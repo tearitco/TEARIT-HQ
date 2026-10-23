@@ -1,0 +1,71 @@
+# dust_seed: LOCKED cases for rpg-dust R1. Source under test: @.apps/rpg-dust/ops/dust_seed.c. Expected values were taken from the first run of the op and pinned; mix(0) is the published splitmix64 anchor, so the hash is checked against an outside value, the rest against itself across runs. Same command twice must give the same bytes; a different seed, key, order or coordinate must give different bytes.
+RESULTS | ../results/dust_seed.txt
+CASE | dust-seed
+SCRATCH |
+COPY | @.apps/rpg-dust/ops/dust_seed.c | dust_seed.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/ds.+x | $T/dust_seed.c
+EXPECT_EXIT | 0 | compiles-clean
+RUN | $T/ds.+x | mix | 0
+EXPECT_EXIT | 0 | splitmix64-anchor-exit
+EXPECT_OUT_IS | e220a8397b1dcdaf | splitmix64-anchor
+RUN | $T/ds.+x | mix | 1
+EXPECT_EXIT | 0 | mix-1-exit
+EXPECT_OUT_IS | 910a2dec89025cc1 | mix-1
+RUN | $T/ds.+x | mix | 18446744073709551615
+EXPECT_EXIT | 0 | mix-max-exit
+EXPECT_OUT_IS | e4d971771b652c20 | mix-max
+RUN | $T/ds.+x | child | 20261023 | globe:3,4
+EXPECT_EXIT | 0 | child-a-exit
+EXPECT_OUT_IS | 9417611597947167293 | child-a
+RUN | $T/ds.+x | child | 20261023 | globe:3,4
+EXPECT_EXIT | 0 | child-a-again-exit
+EXPECT_OUT_IS | 9417611597947167293 | child-a-again
+RUN | $T/ds.+x | child | 20261024 | globe:3,4
+EXPECT_EXIT | 0 | child-other-seed-exit
+EXPECT_OUT_IS | 4629064249140702623 | child-other-seed
+RUN | $T/ds.+x | child | 20261023 | globe:3,5
+EXPECT_EXIT | 0 | child-sibling-key-exit
+EXPECT_OUT_IS | 16695223275860337132 | child-sibling-key
+RUN | $T/ds.+x | child | 20261023 | 
+EXPECT_EXIT | 0 | child-empty-key-exit
+EXPECT_OUT_IS | 8261077322848742158 | child-empty-key
+RUN | $T/ds.+x | path | 20261023 | globe:3,4/region:0,1
+EXPECT_EXIT | 0 | path-two-exit
+EXPECT_OUT_IS | 12778097596652167976 | path-two
+RUN | $T/ds.+x | path | 20261023 | region:0,1/globe:3,4
+EXPECT_EXIT | 0 | path-two-reversed-exit
+EXPECT_OUT_IS | 10585347696456082107 | path-two-reversed
+RUN | $T/ds.+x | child | 9417611597947167293 | region:0,1
+EXPECT_EXIT | 0 | path-equals-chained-child-exit
+EXPECT_OUT_IS | 12778097596652167976 | path-equals-chained-child
+RUN | $T/ds.+x | page | 20261023 | globe:3,4/region:0,1 | 6
+EXPECT_EXIT | 0 | page-6-exit
+EXPECT_OUT_IS | PAGE \p 12778097596652167976 \p globe:3,4/region:0,1 \p 6\n77 60 28 03 62 55\n33 09 42 59 59 26\n04 01 50 06 95 93\n60 97 19 66 01 41\n50 65 40 88 20 17\n90 17 18 08 61 81 | page-6
+RUN | $T/ds.+x | page | 20261023 | globe:3,4/region:0,1 | 6
+EXPECT_EXIT | 0 | page-6-again-exit
+EXPECT_OUT_IS | PAGE \p 12778097596652167976 \p globe:3,4/region:0,1 \p 6\n77 60 28 03 62 55\n33 09 42 59 59 26\n04 01 50 06 95 93\n60 97 19 66 01 41\n50 65 40 88 20 17\n90 17 18 08 61 81 | page-6-again
+RUN | $T/ds.+x | page | 20261024 | globe:3,4/region:0,1 | 6
+EXPECT_EXIT | 0 | page-other-seed-exit
+EXPECT_OUT_IS | PAGE \p 9252446494036176313 \p globe:3,4/region:0,1 \p 6\n08 70 27 18 39 62\n64 45 15 62 84 07\n22 29 52 02 54 30\n31 37 28 38 58 25\n90 15 88 17 69 57\n71 83 38 85 71 11 | page-other-seed
+RUN | $T/ds.+x | page | 20261023 | globe:3,4/region:0,2 | 6
+EXPECT_EXIT | 0 | page-neighbour-exit
+EXPECT_OUT_IS | PAGE \p 1160249340335634816 \p globe:3,4/region:0,2 \p 6\n56 27 04 91 54 64\n08 66 30 56 64 98\n00 30 68 24 71 30\n20 36 12 70 24 99\n09 53 38 59 19 92\n62 82 76 41 59 67 | page-neighbour
+RUN | $T/ds.+x | page | 1 | x | 1
+EXPECT_EXIT | 0 | page-1x1-exit
+EXPECT_OUT_IS | PAGE \p 15921894700254679483 \p x \p 1\n60 | page-1x1
+RUN | $T/ds.+x | child | -5 | a
+EXPECT_EXIT | 2 | neg-seed
+RUN | $T/ds.+x | child | 12ab | a
+EXPECT_EXIT | 2 | letters-seed
+RUN | $T/ds.+x | child | 18446744073709551616 | a
+EXPECT_EXIT | 2 | seed-too-big
+RUN | $T/ds.+x | mix | 
+EXPECT_EXIT | 2 | empty-seed
+RUN | $T/ds.+x | page | 1 | x | 0
+EXPECT_EXIT | 2 | n-zero
+RUN | $T/ds.+x | page | 1 | x | 65
+EXPECT_EXIT | 2 | n-65
+RUN | $T/ds.+x | hash | 1 | a
+EXPECT_EXIT | 2 | unknown-mode
+RUN | $T/ds.+x
+EXPECT_EXIT | 2 | no-args

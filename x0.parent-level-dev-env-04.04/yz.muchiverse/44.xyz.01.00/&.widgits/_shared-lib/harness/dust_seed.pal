@@ -1,0 +1,4 @@
+# dust_seed.pal - LOCKED acceptance harness for rpg-dust R1: the seed rule is deterministic and sensitive to seed, key, order and coordinate. Read results/dust_seed.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dust_seed.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dust_seed.pdl
+halt
