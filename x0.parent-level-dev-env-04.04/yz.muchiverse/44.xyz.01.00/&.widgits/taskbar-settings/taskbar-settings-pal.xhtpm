@@ -90,6 +90,17 @@
     <item id="bar-skin-prev" action="BAR_SKIN_PREV" class="row-bars opacity-btn step-btn" label="&lt;"/>
     <item id="bar-skin-next" action="BAR_SKIN_NEXT" class="row-bars opacity-btn step-btn" label="&gt;"/>
     <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="row-click opacity-btn" label="${click_two_step_label} (press to switch)"/>
+    <!-- UI sounds (2026-10-23, BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md): volume as a bar chip with - / + steps of 10 (the house has no drag-slider element; same step-button
+         shape as Opacity / Size / Grid), the theme picker, and the three switches. Actions are handled by desktop_sound_action() in khtpm_core_render.c, labels by the projector. -->
+    <item id="sound-volume-value" class="row-volume info-chip skin-bar info-long" label="${sound_volume_label}"/>
+    <item id="sound-volume-minus" action="SOUND_VOL_MINUS" class="row-volume opacity-btn step-btn" label="-"/>
+    <item id="sound-volume-plus"  action="SOUND_VOL_PLUS"  class="row-volume opacity-btn step-btn" label="+"/>
+    <item id="sound-theme-name" class="row-soundtheme info-chip skin-bar info-long" label="${sound_theme_label}"/>
+    <item id="sound-theme-prev" action="SOUND_THEME_PREV" class="row-soundtheme opacity-btn step-btn" label="&lt;"/>
+    <item id="sound-theme-next" action="SOUND_THEME_NEXT" class="row-soundtheme opacity-btn step-btn" label="&gt;"/>
+    <item id="sound-toggle" action="SOUND_TOGGLE" class="row-sound opacity-btn" label="${sound_enabled_label} (press to switch)"/>
+    <item id="sound-ui-toggle" action="SOUND_UI_TOGGLE" class="row-soundui opacity-btn" label="${sound_ui_label} (press to switch)"/>
+    <item id="sound-startup-toggle" action="SOUND_STARTUP_TOGGLE" class="row-soundstart opacity-btn" label="${sound_startup_label} (press to switch)"/>
     <repeat count="${n_skins}" bind="sk">
     <item id="skin${sk.#}" action="BAR_SKIN_SET:${sk.id}" class="row-skins skin-pick ${sk.bar} ${sk.ring} ${sk.tone}" label="${sk.label}"/>
     </repeat>

@@ -178,6 +178,7 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py); /
 static void kh_poll_cli_io_ctxmenu_action(void); /* fwd - hq_idle_tick() polls this; defined near kh_open_cli_io_context_menu */
 static pid_t g_khtpm_menu_pid; /* fwd - hq_idle_tick() reaps this; real definition (with initializer) near launch_khtpm_menu() */
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
+static void desktop_sound_action(const char *house_root, const char *action); /* fwd - dispatch()'s SOUND_* settings handler, defined after desktop_toggle_click_two_step */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
 static void desktop_set_grid_cell(const char *house_root, int px); /* fwd - GRID_CELL_MINUS/PLUS, desk_grid.pdl cell_px */
@@ -10430,6 +10431,13 @@ static void dispatch(const char *action) {
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
+    if (strncmp(action, "SOUND_", 6) == 0) {
+        /* UI sound settings (BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md): volume -/+ , on/off, menu sounds, startup sound, theme < >.
+         * Each rewrites ONE key of hq_ui.pdl (the player and every window re-read it) - same shape as the scale and click handlers above. */
+        desktop_sound_action(g_house_root, action);
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
     if (strcmp(action, "UI_FONT_FAMILY_NEXT") == 0 || strcmp(action, "UI_FONT_FAMILY_PREV") == 0) {
         /* direct instruction 2026-09-10 ("when should we add font
          * picker to settings... lets do the build") - same real
@@ -11761,9 +11769,10 @@ static void activate_focused_impl(void) {
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
-static void activate_focused(void) {      /* UI sound cue wrapper (U3): Enter / click on the focused row */
-    if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) ui_cue("activate");
+static void activate_focused(void) {      /* UI sound cue wrapper (U3): Enter / click on the focused row. The cue goes AFTER the action, so a click that changes volume or theme is heard with the new setting. */
+    int valid = (g_focus_nav >= 1 && g_focus_nav <= g_n_nav);
     activate_focused_impl();
+    if (valid) ui_cue("activate");
 }
 
 /* REAL, NEW 2026-09-06 - restore the HQ-menu "cli" terminal mirror.
@@ -16630,6 +16639,118 @@ static void desktop_toggle_click_two_step(const char *house_root) {
     if (!replaced) fprintf(wf, "click_two_step=%d\n", new_val);
     fclose(wf);
     g_click_two_step = new_val;
+    hq_ui_pdl_touch_marker(house_root);
+}
+
+/* ---- UI sound settings (BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md) ---- */
+/* value of key=... in hq_ui.pdl; 1 if present */
+static int hq_ui_read_key(const char *house_root, const char *key, char *out, size_t n) {
+    char path[PATH_BUF], line[512];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    size_t kl = strlen(key);
+    int found = 0;
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, key, kl) == 0 && line[kl] == '=') {
+            line[strcspn(line, "\r\n")] = 0;
+            snprintf(out, n, "%s", line + kl + 1);
+            found = 1;
+        }
+    }
+    fclose(f);
+    return found;
+}
+/* replace (or append) one key=value line, keeping every other byte of the file as it is */
+static void hq_ui_write_key(const char *house_root, const char *key, const char *val) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    FILE *f = fopen(path, "rb");
+    char *buf = NULL;
+    long len = 0;
+    if (f) {
+        fseek(f, 0, SEEK_END);
+        len = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if (len < 0 || len > 1048576) { fclose(f); return; }
+        buf = malloc((size_t)len + 1);
+        if (!buf || fread(buf, 1, (size_t)len, f) != (size_t)len) { free(buf); fclose(f); return; }
+        buf[len] = 0;
+        fclose(f);
+    }
+    FILE *wf = fopen(path, "wb");
+    if (!wf) { free(buf); return; }
+    size_t kl = strlen(key);
+    int replaced = 0;
+    for (char *p = buf; p && *p; ) {
+        char *nl = strchr(p, '\n');
+        size_t ll = nl ? (size_t)(nl - p) + 1 : strlen(p);
+        if (!replaced && strncmp(p, key, kl) == 0 && p[kl] == '=') {
+            fprintf(wf, "%s=%s\n", key, val);
+            replaced = 1;
+        } else {
+            fwrite(p, 1, ll, wf);
+        }
+        p += ll;
+    }
+    if (!replaced) {
+        if (len > 0 && buf[len - 1] != '\n') fputc('\n', wf);
+        fprintf(wf, "%s=%s\n", key, val);
+    }
+    fclose(wf);
+    free(buf);
+}
+static int hq_ui_read_int(const char *house_root, const char *key, int dflt) {
+    char v[64], *e;
+    if (!hq_ui_read_key(house_root, key, v, sizeof(v))) return dflt;
+    long n = strtol(v, &e, 10);
+    return (*v && !*e) ? (int)n : dflt;
+}
+static void desktop_sound_action(const char *house_root, const char *action) {
+    char v[64];
+    if (strcmp(action, "SOUND_VOL_MINUS") == 0 || strcmp(action, "SOUND_VOL_PLUS") == 0) {
+        int n = hq_ui_read_int(house_root, "sound_volume", 40) + (strcmp(action, "SOUND_VOL_PLUS") == 0 ? 10 : -10);
+        if (n < 0) n = 0;
+        if (n > 100) n = 100;
+        snprintf(v, sizeof(v), "%d", n);
+        hq_ui_write_key(house_root, "sound_volume", v);
+    } else if (strcmp(action, "SOUND_TOGGLE") == 0) {
+        g_sound_enabled = !hq_ui_read_int(house_root, "sound_enabled", 1);
+        hq_ui_write_key(house_root, "sound_enabled", g_sound_enabled ? "1" : "0");
+    } else if (strcmp(action, "SOUND_UI_TOGGLE") == 0) {
+        g_sound_ui = !hq_ui_read_int(house_root, "sound_ui", 1);
+        hq_ui_write_key(house_root, "sound_ui", g_sound_ui ? "1" : "0");
+    } else if (strcmp(action, "SOUND_STARTUP_TOGGLE") == 0) {
+        hq_ui_write_key(house_root, "sound_startup", hq_ui_read_int(house_root, "sound_startup", 1) ? "0" : "1");
+    } else if (strcmp(action, "SOUND_THEME_NEXT") == 0 || strcmp(action, "SOUND_THEME_PREV") == 0) {
+        char pdl[PATH_BUF], line[512], ids[16][48];
+        int n = 0;
+        snprintf(pdl, sizeof(pdl), "%s/&.widgits/ui-sounds/ui_sounds.pdl", house_root);
+        FILE *f = fopen(pdl, "r");
+        if (!f) return;
+        while (n < 16 && fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "THEME", 5) != 0) continue;
+            char *a = strchr(line, '|');
+            if (!a) continue;
+            a++;
+            while (*a == ' ') a++;
+            size_t l = strcspn(a, " |\r\n");
+            if (l == 0 || l >= sizeof(ids[0])) continue;
+            memcpy(ids[n], a, l);
+            ids[n][l] = 0;
+            n++;
+        }
+        fclose(f);
+        if (n == 0) return;
+        char cur[64] = "";
+        int ci = 0;
+        hq_ui_read_key(house_root, "sound_theme", cur, sizeof(cur));
+        for (int i = 0; i < n; i++) if (strcmp(ids[i], cur) == 0) ci = i;
+        ci = (ci + (strcmp(action, "SOUND_THEME_NEXT") == 0 ? 1 : n - 1)) % n;
+        hq_ui_write_key(house_root, "sound_theme", ids[ci]);
+    } else {
+        return;
+    }
     hq_ui_pdl_touch_marker(house_root);
 }
 

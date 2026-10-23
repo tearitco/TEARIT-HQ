@@ -283,6 +283,59 @@ static int read_grid_cell(const char *house) {
     return v;
 }
 
+/* UI sound settings labels (BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md): read-only view of the sound_* keys of hq_ui.pdl and the THEME rows of ui_sounds.pdl;
+ * the renderer's desktop_sound_action() owns writing. Defaults mirror the player: enabled 1, volume 40, ui 1, startup 1, theme = the first THEME row. */
+static size_t append_sound_labels(const char *house, char *ui, size_t cap, size_t off) {
+    char path[PATH_MAX], line[512], theme[64] = "";
+    int enabled = 1, vol = 40, ui_on = 1, startup = 1;
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            if (strncmp(line, "sound_enabled=", 14) == 0) enabled = atoi(line + 14) != 0;
+            else if (strncmp(line, "sound_volume=", 13) == 0) { vol = atoi(line + 13); if (vol < 0) vol = 0; if (vol > 100) vol = 100; }
+            else if (strncmp(line, "sound_ui=", 9) == 0) ui_on = atoi(line + 9) != 0;
+            else if (strncmp(line, "sound_startup=", 14) == 0) startup = atoi(line + 14) != 0;
+            else if (strncmp(line, "sound_theme=", 12) == 0) snprintf(theme, sizeof(theme), "%.63s", line + 12);
+        }
+        fclose(f);
+    }
+    char label[96] = "", first[96] = "", id[64];
+    snprintf(path, sizeof(path), "%s/&.widgits/ui-sounds/ui_sounds.pdl", house);
+    f = fopen(path, "r");
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "THEME", 5) != 0) continue;
+            char *a = strchr(line, '|');
+            char *b = a ? strchr(a + 1, '|') : NULL;
+            char *c = b ? strchr(b + 1, '|') : NULL;
+            if (!a || !b) continue;
+            snprintf(id, sizeof(id), "%.*s", (int)(b - a - 1), a + 1);
+            char *t = id; while (*t == ' ') t++;
+            size_t il = strlen(t); while (il && t[il - 1] == ' ') t[--il] = '\0';
+            char lab[96];
+            snprintf(lab, sizeof(lab), "%.*s", (int)((c ? c : line + strlen(line)) - b - 1), b + 1);
+            char *lt = lab; while (*lt == ' ') lt++;
+            size_t ll = strlen(lt); while (ll && (lt[ll - 1] == ' ' || lt[ll - 1] == '\n' || lt[ll - 1] == '\r')) lt[--ll] = '\0';
+            if (!first[0]) snprintf(first, sizeof(first), "%s", lt);
+            if (theme[0] && strcmp(t, theme) == 0) snprintf(label, sizeof(label), "%s", lt);
+        }
+        fclose(f);
+    }
+    if (!label[0]) snprintf(label, sizeof(label), "%s", first[0] ? first : "none");
+    char bar[16];
+    int filled = (vol + 5) / 10;
+    for (int i = 0; i < 10; i++) bar[i] = i < filled ? '#' : '-';
+    bar[10] = '\0';
+    off += (size_t)snprintf(ui + off, cap - off, "sound_volume_label=Volume: %d%%  [%s]\n", vol, bar);
+    off += (size_t)snprintf(ui + off, cap - off, "sound_enabled_label=Sound: %s\n", enabled ? "ON" : "OFF");
+    off += (size_t)snprintf(ui + off, cap - off, "sound_ui_label=Menu sounds: %s\n", ui_on ? "ON" : "OFF");
+    off += (size_t)snprintf(ui + off, cap - off, "sound_startup_label=Startup sound: %s\n", startup ? "ON" : "OFF");
+    off += (size_t)snprintf(ui + off, cap - off, "sound_theme_label=Sound theme: %s\n", label);
+    return off;
+}
+
 static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family,
                      double opacity, double font_scale, const char *bar_label, int grid_cell) {
     const char *prompt =
@@ -317,6 +370,7 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     off = (size_t)append_skin_rows(g_house_for_skins, ui, cap, off, g_cur_skin_id);
     off += (size_t)snprintf(ui + off, cap - off, "size_label=Size: %d%%\n", (int)(font_scale * 100.0 + 0.5));
     off += (size_t)snprintf(ui + off, cap - off, "grid_label=Grid: %d px\n", grid_cell);
+    off = append_sound_labels(g_house_for_skins, ui, cap, off);
     off += (size_t)snprintf(ui + off, cap - off, "colors_label=Colors - background: %s, text: %s. Pick below (green ring = background, gold ring = text)\n",
                             (bg >= 0 && bg < g_n_swatches) ? g_name_buf[bg] : "-",
                             (fg >= 0 && fg < g_n_swatches) ? g_name_buf[fg] : "-");

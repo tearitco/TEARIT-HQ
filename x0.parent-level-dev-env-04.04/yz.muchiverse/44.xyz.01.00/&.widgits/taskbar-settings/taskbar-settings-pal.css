@@ -42,6 +42,7 @@
 .info-wide { width: 820px; }
 .step-btn { background-color: #555555; width: 84px; }
 .row-click { width: 400px; }
+.row-sound, .row-soundui, .row-soundstart { width: 400px; }
 .tone-dark  { color: #ffffff; }
 .tone-light { color: #111111; }
 
