@@ -208,5 +208,22 @@ EXPECT_FILE | d1.log | played theme_demo theme=retro vol=60 latency_ms=0\n | the
 WRITE | d2.cues | 1 1 theme_demo\n1100 1 theme_demo\n1250 2 theme_demo\n
 RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/d2.cues | --dry-run | $T/d2.log | --drain
 EXPECT_EXIT | 0 | demo-gap-exit
-EXPECT_FILE | d2.log | played theme_demo theme=soft vol=40 latency_ms=0\nplayed theme_demo theme=soft vol=40 latency_ms=0\ncoalesce theme_demo gap_ms=150<300\n | theme-demo-rate-limited-to-300ms
+EXPECT_FILE | d2.log | played theme_demo theme=soft vol=40 latency_ms=0\npreempt theme_demo\nplayed theme_demo theme=soft vol=40 latency_ms=0\ncoalesce theme_demo gap_ms=150<300\n | theme-demo-rate-limited-to-300ms
+WRITE | p1.cues | 1000 1 theme_demo\n1500 1 theme_demo\n3000 1 theme_demo\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/p1.cues | --dry-run | $T/p1.log | --drain
+EXPECT_EXIT | 0 | preempt-exit
+EXPECT_FILE | p1.log | played theme_demo theme=soft vol=40 latency_ms=0\npreempt theme_demo\nplayed theme_demo theme=soft vol=40 latency_ms=0\nplayed theme_demo theme=soft vol=40 latency_ms=0\n | second-demo-cuts-off-the-first-but-not-after-it-ended
+WRITE | p2.cues | 1000 1 theme_demo\n1100 1 nav_move\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/p2.cues | --dry-run | $T/p2.log | --drain
+EXPECT_EXIT | 0 | no-preempt-exit
+EXPECT_FILE | p2.log | played theme_demo theme=soft vol=40 latency_ms=0\nplayed nav_move theme=soft vol=40 latency_ms=0\n | a-different-sound-does-not-preempt
+WRITE | p3.cues | 1000 1 theme_demo\n2150 1 theme_demo\n
+WRITE | p3.set | sound_theme=retro\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/p3.set | --cues | $T/p3.cues | --dry-run | $T/p3.log | --drain
+EXPECT_EXIT | 0 | retro-preempt-exit
+EXPECT_FILE | p3.log | played theme_demo theme=retro vol=40 latency_ms=0\nplayed theme_demo theme=retro vol=40 latency_ms=0\n | retro-demo-is-shorter-so-2150-is-after-it-ended
+WRITE | p4.cues | 1000 1 theme_demo\n2150 1 theme_demo\n
+RUN | $T/usp.+x | --pdl | $T/ui_sounds.pdl | --sounds | $T/snd | --settings | $T/none.set | --cues | $T/p4.cues | --dry-run | $T/p4.log | --drain
+EXPECT_EXIT | 0 | soft-preempt-exit
+EXPECT_FILE | p4.log | played theme_demo theme=soft vol=40 latency_ms=0\npreempt theme_demo\nplayed theme_demo theme=soft vol=40 latency_ms=0\n | soft-demo-is-longer-so-2150-preempts
 CLEAN |

@@ -12,7 +12,8 @@
  * Decision per cue, in this order (the log line says which): unknown name -> `skip unknown`; sound_enabled=0 -> `skip muted`; category ui with sound_ui=0 -> `skip ui_off`; category startup with sound_startup=0 -> `skip startup_off`;
  *   older than 150 ms (startup exempt) -> `drop stale`; closer than the cue's min_gap_ms to the last PLAYED cue of that name, from ANY pid -> `coalesce`; volume 0 -> `skip volume0`; else `played <name> theme=<t> vol=<n> latency_ms=<now - cue time>`.
  *   A theme with no such wav falls back to the first theme (`fallback theme=<x>-><y>`); no wav at all -> `skip nofile`. A malformed line -> `skip bad_line`.
- * Live playback: one pa_simple stream (libpulse-simple), 44.1 kHz mono s16, sounds loaded on first use and scaled by volume/100; sounds play in order, never overlapped. No sound server: say so once on stderr and exit 0 (the desktop is unaffected).
+ * A cue with the SAME name as the sound still playing (judged from the cue times and the wav length, so it is the same in --dry-run) CUTS IT OFF: the log says `preempt <name>` before `played`. This is what makes a second theme click replace the first demo instead of playing after it.
+ * Live playback: one pa_simple stream (libpulse-simple, 100 ms buffer, prebuf 0), 44.1 kHz mono s16, sounds loaded on first use and scaled by volume/100, fed in 20 ms chunks while the cue file is polled between chunks; a different sound waits for the one playing (up to 4 queued, entries older than 250 ms are dropped), the same name preempts it (pa_simple_flush). No sound server: say so once on stderr and exit 0 (the desktop is unaffected).
  * Exit: 0 normal (drain finished, or no sound server), 2 usage / unreadable --pdl / --settings is allowed to be missing. Build: sh ops/build_ui_sound_player.sh */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -37,6 +38,8 @@ static int nth = 0;
 static FILE *g_log = NULL;
 static int g_dry = 0;
 static pa_simple *g_pa = NULL;
+static char g_cur_name[48] = "";      /* the sound the cue times say is still playing, and until when (ms on the cue clock) */
+static long g_cur_until = -1;
 static long now_ms(void) {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
@@ -163,19 +166,88 @@ static int wav_path(const char *dir, const char *theme, const char *id, char *ou
     strcat(out, ".wav");
     return access(out, R_OK) == 0;
 }
-static void play_file(const char *path, int vol) {
+/* ---- live playback: a current sound fed in 20 ms chunks, a short queue behind it ---- */
+#define CHUNK 882
+typedef struct { short *pcm; long n, pos; char name[48]; long born; } Snd;
+static Snd g_cur = { NULL, 0, 0, "", 0 };
+static Snd g_q[4];
+static int g_nq = 0;
+static int g_drain_sync = 0;      /* --drain without --dry-run: play each sound to the end at once (no loop to feed it from) */
+static int load_snd(Snd *o, const char *path, int vol, const char *name) {
     short *pcm = NULL;
     long n = 0;
     int sr = 0;
     if (adsp_read_wav(path, &pcm, &n, &sr) != 0 && !pcm) {
-        return;
+        return 0;
     }
     for (long i = 0; i < n; i++) {
         pcm[i] = (short)(pcm[i] * vol / 100);
     }
+    o->pcm = pcm;
+    o->n = n;
+    o->pos = 0;
+    cp(o->name, sizeof o->name, name);
+    o->born = now_ms();
+    return 1;
+}
+static void snd_free(Snd *o) {
+    free(o->pcm);
+    o->pcm = NULL;
+    o->n = o->pos = 0;
+}
+static void play_request(const char *path, int vol, const char *name, int preempt) {
+    Snd nw;
+    if (!load_snd(&nw, path, vol, name)) {
+        return;
+    }
+    if (g_drain_sync) {
+        int err = 0;
+        pa_simple_write(g_pa, nw.pcm, (size_t)nw.n * 2, &err);
+        pa_simple_drain(g_pa, &err);
+        snd_free(&nw);
+        return;
+    }
+    if (preempt && g_cur.pcm) {
+        int err = 0;
+        pa_simple_flush(g_pa, &err);      /* drop what is already in the server buffer */
+        snd_free(&g_cur);
+        g_cur = nw;
+        return;
+    }
+    if (!g_cur.pcm) {
+        g_cur = nw;
+        return;
+    }
+    if (g_nq < 4) {
+        g_q[g_nq++] = nw;
+    } else {
+        snd_free(&nw);
+    }
+}
+/* write one chunk of the current sound; start the next queued one when it ends. Returns 1 while something is playing. */
+static int play_step(void) {
+    while (!g_cur.pcm && g_nq > 0) {
+        g_cur = g_q[0];
+        for (int i = 1; i < g_nq; i++) {
+            g_q[i - 1] = g_q[i];
+        }
+        g_nq--;
+        if (now_ms() - g_cur.born > 250) {
+            snd_free(&g_cur);      /* waited too long: a late blip is worse than none */
+        }
+    }
+    if (!g_cur.pcm) {
+        return 0;
+    }
+    long left = g_cur.n - g_cur.pos;
+    long take = left < CHUNK ? left : CHUNK;
     int err = 0;
-    pa_simple_write(g_pa, pcm, (size_t)n * 2, &err);
-    free(pcm);
+    pa_simple_write(g_pa, g_cur.pcm + g_cur.pos, (size_t)take * 2, &err);
+    g_cur.pos += take;
+    if (g_cur.pos >= g_cur.n) {
+        snd_free(&g_cur);
+    }
+    return 1;
 }
 static void handle(const char *line, const Set *s, const char *sounds, long now) {
     long ts = 0;
@@ -220,9 +292,17 @@ static void handle(const char *line, const Set *s, const char *sounds, long now)
             theme = TH[0];
         }
         c->last = ts;
+        struct stat wst;
+        long dur_ms = (stat(path, &wst) == 0 && wst.st_size > 44) ? (long)((wst.st_size - 44) * 1000 / 88200) : 0;
+        int preempt = (g_cur_until > ts && !strcmp(g_cur_name, name));
+        if (preempt) {
+            logf_("preempt %s", name);
+        }
+        cp(g_cur_name, sizeof g_cur_name, name);
+        g_cur_until = ts + dur_ms;
         logf_("played %s theme=%s vol=%d latency_ms=%ld", name, theme, s->volume, now - ts);
         if (!g_dry) {
-            play_file(path, s->volume);
+            play_request(path, s->volume, name, preempt);
         }
     }
 }
@@ -276,7 +356,14 @@ int main(int argc, char **argv) {
     } else {
         pa_sample_spec ss = { PA_SAMPLE_S16LE, 44100, 1 };
         int err = 0;
-        g_pa = pa_simple_new(NULL, "LyfeDesk", PA_STREAM_PLAYBACK, NULL, "ui sounds", &ss, NULL, NULL, &err);
+        pa_buffer_attr ba;
+        ba.maxlength = (uint32_t)-1;
+        ba.tlength = 8820;      /* 100 ms at 44.1 kHz mono s16 */
+        ba.prebuf = 0;          /* start at once: a 25 ms blip is smaller than any prebuf */
+        ba.minreq = (uint32_t)-1;
+        ba.fragsize = (uint32_t)-1;
+        g_pa = pa_simple_new(NULL, "LyfeDesk", PA_STREAM_PLAYBACK, NULL, "ui sounds", &ss, NULL, &ba, &err);
+        g_drain_sync = drain;
         if (!g_pa) {
             fprintf(stderr, "ui_sound_player: no sound server (%s); UI sounds are off\n", pa_strerror(err));
             return 0;
@@ -371,6 +458,9 @@ int main(int argc, char **argv) {
         }
         if (drain) {
             return 0;
+        }
+        if (!g_dry && play_step()) {
+            continue;      /* the chunk write paced us (about 20 ms): poll the cue file again at once */
         }
         usleep(30000);
     }
