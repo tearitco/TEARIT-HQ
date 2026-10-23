@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relay Harness Test Report: tomom Chatbot</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #00ff88;
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #4a9eff;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #ff6b6b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background: #0f0f23;
+            color: #00ff88;
+        }
+        tr:nth-child(even) {
+            background: #16213e;
+        }
+        code {
+            background: #0f0f23;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ff9e64;
+            font-family: 'Fira Code', monospace;
+        }
+        pre {
+            background: #0f0f23;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: #ff9e64;
+        }
+        .status-ok {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        .status-broken {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
+        .tag-working { background: #0f4c14; color: #00ff88; }
+        .tag-broken { background: #4c0f0f; color: #ff6b6b; }
+        .tag-n-a { background: #333; color: #888; }
+        .meta {
+            color: #888;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Relay Harness Test Report: tomom Chatbot</h1>
+
+<p class="meta">
+  <strong>Date:</strong> 2026-10-22<br>
+  <strong>Project:</strong> tomom (3-stage LLM chatbot)<br>
+  <strong>Location:</strong> <code>44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️</code>
+</p>
+
+<h2>Summary</h2>
+<p>Tested the tomom chatbot (C-based neural network with Mixture of Experts) through four relay interface approaches: direct binary, iqa-fork <code>ask.sh</code> relay (LAN Mac ollama), HTTP relay (<code>http_server.c</code>), and local ollama. The gem-dev harness and bot5 are available but are concurrent agent frameworks, not LLM chat relay harnesses. No "middle-house" solution exists in the codebase.</p>
+
+<h2>Relay Approaches Tested</h2>
+
+<h3>1. Direct Binary <span class="tag tag-working">Working</span></h3>
+<pre><code>.//+x/chatbot_moe_v1.+x curriculum_bank.txt "What is math" 5 0.8</code></pre>
+<p><strong>Result:</strong> Works. Loads 2610 vocab words across 15 curricula. Response is weak (e.g., "their their the language the") — the model is untrained/synthetic, producing word-order artifacts. Expected behavior for a prototype without trained weights.</p>
+
+<h3>2. iqa-fork ask.sh Relay <span class="tag tag-working">Working</span></h3>
+<pre><code>bash 44xyz.01.00/iqa-fork/ask.sh gemma3:270m "What is math?" 15</code></pre>
+<p><strong>Result:</strong> Works well. This is a curl-based relay to <code>10.0.0.144:11434</code> (LAN Mac ollama). Returns coherent, well-formed responses:</p>
+<blockquote>Mathematics is a branch of science and mathematics that deals with the study of numbers, shapes, and concepts.</blockquote>
+<p>The <code>ask.sh</code> script uses <code>curl</code> to POST to <code>/api/generate</code> on <code>10.0.0.144:11434</code>, pipes response through <code>json_parser.+x</code> to extract content. <strong class="status-ok">This is a valid LLM relay harness.</strong></p>
+
+<h3>3. HTTP Relay (tomom http_server.c) <span class="tag tag-broken">Broken</span></h3>
+<pre><code>./+x/http_server.+x  (serves on port 8080)
+curl http://127.0.0.1:8080/api/chat</code></pre>
+<p><strong>Result:</strong> <span class="status-broken">BROKEN.</span> The HTTP server compiles and serves the HTML web interface (GET <code>/</code> returns a Bootstrap page with title "3-Stage LLM Chatbot Interface"). However, the API endpoint <code>/api/chat</code> (POST) has a request-parsing bug: it scans the HTTP buffer for <code>\r\n\r\n</code> to find the JSON body, but the buffer parsing logic corrupts the JSON payload, causing the chatbot to attempt loading files named "number", "start-token", "end-token", etc.</p>
+<ul>
+  <li>All "Error opening vocab file: No such file or directory" messages</li>
+  <li>"Merged vocabulary size: 0"</li>
+  <li><span class="status-broken">Segmentation fault</span> (null pointer dereference on empty vocab)</li>
+</ul>
+<p><strong>Root cause:</strong> The buffer tokenization at lines 351-353 uses <code>strtok()</code> which mutates the buffer before body extraction happens. The tokenizer corrupts the HTTP body content before it reaches <code>handle_chat_request()</code>.</p>
+
+<h3>4. Local Ollama (llama3:latest)</h3>
+<pre><code>curl http://127.0.0.1:11434/api/generate -d '{"model":"llama3:latest","prompt":"Hello","stream":false}'</code></pre>
+<p><strong>Result:</strong> Slow startup (~10s) but works. Local <code>llama3:latest</code> model is available. Larger models have significant startup latency.</p>
+
+<h2>Relay Harness Options Survey</h2>
+
+<h3>gem-dev Harness</h3>
+<table>
+  <tr><th>Location</th><td><code>1.TPMOS_c_+rmmp.0103.0001/projects/gem-dev/</code></td></tr>
+  <tr><th>Type</th><td>Concurrent TPMOS application (not a chat relay)</td></tr>
+  <tr><th>Purpose</th><td>CLI path-completion dev environment</td></tr>
+  <tr><th>Relevance</th><td><span class="tag tag-n-a">N/A</span> Not an LLM relay harness</td></tr>
+  <tr><th>Status</th><td>Available but not applicable</td></tr>
+</table>
+
+<h3>iqa-fork ask.sh <span class="tag tag-working">Valid Relay</span></h3>
+<table>
+  <tr><th>Location</th><td><code>44xyz.01.00/iqa-fork/ask.sh</code></td></tr>
+  <tr><th>Type</th><td>Shell script relay to Ollama API</td></tr>
+  <tr><th>Purpose</th><td>Query a Mac LAN ollama model and return clean text</td></tr>
+  <tr><th>Relevance</th><td><span class="status-ok">Valid LLM relay harness</span></td></tr>
+  <tr><th>Status</th><td>Tested and working</td></tr>
+</table>
+
+<h3>pal-chat-irc Test Harness</h3>
+<table>
+  <tr><th>Location</th><td><code>44xyz.01.00/044.pal-chat-irc👥️+2/test-harn-same/</code></td></tr>
+  <tr><th>Type</th><td>Key-injection testing framework for P2P chat</td></tr>
+  <tr><th>Purpose</th><td>Drive a chat UI by injecting keyboard events into session files</td></tr>
+  <tr><th>Relevance</th><td>UX testing harness, not an LLM relay</td></tr>
+  <tr><th>Status</th><td>Ops compile-ready but not set up</td></tr>
+</table>
+
+<h3>bot5 (in xo/)</h3>
+<table>
+  <tr><th>Location</th><td><code>1.TPMOS_c_+rmmp.0103.0001/xo/bot5/</code></td></tr>
+  <tr><th>Type</th><td>Concurrent Exo-Bot v5 muscle/agent framework</td></tr>
+  <tr><th>Purpose</th><td>Orchestrator + keyboard muscle concurrent process launcher</td></tr>
+  <tr><th>Relevance</th><td><span class="tag tag-n-a">N/A</span> Not an LLM relay</td></tr>
+  <tr><th>Status</th><td>Available but not applicable</td></tr>
+</table>
+
+<h3>Middle-House Solution</h3>
+<p><span class="status-broken">Not found.</span> Searched for "middle.house", "middlehouse", "middle_house" — zero results across the entire codebase. The term was not found in any file.</p>
+
+<h2>Available LLM Endpoints</h2>
+<table>
+  <tr><th>Endpoint</th><th>Model</th><th>Status</th><th>Notes</th></tr>
+  <tr><td>Local</td><td>llama3:latest</td><td class="status-ok">Working (slow ~10s)</td><td>127.0.0.1:11434</td></tr>
+  <tr><td>Local</td><td>llama2:latest</td><td class="status-ok">Available</td><td>127.0.0.1:11434 (untested)</td></tr>
+  <tr><td>LAN Mac</td><td>gemma3:270m</td><td class="status-ok">Working (fast ~2s)</td><td>10.0.0.144:11434</td></tr>
+  <tr><td>LAN Mac</td><td>gemma3:latest</td><td>Unknown</td><td>May have larger gemma3</td></tr>
+  <tr><td>Local</td><td>llama3 (chat)</td><td class="status-broken">Failed</td><td>/api/chat timed out; use /api/generate</td></tr>
+</table>
+
+<h2>Recommendations</h2>
+<ol>
+  <li><strong>Use iqa-fork ask.sh as the relay:</strong> It's the most practical working relay. For tomom specifically, a wrapper can pipe the LLM response through the tomom vocab comparison (calculate similarity against vocab embeddings).</li>
+  <li><strong>Fix http_server.c:</strong> The <code>/api/chat</code> endpoint has a parsing bug at lines 351-353. The <code>strtok()</code> call mutates the buffer before body extraction via <code>strstr(buffer, "\r\n\r\n")</code> can safely read it. Fix: extract the body pointer before tokenizing the request line, or copy the body to a separate buffer before tokenizing.</li>
+  <li><strong>Local ollama for offline use:</strong> Local <code>llama3:latest</code> works but has ~10s startup. For quick tests, use the LAN Mac <code>gemma3:270m</code> which responds in under 2s.</li>
+</ol>
+
+</body>
+</html>
