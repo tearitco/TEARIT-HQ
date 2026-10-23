@@ -1,0 +1,4 @@
+# event.pal - the ship teleport as an EVENT PAGE, like a door (events-hq edits event.ir.pdl); the page runs the engine verb planet, which logs a DOOR row in state/events.txt and the look ledger
+# pkg=planet page=page_1
+exec cmd_1.sh
+halt

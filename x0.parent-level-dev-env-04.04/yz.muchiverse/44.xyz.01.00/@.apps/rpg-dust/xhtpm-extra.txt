@@ -7,7 +7,9 @@
         <item id="zin" class="pchq-ft skin-bar" label="Zoom in here" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' zoomhere"/>
         <item id="zout" class="pchq-ft skin-bar" label="Zoom out" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' zoomout"/>
         <text label="planet: ${pl_label}" class="ph-quiet"/>
+        <item id="pl-none" class="pchq-ft skin-bar" label="No planet (deep space)" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire planet none"/>
+        <item id="pl-new" class="pchq-ft skin-bar" label="New planet" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire newplanet"/>
         <repeat count="${n_pl}" bind="pl">
-          <item id="pl${pl.#}" class="pchq-ft skin-bar ${pl.cls}" label="${pl.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' planet ${pl.id}"/>
+          <item id="pl${pl.#}" class="pchq-ft skin-bar ${pl.cls}" label="${pl.label}" action="'${HOUSE}/@.apps/@APP@/ops/+x/@OP@.+x' fire planet ${pl.id}"/>
         </repeat>
 @@end

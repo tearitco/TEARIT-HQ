@@ -1342,8 +1342,8 @@ static int daemon_main(void) {
  * leaf). Environment words carry the arguments (PET_ARG) and a one-time token (PET_VIA) that the leaf writes to state/via.txt, so a page that ran is
  * told from a page that did not, and a verb is never run twice. No manifest, no page, a broken page or a page=no verb: the verb runs directly and one
  * line goes to state/fire_log.txt (never silent). A game without verbs.pdl behaves exactly as before. */
-static int manifest_page(const char *verb, char *out, size_t cap) {
-    char p[PATH_MAX], buf[16384]; snprintf(p, sizeof p, "%s/verbs.pdl", APP); out[0] = 0; if (!read_file(p, buf, sizeof buf)) return 0;
+static int manifest_page_in(const char *file, const char *verb, char *out, size_t cap) {
+    char p[PATH_MAX], buf[16384]; snprintf(p, sizeof p, "%s/%s", APP, file); out[0] = 0; if (!read_file(p, buf, sizeof buf)) return 0;
     for (char *l = strtok(buf, "\n"); l; l = strtok(NULL, "\n")) {
         if (strncmp(l, "VERB", 4)) continue; char *f[4]; int n = 0; char *q = l;
         while (n < 4) { f[n++] = q; char *b = strchr(q, '|'); if (!b) break; *b = 0; q = b + 1; }
@@ -1352,6 +1352,8 @@ static int manifest_page(const char *verb, char *out, size_t cap) {
     }
     return 0;
 }
+/* verbs.pdl is the manifest verbgen checks; a skin whose page verbs live in a different engine than the manifest GAME row (rpg-dust: the manifest binds dust_zoom) lists them in verbs_extra.pdl, which fire reads too (same VERB rows, not checked by verbgen) */
+static int manifest_page(const char *verb, char *out, size_t cap) { return manifest_page_in("verbs.pdl", verb, out, cap) || manifest_page_in("verbs_extra.pdl", verb, out, cap); }
 static void fire_log(const char *verb, const char *what) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/fire_log.txt", ST); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%ld|%s|%s\n", (long)time(NULL), verb, what); fclose(f); } }
 /* returns 1 when it handled the call (page ran, or the arguments were refused); 0 = run the verb directly */
 static int fire_main(int vargc, char **vargv) {

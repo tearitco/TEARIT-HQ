@@ -1,0 +1,5 @@
+# verbs_extra.pdl - page verbs of the rpg-dust SKIN (ops/rpg_dust.c). verbs.pdl is the manifest verbgen checks and binds the dust_zoom op; the core's fire reads this file too (same VERB rows), so a click can play an events-hq page and fall back to the plain verb.
+#   planet <id|none>   the ship teleports above a planet (events/planet/: logs DOOR | time | ship | from | to, appends PLANET to state/look_ledger.txt)
+#   newplanet          a new planet is generated in this system and the ship goes above it (events/newplanet/: NEWPLANET row)
+VERB | planet    | yes | ui | planet id or none | the ship teleports above a planet (or none = deep space)
+VERB | newplanet | yes | ui | -                  | generate a new planet and go there

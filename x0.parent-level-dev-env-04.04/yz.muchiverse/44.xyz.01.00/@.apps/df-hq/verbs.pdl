@@ -39,6 +39,7 @@ VERB | reset     | no     | ui     | -             | reset the game state (destr
 VERB | resolve   | no     | ui     | -             | engine: resolve fortress jobs
 VERB | review    | no     | ui     | -             | read-only panel
 VERB | select    | no     | ui     | -             | UI state: select a pet
+VERB | selev     | no     | ui     | -             | UI state: a click on an entity cell of the bottom bar (selects a pet, else the entity menu)
 VERB | status    | no     | ui     | -             | read-only
 VERB | step      | no     | ui     | -             | one tick (high frequency)
 VERB | sync      | no     | ui     | -             | engine: re-render

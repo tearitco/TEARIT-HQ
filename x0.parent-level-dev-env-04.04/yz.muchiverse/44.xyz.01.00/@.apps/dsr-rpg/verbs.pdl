@@ -28,6 +28,7 @@ VERB | pet_says  | no     | ui     | -             | a character says a line (ev
 VERB | phase     | no     | ui     | -             | engine: day phase event
 VERB | reset     | no     | ui     | -             | reset the game state (destructive; direct on purpose)
 VERB | select    | no     | ui     | -             | UI state: select a pet
+VERB | selev     | no     | ui     | -             | UI state: a click on an entity cell of the bottom bar (selects a pet, else the entity menu)
 VERB | status    | no     | ui     | -             | read-only
 VERB | step      | no     | ui     | -             | one tick (high frequency)
 VERB | sync      | no     | ui     | -             | engine: re-render
