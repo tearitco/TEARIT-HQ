@@ -19,18 +19,20 @@ HOUSE="$(dirname "$CRYPTS")"
 [ -n "${XAUTHORITY:-}" ] || { [ -r "$HOME/.Xauthority" ] && export XAUTHORITY="$HOME/.Xauthority"; }
 cd "$HOUSE" || exit 1
 LOG="$HOUSE/#.desktop/livedesk_launch.log"
-# Every press: redraw the app icon in the CURRENT theme colors (see livedesk-icon-refresh.sh; a no-op without an installed icon / Pillow).
-sh "$CRYPTS/livedesk-icon-refresh.sh" </dev/null
 OPS="$HOUSE/_.monads/_.livedesk-taskbar/ops"
-# The loading strip starts FIRST (before any compile) so a compile is shown on it too; the build step is pinned to it (marker + rewritten
-# binaries), then it follows the manager and the bottom bar's own redraws to "Ready". (Owner 2026-10-06: the loading animation was
-# pinned to the wrong thing - it only began after the build, so a compile showed nothing at the bottom.) Binary rebuilt if missing/stale.
-if [ ! -x "$OPS/+x/livedesk_splash.+x" ] || [ "$OPS/livedesk_splash.c" -nt "$OPS/+x/livedesk_splash.+x" ]; then
+# THE FIRST THING: the loading strip (owner 2026-10-23: "i should see loading bar immediately before anything else happens"). The icon refresh
+# below takes ~2 s (Pillow), so it used to stand between the press and the first bar; it now runs in the background AFTER the strip is up.
+# boot-splash.sh is a singleton and writes #.desktop/boot_trace.txt (when the press was seen, when the strip started).
+sh "$CRYPTS/boot-splash.sh" --trace "launcher: press seen (pid $$)"
+if [ ! -x "$OPS/+x/livedesk_splash.+x" ]; then
     _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"; [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
     mkdir -p "$OPS/+x"; ${CC:-gcc} -std=c11 -O2 -o "$OPS/+x/livedesk_splash.+x" "$OPS/livedesk_splash.c" $_sx >/dev/null 2>&1 || true
 fi
-rm -f "$HOUSE/#.desktop/boot_build_failed.txt" "$HOUSE/#.desktop/dock_stack/draw_stamp.txt"
-[ -x "$OPS/+x/livedesk_splash.+x" ] && $SETSID nohup "$OPS/+x/livedesk_splash.+x" "$HOUSE" "$OPS/+x" --boot >/dev/null 2>&1 < /dev/null &
+sh "$CRYPTS/boot-splash.sh" launcher
+# Every press: redraw the app icon in the CURRENT theme colors (see livedesk-icon-refresh.sh; a no-op without an installed icon / Pillow).
+( sh "$CRYPTS/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1; sh "$CRYPTS/boot-splash.sh" --trace "launcher: icon refresh done" ) &
+# (the loading strip was started above, before anything else; the build step below shows a real compile on it too, and a stale strip binary is
+# rebuilt by build_khtpm_strip.sh's own hash gate.)
 {
     echo "== $(date '+%F %T') livedesk-launch (pid $$) DISPLAY=$DISPLAY"
     # the same hash-gated build the old button ran (no-op < 1 s; a stale gate compiles the core renderer ~20 s). No centered
@@ -38,6 +40,7 @@ rm -f "$HOUSE/#.desktop/boot_build_failed.txt" "$HOUSE/#.desktop/dock_stack/draw
     ( cd "$OPS" && bash build_khtpm_strip.sh >/dev/null 2>&1 )
     echo "build step done $(date +%T)"
 } >> "$LOG" 2>&1
+sh "$CRYPTS/boot-splash.sh" --trace "launcher: build step done, starting button.sh run"
 if [ -f "$OPS/+x/.build_failed.txt" ]; then
     echo "BUILD FAILED (marker still present) - not starting livedesk; see $OPS/+x/build_error.log" >> "$LOG"
     : > "$HOUSE/#.desktop/boot_build_failed.txt"

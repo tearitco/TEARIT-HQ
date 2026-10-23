@@ -156,6 +156,31 @@ static void boot_claim_pidfile(const char *house) {
     if ((f = fopen(p, "w"))) { fprintf(f, "%d\n", (int)getpid()); fclose(f); }
 }
 
+/* Start-up milestones, read from the boot timeline (#.desktop/boot_timeline.txt, lines `<epoch_ms> <text>`: run_khtpm_strip.sh boot resets it when the NEW
+ * boot begins, then the menu manager and the bottom dock append their own marks). Only marks written at or after since_ms count, so neither the previous
+ * boot's marks nor the still-running OLD desktop can move the bar. boot = "script boot started", mgr = "manager first strip_ui.txt publish", dock = "dock
+ * bottom bar first drawn", last = the newest mark of any kind (the desktop is settled when no mark has appeared for a while). -1 = not seen yet. */
+typedef struct { long long boot, mgr, dock, last; } BootMarks;
+static long long real_ms(void) { struct timespec t; clock_gettime(CLOCK_REALTIME, &t); return (long long)t.tv_sec * 1000LL + t.tv_nsec / 1000000LL; }
+static void tl_scan(const char *house, long long since_ms, BootMarks *m) {
+    char p[4096], ln[512];
+    FILE *f;
+    m->boot = m->mgr = m->dock = m->last = -1;
+    snprintf(p, sizeof(p), "%s/#.desktop/boot_timeline.txt", house);
+    if (!(f = fopen(p, "r"))) return;
+    while (fgets(ln, sizeof(ln), f)) {
+        char *e;
+        long long ts = strtoll(ln, &e, 10);
+        if (e == ln || ts < since_ms) continue;
+        if (strstr(e, "splash closed")) continue;
+        if (ts > m->last) m->last = ts;
+        if (strstr(e, "script boot started")) m->boot = ts;
+        else if (strstr(e, "manager first strip_ui.txt publish")) m->mgr = ts;
+        else if (strstr(e, "dock bottom bar first drawn")) m->dock = ts;
+    }
+    fclose(f);
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: livedesk_splash <house_root> <ops_+x_dir>\n"); return 2; }
     const char *house = argv[1];
@@ -235,8 +260,13 @@ int main(int argc, char **argv) {
     if (boot) {
         struct timespec b0; clock_gettime(CLOCK_MONOTONIC, &b0);
         double done_at = -1.0;
+        long long since_ms = real_ms() - 3000;      /* marks older than this belong to an earlier boot */
+        BootMarks bm = { -1, -1, -1, -1 };
+        double scan_t = -100.0, phase_t = 0.0;
+        int phase = -1;
         int tick = 0;
         int compile_seen = 0, compiling = 0, failed_boot = 0, marker_seen_any = 0;
+        (void)marker_seen_any;      /* kept as a record of the build marker; the no-compile path no longer closes on it */
         /* Back buffer: every frame is composed off-screen and copied once, so the bar no longer flickers (the old code cleared the
          * window and redrew it every 60 ms). Progress: the file count and a time estimate (the length of the LAST real compile, learned
          * in #.desktop/boot_compile_seconds.txt) pick a target; the shown value eases toward it, never goes back, spans the whole bar,
@@ -315,12 +345,30 @@ int main(int argc, char **argv) {
             const char *step = "Ready";
             if (compile_seen) {
                 if (done_at < 0) done_at = el;
-            } else if (marker_seen_any && !build_failed(xdir)) {
-                break;                                   /* the build finished without ever becoming a real compile */
-            } else if (el > 4.0 && !marker_seen_any) {
-                break;                                   /* no build ran at all */
             } else {
-                frac = 0.0; step = "Starting\xE2\x80\xA6";    /* build about to start / marker stood < 0.8 s */
+                /* No real compile (the usual case: a hash-gated no-op build). The strip used to close here, the moment the build ended, which left a blank
+                 * screen for the ~12 s the desktop still needed (owner 2026-10-23: "it will feel slow/broken"). It now follows the NEW boot's own marks and
+                 * closes only when the desktop has settled: 0 start, 1 boot script started, 2 menus published, 3 bottom bar drawn, then Ready once no mark
+                 * has appeared for 1.5 s (or 25 s after the bar was drawn at the latest). Each phase creeps a little so the bar never looks stalled. */
+                static const double FL[4]  = { 0.00, 0.30, 0.55, 0.75 };
+                static const double CAP[4] = { 0.25, 0.50, 0.72, 0.96 };
+                static const char *ST[4]   = { "Starting\xE2\x80\xA6", "Starting desktop\xE2\x80\xA6", "Loading menus\xE2\x80\xA6", "Loading desktop\xE2\x80\xA6" };
+                long long nowm = real_ms();
+                if (el - scan_t >= 0.25) { tl_scan(house, since_ms, &bm); scan_t = el; }
+                int ph = bm.dock >= 0 ? 3 : bm.mgr >= 0 ? 2 : bm.boot >= 0 ? 1 : 0;
+                if (ph != phase) { phase = ph; phase_t = el; }
+                double target = FL[ph] + (el - phase_t) * (ph == 0 ? 0.03 : 0.04);
+                if (target > CAP[ph]) target = CAP[ph];
+                step = ST[ph];
+                if (ph == 3 && ((nowm - bm.dock >= 1500 && nowm - bm.last >= 1500) || nowm - bm.dock > 25000)) {
+                    if (done_at < 0) done_at = el;
+                } else if (ph == 0 && el > 30.0) {
+                    break;                               /* no boot followed this strip: do not hang around */
+                }
+                if (done_at >= 0) { target = 1.0; step = "Ready"; }
+                if (target > disp) disp += (target - disp) * 0.2;      /* eased, monotonic */
+                if (done_at >= 0 && disp > 0.995) disp = 1.0;
+                frac = disp;
             }
             XSetForeground(dpy, gc, bg);
             XFillRectangle(dpy, dr, gc, 0, 0, ww, wh);

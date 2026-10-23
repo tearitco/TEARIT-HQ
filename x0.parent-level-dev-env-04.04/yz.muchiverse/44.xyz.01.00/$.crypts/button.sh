@@ -87,6 +87,13 @@ read_restore_mode() {
     ' "$PDL"
 }
 
+# THE FIRST THING on every start path: the loading strip (owner 2026-10-23), before the icon refresh, the closes, the kills, the data snapshot or the build.
+# boot-splash.sh is a singleton (the launcher may have started it already) and traces to #.desktop/boot_trace.txt.
+case "$ACTION" in
+    run|r|start|restart|reset)
+        sh "$SCRIPT_DIR/boot-splash.sh" "button.sh $ACTION" </dev/null >/dev/null 2>&1 || true ;;
+esac
+
 case "$ACTION" in
     run|r|start|restart)
         sh "$SCRIPT_DIR/livedesk-icon-refresh.sh" </dev/null >/dev/null 2>&1 &   # icon follows the current theme colors
@@ -174,6 +181,7 @@ case "$ACTION" in
         # already-proven pattern run_khtpm_strip.sh's own `new` mode uses
         # (`|| { echo "BUILD FAILED — not launching"; exit 1; }`) - never
         # fall through to launching whatever binary happens to exist.
+        sh "$SCRIPT_DIR/boot-splash.sh" --trace "reset: old desktop closed and data snapshot done, building"
         if [ -x "$TB_DIR/build_khtpm_strip.sh" ]; then
             # REAL FIX 2026-09-21, direct follow-up ("yes, log it"): a
             # reset triggered from the desktop runs with no visible
@@ -190,6 +198,7 @@ case "$ACTION" in
             rm -f "$_brc"
             [ "$_brc_val" = 0 ] || { echo "BUILD FAILED — desktop left stopped, not relaunched with a stale binary (full output: $_blog)"; exit 1; }
         fi
+        sh "$SCRIPT_DIR/boot-splash.sh" --trace "reset: build done, launching autostart rows"
         [ -x "$KHTPM_PARSER" ] || { echo "MISSING $KHTPM_PARSER (build failed?)"; exit 1; }
         mkdir -p "$SCRIPT_DIR/ops/+x"
         [ -x "$BIN" ] || gcc -Wall -O2 -o "$BIN" "$SCRIPT_DIR/ops/crypt_autostart.c"
