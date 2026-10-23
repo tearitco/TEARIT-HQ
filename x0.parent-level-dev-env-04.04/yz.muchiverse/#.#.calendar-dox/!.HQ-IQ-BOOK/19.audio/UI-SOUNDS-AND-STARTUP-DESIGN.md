@@ -19,6 +19,10 @@ User-visible text says **LyfeDesk** (AGENTS.md); internal ids keep `livedesk`.
 
 **RAN today (this machine, load ~2.4):** `sfx_render` made a 3,572-byte blip; `paplay` of that 80 ms blip took **0.09 to 0.15 s wall** (so a process start per cue costs tens of ms plus a fork); server name `pulseaudio`, `libpulse-simple` headers present (`/usr/include/pulse/simple.h`), `alsa/asoundlib.h` present; the default sink was **SUSPENDED** (the first sound after idle may wake it and arrive late: NOT KNOWN how late).
 
+## 1b. Owner decisions, 2026-10-23
+1. Defaults ON (UI sounds and startup), volume 40. 2. Startup = **option C**: chime, then a spoken "LyfeDesk" (the chime half is built in U1; the spoken half is a later step on debil + `audio_fx`). 3. **Sound themes are selectable in settings** (`sound_theme=<id>` in `hq_ui.pdl`; the settings window lists the `THEME` rows). 4. First cue set: menu movement and activate first, then window focus/open/close, toggles and refused (all nine are already rendered; hooking is stepwise).
+Consequences: sounds are keyed by (theme, id); every theme must define every sound a cue names (the renderer enforces it); the player loads the chosen theme and reloads on a `sound_theme` change.
+
 ## 2. Decisions this design takes (PROPOSED)
 1. **Never block or fork in the render loop.** A cue is one short append to a marker file; a separate small player process does the sound. This is the house marker rule (change detection = append-only file growth) and the house sharing rule (stateful + 2 consumers = op + file/IPC, not a header).
 2. **All sounds are generated, never recorded.** Rows in a data file are rendered by a deterministic C op into wav files at build time; nothing is synthesised at click time. Same seed and rows give the same bytes (the same gate as rpg-dust R1).
@@ -48,7 +52,7 @@ CUE    | activate   | sound=activate | min_gap_ms=40 | category=ui
 `SOUND` = what a sound is (rendered once). `CUE` = which UI event plays which sound and how often it may fire. A new sound or event is a new row, not new code. Kind `blip` reuses `sfx_render`'s parameters; kind `notes` (a short melody, layered) needs a new small renderer because `sfx_render` has no sequencing or layering and must not be changed (JUDGEMENT: a separate `ui_sound_render` op that text-includes `audio_dsp.c` is cheaper than re-proving `sfx_render`).
 
 ### 3.2 The renderer: `ui_sound_render` (PROPOSED, new C op)
-`ui_sound_render <ui_sounds.pdl> <out_dir>` writes one wav per `SOUND` row, 44.1 kHz stereo 16-bit (matches the sink, so the player does no conversion), fixed fade-in/out of at least 2 ms (no clicks). Checks per file, reusing `audio_dsp.c`: duration within 20 percent of the row, peak at most 0.7, **RMS at most a set ceiling** (a startup sound must not be louder than a click by accident), DC under 0.01, not silent. Exit 1 with the failing row named. Run by `button.sh build` so a fresh clone has the files (compiled programs and generated sounds are in no branch; same as today's binaries).
+`ui_sound_render <ui_sounds.pdl> <out_dir>` writes one wav per `SOUND` row, 44.1 kHz mono 16-bit as built (pulse upmixes to the stereo sink; the design first said stereo), fixed fade-in/out of at least 2 ms (no clicks). Checks per file, reusing `audio_dsp.c`: duration within 20 percent of the row, peak at most 0.7, **RMS at most a set ceiling** (a startup sound must not be louder than a click by accident), DC under 0.01, not silent. Exit 1 with the failing row named. Run by `button.sh build` so a fresh clone has the files (compiled programs and generated sounds are in no branch; same as today's binaries).
 
 ### 3.3 The cue line and the player (PROPOSED)
 - **Writer** (in `khtpm_core_render.c`, one inline function `ui_cue(name)`): if `g_sound_enabled`, append `<monotonic_ms> <pid> <name>\n` to `#.desktop/ui_cue.txt` (open with `O_APPEND`, write one line, close; atomic for short lines). Per-process: at most one cue per `min_gap_ms` per name. Also skips when the event came from the relay.
@@ -90,7 +94,7 @@ Optional idea, JUDGEMENT, not in v1: the pitch of `nav_move` steps up a pentaton
 | Step | What | Test |
 |---|---|---|
 | U0 | this doc; owner picks defaults and startup option | the open decisions in section 6 |
-| U1 | `ui_sounds.pdl` + `ui_sound_render` + harness `ui_sounds`: files exist for every `SOUND`, same bytes twice, other seed differs, each numeric check has a negative fixture (silent, clipped, too long, too loud, DC offset) | harness PASS and a code mutant (drop the clip check) is caught |
+| U1 | **BUILT 2026-10-23** (`&.widgits/ui-sounds/`, harness `ui_sounds` 108/0; the row format differs from section 3.1: `SOUND | theme | id | kind | params | note`, notes joined with commas `seq=C5:1,E5:1`, mono output). Original plan: `ui_sounds.pdl` + `ui_sound_render` + harness `ui_sounds`: files exist for every `SOUND`, same bytes twice, other seed differs, each numeric check has a negative fixture (silent, clipped, too long, too loud, DC offset) | harness PASS and a code mutant (drop the clip check) is caught |
 | U2 | `ui_sound_player` with `--dry-run`: coalescing, stale-drop, global gap, mute, start-at-end, log truncation | harness drives the cue file by hand; mutants: ignore mute, replay old cues |
 | U3 | `ui_cue()` in the renderer at 4 call sites + live reload of the keys | relay test on a scratch window: N arrow keys -> expected cue count in the dry-run log, `sound_enabled=0` -> zero, relay input -> zero unless `sound_relay=1`. (Relay passing is not proof for hardware focus bugs: the memory note on relay masking applies; the owner presses keys once.) |
 | U4 | settings group + toggles | relay clicks flip each key in `hq_ui.pdl`; the Test button appends one `activate` cue |

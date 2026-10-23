@@ -1,0 +1,211 @@
+# ui_sounds: LOCKED cases for U1 of BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md. Source under test: &.widgits/ui-sounds/ops/ui_sound_render.c; data under test: &.widgits/ui-sounds/ui_sounds.pdl. Every refusal is a NEGATIVE test: the renderer must exit 1 with the right message and write nothing it should not. Not tested here (cannot fail): the duration check, because the renderer always writes the requested length; the DC check, because no waveform the renderer makes has DC. HEARING is not tested: nobody has listened. KNOWN GAP (found by mutation 2026-10-23): the peak > 0.7 branch of the renderer is subsumed by the rms ceiling for every sound the current kinds can make (crest factor at most about 2.5), so removing it is not caught; it stays as a safety net for future kinds.
+RESULTS | ../results/ui_sounds.txt
+CASE | ui-sounds
+SCRATCH |
+COPY | &.widgits/ui-sounds/ops/ui_sound_render.c | ui_sound_render.c
+MKDIR | sys
+COPY | &.widgits/_shared-lib/audio_dsp.c | sys/audio_dsp.c
+COPY | &.widgits/ui-sounds/ui_sounds.pdl | ui_sounds.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -isystem | $T/sys | -o | $T/usr.+x | $T/ui_sound_render.c | -lm
+EXPECT_EXIT | 0 | compiles-clean
+RUN | $T/usr.+x | $T/ui_sounds.pdl | $T/a
+EXPECT_EXIT | 0 | real-file-renders
+EXPECT_OUT | rendered=18 themes=2 cues=9 | real-file-summary
+EXPECT_OUT_LACKS | FAIL | real-file-no-fail
+EXPECT_EXISTS | a/soft/nav_move.wav | exists-soft-nav_move
+EXPECT_EXISTS | a/soft/activate.wav | exists-soft-activate
+EXPECT_EXISTS | a/soft/focus_win.wav | exists-soft-focus_win
+EXPECT_EXISTS | a/soft/open_win.wav | exists-soft-open_win
+EXPECT_EXISTS | a/soft/close_win.wav | exists-soft-close_win
+EXPECT_EXISTS | a/soft/refused.wav | exists-soft-refused
+EXPECT_EXISTS | a/soft/toggle_on.wav | exists-soft-toggle_on
+EXPECT_EXISTS | a/soft/toggle_off.wav | exists-soft-toggle_off
+EXPECT_EXISTS | a/soft/startup.wav | exists-soft-startup
+EXPECT_EXISTS | a/retro/nav_move.wav | exists-retro-nav_move
+EXPECT_EXISTS | a/retro/activate.wav | exists-retro-activate
+EXPECT_EXISTS | a/retro/focus_win.wav | exists-retro-focus_win
+EXPECT_EXISTS | a/retro/open_win.wav | exists-retro-open_win
+EXPECT_EXISTS | a/retro/close_win.wav | exists-retro-close_win
+EXPECT_EXISTS | a/retro/refused.wav | exists-retro-refused
+EXPECT_EXISTS | a/retro/toggle_on.wav | exists-retro-toggle_on
+EXPECT_EXISTS | a/retro/toggle_off.wav | exists-retro-toggle_off
+EXPECT_EXISTS | a/retro/startup.wav | exists-retro-startup
+RUN | $T/usr.+x | $T/ui_sounds.pdl | $T/b
+EXPECT_EXIT | 0 | second-render-exit
+SUMTREE | ha | a
+SUMTREE | hb | b
+EXPECT_EQ | $ha | $hb | same-file-same-seed-same-bytes
+WRITE | seed2.pdl | SEED \p ui \p 20261024\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=noise dur=0.1 vol=0.3 \p n\nCUE \p e \p a \p 50 \p ui\n
+WRITE | seed1.pdl | SEED \p ui \p 20261023\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=noise dur=0.1 vol=0.3 \p n\nCUE \p e \p a \p 50 \p ui\n
+RUN | $T/usr.+x | $T/seed1.pdl | $T/n1
+RUN | $T/usr.+x | $T/seed2.pdl | $T/n2
+SUMTREE | h1 | n1
+SUMTREE | h2 | n2
+EXPECT_NE | $h1 | $h2 | other-seed-other-noise-bytes
+RUN | $T/usr.+x | $T/seed1.pdl | $T/n1b
+SUMTREE | h1b | n1b
+EXPECT_EQ | $h1 | $h1b | noise-same-seed-twice-same-bytes
+WRITE | f1.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\nCUE \p e \p a \p 50 \p ui\n
+RUN | $T/usr.+x | $T/f1.pdl | $T/x1
+EXPECT_EXIT | 0 | minimal-ok
+EXPECT_OUT | rendered=1 themes=1 cues=1 | minimal-ok-message
+WRITE | f2.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=120 seq=C5:1,R:1,F#4:0.5,Bb3:1 wave=triangle vol=0.3 attack=0.01 decay=0.2 \p n\nCUE \p e \p a \p 50 \p ui\n
+RUN | $T/usr.+x | $T/f2.pdl | $T/x2
+EXPECT_EXIT | 0 | notes-with-rest-ok
+EXPECT_OUT | rendered=1 | notes-with-rest-ok-message
+WRITE | f3.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=noise dur=0.1 vol=0.3 \p n\nCUE \p e \p a \p 50 \p ui\n
+RUN | $T/usr.+x | $T/f3.pdl | $T/x3
+EXPECT_EXIT | 0 | noise-needs-no-f0
+EXPECT_OUT | rendered=1 | noise-needs-no-f0-message
+WRITE | f4.pdl | THEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f4.pdl | $T/x4
+EXPECT_EXIT | 1 | no-seed
+EXPECT_OUT | no SEED row | no-seed-message
+WRITE | f5.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSEED \p ui \p 2\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f5.pdl | $T/x5
+EXPECT_EXIT | 1 | two-seeds
+EXPECT_OUT | more than one SEED | two-seeds-message
+WRITE | f6.pdl | SEED \p ui \p 12ab\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f6.pdl | $T/x6
+EXPECT_EXIT | 1 | seed-letters
+EXPECT_OUT | not an unsigned 64-bit | seed-letters-message
+WRITE | f7.pdl | SEED \p world \p 5\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f7.pdl | $T/x7
+EXPECT_EXIT | 1 | seed-wrong-key
+EXPECT_OUT | SEED row must be | seed-wrong-key-message
+WRITE | f8.pdl | SEED \p ui \p 1\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f8.pdl | $T/x8
+EXPECT_EXIT | 1 | no-theme
+EXPECT_OUT | no THEME rows | no-theme-message
+WRITE | f9.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nTHEME \p t \p T2 \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f9.pdl | $T/x9
+EXPECT_EXIT | 1 | duplicate-theme
+EXPECT_OUT | duplicate THEME 't' | duplicate-theme-message
+WRITE | f10.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p zz \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f10.pdl | $T/x10
+EXPECT_EXIT | 1 | sound-unknown-theme
+EXPECT_OUT | names theme 'zz' | sound-unknown-theme-message
+WRITE | f11.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f11.pdl | $T/x11
+EXPECT_EXIT | 1 | duplicate-sound
+EXPECT_OUT | duplicate SOUND t/a | duplicate-sound-message
+WRITE | f12.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nTHEME \p u \p U \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\nCUE \p e \p a \p 50 \p ui\n
+RUN | $T/usr.+x | $T/f12.pdl | $T/x12
+EXPECT_EXIT | 1 | theme-incomplete-for-a-cue
+EXPECT_OUT | theme 'u' does not define | theme-incomplete-for-a-cue-message
+WRITE | f13.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\nCUE \p e \p a \p soon \p ui\n
+RUN | $T/usr.+x | $T/f13.pdl | $T/x13
+EXPECT_EXIT | 1 | cue-gap-not-number
+EXPECT_OUT | min_gap_ms 'soon' | cue-gap-not-number-message
+WRITE | f14.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\nCUE \p e \p a\n
+RUN | $T/usr.+x | $T/f14.pdl | $T/x14
+EXPECT_EXIT | 1 | cue-too-few-fields
+EXPECT_OUT | CUE row must be | cue-too-few-fields-message
+WRITE | f15.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\nSOUN \p t \p b \p blip \p x\n
+RUN | $T/usr.+x | $T/f15.pdl | $T/x15
+EXPECT_EXIT | 1 | unknown-row-kind
+EXPECT_OUT | unknown row kind 'SOUN' | unknown-row-kind-message
+WRITE | f16.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p A-b \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 \p n\n
+RUN | $T/usr.+x | $T/f16.pdl | $T/x16
+EXPECT_EXIT | 1 | bad-sound-id
+EXPECT_OUT | SOUND row must be | bad-sound-id-message
+WRITE | f17.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=pink f0=440 dur=0.1 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f17.pdl | $T/x17
+EXPECT_EXIT | 1 | bad-wave
+EXPECT_OUT | wave must be | bad-wave-message
+WRITE | f18.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0 \p n\n
+RUN | $T/usr.+x | $T/f18.pdl | $T/x18
+EXPECT_EXIT | 1 | vol-zero
+EXPECT_OUT | vol must be | vol-zero-message
+WRITE | f19.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=1.5 \p n\n
+RUN | $T/usr.+x | $T/f19.pdl | $T/x19
+EXPECT_EXIT | 1 | vol-above-one
+EXPECT_OUT | vol must be | vol-above-one-message
+WRITE | f20.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=loud \p n\n
+RUN | $T/usr.+x | $T/f20.pdl | $T/x20
+EXPECT_EXIT | 1 | vol-not-number
+EXPECT_OUT | vol must be | vol-not-number-message
+WRITE | f21.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=square f0=440 dur=0.1 vol=0.9 \p n\n
+RUN | $T/usr.+x | $T/f21.pdl | $T/x21
+EXPECT_EXIT | 1 | too-loud-peak
+EXPECT_OUT | too loud | too-loud-peak-message
+WRITE | f22.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.01 \p n\n
+RUN | $T/usr.+x | $T/f22.pdl | $T/x22
+EXPECT_EXIT | 1 | silent
+EXPECT_OUT | silent | silent-message
+WRITE | f23.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=5 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f23.pdl | $T/x23
+EXPECT_EXIT | 1 | dur-too-long
+EXPECT_OUT | dur must be 0.01..4 | dur-too-long-message
+WRITE | f24.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.001 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f24.pdl | $T/x24
+EXPECT_EXIT | 1 | dur-too-short
+EXPECT_OUT | dur must be 0.01..4 | dur-too-short-message
+WRITE | f25.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=10 dur=0.1 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f25.pdl | $T/x25
+EXPECT_EXIT | 1 | f0-below-20
+EXPECT_OUT | f0 must be 20..18000 | f0-below-20-message
+WRITE | f26.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=20000 dur=0.1 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f26.pdl | $T/x26
+EXPECT_EXIT | 1 | f0-above-18000
+EXPECT_OUT | f0 must be 20..18000 | f0-above-18000-message
+WRITE | f27.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 f1=50000 dur=0.1 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f27.pdl | $T/x27
+EXPECT_EXIT | 1 | f1-bad
+EXPECT_OUT | f1 must be | f1-bad-message
+WRITE | f28.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 attack=0.08 decay=0.08 vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f28.pdl | $T/x28
+EXPECT_EXIT | 1 | attack-plus-decay-too-long
+EXPECT_OUT | attack + decay is longer | attack-plus-decay-too-long-message
+WRITE | f29.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p blip \p wave=sine f0=440 dur=0.1 vol=0.25 lp=-5 \p n\n
+RUN | $T/usr.+x | $T/f29.pdl | $T/x29
+EXPECT_EXIT | 1 | lp-negative
+EXPECT_OUT | lp must be | lp-negative-message
+WRITE | f30.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p chord \p wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f30.pdl | $T/x30
+EXPECT_EXIT | 1 | unknown-kind
+EXPECT_OUT | kind 'chord' | unknown-kind-message
+WRITE | f31.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=100 seq=H4:1 wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f31.pdl | $T/x31
+EXPECT_EXIT | 1 | note-letter-H
+EXPECT_OUT | note 'H4' | note-letter-H-message
+WRITE | f32.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=100 seq=C4 wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f32.pdl | $T/x32
+EXPECT_EXIT | 1 | note-no-beats
+EXPECT_OUT | needs NOTE:beats | note-no-beats-message
+WRITE | f33.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=100 seq=C4:0 wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f33.pdl | $T/x33
+EXPECT_EXIT | 1 | beats-zero
+EXPECT_OUT | beats '0' | beats-zero-message
+WRITE | f34.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=10 seq=C4:1 wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f34.pdl | $T/x34
+EXPECT_EXIT | 1 | tempo-too-slow
+EXPECT_OUT | tempo must be | tempo-too-slow-message
+WRITE | f35.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=100 wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f35.pdl | $T/x35
+EXPECT_EXIT | 1 | seq-missing
+EXPECT_OUT | seq is missing | seq-missing-message
+WRITE | f36.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p a \p notes \p tempo=60 seq=C4:5,D4:5 wave=sine vol=0.3 \p n\n
+RUN | $T/usr.+x | $T/f36.pdl | $T/x36
+EXPECT_EXIT | 1 | seq-over-8-seconds
+EXPECT_OUT | at most 8 seconds | seq-over-8-seconds-message
+WRITE | f37.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p s \p blip \p wave=sine f0=440 dur=3 vol=0.3 \p n\nCUE \p boot \p s \p 0 \p startup\n
+RUN | $T/usr.+x | $T/f37.pdl | $T/x37
+EXPECT_EXIT | 1 | startup-over-2.5s
+EXPECT_OUT | startup sound is | startup-over-2.5s-message
+WRITE | f38.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p s \p blip \p wave=triangle f0=440 dur=0.5 attack=0.001 decay=0.499 vol=0.55 \p n\nCUE \p boot \p s \p 0 \p startup\n
+RUN | $T/usr.+x | $T/f38.pdl | $T/x38
+EXPECT_EXIT | 1 | startup-peak-over-0.5
+EXPECT_OUT | startup sound peak | startup-peak-over-0.5-message
+WRITE | f39.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\nSOUND \p t \p s \p blip \p wave=triangle f0=440 dur=0.5 attack=0.001 decay=0.499 vol=0.55 \p n\nCUE \p boot \p s \p 0 \p ui\n
+RUN | $T/usr.+x | $T/f39.pdl | $T/x39
+EXPECT_EXIT | 0 | same-peak-ok-for-a-ui-cue
+EXPECT_OUT | rendered=1 | same-peak-ok-for-a-ui-cue-message
+RUN | $T/usr.+x | $T/nosuch.pdl | $T/zz
+EXPECT_EXIT | 2 | missing-file-exit-2
+RUN | $T/usr.+x
+EXPECT_EXIT | 2 | no-args-exit-2
+WRITE | bad1.pdl | SEED \p ui \p 1\nTHEME \p t \p T \p n\n
+RUN | $T/usr.+x | $T/bad1.pdl | $T/never
+EXPECT_EXIT | 1 | no-sounds-no-render-exit
+EXPECT_NOFILE | never/t/a.wav | nothing-written-on-bad-rows

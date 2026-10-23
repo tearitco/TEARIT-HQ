@@ -1,0 +1,38 @@
+SECTION | KEY | VALUE
+------------------------------
+# ui_sounds.pdl - the LyfeDesk startup sound and UI sound effects, as data (U1 of BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md; 2026-10-23, claude).
+# Rendered by ops/+x/ui_sound_render.+x <this file> <out_dir> into <out_dir>/<theme>/<id>.wav and checked (duration, peak 0.02..0.7, rms <= 0.2, DC). The numbers are STARTING values: nobody has listened yet; the owner's ear decides.
+# SEED | ui | <u64>                        noise sources derive from it; same file + same seed = same bytes
+# THEME | id | label | note               a sound theme (the settings window lists these; hq_ui.pdl key sound_theme=<id>)
+# SOUND | theme | id | kind | params | note   kind blip (wave f0 [f1] dur attack decay vol [lp]) or notes (tempo seq=NOTE:beats,... wave vol attack decay [tail] [lp]); a rest is R:<beats>
+# CUE   | event | sound id | min_gap_ms | category   which UI event plays which sound; EVERY theme must define every sound id a CUE names (the renderer refuses otherwise)
+SEED  | ui | 20261023
+THEME | soft | Soft | sine and triangle blips; quiet, round
+THEME | retro | Retro | square-wave 8-bit blips; brighter
+SOUND | soft | nav_move | blip | wave=sine f0=520 dur=0.025 attack=0.002 decay=0.019 vol=0.18 | focus moved one row (the quietest, shortest)
+SOUND | soft | activate | blip | wave=triangle f0=660 f1=880 dur=0.07 attack=0.002 decay=0.053 vol=0.35 | Enter or click on a button
+SOUND | soft | focus_win | blip | wave=sine f0=440 f1=520 dur=0.05 attack=0.002 decay=0.038 vol=0.25 | a window took focus
+SOUND | soft | open_win | blip | wave=triangle f0=392 f1=784 dur=0.12 attack=0.002 decay=0.09 vol=0.35 | a window opened
+SOUND | soft | close_win | blip | wave=triangle f0=784 f1=392 dur=0.12 attack=0.002 decay=0.09 vol=0.3 | a window closed
+SOUND | soft | refused | blip | wave=square f0=180 dur=0.09 attack=0.002 decay=0.068 vol=0.3 lp=900 | nothing to do / blocked
+SOUND | soft | toggle_on | blip | wave=sine f0=600 f1=800 dur=0.06 attack=0.002 decay=0.045 vol=0.3 | a switch turned on
+SOUND | soft | toggle_off | blip | wave=sine f0=800 f1=600 dur=0.06 attack=0.002 decay=0.045 vol=0.3 | a switch turned off
+SOUND | soft | startup | notes | tempo=140 seq=C5:1,E5:1,G5:1,C6:2 wave=triangle vol=0.22 attack=0.01 decay=0.3 tail=0.3 | LyfeDesk coming up (the chime half of startup option C; the spoken half is a later step)
+SOUND | retro | nav_move | blip | wave=square f0=440 dur=0.02 attack=0.002 decay=0.015 vol=0.1 lp=3000 | focus moved one row (the quietest, shortest)
+SOUND | retro | activate | blip | wave=square f0=660 f1=990 dur=0.06 attack=0.002 decay=0.045 vol=0.16 lp=4000 | Enter or click on a button
+SOUND | retro | focus_win | blip | wave=square f0=523 dur=0.04 attack=0.002 decay=0.03 vol=0.12 lp=3500 | a window took focus
+SOUND | retro | open_win | blip | wave=square f0=392 f1=784 dur=0.1 attack=0.002 decay=0.075 vol=0.14 lp=4000 | a window opened
+SOUND | retro | close_win | blip | wave=square f0=784 f1=392 dur=0.1 attack=0.002 decay=0.075 vol=0.14 lp=4000 | a window closed
+SOUND | retro | refused | blip | wave=square f0=150 f1=110 dur=0.12 attack=0.002 decay=0.09 vol=0.14 lp=1500 | nothing to do / blocked
+SOUND | retro | toggle_on | blip | wave=square f0=600 f1=800 dur=0.05 attack=0.002 decay=0.038 vol=0.13 lp=4000 | a switch turned on
+SOUND | retro | toggle_off | blip | wave=square f0=800 f1=600 dur=0.05 attack=0.002 decay=0.038 vol=0.13 lp=4000 | a switch turned off
+SOUND | retro | startup | notes | tempo=150 seq=C5:1,E5:1,G5:1,C6:2 wave=square vol=0.12 attack=0.005 decay=0.12 lp=5000 tail=0.3 | LyfeDesk coming up (the chime half of startup option C; the spoken half is a later step)
+CUE   | nav_move | nav_move | 60 | ui
+CUE   | activate | activate | 40 | ui
+CUE   | focus_win | focus_win | 80 | ui
+CUE   | open_win | open_win | 100 | ui
+CUE   | close_win | close_win | 100 | ui
+CUE   | refused | refused | 200 | ui
+CUE   | toggle_on | toggle_on | 80 | ui
+CUE   | toggle_off | toggle_off | 80 | ui
+CUE   | startup | startup | 0 | startup

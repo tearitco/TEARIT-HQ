@@ -1,0 +1,4 @@
+# ui_sounds.pal - LOCKED acceptance harness for UI sounds U1: every SOUND row renders, is checked, and is deterministic. Read results/ui_sounds.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/ui_sounds.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ui_sounds.pdl
+halt
