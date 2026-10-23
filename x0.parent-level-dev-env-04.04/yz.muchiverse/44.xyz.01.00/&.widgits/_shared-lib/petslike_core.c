@@ -55,6 +55,7 @@
 #include "stb_image.h"
 #include "petslike_toolbar.c"      /* the header menus as data: <app>/toolbar.pdl */
 #include "pet_sky.c"      /* day phase + parallax sky files (shared with rpg-edit-hq) */
+#include "pet_footer.c"   /* the footer picture sprite.csv (shared with rpg-edit-hq) */
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #define PET_SECTION 2
@@ -883,10 +884,9 @@ static void write_entity_sprites(const char *room_id) {
         Sheet *sh = sheet("characters", cs); if (!sh) continue;
         int pw = sh->w / 12, ph = sh->h / 8; if (pw < 1 || ph < 1) continue; idx &= 7;
         int sx = ((idx % 4) * 3 + 1) * pw, sy = (idx / 4) * 4 * ph;      /* middle walk pattern, facing down */
-        char d[PATH_MAX], f[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/%d", PCHQ, k); mkdir(d, 0755); snprintf(f, sizeof f, "%s/sprite.csv", d);
-        size_t cap = 32 * 32 * 16 + 256; char *out = malloc(cap); if (!out) return; size_t oo = (size_t)snprintf(out, 256, "# resolution=32\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n");
-        for (int yy = 0; yy < 32; yy++) for (int xx = 0; xx < 32; xx++) { const unsigned char *q = sh->px + ((size_t)(sy + yy * ph / 32) * sh->w + (sx + xx * pw / 32)) * 4; oo += (size_t)snprintf(out + oo, cap - oo, "%d,%d,%d,%d\n", q[0], q[1], q[2], q[3]); }
-        write_if_changed(f, out, oo); free(out);
+        unsigned char blk[PET_FOOT * PET_FOOT * 4];
+        for (int yy = 0; yy < PET_FOOT; yy++) for (int xx = 0; xx < PET_FOOT; xx++) memcpy(blk + ((size_t)yy * PET_FOOT + xx) * 4, sh->px + ((size_t)(sy + yy * ph / PET_FOOT) * sh->w + (sx + xx * pw / PET_FOOT)) * 4, 4);
+        pet_write_footer(PCHQ, k, blk);
     }
 }
 static void follow_pchq(void) {

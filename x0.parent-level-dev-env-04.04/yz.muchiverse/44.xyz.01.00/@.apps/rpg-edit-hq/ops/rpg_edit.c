@@ -18,6 +18,7 @@
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
 #include "../../../&.widgits/_shared-lib/csv_frames.c"      /* sprite.csv -> 16x24 3D walk frames (shared; also usable by any pet board) */
 #include "../../../&.widgits/_shared-lib/pet_sky.c"        /* the day phase and the parallax sky files, one copy with petslike_core.c */
+#include "../../../&.widgits/_shared-lib/pet_footer.c"     /* the footer picture sprite.csv, one copy with petslike_core.c */
 
 #define XT 24
 #define S48 48
@@ -278,15 +279,14 @@ static void load_petpic(int i) {
     static unsigned char big[64 * 64 * 4]; char ln[64]; int n = 0;
     while (fgets(ln, sizeof ln, f) && n < 64 * 64) { int r, g, b, a; if (sscanf(ln, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue; big[n * 4] = (unsigned char)r; big[n * 4 + 1] = (unsigned char)g; big[n * 4 + 2] = (unsigned char)b; big[n * 4 + 3] = (unsigned char)a; n++; }
     fclose(f); if (n < 64 * 64) return;
-    {   /* the footer's picture: <pchq>/pieces/<event id>/sprite.csv at 32x32 (the footer re-reads it on every redraw, so 1024 rows, not 4096; event id = roster index + 1) */
-        char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/pieces/%d", PCHQ, i + 1); mkdir(sd, 0755); strncat(sd, "/sprite.csv", sizeof sd - strlen(sd) - 1);
-        FILE *o = fopen(sd, "w");
-        if (o) { fputs("# resolution=32\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", o);
-            for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
-                int acc[4] = {0}, w = 0; for (int yy = y * 2; yy < y * 2 + 2; yy++) for (int xx = x * 2; xx < x * 2 + 2; xx++) { unsigned char *q = big + (yy * 64 + xx) * 4; acc[0] += q[0] * q[3]; acc[1] += q[1] * q[3]; acc[2] += q[2] * q[3]; acc[3] += q[3]; w++; }
-                if (acc[3]) fprintf(o, "%d,%d,%d,%d\n", acc[0] / acc[3], acc[1] / acc[3], acc[2] / acc[3], acc[3] / w); else fputs("0,0,0,0\n", o);
-            }
-            fclose(o); }
+    {   /* the footer's picture: <pchq>/pieces/<event id>/sprite.csv at 32x32 (event id = roster index + 1): box-filter the 64x64 art, pet_footer.c writes it */
+        unsigned char blk[PET_FOOT * PET_FOOT * 4];
+        for (int y = 0; y < PET_FOOT; y++) for (int x = 0; x < PET_FOOT; x++) {
+            int acc[4] = {0}, w = 0; for (int yy = y * 2; yy < y * 2 + 2; yy++) for (int xx = x * 2; xx < x * 2 + 2; xx++) { unsigned char *q = big + (yy * 64 + xx) * 4; acc[0] += q[0] * q[3]; acc[1] += q[1] * q[3]; acc[2] += q[2] * q[3]; acc[3] += q[3]; w++; }
+            unsigned char *o = blk + (y * PET_FOOT + x) * 4;
+            if (acc[3]) { o[0] = (unsigned char)(acc[0] / acc[3]); o[1] = (unsigned char)(acc[1] / acc[3]); o[2] = (unsigned char)(acc[2] / acc[3]); o[3] = (unsigned char)(acc[3] / w); } else o[0] = o[1] = o[2] = o[3] = 0;
+        }
+        pet_write_footer(PCHQ, i + 1, blk);
     }
     for (int y = 0; y < XT; y++) for (int x = 0; x < XT; x++) {
         int acc[4] = {0}, w = 0, x0 = x * 64 / XT, x1 = (x + 1) * 64 / XT, y0 = y * 64 / XT, y1 = (y + 1) * 64 / XT;
