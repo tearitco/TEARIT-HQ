@@ -56,6 +56,7 @@
 #include "petslike_toolbar.c"      /* the header menus as data: <app>/toolbar.pdl */
 #include "pet_sky.c"      /* day phase + parallax sky files (shared with rpg-edit-hq) */
 #include "pet_footer.c"   /* the footer picture sprite.csv (shared with rpg-edit-hq) */
+#include "pet_nudge.c"    /* wake an idle board engine (shared with rpg-edit-hq) */
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #define PET_SECTION 2
@@ -911,11 +912,9 @@ static void follow_pchq(void) {
     { static int last_scene = -1; if (last_scene != g_scene_ver) { last_scene = g_scene_ver; changed = 1; } }      /* the painted scene changed (a sprite stepped, the tone changed): the engine shows it in its "scene" 2D style, so wake it */
     write_entity_sprites(dk[0] ? dk : rooms[e->room].id);
     if (changed) {      /* nudge the LIVE engine session so it redraws (an idle engine only renders on input): every board window has its own ui.txt with bv_session=; the one whose session dir exists and whose ui.txt is the newest wins (a stale file points at a dead session). The nudge key is 126 (tilde), bound to nothing, so the view and camera are never touched (the old "1" is the POV key). */
-        const char *cand[3] = {"@.apps/" PET_APP "/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char best[PATH_MAX] = ""; time_t bt = 0;
-        for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = "", rp[PATH_MAX]; struct stat us; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (stat(up, &us)) continue; read_file(up, ub, sizeof ub);
-            for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
-            snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); if (sess[0] && fexists(rp) && (!best[0] || us.st_mtime > bt)) { snprintf(best, sizeof best, "%s", rp); bt = us.st_mtime; } }
-        if (best[0]) { FILE *f = fopen(best, "a"); if (f) { fputs("126\n", f); fclose(f); } } }
+        const char *cand[3] = {"@.apps/" PET_APP "/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char cp[3][PATH_MAX]; const char *cpp[3];
+        for (int k = 0; k < 3; k++) { snprintf(cp[k], sizeof cp[k], "%s/%s", HOUSE, cand[k]); cpp[k] = cp[k]; }
+        pet_nudge(cpp, 3); }
 }
 static void export3d(char *msg, size_t cap) {
     char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/pieces/system/maps/" PET_APP "", PCHQ);

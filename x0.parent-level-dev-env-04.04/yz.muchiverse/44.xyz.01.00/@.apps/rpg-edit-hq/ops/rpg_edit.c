@@ -19,6 +19,7 @@
 #include "../../../&.widgits/_shared-lib/csv_frames.c"      /* sprite.csv -> 16x24 3D walk frames (shared; also usable by any pet board) */
 #include "../../../&.widgits/_shared-lib/pet_sky.c"        /* the day phase and the parallax sky files, one copy with petslike_core.c */
 #include "../../../&.widgits/_shared-lib/pet_footer.c"     /* the footer picture sprite.csv, one copy with petslike_core.c */
+#include "../../../&.widgits/_shared-lib/pet_nudge.c"      /* wake an idle board engine, one copy with petslike_core.c */
 
 #define XT 24
 #define S48 48
@@ -453,14 +454,7 @@ static void follow_ava(void) {
 }
 /* An idle engine only renders on input (BOOK 16.game/PETSLIKE-FRAMEWORK-PLAN.md, same rule as petslike_core.c): after the pets stepped, append the no-op key 126 to this board's engine session relay so the 3D view redraws the moved sprites. The session is the bv_session= line of board/state/ui.txt. */
 static void nudge_engine(void) {
-    char up[PATH_MAX], ub[2048], sess[PATH_MAX] = "", rp[PATH_MAX]; snprintf(up, sizeof up, "%s/board/state/ui.txt", APP);
-    FILE *f = fopen(up, "r"); if (!f) return;
-    size_t n = fread(ub, 1, sizeof ub - 1, f); ub[n] = 0; fclose(f);
-    for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
-    if (!sess[0]) return;
-    snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess);
-    if (access(rp, F_OK)) return;
-    f = fopen(rp, "a"); if (f) { fputs("126\n", f); fclose(f); }
+    char up[PATH_MAX]; snprintf(up, sizeof up, "%s/board/state/ui.txt", APP); const char *ps[1] = {up}; pet_nudge(ps, 1);
 }
 static int quiet[MAXPET][MAXPET];      /* steps until a pair of pets greets again */
 static void step_all(void) {
