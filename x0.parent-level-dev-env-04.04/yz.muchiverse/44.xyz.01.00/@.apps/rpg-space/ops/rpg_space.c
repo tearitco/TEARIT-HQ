@@ -323,6 +323,14 @@ static int sk_tile_load(const SkTs *ts, int band, unsigned char *out) {      /* 
     if (!strcmp(ts->kind, "csv")) { snprintf(path, sizeof path, "%s/&.widgits/palettes/sprites/%s/%s/sprite.csv", HOUSE, ts->root, src); int res = 0; unsigned char *big = sk_csv_any(path, &res); if (!big) return 0; sk_box(big, res, res, tint, tinted, out); free(big); return 1; }
     return 0;
 }
+static int sk_band_of(int v) { return v < 20 ? 0 : v < 35 ? 1 : v < 45 ? 2 : v < 65 ? 3 : v < 80 ? 4 : v < 92 ? 5 : 6; }
+/* RPG Maker autotiling for the planet's water and sand (the shared rule in petslike_skin_lib.c, the one rpg-pet and df-hq copied): a cell's neighbours of the same kind pick its edge shape, laid over the ground tile. Water joins water (World_A1 sea), sand joins sand and water (World_A2 kind 16); outside the page counts as the same kind (MV treats the border as connected). */
+static int sk_nb(int h[SK_H][SK_W], int x, int y, int lim) { if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1; return sk_band_of(h[y][x]) <= lim; }
+static void sk_auto_cell(int g, int x, int y, int band, int h[SK_H][SK_W], int grass, Sheet *a1, Sheet *a2) {
+    int lim = band <= 1 ? 1 : 2; unsigned char t[XT * XT * 4], a[XT * XT * 4]; memcpy(t, slotpx[grass], sizeof t);
+    sk_auto_tile(band <= 1 ? a1 : a2, 0, band <= 1 ? 0 : 6, sk_nb(h, x, y - 1, lim), sk_nb(h, x + 1, y, lim), sk_nb(h, x, y + 1, lim), sk_nb(h, x - 1, y, lim), sk_nb(h, x + 1, y - 1, lim), sk_nb(h, x + 1, y + 1, lim), sk_nb(h, x - 1, y + 1, lim), sk_nb(h, x - 1, y - 1, lim), a);
+    over24(t, a); sk_glyph[g][y][x] = band == 2 ? 'p' : '~'; sk_fs[g][y][x] = slot_of(t); sk_ws[g][y][x] = 0;
+}
 static void sk_cell(int g, int x, int y, int band, int grass, unsigned char tl[7][XT * XT * 4], const int have[7]) {
     static const char GL[7] = { '~', '~', 'p', 'G', 'T', 'r', 'r' };
     if (band <= 3) { if (have[band]) { sk_glyph[g][y][x] = GL[band]; sk_fs[g][y][x] = slot_of(tl[band]); } else sk_solid(g, x, y, GL[band], SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 0); if (band == 3) sk_glyph[g][y][x] = 'G'; return; }
@@ -388,17 +396,20 @@ static void sk_ensure_map(void) {
     if (!rm && ts && strcmp(ts->kind, "plain")) for (int b = 0; b < 7; b++) have[b] = sk_tile_load(ts, b, tl[b]);
     if (rm) { if (!a5) { fprintf(stderr, PET_OP ": missing RPG Maker sheets under %s\n", ASSETS); return; } tile24(a5, 0, 2 * S48, tl[3]); have[3] = 1; }
     int grass = slot_of(tl[3]); sk_rockslot = grass; if (!have[3]) { unsigned char g[XT * XT * 4]; for (int i = 0; i < XT * XT; i++) { g[i * 4] = SK_FLAT[3][0]; g[i * 4 + 1] = SK_FLAT[3][1]; g[i * 4 + 2] = SK_FLAT[3][2]; g[i * 4 + 3] = 255; } memcpy(tl[3], g, sizeof g); grass = slot_of(tl[3]); have[3] = 1; }
+    Sheet *sa1 = rm ? sheet("tilesets", "World_A1") : NULL, *sa2 = rm ? sheet("tilesets", "World_A2") : NULL;
     for (int g = SK_SHIP; g < SK_NR; g++) {
         memset(h, 0, sizeof h); sk_read_page(pg[g - SK_SHIP], h);
         for (int y = 0; y < SK_H; y++) { for (int x = 0; x < SK_W; x++) { int v = h[y][x], band = v < 20 ? 0 : v < 35 ? 1 : v < 45 ? 2 : v < 65 ? 3 : v < 80 ? 4 : v < 92 ? 5 : 6;
             sk_glyph[g][y][x] = 'G'; sk_fs[g][y][x] = grass; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = v / 10;
             if (rm && band == 4) { if (ob) sk_stamp(g, ob, (x + y) & 1, 0, x, y, 'T'); else sk_solid(g, x, y, 'T', 40, 110, 50, 0, 1); }
+            else if (rm && band <= 2 && sa1 && sa2) sk_auto_cell(g, x, y, band, h, grass, sa1, sa2);
             else if (rm && band <= 2) sk_solid(g, x, y, band == 2 ? 'p' : '~', SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 0);
             else if (rm && band >= 5) sk_solid(g, x, y, 'r', SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 1);
             else if (!rm) sk_cell(g, x, y, band, grass, tl, have); }
             sk_glyph[g][y][SK_W] = 0; }
     }
     sk_build_ship();
+    if (nslot > MAXSLOT - 40) fprintf(stderr, PET_OP ": tile slots %d of %d used, the picture slots are nearly full (slot_of then returns 0 for a new picture)\n", nslot, MAXSLOT);
 }
 /* a book reload resets the engine to the first desk (the bridge); the core only switches desks when a pet changes room, so after a reload the desk of the room being watched is selected again */
 static void sk_desk_sync(void) {
