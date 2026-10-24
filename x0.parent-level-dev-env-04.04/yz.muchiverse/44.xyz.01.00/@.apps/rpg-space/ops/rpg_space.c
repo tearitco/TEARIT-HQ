@@ -15,7 +15,7 @@
 #define PET_OWN_EXPORT 1
 #define PET_SHEET_PFX "!space"      /* the generated pet character sheets are !space0.png ... (shared pet code: _shared-lib/petslike_skin_lib.c) */
 #define PET_ART_FALLBACK "../rpg-edit-hq/art"      /* the pals pictures are the island game's, shared */
-#define PET_ROOM_PHASE(r, ph) do { if ((r) < 4) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..3 are the ship: deep space is always night */
+#define PET_ROOM_PHASE(r, ph) do { if ((r) < 4 || (r) == 6) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..3 are the ship: deep space is always night */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
 #if PET_SECTION == 1
@@ -46,6 +46,7 @@ static const char *sk_room_label(int room); static void sk_look_load(void); stat
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
+static int sk_choice(char *title, char *q, char *yes, char *no);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
@@ -129,6 +130,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
 #elif PET_SECTION == 28
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
+    { char ct[48] = "", cq[80] = "", cy[48] = "", cn[48] = ""; int ask = flag_on("ask", 0) && sk_choice(ct, cq, cy, cn); W("ask_visible=%s\nask_title=%s\nask_text=%s\nask_yes=%s\nask_no=%s\n", ask ? "1" : "", ct, cq, cy, cn); }      /* the yes / no popup of an event (events/<name>/choice.pdl) */
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     sk_look_load(); { const char *cl = sk_pl_cur < 0 ? "No planet (deep space)" : sk_pl_n ? sk_pl[sk_pl_cur].label : "-";      /* the left bar: the address, the seed, Regen, zoom and the planets (design D8, D12) */
       W("seed=%llu\naddr_line=%s\npl_label=%s\nn_pl=%d\n", sk_seed, sk_addr, cl, sk_pl_n);
@@ -226,6 +228,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (now_ms() < sk_pin_until) { g_pin_now = 1; char xz[PATH_MAX], hz[PATH_MAX]; snprintf(xz, sizeof xz, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hz, sizeof hz, "%s/pieces/hero_01/state.txt", PCHQ); kv_set_int(xz, "pos_z", 17); kv_set_int(hz, "pos_z", 17); }      /* the engine starts the camera one above the LOWEST surface, which is now the planet sunk under the ship: hold it at the ship's floor level (floor 16, camera 17) */      /* after a planet / Regen reload the xelector follows the active pet again (follow_pchq re-writes its cell while the pin is set) */
         { static long pl_safety = 0; long pn = now_ms(); if (!sn_active(&g_sn) || sn_changed(&g_sn, SL_PETS) || pn - pl_safety > 30000) { pl_safety = pn; pet_load(); } }      /* marker/shmem: reload the pets only when a writer moved the slot (or every 30 s for a hand edit) */
         int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
+        if (!in && flag_on("ask", 0)) set_flag("ask", "0");      /* a popup left open when In: goes off is closed */
         { static int hw = 0; int hh = flag_on("helm", 0); if (hh && !hw) sk_helm_settle = now_ms() + 1800; hw = hh; }      /* the helm page runs in its own process: the daemon notices the helm turning on and waits for the desk change to settle */
         if (!in && flag_on("helm", 0)) { char hm[160], *hv[2] = { "helm", "off" }; sk_helm_verb(2, hv, hm, sizeof hm); }      /* In: off = AI control again: the helm lets go (at the helm the xelector is read and put back by sk_helm_follow, section 78) */
 #elif PET_SECTION == 68
@@ -545,6 +548,10 @@ static int sk_area_cells(char *what, size_t cap) {      /* events/helm/area.pdl:
     while (fp && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 12) >= 10 && !strcmp(f[0], "AREA")) { vox += (long)(atoi(f[7]) - atoi(f[4]) + 1) * (atoi(f[8]) - atoi(f[5]) + 1) * (atoi(f[9]) - atoi(f[6]) + 1); n++; }
     if (fp) fclose(fp); snprintf(what, cap, "%d boxes, %ld voxels", n, vox); return n;
 }
+static int sk_choice(char *title, char *q, char *yes, char *no) {      /* events/helm/choice.pdl: CHOICE | title | question | yes label | no label */
+    char p[PATH_MAX], ln[300]; char *f[6]; snprintf(p, sizeof p, "%s/events/helm/choice.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0;
+    while (fp && !hit && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 6) >= 5 && !strcmp(f[0], "CHOICE")) { snprintf(title, 48, "%s", f[1]); snprintf(q, 80, "%s", f[2]); snprintf(yes, 48, "%s", f[3]); snprintf(no, 48, "%s", f[4]); hit = 1; }
+    if (fp) fclose(fp); return hit; }
 static void sk_helm_put(int room, int x, int y) {      /* the controlled one stands on (room, x, y): the helm makes them the ship */
     int ci = ctl_idx(); use_ent(ci); pet.room = room; pet.x = x; pet.y = y; pet.dir = 0; pet.tx = pet.ty = -1; pet_save(); use_ent(active); set_flag("follow", ci < 0 ? "player" : "pet"); g_pin_now = 1; sk_helm_settle = now_ms() + 1800;
 }
@@ -553,6 +560,8 @@ static void sk_space_refresh(char *msg, size_t cap) {      /* the hull cells mov
 }
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
     const char *a = argc >= 2 ? argv[1] : "status";
+    if (!strcmp(a, "no")) { set_flag("ask", "0"); snprintf(msg, cap, "you stay at the console"); return; }
+    if (!strcmp(a, "yes")) { set_flag("ask", "0"); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; } if (!run_event_x("helm", "action", "")) { char *pv[2] = { "helm", "on" }; sk_helm_verb(2, pv, msg, cap); } else snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); return; }
     if (!strcmp(a, "on")) { char w[80]; sk_area_cells(w, sizeof w); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; }
         { int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char b[80]; snprintf(b, sizeof b, "%d %d %d\n", e->room, e->x, e->y); char hp[PATH_MAX]; spath(hp, "helm_from.txt"); write_if_changed(hp, b, strlen(b)); }      /* where to put the pilot back */
         int gx, gy; sk_ship_load(&gx, &gy); set_flag("helm", "1"); sk_helm_put(SK_SPACE, 2 + gx * 2, 2 + gy * 2); sk_space_refresh(msg, cap);
@@ -577,7 +586,7 @@ static int sk_helm_follow(char *msg, size_t cap) {
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char xp[PATH_MAX], kb[512]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
     for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
     if (xx < 0 || xy < 0) return 0; if (xx == e->x && xy == e->y) { lx = ly = -9; return 0; } if (xx == lx && xy == ly) { g_pin_now = 1; return 0; }
-    lx = xx; ly = xy; int ddx = xx - e->x, ddy = xy - e->y, dx = 0, dy = 0; if (abs(ddx) >= abs(ddy)) dx = ddx > 0 ? 1 : -1; else dy = ddy > 0 ? 1 : -1;
+    lx = xx; ly = xy; int ddx = xx - e->x, ddy = xy - e->y, dx = 0, dy = 0; if (abs(ddx) + abs(ddy) != 1) { g_pin_now = 1; return 0; }      /* an arrow moves the xelector exactly one cell from the pilot; any other offset is the engine's own desk reload, not a key */ if (abs(ddx) >= abs(ddy)) dx = ddx > 0 ? 1 : -1; else dy = ddy > 0 ? 1 : -1;
     char a[16], b[16], *hv[4]; snprintf(a, sizeof a, "%d", dx); snprintf(b, sizeof b, "%d", dy); hv[0] = "helm"; hv[1] = "move"; hv[2] = a; hv[3] = b; sk_helm_verb(4, hv, msg, cap); g_pin_now = 1; sk_helm_settle = now_ms() + 1500; lx = ly = -9; return 1;
 }
 /* Enter next to an event cell: the first HOT row of this room within one cell (not diagonal) of the controlled character that names an event page plays that page with trigger "action". */
@@ -586,6 +595,7 @@ static int sk_helm_interact(char *msg, size_t cap) {
     while (fp && !done && fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 8) < 7 || strcmp(f[0], "HOT") || strcmp(f[1], rooms[e->room].id) || !f[6][0]) continue;
         int hx = atoi(f[2]), hy = atoi(f[3]); if (abs(hx - e->x) + abs(hy - e->y) != 1) continue;
         char ev[48]; snprintf(ev, sizeof ev, "%s", f[6]); fclose(fp); fp = NULL; done = 1;
+        { char ct[48], cq[80], cy[48], cn[48]; if (!strcmp(ev, "helm") && sk_choice(ct, cq, cy, cn)) { set_flag("ask", "1"); snprintf(msg, cap, "%s", cq); { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|ask|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } return 1; } }      /* a choice popup first: Yes plays the page (verb helm yes) */
         if (!run_event_x(ev, "action", "") ) { char *pv[2] = { "helm", "on" }; verb(2, pv, msg, cap); } else if (flag_on("helm", 0)) snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); else snprintf(msg, cap, "%s: played", ev);
         sk_helm_settle = now_ms() + 2500;      /* the page moved the pilot and the desk: this iteration of the daemon must not read the xelector as a steering move */
         { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|action|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } }

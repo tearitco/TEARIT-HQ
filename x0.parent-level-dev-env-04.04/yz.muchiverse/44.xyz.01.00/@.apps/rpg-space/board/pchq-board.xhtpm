@@ -92,6 +92,12 @@
         <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' clearchat"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_space.+x'"/>
       </row>
+      <row id="ask-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${ask_visible}">
+        <text label="${ask_title}" class="hb-quiet ov-title theme-3"/>
+        <text label="${ask_text}" class="rp-big"/>
+        <item id="ask-yes" class="rp-menu-row" label="${ask_yes}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' helm yes"/>
+        <item id="ask-no" class="rp-menu-row" label="${ask_no}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' helm no"/>
+      </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
         <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' toggle hb"/>
