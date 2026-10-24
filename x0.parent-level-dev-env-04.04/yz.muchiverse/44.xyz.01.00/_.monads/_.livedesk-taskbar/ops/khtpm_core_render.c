@@ -7109,14 +7109,33 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 yy += rowh;
             }
             kh_ov_min_place(ov, x0, y0, colw, rowh, pad4);
+            /* class ov-scroll on a PINNED bar (owner 2026-10-23: "i can't read the other planets in the left bar, we need a scroll thumb if the window is small"):
+             * when the items do not fit the bar's height, only the ones in view are placed, the rest are parked off screen (y = -100000, no nav number: clip, never
+             * translate), and the house's generic scrollbar (track, thumb, ^ v arrows, wheel, page keys) is registered over them. A bar whose items fit, or one
+             * without the class, is laid out exactly as before. The scroll cursor is per pinned bar and is only clamped here, so this pass stays idempotent. */
+            static int s_ov_scroll[8];
+            int per = itemh + scaled(2), items_top = yy, n_vis = n_it, sc0 = 0, bar_w = 0, scr = 0, idx = 0;
+            if (pin_i >= 0 && elem_has_class(ov, "ov-scroll")) {
+                n_vis = ((y0 + hh - pad4) - yy - n_cl * rowh) / per; if (n_vis < 1) n_vis = 1;
+                if (n_it > n_vis) {
+                    int max_sc = n_it - n_vis, *sp = &s_ov_scroll[pin_i];
+                    if (*sp > max_sc) *sp = max_sc;
+                    if (*sp < 0) *sp = 0;
+                    sc0 = *sp; scr = 1; bar_w = scaled(GENERIC_SCROLLBAR_W + 16);
+                    generic_sbar_register(x0, items_top, colw, n_vis * per, sp, n_it, n_vis, max_sc);
+                }
+            }
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
                 if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close")) continue;
-                it->x = x0 + pad4; it->y = yy; it->w = colw - 2 * pad4; it->h = itemh;
-                yy += itemh + scaled(2);
+                if (scr && (idx < sc0 || idx >= sc0 + n_vis)) { it->x = x0 + pad4; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; idx++; continue; }
+                it->x = x0 + pad4; it->y = scr ? items_top + (idx - sc0) * per : yy; it->w = colw - 2 * pad4 - bar_w; it->h = itemh;
+                if (!scr) yy += itemh + scaled(2);
+                idx++;
                 it->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = it;
             }
+            if (scr) yy = items_top + n_vis * per;
             for (k = 0; k < ov->n_children; k++) {
                 Elem *t = ov->children[k];
                 if (strcmp(t->tag, "cli_io") != 0) continue;

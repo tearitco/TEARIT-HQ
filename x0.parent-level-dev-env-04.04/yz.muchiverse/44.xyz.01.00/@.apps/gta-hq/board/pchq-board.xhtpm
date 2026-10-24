@@ -64,7 +64,7 @@
     <panel id="view-panel" class="pchq-view">
       <canvas id="view" sprite="${canvas_raw}"/>
       <!-- LEFT pinned bar: the pets and their stats. Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl), the _ hides it, the footer cell left toggles it. -->
-      <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_left}">
         <text label="cast - coins ${coins}" class="hb-quiet ov-title theme-3"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/gta-hq/board/state/sides.txt' side_left hide"/>
         <text id="light" label="${run_label}" class="${run_cls}"/>
