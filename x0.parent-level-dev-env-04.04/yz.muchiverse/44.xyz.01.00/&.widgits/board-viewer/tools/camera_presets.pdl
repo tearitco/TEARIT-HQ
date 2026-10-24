@@ -1,0 +1,5 @@
+# camera_presets.pdl - absolute camera presets for board_ctl camera <app> <name> (the engine's camera keys are relative and 'f' is not a reset; the state is plain kv in <session>/pieces/system/bv_state.txt)
+# CAM | name | camera_mode | cam_yaw | cam_pitch | cam_pan_x | cam_pan_y | cam_pan_z | cam_z_level | current_z
+# first value seen right after a launch of rpg-space (3D free-roam, looking north from the south): mode 3, yaw 180, pitch -49, pan 16,8,36, level 0, xelector level 25 gave the good bridge and space pictures of 2026-10-24
+CAM | iso-south | 3 | 180 | -49 | 16 | 8 | 36 | 0 | 25
+CAM | topdown   | 3 | 180 | -89 | 16 | 8 | 36 | 0 | 25

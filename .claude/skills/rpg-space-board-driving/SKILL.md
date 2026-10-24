@@ -7,6 +7,26 @@ description: How to launch, drive, photograph and test the rpg-space board (and 
 
 Paths below are from `44.xyz.01.00/`. App = `@.apps/rpg-space`. Quote every path (`&` and `@` are shell characters). Full test record: `#.#.calendar-dox/!.HQ-IQ-BOOK/16.game/RPG-SPACE-HELM-INTERACTION-TEST-PLAN.md`; design of the event area: `EVENT-AREA-SELECTION-DESIGN.md`.
 
+## 00. Use the harness: `board_ctl` (built 2026-10-24, use it instead of hand-typed xdotool/sed)
+
+`&.widgits/board-viewer/tools/+x/board_ctl.+x` (source `board_ctl.c`, build `sh &.widgits/board-viewer/tools/build_board_ctl.sh`; header comment lists every command). Pass the app dir (`@.apps/rpg-space`).
+
+| command | what it does / why |
+|---|---|
+| `preflight` | session folder alive, engine process alive (not "(deleted)"), `bv_state` lines, window MAPPED (a hidden window cannot be focused), daemon running, In: coherent with the engine's Interact mode, engine really renders after a nudge. Run first; any FAIL = you do not have control. |
+| `recover` | kill the app's window/engine by pid, relaunch, wait for a live session, preflight. Worked twice on 2026-10-24 (the engine process died twice, cause unknown). |
+| `key <xdotool key> [ms]` | moves the POINTER into the window (focus-follows-mouse), focuses, presses a real key, then nudges the engine 3 times (an idle engine only reads keys when woken). |
+| `click <x> <y>` | pointer to the spot, then the relay `MOUSE_EVENT` press/release. Both are needed. |
+| `camera <preset>` | absolute camera from `tools/camera_presets.pdl` (`iso-south`, `topdown`) written into `bv_state.txt`; the engine's camera keys are relative and `f` is not a reset. |
+| `expect <state[:key]> <value> [s]` | assert/wait on `<app>/state` (`flag_int.txt 1`, `trainer.txt:y 4`, `ship.txt "4 3"`). Check after EVERY action. |
+| `snap <out.png> [--state a,b:key] [--same-ok]` | waits until the engine rendered after a nudge, dumps the window, writes `<out>.receipt.txt` (hash + state values); exit 3 if identical to the previous picture. |
+| `manifest <dir> <steps.txt>` | builds `manifest.txt` for `make_presentation_video.py` from the receipts: captions use `{ship.txt}`, `{trainer.txt:x}` placeholders, so numbers in captions are real; fails on identical neighbours. |
+| game verb `rpg_space.+x setpos <room> <x> <y>` | put the controlled character on a cell (also moves the xelector so the daemon does not walk him back). Not `place` (that is furniture). |
+
+The reference run: `RPG-SPACE-HELM-FLIGHT` folder in the media archive (`October-24/rpg-space-helm-flight-harness-20261024/flight_run.sh`).
+
+Order of waits that mattered: after `planet <id>` wait ~40 s (the engine reloads the book and ignores keys); after a Yes click wait ~14 s before the camera preset; after each flight key about 7 s before a snap.
+
 ## 0. Prove you have control BEFORE any presentation or claim
 
 Do this checklist first; do not start a recording until every line is true. Write the evidence down.
@@ -30,8 +50,8 @@ Do this checklist first; do not start a recording until every line is true. Writ
 
 ## 2. Input - what works and what does not
 
-- **Real X keys work**: `xdotool windowfocus <win>; xdotool key Up` (one cell per press). Always `windowfocus` in the SAME command (focus is lost between calls; a key without focus does nothing and says nothing). Camera-aware: Up is screen-up.
-- **Window clicks: use the per-pid relay, not xdotool click.** Append (never truncate) to `#.desktop/entity_menu_history/<pid>.txt`: `MOUSE_EVENT: 1 <x> <y> 1` then `... 0`, x,y relative to the window (dump pixel coordinates). This pressed the popup's Yes. `xdotool click` did nothing on the popup.
+- **Real X keys work** when the pointer is over the window (focus-follows-mouse) and the window is mapped: `xdotool mousemove --window <win> 400 350; xdotool windowfocus <win>; xdotool key Up` (one cell per press; `board_ctl key` does this). Always `windowfocus` in the SAME command (focus is lost between calls; a key without focus does nothing and says nothing). Camera-aware: Up is screen-up.
+- **Window clicks: move the pointer onto the element AND use the per-pid relay (board_ctl click), not xdotool click.** Append (never truncate) to `#.desktop/entity_menu_history/<pid>.txt`: `MOUSE_EVENT: 1 <x> <y> 1` then `... 0`, x,y relative to the window (dump pixel coordinates). This pressed the popup's Yes. `xdotool click` did nothing on the popup.
 - The relay's `KEY_PRESSED: 200` arrows do NOT move the xelector. The engine eats arrow keys itself and empties its own relay file, so the daemon only ever sees where the xelector went.
 - Engine camera/level keys: `&.widgits/board-viewer/tools/+x/bv_keys.+x <session> <text>` (`f` camera reset - also puts the engine on the FIRST desk, `c`/`v` height, `r`/`t` pitch, `z`/`x` xelector level, `8` snaps the xelector to the character, `\e` Esc). Nine `z` presses sink the camera inside the planet = solid green screen; undo with `x` x16.
 - In: on/off: the `int` verb (`ops/+x/rpg_space.+x int`) is a TOGGLE - read `flag_int.txt` first. Esc in the window leaves In: (and releases the helm).
@@ -63,3 +83,9 @@ Hero next to the console (bridge 8,4; (7,4) or (9,4)), In: ON, press Enter -> `f
 - Hero blocked by furniture (row 4/5 of the bridge); walk (7,7) -> Up x3, or stand at (9,4). Walking through a door changes room: check `room=` in trainer.txt, not just x,y.
 - `git commit -- <paths>` takes whole files; quote `&`/`@`; never `git add -A`; mp3 and screenshots/mp4 stay out of the repo (XO folder / media archive).
 - Do not drive the window while the owner is; say so before using `xdotool windowfocus`.
+
+## 7. Unsolved (2026-10-24), so do not trust the engine to stay up
+
+- The engine process `bv_render_3d --daemon` died twice in one evening (03:18 and 04:12) with no log line; once the window had also become unmapped. `board_ctl recover` rebuilds it in about 60 s. If you find the cause, write it here.
+- The per-pid relay arrows (`KEY_PRESSED: 200`) are logged but do not move the xelector.
+- A hidden window (`xwininfo -id <win>` says IsUnMapped) makes every key fail with `BadMatch (X_SetInputFocus)`; `xdotool windowmap <win>` shows it again.

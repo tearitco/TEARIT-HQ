@@ -222,6 +222,13 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "setpos")) {      /* setpos <room id> <x> <y>: put the controlled one on a cell (test setup for board_ctl; refuses a blocked cell and the space desk) */
+        int rr = argc >= 2 ? room_idx(argv[1]) : -1, px = argc >= 4 ? atoi(argv[2]) : -1, py = argc >= 4 ? atoi(argv[3]) : -1;
+        if (argc >= 4) { rr = room_idx(argv[1]); px = atoi(argv[2]); py = atoi(argv[3]); } else if (argc == 3) { snprintf(msg, cap, "usage: setpos <room> <x> <y>"); return; }
+        if (argc < 4 || rr < 0 || rr == SK_SPACE || sk_blocked(rr, px, py)) { snprintf(msg, cap, "setpos: unknown room, the space desk, or a blocked cell"); return; }
+        { int ci = ctl_idx(); use_ent(ci); pet.room = rr; pet.x = px; pet.y = py; pet.dir = 0; pet.tx = pet.ty = -1; pet_save(); use_ent(active); set_flag("follow", ci < 0 ? "player" : "pet"); g_pin_now = 1;
+          { char xz[PATH_MAX], hz[PATH_MAX]; snprintf(xz, sizeof xz, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hz, sizeof hz, "%s/pieces/hero_01/state.txt", PCHQ); kv_set_int(xz, "pos_x", px); kv_set_int(xz, "pos_y", py); kv_set_int(hz, "pos_x", px); kv_set_int(hz, "pos_y", py); } }      /* the xelector goes with the character, or the daemon walks the character back to where the xelector was */
+        snprintf(msg, cap, "set on %s %d,%d", argv[1], px, py); return; }
 #elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
 #elif PET_SECTION == 67
