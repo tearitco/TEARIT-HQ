@@ -1,0 +1,17 @@
+# rpg-space lights: the ship's rooms are lit by their own lamps, not by the clock (it is always dark in space; owner 2026-10-23: "the ship's rooms should have lights in them"). The skin writes each room's own engine file (maps/<book>/<room>/lights.pdl; the board engine, &.widgits/board-viewer, shades hits with it: GPU path).
+# AMBIENT | room | level        light a room has with no lamp near (0..1); it REPLACES the sun for that room, so the room looks the same at noon and at midnight
+# LIGHT | room | x | y | z | radius | r | g | b | strength     x = column, y = row of the desk, z = cells above the floor top, radius in cells; colour 0..1; at distance d a hit gets colour * strength * (1 - d/radius)^2 on top of the ambient (at most 8 per room)
+AMBIENT | bridge   | 0.34
+LIGHT   | bridge   | 5  | 6  | 3 | 7 | 0.80 | 0.90 | 1.00 | 0.85
+LIGHT   | bridge   | 10 | 6  | 3 | 7 | 0.80 | 0.90 | 1.00 | 0.85
+LIGHT   | bridge   | 8  | 10 | 3 | 7 | 0.80 | 0.90 | 1.00 | 0.70
+AMBIENT | quarters | 0.34
+LIGHT   | quarters | 5  | 6  | 3 | 7 | 1.00 | 0.82 | 0.55 | 0.80
+LIGHT   | quarters | 10 | 9  | 3 | 7 | 1.00 | 0.82 | 0.55 | 0.80
+AMBIENT | hold     | 0.30
+LIGHT   | hold     | 5  | 6  | 3 | 7 | 1.00 | 0.95 | 0.75 | 0.75
+LIGHT   | hold     | 10 | 9  | 3 | 7 | 1.00 | 0.95 | 0.75 | 0.75
+AMBIENT | engine   | 0.28
+LIGHT   | engine   | 5  | 6  | 3 | 7 | 1.00 | 0.50 | 0.30 | 0.85
+LIGHT   | engine   | 10 | 6  | 3 | 7 | 1.00 | 0.50 | 0.30 | 0.85
+LIGHT   | engine   | 8  | 10 | 3 | 7 | 1.00 | 0.60 | 0.35 | 0.70

@@ -453,6 +453,14 @@ static void pet_own_export_room(int r, const char *d) {
         static const char PLANET[] = "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";
         static const char SHIP[] = "EXTRUDE      | ~                  | -6\nEXTRUDE      | p                  | -5\nEXTRUDE      | G                  | -5\nEXTRUDE      | W                  | 4\nEXTRUDE      | D                  | 1\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 4 tall (owner): walls 4, floor level; the planet is a body hung UNDER the ship (the island trick: the engine draws hung rock under a floor, never under a hole) */
         fprintf(f, HEAD, rooms[r].id); fputs(r < SK_SHIP ? SHIP : PLANET, f); fclose_tmp(f, p); } }
+    snprintf(p, sizeof p, "%s/lights.pdl", d);      /* this room's own lamps (the app's lights.pdl rows for it); a room with none gets no file, so the engine lights it by the sun as before */
+    { char lp[PATH_MAX], ln[256], out[2048] = ""; size_t o = 0; snprintf(lp, sizeof lp, "%s/lights.pdl", APP); FILE *lf = fopen(lp, "r");
+      while (lf && fgets(ln, sizeof ln, lf)) { char *fl[12]; int n = split_bar(ln, fl, 12); if (n < 3 || ln[0] == '#' || strcmp(fl[1], rooms[r].id)) continue;
+          if (!strcmp(fl[0], "AMBIENT")) o += (size_t)snprintf(out + o, sizeof out - o, "AMBIENT | %s\n", fl[2]);
+          else if (!strcmp(fl[0], "LIGHT") && n >= 10) o += (size_t)snprintf(out + o, sizeof out - o, "LIGHT | %s | %s | %s | %s | %s | %s | %s | %s\n", fl[2], fl[3], fl[4], fl[5], fl[6], fl[7], fl[8], fl[9]);
+          if (o > sizeof out - 160) break; }
+      if (lf) fclose(lf);
+      if (o) { FILE *f = fopen_tmp(p); if (f) { fputs(out, f); fclose_tmp(f, p); } } else remove(p); }
     int acols = 16, nrows = (nslot + acols - 1) / acols, aw = acols * XT, ah = nrows * XT; unsigned char *atlas = (unsigned char *)calloc((size_t)aw * ah * 4, 1); if (!atlas) return;
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
     snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);
