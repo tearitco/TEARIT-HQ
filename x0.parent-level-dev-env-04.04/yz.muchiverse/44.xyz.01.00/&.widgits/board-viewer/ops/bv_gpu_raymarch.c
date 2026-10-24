@@ -65,6 +65,7 @@ static const char *FS_SRC =
 "uniform ivec2 u_mk;\n"
 "uniform sampler2D u_atlas;\n"
 "uniform highp usampler2D u_cells;\n"
+"uniform int   u_under;\n"       /* 1: u_cells holds a second block of rows (under-run tile slots, red channel) below the cells */
 "uniform sampler2D u_para;\n"
 "uniform int   u_para_on;\n"
 "uniform vec2  u_para_size;\n"
@@ -196,8 +197,9 @@ static const char *FS_SRC =
 "               the top face is the picture, the sides are the extruded edge.\n"
 "               Walls keep the old split (floor on y=0, wall art above). */\n"
 "            uint slot = (c.y <= u_zoff) ? sl.x : sl.y;\n"
-"            if (c.y < u_zoff && u_rock > 0) slot = uint(u_rock);\n"
+"            if (c.y < u_zoff && u_rock > 0 && cf != 3) slot = uint(u_rock);\n"       /* the top face of a SUNK column (nothing above it) keeps the cell's own tile; hung blocks under a floor are never hit from above */
 "            if (sl.x != 0u && sl.y != 0u && sl.x != sl.y) slot = (cf == 3) ? sl.x : sl.y;\n"
+"            if (u_under != 0 && c.y < u_zoff - 1) { uint us = texelFetch(u_cells, ivec2(c.x, c.z + int(u_wext.z)), 0).r; if (us != 0u) slot = us; }\n"      /* the second run under a hovering hull: its own tile on every face */
 "            ivec2 ap = ivec2(int(slot) % u_mk.x, int(slot) / u_mk.x) * u_mk.y + ivec2(clamp(uv, 0.0, 0.999) * float(u_mk.y));\n"
 "            vec4 at = texelFetch(u_atlas, ap, 0);\n"
 "            if ((slot == 0u || at.a <= 0.5) && c.y > u_zoff) {\n"
@@ -206,7 +208,7 @@ static const char *FS_SRC =
 "              at = texelFetch(u_atlas, ap, 0);\n"
 "            }\n"
 "            col = (slot != 0u && at.a > 0.5) ? at.rgb : vec3(0.10, 0.10, 0.12);\n"
-"            if (c.y < u_zoff && u_rock <= 0) col *= vec3(0.62, 0.50, 0.42);\n"       /* hung blocks with no rock tile: earthy tint */
+"            if (c.y < u_zoff && u_rock <= 0 && cf != 3) col *= vec3(0.62, 0.50, 0.42);\n"       /* hung blocks with no rock tile: earthy tint */
 "          }\n"
 "        }\n"
 "        break;\n"
@@ -264,7 +266,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -401,7 +403,7 @@ static int gl_ensure_context(void) {
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
     s_u.light=UL("u_light"); s_u.nl=UL("u_nl"); s_u.amb_on=UL("u_amb_on"); s_u.amb=UL("u_amb"); s_u.lpos=UL("u_lpos"); s_u.lcol=UL("u_lcol"); s_u.sky=UL("u_sky"); s_u.clear=UL("u_clear"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
-    s_u.maker=UL("u_maker"); s_u.zoff=UL("u_zoff"); s_u.rock=UL("u_rock"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells");
+    s_u.maker=UL("u_maker"); s_u.zoff=UL("u_zoff"); s_u.rock=UL("u_rock"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells"); s_u.under=UL("u_under");
     s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
@@ -593,6 +595,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1i (s_u.leg,   1);
     glUniform1i (s_u.terr,  2);
     /* maker_view: upload the atlas + cell map only when maker_id changed; samplers always point at their own units */
+    int under_on = (s->maker && s->under) ? 1 : 0;
     if (s->maker && s->atlas && s->cells && s->maker_id != s_maker_id) {
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glActiveTexture(GL_TEXTURE4);
@@ -600,11 +603,16 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, s->atlas_w, s->atlas_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->atlas);
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, s_tex_cells);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, s->cells_w, s->cells_h, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, s->cells);
+        if (s->under) {      /* the cells, then a second block of rows holding the under-run slots in the red channel */
+            size_t n = (size_t)s->cells_w * (size_t)s->cells_h; unsigned short *tmp = (unsigned short *)calloc(n * 4, sizeof(unsigned short));
+            if (tmp) { memcpy(tmp, s->cells, n * 2 * sizeof(unsigned short)); for (size_t i = 0; i < n; i++) tmp[n * 2 + i * 2] = s->under[i];
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, s->cells_w, s->cells_h * 2, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, tmp); free(tmp); }
+        } else glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, s->cells_w, s->cells_h, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, s->cells);
         s_maker_id = s->maker_id;
     }
     glUniform1i (s_u.atlas, 4);
     glUniform1i (s_u.cells, 5);
+    glUniform1i (s_u.under, under_on);
     glUniform1i (s_u.zoff, s->zoff);
     glUniform1i (s_u.rock, s->rock);
     glUniform1i (s_u.maker, (s->maker && s->atlas && s->cells) ? 1 : 0);

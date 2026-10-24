@@ -365,8 +365,11 @@ typedef struct {
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
+    unsigned char zs[128];  /* EXTRUDE value < 0: the glyph's surface is SUNK by that many levels (-5 = its top is 5 levels lower than the floor top); a planet seen below a hovering ship. 0 = not sunk. */
     unsigned char *cdepth;  /* cells.txt third token per cell ("F,Wl,D"): hung blocks under THIS cell, so an island underside can taper; absent = the glyph DEPTH row. */
     int cdepth_any;
+    /* A SECOND solid run under a column (cells.txt tokens 4..6 per cell: "F,Wl,D,U,UD,US"): tile slot U for it, hung UD levels below the floor level, its top US levels below the floor TOP (zoff + 1 - US). A column is otherwise one contiguous run, so a hull floating over a planet could not keep the planet's own centre under it. 0 = none. */
+    unsigned short *under; unsigned char *udep, *usink; int under_any;
     int rock;               /* cells.txt rock_slot=: atlas slot painted on the hung (negative z) blocks; 0 = the cell floor tile. */
     unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
     int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. With DEPTH in use a cell with no floor and no wall tile has no block (the sky shows), so there is no separate hole key. */
@@ -468,7 +471,7 @@ static int maker_load(const char *root) {
     static long long held_stamp = -1;
     if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
     held_stamp = cell_stamp;
-    free(g_mk.atlas); free(g_mk.cells); free(g_mk.cdepth); free(g_mk.para); free(g_mk.glyph);
+    free(g_mk.atlas); free(g_mk.cells); free(g_mk.cdepth); free(g_mk.under); free(g_mk.udep); free(g_mk.usink); free(g_mk.para); free(g_mk.glyph);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
     g_mk.id = prev_id + 1;
@@ -491,7 +494,8 @@ static int maker_load(const char *root) {
                 if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
                 g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
                 g_mk.cdepth = (unsigned char *)calloc((size_t)g_mk.w * (size_t)g_mk.h, 1);
-                if (!g_mk.cells || !g_mk.cdepth) { fclose(f); return 0; }
+                g_mk.under = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h, 2); g_mk.udep = (unsigned char *)calloc((size_t)g_mk.w * (size_t)g_mk.h, 1); g_mk.usink = (unsigned char *)calloc((size_t)g_mk.w * (size_t)g_mk.h, 1);
+                if (!g_mk.cells || !g_mk.cdepth || !g_mk.under || !g_mk.udep || !g_mk.usink) { fclose(f); return 0; }
                 in_cells = 1;
             }
             continue;
@@ -508,6 +512,12 @@ static int maker_load(const char *root) {
             if (*q == ',') {      /* optional per-cell depth */
                 long dv = strtol(q + 1, &e, 10); q = e;
                 if (dv > 0 && dv <= 16) { g_mk.cdepth[(size_t)row * g_mk.w + x] = (unsigned char)dv; g_mk.cdepth_any = 1; if (dv > g_mk.zoff) g_mk.zoff = (int)dv; }
+                if (*q == ',') {      /* optional second run under the column: tile, depth, sink */
+                    long us = strtol(q + 1, &e, 10); q = e; long ud = 0, uk = 0;
+                    if (*q == ',') { ud = strtol(q + 1, &e, 10); q = e; }
+                    if (*q == ',') { uk = strtol(q + 1, &e, 10); q = e; }
+                    if (us > 0 && ud > 0 && ud <= 16 && uk >= 0 && uk < ud) { size_t ci = (size_t)row * g_mk.w + x; g_mk.under[ci] = (unsigned short)us; g_mk.udep[ci] = (unsigned char)ud; g_mk.usink[ci] = (unsigned char)uk; g_mk.under_any = 1; if (ud > g_mk.zoff) g_mk.zoff = (int)ud; }
+                }
             }
             g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 0] = (unsigned short)fl;
             g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 1] = (unsigned short)wl;
@@ -556,7 +566,7 @@ static int maker_load(const char *root) {
                 char *val = bar2 + 1; while (*val == ' ' || *val == '\t') val++;
                 if (is_depth) { int dv = atoi(val); if (dv > 0 && dv <= 16) { g_mk.depth[(unsigned char)g] = (unsigned char)dv; if (dv > g_mk.zoff) g_mk.zoff = dv; } }
                 else if (strncmp(val, "sprite", 6) == 0) g_mk.draw[(unsigned char)g] = 1;
-                else { int hv = atoi(val); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; }
+                else { int hv = atoi(val); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; else if (hv < 0 && hv >= -16) g_mk.zs[(unsigned char)g] = (unsigned char)(-hv); }
             }
         }
         fclose(f);
@@ -3688,7 +3698,7 @@ static int render_one_frame(void) {
             bv_view_window(g_mk.w, g_mk.h, cam.eye.x, cam.eye.z, &vox, &voy, &vww, &vwh);
             sc.eye[0] = (float)(cam.eye.x - vox);
             sc.eye[2] = (float)(cam.eye.z - voy);
-            static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2];
+            static unsigned short view_cells[BV_VIEW_DIM * BV_VIEW_DIM * 2], view_under[BV_VIEW_DIM * BV_VIEW_DIM];
             int cropped = (vox || voy || vww != g_mk.w || vwh != g_mk.h);
             char vp[PATH_BUF], mode[32];
             snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
@@ -3761,12 +3771,17 @@ static int render_one_frame(void) {
                         int zo = g_mk.zoff, lo = zo, hi = zo + h, hole = 0;
                         if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
                             unsigned char zg = (unsigned char)g_mk.glyph[my * g_mk.w + mx];
-                            if (zg < 128) lo = zo - g_mk.depth[zg];
+                            if (zg < 128) { lo = zo - g_mk.depth[zg]; hi -= g_mk.zs[zg]; }      /* a sunk glyph: its top is zs levels below the floor top (negative EXTRUDE) */
                         }
                         if (g_mk.cdepth_any && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) lo = zo - g_mk.cdepth[(size_t)my * g_mk.w + mx];      /* per-cell depth wins: tapered undersides */
                         if (zo && !g_mk.cells[src] && !g_mk.cells[src + 1]) hole = 1;     /* no tile at all = air, once negative levels are in use */
+                        if (hi <= lo) hole = 1;      /* a sunk surface with no hung body under it is nothing at all */
                         if (hi > z_count) hi = z_count;
                         if (!hole) for (int lvl = lo; lvl < hi; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1;
+                        view_under[(size_t)row * vww + col] = 0;
+                        if (g_mk.under_any && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h && g_mk.under[(size_t)my * g_mk.w + mx]) {      /* the second run: a planet under a hovering hull */
+                            size_t ci = (size_t)my * g_mk.w + mx; int ulo = zo - g_mk.udep[ci], uhi = zo + 1 - g_mk.usink[ci];
+                            if (uhi > ulo && ulo >= 0) { for (int lvl = ulo; lvl < uhi && lvl < z_count; lvl++) gpu_grid[col + row * vww + lvl * vww * vwh] = 1; view_under[(size_t)row * vww + col] = g_mk.under[ci]; } }
                     }
                     if (cropped || card_furn || g_bspr_any) {
                         unsigned short fl = g_mk.cells[src], wl = g_mk.cells[src + 1];
@@ -3784,7 +3799,7 @@ static int render_one_frame(void) {
             sc.maker = 1; sc.maker_id = g_mk.id + (card_furn ? 100000 : 0) + (g_bspr_any ? 200000 : 0); sc.zoff = g_mk.zoff; sc.rock = g_mk.rock;
             sc.atlas = g_mk.atlas; sc.atlas_w = g_mk.aw; sc.atlas_h = g_mk.ah; sc.atlas_cols = g_mk.cols; sc.tile_px = g_mk.tile_px;
             sc.cells = (cropped || card_furn || g_bspr_any) ? view_cells : g_mk.cells;
-            sc.cells_w = vww; sc.cells_h = vwh;
+            sc.cells_w = vww; sc.cells_h = vwh; sc.under = g_mk.under_any ? view_under : NULL;      /* the under-run tile slots of this view (BvGpuScene.under) */
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
             sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly; sc.para_ver = g_mk.para_ver;
             sc.light_amb_on = g_mk.light_amb_on; sc.light_amb = g_mk.light_amb; sc.light_n = g_mk.light_n;      /* a desk's own lights (lights.pdl); world cell = column + 0.5, floor level + 1 + z, row + 0.5 */

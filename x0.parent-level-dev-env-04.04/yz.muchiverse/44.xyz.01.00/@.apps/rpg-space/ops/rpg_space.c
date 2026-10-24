@@ -363,7 +363,7 @@ static void sk_build_ship(void) {      /* called after the planet pages are pain
     static const int bx[3] = {3, 8, 0}, by[3] = {11, 11, 6}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1}, ex[1] = {11}, ey[1] = {6};
     for (int g = 0; g < SK_SHIP; g++) for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) {      /* the planet below: its cells are copied in and SUNK under the ship's floor (negative extrusion in the ship desks' extrusion file), with a body hung under them; no planet = holes, only space */
         if (sk_pl_cur < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
-        else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][y][x]; sk_fs[g][y][x] = sk_fs[SK_SHIP][y][x]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 4 + sk_cdep[SK_SHIP][y][x]; if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
+        else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][y][x]; sk_fs[g][y][x] = sk_fs[SK_SHIP][y][x]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[SK_SHIP][y][x]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
     sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge, the hub: green hex floor, doors in the south wall to the quarters (left) and the hold (right) and in the west wall to the engine room */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
@@ -451,7 +451,7 @@ static void pet_own_export_room(int r, const char *d) {
     snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) {
         static const char HEAD[] = "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\n";
         static const char PLANET[] = "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";
-        static const char SHIP[] = "EXTRUDE      | ~                  | -6\nEXTRUDE      | p                  | -5\nEXTRUDE      | G                  | -5\nEXTRUDE      | W                  | 4\nEXTRUDE      | D                  | 1\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 4 tall (owner): walls 4, floor level; the planet is a body hung UNDER the ship (the island trick: the engine draws hung rock under a floor, never under a hole) */
+        static const char SHIP[] = "EXTRUDE      | ~                  | -9\nEXTRUDE      | p                  | -8\nEXTRUDE      | G                  | -8\nEXTRUDE      | W                  | 4\nEXTRUDE      | D                  | 1\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 4 tall (owner): walls 4, floor level; the planet is a body hung UNDER the ship (the island trick: the engine draws hung rock under a floor, never under a hole) */
         fprintf(f, HEAD, rooms[r].id); fputs(r < SK_SHIP ? SHIP : PLANET, f); fclose_tmp(f, p); } }
     snprintf(p, sizeof p, "%s/lights.pdl", d);      /* this room's own lamps (the app's lights.pdl rows for it); a room with none gets no file, so the engine lights it by the sun as before */
     { char lp[PATH_MAX], ln[256], out[2048] = ""; size_t o = 0; snprintf(lp, sizeof lp, "%s/lights.pdl", APP); FILE *lf = fopen(lp, "r");
@@ -473,7 +473,12 @@ static void pet_own_export_room(int r, const char *d) {
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
     snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);
     snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\ncells\n", cols, rows, XT, nslot, sk_rockslot);
-        for (int y = 0; y < rows; y++) { for (int x = 0; x < cols; x++) fprintf(f, "%s%d,%d,%d", x ? " " : "", fs[y][x], ws[y][x], sk_cdep[r][y][x]); fputc('\n', f); } fclose_tmp(f, p); } }
+        for (int y = 0; y < rows; y++) { for (int x = 0; x < cols; x++) {
+            fprintf(f, "%s%d,%d,%d", x ? " " : "", fs[y][x], ws[y][x], sk_cdep[r][y][x]);
+            if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ && sk_fs[SK_SHIP][y][x]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
+                char pg = sk_glyph[SK_SHIP][y][x]; int ud = 10 + sk_cdep[SK_SHIP][y][x]; if (ud > 16) ud = 16;
+                fprintf(f, ",%d,%d,%d", sk_fs[SK_SHIP][y][x], ud, pg == '~' ? 9 : 8); } }
+          fputc('\n', f); } fclose_tmp(f, p); } }
 }
 #elif PET_SECTION == 74
     { int sx, sy; sk_spawn(i, &sx, &sy); e->room = 0; e->x = sx; e->y = sy; }

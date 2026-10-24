@@ -75,6 +75,7 @@ typedef struct {
     int   rock;                 /* maker maps: atlas slot of the hung (negative z) blocks, 0 = none */
     int   zoff;                 /* maker maps: grid level of the floor (levels below it are DEPTH blocks) */
     int   maker, maker_id, atlas_w, atlas_h, atlas_cols, tile_px, cells_w, cells_h;
+    const unsigned short *under;   /* maker maps, optional: cells_w * cells_h tile slots of a second solid run under a column (see the cells.txt tokens 4..6 in bv_render_3d.c); a voxel below the floor level minus one in such a column is painted with this slot. NULL = none. */
     const unsigned char  *atlas;
     const unsigned short *cells;
     /* Far-plane sky. Sampled only when a ray misses. para == NULL keeps u_sky.
