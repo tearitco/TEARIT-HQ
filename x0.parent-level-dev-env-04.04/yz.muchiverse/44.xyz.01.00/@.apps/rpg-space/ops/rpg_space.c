@@ -527,7 +527,17 @@ static void pet_own_export_room(int r, const char *d) {
  * command. Enter next to a console cell (hotspots.pdl HOT row with an event name) plays the page; the page runs the verb "helm on": flag_helm=1. At the helm the arrows (Up Down Left Right) move the SHIP one cell on the galaxy grid
  * (planets.pdl POS rows, state/ship.txt); a cell with a planet puts the ship above it (the same "planet" verb), an empty cell is deep space. Esc (or In: off) lets go. Design: 16.game/EVENT-AREA-SELECTION-DESIGN.md */
 #define SK_GRID 6
-static int sk_pos_of(const char *id, int *gx, int *gy) { char p[PATH_MAX], ln[300]; char *f[6]; snprintf(p, sizeof p, "%s/planets.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0; while (fp && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 6) >= 4 && !strcmp(f[0], "POS") && !strcmp(f[1], id)) { *gx = atoi(f[2]); *gy = atoi(f[3]); hit = 1; } if (fp) fclose(fp); return hit; }
+static int sk_pos_file(const char *id, int *gx, int *gy) {      /* the POS row of planets.pdl, if any */
+    char p[PATH_MAX], ln[300]; char *f[6]; snprintf(p, sizeof p, "%s/planets.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0; while (fp && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 6) >= 4 && !strcmp(f[0], "POS") && !strcmp(f[1], id)) { *gx = atoi(f[2]); *gy = atoi(f[3]); hit = 1; } if (fp) fclose(fp); return hit; }
+/* A planet with no POS row (newplanet) gets the first EMPTY grid cell: scan row by row, column by column, and take the first cell at least 2 grid cells (Chebyshev) from every planet that already has a place (islands are 3 cells wide, 2 cells apart per grid step, so 2 apart keeps them from touching). Planets are placed in list order after all the POS rows, so the result never changes between calls. */
+static int sk_pos_of(const char *id, int *gx, int *gy) {
+    if (sk_pos_file(id, gx, gy)) return 1; int n = sk_pl_n, px[16], py[16], has[16] = {0}; if (n > 16) n = 16;
+    for (int k = 0; k < n; k++) has[k] = sk_pos_file(sk_pl[k].id, &px[k], &py[k]);
+    for (int k = 0; k < n; k++) { if (has[k]) continue; int fx = -1, fy = -1;
+        for (int y = 0; y < 6 && fx < 0; y++) for (int x = 0; x < 6 && fx < 0; x++) { int ok = 1; for (int m = 0; m < n; m++) if (has[m] && abs(px[m] - x) < 2 && abs(py[m] - y) < 2) ok = 0; if (ok) { fx = x; fy = y; } }
+        if (fx < 0) return 0;      /* the map is full */
+        px[k] = fx; py[k] = fy; has[k] = 1; if (!strcmp(sk_pl[k].id, id)) { *gx = fx; *gy = fy; return 1; } }
+    return 0; }
 static void sk_ship_load(int *gx, int *gy) { char p[PATH_MAX], b[40]; spath(p, "ship.txt"); read_file(p, b, sizeof b); if (sscanf(b, "%d %d", gx, gy) == 2) return; *gx = *gy = 0; sk_look_load(); if (sk_pl_cur >= 0) sk_pos_of(sk_pl[sk_pl_cur].id, gx, gy); }
 static void sk_ship_save(int gx, int gy) { char p[PATH_MAX], b[40]; spath(p, "ship.txt"); snprintf(b, sizeof b, "%d %d\n", gx, gy); write_if_changed(p, b, strlen(b)); }
 static int sk_area_cells(char *what, size_t cap) {      /* events/helm/area.pdl: AREA | name | mode | room | x0 | y0 | z0 | x1 | y1 | z1  ->  how many voxels the event touches (the hull) */
