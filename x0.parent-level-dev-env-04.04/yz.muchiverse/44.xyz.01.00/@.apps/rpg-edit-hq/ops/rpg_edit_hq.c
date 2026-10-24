@@ -282,6 +282,11 @@ static void sk_set_kv_line(const char *path, const char *key, const char *val) {
     for (char *l = b; *l; ) { char *e = strchr(l, '\n'); size_t len = e ? (size_t)(e - l) : strlen(l); if (!strncmp(l, key, kl) && l[kl] == '=') { o += (size_t)snprintf(out + o, sizeof out - o, "%s=%s\n", key, val); done = 1; } else o += (size_t)snprintf(out + o, sizeof out - o, "%.*s\n", (int)len, l); l += len + (e ? 1 : 0); }
     if (!done) o += (size_t)snprintf(out + o, sizeof out - o, "%s=%s\n", key, val); write_if_changed(path, out, o); }
 
+/* the 8 neighbours (n, e, s, w, ne, se, sw, nw) of an island cell that are one of the glyphs in `same` (1 = same kind for the autotile shape); outside the page counts as the same kind (MV treats the border as connected) */
+static void sk_isl_nb(int x, int y, const char *same, int nb[8]) {
+    static const int D[8][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}, {1, -1}, {1, 1}, {-1, 1}, {-1, -1}};
+    for (int k = 0; k < 8; k++) { int cx = x + D[k][0], cy = y + D[k][1]; nb[k] = (cx < 0 || cy < 0 || cx >= SK_W || cy >= SK_H) ? 1 : strchr(same, sk_isl_at(cx, cy)) != NULL; }
+}
 /* Build every room's tiles once per process. Needs rooms.pdl (the interiors' floor tile), the RPG Maker sheets and nothing else. */
 static void sk_ensure_map(void) {
     if (sk_built) return; sk_built = 1;
@@ -290,12 +295,12 @@ static void sk_ensure_map(void) {
     if (!a5 || !wb) { fprintf(stderr, PET_OP ": missing RPG Maker sheets under %s\n", ASSETS); return; }
     unsigned char t[XT * XT * 4], u[XT * XT * 4], v[XT * XT * 4];
     /* the island page: grass floor everywhere, then the cells by glyph */
-    tile24(a5, 0, 2 * S48, t); int grass = slot_of(t);
+    tile24(a5, 0, 2 * S48, t); int grass = slot_of(t); Sheet *sa1 = sheet("tilesets", "World_A1"), *sa2 = sheet("tilesets", "World_A2");
     for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) { char c = sk_isl_at(x, y); sk_glyph[0][y][x] = c; sk_fs[0][y][x] = grass; sk_ws[0][y][x] = 0;
         switch (c) {
         case '.': sk_glyph[0][y][x] = '_'; sk_fs[0][y][x] = 0; break;      /* the void is a hole: the sky shows through */
-        case '~': sk_solid(0, x, y, '~', 50, 110, 200, 0, 0); break;
-        case 'p': sk_solid(0, x, y, 'p', 214, 190, 130, 0, 0); break;
+        case '~': if (sa1) { int nb[8]; sk_isl_nb(x, y, "~", nb); sk_auto_ground(0, x, y, '~', sa1, 0, 0, nb, grass, 0); } else sk_solid(0, x, y, '~', 50, 110, 200, 0, 0); break;      /* RPG Maker sea autotile: water joins water, the page border counts as water */
+        case 'p': if (sa2) { int nb[8]; sk_isl_nb(x, y, "~pr", nb); sk_auto_ground(0, x, y, 'p', sa2, 0, 6, nb, grass, 0); } else sk_solid(0, x, y, 'p', 214, 190, 130, 0, 0); break;      /* sand (World_A2 kind 16) joins sand, path and water */
         case 'r': sk_solid(0, x, y, 'r', 190, 165, 110, 0, 0); break;
         case 'b': case 's': sk_solid(0, x, y, c, 150, 100, 55, 1, 0); break;
         case 'T': case 'B': case 'D': case 'S': case 'F': sk_glyph[0][y][x] = 'G'; break;

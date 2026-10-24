@@ -324,12 +324,13 @@ static int sk_tile_load(const SkTs *ts, int band, unsigned char *out) {      /* 
     return 0;
 }
 static int sk_band_of(int v) { return v < 20 ? 0 : v < 35 ? 1 : v < 45 ? 2 : v < 65 ? 3 : v < 80 ? 4 : v < 92 ? 5 : 6; }
-/* RPG Maker autotiling for the planet's water and sand (the shared rule in petslike_skin_lib.c, the one rpg-pet and df-hq copied): a cell's neighbours of the same kind pick its edge shape, laid over the ground tile. Water joins water (World_A1 sea), sand joins sand and water (World_A2 kind 16); outside the page counts as the same kind (MV treats the border as connected). */
-static int sk_nb(int h[SK_H][SK_W], int x, int y, int lim) { if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1; return sk_band_of(h[y][x]) <= lim; }
+/* RPG Maker autotiling for the planet's water, sand, rock and snow (the shared rule, petslike_autotile.c; owner 2026-10-23): a cell's neighbours of the same kind pick its edge shape, laid over the grass tile. Water joins water (World_A1 sea); sand joins sand and water (World_A2 kind 16); rock joins rock and snow (kind 18, grey); snow joins snow (kind 24). Outside the page counts as the same kind (MV treats the border as connected). */
+static int sk_nb(int h[SK_H][SK_W], int x, int y, int lo, int hi) { if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1; int b = sk_band_of(h[y][x]); return b >= lo && b <= hi; }
 static void sk_auto_cell(int g, int x, int y, int band, int h[SK_H][SK_W], int grass, Sheet *a1, Sheet *a2) {
-    int lim = band <= 1 ? 1 : 2; unsigned char t[XT * XT * 4], a[XT * XT * 4]; memcpy(t, slotpx[grass], sizeof t);
-    sk_auto_tile(band <= 1 ? a1 : a2, 0, band <= 1 ? 0 : 6, sk_nb(h, x, y - 1, lim), sk_nb(h, x + 1, y, lim), sk_nb(h, x, y + 1, lim), sk_nb(h, x - 1, y, lim), sk_nb(h, x + 1, y - 1, lim), sk_nb(h, x + 1, y + 1, lim), sk_nb(h, x - 1, y + 1, lim), sk_nb(h, x - 1, y - 1, lim), a);
-    over24(t, a); sk_glyph[g][y][x] = band == 2 ? 'p' : '~'; sk_fs[g][y][x] = slot_of(t); sk_ws[g][y][x] = 0;
+    int lo = band <= 1 ? 0 : band == 2 ? 0 : band == 5 ? 5 : 6, hi = band <= 1 ? 1 : band == 2 ? 2 : 6, nb[8]; static const int D[8][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}, {1, -1}, {1, 1}, {-1, 1}, {-1, -1}};
+    for (int k = 0; k < 8; k++) nb[k] = sk_nb(h, x + D[k][0], y + D[k][1], lo, hi);
+    if (band <= 1) sk_auto_ground(g, x, y, '~', a1, 0, 0, nb, grass, 0); else if (band == 2) sk_auto_ground(g, x, y, 'p', a2, 0, 6, nb, grass, 0);
+    else if (band == 5) sk_auto_ground(g, x, y, 'r', a2, 4, 6, nb, grass, 1); else sk_auto_ground(g, x, y, 'r', a2, 0, 9, nb, grass, 1);
 }
 static void sk_cell(int g, int x, int y, int band, int grass, unsigned char tl[7][XT * XT * 4], const int have[7]) {
     static const char GL[7] = { '~', '~', 'p', 'G', 'T', 'r', 'r' };
@@ -404,6 +405,7 @@ static void sk_ensure_map(void) {
             if (rm && band == 4) { if (ob) sk_stamp(g, ob, (x + y) & 1, 0, x, y, 'T'); else sk_solid(g, x, y, 'T', 40, 110, 50, 0, 1); }
             else if (rm && band <= 2 && sa1 && sa2) sk_auto_cell(g, x, y, band, h, grass, sa1, sa2);
             else if (rm && band <= 2) sk_solid(g, x, y, band == 2 ? 'p' : '~', SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 0);
+            else if (rm && band >= 5 && sa1 && sa2) sk_auto_cell(g, x, y, band, h, grass, sa1, sa2);
             else if (rm && band >= 5) sk_solid(g, x, y, 'r', SK_FLAT[band][0], SK_FLAT[band][1], SK_FLAT[band][2], 0, 1);
             else if (!rm) sk_cell(g, x, y, band, grass, tl, have); }
             sk_glyph[g][y][SK_W] = 0; }

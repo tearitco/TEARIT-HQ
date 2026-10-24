@@ -13,33 +13,22 @@ static void sk_solid(int d, int x, int y, char g, int r, int gr, int b, int plan
     sk_glyph[d][y][x] = g; if (tall) sk_ws[d][y][x] = slot_of(t); else sk_fs[d][y][x] = slot_of(t);
 }
 /* ---- RPG Maker autotiles (owner 2026-10-23: "i thought they would all share tiling"). The rule rpg-pet and df-hq each had a copy of (verified against the tsots maps: tile id = kind * 48 + shape, the shape picked from the 8 neighbours of the same kind; all 8 present = shape 0; the 48 shapes are 4 quadrant pieces; same as _.monads/_.livedesk-taskbar/ops/tile_autotile.c's FLOOR_AUTOTILE_TABLE, computed per quadrant: for each corner look at its two adjacent sides and its diagonal).
- *   sk_auto_quads  the pure picker: neighbours (1 = the same kind) -> the four 24 px pieces (column, row in 24 px units) inside the kind's 2 x 3 tile block, order TL TR BL BR
+ *   sk_auto_quads  (petslike_autotile.c) the pure picker: neighbours (1 = the same kind) -> the four 24 px pieces (column, row in 24 px units) inside the kind's 2 x 3 tile block, order TL TR BL BR
  *   sk_auto_tile   those four pieces of a sheet's block (bx, by = the block's top-left 48 px tile) as one XT x XT RGBA picture (each 24 px piece box-filtered to XT / 2); transparent where the art is, so the caller lays it over the ground tile with over24
  * A kind's block in World_A1 / World_A2 sheets: bx = (kind % 8) * 2, by = (kind / 8) * 3 (A2); World_A1 sea is kind 0 at 0,0. ---- */
-static void sk_auto_quads(int n, int e, int s, int w, int ne, int se, int sw, int nw, int q[4][2]) {
-    if (!n && !e && !s && !w) { static const int iso[4][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}}; memcpy(q, iso, sizeof(int) * 8); return; }
-    #define SKPICK(i, a, b, d, bothA, bothB, onlyA_, onlyB_, none_) { const int *p_ = ((a) && (b)) ? ((d) ? bothA : bothB) : (a) ? onlyA_ : (b) ? onlyB_ : none_; q[i][0] = p_[0]; q[i][1] = p_[1]; }
-    static const int TLf[2] = {2, 4}, TLn[2] = {2, 0}, TLw[2] = {2, 2}, TLm[2] = {0, 4}, TLx[2] = {0, 2};      /* flat, notch (diagonal missing), N missing, W missing, both missing */
-    static const int TRf[2] = {1, 4}, TRn[2] = {3, 0}, TRw[2] = {1, 2}, TRm[2] = {3, 4}, TRx[2] = {3, 2};
-    static const int BLf[2] = {2, 3}, BLn[2] = {2, 1}, BLw[2] = {2, 5}, BLm[2] = {0, 3}, BLx[2] = {0, 5};
-    static const int BRf[2] = {1, 3}, BRn[2] = {3, 1}, BRw[2] = {1, 5}, BRm[2] = {3, 3}, BRx[2] = {3, 5};
-    SKPICK(0, n, w, nw, TLf, TLn, TLw, TLm, TLx)      /* "only A" = the first side present, i.e. the other side (W) is missing */
-    SKPICK(1, n, e, ne, TRf, TRn, TRw, TRm, TRx)
-    SKPICK(2, s, w, sw, BLf, BLn, BLw, BLm, BLx)
-    SKPICK(3, s, e, se, BRf, BRn, BRw, BRm, BRx)
-    #undef SKPICK
-    /* SKPICK(a present only) means the OTHER side is missing: swap to the table's meaning (TLm = W missing, TLw = N missing) */
-    if (n && !w) { q[0][0] = TLm[0]; q[0][1] = TLm[1]; } else if (!n && w) { q[0][0] = TLw[0]; q[0][1] = TLw[1]; }
-    if (n && !e) { q[1][0] = TRm[0]; q[1][1] = TRm[1]; } else if (!n && e) { q[1][0] = TRw[0]; q[1][1] = TRw[1]; }
-    if (s && !w) { q[2][0] = BLm[0]; q[2][1] = BLm[1]; } else if (!s && w) { q[2][0] = BLw[0]; q[2][1] = BLw[1]; }
-    if (s && !e) { q[3][0] = BRm[0]; q[3][1] = BRm[1]; } else if (!s && e) { q[3][0] = BRw[0]; q[3][1] = BRw[1]; }
-}
+#include "petslike_autotile.c"      /* sk_auto_quads, the pure picker (also included by rpg-pet and df-hq) */
 static void sk_auto_tile(Sheet *sp, int bx, int by, int n, int e, int s, int w, int ne, int se, int sw, int nw, unsigned char *out) {
     int q[4][2], H = XT / 2; sk_auto_quads(n, e, s, w, ne, se, sw, nw, q); memset(out, 0, (size_t)XT * XT * 4); if (!sp) return;
     for (int i = 0; i < 4; i++) { int sx = bx * S48 + q[i][0] * 24, sy = by * S48 + q[i][1] * 24, ox = (i % 2) * H, oy = (i / 2) * H;
         for (int y = 0; y < H; y++) for (int x = 0; x < H; x++) { int acc[3] = {0, 0, 0}, al = 0, wsum = 0;
             for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++) { int px = sx + x * 2 + dx, py = sy + y * 2 + dy; if (px >= sp->w || py >= sp->h) continue; const unsigned char *a = sp->px + ((size_t)py * sp->w + px) * 4; acc[0] += a[0] * a[3]; acc[1] += a[1] * a[3]; acc[2] += a[2] * a[3]; wsum += a[3]; al += a[3]; }
             unsigned char *o = out + ((oy + y) * XT + ox + x) * 4; if (wsum) { o[0] = (unsigned char)(acc[0] / wsum); o[1] = (unsigned char)(acc[1] / wsum); o[2] = (unsigned char)(acc[2] / wsum); o[3] = (unsigned char)(al / 4); } } }
+}
+/* one cell of an autotiled kind: the ground tile (slot `ground`) with the kind's edge-shaped picture laid over it, written as the cell's floor slot (tall = 0) or its wall slot (tall = 1), glyph g. nb = the 8 neighbours (1 = the same kind) in the order n, e, s, w, ne, se, sw, nw; the skin decides what "same kind" means. */
+static void sk_auto_ground(int d, int x, int y, char g, Sheet *sp, int bx, int by, const int nb[8], int ground, int tall) {
+    unsigned char t[XT * XT * 4], a[XT * XT * 4]; memcpy(t, slotpx[ground], sizeof t);
+    sk_auto_tile(sp, bx, by, nb[0], nb[1], nb[2], nb[3], nb[4], nb[5], nb[6], nb[7], a); over24(t, a);
+    sk_glyph[d][y][x] = g; if (tall) { sk_ws[d][y][x] = slot_of(t); } else { sk_fs[d][y][x] = slot_of(t); sk_ws[d][y][x] = 0; }
 }
 static void sk_drop_sheet(const char *name) { for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) { stbi_image_free(sheets[i].px); sheets[i] = sheets[--nsheet]; return; } }
 /* ---- the pets: what each looks like. party.pdl PET rows (name | sheet | index | art id | letter | r | g | b | x | y); the skin reads the picture, spawn and colour columns ---- */
