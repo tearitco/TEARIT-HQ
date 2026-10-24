@@ -7,8 +7,7 @@
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' int"/>
-      <tab id="tb-book" class="pchq-tb" label="${galaxy_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
-      <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
+      <tab id="tb-book" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="pchq-tb" label="${room_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
@@ -19,16 +18,13 @@
       <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
-      <repeat count="${n_galaxy}" bind="gx">
-        <item id="gx-${gx.#}" class="pchq-menu-row dropdown-child ${gx.cls}" target_id="tb-book" label="${gx.label}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' sync"/>
-      </repeat>
-      <item id="gx-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
       <repeat count="${n_party}" bind="party">
-        <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-pals" label="${party.label}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' select ${party.id}"/>
+        <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' select ${party.id}"/>
       </repeat>
-      <item id="pal-new" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="+ new pal" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' fire newpal"/>
-      <item id="pal-del" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="- remove last pal" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' fire delpal"/>
-      <item id="pal-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-pals" label="- cancel -" action="void"/>
+      <item id="tp-book-0" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_0_label}" action="${book_post_0_act}" show="${book_post_0_label}"/>
+      <item id="tp-book-1" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_1_label}" action="${book_post_1_act}" show="${book_post_1_label}"/>
+      <item id="tp-book-2" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
+      <item id="tp-book-3" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' fire goto ${room.id}"/>
       </repeat>
