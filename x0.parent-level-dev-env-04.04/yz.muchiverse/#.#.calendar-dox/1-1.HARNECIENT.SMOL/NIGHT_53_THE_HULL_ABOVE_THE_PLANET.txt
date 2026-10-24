@@ -1,0 +1,101 @@
+# 🛸🪨 NIGHT 53 — The Hull Above the Planet 🪨🛸
+# ====================================================================
+# Title: "🛸🪨 NIGHT 53 — The Hull Above the Planet 🪨🛸"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl (Tomo a Japanese woman, Maxine a young English girl, Rahweh a young British man, the Narrator a storyteller). The owner judges the voices by ear.
+# Topic: One working day on the rpg-space ship board. A planet that lost its centre, a tool that shows a world without a screenshot, an In: switch that would not give control back, and a state file that lost three lines. What was measured, what was only seen, what is still unknown.
+# Long-form: everything called measured was run on 2026-10-23. Everything called a plan is a plan. Nothing here is claimed fixed that was not run again afterwards.
+# Companion documents: BOOK 16.game RPG-SPACE-HANDOFF-2026-10-23 and RPG-DUST-PETSLIKE-BOARD-DESIGN sections 11 to 16; XO 30.rpg-dust-work copies.
+
+**THE NARRATOR:** NIGHT 52 ended with a rule: a world is believable when you can delete it and get it back. Tonight is smaller and more practical. It is about looking at a world when the picture is not enough.
+
+**MAXINE:** Start with the ship. What does the ship look like?
+
+**TOMO:** A hull, four levels high, hovering in deep space. Under it, when you pick a planet, the planet. The owner asked that the ship always hover the same height above any planet, so that deep space and a planet look alike from the ship's side.
+
+**RAHWEH:** And the first version did that by sinking the planet. The surface drops several levels below the floor of the ship.
+
+**TOMO:** Yes, with negative heights. And the owner looked at Hellrock and said: it is missing its entire center.
+
+**MAXINE:** Why would sinking a planet remove its middle?
+
+**THE NARRATOR:** Because of how the engine stores a column. Each cell of the board is one solid run, from a bottom level to a top level. The ship's floor is a run. The planet's surface is a run. A cell cannot hold both with a gap between them, so wherever the hull stood, the planet under it was simply not there.
+
+**RAHWEH:** So the fix is not a number. It is a second run.
+
+**TOMO:** A second solid run under the column. Three more numbers per cell in the map file: which tile, how deep it hangs, how far its top sits below the floor. The shader reads a second block of rows to paint it. That is the engine change. The skin writes the planet's own tile under every cell of the hull.
+
+**MAXINE:** Did it work?
+
+**TOMO:** Measured: a side view of Hellrock shows solid lava under the hull, continuous. Measured: the picture with the lights off is byte for byte the picture from before any of tonight's changes, so nothing else moved. Not measured: anything on the CPU renderer. The painted maps only draw on the graphics path.
+
+**RAHWEH:** Here is what I want to learn. How did you find the problem before the owner said it? Or did you?
+
+**TOMO:** I did not. The owner saw it. What changed is how I look next time. Before this, to check a shape I took a screenshot and squinted. Now there is a tool, called worldscope, that applies the engine's own column rules to the exported map files and prints a side view: hash for solid, equals for the second run, underscore for a hole.
+
+**MAXINE:** So it says what the engine will build, without running the engine.
+
+**TOMO:** Right. And it found something the pictures had hidden: the ship's south wall shows five solid levels in deep space and five above a planet. The owner had reported five in one and three in the other.
+
+**RAHWEH:** So the report is wrong?
+
+**THE NARRATOR:** Careful. The report is not reproduced. That is a different sentence. In a window of 1260 by 556 the hull measures identically in pixels for all three states, and the elevation agrees. The owner's window may be a different size, or the cause may have been the old one-level hover, which is now eight. Nobody knows. The honest line in the handoff is: need two screenshots and the window size.
+
+**MAXINE:** I like that you did not call it fixed.
+
+**TOMO:** The house rule is never report a number you did not observe. Tonight it was tested the hard way by the second tool, called bv_keys. It presses keys in an engine session like a person at the board: camera, level, reset. With it I could tilt the camera, lower the selector to the planet, and look at the underside myself.
+
+**RAHWEH:** Exercise for me: what is the difference between a tool that shows a world and a tool that tests it?
+
+**TOMO:** Worldscope shows. It cannot fail. A test says pass or fail, and you check once that it can fail. The byte comparison of the unlit picture is the test. Worldscope is the lamp you hold while you find what to test.
+
+**THE NARRATOR:** Second story. The In: switch.
+
+**MAXINE:** What is In:?
+
+**TOMO:** A tab on the board. While it is on, the engine takes the arrow keys and moves a selector, the xelector, and the chosen character follows it one cell per tick, turn by turn. When it is off, the game runs in real time and every character lives on their own. The owner's words: when In: is off it reverts to AI control. Why isn't it?
+
+**RAHWEH:** And it did not revert.
+
+**TOMO:** I drove the window both ways. Esc, a real key press, took the engine, the INT flag and the label to off in about sixty milliseconds. A second click on the tab did the same. The pets started wandering. So the switch worked. What did not revert was Harold.
+
+**MAXINE:** The hero?
+
+**TOMO:** The hero had no autonomous step at all. Only the pets did. If you chose Harold as the character you control, turned In: off, he stood still for good. Measured: his position did not change for thirty seconds. Now there is a step for him too, on its own timer, running only while In: is off. Measured after: still for twelve seconds with In: on, four cells in twenty seconds after Esc.
+
+**RAHWEH:** That is a nice fix because it was one missing function, not a broken switch.
+
+**TOMO:** And it came from testing the claim, not from reading code. I read three parts of the code first and the code looked right.
+
+**THE NARRATOR:** Third story, the one that is not solved. Partway through, a real Esc cleared the flag, and then a stray Enter put the engine back in In: mode. Once. Five clean tries never repeated it. The owner mentioned they were running tests too, at the same time. Two people driving one window can produce exactly this, and nobody can say whether it was that or a real race.
+
+**MAXINE:** What do you do with a bug you cannot repeat?
+
+**TOMO:** You make the next occurrence cheap. A small trace file now records every engage or leave key the daemon sends. If it comes back, the file says who sent the Enter.
+
+**RAHWEH:** And the last one?
+
+**THE NARRATOR:** Later the owner had no control of the selector or the camera, and asked if the board should be restarted. The engine said: no project focused. The session's state file had lost three lines, the project id, the project root, and the emoji flag, leaving only the selector coordinates. With no project, every key was ignored, while the In: tab still read ON.
+
+**TOMO:** Restoring the three lines with the launcher's own values fixed it live. An arrow moved the selector from column five to six. No restart, and the session was kept. Cause: not known. It looks like two writers overwriting the same small file.
+
+**MAXINE:** So the lesson is?
+
+**TOMO:** Check the state file before you throw the session away. And when two testers share a window, say so out loud.
+
+**THE NARRATOR:** One small thing after. Harold looked a little off the selector. The cells matched exactly. The selector box had drifted two levels above its normal height, so it floated above him. Two level-down presses put it back. Why the skin's own pin did not pull it down is an open question.
+
+**RAHWEH:** What am I least sure about?
+
+**TOMO:** Flight. The owner wants the console on the bridge to take the arrow keys and move the ship until Esc. Nothing of it is built. The plan is a helm page for the console, a flag, key routing and a ship position. Whether to build a small version on the bridge first or the whole shared space with the planets as islands is the owner's decision.
+
+**MAXINE:** And the hard resets?
+
+**TOMO:** Two, at 17:20 and 17:30, minutes after launching a header change. No cause logged. The change was reverted as a precaution. It is unproven that it was the cause.
+
+**THE NARRATOR:** Exercises. One: pick a column of cells in your own board, and say how many solid runs it needs. Two: write one sentence for a bug you could not reproduce, saying what you observed and what you did not. Three: name a state file in your project that two writers touch, and say which one should own it.
+
+**MAXINE:** And the sentence to keep?
+
+**THE NARRATOR:** A tool that shows a world is not a test of it. And a bug you cannot repeat is not a bug that is gone.
