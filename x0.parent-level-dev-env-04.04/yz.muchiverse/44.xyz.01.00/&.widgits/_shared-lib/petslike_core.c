@@ -748,7 +748,7 @@ static int ai_step(int i) {
 #undef PET_SECTION
     if (pet.tx >= 0) { int before = pet.room, dx, dy; if (bfs_first(pet.tx, pet.ty, &dx, &dy) && do_step(dx, dy, NULL, 0)) { moved = 1; if (pet.room != before) pet.tx = pet.ty = -1; } else pet.tx = pet.ty = -1; }
     pet_save();
-    for (int j = 0; j < nparty; j++) if (j != i && others[j].room == others[i].room && abs(others[j].x - others[i].x) + abs(others[j].y - others[i].y) == 1) { meet(i < j ? i : j, i < j ? j : i); break; }
+    if (i >= 0) for (int j = 0; j < nparty; j++) if (j != i && others[j].room == others[i].room && abs(others[j].x - others[i].x) + abs(others[j].y - others[i].y) == 1) { meet(i < j ? i : j, i < j ? j : i); break; }      /* the hero (i = -1) wanders too, but is not part of the pet greetings */
     return moved;
 }
 #define PET_SECTION 38
@@ -1203,7 +1203,9 @@ static void board_interact(int want, int force) {
     for (int k = 0; k < 3; k++) { char up[PATH_MAX], ub[1024], sess[PATH_MAX] = ""; snprintf(up, sizeof up, "%s/%s", HOUSE, cand[k]); if (!fexists(up)) continue; read_file(up, ub, sizeof ub); int armed = 0;
         for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11); else if (!strncmp(l, "interact_armed=", 15)) armed = atoi(l + 15); }
         if (!sess[0] || !fexists(sess) || board_armed() == want) continue; if (k != 0) continue;      /* only the <app> board's own window */
-        last = now; g_own13 = now; if (!want) { board_esc(); return; }      /* leaving Interact takes Esc: the engage key (Enter) is an ordinary key inside it */
+        last = now; g_own13 = now;
+        { char tp[PATH_MAX]; snprintf(tp, sizeof tp, "%s/int_trace.txt", ST); FILE *tf = fsize(tp) > 200000 ? NULL : fopen(tp, "a"); if (tf) { fprintf(tf, "%ld %s force=%d armed=%d int=%d\n", now / 1000, want ? "engage-13" : "leave-esc", force, board_armed(), flag_on("int", 0)); fclose(tf); } }      /* who sent the engage / leave key (the In: bug hunt, owner 2026-10-23) */
+        if (!want) { board_esc(); return; }      /* leaving Interact takes Esc: the engage key (Enter) is an ordinary key inside it */
         char cmd[PATH_MAX * 2 + 64]; snprintf(cmd, sizeof cmd, "sh '%s/@.apps/piececraft-hq/ops/pchq_board_action.sh' '%s' interact >/dev/null 2>&1", HOUSE, sess); sh_timed(cmd, 10);
         { char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", sess); FILE *nf = fopen(rp, "a"); if (nf) { fputs("126\n", nf); fclose(nf); } }      /* an idle engine only reads its relay when woken: 126 is the unbound "render now" key */
         return; }
@@ -1263,7 +1265,7 @@ static int daemon_main(void) {
 #include PET_SKIN
 #undef PET_SECTION
     char h1[PATH_MAX], h2[PATH_MAX], d[PATH_MAX]; snprintf(d, sizeof d, "%s/keyboard", ST); mkdir(d, 0755); spath(h1, "interact_relay.txt"); snprintf(h2, sizeof h2, "%s/keyboard/history.txt", ST);
-    long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";
+    long o1 = fsize(h1), o2 = fsize(h2), next_ms[NP], next_hero_ms = 0, last_ui = 0; int was_run = run_on() + 2 * rogue_mode(); for (int i = 0; i < NP; i++) next_ms[i] = now_ms() + 600 + 450L * i; char msg[200], lastday[40] = "", lasttone[300] = "";
     g_fcache_on = 1; load_tune(); load_data(); replay(); pet_load(); unstack(); clock_start(); out_all("");
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
@@ -1324,6 +1326,8 @@ static int daemon_main(void) {
         if (in && run_on() && follow_xelector(msg, sizeof msg)) dirty = 1;
         long ms = now_ms();
         for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700); if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > tune("far_repaint_ms", 1500)) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
+        if (!in && run_on() && ms >= next_hero_ms) {      /* INT off = real time, every character lives on its own: the hero too (owner 2026-10-23: when In: is off control reverts to AI, Harold stood still). While INT is on he is whoever you steer or waits for his turn. */
+            next_hero_ms = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700) + 300; replay(); if (ai_step(-1)) dirty = 1; use_ent(active); }
         if (ms - last_ui > 3000) { last_ui = ms; clock_paths(); clock_ui(); }
 #define PET_SECTION 69
 #include PET_SKIN
