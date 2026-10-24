@@ -31,6 +31,7 @@
 #define SOX 2      /* the ship's footprint inside its 16 x 16 desk: 12 x 12 cells at (2,2); the planet is the backdrop around it */
 #define SOY 2
 #define SSZ 12
+#define SK_GALAXY "Home Galaxy"      /* the one book for now: the galaxy; the header's book tab names it, its pages are the rooms (owner 2026-10-23: "the galaxy is a book and the rooms are pages") */
 #define SK_SHIP 4      /* rooms 0..3 are the ship (bridge, quarters, hold, engine); 4 = the region page, 5 = the area page of the current planet */
 #define SK_W 16
 #define SK_H 16
@@ -128,6 +129,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     sk_look_load(); { const char *cl = sk_pl_cur < 0 ? "No planet (deep space)" : sk_pl_n ? sk_pl[sk_pl_cur].label : "-";      /* the left bar: the address, the seed, Regen, zoom and the planets (design D8, D12) */
       W("seed=%llu\naddr_line=%s\npl_label=%s\nn_pl=%d\n", sk_seed, sk_addr, cl, sk_pl_n);
       for (int k = 0; k < sk_pl_n; k++) W("pl_%d_label=%s\npl_%d_id=%s\npl_%d_cls=%s\n", k, sk_pl[k].label, k, sk_pl[k].id, k, k == sk_pl_cur ? "active nav-selected" : ""); }
+    W("galaxy_label=%s\nn_galaxy=1\ngx_0_label=%s\ngx_0_cls=active nav-selected\n", SK_GALAXY, SK_GALAXY);      /* the BOOK of the header (the LyfeDesk taskbar's sessions strip): the galaxy; its pages are the rooms */
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
