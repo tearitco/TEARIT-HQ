@@ -1,0 +1,92 @@
+MIDDLE-HOUSE CONVERSION LIST                                   written 2026-10-24, branch claude
+=====================================================================================================
+Owner 2026-10-24: "014.wsr-pal runs a terminal and a GL window using button.sh. These should all have been converted
+to x11-hq style windows (same framework) instead of using GL as their mirror window. We can keep the GL for now as we
+phase out, till we prove x11-hq's styles are done."
+
+WHAT "MIDDLE HOUSE" MEANS HERE
+  The generation of apps between the first TPMOS terminal games and LyfeDesk (the khtpm / x11-hq window shell). Shape:
+    button.sh run  ->  (orchestrator)  ->  system/keyboard_input  (owns the tty, writes keys)
+                                           system/prisc+x         (runs pal/main_loop*.pal)
+                                           system/renderer        (terminal frame, pieces/display/current_frame.txt)
+                                           system/chtpm_parser_pal / chtpm_rgb_render (chtpm layouts -> rgb_frame.raw)
+                                           system/gl_mirror       (OPTIONAL GL window that blits rgb_frame.raw)
+  Target shape: ONE khtpm_core_render.+x window on an .xhtpm/.chtpm projection, a manager process, nothing else
+  (see CENTROID_GOLD_STD.md). x11-hq = that window family. The terminal + GL pair goes away when the window is proven.
+
+HOW THE LIST WAS MADE (so it can be redone)
+  find ... -name button.sh (depth <= 4, not under pieces/sessions) whose folder has system/keyboard_input[.c] or
+  system/gl_mirror[.c]; then read each button.sh for orchestrator / gl_mirror / renderer / khtpm_core_render /
+  board-viewer run-widget. 35 launchers found; 30 are middle house (sections A and B), 5 are already x11-hq (section C).
+
+DATES - READ THIS BEFORE TRUSTING A DATE
+  * The git history starts 2026-08-25 and every project's first commit is the path migration of 2026-09-01, so git
+    gives NO creation date for any of these.
+  * 2026-10-05 is the working-tree restore day (INCIDENT-2026-10-05-WORKING-TREE-WIPE): every file restored then has
+    that mtime. "earliest file" below is the oldest surviving file mtime; "10-05" means the real birth is NOT known.
+    For those, the header comment's "modeled directly on <app>" lineage is given instead.
+  * LyfeDesk anchors: khtpm renderer already in the first commit (2026-08-25); the word "livedesk" is in commit
+    messages from 2026-08-29; the khtpm architecture standard is dated 2026-09-01; the taskbar tree itself shows 10-05
+    (restored); renamed LyfeDesk on 2026-10-15. So: earliest < 08-25 = older than any evidence of the khtpm shell
+    ("pre-LyfeDesk"); 08-25..09-01 = same era; later = built beside it (still middle house by shape).
+
+LEGEND
+  gl   : gl_mirror binary (b) / source (s) / none (-)       x11 : does button.sh already launch a khtpm / run-widget window
+  hist : where the keys go (see HOW-TO-RELAY-DRIVE-MIDDLE-HOUSE.md)        sim : button.sh has a sim-key test action
+
+A. TERMINAL + GL, NO x11-hq WINDOW YET  (the real conversion backlog; oldest first)
+-----------------------------------------------------------------------------------------------------
+ earliest   path (under 44.xyz.01.00/)                              what                         gl   x11  sim
+ 2026-07-19 002.zoo__...0000/02.z00-INK.lo.sur]PEN                  zoo game (renderer + gl mirror) b+s  no   no
+ 2026-07-19 041.pal-forum                                           forum CLI app                 -    no   no   (Network HQ phase 1 was meant to replace it)
+ 2026-07-20 01.muchi-pals-13.01                                     muchi-pals (egg pets)         -    no   no
+ 2026-07-24 101.ledger-player-npc-simple+3                          LPNS+3 word game              -    no   no
+ 2026-07-25 101.lpns+map+4                                          LPNS+MAP+4                    -    no   no
+ 2026-07-26 041.pal-chain                                           pal-chain (mining cones)      -    no   no   (modeled on wsr-pal)
+ 2026-07-28 205.ttg-tactics                                         tabletop tactics (dual render) b    no   no
+ 2026-07-28 300.rpg-xyz                                             rpg (mutaclsym launcher shape) b+s  no   no
+ 2026-07-31 300.rtp-xyz                                             rtp (same shape)              b+s  no   no
+ 2026-07-31 045.muchi-pal-agent                                     pal agent chat                b+s  no   no
+ 2026-08-17 @.apps/yahoo-app                                        yahoo bank GUI + broker       b+s  no   no   (broker widget is already x11, section D)
+ 2026-09-05 102.agy-txt                                             text editor (self-contained)  b    no   no
+ 2026-09-05 102.editor-00.00                                        agy-editor, INTERACT canvas   b    no   no
+ 2026-09-14 014.wsr-pal                                             Wall Street Raider            b+s  no   YES  (the one named by the owner; best-documented launcher)
+ 2026-09-17 101.mutaclsym+18.0G                                     mutaclsym 18.0G               b+s  no   no   (older sibling of 19.00; ops path in a prisc error still points here)
+ 10-05 ?    044.pal-chat-irc                                        IRC CLI app                   b+s  no   no   (modeled on pal-forum)
+ 10-05 ?    0.user-pal/00.login-signup                              login / signup                -    no   no   (modeled on pal-forum, session isolated)
+ 10-05 ?    0.user-pal/01.avatar-creation                           avatar creation               -    no   no   (muchi-pals shaped)
+ 10-05 ?    @.apps/my-chara-txt                                     character sheet               b+s  no   no   (the model the next four copy)
+ 10-05 ?    @.apps/my-biotech                                       biotech                       -    no   no   (modeled on my-chara-txt)
+ 10-05 ?    @.apps/my-lawyer                                        lawyer                        -    no   no   (modeled on my-biotech)
+ 10-05 ?    @.apps/myne-qrypto/qtc                                  pal-chain copy for qrypto     -    no   no   (modeled on wsr-pal)
+ 10-05 ?    +.TSOTS-ALPHA-OMEGA/TSOTS-OG+01.00                      TSOTS, This Order Still Stands b    no   no   (gl only when NO_GL unset)
+ 10-05 ?    _.START_BUTTON                                          the HOUSE LOADER (home.chtpm) -    no   no   (pre-LyfeDesk loader; LyfeDesk's taskbar replaced its job)
+
+B. TERMINAL + GL, WITH A PARTIAL x11-hq PATH  (convert = finish the window, then drop the pair)
+-----------------------------------------------------------------------------------------------------
+ 2026-08-06 @.apps/aomorai-editor                                   editor                        b+s  yes  no   (button.sh launches a window beside the pair)
+ 2026-08-17 101.mutaclsym19.00                                      mutaclysm rebuilt on piececraft-xyz's shape  b+s yes no
+ 2026-08-17 @.apps/piececraft-xyz                                   piece-craft board             b+s  yes  no   (the 2D/3D board lives in board-viewer; this is the xyz sibling)
+ 10-05 ?    @.apps/civ-txt                                          civ text game (modeled on my-chara-txt)  b+s yes no   (board-viewer run-widget in kill list)
+ 10-05 ?    @.apps/tactics-txt                                      tactics text game             b+s  yes  no   (same)
+ 10-05 ?    @.apps/TSC_ELO                                          True Swords Clash             b+s  yes  no
+
+C. NOT middle house (listed so nobody re-adds them): already x11-hq / board-viewer based
+-----------------------------------------------------------------------------------------------------
+ @.apps/piececraft-hq (the pets-like boards and rpg-space ride on it), &.widgits/board-viewer, &.widgits/file-menu,
+ &.widgits/tile-picker, &.widgits/yahoo-chart / yahoo-broker (broker keeps a gl_mirror source from its origin).
+ They still carry system/keyboard_input or gl_mirror binaries from the shared template; their button.sh launches a
+ khtpm window or board-viewer run-widget.
+
+COUNTS (counted from the rows above)
+  A 24 + B 6 = 30 middle-house launchers. Dating: 14 have a real surviving date before 2026-08-25 (07-19 .. 08-17),
+  4 are dated 09-05 .. 09-17, 12 are restore-day files (10-05, real birth unknown). gl_mirror binary: 19 have one,
+  11 are terminal only (forum, muchi-pals, lpns x2, chain, login, avatar, my-biotech, my-lawyer, qtc, START_BUTTON).
+
+NOT VERIFIED (be honest about it)
+  * None of these was launched today; classification is from button.sh and the file tree.
+  * Whether each binary still builds on this machine was not checked (button.sh `check` exists in wsr-pal only).
+  * "what" is read from the button.sh header, one line; some apps have richer docs in their own folder.
+  * Conversion order is not decided. Suggested: wsr-pal first (best test hooks: sim-key, a known 3-process shape, an
+    owner request), then the apps that copy another app (my-biotech / my-lawyer after my-chara-txt; qtc after
+    wsr-pal; chat-irc / forum / chain / login together, they share a template), so one converted template covers a family.
