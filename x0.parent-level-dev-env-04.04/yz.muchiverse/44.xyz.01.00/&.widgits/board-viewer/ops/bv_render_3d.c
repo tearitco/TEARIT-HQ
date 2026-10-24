@@ -357,6 +357,8 @@ typedef struct {
     long para_stamp;
     /* Local lights (lights.pdl of the desk, opt-in): rows `AMBIENT | level` and `LIGHT | x | y | z | radius | r | g | b | strength` (x column, y row, z cells above the floor top, r g b 0..1). See BvGpuScene.light_*. */
     int light_n, light_amb_on; float light_amb, light[8][8];
+    /* Event voxels (hotspots.txt of the desk, opt-in): rows `HOT | x | y | z | label` (x column, y row, z cells above the floor top). While In: is off (pieces/display/active_gui_is_typing.txt is 0) each one is outlined in orange so the owner can see where the events are; with In: on they are not drawn. */
+    int hot_n; float hot[64][3];
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
     struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
@@ -371,6 +373,21 @@ typedef struct {
     unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
 } MakerAtlas;
 static MakerAtlas g_mk;
+
+/* "In:" of the toolbar: the session's active_gui_is_typing.txt holds 1 while In: is ON (the projector's interact flag), 0 or missing when it is off. */
+static int bv_in_on(const char *path) { FILE *f = fopen(path, "r"); if (!f) return 0; int c = fgetc(f); fclose(f); return c >= '1' && c <= '9'; }
+
+/* The desk's hotspots.txt (see MakerAtlas.hot_n). Read with the desk and with lights.pdl; a missing file means no hotspots. */
+static void maker_read_hotspots(const char *dir) {
+    char path[4400], line[256]; snprintf(path, sizeof(path), "%s/hotspots.txt", dir); g_mk.hot_n = 0;
+    FILE *f = fopen(path, "r"); if (!f) return;
+    while (fgets(line, sizeof(line), f) && g_mk.hot_n < 64) {
+        if (line[0] == '#') continue;
+        char *fl[5]; int n = 0; char *p = line; while (n < 5) { fl[n++] = p; char *bar = strchr(p, '|'); if (!bar) break; *bar = 0; p = bar + 1; }
+        if (n >= 4 && !strncmp(fl[0], "HOT", 3)) { for (int k = 0; k < 3; k++) g_mk.hot[g_mk.hot_n][k] = (float)atof(fl[k + 1]); g_mk.hot_n++; }
+    }
+    fclose(f);
+}
 
 /* The desk's lights.pdl (see MakerAtlas.light_n). Read again every frame like parallax.pdl, so a skin can change a lamp without a rebuild; a missing file means no lights and no ambient override, the old picture exactly. */
 static void maker_read_lights(const char *dir) {
@@ -509,7 +526,7 @@ static int maker_load(const char *root) {
     g_mk.atlas = (unsigned char *)malloc(need);
     if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
     fclose(f);
-    g_mk.para_stamp = -1; maker_read_parallax(dir); maker_read_lights(dir);
+    g_mk.para_stamp = -1; maker_read_parallax(dir); maker_read_lights(dir); maker_read_hotspots(dir);
     maker_read_events(dir);
     g_mk.glyph = (char *)malloc((size_t)g_mk.w * (size_t)g_mk.h);
     if (g_mk.glyph) {
@@ -3819,6 +3836,12 @@ static int render_one_frame(void) {
                 /* z / x move the selector in levels: the floor (board_manifest floor_z + 1) is where it stands, each level down goes into the hung rock (the grid is lifted by zoff, so that is room for zoff levels) */
                 double mdz = (double)g_xelector_z;      /* already relative to the floor (see maker_ground above) and clamped to the hung depth */
                 ADDWIRE(g_xelector_x+0.15, 1.0+mdz, g_xelector_y+0.15, g_xelector_x+0.85, 2.6+mdz, g_xelector_y+0.85, 40,255,80);
+            }      /* event voxels, orange, while In: is off (see MakerAtlas.hot_n); the same lifted box space as the selector above */
+            if (sc.maker && g_mk.hot_n > 0) {
+                char gp[PATH_BUF]; snprintf(gp, sizeof(gp), "%s/pieces/display/active_gui_is_typing.txt", project_root);
+                if (!bv_in_on(gp)) for (int hi = 0; hi < g_mk.hot_n; hi++) {
+                    const float *H = g_mk.hot[hi];
+                    ADDWIRE(H[0] - 0.03, 1.0 + H[2] - 0.03, H[1] - 0.03, H[0] + 1.03, 2.6 + H[2], H[1] + 1.03, 255,140,0); }      /* a hair OUTSIDE the cell and as tall as a sprite box (2.6, like the selector): an event voxel that is a solid block (the console) hides an outline drawn inside it or only as high as itself */
             }      /* the same box as a sprite, as an outline so the selected sprite inside it stays visible */
             else ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
@@ -3964,7 +3987,7 @@ static int render_one_frame(void) {
                         }
                     }
             }
-            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key); maker_read_lights(g_mk.key);
+            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key); maker_read_lights(g_mk.key); maker_read_hotspots(g_mk.key);
             int budget = 80;
             int used_model[96];
             char used_key[96][64];

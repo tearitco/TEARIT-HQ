@@ -461,6 +461,14 @@ static void pet_own_export_room(int r, const char *d) {
           if (o > sizeof out - 160) break; }
       if (lf) fclose(lf);
       if (o) { FILE *f = fopen_tmp(p); if (f) { fputs(out, f); fclose_tmp(f, p); } } else remove(p); }
+    snprintf(p, sizeof p, "%s/hotspots.txt", d);      /* event voxels of this room: its doors (the door object is the cell tx,ty) + the app's hotspots.pdl rows; the engine outlines them in orange while In: is off */
+    { char hp[PATH_MAX], ln[256], out[2048] = ""; size_t o = 0; int nh = 0;
+      for (int i = 0; i < ndoor && r < SK_SHIP; i++) if (doors[i].room == r) { o += (size_t)snprintf(out + o, sizeof out - o, "HOT | %d | %d | 0 | door to %s\n", doors[i].tx, doors[i].ty, rooms[doors[i].dest].name); nh++; }
+      snprintf(hp, sizeof hp, "%s/hotspots.pdl", APP); FILE *hf = fopen(hp, "r");
+      while (hf && fgets(ln, sizeof ln, hf)) { char *fl[8]; int n = split_bar(ln, fl, 8); if (n < 6 || ln[0] == '#' || strcmp(fl[0], "HOT") || strcmp(fl[1], rooms[r].id)) continue;
+          o += (size_t)snprintf(out + o, sizeof out - o, "HOT | %s | %s | %s | %s\n", fl[2], fl[3], fl[4], fl[5]); nh++; if (o > sizeof out - 200) break; }
+      if (hf) fclose(hf);
+      if (nh) { FILE *f = fopen_tmp(p); if (f) { fputs(out, f); fclose_tmp(f, p); } } else remove(p); }
     int acols = 16, nrows = (nslot + acols - 1) / acols, aw = acols * XT, ah = nrows * XT; unsigned char *atlas = (unsigned char *)calloc((size_t)aw * ah * 4, 1); if (!atlas) return;
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
     snprintf(p, sizeof p, "%s/cells.rgba", d); { FILE *f = fopen_tmp(p); if (f) { fwrite(atlas, 1, (size_t)aw * ah * 4, f); fclose_tmp(f, p); } } snprintf(p, sizeof p, "%s/cells.png", d); png_atomic(p, aw, ah, atlas, aw * 4); free(atlas);
