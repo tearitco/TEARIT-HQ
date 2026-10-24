@@ -83,8 +83,34 @@ COUNTS (counted from the rows above)
   4 are dated 09-05 .. 09-17, 12 are restore-day files (10-05, real birth unknown). gl_mirror binary: 19 have one,
   11 are terminal only (forum, muchi-pals, lpns x2, chain, login, avatar, my-biotech, my-lawyer, qtc, START_BUTTON).
 
+RUN CHECK 2026-10-24 (owner: "check them out from relay / frame history to be sure")
+  Method: each app launched with `NO_GL=1 NO_NET=1` inside a pty (`script -qfc "bash button.sh run"`), 11 s wait, then the
+  processes and pieces/display/current_frame.txt were read (a frame counts as live only if its mtime moved during the run),
+  then everything was killed by pid and tracked runtime files restored with git. Driven = keys sent through the relay.
+  DRIVEN, frame changed as expected:
+    014.wsr-pal            keys 49,13 -> Actions menu expanded (34 rows). Digits 99,13 -> active corp changed AFL -> AST (NOT "nothing")
+    @.apps/my-chara-txt    session folder; keys 49,13 -> [main] became [farm]
+  LAUNCHED, live fresh frame, not driven:
+    101.ledger-player-npc-simple+3 ("LPNS - Word Game"), 101.lpns+map+4, 002.zoo (ZOO_0000, no orchestrator: renderer only),
+    0.user-pal/00.login-signup, 0.user-pal/01.avatar-creation, 205.ttg-tactics, 300.rpg-xyz, 300.rtp-xyz, 101.mutaclsym+18.0G,
+    @.apps/my-biotech, @.apps/my-lawyer, @.apps/myne-qrypto/qtc, +.TSOTS (menu_loop.pal)
+  LAUNCHED but the frame is nearly empty: 102.agy-txt and 102.editor (69 bytes, "Nav > _" only; editor.chtpm + keyboard_input ran)
+  DID NOT COME UP:
+    041.pal-chain, 041.pal-forum   button.sh run prints "./system/keyboard_input: No such file or directory" (line 124 / 158) and ends;
+                                   frame on disk is the 2026-10-05 one
+    01.muchi-pals                  orchestrator + keyboard_input start, then exit code 1; no session frame
+    044.pal-chat-irc, 045.muchi-pal-agent   orchestrator printed Ready and started children; no session folder / frame found
+                                   in 11 s (not diagnosed; may need longer or a network)
+    @.apps/yahoo-app               orchestrator only; frame on disk 18 days old, not refreshed
+    _.START_BUTTON                 nothing started, no frame
+  NOT LAUNCHED (would open real windows on the owner's desktop): group B (aomorai-editor, mutaclysm 19.00, piececraft-xyz,
+    civ-txt, tactics-txt, TSC_ELO). Their frames were not checked.
+  GL: never started (NO_GL=1); the gl_mirror half of every app is UNTESTED here.
+  Side finding: piececraft-hq's board-viewer sessions run the same orchestrator + renderer + chtpm_parser_pal shape; that is
+  the engine of the x11-hq boards, so "the terminal pair" is not gone from the house even for the converted apps.
+
 NOT VERIFIED (be honest about it)
-  * None of these was launched today; classification is from button.sh and the file tree.
+  * The classification is from button.sh and the file tree; the run check above covers 24 of the 30.
   * Whether each binary still builds on this machine was not checked (button.sh `check` exists in wsr-pal only).
   * "what" is read from the button.sh header, one line; some apps have richer docs in their own folder.
   * Conversion order is not decided. Suggested: wsr-pal first (best test hooks: sim-key, a known 3-process shape, an

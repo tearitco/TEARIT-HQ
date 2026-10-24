@@ -1,6 +1,6 @@
 # How to relay-drive and test the "middle-house" apps (terminal + GL era)
 
-Written 2026-10-24. Companion of `middle-house-conversion.txt` (the list). Read from `button.sh`, `keyboard_input.c`, `orchestrator.c` and `gl_mirror.c` of `014.wsr-pal` and `@.apps/my-chara-txt`. **Nothing here was run on 2026-10-24**: the only thing observed live was the file layout of `014.wsr-pal` (`pieces/apps/player_app/history.txt` holding bare numbers, `pieces/display/current_frame.txt` holding a drawn menu). Every "expect" below is the documented behaviour; the first real run is a test of this document too.
+Written 2026-10-24. Companion of `middle-house-conversion.txt` (the list). Read from `button.sh`, `keyboard_input.c`, `orchestrator.c` and `gl_mirror.c` of `014.wsr-pal` and `@.apps/my-chara-txt`. **Run check 2026-10-24** (see the end of `middle-house-conversion.txt`): wsr-pal and my-chara-txt were launched without GL in a pty and driven through the relay as described below (frames changed as expected); 22 more were launched and their frames read; 8 did not come up. Steps below that were not exercised (sim-key, GL receipts, real keys) are marked.
 
 ## 1. What a middle-house app is made of
 
@@ -42,6 +42,7 @@ Find your session by identity: `ps -eo pid,args | grep '<app>/pieces/sessions'` 
 
 ## 5. A test, step by step (works for any app of the list)
 
+0. **Launch headless from an agent shell**: `(sleep 60 | NO_GL=1 NO_NET=1 setsid script -qfc "bash button.sh run" /tmp/x.tty >/dev/null 2>&1 &)`. A pty is needed (keyboard_input wants a tty); the dummy stdin keeps it from exiting; GL stays off. Kill by pid, not `pkill -f` (it matches your own shell). Launching changes tracked runtime files (`pieces/display/*`, `history.txt`, game state): note `git status` first and restore only what you changed.
 1. **Baseline.** Note the app folder, the session folder (section 3), the history file sizes (`wc -c`), `pieces/os/proc_list.txt`, and CPU of the app's processes (`ps -o pid,pcpu,args -C prisc+x,renderer,gl_mirror`). Log CPU to a file, not the terminal (these loops can spin).
 2. **Start** the app once: `sh <app>/button.sh run` in a terminal you control (it owns the tty), or `NO_GL=1` where the app honours it (TSOTS does) to run without the GL window. Wait for `pieces/display/current_frame.txt` to be non-empty.
 3. **Read the screen**: `cat <live>/pieces/display/current_frame.txt`. It is plain text: the menu rows and their numbers are right there. Pick the number from the frame, never from memory (menu rows get renumbered; wsr-pal's `new-game` action had hard-coded a row twice and broke twice).
@@ -50,7 +51,7 @@ Find your session by identity: `ps -eo pid,args | grep '<app>/pieces/sessions'` 
 6. **Repeat** one key at a time, saving each frame. Keep a table: key, time, what changed.
 7. **GL check** (only if gl_mirror runs): `pieces/display/gl_display.receipt.txt` and `rgb_frame.receipt.txt` hold checksums of what the GL window drew; `rgb_frame_debug.png` is a dump of the frame. A picture of the GL window needs an X screenshot of its window, found by size.
 8. **Stop**: `sh <app>/button.sh kill` (wsr-pal) or the tty Esc path; confirm `ps` shows none of `keyboard_input`, `renderer`, `prisc+x`, `gl_mirror`, `chtpm_*` for that folder. A stray `prisc+x` eats CPU.
-9. **Negative check**: send a key the screen does not offer (e.g. a digit above the last row) and see that nothing changes; and change one expected value in your check to prove the check can fail.
+9. **Negative check**: a digit that is not a menu row is NOT necessarily ignored: in wsr-pal, `99` + Enter changed the active corporation (AFL to AST). Pick the negative from the screen (a row number the frame does not list) and expect the app's own rule, not "nothing"; and change one expected value in your check to prove the check can fail.
 
 ## 6. Pitfalls known from the code and the house docs
 
