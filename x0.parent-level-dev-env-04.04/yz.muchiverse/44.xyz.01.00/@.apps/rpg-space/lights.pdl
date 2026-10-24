@@ -15,3 +15,4 @@ AMBIENT | engine   | 0.28
 LIGHT   | engine   | 5  | 6  | 3 | 7 | 1.00 | 0.50 | 0.30 | 0.85
 LIGHT   | engine   | 10 | 6  | 3 | 7 | 1.00 | 0.50 | 0.30 | 0.85
 LIGHT   | engine   | 8  | 10 | 3 | 7 | 1.00 | 0.60 | 0.35 | 0.70
+AMBIENT | space    | 0.55

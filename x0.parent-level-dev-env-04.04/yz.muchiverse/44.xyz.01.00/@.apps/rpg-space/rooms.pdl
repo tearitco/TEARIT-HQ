@@ -9,3 +9,4 @@ ROOM | hold     | Hold     | 0 | 0 | over | 16 | 16 | 24 | ship
 ROOM | engine   | Engine   | 0 | 0 | over | 16 | 16 | 24 | ship
 ROOM | region   | Region   | 0 | 0 | over | 16 | 16 | 24 | planet
 ROOM | area     | Area     | 0 | 0 | over | 16 | 16 | 24 | planet
+ROOM | space    | Space    | 0 | 0 | over | 16 | 16 | 24 | planet

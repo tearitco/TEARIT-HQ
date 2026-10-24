@@ -19,6 +19,20 @@ Run live (real X keys into the window, ship started at 1,5):
 
 NOT done / seen: no screenshot (the window grab is black on this GPU path; the evidence is state files); the per-pid relay was not used (it does not move the xelector); a first Enter test in the wrong room (Harold had walked through a door) looked like a failure and was my test error; the keys are sometimes lost when the window loses focus (one Esc did nothing until focus was set again); the hull does not move (the planet under it is swapped); no minimap shows the ship cell; the `101.mutaclsym` prisc error still appears in `events/helm/master_ledger.txt` and the page still runs; the debug trace `enter-in-engine` in `state/int_trace.txt` stays on.
 
+
+### 0b. UPDATE 2026-10-24 (evening): the hull voxels move and the space map shows it
+
+Owner: "both" (move the hull's voxels; show the ship's cell on a minimap). Built the **space desk** of design 13b (`RPG-DUST-PETSLIKE-BOARD-DESIGN.md`): room 7 `space` (a 16 x 16 desk in `rooms.pdl`), deep space = holes, every planet with a `POS` row is a 3 x 3 island with a body hung under it (cell = 2 + 2 x grid cell, tinted by tileset: green, grey, brown, red), the ship is a hull of 3 x 1 cells (tall middle, low wings). `helm on` puts the controlled character on the ship's cell **in the space desk** (the view follows, the engine shows the space desk), each arrow moves the three hull cells one grid step (a rigid translation of the box `AREA | hull | 3d | space | ... | anchor=ship`), the planets stay. `helm off` (Esc, or In: off) puts the pilot back at the console (`state/helm_from.txt`) and, if the ship is over a planet, runs the planet verb for it (the planet under the hull changes: landing).
+
+Run live (real X keys, ship started at 3,4, Harold at the console):
+- Enter: `HELM|..|on|5 boxes, 4105 voxels`, `flag_helm=1`, Harold `room=space x=8 y=10`, engine desk `space`; the HUD of the engine says `rpg-space:space`.
+- Right, Up, Left, Left, Down: ship 3,4 -> 4,4 -> 4,3 -> 3,3 -> 2,3 -> 2,4. 2D scene (the star map, `state/scene.raw`) after the last key: the hull on cells 5..7 of row 10, over the brown planet's edge (picture in XO: `helm_space_desk_2d_map.png`). 3D top-down view: four planet blocks and the grey hull between two of them (`helm_space_desk_3d_topdown.png`). `worldscope` of the space desk row 10: middle hull cell 3 high, wings 1, islands hung 2..5 deep.
+- Right onto hell (4,4), Esc: `flag_helm=0`, `flag_int=0`, Harold back on the bridge, `PLANET | hell` appended to the look ledger, engine desk `bridge`.
+
+What had to be fixed on the way (all found by running it, none by reading): the helm page runs in its own process, so the daemon's first read of the xelector right after `helm on` looked like an arrow press (a stale FLY row): the daemon now waits 1.8-2.5 s after the helm turns on; the 2D background of the space desk was cached by a key that did not change when the hull moved (stale picture): the key now carries a rebuild counter; the engine went back to the first desk after every book reload and swallowed the one desk request: the core now repeats the desk request every 3 s while the engine shows another desk (this is a change of `petslike_core.c` that every pets-like board gets: rpg-pet, df-hq, rpg-dust still compile, none relaunched).
+
+NOT done: planets added with `newplanet` have no `POS` row, so they are not on the space map (they can still be reached by the menu); the minimap is the space desk itself (2D scene and the engine's own top-down view of it), not a corner overlay on the ship's rooms; flying over a planet does not change what is under the ship until you let go (landing); each arrow reloads the whole book (about 4-6 s until the 3D picture shows it: the 2D map is faster); the camera of the 3D view does not frame the space desk by itself (I framed it with `bv_keys` f, c x8, r); adjacency not facing; per-key lag and a lost key when the window lacks focus are not measured.
+
 The sections below are the original plan written before this was built.
 
 ## 1. Status, in one paragraph

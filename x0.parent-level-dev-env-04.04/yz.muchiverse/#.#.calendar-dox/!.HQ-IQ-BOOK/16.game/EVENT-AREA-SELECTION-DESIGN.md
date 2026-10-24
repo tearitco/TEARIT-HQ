@@ -2,7 +2,7 @@
 
 Owner 2026-10-24: "in the future when we make a multi voxel affecting event, we will have a selection window for 2d/3d area affected (when we leave that for rpg editing) so you can use a similar model now since you are trying to put this in rpg maker events format." And: "document about future event size selection, that may be new to our house engine."
 
-Status: **half built**. The data format and the first consumer exist (the helm). The selection window, the outline of an area and the rigid move of voxels do not.
+Status: **half built**. The data format, the first consumer (the helm) and a first rigid move exist: the helm translates a 3 x 1 hull box on the space desk (2026-10-24, see the test plan section 0b). The selection window and the outline of an area do not.
 
 ## 1. The problem
 
@@ -19,7 +19,7 @@ Files of the helm event, `@.apps/rpg-space/`:
 | `events/helm/event_pkg/pages/page_1/cmd_1.sh` | the command: the verb `helm on` |
 | `events/helm/area.pdl` `AREA \| name \| mode \| room \| x0 \| y0 \| z0 \| x1 \| y1 \| z1` | **the area**: boxes of voxels. `mode` 2d = cells of one desk (z ignored), 3d = a box (z in levels above the floor top) |
 
-Today `area.pdl` is **read for its voxel count** (the helm logs `HELM|time|on|4 boxes, 4096 voxels`). The helm's flight is a move over a galaxy grid (planets.pdl `POS` rows) that swaps the planet under the hull; no voxel is actually moved yet.
+Today `area.pdl` is **read for its voxel count** (the helm logs `HELM|time|on|5 boxes, 4105 voxels`). The hull box of the space desk (`AREA | hull | 3d | space | -1 | 0 | 0 | 1 | 0 | 2 | anchor=ship`, relative to the ship's cell) is the first area that is really moved: the skin draws it at the ship's cell and a helm step translates it; the four hull-room boxes are absolute and are not moved (the ship's interior stays put, the planet under it changes on landing). The skin draws the box itself from the ship cell: the engine has no generic 'move this area' yet.
 
 ## 3. What the selection window has to be (future, with rpg editing)
 
@@ -35,7 +35,7 @@ A window of the rpg editor (rpg-edit-hq) that writes `AREA` rows for the event b
 ## 4. What is new to the house engine
 
 1. **Events with a volume.** Everything so far is a cell (doors, hotspots) or the whole world (the clock). A box that the commands act on needs: a stored shape (above), a replayable record (append-only `AREA` rows, same rule as every ledger), and a lock: two events may not claim the same voxel for `move`.
-2. **A rigid move of voxels.** Today a "move" is simulated by swapping what is under the hull (the planet). A real move translates a box of the 3D export (`cells.txt` columns, both runs) by a vector. The engine's second solid run (2026-10-23) is the first piece: a hull can float over a planet without removing it.
+2. **A rigid move of voxels.** First version built for one case (the hull on the space desk, rebuilt and re-exported at each step, so it costs a book reload, 4-6 s in 3D). A generic move translates a box of the 3D export (`cells.txt` columns, both runs) by a vector inside the engine without a reload. The engine's second solid run (2026-10-23) is what lets a hull float over a planet without removing it.
 3. **Selection in 3D.** The engine has cell picking (xelector, camera aware) but no box. A box selection is two xelector positions plus a height; the new part is drawing the wire box and a way to read it back (a state file the editor reads, like `pieces/xelector_01/state.txt`).
 4. **Trigger `action`.** Facing / adjacency rules are new: the daemon asks "is the controlled character within one cell of a HOT row that names an event" on Enter. Moving this rule into the core (`petslike_core.c` section 77 hook) lets every pets-like board have interactive objects.
 
@@ -54,4 +54,4 @@ A window of the rpg editor (rpg-edit-hq) that writes `AREA` rows for the event b
 
 ## 7. What is NOT done
 
-No selection window. No wire-box outline. No voxel is moved by the helm. The area is not anchored. The `action` rule is adjacency (not facing). Two events cannot yet be refused for overlapping areas.
+No selection window. No wire-box outline. The helm moves only its space-desk hull box (by a skin painter, with a book reload per step). The `anchor=ship` field is read by nobody yet (the skin knows where the box goes). The `action` rule is adjacency (not facing). Two events cannot yet be refused for overlapping areas.

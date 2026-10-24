@@ -5,3 +5,4 @@ AREA | hull | 3d | bridge   | 0 | 0 | 0 | 15 | 15 | 3
 AREA | hull | 3d | quarters | 0 | 0 | 0 | 15 | 15 | 3
 AREA | hull | 3d | hold     | 0 | 0 | 0 | 15 | 15 | 3
 AREA | hull | 3d | engine   | 0 | 0 | 0 | 15 | 15 | 3
+AREA | hull | 3d | space    | -1 | 0 | 0 | 1 | 0 | 2 | anchor=ship
