@@ -3,3 +3,5 @@
 #   newplanet          a new planet is generated in this system and the ship goes above it (events/newplanet/: NEWPLANET row)
 VERB | planet    | yes | ui | planet id or none | the ship teleports above a planet (or none = deep space)
 VERB | newplanet | yes | ui | -                  | generate a new planet and go there
+#   helm on|off|move <dx> <dy>   the bridge console (events/helm/, trigger action): at the helm the arrows move the ship on the galaxy grid (planets.pdl POS rows); each move over a planet cell is a planet teleport
+VERB | helm | no | ui | on, off or move dx dy | helm flag and ship flight (the console page runs "helm on")

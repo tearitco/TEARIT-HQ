@@ -42,6 +42,7 @@ typedef struct { char id[24], label[40], kind[8], root[160]; } SkTs;
 typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; } SkPl;
 static SkPl sk_pl[16]; static int sk_pl_n, sk_pl_cur; static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
 static const char *sk_room_label(int room); static void sk_look_load(void); static void sk_desk_sync(void); static void sk_rebuild(char *msg, size_t cap); static void export3d(char *msg, size_t cap);
+static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
@@ -209,18 +210,20 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         sk_rebuild(msg, cap);
         if (!strcmp(v, "planet") || !strcmp(v, "newplanet")) {      /* the ship goes ABOVE the planet: the backdrop is the new planet, the crew (the hero and every pet) gathers in the middle of the bridge and the window follows */
             static const int dk[8][2] = { {7, 8}, {8, 8}, {9, 8}, {7, 9}, {8, 9}, {9, 9}, {8, 7}, {9, 7} }; int slot = 0;
-            for (int ci = -1; ci < nparty; ci++) { use_ent(ci); pet.room = 0; pet.x = dk[slot % 8][0]; pet.y = dk[slot % 8][1]; slot++; pet.dir = 0; pet.tx = pet.ty = -1; pet_save(); }
+            if (!(argc >= 3 && !strcmp(argv[2], "fly"))) for (int ci = -1; ci < nparty; ci++) { use_ent(ci); pet.room = 0; pet.x = dk[slot % 8][0]; pet.y = dk[slot % 8][1]; slot++; pet.dir = 0; pet.tx = pet.ty = -1; pet_save(); }
             use_ent(active); g_gr = 0; set_flag("follow", "pet"); sk_desk_sync();
             { char b[96]; snprintf(b, sizeof b, "DOOR|%ld|ship|%s|%s", (long)time(NULL), from_pl, sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id);      /* the same row a door writes (who | from | to): the ship went from one planet to the next */ append_line("events.txt", b); }
             if (sk_pl_cur < 0) snprintf(msg, cap, "the ship floats in deep space"); else snprintf(msg, cap, "the ship is above %s", sk_pl[sk_pl_cur].label); }
         return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
+    if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
 #elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
 #elif PET_SECTION == 67
     if (now_ms() < sk_pin_until) { g_pin_now = 1; char xz[PATH_MAX], hz[PATH_MAX]; snprintf(xz, sizeof xz, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(hz, sizeof hz, "%s/pieces/hero_01/state.txt", PCHQ); kv_set_int(xz, "pos_z", 17); kv_set_int(hz, "pos_z", 17); }      /* the engine starts the camera one above the LOWEST surface, which is now the planet sunk under the ship: hold it at the ship's floor level (floor 16, camera 17) */      /* after a planet / Regen reload the xelector follows the active pet again (follow_pchq re-writes its cell while the pin is set) */
         { static long pl_safety = 0; long pn = now_ms(); if (!sn_active(&g_sn) || sn_changed(&g_sn, SL_PETS) || pn - pl_safety > 30000) { pl_safety = pn; pet_load(); } }      /* marker/shmem: reload the pets only when a writer moved the slot (or every 30 s for a hand edit) */
         int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
+        if (!in && flag_on("helm", 0)) set_flag("helm", "0");      /* In: off = AI control again: the helm lets go (at the helm the xelector is read and put back by sk_helm_follow, section 78) */
 #elif PET_SECTION == 68
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
 #elif PET_SECTION == 69
@@ -499,5 +502,60 @@ static void pet_own_export_room(int r, const char *d) {
 }
 #elif PET_SECTION == 74
     { int sx, sy; sk_spawn(i, &sx, &sy); e->room = 0; e->x = sx; e->y = sy; }
+#elif PET_SECTION == 75
+/* THE HELM (owner 2026-10-24: "do what must be done for drive event to make sense"). The console is an EVENT (events/helm/, trigger "action") in the RPG Maker sense: a page with a condition, an AREA of voxels it affects (area.pdl) and a
+ * command. Enter next to a console cell (hotspots.pdl HOT row with an event name) plays the page; the page runs the verb "helm on": flag_helm=1. At the helm the arrows (Up Down Left Right) move the SHIP one cell on the galaxy grid
+ * (planets.pdl POS rows, state/ship.txt); a cell with a planet puts the ship above it (the same "planet" verb), an empty cell is deep space. Esc (or In: off) lets go. Design: 16.game/EVENT-AREA-SELECTION-DESIGN.md */
+#define SK_GRID 6
+static int sk_pos_of(const char *id, int *gx, int *gy) { char p[PATH_MAX], ln[300]; char *f[6]; snprintf(p, sizeof p, "%s/planets.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0; while (fp && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 6) >= 4 && !strcmp(f[0], "POS") && !strcmp(f[1], id)) { *gx = atoi(f[2]); *gy = atoi(f[3]); hit = 1; } if (fp) fclose(fp); return hit; }
+static void sk_ship_load(int *gx, int *gy) { char p[PATH_MAX], b[40]; spath(p, "ship.txt"); read_file(p, b, sizeof b); if (sscanf(b, "%d %d", gx, gy) == 2) return; *gx = *gy = 0; sk_look_load(); if (sk_pl_cur >= 0) sk_pos_of(sk_pl[sk_pl_cur].id, gx, gy); }
+static void sk_ship_save(int gx, int gy) { char p[PATH_MAX], b[40]; spath(p, "ship.txt"); snprintf(b, sizeof b, "%d %d\n", gx, gy); write_if_changed(p, b, strlen(b)); }
+static int sk_area_cells(char *what, size_t cap) {      /* events/helm/area.pdl: AREA | name | mode | room | x0 | y0 | z0 | x1 | y1 | z1  ->  how many voxels the event touches (the hull) */
+    char p[PATH_MAX], ln[300]; char *f[12]; long vox = 0; int n = 0; snprintf(p, sizeof p, "%s/events/helm/area.pdl", APP); FILE *fp = fopen(p, "r");
+    while (fp && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 12) >= 10 && !strcmp(f[0], "AREA")) { vox += (long)(atoi(f[7]) - atoi(f[4]) + 1) * (atoi(f[8]) - atoi(f[5]) + 1) * (atoi(f[9]) - atoi(f[6]) + 1); n++; }
+    if (fp) fclose(fp); snprintf(what, cap, "%d boxes, %ld voxels", n, vox); return n;
+}
+static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
+    const char *a = argc >= 2 ? argv[1] : "status";
+    if (!strcmp(a, "on")) { char w[80]; sk_area_cells(w, sizeof w); set_flag("helm", "1"); char b[160]; snprintf(b, sizeof b, "HELM|%ld|on|%s", (long)time(NULL), w); append_line("events.txt", b); snprintf(msg, cap, "at the helm: the arrows steer the ship (area: %s). Esc lets go", w); return; }
+    if (!strcmp(a, "off")) { set_flag("helm", "0"); char b[80]; snprintf(b, sizeof b, "HELM|%ld|off", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released"); return; }
+    if (!strcmp(a, "move") && argc >= 4) {
+        if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
+        int gx, gy, dx = atoi(argv[2]), dy = atoi(argv[3]); sk_ship_load(&gx, &gy); int nx = gx + dx, ny = gy + dy;
+        if (nx < 0 || ny < 0 || nx >= SK_GRID || ny >= SK_GRID) { snprintf(msg, cap, "the edge of the charted system (%d,%d)", gx, gy); return; }
+        sk_ship_save(nx, ny); char b[100]; snprintf(b, sizeof b, "FLY|%ld|ship|%d,%d|%d,%d", (long)time(NULL), gx, gy, nx, ny); append_line("events.txt", b);
+        sk_look_load(); const char *to = "none", *cur = sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id; for (int k = 0; k < sk_pl_n; k++) { int px, py; if (sk_pos_of(sk_pl[k].id, &px, &py) && px == nx && py == ny) to = sk_pl[k].id; }
+        if (strcmp(to, cur)) { char *pv[3] = { "planet", (char *)to, "fly" }; verb(3, pv, msg, cap); }
+        else snprintf(msg, cap, "ship at %d,%d (%s)", nx, ny, !strcmp(cur, "none") ? "deep space" : sk_pl[sk_pl_cur].label);
+        return; }
+    int gx, gy; sk_ship_load(&gx, &gy); snprintf(msg, cap, "helm %s, ship at %d,%d", flag_on("helm", 0) ? "on" : "off", gx, gy);
+}
+/* At the helm the engine still moves the xelector on an arrow (it eats the arrow keys itself and empties the relay, so the daemon never sees them). The ship takes that move instead: the xelector's offset from the
+ * character is the direction (camera aware, left is left on screen, like follow_xelector), the ship flies one cell, and the xelector is put back on the character (g_pin_now). One move per distinct xelector cell. */
+static int sk_helm_follow(char *msg, size_t cap) {
+    static int lx = -9, ly = -9; static long settle = 0; if (now_ms() < settle) { g_pin_now = 1; return 0; }      /* a planet change reloads the scene and moves the xelector by itself: wait it out */
+    int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char xp[PATH_MAX], kb[512]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
+    for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
+    if (xx < 0 || xy < 0) return 0; if (xx == e->x && xy == e->y) { lx = ly = -9; return 0; } if (xx == lx && xy == ly) { g_pin_now = 1; return 0; }
+    lx = xx; ly = xy; int ddx = xx - e->x, ddy = xy - e->y, dx = 0, dy = 0; if (abs(ddx) >= abs(ddy)) dx = ddx > 0 ? 1 : -1; else dy = ddy > 0 ? 1 : -1;
+    char a[16], b[16], *hv[4]; snprintf(a, sizeof a, "%d", dx); snprintf(b, sizeof b, "%d", dy); hv[0] = "helm"; hv[1] = "move"; hv[2] = a; hv[3] = b; sk_helm_verb(4, hv, msg, cap); g_pin_now = 1; settle = now_ms() + 1500; lx = ly = -9; return 1;
+}
+/* Enter next to an event cell: the first HOT row of this room within one cell (not diagonal) of the controlled character that names an event page plays that page with trigger "action". */
+static int sk_helm_interact(char *msg, size_t cap) {
+    int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char p[PATH_MAX], ln[400]; char *f[8]; snprintf(p, sizeof p, "%s/hotspots.pdl", APP); FILE *fp = fopen(p, "r"); int done = 0;
+    while (fp && !done && fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 8) < 7 || strcmp(f[0], "HOT") || strcmp(f[1], rooms[e->room].id) || !f[6][0]) continue;
+        int hx = atoi(f[2]), hy = atoi(f[3]); if (abs(hx - e->x) + abs(hy - e->y) != 1) continue;
+        char ev[48]; snprintf(ev, sizeof ev, "%s", f[6]); fclose(fp); fp = NULL; done = 1;
+        if (!run_event_x(ev, "action", "") ) { char *pv[2] = { "helm", "on" }; verb(2, pv, msg, cap); } else if (flag_on("helm", 0)) snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); else snprintf(msg, cap, "%s: played", ev);
+        { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|action|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } }
+    if (fp) fclose(fp); return done;
+}
+#elif PET_SECTION == 76
+            if (c == 27 && flag_on("helm", 0)) set_flag("helm", "0");      /* Esc lets go of the helm and still leaves In: (the default below) */
+#elif PET_SECTION == 77
+            { char tb[100]; snprintf(tb, sizeof tb, "%ld enter-in-engine hero=%d,%d room=%s ctl=%d", (long)time(NULL), tr.x, tr.y, rooms[tr.room].id, ctl_idx()); append_line("int_trace.txt", tb); }
+            took = sk_helm_interact(msg, sizeof msg);
+#elif PET_SECTION == 78
+            if (sk_helm_follow(msg, sizeof msg)) dirty = 1;
 #endif
 #endif

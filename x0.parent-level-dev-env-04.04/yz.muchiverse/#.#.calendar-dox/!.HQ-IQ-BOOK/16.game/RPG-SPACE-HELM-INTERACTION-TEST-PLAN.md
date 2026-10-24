@@ -2,6 +2,25 @@
 
 Written 2026-10-24. Branch `claude`. This is a how-to and a test plan, plus an honest record of what was tried. Nothing about driving is built yet.
 
+
+## 0. UPDATE 2026-10-24 (later the same day): the helm exists and was driven as a person would
+
+Built: event page `events/helm/` (trigger `action`, command `helm on`), its AREA file `events/helm/area.pdl` (see `EVENT-AREA-SELECTION-DESIGN.md`), a `HOT` row with an event name (`hotspots.pdl`), the verb `helm on|off|move dx dy|status`, the galaxy grid (`POS` rows in `planets.pdl`, ship cell in `state/ship.txt`), and three core hooks in `petslike_core.c` (75 file scope, 76 key loop, 77 Enter, 78 helm steering).
+
+Interaction rule chosen: **(a)**: the controlled character stands next to the console cell (not diagonal) and Enter is pressed. The xelector is not used for it.
+
+Steering: the engine eats the arrow keys itself and empties its relay, so the daemon never sees them. At the helm the daemon reads **where the engine moved the xelector**, takes the direction from its offset to the character (camera aware), flies the ship one cell and puts the xelector back. One move per key; 1.5 s settle after a move (a planet change reloads the scene and moves the xelector by itself).
+
+Run live (real X keys into the window, ship started at 1,5):
+- Enter at the console (hero 7,4, In: on): `HELM|..|on|4 boxes, 4096 voxels` and `EVENT|..|helm|action|bridge|8,4` in `state/events.txt`, `flag_helm=1`.
+- Up, Right, Right, Right, Down, Left: ship 1,5 -> 2,4 (first key also took a stale xelector offset: fixed by the debounce) -> 3,4 -> 4,4 (`PLANET | hell`, `DOOR|..|ship|none|hell`) -> 5,4 (deep space) -> 5,5 -> 4,5. Xelector stayed on 7,4 and Harold on 7,4 throughout.
+- Esc: `flag_helm=0`, `flag_int=0`, engine flag 0, Harold wandered (7,4 -> 7,9 in 15 s).
+- Negative: Enter three cells from the console with In: on: no EVENT row, `flag_helm` stays 0. `helm move` with the helm off: "not at the helm". Edge of the grid refuses.
+
+NOT done / seen: no screenshot (the window grab is black on this GPU path; the evidence is state files); the per-pid relay was not used (it does not move the xelector); a first Enter test in the wrong room (Harold had walked through a door) looked like a failure and was my test error; the keys are sometimes lost when the window loses focus (one Esc did nothing until focus was set again); the hull does not move (the planet under it is swapped); no minimap shows the ship cell; the `101.mutaclsym` prisc error still appears in `events/helm/master_ledger.txt` and the page still runs; the debug trace `enter-in-engine` in `state/int_trace.txt` stays on.
+
+The sections below are the original plan written before this was built.
+
 ## 1. Status, in one paragraph
 
 **Vehicle driving has not been tested, because it does not exist.** The bridge has an event-voxel *marker* for the helm console (`@.apps/rpg-space/hotspots.pdl`, `HOT | bridge | 8 | 4 | 0 | helm console ...`), which draws an orange outline while In: is off. There is **no pilot event page**: `@.apps/rpg-space/events/` holds only `newplanet`, `planet`, `start`, `zoom_in`, `zoom_out`, all `trigger=ui` (menu verbs). There is **no helm flag** (`state/flag_helm.txt` does not exist), no key routing for flying, and no ship position. In gta-hq the car is a set of parts assembled on a sprite (`car_frame`, `car_wheel`, `car_seat` ...), not something you drive. So no vehicle has ever been driven in any pets-like board.

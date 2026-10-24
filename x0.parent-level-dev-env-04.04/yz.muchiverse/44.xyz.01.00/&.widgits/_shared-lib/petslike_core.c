@@ -1258,6 +1258,9 @@ static void board_cam_key(int code) {
     FILE *f = fopen(rp, "a");
     if (f) { fprintf(f, "%d\n", code); fclose(f); }
 }
+#define PET_SECTION 75
+#include PET_SKIN
+#undef PET_SECTION
 static int daemon_main(void) {
     { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/daemon.lock", ST); static int lfd; lfd = open(lp, O_CREAT | O_RDWR, 0644);      /* ONE resident daemon per game folder (2026-10-17: a board launch and the standalone window each started one, both ticking the same state): flock is dropped by the kernel when this process dies, close-on-exec so a leftover child cannot hold it */
       if (lfd >= 0) { fcntl(lfd, F_SETFD, FD_CLOEXEC); if (flock(lfd, LOCK_EX | LOCK_NB) != 0) { fprintf(stderr, "daemon already running for %s: this one exits\n", ST); return 0; } } }
@@ -1274,7 +1277,12 @@ static int daemon_main(void) {
 #define PET_SECTION 67
 #include PET_SKIN
 #undef PET_SECTION
-        if (in && enter_pressed_in_engine() && possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); }
+        if (in && enter_pressed_in_engine()) {      /* Enter: a skin's event under the character first (the helm console, trigger action), else possess whoever stands at the xelector */
+            int took = 0;
+#define PET_SECTION 77
+#include PET_SKIN
+#undef PET_SECTION
+            if (took) dirty = 1; else if (possess_at_xelector(msg, sizeof msg)) { dirty = 1; follow_pchq(); } }
         n = poll_keys(h1, &o1, codes, 32); n += poll_keys(h2, &o2, codes + n, 32);     /* the offsets always advance; keys only act while INT is on */
         if (in && n) replay();
 #define PET_SECTION 68
@@ -1282,6 +1290,9 @@ static int daemon_main(void) {
 #undef PET_SECTION
         { int r = run_on() + 2 * rogue_mode(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
+#define PET_SECTION 76
+#include PET_SKIN
+#undef PET_SECTION
             if (c == 1002 || c == 200) dy = -1; else if (c == 1003 || c == 201) dy = 1; else if (c == 1000 || c == 202) dx = -1; else if (c == 1001 || c == 203) dx = 1;
             else if (c == 27) { set_flag("int", "0"); clock_sync(); snprintf(msg, sizeof msg, "INT off: real time"); dirty = 1; break; }      /* Esc leaves INT (keyboard/history.txt: KEY_PRESSED: 27) */
             else if (!run_on()) continue;
@@ -1323,7 +1334,12 @@ static int daemon_main(void) {
                         if (!hit && tr.room == vroom && tr.x == col && tr.y == row) { snprintf(sid, sizeof sid, "%s", hero.name); for (char *q = sid; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; hit = 1; }
                         if (hit) { verb(2, sa, msg, sizeof msg); dirty = 1; } } } }
         }
-        if (in && run_on() && follow_xelector(msg, sizeof msg)) dirty = 1;
+        if (in && run_on() && !flag_on("helm", 0) && follow_xelector(msg, sizeof msg)) dirty = 1;      /* at the helm the arrows steer a vehicle, not the xelector */
+        if (in && run_on() && flag_on("helm", 0)) {      /* the skin's vehicle takes the xelector's move (rpg-space: the ship) */
+#define PET_SECTION 78
+#include PET_SKIN
+#undef PET_SECTION
+        }
         long ms = now_ms();
         for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700); if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > tune("far_repaint_ms", 1500)) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (!in && run_on() && ms >= next_hero_ms) {      /* INT off = real time, every character lives on its own: the hero too (owner 2026-10-23: when In: is off control reverts to AI, Harold stood still). While INT is on he is whoever you steer or waits for his turn. */

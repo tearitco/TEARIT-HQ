@@ -1,4 +1,5 @@
 # rpg-space hotspots: event voxels that are not doors. Every DOOR of the door table is a hotspot by itself (the skin adds it); this file lists the others, like the helm console (owner 2026-10-23: "what about the control console event voxel? ... events should highlight wireframe orange when In: is off").
 # The skin writes each room's maps/<book>/<room>/hotspots.txt; the board engine outlines each one in ORANGE while In: is off and draws nothing for them when In: is on.
-# HOT | room | x | y | z | label       x column, y row of the desk, z cells above the floor top (0 = standing on the floor)
-HOT | bridge | 8 | 4 | 0 | helm console (flying the ship; the event page comes with the flight work)
+# HOT | room | x | y | z | label | event      (event: an events/<name>/ page played with trigger "action" when the controlled character stands next to the cell and Enter is pressed)
+# HOT | room | x | y | z | label (old form, no event)       x column, y row of the desk, z cells above the floor top (0 = standing on the floor)
+HOT | bridge | 8 | 4 | 0 | helm console (Enter next to it: the arrows fly the ship) | helm

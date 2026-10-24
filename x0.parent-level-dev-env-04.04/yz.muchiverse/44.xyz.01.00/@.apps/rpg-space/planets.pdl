@@ -8,3 +8,8 @@ PLANET | maker | Maker World | rmmv | 20261023
 PLANET | cata  | Cata Prime  | cdda | 20261107
 PLANET | cubia | Cubia       | mcl  | 20261121
 PLANET | hell  | Hellrock    | doom | 20261203
+# POS | id | gx | gy   where the planet sits on the galaxy grid the helm steers over (0..5 each way; a cell with no planet is deep space). State/ship.txt holds the ship's own cell.
+POS | maker | 1 | 1
+POS | cata  | 4 | 1
+POS | cubia | 1 | 4
+POS | hell  | 4 | 4
