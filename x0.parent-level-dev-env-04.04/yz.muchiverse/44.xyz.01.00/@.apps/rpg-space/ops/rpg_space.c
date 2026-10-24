@@ -36,6 +36,7 @@
 #define SK_H 16
 static char sk_glyph[SK_NR][SK_H][SK_W + 1];
 static int sk_fs[SK_NR][SK_H][SK_W], sk_ws[SK_NR][SK_H][SK_W], sk_cdep[SK_NR][SK_H][SK_W];
+static int sk_fs3[SK_NR][SK_H][SK_W], sk_ws3[SK_NR][SK_H][SK_W];      /* the same cells painted with the plain flat tiles, for the 3D export (owner 2026-10-23: autotiling in 2D only, "roll back only for 3d for now"); sk_fs / sk_ws are what the 2D scene paints */
 static int sk_built, sk_rockslot; static long sk_pin_until;      /* until this time the daemon keeps pinning the xelector to the active pet (a book reload resets the engine's xelector to 1,1) */
 typedef struct { char id[24], label[40], kind[8], root[160]; } SkTs;
 typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; } SkPl;
@@ -397,7 +398,8 @@ static void sk_ensure_map(void) {
     if (!rm && ts && strcmp(ts->kind, "plain")) for (int b = 0; b < 7; b++) have[b] = sk_tile_load(ts, b, tl[b]);
     if (rm) { if (!a5) { fprintf(stderr, PET_OP ": missing RPG Maker sheets under %s\n", ASSETS); return; } tile24(a5, 0, 2 * S48, tl[3]); have[3] = 1; }
     int grass = slot_of(tl[3]); sk_rockslot = grass; if (!have[3]) { unsigned char g[XT * XT * 4]; for (int i = 0; i < XT * XT; i++) { g[i * 4] = SK_FLAT[3][0]; g[i * 4 + 1] = SK_FLAT[3][1]; g[i * 4 + 2] = SK_FLAT[3][2]; g[i * 4 + 3] = 255; } memcpy(tl[3], g, sizeof g); grass = slot_of(tl[3]); have[3] = 1; }
-    Sheet *sa1 = rm ? sheet("tilesets", "World_A1") : NULL, *sa2 = rm ? sheet("tilesets", "World_A2") : NULL;
+    for (int pass = 0; pass < 2; pass++) {      /* pass 0 paints the flat tiles (kept for the 3D export), pass 1 the autotiled ones (what the 2D scene shows) */
+    Sheet *sa1 = rm && pass && !getenv("SK_NOAUTO") ? sheet("tilesets", "World_A1") : NULL, *sa2 = rm && pass && !getenv("SK_NOAUTO") ? sheet("tilesets", "World_A2") : NULL;      /* SK_NOAUTO=1 in the daemon environment paints the old flat tiles (to compare the 3D look) */
     for (int g = SK_SHIP; g < SK_NR; g++) {
         memset(h, 0, sizeof h); sk_read_page(pg[g - SK_SHIP], h);
         for (int y = 0; y < SK_H; y++) { for (int x = 0; x < SK_W; x++) { int v = h[y][x], band = v < 20 ? 0 : v < 35 ? 1 : v < 45 ? 2 : v < 65 ? 3 : v < 80 ? 4 : v < 92 ? 5 : 6;
@@ -411,6 +413,8 @@ static void sk_ensure_map(void) {
             sk_glyph[g][y][SK_W] = 0; }
     }
     sk_build_ship();
+    if (!pass) { memcpy(sk_fs3, sk_fs, sizeof sk_fs3); memcpy(sk_ws3, sk_ws, sizeof sk_ws3); }
+    }
     if (nslot > MAXSLOT - 40) fprintf(stderr, PET_OP ": tile slots %d of %d used, the picture slots are nearly full (slot_of then returns 0 for a new picture)\n", nslot, MAXSLOT);
 }
 /* a book reload resets the engine to the first desk (the bridge); the core only switches desks when a pet changes room, so after a reload the desk of the room being watched is selected again */
@@ -455,7 +459,7 @@ static void sk_spawn(int i, int *x, int *y) {
 static void pet_own_export_room(int r, const char *d) {
     sk_ensure_map(); if (r < 0 || r >= nroom || r >= SK_NR) return;
     int cols = rooms[r].cols, rows = rooms[r].rows; char p[PATH_MAX];
-    static char gl[SK_H][SK_W + 1]; static int fs[SK_H][SK_W], ws[SK_H][SK_W]; memcpy(gl, sk_glyph[r], sizeof gl); memcpy(fs, sk_fs[r], sizeof fs); memcpy(ws, sk_ws[r], sizeof ws);
+    static char gl[SK_H][SK_W + 1]; static int fs[SK_H][SK_W], ws[SK_H][SK_W]; memcpy(gl, sk_glyph[r], sizeof gl); memcpy(fs, sk_fs3[r], sizeof fs); memcpy(ws, sk_ws3[r], sizeof ws);
     for (int i = 0; i < npl; i++) if (pl[i].room == r) {      /* furniture the house placed: a 1 high block with the item's tile on the floor tile, like the common painter */
         Item *it = &cat[pl[i].item]; Sheet *s = sheet("tilesets", it->sheet); unsigned char a[XT * XT * 4], b[XT * XT * 4];
         for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
@@ -488,9 +492,9 @@ static void pet_own_export_room(int r, const char *d) {
     snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\ncells\n", cols, rows, XT, nslot, sk_rockslot);
         for (int y = 0; y < rows; y++) { for (int x = 0; x < cols; x++) {
             fprintf(f, "%s%d,%d,%d", x ? " " : "", fs[y][x], ws[y][x], sk_cdep[r][y][x]);
-            if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ && sk_fs[SK_SHIP][y][x]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
+            if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ && sk_fs3[SK_SHIP][y][x]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
                 char pg = sk_glyph[SK_SHIP][y][x]; int ud = 10 + sk_cdep[SK_SHIP][y][x]; if (ud > 16) ud = 16;
-                fprintf(f, ",%d,%d,%d", sk_fs[SK_SHIP][y][x], ud, pg == '~' ? 9 : 8); } }
+                fprintf(f, ",%d,%d,%d", sk_fs3[SK_SHIP][y][x], ud, pg == '~' ? 9 : 8); } }
           fputc('\n', f); } fclose_tmp(f, p); } }
 }
 #elif PET_SECTION == 74
