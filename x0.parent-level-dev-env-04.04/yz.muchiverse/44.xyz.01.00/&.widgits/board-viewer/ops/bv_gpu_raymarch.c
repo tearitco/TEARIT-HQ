@@ -53,6 +53,9 @@ static const char *FS_SRC =
 "uniform sampler2DArray u_terr;\n" /* 16x16xN terrain emoji slices, layer per legend entry */
 "uniform vec4  u_lbbox[64];\n"     /* per-layer opaque bbox (u0,v0,u1,v1) in 0..1 */
 "uniform float u_light;\n"
+"uniform int   u_nl, u_amb_on;\n"       /* local lights (see BvGpuScene.light_*) */
+"uniform float u_amb;\n"
+"uniform vec4  u_lpos[8], u_lcol[8];\n"
 "uniform vec3  u_sky;\n"
 "uniform int   u_clear;\n"      /* 1: no sky, no parallax, missed rays alpha 0 */
 "uniform float u_fog_start, u_fog_end;\n"
@@ -231,7 +234,12 @@ static const char *FS_SRC =
 "  }\n"
 "  if (hit && !self_lit) {\n"
 "    if (face != 3) col *= 0.75;\n"   /* top = face 3 (Y slab, swapped case) - matches bv_render_3d CPU */
-"    col *= u_light;\n"
+"    vec3 L = vec3(u_amb_on != 0 ? u_amb : u_light);\n"
+"    if (u_nl > 0) {\n"
+"      vec3 hp = ro + rd * bestT;\n"
+"      for (int i = 0; i < u_nl; i++) { float f = clamp(1.0 - distance(hp, u_lpos[i].xyz) / max(u_lpos[i].w, 1e-3), 0.0, 1.0); L += u_lcol[i].rgb * (u_lcol[i].a * f * f); }\n"
+"    }\n"
+"    col *= L;\n"
 "  }\n"
 "  float fa = (!hit && u_clear != 0) ? 0.0 : 1.0;\n"
 "  if (hit && u_fog_end > u_fog_start) {\n"
@@ -256,7 +264,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -392,7 +400,7 @@ static int gl_ensure_context(void) {
     s_u.eye=UL("u_eye"); s_u.fwd=UL("u_fwd"); s_u.right=UL("u_right"); s_u.up=UL("u_up");
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
-    s_u.light=UL("u_light"); s_u.sky=UL("u_sky"); s_u.clear=UL("u_clear"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
+    s_u.light=UL("u_light"); s_u.nl=UL("u_nl"); s_u.amb_on=UL("u_amb_on"); s_u.amb=UL("u_amb"); s_u.lpos=UL("u_lpos"); s_u.lcol=UL("u_lcol"); s_u.sky=UL("u_sky"); s_u.clear=UL("u_clear"); s_u.fog_start=UL("u_fog_start"); s_u.fog_end=UL("u_fog_end");
     s_u.maker=UL("u_maker"); s_u.zoff=UL("u_zoff"); s_u.rock=UL("u_rock"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells");
     s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
@@ -614,6 +622,8 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform2i (s_u.mk, s->atlas_cols > 0 ? s->atlas_cols : 1, s->tile_px > 0 ? s->tile_px : 24);
     glActiveTexture(GL_TEXTURE0);
     glUniform1f (s_u.light, s->light_level);
+    { int nl = s->light_n < 0 ? 0 : s->light_n > BV_GPU_MAX_LIGHT ? BV_GPU_MAX_LIGHT : s->light_n; glUniform1i(s_u.nl, nl); glUniform1i(s_u.amb_on, s->light_amb_on ? 1 : 0); glUniform1f(s_u.amb, s->light_amb);
+      if (nl) { glUniform4fv(s_u.lpos, nl, &s->light_pos[0][0]); glUniform4fv(s_u.lcol, nl, &s->light_col[0][0]); } }
     glUniform3fv(s_u.sky,   1, s->sky);
     glUniform1i(s_u.clear, s->see_through ? 1 : 0);
     glUniform1f(s_u.fog_start, s->fog_start);

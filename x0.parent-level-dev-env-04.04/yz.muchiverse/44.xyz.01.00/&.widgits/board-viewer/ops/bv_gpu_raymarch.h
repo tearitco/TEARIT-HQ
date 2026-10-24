@@ -61,6 +61,11 @@ typedef struct {
     float legend_bbox[BV_GPU_MAX_LEGEND][4];  /* u0,v0,u1,v1 in 0..1 */
 
     float light_level;           /* ground light 0..1 (ambient floor already applied) */
+    /* Local lights (a desk's lights.pdl, opt-in): light_amb_on != 0 REPLACES the sun's light_level with light_amb for this desk (a ship interior is lit by its own lamps, not the clock); each light adds colour * strength * (1 - d / radius)^2 at a hit point d cells away.
+     * pos = x, y, z (world cells, the same space as the grid and the boxes), radius; col = r, g, b (0..1), strength. light_n == 0 and light_amb_on == 0 draws exactly as before. */
+#define BV_GPU_MAX_LIGHT 8
+    int   light_n, light_amb_on; float light_amb;
+    float light_pos[BV_GPU_MAX_LIGHT][4], light_col[BV_GPU_MAX_LIGHT][4];
     float sky[3];                /* 0..1 */
 
     /* maker_view (RPG Maker tile terrain): per-cell atlas. When maker != 0 the grid holds solid voxels (legend glyph 1) and each hit

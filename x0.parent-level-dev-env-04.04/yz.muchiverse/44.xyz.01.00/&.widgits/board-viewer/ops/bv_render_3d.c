@@ -355,6 +355,8 @@ typedef struct {
     unsigned char *para;
     int para_w, para_h, para_lx, para_ly, para_ver;
     long para_stamp;
+    /* Local lights (lights.pdl of the desk, opt-in): rows `AMBIENT | level` and `LIGHT | x | y | z | radius | r | g | b | strength` (x column, y row, z cells above the floor top, r g b 0..1). See BvGpuScene.light_*. */
+    int light_n, light_amb_on; float light_amb, light[8][8];
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
     struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
@@ -369,6 +371,20 @@ typedef struct {
     unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
 } MakerAtlas;
 static MakerAtlas g_mk;
+
+/* The desk's lights.pdl (see MakerAtlas.light_n). Read again every frame like parallax.pdl, so a skin can change a lamp without a rebuild; a missing file means no lights and no ambient override, the old picture exactly. */
+static void maker_read_lights(const char *dir) {
+    char path[4400], line[256]; snprintf(path, sizeof(path), "%s/lights.pdl", dir);
+    g_mk.light_n = 0; g_mk.light_amb_on = 0; g_mk.light_amb = 0;
+    FILE *f = fopen(path, "r"); if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char *fl[10]; int n = 0; char *p = line; while (n < 10) { fl[n++] = p; char *bar = strchr(p, '|'); if (!bar) break; *bar = 0; p = bar + 1; }
+        if (n >= 2 && !strncmp(fl[0], "AMBIENT", 7)) { g_mk.light_amb = (float)atof(fl[1]); g_mk.light_amb_on = 1; }
+        else if (n >= 9 && !strncmp(fl[0], "LIGHT", 5) && g_mk.light_n < 8) { for (int k = 0; k < 8; k++) g_mk.light[g_mk.light_n][k] = (float)atof(fl[k + 1]); g_mk.light_n++; }
+    }
+    fclose(f);
+}
 
 /* The parallax sky of a painted desk: parallax.pdl (show, width, height, loop_x, loop_y, stamp) + parallax.rgba (raw RGBA8). A missing file leaves the old flat sky colour.
  * Called at load and again every frame: a changed `stamp` row (rpg-pet bumps it when its day / night phase changes the sky picture) reloads the pixels and bumps para_ver so the
@@ -493,7 +509,7 @@ static int maker_load(const char *root) {
     g_mk.atlas = (unsigned char *)malloc(need);
     if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
     fclose(f);
-    g_mk.para_stamp = -1; maker_read_parallax(dir);
+    g_mk.para_stamp = -1; maker_read_parallax(dir); maker_read_lights(dir);
     maker_read_events(dir);
     g_mk.glyph = (char *)malloc((size_t)g_mk.w * (size_t)g_mk.h);
     if (g_mk.glyph) {
@@ -3754,6 +3770,9 @@ static int render_one_frame(void) {
             sc.cells_w = vww; sc.cells_h = vwh;
             sc.para = g_mk.para; sc.para_w = g_mk.para_w; sc.para_h = g_mk.para_h;
             sc.para_loop_x = g_mk.para_lx; sc.para_loop_y = g_mk.para_ly; sc.para_ver = g_mk.para_ver;
+            sc.light_amb_on = g_mk.light_amb_on; sc.light_amb = g_mk.light_amb; sc.light_n = g_mk.light_n;      /* a desk's own lights (lights.pdl); world cell = column + 0.5, floor level + 1 + z, row + 0.5 */
+            for (int li = 0; li < g_mk.light_n; li++) { const float *L = g_mk.light[li]; sc.light_pos[li][0] = L[0] + 0.5f; sc.light_pos[li][1] = (float)g_mk.zoff + 1.0f + L[2]; sc.light_pos[li][2] = L[1] + 0.5f; sc.light_pos[li][3] = L[3];
+                sc.light_col[li][0] = L[4]; sc.light_col[li][1] = L[5]; sc.light_col[li][2] = L[6]; sc.light_col[li][3] = L[7]; }
         }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
         if (ll < 0.15) ll = 0.15;
@@ -3945,7 +3964,7 @@ static int render_one_frame(void) {
                         }
                     }
             }
-            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key);
+            maker_read_events(g_mk.key); maker_read_parallax(g_mk.key); maker_read_lights(g_mk.key);
             int budget = 80;
             int used_model[96];
             char used_key[96][64];
