@@ -145,7 +145,7 @@ static const char *FS_SRC =
 "      ivec3 li = swp ? li0.zyx : li0;\n"
 "      vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 16 + li.z), 0);\n"
 "      if (mv.a > 0.5) {\n"
-"        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = false; face = f; }\n"
+"        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = (u_bcol[i].a < 0.5); face = f; }\n"
 "        break;\n"
 "      }\n"
 "      mt += stepT;\n"

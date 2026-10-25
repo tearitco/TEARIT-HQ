@@ -3945,7 +3945,7 @@ static int render_one_frame(void) {
           if (lf) { float b[6]; if (fscanf(lf, "%f %f %f %f %f %f", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) ADDWIRE(b[0], b[1], b[2], b[3], b[4], b[5], 200, 200, 210); fclose(lf); } }
         if (g_veh_present) {      /* the ship piece: one box, a dense voxel model inside (GPU_ADD_MODEL); world (X, Y = height, Z) = (grid x, up, grid y) */
             int vm = GPU_ADD_MODEL(g_veh_vox, g_veh_n, g_veh_dim[0] - 1, g_veh_dim[1] - 1, g_veh_dim[2] - 1);
-            ADDBOX(g_veh_x, g_veh_z, g_veh_y, g_veh_x + g_veh_sx, g_veh_z + g_veh_sh, g_veh_y + g_veh_sy, 150, 150, 160, 0);
+            ADDBOX(g_veh_x, g_veh_z, g_veh_y, g_veh_x + g_veh_sx, g_veh_z + g_veh_sh, g_veh_y + g_veh_sy, 150, 150, 160, 1);
             if (vm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = vm;
         }
         /* Map events. A 16x24 frame (written by tsots_events.py) is one
