@@ -23,6 +23,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include "../js/quickjs.h"
 
 #ifndef NB_HOST_DEFINE_GLOBALS
@@ -952,8 +954,208 @@ static const char g_js_prelude[] =
 "  AudioContext.prototype.suspend = function(){ return Promise.resolve(); };\n"
 "  AudioContext.prototype.resume = function(){ return Promise.resolve(); };\n"
 "  Object.defineProperty(window,'AudioContext',{ value:AudioContext, configurable:true, writable:true });\n"
-"  Object.defineProperty(window,'webkitAudioContext',{ value:AudioContext, configurable:true, writable:true });\n"
 "})();\n";
+
+/* Helper: get data pointer and length from ArrayBuffer or TypedArray */
+static int nb_get_array_buffer_data(JSContext *ctx, JSValueConst obj, const uint8_t **pdata, size_t *plen) {
+    size_t byte_offset = 0, byte_length = 0, bytes_per_element = 0;
+    JSValue buffer_obj = JS_GetTypedArrayBuffer(ctx, obj, &byte_offset, &byte_length, &bytes_per_element);
+    
+    if (JS_IsException(buffer_obj)) {
+        /* Not a TypedArray, try as ArrayBuffer */
+        size_t size = 0;
+        const uint8_t *data = JS_GetArrayBuffer(ctx, &size, obj);
+        if (data) {
+            *pdata = data;
+            *plen = size;
+            return 1;
+        }
+        return 0;
+    }
+    
+    if (!JS_IsException(buffer_obj)) {
+        /* It's a TypedArray, get the underlying ArrayBuffer */
+        JSValue abuf_obj = buffer_obj;
+        size_t size = 0;
+        const uint8_t *data = JS_GetArrayBuffer(ctx, &size, abuf_obj);
+        if (data) {
+            *pdata = data + byte_offset;
+            *plen = byte_length;
+            JS_FreeValue(ctx, abuf_obj);
+            return 1;
+        }
+        JS_FreeValue(ctx, abuf_obj);
+    }
+    return 0;
+}
+
+/* crypto.subtle — real implementation using OpenSSL */
+static JSValue nb_crypto_subtle_digest(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 2) {
+        JS_ThrowTypeError(ctx, "SubtleCrypto.digest requires algorithm and data");
+        return JS_EXCEPTION;
+    }
+    
+    const char *algo = JS_ToCString(ctx, argv[0]);
+    if (!algo) return JS_EXCEPTION;
+    
+    JSValue data_obj = argv[1];
+    size_t data_len = 0;
+    const uint8_t *data = NULL;
+    
+    if (!nb_get_array_buffer_data(ctx, data_obj, &data, &data_len)) {
+        JS_FreeCString(ctx, algo);
+        JS_ThrowTypeError(ctx, "digest data must be ArrayBuffer or TypedArray");
+        return JS_EXCEPTION;
+    }
+    
+    if (!data || data_len == 0) {
+        JS_FreeCString(ctx, algo);
+        JS_ThrowTypeError(ctx, "Empty data for digest");
+        return JS_EXCEPTION;
+    }
+    
+    /* Determine hash algorithm */
+    const EVP_MD *md = NULL;
+    if (strcasecmp(algo, "SHA-256") == 0 || strcasecmp(algo, "SHA256") == 0) {
+        md = EVP_sha256();
+    } else if (strcasecmp(algo, "SHA-384") == 0 || strcasecmp(algo, "SHA384") == 0) {
+        md = EVP_sha384();
+    } else if (strcasecmp(algo, "SHA-512") == 0 || strcasecmp(algo, "SHA512") == 0) {
+        md = EVP_sha512();
+    } else if (strcasecmp(algo, "SHA-1") == 0 || strcasecmp(algo, "SHA1") == 0) {
+        md = EVP_sha1();
+    } else if (strcasecmp(algo, "MD5") == 0) {
+        md = EVP_md5();
+    }
+    
+    JS_FreeCString(ctx, algo);
+    
+    if (!md) {
+        JS_ThrowTypeError(ctx, "Unsupported hash algorithm");
+        return JS_EXCEPTION;
+    }
+    
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_len = 0;
+    
+    EVP_MD_CTX *ctx_md = EVP_MD_CTX_new();
+    if (!ctx_md || EVP_DigestInit_ex(ctx_md, md, NULL) != 1 ||
+        EVP_DigestUpdate(ctx_md, data, data_len) != 1 ||
+        EVP_DigestFinal_ex(ctx_md, hash, &hash_len) != 1) {
+        if (ctx_md) EVP_MD_CTX_free(ctx_md);
+        JS_ThrowTypeError(ctx, "Digest computation failed");
+        return JS_EXCEPTION;
+    }
+    EVP_MD_CTX_free(ctx_md);
+    
+    /* Create a Promise and resolve it with the result */
+    JSValue resolving_funcs[2];
+    JSValue promise = JS_NewPromiseCapability(ctx, resolving_funcs);
+    if (JS_IsException(promise)) {
+        return promise;
+    }
+    
+    JSValue result = JS_NewArrayBufferCopy(ctx, hash, hash_len);
+    if (JS_IsException(result)) {
+        JS_FreeValue(ctx, resolving_funcs[0]);
+        JS_FreeValue(ctx, resolving_funcs[1]);
+        return result;
+    }
+    
+    JSValue ret = JS_Call(ctx, resolving_funcs[0], JS_UNDEFINED, 1, &result);
+    JS_FreeValue(ctx, result);
+    JS_FreeValue(ctx, resolving_funcs[0]);
+    JS_FreeValue(ctx, resolving_funcs[1]);
+    
+    if (JS_IsException(ret)) {
+        JS_FreeValue(ctx, promise);
+        return ret;
+    }
+    JS_FreeValue(ctx, ret);
+    
+    return promise;
+}
+
+/* crypto.subtle — real implementation using OpenSSL */
+static JSValue nb_crypto_subtle_generateKey(JSContext *ctx, JSValueConst this_val,
+                                            int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "generateKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_importKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "importKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_exportKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "exportKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_sign(JSContext *ctx, JSValueConst this_val,
+                                     int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "sign not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_verify(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "verify not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_deriveKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "deriveKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_deriveBits(JSContext *ctx, JSValueConst this_val,
+                                           int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "deriveBits not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_encrypt(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "encrypt not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_decrypt(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "decrypt not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_wrapKey(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "wrapKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_unwrapKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "unwrapKey not implemented");
+    return JS_EXCEPTION;
+}
 
 /* crypto.getRandomValues implementation */
 static JSValue nb_crypto_getRandomValues(JSContext *ctx, JSValueConst this_val,
@@ -1124,33 +1326,33 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, perf, "timing", ptime);
     JS_SetPropertyStr(ctx, g, "performance", perf);
 
-    /* crypto — minimal implementation for fingerprinting */
+    /* crypto — real implementation using OpenSSL */
     JSValue crypto = JS_NewObject(ctx);
     JSValue subtle = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, subtle, "digest",
-                      JS_NewCFunction(ctx, native_noop, "digest", 2));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_digest, "digest", 2));
     JS_SetPropertyStr(ctx, subtle, "generateKey",
-                      JS_NewCFunction(ctx, native_noop, "generateKey", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_generateKey, "generateKey", 3));
     JS_SetPropertyStr(ctx, subtle, "importKey",
-                      JS_NewCFunction(ctx, native_noop, "importKey", 4));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_importKey, "importKey", 4));
     JS_SetPropertyStr(ctx, subtle, "exportKey",
-                      JS_NewCFunction(ctx, native_noop, "exportKey", 2));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_exportKey, "exportKey", 2));
     JS_SetPropertyStr(ctx, subtle, "sign",
-                      JS_NewCFunction(ctx, native_noop, "sign", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_sign, "sign", 3));
     JS_SetPropertyStr(ctx, subtle, "verify",
-                      JS_NewCFunction(ctx, native_noop, "verify", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_verify, "verify", 3));
     JS_SetPropertyStr(ctx, subtle, "deriveKey",
-                      JS_NewCFunction(ctx, native_noop, "deriveKey", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_deriveKey, "deriveKey", 3));
     JS_SetPropertyStr(ctx, subtle, "deriveBits",
-                      JS_NewCFunction(ctx, native_noop, "deriveBits", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_deriveBits, "deriveBits", 3));
     JS_SetPropertyStr(ctx, subtle, "encrypt",
-                      JS_NewCFunction(ctx, native_noop, "encrypt", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_encrypt, "encrypt", 3));
     JS_SetPropertyStr(ctx, subtle, "decrypt",
-                      JS_NewCFunction(ctx, native_noop, "decrypt", 3));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_decrypt, "decrypt", 3));
     JS_SetPropertyStr(ctx, subtle, "wrapKey",
-                      JS_NewCFunction(ctx, native_noop, "wrapKey", 4));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_wrapKey, "wrapKey", 4));
     JS_SetPropertyStr(ctx, subtle, "unwrapKey",
-                      JS_NewCFunction(ctx, native_noop, "unwrapKey", 4));
+                      JS_NewCFunction(ctx, nb_crypto_subtle_unwrapKey, "unwrapKey", 4));
     JS_SetPropertyStr(ctx, crypto, "subtle", subtle);
     JS_SetPropertyStr(ctx, crypto, "getRandomValues",
                       JS_NewCFunction(ctx, nb_crypto_getRandomValues, "getRandomValues", 1));
