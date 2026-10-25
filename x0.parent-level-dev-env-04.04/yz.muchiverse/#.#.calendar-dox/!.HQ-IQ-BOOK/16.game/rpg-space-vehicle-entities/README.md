@@ -36,3 +36,6 @@ Popup with three choices; Direct click; real Right x6, Down x3: `direct.txt` and
 
 ## Files
 Engine: `bv_render_3d.c` (vehicle pieces, limit_box), `bv_gpu_raymarch.{c,h}` (model depth 16, self-lit models). Skin: `rpg_space.c`, `tuning.pdl`, `events/helm/choice.pdl`. Harness: `&.widgits/board-viewer/tools/board_ctl.c`, `camera_presets.pdl`, `flight_run.sh` (in the media folder and here).
+
+## Altitude: x / z (owner 2026-10-25: "zx should move ship up and down")
+In direct flight the engine's level keys x (up) and z (down) change the ship's altitude: `helm lift +1/-1`, stored in `state/direct_z.txt` (-6..12), `pieces/ship_01` pos_z = altitude, the land pieces sink by the same amount (pos_z = land_z - altitude) so the picture around the hull is unchanged. RAN: x,x,x gave 1,2,3 (ship_01 pos_z 1..3, land_4 pos_z -10..-12); z presses lowered it back (one press at -1 was dropped by the key harness). The frames `zx/z0.png` / `z1.png` (archive `October-24/rpg-space-direct-flight-final-20261025/altitude/`) show the whole ship over the planet, the planet smaller after climbing. Limits: no collision with the land when low.

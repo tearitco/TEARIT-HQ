@@ -584,15 +584,16 @@ static int sk_choice(char *title, char *q, char *yes, char *no, char *direct) { 
 static int sk_helm_direct(void);
 static int sk_land_live(void) { char p[PATH_MAX], b[20]; spath(p, "helm_mode.txt"); read_file(p, b, sizeof b); return flag_on("helm", 0) && !strncmp(b, "direct", 6); }
 static void sk_slot_avg(int slot, int *r, int *g, int *b) { long R = 0, G = 0, B = 0, n = 0; if (slot > 0 && slot < MAXSLOT) for (int i = 0; i < XT * XT; i++) { const unsigned char *q = slotpx[slot] + i * 4; if (q[3] < 128) continue; R += q[0]; G += q[1]; B += q[2]; n++; } if (!n) { *r = 120; *g = 125; *b = 135; return; } *r = (int)(R / n); *g = (int)(G / n); *b = (int)(B / n); }
+static int sk_doz_get(void) { char p[PATH_MAX], b[16]; spath(p, "direct_z.txt"); read_file(p, b, sizeof b); return atoi(b); }      /* the ship's altitude over its start (owner 2026-10-25: z / x move the ship up and down); the land pieces sink by the same amount, the picture around the hull stays */
 static void sk_ship_world_write(void) {      /* the ship is the entity that moves: its world position (cells from the page origin) is the truth, the land pieces are placed relative to it, so the picture around the hull never changes while it flies. desk=none = the engine does not draw it (the real hull stays the baked bridge desk). */
     char d[PATH_MAX], p[PATH_MAX], b[200]; snprintf(d, sizeof d, "%s/pieces/ship_01", PCHQ); mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
-    snprintf(b, sizeof b, "entity_type=vehicle\ndesk=none\npos_x=%d\npos_y=%d\npos_z=0\nsize_x=12\nsize_y=12\nsize_h=4\n", sk_dox, sk_doy); write_if_changed(p, b, strlen(b)); }
+    snprintf(b, sizeof b, "entity_type=vehicle\ndesk=none\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=12\nsize_y=12\nsize_h=4\n", sk_dox, sk_doy, sk_doz_get()); write_if_changed(p, b, strlen(b)); }
 static void sk_land_write(int models) {      /* models=1 also writes the voxels (once per helm / planet change), models=0 only moves the pieces */
     sk_direct_load(); sk_ship_world_write(); char d[PATH_MAX], p[PATH_MAX], b[300];
     for (int i = 0; i < 9; i++) { int room = i == 4 ? SK_SHIP : (sk_nb_ok[i] ? SK_NB0 + i : -1); snprintf(d, sizeof d, "%s/pieces/land_%d", PCHQ, i);
         if (room < 0) { snprintf(p, sizeof p, "%s/state.txt", d); unlink(p); continue; }
         mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
-        snprintf(b, sizeof b, "entity_type=land\ndesk=bridge\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=16\nsize_y=16\nsize_h=%d\n", 16 * (i % 3 - 1) - sk_dox, 16 * (i / 3 - 1) - sk_doy, tune("land_z", -9), 2); write_if_changed(p, b, strlen(b));
+        snprintf(b, sizeof b, "entity_type=land\ndesk=bridge\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=16\nsize_y=16\nsize_h=%d\n", 16 * (i % 3 - 1) - sk_dox, 16 * (i / 3 - 1) - sk_doy, tune("land_z", -9) - sk_doz_get(), 2); write_if_changed(p, b, strlen(b));
         if (!models) continue; snprintf(p, sizeof p, "%s/model.txt", d); char tmp[PATH_MAX]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(tmp, "w"); if (!f) continue;
         fprintf(f, "dim 16 2 16\n"); for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) { int r, g, bl; sk_slot_avg(sk_fs3[room][y][x], &r, &g, &bl); fprintf(f, "%d 0 %d %d %d %d\n%d 1 %d %d %d %d\n", x, y, r * 6 / 10, g * 6 / 10, bl * 6 / 10, x, y, r, g, bl); }
         fclose(f); rename(tmp, p); }
@@ -627,6 +628,11 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
         { sk_look_load(); int gx, gy; sk_ship_load(&gx, &gy); const char *to = "none", *cur = sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id; for (int k = 0; k < sk_pl_n; k++) { int px, py; if (sk_pos_of(sk_pl[k].id, &px, &py) && px == gx && py == gy) to = sk_pl[k].id; }
           if (strcmp(to, cur)) { char *pv[3] = { "planet", (char *)to, "fly" }; verb(3, pv, msg, cap); } else sk_space_refresh(msg, cap); }      /* landing: the planet under the ship becomes the one under the hull */
         char b[80]; snprintf(b, sizeof b, "HELM|%ld|off", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds over %s", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
+    if (!strcmp(a, "lift") && argc >= 3) {
+        if (!flag_on("helm", 0) || !sk_helm_direct()) { snprintf(msg, cap, "not in direct flight"); return; }
+        int z = sk_doz_get() + atoi(argv[2]); if (z < -6 || z > 12) { snprintf(msg, cap, "the ship cannot go %s than this (%d)", z < 0 ? "lower" : "higher", sk_doz_get()); return; }
+        { char zp[PATH_MAX], zb[16]; spath(zp, "direct_z.txt"); snprintf(zb, sizeof zb, "%d\n", z); write_if_changed(zp, zb, strlen(zb)); char rb[100]; snprintf(rb, sizeof rb, "DIRECT|%ld|lift|%d", (long)time(NULL), z); append_line("events.txt", rb); }
+        sk_direct_load(); sk_land_write(0); snprintf(msg, cap, "ship altitude %d", z); return; }
     if (!strcmp(a, "move") && argc >= 4) {
         if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
         if (sk_helm_direct()) {      /* direct: the arrows move the land pieces under the ship (state/direct.txt + pieces/land_*); no rebuild, no reload */
@@ -646,6 +652,7 @@ static int sk_helm_follow(char *msg, size_t cap) {
     static int lx = -9, ly = -9; static long settle_unused = 0; (void)settle_unused; if (now_ms() < sk_helm_settle) { g_pin_now = 1; return 0; }      /* a planet change reloads the scene and moves the xelector by itself: wait it out */
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char xp[PATH_MAX], kb[512]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, kb, sizeof kb); int xx = -1, xy = -1;
     for (char *l = strtok(kb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy = atoi(l + 6); }
+    { static int bz = -99; int zz = -99; char kz[512]; read_file(xp, kz, sizeof kz); char *q = strstr(kz, "pos_z="); if (q) zz = atoi(q + 6); if (!flag_on("helm", 0)) bz = -99; else if (zz != -99) { if (bz == -99) bz = zz; else if (zz != bz && sk_helm_direct()) { char zs[8], *hv[3] = { "helm", "lift", zs }; snprintf(zs, sizeof zs, "%d", zz > bz ? 1 : -1); bz = zz; sk_helm_verb(3, hv, msg, cap); return 1; } } }
     if (xx < 0 || xy < 0) return 0; if (xx == e->x && xy == e->y) { lx = ly = -9; return 0; } if (xx == lx && xy == ly) { g_pin_now = 1; return 0; }
     lx = xx; ly = xy; int ddx = xx - e->x, ddy = xy - e->y, dx = 0, dy = 0; if (abs(ddx) + abs(ddy) != 1) { g_pin_now = 1; return 0; }      /* an arrow moves the xelector exactly one cell from the pilot; any other offset is the engine's own desk reload, not a key */ if (abs(ddx) >= abs(ddy)) dx = ddx > 0 ? 1 : -1; else dy = ddy > 0 ? 1 : -1;
     char a[16], b[16], *hv[4]; snprintf(a, sizeof a, "%d", dx); snprintf(b, sizeof b, "%d", dy); hv[0] = "helm"; hv[1] = "move"; hv[2] = a; hv[3] = b; sk_helm_verb(4, hv, msg, cap); g_pin_now = 1; sk_helm_settle = now_ms() + 1500; lx = ly = -9; return 1;
