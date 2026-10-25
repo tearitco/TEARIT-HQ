@@ -38,6 +38,10 @@
 - Debug bounds: extend the grey wireframe (`g_land_box_on`) to ship + land so the box shows what collides.
 - Removal of a destroyed cell: edit the page/desk the overlay reads, then reload; or an engine "removed cells" file; NOT built, check cost before choosing.
 
+## 4b. Design principle (owner 2026-10-25): events / pal / pdl, and simulate only where asked
+
+Keep every system (collision, damage, destruction, air, temperature, needs) as **event pages + .pal/.pdl data**, with C ops only doing the work a page calls. That keeps it malleable, scalable, customizable and abstractable. Fidelity is OPT-IN per entity or per case: we do not run cellular respiration (or any deep simulation) for every entity; the default is the cheap abstraction (a number that drifts, a need that ticks), and a special case can switch the detailed model on (a flag/row in its .pdl, or an event that attaches it). Build each system as a cheap default plus an optional detailed layer, never as a mandatory deep model.
+
 ## 5. Rules for whoever builds it
 
 - Verify with a 3D frame ("if you didn't see it in 3D it doesn't exist"): ship blocked at the planet, a cell removed, a drop appearing.
