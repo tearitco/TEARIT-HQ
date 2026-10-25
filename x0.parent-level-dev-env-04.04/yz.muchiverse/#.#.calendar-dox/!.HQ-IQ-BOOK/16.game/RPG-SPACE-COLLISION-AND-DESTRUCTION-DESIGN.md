@@ -59,6 +59,13 @@ More key controls will go with the ship, each an event page bound to a key in `k
 
 Later: **asteroids** (to mine) and **other ships** (to battle and trade with). Both fit what exists: an asteroid is a land-like entity (own `pieces/<id>` with position, size and a block model, destructible per `blocks.pdl`); another ship is a vehicle entity like `ship_01` (own state.txt, model, owner/faction, crew) driven by an event page or an AI pilot instead of the helm. Collision between them uses the same `collision.pdl` type pairs (ship/asteroid, ship/ship: block or overlap), trading and battle are event pages (hail, trade menu, fire = damage through the same `life hurt` / cell-damage sinks). Needs, before building: more than one vehicle entity and one land overlay in the engine at once (today the engine reads ONE `ship_01` and ONE `land_01`; `veh_1..9` names exist for vehicles, the land overlay is single).
 
+## 4f. Everything registers as an entity; ships have an inventory (owner 2026-10-25)
+
+- Asteroids, other ships and passengers all **register as entities** (same entity registry/links the rest of the house uses: id, type, position, owner), so any page, verb or UI can find them the same way.
+- **A ship has an inventory that also lists the entities inside it** (crew, passengers, pets, cargo items), not only items. One list per ship, e.g. `pieces/<ship>/inventory.txt` (`kind|id|n|...`; kind = item or entity), the same shape as the characters' `inv=` and `state/drops.txt` so items move between a character, a drop and a ship hold with one mechanism.
+- Why: ease of use and **macro storage UI** solutions (one hold screen, bulk move, "everything in the ship"), and so a passenger boarding or leaving is just an inventory move plus a position change (ties to the pets-as-passengers / door idea, and to respawn "on the bridge").
+- Not built. Open details to settle first: does an entity inside a ship keep its own position (relative to the ship) or only a seat/room id; what happens to the inventory when the ship is destroyed (drops, like death's `drop_pct`); capacity limits (a .pdl number).
+
 ## 5. Rules for whoever builds it
 
 - Verify with a 3D frame ("if you didn't see it in 3D it doesn't exist"): ship blocked at the planet, a cell removed, a drop appearing.
