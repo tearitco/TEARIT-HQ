@@ -1334,7 +1334,8 @@ static int daemon_main(void) {
                         if (!hit && tr.room == vroom && tr.x == col && tr.y == row) { snprintf(sid, sizeof sid, "%s", hero.name); for (char *q = sid; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; hit = 1; }
                         if (hit) { verb(2, sa, msg, sizeof msg); dirty = 1; } } } }
         }
-        if (in && run_on() && !flag_on("helm", 0) && follow_xelector(msg, sizeof msg)) dirty = 1;      /* at the helm the arrows steer a vehicle, not the xelector */
+        if (in && run_on() && flag_on("ask", 0)) g_pin_now = 1;      /* a popup is open (rpg-space helm question): the arrows do not walk the character, the xelector is held on them */
+        else if (in && run_on() && !flag_on("helm", 0) && follow_xelector(msg, sizeof msg)) dirty = 1;      /* at the helm the arrows steer a vehicle, not the xelector */
         if (in && run_on() && flag_on("helm", 0)) {      /* the skin's vehicle takes the xelector's move (rpg-space: the ship) */
 #define PET_SECTION 78
 #include PET_SKIN
