@@ -75,6 +75,10 @@ Something wipes `&.widgits/board-viewer/pieces/sessions/*` (the engine launcher'
 
 Hero next to the console (bridge 8,4; (7,4) or (9,4)), In: ON, press Enter -> `flag_ask=1` and a centred popup "HELM / Take the helm? Yes / No" (`events/helm/choice.pdl`, row `ask-ov` in `board/pchq-board.xhtpm`; delete the file and Enter plays the page at once). Yes (relay click, nav number, or `ops/+x/rpg_space.+x helm yes`) plays `events/helm/` (trigger `action`) -> `helm on`: the hero is put on the ship's cell in the `space` desk, the engine shows it, arrows move the hull one grid step (`FLY` rows, `state/ship.txt`), Esc (or In: off) releases the helm and lands over the planet under the ship. Planets without a `POS` row take the first free cell. Evidence rows: `state/events.txt`.
 
+## 5b. Direct flight (second helm mode, 2026-10-24)
+
+The popup has three rows: Galaxy / Direct / No (`events/helm/choice.pdl`; click rows at window pixels about (640,303) Galaxy, (640,331) Direct, (640,355) No - dump first and read them). Direct keeps the bridge and the camera fixed and slides the planet page under the hull (`state/direct.txt` ox oy, `tuning.pdl` `direct_max`), Galaxy moves the pilot onto the space desk. `state/helm_mode.txt` says which. Design and limits: `#.#.calendar-dox/!.HQ-IQ-BOOK/16.game/RPG-SPACE-HELM-MODES.md`. A grey map-limit box (`tuning.pdl` `map_box`) draws the planet page's edge. Test with `board_ctl expect <app> direct.txt "3 0"` after each Right key.
+
 ## 6. Traps that cost real time (all hit on 2026-10-24)
 
 - `$S` empty after `sed` of ui.txt = no session; every `$S/...` path then points at `/pieces/...`. Always `ls -d "$S"`.
@@ -82,6 +86,8 @@ Hero next to the console (bridge 8,4; (7,4) or (9,4)), In: ON, press Enter -> `f
 - The helm page runs in its own process; the daemon must wait ~2 s after `helm on` before reading the xelector (stale offset = phantom FLY row). Any xelector offset other than exactly one cell is ignored.
 - Hero blocked by furniture (row 4/5 of the bridge); walk (7,7) -> Up x3, or stand at (9,4). Walking through a door changes room: check `room=` in trainer.txt, not just x,y.
 - `git commit -- <paths>` takes whole files; quote `&`/`@`; never `git add -A`; mp3 and screenshots/mp4 stay out of the repo (XO folder / media archive).
+- Never start a second engine (`PCHQ_ENGINE_MODE` button.sh) while a launch is still bringing its own up: two starts kill each other's session folder (my probable cause of the 03:18 and 18:39 wipes; `board_ctl recover` now checks).
+- Nested `strtok` loops silently skip lines (a camera preset line was never reached); use `strtok_r`.
 - Do not drive the window while the owner is; say so before using `xdotool windowfocus`.
 
 ## 7. Unsolved (2026-10-24), so do not trust the engine to stay up

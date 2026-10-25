@@ -96,6 +96,7 @@
         <text label="${ask_title}" class="hb-quiet ov-title theme-3"/>
         <text label="${ask_text}" class="rp-big"/>
         <item id="ask-yes" class="rp-menu-row" label="${ask_yes}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' helm yes"/>
+        <item id="ask-direct" class="rp-menu-row" label="${ask_direct}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' helm direct" show="${ask_direct_show}"/>
         <item id="ask-no" class="rp-menu-row" label="${ask_no}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' helm no"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">

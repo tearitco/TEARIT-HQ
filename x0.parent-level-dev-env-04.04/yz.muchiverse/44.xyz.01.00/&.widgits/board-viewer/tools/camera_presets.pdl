@@ -3,3 +3,4 @@
 # first value seen right after a launch of rpg-space (3D free-roam, looking north from the south): mode 3, yaw 180, pitch -49, pan 16,8,36, level 0, xelector level 25 gave the good bridge and space pictures of 2026-10-24
 CAM | iso-south | 3 | 180 | -49 | 16 | 8 | 36 | 0 | 25
 CAM | topdown   | 3 | 180 | -89 | 16 | 8 | 36 | 0 | 25
+CAM | iso-low    | 3 | 180 | -30 | 16 | 8 | 36 | 0 | 25

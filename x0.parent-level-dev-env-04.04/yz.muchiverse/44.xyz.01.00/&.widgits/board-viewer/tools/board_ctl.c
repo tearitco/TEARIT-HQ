@@ -92,7 +92,7 @@ static int do_recover(void) {
     sleep(3); snprintf(cmd, sizeof cmd, "sh '%s/button.sh' run >/dev/null 2>&1", APP); run(cmd, NULL, 0);
     printf("recover: launched %s/button.sh, waiting for a session (up to 90 s)\n", APP); long until = now_ms() + 90000; int started_engine = 0;
     while (now_ms() < until) { sleep(3); if (load_session() && exists(SESS)) { int del; if (engine_pid(&del) && !del) { printf("recover: session %s is up\n", SESS); return do_preflight(); } }
-        if (!started_engine && now_ms() > until - 60000) { started_engine = 1; snprintf(cmd, sizeof cmd, "cd '%s/@.apps/piececraft-hq' && (PCHQ_ENGINE_MODE=1 PCHQ_PKG='%s/rpg-space-pchq' setsid nohup sh button.sh run >/tmp/board_ctl_engine.log 2>&1 &)", HOUSE, APP); run(cmd, NULL, 0); printf("recover: no engine yet, started the piececraft engine by hand\n"); } }
+        if (!started_engine && now_ms() > until - 45000) { int lp[8]; if (find_pids("piececraft-hq/button.sh", NULL, lp, 8) > 0 || find_pids("open_pchq_board", NULL, lp, 8) > 0) { printf("recover: an engine launch is still running, not starting a second one (two starts kill each other's session)\n"); started_engine = 1; continue; } started_engine = 1; snprintf(cmd, sizeof cmd, "cd '%s/@.apps/piececraft-hq' && (PCHQ_ENGINE_MODE=1 PCHQ_PKG='%s/rpg-space-pchq' setsid nohup sh button.sh run >/tmp/board_ctl_engine.log 2>&1 &)", HOUSE, APP); run(cmd, NULL, 0); printf("recover: no engine yet, started the piececraft engine by hand\n"); } }
     printf("recover: FAILED, no live session after 90 s (see /tmp/rpg-space-board.log, /tmp/board_ctl_engine.log)\n"); return 1;
 }
 static int do_key(const char *key, int ms) {
@@ -112,12 +112,16 @@ static int kv_write(const char *path, const char *key, const char *val) {      /
 }
 static int do_camera(const char *name) {
     if (!load_session() || !exists(SESS)) { printf("FAIL camera: no live session\n"); return 1; }
-    char p[PATH_MAX + 64], b[8192]; snprintf(p, sizeof p, "%s/camera_presets.pdl", HERE); slurp(p, b, sizeof b); int hit = 0;
-    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { char *f[12]; int k = 0; if (l[0] == '#') continue; for (char *t = strtok(l, "|"); t && k < 12; t = strtok(NULL, "|")) { while (*t == ' ') t++; char *e = t + strlen(t); while (e > t && e[-1] == ' ') *--e = 0; f[k++] = t; }
+    char p[PATH_MAX + 64], b[8192]; snprintf(p, sizeof p, "%s/camera_presets.pdl", HERE); slurp(p, b, sizeof b); int hit = 0, want_z = -1;
+    char *sv1 = NULL; for (char *l = strtok_r(b, "\n", &sv1); l; l = strtok_r(NULL, "\n", &sv1)) { char *f[12]; int k = 0; if (l[0] == '#') continue; char *sv2 = NULL; for (char *t = strtok_r(l, "|", &sv2); t && k < 12; t = strtok_r(NULL, "|", &sv2)) { while (*t == ' ') t++; char *e = t + strlen(t); while (e > t && e[-1] == ' ') *--e = 0; f[k++] = t; }
         if (k < 10 || strcmp(f[0], "CAM") || strcmp(f[1], name)) continue; char sp[PATH_MAX + 64]; snprintf(sp, sizeof sp, "%s/pieces/system/bv_state.txt", SESS);
         const char *keys[8] = { "camera_mode", "cam_yaw", "cam_pitch", "cam_pan_x", "cam_pan_y", "cam_pan_z", "cam_z_level", "current_z" };
-        for (int i = 0; i < 8; i++) kv_write(sp, keys[i], f[2 + i]); hit = 1; }
-    if (!hit) { printf("FAIL camera: no preset '%s' in %s\n", name, p); return 1; } nudge(); usleep(500000); nudge(); printf("camera %s set (absolute) and nudged\n", name); return 0;
+        for (int i = 0; i < 8; i++) kv_write(sp, keys[i], f[2 + i]); hit = 1; want_z = atoi(f[9]); }
+    if (!hit) { printf("FAIL camera: no preset '%s' in %s\n", name, p); return 1; } nudge(); usleep(500000); nudge();
+    if (want_z >= 0) {      /* the engine puts the xelector level back (to -7 after a book reload) and the camera follows it: bring the level to the preset's with real z / x keys */
+        char fp[PATH_MAX + 80], fb[4096]; usleep(2500000); nudge(); usleep(2500000); snprintf(fp, sizeof fp, "%s/pieces/display/current_frame.txt", SESS); slurp(fp, fb, sizeof fb); char *zl = strstr(fb, "Z-level:"); int cur = zl ? atoi(zl + 8) : want_z;
+        if (cur != want_z) { char rp[PATH_MAX + 80]; snprintf(rp, sizeof rp, "%s/pieces/apps/player_app/interact_relay.txt", SESS); FILE *rf = fopen(rp, "a"); if (rf) { int n = cur < want_z ? want_z - cur : cur - want_z; for (int i = 0; i < n; i++) { fprintf(rf, "%d\n", cur < want_z ? 'x' : 'z'); fflush(rf); usleep(120000); } fprintf(rf, "126\n"); fclose(rf); } printf("camera: level %d -> %d (%s)\n", cur, want_z, cur < want_z ? "x" : "z"); usleep(2000000); nudge(); } }
+    printf("camera %s set (absolute) and nudged\n", name); return 0;
 }
 static void state_get(const char *spec, char *val, size_t cap) {      /* "ship.txt" = first line of <app>/state/ship.txt, "trainer.txt:x" = the value of the line x= */
     char fn[128], fp[PATH_MAX + 64], fb[2048]; snprintf(fn, sizeof fn, "%s", spec); char *key = strchr(fn, ':'); if (key) *key++ = 0; snprintf(fp, sizeof fp, "%s/state/%s", APP, fn); slurp(fp, fb, sizeof fb); val[0] = 0;

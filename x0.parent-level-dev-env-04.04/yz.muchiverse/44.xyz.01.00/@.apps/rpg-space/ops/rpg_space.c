@@ -46,7 +46,7 @@ static const char *sk_room_label(int room); static void sk_look_load(void); stat
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
-static int sk_choice(char *title, char *q, char *yes, char *no);
+static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
@@ -130,7 +130,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
 #elif PET_SECTION == 28
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
-    { char ct[48] = "", cq[80] = "", cy[48] = "", cn[48] = ""; int ask = flag_on("ask", 0) && sk_choice(ct, cq, cy, cn); W("ask_visible=%s\nask_title=%s\nask_text=%s\nask_yes=%s\nask_no=%s\n", ask ? "1" : "", ct, cq, cy, cn); }      /* the yes / no popup of an event (events/<name>/choice.pdl) */
+    { char ct[48] = "", cq[80] = "", cy[48] = "", cn[48] = "", cd[48] = ""; int ask = flag_on("ask", 0) && sk_choice(ct, cq, cy, cn, cd); W("ask_visible=%s\nask_title=%s\nask_text=%s\nask_yes=%s\nask_direct=%s\nask_direct_show=%s\nask_no=%s\n", ask ? "1" : "", ct, cq, cy, cd, cd[0] ? "1" : "", cn); }      /* the yes / no popup of an event (events/<name>/choice.pdl) */
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     sk_look_load(); { const char *cl = sk_pl_cur < 0 ? "No planet (deep space)" : sk_pl_n ? sk_pl[sk_pl_cur].label : "-";      /* the left bar: the address, the seed, Regen, zoom and the planets (design D8, D12) */
       W("seed=%llu\naddr_line=%s\npl_label=%s\nn_pl=%d\n", sk_seed, sk_addr, cl, sk_pl_n);
@@ -204,6 +204,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
 #elif PET_SECTION == 65
     if (!strcmp(v, "regen") || !strcmp(v, "planet") || !strcmp(v, "newplanet") || !strcmp(v, "zoomhere") || !strcmp(v, "zoomout")) {      /* the look and the place are LEDGER rows (state/look_ledger.txt, zoom_ledger.txt): a verb appends, every process replays */
         char lp[PATH_MAX], row[160]; snprintf(lp, sizeof lp, "%s/state/look_ledger.txt", APP); sk_look_load();
+        if (strcmp(v, "zoomhere") && strcmp(v, "zoomout")) { char dp[PATH_MAX]; spath(dp, "direct.txt"); write_if_changed(dp, "0 0\n", 4); }      /* a new planet or look: the hull is centred over it again */
         char from_pl[24]; snprintf(from_pl, sizeof from_pl, "%s", sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id);      /* where the ship is before the move */
         if (!strcmp(v, "newplanet")) { static const char *TS[4] = { "rmmv", "cdda", "mcl", "doom" }; int n = sk_pl_n + 1; struct timespec ts_; clock_gettime(CLOCK_REALTIME, &ts_); unsigned long long z = ((unsigned long long)ts_.tv_sec * 1000000007ULL + (unsigned long long)ts_.tv_nsec) ^ ((unsigned long long)n * 0x9E3779B97F4A7C15ULL); z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL; z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL; z ^= z >> 31; unsigned long long sd = 20270000ULL + z % 90000000ULL;      /* a new planet gets a fresh seed from the clock (nanoseconds + its number, mixed): two quick clicks make two different worlds; the row stores it, so replay is exact */ if (sk_pl_n >= 16) { snprintf(msg, cap, "the system is full (16 planets)"); return; } snprintf(row, sizeof row, "NEWPLANET | p%d | Planet %d | %s | %llu\n", n, n, TS[n % 4], sd); }
         else if (!strcmp(v, "planet")) { int ok = argc >= 2 && !strcmp(argv[1], "none"); for (int k = 0; argc >= 2 && k < sk_pl_n; k++) if (!strcmp(sk_pl[k].id, argv[1])) ok = 1; if (!ok) { snprintf(msg, cap, "unknown planet (see planets.pdl)"); return; } snprintf(row, sizeof row, "PLANET | %s\n", argv[1]); }
@@ -386,12 +387,19 @@ static const char *sk_room_label(int room) {
     static char b[64]; static const char *ex[4] = { " (doors S, S, W)", " (door N)", " (door N)", " (door E)" };
     snprintf(b, sizeof b, "%s%s", rooms[room].name, room >= 0 && room < SK_SHIP ? ex[room] : ""); return b;
 }
+static int sk_dox, sk_doy; static unsigned sk_ship_ver = 0;      /* DIRECT flight: the planet page under the hull is shifted by (sk_dox, sk_doy) cells, -direct_max..direct_max; state/direct.txt "ox oy"; the ship rooms and the camera never move, the planet slides away under them */
+static void sk_direct_load(void) { char p[PATH_MAX], b[40]; spath(p, "direct.txt"); read_file(p, b, sizeof b); if (sscanf(b, "%d %d", &sk_dox, &sk_doy) != 2) sk_dox = sk_doy = 0; int mx = tune("direct_max", 10); if (sk_dox < -mx) sk_dox = -mx; if (sk_dox > mx) sk_dox = mx; if (sk_doy < -mx) sk_doy = -mx; if (sk_doy > mx) sk_doy = mx; }      /* tuning.pdl direct_max: how far the planet may slide away under the ship (default 10 of 16 cells; the planet leaves the screen into open space, the hull and the camera stay) */
 static void sk_build_ship(void) {      /* called after the planet pages are painted: room SK_SHIP (the region page) is copied into every ship desk as the backdrop, then the ship is drawn over its middle */
+    sk_direct_load(); sk_ship_ver++;
     Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
     static const int bx[3] = {3, 8, 0}, by[3] = {11, 11, 6}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1}, ex[1] = {11}, ey[1] = {6};
     for (int g = 0; g < SK_SHIP; g++) for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) {      /* the planet below: its cells are copied in and SUNK under the ship's floor (negative extrusion in the ship desks' extrusion file), with a body hung under them; no planet = holes, only space */
-        if (sk_pl_cur < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
-        else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][y][x]; sk_fs[g][y][x] = sk_fs[SK_SHIP][y][x]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[SK_SHIP][y][x]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
+        int sx_ = x + sk_dox, sy_ = y + sk_doy;      /* the page cell under the desk cell, shifted by direct flight; off the page = open space */
+        if (sk_pl_cur < 0 || sx_ < 0 || sy_ < 0 || sx_ >= SK_W || sy_ >= SK_H) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
+        else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][sy_][sx_]; sk_fs[g][y][x] = sk_fs[SK_SHIP][sy_][sx_]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[SK_SHIP][sy_][sx_]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; }
+        if (sk_pl_cur >= 0 && tune("map_box", 0) && sx_ >= 0 && sy_ >= 0 && sx_ < SK_W && sy_ < SK_H && (sx_ == 0 || sx_ == SK_W - 1 || sy_ == 0 || sy_ == SK_H - 1)) {      /* MAP BOX (owner 2026-10-24: 'a grey cube to show the map's 3D limit', for tests and presentations; tuning.pdl map_box): the outer ring of the planet page is grey, the four corners are tall grey pillars, so the edge of the map shows while the planet slides away under the ship */
+            int cor = (sx_ == 0 || sx_ == SK_W - 1) && (sy_ == 0 || sy_ == SK_H - 1);
+            if (cor) { sk_solid(g, x, y, 'P', 150, 150, 160, 0, 1); sk_solid(g, x, y, 'P', 150, 150, 160, 0, 0); } else sk_solid(g, x, y, 'G', 150, 150, 160, 0, 0); } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
     sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge, the hub: green hex floor, doors in the south wall to the quarters (left) and the hold (right) and in the west wall to the engine room */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
@@ -466,7 +474,7 @@ static unsigned char *sk_bg[SK_NR]; static char sk_bgkey[SK_NR][24];
 static void sk_paint_bg(int room, const char *phase) {
     if (room < SK_SHIP || room == SK_SPACE) phase = "night";      /* the ship is in deep space: always dark (design D16) */
     sk_ensure_map(); if (room < 0 || room >= nroom || room >= SK_NR) return;
-    Room *rm = &rooms[room]; int W = rm->cols * XT, H = rm->rows * XT; char key[24]; snprintf(key, sizeof key, "%s%lx%x", rm->outdoor ? phase : "-", (unsigned long)sk_built_sig & 0xffffff, room == SK_SPACE ? sk_space_ver & 0xfff : 0);
+    Room *rm = &rooms[room]; int W = rm->cols * XT, H = rm->rows * XT; char key[24]; snprintf(key, sizeof key, "%s%lx%x", rm->outdoor ? phase : "-", (unsigned long)sk_built_sig & 0xffffff, room == SK_SPACE ? sk_space_ver & 0xfff : room < SK_SHIP ? sk_ship_ver & 0xfff : 0);
     if (!sk_bg[room] || strcmp(sk_bgkey[room], key)) {
         free(sk_bg[room]); sk_bg[room] = (unsigned char *)malloc((size_t)W * H * 4); if (!sk_bg[room]) return;
         Sheet *sky = rm->outdoor ? sheet("parallaxes", pet_sky_sheet(phase)) : NULL;
@@ -500,7 +508,7 @@ static void pet_own_export_room(int r, const char *d) {
     snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) {
         static const char HEAD[] = "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\n";
         static const char PLANET[] = "EXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | p                  | 1\nEXTRUDE      | G                  | 1\nEXTRUDE      | T                  | 2\nEXTRUDE      | r                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";
-        static const char SHIP[] = "EXTRUDE      | ~                  | -9\nEXTRUDE      | p                  | -8\nEXTRUDE      | G                  | -8\nEXTRUDE      | W                  | 4\nEXTRUDE      | D                  | 1\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 4 tall (owner): walls 4, floor level; the planet is a body hung UNDER the ship (the island trick: the engine draws hung rock under a floor, never under a hole) */
+        static const char SHIP[] = "EXTRUDE      | ~                  | -9\nEXTRUDE      | p                  | -8\nEXTRUDE      | G                  | -8\nEXTRUDE      | W                  | 4\nEXTRUDE      | P                  | 8\nEXTRUDE      | D                  | 1\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* the ship is always 4 tall (owner): walls 4, floor level; the planet is a body hung UNDER the ship (the island trick: the engine draws hung rock under a floor, never under a hole) */
         static const char SPACE[] = "EXTRUDE      | G                  | 1\nEXTRUDE      | W                  | 3\nEXTRUDE      | f                  | 1\nEXTRUDE      | default            | 0\n";      /* islands 1 high, the hull 3 (middle) and 1 (wings) */
         fprintf(f, HEAD, rooms[r].id); fputs(r == SK_SPACE ? SPACE : r < SK_SHIP ? SHIP : PLANET, f); fclose_tmp(f, p); } }
     snprintf(p, sizeof p, "%s/lights.pdl", d);      /* this room's own lamps (the app's lights.pdl rows for it); a room with none gets no file, so the engine lights it by the sun as before */
@@ -525,9 +533,9 @@ static void pet_own_export_room(int r, const char *d) {
     snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\ncells\n", cols, rows, XT, nslot, sk_rockslot);
         for (int y = 0; y < rows; y++) { for (int x = 0; x < cols; x++) {
             fprintf(f, "%s%d,%d,%d", x ? " " : "", fs[y][x], ws[y][x], sk_cdep[r][y][x]);
-            if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ && sk_fs3[SK_SHIP][y][x]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
-                char pg = sk_glyph[SK_SHIP][y][x]; int ud = 10 + sk_cdep[SK_SHIP][y][x]; if (ud > 16) ud = 16;
-                fprintf(f, ",%d,%d,%d", sk_fs3[SK_SHIP][y][x], ud, pg == '~' ? 9 : 8); } }
+            if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ && x + sk_dox >= 0 && x + sk_dox < SK_W && y + sk_doy >= 0 && y + sk_doy < SK_H && sk_fs3[SK_SHIP][y + sk_doy][x + sk_dox]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
+                char pg = sk_glyph[SK_SHIP][y + sk_doy][x + sk_dox]; int ud = 10 + sk_cdep[SK_SHIP][y + sk_doy][x + sk_dox]; if (ud > 16) ud = 16;
+                fprintf(f, ",%d,%d,%d", sk_fs3[SK_SHIP][y + sk_doy][x + sk_dox], ud, pg == '~' ? 9 : 8); } }
           fputc('\n', f); } fclose_tmp(f, p); } }
 }
 #elif PET_SECTION == 74
@@ -555,10 +563,14 @@ static int sk_area_cells(char *what, size_t cap) {      /* events/helm/area.pdl:
     while (fp && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 12) >= 10 && !strcmp(f[0], "AREA")) { vox += (long)(atoi(f[7]) - atoi(f[4]) + 1) * (atoi(f[8]) - atoi(f[5]) + 1) * (atoi(f[9]) - atoi(f[6]) + 1); n++; }
     if (fp) fclose(fp); snprintf(what, cap, "%d boxes, %ld voxels", n, vox); return n;
 }
-static int sk_choice(char *title, char *q, char *yes, char *no) {      /* events/helm/choice.pdl: CHOICE | title | question | yes label | no label */
-    char p[PATH_MAX], ln[300]; char *f[6]; snprintf(p, sizeof p, "%s/events/helm/choice.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0;
-    while (fp && !hit && fgets(ln, sizeof ln, fp)) if (ln[0] != '#' && split_bar(ln, f, 6) >= 5 && !strcmp(f[0], "CHOICE")) { snprintf(title, 48, "%s", f[1]); snprintf(q, 80, "%s", f[2]); snprintf(yes, 48, "%s", f[3]); snprintf(no, 48, "%s", f[4]); hit = 1; }
+static int sk_choice(char *title, char *q, char *yes, char *no, char *direct) {      /* events/helm/choice.pdl: CHOICE | title | question | yes label | no label */
+    char p[PATH_MAX], ln[300]; char *f[8]; snprintf(p, sizeof p, "%s/events/helm/choice.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0;
+    while (fp && !hit && fgets(ln, sizeof ln, fp)) { int nf = ln[0] != '#' ? split_bar(ln, f, 7) : 0; if (nf >= 5 && !strcmp(f[0], "CHOICE")) { snprintf(title, 48, "%s", f[1]); snprintf(q, 80, "%s", f[2]); snprintf(yes, 48, "%s", f[3]); direct[0] = 0; if (nf >= 6) { snprintf(direct, 48, "%s", f[4]); snprintf(no, 48, "%s", f[5]); } else snprintf(no, 48, "%s", f[4]); hit = 1; } }
     if (fp) fclose(fp); return hit; }
+static int sk_helm_direct(void) { char p[PATH_MAX], b[20]; spath(p, "helm_mode.txt"); read_file(p, b, sizeof b); return !strncmp(b, "direct", 6); }
+static void sk_ship_refresh(char *msg, size_t cap) {      /* the page under the hull moved: rebuild the ship rooms, write the book, reload it, show the same desk again */
+    sk_build_ship(); export3d(msg, cap); char ib[PATH_MAX]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); FILE *f = fopen(ib, "a"); if (f) { fputs("CONFIRM_START_MAP:" PET_APP "\n", f); fclose(f); } pet_load(); calc_view(); sk_desk_sync();
+}
 static void sk_helm_put(int room, int x, int y) {      /* the controlled one stands on (room, x, y): the helm makes them the ship */
     int ci = ctl_idx(); use_ent(ci); pet.room = room; pet.x = x; pet.y = y; pet.dir = 0; pet.tx = pet.ty = -1; pet_save(); use_ent(active); set_flag("follow", ci < 0 ? "player" : "pet"); g_pin_now = 1; sk_helm_settle = now_ms() + 1800;
 }
@@ -568,18 +580,26 @@ static void sk_space_refresh(char *msg, size_t cap) {      /* the hull cells mov
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
     const char *a = argc >= 2 ? argv[1] : "status";
     if (!strcmp(a, "no")) { set_flag("ask", "0"); snprintf(msg, cap, "you stay at the console"); return; }
+    if (!strcmp(a, "direct") || !strcmp(a, "galaxy")) { char mp[PATH_MAX]; spath(mp, "helm_mode.txt"); write_if_changed(mp, a[0] == 'd' ? "direct\n" : "galaxy\n", a[0] == 'd' ? 7 : 7); a = "yes"; }
     if (!strcmp(a, "yes")) { set_flag("ask", "0"); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; } if (!run_event_x("helm", "action", "")) { char *pv[2] = { "helm", "on" }; sk_helm_verb(2, pv, msg, cap); } else snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); return; }
     if (!strcmp(a, "on")) { char w[80]; sk_area_cells(w, sizeof w); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; }
+        if (sk_helm_direct()) { set_flag("helm", "1"); sk_helm_settle = now_ms() + 2500; char b[160]; snprintf(b, sizeof b, "HELM|%ld|on-direct|%s", (long)time(NULL), w); append_line("events.txt", b); snprintf(msg, cap, "direct flight: the arrows move the ship over %s on this screen; the edge of the page stops it. Esc lets go", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         { int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char b[80]; snprintf(b, sizeof b, "%d %d %d\n", e->room, e->x, e->y); char hp[PATH_MAX]; spath(hp, "helm_from.txt"); write_if_changed(hp, b, strlen(b)); }      /* where to put the pilot back */
         int gx, gy; sk_ship_load(&gx, &gy); set_flag("helm", "1"); sk_helm_put(SK_SPACE, 2 + gx * 2, 2 + gy * 2); sk_space_refresh(msg, cap);
         char b[160]; snprintf(b, sizeof b, "HELM|%ld|on|%s", (long)time(NULL), w); append_line("events.txt", b); snprintf(msg, cap, "at the helm: the arrows steer the ship over the space map (area: %s). Esc lets go", w); return; }
     if (!strcmp(a, "off")) { if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; } set_flag("helm", "0");
+        if (sk_helm_direct()) { char b[80]; snprintf(b, sizeof b, "HELM|%ld|off-direct", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds where it is"); return; }
         { char hp[PATH_MAX], b[80] = ""; int r = 0, x = 7, y = 4; spath(hp, "helm_from.txt"); read_file(hp, b, sizeof b); sscanf(b, "%d %d %d", &r, &x, &y); sk_helm_put(r, x, y); }
         { sk_look_load(); int gx, gy; sk_ship_load(&gx, &gy); const char *to = "none", *cur = sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id; for (int k = 0; k < sk_pl_n; k++) { int px, py; if (sk_pos_of(sk_pl[k].id, &px, &py) && px == gx && py == gy) to = sk_pl[k].id; }
           if (strcmp(to, cur)) { char *pv[3] = { "planet", (char *)to, "fly" }; verb(3, pv, msg, cap); } else sk_space_refresh(msg, cap); }      /* landing: the planet under the ship becomes the one under the hull */
         char b[80]; snprintf(b, sizeof b, "HELM|%ld|off", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds over %s", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
     if (!strcmp(a, "move") && argc >= 4) {
         if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
+        if (sk_helm_direct()) {      /* direct: the ship flies over the planet page on this screen; the page under the hull slides away, up to direct_max cells (stop there) */
+            sk_direct_load(); int nx = sk_dox + atoi(argv[2]), ny = sk_doy + atoi(argv[3]);
+            { int mx = tune("direct_max", 10); if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the planet is almost gone behind the ship: it stops here (%d,%d)", sk_dox, sk_doy); return; } }
+            { char dp[PATH_MAX], db[24], rb[120]; spath(dp, "direct.txt"); snprintf(db, sizeof db, "%d %d\n", nx, ny); write_if_changed(dp, db, strlen(db)); snprintf(rb, sizeof rb, "DIRECT|%ld|ship|%d,%d|%d,%d", (long)time(NULL), sk_dox, sk_doy, nx, ny); append_line("events.txt", rb); }
+            sk_helm_settle = now_ms() + 1500; sk_ship_refresh(msg, cap); snprintf(msg, cap, "ship offset %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         int gx, gy, dx = atoi(argv[2]), dy = atoi(argv[3]); sk_ship_load(&gx, &gy); int nx = gx + dx, ny = gy + dy;
         if (nx < 0 || ny < 0 || nx >= SK_GRID || ny >= SK_GRID) { snprintf(msg, cap, "the edge of the charted system (%d,%d)", gx, gy); return; }
         sk_ship_save(nx, ny); char b[100]; snprintf(b, sizeof b, "FLY|%ld|ship|%d,%d|%d,%d", (long)time(NULL), gx, gy, nx, ny); append_line("events.txt", b);
@@ -598,11 +618,12 @@ static int sk_helm_follow(char *msg, size_t cap) {
 }
 /* Enter next to an event cell: the first HOT row of this room within one cell (not diagonal) of the controlled character that names an event page plays that page with trigger "action". */
 static int sk_helm_interact(char *msg, size_t cap) {
+    if (flag_on("helm", 0)) return 0;      /* at the helm (direct flight keeps the pilot on the bridge, next to the console): Enter is not a second question */
     int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char p[PATH_MAX], ln[400]; char *f[8]; snprintf(p, sizeof p, "%s/hotspots.pdl", APP); FILE *fp = fopen(p, "r"); int done = 0;
     while (fp && !done && fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 8) < 7 || strcmp(f[0], "HOT") || strcmp(f[1], rooms[e->room].id) || !f[6][0]) continue;
         int hx = atoi(f[2]), hy = atoi(f[3]); if (abs(hx - e->x) + abs(hy - e->y) != 1) continue;
         char ev[48]; snprintf(ev, sizeof ev, "%s", f[6]); fclose(fp); fp = NULL; done = 1;
-        { char ct[48], cq[80], cy[48], cn[48]; if (!strcmp(ev, "helm") && sk_choice(ct, cq, cy, cn)) { set_flag("ask", "1"); snprintf(msg, cap, "%s", cq); { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|ask|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } return 1; } }      /* a choice popup first: Yes plays the page (verb helm yes) */
+        { char ct[48], cq[80], cy[48], cn[48], cd[48]; if (!strcmp(ev, "helm") && sk_choice(ct, cq, cy, cn, cd)) { set_flag("ask", "1"); snprintf(msg, cap, "%s", cq); { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|ask|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } return 1; } }      /* a choice popup first: Yes plays the page (verb helm yes) */
         if (!run_event_x(ev, "action", "") ) { char *pv[2] = { "helm", "on" }; verb(2, pv, msg, cap); } else if (flag_on("helm", 0)) snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); else snprintf(msg, cap, "%s: played", ev);
         sk_helm_settle = now_ms() + 2500;      /* the page moved the pilot and the desk: this iteration of the daemon must not read the xelector as a steering move */
         { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|action|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } }

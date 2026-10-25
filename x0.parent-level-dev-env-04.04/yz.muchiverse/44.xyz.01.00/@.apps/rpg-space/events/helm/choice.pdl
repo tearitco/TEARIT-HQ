@@ -1,3 +1,3 @@
-# choice.pdl - the "Show Choices" popup of the helm event (owner 2026-10-24: a yes / no popup before taking the controls, for the visual factor, not a standard). Enter next to the console asks this; Yes plays the event page, No closes the popup. Delete this file and Enter plays the page at once.
-# CHOICE | title | question | yes label | no label
-CHOICE | HELM | Take the helm? | Yes - fly the ship | No - stay here
+# choice.pdl - the "Show Choices" popup of the helm event (owner 2026-10-24: a yes / no popup before taking the controls, for the visual factor, not a standard; then a third choice, DIRECT flight). Enter next to the console asks this; the first choice plays the page in GALAXY mode (the space map), the second in DIRECT mode (the ship moves over the planet on this screen), the last closes the popup. Delete this file and Enter plays the page at once (galaxy).
+# CHOICE | title | question | galaxy label | direct label | no label      (a row with 5 fields has no direct choice: title | question | yes | no)
+CHOICE | HELM | Take the helm? | Galaxy: planet to planet | Direct: over this planet | No: stay here
