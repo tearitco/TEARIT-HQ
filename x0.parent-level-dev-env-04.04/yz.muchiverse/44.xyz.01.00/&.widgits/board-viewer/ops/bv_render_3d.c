@@ -3398,6 +3398,10 @@ static int render_one_frame(void) {
                 floor_pan_x = cam_pan_x;
                 floor_pan_y = cam_pan_y;
                 floor_pan_z = cam_pan_z;
+                {   /* the home framing of this desk (what the first view was): the ';' snap in bv_menu_input.c returns the camera to exactly this pan */
+                    char hp[PATH_MAX + 32]; snprintf(hp, sizeof hp, "%s", state_path); char *sl = strrchr(hp, '/');
+                    if (sl) { snprintf(sl + 1, 24, "cam_home.txt"); FILE *hf = fopen(hp, "w"); if (hf) { fprintf(hf, "%d %d %d %d\n", cam_pan_x, cam_pan_y, cam_pan_z, cam_z_level); fclose(hf); } }
+                }
             }
             cam_z_level -= floor_cam_z;
             cam_pan_x -= floor_pan_x;

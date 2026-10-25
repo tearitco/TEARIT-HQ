@@ -53,6 +53,8 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#define PITCH_MIN (-80)   /* the camera pitch keys stay in this band: looking down, never under the floor or at the sky */
+#define PITCH_MAX (-25)
 
 #define MAX_LINE 512
 #define MAX_PATH 4096
@@ -474,6 +476,7 @@ static int handle_one_key(int key) {
     int key_reset_view_alt = '5';   /* direct instruction 2026-09-09: "make 5 do same as f" */
     int key_yaw_left = 'q', key_yaw_right = 'e';
     int key_pitch_down = 'r', key_pitch_up = 't';
+    int key_cam_snap = ';';      /* snap to the player view: north-facing, pitched down, centred on the anchor (owner 2026-10-25) */
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
     int key_cam_down = 'c', key_cam_up = 'v';
     int key_pov_1 = '1', key_pov_2 = '2', key_pov_3 = '3', key_pov_4 = '4';
@@ -535,6 +538,7 @@ static int handle_one_key(int key) {
         key_yaw_right = pdl_bind_int(kb_pdl_path, "KEY", "yaw_right", key_yaw_right);
         key_pitch_down = pdl_bind_int(kb_pdl_path, "KEY", "pitch_down", key_pitch_down);
         key_pitch_up   = pdl_bind_int(kb_pdl_path, "KEY", "pitch_up",   key_pitch_up);
+        key_cam_snap   = pdl_bind_int(kb_pdl_path, "KEY", "cam_snap",  key_cam_snap);
         key_pan_forward = pdl_bind_int(kb_pdl_path, "KEY", "pan_forward", key_pan_forward);
         key_pan_back    = pdl_bind_int(kb_pdl_path, "KEY", "pan_back",    key_pan_back);
         key_pan_left    = pdl_bind_int(kb_pdl_path, "KEY", "pan_left",    key_pan_left);
@@ -1190,6 +1194,23 @@ static int handle_one_key(int key) {
 
     int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
 
+    if (key == key_cam_snap && camera_mode == 3) {
+        /* Player view: yaw north, pitch cam_snap_pitch (default -49, view.pdl-free: state key), pan back onto the anchor, level reset.
+         * The pitch keys below clamp to PITCH_MIN..PITCH_MAX so the view can never go under the floor or flip over. */
+        int hx = 0, hy = read_kv_int(state_path, "current_z", default_current_z(focused_project_root)), hz = 0, hl = 0;
+        {   /* the engine publishes the desk's home framing (the ship in frame) next to the state file */
+            char hp[MAX_PATH]; snprintf(hp, sizeof hp, "%s", state_path); char *sl = strrchr(hp, '/');
+            if (sl) { snprintf(sl + 1, 24, "cam_home.txt"); FILE *hf = fopen(hp, "r"); if (hf) { if (fscanf(hf, "%d %d %d %d", &hx, &hy, &hz, &hl) != 4) { hx = 0; hz = 0; hl = 0; } fclose(hf); } }
+        }
+        write_kv_int(state_path, "cam_pan_x", hx);
+        write_kv_int(state_path, "cam_pan_y", hy);
+        write_kv_int(state_path, "cam_pan_z", hz + read_kv_int(state_path, "cam_snap_back", 12));      /* pulled back so the whole ship is in frame (owner 2026-10-25) */
+        write_kv_int(state_path, "cam_yaw", 180);
+        write_kv_int(state_path, "cam_pitch", clamp_int(read_kv_int(state_path, "cam_snap_pitch", -49), PITCH_MIN, PITCH_MAX));
+        write_kv_int(state_path, "cam_z_level", hl);
+        bump_screen_changed(project_root);
+        return 0;
+    }
     if (key == key_reset_view || key == key_reset_view_alt) {
         /* Reset, mode-dependent default (camera_control.c's own 'f'
          * handling per mode - see 5-pov-widgit.md §2e table). */
@@ -1235,7 +1256,7 @@ static int handle_one_key(int key) {
     if (key == key_pitch_down || key == key_pitch_up) {
         int pitch = read_kv_int(state_path, "cam_pitch", 6);
         pitch += (key == key_pitch_up) ? PITCH_STEP : -PITCH_STEP;
-        pitch = clamp_int(pitch, -89, 89);
+        pitch = clamp_int(pitch, PITCH_MIN, PITCH_MAX);
         write_kv_int(state_path, "cam_pitch", pitch);
         bump_screen_changed(project_root);
         return 0;
