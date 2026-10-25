@@ -42,3 +42,11 @@ Files: `events/helm/choice.pdl` (`CHOICE | title | question | galaxy | direct | 
 - The planet map is 16 x 16: Direct flight ends at `direct_max` cells; a bigger map and neighbour pages (the zoom ledger) are the next step. The owner chose "stop at the edge".
 - Both modes at once (leave Direct for Galaxy without Esc) is not built: Esc, then Enter again.
 - The grey box is only on the ship-over-planet desks, not on the space desk (its limit is the desk edge).
+
+## 6. Direction (owner 2026-10-24): the ship and the land are entities, the map is parallax
+
+"It was always meant to be an entity. Even the land is meant to be its own entity. Technically map should be just blank parallax." The slide-the-planet Direct mode above (sections 1-5) rewrites the book and reloads the engine on every step; it is a stop-gap.
+
+Started in the engine (`&.widgits/board-viewer/ops/bv_render_3d.c`, GPU path): **vehicle pieces**. `pieces/ship_01/state.txt` (`pos_x pos_y pos_z size_x size_y size_h`) and `pieces/ship_01/model.txt` (`dim X Y Z`, rows `lx ly lz r g b`; Y up to 32, Z up to 8) are read every frame and drawn as one box carrying a dense voxel model (the hero/tree model path, `GPU_ADD_MODEL`). Run live: a 12 x 4 x 8 prototype hull appeared in the 3D window, and changing `pos_x` from 2 to 8 moved it (the block at the top edge shifted right between two frames) with no book rewrite and no reload. Prototype files removed again (kept at /tmp only); NOT wired to the rpg-space skin, no crew inside, no helm control, hull voxels are coarse (model Z is limited to 8 voxels, stretched over the box).
+Also: `pieces/system/limit_box.txt` (`x0 y0 z0 x1 y1 z1`) draws ONE wireframe box (debug map limit) instead of the painted wall; written by the skin when `map_box=1` - NOT verified (the file was not produced in my last run).
+Next steps: skin writes ship_01 from the hull model, the helm changes pos_x / pos_y only, crew pieces take the ship's offset, then the land page as its own vehicle piece and the book reduced to parallax.

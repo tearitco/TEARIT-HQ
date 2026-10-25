@@ -918,6 +918,40 @@ static void load_entities(const char *root) {
     fclose(f);
 }
 
+/* VEHICLE PIECES (owner 2026-10-24: the rpg-space ship - and later the land - is meant to be an ENTITY with an xy, not cells painted into the map; "map should be just blank parallax").
+ * pieces/ship_01/state.txt   pos_x / pos_y (cells, may be fractional), pos_z (world height of the underside), size_x / size_y (footprint in cells), size_h (height)
+ * pieces/ship_01/model.txt   first line `dim X Y Z` (voxels along grid x / height / grid y, Y up to 32, Z up to 8), then one row per voxel `lx ly lz r g b`
+ * The engine draws it as one box carrying a dense voxel model (the same GPU path the hero and the trees use), so moving it is a number in state.txt: no book rewrite, no reload. */
+typedef struct { int lx, ly, lz; unsigned char r, g, b; } VehVox;
+static int g_veh_present = 0, g_veh_n = 0, g_veh_dim[3];
+static float g_veh_x, g_veh_y, g_veh_z, g_veh_sx = 1, g_veh_sy = 1, g_veh_sh = 1;
+static VehVox g_veh_vox[4096];
+static void load_vehicle(const char *root) {
+    g_veh_present = 0; g_veh_n = 0; char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/pieces/ship_01/state.txt", root);
+    FILE *f = host_fopen(path, "r"); if (!f) return;
+    char line[MAX_LINE]; int have = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (!strncmp(line, "pos_x=", 6)) { g_veh_x = (float)atof(line + 6); have |= 1; }
+        else if (!strncmp(line, "pos_y=", 6)) { g_veh_y = (float)atof(line + 6); have |= 2; }
+        else if (!strncmp(line, "pos_z=", 6)) g_veh_z = (float)atof(line + 6);
+        else if (!strncmp(line, "size_x=", 7)) g_veh_sx = (float)atof(line + 7);
+        else if (!strncmp(line, "size_y=", 7)) g_veh_sy = (float)atof(line + 7);
+        else if (!strncmp(line, "size_h=", 7)) g_veh_sh = (float)atof(line + 7);
+    }
+    fclose(f); if (have != 3) return;
+    snprintf(path, sizeof(path), "%s/pieces/ship_01/model.txt", root);
+    f = host_fopen(path, "r"); if (!f) return;
+    g_veh_dim[0] = g_veh_dim[1] = g_veh_dim[2] = 0;
+    while (fgets(line, sizeof(line), f)) {
+        int a, b, c, r, g, bl;
+        if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &g_veh_dim[0], &g_veh_dim[1], &g_veh_dim[2]); continue; }
+        if (g_veh_n < 4096 && sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) == 6) {
+            VehVox *v = &g_veh_vox[g_veh_n++]; v->lx = a; v->ly = b; v->lz = c; v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)bl; }
+    }
+    fclose(f); g_veh_present = g_veh_n > 0 && g_veh_dim[0] > 0 && g_veh_dim[1] > 0 && g_veh_dim[2] > 0;
+}
+
 /* Real xelector cursor marker, added 2026-08-03 (direct user report:
  * "everything looks really great but i cant see the xelector indicator
  * anymore"). Root cause: the OLD selector-highlight code only ever lit
@@ -3177,6 +3211,7 @@ static int render_one_frame(void) {
     load_entities(focused_project_root);
     load_xelector(focused_project_root);
     load_hero(focused_project_root);
+    load_vehicle(focused_project_root);
     if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
         if (g_xelector_present) g_xelector_z = 1;
         if (g_hero_present) g_hero_z = 1;
@@ -3904,6 +3939,13 @@ static int render_one_frame(void) {
                     sc.model_vox[_m][_o+2]=(VOX)[_i].b; sc.model_vox[_m][_o+3]=255; } \
             } _m; })
 
+        { char lbp[PATH_BUF]; snprintf(lbp, sizeof(lbp), "%s/pieces/system/limit_box.txt", focused_project_root); FILE *lf = host_fopen(lbp, "r");      /* debug: the limit of the map as one wireframe box, `x0 y0 z0 x1 y1 z1` in world cells (written by the skin, see rpg-space map_box) */
+          if (lf) { float b[6]; if (fscanf(lf, "%f %f %f %f %f %f", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) ADDWIRE(b[0], b[1], b[2], b[3], b[4], b[5], 200, 200, 210); fclose(lf); } }
+        if (g_veh_present) {      /* the ship piece: one box, a dense voxel model inside (GPU_ADD_MODEL); world (X, Y = height, Z) = (grid x, up, grid y) */
+            int vm = GPU_ADD_MODEL(g_veh_vox, g_veh_n, g_veh_dim[0] - 1, g_veh_dim[1] - 1, g_veh_dim[2] - 1);
+            ADDBOX(g_veh_x, g_veh_z, g_veh_y, g_veh_x + g_veh_sx, g_veh_z + g_veh_sh, g_veh_y + g_veh_sy, 150, 150, 160, 0);
+            if (vm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = vm;
+        }
         /* Map events. A 16x24 frame (written by tsots_events.py) is one
          * voxel slice. The shader stretches that slice through the box,
          * which is the same extrusion a phymoji model gets. No frame

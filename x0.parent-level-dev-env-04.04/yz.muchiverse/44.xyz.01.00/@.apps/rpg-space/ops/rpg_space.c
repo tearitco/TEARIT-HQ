@@ -403,14 +403,13 @@ static void sk_build_ship(void) {      /* called after the planet pages are pain
         if (pr_ < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
         else { sk_glyph[g][y][x] = sk_glyph[pr_][ly_][lx_]; sk_fs[g][y][x] = sk_fs[pr_][ly_][lx_]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[pr_][ly_][lx_]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; }
         if (pr_ >= 0 && tune("map_box", 0) && !(sx_ == -16 || sx_ == 31 || sy_ == -16 || sy_ == 31) && (lx_ == 0 || lx_ == 15 || ly_ == 0 || ly_ == 15)) sk_solid(g, x, y, 'G', 205, 205, 215, 0, 0);      /* the border of every 16 x 16 page: a pale line, so crossing from one page to the next shows */
-        if (pr_ >= 0 && tune("map_box", 0) && (sx_ == -16 || sx_ == 31 || sy_ == -16 || sy_ == 31)) {      /* MAP BOX (owner 2026-10-24: 'a grey cube to show the map's 3D limit', for tests and presentations; tuning.pdl map_box): the outer ring of the whole map (the planet page and its eight neighbours, 48 x 48 cells) is grey, the four corners are tall grey pillars, so the limit shows while the planet slides away under the ship */
-            int cor = (sx_ == -16 || sx_ == 31) && (sy_ == -16 || sy_ == 31);
-            sk_solid(g, x, y, 'P', 150, 150, 160, 0, 1); sk_solid(g, x, y, 'P', 150, 150, 160, 0, 0); (void)cor; } }      /* the whole outer ring is a tall wall (extrusion P 8), visible from far; the corners are no longer special */      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
+    }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
     sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge, the hub: green hex floor, doors in the south wall to the quarters (left) and the hold (right) and in the west wall to the engine room */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
     sk_ship_room(3, a4, door, 8, 6, 6, 2, ex, ey, 1);      /* engine room: dark diamond plate, a door in the east wall back to the bridge */
     sk_ship_deco();
+    { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/pieces/system/limit_box.txt", PCHQ); if (sk_pl_cur >= 0 && tune("map_box", 0)) { char lb[160]; snprintf(lb, sizeof lb, "%d -9 %d %d 6 %d\n", -16 - sk_dox, -16 - sk_doy, 32 - sk_dox, 32 - sk_doy); write_if_changed(lp, lb, strlen(lb)); } else unlink(lp); }      /* the map limit as ONE wireframe box for the engine (owner 2026-10-24: 'meant to be a single wireframe for debugging'): world x0 y0 z0 x1 y1 z1 of the 48 x 48 map around the planet page, shifted with the planet under the ship */
     for (int g = 0; g < SK_SHIP; g++) for (int ly = 0; ly < SSZ; ly++) for (int lx = 0; lx < SSZ; lx++) {      /* the hull is thin (one block hung under the floor): the ship hovers, the planet surface is sunk below it */
         int x = SOX + lx, y = SOY + ly; sk_cdep[g][y][x] = 1; }
 }
