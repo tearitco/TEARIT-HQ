@@ -19,21 +19,21 @@ Files: `events/helm/choice.pdl` (`CHOICE | title | question | galaxy | direct | 
 "The ship should stay in view, while the planet fades away. Then it is the ship moving, not the camera." "The ship is moving as a vehicle through space away from the planet." Decided with the owner: the planet page under the hull is shifted; the planet itself is unchanged (same planet, same address); the ship rooms, the crew and the camera do not move.
 
 - State `state/direct.txt` = `ox oy`, the shift of the planet page under the hull in cells (positive x = the ship is east of where it was). The skin copies page cell `(x+ox, y+oy)` under desk cell `(x,y)`; a cell off the page is open space (a hole).
-- `tuning.pdl` `direct_max` (default 10): the ship stops when the planet is that far (of 16 cells) away ("the planet is almost gone behind the ship"). 0..15. To fly further the **planet map has to be bigger** (the engine allows 256 x 256 per board; a page is 16 x 16 today): that is the "expand the planet map limit" step, not done.
+- **The map is 48 x 48 (owner 2026-10-24: "widen it so the ship can move further")**: the ship desks sample the planet page and its eight neighbour region pages (`dust_gen page` for `region:RX+-1,RY+-1`, stored in `state/page_n<0..8>.txt`, painted into rooms 7..15 = `SK_NB0`, helper `sk_wroom`). A neighbour that does not exist stays open space. `tuning.pdl` `direct_max` (default and maximum 16): the ship stops there ("the planet is almost gone behind the ship"). Beyond 16 needs a bigger sampling window (more rings of pages), not built.
 - A move rebuilds the ship rooms and the book and reloads the engine (about 5 s in 3D; the minimap updates with it). Log rows `DIRECT|time|ship|ox,oy|nx,ny` and `HELM|..|on-direct` / `off-direct` in `state/events.txt`.
 - A new planet, Regen or `planet <id>` resets the shift to 0,0.
 - The pilot is NOT moved (Galaxy puts the pilot on the space desk); the arrows are read from the xelector offset like Galaxy; Enter next to the console does nothing while at the helm.
 
 ## 3. The map box (owner: "draw a grey cube to show the map's 3D limit, for tests / presentations")
 
-`tuning.pdl` `map_box` = 1 (default 1 for now): the outer ring of the **planet page** is drawn grey and its four corners are tall grey pillars (glyph `P`, extruded 8 above the hull floor), so while the planet slides away the limit of the map stays visible (3D: the pillars; minimap and 2D scene: the grey ring). It moves with the planet page. Set it to 0 to turn it off. Not a full wire cube (the engine's column model has one run per column plus one under it, so a top ring floating in the air is not possible yet); the ring and pillars are the edge of the map volume.
+`tuning.pdl` `map_box` = 1 (default 1 for now): the outer ring of the **whole 48 x 48 map** (world cells -16 and 31) is drawn grey and its four corners are tall grey pillars (glyph `P`, extruded 8 above the hull floor), so while the planet slides away the limit of the map stays visible (3D: the pillars; minimap and 2D scene: the grey ring). It moves with the planet page. Set it to 0 to turn it off. Not a full wire cube (the engine's column model has one run per column plus one under it, so a top ring floating in the air is not possible yet); the ring and pillars are the edge of the map volume.
 
 ## 4. Evidence (live, 2026-10-24, `board_ctl` harness)
 
 - Popup with three choices in a window dump; the Direct choice clicked: `helm_mode.txt = direct`, `flag_helm = 1`.
 - Six Right keys: `direct.txt` 1 0 .. 6 0 (checked by `board_ctl expect` after each key), `DIRECT|` rows; the minimap shows the planet (brown) sliding to the top-right corner inside the grey ring while the bridge stays fixed; top-down 3D frame shows the bridge fixed and a grey corner pillar of the map box.
 - Esc: `flag_helm = 0`; the ship holds its offset.
-- NOT run: the refusal at `direct_max` (the code returns the "almost gone" message and keeps `direct.txt`; I flew only to offset 6 of 10).
+- Run (wide map): `helm move` to 16 0 worked, the next move answered "the planet is almost gone behind the ship: it stops here (16,0)". NOT verified: a clean 3D picture at offset 16 (two camera presets showed only space, the window had been resized to 1296x789; `BOARD_CTL_SIZE=1296x789` tells board_ctl) and the grey ring at the far edge. Earlier note, superseded: the refusal at `direct_max` (the code returns the "almost gone" message and keeps `direct.txt`; I flew only to offset 6 of 10).
 
 ## 5. Not done / open
 

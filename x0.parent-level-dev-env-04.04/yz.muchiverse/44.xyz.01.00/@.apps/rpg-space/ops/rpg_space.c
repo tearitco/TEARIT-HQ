@@ -27,7 +27,12 @@
 #elif PET_SECTION == 3
 /* ---- rpg-space: room 0 = the region page, room 1 = the area page (section 73 builds them into these arrays once per process). glyph: G grass, p sand, T forest tree, ~ water, r rock / snow.
  * fs / ws: the floor and the wall/object slot of the 24 px tile atlas, cdep: hung blocks under the cell (always 0 here). ---- */
-#define SK_NR 7
+#define SK_NR 16
+#define SK_NB0 7      /* rooms 7..15: the nine region pages around the ship's planet page, index (dy+1)*3+(dx+1); 11 is the middle one and unused (room SK_SHIP is the middle page). Only storage for the painted pages, they are no desks (owner 2026-10-24: 'widen the map so the ship can move further') */
+static int sk_nb_ok[9];
+static int sk_wroom(int wx, int wy, int *lx, int *ly) {      /* the world cell (wx, wy) in page units (0..15 = the planet page, -16..-1 and 16..31 = its neighbours) -> the room that holds its painted cell, or -1 = open space */
+    int px = wx < 0 ? -1 - (-wx - 1) / 16 : wx / 16, py = wy < 0 ? -1 - (-wy - 1) / 16 : wy / 16; if (px < -1 || px > 1 || py < -1 || py > 1) return -1;
+    *lx = wx - px * 16; *ly = wy - py * 16; if (!px && !py) return 4; int i = (py + 1) * 3 + (px + 1); return sk_nb_ok[i] ? SK_NB0 + i : -1; }
 #define SK_SPACE 6      /* the space desk: planets as islands, the ship as a small hull box that the helm moves (design 13b, owner 2026-10-23 / 2026-10-24) */
 #define SOX 2      /* the ship's footprint inside its 16 x 16 desk: 12 x 12 cells at (2,2); the planet is the backdrop around it */
 #define SOY 2
@@ -388,17 +393,17 @@ static const char *sk_room_label(int room) {
     snprintf(b, sizeof b, "%s%s", rooms[room].name, room >= 0 && room < SK_SHIP ? ex[room] : ""); return b;
 }
 static int sk_dox, sk_doy; static unsigned sk_ship_ver = 0;      /* DIRECT flight: the planet page under the hull is shifted by (sk_dox, sk_doy) cells, -direct_max..direct_max; state/direct.txt "ox oy"; the ship rooms and the camera never move, the planet slides away under them */
-static void sk_direct_load(void) { char p[PATH_MAX], b[40]; spath(p, "direct.txt"); read_file(p, b, sizeof b); if (sscanf(b, "%d %d", &sk_dox, &sk_doy) != 2) sk_dox = sk_doy = 0; int mx = tune("direct_max", 10); if (sk_dox < -mx) sk_dox = -mx; if (sk_dox > mx) sk_dox = mx; if (sk_doy < -mx) sk_doy = -mx; if (sk_doy > mx) sk_doy = mx; }      /* tuning.pdl direct_max: how far the planet may slide away under the ship (default 10 of 16 cells; the planet leaves the screen into open space, the hull and the camera stay) */
+static void sk_direct_load(void) { char p[PATH_MAX], b[40]; spath(p, "direct.txt"); read_file(p, b, sizeof b); if (sscanf(b, "%d %d", &sk_dox, &sk_doy) != 2) sk_dox = sk_doy = 0; int mx = tune("direct_max", 16); if (mx > 16) mx = 16; if (sk_dox < -mx) sk_dox = -mx; if (sk_dox > mx) sk_dox = mx; if (sk_doy < -mx) sk_doy = -mx; if (sk_doy > mx) sk_doy = mx; }      /* tuning.pdl direct_max: how far the planet may slide away under the ship (default 10 of 16 cells; the planet leaves the screen into open space, the hull and the camera stay) */
 static void sk_build_ship(void) {      /* called after the planet pages are painted: room SK_SHIP (the region page) is copied into every ship desk as the backdrop, then the ship is drawn over its middle */
     sk_direct_load(); sk_ship_ver++;
     Sheet *a4 = sheet("tilesets", "SF_Inside_A4"), *door = sheet("characters", "!SF_Door1");
     static const int bx[3] = {3, 8, 0}, by[3] = {11, 11, 6}, qx[1] = {3}, qy[1] = {1}, hx[1] = {8}, hy[1] = {1}, ex[1] = {11}, ey[1] = {6};
     for (int g = 0; g < SK_SHIP; g++) for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) {      /* the planet below: its cells are copied in and SUNK under the ship's floor (negative extrusion in the ship desks' extrusion file), with a body hung under them; no planet = holes, only space */
-        int sx_ = x + sk_dox, sy_ = y + sk_doy;      /* the page cell under the desk cell, shifted by direct flight; off the page = open space */
-        if (sk_pl_cur < 0 || sx_ < 0 || sy_ < 0 || sx_ >= SK_W || sy_ >= SK_H) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
-        else { sk_glyph[g][y][x] = sk_glyph[SK_SHIP][sy_][sx_]; sk_fs[g][y][x] = sk_fs[SK_SHIP][sy_][sx_]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[SK_SHIP][sy_][sx_]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; }
-        if (sk_pl_cur >= 0 && tune("map_box", 0) && sx_ >= 0 && sy_ >= 0 && sx_ < SK_W && sy_ < SK_H && (sx_ == 0 || sx_ == SK_W - 1 || sy_ == 0 || sy_ == SK_H - 1)) {      /* MAP BOX (owner 2026-10-24: 'a grey cube to show the map's 3D limit', for tests and presentations; tuning.pdl map_box): the outer ring of the planet page is grey, the four corners are tall grey pillars, so the edge of the map shows while the planet slides away under the ship */
-            int cor = (sx_ == 0 || sx_ == SK_W - 1) && (sy_ == 0 || sy_ == SK_H - 1);
+        int sx_ = x + sk_dox, sy_ = y + sk_doy, lx_ = 0, ly_ = 0, pr_ = sk_pl_cur < 0 ? -1 : sk_wroom(sx_, sy_, &lx_, &ly_);      /* the world cell under the desk cell, shifted by direct flight: the planet page or one of its eight neighbours; none = open space */
+        if (pr_ < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
+        else { sk_glyph[g][y][x] = sk_glyph[pr_][ly_][lx_]; sk_fs[g][y][x] = sk_fs[pr_][ly_][lx_]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[pr_][ly_][lx_]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; }
+        if (pr_ >= 0 && tune("map_box", 0) && (sx_ == -16 || sx_ == 31 || sy_ == -16 || sy_ == 31)) {      /* MAP BOX (owner 2026-10-24: 'a grey cube to show the map's 3D limit', for tests and presentations; tuning.pdl map_box): the outer ring of the whole map (the planet page and its eight neighbours, 48 x 48 cells) is grey, the four corners are tall grey pillars, so the limit shows while the planet slides away under the ship */
+            int cor = (sx_ == -16 || sx_ == 31) && (sy_ == -16 || sy_ == 31);
             if (cor) { sk_solid(g, x, y, 'P', 150, 150, 160, 0, 1); sk_solid(g, x, y, 'P', 150, 150, 160, 0, 0); } else sk_solid(g, x, y, 'G', 150, 150, 160, 0, 0); } }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
     sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge, the hub: green hex floor, doors in the south wall to the quarters (left) and the hold (right) and in the west wall to the engine room */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
@@ -433,6 +438,9 @@ static void sk_ensure_map(void) {
     snprintf(pg[0], PATH_MAX, "%s/state/page_region.txt", APP); snprintf(pg[1], PATH_MAX, "%s/state/page_area.txt", APP);      /* pg[0] / pg[1] feed rooms SK_SHIP / SK_SHIP + 1 */
     snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%s' '%s' >/dev/null 2>&1", APP, sc, reg, pg[0]); if (system(cmd)) fprintf(stderr, PET_OP ": dust_gen region failed (%s)\n", reg);
     snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%s/cell:%d,%d' '%s' >/dev/null 2>&1", APP, sc, reg, cx, cy, pg[1]); if (system(cmd)) fprintf(stderr, PET_OP ": dust_gen area failed (%s/cell:%d,%d)\n", reg, cx, cy);
+    { int rx = 0, ry = 0; char *rg = strstr(reg, "region:"); if (rg) sscanf(rg + 7, "%d,%d", &rx, &ry); char gl[120]; snprintf(gl, sizeof gl, "%s", reg); if ((rg = strstr(gl, "region:"))) *rg = 0;
+      for (int i = 0; i < 9; i++) { sk_nb_ok[i] = 0; if (i == 4) continue; char np[PATH_MAX]; snprintf(np, sizeof np, "%s/state/page_n%d.txt", APP, i);
+        snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%sregion:%d,%d' '%s' >/dev/null 2>&1", APP, sc, gl, rx + i % 3 - 1, ry + i / 3 - 1, np); unlink(np); (void)system(cmd); } }      /* the eight neighbour region pages of the planet page (a missing one, off the globe, stays open space) */
     const SkTs *ts = NULL; for (int k = 0; k < sk_ts_n; k++) if (!strcmp(sk_ts[k].id, sk_ts_cur)) ts = &sk_ts[k];
     static unsigned char tl[7][XT * XT * 4]; int have[7] = {0}, rm = !ts || !strcmp(ts->kind, "rmmv");
     if (!rm && ts && strcmp(ts->kind, "plain")) for (int b = 0; b < 7; b++) have[b] = sk_tile_load(ts, b, tl[b]);
@@ -440,8 +448,10 @@ static void sk_ensure_map(void) {
     int grass = slot_of(tl[3]); sk_rockslot = grass; if (!have[3]) { unsigned char g[XT * XT * 4]; for (int i = 0; i < XT * XT; i++) { g[i * 4] = SK_FLAT[3][0]; g[i * 4 + 1] = SK_FLAT[3][1]; g[i * 4 + 2] = SK_FLAT[3][2]; g[i * 4 + 3] = 255; } memcpy(tl[3], g, sizeof g); grass = slot_of(tl[3]); have[3] = 1; }
     for (int pass = 0; pass < 2; pass++) {      /* pass 0 paints the flat tiles (kept for the 3D export), pass 1 the autotiled ones (what the 2D scene shows) */
     Sheet *sa1 = rm && pass && !getenv("SK_NOAUTO") ? sheet("tilesets", "World_A1") : NULL, *sa2 = rm && pass && !getenv("SK_NOAUTO") ? sheet("tilesets", "World_A2") : NULL;      /* SK_NOAUTO=1 in the daemon environment paints the old flat tiles (to compare the 3D look) */
-    for (int g = SK_SHIP; g < SK_SPACE; g++) {
-        memset(h, 0, sizeof h); sk_read_page(pg[g - SK_SHIP], h);
+    for (int gi = 0; gi < 11; gi++) {
+        int g = gi < 2 ? SK_SHIP + gi : SK_NB0 + gi - 2; if (g == SK_NB0 + 4) continue; char np[PATH_MAX];
+        if (g >= SK_NB0) snprintf(np, sizeof np, "%s/state/page_n%d.txt", APP, g - SK_NB0);
+        memset(h, 0, sizeof h); int okp = sk_read_page(g >= SK_NB0 ? np : pg[g - SK_SHIP], h); if (g >= SK_NB0) { sk_nb_ok[g - SK_NB0] = okp; if (!okp) continue; }
         for (int y = 0; y < SK_H; y++) { for (int x = 0; x < SK_W; x++) { int v = h[y][x], band = v < 20 ? 0 : v < 35 ? 1 : v < 45 ? 2 : v < 65 ? 3 : v < 80 ? 4 : v < 92 ? 5 : 6;
             sk_glyph[g][y][x] = 'G'; sk_fs[g][y][x] = grass; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = v / 10;
             if (rm && band == 4) { if (ob) sk_stamp(g, ob, (x + y) & 1, 0, x, y, 'T'); else sk_solid(g, x, y, 'T', 40, 110, 50, 0, 1); }
@@ -533,9 +543,10 @@ static void pet_own_export_room(int r, const char *d) {
     snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\ncells\n", cols, rows, XT, nslot, sk_rockslot);
         for (int y = 0; y < rows; y++) { for (int x = 0; x < cols; x++) {
             fprintf(f, "%s%d,%d,%d", x ? " " : "", fs[y][x], ws[y][x], sk_cdep[r][y][x]);
-            if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ && x + sk_dox >= 0 && x + sk_dox < SK_W && y + sk_doy >= 0 && y + sk_doy < SK_H && sk_fs3[SK_SHIP][y + sk_doy][x + sk_dox]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
-                char pg = sk_glyph[SK_SHIP][y + sk_doy][x + sk_dox]; int ud = 10 + sk_cdep[SK_SHIP][y + sk_doy][x + sk_dox]; if (ud > 16) ud = 16;
-                fprintf(f, ",%d,%d,%d", sk_fs3[SK_SHIP][y + sk_doy][x + sk_dox], ud, pg == '~' ? 9 : 8); } }
+            int ur_ = -1, ulx_ = 0, uly_ = 0; if (r < SK_SHIP && sk_pl_cur >= 0 && x >= SOX && x < SOX + SSZ && y >= SOY && y < SOY + SSZ) ur_ = sk_wroom(x + sk_dox, y + sk_doy, &ulx_, &uly_);
+            if (ur_ >= 0 && sk_fs3[ur_][uly_][ulx_]) {      /* the planet's own centre under the hovering hull: a second solid run (engine cells.txt tokens 4..6: tile, depth, sink) so the planet is whole under the ship */
+                char pg = sk_glyph[ur_][uly_][ulx_]; int ud = 10 + sk_cdep[ur_][uly_][ulx_]; if (ud > 16) ud = 16;
+                fprintf(f, ",%d,%d,%d", sk_fs3[ur_][uly_][ulx_], ud, pg == '~' ? 9 : 8); } }
           fputc('\n', f); } fclose_tmp(f, p); } }
 }
 #elif PET_SECTION == 74
@@ -597,7 +608,7 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
         if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
         if (sk_helm_direct()) {      /* direct: the ship flies over the planet page on this screen; the page under the hull slides away, up to direct_max cells (stop there) */
             sk_direct_load(); int nx = sk_dox + atoi(argv[2]), ny = sk_doy + atoi(argv[3]);
-            { int mx = tune("direct_max", 10); if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the planet is almost gone behind the ship: it stops here (%d,%d)", sk_dox, sk_doy); return; } }
+            { int mx = tune("direct_max", 16); if (mx > 16) mx = 16; if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the planet is almost gone behind the ship: it stops here (%d,%d)", sk_dox, sk_doy); return; } }
             { char dp[PATH_MAX], db[24], rb[120]; spath(dp, "direct.txt"); snprintf(db, sizeof db, "%d %d\n", nx, ny); write_if_changed(dp, db, strlen(db)); snprintf(rb, sizeof rb, "DIRECT|%ld|ship|%d,%d|%d,%d", (long)time(NULL), sk_dox, sk_doy, nx, ny); append_line("events.txt", rb); }
             sk_helm_settle = now_ms() + 1500; sk_ship_refresh(msg, cap); snprintf(msg, cap, "ship offset %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         int gx, gy, dx = atoi(argv[2]), dy = atoi(argv[3]); sk_ship_load(&gx, &gy); int nx = gx + dx, ny = gy + dy;

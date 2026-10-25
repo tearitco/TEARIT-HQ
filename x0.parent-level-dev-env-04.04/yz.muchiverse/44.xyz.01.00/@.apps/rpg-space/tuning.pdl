@@ -19,5 +19,5 @@ TUNE | engage_retry_ms | 20000 | INT on: how long to wait before sending the eng
 TUNE | click_poll_ms   | 150   | how often a click on the board's 2D canvas is looked at (a click on a pet or the trainer selects them)          | 150
 # rpg-space (16 pets on a 56-wide island page): fewer, bigger output bursts. out_min_ms = at most one render + ui.txt write per this many ms (the pets still step on their own timers)
 TUNE | out_min_ms       | 250   | at most one scene / ui write per this many ms (0 = after every pet step, the old behaviour of the other pets games) | 0
-TUNE | direct_max       | 10    | how many cells the planet may slide away under the ship in DIRECT flight (0..15)                                                                       | 10
+TUNE | direct_max       | 16    | how many cells the planet may slide away under the ship in DIRECT flight (0..16; the map is the planet page and its eight neighbour pages, 48 x 48)                                                 | 16
 TUNE | map_box          | 1     | 1 = draw a grey box at the limit of the planet map under the ship (outer ring grey, four tall corner pillars): shows where the map ends while the planet slides away in direct flight (tests and presentations)  | 1
