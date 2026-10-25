@@ -4,11 +4,33 @@
 # Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
 # Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
 # Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
-# Topic: One day on the rpg-space board: the ship flies as an entity, then the direction changes to life, death and respawn, as event pages, with a health line in the bottom bar.
-# Long-form: everything called measured was run on 2026-10-25. Everything called a plan is a plan.
+# Topic: Two days on the rpg-space board: the ship and the land become real entities and the ship flies up, down and sideways with the picture unchanged; then the direction changes to life, death and respawn, as event pages, with a health line in the bottom bar.
+# Long-form: everything called measured was run on 2026-10-24 and 2026-10-25. Everything called a plan is a plan.
 # Companion documents: BOOK 16.game RPG-SPACE-LIFE-DEATH-RESPAWN, RPG-SPACE-DEATH-RESPAWN-GRAVITY-NOTES, rpg-space-vehicle-entities/README.
 
-**THE NARRATOR:** Early in the day the work was a ship. By evening the owner said: never mind all that, we are moving in a new direction. Deaths and respawns.
+**THE NARRATOR:** NIGHT 53 left the ship as a hull painted into the map. The owner had said what it was always meant to be: the ship is an entity, the land is an entity, and the map is only a blank parallax backdrop. Two days went into that, before anyone died.
+
+**MAXINE:** What is a vehicle entity, in the engine?
+
+**TOMO:** A piece with its own folder. A state file with a position, a size, which desk it shows, and whether it lights itself. A model file with a small grid of voxels. The board engine draws it, so moving the ship means changing two numbers, not rewriting the book and reloading for five seconds.
+
+**RAHWEH:** Direct flight is the second helm mode. Arrow keys move the ship entity. The rule the owner set was strict: when you pilot, the picture must not change. The ship stays fixed on the screen, the land scrolls under it, the camera follows.
+
+**MAXINE:** And up and down?
+
+**TOMO:** X and Z. Level keys read from the selector, the helm lifts by one, the ship and the land pieces move opposite, so the picture stays. Measured: x three times gave one, two, three. Two frames showed the ship over the planet at different heights. Not done: collision, and one z press was dropped by the test harness.
+
+**THE NARRATOR:** Then the planet. Once the land was its own entity it looked flat next to the old rpg-dust worlds, which were textured and extruded. The owner asked why not paint it with the old look and still keep it an entity. So the engine overlays the planet page onto the empty cells of the shown desk, driven by one small land file with a position, an altitude and a source. And the missing centre came back the same way as before: a second solid run under the hull.
+
+**RAHWEH:** One more request: a debug frame. A grey wireframe cube for the bounds in three dimensions, a grey ring in two, toggled by a line in view.pdl. The first cube was green, and invisible because a flag was reset every frame. The owner had to say, more than once, I do not see it. Fixed by computing the box before the early return.
+
+**MAXINE:** Is it all verified?
+
+**TOMO:** Honestly, no. The overlay logs ran, the cube was seen in the live window top down, and the planet body showed under the hull. The two dimensional ring, a clean angled frame of cube and planet, altitude with the overlay, and the release were not re-run.
+
+**THE NARRATOR:** That was the ship. Then, late on the second day, the direction changed.
+
+**THE NARRATOR:** Then, in the evening, the ship was set down. By evening the owner said: never mind all that, we are moving in a new direction. Deaths and respawns.
 
 **MAXINE:** Who dies?
 
