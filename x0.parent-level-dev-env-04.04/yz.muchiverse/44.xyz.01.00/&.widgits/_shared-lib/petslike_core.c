@@ -1342,6 +1342,9 @@ static int daemon_main(void) {
 #undef PET_SECTION
         }
         long ms = now_ms();
+#define PET_SECTION 79
+#include PET_SKIN
+#undef PET_SECTION
         for (int i = 0; i < nparty; i++) if (ms >= next_ms[i]) { next_ms[i] = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700); if (tm || !run_on()) continue; replay(); if (ai_step(i)) { static long last_far = 0; if (others[i].room == vroom || ms - last_far > tune("far_repaint_ms", 1500)) { dirty = 1; if (others[i].room != vroom) last_far = ms; } } use_ent(active); }     /* real time (INT off): every pet walks on its own. INT on is turn based: no timers, only your acts advance time */
         if (!in && run_on() && ms >= next_hero_ms) {      /* INT off = real time, every character lives on its own: the hero too (owner 2026-10-23: when In: is off control reverts to AI, Harold stood still). While INT is on he is whoever you steer or waits for his turn. */
             next_hero_ms = ms + tune("step_min_ms", 900) + rand() % tune("step_jitter_ms", 700) + 300; replay(); if (ai_step(-1)) dirty = 1; use_ent(active); }

@@ -1,0 +1,11 @@
+# life.pdl - needs, death, respawn and drops of rpg-space (owner 2026-10-25). Re-read every 2 s, no rebuild.
+# LIFE | key | value | what it does
+LIFE | enabled      | 1        | 0 = nobody gets hungry or dies
+LIFE | hunger_ms    | 60000    | ms for hunger to rise by 1 (0..100); at 100 each step costs starve_hp
+LIFE | starve_hp    | 1        | hp lost per hunger step once hunger is 100
+LIFE | drop_pct     | 50       | percent of every item stack that falls where they died (0 = keep all, 100 = drop all)
+LIFE | death_mode   | respawn  | respawn = back on the safe place with full hp; permadeath = stays dead for good; session = stays dead until `life reset` / the next session
+LIFE | respawn_room | bridge   | the safe place: room id ...
+LIFE | respawn_x    | 7        | ... and cell
+LIFE | respawn_y    | 5        |
+LIFE | take_range   | 2        | how many cells away a drop can be taken from (anyone can take)

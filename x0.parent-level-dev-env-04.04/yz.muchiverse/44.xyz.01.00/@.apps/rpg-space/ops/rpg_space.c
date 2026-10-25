@@ -49,6 +49,7 @@ typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; }
 static SkPl sk_pl[16]; static int sk_pl_n, sk_pl_cur; static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
 static const char *sk_room_label(int room); static void sk_look_load(void); static void sk_desk_sync(void); static void sk_rebuild(char *msg, size_t cap); static void export3d(char *msg, size_t cap);
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
+static void sk_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_life_tick(void);      /* life, death, respawn, drops (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
@@ -228,6 +229,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "life")) { sk_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "setpos")) {      /* setpos <room id> <x> <y>: put the controlled one on a cell (test setup for board_ctl; refuses a blocked cell and the space desk) */
         int rr = argc >= 2 ? room_idx(argv[1]) : -1, px = argc >= 4 ? atoi(argv[2]) : -1, py = argc >= 4 ? atoi(argv[3]) : -1;
         if (argc >= 4) { rr = room_idx(argv[1]); px = atoi(argv[2]); py = atoi(argv[3]); } else if (argc == 3) { snprintf(msg, cap, "usage: setpos <room> <x> <y>"); return; }
@@ -666,11 +668,80 @@ static int sk_helm_interact(char *msg, size_t cap) {
         { char b[120]; snprintf(b, sizeof b, "EVENT|%ld|%s|action|%s|%d,%d", (long)time(NULL), ev, rooms[e->room].id, hx, hy); append_line("events.txt", b); } }
     if (fp) fclose(fp); return done;
 }
+/* LIFE, DEATH, RESPAWN, DROPS (owner 2026-10-25: "everyone dies, pets included; hunger + damage, vacuum later by events; respawn on the ship bridge; half the items drop, anyone can take them; toggle the drop and permadeath / per-session death in .pdl").
+ * Config: life.pdl (LIFE | key | value, re-read every 2 s). Per character: state/life_<id>.txt (hp, hunger, dead, deaths, inv=key:n,...). Drops: state/drops.txt (live drops, rewritten on change). Log rows DEATH / RESPAWN / DROP / TAKE in state/events.txt.
+ * The behaviour is in these C functions; event pages (events/death, events/respawn, trigger parallel) can call the verbs `life hurt|feed|give|take|status|reset`, the way RPG Maker's death state and common events do. Design: 16.game/rpg-space-vehicle-entities (death section). */
+typedef struct { int id, room, x, y, n; char item[24], owner[24]; } SkDrop;
+static SkDrop sk_drops[64]; static int sk_ndrops, sk_dropid = 1;
+typedef struct { int hp, hunger, dead, deaths; char inv[400]; long last; } SkLife;
+static SkLife sk_life[NP + 1];      /* index 0 = the hero, 1.. = party */
+static char sk_lc_mode[16] = "respawn", sk_lc_room[16] = "bridge"; static int sk_lc_on = 1, sk_lc_hunger_ms = 60000, sk_lc_starve = 1, sk_lc_drop = 50, sk_lc_rx = 7, sk_lc_ry = 5, sk_lc_range = 2; static long sk_lc_at;
+static void sk_life_cfg(void) {
+    long now = now_ms(); if (sk_lc_at && now - sk_lc_at < 2000) return; sk_lc_at = now; char p[PATH_MAX], ln[300]; char *f[4]; snprintf(p, sizeof p, "%s/life.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return;
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 4) < 3 || strcmp(f[0], "LIFE")) continue; const char *k = f[1], *v = f[2];
+        if (!strcmp(k, "enabled")) sk_lc_on = atoi(v); else if (!strcmp(k, "hunger_ms")) sk_lc_hunger_ms = atoi(v); else if (!strcmp(k, "starve_hp")) sk_lc_starve = atoi(v); else if (!strcmp(k, "drop_pct")) sk_lc_drop = atoi(v);
+        else if (!strcmp(k, "death_mode")) snprintf(sk_lc_mode, sizeof sk_lc_mode, "%.15s", v); else if (!strcmp(k, "respawn_room")) snprintf(sk_lc_room, sizeof sk_lc_room, "%.15s", v); else if (!strcmp(k, "respawn_x")) sk_lc_rx = atoi(v); else if (!strcmp(k, "respawn_y")) sk_lc_ry = atoi(v); else if (!strcmp(k, "take_range")) sk_lc_range = atoi(v); }
+    fclose(fp);
+    for (char *q = sk_lc_mode; *q; q++) if (*q == ' ') *q = 0;      /* trailing blanks of the pdl cell */
+    for (char *q = sk_lc_room; *q; q++) if (*q == ' ') *q = 0;
+}
+static int sk_life_slot(const char *id) { if (!id || !id[0]) return -2; char lo[24]; snprintf(lo, sizeof lo, "%s", id); for (char *q = lo; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; char hn[24]; snprintf(hn, sizeof hn, "%s", hero.name); for (char *q = hn; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; if (!strcmp(lo, hn)) return 0; for (int i = 0; i < nparty; i++) if (!strcmp(lo, party[i].id)) return i + 1; return -2; }
+static const char *sk_life_id(int slot) { static char b[24]; if (slot == 0) { snprintf(b, sizeof b, "%s", hero.name); for (char *q = b; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; return b; } return party[slot - 1].id; }
+static int sk_life_mhp(int slot) { int m = slot == 0 ? hero.mhp : party[slot - 1].mhp; return m > 0 ? m : 40; }
+static Ent *sk_life_ent(int slot) { return slot == 0 ? &tr : &others[slot - 1]; }
+static void sk_life_path(int slot, char *p, size_t n) { char nm[40]; snprintf(nm, sizeof nm, "life_%s.txt", sk_life_id(slot)); spath(p, nm); (void)n; }
+static void sk_life_load(int slot) { SkLife *L = &sk_life[slot]; char p[PATH_MAX], b[900]; sk_life_path(slot, p, sizeof p); int had = read_file(p, b, sizeof b); L->hp = sk_life_mhp(slot); L->hunger = 0; L->dead = 0; L->deaths = 0; L->inv[0] = 0;
+    if (had) for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "hp=", 3)) L->hp = atoi(l + 3); else if (!strncmp(l, "hunger=", 7)) L->hunger = atoi(l + 7); else if (!strncmp(l, "dead=", 5)) L->dead = atoi(l + 5); else if (!strncmp(l, "deaths=", 7)) L->deaths = atoi(l + 7); else if (!strncmp(l, "inv=", 4)) snprintf(L->inv, sizeof L->inv, "%s", l + 4); }
+    if (!L->last) L->last = now_ms(); }
+static void sk_life_save(int slot) { SkLife *L = &sk_life[slot]; char p[PATH_MAX], b[900]; sk_life_path(slot, p, sizeof p); snprintf(b, sizeof b, "hp=%d\nhunger=%d\ndead=%d\ndeaths=%d\ninv=%s\n", L->hp, L->hunger, L->dead, L->deaths, L->inv); write_if_changed(p, b, strlen(b)); }
+static int sk_inv_count(SkLife *L, const char *item) { char b[400]; snprintf(b, sizeof b, "%s", L->inv); for (char *t = strtok(b, ","); t; t = strtok(NULL, ",")) { char *c = strchr(t, ':'); if (c && !strncmp(t, item, (size_t)(c - t)) && (size_t)(c - t) == strlen(item)) return atoi(c + 1); } return 0; }
+static void sk_inv_set(SkLife *L, const char *item, int n) { char b[400], out[400] = ""; int found = 0; snprintf(b, sizeof b, "%s", L->inv); for (char *t = strtok(b, ","); t; t = strtok(NULL, ",")) { char *c = strchr(t, ':'); if (!c) continue; char k[24]; snprintf(k, sizeof k, "%.*s", (int)(c - t), t); int cnt = atoi(c + 1); if (!strcmp(k, item)) { cnt = n; found = 1; } if (cnt > 0) { size_t o = strlen(out); snprintf(out + o, sizeof out - o, "%s%s:%d", o ? "," : "", k, cnt); } }
+    if (!found && n > 0) { size_t o = strlen(out); snprintf(out + o, sizeof out - o, "%s%s:%d", o ? "," : "", item, n); } snprintf(L->inv, sizeof L->inv, "%s", out); }
+static void sk_drops_save(void) { char p[PATH_MAX], b[64 * 80 + 32], *w = b; spath(p, "drops.txt"); b[0] = 0; for (int i = 0; i < sk_ndrops; i++) { SkDrop *d = &sk_drops[i]; w += snprintf(w, sizeof b - (size_t)(w - b), "%d|%s|%d|%d|%d|%s|%d\n", d->id, rooms[d->room].id, d->x, d->y, d->n, d->item, 0); (void)d->owner; } write_if_changed(p, b, strlen(b)); }
+static void sk_drops_load(void) { char p[PATH_MAX], b[64 * 80 + 32]; spath(p, "drops.txt"); read_file(p, b, sizeof b); sk_ndrops = 0; for (char *l = strtok(b, "\n"); l && sk_ndrops < 64; l = strtok(NULL, "\n")) { char *f[8]; if (split_bar(l, f, 8) < 6) continue; SkDrop *d = &sk_drops[sk_ndrops]; d->id = atoi(f[0]); d->room = room_idx(f[1]); d->x = atoi(f[2]); d->y = atoi(f[3]); d->n = atoi(f[4]); snprintf(d->item, sizeof d->item, "%s", f[5]); d->owner[0] = 0; if (d->room < 0 || d->n <= 0) continue; if (d->id >= sk_dropid) sk_dropid = d->id + 1; sk_ndrops++; } }
+static void sk_life_log(const char *kind, int slot, const char *extra) { char b[200]; snprintf(b, sizeof b, "%s|%ld|%s|%s", kind, (long)time(NULL), sk_life_id(slot), extra); append_line("events.txt", b); }
+static void sk_life_die(int slot) {      /* the death: half the stacks fall where they stood, then respawn / stay down by death_mode */
+    SkLife *L = &sk_life[slot]; Ent *e = sk_life_ent(slot); char b[400], ex[160]; int dropped = 0; snprintf(b, sizeof b, "%s", L->inv);
+    sk_drops_load(); for (char *t = strtok(b, ","); t; t = strtok(NULL, ",")) { char *c = strchr(t, ':'); if (!c) continue; char k[24]; snprintf(k, sizeof k, "%.*s", (int)(c - t), t); int cnt = atoi(c + 1), d = cnt * sk_lc_drop / 100; if (d <= 0 || sk_ndrops >= 64) continue;
+        SkDrop *q = &sk_drops[sk_ndrops++]; q->id = sk_dropid++; q->room = e->room; q->x = e->x; q->y = e->y; q->n = d; snprintf(q->item, sizeof q->item, "%s", k); q->owner[0] = 0; dropped += d; }
+    { char cp[400], *sv = NULL; snprintf(cp, sizeof cp, "%s", L->inv); for (char *t = strtok_r(cp, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) { char *c = strchr(t, ':'); if (!c) continue; char k[24]; snprintf(k, sizeof k, "%.*s", (int)(c - t), t); int cnt = atoi(c + 1); sk_inv_set(L, k, cnt - cnt * sk_lc_drop / 100); } }
+    sk_drops_save(); L->deaths++; snprintf(ex, sizeof ex, "%s,%d,%d|dropped %d (%d%%)|mode %s", rooms[e->room].id, e->x, e->y, dropped, sk_lc_drop, sk_lc_mode); sk_life_log("DEATH", slot, ex);
+    if (!strcmp(sk_lc_mode, "respawn")) { int rr = room_idx(sk_lc_room); if (rr < 0) rr = 0; L->hp = sk_life_mhp(slot); L->hunger = 0; L->dead = 0; if (slot == 0 || slot - 1 == active) {} int ci = slot == 0 ? -1 : slot - 1; use_ent(ci); pet.room = rr; pet.x = sk_lc_rx; pet.y = sk_lc_ry; pet.tx = pet.ty = -1; pet_save(); use_ent(active); snprintf(ex, sizeof ex, "%s,%d,%d", sk_lc_room, sk_lc_rx, sk_lc_ry); sk_life_log("RESPAWN", slot, ex); }
+    else { L->hp = 0; L->dead = 1; }      /* permadeath / session: stays down (the walker is not removed yet) */
+    sk_life_save(slot); }
+static int sk_life_tick(void) {      /* hunger grows, starving hurts, 0 hp dies. Returns 1 when anything changed */
+    sk_life_cfg(); if (!sk_lc_on) return 0; int changed = 0; long now = now_ms();
+    for (int s = 0; s <= nparty; s++) { SkLife *L = &sk_life[s]; static int loaded[NP + 1]; if (!loaded[s]) { sk_life_load(s); loaded[s] = 1; } if (L->dead) continue;
+        if (sk_lc_hunger_ms > 0 && now - L->last >= sk_lc_hunger_ms) { L->last = now; sk_life_load(s); L->last = now; if (L->dead) continue;      /* re-read first: verbs and event pages write these files from other processes, a cached copy would overwrite their changes */
+            if (L->hunger < 100) L->hunger++; else L->hp -= sk_lc_starve; sk_life_save(s); changed = 1; }
+        if (L->hp <= 0) { sk_life_die(s); changed = 1; } }
+    return changed; }
+static void sk_life_verb(int argc, char **argv, char *msg, size_t cap) {
+    sk_life_cfg(); sk_drops_load(); const char *a = argc >= 2 ? argv[1] : "status"; static int loaded[NP + 1];
+    for (int s = 0; s <= nparty; s++) if (!loaded[s]) { sk_life_load(s); loaded[s] = 1; }
+    if (!strcmp(a, "status")) { int slot = argc >= 3 ? sk_life_slot(argv[2]) : -2; char b[500] = ""; size_t o = 0;
+        for (int s = 0; s <= nparty; s++) { if (slot >= 0 && s != slot) continue; SkLife *L = &sk_life[s]; o += (size_t)snprintf(b + o, sizeof b - o, "%s hp %d/%d hunger %d%s deaths %d inv [%s]; ", sk_life_id(s), L->hp, sk_life_mhp(s), L->hunger, L->dead ? " DEAD" : "", L->deaths, L->inv); }
+        snprintf(msg, cap, "%s drops %d, mode %s, drop %d%%", b, sk_ndrops, sk_lc_mode, sk_lc_drop); return; }
+    if (!strcmp(a, "reset")) { for (int s = 0; s <= nparty; s++) { SkLife *L = &sk_life[s]; L->hp = sk_life_mhp(s); L->hunger = 0; L->dead = 0; L->deaths = 0; L->last = now_ms(); sk_life_save(s); } sk_ndrops = 0; sk_drops_save(); snprintf(msg, cap, "life reset: everyone alive, drops cleared"); return; }
+    int slot = argc >= 3 ? sk_life_slot(argv[2]) : -2; if (slot < 0 && strcmp(a, "take")) { snprintf(msg, cap, "life: unknown character (use harold, ember, ...)"); return; }
+    if (!strcmp(a, "hurt") && argc >= 4) { sk_life[slot].hp -= atoi(argv[3]); if (sk_life[slot].hp <= 0) sk_life_die(slot); else sk_life_save(slot); snprintf(msg, cap, "%s hp %d", sk_life_id(slot), sk_life[slot].hp); return; }
+    if (!strcmp(a, "feed") && argc >= 4) { sk_life[slot].hunger -= atoi(argv[3]); if (sk_life[slot].hunger < 0) sk_life[slot].hunger = 0; sk_life_save(slot); snprintf(msg, cap, "%s hunger %d", sk_life_id(slot), sk_life[slot].hunger); return; }
+    if (!strcmp(a, "set") && argc >= 5) { if (!strcmp(argv[3], "hunger")) sk_life[slot].hunger = atoi(argv[4]); else if (!strcmp(argv[3], "hp")) sk_life[slot].hp = atoi(argv[4]); sk_life_save(slot); snprintf(msg, cap, "%s %s %s", sk_life_id(slot), argv[3], argv[4]); return; }
+    if (!strcmp(a, "give") && argc >= 4) { int n = argc >= 5 ? atoi(argv[4]) : 1; sk_inv_set(&sk_life[slot], argv[3], sk_inv_count(&sk_life[slot], argv[3]) + n); sk_life_save(slot); snprintf(msg, cap, "%s now has [%s]", sk_life_id(slot), sk_life[slot].inv); return; }
+    if (!strcmp(a, "take") && argc >= 3) { int id = atoi(argv[2]), k = -1; for (int i = 0; i < sk_ndrops; i++) if (sk_drops[i].id == id) k = i; if (k < 0) { snprintf(msg, cap, "no drop #%d", id); return; }
+        int ts = argc >= 4 ? sk_life_slot(argv[3]) : (ctl_idx() < 0 ? 0 : ctl_idx() + 1); if (ts < 0) { snprintf(msg, cap, "life take: unknown taker"); return; } Ent *e = sk_life_ent(ts); SkDrop *d = &sk_drops[k];
+        if (sk_life[ts].dead) { snprintf(msg, cap, "the dead cannot take things"); return; }
+        if (e->room != d->room || abs(e->x - d->x) + abs(e->y - d->y) > sk_lc_range) { snprintf(msg, cap, "too far from the drop (%s at %d,%d, range %d)", rooms[d->room].id, d->x, d->y, sk_lc_range); return; }
+        sk_inv_set(&sk_life[ts], d->item, sk_inv_count(&sk_life[ts], d->item) + d->n); sk_life_save(ts); { char ex[100]; snprintf(ex, sizeof ex, "#%d %s x%d", d->id, d->item, d->n); sk_life_log("TAKE", ts, ex); } snprintf(msg, cap, "%s took %s x%d", sk_life_id(ts), d->item, d->n); sk_drops[k] = sk_drops[--sk_ndrops]; sk_drops_save(); return; }
+    snprintf(msg, cap, "usage: life status [id] | hurt <id> <n> | feed <id> <n> | give <id> <item> [n] | set <id> hunger|hp <n> | take <drop#> [id] | reset");
+}
 #elif PET_SECTION == 76
             if (c == 27 && flag_on("helm", 0)) { char *hv[2] = { "helm", "off" }; sk_helm_verb(2, hv, msg, sizeof msg); dirty = 1; }      /* Esc lets go of the helm and still leaves In: (the default below) */
 #elif PET_SECTION == 77
             { char tb[100]; snprintf(tb, sizeof tb, "%ld enter-in-engine hero=%d,%d room=%s ctl=%d", (long)time(NULL), tr.x, tr.y, rooms[tr.room].id, ctl_idx()); append_line("int_trace.txt", tb); }
             took = sk_helm_interact(msg, sizeof msg);
+#elif PET_SECTION == 79
+        if (run_on() && sk_life_tick()) dirty = 1;      /* hunger, starving, death, respawn (life.pdl) */
 #elif PET_SECTION == 78
             if (sk_helm_follow(msg, sizeof msg)) dirty = 1;
 #endif
