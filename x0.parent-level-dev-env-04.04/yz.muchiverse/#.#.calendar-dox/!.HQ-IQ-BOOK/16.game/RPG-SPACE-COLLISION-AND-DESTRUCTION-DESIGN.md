@@ -55,6 +55,10 @@ More key controls will go with the ship, each an event page bound to a key in `k
 - **Self-shrinking:** the ship (and crew) shrinks to enter a microverse, to the planned "dustopia" scale (a scale change of the same entities, with its own map and its own environment layers). Needs a scale field on the vehicle entity and a way to hand a page/desk to the engine at another scale; no design yet.
 - Others as they come (scanner, tractor, hull patch); each is a verb + a page + a key row, so adding one never touches the engine.
 
+## 4e. More things to fly among (not built, owner 2026-10-25)
+
+Later: **asteroids** (to mine) and **other ships** (to battle and trade with). Both fit what exists: an asteroid is a land-like entity (own `pieces/<id>` with position, size and a block model, destructible per `blocks.pdl`); another ship is a vehicle entity like `ship_01` (own state.txt, model, owner/faction, crew) driven by an event page or an AI pilot instead of the helm. Collision between them uses the same `collision.pdl` type pairs (ship/asteroid, ship/ship: block or overlap), trading and battle are event pages (hail, trade menu, fire = damage through the same `life hurt` / cell-damage sinks). Needs, before building: more than one vehicle entity and one land overlay in the engine at once (today the engine reads ONE `ship_01` and ONE `land_01`; `veh_1..9` names exist for vehicles, the land overlay is single).
+
 ## 5. Rules for whoever builds it
 
 - Verify with a 3D frame ("if you didn't see it in 3D it doesn't exist"): ship blocked at the planet, a cell removed, a drop appearing.
