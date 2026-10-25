@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | death
+STATE        | source               | hand-made
+NODE         | id=1 type=rpg_space_verb | verb=life|arg=die @actor

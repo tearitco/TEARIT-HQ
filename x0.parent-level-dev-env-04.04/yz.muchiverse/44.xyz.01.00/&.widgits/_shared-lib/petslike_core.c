@@ -100,6 +100,9 @@ static int g_gr;
 #define NP 8      /* up to 6 DB members + the pals made with "+ new pal" (pals.pdl) */
 #endif
 
+#ifndef PET_BAR_HP
+#define PET_BAR_HP(slot) ""      /* a skin may add the 6th field of bar.txt: ok | low | ko (the health bar under the name in the bottom bar) */
+#endif
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
 typedef struct { char id[16], name[32], biome[16]; int fc, fr, outdoor, over, cols, rows, tpx, trig; } Room;
 typedef struct { int room, c, r, w, h, x, y; char sheet[24]; } Scen;
@@ -847,8 +850,8 @@ static void write_room_events(int r) {
     snprintf(p, sizeof p, "%s/ascii_legend.txt", d); write_if_changed(p, leg, sizeof leg - 1);
     { char bp[PATH_MAX]; snprintf(bp, sizeof bp, "%s/pieces/system/maps/" PET_APP "/view.pdl", PCHQ); char vw[PATH_MAX + 160]; char sc[PATH_MAX]; spath(sc, "scene.raw"); int vn = snprintf(vw, sizeof vw, "VIEW | cell_px | " PET_VIEW_CELL "\nVIEW | default_style | " PET_VIEW_STYLE "\nVIEW | scene_raw | %s\nVIEW | scene_w | %d\nVIEW | scene_h | %d\n", sc, FW, FH); write_if_changed(bp, vw, (size_t)vn); }      /* the engine draws this book's 2D at <app>'s own 48 px tile (house desk_grid.pdl says 80) */
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
-    char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, hero.name, tr.x, tr.y);
-    for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\n", id++, party[i].name, others[i].x, others[i].y);
+    char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\t%s\n", id++, hero.name, tr.x, tr.y, PET_BAR_HP(0));
+    for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\t%s\n", id++, party[i].name, others[i].x, others[i].y, PET_BAR_HP(i + 1));
     snprintf(p, sizeof p, "%s/bar.txt", d); write_if_changed(p, bb, bo);
 }
 /* ---------- the pc-hq 3D view follows the SELECTED entity ----------

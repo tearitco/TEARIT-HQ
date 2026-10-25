@@ -1,0 +1,4 @@
+# event.pal - respawn as an EVENT PAGE (RPG Maker style common event, trigger parallel): after a death in respawn mode: the character goes back to the safe place of life.pdl (bridge), full hp, hunger 0.
+# pkg=respawn page=page_1
+exec cmd_1.sh
+halt

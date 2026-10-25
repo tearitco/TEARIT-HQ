@@ -1,0 +1,4 @@
+# event.pal - death as an EVENT PAGE (RPG Maker style common event, trigger parallel): hp reached 0: the Death state is set, this page runs the death (the drop of life.pdl drop_pct of every stack where they stood); in respawn mode the death plays the respawn page next.
+# pkg=death page=page_1
+exec cmd_1.sh
+halt

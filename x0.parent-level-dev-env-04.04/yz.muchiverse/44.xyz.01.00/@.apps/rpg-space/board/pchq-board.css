@@ -17,7 +17,7 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
 /* bottom status/footer strip */
 .pchq-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; }
 .pchq-ft { background-color: #232323; color: #cccccc; font-size: 10px;
-  width: 160px; height: 40px; border: 1px solid #3a3a3a; border-width: 1; }
+  width: 134px; height: 40px; border: 1px solid #3a3a3a; border-width: 1; }
 /* the synthesized footer row pager (+ / -) - appears bottom-right when
  * entity cells wrap past one row */
 #footer-rows-more, #footer-rows-less {
@@ -96,3 +96,8 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
 /* load guard tab (pid and cpu %, taskbar manager ktb_load_sample): red when a limit is passed */
 .tab.pchq-tb-warn { color: #ff5555; font-weight: bold; }
 .pchq-tb-warn { color: #ff5555; font-weight: bold; }
+
+/* health bar under the name of an entity slot in the bottom bar (owner 2026-10-25): green, red under 30 percent, grey when KO'd */
+.hpb-ok { color: #3cdc50; }
+.hpb-low { color: #e03c3c; }
+.hpb-ko { color: #808080; }
