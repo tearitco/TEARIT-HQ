@@ -25,6 +25,13 @@ run_one_session() {
         fi
     done
 
+    # SESSION COPY (found 2026-10-24): the renderer, parser and keyboard are started as ./system/... from the session dir, and the symlinks that
+    # used to provide system/ pal/ pieces/chtpm/ were eliminated (2026-08-20): the static files are COPIED in (as my-chara-txt does).
+    for _d in system ops pal pieces/chtpm pieces/registry; do
+        if [ -d "$SCRIPT_DIR/$_d" ]; then mkdir -p "$SESSION_DIR/$_d" && cp -r "$SCRIPT_DIR/$_d/." "$SESSION_DIR/$_d/"; fi
+    done
+    [ -f "$SCRIPT_DIR/default_op.txt" ] && cp -p "$SCRIPT_DIR/default_op.txt" "$SESSION_DIR/default_op.txt"
+
     cd "$SESSION_DIR"
     : > pieces/apps/player_app/interact_relay.txt
     : > pieces/keyboard/history.txt

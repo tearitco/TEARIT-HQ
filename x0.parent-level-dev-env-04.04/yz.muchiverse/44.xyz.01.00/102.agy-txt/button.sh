@@ -32,7 +32,9 @@ case "$ACTION" in
         # keystrokes - confirmed live: typed characters landed doubled
         # in the editor buffer right after this exact fix was added.
         # Poll until genuinely dead instead of guessing a fixed delay.
-        PKILL_PATTERNS='system/keyboard_input system/renderer system/prisc\+x system/chtpm_parser_pal system/gl_mirror system/chtpm_rgb_render manager/\+x/agy_browser_manager\.\+x'
+        # SCOPED to this app's own folder (2026-10-24): the bare patterns ("system/renderer" ...) matched EVERY app's renderer / parser / prisc on the
+        # machine, so starting this editor killed the board engine of an unrelated open window. Its children are all started as "$SCRIPT_DIR/system/...".
+        PKILL_PATTERNS="$SCRIPT_DIR/system/keyboard_input $SCRIPT_DIR/system/renderer $SCRIPT_DIR/system/prisc\\+x $SCRIPT_DIR/system/chtpm_parser_pal $SCRIPT_DIR/system/gl_mirror $SCRIPT_DIR/system/chtpm_rgb_render $SCRIPT_DIR/manager/\\+x/agy_browser_manager\\.\\+x"
         for pat in $PKILL_PATTERNS; do
             pkill -f "$pat" 2>/dev/null
         done
@@ -73,6 +75,14 @@ case "$ACTION" in
         # rm -rf'd on exit instead of the durable house-level docs/.
 
         # No symlinks — C processes resolve shared/persistent files via PRISC_PROJECT_ROOT env var
+
+        # SESSION COPY (found 2026-10-24: the window showed only "Nav > _", 69 bytes). The parser reads pieces/chtpm/layouts/editor.chtpm and the
+        # module is started as system/prisc+x pal/... RELATIVE to this session dir; the symlinks that provided them were eliminated (2026-08-20),
+        # so the static files are COPIED in (as my-chara-txt does). The binaries the script starts are still the absolute "$SCRIPT_DIR/system/..." ones.
+        for _d in system ops pal pieces/chtpm pieces/registry; do
+            if [ -d "$SCRIPT_DIR/$_d" ]; then mkdir -p "$SESSION_DIR/$_d" && cp -r "$SCRIPT_DIR/$_d/." "$SESSION_DIR/$_d/"; fi
+        done
+        [ -f "$SCRIPT_DIR/default_op.txt" ] && cp -p "$SCRIPT_DIR/default_op.txt" "$SESSION_DIR/default_op.txt"
 
         cd "$SESSION_DIR"
         : > pieces/apps/player_app/interact_relay.txt

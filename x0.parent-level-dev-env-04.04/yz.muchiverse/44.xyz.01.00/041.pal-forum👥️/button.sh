@@ -70,6 +70,13 @@ case "$ACTION" in
                  "$SESSION_DIR/pieces/os" "$SESSION_DIR/net" "$SESSION_DIR/projects/pal-forum/manager"
         mkdir -p "$SCRIPT_DIR/users"  # shared, real - not session-scoped
         # No symlinks — C processes resolve shared/persistent files via PRISC_PROJECT_ROOT env var
+        # SESSION COPY (found 2026-10-24: "exec failed: ./system/renderer", the app opened nothing). The orchestrator launches ./system/... and the
+        # parser reads pal/ and pieces/chtpm/ relative to THIS session dir; the symlinks that used to provide them were eliminated (2026-08-20),
+        # so the static, read-only files are COPIED in, the way my-chara-txt does. Persistent state (wallets/, data/) stays in the real dir.
+        for _d in system ops pal pieces/chtpm pieces/registry projects; do
+            if [ -d "$SCRIPT_DIR/$_d" ]; then mkdir -p "$SESSION_DIR/$_d" && cp -r "$SCRIPT_DIR/$_d/." "$SESSION_DIR/$_d/"; fi
+        done
+        [ -f "$SCRIPT_DIR/default_op.txt" ] && cp -p "$SCRIPT_DIR/default_op.txt" "$SESSION_DIR/default_op.txt"
         cd "$SESSION_DIR"
         : > pieces/apps/player_app/interact_relay.txt
         : > pieces/keyboard/history.txt

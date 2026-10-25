@@ -59,6 +59,9 @@ Find your session by identity: `ps -eo pid,args | grep '<app>/pieces/sessions'` 
 - The terminal and the GL window both write keys; the lock file `input_focus.lock` decides who may. If a relay test works and a real key does not (or the reverse), look at that lock first.
 - `chtpm` apps without their glyph bitmaps (`pieces/registry/`) draw blank text in the GL window: checksums look fine, the picture is empty. Session copies must include `pieces/registry` (the buttons already do `cp -r`).
 - `orchestrator` kills its process group on exit; do not run it from a shell you need.
+- **Do not run `button.sh run` or `kill` of these apps while another board / window is open**: many (agy-txt before 2026-10-24, wsr-pal `kill`, about 40 launchers) `pkill -f "system/renderer"` and friends, which also kills the board engine of an unrelated window. Check the pattern in the script first; the safe form matches `/proc/<pid>/cwd` to the session dir.
+- A session that is missing `system/`, `pal/` or `pieces/chtpm/` shows as `exec failed: ./system/renderer` in `pieces/system/orchestrator.log` or a 69-byte "Nav > _" frame: the launcher must copy those folders in (fixed 2026-10-24 for eight apps).
+- yahoo-app keeps its live session in `/tmp/.yahoo-app-bank-<epoch>-<pid>`, not in `pieces/sessions`.
 - Do **not** drive a GL window with `xdotool` and the relay at once.
 - Build before running: `button.sh compile` (wsr-pal) / `scripts/build.sh`. A missing binary prints `MISSING` in `button.sh check` where the app has it.
 

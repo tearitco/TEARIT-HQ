@@ -95,14 +95,31 @@ RUN CHECK 2026-10-24 (owner: "check them out from relay / frame history to be su
     0.user-pal/00.login-signup, 0.user-pal/01.avatar-creation, 205.ttg-tactics, 300.rpg-xyz, 300.rtp-xyz, 101.mutaclsym+18.0G,
     @.apps/my-biotech, @.apps/my-lawyer, @.apps/myne-qrypto/qtc, +.TSOTS (menu_loop.pal)
   LAUNCHED but the frame is nearly empty: 102.agy-txt and 102.editor (69 bytes, "Nav > _" only; editor.chtpm + keyboard_input ran)
-  DID NOT COME UP:
-    041.pal-chain, 041.pal-forum   button.sh run prints "./system/keyboard_input: No such file or directory" (line 124 / 158) and ends;
-                                   frame on disk is the 2026-10-05 one
-    01.muchi-pals                  orchestrator + keyboard_input start, then exit code 1; no session frame
-    044.pal-chat-irc, 045.muchi-pal-agent   orchestrator printed Ready and started children; no session folder / frame found
-                                   in 11 s (not diagnosed; may need longer or a network)
-    @.apps/yahoo-app               orchestrator only; frame on disk 18 days old, not refreshed
-    _.START_BUTTON                 nothing started, no frame
+  DID NOT COME UP (first pass), CAUSES FOUND AND FIXED the same day (re-probed: live frame, processes stay up):
+    ROOT CAUSE A (muchi-pals, pal-chain, pal-forum, pal-chat-irc, muchi-pal-agent, _.START_BUTTON, and the two editors):
+      the SESSION folder had no system/ pal/ pieces/chtpm. The orchestrator log said "exec failed: ./system/renderer" and
+      "exec failed: ./system/chtpm_parser_pal" (muchi-pals); pal-chain / forum died at "./system/keyboard_input: No such file".
+      The symlinks that put those folders in the session were removed by the 2026-08-20 "symlink elimination" (their own
+      comment in pal-chain/button.sh line 51: "No symlinks"), but the orchestrator / button.sh still start ./system/... from
+      the session dir. my-chara-txt, civ-txt, login-signup and yahoo-app were converted properly (they cp -r the static
+      folders into the session); these eight were missed. FIX: the same copy block in each button.sh `run` (system ops pal
+      pieces/chtpm pieces/registry projects default_op.txt). Persistent state (wallets/, data/) is untouched.
+      Re-probe results: muchi-pals live ([>] 1. [User], 5 procs); pal-chain live (Wallet ID login, 2 procs);
+      pal-forum live (5 procs, stable for 14 s, frame 590 B); chat-irc live (PAL-CHAT-IRC [login]); pal-agent live
+      (MUCHI-PAL-CHAT [IDLE]); agy-txt live (XYZ EDITOR, FILE: docs/untitled.txt, 1037 B); START_BUTTON live (menu System /
+      Widgets / Apps / App Store, stable 32 s); editor-00.00 starts its module but its frame stayed 162 B "[Map Loading...]"
+      in an 11 s look (not given a longer look: UNRESOLVED, may be the same header line as START_BUTTON or a real stall).
+    ROOT CAUSE B (agy-txt, editor): the 69-byte "Nav > _" frame was the same missing pieces/chtpm: the parser got no layout.
+    FALSE ALARM (yahoo-app): it runs; its live session is /tmp/.yahoo-app-bank-<epoch>-<pid>, NOT pieces/sessions, so the
+      first check read the stale frame on disk. Re-checked: "Y A H O O - X Y Z", Bank Balance $5000.00, frame fresh.
+    pal-forum's first-pass "procs=0" was timing: re-run showed 5 stable processes after the fix.
+    INCIDENT during the check (mine): 102.agy-txt `run` began with a house-wide `pkill -f 'system/renderer system/keyboard_input
+      system/prisc+x ...'`, and wsr-pal's `button.sh kill` does the same kind of pkill. Both patterns match EVERY app's
+      processes, including the rpg-space board engine's renderer / chtpm_parser_pal / chtpm_rgb_render, which were running
+      before and gone afterwards (a fresh board stack was running later). I cannot prove which of the two killed them. agy-txt's
+      patterns are now scoped to its own "$SCRIPT_DIR/system/...". About 40 button.sh files carry similar unscoped pkill / kill_all
+      lines (list: grep -l "pkill.*system/" **/button.sh); they are NOT changed. The safe pattern is the one already used in
+      kill_own_module(): match by /proc/<pid>/cwd == the session dir.
   NOT LAUNCHED (would open real windows on the owner's desktop): group B (aomorai-editor, mutaclysm 19.00, piececraft-xyz,
     civ-txt, tactics-txt, TSC_ELO). Their frames were not checked.
   GL: never started (NO_GL=1); the gl_mirror half of every app is UNTESTED here.
