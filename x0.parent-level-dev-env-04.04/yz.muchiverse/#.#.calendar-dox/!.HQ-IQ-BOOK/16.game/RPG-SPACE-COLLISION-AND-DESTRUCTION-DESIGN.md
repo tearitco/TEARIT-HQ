@@ -1,6 +1,6 @@
 # RPG-SPACE: collision and destruction (design, 2026-10-25)
 
-**Status: DESIGN ONLY. Nothing in sections 3-6 is built.** Written for future agents after the owner asked (2026-10-25) "do we have collision codes yet?", "research how RPG Maker MV does collision vs Unreal", and "what about destructability (which we should have) ala minecraft?". Read this before touching ship/land collision, damage or breakable blocks. Related: `RPG-SPACE-LIFE-DEATH-RESPAWN.md` (the damage sink), `rpg-space-vehicle-entities/README.md` (ship and land entities), `RPG-SPACE-DEATH-RESPAWN-GRAVITY-NOTES.md`.
+**Status (2026-10-25 evening): the FIRST SLICE of section 3 rule 1-2 is built and run (section 7); destruction, mining/building and the environment layers (section 8) are NOT built.** Written for future agents after the owner asked (2026-10-25) "do we have collision codes yet?", "research how RPG Maker MV does collision vs Unreal", and "what about destructability (which we should have) ala minecraft?". Read this before touching ship/land collision, damage or breakable blocks. Related: `RPG-SPACE-LIFE-DEATH-RESPAWN.md` (the damage sink), `rpg-space-vehicle-entities/README.md` (ship and land entities), `RPG-SPACE-DEATH-RESPAWN-GRAVITY-NOTES.md`.
 
 ## 1. What exists today (verified 2026-10-25 by grep over engine, core, skin, docs)
 
@@ -45,9 +45,24 @@
 - Put numbers in .pdl, behaviour in event pages; do not hard-code hardness or damage in C.
 - Do not extend the old slide approach (rewriting the book per step); entities and overlays only ([[ship-and-land-are-entities]] direction).
 
-## 6. Open questions for the owner
+## 6. Owner answers (2026-10-25) - these are decisions, not questions
 
-1. Do crew die/take damage on every hit, or only above a speed threshold?
-2. Is everything destructible (planet, hull) or only marked blocks?
-3. Is mining/building a goal (tools, hardness) or only impact/explosion damage first?
-4. Should a destroyed hull cell open the ship to vacuum (ties to the later ozone/vacuum events)?
+1. **Crew damage:** every hit costs the crew a very slight amount, more at speed; it is mainly there to register the ship's damage for now. The percentages change later through .pdl and events (built that way: `collision.pdl`).
+2. **Destructible:** (not answered directly; mining/building is the goal, so design for per-block destruction of land and hull, flagged per block in `blocks.pdl`).
+3. **Mining and building are A MAJOR GOAL** of the game, not an extra.
+4. **Environment is a goal too:** oxygen / gas levels (chemical-compound level events or entities, "or other?"), temperature, thermonuclear (reactor / star heat) as needs and levels. A destroyed hull cell opening to vacuum is part of this (answer to the old vacuum question: yes, via events).
+
+## 7. First slice BUILT and RUN (2026-10-25)
+
+- `@.apps/rpg-space/collision.pdl` (re-read every 2 s): `enabled`, `block`, `contact_alt` (-4), `reach` (12), `crew_base_pm` (5) and `crew_speed_pm` (5), per-mille of max hp (minimum 1 hp).
+- `rpg_space.c` section 75: `sk_coll_check(nx,ny,nz)` is called by `helm move` (after the map-limit check, which already existed as `direct_max`) and `helm lift`. Hit = ship altitude <= contact_alt AND |offset| <= reach around the planet centre. A hit logs `COLLISION|time|ship|x,y,z|speed n|blocked`, plays `events/collision` (trigger parallel; the page runs `collision hit`; fallback = the effect directly), refuses the move when `block=1`.
+- Effect (`collision hit [speed]`): every crew member loses `max(1, mhp*(base+speed*spd)/1000)` hp through `life hurt`; `state/ship_damage.txt` (`hits= dmg= last=`) is the ship's own damage register. Speed 1..4 from the time since the previous helm action. `collision` alone prints the status.
+- RAN: lowering from altitude 11 to -5 and -6 was refused both times, 2 COLLISION rows, the page ledger shows "Play event page_1 (trigger=parallel) for collision", crew lost 4 hp (hero, 450 max) and 1 hp (pets, 20 max) per hit at speed 1, register `hits=1 dmg=1`.
+- **NOT verified / NOT built:** `contact_alt -4` and `reach 12` are GUESSES (calibrate: lower the ship in a low side camera and find where the hull meets the land; then set them); land is a square, not per-cell solids; the grey map-limit cube is still drawn from the desk volume and does not enclose the planet; no horizontal collision with tall land features; ship vs ship/drops/other entities; Galaxy mode.
+
+## 8. Next, in order (proposal)
+
+1. Calibrate `contact_alt` and `reach` with frames; make the grey cube the real map limit around ship + land.
+2. Per-cell solids: read the land cells (planet page `sk_cdep` columns) instead of a square.
+3. Destruction: `blocks.pdl`, `state/damage.txt`, a `mine <cell>` verb (tool, hardness, ticks), drops via `state/drops.txt`, and placing blocks (`build <cell> <block>`), all as event pages.
+4. Environment layers as their own small state, per room/cell, with events: `air.txt` (oxygen, gases by compound), `temp.txt`, a heat source entity (reactor/star); needs on characters (breathing, cold/heat) feeding the same `life hurt` sink. A broken hull cell leaks air to the neighbour cell. Keep each as a plain file + one `.pdl` of constants, like `life.pdl`.

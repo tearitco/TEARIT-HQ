@@ -1,0 +1,9 @@
+# collision.pdl - ship against land, in DIRECT flight (owner 2026-10-25). Re-read every 2 s, no rebuild.
+# Design: BOOK 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md (same order as RPG Maker canPass: map limit, then ghost, then solid cells, then other entities).
+# COLL | key | value | what it does
+COLL | enabled       | 1   | 0 = the ship flies through the land (ghost)
+COLL | block         | 1   | 1 = a move into the land is refused (the ship stays), 0 = only the damage happens
+COLL | contact_alt   | -4  | ship altitude (state/direct_z.txt, -6..12) at or below which the hull touches the land (CALIBRATE with a side-view frame)
+COLL | reach         | 12  | how many cells from the planet centre (direct.txt offsets) count as over solid land
+COLL | crew_base_pm  | 5   | per-mille (1/1000) of max hp every crew member loses per hit (minimum 1 hp): very slight, it just registers the damage
+COLL | crew_speed_pm | 5   | extra per-mille per speed step (1..4; faster moves hit harder)

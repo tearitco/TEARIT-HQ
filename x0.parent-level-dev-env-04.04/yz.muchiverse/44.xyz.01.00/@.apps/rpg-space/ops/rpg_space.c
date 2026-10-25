@@ -50,6 +50,7 @@ typedef struct { char id[24], label[40], kind[8], root[160]; } SkTs;
 typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; } SkPl;
 static SkPl sk_pl[16]; static int sk_pl_n, sk_pl_cur; static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
 static const char *sk_room_label(int room); static void sk_look_load(void); static void sk_desk_sync(void); static void sk_rebuild(char *msg, size_t cap); static void export3d(char *msg, size_t cap);
+static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static void sk_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_life_tick(void); static void sk_life_ui(char *out, size_t cap);      /* life, death, respawn, drops (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
@@ -233,6 +234,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "life")) { sk_life_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "setpos")) {      /* setpos <room id> <x> <y>: put the controlled one on a cell (test setup for board_ctl; refuses a blocked cell and the space desk) */
         int rr = argc >= 2 ? room_idx(argv[1]) : -1, px = argc >= 4 ? atoi(argv[2]) : -1, py = argc >= 4 ? atoi(argv[3]) : -1;
         if (argc >= 4) { rr = room_idx(argv[1]); px = atoi(argv[2]); py = atoi(argv[3]); } else if (argc == 3) { snprintf(msg, cap, "usage: setpos <room> <x> <y>"); return; }
@@ -632,13 +634,15 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(a, "lift") && argc >= 3) {
         if (!flag_on("helm", 0) || !sk_helm_direct()) { snprintf(msg, cap, "not in direct flight"); return; }
         int z = sk_doz_get() + atoi(argv[2]); if (z < -6 || z > 12) { snprintf(msg, cap, "the ship cannot go %s than this (%d)", z < 0 ? "lower" : "higher", sk_doz_get()); return; }
+        sk_direct_load(); if (sk_coll_check(sk_dox, sk_doy, z, msg, cap)) return;      /* the hull would touch the land (collision.pdl) */
         { char zp[PATH_MAX], zb[16]; spath(zp, "direct_z.txt"); snprintf(zb, sizeof zb, "%d\n", z); write_if_changed(zp, zb, strlen(zb)); char rb[100]; snprintf(rb, sizeof rb, "DIRECT|%ld|lift|%d", (long)time(NULL), z); append_line("events.txt", rb); }
         sk_direct_load(); sk_land_write(0); snprintf(msg, cap, "ship altitude %d", z); return; }
     if (!strcmp(a, "move") && argc >= 4) {
         if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
         if (sk_helm_direct()) {      /* direct: the arrows move the land pieces under the ship (state/direct.txt + pieces/land_*); no rebuild, no reload */
             sk_direct_load(); int nx = sk_dox + atoi(argv[2]), ny = sk_doy + atoi(argv[3]); int mx = tune("direct_max", 16); if (mx > 16) mx = 16;
-            if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the edge of the map: the ship stops (%d,%d)", sk_dox, sk_doy); return; }
+            if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the edge of the map: the ship stops (%d,%d)", sk_dox, sk_doy); return; }      /* step 1 of canPass: the map limit */
+            if (sk_coll_check(nx, ny, sk_doz_get(), msg, cap)) return;      /* step 3: solid land */
             { char dp[PATH_MAX], db[24], rb[120]; spath(dp, "direct.txt"); snprintf(db, sizeof db, "%d %d\n", nx, ny); write_if_changed(dp, db, strlen(db)); snprintf(rb, sizeof rb, "DIRECT|%ld|ship|%d,%d|%d,%d", (long)time(NULL), sk_dox, sk_doy, nx, ny); append_line("events.txt", rb); }
             sk_dox = nx; sk_doy = ny; sk_land_write(0); sk_helm_settle = now_ms() + 300; snprintf(msg, cap, "ship at %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         int gx, gy, dx = atoi(argv[2]), dy = atoi(argv[3]); sk_ship_load(&gx, &gy); int nx = gx + dx, ny = gy + dy;
@@ -751,6 +755,27 @@ static void sk_life_verb(int argc, char **argv, char *msg, size_t cap) {
         sk_inv_set(&sk_life[ts], d->item, sk_inv_count(&sk_life[ts], d->item) + d->n); sk_life_save(ts); { char ex[100]; snprintf(ex, sizeof ex, "#%d %s x%d", d->id, d->item, d->n); sk_life_log("TAKE", ts, ex); } snprintf(msg, cap, "%s took %s x%d", sk_life_id(ts), d->item, d->n); sk_drops[k] = sk_drops[--sk_ndrops]; sk_drops_save(); return; }
     snprintf(msg, cap, "usage: life status [id] | die <id|@actor> | respawn <id|@actor> | hurt <id> <n> | feed <id> <n> | give <id> <item> [n] | set <id> hunger|hp <n> | take <drop#> [id] | reset");
 }
+/* COLLISION (owner 2026-10-25; design BOOK 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md): the ship's move is tested against the land like RPG Maker's canPass (map limit first, in sk_helm_verb; then solid land here). A hit logs COLLISION, plays events/collision (trigger parallel, fallback = the effect directly), refuses the move when block=1, and costs every crew member a very small hp share (more at speed) plus a mark on the ship's own damage register state/ship_damage.txt. First slice: land = a square reach around the planet centre, touched at or below contact_alt (approximation, calibrate); per-cell solids and destruction are not built. */
+static int sk_cl_on = 1, sk_cl_block = 1, sk_cl_contact = -4, sk_cl_reach = 12, sk_cl_base = 5, sk_cl_spd = 5; static long sk_cl_at, sk_cl_last;
+static void sk_coll_cfg(void) {
+    long now = now_ms(); if (sk_cl_at && now - sk_cl_at < 2000) return; sk_cl_at = now; char p[PATH_MAX], ln[300]; char *f[4]; snprintf(p, sizeof p, "%s/collision.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return;
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 4) < 3 || strcmp(f[0], "COLL")) continue; const char *k = f[1], *v = f[2];
+        if (!strcmp(k, "enabled")) sk_cl_on = atoi(v); else if (!strcmp(k, "block")) sk_cl_block = atoi(v); else if (!strcmp(k, "contact_alt")) sk_cl_contact = atoi(v); else if (!strcmp(k, "reach")) sk_cl_reach = atoi(v); else if (!strcmp(k, "crew_base_pm")) sk_cl_base = atoi(v); else if (!strcmp(k, "crew_speed_pm")) sk_cl_spd = atoi(v); }
+    fclose(fp); }
+static void sk_coll_effect(int speed, char *msg, size_t cap) {      /* what events/collision calls: slight crew damage, more at speed, and the ship's own damage register */
+    sk_coll_cfg(); int hurt = 0; for (int s = 0; s <= nparty; s++) { int mh = sk_life_mhp(s), n = mh * (sk_cl_base + speed * sk_cl_spd) / 1000; if (n < 1) n = 1; char nb[16], m2[160]; snprintf(nb, sizeof nb, "%d", n); char *hv[4] = { "life", "hurt", (char *)sk_life_id(s), nb }; sk_life_verb(4, hv, m2, sizeof m2); hurt += n; }
+    { char p[PATH_MAX], b[120]; int hits = 0, dmg = 0; spath(p, "ship_damage.txt"); read_file(p, b, sizeof b); sscanf(b, "hits=%d dmg=%d", &hits, &dmg); hits++; dmg += speed; snprintf(b, sizeof b, "hits=%d dmg=%d last=%ld\n", hits, dmg, (long)time(NULL)); write_if_changed(p, b, strlen(b)); }
+    if (msg) snprintf(msg, cap, "collision at speed %d: crew lost %d hp in all", speed, hurt); }
+static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the move is refused */
+    sk_coll_cfg(); long now = now_ms(); long dt = now - sk_cl_last; sk_cl_last = now; if (!sk_cl_on) return 0;
+    if (nz > sk_cl_contact || abs(nx) > sk_cl_reach || abs(ny) > sk_cl_reach) return 0;
+    int speed = dt < 300 ? 4 : dt < 700 ? 3 : dt < 1500 ? 2 : 1; char p[PATH_MAX], b[24], rb[100]; spath(p, "coll_speed.txt"); snprintf(b, sizeof b, "%d\n", speed); write_if_changed(p, b, strlen(b));
+    snprintf(rb, sizeof rb, "COLLISION|%ld|ship|%d,%d,%d|speed %d|%s", (long)time(NULL), nx, ny, nz, speed, sk_cl_block ? "blocked" : "passed"); append_line("events.txt", rb);
+    char m2[160] = ""; if (!run_event_x("collision", "parallel", "")) sk_coll_effect(speed, m2, sizeof m2);
+    snprintf(msg, cap, "%s the land at %d,%d altitude %d (speed %d)", sk_cl_block ? "the hull hits" : "the hull scrapes", nx, ny, nz, speed); return sk_cl_block; }
+static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap) {      /* collision hit [speed]: what the collision page runs; collision status */
+    sk_coll_cfg(); if (argc >= 2 && !strcmp(argv[1], "hit")) { char p[PATH_MAX], b[16] = ""; spath(p, "coll_speed.txt"); read_file(p, b, sizeof b); int sp = argc >= 3 ? atoi(argv[2]) : atoi(b); if (sp < 1) sp = 1; if (sp > 4) sp = 4; sk_coll_effect(sp, msg, cap); return; }
+    { char p[PATH_MAX], b[100] = ""; spath(p, "ship_damage.txt"); read_file(p, b, sizeof b); b[strcspn(b, "\n")] = 0; snprintf(msg, cap, "collision %s, block %d, contact_alt %d, reach %d; ship %s", sk_cl_on ? "on" : "off", sk_cl_block, sk_cl_contact, sk_cl_reach, b[0] ? b : "undamaged"); } }
 #elif PET_SECTION == 76
             if (c == 27 && flag_on("helm", 0)) { char *hv[2] = { "helm", "off" }; sk_helm_verb(2, hv, msg, sizeof msg); dirty = 1; }      /* Esc lets go of the helm and still leaves In: (the default below) */
 #elif PET_SECTION == 77

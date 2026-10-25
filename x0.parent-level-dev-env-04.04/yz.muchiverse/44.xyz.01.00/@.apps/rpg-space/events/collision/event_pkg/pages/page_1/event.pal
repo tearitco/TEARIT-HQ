@@ -1,0 +1,4 @@
+# event.pal - collision as an EVENT PAGE (trigger parallel): the ship's hull hit the land; the page applies the slight crew damage (more at speed) and marks the ship's damage register. Speed is in state/coll_speed.txt.
+# pkg=collision page=page_1
+exec cmd_1.sh
+halt
