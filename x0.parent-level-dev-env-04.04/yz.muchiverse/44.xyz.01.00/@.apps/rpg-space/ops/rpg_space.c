@@ -404,7 +404,8 @@ static void sk_build_ship(void) {      /* called after the planet pages are pain
         if (pr_ < 0) { sk_glyph[g][y][x] = '_'; sk_fs[g][y][x] = 0; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 0; }
         else { sk_glyph[g][y][x] = sk_glyph[pr_][ly_][lx_]; sk_fs[g][y][x] = sk_fs[pr_][ly_][lx_]; sk_ws[g][y][x] = 0; sk_cdep[g][y][x] = 10 + sk_cdep[pr_][ly_][lx_]; if (sk_cdep[g][y][x] > 16) sk_cdep[g][y][x] = 16;      /* a body under every planet cell, at least as deep as the sink (negative EXTRUDE in the ship desks) or the sunk surface would be nothing */ if (sk_glyph[g][y][x] == 'T' || sk_glyph[g][y][x] == 'r') sk_glyph[g][y][x] = sk_glyph[g][y][x] == 'T' ? 'G' : 'p'; }
         if (pr_ >= 0 && tune("map_box", 0) && !(sx_ == -16 || sx_ == 31 || sy_ == -16 || sy_ == 31) && (lx_ == 0 || lx_ == 15 || ly_ == 0 || ly_ == 15)) sk_solid(g, x, y, 'G', 205, 205, 215, 0, 0);      /* the border of every 16 x 16 page: a pale line, so crossing from one page to the next shows */
-    pf_[g][y][x] = sk_fs[g][y][x]; pf3_[g][y][x] = pr_ >= 0 ? sk_fs3[pr_][ly_][lx_] : 0; }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
+    { int ex_ = x + sk_dox, ey_ = y + sk_doy; if (tune("map_box", 0) && sk_pl_cur >= 0 && ex_ >= 0 && ey_ >= 0 && ex_ < SK_W && ey_ < SK_H && (ex_ == 0 || ex_ == SK_W - 1 || ey_ == 0 || ey_ == SK_H - 1)) sk_solid(g, x, y, 'G', 150, 150, 160, 0, 0); }      /* MAP LIMIT in 2D (owner: 'the other one was 2D'): the edge of the planet page is a grey ring in the 2D scene and the minimap; the 3D picture gets the engine's wireframe cube instead (view.pdl debug_land), so the cell's 3D copy below keeps the planet underneath */
+        pf_[g][y][x] = sk_fs[g][y][x]; pf3_[g][y][x] = pr_ >= 0 ? sk_fs3[pr_][ly_][lx_] : 0; }      /* trees and rocks become flat ground: seen from the ship the planet is a surface */
     sk_ship_room(0, a4, door, 8, 11, 6, 2, bx, by, 3);      /* bridge, the hub: green hex floor, doors in the south wall to the quarters (left) and the hold (right) and in the west wall to the engine room */
     sk_ship_room(1, a4, door, 4, 1, 4, 2, qx, qy, 1);      /* quarters: wood, a door in the north wall */
     sk_ship_room(2, a4, door, 10, 11, 6, 2, hx, hy, 1);      /* hold: dark grating, a door in the north wall */
@@ -588,17 +589,12 @@ static int sk_doz_get(void) { char p[PATH_MAX], b[16]; spath(p, "direct_z.txt");
 static void sk_ship_world_write(void) {      /* the ship is the entity that moves: its world position (cells from the page origin) is the truth, the land pieces are placed relative to it, so the picture around the hull never changes while it flies. desk=none = the engine does not draw it (the real hull stays the baked bridge desk). */
     char d[PATH_MAX], p[PATH_MAX], b[200]; snprintf(d, sizeof d, "%s/pieces/ship_01", PCHQ); mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
     snprintf(b, sizeof b, "entity_type=vehicle\ndesk=none\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=12\nsize_y=12\nsize_h=4\n", sk_dox, sk_doy, sk_doz_get()); write_if_changed(p, b, strlen(b)); }
-static void sk_land_write(int models) {      /* models=1 also writes the voxels (once per helm / planet change), models=0 only moves the pieces */
-    sk_direct_load(); sk_ship_world_write(); char d[PATH_MAX], p[PATH_MAX], b[300];
-    for (int i = 0; i < 9; i++) { int room = i == 4 ? SK_SHIP : (sk_nb_ok[i] ? SK_NB0 + i : -1); snprintf(d, sizeof d, "%s/pieces/land_%d", PCHQ, i);
-        if (room < 0) { snprintf(p, sizeof p, "%s/state.txt", d); unlink(p); continue; }
-        mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
-        snprintf(b, sizeof b, "entity_type=land\ndesk=bridge\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=16\nsize_y=16\nsize_h=%d\n", 16 * (i % 3 - 1) - sk_dox, 16 * (i / 3 - 1) - sk_doy, tune("land_z", -9) - sk_doz_get(), 2); write_if_changed(p, b, strlen(b));
-        if (!models) continue; snprintf(p, sizeof p, "%s/model.txt", d); char tmp[PATH_MAX]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(tmp, "w"); if (!f) continue;
-        fprintf(f, "dim 16 2 16\n"); for (int y = 0; y < SK_H; y++) for (int x = 0; x < SK_W; x++) { int r, g, bl; sk_slot_avg(sk_fs3[room][y][x], &r, &g, &bl); fprintf(f, "%d 0 %d %d %d %d\n%d 1 %d %d %d %d\n", x, y, r * 6 / 10, g * 6 / 10, bl * 6 / 10, x, y, r, g, bl); }
-        fclose(f); rename(tmp, p); }
+static void sk_land_write(int models) {      /* the land is ONE entity now (pieces/land_01): the engine fills the empty cells of the bridge desk from the planet page desk, shifted by the entity's position, with the old textured / extruded look (engine maker_load). models is unused. */
+    (void)models; sk_direct_load(); sk_ship_world_write(); char d[PATH_MAX], p[PATH_MAX], b[300];
+    snprintf(d, sizeof d, "%s/pieces/land_01", PCHQ); mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
+    snprintf(b, sizeof b, "entity_type=land\npos_x=%d\npos_y=%d\nalt=%d\nsrc=region\n", -sk_dox, -sk_doy, sk_doz_get()); write_if_changed(p, b, strlen(b));
 }
-static void sk_land_remove(void) { char d[PATH_MAX], p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/ship_01/state.txt", PCHQ); unlink(p); for (int i = 0; i < 9; i++) { snprintf(d, sizeof d, "%s/pieces/land_%d", PCHQ, i); snprintf(p, sizeof p, "%s/state.txt", d); unlink(p); } }
+static void sk_land_remove(void) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/ship_01/state.txt", PCHQ); unlink(p); snprintf(p, sizeof p, "%s/pieces/land_01/state.txt", PCHQ); unlink(p); }
 static int sk_helm_direct(void) { char p[PATH_MAX], b[20]; spath(p, "helm_mode.txt"); read_file(p, b, sizeof b); return !strncmp(b, "direct", 6); }
 static void sk_ship_refresh(char *msg, size_t cap) {      /* the page under the hull moved: rebuild the ship rooms, write the book, reload it, show the same desk again */
     sk_build_ship(); export3d(msg, cap); char ib[PATH_MAX]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); FILE *f = fopen(ib, "a"); if (f) { fputs("CONFIRM_START_MAP:" PET_APP "\n", f); fclose(f); } pet_load(); calc_view(); sk_desk_sync();

@@ -457,20 +457,23 @@ static void maker_read_events(const char *dir) {
     fclose(f);
 }
 
-static int maker_load(const char *root) {
+static int g_land_box_on = 0; static float g_land_box[6];      /* debug_land=1: the planet page's volume as one wireframe cube (x0 y0 z0 x1 y1 z1 in world cells) */
+static const char *g_ml_dir_override = NULL;      /* set while the land overlay loads its source desk: use this directory, leave the held-desk cache alone */
+static int maker_load_base(const char *root) {
     char wpath[4352], map_id[128] = "", desk_id[128] = "";
     snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root);
     read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
     read_kv_str(wpath, "desk_id", desk_id, sizeof(desk_id));
-    if (!map_id[0] || !desk_id[0]) return 0;
+    if (!g_ml_dir_override && (!map_id[0] || !desk_id[0])) return 0;
     char dir[4352];
     snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
+    if (g_ml_dir_override) snprintf(dir, sizeof(dir), "%s", g_ml_dir_override);
     /* Reload when cells.rgba changes. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
     struct stat cst; char rgba_path[4400]; snprintf(rgba_path, sizeof(rgba_path), "%s/cells.rgba", dir);
     long long cell_stamp = (stat(rgba_path, &cst) == 0) ? (long long)cst.st_mtime : 0;
     static long long held_stamp = -1;
-    if (g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
-    held_stamp = cell_stamp;
+    if (!g_ml_dir_override && g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
+    if (!g_ml_dir_override) held_stamp = cell_stamp;
     free(g_mk.atlas); free(g_mk.cells); free(g_mk.cdepth); free(g_mk.under); free(g_mk.udep); free(g_mk.usink); free(g_mk.para); free(g_mk.glyph);
     int prev_id = g_mk.id;
     memset(&g_mk, 0, sizeof(g_mk));
@@ -573,6 +576,51 @@ static int maker_load(const char *root) {
     }
     g_mk.ok = 1;
     return 1;
+}
+
+/* LAND ENTITY (owner 2026-10-25: "paint it with the old look but still allow the land to be an entity"): pieces/land_01/state.txt = pos_x pos_y (where the planet page's origin lies on this desk, may be negative), alt (levels the ship climbed: the planet sinks further), src (the desk that holds the planet page).
+ * Every EMPTY cell of the shown desk (no floor tile, no wall tile) takes the cell of the src desk at (x - pos_x, y - pos_y): its floor tile, its glyph (trees / rocks flat, as seen from the ship), and a body 10 + its depth levels deep. The old textured, extruded
+ * terrain look, moved by a number, no book rewrite. Applied to a fresh load of the desk; a changed state reloads the desk first. Assumes the desks of one book share one tile atlas (the skin exports one). */
+static int maker_load(const char *root) {
+    char sp[PATH_BUF], line[256], src[64] = ""; int present = 0, px = 0, py = 0, alt = 0; static char sig[160] = "none"; static int applied_id = -1;
+    snprintf(sp, sizeof(sp), "%s/pieces/land_01/state.txt", root);
+    FILE *f = host_fopen(sp, "r");
+    if (f) { while (fgets(line, sizeof(line), f)) { if (!strncmp(line, "pos_x=", 6)) px = atoi(line + 6); else if (!strncmp(line, "pos_y=", 6)) py = atoi(line + 6); else if (!strncmp(line, "alt=", 4)) alt = atoi(line + 4); else if (!strncmp(line, "src=", 4)) { snprintf(src, sizeof(src), "%s", line + 4); src[strcspn(src, "\r\n")] = 0; } } fclose(f); present = src[0] != 0; }
+    char nsig[160]; if (present) snprintf(nsig, sizeof(nsig), "%d %d %d %s", px, py, alt, src); else snprintf(nsig, sizeof(nsig), "none");
+    int changed = strcmp(nsig, sig) != 0; snprintf(sig, sizeof(sig), "%s", nsig);
+    if (changed) g_mk.key[0] = 0;      /* force a fresh, unmodified load of the desk */
+    int ok = maker_load_base(root);
+    if (!ok) return ok;
+    g_land_box_on = 0;
+    if (!present) { applied_id = g_mk.id; return ok; }
+    { char vq0[PATH_BUF]; snprintf(vq0, sizeof(vq0), "%s/pieces/system/view.pdl", root); if (read_kv_int(vq0, "debug_land", 0)) { g_land_box_on = 1; g_land_box[0] = (float)px; g_land_box[2] = (float)py; g_land_box[3] = (float)(px + 16); g_land_box[5] = (float)(py + 16); g_land_box[1] = 0.0f; g_land_box[4] = 20.0f; } }
+
+    if (!changed && applied_id == g_mk.id) return ok;
+    applied_id = g_mk.id + 0;
+    char wpath[4352], map_id[128] = ""; snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root); read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
+    char sdir[4352]; snprintf(sdir, sizeof(sdir), "%s/pieces/system/maps/%s/%s", root, map_id, src);
+    MakerAtlas prim = g_mk; memset(&g_mk, 0, sizeof(g_mk)); g_ml_dir_override = sdir; int sok = maker_load_base(root); g_ml_dir_override = NULL;
+    MakerAtlas lnd = g_mk; g_mk = prim;
+    int filled = 0, under_n = 0;
+    if (sok && lnd.cells && lnd.glyph && lnd.w > 0 && g_mk.cells && g_mk.glyph) {
+        if (!g_mk.cdepth) g_mk.cdepth = (unsigned char *)calloc((size_t)g_mk.w * (size_t)g_mk.h, 1);
+        for (int y = 0; y < g_mk.h; y++) for (int x = 0; x < g_mk.w; x++) {
+            size_t ci = (size_t)y * g_mk.w + x; int hull = g_mk.cells[ci * 2] || g_mk.cells[ci * 2 + 1];
+            int sx = x - px, sy = y - py; if (sx < 0 || sy < 0 || sx >= lnd.w || sy >= lnd.h) continue;
+            size_t si = (size_t)sy * lnd.w + sx; if (!lnd.cells[si * 2]) continue;
+            if (hull) {      /* under the hull: the planet's own centre as the SECOND solid run of the column (one run holds the hull floor), so the planet is whole under the ship (the 'missing centre' error of NIGHT 53) */
+                if (g_mk.under && g_mk.udep && g_mk.usink) { int ud = 10 + (lnd.cdepth ? lnd.cdepth[si] : 0) + (alt > 0 ? alt : 0); if (ud > 16) ud = 16; g_mk.under[ci] = lnd.cells[si * 2]; g_mk.udep[ci] = (unsigned char)ud; g_mk.usink[ci] = (unsigned char)(lnd.glyph[si] == '~' ? 9 : 8); under_n++; g_mk.under_any = 1; g_mk.zoff = g_mk.zoff > ud ? g_mk.zoff : ud; }
+                continue; }
+            char gl = lnd.glyph[si]; if (gl == 'T') gl = 'G'; else if (gl == 'r') gl = 'p';
+            g_mk.cells[ci * 2] = lnd.cells[si * 2]; g_mk.cells[ci * 2 + 1] = 0; g_mk.glyph[ci] = gl; filled++;
+            int d = 10 + (lnd.cdepth ? lnd.cdepth[si] : 0) + (alt > 0 ? alt : 0); if (d > 16) d = 16; if (g_mk.cdepth) { g_mk.cdepth[ci] = (unsigned char)d; g_mk.cdepth_any = 1; } if (d > g_mk.zoff) g_mk.zoff = d;      /* the floor level rises to the body depth, as a baked planet does: without it the sunk columns fall below the grid and nothing shows */
+        }
+        if (alt) for (const char *gp = "~pG"; *gp; gp++) { int z = g_mk.zs[(unsigned char)*gp]; if (z > 0) { z += alt; if (z > 16) z = 16; if (z < 1) z = 1; g_mk.zs[(unsigned char)*gp] = (unsigned char)z; } }
+        g_mk.id++; applied_id = g_mk.id;      /* the GPU path re-uploads on a new id */
+    }
+    { char vq[PATH_BUF]; snprintf(vq, sizeof(vq), "%s/pieces/system/view.pdl", root); if (read_kv_int(vq, "debug_land", 0)) { char lq[PATH_BUF]; snprintf(lq, sizeof(lq), "%s/pieces/system/land_debug.txt", root); FILE *df = fopen(lq, "a"); if (df) { fprintf(df, "overlay sig=%s src_ok=%d filled=%d under=%d zoff=%d zs_G=%d id=%d\n", nsig, sok, filled, under_n, g_mk.zoff, g_mk.zs[(unsigned char)'G'], g_mk.id); fclose(df); } } }      /* debug_land=1 in the desk's view.pdl logs every overlay to pieces/system/land_debug.txt */
+    free(lnd.atlas); free(lnd.cells); free(lnd.cdepth); free(lnd.under); free(lnd.udep); free(lnd.usink); free(lnd.para); free(lnd.glyph);
+    return ok;
 }
 
 static long long read_kv_ll(const char *path, const char *key, long long def) {
@@ -927,7 +975,7 @@ typedef struct { int lx, ly, lz; unsigned char r, g, b; } VehVox;
 #define VEH_VOX 4096
 typedef struct { int dim[3], n, selflit; float x, y, z, sx, sy, sh; VehVox *vox; } VehPiece;
 static VehPiece g_veh[VEH_MAX]; static int g_veh_cnt = 0;
-static const char *const g_veh_names[VEH_MAX] = { "ship_01", "land_0", "land_1", "land_2", "land_3", "land_4", "land_5", "land_6", "land_7", "land_8" };
+static const char *const g_veh_names[VEH_MAX] = { "ship_01", "veh_1", "veh_2", "veh_3", "veh_4", "veh_5", "veh_6", "veh_7", "veh_8", "veh_9" };
 static void load_vehicle(const char *root) {      /* every vehicle piece that exists, whose desk= (if given) is the desk on show */
     g_veh_cnt = 0; char path[PATH_BUF], cur[128] = "";
     snprintf(path, sizeof(path), "%s/pieces/world_01/state.txt", root); read_kv_str(path, "desk_id", cur, sizeof(cur));
@@ -3948,6 +3996,7 @@ static int render_one_frame(void) {
 
         { char lbp[PATH_BUF]; snprintf(lbp, sizeof(lbp), "%s/pieces/system/limit_box.txt", focused_project_root); FILE *lf = host_fopen(lbp, "r");      /* debug: the limit of the map as one wireframe box, `x0 y0 z0 x1 y1 z1` in world cells (written by the skin, see rpg-space map_box) */
           if (lf) { float b[6]; if (fscanf(lf, "%f %f %f %f %f %f", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) ADDWIRE(b[0], b[1], b[2], b[3], b[4], b[5], 200, 200, 210); fclose(lf); } }
+        if (g_land_box_on) ADDWIRE(g_land_box[0], g_land_box[1], g_land_box[2], g_land_box[3], g_land_box[4], g_land_box[5], 170, 170, 180);      /* the land entity's cube (debug_land) */
         for (int vk = 0; vk < g_veh_cnt; vk++) {      /* vehicle pieces: one box each, a dense voxel model inside; world (X, Y = height, Z) = (grid x, up, grid y) */
             VehPiece *V = &g_veh[vk]; int vm = GPU_ADD_MODEL(V->vox, V->n, V->dim[0] - 1, V->dim[1] - 1, V->dim[2] - 1);
             ADDBOX(V->x, V->z, V->y, V->x + V->sx, V->z + V->sh, V->y + V->sy, 150, 150, 160, V->selflit);
