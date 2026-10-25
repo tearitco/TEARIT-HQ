@@ -1,0 +1,45 @@
+# 💀🌱 NIGHT 54 — Everyone Dies and Comes Back 🌱💀
+# ====================================================================
+# Title: "💀🌱 NIGHT 54 — Everyone Dies and Comes Back 💀🌱"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: One day on the rpg-space board: the ship flies as an entity, then the direction changes to life, death and respawn, as event pages, with a health line in the bottom bar.
+# Long-form: everything called measured was run on 2026-10-25. Everything called a plan is a plan.
+# Companion documents: BOOK 16.game RPG-SPACE-LIFE-DEATH-RESPAWN, RPG-SPACE-DEATH-RESPAWN-GRAVITY-NOTES, rpg-space-vehicle-entities/README.
+
+**THE NARRATOR:** Early in the day the work was a ship. By evening the owner said: never mind all that, we are moving in a new direction. Deaths and respawns.
+
+**MAXINE:** Who dies?
+
+**TOMO:** Everyone, pets included. Hunger and damage now. Vacuum, ozone and spacesuits later, all as events. A dead character respawns on the ship bridge, one safe place, and half of what they carry falls where they died. Anyone can pick it up.
+
+**RAHWEH:** And the numbers live in a plain file, life.pdl. The drop share, permadeath or respawn, the respawn spot. Edit it and the daemon notices within two seconds.
+
+**MAXINE:** How does a game like RPG Maker do it?
+
+**TOMO:** Death is just a state, and the game over or the respawn is an event, a common event. So we copied the shape: hit points reach zero, the Death state is set, and a page called death plays.
+
+**THE NARRATOR:** Two pages, death and respawn, each with one node that calls a verb. The death page drops the items. In respawn mode it plays the respawn page, which sends the character back to the bridge with full health. If a page is missing, the same effect runs directly.
+
+**RAHWEH:** Proof was the ledgers. A killing hit, and both pages logged: Play event page one, trigger parallel, in the same second. Then the DEATH row, with three of six bread dropped, and the RESPAWN row at the bridge.
+
+**MAXINE:** And the health?
+
+**TOMO:** A small bar after each pet's name in the bottom bar. Green when well, red and short under thirty percent, grey when knocked out.
+
+**RAHWEH:** That took longer than the death. The first try put the bars in the empty space of the footer. The owner wanted them inside each pet's own slot. The second try used a border colour, and the renderer ignores it. The third used a line break in the label, and the whole slot vanished.
+
+**THE NARRATOR:** The renderer drops any item whose label has a line break. So the bar sits after the name, and the slot is narrow enough that it wraps by itself. A true second line needs the shared renderer, which nobody touched.
+
+**MAXINE:** Why did the bar lose some pets?
+
+**TOMO:** Two reasons. It lists only pets in the current room, which is old behaviour the owner accepted. And a test with permadeath had left one pet dead. A reset brought everyone back.
+
+**RAHWEH:** Small traps worth writing down. The projector does not restart itself. The style file is read only when the window opens. And a screenshot fails with write failed when its folder is gone.
+
+**THE NARRATOR:** Not done: drops are not drawn in the scene, nothing yet deals damage except the hurt verb, and the second line of the bar waits for the renderer.
+
+**MAXINE:** So what is the rule for tomorrow?
+
+**TOMO:** A character that dies is not an error. It is a state, with a page that handles it. Build the next cause of death as another event, not another branch of code.
