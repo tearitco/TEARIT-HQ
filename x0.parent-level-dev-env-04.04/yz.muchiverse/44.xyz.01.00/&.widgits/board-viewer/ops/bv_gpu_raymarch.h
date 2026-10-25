@@ -25,7 +25,7 @@
 #define BV_GPU_MAX_BOX    128
 #define BV_GPU_MAX_MODEL  80     /* charset extrusions share this list with hero/trees; 24 left classic-board people as flat boxes */
 #define BV_GPU_MDL_DIM    32     /* max local grid side */
-#define BV_GPU_MDL_DEPTH  8      /* phymoji lz is always 0..7 */
+#define BV_GPU_MDL_DEPTH  16     /* phymoji lz is 0..7; vehicle pieces (ship_01) use up to 16 */
 
 typedef struct {
     float min_x, min_y, min_z;   /* world-space AABB */

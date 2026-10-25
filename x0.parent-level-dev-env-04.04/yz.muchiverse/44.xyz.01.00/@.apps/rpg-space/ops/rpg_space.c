@@ -579,14 +579,18 @@ static int sk_choice(char *title, char *q, char *yes, char *no, char *direct) { 
     while (fp && !hit && fgets(ln, sizeof ln, fp)) { int nf = ln[0] != '#' ? split_bar(ln, f, 7) : 0; if (nf >= 5 && !strcmp(f[0], "CHOICE")) { snprintf(title, 48, "%s", f[1]); snprintf(q, 80, "%s", f[2]); snprintf(yes, 48, "%s", f[3]); direct[0] = 0; if (nf >= 6) { snprintf(direct, 48, "%s", f[4]); snprintf(no, 48, "%s", f[5]); } else snprintf(no, 48, "%s", f[4]); hit = 1; } }
     if (fp) fclose(fp); return hit; }
 /* THE SHIP AS AN ENTITY (owner 2026-10-24): in direct flight the ship is a vehicle piece, pieces/ship_01 (state.txt = position, model.txt = voxels), drawn by the board engine over the planet page desk (the region desk). The arrows only change pos_x / pos_y: no book rewrite, no reload. A small hull (4 x 4 cells) on the 16 x 16 page; the interior desks stay as they are. */
-#define SK_VW 4
+#define SK_VW 6
 static void sk_vehicle_pos(int *x, int *y) { char p[PATH_MAX], b[512]; *x = tune("ship_start_x", 6); *y = tune("ship_start_y", 6); snprintf(p, sizeof p, "%s/pieces/ship_01/state.txt", PCHQ); read_file(p, b, sizeof b); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) *x = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) *y = atoi(l + 6); } }
-static void sk_vehicle_write(int x, int y) {
-    char d[PATH_MAX], p[PATH_MAX], b[300]; snprintf(d, sizeof d, "%s/pieces/ship_01", PCHQ); mkdir(d, 0775);
-    snprintf(p, sizeof p, "%s/state.txt", d); snprintf(b, sizeof b, "entity_type=vehicle\ndesk=region\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=%d\nsize_y=%d\nsize_h=%d\n", x, y, tune("ship_alt", 2), SK_VW, SK_VW, 2); write_if_changed(p, b, strlen(b));
-    snprintf(p, sizeof p, "%s/model.txt", d); FILE *f = fopen(p, "w"); if (!f) return;      /* 8 x 3 x 8 voxels: a deck, a rim, a cabin block */
-    fprintf(f, "dim 8 3 8\n"); for (int vx = 0; vx < 8; vx++) for (int vz = 0; vz < 8; vz++) { int rim = vx == 0 || vx == 7 || vz == 0 || vz == 7; fprintf(f, "%d 0 %d 90 160 100\n", vx, vz); if (rim) fprintf(f, "%d 1 %d 150 155 165\n", vx, vz); if (vx >= 3 && vx <= 4 && vz >= 3 && vz <= 4) { fprintf(f, "%d 1 %d 200 200 215\n%d 2 %d 200 200 215\n", vx, vz, vx, vz); } }
-    fclose(f);
+static void sk_slot_avg(int slot, int *r, int *g, int *b) { long a = 0, n = 0, R = 0, G = 0, B = 0; if (slot > 0 && slot < MAXSLOT) for (int i = 0; i < XT * XT; i++) { const unsigned char *q = slotpx[slot] + i * 4; if (q[3] < 128) continue; R += q[0]; G += q[1]; B += q[2]; n++; } (void)a; if (!n) { *r = 120; *g = 125; *b = 135; return; } *r = (int)(R / n); *g = (int)(G / n); *b = (int)(B / n); }
+static void sk_vehicle_write(int x, int y) {      /* the ship piece = the real hull of the bridge desk (room 0), same cells, same tiles, seen from outside: one block of hull under the floor, the floor, the walls 4 high, the doors 1 high. 2 voxels per desk cell would be 24 deep, so one voxel per cell (12 x 5 x 12) stretched over the 6 x 6 cell box */
+    char d[PATH_MAX], p[PATH_MAX], b[300]; snprintf(d, sizeof d, "%s/pieces/ship_01", PCHQ); mkdir(d, 0775); sk_ensure_map();
+    snprintf(p, sizeof p, "%s/state.txt", d); snprintf(b, sizeof b, "entity_type=vehicle\ndesk=region\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=%d\nsize_y=%d\nsize_h=%d\n", x, y, tune("ship_alt", 2), SK_VW, SK_VW, 3); write_if_changed(p, b, strlen(b));
+    snprintf(p, sizeof p, "%s/model.txt", d); char tmp[PATH_MAX]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(tmp, "w"); if (!f) return;
+    fprintf(f, "dim %d 5 %d\n", SSZ, SSZ);
+    for (int ly = 0; ly < SSZ; ly++) for (int lx = 0; lx < SSZ; lx++) { int gx = SOX + lx, gy = SOY + ly, r, g, bl, hr, hg, hb; char gl = sk_glyph[0][gy][gx];
+        sk_slot_avg(sk_fs3[0][gy][gx], &r, &g, &bl); fprintf(f, "%d 0 %d 70 75 85\n%d 1 %d %d %d %d\n", lx, ly, lx, ly, r, g, bl);
+        if (gl == 'W' || gl == 'f' || gl == 'D') { int h = gl == 'W' ? 4 : 1; sk_slot_avg(sk_ws3[0][gy][gx] ? sk_ws3[0][gy][gx] : sk_fs3[0][gy][gx], &hr, &hg, &hb); for (int yy = 2; yy < 2 + h && yy < 5; yy++) fprintf(f, "%d %d %d %d %d %d\n", lx, yy, ly, hr, hg, hb); } }
+    fclose(f); rename(tmp, p);
 }
 static int sk_helm_direct(void) { char p[PATH_MAX], b[20]; spath(p, "helm_mode.txt"); read_file(p, b, sizeof b); return !strncmp(b, "direct", 6); }
 static void sk_ship_refresh(char *msg, size_t cap) {      /* the page under the hull moved: rebuild the ship rooms, write the book, reload it, show the same desk again */

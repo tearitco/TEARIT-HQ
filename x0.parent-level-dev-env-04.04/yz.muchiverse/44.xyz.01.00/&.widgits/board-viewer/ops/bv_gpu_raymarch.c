@@ -77,7 +77,7 @@ static const char *FS_SRC =
 "uniform vec3  u_bmax[128];\n"
 "uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
 "uniform int   u_bmdl[128];\n"     /* >=0 -> raymarch phymoji model u_bmdl[i] inside the box */
-"uniform highp sampler3D u_mdl;\n" /* 32x32x(8*24): model m at z [m*8, m*8+8) */
+"uniform highp sampler3D u_mdl;\n" /* 32x32x(16*80): model m at z [m*16, m*16+16) */
 "uniform ivec3 u_mdim[80];\n"      /* per-model (lx,ly,lz) counts; keep equal to BV_GPU_MAX_MODEL */
 "\n"
 "bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
@@ -143,7 +143,7 @@ static const char *FS_SRC =
 "          lf.x > 1.02 || lf.y > 1.02 || lf.z > 1.02) break;\n"
 "      ivec3 li0 = clamp(ivec3(lf * vec3(md)), ivec3(0), md - 1);\n"
 "      ivec3 li = swp ? li0.zyx : li0;\n"
-"      vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 8 + li.z), 0);\n"
+"      vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 16 + li.z), 0);\n"
 "      if (mv.a > 0.5) {\n"
 "        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = false; face = f; }\n"
 "        break;\n"
