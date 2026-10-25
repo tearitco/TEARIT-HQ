@@ -923,36 +923,41 @@ static void load_entities(const char *root) {
  * pieces/ship_01/model.txt   first line `dim X Y Z` (voxels along grid x / height / grid y, Y up to 32, Z up to 8), then one row per voxel `lx ly lz r g b`
  * The engine draws it as one box carrying a dense voxel model (the same GPU path the hero and the trees use), so moving it is a number in state.txt: no book rewrite, no reload. */
 typedef struct { int lx, ly, lz; unsigned char r, g, b; } VehVox;
-static int g_veh_present = 0, g_veh_n = 0, g_veh_dim[3];
-static float g_veh_x, g_veh_y, g_veh_z, g_veh_sx = 1, g_veh_sy = 1, g_veh_sh = 1;
-static VehVox g_veh_vox[4096];
-static void load_vehicle(const char *root) {
-    g_veh_present = 0; g_veh_n = 0; char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/ship_01/state.txt", root);
-    FILE *f = host_fopen(path, "r"); if (!f) return;
-    char line[MAX_LINE], vdesk[128] = ""; int have = 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (!strncmp(line, "pos_x=", 6)) { g_veh_x = (float)atof(line + 6); have |= 1; }
-        else if (!strncmp(line, "pos_y=", 6)) { g_veh_y = (float)atof(line + 6); have |= 2; }
-        else if (!strncmp(line, "pos_z=", 6)) g_veh_z = (float)atof(line + 6);
-        else if (!strncmp(line, "size_x=", 7)) g_veh_sx = (float)atof(line + 7);
-        else if (!strncmp(line, "size_y=", 7)) g_veh_sy = (float)atof(line + 7);
-        else if (!strncmp(line, "size_h=", 7)) g_veh_sh = (float)atof(line + 7);
-        else if (!strncmp(line, "desk=", 5)) { line[strcspn(line, "\r\n")] = 0; snprintf(vdesk, sizeof(vdesk), "%s", line + 5); }
+#define VEH_MAX 10
+#define VEH_VOX 4096
+typedef struct { int dim[3], n, selflit; float x, y, z, sx, sy, sh; VehVox *vox; } VehPiece;
+static VehPiece g_veh[VEH_MAX]; static int g_veh_cnt = 0;
+static const char *const g_veh_names[VEH_MAX] = { "ship_01", "land_0", "land_1", "land_2", "land_3", "land_4", "land_5", "land_6", "land_7", "land_8" };
+static void load_vehicle(const char *root) {      /* every vehicle piece that exists, whose desk= (if given) is the desk on show */
+    g_veh_cnt = 0; char path[PATH_BUF], cur[128] = "";
+    snprintf(path, sizeof(path), "%s/pieces/world_01/state.txt", root); read_kv_str(path, "desk_id", cur, sizeof(cur));
+    for (int k = 0; k < VEH_MAX; k++) {
+        snprintf(path, sizeof(path), "%s/pieces/%s/state.txt", root, g_veh_names[k]);
+        FILE *f = host_fopen(path, "r"); if (!f) continue;
+        VehPiece P; memset(&P, 0, sizeof P); P.sx = P.sy = P.sh = 1; char line[MAX_LINE], vdesk[128] = ""; int have = 0;
+        while (fgets(line, sizeof(line), f)) {
+            if (!strncmp(line, "pos_x=", 6)) { P.x = (float)atof(line + 6); have |= 1; }
+            else if (!strncmp(line, "pos_y=", 6)) { P.y = (float)atof(line + 6); have |= 2; }
+            else if (!strncmp(line, "pos_z=", 6)) P.z = (float)atof(line + 6);
+            else if (!strncmp(line, "size_x=", 7)) P.sx = (float)atof(line + 7);
+            else if (!strncmp(line, "size_y=", 7)) P.sy = (float)atof(line + 7);
+            else if (!strncmp(line, "size_h=", 7)) P.sh = (float)atof(line + 7);
+            else if (!strncmp(line, "selflit=", 8)) P.selflit = atoi(line + 8);
+            else if (!strncmp(line, "desk=", 5)) { line[strcspn(line, "\r\n")] = 0; snprintf(vdesk, sizeof(vdesk), "%s", line + 5); }
+        }
+        fclose(f); if (have != 3 || (vdesk[0] && strcmp(cur, vdesk))) continue;
+        snprintf(path, sizeof(path), "%s/pieces/%s/model.txt", root, g_veh_names[k]);
+        f = host_fopen(path, "r"); if (!f) continue;
+        P.vox = (VehVox *)malloc(sizeof(VehVox) * VEH_VOX); if (!P.vox) { fclose(f); continue; }
+        while (fgets(line, sizeof(line), f)) {
+            int a, b, c, r, g, bl;
+            if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &P.dim[0], &P.dim[1], &P.dim[2]); continue; }
+            if (P.n < VEH_VOX && sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) == 6) { VehVox *v = &P.vox[P.n++]; v->lx = a; v->ly = b; v->lz = c; v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)bl; }
+        }
+        fclose(f); if (P.n > 0 && P.dim[0] > 0 && P.dim[1] > 0 && P.dim[2] > 0) g_veh[g_veh_cnt++] = P; else free(P.vox);
     }
-    fclose(f); if (have != 3) return;
-    if (vdesk[0]) { char wp[PATH_BUF], cur[128] = ""; snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", root); read_kv_str(wp, "desk_id", cur, sizeof(cur)); if (strcmp(cur, vdesk)) return; }      /* desk=<id>: the piece belongs to one desk of the book (the planet page); other desks do not show it */
-    snprintf(path, sizeof(path), "%s/pieces/ship_01/model.txt", root);
-    f = host_fopen(path, "r"); if (!f) return;
-    g_veh_dim[0] = g_veh_dim[1] = g_veh_dim[2] = 0;
-    while (fgets(line, sizeof(line), f)) {
-        int a, b, c, r, g, bl;
-        if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &g_veh_dim[0], &g_veh_dim[1], &g_veh_dim[2]); continue; }
-        if (g_veh_n < 4096 && sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) == 6) {
-            VehVox *v = &g_veh_vox[g_veh_n++]; v->lx = a; v->ly = b; v->lz = c; v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)bl; }
-    }
-    fclose(f); g_veh_present = g_veh_n > 0 && g_veh_dim[0] > 0 && g_veh_dim[1] > 0 && g_veh_dim[2] > 0;
 }
+static void free_vehicles(void) { for (int k = 0; k < g_veh_cnt; k++) free(g_veh[k].vox); g_veh_cnt = 0; }
 
 /* Real xelector cursor marker, added 2026-08-03 (direct user report:
  * "everything looks really great but i cant see the xelector indicator
@@ -3213,7 +3218,7 @@ static int render_one_frame(void) {
     load_entities(focused_project_root);
     load_xelector(focused_project_root);
     load_hero(focused_project_root);
-    load_vehicle(focused_project_root);
+    free_vehicles(); load_vehicle(focused_project_root);
     if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
         if (g_xelector_present) g_xelector_z = 1;
         if (g_hero_present) g_hero_z = 1;
@@ -3943,9 +3948,9 @@ static int render_one_frame(void) {
 
         { char lbp[PATH_BUF]; snprintf(lbp, sizeof(lbp), "%s/pieces/system/limit_box.txt", focused_project_root); FILE *lf = host_fopen(lbp, "r");      /* debug: the limit of the map as one wireframe box, `x0 y0 z0 x1 y1 z1` in world cells (written by the skin, see rpg-space map_box) */
           if (lf) { float b[6]; if (fscanf(lf, "%f %f %f %f %f %f", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) ADDWIRE(b[0], b[1], b[2], b[3], b[4], b[5], 200, 200, 210); fclose(lf); } }
-        if (g_veh_present) {      /* the ship piece: one box, a dense voxel model inside (GPU_ADD_MODEL); world (X, Y = height, Z) = (grid x, up, grid y) */
-            int vm = GPU_ADD_MODEL(g_veh_vox, g_veh_n, g_veh_dim[0] - 1, g_veh_dim[1] - 1, g_veh_dim[2] - 1);
-            ADDBOX(g_veh_x, g_veh_z, g_veh_y, g_veh_x + g_veh_sx, g_veh_z + g_veh_sh, g_veh_y + g_veh_sy, 150, 150, 160, 1);
+        for (int vk = 0; vk < g_veh_cnt; vk++) {      /* vehicle pieces: one box each, a dense voxel model inside; world (X, Y = height, Z) = (grid x, up, grid y) */
+            VehPiece *V = &g_veh[vk]; int vm = GPU_ADD_MODEL(V->vox, V->n, V->dim[0] - 1, V->dim[1] - 1, V->dim[2] - 1);
+            ADDBOX(V->x, V->z, V->y, V->x + V->sx, V->z + V->sh, V->y + V->sy, 150, 150, 160, V->selflit);
             if (vm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = vm;
         }
         /* Map events. A 16x24 frame (written by tsots_events.py) is one
