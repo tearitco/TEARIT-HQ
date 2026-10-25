@@ -42,6 +42,19 @@
 
 Keep every system (collision, damage, destruction, air, temperature, needs) as **event pages + .pal/.pdl data**, with C ops only doing the work a page calls. That keeps it malleable, scalable, customizable and abstractable. Fidelity is OPT-IN per entity or per case: we do not run cellular respiration (or any deep simulation) for every entity; the default is the cheap abstraction (a number that drifts, a need that ticks), and a special case can switch the detailed model on (a flag/row in its .pdl, or an event that attaches it). Build each system as a cheap default plus an optional detailed layer, never as a mandatory deep model.
 
+## 4c. Tone and data shape for mining, chemistry (respiration) and thermo (owner 2026-10-25)
+
+- **Fun first:** mining, ingestion/respiration and heat follow the Minecraft / No Man's Sky / Factorio feel: simple readable rules (a hardness, a tool speed, a gauge that fills and drains, a recipe, a belt), not lab simulation.
+- **Room for realism in the DATA:** the records carry the extra fields from the start even when the default game ignores them, so a game developer who reuses or repurposes this can switch on a realistic mode without a schema change. Examples: a block row has `hardness` and `drops` (used) plus `composition` (compound list), `density`, `melting_point`, `specific_heat` (unused until a realistic ruleset reads them); a gas has `symbol`, `partial_pressure`, `toxicity`; an organism has a simple `breath` need (used) and an optional `metabolism` profile (unused by default; the opt-in detailed layer of 4b). Unknown columns are kept, never dropped (same rule as every .pdl in the house).
+- **Rulesets, not forks:** the fun ruleset and a realistic ruleset are different .pdl files over the same state files; the engine and the event pages do not change.
+
+## 4d. Future ship controls (not built, owner 2026-10-25)
+
+More key controls will go with the ship, each an event page bound to a key in `keybinds.pdl`, using the same vehicle entity and verbs:
+- **Mining beam:** hold to damage the cell in the beam line (the `mine` verb of roadmap step 3); drops go to the ship hold.
+- **Self-shrinking:** the ship (and crew) shrinks to enter a microverse, to the planned "dustopia" scale (a scale change of the same entities, with its own map and its own environment layers). Needs a scale field on the vehicle entity and a way to hand a page/desk to the engine at another scale; no design yet.
+- Others as they come (scanner, tractor, hull patch); each is a verb + a page + a key row, so adding one never touches the engine.
+
 ## 5. Rules for whoever builds it
 
 - Verify with a 3D frame ("if you didn't see it in 3D it doesn't exist"): ship blocked at the planet, a cell removed, a drop appearing.
