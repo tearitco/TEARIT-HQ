@@ -930,7 +930,7 @@ static void load_vehicle(const char *root) {
     g_veh_present = 0; g_veh_n = 0; char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/ship_01/state.txt", root);
     FILE *f = host_fopen(path, "r"); if (!f) return;
-    char line[MAX_LINE]; int have = 0;
+    char line[MAX_LINE], vdesk[128] = ""; int have = 0;
     while (fgets(line, sizeof(line), f)) {
         if (!strncmp(line, "pos_x=", 6)) { g_veh_x = (float)atof(line + 6); have |= 1; }
         else if (!strncmp(line, "pos_y=", 6)) { g_veh_y = (float)atof(line + 6); have |= 2; }
@@ -938,8 +938,10 @@ static void load_vehicle(const char *root) {
         else if (!strncmp(line, "size_x=", 7)) g_veh_sx = (float)atof(line + 7);
         else if (!strncmp(line, "size_y=", 7)) g_veh_sy = (float)atof(line + 7);
         else if (!strncmp(line, "size_h=", 7)) g_veh_sh = (float)atof(line + 7);
+        else if (!strncmp(line, "desk=", 5)) { line[strcspn(line, "\r\n")] = 0; snprintf(vdesk, sizeof(vdesk), "%s", line + 5); }
     }
     fclose(f); if (have != 3) return;
+    if (vdesk[0]) { char wp[PATH_BUF], cur[128] = ""; snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", root); read_kv_str(wp, "desk_id", cur, sizeof(cur)); if (strcmp(cur, vdesk)) return; }      /* desk=<id>: the piece belongs to one desk of the book (the planet page); other desks do not show it */
     snprintf(path, sizeof(path), "%s/pieces/ship_01/model.txt", root);
     f = host_fopen(path, "r"); if (!f) return;
     g_veh_dim[0] = g_veh_dim[1] = g_veh_dim[2] = 0;

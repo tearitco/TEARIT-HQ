@@ -578,6 +578,16 @@ static int sk_choice(char *title, char *q, char *yes, char *no, char *direct) { 
     char p[PATH_MAX], ln[300]; char *f[8]; snprintf(p, sizeof p, "%s/events/helm/choice.pdl", APP); FILE *fp = fopen(p, "r"); int hit = 0;
     while (fp && !hit && fgets(ln, sizeof ln, fp)) { int nf = ln[0] != '#' ? split_bar(ln, f, 7) : 0; if (nf >= 5 && !strcmp(f[0], "CHOICE")) { snprintf(title, 48, "%s", f[1]); snprintf(q, 80, "%s", f[2]); snprintf(yes, 48, "%s", f[3]); direct[0] = 0; if (nf >= 6) { snprintf(direct, 48, "%s", f[4]); snprintf(no, 48, "%s", f[5]); } else snprintf(no, 48, "%s", f[4]); hit = 1; } }
     if (fp) fclose(fp); return hit; }
+/* THE SHIP AS AN ENTITY (owner 2026-10-24): in direct flight the ship is a vehicle piece, pieces/ship_01 (state.txt = position, model.txt = voxels), drawn by the board engine over the planet page desk (the region desk). The arrows only change pos_x / pos_y: no book rewrite, no reload. A small hull (4 x 4 cells) on the 16 x 16 page; the interior desks stay as they are. */
+#define SK_VW 4
+static void sk_vehicle_pos(int *x, int *y) { char p[PATH_MAX], b[512]; *x = tune("ship_start_x", 6); *y = tune("ship_start_y", 6); snprintf(p, sizeof p, "%s/pieces/ship_01/state.txt", PCHQ); read_file(p, b, sizeof b); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) *x = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) *y = atoi(l + 6); } }
+static void sk_vehicle_write(int x, int y) {
+    char d[PATH_MAX], p[PATH_MAX], b[300]; snprintf(d, sizeof d, "%s/pieces/ship_01", PCHQ); mkdir(d, 0775);
+    snprintf(p, sizeof p, "%s/state.txt", d); snprintf(b, sizeof b, "entity_type=vehicle\ndesk=region\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=%d\nsize_y=%d\nsize_h=%d\n", x, y, tune("ship_alt", 2), SK_VW, SK_VW, 2); write_if_changed(p, b, strlen(b));
+    snprintf(p, sizeof p, "%s/model.txt", d); FILE *f = fopen(p, "w"); if (!f) return;      /* 8 x 3 x 8 voxels: a deck, a rim, a cabin block */
+    fprintf(f, "dim 8 3 8\n"); for (int vx = 0; vx < 8; vx++) for (int vz = 0; vz < 8; vz++) { int rim = vx == 0 || vx == 7 || vz == 0 || vz == 7; fprintf(f, "%d 0 %d 90 160 100\n", vx, vz); if (rim) fprintf(f, "%d 1 %d 150 155 165\n", vx, vz); if (vx >= 3 && vx <= 4 && vz >= 3 && vz <= 4) { fprintf(f, "%d 1 %d 200 200 215\n%d 2 %d 200 200 215\n", vx, vz, vx, vz); } }
+    fclose(f);
+}
 static int sk_helm_direct(void) { char p[PATH_MAX], b[20]; spath(p, "helm_mode.txt"); read_file(p, b, sizeof b); return !strncmp(b, "direct", 6); }
 static void sk_ship_refresh(char *msg, size_t cap) {      /* the page under the hull moved: rebuild the ship rooms, write the book, reload it, show the same desk again */
     sk_build_ship(); export3d(msg, cap); char ib[PATH_MAX]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); FILE *f = fopen(ib, "a"); if (f) { fputs("CONFIRM_START_MAP:" PET_APP "\n", f); fclose(f); } pet_load(); calc_view(); sk_desk_sync();
@@ -594,23 +604,27 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(a, "direct") || !strcmp(a, "galaxy")) { char mp[PATH_MAX]; spath(mp, "helm_mode.txt"); write_if_changed(mp, a[0] == 'd' ? "direct\n" : "galaxy\n", a[0] == 'd' ? 7 : 7); a = "yes"; }
     if (!strcmp(a, "yes")) { set_flag("ask", "0"); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; } if (!run_event_x("helm", "action", "")) { char *pv[2] = { "helm", "on" }; sk_helm_verb(2, pv, msg, cap); } else snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); return; }
     if (!strcmp(a, "on")) { char w[80]; sk_area_cells(w, sizeof w); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; }
-        if (sk_helm_direct()) { set_flag("helm", "1"); sk_helm_settle = now_ms() + 2500; char b[160]; snprintf(b, sizeof b, "HELM|%ld|on-direct|%s", (long)time(NULL), w); append_line("events.txt", b); snprintf(msg, cap, "direct flight: the arrows move the ship over %s on this screen; the edge of the page stops it. Esc lets go", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
+        if (sk_helm_direct()) {
+            { int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char b[80]; snprintf(b, sizeof b, "%d %d %d\n", e->room, e->x, e->y); char hp[PATH_MAX]; spath(hp, "helm_from.txt"); write_if_changed(hp, b, strlen(b)); }
+            int vx, vy; sk_vehicle_pos(&vx, &vy); sk_vehicle_write(vx, vy); set_flag("helm", "1"); sk_helm_put(SK_SHIP, vx + SK_VW / 2, vy + SK_VW / 2); sk_helm_settle = now_ms() + 2500;
+            char b[160]; snprintf(b, sizeof b, "HELM|%ld|on-direct|%d,%d", (long)time(NULL), vx, vy); append_line("events.txt", b); snprintf(msg, cap, "direct flight: the ship is a piece over %s; the arrows change its x and y. Esc lets go", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         { int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char b[80]; snprintf(b, sizeof b, "%d %d %d\n", e->room, e->x, e->y); char hp[PATH_MAX]; spath(hp, "helm_from.txt"); write_if_changed(hp, b, strlen(b)); }      /* where to put the pilot back */
         int gx, gy; sk_ship_load(&gx, &gy); set_flag("helm", "1"); sk_helm_put(SK_SPACE, 2 + gx * 2, 2 + gy * 2); sk_space_refresh(msg, cap);
         char b[160]; snprintf(b, sizeof b, "HELM|%ld|on|%s", (long)time(NULL), w); append_line("events.txt", b); snprintf(msg, cap, "at the helm: the arrows steer the ship over the space map (area: %s). Esc lets go", w); return; }
     if (!strcmp(a, "off")) { if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; } set_flag("helm", "0");
-        if (sk_helm_direct()) { char b[80]; snprintf(b, sizeof b, "HELM|%ld|off-direct", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds where it is"); return; }
+        if (sk_helm_direct()) { char hp[PATH_MAX], b[80] = ""; int r = 0, x = 7, y = 4; spath(hp, "helm_from.txt"); read_file(hp, b, sizeof b); sscanf(b, "%d %d %d", &r, &x, &y); sk_helm_put(r, x, y); snprintf(b, sizeof b, "HELM|%ld|off-direct", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds where it is (parked on the planet page)"); return; }
         { char hp[PATH_MAX], b[80] = ""; int r = 0, x = 7, y = 4; spath(hp, "helm_from.txt"); read_file(hp, b, sizeof b); sscanf(b, "%d %d %d", &r, &x, &y); sk_helm_put(r, x, y); }
         { sk_look_load(); int gx, gy; sk_ship_load(&gx, &gy); const char *to = "none", *cur = sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id; for (int k = 0; k < sk_pl_n; k++) { int px, py; if (sk_pos_of(sk_pl[k].id, &px, &py) && px == gx && py == gy) to = sk_pl[k].id; }
           if (strcmp(to, cur)) { char *pv[3] = { "planet", (char *)to, "fly" }; verb(3, pv, msg, cap); } else sk_space_refresh(msg, cap); }      /* landing: the planet under the ship becomes the one under the hull */
         char b[80]; snprintf(b, sizeof b, "HELM|%ld|off", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds over %s", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
     if (!strcmp(a, "move") && argc >= 4) {
         if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
-        if (sk_helm_direct()) {      /* direct: the ship flies over the planet page on this screen; the page under the hull slides away, up to direct_max cells (stop there) */
-            sk_direct_load(); int nx = sk_dox + atoi(argv[2]), ny = sk_doy + atoi(argv[3]);
-            { int mx = tune("direct_max", 16); if (mx > 16) mx = 16; if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the planet is almost gone behind the ship: it stops here (%d,%d)", sk_dox, sk_doy); return; } }
-            { char dp[PATH_MAX], db[24], rb[120]; spath(dp, "direct.txt"); snprintf(db, sizeof db, "%d %d\n", nx, ny); write_if_changed(dp, db, strlen(db)); snprintf(rb, sizeof rb, "DIRECT|%ld|ship|%d,%d|%d,%d", (long)time(NULL), sk_dox, sk_doy, nx, ny); append_line("events.txt", rb); }
-            sk_helm_settle = now_ms() + 1500; sk_ship_refresh(msg, cap); snprintf(msg, cap, "ship offset %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
+        if (sk_helm_direct()) {      /* direct: the ship is a vehicle piece; a move changes its pos_x / pos_y in pieces/ship_01/state.txt and puts the pilot on it. No rebuild, no reload. */
+            int vx, vy; sk_vehicle_pos(&vx, &vy); int nx = vx + atoi(argv[2]), ny = vy + atoi(argv[3]);
+            if (nx < 0 || ny < 0 || nx > SK_W - SK_VW || ny > SK_H - SK_VW) { snprintf(msg, cap, "the edge of the planet page: the ship stops (%d,%d)", vx, vy); return; }
+            sk_vehicle_write(nx, ny); sk_helm_put(SK_SHIP, nx + SK_VW / 2, ny + SK_VW / 2); sk_helm_settle = now_ms() + 600;
+            { char rb[120]; snprintf(rb, sizeof rb, "DIRECT|%ld|ship|%d,%d|%d,%d", (long)time(NULL), vx, vy, nx, ny); append_line("events.txt", rb); }
+            snprintf(msg, cap, "ship at %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         int gx, gy, dx = atoi(argv[2]), dy = atoi(argv[3]); sk_ship_load(&gx, &gy); int nx = gx + dx, ny = gy + dy;
         if (nx < 0 || ny < 0 || nx >= SK_GRID || ny >= SK_GRID) { snprintf(msg, cap, "the edge of the charted system (%d,%d)", gx, gy); return; }
         sk_ship_save(nx, ny); char b[100]; snprintf(b, sizeof b, "FLY|%ld|ship|%d,%d|%d,%d", (long)time(NULL), gx, gy, nx, ny); append_line("events.txt", b);
