@@ -468,9 +468,11 @@ static int maker_load_base(const char *root) {
     char dir[4352];
     snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
     if (g_ml_dir_override) snprintf(dir, sizeof(dir), "%s", g_ml_dir_override);
-    /* Reload when cells.rgba changes. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
-    struct stat cst; char rgba_path[4400]; snprintf(rgba_path, sizeof(rgba_path), "%s/cells.rgba", dir);
-    long long cell_stamp = (stat(rgba_path, &cst) == 0) ? (long long)cst.st_mtime : 0;
+    /* Reload when the book was re-exported. House standard (owner 2026-10-25, "always use the marker size checker"): the exporter appends one byte to <desk>/cells.marker after it wrote cells.rgba, and the stamp is that
+     * file's SIZE (grows = new book, never st_mtime: two exports inside one second looked identical and the engine kept a stale atlas, "right shape, wrong blocks"). A desk with no marker yet (an exporter not converted)
+     * falls back to the old mtime of cells.rgba. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
+    struct stat cst, mst; char rgba_path[4400], mark_path[4400]; snprintf(rgba_path, sizeof(rgba_path), "%s/cells.rgba", dir); snprintf(mark_path, sizeof(mark_path), "%s/cells.marker", dir);
+    long long cell_stamp = (stat(mark_path, &mst) == 0) ? (long long)mst.st_size : (stat(rgba_path, &cst) == 0) ? (long long)cst.st_mtime : 0;
     static long long held_stamp = -1;
     if (!g_ml_dir_override && g_mk.key[0] && strcmp(g_mk.key, dir) == 0 && held_stamp == cell_stamp) return g_mk.ok;
     if (!g_ml_dir_override) held_stamp = cell_stamp;

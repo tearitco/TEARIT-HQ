@@ -27,6 +27,7 @@
  * Self-contained, no shared headers.
  * Usage: pc_clock_daemon.+x (no args, runs forever until SIGTERM/SIGINT) */
 #define _GNU_SOURCE
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -227,9 +228,13 @@ static void update_celestial_body(const char *root, const char *entity_id,
 #ifdef _WIN32
     win_mkdir_p(dir_path);
 #else
-    char mkdir_cmd[PATH_BUF + 16];
-    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p '%s'", dir_path);
-    { int _rc = system(mkdir_cmd); (void)_rc; }
+    /* the folder almost always exists after the first tick: a stat() is free, a `sh -c mkdir -p` was two process spawns per body per 0.3 s tick (owner 2026-10-25: keep our own footprint managed) */
+    struct stat dir_st;
+    if (stat(dir_path, &dir_st) != 0) {
+        char mkdir_cmd[PATH_BUF + 16];
+        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p '%s'", dir_path);
+        { int _rc = system(mkdir_cmd); (void)_rc; }
+    }
 #endif
 
     char state_path[PATH_BUF];

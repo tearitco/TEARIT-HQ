@@ -566,6 +566,7 @@ static int place(const char *desk, int x, int y, int layer, int id,
     if (write_cells(cells_path, &C) != 0) die("write cells.txt failed");
     if (save_rgba(rgba_path, atlas, nbytes) != 0) die("write cells.rgba failed");
     bump_generation(desk);
+    { char mk[1100]; snprintf(mk, sizeof mk, "%s/cells.marker", desk); FILE *mf = fopen(mk, "a"); if (mf) { fputc('\n', mf); fclose(mf); } }      /* the engine reloads the atlas when this marker grows */
     printf("placed %d %d layer %d id %d floor=%d wall=%d atlas_tiles=%d\n",
            x, y, layer, id, C.floor[i], C.wall[i], C.ntiles);
     printf("key 7 keeps the old atlas until this desk is left and opened again\n");

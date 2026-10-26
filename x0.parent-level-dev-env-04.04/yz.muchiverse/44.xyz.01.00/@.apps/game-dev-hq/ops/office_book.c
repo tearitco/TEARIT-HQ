@@ -226,6 +226,7 @@ void gd_export_office(const char *app) {
         }
         char cr[PATH_MAX]; join2(cr, sizeof cr, room, "cells.rgba");
         FILE *cf = fopen(cr, "wb"); if (cf) { fwrite(atlas, 1, (size_t)aw * ah * 4, cf); fclose(cf); }
+        { char mk[PATH_MAX]; join2(mk, sizeof mk, room, "cells.marker"); FILE *mf = fopen(mk, "a"); if (mf) { fputc('\n', mf); fclose(mf); } }      /* the engine reloads the atlas when this marker grows */
         char cp[PATH_MAX]; join2(cp, sizeof cp, room, "cells.png");
         snprintf(tmp, sizeof tmp, "%s.tmp", cp);
         if (stbi_write_png(tmp, aw, ah, 4, atlas, aw * 4)) rename(tmp, cp); else remove(tmp);

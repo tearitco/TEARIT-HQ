@@ -261,6 +261,7 @@ int main(void) {
     long screen_last = 0;
     { FILE *pf = fopen(pos_path, "r"); if (pf) { if (fscanf(pf, "%ld", &screen_last) != 1) screen_last = 0; fclose(pf); } }
     int external_change = (screen_now != screen_last);
+    int fast_tick = 0;
     /* Move range finder (bv_move_range.c) lives in the REAL project, whose
      * Move script can't reach this session's marker. Its file appearing,
      * changing or vanishing is therefore a change trigger too. */
@@ -278,6 +279,7 @@ int main(void) {
             if (lf) { if (fscanf(lf, "%ld", &range_last) != 1) range_last = 0; fclose(lf); }
             char stp[PATH_BUF];
             pj(stp, sizeof(stp), "pieces/display/.bv_move_step_ms");
+            { char ap2[PATH_BUF]; snprintf(ap2, sizeof(ap2), "%s/pieces/display/move_active.txt", rr); fast_tick = (access(ap2, F_OK) == 0) || range_now > 0; }   /* a Move is walking or a range is on show: the pal loop must keep the fast tick */
             if (bvr_step(rr, stp)) external_change = 1;   /* Move animation tick */
             if (range_now != range_last) {
                 external_change = 1;
@@ -285,6 +287,11 @@ int main(void) {
                 if (lf) { fprintf(lf, "%ld\n", range_now); fclose(lf); }
             }
         }
+    }
+    {   /* FOOTPRINT (owner 2026-10-25): publish whether the pal loop may idle. pieces/display/.bv_fast_tick has size > 0 only while a Move or range needs the fast tick; the loop reads it with read_pos (no process) and otherwise execs this op only when keys or the screen marker moved, or every 8th idle tick. */
+        char fp[PATH_BUF]; pj(fp, sizeof(fp), "pieces/display/.bv_fast_tick"); long fsz = file_size(fp);
+        if (fast_tick && fsz == 0) { FILE *ff = fopen(fp, "w"); if (ff) { fputs("1\n", ff); fclose(ff); } }
+        else if (!fast_tick && fsz > 0) { FILE *ff = fopen(fp, "w"); if (ff) fclose(ff); }
     }
     if (external_change) {
         FILE *pf = fopen(pos_path, "w");
