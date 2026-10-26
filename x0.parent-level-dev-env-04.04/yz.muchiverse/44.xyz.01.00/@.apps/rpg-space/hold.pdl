@@ -1,0 +1,4 @@
+# hold.pdl - the ship's hold: one list of items AND the entities inside (owner 2026-10-25). Re-read every 2 s.
+# HOLD | key | value | what it does
+HOLD | capacity   | 40  | most entries (every item stack and every entity counts 1)
+HOLD | wreck_drop | 100 | percent of every item stack that falls as remnants when the ship is destroyed

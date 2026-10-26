@@ -1,0 +1,4 @@
+# event.pal - destroyed as an EVENT PAGE (trigger parallel): something was destroyed (mined, wrecked, shot); the page turns its BLOCK row of blocks.pdl into remnants (state/drops.txt) and logs DESTROYED. The thing is in state/destroyed.txt.
+# pkg=destroyed page=page_1
+exec cmd_1.sh
+halt

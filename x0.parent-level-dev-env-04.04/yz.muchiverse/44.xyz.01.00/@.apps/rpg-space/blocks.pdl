@@ -1,0 +1,12 @@
+# blocks.pdl - what can be mined / destroyed and what it leaves behind (owner 2026-10-25). Re-read every 2 s.
+# Design: BOOK 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md sections 3, 4c, 4g. Fun first; the extra columns are kept for a realistic ruleset (nothing reads them yet).
+# BLOCK | kind | hardness | drops | count | damaged_pct | composition | density | melting_point
+# hardness = mining power needed in total (tool power is added per mine action); damaged_pct = chance (0..100) that a remnant is damaged.
+BLOCK | rock     | 3  | stone | 2 | 10 | SiO2   | 2.6 | 1700
+BLOCK | ore      | 5  | iron  | 3 | 20 | Fe2O3  | 5.2 | 1565
+BLOCK | crystal  | 8  | gem   | 1 | 30 | SiO2   | 2.7 | 1700
+BLOCK | hullplate| 6  | scrap | 4 | 40 | Fe     | 7.8 | 1538
+# TOOL | name | power   (state: which tool a mine action uses)
+TOOL | hand | 1
+TOOL | pick | 2
+TOOL | beam | 4
