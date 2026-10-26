@@ -1,0 +1,5 @@
+TRIGGER|parallel
+CMD|1|wo_calc|key=n|a=:mhp:|op=pm|b=:perm:|a=:mhp:|op=pm|b=:perm:|op=pm|b=:perm:|b=:perm:
+CMD|2|wo_run|op=rpg_space|w1=life|w2=hurt|w3=:who: :n:|w1=life|w2=hurt|w3=:who: :n:|w2=hurt|w3=:who: :n:|w3=:who: :n:
+SCRATCHBLOCK|wo|n
+SCRATCHBLOCK|wo|rpg_space

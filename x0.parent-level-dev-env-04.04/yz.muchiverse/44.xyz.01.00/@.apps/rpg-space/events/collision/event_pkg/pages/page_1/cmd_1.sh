@@ -3,4 +3,4 @@ cd "$(dirname "$0")/../../.." || exit 1
 ENT="${MUCHI_TARGET_ENT:-$PWD}"
 D="$ENT"
 while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
-exec "$D/@.apps/rpg-space/ops/+x/rpg_space.+x" 'collision' 'hit'
+exec "$D/&.widgits/world-ops/ops/+x/wo.+x" load "$(dirname "$(dirname "$ENT")")" 'coll_speed.txt' 'speed' '1' '4'

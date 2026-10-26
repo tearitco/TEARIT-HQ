@@ -48,8 +48,10 @@ static void kv_set(const char *path, const char *key, const char *val) {
     write_if_changed(path, out); }
 
 /* life.pdl style config: ROW | key | value | ... */
-static int cfg_get(const char *rowname, const char *key, char *out, size_t cap) {
-    char p[PATH_MAX], b[BIG * 2]; snprintf(p, sizeof p, "%s/life.pdl", GAME); read_file(p, b, sizeof b); out[0] = 0;
+static int cfg_get_in(const char *file, const char *rowname, const char *key, char *out, size_t cap);
+static int cfg_get(const char *rowname, const char *key, char *out, size_t cap) { return cfg_get_in("life.pdl", rowname, key, out, cap); }
+static int cfg_get_in(const char *file, const char *rowname, const char *key, char *out, size_t cap) {
+    char p[PATH_MAX], b[BIG * 2]; snprintf(p, sizeof p, "%s/%s", GAME, file); read_file(p, b, sizeof b); out[0] = 0;
     char *sv = NULL; for (char *l = strtok_r(b, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { if (l[0] == '#') continue; char c[512]; snprintf(c, sizeof c, "%s", l); char *f[4] = { 0 }; int n = 0; char *sv2 = NULL; for (char *t = strtok_r(c, "|", &sv2); t && n < 4; t = strtok_r(NULL, "|", &sv2)) f[n++] = trim(t);
         if (n >= 3 && !strcmp(f[0], rowname) && !strcmp(f[1], key)) { snprintf(out, cap, "%s", f[2]); return 1; } } return 0; }
 static int actor_row(const char *id, char *posfile, size_t pn, int *mhp) {
@@ -67,6 +69,8 @@ static int token_value(const char *key, char *v, size_t cap) {      /* a known n
     if (!strcmp(key, "modeline")) { char m[64]; cfg_get("LIFE", "death_mode", m, sizeof m); snprintf(v, cap, "mode %s", m); return 1; }
     if (!strcmp(key, "drops")) { char d[32] = "0", pc[32]; kv_get(lp, "dropped", d, sizeof d); if (!kv_get(lp, "pct", pc, sizeof pc)) cfg_get("LIFE", "drop_pct", pc, sizeof pc); snprintf(v, cap, "dropped %s (%s%%)", d, pc); return 1; }
     if (!strcmp(key, "unit")) { char k[32]; kv_get(lp, "kind", k, sizeof k); snprintf(v, cap, "%s", !strcmp(k, "CHOKE") ? "o2" : "temp"); return 1; }      /* the air log rows say o2 for CHOKE, temp for the rest */
+    if (!strncmp(key, "coll_", 5)) return cfg_get_in("collision.pdl", "COLL", key + 5, v, cap);      /* :coll_<key>: = collision.pdl COLL row, :env_<key>: = environment.pdl ENV row */
+    if (!strncmp(key, "env_", 4)) return cfg_get_in("environment.pdl", "ENV", key + 4, v, cap);
     if (kv_get(lp, key, v, cap)) return 1;
     return cfg_get("LIFE", key, v, cap); }
 static void expand(const char *in, char *out, size_t cap) {      /* :name: and @name */
@@ -197,8 +201,40 @@ static int v_run(int argc, char **argv) {
     char *av[40]; int n = 0; av[n++] = bin; char *sv = NULL; for (char *t = strtok_r(line, " ", &sv); t && n < 38; t = strtok_r(NULL, " ", &sv)) av[n++] = t; av[n] = NULL;
     pid_t pid = fork(); if (pid == 0) { execv(bin, av); _exit(127); } int st = 0; waitpid(pid, &st, 0); printf("ran %s %s ... (exit %d)\n", op, n > 1 ? av[1] : "", WIFEXITED(st) ? WEXITSTATUS(st) : -1); return 0; }
 
+
+/* ---- B4: numbers and conditions ---- */
+/* wo load <game> <file> <key> <min> <max>   a one-value file (state/<file>) -> :key: , clamped */
+static int v_load(int argc, char **argv) {
+    if (argc < 4) { fprintf(stderr, "usage: wo load <game> <file> <key> <min> <max>\n"); return 1; } char p[PATH_MAX], b[64]; spath(p, argv[1]); read_file(p, b, sizeof b); int v = atoi(b), lo = atoi(argv[3]), hi = argc > 4 ? atoi(argv[4]) : lo; if (v < lo) v = lo; if (v > hi) v = hi;
+    char t[24]; snprintf(t, sizeof t, "%d", v); last_set(argv[2], t); printf("%s=%d\n", argv[2], v); return 0; }
+
+/* wo calc <game> <key> <a> <op> <b>   op: add sub mul div pm (a*b/1000, at least 1) -> :key: */
+static int v_calc(int argc, char **argv) {
+    if (argc < 5) { fprintf(stderr, "usage: wo calc <game> <key> <a> <op> <b>\n"); return 1; } char as[64], bs[64]; expand(argv[2], as, sizeof as); expand(argv[4], bs, sizeof bs); long a = atol(as), b = atol(bs), r = 0; const char *op = argv[3];
+    if (!strcmp(op, "add")) r = a + b; else if (!strcmp(op, "sub")) r = a - b; else if (!strcmp(op, "mul")) r = a * b; else if (!strcmp(op, "div")) r = b ? a / b : 0; else if (!strcmp(op, "pm")) { r = a * b / 1000; if (r < 1) r = 1; } else { fprintf(stderr, "wo calc: op is add sub mul div pm\n"); return 1; }
+    char t[24]; snprintf(t, sizeof t, "%ld", r); last_set(argv[1], t); printf("%s=%ld\n", argv[1], r); return 0; }
+
+/* wo kvline <game> <file> <key> <expr>   a single-line "k=v k=v" file (ship_damage.txt: hits=9 dmg=17 last=...); expr add:N set:V set:now ; new keys go to the end */
+static int v_kvline(int argc, char **argv) {
+    if (argc < 4) { fprintf(stderr, "usage: wo kvline <game> <file> <key> <expr>\n"); return 1; } char file[128], key[48], expr[64], p[PATH_MAX], b[400]; expand(argv[1], file, sizeof file); expand(argv[2], key, sizeof key); expand(argv[3], expr, sizeof expr); spath(p, file); read_file(p, b, sizeof b); b[strcspn(b, "\n")] = 0;
+    char ks[16][48], vs[16][48]; int n = 0, found = -1; char *sv = NULL; for (char *t = strtok_r(b, " ", &sv); t && n < 15; t = strtok_r(NULL, " ", &sv)) { char *e = strchr(t, '='); if (!e) continue; snprintf(ks[n], 48, "%.*s", (int)(e - t), t); snprintf(vs[n], 48, "%s", e + 1); if (!strcmp(ks[n], key)) found = n; n++; }
+    if (found < 0) { snprintf(ks[n], 48, "%s", key); snprintf(vs[n], 48, "0"); found = n++; }
+    if (!strncmp(expr, "add:", 4)) snprintf(vs[found], 48, "%ld", atol(vs[found]) + atol(expr + 4)); else if (!strcmp(expr, "set:now")) snprintf(vs[found], 48, "%ld", (long)time(NULL)); else if (!strncmp(expr, "set:", 4)) snprintf(vs[found], 48, "%s", expr + 4); else { fprintf(stderr, "wo kvline: expr add:N set:V set:now\n"); return 1; }
+    char out[400] = ""; for (int i = 0; i < n; i++) { size_t o = strlen(out); snprintf(out + o, sizeof out - o, "%s%s=%s", i ? " " : "", ks[i], vs[i]); } strncat(out, "\n", sizeof out - strlen(out) - 1); write_if_changed(p, out); printf("%s", out); return 0; }
+
+/* wo if <game> <a> <op> <b> <event>   op: ge gt le lt eq ne (numbers); plays <event> when true */
+static int v_if(int argc, char **argv) {
+    if (argc < 5) { fprintf(stderr, "usage: wo if <game> <a> <op> <b> <event>\n"); return 1; } char as[64], bs[64]; expand(argv[1], as, sizeof as); expand(argv[3], bs, sizeof bs); long a = atol(as), b = atol(bs); const char *op = argv[2]; int t = !strcmp(op, "ge") ? a >= b : !strcmp(op, "gt") ? a > b : !strcmp(op, "le") ? a <= b : !strcmp(op, "lt") ? a < b : !strcmp(op, "eq") ? a == b : !strcmp(op, "ne") ? a != b : -1;
+    if (t < 0) { fprintf(stderr, "wo if: op is ge gt le lt eq ne\n"); return 1; } if (!t) { printf("%ld %s %ld is false: %s does not play\n", a, op, b, argv[4]); return 0; } int rc = play_event(argv[4]); printf("%ld %s %ld: played %s (exit %d)\n", a, op, b, argv[4], rc); return 0; }
+
+/* wo each_actor <game> <event>   plays <event> once for every ACTOR row of life.pdl with :who: :posfile: :mhp: set */
+static int v_each_actor(int argc, char **argv) {
+    if (argc < 2) { fprintf(stderr, "usage: wo each_actor <game> <event>\n"); return 1; } char lp[PATH_MAX], lb[BIG * 2]; snprintf(lp, sizeof lp, "%s/life.pdl", GAME); read_file(lp, lb, sizeof lb); int n = 0; char *sv = NULL;
+    for (char *q = strtok_r(lb, "\n", &sv); q; q = strtok_r(NULL, "\n", &sv)) { if (q[0] == '#') continue; char cc[300], *g[5]; snprintf(cc, sizeof cc, "%s", q); if (split_row(cc, g, 5) >= 4 && !strcmp(g[0], "ACTOR")) { last_set("who", g[1]); last_set("posfile", g[2]); last_set("mhp", g[3]); play_event(argv[1]); n++; } }
+    printf("%d actor(s): %s played each\n", n, argv[1]); return 0; }
+
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: wo <verb> <game> ...  (kv drop place log when pending remnant clear_damage node_use event each run)\n"); return 1; }
+    if (argc < 3) { fprintf(stderr, "usage: wo <verb> <game> ...  (kv drop place log when pending remnant clear_damage node_use event each run load calc kvline if each_actor)\n"); return 1; }
     const char *verb = argv[1]; if (!realpath(argv[2], GAME)) { fprintf(stderr, "wo: no game folder %s\n", argv[2]); return 1; } resolve_actor();
     /* each verb sees argv[0] = the game folder, then its own arguments */
     if (!strcmp(verb, "kv")) return v_kv(argc - 2, argv + 2);
@@ -210,6 +246,11 @@ int main(int argc, char **argv) {
     if (!strcmp(verb, "clear_damage")) return v_clear_damage(argc - 2, argv + 2);
     if (!strcmp(verb, "node_use")) return v_node_use(argc - 2, argv + 2);
     if (!strcmp(verb, "event")) return v_event(argc - 2, argv + 2);
+    if (!strcmp(verb, "load")) return v_load(argc - 2, argv + 2);
+    if (!strcmp(verb, "calc")) return v_calc(argc - 2, argv + 2);
+    if (!strcmp(verb, "kvline")) return v_kvline(argc - 2, argv + 2);
+    if (!strcmp(verb, "if")) return v_if(argc - 2, argv + 2);
+    if (!strcmp(verb, "each_actor")) return v_each_actor(argc - 2, argv + 2);
     if (!strcmp(verb, "each")) return v_each(argc - 2, argv + 2);
     if (!strcmp(verb, "run")) return v_run(argc - 2, argv + 2);
     if (!strcmp(verb, "when")) return v_when(argc - 2, argv + 2);

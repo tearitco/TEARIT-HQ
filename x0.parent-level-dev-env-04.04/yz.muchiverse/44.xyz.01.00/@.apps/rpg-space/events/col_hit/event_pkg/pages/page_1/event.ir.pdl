@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | environment
+STATE        | source               | hand-made
+NODE         | id=1 type=wo_calc | key=n|a=:mhp:|op=pm|b=:perm:
+NODE         | id=2 type=wo_run | op=rpg_space|w1=life|w2=hurt|w3=:who: :n:

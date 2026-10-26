@@ -1577,3 +1577,44 @@ COMMAND wo_run
   PARAMS op,w1,w2,w3
   TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" run "$(dirname "$(dirname "$ENT")")" '{op}' '{w1}' '{w2}' '{w3}'
 END
+# ---- world-ops, B4: numbers and conditions (collision) ----
+COMMAND wo_load
+  LABEL World: Load Number
+  FIELD1 File (in state/):
+  FIELD2 Key:
+  PARAMS file,key,min,max
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" load "$(dirname "$(dirname "$ENT")")" '{file}' '{key}' '{min}' '{max}'
+END
+
+COMMAND wo_calc
+  LABEL World: Calculate
+  FIELD1 Result key:
+  FIELD2 A:
+  PARAMS key,a,op,b
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" calc "$(dirname "$(dirname "$ENT")")" '{key}' '{a}' '{op}' '{b}'
+END
+
+COMMAND wo_kvline
+  LABEL World: Change Value In Line File
+  FIELD1 File (in state/):
+  FIELD2 Key:
+  PARAMS file,key,expr
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" kvline "$(dirname "$(dirname "$ENT")")" '{file}' '{key}' '{expr}'
+END
+
+COMMAND wo_if
+  LABEL World: If Number, Play Event
+  FIELD1 A:
+  FIELD2 Test (ge gt le lt eq ne):
+  PARAMS a,op,b,event
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" if "$(dirname "$(dirname "$ENT")")" '{a}' '{op}' '{b}' '{event}'
+END
+
+COMMAND wo_each_actor
+  LABEL World: For Each Character, Play Event
+  FIELD1 Event:
+  FIELD2 (unused):
+  PARAMS event
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" each_actor "$(dirname "$(dirname "$ENT")")" '{event}'
+END
+

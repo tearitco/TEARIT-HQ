@@ -1,0 +1,3 @@
+TRIGGER|parallel
+CMD|1|wo_run|op=rpg_space|w1=env|w2=breach|w3=:env_breach_room:|w1=env|w2=breach|w3=:env_breach_room:|w2=breach|w3=:env_breach_room:|w3=:env_breach_room:
+SCRATCHBLOCK|wo|rpg_space
