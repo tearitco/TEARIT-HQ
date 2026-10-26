@@ -7,6 +7,7 @@
  *   board_ctl key       <app> <xdotool key> [ms]    put the pointer inside the window (the desktop is focus-follows-mouse: a key goes to the window under the pointer), focus it, press one real key, wait ms (default 1500)
  *   board_ctl click     <app> <x> <y>               a click in window pixels: pointer moved onto the spot, then the press through the per-pid relay (a bare xdotool click did not reach the popup, and the relay click without the pointer there did nothing)
  *   board_ctl camera    <app> <preset>              absolute camera from tools/camera_presets.pdl (written into the session's bv_state.txt without touching the other lines), then a redraw nudge
+ *   board_ctl camset    <app> key=value ... | show   exact camera coordinates: cam_yaw cam_pitch cam_pan_x cam_pan_y cam_pan_z cam_z_level camera_mode current_z are written into bv_state.txt, then a redraw nudge (show prints them)
  *   board_ctl snap      <app> <out.png> [--same-ok] [--state f1,f2,..]
  *                                                   nudge, wait until the engine has rendered AFTER the nudge, dump the window (dump_frame_png_op), write <out.png>.receipt.txt (hash, session, frame time,
  *                                                   the first line of each --state file, relative to <app>/state). Exit 3 when the picture is byte-identical to the previous snap (stale) unless --same-ok.
@@ -155,6 +156,15 @@ static int do_manifest(const char *dir, const char *steps) {
         fprintf(m, "%s | %s | %s\n", snap, hold, out); }
     fclose(m); printf("%s manifest %s\n", bad ? "FAIL" : "ok", mp); return bad;
 }
+static int do_camset(int argc, char **argv) {      /* camset <app> key=value ...: write the camera lines of the session's bv_state.txt directly (cam_yaw, cam_pitch, cam_pan_x/y/z, cam_z_level, camera_mode, current_z), then a redraw nudge; camset <app> show prints them. The values are what the engine reads: pan is relative to the desk's home framing (pieces/system/cam_home.txt). */
+    if (!load_session() || !exists(SESS)) { printf("FAIL camset: no live session\n"); return 1; }
+    char sp[PATH_MAX + 64], b[8192]; snprintf(sp, sizeof sp, "%s/pieces/system/bv_state.txt", SESS); int shown = 0;
+    for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "show")) { shown = 1; continue; } char *eq = strchr(argv[i], '='); if (!eq) { printf("FAIL camset: %s is not key=value\n", argv[i]); return 1; } char k[64]; snprintf(k, sizeof k, "%.*s", (int)(eq - argv[i]), argv[i]);
+        if (strncmp(k, "cam_", 4) && strcmp(k, "camera_mode") && strcmp(k, "current_z")) { printf("FAIL camset: %s is not a camera key\n", k); return 1; } kv_write(sp, k, eq + 1); }
+    if (argc > 3 && !shown) { nudge(); usleep(500000); nudge(); }
+    slurp(sp, b, sizeof b); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "cam_", 4) || !strncmp(l, "camera_mode", 11) || !strncmp(l, "current_z", 9)) printf("%s\n", l);
+    return 0;
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: board_ctl status|preflight|recover|key|click|camera|snap <app dir> ...   |   manifest <dir> <steps.txt>   (see the header of tools/board_ctl.c)\n"); return 2; }
     char self[PATH_MAX]; ssize_t r = readlink("/proc/self/exe", self, sizeof self - 1); if (r > 0) { self[r] = 0; char *s = strrchr(self, '/'); if (s) *s = 0; s = strrchr(self, '/'); if (s) *s = 0; snprintf(HERE, sizeof HERE, "%s", self); }      /* tools/+x/board_ctl.+x -> .../tools */
@@ -168,6 +178,7 @@ int main(int argc, char **argv) {
     if (!strcmp(cmd, "key") && argc >= 4) return do_key(argv[3], argc >= 5 ? atoi(argv[4]) : 1500);
     if (!strcmp(cmd, "click") && argc >= 5) return do_click(atoi(argv[3]), atoi(argv[4]));
     if (!strcmp(cmd, "camera") && argc >= 4) return do_camera(argv[3]);
+    if (!strcmp(cmd, "camset") && argc >= 4) return do_camset(argc, argv);
     if (!strcmp(cmd, "expect") && argc >= 5) return do_expect(argv[3], argv[4], argc >= 6 ? atoi(argv[5]) : 0);
     if (!strcmp(cmd, "snap") && argc >= 4) { int same_ok = 0; const char *states = NULL; for (int i = 4; i < argc; i++) { if (!strcmp(argv[i], "--same-ok")) same_ok = 1; else if (!strcmp(argv[i], "--state") && i + 1 < argc) states = argv[++i]; } return do_snap(argv[3], same_ok, states); }
     fprintf(stderr, "board_ctl: bad command or arguments\n"); return 2;
