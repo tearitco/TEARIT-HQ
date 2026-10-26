@@ -1523,3 +1523,40 @@ COMMAND wo_when
   PARAMS cfg,value,event
   TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" when "$(dirname "$(dirname "$ENT")")" '{cfg}' '{value}' '{event}'
 END
+
+# ---- world-ops, B2: the destroyed page (mining / destruction -> remnants) ----
+COMMAND wo_pending
+  LABEL World: Load Pending Cell
+  FIELD1 File (in state/):
+  FIELD2 (unused):
+  PARAMS file
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" pending "$(dirname "$(dirname "$ENT")")" '{file}'
+END
+COMMAND wo_remnant
+  LABEL World: Make Remnants
+  FIELD1 Kind:
+  FIELD2 Room:
+  PARAMS kind,room,x,y
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" remnant "$(dirname "$(dirname "$ENT")")" '{kind}' '{room}' '{x}' '{y}'
+END
+COMMAND wo_clear_damage
+  LABEL World: Clear Damage
+  FIELD1 Room:
+  FIELD2 X:
+  PARAMS room,x,y
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" clear_damage "$(dirname "$(dirname "$ENT")")" '{room}' '{x}' '{y}'
+END
+COMMAND wo_node_use
+  LABEL World: Use Up Node Load
+  FIELD1 Kind:
+  FIELD2 Room:
+  PARAMS kind,room,x,y
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" node_use "$(dirname "$(dirname "$ENT")")" '{kind}' '{room}' '{x}' '{y}'
+END
+COMMAND wo_event
+  LABEL World: Log Event Row
+  FIELD1 Kind:
+  FIELD2 Field 1:
+  PARAMS kind,f1,f2,f3,f4
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" event "$(dirname "$(dirname "$ENT")")" '{kind}' '{f1}' '{f2}' '{f3}' '{f4}'
+END

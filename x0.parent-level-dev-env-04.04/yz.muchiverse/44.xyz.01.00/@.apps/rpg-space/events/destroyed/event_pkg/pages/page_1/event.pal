@@ -1,4 +1,8 @@
-# event.pal - destroyed as an EVENT PAGE (trigger parallel): something was destroyed (mined, wrecked, shot); the page turns its BLOCK row of blocks.pdl into remnants (state/drops.txt) and logs DESTROYED. The thing is in state/destroyed.txt.
-# pkg=destroyed page=page_1
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=destroyed page=page_1 - regenerated fresh on every command save
 exec cmd_1.sh
+exec cmd_2.sh
+exec cmd_3.sh
+exec cmd_4.sh
+exec cmd_5.sh
 halt
