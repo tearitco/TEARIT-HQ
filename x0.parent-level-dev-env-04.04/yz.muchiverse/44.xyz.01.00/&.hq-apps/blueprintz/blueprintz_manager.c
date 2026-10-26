@@ -21,7 +21,7 @@
 #include <sys/wait.h>
 
 #define P 4400
-#define MAXE 48
+#define MAXE 512      /* events on one page (was 48: a game with more was cut with no message); ui.txt buffer below is sized for it */
 #define MAXF 200
 static char g_house[4096], g_pkg[P], g_state[P], g_target[P];
 
@@ -30,16 +30,16 @@ typedef struct { char ev[64], page[24], code[24], detail[240]; } Fl;
 static Ev E[MAXE]; static int nE = 0, sel = 0;
 static Fl F[MAXF]; static int nF = 0;
 static char msg[300] = "ready", ctl_status[600] = "", trace_rows[6][240]; static int ntrace = 0;
-static char last_ui[24000];
+static char last_ui[1 << 20];
 
 /* ---- B4 editing: the commands (NODE rows) of the selected event's page_1, and an undo stack of inverse edits ---- */
 typedef struct { int id; char type[40], params[400]; } Nd;
 /* pages of the selected event (B4 multi-page, 2026-10-21): name + trigger read from pages/<name>/condition.pdl; cpage = the page being edited */
 typedef struct { char name[32], trig[64], sw[64]; } Pg;
-#define MAXPG 24
+#define MAXPG 64
 static Pg PG[MAXPG]; static int nPG = 0; static char cpage[32] = "";
 typedef struct { char pkg[P], label[64], page[32], mode[8], id[12], type[40], params[400]; } Undo;
-#define MAXN 64
+#define MAXN 128      /* = the compile limit (compile_page stops at 128 NODE rows) */
 #define MAXU 16
 static Nd N[MAXN]; static int nN = 0, csel = -1;
 static Undo U[MAXU]; static int nU = 0;
@@ -319,12 +319,12 @@ static void write_rows(const char *dir, const char *rel_prefix, const char *what
         if (de->d_name[0] == '.' || strlen(de->d_name) >= 64) continue;
         char t[P]; snprintf(t, P, "%s/%s/event_pkg/pages", dir, de->d_name); if (access(t, F_OK) == 0) snprintf(names[n++], 64, "%s", de->d_name);
     }
-    closedir(d); qsort(names, (size_t)n, 64, cmp_s);
+    int cut_more = de != NULL; closedir(d); qsort(names, (size_t)n, 64, cmp_s);
     char out[P], tmp[P]; join(out, g_state, "bp_sources.pdl"); snprintf(tmp, P, "%s.tmp", out);
     FILE *f = fopen(tmp, "w"); if (!f) { snprintf(msg, sizeof msg, "cannot write bp_sources.pdl"); return; }
     for (int i = 0; i < n; i++) fprintf(f, "EVENT | %s | %s/%s\n", names[i], rel_prefix, names[i]);
     fclose(f); rename(tmp, out); sel = 0; csel = -1; cpage[0] = 0; nU = 0;
-    snprintf(msg, sizeof msg, "loaded %d event(s) of %s (undo history cleared)", n, what);
+    snprintf(msg, sizeof msg, "loaded %d event(s) of %s%s (undo history cleared)", n, what, cut_more ? " - more exist than the page holds (raise MAXE)" : "");
 }
 static void load_common(void) {
     char dir[P]; snprintf(dir, P, "%s/common_events", g_target);
@@ -339,12 +339,12 @@ static void load_game(const char *app) {
         if (de->d_name[0] == '.' || strlen(de->d_name) >= 64) continue;
         char t[P]; snprintf(t, P, "%s/%s/event_pkg/pages", dir, de->d_name); if (access(t, F_OK) == 0) snprintf(names[n++], 64, "%s", de->d_name);
     }
-    closedir(d); qsort(names, (size_t)n, 64, cmp_s);
+    int cut_more = de != NULL; closedir(d); qsort(names, (size_t)n, 64, cmp_s);
     char out[P], tmp[P]; join(out, g_state, "bp_sources.pdl"); snprintf(tmp, P, "%s.tmp", out);
     FILE *f = fopen(tmp, "w"); if (!f) { snprintf(msg, sizeof msg, "cannot write bp_sources.pdl"); return; }
     for (int i = 0; i < n; i++) fprintf(f, "EVENT | %s | @.apps/%s/events/%s\n", names[i], app, names[i]);
     fclose(f); rename(tmp, out); sel = 0; csel = -1; nU = 0;
-    snprintf(msg, sizeof msg, "loaded %d verb pages of %s (undo history cleared)", n, app);
+    snprintf(msg, sizeof msg, "loaded %d verb pages of %s%s (undo history cleared)", n, app, cut_more ? " - more exist than the page holds (raise MAXE)" : "");
 }
 static void edit_verb(const char *verb) {
     if (!nE) { snprintf(msg, sizeof msg, "no event selected"); return; }
@@ -454,8 +454,8 @@ static void scan_edges(void) {
 
 /* ---- ui.txt ---- */
 static void write_ui(void) {
-    static char buf[24000]; size_t o = 0;
-#define PUT(...) do { if (o < sizeof buf - 600) o += (size_t)snprintf(buf + o, sizeof buf - o, __VA_ARGS__); } while (0)
+    static char buf[1 << 20]; size_t o = 0; int ui_cut = 0;      /* was 24000 bytes: near 48 events the rest of ui.txt (pages, commands, trace) was dropped silently */
+#define PUT(...) do { if (o < sizeof buf - 600) o += (size_t)snprintf(buf + o, sizeof buf - o, __VA_ARGS__); else ui_cut = 1; } while (0)
     char act[P]; snprintf(act, P, "'%s/ops/+x/bp_req.+x'", g_pkg);
     int totflags = 0; for (int i = 0; i < nE; i++) totflags += E[i].nflags;
     PUT("status_line=BLUEPRINTZ  page: %d events, %d flags  play=%s  %s\n", nE, totflags, play_mode_on() ? "ON" : "off", ctl_status);
@@ -513,6 +513,7 @@ static void write_ui(void) {
                                       {"runend","RUNEND"}, {"abort","ABORT"}, {"fire","FIRE"}, {"detach","DETACH"}, {"refresh","REFRESH"} };
     for (size_t i = 0; i < sizeof verbs / sizeof verbs[0]; i++) PUT("%s_action=%s '%s'\n", verbs[i][0], act, verbs[i][1]);
 #undef PUT
+    if (ui_cut) fprintf(stderr, "blueprintz_manager: ui.txt is over %d bytes, the end was cut\n", (int)sizeof buf);
     if (strcmp(buf, last_ui)) {
         char tmp[P], dst[P]; join(dst, g_state, "ui.txt"); snprintf(tmp, P, "%s.tmp", dst);
         FILE *f = fopen(tmp, "w"); if (!f) return; fputs(buf, f); fclose(f); rename(tmp, dst);

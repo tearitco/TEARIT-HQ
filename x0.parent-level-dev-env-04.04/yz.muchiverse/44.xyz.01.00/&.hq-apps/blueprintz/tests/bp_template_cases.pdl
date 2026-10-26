@@ -1,0 +1,14 @@
+SECTION | KEY | VALUE
+------------------------------
+# bp_template_cases.pdl - the blueprintz window template must be well formed (owner 2026-10-25: the page list, command list and editors had vanished because a stale copy of the sidebar, with a second panel and a second </sidebar>, sat in the middle of blueprintz.xhtpm since commit fc66c35ce; the parser dropped everything after the first scroll list and nothing said so). Run with auto's case_run:  X=<blueprintz.xhtpm> T=<scratch file> case_run tests/bp_template_cases.pdl
+# CASE | name | expected exit code | must contain ONE substring (- none) | must NOT contain ONE substring (- none) | command (sh -c). Fields cannot contain a pipe character.
+CASE | t0 exactly one bp_p panel | 0 | panels=1 | panels=2 | echo panels=$(grep -c '<panel id="bp_p"' "$X")
+CASE | t1 sidebar opens and closes once | 0 | sidebar=1/1 | - | echo sidebar=$(grep -c '<sidebar' "$X")/$(grep -c '</sidebar>' "$X")
+CASE | t2 panel opens and closes once | 0 | panel=1/1 | - | echo panel=$(grep -c '<panel' "$X")/$(grep -c '</panel>' "$X")
+CASE | t3 scrolllists balanced | 0 | scrolllist=ok | scrolllist=BAD | a=$(grep -c '<scrolllist' "$X"); b=$(grep -c '</scrolllist>' "$X"); if [ "$a" = "$b" ]; then echo scrolllist=ok; else echo scrolllist=BAD $a $b; fi
+CASE | t4 repeats balanced | 0 | repeat=ok | repeat=BAD | a=$(grep -c '<repeat ' "$X"); b=$(grep -c '</repeat>' "$X"); if [ "$a" = "$b" ]; then echo repeat=ok; else echo repeat=BAD $a $b; fi
+CASE | t5 rows balanced | 0 | row=ok | row=BAD | a=$(grep -c '<row ' "$X"); b=$(grep -c '</row>' "$X"); if [ "$a" = "$b" ]; then echo row=ok; else echo row=BAD $a $b; fi
+CASE | t6 the page list, command list and editors are inside the panel | 0 | inside=yes | inside=no | p=$(grep -n '<panel id="bp_p"' "$X" | head -1 | cut -d: -f1); q=$(grep -n '</panel>' "$X" | head -1 | cut -d: -f1); c=$(grep -n 'bind="pg"' "$X" | head -1 | cut -d: -f1); n=$(grep -n 'bind="n"' "$X" | head -1 | cut -d: -f1); if [ "$p" -lt "$c" ] && [ "$c" -lt "$n" ] && [ "$n" -lt "$q" ]; then echo inside=yes; else echo inside=no; fi
+# ---- negative test: the check can fail. A copy with the old stray block put back is caught -------------------------------------------------------
+CASE | t7 a copy with a second panel is caught by t0's count | 0 | panels=2 | panels=1 | awk 'NR==22{print "    <panel id=\"bp_p\" class=\"bp-panel\">"} {print}' "$X" > "$T"; echo panels=$(grep -c '<panel id="bp_p"' "$T")
+CASE | t8 a copy missing the closing panel is caught | 0 | panel=1/0 | - | grep -v '</panel>' "$X" > "$T"; echo panel=$(grep -c '<panel' "$T")/$(grep -c '</panel>' "$T")

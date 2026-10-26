@@ -1460,3 +1460,23 @@ COMMAND rpg_dust_verb
   PARAMS verb,arg
   TEMPLATE exec "$D/@.apps/rpg-dust/ops/+x/rpg_dust.+x" '{verb}'[ {arg}]
 END
+
+# dust_zoom_verb = the zoom / start verbs of the rpg-dust family ("dust_zoom.+x <verb>"). The game folder is found from the event itself ($ENT = <game>/events/<name>, so its grandparent is the game): every game has
+# its own copy of the op, a fixed path would run rpg-space's binary for rpg-dust's pages. No braces in the template: every {..} is a substitution key.
+COMMAND dust_zoom_verb
+  LABEL dust-zoom: Run Verb
+  FIELD1 Verb:
+  FIELD2 Args:
+  PARAMS verb,arg
+  TEMPLATE exec "$(dirname "$(dirname "$ENT")")/ops/+x/dust_zoom.+x" '{verb}'[ {arg}]
+END
+
+# app_verb = ONE generic command for any game whose op follows <game>/ops/+x/<op>.+x <verb> [args] (rpg-space, rpg-dust, the petslike family): Op is the binary's name without .+x (rpg_space, rpg_dust ...).
+# Same grandparent trick as above, so a page copied from one game to another still runs the other game's own op (BOOK 16.game/RPG-SPACE-BLUEPRINT-SYSTEMS.md, the port).
+COMMAND app_verb
+  LABEL Game: Run Verb
+  FIELD1 Op (binary name):
+  FIELD2 Verb:
+  PARAMS op,verb,arg
+  TEMPLATE exec "$(dirname "$(dirname "$ENT")")/ops/+x/{op}.+x" '{verb}'[ {arg}]
+END
