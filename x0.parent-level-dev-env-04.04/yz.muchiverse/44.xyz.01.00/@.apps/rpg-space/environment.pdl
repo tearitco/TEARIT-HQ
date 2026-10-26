@@ -9,7 +9,14 @@ ENV | scrub_per_tick | 1    | percent of oxygen the ship's air recycler gives ba
 ENV | leak_pct       | 12   | percent of the gap to the outside lost per tick through a hole (at least 1)
 ENV | breach_speed   | 4    | a collision at this speed or more punctures breach_room
 ENV | breach_room    | bridge | the room a collision punctures (later: the hull cell that was hit)
+ENV | cold_c         | 5    | below this many degrees a character freezes
+ENV | hot_c          | 45   | above this many degrees a character is scorched
+ENV | temp_pm        | 20   | per-mille of max hp lost per tick while freezing or scorching (at least 1 hp)
+ENV | cool_pct       | 6    | percent of the gap to the outside temperature a hole lets out per tick
+ENV | warm_per_tick  | 2    | degrees per tick a sealed room heats or cools back to its own temperature
 # OUTSIDE | o2 | temp   what lies beyond the hull
 OUTSIDE | 0  | -150
 # ROOM | id | o2 | temp   the level a room is kept at (rooms not listed: 21 percent, 20 C)
 ROOM | bridge | 21 | 20
+ROOM | engine | 21 | 38
+ROOM | hold   | 21 | 12

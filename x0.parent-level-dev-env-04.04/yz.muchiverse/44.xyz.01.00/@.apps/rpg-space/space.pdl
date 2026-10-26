@@ -1,0 +1,9 @@
+# space.pdl - what floats on the galaxy grid besides the planets (owner 2026-10-25: "a few asteroids and another smaller ship with 1 or 2 crew, to see how it goes").
+# Design: BOOK 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md 4e, 4f, 7f. The grid is 6 x 6 (gx, gy 0..5); planets sit on 0/2/4 (planets.pdl POS rows), the helm flies grid cell to grid cell.
+# Each row is seeded ONCE (state/space_seeded.txt remembers the id), after that the state files are the truth: state/nodes.txt (asteroids, mined away for good) and state/craft.txt (ships).
+# ROCK  | id | gx | gy | kind | amount | label      an asteroid = a resource node on the space desk (blocks.pdl kinds), mined with the ship's beam from a neighbouring grid cell; amount -1 = endless
+# CRAFT | id | gx | gy | label | crew | cargo       another ship: crew = name:hp:dx:dy,... (dx dy = where they stand inside, relative to the hull), cargo = item:n,...
+ROCK  | rock_1 | 2 | 2 | ore     | 6 | Rusty Rock
+ROCK  | rock_2 | 1 | 3 | rock    | 8 | Grey Chunk
+ROCK  | rock_3 | 3 | 1 | crystal | 3 | Glint
+CRAFT | skiff_1 | 2 | 4 | Wren (skiff) | pip:12:0:0,nova:12:1:0 | iron:2,bread:3

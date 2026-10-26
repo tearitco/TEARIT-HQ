@@ -74,6 +74,7 @@ static long sk_helm_settle = 0;      /* until this time the xelector is not read
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
+static int sk_space_block(int gx, int gy, char *msg, size_t cap); static void sk_space_draw(int g); static void sk_space_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static int sk_node_solid(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
 /* STATE_BACKEND (kh_state_notify.h): file = every tick re-reads everything (the old behaviour); marker / shmem = a slot moves when a writer wrote, readers reload only then. Slots: */
@@ -256,6 +257,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold") || !strcmp(v, "build")) { sk_wd_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "env")) { sk_env_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "space")) { sk_space_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "setpos")) {      /* setpos <room id> <x> <y>: put the controlled one on a cell (test setup for board_ctl; refuses a blocked cell and the space desk) */
         int rr = argc >= 2 ? room_idx(argv[1]) : -1, px = argc >= 4 ? atoi(argv[2]) : -1, py = argc >= 4 ? atoi(argv[3]) : -1;
         if (argc >= 4) { rr = room_idx(argv[1]); px = atoi(argv[2]); py = atoi(argv[3]); } else if (argc == 3) { snprintf(msg, cap, "usage: setpos <room> <x> <y>"); return; }
@@ -457,6 +459,7 @@ static void sk_build_space(void) {
     int sx, sy; sk_ship_load(&sx, &sy); int cx = 2 + sx * 2, cy = 2 + sy * 2;
     for (int dx = -1; dx <= 1; dx++) { int x = cx + dx; if (x < 0 || x >= SK_W) continue; sk_cdep[g][cy][x] = 0;
         if (dx) sk_solid(g, x, cy, 'f', 170, 175, 185, 0, 0); else { sk_solid(g, x, cy, 'W', 205, 210, 220, 0, 1); sk_solid(g, x, cy, 'W', 150, 155, 165, 0, 0); } }
+    sk_space_draw(g);      /* asteroids and other ships (space.pdl) */
     memcpy(sk_fs3[g], sk_fs[g], sizeof sk_fs3[g]); memcpy(sk_ws3[g], sk_ws[g], sizeof sk_ws3[g]);
 }
 static void sk_ensure_map(void) {
@@ -669,6 +672,7 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
             sk_dox = nx; sk_doy = ny; sk_land_write(0); sk_helm_settle = now_ms() + 300; snprintf(msg, cap, "ship at %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         int gx, gy, dx = atoi(argv[2]), dy = atoi(argv[3]); sk_ship_load(&gx, &gy); int nx = gx + dx, ny = gy + dy;
         if (nx < 0 || ny < 0 || nx >= SK_GRID || ny >= SK_GRID) { snprintf(msg, cap, "the edge of the charted system (%d,%d)", gx, gy); return; }
+        if (sk_space_block(nx, ny, msg, cap)) return;      /* an asteroid or another ship sits there */
         sk_ship_save(nx, ny); char b[100]; snprintf(b, sizeof b, "FLY|%ld|ship|%d,%d|%d,%d", (long)time(NULL), gx, gy, nx, ny); append_line("events.txt", b);
         sk_helm_put(SK_SPACE, 2 + nx * 2, 2 + ny * 2); sk_space_refresh(msg, cap);
         const char *over = "deep space"; sk_look_load(); for (int k = 0; k < sk_pl_n; k++) { int px, py; if (sk_pos_of(sk_pl[k].id, &px, &py) && px == nx && py == ny) over = sk_pl[k].label; }
@@ -787,12 +791,12 @@ static void sk_coll_cfg(void) {
 /* ENVIRONMENT (owner 2026-10-25, 4b/4c/7e): air per room as plain data. environment.pdl holds the constants, state/air.txt one row per room "room|o2|temp|breach". A hole (breach 1) lets the room's oxygen drain toward the outside value, a
  * room without a hole is topped up by the recycler toward its own level, a character in air under o2_ok loses a slice of max hp per tick through the same `life hurt` sink hunger and collisions use (so death, drops and respawn follow by themselves). */
 typedef struct { char id[24]; int o2, temp, breach; } SkAir;
-static SkAir sk_air[16]; static int sk_nair; static int sk_ev_on = 1, sk_ev_tick = 2000, sk_ev_ok = 16, sk_ev_pm = 30, sk_ev_scrub = 1, sk_ev_leak = 12, sk_ev_bspeed = 6, sk_ev_out_o2 = 0; static char sk_ev_broom[24] = "bridge"; static struct { char id[24]; int o2, temp; } sk_ev_base[16]; static int sk_ev_nbase; static long sk_ev_cfg_at, sk_ev_last;
+static SkAir sk_air[16]; static int sk_nair; static int sk_ev_on = 1, sk_ev_tick = 2000, sk_ev_ok = 16, sk_ev_pm = 30, sk_ev_scrub = 1, sk_ev_leak = 12, sk_ev_bspeed = 6, sk_ev_out_o2 = 0; static int sk_ev_cold = 5, sk_ev_hot = 45, sk_ev_cool = 6, sk_ev_warm = 2, sk_ev_tpm = 20, sk_ev_out_t = -150; static char sk_ev_broom[24] = "bridge"; static struct { char id[24]; int o2, temp; } sk_ev_base[16]; static int sk_ev_nbase; static long sk_ev_cfg_at, sk_ev_last;
 static void sk_env_cfg(void) {
     long now = now_ms(); if (sk_ev_cfg_at && now - sk_ev_cfg_at < 2000) return; sk_ev_cfg_at = now; char p[PATH_MAX], ln[300], *f[8]; snprintf(p, sizeof p, "%s/environment.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return; sk_ev_nbase = 0;
     while (fgets(ln, sizeof ln, fp)) { int n; if (ln[0] == '#' || (n = split_bar(ln, f, 8)) < 2) continue;
-        if (!strcmp(f[0], "ENV") && n >= 3) { int v = atoi(f[2]); if (!strcmp(f[1], "enabled")) sk_ev_on = v; else if (!strcmp(f[1], "tick_ms")) sk_ev_tick = v > 100 ? v : 100; else if (!strcmp(f[1], "o2_ok")) sk_ev_ok = v; else if (!strcmp(f[1], "choke_pm")) sk_ev_pm = v; else if (!strcmp(f[1], "scrub_per_tick")) sk_ev_scrub = v; else if (!strcmp(f[1], "leak_pct")) sk_ev_leak = v; else if (!strcmp(f[1], "breach_speed")) sk_ev_bspeed = v; else if (!strcmp(f[1], "breach_room")) snprintf(sk_ev_broom, sizeof sk_ev_broom, "%s", f[2]); }
-        else if (!strcmp(f[0], "OUTSIDE") && n >= 2) sk_ev_out_o2 = atoi(f[1]);
+        if (!strcmp(f[0], "ENV") && n >= 3) { int v = atoi(f[2]); if (!strcmp(f[1], "enabled")) sk_ev_on = v; else if (!strcmp(f[1], "tick_ms")) sk_ev_tick = v > 100 ? v : 100; else if (!strcmp(f[1], "o2_ok")) sk_ev_ok = v; else if (!strcmp(f[1], "choke_pm")) sk_ev_pm = v; else if (!strcmp(f[1], "scrub_per_tick")) sk_ev_scrub = v; else if (!strcmp(f[1], "leak_pct")) sk_ev_leak = v; else if (!strcmp(f[1], "breach_speed")) sk_ev_bspeed = v; else if (!strcmp(f[1], "cold_c")) sk_ev_cold = v; else if (!strcmp(f[1], "hot_c")) sk_ev_hot = v; else if (!strcmp(f[1], "cool_pct")) sk_ev_cool = v; else if (!strcmp(f[1], "warm_per_tick")) sk_ev_warm = v; else if (!strcmp(f[1], "temp_pm")) sk_ev_tpm = v; else if (!strcmp(f[1], "breach_room")) snprintf(sk_ev_broom, sizeof sk_ev_broom, "%s", f[2]); }
+        else if (!strcmp(f[0], "OUTSIDE") && n >= 2) { sk_ev_out_o2 = atoi(f[1]); if (n >= 3) sk_ev_out_t = atoi(f[2]); }
         else if (!strcmp(f[0], "ROOM") && n >= 4 && sk_ev_nbase < 16) { snprintf(sk_ev_base[sk_ev_nbase].id, sizeof sk_ev_base[0].id, "%s", f[1]); sk_ev_base[sk_ev_nbase].o2 = atoi(f[2]); sk_ev_base[sk_ev_nbase++].temp = atoi(f[3]); } }
     fclose(fp); }
 static int sk_env_base(const char *id, int *temp) { for (int i = 0; i < sk_ev_nbase; i++) if (!strcmp(sk_ev_base[i].id, id)) { if (temp) *temp = sk_ev_base[i].temp; return sk_ev_base[i].o2; } if (temp) *temp = 20; return 21; }
@@ -806,23 +810,32 @@ static SkAir *sk_env_room(const char *id) { for (int i = 0; i < sk_nair; i++) if
 static void sk_env_breach(const char *room, int on) { sk_env_load(); SkAir *a = sk_env_room(room); if (!a || a->breach == on) return; a->breach = on; sk_env_save(); char rb[120]; snprintf(rb, sizeof rb, "%s|%ld|%s|o2 %d", on ? "BREACH" : "SEALED", (long)time(NULL), room, a->o2); append_line("events.txt", rb); }
 static int sk_env_tick(void) {
     sk_env_cfg(); if (!sk_ev_on) return 0; long now = now_ms(); if (now - sk_ev_last < sk_ev_tick) return 0; sk_ev_last = now; sk_env_load(); int changed = 0;
-    for (int i = 0; i < sk_nair; i++) { SkAir *a = &sk_air[i]; int tmp, want = sk_env_base(a->id, &tmp), o = a->o2;
-        if (a->breach) { int d = (a->o2 - sk_ev_out_o2) * sk_ev_leak / 100; if (d < 1 && a->o2 > sk_ev_out_o2) d = 1; a->o2 -= d; }
-        else if (a->o2 < want) { a->o2 += sk_ev_scrub; if (a->o2 > want) a->o2 = want; }
-        else if (a->o2 > want) a->o2 = want; if (a->o2 != o) changed = 1; }
+    for (int i = 0; i < sk_nair; i++) { SkAir *a = &sk_air[i]; int wt, want = sk_env_base(a->id, &wt), o = a->o2, ot = a->temp;
+        if (a->breach) { int d = (a->o2 - sk_ev_out_o2) * sk_ev_leak / 100; if (d < 1 && a->o2 > sk_ev_out_o2) d = 1; a->o2 -= d; int dt = (a->temp - sk_ev_out_t) * sk_ev_cool / 100; if (dt < 1 && a->temp > sk_ev_out_t) dt = 1; a->temp -= dt; }      /* a hole lets the heat out too */
+        else { if (a->o2 < want) { a->o2 += sk_ev_scrub; if (a->o2 > want) a->o2 = want; } else if (a->o2 > want) a->o2 = want;
+               if (a->temp < wt) { a->temp += sk_ev_warm; if (a->temp > wt) a->temp = wt; } else if (a->temp > wt) { a->temp -= sk_ev_warm; if (a->temp < wt) a->temp = wt; } }      /* the heating and the cooling of a sealed room move it back to its own temperature */
+        if (a->o2 != o || a->temp != ot) changed = 1; }
     if (changed) sk_env_save();
-    for (int s = 0; s <= nparty; s++) { sk_life_load(s); if (sk_life[s].dead || sk_life[s].hp <= 0) continue; Ent *e = sk_life_ent(s); if (e->room < 0 || e->room >= nroom) continue; SkAir *a = sk_env_room(rooms[e->room].id); if (!a || a->o2 >= sk_ev_ok) continue;
-        int n = sk_life_mhp(s) * sk_ev_pm / 1000; if (n < 1) n = 1; char nb[16], m2[160]; snprintf(nb, sizeof nb, "%d", n); char *hv[4] = { "life", "hurt", (char *)sk_life_id(s), nb }; sk_life_verb(4, hv, m2, sizeof m2);
-        { char rb[120]; snprintf(rb, sizeof rb, "CHOKE|%ld|%s|%s o2 %d|-%d hp", (long)time(NULL), sk_life_id(s), a->id, a->o2, n); append_line("events.txt", rb); } changed = 1; }
+    char pend[600] = ""; int np = 0;      /* who suffers this tick: state/env_pending.txt "slot|hp|kind|room|value", applied by events/environment (env apply) */
+    for (int s = 0; s <= nparty; s++) { sk_life_load(s); if (sk_life[s].dead || sk_life[s].hp <= 0) continue; Ent *e = sk_life_ent(s); if (e->room < 0 || e->room >= nroom) continue; SkAir *a = sk_env_room(rooms[e->room].id); if (!a) continue;
+        const char *kind = a->o2 < sk_ev_ok ? "CHOKE" : a->temp < sk_ev_cold ? "FREEZE" : a->temp > sk_ev_hot ? "SCORCH" : NULL; if (!kind) continue;
+        int pm = a->o2 < sk_ev_ok ? sk_ev_pm : sk_ev_tpm, n = sk_life_mhp(s) * pm / 1000; if (n < 1) n = 1; char t[100]; snprintf(t, sizeof t, "%d|%d|%s|%s|%d\n", s, n, kind, a->id, a->o2 < sk_ev_ok ? a->o2 : a->temp); if (strlen(pend) + strlen(t) < sizeof pend) { strcat(pend, t); np++; } }
+    if (np) { char pp[PATH_MAX]; spath(pp, "env_pending.txt"); write_if_changed(pp, pend, strlen(pend)); if (!run_event_x("environment", "parallel", "")) { char *av[2] = { "env", "apply" }; char m2[200]; sk_env_verb(2, av, m2, sizeof m2); } changed = 1; }      /* no page = the C fallback applies it at once */
     return changed; }
 static void sk_env_ui(char *out, size_t cap) {      /* vars env_o2 / env_temp / env_breach: the air in the room of the controlled character (the bar can show them) */
-    sk_env_load(); int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); SkAir *a = e->room >= 0 && e->room < nroom ? sk_env_room(rooms[e->room].id) : NULL; snprintf(out, cap, "env_o2=%d\nenv_temp=%d\nenv_breach=%d\n", a ? a->o2 : 0, a ? a->temp : 0, a ? a->breach : 0); }
+    sk_env_load(); int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); SkAir *a = e->room >= 0 && e->room < nroom ? sk_env_room(rooms[e->room].id) : NULL; int o2 = a ? a->o2 : 0, tc = a ? a->temp : 0, br = a ? a->breach : 0, warn = br || o2 < sk_ev_ok || tc < sk_ev_cold || tc > sk_ev_hot;
+    snprintf(out, cap, "env_o2=%d\nenv_temp=%d\nenv_breach=%d\nenv_label=Air %d%% %dC%s\nenv_ok=%s\nenv_warn=%s\n", o2, tc, br, o2, tc, br ? " HOLE" : "", warn ? "" : "1", warn ? "1" : ""); }
 static void sk_env_verb(int argc, char **argv, char *msg, size_t cap) {      /* env status | breach <room> [on|off] | set <room> o2 <n> */
     sk_env_load(); const char *a = argc >= 2 ? argv[1] : "status";
     if (!strcmp(a, "status")) { char b[400] = ""; for (int i = 0; i < sk_nair; i++) { char t[80]; snprintf(t, sizeof t, "%s o2 %d%% %dC%s; ", sk_air[i].id, sk_air[i].o2, sk_air[i].temp, sk_air[i].breach ? " HOLE" : ""); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "air: %s", b); return; }
+    if (!strcmp(a, "apply")) {      /* what events/environment calls: hurt everyone listed in state/env_pending.txt and log CHOKE / FREEZE / SCORCH */
+        char p[PATH_MAX], b[600], *f[6], *sv = NULL; spath(p, "env_pending.txt"); b[0] = 0; read_file(p, b, sizeof b); write_if_changed(p, "", 0); int cnt = 0;
+        for (char *l = strtok_r(b, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { if (split_bar(l, f, 6) < 5) continue; int slot = atoi(f[0]); if (slot < 0 || slot > nparty) continue; char *hv[4] = { "life", "hurt", (char *)sk_life_id(slot), f[1] }; char m2[160]; sk_life_verb(4, hv, m2, sizeof m2);
+            char rb[140]; snprintf(rb, sizeof rb, "%s|%ld|%s|%s %s %s|-%s hp", f[2], (long)time(NULL), sk_life_id(slot), f[3], !strcmp(f[2], "CHOKE") ? "o2" : "temp", f[4], f[1]); append_line("events.txt", rb); cnt++; }
+        snprintf(msg, cap, "environment: %d hurt", cnt); return; }
     if (!strcmp(a, "breach") && argc >= 3) { int on = !(argc >= 4 && !strcmp(argv[3], "off")); if (!sk_env_room(argv[2])) { snprintf(msg, cap, "env: no room %s", argv[2]); return; } sk_env_breach(argv[2], on); snprintf(msg, cap, "%s %s", argv[2], on ? "has a hole in the hull" : "is sealed"); return; }
-    if (!strcmp(a, "set") && argc >= 5 && !strcmp(argv[3], "o2")) { SkAir *r = sk_env_room(argv[2]); if (!r) { snprintf(msg, cap, "env: no room %s", argv[2]); return; } r->o2 = atoi(argv[4]); sk_env_save(); snprintf(msg, cap, "%s o2 %d%%", r->id, r->o2); return; }
-    snprintf(msg, cap, "usage: env status | breach <room> [on|off] | set <room> o2 <n>"); }
+    if (!strcmp(a, "set") && argc >= 5 && (!strcmp(argv[3], "o2") || !strcmp(argv[3], "temp"))) { SkAir *r = sk_env_room(argv[2]); if (!r) { snprintf(msg, cap, "env: no room %s", argv[2]); return; } if (argv[3][0] == 'o') r->o2 = atoi(argv[4]); else r->temp = atoi(argv[4]); sk_env_save(); snprintf(msg, cap, "%s o2 %d%% %dC", r->id, r->o2, r->temp); return; }
+    snprintf(msg, cap, "usage: env status | breach <room> [on|off] | set <room> o2|temp <n> | apply"); }
 static void sk_coll_effect(int speed, char *msg, size_t cap) {      /* what events/collision calls: slight crew damage, more at speed, and the ship's own damage register */
     sk_coll_cfg(); int hurt = 0; for (int s = 0; s <= nparty; s++) { int mh = sk_life_mhp(s), n = mh * (sk_cl_base + speed * sk_cl_spd) / 1000; if (n < 1) n = 1; char nb[16], m2[160]; snprintf(nb, sizeof nb, "%d", n); char *hv[4] = { "life", "hurt", (char *)sk_life_id(s), nb }; sk_life_verb(4, hv, m2, sizeof m2); hurt += n; }
     { char p[PATH_MAX], b[120]; int hits = 0, dmg = 0; spath(p, "ship_damage.txt"); read_file(p, b, sizeof b); sscanf(b, "hits=%d dmg=%d", &hits, &dmg); hits++; dmg += speed; snprintf(b, sizeof b, "hits=%d dmg=%d last=%ld\n", hits, dmg, (long)time(NULL)); write_if_changed(p, b, strlen(b)); }
@@ -866,6 +879,34 @@ static SkNode *sk_node_at(int room, int x, int y) { for (int i = 0; i < sk_nnode
 static int sk_node_solid(int room, int x, int y) {      /* cached for 400 ms: the walk checks run for every pet and every path step */
     static long at; static int n, r[32], px[32], py[32]; long now = now_ms(); if (!at || now - at > 400) { at = now; sk_nodes_load(); n = sk_nnodes; for (int i = 0; i < n; i++) { r[i] = sk_nodes[i].room; px[i] = sk_nodes[i].x; py[i] = sk_nodes[i].y; } }
     for (int i = 0; i < n; i++) if (r[i] == room && px[i] == x && py[i] == y) return 1; return 0; }
+/* SPACE OBJECTS (owner 2026-10-25, 4e/4f/7f): asteroids are resource nodes of the space room (so mining, remnants, solidity and drawing are the ones that exist), another ship is a registered entity with crew and cargo, both seeded from space.pdl once. */
+typedef struct { char id[24], label[32], crew[120], cargo[80]; int gx, gy; } SkCraft;
+static SkCraft sk_craft[6]; static int sk_ncraft;
+static void sk_craft_save(void) { char p[PATH_MAX], b[6 * 300], *w = b; spath(p, "craft.txt"); b[0] = 0; for (int i = 0; i < sk_ncraft; i++) w += snprintf(w, sizeof b - (size_t)(w - b), "%s|%d|%d|%s|%s|%s\n", sk_craft[i].id, sk_craft[i].gx, sk_craft[i].gy, sk_craft[i].label, sk_craft[i].crew, sk_craft[i].cargo); write_if_changed(p, b, strlen(b)); }
+static void sk_craft_load(void) {
+    static long at; long now = now_ms(); if (at && now - at < 700) return; at = now; char p[PATH_MAX], b[6 * 300], sd[800], *f[8]; spath(p, "craft.txt"); b[0] = 0; read_file(p, b, sizeof b); sk_ncraft = 0;
+    for (char *l = strtok(b, "\n"); l && sk_ncraft < 6; l = strtok(NULL, "\n")) { if (split_bar(l, f, 8) < 6) continue; SkCraft *c = &sk_craft[sk_ncraft++]; snprintf(c->id, sizeof c->id, "%s", f[0]); c->gx = atoi(f[1]); c->gy = atoi(f[2]); snprintf(c->label, sizeof c->label, "%s", f[3]); snprintf(c->crew, sizeof c->crew, "%s", f[4]); snprintf(c->cargo, sizeof c->cargo, "%s", f[5]); }
+    spath(p, "space_seeded.txt"); sd[0] = 0; read_file(p, sd, sizeof sd); int added = 0; char pd[PATH_MAX], ln[400]; snprintf(pd, sizeof pd, "%s/space.pdl", APP); FILE *fp = fopen(pd, "r"); if (!fp) return;
+    while (fgets(ln, sizeof ln, fp)) { int n; if (ln[0] == '#' || (n = split_bar(ln, f, 8)) < 6) continue; char key[40]; snprintf(key, sizeof key, "\n%s\n", f[1]); char hay[820]; snprintf(hay, sizeof hay, "\n%s", sd); if (strstr(hay, key)) continue;
+        if (!strcmp(f[0], "ROCK")) { sk_nodes_load(); if (sk_nnodes < 32) { SkNode *nd = &sk_nodes[sk_nnodes++]; nd->room = SK_SPACE; nd->x = 2 + atoi(f[2]) * 2; nd->y = 2 + atoi(f[3]) * 2; nd->amount = atoi(f[5]); snprintf(nd->kind, sizeof nd->kind, "%s", f[4]); sk_nodes_save(); added = 1; } else continue; }
+        else if (!strcmp(f[0], "CRAFT") && n >= 7 && sk_ncraft < 6) { SkCraft *c = &sk_craft[sk_ncraft++]; snprintf(c->id, sizeof c->id, "%s", f[1]); c->gx = atoi(f[2]); c->gy = atoi(f[3]); snprintf(c->label, sizeof c->label, "%s", f[4]); snprintf(c->crew, sizeof c->crew, "%s", f[5]); snprintf(c->cargo, sizeof c->cargo, "%s", f[6]); sk_craft_save(); added = 1; }
+        else continue;
+        strncat(sd, f[1], sizeof sd - strlen(sd) - 2); strcat(sd, "\n"); }
+    fclose(fp); if (added) { spath(p, "space_seeded.txt"); write_if_changed(p, sd, strlen(sd)); } }
+static int sk_craft_at(int gx, int gy) { sk_craft_load(); for (int i = 0; i < sk_ncraft; i++) if (sk_craft[i].gx == gx && sk_craft[i].gy == gy) return i; return -1; }
+static int sk_space_block(int gx, int gy, char *msg, size_t cap) {      /* 1 = the ship cannot fly onto this grid cell */
+    sk_craft_load(); int ci = sk_craft_at(gx, gy); if (ci >= 0) { snprintf(msg, cap, "%s is there: the helm holds off (try `space hail %s`)", sk_craft[ci].label, sk_craft[ci].id); return 1; }
+    if (sk_node_solid(SK_SPACE, 2 + gx * 2, 2 + gy * 2)) { snprintf(msg, cap, "an asteroid is in the way at %d,%d: mine it with m from a neighbouring cell", gx, gy); return 1; } return 0; }
+static void sk_space_draw(int g) {      /* asteroids: a grey rock cell under their block; other ships: a one-cell teal hull (rows of the space desk, no engine piece) */
+    sk_craft_load(); sk_nodes_load(); for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SPACE) { int x = sk_nodes[i].x, y = sk_nodes[i].y; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_solid(g, x, y, 'G', 110, 105, 100, 0, 0); sk_cdep[g][y][x] = 3; }
+    for (int i = 0; i < sk_ncraft; i++) { int x = 2 + sk_craft[i].gx * 2, y = 2 + sk_craft[i].gy * 2; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_cdep[g][y][x] = 0; sk_solid(g, x, y, 'W', 95, 190, 190, 0, 1); sk_solid(g, x, y, 'W', 60, 140, 150, 0, 0); } }
+static void sk_space_verb(int argc, char **argv, char *msg, size_t cap) {      /* space status | hail <id> | move <id> <gx> <gy> */
+    sk_craft_load(); const char *a = argc >= 2 ? argv[1] : "status";
+    if (!strcmp(a, "status")) { char b[500] = ""; sk_nodes_load(); int rocks = 0; for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SPACE) { char t[60]; snprintf(t, sizeof t, "%s@%d,%d x%d; ", sk_nodes[i].kind, (sk_nodes[i].x - 2) / 2, (sk_nodes[i].y - 2) / 2, sk_nodes[i].amount); strncat(b, t, sizeof b - strlen(b) - 1); rocks++; }
+        for (int i = 0; i < sk_ncraft; i++) { char t[200]; snprintf(t, sizeof t, "%s '%s' @%d,%d crew %s cargo %s; ", sk_craft[i].id, sk_craft[i].label, sk_craft[i].gx, sk_craft[i].gy, sk_craft[i].crew, sk_craft[i].cargo); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "space: %d asteroids, %d ships: %s", rocks, sk_ncraft, b); return; }
+    if (!strcmp(a, "hail") && argc >= 3) { for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { char who[40] = "", cp[120]; snprintf(cp, sizeof cp, "%s", sk_craft[i].crew); char *c0 = strtok(cp, ":,"); if (c0) snprintf(who, sizeof who, "%s", c0); char rb[160]; snprintf(rb, sizeof rb, "HAIL|%ld|%s|%s", (long)time(NULL), sk_craft[i].id, who); append_line("events.txt", rb); snprintf(msg, cap, "%s answers from the %s: \"%s here. Crew %s. Cargo %s.\"", who[0] ? who : "someone", sk_craft[i].label, who[0] ? who : "we", sk_craft[i].crew, sk_craft[i].cargo); return; } snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
+    if (!strcmp(a, "move") && argc >= 5) { for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { int gx = atoi(argv[3]), gy = atoi(argv[4]); if (gx < 0 || gy < 0 || gx >= SK_GRID || gy >= SK_GRID) { snprintf(msg, cap, "space: off the chart"); return; } sk_craft[i].gx = gx; sk_craft[i].gy = gy; sk_craft_save(); sk_space_refresh(msg, cap); snprintf(msg, cap, "%s moved to %d,%d", sk_craft[i].id, gx, gy); return; } snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
+    snprintf(msg, cap, "usage: space status | hail <id> | move <id> <gx> <gy>"); }
 static void sk_destroy_effect(const char *kind, int room, int x, int y, const char *src, char *msg, size_t cap) {      /* what events/destroyed calls: the BLOCK row becomes remnants where it stood */
     sk_wd_cfg(); SkBlk *b = sk_blk_find(kind); char rb[160]; int made = 0, dm = 0;
     if (b && b->cnt > 0) { sk_drops_load(); if (sk_ndrops < 64) { SkDrop *q = &sk_drops[sk_ndrops++]; q->id = sk_dropid++; q->room = room; q->x = x; q->y = y; q->n = b->cnt; snprintf(q->item, sizeof q->item, "%s", b->drop); q->owner[0] = 0; srand((unsigned)(now_ms() ^ ((long)getpid() << 7))); dm = (rand() % 100) < b->dpct;      /* every verb is a fresh process: seed or the first rand() is always the same */ q->dmg = dm; snprintf(q->src, sizeof q->src, "%s", kind); made = q->n; sk_drops_save(); } }
@@ -890,6 +931,7 @@ static void sk_wd_verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "mine") && argc >= 2 && (!strcmp(argv[1], "here") || !strcmp(argv[1], "nodes"))) {      /* mine here [tool]: the node in front of the controlled character (or under it), mined with the pick on foot and the ship's beam at the helm; mine nodes lists them */
         sk_nodes_load(); if (!strcmp(argv[1], "nodes")) { char b[600] = ""; for (int i = 0; i < sk_nnodes; i++) { char t[80]; snprintf(t, sizeof t, "%s %d,%d %s x%d; ", rooms[sk_nodes[i].room].id, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].kind, sk_nodes[i].amount); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "nodes %d: %s", sk_nnodes, b[0] ? b : "none"); return; }
         int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); static const int ddx[4] = { 0, -1, 1, 0 }, ddy[4] = { 1, 0, 0, -1 }; int tx = e->x + ddx[e->dir & 3], ty = e->y + ddy[e->dir & 3]; SkNode *nd = sk_node_at(e->room, tx, ty); if (!nd) nd = sk_node_at(e->room, e->x, e->y);
+        if (!nd && e->room == SK_SPACE) for (int i = 0; i < sk_nnodes && !nd; i++) if (sk_nodes[i].room == SK_SPACE && abs(sk_nodes[i].x - e->x) <= 2 && abs(sk_nodes[i].y - e->y) <= 2) nd = &sk_nodes[i];      /* at the helm in space the beam reaches the asteroid on a neighbouring grid cell */
         if (!nd) { snprintf(msg, cap, "nothing to mine in front of %s (%d,%d)", sk_life_id(sh), tx, ty); return; }
         char xs[12], ys[12]; snprintf(xs, sizeof xs, "%d", nd->x); snprintf(ys, sizeof ys, "%d", nd->y); char kd[24], rm[16]; snprintf(kd, sizeof kd, "%s", nd->kind); snprintf(rm, sizeof rm, "%s", rooms[nd->room].id); char *nv[6] = { "mine", kd, rm, xs, ys, argc >= 3 ? argv[2] : (flag_on("helm", 0) ? "beam" : "pick") }; sk_wd_verb(6, nv, msg, cap); return; }
     if (!strcmp(v, "mine")) {      /* mine <kind> <room> <x> <y> [tool]: adds the tool's power to the cell's progress; at hardness the cell is destroyed (event page) */
