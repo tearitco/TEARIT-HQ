@@ -1,0 +1,102 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | file_id            | keybinds
+META         | note               | Unified board-viewer keybinds. Read by &.widgits/board-viewer/ops/bv_menu_input.c. Edit + relaunch (no rebuild). Values on KEY/VERB rows are RAW ASCII KEYCODES (python3 -c "print(ord('w'))" or man ascii). Missing a row -> the built-in default (shown in the comment). This file overrides pieces/system/arrow_config.txt's key_* section and pieces/system/keybinds.txt.
+
+# ── camera / POV / view ──
+# render_mode_toggle, the pov_mode_* keys and cjk_view are NON-modal
+# (work from any mode). q/e/r/t rotate, w/a/s/d pan and c/v height now
+# work in EVERY 3D camera mode (2026-09-09).
+KEY          | render_mode_toggle | 48        # '0'  toggle 2D <-> 3D
+KEY          | cjk_view           | 96        # '`'  always -> 2D Chinese / ASCII terminal view
+KEY          | pov_mode_1         | 49        # '1'  first person   (-> 3D)
+KEY          | pov_mode_2         | 50        # '2'  third person   (-> 3D)
+KEY          | pov_mode_3         | 51        # '3'  free roam      (-> 3D, wasd pan)
+KEY          | pov_mode_4         | 52        # '4'  bird's eye     (-> 3D, wasd pan, no rotate)
+KEY          | pov_mode_6         | 255       # unused. Painted desks show in POV 1-4. 0 toggles 2D/3D.
+KEY          | yaw_left           | 113       # 'q'  turn left   (all 3D modes)
+KEY          | yaw_right          | 101       # 'e'  turn right  (all 3D modes)
+KEY          | pitch_down         | 114       # 'r'  look down   (all 3D modes)
+KEY          | pitch_up           | 116       # 't'  look up     (all 3D modes)
+KEY          | pan_forward        | 119       # 'w'  pan forward (all 3D modes)
+KEY          | pan_back           | 115       # 's'  pan back    (all 3D modes)
+KEY          | pan_left           | 97        # 'a'  pan left    (all 3D modes)
+KEY          | pan_right          | 100       # 'd'  pan right   (all 3D modes)
+KEY          | cam_height_down    | 99        # 'c'  camera Z -1 (all 3D modes)
+KEY          | cam_height_up      | 118       # 'v'  camera Z +1 (all 3D modes)
+KEY          | reset_view         | 102       # 'f'  reset camera to this mode's default
+KEY          | reset_view_alt     | 53        # '5'  same as 'f' (recentre); shadows the old '5'->FILE_MENU (File is on the chrome button)
+
+# ── xelector cursor / possession (muta ops/choice.c parity) ──
+KEY          | xelector_z_down    | 122       # 'z'  xelector Z -1
+KEY          | xelector_z_up      | 120       # 'x'  xelector Z +1
+KEY          | reset_xelector     | 56        # '8'  snap xelector back to the hero
+KEY          | possess_commit     | 13        # Enter  possess the entity the xelector is standing on (if piece.pdl possessable)
+KEY          | possess            | 57        # '9'  release possession (blocked if piece.pdl de_possessible=true); if unpossessed, reverse-jump to last_possessed_id
+
+# ── host menu actions (relayed to the game's inbox) ──
+KEY          | file_menu          | 53        # '5'  -> FILE_MENU
+KEY          | desk_menu          | 54        # '6'  -> DESK_MENU
+
+# ── game verbs: <keycode> -> ACTION (only while possessing hero) ──
+VERB         | 32                 | JUMP
+VERB         | 103                | MINE
+VERB         | 104                | BUILD
+VERB         | 47                 | END_TURN
+VERB         | 46                 | TOGGLE_AUTOTICK
+VERB         | 44                 | CYCLE_TICK_SPEED
+
+# ── entity context menu (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md) ──
+# The ctx_menu VERB opens the SHARED khtpm context-menu window on
+# whatever the selector points at (pieces/display/pick.txt). Unlike the
+# game verbs below it fires even when NOT possessing the hero
+# (bv_menu_input.c's verb_always_allowed list). Moved to o (111) in rpg-space (owner 2026-10-25: m is mining there); default m (109) - a
+# real forwarded key; bare Shift is a modifier and isn't relayed. Right-
+# click is the planned second trigger (slice 3). Rebind by editing the
+# keycode here (man ascii / python3 -c "print(ord('m'))").
+OPT          | ctx_menu_enabled   | 1
+VERB         | 111                | CTX_MENU
+
+# ── input options ──
+# multipress_compensator: 1 = bv_dispatch drops stale queued keys (a
+#   held key that piled up behind a slow 3D render) so movement stops
+#   promptly on release, and caps a same-arrow run to 3 moves/tick.
+#   0 = process every queued key as-is. Added while the CPU raymarch
+#   was ~4fps; try 0 now that the GPU daemon renders at ~17fps
+#   (mc-speed-algos.md §7, BV-GPU-RENDER-DESIGN.md).
+OPT          | multipress_compensator | 1
+
+# Dispatcher drop tuning (read every tick by bv_dispatch, only used while
+# multipress_compensator is 1). A queued key older than
+#   clamp(dispatch_stale_factor x last 3D render ms, floor, ceil)
+# is dropped as backlog. Lower floor/ceil = stops sooner on release but
+# under-moves when frames are slow; raise them if the xelector feels
+# "inaccurate". dispatch_arrow_run_cap = max moves of one arrow per tick.
+# Defaults below equal the old compiled-in values (2 x, 150, 900, 3).
+OPT          | dispatch_stale_factor  | 2
+OPT          | dispatch_stale_floor_ms | 150
+OPT          | dispatch_stale_ceil_ms  | 900
+OPT          | dispatch_arrow_run_cap  | 3
+
+# REAL, NEW 2026-09-29, direct instruction ("well its cause i minimized
+# the window... we will keep game logic alive, unless 'minimize set to
+# pause' on a .pdl file which we will let user toggle thru menu later"):
+# read by bv_dispatch.c right alongside multipress_compensator above
+# (same focused_project_root/keybinds.pdl read, real precedent, not a
+# new per-app config file). 0 (default): a minimized board window still
+# skips its own render step (real, unconditional - the render is never
+# worth doing when nothing can see it), but world ticks/input dispatch
+# keep running exactly as if the window were visible. 1: also skip
+# dispatch entirely while minimized - a real pause, not just "don't
+# bother drawing it." No menu wiring yet - the instruction was explicit
+# that the UI toggle is later, separate work.
+OPT          | minimize_pauses_game | 0
+
+# ── arrow-key on-screen direction (flip a sign if it feels backwards) ──
+AXIS         | left_dx            | -1
+AXIS         | right_dx           | 1
+AXIS         | up_dy              | -1
+AXIS         | down_dy            | 1
+
+# ── keys forwarded to the host skin's own daemon (bv_menu_input.c pdl_hostkey; <host>/../state/interact_relay.txt) ──
+HOSTKEY      | mine               | 109       # 'm'  mine / beam the node in front (rpg_space.c section 76, keybinds KEY | mine)

@@ -8,6 +8,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"; APP="$(dirname "$HERE")"; HOUSE="$(cd "$A
 [ -x "$APP/ops/+x/rpg_space.+x" ] && [ -x "$APP/ops/+x/dust_gen.+x" ] || sh "$APP/ops/build_rpg_space.sh" >/dev/null || { echo "rpg-space: build failed" >&2; exit 1; }
 export PCHQ_PKG="$APP/rpg-space-pchq"
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
+# this game's own versions of instance config files (pchq-overlay/README.txt): the instance folder is gitignored, so they are copied in at every launch
+for f in "$APP"/pchq-overlay/*.pdl; do [ -f "$f" ] && cp -f "$f" "$PCHQ_PKG/pieces/system/$(basename "$f")"; done
 mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf "side_left=1\nside_right=1\n" > "$HERE/state/sides.txt"
 "$APP/ops/+x/rpg_space.+x" export3d >/dev/null 2>&1
 # the ONE rpg-space daemon (walks the pets, chat, clock, writes ../state/ui.txt): not a <module> of this window, a module runs with THIS folder as its app dir and would start a second house in board/state

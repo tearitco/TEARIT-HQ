@@ -161,6 +161,22 @@ static void pdl_verb_lookup(const char *pdl_path, int keycode, char *out, size_t
     }
     fclose(f);
 }
+/* HOSTKEY | <name> | <keycode>: keys a host's own daemon wants (owner 2026-10-25: a real "m" never reached rpg-space - the session relay is drained by the engine and only the xelector offset
+ * reaches the skin). 1 when the code is listed. */
+static int pdl_hostkey(const char *pdl_path, int keycode) {
+    FILE *f = fopen(pdl_path, "r");
+    if (!f) return 0;
+    char l[MAX_LINE], t[16], k[64]; int hit = 0;
+    while (!hit && fgets(l, sizeof(l), f)) {
+        if (l[0] == '#') continue;
+        pdl_field(l, 0, t, sizeof(t));
+        if (strcmp(t, "HOSTKEY") != 0) continue;
+        pdl_field(l, 2, k, sizeof(k));
+        if (atoi(k) == keycode) hit = 1;
+    }
+    fclose(f);
+    return hit;
+}
 /* Read a boolean-ish flag from an entity's piece.pdl (muta parity for
  * possess). Matches "<key>" appearing with "true"/"1" on the same line,
  * house `SECTION | possessable | 1` OR a bare `possessable=1`. */
@@ -554,6 +570,13 @@ static int handle_one_key(int key) {
         key_cjk_view = pdl_bind_int(kb_pdl_path, "KEY", "cjk_view", key_cjk_view);
         key_file_menu = pdl_bind_int(kb_pdl_path, "KEY", "file_menu", key_file_menu);
         key_desk_menu = pdl_bind_int(kb_pdl_path, "KEY", "desk_menu", key_desk_menu);
+    }
+    /* HOSTKEY rows: hand the key to the host skin the way gta-hq's backslash does - "<code> <ms>" appended to <host>/../state/interact_relay.txt, which the skin daemon polls. */
+    if (focused_project_root[0] && kb_pdl_path[0] && pdl_hostkey(kb_pdl_path, key)) {
+        char relay[PATH_BUF]; snprintf(relay, sizeof(relay), "%s/../state/interact_relay.txt", focused_project_root);
+        FILE *rf = fopen(relay, "a");
+        if (rf) { struct timespec hts; clock_gettime(CLOCK_MONOTONIC, &hts); fprintf(rf, "%d %lld\n", key, (long long)hts.tv_sec * 1000 + hts.tv_nsec / 1000000); fclose(rf); }
+        return 0;
     }
     int dx = 0, dy = 0;
     if (key == ARROW_LEFT) dx = left_dx;
