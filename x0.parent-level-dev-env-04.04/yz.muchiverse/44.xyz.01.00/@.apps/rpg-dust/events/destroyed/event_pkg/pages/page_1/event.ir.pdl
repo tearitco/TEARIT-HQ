@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | destroyed
+STATE        | source               | hand-made
+NODE         | id=1 type=wo_pending | file=destroyed.txt
+NODE         | id=2 type=wo_remnant | kind=:kind:|room=:room:|x=:x:|y=:y:
+NODE         | id=3 type=wo_clear_damage | room=:room:|x=:x:|y=:y:
+NODE         | id=4 type=wo_node_use | kind=:kind:|room=:room:|x=:x:|y=:y:
+NODE         | id=5 type=wo_event | kind=DESTROYED|f1=:kind:/:room:,:x:,:y:/:what:/by :src:

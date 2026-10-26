@@ -1,0 +1,24 @@
+# blocks.pdl - what can be mined / destroyed and what it leaves behind (owner 2026-10-25). Re-read every 2 s.
+# Design: BOOK 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md sections 3, 4c, 4g. Fun first; the extra columns are kept for a realistic ruleset (nothing reads them yet).
+# BLOCK | kind | hardness | drops | count | damaged_pct | composition | density | melting_point
+# hardness = mining power needed in total (tool power is added per mine action); damaged_pct = chance (0..100) that a remnant is damaged.
+BLOCK | rock     | 3  | stone | 2 | 10 | SiO2   | 2.6 | 1700
+BLOCK | ore      | 5  | iron  | 3 | 20 | Fe2O3  | 5.2 | 1565
+BLOCK | crystal  | 8  | gem   | 1 | 30 | SiO2   | 2.7 | 1700
+BLOCK | hullplate| 6  | scrap | 4 | 40 | Fe     | 7.8 | 1538
+# TOOL | name | power   (state: which tool a mine action uses)
+TOOL | hand | 1
+TOOL | pick | 2
+TOOL | beam | 4
+# BUILD | kind | item | count   (placing one block with b / `build here [kind]` costs this many of that item from the controlled character; the block is a solid node of that kind, mined like any other)
+BUILD | rock      | stone | 2
+BUILD | hullplate | scrap | 4
+# PICKUP | key | value   (remnants lying in the scene, owner 2026-10-25)
+PICKUP | range | 2   | cells (Manhattan) from a remnant at which a living character picks it up by itself
+PICKUP | ms    | 600 | how long the block hops to the character before it enters the inventory
+PICKUP | size  | 40  | the block's size in percent of a cell
+PICKUP | spin_ms| 220 | a remnant lying in the scene turns to show it can be picked up: ms per quarter turn (0 = it does not turn)
+# NODE | room | x | y | kind | amount   (resource nodes you mine with m / `mine here`; amount -1 = endless; seeds state/nodes.txt once, edit that file or delete it to reseed)
+NODE | bridge | 12 | 10 | ore     | 4
+NODE | bridge | 3  | 10 | crystal | 2
+NODE | bridge | 12 | 4  | rock    | -1
