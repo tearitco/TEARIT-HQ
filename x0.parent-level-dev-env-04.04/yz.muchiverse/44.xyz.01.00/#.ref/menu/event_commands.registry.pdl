@@ -1480,3 +1480,46 @@ COMMAND app_verb
   PARAMS op,verb,arg
   TEMPLATE exec "$(dirname "$(dirname "$ENT")")/ops/+x/{op}.+x" '{verb}'[ {arg}]
 END
+
+# ---- world-ops (BOOK 16.game/RPG-SPACE-BLUEPRINT-SYSTEMS.md, B1, owner 2026-10-25: reusable ops, events, pal; not shared libs) ----------------------------------------------------------------
+# One small op, &.widgits/world-ops/ops/wo.c, one verb per node. It gets the GAME folder from the event's own location (grandparent of $ENT, see dust_zoom_verb above), reads plain files in <game>/state and the
+# game's life.pdl (LIFE rows = rules, ACTOR rows = characters), and prints what it did. @actor = the id in state/life_actor.txt; @pos @dropped @pct @mode @<LIFE key> work in fields. No braces except the keys.
+COMMAND wo_kv
+  LABEL World: Change Value
+  FIELD1 File (in state/):
+  FIELD2 Key:
+  PARAMS file,key,expr
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" kv "$(dirname "$(dirname "$ENT")")" '{file}' '{key}' '{expr}'
+END
+
+COMMAND wo_drop
+  LABEL World: Drop Inventory
+  FIELD1 Actor (@actor):
+  FIELD2 Percent (or cfg):
+  PARAMS actor,pct,src
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" drop "$(dirname "$(dirname "$ENT")")" '{actor}' '{pct}' '{src}'
+END
+
+COMMAND wo_place
+  LABEL World: Place Character
+  FIELD1 Actor (@actor):
+  FIELD2 Room:
+  PARAMS actor,room,x,y
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" place "$(dirname "$(dirname "$ENT")")" '{actor}' '{room}' '{x}' '{y}'
+END
+
+COMMAND wo_log
+  LABEL World: Log Row
+  FIELD1 Kind (DEATH ...):
+  FIELD2 Field 1:
+  PARAMS kind,f1,f2,f3
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" log "$(dirname "$(dirname "$ENT")")" '{kind}' '{f1}' '{f2}' '{f3}'
+END
+
+COMMAND wo_when
+  LABEL World: If Setting, Play Event
+  FIELD1 Setting (ROW.key):
+  FIELD2 Equals:
+  PARAMS cfg,value,event
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" when "$(dirname "$(dirname "$ENT")")" '{cfg}' '{value}' '{event}'
+END

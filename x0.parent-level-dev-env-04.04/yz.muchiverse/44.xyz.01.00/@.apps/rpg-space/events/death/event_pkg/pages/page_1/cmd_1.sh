@@ -3,4 +3,4 @@ cd "$(dirname "$0")/../../.." || exit 1
 ENT="${MUCHI_TARGET_ENT:-$PWD}"
 D="$ENT"
 while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
-exec "$D/@.apps/rpg-space/ops/+x/rpg_space.+x" 'life' 'die' '@actor'
+exec "$D/&.widgits/world-ops/ops/+x/wo.+x" drop "$(dirname "$(dirname "$ENT")")" ':actor:' 'cfg' 'death'

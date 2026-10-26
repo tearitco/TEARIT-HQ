@@ -9,3 +9,11 @@ LIFE | respawn_room | bridge   | the safe place: room id ...
 LIFE | respawn_x    | 7        | ... and cell
 LIFE | respawn_y    | 5        |
 LIFE | take_range   | 2        | how many cells away a drop can be taken from (anyone can take)
+
+# ACTOR | id | position file (in state/) | max hp   the characters the world-ops steps (events/death, events/respawn: wo kv / drop / place) work on; the skin reads only the LIFE rows.
+# The hero is a state file of its own (trainer.txt), every pal has pet_<id>.txt. Max hp = what `life status` shows as the second number.
+ACTOR | harold  | trainer.txt      | 450
+ACTOR | ember   | pet_ember.txt    | 20
+ACTOR | glacine | pet_glacine.txt  | 20
+ACTOR | murmur  | pet_murmur.txt   | 20
+ACTOR | solvent | pet_solvent.txt  | 20

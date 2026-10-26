@@ -1,4 +1,8 @@
-# event.pal - respawn as an EVENT PAGE (RPG Maker style common event, trigger parallel): after a death in respawn mode: the character goes back to the safe place of life.pdl (bridge), full hp, hunger 0.
-# pkg=respawn page=page_1
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=respawn page=page_1 - regenerated fresh on every command save
 exec cmd_1.sh
+exec cmd_2.sh
+exec cmd_3.sh
+exec cmd_4.sh
+exec cmd_5.sh
 halt
