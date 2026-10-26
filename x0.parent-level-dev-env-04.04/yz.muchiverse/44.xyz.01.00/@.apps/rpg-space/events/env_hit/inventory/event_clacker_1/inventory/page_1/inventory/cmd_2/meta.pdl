@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | cmd_2
+STATE        | kind                 | deskpal
+STATE        | glyph                | 🧩
+STATE        | instance_id          | CMD2
+STATE        | event_object         | 1
+METHOD       | Dir                  | sh -c 'exec xdg-open "$0"'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

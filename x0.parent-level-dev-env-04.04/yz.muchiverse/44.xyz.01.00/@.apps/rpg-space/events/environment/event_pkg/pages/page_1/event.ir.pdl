@@ -2,4 +2,4 @@ SECTION      | KEY                | VALUE
 ----------------------------------------
 META         | piece_id           | environment
 STATE        | source               | hand-made
-NODE         | id=1 type=rpg_space_verb | verb=env|arg=apply
+NODE         | id=1 type=wo_each | file=env_pending.txt|event=env_hit|cols=slot,hp,kind,room,value

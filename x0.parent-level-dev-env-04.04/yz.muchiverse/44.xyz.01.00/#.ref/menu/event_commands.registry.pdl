@@ -1560,3 +1560,20 @@ COMMAND wo_event
   PARAMS kind,f1,f2,f3,f4
   TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" event "$(dirname "$(dirname "$ENT")")" '{kind}' '{f1}' '{f2}' '{f3}' '{f4}'
 END
+
+# ---- world-ops, B3: loops and calls into the game's own op ----
+COMMAND wo_each
+  LABEL World: For Each Row, Play Event
+  FIELD1 File (in state/):
+  FIELD2 Event:
+  PARAMS file,event,cols
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" each "$(dirname "$(dirname "$ENT")")" '{file}' '{event}' '{cols}'
+END
+
+COMMAND wo_run
+  LABEL World: Run Game Op
+  FIELD1 Op (binary name):
+  FIELD2 Words:
+  PARAMS op,w1,w2,w3
+  TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" run "$(dirname "$(dirname "$ENT")")" '{op}' '{w1}' '{w2}' '{w3}'
+END

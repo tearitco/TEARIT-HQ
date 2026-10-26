@@ -66,6 +66,7 @@ static int token_value(const char *key, char *v, size_t cap) {      /* a known n
     if (!strcmp(key, "pct")) { if (!kv_get(lp, "pct", v, cap)) cfg_get("LIFE", "drop_pct", v, cap); return 1; }
     if (!strcmp(key, "modeline")) { char m[64]; cfg_get("LIFE", "death_mode", m, sizeof m); snprintf(v, cap, "mode %s", m); return 1; }
     if (!strcmp(key, "drops")) { char d[32] = "0", pc[32]; kv_get(lp, "dropped", d, sizeof d); if (!kv_get(lp, "pct", pc, sizeof pc)) cfg_get("LIFE", "drop_pct", pc, sizeof pc); snprintf(v, cap, "dropped %s (%s%%)", d, pc); return 1; }
+    if (!strcmp(key, "unit")) { char k[32]; kv_get(lp, "kind", k, sizeof k); snprintf(v, cap, "%s", !strcmp(k, "CHOKE") ? "o2" : "temp"); return 1; }      /* the air log rows say o2 for CHOKE, temp for the rest */
     if (kv_get(lp, key, v, cap)) return 1;
     return cfg_get("LIFE", key, v, cap); }
 static void expand(const char *in, char *out, size_t cap) {      /* :name: and @name */
@@ -167,13 +168,37 @@ static int v_node_use(int argc, char **argv) {
 
 /* wo event <game> <KIND> <f1> [f2] [f3] [f4]   like log but with no actor column: KIND|time|f1|f2... */
 static int v_event(int argc, char **argv) {
-    if (argc < 2) { fprintf(stderr, "usage: wo event <game> <KIND> <f1> ...\n"); return 1; } char row[1000]; snprintf(row, sizeof row, "%s|%ld", argv[1], (long)time(NULL));
+    if (argc < 2) { fprintf(stderr, "usage: wo event <game> <KIND> <f1> ...\n"); return 1; } char row[1000], kd[64]; expand(argv[1], kd, sizeof kd); snprintf(row, sizeof row, "%s|%ld", kd, (long)time(NULL));
     for (int i = 2; i < argc && i < 7; i++) { char f[300]; expand(argv[i], f, sizeof f); if (!f[0]) continue; for (char *c = f; *c; c++) if (*c == '/') *c = '|';      /* a node holds at most 4 values: "/" inside one makes several columns */
         size_t o = strlen(row); snprintf(row + o, sizeof row - o, "|%s", f); }
     char ep[PATH_MAX]; spath(ep, "events.txt"); append_line(ep, row); printf("%s\n", row); return 0; }
 
+
+/* the play_event.sh of the house, for a sub-event of this game */
+static int play_event(const char *name) {
+    char house[PATH_MAX], pl[PATH_MAX], pd[PATH_MAX], cmd[4 * PATH_MAX], wd[PATH_MAX]; snprintf(house, sizeof house, "%s", GAME); char *s = strrchr(house, '/'); if (s) *s = 0; s = strrchr(house, '/'); if (s) *s = 0;
+    snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", house); snprintf(pd, sizeof pd, "%s/events/%s", GAME, name); snprintf(wd, sizeof wd, "%s/state/world", GAME); mkdir(wd, 0755);
+    if (access(pl, F_OK) || access(pd, F_OK)) { fprintf(stderr, "wo: no player or no page %s\n", pd); return -1; }
+    snprintf(cmd, sizeof cmd, "MUCHI_TARGET_ENT='%s' timeout 20 bash '%s' '%s' '%s' parallel >/dev/null 2>&1", wd, pl, pd, house); int rc = system(cmd); return WIFEXITED(rc) ? WEXITSTATUS(rc) : -1; }
+
+/* wo each <game> <file> <event> <col1,col2,...>   the rows of state/<file> (a|b|c) are taken off the file, then <event> plays once per row with :col1: :col2: set; col "slot" also sets :who: (the nth ACTOR of life.pdl) */
+static int v_each(int argc, char **argv) {
+    if (argc < 4) { fprintf(stderr, "usage: wo each <game> <file> <event> <cols>\n"); return 1; } char p[PATH_MAX], b[BIG]; spath(p, argv[1]); read_file(p, b, sizeof b); write_if_changed(p, "");
+    char cols[256]; snprintf(cols, sizeof cols, "%s", argv[3]); char *cn[12]; int nc = 0; { char *sv = NULL; for (char *t = strtok_r(cols, ",", &sv); t && nc < 12; t = strtok_r(NULL, ",", &sv)) cn[nc++] = t; }
+    int rows = 0; char *sv = NULL; for (char *l = strtok_r(b, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { char c[300], *f[12]; snprintf(c, sizeof c, "%s", l); int n = split_row(c, f, 12); if (n < nc) continue;
+        for (int i = 0; i < nc; i++) { last_set(cn[i], f[i]); if (!strcmp(cn[i], "slot")) { char lp[PATH_MAX], lb[BIG * 2], *sv2 = NULL; snprintf(lp, sizeof lp, "%s/life.pdl", GAME); read_file(lp, lb, sizeof lb); int k = 0; for (char *q = strtok_r(lb, "\n", &sv2); q; q = strtok_r(NULL, "\n", &sv2)) { char cc[300], *g[5]; snprintf(cc, sizeof cc, "%s", q); if (q[0] == '#') continue; if (split_row(cc, g, 5) >= 4 && !strcmp(g[0], "ACTOR")) { if (k == atoi(f[i])) { last_set("who", g[1]); break; } k++; } } } }
+        play_event(argv[2]); rows++; }
+    printf("%d row(s) of %s: %s played each\n", rows, argv[1], argv[2]); return 0; }
+
+/* wo run <game> <op> <word>...   the game's own op (ops/+x/<op>.+x) with the words expanded (:name: tokens); the words of a single value are split on spaces */
+static int v_run(int argc, char **argv) {
+    if (argc < 3) { fprintf(stderr, "usage: wo run <game> <op> <words...>\n"); return 1; } char bin[PATH_MAX], op[64]; expand(argv[1], op, sizeof op); snprintf(bin, sizeof bin, "%s/ops/+x/%s.+x", GAME, op);
+    char line[800] = ""; for (int i = 2; i < argc; i++) { char w[300]; expand(argv[i], w, sizeof w); if (!w[0]) continue; size_t o = strlen(line); snprintf(line + o, sizeof line - o, "%s%s", o ? " " : "", w); }
+    char *av[40]; int n = 0; av[n++] = bin; char *sv = NULL; for (char *t = strtok_r(line, " ", &sv); t && n < 38; t = strtok_r(NULL, " ", &sv)) av[n++] = t; av[n] = NULL;
+    pid_t pid = fork(); if (pid == 0) { execv(bin, av); _exit(127); } int st = 0; waitpid(pid, &st, 0); printf("ran %s %s ... (exit %d)\n", op, n > 1 ? av[1] : "", WIFEXITED(st) ? WEXITSTATUS(st) : -1); return 0; }
+
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: wo <verb> <game> ...  (kv drop place log when pending remnant clear_damage node_use event)\n"); return 1; }
+    if (argc < 3) { fprintf(stderr, "usage: wo <verb> <game> ...  (kv drop place log when pending remnant clear_damage node_use event each run)\n"); return 1; }
     const char *verb = argv[1]; if (!realpath(argv[2], GAME)) { fprintf(stderr, "wo: no game folder %s\n", argv[2]); return 1; } resolve_actor();
     /* each verb sees argv[0] = the game folder, then its own arguments */
     if (!strcmp(verb, "kv")) return v_kv(argc - 2, argv + 2);
@@ -185,5 +210,7 @@ int main(int argc, char **argv) {
     if (!strcmp(verb, "clear_damage")) return v_clear_damage(argc - 2, argv + 2);
     if (!strcmp(verb, "node_use")) return v_node_use(argc - 2, argv + 2);
     if (!strcmp(verb, "event")) return v_event(argc - 2, argv + 2);
+    if (!strcmp(verb, "each")) return v_each(argc - 2, argv + 2);
+    if (!strcmp(verb, "run")) return v_run(argc - 2, argv + 2);
     if (!strcmp(verb, "when")) return v_when(argc - 2, argv + 2);
     fprintf(stderr, "wo: unknown verb %s\n", verb); return 1; }

@@ -1,4 +1,4 @@
-# event.pal - the environment as an EVENT PAGE (trigger parallel): the air tick found someone choking, freezing or scorching; the page applies the pending hurts of state/env_pending.txt (env apply) through the same life hurt sink as hunger and collisions
-# pkg=environment page=page_1
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=environment page=page_1 - regenerated fresh on every command save
 exec cmd_1.sh
 halt

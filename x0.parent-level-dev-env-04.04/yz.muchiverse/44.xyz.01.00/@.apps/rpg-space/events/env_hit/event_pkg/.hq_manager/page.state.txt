@@ -1,0 +1,5 @@
+TRIGGER|parallel
+CMD|1|wo_run|op=rpg_space|w1=life|w2=hurt|w3=:who: :hp:|w1=life|w2=hurt|w3=:who: :hp:|w2=hurt|w3=:who: :hp:|w3=:who: :hp:
+CMD|2|wo_event|kind=:kind:|f1=:who:/:room: :unit: :value:/-:hp: hp|f1=:who:/:room: :unit: :value:/-:hp: hp
+SCRATCHBLOCK|wo|rpg_space
+SCRATCHBLOCK|wo|:kind:
