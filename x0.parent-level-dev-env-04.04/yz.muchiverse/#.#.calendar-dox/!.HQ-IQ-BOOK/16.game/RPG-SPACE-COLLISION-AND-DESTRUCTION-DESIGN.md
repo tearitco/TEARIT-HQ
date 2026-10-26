@@ -64,7 +64,15 @@ Later: **asteroids** (to mine) and **other ships** (to battle and trade with). B
 - Asteroids, other ships and passengers all **register as entities** (same entity registry/links the rest of the house uses: id, type, position, owner), so any page, verb or UI can find them the same way.
 - **A ship has an inventory that also lists the entities inside it** (crew, passengers, pets, cargo items), not only items. One list per ship, e.g. `pieces/<ship>/inventory.txt` (`kind|id|n|...`; kind = item or entity), the same shape as the characters' `inv=` and `state/drops.txt` so items move between a character, a drop and a ship hold with one mechanism.
 - Why: ease of use and **macro storage UI** solutions (one hold screen, bulk move, "everything in the ship"), and so a passenger boarding or leaving is just an inventory move plus a position change (ties to the pets-as-passengers / door idea, and to respawn "on the bridge").
-- Not built. Open details to settle first: does an entity inside a ship keep its own position (relative to the ship) or only a seat/room id; what happens to the inventory when the ship is destroyed (drops, like death's `drop_pct`); capacity limits (a .pdl number).
+- **Decided (owner 2026-10-25):** an entity inside a ship has a **position, relative to the ship** (that is all; my earlier word "seat" was only a possible named spot like the helm console, not needed). When a ship is destroyed its inventory **drops** (same mechanism as death, below). **Capacity is a .pdl number** for now.
+- Not built. This round is infrastructure/scaffolding for later detail: everything stays events / blueprints / pdl based (4b).
+
+## 4g. Remnants: how destruction, mining and death all leave things behind (owner 2026-10-25)
+
+One mechanism for everything: **when something is destroyed it leaves "remnants"**, small items (mini blocks) that **sit where they fell until collected**, like Minecraft. A remnant may or may not be damaged. This is how mining works (a mined block leaves its remnants), how a destroyed ship or asteroid works (its inventory and parts drop), and how death already works (`state/drops.txt`, half the stacks, anyone can take).
+- **Data:** a remnant is a drop row (today `id|room|x|y|n|item|0`) with room for a condition/damage field and a source (what it came from); collecting is the existing `life take`-style verb. Keep unknown columns (4c).
+- **Flow, all event pages:** destroyed event -> a page decides the remnants (from `blocks.pdl` / `drops` of the thing, or the inventory for a ship or character) -> the drops are written -> they are drawn as mini blocks in the scene (NOT built: drops are still not drawn today) -> a collect action moves them into an inventory. Whether a remnant is damaged can come from the damage the thing had (a .pdl rule).
+- **Infrastructure first:** do not hard-code per-thing rules; each destroyed type names its remnants in its .pdl row, and a generic `destroyed` page turns the row into drops.
 
 ## 5. Rules for whoever builds it
 
