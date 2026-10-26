@@ -1,0 +1,91 @@
+# 📖🧱 NIGHT 55 — The Pages You Can Read 🧱📖
+# ====================================================================
+# Title: "📖🧱 NIGHT 55 — The Pages You Can Read 🧱📖"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: One long day on the rpg-space board after NIGHT 54. Mining that you can see, air that you can lose, a tool that lost its own page list, and the decision to turn every system into small pages anyone can read and a test can replay. What was measured, what is a plan.
+# Long-form: everything called measured was run on 2026-10-25. Everything called a plan is a plan. Nothing here is claimed fixed that was not run again afterwards.
+# Companion documents: the technical report of this day (XO 30.rpg-dust-work oct-25), BOOK 16.game RPG-SPACE-BLUEPRINT-SYSTEMS sections 5b to 5e, RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN sections 7e to 7g.
+
+**THE NARRATOR:** NIGHT 54 ended with a rule: a character that dies is not an error, it is a state with a page that handles it. Build the next cause of death as another event. This day started by obeying that rule, and ended by asking a bigger question: can every system be a page?
+
+**MAXINE:** Start with what a person could see. What did the board get?
+
+**TOMO:** Mining. A block breaks and leaves small spinning blocks where it stood. Walk near them and they hop into your bag. Resource nodes that give one load each time. A key to mine, a key to place a block, oxygen and temperature in each room, three asteroids, and one small ship with a crew.
+
+**RAHWEH:** And the key did not work at first.
+
+**TOMO:** The mining key pressed on the real keyboard did nothing. The test that pressed it through a file worked. The cause: the 3D engine drains the session's relay file itself, so the game never saw the key. The fix was a row that forwards printable keys. And the key clashed with a menu key, so the menu moved.
+
+**MAXINE:** So a test through a side door passed, and the front door was shut.
+
+**THE NARRATOR:** Hold on to that. It comes back tonight.
+
+**RAHWEH:** Then the picture was wrong. The owner said: the shape is right, the blocks are wrong.
+
+**TOMO:** The game reloaded its atlas, the sheet of block pictures, by the file's modification time. Time has one-second resolution. A book rewritten in the same second as the held atlas kept the old pictures. The house rule says change detection is the size of an append-only marker file. Every exporter now appends one byte, and the engine compares sizes.
+
+**MAXINE:** And the machine was slow.
+
+**TOMO:** Measured at idle: about ninety-eight process starts per second across the system, load average fourteen. The owner said do not blame the browser, keep our own footprint managed. After gating the board's loops on marker sizes: about nineteen per second, load one point six. Not done: the desktop's own manager, and every extra open board costs the same again.
+
+**THE NARRATOR:** Then, in the afternoon, the direction changed.
+
+**RAHWEH:** What did the owner say?
+
+**TOMO:** Systems should be events, readable in a blueprint viewer, built on reusable ops and events. Not shared libraries of C. And only then port to rpg-dust.
+
+**MAXINE:** Why does that matter?
+
+**THE NARRATOR:** Because a page of small steps is something a person can read, edit, copy to another game, and something a test can replay. One hundred lines of C is only something you trust.
+
+**RAHWEH:** So the first job was to look at the pages.
+
+**TOMO:** And the viewer's page list was gone. The tool had a layout file with a stale copy of its own sidebar pasted into the middle: a second panel, a second closing tag. The renderer drew up to the first scrolling list and dropped everything after it, with no message. Commands, pages, editors, all missing. Remove thirty-three lines, and they came back. A test now fails on the broken file and passes on the fixed one.
+
+**MAXINE:** Was that the only silent loss?
+
+**TOMO:** No. Three more: the viewer cut its event list at forty-eight, the command list at one hundred twenty-eight, and its output buffer at twenty-four thousand bytes, each without a word. All raised, and each now says when it cuts.
+
+**THE NARRATOR:** The commonest defect of the day was a thing that disappeared quietly.
+
+**RAHWEH:** Then the conversion. How do you turn death into pages?
+
+**TOMO:** One small program, the world op, with seventeen tiny verbs: change a value, drop part of an inventory, place a character, log a row, play an event if a setting matches, loop over rows, calculate, compare. Each verb is one step on a page. It finds its game from where the page lives, so a page copied to another game runs on that game's files.
+
+**MAXINE:** And how do you know the pages do the same as the old code?
+
+**TOMO:** The old code was frozen at a git tag, and a binary built from it is the reference. Same starting files, run the old verb, run the page, compare every file. Death and respawn, identical. Mining, eight cases, identical. Air, three cases. Collision, five speeds.
+
+**RAHWEH:** And you trusted that?
+
+**TOMO:** Only after breaking a step on purpose in each one, and seeing the comparison say different. A check that cannot fail proves nothing. The first runs also found two real differences: drop numbers that started at zero instead of one, and a log row that lost its last word to a limit of four values per command.
+
+**THE NARRATOR:** Counting: death six steps, respawn five, mining five, collision eight, air a loop and a small hit page. Thirty steps in all.
+
+**MAXINE:** And rpg-dust?
+
+**TOMO:** It got the data and three pages. No C copied. The same script on scratch copies of both games leaves identical files. It still lacks the ticks that would play death, and mining, and a ship.
+
+**RAHWEH:** The owner asked one more thing. Can the whole presentation be replayed in the house?
+
+**TOMO:** It can now. A phase table builds the real game from source in a scratch folder, opens the blueprint window logic, kills a pet with ninety-nine damage, mines an ore node twice, freezes a character, hits the land at speed four. Thirty-four checks, all passed, about fifteen seconds. Change one expected number and exactly one check fails and prints the real value.
+
+**MAXINE:** And the owner's folder of learnings?
+
+**TOMO:** It had filled with agents' scratch. Three hundred thirty-three unprefixed items, nearly sixteen thousand files, were moved out to a quarantine folder with a list. Nothing deleted. The owner's items all start with a prefix and a dot. A rule went into the house instructions.
+
+**THE NARRATOR:** What is not done. The old code is still the fallback. Mining, building, pickup, hunger and the air physics are still C. rpg-dust cannot yet play its death pages. The viewer cannot yet draw calls made through the new steps. Three tests are still shell scripts, not pal. Thirty commits sit on one branch and none was pushed.
+
+**MAXINE:** And tomorrow?
+
+**TOMO:** First retire the C fallbacks one by one, only after the replay passes several times in a row. Then port the tests to pal and add a number for spawns per second to the gate. Then give rpg-dust its ticks. Then ships that move, trade and fight, as entities. Then let a pet propose a phase table and let the harness judge it, because that is the point of all this: a game the pets can play with the same hands a person has.
+
+**RAHWEH:** Exercises?
+
+**THE NARRATOR:** One: pick a system in your own project and list it as steps of at most four values each. Which steps are missing a verb? Two: write the fault you would inject to prove a test can fail. Three: find one place where your tool cuts something off. Does it say so?
+
+**MAXINE:** And the sentence to keep?
+
+**THE NARRATOR:** If you cannot read it, you cannot trust it; and a test that cannot fail has not tested anything.
