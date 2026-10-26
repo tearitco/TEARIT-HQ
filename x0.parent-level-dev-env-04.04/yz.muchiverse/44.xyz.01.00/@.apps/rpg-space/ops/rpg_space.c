@@ -69,7 +69,7 @@ static int sk_node_idx(const char *item) {      /* frame index of a resource nod
 static char sk_rem_rows[16][1100];      /* per room: the remnant rows appended to that room's events.txt (section 43), "x y r g b rem 0 2 0 *" = a coloured box in the cell (the same path the pets are drawn by) */
 static int sk_remnants_tick(void); static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
-static void sk_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_life_tick(void); static void sk_life_ui(char *out, size_t cap);      /* life, death, respawn, drops (section 75) */
+static void sk_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_env_tick(void); static void sk_env_verb(int argc, char **argv, char *msg, size_t cap); static void sk_env_breach(const char *room, int on); static void sk_env_ui(char *out, size_t cap); static int sk_life_tick(void); static void sk_life_ui(char *out, size_t cap);      /* life, death, respawn, drops (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
@@ -159,6 +159,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     { char ct[48] = "", cq[80] = "", cy[48] = "", cn[48] = "", cd[48] = ""; int ask = flag_on("ask", 0) && sk_choice(ct, cq, cy, cn, cd); W("ask_visible=%s\nask_title=%s\nask_text=%s\nask_yes=%s\nask_direct=%s\nask_direct_show=%s\nask_no=%s\n", ask ? "1" : "", ct, cq, cy, cd, cd[0] ? "1" : "", cn); }      /* the yes / no popup of an event (events/<name>/choice.pdl) */
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     { char lb[1200]; sk_life_ui(lb, sizeof lb); W("%s", lb); }
+    { char eb[300]; sk_env_ui(eb, sizeof eb); W("%s", eb); }
     sk_look_load(); { const char *cl = sk_pl_cur < 0 ? "No planet (deep space)" : sk_pl_n ? sk_pl[sk_pl_cur].label : "-";      /* the left bar: the address, the seed, Regen, zoom and the planets (design D8, D12) */
       W("seed=%llu\naddr_line=%s\npl_label=%s\nn_pl=%d\n", sk_seed, sk_addr, cl, sk_pl_n);
       for (int k = 0; k < sk_pl_n; k++) W("pl_%d_label=%s\npl_%d_id=%s\npl_%d_cls=%s\n", k, sk_pl[k].label, k, sk_pl[k].id, k, k == sk_pl_cur ? "active nav-selected" : ""); }
@@ -254,6 +255,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "life")) { sk_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold") || !strcmp(v, "build")) { sk_wd_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "env")) { sk_env_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "setpos")) {      /* setpos <room id> <x> <y>: put the controlled one on a cell (test setup for board_ctl; refuses a blocked cell and the space desk) */
         int rr = argc >= 2 ? room_idx(argv[1]) : -1, px = argc >= 4 ? atoi(argv[2]) : -1, py = argc >= 4 ? atoi(argv[3]) : -1;
         if (argc >= 4) { rr = room_idx(argv[1]); px = atoi(argv[2]); py = atoi(argv[3]); } else if (argc == 3) { snprintf(msg, cap, "usage: setpos <room> <x> <y>"); return; }
@@ -782,9 +784,49 @@ static void sk_coll_cfg(void) {
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 4) < 3 || strcmp(f[0], "COLL")) continue; const char *k = f[1], *v = f[2];
         if (!strcmp(k, "enabled")) sk_cl_on = atoi(v); else if (!strcmp(k, "block")) sk_cl_block = atoi(v); else if (!strcmp(k, "contact_alt")) sk_cl_contact = atoi(v); else if (!strcmp(k, "ship_size")) sk_cl_ship = atoi(v); else if (!strcmp(k, "land_size")) sk_cl_land = atoi(v); else if (!strcmp(k, "crew_base_pm")) sk_cl_base = atoi(v); else if (!strcmp(k, "crew_speed_pm")) sk_cl_spd = atoi(v); }
     fclose(fp); }
+/* ENVIRONMENT (owner 2026-10-25, 4b/4c/7e): air per room as plain data. environment.pdl holds the constants, state/air.txt one row per room "room|o2|temp|breach". A hole (breach 1) lets the room's oxygen drain toward the outside value, a
+ * room without a hole is topped up by the recycler toward its own level, a character in air under o2_ok loses a slice of max hp per tick through the same `life hurt` sink hunger and collisions use (so death, drops and respawn follow by themselves). */
+typedef struct { char id[24]; int o2, temp, breach; } SkAir;
+static SkAir sk_air[16]; static int sk_nair; static int sk_ev_on = 1, sk_ev_tick = 2000, sk_ev_ok = 16, sk_ev_pm = 30, sk_ev_scrub = 1, sk_ev_leak = 12, sk_ev_bspeed = 6, sk_ev_out_o2 = 0; static char sk_ev_broom[24] = "bridge"; static struct { char id[24]; int o2, temp; } sk_ev_base[16]; static int sk_ev_nbase; static long sk_ev_cfg_at, sk_ev_last;
+static void sk_env_cfg(void) {
+    long now = now_ms(); if (sk_ev_cfg_at && now - sk_ev_cfg_at < 2000) return; sk_ev_cfg_at = now; char p[PATH_MAX], ln[300], *f[8]; snprintf(p, sizeof p, "%s/environment.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return; sk_ev_nbase = 0;
+    while (fgets(ln, sizeof ln, fp)) { int n; if (ln[0] == '#' || (n = split_bar(ln, f, 8)) < 2) continue;
+        if (!strcmp(f[0], "ENV") && n >= 3) { int v = atoi(f[2]); if (!strcmp(f[1], "enabled")) sk_ev_on = v; else if (!strcmp(f[1], "tick_ms")) sk_ev_tick = v > 100 ? v : 100; else if (!strcmp(f[1], "o2_ok")) sk_ev_ok = v; else if (!strcmp(f[1], "choke_pm")) sk_ev_pm = v; else if (!strcmp(f[1], "scrub_per_tick")) sk_ev_scrub = v; else if (!strcmp(f[1], "leak_pct")) sk_ev_leak = v; else if (!strcmp(f[1], "breach_speed")) sk_ev_bspeed = v; else if (!strcmp(f[1], "breach_room")) snprintf(sk_ev_broom, sizeof sk_ev_broom, "%s", f[2]); }
+        else if (!strcmp(f[0], "OUTSIDE") && n >= 2) sk_ev_out_o2 = atoi(f[1]);
+        else if (!strcmp(f[0], "ROOM") && n >= 4 && sk_ev_nbase < 16) { snprintf(sk_ev_base[sk_ev_nbase].id, sizeof sk_ev_base[0].id, "%s", f[1]); sk_ev_base[sk_ev_nbase].o2 = atoi(f[2]); sk_ev_base[sk_ev_nbase++].temp = atoi(f[3]); } }
+    fclose(fp); }
+static int sk_env_base(const char *id, int *temp) { for (int i = 0; i < sk_ev_nbase; i++) if (!strcmp(sk_ev_base[i].id, id)) { if (temp) *temp = sk_ev_base[i].temp; return sk_ev_base[i].o2; } if (temp) *temp = 20; return 21; }
+static void sk_env_save(void) { char p[PATH_MAX], b[16 * 60 + 8], *w = b; spath(p, "air.txt"); b[0] = 0; for (int i = 0; i < sk_nair; i++) w += snprintf(w, sizeof b - (size_t)(w - b), "%s|%d|%d|%d\n", sk_air[i].id, sk_air[i].o2, sk_air[i].temp, sk_air[i].breach); write_if_changed(p, b, strlen(b)); }
+static void sk_env_load(void) {      /* every room has a row; a room without one starts at its base level */
+    sk_env_cfg(); char p[PATH_MAX], b[16 * 60 + 8], *f[5]; spath(p, "air.txt"); b[0] = 0; read_file(p, b, sizeof b); sk_nair = 0;
+    for (char *l = strtok(b, "\n"); l && sk_nair < 16; l = strtok(NULL, "\n")) { if (split_bar(l, f, 5) < 4) continue; SkAir *a = &sk_air[sk_nair++]; snprintf(a->id, sizeof a->id, "%s", f[0]); a->o2 = atoi(f[1]); a->temp = atoi(f[2]); a->breach = atoi(f[3]); }
+    int added = 0; for (int r = 0; r < nroom && r < 16; r++) { int have = 0; for (int i = 0; i < sk_nair; i++) if (!strcmp(sk_air[i].id, rooms[r].id)) have = 1; if (!have && sk_nair < 16) { SkAir *a = &sk_air[sk_nair++]; snprintf(a->id, sizeof a->id, "%s", rooms[r].id); a->o2 = sk_env_base(a->id, &a->temp); a->breach = 0; added = 1; } }
+    if (added) sk_env_save(); }
+static SkAir *sk_env_room(const char *id) { for (int i = 0; i < sk_nair; i++) if (!strcmp(sk_air[i].id, id)) return &sk_air[i]; return NULL; }
+static void sk_env_breach(const char *room, int on) { sk_env_load(); SkAir *a = sk_env_room(room); if (!a || a->breach == on) return; a->breach = on; sk_env_save(); char rb[120]; snprintf(rb, sizeof rb, "%s|%ld|%s|o2 %d", on ? "BREACH" : "SEALED", (long)time(NULL), room, a->o2); append_line("events.txt", rb); }
+static int sk_env_tick(void) {
+    sk_env_cfg(); if (!sk_ev_on) return 0; long now = now_ms(); if (now - sk_ev_last < sk_ev_tick) return 0; sk_ev_last = now; sk_env_load(); int changed = 0;
+    for (int i = 0; i < sk_nair; i++) { SkAir *a = &sk_air[i]; int tmp, want = sk_env_base(a->id, &tmp), o = a->o2;
+        if (a->breach) { int d = (a->o2 - sk_ev_out_o2) * sk_ev_leak / 100; if (d < 1 && a->o2 > sk_ev_out_o2) d = 1; a->o2 -= d; }
+        else if (a->o2 < want) { a->o2 += sk_ev_scrub; if (a->o2 > want) a->o2 = want; }
+        else if (a->o2 > want) a->o2 = want; if (a->o2 != o) changed = 1; }
+    if (changed) sk_env_save();
+    for (int s = 0; s <= nparty; s++) { sk_life_load(s); if (sk_life[s].dead || sk_life[s].hp <= 0) continue; Ent *e = sk_life_ent(s); if (e->room < 0 || e->room >= nroom) continue; SkAir *a = sk_env_room(rooms[e->room].id); if (!a || a->o2 >= sk_ev_ok) continue;
+        int n = sk_life_mhp(s) * sk_ev_pm / 1000; if (n < 1) n = 1; char nb[16], m2[160]; snprintf(nb, sizeof nb, "%d", n); char *hv[4] = { "life", "hurt", (char *)sk_life_id(s), nb }; sk_life_verb(4, hv, m2, sizeof m2);
+        { char rb[120]; snprintf(rb, sizeof rb, "CHOKE|%ld|%s|%s o2 %d|-%d hp", (long)time(NULL), sk_life_id(s), a->id, a->o2, n); append_line("events.txt", rb); } changed = 1; }
+    return changed; }
+static void sk_env_ui(char *out, size_t cap) {      /* vars env_o2 / env_temp / env_breach: the air in the room of the controlled character (the bar can show them) */
+    sk_env_load(); int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); SkAir *a = e->room >= 0 && e->room < nroom ? sk_env_room(rooms[e->room].id) : NULL; snprintf(out, cap, "env_o2=%d\nenv_temp=%d\nenv_breach=%d\n", a ? a->o2 : 0, a ? a->temp : 0, a ? a->breach : 0); }
+static void sk_env_verb(int argc, char **argv, char *msg, size_t cap) {      /* env status | breach <room> [on|off] | set <room> o2 <n> */
+    sk_env_load(); const char *a = argc >= 2 ? argv[1] : "status";
+    if (!strcmp(a, "status")) { char b[400] = ""; for (int i = 0; i < sk_nair; i++) { char t[80]; snprintf(t, sizeof t, "%s o2 %d%% %dC%s; ", sk_air[i].id, sk_air[i].o2, sk_air[i].temp, sk_air[i].breach ? " HOLE" : ""); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "air: %s", b); return; }
+    if (!strcmp(a, "breach") && argc >= 3) { int on = !(argc >= 4 && !strcmp(argv[3], "off")); if (!sk_env_room(argv[2])) { snprintf(msg, cap, "env: no room %s", argv[2]); return; } sk_env_breach(argv[2], on); snprintf(msg, cap, "%s %s", argv[2], on ? "has a hole in the hull" : "is sealed"); return; }
+    if (!strcmp(a, "set") && argc >= 5 && !strcmp(argv[3], "o2")) { SkAir *r = sk_env_room(argv[2]); if (!r) { snprintf(msg, cap, "env: no room %s", argv[2]); return; } r->o2 = atoi(argv[4]); sk_env_save(); snprintf(msg, cap, "%s o2 %d%%", r->id, r->o2); return; }
+    snprintf(msg, cap, "usage: env status | breach <room> [on|off] | set <room> o2 <n>"); }
 static void sk_coll_effect(int speed, char *msg, size_t cap) {      /* what events/collision calls: slight crew damage, more at speed, and the ship's own damage register */
     sk_coll_cfg(); int hurt = 0; for (int s = 0; s <= nparty; s++) { int mh = sk_life_mhp(s), n = mh * (sk_cl_base + speed * sk_cl_spd) / 1000; if (n < 1) n = 1; char nb[16], m2[160]; snprintf(nb, sizeof nb, "%d", n); char *hv[4] = { "life", "hurt", (char *)sk_life_id(s), nb }; sk_life_verb(4, hv, m2, sizeof m2); hurt += n; }
     { char p[PATH_MAX], b[120]; int hits = 0, dmg = 0; spath(p, "ship_damage.txt"); read_file(p, b, sizeof b); sscanf(b, "hits=%d dmg=%d", &hits, &dmg); hits++; dmg += speed; snprintf(b, sizeof b, "hits=%d dmg=%d last=%ld\n", hits, dmg, (long)time(NULL)); write_if_changed(p, b, strlen(b)); }
+    sk_env_cfg(); if (speed >= sk_ev_bspeed) sk_env_breach(sk_ev_broom, 1);      /* a hard hit punctures the hull: the room leaks until `env breach <room> off` */
     if (msg) snprintf(msg, cap, "collision at speed %d: crew lost %d hp in all", speed, hurt); }
 static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the move is refused */
     sk_coll_cfg(); long now = now_ms(); long dt = now - sk_cl_last; sk_cl_last = now; if (!sk_cl_on) return 0;
@@ -914,6 +956,7 @@ static int sk_remnants_tick(void) {
             took = sk_helm_interact(msg, sizeof msg);
 #elif PET_SECTION == 79
         if (run_on() && sk_life_tick()) dirty = 1;
+        if (run_on() && sk_env_tick()) dirty = 1;      /* air: leaks through holes, the recycler, choking */
         if (run_on() && sk_remnants_tick()) dirty = 1;      /* remnants drawn as mini blocks, auto pickup when a character walks close */      /* hunger, starving, death, respawn (life.pdl) */
 #elif PET_SECTION == 78
             if (sk_helm_follow(msg, sizeof msg)) dirty = 1;
