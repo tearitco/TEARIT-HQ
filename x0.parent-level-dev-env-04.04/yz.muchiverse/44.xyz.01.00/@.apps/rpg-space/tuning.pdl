@@ -24,3 +24,4 @@ TUNE | map_box          | 1     | 1 = draw a grey box at the limit of the planet
 TUNE | ship_alt         | 2     | height of the ship piece above the planet page in direct flight (cells)                                                                                      | 2
 TUNE | ship_start_x     | 6     | where the ship piece starts on the planet page                                                                                                                | 6
 TUNE | ship_start_y     | 6     | where the ship piece starts on the planet page                                                                                                                | 6
+TUNE | remnant_z       | 17    | the world level remnant blocks lie on: the ship floor is level 16, characters stand at 17 (the hero piece's own pos_z resets after a reload, do not use it)                                                  | 17

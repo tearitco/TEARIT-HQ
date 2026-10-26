@@ -50,7 +50,17 @@ typedef struct { char id[24], label[40], kind[8], root[160]; } SkTs;
 typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; } SkPl;
 static SkPl sk_pl[16]; static int sk_pl_n, sk_pl_cur; static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
 static const char *sk_room_label(int room); static void sk_look_load(void); static void sk_desk_sync(void); static void sk_rebuild(char *msg, size_t cap); static void export3d(char *msg, size_t cap);
-static void sk_wd_verb(int argc, char **argv, char *msg, size_t cap); static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
+static void sk_wd_verb(int argc, char **argv, char *msg, size_t cap); static void sk_item_rgb(const char *item, int dmg, int *r, int *g, int *b);
+static int sk_rem_idx(const char *item, int dmg) {      /* the frame index of a remnant: item kind * 2 + damaged; the frame file rem_<idx>_2_0.rgba (16x24, a small block at the foot of the cell) is written on first use */
+    static const char *const kinds[] = { "stone", "iron", "gem", "scrap", "bread", "fish", "ore" }; int kd = 7; for (int i = 0; i < 7; i++) if (!strncmp(item, kinds[i], strlen(kinds[i]))) { kd = i; break; } if (kd == 6) kd = 1; int idx = kd * 2 + (dmg > 0 ? 1 : 0);
+    char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/../tsots-characters/frames", ASSETS); mkdir(d, 0755);
+    static const int dirs[4] = { 2, 6, 4, 8 }, wid[4] = { 8, 6, 3, 6 };      /* the four facings of a REVOLVING remnant (owner 2026-10-25: it turns to show it can be picked up): wide, three-quarter, edge-on, three-quarter */
+    for (int k = 0; k < 4; k++) { snprintf(p, sizeof p, "%s/rem_%d_%d_0.rgba", d, idx, dirs[k]); if (access(p, F_OK) == 0) continue; int r, g, b; sk_item_rgb(item, dmg, &r, &g, &b); unsigned char out[16 * 24 * 4]; memset(out, 0, sizeof out); int x0 = 8 - wid[k] / 2;
+        for (int y = 17; y < 24; y++) for (int x = x0; x < x0 + wid[k]; x++) { unsigned char *q = out + (y * 16 + x) * 4; int edge = (x == x0 || x == x0 + wid[k] - 1 || y == 23), top = (y == 17); q[0] = (unsigned char)(edge ? r * 60 / 100 : top ? (r + 255) / 2 : r); q[1] = (unsigned char)(edge ? g * 60 / 100 : top ? (g + 255) / 2 : g); q[2] = (unsigned char)(edge ? b * 60 / 100 : top ? (b + 255) / 2 : b); q[3] = 255; }
+        FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); } }
+    return idx; }
+static char sk_rem_rows[16][1100];      /* per room: the remnant rows appended to that room's events.txt (section 43), "x y r g b rem 0 2 0 *" = a coloured box in the cell (the same path the pets are drawn by) */
+static int sk_remnants_tick(void); static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static void sk_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_life_tick(void); static void sk_life_ui(char *out, size_t cap);      /* life, death, respawn, drops (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
@@ -170,6 +180,7 @@ static void end_turn(void) { if (!run_on() || !turn_mode()) return; clock_turn()
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s %d %d %d %c\n", others[i].x, others[i].y, px[0], px[1], px[2], party[i].sheet, party[i].idx, dc[fd], pat, party[i].name[0] >= 'A' && party[i].name[0] <= 'Z' ? party[i].name[0] + 32 : (party[i].name[0] ? party[i].name[0] : 'm')); }
     if (tr.room == r) { int pat = tr.steps % 3; write_frame(hero.sheet, 0, tr.dir, pat); unsigned char px[4] = {200, 60, 60, 255}; frame_rgb(sheet("characters", hero.sheet), 0, tr.dir & 3, px);
         o += snprintf(buf + o, sizeof buf - o, "%d %d %d %d %d %s 0 %d %d @\n", tr.x, tr.y, px[0], px[1], px[2], hero.sheet, dc[tr.dir & 3], pat); }
+    if (r >= 0 && r < 16 && sk_rem_rows[r][0] && o + strlen(sk_rem_rows[r]) < sizeof buf) { memcpy(buf + o, sk_rem_rows[r], strlen(sk_rem_rows[r])); o += (int)strlen(sk_rem_rows[r]); }      /* remnants lying in this room (after the pets and the hero, so their ids do not move) */
 #elif PET_SECTION == 44
     static const char leg[] = "W|3|150|150|160|-|wall|#\nD|3|170|110|50|-|door|+\nT|2|50|150|60|-|tree|T\nf|1|190|150|90|-|furniture|&\n.|0|90|80|60|-|floor|.\n";
 #elif PET_SECTION == 45
@@ -779,12 +790,13 @@ static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap) {      /*
     { char p[PATH_MAX], b[100] = ""; spath(p, "ship_damage.txt"); read_file(p, b, sizeof b); b[strcspn(b, "\n")] = 0; snprintf(msg, cap, "collision %s, block %d, contact_alt %d, reach %d; ship %s", sk_cl_on ? "on" : "off", sk_cl_block, sk_cl_contact, sk_cl_reach, b[0] ? b : "undamaged"); } }
 /* WORLD OBJECTS: mining, destruction, remnants and the ship hold (owner 2026-10-25; design 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md 3, 4f, 4g). Infrastructure: everything is data (blocks.pdl, hold.pdl) + event pages (events/destroyed); the C only does what a page calls. mine adds tool power to a per-cell progress (state/damage.txt); at hardness the cell is destroyed: events/destroyed (parallel, fallback = the effect) runs `destroy last`, which turns the BLOCK row into remnants (state/drops.txt, maybe damaged) and logs DESTROYED. hold = state/hold.txt, items and the entities inside (position relative to the ship). NOT built: finding the block under a cell from the engine (kind is passed), drawing remnants in the scene, the beam key. */
 typedef struct { char kind[24], drop[24]; int hard, cnt, dpct; } SkBlk; typedef struct { char name[16]; int power; } SkTool; typedef struct { char kind[8], id[24]; int n, x, y; } SkHold;
-static SkBlk sk_blk[24]; static int sk_nblk; static SkTool sk_tool[8]; static int sk_ntool; static SkHold sk_hold[64]; static int sk_nhold, sk_hold_cap = 40, sk_hold_wreck = 100; static long sk_wd_at;
+static int sk_pk_range = 2, sk_pk_ms = 600, sk_pk_size = 40, sk_pk_spin = 220; static SkBlk sk_blk[24]; static int sk_nblk; static SkTool sk_tool[8]; static int sk_ntool; static SkHold sk_hold[64]; static int sk_nhold, sk_hold_cap = 40, sk_hold_wreck = 100; static long sk_wd_at;
 static void sk_wd_cfg(void) {
     long now = now_ms(); if (sk_wd_at && now - sk_wd_at < 2000) return; sk_wd_at = now; char p[PATH_MAX], ln[400]; char *f[10]; int n;
     snprintf(p, sizeof p, "%s/blocks.pdl", APP); FILE *fp = fopen(p, "r"); if (fp) { sk_nblk = sk_ntool = 0;
         while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || (n = split_bar(ln, f, 10)) < 3) continue;
             if (!strcmp(f[0], "BLOCK") && n >= 6 && sk_nblk < 24) { SkBlk *b = &sk_blk[sk_nblk++]; snprintf(b->kind, sizeof b->kind, "%s", f[1]); b->hard = atoi(f[2]); snprintf(b->drop, sizeof b->drop, "%s", f[3]); b->cnt = atoi(f[4]); b->dpct = atoi(f[5]); }
+            else if (!strcmp(f[0], "PICKUP")) { if (!strcmp(f[1], "range")) sk_pk_range = atoi(f[2]); else if (!strcmp(f[1], "ms")) sk_pk_ms = atoi(f[2]); else if (!strcmp(f[1], "size")) sk_pk_size = atoi(f[2]); else if (!strcmp(f[1], "spin_ms")) sk_pk_spin = atoi(f[2]); }
             else if (!strcmp(f[0], "TOOL") && sk_ntool < 8) { snprintf(sk_tool[sk_ntool].name, sizeof sk_tool[0].name, "%s", f[1]); sk_tool[sk_ntool++].power = atoi(f[2]); } }
         fclose(fp); }
     snprintf(p, sizeof p, "%s/hold.pdl", APP); fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 10) < 3 || strcmp(f[0], "HOLD")) continue; if (!strcmp(f[1], "capacity")) sk_hold_cap = atoi(f[2]); else if (!strcmp(f[1], "wreck_drop")) sk_hold_wreck = atoi(f[2]); } fclose(fp); } }
@@ -827,13 +839,41 @@ static void sk_wd_verb(int argc, char **argv, char *msg, size_t cap) {
         if (!strcmp(a, "wreck")) { int room = room_idx(sk_lc_room); if (room < 0) room = 0; sk_drops_load(); int made = 0, ents = 0; for (int i = 0; i < sk_nhold; i++) { SkHold *h = &sk_hold[i]; if (strcmp(h->kind, "item")) { ents++; continue; } int d = h->n * sk_hold_wreck / 100; if (d <= 0 || sk_ndrops >= 64) continue; SkDrop *q = &sk_drops[sk_ndrops++]; q->id = sk_dropid++; q->room = room; q->x = sk_lc_rx; q->y = sk_lc_ry; q->n = d; snprintf(q->item, sizeof q->item, "%s", h->id); q->owner[0] = 0; q->dmg = 1; snprintf(q->src, sizeof q->src, "wreck"); made += d; }
             sk_drops_save(); char rb[120]; snprintf(rb, sizeof rb, "WRECK|%ld|ship|dropped %d (%d%%)|entities released %d", (long)time(NULL), made, sk_hold_wreck, ents); append_line("events.txt", rb); sk_nhold = 0; sk_hold_save(); snprintf(msg, cap, "the ship is wrecked: %d items fall as damaged remnants, %d entities released", made, ents); return; }
         snprintf(msg, cap, "usage: hold status | give <item> [n] | board <id> [x y] | leave <id> | store <char> <item> [n] | fetch <char> <item> [n] | wreck"); return; } }
+/* REMNANTS IN THE SCENE + AUTO PICKUP (owner 2026-10-25: "it will auto enter the entities inventory when it walks close (animated)"). Every remnant row of state/drops.txt is drawn as a mini block: a vehicle piece pieces/veh_1..9 (desk = its room, pos = the cell, size = blocks.pdl PICKUP size percent of a cell, self-lit, colour by item, darker when damaged) so the engine shows it with no new engine code (9 slots: the shown room first). A living character within PICKUP range cells of a remnant starts its pickup: the block hops and slides to the character over PICKUP ms (the pieces are rewritten every daemon tick and the engine is nudged), then the take runs (`life take`) and the block is gone. Data in blocks.pdl (PICKUP | range | ms | size). */
+typedef struct { int id, slot; long start; } SkAnim;
+static SkAnim sk_anim[16]; static int sk_nanim;
+static void sk_item_rgb(const char *item, int dmg, int *r, int *g, int *b) {
+    if (!strncmp(item, "stone", 5)) { *r = 140; *g = 140; *b = 148; } else if (!strncmp(item, "iron", 4)) { *r = 205; *g = 120; *b = 85; } else if (!strncmp(item, "gem", 3)) { *r = 90; *g = 225; *b = 235; } else if (!strncmp(item, "scrap", 5)) { *r = 170; *g = 175; *b = 185; } else if (!strncmp(item, "bread", 5)) { *r = 225; *g = 180; *b = 90; } else if (!strncmp(item, "fish", 4)) { *r = 120; *g = 170; *b = 230; } else if (!strncmp(item, "ore", 3)) { *r = 205; *g = 120; *b = 85; } else { *r = 230; *g = 210; *b = 70; }
+    if (dmg > 0) { *r = *r * 55 / 100; *g = *g * 55 / 100; *b = *b * 55 / 100; } }
+static void sk_remnant_nudge(void) {      /* wake the idle board engine so it redraws the moved blocks (same nudge as follow_pchq) */
+    const char *cand[3] = {"@.apps/" PET_APP "/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char cp[3][PATH_MAX]; const char *cpp[3];
+    for (int k = 0; k < 3; k++) { snprintf(cp[k], sizeof cp[k], "%s/%s", HOUSE, cand[k]); cpp[k] = cp[k]; } pet_nudge(cpp, 3); }
+static void write_room_events(int r);
+static int sk_remnants_tick(void) {
+    sk_wd_cfg(); static long last_at; long now = now_ms(); if (now - last_at < 90) return 0; last_at = now; sk_drops_load(); int changed = 0;
+    for (int i = 0; i < sk_ndrops; i++) {      /* who is close enough to pick it up */
+        SkDrop *d = &sk_drops[i]; int a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k; if (a >= 0) continue;
+        int best = -1, bd = 1000; for (int s = 0; s <= nparty; s++) { if (sk_life[s].dead) continue; Ent *e = sk_life_ent(s); if (e->room != d->room) continue; int dist = abs(e->x - d->x) + abs(e->y - d->y); if (dist <= sk_pk_range && dist < bd) { bd = dist; best = s; } }
+        if (best >= 0 && sk_nanim < 16) { sk_anim[sk_nanim].id = d->id; sk_anim[sk_nanim].slot = best; sk_anim[sk_nanim++].start = now; } }
+    static char prev[16][1100]; char rows[16][1100]; for (int r = 0; r < 16; r++) rows[r][0] = 0; int cnt[16] = {0};
+    for (int i = 0; i < sk_ndrops; i++) {
+        SkDrop *d = &sk_drops[i]; if (d->room < 0 || d->room >= 16 || d->room >= nroom || cnt[d->room] >= 24) continue; int x = d->x, y = d->y, a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k;
+        if (a >= 0) { double t = (double)(now - sk_anim[a].start) / (double)(sk_pk_ms > 0 ? sk_pk_ms : 1); if (t > 1) t = 1; Ent *e = sk_life_ent(sk_anim[a].slot); x = (int)lround(d->x + (e->x - d->x) * t); y = (int)lround(d->y + (e->y - d->y) * t); }
+        int r, g, b; sk_item_rgb(d->item, d->dmg, &r, &g, &b); size_t o = strlen(rows[d->room]); snprintf(rows[d->room] + o, sizeof rows[0] - o, "%d %d %d %d %d rem %d %d 0 *\n", x, y, r, g, b, sk_rem_idx(d->item, d->dmg), a >= 0 || sk_pk_spin <= 0 ? 2 : (int[]){ 2, 6, 4, 8 }[(int)((now / sk_pk_spin + d->id) % 4)]); cnt[d->room]++; }
+    for (int r = 0; r < nroom && r < 16; r++) { if (strcmp(rows[r], prev[r])) { snprintf(prev[r], sizeof prev[0], "%s", rows[r]); snprintf(sk_rem_rows[r], sizeof sk_rem_rows[0], "%s", rows[r]); write_room_events(r); changed = 1; } }
+    for (int k = 0; k < sk_nanim; k++) {      /* finished slides: the pickup itself */
+        if (now - sk_anim[k].start < sk_pk_ms) continue; int id = sk_anim[k].id, slot = sk_anim[k].slot; char ib[16], m2[160]; snprintf(ib, sizeof ib, "%d", id); char *hv[4] = { "life", "take", ib, (char *)sk_life_id(slot) }; sk_life_verb(4, hv, m2, sizeof m2); sk_drops_load(); changed = 1;
+        sk_anim[k] = sk_anim[--sk_nanim]; k--; }
+    for (int k = 0; k < sk_nanim; k++) { int alive = 0; for (int i = 0; i < sk_ndrops; i++) if (sk_drops[i].id == sk_anim[k].id) alive = 1; if (!alive) { sk_anim[k] = sk_anim[--sk_nanim]; k--; } }
+    if (changed) sk_remnant_nudge(); return changed; }
 #elif PET_SECTION == 76
             if (c == 27 && flag_on("helm", 0)) { char *hv[2] = { "helm", "off" }; sk_helm_verb(2, hv, msg, sizeof msg); dirty = 1; }      /* Esc lets go of the helm and still leaves In: (the default below) */
 #elif PET_SECTION == 77
             { char tb[100]; snprintf(tb, sizeof tb, "%ld enter-in-engine hero=%d,%d room=%s ctl=%d", (long)time(NULL), tr.x, tr.y, rooms[tr.room].id, ctl_idx()); append_line("int_trace.txt", tb); }
             took = sk_helm_interact(msg, sizeof msg);
 #elif PET_SECTION == 79
-        if (run_on() && sk_life_tick()) dirty = 1;      /* hunger, starving, death, respawn (life.pdl) */
+        if (run_on() && sk_life_tick()) dirty = 1;
+        if (run_on() && sk_remnants_tick()) dirty = 1;      /* remnants drawn as mini blocks, auto pickup when a character walks close */      /* hunger, starving, death, respawn (life.pdl) */
 #elif PET_SECTION == 78
             if (sk_helm_follow(msg, sizeof msg)) dirty = 1;
 #endif

@@ -10,3 +10,8 @@ BLOCK | hullplate| 6  | scrap | 4 | 40 | Fe     | 7.8 | 1538
 TOOL | hand | 1
 TOOL | pick | 2
 TOOL | beam | 4
+# PICKUP | key | value   (remnants lying in the scene, owner 2026-10-25)
+PICKUP | range | 2   | cells (Manhattan) from a remnant at which a living character picks it up by itself
+PICKUP | ms    | 600 | how long the block hops to the character before it enters the inventory
+PICKUP | size  | 40  | the block's size in percent of a cell
+PICKUP | spin_ms| 220 | a remnant lying in the scene turns to show it can be picked up: ms per quarter turn (0 = it does not turn)
