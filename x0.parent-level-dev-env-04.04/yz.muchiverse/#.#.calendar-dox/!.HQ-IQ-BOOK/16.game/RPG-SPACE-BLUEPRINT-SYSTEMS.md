@@ -56,6 +56,13 @@ A page is a process chain (`play_event.sh` -> `cmd_N.sh` -> op): fine for transi
 - **Live:** `life hurt ember 99` -> DEATH + RESPAWN rows; `mine rock bridge 12 4 pick` x2 -> "DESTROYED|rock|bridge,12,4|stone x2|by mine pick", remnant row, ledger shows the page played.
 - **Not done:** the C effects stay as the fallback when a page is missing; `mine` and `build` (tool/range logic) and pickup are still C; hunger/starve tick is C; no process-spawn re-measure (each page step is now one process: a death costs 6 forks, a break 5; it is event-driven, not per tick). Seen, not ours: the events' ledgers carry "[Prisc Error] Could not open ops file .../101.mutaclsym.../system/default_op.txt" (older than these changes).
 
+## 5e. B3, B4, B5 done; the presentation (2026-10-25, owner: "lets finish and make presentation when done")
+- **B3 air:** events/environment = `wo_each` over env_pending.txt -> events/env_hit (`wo_run rpg_space life hurt :who: :hp:` + log row). Gate `wo_env_gate.sh`: 3 cases identical, broken step caught; live breach froze all five. The per-tick physics stays in the C daemon.
+- **B4 collision:** events/collision (8 nodes) + col_hit + col_breach; verbs load, calc, kvline, if, each_actor; tokens `:coll_<key>:` / `:env_<key>:`. Gate `wo_coll_gate.sh`: speeds 1,2,3,4,9 identical; broken breach step caught. Live: page played, hits 10->11, BREACH row. **Hold** has no page today (its verbs are commands, reachable through `rpg_space_verb`), so nothing to convert.
+- **B5 port:** rpg-dust got life.pdl, blocks.pdl and events death / respawn / destroyed, no C. Gate `wo_port_gate.sh`: one script on scratch copies of both games leaves identical files. Not ported (needs C or a pal loop in rpg-dust): the hunger tick and hp-0 detection that PLAY death, mine/build/pickup; air and collision need a ship (dust has none).
+- **Seen, not fixed:** blueprintz's "Calls between the loaded events" says no calls for pages that use `wo_when` / `wo_each` / `wo_if` (the call graph only knows the old call commands); all gates are interim `.sh` scripts (house rule: pal harness); the C fallbacks are still in the binary.
+- **Presentation:** XO/30.rpg-dust-work/presentations/rpg-blueprint-b0-b5/ (manifest + 11 frames: real blueprintz captures of every page + results slides; presentation.mp4 narrated with the local pet voice). Not in the repo.
+
 ## 6. Open questions for the owner
 - New widget `&.widgits/world-ops/` for the reusable ops, or add them to `events-hq/ops/` next to the `mr_*` ops? (recommend the new widget, so events-hq stays an editor)
 - Keep the daemon's per-tick scans in C (recommended, section 4) or make them a pal loop on the prisc VM too? (a pal loop is allowed; it is another process loop, measure first)
