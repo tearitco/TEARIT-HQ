@@ -25,3 +25,5 @@ TUNE | ship_alt         | 2     | height of the ship piece above the planet page
 TUNE | ship_start_x     | 6     | where the ship piece starts on the planet page                                                                                                                | 6
 TUNE | ship_start_y     | 6     | where the ship piece starts on the planet page                                                                                                                | 6
 TUNE | remnant_z       | 17    | the world level remnant blocks lie on: the ship floor is level 16, characters stand at 17 (the hero piece's own pos_z resets after a reload, do not use it)                                                  | 17
+TUNE | direct_z_min     | -8    | the lowest ship altitude in DIRECT flight (collision.pdl contact_alt is -7: below it the hull is in the land)                                                  | -8
+TUNE | direct_z_max     | 12    | the highest ship altitude in DIRECT flight                                                  | 12
