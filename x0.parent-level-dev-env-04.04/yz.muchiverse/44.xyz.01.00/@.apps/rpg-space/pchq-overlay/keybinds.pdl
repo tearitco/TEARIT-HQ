@@ -100,3 +100,4 @@ AXIS         | down_dy            | 1
 
 # ── keys forwarded to the host skin's own daemon (bv_menu_input.c pdl_hostkey; <host>/../state/interact_relay.txt) ──
 HOSTKEY      | mine               | 109       # 'm'  mine / beam the node in front (rpg_space.c section 76, keybinds KEY | mine)
+HOSTKEY      | build              | 98        # 'b'  place a block in front (rpg_space.c section 76, keybinds KEY | build)

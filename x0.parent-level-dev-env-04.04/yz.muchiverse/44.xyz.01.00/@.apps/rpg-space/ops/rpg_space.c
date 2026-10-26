@@ -74,7 +74,7 @@ static long sk_helm_settle = 0;      /* until this time the xelector is not read
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
-static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
+static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static int sk_node_solid(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
 /* STATE_BACKEND (kh_state_notify.h): file = every tick re-reads everything (the old behaviour); marker / shmem = a slot moves when a writer wrote, readers reload only then. Slots: */
 enum { SL_PETS = 0, SL_FLAGS, SL_DAY };
@@ -252,7 +252,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "life")) { sk_life_verb(argc, argv, msg, cap); return; }
-    if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold")) { sk_wd_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold") || !strcmp(v, "build")) { sk_wd_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "setpos")) {      /* setpos <room id> <x> <y>: put the controlled one on a cell (test setup for board_ctl; refuses a blocked cell and the space desk) */
         int rr = argc >= 2 ? room_idx(argv[1]) : -1, px = argc >= 4 ? atoi(argv[2]) : -1, py = argc >= 4 ? atoi(argv[3]) : -1;
@@ -311,6 +311,7 @@ static int sk_blocked(int room, int x, int y) {
     if (room < 0 || room >= SK_NR || x < 0 || y < 0 || x >= SK_W || y >= SK_H) return 1;
     if (room == SK_SPACE) return 1;      /* nobody walks in space: the one who is there is the ship, put on its cell by the helm */
     if (room < SK_SHIP && (x < SOX || y < SOY || x >= SOX + SSZ || y >= SOY + SSZ)) return 1;      /* beyond the hull is the planet far below: nobody walks there */
+    if (sk_node_solid(room, x, y)) return 1;      /* a resource node or a block you built stands in the way until it is mined away (owner 2026-10-25: building walls) */
     char g = sk_glyph[room][y][x]; return g == 'T' || g == '~' || g == 'r' || g == 'W' || g == 'f';
 }
 static void sk_near_free(int room, int *x, int *y) {      /* the nearest walkable cell to (x, y), searched in growing squares */
@@ -796,15 +797,16 @@ static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap) {      /*
     sk_coll_cfg(); if (argc >= 2 && !strcmp(argv[1], "hit")) { char p[PATH_MAX], b[16] = ""; spath(p, "coll_speed.txt"); read_file(p, b, sizeof b); int sp = argc >= 3 ? atoi(argv[2]) : atoi(b); if (sp < 1) sp = 1; if (sp > 4) sp = 4; sk_coll_effect(sp, msg, cap); return; }
     { char p[PATH_MAX], b[100] = ""; spath(p, "ship_damage.txt"); read_file(p, b, sizeof b); b[strcspn(b, "\n")] = 0; snprintf(msg, cap, "collision %s, block %d, contact_alt %d, ship %d land %d; ship %s", sk_cl_on ? "on" : "off", sk_cl_block, sk_cl_contact, sk_cl_ship, sk_cl_land, b[0] ? b : "undamaged"); } }
 /* WORLD OBJECTS: mining, destruction, remnants and the ship hold (owner 2026-10-25; design 16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md 3, 4f, 4g). Infrastructure: everything is data (blocks.pdl, hold.pdl) + event pages (events/destroyed); the C only does what a page calls. mine adds tool power to a per-cell progress (state/damage.txt); at hardness the cell is destroyed: events/destroyed (parallel, fallback = the effect) runs `destroy last`, which turns the BLOCK row into remnants (state/drops.txt, maybe damaged) and logs DESTROYED. hold = state/hold.txt, items and the entities inside (position relative to the ship). NOT built: finding the block under a cell from the engine (kind is passed), drawing remnants in the scene, the beam key. */
-typedef struct { char kind[24], drop[24]; int hard, cnt, dpct; } SkBlk; typedef struct { char name[16]; int power; } SkTool; typedef struct { char kind[8], id[24]; int n, x, y; } SkHold;
-static char sk_node_seed[2400]; static int sk_pk_range = 2, sk_pk_ms = 600, sk_pk_size = 40, sk_pk_spin = 220; static SkBlk sk_blk[24]; static int sk_nblk; static SkTool sk_tool[8]; static int sk_ntool; static SkHold sk_hold[64]; static int sk_nhold, sk_hold_cap = 40, sk_hold_wreck = 100; static long sk_wd_at;
+typedef struct { char kind[24], drop[24]; int hard, cnt, dpct; } SkBlk; typedef struct { char name[16]; int power; } SkTool; typedef struct { char kind[8], id[24]; int n, x, y; } SkHold; typedef struct { char kind[24], item[24]; int n; } SkBuild;
+static char sk_node_seed[2400]; static int sk_pk_range = 2, sk_pk_ms = 600, sk_pk_size = 40, sk_pk_spin = 220; static SkBlk sk_blk[24]; static int sk_nblk; static SkBuild sk_bld[12]; static int sk_nbld; static SkTool sk_tool[8]; static int sk_ntool; static SkHold sk_hold[64]; static int sk_nhold, sk_hold_cap = 40, sk_hold_wreck = 100; static long sk_wd_at;
 static void sk_wd_cfg(void) {
     long now = now_ms(); if (sk_wd_at && now - sk_wd_at < 2000) return; sk_wd_at = now; char p[PATH_MAX], ln[400]; char *f[10]; int n;
-    snprintf(p, sizeof p, "%s/blocks.pdl", APP); FILE *fp = fopen(p, "r"); if (fp) { sk_nblk = sk_ntool = 0; sk_node_seed[0] = 0;
+    snprintf(p, sizeof p, "%s/blocks.pdl", APP); FILE *fp = fopen(p, "r"); if (fp) { sk_nblk = sk_ntool = sk_nbld = 0; sk_node_seed[0] = 0;
         while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || (n = split_bar(ln, f, 10)) < 3) continue;
             if (!strcmp(f[0], "BLOCK") && n >= 6 && sk_nblk < 24) { SkBlk *b = &sk_blk[sk_nblk++]; snprintf(b->kind, sizeof b->kind, "%s", f[1]); b->hard = atoi(f[2]); snprintf(b->drop, sizeof b->drop, "%s", f[3]); b->cnt = atoi(f[4]); b->dpct = atoi(f[5]); }
             else if (!strcmp(f[0], "NODE") && n >= 6 && strlen(sk_node_seed) < sizeof sk_node_seed - 80) { char t[100]; snprintf(t, sizeof t, "%s|%s|%s|%s|%s\n", f[1], f[2], f[3], f[4], f[5]); strcat(sk_node_seed, t); }
             else if (!strcmp(f[0], "PICKUP")) { if (!strcmp(f[1], "range")) sk_pk_range = atoi(f[2]); else if (!strcmp(f[1], "ms")) sk_pk_ms = atoi(f[2]); else if (!strcmp(f[1], "size")) sk_pk_size = atoi(f[2]); else if (!strcmp(f[1], "spin_ms")) sk_pk_spin = atoi(f[2]); }
+            else if (!strcmp(f[0], "BUILD") && n >= 4 && sk_nbld < 12) { SkBuild *q = &sk_bld[sk_nbld++]; snprintf(q->kind, sizeof q->kind, "%s", f[1]); snprintf(q->item, sizeof q->item, "%s", f[2]); q->n = atoi(f[3]); }      /* BUILD | kind | item | count: what placing one block costs */
             else if (!strcmp(f[0], "TOOL") && sk_ntool < 8) { snprintf(sk_tool[sk_ntool].name, sizeof sk_tool[0].name, "%s", f[1]); sk_tool[sk_ntool++].power = atoi(f[2]); } }
         fclose(fp); }
     snprintf(p, sizeof p, "%s/hold.pdl", APP); fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 10) < 3 || strcmp(f[0], "HOLD")) continue; if (!strcmp(f[1], "capacity")) sk_hold_cap = atoi(f[2]); else if (!strcmp(f[1], "wreck_drop")) sk_hold_wreck = atoi(f[2]); } fclose(fp); } }
@@ -819,6 +821,9 @@ static void sk_nodes_load(void) {
     sk_nnodes = 0; for (char *l = strtok(b, "\n"); l && sk_nnodes < 32; l = strtok(NULL, "\n")) { char *f[6]; if (split_bar(l, f, 6) < 5) continue; SkNode *nd = &sk_nodes[sk_nnodes]; nd->room = room_idx(f[0]); nd->x = atoi(f[1]); nd->y = atoi(f[2]); snprintf(nd->kind, sizeof nd->kind, "%s", f[3]); nd->amount = atoi(f[4]); if (nd->room >= 0 && nd->amount != 0) sk_nnodes++; }
     if (have == 2) sk_nodes_save(); }
 static SkNode *sk_node_at(int room, int x, int y) { for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == room && sk_nodes[i].x == x && sk_nodes[i].y == y) return &sk_nodes[i]; return NULL; }
+static int sk_node_solid(int room, int x, int y) {      /* cached for 400 ms: the walk checks run for every pet and every path step */
+    static long at; static int n, r[32], px[32], py[32]; long now = now_ms(); if (!at || now - at > 400) { at = now; sk_nodes_load(); n = sk_nnodes; for (int i = 0; i < n; i++) { r[i] = sk_nodes[i].room; px[i] = sk_nodes[i].x; py[i] = sk_nodes[i].y; } }
+    for (int i = 0; i < n; i++) if (r[i] == room && px[i] == x && py[i] == y) return 1; return 0; }
 static void sk_destroy_effect(const char *kind, int room, int x, int y, const char *src, char *msg, size_t cap) {      /* what events/destroyed calls: the BLOCK row becomes remnants where it stood */
     sk_wd_cfg(); SkBlk *b = sk_blk_find(kind); char rb[160]; int made = 0, dm = 0;
     if (b && b->cnt > 0) { sk_drops_load(); if (sk_ndrops < 64) { SkDrop *q = &sk_drops[sk_ndrops++]; q->id = sk_dropid++; q->room = room; q->x = x; q->y = y; q->n = b->cnt; snprintf(q->item, sizeof q->item, "%s", b->drop); q->owner[0] = 0; srand((unsigned)(now_ms() ^ ((long)getpid() << 7))); dm = (rand() % 100) < b->dpct;      /* every verb is a fresh process: seed or the first rand() is always the same */ q->dmg = dm; snprintf(q->src, sizeof q->src, "%s", kind); made = q->n; sk_drops_save(); } }
@@ -828,6 +833,18 @@ static void sk_destroy_effect(const char *kind, int room, int x, int y, const ch
     if (msg) snprintf(msg, cap, "%s destroyed: %s x%d%s", kind, b ? b->drop : "nothing", made, dm ? " (damaged)" : ""); }
 static void sk_wd_verb(int argc, char **argv, char *msg, size_t cap) {
     sk_wd_cfg(); const char *v = argv[0];
+    if (!strcmp(v, "build")) {      /* build here [kind] | build list | build kind <kind>: put a block in the cell in front of the controlled character; the BUILD row's items leave their inventory, the block is a node with amount 1 (solid, mined like any node) */
+        if (argc >= 2 && !strcmp(argv[1], "list")) { char b[400] = ""; for (int i = 0; i < sk_nbld; i++) { char t[80]; snprintf(t, sizeof t, "%s=%s x%d; ", sk_bld[i].kind, sk_bld[i].item, sk_bld[i].n); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "build: %s", b[0] ? b : "nothing is buildable"); return; }
+        char kp[PATH_MAX]; spath(kp, "build_kind.txt"); if (argc >= 3 && !strcmp(argv[1], "kind")) { char t[40]; snprintf(t, sizeof t, "%s\n", argv[2]); write_if_changed(kp, t, strlen(t)); snprintf(msg, cap, "build kind %s", argv[2]); return; }
+        if (argc < 2 || strcmp(argv[1], "here")) { snprintf(msg, cap, "usage: build here [kind] | build list | build kind <kind>"); return; }
+        int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); static const int ddx[4] = { 0, -1, 1, 0 }, ddy[4] = { 1, 0, 0, -1 }; int tx = e->x + ddx[e->dir & 3], ty = e->y + ddy[e->dir & 3];
+        if (sk_blocked(e->room, tx, ty) || other_at(e->room, tx, ty) || floor_blocked(e->room, tx, ty, 0)) { snprintf(msg, cap, "build: %d,%d is not free", tx, ty); return; }
+        sk_life_load(sh); SkLife *L = &sk_life[sh]; char want[24] = ""; if (argc >= 3) snprintf(want, sizeof want, "%s", argv[2]); else { char t[40] = ""; read_file(kp, t, sizeof t); t[strcspn(t, "\n")] = 0; snprintf(want, sizeof want, "%s", t); }
+        SkBuild *use = NULL; for (int i = 0; i < sk_nbld; i++) { if (sk_inv_count(L, sk_bld[i].item) < sk_bld[i].n || !sk_blk_find(sk_bld[i].kind)) continue; if (!use) use = &sk_bld[i]; if (want[0] && !strcmp(sk_bld[i].kind, want)) { use = &sk_bld[i]; break; } }      /* the wanted kind when affordable, else the first one the inventory pays for */
+        if (!use) { snprintf(msg, cap, "build: %s lacks the items for %s (build list)", sk_life_id(sh), want[0] ? want : "any block"); return; }
+        sk_inv_set(L, use->item, sk_inv_count(L, use->item) - use->n); sk_life_save(sh); sk_nodes_load(); if (sk_nnodes < 32) { SkNode *nd = &sk_nodes[sk_nnodes++]; nd->room = e->room; nd->x = tx; nd->y = ty; nd->amount = 1; snprintf(nd->kind, sizeof nd->kind, "%s", use->kind); sk_nodes_save(); }
+        { char rb[160]; snprintf(rb, sizeof rb, "BUILT|%ld|%s|%s,%d,%d|cost %s x%d|by %s", (long)time(NULL), use->kind, rooms[e->room].id, tx, ty, use->item, use->n, sk_life_id(sh)); append_line("events.txt", rb); }
+        snprintf(msg, cap, "%s built at %d,%d (cost %s x%d)", use->kind, tx, ty, use->item, use->n); return; }
     if (!strcmp(v, "mine") && argc >= 2 && (!strcmp(argv[1], "here") || !strcmp(argv[1], "nodes"))) {      /* mine here [tool]: the node in front of the controlled character (or under it), mined with the pick on foot and the ship's beam at the helm; mine nodes lists them */
         sk_nodes_load(); if (!strcmp(argv[1], "nodes")) { char b[600] = ""; for (int i = 0; i < sk_nnodes; i++) { char t[80]; snprintf(t, sizeof t, "%s %d,%d %s x%d; ", rooms[sk_nodes[i].room].id, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].kind, sk_nodes[i].amount); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "nodes %d: %s", sk_nnodes, b[0] ? b : "none"); return; }
         int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); static const int ddx[4] = { 0, -1, 1, 0 }, ddy[4] = { 1, 0, 0, -1 }; int tx = e->x + ddx[e->dir & 3], ty = e->y + ddy[e->dir & 3]; SkNode *nd = sk_node_at(e->room, tx, ty); if (!nd) nd = sk_node_at(e->room, e->x, e->y);
@@ -890,6 +907,7 @@ static int sk_remnants_tick(void) {
     if (changed) sk_remnant_nudge(); return changed; }
 #elif PET_SECTION == 76
             if ((c == 'm' || c == 'M') && run_on() && !flag_on("ask", 0)) { char *mv[2] = { "mine", "here" }; sk_wd_verb(2, mv, msg, sizeof msg); dirty = 1; continue; }      /* m = mine / beam: the node in front of the controlled character (blocks.pdl NODE rows) */
+            if ((c == 'b' || c == 'B') && run_on() && !flag_on("ask", 0)) { char *bv[2] = { "build", "here" }; sk_wd_verb(2, bv, msg, sizeof msg); dirty = 1; continue; }      /* b = place a block in front (blocks.pdl BUILD rows) */
             if (c == 27 && flag_on("helm", 0)) { char *hv[2] = { "helm", "off" }; sk_helm_verb(2, hv, msg, sizeof msg); dirty = 1; }      /* Esc lets go of the helm and still leaves In: (the default below) */
 #elif PET_SECTION == 77
             { char tb[100]; snprintf(tb, sizeof tb, "%ld enter-in-engine hero=%d,%d room=%s ctl=%d", (long)time(NULL), tr.x, tr.y, rooms[tr.room].id, ctl_idx()); append_line("int_trace.txt", tb); }

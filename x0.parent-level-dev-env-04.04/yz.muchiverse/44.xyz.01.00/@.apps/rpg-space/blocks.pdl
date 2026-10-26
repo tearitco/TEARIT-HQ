@@ -10,6 +10,9 @@ BLOCK | hullplate| 6  | scrap | 4 | 40 | Fe     | 7.8 | 1538
 TOOL | hand | 1
 TOOL | pick | 2
 TOOL | beam | 4
+# BUILD | kind | item | count   (placing one block with b / `build here [kind]` costs this many of that item from the controlled character; the block is a solid node of that kind, mined like any other)
+BUILD | rock      | stone | 2
+BUILD | hullplate | scrap | 4
 # PICKUP | key | value   (remnants lying in the scene, owner 2026-10-25)
 PICKUP | range | 2   | cells (Manhattan) from a remnant at which a living character picks it up by itself
 PICKUP | ms    | 600 | how long the block hops to the character before it enters the inventory

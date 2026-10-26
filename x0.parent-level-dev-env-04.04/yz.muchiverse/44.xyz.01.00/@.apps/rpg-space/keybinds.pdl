@@ -14,3 +14,4 @@ KEY | pov_mode_3 | 51
 KEY | pov_mode_4 | 52
 KEY | escape | 27
 KEY | mine | 109   # m: mine / beam the node in front (blocks.pdl NODE rows); the skin reads the relay code
+KEY | build | 98   # b: place a block in front (blocks.pdl BUILD rows); forwarded from the engine by the pchq HOSTKEY row

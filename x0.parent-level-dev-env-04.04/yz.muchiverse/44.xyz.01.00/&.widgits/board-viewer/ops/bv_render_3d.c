@@ -4000,7 +4000,7 @@ static int render_one_frame(void) {
 
         { char lbp[PATH_BUF]; snprintf(lbp, sizeof(lbp), "%s/pieces/system/limit_box.txt", focused_project_root); FILE *lf = host_fopen(lbp, "r");      /* debug: the limit of the map as one wireframe box, `x0 y0 z0 x1 y1 z1` in world cells (written by the skin, see rpg-space map_box) */
           if (lf) { float b[6]; if (fscanf(lf, "%f %f %f %f %f %f", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) ADDWIRE(b[0], b[1], b[2], b[3], b[4], b[5], 200, 200, 210); fclose(lf); } }
-        if (g_land_box_on) ADDWIRE(g_land_box[0], g_land_box[1], g_land_box[2], g_land_box[3], g_land_box[4], g_land_box[5], 170, 170, 180);      /* the land entity's cube (debug_land) */
+        if (g_land_box_on) ADDWIRE(g_land_box[0], g_land_box[1], g_land_box[2], g_land_box[3], g_land_box[4], g_land_box[5], 235, 235, 255);      /* the land entity's cube (debug_land) */
         for (int vk = 0; vk < g_veh_cnt; vk++) {      /* vehicle pieces: one box each, a dense voxel model inside; world (X, Y = height, Z) = (grid x, up, grid y) */
             VehPiece *V = &g_veh[vk]; int vm = GPU_ADD_MODEL(V->vox, V->n, V->dim[0] - 1, V->dim[1] - 1, V->dim[2] - 1);
             ADDBOX(V->x, V->z, V->y, V->x + V->sx, V->z + V->sh, V->y + V->sy, 150, 150, 160, V->selflit);
