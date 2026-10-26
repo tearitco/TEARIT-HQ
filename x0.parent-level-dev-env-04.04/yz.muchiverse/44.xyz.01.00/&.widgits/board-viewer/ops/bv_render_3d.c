@@ -593,7 +593,7 @@ static int maker_load(const char *root) {
     if (!ok) return ok;
     g_land_box_on = 0;
     if (!present) { applied_id = g_mk.id; return ok; }
-    { char vq0[PATH_BUF]; snprintf(vq0, sizeof(vq0), "%s/pieces/system/view.pdl", root); if (read_kv_int(vq0, "debug_land", 0)) { g_land_box_on = 1; g_land_box[0] = (float)px; g_land_box[2] = (float)py; g_land_box[3] = (float)(px + 16); g_land_box[5] = (float)(py + 16); g_land_box[1] = 0.0f; g_land_box[4] = 20.0f; } }
+    { char vq0[PATH_BUF]; snprintf(vq0, sizeof(vq0), "%s/pieces/system/view.pdl", root); if (read_kv_int(vq0, "debug_land", 0)) { g_land_box_on = 1; g_land_box[0] = (float)(px - 16); g_land_box[2] = (float)(py - 16); g_land_box[3] = (float)(px + 32); g_land_box[5] = (float)(py + 32); g_land_box[1] = 0.0f; g_land_box[4] = 34.0f; }      /* the MAP LIMIT (owner 2026-10-25): the planet page and its eight neighbours (48 x 48 cells, direct_max = 16 from the planet), from the planet's underside up past the highest ship altitude; it moves with the land, so the hull touches a wall exactly at the limit */ }
 
     if (!changed && applied_id == g_mk.id) return ok;
     applied_id = g_mk.id + 0;

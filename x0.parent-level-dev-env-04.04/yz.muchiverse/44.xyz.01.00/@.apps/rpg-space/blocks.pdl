@@ -15,3 +15,7 @@ PICKUP | range | 2   | cells (Manhattan) from a remnant at which a living charac
 PICKUP | ms    | 600 | how long the block hops to the character before it enters the inventory
 PICKUP | size  | 40  | the block's size in percent of a cell
 PICKUP | spin_ms| 220 | a remnant lying in the scene turns to show it can be picked up: ms per quarter turn (0 = it does not turn)
+# NODE | room | x | y | kind | amount   (resource nodes you mine with m / `mine here`; amount -1 = endless; seeds state/nodes.txt once, edit that file or delete it to reseed)
+NODE | bridge | 12 | 10 | ore     | 4
+NODE | bridge | 3  | 10 | crystal | 2
+NODE | bridge | 12 | 4  | rock    | -1

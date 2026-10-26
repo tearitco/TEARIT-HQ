@@ -13,3 +13,4 @@ KEY | pov_mode_2 | 50
 KEY | pov_mode_3 | 51
 KEY | pov_mode_4 | 52
 KEY | escape | 27
+KEY | mine | 109   # m: mine / beam the node in front (blocks.pdl NODE rows); the skin reads the relay code
