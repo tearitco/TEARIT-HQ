@@ -169,7 +169,12 @@ Proposal, data first (events / pdl, per the house principle):
 2. **Sprite blood.** Per character, a small set of overlay or variant frames chosen by hp fraction at the same thresholds as the bar (so the picture and the bar never disagree), with a KO frame. Applies to the playable characters and pets; opt-in per entity, cheap default (no overlay).
 3. **A setting for how graphic it is.** A player-level level (off, mild, full) in a settings file, default decided by the owner. Without this setting the sprite change should not ship.
 4. **Gate** (per house practice): a replay phase that sets progress or hp to known fractions and checks the chosen frame id for each stage, plus a deliberately wrong threshold that must fail.
-Open questions for the owner: how many stages; sprite art source (new frames drawn, or an overlay layer applied to the existing sheet); whether the blood level should also show on the ship's crew pips; default level of the graphic setting.
+DECIDED by the owner 2026-10-26 (answers to the four open questions; still nothing built):
+- **Block stages: 3** (intact, cracked, crumbling, then it breaks). Each stage change carries a **sound and an animation, both numbers-based**: no asset files. Frames are generated from data (a crack pattern from the cell seed and the stage number; chips and dust as a few moving points), and the sound is a tone described by numbers (frequency, length, decay) played by the existing sound op. "Default image overlay, original art for now."
+- **Sprite blood: an overlay layer** drawn over any existing sprite sheet, chosen by hp fraction at the bar's thresholds. One layer serves every character and pet; no per-character art.
+- **Graphic level: per game.** Each game sets its own default (off, mild, full) in its own config; the player can still change it in settings.
+- **Where it shows: everything that shows a character**: the sprite, the health bar, the crew pips, minimap dots and any portrait, all driven from ONE hp-fraction rule so they cannot disagree.
+Gate to build with it: one replay phase per stage and per surface (sprite, bar, pips, minimap) that sets known fractions and checks the chosen stage, plus a deliberately wrong threshold that must fail, and a check that the overlay is absent at graphic level off.
 
 ## 8. Next, in order (proposal)
 
