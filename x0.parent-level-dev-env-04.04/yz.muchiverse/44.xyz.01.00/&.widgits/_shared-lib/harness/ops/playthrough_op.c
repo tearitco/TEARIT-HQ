@@ -39,7 +39,7 @@ static char HARN[P];                      /* .../_shared-lib/harness */
 
 typedef struct { char *f[MAXF]; int n; } Row;
 typedef struct { char id[64], title[256], kw[256]; Row body[MAXL]; int nb; } Phase;
-typedef struct { char name[128], game[64], bin[64]; int events, common; Row init[MAXL], needs[32]; int ninit, nneeds; Phase ph[MAXPH]; int nph; char path[P]; } Table;
+typedef struct { char name[128], game[64], bin[64]; int events, common; Row init[MAXL], needs[32], cflags; int ninit, nneeds, hascf; Phase ph[MAXPH]; int nph; char path[P]; } Table;
 
 static long long now_ms(void) { struct timeval tv; gettimeofday(&tv, NULL); return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000; }
 static char *trim(char *s) { char *e; while (*s == ' ' || *s == '\t') s++; e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0; return s; }
@@ -74,6 +74,7 @@ static int parse_table(const char *path, Table *t) {
         else if (!strcmp(v, "COMMON") && r.n >= 2) t->common = !strcmp(r.f[1], "yes");      /* with EVENTS: common_events/ in the scratch house, the fixed call_event_op, mr_change_gold, and a caller entity <app>/ce_caller (BPCE, PLAYCE rows) */
         else if (!strcmp(v, "INIT") && r.n >= 3 && t->ninit < MAXL) t->init[t->ninit++] = r;
         else if (!strcmp(v, "NEEDS") && r.n >= 2 && t->nneeds < 32) t->needs[t->nneeds++] = r;
+        else if (!strcmp(v, "CFLAGS") && r.n >= 2) { t->cflags = r; t->hascf = 1; }      /* CFLAGS | -I$T/@.apps/<game>/ops | ... : extra gcc arguments of the scratch build, one argv entry per field ($T = the scratch house; a skin that text-includes by bare name needs its ops folder as -I) */
         else if (!strcmp(v, "PHASE") && r.n >= 2) {
             if (t->nph >= MAXPH) { fprintf(stderr, "playthrough_op: more than %d phases\n", MAXPH); return -1; }
             if (!valid_id(r.f[1]) || !strcmp(r.f[1], "setup")) { fprintf(stderr, "playthrough_op: bad phase id '%s' (letters digits _ - only, not 'setup')\n", r.f[1]); return -1; }
@@ -260,7 +261,8 @@ static int cmd_compile(const char *phases, const char *casedir_arg) {
         }
     }
     for (int i = 0; i < t->nneeds; i++) emit("COPY | %s | %s", t->needs[i].f[1], t->needs[i].n >= 3 ? t->needs[i].f[2] : t->needs[i].f[1]);
-    emit("RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -o | %s | $T/%s/ops/%s.c | -lm", CBIN, CAPP, t->bin);
+    { char cf[P] = ""; if (t->hascf) for (int i = 1; i < t->cflags.n; i++) { size_t o = strlen(cf); snprintf(cf + o, sizeof cf - o, " | %s", t->cflags.f[i]); }
+      emit("RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w%s | -o | %s | $T/%s/ops/%s.c | -lm", cf, CBIN, CAPP, t->bin); }
     emit("EXPECT_EXIT | 0 | setup.build"); emit("EXPECT_EXISTS | %s/ops/+x/%s.+x | setup.binary-exists", CAPP, t->bin);
     emit("# a stand-in window: the game writes ui.txt only while a process named khtpm_core_render with <game>.xhtpm in its command line exists (a copy of tail, no GUI)");
     emit("RUN | cp | /usr/bin/tail | $T/khtpm_core_render"); emit("SPAWN | viewer | $T/khtpm_core_render | -f | /dev/null | %s.xhtpm", t->game); emit("EXPECT_ALIVE | $viewer | setup.viewer-alive");

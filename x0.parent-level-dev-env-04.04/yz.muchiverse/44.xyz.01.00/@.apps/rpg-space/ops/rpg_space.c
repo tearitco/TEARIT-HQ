@@ -255,6 +255,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "life")) { sk_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold") || !strcmp(v, "build")) { sk_wd_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "playpage") && argc >= 2) { int ok = run_event_x(argv[1], argc >= 3 ? argv[2] : "parallel", ""); snprintf(msg, cap, "playpage %s: %s", argv[1], ok ? "page played" : "no page / failed"); return; }      /* what events-hq's Play does: the page by name (a harness plays the air and collision pages with it) */
     if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "env")) { sk_env_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "space")) { sk_space_verb(argc, argv, msg, cap); return; }

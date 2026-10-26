@@ -1,0 +1,84 @@
+# rpg_space_blueprint.phases.pdl - the rpg-space B0..B4 presentation as a replayable harness (BOOK 16.game/RPG-SPACE-BLUEPRINT-SYSTEMS.md 5c-5e, 2026-10-25).
+# Runner: ops/+x/playthrough_op.+x run play/phases/rpg_space_blueprint.phases.pdl     (a scratch house under /tmp: nothing live is touched)   or   prisc play_rpg_space_blueprint.pal
+# What it replays: the blueprintz window shows every system as readable pages (p1), then the REAL game plays them: death + respawn (p2), a mined block (p3), air (p4), collision (p5).
+# The golden values are what the FROZEN C code (git tag rpg-space-pre-blueprint, XO/30.rpg-dust-work/reference/rpg_space_c_reference.+x) produced for the same start files (BOOK 5d/5e gates).
+# Indexes in the blueprintz list are alphabetical: 0 col_breach 1 col_hit 2 collision 3 death 4 destroyed 5 env_hit 6 environment 7 helm 8 newplanet 9 planet 10 respawn 11 start 12 zoom_in 13 zoom_out.
+GAME | rpg-space | rpg_space
+EVENTS | yes
+NEEDS | &.widgits/world-ops/ops/+x/wo.+x
+# the rpg-space skin text-includes the shared petslike core and its helpers (the scratch house has only what is listed)
+NEEDS | &.widgits/_shared-lib/petslike_core.c
+NEEDS | &.widgits/_shared-lib/petslike_toolbar.c
+NEEDS | &.widgits/_shared-lib/pet_sky.c
+NEEDS | &.widgits/_shared-lib/pet_footer.c
+NEEDS | &.widgits/_shared-lib/pet_nudge.c
+NEEDS | &.widgits/_shared-lib/kh_state_notify.h
+NEEDS | &.widgits/_shared-lib/csv_frames.c
+NEEDS | &.widgits/_shared-lib/petslike_skin_lib.c
+NEEDS | &.widgits/_shared-lib/petslike_autotile.c
+NEEDS | @.apps/rpg-space/ops/+x/dust_gen.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_seed.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_zoom.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_orbit.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_check.+x
+# the planet pages are painted from RPG Maker sheets (the assets live above the house)
+NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
+NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+CFLAGS | -I$T/@.apps/rpg-space/ops
+INIT | state/pet_ember.txt | room=bridge\nx=9\ny=5\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+INIT | state/life_ember.txt | hp=20\nhunger=3\ndead=0\ndeaths=0\ninv=bread:5,iron:11,scrap:32\n
+
+PHASE | p1_blueprints | blueprintz loads rpg-space: 14 events and no problem flags; death shows its 6 steps, respawn 5, destroyed 5, collision 8, environment 1 | window, readable, pages
+BPWIN | REQ:LOAD:rpg-space | EXPECT:e_count~14 | EXPECT:status_line~0 flags
+EXIT | 0 | fourteen-events-and-zero-problem-flags
+BPWIN | REQ:LOAD:rpg-space | REQ:SEL:3 | EXPECT:sel_line~selected: death | EXPECT:n_count~6 | EXPECT:n_0_label~wo_drop | EXPECT:n_5_label~wo_when
+EXIT | 0 | death-is-six-readable-steps
+BPWIN | REQ:LOAD:rpg-space | REQ:SEL:10 | EXPECT:n_count~5 | EXPECT:n_3_label~wo_place
+EXIT | 0 | respawn-is-five-steps-with-a-place-step
+BPWIN | REQ:LOAD:rpg-space | REQ:SEL:4 | EXPECT:n_count~5 | EXPECT:n_1_label~wo_remnant
+EXIT | 0 | destroyed-is-five-steps-with-a-remnant-step
+BPWIN | REQ:LOAD:rpg-space | REQ:SEL:2 | EXPECT:n_count~8 | EXPECT:n_3_label~wo_each_actor | EXPECT:n_7_label~wo_if
+EXIT | 0 | collision-is-eight-steps
+BPWIN | REQ:LOAD:rpg-space | REQ:SEL:6 | EXPECT:n_count~1 | EXPECT:n_0_label~wo_each
+EXIT | 0 | environment-is-one-loop-step
+
+PHASE | p2_death_respawn | ember takes 99 damage: the death page drops half of the stacks, counts the death, then the respawn page puts her back at full hp on the safe cell | death, respawn, drops, page
+DO | life | hurt | ember | 99
+HAS | events/death/master_ledger.txt | Play event page_1 (trigger=parallel) for death | the-death-PAGE-ran-not-the-C-fallback
+HAS | events/respawn/master_ledger.txt | Play event page_1 (trigger=parallel) for respawn | the-respawn-page-ran
+FILEIS | state/life_ember.txt | hp=20\nhunger=0\ndead=0\ndeaths=1\ninv=bread:3,iron:6,scrap:16\n | life-file-is-what-the-frozen-C-code-wrote
+FILEIS | state/drops.txt | 1\pbridge\p9\p5\p2\pbread\p0\p0\pdeath\n2\pbridge\p9\p5\p5\piron\p0\p0\pdeath\n3\pbridge\p9\p5\p16\pscrap\p0\p0\pdeath\n | half-of-each-stack-lies-where-she-stood
+FILEIS | state/pet_ember.txt | room=bridge\nx=7\ny=5\ndir=1\nsteps=5\ntx=-1\nty=-1\n | back-on-the-safe-cell
+COUNT | state/events.txt | DEATH\p | 1 | one-death-row
+COUNT | state/events.txt | RESPAWN\p | 1 | one-respawn-row
+HAS | state/events.txt | dropped 23 (50%)\pmode respawn | death-row-says-what-was-dropped
+
+PHASE | p3_mining | a beam hits the ore node twice: the destroyed page makes iron remnants, clears the damage, uses up one load of the node and logs it | mine, destroyed, node, remnant
+DO | mine | ore | bridge | 12 | 10 | beam
+SAY | /5 | first-hit-reports-progress
+DO | mine | ore | bridge | 12 | 10 | beam
+SAY | broke | second-hit-breaks-the-block
+HAS | events/destroyed/master_ledger.txt | Play event page_1 (trigger=parallel) for destroyed | the-destroyed-page-ran
+HAS | state/drops.txt | bridge\p12\p10\p3\piron\p | three-iron-remnants-on-the-cell
+HAS | state/nodes.txt | bridge\p12\p10\pore\p3 | the-node-has-one-load-less
+HAS | state/events.txt | DESTROYED\p | the-destroyed-row-is-logged
+HAS | state/events.txt | iron x3 | the-row-says-what-came-out
+
+PHASE | p4_air | a freezing row is pending: the environment page plays the hit page once per row, ember loses 2 hp and the row is logged | air, environment, env_hit
+PUT | state/env_pending.txt | 1\p2\pFREEZE\pbridge\p0\n
+DO | playpage | environment
+SAY | page played | environment-page-played
+HAS | state/life_ember.txt | hp=18 | ember-lost-two-hp
+HAS | state/events.txt | FREEZE\p | the-freeze-row-is-logged
+HAS | state/events.txt | bridge temp 0\p-2 hp | the-row-says-where-and-how-much
+COUNT | state/env_pending.txt | . | 0 | the-pending-file-was-emptied
+
+PHASE | p5_collision | a speed 4 hit: every character loses hp from the config, the ship counts the hit, and the hull is punctured | collision, ship, breach
+PUT | state/coll_speed.txt | 4\n
+PUT | state/ship_damage.txt | hits=2 dmg=3 last=1\n
+DO | playpage | collision
+SAY | page played | collision-page-played
+HAS | state/ship_damage.txt | hits=3 dmg=7 | one-more-hit-and-the-speed-added
+HAS | state/life_harold.txt | hp=439 | harold-lost-11-hp-from-450
+HAS | state/life_ember.txt | hp=17 | ember-lost-one-hp-more-at-least-one
+HAS | state/events.txt | BREACH\p | the-hull-was-punctured-at-speed-4
