@@ -36,6 +36,7 @@ In the founder's draft wording (`14.biz/ELEVATOR-PITCH.md`, DRAFT): a plain-text
 | rpg-dust gets the ticks that play its life pages, then mining; the same test script must pass on both games | `building` (data and three pages copied; no ticks yet) | `RPG-SPACE-BLUEPRINT-SYSTEMS.md` 5e |
 | Ships that move, trade and fight as entities; entities in a ship have a position relative to it; draw the vehicle pieces that load but are not drawn | `designing` | collision design 4e to 4g; `RPG-SPACE-ENGINE-PIECES.md` |
 | "Micro" scenes inside a ship's voxels; deep simulation (for example respiration) switched on per entity only where it earns its cost, cheap default elsewhere | `planned` | owner direction 2026-10-25, collision design 4c |
+| "Semi destroyed" block animations (frames chosen by mining progress over hardness) and sprites that show more blood the more hurt a character is, with a setting for how graphic it is | `planned` (owner 2026-10-26; state it needs already exists) | `RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md` 7h |
 | Shared z, vehicle and physics spine for the cdda, df and gta style games (z-cell format, physics concept rows, decision ledger) | `planned` (every row NOT BUILT) | `16.game/GAMES-ROADMAP.md` |
 
 ### 3.2 AI integration

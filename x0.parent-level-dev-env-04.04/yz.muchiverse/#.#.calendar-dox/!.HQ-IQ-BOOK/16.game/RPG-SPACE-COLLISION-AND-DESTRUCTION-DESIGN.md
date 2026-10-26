@@ -159,6 +159,18 @@ Owner: "just a few asteroids and another smaller ship with 1 or 2 crew, to see h
   - Still on the list: the world_manager `prisc+x` (desktop, not ours) forks about 3 a second; `pc_menu_input` per tick could drop further if its HUD mirror moves to a marker; every other open board costs the same again.
 - Not changed on purpose: `bv_dispatch.c` keeps all its triggers (relay, screen marker, minimize, Move), the gate only decides WHEN to run it.
 
+## 7h. Semi-destroyed blocks and blood on sprites (owner 2026-10-26, PLANNED, nothing built)
+Owner: "we also want to add 'semi destroyed' animations, both for blocks, but also, we will probably change the sprite to have more blood on it the more hurt it is. Something I meant to add earlier."
+What the state already holds (read from files, measured 2026-10-25):
+- **Blocks:** mining progress per cell is `state/damage.txt` rows `room|x|y|progress|kind`; the break threshold is the hardness column of `blocks.pdl` (the mine verb prints it as "ore at bridge 12,10: 4/5"). So the fraction `progress / hardness` is the damage stage; no new state is needed.
+- **Characters:** current and max hp are in `state/life_<id>.txt` and `life.pdl` ACTOR rows; the bottom bar already reduces hp to three states (ok, low, ko) in `bar.txt`.
+Proposal, data first (events / pdl, per the house principle):
+1. **Block stages.** A `STAGE` row per block kind in `blocks.pdl` (kind, minimum fraction in percent, frame id), for example three stages: intact, cracked, crumbling. The scene export picks the frame from the cell's damage fraction, the same way remnants already pick theirs. A short animation between stages is a frame list on the row, not code.
+2. **Sprite blood.** Per character, a small set of overlay or variant frames chosen by hp fraction at the same thresholds as the bar (so the picture and the bar never disagree), with a KO frame. Applies to the playable characters and pets; opt-in per entity, cheap default (no overlay).
+3. **A setting for how graphic it is.** A player-level level (off, mild, full) in a settings file, default decided by the owner. Without this setting the sprite change should not ship.
+4. **Gate** (per house practice): a replay phase that sets progress or hp to known fractions and checks the chosen frame id for each stage, plus a deliberately wrong threshold that must fail.
+Open questions for the owner: how many stages; sprite art source (new frames drawn, or an overlay layer applied to the existing sheet); whether the blood level should also show on the ship's crew pips; default level of the graphic setting.
+
 ## 8. Next, in order (proposal)
 
 1. Calibrate `contact_alt` and `reach` with frames; make the grey cube the real map limit around ship + land.
