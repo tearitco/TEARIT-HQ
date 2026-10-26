@@ -32,7 +32,7 @@ $CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_b
 # convention as stb_image.h already used elsewhere in the house - both
 # live in the shared &.hq-apps/js/ dir, not copied per-op.
 echo "-- nb_js_eval -> ops/+x/nb_js_eval.+x"
-$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -DNDEBUG -fwrapv -pthread -I"$JSDIR" -I"$SDIR/../../../third_party/wasm3/source" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_js_eval.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" -lm -lcrypto && echo "OK nb_js_eval" || exit 1
+$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -DNDEBUG -fwrapv -pthread -I"$JSDIR" -I"$SDIR/../../../third_party/wasm3/source" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_js_eval.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" "$SDIR/../../../third_party/wasm3/source/libwasm3.a" -lm -lcrypto && echo "OK nb_js_eval" || exit 1
 
 # 2026-09-04 (NB-JS worker plan step 2): resident worker owned by the
 # manager, line-RPC over a socketpair dup2'd to stdin/stdout. Shares the

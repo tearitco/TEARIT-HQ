@@ -28,20 +28,33 @@
 #
 # Exit: 0 a pid was printed, 1 none (or not exactly one with
 # --require-one).
+#
+# --house <dir>  only consider renderers whose argv names exactly <dir>.
+#   Without it the "highest pid = newest" proxy can pick a renderer for a
+#   DIFFERENT house: measured 2026-10-25, a leftover test house's renderer
+#   had pid 719765 while the real house's fresh one was 51451, so a relay
+#   write went to a PID nobody read and G2.2 reported "no frame dump" - a
+#   harness failure dressed up as a browser failure (again, see the note at
+#   the bottom). Suites that build a relay path must pass this.
 set -u
 CHTPM_MATCH='network-browser-hq'
 QUIET=0
 REQUIRE_ONE=0
-for a in "$@"; do
-    case "$a" in
+HOUSE=""
+while [ $# -gt 0 ]; do
+    case "$1" in
         --quiet) QUIET=1 ;;
         --require-one) REQUIRE_ONE=1 ;;
+        --house) shift; HOUSE="${1:-}" ;;
+        --house=*) HOUSE="${1#--house=}" ;;
     esac
+    shift
 done
 
 pids="$(python3 - <<PY
 import os
 want = "$CHTPM_MATCH"
+house = "$HOUSE"
 found = []
 for pid in os.listdir('/proc'):
     if not pid.isdigit():
@@ -55,6 +68,8 @@ for pid in os.listdir('/proc'):
         continue
     args = [a.decode('utf-8', 'replace') for a in argv if a]
     if not any(want in a for a in args):
+        continue
+    if house and house not in args:
         continue
     found.append(int(pid))
 found.sort()

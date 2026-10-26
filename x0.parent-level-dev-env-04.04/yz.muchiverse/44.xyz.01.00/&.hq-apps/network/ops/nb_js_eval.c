@@ -100,6 +100,23 @@ int main(int argc, char **argv) {
         return 1;
     }
     JS_FreeValue(ctx, s);
+
+    /* Promise-returning host APIs (crypto.subtle.digest, WebAssembly.compile,
+     * fetch().then) settle as microtasks. The resident worker drains the job
+     * queue each tick; the one-shot path has to do the same or a headless
+     * .then() test would print nothing and look like a pass. */
+    while (JS_IsJobPending(rt)) {
+        JSContext *jctx = NULL;
+        if (JS_ExecutePendingJob(rt, &jctx) < 0) {
+            JSValue e = JS_GetException(jctx ? jctx : ctx);
+            const char *m = JS_ToCString(ctx, e);
+            if (m) { pipe_one("ERROR", m); JS_FreeCString(ctx, m); }
+            else pipe_one("ERROR", "unhandled promise rejection");
+            JS_FreeValue(ctx, e);
+            break;
+        }
+    }
+
     if (g_title_set) pipe_one("TITLE", g_title);
     fprintf(g_out, "OK|1\n");
     JS_FreeContext(ctx);
