@@ -66,7 +66,26 @@ static void var_set(const char *name, const char *val) {
     for (int i = 0; i < NVARS; i++) if (!strcmp(VARS[i].name, name)) { snprintf(VARS[i].val, sizeof VARS[i].val, "%s", val); return; }
     if (NVARS < MAXVAR) { snprintf(VARS[NVARS].name, sizeof VARS[NVARS].name, "%s", name); snprintf(VARS[NVARS].val, sizeof VARS[NVARS].val, "%s", val); NVARS++; }
 }
-static void kill_spawned(void) { for (int i = 0; i < NSPAWNED; i++) { kill(-SPAWNED[i], SIGKILL); waitpid(SPAWNED[i], NULL, 0);   /* SIGKILL cannot be ignored, so a blocking reap is safe and leaves no zombie for EXPECT_DEAD */ } NSPAWNED = 0; }
+/* Anything the case started inside its scratch house that is NOT in a SPAWN group: a game that forks a detached daemon (setsid) leaves it running after the scratch is removed
+ * (2026-10-25: three lc_clock daemons from deleted /tmp/hc_* houses, found spinning). Kill every process whose command line or working directory is under the scratch dir.
+ * Only a dir this op created under /tmp/hc_ is ever matched; this op and its parent are never killed. Two passes, because a killed parent may have just forked a child. */
+static void kill_under_scratch(void) {
+    if (!made_scratch || strncmp(T, "/tmp/hc_", 8) != 0 || strlen(T) < 12) return;
+    pid_t me = getpid(), par = getppid();
+    for (int pass = 0; pass < 2; pass++) {
+        DIR *d = opendir("/proc"); if (!d) return; struct dirent *e;
+        while ((e = readdir(d))) {
+            if (e->d_name[0] < '0' || e->d_name[0] > '9') continue;
+            pid_t pid = (pid_t)atoi(e->d_name); if (pid == me || pid == par || pid <= 1) continue;
+            char pa[64], cl[4096] = "", cw[P] = ""; ssize_t n;
+            snprintf(pa, sizeof pa, "/proc/%d/cmdline", (int)pid); { FILE *f = fopen(pa, "r"); if (f) { n = (ssize_t)fread(cl, 1, sizeof cl - 1, f); fclose(f); if (n < 0) n = 0; cl[n] = 0; for (ssize_t i = 0; i < n; i++) if (!cl[i]) cl[i] = ' '; } }
+            snprintf(pa, sizeof pa, "/proc/%d/cwd", (int)pid); n = readlink(pa, cw, sizeof cw - 1); if (n > 0) cw[n] = 0;
+            if (strstr(cl, T) || strstr(cw, T)) kill(pid, SIGKILL);
+        }
+        closedir(d); usleep(30000);
+    }
+}
+static void kill_spawned(void) { kill_under_scratch(); for (int i = 0; i < NSPAWNED; i++) { kill(-SPAWNED[i], SIGKILL); waitpid(SPAWNED[i], NULL, 0);   /* SIGKILL cannot be ignored, so a blocking reap is safe and leaves no zombie for EXPECT_DEAD */ } NSPAWNED = 0; }
 static long long now_ms(void) { struct timeval tv; gettimeofday(&tv, NULL); return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000; }
 
 static char *trim(char *s) { char *e; while (*s == ' ' || *s == '\t') s++; e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0; return s; }

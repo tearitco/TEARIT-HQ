@@ -1,0 +1,4 @@
+# loop_exit.pal - board pal loops end by themselves when their engine is gone (owner 2026-10-26: "have loops exit as well"). Takes about 100 s. Read results/loop_exit.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/loop_exit.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/loop_exit.pdl
+halt

@@ -1,0 +1,5 @@
+# harness_cleanup_b - second half: run AFTER harness_cleanup_a ended. No process whose command line is under a /tmp/hc_ scratch dir may be alive (pgrep exits 1 when nothing matches).
+RESULTS | ../results/harness_cleanup_kills.txt
+CASE    | cleanup_b
+RUN     | pgrep | -f | tail -f /tmp/hc_
+EXPECT_EXIT | 1 | nothing-left-running-from-the-deleted-scratch-house

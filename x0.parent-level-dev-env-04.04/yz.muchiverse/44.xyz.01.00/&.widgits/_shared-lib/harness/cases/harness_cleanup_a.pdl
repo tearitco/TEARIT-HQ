@@ -1,0 +1,10 @@
+# harness_cleanup_a - the first half of the cleanup-kills test: a game-like detached daemon (setsid, so not in a SPAWN group) is left running inside the scratch house. The case ends with no CLEAN on purpose:
+# the end of the run must kill it. harness_cleanup_b.pdl (run after) checks that nothing from that house is alive.
+RESULTS | ../results/harness_cleanup_kills.txt
+CASE    | cleanup_a
+SCRATCH |
+WRITE   | daemon.log | x
+RUN     | sh | -c | exec setsid tail -f $T/daemon.log >/dev/null 2>&1 </dev/null &
+SLEEP   | 300
+RUN     | pgrep | -f | tail -f /tmp/hc_
+EXPECT_EXIT | 0 | the-detached-daemon-is-running-before-the-end

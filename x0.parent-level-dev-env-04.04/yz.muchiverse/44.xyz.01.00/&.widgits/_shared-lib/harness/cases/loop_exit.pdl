@@ -1,0 +1,94 @@
+# loop_exit - board pal loops end by themselves when their engine is gone (owner 2026-10-26: "have loops exit as well").
+# The REAL new pal text (board-viewer/pal/main_module.pal, piececraft-hq/pal/main_module.pal) runs under the REAL session VM (board-viewer/system/prisc+x, the OLD VM
+# whose exec delivers no arguments) with the REAL ops/loop_guard.+x. The engine ops are stubs (/bin/true). Nothing live is touched; everything is under $T and
+# the harness kills what is left (kill_under_scratch). Needs: sh &.widgits/board-viewer/scripts/build.sh (builds ops/+x/loop_guard.+x).
+# A guard only judges an engine it has seen alive once (it drops .engine_seen); F proves a session without a 3D engine is never ended.
+# Timing: the guard runs every 480 passes (~8 s) and re-checks 3 s later, so a dead engine ends the loop after about 11 s.
+RESULTS | ../results/loop_exit.txt
+CASE    | loop_exit
+SCRATCH |
+# ---- the board-viewer side: a session-like folder
+COPYDIR | &.widgits/board-viewer/system | bv/system
+COPY    | &.widgits/board-viewer/default_op.txt | bv/default_op.txt
+COPY    | &.widgits/board-viewer/pal/main_module.pal | bv/pal/main_module.pal
+COPY    | &.widgits/board-viewer/ops/+x/loop_guard.+x | bv/ops/+x/loop_guard.+x
+RUN     | cp | /bin/true | $T/bv/ops/+x/bv_render_3d.+x
+RUN     | cp | /bin/true | $T/bv/ops/+x/bv_compose_frame.+x
+RUN     | cp | /bin/true | $T/bv/ops/+x/bv_dispatch.+x
+RUN     | cp | /bin/true | $T/bv/ops/+x/hit_frame.+x
+MKDIR   | bv/pieces/display
+MKDIR   | bv/pieces/system
+MKDIR   | bv/pieces/apps/player_app
+WRITE   | bv/pieces/apps/player_app/interact_relay.txt |
+WRITE   | bv/pieces/display/bv_screen_changed.txt |
+# the instance root: where the stop marker goes
+MKDIR   | instance/pieces/system
+WRITE   | bv/pieces/system/real_project_root.txt | $T/instance
+EXPECT_EXISTS | bv/system/prisc+x | session-vm-copied
+EXPECT_EXISTS | bv/ops/+x/loop_guard.+x | loop-guard-built-and-copied
+ENV     | PRISC_PROJECT_ROOT | $T/bv
+ENV     | PRISC_PROJECT_ID | board-viewer
+ENV     | LOOP_GUARD_GRACE | 0
+# a long-lived stand-in for the engine daemon
+SPAWN   | engine | sleep | 600
+
+# ---- A: engine alive -> the loop keeps running and no marker is written
+WRITE   | bv/pieces/display/.gpu_render.pid | $engine
+SPAWN   | vmA | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 14000
+EXPECT_ALIVE | $vmA | A-engine-alive-loop-keeps-running
+EXPECT_NOFILE | instance/pieces/system/stack_stop.txt | A-no-stop-marker-while-the-engine-lives
+# stop A before B reuses this session folder (a dead pid file would end A's loop too)
+RUN     | kill | $vmA
+SLEEP   | 300
+
+# ---- B: engine dead (the pid file names a dead pid) -> the loop ends, the marker gets one byte
+WRITE   | bv/pieces/display/.gpu_render.pid | 999999
+SPAWN   | vmB | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 16000
+EXPECT_DEAD | $vmB | B-engine-dead-loop-ended-by-itself
+EXPECT_FILE | instance/pieces/system/stack_stop.txt | x | B-stop-marker-grew-by-one-byte
+
+# ---- C: pid file missing (a clean engine exit removes it) -> the loop ends too
+RUN     | rm | -f | $T/bv/pieces/display/.gpu_render.pid
+SPAWN   | vmC | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 16000
+EXPECT_DEAD | $vmC | C-pid-file-missing-loop-ended-by-itself
+
+# ---- D: a dead engine inside the startup grace is not judged
+WRITE   | bv/pieces/display/.gpu_render.pid | 999999
+ENV     | LOOP_GUARD_GRACE | 300
+SPAWN   | vmD | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 14000
+EXPECT_ALIVE | $vmD | D-inside-the-grace-period-nothing-is-judged
+
+# ---- F: a session that never had an engine (2D mode, standalone widget): no pid file and nothing ever seen alive -> the loop is left alone
+RUN     | kill | $vmD
+RUN     | rm | -f | $T/bv/pieces/display/.gpu_render.pid | $T/bv/pieces/display/.engine_seen
+ENV     | LOOP_GUARD_GRACE | 0
+SPAWN   | vmF | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 16000
+EXPECT_ALIVE | $vmF | F-never-saw-an-engine-so-the-loop-is-not-judged
+
+# ---- E: the piececraft loop ends when the marker grows (size compare, not mtime), not before
+COPYDIR | &.widgits/board-viewer/system | pcroot/pieces/sessions/s1/system
+COPY    | @.apps/piececraft-hq/default_op.txt | pcroot/pieces/sessions/s1/default_op.txt
+COPY    | @.apps/piececraft-hq/pal/main_module.pal | pcroot/pieces/sessions/s1/pal/main_module.pal
+MKDIR   | pcroot/pieces/sessions/s1/ops/+x
+RUN     | cp | /bin/true | $T/pcroot/pieces/sessions/s1/ops/+x/pc_menu_input.+x
+RUN     | cp | /bin/true | $T/pcroot/pieces/sessions/s1/ops/+x/pc_compose_frame.+x
+RUN     | cp | /bin/true | $T/pcroot/pieces/sessions/s1/ops/+x/hit_frame.+x
+MKDIR   | pcroot/pieces/sessions/s1/pieces/apps/player_app
+MKDIR   | pcroot/pieces/sessions/s1/pieces/display
+MKDIR   | pcroot/pieces/system
+WRITE   | pcroot/pieces/sessions/s1/pieces/apps/player_app/interact_relay.txt |
+WRITE   | pcroot/pieces/system/stack_stop.txt |
+ENV     | PRISC_PROJECT_ROOT | $T/pcroot/pieces/sessions/s1
+ENV     | PRISC_PROJECT_ID | piececraft-hq
+SPAWN   | vmE | sh | -c | cd $T/pcroot/pieces/sessions/s1 && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 5000
+EXPECT_ALIVE | $vmE | E-piececraft-loop-runs-while-the-marker-is-unchanged
+APPEND  | pcroot/pieces/system/stack_stop.txt | x
+SLEEP   | 3000
+EXPECT_DEAD | $vmE | E-piececraft-loop-ended-when-the-marker-grew
+CLEAN   |

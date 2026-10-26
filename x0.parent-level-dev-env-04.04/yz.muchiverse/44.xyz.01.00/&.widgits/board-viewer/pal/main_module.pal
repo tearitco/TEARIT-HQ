@@ -28,7 +28,18 @@ li x6, 0
 li x7, 8
 read_pos x3, "pieces/display/bv_screen_changed.txt"
 
+# LOOP EXIT (owner 2026-10-26: "have loops exit as well"): every 480 passes (~8 s, 0.12 spawns/s) run loop_guard. It ends this loop (SIGTERM to the VM)
+# when the engine daemon's pid file is missing or dead for 120 s + a 3 s re-check, and appends a byte to <instance>/pieces/system/stack_stop.txt so the
+# piececraft loop of the same stack ends too. No arguments: this session's prisc VM delivers none to exec (prisc_exec_args.pal fails on it).
+li x10, 0
+li x11, 480
+
 loop:
+addi x10, x10, 1
+bne x10, x11, noguard
+li x10, 0
+exec ./ops/+x/loop_guard.+x
+noguard:
 read_pos x4, "pieces/apps/player_app/interact_relay.txt"
 bne x4, x0, run
 read_pos x5, "pieces/display/bv_screen_changed.txt"

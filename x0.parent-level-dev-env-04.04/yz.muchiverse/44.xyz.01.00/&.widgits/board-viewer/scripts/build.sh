@@ -48,6 +48,8 @@ gcc $CFLAGS -o "ops/+x/bv_render_2d.+x" "ops/bv_render_2d.c" "ops/bv_cjk_glyph.c
 # raymarch per 30ms iteration). pal/main_module_legacy.pal is the old
 # loop, kept for rollback.
 gcc $CFLAGS -o "ops/+x/bv_dispatch.+x" "ops/bv_dispatch.c"
+# loop_guard: ends the pal loop when the engine daemon is gone (owner 2026-10-26: "have loops exit as well"); see ops/loop_guard.c
+gcc $CFLAGS -o "ops/+x/loop_guard.+x" "ops/loop_guard.c"
 # Real house-wide widget discovery/registration (Phase 0 follow-up,
 # 2026-08-03 - see ops/ledger_append.c's own header comment: ported
 # from file-menu's own proven mechanism, "default" xyzfs fallback so

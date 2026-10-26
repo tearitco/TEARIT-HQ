@@ -1,0 +1,5 @@
+# harness_cleanup_kills.pal - cleanup kills what a game leaves behind (owner 2026-10-25: "make sure kills at cleanup"). Read results/harness_cleanup_kills.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/harness_cleanup_a.pdl
+exec ./ops/+x/harness_case_op.+x cases/harness_cleanup_b.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/harness_cleanup_a.pdl
+halt
