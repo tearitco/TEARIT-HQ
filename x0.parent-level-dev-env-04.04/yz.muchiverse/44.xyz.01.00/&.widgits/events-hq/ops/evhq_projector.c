@@ -38,7 +38,7 @@
 #endif
 
 #define MAXCMDS 128
-#define MAXTYPES 128
+#define MAXTYPES 512      /* was 128: the registry has 139 commands and the cap cut the tail with no message (rpg_pvp_hq_verb, game_dev_hq_verb, rpg_space_verb showed as raw type + params); same fix the manager got (MAX_REGISTRY_CMDS 512) */
 #define LINEBUF 1024
 #define UIBUF   65536
 
@@ -49,7 +49,7 @@ static char g_pkg[PATH_MAX];      /* the event_pkg dir (KHTPM_ARG3) */
 typedef struct { char type[48]; char label[64]; char pnames[4][32]; char prompts[4][48]; int npn; } TypeDef;
 static TypeDef g_types[MAXTYPES];
 static int g_ntypes = 0;
-static time_t g_reg_mtime = 0;
+static off_t g_reg_size = -1;      /* house standard: change detection by size, never st_mtime */
 
 static void reg_path(char *o, size_t n) {
     snprintf(o, n, "%s/#.ref/menu/event_commands.registry.pdl", g_house);
@@ -59,8 +59,8 @@ static void load_registry(void) {
     char p[PATH_MAX]; reg_path(p, sizeof(p));
     struct stat st;
     if (stat(p, &st) != 0) return;
-    if (st.st_mtime == g_reg_mtime && g_ntypes > 0) return;
-    g_reg_mtime = st.st_mtime;
+    if (st.st_size == g_reg_size && g_ntypes > 0) return;
+    g_reg_size = st.st_size;
     g_ntypes = 0;
     FILE *f = fopen(p, "r");
     if (!f) return;
@@ -73,7 +73,7 @@ static void load_registry(void) {
                 cur = &g_types[g_ntypes++];
                 memset(cur, 0, sizeof(*cur));
                 snprintf(cur->type, sizeof(cur->type), "%s", l + 8);
-            } else cur = NULL;
+            } else { cur = NULL; static int warned; if (!warned) { warned = 1; fprintf(stderr, "evhq_projector: registry has more than %d commands, the rest are ignored\n", MAXTYPES); } }
         } else if (cur && strncmp(l, "  LABEL ", 8) == 0) {
             snprintf(cur->label, sizeof(cur->label), "%s", l + 8);
         } else if (cur && strncmp(l, "  PARAMS ", 9) == 0) {

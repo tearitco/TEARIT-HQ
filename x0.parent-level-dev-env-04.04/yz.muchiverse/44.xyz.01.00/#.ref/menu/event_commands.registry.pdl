@@ -1441,3 +1441,22 @@ COMMAND game_dev_hq_verb
   PARAMS verb,arg
   TEMPLATE exec "$D/@.apps/game-dev-hq/ops/+x/game_dev_hq.+x" '{verb}'[ '{arg}']
 END
+
+# rpg_space_verb / rpg_dust_verb = one generic command that runs a verb of the petslike skins ("rpg_space.+x <verb> [args]"); the event pages of rpg-space (life, collision, destroyed, environment, helm ...) use it
+# (BOOK 16.game/RPG-SPACE-BLUEPRINT-SYSTEMS.md, B0, owner 2026-10-25). Unlike the quoted one-argument form of the commands above, {arg} is NOT quoted here: a page row such as
+# `verb=life|arg=die @actor` must reach the skin as the words `life die @actor` (that is what the hand-made cmd_1.sh of the death page runs).
+COMMAND rpg_space_verb
+  LABEL rpg-space: Run Verb
+  FIELD1 Verb:
+  FIELD2 Args:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rpg-space/ops/+x/rpg_space.+x" '{verb}'[ {arg}]
+END
+
+COMMAND rpg_dust_verb
+  LABEL rpg-dust: Run Verb
+  FIELD1 Verb:
+  FIELD2 Args:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rpg-dust/ops/+x/rpg_dust.+x" '{verb}'[ {arg}]
+END
