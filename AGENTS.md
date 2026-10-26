@@ -131,6 +131,13 @@ sees (window titles, labels, banners, launchers, icon, docs prose) says LyfeDesk
 until the deep rename (directories, file names, `livedesk:` command prefix, constants, WM_CLASS, user-data paths): do not rename those
 piecemeal, and do not write new user-facing text with the old name. The plan and checklist are in `04-bugs/bug_bounty.md`.
 
+## XO is the owner's folder, not for code (REQUIRED, since 2026-10-25)
+
+`/home/no/Desktop/github/work/XO/` is where the owner exfiltrates learnings (docs, mp3, mp4, PNG presentations) to other AI tools. Every owner item there is
+named `<pre>.<name>` (`0.LLMUD_BIZ`, `$.Brainstorm`, `29.marathon-sprint-drive`). Do not put code, scripts, binaries, game data (`.pdl`), logs, scratch trees or
+"safekeeping" copies there, and do not create unprefixed items in it. Scratch work goes in `/tmp` or the session scratchpad; a frozen reference binary is rebuilt
+from its git tag. 2026-10-25: 333 agent items (15,685 files) were moved out to `XO-quarantine/` (next to `XO/`, with `MANIFEST.tsv`; nothing deleted).
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:
