@@ -2403,8 +2403,17 @@ static int handle_worker_fetch(const char *payload) {
         if (want > 0 && want <= 16) nreq = want;
     }
     for (int i = 0; i < nreq; i++) cur = fetch_line(cur, reqhdr[i], sizeof reqhdr[i]);
-    if (nreq > 0 && cur) cur = fetch_line(cur, nb, sizeof nb);   /* blank separator */
+    /* The frame ALWAYS carries a blank separator line between the header list
+     * and the body. This used to run only when nreq > 0, so a header-less
+     * request (what plain fetch(url) sends) left the separator in reqbody; it
+     * then went out as `data = " "` - a GET with a one-space BODY. Measured
+     * 2026-10-26: www.coinmarketcap.com/robots.txt answered 403 through the
+     * manager and 200 to the byte-identical curl from a shell; the only
+     * difference was that invented body. WAFs reject GET-with-body, so this
+     * looked exactly like "Cloudflare blocks the browser". */
+    if (cur) cur = fetch_line(cur, nb, sizeof nb);   /* blank separator */
     const char *reqbody = cur ? cur : "";
+    while (*reqbody == '\n' || *reqbody == '\r' || *reqbody == ' ') reqbody++;
 
     char *body = NULL; size_t body_len = 0; int status = 0;
     char err[256] = "";
@@ -2444,7 +2453,11 @@ static int handle_worker_fetch(const char *payload) {
                 mcfg_line(cf, "write-out", "%{http_code}");
                 fputs("silent\nlocation\nfail\n", cf);
                 for (int i = 0; i < nreq; i++) mcfg_line(cf, "header", reqhdr[i]);
-                if (*reqbody) mcfg_data(cf, reqbody);
+                /* GET/HEAD never carry a body: a WAF treats one as bot
+                 * behaviour even when the method stays GET (see the
+                 * separator comment above). */
+                if (*reqbody && strcasecmp(method, "GET") != 0 &&
+                    strcasecmp(method, "HEAD") != 0) mcfg_data(cf, reqbody);
                 fclose(cf);
                 /* Only mkstemp paths and literal flags reach this string, never
                  * page data - the point of the config file. */

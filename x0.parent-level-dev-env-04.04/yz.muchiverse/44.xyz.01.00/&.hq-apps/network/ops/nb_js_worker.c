@@ -7667,7 +7667,13 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
                     int rc = pclose(po);
                     status = (int)strtol(code, NULL, 10);
                     if (status <= 0) status = 0;
-                    if (status > 0 && read_file(bodypath, &rb, &rn)) {
+                    /* Page/asset bodies are legitimately larger than the
+                     * 512KB fs-lite guard: read_file() returned 0 for a
+                     * 940KB homepage, so nbFetchSync reported status 200 with
+                     * an empty body (measured 2026-10-26 on
+                     * www.coinmarketcap.com). read_file_big is the existing
+                     * chunked reader with a 64MB ceiling. */
+                    if (status > 0 && read_file_big(bodypath, &rb, &rn)) {
                         /* treats zero-byte bodies as a successful empty read */
                     }
                     if (!rb) snprintf(errbuf, sizeof(errbuf),
