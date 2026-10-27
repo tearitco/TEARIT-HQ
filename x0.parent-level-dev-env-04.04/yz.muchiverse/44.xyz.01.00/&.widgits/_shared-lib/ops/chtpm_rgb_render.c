@@ -860,6 +860,7 @@ int main(void) {
      * this daemon forever) before reading its content. Directly
      * verifies the actual thing being read is done changing, rather
      * than guessing how long that takes. */
+    uint64_t last_published = 0; int have_published = 0;      /* checksum of the last frame announced to consumers */
     for (;;) {
         long m = file_size(pulse_path);
         long sm = file_size(renderer_pulse_path);
@@ -873,9 +874,15 @@ int main(void) {
                 cur_frame_size = file_size(frame_path);
             }
             render_once(fb, frame_path);
-            write_file_atomic(out_path, fb, byte_count);
-            write_receipt(receipt_path, byte_count, checksum_buffer((unsigned char *)fb, byte_count));
-            pulse_rgb_ready(rgb_pulse_path);
+            uint64_t sum = checksum_buffer((unsigned char *)fb, byte_count);
+            if (have_published && sum == last_published && file_size(out_path) == (long)byte_count && file_size(receipt_path) > 0) {
+                /* IDENTICAL to the frame already published: a consumer has nothing new to read, and announcing it makes the window redraw, which wakes this renderer again - a self-sustaining loop that re-rendered the same picture about 5 times a second (owner 2026-10-26: "check game cpu and runaway procs"). Only a real change is published; a missing or resized output file or receipt is republished. */
+            } else {
+                write_file_atomic(out_path, fb, byte_count);
+                write_receipt(receipt_path, byte_count, sum);
+                pulse_rgb_ready(rgb_pulse_path);
+                last_published = sum; have_published = 1;
+            }
         }
         usleep(33333); /* 30 fps cap */
     }

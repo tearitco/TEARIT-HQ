@@ -365,8 +365,14 @@ int main(void) {
                  * state, not part of the persistent world. */
                 char screen_marker_path[PATH_BUF];
                 snprintf(screen_marker_path, sizeof(screen_marker_path), "%s/pieces/display/pc_screen_changed.txt", project_root);
-                FILE *smf = fopen(screen_marker_path, "a");
-                if (smf) { fputc('.', smf); fclose(smf); }
+                /* THROTTLED to once per real second (owner 2026-10-26: "check game cpu and runaway procs"): this daemon runs every 0.3 s and used to bump the marker on EVERY pass, so each pass re-composed the whole pc-hq text frame and re-rendered it (the rgb renderer used 40+ percent of a CPU for a clock line). The world clock itself still advances every pass; only the repaint is limited. */
+                static long long last_screen_bump_ms = 0;
+                long long now_bump_ms = (long long)current_time.tv_sec * 1000LL + current_time.tv_nsec / 1000000LL;
+                if (now_bump_ms - last_screen_bump_ms >= 1000) {
+                    last_screen_bump_ms = now_bump_ms;
+                    FILE *smf = fopen(screen_marker_path, "a");
+                    if (smf) { fputc('.', smf); fclose(smf); }
+                }
 
                 /* REAL, NEW 2026-08-04, direct user request ("live
                  * auto-refresh... both screens" - the 3D/2D map window
