@@ -74,6 +74,7 @@ static long sk_helm_settle = 0;      /* until this time the xelector is not read
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
+static void sk_world_draw(void); static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap); static int sk_world_reach_idx(void);
 static int sk_space_block(int gx, int gy, char *msg, size_t cap); static void sk_space_draw(int g); static void sk_space_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static int sk_node_solid(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
@@ -498,7 +499,7 @@ static void sk_ensure_map(void) {
             else if (!rm) sk_cell(g, x, y, band, grass, tl, have); }
             sk_glyph[g][y][SK_W] = 0; }
     }
-    sk_build_ship(); sk_build_space();
+    sk_world_draw(); sk_build_ship(); sk_build_space();
     if (!pass) { memcpy(sk_fs3, sk_fs, sizeof sk_fs3); memcpy(sk_ws3, sk_ws, sizeof sk_ws3); }
     }
     if (nslot > MAXSLOT - 40) fprintf(stderr, PET_OP ": tile slots %d of %d used, the picture slots are nearly full (slot_of then returns 0 for a new picture)\n", nslot, MAXSLOT);
@@ -668,6 +669,7 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
         if (sk_helm_direct()) {      /* direct: the arrows move the land pieces under the ship (state/direct.txt + pieces/land_*); no rebuild, no reload */
             sk_direct_load(); int nx = sk_dox + atoi(argv[2]), ny = sk_doy + atoi(argv[3]); int mx = tune("direct_max", 16); if (mx > 16) mx = 16;
             if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the edge of the map: the ship stops (%d,%d)", sk_dox, sk_doy); return; }      /* step 1 of canPass: the map limit */
+            if (sk_world_block(nx, ny, sk_doz_get(), msg, cap)) return;      /* an asteroid or another ship of the planet map under the hull */
             if (sk_coll_check(nx, ny, sk_doz_get(), msg, cap)) return;      /* step 3: solid land */
             { char dp[PATH_MAX], db[24], rb[120]; spath(dp, "direct.txt"); snprintf(db, sizeof db, "%d %d\n", nx, ny); write_if_changed(dp, db, strlen(db)); snprintf(rb, sizeof rb, "DIRECT|%ld|ship|%d,%d|%d,%d", (long)time(NULL), sk_dox, sk_doy, nx, ny); append_line("events.txt", rb); }
             sk_dox = nx; sk_doy = ny; sk_land_write(0); sk_helm_settle = now_ms() + 300; snprintf(msg, cap, "ship at %d,%d over %s", nx, ny, sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
@@ -881,18 +883,20 @@ static int sk_node_solid(int room, int x, int y) {      /* cached for 400 ms: th
     static long at; static int n, r[32], px[32], py[32]; long now = now_ms(); if (!at || now - at > 400) { at = now; sk_nodes_load(); n = sk_nnodes; for (int i = 0; i < n; i++) { r[i] = sk_nodes[i].room; px[i] = sk_nodes[i].x; py[i] = sk_nodes[i].y; } }
     for (int i = 0; i < n; i++) if (r[i] == room && px[i] == x && py[i] == y) return 1; return 0; }
 /* SPACE OBJECTS (owner 2026-10-25, 4e/4f/7f): asteroids are resource nodes of the space room (so mining, remnants, solidity and drawing are the ones that exist), another ship is a registered entity with crew and cargo, both seeded from space.pdl once. */
-typedef struct { char id[24], label[32], crew[120], cargo[80]; int gx, gy; } SkCraft;
+typedef struct { char id[24], label[32], crew[120], cargo[80]; int gx, gy, wx, wy; } SkCraft;      /* wx, wy: the cell on the PLANET MAP (-1 = none), the same space as the ship and the land (owner 2026-10-26: 'i expected to see them on same map as planet/ship') */
 static SkCraft sk_craft[6]; static int sk_ncraft;
-static void sk_craft_save(void) { char p[PATH_MAX], b[6 * 300], *w = b; spath(p, "craft.txt"); b[0] = 0; for (int i = 0; i < sk_ncraft; i++) w += snprintf(w, sizeof b - (size_t)(w - b), "%s|%d|%d|%s|%s|%s\n", sk_craft[i].id, sk_craft[i].gx, sk_craft[i].gy, sk_craft[i].label, sk_craft[i].crew, sk_craft[i].cargo); write_if_changed(p, b, strlen(b)); }
+static void sk_craft_save(void) { char p[PATH_MAX], b[6 * 300], *w = b; spath(p, "craft.txt"); b[0] = 0; for (int i = 0; i < sk_ncraft; i++) w += snprintf(w, sizeof b - (size_t)(w - b), "%s|%d|%d|%s|%s|%s|%d|%d\n", sk_craft[i].id, sk_craft[i].gx, sk_craft[i].gy, sk_craft[i].label, sk_craft[i].crew, sk_craft[i].cargo, sk_craft[i].wx, sk_craft[i].wy); write_if_changed(p, b, strlen(b)); }
 static void sk_craft_load(void) {
     static long at; long now = now_ms(); if (at && now - at < 700) return; at = now; char p[PATH_MAX], b[6 * 300], sd[800], *f[8]; spath(p, "craft.txt"); b[0] = 0; read_file(p, b, sizeof b); sk_ncraft = 0;
-    for (char *l = strtok(b, "\n"); l && sk_ncraft < 6; l = strtok(NULL, "\n")) { if (split_bar(l, f, 8) < 6) continue; SkCraft *c = &sk_craft[sk_ncraft++]; snprintf(c->id, sizeof c->id, "%s", f[0]); c->gx = atoi(f[1]); c->gy = atoi(f[2]); snprintf(c->label, sizeof c->label, "%s", f[3]); snprintf(c->crew, sizeof c->crew, "%s", f[4]); snprintf(c->cargo, sizeof c->cargo, "%s", f[5]); }
+    for (char *l = strtok(b, "\n"); l && sk_ncraft < 6; l = strtok(NULL, "\n")) { int nf = split_bar(l, f, 8); if (nf < 6) continue; SkCraft *c = &sk_craft[sk_ncraft++]; c->wx = nf >= 8 ? atoi(f[6]) : -1; c->wy = nf >= 8 ? atoi(f[7]) : -1; snprintf(c->id, sizeof c->id, "%s", f[0]); c->gx = atoi(f[1]); c->gy = atoi(f[2]); snprintf(c->label, sizeof c->label, "%s", f[3]); snprintf(c->crew, sizeof c->crew, "%s", f[4]); snprintf(c->cargo, sizeof c->cargo, "%s", f[5]); }
     spath(p, "space_seeded.txt"); sd[0] = 0; read_file(p, sd, sizeof sd); int added = 0; char pd[PATH_MAX], ln[400]; snprintf(pd, sizeof pd, "%s/space.pdl", APP); FILE *fp = fopen(pd, "r"); if (!fp) return;
-    while (fgets(ln, sizeof ln, fp)) { int n; if (ln[0] == '#' || (n = split_bar(ln, f, 8)) < 6) continue; char key[40]; snprintf(key, sizeof key, "\n%s\n", f[1]); char hay[820]; snprintf(hay, sizeof hay, "\n%s", sd); if (strstr(hay, key)) continue;
+    while (fgets(ln, sizeof ln, fp)) { int n; if (ln[0] == '#' || (n = split_bar(ln, f, 8)) < 6) continue; char kid[40]; snprintf(kid, sizeof kid, "%s%s", f[0][0] == 'W' ? "w_" : "", f[1]); char key[48]; snprintf(key, sizeof key, "\n%s\n", kid); char hay[820]; snprintf(hay, sizeof hay, "\n%s", sd); if (strstr(hay, key)) continue;
         if (!strcmp(f[0], "ROCK")) { sk_nodes_load(); if (sk_nnodes < 32) { SkNode *nd = &sk_nodes[sk_nnodes++]; nd->room = SK_SPACE; nd->x = 2 + atoi(f[2]) * 2; nd->y = 2 + atoi(f[3]) * 2; nd->amount = atoi(f[5]); snprintf(nd->kind, sizeof nd->kind, "%s", f[4]); sk_nodes_save(); added = 1; } else continue; }
         else if (!strcmp(f[0], "CRAFT") && n >= 7 && sk_ncraft < 6) { SkCraft *c = &sk_craft[sk_ncraft++]; snprintf(c->id, sizeof c->id, "%s", f[1]); c->gx = atoi(f[2]); c->gy = atoi(f[3]); snprintf(c->label, sizeof c->label, "%s", f[4]); snprintf(c->crew, sizeof c->crew, "%s", f[5]); snprintf(c->cargo, sizeof c->cargo, "%s", f[6]); sk_craft_save(); added = 1; }
+        else if (!strcmp(f[0], "WROCK") && n >= 7) { sk_nodes_load(); if (sk_nnodes < 32) { SkNode *nd = &sk_nodes[sk_nnodes++]; nd->room = SK_SHIP; nd->x = atoi(f[3]); nd->y = atoi(f[4]); nd->amount = atoi(f[6]); snprintf(nd->kind, sizeof nd->kind, "%s", f[5]); sk_nodes_save(); char pp[PATH_MAX]; spath(pp, "pworld_planet.txt"); char pb[40]; snprintf(pb, sizeof pb, "%s\n", f[2]); write_if_changed(pp, pb, strlen(pb)); added = 1; } else continue; }      /* an asteroid over the PLANET MAP: a node of the planet page room (so mining, damage and remnants are the ones that exist), at world cell (wx, wy) of planet f[2] */
+        else if (!strcmp(f[0], "WCRAFT")) { int hit = 0; for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, f[1])) { sk_craft[i].wx = atoi(f[3]); sk_craft[i].wy = atoi(f[4]); hit = 1; } if (!hit) continue; sk_craft_save(); char pp[PATH_MAX]; spath(pp, "pworld_planet.txt"); char pb[40]; snprintf(pb, sizeof pb, "%s\n", f[2]); write_if_changed(pp, pb, strlen(pb)); added = 1; }
         else continue;
-        strncat(sd, f[1], sizeof sd - strlen(sd) - 2); strcat(sd, "\n"); }
+        strncat(sd, kid, sizeof sd - strlen(sd) - 2); strcat(sd, "\n"); }
     fclose(fp); if (added) { spath(p, "space_seeded.txt"); write_if_changed(p, sd, strlen(sd)); } }
 static int sk_craft_at(int gx, int gy) { sk_craft_load(); for (int i = 0; i < sk_ncraft; i++) if (sk_craft[i].gx == gx && sk_craft[i].gy == gy) return i; return -1; }
 static int sk_space_block(int gx, int gy, char *msg, size_t cap) {      /* 1 = the ship cannot fly onto this grid cell */
@@ -901,6 +905,20 @@ static int sk_space_block(int gx, int gy, char *msg, size_t cap) {      /* 1 = t
 static void sk_space_draw(int g) {      /* asteroids: a grey rock cell under their block; other ships: a one-cell teal hull (rows of the space desk, no engine piece) */
     sk_craft_load(); sk_nodes_load(); for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SPACE) { int x = sk_nodes[i].x, y = sk_nodes[i].y; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_solid(g, x, y, 'G', 110, 105, 100, 0, 0); sk_cdep[g][y][x] = 3; }
     for (int i = 0; i < sk_ncraft; i++) { int x = 2 + sk_craft[i].gx * 2, y = 2 + sk_craft[i].gy * 2; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_cdep[g][y][x] = 0; sk_solid(g, x, y, 'W', 95, 190, 190, 0, 1); sk_solid(g, x, y, 'W', 60, 140, 150, 0, 0); } }
+/* OBJECTS ON THE PLANET MAP (owner 2026-10-26: "i expected to see them on same map as planet/ship cata prime"). In direct flight the planet is the land overlay: the engine fills the empty cells of the bridge desk from the planet page (room SK_SHIP), shifted by (state/direct.txt). So an asteroid or a ship painted ON that page slides with the planet for free, and is a node / craft with a world cell (wx, wy) = a cell of the page. The hull covers desk cells [SOX, SOX+SSZ); a desk cell is world cell minus (ox, oy), so only a ring around the hull shows and flying brings other objects into it. space.pdl WROCK / WCRAFT rows seed them once; tuning.pdl obj_reach / obj_top. */
+static int sk_world_here(void) { if (sk_pl_cur < 0) return 0; char p[PATH_MAX], b[40] = ""; spath(p, "pworld_planet.txt"); read_file(p, b, sizeof b); b[strcspn(b, "\n")] = 0; return b[0] && !strcmp(b, sk_pl[sk_pl_cur].id); }
+static void sk_world_draw(void) {      /* called with the page rooms painted, before sk_build_ship copies them */
+    sk_craft_load(); sk_nodes_load(); if (!sk_world_here()) return;
+    for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) { int x = sk_nodes[i].x, y = sk_nodes[i].y; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_solid(SK_SHIP, x, y, 'r', 120, 115, 108, 0, 1); sk_cdep[SK_SHIP][y][x] = 9; }
+    for (int i = 0; i < sk_ncraft; i++) { int x = sk_craft[i].wx, y = sk_craft[i].wy; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_solid(SK_SHIP, x, y, 'W', 95, 190, 190, 0, 1); sk_cdep[SK_SHIP][y][x] = 9; } }
+static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev distance from the desk cell of a world cell to the hull rectangle (0 = under the hull, 99 = off the desk) */
+    int dx = wx - ox, dy = wy - oy; if (dx < 0 || dy < 0 || dx >= SK_W || dy >= SK_H) return 99; int ex = dx < SOX ? SOX - dx : dx >= SOX + SSZ ? dx - (SOX + SSZ - 1) : 0, ey = dy < SOY ? SOY - dy : dy >= SOY + SSZ ? dy - (SOY + SSZ - 1) : 0; return ex > ey ? ex : ey; }
+static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the hull would sit on an asteroid or another ship that is taller than the ship flies */
+    if (!sk_world_here() || nz > tune("obj_top", 6)) return 0; sk_craft_load(); sk_nodes_load();
+    for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP && sk_world_gap(sk_nodes[i].x, sk_nodes[i].y, nx, ny) == 0) { snprintf(msg, cap, "an asteroid is in the way at %d,%d: lift above it, or mine it with m from beside it", sk_nodes[i].x, sk_nodes[i].y); return 1; }
+    for (int i = 0; i < sk_ncraft; i++) if (sk_craft[i].wx >= 0 && sk_world_gap(sk_craft[i].wx, sk_craft[i].wy, nx, ny) == 0) { snprintf(msg, cap, "%s is there: the helm holds off (try `space hail %s`)", sk_craft[i].label, sk_craft[i].id); return 1; } return 0; }
+static int sk_world_reach_idx(void) {      /* the asteroid node of the planet map nearest to the hull and within the beam's reach (-1 = none) */
+    if (!sk_world_here()) return -1; sk_nodes_load(); int best = -1, bd = 99, reach = tune("obj_reach", 2); for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) { int d = sk_world_gap(sk_nodes[i].x, sk_nodes[i].y, sk_dox, sk_doy); if (d <= reach && d < bd) { bd = d; best = i; } } return best; }
 static void sk_space_verb(int argc, char **argv, char *msg, size_t cap) {      /* space status | hail <id> | move <id> <gx> <gy> */
     sk_craft_load(); const char *a = argc >= 2 ? argv[1] : "status";
     if (!strcmp(a, "status")) { char b[500] = ""; sk_nodes_load(); int rocks = 0; for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SPACE) { char t[60]; snprintf(t, sizeof t, "%s@%d,%d x%d; ", sk_nodes[i].kind, (sk_nodes[i].x - 2) / 2, (sk_nodes[i].y - 2) / 2, sk_nodes[i].amount); strncat(b, t, sizeof b - strlen(b) - 1); rocks++; }
@@ -933,6 +951,7 @@ static void sk_wd_verb(int argc, char **argv, char *msg, size_t cap) {
         sk_nodes_load(); if (!strcmp(argv[1], "nodes")) { char b[600] = ""; for (int i = 0; i < sk_nnodes; i++) { char t[80]; snprintf(t, sizeof t, "%s %d,%d %s x%d; ", rooms[sk_nodes[i].room].id, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].kind, sk_nodes[i].amount); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "nodes %d: %s", sk_nnodes, b[0] ? b : "none"); return; }
         int sh = ctl_idx() < 0 ? 0 : ctl_idx() + 1; Ent *e = sk_life_ent(sh); static const int ddx[4] = { 0, -1, 1, 0 }, ddy[4] = { 1, 0, 0, -1 }; int tx = e->x + ddx[e->dir & 3], ty = e->y + ddy[e->dir & 3]; SkNode *nd = sk_node_at(e->room, tx, ty); if (!nd) nd = sk_node_at(e->room, e->x, e->y);
         if (!nd && e->room == SK_SPACE) for (int i = 0; i < sk_nnodes && !nd; i++) if (sk_nodes[i].room == SK_SPACE && abs(sk_nodes[i].x - e->x) <= 2 && abs(sk_nodes[i].y - e->y) <= 2) nd = &sk_nodes[i];      /* at the helm in space the beam reaches the asteroid on a neighbouring grid cell */
+        if (!nd && flag_on("helm", 0) && sk_helm_direct()) { sk_direct_load(); int wi = sk_world_reach_idx(); if (wi >= 0) nd = &sk_nodes[wi]; }      /* direct flight: the beam reaches the asteroid of the planet map nearest to the hull */
         if (!nd) { snprintf(msg, cap, "nothing to mine in front of %s (%d,%d)", sk_life_id(sh), tx, ty); return; }
         char xs[12], ys[12]; snprintf(xs, sizeof xs, "%d", nd->x); snprintf(ys, sizeof ys, "%d", nd->y); char kd[24], rm[16]; snprintf(kd, sizeof kd, "%s", nd->kind); snprintf(rm, sizeof rm, "%s", rooms[nd->room].id); char *nv[6] = { "mine", kd, rm, xs, ys, argc >= 3 ? argv[2] : (flag_on("helm", 0) ? "beam" : "pick") }; sk_wd_verb(6, nv, msg, cap); return; }
     if (!strcmp(v, "mine")) {      /* mine <kind> <room> <x> <y> [tool]: adds the tool's power to the cell's progress; at hardness the cell is destroyed (event page) */
