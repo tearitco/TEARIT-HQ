@@ -1,0 +1,38 @@
+<!-- store-hq.xhtpm - MOCKUP of the Steam-like Store window (2026-10-27). Design: #.#.calendar-dox/!.HQ-IQ-BOOK/16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md
+  Built from _template-hq: <sidebar>+<panel> (chrome + taskbar entry), database-window (a click does not close), vars=state/ui.txt,
+  <repeat bind="row"> (keys row_<n>_*). Generic renderer only: no new per-project C. Data is mock_catalog.pdl; nothing installs. -->
+<window label="Store" class="store-hq database-window" vars="state/ui.txt">
+  <module id="refresh" src="&.hq-apps/store-hq/refresh.sh"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="STORE (mockup)" class="block-title"/>
+      <item id="t_library" class="btn" label="  Library  " action="sh '${PKG}/actions.sh' tab library '${PKG}'"/>
+      <item id="t_store"   class="btn" label="   Store   " action="sh '${PKG}/actions.sh' tab store '${PKG}'"/>
+      <item id="t_toys"    class="btn" label="   Toys    " action="sh '${PKG}/actions.sh' tab toys '${PKG}'"/>
+      <text label="showing: ${tab}" class="quiet"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <row class="sprite-grid-row">
+            <item id="game${row.#}" class="data-item" label="${row.text}" sprite="${row.art}" action="sh '${PKG}/actions.sh' sel ${row.id} '${PKG}'"/>
+          </row>
+        </repeat>
+        <text label="(nothing here yet)" class="quiet" show="${no_rows}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${d_name}" class="game-title"/>
+      <text label="${d_line}" class="quiet"/>
+      <text label="${d_screen}" class="badge"/>
+      <text label="tags: ${d_tags}" class="quiet"/>
+      <text label="${d_blurb}"/>
+      <item id="a_get" class="btn primary" label="  ${d_action}  " action="sh '${PKG}/actions.sh' get '${PKG}'" show="${d_has}"/>
+      <text label="Reviews (sample text)" class="block-title"/>
+      <repeat count="${rev_count}" bind="rev">
+        <text label="${rev.text}"/>
+      </repeat>
+      <text label="no reviews yet" class="quiet" show="${no_rev}"/>
+      <text label="last action: ${last_action}" class="quiet"/>
+      <text label="MOCKUP: nothing is downloaded, screened or installed. updated ${stamp}" class="quiet"/>
+    </panel>
+  </page>
+</window>

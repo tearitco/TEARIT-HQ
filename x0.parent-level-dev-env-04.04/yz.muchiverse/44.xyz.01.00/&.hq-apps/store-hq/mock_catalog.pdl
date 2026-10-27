@@ -1,0 +1,12 @@
+# mock_catalog.pdl - MOCKUP DATA for store-hq (2026-10-27). NOT the real catalog (&.widgits/store/catalog.pdl); nothing here is installable.
+# GAME | id | name | kind | price | rating | screening | tags | blurb
+# kind: game | demo | toy.   rating 0 = no reviews.   screening: screened | needs_review | unscreened (design: GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 6)
+GAME | rpg-space | RPG Space | game | free | 4.5 | needs_review | voxel, pets, ships | Fly a ship between voxel planets, mine asteroids, keep your pets alive. (real game, mockup listing)
+GAME | rpg-dust | RPG Dust | demo | free | 0 | needs_review | voxel, generation, testbed | The world-generation testbed copy of RPG Space. (real game, mockup listing)
+GAME | sample-farm | Sample Farm | game | 5 coins | 3.8 | screened | farming, cozy | SAMPLE placeholder to show a paid, screened game page. Not a real game.
+GAME | sample-dungeon | Sample Dungeon | demo | free | 4.1 | unscreened | rpg, tiles | SAMPLE placeholder to show an unscreened demo. Not a real game.
+GAME | solitaire | Solitaire | toy | free | 0 | screened | toy, dev, beta | SAMPLE toy. Toys are for devs and betas, like solitaire.
+GAME | mutaclysm-neo | Mutaclysm-Neo | toy | free | 0 | screened | toy, dev | Real toy in the house (101.mutaclysm toy.pdl), listed here only as an example.
+REVIEW | rpg-space | sample_user | 5 | SAMPLE review text: the pets are charming.
+REVIEW | rpg-space | sample_user2 | 4 | SAMPLE review text: needs a first-ten-minutes guide.
+REVIEW | sample-farm | sample_user | 4 | SAMPLE review text.
