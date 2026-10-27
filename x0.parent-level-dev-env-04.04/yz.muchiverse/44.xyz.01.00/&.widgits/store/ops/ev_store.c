@@ -26,7 +26,8 @@ static int ident_ok(const char *s, size_t max) { size_t n = strlen(s); if (!n ||
 static void setvar(const char *name, long long v) { char p[PL + 32], t[PL + 64], line[512]; snprintf(p, sizeof p, "%s/variables.txt", STATE); snprintf(t, sizeof t, "%s.tmp.%d", p, (int)getpid());
     FILE *in = fopen(p, "r"), *out = fopen(t, "w"); if (!out) { if (in) fclose(in); return; } size_t nl = strlen(name); int done = 0;
     if (in) { while (fgets(line, sizeof line, in)) { if (!strncmp(line, name, nl) && line[nl] == '=') { fprintf(out, "%s=%lld\n", name, v); done = 1; } else fputs(line, out); } fclose(in); }
-    if (!done) fprintf(out, "%s=%lld\n", name, v); fclose(out); rename(t, p); }
+    if (!done) fprintf(out, "%s=%lld\n", name, v);
+    fclose(out); rename(t, p); }
 static void ledger(const char *verb, const char *item, int rc, const char *note) { char p[PL + 32]; snprintf(p, sizeof p, "%s/store_events.txt", STATE); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "STOREEV|%ld|%s|%s|%s|rc=%d|%s\n", (long)time(NULL), UUID, verb, item, rc, note); fclose(f); } }
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 /* find ITEM row: fills version, price text, requires. Returns 1 if found. */

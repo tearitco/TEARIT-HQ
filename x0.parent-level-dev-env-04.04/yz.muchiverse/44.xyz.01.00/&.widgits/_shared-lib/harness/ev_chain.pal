@@ -1,0 +1,4 @@
+# ev_chain.pal - LOCKED acceptance harness for the chain event command. Read results/ev_chain.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/ev_chain.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ev_chain.pdl
+halt

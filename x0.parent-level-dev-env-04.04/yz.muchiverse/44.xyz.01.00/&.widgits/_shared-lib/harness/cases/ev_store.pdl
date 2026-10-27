@@ -1,0 +1,67 @@
+# ev_store: LOCKED cases for the Store event command (design 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 17). SCRATCH house with its own catalog.pdl and xyzfs/users/<uuid>/; never real user data.
+# Source: &.widgits/store/ops/ev_store.c. Not covered (not built): buy, install, review.
+RESULTS | ../results/ev_store.txt
+CASE | ev-store
+SCRATCH |
+COPY | &.widgits/store/ops/ev_store.c | ev_store.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/es.+x | $T/ev_store.c
+EXPECT_EXIT | 0 | compiles-clean
+MKDIR | &.widgits
+MKDIR | &.widgits/store
+WRITE | &.widgits/store/catalog.pdl | # fixture catalog\nITEM \p free1 \p Free one \p content \p 0.1 \p free \p none \p x \p data-ready \p n\nITEM \p paid1 \p Paid one \p content \p 0.1 \p 5 \p none \p x \p data-ready \p n\nITEM \p role1 \p Role one \p content \p 0.1 \p free \p role:dev \p x \p data-ready \p n\n
+MKDIR | xyzfs
+MKDIR | xyzfs/users
+MKDIR | xyzfs/users/aaaaaaaa-0000-4000-8000-000000000001
+MKDIR | st
+WRITE | st/user_uuid.txt | aaaaaaaa-0000-4000-8000-000000000001\n
+MKDIR | stx
+WRITE | stx/user_uuid.txt | bbbbbbbb-0000-4000-8000-00000000dead\n
+MKDIR | sty
+WRITE | sty/user_uuid.txt | ../../etc\n
+MKDIR | stz
+
+CASE | ev-store-reads
+RUN | $T/es.+x | $T/st | $T | price | free1
+EXPECT_EXIT | 0 | price-free-runs
+EXPECT_HAS | st/variables.txt | store_price=0 | free-price-zero
+EXPECT_HAS | st/variables.txt | store_known=1 | free-known
+RUN | $T/es.+x | $T/st | $T | price | paid1
+EXPECT_HAS | st/variables.txt | store_price=5 | paid-price-five
+RUN | $T/es.+x | $T/st | $T | price | nosuch
+EXPECT_HAS | st/variables.txt | store_known=0 | unknown-item-not-known
+RUN | $T/es.+x | $T/st | $T | owned | free1
+EXPECT_HAS | st/variables.txt | store_owned=0 | not-owned-yet
+
+CASE | ev-store-get
+RUN | $T/es.+x | $T/st | $T | get | free1
+EXPECT_EXIT | 0 | get-free-ok
+EXPECT_HAS | st/variables.txt | store_ok=1 | get-ok-flag
+EXPECT_HAS | xyzfs/users/aaaaaaaa-0000-4000-8000-000000000001/owned.pdl | OWN \p free1 \p 0.1 \p 1 | own-row-written
+RUN | $T/es.+x | $T/st | $T | get | free1
+EXPECT_EXIT | 0 | get-twice-ok
+RUN | grep | -c | OWN | $T/xyzfs/users/aaaaaaaa-0000-4000-8000-000000000001/owned.pdl
+EXPECT_OUT_IS | 1 | get-is-idempotent-one-row
+RUN | $T/es.+x | $T/st | $T | owned | free1
+EXPECT_HAS | st/variables.txt | store_owned=1 | owned-now-one
+RUN | $T/es.+x | $T/st | $T | get | paid1
+EXPECT_EXIT | 1 | paid-item-refused
+EXPECT_HAS | st/variables.txt | store_ok=0 | paid-flag-zero
+RUN | $T/es.+x | $T/st | $T | get | role1
+EXPECT_EXIT | 1 | role-gated-item-refused
+RUN | $T/es.+x | $T/st | $T | get | nosuch
+EXPECT_EXIT | 1 | unknown-item-refused
+RUN | grep | -c | OWN | $T/xyzfs/users/aaaaaaaa-0000-4000-8000-000000000001/owned.pdl
+EXPECT_OUT_IS | 1 | refusals-added-no-rows
+
+CASE | ev-store-player-binding
+RUN | $T/es.+x | $T/stx | $T | get | free1
+EXPECT_EXIT | 1 | uuid-without-folder-refused
+EXPECT_NOFILE | xyzfs/users/bbbbbbbb-0000-4000-8000-00000000dead | no-folder-created
+RUN | $T/es.+x | $T/sty | $T | get | free1
+EXPECT_EXIT | 1 | path-traversal-uuid-refused
+RUN | $T/es.+x | $T/stz | $T | get | free1
+EXPECT_EXIT | 1 | no-user-bound-refused
+RUN | $T/es.+x | $T/st | $T | get | ../x
+EXPECT_EXIT | 2 | bad-item-id-usage-rc-2
+RUN | $T/es.+x | $T/st
+EXPECT_EXIT | 2 | usage

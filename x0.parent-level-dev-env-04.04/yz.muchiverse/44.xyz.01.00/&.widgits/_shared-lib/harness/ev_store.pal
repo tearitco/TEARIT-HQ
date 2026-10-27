@@ -1,0 +1,4 @@
+# ev_store.pal - LOCKED acceptance harness for the Store event command. Read results/ev_store.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/ev_store.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ev_store.pdl
+halt

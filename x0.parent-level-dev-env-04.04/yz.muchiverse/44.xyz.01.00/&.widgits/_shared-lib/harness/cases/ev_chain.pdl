@@ -1,0 +1,67 @@
+# ev_chain: LOCKED cases for the event-command op that lets event pages use a TEST chain (design 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 17). SCRATCH only: a scratch house with its own 041.pal-chain root; never the real chain.
+# Bad amounts, ids and verbs fall through to the usage path (exit 2); chain/wallet refusals are exit 1 with an ERR row.
+# Source: &.widgits/chain-events/ops/ev_chain.c. Results come back as key=int lines in <state_dir>/variables.txt and ERR rows in op_errors.txt.
+RESULTS | ../results/ev_chain.txt
+SCRATCH |
+COPY | &.widgits/chain-events/ops/ev_chain.c | ev_chain.c
+COPY | 041.pal-chain⛓️/ops/+x/chain_new.+x | 041.pal-chain/ops/+x/chain_new.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_balance.+x | 041.pal-chain/ops/+x/chain_balance.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_send.+x | 041.pal-chain/ops/+x/chain_send.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_escrow.+x | 041.pal-chain/ops/+x/chain_escrow.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_miner.+x | 041.pal-chain/ops/+x/chain_miner.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_create_wallet.+x | 041.pal-chain/ops/+x/chain_create_wallet.+x
+
+CASE | ev-chain-setup
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/ev.+x | $T/ev_chain.c
+EXPECT_EXIT | 0 | compiles-clean
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain
+ENV | CHAIN_DIFFICULTY_HEX_ZEROS | 1
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | lab | --difficulty | 1 | --cap | 0
+EXPECT_EXIT | 0 | chain-created
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/lab
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | alice | pw
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | bob | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | alice-mined-one-block
+MKDIR | st
+WRITE | st/wallet_id.txt | alice\n
+MKDIR | st2
+WRITE | st2/wallet_id.txt | bob\n
+MKDIR | st3
+
+CASE | ev-chain-reads-and-sends
+RUN | $T/ev.+x | $T/st | $T | lab | balance
+EXPECT_EXIT | 0 | balance-runs
+EXPECT_HAS | st/variables.txt | chain_ok=1 | balance-ok-flag
+EXPECT_LACKS | st/variables.txt | chain_balance=0 | alice-has-coins-after-mining
+RUN | $T/ev.+x | $T/st | $T | lab | send | bob | 5
+EXPECT_EXIT | 0 | send-runs
+EXPECT_HAS | st/variables.txt | chain_ok=1 | send-ok-flag
+EXPECT_HAS | st/chain_events.txt | send | event-row-written
+RUN | $T/ev.+x | $T/st | $T | lab | send | bob | 999999999
+EXPECT_EXIT | 1 | overspend-refused
+EXPECT_HAS | st/variables.txt | chain_ok=0 | overspend-flag-zero
+
+CASE | ev-chain-refusals
+RUN | $T/ev.+x | $T/st | $T | cones | balance
+EXPECT_EXIT | 1 | real-chain-cones-refused
+EXPECT_HAS | st/op_errors.txt | refused chain (bad id or the real chain) | cones-error-row
+RUN | $T/ev.+x | $T/st | $T | nosuch | balance
+EXPECT_EXIT | 1 | unknown-chain-refused
+RUN | $T/ev.+x | $T/st | $T | ../lab | balance
+EXPECT_EXIT | 1 | path-traversal-chain-refused
+RUN | $T/ev.+x | $T/st3 | $T | lab | balance
+EXPECT_EXIT | 1 | no-wallet-bound-refused
+EXPECT_HAS | st3/op_errors.txt | no wallet bound | no-wallet-error-row
+RUN | $T/ev.+x | $T/st | $T | lab | send | bob | 0
+EXPECT_EXIT | 2 | zero-amount-refused-usage-rc-2
+RUN | $T/ev.+x | $T/st | $T | lab | send | bob | -5
+EXPECT_EXIT | 2 | negative-amount-refused-usage-rc-2
+RUN | $T/ev.+x | $T/st | $T | lab | send | bob | 1000000001
+EXPECT_EXIT | 2 | amount-above-cap-refused-usage-rc-2
+RUN | $T/ev.+x | $T/st | $T | lab | send | b/ob | 5
+EXPECT_EXIT | 2 | slash-in-recipient-refused-usage-rc-2
+RUN | $T/ev.+x | $T/st | $T | lab | frobnicate
+EXPECT_EXIT | 2 | unknown-verb-refused-usage-rc-2
+RUN | $T/ev.+x | $T/st
+EXPECT_EXIT | 2 | usage
