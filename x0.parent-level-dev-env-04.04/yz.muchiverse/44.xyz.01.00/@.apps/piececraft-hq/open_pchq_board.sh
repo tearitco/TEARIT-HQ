@@ -270,6 +270,14 @@ engine_up() {
     done
     return 1
 }
+# One engine launch; its output is KEPT in $ENGLOG (until 2026-10-26 it went to /dev/null: a launch that died left the board window on "loading..." with nothing to read). Sets _eng to its pid.
+start_engine() {
+    if [ "$DATA" = "$PKG" ]; then setsid nohup env PCHQ_ENGINE_MODE=1 sh -c 'sh "$0" run' "$PKG/button.sh" >>"$ENGLOG" 2>&1 &
+    else setsid nohup env PCHQ_ENGINE_MODE=1 PCHQ_PKG="$DATA" sh -c 'sh "$0" run' "$PKG/button.sh" >>"$ENGLOG" 2>&1 &
+    fi
+    _eng=$!
+}
+ENGLOG="/tmp/pchq-engine-$INST.log"
 if ! engine_up; then
     # serialize concurrent launches (rapid double-click) through a
     # short-lived mkdir lock so we start exactly one engine.
@@ -284,10 +292,8 @@ if ! engine_up; then
             # keyboard_input reader - that early exit is what fired the
             # rm -rf trap and left the board window blank. Its teardown
             # trap still runs on a real SIGTERM (taskbar reap) / Ctrl-C.
-            if [ "$DATA" = "$PKG" ]; then setsid nohup env PCHQ_ENGINE_MODE=1 sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
-            else setsid nohup env PCHQ_ENGINE_MODE=1 PCHQ_PKG="$DATA" sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
-            fi
-            _eng=$!
+            : > "$ENGLOG" 2>/dev/null || true
+            start_engine
             # button.sh's own EXIT/INT/TERM trap does a clean rm -rf +
             # kill_own_* - nothing ever SIGTERM'd it under the old
             # taskbar launch, so it orphaned. Register its group in the
@@ -305,6 +311,18 @@ if ! engine_up; then
         sleep 0.2
         i=$((i + 1))
     done
+    # SELF-HEAL (2026-10-26: a board sat on "loading..." for good because its engine session never came up and nothing said so): a slow start gets 12 s more, then ONE retry; every step is told on stderr (the app's board log) and the launch output is in $ENGLOG.
+    if ! engine_up && [ -n "${_eng:-}" ]; then
+        echo "open_pchq_board: engine not registered after 8 s (launch output: $ENGLOG); waiting 12 s more" >&2
+        i=0; while [ "$i" -lt 60 ]; do engine_up && break; sleep 0.2; i=$((i + 1)); done
+        if ! engine_up; then
+            echo "open_pchq_board: still no engine after 20 s; ending that launch and retrying once" >&2
+            kill "$_eng" 2>/dev/null || true; sleep 3
+            start_engine; printf '%s\n' "$_eng" > "$DATA/pieces/system/engine.pid" 2>/dev/null || true
+            i=0; while [ "$i" -lt 100 ]; do engine_up && break; sleep 0.2; i=$((i + 1)); done
+            if engine_up; then echo "open_pchq_board: engine up after the retry" >&2; else echo "open_pchq_board: engine still not up after the retry; read $ENGLOG" >&2; fi
+        fi
+    fi
     rmdir "$LOCK" 2>/dev/null || true
     trap - EXIT INT TERM
 fi

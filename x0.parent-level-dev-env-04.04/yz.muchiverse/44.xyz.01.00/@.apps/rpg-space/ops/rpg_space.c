@@ -947,6 +947,21 @@ static int sk_skiff_model(SkVox *v, int cap, int dim[3]) {      /* the player's 
         if (a < 0 || b < 0 || c < 0 || a >= 32 || b >= 32 || c >= 32 || seen[a][b][c] || n >= cap) continue; seen[a][b][c] = 1; v[n++] = (SkVox){a, b, c, r, g, bl};
         if (a + 1 > dim[0]) dim[0] = a + 1; if (b + 1 > dim[1]) dim[1] = b + 1; if (c + 1 > dim[2]) dim[2] = c + 1; }
     fclose(f); return n; }
+/* THE SAME TILES AS THE SHIP (owner 2026-10-26: 'u can use the same tiles for the asteroids, skiff, as scifi'). The engine's voxel pieces carry one RGB per voxel, so the colour is taken from real pixels of the ship's own sheet SF_Inside_A4 (the 24 x 24 tiles of sk_ship_room): the skiff's top faces from the bridge's green hex floor (8,11) and every other voxel from the hull wall (6,2); an asteroid from the engine room's diamond plate (8,6), tinted per kind so ore and crystal stay recognisable. A missing sheet leaves the flat colours. */
+static const unsigned char *sk_tile_px(int col, int row) {
+    static unsigned char buf[4][XT * XT * 4]; static int kc[4], kr[4], n; for (int i = 0; i < n; i++) if (kc[i] == col && kr[i] == row) return buf[i];
+    Sheet *a4 = n < 4 ? sheet("tilesets", "SF_Inside_A4") : NULL; if (!a4) return NULL; tile24(a4, col * S48, row * S48, buf[n]); kc[n] = col; kr[n] = row; return buf[n++]; }
+static void sk_retile(SkVox *v, int n, const int dim[3], int tc, int tr, int sc, int sr, const char *kind) {
+    const unsigned char *top = sk_tile_px(tc, tr), *side = sk_tile_px(sc, sr); if (!top || !side) return;
+    static signed char occ[32][32][32]; memset(occ, 0, sizeof occ); for (int i = 0; i < n; i++) if (v[i].x < 32 && v[i].y < 32 && v[i].z < 32) occ[v[i].x][v[i].y][v[i].z] = 1;
+    int dx = dim[0] > 0 ? dim[0] : 1, dy = dim[1] > 0 ? dim[1] : 1, dz = dim[2] > 0 ? dim[2] : 1;
+    for (int i = 0; i < n; i++) {
+        int is_top = v[i].y + 1 >= 32 || !occ[v[i].x][v[i].y + 1][v[i].z], tx = (v[i].x * XT + XT / 2) / dx % XT, ty = is_top ? (v[i].z * XT + XT / 2) / dz % XT : (v[i].y * XT + XT / 2) / dy % XT;
+        const unsigned char *q = (is_top ? top : side) + (ty * XT + tx) * 4; double r = q[0], g = q[1], b = q[2];
+        if (kind && !strcmp(kind, "rock")) { r *= 1.7; g *= 1.7; b *= 1.7; }      /* the diamond plate is dark: lift it to a rock grey */
+        else if (kind && !strcmp(kind, "ore")) { r = r * 2.2 + 40; g = g * 1.4 + 12; b *= 0.9; }      /* leans orange */
+        else if (kind && !strcmp(kind, "crystal")) { r = r * 1.2 + 10; g = g * 2.2 + 70; b = b * 2.4 + 90; }      /* leans cyan */
+        v[i].r = r > 255 ? 255 : (int)r; v[i].g = g > 255 ? 255 : (int)g; v[i].b = b > 255 ? 255 : (int)b; } }
 static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3]) {
     static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
     char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", dim[0], dim[1], dim[2]);
@@ -959,8 +974,8 @@ static void sk_veh_clear(void) { char p[PATH_MAX]; for (int k = 1; k <= 9; k++) 
 static void sk_veh_write(void) {
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
-    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim); }
-    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int n = sk_skiff_model(v, SK_VEH_MAXV, dim); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim); }
+    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_retile(v, n, dim, 8, 6, 8, 6, sk_nodes[i].kind); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim); }
+    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int n = sk_skiff_model(v, SK_VEH_MAXV, dim); if (n > 0) sk_retile(v, n, dim, 8, 11, 6, 2, NULL); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim); }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev distance from the desk cell of a world cell to the hull rectangle (0 = under the hull, 99 = off the desk) */
     int dx = wx - ox, dy = wy - oy; if (dx < 0 || dy < 0 || dx >= SK_W || dy >= SK_H) return 99; int ex = dx < SOX ? SOX - dx : dx >= SOX + SSZ ? dx - (SOX + SSZ - 1) : 0, ey = dy < SOY ? SOY - dy : dy >= SOY + SSZ ? dy - (SOY + SSZ - 1) : 0; return ex > ey ? ex : ey; }
