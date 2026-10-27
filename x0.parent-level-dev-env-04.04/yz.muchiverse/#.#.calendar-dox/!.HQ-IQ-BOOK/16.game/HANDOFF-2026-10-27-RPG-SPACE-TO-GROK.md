@@ -94,6 +94,36 @@ Not done / known gaps (be honest about these in any report):
 5. **Back-merge life/death/health bars to the other pets games and keep the rpg-dust copy in step (section 4b).**
 6. Controls: write down every key per mode in one table (today it is spread over keybinds.pdl, engine keys, relay codes).
 
+## 3b. UPDATE (end of 2026-10-27, branch `claude` pushed through 54a801f68): what changed since sections 3 to 4b were written
+
+* **rpg-dust is now a copy of rpg-space.** `rpg_dust.c` = `rpg_space.c` with the names swapped, plus the data files dust lacked (collision / environment /
+  hold / hotspots / lights / space .pdl, `pchq-overlay/`, helm / collision / col_* / environment / env_hit event pages, the board layout). Dust had no data
+  of its own that space lacked. Re-sync method: `sed 's/rpg-space/rpg-dust/g; s/rpg_space/rpg_dust/g; s/!space/!dust/g'` on the skin, then `build_rpg_dust.sh`.
+  Gate `play_rpg_dust_planet_map.pal` = the same phases as rpg-space. **Both gates: 83 PASS** (p1 seed ... p7 worlds). The old dust life gate is retired.
+  Dust keeps its own `life.pdl`, scale, pals, party and planet data. Dust's board button look is the owner's own settings change, not a bug.
+* **Ambient world** (`world_ambient` row): with the helm off and a planet below, the land entity stays written (altitude 1), so the planet shows in every
+  ship room, not only the Bridge. Objects (asteroids, skiff) still draw on the **Bridge desk only**.
+* **Every planet has its own asteroids**: `sk_world_switch` saves the outgoing planet's objects to `state/world_<planet>.txt`, loads the incoming file or
+  generates 3 to 5 from `hash(planet id, seed)` on the first visit; `space world` runs it by hand; the skiff stays with its planet (Cata Prime).
+* **User / generated asteroids seam**: node kind `gen:<name>` loads `<app>/asteroids/<name>/model.txt` (voxel piece format, 16 cells a side,
+  `gen_vox_max` 1024). Design + the contract for the generate pipeline (concept bank -> image -> 3D -> voxelise -> model.txt) and the open decisions:
+  `RPG-SPACE-USER-ASTEROIDS-DESIGN.md`. Nothing generates models yet; no verb adds one; no yields / per-user storage.
+* **CPU**: our programs must run alongside normal user activity (AGENTS.md rule, `hq-cpu-safety.md` section 9). A footprint bug of mine (unthrottled
+  world check + a land rewrite every 1.5 s) was found and fixed; the daemon now writes `state/tick_stats.txt` (`cpu_permille`, ticks, uptime) every 10 s.
+  Reference: rpg-dust at rest, 18 permille. **Read it before and after any change to a tick.** The harness cannot run a daemon, so no gate catches this.
+  Other games' daemons do not report yet. The cpu_guard alert from 2026-10-27 01:03 is still waiting for the owner's review.
+* **Piloting the other ship** (`space pilot <id>`) and the **minimap knobs** (`minimap_margin` / `follow` / `view` / `max_px`, synced from `tuning.pdl` to the
+  board's `hud.pdl` by `sk_hud_sync`) exist; the minimap modes were compiled and key-synced but **never photographed**; the pilot works by verb (gate p5),
+  not by an in-world console.
+* **Life layer**: shared `petslike_life.c`; rpg-space and rpg-dust ON; nine other games wired but OFF (compile-only). In rpg-dust it now also has drops
+  and `take`, because dust has the whole space skin. See 4b.
+* **Next, in this order** (suggested): (1) put objects on every ship room's desk or explain why not; (2) the in-world console for the skiff + boarding;
+  (3) the settings / db surface (bar radius, minimap, world_ambient, asteroid budgets); (4) gates + a live look for the nine OFF life games before enabling
+  any; (5) the generate pipeline writer for `asteroids/<name>/model.txt`; (6) add `sk_tick_stats` to the other daemons.
+* **Process lessons from today**: do not end a board's stack by pattern or sweep (the permission layer refused it; close the window instead, or end your own
+  single daemon pid); a window count from `pidof` needs the full process name; a `cd` in a chained command can land in the wrong folder and make a
+  commit message claim something the commit does not contain (it happened once: see the correction commit after 5c8d3660b).
+
 ## 4b. BACKWARD MERGE to the other pets games, and the rpg-dust copy (owner 2026-10-27)
 
 **STATUS (updated after the work, commits 11d37fd82, d98f08920, abccd2783):** the generic life layer IS lifted and offered to all ten other skins. Details:
