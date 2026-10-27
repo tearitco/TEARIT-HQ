@@ -141,5 +141,33 @@ EXPECT_OUT_IS | 8 | p4_voxels.the-crystal-keeps-its-shape-too
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | off
 EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | p4_voxels.releasing-the-helm-removes-the-asteroid-pieces
 EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | p4_voxels.releasing-the-helm-removes-the-skiff-piece
+# ---- phase p5_pilot: `space pilot <id>` hands the helm's arrows to the other ship: it flies over the planet map (craft.txt wx, wy), stays out of the player's hull while that flies low, and the player's ship stays put (owner 2026-10-27: its own working helm)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_space_planet_map.marks.txt | p5_pilot
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | pilot | skiff_1
+EXPECT_OUT | take the helm first | p5_pilot.pilot-needs-the-helm-in-direct-flight
+WRITE | @.apps/rpg-space/state/flag_helm.txt | 1\n
+WRITE | @.apps/rpg-space/state/helm_mode.txt | direct\n
+WRITE | @.apps/rpg-space/state/direct_z.txt | 1\n
+WRITE | @.apps/rpg-space/state/direct.txt | 0 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | pilot | skiff_1
+EXPECT_OUT | you fly Wren (skiff) | p5_pilot.the-skiff-is-piloted
+EXPECT_FILE | @.apps/rpg-space/state/pilot.txt | skiff_1\n | p5_pilot.the-pilot-is-remembered
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 0 | 1
+EXPECT_FILE | @.apps/rpg-space/state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-5\n | p5_pilot.the-arrow-moved-the-skiff-south-one-cell
+EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 0 0\n | p5_pilot.and-the-players-ship-did-not-move
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-7.50 | p5_pilot.the-skiff-piece-followed-at-once
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 0 | 1
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 0 | 1
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 0 | 1
+EXPECT_FILE | @.apps/rpg-space/state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-2\n | p5_pilot.four-cells-south-the-skiffs-box-ends-one-cell-from-the-hull
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 0 | 1
+EXPECT_OUT | your ship's hull is in the way | p5_pilot.the-skiff-cannot-fly-through-the-low-hull
+EXPECT_FILE | @.apps/rpg-space/state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-2\n | p5_pilot.and-it-stayed
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | pilot | off
+WRITE | @.apps/rpg-space/state/direct_z.txt | 8\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
+EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 1 0\n | p5_pilot.after-pilot-off-the-arrows-fly-the-players-ship-again
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | off
+EXPECT_NOFILE | @.apps/rpg-space/state/pilot.txt | p5_pilot.releasing-the-helm-clears-the-pilot
 RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_space_planet_map.marks.txt | END
 CLEAN |

@@ -2562,10 +2562,22 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * pad now uses, so it shrinks to fit instead of vanishing. */
     max_px = (int)(max_px * cscale);
     if (max_px < 24) max_px = 24;
+    /* THE MAP IS BIGGER THAN THE DESK (owner 2026-10-27: 'minimap isn't moving view finder to accommodate bigger map ... should have ability to do both'). Two knobs in hud.pdl, both off by default (0 = the old desk-only minimap):
+     *   minimap_margin N   show N extra cells on every side of the desk (the land of a 16 x 16 desk with margin 16 is 48 x 48), so the camera and the objects outside the desk are on the map;
+     *   minimap_follow 1   show only a window of minimap_view cells (default 24) that follows the camera, clamped to that area, so a big map stays readable at a small size.
+     * The size itself is minimap_max_px / minimap_px_per_col as before. */
+    int mm_margin = hud_pdl_int(pdl, "minimap_margin", 0); if (mm_margin < 0) mm_margin = 0; if (mm_margin > 64) mm_margin = 64;
+    int wx0 = -mm_margin, wy0 = -mm_margin, ww = g_mm_board_w + 2 * mm_margin, wh = g_mm_board_h + 2 * mm_margin;
+    if (hud_pdl_int(pdl, "minimap_follow", 0) && g_mm_cam_ok) {
+        int view = hud_pdl_int(pdl, "minimap_view", 24); if (view < 4) view = 4;
+        int vw = view < ww ? view : ww, vh = view < wh ? view : wh, cx0 = (int)floor(g_mm_cam_x) - vw / 2, cy0 = (int)floor(g_mm_cam_z) - vh / 2;
+        if (cx0 < wx0) cx0 = wx0; if (cx0 > wx0 + ww - vw) cx0 = wx0 + ww - vw; if (cy0 < wy0) cy0 = wy0; if (cy0 > wy0 + wh - vh) cy0 = wy0 + wh - vh;
+        wx0 = cx0; wy0 = cy0; ww = vw; wh = vh;
+    }
     int cellpx = px_per_col;
-    while (cellpx > 1 && (g_mm_board_w * cellpx > max_px || g_mm_board_h * cellpx > max_px)) cellpx--;
+    while (cellpx > 1 && (ww * cellpx > max_px || wh * cellpx > max_px)) cellpx--;
 
-    int mm_w = g_mm_board_w * cellpx, mm_h = g_mm_board_h * cellpx;
+    int mm_w = ww * cellpx, mm_h = wh * cellpx;
     if (mm_w <= 0 || mm_h <= 0 || mm_w > g_fw || mm_h > g_fh) return;
 
     int mm_y = top_anchor ? (pad + text_block_h) : (g_fh - pad - mm_h - text_block_h);
@@ -2595,13 +2607,15 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     bv_fill_rect(mm_x - 2, mm_y - 2, mm_x - 1, mm_y + mm_h + 2, 150, 150, 160);
     bv_fill_rect(mm_x + mm_w + 1, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
 
-    for (int row = 0; row < g_mm_board_h; row++) {
-        for (int col = 0; col < g_mm_board_w; col++) {
-            int lvl = g_mm_col_top[row][col];
+    for (int row = 0; row < wh; row++) {
+        for (int col = 0; col < ww; col++) {
+            int bx = wx0 + col, by = wy0 + row;
+            if (bx < 0 || by < 0 || bx >= g_mm_board_w || by >= g_mm_board_h) { bv_fill_rect(mm_x + col * cellpx, mm_y + row * cellpx, mm_x + (col + 1) * cellpx, mm_y + (row + 1) * cellpx, 12, 12, 24); continue; }      /* outside the desk: the map's open space */
+            int lvl = g_mm_col_top[by][bx];
             unsigned char r, g, b;
             if (lvl < 0) { r = 18; g = 18; b = 22; } /* empty column - near-black */
             else {
-                char glyph = g_mm_board3d[lvl][row][col];
+                char glyph = g_mm_board3d[lvl][by][bx];
                 const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
                 if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
             }
@@ -2624,28 +2638,42 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int dot = cellpx - inset * 2; if (dot < 1) dot = 1;
     for (int i = 0; i < g_phymoji_world_entity_count; i++) {
         PhymojiWorldEntity *e = &g_phymoji_world_entities[i];
-        if (e->x < 0 || e->x >= g_mm_board_w || e->y < 0 || e->y >= g_mm_board_h) continue;
+        if (e->x < wx0 || e->x >= wx0 + ww || e->y < wy0 || e->y >= wy0 + wh) continue;
         unsigned char r, g, b;
         if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
         else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
         else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
-        int cx = mm_x + e->x * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
+        int cx = mm_x + (e->x - wx0) * cellpx + inset, cy = mm_y + (e->y - wy0) * cellpx + inset;
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
     }
 
     /* xelector (the board's own targeting cursor, distinct from the
      * hero/player and from bv_draw_hud's plain "pos" selector) - cyan,
      * full cell so it's easy to find even off the player. */
-    if (g_xelector_present && g_xelector_x >= 0 && g_xelector_x < g_mm_board_w &&
-        g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
-        int cx = mm_x + g_xelector_x * cellpx, cy = mm_y + g_xelector_y * cellpx;
+    if (g_xelector_present && g_xelector_x >= wx0 && g_xelector_x < wx0 + ww &&
+        g_xelector_y >= wy0 && g_xelector_y < wy0 + wh) {
+        int cx = mm_x + (g_xelector_x - wx0) * cellpx, cy = mm_y + (g_xelector_y - wy0) * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
+    }
+
+    /* the desk's own edge when the map is bigger than it, and the voxel pieces (asteroids, other ships) as boxes in their average colour, lightened so they read on the dark space */
+    if (ww != g_mm_board_w || wh != g_mm_board_h || wx0 != 0 || wy0 != 0) {
+        int ex0 = (0 - wx0) * cellpx, ey0 = (0 - wy0) * cellpx, ex1 = (g_mm_board_w - wx0) * cellpx - 1, ey1 = (g_mm_board_h - wy0) * cellpx - 1;
+        for (int t = ex0; t <= ex1; t++) { if (t >= 0 && t < mm_w) { if (ey0 >= 0 && ey0 < mm_h) bv_fill_rect(mm_x + t, mm_y + ey0, mm_x + t + 1, mm_y + ey0 + 1, 70, 70, 90); if (ey1 >= 0 && ey1 < mm_h) bv_fill_rect(mm_x + t, mm_y + ey1, mm_x + t + 1, mm_y + ey1 + 1, 70, 70, 90); } }
+        for (int t = ey0; t <= ey1; t++) { if (t >= 0 && t < mm_h) { if (ex0 >= 0 && ex0 < mm_w) bv_fill_rect(mm_x + ex0, mm_y + t, mm_x + ex0 + 1, mm_y + t + 1, 70, 70, 90); if (ex1 >= 0 && ex1 < mm_w) bv_fill_rect(mm_x + ex1, mm_y + t, mm_x + ex1 + 1, mm_y + t + 1, 70, 70, 90); } }
+    }
+    for (int vk = 0; vk < g_veh_cnt; vk++) {
+        VehPiece *V = &g_veh[vk]; long sr = 0, sg = 0, sb = 0; for (int q = 0; q < V->n; q++) { sr += V->vox[q].r; sg += V->vox[q].g; sb += V->vox[q].b; } if (V->n <= 0) continue;
+        int rr = (int)(sr / V->n) + 40, gg = (int)(sg / V->n) + 40, bb = (int)(sb / V->n) + 40; if (rr > 255) rr = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
+        int bx0 = (int)floor((V->x - wx0) * cellpx), by0 = (int)floor((V->y - wy0) * cellpx), bx1 = (int)ceil((V->x + V->sx - wx0) * cellpx), by1 = (int)ceil((V->y + V->sy - wy0) * cellpx);
+        if (bx1 <= 0 || by1 <= 0 || bx0 >= mm_w || by0 >= mm_h) continue; if (bx0 < 0) bx0 = 0; if (by0 < 0) by0 = 0; if (bx1 > mm_w) bx1 = mm_w; if (by1 > mm_h) by1 = mm_h; if (bx1 - bx0 < 2) bx1 = bx0 + 2; if (by1 - by0 < 2) by1 = by0 + 2;
+        bv_fill_rect(mm_x + bx0, mm_y + by0, mm_x + bx1, mm_y + by1, (unsigned char)rr, (unsigned char)gg, (unsigned char)bb);
     }
 
     /* CAMERA: a bright yellow dot (dark outline) at the eye, clamped onto the minimap when the camera is outside the desk, and two yellow rays at +-half the field of view along the ground direction it faces,
      * clipped to the minimap. Drawn under the hero cell so "you" stays visible. */
     if (g_mm_cam_ok) {
-        double ex = g_mm_cam_x * cellpx, ez = g_mm_cam_z * cellpx; int outside = 0;
+        double ex = (g_mm_cam_x - wx0) * cellpx, ez = (g_mm_cam_z - wy0) * cellpx; int outside = 0;
         if (ex < 0) { ex = 0; outside = 1; } if (ex > mm_w - 1) { ex = mm_w - 1; outside = 1; } if (ez < 0) { ez = 0; outside = 1; } if (ez > mm_h - 1) { ez = mm_h - 1; outside = 1; }
         double half = g_fov_deg * M_PI_LOCAL / 360.0, len = (mm_w > mm_h ? mm_w : mm_h) * 0.55;
         for (int side = -1; side <= 1; side += 2) {
@@ -2661,8 +2689,8 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * matches bv_draw_hud's own "poss"/"pos" line convention. */
     int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
     int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
-    if (mark_x >= 0 && mark_x < g_mm_board_w && mark_y >= 0 && mark_y < g_mm_board_h) {
-        int cx = mm_x + mark_x * cellpx, cy = mm_y + mark_y * cellpx;
+    if (mark_x >= wx0 && mark_x < wx0 + ww && mark_y >= wy0 && mark_y < wy0 + wh) {
+        int cx = mm_x + (mark_x - wx0) * cellpx, cy = mm_y + (mark_y - wy0) * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
     }
 }

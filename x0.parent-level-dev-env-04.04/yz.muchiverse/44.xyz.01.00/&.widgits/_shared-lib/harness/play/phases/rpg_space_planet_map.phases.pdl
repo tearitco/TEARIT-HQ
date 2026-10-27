@@ -105,3 +105,31 @@ COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | the-crystal-keeps-its-s
 DO | helm | off
 NOFILE | rpg-space-pchq/pieces/veh_1/state.txt | releasing-the-helm-removes-the-asteroid-pieces
 NOFILE | rpg-space-pchq/pieces/veh_4/state.txt | releasing-the-helm-removes-the-skiff-piece
+
+PHASE | p5_pilot | `space pilot <id>` hands the helm's arrows to the other ship: it flies over the planet map (craft.txt wx, wy), stays out of the player's hull while that flies low, and the player's ship stays put (owner 2026-10-27: its own working helm) | pilot, collision, planet map
+DO | space | pilot | skiff_1
+SAY | take the helm first | pilot-needs-the-helm-in-direct-flight
+PUT | state/flag_helm.txt | 1\n
+PUT | state/helm_mode.txt | direct\n
+PUT | state/direct_z.txt | 1\n
+PUT | state/direct.txt | 0 0\n
+DO | space | pilot | skiff_1
+SAY | you fly Wren (skiff) | the-skiff-is-piloted
+FILEIS | state/pilot.txt | skiff_1\n | the-pilot-is-remembered
+DO | helm | move | 0 | 1
+FILEIS | state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-5\n| the-arrow-moved-the-skiff-south-one-cell
+FILEIS | state/direct.txt | 0 0\n | and-the-players-ship-did-not-move
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-7.50 | the-skiff-piece-followed-at-once
+DO | helm | move | 0 | 1
+DO | helm | move | 0 | 1
+DO | helm | move | 0 | 1
+FILEIS | state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-2\n| four-cells-south-the-skiffs-box-ends-one-cell-from-the-hull
+DO | helm | move | 0 | 1
+SAY | your ship's hull is in the way | the-skiff-cannot-fly-through-the-low-hull
+FILEIS | state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-2\n| and-it-stayed
+DO | space | pilot | off
+PUT | state/direct_z.txt | 8\n
+DO | helm | move | 1 | 0
+FILEIS | state/direct.txt | 1 0\n | after-pilot-off-the-arrows-fly-the-players-ship-again
+DO | helm | off
+NOFILE | state/pilot.txt | releasing-the-helm-clears-the-pilot

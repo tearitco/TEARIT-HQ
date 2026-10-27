@@ -37,3 +37,7 @@ TUNE | obj_z           | 1     | height of the underside of the voxel pieces ove
 TUNE | bar_radius      | 48    | the bottom bar lists every ship and asteroid of the planet map within this many cells of the ship (Chebyshev, from the hull centre); 16 = the whole 48 x 48 land   | 48
 TUNE | skiff_vpc       | 4     | voxels per cell edge of the other ship (4 = each of its tile cubes is 4 x 4 x 4 voxels showing the whole tile; the ship's own cube size)                      | 4
 TUNE | skiff_wall      | 3     | how many cubes high the other ship's walls stand on its floor cube (the layout is SK_SKIFF in rpg_space.c, 6 x 6 cells)                                         | 3
+TUNE | minimap_margin  | 16    | cells shown around the 16 x 16 desk on the engine minimap (16 = the whole 48 x 48 land, so the camera, ships and asteroids outside the desk are on it; 0 = desk only)    | 16
+TUNE | minimap_follow  | 0     | 1 = the minimap shows only a minimap_view-cell window that follows the camera (clamped to the land), for a small minimap on a big map; 0 = the whole area at once    | 0
+TUNE | minimap_view    | 24    | cells across the following minimap window                                                                                                                              | 24
+TUNE | minimap_max_px  | 240   | the minimap's size in pixels, its largest side (the engine scales it down on a small window)                                                                           | 240

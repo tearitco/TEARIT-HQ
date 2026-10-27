@@ -71,6 +71,8 @@ static int sk_node_idx(const char *item) {      /* frame index of a resource nod
 static char sk_rem_rows[16][1100];      /* per room: the remnant rows appended to that room's events.txt (section 43), "x y r g b rem 0 2 0 *" = a coloured box in the cell (the same path the pets are drawn by) */
 static int sk_remnants_tick(void); static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
+static int sk_pilot_move(int dx, int dy, char *msg, size_t cap);      /* 1 = the helm is flying another ship (state/pilot.txt) and handled the arrow */
+static void sk_pilot_clear(void);
 static void sk_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_env_tick(void); static void sk_env_verb(int argc, char **argv, char *msg, size_t cap); static void sk_env_breach(const char *room, int on); static void sk_env_ui(char *out, size_t cap); static int sk_life_tick(void); static void sk_life_ui(char *out, size_t cap);      /* life, death, respawn, drops (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
@@ -649,12 +651,12 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(a, "yes")) { set_flag("ask", "0"); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; } if (!run_event_x("helm", "action", "")) { char *pv[2] = { "helm", "on" }; sk_helm_verb(2, pv, msg, cap); } else snprintf(msg, cap, "at the helm: the arrows steer the ship. Esc lets go"); return; }
     if (!strcmp(a, "on")) { char w[80]; sk_area_cells(w, sizeof w); if (flag_on("helm", 0)) { snprintf(msg, cap, "already at the helm"); return; }
         if (sk_helm_direct()) {      /* direct: the ship does not change; the planet becomes land pieces under it */
-            sk_direct_load(); set_flag("helm", "1"); sk_ship_refresh(msg, cap); sk_land_write(1); sk_helm_settle = now_ms() + 2500;
+            sk_pilot_clear(); sk_direct_load(); set_flag("helm", "1"); sk_ship_refresh(msg, cap); sk_land_write(1); sk_helm_settle = now_ms() + 2500;
             char b[160]; snprintf(b, sizeof b, "HELM|%ld|on-direct|%d,%d", (long)time(NULL), sk_dox, sk_doy); append_line("events.txt", b); snprintf(msg, cap, "direct flight: the land is nine pieces under the ship; the arrows move them. Esc lets go"); return; }
         { int ci = ctl_idx(); Ent *e = ci < 0 ? &tr : &others[ci]; char b[80]; snprintf(b, sizeof b, "%d %d %d\n", e->room, e->x, e->y); char hp[PATH_MAX]; spath(hp, "helm_from.txt"); write_if_changed(hp, b, strlen(b)); }      /* where to put the pilot back */
         int gx, gy; sk_ship_load(&gx, &gy); set_flag("helm", "1"); sk_helm_put(SK_SPACE, 2 + gx * 2, 2 + gy * 2); sk_space_refresh(msg, cap);
         char b[160]; snprintf(b, sizeof b, "HELM|%ld|on|%s", (long)time(NULL), w); append_line("events.txt", b); snprintf(msg, cap, "at the helm: the arrows steer the ship over the space map (area: %s). Esc lets go", w); return; }
-    if (!strcmp(a, "off")) { if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; } set_flag("helm", "0");
+    if (!strcmp(a, "off")) { if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; } sk_pilot_clear(); set_flag("helm", "0");
         if (sk_helm_direct()) { sk_land_remove(); sk_rebuild(msg, cap);      /* full rebuild: the planet goes back into the bridge desk's book (a plain refresh left the stale flat copy and no planet) */
             char b[80]; snprintf(b, sizeof b, "HELM|%ld|off-direct", (long)time(NULL)); append_line("events.txt", b); snprintf(msg, cap, "the helm is released: the ship holds over %s", sk_pl_cur < 0 ? "deep space" : sk_pl[sk_pl_cur].label); return; }
         { char hp[PATH_MAX], b[80] = ""; int r = 0, x = 7, y = 4; spath(hp, "helm_from.txt"); read_file(hp, b, sizeof b); sscanf(b, "%d %d %d", &r, &x, &y); sk_helm_put(r, x, y); }
@@ -670,6 +672,7 @@ static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(a, "move") && argc >= 4) {
         if (!flag_on("helm", 0)) { snprintf(msg, cap, "not at the helm"); return; }
         if (sk_helm_direct()) {      /* direct: the arrows move the land pieces under the ship (state/direct.txt + pieces/land_*); no rebuild, no reload */
+            if (sk_pilot_move(atoi(argv[2]), atoi(argv[3]), msg, cap)) return;      /* `space pilot <id>`: the arrows fly that ship over the planet map, this ship stays */
             sk_direct_load(); int nx = sk_dox + atoi(argv[2]), ny = sk_doy + atoi(argv[3]); int mx = tune("direct_max", 16); if (mx > 16) mx = 16;
             if (nx < -mx || nx > mx || ny < -mx || ny > mx) { snprintf(msg, cap, "the edge of the map: the ship stops (%d,%d)", sk_dox, sk_doy); return; }      /* step 1 of canPass: the map limit */
             if (sk_world_block(nx, ny, sk_doz_get(), msg, cap)) return;      /* an asteroid or another ship of the planet map under the hull */
@@ -1022,9 +1025,23 @@ static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev dist
 static int sk_rect_gap(int x0, int y0, int x1, int y1, int ox, int oy) {
     int hx0 = ox + SOX, hy0 = oy + SOY, hx1 = hx0 + SSZ - 1, hy1 = hy0 + SSZ - 1;
     int ex = x1 < hx0 ? hx0 - x1 : x0 > hx1 ? x0 - hx1 : 0, ey = y1 < hy0 ? hy0 - y1 : y0 > hy1 ? y0 - hy1 : 0; return ex > ey ? ex : ey; }
-static int sk_node_gap(int i, int ox, int oy) { SkVox v[48]; int dim[3]; sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); int sx = (int)ceil(dim[0] * tune("obj_vox_pct", 100) / 100.0), sy = (int)ceil(dim[2] * tune("obj_vox_pct", 100) / 100.0); if (sx < 1) sx = 1; if (sy < 1) sy = 1;
-    int x0 = sk_nodes[i].x - (sx - 1) / 2, y0 = sk_nodes[i].y - (sy - 1) / 2; return sk_rect_gap(x0, y0, x0 + sx - 1, y0 + sy - 1, ox, oy); }
+static void sk_node_rect(int i, int *x0, int *y0, int *x1, int *y1) {      /* the world cells an asteroid really covers (its nugget's x / z size, centred on the node) */
+    SkVox v[48]; int dim[3]; sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); int sx = (int)ceil(dim[0] * tune("obj_vox_pct", 100) / 100.0), sy = (int)ceil(dim[2] * tune("obj_vox_pct", 100) / 100.0); if (sx < 1) sx = 1; if (sy < 1) sy = 1;
+    *x0 = sk_nodes[i].x - (sx - 1) / 2; *y0 = sk_nodes[i].y - (sy - 1) / 2; *x1 = *x0 + sx - 1; *y1 = *y0 + sy - 1; }
+static int sk_node_gap(int i, int ox, int oy) { int x0, y0, x1, y1; sk_node_rect(i, &x0, &y0, &x1, &y1); return sk_rect_gap(x0, y0, x1, y1, ox, oy); }
 static int sk_craft_gap(int i, int ox, int oy) { int s = SK_SKIFF_N; int x0 = sk_craft[i].wx - (s - 1) / 2, y0 = sk_craft[i].wy - (s - 1) / 2; return sk_rect_gap(x0, y0, x0 + s - 1, y0 + s - 1, ox, oy); }
+/* PILOTING THE OTHER SHIP (owner 2026-10-27: the other ship should have its own working helm). `space pilot <id>` (at the helm in direct flight) hands the helm's arrows to that craft: they move its cell on the planet map (craft.txt wx, wy) instead of sliding the land under the player's ship, which stays. state/pilot.txt holds the craft id; taking or leaving the helm clears it. The craft's 6 x 6 box must stay inside the land (-16..31), may not overlap an asteroid, and may not pass through the player's hull unless the hull flies above obj_top. The voxel piece follows at once (sk_veh_write). First slice: no interior or boarding yet, the console is the verb. */
+static void sk_pilot_clear(void) { char p[PATH_MAX]; spath(p, "pilot.txt"); unlink(p); }
+static int sk_pilot_idx(void) { char p[PATH_MAX], b[40] = ""; spath(p, "pilot.txt"); read_file(p, b, sizeof b); b[strcspn(b, "\r\n")] = 0; if (!b[0]) return -1; sk_craft_load(); for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, b)) return i; return -2; }      /* -1 not piloting, -2 piloting a ship that is gone */
+static int sk_pilot_move(int dx, int dy, char *msg, size_t cap) {
+    int ci = sk_pilot_idx(); if (ci == -1) return 0; if (ci < 0 || sk_craft[ci].wx < 0) { snprintf(msg, cap, "the piloted ship is not on the planet map: `space pilot off`"); return 1; }
+    sk_nodes_load(); sk_direct_load(); int h = (SK_SKIFF_N - 1) / 2, ox = sk_craft[ci].wx, oy = sk_craft[ci].wy, nx = ox + dx, ny = oy + dy;
+    if (nx - h < -16 || nx - h + SK_SKIFF_N - 1 > 31 || ny - h < -16 || ny - h + SK_SKIFF_N - 1 > 31) { snprintf(msg, cap, "%s: the edge of the map, it stops at %d,%d", sk_craft[ci].label, ox, oy); return 1; }
+    int sx0 = nx - h, sy0 = ny - h, sx1 = sx0 + SK_SKIFF_N - 1, sy1 = sy0 + SK_SKIFF_N - 1;
+    for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) { int x0, y0, x1, y1; sk_node_rect(i, &x0, &y0, &x1, &y1); if (sx0 <= x1 && sx1 >= x0 && sy0 <= y1 && sy1 >= y0) { snprintf(msg, cap, "%s: an asteroid is in the way at %d,%d", sk_craft[ci].label, sk_nodes[i].x, sk_nodes[i].y); return 1; } }
+    if (sk_doz_get() <= tune("obj_top", 6) && sk_rect_gap(sx0, sy0, sx1, sy1, sk_dox, sk_doy) == 0) { snprintf(msg, cap, "%s: your ship's hull is in the way (lift above it)", sk_craft[ci].label); return 1; }
+    sk_craft[ci].wx = nx; sk_craft[ci].wy = ny; sk_craft_save(); { char rb[140]; snprintf(rb, sizeof rb, "PILOT|%ld|%s|%d,%d|%d,%d", (long)time(NULL), sk_craft[ci].id, ox, oy, nx, ny); append_line("events.txt", rb); }
+    sk_veh_write(); snprintf(msg, cap, "%s at %d,%d", sk_craft[ci].label, nx, ny); return 1; }
 static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the hull would sit on an asteroid or another ship that is taller than the ship flies */
     if (!sk_world_here() || nz > tune("obj_top", 6)) return 0; sk_craft_load(); sk_nodes_load();
     for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP && sk_node_gap(i, nx, ny) == 0) { snprintf(msg, cap, "an asteroid is in the way at %d,%d: lift above it, or mine it with m from beside it", sk_nodes[i].x, sk_nodes[i].y); return 1; }
@@ -1037,7 +1054,13 @@ static void sk_space_verb(int argc, char **argv, char *msg, size_t cap) {      /
         for (int i = 0; i < sk_ncraft; i++) { char t[200]; snprintf(t, sizeof t, "%s '%s' @%d,%d crew %s cargo %s; ", sk_craft[i].id, sk_craft[i].label, sk_craft[i].gx, sk_craft[i].gy, sk_craft[i].crew, sk_craft[i].cargo); strncat(b, t, sizeof b - strlen(b) - 1); } snprintf(msg, cap, "space: %d asteroids, %d ships: %s", rocks, sk_ncraft, b); return; }
     if (!strcmp(a, "hail") && argc >= 3) { for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { char who[40] = "", cp[120]; snprintf(cp, sizeof cp, "%s", sk_craft[i].crew); char *c0 = strtok(cp, ":,"); if (c0) snprintf(who, sizeof who, "%s", c0); char rb[160]; snprintf(rb, sizeof rb, "HAIL|%ld|%s|%s", (long)time(NULL), sk_craft[i].id, who); append_line("events.txt", rb); snprintf(msg, cap, "%s answers from the %s: \"%s here. Crew %s. Cargo %s.\"", who[0] ? who : "someone", sk_craft[i].label, who[0] ? who : "we", sk_craft[i].crew, sk_craft[i].cargo); return; } snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
     if (!strcmp(a, "move") && argc >= 5) { for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { int gx = atoi(argv[3]), gy = atoi(argv[4]); if (gx < 0 || gy < 0 || gx >= SK_GRID || gy >= SK_GRID) { snprintf(msg, cap, "space: off the chart"); return; } sk_craft[i].gx = gx; sk_craft[i].gy = gy; sk_craft_save(); sk_space_refresh(msg, cap); snprintf(msg, cap, "%s moved to %d,%d", sk_craft[i].id, gx, gy); return; } snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
-    snprintf(msg, cap, "usage: space status | hail <id> | move <id> <gx> <gy>"); }
+    if (!strcmp(a, "pilot")) {
+        if (argc >= 3 && !strcmp(argv[2], "off")) { sk_pilot_clear(); snprintf(msg, cap, "the helm flies your ship again"); return; }
+        if (argc < 3) { int pi = sk_pilot_idx(); snprintf(msg, cap, pi >= 0 ? "piloting %s" : "not piloting another ship (space pilot <id>)", pi >= 0 ? sk_craft[pi].id : ""); return; }
+        if (!flag_on("helm", 0) || !sk_helm_direct()) { snprintf(msg, cap, "take the helm first (Direct): its arrows then fly the other ship"); return; }
+        for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { if (sk_craft[i].wx < 0) { snprintf(msg, cap, "%s is not on the planet map", sk_craft[i].id); return; } char p[PATH_MAX], b[40]; spath(p, "pilot.txt"); snprintf(b, sizeof b, "%s\n", sk_craft[i].id); write_if_changed(p, b, strlen(b)); snprintf(msg, cap, "you fly %s: the arrows move it, Esc lets go (space pilot off: your own ship again)", sk_craft[i].label); return; }
+        snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
+    snprintf(msg, cap, "usage: space status | hail <id> | move <id> <gx> <gy> | pilot <id>|off"); }
 static void sk_destroy_effect(const char *kind, int room, int x, int y, const char *src, char *msg, size_t cap) {      /* what events/destroyed calls: the BLOCK row becomes remnants where it stood */
     sk_wd_cfg(); SkBlk *b = sk_blk_find(kind); char rb[160]; int made = 0, dm = 0;
     if (b && b->cnt > 0) { sk_drops_load(); if (sk_ndrops < 64) { SkDrop *q = &sk_drops[sk_ndrops++]; q->id = sk_dropid++; q->room = room; q->x = x; q->y = y; q->n = b->cnt; snprintf(q->item, sizeof q->item, "%s", b->drop); q->owner[0] = 0; srand((unsigned)(now_ms() ^ ((long)getpid() << 7))); dm = (rand() % 100) < b->dpct;      /* every verb is a fresh process: seed or the first rand() is always the same */ q->dmg = dm; snprintf(q->src, sizeof q->src, "%s", kind); made = q->n; sk_drops_save(); } }
@@ -1103,7 +1126,18 @@ static void sk_remnant_nudge(void) {      /* wake the idle board engine so it re
     const char *cand[3] = {"@.apps/" PET_APP "/board/state/ui.txt", "@.apps/piececraft-hq/state/ui.txt", "@.apps/layout-studio/sandbox/state/ui.txt"}; char cp[3][PATH_MAX]; const char *cpp[3];
     for (int k = 0; k < 3; k++) { snprintf(cp[k], sizeof cp[k], "%s/%s", HOUSE, cand[k]); cpp[k] = cp[k]; } pet_nudge(cpp, 3); }
 static void write_room_events(int r);
+/* THE MINIMAP FOLLOWS THE BIG MAP (owner 2026-10-27: 'minimap isn't moving view finder to accommodate bigger map ... ability to do both'). The engine reads minimap_margin / minimap_follow / minimap_view / minimap_max_px from the board's pieces/system/hud.pdl, which is a runtime copy of the pc-hq template, so this skin writes them from tuning.pdl (every 2 s, only when a value changed): margin 16 = the whole 48 x 48 land around the 16 x 16 desk, follow 1 = a minimap_view-cell window that tracks the camera, max_px = how big the minimap is. */
+static void sk_hud_sync(void) {
+    static long last; long t = now_ms(); if (t - last < 2000) return; last = t;
+    static const char *K[4] = { "minimap_margin", "minimap_follow", "minimap_view", "minimap_max_px" }; int val[4] = { tune("minimap_margin", 16), tune("minimap_follow", 0), tune("minimap_view", 24), tune("minimap_max_px", 240) };
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/system/hud.pdl", PCHQ); static char in[8192], out[9000]; read_file(p, in, sizeof in); if (!in[0]) return; out[0] = 0; int seen[4] = { 0, 0, 0, 0 }; char *sv = NULL;
+    for (char *l = strtok_r(in, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { int hit = -1; for (int k = 0; k < 4; k++) { char key[40]; snprintf(key, sizeof key, "| %s ", K[k]); if (l[0] != '#' && strstr(l, key)) hit = k; }
+        if (hit >= 0 && !seen[hit]) { seen[hit] = 1; char nl[120]; snprintf(nl, sizeof nl, "KEY          | %-20s | %-5d # rpg-space tuning.pdl (sk_hud_sync)", K[hit], val[hit]); strncat(out, nl, sizeof out - strlen(out) - 2); }
+        else if (hit >= 0) continue; else strncat(out, l, sizeof out - strlen(out) - 2); strcat(out, "\n"); }
+    for (int k = 0; k < 4; k++) if (!seen[k]) { char nl[120]; snprintf(nl, sizeof nl, "KEY          | %-20s | %-5d # rpg-space tuning.pdl (sk_hud_sync)\n", K[k], val[k]); strncat(out, nl, sizeof out - strlen(out) - 1); }
+    write_if_changed(p, out, strlen(out)); }
 static int sk_remnants_tick(void) {
+    sk_hud_sync();
     { static unsigned bsig; sk_nodes_load(); sk_craft_load(); unsigned g = 2166136261u;      /* the bottom bar lists the objects near the ship: rewrite it only when something it shows changed (the ship's shift, the planet, an asteroid's cell or loads, a craft's cell, the radius) */
       int v[6] = { sk_dox, sk_doy, sk_pl_cur, tune("bar_radius", 16), sk_nnodes, sk_ncraft }; for (int i = 0; i < 6; i++) g = (g ^ (unsigned)v[i]) * 16777619u;
       for (int i = 0; i < sk_nnodes; i++) { int w[4] = { sk_nodes[i].room, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].amount }; for (int k = 0; k < 4; k++) g = (g ^ (unsigned)w[k]) * 16777619u; }
