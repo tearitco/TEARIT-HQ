@@ -180,6 +180,7 @@ Fix before an AI reads them: reset the rpg-* entries; add a **dev mode** (an env
 10. The comparison table (RPG Maker, Unreal, Minecraft, CDDA, Dwarf Fortress, GTA, Pokemon, Palworld) with evidence, plus rows for onboarding, accessibility, moddability, creator tooling, and measured footprint.
 
 ## 15. Open questions for the owner (not blocking the spine)
+**Answered 2026-10-27:** (2) game-making IS the direction: whole games on the engine, swappable parts, demos, modify from insights, shipped through a Steam-like Store window; (3) shared dev folder for all users now, outside users only via the Store after screening. Design: `GAMES-AS-PACKAGES-AND-STORE-DESIGN.md` (same folder). That makes section 10 items 1, 3, 5, 9 and section 11 (common skin) urgent, not optional.
 1. **"3D associated synonyms"** (HARNESS-BEHAVIOR-BANK-DESIGN 4b/5): undefined since 2026-10-07. Three coordinates per word, or three association axes (words / concepts / corpus)? Do not bake either in.
 2. The value of `K` and who may promote a **template** (species) bank from convergent deltas.
 3. `auto` / `auto-studio` (AUTO-AND-AUTO-STUDIO-DESIGN section 9): do pets get `auto` switches, and may the studio act while a human is at the machine?
