@@ -18,13 +18,13 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 1. **`game.pdl` + `game_check`** on rpg-space and rpg-dust (owner's chosen first build). Then the **common-skin extraction** so parts are swappable and dust can diverge.
 2. **Pal harness for `ev_chain` and `ev_store`** (repeatable, with every negative from section 17), and one **events-hq-generated page** played end to end.
 3. ~~Reset the polluted scratch-bank entries + a dev-mode~~ DONE 2026-10-27 as **bank lanes** (dev lane default, entries moved not deleted; a learner for the dev lane is still design).
-4. ~~Decision ledger in rpg-space~~ DONE 2026-10-27 (pets write rows, pick chance reads the weight; shared code is now the op `dec_op`). Next: the `why`/`score` column, then **move `petslike_life.c` to an op** (hot path = row, op digests).
+4. ~~Decision ledger in rpg-space~~ DONE 2026-10-27 (pets write rows, pick chance reads the weight; shared code is now the op `dec_op`). Next: the `why`/`score` column, then **move `petslike_life.c` to an op** in five slices (assessment and plan: design doc section 18; first slice `life_op tick` on a slow cadence).
 5. **`policy.pdl` reader** with range checks and owner-signed changes (court, store and chain read it at call time); per-game spend caps for `ev_chain`.
 6. **Move `store-hq` and `court-hq` onto the same ops** the events use (one path for window and games). Measure both windows' footprint with a browser open.
 7. Housekeeping: owner review of the cpu_guard alert; taskbar-owner review of the `store` cell C change and the Network menu row; push-ready commits only.
 
 ## 2. Medium term (weeks): the money and trust layer, and the first creator loop
-1. **Signed transactions** on the test chain (prerequisite for disputes, REP, social identity). Separate social signing key from the wallet key.
+1. **Signed transactions** (owner confirmed "we will do the crypto sigs"; design in GAMES-AS-PACKAGES-AND-STORE-DESIGN section 19: Ed25519 via OpenSSL, a `sig_op`, verification in issue/mining/replay, `SIGNING required` per chain) on the test chain (prerequisite for disputes, REP, social identity). Separate social signing key from the wallet key.
 2. **Dispute + resolution ledgers, deterministic small-amount rules, 7-day settlement hold**, REP ledger and its two gates (payout wait, posting reach). Negative tests: stolen-key purchase reversed, false dispute refused, thief cannot reverse back.
 3. **`ev_store buy`** (escrow lock -> payout after the window -> refund on failure) and **install**: quarantine -> screening (integrity, deny-list, contract, scratch gate, budget; agent proposes verdict, owner confirms in batches) -> copy into the player's own folder.
 4. **Pack builder + screener** for games; the shared dev folder `xyzfs/shared/games/` with `access.pdl` and a reader used by the launcher; first residents rpg-space and rpg-dust.
