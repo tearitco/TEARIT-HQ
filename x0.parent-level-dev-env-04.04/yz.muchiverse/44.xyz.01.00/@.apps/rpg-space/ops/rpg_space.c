@@ -17,6 +17,8 @@
 #define PET_ART_FALLBACK "../rpg-edit-hq/art"      /* the pals pictures are the island game's, shared */
 static const char *sk_life_bar_state(int slot);
 #define PET_BAR_HP(slot) sk_life_bar_state(slot)
+static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id);
+#define PET_BAR_EXTRA(r, bb, bo, cap, idp) sk_bar_extra((r), (bb), (bo), (cap), (idp))
 #define PET_ROOM_PHASE(r, ph) do { if ((r) < 4 || (r) == 6) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..3 are the ship: deep space is always night */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
@@ -74,7 +76,7 @@ static long sk_helm_settle = 0;      /* until this time the xelector is not read
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
-static void sk_world_draw(void); static void sk_veh_write(void); static void sk_veh_clear(void); static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap); static int sk_world_reach_idx(void);
+static void sk_world_draw(void); static void sk_veh_write(void); static void sk_veh_clear(void); static void sk_bar_refresh(void); static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap); static int sk_world_reach_idx(void);
 static int sk_space_block(int gx, int gy, char *msg, size_t cap); static void sk_space_draw(int g); static void sk_space_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static int sk_node_solid(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
@@ -972,12 +974,28 @@ static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const in
     snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=bridge\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
     snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); }
 static void sk_veh_clear(void) { char p[PATH_MAX]; for (int k = 1; k <= 9; k++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, k); unlink(p); } }
+static void sk_bar_refresh(void) { for (int r = 0; r < SK_SHIP; r++) write_room_events(r); }      /* bar.txt is only rewritten with its room's scene rows: ask for it when the ship moved or the objects changed */
 static void sk_veh_write(void) {
+    sk_bar_refresh();
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
     for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim); }
     for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int n = sk_skiff_model(v, SK_VEH_MAXV, dim); if (n > 0) sk_retile(v, n, dim, 8, 11, 6, 2, NULL); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim); }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
+/* THE BOTTOM BAR LISTS THE SHIPS AND ASTEROIDS NEAR THE SHIP (owner 2026-10-27: 'all ships/asteroids within a radius ... should show up on bottom tb', radius from a .pdl figure: tuning.pdl bar_radius, default 16 = one planet page). Rows of the planet map (asteroids that still have loads, crafts with a world cell), nearest first, distance = Chebyshev cells from the centre of the hull; a click row moves the cursor to the object's desk cell. Ship rooms only. */
+static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id) {
+    if (r < 0 || r >= SK_SHIP || !sk_world_here()) return bo;
+    sk_direct_load(); sk_craft_load(); sk_nodes_load();
+    int rad = tune("bar_radius", 16), cx = sk_dox + SOX + SSZ / 2, cy = sk_doy + SOY + SSZ / 2, n = 0;
+    struct { char lab[48]; int wx, wy, d; } o[40];
+    for (int i = 0; i < sk_nnodes && n < 40; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int dx = abs(sk_nodes[i].x - cx), dy = abs(sk_nodes[i].y - cy), d = dx > dy ? dx : dy; if (d > rad) continue;
+        if (sk_nodes[i].amount > 0) snprintf(o[n].lab, sizeof o[n].lab, "%s x%d d%d", sk_nodes[i].kind, sk_nodes[i].amount, d); else snprintf(o[n].lab, sizeof o[n].lab, "%s d%d", sk_nodes[i].kind, d);
+        o[n].wx = sk_nodes[i].x; o[n].wy = sk_nodes[i].y; o[n].d = d; n++; }
+    for (int i = 0; i < sk_ncraft && n < 40; i++) if (sk_craft[i].wx >= 0) { int dx = abs(sk_craft[i].wx - cx), dy = abs(sk_craft[i].wy - cy), d = dx > dy ? dx : dy; if (d > rad) continue;
+        snprintf(o[n].lab, sizeof o[n].lab, "%.30s d%d", sk_craft[i].label, d); o[n].wx = sk_craft[i].wx; o[n].wy = sk_craft[i].wy; o[n].d = d; n++; }
+    for (int a = 1; a < n; a++) { typeof(o[0]) t = o[a]; int b = a - 1; while (b >= 0 && o[b].d > t.d) { o[b + 1] = o[b]; b--; } o[b + 1] = t; }      /* nearest first */
+    for (int i = 0; i < n && cap - bo > 90; i++) { int x = o[i].wx - sk_dox, y = o[i].wy - sk_doy; x = x < 0 ? 0 : x >= SK_W ? SK_W - 1 : x; y = y < 0 ? 0 : y >= SK_H ? SK_H - 1 : y; bo += snprintf(bb + bo, (size_t)(cap - bo), "%d\t%s\t%d\t%d\ton-click\t\n", (*id)++, o[i].lab, x, y); }
+    return bo; }
 static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev distance from the desk cell of a world cell to the hull rectangle (0 = under the hull, 99 = off the desk) */
     int dx = wx - ox, dy = wy - oy; if (dx < 0 || dy < 0 || dx >= SK_W || dy >= SK_H) return 99; int ex = dx < SOX ? SOX - dx : dx >= SOX + SSZ ? dx - (SOX + SSZ - 1) : 0, ey = dy < SOY ? SOY - dy : dy >= SOY + SSZ ? dy - (SOY + SSZ - 1) : 0; return ex > ey ? ex : ey; }
 static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the hull would sit on an asteroid or another ship that is taller than the ship flies */
@@ -1059,6 +1077,11 @@ static void sk_remnant_nudge(void) {      /* wake the idle board engine so it re
     for (int k = 0; k < 3; k++) { snprintf(cp[k], sizeof cp[k], "%s/%s", HOUSE, cand[k]); cpp[k] = cp[k]; } pet_nudge(cpp, 3); }
 static void write_room_events(int r);
 static int sk_remnants_tick(void) {
+    { static unsigned bsig; sk_nodes_load(); sk_craft_load(); unsigned g = 2166136261u;      /* the bottom bar lists the objects near the ship: rewrite it only when something it shows changed (the ship's shift, the planet, an asteroid's cell or loads, a craft's cell, the radius) */
+      int v[6] = { sk_dox, sk_doy, sk_pl_cur, tune("bar_radius", 16), sk_nnodes, sk_ncraft }; for (int i = 0; i < 6; i++) g = (g ^ (unsigned)v[i]) * 16777619u;
+      for (int i = 0; i < sk_nnodes; i++) { int w[4] = { sk_nodes[i].room, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].amount }; for (int k = 0; k < 4; k++) g = (g ^ (unsigned)w[k]) * 16777619u; }
+      for (int i = 0; i < sk_ncraft; i++) { g = (g ^ (unsigned)sk_craft[i].wx) * 16777619u; g = (g ^ (unsigned)sk_craft[i].wy) * 16777619u; }
+      if (g != bsig) { bsig = g; sk_bar_refresh(); } }
     sk_wd_cfg(); static long last_at; long now = now_ms(); if (now - last_at < 90) return 0; last_at = now; sk_drops_load(); int changed = 0;
     for (int i = 0; i < sk_ndrops; i++) {      /* who is close enough to pick it up */
         SkDrop *d = &sk_drops[i]; int a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k; if (a >= 0) continue;

@@ -103,6 +103,9 @@ static int g_gr;
 #ifndef PET_BAR_HP
 #define PET_BAR_HP(slot) ""      /* a skin may add the 6th field of bar.txt: ok | low | ko (the health bar under the name in the bottom bar) */
 #endif
+#ifndef PET_BAR_EXTRA
+#define PET_BAR_EXTRA(r, bb, bo, cap, idp) (bo)      /* a skin may append rows to bar.txt (id<TAB>name<TAB>x<TAB>y<TAB>trigger<TAB>hp): it gets the room, the buffer, its used length and size and the next id, and returns the new length (rpg-space lists the ships and asteroids near the ship) */
+#endif
 typedef struct { char key[32], label[40], sheet[24], effect[12]; int price, c, r, w, h, wall; } Item;
 typedef struct { char id[16], name[32], biome[16]; int fc, fr, outdoor, over, cols, rows, tpx, trig; } Room;
 typedef struct { int room, c, r, w, h, x, y; char sheet[24]; } Scen;
@@ -854,6 +857,7 @@ static void write_room_events(int r) {
     /* bar.txt: the bottom entities bar of the pc-hq board lists these (id<TAB>name<TAB>x<TAB>y<TAB>trigger), Harold first */
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\t%s\n", id++, hero.name, tr.x, tr.y, PET_BAR_HP(0));
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\t%s\n", id++, party[i].name, others[i].x, others[i].y, PET_BAR_HP(i + 1));
+    bo = PET_BAR_EXTRA(r, bb, bo, (int)sizeof bb, &id);
     snprintf(p, sizeof p, "%s/bar.txt", d); write_if_changed(p, bb, bo);
 }
 /* ---------- the pc-hq 3D view follows the SELECTED entity ----------
