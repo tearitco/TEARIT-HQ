@@ -251,6 +251,25 @@ static void handle_signal(int signo) {
     g_should_exit = 1;
 }
 
+/* The live board-viewer session folder of THIS host (the one the 3D map window runs in): ledger_peers.+x widget lists them as session|...|...|board-viewer:<host id>. "" when no board is open. (popen of a helper: callers cache the answer.) */
+static void find_bv_session(const char *project_root, char *out, size_t cap) {
+    out[0] = '\0'; char house_root[PATH_BUF] = "";
+    loc_house_root(project_root, house_root, sizeof(house_root));
+    if (!house_root[0]) return;
+    char peer_cmd[PATH_BUF * 2];
+    snprintf(peer_cmd, sizeof(peer_cmd), "PRISC_PROJECT_ROOT='%s' '%s/&.widgits/board-viewer/ops/+x/ledger_peers.+x' widget 2>/dev/null", project_root, house_root);
+    FILE *pf = popen(peer_cmd, "r"); if (!pf) return;
+    char peer_line[MAX_LINE];
+    while (fgets(peer_line, sizeof(peer_line), pf)) {
+        peer_line[strcspn(peer_line, "\r\n")] = '\0';
+        char *save = NULL; char *sess_tok = strtok_r(peer_line, "|", &save);
+        strtok_r(NULL, "|", &save); strtok_r(NULL, "|", &save);
+        char *proj_tok = strtok_r(NULL, "|", &save);
+        char want_id[160]; { const char *hid = getenv("PCHQ_HOST_ID"); snprintf(want_id, sizeof(want_id), "board-viewer:%s", (hid && hid[0]) ? hid : "piececraft-hq"); }
+        if (proj_tok && sess_tok && strcmp(proj_tok, want_id) == 0) { snprintf(out, cap, "%s", sess_tok); break; }
+    }
+    pclose(pf);
+}
 int main(void) {
     resolve_root();
     signal(SIGTERM, handle_signal);
@@ -291,8 +310,13 @@ int main(void) {
          * still show sun/moon at their real, correct current spot). */
         {
             long long cur_epoch = read_kv_ll(world_state_path, "game_time_epoch_sec", 0);
-            update_celestial_body(real_root, "sun_01", cur_epoch, 86400.0, 0.0);
-            update_celestial_body(real_root, "moon_01", cur_epoch, 86400.0, M_PI_LOCAL);
+            /* Each update_celestial_body() is about six locked whole-file rewrites, and this loop used to do two of them every 0.3 s even with the clock PAUSED. The sun moves 0.25 degrees per 60 game-seconds, so only a step of 60 or more (or a jump backwards, or a missing piece) is worth the writes. */
+            static long long last_cel_epoch = -1; char sun_chk[PATH_BUF + 64]; snprintf(sun_chk, sizeof(sun_chk), "%s/pieces/moon_01/state.txt", real_root);
+            if (last_cel_epoch < 0 || cur_epoch < last_cel_epoch || cur_epoch - last_cel_epoch >= 60 || access(sun_chk, F_OK) != 0) {
+                last_cel_epoch = cur_epoch;
+                update_celestial_body(real_root, "sun_01", cur_epoch, 86400.0, 0.0);
+                update_celestial_body(real_root, "moon_01", cur_epoch, 86400.0, M_PI_LOCAL);
+            }
         }
 
         int autotick_enabled = read_kv_int(world_state_path, "autotick_enabled", 0);
@@ -365,76 +389,28 @@ int main(void) {
                  * state, not part of the persistent world. */
                 char screen_marker_path[PATH_BUF];
                 snprintf(screen_marker_path, sizeof(screen_marker_path), "%s/pieces/display/pc_screen_changed.txt", project_root);
-                /* THROTTLED to once per real second (owner 2026-10-26: "check game cpu and runaway procs"): this daemon runs every 0.3 s and used to bump the marker on EVERY pass, so each pass re-composed the whole pc-hq text frame and re-rendered it (the rgb renderer used 40+ percent of a CPU for a clock line). The world clock itself still advances every pass; only the repaint is limited. */
-                static long long last_screen_bump_ms = 0;
-                long long now_bump_ms = (long long)current_time.tv_sec * 1000LL + current_time.tv_nsec / 1000000LL;
-                if (now_bump_ms - last_screen_bump_ms >= 1000) {
-                    last_screen_bump_ms = now_bump_ms;
-                    FILE *smf = fopen(screen_marker_path, "a");
-                    if (smf) { fputc('.', smf); fclose(smf); }
-                }
-
-                /* REAL, NEW 2026-08-04, direct user request ("live
-                 * auto-refresh... both screens" - the 3D/2D map window
-                 * is a genuinely SEPARATE process/session from
-                 * piececraft-hq's own text screen, with its own real
-                 * refresh marker (bv_screen_changed.txt) - bumping THIS
-                 * project's own marker above does nothing for it. Same
-                 * real live-widget lookup pc_menu_input.c's own
-                 * OPEN_BOARD_WIDGET handler already uses (house_root.txt
-                 * + ledger_peers.+x, scanning for THIS host's own real
-                 * "board-viewer:piececraft-hq" scoped entry) - a real,
-                 * honest no-op if no board-viewer window is currently
-                 * open (nothing to refresh). */
-                /* REAL FIX 2026-08-04, direct user report ("something
-                 * was throttling my cpu after leaving it running...
-                 * doesn't even happen in the python version"): this
-                 * whole block spawns a REAL subprocess (fork+exec,
-                 * ledger_peers.+x) - fine occasionally, genuinely
-                 * expensive done every real loop iteration forever (at
-                 * fast speeds like cent/sec, that's ~3x/real-second,
-                 * CONTINUOUSLY, for as long as autotick stays on - real,
-                 * sustained CPU churn from constant process spawning,
-                 * not a one-time cost). The map window doesn't need
-                 * sub-second refresh precision anyway - real, simple
-                 * rate limit: at most once per real second, tracked via
-                 * a real static timestamp that survives across loop
-                 * iterations. */
-                static long long last_peer_lookup_ms = 0;
+                /* ONE refresh pass per real second (owner 2026-10-26: "check game cpu and runaway procs", then "optimize autotick w/o causing problems"). This daemon runs every 0.3 s, but a repaint of the pc-hq frame and of the board costs far more than the clock step: it used to bump the screen marker on EVERY pass and to popen() ledger_peers.+x once a second. Now: the board-viewer session is looked up once and CACHED (re-checked when its folder is gone or every 30 s; a miss is retried after 5 s), and nothing is repainted while the window is minimized (pieces/display/window_minimized.txt in that session, the flag pchq_board_projector keeps); the first pass after it is restored repaints at once. The world clock itself still advances on every pass. */
+                static long long last_refresh_ms = 0, bv_sess_at = 0; static char bv_sess[PATH_BUF];
                 long long now_ms_rl = (long long)current_time.tv_sec * 1000LL + current_time.tv_nsec / 1000000LL;
-                char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
-                if (now_ms_rl - last_peer_lookup_ms >= 1000) {
-                last_peer_lookup_ms = now_ms_rl;
-                (void)house_root_path;
-                loc_house_root(project_root, house_root, sizeof(house_root));   /* shared resolver, no file required */
-                if (house_root[0]) {
-                    char peer_cmd[PATH_BUF * 2];
-                    snprintf(peer_cmd, sizeof(peer_cmd),
-                             "PRISC_PROJECT_ROOT='%s' '%s/&.widgits/board-viewer/ops/+x/ledger_peers.+x' widget 2>/dev/null",
-                             project_root, house_root);
-                    FILE *pf = popen(peer_cmd, "r");
-                    if (pf) {
-                        char peer_line[MAX_LINE];
-                        while (fgets(peer_line, sizeof(peer_line), pf)) {
-                            peer_line[strcspn(peer_line, "\r\n")] = '\0';
-                            char *save = NULL;
-                            char *sess_tok = strtok_r(peer_line, "|", &save);
-                            strtok_r(NULL, "|", &save);
-                            strtok_r(NULL, "|", &save);
-                            char *proj_tok = strtok_r(NULL, "|", &save);
-                            char want_id[160]; { const char *hid = getenv("PCHQ_HOST_ID"); snprintf(want_id, sizeof(want_id), "board-viewer:%s", (hid && hid[0]) ? hid : "piececraft-hq"); }      /* pc-hq sessions: this instance's own engine session */
-                            if (proj_tok && sess_tok && strcmp(proj_tok, want_id) == 0) {
-                                char bv_marker_path[PATH_BUF];
-                                snprintf(bv_marker_path, sizeof(bv_marker_path), "%s/pieces/display/bv_screen_changed.txt", sess_tok);
-                                FILE *bvmf = fopen(bv_marker_path, "a");
-                                if (bvmf) { fputc('.', bvmf); fclose(bvmf); }
-                                break;
-                            }
+                if (now_ms_rl - last_refresh_ms >= 1000) {
+                    last_refresh_ms = now_ms_rl;
+                    char dpath[PATH_BUF + 32]; snprintf(dpath, sizeof(dpath), "%s/pieces/display", bv_sess);
+                    if (!(bv_sess[0] && now_ms_rl - bv_sess_at < 30000 && access(dpath, F_OK) == 0)) {
+                        bv_sess[0] = '\0'; find_bv_session(project_root, bv_sess, sizeof(bv_sess));
+                        bv_sess_at = bv_sess[0] ? now_ms_rl : now_ms_rl - 25000;      /* a miss is retried in 5 s */
+                    }
+                    int minimized = 0;
+                    if (bv_sess[0]) { char mpath[PATH_BUF + 48]; snprintf(mpath, sizeof(mpath), "%s/pieces/display/window_minimized.txt", bv_sess); FILE *mf = fopen(mpath, "r"); if (mf) { if (fscanf(mf, "%d", &minimized) != 1) minimized = 0; fclose(mf); } }
+                    if (!minimized) {
+                        FILE *smf = fopen(screen_marker_path, "a");
+                        if (smf) { fputc('.', smf); fclose(smf); }
+                        if (bv_sess[0]) {
+                            char bv_marker_path[PATH_BUF + 48]; snprintf(bv_marker_path, sizeof(bv_marker_path), "%s/pieces/display/bv_screen_changed.txt", bv_sess);
+                            FILE *bvmf = fopen(bv_marker_path, "a");
+                            if (bvmf) { fputc('.', bvmf); fclose(bvmf); }
                         }
-                        pclose(pf);
                     }
                 }
-                } /* end real 1-real-second rate limit */
             }
         }
 
