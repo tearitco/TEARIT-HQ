@@ -1,0 +1,8 @@
+# area.pdl - the AREA of voxels the helm event affects (the sibling of the RPG Maker "event page": condition + commands, plus WHAT in the world the commands touch). The helm moves the whole hull, so the area is the four ship rooms.
+# AREA | name | mode | room | x0 | y0 | z0 | x1 | y1 | z1      mode 2d = cells of one desk (z ignored), 3d = a box of voxels; z is levels above the floor top.
+# Today the file is READ for the voxel count the helm logs (events.txt HELM row). A selection window in the rpg editor writes these rows later: see 16.game/EVENT-AREA-SELECTION-DESIGN.md.
+AREA | hull | 3d | bridge   | 0 | 0 | 0 | 15 | 15 | 3
+AREA | hull | 3d | quarters | 0 | 0 | 0 | 15 | 15 | 3
+AREA | hull | 3d | hold     | 0 | 0 | 0 | 15 | 15 | 3
+AREA | hull | 3d | engine   | 0 | 0 | 0 | 15 | 15 | 3
+AREA | hull | 3d | space    | -1 | 0 | 0 | 1 | 0 | 2 | anchor=ship

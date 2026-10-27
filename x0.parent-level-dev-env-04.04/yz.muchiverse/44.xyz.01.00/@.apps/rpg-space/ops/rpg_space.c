@@ -1081,7 +1081,14 @@ static void sk_hud_sync(void) {
         else if (hit >= 0) continue; else strncat(out, l, sizeof out - strlen(out) - 2); strcat(out, "\n"); }
     for (int k = 0; k < 4; k++) if (!seen[k]) { char nl[120]; snprintf(nl, sizeof nl, "KEY          | %-20s | %-5d # rpg-space tuning.pdl (sk_hud_sync)\n", K[k], val[k]); strncat(out, nl, sizeof out - strlen(out) - 1); }
     write_if_changed(p, out, strlen(out)); }
+/* THE AMBIENT WORLD (owner 2026-10-27: 'planet is missing its center in rpg-dust, and i dont see the asteroids'). The land entity (pieces/land_01: the engine fills every EMPTY cell of the shown desk from the planet page) and the object pieces used to exist only while the ship flew in direct mode, and the release baked the planet into the Bridge desk alone, so in the other ship rooms the middle of the planet was missing and nothing was drawn without a flight. With the helm off and a planet below, the skin now keeps the land entity written (altitude 1, the resting height measured on the Bridge floor) and, over the planet the objects belong to, the voxel pieces. tuning.pdl world_ambient = 0 turns it off. */
+static void sk_world_ambient(void) {
+    static long last; long t = now_ms(); if (last && t - last < 1500) return; last = t;
+    if (!tune("world_ambient", 1) || flag_on("helm", 0)) return; sk_look_load(); if (sk_pl_cur < 0) return;
+    { char p[PATH_MAX], b[8] = ""; spath(p, "direct_z.txt"); read_file(p, b, sizeof b); if (!b[0]) write_if_changed(p, "1\n", 2); }
+    sk_land_write(0); }
 static int sk_remnants_tick(void) {
+    sk_world_ambient();
     sk_hud_sync();
     { static unsigned bsig; sk_nodes_load(); sk_craft_load(); unsigned g = 2166136261u;      /* the bottom bar lists the objects near the ship: rewrite it only when something it shows changed (the ship's shift, the planet, an asteroid's cell or loads, a craft's cell, the radius) */
       int v[6] = { sk_dox, sk_doy, sk_pl_cur, tune("bar_radius", 16), sk_nnodes, sk_ncraft }; for (int i = 0; i < 6; i++) g = (g ^ (unsigned)v[i]) * 16777619u;

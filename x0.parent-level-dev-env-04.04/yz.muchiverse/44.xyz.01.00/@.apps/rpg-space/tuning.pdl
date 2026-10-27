@@ -41,3 +41,4 @@ TUNE | minimap_margin  | 16    | cells shown around the 16 x 16 desk on the engi
 TUNE | minimap_follow  | 0     | 1 = the minimap shows only a minimap_view-cell window that follows the camera (clamped to the land), for a small minimap on a big map; 0 = the whole area at once    | 0
 TUNE | minimap_view    | 24    | cells across the following minimap window                                                                                                                              | 24
 TUNE | minimap_max_px  | 240   | the minimap's size in pixels, its largest side (the engine scales it down on a small window)                                                                           | 240
+TUNE | world_ambient   | 1     | 1 = with the helm off and a planet below, keep the land entity (and the objects over their own planet) drawn in every ship room, at altitude 1; 0 = only while flying direct (the old behaviour)                  | 1

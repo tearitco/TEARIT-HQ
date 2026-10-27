@@ -14,6 +14,8 @@
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
+      <tab id="tb-air" class="pchq-tb" label="${env_label}" onclick="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' env status" show="${env_ok}"/>
+      <tab id="tb-airw" class="pchq-tb pchq-tb-warn" label="${env_label}" onclick="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' env status" show="${env_warn}"/>
       <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
       <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
     </tabbar>
@@ -91,6 +93,13 @@
         <text label="${chat_5}" class="rp-chat"/>
         <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' clearchat"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_dust.+x'"/>
+      </row>
+      <row id="ask-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${ask_visible}">
+        <text label="${ask_title}" class="hb-quiet ov-title theme-3"/>
+        <text label="${ask_text}" class="rp-big"/>
+        <item id="ask-yes" class="rp-menu-row" label="${ask_yes}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' helm yes"/>
+        <item id="ask-direct" class="rp-menu-row" label="${ask_direct}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' helm direct" show="${ask_direct_show}"/>
+        <item id="ask-no" class="rp-menu-row" label="${ask_no}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' helm no"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>

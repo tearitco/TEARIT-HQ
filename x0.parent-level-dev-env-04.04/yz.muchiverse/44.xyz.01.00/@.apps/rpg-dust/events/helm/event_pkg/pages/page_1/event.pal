@@ -1,0 +1,4 @@
+# event.pal - the helm console as an EVENT PAGE (RPG Maker style: trigger "action" = Enter next to the console). The page runs the verb "helm on"; the voxels it affects are in ../../../area.pdl.
+# pkg=helm page=page_1
+exec cmd_1.sh
+halt

@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | environment
+STATE        | source               | hand-made
+NODE         | id=1 type=wo_run | op=rpg_dust|w1=env|w2=breach|w3=:env_breach_room:
