@@ -145,6 +145,8 @@ static int turn_taken;          /* a verb that counts as a roguelike turn sets t
 static void spath(char *o, const char *n) { snprintf(o, PATH_MAX, "%s/%s", ST, n); }
 static int fexists(const char *p) { struct stat s; return stat(p, &s) == 0; }
 static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_ISDIR(s.st_mode); }
+/* SHELL SAFETY (owner 2026-10-26: "make sure theres nothing unsafe in spaceboard code"): every system() / popen() command line in the skins wraps its arguments in single quotes, so an argument that holds a ' (or a newline or another control character) closes the quote and runs the rest as a shell command. Found and shown with a harmless `touch` through `selev`: the entity context menu passed click arguments straight into the command. 1 = the text is safe to put inside '...'. */
+static int sh_arg_ok(const char *s) { if (!s) return 0; for (; *s; s++) if (*s == '\'' || (unsigned char)*s < 32 || *s == 127) return 0; return 1; }
 /* Play one of this app's events-hq pages (<app>/events/<name>/, trigger <trig>) through events-hq's play_event.sh. MUCHI_TARGET_ENT points every
  * event at ONE shared world dir (<app>/state/world) so state commands land in one place: map_state.pdl (transfer_player) and screen_state.pdl (tint_screen).
  * Returns 1 when the page ran. */
@@ -1070,7 +1072,8 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         const char *nm = strchr(argv[2], ' '); nm = nm ? nm + 1 : argv[2]; int k = -1, hero_hit = !strcasecmp(nm, hero.name);
         if (!strcmp(argv[1], "mapev")) for (int i = 0; i < nparty; i++) if (!strcasecmp(party[i].name, nm) || !strcasecmp(party[i].id, nm)) k = i;
         if (k >= 0 || (hero_hit && !strcmp(argv[1], "mapev"))) { static char sid[24]; if (k >= 0) snprintf(sid, sizeof sid, "%s", party[k].id); else { snprintf(sid, sizeof sid, "%s", hero.name); for (char *c = sid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; } v = "select"; argv[1] = sid; argc = 2; }
-        else { char cmd[PATH_MAX * 2]; snprintf(cmd, sizeof cmd, "setsid sh '%s/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '%s/@.apps/piececraft-hq' '%s' '%s' '%s' '%s' '%s' >/dev/null 2>&1 &", HOUSE, HOUSE, argv[3], argv[4], argv[5], argv[1], argv[6]); if (system(cmd)) { } snprintf(msg, cap, "menu for %s", argv[2]); return; }
+        else { char cmd[PATH_MAX * 2]; if (!sh_arg_ok(argv[1]) || !sh_arg_ok(argv[3]) || !sh_arg_ok(argv[4]) || !sh_arg_ok(argv[5]) || !sh_arg_ok(argv[6])) { snprintf(msg, cap, "menu refused: unsafe characters in the arguments"); return; }      /* a ' in an argument would end the quote and run the rest as a shell command */
+            snprintf(cmd, sizeof cmd, "setsid sh '%s/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '%s/@.apps/piececraft-hq' '%s' '%s' '%s' '%s' '%s' >/dev/null 2>&1 &", HOUSE, HOUSE, argv[3], argv[4], argv[5], argv[1], argv[6]); if (system(cmd)) { } snprintf(msg, cap, "menu for %s", argv[2]); return; }
     }
     if (!strcmp(v, "select") && argc >= 2) { char hid[24]; snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
         if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }

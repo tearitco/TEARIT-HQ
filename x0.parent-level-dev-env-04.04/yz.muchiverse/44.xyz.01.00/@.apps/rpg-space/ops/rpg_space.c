@@ -473,6 +473,7 @@ static void sk_ensure_map(void) {
     snprintf(reg, sizeof reg, "%s", sk_addr); char *c = strstr(reg, "/cell:"); if (c) { sscanf(c + 6, "%d,%d", &cx, &cy); *c = 0; }
     sk_scale_run(sc, sizeof sc);
     snprintf(pg[0], PATH_MAX, "%s/state/page_region.txt", APP); snprintf(pg[1], PATH_MAX, "%s/state/page_area.txt", APP);      /* pg[0] / pg[1] feed rooms SK_SHIP / SK_SHIP + 1 */
+    if (!sh_arg_ok(sc) || !sh_arg_ok(reg) || !sh_arg_ok(sk_ts_cur)) { fprintf(stderr, PET_OP ": unsafe characters in the scale or address, the map is not regenerated\n"); return; }      /* the three strings below go into single quotes of a shell command */
     snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%s' '%s' >/dev/null 2>&1", APP, sc, reg, pg[0]); if (system(cmd)) fprintf(stderr, PET_OP ": dust_gen region failed (%s)\n", reg);
     snprintf(cmd, sizeof cmd, "'%s/ops/+x/dust_gen.+x' page '%s' '%s/cell:%d,%d' '%s' >/dev/null 2>&1", APP, sc, reg, cx, cy, pg[1]); if (system(cmd)) fprintf(stderr, PET_OP ": dust_gen area failed (%s/cell:%d,%d)\n", reg, cx, cy);
     { int rx = 0, ry = 0; char *rg = strstr(reg, "region:"); if (rg) sscanf(rg + 7, "%d,%d", &rx, &ry); char gl[120]; snprintf(gl, sizeof gl, "%s", reg); if ((rg = strstr(gl, "region:"))) *rg = 0;

@@ -70,6 +70,31 @@ SPAWN   | vmF | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
 SLEEP   | 16000
 EXPECT_ALIVE | $vmF | F-never-saw-an-engine-so-the-loop-is-not-judged
 
+# ---- G: the pid file is stale (names a dead pid) but a bv_render_3d process of this very session is alive (a second engine exited and removed or overwrote the file; a relaunch): the loop is KEPT and the decision is logged
+RUN     | kill | $vmF
+SLEEP   | 300
+MKDIR   | ebin
+RUN     | cp | /bin/sleep | $T/ebin/bv_render_3d.+x
+SPAWN   | engG | sh | -c | cd $T/bv && exec $T/ebin/bv_render_3d.+x 600
+WRITE   | bv/pieces/display/.gpu_render.pid | 999999
+WRITE   | bv/pieces/display/.engine_seen |
+SPAWN   | vmG | sh | -c | cd $T/bv && exec ./system/prisc+x pal/main_module.pal
+SLEEP   | 16000
+EXPECT_ALIVE | $vmG | G-stale-pid-file-but-the-engine-process-lives-so-the-loop-is-kept
+EXPECT_HAS | bv/pieces/display/.loop_guard.log | process scan | G-the-decision-is-logged
+RUN     | kill | $vmG
+RUN     | kill | $engG
+SLEEP   | 300
+
+# ---- H: the guard run BY HAND from a plain shell (parent = sh, not a prisc VM) with a dead pid file: it must never end that shell (it used to SIGTERM whatever its parent was)
+WRITE   | bv/pieces/display/.gpu_render.pid | 999999
+WRITE   | bv/pieces/display/.engine_seen |
+RUN     | rm | -f | $T/h_survived.txt
+ENV     | LOOP_GUARD_GRACE | 0
+SPAWN   | shH | sh | -c | cd $T/bv && ./ops/+x/loop_guard.+x; printf survived > $T/h_survived.txt
+SLEEP   | 7000
+EXPECT_FILE | h_survived.txt | survived | H-a-hand-run-never-ends-its-own-shell
+
 # ---- E: the piececraft loop ends when the marker grows (size compare, not mtime), not before
 COPYDIR | &.widgits/board-viewer/system | pcroot/pieces/sessions/s1/system
 COPY    | @.apps/piececraft-hq/default_op.txt | pcroot/pieces/sessions/s1/default_op.txt

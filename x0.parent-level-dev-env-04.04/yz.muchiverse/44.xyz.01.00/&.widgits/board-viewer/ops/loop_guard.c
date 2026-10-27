@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <dirent.h>
+#include <time.h>
 
 static int engine_alive(const char *pidfile) {
     FILE *f = fopen(pidfile, "r"); if (!f) return 0;
@@ -44,6 +46,17 @@ static double age_s(pid_t pid) {
     return up - (double)start / (double)hz;
 }
 
+/* Is a bv_render_3d engine process running with THIS session as its working directory? The pid file can be missing or stale while the engine lives (a second engine of the session exits and removes it, a relaunch rewrites it), so a missing file alone must never end a loop (owner 2026-10-26: camera keys died in a live board after the guard fired at 21:35 while frames kept coming until 21:42). */
+static int engine_process_here(const char *here) {
+    DIR *d = opendir("/proc"); if (!d) return 0; struct dirent *e; int found = 0;
+    while (!found && (e = readdir(d))) { if (e->d_name[0] < '0' || e->d_name[0] > '9') continue;
+        char p[96], comm[64] = "", cwd[4200]; snprintf(p, sizeof p, "/proc/%s/comm", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; if (fgets(comm, sizeof comm, f)) comm[strcspn(comm, "\n")] = 0; fclose(f);
+        if (strncmp(comm, "bv_render_3d", 12)) continue;
+        snprintf(p, sizeof p, "/proc/%s/cwd", e->d_name); ssize_t n = readlink(p, cwd, sizeof cwd - 1); if (n <= 0) continue; cwd[n] = 0;
+        if (!strcmp(cwd, here)) { snprintf(p, sizeof p, "/proc/%s/stat", e->d_name); char sb[512] = ""; f = fopen(p, "r"); if (f) { size_t m = fread(sb, 1, sizeof sb - 1, f); sb[m] = 0; fclose(f); } char *r = strrchr(sb, ')'); if (r && r[2] != 'Z') found = 1; } }
+    closedir(d); return found; }
+static void guard_log(const char *fmt, const char *a, const char *b) {      /* one line per decision to pieces/display/.loop_guard.log (cap 40 lines: it is only for finding out why a loop ended) */
+    FILE *f = fopen("pieces/display/.loop_guard.log", "a"); if (!f) return; fprintf(f, "%ld ", (long)time(NULL)); fprintf(f, fmt, a, b); fputc('\n', f); fclose(f); }
 int main(int argc, char **argv) {
     /* No arguments = the session defaults. The board-viewer session copies the OLD prisc VM, whose exec delivers no arguments (prisc_exec_args.pal fails on it), so the loop
      * runs this bare; arguments exist only so a test can point it elsewhere. */
@@ -55,12 +68,17 @@ int main(int argc, char **argv) {
         marker = mk;
     }
     pid_t parent = getppid(); if (parent <= 1) return 0;      /* started by hand or reparented: never kill init */
+    { char cp[64], cm[64] = ""; snprintf(cp, sizeof cp, "/proc/%d/comm", (int)parent); FILE *f = fopen(cp, "r"); if (f) { if (fgets(cm, sizeof cm, f)) cm[strcspn(cm, "\n")] = 0; fclose(f); }
+      if (strcmp(cm, "prisc+x")) return 0; }      /* only a pal VM is ever ended: run by hand from a shell (or any other parent) the guard does nothing, it used to SIGTERM that shell */
     char seen[4200]; { snprintf(seen, sizeof seen, "%s", pidfile); char *sl = strrchr(seen, '/'); if (sl) { snprintf(sl + 1, sizeof seen - (size_t)(sl + 1 - seen), ".engine_seen"); } else snprintf(seen, sizeof seen, ".engine_seen"); }
     if (engine_alive(pidfile)) { if (access(seen, F_OK) != 0) { int fd = open(seen, O_WRONLY | O_CREAT, 0644); if (fd >= 0) close(fd); } return 0; }
     if (access(seen, F_OK) != 0) return 0;      /* never saw an engine here: not this guard's business */
     double age = age_s(parent); if (age >= 0 && age < grace) return 0;      /* still starting up */
+    char here[4200] = ""; if (!getcwd(here, sizeof here)) here[0] = 0;
     sleep(3); if (engine_alive(pidfile)) return 0;      /* a respawn writes a new pid within this window */
+    if (here[0] && engine_process_here(here)) { guard_log("pid file %s is missing or dead but an engine process runs here: loop kept (%s)", pidfile, "process scan"); return 0; }
     if (marker && marker[0]) { int fd = open(marker, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd >= 0) { if (write(fd, "x", 1) < 0) { /* best effort */ } close(fd); } }
+    { char b[24]; snprintf(b, sizeof b, "%d", (int)parent); guard_log("engine gone (pid file %s, no engine process in this session): ending loop pid %s", pidfile, b); }
     fprintf(stderr, "loop_guard: engine gone (%s), ending loop pid %d\n", pidfile, (int)parent);
     kill(parent, SIGTERM);
     return 0;
