@@ -1098,6 +1098,10 @@ static void sk_world_ambient(void) {
     static long last; long t = now_ms(); if (last && t - last < 1500) return; last = t;
     if (!tune("world_ambient", 1) || flag_on("helm", 0)) return; sk_look_load(); if (sk_pl_cur < 0) return;
     { char p[PATH_MAX], b[8] = ""; spath(p, "direct_z.txt"); read_file(p, b, sizeof b); if (!b[0]) write_if_changed(p, "1\n", 2); }
+    { unsigned h = 2166136261u; static const char *F[4] = { "nodes.txt", "craft.txt", "direct.txt", "direct_z.txt" }; static unsigned last_h; char fb[2400], lp[PATH_MAX];      /* rewrite the land and rebuild every voxel piece only when something they come from changed (footprint: the skiff alone is 2,646 voxels of text) */
+      for (int k = 0; k < 4; k++) { char fp[PATH_MAX]; spath(fp, F[k]); fb[0] = 0; read_file(fp, fb, sizeof fb); for (const char *q = fb; *q; q++) h = (h ^ (unsigned char)*q) * 16777619u; h = (h ^ (unsigned)k) * 16777619u; }
+      for (const char *q = sk_pl[sk_pl_cur].id; *q; q++) h = (h ^ (unsigned char)*q) * 16777619u;
+      snprintf(lp, sizeof lp, "%s/pieces/land_01/state.txt", PCHQ); if (h == last_h && access(lp, F_OK) == 0) return; last_h = h; }
     sk_land_write(0); }
 /* EVERY PLANET HAS ITS OWN ASTEROIDS (owner 2026-10-27: 'yes i want some asteroids' on every planet). The planet-map objects (the `region` rows of state/nodes.txt and the craft's world cell) belong to one planet, named in state/pworld_planet.txt. When the planet below changes, sk_world_switch saves the outgoing planet's objects to state/world_<planet>.txt, then loads the incoming one's file, or, the first time, GENERATES them from the planet's id and seed (3 to 5 asteroids of rock / ore / crystal, 4 or more cells from the ship's start and from each other, deterministic, then remembered in the file so mining sticks). Craft with a world cell stay with their planet. `space world` runs it by hand. */
 static void sk_world_path(const char *id, char *p, size_t n) { char nm[64]; snprintf(nm, sizeof nm, "world_%s.txt", id); spath(p, nm); (void)n; }
@@ -1126,7 +1130,8 @@ static int sk_world_switch(char *msg, size_t cap) {
     { char rb[160]; snprintf(rb, sizeof rb, "WORLD|%ld|%s|%s|%d asteroids", (long)time(NULL), cur[0] ? cur : "-", to, made); append_line("events.txt", rb); }
     if (msg) snprintf(msg, cap, "world of %s: %d asteroids (%s)", to, made, had ? "remembered" : "generated"); return 1; }
 static int sk_remnants_tick(void) {
-    sk_world_switch(NULL, 0); sk_world_ambient();
+    { static long wsw; long wn = now_ms(); if (!wsw || wn - wsw >= 1500) { wsw = wn; sk_world_switch(NULL, 0); } }      /* the planet below changes rarely: look every 1.5 s, not every tick */
+    sk_world_ambient();
     sk_hud_sync();
     { static unsigned bsig; sk_nodes_load(); sk_craft_load(); unsigned g = 2166136261u;      /* the bottom bar lists the objects near the ship: rewrite it only when something it shows changed (the ship's shift, the planet, an asteroid's cell or loads, a craft's cell, the radius) */
       int v[6] = { sk_dox, sk_doy, sk_pl_cur, tune("bar_radius", 16), sk_nnodes, sk_ncraft }; for (int i = 0; i < 6; i++) g = (g ^ (unsigned)v[i]) * 16777619u;
