@@ -92,14 +92,21 @@ Recommend **A for outside creators, B/C for trusted devs**, with a capability al
 7. Checkout escrow on a test chain; per-user repos as sources; moderation of reviews.
 This builds on the already-designed order in XYZFS design sections 7, 9, 10; where they conflict (a window instead of a dropdown, games as the product), this document is the later word.
 
-## 9. Open questions for the owner
-1. **Executable code from outside creators:** data-only (A), source+house build (B), trusted binaries (C)? This sets the whole safety model.
-2. **The dedicated repo:** its name, public or private, and who may publish (the owner only at first?).
-3. **Shared dev folder:** tracked in the code repo, its own repo, or local only? (User data must not go to code branches.)
-4. **Who writes screening verdicts** and may promote `needs_review`: the owner, a role, or an agent that proposes only?
-5. **Reviews:** moderation rule, and whether reviews may ever be read by the AI loop.
-6. **Insights consent:** opt-in per game and per player, shown in the Library; agreed?
-7. **Platforms (Steam/PSN framing):** is "list games from other platforms" a real goal or only the look and feel?
+## 9. Owner decisions (2026-10-27, answered in chat) and what is still open
+| # | Decision | Consequence recorded here |
+|---|---|---|
+| 1 | **Outside creators ship data only** (rows, voxel models, layouts, art, event pages); only the owner and trusted dev users ship C | section 6 option A is the rule; step 5 rejects any pack asking for `exec` / `net` capability from an outside creator |
+| 2 | **An agent proposes the screening verdict, the owner confirms in batches** (from the store-hq window) | the screener writes `needs_review` + a recommendation; promotion stays a person's act; needs a batch-confirm view |
+| 3 | **Shared dev folder is tracked in the code branch** | keep large art/assets out (size cap row); never put user data or secrets in it; watch history bloat |
+| 4 | **Insights: opt-in per game and per player**, off by default, visible toggle in the Library; aggregates only | section 7 stands as written |
+| 5 | **Store-items repo is public, owner publishes only** | **public history is permanent**: the deny-list and screening run BEFORE anything is published; archives as release assets; nothing from `xyzfs/users` ever; I will not publish or create the repo without your explicit go |
+| 6 | **Outside-platform listings (Steam/PSN): a later real goal** | keep the catalog `source=` column open to adapters; no adapter is designed now |
+| 7 | **Reviews: rule-based filter, AI describes only** | a deny-word/length filter plus owner override; the AI may DESCRIBE review text into the usual review file, never act on it |
+| 8 | **First build: `game.pdl` + `game_check` on rpg-space and rpg-dust**, then the common-skin extraction | section 8 steps 1-2, in that order |
+
+**Tension to watch (mine, not a decision):** decision 3 puts the shared folder in the code branch while decision 5 makes the *store* repo public. Those are different things (the first is the dev working copy, the second the published catalog), but a game copied from one to the other becomes public: the screening and deny-list must gate that copy, not only installs.
+
+**Still open:** the real name of the store repo (placeholder `tearit-co/store-items`); who may become a reviewer later; the reviews deny-word list; moderation of images/screenshots; how a taskbar cell opens the store-hq window without shared-file review.
 
 ## 10. Checked after the first edition (2026-10-27) and what is still unchecked
 * **`store_module.pal` (01.muchi-pals) is NOT the taskbar Store.** It is the muchi-pals project's own "store" screen (a per-screen module of that project, 59 lines, July 2026). Ignore it for this design; do not build on it.
