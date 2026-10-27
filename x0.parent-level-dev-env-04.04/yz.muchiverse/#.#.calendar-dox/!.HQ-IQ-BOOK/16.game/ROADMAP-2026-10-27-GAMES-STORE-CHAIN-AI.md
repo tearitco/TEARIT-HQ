@@ -45,6 +45,9 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 * **Life is evolvable** (section 20): needs and rates are data and weights, AI proposes new needs/variables/events through the validated review loop, scored in the dev lane; **anatomy and chemistry are optional AI-built packs**, fidelity opt-in per entity.
 * **Life op slice 1 DONE** (section 18): hunger/starvation clock is `life_op`; slices 2-5 next.
 
+* **Dual fidelity over shared weights** (design doc 23.1): abstract and complex levels read the same trainable weights; applies to strength, needs, anatomy, chemistry.
+* **Knowledge domains:** chemistry exams (P2) DONE in `chem_label` (seeded, graded by code, shown in Knowledge HQ); next `part_tree_lint` (anatomy v0: brain, stomach, blood, bones, lungs, limbs and fingers), then needs on top (air, thirst, rest, exercise). `sig_op` (signature step 1) DONE.
+
 ## 4. Standing risks to watch
 * Public GitHub history is permanent: screen before publishing, never publish `xyzfs/users` or `user/*`.
 * A 270M judge must never move real value alone.
