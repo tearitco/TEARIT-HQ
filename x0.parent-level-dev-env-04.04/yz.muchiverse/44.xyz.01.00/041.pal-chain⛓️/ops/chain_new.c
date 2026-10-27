@@ -11,7 +11,7 @@
  * so test/user chains are the only place escrow is meant to be used.
  *
  * Usage: chain_new.+x <chain_id> [--kind test|user] [--difficulty n] [--cap n]
- *                     [--faucet-amount n] [--cooldown s] [--faucet-daily-cap n]
+ *                     [--faucet-amount n] [--cooldown s] [--faucet-daily-cap n] [--signing 0|1]
  *   defaults: kind test, difficulty 1 (1..15), cap 20 blocks/wallet/UTC day (0 = none),
  *   faucet-amount 1000, cooldown 3600, faucet-daily-cap 5000 (0 = none).
  * Exit: 0 created (prints the new root path), 1 usage / bad option,
@@ -46,18 +46,21 @@ static int touch_new(const char *dir, const char *name) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: chain_new.+x <chain_id> [--kind test|user] [--difficulty n] [--cap n] [--faucet-amount n] [--cooldown s] [--faucet-daily-cap n]\n");
+        fprintf(stderr, "Usage: chain_new.+x <chain_id> [--kind test|user] [--difficulty n] [--cap n] [--faucet-amount n] [--cooldown s] [--faucet-daily-cap n] [--signing 0|1]\n");
         return 1;
     }
     const char *id = argv[1];
     const char *kind = "test";
-    long difficulty = 1, cap = 20, famount = 1000, cooldown = 3600, fdaily = 5000;
+    long signing = 0, difficulty = 1, cap = 20, famount = 1000, cooldown = 3600, fdaily = 5000;
     for (int i = 2; i < argc; i += 2) {
         if (i + 1 >= argc) { fprintf(stderr, "Option %s needs a value.\n", argv[i]); return 1; }
         const char *v = argv[i + 1];
         if (strcmp(argv[i], "--kind") == 0) {
             if (strcmp(v, "test") != 0 && strcmp(v, "user") != 0) { fprintf(stderr, "--kind must be test or user.\n"); return 1; }
             kind = v;
+        } else if (strcmp(argv[i], "--signing") == 0) {
+            if (strcmp(v, "0") != 0 && strcmp(v, "1") != 0) { fprintf(stderr, "--signing must be 0 or 1.\n"); return 1; }
+            signing = atol(v);
         } else if (strcmp(argv[i], "--difficulty") == 0 || strcmp(argv[i], "--cap") == 0 || strcmp(argv[i], "--faucet-amount") == 0 ||
                    strcmp(argv[i], "--cooldown") == 0 || strcmp(argv[i], "--faucet-daily-cap") == 0) {
             if (!all_digits(v) || strlen(v) > 9) { fprintf(stderr, "%s needs a non-negative whole number.\n", argv[i]); return 1; }
@@ -119,6 +122,7 @@ int main(int argc, char **argv) {
     fprintf(f, "FAUCET  | cooldown_seconds           | %ld\n", cooldown);
     fprintf(f, "FAUCET  | daily_cap_millicones_per_wallet | %ld\n", fdaily);
     fprintf(f, "ESCROW  | enabled                    | 1\n");
+    fprintf(f, "SIGNING | required                   | %ld\n", signing);
     fclose(f);
 
     printf("Chain '%s' created at %s\n", id, croot);

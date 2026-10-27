@@ -58,12 +58,14 @@ static int valid_wallet_id(const char *id) {
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        fprintf(stderr, "Usage: chain_create_wallet.+x <wallet_id> <password>\n");
+        fprintf(stderr, "Usage: chain_create_wallet.+x <wallet_id> <password> [pubkey_hex]\n");
         return 1;
     }
     resolve_root();
     const char *wallet_id = argv[1];
     const char *password = argv[2];
+    const char *pubkey = argc > 3 ? argv[3] : NULL;   /* optional Ed25519 public key (64 hex), for signed chains (sig_op) */
+    if (pubkey) { size_t n = strlen(pubkey); int ok = n == 64; for (size_t i = 0; ok && i < n; i++) if (!isxdigit((unsigned char)pubkey[i])) ok = 0; if (!ok) { fprintf(stderr, "pubkey must be 64 hex characters.\n"); return 1; } }
 
     if (!valid_wallet_id(wallet_id)) {
         fprintf(stderr, "Invalid wallet_id - letters, digits, _ and - only.\n");
@@ -103,6 +105,7 @@ int main(int argc, char **argv) {
     fprintf(f, "created_at=%ld\n", (long)time(NULL));
     fprintf(f, "cached_balance=0\n");
     fprintf(f, "last_processed_block=0\n");
+    if (pubkey) fprintf(f, "pubkey=%s\n", pubkey);
     fclose(f);
 
     printf("Wallet '%s' created.\n", wallet_id);

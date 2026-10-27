@@ -67,3 +67,5 @@ Old test cones removed (backed up), `house` wallet created with 3 mined blocks, 
 4. **Hub shell + pong + one central-editor edit** (showcase), then slots + faucet sub-chain once signatures exist.
 5. **Router rows + dataset rows for the exam family** (the flywheel plumbing), using the Mac Gemma only; API quota reserved for escalation.
 Deliberately NOT next: more design documents (the design is ahead of the evidence), needs layers (air/thirst/rest) until anatomy and weights files exist.
+
+**Update (signatures):** steps 2-3 built (wallet pubkey, `SIGNING` chain row, signed `chain_send` with nonce replay check, harness `chain_signed.pal`). Next: verification at mining and replay, escrow and `ev_chain` signing under the policy cap, key binding on the chain, then the real chain flip (owner).

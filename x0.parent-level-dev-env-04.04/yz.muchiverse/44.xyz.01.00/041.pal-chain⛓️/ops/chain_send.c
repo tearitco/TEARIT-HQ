@@ -35,12 +35,16 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #define MAX_LINE 1024
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
 
 static char project_root[MAX_PATH] = ".";
+static char g_sigtail[256] = "";
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -66,9 +70,51 @@ static int valid_wallet_id(const char *id) {
     return 1;
 }
 
+
+/* ---- signed transactions (signatures step 2-3; design 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 19) ----
+ * chain.pdl row `SIGNING | required | 1` makes a signature mandatory on that chain; the real chain (no chain.pdl) stays unsigned until the owner flips it.
+ * Optional trailing args: <nonce> <sig_hex>. Signed message: TX|<chain_id>|<from>|<to>|<amount>|<nonce> under context chain:<chain_id> (sig_op: a signature
+ * for another chain, another amount or another recipient does not verify). The sender's public key is the `pubkey=` line of its wallet.txt. A (from, nonce)
+ * pair already present in pending or the ledger is refused (replay). The TX line gets two trailing fields `n=<nonce>|s=<sig>`; chain_balance and the miner ignore them.
+ * NOT yet: verification at mining and replay time (so a forged line written straight into pending_tx.txt is still accepted by the miner), escrow rows, the real chain. */
+static void trim_ends(char **p) {
+    while (**p == ' ') (*p)++;
+    char *e = *p + strlen(*p);
+    while (e > *p && (e[-1] == ' ' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0;
+}
+static int pdl_row(const char *section, const char *key, char *out, size_t n) {
+    char path[PATH_BUF]; snprintf(path, sizeof path, "%s/chain.pdl", project_root); FILE *f = fopen(path, "r"); if (!f) return 0;
+    char line[MAX_LINE]; int found = 0;
+    while (!found && fgets(line, sizeof line, f)) {
+        if (line[0] == '#') continue;
+        char *a = strchr(line, '|'); if (!a) continue;
+        char *b = strchr(a + 1, '|'); if (!b) continue;
+        *a = 0; *b = 0;
+        char *sec = line, *k = a + 1, *v = b + 1;
+        trim_ends(&sec); trim_ends(&k); trim_ends(&v);
+        if (!strcmp(sec, section) && !strcmp(k, key)) { snprintf(out, n, "%s", v); found = 1; }
+    }
+    fclose(f); return found;
+}
+static int wallet_pubkey(const char *w, char *out, size_t n) {
+    char path[PATH_BUF], line[MAX_LINE]; snprintf(path, sizeof path, "%s/wallets/%s/wallet.txt", project_root, w); FILE *f = fopen(path, "r"); if (!f) return 0;
+    int ok = 0; while (fgets(line, sizeof line, f)) if (!strncmp(line, "pubkey=", 7)) { line[strcspn(line, "\r\n")] = 0; snprintf(out, n, "%.79s", line + 7); ok = strlen(out) == 64; }
+    fclose(f); return ok; }
+static int nonce_used(const char *from, const char *nonce) {
+    const char *files[2] = { "data/pending_tx.txt", "data/blockchain.txt" }; char needle[256], pre[256]; snprintf(needle, sizeof needle, "|n=%s|", nonce); snprintf(pre, sizeof pre, "TX|%s|", from);
+    for (int i = 0; i < 2; i++) { char path[PATH_BUF]; snprintf(path, sizeof path, "%s/%s", project_root, files[i]); FILE *f = fopen(path, "r"); if (!f) continue; static char line[1 << 16];
+        while (fgets(line, sizeof line, f)) { for (char *p = strstr(line, pre); p; p = strstr(p + 1, pre)) { char *e = strpbrk(p, ";\n"); char save = e ? *e : 0; if (e) *e = 0; int hit = strstr(p, needle) != NULL; if (e) *e = save; if (hit) { fclose(f); return 1; } } }
+        fclose(f); }
+    return 0; }
+static int verify_sig(const char *pub, const char *chain, const char *msg, const char *sig) {   /* fork+exec sig_op verify with a watchdog (house rule: no popen) */
+    char exe[PATH_BUF], ctx[128]; snprintf(exe, sizeof exe, "%s/ops/+x/sig_op.+x", project_root); if (access(exe, X_OK)) return -1; snprintf(ctx, sizeof ctx, "chain:%s", chain);
+    pid_t c = fork(); if (c < 0) return -1;
+    if (c == 0) { int nul = open("/dev/null", O_WRONLY); if (nul >= 0) { dup2(nul, 1); dup2(nul, 2); } execl(exe, exe, "verify", pub, ctx, msg, sig, (char *)NULL); _exit(97); }
+    time_t t0 = time(NULL); int st;
+    for (;;) { pid_t r = waitpid(c, &st, WNOHANG); if (r == c) return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 1 : 0; if (time(NULL) - t0 > 10) { kill(c, SIGKILL); waitpid(c, &st, 0); return -1; } usleep(20000); } }
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "Usage: chain_send.+x <from_wallet_id> <to_wallet_id> <amount_millicones>\n");
+        fprintf(stderr, "Usage: chain_send.+x <from_wallet_id> <to_wallet_id> <amount_millicones> [<nonce> <sig_hex>]\n");
         return 1;
     }
     resolve_root();
@@ -90,6 +136,19 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+
+    {   char req[16] = "0", chain[64] = "cones"; pdl_row("SIGNING", "required", req, sizeof req); pdl_row("CHAIN", "id", chain, sizeof chain);
+        const char *nonce = argc > 5 ? argv[4] : NULL, *sig = argc > 5 ? argv[5] : NULL;
+        if (argc == 5) { fprintf(stderr, "A signed send needs <nonce> <sig_hex> together.\n"); return 1; }
+        if (!strcmp(req, "1") && !sig) { fprintf(stderr, "This chain requires signed transactions (SIGNING | required).\n"); return 3; }
+        if (sig) {
+            for (const char *p = nonce; *p; p++) if (!isdigit((unsigned char)*p) || strlen(nonce) > 18) { fprintf(stderr, "nonce must be a whole number.\n"); return 1; }
+            char pub[80] = ""; if (!wallet_pubkey(from, pub, sizeof pub)) { fprintf(stderr, "Sender has no public key on this node (wallet.txt pubkey=).\n"); return 3; }
+            char msg[512]; snprintf(msg, sizeof msg, "TX|%s|%s|%s|%ld|%s", chain, from, to, amount, nonce);
+            int v = verify_sig(pub, chain, msg, sig); if (v < 0) { fprintf(stderr, "Could not run sig_op (ops/+x/sig_op.+x).\n"); return 3; }
+            if (!v) { fprintf(stderr, "Signature does not verify.\n"); return 3; }
+            if (nonce_used(from, nonce)) { fprintf(stderr, "Nonce already used by this wallet (replay).\n"); return 3; }
+            snprintf(g_sigtail, sizeof g_sigtail, "|n=%s|s=%s", nonce, sig); } }
     long balance = current_balance(from);
     if (balance < 0) {
         fprintf(stderr, "Could not determine sender balance.\n");
@@ -105,7 +164,7 @@ int main(int argc, char **argv) {
     snprintf(tx_id, sizeof(tx_id), "%s-%ld-%d", from, ts, rand() % 1000000);
 
     char tx_line[MAX_LINE];
-    snprintf(tx_line, sizeof(tx_line), "TX|%s|%s|%ld|%ld|%s", from, to, amount, ts, tx_id);
+    snprintf(tx_line, sizeof(tx_line), "TX|%s|%s|%ld|%ld|%s%s", from, to, amount, ts, tx_id, g_sigtail);
 
     char pending_path[PATH_BUF];
     snprintf(pending_path, sizeof(pending_path), "%s/data/pending_tx.txt", project_root);

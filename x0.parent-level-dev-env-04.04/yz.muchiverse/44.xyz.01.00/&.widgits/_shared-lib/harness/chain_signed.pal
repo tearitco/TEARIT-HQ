@@ -1,0 +1,4 @@
+# chain_signed.pal - LOCKED acceptance harness for signed chain transactions. Read results/chain_signed.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/chain_signed.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/chain_signed.pdl
+halt
