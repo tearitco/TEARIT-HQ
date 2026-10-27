@@ -56,3 +56,6 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 * A 270M judge must never move real value alone.
 * Unsigned chain ops are honor fields: test chains only until signing lands.
 * Everything must stay cheap beside a browser (idle cost near zero, niced one-at-a-time heavy work, `tick_stats` and `cpu_guard` as findings in our own footprint).
+
+## Update 2026-10-27 (late): genuine house bank started
+Old test cones removed (backed up), `house` wallet created with 3 mined blocks, faucet design = seeded game bank with rake and payout floor on a test sub-chain, central editor = rpg-edit-hq, games as books. Next: exam taker (Gemma, graded by code), free-API cap probe, sig steps 2-6, hub shell.

@@ -1,5 +1,0 @@
-wallet_id=walletB_1668226
-password_hash=1a6344fed8a876562a2d958831b1ae5d1bb3f2a660c9b4a5f157865314021a5c
-created_at=1785485096
-cached_balance=1
-last_processed_block=7864

@@ -1,0 +1,5 @@
+wallet_id=house
+password_hash=ce1cf3e96aa088ab841452b98f14ff0e164c6dc415b3cf49610ad9bb5eb1b130
+created_at=1793110975
+cached_balance=21000
+last_processed_block=2

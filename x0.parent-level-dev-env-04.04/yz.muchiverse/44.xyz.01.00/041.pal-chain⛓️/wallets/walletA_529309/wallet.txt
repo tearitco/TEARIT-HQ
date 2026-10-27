@@ -1,5 +1,0 @@
-wallet_id=walletA_529309
-password_hash=1a6344fed8a876562a2d958831b1ae5d1bb3f2a660c9b4a5f157865314021a5c
-created_at=1785117315
-cached_balance=6855
-last_processed_block=13185
