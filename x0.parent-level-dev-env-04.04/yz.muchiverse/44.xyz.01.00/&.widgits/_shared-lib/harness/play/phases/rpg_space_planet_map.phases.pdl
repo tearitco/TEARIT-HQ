@@ -14,6 +14,7 @@ NEEDS | &.widgits/_shared-lib/kh_state_notify.h
 NEEDS | &.widgits/_shared-lib/csv_frames.c
 NEEDS | &.widgits/_shared-lib/petslike_skin_lib.c
 NEEDS | &.widgits/_shared-lib/petslike_autotile.c
+NEEDS | &.widgits/_shared-lib/petslike_life.c
 NEEDS | @.apps/rpg-space/ops/+x/dust_gen.+x
 NEEDS | @.apps/rpg-space/ops/+x/dust_seed.+x
 NEEDS | @.apps/rpg-space/ops/+x/dust_zoom.+x
@@ -133,3 +134,20 @@ DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 1 0\n | after-pilot-off-the-arrows-fly-the-players-ship-again
 DO | helm | off
 NOFILE | state/pilot.txt | releasing-the-helm-clears-the-pilot
+
+PHASE | p6_life | the generic life layer (petslike_life.c, lifted out of the skin 2026-10-27) behaves as before: damage, death with drops, respawn, taking a drop | life, death, drops, respawn
+DO | life | hurt | ember | 5
+HAS | state/life_ember.txt | hp=15 | hurt-takes-5-hp
+DO | life | die | ember
+HAS | state/life_ember.txt | deaths=1 | a-death-is-counted
+HAS | state/life_ember.txt | dead=0 | respawn-mode-brings-them-back
+HAS | state/life_ember.txt | inv=bread:3,iron:6,scrap:16 | half-of-every-stack-fell-where-they-died
+HAS | state/drops.txt | \p2\pbread\p0\p0\pdeath | the-bread-lies-on-the-floor-as-a-death-drop
+HAS | state/events.txt | DEATH| | the-death-is-logged
+HAS | state/events.txt | RESPAWN| | and-the-respawn
+DO | life | take | 3 | ember
+SAY | ember took bread x2 | the-take-verb-answers
+HAS | state/life_ember.txt | inv=bread:5,iron:6,scrap:16 | taking-the-drop-adds-it-back-by-the-skins-own-verb
+DO | life | status
+SAY | ember | status-names-the-characters
+
