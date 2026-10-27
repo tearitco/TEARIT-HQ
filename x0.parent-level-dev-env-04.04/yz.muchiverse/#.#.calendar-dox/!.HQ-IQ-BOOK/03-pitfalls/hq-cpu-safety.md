@@ -337,5 +337,11 @@ house has the whole machine.** Budget for coexistence:
 * **A guard kill is data, not an obstacle.** Read `cpu_guard_alert.txt` and the newest `incidents/` file, find what we added, cut it.
   Never excuse the load as "the browser" (that is the standing rule in `feedback-keep-own-footprint-managed`).
 
+* **A game daemon reports its own cost** (rpg-space, rpg-dust; owner 2026-10-27): `@.apps/<app>/state/tick_stats.txt` is rewritten every
+  10 s with `ticks`, `cpu_permille` (this process's CPU over the window, 1000 = one whole core) and `uptime_s`. Read it before and after a
+  change. Reference: rpg-dust at rest, one open board, 18 permille (about 10 ticks a second), idle engine 0. The harness cannot run a
+  daemon, so this is how a per-tick cost is caught; the 2026-10-27 bug (an unthrottled world check and a land rewrite every 1.5 s) is
+  the kind of thing it shows. Other games' daemons do not report yet: add `sk_tick_stats` from rpg_space.c when you touch their tick.
+
 Docs and handoffs should repeat this where it matters (the Grok handoff does); when you write a design, add a "footprint" paragraph.
 
