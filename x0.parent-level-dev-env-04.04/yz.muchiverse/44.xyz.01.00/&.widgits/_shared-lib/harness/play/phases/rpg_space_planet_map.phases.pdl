@@ -151,3 +151,32 @@ HAS | state/life_ember.txt | inv=bread:5,iron:6,scrap:16 | taking-the-drop-adds-
 DO | life | status
 SAY | ember | status-names-the-characters
 
+PHASE | p7_worlds | every planet has its own asteroids (saved per planet, generated the first time), and a node of kind gen:<name> takes its shape from asteroids/<name>/model.txt (owner 2026-10-27) | worlds, proc gen, user asteroids
+DO | space | world
+SAY | already this planet | the-planet-below-owns-the-world-already
+PUT | state/look_ledger.txt | PLANET\p cubia\n
+DO | space | world
+SAY | world of cubia | the-planet-changed-so-the-world-switched
+SAY | generated | and-cubia-had-none-so-it-was-generated
+HAS | state/world_cata.txt | NODE\pore\p15\p5\p | the-outgoing-planets-objects-are-saved-by-planet
+HAS | state/world_cata.txt | CRAFT\pskiff_1\p8\p-2 | and-so-is-the-craft-with-its-world-cell
+HAS | state/world_cubia.txt | NODE\p | cubia-has-its-own-asteroids
+HAS | state/pworld_planet.txt | cubia | the-world-marker-follows-the-planet
+HAS | state/nodes.txt | region\p | and-the-planet-map-rows-are-cubias
+HAS | state/craft.txt | \p-1\p-1 | the-skiff-stays-with-its-planet-so-it-is-gone-here
+PUT | state/look_ledger.txt | PLANET\p cata\n
+DO | space | world
+SAY | remembered | the-first-world-is-remembered-not-regenerated
+HAS | state/nodes.txt | region\p15\p5\pore | the-ore-asteroid-is-back-where-it-was
+HAS | state/craft.txt | \p8\p-2 | and-the-skiff-with-its-cell
+PUT | state/nodes.txt | region\p9\p9\pgen:sample_rock\p3\n
+PUT | state/flag_helm.txt | 1\n
+PUT | state/helm_mode.txt | direct\n
+PUT | state/direct_z.txt | 8\n
+PUT | state/direct.txt | 0 0\n
+DO | helm | move | 1 | 0
+HAS | rpg-space-pchq/pieces/veh_1/model.txt | dim 3 2 3 | a-generated-asteroid-takes-its-shape-from-its-model-file
+COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 11 | all-ten-voxels-plus-the-dim-line
+HAS | rpg-space-pchq/pieces/veh_1/model.txt | 0 0 0 200 40 40 | and-keeps-the-colours-of-the-file-not-the-rock-tile
+DO | helm | off
+

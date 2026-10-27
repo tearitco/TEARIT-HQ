@@ -186,5 +186,35 @@ EXPECT_OUT | ember took bread x2 | p6_life.the-take-verb-answers
 EXPECT_HAS | @.apps/rpg-dust/state/life_ember.txt | inv=bread:5,iron:6,scrap:16 | p6_life.taking-the-drop-adds-it-back-by-the-skins-own-verb
 RUN | nice | -n | 15 | $T/@.apps/rpg-dust/ops/+x/rpg_dust.+x | life | status
 EXPECT_OUT | ember | p6_life.status-names-the-characters
+# ---- phase p7_worlds: every planet has its own asteroids (saved per planet, generated the first time), and a node of kind gen:<name> takes its shape from asteroids/<name>/model.txt (owner 2026-10-27)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_dust_planet_map.marks.txt | p7_worlds
+RUN | nice | -n | 15 | $T/@.apps/rpg-dust/ops/+x/rpg_dust.+x | space | world
+EXPECT_OUT | already this planet | p7_worlds.the-planet-below-owns-the-world-already
+WRITE | @.apps/rpg-dust/state/look_ledger.txt | PLANET\p cubia\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-dust/ops/+x/rpg_dust.+x | space | world
+EXPECT_OUT | world of cubia | p7_worlds.the-planet-changed-so-the-world-switched
+EXPECT_OUT | generated | p7_worlds.and-cubia-had-none-so-it-was-generated
+EXPECT_HAS | @.apps/rpg-dust/state/world_cata.txt | NODE\pore\p15\p5\p | p7_worlds.the-outgoing-planets-objects-are-saved-by-planet
+EXPECT_HAS | @.apps/rpg-dust/state/world_cata.txt | CRAFT\pskiff_1\p8\p-2 | p7_worlds.and-so-is-the-craft-with-its-world-cell
+EXPECT_HAS | @.apps/rpg-dust/state/world_cubia.txt | NODE\p | p7_worlds.cubia-has-its-own-asteroids
+EXPECT_HAS | @.apps/rpg-dust/state/pworld_planet.txt | cubia | p7_worlds.the-world-marker-follows-the-planet
+EXPECT_HAS | @.apps/rpg-dust/state/nodes.txt | region\p | p7_worlds.and-the-planet-map-rows-are-cubias
+EXPECT_HAS | @.apps/rpg-dust/state/craft.txt | \p-1\p-1 | p7_worlds.the-skiff-stays-with-its-planet-so-it-is-gone-here
+WRITE | @.apps/rpg-dust/state/look_ledger.txt | PLANET\p cata\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-dust/ops/+x/rpg_dust.+x | space | world
+EXPECT_OUT | remembered | p7_worlds.the-first-world-is-remembered-not-regenerated
+EXPECT_HAS | @.apps/rpg-dust/state/nodes.txt | region\p15\p5\pore | p7_worlds.the-ore-asteroid-is-back-where-it-was
+EXPECT_HAS | @.apps/rpg-dust/state/craft.txt | \p8\p-2 | p7_worlds.and-the-skiff-with-its-cell
+WRITE | @.apps/rpg-dust/state/nodes.txt | region\p9\p9\pgen:sample_rock\p3\n
+WRITE | @.apps/rpg-dust/state/flag_helm.txt | 1\n
+WRITE | @.apps/rpg-dust/state/helm_mode.txt | direct\n
+WRITE | @.apps/rpg-dust/state/direct_z.txt | 8\n
+WRITE | @.apps/rpg-dust/state/direct.txt | 0 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-dust/ops/+x/rpg_dust.+x | helm | move | 1 | 0
+EXPECT_HAS | @.apps/rpg-dust/rpg-dust-pchq/pieces/veh_1/model.txt | dim 3 2 3 | p7_worlds.a-generated-asteroid-takes-its-shape-from-its-model-file
+RUN | grep | -c | ^\n | $T/@.apps/rpg-dust/rpg-dust-pchq/pieces/veh_1/model.txt
+EXPECT_OUT_IS | 11 | p7_worlds.all-ten-voxels-plus-the-dim-line
+EXPECT_HAS | @.apps/rpg-dust/rpg-dust-pchq/pieces/veh_1/model.txt | 0 0 0 200 40 40 | p7_worlds.and-keeps-the-colours-of-the-file-not-the-rock-tile
+RUN | nice | -n | 15 | $T/@.apps/rpg-dust/ops/+x/rpg_dust.+x | helm | off
 RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_dust_planet_map.marks.txt | END
 CLEAN |

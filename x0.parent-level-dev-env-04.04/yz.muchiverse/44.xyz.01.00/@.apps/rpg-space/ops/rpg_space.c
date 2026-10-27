@@ -73,6 +73,7 @@ static int sk_remnants_tick(void); static int sk_coll_check(int nx, int ny, int 
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static int sk_pilot_move(int dx, int dy, char *msg, size_t cap);      /* 1 = the helm is flying another ship (state/pilot.txt) and handled the arrow */
 static void sk_pilot_clear(void);
+static int sk_world_switch(char *msg, size_t cap);      /* the planet below changed: save its objects, load or generate the new planet's */
 static void pl_life_verb(int argc, char **argv, char *msg, size_t cap); static int sk_env_tick(void); static void sk_env_verb(int argc, char **argv, char *msg, size_t cap); static void sk_env_breach(const char *room, int on); static void sk_env_ui(char *out, size_t cap); static int pl_life_tick(void); static void pl_life_ui(char *out, size_t cap);      /* life, death, respawn, drops (section 75) */
 static long sk_helm_settle = 0;      /* until this time the xelector is not read as a steering move (a desk change or a move puts it somewhere else by itself) */
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
@@ -819,7 +820,7 @@ static void sk_wd_cfg(void) {
             else if (!strcmp(f[0], "TOOL") && sk_ntool < 8) { snprintf(sk_tool[sk_ntool].name, sizeof sk_tool[0].name, "%s", f[1]); sk_tool[sk_ntool++].power = atoi(f[2]); } }
         fclose(fp); }
     snprintf(p, sizeof p, "%s/hold.pdl", APP); fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 10) < 3 || strcmp(f[0], "HOLD")) continue; if (!strcmp(f[1], "capacity")) sk_hold_cap = atoi(f[2]); else if (!strcmp(f[1], "wreck_drop")) sk_hold_wreck = atoi(f[2]); } fclose(fp); } }
-static SkBlk *sk_blk_find(const char *k) { for (int i = 0; i < sk_nblk; i++) if (!strcmp(sk_blk[i].kind, k)) return &sk_blk[i]; return NULL; }
+static SkBlk *sk_blk_find(const char *k) { if (!strncmp(k, "gen:", 4)) k = "rock"; for (int i = 0; i < sk_nblk; i++) if (!strcmp(sk_blk[i].kind, k)) return &sk_blk[i]; return NULL; }      /* a generated asteroid (kind gen:<name>) mines as rock until its meta says otherwise */
 static void sk_hold_load(void) { char p[PATH_MAX], b[64 * 70 + 32]; spath(p, "hold.txt"); read_file(p, b, sizeof b); sk_nhold = 0; for (char *l = strtok(b, "\n"); l && sk_nhold < 64; l = strtok(NULL, "\n")) { char *f[8]; int nf = split_bar(l, f, 8); if (nf < 3) continue; SkHold *h = &sk_hold[sk_nhold++]; snprintf(h->kind, sizeof h->kind, "%s", f[0]); snprintf(h->id, sizeof h->id, "%s", f[1]); h->n = atoi(f[2]); h->x = nf >= 4 ? atoi(f[3]) : 0; h->y = nf >= 5 ? atoi(f[4]) : 0; } }
 static void sk_hold_save(void) { char p[PATH_MAX], b[64 * 70 + 32], *w = b; spath(p, "hold.txt"); b[0] = 0; for (int i = 0; i < sk_nhold; i++) { SkHold *h = &sk_hold[i]; w += snprintf(w, sizeof b - (size_t)(w - b), "%s|%s|%d|%d|%d\n", h->kind, h->id, h->n, h->x, h->y); } write_if_changed(p, b, strlen(b)); }
 static SkHold *sk_hold_find(const char *kind, const char *id) { for (int i = 0; i < sk_nhold; i++) if (!strcmp(sk_hold[i].kind, kind) && !strcmp(sk_hold[i].id, id)) return &sk_hold[i]; return NULL; }
@@ -870,7 +871,17 @@ static void sk_world_draw(void) {      /* called with the page rooms painted, be
 typedef struct { int x, y, z, r, g, b; } SkVox;
 static unsigned sk_hash(const char *s) { unsigned h = 2166136261u; for (; *s; s++) h = (h ^ (unsigned char)*s) * 16777619u; return h | 1u; }
 static unsigned sk_rng(unsigned *s) { *s ^= *s << 13; *s ^= *s >> 17; *s ^= *s << 5; return *s; }
-static int sk_nugget(const char *kind, int wx, int wy, SkVox *v, int dim[3]) {      /* a random face-connected blob of rock_vox_min..rock_vox_max voxels, the same one every time for the same asteroid (seeded by kind and cell) */
+/* USER / GENERATED ASTEROIDS (owner 2026-10-27: users should later be able to create proc-gen asteroids, one of the first uses of our generate pipeline, image -> 3D / concept bank). The seam: a node whose kind is gen:<name> takes its shape and colours from <app>/asteroids/<name>/model.txt, the SAME format as a voxel piece (`dim X Y Z`, then `x y z r g b` per voxel), up to gen_vox_max voxels and 16 cells a side; the generator (or a person) only has to write that file and a node row `region|<wx>|<wy>|gen:<name>|<amount>`. No file or a bad one: it falls back to the plain rock nugget. Design: BOOK 16.game/RPG-SPACE-USER-ASTEROIDS-DESIGN.md. */
+static int sk_gen_model(const char *name, SkVox *v, int dim[3]) {
+    for (const char *q = name; *q; q++) if (!((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') || (*q >= '0' && *q <= '9') || *q == '_' || *q == '-')) return 0;      /* a plain name, never a path */
+    char p[PATH_MAX], ln[120]; snprintf(p, sizeof p, "%s/asteroids/%s/model.txt", APP, name); FILE *f = fopen(p, "r"); if (!f) return 0;
+    int mx = tune("gen_vox_max", 1024), n = 0; dim[0] = dim[1] = dim[2] = 0; if (mx > SK_VEH_MAXV) mx = SK_VEH_MAXV;
+    while (fgets(ln, sizeof ln, f)) { int a, b, c, r, g, bl; if (!strncmp(ln, "dim ", 4)) continue; if (sscanf(ln, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) != 6) continue; if (a < 0 || b < 0 || c < 0 || a >= 16 || b >= 16 || c >= 16 || n >= mx) continue;
+        v[n++] = (SkVox){a, b, c, r & 255, g & 255, bl & 255}; if (a + 1 > dim[0]) dim[0] = a + 1; if (b + 1 > dim[1]) dim[1] = b + 1; if (c + 1 > dim[2]) dim[2] = c + 1; }
+    fclose(f); return n; }
+static int sk_gen_model_missing(const char *name) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/asteroids/%s/model.txt", APP, name); return access(p, R_OK) != 0; }
+static int sk_nugget(const char *kind, int wx, int wy, SkVox *v, int dim[3]) {
+    if (!strncmp(kind, "gen:", 4)) { int gn = sk_gen_model(kind + 4, v, dim); if (gn > 0) return gn; kind = "rock"; }      /* a random face-connected blob of rock_vox_min..rock_vox_max voxels, the same one every time for the same asteroid (seeded by kind and cell) */
     char key[64]; snprintf(key, sizeof key, "%s|%d|%d", kind, wx, wy); unsigned s = sk_hash(key);
     int lo = tune("rock_vox_min", 5), hi = tune("rock_vox_max", 11); if (lo < 1) lo = 1; if (hi < lo) hi = lo; if (hi > 40) hi = 40;
     int n = lo + (int)(sk_rng(&s) % (unsigned)(hi - lo + 1));
@@ -947,7 +958,7 @@ static void sk_veh_write(void) {
     sk_bar_refresh();
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
-    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, 0); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0); }
+    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); if (strncmp(sk_nodes[i].kind, "gen:", 4) || sk_gen_model_missing(sk_nodes[i].kind + 4)) sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, 0); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0); }
     for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_build(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 /* THE BOTTOM BAR LISTS THE SHIPS AND ASTEROIDS NEAR THE SHIP (owner 2026-10-27: 'all ships/asteroids within a radius ... should show up on bottom tb', radius from a .pdl figure: tuning.pdl bar_radius, default 16 = one planet page). Rows of the planet map (asteroids that still have loads, crafts with a world cell), nearest first, distance = Chebyshev cells from the centre of the hull; a click row moves the cursor to the object's desk cell. Ship rooms only. */
@@ -971,7 +982,7 @@ static int sk_rect_gap(int x0, int y0, int x1, int y1, int ox, int oy) {
     int hx0 = ox + SOX, hy0 = oy + SOY, hx1 = hx0 + SSZ - 1, hy1 = hy0 + SSZ - 1;
     int ex = x1 < hx0 ? hx0 - x1 : x0 > hx1 ? x0 - hx1 : 0, ey = y1 < hy0 ? hy0 - y1 : y0 > hy1 ? y0 - hy1 : 0; return ex > ey ? ex : ey; }
 static void sk_node_rect(int i, int *x0, int *y0, int *x1, int *y1) {      /* the world cells an asteroid really covers (its nugget's x / z size, centred on the node) */
-    SkVox v[48]; int dim[3]; sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); int sx = (int)ceil(dim[0] * tune("obj_vox_pct", 100) / 100.0), sy = (int)ceil(dim[2] * tune("obj_vox_pct", 100) / 100.0); if (sx < 1) sx = 1; if (sy < 1) sy = 1;
+    static SkVox v[SK_VEH_MAXV]; int dim[3]; sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); int sx = (int)ceil(dim[0] * tune("obj_vox_pct", 100) / 100.0), sy = (int)ceil(dim[2] * tune("obj_vox_pct", 100) / 100.0); if (sx < 1) sx = 1; if (sy < 1) sy = 1;
     *x0 = sk_nodes[i].x - (sx - 1) / 2; *y0 = sk_nodes[i].y - (sy - 1) / 2; *x1 = *x0 + sx - 1; *y1 = *y0 + sy - 1; }
 static int sk_node_gap(int i, int ox, int oy) { int x0, y0, x1, y1; sk_node_rect(i, &x0, &y0, &x1, &y1); return sk_rect_gap(x0, y0, x1, y1, ox, oy); }
 static int sk_craft_gap(int i, int ox, int oy) { int s = SK_SKIFF_N; int x0 = sk_craft[i].wx - (s - 1) / 2, y0 = sk_craft[i].wy - (s - 1) / 2; return sk_rect_gap(x0, y0, x0 + s - 1, y0 + s - 1, ox, oy); }
@@ -1005,7 +1016,8 @@ static void sk_space_verb(int argc, char **argv, char *msg, size_t cap) {      /
         if (!flag_on("helm", 0) || !sk_helm_direct()) { snprintf(msg, cap, "take the helm first (Direct): its arrows then fly the other ship"); return; }
         for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { if (sk_craft[i].wx < 0) { snprintf(msg, cap, "%s is not on the planet map", sk_craft[i].id); return; } char p[PATH_MAX], b[40]; spath(p, "pilot.txt"); snprintf(b, sizeof b, "%s\n", sk_craft[i].id); write_if_changed(p, b, strlen(b)); snprintf(msg, cap, "you fly %s: the arrows move it, Esc lets go (space pilot off: your own ship again)", sk_craft[i].label); return; }
         snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
-    snprintf(msg, cap, "usage: space status | hail <id> | move <id> <gx> <gy> | pilot <id>|off"); }
+    if (!strcmp(a, "world")) { if (!sk_world_switch(msg, cap)) snprintf(msg, cap, "world: already this planet's"); return; }
+    snprintf(msg, cap, "usage: space status | hail <id> | move <id> <gx> <gy> | pilot <id>|off | world"); }
 static void sk_destroy_effect(const char *kind, int room, int x, int y, const char *src, char *msg, size_t cap) {      /* what events/destroyed calls: the BLOCK row becomes remnants where it stood */
     sk_wd_cfg(); SkBlk *b = sk_blk_find(kind); char rb[160]; int made = 0, dm = 0;
     if (b && b->cnt > 0) { sk_drops_load(); if (sk_ndrops < 64) { SkDrop *q = &sk_drops[sk_ndrops++]; q->id = sk_dropid++; q->room = room; q->x = x; q->y = y; q->n = b->cnt; snprintf(q->item, sizeof q->item, "%s", b->drop); q->owner[0] = 0; srand((unsigned)(now_ms() ^ ((long)getpid() << 7))); dm = (rand() % 100) < b->dpct;      /* every verb is a fresh process: seed or the first rand() is always the same */ q->dmg = dm; snprintf(q->src, sizeof q->src, "%s", kind); made = q->n; sk_drops_save(); } }
@@ -1087,8 +1099,34 @@ static void sk_world_ambient(void) {
     if (!tune("world_ambient", 1) || flag_on("helm", 0)) return; sk_look_load(); if (sk_pl_cur < 0) return;
     { char p[PATH_MAX], b[8] = ""; spath(p, "direct_z.txt"); read_file(p, b, sizeof b); if (!b[0]) write_if_changed(p, "1\n", 2); }
     sk_land_write(0); }
+/* EVERY PLANET HAS ITS OWN ASTEROIDS (owner 2026-10-27: 'yes i want some asteroids' on every planet). The planet-map objects (the `region` rows of state/nodes.txt and the craft's world cell) belong to one planet, named in state/pworld_planet.txt. When the planet below changes, sk_world_switch saves the outgoing planet's objects to state/world_<planet>.txt, then loads the incoming one's file, or, the first time, GENERATES them from the planet's id and seed (3 to 5 asteroids of rock / ore / crystal, 4 or more cells from the ship's start and from each other, deterministic, then remembered in the file so mining sticks). Craft with a world cell stay with their planet. `space world` runs it by hand. */
+static void sk_world_path(const char *id, char *p, size_t n) { char nm[64]; snprintf(nm, sizeof nm, "world_%s.txt", id); spath(p, nm); (void)n; }
+static int sk_world_switch(char *msg, size_t cap) {
+    sk_look_load(); if (sk_pl_cur < 0) return 0; const char *to = sk_pl[sk_pl_cur].id; char pp[PATH_MAX], cur[40] = ""; spath(pp, "pworld_planet.txt"); read_file(pp, cur, sizeof cur); cur[strcspn(cur, "\r\n")] = 0;
+    if (!strcmp(cur, to)) return 0; sk_craft_load(); sk_nodes_load();
+    if (cur[0]) {      /* save the outgoing world */
+        char wp[PATH_MAX], b[2400], *w = b; sk_world_path(cur, wp, sizeof wp); b[0] = 0;
+        for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) w += snprintf(w, sizeof b - (size_t)(w - b), "NODE|%s|%d|%d|%d\n", sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].amount);
+        for (int i = 0; i < sk_ncraft; i++) if (sk_craft[i].wx >= 0) w += snprintf(w, sizeof b - (size_t)(w - b), "CRAFT|%s|%d|%d\n", sk_craft[i].id, sk_craft[i].wx, sk_craft[i].wy);
+        write_if_changed(wp, b, strlen(b)); }
+    int k = 0; for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room != SK_SHIP) sk_nodes[k++] = sk_nodes[i]; sk_nnodes = k;      /* the other rooms' nodes stay */
+    for (int i = 0; i < sk_ncraft; i++) sk_craft[i].wx = sk_craft[i].wy = -1;
+    char wp[PATH_MAX], b[2400]; sk_world_path(to, wp, sizeof wp); int had = read_file(wp, b, sizeof b) > 0 || access(wp, F_OK) == 0, made = 0;
+    if (had) { for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { char *f[6]; int nf = split_bar(l, f, 6);
+            if (nf >= 5 && !strcmp(f[0], "NODE") && sk_nnodes < 32) { SkNode *nd = &sk_nodes[sk_nnodes++]; nd->room = SK_SHIP; snprintf(nd->kind, sizeof nd->kind, "%s", f[1]); nd->x = atoi(f[2]); nd->y = atoi(f[3]); nd->amount = atoi(f[4]); made++; }
+            else if (nf >= 4 && !strcmp(f[0], "CRAFT")) for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, f[1])) { sk_craft[i].wx = atoi(f[2]); sk_craft[i].wy = atoi(f[3]); } } }
+    else {      /* first visit: generate */
+        char key[80]; snprintf(key, sizeof key, "%s|%llu", to, sk_pl[sk_pl_cur].seed); unsigned st = sk_hash(key); int want = 3 + (int)(sk_rng(&st) % 3u), px[8], py[8];
+        for (int guard = 0; made < want && guard < 200; guard++) {
+            int x = -13 + (int)(sk_rng(&st) % 42u), y = -13 + (int)(sk_rng(&st) % 42u), ok = !(x > -4 && x < 18 && y > -4 && y < 18);      /* not over the ship's start page */
+            for (int j = 0; j < made && ok; j++) if (abs(px[j] - x) < 6 && abs(py[j] - y) < 6) ok = 0; if (!ok || sk_nnodes >= 32) continue;
+            unsigned kr = sk_rng(&st) % 10u; SkNode *nd = &sk_nodes[sk_nnodes++]; nd->room = SK_SHIP; nd->x = x; nd->y = y; px[made] = x; py[made] = y; snprintf(nd->kind, sizeof nd->kind, "%s", kr < 5 ? "rock" : kr < 8 ? "ore" : "crystal"); nd->amount = 3 + (int)(sk_rng(&st) % 6u); made++; }
+        { char o[2400], *w = o; o[0] = 0; for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) w += snprintf(w, sizeof o - (size_t)(w - o), "NODE|%s|%d|%d|%d\n", sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].amount); write_if_changed(wp, o, strlen(o)); if (!o[0]) { FILE *ef = fopen(wp, "w"); if (ef) fclose(ef); } } }
+    sk_nodes_save(); sk_craft_save(); { char tb[48]; snprintf(tb, sizeof tb, "%s\n", to); write_if_changed(pp, tb, strlen(tb)); }
+    { char rb[160]; snprintf(rb, sizeof rb, "WORLD|%ld|%s|%s|%d asteroids", (long)time(NULL), cur[0] ? cur : "-", to, made); append_line("events.txt", rb); }
+    if (msg) snprintf(msg, cap, "world of %s: %d asteroids (%s)", to, made, had ? "remembered" : "generated"); return 1; }
 static int sk_remnants_tick(void) {
-    sk_world_ambient();
+    sk_world_switch(NULL, 0); sk_world_ambient();
     sk_hud_sync();
     { static unsigned bsig; sk_nodes_load(); sk_craft_load(); unsigned g = 2166136261u;      /* the bottom bar lists the objects near the ship: rewrite it only when something it shows changed (the ship's shift, the planet, an asteroid's cell or loads, a craft's cell, the radius) */
       int v[6] = { sk_dox, sk_doy, sk_pl_cur, tune("bar_radius", 16), sk_nnodes, sk_ncraft }; for (int i = 0; i < 6; i++) g = (g ^ (unsigned)v[i]) * 16777619u;
