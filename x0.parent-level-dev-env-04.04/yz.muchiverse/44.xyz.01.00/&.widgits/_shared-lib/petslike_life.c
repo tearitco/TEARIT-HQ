@@ -12,6 +12,8 @@
  *   PL_LIFE_VERB_EXTRA(a, argc, argv, msg, cap)   extra `life` verbs of the skin, returns 1 when handled (rpg-space: take);
  *   PL_LIFE_VERB_KEEPS_NOSLOT(a)           1 for verbs that need no character argument (rpg-space: "take").
  * Needs from the core: hero, party, nparty, tr, others, rooms, pet, active, use_ent, pet_save, room_idx, spath, read_file, write_if_changed, append_line, split_bar, now_ms, run_event_x, ctl_idx, NP. */
+#include <fcntl.h>
+#include <sys/wait.h>
 #ifndef PL_DROPS_BEGIN
 #define PL_DROPS_BEGIN() ((void)0)
 #define PL_DROPS_END() ((void)0)
@@ -69,12 +71,21 @@ static void pl_life_die_effect(int slot) {      /* the death itself: drop_pct of
 static void pl_life_die(int slot) {      /* hp reached 0: the Death state, then the death page (RPG Maker's common event). No page = the effect runs directly. */
     PlLife *L = &pl_life[slot]; L->hp = 0; L->dead = 1; pl_life_save(slot); char ap[PATH_MAX], ab[40]; spath(ap, "life_actor.txt"); snprintf(ab, sizeof ab, "%s\n", pl_life_id(slot)); write_if_changed(ap, ab, strlen(ab));
     if (!run_event_x("death", "parallel", "")) pl_life_die_effect(slot); pl_life_load(slot); }
+/* life_op (slice 1 of the petslike_life.c -> op migration, owner 2026-10-27): hunger growth + starvation run as an op every 1.5 s, niced, one at a time; the tick itself does no work.
+ * Needs, rates and weights are data (life.pdl, state/life_weights.txt hunger_rate_pm) so they can evolve without C changes. life_op never kills: this file still runs the death page/effect. */
+static void pl_life_op_spawn(void) {
+    static pid_t last = 0; int st; if (last > 0) { if (waitpid(last, &st, WNOHANG) == 0) return; last = 0; }
+    char exe[PATH_MAX], sd[PATH_MAX]; snprintf(exe, sizeof exe, "%s/&.widgits/_shared-lib/ops/+x/life_op.+x", HOUSE[0] ? HOUSE : APP); if (access(exe, X_OK)) return;
+    snprintf(sd, sizeof sd, "%s", ST);
+    pid_t pid = fork(); if (pid < 0) return;
+    if (!pid) { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); } (void)!nice(10); execl(exe, exe, "tick", sd, APP, (char *)NULL); _exit(97); }
+    last = pid; }
 static int pl_life_tick(void) {      /* hunger grows, starving hurts, 0 hp dies. Returns 1 when anything changed */
     pl_life_cfg(); if (!pl_lc_on) return 0; int changed = 0; long now = now_ms();
+    { static long opat; if (now - opat >= 1500) { opat = now; pl_life_op_spawn(); } }
     { static long lchk; static unsigned lsig = 1; if (now - lchk >= 1500) { lchk = now; unsigned sg = 7; for (int s = 0; s <= nparty; s++) { pl_life_load(s); sg = sg * 31 + (unsigned)pl_life[s].hp * 3 + (unsigned)pl_life[s].dead * 1009 + (unsigned)(pl_life[s].hunger / 10); } if (sg != lsig) { lsig = sg; changed = 1; } } }      /* a verb or an event page in another process changed a life file: tell the board (health line) */
     for (int s = 0; s <= nparty; s++) { PlLife *L = &pl_life[s]; static int loaded[NP + 1]; if (!loaded[s]) { pl_life_load(s); loaded[s] = 1; } if (L->dead) continue;
-        if (pl_lc_hunger_ms > 0 && now - L->last >= pl_lc_hunger_ms) { L->last = now; pl_life_load(s); L->last = now; if (L->dead) continue;      /* re-read first: verbs and event pages write these files from other processes, a cached copy would overwrite their changes */
-            if (L->hunger < 100) L->hunger++; else L->hp -= pl_lc_starve; pl_life_save(s); changed = 1; }
+        /* hunger growth and starvation hp loss are no longer computed here: the OP life_op does them on a slow cadence (see pl_life_op_spawn); this loop only reloads and reacts to hp <= 0 */
         if (L->hp <= 0) { pl_life_die(s); changed = 1; } }
     return changed; }
 static const char *pl_life_bar_state(int slot) { if (slot < 0 || slot > nparty) return ""; static char loaded[NP + 1]; pl_life_cfg(); if (!pl_lc_on) return ""; if (!loaded[slot]) { pl_life_load(slot); loaded[slot] = 1; } PlLife *L = &pl_life[slot]; int mh = pl_life_mhp(slot); if (L->dead || L->hp <= 0) return "ko"; return L->hp * 100 / mh < 30 ? "low" : "ok"; }      /* bar.txt 6th field: written when the desk exports, so a health change shows at the next export (the life tick asks for one) */

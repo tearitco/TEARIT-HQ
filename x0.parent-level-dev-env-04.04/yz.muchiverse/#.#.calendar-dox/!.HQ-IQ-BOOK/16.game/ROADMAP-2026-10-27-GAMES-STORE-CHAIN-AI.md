@@ -40,6 +40,11 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 4. **AI attrition model growing up:** more edit types (new concept node, FSM transition, planner action), promotion designed from real review history, tomom learning from the ledgers, `auto` studio for creators' repetitive work. Always: describe never classify, models never set numbers, no auto-promotion.
 5. **Hardening:** real money out of scope until a payment provider and legal review exist; external-chain value stays irreversible and out of the reversal model; courts' appeal to the owner stays.
 
+## 3b. Standing principles added later today (owner)
+* **Engine grows and compacts** (design doc section 21): every growth slice pays a compaction tax; data over code, ops over copies, one verb family not many commands, retire text includes; measured baseline and a compaction ledger.
+* **Life is evolvable** (section 20): needs and rates are data and weights, AI proposes new needs/variables/events through the validated review loop, scored in the dev lane; **anatomy and chemistry are optional AI-built packs**, fidelity opt-in per entity.
+* **Life op slice 1 DONE** (section 18): hunger/starvation clock is `life_op`; slices 2-5 next.
+
 ## 4. Standing risks to watch
 * Public GitHub history is permanent: screen before publishing, never publish `xyzfs/users` or `user/*`.
 * A 270M judge must never move real value alone.
