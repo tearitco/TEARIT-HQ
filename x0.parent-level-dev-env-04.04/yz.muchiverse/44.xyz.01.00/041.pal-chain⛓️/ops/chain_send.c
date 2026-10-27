@@ -76,7 +76,7 @@ static int valid_wallet_id(const char *id) {
  * Optional trailing args: <nonce> <sig_hex>. Signed message: TX|<chain_id>|<from>|<to>|<amount>|<nonce> under context chain:<chain_id> (sig_op: a signature
  * for another chain, another amount or another recipient does not verify). The sender's public key is the `pubkey=` line of its wallet.txt. A (from, nonce)
  * pair already present in pending or the ledger is refused (replay). The TX line gets two trailing fields `n=<nonce>|s=<sig>`; chain_balance and the miner ignore them.
- * NOT yet: verification at mining and replay time (so a forged line written straight into pending_tx.txt is still accepted by the miner), escrow rows, the real chain. */
+ * The miner re-verifies signed TX lines at inclusion (chain_miner.c). NOT yet: escrow rows, key binding on the chain, the real chain. */
 static void trim_ends(char **p) {
     while (**p == ' ') (*p)++;
     char *e = *p + strlen(*p);

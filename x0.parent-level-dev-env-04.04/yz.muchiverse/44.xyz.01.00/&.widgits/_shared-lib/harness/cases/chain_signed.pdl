@@ -1,6 +1,6 @@
 # chain_signed: LOCKED cases for signed transactions on a test chain (signatures steps 2-3): wallet pubkey field, chain.pdl SIGNING row, chain_send signature + nonce check.
 # SCRATCH only. Signed message: TX|<chain>|<from>|<to>|<amount>|<nonce> under context chain:<chain>; Ed25519 is deterministic, so the expected signature is a literal from the TEST fixture key.
-# NOT covered (not built): verification at mining/replay time, escrow rows, the real chain.
+# Also covers verification at mining time (forged, tampered, replayed lines are dropped to rejected_tx.txt). NOT covered (not built): escrow rows, the real chain, key binding on the chain.
 RESULTS | ../results/chain_signed.txt
 SCRATCH |
 COPY | 041.pal-chain⛓️/ops/+x/chain_new.+x | 041.pal-chain/ops/+x/chain_new.+x
@@ -60,3 +60,28 @@ RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | dan | pw
 RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | dan | --blocks | 1
 RUN | $T/041.pal-chain/ops/+x/chain_send.+x | dan | erin | 5
 EXPECT_EXIT | 0 | unsigned-chain-still-sends-unsigned
+
+CASE | forged-lines-rejected-at-mining
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/sg
+WRITE | 041.pal-chain/chains/sg/data/pending_tx.txt | TX\palice\pmallory\p5\p10\pf1\nTX\palice\pmallory\p9\p11\pf2\pn=3\ps=a497790a62a099621b4f8deeb3c0e8a31b0301e13fbf58920b93152eacc46ec02f9215bcd49fe1668eb3eb6ee77883caf90f3e381003bc4fdbe6884b432c8d0f\nTX\palice\pbob\p5\p12\pf3\pn=1\ps=a497790a62a099621b4f8deeb3c0e8a31b0301e13fbf58920b93152eacc46ec02f9215bcd49fe1668eb3eb6ee77883caf90f3e381003bc4fdbe6884b432c8d0f\nTX\palice\pbob\p5\p13\pg1\pn=2\ps=88cfa0412def956505e21d329de1a3075ed16a159305cfb35c594a7c53398d2547bd8365808a33c1ba4120469c2746bb170bc5ebe3ba59e80e7194ed6e40bd03\nTX\palice\pbob\p5\p14\pg2\pn=2\ps=88cfa0412def956505e21d329de1a3075ed16a159305cfb35c594a7c53398d2547bd8365808a33c1ba4120469c2746bb170bc5ebe3ba59e80e7194ed6e40bd03\n
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | miner-ran
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | bob
+EXPECT_OUT_IS | 10 | only-the-genuine-signed-tx-moved-money
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | mallory
+EXPECT_OUT_IS | 0 | forged-and-tampered-paid-nothing
+EXPECT_HAS | 041.pal-chain/chains/sg/data/rejected_tx.txt | unsigned tx on a signing chain | unsigned-line-rejected-with-reason
+EXPECT_HAS | 041.pal-chain/chains/sg/data/rejected_tx.txt | signature does not verify | tampered-amount-rejected-with-reason
+EXPECT_HAS | 041.pal-chain/chains/sg/data/rejected_tx.txt | nonce already used (replay) | replay-rejected-with-reason
+EXPECT_LACKS | 041.pal-chain/chains/sg/data/blockchain.txt | pmallory | no-forged-line-in-the-ledger
+EXPECT_LACKS | 041.pal-chain/chains/sg/data/pending_tx.txt | TX | pending-emptied
+RUN | grep | -c | ^REJECT | $T/041.pal-chain/chains/sg/data/rejected_tx.txt
+EXPECT_OUT_IS | 4 | exactly-four-rejections-of-five-lines
+
+CASE | unsigned-chain-miner-unchanged
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/lax
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | erin | pw
+WRITE | 041.pal-chain/chains/lax/data/pending_tx.txt | TX\pdan\perin\p3\p20\pu1\n
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | dan | --blocks | 1
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | erin
+EXPECT_OUT_IS | 3 | unsigned-chain-still-mines-unsigned-lines

@@ -45,8 +45,10 @@
  *           spendable balance (after earlier lines of this block) >= amount
  *   PAYOUT/REFUND  ESCROW enabled, escrow exists, by == the lock's agent,
  *           amount > 0, paid+refunded+amount <= locked
- *   TX      with chain.pdl present, a TX from `_burn` is not included; any other
- *           TX is included exactly as before (legacy; not balance-checked here)
+ *   TX      with chain.pdl present, a TX from `_burn` is not included; with SIGNING | required | 1 a TX
+ *           must carry n=<nonce>|s=<sig> that sig_op verifies against the sender's wallet.txt pubkey=
+ *           (context chain:<id>, message TX|<id>|<from>|<to>|<amount>|<nonce>) and an unused (from, nonce);
+ *           any other TX is included exactly as before (legacy; not balance-checked here)
  * WITHOUT SIGNING the agent/by fields are an HONOR FIELD: anyone who can write
  * pending_tx.txt can claim to be the agent. Escrow is trustworthy on
  * local/test chains only.
@@ -63,6 +65,9 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <ctype.h>
+#include <sys/wait.h>
 #include <openssl/sha.h>
 
 #define MAX_LINE 8192
@@ -79,7 +84,8 @@ static long g_halving_period = HALVING_PERIOD_BLOCKS;
 static long long g_total_supply = TOTAL_SUPPLY_MILLICONES;
 static int g_pdl_difficulty = 0;      /* from chain.pdl, 0 = not set */
 static long g_daily_cap = 0;          /* blocks per wallet per UTC day, 0 = none */
-static int g_has_pdl = 0, g_faucet_enabled = 0, g_escrow_enabled = 0;
+static int g_has_pdl = 0, g_faucet_enabled = 0, g_escrow_enabled = 0, g_signing = 0;
+static char g_chain_id[64] = "cones";
 static long g_faucet_amount = 0;
 static char miner_wallet_id[128] = "";
 static volatile sig_atomic_t g_stop = 0;
@@ -148,6 +154,8 @@ static void load_chain_pdl(void) {
     if (pdl_get("FAUCET", "enabled", v, sizeof(v))) g_faucet_enabled = atoi(v) == 1;
     if (pdl_get("FAUCET", "amount_millicones", v, sizeof(v))) g_faucet_amount = atol(v);
     if (pdl_get("ESCROW", "enabled", v, sizeof(v))) g_escrow_enabled = atoi(v) == 1;
+    if (pdl_get("SIGNING", "required", v, sizeof(v))) g_signing = atoi(v) == 1;
+    if (pdl_get("CHAIN", "id", v, sizeof(v))) snprintf(g_chain_id, sizeof(g_chain_id), "%.63s", v);
     if (pdl_get("CHAIN", "kind", v, sizeof(v)) && strcmp(v, "cones") == 0) g_faucet_enabled = 0;   /* cones never has a faucet */
 }
 
@@ -168,6 +176,58 @@ static int escrow_find(const char *id) {
     return -1;
 }
 
+
+/* ---- signatures (SIGNING | required | 1): a TX must carry n=<nonce>|s=<sig>, verified through sig_op
+ * (fork+exec, watchdog) against the sender's wallet.txt pubkey=; a (from, nonce) pair is spendable once.
+ * Nonces seen in the replay and in this block's earlier lines live in N[]. Same message as chain_send. */
+#define MAX_N 8192
+static char N[MAX_N][160]; static int nN;
+static int nonce_seen(const char *from, const char *nonce) {
+    char key[160]; snprintf(key, sizeof key, "%s|%s", from, nonce);
+    for (int i = 0; i < nN; i++) if (strcmp(N[i], key) == 0) return 1;
+    return 0;
+}
+static void nonce_note(const char *from, const char *nonce) {
+    if (nN < MAX_N) snprintf(N[nN++], sizeof N[0], "%s|%s", from, nonce);
+}
+static int wallet_pub(const char *w, char *out, size_t n) {
+    char path[PATH_BUF], line[MAX_LINE]; snprintf(path, sizeof path, "%s/wallets/%s/wallet.txt", project_root, w);
+    FILE *f = fopen(path, "r"); if (!f) return 0;
+    int ok = 0;
+    while (fgets(line, sizeof line, f)) if (!strncmp(line, "pubkey=", 7)) { line[strcspn(line, "\r\n")] = 0; snprintf(out, n, "%.79s", line + 7); ok = strlen(out) == 64; }
+    fclose(f); return ok;
+}
+static int sig_verify(const char *pub, const char *msg, const char *sig) {
+    char exe[PATH_BUF], ctx[128]; snprintf(exe, sizeof exe, "%s/ops/+x/sig_op.+x", project_root);
+    if (access(exe, X_OK)) return -1;
+    snprintf(ctx, sizeof ctx, "chain:%s", g_chain_id);
+    pid_t c = fork(); if (c < 0) return -1;
+    if (c == 0) { int nul = open("/dev/null", O_WRONLY); if (nul >= 0) { dup2(nul, 1); dup2(nul, 2); } execl(exe, exe, "verify", pub, ctx, msg, sig, (char *)NULL); _exit(97); }
+    time_t t0 = time(NULL); int st;
+    for (;;) {
+        pid_t r = waitpid(c, &st, WNOHANG);
+        if (r == c) return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 1 : 0;
+        if (time(NULL) - t0 > 10) { kill(c, SIGKILL); waitpid(c, &st, 0); return -1; }
+        usleep(20000);
+    }
+}
+/* 1 = fine (or unsigned chain), 0 = refuse with why. tf = TX fields (>= 6). */
+static int tx_signature_ok(char **tf, int tnf, char *why, size_t why_sz) {
+    if (!g_signing) return 1;
+    const char *nonce = NULL, *sig = NULL;
+    for (int i = 6; i < tnf; i++) { if (!strncmp(tf[i], "n=", 2)) nonce = tf[i] + 2; else if (!strncmp(tf[i], "s=", 2)) sig = tf[i] + 2; }
+    if (!nonce || !sig) { snprintf(why, why_sz, "unsigned tx on a signing chain"); return 0; }
+    if (!nonce[0] || strlen(nonce) > 18) { snprintf(why, why_sz, "bad nonce"); return 0; }
+    for (const char *p = nonce; *p; p++) if (!isdigit((unsigned char)*p)) { snprintf(why, why_sz, "bad nonce"); return 0; }
+    char pub[80] = ""; if (!wallet_pub(tf[1], pub, sizeof pub)) { snprintf(why, why_sz, "sender has no public key on this node"); return 0; }
+    char msg[512]; snprintf(msg, sizeof msg, "TX|%s|%s|%s|%s|%s", g_chain_id, tf[1], tf[2], tf[3], nonce);
+    int v = sig_verify(pub, msg, sig);
+    if (v < 0) { snprintf(why, why_sz, "could not run sig_op"); return 0; }
+    if (!v) { snprintf(why, why_sz, "signature does not verify"); return 0; }
+    if (nonce_seen(tf[1], nonce)) { snprintf(why, why_sz, "nonce already used (replay)"); return 0; }
+    return 1;
+}
+
 /* Applies one tx (fields already split, tnf fields). validate=0: replay, just
  * apply. validate=1: refuse an invalid line, writing the reason to why. 1 = ok. */
 static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) {
@@ -175,6 +235,8 @@ static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) 
     if (strcmp(tf[0], "TX") == 0 && tnf >= 6) {
         if (validate && g_has_pdl && strcmp(tf[1], "_burn") == 0) { snprintf(why, why_sz, "TX from _burn"); return 0; }
         long long amt = atoll(tf[3]);
+        if (validate && !tx_signature_ok(tf, tnf, why, why_sz)) return 0;
+        for (int i = 6; i < tnf; i++) if (!strncmp(tf[i], "n=", 2)) nonce_note(tf[1], tf[i] + 2);
         *wallet_bal(tf[1]) -= amt; *wallet_bal(tf[2]) += amt;
     } else if (strcmp(tf[0], "FAUCET") == 0 && tnf >= 5) {
         long long amt = atoll(tf[2]);
@@ -252,7 +314,7 @@ static int meets_difficulty(const char *hash_hex, int zeros) {
 static long g_today_blocks = 0;   /* blocks by this miner in the current UTC day, set by scan_chain */
 
 static void scan_chain(long *last_index, char *last_hash, size_t last_hash_sz, long long *total_minted) {
-    nW = 0; nE = 0; g_today_blocks = 0;
+    nW = 0; nE = 0; nN = 0; g_today_blocks = 0;
     long today = (long)time(NULL) / 86400;
     *last_index = -1;
     snprintf(last_hash, last_hash_sz, "%s", "0000000000000000000000000000000000000000000000000000000000000000");
