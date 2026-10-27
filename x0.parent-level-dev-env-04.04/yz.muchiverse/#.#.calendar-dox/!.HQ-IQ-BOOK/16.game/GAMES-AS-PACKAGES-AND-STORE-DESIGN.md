@@ -185,3 +185,36 @@ FACT, what my-lawyer already is: a turn-based game where NPCs post lawsuits to a
 **Footprint:** all event-driven; the judge worker is a niced one-shot, never a polling loop (AGENTS.md coexistence rule).
 ### 14.5 Open for the owner
 The small-amount threshold; the liability share and cap; REP decay and appeal rules; whether jail applies to a user's own account or only to pets/agents; whether bail may be posted by third parties; who the final appeal is (assumed: the owner); whether the courts are one window (`court-hq`, a Steam-like sibling of `store-hq`) or part of the Store.
+
+## 15. Everything adjustable by .pdl per chain and per game; where `court-hq` lives (owner 2026-10-27)
+### 15.1 Owner decisions
+* **All thresholds, windows, shares and rules are adjustable through `.pdl`, per chain and per game** (not constants in code). This answers the open numbers of section 14 (threshold, share, cap, decay, jail scope, bail) as **settings with defaults**, not as one fixed answer.
+* **Build a `court-hq` window and try it under the taskbar's Network menu** (question was: Network or HQ, global admin or networks?).
+### 15.2 Settings format (PROPOSAL, same house pattern as `tuning.pdl` TUNE rows)
+```
+POLICY | scope | key                   | value | text                                              | default
+POLICY | chain:cones-test | dispute_window_days    | 7  | days a purchase stays disputable before PAYOUT      | 7
+POLICY | chain:cones-test | dispute_window_dev_days| 0  | override used when dev_mode=1                       | 0
+POLICY | chain:*          | small_amount           | 50 | disputes at or below this are rule-resolved (millicones) | 0
+POLICY | game:rpg-space   | liability_share_pct    | 25 | share of a pet/agent penalty the owner takes        | 25
+POLICY | game:rpg-space   | liability_cap_per_30d  | 40 | cap on REP points an owner takes from pets          | 40
+POLICY | *                | rep_decay_per_30d      | 5  | REP points forgiven per 30 days of clean record     | 5
+POLICY | *                | jail_applies_to        | pet,agent | account kinds that can be jailed             | pet,agent
+POLICY | *                | bail_by                | owner | who may post bail (owner|anyone|none)             | owner
+POLICY | *                | judge_bias             | 0  | MUST stay 0 in real courts (tested)                 | 0
+```
+* **Scope resolution** reuses the scoped framework of the companion doc section 8: most specific wins: `chain:<id>` / `game:<id>` / `kind:<k>` / `*`; a missing row falls back to the default column; **a value outside its declared range is refused and the default is used (logged)**. Numbers above are **placeholders to show shape, not decisions**.
+* **Where files live:** `policy.pdl` next to each chain's `chain.pdl` (escrow already has an enable flag there: `ESCROW enabled = 1`, per `chain_escrow.c`) and next to each game's `tuning.pdl`. A generated settings window (companion section 10 item 6) edits them with the TUNE text as help, keyboard-numbered.
+* **Safety of tunable safety:** rows that weaken protections (`judge_bias`, `dispute_window_*`, `small_amount`, `bail_by`) are **owner-signed**: a change is an append-only `POLICYCHG | who | key | old | new | ts` row; the court ops read the file at use time, never cache across a ruling. A player-facing game must not be able to edit its own court's policy (the "never edit the grader" rule).
+### 15.3 Network or HQ? (checked in `#.desktop/livedesk_taskbar.pdl`)
+* **HQ menu (FACT, 16 rows):** restart, quit, kill hq, always-on-top, hide/show, dir, settings, stats, cli, tpmos, cursword, debug, proc-mon, tomom. That is **machine administration and diagnostics** (global admin of the house itself).
+* **Network menu (FACT, 8 rows):** IRC Chat, Forum, Chain, Browser, Exchange, Auction, hq-ftp (LAN drop, not built), cancel. These are the **windows where users meet and value moves between accounts**.
+**Recommendation: `court-hq` goes under Network, next to Exchange and Auction.** Reason: a court exists because of what happens between parties (a purchase, an exchange trade, an auction, a social post, a chain transfer), and it reads exactly those ledgers; the people who need it (a buyer, a seller, a pet's owner posting bail) are network users, not house administrators. It is closest to **Exchange/Auction/Chain** (money disputes) and **Forum/IRC** (REP for posting).
+The **admin part is narrow and stays inside the window**: the owner's appeal / confirm-in-batches queue and the policy editor are shown only to the owner role (once `role=` is enforced; today it is only a marker). Do **not** add a separate HQ-menu entry for it; the HQ menu is for running the machine. If the taskbar later grows a role-gated "admin" group, the owner queue could move there.
+**Adding the menu row:** the Network menu is data-driven in `livedesk_taskbar.pdl` (`network_menu_N_label` / `_cmd`, with `cancel` last). A new row means inserting `court` before `cancel` and renumbering; that file and the taskbar manager are **shared, with a taskbar owner who must review** (XYZFS design section 10), so this is not done here. A `court-hq` mockup can be built first as a standalone window (like `store-hq`) and wired in after review.
+### 15.4 Next steps (PROPOSAL)
+1. `court-hq` mockup from `_template-hq` (views: My cases, Docket, Case file, Rulings, Jail/Bail, owner queue), data from mock rows; no real transactions.
+2. `policy.pdl` schema + a reader with range checks and a harness (a value out of range falls back; an unsigned change is refused).
+3. Then the build order of section 14.4.
+### 15.5 Still open
+The actual numbers (placeholders above); whether jail applies to users' own accounts (default set to pets/agents until you say otherwise); who may post bail (default owner); the court window layout; who is the taskbar owner to review the Network menu change.
