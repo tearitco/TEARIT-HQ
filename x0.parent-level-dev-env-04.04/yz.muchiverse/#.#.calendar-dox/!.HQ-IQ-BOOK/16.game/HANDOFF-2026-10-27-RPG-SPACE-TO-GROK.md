@@ -91,7 +91,39 @@ Not done / known gaps (be honest about these in any report):
 3. **Event-page coverage**: move hard-coded behaviour into pages/verbs; add pages for mining, building, trading, hail.
 4. Survival loop: hunger/air/temperature exist as stubs (`environment.pdl`, `life.pdl`); make one full loop (need -> resource
    -> craft -> consequence) playable end to end.
-5. Controls: write down every key per mode in one table (today it is spread over keybinds.pdl, engine keys, relay codes).
+5. **Back-merge life/death/health bars to the other pets games and keep the rpg-dust copy in step (section 4b).**
+6. Controls: write down every key per mode in one table (today it is spread over keybinds.pdl, engine keys, relay codes).
+
+## 4b. BACKWARD MERGE to the other pets games, and the rpg-dust copy (owner 2026-10-27; I had NOT noted this before; no code written yet)
+
+The owner expects the "normal things every pets game should have" to exist in all of them: **death / respawn and life bars first**,
+then whatever else turns out generic. Today they exist ONLY in the rpg-space skin. Counts from a text search of the skin files
+(`grep -c`, not a behaviour test): `life_` appears 71 times in `rpg_space.c` and **0 times** in each of the other ten skins
+(`rpg_pet`, `cdda_hq`, `gta_hq`, `df_hq`, `rpg_dust`, `civ_rpgce`, `dsr_rpg`, `tcg_rpgce`, `rpg_edit_hq`, `mcl_hq`); `respawn`
+13 vs 0. The core (`petslike_core.c`) only has the hooks: `PET_BAR_HP` (the 6th field of `bar.txt`, drives the hp slots in
+`pchq_board_projector`) and `PET_BAR_EXTRA` (new, default none), a 64-slot `tune()` table, and generic drops/hold helpers.
+
+| rpg-space feature | Lives in | Generic? | Back-merge plan |
+|---|---|---|---|
+| life state (hp, hunger, dead, deaths, inv), `life` verb, `life.pdl`, event pages `death` / `respawn`, DEATH/RESPAWN rows | skin `rpg_space.c` + `events/death`, `events/respawn` | YES (every game with pets) | lift into a shared text-include (house rule: pure + 2+ consumers = text-include, never header+link), per-game `life.pdl`, **off by default** per game, enabled game by game |
+| health bar in the bottom bar (`bar.txt` field 6 ok/low/ko -> projector `ent_N_hp_*`, `.hpb-*` css) | core hook + projector + each board's xhtpm slots | YES | each board's `pchq-board.xhtpm` needs the four hp slot variants and css; check every board, not only rpg-space |
+| bottom bar extra rows (`PET_BAR_EXTRA`), `bar_radius` | core hook + skin | generic hook, game-specific rows | already in core (default does nothing); each game writes its own rows |
+| collision / destruction (`collision.pdl`, `col_*` pages), mining nodes, build (`blocks.pdl`, keys `m` `b`), hold, remnants | skin | partly (mine/build/hold are survival-generic; collision is flight-specific) | decide per game; start with mine/build/hold behind `blocks.pdl` rows |
+| voxel pieces (asteroids, tiled ships), direct flight, helm, `space pilot` | skin | NO (space only) | stays in rpg-space |
+| tuning rows + `sk_hud_sync` minimap knobs | skin + `tuning.pdl` | generic idea | a shared "sync tuning to hud.pdl" helper later |
+
+Method (owner's standing rules): rehearse in a scratch/staging worktree, additive only, all ten skins must still compile, and the
+**per-game verb-script diff gate** must show every old behaviour unchanged before a game gets the new layer (see memory
+`petslike-core-framework`; design `RPG-DUST-DESIGN.md` R8). Do the lift once in the shared file, then turn it on per game.
+Footprint (section 6): the shared layer must cost nothing when a game has not enabled it.
+
+**The rpg-dust copy** is the owner's short-term goal and comparison point: get rpg-space to a defined level, then copy it onto
+`@.apps/rpg-dust` so any lost feature can be diffed against it without digging through git. rpg-dust's skin is 478 lines against
+rpg-space's 1,177 and it has 8 event folders against rpg-space's 14, i.e. it is far behind. Steps: (1) finish the generic life /
+health-bar lift above, since dust needs them too; (2) port the rpg-space gate (`rpg_space_planet_map` phases, then the other
+rpg-space gates) to a dust copy and make it pass there; (3) keep the per-game diff gate green for the other skins; (4) record
+what dust does NOT take (space-only: helm, direct flight, voxel ships) so the comparison stays honest. dust-specific design:
+`RPG-DUST-DESIGN.md` (scale ladder, molecules).
 
 ## 5. Your play-test assignment (owner: "ask grok to play")
 
