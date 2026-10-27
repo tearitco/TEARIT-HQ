@@ -63,11 +63,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#include <process.h>
+#include <io.h>
+#define usleep(us) Sleep((DWORD)((us) / 1000))
+#define getcwd _getcwd
+#define getpid _getpid
+#define unlink _unlink
+#define access _access
+#define F_OK 0
+#else
+#include <unistd.h>
+#endif
 
+#ifndef MAX_PATH
 #define MAX_PATH 4096
+#endif
 #define PATH_BUF (MAX_PATH + 256)
 
 #define GLYPH_W 8
@@ -81,27 +96,15 @@ static char project_root[MAX_PATH] = ".";
 
 static void resolve_root(void) {
 #ifdef _WIN32
-    /* Prefer "." when CWD is project/session — emoji abs paths break ANSI fopen. */
+    /* Prefer relative "." when launched from project CWD (emoji abs paths
+     * break ANSI fopen; matches orchestrator/button.ps1 convention). */
     if (access("pieces", F_OK) == 0) {
         snprintf(project_root, sizeof(project_root), ".");
         return;
     }
 #endif
     const char *env = getenv("PRISC_PROJECT_ROOT");
-    if (env && env[0]) {
-#ifdef _WIN32
-        /* Ignore absolute Unicode env when CWD already has pieces/ */
-        if (env[0] == '.' || (access("pieces", F_OK) != 0)) {
-            snprintf(project_root, sizeof(project_root), "%s", env);
-            return;
-        }
-        snprintf(project_root, sizeof(project_root), ".");
-        return;
-#else
-        snprintf(project_root, sizeof(project_root), "%s", env);
-        return;
-#endif
-    }
+    if (env && env[0]) { snprintf(project_root, sizeof(project_root), "%s", env); return; }
     if (!getcwd(project_root, sizeof(project_root))) snprintf(project_root, sizeof(project_root), ".");
 }
 
@@ -577,6 +580,26 @@ static int ensure_emoji_asset_generated(const char *hex_id, const char *utf8_byt
     struct stat st;
     if (stat(csv_path, &st) == 0) return 1; /* already generated, real cache hit */
 
+#ifdef _WIN32
+    {
+        char mkdir_cmd[PATH_BUF + 32];
+        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir \"%s\" 2>nul", dir_path);
+        system(mkdir_cmd);
+    }
+    {
+        char tmpdir[MAX_PATH];
+        DWORD n = GetTempPathA(sizeof(tmpdir), tmpdir);
+        if (n == 0 || n >= sizeof(tmpdir)) snprintf(tmpdir, sizeof(tmpdir), ".");
+        snprintf(tmp_png, sizeof(tmp_png), "%semoji_gen_%s_%d.png", tmpdir, hex_id, (int)getpid());
+    }
+    snprintf(cmd, sizeof(cmd), "\"%s/ops/+x/emoji_gen_atlas.+x\" \"%s\" \"%s\" >nul 2>&1",
+             project_root, glyph_buf, tmp_png);
+    int rc1 = system(cmd);
+
+    snprintf(cmd, sizeof(cmd), "\"%s/ops/+x/emoji_xtract.+x\" \"%s\" 0 16 \"%s\" >nul 2>&1",
+             project_root, tmp_png, csv_path);
+    int rc2 = system(cmd);
+#else
     snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir_path);
     if (system(cmd) != 0) return 0;
 
@@ -588,6 +611,7 @@ static int ensure_emoji_asset_generated(const char *hex_id, const char *utf8_byt
     snprintf(cmd, sizeof(cmd), "'%s/ops/+x/emoji_xtract.+x' '%s' 0 16 '%s' >/dev/null 2>&1",
              project_root, tmp_png, csv_path);
     int rc2 = system(cmd);
+#endif
 
     unlink(tmp_png);
 
@@ -759,22 +783,32 @@ static void write_file_atomic(const char *path, const void *data, size_t len) {
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
     FILE *f = fopen(tmp_path, "wb");
     if (!f) return;
-    if (fwrite(data, 1, len, f) != len) {
-        fclose(f);
-        remove(tmp_path);
-        return;
-    }
+    fwrite(data, 1, len, f);
     fclose(f);
-    /* POSIX rename overwrites; Windows rename FAILS if dest exists —
-     * rgb_frame.raw then freezes on first write (muta/wsr fix). */
+#ifdef _WIN32
+    /* POSIX rename() overwrites the destination; Windows rename() FAILS
+     * if the destination already exists — so rgb_frame.raw stayed
+     * forever stuck at the first write and GL showed a stale/empty
+     * frame. Remove destination first (same net effect as POSIX). */
     remove(path);
+#endif
     if (rename(tmp_path, path) != 0) {
-        FILE *out = fopen(path, "wb");
-        if (out) {
-            fwrite(data, 1, len, out);
-            fclose(out);
+#ifdef _WIN32
+        /* Last resort: non-atomic overwrite so the game still runs. */
+        FILE *dst = fopen(path, "wb");
+        FILE *src = fopen(tmp_path, "rb");
+        if (dst && src) {
+            char buf[8192];
+            size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), src)) > 0)
+                fwrite(buf, 1, n, dst);
         }
+        if (src) fclose(src);
+        if (dst) fclose(dst);
         remove(tmp_path);
+#else
+        (void)0;
+#endif
     }
 }
 
@@ -854,23 +888,21 @@ static int read_kv_int_generic(const char *path, const char *key, int def) {
  * so nothing is double-counted. Any project that never emits this
  * marker byte (the common case) sees ZERO behavior change - this is a
  * pure opt-in. */
-/* Returns 1 if overlay blitted, 0 if missing/short — caller must NOT
- * skip map rows when 0 (stale receipt left board black on Win). */
-static int blit_overlay(unsigned char fb[FRAME_H][FRAME_W][4], int y0) {
+static void blit_overlay(unsigned char fb[FRAME_H][FRAME_W][4], int y0) {
     char overlay_path[PATH_BUF], receipt_path[PATH_BUF];
     snprintf(overlay_path, sizeof(overlay_path), "%s/pieces/display/rgb_frame_3d_overlay.raw", project_root);
     snprintf(receipt_path, sizeof(receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
     int ov_w = read_kv_int_generic(receipt_path, "overlay_w", 0);
     int ov_h = read_kv_int_generic(receipt_path, "overlay_h", 0);
-    if (ov_w <= 0 || ov_h <= 0) return 0;
+    if (ov_w <= 0 || ov_h <= 0) return;
 
     FILE *f = fopen(overlay_path, "rb");
-    if (!f) return 0;
+    if (!f) return;
     unsigned char *buf = malloc((size_t)ov_w * ov_h * 4);
-    if (!buf) { fclose(f); return 0; }
+    if (!buf) { fclose(f); return; }
     size_t got = fread(buf, 1, (size_t)ov_w * ov_h * 4, f);
     fclose(f);
-    if (got != (size_t)ov_w * ov_h * 4) { free(buf); return 0; }
+    if (got != (size_t)ov_w * ov_h * 4) { free(buf); return; }
 
     for (int oy = 0; oy < ov_h; oy++) {
         int fy = y0 + oy;
@@ -884,7 +916,6 @@ static int blit_overlay(unsigned char fb[FRAME_H][FRAME_W][4], int y0) {
         }
     }
     free(buf);
-    return 1;
 }
 
 /* Reads pieces/display/current_frame.txt (whatever chtpm_parser_pal.c
@@ -914,8 +945,7 @@ static void render_once(unsigned char fb[FRAME_H][FRAME_W][4], const char *frame
         for (int x = 0; x < FRAME_W; x++)
             fb[y][x][3] = 255;
 
-    /* "rb": Windows text-mode can mangle multi-byte UTF-8 map emoji. */
-    FILE *f = fopen(frame_path, "rb");
+    FILE *f = fopen(frame_path, "r");
     if (!f) return;
 
     char line[512];
@@ -923,20 +953,23 @@ static void render_once(unsigned char fb[FRAME_H][FRAME_W][4], const char *frame
     while (row < MAX_TEXT_ROWS && fgets(line, sizeof(line), f)) {
         line[strcspn(line, "\r\n")] = '\0';
         if ((unsigned char)line[0] == 0x01) {
-            /* MAP3D_MARKER — only skip map rows if overlay actually blitted.
-             * Stale receipt + missing raw used to leave a black board band. */
+            /* MAP3D_MARKER - see blit_overlay()'s own header comment.
+             * Don't rasterize the marker itself. */
             char receipt_path[PATH_BUF];
             snprintf(receipt_path, sizeof(receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
             int ov_h = read_kv_int_generic(receipt_path, "overlay_h", 0);
             int skip_rows = (ov_h > 0) ? (ov_h + GLYPH_H - 1) / GLYPH_H : 0;
-            int ok = blit_overlay(fb, row * GLYPH_H);
 
-            if (ok && skip_rows > 0) {
-                for (int i = 0; i < skip_rows; i++) {
-                    if (!fgets(line, sizeof(line), f)) break;
-                }
-                row += skip_rows;
+            blit_overlay(fb, row * GLYPH_H);
+
+            /* Consume (without rasterizing) whatever the producer's own
+             * marker-emission convention put in place of the map rows
+             * this overlay replaces, then continue from a real row
+             * boundary. */
+            for (int i = 0; i < skip_rows; i++) {
+                if (!fgets(line, sizeof(line), f)) break;
             }
+            row += skip_rows;
             continue;
         }
         blit_text(fb, 0, row * GLYPH_H, line, 255, 255, 255);
