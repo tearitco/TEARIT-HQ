@@ -96,3 +96,7 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
 /* load guard tab (pid and cpu %, taskbar manager ktb_load_sample): red when a limit is passed */
 .tab.pchq-tb-warn { color: #ff5555; font-weight: bold; }
 .pchq-tb-warn { color: #ff5555; font-weight: bold; }
+/* life bars in the bottom bar (the generic life layer, petslike_life.c; same colours as rpg-space; shown only when life.pdl says enabled 1) */
+.hpb-ok { color: #3cdc50; }
+.hpb-low { color: #e03c3c; }
+.hpb-ko { color: #808080; }

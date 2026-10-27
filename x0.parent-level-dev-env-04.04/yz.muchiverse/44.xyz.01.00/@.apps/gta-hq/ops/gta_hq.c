@@ -4,12 +4,15 @@
 #define PET_APP "gta-hq"
 #define PET_OP "gta_hq"
 #define PET_SKIN "gta_hq.c"
+static const char *pl_life_bar_state(int slot);
+#define PET_BAR_HP(slot) pl_life_bar_state(slot)      /* life bars in the bottom bar (the generic life layer, petslike_life.c; off until life.pdl says enabled 1) */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
 #if PET_SECTION == 1
  * Map terrain is drawn from shared/gta-tiles.pdl roles (first TILE row in shared/cdda-tiles.pdl). People and furniture stay on the RPG Maker sheets.
 #elif PET_SECTION == 2
 #elif PET_SECTION == 3
+static void pl_life_verb(int argc, char **argv, char *msg, size_t cap); static void pl_life_ui(char *out, size_t cap); static int pl_life_tick(void);      /* the generic life layer (section 75) */
 #elif PET_SECTION == 4
 #elif PET_SECTION == 5
     f = fopen(tmp, "wb"); if (!f) return 0; size_t wn = fwrite(data, 1, n, f); int ce = fclose(f); if (wn != n || ce != 0 || rename(tmp, p) != 0) { remove(tmp); return 0; } return 1;      /* ENOSPC / EIO: the good file stays, the half-written tmp goes (hq-crash-hardening.md) */
@@ -418,6 +421,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     W("title=gta-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
 #elif PET_SECTION == 28
     { char ab[16]; flag_str("art", "brixel", ab, sizeof ab); W("left_visible=%s\n", flag_on("left", 1) ? "1" : ""); W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\nart=%s\nemoji=%d\nart_label=art %s%s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off", ab, flag_on("emoji", 0), ab, flag_on("emoji", 0) ? " + emoji" : ""); }
+    { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
@@ -523,6 +527,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
+    if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
 #elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
@@ -543,5 +548,10 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     snprintf(PCHQ, sizeof PCHQ, "%s/gta-hq-pchq", APP);
 #elif PET_SECTION == 71
     load_data(); replay(); pet_load(); clock_paths();
+#elif PET_SECTION == 75
+/* LIFE (owner 2026-10-27: the generic things every pets game has, backwards-merged from rpg-space): hp, hunger, death, respawn, life bars and the `life` verb from the shared text-include. OFF until this app's life.pdl says LIFE | enabled | 1. No drop list in this game (the PL_DROP hook defaults to nothing), so a death costs no items. */
+#include "../../../&.widgits/_shared-lib/petslike_life.c"
+#elif PET_SECTION == 79
+        if (run_on() && pl_life_tick()) dirty = 1;      /* hunger, starving, death, respawn (life.pdl; nothing runs while it is disabled) */
 #endif
 #endif

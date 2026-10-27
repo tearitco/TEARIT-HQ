@@ -3,8 +3,7 @@
  * lifebars, etc. onto the other pets games") with no behaviour change there (its gate stays green); a game opts in by including this file.
  * Config: life.pdl in the app folder (LIFE | key | value, re-read every 2 s): enabled, hunger_ms, starve_hp, drop_pct, death_mode (respawn|permadeath), respawn_room/x/y, take_range.
  * Per character state/life_<id>.txt (hp, hunger, dead, deaths, inv=key:n,...); log rows DEATH / RESPAWN / TAKE in state/events.txt; event pages events/death and events/respawn
- * (trigger parallel, RPG Maker's death state and common events) run first, the C effect runs when no page exists. COST: when life.pdl says enabled=0 or the file is missing and
- * the skin never calls pl_life_tick, nothing runs; the tick itself is a few file reads every 1.5 s (state/life_*.txt signature).
+ * (trigger parallel, RPG Maker's death state and common events) run first, the C effect runs when no page exists. COST: with life.pdl enabled=0 the tick, the bar state and the UI return at once (no bars, no state files read or written); a missing life.pdl means enabled. The tick itself is a few file reads every 1.5 s (state/life_*.txt signature).
  * HOOKS the including skin defines BEFORE the include (defaults below when absent):
  *   PL_DROPS_BEGIN() / PL_DROPS_END()      load / save the skin's drop list around one death;
  *   PL_DROPS_CLEAR()                       `life reset` forgets every drop (default nothing);
@@ -78,9 +77,10 @@ static int pl_life_tick(void) {      /* hunger grows, starving hurts, 0 hp dies.
             if (L->hunger < 100) L->hunger++; else L->hp -= pl_lc_starve; pl_life_save(s); changed = 1; }
         if (L->hp <= 0) { pl_life_die(s); changed = 1; } }
     return changed; }
-static const char *pl_life_bar_state(int slot) { if (slot < 0 || slot > nparty) return ""; static char loaded[NP + 1]; pl_life_cfg(); if (!loaded[slot]) { pl_life_load(slot); loaded[slot] = 1; } PlLife *L = &pl_life[slot]; int mh = pl_life_mhp(slot); if (L->dead || L->hp <= 0) return "ko"; return L->hp * 100 / mh < 30 ? "low" : "ok"; }      /* bar.txt 6th field: written when the desk exports, so a health change shows at the next export (the life tick asks for one) */
+static const char *pl_life_bar_state(int slot) { if (slot < 0 || slot > nparty) return ""; static char loaded[NP + 1]; pl_life_cfg(); if (!pl_lc_on) return ""; if (!loaded[slot]) { pl_life_load(slot); loaded[slot] = 1; } PlLife *L = &pl_life[slot]; int mh = pl_life_mhp(slot); if (L->dead || L->hp <= 0) return "ko"; return L->hp * 100 / mh < 30 ? "low" : "ok"; }      /* bar.txt 6th field: written when the desk exports, so a health change shows at the next export (the life tick asks for one) */
 static void pl_life_ui(char *out, size_t cap) {      /* the bottom bar: per character a bar of block cells (green, red under 30 percent, grey when KO'd), vars life_N_name / _bar / _ok / _low / _ko */
-    size_t o = 0; out[0] = 0; for (int s = 0; s <= nparty && s < 5; s++) { PlLife *L = &pl_life[s]; pl_life_load(s); int mh = pl_life_mhp(s), cells = L->hp <= 0 ? 0 : 1 + L->hp * 3 / mh; if (cells > 4) cells = 4; char bar[48] = ""; for (int c = 0; c < 4; c++) strcat(bar, c < cells ? "\xe2\x96\xac" : "\xc2\xb7"); int ko = L->dead || L->hp <= 0, low = !ko && L->hp * 100 / mh < 30; char nm[24]; snprintf(nm, sizeof nm, "%.1s", pl_life_id(s)); if (nm[0] >= 'a' && nm[0] <= 'z') nm[0] -= 32;
+    size_t o = 0; out[0] = 0; pl_life_cfg(); if (!pl_lc_on) return;      /* disabled in life.pdl: no bars, nothing read
+    */ for (int s = 0; s <= nparty && s < 5; s++) { PlLife *L = &pl_life[s]; pl_life_load(s); int mh = pl_life_mhp(s), cells = L->hp <= 0 ? 0 : 1 + L->hp * 3 / mh; if (cells > 4) cells = 4; char bar[48] = ""; for (int c = 0; c < 4; c++) strcat(bar, c < cells ? "\xe2\x96\xac" : "\xc2\xb7"); int ko = L->dead || L->hp <= 0, low = !ko && L->hp * 100 / mh < 30; char nm[24]; snprintf(nm, sizeof nm, "%.1s", pl_life_id(s)); if (nm[0] >= 'a' && nm[0] <= 'z') nm[0] -= 32;
         o += (size_t)snprintf(out + o, cap - o, "life_%d_name=%s\nlife_%d_bar=%s %s\nlife_%d_ok=%s\nlife_%d_low=%s\nlife_%d_ko=%s\n", s, nm, s, nm, ko ? "KO" : bar, s, !ko && !low ? "1" : "", s, low ? "1" : "", s, ko ? "1" : ""); } }
 static void pl_life_verb(int argc, char **argv, char *msg, size_t cap) {
     pl_life_cfg(); PL_DROPS_BEGIN(); const char *a = argc >= 2 ? argv[1] : "status"; static int loaded[NP + 1];

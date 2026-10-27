@@ -14,6 +14,8 @@
 #define PET_VIEW_STYLE "tiles"
 #define PET_OWN_EXPORT 1
 #define PET_SHEET_PFX "!edit"      /* the generated pet character sheets are !edit0.png ... (shared pet code: _shared-lib/petslike_skin_lib.c) */
+static const char *pl_life_bar_state(int slot);
+#define PET_BAR_HP(slot) pl_life_bar_state(slot)      /* life bars in the bottom bar (the generic life layer, petslike_life.c; off until life.pdl says enabled 1) */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
 #if PET_SECTION == 1
@@ -23,6 +25,7 @@
 #include "../../../&.widgits/_shared-lib/kh_state_notify.h"      /* STATE_BACKEND=file|marker|shmem: "did it change" without reading it (branch marker, 2026-10-12) */
 #include "../../../&.widgits/_shared-lib/csv_frames.c"      /* a pet's sprite.csv -> the 16x24 3D walk frames */
 #elif PET_SECTION == 3
+static void pl_life_verb(int argc, char **argv, char *msg, size_t cap); static void pl_life_ui(char *out, size_t cap); static int pl_life_tick(void);      /* the generic life layer (section 75) */
 /* ---- rpg-edit-hq: the floating-island town (BOOK 16.game/EDIT-ISLANDS-DESIGN.md). sk_ensure_map() (section 73) builds the map into these arrays once per process; the index is the room's place in rooms.pdl
  * (start, bank, store, hotel, school, cabin). glyph: G grass, p path, T pine, B building, D door, ~ water, b bridge, s ramp, F fire, S sign, r rubble, _ void (a hole in the island), W wall, . floor.
  * fs / ws: the floor and the wall/object slot of the 24 px tile atlas, cdep: how many blocks hang under the cell (negative z, tapered into an inverted cone). ---- */
@@ -118,6 +121,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
 #elif PET_SECTION == 28
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
+    { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
@@ -186,6 +190,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } sn_bump(&g_sn, SL_PETS); sn_bump(&g_sn, SL_FLAGS); sn_bump(&g_sn, SL_DAY); g_flag_epoch++; pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
+    if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
 #elif PET_SECTION == 66
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye); srand((unsigned)(time(NULL) ^ getpid()));
@@ -381,5 +386,10 @@ static void pet_own_export_room(int r, const char *d) {
 }
 #elif PET_SECTION == 74
     { int sx, sy; sk_spawn(i, &sx, &sy); e->room = 0; e->x = sx; e->y = sy; }
+#elif PET_SECTION == 75
+/* LIFE (owner 2026-10-27: the generic things every pets game has, backwards-merged from rpg-space): hp, hunger, death, respawn, life bars and the `life` verb from the shared text-include. OFF until this app's life.pdl says LIFE | enabled | 1. No drop list in this game (the PL_DROP hook defaults to nothing), so a death costs no items. */
+#include "../../../&.widgits/_shared-lib/petslike_life.c"
+#elif PET_SECTION == 79
+        if (run_on() && pl_life_tick()) dirty = 1;      /* hunger, starving, death, respawn (life.pdl; nothing runs while it is disabled) */
 #endif
 #endif
