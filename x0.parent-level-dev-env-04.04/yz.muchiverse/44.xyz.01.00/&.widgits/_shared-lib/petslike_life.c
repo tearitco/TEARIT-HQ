@@ -7,6 +7,8 @@
  * the skin never calls pl_life_tick, nothing runs; the tick itself is a few file reads every 1.5 s (state/life_*.txt signature).
  * HOOKS the including skin defines BEFORE the include (defaults below when absent):
  *   PL_DROPS_BEGIN() / PL_DROPS_END()      load / save the skin's drop list around one death;
+ *   PL_DROPS_CLEAR()                       `life reset` forgets every drop (default nothing);
+ *   PL_DROP_COUNT()                        how many drops lie around, for `life status` (default 0);
  *   PL_DROP(ent, item, n)                  one stack falls where the dead stood; returns 1 if it was placed (default: nothing drops);
  *   PL_LIFE_VERB_EXTRA(a, argc, argv, msg, cap)   extra `life` verbs of the skin, returns 1 when handled (rpg-space: take);
  *   PL_LIFE_VERB_KEEPS_NOSLOT(a)           1 for verbs that need no character argument (rpg-space: "take").
@@ -14,6 +16,12 @@
 #ifndef PL_DROPS_BEGIN
 #define PL_DROPS_BEGIN() ((void)0)
 #define PL_DROPS_END() ((void)0)
+#endif
+#ifndef PL_DROPS_CLEAR
+#define PL_DROPS_CLEAR() ((void)0)      /* `life reset`: forget every drop */
+#endif
+#ifndef PL_DROP_COUNT
+#define PL_DROP_COUNT() 0      /* how many drops lie around (shown by `life status`) */
 #endif
 #ifndef PL_DROP
 #define PL_DROP(e, item, n) 0
@@ -56,8 +64,7 @@ static void pl_life_respawn_effect(int slot) {      /* the respawn: back on the 
 static void pl_life_die_effect(int slot) {      /* the death itself: drop_pct of every stack falls where they stood (PL_DROP hook); then the respawn page / effect by death_mode. What events/death calls */
     PlLife *L = &pl_life[slot]; pl_life_load(slot); Ent *e = pl_life_ent(slot); char b[400], ex[160], *sv = NULL; int dropped = 0; snprintf(b, sizeof b, "%s", L->inv);
     PL_DROPS_BEGIN(); for (char *t = strtok_r(b, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) { char *c = strchr(t, ':'); if (!c) continue; char k[24]; snprintf(k, sizeof k, "%.*s", (int)(c - t), t); int cnt = atoi(c + 1), d = cnt * pl_lc_drop / 100; if (d <= 0) continue;
-        if (PL_DROP(e, k, d)) dropped += d; }
-    { char cp[400], *sv2 = NULL; snprintf(cp, sizeof cp, "%s", L->inv); for (char *t = strtok_r(cp, ",", &sv2); t; t = strtok_r(NULL, ",", &sv2)) { char *c = strchr(t, ':'); if (!c) continue; char k[24]; snprintf(k, sizeof k, "%.*s", (int)(c - t), t); int cnt = atoi(c + 1); pl_inv_set(L, k, cnt - cnt * pl_lc_drop / 100); } }
+        if (PL_DROP(e, k, d)) { dropped += d; pl_inv_set(L, k, cnt - d); } }      /* the stack only shrinks when its share really fell somewhere: a game without a drop list keeps its items */
     PL_DROPS_END(); L->deaths++; L->hp = 0; L->dead = 1; snprintf(ex, sizeof ex, "%s,%d,%d|dropped %d (%d%%)|mode %s", rooms[e->room].id, e->x, e->y, dropped, pl_lc_drop, pl_lc_mode); pl_life_log("DEATH", slot, ex); pl_life_save(slot);
     if (!strcmp(pl_lc_mode, "respawn")) { char ap[PATH_MAX]; spath(ap, "life_actor.txt"); char ab[40]; snprintf(ab, sizeof ab, "%s\n", pl_life_id(slot)); write_if_changed(ap, ab, strlen(ab)); if (!run_event_x("respawn", "parallel", "")) pl_life_respawn_effect(slot); pl_life_load(slot); } }
 static void pl_life_die(int slot) {      /* hp reached 0: the Death state, then the death page (RPG Maker's common event). No page = the effect runs directly. */
@@ -76,12 +83,12 @@ static void pl_life_ui(char *out, size_t cap) {      /* the bottom bar: per char
     size_t o = 0; out[0] = 0; for (int s = 0; s <= nparty && s < 5; s++) { PlLife *L = &pl_life[s]; pl_life_load(s); int mh = pl_life_mhp(s), cells = L->hp <= 0 ? 0 : 1 + L->hp * 3 / mh; if (cells > 4) cells = 4; char bar[48] = ""; for (int c = 0; c < 4; c++) strcat(bar, c < cells ? "\xe2\x96\xac" : "\xc2\xb7"); int ko = L->dead || L->hp <= 0, low = !ko && L->hp * 100 / mh < 30; char nm[24]; snprintf(nm, sizeof nm, "%.1s", pl_life_id(s)); if (nm[0] >= 'a' && nm[0] <= 'z') nm[0] -= 32;
         o += (size_t)snprintf(out + o, cap - o, "life_%d_name=%s\nlife_%d_bar=%s %s\nlife_%d_ok=%s\nlife_%d_low=%s\nlife_%d_ko=%s\n", s, nm, s, nm, ko ? "KO" : bar, s, !ko && !low ? "1" : "", s, low ? "1" : "", s, ko ? "1" : ""); } }
 static void pl_life_verb(int argc, char **argv, char *msg, size_t cap) {
-    pl_life_cfg(); sk_drops_load(); const char *a = argc >= 2 ? argv[1] : "status"; static int loaded[NP + 1];
+    pl_life_cfg(); PL_DROPS_BEGIN(); const char *a = argc >= 2 ? argv[1] : "status"; static int loaded[NP + 1];
     for (int s = 0; s <= nparty; s++) if (!loaded[s]) { pl_life_load(s); loaded[s] = 1; }
     if (!strcmp(a, "status")) { int slot = argc >= 3 ? pl_life_slot(argv[2]) : -2; char b[500] = ""; size_t o = 0;
         for (int s = 0; s <= nparty; s++) { if (slot >= 0 && s != slot) continue; PlLife *L = &pl_life[s]; o += (size_t)snprintf(b + o, sizeof b - o, "%s hp %d/%d hunger %d%s deaths %d inv [%s]; ", pl_life_id(s), L->hp, pl_life_mhp(s), L->hunger, L->dead ? " DEAD" : "", L->deaths, L->inv); }
-        snprintf(msg, cap, "%s drops %d, mode %s, drop %d%%", b, sk_ndrops, pl_lc_mode, pl_lc_drop); return; }
-    if (!strcmp(a, "reset")) { for (int s = 0; s <= nparty; s++) { PlLife *L = &pl_life[s]; L->hp = pl_life_mhp(s); L->hunger = 0; L->dead = 0; L->deaths = 0; L->last = now_ms(); pl_life_save(s); } sk_ndrops = 0; sk_drops_save(); snprintf(msg, cap, "life reset: everyone alive, drops cleared"); return; }
+        snprintf(msg, cap, "%s drops %d, mode %s, drop %d%%", b, PL_DROP_COUNT(), pl_lc_mode, pl_lc_drop); return; }
+    if (!strcmp(a, "reset")) { for (int s = 0; s <= nparty; s++) { PlLife *L = &pl_life[s]; L->hp = pl_life_mhp(s); L->hunger = 0; L->dead = 0; L->deaths = 0; L->last = now_ms(); pl_life_save(s); } PL_DROPS_CLEAR(); snprintf(msg, cap, "life reset: everyone alive, drops cleared"); return; }
     char actor[32] = ""; if (argc >= 3 && !strcmp(argv[2], "@actor")) { char ap[PATH_MAX]; spath(ap, "life_actor.txt"); read_file(ap, actor, sizeof actor); actor[strcspn(actor, "\r\n")] = 0; argv[2] = actor; }      /* @actor = the character the death / respawn page was played for */
     int slot = argc >= 3 ? pl_life_slot(argv[2]) : -2; if (slot < 0 && !PL_LIFE_VERB_KEEPS_NOSLOT(a)) { snprintf(msg, cap, "life: unknown character (use harold, ember, ...)"); return; }
     if (!strcmp(a, "hurt") && argc >= 4) { pl_life[slot].hp -= atoi(argv[3]); if (pl_life[slot].hp <= 0) pl_life_die(slot); else pl_life_save(slot); snprintf(msg, cap, "%s hp %d", pl_life_id(slot), pl_life[slot].hp); return; }

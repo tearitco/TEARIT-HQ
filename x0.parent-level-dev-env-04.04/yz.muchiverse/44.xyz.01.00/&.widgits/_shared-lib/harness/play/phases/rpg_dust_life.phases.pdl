@@ -1,0 +1,42 @@
+# rpg_dust_life.phases.pdl - the generic life layer (petslike_life.c) backwards-merged into rpg-dust (owner 2026-10-27: "deaths, lifebars, etc. onto the other pets games"). Same checks as rpg-space's p6_life, with one difference by design: rpg-dust has no drop list yet, so a death costs no items.
+# Runner: ops/+x/playthrough_op.+x run play/phases/rpg_dust_life.phases.pdl (a scratch house under /tmp; nothing live is touched).
+GAME | rpg-dust | rpg_dust
+EVENTS | yes
+NEEDS | &.widgits/world-ops/ops/+x/wo.+x
+NEEDS | &.widgits/_shared-lib/petslike_core.c
+NEEDS | &.widgits/_shared-lib/petslike_toolbar.c
+NEEDS | &.widgits/_shared-lib/pet_sky.c
+NEEDS | &.widgits/_shared-lib/pet_footer.c
+NEEDS | &.widgits/_shared-lib/pet_nudge.c
+NEEDS | &.widgits/_shared-lib/kh_state_notify.h
+NEEDS | &.widgits/_shared-lib/csv_frames.c
+NEEDS | &.widgits/_shared-lib/petslike_skin_lib.c
+NEEDS | &.widgits/_shared-lib/petslike_autotile.c
+NEEDS | &.widgits/_shared-lib/petslike_life.c
+NEEDS | @.apps/rpg-dust/ops/+x/dust_gen.+x
+NEEDS | @.apps/rpg-dust/ops/+x/dust_seed.+x
+NEEDS | @.apps/rpg-dust/ops/+x/dust_zoom.+x
+NEEDS | @.apps/rpg-dust/ops/+x/dust_orbit.+x
+NEEDS | @.apps/rpg-dust/ops/+x/dust_check.+x
+NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
+NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+CFLAGS | -I$T/@.apps/rpg-dust/ops
+INIT | state/pet_ember.txt | room=bridge\nx=9\ny=5\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+INIT | state/life_ember.txt | hp=20\nhunger=3\ndead=0\ndeaths=0\ninv=bread:5,iron:11,scrap:32\n
+
+PHASE | d1_life | damage, death, respawn and the life status work in rpg-dust through the shared life layer, and nothing is dropped or lost | life, death, respawn, backwards merge
+DO | life | hurt | ember | 5
+HAS | state/life_ember.txt | hp=15 | hurt-takes-5-hp
+DO | life | die | ember
+HAS | state/life_ember.txt | deaths=1 | a-death-is-counted
+HAS | state/life_ember.txt | dead=0 | respawn-mode-brings-them-back
+HAS | state/life_ember.txt | inv=bread:5,iron:11,scrap:32 | no-drop-list-in-dust-so-the-items-stay
+NOFILE | state/drops.txt | nothing-was-dropped
+HAS | state/events.txt | DEATH| | the-death-is-logged
+HAS | state/events.txt | RESPAWN| | and-the-respawn
+DO | life | status
+SAY | ember | status-names-the-characters
+DO | life | hurt | ember | 999
+HAS | state/life_ember.txt | deaths=2 | lethal-damage-kills-again
+DO | life | take | 1 | ember
+SAY | life: | take-is-not-a-dust-verb-yet-it-answers-with-the-usage-line

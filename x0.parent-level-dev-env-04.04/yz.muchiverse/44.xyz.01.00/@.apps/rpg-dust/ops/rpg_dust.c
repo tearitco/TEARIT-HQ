@@ -16,6 +16,8 @@
 #define PET_SHEET_PFX "!dust"      /* the generated pet character sheets are !dust0.png ... (shared pet code: _shared-lib/petslike_skin_lib.c) */
 #define PET_ART_FALLBACK "../rpg-edit-hq/art"      /* the pals pictures are the island game's, shared */
 #define PET_ROOM_PHASE(r, ph) do { if ((r) < 4) snprintf(ph, sizeof ph, "night"); } while (0)      /* rooms 0..3 are the ship: deep space is always night */
+static const char *pl_life_bar_state(int slot);
+#define PET_BAR_HP(slot) pl_life_bar_state(slot)      /* life bars in the bottom bar (the generic life layer, petslike_life.c) */
 #include "../../../&.widgits/_shared-lib/petslike_core.c"
 #else
 #if PET_SECTION == 1
@@ -42,6 +44,7 @@ typedef struct { char id[24], label[40], ts[24]; unsigned long long seed, def; }
 static SkPl sk_pl[16]; static int sk_pl_n, sk_pl_cur; static SkTs sk_ts[8]; static int sk_ts_n; static char sk_ts_cur[24] = "rmmv", sk_addr[200] = "globe:3,4/region:0,1"; static unsigned long long sk_seed; static long sk_look_sig = -1, sk_built_sig = -2;
 static const char *sk_room_label(int room); static void sk_look_load(void); static void sk_desk_sync(void); static void sk_rebuild(char *msg, size_t cap); static void export3d(char *msg, size_t cap);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
+static void pl_life_verb(int argc, char **argv, char *msg, size_t cap); static void pl_life_ui(char *out, size_t cap); static int pl_life_tick(void);      /* the generic life layer (section 75) */
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
 /* STATE_BACKEND (kh_state_notify.h): file = every tick re-reads everything (the old behaviour); marker / shmem = a slot moves when a writer wrote, readers reload only then. Slots: */
@@ -124,6 +127,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
 #elif PET_SECTION == 28
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
+    { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
     { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
     sk_look_load(); { const char *cl = sk_pl_cur < 0 ? "No planet (deep space)" : sk_pl_n ? sk_pl[sk_pl_cur].label : "-";      /* the left bar: the address, the seed, Regen, zoom and the planets (design D8, D12) */
       W("seed=%llu\naddr_line=%s\npl_label=%s\nn_pl=%d\n", sk_seed, sk_addr, cl, sk_pl_n);
@@ -195,6 +199,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } sn_bump(&g_sn, SL_PETS); sn_bump(&g_sn, SL_FLAGS); sn_bump(&g_sn, SL_DAY); g_flag_epoch++; pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
+    if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "regen") || !strcmp(v, "planet") || !strcmp(v, "newplanet") || !strcmp(v, "zoomhere") || !strcmp(v, "zoomout")) {      /* the look and the place are LEDGER rows (state/look_ledger.txt, zoom_ledger.txt): a verb appends, every process replays */
         char lp[PATH_MAX], row[160]; snprintf(lp, sizeof lp, "%s/state/look_ledger.txt", APP); sk_look_load();
         char from_pl[24]; snprintf(from_pl, sizeof from_pl, "%s", sk_pl_cur < 0 ? "none" : sk_pl[sk_pl_cur].id);      /* where the ship is before the move */
@@ -474,5 +479,10 @@ static void pet_own_export_room(int r, const char *d) {
 }
 #elif PET_SECTION == 74
     { int sx, sy; sk_spawn(i, &sx, &sy); e->room = 0; e->x = sx; e->y = sy; }
+#elif PET_SECTION == 75
+/* LIFE (owner 2026-10-27: the generic things every pets game has, backwards-merged from rpg-space): hp, hunger, death, respawn, life bars and the `life` verb from the shared text-include. life.pdl is this app's own; the events/death and events/respawn pages run first. There is no drop list in this game yet (the PL_DROP hook defaults to nothing), so a death costs no items. */
+#include "../../../&.widgits/_shared-lib/petslike_life.c"
+#elif PET_SECTION == 79
+        if (run_on() && pl_life_tick()) dirty = 1;      /* hunger, starving, death, respawn (life.pdl) */
 #endif
 #endif

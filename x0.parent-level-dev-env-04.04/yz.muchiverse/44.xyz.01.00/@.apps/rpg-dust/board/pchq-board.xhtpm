@@ -106,7 +106,10 @@
       <item id="sr-toggle" class="pchq-ft" label="chat" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-dust/board/state/sides.txt' side_right toggle"/>
       <item id="hb-toggle" class="pchq-ft" label="hb" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' toggle hb"/>
       <repeat count="${n_ent}" bind="ent">
-        <item id="e${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'"/>
+        <item id="eok${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-ok" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_ok}"/>
+        <item id="elow${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-low" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_low}"/>
+        <item id="eko${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-ko" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_ko}"/>
+        <item id="enone${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_none}"/>
       </repeat>
     </footer>
     <text label="No live board-viewer session - open the board with open_board.sh." class="quiet" show="${no_session}"/>

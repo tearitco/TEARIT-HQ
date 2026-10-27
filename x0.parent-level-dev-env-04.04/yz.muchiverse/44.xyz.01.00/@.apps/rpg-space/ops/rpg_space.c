@@ -720,6 +720,8 @@ static void sk_drops_load(void) { char p[PATH_MAX], b[64 * 80 + 32]; spath(p, "d
 /* LIFE hooks of this skin, then the generic life layer (petslike_life.c, lifted 2026-10-27 so the other pets games can opt in): drops are rpg-space's remnants list, `life take <drop#>` collects one. */
 #define PL_DROPS_BEGIN() sk_drops_load()
 #define PL_DROPS_END() sk_drops_save()
+#define PL_DROP_COUNT() sk_ndrops
+#define PL_DROPS_CLEAR() do { sk_ndrops = 0; sk_drops_save(); } while (0)
 #define PL_DROP(e, item, n) pl_life_drop_here(e, item, n)
 #define PL_LIFE_VERB_EXTRA(a, argc, argv, msg, cap) pl_life_verb_extra(a, argc, argv, msg, cap)
 #define PL_LIFE_VERB_KEEPS_NOSLOT(a) (!strcmp(a, "take"))
