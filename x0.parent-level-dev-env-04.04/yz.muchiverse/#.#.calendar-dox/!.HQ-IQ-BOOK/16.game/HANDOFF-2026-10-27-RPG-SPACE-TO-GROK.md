@@ -94,7 +94,19 @@ Not done / known gaps (be honest about these in any report):
 5. **Back-merge life/death/health bars to the other pets games and keep the rpg-dust copy in step (section 4b).**
 6. Controls: write down every key per mode in one table (today it is spread over keybinds.pdl, engine keys, relay codes).
 
-## 4b. BACKWARD MERGE to the other pets games, and the rpg-dust copy (owner 2026-10-27; I had NOT noted this before; no code written yet)
+## 4b. BACKWARD MERGE to the other pets games, and the rpg-dust copy (owner 2026-10-27)
+
+**STATUS (updated after the work, commits 11d37fd82, d98f08920, abccd2783):** the generic life layer IS lifted and offered to all ten other skins. Details:
+
+* **Shared file** `&.widgits/_shared-lib/petslike_life.c` (text-include, `pl_*` names): hp, hunger, death, respawn, life bars, the `life` verb. Hooks the skin may define: `PL_DROPS_BEGIN/END`, `PL_DROP`, `PL_DROPS_CLEAR`, `PL_DROP_COUNT`, `PL_LIFE_VERB_EXTRA`, `PL_LIFE_VERB_KEEPS_NOSLOT` (all default to nothing). `LIFE | enabled | 0` in a game's `life.pdl` makes the tick, the bar state and the UI return at once.
+* **rpg-space**: refactored onto it with no behaviour change (gate 58 -> 68 PASS; new phase `p6_life`). It keeps its remnant drops and `life take` behind the hooks.
+* **rpg-dust**: ON (`enabled 1`), verified: gate `play_rpg_dust_life.pal` 13 PASS (no items lost, no drops file), and a live board showed the green life bar next to "1 Ember". No drops, no `take`, no air or collision in dust yet.
+* **Nine more games** (cdda-hq, civ-rpgce, df-hq, dsr-rpg, gta-hq, mcl-hq, rpg-edit-hq, rpg-pet, tcg-rpgce): wired and **OFF**. Each has the five seams in its skin, a `life.pdl` (`enabled 0`), and its board's bottom-bar item split into the four hp variants plus `.hpb-*` css. Only compile-checked (all 11 skins, `gcc -std=gnu11 -fsyntax-only -I.`); **no gate and no live board for these nine.**
+* **To turn a game on**: set `enabled 1` AND set `respawn_room / respawn_x / respawn_y` for that game (the copied values are rpg-space's `bridge 7,5`), write a gate like `rpg_dust_life.phases.pdl`, run it, launch the board and look at the bar. Check the game's `events/death` and `events/respawn` pages (rpg-dust has them; the C fallback runs when a page is missing, but the page route was NOT tested in dust).
+* **Still to merge**: drops + `take`, mining/build/hold, air (`environment.pdl`), collision (flight-specific, probably stays in space). Do them as shared text-includes with hooks, same method.
+* **Lessons**: `-fsyntax-only` did not catch a missing symbol until the include was added to a second game; always compile AND run a gate for the second consumer. A shared file must not name the first skin's globals (`sk_*`).
+
+The original plan text follows (kept for the reasoning):
 
 The owner expects the "normal things every pets game should have" to exist in all of them: **death / respawn and life bars first**,
 then whatever else turns out generic. Today they exist ONLY in the rpg-space skin. Counts from a text search of the skin files
