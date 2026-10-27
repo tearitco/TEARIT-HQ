@@ -1129,7 +1129,13 @@ static int sk_world_switch(char *msg, size_t cap) {
     sk_nodes_save(); sk_craft_save(); { char tb[48]; snprintf(tb, sizeof tb, "%s\n", to); write_if_changed(pp, tb, strlen(tb)); }
     { char rb[160]; snprintf(rb, sizeof rb, "WORLD|%ld|%s|%s|%d asteroids", (long)time(NULL), cur[0] ? cur : "-", to, made); append_line("events.txt", rb); }
     if (msg) snprintf(msg, cap, "world of %s: %d asteroids (%s)", to, made, had ? "remembered" : "generated"); return 1; }
+/* THE DAEMON REPORTS ITS OWN COST (owner 2026-10-27, after a CPU rise: the harness cannot run a daemon, so the daemon says what it costs). Every 10 s state/tick_stats.txt gets ticks (the ticks of the last window), cpu_permille (this process's CPU time over the window, 1000 = one whole core) and uptime_s. Read it before and after a change; a new per-tick cost shows up here first. Cost of the report itself: one clock_gettime per tick, one tiny write per 10 s. */
+static void sk_tick_stats(void) {
+    static long ticks, w0_wall; static double w0_cpu; struct timespec cw, cc; clock_gettime(CLOCK_MONOTONIC, &cw); clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cc); long wall = cw.tv_sec * 1000L + cw.tv_nsec / 1000000L; double cpu = cc.tv_sec * 1000.0 + cc.tv_nsec / 1e6; static long born; if (!born) born = wall; ticks++;
+    if (!w0_wall) { w0_wall = wall; w0_cpu = cpu; return; } if (wall - w0_wall < 10000) return;
+    char p[PATH_MAX], b[120]; spath(p, "tick_stats.txt"); snprintf(b, sizeof b, "ticks=%ld\ncpu_permille=%d\nuptime_s=%ld\n", ticks, (int)((cpu - w0_cpu) * 1000.0 / (double)(wall - w0_wall)), (wall - born) / 1000L); write_if_changed(p, b, strlen(b)); w0_wall = wall; w0_cpu = cpu; ticks = 0; }
 static int sk_remnants_tick(void) {
+    sk_tick_stats();
     { static long wsw; long wn = now_ms(); if (!wsw || wn - wsw >= 1500) { wsw = wn; sk_world_switch(NULL, 0); } }      /* the planet below changes rarely: look every 1.5 s, not every tick */
     sk_world_ambient();
     sk_hud_sync();
