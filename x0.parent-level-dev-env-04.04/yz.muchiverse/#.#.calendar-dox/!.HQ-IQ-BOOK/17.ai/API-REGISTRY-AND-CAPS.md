@@ -3,6 +3,7 @@
 Owner 2026-10-27: "there should be docs on last api testing; if not, make sure we keep better agent dox." Finding: the house has docs on **what free models can do** and **how delegation works** (`02-architecture/OPENROUTER-MODEL-COMPETENCY.md`, `13.agent-coms/GROK/2026-09-29/open-hai-api-delegation-guide.md`, `AI-BACKENDS-DISAMBIGUATION.md`), but **no record of rate caps or of probe runs**. This file is that record. Every probe adds a dated row; nothing here is guessed.
 
 ## Rules (house)
+* **NEVER probe a free API to exhaustion.** On 2026-10-27 a probe looped to the first 429 and burned the whole day's free quota (owner: "save the api for when you really need it"). A cap is learned from ONE call's `X-RateLimit-*` headers or from the rows below. The API is the escalation tier; bulk micro-tasks go to the Mac Gemma.
 * Free providers and the Mac's Ollama only (memory: free-models-only; all Ollama calls go to the Mac URL in `#.desktop/ai_backend.pdl`). OpenRouter's free quota is **per account**.
 * Probe niced, one provider at a time, stop at the first refusal; record the number, the error text and the time. Never put keys in this file.
 * The router reads the cap rows (design: VISION-CLARIFIED section 8); a cap row older than 30 days is stale and is re-probed.
