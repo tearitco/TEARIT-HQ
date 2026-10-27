@@ -17,8 +17,8 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 ## 1. Short term (next days): make the foundations real, small and testable
 1. **`game.pdl` + `game_check`** on rpg-space and rpg-dust (owner's chosen first build). Then the **common-skin extraction** so parts are swappable and dust can diverge.
 2. **Pal harness for `ev_chain` and `ev_store`** (repeatable, with every negative from section 17), and one **events-hq-generated page** played end to end.
-3. **Reset the polluted scratch-bank entries + a dev-mode** so developer runs do not count as AI evidence.
-4. **Decision ledger in rpg-space** (hook `pick_target` to `dec_append` + the existing read-back), then the `why`/`score` column.
+3. ~~Reset the polluted scratch-bank entries + a dev-mode~~ DONE 2026-10-27 as **bank lanes** (dev lane default, entries moved not deleted; a learner for the dev lane is still design).
+4. ~~Decision ledger in rpg-space~~ DONE 2026-10-27 (pets write rows, pick chance reads the weight; shared code is now the op `dec_op`). Next: the `why`/`score` column, then **move `petslike_life.c` to an op** (hot path = row, op digests).
 5. **`policy.pdl` reader** with range checks and owner-signed changes (court, store and chain read it at call time); per-game spend caps for `ev_chain`.
 6. **Move `store-hq` and `court-hq` onto the same ops** the events use (one path for window and games). Measure both windows' footprint with a browser open.
 7. Housekeeping: owner review of the cpu_guard alert; taskbar-owner review of the `store` cell C change and the Network menu row; push-ready commits only.

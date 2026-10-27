@@ -1,55 +1,28 @@
-/* game_decisions.c - M3 decision ledger (GAMES-ROADMAP M3): one append-only line per actor decision, plus a daily review file.
- * Text-included (pure logic, 2+ consumers: df-hq, cdda-hq, mcl-hq), like game_events.c. No globals but one static cursor; every path comes from the caller.
- * Doc: BOOK/16.game/DECISION-LEDGER-AND-DAILY-REVIEW.md
+/* dec_op - the decision-ledger digest as an OP (owner 2026-10-27: shared C should be ops/events, not text includes; hot paths write rows, an op digests on a slow cadence).
+ * Replaces the text-include game_decisions.c for df-hq, cdda-hq, mcl-hq and rpg-pvp-hq. The HOT PATH (one DEC row per pet decision) stays a plain O_APPEND write inside each
+ * game; this op does everything else, run by fork/exec: never in the tick path. Row format and bank file shape are unchanged (BOOK 16.game/DECISION-LEDGER-AND-DAILY-REVIEW.md).
  *
- * Row (state/decisions.txt):  DEC|<unix>|<game stamp e.g. D2 08:20, may be empty>|<actor>|<state>|<action>|<target>|<outcome>
- *   actor   who decided (pet id, "zed")        state   what it was doing/knew before (idle, goal, adjacent)
- *   action  what it chose (pick, walk, idle, greet, strike, chase)   target  where/who ("x,y", a name, "-")
- *   outcome what happened (ok, blocked, hit, miss, moved, none)
- * One write() per row with O_APPEND, so a crash tears at most the last line and readers ignore a row that does not end in a newline.
- * Size growth is the change marker (never mtime): a reader keeps the byte offset it has consumed. The file rotates to decisions.archive.txt past
- * DEC_MAX_BYTES (rename is atomic; the previous archive is replaced, the owner can raise the cap). The ledger is for review and learning input
- * (the behavior bank), so it may be cut; the event ledger (game_events.c) is the authority for game state.
- * Fields never contain '|' or a newline (replaced by '/' and ' ').
- */
-#ifndef GAME_DECISIONS_C
-#define GAME_DECISIONS_C
-#include <fcntl.h>
+ * Usage:  dec_op bank   <decisions.txt> <bank_dir> <game>   consume new rows (cursor = byte offset in <bank_dir>/dec_cursor.txt, never mtime), update
+ *                                                           <bank_dir>/dec_<game>_<action>.behavior.pdl, write <bank_dir>/dec_<game>_pick_pct.txt, then rotate the ledger
+ *                                                           past DEC_MAX_BYTES (to decisions.archive.txt; cursor reset). Prints rows=<n>.
+ *         dec_op review <decisions.txt> <out> [day]         the daily review file (day default = latest). Prints rows=<n> (-1 = no decisions).
+ *         dec_op weight <bank_dir> <game> <action>          prints the live weight (0.5 when no evidence).
+ * pick_pct (moved here from the games): 45 + (0.5 - weight("walk")) * 60, clamped 15..85, written as one integer. NOT yet a .pdl policy (design: 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md
+ * section 15: base 45, slope 60, clamp 15..85 should become POLICY rows). Rotation window: rows a game appends between this op reading the ledger and renaming it land in the archive
+ * unconsumed (milliseconds; the ledger is learning input, not authority).
+ * Exit: 0 ok | 1 failed | 2 usage. Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/dec_op.+x dec_op.c */
+#define _GNU_SOURCE
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
-
 #ifndef DEC_MAX_BYTES
 #define DEC_MAX_BYTES (2L * 1024 * 1024)
 #endif
 
-static void dec_clean(char *o, size_t cap, const char *s) {
-    size_t n = 0; if (!s || !*s) s = "-";
-    for (; *s && n + 1 < cap && n < 40; s++) o[n++] = (*s == '|') ? '/' : (*s == '\n' || *s == '\r' || *s == '\t') ? ' ' : *s;
-    o[n] = 0; if (!n) { o[0] = '-'; o[1] = 0; }
-}
-
-/* append one decision; returns 1 when written. path = state/decisions.txt */
-static int dec_append(const char *path, const char *stamp, const char *actor, const char *state, const char *action, const char *target, const char *outcome) {
-    char a[48], s[48], c[48], t[48], o[48], st[32], ln[400]; struct stat sb;
-    dec_clean(a, sizeof a, actor); dec_clean(s, sizeof s, state); dec_clean(c, sizeof c, action); dec_clean(t, sizeof t, target); dec_clean(o, sizeof o, outcome);
-    if (stamp && *stamp) dec_clean(st, sizeof st, stamp); else st[0] = 0;
-    if (stat(path, &sb) == 0 && sb.st_size > DEC_MAX_BYTES) { char ap[4200]; snprintf(ap, sizeof ap, "%.*s", (int)(strlen(path) > 4 ? strlen(path) - 4 : strlen(path)), path); strncat(ap, ".archive.txt", sizeof ap - strlen(ap) - 1); rename(path, ap); }
-    int n = snprintf(ln, sizeof ln, "DEC|%ld|%s|%s|%s|%s|%s|%s\n", (long)time(NULL), st, a, s, c, t, o); if (n <= 0 || n >= (int)sizeof ln) return 0;
-    int fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd < 0) return 0;
-    int ok = write(fd, ln, (size_t)n) == n; close(fd); return ok;
-}
-
-/* the daily review: reads the ledger from the start (bounded to the last 4 MB), keeps the rows of one game day (day < 0 = the latest day seen),
- * counts rows per actor and per (action, outcome), and writes the review file atomically (tmp + rename). Returns the number of rows reviewed, -1 on error.
- * Review format (plain text, key=value + table rows, the same style as the other state files):
- *   day=D2   rows=37   actors=3   first=D2 00:05   last=D2 23:50
- *   ACTOR|<name>|<rows>|<ok rows>|<blocked rows>
- *   ACTION|<action>|<outcome>|<count>
- */
 #define DEC_MAXKEY 48
 typedef struct { char a[DEC_MAXKEY], b[DEC_MAXKEY]; int n, ok, blocked; } DecTally;
 static int dec_review(const char *path, const char *out, int day) {
@@ -141,4 +114,21 @@ static double dec_weight(const char *bank_dir, const char *game, const char *act
     double w = 0.5; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "WEIGHT", 6)) { char *b = strchr(ln, '|'); if (b) w = atof(b + 1); break; }
     fclose(f); return w < 0 ? 0 : w > 1 ? 1 : w;
 }
-#endif
+
+static void write_pick_pct(const char *bank_dir, const char *game) {
+    double w = dec_weight(bank_dir, game, "walk"); int pct = 45 + (int)((0.5 - w) * 60.0); pct = pct < 15 ? 15 : pct > 85 ? 85 : pct;
+    char fp[4200], tp[4300]; snprintf(fp, sizeof fp, "%s/dec_%s_pick_pct.txt", bank_dir, game); snprintf(tp, sizeof tp, "%s.tmp", fp);
+    FILE *o = fopen(tp, "w"); if (!o) return; fprintf(o, "%d\n", pct); fflush(o); fclose(o); rename(tp, fp);
+}
+static void rotate_if_big(const char *dec_path, const char *bank_dir) {
+    struct stat sb; if (stat(dec_path, &sb) || sb.st_size <= DEC_MAX_BYTES) return;
+    char ap[4300]; size_t L = strlen(dec_path); snprintf(ap, sizeof ap, "%.*s.archive.txt", (int)(L > 4 ? L - 4 : L), dec_path);
+    if (rename(dec_path, ap)) return;
+    char cp[4300]; snprintf(cp, sizeof cp, "%s/dec_cursor.txt", bank_dir); FILE *c = fopen(cp, "w"); if (c) { fputs("0\n", c); fclose(c); }
+}
+int main(int argc, char **argv) {
+    if (argc >= 5 && !strcmp(argv[1], "bank")) { int n = dec_bank_update(argv[2], argv[3], argv[4]); if (n >= 0) { write_pick_pct(argv[3], argv[4]); rotate_if_big(argv[2], argv[3]); } printf("rows=%d\n", n); return n < 0; }
+    if (argc >= 4 && !strcmp(argv[1], "review")) { int n = dec_review(argv[2], argv[3], argc > 4 ? atoi(argv[4]) : -1); printf("rows=%d\n", n); return n < 0; }
+    if (argc == 5 && !strcmp(argv[1], "weight")) { printf("%.4f\n", dec_weight(argv[2], argv[3], argv[4])); return 0; }
+    fprintf(stderr, "usage: dec_op bank <decisions> <bank_dir> <game> | review <decisions> <out> [day] | weight <bank_dir> <game> <action>\n"); return 2;
+}

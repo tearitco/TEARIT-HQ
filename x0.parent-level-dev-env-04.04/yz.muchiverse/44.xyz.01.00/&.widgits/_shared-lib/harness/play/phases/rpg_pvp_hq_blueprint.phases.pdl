@@ -2,7 +2,7 @@
 # Runner: ops/+x/playthrough_op.+x run play/phases/rpg_pvp_hq_blueprint.phases.pdl   (scratch house under /tmp; nothing live is touched)
 GAME | rpg-pvp-hq | rpg_pvp_hq
 EVENTS | yes
-NEEDS | &.widgits/_shared-lib/game_decisions.c
+NEEDS | &.widgits/_shared-lib/ops/+x/dec_op.+x
 
 PHASE | p1_buy | the shop button plays the buy page and one bed is bought | blueprint, buy, fire
 DO | status

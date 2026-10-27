@@ -4,7 +4,7 @@
  *
  * Usage: harness_bank_op <cases.pdl>   (= `update <cases.pdl>`, the one-argument form a pal's exec can pass; prisc exec passes only one literal): reads the case file's `RESULTS | <path>` row, reads new ledger rows since the entry's
  *                                               `COUNTS ... cursor=<bytes>` (append-only marker, never mtime), adds PASS rows to reward and FAIL rows to punish, rewrites COUNTS and
- *                                               `WEIGHT | <(reward+1)/(reward+punish+2)>` into bank/live/<name>.behavior.pdl (a git-ignored copy of the seed; other lines untouched). Running it twice counts nothing twice.
+ *                                               `WEIGHT | <(reward+1)/(reward+punish+2)>` into bank/live/<name>.behavior.pdl (a git-ignored copy of the seed; other lines untouched; the directory is the LANE, see lane_for: dev by default). Running it twice counts nothing twice.
  *        harness_bank_op find <bank_dir> <word>...   ranks the entries for the query words: per word the best of keyword 1.0, synonym <weight>, z-node name 0.6*<slot weight>,
  *                                               word inside a sentence 0.25; summed over the words, times the entry weight; prints  <score>|<id>|<file>  best first.
  * Sidecar rows (pipe-delimited `KEY | a | b`, '#' comments):  BEHAVIOR | id    KEYWORDS | a, b, c    SYNONYM | word | weight    SENTENCE | text
@@ -37,13 +37,23 @@ static int load(const char *path, Entry *e) {
 }
 static void free_entry(Entry *e) { for (int i = 0; i < e->n; i++) free(e->lines[i]); e->n = 0; }
 
+/* LANES (owner 2026-10-27: "when the bank is reset, default to a dev toggle / dev lib so the AI can also learn to dev, a real big goal"). Run counts are kept in a LANE and never mixed:
+ *   dev  = developer runs (a person or an agent iterating on code and gates). This is the corpus an AI learns HOW TO DEVELOP from, so it is KEPT, never reset away.
+ *   live = runs made for the AI/game itself (an actor's proposal judged by the gate); the only lane a pet or game should read weights from.
+ * Chosen by env HARNESS_BANK_LANE=dev|live, else the first word of <bank>/lane.txt, else the DEFAULT: dev for `update` (every ordinary gate run is a developer run), live for `find` (readers
+ * want the game-facing weights). Counts go to bank/<lane>/<name>.behavior.pdl (git-ignored runtime state); the tracked sidecar stays the hand-authored seed. */
+static const char *lane_for(const char *bankdir, const char *dflt) {
+    static char lane[8]; const char *e = getenv("HARNESS_BANK_LANE");
+    if (!e || !*e) { char p[P + 16], w[32] = ""; snprintf(p, sizeof p, "%s/lane.txt", bankdir); FILE *f = fopen(p, "r"); if (f) { if (fscanf(f, "%31s", w) != 1) w[0] = 0; fclose(f); } e = w; }
+    snprintf(lane, sizeof lane, "%s", (!strcmp(e, "dev") || !strcmp(e, "live")) ? e : dflt); return lane;
+}
 static int cmd_update(const char *casefile) {
     char cpath[P], cdir[P], cbase[P], line[P], results[P] = "", bank[P], live[P]; FILE *f; Entry e; long cursor = 0; int reward = 0, punish = 0, ci = -1, wi = -1;
     if (!realpath(casefile, cpath)) { fprintf(stderr, "harness_bank_op: no case file\n"); return 2; }
     snprintf(cdir, sizeof cdir, "%s", cpath); { char *d = dirname(cdir); memmove(cdir, d, strlen(d) + 1); }
     { char t[P]; snprintf(t, sizeof t, "%s", cpath); snprintf(cbase, sizeof cbase, "%s", basename(t)); char *dot = strrchr(cbase, '.'); if (dot) *dot = 0; }
     snprintf(bank, sizeof bank, "%s/../bank/%s.behavior.pdl", cdir, cbase);
-    snprintf(live, sizeof live, "%s/../bank/live/%s.behavior.pdl", cdir, cbase);
+    { char bd[P]; snprintf(bd, sizeof bd, "%s/../bank", cdir); snprintf(live, sizeof live, "%s/../bank/%s/%s.behavior.pdl", cdir, lane_for(bd, "dev"), cbase); }
     if (!(f = fopen(cpath, "r"))) return 2;
     while (fgets(line, sizeof line, f)) { char *p = trim(line); if (!strncmp(p, "RESULTS", 7)) { char *b = strchr(p, '|'); if (b) snprintf(results, sizeof results, "%s/%s", cdir, trim(b + 1)); break; } }
     fclose(f);
@@ -88,7 +98,7 @@ static int cmd_find(const char *dir, int nq, char **q) {
     while ((de = readdir(d)) && nh < 256) {
         size_t l = strlen(de->d_name); char path[P + 300]; Entry e; double s = 0;
         if (l < 14 || strcmp(de->d_name + l - 13, ".behavior.pdl")) continue;
-        snprintf(path, sizeof path, "%s/live/%s", dir, de->d_name);   /* live counts win over the seed */
+        snprintf(path, sizeof path, "%s/%s/%s", dir, lane_for(dir, "live"), de->d_name);   /* the lane's counts win over the seed */
         if (load(path, &e) != 0) { snprintf(path, sizeof path, "%s/%s", dir, de->d_name); if (load(path, &e) != 0) continue; }
         for (int qi = 0; qi < nq; qi++) {
             char w[128]; double best = 0; snprintf(w, sizeof w, "%s", q[qi]); lower(w);
@@ -114,5 +124,5 @@ int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "update") && strcmp(argv[1], "find")) return cmd_update(argv[1]);   /* one argument = update (a pal's exec passes only one literal) */
     if (argc >= 3 && !strcmp(argv[1], "update")) return cmd_update(argv[2]);
     if (argc >= 4 && !strcmp(argv[1], "find")) return cmd_find(argv[2], argc - 3, argv + 3);
-    fprintf(stderr, "usage: harness_bank_op update <cases.pdl> | find <bank_dir> <word>...\n"); return 2;
+    fprintf(stderr, "usage: harness_bank_op update <cases.pdl> | find <bank_dir> <word>...   (lane: env HARNESS_BANK_LANE=dev|live, or <bank>/lane.txt)\n"); return 2;
 }

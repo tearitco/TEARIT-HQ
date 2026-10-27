@@ -178,10 +178,61 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
 #elif PET_SECTION == 32
 #elif PET_SECTION == 33
 #elif PET_SECTION == 34
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/wait.h>
+/* Pets write the decision ledger (owner 2026-10-27: "pets don't write to ledger? bad"). Same rows, same op as df-hq / cdda-hq / mcl-hq: one DEC row per autonomous choice (pick a target, walk, door,
+ * blocked), written AFTER the step from before/after state (section 35); no game clock here, so the stamp is empty. The digest (bank, review, rotation, pick chance) is the op dec_op. */
+/* HOT PATH = dec_row(): one O_APPEND write per decision. Everything else (bank, review, rotation, the pick chance) is the OP &.widgits/_shared-lib/ops/+x/dec_op.+x, run by
+ * fork/exec off the tick (owner 2026-10-27: shared C is ops/events, not text includes; docs: BOOK 16.game/DECISION-LEDGER-AND-DAILY-REVIEW.md). */
+static void dec_clean(char *o, size_t cap, const char *s) {
+    size_t n = 0; if (!s || !*s) s = "-";
+    for (; *s && n + 1 < cap && n < 40; s++) o[n++] = (*s == '|') ? '/' : (*s == '\n' || *s == '\r' || *s == '\t') ? ' ' : *s;
+    o[n] = 0; if (!n) { o[0] = '-'; o[1] = 0; } }
+static int dec_row(const char *path, const char *stamp, const char *actor, const char *state, const char *action, const char *target, const char *outcome) {
+    char a[48], s[48], c[48], t[48], o[48], st[32], ln[400];
+    dec_clean(a, sizeof a, actor); dec_clean(s, sizeof s, state); dec_clean(c, sizeof c, action); dec_clean(t, sizeof t, target); dec_clean(o, sizeof o, outcome);
+    if (stamp && *stamp) dec_clean(st, sizeof st, stamp); else st[0] = 0;
+    int n = snprintf(ln, sizeof ln, "DEC|%ld|%s|%s|%s|%s|%s|%s\n", (long)time(NULL), st, a, s, c, t, o); if (n <= 0 || n >= (int)sizeof ln) return 0;
+    int fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd < 0) return 0;
+    int ok = write(fd, ln, (size_t)n) == n; close(fd); return ok; }
+/* run dec_op <verb> a b [c]. wait=0: fire and forget (one at a time; the previous child is reaped first, a still-running one means skip). wait=1: capture "rows=N" (5 s watchdog), return N, -1 on failure. */
+static int dec_exec(const char *verb, const char *a, const char *b, const char *c, int wait) {
+    static pid_t last = 0; int st; if (last > 0) { if (waitpid(last, &st, WNOHANG) == 0) { if (!wait) return 0; } else last = 0; }
+    char exe[PATH_MAX]; snprintf(exe, sizeof exe, "%s/&.widgits/_shared-lib/ops/+x/dec_op.+x", HOUSE[0] ? HOUSE : APP); if (access(exe, X_OK)) return -1;
+    int pf[2] = {-1, -1}; if (wait && pipe(pf)) return -1;
+    pid_t pid = fork(); if (pid < 0) return -1;
+    if (!pid) { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(wait ? pf[1] : dn, 1); dup2(dn, 2); } if (wait) { close(pf[0]); close(pf[1]); }
+        (void)!nice(10); execl(exe, exe, verb, a, b, c ? c : (char *)NULL, (char *)NULL); _exit(97); }
+    if (!wait) { last = pid; return 0; }
+    close(pf[1]); char out[64] = ""; size_t n = 0; time_t t0 = time(NULL); fcntl(pf[0], F_SETFL, O_NONBLOCK); int done = 0;
+    while (!done && time(NULL) - t0 < 5) { ssize_t r = read(pf[0], out + n, sizeof out - 1 - n); if (r > 0) n += (size_t)r; else if (r == 0) done = 1; else usleep(10000); }
+    out[n] = 0; close(pf[0]); if (!done) kill(pid, SIGKILL); waitpid(pid, &st, 0); char *q = strstr(out, "rows="); return (done && q) ? atoi(q + 5) : -1; }
+static void dec_bank(void) { char dp[PATH_MAX], bp[PATH_MAX]; spath(dp, "decisions.txt"); spath(bp, "bank"); dec_exec("bank", dp, bp, "rpg-dust", 0); }      /* DEC rows -> bank entries + pick_pct (state/bank/) */
+static void dec_log(const char *actor, const char *state, const char *action, const char *target, const char *outcome) {
+    char p[PATH_MAX], st[24] = ""; static int since; spath(p, "decisions.txt"); dec_row(p, st, actor, state, action, target, outcome);
+    if (++since >= 200) { since = 0; dec_bank(); } }      /* the bank follows the ledger every 200 decisions (off the tick, niced), and on the review verb */
+/* the read-back that closes the loop: how readily a pet picks a new target. 45 % with no evidence; the op computes it from the walk weight (45 + (0.5 - w) * 60, clamped 15..85) and
+ * writes state/bank/dec_rpg-dust_pick_pct.txt; a pet that keeps being blocked retargets sooner. The file is re-read at most every 10 s. */
+static int dec_pick_pct(void) {
+    static int pct = 45; static time_t at; time_t nw = time(NULL);
+    if (nw - at >= 10) { char bp[PATH_MAX], fp[PATH_MAX + 64]; spath(bp, "bank"); snprintf(fp, sizeof fp, "%s/dec_rpg-dust_pick_pct.txt", bp); FILE *f = fopen(fp, "r"); int v; if (f) { if (fscanf(f, "%d", &v) == 1 && v >= 15 && v <= 85) pct = v; fclose(f); } at = nw; }
+    return pct; }
+static int ai_step_inner(int i);
 #elif PET_SECTION == 35
+    use_ent(i); Ent *e0 = i < 0 ? &tr : &others[i]; int tx0 = e0->tx, ty0 = e0->ty, x0 = e0->x, y0 = e0->y, r0 = e0->room;
+    int moved = ai_step_inner(i); Ent *e = i < 0 ? &tr : &others[i]; char tg[32];
+    const char *act = NULL, *out = "ok";
+    if (moved && (e->x != x0 || e->y != y0 || e->room != r0)) { act = e->room != r0 ? "door" : "walk"; snprintf(tg, sizeof tg, "%d,%d", e->x, e->y); }
+    else if (tx0 < 0 && e->tx >= 0) { act = "pick"; snprintf(tg, sizeof tg, "%d,%d", e->tx, e->ty); }
+    else if (tx0 >= 0 && !moved) { act = "walk"; out = "blocked"; snprintf(tg, sizeof tg, "%d,%d", tx0, ty0); }
+    if (act) dec_log(i < 0 ? "trainer" : party[i].id, tx0 >= 0 ? "goal" : "idle", act, tg, out);
+    return moved;
+}
+static int ai_step_inner(int i) {
 #elif PET_SECTION == 36
 #elif PET_SECTION == 37
-    if (pet.tx < 0 && rand() % 100 < 45) pick_target();
+    if (pet.tx < 0 && rand() % 100 < dec_pick_pct()) pick_target();
 #elif PET_SECTION == 38
 #elif PET_SECTION == 39
 static void end_turn(void) { if (!run_on() || !turn_mode()) return; clock_turn(); int in = flag_on("int", 0), c = ctl_idx(); for (int i = 0; i < nparty; i++) if (!(in && i == c)) ai_step(i); use_ent(active); }      /* the pet you control does not act on its own */
@@ -260,6 +311,10 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
     if (!strcmp(v, "helm")) { sk_helm_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }
+    if (!strcmp(v, "decpct")) { snprintf(msg, cap, "a pet without a target picks a new one with %d%% chance each step (base 45, moved by the walk weight in state/bank)", dec_pick_pct()); return; }
+    if (!strcmp(v, "review")) {      /* the daily review of state/decisions.txt -> state/review.txt (review [day-number], default the latest day) */
+        char dp[PATH_MAX], rp[PATH_MAX]; spath(dp, "decisions.txt"); spath(rp, "review.txt"); char ds[16]; snprintf(ds, sizeof ds, "%d", argc > 1 ? atoi(argv[1]) : -1); int n = dec_exec("review", dp, rp, ds, 1); dec_bank();
+        if (n < 0) snprintf(msg, cap, "review: no decisions yet"); else snprintf(msg, cap, "review: %d decisions reviewed, written to review.txt", n); return; }
     if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold") || !strcmp(v, "build")) { sk_wd_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "playpage") && argc >= 2) { int ok = run_event_x(argv[1], argc >= 3 ? argv[2] : "parallel", ""); snprintf(msg, cap, "playpage %s: %s", argv[1], ok ? "page played" : "no page / failed"); return; }      /* what events-hq's Play does: the page by name (a harness plays the air and collision pages with it) */
     if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }

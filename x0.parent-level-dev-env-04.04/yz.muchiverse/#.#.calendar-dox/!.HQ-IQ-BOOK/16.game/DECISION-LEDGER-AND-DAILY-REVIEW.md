@@ -1,6 +1,6 @@
 # Decision ledger and daily review (M3 / S3)
 
-Built 2026-10-18 for df-hq, cdda-hq and mcl-hq. Roadmap rows: `GAMES-ROADMAP.md` M3, `CLAUDE-TODO-ROADMAP-2026-10-16.md` S3. Shared code: `&.widgits/_shared-lib/game_decisions.c` (text-included, pure, like `game_events.c`). Test: `XO/test_decisions.sh` (not in git; scratch copies, tag `dec`).
+Built 2026-10-18 for df-hq, cdda-hq and mcl-hq. Roadmap rows: `GAMES-ROADMAP.md` M3, `CLAUDE-TODO-ROADMAP-2026-10-16.md` S3. Shared code (CHANGED 2026-10-27, see "Moved to an op" at the end): the op `&.widgits/_shared-lib/ops/dec_op.c`; the old text-include `game_decisions.c` is retired. Test: `XO/test_decisions.sh` (not in git; scratch copies, tag `dec`).
 
 ## What it is for
 
@@ -107,3 +107,12 @@ Today: read `state/review.txt` for a day summary, `state/bank/dec_<game>_<action
 2. Call `dec_append(path, stamp, actor, state, action, target, outcome)` at the one place the actor commits to a choice, after the outcome is known. One row per choice.
 3. Add a `review` verb that calls `dec_review(decisions_path, review_path, day_or_-1)`.
 4. Add the game to `XO/test_decisions.sh`.
+
+## Moved to an op, and pets in rpg-space now write the ledger (2026-10-27)
+Owner: shared C should be ops/events, not text includes; hot paths write rows and an op digests them off the tick. So:
+* **Hot path (inline in each game, one `O_APPEND` write per decision):** `dec_row()` in `df_hq.c`, `cdda_hq.c`, `mcl_hq.c`, `rpg_pvp_hq.c` and now `rpg_space.c` / `rpg_dust.c`. Same 8-field `DEC` row; checked identical to the old `dec_append` (timestamp aside).
+* **Everything else is `dec_op`**, run by fork/exec (niced, one at a time, never in the tick path): `bank <decisions> <bank_dir> <game>` (cursor by byte offset, bank entries, **`dec_<game>_pick_pct.txt`**, and **ledger rotation** past 2 MB), `review <decisions> <out> [day]`, `weight <bank_dir> <game> <action>`. The games call `bank` every 200 decisions and on the `review` verb; the pick-chance formula (45 + (0.5 - walk weight) * 60, clamped 15..85) moved from the games into the op, which writes one integer the game re-reads every 10 s. Not yet a `POLICY` row (design: GAMES-AS-PACKAGES-AND-STORE-DESIGN section 15).
+* **Observed:** on a 500-row synthetic ledger the op's bank files and review file are **byte-identical** to the old code's (and weight 0.5447 / pick chance 43 agree; an altered ledger changes 5 of 5 files, so the comparison is not vacuous); a second run consumes 0 rows; a 3 MB ledger rotates and resets the cursor; the torn last line is ignored. `df-hq` in a scratch house: `review` -> "200 decisions reviewed", bank files and `pick_pct` written, `decpct` moved from 45 to 43. Both rpg-space and rpg-dust gates: **83 PASS, 0 FAIL** with the rebuilt binaries.
+* **rpg-space / rpg-dust pets now write the ledger** (they did not: wandering was `rand()` in the core). Same wrapper as df-hq in skin sections 34/35 (before/after state of each `ai_step`: `pick`, `walk`, `door`, `blocked`), and the skin's pick roll now reads `dec_pick_pct()` instead of the constant 45. Observed in a scratch copy: 6 `walk` verbs gave 3 `ok` and 3 `blocked` rows, `review` made the bank entry, and a pet that kept being blocked got a 66 % retarget chance. **Limits:** there is no game clock here, so the stamp is empty and `review` treats everything as day 0; the daemon's own cadence (every 200 decisions) was not run for 200 decisions; a `walk` verb is a fresh process (the doc trap: pick rolls never fire), so the live daemon's `pick` rows were not observed.
+* **Fixed in all five wrappers:** a `blocked` row used to record target `x,-1` (the target was cleared before it was read); it now keeps the real target.
+* **Still true:** per-game, not per-actor weights; only the pick chance reads a weight; no judge checks the change helped.
