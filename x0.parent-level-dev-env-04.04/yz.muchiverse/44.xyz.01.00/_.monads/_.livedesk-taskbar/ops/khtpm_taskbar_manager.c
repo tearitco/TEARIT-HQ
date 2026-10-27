@@ -5155,6 +5155,20 @@ void ktb_hq_open(KtbState *s, int which) {
      * menu()'s own header comment. Was one of the bare inert cells
      * this same catch-all comment below used to include. */
     else if (strcmp(cid, "network") == 0 || which == 14) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* store - owner 2026-10-27: clicking cell 13 opens the Store WINDOW (store-hq), not a dropdown. Data-driven like the network
+     * launchers: `launcher_store` in livedesk_launchers.pdl names the script (argv[1] = house_root); no row = the old inert no-op.
+     * Cell 13 is positional only (no id in livedesk_header_cell_ids.txt), hence the which == 13 test. */
+    else if (strcmp(cid, "store") == 0 || which == 13) {
+        char launcher[KTB_PATH_BUF];
+        if (ktb_hq_launcher_path(s->house_root, "store", launcher, sizeof(launcher))) {
+            char sh[KTB_PATH_BUF * 3];
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'bash \"%s\" \"%s\"' >/dev/null 2>&1 &", launcher, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
+        }
+        ktb_hq_close(s);
+        return;
+    }
     else { ktb_hq_close(s); return; } /* inert cell (8/11/13, no real id declared - "edit"/"plugins"/"store") or unknown - close any open popup, no-op otherwise, matching the legacy exactly. */
     if (n <= 0) {
         snprintf(s->hq_menu[0].label, sizeof(s->hq_menu[0].label), "(empty)");
