@@ -296,3 +296,25 @@ Every daemon that renders or exports for a window asks first whether the window 
 **The real fix needs root (owner action, one time).** Delegate the cpu controller so tier 1 works: `sudo mkdir -p /etc/systemd/system/user@.service.d && printf '[Service]\nDelegate=cpu cpuset io memory pids\n' | sudo tee /etc/systemd/system/user@.service.d/delegate.conf`, then log out and in. Also worth doing, as freeze mitigations: install the `linux-surface` kernel and check for a firmware/BIOS update for the Laptop 3. Both need sudo and are not done.
 
 **Rules.** Never run more than two CPU-heavy things at once; bound every test loop; a freeze that leaves no log is a hardware/firmware suspect first, our code second, but our code is the part we can fix.
+
+## 8. The always-on CPU guard (2026-10-26)
+
+**Why now.** A fifth hard freeze (2026-10-26 22:35; the journal stops mid-run, no OOM or panic) followed a long agent session that ran renderer gates, repeated builds, a fast `/proc` poller, live boards and the 3D engine together, none of it under `cpu-quota.sh`. The old `ops/cpu_watch_daemon.sh` only logged single processes over 30 % and nothing ever started it. Owner request: when CPU rises above normal, end our own children, tell the developers to check CPU safety, and ask before killing a browser.
+
+**What it is.** `&.hq-apps/proc-mon/ops/cpu_guard.c` (launcher `guard.sh start|stop|status`, autostart row in `$.crypts/autostart.pdl`, config `#.desktop/proc_mon_guard.pdl`, created on first run). One sample per 2 s from `/proc/stat`, `/proc/*/stat` and the die temperature (`k10temp`); no forks while idle. Measured idle cost over 60 s: 0.6 % of one core, 2 MB.
+
+| Level | Trigger (defaults) | Action |
+|---|---|---|
+| WARN | busy >= 70 % for 3 samples, or die >= 85 C | incident report in `state/incidents/`, log line, toast. Kills nothing. |
+| ACT | busy >= 85 % for 5 samples, or die >= 92 C | 1. if the house is >= 10 % of the machine: end every house process (script hosts first so nothing respawns, TERM, then KILL after 1.5 s); the desktop shell (taskbar and its process groups) is never touched. 2. if still hot, or the house was not the culprit: a zenity dialog asks whether to kill the biggest outside program (all pids of that name summed, e.g. Chrome). Default answer is No; no answer is No. 3. writes `state/cpu_guard_alert.txt`: **the house needs a CPU-safety review**. |
+
+Percentages are of the whole machine. "House" = process whose executable is under the house root, or a shell running a house `.sh`. An agent's `bash -c ...` tool shell is not a house process. The guard ignores nothing else: system processes, the guard itself and the desktop shell are protected.
+
+**Evidence for the next freeze.** `state/cpu_guard_last.txt` is rewritten every sample and fdatasync'd every third, so after a hard freeze it shows busy %, die temperature and the top process of the last seconds. `STALL` log lines mean the guard itself woke much later than asked, i.e. the machine was nearly frozen. Log: `state/cpu_guard.log` (fsync'd per line).
+
+**For every developer and agent: at the start of a session run `sh &.hq-apps/proc-mon/guard.sh status`.** If an ALERT is waiting, read the newest `state/incidents/*ACT.txt`, find which of our processes was on top, fix that before adding load, then delete `state/cpu_guard_alert.txt`.
+
+**Verified 2026-10-26 (scratch house, niced spinners, thresholds lowered; nothing in the live house was touched).** House spinner ended and a protected `khtpm_strip_parser` spinner survived; an outside spinner survived the house kill; answer No: 3 outside processes survived; answer Yes: all 3 ended; dialog timeout: all survived; `dry_run=1` logged `WOULD-KILL` and ended nothing; real `zenity` arguments display (exit 5 on timeout); `button.sh quit` pattern does not match the guard's command line. **Not verified:** the ACT path on the real house stacks, the real dialog being answered by a person, the guard acting during a true multi-second machine stall, and whether it gets scheduled at all when the machine is already wedged (it cannot raise its own priority without root). It reduces the chance of a freeze and records evidence; it is not a guarantee.
+
+**Limits and open decisions.** `kill_house` and the thresholds are the owner's to tune. The die ran 77 to 87 C in scratch tests with only 3 busy loops, so `temp_act_c=92` may be close to normal on this machine under real load; watch `cpu_guard_last.txt` before lowering it. A cgroup CPU cap for the house (section 7, tier 1) still needs the root `Delegate=` drop-in and would be the stronger fix.
+

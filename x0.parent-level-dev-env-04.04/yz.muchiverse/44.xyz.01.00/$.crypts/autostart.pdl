@@ -31,3 +31,5 @@ LAUNCH       | tool-bar             | '_.monads/_.livedesk-taskbar/ops/run_khtpm
 LAUNCH       | world-manager        | '&.hq-apps/world-manager/button.sh' 'boot'
 LAUNCH       | hotbar-desk          | '@.apps/hotbar-hq/boot.sh'
 LAUNCH       | ui-sounds            | '&.widgits/ui-sounds/start_player.sh' 'boot'
+# CPU guard (2026-10-26): always on, survives quit/reset on purpose. Ends the house's own processes and asks before killing an outside program when the machine runs hot.
+LAUNCH       | cpu-guard            | '&.hq-apps/proc-mon/guard.sh' 'boot'

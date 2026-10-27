@@ -140,3 +140,10 @@ the monitor window structurally excluded.
 - `../../_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh` — the
   ledger-based emergency reaper (`!kill hq` row); mon-hq is the
   observable, engine-aware companion to it.
+
+---
+
+## CPU guard (2026-10-26)
+
+`guard.sh start|stop|status` runs `ops/cpu_guard.c`, an always-on watchdog (autostart row in `$.crypts/autostart.pdl`). It warns when the machine runs hot, ends the house's own processes when it stays hot, and asks (zenity, default No) before killing a big outside program such as Chrome. It never kills the desktop shell. Everything it did is in `state/cpu_guard.log`, `state/incidents/` and `state/cpu_guard_alert.txt`; `state/cpu_guard_last.txt` is the last-seconds record for a hard freeze. Config: `#.desktop/proc_mon_guard.pdl`. Full description and test record: BOOK `03-pitfalls/hq-cpu-safety.md` section 8. It supersedes `ops/cpu_watch_daemon.sh`, which nothing ever started.
+
