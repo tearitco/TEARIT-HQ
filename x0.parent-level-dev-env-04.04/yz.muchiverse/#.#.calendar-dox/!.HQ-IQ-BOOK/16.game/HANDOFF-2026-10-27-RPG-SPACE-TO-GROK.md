@@ -6,6 +6,8 @@ RPG Maker, Unreal, Minecraft, CDDA, Dwarf Fortress, GTA, Pokemon and Palworld.**
 `x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/` (house); app = `@.apps/rpg-space`. Quote every path (`&`, `@`).
 Branch: commit to YOUR OWN branch (`grok`), never `claude`/`main`, scoped pathspec only (AGENTS.md).
 
+> **Read `HANDOFF-2026-10-27-AI-SIDE-COMPANION.md` (same folder) before this list: it covers the AI side (the harness as judge, the bank, the attrition model, what pets do today), a merged work order that replaces the lists in 3b / 4 / 4b, and a revised question block.**
+
 ## 0. The owner's raw note, decoded
 
 1. *"when can user decide what radius of items in space / depth (molecules etc) shows up in the bottom tb? ... when we allow
