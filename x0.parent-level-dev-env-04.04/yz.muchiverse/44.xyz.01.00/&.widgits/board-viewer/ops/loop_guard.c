@@ -55,6 +55,15 @@ static int engine_process_here(const char *here) {
         snprintf(p, sizeof p, "/proc/%s/cwd", e->d_name); ssize_t n = readlink(p, cwd, sizeof cwd - 1); if (n <= 0) continue; cwd[n] = 0;
         if (!strcmp(cwd, here)) { snprintf(p, sizeof p, "/proc/%s/stat", e->d_name); char sb[512] = ""; f = fopen(p, "r"); if (f) { size_t m = fread(sb, 1, sizeof sb - 1, f); sb[m] = 0; fclose(f); } char *r = strrchr(sb, ')'); if (r && r[2] != 'Z') found = 1; } }
     closedir(d); return found; }
+/* Is the board window of this instance still open? The window (khtpm_core_render) carries PCHQ_PKG=<instance root> in its environment; a board without that variable is judged by its xhtpm name. */
+static int board_window_alive(const char *root) {
+    DIR *d = opendir("/proc"); if (!d) return 0; struct dirent *e; int found = 0; char want[3900]; snprintf(want, sizeof want, "PCHQ_PKG=%s", root);
+    while (!found && (e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char p[64], cm[32] = ""; snprintf(p, sizeof p, "/proc/%s/comm", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; if (fgets(cm, sizeof cm, f)) cm[strcspn(cm, "\n")] = 0; fclose(f);
+        if (strncmp(cm, "khtpm_core_rend", 15)) continue;
+        static char env[65536]; snprintf(p, sizeof p, "/proc/%s/environ", e->d_name); f = fopen(p, "r"); size_t n = 0; if (f) { n = fread(env, 1, sizeof env - 1, f); fclose(f); } env[n] = 0;
+        int has_pkg = 0; for (size_t i = 0; i < n; i += strlen(env + i) + 1) { if (!strncmp(env + i, "PCHQ_PKG=", 9)) { has_pkg = 1; if (!strcmp(env + i, want)) found = 1; } }
+        if (!has_pkg) { char cl[2048] = ""; snprintf(p, sizeof p, "/proc/%s/cmdline", e->d_name); f = fopen(p, "r"); if (f) { size_t m = fread(cl, 1, sizeof cl - 1, f); for (size_t i = 0; i + 1 < m; i++) if (!cl[i]) cl[i] = ' '; fclose(f); } if (strstr(cl, "pchq-board")) found = 1; } }
+    closedir(d); return found; }
 static void guard_log(const char *fmt, const char *a, const char *b) {      /* one line per decision to pieces/display/.loop_guard.log (cap 40 lines: it is only for finding out why a loop ended) */
     FILE *f = fopen("pieces/display/.loop_guard.log", "a"); if (!f) return; fprintf(f, "%ld ", (long)time(NULL)); fprintf(f, fmt, a, b); fputc('\n', f); fclose(f); }
 int main(int argc, char **argv) {
@@ -77,6 +86,9 @@ int main(int argc, char **argv) {
     char here[4200] = ""; if (!getcwd(here, sizeof here)) here[0] = 0;
     sleep(3); if (engine_alive(pidfile)) return 0;      /* a respawn writes a new pid within this window */
     if (here[0] && engine_process_here(here)) { guard_log("pid file %s is missing or dead but an engine process runs here: loop kept (%s)", pidfile, "process scan"); return 0; }
+    { char idle[4200]; snprintf(idle, sizeof idle, "%s", pidfile); char *sl2 = strrchr(idle, '/'); snprintf(sl2 ? sl2 + 1 : idle, sizeof idle - (sl2 ? (size_t)(sl2 + 1 - idle) : 0), ".engine_idle_exit");      /* the engine left this when it exited by its own idle timeout */
+      char root[3800] = ""; FILE *rf = fopen("pieces/system/real_project_root.txt", "r"); if (rf) { if (fgets(root, sizeof root, rf)) root[strcspn(root, "\r\n")] = 0; fclose(rf); }
+      if (access(idle, F_OK) == 0 && root[0] && board_window_alive(root)) { guard_log("engine exited on its idle timeout (%s) and the board window is open: loop kept, the next request respawns it", pidfile, ""); return 0; } }
     if (marker && marker[0]) { int fd = open(marker, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd >= 0) { if (write(fd, "x", 1) < 0) { /* best effort */ } close(fd); } }
     { char b[24]; snprintf(b, sizeof b, "%d", (int)parent); guard_log("engine gone (pid file %s, no engine process in this session): ending loop pid %s", pidfile, b); }
     fprintf(stderr, "loop_guard: engine gone (%s), ending loop pid %d\n", pidfile, (int)parent);

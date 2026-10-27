@@ -2327,6 +2327,8 @@ static int bv_hud_fps(void) {
 static char (*g_mm_board3d)[MAX_BOARD_DIM][MAX_BOARD_DIM] = NULL;
 static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
 static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
+/* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
+static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 
 /* REAL FIX 2026-09-30, direct live report ("hud/mini map still isn't
@@ -2638,6 +2640,19 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
         int cx = mm_x + g_xelector_x * cellpx, cy = mm_y + g_xelector_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
+    }
+
+    /* CAMERA: a bright yellow dot (dark outline) at the eye, clamped onto the minimap when the camera is outside the desk, and two yellow rays at +-half the field of view along the ground direction it faces,
+     * clipped to the minimap. Drawn under the hero cell so "you" stays visible. */
+    if (g_mm_cam_ok) {
+        double ex = g_mm_cam_x * cellpx, ez = g_mm_cam_z * cellpx; int outside = 0;
+        if (ex < 0) { ex = 0; outside = 1; } if (ex > mm_w - 1) { ex = mm_w - 1; outside = 1; } if (ez < 0) { ez = 0; outside = 1; } if (ez > mm_h - 1) { ez = mm_h - 1; outside = 1; }
+        double half = g_fov_deg * M_PI_LOCAL / 360.0, len = (mm_w > mm_h ? mm_w : mm_h) * 0.55;
+        for (int side = -1; side <= 1; side += 2) {
+            double a = side * half, ca = cos(a), sa = sin(a), rx = g_mm_cam_dx * ca - g_mm_cam_dz * sa, rz = g_mm_cam_dx * sa + g_mm_cam_dz * ca;
+            for (double t = 2; t < len; t += 0.7) { int px = mm_x + (int)(ex + rx * t), py = mm_y + (int)(ez + rz * t); if (px < mm_x || py < mm_y || px >= mm_x + mm_w || py >= mm_y + mm_h) break; bv_fill_rect(px, py, px + 1, py + 1, 255, 240, 0); } }
+        int dxp = mm_x + (int)ex, dyp = mm_y + (int)ez, rr = outside ? 3 : 2;
+        bv_fill_rect(dxp - rr - 1, dyp - rr - 1, dxp + rr + 2, dyp + rr + 2, 20, 20, 20); bv_fill_rect(dxp - rr, dyp - rr, dxp + rr + 1, dyp + rr + 1, 255, 240, 0);
     }
 
     /* hero/player - red, drawn last (on top of everything else). Falls
@@ -4870,6 +4885,9 @@ static int render_one_frame(void) {
      * g_fbuf, on top of the raymarch, before the atomic write. */
     g_mm_board3d = board3d; g_mm_col_top = col_top;
     g_mm_board_w = board_w; g_mm_board_h = board_h;
+    { double fl = sqrt(cam.forward.x * cam.forward.x + cam.forward.z * cam.forward.z), dx = cam.forward.x, dz = cam.forward.z;
+      if (fl < 0.25) { dx = cam.up.x; dz = cam.up.z; fl = sqrt(dx * dx + dz * dz); }      /* looking straight down: the screen-up direction is the way it faces */
+      g_mm_cam_x = cam.eye.x; g_mm_cam_z = cam.eye.z; g_mm_cam_ok = fl > 1e-6; if (g_mm_cam_ok) { g_mm_cam_dx = dx / fl; g_mm_cam_dz = dz / fl; } }
     /* The selector defaults to the middle of the glyph board. On a
      * painted page the camera follows the xelector, so the minimap
      * marker follows it too. */
@@ -5053,6 +5071,8 @@ int main(int argc, char **argv) {
      * keep the same real ~270s orphan-cleanup exit at the new rate. */
     #define BV_IDLE_POLL_USEC 30000
     #define BV_IDLE_EXIT_TICKS (270000000 / BV_IDLE_POLL_USEC)
+    long idle_exit_ticks = BV_IDLE_EXIT_TICKS; { const char *ie = getenv("BV_IDLE_EXIT_S"); if (ie && atoi(ie) > 0) idle_exit_ticks = (long)atoi(ie) * 1000000L / BV_IDLE_POLL_USEC; }      /* BV_IDLE_EXIT_S: test override (seconds) */
+    { char ip[PATH_BUF]; snprintf(ip, sizeof ip, "%s/pieces/display/.engine_idle_exit", project_root); unlink(ip); }      /* a NEW engine: the last exit is no longer "idle" */
     int idle_ticks = 0;
     while (!g_daemon_stop) {
         long long now = bv_file_size(reqp);
@@ -5109,8 +5129,11 @@ int main(int argc, char **argv) {
             served++;
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
-        } else if (++idle_ticks > BV_IDLE_EXIT_TICKS) {
+        } else if (++idle_ticks > idle_exit_ticks) {
             fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n");
+            /* An IDLE self-exit is not a death (owner 2026-10-27: the board froze after ~4.5 min untouched). Say so: .engine_idle_exit tells loop_guard that the dispatcher's keep-alive will respawn the engine on the next request, so a board whose window is still open must keep its loops. */
+            { char ip[PATH_BUF]; snprintf(ip, sizeof ip, "%s/pieces/display/.engine_idle_exit", project_root); FILE *xf = fopen(ip, "w"); if (xf) { fputs("idle\n", xf); fclose(xf); } }
+            bv_note_death("idle timeout (no frame requested), exiting", 0);
             break;
         }
         /* Bottom of every pass, not the idle else. house_wait_us
