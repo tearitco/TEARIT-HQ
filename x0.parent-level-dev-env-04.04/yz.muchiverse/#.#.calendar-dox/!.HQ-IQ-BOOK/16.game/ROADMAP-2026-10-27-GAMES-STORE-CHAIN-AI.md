@@ -40,6 +40,9 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 4. **AI attrition model growing up:** more edit types (new concept node, FSM transition, planner action), promotion designed from real review history, tomom learning from the ledgers, `auto` studio for creators' repetitive work. Always: describe never classify, models never set numbers, no auto-promotion.
 5. **Hardening:** real money out of scope until a payment provider and legal review exist; external-chain value stays irreversible and out of the reversal model; courts' appeal to the owner stays.
 
+## 3a. Owner's priority call (2026-10-27, after the vision synthesis)
+**North star: the learning flywheel** (VISION-CLARIFIED sections 8): micro-delegate tasks to Gemma 270M and free APIs as early as possible, train in-house reusable weights/models/datasets, compact and refine; every feature should feed it. **Showcase milestone: one space with several small games and one central editor** (section 9: pong, space invaders, slots, pet-faucet with a subchain, Elo tactics like BOTS). First flywheel turn: a `exam_taker` micro-task (Gemma 270M answers the chemistry exam, graded by code, worker grade per question kind). Save truth: the shared weights; both fidelity levels are views.
+
 ## 3b. Standing principles added later today (owner)
 * **Engine grows and compacts** (design doc section 21): every growth slice pays a compaction tax; data over code, ops over copies, one verb family not many commands, retire text includes; measured baseline and a compaction ledger.
 * **Life is evolvable** (section 20): needs and rates are data and weights, AI proposes new needs/variables/events through the validated review loop, scored in the dev lane; **anatomy and chemistry are optional AI-built packs**, fidelity opt-in per entity.
