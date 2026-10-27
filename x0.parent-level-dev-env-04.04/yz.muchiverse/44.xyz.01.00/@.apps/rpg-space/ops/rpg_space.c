@@ -918,7 +918,7 @@ static void sk_world_draw(void) {      /* called with the page rooms painted, be
 /* WORLD OBJECTS AS VOXEL PIECES (owner 2026-10-26: 'asteroid is not a flat tile, it should be a random nugget of 5-11 or so voxels ... same goes for the other ship, a smaller version of the current ship').
  * The engine draws pieces/veh_1..9 (state.txt + model.txt, bv_render_3d.c load_vehicle) as one box with a dense voxel model; nothing ever wrote them before, which is why they "never drew".
  * Slots 1.. = the asteroids of the planet map (nodes in room SK_SHIP) then the craft that have a world cell. Desk cell = world cell - the direct-flight shift, like the land. Fallback: obj_draw=0. */
-#define SK_VEH_MAXV 600
+#define SK_VEH_MAXV 4096      /* the engine takes 4096 voxels per piece (VEH_VOX) */
 typedef struct { int x, y, z, r, g, b; } SkVox;
 static unsigned sk_hash(const char *s) { unsigned h = 2166136261u; for (; *s; s++) h = (h ^ (unsigned char)*s) * 16777619u; return h | 1u; }
 static unsigned sk_rng(unsigned *s) { *s ^= *s << 13; *s ^= *s >> 17; *s ^= *s << 5; return *s; }
@@ -942,35 +942,36 @@ static int sk_nugget(const char *kind, int wx, int wy, SkVox *v, int dim[3]) {  
         if (!strcmp(kind, "ore") && sk_rng(&s) % 3u == 0) { r = 225; gg = 130; b = 55; }      /* orange flecks: the ore you mine */
         v[i] = (SkVox){px[i] - mn[0], py[i] - mn[1], pz[i] - mn[2], r < 0 ? 0 : r > 255 ? 255 : r, gg < 0 ? 0 : gg > 255 ? 255 : gg, b < 0 ? 0 : b > 255 ? 255 : b}; }
     return c; }
-static int sk_skiff_model(SkVox *v, int cap, int dim[3]) {      /* the player's own hull model (pieces/ship_01/model.txt) shrunk by skiff_div (default 2): 'a smaller version of the current ship' */
+static int sk_skiff_model(SkVox *v, int cap, int dim[3], int *vpc, double *edge) {      /* the player's own hull model (pieces/ship_01/model.txt, 12 x 5 x 12) at 1/skiff_div of its size, drawn with skiff_up times finer voxels so the tile pixels show (owner 2026-10-27: 'i just see colors, no tiles'): up 2, div 2 = 24 x 10 x 24 voxels, 4 per skiff cell, box 6 x 2.5 x 6 cells */
     char p[PATH_MAX], line[160]; snprintf(p, sizeof p, "%s/pieces/ship_01/model.txt", PCHQ); FILE *f = fopen(p, "r"); if (!f) return 0;
-    int div = tune("skiff_div", 2); if (div < 1) div = 1; static signed char seen[32][32][32]; memset(seen, 0, sizeof seen); int n = 0; dim[0] = dim[1] = dim[2] = 0;
-    while (fgets(line, sizeof line, f)) { int a, b, c, r, g, bl; if (sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) != 6) continue; a /= div; b /= div; c /= div;
-        if (a < 0 || b < 0 || c < 0 || a >= 32 || b >= 32 || c >= 32 || seen[a][b][c] || n >= cap) continue; seen[a][b][c] = 1; v[n++] = (SkVox){a, b, c, r, g, bl};
-        if (a + 1 > dim[0]) dim[0] = a + 1; if (b + 1 > dim[1]) dim[1] = b + 1; if (c + 1 > dim[2]) dim[2] = c + 1; }
-    fclose(f); return n; }
+    int up = tune("skiff_up", 2), div = tune("skiff_div", 2); if (up < 1) up = 1; if (up > 3) up = 3; if (div < 1) div = 1; static signed char seen[16][16][16]; memset(seen, 0, sizeof seen); int n = 0; dim[0] = dim[1] = dim[2] = 0;
+    while (fgets(line, sizeof line, f)) { int a, b, c, r, g, bl; if (sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) != 6) continue; if (a < 0 || b < 0 || c < 0 || a >= 16 || b >= 16 || c >= 16 || seen[a][b][c]) continue; seen[a][b][c] = 1;
+        for (int i = 0; i < up; i++) for (int j = 0; j < up; j++) for (int k = 0; k < up; k++) { int x = a * up + i, y = b * up + j, z = c * up + k; if (x >= 32 || y >= 32 || z >= 32 || n >= cap) continue; v[n++] = (SkVox){x, y, z, r, g, bl};
+            if (x + 1 > dim[0]) dim[0] = x + 1; if (y + 1 > dim[1]) dim[1] = y + 1; if (z + 1 > dim[2]) dim[2] = z + 1; } }
+    fclose(f); *vpc = up * div; *edge = 1.0 / (up * div); return n; }
 /* THE SAME TILES AS THE SHIP (owner 2026-10-26: 'u can use the same tiles for the asteroids, skiff, as scifi'). The engine's voxel pieces carry one RGB per voxel, so the colour is taken from real pixels of the ship's own sheet SF_Inside_A4 (the 24 x 24 tiles of sk_ship_room): the skiff's top faces from the bridge's green hex floor (8,11) and every other voxel from the hull wall (6,2); an asteroid from the engine room's diamond plate (8,6), tinted per kind so ore and crystal stay recognisable. A missing sheet leaves the flat colours. */
 static const unsigned char *sk_tile_px(int col, int row) {
     static unsigned char buf[4][XT * XT * 4]; static int kc[4], kr[4], n; for (int i = 0; i < n; i++) if (kc[i] == col && kr[i] == row) return buf[i];
     Sheet *a4 = n < 4 ? sheet("tilesets", "SF_Inside_A4") : NULL; if (!a4) return NULL; tile24(a4, col * S48, row * S48, buf[n]); kc[n] = col; kr[n] = row; return buf[n++]; }
-static void sk_retile(SkVox *v, int n, const int dim[3], int tc, int tr, int sc, int sr, const char *kind) {
+static void sk_retile(SkVox *v, int n, const int dim[3], int tc, int tr, int sc, int sr, const char *kind, int vpc) {      /* vpc > 0: that many voxels per cell, every cell shows the whole tile (the skiff); 0: the tile spread over the whole piece (asteroids) */
     const unsigned char *top = sk_tile_px(tc, tr), *side = sk_tile_px(sc, sr); if (!top || !side) return;
     static signed char occ[32][32][32]; memset(occ, 0, sizeof occ); for (int i = 0; i < n; i++) if (v[i].x < 32 && v[i].y < 32 && v[i].z < 32) occ[v[i].x][v[i].y][v[i].z] = 1;
     int dx = dim[0] > 0 ? dim[0] : 1, dy = dim[1] > 0 ? dim[1] : 1, dz = dim[2] > 0 ? dim[2] : 1;
     for (int i = 0; i < n; i++) {
-        int is_top = v[i].y + 1 >= 32 || !occ[v[i].x][v[i].y + 1][v[i].z], tx = (v[i].x * XT + XT / 2) / dx % XT, ty = is_top ? (v[i].z * XT + XT / 2) / dz % XT : (v[i].y * XT + XT / 2) / dy % XT;
+        int is_top = v[i].y + 1 >= 32 || !occ[v[i].x][v[i].y + 1][v[i].z], tx, ty;
+        if (vpc > 0) { tx = (v[i].x % vpc * XT + XT / 2) / vpc; ty = ((is_top ? v[i].z : v[i].y) % vpc * XT + XT / 2) / vpc; } else { tx = (v[i].x * XT + XT / 2) / dx % XT; ty = is_top ? (v[i].z * XT + XT / 2) / dz % XT : (v[i].y * XT + XT / 2) / dy % XT; }
         const unsigned char *q = (is_top ? top : side) + (ty * XT + tx) * 4; double r = q[0], g = q[1], b = q[2];
         if (!kind) { r *= 1.6; g *= 1.6; b *= 1.6; }      /* the other ship's hull: the wall tile is dark in an unlit voxel, lift it */
         else if (!strcmp(kind, "rock")) { r *= 2.0; g *= 2.0; b *= 2.0; }      /* the engine room's tiles are almost black; the hull wall tile lifted gives a rock grey */
         else if (!strcmp(kind, "ore")) { r = r * 2.0 + 70; g = g * 1.6 + 25; b *= 1.0; }      /* leans orange */
         else if (!strcmp(kind, "crystal")) { r = r * 1.4 + 20; g = g * 2.2 + 90; b = b * 2.4 + 110; }      /* leans cyan */
         v[i].r = r > 255 ? 255 : (int)r; v[i].g = g > 255 ? 255 : (int)g; v[i].b = b > 255 ? 255 : (int)b; } }
-static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3]) {
+static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3], double edge) {
     static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
     char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", dim[0], dim[1], dim[2]);
     for (int i = 0; i < n && (size_t)(w - mb) < sizeof mb - 40; i++) w += snprintf(w, sizeof mb - (size_t)(w - mb), "%d %d %d %d %d %d\n", v[i].x, v[i].y, v[i].z, v[i].r, v[i].g, v[i].b);
     snprintf(p, sizeof p, "%s/model.txt", d); write_if_changed(p, mb, (size_t)(w - mb));
-    double cell = tune("obj_vox_pct", 100) / 100.0, sx = dim[0] * cell, sy = dim[2] * cell, sh = dim[1] * cell;
+    double cell = edge * tune("obj_vox_pct", 100) / 100.0, sx = dim[0] * cell, sy = dim[2] * cell, sh = dim[1] * cell;
     snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=bridge\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
     snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); }
 static void sk_veh_clear(void) { char p[PATH_MAX]; for (int k = 1; k <= 9; k++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, k); unlink(p); } }
@@ -979,14 +980,14 @@ static void sk_veh_write(void) {
     sk_bar_refresh();
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
-    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim); }
-    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int n = sk_skiff_model(v, SK_VEH_MAXV, dim); if (n > 0) sk_retile(v, n, dim, 8, 11, 6, 2, NULL); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim); }
+    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, 0); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0); }
+    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_model(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) sk_retile(v, n, dim, 8, 11, 6, 2, NULL, vpc); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 /* THE BOTTOM BAR LISTS THE SHIPS AND ASTEROIDS NEAR THE SHIP (owner 2026-10-27: 'all ships/asteroids within a radius ... should show up on bottom tb', radius from a .pdl figure: tuning.pdl bar_radius, default 16 = one planet page). Rows of the planet map (asteroids that still have loads, crafts with a world cell), nearest first, distance = Chebyshev cells from the centre of the hull; a click row moves the cursor to the object's desk cell. Ship rooms only. */
 static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id) {
     if (r < 0 || r >= SK_SHIP || !sk_world_here()) return bo;
     sk_direct_load(); sk_craft_load(); sk_nodes_load();
-    int rad = tune("bar_radius", 16), cx = sk_dox + SOX + SSZ / 2, cy = sk_doy + SOY + SSZ / 2, n = 0;
+    int rad = tune("bar_radius", 48), cx = sk_dox + SOX + SSZ / 2, cy = sk_doy + SOY + SSZ / 2, n = 0;
     struct { char lab[48]; int wx, wy, d; } o[40];
     for (int i = 0; i < sk_nnodes && n < 40; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int dx = abs(sk_nodes[i].x - cx), dy = abs(sk_nodes[i].y - cy), d = dx > dy ? dx : dy; if (d > rad) continue;
         if (sk_nodes[i].amount > 0) snprintf(o[n].lab, sizeof o[n].lab, "%s x%d d%d", sk_nodes[i].kind, sk_nodes[i].amount, d); else snprintf(o[n].lab, sizeof o[n].lab, "%s d%d", sk_nodes[i].kind, d);
@@ -998,12 +999,19 @@ static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id) {
     return bo; }
 static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev distance from the desk cell of a world cell to the hull rectangle (0 = under the hull, 99 = off the desk) */
     int dx = wx - ox, dy = wy - oy; if (dx < 0 || dy < 0 || dx >= SK_W || dy >= SK_H) return 99; int ex = dx < SOX ? SOX - dx : dx >= SOX + SSZ ? dx - (SOX + SSZ - 1) : 0, ey = dy < SOY ? SOY - dy : dy >= SOY + SSZ ? dy - (SOY + SSZ - 1) : 0; return ex > ey ? ex : ey; }
+/* FOOTPRINTS (owner 2026-10-27: the asteroids looked like they overlapped the ship): the gap to an object is measured to its real footprint, not to one cell. Asteroid = the nugget's x/z size, other ship = the player's hull width / skiff_div. 0 = the hull overlaps it. */
+static int sk_rect_gap(int x0, int y0, int x1, int y1, int ox, int oy) {
+    int hx0 = ox + SOX, hy0 = oy + SOY, hx1 = hx0 + SSZ - 1, hy1 = hy0 + SSZ - 1;
+    int ex = x1 < hx0 ? hx0 - x1 : x0 > hx1 ? x0 - hx1 : 0, ey = y1 < hy0 ? hy0 - y1 : y0 > hy1 ? y0 - hy1 : 0; return ex > ey ? ex : ey; }
+static int sk_node_gap(int i, int ox, int oy) { SkVox v[48]; int dim[3]; sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); int sx = (int)ceil(dim[0] * tune("obj_vox_pct", 100) / 100.0), sy = (int)ceil(dim[2] * tune("obj_vox_pct", 100) / 100.0); if (sx < 1) sx = 1; if (sy < 1) sy = 1;
+    int x0 = sk_nodes[i].x - (sx - 1) / 2, y0 = sk_nodes[i].y - (sy - 1) / 2; return sk_rect_gap(x0, y0, x0 + sx - 1, y0 + sy - 1, ox, oy); }
+static int sk_craft_gap(int i, int ox, int oy) { int dv = tune("skiff_div", 2); if (dv < 1) dv = 1; int s = SSZ / dv; if (s < 1) s = 1; int x0 = sk_craft[i].wx - (s - 1) / 2, y0 = sk_craft[i].wy - (s - 1) / 2; return sk_rect_gap(x0, y0, x0 + s - 1, y0 + s - 1, ox, oy); }
 static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the hull would sit on an asteroid or another ship that is taller than the ship flies */
     if (!sk_world_here() || nz > tune("obj_top", 6)) return 0; sk_craft_load(); sk_nodes_load();
-    for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP && sk_world_gap(sk_nodes[i].x, sk_nodes[i].y, nx, ny) == 0) { snprintf(msg, cap, "an asteroid is in the way at %d,%d: lift above it, or mine it with m from beside it", sk_nodes[i].x, sk_nodes[i].y); return 1; }
-    for (int i = 0; i < sk_ncraft; i++) if (sk_craft[i].wx >= 0 && sk_world_gap(sk_craft[i].wx, sk_craft[i].wy, nx, ny) == 0) { snprintf(msg, cap, "%s is there: the helm holds off (try `space hail %s`)", sk_craft[i].label, sk_craft[i].id); return 1; } return 0; }
+    for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP && sk_node_gap(i, nx, ny) == 0) { snprintf(msg, cap, "an asteroid is in the way at %d,%d: lift above it, or mine it with m from beside it", sk_nodes[i].x, sk_nodes[i].y); return 1; }
+    for (int i = 0; i < sk_ncraft; i++) if (sk_craft[i].wx >= 0 && sk_craft_gap(i, nx, ny) == 0) { snprintf(msg, cap, "%s is there: the helm holds off (try `space hail %s`)", sk_craft[i].label, sk_craft[i].id); return 1; } return 0; }
 static int sk_world_reach_idx(void) {      /* the asteroid node of the planet map nearest to the hull and within the beam's reach (-1 = none) */
-    if (!sk_world_here()) return -1; sk_nodes_load(); int best = -1, bd = 99, reach = tune("obj_reach", 2); for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) { int d = sk_world_gap(sk_nodes[i].x, sk_nodes[i].y, sk_dox, sk_doy); if (d <= reach && d < bd) { bd = d; best = i; } } return best; }
+    if (!sk_world_here()) return -1; sk_nodes_load(); int best = -1, bd = 99, reach = tune("obj_reach", 2); for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) { int d = sk_node_gap(i, sk_dox, sk_doy); if (d <= reach && d < bd) { bd = d; best = i; } } return best; }
 static void sk_space_verb(int argc, char **argv, char *msg, size_t cap) {      /* space status | hail <id> | move <id> <gx> <gy> */
     sk_craft_load(); const char *a = argc >= 2 ? argv[1] : "status";
     if (!strcmp(a, "status")) { char b[500] = ""; sk_nodes_load(); int rocks = 0; for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SPACE) { char t[60]; snprintf(t, sizeof t, "%s@%d,%d x%d; ", sk_nodes[i].kind, (sk_nodes[i].x - 2) / 2, (sk_nodes[i].y - 2) / 2, sk_nodes[i].amount); strncat(b, t, sizeof b - strlen(b) - 1); rocks++; }
@@ -1081,7 +1089,7 @@ static int sk_remnants_tick(void) {
       int v[6] = { sk_dox, sk_doy, sk_pl_cur, tune("bar_radius", 16), sk_nnodes, sk_ncraft }; for (int i = 0; i < 6; i++) g = (g ^ (unsigned)v[i]) * 16777619u;
       for (int i = 0; i < sk_nnodes; i++) { int w[4] = { sk_nodes[i].room, sk_nodes[i].x, sk_nodes[i].y, sk_nodes[i].amount }; for (int k = 0; k < 4; k++) g = (g ^ (unsigned)w[k]) * 16777619u; }
       for (int i = 0; i < sk_ncraft; i++) { g = (g ^ (unsigned)sk_craft[i].wx) * 16777619u; g = (g ^ (unsigned)sk_craft[i].wy) * 16777619u; }
-      if (g != bsig) { bsig = g; sk_bar_refresh(); } }
+      if (g != bsig) { bsig = g; sk_veh_write(); } }      /* sk_veh_write refreshes the bar and rewrites the voxel pieces: a mined-out asteroid leaves the picture at once and the objects exist without direct flight too */
     sk_wd_cfg(); static long last_at; long now = now_ms(); if (now - last_at < 90) return 0; last_at = now; sk_drops_load(); int changed = 0;
     for (int i = 0; i < sk_ndrops; i++) {      /* who is close enough to pick it up */
         SkDrop *d = &sk_drops[i]; int a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k; if (a >= 0) continue;

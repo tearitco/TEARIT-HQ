@@ -28,6 +28,8 @@ INIT | state/pet_ember.txt | room=bridge\nx=9\ny=5\ndir=1\nsteps=5\ntx=-1\nty=-1
 INIT | state/life_ember.txt | hp=20\nhunger=3\ndead=0\ndeaths=0\ninv=bread:5,iron:11,scrap:32\n
 
 INIT | state/look_ledger.txt | PLANET\p cata\n
+# the gate's own seed rows (the geometry every pin below is worked out from): the real space.pdl puts the objects far out on the 48 x 48 land, this one keeps them against the hull
+INIT | space.pdl | ROCK  \p rock_1 \p 2 \p 2 \p ore     \p 6 \p Rusty Rock\nROCK  \p rock_2 \p 1 \p 3 \p rock    \p 8 \p Grey Chunk\nROCK  \p rock_3 \p 3 \p 1 \p crystal \p 3 \p Glint\nCRAFT \p skiff_1 \p 2 \p 4 \p Wren (skiff) \p pip:12:0:0,nova:12:1:0 \p iron:2,bread:3\nWROCK  \p wr_1 \p cata \p 15 \p 5  \p ore     \p 5\nWROCK  \p wr_2 \p cata \p 3  \p 14 \p rock    \p 7\nWROCK  \p wr_3 \p cata \p 0  \p 9  \p crystal \p 3\nWCRAFT \p skiff_1 \p cata \p 14 \p 1 \p Wren\n
 
 PHASE | p1_seed | space.pdl WROCK and WCRAFT rows put three asteroids and the skiff on the planet map, once | planet map, seed, data
 DO | space | status
@@ -63,10 +65,13 @@ PUT | state/direct.txt | 1 0\n
 DO | helm | move | 1 | 0
 SAY | an asteroid is in the way at 15,5 | low-hull-refused-over-the-asteroid
 FILEIS | state/direct.txt | 1 0\n | the-ship-did-not-move
-PUT | state/direct.txt | 1 0\n
+PUT | state/craft.txt | skiff_1\p2\p4\pWren (skiff)\ppip:12:0:0,nova:12:1:0\piron:2,bread:3\p8\p-6\n
+PUT | state/direct.txt | 0 -5\n
 DO | helm | move | 0 | -1
-SAY | Wren (skiff) is there | low-hull-refused-over-the-skiff
+SAY | Wren (skiff) is there | low-hull-refused-over-the-skiff-by-its-6-wide-footprint
+FILEIS | state/direct.txt | 0 -5\n | the-ship-did-not-move
 PUT | state/direct_z.txt | 8\n
+PUT | state/direct.txt | 1 0\n
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | high-hull-flies-over-the-asteroid
 
@@ -84,15 +89,16 @@ HAS | rpg-space-pchq/pieces/veh_1/state.txt | size_h=3.00 | box-height-is-the-nu
 COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | ore-nugget-is-11-voxels-plus-the-dim-line
 COUNT | rpg-space-pchq/pieces/veh_2/model.txt | \n | 12 | rock-nugget-is-11-voxels-plus-the-dim-line
 COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | crystal-nugget-is-7-voxels-plus-the-dim-line
-HAS | rpg-space-pchq/pieces/veh_4/model.txt | dim 6 3 6 | the-skiff-is-the-12x5x12-ship-at-half-size
-COUNT | rpg-space-pchq/pieces/veh_4/model.txt | \n | 81 | the-skiff-has-80-voxels
-HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=10.50 | skiff-at-world-14-minus-shift-1-centred-on-its-6-wide-box
-HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-1.50 | skiff-at-world-y-1-centred-on-its-6-deep-box
+HAS | rpg-space-pchq/pieces/veh_4/model.txt | dim 24 10 24 | the-skiff-is-the-12x5x12-ship-at-half-size-in-2x-finer-voxels
+COUNT | rpg-space-pchq/pieces/veh_4/model.txt | \n | 3617 | the-skiff-has-452-ship-voxels-times-8-plus-the-dim-line
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=4.50 | skiff-at-world-8-minus-shift-1-centred-on-its-6-wide-box
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-8.50 | skiff-at-world-y-minus-6-centred-on-its-6-deep-box
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | skiff-box-is-6-cells-wide
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_h=2.50 | and-2.5-cells-high-half-the-ships-5
 NOFILE | rpg-space-pchq/pieces/veh_5/state.txt | only-four-objects-so-no-fifth-piece
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | flown-another-cell-east
-HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=9.50 | the-skiff-slid-one-cell-with-the-flight
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=3.50 | the-skiff-slid-one-cell-with-the-flight
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_x=12.00 | the-ore-slid-one-cell-with-the-flight
 COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | the-nugget-keeps-its-shape-when-the-ship-moves
 COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | the-crystal-keeps-its-shape-too

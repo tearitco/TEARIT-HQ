@@ -11,7 +11,8 @@ CRAFT | skiff_1 | 2 | 4 | Wren (skiff) | pip:12:0:0,nova:12:1:0 | iron:2,bread:3
 # --- the same objects ON THE PLANET MAP (owner 2026-10-26: "i expected to see them on same map as planet/ship cata prime"). Design 7i. World cell = a cell of the planet page (0..15), the space direct flight slides under the hull. The hull (12 cells) covers desk cells 2..13, so at the start (ox 0, oy 0) the ring cells x or y in 0,1,14,15 are the ones in view; flying brings the others in.
 # WROCK  | id | planet | wx | wy | kind | amount     an asteroid over that planet's map (a node of the planet page room; mined with m in direct flight)
 # WCRAFT | craft id | planet | wx | wy | label        puts an existing CRAFT row on the planet map
-WROCK  | wr_1 | cata | 15 | 5  | ore     | 5
-WROCK  | wr_2 | cata | 3  | 14 | rock    | 7
-WROCK  | wr_3 | cata | 0  | 9  | crystal | 3
-WCRAFT | skiff_1 | cata | 14 | 1 | Wren
+WROCK  | wr_1 | cata | 26 | 3  | ore     | 5
+WROCK  | wr_2 | cata | -9 | 21 | rock    | 7
+WROCK  | wr_3 | cata | -12 | -6 | crystal | 3
+WCRAFT | skiff_1 | cata | 22 | 24 | Wren
+# Positions are world cells of the 48 x 48 land (-16..31; the grey limit box). The ship starts with its hull centre at 8,8; they were first put inside the start page (15,5 / 3,14 / 0,9 / 14,1), so they sat against the hull (owner 2026-10-27).
