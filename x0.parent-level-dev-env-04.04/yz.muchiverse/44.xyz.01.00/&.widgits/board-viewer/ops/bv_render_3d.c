@@ -64,6 +64,7 @@
 #include "bv_move_range.c"    /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include <signal.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include "../../_shared-lib/house_wait.h"
 #include <sys/stat.h>
@@ -4932,7 +4933,8 @@ static int bv_sig_changed(const char *p, bv_sig_t *s) {
     if (stat(p, &st) == 0) { sz = (long long)st.st_size; mt = (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec; struct timespec n; clock_gettime(CLOCK_REALTIME, &n); racy = ((long long)n.tv_sec * 1000000000LL + n.tv_nsec) - mt < 100000000LL; }
     int ch = (sz != s->sz || mt != s->mt || racy); s->sz = sz; s->mt = mt; return ch;
 }
-static void bv_daemon_on_term(int sig) { (void)sig; g_daemon_stop = 1; }
+static void bv_note_death(const char *how, int sig);      /* defined below main-side setup: one line in pieces/display/.engine_exit.log */
+static void bv_daemon_on_term(int sig) { bv_note_death("signal received (told to stop)", sig); g_daemon_stop = 1; }
 
 static long long bv_file_size(const char *p) {
     struct stat st;
@@ -4970,6 +4972,21 @@ static void bv_repaint_hud_only(void) {
     free(g_fbuf); g_fbuf = NULL;
 }
 
+/* EXIT EVIDENCE (owner 2026-10-27: the engine died on a board the owner was driving, with no log line, no core and no kernel message; bv_dispatch double-forks it so nobody waits for its exit status).
+ * One line per death in pieces/display/.engine_exit.log: "<epoch> engine pid N: <how>". how = a crash signal (11 SEGV, 6 ABRT, 7 BUS, 8 FPE, 4 ILL), a termination signal that was sent to it (15 TERM, 2 INT, 1 HUP: someone ended it), or "exit()" (normal end). A death with NO line is SIGKILL (the OOM killer or `kill -9`), which cannot be caught.
+ * The signal path only uses open/write/close/getpid-free formatting (async-signal-safe). */
+static char g_exit_log[PATH_MAX + 40], g_exit_pidtxt[16], g_exit_root[PATH_MAX];
+static void bv_put_num(char *o, long v) { char t[24]; int n = 0, i = 0; if (v <= 0) { o[0] = '0'; o[1] = 0; return; } while (v > 0 && n < 22) { t[n++] = (char)('0' + v % 10); v /= 10; } while (n > 0) o[i++] = t[--n]; o[i] = 0; }
+static void bv_note_death(const char *how, int sig) {      /* the session folder is deleted by teardown, so every line is ALSO appended to /tmp/bv_engine_exit.log (with the session path) */
+    char ts[24], sg[8]; bv_put_num(ts, (long)time(NULL)); bv_put_num(sg, (long)sig);
+    for (int k = 0; k < 2; k++) {
+        int fd = open(k ? "/tmp/bv_engine_exit.log" : g_exit_log, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd < 0) continue;
+        (void)!write(fd, ts, strlen(ts)); (void)!write(fd, " engine pid ", 12); (void)!write(fd, g_exit_pidtxt, strlen(g_exit_pidtxt)); (void)!write(fd, ": ", 2); (void)!write(fd, how, strlen(how));
+        if (sig) { (void)!write(fd, " signal ", 8); (void)!write(fd, sg, strlen(sg)); }
+        if (k) { (void)!write(fd, " root=", 6); (void)!write(fd, g_exit_root, strlen(g_exit_root)); } (void)!write(fd, "\n", 1); close(fd); } }
+static void bv_death_signal(int sig) { bv_note_death("died on", sig); signal(sig, SIG_DFL); raise(sig); }
+static void bv_death_atexit(void) { bv_note_death("exit()", 0); }
+
 /* Path A v2 - resident GPU renderer. EGL context + shader + textures
  * are created once; each frame is a bv_state re-read + grid upload +
  * draw + readback (~1-5ms). bv_dispatch bumps .gpu_render_req (append)
@@ -4990,6 +5007,9 @@ int main(int argc, char **argv) {
     bv_gpu_set_persistent(1);
 
     resolve_root();                       /* sets project_root */
+    snprintf(g_exit_log, sizeof g_exit_log, "%s/pieces/display/.engine_exit.log", project_root); bv_put_num(g_exit_pidtxt, (long)getpid()); snprintf(g_exit_root, sizeof g_exit_root, "%s", project_root);
+    { int cs[] = { SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL }; for (unsigned i = 0; i < sizeof cs / sizeof cs[0]; i++) signal(cs[i], bv_death_signal); }
+    atexit(bv_death_atexit);
     char reqp[PATH_BUF], ackp[PATH_BUF], pidp[PATH_BUF], mkp[PATH_BUF];
     snprintf(reqp, sizeof(reqp), "%s/pieces/display/.gpu_render_req", project_root);
     snprintf(ackp, sizeof(ackp), "%s/pieces/display/.gpu_render_ack", project_root);
