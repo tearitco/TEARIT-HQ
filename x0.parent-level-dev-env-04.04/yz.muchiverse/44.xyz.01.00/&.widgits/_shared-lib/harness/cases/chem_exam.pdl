@@ -1,0 +1,45 @@
+# chem_exam: LOCKED cases for chem_label exam-make / exam-grade (plan phase P2). Source: &.widgits/concept-bank/ops/chem_label.c; ground truth: the real locked elements.pdl.
+# Hand arithmetic behind the key for seed 3 / n 6 on the fixture: NH3 mass = 14 + 3*1 = 17, CH4 atoms = 5, Z=26 is Fe; "NH3Qx" and "Cc2" are not valid formulas.
+RESULTS | ../results/chem_exam.txt
+CASE | chem-exam
+SCRATCH |
+COPY | &.widgits/concept-bank/ops/chem_label.c | chem_label.c
+COPY | &.widgits/concept-bank/data/chem/elements.pdl | elements.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/cl.+x | $T/chem_label.c
+EXPECT_EXIT | 0 | compiles-clean
+WRITE | c.csv | emoji,compound_name,formula,category,hint,state,melting_point,boiling_point,density\nW,Water,H2O,6,x,liquid,0,100,1\nS,Salt,NaCl,6,x,solid,801,1465,2.16\nM,Methane,CH4,1,x,gas,-182,-161,0.7\nA,Ammonia,NH3,1,x,gas,-77,-33,0.7\nG,Glucose,C6H12O6,1,x,solid,146,300,1.5\nC,CO2,CO2,1,x,gas,-56,-78,1.9\n
+RUN | $T/cl.+x | $T/elements.pdl | $T/c.csv | t | $T/lab.pdl | $T/fb0.txt
+EXPECT_EXIT | 0 | label-fixture
+RUN | $T/cl.+x | exam-make | $T/elements.pdl | $T/lab.pdl | 3 | 6 | $T/e
+EXPECT_EXIT | 0 | exam-make-runs
+RUN | $T/cl.+x | exam-make | $T/elements.pdl | $T/lab.pdl | 3 | 6 | $T/f
+RUN | cmp | $T/e.exam | $T/f.exam
+EXPECT_EXIT | 0 | same-seed-same-exam-bytes
+RUN | cmp | $T/e.key | $T/f.key
+EXPECT_EXIT | 0 | same-seed-same-key-bytes
+RUN | $T/cl.+x | exam-make | $T/elements.pdl | $T/lab.pdl | 4 | 6 | $T/g
+RUN | cmp | $T/e.key | $T/g.key
+EXPECT_EXIT | 1 | other-seed-differs
+EXPECT_HAS | e.exam | Q \p q3 \p atoms \p How many atoms are in one unit of CH4? \p integer | atoms-question-form
+EXPECT_HAS | e.key | K \p q3 \p atoms \p 5 | ch4-has-5-atoms
+EXPECT_HAS | e.key | K \p q4 \p mass \p 17 | nh3-mass-17-by-hand
+EXPECT_HAS | e.key | K \p q6 \p symbol \p Fe | z26-is-fe
+EXPECT_HAS | e.key | K \p q1 \p valid \p no | mutated-formula-invalid
+EXPECT_LACKS | e.exam | K \p q | exam-file-has-no-answers
+WRITE | perfect.txt | A \p q1 \p no\nA \p q2 \p no\nA \p q3 \p 5\nA \p q4 \p 17\nA \p q5 \p 17\nA \p q6 \p Fe\n
+WRITE | wrong.txt | A \p q1 \p yes\nA \p q2 \p yes\nA \p q3 \p 6\nA \p q4 \p 18\nA \p q5 \p 18\nA \p q6 \p Xx\n
+RUN | $T/cl.+x | exam-grade | $T/e.key | $T/perfect.txt | $T/fbp.txt
+EXPECT_OUT_IS | graded=6 correct=6 wrong=0 of 6 questions | perfect-sheet-6-of-6
+RUN | $T/cl.+x | exam-grade | $T/e.key | $T/wrong.txt | $T/fbw.txt
+EXPECT_OUT_IS | graded=6 correct=0 wrong=6 of 6 questions | all-wrong-0-of-6
+EXPECT_HAS | fbw.txt | id=exam3#q1 \p target=chem-bank \p valence=-1 \p concept=chem_exam_valid | wrong-row-is-minus-one
+EXPECT_HAS | fbp.txt | id=exam3#q4 \p target=chem-bank \p valence=+1 \p concept=chem_exam_mass | right-row-is-plus-one
+RUN | $T/cl.+x | exam-grade | $T/e.key | $T/perfect.txt | $T/fbp.txt
+EXPECT_OUT_IS | graded=6 correct=6 wrong=0 of 6 questions | regrade-same-output
+EXPECT_FILE | fbp.txt | [chem] FEEDBACK \p id=exam3#q1 \p target=chem-bank \p valence=+1 \p concept=chem_exam_valid \p intensity=1 \p layer=curriculum \p row=exam\n[chem] FEEDBACK \p id=exam3#q2 \p target=chem-bank \p valence=+1 \p concept=chem_exam_valid \p intensity=1 \p layer=curriculum \p row=exam\n[chem] FEEDBACK \p id=exam3#q3 \p target=chem-bank \p valence=+1 \p concept=chem_exam_atoms \p intensity=1 \p layer=curriculum \p row=exam\n[chem] FEEDBACK \p id=exam3#q4 \p target=chem-bank \p valence=+1 \p concept=chem_exam_mass \p intensity=1 \p layer=curriculum \p row=exam\n[chem] FEEDBACK \p id=exam3#q5 \p target=chem-bank \p valence=+1 \p concept=chem_exam_mass \p intensity=1 \p layer=curriculum \p row=exam\n[chem] FEEDBACK \p id=exam3#q6 \p target=chem-bank \p valence=+1 \p concept=chem_exam_symbol \p intensity=1 \p layer=curriculum \p row=exam\n | regrade-adds-no-rows-exact-six
+RUN | $T/cl.+x | exam-make | $T/nosuch.pdl | $T/lab.pdl | 3 | 6 | $T/h
+EXPECT_EXIT | 2 | missing-elements
+RUN | $T/cl.+x | exam-make | $T/elements.pdl | $T/lab.pdl | 3 | 0 | $T/h
+EXPECT_EXIT | 2 | n-zero-refused
+RUN | $T/cl.+x | exam-grade | $T/nosuch.key | $T/perfect.txt | $T/fbx.txt
+EXPECT_EXIT | 2 | missing-key

@@ -59,3 +59,11 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 
 ## Update 2026-10-27 (late): genuine house bank started
 Old test cones removed (backed up), `house` wallet created with 3 mined blocks, faucet design = seeded game bank with rake and payout floor on a test sub-chain, central editor = rpg-edit-hq, games as books. Next: exam taker (Gemma, graded by code), free-API cap probe, sig steps 2-6, hub shell.
+
+## CTO call, 2026-10-27 (late): order of the next builds and why
+1. **Harness cases for what was hand-run today** (exam verbs DONE: `chem_exam.pal`, 21/0, negative-tested; next `sig_op`, `ev_chain`, `ev_store`). Reason: every claim so far rests on my scripted runs; locked cases are the only thing another agent or a cheap worker can re-run, and the flywheel needs judges that can fail.
+2. **Signatures steps 2-4** (wallet pubkey, signed TX lines, verification at issue/mining/replay). Reason: the house bank now exists and the faucet, the store and courts all depend on who-signed-what; everything money-shaped waits on it.
+3. **`part_tree_lint` + anatomy v0** (generic body). Reason: the next verifiable domain, the cheapest second flywheel family after chemistry.
+4. **Hub shell + pong + one central-editor edit** (showcase), then slots + faucet sub-chain once signatures exist.
+5. **Router rows + dataset rows for the exam family** (the flywheel plumbing), using the Mac Gemma only; API quota reserved for escalation.
+Deliberately NOT next: more design documents (the design is ahead of the evidence), needs layers (air/thirst/rest) until anatomy and weights files exist.

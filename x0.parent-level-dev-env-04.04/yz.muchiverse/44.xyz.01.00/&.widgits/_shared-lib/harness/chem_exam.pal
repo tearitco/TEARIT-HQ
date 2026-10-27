@@ -1,0 +1,4 @@
+# chem_exam.pal - LOCKED acceptance harness for chem_label exam-make / exam-grade. Read results/chem_exam.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/chem_exam.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/chem_exam.pdl
+halt
