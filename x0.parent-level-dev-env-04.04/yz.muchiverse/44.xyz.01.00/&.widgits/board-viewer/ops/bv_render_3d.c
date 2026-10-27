@@ -4265,12 +4265,23 @@ static int render_one_frame(void) {
          * view_cut_radius=<tenths of a cell, default 16>. Cells at or above the character's level inside a tube from the eye to the character
          * are blended by the GPU shader (u_cut*); off by default. The target is the hero, or the xelector on painted maps while In: is off. */
         {
-            char cvp[PATH_BUF], chp[PATH_BUF]; snprintf(cvp, sizeof(cvp), "%s/pieces/system/view.pdl", focused_project_root);
-            snprintf(chp, sizeof(chp), "%s/#.desktop/hq_ui.pdl", house_root);
-            int con = read_kv_int(cvp, "view_cut_on", -1); if (con < 0) con = house_root[0] ? read_kv_int(chp, "view_cut_on", 0) : 0;
+            /* the three keys are read from two files; look at them once a second, not every frame (a frame is a few ms, a read is a file open) */
+            static int cut_con = 0, cut_ca = 30, cut_cr = 16; static struct timespec cut_t;
+            struct timespec cn; clock_gettime(CLOCK_MONOTONIC, &cn);
+            if (cut_t.tv_sec == 0 || (cn.tv_sec - cut_t.tv_sec) * 1000 + (cn.tv_nsec - cut_t.tv_nsec) / 1000000 >= 1000) {
+                char cvp[PATH_BUF], chp[PATH_BUF]; snprintf(cvp, sizeof(cvp), "%s/pieces/system/view.pdl", focused_project_root);
+                snprintf(chp, sizeof(chp), "%s/#.desktop/hq_ui.pdl", house_root);
+                cut_t = cn;
+                cut_con = read_kv_int(cvp, "view_cut_on", -1); if (cut_con < 0) cut_con = house_root[0] ? read_kv_int(chp, "view_cut_on", 0) : 0;
+                cut_ca = 30; cut_cr = 16;
+                if (cut_con > 0) {
+                    cut_ca = read_kv_int(cvp, "view_cut_alpha", -1); if (cut_ca < 0) cut_ca = house_root[0] ? read_kv_int(chp, "view_cut_alpha", 30) : 30;
+                    cut_cr = read_kv_int(cvp, "view_cut_radius", -1); if (cut_cr < 0) cut_cr = house_root[0] ? read_kv_int(chp, "view_cut_radius", 16) : 16;
+                }
+            }
+            int con = cut_con;
             if (con > 0 && camera_mode != 1 && (g_hero_present || (g_xelector_present && sc.maker))) {
-                int ca = read_kv_int(cvp, "view_cut_alpha", -1); if (ca < 0) ca = house_root[0] ? read_kv_int(chp, "view_cut_alpha", 30) : 30;
-                int cr = read_kv_int(cvp, "view_cut_radius", -1); if (cr < 0) cr = house_root[0] ? read_kv_int(chp, "view_cut_radius", 16) : 16;
+                int ca = cut_ca, cr = cut_cr;
                 ca = ca < 5 ? 5 : ca > 95 ? 95 : ca; cr = cr < 5 ? 5 : cr > 80 ? 80 : cr;
                 double fy, ty;   /* feet and head height of the target */
                 double tx, tz;
