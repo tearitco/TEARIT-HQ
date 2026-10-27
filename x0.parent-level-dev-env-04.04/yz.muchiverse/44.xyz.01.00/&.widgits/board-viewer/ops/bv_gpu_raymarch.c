@@ -62,6 +62,9 @@ static const char *FS_SRC =
 "uniform int   u_maker;\n"
 "uniform int   u_zoff;\n"
 "uniform int   u_rock;\n"
+"uniform int   u_cut, u_cuty;\n"          /* see-through cutaway (view.pdl view_cut_on): 1 = cells between the eye and u_cutp, level >= u_cuty, are blended at u_cuta */
+"uniform vec3  u_cutp;\n"
+"uniform float u_cutr, u_cuta;\n"
 "uniform ivec2 u_mk;\n"
 "uniform sampler2D u_atlas;\n"
 "uniform highp usampler2D u_cells;\n"
@@ -98,6 +101,16 @@ static const char *FS_SRC =
 "  return true;\n"
 "}\n"
 "\n"
+"bool is_ghost(ivec3 c) {\n"
+"  if (u_cut == 0 || c.y < u_cuty) return false;\n"
+"  vec3 p = vec3(c) + 0.5, ab = u_cutp - u_eye;\n"
+"  float l2 = dot(ab, ab);\n"
+"  if (l2 < 1e-6) return false;\n"
+"  float s = dot(p - u_eye, ab) / l2;\n"
+"  if (s < 0.0 || s > 1.0 - 0.7 / sqrt(l2)) return false;\n"      /* only cells in front of the character, never the ones around or behind it */
+"  return distance(p, u_eye + s * ab) < u_cutr;\n"
+"}\n"
+"\n"
 "bool on_edge(vec3 hp, vec3 bn, vec3 bx, float e) {\n"
 "  vec3 q = min(abs(hp - bn), abs(hp - bx));\n"
 "  return (int(q.x < e) + int(q.y < e) + int(q.z < e)) >= 2;\n"
@@ -113,6 +126,8 @@ static const char *FS_SRC =
 "  vec3  col   = u_sky;\n"
 "  bool  hit = false, self_lit = false;\n"
 "  int   face = -1;\n"
+"  vec3  gacc = vec3(0.0);\n"
+"  float gA = 0.0;\n"
 "\n"
 "  for (int i = 0; i < u_nbox; i++) {\n"
 "    float t; int f;\n"
@@ -173,11 +188,13 @@ static const char *FS_SRC =
 "      vec4 L = texelFetch(u_leg, ivec2(int(g), 0), 0);\n"
 "      int lay = int(L.a * 255.0 + 0.5) - 1;\n"                     /* -1 = air */
 "      if (lay >= 0) {\n"
+"        bool ghosted = false;\n"
 "        /* real per-cell slab test for the true hit face + t (the DDA\n"
 "         * step axis is wrong for the first cell - it's the board-bbox\n"
 "         * entry face, not this voxel's). Matches the CPU DDA. */\n"
 "        float ct; int cf;\n"
 "        if (slab(ro, rd, vec3(c), vec3(c) + 1.0, ct, cf) && ct < bestT) {\n"
+"          float b0 = bestT; bool h0 = hit, s0 = self_lit; int f0 = face; vec3 c0 = col;\n"
 "          bestT = ct; hit = true; self_lit = false; face = cf;\n"
 "          vec3 wp = ro + rd * ct;\n"
 "          vec3 fr = wp - vec3(c);\n"
@@ -210,8 +227,13 @@ static const char *FS_SRC =
 "            col = (slot != 0u && at.a > 0.5) ? at.rgb : vec3(0.10, 0.10, 0.12);\n"
 "            if (c.y < u_zoff && u_rock <= 0 && cf != 3) col *= vec3(0.62, 0.50, 0.42);\n"       /* hung blocks with no rock tile: earthy tint */
 "          }\n"
+"          if (is_ghost(c) && gA < 0.97) {\n"
+"            vec3 gc = col * (cf != 3 ? 0.75 : 1.0) * vec3(u_amb_on != 0 ? u_amb : u_light);\n"
+"            gacc += (1.0 - gA) * u_cuta * gc; gA += (1.0 - gA) * u_cuta;\n"
+"            bestT = b0; hit = h0; self_lit = s0; face = f0; col = c0; ghosted = true;\n"
+"          }\n"
 "        }\n"
-"        break;\n"
+"        if (!ghosted) break;\n"
 "      }\n"
 "      if (tmax.x < tmax.y) { if (tmax.x < tmax.z) ax = 0; else ax = 2; }\n"
 "      else               { if (tmax.y < tmax.z) ax = 1; else ax = 2; }\n"
@@ -243,7 +265,9 @@ static const char *FS_SRC =
 "    }\n"
 "    col *= L;\n"
 "  }\n"
+"  if (gA > 0.0) col = gacc + (1.0 - gA) * col;\n"
 "  float fa = (!hit && u_clear != 0) ? 0.0 : 1.0;\n"
+"  if (gA > 0.0) fa = max(fa, gA);\n"
 "  if (hit && u_fog_end > u_fog_start) {\n"
 "    float f = smoothstep(u_fog_start, u_fog_end, bestT);\n"
 "    if (u_clear != 0) fa = 1.0 - f;\n"
@@ -266,7 +290,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin;
+    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin, cut, cuty, cutp, cutr, cuta;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -406,6 +430,7 @@ static int gl_ensure_context(void) {
     s_u.maker=UL("u_maker"); s_u.zoff=UL("u_zoff"); s_u.rock=UL("u_rock"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells"); s_u.under=UL("u_under");
     s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
+    s_u.cut=UL("u_cut"); s_u.cuty=UL("u_cuty"); s_u.cutp=UL("u_cutp"); s_u.cutr=UL("u_cutr"); s_u.cuta=UL("u_cuta");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
     return 0;
@@ -636,6 +661,8 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1i(s_u.clear, s->see_through ? 1 : 0);
     glUniform1f(s_u.fog_start, s->fog_start);
     glUniform1f(s_u.fog_end,   s->fog_end);
+    glUniform1i(s_u.cut, s->cut_on ? 1 : 0); glUniform1i(s_u.cuty, s->cut_y); glUniform3fv(s_u.cutp, 1, s->cut_pos);
+    glUniform1f(s_u.cutr, s->cut_r > 0 ? s->cut_r : 1.6f); glUniform1f(s_u.cuta, s->cut_a > 0 ? s->cut_a : 0.3f);
     {
         int nb = s->box_n; if (nb > BV_GPU_MAX_BOX) nb = BV_GPU_MAX_BOX; if (nb > 128) nb = 128;
         glUniform1i(s_u.nbox, nb);

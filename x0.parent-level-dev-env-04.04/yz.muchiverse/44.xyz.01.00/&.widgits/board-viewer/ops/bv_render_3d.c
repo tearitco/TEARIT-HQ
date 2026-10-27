@@ -974,16 +974,16 @@ static void load_entities(const char *root) {
  * pieces/ship_01/model.txt   first line `dim X Y Z` (voxels along grid x / height / grid y, Y up to 32, Z up to 8), then one row per voxel `lx ly lz r g b`
  * The engine draws it as one box carrying a dense voxel model (the same GPU path the hero and the trees use), so moving it is a number in state.txt: no book rewrite, no reload. */
 typedef struct { int lx, ly, lz; unsigned char r, g, b; } VehVox;
-#define VEH_MAX 10
+#define VEH_MAX 25      /* ship_01 + veh_1..veh_24 (2026-10-27: 1..9 are the space objects, 10..24 the small voxel things lying in a room: remnants, resource nodes; was 10) */
 #define VEH_VOX 4096
 typedef struct { int dim[3], n, selflit; float x, y, z, sx, sy, sh; VehVox *vox; } VehPiece;
 static VehPiece g_veh[VEH_MAX]; static int g_veh_cnt = 0;
-static const char *const g_veh_names[VEH_MAX] = { "ship_01", "veh_1", "veh_2", "veh_3", "veh_4", "veh_5", "veh_6", "veh_7", "veh_8", "veh_9" };
+static const char *veh_name(int k) { static char nm[VEH_MAX][10]; if (k == 0) return "ship_01"; snprintf(nm[k], sizeof nm[k], "veh_%d", k); return nm[k]; }
 static void load_vehicle(const char *root) {      /* every vehicle piece that exists, whose desk= (if given) is the desk on show */
     g_veh_cnt = 0; char path[PATH_BUF], cur[128] = "";
     snprintf(path, sizeof(path), "%s/pieces/world_01/state.txt", root); read_kv_str(path, "desk_id", cur, sizeof(cur));
     for (int k = 0; k < VEH_MAX; k++) {
-        snprintf(path, sizeof(path), "%s/pieces/%s/state.txt", root, g_veh_names[k]);
+        snprintf(path, sizeof(path), "%s/pieces/%s/state.txt", root, veh_name(k));
         FILE *f = host_fopen(path, "r"); if (!f) continue;
         VehPiece P; memset(&P, 0, sizeof P); P.sx = P.sy = P.sh = 1; char line[MAX_LINE], vdesk[128] = ""; int have = 0;
         while (fgets(line, sizeof(line), f)) {
@@ -997,7 +997,7 @@ static void load_vehicle(const char *root) {      /* every vehicle piece that ex
             else if (!strncmp(line, "desk=", 5)) { line[strcspn(line, "\r\n")] = 0; snprintf(vdesk, sizeof(vdesk), "%s", line + 5); }
         }
         fclose(f); if (have != 3 || (vdesk[0] && strcmp(cur, vdesk))) continue;
-        snprintf(path, sizeof(path), "%s/pieces/%s/model.txt", root, g_veh_names[k]);
+        snprintf(path, sizeof(path), "%s/pieces/%s/model.txt", root, veh_name(k));
         f = host_fopen(path, "r"); if (!f) continue;
         P.vox = (VehVox *)malloc(sizeof(VehVox) * VEH_VOX); if (!P.vox) { fclose(f); continue; }
         while (fgets(line, sizeof(line), f)) {
@@ -4259,6 +4259,26 @@ static int render_one_frame(void) {
             ADDBOX(g_hero_x+0.5-hs/2.0, g_hero_z+0.0, g_hero_y+0.5-hs/2.0,
                    g_hero_x+0.5+hs/2.0, g_hero_z+hs,  g_hero_y+0.5+hs/2.0, 200,90,60, 0);
             if (hm >= 0) sc.box[sc.box_n-1].model = hm;
+        }
+        /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can
+         * see through the building"). view.pdl (this map) or #.desktop/hq_ui.pdl: view_cut_on=1, view_cut_alpha=<percent, default 30>,
+         * view_cut_radius=<tenths of a cell, default 16>. Cells at or above the character's level inside a tube from the eye to the character
+         * are blended by the GPU shader (u_cut*); off by default. The target is the hero, or the xelector on painted maps while In: is off. */
+        {
+            char cvp[PATH_BUF], chp[PATH_BUF]; snprintf(cvp, sizeof(cvp), "%s/pieces/system/view.pdl", focused_project_root);
+            snprintf(chp, sizeof(chp), "%s/#.desktop/hq_ui.pdl", house_root);
+            int con = read_kv_int(cvp, "view_cut_on", -1); if (con < 0) con = house_root[0] ? read_kv_int(chp, "view_cut_on", 0) : 0;
+            if (con > 0 && camera_mode != 1 && (g_hero_present || (g_xelector_present && sc.maker))) {
+                int ca = read_kv_int(cvp, "view_cut_alpha", -1); if (ca < 0) ca = house_root[0] ? read_kv_int(chp, "view_cut_alpha", 30) : 30;
+                int cr = read_kv_int(cvp, "view_cut_radius", -1); if (cr < 0) cr = house_root[0] ? read_kv_int(chp, "view_cut_radius", 16) : 16;
+                ca = ca < 5 ? 5 : ca > 95 ? 95 : ca; cr = cr < 5 ? 5 : cr > 80 ? 80 : cr;
+                double fy, ty;   /* feet and head height of the target */
+                double tx, tz;
+                if (g_hero_present) { tx = g_hero_x + 0.5; tz = g_hero_y + 0.5; if (sc.maker) { fy = 1.0; ty = 2.6; } else { fy = g_hero_z; ty = g_hero_z + 0.9; } }
+                else { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = 1.0 + g_xelector_z; ty = 2.6 + g_xelector_z; }
+                sc.cut_on = 1; sc.cut_y = (int)floor(fy + 0.001); sc.cut_pos[0] = (float)tx; sc.cut_pos[1] = (float)((fy + ty) / 2.0); sc.cut_pos[2] = (float)tz;
+                sc.cut_r = cr / 10.0f; sc.cut_a = ca / 100.0f;
+            }
         }
         int tmpl_model[MAX_PHYMOJI_TEMPLATES];
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;

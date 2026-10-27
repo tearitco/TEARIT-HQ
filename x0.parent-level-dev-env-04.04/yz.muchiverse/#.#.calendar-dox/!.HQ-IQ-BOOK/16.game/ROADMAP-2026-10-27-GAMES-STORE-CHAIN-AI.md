@@ -69,3 +69,5 @@ Old test cones removed (backed up), `house` wallet created with 3 mined blocks, 
 Deliberately NOT next: more design documents (the design is ahead of the evidence), needs layers (air/thirst/rest) until anatomy and weights files exist.
 
 **Update (signatures):** steps 2-3 built (wallet pubkey, `SIGNING` chain row, signed `chain_send` with nonce replay check, harness `chain_signed.pal`); step 4 (miner verifies at inclusion, design section 26) built, harness 30/0. Next: escrow and `ev_chain` signing under the policy cap, key binding on the chain, then the real chain flip (owner).
+
+**Update (see-through walls, 2026-10-27):** GPU shader cutaway built (`view_cut_on/alpha/radius` in view.pdl or hq_ui.pdl, on in the rpg-space and rpg-dust overlays): wall/roof cells in a tube from the camera to the character are blended over what is behind. Headless test `board-viewer/ops/bv_gpu_cut_test.c` (build line in its header) 9 checks, negative-tested; before/after pictures from the synthetic scene only. NOT verified in the live game (engine needs a restart), CPU fallback draws walls solid, sprite-style buildings (`building_draw=sprite`) are boxes and are not blended.

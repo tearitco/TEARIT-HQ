@@ -13,3 +13,9 @@ event_draw=billboard
 # building_thickness=30
 debug_land=1
 ent_bar_hero=0
+# See-through cutaway (2026-10-27): view_cut_on=1 blends the wall (and roof) cells between the camera and the character so the room behind them shows.
+# view_cut_alpha = opacity of those cells in percent (5..95, default 30); view_cut_radius = tube width in tenths of a cell (5..80, default 16). Off = 0 or delete the line.
+# Read every frame (wake the engine to see it). GPU path only; the CPU fallback draws walls solid.
+view_cut_on=1
+view_cut_alpha=30
+view_cut_radius=16
