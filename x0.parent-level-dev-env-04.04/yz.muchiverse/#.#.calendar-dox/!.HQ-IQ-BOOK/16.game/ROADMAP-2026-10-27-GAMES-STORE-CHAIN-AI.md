@@ -1,0 +1,47 @@
+# Roadmap, 2026-10-27: games on the engine, Store, chain and courts, social/p2p, AI side
+
+One page over the four docs written today (all in this folder): `HANDOFF-2026-10-27-RPG-SPACE-TO-GROK.md`, `HANDOFF-2026-10-27-AI-SIDE-COMPANION.md`, `GAMES-AS-PACKAGES-AND-STORE-DESIGN.md` (sections 1-17), and the existing `XYZFS-DISTRIBUTION-VIA-STORE-DESIGN.md`. Labels: **DONE** (built and observed), **MOCK** (runs, mock data), **DESIGN** (doc only). Order is a PROPOSAL; the owner reorders.
+
+## 0. Where we are (FACT)
+| Area | State |
+|---|---|
+| rpg-space / rpg-dust | DONE: playable, both gates 83 PASS, life layer, ambient asteroids, tick cost file. rpg-dust = AI/world-generation testbed (owner). Common skin is still a sed copy (DESIGN: extract it). |
+| AI side | DESIGN mostly. DONE: phase-table gate, decision ledger in df/cdda/mcl, `ai_describe`, validator. Not built: a pet caller, per-actor/scoped weights, promotion. The scratch bank holds my dev-run noise (reset needed). |
+| Games as packages | DESIGN: `game.pdl` manifest, parts/slots, demos, mods, shared dev folder + `access.pdl`, screening. Nothing enforced. |
+| Store | MOCK: `store-hq` window opens from taskbar cell 13 (tested). Catalog has 12 rows, nothing installable. |
+| Events for chain/store | DONE (tested by hand): `ev_chain`, `ev_store`, 9 registry commands. Free `get` only; test chains only; unsigned. |
+| Courts / REP / disputes | MOCK: `court-hq` under Network (tested). DESIGN: dispute ledger, REP, jail/bail, my-lawyer reuse. |
+| Social / p2p / user-owned data | DESIGN only. No upload exists; hq-ftp is a placeholder; `palnet_peer` is same-machine. |
+| Safety rules decided | data-only for outside creators; agent proposes + owner confirms; opt-in insights; no bias in courts; 7-day window; small-amount rule-resolve; all numbers in `.pdl` per chain/game. |
+
+## 1. Short term (next days): make the foundations real, small and testable
+1. **`game.pdl` + `game_check`** on rpg-space and rpg-dust (owner's chosen first build). Then the **common-skin extraction** so parts are swappable and dust can diverge.
+2. **Pal harness for `ev_chain` and `ev_store`** (repeatable, with every negative from section 17), and one **events-hq-generated page** played end to end.
+3. **Reset the polluted scratch-bank entries + a dev-mode** so developer runs do not count as AI evidence.
+4. **Decision ledger in rpg-space** (hook `pick_target` to `dec_append` + the existing read-back), then the `why`/`score` column.
+5. **`policy.pdl` reader** with range checks and owner-signed changes (court, store and chain read it at call time); per-game spend caps for `ev_chain`.
+6. **Move `store-hq` and `court-hq` onto the same ops** the events use (one path for window and games). Measure both windows' footprint with a browser open.
+7. Housekeeping: owner review of the cpu_guard alert; taskbar-owner review of the `store` cell C change and the Network menu row; push-ready commits only.
+
+## 2. Medium term (weeks): the money and trust layer, and the first creator loop
+1. **Signed transactions** on the test chain (prerequisite for disputes, REP, social identity). Separate social signing key from the wallet key.
+2. **Dispute + resolution ledgers, deterministic small-amount rules, 7-day settlement hold**, REP ledger and its two gates (payout wait, posting reach). Negative tests: stolen-key purchase reversed, false dispute refused, thief cannot reverse back.
+3. **`ev_store buy`** (escrow lock -> payout after the window -> refund on failure) and **install**: quarantine -> screening (integrity, deny-list, contract, scratch gate, budget; agent proposes verdict, owner confirms in batches) -> copy into the player's own folder.
+4. **Pack builder + screener** for games; the shared dev folder `xyzfs/shared/games/` with `access.pdl` and a reader used by the launcher; first residents rpg-space and rpg-dust.
+5. **Content spine** for the voxel game-making engine: pack format + `pack_check`, the `content propose/confirm/undo` verbs + spawn policy rows, generators as data, a one-line judge command, a `skin_port` op, a settings window generated from `tuning.pdl`.
+6. **AI threads A and C first:** pets learn from outcomes (scoped weight chain), world/asteroid generation loop (describe -> validate -> review -> bank) with the user-asteroid pipeline. Then D (skills/grades) and B (plan-proposing pets, needs a snapshot judge).
+7. **Courts for real:** adapt my-lawyer's docket/case files/describe-only judge to disputes; evidence = ledger rows only; bias = 0 (tested); jail/bail/representation rows; liability share + cap from `.pdl`.
+8. **Ledger-to-event watcher** so the Store/chain can notify game pages (OWN recorded, escrow paid, dispute opened).
+
+## 3. Long term (months): open it to outside users and other people's data
+1. **Outside users:** role enforcement (`role=` is only a marker today), `access.pdl` enforced everywhere, the public store-items repo (owner publishes only; deny-list + screening before anything is published), per-creator repos as extra sources, capability manifests (`CAP | chain.send | max=...`) for data-only packs.
+2. **Social + user-owned data:** images (PNG validation, size caps), `hq-ftp` for two LAN houses (first real transfer), a feed from append-only rows, per-user export to the user's own GitHub with a dry-run plan, then real p2p after the cross-machine networking work. Tokens and keys never leave the user's folder.
+3. **Store as a platform:** Steam-like look (capsule art, reviews with rule-based filter, libraries, updates), demos generated from the full manifest, insights back to creators (opt-in aggregates), mods naming their base game; later source adapters for other platforms.
+4. **AI attrition model growing up:** more edit types (new concept node, FSM transition, planner action), promotion designed from real review history, tomom learning from the ledgers, `auto` studio for creators' repetitive work. Always: describe never classify, models never set numbers, no auto-promotion.
+5. **Hardening:** real money out of scope until a payment provider and legal review exist; external-chain value stays irreversible and out of the reversal model; courts' appeal to the owner stays.
+
+## 4. Standing risks to watch
+* Public GitHub history is permanent: screen before publishing, never publish `xyzfs/users` or `user/*`.
+* A 270M judge must never move real value alone.
+* Unsigned chain ops are honor fields: test chains only until signing lands.
+* Everything must stay cheap beside a browser (idle cost near zero, niced one-at-a-time heavy work, `tick_stats` and `cpu_guard` as findings in our own footprint).
