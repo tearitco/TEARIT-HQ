@@ -1,0 +1,30 @@
+<!-- court-hq.xhtpm - MOCKUP of the platform courts window (2026-10-27). Design: #.#.calendar-dox/!.HQ-IQ-BOOK/16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md sections 14-15
+  (disputes, REP, jail/bail, POLICY rows). Sibling of store-hq; built from _template-hq; generic renderer only. All data is mock (mock_cases.pdl, policy.pdl); no transaction is read or changed. -->
+<window label="Courts" class="court-hq database-window" vars="state/ui.txt">
+  <module id="refresh" src="&.hq-apps/court-hq/refresh.sh"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="COURTS (mockup)" class="block-title"/>
+      <item id="t_docket"  class="btn" label="  Docket  " action="sh '${PKG}/actions.sh' tab docket '${PKG}'"/>
+      <item id="t_rulings" class="btn" label="  Rulings " action="sh '${PKG}/actions.sh' tab rulings '${PKG}'"/>
+      <item id="t_jail"    class="btn" label="Jail / bail" action="sh '${PKG}/actions.sh' tab jail '${PKG}'"/>
+      <text label="showing: ${tab}" class="quiet"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <item id="case${row.#}" class="data-item" label="${row.text}" action="sh '${PKG}/actions.sh' sel ${row.id} '${PKG}'"/>
+        </repeat>
+        <text label="(nothing here)" class="quiet" show="${no_rows}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${d_name}" class="case-title"/>
+      <text label="${d_line}" class="quiet"/>
+      <text label="${d_how}" class="badge"/>
+      <text label="${d_blurb}"/>
+      <item id="a_act" class="btn primary" label="  ${d_action}  " action="sh '${PKG}/actions.sh' act '${PKG}'" show="${d_has}"/>
+      <text label="${pol_line}" class="quiet"/>
+      <text label="last action: ${last_action}" class="quiet"/>
+      <text label="MOCKUP: sample cases only. Nothing is read from or written to any ledger. updated ${stamp}" class="quiet"/>
+    </panel>
+  </page>
+</window>

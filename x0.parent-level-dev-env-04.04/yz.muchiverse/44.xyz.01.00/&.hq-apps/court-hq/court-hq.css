@@ -1,0 +1,13 @@
+/* store-hq.css - mockup styling, Steam-ish dark blue. Colour/border only; the generic layout engine owns geometry. */
+.sidebar        { background-color: #171a21; border-color: #2a475e; }
+.settings-block { background-color: #1b2838; border: 1px solid #2a475e; }
+.block-title    { color: #c7d5e0; }
+.case-title     { color: #ffffff; }
+.quiet          { color: #8f98a0; }
+.badge          { color: #a4d007; }
+.data-item.active { background-color: #2a475e; color: #ffffff; }
+.btn            { background-color: #2a3a4d; border: 1px solid #3d5a78; color: #c7d5e0; }
+.btn.active     { background-color: #417a9b; color: #ffffff; }
+.btn.primary    { background-color: #5c7e10; border-color: #a4d007; color: #ffffff; }
+.btn.primary.active { background-color: #a4d007; color: #101010; }
+.cover          { width: 96px; height: 96px; background-color: #101820; border: 1px solid #2a475e; }

@@ -1,0 +1,9 @@
+# policy.pdl - MOCKUP of the POLICY rows (design section 15.2). Placeholders, not decisions. scope: most specific wins (chain:<id> / game:<id> / *).
+# POLICY | scope | key | value | text | default
+POLICY | * | dispute_window_days | 7 | days a purchase stays disputable before PAYOUT | 7
+POLICY | chain:cones-test | dispute_window_days | 7 | (same) | 7
+POLICY | * | small_amount | 50 | disputes at or below this are rule-resolved | 0
+POLICY | * | liability_share_pct | 25 | share of a pet or agent penalty the owner takes | 25
+POLICY | * | jail_applies_to | pet,agent | account kinds that can be jailed | pet,agent
+POLICY | * | bail_by | owner | who may post bail | owner
+POLICY | * | judge_bias | 0 | MUST stay 0 in real courts | 0

@@ -1,0 +1,9 @@
+# mock_cases.pdl - MOCKUP data for court-hq (2026-10-27). Not real cases; no real ledger is read. Design: 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md sections 14-15.
+# CASE | id | title | tab | amount | status | parties | resolution | summary
+# tab: docket (open) | rulings (decided) | jail (account frozen; bail posted by owner)
+# resolution: rule (deterministic small-amount rule) | court (case files + describe-only judge) | owner (confirmed above threshold) | -
+CASE | c1 | Stolen-key purchase (SAMPLE) | docket | 30 | open | buyer:ana v seller:zed | rule | A purchase made with a stolen key; payout not yet released (inside the 7-day window). Rule: refund.
+CASE | c2 | Failed install charge (SAMPLE) | docket | 12 | open | buyer:bo v seller:kim | rule | Install check failed after payment. Rule: refund.
+CASE | c3 | Disputed auction win (SAMPLE) | docket | 400 | open | buyer:cy v seller:dee | court | Above the small-amount threshold: case files built from ledger rows, describe-only judge, owner confirms.
+CASE | c4 | Duplicate charge (SAMPLE) | rulings | 8 | upheld | buyer:eve v seller:fox | rule | Same item charged twice. Refunded by rule. REP: seller -2.
+CASE | c5 | Pet theft of berries (SAMPLE) | jail | 20 | jailed | pet:ember (owner:jb) | court | Pet account frozen pending case. Bail: owner may post 20 (escrow LOCK).

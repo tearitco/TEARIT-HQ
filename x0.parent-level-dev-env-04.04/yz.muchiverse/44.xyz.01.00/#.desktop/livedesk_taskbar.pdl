@@ -164,7 +164,9 @@ SECTION      | network_menu_6_label  | Auction
 SECTION      | network_menu_6_cmd    | livedesk:open-network:auction
 SECTION      | network_menu_7_label  | hq-ftp (LAN drop, not built)
 SECTION      | network_menu_7_cmd    | livedesk:open-network:hqftp
-SECTION      | network_menu_8_label  | cancel
+SECTION      | network_menu_8_label  | court (mockup)
+SECTION      | network_menu_8_cmd    | livedesk:open-network:court
+SECTION      | network_menu_9_label  | cancel
 
 # top-left command strip (2do task #4). Defaults match what's written
 # below, so editing here is the only thing needed to change labels or
