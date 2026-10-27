@@ -2613,6 +2613,33 @@ static void worker_err_tail(void) {
     }
 }
 
+/* 2026-10-26: report an UNEXPECTED worker death instead of leaving a zombie
+ * and a pane that silently stops updating. worker_close() - the normal path -
+ * sets g_worker_pid = -1 itself, so a pid still here means the worker died on
+ * its own: a hostile/oversized page script taking the process down, a fatal
+ * signal, or an abort. Seen while loading Cloudflare's orchestrate/chl_page
+ * challenge script on glassdoor (the worker vanished once right after
+ * "resolved script URL") and reproduced deterministically with kill -SEGV:
+ * the zombie sat in ps for the rest of the session, status still read "ready",
+ * and every later eval reported "eval error". The next worker_load()/worker_eval()
+ * spawns a fresh process; rows already merged stay on screen. */
+static void worker_reap_unexpected(void) {
+    if (g_worker_pid <= 0) return;
+    int st = 0;
+    pid_t r = waitpid(g_worker_pid, &st, WNOHANG);
+    if (r != g_worker_pid) return;
+    if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+    g_worker_pid = -1;
+    if (WIFSIGNALED(st))
+        fprintf(stderr, "[worker] died unexpectedly (signal %d); respawns on the next request\n",
+                WTERMSIG(st));
+    else
+        fprintf(stderr, "[worker] died unexpectedly (exit %d); respawns on the next request\n",
+                WIFEXITED(st) ? WEXITSTATUS(st) : st);
+    publish_status("script aborted - partial page");
+    worker_err_tail();
+}
+
 /* Spawn the worker on first need. Child keeps socketpair end as stdin/stdout. */
 static void worker_spawn(void) {
     if (g_worker_fd >= 0) {
@@ -2679,7 +2706,10 @@ static void worker_spawn(void) {
          * merge, then "eval" reports "no page loaded". The one-shot row-31
          * path already overrides NB_EVAL_BUDGET for the same bundle; give the
          * RESIDENT browser a generous-but-bounded per-slice ceiling too. */
-        setenv("NB_EVAL_BUDGET", "60", 1);
+        /* An explicit NB_EVAL_BUDGET from the launcher wins: a test needs to
+         * shrink the window to prove the watchdog path in seconds instead of
+         * waiting a full minute. The 60s default stands for the reason above. */
+        if (!getenv("NB_EVAL_BUDGET")) setenv("NB_EVAL_BUDGET", "60", 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -2971,7 +3001,18 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
      * (document.title=, el.textContent=, appendChild, ...). The legacy
      * one-shot nb_js_eval effects path is gone — the worker is the single
      * DOM writer. A worker that fails leaves the static DOM in place. */
-    worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path);
+    if (!worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path) &&
+        g_worker_pid <= 0) {
+        /* The worker is GONE (worker_load closed it), not merely reporting
+         * "STATUS err" from a live one. Until 2026-10-26 this failure was
+         * discarded: the pane kept saying "loading" forever, evals answered
+         * "eval error", and nothing named the cause. The static DOM plus any
+         * RENDER rows already received are still merged below; only the
+         * status changes, so the user sees an honest partial page. */
+        fprintf(stderr, "[worker] LOAD did not finish: page scripts aborted; "
+                        "static DOM kept, worker respawns on the next request\n");
+        publish_status("script aborted - partial page");
+    }
     (void)merge_render_rows();
 }
 
@@ -7462,6 +7503,7 @@ int main(int argc, char **argv) {
             break;
         }
         video_reap();
+        worker_reap_unexpected();
         usleep(300000);
     }
     return 0;

@@ -51,7 +51,9 @@ if pkg-config --exists egl glesv2 2>/dev/null; then
 else
   echo "note: no egl/glesv2 dev - worker builds without WebGL"
 fi
-$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -DNDEBUG -fwrapv -pthread -I"$JSDIR" -I"$SDIR/../../../third_party/wasm3/source" $GL_CFLAGS -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" "$SDIR/../../../third_party/wasm3/source/libwasm3.a" -lm -lcrypto $GL_LIBS && echo "OK nb_js_worker" || exit 1
+# -rdynamic: NB_CRASH_BT backtraces resolve function names instead of bare
+# addresses (backtrace_symbols_fd uses the dynamic symbol table).
+$CC -std=gnu11 -Wall -O2 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -DNDEBUG -fwrapv -pthread -rdynamic -I"$JSDIR" -I"$SDIR/../../../third_party/wasm3/source" $GL_CFLAGS -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/quickjs.c" "$JSDIR/cutils.c" "$JSDIR/libregexp.c" "$JSDIR/libunicode.c" "$JSDIR/dtoa.c" "$SDIR/../../../third_party/wasm3/source/libwasm3.a" -lm -lcrypto $GL_LIBS && echo "OK nb_js_worker" || exit 1
 
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1

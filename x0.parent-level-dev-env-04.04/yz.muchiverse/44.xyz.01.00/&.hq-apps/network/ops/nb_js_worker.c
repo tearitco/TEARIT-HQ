@@ -20,6 +20,7 @@
  * manager -> worker: QUIT            (shut down cleanly)
  */
 #include "nb_host.h"
+#include <execinfo.h>   /* NB_CRASH_BT: fatal-signal backtrace into the worker log */
 #include "../nb_css.h"
 #include "../nb_dom.h"
 
@@ -6633,7 +6634,6 @@ static int nb_budget(void) {
     return b;
 }
 #define MAX_DRAIN_MS 800    /* commit 7: bounded wait so short timers fire pre-RENDER */
-static void sigalrm(int sig);   /* used by run_event_loop below */
 
 /* ===================== Phase 2 (commit 7): timers + microtasks + events ================ */
 
@@ -6673,6 +6673,40 @@ static uint64_t now_ms(void) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)(ts.tv_nsec / 1000000);
 }
+
+/* ---- eval watchdog (2026-10-26) ----
+ * This used to be signal(SIGALRM, sigalrm) + alarm(nb_budget()), with the
+ * handler calling _exit(128 + sig). Every script slower than the budget was
+ * treated as hostile: a heavy-but-legitimate page slice killed the whole
+ * worker mid-page, the process stayed a zombie, every later eval reported
+ * "eval error", and the page was dead with no message anywhere.
+ * QuickJS's runtime interrupt handler aborts the running script with a
+ * CATCHABLE-BY-C exception instead, so the worker survives with its DOM
+ * intact and the abort is visible in the log as "interrupted".
+ * The abort is NOT catchable by page JS: a fixture wrapping three
+ * `while(true)` loops in try/catch ended at the first abort with a single
+ * "interrupted" line and no re-loop (2026-10-26), so one abort per armed
+ * window is enough - a page cannot swallow it and keep spinning.
+ * Measured on Cloudflare's orchestrate/chl_page challenge script (glassdoor,
+ * 2026-10-26): it finishes in seconds here and then throws TypeError: not a
+ * function from a browser API this engine lacks - that challenge needs the R4
+ * fingerprint surface, not a bigger budget. */
+static uint64_t g_watchdog_deadline = 0;   /* CLOCK_MONOTONIC ms; 0 = paused */
+
+static int nb_watchdog_cb(JSRuntime *rt, void *opaque) {
+    (void)rt; (void)opaque;
+    if (!g_watchdog_deadline) return 0;
+    if (now_ms() <= g_watchdog_deadline) return 0;
+    g_watchdog_deadline = 0;               /* one abort ends the script */
+    return 1;
+}
+static void nb_watchdog_install(JSRuntime *rt) {
+    JS_SetInterruptHandler(rt, nb_watchdog_cb, NULL);
+}
+static void nb_watchdog_begin(void) {
+    g_watchdog_deadline = now_ms() + (uint64_t)nb_budget() * 1000u;
+}
+static void nb_watchdog_pause(void) { g_watchdog_deadline = 0; }
 
 /* Format + clear the current context exception into buf; returns buf. */
 static const char *js_error_to_cstr(JSContext *ctx, char *buf, size_t bl) {
@@ -7582,7 +7616,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
 
     char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
 
-    alarm(0);   /* a blocking curl must never trip the EVAL_BUDGET_SEC watchdog */
+    nb_watchdog_pause();   /* a blocking curl must never trip the EVAL_BUDGET_SEC watchdog */
 
     if (strncmp(url, "file:", 5) == 0) {
         /* normalize file://host/path, file:///path, file:/path -> /path */
@@ -8598,8 +8632,7 @@ static int run_event_loop(JSContext *ctx) {
             } \
         } \
     } while (0)
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());   /* phase-1 backstop also covers timer/job callbacks */
+    nb_watchdog_begin();   /* phase-1 backstop also covers timer/job callbacks */
     drain_jobs(ctx);
     if (!g_pending_err) fire_event(ctx, EVT_DOC, NULL, "DOMContentLoaded");
     drain_jobs(ctx);
@@ -8625,7 +8658,7 @@ static int run_event_loop(JSContext *ctx) {
             continue;
         }
     }
-    alarm(0);
+    nb_watchdog_pause();
     nb_wire_search_proxy(ctx);
     return g_pending_err;
 }
@@ -8731,17 +8764,15 @@ static void boot_install_safe(JSContext *ctx) {
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
  * the engine is running; the deadly default _exit kills the worker mid-eval, the
  * manager sees the socket close and respawns on the next LOAD. */
-static void sigalrm(int sig) { _exit(128 + sig); }
 /* Evaluate src with a SIGALRM CPU budget. Returns 0 on success; on error
  * returns 1 and, if errbuf is non-NULL, formats the exception message into
  * it (the exception is always consumed/cleared). The completion value is
  * discarded — use peval_budget_value() when the result is wanted. */
 static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
                         char *errbuf, size_t errlen) {
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
-    alarm(0);
+    nb_watchdog_pause();
     if (JS_IsException(r)) {
         if (errbuf && errlen) {
             char tmp[512];
@@ -8760,20 +8791,18 @@ static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
 /* Like peval_budget but returns the completion JSValue (owned; freed by the
  * caller — also on JS_EXCEPTION). No exception is consumed here. */
 static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n) {
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
-    alarm(0);
+    nb_watchdog_pause();
     return r;
 }
 /* Like peval_budget but uses JS_EVAL_TYPE_MODULE for ES module scripts.
  * Modules without imports work; imports need a module loader (not yet set). */
 static int peval_budget_module(JSContext *ctx, const char *src, size_t src_n,
                                char *errbuf, size_t errlen) {
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue r = JS_Eval(ctx, src, src_n, "<module>", JS_EVAL_TYPE_MODULE);
-    alarm(0);
+    nb_watchdog_pause();
     if (JS_IsException(r)) {
         if (errbuf && errlen) {
             char tmp[512];
@@ -9102,6 +9131,7 @@ static void run_page(void) {
          * create a fresh runtime, run the page, and free it immediately.
          * No resident context = no EVAL support for module pages. */
         JSRuntime *rt = JS_NewRuntime();
+        nb_watchdog_install(rt);
         if (!rt) { free(src); send_status("STATUS err:heap"); return; }
         JSContext *ctx = JS_NewContext(rt);
         if (!ctx) { JS_FreeRuntime(rt); free(src); send_status("STATUS err:heap"); return; }
@@ -9209,6 +9239,7 @@ static void run_page(void) {
     } else {
         /* Classic page: use the standard resident runtime for EVAL support. */
         JSRuntime *rt = JS_NewRuntime();
+        nb_watchdog_install(rt);
         if (!rt) { free(src); live_teardown(); send_status("STATUS err:heap"); return; }
         JSContext *ctx = JS_NewContext(rt);
         if (!ctx) { JS_FreeRuntime(rt); free(src); live_teardown(); send_status("STATUS err:heap"); return; }
@@ -9427,6 +9458,7 @@ static void      nb_install_fs(JSContext *ctx);
 static const char g_cjs_prelude[];
 static int repl_main(void) {
     JSRuntime *rt = JS_NewRuntime();
+    nb_watchdog_install(rt);
     if (!rt) return 1;
     JSContext *ctx = rt ? JS_NewContext(rt) : NULL;
     if (!ctx) { if (rt) JS_FreeRuntime(rt); return 1; }
@@ -9459,12 +9491,11 @@ static int repl_main(void) {
     av[0] = JS_NewString(ctx, cwd_buf);
     av[1] = JS_NewString(ctx, "[repl]");
     JSValue g0 = JS_GetGlobalObject(ctx);
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue rr = JS_Call(ctx, install, g0, 2, av);
     JS_FreeValue(ctx, g0);
     JS_FreeValue(ctx, install);
-    alarm(0);
+    nb_watchdog_pause();
     JS_FreeValue(ctx, av[0]); JS_FreeValue(ctx, av[1]);
     if (JS_IsException(rr)) {
         char tmp[512];
@@ -9539,8 +9570,7 @@ g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
         fflush(stdout);
 
         /* drain jobs + timers (no lifecycle events), CPU-bounded */
-        signal(SIGALRM, sigalrm);
-        alarm(nb_budget());
+        nb_watchdog_begin();
         uint64_t start = now_ms();
         for (int guard = 0; guard < 10000 && !g_pending_err; guard++) {
             if (now_ms() - start > 200) break;
@@ -9556,7 +9586,7 @@ g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
                 nanosleep(&ts, NULL);
             }
         }
-        alarm(0);
+        nb_watchdog_pause();
     }
     free_held_callbacks(ctx);
     JS_FreeContext(ctx);
@@ -10023,6 +10053,7 @@ static int cli_main(int argc, char **argv) {
     }
 
     JSRuntime *rt = JS_NewRuntime();
+    nb_watchdog_install(rt);
     if (!rt) return 1;
     JSContext *ctx = JS_NewContext(rt);
     if (!ctx) { JS_FreeRuntime(rt); return 1; }
@@ -10094,12 +10125,11 @@ static int cli_main(int argc, char **argv) {
     av[0] = JS_NewString(ctx, entry_dir);
     av[1] = JS_NewString(ctx, entry_file);
     JSValue g1 = JS_GetGlobalObject(ctx);
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue rr = JS_Call(ctx, install, g1, 2, av);
     JS_FreeValue(ctx, g1);
     JS_FreeValue(ctx, install);
-    alarm(0);
+    nb_watchdog_pause();
     JS_FreeValue(ctx, av[0]); JS_FreeValue(ctx, av[1]);
     if (JS_IsException(rr)) {
         char tmp[512];
@@ -10177,7 +10207,36 @@ static int cli_main(int argc, char **argv) {
     return 0;
 }
 
+/* ---- fatal-signal backtrace (2026-10-26) ----
+ * A hostile or oversized page script can take the worker down in ways that
+ * leave NOTHING in the log: no WERR, no STATUS, just a zombie the manager
+ * never hears from again. Measured on Cloudflare's orchestrate/chl_page
+ * script: the last line in the worker log is "resolved script URL", and the
+ * process is then gone. Without gdb on the box, the only way to tell a
+ * SIGSEGV from an abort() is to have the worker report it itself. Gated by
+ * NB_CRASH_BT so normal runs stay quiet. backtrace_symbols_fd() is the
+ * async-signal-safe half of execinfo, and stderr is already the per-house
+ * worker log, so the trace lands next to the page errors. */
+static void nb_crash_handler(int sig) {
+    void *bt[64];
+    static const char hdr[] = "CRASH| fatal signal in worker (see frames below)\n";
+    ssize_t w = write(STDERR_FILENO, hdr, sizeof(hdr) - 1);
+    (void)w;
+    int n = backtrace(bt, 64);
+    backtrace_symbols_fd(bt, n, STDERR_FILENO);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+static void nb_crash_install(void) {
+    if (!getenv("NB_CRASH_BT")) return;
+    signal(SIGSEGV, nb_crash_handler);
+    signal(SIGABRT, nb_crash_handler);
+    signal(SIGBUS, nb_crash_handler);
+    signal(SIGFPE, nb_crash_handler);
+}
+
 int main(int argc, char **argv) {
+    nb_crash_install();
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
     if (getenv("NB_TRACE_CB")) g_trace_cb = 1;   /* full callback exceptions to stderr */
     {
