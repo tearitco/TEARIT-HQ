@@ -1,0 +1,37 @@
+# sig_op: LOCKED cases for the Ed25519 signing op (signatures step 1). Source: &.widgits/_shared-lib/ops/sig_op.c. The fixture key sig_test_key.pem is a TEST key (passphrase harness-test-only), never a real one.
+# Ed25519 signatures are deterministic, so the expected signature below is a literal produced once by the op and re-checked by independent verify cases.
+RESULTS | ../results/sig_op.txt
+CASE | sig-op
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/sig_op.c | sig_op.c
+COPY | &.widgits/_shared-lib/harness/fixtures/sig_test_key.pem | k.pem
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/s.+x | $T/sig_op.c | -lcrypto
+EXPECT_EXIT | 0 | compiles-clean
+RUN | env | SIG_PASSPHRASE=harness-test-only | $T/s.+x | pubkey | $T/k.pem
+EXPECT_OUT_IS | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | pubkey-is-the-fixture-pubkey
+RUN | env | SIG_PASSPHRASE=harness-test-only | $T/s.+x | sign | $T/k.pem | chain:test | send a b 5
+EXPECT_OUT_IS | 9712b18cd980c4fb41cd4e916c5c68b92dc216e5d692bbd08af2c1d97e94e1ceefcfcb2e3d2af810274799d9ac0b8132bbe2ae976706b8877310e2bffd92f707 | signature-is-deterministic-literal
+RUN | $T/s.+x | verify | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | chain:test | send a b 5 | 9712b18cd980c4fb41cd4e916c5c68b92dc216e5d692bbd08af2c1d97e94e1ceefcfcb2e3d2af810274799d9ac0b8132bbe2ae976706b8877310e2bffd92f707
+EXPECT_EXIT | 0 | valid-signature-verifies
+RUN | $T/s.+x | verify | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | chain:test | send a b 6 | 9712b18cd980c4fb41cd4e916c5c68b92dc216e5d692bbd08af2c1d97e94e1ceefcfcb2e3d2af810274799d9ac0b8132bbe2ae976706b8877310e2bffd92f707
+EXPECT_EXIT | 1 | tampered-amount-refused
+RUN | $T/s.+x | verify | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | chain:other | send a b 5 | 9712b18cd980c4fb41cd4e916c5c68b92dc216e5d692bbd08af2c1d97e94e1ceefcfcb2e3d2af810274799d9ac0b8132bbe2ae976706b8877310e2bffd92f707
+EXPECT_EXIT | 1 | other-context-refused
+RUN | $T/s.+x | verify | ede83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | chain:test | send a b 5 | 9712b18cd980c4fb41cd4e916c5c68b92dc216e5d692bbd08af2c1d97e94e1ceefcfcb2e3d2af810274799d9ac0b8132bbe2ae976706b8877310e2bffd92f707
+EXPECT_EXIT | 1 | wrong-public-key-refused
+RUN | $T/s.+x | verify | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | chain:test | send a b 5 | 9712b18cd980c4fb41cd4e916c5c68b92dc216e5d692bbd08af2c1d97e94e1ceefcfcb2e3d2af810274799d9ac0b8132bbe2ae976706b8877310e2bffd92f706
+EXPECT_EXIT | 1 | flipped-signature-byte-refused
+RUN | $T/s.+x | verify | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a | chain:test | send a b 5 | 9712b18c
+EXPECT_EXIT | 1 | short-signature-refused
+RUN | env | SIG_PASSPHRASE=wrong | $T/s.+x | sign | $T/k.pem | chain:test | send a b 5
+EXPECT_EXIT | 1 | wrong-passphrase-cannot-sign
+RUN | env | -u | SIG_PASSPHRASE | $T/s.+x | keygen | $T/new.pem
+EXPECT_EXIT | 2 | keygen-needs-passphrase
+RUN | env | SIG_PASSPHRASE=x | $T/s.+x | keygen | $T/k.pem
+EXPECT_EXIT | 1 | keygen-refuses-overwrite
+RUN | env | SIG_PASSPHRASE=x | $T/s.+x | keygen | $T/fresh.pem
+EXPECT_EXIT | 0 | keygen-new-key
+RUN | stat | -c | %a | $T/fresh.pem
+EXPECT_OUT_IS | 600 | key-file-mode-0600
+RUN | $T/s.+x | bogus
+EXPECT_EXIT | 2 | usage

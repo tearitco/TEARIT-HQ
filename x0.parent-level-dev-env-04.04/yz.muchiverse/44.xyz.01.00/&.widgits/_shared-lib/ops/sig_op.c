@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
         EVP_PKEY *k = load_priv(argv[2]); if (!k) { fprintf(stderr, "sig_op: cannot read the key (wrong passphrase?)\n"); return 1; }
         size_t ml; unsigned char *m = build_msg(argv[3], argv[4], &ml); unsigned char sig[64]; size_t sl = sizeof sig; EVP_MD_CTX *mc = EVP_MD_CTX_new();
         int ok = m && mc && EVP_DigestSignInit(mc, NULL, NULL, NULL, k) == 1 && EVP_DigestSign(mc, sig, &sl, m, ml) == 1 && sl == 64; EVP_MD_CTX_free(mc); free(m); EVP_PKEY_free(k);
-        if (!ok) return 1; char h[129]; bin2hex(sig, 64, h); printf("%s\n", h); return 0; }
+        if (!ok) return 1;
+        char h[129]; bin2hex(sig, 64, h); printf("%s\n", h); return 0; }
     if (argc == 6 && !strcmp(argv[1], "verify")) {
         unsigned char pub[32], sig[64]; if (!hex2bin(argv[2], pub, 32) || !hex2bin(argv[5], sig, 64)) return 1;
         EVP_PKEY *k = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pub, 32); if (!k) return 1;

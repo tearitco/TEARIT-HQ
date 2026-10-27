@@ -1,0 +1,4 @@
+# sig_op.pal - LOCKED acceptance harness for the Ed25519 signing op. Read results/sig_op.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/sig_op.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/sig_op.pdl
+halt
