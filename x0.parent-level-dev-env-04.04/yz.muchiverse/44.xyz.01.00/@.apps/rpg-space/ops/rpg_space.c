@@ -942,17 +942,11 @@ static int sk_nugget(const char *kind, int wx, int wy, SkVox *v, int dim[3]) {  
         if (!strcmp(kind, "ore") && sk_rng(&s) % 3u == 0) { r = 225; gg = 130; b = 55; }      /* orange flecks: the ore you mine */
         v[i] = (SkVox){px[i] - mn[0], py[i] - mn[1], pz[i] - mn[2], r < 0 ? 0 : r > 255 ? 255 : r, gg < 0 ? 0 : gg > 255 ? 255 : gg, b < 0 ? 0 : b > 255 ? 255 : b}; }
     return c; }
-static int sk_skiff_model(SkVox *v, int cap, int dim[3], int *vpc, double *edge) {      /* the player's own hull model (pieces/ship_01/model.txt, 12 x 5 x 12) at 1/skiff_div of its size, drawn with skiff_up times finer voxels so the tile pixels show (owner 2026-10-27: 'i just see colors, no tiles'): up 2, div 2 = 24 x 10 x 24 voxels, 4 per skiff cell, box 6 x 2.5 x 6 cells */
-    char p[PATH_MAX], line[160]; snprintf(p, sizeof p, "%s/pieces/ship_01/model.txt", PCHQ); FILE *f = fopen(p, "r"); if (!f) return 0;
-    int up = tune("skiff_up", 2), div = tune("skiff_div", 2); if (up < 1) up = 1; if (up > 3) up = 3; if (div < 1) div = 1; static signed char seen[16][16][16]; memset(seen, 0, sizeof seen); int n = 0; dim[0] = dim[1] = dim[2] = 0;
-    while (fgets(line, sizeof line, f)) { int a, b, c, r, g, bl; if (sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) != 6) continue; if (a < 0 || b < 0 || c < 0 || a >= 16 || b >= 16 || c >= 16 || seen[a][b][c]) continue; seen[a][b][c] = 1;
-        for (int i = 0; i < up; i++) for (int j = 0; j < up; j++) for (int k = 0; k < up; k++) { int x = a * up + i, y = b * up + j, z = c * up + k; if (x >= 32 || y >= 32 || z >= 32 || n >= cap) continue; v[n++] = (SkVox){x, y, z, r, g, bl};
-            if (x + 1 > dim[0]) dim[0] = x + 1; if (y + 1 > dim[1]) dim[1] = y + 1; if (z + 1 > dim[2]) dim[2] = z + 1; } }
-    fclose(f); *vpc = up * div; *edge = 1.0 / (up * div); return n; }
 /* THE SAME TILES AS THE SHIP (owner 2026-10-26: 'u can use the same tiles for the asteroids, skiff, as scifi'). The engine's voxel pieces carry one RGB per voxel, so the colour is taken from real pixels of the ship's own sheet SF_Inside_A4 (the 24 x 24 tiles of sk_ship_room): the skiff's top faces from the bridge's green hex floor (8,11) and every other voxel from the hull wall (6,2); an asteroid from the engine room's diamond plate (8,6), tinted per kind so ore and crystal stay recognisable. A missing sheet leaves the flat colours. */
-static const unsigned char *sk_tile_px(int col, int row) {
-    static unsigned char buf[4][XT * XT * 4]; static int kc[4], kr[4], n; for (int i = 0; i < n; i++) if (kc[i] == col && kr[i] == row) return buf[i];
-    Sheet *a4 = n < 4 ? sheet("tilesets", "SF_Inside_A4") : NULL; if (!a4) return NULL; tile24(a4, col * S48, row * S48, buf[n]); kc[n] = col; kr[n] = row; return buf[n++]; }
+static const unsigned char *sk_tile_in(const char *sh, int col, int row) {      /* one 24 x 24 tile of a tileset sheet, cached */
+    static unsigned char buf[8][XT * XT * 4]; static int kc[8], kr[8], n; static const char *ks[8]; for (int i = 0; i < n; i++) if (kc[i] == col && kr[i] == row && !strcmp(ks[i], sh)) return buf[i];
+    Sheet *a4 = n < 8 ? sheet("tilesets", sh) : NULL; if (!a4) return NULL; tile24(a4, col * S48, row * S48, buf[n]); kc[n] = col; kr[n] = row; ks[n] = sh; return buf[n++]; }
+static const unsigned char *sk_tile_px(int col, int row) { return sk_tile_in("SF_Inside_A4", col, row); }
 static void sk_retile(SkVox *v, int n, const int dim[3], int tc, int tr, int sc, int sr, const char *kind, int vpc) {      /* vpc > 0: that many voxels per cell, every cell shows the whole tile (the skiff); 0: the tile spread over the whole piece (asteroids) */
     const unsigned char *top = sk_tile_px(tc, tr), *side = sk_tile_px(sc, sr); if (!top || !side) return;
     static signed char occ[32][32][32]; memset(occ, 0, sizeof occ); for (int i = 0; i < n; i++) if (v[i].x < 32 && v[i].y < 32 && v[i].z < 32) occ[v[i].x][v[i].y][v[i].z] = 1;
@@ -966,6 +960,31 @@ static void sk_retile(SkVox *v, int n, const int dim[3], int tc, int tr, int sc,
         else if (!strcmp(kind, "ore")) { r = r * 2.0 + 70; g = g * 1.6 + 25; b *= 1.0; }      /* leans orange */
         else if (!strcmp(kind, "crystal")) { r = r * 1.4 + 20; g = g * 2.2 + 90; b = b * 2.4 + 110; }      /* leans cyan */
         v[i].r = r > 255 ? 255 : (int)r; v[i].g = g > 255 ? 255 : (int)g; v[i].b = b > 255 ? 255 : (int)b; } }
+/* THE OTHER SHIP IS A TILED MINI-SHIP, NOT A SHELL (owner 2026-10-27: 'ship is 2d? should be 3d voxels as tiles in 3d mode ... our ship is 3d future scifi rpg tiles, other can be similar'). It is a 6 x 6 layout of the SAME tile cubes the player's ship is made of: green hex floor (SF_Inside_A4 8,11), a ring of wall-tile cubes (6,2) skiff_wall high, monitors (SF_Inside_B 8,0) and blue chairs (8,3) along the north wall like the bridge, a gap for the door in the south wall. Each cube is skiff_vpc voxels a side (default 4) and shows its whole tile on every face (the tile is averaged down to vpc x vpc), so the cubes are the ship's own size: the skiff is 6 cells wide, 1 + skiff_wall cells high. Only voxels with a free neighbour are written (a closed cube keeps its outer shell), which keeps it under the engine's 4096. */
+#define SK_SKIFF_N 6
+static const char *const SK_SKIFF[SK_SKIFF_N] = { "######", "#.MM.#", "#.CC.#", "#....#", "#....#", "##.###" };      /* # wall, . floor, M monitor (one cube on the floor), C chair, the gap in the south wall is the door */
+static void sk_cube_avg(const unsigned char *t, int u, int w, int vpc, double *r, double *g, double *b) {      /* the mean colour of block (u, w) of a tile cut into vpc x vpc blocks */
+    int a = u * XT / vpc, a2 = (u + 1) * XT / vpc, c = w * XT / vpc, c2 = (w + 1) * XT / vpc; double sr = 0, sg = 0, sb = 0; int n = 0;
+    for (int y = c; y < c2; y++) for (int x = a; x < a2; x++) { const unsigned char *q = t + (y * XT + x) * 4; sr += q[0]; sg += q[1]; sb += q[2]; n++; } if (!n) n = 1; *r = sr / n; *g = sg / n; *b = sb / n; }
+static int sk_skiff_build(SkVox *v, int cap, int dim[3], int *vpc, double *edge) {
+    int vp = tune("skiff_vpc", 4), wh = tune("skiff_wall", 3); if (vp < 1) vp = 1; if (vp > 5) vp = 5; if (wh < 1) wh = 1; if (wh > 4) wh = 4;
+    const unsigned char *fl = sk_tile_in("SF_Inside_A4", 8, 11), *wl = sk_tile_in("SF_Inside_A4", 6, 2), *mo = sk_tile_in("SF_Inside_B", 8, 0), *ch = sk_tile_in("SF_Inside_B", 8, 3);
+    static unsigned char flat[4][XT * XT * 4]; static const unsigned char FC[4][3] = { { 45, 143, 77 }, { 70, 75, 85 }, { 40, 60, 120 }, { 60, 60, 160 } };      /* no tile sheets (a scratch copy without assets): flat colours, the shape is still the ship */
+    for (int q = 0; q < 4; q++) for (int i = 0; i < XT * XT; i++) { flat[q][i * 4] = FC[q][0]; flat[q][i * 4 + 1] = FC[q][1]; flat[q][i * 4 + 2] = FC[q][2]; flat[q][i * 4 + 3] = 255; }
+    if (!fl) fl = flat[0]; if (!wl) wl = flat[1]; if (!mo) mo = flat[2]; if (!ch) ch = flat[3];
+    int W = SK_SKIFF_N * vp, H = (1 + wh) * vp; if (W > 32 || H > 32) return 0; static signed char tl[32][32][32]; memset(tl, 0, sizeof tl);      /* tl: 1 floor, 2 wall, 3 monitor, 4 chair, 0 empty */
+    for (int cz = 0; cz < SK_SKIFF_N; cz++) for (int cx = 0; cx < SK_SKIFF_N; cx++) { char c = SK_SKIFF[cz][cx]; int levels = 1, kind[5] = { 1, 0, 0, 0, 0 };
+        if (c == '#') { levels = 1 + wh; for (int l = 1; l <= wh; l++) kind[l] = 2; } else if (c == 'M') { levels = 2; kind[1] = 3; } else if (c == 'C') { levels = 2; kind[1] = 4; }
+        for (int l = 0; l < levels; l++) for (int i = 0; i < vp; i++) for (int j = 0; j < vp; j++) for (int k = 0; k < vp; k++) tl[cx * vp + i][l * vp + j][cz * vp + k] = (signed char)kind[l]; }
+    int n = 0; dim[0] = W; dim[1] = H; dim[2] = W;
+    for (int x = 0; x < W; x++) for (int y = 0; y < H; y++) for (int z = 0; z < W; z++) { int t = tl[x][y][z]; if (!t) continue;
+        int e_up = y + 1 >= 32 || !tl[x][y + 1][z], e_xm = x == 0 || !tl[x - 1][y][z], e_xp = x + 1 >= 32 || !tl[x + 1][y][z], e_zm = z == 0 || !tl[x][y][z - 1], e_zp = z + 1 >= 32 || !tl[x][y][z + 1];
+        if (!(e_up || e_xm || e_xp || e_zm || e_zp)) continue; if (n >= cap) continue;      /* the underside and enclosed voxels are never seen */
+        const unsigned char *tex = t == 1 ? fl : t == 2 ? wl : t == 3 ? mo : ch; double r, g, b; int i = x % vp, j = y % vp, k = z % vp;
+        if (e_up) sk_cube_avg(tex, i, k, vp, &r, &g, &b); else if (e_zp) sk_cube_avg(tex, i, vp - 1 - j, vp, &r, &g, &b); else if (e_zm) sk_cube_avg(tex, vp - 1 - i, vp - 1 - j, vp, &r, &g, &b); else if (e_xp) sk_cube_avg(tex, k, vp - 1 - j, vp, &r, &g, &b); else sk_cube_avg(tex, vp - 1 - k, vp - 1 - j, vp, &r, &g, &b);
+        r *= 1.6; g *= 1.6; b *= 1.6;      /* an unlit voxel renders the tile darker than the flat tile: the same lift as before */
+        v[n++] = (SkVox){x, y, z, r > 255 ? 255 : (int)r, g > 255 ? 255 : (int)g, b > 255 ? 255 : (int)b}; }
+    *vpc = vp; *edge = 1.0 / vp; return n; }
 static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3], double edge) {
     static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
     char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", dim[0], dim[1], dim[2]);
@@ -981,7 +1000,7 @@ static void sk_veh_write(void) {
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
     for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, 0); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0); }
-    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_model(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) sk_retile(v, n, dim, 8, 11, 6, 2, NULL, vpc); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); }
+    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_build(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 /* THE BOTTOM BAR LISTS THE SHIPS AND ASTEROIDS NEAR THE SHIP (owner 2026-10-27: 'all ships/asteroids within a radius ... should show up on bottom tb', radius from a .pdl figure: tuning.pdl bar_radius, default 16 = one planet page). Rows of the planet map (asteroids that still have loads, crafts with a world cell), nearest first, distance = Chebyshev cells from the centre of the hull; a click row moves the cursor to the object's desk cell. Ship rooms only. */
 static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id) {
@@ -999,13 +1018,13 @@ static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id) {
     return bo; }
 static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev distance from the desk cell of a world cell to the hull rectangle (0 = under the hull, 99 = off the desk) */
     int dx = wx - ox, dy = wy - oy; if (dx < 0 || dy < 0 || dx >= SK_W || dy >= SK_H) return 99; int ex = dx < SOX ? SOX - dx : dx >= SOX + SSZ ? dx - (SOX + SSZ - 1) : 0, ey = dy < SOY ? SOY - dy : dy >= SOY + SSZ ? dy - (SOY + SSZ - 1) : 0; return ex > ey ? ex : ey; }
-/* FOOTPRINTS (owner 2026-10-27: the asteroids looked like they overlapped the ship): the gap to an object is measured to its real footprint, not to one cell. Asteroid = the nugget's x/z size, other ship = the player's hull width / skiff_div. 0 = the hull overlaps it. */
+/* FOOTPRINTS (owner 2026-10-27: the asteroids looked like they overlapped the ship): the gap to an object is measured to its real footprint, not to one cell. Asteroid = the nugget's x/z size, other ship = its 6 x 6 layout (SK_SKIFF_N). 0 = the hull overlaps it. */
 static int sk_rect_gap(int x0, int y0, int x1, int y1, int ox, int oy) {
     int hx0 = ox + SOX, hy0 = oy + SOY, hx1 = hx0 + SSZ - 1, hy1 = hy0 + SSZ - 1;
     int ex = x1 < hx0 ? hx0 - x1 : x0 > hx1 ? x0 - hx1 : 0, ey = y1 < hy0 ? hy0 - y1 : y0 > hy1 ? y0 - hy1 : 0; return ex > ey ? ex : ey; }
 static int sk_node_gap(int i, int ox, int oy) { SkVox v[48]; int dim[3]; sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); int sx = (int)ceil(dim[0] * tune("obj_vox_pct", 100) / 100.0), sy = (int)ceil(dim[2] * tune("obj_vox_pct", 100) / 100.0); if (sx < 1) sx = 1; if (sy < 1) sy = 1;
     int x0 = sk_nodes[i].x - (sx - 1) / 2, y0 = sk_nodes[i].y - (sy - 1) / 2; return sk_rect_gap(x0, y0, x0 + sx - 1, y0 + sy - 1, ox, oy); }
-static int sk_craft_gap(int i, int ox, int oy) { int dv = tune("skiff_div", 2); if (dv < 1) dv = 1; int s = SSZ / dv; if (s < 1) s = 1; int x0 = sk_craft[i].wx - (s - 1) / 2, y0 = sk_craft[i].wy - (s - 1) / 2; return sk_rect_gap(x0, y0, x0 + s - 1, y0 + s - 1, ox, oy); }
+static int sk_craft_gap(int i, int ox, int oy) { int s = SK_SKIFF_N; int x0 = sk_craft[i].wx - (s - 1) / 2, y0 = sk_craft[i].wy - (s - 1) / 2; return sk_rect_gap(x0, y0, x0 + s - 1, y0 + s - 1, ox, oy); }
 static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the hull would sit on an asteroid or another ship that is taller than the ship flies */
     if (!sk_world_here() || nz > tune("obj_top", 6)) return 0; sk_craft_load(); sk_nodes_load();
     for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP && sk_node_gap(i, nx, ny) == 0) { snprintf(msg, cap, "an asteroid is in the way at %d,%d: lift above it, or mine it with m from beside it", sk_nodes[i].x, sk_nodes[i].y); return 1; }

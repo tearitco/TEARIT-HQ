@@ -89,12 +89,12 @@ HAS | rpg-space-pchq/pieces/veh_1/state.txt | size_h=3.00 | box-height-is-the-nu
 COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | ore-nugget-is-11-voxels-plus-the-dim-line
 COUNT | rpg-space-pchq/pieces/veh_2/model.txt | \n | 12 | rock-nugget-is-11-voxels-plus-the-dim-line
 COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | crystal-nugget-is-7-voxels-plus-the-dim-line
-HAS | rpg-space-pchq/pieces/veh_4/model.txt | dim 24 10 24 | the-skiff-is-the-12x5x12-ship-at-half-size-in-2x-finer-voxels
-COUNT | rpg-space-pchq/pieces/veh_4/model.txt | \n | 3617 | the-skiff-has-452-ship-voxels-times-8-plus-the-dim-line
+HAS | rpg-space-pchq/pieces/veh_4/model.txt | dim 24 16 24 | the-skiff-is-a-6x6-layout-of-4-voxel-tile-cubes-floor-plus-3-wall-levels-high
+COUNT | rpg-space-pchq/pieces/veh_4/model.txt | \n | 2647 | the-skiff-has-2646-tile-cube-voxels-plus-the-dim-line-only-cubes-with-a-free-face
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=4.50 | skiff-at-world-8-minus-shift-1-centred-on-its-6-wide-box
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-8.50 | skiff-at-world-y-minus-6-centred-on-its-6-deep-box
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | skiff-box-is-6-cells-wide
-HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_h=2.50 | and-2.5-cells-high-half-the-ships-5
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_h=4.00 | and-4-cells-high-a-floor-cube-plus-3-wall-cubes
 NOFILE | rpg-space-pchq/pieces/veh_5/state.txt | only-four-objects-so-no-fifth-piece
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | flown-another-cell-east

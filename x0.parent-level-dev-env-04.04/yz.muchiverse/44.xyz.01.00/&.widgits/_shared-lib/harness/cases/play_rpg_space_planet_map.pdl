@@ -122,13 +122,13 @@ RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_2/model.tx
 EXPECT_OUT_IS | 12 | p4_voxels.rock-nugget-is-11-voxels-plus-the-dim-line
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_3/model.txt
 EXPECT_OUT_IS | 8 | p4_voxels.crystal-nugget-is-7-voxels-plus-the-dim-line
-EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt | dim 24 10 24 | p4_voxels.the-skiff-is-the-12x5x12-ship-at-half-size-in-2x-finer-voxels
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt | dim 24 16 24 | p4_voxels.the-skiff-is-a-6x6-layout-of-4-voxel-tile-cubes-floor-plus-3-wall-levels-high
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt
-EXPECT_OUT_IS | 3617 | p4_voxels.the-skiff-has-452-ship-voxels-times-8-plus-the-dim-line
+EXPECT_OUT_IS | 2647 | p4_voxels.the-skiff-has-2646-tile-cube-voxels-plus-the-dim-line-only-cubes-with-a-free-face
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_x=4.50 | p4_voxels.skiff-at-world-8-minus-shift-1-centred-on-its-6-wide-box
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-8.50 | p4_voxels.skiff-at-world-y-minus-6-centred-on-its-6-deep-box
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | p4_voxels.skiff-box-is-6-cells-wide
-EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | size_h=2.50 | p4_voxels.and-2.5-cells-high-half-the-ships-5
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | size_h=4.00 | p4_voxels.and-4-cells-high-a-floor-cube-plus-3-wall-cubes
 EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_5/state.txt | p4_voxels.only-four-objects-so-no-fifth-piece
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
 EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 2 0\n | p4_voxels.flown-another-cell-east
