@@ -22,6 +22,7 @@ NEEDS | @.apps/rpg-space/ops/+x/dust_check.+x
 # the planet pages are painted from RPG Maker sheets (the assets live above the house)
 NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
 NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+NEEDS | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt
 CFLAGS | -I$T/@.apps/rpg-space/ops
 INIT | state/pet_ember.txt | room=bridge\nx=9\ny=5\ndir=1\nsteps=5\ntx=-1\nty=-1\n
 INIT | state/life_ember.txt | hp=20\nhunger=3\ndead=0\ndeaths=0\ninv=bread:5,iron:11,scrap:32\n
@@ -68,3 +69,33 @@ SAY | Wren (skiff) is there | low-hull-refused-over-the-skiff
 PUT | state/direct_z.txt | 8\n
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | high-hull-flies-over-the-asteroid
+
+PHASE | p4_voxels | asteroids and the skiff are VOXEL PIECES (pieces/veh_N: state.txt + model.txt) that the engine draws as boxes, not flat tiles (owner 2026-10-26) | voxel, pieces, planet map
+PUT | state/direct_z.txt | 8\n
+PUT | state/direct.txt | 0 0\n
+DO | helm | move | 1 | 0
+FILEIS | state/direct.txt | 1 0\n | flown-one-cell-east
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | entity_type=vehicle | an-asteroid-is-a-vehicle-piece
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | desk=bridge | drawn-on-the-bridge-desk-where-the-land-is
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_x=13.00 | ore-at-world-15-5-minus-flight-shift-1-centred-on-its-3-wide-box
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_y=3.50 | ore-at-world-y-5-centred-on-its-4-deep-box
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_z=-8 | the-land-and-its-rocks-sink-by-the-ship-altitude
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | size_h=3.00 | box-height-is-the-nugget-height
+COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | ore-nugget-is-11-voxels-plus-the-dim-line
+COUNT | rpg-space-pchq/pieces/veh_2/model.txt | \n | 12 | rock-nugget-is-11-voxels-plus-the-dim-line
+COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | crystal-nugget-is-7-voxels-plus-the-dim-line
+HAS | rpg-space-pchq/pieces/veh_4/model.txt | dim 6 3 6 | the-skiff-is-the-12x5x12-ship-at-half-size
+COUNT | rpg-space-pchq/pieces/veh_4/model.txt | \n | 81 | the-skiff-has-80-voxels
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=10.50 | skiff-at-world-14-minus-shift-1-centred-on-its-6-wide-box
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-1.50 | skiff-at-world-y-1-centred-on-its-6-deep-box
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | skiff-box-is-6-cells-wide
+NOFILE | rpg-space-pchq/pieces/veh_5/state.txt | only-four-objects-so-no-fifth-piece
+DO | helm | move | 1 | 0
+FILEIS | state/direct.txt | 2 0\n | flown-another-cell-east
+HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=9.50 | the-skiff-slid-one-cell-with-the-flight
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_x=12.00 | the-ore-slid-one-cell-with-the-flight
+COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | the-nugget-keeps-its-shape-when-the-ship-moves
+COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | the-crystal-keeps-its-shape-too
+DO | helm | off
+NOFILE | rpg-space-pchq/pieces/veh_1/state.txt | releasing-the-helm-removes-the-asteroid-pieces
+NOFILE | rpg-space-pchq/pieces/veh_4/state.txt | releasing-the-helm-removes-the-skiff-piece

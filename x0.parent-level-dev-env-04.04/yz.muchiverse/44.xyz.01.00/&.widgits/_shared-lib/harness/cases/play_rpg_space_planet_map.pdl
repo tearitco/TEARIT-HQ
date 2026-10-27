@@ -46,6 +46,7 @@ COPY | @.apps/rpg-space/ops/+x/dust_orbit.+x | @.apps/rpg-space/ops/+x/dust_orbi
 COPY | @.apps/rpg-space/ops/+x/dust_check.+x | @.apps/rpg-space/ops/+x/dust_check.+x
 COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
 COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+COPY | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt
 RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-space/ops | -o | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | $T/@.apps/rpg-space/ops/rpg_space.c | -lm
 EXPECT_EXIT | 0 | setup.build
 EXPECT_EXISTS | @.apps/rpg-space/ops/+x/rpg_space.+x | setup.binary-exists
@@ -99,5 +100,41 @@ EXPECT_OUT | Wren (skiff) is there | p3_hull.low-hull-refused-over-the-skiff
 WRITE | @.apps/rpg-space/state/direct_z.txt | 8\n
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
 EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 2 0\n | p3_hull.high-hull-flies-over-the-asteroid
+# ---- phase p4_voxels: asteroids and the skiff are VOXEL PIECES (pieces/veh_N: state.txt + model.txt) that the engine draws as boxes, not flat tiles (owner 2026-10-26)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_space_planet_map.marks.txt | p4_voxels
+WRITE | @.apps/rpg-space/state/direct_z.txt | 8\n
+WRITE | @.apps/rpg-space/state/direct.txt | 0 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
+EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 1 0\n | p4_voxels.flown-one-cell-east
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | entity_type=vehicle | p4_voxels.an-asteroid-is-a-vehicle-piece
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | desk=bridge | p4_voxels.drawn-on-the-bridge-desk-where-the-land-is
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_x=13.00 | p4_voxels.ore-at-world-15-5-minus-flight-shift-1-centred-on-its-3-wide-box
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_y=3.50 | p4_voxels.ore-at-world-y-5-centred-on-its-4-deep-box
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_z=-8 | p4_voxels.the-land-and-its-rocks-sink-by-the-ship-altitude
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | size_h=3.00 | p4_voxels.box-height-is-the-nugget-height
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_1/model.txt
+EXPECT_OUT_IS | 12 | p4_voxels.ore-nugget-is-11-voxels-plus-the-dim-line
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_2/model.txt
+EXPECT_OUT_IS | 12 | p4_voxels.rock-nugget-is-11-voxels-plus-the-dim-line
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_3/model.txt
+EXPECT_OUT_IS | 8 | p4_voxels.crystal-nugget-is-7-voxels-plus-the-dim-line
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt | dim 6 3 6 | p4_voxels.the-skiff-is-the-12x5x12-ship-at-half-size
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt
+EXPECT_OUT_IS | 81 | p4_voxels.the-skiff-has-80-voxels
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_x=10.50 | p4_voxels.skiff-at-world-14-minus-shift-1-centred-on-its-6-wide-box
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-1.50 | p4_voxels.skiff-at-world-y-1-centred-on-its-6-deep-box
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | p4_voxels.skiff-box-is-6-cells-wide
+EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_5/state.txt | p4_voxels.only-four-objects-so-no-fifth-piece
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
+EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 2 0\n | p4_voxels.flown-another-cell-east
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_x=9.50 | p4_voxels.the-skiff-slid-one-cell-with-the-flight
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_x=12.00 | p4_voxels.the-ore-slid-one-cell-with-the-flight
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_1/model.txt
+EXPECT_OUT_IS | 12 | p4_voxels.the-nugget-keeps-its-shape-when-the-ship-moves
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_3/model.txt
+EXPECT_OUT_IS | 8 | p4_voxels.the-crystal-keeps-its-shape-too
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | off
+EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | p4_voxels.releasing-the-helm-removes-the-asteroid-pieces
+EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | p4_voxels.releasing-the-helm-removes-the-skiff-piece
 RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_space_planet_map.marks.txt | END
 CLEAN |

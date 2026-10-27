@@ -74,7 +74,7 @@ static long sk_helm_settle = 0;      /* until this time the xelector is not read
 static int sk_pos_of(const char *id, int *gx, int *gy); static void sk_ship_load(int *gx, int *gy);
 static int sk_choice(char *title, char *q, char *yes, char *no, char *direct);
 static int sk_art[NP];      /* 1: pet i has art (csv frames exist: the 3D view shows its front picture) */
-static void sk_world_draw(void); static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap); static int sk_world_reach_idx(void);
+static void sk_world_draw(void); static void sk_veh_write(void); static void sk_veh_clear(void); static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap); static int sk_world_reach_idx(void);
 static int sk_space_block(int gx, int gy, char *msg, size_t cap); static void sk_space_draw(int g); static void sk_space_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_ensure_map(void); static int sk_blocked(int room, int x, int y); static int sk_node_solid(int room, int x, int y); static void sk_pets_sync(void); static void sk_paint_bg(int room, const char *phase); static void sk_spawn(int i, int *x, int *y);
 #elif PET_SECTION == 4
@@ -625,11 +625,11 @@ static void sk_ship_world_write(void) {      /* the ship is the entity that move
     char d[PATH_MAX], p[PATH_MAX], b[200]; snprintf(d, sizeof d, "%s/pieces/ship_01", PCHQ); mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
     snprintf(b, sizeof b, "entity_type=vehicle\ndesk=none\npos_x=%d\npos_y=%d\npos_z=%d\nsize_x=12\nsize_y=12\nsize_h=4\n", sk_dox, sk_doy, sk_doz_get()); write_if_changed(p, b, strlen(b)); }
 static void sk_land_write(int models) {      /* the land is ONE entity now (pieces/land_01): the engine fills the empty cells of the bridge desk from the planet page desk, shifted by the entity's position, with the old textured / extruded look (engine maker_load). models is unused. */
-    (void)models; sk_direct_load(); sk_ship_world_write(); char d[PATH_MAX], p[PATH_MAX], b[300];
+    (void)models; sk_direct_load(); sk_ship_world_write(); sk_veh_write(); char d[PATH_MAX], p[PATH_MAX], b[300];
     snprintf(d, sizeof d, "%s/pieces/land_01", PCHQ); mkdir(d, 0775); snprintf(p, sizeof p, "%s/state.txt", d);
     snprintf(b, sizeof b, "entity_type=land\npos_x=%d\npos_y=%d\nalt=%d\nsrc=region\n", -sk_dox, -sk_doy, sk_doz_get()); write_if_changed(p, b, strlen(b));
 }
-static void sk_land_remove(void) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/ship_01/state.txt", PCHQ); unlink(p); snprintf(p, sizeof p, "%s/pieces/land_01/state.txt", PCHQ); unlink(p); }
+static void sk_land_remove(void) { char p[PATH_MAX]; sk_veh_clear(); snprintf(p, sizeof p, "%s/pieces/ship_01/state.txt", PCHQ); unlink(p); snprintf(p, sizeof p, "%s/pieces/land_01/state.txt", PCHQ); unlink(p); }
 static int sk_helm_direct(void) { char p[PATH_MAX], b[20]; spath(p, "helm_mode.txt"); read_file(p, b, sizeof b); return !strncmp(b, "direct", 6); }
 static void sk_ship_refresh(char *msg, size_t cap) {      /* the page under the hull moved: rebuild the ship rooms, write the book, reload it, show the same desk again */
     sk_build_ship(); export3d(msg, cap); char ib[PATH_MAX]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); FILE *f = fopen(ib, "a"); if (f) { fputs("CONFIRM_START_MAP:" PET_APP "\n", f); fclose(f); } pet_load(); calc_view(); sk_desk_sync();
@@ -909,10 +909,59 @@ static void sk_space_draw(int g) {      /* asteroids: a grey rock cell under the
 /* OBJECTS ON THE PLANET MAP (owner 2026-10-26: "i expected to see them on same map as planet/ship cata prime"). In direct flight the planet is the land overlay: the engine fills the empty cells of the bridge desk from the planet page (room SK_SHIP), shifted by (state/direct.txt). So an asteroid or a ship painted ON that page slides with the planet for free, and is a node / craft with a world cell (wx, wy) = a cell of the page. The hull covers desk cells [SOX, SOX+SSZ); a desk cell is world cell minus (ox, oy), so only a ring around the hull shows and flying brings other objects into it. space.pdl WROCK / WCRAFT rows seed them once; tuning.pdl obj_reach / obj_top. */
 static int sk_world_here(void) { if (sk_pl_cur < 0) return 0; char p[PATH_MAX], b[40] = ""; spath(p, "pworld_planet.txt"); read_file(p, b, sizeof b); b[strcspn(b, "\n")] = 0; return b[0] && !strcmp(b, sk_pl[sk_pl_cur].id); }
 static void sk_world_draw(void) {      /* called with the page rooms painted, before sk_build_ship copies them */
-    sk_craft_load(); sk_nodes_load(); if (!sk_world_here()) return;
+    sk_craft_load(); sk_nodes_load(); if (!sk_world_here() || tune("obj_draw", 1)) return;      /* obj_draw=1 (default): asteroids and the other ship are VOXEL PIECES (sk_veh_write); 0 = the old flat tiles */
     for (int i = 0; i < sk_nnodes; i++) if (sk_nodes[i].room == SK_SHIP) { int x = sk_nodes[i].x, y = sk_nodes[i].y; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; int cr = 120, cg = 115, cb = 108; if (!strcmp(sk_nodes[i].kind, "ore")) { cr = 205; cg = 120; cb = 60; } else if (!strcmp(sk_nodes[i].kind, "crystal")) { cr = 110; cg = 225; cb = 235; }      /* grey rock, orange ore, cyan crystal */
         sk_solid(SK_SHIP, x, y, 'r', cr, cg, cb, 0, 1); sk_solid(SK_SHIP, x, y, 'r', cr, cg, cb, 0, 0); sk_cdep[SK_SHIP][y][x] = 9; }      /* BOTH layers: the engine's land overlay (maker_load) copies only the FLOOR tile of the page (walls are dropped, rocks and trees flattened), so a wall-only rock vanished from the planet under the ship */
     for (int i = 0; i < sk_ncraft; i++) { int x = sk_craft[i].wx, y = sk_craft[i].wy; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H) continue; sk_solid(SK_SHIP, x, y, 'W', 95, 190, 190, 0, 1); sk_cdep[SK_SHIP][y][x] = 9; } }
+/* WORLD OBJECTS AS VOXEL PIECES (owner 2026-10-26: 'asteroid is not a flat tile, it should be a random nugget of 5-11 or so voxels ... same goes for the other ship, a smaller version of the current ship').
+ * The engine draws pieces/veh_1..9 (state.txt + model.txt, bv_render_3d.c load_vehicle) as one box with a dense voxel model; nothing ever wrote them before, which is why they "never drew".
+ * Slots 1.. = the asteroids of the planet map (nodes in room SK_SHIP) then the craft that have a world cell. Desk cell = world cell - the direct-flight shift, like the land. Fallback: obj_draw=0. */
+#define SK_VEH_MAXV 600
+typedef struct { int x, y, z, r, g, b; } SkVox;
+static unsigned sk_hash(const char *s) { unsigned h = 2166136261u; for (; *s; s++) h = (h ^ (unsigned char)*s) * 16777619u; return h | 1u; }
+static unsigned sk_rng(unsigned *s) { *s ^= *s << 13; *s ^= *s >> 17; *s ^= *s << 5; return *s; }
+static int sk_nugget(const char *kind, int wx, int wy, SkVox *v, int dim[3]) {      /* a random face-connected blob of rock_vox_min..rock_vox_max voxels, the same one every time for the same asteroid (seeded by kind and cell) */
+    char key[64]; snprintf(key, sizeof key, "%s|%d|%d", kind, wx, wy); unsigned s = sk_hash(key);
+    int lo = tune("rock_vox_min", 5), hi = tune("rock_vox_max", 11); if (lo < 1) lo = 1; if (hi < lo) hi = lo; if (hi > 40) hi = 40;
+    int n = lo + (int)(sk_rng(&s) % (unsigned)(hi - lo + 1));
+    enum { GX = 5, GY = 4, GZ = 5 }; static signed char g[GX][GY][GZ]; memset(g, 0, sizeof g);
+    int px[64], py[64], pz[64], c = 1; px[0] = 2; py[0] = 0; pz[0] = 2; g[2][0][2] = 1;      /* starts on the ground layer so the nugget rests on the planet */
+    for (int guard = 0; c < n && guard < 4000; guard++) {
+        int k = (int)(sk_rng(&s) % (unsigned)c), d = (int)(sk_rng(&s) % 6u);
+        int nx = px[k] + (d == 0) - (d == 1), ny = py[k] + (d == 2) - (d == 3), nz = pz[k] + (d == 4) - (d == 5);
+        if (nx < 0 || ny < 0 || nz < 0 || nx >= GX || ny >= GY || nz >= GZ || g[nx][ny][nz]) continue;
+        g[nx][ny][nz] = 1; px[c] = nx; py[c] = ny; pz[c] = nz; c++; }
+    int mn[3] = {99, 99, 99}, mx[3] = {-1, -1, -1};
+    for (int i = 0; i < c; i++) { int q[3] = {px[i], py[i], pz[i]}; for (int a = 0; a < 3; a++) { if (q[a] < mn[a]) mn[a] = q[a]; if (q[a] > mx[a]) mx[a] = q[a]; } }
+    for (int a = 0; a < 3; a++) dim[a] = mx[a] - mn[a] + 1;
+    int br = 120, bg = 115, bb = 108; if (!strcmp(kind, "ore")) { br = 150; bg = 108; bb = 88; } else if (!strcmp(kind, "crystal")) { br = 110; bg = 215; bb = 230; }      /* grey rock, rust ore, cyan crystal */
+    for (int i = 0; i < c; i++) {
+        int j = (int)(sk_rng(&s) % 31u) - 15, r = br + j, gg = bg + j, b = bb + j;
+        if (!strcmp(kind, "ore") && sk_rng(&s) % 3u == 0) { r = 225; gg = 130; b = 55; }      /* orange flecks: the ore you mine */
+        v[i] = (SkVox){px[i] - mn[0], py[i] - mn[1], pz[i] - mn[2], r < 0 ? 0 : r > 255 ? 255 : r, gg < 0 ? 0 : gg > 255 ? 255 : gg, b < 0 ? 0 : b > 255 ? 255 : b}; }
+    return c; }
+static int sk_skiff_model(SkVox *v, int cap, int dim[3]) {      /* the player's own hull model (pieces/ship_01/model.txt) shrunk by skiff_div (default 2): 'a smaller version of the current ship' */
+    char p[PATH_MAX], line[160]; snprintf(p, sizeof p, "%s/pieces/ship_01/model.txt", PCHQ); FILE *f = fopen(p, "r"); if (!f) return 0;
+    int div = tune("skiff_div", 2); if (div < 1) div = 1; static signed char seen[32][32][32]; memset(seen, 0, sizeof seen); int n = 0; dim[0] = dim[1] = dim[2] = 0;
+    while (fgets(line, sizeof line, f)) { int a, b, c, r, g, bl; if (sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) != 6) continue; a /= div; b /= div; c /= div;
+        if (a < 0 || b < 0 || c < 0 || a >= 32 || b >= 32 || c >= 32 || seen[a][b][c] || n >= cap) continue; seen[a][b][c] = 1; v[n++] = (SkVox){a, b, c, r, g, bl};
+        if (a + 1 > dim[0]) dim[0] = a + 1; if (b + 1 > dim[1]) dim[1] = b + 1; if (c + 1 > dim[2]) dim[2] = c + 1; }
+    fclose(f); return n; }
+static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3]) {
+    static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
+    char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", dim[0], dim[1], dim[2]);
+    for (int i = 0; i < n && (size_t)(w - mb) < sizeof mb - 40; i++) w += snprintf(w, sizeof mb - (size_t)(w - mb), "%d %d %d %d %d %d\n", v[i].x, v[i].y, v[i].z, v[i].r, v[i].g, v[i].b);
+    snprintf(p, sizeof p, "%s/model.txt", d); write_if_changed(p, mb, (size_t)(w - mb));
+    double cell = tune("obj_vox_pct", 100) / 100.0, sx = dim[0] * cell, sy = dim[2] * cell, sh = dim[1] * cell;
+    snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=bridge\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
+    snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); }
+static void sk_veh_clear(void) { char p[PATH_MAX]; for (int k = 1; k <= 9; k++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, k); unlink(p); } }
+static void sk_veh_write(void) {
+    if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
+    static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
+    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim); }
+    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int n = sk_skiff_model(v, SK_VEH_MAXV, dim); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim); }
+    for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 static int sk_world_gap(int wx, int wy, int ox, int oy) {      /* Chebyshev distance from the desk cell of a world cell to the hull rectangle (0 = under the hull, 99 = off the desk) */
     int dx = wx - ox, dy = wy - oy; if (dx < 0 || dy < 0 || dx >= SK_W || dy >= SK_H) return 99; int ex = dx < SOX ? SOX - dx : dx >= SOX + SSZ ? dx - (SOX + SSZ - 1) : 0, ey = dy < SOY ? SOY - dy : dy >= SOY + SSZ ? dy - (SOY + SSZ - 1) : 0; return ex > ey ? ex : ey; }
 static int sk_world_block(int nx, int ny, int nz, char *msg, size_t cap) {      /* 1 = the hull would sit on an asteroid or another ship that is taller than the ship flies */
