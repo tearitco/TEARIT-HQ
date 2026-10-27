@@ -205,11 +205,11 @@ static void sw_set(const char *name, const char *v) {
 }
 static int is_switch_flag(const char *n) { return !strcmp(n, "running") || !strcmp(n, "int"); }
 /* tuning.pdl: "TUNE | name | value | text | default" rows. tune(name, default) is one small table lookup; the file is re-read when its size or mtime moves (load_tune is called by load_data). */
-static struct { char k[32]; int v; } g_tn[24]; static int g_tnn = 0; static long g_tn_sig = -1;
+static struct { char k[32]; int v; } g_tn[64]; static int g_tnn = 0; static long g_tn_sig = -1;
 static void load_tune(void) {
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/tuning.pdl", APP); struct stat st; long sig = stat(p, &st) == 0 ? (long)st.st_size * 1000003L + (long)st.st_mtime : -2; if (sig == g_tn_sig) return; g_tn_sig = sig; g_tnn = 0;
     FILE *f = fopen(p, "r"); if (!f) return; char l[300];
-    while (fgets(l, sizeof l, f)) { if (strncmp(l, "TUNE", 4)) continue; char *fl[5]; int n = 0; for (char *t = strtok(l, "|"); t && n < 5; t = strtok(NULL, "|")) fl[n++] = t; if (n < 3 || g_tnn >= 24) continue;
+    while (fgets(l, sizeof l, f)) { if (strncmp(l, "TUNE", 4)) continue; char *fl[5]; int n = 0; for (char *t = strtok(l, "|"); t && n < 5; t = strtok(NULL, "|")) fl[n++] = t; if (n < 3 || g_tnn >= 64) continue;
         char *k = fl[1]; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0; snprintf(g_tn[g_tnn].k, sizeof g_tn[g_tnn].k, "%s", k); g_tn[g_tnn].v = atoi(fl[2]); g_tnn++; }
     fclose(f);
 }
