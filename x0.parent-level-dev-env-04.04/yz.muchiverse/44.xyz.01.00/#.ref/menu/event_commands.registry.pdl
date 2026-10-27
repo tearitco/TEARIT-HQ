@@ -1618,3 +1618,81 @@ COMMAND wo_each_actor
   TEMPLATE exec "$D/&.widgits/world-ops/ops/+x/wo.+x" each_actor "$(dirname "$(dirname "$ENT")")" '{event}'
 END
 
+
+# ---- chain + store commands (owner 2026-10-27: "store and blockchain should use events as much as possible so users can make their apps and games interface with them").
+# Two single-verb-family ops, same convention as the ring-board ops: <state_dir> ($ENT) first, results as key=int lines in variables.txt (chain_ok / chain_rc / chain_balance ...,
+# store_ok / store_known / store_price / store_owned), failures as ERR rows in op_errors.txt, one ledger row per call (chain_events.txt / store_events.txt in $ENT).
+# Rules (tested, see 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 17): the wallet is always the running entity's own ($ENT/wallet_id.txt), never a parameter; chain ids must be
+# chain_new chains (the real `cones` chain is refused); the player is $ENT/user_uuid.txt; store `get` only takes FREE items with no requirements and records ownership (installs nothing).
+# Chain field: a chain id from chain_new (test/user chains only).
+COMMAND chain_balance
+  LABEL Chain: Balance (this entity's wallet) -> chain_balance
+  FIELD1 Chain id:
+  FIELD2 (unused):
+  PARAMS chain
+  TEMPLATE exec "$D/&.widgits/chain-events/ops/+x/ev_chain.+x" "$ENT" "$D" '{chain}' balance
+END
+
+COMMAND chain_send
+  LABEL Chain: Send From This Entity's Wallet
+  FIELD1 To wallet id:
+  FIELD2 Amount (millicones):
+  PARAMS chain,to,amount
+  TEMPLATE exec "$D/&.widgits/chain-events/ops/+x/ev_chain.+x" "$ENT" "$D" '{chain}' send '{to}' '{amount}'
+END
+
+COMMAND chain_escrow_lock
+  LABEL Chain: Escrow Lock (this wallet becomes the agent)
+  FIELD1 Escrow id:
+  FIELD2 Amount (millicones):
+  PARAMS chain,escrow,amount
+  TEMPLATE exec "$D/&.widgits/chain-events/ops/+x/ev_chain.+x" "$ENT" "$D" '{chain}' lock '{escrow}' '{amount}'
+END
+
+COMMAND chain_escrow_payout
+  LABEL Chain: Escrow Payout (agent only)
+  FIELD1 Escrow id:
+  FIELD2 To wallet id:
+  PARAMS chain,escrow,to,amount
+  TEMPLATE exec "$D/&.widgits/chain-events/ops/+x/ev_chain.+x" "$ENT" "$D" '{chain}' payout '{escrow}' '{to}' '{amount}'
+END
+
+COMMAND chain_escrow_refund
+  LABEL Chain: Escrow Refund (agent only)
+  FIELD1 Escrow id:
+  FIELD2 To wallet id:
+  PARAMS chain,escrow,to,amount
+  TEMPLATE exec "$D/&.widgits/chain-events/ops/+x/ev_chain.+x" "$ENT" "$D" '{chain}' refund '{escrow}' '{to}' '{amount}'
+END
+
+COMMAND chain_escrow_status
+  LABEL Chain: Escrow Status -> chain_locked chain_paid chain_refunded chain_remaining
+  FIELD1 Escrow id:
+  FIELD2 (unused):
+  PARAMS chain,escrow
+  TEMPLATE exec "$D/&.widgits/chain-events/ops/+x/ev_chain.+x" "$ENT" "$D" '{chain}' status '{escrow}'
+END
+
+COMMAND store_price
+  LABEL Store: Price of Item -> store_known store_price (coins, free = 0)
+  FIELD1 Item id:
+  FIELD2 (unused):
+  PARAMS item
+  TEMPLATE exec "$D/&.widgits/store/ops/+x/ev_store.+x" "$ENT" "$D" price '{item}'
+END
+
+COMMAND store_owned
+  LABEL Store: Does the Player Own Item -> store_owned (quantity)
+  FIELD1 Item id:
+  FIELD2 (unused):
+  PARAMS item
+  TEMPLATE exec "$D/&.widgits/store/ops/+x/ev_store.+x" "$ENT" "$D" owned '{item}'
+END
+
+COMMAND store_get_free
+  LABEL Store: Get a Free Item (records ownership, installs nothing)
+  FIELD1 Item id:
+  FIELD2 (unused):
+  PARAMS item
+  TEMPLATE exec "$D/&.widgits/store/ops/+x/ev_store.+x" "$ENT" "$D" get '{item}'
+END
