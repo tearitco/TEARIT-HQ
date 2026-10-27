@@ -318,3 +318,24 @@ Percentages are of the whole machine. "House" = process whose executable is unde
 
 **Limits and open decisions.** `kill_house` and the thresholds are the owner's to tune. The die ran 77 to 87 C in scratch tests with only 3 busy loops, so `temp_act_c=92` may be close to normal on this machine under real load; watch `cpu_guard_last.txt` before lowering it. A cgroup CPU cap for the house (section 7, tier 1) still needs the root `Delegate=` drop-in and would be the stronger fix.
 
+## 9. The design principle: our programs run ALONGSIDE normal user activity (owner 2026-10-27)
+
+The house is not the only thing on the machine. The owner has a browser (Chrome, Firefox) with many tabs, a terminal, media, and
+everything else a person does open while the house runs, on a weak-CPU laptop. **A feature is not done if it only works when the
+house has the whole machine.** Budget for coexistence:
+
+* **Measure our footprint next to a browser, not on an idle box.** A board engine at 34% plus a launch spike (parser, forks, renderer) is
+  fine alone and is the straw that trips the guard when a browser is already at 150-300%. 2026-10-27 01:03: busy 95% (normal about 34%),
+  house 25% of the machine, Chrome 163% + Firefox 95% + a web process 112%; the guard ended 19 house processes, including a board
+  that had just launched. The guard did its job; the lesson is that our spikes land on top of other people's load.
+* **Launch heavy things niced and one at a time** (`nice -n 15`, `ionice -c3` for multi-minute work), never two relaunches back to
+  back, and check `sh '&.hq-apps/proc-mon/guard.sh' status` first. Do not stack a relaunch on top of a test run.
+* **Idle must be near zero.** Poll slowly, prefer marker-file size growth to scanning, stop work when no window is open (the engine
+  idle exit and `loop_guard` exist for this), and never keep a render loop running for a window nobody looks at.
+* **New features get a footprint line in their commit**: what they cost idle and while active, measured with something else running.
+  A feature that cannot be made cheap needs an off switch (a `tuning.pdl` row) and a default of off.
+* **A guard kill is data, not an obstacle.** Read `cpu_guard_alert.txt` and the newest `incidents/` file, find what we added, cut it.
+  Never excuse the load as "the browser" (that is the standing rule in `feedback-keep-own-footprint-managed`).
+
+Docs and handoffs should repeat this where it matters (the Grok handoff does); when you write a design, add a "footprint" paragraph.
+

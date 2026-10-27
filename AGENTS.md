@@ -107,6 +107,13 @@ Compiled programs are in no branch: after a wipe, clone or branch switch run
 - Data is committed by `sh '$.crypts/button.sh' save-data` (also runs automatically after `quit`/`reset`); plumbing only, it never touches your working tree.
 - Before any bulk operation that could touch `xyzfs/users`, take a tarball + `sha256sum` list outside the repo and verify the file count.
 
+## Our programs run alongside normal user activity (REQUIRED, since 2026-10-27)
+
+The owner keeps a browser and other work open while the house runs, on a weak CPU. A feature that needs the whole machine is not
+done. Launch heavy things niced (`nice -n 15`) and one at a time, keep idle cost near zero, say what a feature costs (idle and
+active, measured with a browser running) in its commit, and treat a `cpu_guard` kill (`sh '&.hq-apps/proc-mon/guard.sh' status`)
+as a finding in our own footprint, never as "the browser". Details: HQ-IQ-BOOK `03-pitfalls/hq-cpu-safety.md` section 9.
+
 ## Never report a number you did not observe (REQUIRED)
 
 Three wrong conclusions in one session traced to this, all from my own

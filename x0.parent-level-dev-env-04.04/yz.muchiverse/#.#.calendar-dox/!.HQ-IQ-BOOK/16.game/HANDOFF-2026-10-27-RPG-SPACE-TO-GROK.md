@@ -115,6 +115,10 @@ Compare mechanics you actually exercised, not the marketing of the other games. 
 
 ## 6. House rules that bit us (short)
 
+* **Our programs run alongside normal user activity (owner 2026-10-27).** The owner has Chrome/Firefox and more open while the
+  game runs, on a weak CPU. Every feature needs a footprint note (idle and active, measured with a browser running), heavy
+  things launch niced and one at a time, idle must be near zero, and a `cpu_guard` kill is a finding to fix, not noise. See
+  `03-pitfalls/hq-cpu-safety.md` section 9. When you write a design or a report, say what it costs.
 * Never report a number you did not observe; confirm an artifact exists before trusting its count; negative-test an assertion.
 * Never "fixed/done" without a fresh build + fresh run + evidence. A clean compile is not evidence.
 * Use the relay / `bv_keys`, not xdotool. Check the engine is alive and In: is ON before trusting a 0% change.
