@@ -1,0 +1,4 @@
+# game_page_export.pal - LOCKED acceptance harness for game_page_export (writes a BOOK:PAGE page file + session for a game from its live state) and the chain into book_check. Read results/game_page_export.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/game_page_export.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/game_page_export.pdl
+halt

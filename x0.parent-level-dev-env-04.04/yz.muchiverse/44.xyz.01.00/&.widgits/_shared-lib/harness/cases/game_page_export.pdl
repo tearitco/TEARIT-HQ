@@ -1,0 +1,303 @@
+# game_page_export: LOCKED cases. Sources: &.widgits/_shared-lib/ops/game_page_export.c and book_check.c compiled -Wall -Wextra -Werror from source into the scratch. Each case builds a tiny house (state/trainer.txt, a pc-hq folder with hero/xelector state, arrow_config, a map book) and runs the op into a scratch session.
+# Expected rows are worked out BY HAND from the rules in the op header (pixels = cells x 80; the page is the trainer's room; the xelector stands on the hero and carries its possessed id; camera m= from default_camera_mode, p=6 for modes 1/2 else -90).
+RESULTS | ../results/game_page_export.txt
+SCRATCH |
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/gpe.+x | $HOUSE/&.widgits/_shared-lib/ops/game_page_export.c
+EXPECT_EXIT | 0 | export-compiles-clean
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/bc.+x | $HOUSE/&.widgits/_shared-lib/ops/book_check.c
+EXPECT_EXIT | 0 | book_check-compiles-clean
+
+CASE | ok
+MKDIR | ok/h/&.widgits
+MKDIR | ok/h/@.apps/g/state
+WRITE | ok/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/system
+WRITE | ok/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ok/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/ok/h/@.apps/g | $T/ok/sess | --house | $T/ok/h
+EXPECT_EXIT | 0 | ok-exit-0
+EXPECT_OUT | wrote | writes
+EXPECT_OUT | rows=3 disagreements=0 | three-rows-no-disagreement
+EXPECT_OUT | room=bridge cell=7,5 | reads-the-trainer
+EXPECT_HAS | ok/sess/desks/bridge.pdl | DESK \p hero_01 \p @.apps/g/g-pchq/pieces/hero_01 \p 560 \p 400 \p 7 \p 5 \p . \p 0 | hero-row-pixels-are-cells-times-80
+EXPECT_HAS | ok/sess/desks/bridge.pdl | DESK \p xelector_01 \p @.apps/g/g-pchq/pieces/xelector_01 \p 560 \p 400 \p 7 \p 5 \p hero_01 \p 0 | xelector-on-the-hero-with-its-possessed-id
+EXPECT_HAS | ok/sess/desks/bridge.pdl | DESK \p camera_01 \p @.apps/g/g-pchq/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=0,h=0 \p 0 | camera-default
+EXPECT_HAS | ok/sess/session.pdl | STATE \p name \p g | book-is-the-game
+EXPECT_HAS | ok/sess/session.pdl | STATE \p active_desk \p bridge | open-page-is-the-room
+
+CASE | other_cell
+MKDIR | other_cell/h/&.widgits
+MKDIR | other_cell/h/@.apps/g/state
+WRITE | other_cell/h/@.apps/g/state/trainer.txt | room=bridge\nx=3\ny=2\n
+MKDIR | other_cell/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | other_cell/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | other_cell/h/@.apps/g/g-pchq/pieces/display
+MKDIR | other_cell/h/@.apps/g/g-pchq/pieces/system
+WRITE | other_cell/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | pos_x=3\npos_y=2\npossessed_id=hero_01\n
+WRITE | other_cell/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | pos_x=3\npos_y=2\n
+WRITE | other_cell/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | other_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | other_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | other_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/other_cell/h/@.apps/g | $T/other_cell/sess | --house | $T/other_cell/h
+EXPECT_EXIT | 0 | other_cell-exit-0
+EXPECT_OUT | rows=3 | three-rows
+EXPECT_HAS | other_cell/sess/desks/bridge.pdl | \p 240 \p 160 \p 3 \p 2 \p . | cell-3-2-is-240-160
+
+CASE | disagree
+MKDIR | disagree/h/&.widgits
+MKDIR | disagree/h/@.apps/g/state
+WRITE | disagree/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | disagree/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | disagree/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | disagree/h/@.apps/g/g-pchq/pieces/display
+MKDIR | disagree/h/@.apps/g/g-pchq/pieces/system
+WRITE | disagree/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | pos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | disagree/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | pos_x=1\npos_y=1\n
+WRITE | disagree/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | disagree/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | disagree/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | disagree/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/disagree/h/@.apps/g | $T/disagree/sess | --house | $T/disagree/h
+EXPECT_EXIT | 0 | disagree-exit-0
+EXPECT_OUT | DISAGREE xelector_01/state.txt 4,5 vs trainer 7,5 | xelector-private-file-reported
+EXPECT_OUT | DISAGREE hero_01/state.txt 1,1 vs trainer 7,5 | hero-private-file-reported
+EXPECT_OUT | disagreements=2 | two
+EXPECT_HAS | disagree/sess/desks/bridge.pdl | \p 560 \p 400 \p 7 \p 5 \p hero_01 | the-trainer-wins
+
+CASE | room_quarters
+MKDIR | room_quarters/h/&.widgits
+MKDIR | room_quarters/h/@.apps/g/state
+WRITE | room_quarters/h/@.apps/g/state/trainer.txt | room=quarters\nx=2\ny=2\n
+MKDIR | room_quarters/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | room_quarters/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | room_quarters/h/@.apps/g/g-pchq/pieces/display
+MKDIR | room_quarters/h/@.apps/g/g-pchq/pieces/system
+WRITE | room_quarters/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | room_quarters/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | room_quarters/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | room_quarters/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | room_quarters/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | room_quarters/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/room_quarters/h/@.apps/g | $T/room_quarters/sess | --house | $T/room_quarters/h
+EXPECT_EXIT | 0 | room_quarters-exit-0
+EXPECT_OUT | room=quarters | other-room
+EXPECT_HAS | room_quarters/sess/session.pdl | STATE \p active_desk \p quarters | active-desk
+EXPECT_HAS | room_quarters/sess/desks/quarters.pdl | hero_01 | page-named-after-the-room
+EXPECT_NOFILE | room_quarters/sess/desks/bridge.pdl | and-no-bridge-page
+
+CASE | mode3
+MKDIR | mode3/h/&.widgits
+MKDIR | mode3/h/@.apps/g/state
+WRITE | mode3/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | mode3/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | mode3/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | mode3/h/@.apps/g/g-pchq/pieces/display
+MKDIR | mode3/h/@.apps/g/g-pchq/pieces/system
+WRITE | mode3/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | mode3/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | mode3/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=3\n
+MKDIR | mode3/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | mode3/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | mode3/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/mode3/h/@.apps/g | $T/mode3/sess | --house | $T/mode3/h
+EXPECT_EXIT | 0 | mode3-exit-0
+EXPECT_OUT | rows=3 | ok
+EXPECT_HAS | mode3/sess/desks/bridge.pdl | m=3,y=180,p=-90,z=0,h=0 | free-roam-pitch-minus-90
+
+CASE | mode1
+MKDIR | mode1/h/&.widgits
+MKDIR | mode1/h/@.apps/g/state
+WRITE | mode1/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | mode1/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | mode1/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | mode1/h/@.apps/g/g-pchq/pieces/display
+MKDIR | mode1/h/@.apps/g/g-pchq/pieces/system
+WRITE | mode1/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | mode1/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | mode1/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=1\n
+MKDIR | mode1/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | mode1/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | mode1/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/mode1/h/@.apps/g | $T/mode1/sess | --house | $T/mode1/h
+EXPECT_EXIT | 0 | mode1-exit-0
+EXPECT_OUT | rows=3 | ok
+EXPECT_HAS | mode1/sess/desks/bridge.pdl | m=1,y=180,p=6,z=0,h=0 | first-person-pitch-6
+
+CASE | no_cfg
+MKDIR | no_cfg/h/&.widgits
+MKDIR | no_cfg/h/@.apps/g/state
+WRITE | no_cfg/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | no_cfg/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | no_cfg/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | no_cfg/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_cfg/h/@.apps/g/g-pchq/pieces/system
+WRITE | no_cfg/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | no_cfg/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+MKDIR | no_cfg/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | no_cfg/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | no_cfg/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/no_cfg/h/@.apps/g | $T/no_cfg/sess | --house | $T/no_cfg/h
+EXPECT_EXIT | 0 | no_cfg-exit-0
+EXPECT_OUT | rows=3 | ok
+EXPECT_HAS | no_cfg/sess/desks/bridge.pdl | m=2,y=180,p=6,z=0,h=0 | no-config-means-mode-2
+
+CASE | bad_cfg
+MKDIR | bad_cfg/h/&.widgits
+MKDIR | bad_cfg/h/@.apps/g/state
+WRITE | bad_cfg/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | bad_cfg/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | bad_cfg/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | bad_cfg/h/@.apps/g/g-pchq/pieces/display
+MKDIR | bad_cfg/h/@.apps/g/g-pchq/pieces/system
+WRITE | bad_cfg/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | bad_cfg/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | bad_cfg/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=9\n
+MKDIR | bad_cfg/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | bad_cfg/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | bad_cfg/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/bad_cfg/h/@.apps/g | $T/bad_cfg/sess | --house | $T/bad_cfg/h
+EXPECT_EXIT | 0 | bad_cfg-exit-0
+EXPECT_OUT | rows=3 | ok
+EXPECT_HAS | bad_cfg/sess/desks/bridge.pdl | m=2,y=180,p=6 | mode-9-is-invalid-so-2
+
+CASE | not_possessing
+MKDIR | not_possessing/h/&.widgits
+MKDIR | not_possessing/h/@.apps/g/state
+WRITE | not_possessing/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | not_possessing/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | not_possessing/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | not_possessing/h/@.apps/g/g-pchq/pieces/display
+MKDIR | not_possessing/h/@.apps/g/g-pchq/pieces/system
+WRITE | not_possessing/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | pos_x=7\npos_y=5\n
+WRITE | not_possessing/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | not_possessing/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | not_possessing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | not_possessing/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | not_possessing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/not_possessing/h/@.apps/g | $T/not_possessing/sess | --house | $T/not_possessing/h
+EXPECT_EXIT | 0 | not_possessing-exit-0
+EXPECT_OUT | rows=3 | ok
+EXPECT_HAS | not_possessing/sess/desks/bridge.pdl | \p none \p 0 | no-possessed-id-means-none
+
+CASE | no_trainer
+MKDIR | no_trainer/h/&.widgits
+MKDIR | no_trainer/h/@.apps/g/state
+MKDIR | no_trainer/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | no_trainer/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | no_trainer/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_trainer/h/@.apps/g/g-pchq/pieces/system
+WRITE | no_trainer/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | no_trainer/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | no_trainer/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | no_trainer/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | no_trainer/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | no_trainer/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/no_trainer/h/@.apps/g | $T/no_trainer/sess | --house | $T/no_trainer/h
+EXPECT_EXIT | 1 | no_trainer-exit-1
+EXPECT_NOFILE | no_trainer/sess/desks/bridge.pdl | nothing-written
+EXPECT_NOFILE | no_trainer/sess/session.pdl | no-session-either
+
+CASE | bad_room
+MKDIR | bad_room/h/&.widgits
+MKDIR | bad_room/h/@.apps/g/state
+WRITE | bad_room/h/@.apps/g/state/trainer.txt | room=big room\nx=1\ny=1\n
+MKDIR | bad_room/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | bad_room/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | bad_room/h/@.apps/g/g-pchq/pieces/display
+MKDIR | bad_room/h/@.apps/g/g-pchq/pieces/system
+WRITE | bad_room/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | bad_room/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | bad_room/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | bad_room/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | bad_room/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | bad_room/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/bad_room/h/@.apps/g | $T/bad_room/sess | --house | $T/bad_room/h
+EXPECT_EXIT | 1 | bad_room-exit-1
+EXPECT_NOFILE | bad_room/sess/session.pdl | nothing-written-for-a-bad-room
+
+CASE | bad_cell
+MKDIR | bad_cell/h/&.widgits
+MKDIR | bad_cell/h/@.apps/g/state
+WRITE | bad_cell/h/@.apps/g/state/trainer.txt | room=bridge\nx=-1\ny=1\n
+MKDIR | bad_cell/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | bad_cell/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | bad_cell/h/@.apps/g/g-pchq/pieces/display
+MKDIR | bad_cell/h/@.apps/g/g-pchq/pieces/system
+WRITE | bad_cell/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | bad_cell/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | bad_cell/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | bad_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | bad_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | bad_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/bad_cell/h/@.apps/g | $T/bad_cell/sess | --house | $T/bad_cell/h
+EXPECT_EXIT | 1 | bad_cell-exit-1
+EXPECT_NOFILE | bad_cell/sess/session.pdl | nothing-written-for-a-bad-cell
+
+CASE | no_pchq
+MKDIR | no_pchq/h/&.widgits
+MKDIR | no_pchq/h/@.apps/g/state
+WRITE | no_pchq/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+RUN | $T/gpe.+x | $T/no_pchq/h/@.apps/g | $T/no_pchq/sess | --house | $T/no_pchq/h
+EXPECT_EXIT | 1 | no_pchq-exit-1
+EXPECT_NOFILE | no_pchq/sess/session.pdl | nothing-written
+
+CASE | usage
+RUN | $T/gpe.+x
+EXPECT_EXIT | 2 | no-arguments
+RUN | $T/gpe.+x | $T/ok/h/@.apps/g | $T/u1 | --bogus
+EXPECT_EXIT | 2 | unknown-option
+RUN | $T/gpe.+x | $T/nowhere | $T/u2
+EXPECT_EXIT | 1 | missing-game-folder
+
+CASE | chain
+MKDIR | chain/h/&.widgits
+MKDIR | chain/h/@.apps/g/state
+WRITE | chain/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | chain/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | chain/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | chain/h/@.apps/g/g-pchq/pieces/display
+MKDIR | chain/h/@.apps/g/g-pchq/pieces/system
+WRITE | chain/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | chain/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | chain/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | chain/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | chain/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | chain/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/chain/h/@.apps/g | $T/chain/sess | --house | $T/chain/h
+EXPECT_EXIT | 0 | exported
+WRITE | chain/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=$T/chain/sess/desks/bridge.pdl\n
+RUN | $T/bc.+x | $T/chain/h/@.apps/g/g-pchq | --house | $T/chain/h
+EXPECT_EXIT | 0 | the-bound-game-is-conformant
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 | all-fourteen-checks-pass-with-the-exported-page
+EXPECT_OUT | PASS A10 session: book `g`, open page `bridge` exists | session-resolved
+EXPECT_OUT | PASS A8 possession: xelector_01 possesses `hero_01` | possession
+
+CASE | chain_board
+MKDIR | chain_board/h/&.widgits
+MKDIR | chain_board/h/@.apps/g/state
+WRITE | chain_board/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | chain_board/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | chain_board/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | chain_board/h/@.apps/g/g-pchq/pieces/display
+MKDIR | chain_board/h/@.apps/g/g-pchq/pieces/system
+WRITE | chain_board/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | chain_board/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | chain_board/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | chain_board/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | chain_board/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | chain_board/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/chain_board/h/@.apps/g | $T/chain_board/sess | --house | $T/chain_board/h
+WRITE | chain_board/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/bc.+x | $T/chain_board/h/@.apps/g/g-pchq | --house | $T/chain_board/h
+EXPECT_EXIT | 1 | a-game-still-on-source-board-fails-A2-even-with-the-page-written
+EXPECT_OUT | FAIL A2 | binding-is-what-flips-it
+CLEAN |
