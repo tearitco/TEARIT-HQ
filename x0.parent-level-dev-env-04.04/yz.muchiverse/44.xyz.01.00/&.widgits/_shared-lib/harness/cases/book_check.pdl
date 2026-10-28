@@ -1,0 +1,674 @@
+# book_check: LOCKED cases. Source: &.widgits/_shared-lib/ops/book_check.c compiled -Wall -Wextra -Werror from source into the scratch. Each case builds a tiny house (pal folders, a livedesk session with a page file, a pc-hq folder with its open_book_page.txt and a maps/<game> book) with ONE deliberate fault.
+# Expected check lines and totals are worked out BY HAND from the rules in the op's header (14 checks: A1..A10 page file, B1..B4 map book; INFO lines are not checks). Bars are written \p in this file.
+RESULTS | ../results/book_check.txt
+SCRATCH |
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/bc.+x | $HOUSE/&.widgits/_shared-lib/ops/book_check.c
+EXPECT_EXIT | 0 | compiles-clean-with-werror
+
+CASE | ok
+MKDIR | ok/h/pals/castle
+MKDIR | ok/h/pals/asa
+MKDIR | ok/h/@.apps/g/pieces/hero_01
+MKDIR | ok/h/@.apps/g/pieces/xelector_01
+MKDIR | ok/h/@.apps/g/pieces/display
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ok/h/sessions/s1/desks
+WRITE | ok/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | ok/h/sessions/s1
+WRITE | ok/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | ok/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | ok/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/ok/h/@.apps/g/g-pchq | --house | $T/ok/h
+EXPECT_EXIT | 0 | ok-exit-0
+EXPECT_OUT | PASS A4 page_rows: 5 entity rows, all well formed | five-rows
+EXPECT_OUT | PASS A7 camera_row: camera_01 carries mode=2 yaw=180 pitch=6 pan_z=-3 height=0 | packed-camera-read
+EXPECT_OUT | PASS A10 session: book `b1`, open page `office` exists | session-resolved
+EXPECT_OUT | PASS B2 desk_ids: n_desks=3 | three-desks
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 info=0 | fourteen-of-fourteen
+EXPECT_OUT | conformant=yes | conformant
+
+CASE | private_file
+MKDIR | private_file/h/pals/castle
+MKDIR | private_file/h/pals/asa
+MKDIR | private_file/h/@.apps/g/pieces/hero_01
+MKDIR | private_file/h/@.apps/g/pieces/xelector_01
+MKDIR | private_file/h/@.apps/g/pieces/display
+MKDIR | private_file/h/@.apps/g/g-pchq/pieces/display
+MKDIR | private_file/h/sessions/s1/desks
+WRITE | private_file/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | private_file/h/sessions/s1
+WRITE | private_file/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | private_file/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | private_file/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+WRITE | private_file/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | pos_x=1\n
+RUN | $T/bc.+x | $T/private_file/h/@.apps/g/g-pchq | --house | $T/private_file/h
+EXPECT_EXIT | 0 | private_file-exit-0
+EXPECT_OUT | INFO C1 private position file present: pieces/hero_01/state.txt | private-file-reported-as-info
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 info=1 | info-is-not-a-check
+EXPECT_OUT | conformant=yes | still-conformant
+
+CASE | board
+MKDIR | board/h/pals/castle
+MKDIR | board/h/pals/asa
+MKDIR | board/h/@.apps/g/pieces/hero_01
+MKDIR | board/h/@.apps/g/pieces/xelector_01
+MKDIR | board/h/@.apps/g/pieces/display
+MKDIR | board/h/@.apps/g/g-pchq/pieces/display
+MKDIR | board/h/sessions/s1/desks
+WRITE | board/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | board/h/sessions/s1
+WRITE | board/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | board/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+MKDIR | board/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | board/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | board/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | board/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | board/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | board/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | board/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | board/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/board/h/@.apps/g/g-pchq | --house | $T/board/h
+EXPECT_EXIT | 1 | board-exit-1
+EXPECT_OUT | FAIL A2 source_desk: source=board | the-board-owns-its-page
+EXPECT_OUT | SKIP A3 page_file: needs A2 | page-checks-skipped
+EXPECT_OUT | SKIP A10 session: needs a readable page file | all-eight-skipped
+EXPECT_OUT | PASS B3 desk_folders | the-map-book-half-passes
+EXPECT_OUT | checks=14 pass=5 fail=1 skip=8 info=0 | one-fail-eight-skip
+EXPECT_OUT | conformant=no | not-conformant
+
+CASE | older_pin
+MKDIR | older_pin/h/pals/castle
+MKDIR | older_pin/h/pals/asa
+MKDIR | older_pin/h/@.apps/g/pieces/hero_01
+MKDIR | older_pin/h/@.apps/g/pieces/xelector_01
+MKDIR | older_pin/h/@.apps/g/pieces/display
+MKDIR | older_pin/h/@.apps/g/g-pchq/pieces/display
+MKDIR | older_pin/h/sessions/s1/desks
+WRITE | older_pin/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | older_pin/h/sessions/s1
+WRITE | older_pin/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | older_pin/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | pdl=sessions/s1/desks/office.pdl\n
+MKDIR | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | older_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/older_pin/h/@.apps/g/g-pchq | --house | $T/older_pin/h
+EXPECT_EXIT | 0 | older_pin-exit-0
+EXPECT_OUT | PASS A2 source_desk: the page is a desk file (source=(older pin)) | a-pdl-pin-without-source-counts
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 info=0 | all-pass
+
+CASE | no_open_file
+MKDIR | no_open_file/h/pals/castle
+MKDIR | no_open_file/h/pals/asa
+MKDIR | no_open_file/h/@.apps/g/pieces/hero_01
+MKDIR | no_open_file/h/@.apps/g/pieces/xelector_01
+MKDIR | no_open_file/h/@.apps/g/pieces/display
+MKDIR | no_open_file/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_open_file/h/sessions/s1/desks
+WRITE | no_open_file/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | no_open_file/h/sessions/s1
+WRITE | no_open_file/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+MKDIR | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | no_open_file/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/no_open_file/h/@.apps/g/g-pchq | --house | $T/no_open_file/h
+EXPECT_EXIT | 1 | no_open_file-exit-1
+EXPECT_OUT | FAIL A1 open_page_file | no-record
+EXPECT_OUT | FAIL A2 source_desk: source=(none) | and-no-source
+
+CASE | page_missing
+MKDIR | page_missing/h/pals/castle
+MKDIR | page_missing/h/pals/asa
+MKDIR | page_missing/h/@.apps/g/pieces/hero_01
+MKDIR | page_missing/h/@.apps/g/pieces/xelector_01
+MKDIR | page_missing/h/@.apps/g/pieces/display
+MKDIR | page_missing/h/@.apps/g/g-pchq/pieces/display
+MKDIR | page_missing/h/sessions/s1
+WRITE | page_missing/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | page_missing/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | page_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/page_missing/h/@.apps/g/g-pchq | --house | $T/page_missing/h
+EXPECT_EXIT | 1 | page_missing-exit-1
+EXPECT_OUT | FAIL A3 page_file: sessions/s1/desks/office.pdl does not exist | pin-points-nowhere
+EXPECT_OUT | SKIP A4 page_rows | dependents-skipped
+
+CASE | no_pin
+MKDIR | no_pin/h/pals/castle
+MKDIR | no_pin/h/pals/asa
+MKDIR | no_pin/h/@.apps/g/pieces/hero_01
+MKDIR | no_pin/h/@.apps/g/pieces/xelector_01
+MKDIR | no_pin/h/@.apps/g/pieces/display
+MKDIR | no_pin/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_pin/h/sessions/s1/desks
+WRITE | no_pin/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | no_pin/h/sessions/s1
+WRITE | no_pin/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | no_pin/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\n
+MKDIR | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | no_pin/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/no_pin/h/@.apps/g/g-pchq | --house | $T/no_pin/h
+EXPECT_EXIT | 1 | no_pin-exit-1
+EXPECT_OUT | FAIL A3 page_file: source=desk but there is no pdl= line | desk-without-a-pin
+
+CASE | row_8_fields
+MKDIR | row_8_fields/h/pals/castle
+MKDIR | row_8_fields/h/pals/asa
+MKDIR | row_8_fields/h/@.apps/g/pieces/hero_01
+MKDIR | row_8_fields/h/@.apps/g/pieces/xelector_01
+MKDIR | row_8_fields/h/@.apps/g/pieces/display
+MKDIR | row_8_fields/h/@.apps/g/g-pchq/pieces/display
+MKDIR | row_8_fields/h/sessions/s1/desks
+WRITE | row_8_fields/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p tree \p pals/castle \p 1 \p 2 \p 3 \p 4 \p t\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | row_8_fields/h/sessions/s1
+WRITE | row_8_fields/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | row_8_fields/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | row_8_fields/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/row_8_fields/h/@.apps/g/g-pchq | --house | $T/row_8_fields/h
+EXPECT_EXIT | 1 | row_8_fields-exit-1
+EXPECT_OUT | FAIL A4 page_rows: 1 malformed DESK row(s), the first is `tree` | eight-fields-is-malformed
+
+CASE | row_non_numeric
+MKDIR | row_non_numeric/h/pals/castle
+MKDIR | row_non_numeric/h/pals/asa
+MKDIR | row_non_numeric/h/@.apps/g/pieces/hero_01
+MKDIR | row_non_numeric/h/@.apps/g/pieces/xelector_01
+MKDIR | row_non_numeric/h/@.apps/g/pieces/display
+MKDIR | row_non_numeric/h/@.apps/g/g-pchq/pieces/display
+MKDIR | row_non_numeric/h/sessions/s1/desks
+WRITE | row_non_numeric/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p x \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | row_non_numeric/h/sessions/s1
+WRITE | row_non_numeric/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | row_non_numeric/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | row_non_numeric/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/row_non_numeric/h/@.apps/g/g-pchq | --house | $T/row_non_numeric/h
+EXPECT_EXIT | 1 | row_non_numeric-exit-1
+EXPECT_OUT | FAIL A4 page_rows: 1 malformed DESK row(s), the first is `castle` | a-non-number-in-cell_x
+
+CASE | duplicate_name
+MKDIR | duplicate_name/h/pals/castle
+MKDIR | duplicate_name/h/pals/asa
+MKDIR | duplicate_name/h/@.apps/g/pieces/hero_01
+MKDIR | duplicate_name/h/@.apps/g/pieces/xelector_01
+MKDIR | duplicate_name/h/@.apps/g/pieces/display
+MKDIR | duplicate_name/h/@.apps/g/g-pchq/pieces/display
+MKDIR | duplicate_name/h/sessions/s1/desks
+WRITE | duplicate_name/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\nDESK \p asa \p pals/asa \p 0 \p 0 \p 0 \p 0 \p a \p 1\n
+MKDIR | duplicate_name/h/sessions/s1
+WRITE | duplicate_name/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | duplicate_name/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | duplicate_name/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/duplicate_name/h/@.apps/g/g-pchq | --house | $T/duplicate_name/h
+EXPECT_EXIT | 1 | duplicate_name-exit-1
+EXPECT_OUT | FAIL A5 unique_names: `asa` appears more than once | duplicate
+
+CASE | no_hero
+MKDIR | no_hero/h/pals/castle
+MKDIR | no_hero/h/pals/asa
+MKDIR | no_hero/h/@.apps/g/pieces/hero_01
+MKDIR | no_hero/h/@.apps/g/pieces/xelector_01
+MKDIR | no_hero/h/@.apps/g/pieces/display
+MKDIR | no_hero/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_hero/h/sessions/s1/desks
+WRITE | no_hero/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | no_hero/h/sessions/s1
+WRITE | no_hero/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | no_hero/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | no_hero/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/no_hero/h/@.apps/g/g-pchq | --house | $T/no_hero/h
+EXPECT_EXIT | 1 | no_hero-exit-1
+EXPECT_OUT | FAIL A6 core_rows | missing-core-row
+EXPECT_OUT | hero_01(0) | names-the-missing-one
+EXPECT_OUT | PASS A9 pal_paths | others-unaffected
+
+CASE | two_cameras
+MKDIR | two_cameras/h/pals/castle
+MKDIR | two_cameras/h/pals/asa
+MKDIR | two_cameras/h/@.apps/g/pieces/hero_01
+MKDIR | two_cameras/h/@.apps/g/pieces/xelector_01
+MKDIR | two_cameras/h/@.apps/g/pieces/display
+MKDIR | two_cameras/h/@.apps/g/g-pchq/pieces/display
+MKDIR | two_cameras/h/sessions/s1/desks
+WRITE | two_cameras/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\nDESK \p camera_01 \p @.apps/g/pieces/display \p 0 \p 0 \p 0 \p 0 \p m=1,y=0,p=0,z=0,h=0 \p 0\n
+MKDIR | two_cameras/h/sessions/s1
+WRITE | two_cameras/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | two_cameras/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | two_cameras/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/two_cameras/h/@.apps/g/g-pchq | --house | $T/two_cameras/h
+EXPECT_EXIT | 1 | two_cameras-exit-1
+EXPECT_OUT | FAIL A5 unique_names: `camera_01` appears more than once | the-second-camera-is-a-duplicate-name
+EXPECT_OUT | camera_01(2) | and-core-rows-says-two
+
+CASE | bad_camera
+MKDIR | bad_camera/h/pals/castle
+MKDIR | bad_camera/h/pals/asa
+MKDIR | bad_camera/h/@.apps/g/pieces/hero_01
+MKDIR | bad_camera/h/@.apps/g/pieces/xelector_01
+MKDIR | bad_camera/h/@.apps/g/pieces/display
+MKDIR | bad_camera/h/@.apps/g/g-pchq/pieces/display
+MKDIR | bad_camera/h/sessions/s1/desks
+WRITE | bad_camera/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180 \p 0\n
+MKDIR | bad_camera/h/sessions/s1
+WRITE | bad_camera/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | bad_camera/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | bad_camera/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/bad_camera/h/@.apps/g/g-pchq | --house | $T/bad_camera/h
+EXPECT_EXIT | 1 | bad_camera-exit-1
+EXPECT_OUT | FAIL A7 camera_row: camera_01's glyph `m=2,y=180` is not | half-a-camera
+
+CASE | xelector_none
+MKDIR | xelector_none/h/pals/castle
+MKDIR | xelector_none/h/pals/asa
+MKDIR | xelector_none/h/@.apps/g/pieces/hero_01
+MKDIR | xelector_none/h/@.apps/g/pieces/xelector_01
+MKDIR | xelector_none/h/@.apps/g/pieces/display
+MKDIR | xelector_none/h/@.apps/g/g-pchq/pieces/display
+MKDIR | xelector_none/h/sessions/s1/desks
+WRITE | xelector_none/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 1 \p 1 \p 1 \p 1 \p none \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | xelector_none/h/sessions/s1
+WRITE | xelector_none/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | xelector_none/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | xelector_none/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/xelector_none/h/@.apps/g/g-pchq | --house | $T/xelector_none/h
+EXPECT_EXIT | 0 | xelector_none-exit-0
+EXPECT_OUT | PASS A8 possession: xelector_01 possesses `none` | none-is-allowed
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 info=0 | all-pass
+
+CASE | xelector_ghost
+MKDIR | xelector_ghost/h/pals/castle
+MKDIR | xelector_ghost/h/pals/asa
+MKDIR | xelector_ghost/h/@.apps/g/pieces/hero_01
+MKDIR | xelector_ghost/h/@.apps/g/pieces/xelector_01
+MKDIR | xelector_ghost/h/@.apps/g/pieces/display
+MKDIR | xelector_ghost/h/@.apps/g/g-pchq/pieces/display
+MKDIR | xelector_ghost/h/sessions/s1/desks
+WRITE | xelector_ghost/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 1 \p 1 \p 1 \p 1 \p ghost \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | xelector_ghost/h/sessions/s1
+WRITE | xelector_ghost/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | xelector_ghost/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | xelector_ghost/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/xelector_ghost/h/@.apps/g/g-pchq | --house | $T/xelector_ghost/h
+EXPECT_EXIT | 1 | xelector_ghost-exit-1
+EXPECT_OUT | FAIL A8 possession: xelector_01 possesses `ghost`, which is not an entity row | possesses-nobody
+
+CASE | pal_folder_missing
+MKDIR | pal_folder_missing/h/pals/asa
+MKDIR | pal_folder_missing/h/@.apps/g/pieces/hero_01
+MKDIR | pal_folder_missing/h/@.apps/g/pieces/xelector_01
+MKDIR | pal_folder_missing/h/@.apps/g/pieces/display
+MKDIR | pal_folder_missing/h/@.apps/g/g-pchq/pieces/display
+MKDIR | pal_folder_missing/h/sessions/s1/desks
+WRITE | pal_folder_missing/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | pal_folder_missing/h/sessions/s1
+WRITE | pal_folder_missing/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | pal_folder_missing/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | pal_folder_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/pal_folder_missing/h/@.apps/g/g-pchq | --house | $T/pal_folder_missing/h
+EXPECT_EXIT | 1 | pal_folder_missing-exit-1
+EXPECT_OUT | FAIL A9 pal_paths: 1 row path(s) are not folders, the first is `castle` | castle-folder-gone
+
+CASE | no_session
+MKDIR | no_session/h/pals/castle
+MKDIR | no_session/h/pals/asa
+MKDIR | no_session/h/@.apps/g/pieces/hero_01
+MKDIR | no_session/h/@.apps/g/pieces/xelector_01
+MKDIR | no_session/h/@.apps/g/pieces/display
+MKDIR | no_session/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_session/h/sessions/s1/desks
+WRITE | no_session/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+WRITE | no_session/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | no_session/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/no_session/h/@.apps/g/g-pchq | --house | $T/no_session/h
+EXPECT_EXIT | 1 | no_session-exit-1
+EXPECT_OUT | FAIL A10 session: <session>/session.pdl does not exist | no-session-file
+
+CASE | session_no_active
+MKDIR | session_no_active/h/pals/castle
+MKDIR | session_no_active/h/pals/asa
+MKDIR | session_no_active/h/@.apps/g/pieces/hero_01
+MKDIR | session_no_active/h/@.apps/g/pieces/xelector_01
+MKDIR | session_no_active/h/@.apps/g/pieces/display
+MKDIR | session_no_active/h/@.apps/g/g-pchq/pieces/display
+MKDIR | session_no_active/h/sessions/s1/desks
+WRITE | session_no_active/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | session_no_active/h/sessions/s1
+WRITE | session_no_active/h/sessions/s1/session.pdl | STATE \p name \p b1\n
+WRITE | session_no_active/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | session_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/session_no_active/h/@.apps/g/g-pchq | --house | $T/session_no_active/h
+EXPECT_EXIT | 1 | session_no_active-exit-1
+EXPECT_OUT | FAIL A10 session: session.pdl lacks STATE \p active_desk | no-active-desk
+
+CASE | session_active_gone
+MKDIR | session_active_gone/h/pals/castle
+MKDIR | session_active_gone/h/pals/asa
+MKDIR | session_active_gone/h/@.apps/g/pieces/hero_01
+MKDIR | session_active_gone/h/@.apps/g/pieces/xelector_01
+MKDIR | session_active_gone/h/@.apps/g/pieces/display
+MKDIR | session_active_gone/h/@.apps/g/g-pchq/pieces/display
+MKDIR | session_active_gone/h/sessions/s1/desks
+WRITE | session_active_gone/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | session_active_gone/h/sessions/s1
+WRITE | session_active_gone/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p lobby\n
+WRITE | session_active_gone/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | session_active_gone/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/session_active_gone/h/@.apps/g/g-pchq | --house | $T/session_active_gone/h
+EXPECT_EXIT | 1 | session_active_gone-exit-1
+EXPECT_OUT | FAIL A10 session: active_desk `lobby` has no page file | active-page-missing
+
+CASE | page_outside_desks
+MKDIR | page_outside_desks/h/pals/castle
+MKDIR | page_outside_desks/h/pals/asa
+MKDIR | page_outside_desks/h/@.apps/g/pieces/hero_01
+MKDIR | page_outside_desks/h/@.apps/g/pieces/xelector_01
+MKDIR | page_outside_desks/h/@.apps/g/pieces/display
+MKDIR | page_outside_desks/h/@.apps/g/g-pchq/pieces/display
+MKDIR | page_outside_desks/h/pages
+WRITE | page_outside_desks/h/pages/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | page_outside_desks/h/sessions/s1
+WRITE | page_outside_desks/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | page_outside_desks/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=pages/office.pdl\n
+MKDIR | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | page_outside_desks/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/page_outside_desks/h/@.apps/g/g-pchq | --house | $T/page_outside_desks/h
+EXPECT_EXIT | 0 | page_outside_desks-exit-0
+EXPECT_OUT | SKIP A10 session: the page file is not inside a <session>/desks/ folder | not-a-session-page
+EXPECT_OUT | checks=14 pass=13 fail=0 skip=1 info=0 | one-skip
+
+CASE | no_game
+MKDIR | no_game/h/pals/castle
+MKDIR | no_game/h/pals/asa
+MKDIR | no_game/h/@.apps/g/pieces/hero_01
+MKDIR | no_game/h/@.apps/g/pieces/xelector_01
+MKDIR | no_game/h/@.apps/g/pieces/display
+MKDIR | no_game/h/@.apps/g/g-pchq/pieces/display
+MKDIR | no_game/h/sessions/s1/desks
+WRITE | no_game/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | no_game/h/sessions/s1
+WRITE | no_game/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | no_game/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+RUN | $T/bc.+x | $T/no_game/h/@.apps/g/g-pchq | --house | $T/no_game/h
+EXPECT_EXIT | 1 | no_game-exit-1
+EXPECT_OUT | FAIL B1 game_pdl: need exactly one maps/<game>/ with a game.pdl (found 0 game folder(s) | no-map-book
+EXPECT_OUT | SKIP B4 no_orphans: needs B1 | dependents-skipped
+
+CASE | ndesks_mismatch
+MKDIR | ndesks_mismatch/h/pals/castle
+MKDIR | ndesks_mismatch/h/pals/asa
+MKDIR | ndesks_mismatch/h/@.apps/g/pieces/hero_01
+MKDIR | ndesks_mismatch/h/@.apps/g/pieces/xelector_01
+MKDIR | ndesks_mismatch/h/@.apps/g/pieces/display
+MKDIR | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ndesks_mismatch/h/sessions/s1/desks
+WRITE | ndesks_mismatch/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | ndesks_mismatch/h/sessions/s1
+WRITE | ndesks_mismatch/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 4\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | ndesks_mismatch/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/ndesks_mismatch/h/@.apps/g/g-pchq | --house | $T/ndesks_mismatch/h
+EXPECT_EXIT | 1 | ndesks_mismatch-exit-1
+EXPECT_OUT | FAIL B2 desk_ids: n_desks says 4 but game.pdl lists 3 desk ids | count-disagrees
+
+CASE | bad_desk_id
+MKDIR | bad_desk_id/h/pals/castle
+MKDIR | bad_desk_id/h/pals/asa
+MKDIR | bad_desk_id/h/@.apps/g/pieces/hero_01
+MKDIR | bad_desk_id/h/@.apps/g/pieces/xelector_01
+MKDIR | bad_desk_id/h/@.apps/g/pieces/display
+MKDIR | bad_desk_id/h/@.apps/g/g-pchq/pieces/display
+MKDIR | bad_desk_id/h/sessions/s1/desks
+WRITE | bad_desk_id/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | bad_desk_id/h/sessions/s1
+WRITE | bad_desk_id/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | bad_desk_id/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | bad_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | bad_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p bad id\nGAME \p desk_3_id \p hold\n
+MKDIR | bad_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | bad_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | bad_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | bad_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/bad_desk_id/h/@.apps/g/g-pchq | --house | $T/bad_desk_id/h
+EXPECT_EXIT | 1 | bad_desk_id-exit-1
+EXPECT_OUT | FAIL B2 desk_ids: 1 desk id(s) are not valid names | a-space-in-an-id
+
+CASE | duplicate_desk_id
+MKDIR | duplicate_desk_id/h/pals/castle
+MKDIR | duplicate_desk_id/h/pals/asa
+MKDIR | duplicate_desk_id/h/@.apps/g/pieces/hero_01
+MKDIR | duplicate_desk_id/h/@.apps/g/pieces/xelector_01
+MKDIR | duplicate_desk_id/h/@.apps/g/pieces/display
+MKDIR | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/display
+MKDIR | duplicate_desk_id/h/sessions/s1/desks
+WRITE | duplicate_desk_id/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | duplicate_desk_id/h/sessions/s1
+WRITE | duplicate_desk_id/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p hold\nGAME \p desk_3_id \p bridge\n
+MKDIR | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | duplicate_desk_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/bc.+x | $T/duplicate_desk_id/h/@.apps/g/g-pchq | --house | $T/duplicate_desk_id/h
+EXPECT_EXIT | 1 | duplicate_desk_id-exit-1
+EXPECT_OUT | FAIL B2 desk_ids: 1 desk id(s) listed twice | listed-twice
+
+CASE | desk_without_map
+MKDIR | desk_without_map/h/pals/castle
+MKDIR | desk_without_map/h/pals/asa
+MKDIR | desk_without_map/h/@.apps/g/pieces/hero_01
+MKDIR | desk_without_map/h/@.apps/g/pieces/xelector_01
+MKDIR | desk_without_map/h/@.apps/g/pieces/display
+MKDIR | desk_without_map/h/@.apps/g/g-pchq/pieces/display
+MKDIR | desk_without_map/h/sessions/s1/desks
+WRITE | desk_without_map/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | desk_without_map/h/sessions/s1
+WRITE | desk_without_map/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | desk_without_map/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | desk_without_map/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+RUN | $T/bc.+x | $T/desk_without_map/h/@.apps/g/g-pchq | --house | $T/desk_without_map/h
+EXPECT_EXIT | 1 | desk_without_map-exit-1
+EXPECT_OUT | FAIL B3 desk_folders: 1 desk(s) have no folder with a map.txt, the first is `hold` | hold-has-no-map
+
+CASE | orphan_folder
+MKDIR | orphan_folder/h/pals/castle
+MKDIR | orphan_folder/h/pals/asa
+MKDIR | orphan_folder/h/@.apps/g/pieces/hero_01
+MKDIR | orphan_folder/h/@.apps/g/pieces/xelector_01
+MKDIR | orphan_folder/h/@.apps/g/pieces/display
+MKDIR | orphan_folder/h/@.apps/g/g-pchq/pieces/display
+MKDIR | orphan_folder/h/sessions/s1/desks
+WRITE | orphan_folder/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | orphan_folder/h/sessions/s1
+WRITE | orphan_folder/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | orphan_folder/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/attic
+WRITE | orphan_folder/h/@.apps/g/g-pchq/pieces/system/maps/g/attic/map.txt | ....\n
+RUN | $T/bc.+x | $T/orphan_folder/h/@.apps/g/g-pchq | --house | $T/orphan_folder/h
+EXPECT_EXIT | 1 | orphan_folder-exit-1
+EXPECT_OUT | FAIL B4 no_orphans: 1 map folder(s) are not in game.pdl, the first is `attic` | attic-is-not-a-desk
+
+CASE | page_option
+MKDIR | page_option/h/pals/castle
+MKDIR | page_option/h/pals/asa
+MKDIR | page_option/h/@.apps/g/pieces/hero_01
+MKDIR | page_option/h/@.apps/g/pieces/xelector_01
+MKDIR | page_option/h/@.apps/g/pieces/display
+MKDIR | page_option/h/@.apps/g/g-pchq/pieces/display
+MKDIR | page_option/h/sessions/s1/desks
+WRITE | page_option/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | page_option/h/sessions/s1
+WRITE | page_option/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | page_option/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+MKDIR | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | page_option/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+RUN | $T/bc.+x | $T/page_option/h/@.apps/g/g-pchq | --house | $T/page_option/h | --page | $T/page_option/h/sessions/s1/desks/office.pdl
+EXPECT_EXIT | 0 | the-forced-page-is-checked-as-if-bound
+EXPECT_OUT | PASS A2 source_desk: --page given | note-instead-of-the-board-failure
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 info=0 | and-every-check-passes
+
+CASE | usage
+RUN | $T/bc.+x
+EXPECT_EXIT | 2 | no-arguments
+RUN | $T/bc.+x | $T/nothere
+EXPECT_EXIT | 2 | a-missing-folder
+RUN | $T/bc.+x | $T/ok/h/@.apps/g/g-pchq | --bogus
+EXPECT_EXIT | 2 | an-unknown-option
+RUN | $T/bc.+x | $T/ok/h/@.apps/g/g-pchq
+EXPECT_EXIT | 2 | no-house-found-above-a-scratch-folder-without-widgits
+CLEAN |

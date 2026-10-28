@@ -1,0 +1,4 @@
+# book_check.pal - LOCKED acceptance harness for book_check (the BOOK:PAGE conformance check of a pc-hq game folder against 18.pc-hq/PAGE-FILE.md). Read results/book_check.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/book_check.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/book_check.pdl
+halt
