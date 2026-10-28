@@ -40,6 +40,16 @@ static const char *VS_SRC =
  * next to the running binary (../bv_raymarch.frag, ./bv_raymarch.frag), else ./bv_raymarch.frag or ./ops/bv_raymarch.frag from the working directory. Not found = this
  * function says so on stderr and the GPU path is off (the caller falls back to the CPU raymarch). */
 static char s_fs_path[4096];
+/* The highest solid level of grid column (gx, gz), or -1 (column outside the grid or empty). The cutaway uses it as the floor the character stands on: the cells above it are
+ * the ones that may be blended, the floor and everything below (a planet under a hovering ship) never. Solid = a legend glyph, as the shader reads it. */
+int bv_gpu_column_top(const BvGpuScene *s, int gx, int gz) {
+    if (!s || !s->grid || gx < 0 || gz < 0 || gx >= s->board_w || gz >= s->board_h) return -1;
+    for (int l = s->z_count - 1; l >= 0; l--) {
+        unsigned char b = s->grid[gx + gz * s->board_w + l * s->board_w * s->board_h];
+        for (int i = 0; i < s->legend_n && i < BV_GPU_MAX_LEGEND; i++) if (s->legend_glyph[i] == b) return l;
+    }
+    return -1;
+}
 void bv_gpu_set_shader_path(const char *path) { snprintf(s_fs_path, sizeof s_fs_path, "%s", path ? path : ""); }
 static char *load_fs(void) {
     char cand[6][4200]; int n = 0; const char *env = getenv("BV_SHADER_FILE");

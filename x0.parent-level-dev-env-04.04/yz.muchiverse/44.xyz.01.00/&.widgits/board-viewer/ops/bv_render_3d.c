@@ -4311,7 +4311,11 @@ static int render_one_frame(void) {
                 if (g_hero_present) { tx = g_hero_x + 0.5; tz = g_hero_y + 0.5; if (sc.maker) { fy = 1.0; ty = 2.6; } else { fy = g_hero_z; ty = g_hero_z + 0.9; } }
                 else if (sc.maker) { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = 1.0 + g_xelector_z; ty = 2.6 + g_xelector_z; }
                 else { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = g_xelector_z; ty = g_xelector_z + 0.85; }      /* emoji-tile boards (rpg-space bridge): the selector sits on the controlled character, its box stands on level g_xelector_z */
-                sc.cut_on = 1; sc.cut_y = (int)floor(fy + 0.001); sc.cut_pos[0] = (float)tx; sc.cut_pos[1] = (float)((fy + ty) / 2.0); sc.cut_pos[2] = (float)tz;
+                sc.cut_on = 1; sc.cut_y = (int)floor(fy + 0.001);
+                {   /* the floor the character really stands on (the selector height this game reports is not a world level: seen 9, 17, -7): one above the highest solid cell of its column. With a wrong floor the floor and a planet below were blended too. */
+                    int top = bv_gpu_column_top(&sc, (int)floor(tx), (int)floor(tz));
+                    if (top >= 0) sc.cut_y = top + 1;
+                } sc.cut_pos[0] = (float)tx; sc.cut_pos[1] = (float)((fy + ty) / 2.0); sc.cut_pos[2] = (float)tz;
                 sc.cut_r = cr / 10.0f; sc.cut_a = ca / 100.0f; sc.cut_depth = (float)(cut_cd < 1 ? 1 : cut_cd > 60 ? 60 : cut_cd); sc.cut_base = cut_cb < 0 ? 0 : cut_cb > 8 ? 8 : cut_cb;
             }
         }

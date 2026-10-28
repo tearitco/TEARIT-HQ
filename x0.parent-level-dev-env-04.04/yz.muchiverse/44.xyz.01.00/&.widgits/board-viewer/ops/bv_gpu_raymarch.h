@@ -108,6 +108,7 @@ int  bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out);
 /* Keep the EGL context + GL objects alive across bv_gpu_raymarch()
  * calls (daemon mode). Passing 0 tears them down. */
 void bv_gpu_set_persistent(int on);
+int bv_gpu_column_top(const BvGpuScene *s, int gx, int gz);   /* highest solid level of a grid column, -1 = none / outside; the cutaway floor */
 void bv_gpu_set_shader_path(const char *path);   /* where ops/bv_raymarch.frag is (the fragment shader lives in that file, read when the GL context is created; BV_SHADER_FILE overrides) */
 
 /* Explicit teardown (called on daemon exit; also implied by

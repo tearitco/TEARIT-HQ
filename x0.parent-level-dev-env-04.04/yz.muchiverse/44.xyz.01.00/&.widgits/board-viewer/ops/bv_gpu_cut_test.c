@@ -51,6 +51,12 @@ int main(int argc, char **argv) {
     check(redc3 > 100, "half-width 1.6 leaves the outer wall columns solid (the face is limited to the half-width)");
     int diff_floor = 0; for (int y = H - 20; y < H; y++) for (int x = 0; x < W; x++) if (memcmp(c3 + (y * W + x) * 4, ref + (y * W + x) * 4, 4)) diff_floor++;
     check(diff_floor == 0, "the floor below the character is not ghosted");
+    scene(s);
+    check(bv_gpu_column_top(s, 4, 4) == 0 && bv_gpu_column_top(s, 3, 2) == 3 && bv_gpu_column_top(s, 6, 3) == 1, "column top: floor 0 under the hero, 3 in the wall column, 1 under the crate");
+    check(bv_gpu_column_top(s, -1, 4) == -1 && bv_gpu_column_top(s, 4, 99) == -1, "column top: outside the grid is -1 (the caller keeps its own guess)");
+    {   static unsigned char lo[W * H * 4]; scene(s); cut(s, -7, 0.3f); bv_gpu_raymarch(s, lo); int fl = 0; for (int y = H - 40; y < H; y++) for (int x = 0; x < W; x++) if (memcmp(lo + (y * W + x) * 4, ref + (y * W + x) * 4, 4)) fl++;
+      int ghosted_floor = 0; for (int i = 0; i < W * H; i++) if (memcmp(lo + i * 4, ref + i * 4, 4) && lo[i * 4] > 150 && lo[i * 4 + 1] > 150) ghosted_floor++;
+      printf("wrong floor level (-7): %d pixels changed in the bottom rows, %d grey-floor-like pixels changed\n", fl, ghosted_floor); }
     int tint = 0; for (int i = 0; i < W * H; i++) if (c3[i * 4] > c3[i * 4 + 1] + 30) tint++;
     printf("red-tinted pixels at alpha 0.3: %d\n", tint);
     check(tint > 200, "the wall is still there (red-tinted pixels remain, it is blended, not removed)");
