@@ -220,7 +220,8 @@ static int pin_readable(const char *p) {
     fclose(f);
     return 1;
 }
-/* 1 = the synch pin's desk file, -1 = the board owns its map, 0 = no pin.
+/* 1 = the synch pin's desk file (desk-page mode: the page rows ARE the world), 2 = source=game (the board keeps its own map, floor and 3D set; hero_01 / xelector_01 / camera_01 and
+ * the named rows come from this page), -1 = the board owns its map, 0 = no pin. Callers that mean "desk-page mode" must test == 1, never > 0.
  * A later livedesk page change does not move this view. Synch writes
  * a new pdl= line; that is the only time the desk page changes here. */
 static int page_bound_pdl(const char *house, char *out, int n) {
@@ -252,7 +253,7 @@ static int page_bound_pdl(const char *house, char *out, int n) {
     if (!t) return 0;
     fclose(t);
     snprintf(out, n, "%s", resolved);
-    return 1;
+    return strcmp(source, "game") == 0 ? 2 : 1;      /* 2 = source=game: the board keeps its own map, only the entity rows come from this page (S3b-2); 1 = desk-page mode */
 }
 static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
     *n = 0;
@@ -1110,6 +1111,15 @@ static void load_xelector(const char *root) {
                 g_xelector_y = ys[0];
             }
         }
+        {   /* source=game (S3b-2): x/y come from the page, but a page row carries no height; the board keeps its own selector level */
+            char gp[PATH_BUF];
+            if (house_root[0] && page_bound_pdl(house_root, gp, sizeof(gp)) == 2) {
+                char zp[PATH_BUF];
+                snprintf(zp, sizeof(zp), "%s/pieces/xelector_01/state.txt", root);
+                int pz = bvr_kv_int(zp, "pos_z", -9999);
+                if (pz != -9999) g_xelector_z = pz;
+            }
+        }
         g_xelector_present = 1;
         return;
     }
@@ -1270,7 +1280,7 @@ static void load_hero(const char *root) {
     g_hero_present = 0;
     char bound[PATH_BUF];
     /* A desk page does not carry the piececraft hero. */
-    if (house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0) return;
+    if (house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) == 1) return;
     int xs[4], ys[4];
     if (page_named_cells(house_root, "hero_01", xs, ys, 4) > 0) {
         char sp[PATH_BUF];
@@ -1775,7 +1785,7 @@ static int load_sprite_template(const char *fullpath, const char *id) {
 
 static void place_desk_sprites(int z) {
     char pdl[PATH_BUF];
-    if (page_bound_pdl(house_root, pdl, sizeof(pdl)) <= 0) return;
+    if (page_bound_pdl(house_root, pdl, sizeof(pdl)) != 1) return;
     FILE *f = host_fopen(pdl, "r");
     if (!f) return;
     char line[MAX_LINE];
@@ -1822,7 +1832,7 @@ static void load_phymoji_world_entities(const char *root) {
      * default_current_z() is the stable "where the world's ground is" (one below the hero's own z), not the
      * viewed slice. (Still follows the hero if the hero itself changes level; a per-entity z belongs in the
      * page row and is the real fix - see 18.pc-hq/IN-GAME-LAYOUTS-PLAN.md part 3 note.) */
-    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) == 1;
     /* A desk page is ONE floor layer (index 0), so its entities stand on top of it (z = 1). default_current_z() is the chunk
      * world's ground (hero pos_z - 1 = 16): used for a desk page it left every entity 16 voxels above the floor. */
     int z = desk_page ? 1 : default_current_z(root);
@@ -3264,7 +3274,7 @@ static int render_one_frame(void) {
     int board_w = 0, board_h = 0;
     int z_count = 0;
     char bound_pdl[PATH_BUF];
-    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) > 0;
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) == 1;
     if (desk_page) {
         /* Same rule as the 2D painter: a desk page is not the chunk
          * grid. One 16x16 floor layer, air everywhere else. */

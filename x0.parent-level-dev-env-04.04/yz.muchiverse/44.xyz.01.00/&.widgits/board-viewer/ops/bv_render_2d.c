@@ -424,6 +424,8 @@ static int pin_readable(const char *p) {
  *                   does not move this view until the next Synch.
  *   source=board — the board's own map; do not read a desk file
  *   no source, but pdl= — older Synch pin; same as source=desk
+ *   source=game  — (S3b-2) the board keeps its own map; only entity rows come from the page: returns 2.
+ * Callers that mean "desk-page mode" test == 1, never > 0.
  * Returns 1 and writes the desk path, -1 when the board owns the
  * page, 0 when this file does not decide (caller may use active_desk). */
 static int page_bound_pdl(const char *house, char *out, int n) {
@@ -455,7 +457,7 @@ static int page_bound_pdl(const char *house, char *out, int n) {
     if (!t) return 0;
     fclose(t);
     snprintf(out, n, "%s", resolved);
-    return 1;
+    return strcmp(source, "game") == 0 ? 2 : 1;      /* 2 = source=game: the board keeps its own map, only the entity rows come from this page (S3b-2); 1 = desk-page mode */
 }
 static int page_file(const char *house, char *out, int n) {
     int bound = page_bound_pdl(house, out, n);
@@ -677,7 +679,7 @@ static void load_actors(int cur_z) {
     /* A desk page is the whole list. Missing tree_small / chicken
      * means they left with the old book. Do not seed them back in,
      * and do not read the private txt files. */
-    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) == 1;
     if (!desk_page && house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
         page_seed_sprites(pdl);
     int xs[16], ys[16], n = 0;
@@ -1266,7 +1268,7 @@ int main(void) {
     load_actors(cur_z);          /* hero_01 + world_01 animals - all heights in side_mode, this z-slice otherwise */
     int side_zcount = 0;
     char bound_pdl[PATH_BUF];
-    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) > 0;
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) == 1;
     if (desk_page) {
         /* The desk page is the map. The piececraft chunk (grass, rock)
          * stays out. A 16x16 floor keeps pals off the void without
