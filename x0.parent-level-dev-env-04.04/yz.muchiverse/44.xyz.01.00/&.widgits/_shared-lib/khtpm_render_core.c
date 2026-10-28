@@ -648,7 +648,6 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
                 int l = c->style.has_left ? c->style.left : 0;
                 if (c->style.position_fixed) {
                     /* fixed: relative to viewport (window), not parent */
-                    extern int g_win_w, g_win_h;
                     css_layout_pass(c, l, t, c->w, c->h);
                 } else {
                     css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
@@ -680,7 +679,6 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
                 int t = c->style.has_top ? c->style.top : 0;
                 int l = c->style.has_left ? c->style.left : 0;
                 if (c->style.position_fixed) {
-                    extern int g_win_w, g_win_h;
                     css_layout_pass(c, l, t, c->w, c->h);
                 } else {
                     css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
@@ -736,7 +734,6 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
             int t = c->style.has_top ? c->style.top : 0;
             int l = c->style.has_left ? c->style.left : 0;
             if (c->style.position_fixed) {
-                extern int g_win_w, g_win_h;
                 css_layout_pass(c, l, t, c->w, c->h);
             } else {
                 css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
