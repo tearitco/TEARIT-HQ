@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 
 #include <EGL/egl.h>
@@ -34,250 +35,29 @@ static const char *VS_SRC =
 "  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n"
 "}\n";
 
-static const char *FS_SRC =
-"#version 300 es\n"
-"precision highp float;\n"
-"precision highp int;\n"
-"precision highp usampler3D;\n"
-"precision highp sampler3D;\n"
-"precision highp sampler2D;\n"
-"precision highp sampler2DArray;\n"
-"precision highp usampler2D;\n"
-"out vec4 o_col;\n"
-"uniform vec3  u_eye, u_fwd, u_right, u_up;\n"
-"uniform float u_focal;\n"
-"uniform vec2  u_res;\n"
-"uniform vec3  u_wext;\n"          /* world extents: (board_w, z_count, board_h) */
-"uniform highp usampler3D u_grid;\n"
-"uniform sampler2D u_leg;\n"       /* 256x1 RGBA8: .rgb flat colour, .a*255 = 0 air / layer+1 solid */
-"uniform sampler2DArray u_terr;\n" /* 16x16xN terrain emoji slices, layer per legend entry */
-"uniform vec4  u_lbbox[64];\n"     /* per-layer opaque bbox (u0,v0,u1,v1) in 0..1 */
-"uniform float u_light;\n"
-"uniform int   u_nl, u_amb_on;\n"       /* local lights (see BvGpuScene.light_*) */
-"uniform float u_amb;\n"
-"uniform vec4  u_lpos[8], u_lcol[8];\n"
-"uniform vec3  u_sky;\n"
-"uniform int   u_clear;\n"      /* 1: no sky, no parallax, missed rays alpha 0 */
-"uniform float u_fog_start, u_fog_end;\n"
-"uniform int   u_maker;\n"
-"uniform int   u_zoff;\n"
-"uniform int   u_rock;\n"
-"uniform int   u_cut, u_cuty;\n"          /* see-through cutaway (view.pdl view_cut_on): 1 = cells between the eye and u_cutp, level >= u_cuty, are blended at u_cuta */
-"uniform vec3  u_cutp;\n"
-"uniform float u_cutr, u_cuta, u_cutt, u_cutb;\n"      /* u_cutr half-width of the wall face in cells, u_cutt how far toward the camera it reaches, u_cutb levels above the feet left solid (furniture) */
-"uniform ivec2 u_mk;\n"
-"uniform sampler2D u_atlas;\n"
-"uniform highp usampler2D u_cells;\n"
-"uniform int   u_under;\n"       /* 1: u_cells holds a second block of rows (under-run tile slots, red channel) below the cells */
-"uniform sampler2D u_para;\n"
-"uniform int   u_para_on;\n"
-"uniform vec2  u_para_size;\n"
-"uniform vec2  u_para_loop;\n"
-"uniform int   u_nbox;\n"
-"uniform float u_wire_edge;\n"
-"uniform float u_wire_thin;\n"
-"uniform vec3  u_bmin[128];\n"
-"uniform vec3  u_bmax[128];\n"
-"uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
-"uniform int   u_bmdl[128];\n"     /* >=0 -> raymarch phymoji model u_bmdl[i] inside the box */
-"uniform highp sampler3D u_mdl;\n" /* 32x32x(16*80): model m at z [m*16, m*16+16) */
-"uniform ivec3 u_mdim[80];\n"      /* per-model (lx,ly,lz) counts; keep equal to BV_GPU_MAX_MODEL */
-"\n"
-"bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
-"  float tmin = -1e30, tmax = 1e30; face = -1;\n"
-"  for (int i = 0; i < 3; i++) {\n"
-"    float o = ro[i], d = rd[i];\n"
-"    if (abs(d) < 1e-9) { if (o < bn[i] || o > bx[i]) return false; }\n"
-"    else {\n"
-"      float t0 = (bn[i]-o)/d, t1 = (bx[i]-o)/d; int f0 = i*2;\n"
-"      if (t0 > t1) { float tt=t0; t0=t1; t1=tt; f0 = i*2+1; }\n"
-"      if (t0 > tmin) { tmin = t0; face = f0; }\n"
-"      if (t1 < tmax) tmax = t1;\n"
-"      if (tmin > tmax) return false;\n"
-"    }\n"
-"  }\n"
-"  if (tmax < 0.0) return false;\n"
-"  t = tmin < 0.0 ? 0.0 : tmin;\n"
-"  return true;\n"
-"}\n"
-"\n"
-"bool is_ghost(ivec3 c) {\n"
-"  if (u_cut == 0 || float(c.y) < float(u_cuty) + u_cutb) return false;\n"
-"  vec2 h = vec2(float(c.x) + 0.5 - u_cutp.x, float(c.z) + 0.5 - u_cutp.z);\n"
-"  vec2 e = u_eye.xz - u_cutp.xz;\n"
-"  float el = length(e);\n"
-"  if (el > 0.5) {\n"                                        /* the wall face toward the camera: in front of the character, as wide as the room, up to u_cutt cells out (never past the eye) */
-"    vec2 d = e / el;\n"
-"    float t = dot(h, d), s = dot(h, vec2(-d.y, d.x));\n"
-"    if (abs(s) < u_cutr && t > 0.5 && t < min(u_cutt, el + 0.5)) return true;\n"
-"  }\n"
-"  return float(c.y) >= float(u_cuty) + 3.0 && abs(h.x) < u_cutr && abs(h.y) < u_cutr;\n"   /* the roof over the room: well above head height */
-"}\n"
-"\n"
-"bool on_edge(vec3 hp, vec3 bn, vec3 bx, float e) {\n"
-"  vec3 q = min(abs(hp - bn), abs(hp - bx));\n"
-"  return (int(q.x < e) + int(q.y < e) + int(q.z < e)) >= 2;\n"
-"}\n"
-"\n"
-"void main() {\n"
-"  float a = (u_res.x * 0.5 - gl_FragCoord.x) / u_focal;\n" /* desk +x is screen-right; this facing would put it on the left */
-"  float b = (u_res.y * 0.5 - gl_FragCoord.y) / u_focal;\n"   /* flipped: GL row 0 = image top, so glReadPixels needs no row-flip */
-"  vec3 rd = normalize(u_fwd + a * u_right + b * u_up);\n"
-"  vec3 ro = u_eye;\n"
-"\n"
-"  float bestT = 1e30;\n"
-"  vec3  col   = u_sky;\n"
-"  bool  hit = false, self_lit = false;\n"
-"  int   face = -1;\n"
-"  vec3  gacc = vec3(0.0);\n"
-"  float gA = 0.0;\n"
-"\n"
-"  for (int i = 0; i < u_nbox; i++) {\n"
-"    float t; int f;\n"
-"    if (!slab(ro, rd, u_bmin[i], u_bmax[i], t, f) || t >= bestT) continue;\n"
-"    int raw = u_bmdl[i];\n"
-"    bool swp = raw >= 128;\n" /* billboard facing world X: sprite columns run along Z */
-"    int mdl = swp ? raw - 128 : raw;\n"
-"    if (mdl < 0) {\n"
-"      bool wire = (u_bcol[i].a > 0.12 && u_bcol[i].a < 0.4);\n"
-"      float we = (u_bcol[i].a < 0.2) ? u_wire_thin : u_wire_edge;\n"
-"      if (wire && !on_edge(ro + rd * t, u_bmin[i], u_bmax[i], we)) continue;\n"
-"      bestT = t; col = u_bcol[i].rgb; hit = true;\n"
-"      self_lit = (u_bcol[i].a < 0.5); face = f;\n"
-"      continue;\n"
-"    }\n"
-"    /* raymarch the dense model grid inside the box (fixed sub-cell step) */\n"
-"    vec3 bsz = max(u_bmax[i] - u_bmin[i], vec3(1e-4));\n"
-"    ivec3 md0 = u_mdim[mdl];\n"
-"    ivec3 md = swp ? md0.zyx : md0;\n"
-"    vec3  cellw = bsz / vec3(md);\n"
-"    float mn = min(min(cellw.x, cellw.y), cellw.z);\n"
-"    float stepT = 0.5 * mn / max(length(rd), 1e-4);\n"
-"    float mt = max(t, 0.0) + stepT * 0.5;\n"
-"    for (int k = 0; k < 220; k++) {\n"
-"      vec3 wp = ro + rd * mt;\n"
-"      vec3 lf = (wp - u_bmin[i]) / bsz;\n"
-"      if (lf.x < -0.02 || lf.y < -0.02 || lf.z < -0.02 ||\n"
-"          lf.x > 1.02 || lf.y > 1.02 || lf.z > 1.02) break;\n"
-"      ivec3 li0 = clamp(ivec3(lf * vec3(md)), ivec3(0), md - 1);\n"
-"      ivec3 li = swp ? li0.zyx : li0;\n"
-"      vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 16 + li.z), 0);\n"
-"      if (mv.a > 0.5) {\n"
-"        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = (u_bcol[i].a < 0.5); face = f; }\n"
-"        break;\n"
-"      }\n"
-"      mt += stepT;\n"
-"    }\n"
-"  }\n"
-"\n"
-"  float bt; int bf;\n"
-"  if (slab(ro, rd, vec3(-1e-3), u_wext + vec3(1e-3), bt, bf)) {\n"
-"    float tcur = max(bt, 0.0);\n"
-"    vec3  p = ro + rd * (tcur + 1e-4);\n"
-"    ivec3 c = clamp(ivec3(floor(p)), ivec3(0), ivec3(u_wext) - 1);\n"
-"    ivec3 st = ivec3(sign(rd));\n"
-"    vec3  tdelta = abs(1.0 / rd);\n"
-"    vec3  tmax;\n"
-"    for (int i = 0; i < 3; i++) {\n"
-"      float nb = (st[i] > 0) ? float(c[i] + 1) : float(c[i]);\n"
-"      tmax[i] = (abs(rd[i]) < 1e-9) ? 1e30 : (nb - ro[i]) / rd[i];\n"
-"    }\n"
-"    int ax = bf / 2;\n"
-"    for (int it = 0; it < 96; it++) {\n"
-"      if (u_fog_end > u_fog_start && tcur > u_fog_end) break;\n"
-"      if (c.x < 0 || c.y < 0 || c.z < 0 ||\n"
-"          c.x >= int(u_wext.x) || c.y >= int(u_wext.y) || c.z >= int(u_wext.z)) break;\n"
-"      uint g = texelFetch(u_grid, ivec3(c.x, c.z, c.y), 0).r;\n"   /* (col,row,lvl) */
-"      vec4 L = texelFetch(u_leg, ivec2(int(g), 0), 0);\n"
-"      int lay = int(L.a * 255.0 + 0.5) - 1;\n"                     /* -1 = air */
-"      if (lay >= 0) {\n"
-"        bool ghosted = false;\n"
-"        /* real per-cell slab test for the true hit face + t (the DDA\n"
-"         * step axis is wrong for the first cell - it's the board-bbox\n"
-"         * entry face, not this voxel's). Matches the CPU DDA. */\n"
-"        float ct; int cf;\n"
-"        if (slab(ro, rd, vec3(c), vec3(c) + 1.0, ct, cf) && ct < bestT) {\n"
-"          float b0 = bestT; bool h0 = hit, s0 = self_lit; int f0 = face; vec3 c0 = col;\n"
-"          bestT = ct; hit = true; self_lit = false; face = cf;\n"
-"          vec3 wp = ro + rd * ct;\n"
-"          vec3 fr = wp - vec3(c);\n"
-"          vec2 uv;\n"
-"          if (cf == 2 || cf == 3)      uv = vec2(fr.x, fr.z);\n"
-"          else if (cf == 4 || cf == 5) uv = vec2(fr.x, 1.0 - fr.y);\n"
-"          else                         uv = vec2(fr.z, 1.0 - fr.y);\n"
-"          vec4 bb = u_lbbox[lay];\n"
-"          if (bb.z <= bb.x) bb = vec4(0.0, 0.0, 1.0, 1.0);\n"
-"          vec2 tuv = bb.xy + clamp(uv, 0.0, 0.999) * (bb.zw - bb.xy);\n"
-"          ivec2 ti = clamp(ivec2(tuv * 16.0), ivec2(0), ivec2(15));\n"
-"          vec4 tx = texelFetch(u_terr, ivec3(ti, lay), 0);\n"
-"          col = (tx.a > 0.04) ? tx.rgb : L.rgb;\n"
-"          if (u_maker != 0) {\n"
-"            uvec2 sl = texelFetch(u_cells, ivec2(c.x, c.z), 0).rg;\n"
-"            /* A cell with both a top tile and a different side tile is furniture:\n"
-"               the top face is the picture, the sides are the extruded edge.\n"
-"               Walls keep the old split (floor on y=0, wall art above). */\n"
-"            uint slot = (c.y <= u_zoff) ? sl.x : sl.y;\n"
-"            if (c.y < u_zoff && u_rock > 0 && cf != 3) slot = uint(u_rock);\n"       /* the top face of a SUNK column (nothing above it) keeps the cell's own tile; hung blocks under a floor are never hit from above */
-"            if (sl.x != 0u && sl.y != 0u && sl.x != sl.y) slot = (cf == 3) ? sl.x : sl.y;\n"
-"            if (u_under != 0 && c.y < u_zoff - 1) { uint us = texelFetch(u_cells, ivec2(c.x, c.z + int(u_wext.z)), 0).r; if (us != 0u) slot = us; }\n"      /* the second run under a hovering hull: its own tile on every face */
-"            ivec2 ap = ivec2(int(slot) % u_mk.x, int(slot) / u_mk.x) * u_mk.y + ivec2(clamp(uv, 0.0, 0.999) * float(u_mk.y));\n"
-"            vec4 at = texelFetch(u_atlas, ap, 0);\n"
-"            if ((slot == 0u || at.a <= 0.5) && c.y > u_zoff) {\n"
-"              slot = sl.x;\n"                     /* transparent wall tile (prop): show the floor tile under it, not a black box */
-"              ap = ivec2(int(slot) % u_mk.x, int(slot) / u_mk.x) * u_mk.y + ivec2(clamp(uv, 0.0, 0.999) * float(u_mk.y));\n"
-"              at = texelFetch(u_atlas, ap, 0);\n"
-"            }\n"
-"            col = (slot != 0u && at.a > 0.5) ? at.rgb : vec3(0.10, 0.10, 0.12);\n"
-"            if (c.y < u_zoff && u_rock <= 0 && cf != 3) col *= vec3(0.62, 0.50, 0.42);\n"       /* hung blocks with no rock tile: earthy tint */
-"          }\n"
-"          if (is_ghost(c) && gA < 0.97) {\n"
-"            vec3 gc = col * (cf != 3 ? 0.75 : 1.0) * vec3(u_amb_on != 0 ? u_amb : u_light);\n"
-"            if (gA < 0.001) { gacc = u_cuta * gc; gA = u_cuta; }\n"      /* only the first blended cell of a ray shows: a wall face stays one even glass, however many cells deep */
-"            bestT = b0; hit = h0; self_lit = s0; face = f0; col = c0; ghosted = true;\n"
-"          }\n"
-"        }\n"
-"        if (!ghosted) break;\n"
-"      }\n"
-"      if (tmax.x < tmax.y) { if (tmax.x < tmax.z) ax = 0; else ax = 2; }\n"
-"      else               { if (tmax.y < tmax.z) ax = 1; else ax = 2; }\n"
-"      tcur = tmax[ax];\n"
-"      c[ax]   += st[ax];\n"
-"      tmax[ax] += tdelta[ax];\n"
-"    }\n"
-"  }\n"
-"\n"
-"  /* Missed rays show the whole parallax picture. A screen-pixel\n"
-"   * fetch only ever showed two rows, which wrapped as stripes.\n"
-"   * u and v come from the ray that was already cast. This does not\n"
-"   * write the camera. */\n"
-"  if (!hit && u_para_on != 0 && u_clear == 0) {\n"
-"    vec2 sz = max(u_para_size, vec2(1.0));\n"
-"    float u = atan(rd.x, rd.z) / 6.2831853 + 0.5;\n"
-"    float v = clamp(0.5 - rd.y * 0.5, 0.0, 0.999);\n"
-"    if (u_para_loop.x < 0.5) u = clamp(u, 0.0, 0.999);\n"
-"    else u = fract(u);\n"
-"    ivec2 p = ivec2(clamp(vec2(u, v) * sz, vec2(0.0), sz - 1.0));\n"
-"    col = texelFetch(u_para, p, 0).rgb;\n"
-"  }\n"
-"  if (hit && !self_lit) {\n"
-"    if (face != 3) col *= 0.75;\n"   /* top = face 3 (Y slab, swapped case) - matches bv_render_3d CPU */
-"    vec3 L = vec3(u_amb_on != 0 ? u_amb : u_light);\n"
-"    if (u_nl > 0) {\n"
-"      vec3 hp = ro + rd * bestT;\n"
-"      for (int i = 0; i < u_nl; i++) { float f = clamp(1.0 - distance(hp, u_lpos[i].xyz) / max(u_lpos[i].w, 1e-3), 0.0, 1.0); L += u_lcol[i].rgb * (u_lcol[i].a * f * f); }\n"
-"    }\n"
-"    col *= L;\n"
-"  }\n"
-"  if (gA > 0.0) col = gacc + (1.0 - gA) * col;\n"
-"  float fa = (!hit && u_clear != 0) ? 0.0 : 1.0;\n"
-"  if (gA > 0.0) fa = max(fa, gA);\n"
-"  if (hit && u_fog_end > u_fog_start) {\n"
-"    float f = smoothstep(u_fog_start, u_fog_end, bestT);\n"
-"    if (u_clear != 0) fa = 1.0 - f;\n"
-"    else col = mix(col, u_sky, f);\n"
-"  }\n"
-"  o_col = vec4(clamp(col, 0.0, 1.0), fa);\n"
-"}\n";
+/* The fragment shader is its own file, ops/bv_raymarch.frag (owner 2026-10-27: the shader in a file of its own, one source, edited and relaunched without a C rebuild,
+ * like arrow_config.txt). It is read when the GL context is created. Where: BV_SHADER_FILE, else the path bv_render_3d gives bv_gpu_set_shader_path (the house copy), else
+ * next to the running binary (../bv_raymarch.frag, ./bv_raymarch.frag), else ./bv_raymarch.frag or ./ops/bv_raymarch.frag from the working directory. Not found = this
+ * function says so on stderr and the GPU path is off (the caller falls back to the CPU raymarch). */
+static char s_fs_path[4096];
+void bv_gpu_set_shader_path(const char *path) { snprintf(s_fs_path, sizeof s_fs_path, "%s", path ? path : ""); }
+static char *load_fs(void) {
+    char cand[6][4200]; int n = 0; const char *env = getenv("BV_SHADER_FILE");
+    if (env && env[0]) snprintf(cand[n++], sizeof cand[0], "%s", env);
+    if (s_fs_path[0]) snprintf(cand[n++], sizeof cand[0], "%s", s_fs_path);
+    { char exe[4096]; ssize_t k = readlink("/proc/self/exe", exe, sizeof exe - 1);
+      if (k > 0) { exe[k] = 0; char *sl = strrchr(exe, '/'); if (sl) { *sl = 0; snprintf(cand[n++], sizeof cand[0], "%s/../bv_raymarch.frag", exe); snprintf(cand[n++], sizeof cand[0], "%s/bv_raymarch.frag", exe); } } }
+    snprintf(cand[n++], sizeof cand[0], "bv_raymarch.frag"); snprintf(cand[n++], sizeof cand[0], "ops/bv_raymarch.frag");
+    for (int i = 0; i < n; i++) {
+        FILE *f = fopen(cand[i], "rb"); if (!f) continue;
+        fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
+        if (sz < 100 || sz > (1 << 20)) { fclose(f); continue; }
+        char *t = malloc((size_t)sz + 1); if (!t) { fclose(f); return NULL; }
+        size_t got = fread(t, 1, (size_t)sz, f); fclose(f); t[got] = 0; return t;
+    }
+    fprintf(stderr, "bv_gpu: bv_raymarch.frag not found (BV_SHADER_FILE, bv_gpu_set_shader_path, next to the binary, ./ or ./ops/): GPU path off\n");
+    return NULL;
+}
 
 /* ---- resident state (persistent mode) ---- */
 static int        s_persist = 0;
@@ -350,7 +130,9 @@ static int gl_ensure_context(void) {
     }
 
     GLuint vs = compile(GL_VERTEX_SHADER, VS_SRC);
-    GLuint fs = compile(GL_FRAGMENT_SHADER, FS_SRC);
+    char *fs_text = load_fs();
+    GLuint fs = fs_text ? compile(GL_FRAGMENT_SHADER, fs_text) : 0;
+    free(fs_text);
     if (!vs || !fs) { eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
                       eglDestroyContext(dpy, ctx); eglTerminate(dpy); return 1; }
     GLuint prog = glCreateProgram();

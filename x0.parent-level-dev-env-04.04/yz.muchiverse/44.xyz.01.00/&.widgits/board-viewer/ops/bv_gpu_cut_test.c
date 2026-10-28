@@ -14,7 +14,8 @@ static void scene(BvGpuScene *s) {
     memset(s, 0, sizeof *s); s->w = W; s->h = H; s->focal = (H / 2.0f) / 0.8391f; s->board_w = 8; s->board_h = 8; s->z_count = 4;
     static unsigned char grid[8 * 8 * 4]; memset(grid, 0, sizeof grid); for (int i = 0; i < 64; i++) grid[i] = 's';
     for (int lvl = 1; lvl < 4; lvl++) for (int x = 0; x <= 7; x++) grid[x + 2 * 8 + lvl * 64] = 'w';      /* the wall face: all of row 2, levels 1..3 */
-    s->grid = grid; s->legend_n = 2; s->legend_glyph[0] = 's'; s->legend_glyph[1] = 'w';
+    grid[6 + 3 * 8 + 1 * 64] = 'c';      /* a crate: row 3, column 6, ONE level high (not a wall column) */
+    s->grid = grid; s->legend_n = 3; s->legend_glyph[0] = 's'; s->legend_glyph[1] = 'w'; s->legend_glyph[2] = 'c'; s->legend_rgb[2][0] = 0.9f; s->legend_rgb[2][1] = 0.9f; s->legend_rgb[2][2] = 0.1f;
     s->legend_rgb[0][0] = s->legend_rgb[0][1] = s->legend_rgb[0][2] = 0.8f; s->legend_rgb[1][0] = 0.9f; s->legend_rgb[1][1] = 0.1f; s->legend_rgb[1][2] = 0.1f;
     s->light_level = 1.0f; s->sky[0] = 0.1f; s->sky[1] = 0.1f; s->sky[2] = 0.2f; s->eye[0] = 4; s->eye[1] = 8; s->eye[2] = -6;
     float fl = 1.0f / 1.118f; s->fwd[0] = 0; s->fwd[1] = -0.5f * fl; s->fwd[2] = 1.0f * fl; s->right[0] = 1;
@@ -41,6 +42,12 @@ int main(int argc, char **argv) {
     int more = 0, redc3 = 0, redcw = 0; for (int i = 0; i < W * H; i++) { if (memcmp(cw + i * 4, c3 + i * 4, 4)) more++; if (c3[i * 4] > 150 && c3[i * 4 + 1] < 60) redc3++; if (cw[i * 4] > 150 && cw[i * 4 + 1] < 60) redcw++; }
     printf("half-width 1.6: %d solid-red pixels left, half-width 8: %d; %d pixels differ\n", redc3, redcw, more);
     check(more > 150 && redcw < redc3, "a wider half-width blends more of the same wall (the outer columns stop being solid red)");
+    static unsigned char cb0[W * H * 4], cb1[W * H * 4]; int y0 = 0, y1 = 0;
+    scene(s); cut(s, 1, 0.3f); s->cut_r = 8.0f; s->cut_base = 0; bv_gpu_raymarch(s, cb0);
+    scene(s); cut(s, 1, 0.3f); s->cut_r = 8.0f; s->cut_base = 1; bv_gpu_raymarch(s, cb1);
+    for (int i = 0; i < W * H; i++) { if (cb0[i * 4] > 150 && cb0[i * 4 + 1] > 150 && cb0[i * 4 + 2] < 80) y0++; if (cb1[i * 4] > 150 && cb1[i * 4 + 1] > 150 && cb1[i * 4 + 2] < 80) y1++; }
+    printf("solid-yellow crate pixels: wall-height rule off %d, on %d\n", y0, y1);
+    check(y1 > 30 && y0 < y1, "wall-height rule (cut_base 1): the low crate stays solid, the tall wall is still blended; with the rule off the crate is blended too");
     check(redc3 > 100, "half-width 1.6 leaves the outer wall columns solid (the face is limited to the half-width)");
     int diff_floor = 0; for (int y = H - 20; y < H; y++) for (int x = 0; x < W; x++) if (memcmp(c3 + (y * W + x) * 4, ref + (y * W + x) * 4, 4)) diff_floor++;
     check(diff_floor == 0, "the floor below the character is not ghosted");

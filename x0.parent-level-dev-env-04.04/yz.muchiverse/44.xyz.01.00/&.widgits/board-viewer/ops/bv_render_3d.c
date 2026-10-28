@@ -4283,7 +4283,7 @@ static int render_one_frame(void) {
         }
         /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can
          * see through the building"). view.pdl (this map) or #.desktop/hq_ui.pdl: view_cut_on=1, view_cut_alpha=<percent, default 30>,
-         * view_cut_radius=<half-width of the wall face in tenths of a cell, default 80>, view_cut_depth=<cells toward the camera, default 12>, view_cut_base=<levels left solid above the feet, default 1>. Cells at or above the character's level inside a tube from the eye to the character
+         * view_cut_radius=<half-width of the wall face in tenths of a cell, default 80>, view_cut_depth=<cells toward the camera, default 12>, view_cut_base=<levels above the feet a column must reach to count as a wall, default 1; 0 = no height test>. Cells at or above the character's level inside a tube from the eye to the character
          * are blended by the GPU shader (u_cut*); off by default. The target is the hero when one is possessed, else the xelector (painted or emoji-tile map): in rpg-space the selector sits on the controlled character. */
         {
             /* the three keys are read from two files; look at them once a second, not every frame (a frame is a few ms, a read is a file open) */
@@ -5108,6 +5108,7 @@ int main(int argc, char **argv) {
     bv_gpu_set_persistent(1);
 
     resolve_root();                       /* sets project_root */
+    if (house_root[0]) { char sp[PATH_BUF]; snprintf(sp, sizeof(sp), "%s/&.widgits/board-viewer/ops/bv_raymarch.frag", house_root); bv_gpu_set_shader_path(sp); }      /* the house copy of the shader file; the session binary copy is not next to it */
     snprintf(g_exit_log, sizeof g_exit_log, "%s/pieces/display/.engine_exit.log", project_root); bv_put_num(g_exit_pidtxt, (long)getpid()); snprintf(g_exit_root, sizeof g_exit_root, "%s", project_root);
     { int cs[] = { SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL }; for (unsigned i = 0; i < sizeof cs / sizeof cs[0]; i++) signal(cs[i], bv_death_signal); }
     atexit(bv_death_atexit);

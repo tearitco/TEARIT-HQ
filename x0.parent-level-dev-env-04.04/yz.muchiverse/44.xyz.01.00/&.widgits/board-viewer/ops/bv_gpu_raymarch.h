@@ -89,7 +89,7 @@ typedef struct {
     int   cut_on, cut_y;         /* see-through cutaway: cells with level >= cut_y between the eye and cut_pos are blended over what is behind them */
     float cut_pos[3], cut_r, cut_a;  /* cut_pos = world point to keep visible (the character); cut_r = half-width of the blended wall face in cells (0 = 8); cut_a = opacity of the blended cells (0 = 0.3) */
     float cut_depth;            /* how many cells toward the camera the face reaches (0 = 12) */
-    int   cut_base;             /* levels above cut_y that stay solid, so furniture is not blended (0 = none) */
+    int   cut_base;             /* a column must reach this many levels above cut_y to count as a wall (the map's own extrusion height); 0 = no height test */
     int   box_n;
     BvGpuBox box[BV_GPU_MAX_BOX];
 
@@ -108,6 +108,7 @@ int  bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out);
 /* Keep the EGL context + GL objects alive across bv_gpu_raymarch()
  * calls (daemon mode). Passing 0 tears them down. */
 void bv_gpu_set_persistent(int on);
+void bv_gpu_set_shader_path(const char *path);   /* where ops/bv_raymarch.frag is (the fragment shader lives in that file, read when the GL context is created; BV_SHADER_FILE overrides) */
 
 /* Explicit teardown (called on daemon exit; also implied by
  * set_persistent(0)). Safe to call when nothing is initialised. */
