@@ -39,10 +39,18 @@ static void map_branch(void) {
     png_set_IHDR(pg, in, 192, 144, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT); png_write_info(pg, in);
     static unsigned char row[192 * 4]; for (int x = 0; x < 192; x++) { row[x * 4] = row[x * 4 + 1] = row[x * 4 + 2] = 90; row[x * 4 + 3] = 255; } for (int y = 0; y < 144; y++) png_write_row(pg, row);
     png_write_end(pg, NULL); png_destroy_write_struct(&pg, &in); fclose(f); }
-static void zoom(int z) { char b[600]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=3\nselector_y=3\nview_2d_zoom=%d\n", dir, z); wr("pieces/system/bv_state.txt", b); }
+static int pan_x = 0, pan_y = 0;
+static void zoom(int z) { char b[700]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=3\nselector_y=3\nview_2d_zoom=%d\nview_2d_pan_x=%d\nview_2d_pan_y=%d\n", dir, z, pan_x, pan_y); wr("pieces/system/bv_state.txt", b); }
+static void minimap_setting(int on) { char b[64]; snprintf(b, sizeof b, "VIEW | view_2d_minimap | %d\n", on); wr("pieces/system/maps/m/view.pdl", b); }
+static int yellows(const unsigned char *f) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] < 120 && p[1] > 245 && p[2] > 245) n++; } return n; }
 static void piece_at(int x, int y) { char t[320]; snprintf(t, sizeof t, "entity_type=vehicle\ndesk=d1\npos_x=%d\npos_y=%d\npos_z=0\nsize_x=2\nsize_y=2\nsize_h=1\n", x, y); wr("pieces/veh_1/state.txt", t);
     wr("pieces/veh_1/model.txt", "dim 2 1 2\n0 0 0 255 0 0\n1 0 0 255 0 0\n0 0 1 255 0 0\n1 0 1 255 0 0\n"); }
 static int reds(const unsigned char *f) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] > 200 && p[1] < 60 && p[2] < 60) n++; } return n; }
+/* the pan KEYS through the real input op (env BV2D_INPUT_BIN, default ops/+x/bv_menu_input.+x; PRISC_PROJECT_ROOT = the scratch project): Shift+W/A/S/D = 87 65 83 68 move the 2D view, ';' (59) drops the pan, only in 2D */
+static int input_keys(const char *keys) { const char *bin = getenv("BV2D_INPUT_BIN"); if (!bin) bin = "ops/+x/bv_menu_input.+x"; char abs[800]; if (bin[0] != '/') { char cw[512]; if (!getcwd(cw, sizeof cw)) return 2; snprintf(abs, sizeof abs, "%s/%s", cw, bin); } else snprintf(abs, sizeof abs, "%s", bin);
+    char cmd[1700]; snprintf(cmd, sizeof cmd, "cd '%s' && PRISC_PROJECT_ROOT='%s' timeout 20 '%s' %s >/dev/null 2>&1", dir, dir, abs, keys); return system(cmd) == 0 ? 0 : 2; }
+static int state_int(const char *key) { char p[800], l[200]; snprintf(p, sizeof p, "%s/pieces/system/bv_state.txt", dir); FILE *f = fopen(p, "r"); if (!f) return -9999; size_t kl = strlen(key); int v = 0; while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
+static void state_mode(int m) { char b[600]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=%d\nselector_x=3\nselector_y=3\n", dir, m); wr("pieces/system/bv_state.txt", b); }
 static void check(int ok, const char *what) { printf("%s: %s\n", ok ? "ok  " : "FAIL", what); if (!ok) bad = 1; }
 static void count(int *red, int *blue, int *green, int *outside_diff) {
     int x0 = (2 - ox) * cell, y0 = (2 - oy) * cell, x1 = x0 + 2 * cell, y1 = y0 + 2 * cell; *red = *blue = *green = *outside_diff = 0;
@@ -61,7 +69,20 @@ int main(int argc, char **argv) {
     /* the desk-picture branch: a piece inside the page is drawn; a piece outside the page shows only at zoom -1 (the whole scene); zoom -1 with no piece must not break the frame */
     nopiece(); map_branch(); zoom(0); if (render(base)) return 2; check(reds(base) == 0, "desk picture, no piece: no red");
     piece_at(2, 2); zoom(0); if (render(cur)) return 2; r = reds(cur); printf("desk picture, piece on the page: red %d\n", r); check(r > 5000, "desk-picture branch: a piece on the page is drawn");
-    piece_at(12, 2); zoom(0); if (render(cur)) return 2; check(reds(cur) == 0, "a piece outside the page is not visible at fit-page zoom 0");
+    piece_at(12, 2); minimap_setting(0); zoom(0); if (render(cur)) return 2; check(reds(cur) == 0, "a piece outside the page is not visible in the main view at fit-page zoom 0 (minimap off here: with it on the piece shows in the minimap)");
     zoom(-1); if (render(cur)) return 2; r = reds(cur); printf("desk picture, piece off the page, zoom -1: red %d\n", r); check(r > 300, "zoom -1 (whole scene) shows the piece that lies outside the page");
     nopiece(); zoom(-1); if (render(cur)) return 2; zoom(0); if (render(base)) return 2; check(memcmp(cur, base, sizeof cur) == 0, "zoom -1 with no piece looks exactly like fit-page (no crash, no change)");
+    /* minimap + detached pan (owner 2026-10-27): a minimap shows when part of the scene is off screen; Shift+W/A/S/D pan (state view_2d_pan_x/y) moves the view over the whole scene */
+    nopiece(); minimap_setting(1); pan_x = pan_y = 0; zoom(0); if (render(cur)) return 2; check(yellows(cur) == 0, "minimap: none when the whole scene is on screen (page only)");
+    piece_at(12, 2); zoom(0); if (render(cur)) return 2; r = yellows(cur); printf("minimap, piece off the page: view-outline pixels %d\n", r); check(r > 20, "minimap: shown when a piece lies outside the view (cyan view outline)");
+    zoom(-1); if (render(cur)) return 2; check(yellows(cur) == 0, "minimap: gone again at zoom -1 (the whole scene fits)");
+    minimap_setting(0); zoom(0); if (render(cur)) return 2; check(yellows(cur) == 0, "minimap: VIEW | view_2d_minimap | 0 turns it off");
+    pan_x = 8; zoom(0); if (render(cur)) return 2; r = reds(cur); printf("pan x +8 (minimap off): red %d\n", r); check(r > 5000, "pan: the view moves over to a piece outside the page");
+    pan_x = 100; zoom(0); if (render(base)) return 2; check(memcmp(base, cur, sizeof cur) == 0, "pan: a far pan is clamped to the scene edge (same frame as pan 8)");
+    pan_x = pan_y = 0; zoom(0); if (render(base)) return 2; check(reds(base) == 0, "pan: back to 0 follows the xelector again (piece out of view)");
+    /* the pan keys through the real input op */
+    state_mode(0); if (input_keys("68 68 68")) return 2; check(state_int("view_2d_pan_x") == 3, "keys: Shift+D three times pans the 2D view +3 cells");
+    if (input_keys("87")) return 2; check(state_int("view_2d_pan_y") == -1, "keys: Shift+W pans -1 cell up");
+    if (input_keys("59")) return 2; check(state_int("view_2d_pan_x") == 0 && state_int("view_2d_pan_y") == 0, "keys: ; drops the pan (follow the xelector again)");
+    state_mode(1); if (input_keys("68 68")) return 2; check(state_int("view_2d_pan_x") == 0, "keys: in 3D (render_mode 1) the same keys do not pan the 2D view");
     return bad; }

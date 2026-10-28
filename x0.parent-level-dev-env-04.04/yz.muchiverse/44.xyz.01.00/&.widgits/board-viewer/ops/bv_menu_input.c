@@ -817,6 +817,16 @@ static int handle_one_key(int key) {
 
     /* '+' / '=' (43 / 61) and '-' (45) - zoom of the 2D tile view, every board (owner 2026-10-22: "2d default is fit map to screen", "+- for zoom"). view_2d_zoom -1 = fit the whole scene (page + entity pieces), 0 = fit the whole page
      * (the renderer's default), 1..5 = 125, 150, 200, 300, 400 percent of that. Only while the view is 2D (render_mode 0); in 3D the keys fall through. */
+    /* 2D detached pan (owner 2026-10-27: "camera should be able to navigate that view in 2d"): Shift+W/A/S/D (87 65 83 68) move the 2D view one cell off the cell it follows (the xelector), view_2d_pan_x / view_2d_pan_y in the
+     * state file; the plain w/a/s/d keep stepping the xelector. ';' (59) drops the pan (follow again). Only while the view is 2D (render_mode 0). The renderer clamps the panned view to the whole scene (page + entity pieces). */
+    if ((key == 87 || key == 65 || key == 83 || key == 68 || key == 59) && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
+        int px = read_kv_int(state_path, "view_2d_pan_x", 0), py = read_kv_int(state_path, "view_2d_pan_y", 0);
+        if (key == 59) { if (px || py) { write_kv_int(state_path, "view_2d_pan_x", 0); write_kv_int(state_path, "view_2d_pan_y", 0); bump_screen_changed(project_root); } }
+        else {
+            if (key == 87) py -= 1; else if (key == 83) py += 1; else if (key == 65) px -= 1; else px += 1;
+            px = clamp_int(px, -128, 128); py = clamp_int(py, -128, 128); write_kv_int(state_path, "view_2d_pan_x", px); write_kv_int(state_path, "view_2d_pan_y", py);
+            bump_screen_changed(project_root); return 0; }
+    }
     if ((key == 43 || key == 61 || key == 45) && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
         char zs[16] = ""; read_kv_str(state_path, "view_2d_zoom", zs, sizeof(zs));
         int z = atoi(zs) + (key == 45 ? -1 : 1); if (z < -1) z = -1; if (z > 5) z = 5;      /* -1 = the whole scene (the page and every entity piece), 0 = fit the page (the 2D renderer reads it) */

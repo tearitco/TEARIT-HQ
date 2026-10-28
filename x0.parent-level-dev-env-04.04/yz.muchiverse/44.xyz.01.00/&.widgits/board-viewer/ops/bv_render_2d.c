@@ -1177,6 +1177,28 @@ static void p2d_load(const char *root, const char *desk) {
     }
 }
 
+/* the scene = the page (0,0 .. cols,rows) and every piece's footprint, in cells */
+static void p2d_scene(int cols, int rows, float *x0, float *y0, float *x1, float *y1) {
+    *x0 = 0; *y0 = 0; *x1 = (float)cols; *y1 = (float)rows;
+    for (int k = 0; k < g_np2d; k++) { if (g_p2d[k].x < *x0) *x0 = g_p2d[k].x; if (g_p2d[k].y < *y0) *y0 = g_p2d[k].y; if (g_p2d[k].x + g_p2d[k].sx > *x1) *x1 = g_p2d[k].x + g_p2d[k].sx; if (g_p2d[k].y + g_p2d[k].sy > *y1) *y1 = g_p2d[k].y + g_p2d[k].sy; } }
+/* MINIMAP in 2D (owner 2026-10-27: "there should be a minimap in 2d if the map is bigger than the view"): the whole scene at a few pixels per cell in the top-right corner - the page as its own picture, every piece as its average colour, the
+ * visible part as a yellow outline, the followed cell (xelector) as a red dot. Drawn only when part of the scene is outside the view. view.pdl `VIEW | view_2d_minimap | 0` turns it off. (vx0,vy0,vx1,vy1) = the visible rectangle in cells. */
+static void p2d_minimap(unsigned char *px, int W, int H, int cols, int rows, const unsigned char *map_px, int map_w, int map_h, int map_tile, float vx0, float vy0, float vx1, float vy1, int selx, int sely) {
+    float sx0, sy0, sx1, sy1; p2d_scene(cols, rows, &sx0, &sy0, &sx1, &sy1);
+    if (vx0 <= sx0 + 0.01f && vy0 <= sy0 + 0.01f && vx1 >= sx1 - 0.01f && vy1 >= sy1 - 0.01f) return;      /* the whole scene is on screen: no minimap */
+    float sw = sx1 - sx0, sh = sy1 - sy0; int mw, mh; float sc = 200.0f / sw; if (150.0f / sh < sc) sc = 150.0f / sh; if (sc > 8.0f) sc = 8.0f; if (sc < 1.0f) sc = 1.0f; mw = (int)(sw * sc); mh = (int)(sh * sc);
+    if (mw + 12 > W || mh + 12 > H) return; int ox = W - mw - 8, oy = 8;
+    for (int y = -2; y < mh + 2; y++) for (int x = -2; x < mw + 2; x++) { unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4; int edge = x < 0 || y < 0 || x >= mw || y >= mh; d[0] = edge ? 200 : 10; d[1] = edge ? 200 : 10; d[2] = edge ? 205 : 16; d[3] = 255; }
+    for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) { float wx = sx0 + (x + 0.5f) / sc, wy = sy0 + (y + 0.5f) / sc; unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4;
+        if (wx >= 0 && wy >= 0 && wx < cols && wy < rows && map_px && map_tile > 0) { int mx = (int)(wx * map_tile), my = (int)(wy * map_tile); if (mx < map_w && my < map_h) { const unsigned char *s = map_px + ((size_t)my * map_w + mx) * 4; if (s[3]) { d[0] = s[0] / 2 + 20; d[1] = s[1] / 2 + 20; d[2] = s[2] / 2 + 20; } } }
+        for (int k = 0; k < g_np2d; k++) { P2D *P = &g_p2d[k]; if (wx < P->x || wy < P->y || wx >= P->x + P->sx || wy >= P->y + P->sy) continue; long r = 0, g = 0, b = 0, n = 0;
+            for (int i = 0; i < P->iw * P->ih; i += 3) { const unsigned char *s = P->img + (size_t)i * 4; if (s[3]) { r += s[0]; g += s[1]; b += s[2]; n++; } } if (n) { d[0] = (unsigned char)(r / n); d[1] = (unsigned char)(g / n); d[2] = (unsigned char)(b / n); } } }
+    int rx0 = ox + (int)((vx0 - sx0) * sc), ry0 = oy + (int)((vy0 - sy0) * sc), rx1 = ox + (int)((vx1 - sx0) * sc), ry1 = oy + (int)((vy1 - sy0) * sc);
+    for (int x = rx0; x <= rx1; x++) for (int e = 0; e < 2; e++) { int y = e ? ry1 : ry0; if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 70; d[1] = 255; d[2] = 255; d[3] = 255; } }
+    for (int y = ry0; y <= ry1; y++) for (int e = 0; e < 2; e++) { int x = e ? rx1 : rx0; if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 70; d[1] = 255; d[2] = 255; d[3] = 255; } }
+    if (selx >= 0 && sely >= 0) { int dx = ox + (int)((selx + 0.5f - sx0) * sc), dy = oy + (int)((sely + 0.5f - sy0) * sc); for (int y = dy - 1; y <= dy + 1; y++) for (int x = dx - 1; x <= dx + 1; x++) if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 240; d[1] = 40; d[2] = 40; d[3] = 255; } }
+}
+
 /* draw every piece over the footprint: screen = ax * world + bx (per axis), clipped to the frame */
 static void p2d_draw(unsigned char *px, int W, int H, float axx, float bxx, float ayy, float byy) {
     for (int k = 0; k < g_np2d; k++) { P2D *P = &g_p2d[k];
@@ -1399,6 +1421,16 @@ int main(void) {
                     if (map_py0 < 0) map_py0 = 0;
                     if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
                 } else map_py0 = -(view_h - map_h) / 2;
+                {   /* detached pan (Shift+W/A/S/D, bv_menu_input.c): the view centre moves off the followed cell and is clamped to the whole scene (page + pieces), not just the page */
+                    int pnx = read_kv_int(st, "view_2d_pan_x", 0), pny = read_kv_int(st, "view_2d_pan_y", 0);
+                    if (!world_fit && (pnx || pny)) {
+                        float sx0, sy0, sx1, sy1; p2d_scene(map_cols, map_h / map_tile, &sx0, &sy0, &sx1, &sy1);
+                        int lox = (int)(sx0 * map_tile), hix = (int)(sx1 * map_tile) - view_w, loy = (int)(sy0 * map_tile), hiy = (int)(sy1 * map_tile) - view_h;
+                        map_px0 = (cx + pnx) * map_tile - view_w / 2; map_py0 = (cy + pny) * map_tile - view_h / 2;
+                        if (hix < lox) map_px0 = (lox + hix) / 2; else { if (map_px0 < lox) map_px0 = lox; if (map_px0 > hix) map_px0 = hix; }
+                        if (hiy < loy) map_py0 = (loy + hiy) / 2; else { if (map_py0 < loy) map_py0 = loy; if (map_py0 > hiy) map_py0 = hiy; }
+                    }
+                }
                 /* Sky behind the tiles. A clear map pixel keeps the sky.
                  * An opaque export covers it, which is the baked picture. */
                 unsigned char *para = NULL;
@@ -1446,6 +1478,8 @@ int main(void) {
                 map_ok = 1; cell = draw;
                 draw_map_events(px, W, H, mp, map_tile, map_px0, map_py0, draw);
                 p2d_draw(px, W, H, (float)draw, -(float)map_px0 * draw / map_tile, (float)draw, -(float)map_py0 * draw / map_tile);      /* the pieces over their footprints (page cell c,r = world c,r) */
+                {   char mm[16]; if (!view_pdl_get("view_2d_minimap", mm, sizeof(mm)) || atoi(mm) != 0)      /* on by default, VIEW | view_2d_minimap | 0 = off */
+                        p2d_minimap(px, W, H, map_cols, map_h / map_tile, map_px, map_w, map_h, map_tile, (float)map_px0 / map_tile, (float)map_py0 / map_tile, (float)(map_px0 + view_w) / map_tile, (float)(map_py0 + view_h) / map_tile, sel_x, sel_y); }
                 /* map_px0/map_py0 stay in source pixels. map_tile stays
                  * the PNG tile. The selector uses `cell` for the box. */
             }
