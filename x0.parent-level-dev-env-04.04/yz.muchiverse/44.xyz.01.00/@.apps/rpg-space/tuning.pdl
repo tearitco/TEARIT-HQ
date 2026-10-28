@@ -37,7 +37,9 @@ TUNE | obj_z           | 1     | height of the underside of the voxel pieces ove
 TUNE | scene_flat      | 0     | 1 = remnants and resource nodes in a room are the old flat sprite rows again; 0 (default) = voxel pieces (loot bag, nugget; pieces/veh_10..24)                  | 0 1
 TUNE | node_cell_pct    | 150   | width of a resource node's voxel nugget in percent of a cell (a remnant's bag is blocks.pdl PICKUP size)                                                     | 50 300
 TUNE | bar_radius      | 48    | the bottom bar lists every ship and asteroid of the planet map within this many cells of the ship (Chebyshev, from the hull centre); 16 = the whole 48 x 48 land   | 48
+TUNE | rock_vpc       | 4     | voxels per cell edge of an asteroid or a resource node (4 = each rock cube is 4 x 4 x 4 voxels showing the whole rock tile, like the skiff; 1 = the old coarse lump)                | 4
 TUNE | skiff_vpc       | 4     | voxels per cell edge of the other ship (4 = each of its tile cubes is 4 x 4 x 4 voxels showing the whole tile; the ship's own cube size)                      | 4
+TUNE | skiff_lift_pct  | 120   | brightness of the other ship's tile colours in percent (160 = the first guess; the skiff read paler than the ship, lower it toward 100 to match)                         | 160
 TUNE | skiff_wall      | 3     | how many cubes high the other ship's walls stand on its floor cube (the layout is SK_SKIFF in rpg_space.c, 6 x 6 cells)                                         | 3
 TUNE | minimap_margin  | 16    | cells shown around the 16 x 16 desk on the engine minimap (16 = the whole 48 x 48 land, so the camera, ships and asteroids outside the desk are on it; 0 = desk only)    | 16
 TUNE | minimap_follow  | 0     | 1 = the minimap shows only a minimap_view-cell window that follows the camera (clamped to the land), for a small minimap on a big map; 0 = the whole area at once    | 0

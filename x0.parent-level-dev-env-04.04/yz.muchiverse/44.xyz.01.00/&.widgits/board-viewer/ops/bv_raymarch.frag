@@ -103,6 +103,7 @@ void main() {
   bool  hit = false, self_lit = false;
   int   face = -1;
   vec3  gacc = vec3(0.0);
+  float mshade = -1.0;
   float gA = 0.0;
 
   for (int i = 0; i < u_nbox; i++) {
@@ -115,7 +116,7 @@ void main() {
       bool wire = (u_bcol[i].a > 0.12 && u_bcol[i].a < 0.4);
       float we = (u_bcol[i].a < 0.2) ? u_wire_thin : u_wire_edge;
       if (wire && !on_edge(ro + rd * t, u_bmin[i], u_bmax[i], we)) continue;
-      bestT = t; col = u_bcol[i].rgb; hit = true;
+      bestT = t; col = u_bcol[i].rgb; hit = true; mshade = -1.0;
       self_lit = (u_bcol[i].a < 0.5); face = f;
       continue;
     }
@@ -127,6 +128,7 @@ void main() {
     float mn = min(min(cellw.x, cellw.y), cellw.z);
     float stepT = 0.5 * mn / max(length(rd), 1e-4);
     float mt = max(t, 0.0) + stepT * 0.5;
+    ivec3 pli = ivec3(-1);
     for (int k = 0; k < 220; k++) {
       vec3 wp = ro + rd * mt;
       vec3 lf = (wp - u_bmin[i]) / bsz;
@@ -136,9 +138,17 @@ void main() {
       ivec3 li = swp ? li0.zyx : li0;
       vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 16 + li.z), 0);
       if (mv.a > 0.5) {
-        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = (u_bcol[i].a < 0.5); face = f; }
+        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = (u_bcol[i].a < 0.5); face = f; mshade = -1.0;
+          if (!swp && pli.x >= 0) {      // the face of the VOXEL the ray entered, not of the piece's box: top bright, sides dimmer, the two side axes differ, so a lump of voxels reads as a solid
+            ivec3 dd = li0 - pli; ivec3 ad = abs(dd);
+            if (ad.y >= ad.x && ad.y >= ad.z && ad.y > 0) mshade = dd.y < 0 ? 1.0 : 0.5;
+            else if (ad.x >= ad.z && ad.x > 0) mshade = 0.82;
+            else if (ad.z > 0) mshade = 0.66;
+          }
+        }
         break;
       }
+      pli = li0;
       mt += stepT;
     }
   }
@@ -170,8 +180,8 @@ void main() {
          * entry face, not this voxel's). Matches the CPU DDA. */
         float ct; int cf;
         if (slab(ro, rd, vec3(c), vec3(c) + 1.0, ct, cf) && ct < bestT) {
-          float b0 = bestT; bool h0 = hit, s0 = self_lit; int f0 = face; vec3 c0 = col;
-          bestT = ct; hit = true; self_lit = false; face = cf;
+          float b0 = bestT, m0 = mshade; bool h0 = hit, s0 = self_lit; int f0 = face; vec3 c0 = col;
+          bestT = ct; hit = true; self_lit = false; face = cf; mshade = -1.0;
           vec3 wp = ro + rd * ct;
           vec3 fr = wp - vec3(c);
           vec2 uv;
@@ -206,7 +216,7 @@ void main() {
           if (is_ghost(c) && gA < 0.97) {
             vec3 gc = col * (cf != 3 ? 0.75 : 1.0) * vec3(u_amb_on != 0 ? u_amb : u_light);
             if (gA < 0.001) { gacc = u_cuta * gc; gA = u_cuta; }
-            bestT = b0; hit = h0; self_lit = s0; face = f0; col = c0; ghosted = true;
+            bestT = b0; hit = h0; self_lit = s0; face = f0; col = c0; mshade = m0; ghosted = true;
           }
         }
         if (!ghosted) break;
@@ -233,7 +243,7 @@ void main() {
     col = texelFetch(u_para, p, 0).rgb;
   }
   if (hit && !self_lit) {
-    if (face != 3) col *= 0.75;
+    if (mshade > 0.0) col *= mshade; else if (face != 3) col *= 0.75;
     vec3 L = vec3(u_amb_on != 0 ? u_amb : u_light);
     if (u_nl > 0) {
       vec3 hp = ro + rd * bestT;

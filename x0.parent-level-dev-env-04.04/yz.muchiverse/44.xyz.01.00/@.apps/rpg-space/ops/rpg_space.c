@@ -943,10 +943,12 @@ static int sk_nugget(const char *kind, int wx, int wy, SkVox *v, int dim[3]) {
     enum { GX = 5, GY = 4, GZ = 5 }; static signed char g[GX][GY][GZ]; memset(g, 0, sizeof g);
     int px[64], py[64], pz[64], c = 1; px[0] = 2; py[0] = 0; pz[0] = 2; g[2][0][2] = 1;      /* starts on the ground layer so the nugget rests on the planet */
     for (int guard = 0; c < n && guard < 4000; guard++) {
-        int k = (int)(sk_rng(&s) % (unsigned)c), d = (int)(sk_rng(&s) % 6u);
-        int nx = px[k] + (d == 0) - (d == 1), ny = py[k] + (d == 2) - (d == 3), nz = pz[k] + (d == 4) - (d == 5);
+        int k = (int)(sk_rng(&s) % (unsigned)c), d = (int)(sk_rng(&s) % 9u);      /* growth is biased UP (owner 2026-10-27: asteroids still flat, one came out one voxel thick): +y has four of the nine, -y one */
+        int nx = px[k] + (d == 0) - (d == 1), ny = py[k] + (d >= 4 && d <= 7) - (d == 8), nz = pz[k] + (d == 2) - (d == 3);
         if (nx < 0 || ny < 0 || nz < 0 || nx >= GX || ny >= GY || nz >= GZ || g[nx][ny][nz]) continue;
         g[nx][ny][nz] = 1; px[c] = nx; py[c] = ny; pz[c] = nz; c++; }
+    { int top = 0; for (int i = 0; i < c; i++) if (py[i] > top) top = py[i];      /* never one voxel thick: put one more on top of a random voxel when the blob stayed flat */
+      if (top == 0 && c < 64) { int k = (int)(sk_rng(&s) % (unsigned)c); px[c] = px[k]; py[c] = 1; pz[c] = pz[k]; c++; } }
     int mn[3] = {99, 99, 99}, mx[3] = {-1, -1, -1};
     for (int i = 0; i < c; i++) { int q[3] = {px[i], py[i], pz[i]}; for (int a = 0; a < 3; a++) { if (q[a] < mn[a]) mn[a] = q[a]; if (q[a] > mx[a]) mx[a] = q[a]; } }
     for (int a = 0; a < 3; a++) dim[a] = mx[a] - mn[a] + 1;
@@ -974,6 +976,18 @@ static void sk_retile(SkVox *v, int n, const int dim[3], int tc, int tr, int sc,
         else if (!strcmp(kind, "ore")) { r = r * 2.0 + 70; g = g * 1.6 + 25; b *= 1.0; }      /* leans orange */
         else if (!strcmp(kind, "crystal")) { r = r * 1.4 + 20; g = g * 2.2 + 90; b = b * 2.4 + 110; }      /* leans cyan */
         v[i].r = r > 255 ? 255 : (int)r; v[i].g = g > 255 ? 255 : (int)g; v[i].b = b > 255 ? 255 : (int)b; } }
+/* ROCK IS MADE OF THE SAME TILE CUBES AS THE SHIP (owner 2026-10-27: asteroids still flat, 'they should use rock 3d tiles in 3d mode'). A nugget of 5..11 coarse voxels coloured one sample per voxel reads as a flat grey lump; this cuts every coarse voxel into vp x vp x vp
+ * fine ones (only those with an open face are kept) so sk_retile can show the whole tile on each cube face, exactly as the skiff does. vp from tuning.pdl rock_vpc (1 = the old coarse look). Not for gen:<name> models (their own voxels). The caller divides the piece edge by vp. */
+static int sk_fine(SkVox *v, int n, int dim[3], int vp, int cap) {
+    if (vp <= 1 || n <= 0 || dim[0] > 6 || dim[1] > 6 || dim[2] > 6) return n;
+    static signed char occ[8][8][8]; static SkVox out[SK_VEH_MAXV]; memset(occ, 0, sizeof occ);
+    for (int i = 0; i < n; i++) if (v[i].x < 8 && v[i].y < 8 && v[i].z < 8) occ[v[i].x][v[i].y][v[i].z] = 1;
+    int m = 0; const int D[6][3] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
+    for (int i = 0; i < n && m < cap; i++) for (int a = 0; a < vp; a++) for (int b = 0; b < vp; b++) for (int c = 0; c < vp; c++) {
+        int fx = v[i].x * vp + a, fy = v[i].y * vp + b, fz = v[i].z * vp + c, open = 0;
+        for (int d = 0; d < 6 && !open; d++) { int nx = fx + D[d][0], ny = fy + D[d][1], nz = fz + D[d][2]; if (nx < 0 || ny < 0 || nz < 0) { open = 1; continue; } nx /= vp; ny /= vp; nz /= vp; if (nx >= 8 || ny >= 8 || nz >= 8 || !occ[nx][ny][nz]) open = 1; }
+        if (open && m < cap) out[m++] = (SkVox){ fx, fy, fz, v[i].r, v[i].g, v[i].b }; }
+    memcpy(v, out, sizeof(SkVox) * (size_t)m); dim[0] *= vp; dim[1] *= vp; dim[2] *= vp; return m; }
 /* THE OTHER SHIP IS A TILED MINI-SHIP, NOT A SHELL (owner 2026-10-27: 'ship is 2d? should be 3d voxels as tiles in 3d mode ... our ship is 3d future scifi rpg tiles, other can be similar'). It is a 6 x 6 layout of the SAME tile cubes the player's ship is made of: green hex floor (SF_Inside_A4 8,11), a ring of wall-tile cubes (6,2) skiff_wall high, monitors (SF_Inside_B 8,0) and blue chairs (8,3) along the north wall like the bridge, a gap for the door in the south wall. Each cube is skiff_vpc voxels a side (default 4) and shows its whole tile on every face (the tile is averaged down to vpc x vpc), so the cubes are the ship's own size: the skiff is 6 cells wide, 1 + skiff_wall cells high. Only voxels with a free neighbour are written (a closed cube keeps its outer shell), which keeps it under the engine's 4096. */
 #define SK_SKIFF_N 6
 static const char *const SK_SKIFF[SK_SKIFF_N] = { "######", "#.MM.#", "#.CC.#", "#....#", "#....#", "##.###" };      /* # wall, . floor, M monitor (one cube on the floor), C chair, the gap in the south wall is the door */
@@ -996,7 +1010,7 @@ static int sk_skiff_build(SkVox *v, int cap, int dim[3], int *vpc, double *edge)
         if (!(e_up || e_xm || e_xp || e_zm || e_zp)) continue; if (n >= cap) continue;      /* the underside and enclosed voxels are never seen */
         const unsigned char *tex = t == 1 ? fl : t == 2 ? wl : t == 3 ? mo : ch; double r, g, b; int i = x % vp, j = y % vp, k = z % vp;
         if (e_up) sk_cube_avg(tex, i, k, vp, &r, &g, &b); else if (e_zp) sk_cube_avg(tex, i, vp - 1 - j, vp, &r, &g, &b); else if (e_zm) sk_cube_avg(tex, vp - 1 - i, vp - 1 - j, vp, &r, &g, &b); else if (e_xp) sk_cube_avg(tex, k, vp - 1 - j, vp, &r, &g, &b); else sk_cube_avg(tex, vp - 1 - k, vp - 1 - j, vp, &r, &g, &b);
-        r *= 1.6; g *= 1.6; b *= 1.6;      /* an unlit voxel renders the tile darker than the flat tile: the same lift as before */
+        { double lift = tune("skiff_lift_pct", 120) / 100.0; r *= lift; g *= lift; b *= lift; }      /* an unlit voxel renders the tile darker than the flat tile: the same lift as before; tuning.pdl skiff_lift_pct (owner 2026-10-27: the skiff reads paler than the ship) */
         v[n++] = (SkVox){x, y, z, r > 255 ? 255 : (int)r, g > 255 ? 255 : (int)g, b > 255 ? 255 : (int)b}; }
     *vpc = vp; *edge = 1.0 / vp; return n; }
 static int sk_veh_model(int slot, const SkVox *v, int n, const int dim[3]) {      /* pieces/veh_<slot>/model.txt (`dim X Y Z`, then `x y z r g b` per voxel); returns 1 when the file changed */
@@ -1015,7 +1029,7 @@ static void sk_veh_write(void) {
     sk_bar_refresh();
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
-    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim); if (strncmp(sk_nodes[i].kind, "gen:", 4) || sk_gen_model_missing(sk_nodes[i].kind + 4)) sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, 0); sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0); }
+    for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim), vp = 1; if (strncmp(sk_nodes[i].kind, "gen:", 4) || sk_gen_model_missing(sk_nodes[i].kind + 4)) { vp = tune("rock_vpc", 4); if (vp < 1) vp = 1; if (vp > 5) vp = 5; if (strncmp(sk_nodes[i].kind, "gen:", 4) == 0) vp = 1; n = sk_fine(v, n, dim, vp, SK_VEH_MAXV); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, vp > 1 ? vp : 0); } sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0 / vp); }
     for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_build(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 /* THE BOTTOM BAR LISTS THE SHIPS AND ASTEROIDS NEAR THE SHIP (owner 2026-10-27: 'all ships/asteroids within a radius ... should show up on bottom tb', radius from a .pdl figure: tuning.pdl bar_radius, default 16 = one planet page). Rows of the planet map (asteroids that still have loads, crafts with a world cell), nearest first, distance = Chebyshev cells from the centre of the hull; a click row moves the cursor to the object's desk cell. Ship rooms only. */
@@ -1233,9 +1247,9 @@ static int sk_scene_vox(long now) {      /* returns 1 when a piece changed (the 
                 n = sk_bag_build(r, g, b, step, v, dim); }
             else {
                 edge = tune("node_cell_pct", 150) / 100.0 / 5.0;
-                snprintf(sg, sizeof sg, "N|%d|%d|%d|%s|%d", m->room, m->x, m->y, m->item, tune("node_cell_pct", 150));
+                snprintf(sg, sizeof sg, "N|%d|%d|%d|%s|%d|%d", m->room, m->x, m->y, m->item, tune("node_cell_pct", 150), tune("rock_vpc", 4));
                 if (!strcmp(sig[k], sg)) { sk_vn_done[m->idx] = 1; continue; }
-                n = sk_nugget(m->item, m->x, m->y, v, dim); if (strncmp(m->item, "gen:", 4) || sk_gen_model_missing(m->item + 4)) sk_retile(v, n, dim, 6, 2, 6, 2, m->item, 0); }
+                n = sk_nugget(m->item, m->x, m->y, v, dim); if (strncmp(m->item, "gen:", 4) || sk_gen_model_missing(m->item + 4)) { int vp = tune("rock_vpc", 4); if (vp < 1) vp = 1; if (vp > 5) vp = 5; if (!strncmp(m->item, "gen:", 4)) vp = 1; n = sk_fine(v, n, dim, vp, SK_VEH_MAXV); sk_retile(v, n, dim, 6, 2, 6, 2, m->item, vp > 1 ? vp : 0); edge /= vp; } }
             if (n <= 0) { sig[k][0] = 0; continue; }
             char sb[320], p[PATH_MAX], d[PATH_MAX]; int slot = SK_SC0 + k; double sx = dim[0] * edge, sy = dim[2] * edge, sh = dim[1] * edge;
             sk_veh_model(slot, v, n, dim);

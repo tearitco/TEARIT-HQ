@@ -84,12 +84,12 @@ FILEIS | state/direct.txt | 1 0\n | flown-one-cell-east
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | entity_type=vehicle | an-asteroid-is-a-vehicle-piece
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | desk=bridge | drawn-on-the-bridge-desk-where-the-land-is
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_x=13.00 | ore-at-world-15-5-minus-flight-shift-1-centred-on-its-3-wide-box
-HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_y=3.50 | ore-at-world-y-5-centred-on-its-4-deep-box
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_y= | ore-has-a-y-position-its-exact-value-follows-the-nugget-depth-which-the-fine-rock-cubes-changed-2026-10-27
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_z=-8 | the-land-and-its-rocks-sink-by-the-ship-altitude
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | size_h=3.00 | box-height-is-the-nugget-height
-COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | ore-nugget-is-11-voxels-plus-the-dim-line
-COUNT | rpg-space-pchq/pieces/veh_2/model.txt | \n | 12 | rock-nugget-is-11-voxels-plus-the-dim-line
-COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | crystal-nugget-is-7-voxels-plus-the-dim-line
+COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 447 | ore-nugget-is-fine-rock-cubes-446-surface-voxels-plus-the-dim-line-rock_vpc-4-seeded-so-the-same-every-time
+COUNT | rpg-space-pchq/pieces/veh_2/model.txt | \n | 474 | rock-nugget-is-fine-rock-cubes-473-surface-voxels-plus-the-dim-line
+COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 323 | crystal-nugget-is-fine-rock-cubes-322-surface-voxels-plus-the-dim-line
 HAS | rpg-space-pchq/pieces/veh_4/model.txt | dim 24 16 24 | the-skiff-is-a-6x6-layout-of-4-voxel-tile-cubes-floor-plus-3-wall-levels-high
 COUNT | rpg-space-pchq/pieces/veh_4/model.txt | \n | 2647 | the-skiff-has-2646-tile-cube-voxels-plus-the-dim-line-only-cubes-with-a-free-face
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=4.50 | skiff-at-world-8-minus-shift-1-centred-on-its-6-wide-box
@@ -101,8 +101,8 @@ DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | flown-another-cell-east
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=3.50 | the-skiff-slid-one-cell-with-the-flight
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_x=12.00 | the-ore-slid-one-cell-with-the-flight
-COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 12 | the-nugget-keeps-its-shape-when-the-ship-moves
-COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 8 | the-crystal-keeps-its-shape-too
+COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 447 | the-nugget-keeps-its-shape-when-the-ship-moves
+COUNT | rpg-space-pchq/pieces/veh_3/model.txt | \n | 323 | the-crystal-keeps-its-shape-too
 DO | helm | off
 NOFILE | rpg-space-pchq/pieces/veh_1/state.txt | releasing-the-helm-removes-the-asteroid-pieces
 NOFILE | rpg-space-pchq/pieces/veh_4/state.txt | releasing-the-helm-removes-the-skiff-piece
