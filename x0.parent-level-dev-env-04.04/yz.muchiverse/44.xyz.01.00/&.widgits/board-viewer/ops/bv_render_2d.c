@@ -28,6 +28,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -1121,6 +1122,72 @@ static int blit_scene(unsigned char *px, int W, int H) {
     free(src); return 1;
 }
 
+
+/* ---- ENTITY PIECES IN 2D (entity frames spec 2026-10-27, 08-roadmap/design-docs/2026-10-27-ENTITY-FRAMES-AND-VIEWS-SPEC.md section 4): the 3D engine draws every pieces/<name>/ with a state.txt + model.txt
+ * (the skiff, the asteroids, loot, ...); the 2D view used to know none of them, so a thing could be in 3D and missing here. Same files, same rules as bv_render_3d.c load_vehicle: names ship_01 + veh_1..24,
+ * pos_x/pos_y (both required), size_x/size_y (footprint in cells), desk= (empty or * = every desk, else must equal world_01's desk_id), model.txt `dim X Y Z` + `x y z r g b` (X = grid x, Y = up, Z = grid y),
+ * optional tile_model.txt (`x y z top side` cells) + tiles.rgba (24x24 tiles). Each piece becomes one small top-down picture (the highest voxel of each column, or the top tile of the highest cell), drawn over
+ * the footprint. The world coordinates are the desk page's own cells (page cell c,r = world x c, y r). */
+typedef struct { int x, y, z; unsigned char c[3]; } VoxTop;
+#define P2D_MAX 25
+typedef struct { float x, y, sx, sy; int iw, ih; unsigned char *img; } P2D;
+static P2D g_p2d[P2D_MAX]; static int g_np2d = 0;
+static void p2d_load(const char *root, const char *desk) {
+    g_np2d = 0;
+    for (int k = 0; k < P2D_MAX; k++) {
+        char nm[16], path[PATH_BUF], line[MAX_LINE], vdesk[128] = ""; if (k == 0) snprintf(nm, sizeof nm, "ship_01"); else snprintf(nm, sizeof nm, "veh_%d", k);
+        snprintf(path, sizeof(path), "%s/pieces/%s/state.txt", root, nm); FILE *f = host_fopen(path, "r"); if (!f) continue;
+        P2D P; memset(&P, 0, sizeof P); P.sx = P.sy = 1; int have = 0;
+        while (fgets(line, sizeof(line), f)) {
+            if (!strncmp(line, "pos_x=", 6)) { P.x = (float)atof(line + 6); have |= 1; } else if (!strncmp(line, "pos_y=", 6)) { P.y = (float)atof(line + 6); have |= 2; }
+            else if (!strncmp(line, "size_x=", 7)) P.sx = (float)atof(line + 7); else if (!strncmp(line, "size_y=", 7)) P.sy = (float)atof(line + 7);
+            else if (!strncmp(line, "desk=", 5)) { line[strcspn(line, "\r\n")] = 0; snprintf(vdesk, sizeof vdesk, "%s", line + 5); } }
+        fclose(f); if (have != 3 || P.sx <= 0 || P.sy <= 0 || (vdesk[0] && strcmp(vdesk, "*") && strcmp(desk, vdesk))) continue;
+        int dim[3] = {0, 0, 0}, tdim[3] = {0, 0, 0};
+        /* tile-faced model first: top tile of the highest cell of each column, the whole 24x24 picture per cell */
+        snprintf(path, sizeof(path), "%s/pieces/%s/tile_model.txt", root, nm); FILE *tf = host_fopen(path, "r");
+        if (tf) {
+            snprintf(path, sizeof(path), "%s/pieces/%s/tiles.rgba", root, nm); FILE *xf = host_fopen(path, "rb"); unsigned char *tex = (unsigned char *)malloc(32 * 24 * 24 * 4); int tex_n = 0;
+            if (xf && tex) { tex_n = (int)(fread(tex, 1, 32 * 24 * 24 * 4, xf) / (24 * 24 * 4)); } if (xf) fclose(xf);
+            int cx[1024], cy[1024], cz[1024], ct[1024], n = 0;
+            while (fgets(line, sizeof(line), tf)) { int a, b, c, tt, ts; if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &tdim[0], &tdim[1], &tdim[2]); continue; }
+                if (n < 1024 && sscanf(line, "%d %d %d %d %d", &a, &b, &c, &tt, &ts) == 5) { cx[n] = a; cy[n] = b; cz[n] = c; ct[n] = tt; n++; } }
+            fclose(tf);
+            if (tex && tex_n > 0 && n > 0 && tdim[0] > 0 && tdim[2] > 0 && tdim[0] <= 32 && tdim[2] <= 32) {
+                P.iw = tdim[0] * 24; P.ih = tdim[2] * 24; P.img = (unsigned char *)calloc((size_t)P.iw * P.ih, 4); static int hy[32][32];
+                if (P.img) { for (int a = 0; a < 32; a++) for (int b = 0; b < 32; b++) hy[a][b] = -1;
+                    for (int q = 0; q < n; q++) { if (cx[q] < 0 || cx[q] >= tdim[0] || cz[q] < 0 || cz[q] >= tdim[2] || ct[q] < 0 || ct[q] >= tex_n || cy[q] < hy[cx[q]][cz[q]]) continue;
+                        hy[cx[q]][cz[q]] = cy[q]; for (int yy = 0; yy < 24; yy++) memcpy(P.img + ((size_t)(cz[q] * 24 + yy) * P.iw + cx[q] * 24) * 4, tex + ((size_t)ct[q] * 24 * 24 + (size_t)yy * 24) * 4, 24 * 4); } }
+            }
+            free(tex);
+        }
+        if (!P.img) {   /* plain voxel model: one texel per column, the colour of the highest voxel (a little brighter the higher it is) */
+            snprintf(path, sizeof(path), "%s/pieces/%s/model.txt", root, nm); FILE *mf = host_fopen(path, "r"); if (!mf) continue;
+            static VoxTop vt[4096]; int n = 0;
+            while (fgets(line, sizeof(line), mf)) { int a, b, c, r, g, bl; if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &dim[0], &dim[1], &dim[2]); continue; }
+                if (n < 4096 && sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) == 6) { vt[n].x = a; vt[n].y = b; vt[n].z = c; vt[n].c[0] = (unsigned char)r; vt[n].c[1] = (unsigned char)g; vt[n].c[2] = (unsigned char)bl; n++; } }
+            fclose(mf); if (n == 0 || dim[0] <= 0 || dim[2] <= 0 || dim[0] > 64 || dim[2] > 64) continue;
+            P.iw = dim[0]; P.ih = dim[2]; P.img = (unsigned char *)calloc((size_t)P.iw * P.ih, 4); if (!P.img) continue;
+            static int hy[64][64]; for (int a = 0; a < 64; a++) for (int b = 0; b < 64; b++) hy[a][b] = -1;
+            for (int q = 0; q < n; q++) { if (vt[q].x < 0 || vt[q].x >= dim[0] || vt[q].z < 0 || vt[q].z >= dim[2] || vt[q].y < hy[vt[q].x][vt[q].z]) continue;
+                hy[vt[q].x][vt[q].z] = vt[q].y; int sh = 85 + (dim[1] > 1 ? 15 * vt[q].y / (dim[1] - 1) : 15); unsigned char *d = P.img + ((size_t)vt[q].z * P.iw + vt[q].x) * 4;
+                for (int ch = 0; ch < 3; ch++) { int v = vt[q].c[ch] * sh / 100; d[ch] = (unsigned char)(v > 255 ? 255 : v); } d[3] = 255; }
+        }
+        g_p2d[g_np2d++] = P;
+    }
+}
+
+/* draw every piece over the footprint: screen = ax * world + bx (per axis), clipped to the frame */
+static void p2d_draw(unsigned char *px, int W, int H, float axx, float bxx, float ayy, float byy) {
+    for (int k = 0; k < g_np2d; k++) { P2D *P = &g_p2d[k];
+        int x0 = (int)floorf(axx * P->x + bxx), x1 = (int)ceilf(axx * (P->x + P->sx) + bxx), y0 = (int)floorf(ayy * P->y + byy), y1 = (int)ceilf(ayy * (P->y + P->sy) + byy);
+        if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0; if (x1 > W) x1 = W; if (y1 > H) y1 = H;
+        for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
+            float fx = (((float)x + 0.5f - bxx) / axx - P->x) / P->sx, fy = (((float)y + 0.5f - byy) / ayy - P->y) / P->sy; if (fx < 0 || fx >= 1 || fy < 0 || fy >= 1) continue;
+            const unsigned char *s = P->img + ((size_t)((int)(fy * P->ih)) * P->iw + (int)(fx * P->iw)) * 4; if (s[3] == 0) continue;
+            unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255; } }
+}
+
 int main(void) {
     resolve_root();
     load_house_root();
@@ -1276,6 +1343,9 @@ int main(void) {
     /* Phase 2: a desk with map.png is blitted 1:1. Scroll is the selector
      * in tile pixels, not the 80 px house cell. Side view (render_mode 2)
      * and every desk with no file keep the glyph path below. */
+    {   /* entity pieces (skiff, asteroids, ...): the same files the 3D engine draws */
+        const char *proot = focused_root[0] ? focused_root : project_root; char wst[PATH_BUF], cdesk[64] = "";
+        snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", proot); read_kv_str(wst, "desk_id", cdesk, sizeof(cdesk)); p2d_load(proot, cdesk); }
     unsigned char *map_px = NULL;
     int map_w = 0, map_h = 0, map_tile = 0, map_ok = 0;
     int map_px0 = 0, map_py0 = 0;
@@ -1293,15 +1363,19 @@ int main(void) {
             /* Default zoom = fit: the whole page on screen (whole-pixel tile step, never below 4 px). '+' / '-' (bv_menu_input) set view_2d_zoom 0..5 =
              * 100, 125, 150, 200, 300, 400 percent of the fit size; above fit the view centres on the selector and scrolls. The selector box below uses
              * the same size, so `cell` takes it. */
-            int draw = cell;
+            int draw = cell, world_fit = 0; float wcx = 0, wcy = 0;
             { int mrows = map_tile > 0 ? map_h / map_tile : 0;
               if (map_cols > 0 && mrows > 0) {
                   static const int zpct[6] = {100, 125, 150, 200, 300, 400};
-                  char zs[16] = ""; read_kv_str(st, "view_2d_zoom", zs, sizeof(zs)); int z = atoi(zs); if (z < 0) z = 0; if (z > 5) z = 5;
+                  char zs[16] = ""; read_kv_str(st, "view_2d_zoom", zs, sizeof(zs)); int z = atoi(zs); if (z < -1) z = -1; if (z > 5) z = 5;
                   int fit = W / map_cols, fh = H / mrows; if (fh < fit) fit = fh; if (fit < 4) fit = 4;
+                  if (z == -1 && g_np2d > 0) {      /* -1 = the whole scene: the page and every piece (entity frames spec, 2D camera = the parent frame) */
+                      float ux0 = 0, uy0 = 0, ux1 = (float)map_cols, uy1 = (float)mrows;
+                      for (int k = 0; k < g_np2d; k++) { if (g_p2d[k].x < ux0) ux0 = g_p2d[k].x; if (g_p2d[k].y < uy0) uy0 = g_p2d[k].y; if (g_p2d[k].x + g_p2d[k].sx > ux1) ux1 = g_p2d[k].x + g_p2d[k].sx; if (g_p2d[k].y + g_p2d[k].sy > uy1) uy1 = g_p2d[k].y + g_p2d[k].sy; }
+                      int f2 = (int)((float)W / (ux1 - ux0)), f3 = (int)((float)H / (uy1 - uy0)); if (f3 < f2) f2 = f3; if (f2 < 2) f2 = 2; fit = f2; world_fit = 1; wcx = (ux0 + ux1) / 2; wcy = (uy0 + uy1) / 2; z = 0; }
                   draw = fit * zpct[z] / 100;
               } }
-            if (draw < 4) draw = 4;
+            if (draw < (world_fit ? 2 : 4)) draw = world_fit ? 2 : 4;
             if (map_tile >= 8 && map_tile <= 96 && (map_h % map_tile) == 0) {
                 int cx = sel_x >= 0 ? sel_x : (map_cols / 2);
                 int cy = sel_y >= 0 ? sel_y : ((map_h / map_tile) / 2);
@@ -1311,11 +1385,12 @@ int main(void) {
                 if (view_h < 1) view_h = 1;
                 map_px0 = cx * map_tile - view_w / 2;
                 map_py0 = cy * map_tile - view_h / 2;
-                if (map_w > view_w) {
+                if (world_fit) { map_px0 = (int)(wcx * map_tile) - view_w / 2; map_py0 = (int)(wcy * map_tile) - view_h / 2; }
+                else if (map_w > view_w) {
                     if (map_px0 < 0) map_px0 = 0;
                     if (map_px0 > map_w - view_w) map_px0 = map_w - view_w;
                 } else map_px0 = -(view_w - map_w) / 2;
-                if (map_h > view_h) {
+                if (world_fit) { /* centred above */ } else if (map_h > view_h) {
                     if (map_py0 < 0) map_py0 = 0;
                     if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
                 } else map_py0 = -(view_h - map_h) / 2;
@@ -1365,6 +1440,7 @@ int main(void) {
                 free(para);
                 map_ok = 1; cell = draw;
                 draw_map_events(px, W, H, mp, map_tile, map_px0, map_py0, draw);
+                p2d_draw(px, W, H, (float)draw, -(float)map_px0 * draw / map_tile, (float)draw, -(float)map_py0 * draw / map_tile);      /* the pieces over their footprints (page cell c,r = world c,r) */
                 /* map_px0/map_py0 stay in source pixels. map_tile stays
                  * the PNG tile. The selector uses `cell` for the box. */
             }
@@ -1462,6 +1538,7 @@ int main(void) {
         }
     }
 
+    if (!map_ok && !side_mode && !(g_own_ascii && want_ascii)) p2d_draw(px, W, H, (float)cell, -(float)ox * cell, (float)cell, -(float)oy * cell);      /* glyph/tile path: the same pieces */
     if (want_ascii && !side_mode) draw_map_event_glyphs(px, W, ox, oy, cols, rows, cell);
 
     /* --- the manual matrix grid (viewport-relative cell boundaries).

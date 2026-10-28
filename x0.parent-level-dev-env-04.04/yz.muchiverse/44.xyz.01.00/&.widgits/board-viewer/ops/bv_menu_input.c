@@ -815,11 +815,11 @@ static int handle_one_key(int key) {
         return 0;
     }
 
-    /* '+' / '=' (43 / 61) and '-' (45) - zoom of the 2D tile view, every board (owner 2026-10-22: "2d default is fit map to screen", "+- for zoom"). view_2d_zoom 0 = fit the whole page
+    /* '+' / '=' (43 / 61) and '-' (45) - zoom of the 2D tile view, every board (owner 2026-10-22: "2d default is fit map to screen", "+- for zoom"). view_2d_zoom -1 = fit the whole scene (page + entity pieces), 0 = fit the whole page
      * (the renderer's default), 1..5 = 125, 150, 200, 300, 400 percent of that. Only while the view is 2D (render_mode 0); in 3D the keys fall through. */
     if ((key == 43 || key == 61 || key == 45) && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
         char zs[16] = ""; read_kv_str(state_path, "view_2d_zoom", zs, sizeof(zs));
-        int z = atoi(zs) + (key == 45 ? -1 : 1); if (z < 0) z = 0; if (z > 5) z = 5;
+        int z = atoi(zs) + (key == 45 ? -1 : 1); if (z < -1) z = -1; if (z > 5) z = 5;      /* -1 = the whole scene (the page and every entity piece), 0 = fit the page (the 2D renderer reads it) */
         write_kv_int(state_path, "view_2d_zoom", z);
         bump_screen_changed(project_root);
         return 0;
