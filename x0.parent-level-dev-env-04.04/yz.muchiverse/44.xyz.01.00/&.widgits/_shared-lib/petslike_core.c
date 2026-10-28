@@ -193,8 +193,133 @@ static FILE *fopen_tmp(const char *p) { char t[PATH_MAX + 24]; snprintf(t, sizeo
 static int fclose_tmp(FILE *f, const char *p) { char t[PATH_MAX + 24]; snprintf(t, sizeof t, "%s.tmp.%d", p, (int)getpid()); int bad = ferror(f); if (fclose(f) != 0) bad = 1; if (bad || rename(t, p) != 0) { remove(t); return 0; } return 1; }
 static int png_atomic(const char *p, int w, int h, const unsigned char *px, int stride) { char t[PATH_MAX + 24]; snprintf(t, sizeof t, "%s.tmp.%d", p, (int)getpid()); if (stbi_write_png(t, w, h, 4, px, stride) && rename(t, p) == 0) return 1; remove(t); return 0; }
 /* HARDENING: one write() of the whole line on an O_APPEND fd (rows from two processes never interleave or tear); a log file past 4 MB drops further rows (the house.txt ledger never does) so a runaway loop cannot fill the disk */
-static void append_line(const char *name, const char *line) { char p[PATH_MAX], b[1100]; spath(p, name); int fd = open(p, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd < 0) return; struct stat sb; if (strcmp(name, "house.txt") && fstat(fd, &sb) == 0 && sb.st_size > 4L * 1024 * 1024) { close(fd); return; }
-    int n = snprintf(b, sizeof b, "%s\n", line); if (n >= (int)sizeof b) { n = (int)sizeof b - 1; b[n - 1] = '\n'; } ssize_t w = write(fd, b, (size_t)n); (void)w; close(fd); }
+/* LOG CAP + TRIM (2026-10-28). Every state log except house.txt stops growing at 4 MiB: an append past the cap is dropped, SILENTLY (the live rpg-space events.txt hit it at 03:46 and wrote no DOOR/DEATH/HELM row after).
+ * A game may opt events.txt into TRIM instead: toy.pdl `SECTION | events_trim_kb | 3072` = when an append finds the file over the cap, delete the OLDEST lines until about that many KB remain (whole lines only), put a first line
+ * `TRIM|<unix>|dropped_lines=N|dropped_bytes=M` (cumulative over earlier trims) so the loss is visible, and then append. Absent or 0 = the old drop (df-hq, cdda-hq, mcl-hq keep their own ledger compaction: game_events.c refers to rows by byte
+ * offset and replays from byte 0, so never opt those in). The rewrite goes to events.txt.trim and is renamed over the log (a crash leaves the old log or the new one, never a mix); a flock on the log serialises writers, and a writer that
+ * waited re-checks that the path still names the file it locked (a trim may have replaced it) before it appends. Readers that keep a byte position in events.txt must treat a smaller file as "start again" (none in this tree do). */
+static const char *cfg(const char *k, const char *d);      /* defined with the other per-game constants below */
+static void log_trim(const char *p, long long keep) {
+    struct stat sb;
+    if (stat(p, &sb) || sb.st_size <= keep || keep < 4096) {
+        return;
+    }
+    long long cut = sb.st_size - keep;
+    FILE *in = fopen(p, "rb");
+    if (!in) {
+        return;
+    }
+    char *buf = malloc((size_t)keep + 1);
+    if (!buf) {
+        fclose(in);
+        return;
+    }
+    if (fseek(in, (long)cut, SEEK_SET) || fread(buf, 1, (size_t)keep, in) != (size_t)keep) {
+        free(buf);
+        fclose(in);
+        return;
+    }
+    long long start = 0;                                  /* the first whole line at or after the cut */
+    while (start < keep && buf[start] != '\n') {
+        start++;
+    }
+    start = start < keep ? start + 1 : keep;
+    long long head = cut + start, dl = 0, db = head;      /* what is deleted: lines and bytes */
+    char first[256] = "";
+    rewind(in);
+    if (fgets(first, sizeof first, in)) {
+        size_t fl = strlen(first);
+        rewind(in);
+        char blk[65536];
+        long long left = head;
+        while (left > 0) {
+            size_t want = left < (long long)sizeof blk ? (size_t)left : sizeof blk;
+            size_t got = fread(blk, 1, want, in);
+            if (!got) {
+                break;
+            }
+            for (size_t i = 0; i < got; i++) {
+                if (blk[i] == '\n') {
+                    dl++;
+                }
+            }
+            left -= (long long)got;
+        }
+        if (!strncmp(first, "TRIM|", 5) && fl && first[fl - 1] == '\n') {      /* an earlier trim's header is deleted too: carry its totals */
+            char *a = strstr(first, "dropped_lines="), *c = strstr(first, "dropped_bytes=");
+            dl += (a ? atoll(a + 14) : 0) - 1;
+            db += (c ? atoll(c + 14) : 0) - (long long)fl;
+        }
+    }
+    fclose(in);
+    char tp[PATH_MAX + 8], hd[160];
+    snprintf(tp, sizeof tp, "%s.trim", p);
+    snprintf(hd, sizeof hd, "TRIM|%ld|dropped_lines=%lld|dropped_bytes=%lld\n", (long)time(NULL), dl, db);
+    FILE *out = fopen(tp, "wb");
+    if (!out) {
+        free(buf);
+        return;
+    }
+    size_t keepn = (size_t)(keep - start);
+    int ok = fwrite(hd, 1, strlen(hd), out) == strlen(hd) && fwrite(buf + start, 1, keepn, out) == keepn;
+    ok = (fflush(out) == 0) && ok;
+    if (ok) {
+        fsync(fileno(out));
+    }
+    ok = (fclose(out) == 0) && ok;
+    free(buf);
+    if (!ok || rename(tp, p)) {
+        remove(tp);
+    }
+}
+static void append_line(const char *name, const char *line) {
+    char p[PATH_MAX], b[1100];
+    spath(p, name);
+    long long trim_keep = !strcmp(name, "events.txt") ? atoll(cfg("events_trim_kb", "0")) * 1024 : 0;
+    int fd = -1;
+    for (int tries = 0; tries < 4; tries++) {
+        fd = open(p, O_WRONLY | O_APPEND | O_CREAT, 0644);
+        if (fd < 0) {
+            return;
+        }
+        if (trim_keep <= 0 || flock(fd, LOCK_EX) != 0) {
+            break;
+        }
+        struct stat a, c;
+        if (fstat(fd, &a) == 0 && stat(p, &c) == 0 && a.st_ino == c.st_ino && a.st_dev == c.st_dev) {
+            break;
+        }
+        close(fd);          /* the path now names another file: a trim replaced the one we waited on */
+        fd = -1;
+    }
+    if (fd < 0) {
+        return;
+    }
+    struct stat sb;
+    if (strcmp(name, "house.txt") && fstat(fd, &sb) == 0 && sb.st_size > 4L * 1024 * 1024) {
+        if (trim_keep <= 0) {
+            close(fd);
+            return;
+        }
+        log_trim(p, trim_keep);
+        close(fd);          /* we held the lock on the replaced file; the new one is small and only another trimmer could replace it */
+        fd = open(p, O_WRONLY | O_APPEND | O_CREAT, 0644);
+        if (fd < 0 || flock(fd, LOCK_EX) != 0) {
+            if (fd >= 0) {
+                close(fd);
+            }
+            return;
+        }
+    }
+    int n = snprintf(b, sizeof b, "%s\n", line);
+    if (n >= (int)sizeof b) {
+        n = (int)sizeof b - 1;
+        b[n - 1] = '\n';
+    }
+    ssize_t w = write(fd, b, (size_t)n);
+    (void)w;
+    close(fd);
+}
 /* SWITCHES: "running" (Play / Stop) and "int" (INT on / off) live as switches in <app>/state/world/switches.txt ("name=1"), the file events-hq's control_switch command writes (the events/play,
  * stop, int_on, int_off pages). flag_str() reads the switch first; set_flag() mirrors into it, so code that still sets the flag directly (Esc leaves INT) and the event pages stay one state. */
 static int sw_get(const char *name, char *out, size_t cap) {

@@ -13,3 +13,5 @@ SECTION | party_idx_base| 0
 SECTION | fallback_party| Ember,Glacine,Murmur,Solvent
 SECTION | reply_tail    | , Harold
 SECTION | cast_label    | planets
+# state/events.txt: past 4 MiB delete the OLDEST lines down to this many KB and leave a first TRIM row (petslike_core.c log_trim, 2026-10-28). Without this key an over-cap log silently stops growing.
+SECTION | events_trim_kb | 3072
