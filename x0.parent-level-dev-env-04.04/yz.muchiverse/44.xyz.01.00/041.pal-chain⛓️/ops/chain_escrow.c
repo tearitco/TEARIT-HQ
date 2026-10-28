@@ -43,6 +43,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <signal.h>
 
 #define MAX_LINE 8192
 #define MAX_PATH 4096
@@ -52,7 +55,8 @@
 
 static char project_root[MAX_PATH] = ".";
 static long g_initial_reward = 10500, g_halving_period = 1000;
-static int g_has_pdl = 0, g_escrow_enabled = 0, g_faucet_enabled = 0;
+static int g_has_pdl = 0, g_escrow_enabled = 0, g_faucet_enabled = 0, g_signing = 0;
+static char g_chain_id[64] = "cones", g_sigtail[256] = "";
 static long g_faucet_amount = 0;
 static struct { char id[128]; long long bal; } W[MAX_W]; static int nW;
 static struct { char id[128], agent[128]; long long locked, paid, refunded; } E[MAX_E]; static int nE;
@@ -95,6 +99,8 @@ static void load_chain_pdl(void) {
     if (pdl_get("FAUCET", "enabled", v, sizeof(v))) g_faucet_enabled = atoi(v) == 1;
     if (pdl_get("FAUCET", "amount_millicones", v, sizeof(v))) g_faucet_amount = atol(v);
     if (pdl_get("ESCROW", "enabled", v, sizeof(v))) g_escrow_enabled = atoi(v) == 1;
+    if (pdl_get("SIGNING", "required", v, sizeof(v))) g_signing = atoi(v) == 1;
+    if (pdl_get("CHAIN", "id", v, sizeof(v)) && v[0]) snprintf(g_chain_id, sizeof g_chain_id, "%.63s", v);
     if (pdl_get("CHAIN", "kind", v, sizeof(v)) && strcmp(v, "cones") == 0) g_faucet_enabled = 0;
 }
 
@@ -207,6 +213,51 @@ static void replay_pending(void) {
     fclose(f);
 }
 
+
+/* ---- signed escrow rows (signatures, escrow slice; design 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 19/27) ----
+ * On a chain with `SIGNING | required | 1` every LOCK / PAYOUT / REFUND must be signed by the wallet that loses the coins (LOCK: from) or by the escrow agent (PAYOUT/REFUND: by).
+ * Optional trailing args <nonce> <sig_hex>. Signed message: <KIND>|<chain>|<esc>|<signer>|<a3>|<a4>|<nonce> (LOCK: a3 = amount, a4 = agent; PAYOUT/REFUND: a3 = to, a4 = amount)
+ * under context chain:<id>, verified through sig_op against the signer's wallet.txt pubkey=. A (signer, nonce) pair is usable once across TX and escrow rows. The line gets two
+ * trailing fields n=<nonce>|s=<sig>. The miner re-verifies at inclusion (chain_miner.c). Copies of chain_send's helpers on purpose (no header+link). */
+static int wallet_pubkey(const char *w, char *out, size_t n) {
+    char path[PATH_BUF], line[MAX_LINE]; snprintf(path, sizeof path, "%s/wallets/%s/wallet.txt", project_root, w); FILE *f = fopen(path, "r"); if (!f) return 0;
+    int ok = 0; while (fgets(line, sizeof line, f)) if (!strncmp(line, "pubkey=", 7)) { line[strcspn(line, "\r\n")] = 0; snprintf(out, n, "%.79s", line + 7); ok = strlen(out) == 64; }
+    fclose(f); return ok; }
+/* The first TX / LOCK / PAYOUT / REFUND row inside a ledger segment, matched at a field boundary (a BLOCK line must not match "LOCK|" inside "BLOCK|"). esc = 0 for TX (signer = field 1), 1 for escrow rows (signer = field 2). */
+static char *find_row(char *tx, int *esc) {
+    static const char *K[4] = { "TX|", "LOCK|", "PAYOUT|", "REFUND|" };
+    for (char *p = tx; *p; p++) { if (p != tx && p[-1] != '|') continue;
+        for (int k = 0; k < 4; k++) if (!strncmp(p, K[k], strlen(K[k]))) { *esc = k > 0; return p; } }
+    return NULL; }
+static int nonce_used(const char *signer, const char *nonce) {
+    const char *files[2] = { "data/pending_tx.txt", "data/blockchain.txt" }; char needle[256]; snprintf(needle, sizeof needle, "|n=%s|", nonce);
+    for (int i = 0; i < 2; i++) { char path[PATH_BUF]; snprintf(path, sizeof path, "%s/%s", project_root, files[i]); FILE *f = fopen(path, "r"); if (!f) continue; static char line[1 << 16];
+        while (fgets(line, sizeof line, f)) { char *sp = NULL; for (char *tx = strtok_r(line, ";\n", &sp); tx; tx = strtok_r(NULL, ";\n", &sp)) { int esc = 0; char *row = find_row(tx, &esc); if (!row) continue; char copy[1 << 12]; snprintf(copy, sizeof copy, "%s", row);
+                char *fld[4]; int n = 0; char *c = copy; while (n < 4) { fld[n++] = c; char *q = strchr(c, '|'); if (!q) break; *q = 0; c = q + 1; }
+                if (n < 3) continue; const char *who = esc ? fld[2] : fld[1]; if (strcmp(who, signer) != 0) continue;
+                if (strstr(row, needle)) { fclose(f); return 1; } } }
+        fclose(f); }
+    return 0; }
+static int verify_sig(const char *pub, const char *msg, const char *sig) {   /* fork+exec sig_op verify with a watchdog (house rule: no popen) */
+    char exe[PATH_BUF], ctx[128]; snprintf(exe, sizeof exe, "%s/ops/+x/sig_op.+x", project_root); if (access(exe, X_OK)) return -1; snprintf(ctx, sizeof ctx, "chain:%s", g_chain_id);
+    pid_t c = fork(); if (c < 0) return -1;
+    if (c == 0) { int nul = open("/dev/null", O_WRONLY); if (nul >= 0) { dup2(nul, 1); dup2(nul, 2); } execl(exe, exe, "verify", pub, ctx, msg, sig, (char *)NULL); _exit(97); }
+    time_t t0 = time(NULL); int st;
+    for (;;) { pid_t r = waitpid(c, &st, WNOHANG); if (r == c) return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 1 : 0; if (time(NULL) - t0 > 10) { kill(c, SIGKILL); waitpid(c, &st, 0); return -1; } usleep(20000); } }
+/* 0 = ok (g_sigtail set when signed), nonzero = exit code after printing why. argv_nonce/argv_sig NULL = unsigned. */
+static int escrow_sign_check(const char *kind, const char *esc, const char *signer, const char *a3, const char *a4, const char *nonce, const char *sig) {
+    g_sigtail[0] = 0;
+    if (g_signing && !sig) { fprintf(stderr, "This chain requires signed transactions (SIGNING | required).\n"); return 3; }
+    if (!sig) return 0;
+    if (!nonce || !nonce[0] || strlen(nonce) > 18) { fprintf(stderr, "nonce must be a whole number.\n"); return 3; }
+    for (const char *p = nonce; *p; p++) if (!isdigit((unsigned char)*p)) { fprintf(stderr, "nonce must be a whole number.\n"); return 3; }
+    char pub[80] = ""; if (!wallet_pubkey(signer, pub, sizeof pub)) { fprintf(stderr, "Signer has no public key on this node (wallet.txt pubkey=).\n"); return 3; }
+    char msg[640]; snprintf(msg, sizeof msg, "%s|%s|%s|%s|%s|%s|%s", kind, g_chain_id, esc, signer, a3, a4, nonce);
+    int v = verify_sig(pub, msg, sig); if (v < 0) { fprintf(stderr, "Could not run sig_op (ops/+x/sig_op.+x).\n"); return 3; }
+    if (!v) { fprintf(stderr, "Signature does not verify.\n"); return 3; }
+    if (nonce_used(signer, nonce)) { fprintf(stderr, "Nonce already used by this wallet (replay).\n"); return 3; }
+    snprintf(g_sigtail, sizeof g_sigtail, "|n=%s|s=%s", nonce, sig); return 0; }
+
 static int valid_id(const char *id) {
     if (!id[0] || strlen(id) > 100) return 0;
     for (const char *p = id; *p; p++) if (!(isalnum((unsigned char)*p) || *p == '_' || *p == '-')) return 0;
@@ -267,25 +318,27 @@ int main(int argc, char **argv) {
     }
     if (!g_escrow_enabled) { fprintf(stderr, "Escrow is disabled on this chain.\n"); return 2; }
     if (strcmp(verb, "lock") == 0) {
-        if (argc < 6) goto usage;
+        if (argc < 6 || argc == 7 || argc > 8) goto usage;
         if (!valid_id(argv[2]) || !valid_id(argv[3]) || !valid_id(argv[5])) { fprintf(stderr, "Ids: letters, digits, _ and - only.\n"); return 3; }
-        long amount = atol(argv[4]);
-        snprintf(line, sizeof(line), "LOCK|%s|%s|%ld|%s|%ld|%s", argv[2], argv[3], amount, argv[5], ts, tx_id);
+        long amount = atol(argv[4]); char am[32]; snprintf(am, sizeof am, "%ld", amount);
+        { int sc = escrow_sign_check("LOCK", argv[2], argv[3], am, argv[5], argc == 8 ? argv[6] : NULL, argc == 8 ? argv[7] : NULL); if (sc) return sc; }
+        snprintf(line, sizeof(line), "LOCK|%s|%s|%ld|%s|%ld|%s%s", argv[2], argv[3], amount, argv[5], ts, tx_id, g_sigtail);
         int rc = issue(line);
         if (rc == 0) printf("Locked %ld millicones from %s in escrow %s (agent %s).\n", amount, argv[3], argv[2], argv[5]);
         return rc;
     }
     if (strcmp(verb, "payout") == 0 || strcmp(verb, "refund") == 0) {
-        if (argc < 6) goto usage;
+        if (argc < 6 || argc == 7 || argc > 8) goto usage;
         if (!valid_id(argv[2]) || !valid_id(argv[3]) || !valid_id(argv[4])) { fprintf(stderr, "Ids: letters, digits, _ and - only.\n"); return 3; }
-        long amount = atol(argv[5]);
+        long amount = atol(argv[5]); char am[32]; snprintf(am, sizeof am, "%ld", amount);
         int pay = verb[0] == 'p';
-        snprintf(line, sizeof(line), "%s|%s|%s|%s|%ld|%ld|%s", pay ? "PAYOUT" : "REFUND", argv[2], argv[3], argv[4], amount, ts, tx_id);
+        { int sc = escrow_sign_check(pay ? "PAYOUT" : "REFUND", argv[2], argv[3], argv[4], am, argc == 8 ? argv[6] : NULL, argc == 8 ? argv[7] : NULL); if (sc) return sc; }
+        snprintf(line, sizeof(line), "%s|%s|%s|%s|%ld|%ld|%s%s", pay ? "PAYOUT" : "REFUND", argv[2], argv[3], argv[4], amount, ts, tx_id, g_sigtail);
         int rc = issue(line);
         if (rc == 0) printf("%s %ld millicones from escrow %s to %s.\n", pay ? "Paid out" : "Refunded", amount, argv[2], argv[4]);
         return rc;
     }
 usage:
-    fprintf(stderr, "Usage: chain_escrow.+x lock <id> <from> <amount> <agent> | payout|refund <id> <by> <to> <amount> | status <id> | audit\n");
+    fprintf(stderr, "Usage: chain_escrow.+x lock <id> <from> <amount> <agent> [<nonce> <sig>] | payout|refund <id> <by> <to> <amount> [<nonce> <sig>] | status <id> | audit\n");
     return 1;
 }

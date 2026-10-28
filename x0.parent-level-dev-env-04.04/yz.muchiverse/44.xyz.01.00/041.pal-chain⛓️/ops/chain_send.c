@@ -100,10 +100,19 @@ static int wallet_pubkey(const char *w, char *out, size_t n) {
     char path[PATH_BUF], line[MAX_LINE]; snprintf(path, sizeof path, "%s/wallets/%s/wallet.txt", project_root, w); FILE *f = fopen(path, "r"); if (!f) return 0;
     int ok = 0; while (fgets(line, sizeof line, f)) if (!strncmp(line, "pubkey=", 7)) { line[strcspn(line, "\r\n")] = 0; snprintf(out, n, "%.79s", line + 7); ok = strlen(out) == 64; }
     fclose(f); return ok; }
-static int nonce_used(const char *from, const char *nonce) {
-    const char *files[2] = { "data/pending_tx.txt", "data/blockchain.txt" }; char needle[256], pre[256]; snprintf(needle, sizeof needle, "|n=%s|", nonce); snprintf(pre, sizeof pre, "TX|%s|", from);
+/* The first TX / LOCK / PAYOUT / REFUND row inside a ledger segment, matched at a field boundary (a BLOCK line must not match "LOCK|" inside "BLOCK|"). esc = 0 for TX (signer = field 1), 1 for escrow rows (signer = field 2). */
+static char *find_row(char *tx, int *esc) {
+    static const char *K[4] = { "TX|", "LOCK|", "PAYOUT|", "REFUND|" };
+    for (char *p = tx; *p; p++) { if (p != tx && p[-1] != '|') continue;
+        for (int k = 0; k < 4; k++) if (!strncmp(p, K[k], strlen(K[k]))) { *esc = k > 0; return p; } }
+    return NULL; }
+static int nonce_used(const char *from, const char *nonce) {      /* one nonce space per signer across TX and LOCK/PAYOUT/REFUND rows (the miner keeps the same one) */
+    const char *files[2] = { "data/pending_tx.txt", "data/blockchain.txt" }; char needle[256]; snprintf(needle, sizeof needle, "|n=%s|", nonce);
     for (int i = 0; i < 2; i++) { char path[PATH_BUF]; snprintf(path, sizeof path, "%s/%s", project_root, files[i]); FILE *f = fopen(path, "r"); if (!f) continue; static char line[1 << 16];
-        while (fgets(line, sizeof line, f)) { for (char *p = strstr(line, pre); p; p = strstr(p + 1, pre)) { char *e = strpbrk(p, ";\n"); char save = e ? *e : 0; if (e) *e = 0; int hit = strstr(p, needle) != NULL; if (e) *e = save; if (hit) { fclose(f); return 1; } } }
+        while (fgets(line, sizeof line, f)) { char *sp = NULL; for (char *tx = strtok_r(line, ";\n", &sp); tx; tx = strtok_r(NULL, ";\n", &sp)) { int esc = 0; char *row = find_row(tx, &esc); if (!row) continue; char copy[1 << 12]; snprintf(copy, sizeof copy, "%s", row);
+                char *fld[4]; int n = 0; char *c = copy; while (n < 4) { fld[n++] = c; char *q = strchr(c, '|'); if (!q) break; *q = 0; c = q + 1; }
+                if (n < 3) continue; const char *who = esc ? fld[2] : fld[1]; if (strcmp(who, from) != 0) continue;
+                char *back = strstr(row, needle); if (back) { fclose(f); return 1; } } }
         fclose(f); }
     return 0; }
 static int verify_sig(const char *pub, const char *chain, const char *msg, const char *sig) {   /* fork+exec sig_op verify with a watchdog (house rule: no popen) */

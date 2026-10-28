@@ -1,0 +1,125 @@
+# chain_escrow_signed: LOCKED cases for signed escrow rows (signatures, escrow slice; design 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 27). Chain ops are COMPILED FROM SOURCE into the scratch.
+# Signed message: <KIND>|<chain>|<escrow>|<signer>|<a3>|<a4>|<nonce> under context chain:<chain> (LOCK: a3 = amount, a4 = agent; PAYOUT/REFUND: a3 = to, a4 = amount), signer = the wallet that loses the coins
+# (LOCK from) or the escrow agent (PAYOUT/REFUND by). Fixture keys are TEST keys (passphrase harness-test-only): sig_test_key.pem = alice, sig_test_key2.pem = bob (the agent); Ed25519 is deterministic so the
+# expected signatures are literals. One nonce space per wallet across TX and escrow rows. NOT covered: ev_chain signing under the POLICY cap, key binding ON the chain, the real chain.
+RESULTS | ../results/chain_escrow_signed.txt
+SCRATCH |
+MKDIR | 041.pal-chain/ops/+x
+CASE | build-from-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_new.+x | $HOUSE/041.pal-chain⛓️/ops/chain_new.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_new-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_send.+x | $HOUSE/041.pal-chain⛓️/ops/chain_send.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_send-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_balance.+x | $HOUSE/041.pal-chain⛓️/ops/chain_balance.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_balance-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_miner.+x | $HOUSE/041.pal-chain⛓️/ops/chain_miner.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_miner-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | $HOUSE/041.pal-chain⛓️/ops/chain_create_wallet.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_create_wallet-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_escrow.+x | $HOUSE/041.pal-chain⛓️/ops/chain_escrow.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_escrow-builds
+COPY | &.widgits/_shared-lib/ops/+x/sig_op.+x | 041.pal-chain/ops/+x/sig_op.+x
+
+CASE | setup
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain
+ENV | CHAIN_DIFFICULTY_HEX_ZEROS | 1
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | sg | --signing | 1 | --cap | 0
+EXPECT_EXIT | 0 | signed-chain-created
+EXPECT_HAS | 041.pal-chain/chains/sg/chain.pdl | ESCROW  \p enabled                    \p 1 | escrow-enabled
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | lax
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/sg
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | alice | pw | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a
+EXPECT_EXIT | 0 | alice-has-key-1
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | bob | pw | 2bf6f4e6e22c967f062c25b2c2b20b112bee003973ce79c0289b6e84a1b3fa85
+EXPECT_EXIT | 0 | bob-has-key-2
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | carol | pw
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | mallory | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | alice-funded
+
+CASE | signed-lock
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e1 | alice | 8 | bob
+EXPECT_EXIT | 3 | unsigned-lock-refused-on-signed-chain
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e1 | alice | 8 | bob | 1 | bc584e2bebde862ca0bd989408606da00da3ba7ccc2084426b2eb2d775bb3be2775225ed50b6e6bf1fb08b18a63d5b9e0be4825156bee9efe8305ac6fd331005
+EXPECT_EXIT | 0 | signed-lock-accepted
+EXPECT_HAS | 041.pal-chain/chains/sg/data/pending_tx.txt | LOCK\pe1\palice\p8\pbob\p | lock-queued
+EXPECT_HAS | 041.pal-chain/chains/sg/data/pending_tx.txt | \pn=1\ps=bc584e2bebde862ca0bd989408606da00da3ba7ccc2084426b2eb2d775bb3be2775225ed50b6e6bf1fb08b18a63d5b9e0be4825156bee9efe8305ac6fd331005 | nonce-and-sig-recorded
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e2 | alice | 1 | bob | 1 | 21b7487a2e450ea2f98cf8e02d758a5e9ea3835fec314cd2003f19def6d2d6f35ec6cec6846673ccc955cb11a7cffa72d3580e93fd699a768d003f42a82ba30e
+EXPECT_EXIT | 3 | replayed-nonce-refused
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e3 | alice | 4 | bob | 2 | 4b27b014350a8df70cc887a543bcf3a76dc52be9aab22c8f8d556bfa9439872bf1dc0c9ac1847f141591374fea53b3647ff0b4347c3f39a4abc154fb3ad2b208
+EXPECT_EXIT | 3 | tampered-amount-refused-signature-was-for-3
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e3 | alice | 3 | bob | 2 | 4b27b014350a8df70cc887a543bcf3a76dc52be9aab22c8f8d556bfa9439872bf1dc0c9ac1847f141591374fea53b3647ff0b4347c3f39a4abc154fb3ad2b208
+EXPECT_EXIT | 0 | the-refused-attempt-did-not-burn-the-nonce
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e3 | alice | 3 | carol
+EXPECT_EXIT | 3 | unsigned-again-refused
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e9 | alice | 3 | bob | 7
+EXPECT_EXIT | 1 | nonce-without-signature-is-a-usage-error
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e9 | alice | 3 | mallory | 7 | bc584e2bebde862ca0bd989408606da00da3ba7ccc2084426b2eb2d775bb3be2775225ed50b6e6bf1fb08b18a63d5b9e0be4825156bee9efe8305ac6fd331005
+EXPECT_EXIT | 3 | signature-for-another-agent-field-refused
+RUN | grep | -c | ^LOCK | $T/041.pal-chain/chains/sg/data/pending_tx.txt
+EXPECT_OUT_IS | 2 | exactly-two-locks-queued
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | locks-mined
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | status | e1
+EXPECT_OUT_HAS | agent=bob locked=8 | e1-locked-with-bob-as-agent
+
+CASE | signed-payout-and-refund
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | payout | e1 | bob | carol | 3
+EXPECT_EXIT | 3 | unsigned-payout-refused
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | payout | e1 | bob | carol | 3 | 9 | cdc05a111f951938b5cced0be326e9393352ed83d80d6c486812ea238fc0982b52fde775c94bb49d947a2ea20a623453dcd8d84ecc39ba60bda82c66f11c9505
+EXPECT_EXIT | 3 | payout-signed-with-the-wrong-key-refused
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | payout | e1 | alice | carol | 1 | 3 | c06a06c4bd69c52e1e204d760007f08dd671155feec244ec20e3bd2dd394c2af86253d8cc5dd64dd74189c7874e2728522db35b672579a438aa74ad30ac95800
+EXPECT_EXIT | 3 | properly-signed-by-a-non-agent-refused
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | payout | e1 | bob | carol | 1 | 3 | 88d1f5aa6034f92833d322a292d94dc4f67b5935268b7d538d9447e474128cf044b7446ae3bf3b230990aa91b68bce6fec6ea59b15e43cba0e5b116ba485e10f
+EXPECT_EXIT | 3 | signature-made-for-another-chain-refused
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | payout | e1 | bob | carol | 3 | 1 | 2c9a37f6d6654609281b36b4dadbabc9678ff12d4cfb86af3d373b93afa0a0177645fce392b027c5c40ff7e2e7c71182404b2bf8bb415a06eac7597d3c84aa0c
+EXPECT_EXIT | 0 | agent-signed-payout-accepted
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | refund | e1 | bob | alice | 2 | 2 | 1a0bf914b3fc31f762c6c69f6d66cff38a97ffbdb3990b75114e3e2785055accabf266bed0b9b8717fe0790793a614ce16a40fe75bb7baddb7f18c2c944a0a0c
+EXPECT_EXIT | 0 | agent-signed-refund-accepted
+RUN | grep | -cE | ^(PAYOUT\pREFUND) | $T/041.pal-chain/chains/sg/data/pending_tx.txt
+EXPECT_OUT_IS | 2 | exactly-one-payout-and-one-refund-queued
+
+CASE | one-nonce-space-across-kinds
+RUN | $T/041.pal-chain/ops/+x/chain_send.+x | alice | bob | 1 | 1 | 8ab1393f3d2ce2bffd8babde224086caca0aa3fc45aef6abcba3089fe4fba681074ee60575124e4108423de357f33aa30b673b8437fea40a10bd5d4cd8948409
+EXPECT_EXIT | 3 | a-send-cannot-reuse-the-nonce-of-a-lock
+RUN | $T/041.pal-chain/ops/+x/chain_send.+x | alice | bob | 1 | 4 | 84d39a01cd32c2c979bb2bc0cad326cd5461dd7c773c291920241b2d10efc0da1f7bfc6d49f2f267a6433feca08e6afdb83a5e9d33bbbd6ea4e7b5a41cbddb0c
+EXPECT_EXIT | 0 | signed-send-with-nonce-4
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | e4 | alice | 1 | bob | 4 | 1459eed68d49131fa9f11715aa17751dca8ee47c5c6ab448bf135e698ffa85959e0acbeaea3ec20c0513a519829a0aaf3e943b933cecebc0e953931208b7c802
+EXPECT_EXIT | 3 | the-same-nonce-on-a-lock-is-a-replay
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | rows-mined
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | carol
+EXPECT_OUT_IS | 3 | carol-got-the-payout
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | bob
+EXPECT_OUT_IS | 1 | bob-got-only-the-send
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | audit
+EXPECT_OUT_HAS | conserved=1 | money-conserved-after-signed-escrow-rows
+
+CASE | forged-escrow-rows-rejected-at-mining
+WRITE | 041.pal-chain/chains/sg/data/pending_tx.txt | PAYOUT\pe3\pbob\pmallory\p1\p20\pf1\nPAYOUT\pe3\pbob\pmallory\p2\p21\pf2\pn=5\ps=e4bdc0cfaa15166a8cfd1d8f05c5b516651f9abe641c85a4ecbf07acd31be6fb958794f175dab44b5838240dd6f68bf1ede130b3102de784bc2846c283ea720d\nPAYOUT\pe3\pbob\pcarol\p1\p22\pf3\pn=5\ps=e4bdc0cfaa15166a8cfd1d8f05c5b516651f9abe641c85a4ecbf07acd31be6fb958794f175dab44b5838240dd6f68bf1ede130b3102de784bc2846c283ea720d\nPAYOUT\pe3\pbob\pcarol\p1\p23\pf4\pn=5\ps=e4bdc0cfaa15166a8cfd1d8f05c5b516651f9abe641c85a4ecbf07acd31be6fb958794f175dab44b5838240dd6f68bf1ede130b3102de784bc2846c283ea720d\nLOCK\pe5\palice\p2\pbob\p24\pf5\pn=6\ps=db5f3f934f021e778afb3fa0bd5833c1c13cb1ad288350d2687a45ca955dc8743292d4fc55e0e73766ce2754677e2a5fbb85149a7b0280917b1ef44c0e172f03\nLOCK\pe6\palice\p2\pbob\p25\pf6\n
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | miner-ran
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | carol
+EXPECT_OUT_IS | 4 | only-the-genuine-payout-moved-money
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | mallory
+EXPECT_OUT_IS | 0 | forged-and-tampered-payouts-paid-nothing
+EXPECT_HAS | 041.pal-chain/chains/sg/data/rejected_tx.txt | unsigned escrow row on a signing chain | unsigned-rows-rejected-with-reason
+EXPECT_HAS | 041.pal-chain/chains/sg/data/rejected_tx.txt | signature does not verify | tampered-payout-rejected-with-reason
+EXPECT_HAS | 041.pal-chain/chains/sg/data/rejected_tx.txt | nonce already used (replay) | replayed-payout-rejected-with-reason
+RUN | grep | -c | ^REJECT | $T/041.pal-chain/chains/sg/data/rejected_tx.txt
+EXPECT_OUT_IS | 4 | exactly-four-rejections-of-six-lines
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | status | e5
+EXPECT_OUT_HAS | agent=bob locked=2 | the-genuine-signed-lock-was-mined
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | audit
+EXPECT_OUT_HAS | conserved=1 | money-conserved-after-the-forgery-attempt
+
+CASE | unsigned-chain-unchanged
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/lax
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | dan | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | dan | --blocks | 1
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | lock | x1 | dan | 5 | erin
+EXPECT_EXIT | 0 | unsigned-lock-still-works-on-an-unsigned-chain
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | dan | --blocks | 1
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | payout | x1 | erin | fay | 2
+EXPECT_EXIT | 0 | unsigned-payout-still-works-on-an-unsigned-chain
+CLEAN |

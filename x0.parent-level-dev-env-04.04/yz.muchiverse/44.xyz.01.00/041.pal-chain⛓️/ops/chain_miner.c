@@ -228,6 +228,25 @@ static int tx_signature_ok(char **tf, int tnf, char *why, size_t why_sz) {
     return 1;
 }
 
+/* Escrow rows on a signing chain: LOCK|esc|from|amount|agent|ts|id, PAYOUT/REFUND|esc|by|to|amount|ts|id carry n=<nonce>|s=<sig> after the id.
+ * Signer = tf[2] (the wallet that loses the coins for a LOCK, the escrow agent `by` for a payout/refund). Signed message: <KIND>|<chain>|<esc>|<signer>|<a3>|<a4>|<nonce>
+ * (LOCK: a3 = amount, a4 = agent; PAYOUT/REFUND: a3 = to, a4 = amount), under context chain:<id>. The same (signer, nonce) space as TX. 1 = fine, 0 = refuse with why. */
+static int escrow_signature_ok(char **tf, int tnf, char *why, size_t why_sz) {
+    if (!g_signing) return 1;
+    const char *nonce = NULL, *sig = NULL;
+    for (int i = 7; i < tnf; i++) { if (!strncmp(tf[i], "n=", 2)) nonce = tf[i] + 2; else if (!strncmp(tf[i], "s=", 2)) sig = tf[i] + 2; }
+    if (!nonce || !sig) { snprintf(why, why_sz, "unsigned escrow row on a signing chain"); return 0; }
+    if (!nonce[0] || strlen(nonce) > 18) { snprintf(why, why_sz, "bad nonce"); return 0; }
+    for (const char *p = nonce; *p; p++) if (!isdigit((unsigned char)*p)) { snprintf(why, why_sz, "bad nonce"); return 0; }
+    char pub[80] = ""; if (!wallet_pub(tf[2], pub, sizeof pub)) { snprintf(why, why_sz, "signer has no public key on this node"); return 0; }
+    char msg[640]; snprintf(msg, sizeof msg, "%s|%s|%s|%s|%s|%s|%s", tf[0], g_chain_id, tf[1], tf[2], tf[3], tf[4], nonce);
+    int v = sig_verify(pub, msg, sig);
+    if (v < 0) { snprintf(why, why_sz, "could not run sig_op"); return 0; }
+    if (!v) { snprintf(why, why_sz, "signature does not verify"); return 0; }
+    if (nonce_seen(tf[2], nonce)) { snprintf(why, why_sz, "nonce already used (replay)"); return 0; }
+    return 1;
+}
+
 /* Applies one tx (fields already split, tnf fields). validate=0: replay, just
  * apply. validate=1: refuse an invalid line, writing the reason to why. 1 = ok. */
 static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) {
@@ -244,6 +263,7 @@ static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) 
         *wallet_bal(tf[1]) += amt;
     } else if (strcmp(tf[0], "LOCK") == 0 && tnf >= 7) {
         long long amt = atoll(tf[3]);
+        if (validate && !escrow_signature_ok(tf, tnf, why, why_sz)) return 0;
         if (validate) {
             if (!g_escrow_enabled) { snprintf(why, why_sz, "escrow disabled"); return 0; }
             if (amt <= 0) { snprintf(why, why_sz, "amount must be positive"); return 0; }
@@ -252,6 +272,7 @@ static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) 
             if (strcmp(tf[2], "_burn") == 0) { snprintf(why, why_sz, "lock from _burn"); return 0; }
             if (*wallet_bal(tf[2]) < amt) { snprintf(why, why_sz, "insufficient spendable balance"); return 0; }
         }
+        for (int i = 7; i < tnf; i++) if (!strncmp(tf[i], "n=", 2)) nonce_note(tf[2], tf[i] + 2);
         if (nE < MAX_E) {
             snprintf(E[nE].id, sizeof(E[nE].id), "%s", tf[1]); snprintf(E[nE].agent, sizeof(E[nE].agent), "%s", tf[4]);
             E[nE].locked = amt; E[nE].paid = 0; nE++;
@@ -260,6 +281,7 @@ static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) 
     } else if ((strcmp(tf[0], "PAYOUT") == 0 || strcmp(tf[0], "REFUND") == 0) && tnf >= 7) {
         long long amt = atoll(tf[4]);
         int ei = escrow_find(tf[1]);
+        if (validate && !escrow_signature_ok(tf, tnf, why, why_sz)) return 0;
         if (validate) {
             if (!g_escrow_enabled) { snprintf(why, why_sz, "escrow disabled"); return 0; }
             if (ei < 0) { snprintf(why, why_sz, "no such escrow"); return 0; }
@@ -267,6 +289,7 @@ static int apply_tx(char **tf, int tnf, int validate, char *why, size_t why_sz) 
             if (amt <= 0) { snprintf(why, why_sz, "amount must be positive"); return 0; }
             if (E[ei].paid + amt > E[ei].locked) { snprintf(why, why_sz, "exceeds remaining locked"); return 0; }
         }
+        for (int i = 7; i < tnf; i++) if (!strncmp(tf[i], "n=", 2)) nonce_note(tf[2], tf[i] + 2);
         if (ei >= 0) E[ei].paid += amt;
         *wallet_bal(tf[3]) += amt;
     }
