@@ -1021,7 +1021,7 @@ static int sk_veh_model(int slot, const SkVox *v, int n, const int dim[3]) {    
 static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3], double edge) {
     char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); sk_veh_model(slot, v, n, dim);
     double cell = edge * tune("obj_vox_pct", 100) / 100.0, sx = dim[0] * cell, sy = dim[2] * cell, sh = dim[1] * cell;
-    snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=bridge\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
+    snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=%s\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", tune("space_all_desks", 1) ? "*" : "bridge", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
     snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); }
 static void sk_veh_clear(void) { char p[PATH_MAX]; for (int k = 1; k <= 9; k++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, k); unlink(p); } }
 static void sk_bar_refresh(void) { for (int r = 0; r < SK_SHIP; r++) write_room_events(r); }      /* bar.txt is only rewritten with its room's scene rows: ask for it when the ship moved or the objects changed */

@@ -996,7 +996,7 @@ static void load_vehicle(const char *root) {      /* every vehicle piece that ex
             else if (!strncmp(line, "selflit=", 8)) P.selflit = atoi(line + 8);
             else if (!strncmp(line, "desk=", 5)) { line[strcspn(line, "\r\n")] = 0; snprintf(vdesk, sizeof(vdesk), "%s", line + 5); }
         }
-        fclose(f); if (have != 3 || (vdesk[0] && strcmp(cur, vdesk))) continue;
+        fclose(f); if (have != 3 || (vdesk[0] && strcmp(vdesk, "*") && strcmp(cur, vdesk))) continue;      /* desk=* (owner 2026-10-27: the asteroids and the other ship must draw wherever space is visible, not only on the bridge desk): a piece for every desk */
         snprintf(path, sizeof(path), "%s/pieces/%s/model.txt", root, veh_name(k));
         f = host_fopen(path, "r"); if (!f) continue;
         P.vox = (VehVox *)malloc(sizeof(VehVox) * VEH_VOX); if (!P.vox) { fclose(f); continue; }

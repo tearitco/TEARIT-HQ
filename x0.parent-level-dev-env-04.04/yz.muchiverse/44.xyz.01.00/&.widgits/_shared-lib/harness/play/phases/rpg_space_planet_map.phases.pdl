@@ -82,7 +82,7 @@ PUT | state/direct.txt | 0 0\n
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 1 0\n | flown-one-cell-east
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | entity_type=vehicle | an-asteroid-is-a-vehicle-piece
-HAS | rpg-space-pchq/pieces/veh_1/state.txt | desk=bridge | drawn-on-the-bridge-desk-where-the-land-is
+HAS | rpg-space-pchq/pieces/veh_1/state.txt | desk=* | drawn-on-every-desk-where-space-is-visible-desk-star
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_x=13.00 | ore-at-world-15-5-minus-flight-shift-1-centred-on-its-3-wide-box
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_y= | ore-has-a-y-position-its-exact-value-follows-the-nugget-depth-which-the-fine-rock-cubes-changed-2026-10-27
 HAS | rpg-space-pchq/pieces/veh_1/state.txt | pos_z=-8 | the-land-and-its-rocks-sink-by-the-ship-altitude
