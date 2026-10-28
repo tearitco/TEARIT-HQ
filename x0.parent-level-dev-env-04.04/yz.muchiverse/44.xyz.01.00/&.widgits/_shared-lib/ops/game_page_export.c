@@ -5,7 +5,9 @@
  *   --if-changed   write a file only when its content differs from what is on disk (a reader that polls the page by file size / marker sees no churn); prints `unchanged <page>` when nothing was written
  *   <app_dir>      the game, e.g. @.apps/rpg-space (state/trainer.txt, <app>/<name>-pchq/)
  *   <session_dir>  where to write: <session_dir>/session.pdl (STATE | name | <game>, STATE | active_desk | <room>) and <session_dir>/desks/<room>.pdl
- * The page is the room the controlled character is in (state/trainer.txt room=). Rows: hero_01 at the trainer's cell; xelector_01 at the SAME cell with its possessed id in the glyph field (the standard: a possessing xelector
+ * The page is the room the CONTROLLED character is in. Who that is follows the game's own rule (petslike_core.c ctl_idx): state/flag_ctl.txt says `pet` and state/active.txt names a pet -> that pet's state/pet_<id>.txt
+ * (room= x= y=); `player`, or a pet file that is missing/incomplete/unsafe -> state/trainer.txt (a note line says when the fallback was a surprise). Before 2026-10-28 it always read trainer.txt, so after a Synch (which moves the
+ * controlled pet) the page still named the old room. Rows: hero_01 at the controlled character's cell; xelector_01 at the SAME cell with its possessed id in the glyph field (the standard: a possessing xelector
  * stands on what it controls; the private xelector file may say otherwise, and that is reported); camera_01 with the fresh-start camera packed m=<mode>,y=<yaw>,p=<pitch>,z=0,h=0 (mode from arrow_config.txt default_camera_mode, yaw 180,
  * pitch 6 for modes 1/2 and -90 otherwise: the engine's own fresh defaults). Pixels are cells x 80. The `n` column is written as 0 (its meaning is not documented in PAGE-FILE.md).
  * NOT rows yet: the ship (it lives on the `space` page, not the room), pets and asteroids (bar rows with no pal folder).
@@ -46,16 +48,22 @@ int main(int argc, char **argv) {
     const char *game = strrchr(app, '/') + 1;
     char pchq[PATH_MAX + 80] = ""; { DIR *d = opendir(app); struct dirent *e; while (d && (e = readdir(d))) { size_t n = strlen(e->d_name); if (n > 5 && !strcmp(e->d_name + n - 5, "-pchq")) { snprintf(pchq, sizeof pchq, "%s/%s", app, e->d_name); break; } } if (d) closedir(d); }
     if (!pchq[0]) { fprintf(stderr, "game_page_export: %s has no <name>-pchq folder\n", app); return 1; }
-    char tp[PATH_MAX + 80], room[64], hx[16], hy[16]; snprintf(tp, sizeof tp, "%s/state/trainer.txt", app);
+    char tp[PATH_MAX + 80], room[64], hx[16], hy[16], srcname[80] = "trainer.txt", srclabel[80] = "trainer"; snprintf(tp, sizeof tp, "%s/state/trainer.txt", app);
+    { char cb[32] = "", ab[64] = ""; char fp[PATH_MAX + 80]; FILE *f; snprintf(fp, sizeof fp, "%s/state/flag_ctl.txt", app); if ((f = fopen(fp, "r"))) { if (fgets(cb, sizeof cb, f)) cb[strcspn(cb, "\r\n")] = 0; fclose(f); }
+      snprintf(fp, sizeof fp, "%s/state/active.txt", app); if ((f = fopen(fp, "r"))) { if (fgets(ab, sizeof ab, f)) ab[strcspn(ab, "\r\n")] = 0; fclose(f); }
+      if (!strcmp(cb, "pet") && ab[0]) {
+        char pf[PATH_MAX + 120], r_[64], x_[16], y_[16]; snprintf(pf, sizeof pf, "%s/state/pet_%s.txt", app, ab);
+        if (name_ok(ab) && kv(pf, "room", r_, sizeof r_) >= 1 && kv(pf, "x", x_, sizeof x_) >= 1 && kv(pf, "y", y_, sizeof y_) >= 1 && name_ok(r_) && whole(x_) && whole(y_)) { snprintf(tp, sizeof tp, "%s", pf); snprintf(srcname, sizeof srcname, "pet_%s.txt", ab); snprintf(srclabel, sizeof srclabel, "pet %s", ab); }
+        else printf("note: flag_ctl is pet and active.txt names `%s`, but state/pet_%s.txt is missing, incomplete or unsafe: using trainer.txt\n", ab, ab); } }
     if (kv(tp, "room", room, sizeof room) < 1 || kv(tp, "x", hx, sizeof hx) < 1 || kv(tp, "y", hy, sizeof hy) < 1) { fprintf(stderr, "game_page_export: %s lacks room=, x= or y=\n", tp); return 1; }
     if (!name_ok(room) || !whole(hx) || !whole(hy)) { fprintf(stderr, "game_page_export: %s has an unusable room/x/y (%s %s %s)\n", tp, room, hx, hy); return 1; }
     int cx = atoi(hx), cy = atoi(hy), disagree = 0;
     char xp[PATH_MAX + 120], px[16] = "", py[16] = "", poss[64] = "", hp_[PATH_MAX + 120], hpx[16] = "", hpy[16] = "";
     snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", pchq); kv(xp, "pos_x", px, sizeof px); kv(xp, "pos_y", py, sizeof py); kv(xp, "possessed_id", poss, sizeof poss);
     snprintf(hp_, sizeof hp_, "%s/pieces/hero_01/state.txt", pchq); kv(hp_, "pos_x", hpx, sizeof hpx); kv(hp_, "pos_y", hpy, sizeof hpy);
-    printf("trainer.txt (the game's own, ticking): room=%s cell=%d,%d\n", room, cx, cy);
-    if (px[0] && (atoi(px) != cx || atoi(py) != cy)) { printf("DISAGREE xelector_01/state.txt %s,%s vs trainer %d,%d\n", px, py, cx, cy); disagree++; }
-    if (hpx[0] && (atoi(hpx) != cx || atoi(hpy) != cy)) { printf("DISAGREE hero_01/state.txt %s,%s vs trainer %d,%d\n", hpx, hpy, cx, cy); disagree++; }
+    printf("%s (%s, ticking): room=%s cell=%d,%d\n", srcname, strcmp(srcname, "trainer.txt") ? "the controlled character" : "the game's own", room, cx, cy);
+    if (px[0] && (atoi(px) != cx || atoi(py) != cy)) { printf("DISAGREE xelector_01/state.txt %s,%s vs %s %d,%d\n", px, py, srclabel, cx, cy); disagree++; }
+    if (hpx[0] && (atoi(hpx) != cx || atoi(hpy) != cy)) { printf("DISAGREE hero_01/state.txt %s,%s vs %s %d,%d\n", hpx, hpy, srclabel, cx, cy); disagree++; }
     char cfg[PATH_MAX + 120], dm[16]; snprintf(cfg, sizeof cfg, "%s/pieces/system/arrow_config.txt", pchq); kv(cfg, "default_camera_mode", dm, sizeof dm);
     int mode = atoi(dm); if (mode < 1 || mode > 4) mode = 2; int pitch = (mode == 1 || mode == 2) ? 6 : -90;
     char rel[PATH_MAX]; { size_t hl = strlen(house); snprintf(rel, sizeof rel, "%s", strncmp(pchq, house, hl) == 0 && pchq[hl] == '/' ? pchq + hl + 1 : pchq); }
@@ -68,7 +76,7 @@ int main(int argc, char **argv) {
     snprintf(r1, sizeof r1, "DESK | hero_01 | %s/pieces/hero_01 | %d | %d | %d | %d | . | 0", rel, cx * 80, cy * 80, cx, cy);
     snprintf(r2, sizeof r2, "DESK | xelector_01 | %s/pieces/xelector_01 | %d | %d | %d | %d | %s | 0", rel, cx * 80, cy * 80, cx, cy, poss[0] ? poss : "none");
     snprintf(r3, sizeof r3, "DESK | camera_01 | %s/pieces/display | 80 | 0 | 1 | 0 | m=%d,y=180,p=%d,z=0,h=0 | 0", rel, mode, pitch);
-    snprintf(pc, sizeof pc, "# page `%s` of book `%s`, written by game_page_export from %s/state/trainer.txt (S2/S3a of the games-as-books pivot)\n%s\n%s\n%s\n", room, game, game, r1, r2, r3);
+    snprintf(pc, sizeof pc, "# page `%s` of book `%s`, written by game_page_export from %s/state/%s (S2/S3a of the games-as-books pivot)\n%s\n%s\n%s\n", room, game, game, srcname, r1, r2, r3);
     int w1 = write_file(sp, sc, if_changed), w2 = write_file(pp, pc, if_changed);
     if (w1 < 0 || w2 < 0) { fprintf(stderr, "game_page_export: cannot write under %s\n", sess); return 1; }
     printf("ROW %s\nROW %s\nROW %s\n%s %s rows=3 disagreements=%d\n", r1, r2, r3, (w1 || w2) ? "wrote" : "unchanged", pp, disagree);

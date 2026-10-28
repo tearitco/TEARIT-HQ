@@ -328,6 +328,305 @@ EXPECT_EXIT | 2 | unknown-option
 RUN | $T/gpe.+x | $T/nowhere | $T/u2
 EXPECT_EXIT | 1 | missing-game-folder
 
+CASE | ctl_pet
+MKDIR | ctl_pet/h/&.widgits
+MKDIR | ctl_pet/h/@.apps/g/state
+WRITE | ctl_pet/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | ctl_pet/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_pet/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_pet/h/@.apps/g | $T/ctl_pet/sess | --house | $T/ctl_pet/h
+EXPECT_EXIT | 0 | ctl_pet-exit-0
+EXPECT_OUT | pet_solvent.txt (the controlled character, ticking): room=quarters cell=4,5 | reads-the-controlled-pet-not-the-trainer
+EXPECT_OUT | rows=3 disagreements=0 | the-private-files-agree-with-the-pet
+EXPECT_HAS | ctl_pet/sess/desks/quarters.pdl | DESK \p hero_01 \p @.apps/g/g-pchq/pieces/hero_01 \p 320 \p 400 \p 4 \p 5 \p . \p 0 | hero-at-4-5-is-320-400
+EXPECT_HAS | ctl_pet/sess/desks/quarters.pdl | from g/state/pet_solvent.txt | the-page-names-its-source
+EXPECT_HAS | ctl_pet/sess/session.pdl | STATE \p active_desk \p quarters | the-page-is-the-pets-room
+EXPECT_NOFILE | ctl_pet/sess/desks/bridge.pdl | the-trainers-room-is-not-the-page
+
+CASE | ctl_pet_disagree
+MKDIR | ctl_pet_disagree/h/&.widgits
+MKDIR | ctl_pet_disagree/h/@.apps/g/state
+WRITE | ctl_pet_disagree/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet_disagree/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet_disagree/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet_disagree/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_pet_disagree/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_pet_disagree/h/@.apps/g | $T/ctl_pet_disagree/sess | --house | $T/ctl_pet_disagree/h
+EXPECT_EXIT | 0 | ctl_pet_disagree-exit-0
+EXPECT_OUT | DISAGREE xelector_01/state.txt 7,5 vs pet solvent 4,5 | xelector-compared-with-the-pet
+EXPECT_OUT | DISAGREE hero_01/state.txt 7,5 vs pet solvent 4,5 | hero-compared-with-the-pet
+EXPECT_OUT | disagreements=2 | two
+
+CASE | ctl_player
+MKDIR | ctl_player/h/&.widgits
+MKDIR | ctl_player/h/@.apps/g/state
+WRITE | ctl_player/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_player/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_player/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_player/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_player/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_player/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_player/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_player/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_player/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_player/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_player/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_player/h/@.apps/g/state/flag_ctl.txt | player\n
+WRITE | ctl_player/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_player/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_player/h/@.apps/g | $T/ctl_player/sess | --house | $T/ctl_player/h
+EXPECT_EXIT | 0 | ctl_player-exit-0
+EXPECT_OUT | trainer.txt (the game's own, ticking): room=bridge cell=7,5 | ctl-player-means-the-trainer
+EXPECT_HAS | ctl_player/sess/desks/bridge.pdl | \p 560 \p 400 \p 7 \p 5 \p . | trainer-cell
+EXPECT_NOFILE | ctl_player/sess/desks/quarters.pdl | the-pets-room-is-not-the-page
+
+CASE | ctl_no_flag
+MKDIR | ctl_no_flag/h/&.widgits
+MKDIR | ctl_no_flag/h/@.apps/g/state
+WRITE | ctl_no_flag/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_no_flag/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_no_flag/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_no_flag/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_no_flag/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_no_flag/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_no_flag/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_no_flag/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_no_flag/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_no_flag/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_no_flag/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_no_flag/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_no_flag/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_no_flag/h/@.apps/g | $T/ctl_no_flag/sess | --house | $T/ctl_no_flag/h
+EXPECT_EXIT | 0 | ctl_no_flag-exit-0
+EXPECT_OUT | room=bridge cell=7,5 | no-flag-file-means-the-old-behaviour
+EXPECT_NOFILE | ctl_no_flag/sess/desks/quarters.pdl | a-lying-around-pet-file-is-not-used
+
+CASE | ctl_flag_garbage
+MKDIR | ctl_flag_garbage/h/&.widgits
+MKDIR | ctl_flag_garbage/h/@.apps/g/state
+WRITE | ctl_flag_garbage/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_flag_garbage/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_flag_garbage/h/@.apps/g/state/flag_ctl.txt | petz\n
+WRITE | ctl_flag_garbage/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_flag_garbage/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_flag_garbage/h/@.apps/g | $T/ctl_flag_garbage/sess | --house | $T/ctl_flag_garbage/h
+EXPECT_EXIT | 0 | ctl_flag_garbage-exit-0
+EXPECT_OUT | room=bridge cell=7,5 | only-the-word-pet-selects-a-pet
+EXPECT_NOFILE | ctl_flag_garbage/sess/desks/quarters.pdl | not-the-pet
+
+CASE | ctl_no_active
+MKDIR | ctl_no_active/h/&.widgits
+MKDIR | ctl_no_active/h/@.apps/g/state
+WRITE | ctl_no_active/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_no_active/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_no_active/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_no_active/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_no_active/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_no_active/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_no_active/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_no_active/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_no_active/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_no_active/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_no_active/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_no_active/h/@.apps/g | $T/ctl_no_active/sess | --house | $T/ctl_no_active/h
+EXPECT_EXIT | 0 | ctl_no_active-exit-0
+EXPECT_OUT | room=bridge cell=7,5 | no-active-pet-so-the-trainer
+EXPECT_NOFILE | ctl_no_active/sess/desks/quarters.pdl | not-the-pet
+
+CASE | ctl_pet_nofile
+MKDIR | ctl_pet_nofile/h/&.widgits
+MKDIR | ctl_pet_nofile/h/@.apps/g/state
+WRITE | ctl_pet_nofile/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet_nofile/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet_nofile/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet_nofile/h/@.apps/g/state/active.txt | ghost\n
+RUN | $T/gpe.+x | $T/ctl_pet_nofile/h/@.apps/g | $T/ctl_pet_nofile/sess | --house | $T/ctl_pet_nofile/h
+EXPECT_EXIT | 0 | ctl_pet_nofile-exit-0
+EXPECT_OUT | note: flag_ctl is pet and active.txt names `ghost`, but state/pet_ghost.txt is missing, incomplete or unsafe: using trainer.txt | the-fallback-is-announced
+EXPECT_OUT | room=bridge cell=7,5 | falls-back-to-the-trainer
+
+CASE | ctl_pet_nox
+MKDIR | ctl_pet_nox/h/&.widgits
+MKDIR | ctl_pet_nox/h/@.apps/g/state
+WRITE | ctl_pet_nox/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet_nox/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet_nox/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet_nox/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_pet_nox/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\n
+RUN | $T/gpe.+x | $T/ctl_pet_nox/h/@.apps/g | $T/ctl_pet_nox/sess | --house | $T/ctl_pet_nox/h
+EXPECT_EXIT | 0 | ctl_pet_nox-exit-0
+EXPECT_OUT | note: flag_ctl is pet and active.txt names `solvent` | incomplete-pet-file-is-announced
+EXPECT_OUT | room=bridge cell=7,5 | trainer
+EXPECT_NOFILE | ctl_pet_nox/sess/desks/quarters.pdl | a-half-read-pet-file-is-not-used
+
+CASE | ctl_pet_badroom
+MKDIR | ctl_pet_badroom/h/&.widgits
+MKDIR | ctl_pet_badroom/h/@.apps/g/state
+WRITE | ctl_pet_badroom/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet_badroom/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet_badroom/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet_badroom/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_pet_badroom/h/@.apps/g/state/pet_solvent.txt | room=big room\nx=4\ny=5\n
+RUN | $T/gpe.+x | $T/ctl_pet_badroom/h/@.apps/g | $T/ctl_pet_badroom/sess | --house | $T/ctl_pet_badroom/h
+EXPECT_EXIT | 0 | ctl_pet_badroom-exit-0
+EXPECT_OUT | note: flag_ctl is pet | announced
+EXPECT_OUT | room=bridge cell=7,5 | trainer
+
+CASE | ctl_pet_negative_cell
+MKDIR | ctl_pet_negative_cell/h/&.widgits
+MKDIR | ctl_pet_negative_cell/h/@.apps/g/state
+WRITE | ctl_pet_negative_cell/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet_negative_cell/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet_negative_cell/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet_negative_cell/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_pet_negative_cell/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=-4\ny=5\n
+RUN | $T/gpe.+x | $T/ctl_pet_negative_cell/h/@.apps/g | $T/ctl_pet_negative_cell/sess | --house | $T/ctl_pet_negative_cell/h
+EXPECT_EXIT | 0 | ctl_pet_negative_cell-exit-0
+EXPECT_OUT | note: flag_ctl is pet | announced
+EXPECT_OUT | room=bridge cell=7,5 | trainer
+
+CASE | ctl_pet_unsafe_id
+MKDIR | ctl_pet_unsafe_id/h/&.widgits
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/state
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/state/active.txt | sub/p\n
+MKDIR | ctl_pet_unsafe_id/h/@.apps/g/state/pet_sub
+WRITE | ctl_pet_unsafe_id/h/@.apps/g/state/pet_sub/p.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_pet_unsafe_id/h/@.apps/g | $T/ctl_pet_unsafe_id/sess | --house | $T/ctl_pet_unsafe_id/h
+EXPECT_EXIT | 0 | ctl_pet_unsafe_id-exit-0
+EXPECT_OUT | note: flag_ctl is pet and active.txt names `sub/p` | a-slash-in-the-id-is-refused
+EXPECT_OUT | room=bridge cell=7,5 | trainer
+EXPECT_NOFILE | ctl_pet_unsafe_id/sess/desks/quarters.pdl | the-file-under-pet_sub-is-never-read
+
+CASE | ctl_second_pet
+MKDIR | ctl_second_pet/h/&.widgits
+MKDIR | ctl_second_pet/h/@.apps/g/state
+WRITE | ctl_second_pet/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_second_pet/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_second_pet/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_second_pet/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_second_pet/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_second_pet/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | pos_x=2\npos_y=3\npossessed_id=hero_01\n
+WRITE | ctl_second_pet/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | pos_x=2\npos_y=3\n
+WRITE | ctl_second_pet/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_second_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_second_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_second_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_second_pet/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_second_pet/h/@.apps/g/state/active.txt | ember\n
+WRITE | ctl_second_pet/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+WRITE | ctl_second_pet/h/@.apps/g/state/pet_ember.txt | room=hold\nx=2\ny=3\n
+RUN | $T/gpe.+x | $T/ctl_second_pet/h/@.apps/g | $T/ctl_second_pet/sess | --house | $T/ctl_second_pet/h
+EXPECT_EXIT | 0 | ctl_second_pet-exit-0
+EXPECT_OUT | pet_ember.txt (the controlled character, ticking): room=hold cell=2,3 | the-active-pet-is-the-one-named
+EXPECT_OUT | rows=3 | ok
+EXPECT_HAS | ctl_second_pet/sess/desks/hold.pdl | \p 160 \p 240 \p 2 \p 3 \p . | cell-2-3-is-160-240
+
+CASE | ctl_if_changed
+MKDIR | ctl_if_changed/h/&.widgits
+MKDIR | ctl_if_changed/h/@.apps/g/state
+WRITE | ctl_if_changed/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | ctl_if_changed/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | ctl_if_changed/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | ctl_if_changed/h/@.apps/g/g-pchq/pieces/display
+MKDIR | ctl_if_changed/h/@.apps/g/g-pchq/pieces/system
+WRITE | ctl_if_changed/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | ctl_if_changed/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | ctl_if_changed/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | ctl_if_changed/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | ctl_if_changed/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | ctl_if_changed/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | ctl_if_changed/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | ctl_if_changed/h/@.apps/g/state/active.txt | solvent\n
+WRITE | ctl_if_changed/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=9\n
+RUN | $T/gpe.+x | $T/ctl_if_changed/h/@.apps/g | --if-changed | --house | $T/ctl_if_changed/h
+EXPECT_EXIT | 0 | first-run
+EXPECT_OUT | wrote | first-run-writes
+RUN | $T/gpe.+x | $T/ctl_if_changed/h/@.apps/g | --if-changed | --house | $T/ctl_if_changed/h
+EXPECT_OUT | unchanged | same-pet-same-cell-is-unchanged
+WRITE | ctl_if_changed/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=5\ny=5\n
+RUN | $T/gpe.+x | $T/ctl_if_changed/h/@.apps/g | --if-changed | --house | $T/ctl_if_changed/h
+EXPECT_OUT | wrote | a-moved-pet-rewrites
+EXPECT_HAS | ctl_if_changed/h/@.apps/g/state/page/desks/quarters.pdl | \p 400 \p 400 \p 5 \p 5 | the-new-cell-is-400-400
+
 CASE | chain
 MKDIR | chain/h/&.widgits
 MKDIR | chain/h/@.apps/g/state

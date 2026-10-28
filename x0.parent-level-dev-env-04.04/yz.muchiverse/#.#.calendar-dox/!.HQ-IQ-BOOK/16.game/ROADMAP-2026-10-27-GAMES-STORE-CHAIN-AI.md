@@ -99,4 +99,7 @@ Deliberately NOT next: more design documents (the design is ahead of the evidenc
 
 
 **Update (layer D, 2026-10-28):** `book_check --events` adds D1 (blueprintz `bp_scan` flags=0) and D2 (blueprintz `bp_book_op` compiles the book). rpg-edit-hq's 21 `unknown-type` flags are gone (registry entry `rpg_edit_hq_verb` added). Real games: rpg-space, rpg-dust, rpg-edit-hq all 16/16 with their exported pages. Harness 130/0, three survivors found and closed.
+
+
+**Update (2026-10-28, later):** Synch demonstrated both ways on a staging house (doc section 19). `events.txt` now trims its oldest lines past 4 MiB for rpg-space / rpg-dust / rpg-edit-hq (`events_trim_kb`, section 20; the live log was frozen since 03:46 before). `game_page_export` takes the page's hero from the controlled character, so the page follows what Synch moves (section 21; harness 124/0).
 \n
