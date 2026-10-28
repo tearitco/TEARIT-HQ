@@ -1423,15 +1423,22 @@ int main(void) {
                     if (map_py0 < 0) map_py0 = 0;
                     if (map_py0 > map_h - view_h) map_py0 = map_h - view_h;
                 } else map_py0 = -(view_h - map_h) / 2;
-                {   /* detached pan (Shift+W/A/S/D, bv_menu_input.c): the view centre moves off the followed cell and is clamped to the whole scene (page + pieces), not just the page */
-                    int pnx = read_kv_int(st, "view_2d_pan_x", 0), pny = read_kv_int(st, "view_2d_pan_y", 0);
-                    if (!world_fit && (pnx || pny || g_xel_on)) {
-                        float sx0, sy0, sx1, sy1; p2d_scene(map_cols, map_h / map_tile, &sx0, &sy0, &sx1, &sy1);
-                        int lox = (int)(sx0 * map_tile), hix = (int)(sx1 * map_tile) - view_w, loy = (int)(sy0 * map_tile), hiy = (int)(sy1 * map_tile) - view_h;
-                        map_px0 = (cx + pnx) * map_tile - view_w / 2; map_py0 = (cy + pny) * map_tile - view_h / 2;
-                        if (hix < lox) map_px0 = (lox + hix) / 2; else { if (map_px0 < lox) map_px0 = lox; if (map_px0 > hix) map_px0 = hix; }
-                        if (hiy < loy) map_py0 = (loy + hiy) / 2; else { if (map_py0 < loy) map_py0 = loy; if (map_py0 > hiy) map_py0 = hiy; }
-                    }
+                if (!world_fit) {   /* PERSISTENT CAMERA (owner 2026-10-27: "arrows move the xelector, not the camera ... it should pan"): the view keeps its own position (pieces/display/view_2d_cam.txt, in cells) and is NOT re-centred on the xelector
+                     * every frame. It scrolls by the least amount only when the xelector would leave the screen, and is clamped to the whole scene (page + pieces + the xelector). Shift+W/A/S/D (bv_menu_input.c) move it directly,
+                     * ';' deletes the file = the default view again (centred on the xelector, clamped to the page, exactly as before). The first frame, and any change of window size or zoom, starts from that default. */
+                    char cpath[PATH_BUF]; snprintf(cpath, sizeof(cpath), "%s/pieces/display/view_2d_cam.txt", project_root);
+                    float vwc = (float)view_w / map_tile, vhc = (float)view_h / map_tile, camx = (float)map_px0 / map_tile, camy = (float)map_py0 / map_tile, lx = camx, ly = camy; int had = 0, fsx = -1, fsy = -1;
+                    { FILE *cf = host_fopen(cpath, "r"); if (cf) { char l[96]; float fx = 0, fy = 0, fw = 0, fh = 0; int got = 0;
+                        while (fgets(l, sizeof(l), cf)) { if (!strncmp(l, "x=", 2)) { fx = (float)atof(l + 2); got |= 1; } else if (!strncmp(l, "y=", 2)) { fy = (float)atof(l + 2); got |= 2; } else if (!strncmp(l, "vw=", 3)) { fw = (float)atof(l + 3); got |= 4; } else if (!strncmp(l, "vh=", 3)) { fh = (float)atof(l + 3); got |= 8; } else if (!strncmp(l, "sx=", 3)) { fsx = atoi(l + 3); got |= 16; } else if (!strncmp(l, "sy=", 3)) { fsy = atoi(l + 3); got |= 32; } }
+                        fclose(cf); if (got == 63 && fabsf(fw - vwc) < 0.01f && fabsf(fh - vhc) < 0.01f) { camx = fx; camy = fy; had = 1; } } }
+                    if (sel_x >= 0 && sel_y >= 0 && (!had || sel_x != fsx || sel_y != fsy)) {      /* only when the XELECTOR moved: keep it on screen with the least movement (a camera pan is never undone by this) */
+                        if ((float)sel_x < camx) camx = (float)sel_x; else if ((float)sel_x + 1.0f > camx + vwc) camx = (float)sel_x + 1.0f - vwc;
+                        if ((float)sel_y < camy) camy = (float)sel_y; else if ((float)sel_y + 1.0f > camy + vhc) camy = (float)sel_y + 1.0f - vhc; }
+                    { float sx0, sy0, sx1, sy1; p2d_scene(map_cols, map_h / map_tile, &sx0, &sy0, &sx1, &sy1);
+                      if (sx1 - sx0 <= vwc) camx = (sx0 + sx1) / 2 - vwc / 2; else { if (camx < sx0) camx = sx0; if (camx > sx1 - vwc) camx = sx1 - vwc; }
+                      if (sy1 - sy0 <= vhc) camy = (sy0 + sy1) / 2 - vhc / 2; else { if (camy < sy0) camy = sy0; if (camy > sy1 - vhc) camy = sy1 - vhc; } }
+                    map_px0 = (int)floorf(camx * map_tile + 0.5f); map_py0 = (int)floorf(camy * map_tile + 0.5f);
+                    if (!had || fabsf(camx - lx) > 0.0005f || fabsf(camy - ly) > 0.0005f || sel_x != fsx || sel_y != fsy) { char cb[200]; int cn = snprintf(cb, sizeof(cb), "x=%.3f\ny=%.3f\nvw=%.3f\nvh=%.3f\nsx=%d\nsy=%d\n", camx, camy, vwc, vhc, sel_x, sel_y); if (cn > 0) write_atomic(cpath, cb, (size_t)cn); }
                 }
                 /* Sky behind the tiles. A clear map pixel keeps the sky.
                  * An opaque export covers it, which is the baked picture. */

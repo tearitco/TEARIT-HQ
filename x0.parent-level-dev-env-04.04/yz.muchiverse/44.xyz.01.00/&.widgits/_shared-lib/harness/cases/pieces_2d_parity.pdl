@@ -19,43 +19,44 @@ ENV | BV2D_INPUT_BIN | $T/menu_input
 ENV | BV2D_BIN | $T/r2d_real
 RUN | $T/ptest | $T/g1
 EXPECT_EXIT | 0 | every-check-of-the-test-holds
-EXPECT_OUT | ok  : no piece: no red in the footprint (baseline) | baseline-has-no-red
-EXPECT_OUT | ok  : a voxel piece of the shown desk is drawn over its footprint (red top) | voxel-piece-drawn-on-its-desk
-EXPECT_OUT | ok  : nothing outside the footprint changed | nothing-outside-the-footprint-changes
-EXPECT_OUT | ok  : a piece of another desk is not drawn (same rule as the 3D engine) | other-desk-not-drawn
-EXPECT_OUT | ok  : desk=* is drawn on every desk | desk-star-drawn
-EXPECT_OUT | ok  : a tile-faced piece shows its tile picture (both halves) and not the voxel colour | tile-faced-piece-shows-its-tiles
-EXPECT_OUT | ok  : desk-picture branch: a piece on the page is drawn | desk-picture-branch-draws-a-piece-on-the-page
-EXPECT_OUT | ok  : a piece outside the page is not visible in the main view at fit-page zoom 0 (minimap off here: with it on the piece shows in the minimap) | outside-the-page-invisible-in-the-main-view-at-fit-page
-EXPECT_OUT | ok  : zoom -1 (whole scene) shows the piece that lies outside the page | zoom-minus-one-shows-the-piece-outside-the-page
-EXPECT_OUT | ok  : zoom -1 with no piece looks exactly like fit-page (no crash, no change) | zoom-minus-one-without-pieces-equals-fit-page
-EXPECT_OUT | ok  : minimap: none when the whole scene is on screen (page only) | minimap-absent-when-everything-fits
-EXPECT_OUT | ok  : minimap: shown when a piece lies outside the view (cyan view outline) | minimap-shown-when-a-piece-is-off-screen
-EXPECT_OUT | ok  : minimap: gone again at zoom -1 (the whole scene fits) | minimap-gone-at-zoom-minus-one
-EXPECT_OUT | ok  : minimap: VIEW \p view_2d_minimap \p 0 turns it off | minimap-can-be-turned-off
-EXPECT_OUT | ok  : pan: the view moves over to a piece outside the page | pan-moves-the-view-over-the-scene
-EXPECT_OUT | ok  : pan: a far pan is clamped to the scene edge (same frame as pan 8) | far-pan-clamped-to-the-scene-edge
-EXPECT_OUT | ok  : pan: back to 0 follows the xelector again (piece out of view) | pan-zero-follows-the-xelector
-EXPECT_OUT | ok  : keys: Shift+D three times pans the 2D view +3 cells | key-shift-d-pans-right
-EXPECT_OUT | ok  : keys: Shift+W pans -1 cell up | key-shift-w-pans-up
-EXPECT_OUT | ok  : keys: ; drops the pan (follow the xelector again) | key-semicolon-drops-the-pan
-EXPECT_OUT | ok  : keys: in 3D (render_mode 1) the same keys do not pan the 2D view | pan-keys-do-nothing-in-3d
-EXPECT_OUT | ok  : xelector: drawn green on the page | xelector-drawn-green
-EXPECT_OUT | ok  : xelector on the page: no minimap (the scene is just the page) | no-minimap-when-the-xelector-is-on-the-page
-EXPECT_OUT | ok  : xelector: still visible after it leaves the page (the view follows it) | view-follows-the-xelector-off-the-page
-EXPECT_OUT | ok  : xelector past the page: the minimap shows (part of the scene is off screen) | minimap-shows-when-the-xelector-is-off-the-page
-EXPECT_OUT | ok  : xelector back on the page: the same frame as before it left (page view unchanged) | page-view-unchanged-when-the-xelector-returns
+EXPECT_OUT | ok  : no piece: no red in the footprint (baseline) | no-piece-no-red-in-the-footprint-baseline
+EXPECT_OUT | ok  : a voxel piece of the shown desk is drawn over its footprint (red top) | a-voxel-piece-of-the-shown-desk-is-drawn-over-its-footprint-red-top
+EXPECT_OUT | ok  : nothing outside the footprint changed | nothing-outside-the-footprint-changed
+EXPECT_OUT | ok  : a piece of another desk is not drawn (same rule as the 3D engine) | a-piece-of-another-desk-is-not-drawn-same-rule-as-the-3d-engine
+EXPECT_OUT | ok  : desk=* is drawn on every desk | desk-is-drawn-on-every-desk
+EXPECT_OUT | ok  : a tile-faced piece shows its tile picture (both halves) and not the voxel colour | a-tile-faced-piece-shows-its-tile-picture-both-halves-and-not-the-voxe
+EXPECT_OUT | ok  : tile-faced: nothing outside the footprint changed | tile-faced-nothing-outside-the-footprint-changed
+EXPECT_OUT | ok  : desk picture, no piece: no red | desk-picture-no-piece-no-red
+EXPECT_OUT | ok  : desk-picture branch: a piece on the page is drawn | desk-picture-branch-a-piece-on-the-page-is-drawn
+EXPECT_OUT | ok  : a piece outside the page is not visible in the main view at fit-page zoom 0 (minimap off here: with it on the piece shows in the minimap) | a-piece-outside-the-page-is-not-visible-in-the-main-view-at-fit-page-z
+EXPECT_OUT | ok  : zoom -1 (whole scene) shows the piece that lies outside the page | zoom-1-whole-scene-shows-the-piece-that-lies-outside-the-page
+EXPECT_OUT | ok  : zoom -1 with no piece looks exactly like fit-page (no crash, no change) | zoom-1-with-no-piece-looks-exactly-like-fit-page-no-crash-no-change
+EXPECT_OUT | ok  : minimap: none when the whole scene is on screen (page only) | minimap-none-when-the-whole-scene-is-on-screen-page-only
+EXPECT_OUT | ok  : minimap: shown when a piece lies outside the view (cyan view outline) | minimap-shown-when-a-piece-lies-outside-the-view-cyan-view-outline
+EXPECT_OUT | ok  : minimap: gone again at zoom -1 (the whole scene fits) | minimap-gone-again-at-zoom-1-the-whole-scene-fits
+EXPECT_OUT | ok  : minimap: VIEW \p view_2d_minimap \p 0 turns it off | minimap-view-view-2d-minimap-0-turns-it-off
+EXPECT_OUT | ok  : camera: Shift+D moves the view over to a piece outside the page | camera-shift-d-moves-the-view-over-to-a-piece-outside-the-page
+EXPECT_OUT | ok  : camera: the piece was out of view before | camera-the-piece-was-out-of-view-before
+EXPECT_OUT | ok  : camera: a far pan is clamped to the scene edge (same frame) | camera-a-far-pan-is-clamped-to-the-scene-edge-same-frame
+EXPECT_OUT | ok  : camera: ; deletes the camera file (default view again) | camera-deletes-the-camera-file-default-view-again
+EXPECT_OUT | ok  : camera: after ; the default view follows the xelector again (piece out of view) | camera-after-the-default-view-follows-the-xelector-again-piece-out-of-
+EXPECT_OUT | ok  : camera: in 3D (render_mode 1) the same keys do not move the 2D camera | camera-in-3d-render-mode-1-the-same-keys-do-not-move-the-2d-camera
+EXPECT_OUT | ok  : xelector: drawn green | xelector-drawn-green
+EXPECT_OUT | ok  : arrows: the xelector moves inside the view and the CAMERA DOES NOT MOVE | arrows-the-xelector-moves-inside-the-view-and-the-camera-does-not-move
+EXPECT_OUT | ok  : arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible | arrows-past-the-edge-the-camera-pans-scrolls-by-the-least-amount-and-t
+EXPECT_OUT | ok  : xelector: still visible far past the page (the camera panned after it) | xelector-still-visible-far-past-the-page-the-camera-panned-after-it
+EXPECT_OUT | ok  : xelector back where it was: the camera stays where it panned to (not re-centred) | xelector-back-where-it-was-the-camera-stays-where-it-panned-to-not-re-
 EXPECT_OUT_LACKS | FAIL | no-failed-check
 CASE    | negative-renderer-without-pieces
 ENV | BV2D_BIN | $T/r2d_nopieces
 RUN | $T/ptest | $T/g2
 EXPECT_EXIT | 1 | the-test-fails-on-a-renderer-that-ignores-pieces
-EXPECT_OUT | FAIL: a voxel piece of the shown desk is drawn over its footprint (red top) | voxel-check-fails-without-piece-code
-EXPECT_OUT | FAIL: desk=* is drawn on every desk | desk-star-check-fails-without-piece-code
-EXPECT_OUT | FAIL: a tile-faced piece shows its tile picture (both halves) and not the voxel colour | tile-check-fails-without-piece-code
-EXPECT_OUT | FAIL: desk-picture branch: a piece on the page is drawn | desk-picture-check-fails-without-piece-code
-EXPECT_OUT | FAIL: zoom -1 (whole scene) shows the piece that lies outside the page | zoom-minus-one-check-fails-without-piece-code
-EXPECT_OUT | FAIL: minimap: shown when a piece lies outside the view (cyan view outline) | minimap-check-fails-without-piece-code
-EXPECT_OUT | FAIL: pan: the view moves over to a piece outside the page | pan-check-fails-without-piece-code
-EXPECT_OUT | ok  : a piece of another desk is not drawn (same rule as the 3D engine) | the-desk-rule-check-alone-cannot-tell-so-it-passes-here
+EXPECT_OUT | FAIL: a voxel piece of the shown desk is drawn over its footprint (red top) | fails-without-piece-code-a-voxel-piece-of-the-shown-desk-is-drawn
+EXPECT_OUT | FAIL: desk=* is drawn on every desk | fails-without-piece-code-desk-is-drawn-on-every-desk
+EXPECT_OUT | FAIL: a tile-faced piece shows its tile picture (both halves) and not the voxel colour | fails-without-piece-code-a-tile-faced-piece-shows-its-tile-pictur
+EXPECT_OUT | FAIL: desk-picture branch: a piece on the page is drawn | fails-without-piece-code-desk-picture-branch-a-piece-on-the-page-
+EXPECT_OUT | FAIL: zoom -1 (whole scene) shows the piece that lies outside the page | fails-without-piece-code-zoom-1-whole-scene-shows-the-piece-that-
+EXPECT_OUT | FAIL: minimap: shown when a piece lies outside the view (cyan view outline) | fails-without-piece-code-minimap-shown-when-a-piece-lies-outside-
+EXPECT_OUT | FAIL: camera: Shift+D moves the view over to a piece outside the page | fails-without-piece-code-camera-shift-d-moves-the-view-over-to-a-
+EXPECT_OUT | FAIL: camera: a far pan is clamped to the scene edge (same frame) | fails-without-piece-code-camera-a-far-pan-is-clamped-to-the-scene
 CLEAN |
