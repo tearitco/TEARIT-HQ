@@ -627,6 +627,128 @@ RUN | $T/gpe.+x | $T/ctl_if_changed/h/@.apps/g | --if-changed | --house | $T/ctl
 EXPECT_OUT | wrote | a-moved-pet-rewrites
 EXPECT_HAS | ctl_if_changed/h/@.apps/g/state/page/desks/quarters.pdl | \p 400 \p 400 \p 5 \p 5 | the-new-cell-is-400-400
 
+# C (2026-10-28): OTHER CHARACTERS IN THE ROOM as rows. Expectations derived from the rules in the exporter header.
+CASE | oth_trainer
+MKDIR | oth_trainer/h/&.widgits
+MKDIR | oth_trainer/h/@.apps/g/state
+MKDIR | oth_trainer/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | oth_trainer/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | oth_trainer/h/@.apps/g/g-pchq/pieces/display
+MKDIR | oth_trainer/h/@.apps/g/g-pchq/pieces/system
+WRITE | oth_trainer/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | oth_trainer/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | oth_trainer/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | oth_trainer/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | oth_trainer/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | oth_trainer/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | oth_trainer/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+WRITE | oth_trainer/h/@.apps/g/state/pet_ember.txt | room=bridge\nx=3\ny=6\ndir=1\nsteps=1\n
+WRITE | oth_trainer/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=1\n
+RUN | $T/gpe.+x | $T/oth_trainer/h/@.apps/g | $T/oth_trainer/sess | --house | $T/oth_trainer/h
+EXPECT_EXIT | 0 | oth_trainer-exit-0
+EXPECT_OUT | rows=4 disagreements= | oth_trainer.the-pet-in-the-room-is-a-row
+EXPECT_HAS | oth_trainer/sess/desks/bridge.pdl | DESK \p pet_ember \p @.apps/g/state/pet_ember.txt \p 240 \p 480 \p 3 \p 6 \p ember \p 0 | oth_trainer.ember-row-is-cell-3-6-times-80
+EXPECT_LACKS | oth_trainer/sess/desks/bridge.pdl | pet_solvent | oth_trainer.a-pet-in-another-room-is-not-a-row
+EXPECT_LACKS | oth_trainer/sess/desks/bridge.pdl | DESK \p trainer | oth_trainer.the-controlled-trainer-is-the-hero-not-a-second-row
+CASE | oth_pet
+MKDIR | oth_pet/h/&.widgits
+MKDIR | oth_pet/h/@.apps/g/state
+MKDIR | oth_pet/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | oth_pet/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | oth_pet/h/@.apps/g/g-pchq/pieces/display
+MKDIR | oth_pet/h/@.apps/g/g-pchq/pieces/system
+WRITE | oth_pet/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | oth_pet/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | oth_pet/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | oth_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | oth_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | oth_pet/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | oth_pet/h/@.apps/g/state/trainer.txt | room=quarters\nx=7\ny=5\ndir=3\n
+WRITE | oth_pet/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | oth_pet/h/@.apps/g/state/active.txt | solvent\n
+WRITE | oth_pet/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=1\n
+WRITE | oth_pet/h/@.apps/g/state/pet_ember.txt | room=quarters\nx=9\ny=9\ndir=1\nsteps=1\n
+RUN | $T/gpe.+x | $T/oth_pet/h/@.apps/g | $T/oth_pet/sess | --house | $T/oth_pet/h
+EXPECT_EXIT | 0 | oth_pet-exit-0
+EXPECT_OUT | rows=5 disagreements= | oth_pet.hero-xelector-camera-plus-the-trainer-and-ember
+EXPECT_HAS | oth_pet/sess/desks/quarters.pdl | DESK \p trainer \p @.apps/g/state/trainer.txt \p 560 \p 400 \p 7 \p 5 \p trainer \p 0 | oth_pet.trainer-row
+EXPECT_HAS | oth_pet/sess/desks/quarters.pdl | DESK \p pet_ember \p @.apps/g/state/pet_ember.txt \p 720 \p 720 \p 9 \p 9 \p ember \p 0 | oth_pet.ember-row
+EXPECT_LACKS | oth_pet/sess/desks/quarters.pdl | DESK \p pet_solvent | oth_pet.the-controlled-pet-is-only-hero_01
+CASE | oth_far
+MKDIR | oth_far/h/&.widgits
+MKDIR | oth_far/h/@.apps/g/state
+MKDIR | oth_far/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | oth_far/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | oth_far/h/@.apps/g/g-pchq/pieces/display
+MKDIR | oth_far/h/@.apps/g/g-pchq/pieces/system
+WRITE | oth_far/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | oth_far/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | oth_far/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | oth_far/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | oth_far/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | oth_far/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | oth_far/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+WRITE | oth_far/h/@.apps/g/state/flag_ctl.txt | pet\n
+WRITE | oth_far/h/@.apps/g/state/active.txt | solvent\n
+WRITE | oth_far/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\ndir=1\nsteps=1\n
+RUN | $T/gpe.+x | $T/oth_far/h/@.apps/g | $T/oth_far/sess | --house | $T/oth_far/h
+EXPECT_EXIT | 0 | oth_far-exit-0
+EXPECT_OUT | rows=3 disagreements=0 | oth_far.nobody-else-in-the-room
+EXPECT_LACKS | oth_far/sess/desks/quarters.pdl | DESK \p trainer | oth_far.a-trainer-in-another-room-is-not-a-row
+CASE | oth_bad
+MKDIR | oth_bad/h/&.widgits
+MKDIR | oth_bad/h/@.apps/g/state
+MKDIR | oth_bad/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | oth_bad/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | oth_bad/h/@.apps/g/g-pchq/pieces/display
+MKDIR | oth_bad/h/@.apps/g/g-pchq/pieces/system
+WRITE | oth_bad/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | oth_bad/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | oth_bad/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | oth_bad/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | oth_bad/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | oth_bad/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | oth_bad/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+WRITE | oth_bad/h/@.apps/g/state/pet_ember.txt | room=bridge\nx=abc\ny=6\ndir=1\nsteps=1\n
+WRITE | oth_bad/h/@.apps/g/state/pet_aurora.txt | room=bridge\nx=2\n\n
+WRITE | oth_bad/h/@.apps/g/state/pet_sol.txt | room=bridge\nx=5\ny=5\ndir=1\nsteps=1\n
+WRITE | oth_bad/h/@.apps/g/state/pet_a.b.txt | room=bridge\nx=1\ny=1\ndir=1\nsteps=1\n
+RUN | $T/gpe.+x | $T/oth_bad/h/@.apps/g | $T/oth_bad/sess | --house | $T/oth_bad/h
+EXPECT_EXIT | 0 | oth_bad-exit-0
+EXPECT_OUT | rows=4 disagreements= | oth_bad.only-the-good-pet-is-a-row
+EXPECT_HAS | oth_bad/sess/desks/bridge.pdl | DESK \p pet_sol \p | oth_bad.the-good-pet-is-there
+EXPECT_LACKS | oth_bad/sess/desks/bridge.pdl | pet_ember | oth_bad.a-non-numeric-cell-is-skipped
+EXPECT_LACKS | oth_bad/sess/desks/bridge.pdl | pet_aurora | oth_bad.a-file-without-y-is-skipped
+EXPECT_LACKS | oth_bad/sess/desks/bridge.pdl | pet_a.b | oth_bad.an-unsafe-id-is-skipped
+CASE | oth_sort
+MKDIR | oth_sort/h/&.widgits
+MKDIR | oth_sort/h/@.apps/g/state
+MKDIR | oth_sort/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | oth_sort/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | oth_sort/h/@.apps/g/g-pchq/pieces/display
+MKDIR | oth_sort/h/@.apps/g/g-pchq/pieces/system
+WRITE | oth_sort/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | oth_sort/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | oth_sort/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | oth_sort/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | oth_sort/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | oth_sort/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | oth_sort/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+WRITE | oth_sort/h/@.apps/g/state/pet_kilo.txt | room=bridge\nx=1\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_alpha.txt | room=bridge\nx=2\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_mike.txt | room=bridge\nx=3\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_bravo.txt | room=bridge\nx=4\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_zulu.txt | room=bridge\nx=5\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_charlie.txt | room=bridge\nx=6\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_delta.txt | room=bridge\nx=7\ny=2\ndir=1\nsteps=1\n
+WRITE | oth_sort/h/@.apps/g/state/pet_yankee.txt | room=bridge\nx=8\ny=2\ndir=1\nsteps=1\n
+RUN | $T/gpe.+x | $T/oth_sort/h/@.apps/g | $T/oth_sort/sess | --house | $T/oth_sort/h
+EXPECT_EXIT | 0 | oth_sort-exit-0
+EXPECT_OUT | rows=11 disagreements= | oth_sort.eight-pets-eight-extra-rows
+RUN | sh | -c | sed -n "s/^DESK . pet_\([a-z]*\) .*/\1/p" $T/oth_sort/sess/desks/bridge.pdl\p tr "\n" " "
+EXPECT_OUT | alpha bravo charlie delta kilo mike yankee zulu | oth_sort.rows-are-sorted-by-id
+RUN | $T/gpe.+x | $T/oth_sort/h/@.apps/g | $T/oth_sort/sess | --house | $T/oth_sort/h | --if-changed
+EXPECT_OUT | unchanged | oth_sort.a-second-run-writes-nothing
 CASE | chain
 MKDIR | chain/h/&.widgits
 MKDIR | chain/h/@.apps/g/state

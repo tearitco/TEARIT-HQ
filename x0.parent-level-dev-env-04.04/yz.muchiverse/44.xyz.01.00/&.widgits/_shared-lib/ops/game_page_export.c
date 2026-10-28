@@ -10,8 +10,11 @@
  * controlled pet) the page still named the old room. Rows: hero_01 at the controlled character's cell; xelector_01 at the SAME cell with its possessed id in the glyph field (the standard: a possessing xelector
  * stands on what it controls; the private xelector file may say otherwise, and that is reported); camera_01 with the fresh-start camera packed m=<mode>,y=<yaw>,p=<pitch>,z=0,h=0 (mode from arrow_config.txt default_camera_mode, yaw 180,
  * pitch 6 for modes 1/2 and -90 otherwise: the engine's own fresh defaults). Pixels are cells x 80. The `n` column is written as 0 (its meaning is not documented in PAGE-FILE.md).
- * NOT rows yet: the ship (it lives on the `space` page, not the room), pets and asteroids (bar rows with no pal folder).
- * Output (stdout): one line per fact: ROW ..., DISAGREE <what> <a> vs <b>, then `wrote <page> rows=3 disagreements=<n>`.  Exit 0 written, 1 a needed file is missing (named), 2 usage.
+ * OTHER CHARACTERS IN THE ROOM (C, 2026-10-28): every state/pet_<id>.txt whose room= is the exported room and which is not the controlled one becomes `DESK | pet_<id> | <game>/state/pet_<id>.txt | px | py | cx | cy | <id> | 0`;
+ * when a PET is the controlled one and state/trainer.txt is in the same room, the trainer becomes `DESK | trainer | <game>/state/trainer.txt | ... | trainer | 0`. Sorted by id (stable page text). The path column names the state file because these
+ * characters have no pal folder: a reader that wants a sprite from <path>/sprite.csv finds none and skips the row (place_desk_sprites does), and game mode never reads them (only hero_01 is followed, page_follow). Unsafe ids/cells are skipped.
+ * NOT rows yet: the ship (it lives on the `space` page, not the room) and asteroids (bar rows with no pal folder).
+ * Output (stdout): one line per fact: ROW ..., DISAGREE <what> <a> vs <b>, then `wrote <page> rows=<3 + other characters> disagreements=<n>`.  Exit 0 written, 1 a needed file is missing (named), 2 usage.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/game_page_export.+x game_page_export.c */
 #define _GNU_SOURCE
 #pragma GCC diagnostic ignored "-Wformat-truncation"
@@ -22,6 +25,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <stdint.h>
 
 static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_ISDIR(s.st_mode); }
 static int kv(const char *file, const char *key, char *out, size_t cap) {
@@ -36,6 +40,7 @@ static int write_file(const char *path, const char *content, int if_changed) {  
     FILE *f = fopen(path, "w"); if (!f) return -1; fputs(content, f); fclose(f); return 1;
 }
 static int mkpath(const char *p) { char t[PATH_MAX + 8]; snprintf(t, sizeof t, "%s", p); for (char *q = t + 1; *q; q++) if (*q == '/') { *q = 0; if (mkdir(t, 0755) && errno != EEXIST) return -1; *q = '/'; } return mkdir(t, 0755) && errno != EEXIST ? -1 : 0; }
+static int cmp_str(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
 int main(int argc, char **argv) {
     if (argc < 2) goto usage;
     char app[PATH_MAX], sess[PATH_MAX] = "", house[PATH_MAX] = ""; int if_changed = 0, have_sess = 0; snprintf(app, sizeof app, "%s", argv[1]);
@@ -72,14 +77,32 @@ int main(int argc, char **argv) {
     if (mkpath(desks)) { fprintf(stderr, "game_page_export: cannot create %s\n", desks); return 1; }
     char sp[PATH_MAX + 40], pp[PATH_MAX + 120]; snprintf(sp, sizeof sp, "%s/session.pdl", sess); snprintf(pp, sizeof pp, "%s/%s.pdl", desks, room);
     char sc[256]; snprintf(sc, sizeof sc, "STATE | name | %s\nSTATE | active_desk | %s\n", game, room);
-    char r1[PATH_MAX + 200], r2[PATH_MAX + 200], r3[PATH_MAX + 200], pc[3 * (PATH_MAX + 200) + PATH_MAX + 300];
+    char r1[PATH_MAX + 200], r2[PATH_MAX + 200], r3[PATH_MAX + 200], pc[3 * (PATH_MAX + 200) + PATH_MAX + 300 + 16 * (PATH_MAX + 200)], extra[16 * (PATH_MAX + 200)] = "";
+    int nextra = 0;
+    {   /* other characters standing in the exported room (see the header) */
+        static char ids[64][49]; int nid = 0; char sd[PATH_MAX + 20]; snprintf(sd, sizeof sd, "%s/state", app); DIR *d = opendir(sd); struct dirent *e;
+        while (d && (e = readdir(d)) && nid < 64) { size_t n = strlen(e->d_name); if (n > 8 && !strncmp(e->d_name, "pet_", 4) && !strcmp(e->d_name + n - 4, ".txt")) { char id[64]; snprintf(id, sizeof id, "%.*s", (int)(n - 8), e->d_name + 4); if (name_ok(id)) snprintf(ids[nid++], sizeof ids[0], "%s", id); } }
+        if (d) closedir(d);
+        qsort(ids, (size_t)nid, sizeof ids[0], cmp_str);
+        for (int i = -1; i < nid && nextra < 15; i++) {
+            char who[64], fp[PATH_MAX + 120], r_[64], x_[16], y_[16], lab[64];
+            if (i < 0) { if (strcmp(srcname, "trainer.txt") == 0) continue; snprintf(who, sizeof who, "trainer"); snprintf(fp, sizeof fp, "%s/state/trainer.txt", app); snprintf(lab, sizeof lab, "trainer"); }
+            else { snprintf(who, sizeof who, "pet_%s", ids[i]); snprintf(fp, sizeof fp, "%s/state/pet_%s.txt", app, ids[i]); snprintf(lab, sizeof lab, "%s", ids[i]); if (strcmp(srcname, fp + strlen(app) + 7) == 0) continue; }
+            if (kv(fp, "room", r_, sizeof r_) < 1 || kv(fp, "x", x_, sizeof x_) < 1 || kv(fp, "y", y_, sizeof y_) < 1 || !name_ok(r_) || !whole(x_) || !whole(y_) || strcmp(r_, room)) continue;
+            char relp[PATH_MAX]; size_t hl = strlen(house); snprintf(relp, sizeof relp, "%s", strncmp(fp, house, hl) == 0 && fp[hl] == '/' ? fp + hl + 1 : fp);
+            char row[PATH_MAX + 200]; snprintf(row, sizeof row, "DESK | %s | %s | %d | %d | %d | %d | %s | 0\n", who, relp, atoi(x_) * 80, atoi(y_) * 80, atoi(x_), atoi(y_), lab);
+            strncat(extra, row, sizeof extra - strlen(extra) - 1); nextra++;
+        }
+    }
     snprintf(r1, sizeof r1, "DESK | hero_01 | %s/pieces/hero_01 | %d | %d | %d | %d | . | 0", rel, cx * 80, cy * 80, cx, cy);
     snprintf(r2, sizeof r2, "DESK | xelector_01 | %s/pieces/xelector_01 | %d | %d | %d | %d | %s | 0", rel, cx * 80, cy * 80, cx, cy, poss[0] ? poss : "none");
     snprintf(r3, sizeof r3, "DESK | camera_01 | %s/pieces/display | 80 | 0 | 1 | 0 | m=%d,y=180,p=%d,z=0,h=0 | 0", rel, mode, pitch);
-    snprintf(pc, sizeof pc, "# page `%s` of book `%s`, written by game_page_export from %s/state/%s (S2/S3a of the games-as-books pivot)\n%s\n%s\n%s\n", room, game, game, srcname, r1, r2, r3);
+    snprintf(pc, sizeof pc, "# page `%s` of book `%s`, written by game_page_export from %s/state/%s (S2/S3a of the games-as-books pivot)\n%s\n%s\n%s\n%s", room, game, game, srcname, r1, r2, r3, extra);
     int w1 = write_file(sp, sc, if_changed), w2 = write_file(pp, pc, if_changed);
     if (w1 < 0 || w2 < 0) { fprintf(stderr, "game_page_export: cannot write under %s\n", sess); return 1; }
-    printf("ROW %s\nROW %s\nROW %s\n%s %s rows=3 disagreements=%d\n", r1, r2, r3, (w1 || w2) ? "wrote" : "unchanged", pp, disagree);
+    printf("ROW %s\nROW %s\nROW %s\n", r1, r2, r3);
+    for (char *q = extra, *nl; *q && (nl = strchr(q, '\n')); q = nl + 1) printf("ROW %.*s\n", (int)(nl - q), q);
+    printf("%s %s rows=%d disagreements=%d\n", (w1 || w2) ? "wrote" : "unchanged", pp, 3 + nextra, disagree);
     return 0;
 usage:
     fprintf(stderr, "Usage: game_page_export <app_dir> [<session_dir>|-] [--house <house_root>] [--if-changed]\n"); return 2;
