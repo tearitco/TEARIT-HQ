@@ -1461,6 +1461,15 @@ COMMAND rpg_dust_verb
   TEMPLATE exec "$D/@.apps/rpg-dust/ops/+x/rpg_dust.+x" '{verb}'[ {arg}]
 END
 
+# rpg_edit_hq_verb (2026-10-28): the same generic command for rpg-edit-hq (its own binary, rpg_edit_hq.+x, never rpg-space's). Its 21 event pages are written by verbgen from verbs.pdl (`GAME | rpg-edit-hq | rpg_edit_hq_verb | ops/+x/rpg_edit_hq.+x`) and blueprintz flagged every one of them `unknown-type` because this entry was missing.
+COMMAND rpg_edit_hq_verb
+  LABEL rpg-edit-hq: Run Verb
+  FIELD1 Verb:
+  FIELD2 Args:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x" '{verb}'[ {arg}]
+END
+
 # dust_zoom_verb = the zoom / start verbs of the rpg-dust family ("dust_zoom.+x <verb>"). The game folder is found from the event itself ($ENT = <game>/events/<name>, so its grandparent is the game): every game has
 # its own copy of the op, a fixed path would run rpg-space's binary for rpg-dust's pages. No braces in the template: every {..} is a substitution key.
 COMMAND dust_zoom_verb

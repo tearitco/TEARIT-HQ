@@ -637,6 +637,495 @@ RUN | $T/bc.+x | $T/orphan_folder/h/@.apps/g/g-pchq | --house | $T/orphan_folder
 EXPECT_EXIT | 1 | orphan_folder-exit-1
 EXPECT_OUT | FAIL B4 no_orphans: 1 map folder(s) are not in game.pdl, the first is `attic` | attic-is-not-a-desk
 
+CASE | d_ok
+MKDIR | d_ok/h/pals/castle
+MKDIR | d_ok/h/pals/asa
+MKDIR | d_ok/h/@.apps/g/pieces/hero_01
+MKDIR | d_ok/h/@.apps/g/pieces/xelector_01
+MKDIR | d_ok/h/@.apps/g/pieces/display
+MKDIR | d_ok/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_ok/h/sessions/s1/desks
+WRITE | d_ok/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_ok/h/sessions/s1
+WRITE | d_ok/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_ok/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_ok/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_ok/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_ok/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_ok/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_ok/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_ok/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_ok/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_ok/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_ok/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_ok/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_ok/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_ok/h/@.apps/g/g-pchq | --house | $T/d_ok/h | --events
+EXPECT_EXIT | 0 | d_ok-exit-0
+EXPECT_OUT | PASS D1 events_scan: blueprintz scans 1 events, flags=0 | one-clean-event
+EXPECT_OUT | PASS D2 events_compile: blueprintz compiles the book | the-book-compiles
+EXPECT_OUT | checks=16 pass=16 fail=0 skip=0 info=0 | sixteen-of-sixteen
+EXPECT_OUT | conformant=yes | conformant
+
+CASE | d_two
+MKDIR | d_two/h/pals/castle
+MKDIR | d_two/h/pals/asa
+MKDIR | d_two/h/@.apps/g/pieces/hero_01
+MKDIR | d_two/h/@.apps/g/pieces/xelector_01
+MKDIR | d_two/h/@.apps/g/pieces/display
+MKDIR | d_two/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_two/h/sessions/s1/desks
+WRITE | d_two/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_two/h/sessions/s1
+WRITE | d_two/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_two/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_two/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_two/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_two/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_two/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_two/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_two/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_two/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_two/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_two/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_two/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_two/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+MKDIR | d_two/h/@.apps/g/events/sell/event_pkg/pages/page_1
+WRITE | d_two/h/@.apps/g/events/sell/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=sell\parg=\n
+WRITE | d_two/h/@.apps/g/events/sell/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_two/h/@.apps/g/events/sell/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_two/h/@.apps/g/events/sell/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_two/h/@.apps/g/g-pchq | --house | $T/d_two/h | --events
+EXPECT_EXIT | 0 | d_two-exit-0
+EXPECT_OUT | blueprintz scans 2 events, flags=0 | two-events
+EXPECT_OUT | events=2 pages=2 | compiled-two-pages
+
+CASE | d_unknown_type
+MKDIR | d_unknown_type/h/pals/castle
+MKDIR | d_unknown_type/h/pals/asa
+MKDIR | d_unknown_type/h/@.apps/g/pieces/hero_01
+MKDIR | d_unknown_type/h/@.apps/g/pieces/xelector_01
+MKDIR | d_unknown_type/h/@.apps/g/pieces/display
+MKDIR | d_unknown_type/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_unknown_type/h/sessions/s1/desks
+WRITE | d_unknown_type/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_unknown_type/h/sessions/s1
+WRITE | d_unknown_type/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_unknown_type/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_unknown_type/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_unknown_type/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_unknown_type/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_unknown_type/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_unknown_type/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_unknown_type/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_unknown_type/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_unknown_type/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=not_a_command \p verb=buy\parg=\n
+WRITE | d_unknown_type/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_unknown_type/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_unknown_type/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_unknown_type/h/@.apps/g/g-pchq | --house | $T/d_unknown_type/h | --events
+EXPECT_EXIT | 1 | d_unknown_type-exit-1
+EXPECT_OUT | FAIL D1 events_scan: blueprintz flags 1 problem(s) in 1 events | one-flag
+EXPECT_OUT | unknown-type | the-type-is-not-in-the-registry
+EXPECT_OUT | conformant=no | not-conformant
+
+CASE | d_no_condition
+MKDIR | d_no_condition/h/pals/castle
+MKDIR | d_no_condition/h/pals/asa
+MKDIR | d_no_condition/h/@.apps/g/pieces/hero_01
+MKDIR | d_no_condition/h/@.apps/g/pieces/xelector_01
+MKDIR | d_no_condition/h/@.apps/g/pieces/display
+MKDIR | d_no_condition/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_no_condition/h/sessions/s1/desks
+WRITE | d_no_condition/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_no_condition/h/sessions/s1
+WRITE | d_no_condition/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_no_condition/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_no_condition/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_no_condition/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_no_condition/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_no_condition/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_no_condition/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_no_condition/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_no_condition/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_no_condition/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_no_condition/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_no_condition/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_no_condition/h/@.apps/g/g-pchq | --house | $T/d_no_condition/h | --events
+EXPECT_EXIT | 1 | d_no_condition-exit-1
+EXPECT_OUT | FAIL D1 | flagged
+EXPECT_OUT | no-condition | a-page-without-a-trigger-can-never-run
+
+CASE | d_no_pal
+MKDIR | d_no_pal/h/pals/castle
+MKDIR | d_no_pal/h/pals/asa
+MKDIR | d_no_pal/h/@.apps/g/pieces/hero_01
+MKDIR | d_no_pal/h/@.apps/g/pieces/xelector_01
+MKDIR | d_no_pal/h/@.apps/g/pieces/display
+MKDIR | d_no_pal/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_no_pal/h/sessions/s1/desks
+WRITE | d_no_pal/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_no_pal/h/sessions/s1
+WRITE | d_no_pal/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_no_pal/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_no_pal/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_no_pal/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_no_pal/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_no_pal/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_no_pal/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_no_pal/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_no_pal/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_no_pal/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_no_pal/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_no_pal/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_no_pal/h/@.apps/g/g-pchq | --house | $T/d_no_pal/h | --events
+EXPECT_EXIT | 1 | d_no_pal-exit-1
+EXPECT_OUT | FAIL D1 | flagged
+EXPECT_OUT | no-pal | a-page-without-its-compiled-program
+
+CASE | d_dup_id
+MKDIR | d_dup_id/h/pals/castle
+MKDIR | d_dup_id/h/pals/asa
+MKDIR | d_dup_id/h/@.apps/g/pieces/hero_01
+MKDIR | d_dup_id/h/@.apps/g/pieces/xelector_01
+MKDIR | d_dup_id/h/@.apps/g/pieces/display
+MKDIR | d_dup_id/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_dup_id/h/sessions/s1/desks
+WRITE | d_dup_id/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_dup_id/h/sessions/s1
+WRITE | d_dup_id/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_dup_id/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_dup_id/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_dup_id/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_dup_id/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_dup_id/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_dup_id/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_dup_id/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_dup_id/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_dup_id/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_dup_id/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_dup_id/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_dup_id/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_dup_id/h/@.apps/g/g-pchq | --house | $T/d_dup_id/h | --events
+EXPECT_EXIT | 1 | d_dup_id-exit-1
+EXPECT_OUT | FAIL D1 | flagged
+EXPECT_OUT | dup-id | the-same-id-twice
+
+CASE | d_no_events
+MKDIR | d_no_events/h/pals/castle
+MKDIR | d_no_events/h/pals/asa
+MKDIR | d_no_events/h/@.apps/g/pieces/hero_01
+MKDIR | d_no_events/h/@.apps/g/pieces/xelector_01
+MKDIR | d_no_events/h/@.apps/g/pieces/display
+MKDIR | d_no_events/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_no_events/h/sessions/s1/desks
+WRITE | d_no_events/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_no_events/h/sessions/s1
+WRITE | d_no_events/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_no_events/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_no_events/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_no_events/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_no_events/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_no_events/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_no_events/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_no_events/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+RUN | $T/bc.+x | $T/d_no_events/h/@.apps/g/g-pchq | --house | $T/d_no_events/h | --events
+EXPECT_EXIT | 0 | d_no_events-exit-0
+EXPECT_OUT | SKIP D1 events_scan | nothing-to-scan
+EXPECT_OUT | has no event packages | says-why
+EXPECT_OUT | SKIP D2 events_compile | nothing-to-compile
+EXPECT_OUT | checks=16 pass=14 fail=0 skip=2 info=0 | two-skips
+
+CASE | d_ops_missing
+MKDIR | d_ops_missing/h/pals/castle
+MKDIR | d_ops_missing/h/pals/asa
+MKDIR | d_ops_missing/h/@.apps/g/pieces/hero_01
+MKDIR | d_ops_missing/h/@.apps/g/pieces/xelector_01
+MKDIR | d_ops_missing/h/@.apps/g/pieces/display
+MKDIR | d_ops_missing/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_ops_missing/h/sessions/s1/desks
+WRITE | d_ops_missing/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_ops_missing/h/sessions/s1
+WRITE | d_ops_missing/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_ops_missing/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_ops_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_ops_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_ops_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_ops_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_ops_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_ops_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_ops_missing/h/@.apps/g/g-pchq | --house | $T/d_ops_missing/h | --events
+EXPECT_EXIT | 0 | d_ops_missing-exit-0
+EXPECT_OUT | SKIP D1 events_scan: the blueprintz ops are not built | ops-not-built
+EXPECT_OUT | SKIP D2 | compile-skipped-too
+EXPECT_OUT | pass=14 fail=0 skip=2 | two-skips
+
+CASE | d_fake_scan
+MKDIR | d_fake_scan/h/pals/castle
+MKDIR | d_fake_scan/h/pals/asa
+MKDIR | d_fake_scan/h/@.apps/g/pieces/hero_01
+MKDIR | d_fake_scan/h/@.apps/g/pieces/xelector_01
+MKDIR | d_fake_scan/h/@.apps/g/pieces/display
+MKDIR | d_fake_scan/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_fake_scan/h/sessions/s1/desks
+WRITE | d_fake_scan/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_fake_scan/h/sessions/s1
+WRITE | d_fake_scan/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_fake_scan/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_fake_scan/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_fake_scan/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_fake_scan/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_fake_scan/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.widgits/_shared-lib/ops/+x/book_check.+x | d_fake_scan/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_fake_scan/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_fake_scan/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_fake_scan/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_fake_scan/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_fake_scan/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_fake_scan/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_fake_scan/h/@.apps/g/g-pchq | --house | $T/d_fake_scan/h | --events
+EXPECT_EXIT | 1 | d_fake_scan-exit-1
+EXPECT_OUT | FAIL D1 events_scan: bp_scan did not finish or printed no SUMMARY | a-scan-that-prints-no-summary-is-a-failure
+EXPECT_OUT | PASS D2 | compile-still-runs
+
+CASE | d_fake_compile
+MKDIR | d_fake_compile/h/pals/castle
+MKDIR | d_fake_compile/h/pals/asa
+MKDIR | d_fake_compile/h/@.apps/g/pieces/hero_01
+MKDIR | d_fake_compile/h/@.apps/g/pieces/xelector_01
+MKDIR | d_fake_compile/h/@.apps/g/pieces/display
+MKDIR | d_fake_compile/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_fake_compile/h/sessions/s1/desks
+WRITE | d_fake_compile/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_fake_compile/h/sessions/s1
+WRITE | d_fake_compile/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_fake_compile/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_fake_compile/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_fake_compile/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_fake_compile/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_fake_compile/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_fake_compile/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.widgits/_shared-lib/ops/+x/book_check.+x | d_fake_compile/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_fake_compile/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_fake_compile/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_fake_compile/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_fake_compile/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_fake_compile/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_fake_compile/h/@.apps/g/g-pchq | --house | $T/d_fake_compile/h | --events
+EXPECT_EXIT | 1 | d_fake_compile-exit-1
+EXPECT_OUT | PASS D1 events_scan | scan-passes
+EXPECT_OUT | FAIL D2 events_compile: blueprintz did not compile the book | a-compile-without-its-ok-line-fails
+EXPECT_OUT | no bp_book line | says-why
+
+CASE | d_book_silent
+MKDIR | d_book_silent/h/pals/castle
+MKDIR | d_book_silent/h/pals/asa
+MKDIR | d_book_silent/h/@.apps/g/pieces/hero_01
+MKDIR | d_book_silent/h/@.apps/g/pieces/xelector_01
+MKDIR | d_book_silent/h/@.apps/g/pieces/display
+MKDIR | d_book_silent/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_book_silent/h/sessions/s1/desks
+WRITE | d_book_silent/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_book_silent/h/sessions/s1
+WRITE | d_book_silent/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_book_silent/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_book_silent/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_book_silent/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_book_silent/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_book_silent/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_book_silent/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/fake_book_silent.sh | d_book_silent/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_book_silent/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_book_silent/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_book_silent/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_book_silent/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_book_silent/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_book_silent/h/@.apps/g/g-pchq | --house | $T/d_book_silent/h | --events
+EXPECT_EXIT | 1 | d_book_silent-exit-1
+EXPECT_OUT | PASS D1 events_scan | scan-passes
+EXPECT_OUT | FAIL D2 events_compile: blueprintz did not compile the book (exit 0) | exit-0-without-the-ok-line-is-a-failure
+EXPECT_OUT | no bp_book line | says-why
+
+CASE | d_book_exit3
+MKDIR | d_book_exit3/h/pals/castle
+MKDIR | d_book_exit3/h/pals/asa
+MKDIR | d_book_exit3/h/@.apps/g/pieces/hero_01
+MKDIR | d_book_exit3/h/@.apps/g/pieces/xelector_01
+MKDIR | d_book_exit3/h/@.apps/g/pieces/display
+MKDIR | d_book_exit3/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_book_exit3/h/sessions/s1/desks
+WRITE | d_book_exit3/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_book_exit3/h/sessions/s1
+WRITE | d_book_exit3/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_book_exit3/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_book_exit3/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_book_exit3/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_book_exit3/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_book_exit3/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_book_exit3/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/fake_book_exit3.sh | d_book_exit3/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_book_exit3/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_book_exit3/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_book_exit3/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_book_exit3/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_book_exit3/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_book_exit3/h/@.apps/g/g-pchq | --house | $T/d_book_exit3/h | --events
+EXPECT_EXIT | 1 | d_book_exit3-exit-1
+EXPECT_OUT | FAIL D2 events_compile: blueprintz did not compile the book (exit 3) | the-ok-line-with-a-non-zero-exit-is-a-failure
+
+CASE | d_book_op_missing
+MKDIR | d_book_op_missing/h/pals/castle
+MKDIR | d_book_op_missing/h/pals/asa
+MKDIR | d_book_op_missing/h/@.apps/g/pieces/hero_01
+MKDIR | d_book_op_missing/h/@.apps/g/pieces/xelector_01
+MKDIR | d_book_op_missing/h/@.apps/g/pieces/display
+MKDIR | d_book_op_missing/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_book_op_missing/h/sessions/s1/desks
+WRITE | d_book_op_missing/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_book_op_missing/h/sessions/s1
+WRITE | d_book_op_missing/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_book_op_missing/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_book_op_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_book_op_missing/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_book_op_missing/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_book_op_missing/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_book_op_missing/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+MKDIR | d_book_op_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_book_op_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_book_op_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_book_op_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_book_op_missing/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_book_op_missing/h/@.apps/g/g-pchq | --house | $T/d_book_op_missing/h | --events
+EXPECT_EXIT | 0 | d_book_op_missing-exit-0
+EXPECT_OUT | SKIP D1 events_scan: the blueprintz ops are not built (bp_book_op.+x) | names-the-missing-op
+EXPECT_OUT | SKIP D2 | skipped-too
+
+CASE | d_off_by_default
+MKDIR | d_off_by_default/h/pals/castle
+MKDIR | d_off_by_default/h/pals/asa
+MKDIR | d_off_by_default/h/@.apps/g/pieces/hero_01
+MKDIR | d_off_by_default/h/@.apps/g/pieces/xelector_01
+MKDIR | d_off_by_default/h/@.apps/g/pieces/display
+MKDIR | d_off_by_default/h/@.apps/g/g-pchq/pieces/display
+MKDIR | d_off_by_default/h/sessions/s1/desks
+WRITE | d_off_by_default/h/sessions/s1/desks/office.pdl | DESK \p castle \p pals/castle \p 80 \p 80 \p 1 \p 1 \p c \p 50\nDESK \p asa \p pals/asa \p 160 \p 0 \p 2 \p 0 \p a \p 39\nDESK \p hero_01 \p @.apps/g/pieces/hero_01 \p 160 \p 160 \p 2 \p 2 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/pieces/xelector_01 \p 160 \p 160 \p 2 \p 2 \p hero_01 \p 20\nDESK \p camera_01 \p @.apps/g/pieces/display \p 80 \p 0 \p 1 \p 0 \p m=2,y=180,p=6,z=-3,h=0 \p 0\n
+MKDIR | d_off_by_default/h/sessions/s1
+WRITE | d_off_by_default/h/sessions/s1/session.pdl | STATE \p name \p b1\nSTATE \p active_desk \p office\n
+WRITE | d_off_by_default/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=desk\npdl=sessions/s1/desks/office.pdl\n
+MKDIR | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g
+WRITE | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p type \p board-game\nGAME \p n_desks \p 3\nGAME \p desk_1_id \p bridge\nGAME \p desk_2_id \p quarters\nGAME \p desk_3_id \p hold\n
+MKDIR | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+MKDIR | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters
+WRITE | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/quarters/map.txt | ....\n
+MKDIR | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/hold
+WRITE | d_off_by_default/h/@.apps/g/g-pchq/pieces/system/maps/g/hold/map.txt | ....\n
+MKDIR | d_off_by_default/h/&.hq-apps/blueprintz/ops/+x
+MKDIR | d_off_by_default/h/#.ref/menu
+COPY | #.ref/menu/event_commands.registry.pdl | d_off_by_default/h/#.ref/menu/event_commands.registry.pdl
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | d_off_by_default/h/&.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | d_off_by_default/h/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+MKDIR | d_off_by_default/h/@.apps/g/events/buy/event_pkg/pages/page_1
+WRITE | d_off_by_default/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nSTATE        \p source               \p events-hq\nNODE         \p id=1 type=rpg_edit_hq_verb \p verb=buy\parg=\n
+WRITE | d_off_by_default/h/@.apps/g/events/buy/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p buy\nCOND \p trigger \p ui\n
+WRITE | d_off_by_default/h/@.apps/g/events/buy/event_pkg/pages/page_1/event.pal | # event.pal\nexec cmd_1.sh\n
+WRITE | d_off_by_default/h/@.apps/g/events/buy/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | $T/bc.+x | $T/d_off_by_default/h/@.apps/g/g-pchq | --house | $T/d_off_by_default/h
+EXPECT_EXIT | 0 | no-flag-no-layer-D
+EXPECT_OUT | checks=14 pass=14 fail=0 skip=0 info=0 | fourteen-checks
+EXPECT_OUT_LACKS | D1 | no-D-line
+
 CASE | page_option
 MKDIR | page_option/h/pals/castle
 MKDIR | page_option/h/pals/asa

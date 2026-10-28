@@ -96,4 +96,7 @@ Deliberately NOT next: more design documents (the design is ahead of the evidenc
 
 
 **Update (book:page on the toolbar + Synch, 2026-10-28):** the three games now show `book:<game>` and `page:<room>` first on the toolbar in the LyfeDesk order (golden standard: a picture of the real top strip), Pals moved to its own tab, Synch rows in the Player menu backed by a new tested op `desk_synch` (harness 58/0, 10 mutations). Synch never creates a book on the desk; live today it says the desk has `pre-design` open. rpg-dust and rpg-edit-hq daemons need a restart to show the new book label (restart was denied).
+
+
+**Update (layer D, 2026-10-28):** `book_check --events` adds D1 (blueprintz `bp_scan` flags=0) and D2 (blueprintz `bp_book_op` compiles the book). rpg-edit-hq's 21 `unknown-type` flags are gone (registry entry `rpg_edit_hq_verb` added). Real games: rpg-space, rpg-dust, rpg-edit-hq all 16/16 with their exported pages. Harness 130/0, three survivors found and closed.
 \n

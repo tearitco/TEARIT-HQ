@@ -1,9 +1,11 @@
 /* book_check - is this game a BOOK:PAGE citizen? A READ-ONLY conformance check of a pc-hq game folder against the house standard 18.pc-hq/PAGE-FILE.md ("book and session are the same thing, page and map are the same
  * thing; a page is one desk file whose rows are entities; pc-hq 2D and 3D read and write the same rows") plus the consistency of the game's own map book (maps/<game>/game.pdl vs its room folders).
- * Design: BOOK 16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md (sections 1b, 3, 4 step S1). It never writes anything.
+ * Design: BOOK 16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md (sections 1b, 3, 4 step S1). It never writes into the game: only with --events it makes ONE scratch folder under /tmp for blueprintz's compile and removes it.
  *
- * Usage:  book_check <pchq_root> [--house <house_root>] [--page <page.pdl>]
+ * Usage:  book_check <pchq_root> [--house <house_root>] [--page <page.pdl>] [--events]
  *   <pchq_root>  the game's pc-hq folder, e.g. @.apps/rpg-space/rpg-space-pchq (it holds pieces/display/open_book_page.txt and pieces/system/maps/<game>/)
+ *   --events     add LAYER D (the game's events as blueprintz sees them): D1 events_scan = blueprintz's own `bp_scan` over every <app>/events/<name>/event_pkg reports flags=0; D2 events_compile = blueprintz's `bp_book_op` compiles that book ("bp_book: ok").
+ *                  <app> = the folder above <pchq_root>. SKIP when the game has no event packages or the blueprintz ops (<house>/&.hq-apps/blueprintz/ops/+x/bp_scan.+x, bp_book_op.+x) are not built. Off by default (16 checks with it, 14 without).
  *   --page       check THIS page file as if the game were bound to it (source=desk, pdl=<file>): what a game would score once moved onto the page file; A2 then passes with a note
  *   --house      the house root (the folder with &.widgits) that relative paths in page rows and in pdl= are resolved against; default = the nearest folder above <pchq_root> that has &.widgits
  * Output, one line per check:   PASS|FAIL|SKIP|INFO <code> <detail>      then   checks=<n> pass=<p> fail=<f> skip=<s> info=<i>   and   conformant=yes|no
@@ -23,6 +25,7 @@
  *     B2 desk_ids         n_desks equals the number of desk ids; ids are valid names (letters, digits, - _; 1..48; the book_page_op rule) and unique
  *     B3 desk_folders     every desk id has a folder with a map.txt
  *     B4 no_orphans       no map folder that game.pdl does not list
+ *   LAYER D (only with --events, see above): D1 events_scan, D2 events_compile.
  *   LAYER C (INFO only: a file's presence cannot prove it is still used): the private position files PAGE-FILE.md says must stop being authorities, listed when present.
  * Exit: 0 conformant (no FAIL) | 1 at least one FAIL | 2 usage or unreadable <pchq_root>.   Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/book_check.+x book_check.c */
 #define _GNU_SOURCE
@@ -34,6 +37,11 @@
 #include <limits.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <signal.h>
+#include <time.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 static int nchk, npass, nfail, nskip, ninfo;
 static void out(const char *kind, const char *code, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
@@ -51,14 +59,24 @@ static int name_ok(const char *s) { size_t n = strlen(s); if (!n || n > 48) retu
 static void resolve(const char *house, const char *p, char *o, size_t cap) { if (p[0] == '/') snprintf(o, cap, "%s", p); else snprintf(o, cap, "%s/%s", house, p); }
 static int read_all(const char *p, char *b, size_t cap) { FILE *f = fopen(p, "r"); if (!f) { b[0] = 0; return 0; } size_t n = fread(b, 1, cap - 1, f); b[n] = 0; fclose(f); return 1; }
 
+/* run argv with stdout+stderr into out (cap), 60 s watchdog, no popen; returns the exit code or -1 */
+static int run_capture(char *const argv[], char *out, size_t cap) {
+    int pf[2]; if (pipe(pf)) return -1; pid_t pid = fork(); if (pid < 0) return -1;
+    if (!pid) { int dn = open("/dev/null", O_RDONLY); if (dn >= 0) dup2(dn, 0); dup2(pf[1], 1); dup2(pf[1], 2); close(pf[0]); close(pf[1]); (void)!nice(10); execv(argv[0], argv); _exit(97); }
+    close(pf[1]); size_t n = 0; time_t t0 = time(NULL); fcntl(pf[0], F_SETFL, O_NONBLOCK); int done = 0, st = 0;
+    while (!done && time(NULL) - t0 < 60) { ssize_t r = read(pf[0], out + n, cap - 1 - n); if (r > 0) { n += (size_t)r; if (n >= cap - 1) break; } else if (r == 0) done = 1; else usleep(10000); }
+    out[n] = 0; close(pf[0]); if (!done) kill(pid, SIGKILL); waitpid(pid, &st, 0); return done && WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+static void rm_tree(const char *p) { DIR *d = opendir(p); struct dirent *e; if (d) { while ((e = readdir(d))) { if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue; char q[PATH_MAX + 300]; snprintf(q, sizeof q, "%s/%s", p, e->d_name); struct stat s; if (lstat(q, &s) == 0 && S_ISDIR(s.st_mode)) rm_tree(q); else unlink(q); } closedir(d); } rmdir(p); }
+
 #define MAXE 512
 typedef struct { char name[64], path[300], glyph[96]; } Ent;
 static Ent E[MAXE]; static int nE;
 
 int main(int argc, char **argv) {
     if (argc < 2) goto usage;
-    char pchq[PATH_MAX], house[PATH_MAX] = "", forced[PATH_MAX] = ""; snprintf(pchq, sizeof pchq, "%s", argv[1]);
-    for (int i = 2; i < argc; i++) { if (!strcmp(argv[i], "--house") && i + 1 < argc) snprintf(house, sizeof house, "%s", argv[++i]); else if (!strcmp(argv[i], "--page") && i + 1 < argc) snprintf(forced, sizeof forced, "%s", argv[++i]); else goto usage; }
+    char pchq[PATH_MAX], house[PATH_MAX] = "", forced[PATH_MAX] = ""; int events = 0; snprintf(pchq, sizeof pchq, "%s", argv[1]);
+    for (int i = 2; i < argc; i++) { if (!strcmp(argv[i], "--house") && i + 1 < argc) snprintf(house, sizeof house, "%s", argv[++i]); else if (!strcmp(argv[i], "--events")) events = 1; else if (!strcmp(argv[i], "--page") && i + 1 < argc) snprintf(forced, sizeof forced, "%s", argv[++i]); else goto usage; }
     { size_t n = strlen(pchq); while (n > 1 && pchq[n - 1] == '/') pchq[--n] = 0; }
     if (!is_dir(pchq)) { fprintf(stderr, "book_check: %s is not a folder\n", pchq); return 2; }
     if (!house[0]) { char d[PATH_MAX]; if (!realpath(pchq, d)) snprintf(d, sizeof d, "%s", pchq); for (int up = 0; up < 10 && !house[0]; up++) { char *s = strrchr(d, '/'); if (!s || s == d) break; *s = 0; char t[PATH_MAX + 16]; snprintf(t, sizeof t, "%s/&.widgits", d); if (is_dir(t)) snprintf(house, sizeof house, "%s", d); } }
@@ -131,11 +149,44 @@ int main(int argc, char **argv) {
         int orph = 0; char on[64] = ""; { char t[PATH_MAX + 100]; snprintf(t, sizeof t, "%s/%s", mroot, game); DIR *d = opendir(t); struct dirent *e; while (d && (e = readdir(d))) { if (e->d_name[0] == '.') continue; char fp[PATH_MAX + 200]; snprintf(fp, sizeof fp, "%s/%s", t, e->d_name); if (!is_dir(fp)) continue; int listed = 0; for (int i = 0; i < nid; i++) if (!strcmp(ids[i], e->d_name)) listed = 1; if (!listed) { if (!orph++) snprintf(on, sizeof on, "%s", e->d_name); } } if (d) closedir(d); }
         if (orph) out("FAIL", "B4", "no_orphans: %d map folder(s) are not in game.pdl, the first is `%s`", orph, on); else out("PASS", "B4", "no_orphans: every map folder is a listed desk");
     }
+    /* ---- layer D (opt-in): the game's events as blueprintz sees them ---- */
+    if (events) {
+        char app[PATH_MAX]; snprintf(app, sizeof app, "%s", pchq); { char *sl = strrchr(app, '/'); if (sl) *sl = 0; }
+        char evd[PATH_MAX + 16]; snprintf(evd, sizeof evd, "%s/events", app);
+        static char names[128][64]; int nn = 0; DIR *d = opendir(evd); struct dirent *e;
+        while (d && (e = readdir(d)) && nn < 128) { if (e->d_name[0] == '.' || strlen(e->d_name) > 60) continue; char t[PATH_MAX + 120]; snprintf(t, sizeof t, "%s/%s/event_pkg", evd, e->d_name); if (is_dir(t)) snprintf(names[nn++], 64, "%s", e->d_name); }
+        if (d) closedir(d);
+        for (int i = 0; i < nn; i++) for (int j = i + 1; j < nn; j++) if (strcmp(names[i], names[j]) > 0) { char t[64]; snprintf(t, sizeof t, "%s", names[i]); snprintf(names[i], 64, "%s", names[j]); snprintf(names[j], 64, "%s", t); }
+        char bs[PATH_MAX + 80], bb[PATH_MAX + 80]; snprintf(bs, sizeof bs, "%s/&.hq-apps/blueprintz/ops/+x/bp_scan.+x", house); snprintf(bb, sizeof bb, "%s/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x", house);
+        if (!nn) { out("SKIP", "D1", "events_scan: %s has no event packages (events/<name>/event_pkg)", evd); out("SKIP", "D2", "events_compile: no event packages"); }
+        else if (access(bs, X_OK) || access(bb, X_OK)) { out("SKIP", "D1", "events_scan: the blueprintz ops are not built (%s)", access(bs, X_OK) ? "bp_scan.+x" : "bp_book_op.+x"); out("SKIP", "D2", "events_compile: the blueprintz ops are not built"); }
+        else {
+            static char outb[65536]; char *av[300]; int ac = 0; av[ac++] = bs; av[ac++] = house; static char dirs[128][PATH_MAX + 140];
+            for (int i = 0; i < nn; i++) { snprintf(dirs[i], sizeof dirs[i], "%s/%s", evd, names[i]); av[ac++] = "--dir"; av[ac++] = dirs[i]; } av[ac] = NULL;
+            int rc = run_capture(av, outb, sizeof outb); int flags = -1; char first[200] = "";
+            for (char *l = strtok(outb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "SUMMARY | flags=", 16)) flags = atoi(l + 16); else if (!strncmp(l, "FLAG |", 6) && !first[0]) snprintf(first, sizeof first, "%s", l + 7); }
+            if (rc < 0 || flags < 0) out("FAIL", "D1", "events_scan: bp_scan did not finish or printed no SUMMARY (exit %d)", rc);
+            else if (flags) out("FAIL", "D1", "events_scan: blueprintz flags %d problem(s) in %d events, the first: %s", flags, nn, first);
+            else out("PASS", "D1", "events_scan: blueprintz scans %d events, flags=0", nn);
+            char tmp[] = "/tmp/book_check.XXXXXX";
+            if (!mkdtemp(tmp)) out("FAIL", "D2", "events_compile: cannot make a scratch folder");
+            else {
+                char sp[PATH_MAX], od[PATH_MAX], pf[PATH_MAX + 8]; snprintf(sp, sizeof sp, "%s/sources.pdl", tmp); snprintf(od, sizeof od, "%s/out", tmp);
+                FILE *f = fopen(sp, "w"); if (f) { for (int i = 0; i < nn; i++) fprintf(f, "EVENT | %s | %s\n", names[i], dirs[i]); fclose(f); }
+                char *bv[] = { bb, house, sp, od, "--no-common", NULL }; (void)pf;
+                int rc2 = run_capture(bv, outb, sizeof outb); char line[240] = "";
+                for (char *l = strtok(outb, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bp_book:", 8)) { snprintf(line, sizeof line, "%s", l); }
+                if (rc2 == 0 && !strncmp(line, "bp_book: ok", 11)) out("PASS", "D2", "events_compile: blueprintz compiles the book (%.150s)", line + 12);
+                else out("FAIL", "D2", "events_compile: blueprintz did not compile the book (exit %d): %.160s", rc2, line[0] ? line : "no bp_book line");
+                rm_tree(tmp);
+            }
+        }
+    }
     /* ---- layer C ---- */
     { static const char *priv[] = { "pieces/hero_01/state.txt", "pieces/xelector_01/state.txt", "pieces/world_01/phymoji_entities.txt", "pieces/world_01/animals.txt", "pieces/display/synched_entities.txt" };
       for (size_t i = 0; i < sizeof priv / sizeof priv[0]; i++) { snprintf(p, sizeof p, "%s/%s", pchq, priv[i]); if (is_file(p)) out("INFO", "C1", "private position file present: %s (PAGE-FILE.md: must stop being an authority)", priv[i]); } }
     printf("checks=%d pass=%d fail=%d skip=%d info=%d\nconformant=%s\n", nchk, npass, nfail, nskip, ninfo, nfail ? "no" : "yes");
     return nfail ? 1 : 0;
 usage:
-    fprintf(stderr, "Usage: book_check <pchq_root> [--house <house_root>] [--page <page.pdl>]\n"); return 2;
+    fprintf(stderr, "Usage: book_check <pchq_root> [--house <house_root>] [--page <page.pdl>] [--events]\n"); return 2;
 }
