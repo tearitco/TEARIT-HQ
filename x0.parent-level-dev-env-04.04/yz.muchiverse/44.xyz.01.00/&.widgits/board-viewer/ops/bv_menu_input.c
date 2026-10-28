@@ -818,15 +818,15 @@ static int handle_one_key(int key) {
     /* '+' / '=' (43 / 61) and '-' (45) - zoom of the 2D tile view, every board (owner 2026-10-22: "2d default is fit map to screen", "+- for zoom"). view_2d_zoom -1 = fit the whole scene (page + entity pieces), 0 = fit the whole page
      * (the renderer's default), 1..5 = 125, 150, 200, 300, 400 percent of that. Only while the view is 2D (render_mode 0); in 3D the keys fall through. */
     /* 2D camera (owner 2026-10-27: "arrows move the xelector, not the camera ... it should pan"): the 2D renderer keeps its own camera in pieces/display/view_2d_cam.txt (x= y= vw= vh=, in cells). The arrows move only the xelector;
-     * Shift+W/A/S/D (87 65 83 68) move the camera one cell, ';' (59) deletes the file = the default view again. Only while the view is 2D (render_mode 0). The renderer clamps the camera to the whole scene (page + pieces + xelector). */
-    if ((key == 87 || key == 65 || key == 83 || key == 68 || key == 59) && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
+     * the camera keys w/a/s/d (the configured pan keys, and Shift+W/A/S/D = 87 65 83 68) move the camera one cell and NEVER the xelector, ';' (59) deletes the file = the default view again. Only while the view is 2D (render_mode 0). The renderer clamps the camera to the whole scene (page + pieces + xelector). */
+    if ((key == 87 || key == 65 || key == 83 || key == 68 || key == 59 || key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right) && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
         char cp[PATH_BUF]; snprintf(cp, sizeof(cp), "%s/pieces/display/view_2d_cam.txt", project_root);
         if (key == 59) { if (unlink(cp) == 0) bump_screen_changed(project_root); }
         else {
             FILE *cf = fopen(cp, "r"); float cx = 0, cy = 0, vw = 0, vh = 0; int got = 0, csx = 0, csy = 0;
             if (cf) { char l[96]; while (fgets(l, sizeof l, cf)) { if (!strncmp(l, "x=", 2)) { cx = (float)atof(l + 2); got |= 1; } else if (!strncmp(l, "y=", 2)) { cy = (float)atof(l + 2); got |= 2; } else if (!strncmp(l, "vw=", 3)) { vw = (float)atof(l + 3); got |= 4; } else if (!strncmp(l, "vh=", 3)) { vh = (float)atof(l + 3); got |= 8; } else if (!strncmp(l, "sx=", 3)) { csx = atoi(l + 3); got |= 16; } else if (!strncmp(l, "sy=", 3)) { csy = atoi(l + 3); got |= 32; } } fclose(cf); }
             if (got == 63) {      /* the renderer writes the file on its first frame; before that there is no camera to move */
-                if (key == 87) cy -= 1; else if (key == 83) cy += 1; else if (key == 65) cx -= 1; else cx += 1;
+                if (key == 87 || key == key_pan_forward) cy -= 1; else if (key == 83 || key == key_pan_back) cy += 1; else if (key == 65 || key == key_pan_left) cx -= 1; else cx += 1;
                 char out[200]; int n = snprintf(out, sizeof out, "x=%.3f\ny=%.3f\nvw=%.3f\nvh=%.3f\nsx=%d\nsy=%d\n", cx, cy, vw, vh, csx, csy); FILE *wf = fopen(cp, "w"); if (wf) { fwrite(out, 1, (size_t)n, wf); fclose(wf); }
                 bump_screen_changed(project_root); }
             return 0; }
@@ -1089,9 +1089,7 @@ static int handle_one_key(int key) {
     }
 
     int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
-    /* 2D has no camera. wasd used to die in the no-op below, so the
-     * picture never moved. Those keys step the xelector, and the 2D
-     * frame is centred on that cell. */
+    /* (2D camera keys: handled above, they move the 2D camera, never the xelector - owner 2026-10-27) */
     if (!render_mode && focused_project_root[0] &&
         (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right)) {
         int dx = 0, dy = 0;

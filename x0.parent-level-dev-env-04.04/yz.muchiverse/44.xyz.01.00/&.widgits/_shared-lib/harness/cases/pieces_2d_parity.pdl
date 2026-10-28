@@ -46,6 +46,12 @@ EXPECT_OUT | ok  : arrows: the xelector moves inside the view and the CAMERA DOE
 EXPECT_OUT | ok  : arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible | arrows-past-the-edge-the-camera-pans-scrolls-by-the-least-amount-and-t
 EXPECT_OUT | ok  : xelector: still visible far past the page (the camera panned after it) | xelector-still-visible-far-past-the-page-the-camera-panned-after-it
 EXPECT_OUT | ok  : xelector back where it was: the camera stays where it panned to (not re-centred) | xelector-back-where-it-was-the-camera-stays-where-it-panned-to-not-re-
+EXPECT_OUT | ok  : keys: w/a/s/d (here 'd' x3) move the 2D camera | keys-w-a-s-d-here-d-x3-move-the-2d-camera
+EXPECT_OUT | ok  : keys: the camera keys did NOT move the xelector | keys-the-camera-keys-did-not-move-the-xelector
+EXPECT_OUT | ok  : arrows: the arrow key moves the xelector | arrows-the-arrow-key-moves-the-xelector
+EXPECT_OUT | ok  : arrows: ... and the camera did not move | arrows-and-the-camera-did-not-move
+EXPECT_OUT | ok  : parallax: none when the desk has no parallax.rgba | parallax-none-when-the-desk-has-no-parallax-rgba
+EXPECT_OUT | ok  : parallax: 2D draws the sky from parallax.rgba (the file the 3D engine reads) outside the page | parallax-2d-draws-the-sky-from-parallax-rgba-the-file-the-3d-engine-re
 EXPECT_OUT_LACKS | FAIL | no-failed-check
 CASE    | negative-renderer-without-pieces
 ENV | BV2D_BIN | $T/r2d_nopieces
@@ -59,4 +65,5 @@ EXPECT_OUT | FAIL: zoom -1 (whole scene) shows the piece that lies outside the p
 EXPECT_OUT | FAIL: minimap: shown when a piece lies outside the view (cyan view outline) | fails-without-piece-code-minimap-shown-when-a-piece-lies-outside-
 EXPECT_OUT | FAIL: camera: Shift+D moves the view over to a piece outside the page | fails-without-piece-code-camera-shift-d-moves-the-view-over-to-a-
 EXPECT_OUT | FAIL: camera: a far pan is clamped to the scene edge (same frame) | fails-without-piece-code-camera-a-far-pan-is-clamped-to-the-scene
+EXPECT_OUT | FAIL: parallax: 2D draws the sky from parallax.rgba (the file the 3D engine reads) outside the page | fails-without-piece-code-parallax-2d-draws-the-sky-from-parallax-
 CLEAN |

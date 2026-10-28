@@ -972,6 +972,16 @@ static void draw_map_events(unsigned char *px, int W, int H,
 /* parallax.pdl sits beside map.png. show=0 means this desk has no sky.
  * loop_x / loop_y tile with the map scroll. sx/sy are stored for a
  * later scroll tick and are not applied here. */
+/* The sky of a painted desk as raw RGBA8: parallax.rgba next to map.png, `PARALLAX | width | N` and `PARALLAX | height | N` in parallax.pdl - the SAME files the 3D engine reads (bv_render_3d.c), so 2D shows the same space parallax
+ * (owner 2026-10-27: "2d isn't using space parallax?": it only looked for a parallax.png, which the games never write). */
+static void load_parallax_rgba(const char *map_png, unsigned char **out, int *w, int *h) {
+    *out = NULL; *w = *h = 0; size_t n = strlen(map_png); if (n < 8 || n > PATH_BUF - 32) return; char dir[PATH_BUF], pdl[PATH_BUF], raw[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%.*s", (int)(n - 8), map_png); snprintf(pdl, sizeof(pdl), "%s/parallax.pdl", dir); snprintf(raw, sizeof(raw), "%s/parallax.rgba", dir);
+    FILE *f = host_fopen(pdl, "r"); if (!f) return; char line[256]; int pw = 0, ph = 0;
+    while (fgets(line, sizeof(line), f)) { char *bar = strrchr(line, '|'); if (!bar || !strstr(line, "PARALLAX")) continue; if (strstr(line, "width")) pw = atoi(bar + 1); else if (strstr(line, "height")) ph = atoi(bar + 1); }
+    fclose(f); if (pw < 1 || ph < 1 || pw > 4096 || ph > 4096) return;
+    unsigned char *buf = (unsigned char *)malloc((size_t)pw * ph * 4); if (!buf) return; FILE *rf = host_fopen(raw, "rb"); if (!rf) { free(buf); return; }
+    size_t got = fread(buf, 1, (size_t)pw * ph * 4, rf); fclose(rf); if (got != (size_t)pw * ph * 4) { free(buf); return; } *out = buf; *w = pw; *h = ph; }
 static int desk_parallax(const char *map_png, int *loop_x, int *loop_y) {
     *loop_x = 0;
     *loop_y = 0;
@@ -1450,6 +1460,7 @@ int main(void) {
                     if (n > 8 && n < sizeof(pp)) {
                         snprintf(pp, sizeof(pp), "%.*s/parallax.png", (int)(n - 8), mp);
                         load_rgba_png(pp, &para, &para_w, &para_h);
+                        if (!para) load_parallax_rgba(mp, &para, &para_w, &para_h);      /* the sky the 3D engine reads (parallax.rgba, size in parallax.pdl) when there is no png */
                     }
                 }
                 /* One image pixel tracks one map pixel, so the picture
