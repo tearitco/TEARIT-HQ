@@ -1,0 +1,175 @@
+# desk_synch: LOCKED cases. Source: &.widgits/_shared-lib/ops/desk_synch.c compiled -Wall -Wextra -Werror from source into the scratch. Each case builds a tiny house with a LyfeDesk session tree (xyzfs/users/u1/home/livedesk/sessions/session.pdl active_session, <id>/session.pdl name + active_desk, <id>/desks/<page>.pdl).
+# Rules worked out by hand from the op header: from-desk never writes; GOTO only when the desk's book name equals the asked book AND its open page is one of the asked rooms; to-desk needs the book to exist as a session with the page file, and then writes only STATE active_session (root, when it differs), name and active_desk.
+RESULTS | ../results/desk_synch.txt
+SCRATCH |
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/ds.+x | $HOUSE/&.widgits/_shared-lib/ops/desk_synch.c
+EXPECT_EXIT | 0 | compiles-clean-with-werror
+
+CASE | from_ok
+MKDIR | from_ok/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_ok/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_ok/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+RUN | $T/ds.+x | $T/from_ok/h | from-desk | g | bridge,quarters,hold
+EXPECT_EXIT | 0 | from_ok-exit-0
+EXPECT_OUT | DESK book=g page=quarters | reads-the-desk
+EXPECT_OUT | GOTO quarters | the-desk-page-is-a-room
+EXPECT_HAS | from_ok/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | active_desk \p quarters | unchanged
+
+CASE | from_spaces
+MKDIR | from_spaces/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_spaces/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_spaces/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+RUN | $T/ds.+x | $T/from_spaces/h | from-desk | g | bridge , quarters ,hold
+EXPECT_EXIT | 0 | from_spaces-exit-0
+EXPECT_OUT | GOTO quarters | room-list-is-trimmed
+
+CASE | from_other_book
+MKDIR | from_other_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_other_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_other_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p quarters\n
+RUN | $T/ds.+x | $T/from_other_book/h | from-desk | g | bridge,quarters
+EXPECT_EXIT | 1 | from_other_book-exit-1
+EXPECT_OUT | DESK book=pre-design page=quarters | the-desk-book
+EXPECT_OUT | NOGO other-book | another-book-is-open
+
+CASE | from_no_page
+MKDIR | from_no_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_no_page/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_no_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p attic\n
+RUN | $T/ds.+x | $T/from_no_page/h | from-desk | g | bridge,quarters
+EXPECT_EXIT | 1 | from_no_page-exit-1
+EXPECT_OUT | NOGO no-such-page | the-page-is-not-a-room-here
+
+CASE | from_empty_page
+MKDIR | from_empty_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_empty_page/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_empty_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\n
+RUN | $T/ds.+x | $T/from_empty_page/h | from-desk | g | bridge,quarters
+EXPECT_EXIT | 1 | from_empty_page-exit-1
+EXPECT_OUT | DESK book=g page= | no-open-page
+EXPECT_OUT | NOGO no-such-page | nothing-to-go-to
+
+CASE | from_name_missing
+MKDIR | from_name_missing/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_name_missing/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_name_missing/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p active_desk \p quarters\n
+RUN | $T/ds.+x | $T/from_name_missing/h | from-desk | b1 | quarters
+EXPECT_EXIT | 0 | from_name_missing-exit-0
+EXPECT_OUT | DESK book=b1 page=quarters | the-folder-id-is-the-book-when-there-is-no-name
+EXPECT_OUT | GOTO quarters | ok
+
+CASE | from_no_desk
+MKDIR | from_no_desk/h/xyzfs/users
+RUN | $T/ds.+x | $T/from_no_desk/h | from-desk | g | quarters
+EXPECT_EXIT | 1 | from_no_desk-exit-1
+EXPECT_OUT | NOGO no-desk | no-sessions-at-all
+
+CASE | from_stale_root
+MKDIR | from_stale_root/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_stale_root/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+RUN | $T/ds.+x | $T/from_stale_root/h | from-desk | g | quarters
+EXPECT_EXIT | 1 | from_stale_root-exit-1
+EXPECT_OUT | NOGO no-desk | the-active-session-has-no-session-file
+
+CASE | from_bad_name
+MKDIR | from_bad_name/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | from_bad_name/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | from_bad_name/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+RUN | $T/ds.+x | $T/from_bad_name/h | from-desk | a b | quarters
+EXPECT_EXIT | 1 | from_bad_name-exit-1
+EXPECT_OUT | NOGO bad-name | a-space-in-a-book-name
+
+CASE | to_no_book
+MKDIR | to_no_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | to_no_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | to_no_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+RUN | $T/ds.+x | $T/to_no_book/h | to-desk | g | hold
+EXPECT_EXIT | 1 | to_no_book-exit-1
+EXPECT_OUT | NOGO book-not-on-desk | the-game-is-not-a-session-on-the-desk
+EXPECT_HAS | to_no_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | active_desk \p quarters | nothing-changed
+EXPECT_HAS | to_no_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | active_session \p b1 | root-unchanged
+
+CASE | to_no_page
+MKDIR | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+WRITE | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | STATE \p name \p g\n
+WRITE | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/g/desks/quarters.pdl | x\n
+RUN | $T/ds.+x | $T/to_no_page/h | to-desk | g | hold
+EXPECT_EXIT | 1 | to_no_page-exit-1
+EXPECT_OUT | NOGO page-not-in-book | the-book-has-no-hold-page
+EXPECT_HAS | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | active_desk \p quarters | nothing-changed
+EXPECT_HAS | to_no_page/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | active_session \p b1 | root-unchanged
+
+CASE | to_ok_other_book
+MKDIR | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+WRITE | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+WRITE | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/g/desks/hold.pdl | x\n
+RUN | $T/ds.+x | $T/to_ok_other_book/h | to-desk | g | hold
+EXPECT_EXIT | 0 | to_ok_other_book-exit-0
+EXPECT_OUT | OK desk-follows-game book=g page=hold | done
+EXPECT_HAS | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | active_session \p g | the-open-book-is-now-g
+EXPECT_HAS | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | active_desk \p hold | the-open-page-is-hold
+EXPECT_HAS | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | name \p g | name
+EXPECT_HAS | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | active_desk \p quarters | the-old-book-is-untouched
+EXPECT_HAS | to_ok_other_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p last \p x | other-root-lines-kept
+
+CASE | to_renames
+MKDIR | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+WRITE | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | STATE \p name \p old-name\nSTATE \p active_desk \p quarters\n
+WRITE | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/g/desks/hold.pdl | x\n
+RUN | $T/ds.+x | $T/to_renames/h | to-desk | g | hold
+EXPECT_EXIT | 0 | to_renames-exit-0
+EXPECT_OUT | OK | done
+EXPECT_HAS | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | name \p g | the-session-name-is-set-to-the-book
+EXPECT_HAS | to_renames/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | active_desk \p hold | page
+
+CASE | to_ok_same_book
+MKDIR | to_ok_same_book/h/xyzfs/users/u1/home/livedesk/sessions/g/desks
+WRITE | to_ok_same_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p g\nSTATE \p last \p x\n
+WRITE | to_ok_same_book/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+WRITE | to_ok_same_book/h/xyzfs/users/u1/home/livedesk/sessions/g/desks/hold.pdl | x\n
+RUN | $T/ds.+x | $T/to_ok_same_book/h | to-desk | g | hold
+EXPECT_EXIT | 0 | to_ok_same_book-exit-0
+EXPECT_OUT | OK desk-follows-game | done
+EXPECT_HAS | to_ok_same_book/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | active_session \p g | root-stays
+EXPECT_HAS | to_ok_same_book/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | active_desk \p hold | page-changed
+
+CASE | to_appends
+MKDIR | to_appends/h/xyzfs/users/u1/home/livedesk/sessions/g/desks
+WRITE | to_appends/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p g\nSTATE \p last \p x\n
+WRITE | to_appends/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | STATE \p name \p g\n
+WRITE | to_appends/h/xyzfs/users/u1/home/livedesk/sessions/g/desks/hold.pdl | x\n
+RUN | $T/ds.+x | $T/to_appends/h | to-desk | g | hold
+EXPECT_EXIT | 0 | to_appends-exit-0
+EXPECT_OUT | OK | done
+EXPECT_HAS | to_appends/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | active_desk \p hold | a-missing-active_desk-line-is-added
+EXPECT_HAS | to_appends/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | name \p g | name-kept
+
+CASE | to_bad_room
+MKDIR | to_bad_room/h/xyzfs/users/u1/home/livedesk/sessions/b1/desks
+WRITE | to_bad_room/h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p b1\nSTATE \p last \p x\n
+WRITE | to_bad_room/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | STATE \p name \p g\nSTATE \p active_desk \p quarters\n
+WRITE | to_bad_room/h/xyzfs/users/u1/home/livedesk/sessions/g/session.pdl | STATE \p name \p g\n
+RUN | $T/ds.+x | $T/to_bad_room/h | to-desk | g | ../x
+EXPECT_EXIT | 1 | to_bad_room-exit-1
+EXPECT_OUT | NOGO bad-name | a-path-in-a-room-name-is-refused
+EXPECT_HAS | to_bad_room/h/xyzfs/users/u1/home/livedesk/sessions/b1/session.pdl | active_desk \p quarters | nothing-changed
+
+CASE | to_no_desk
+MKDIR | to_no_desk/h/xyzfs/users
+RUN | $T/ds.+x | $T/to_no_desk/h | to-desk | g | hold
+EXPECT_EXIT | 1 | to_no_desk-exit-1
+EXPECT_OUT | NOGO no-desk | no-sessions
+
+CASE | usage
+RUN | $T/ds.+x
+EXPECT_EXIT | 2 | no-arguments
+RUN | $T/ds.+x | $T/from_ok/h | sideways | g | x
+EXPECT_EXIT | 2 | an-unknown-direction
+CLEAN |

@@ -665,7 +665,7 @@ static void out_all(const char *msg) {
     char fl[160], cc[16], hid[24]; flag_str("ctl", "pet", cc, sizeof cc); int hs = !strcmp(cc, "player"); snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
     if (hs) { int o = snprintf(fl, sizeof fl, "owns:"); for (int k = 0; k < nparty && o < (int)sizeof fl - 12; k++) o += snprintf(fl + o, sizeof fl - o, "%s %s", k ? "," : "", party[k].name); } else friend_line(active, fl, sizeof fl);
     const char *an = hs ? hero.name : party[active].name;
-    W("n_party=%d\nactive_name=%s\nbook_label=book:%s\npage_label=page:%s\n", nparty + 1, an, an, rooms[vroom].name);
+    W("n_party=%d\nactive_name=%s\nbook_label=book:%s\npage_label=page:%s\n", nparty + 1, an, PET_APP, rooms[vroom].name);      /* the BOOK is the game (the LyfeDesk top bar and pc-hq show book:<name> page:<desk>; owner 2026-10-28 "lyfedesk tb top as ultimate golden std"), the PAGE is the room; the pals have their own Pals tab */
     { char tbuf[4096], opc[PATH_MAX + 8], tp[PATH_MAX]; snprintf(opc, sizeof opc, "'%s/@.apps/" PET_APP "/ops/+x/" PET_OP ".+x'", HOUSE); snprintf(tp, sizeof tp, "%s/toolbar.pdl", APP); ptb_publish(tp, opc, tbuf, sizeof tbuf); W("%s", tbuf); }      /* the Pals tab and the fixed rows, from toolbar.pdl */
     W("stat_line=HP %d  MP %d  atk %d  def %d\nstat_line2=mat %d  mdf %d  agi %d  luk %d\nprofile_line=%s\nfriend_line=%s\n", hs ? hero.mhp : party[active].mhp, hs ? hero.mmp : party[active].mmp, hs ? hero.atk : party[active].atk, hs ? hero.def : party[active].def, hs ? hero.mat : party[active].mat, hs ? hero.mdf : party[active].mdf, hs ? hero.agi : party[active].agi, hs ? hero.luk : party[active].luk, hs ? hero.profile : party[active].profile, fl);
     if (hs) W("nick_line=%s (%s), owner of %d monsters, in the %s\n", hero.name, hero.nick, nparty, rooms[tr.room].name); else W("nick_line=%s (the %s), %s's monster, in the %s\n", party[active].name, party[active].nick, hero.name, rooms[others[active].room].name);
@@ -1119,6 +1119,18 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
 #include PET_SKIN
 #undef PET_SECTION
     if (!strcmp(v, "walk")) { int moved = ai_step(active); use_ent(active); if (moved) snprintf(msg, cap, "%s took a step", party[active].name); else snprintf(msg, cap, "%s stays put", party[active].name); return; }
+    if (!strcmp(v, "synch")) {      /* Synch like the LyfeDesk Player menu (desk_synch op, BOOK 16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md section 17): `synch` / `synch from-desk` = the DESK is the sender, this game follows (goes to the room the desk has open, when the desk's book is this game);
+         * `synch to-desk` = the GAME is the sender, the desk follows (only when this game is already a book on the desk with that page file). Never creates a book on the desk. */
+        int to = argc >= 2 && !strcmp(argv[1], "to-desk"); char rl[512] = "", exe[PATH_MAX + 64], outp[PATH_MAX + 32], cmd[PATH_MAX * 3], rb[1024] = "", dline[200] = "", res[200] = "";
+        for (int i = 0; i < nroom; i++) { if (!sh_arg_ok(rooms[i].id)) continue; size_t o = strlen(rl); snprintf(rl + o, sizeof rl - o, "%s%s", o ? "," : "", rooms[i].id); }
+        snprintf(exe, sizeof exe, "%s/&.widgits/_shared-lib/ops/+x/desk_synch.+x", HOUSE[0] ? HOUSE : APP); snprintf(outp, sizeof outp, "%s/synch_out.txt", ST);
+        if (access(exe, X_OK) || !sh_arg_ok(HOUSE) || !sh_arg_ok(outp) || !sh_arg_ok(exe)) { snprintf(msg, cap, "synch: the desk_synch op is not built"); return; }
+        snprintf(cmd, sizeof cmd, "'%s' '%s' %s '%s' '%s' > '%s' 2>&1", exe, HOUSE, to ? "to-desk" : "from-desk", PET_APP, to ? rooms[vroom].id : rl, outp); sh_timed(cmd, 5); read_file(outp, rb, sizeof rb);
+        for (char *l = strtok(rb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "DESK ", 5)) snprintf(dline, sizeof dline, "%s", l + 5); else snprintf(res, sizeof res, "%s", l); }
+        if (!strncmp(res, "GOTO ", 5)) { char *ga[2] = { "goto", res + 5 }; verb(2, ga, msg, cap); return; }
+        if (!strncmp(res, "OK ", 3)) { snprintf(msg, cap, "synch: the desk now shows book:" PET_APP " page:%s", rooms[vroom].name); return; }
+        const char *why = !strcmp(res, "NOGO other-book") ? "the desk has another book open" : !strcmp(res, "NOGO no-such-page") ? "the desk's page is not a room of this game" : !strcmp(res, "NOGO book-not-on-desk") ? "this game is not a book on the desk yet" : !strcmp(res, "NOGO page-not-in-book") ? "this room is not a page of the book on the desk" : !strcmp(res, "NOGO no-desk") ? "no LyfeDesk session found" : "nothing to do";
+        snprintf(msg, cap, "synch: %s (desk: %s)", why, dline[0] ? dline : "-"); return; }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();

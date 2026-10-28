@@ -93,4 +93,7 @@ Deliberately NOT next: more design documents (the design is ahead of the evidenc
 
 
 **Update (S3a, 2026-10-28):** the page now FOLLOWS the game by pull: `game_page_export --if-changed` writes `<app>/state/page/` only when the content changed. `book_check --page` on the exported page: rpg-space, rpg-dust and rpg-edit-hq all 14/14 (INFO 4 each). Harness 74/0. Private position files: rpg-space and rpg-dust disagree with their trainer, rpg-edit-hq agrees. Engines unchanged and the pins still `source=board` until S3b.
+
+
+**Update (book:page on the toolbar + Synch, 2026-10-28):** the three games now show `book:<game>` and `page:<room>` first on the toolbar in the LyfeDesk order (golden standard: a picture of the real top strip), Pals moved to its own tab, Synch rows in the Player menu backed by a new tested op `desk_synch` (harness 58/0, 10 mutations). Synch never creates a book on the desk; live today it says the desk has `pre-design` open. rpg-dust and rpg-edit-hq daemons need a restart to show the new book label (restart was denied).
 \n

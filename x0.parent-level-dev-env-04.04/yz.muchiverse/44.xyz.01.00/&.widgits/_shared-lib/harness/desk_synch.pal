@@ -1,0 +1,4 @@
+# desk_synch.pal - LOCKED acceptance harness for desk_synch (Synch between a game's book/rooms and the LyfeDesk's open book/page). Read results/desk_synch.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/desk_synch.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/desk_synch.pdl
+halt

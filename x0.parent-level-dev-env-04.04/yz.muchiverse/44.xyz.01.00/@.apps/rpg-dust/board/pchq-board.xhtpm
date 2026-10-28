@@ -7,10 +7,11 @@
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' int"/>
-      <tab id="tb-book" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-book"/>
-      <tab id="tb-page" class="pchq-tb" label="${room_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
-      <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
+      <tab id="tb-book" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
+      <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
@@ -21,12 +22,14 @@
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_party}" bind="party">
-        <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-book" label="${party.label}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' select ${party.id}"/>
+        <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-pals" label="${party.label}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' select ${party.id}"/>
       </repeat>
-      <item id="tp-book-0" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_0_label}" action="${book_post_0_act}" show="${book_post_0_label}"/>
-      <item id="tp-book-1" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_1_label}" action="${book_post_1_act}" show="${book_post_1_label}"/>
-      <item id="tp-book-2" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
-      <item id="tp-book-3" class="pchq-menu-row dropdown-child" target_id="tb-book" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
+      <item id="tp-book-0" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_0_label}" action="${book_post_0_act}" show="${book_post_0_label}"/>
+      <item id="tp-book-1" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_1_label}" action="${book_post_1_act}" show="${book_post_1_label}"/>
+      <item id="tp-book-2" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
+      <item id="tp-book-3" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
+      <item id="bk-blueprintz" class="pchq-menu-row dropdown-child " target_id="tb-book" label="blueprintz (events of this book)" action="sh '${HOUSE}/&.hq-apps/blueprintz/button.sh' '${HOUSE}'"/>
+      <item id="bk-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' fire goto ${room.id}"/>
       </repeat>
@@ -45,6 +48,7 @@
       <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/rpg-dust/rpg-dust-pchq/pieces/system/pchq.pdl' 'entities_bar'"/>
       <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
       <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
+      <item id="db-bp" class="pchq-menu-row dropdown-child " target_id="tb-db" label="blueprintz" action="sh '${HOUSE}/&.hq-apps/blueprintz/button.sh' '${HOUSE}'"/>
       <item id="db-sql" class="pchq-menu-row dropdown-child " target_id="tb-db" label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
       <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db" label="- cancel -" action="void"/>
       <item id="pm-int" class="pchq-menu-row dropdown-child " target_id="tb-player" label="INT on/off (arrow keys drive a pet)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' int"/>
@@ -53,6 +57,8 @@
       <item id="pm-stop" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' stop"/>
       <item id="pm-save" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' fire save 1"/>
       <item id="pm-load" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' fire load 1"/>
+      <item id="pm-synch" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (desk to game)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' synch"/>
+      <item id="pm-synch2" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (game to desk)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' synch to-desk"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <item id="tm-cent" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' clock rate cent"/>
       <item id="tm-sec" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/rpg-dust/ops/+x/rpg_dust.+x' clock rate sec"/>
