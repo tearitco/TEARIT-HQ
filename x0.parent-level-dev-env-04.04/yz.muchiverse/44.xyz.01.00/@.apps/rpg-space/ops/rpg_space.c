@@ -996,7 +996,7 @@ static void sk_cube_avg(const unsigned char *t, int u, int w, int vpc, double *r
     for (int y = c; y < c2; y++) for (int x = a; x < a2; x++) { const unsigned char *q = t + (y * XT + x) * 4; sr += q[0]; sg += q[1]; sb += q[2]; n++; } if (!n) n = 1; *r = sr / n; *g = sg / n; *b = sb / n; }
 /* the four tile pictures of the skiff (24 x 24 RGBA each): floor, wall, monitor, chair, from the ship's own tile sheets; flat colours when a scratch copy has no sheets (the shape is still the ship) */
 static void sk_skiff_tiles_px(const unsigned char *t[4]) {
-    t[0] = sk_tile_in("SF_Inside_A4", 8, 11); t[1] = sk_tile_in("SF_Inside_A4", 6, 2); t[2] = sk_tile_in("SF_Inside_B", 8, 0); t[3] = sk_tile_in("SF_Inside_B", 8, 3);
+    t[0] = sk_tile_in("SF_Inside_A4", 10, 11); t[1] = sk_tile_in("SF_Inside_A4", 6, 2); t[2] = sk_tile_in("SF_Inside_B", 8, 0); t[3] = sk_tile_in("SF_Inside_B", 8, 3);
     static unsigned char flat[4][XT * XT * 4]; static const unsigned char FC[4][3] = { { 45, 143, 77 }, { 70, 75, 85 }, { 40, 60, 120 }, { 60, 60, 160 } };
     for (int q = 0; q < 4; q++) for (int i = 0; i < XT * XT; i++) { flat[q][i * 4] = FC[q][0]; flat[q][i * 4 + 1] = FC[q][1]; flat[q][i * 4 + 2] = FC[q][2]; flat[q][i * 4 + 3] = 255; }
     for (int q = 0; q < 4; q++) if (!t[q]) t[q] = flat[q]; }
