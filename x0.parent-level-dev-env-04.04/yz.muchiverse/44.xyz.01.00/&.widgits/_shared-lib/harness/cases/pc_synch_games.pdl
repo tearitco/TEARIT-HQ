@@ -1,0 +1,65 @@
+# pc_synch_request: LOCKED cases for the GAME BOARD part of the taskbar Synch (S3b-4: a board with its OWN pin follows the desk only when the desk's open book IS that game; the house-wide pin part is unchanged).
+# The real script is copied into a scratch house (it finds its house from its own location). Expectations come from the rule in the script header, not from observed output.
+RESULTS | ../results/pc_synch_games.txt
+CASE | pc_synch_games
+SCRATCH |
+MKDIR | #.desktop
+MKDIR | @.apps/piececraft-hq/ops
+MKDIR | @.apps/piececraft-hq/pieces/display
+COPY | @.apps/piececraft-hq/ops/pc_synch_request.sh | @.apps/piececraft-hq/ops/pc_synch_request.sh
+MKDIR | @.apps/rpg-space/rpg-space-pchq/pieces/display
+MKDIR | @.apps/rpg-dust/rpg-dust-pchq/pieces/display
+MKDIR | @.apps/foo/foo-pchq/pieces/display
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=board\n
+WRITE | @.apps/rpg-dust/rpg-dust-pchq/pieces/display/open_book_page.txt | source=board\n
+WRITE | @.apps/foo/foo-pchq/pieces/display/open_book_page.txt | source=board\n
+MKDIR | @.apps/nopin/nopin-pchq/pieces/display
+MKDIR | xyzfs/users/u/home/livedesk/sessions/s1/desks
+WRITE | xyzfs/users/u/home/livedesk/sessions/s1/session.pdl | STATE \p name \p pre-design\nSTATE \p active_desk \p office\n
+WRITE | xyzfs/users/u/home/livedesk/sessions/s1/desks/office.pdl | DESK \p hero_01 \p x \p 80 \p 80 \p 1 \p 1 \p . \p 0\n
+MKDIR | xyzfs/users/u/home/livedesk/sessions/rpg-space/desks
+WRITE | xyzfs/users/u/home/livedesk/sessions/rpg-space/session.pdl | STATE \p name \p rpg-space\nSTATE \p active_desk \p bridge\n
+WRITE | xyzfs/users/u/home/livedesk/sessions/rpg-space/desks/bridge.pdl | DESK \p hero_01 \p x \p 80 \p 80 \p 1 \p 1 \p . \p 0\n
+WRITE | xyzfs/users/u/home/livedesk/sessions/rpg-space/desks/quarters.pdl | DESK \p hero_01 \p x \p 80 \p 80 \p 1 \p 1 \p . \p 0\n
+WRITE | xyzfs/users/u/home/livedesk/sessions/session.pdl | STATE \p active_session \p s1\n
+# T1 the desk has ANOTHER book open (pre-design): the house-wide pin is written as before; no game board follows
+RUN | sh | $T/@.apps/piececraft-hq/ops/pc_synch_request.sh | taskbar
+EXPECT_EXIT | 0 | t1.runs
+EXPECT_HAS | @.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk | t1.house-wide-pin-written-as-before
+EXPECT_HAS | @.apps/piececraft-hq/pieces/display/open_book_page.txt | book=pre-design | t1.house-wide-pin-names-the-book
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=board | t1.rpg-space-stays-board
+EXPECT_LACKS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game | t1.rpg-space-not-following
+EXPECT_HAS | @.apps/rpg-dust/rpg-dust-pchq/pieces/display/open_book_page.txt | source=board | t1.rpg-dust-stays-board
+# T2 the desk opens the rpg-space book: ITS board follows (source=game + book/page/pdl), the other boards do not
+WRITE | xyzfs/users/u/home/livedesk/sessions/session.pdl | STATE \p active_session \p rpg-space\n
+RUN | sh | $T/@.apps/piececraft-hq/ops/pc_synch_request.sh | taskbar
+EXPECT_EXIT | 0 | t2.runs
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game | t2.rpg-space-follows
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | book=rpg-space | t2.names-the-book
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | page=bridge | t2.names-the-page
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | pdl=xyzfs/users/u/home/livedesk/sessions/rpg-space/desks/bridge.pdl | t2.house-relative-pdl
+EXPECT_HAS | @.apps/rpg-dust/rpg-dust-pchq/pieces/display/open_book_page.txt | source=board | t2.rpg-dust-untouched
+EXPECT_HAS | @.apps/foo/foo-pchq/pieces/display/open_book_page.txt | source=board | t2.an-unrelated-board-untouched
+EXPECT_NOFILE | @.apps/nopin/nopin-pchq/pieces/display/open_book_page.txt | t2.a-board-without-a-pin-gets-none
+EXPECT_HAS | @.apps/piececraft-hq/pieces/display/open_book_page.txt | book=rpg-space | t2.house-wide-pin-follows-too
+# T3 the desk changes page inside the book: the game pin follows the page
+WRITE | xyzfs/users/u/home/livedesk/sessions/rpg-space/session.pdl | STATE \p name \p rpg-space\nSTATE \p active_desk \p quarters\n
+RUN | sh | $T/@.apps/piececraft-hq/ops/pc_synch_request.sh | taskbar
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | page=quarters | t3.page-follows
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | pdl=xyzfs/users/u/home/livedesk/sessions/rpg-space/desks/quarters.pdl | t3.pdl-follows
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game | t3.still-game
+# T4 the desk goes back to another book: a board that was following returns to source=board, so it is never left pointing at a book that is no longer open
+WRITE | xyzfs/users/u/home/livedesk/sessions/session.pdl | STATE \p active_session \p s1\n
+RUN | sh | $T/@.apps/piececraft-hq/ops/pc_synch_request.sh | taskbar
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=board | t4.back-to-board
+EXPECT_LACKS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | pdl= | t4.no-stale-pdl
+# T5 the desk page of the game does not exist as a file: no game pin is written for it (nothing points at a missing page)
+WRITE | xyzfs/users/u/home/livedesk/sessions/session.pdl | STATE \p active_session \p rpg-space\n
+WRITE | xyzfs/users/u/home/livedesk/sessions/rpg-space/session.pdl | STATE \p name \p rpg-space\nSTATE \p active_desk \p ghost\n
+RUN | sh | $T/@.apps/piececraft-hq/ops/pc_synch_request.sh | taskbar
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=board | t5.missing-page-no-game-pin
+# T6 the BOARD is the sender (pchq mode): the game pins are not touched by it
+WRITE | xyzfs/users/u/home/livedesk/sessions/rpg-space/session.pdl | STATE \p name \p rpg-space\nSTATE \p active_desk \p bridge\n
+RUN | sh | $T/@.apps/piececraft-hq/ops/pc_synch_request.sh | pchq
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=board | t6.pchq-mode-leaves-game-pins-alone
+CLEAN |

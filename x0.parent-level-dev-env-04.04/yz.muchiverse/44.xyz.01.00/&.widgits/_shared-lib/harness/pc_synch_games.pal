@@ -1,0 +1,4 @@
+# pc_synch_games.pal - LOCKED acceptance harness for the GAME BOARD part of @.apps/piececraft-hq/ops/pc_synch_request.sh (S3b-4: the taskbar Synch writes a game board's own pin only when the desk's open book is that game). The real script runs in a scratch house. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/pc_synch_games.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pc_synch_games.pdl
+halt

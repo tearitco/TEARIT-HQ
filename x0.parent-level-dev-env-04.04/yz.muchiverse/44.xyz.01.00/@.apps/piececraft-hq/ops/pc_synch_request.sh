@@ -59,6 +59,21 @@ if [ "$FROM" = taskbar ]; then
     # The desk is the sender. Every board of this app is an inheritor.
     printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$(rel_of "$PDL")" > "$OPEN"
     STATUS=board-follows-desk
+    # GAME BOARDS (S3b-4, 2026-10-28; BOOK 16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md section 28). A game board has its OWN pin
+    # (@.apps/<game>/<game>-pchq/pieces/display/open_book_page.txt) and the engines obey it before the house-wide one (S3b-1), so the line above
+    # never reaches it. It follows the desk only when the desk's open book IS that game (the book's name is the game's folder name): then its pin
+    # becomes source=game + book/page/pdl (the engine keeps the board's own map and takes the entity rows from the page, S3b-2; the daemon moves the
+    # controlled character when the page changes, S3b-3). A board that was following and whose book is no longer open goes back to source=board.
+    # Boards without a pin file, with source=board, or for another book are not touched. No page file, no game pin.
+    for gp in "$HOUSE"/@.apps/*/*-pchq/pieces/display/open_book_page.txt; do
+        [ -f "$gp" ] || continue
+        gapp=$(basename "$(dirname "${gp%/pieces/display/open_book_page.txt}")")
+        if [ "$gapp" = "$BOOK" ] && [ -f "$PDL" ]; then
+            printf 'source=game\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$(rel_of "$PDL")" > "$gp"
+        elif [ "$(sed -n 's/^source=//p' "$gp" | head -1 | tr -d ' \r')" = game ]; then
+            printf 'source=board\n' > "$gp"
+        fi
+    done
 else
     # The board is the sender. Its page is open_book_page when that
     # file already names one, otherwise the loaded map (map_id) and
