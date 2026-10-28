@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>near-tear-gear</title><style>
+:root{--bg:#fbfaf7;--fg:#1d2330;--mut:#5b6475;--card:#ffffff;--line:#e3dfd6;--acc:#2b5fd9;--ok:#16794a;--warn:#a4630a;--bad:#b3261e;--call:#eef3ff;--note:#f4f0e6;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--fg:#e8e6e1;--mut:#a3a9b6;--card:#1c2029;--line:#2e3442;--acc:#7aa2ff;--ok:#5fd29a;--warn:#e0a24a;--bad:#ff8a80;--call:#1b2540;--note:#26241c;--code:#10131a}}
+:root[data-theme="dark"]{--bg:#14171d;--fg:#e8e6e1;--mut:#a3a9b6;--card:#1c2029;--line:#2e3442;--acc:#7aa2ff;--ok:#5fd29a;--warn:#e0a24a;--bad:#ff8a80;--call:#1b2540;--note:#26241c;--code:#10131a}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:clamp(1.6rem,4vw,2.3rem);line-height:1.2;margin:.2em 0 .4em}
+h2{font-size:1.35rem;margin:2em 0 .6em;padding-top:.6em;border-top:1px solid var(--line)}
+p,li{max-width:80ch}li{margin:.3em 0}
+.wrap{overflow-x:auto;margin:.8em 0 1.2em;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:.5em .7em;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--card);font-weight:600;color:var(--mut);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+table.num td:first-child{white-space:nowrap}table.num td:nth-child(n+2):not(:last-child){text-align:right;font-variant-numeric:tabular-nums}
+code{background:var(--code);padding:.08em .35em;border-radius:5px;font:.88em ui-monospace,Menlo,Consolas,monospace}
+pre{background:var(--code);padding:14px;border-radius:10px;overflow:auto;font-size:.8rem;max-height:420px}
+pre code{background:none;padding:0}
+.call{border-radius:12px;padding:12px 16px;margin:1em 0;border:1px solid var(--line)}
+.call.answer{background:var(--call);border-color:var(--acc)}.call.note{background:var(--note)}
+.sub{color:var(--mut)}
+@media (max-width:600px){main{padding:16px 12px 60px}th,td{padding:.45em .55em}}
+</style></head><body><main>
+<h1>🧰 near-tear-gear — rpg-edit opens every pets-like game</h1>
+<p class="sub">📅 2026-10-28 · written by Claude (Sonnet 5.5) for the owner · reading and measuring only, no game code changed for this document.</p>
+<p class="sub">Legend: 🏃 RAN today · 📖 READ in a file · 🧠 MINE (my estimate or proposal) · ❓ not known yet · ✅ done · 🟡 partial · ⛔ not built · 🅰️ Road A · 🅱️ Road B</p>
+<h2>🎯 1. What you asked for</h2>
+<p class="">In rpg-edit: the <strong>Book dropdown lists all the pets-like projects</strong>, you can load one, its <strong>pages</strong> appear in the Page dropdown, and <strong>the entire game loads in the editor — toolbar, sidebars and all</strong>.</p>
+<div class="call answer">📌 <strong>How close are we?</strong> The feature itself is ⛔ <strong>not started</strong> (0 of 11 feature tasks on the near road). But <strong>5 of 6 preconditions are ✅ and the last one is 🟡</strong>, and they are the expensive part. The cheapest road to your picture is <strong>11 tasks (5 S · 6 M · 0 L)</strong>, no renderer changes, and its first sprint needs no live window at all.</div>
+<h2>🔬 2. What I measured today (11 games on the shared core)</h2>
+<div class="wrap"><table class="num"><thead><tr><th>game</th><th>template lines</th><th>toolbar tabs</th><th>pages</th><th>event pages</th><th>template lines unlike cdda-hq</th><th>game-specific C lines</th><th>installed as a desk book</th></tr></thead><tbody><tr><td>cdda-hq</td><td>113</td><td>10</td><td>7</td><td>36</td><td>0</td><td>473</td><td>⛔</td></tr><tr><td>civ-rpgce</td><td>113</td><td>10</td><td>6</td><td>33</td><td>0</td><td>310</td><td>⛔</td></tr><tr><td>df-hq</td><td>113</td><td>10</td><td>6</td><td>36</td><td>0</td><td>469</td><td>⛔</td></tr><tr><td>dsr-rpg</td><td>113</td><td>10</td><td>6</td><td>33</td><td>0</td><td>240</td><td>⛔</td></tr><tr><td>gta-hq</td><td>113</td><td>10</td><td>6</td><td>33</td><td>0</td><td>557</td><td>⛔</td></tr><tr><td>mcl-hq</td><td>113</td><td>10</td><td>6</td><td>37</td><td>0</td><td>500</td><td>⛔</td></tr><tr><td>rpg-dust</td><td>132</td><td>13</td><td>7</td><td>14</td><td>49</td><td>1745</td><td>⛔</td></tr><tr><td>rpg-edit-hq</td><td>119</td><td>11</td><td>6</td><td>21</td><td>26</td><td>395</td><td>⛔</td></tr><tr><td>rpg-pet</td><td>113</td><td>10</td><td>3</td><td>37</td><td>4</td><td>223</td><td>⛔</td></tr><tr><td>rpg-space</td><td>140</td><td>14</td><td>7</td><td>15</td><td>57</td><td>1823</td><td>✅</td></tr><tr><td>tcg-rpgce</td><td>113</td><td>10</td><td>6</td><td>33</td><td>0</td><td>314</td><td>⛔</td></tr><tr><td><strong>total</strong></td><td></td><td></td><td>66</td><td>328</td><td></td><td></td><td>1 of 11</td></tr></tbody></table></div>
+<ul><li>🏃 <strong>7 of 11 window layouts are identical</strong> once the game name is swapped (cdda-hq, civ-rpgce, df-hq, dsr-rpg, gta-hq, mcl-hq, tcg-rpgce). rpg-pet differs by 4 lines, rpg-edit-hq 26, rpg-dust 49, rpg-space 57. ➜ <strong>tabs and sidebars are data, not code.</strong></li><li>🏃 Every game has the <strong>same three bars</strong>: a rail sidebar plus a left and a right overlay bar, and a bottom hotbar; the tabs differ only slightly (cdda has <code>in book page shop menu player time db load loadw</code>; rpg-space adds <code>pals air airw debug</code>).</li><li>🏃 <strong>All edit verbs are in the shared core</strong> (<code>place remove newroom newpal delpal save load goto control</code>), so every game already answers them. ➜ editing is not a per-game feature.</li><li>🏃 <strong>Today's editor is just another game</strong>: rpg-edit-hq has its own 6-room town. Its <strong>Book dropdown holds 3 fixed rows</strong> (blueprintz, + new pal, - remove last pal, - cancel) and its <strong>Page dropdown lists its own 6 rooms</strong>. 📖 No op in the house lists books (searched <code>openbook</code>, <code>book_list</code>, <code>list_books</code>: none).</li><li>🏃 <strong>A game binary is hard-wired to its own name</strong>: <code>PET_APP</code> is a compile-time define used <strong>24 times on 23 lines</strong> of the 1,695-line core, so one binary cannot be pointed at another game at runtime. ➜ this is what splits the two roads below.</li><li>🏃 <code>book_check</code> says <code>conformant=no</code> for <strong>all 11</strong>; the one failing item I could list (A2 <code>source=board</code>) is the same everywhere it was itemised (5 of 11).</li><li>📖 The desk has <strong>8 books</strong> (<code>rpg-space</code>, <code>s1</code>..<code>s7</code>), of which <strong>1</strong> is a game.</li></ul>
+<h2>✅ 3. Preconditions (the gears already turning)</h2>
+<div class="wrap"><table class=""><thead><tr><th>id</th><th>what</th><th>state</th><th>evidence</th></tr></thead><tbody><tr><td>P1</td><td>One shared core under all 11 games, and every edit verb (place, remove, newroom, newpal, delpal, save, load, goto, control) is in it</td><td>✅ done</td><td>RAN today: all 9 verb names found in petslike_core.c; the built rpg-space and rpg-dust binaries contain newroom / newpal / place</td></tr><tr><td>P2</td><td>The window layout (toolbar tabs, rail, left/right bars, hotbar) is a data template, and 7 of 11 are identical once the game name is swapped</td><td>✅ done</td><td>RAN today: diff of board/pchq-board.xhtpm vs cdda-hq = 0 lines for civ-rpgce, df-hq, dsr-rpg, gta-hq, mcl-hq, tcg-rpgce; 4 for rpg-pet; 26 / 49 / 57 for rpg-edit-hq / rpg-dust / rpg-space</td></tr><tr><td>P3</td><td>Every game already has pages (rooms) in rooms.pdl: 66 pages over 11 games</td><td>✅ done</td><td>RAN today: ROOM rows per game 7 6 6 6 6 6 7 6 3 7 6</td></tr><tr><td>P4</td><td>book_check can judge any game: all 11 report conformant=no, and the 5 games I itemised fail only the known 'source=board' item (A2)</td><td>✅ done</td><td>RAN today on all 11 (conformant=no for each); the failing item was listed for 5 of 11 (cdda-hq, rpg-edit-hq, rpg-space, tcg-rpgce, rpg-pet) and is A2 in each; the other 6 were not itemised</td></tr><tr><td>P5</td><td>Games are BOOK:PAGE capable: page file, game_page_export (with other characters as rows), page_follow, taskbar Synch for game boards</td><td>✅ done</td><td>RAN this week in scratch houses: harnesses game_page_export 147/0, page_follow 44/0, pc_synch_games 22/0; commits 336385812, b79f820aa, 1b0086ff7. The live taskbar was not pressed</td></tr><tr><td>P6</td><td>One game (rpg-space) is installed as a book on the owner's desk</td><td>🟡 partial</td><td>READ today: desk sessions = rpg-space, s1..s7 (8 books); 1 of 11 games</td></tr></tbody></table></div>
+<h2>🛣️ 4. Two roads to your picture</h2>
+<div class="wrap"><table class=""><thead><tr><th></th><th>🅰️ Road A — launch-through</th><th>🅱️ Road B — one host window</th></tr></thead><tbody><tr><td>What you see</td><td>Pick a game in the editor's Book dropdown → <strong>that game's own window opens</strong> with its own tabs, sidebars, hotbar, pages; edit mode on.</td><td>Pick a game → <strong>the same editor window turns into that game</strong> (its tabs and bars swap in place).</td></tr><tr><td>Why it is cheap / dear</td><td>Every game already is a complete window; the editor only needs the <strong>list</strong>, the <strong>hand-over</strong> and edit mode.</td><td>Needs the core to stop being hard-wired (<code>PET_APP</code> ×24), per-game rule code (240–1,823 lines each) forwarded, ui.txt mirrored, template swapped live.</td></tr><tr><td>Tasks 🧠</td><td>11 tasks: 5 S · 6 M · 0 L</td><td>5 tasks: 0 S · 1 M · 4 L (plus Road A's list part A1–A3)</td></tr><tr><td>Touches guarded files?</td><td>No (no renderer / khtpm_core_render change).</td><td>Probably (live template swap) — would need your OK first.</td></tr><tr><td>Biggest unknown ❓</td><td>S1: is a second window launch safe on this machine (the 15:21 freeze).</td><td>S3 + S4: the ui.txt gate and live re-pointing are unproven.</td></tr><tr><td>Does 'entire game incl. tb + sidebars' hold?</td><td>✅ by construction — it <strong>is</strong> the game's window.</td><td>🟡 only if every template/css/toolbar/side_style swap works.</td></tr><tr><td>My recommendation 🧠</td><td><strong>Start here.</strong> Sprint 1 needs no live window.</td><td>Keep for later, only if one single window matters to you.</td></tr></tbody></table></div>
+<div class="call note">💡 🧠 Road A's list work (A1–A3) is <strong>also the first half of Road B</strong>, so choosing A first loses nothing.</div>
+<h2>🗺️ 5. The tasks (data — same rows are in near-tear-gear.json)</h2>
+<div class="wrap"><table class=""><thead><tr><th>id</th><th>road</th><th>size</th><th>task</th><th>needs</th><th>proof (must be observable)</th><th>lane 🧠</th><th>risk</th></tr></thead><tbody><tr><td>A1</td><td>🅰️</td><td>S</td><td>book_list op: scan @.apps for games (toy.pdl + *-pchq + rooms.pdl), write BOOK rows: id, app, pchq, pages, conformant, on_desk</td><td>—</td><td>harness: scratch houses with 0, 1, 11 games; live repo gives exactly 11 rows; 6+ mutations fail it</td><td>claude</td><td>low</td></tr><tr><td>A2</td><td>🅰️</td><td>S</td><td>page_list for a book: pages from the game's rooms.pdl, cross-checked with its maps/&lt;g&gt;/game.pdl desk ids (book_check B2 logic)</td><td>A1</td><td>harness: 11 live games give 66 pages total; a game whose rooms and desks disagree is reported</td><td>claude</td><td>low</td></tr><tr><td>A3</td><td>🅰️</td><td>M</td><td>Core publishes the lists to ui.txt (n_book, book_N_label/act, target page list) and gets verbs openbook &lt;id&gt; / openpage &lt;book&gt; &lt;room&gt; that only record state/edit_target.txt</td><td>A1, A2</td><td>all 11 games rebuild; per-game verb-script diff gate shows no behaviour change when the toolbar data does not ask for the list; new cases for the lists</td><td>claude</td><td>medium: shared core touched, 11 binaries</td></tr><tr><td>A4</td><td>🅰️</td><td>S</td><td>Editor template: Book dropdown repeats the books, Page dropdown shows the chosen book's pages (rpg-edit-hq's own xhtpm and toolbar.pdl only)</td><td>A3</td><td>ui.txt says n_book=11; picture of the open Book dropdown with 11 rows (needs a live window)</td><td>claude</td><td>medium: live window</td></tr><tr><td>A5</td><td>🅰️</td><td>M</td><td>openbook &lt;id&gt;: start the target game's own daemon and board window (its tabs and sidebars come with it), mark it edit mode, hand over from the editor window</td><td>A3, S1</td><td>relay-driven: pick cdda-hq, its window appears with its 10 tabs and 3 bars; state file shows edit_target; no stray processes after close; footprint line idle + active</td><td>claude</td><td>high: process launch, the 15:21 freeze</td></tr><tr><td>A6</td><td>🅰️</td><td>S</td><td>openpage &lt;book&gt; &lt;room&gt;: goto in the target via its existing goto verb</td><td>A5</td><td>state file room changes in the target; picture of that room</td><td>claude</td><td>low</td></tr><tr><td>A7</td><td>🅰️</td><td>M</td><td>Edit affordances in the loaded game: confirm place / remove / newroom / newpal work from the target's own window; add an edit-mode strip only if they do not</td><td>A5, S2</td><td>place a block from the window; ledger row + state file; remove it again; bytes restored</td><td>claude</td><td>medium: unknown scope</td></tr><tr><td>A8</td><td>🅰️</td><td>M</td><td>Install the other games as desk books, one at a time (additive; backup before, restore rule after), so the desk Book dropdown and Synch see them</td><td>A1</td><td>sessions tree: files added only, 0 existing changed, sha256 list kept under the home folder (not /tmp); desk dropdown picture</td><td>claude+owner</td><td>medium: owner data</td></tr><tr><td>A9</td><td>🅰️</td><td>M</td><td>Round trip: open a book, save unchanged, bytes identical (S4 of the pivot); then one real edit with a ledger row</td><td>A7</td><td>sha256 before == after for the unchanged save; one edit shows in the page file and the ledger</td><td>claude</td><td>medium</td></tr><tr><td>A10</td><td>🅰️</td><td>M</td><td>Picture pack: for each of the 11 games, Book dropdown, Page dropdown, loaded game with tabs and bars (the house's evidence rule)</td><td>A4, A5, A6</td><td>11 x 3 pictures with receipts, taken one process at a time, niced, machine cool</td><td>claude+owner</td><td>medium: machine load</td></tr><tr><td>A11</td><td>🅰️</td><td>S</td><td>Recipe + README + harness rows: how a new game appears in the list; update GAMES-AS-BOOKS doc and the roadmap</td><td>A1</td><td>doc exists, a fresh reader can add a 12th game from it (test: a scratch game appears in book_list)</td><td>any</td><td>low</td></tr><tr><td>B1</td><td>🅱️</td><td>L</td><td>Make PET_APP a runtime value (24 uses in 23 lines of the core) so one binary can serve any game folder</td><td>A3</td><td>all 11 games rebuild with identical behaviour (diff gate); editor binary answers for another folder</td><td>claude</td><td>high: shared core everywhere</td></tr><tr><td>B2</td><td>🅱️</td><td>L</td><td>Per-game rule code (240 to 1,823 lines each) cannot live in one binary: forward verbs to the target's own binary</td><td>B1</td><td>a verb typed in the editor changes the target's state files exactly as the target's own window would</td><td>claude</td><td>high</td></tr><tr><td>B3</td><td>🅱️</td><td>L</td><td>Mirror the target's ui.txt into the editor's, and satisfy the daemon's 'window alive' gate</td><td>B2, S3</td><td>editor window shows the target's live variables</td><td>claude</td><td>high: the gate was only read in a harness comment</td></tr><tr><td>B4</td><td>🅱️</td><td>M</td><td>Swap the editor's template, css, toolbar.pdl and side_style.pdl to the target's at runtime (live reparse)</td><td>B3, S4</td><td>picture: the editor window shows cdda's tabs and bars, then rpg-space's different 14 tabs</td><td>claude</td><td>high: renderer family is guarded</td></tr><tr><td>B5</td><td>🅱️</td><td>L</td><td>Headless daemon mode (no window needed) so a target can run without its own window</td><td>B3</td><td>daemon ticks and publishes with no window process; idle cost measured</td><td>claude</td><td>high</td></tr></tbody></table></div>
+<p class="">Sizes 🧠: <strong>S</strong> = about one focused session including harness and mutation tests (my estimate) · <strong>M</strong> = two to three sessions · <strong>L</strong> = several sessions or needs a design first. They are my estimates, not measurements. 'lane' is who I think should take it; <strong>any</strong> = a bounded, checkable task another agent can do on its own branch with an explicit pathspec.</p>
+<h2>❓ 6. Spikes — answer these before the tasks that need them</h2>
+<div class="wrap"><table class=""><thead><tr><th>id</th><th>question</th><th>blocks</th><th>why unknown</th></tr></thead><tbody><tr><td>S1</td><td>Is opening a second game window while another is open safe on this machine (CPU, heat, freeze)? Do it once, niced, watching temperature, only when the machine is cool and idle.</td><td>A5</td><td>the 15:21 freeze happened ~30 s after a board launch; cause unproven</td></tr><tr><td>S2</td><td>Does a game's own window already expose enough editing (place from the hotbar, new room, new pal), or does edit mode need its own strip?</td><td>A7</td><td>verbs exist in all 11 binaries; whether the window reaches them was not tested for 10 of 11</td></tr><tr><td>S3</td><td>What exactly gates ui.txt publishing (a process whose command line holds &lt;game&gt;.xhtpm was read in a harness comment, not in the code path)?</td><td>B3</td><td>matters only for Road B</td></tr><tr><td>S4</td><td>Can one window be re-pointed to another game by rewriting its template and letting the live reparse pick it up (with the other game's variables)?</td><td>B4</td><td>matters only for Road B</td></tr><tr><td>S5</td><td>What does closing the editor do to the target's daemon and engine (stray processes)? Memory: button.sh leaks engine stacks</td><td>A5</td><td>a footprint finding would be ours, not the browser's</td></tr></tbody></table></div>
+<h2>🏁 7. Sprint cut 🧠</h2>
+<div class="wrap"><table class=""><thead><tr><th>sprint</th><th>theme</th><th>items</th><th>exit criterion (observable)</th></tr></thead><tbody><tr><td>Sprint 1</td><td>list</td><td>A1, A2, A3, A11</td><td>ui.txt of the editor lists 11 books and any book's pages; all 11 games rebuild with no behaviour change; harnesses green; NO live launch needed</td></tr><tr><td>Sprint 2</td><td>open</td><td>S1, A4, A5, A6</td><td>relay-driven: two different games opened from the dropdown with their own tabs and bars, pictures + state files + footprint line; one process at a time</td></tr><tr><td>Sprint 3</td><td>edit + install</td><td>S2, A7, A8, A9</td><td>one real edit round-trips with a ledger row; one more game installed as a desk book with the restore rule honoured</td></tr><tr><td>Sprint 4</td><td>prove all</td><td>A10</td><td>11 x 3 pictures with receipts; the feature is declared done only now</td></tr></tbody></table></div>
+<ul><li>🧊 <strong>House rules that apply to every sprint:</strong> a fresh build + fresh run + a state file or picture before anything is called done; negative-test every check; <code>nice -n 15</code>, one heavy process at a time, a footprint line (idle + active, browser open) in every commit; live-desk changes backed up under the home folder and restored by hash; commit only your own paths.</li><li>🚫 <strong>No live board launch until the machine is cool and idle</strong> (the 2026-10-28 15:21 freeze is unexplained).</li></ul>
+<h2>🤔 8. Decisions only you can make</h2>
+<div class="wrap"><table class=""><thead><tr><th>id</th><th>question</th><th>note</th></tr></thead><tbody><tr><td>D1</td><td>Road A first (the editor launches the target's own window with its tabs and bars) and keep Road B for later?</td><td>A recommended; B only if you need one single window to turn into any game</td></tr><tr><td>D2</td><td>Does the Book dropdown list all 11 games, or only conformant ones?</td><td>All 11 fail book_check A2 today, so conformance cannot be the filter yet; recommend list all, show a conformant flag</td></tr><tr><td>D3</td><td>After you pick a game: does the editor window stay as a small launcher bar, or does the target's window replace it?</td><td>decides A5 hand-over</td></tr><tr><td>D4</td><td>Install the other 10 games as desk books too (A8), one at a time?</td><td>touches your desk data; additive with backup and restore rule</td></tr><tr><td>D5</td><td>Is rpg-edit-hq's own 6-room town also a book in the list ('rpg-edit'), or only the editor shell?</td><td>it is a pets-like game today</td></tr></tbody></table></div>
+<h2>📊 9. Scoreboard</h2>
+<div class="wrap"><table class=""><thead><tr><th>measure</th><th>value</th></tr></thead><tbody><tr><td>Preconditions done</td><td>5 of 6 (P6 partial)</td></tr><tr><td>Road A feature tasks done</td><td>0 of 11</td></tr><tr><td>Road B feature tasks done</td><td>0 of 5</td></tr><tr><td>Games in the Book list today</td><td>0 of 11 (no op builds the list)</td></tr><tr><td>Games on the desk as books</td><td>1 of 11</td></tr><tr><td>Window layouts that are data-identical</td><td>7 of 11</td></tr><tr><td>Spikes answered</td><td>0 of 5</td></tr></tbody></table></div>
+<h2>⚠️ 10. Limits of this document</h2>
+<ul><li>Sizes, lanes and the road comparison are my judgement (🧠), not measured.</li><li>I did not launch any game window for this; nothing about Road A's launch step is tested (that is spike S1).</li><li>The 'identical templates' result compares file text after swapping the game name; it does not prove two windows look the same on screen.</li><li><code>book_check</code> items were itemised for 5 of 11 games, not all.</li><li>'Event pages' counts folders under <code>events/</code>, not their quality.</li></ul>
+<h2>📦 11. The same plan as data</h2>
+<p class=""><code>near-tear-gear.json</code> (same folder) holds games, preconditions, tasks, spikes, decisions and sprints, so a roadmap or sprint tool can read it directly. The block below is the same JSON.</p>
+<pre><code id="plan-json-view">{
+ &quot;generated&quot;: &quot;2026-10-28&quot;,
+ &quot;title&quot;: &quot;near-tear-gear: rpg-edit opens every pets-like game&quot;,
+ &quot;glossary&quot;: {
+  &quot;S&quot;: &quot;about one focused session including harness and mutation tests (my estimate)&quot;,
+  &quot;M&quot;: &quot;two to three sessions&quot;,
+  &quot;L&quot;: &quot;several sessions or needs a design first&quot;
+ },
+ &quot;games&quot;: [
+  {
+   &quot;id&quot;: &quot;cdda-hq&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 7,
+   &quot;event_pages&quot;: 36,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 473,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;civ-rpgce&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 33,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 310,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;df-hq&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 36,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 469,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;dsr-rpg&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 33,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 240,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;gta-hq&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 33,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 557,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;mcl-hq&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 37,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 500,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;rpg-dust&quot;,
+   &quot;template_lines&quot;: 132,
+   &quot;tabs&quot;: 13,
+   &quot;pages&quot;: 7,
+   &quot;event_pages&quot;: 14,
+   &quot;template_diff_vs_cdda&quot;: 49,
+   &quot;game_c_lines&quot;: 1745,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;rpg-edit-hq&quot;,
+   &quot;template_lines&quot;: 119,
+   &quot;tabs&quot;: 11,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 21,
+   &quot;template_diff_vs_cdda&quot;: 26,
+   &quot;game_c_lines&quot;: 395,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;rpg-pet&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 3,
+   &quot;event_pages&quot;: 37,
+   &quot;template_diff_vs_cdda&quot;: 4,
+   &quot;game_c_lines&quot;: 223,
+   &quot;on_desk&quot;: false
+  },
+  {
+   &quot;id&quot;: &quot;rpg-space&quot;,
+   &quot;template_lines&quot;: 140,
+   &quot;tabs&quot;: 14,
+   &quot;pages&quot;: 7,
+   &quot;event_pages&quot;: 15,
+   &quot;template_diff_vs_cdda&quot;: 57,
+   &quot;game_c_lines&quot;: 1823,
+   &quot;on_desk&quot;: true
+  },
+  {
+   &quot;id&quot;: &quot;tcg-rpgce&quot;,
+   &quot;template_lines&quot;: 113,
+   &quot;tabs&quot;: 10,
+   &quot;pages&quot;: 6,
+   &quot;event_pages&quot;: 33,
+   &quot;template_diff_vs_cdda&quot;: 0,
+   &quot;game_c_lines&quot;: 314,
+   &quot;on_desk&quot;: false
+  }
+ ],
+ &quot;preconditions&quot;: [
+  {
+   &quot;id&quot;: &quot;P1&quot;,
+   &quot;title&quot;: &quot;One shared core under all 11 games, and every edit verb (place, remove, newroom, newpal, delpal, save, load, goto, control) is in it&quot;,
+   &quot;state&quot;: &quot;done&quot;,
+   &quot;evidence&quot;: &quot;RAN today: all 9 verb names found in petslike_core.c; the built rpg-space and rpg-dust binaries contain newroom / newpal / place&quot;
+  },
+  {
+   &quot;id&quot;: &quot;P2&quot;,
+   &quot;title&quot;: &quot;The window layout (toolbar tabs, rail, left/right bars, hotbar) is a data template, and 7 of 11 are identical once the game name is swapped&quot;,
+   &quot;state&quot;: &quot;done&quot;,
+   &quot;evidence&quot;: &quot;RAN today: diff of board/pchq-board.xhtpm vs cdda-hq = 0 lines for civ-rpgce, df-hq, dsr-rpg, gta-hq, mcl-hq, tcg-rpgce; 4 for rpg-pet; 26 / 49 / 57 for rpg-edit-hq / rpg-dust / rpg-space&quot;
+  },
+  {
+   &quot;id&quot;: &quot;P3&quot;,
+   &quot;title&quot;: &quot;Every game already has pages (rooms) in rooms.pdl: 66 pages over 11 games&quot;,
+   &quot;state&quot;: &quot;done&quot;,
+   &quot;evidence&quot;: &quot;RAN today: ROOM rows per game 7 6 6 6 6 6 7 6 3 7 6&quot;
+  },
+  {
+   &quot;id&quot;: &quot;P4&quot;,
+   &quot;title&quot;: &quot;book_check can judge any game: all 11 report conformant=no, and the 5 games I itemised fail only the known &#x27;source=board&#x27; item (A2)&quot;,
+   &quot;state&quot;: &quot;done&quot;,
+   &quot;evidence&quot;: &quot;RAN today on all 11 (conformant=no for each); the failing item was listed for 5 of 11 (cdda-hq, rpg-edit-hq, rpg-space, tcg-rpgce, rpg-pet) and is A2 in each; the other 6 were not itemised&quot;
+  },
+  {
+   &quot;id&quot;: &quot;P5&quot;,
+   &quot;title&quot;: &quot;Games are BOOK:PAGE capable: page file, game_page_export (with other characters as rows), page_follow, taskbar Synch for game boards&quot;,
+   &quot;state&quot;: &quot;done&quot;,
+   &quot;evidence&quot;: &quot;RAN this week in scratch houses: harnesses game_page_export 147/0, page_follow 44/0, pc_synch_games 22/0; commits 336385812, b79f820aa, 1b0086ff7. The live taskbar was not pressed&quot;
+  },
+  {
+   &quot;id&quot;: &quot;P6&quot;,
+   &quot;title&quot;: &quot;One game (rpg-space) is installed as a book on the owner&#x27;s desk&quot;,
+   &quot;state&quot;: &quot;partial&quot;,
+   &quot;evidence&quot;: &quot;READ today: desk sessions = rpg-space, s1..s7 (8 books); 1 of 11 games&quot;
+  }
+ ],
+ &quot;tasks&quot;: [
+  {
+   &quot;id&quot;: &quot;A1&quot;,
+   &quot;title&quot;: &quot;book_list op: scan @.apps for games (toy.pdl + *-pchq + rooms.pdl), write BOOK rows: id, app, pchq, pages, conformant, on_desk&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;S&quot;,
+   &quot;depends&quot;: [],
+   &quot;proof&quot;: &quot;harness: scratch houses with 0, 1, 11 games; live repo gives exactly 11 rows; 6+ mutations fail it&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;low&quot;,
+   &quot;touches&quot;: &quot;new op in _shared-lib/ops + pal harness&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A2&quot;,
+   &quot;title&quot;: &quot;page_list for a book: pages from the game&#x27;s rooms.pdl, cross-checked with its maps/&lt;g&gt;/game.pdl desk ids (book_check B2 logic)&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;S&quot;,
+   &quot;depends&quot;: [
+    &quot;A1&quot;
+   ],
+   &quot;proof&quot;: &quot;harness: 11 live games give 66 pages total; a game whose rooms and desks disagree is reported&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;low&quot;,
+   &quot;touches&quot;: &quot;same op, second verb&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A3&quot;,
+   &quot;title&quot;: &quot;Core publishes the lists to ui.txt (n_book, book_N_label/act, target page list) and gets verbs openbook &lt;id&gt; / openpage &lt;book&gt; &lt;room&gt; that only record state/edit_target.txt&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;A1&quot;,
+    &quot;A2&quot;
+   ],
+   &quot;proof&quot;: &quot;all 11 games rebuild; per-game verb-script diff gate shows no behaviour change when the toolbar data does not ask for the list; new cases for the lists&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;medium: shared core touched, 11 binaries&quot;,
+   &quot;touches&quot;: &quot;petslike_core.c, petslike_toolbar.c&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A4&quot;,
+   &quot;title&quot;: &quot;Editor template: Book dropdown repeats the books, Page dropdown shows the chosen book&#x27;s pages (rpg-edit-hq&#x27;s own xhtpm and toolbar.pdl only)&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;S&quot;,
+   &quot;depends&quot;: [
+    &quot;A3&quot;
+   ],
+   &quot;proof&quot;: &quot;ui.txt says n_book=11; picture of the open Book dropdown with 11 rows (needs a live window)&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;medium: live window&quot;,
+   &quot;touches&quot;: &quot;rpg-edit-hq/board/pchq-board.xhtpm, toolbar.pdl&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A5&quot;,
+   &quot;title&quot;: &quot;openbook &lt;id&gt;: start the target game&#x27;s own daemon and board window (its tabs and sidebars come with it), mark it edit mode, hand over from the editor window&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;A3&quot;,
+    &quot;S1&quot;
+   ],
+   &quot;proof&quot;: &quot;relay-driven: pick cdda-hq, its window appears with its 10 tabs and 3 bars; state file shows edit_target; no stray processes after close; footprint line idle + active&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;high: process launch, the 15:21 freeze&quot;,
+   &quot;touches&quot;: &quot;new op + launcher glue&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A6&quot;,
+   &quot;title&quot;: &quot;openpage &lt;book&gt; &lt;room&gt;: goto in the target via its existing goto verb&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;S&quot;,
+   &quot;depends&quot;: [
+    &quot;A5&quot;
+   ],
+   &quot;proof&quot;: &quot;state file room changes in the target; picture of that room&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;low&quot;,
+   &quot;touches&quot;: &quot;verb glue&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A7&quot;,
+   &quot;title&quot;: &quot;Edit affordances in the loaded game: confirm place / remove / newroom / newpal work from the target&#x27;s own window; add an edit-mode strip only if they do not&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;A5&quot;,
+    &quot;S2&quot;
+   ],
+   &quot;proof&quot;: &quot;place a block from the window; ledger row + state file; remove it again; bytes restored&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;medium: unknown scope&quot;,
+   &quot;touches&quot;: &quot;target templates or a shared strip&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A8&quot;,
+   &quot;title&quot;: &quot;Install the other games as desk books, one at a time (additive; backup before, restore rule after), so the desk Book dropdown and Synch see them&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;A1&quot;
+   ],
+   &quot;proof&quot;: &quot;sessions tree: files added only, 0 existing changed, sha256 list kept under the home folder (not /tmp); desk dropdown picture&quot;,
+   &quot;lane&quot;: &quot;claude+owner&quot;,
+   &quot;risk&quot;: &quot;medium: owner data&quot;,
+   &quot;touches&quot;: &quot;xyzfs/users/&lt;id&gt;/home/livedesk/sessions&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A9&quot;,
+   &quot;title&quot;: &quot;Round trip: open a book, save unchanged, bytes identical (S4 of the pivot); then one real edit with a ledger row&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;A7&quot;
+   ],
+   &quot;proof&quot;: &quot;sha256 before == after for the unchanged save; one edit shows in the page file and the ledger&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;medium&quot;,
+   &quot;touches&quot;: &quot;save/load ops&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A10&quot;,
+   &quot;title&quot;: &quot;Picture pack: for each of the 11 games, Book dropdown, Page dropdown, loaded game with tabs and bars (the house&#x27;s evidence rule)&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;A4&quot;,
+    &quot;A5&quot;,
+    &quot;A6&quot;
+   ],
+   &quot;proof&quot;: &quot;11 x 3 pictures with receipts, taken one process at a time, niced, machine cool&quot;,
+   &quot;lane&quot;: &quot;claude+owner&quot;,
+   &quot;risk&quot;: &quot;medium: machine load&quot;,
+   &quot;touches&quot;: &quot;scratch only plus live windows&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;A11&quot;,
+   &quot;title&quot;: &quot;Recipe + README + harness rows: how a new game appears in the list; update GAMES-AS-BOOKS doc and the roadmap&quot;,
+   &quot;road&quot;: &quot;A&quot;,
+   &quot;size&quot;: &quot;S&quot;,
+   &quot;depends&quot;: [
+    &quot;A1&quot;
+   ],
+   &quot;proof&quot;: &quot;doc exists, a fresh reader can add a 12th game from it (test: a scratch game appears in book_list)&quot;,
+   &quot;lane&quot;: &quot;any&quot;,
+   &quot;risk&quot;: &quot;low&quot;,
+   &quot;touches&quot;: &quot;docs&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;B1&quot;,
+   &quot;title&quot;: &quot;Make PET_APP a runtime value (24 uses in 23 lines of the core) so one binary can serve any game folder&quot;,
+   &quot;road&quot;: &quot;B&quot;,
+   &quot;size&quot;: &quot;L&quot;,
+   &quot;depends&quot;: [
+    &quot;A3&quot;
+   ],
+   &quot;proof&quot;: &quot;all 11 games rebuild with identical behaviour (diff gate); editor binary answers for another folder&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;high: shared core everywhere&quot;,
+   &quot;touches&quot;: &quot;petslike_core.c&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;B2&quot;,
+   &quot;title&quot;: &quot;Per-game rule code (240 to 1,823 lines each) cannot live in one binary: forward verbs to the target&#x27;s own binary&quot;,
+   &quot;road&quot;: &quot;B&quot;,
+   &quot;size&quot;: &quot;L&quot;,
+   &quot;depends&quot;: [
+    &quot;B1&quot;
+   ],
+   &quot;proof&quot;: &quot;a verb typed in the editor changes the target&#x27;s state files exactly as the target&#x27;s own window would&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;high&quot;,
+   &quot;touches&quot;: &quot;dispatch op&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;B3&quot;,
+   &quot;title&quot;: &quot;Mirror the target&#x27;s ui.txt into the editor&#x27;s, and satisfy the daemon&#x27;s &#x27;window alive&#x27; gate&quot;,
+   &quot;road&quot;: &quot;B&quot;,
+   &quot;size&quot;: &quot;L&quot;,
+   &quot;depends&quot;: [
+    &quot;B2&quot;,
+    &quot;S3&quot;
+   ],
+   &quot;proof&quot;: &quot;editor window shows the target&#x27;s live variables&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;high: the gate was only read in a harness comment&quot;,
+   &quot;touches&quot;: &quot;daemon + ui relay&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;B4&quot;,
+   &quot;title&quot;: &quot;Swap the editor&#x27;s template, css, toolbar.pdl and side_style.pdl to the target&#x27;s at runtime (live reparse)&quot;,
+   &quot;road&quot;: &quot;B&quot;,
+   &quot;size&quot;: &quot;M&quot;,
+   &quot;depends&quot;: [
+    &quot;B3&quot;,
+    &quot;S4&quot;
+   ],
+   &quot;proof&quot;: &quot;picture: the editor window shows cdda&#x27;s tabs and bars, then rpg-space&#x27;s different 14 tabs&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;high: renderer family is guarded&quot;,
+   &quot;touches&quot;: &quot;khtpm window files&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  },
+  {
+   &quot;id&quot;: &quot;B5&quot;,
+   &quot;title&quot;: &quot;Headless daemon mode (no window needed) so a target can run without its own window&quot;,
+   &quot;road&quot;: &quot;B&quot;,
+   &quot;size&quot;: &quot;L&quot;,
+   &quot;depends&quot;: [
+    &quot;B3&quot;
+   ],
+   &quot;proof&quot;: &quot;daemon ticks and publishes with no window process; idle cost measured&quot;,
+   &quot;lane&quot;: &quot;claude&quot;,
+   &quot;risk&quot;: &quot;high&quot;,
+   &quot;touches&quot;: &quot;core&quot;,
+   &quot;status&quot;: &quot;todo&quot;
+  }
+ ],
+ &quot;spikes&quot;: [
+  {
+   &quot;id&quot;: &quot;S1&quot;,
+   &quot;question&quot;: &quot;Is opening a second game window while another is open safe on this machine (CPU, heat, freeze)? Do it once, niced, watching temperature, only when the machine is cool and idle.&quot;,
+   &quot;blocks&quot;: &quot;A5&quot;,
+   &quot;why&quot;: &quot;the 15:21 freeze happened ~30 s after a board launch; cause unproven&quot;
+  },
+  {
+   &quot;id&quot;: &quot;S2&quot;,
+   &quot;question&quot;: &quot;Does a game&#x27;s own window already expose enough editing (place from the hotbar, new room, new pal), or does edit mode need its own strip?&quot;,
+   &quot;blocks&quot;: &quot;A7&quot;,
+   &quot;why&quot;: &quot;verbs exist in all 11 binaries; whether the window reaches them was not tested for 10 of 11&quot;
+  },
+  {
+   &quot;id&quot;: &quot;S3&quot;,
+   &quot;question&quot;: &quot;What exactly gates ui.txt publishing (a process whose command line holds &lt;game&gt;.xhtpm was read in a harness comment, not in the code path)?&quot;,
+   &quot;blocks&quot;: &quot;B3&quot;,
+   &quot;why&quot;: &quot;matters only for Road B&quot;
+  },
+  {
+   &quot;id&quot;: &quot;S4&quot;,
+   &quot;question&quot;: &quot;Can one window be re-pointed to another game by rewriting its template and letting the live reparse pick it up (with the other game&#x27;s variables)?&quot;,
+   &quot;blocks&quot;: &quot;B4&quot;,
+   &quot;why&quot;: &quot;matters only for Road B&quot;
+  },
+  {
+   &quot;id&quot;: &quot;S5&quot;,
+   &quot;question&quot;: &quot;What does closing the editor do to the target&#x27;s daemon and engine (stray processes)? Memory: button.sh leaks engine stacks&quot;,
+   &quot;blocks&quot;: &quot;A5&quot;,
+   &quot;why&quot;: &quot;a footprint finding would be ours, not the browser&#x27;s&quot;
+  }
+ ],
+ &quot;decisions&quot;: [
+  {
+   &quot;id&quot;: &quot;D1&quot;,
+   &quot;question&quot;: &quot;Road A first (the editor launches the target&#x27;s own window with its tabs and bars) and keep Road B for later?&quot;,
+   &quot;note&quot;: &quot;A recommended; B only if you need one single window to turn into any game&quot;
+  },
+  {
+   &quot;id&quot;: &quot;D2&quot;,
+   &quot;question&quot;: &quot;Does the Book dropdown list all 11 games, or only conformant ones?&quot;,
+   &quot;note&quot;: &quot;All 11 fail book_check A2 today, so conformance cannot be the filter yet; recommend list all, show a conformant flag&quot;
+  },
+  {
+   &quot;id&quot;: &quot;D3&quot;,
+   &quot;question&quot;: &quot;After you pick a game: does the editor window stay as a small launcher bar, or does the target&#x27;s window replace it?&quot;,
+   &quot;note&quot;: &quot;decides A5 hand-over&quot;
+  },
+  {
+   &quot;id&quot;: &quot;D4&quot;,
+   &quot;question&quot;: &quot;Install the other 10 games as desk books too (A8), one at a time?&quot;,
+   &quot;note&quot;: &quot;touches your desk data; additive with backup and restore rule&quot;
+  },
+  {
+   &quot;id&quot;: &quot;D5&quot;,
+   &quot;question&quot;: &quot;Is rpg-edit-hq&#x27;s own 6-room town also a book in the list (&#x27;rpg-edit&#x27;), or only the editor shell?&quot;,
+   &quot;note&quot;: &quot;it is a pets-like game today&quot;
+  }
+ ],
+ &quot;sprints&quot;: [
+  {
+   &quot;name&quot;: &quot;Sprint 1&quot;,
+   &quot;theme&quot;: &quot;list&quot;,
+   &quot;items&quot;: [
+    &quot;A1&quot;,
+    &quot;A2&quot;,
+    &quot;A3&quot;,
+    &quot;A11&quot;
+   ],
+   &quot;exit&quot;: &quot;ui.txt of the editor lists 11 books and any book&#x27;s pages; all 11 games rebuild with no behaviour change; harnesses green; NO live launch needed&quot;
+  },
+  {
+   &quot;name&quot;: &quot;Sprint 2&quot;,
+   &quot;theme&quot;: &quot;open&quot;,
+   &quot;items&quot;: [
+    &quot;S1&quot;,
+    &quot;A4&quot;,
+    &quot;A5&quot;,
+    &quot;A6&quot;
+   ],
+   &quot;exit&quot;: &quot;relay-driven: two different games opened from the dropdown with their own tabs and bars, pictures + state files + footprint line; one process at a time&quot;
+  },
+  {
+   &quot;name&quot;: &quot;Sprint 3&quot;,
+   &quot;theme&quot;: &quot;edit + install&quot;,
+   &quot;items&quot;: [
+    &quot;S2&quot;,
+    &quot;A7&quot;,
+    &quot;A8&quot;,
+    &quot;A9&quot;
+   ],
+   &quot;exit&quot;: &quot;one real edit round-trips with a ledger row; one more game installed as a desk book with the restore rule honoured&quot;
+  },
+  {
+   &quot;name&quot;: &quot;Sprint 4&quot;,
+   &quot;theme&quot;: &quot;prove all&quot;,
+   &quot;items&quot;: [
+    &quot;A10&quot;
+   ],
+   &quot;exit&quot;: &quot;11 x 3 pictures with receipts; the feature is declared done only now&quot;
+  }
+ ],
+ &quot;scoreboard&quot;: {
+  &quot;preconditions_done&quot;: 5,
+  &quot;preconditions_total&quot;: 6,
+  &quot;road_a_tasks&quot;: 11,
+  &quot;road_a_sizes&quot;: {
+   &quot;S&quot;: 5,
+   &quot;M&quot;: 6,
+   &quot;L&quot;: 0
+  },
+  &quot;road_a_done&quot;: 0,
+  &quot;road_b_tasks&quot;: 5,
+  &quot;road_b_sizes&quot;: {
+   &quot;S&quot;: 0,
+   &quot;M&quot;: 1,
+   &quot;L&quot;: 4
+  },
+  &quot;road_b_done&quot;: 0
+ }
+}</code></pre>
+</main>
+<script type="application/json" id="plan-data">{"generated": "2026-10-28", "title": "near-tear-gear: rpg-edit opens every pets-like game", "glossary": {"S": "about one focused session including harness and mutation tests (my estimate)", "M": "two to three sessions", "L": "several sessions or needs a design first"}, "games": [{"id": "cdda-hq", "template_lines": 113, "tabs": 10, "pages": 7, "event_pages": 36, "template_diff_vs_cdda": 0, "game_c_lines": 473, "on_desk": false}, {"id": "civ-rpgce", "template_lines": 113, "tabs": 10, "pages": 6, "event_pages": 33, "template_diff_vs_cdda": 0, "game_c_lines": 310, "on_desk": false}, {"id": "df-hq", "template_lines": 113, "tabs": 10, "pages": 6, "event_pages": 36, "template_diff_vs_cdda": 0, "game_c_lines": 469, "on_desk": false}, {"id": "dsr-rpg", "template_lines": 113, "tabs": 10, "pages": 6, "event_pages": 33, "template_diff_vs_cdda": 0, "game_c_lines": 240, "on_desk": false}, {"id": "gta-hq", "template_lines": 113, "tabs": 10, "pages": 6, "event_pages": 33, "template_diff_vs_cdda": 0, "game_c_lines": 557, "on_desk": false}, {"id": "mcl-hq", "template_lines": 113, "tabs": 10, "pages": 6, "event_pages": 37, "template_diff_vs_cdda": 0, "game_c_lines": 500, "on_desk": false}, {"id": "rpg-dust", "template_lines": 132, "tabs": 13, "pages": 7, "event_pages": 14, "template_diff_vs_cdda": 49, "game_c_lines": 1745, "on_desk": false}, {"id": "rpg-edit-hq", "template_lines": 119, "tabs": 11, "pages": 6, "event_pages": 21, "template_diff_vs_cdda": 26, "game_c_lines": 395, "on_desk": false}, {"id": "rpg-pet", "template_lines": 113, "tabs": 10, "pages": 3, "event_pages": 37, "template_diff_vs_cdda": 4, "game_c_lines": 223, "on_desk": false}, {"id": "rpg-space", "template_lines": 140, "tabs": 14, "pages": 7, "event_pages": 15, "template_diff_vs_cdda": 57, "game_c_lines": 1823, "on_desk": true}, {"id": "tcg-rpgce", "template_lines": 113, "tabs": 10, "pages": 6, "event_pages": 33, "template_diff_vs_cdda": 0, "game_c_lines": 314, "on_desk": false}], "preconditions": [{"id": "P1", "title": "One shared core under all 11 games, and every edit verb (place, remove, newroom, newpal, delpal, save, load, goto, control) is in it", "state": "done", "evidence": "RAN today: all 9 verb names found in petslike_core.c; the built rpg-space and rpg-dust binaries contain newroom / newpal / place"}, {"id": "P2", "title": "The window layout (toolbar tabs, rail, left/right bars, hotbar) is a data template, and 7 of 11 are identical once the game name is swapped", "state": "done", "evidence": "RAN today: diff of board/pchq-board.xhtpm vs cdda-hq = 0 lines for civ-rpgce, df-hq, dsr-rpg, gta-hq, mcl-hq, tcg-rpgce; 4 for rpg-pet; 26 / 49 / 57 for rpg-edit-hq / rpg-dust / rpg-space"}, {"id": "P3", "title": "Every game already has pages (rooms) in rooms.pdl: 66 pages over 11 games", "state": "done", "evidence": "RAN today: ROOM rows per game 7 6 6 6 6 6 7 6 3 7 6"}, {"id": "P4", "title": "book_check can judge any game: all 11 report conformant=no, and the 5 games I itemised fail only the known 'source=board' item (A2)", "state": "done", "evidence": "RAN today on all 11 (conformant=no for each); the failing item was listed for 5 of 11 (cdda-hq, rpg-edit-hq, rpg-space, tcg-rpgce, rpg-pet) and is A2 in each; the other 6 were not itemised"}, {"id": "P5", "title": "Games are BOOK:PAGE capable: page file, game_page_export (with other characters as rows), page_follow, taskbar Synch for game boards", "state": "done", "evidence": "RAN this week in scratch houses: harnesses game_page_export 147/0, page_follow 44/0, pc_synch_games 22/0; commits 336385812, b79f820aa, 1b0086ff7. The live taskbar was not pressed"}, {"id": "P6", "title": "One game (rpg-space) is installed as a book on the owner's desk", "state": "partial", "evidence": "READ today: desk sessions = rpg-space, s1..s7 (8 books); 1 of 11 games"}], "tasks": [{"id": "A1", "title": "book_list op: scan @.apps for games (toy.pdl + *-pchq + rooms.pdl), write BOOK rows: id, app, pchq, pages, conformant, on_desk", "road": "A", "size": "S", "depends": [], "proof": "harness: scratch houses with 0, 1, 11 games; live repo gives exactly 11 rows; 6+ mutations fail it", "lane": "claude", "risk": "low", "touches": "new op in _shared-lib/ops + pal harness", "status": "todo"}, {"id": "A2", "title": "page_list for a book: pages from the game's rooms.pdl, cross-checked with its maps/<g>/game.pdl desk ids (book_check B2 logic)", "road": "A", "size": "S", "depends": ["A1"], "proof": "harness: 11 live games give 66 pages total; a game whose rooms and desks disagree is reported", "lane": "claude", "risk": "low", "touches": "same op, second verb", "status": "todo"}, {"id": "A3", "title": "Core publishes the lists to ui.txt (n_book, book_N_label/act, target page list) and gets verbs openbook <id> / openpage <book> <room> that only record state/edit_target.txt", "road": "A", "size": "M", "depends": ["A1", "A2"], "proof": "all 11 games rebuild; per-game verb-script diff gate shows no behaviour change when the toolbar data does not ask for the list; new cases for the lists", "lane": "claude", "risk": "medium: shared core touched, 11 binaries", "touches": "petslike_core.c, petslike_toolbar.c", "status": "todo"}, {"id": "A4", "title": "Editor template: Book dropdown repeats the books, Page dropdown shows the chosen book's pages (rpg-edit-hq's own xhtpm and toolbar.pdl only)", "road": "A", "size": "S", "depends": ["A3"], "proof": "ui.txt says n_book=11; picture of the open Book dropdown with 11 rows (needs a live window)", "lane": "claude", "risk": "medium: live window", "touches": "rpg-edit-hq/board/pchq-board.xhtpm, toolbar.pdl", "status": "todo"}, {"id": "A5", "title": "openbook <id>: start the target game's own daemon and board window (its tabs and sidebars come with it), mark it edit mode, hand over from the editor window", "road": "A", "size": "M", "depends": ["A3", "S1"], "proof": "relay-driven: pick cdda-hq, its window appears with its 10 tabs and 3 bars; state file shows edit_target; no stray processes after close; footprint line idle + active", "lane": "claude", "risk": "high: process launch, the 15:21 freeze", "touches": "new op + launcher glue", "status": "todo"}, {"id": "A6", "title": "openpage <book> <room>: goto in the target via its existing goto verb", "road": "A", "size": "S", "depends": ["A5"], "proof": "state file room changes in the target; picture of that room", "lane": "claude", "risk": "low", "touches": "verb glue", "status": "todo"}, {"id": "A7", "title": "Edit affordances in the loaded game: confirm place / remove / newroom / newpal work from the target's own window; add an edit-mode strip only if they do not", "road": "A", "size": "M", "depends": ["A5", "S2"], "proof": "place a block from the window; ledger row + state file; remove it again; bytes restored", "lane": "claude", "risk": "medium: unknown scope", "touches": "target templates or a shared strip", "status": "todo"}, {"id": "A8", "title": "Install the other games as desk books, one at a time (additive; backup before, restore rule after), so the desk Book dropdown and Synch see them", "road": "A", "size": "M", "depends": ["A1"], "proof": "sessions tree: files added only, 0 existing changed, sha256 list kept under the home folder (not /tmp); desk dropdown picture", "lane": "claude+owner", "risk": "medium: owner data", "touches": "xyzfs/users/<id>/home/livedesk/sessions", "status": "todo"}, {"id": "A9", "title": "Round trip: open a book, save unchanged, bytes identical (S4 of the pivot); then one real edit with a ledger row", "road": "A", "size": "M", "depends": ["A7"], "proof": "sha256 before == after for the unchanged save; one edit shows in the page file and the ledger", "lane": "claude", "risk": "medium", "touches": "save/load ops", "status": "todo"}, {"id": "A10", "title": "Picture pack: for each of the 11 games, Book dropdown, Page dropdown, loaded game with tabs and bars (the house's evidence rule)", "road": "A", "size": "M", "depends": ["A4", "A5", "A6"], "proof": "11 x 3 pictures with receipts, taken one process at a time, niced, machine cool", "lane": "claude+owner", "risk": "medium: machine load", "touches": "scratch only plus live windows", "status": "todo"}, {"id": "A11", "title": "Recipe + README + harness rows: how a new game appears in the list; update GAMES-AS-BOOKS doc and the roadmap", "road": "A", "size": "S", "depends": ["A1"], "proof": "doc exists, a fresh reader can add a 12th game from it (test: a scratch game appears in book_list)", "lane": "any", "risk": "low", "touches": "docs", "status": "todo"}, {"id": "B1", "title": "Make PET_APP a runtime value (24 uses in 23 lines of the core) so one binary can serve any game folder", "road": "B", "size": "L", "depends": ["A3"], "proof": "all 11 games rebuild with identical behaviour (diff gate); editor binary answers for another folder", "lane": "claude", "risk": "high: shared core everywhere", "touches": "petslike_core.c", "status": "todo"}, {"id": "B2", "title": "Per-game rule code (240 to 1,823 lines each) cannot live in one binary: forward verbs to the target's own binary", "road": "B", "size": "L", "depends": ["B1"], "proof": "a verb typed in the editor changes the target's state files exactly as the target's own window would", "lane": "claude", "risk": "high", "touches": "dispatch op", "status": "todo"}, {"id": "B3", "title": "Mirror the target's ui.txt into the editor's, and satisfy the daemon's 'window alive' gate", "road": "B", "size": "L", "depends": ["B2", "S3"], "proof": "editor window shows the target's live variables", "lane": "claude", "risk": "high: the gate was only read in a harness comment", "touches": "daemon + ui relay", "status": "todo"}, {"id": "B4", "title": "Swap the editor's template, css, toolbar.pdl and side_style.pdl to the target's at runtime (live reparse)", "road": "B", "size": "M", "depends": ["B3", "S4"], "proof": "picture: the editor window shows cdda's tabs and bars, then rpg-space's different 14 tabs", "lane": "claude", "risk": "high: renderer family is guarded", "touches": "khtpm window files", "status": "todo"}, {"id": "B5", "title": "Headless daemon mode (no window needed) so a target can run without its own window", "road": "B", "size": "L", "depends": ["B3"], "proof": "daemon ticks and publishes with no window process; idle cost measured", "lane": "claude", "risk": "high", "touches": "core", "status": "todo"}], "spikes": [{"id": "S1", "question": "Is opening a second game window while another is open safe on this machine (CPU, heat, freeze)? Do it once, niced, watching temperature, only when the machine is cool and idle.", "blocks": "A5", "why": "the 15:21 freeze happened ~30 s after a board launch; cause unproven"}, {"id": "S2", "question": "Does a game's own window already expose enough editing (place from the hotbar, new room, new pal), or does edit mode need its own strip?", "blocks": "A7", "why": "verbs exist in all 11 binaries; whether the window reaches them was not tested for 10 of 11"}, {"id": "S3", "question": "What exactly gates ui.txt publishing (a process whose command line holds <game>.xhtpm was read in a harness comment, not in the code path)?", "blocks": "B3", "why": "matters only for Road B"}, {"id": "S4", "question": "Can one window be re-pointed to another game by rewriting its template and letting the live reparse pick it up (with the other game's variables)?", "blocks": "B4", "why": "matters only for Road B"}, {"id": "S5", "question": "What does closing the editor do to the target's daemon and engine (stray processes)? Memory: button.sh leaks engine stacks", "blocks": "A5", "why": "a footprint finding would be ours, not the browser's"}], "decisions": [{"id": "D1", "question": "Road A first (the editor launches the target's own window with its tabs and bars) and keep Road B for later?", "note": "A recommended; B only if you need one single window to turn into any game"}, {"id": "D2", "question": "Does the Book dropdown list all 11 games, or only conformant ones?", "note": "All 11 fail book_check A2 today, so conformance cannot be the filter yet; recommend list all, show a conformant flag"}, {"id": "D3", "question": "After you pick a game: does the editor window stay as a small launcher bar, or does the target's window replace it?", "note": "decides A5 hand-over"}, {"id": "D4", "question": "Install the other 10 games as desk books too (A8), one at a time?", "note": "touches your desk data; additive with backup and restore rule"}, {"id": "D5", "question": "Is rpg-edit-hq's own 6-room town also a book in the list ('rpg-edit'), or only the editor shell?", "note": "it is a pets-like game today"}], "sprints": [{"name": "Sprint 1", "theme": "list", "items": ["A1", "A2", "A3", "A11"], "exit": "ui.txt of the editor lists 11 books and any book's pages; all 11 games rebuild with no behaviour change; harnesses green; NO live launch needed"}, {"name": "Sprint 2", "theme": "open", "items": ["S1", "A4", "A5", "A6"], "exit": "relay-driven: two different games opened from the dropdown with their own tabs and bars, pictures + state files + footprint line; one process at a time"}, {"name": "Sprint 3", "theme": "edit + install", "items": ["S2", "A7", "A8", "A9"], "exit": "one real edit round-trips with a ledger row; one more game installed as a desk book with the restore rule honoured"}, {"name": "Sprint 4", "theme": "prove all", "items": ["A10"], "exit": "11 x 3 pictures with receipts; the feature is declared done only now"}], "scoreboard": {"preconditions_done": 5, "preconditions_total": 6, "road_a_tasks": 11, "road_a_sizes": {"S": 5, "M": 6, "L": 0}, "road_a_done": 0, "road_b_tasks": 5, "road_b_sizes": {"S": 0, "M": 1, "L": 4}, "road_b_done": 0}}</script>
+</body></html>
