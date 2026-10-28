@@ -20,30 +20,30 @@ Written after the owner said: **"all those pet evolution plans to hand to Grok s
 6. **The packaging design exists.** `GAMES-AS-PACKAGES-AND-STORE-DESIGN.md` (`game.pdl` parts and slots, packs, `pack_check`, Store, screening) and `VISION-CLARIFIED-2026-10-27.md` ("one space with several small games, to prove that one central editor works"). The pivot should **land on those**, not invent a second package format.
 
 ## 2. The model (📝 PROPOSED; one thin layer over what exists, no conversion of the maps)
-* **Book = a game** (id `rpg-space`, `rpg-dust`, `rpg-edit`...). **Page = a map** inside it, addressed **`<book>:<page>`**: `rpg-space:quarters`, `rpg-space:region`, `rpg-space:space`, `rpg-dust:region`. A page has a **kind**: `interior` (belongs to an entity, reached by a door/teleport: the ship rooms), `surface` (a planet page), `space` (blank space).
-* **Entity = a placed thing with identity**, a position on a page, and optionally **`interior=<page,page,...>`**. The **ship is an entity** (`kind=ship`, `hull=pieces/ship_01`, `interior=bridge,quarters,hold,engine`) placed on a surface or space page. Its rooms are pages **it owns**; the door from a surface page into the ship is a teleport to `rpg-space:bridge`. "The whole ship teleports into a planet map" = **the ship entity's `at=` changes page**, nothing is copied under the bridge. (The painted-backdrop copy then becomes a *view* of the page the ship stands on, not a second source of truth: ❓ see 7.3.)
+* **Book = a game** (id `rpg-space`, `rpg-dust`, `rpg-edit`...). **Page = a map** inside it, addressed **`<book>:<page>`**: `rpg-space:quarters`, `rpg-space:region`, `rpg-space:space`, `rpg-dust:region`. A page has a **kind**: `interior` (reached by a door or a teleport: the ship rooms), `surface` (a planet page), `space` (blank space).
+* **Entity = a placed thing with identity** (a **PAL**, section 7a), a position on a page (`at=`), and optionally **`pages=<page,page,...>`**: the pages it can teleport you to. The **ship is an entity** (`kind=ship`, `hull=pieces/ship_01`, `pages=bridge,quarters,hold,engine`) placed on a surface or space page. **The book owns every page**; the ship's menu is the way to reach its rooms (a door from a surface page into the ship is also a teleport to `rpg-space:bridge`). "The whole ship teleports into a planet map" = **the ship entity's `at=` changes page**, nothing is copied under the bridge. (The painted-backdrop copy then becomes a *view* of the page the ship stands on, not a second source of truth: ❓ see 7.3.)
 * **Rows, not code** (house rule): a `book.pdl` per game:
 ```
 BOOK   | rpg-space | RPG Space | maps=pieces/system/maps/rpg-space
-PAGE   | bridge   | Bridge   | kind=interior | owner=ship_1
+PAGE   | bridge   | Bridge   | kind=interior
 PAGE   | region   | Region   | kind=surface
 PAGE   | space    | Space    | kind=space
-ENTITY | ship_1   | Ship     | kind=ship | hull=pieces/ship_01 | interior=bridge,quarters,hold,engine | at=space:5,5
+ENTITY | ship_1   | Ship     | kind=ship | hull=pieces/ship_01 | pages=bridge,quarters,hold,engine | at=space:5,5
 ```
   It is **generated from / checked against** the existing `game.pdl` and the map folders, so nothing is hand-duplicated. `tree_lint` (BUILT, 53/0) already validates `NODE` rows with `parent=` / `needs=`: an entity's interior pages and a page's owner are exactly such edges, so the same linter can be reused.
 * **The header shows BOOK:PAGE from data** (`rpg-space:quarters`) in every game that has a `book.pdl`: no per-game renderer code (the khtpm house rule). 📖 The 3D debug overlay already prints `rpg-space:quarters`, so the engine knows the pair; the header is the missing display.
 * **rpg-edit opens a book**, not "is a game": list the book's pages, show a page, then edit (cells, events, hotspots, entities) through ops that write the map files with a ledger row. **Export** = package the book + the pinned engine binaries + a launcher (design 16.game games-as-packages), and prove it by running the same playthrough gate on the exported copy.
 
 ## 3. Why "unshippable" today, in checkable terms (📝 the compliance gate)
-A game is **BOOK:PAGE compliant** when `book_check <game>` passes: (a) it has a `book.pdl`; (b) every `PAGE` has a map folder with the required files; (c) every `ENTITY` `at=` names an existing page and every `interior=` page exists and names that entity as owner; (d) page ids are unique and valid names (the `book_page_op` rule: letters, digits, `-`, `_`, 1..48); (e) no map folder exists that is not a page; (f) the header shows `book:page` (a state-file check, not a screenshot). Until that passes for rpg-space, rpg-dust and rpg-edit, nothing built on top is shippable.
+A game is **BOOK:PAGE compliant** when `book_check <game>` passes: (a) it has a `book.pdl`; (b) every `PAGE` has a map folder with the required files; (c) every `ENTITY` `at=` names an existing page and every page in its `pages=` exists; (d) page ids are unique and valid names (the `book_page_op` rule: letters, digits, `-`, `_`, 1..48); (e) no map folder exists that is not a page; (f) the header shows `book:page` (a state-file check, not a screenshot). Until that passes for rpg-space, rpg-dust and rpg-edit, nothing built on top is shippable.
 
 ## 4. Build order, each step with a test that can fail (📝)
 1. **S0, inventory (read-only, cheap, next):** the real desk-file format of a livedesk page versus a `maps/<game>/<room>` folder; how `open_book_page.txt source=board` is consumed; how rpg-edit-hq loads maps; what the bottom bar reads to list entities. Output: a short table, no code.
 2. **S1, `book.pdl` + `book_check` op + harness** for rpg-space (then dust, then edit): fixtures with deliberate faults (missing map, duplicate page, entity at a missing page, interior owned by nobody, orphan map folder); mutations as always; **the check counts must rise when checks are added** (lesson of 2026-10-28).
 3. **S2, the header** shows `book:page` from `book.pdl` in rpg-space, rpg-dust, rpg-edit (data row + the generic renderer path); proof: a state-file check plus a window picture.
-4. **S3, the ship becomes an entity row** and appears in the bottom bar; ship rooms become `owner=ship_1` pages; the planet backdrop copy is derived from the page the ship stands on. Proof: the existing gates (planet map 101/0, fridge 29/0, helm) still pass.
+4. **S3, the ship becomes an entity row** and appears in the bottom bar; the ship is a PAL whose menu lists its `pages=` (the rooms stay plain pages of the book); the planet backdrop copy is derived from the page the ship stands on. Proof: the existing gates (planet map 101/0, fridge 29/0, helm) still pass.
 5. **S4, rpg-edit opens a book:** read-only page list and picture first; then edits with a ledger; round-trip test (open, save unchanged, bytes identical).
-6. **S5, export:** a book becomes a package that runs from a scratch house; gate = the same playthrough on the export.
+6. **S5, export:** a book becomes the user's game as an executable in a directory with what it needs (owner decision 5), the target being a parameter (first Linux desktop; consoles and other OSes later); it runs from a scratch house; gate = the same playthrough on the export.
 7. **S6, beam down:** a helm verb that moves a crew entity from the ship interior to a chosen cell on the surface page under the ship, one ledger row, refused when there is no surface page. (Owner: "probably".)
 Each slice ends with the owner's rule: a before/after picture and a click path they can see.
 
@@ -58,13 +58,21 @@ Each slice ends with the owner's rule: a before/after picture and a click path t
 * The **fridge** is a page object in `rpg-space:quarters`; its rows (`foods.pdl`) become a book asset. No rework needed.
 * The **"central editor with several small games"** (VISION section 6) is this pivot's end state: one rpg-edit, many books.
 
-## 7. Open decisions for the owner (❓)
-1. **Which "book" format:** the livedesk session shape (`s<N>/session.pdl` + `desks/*.pdl`) or the pc-hq `maps/<game>/<room>` folder + a thin `book.pdl` manifest (my recommendation: the manifest, no conversion)?
-2. **Do interior pages belong to the ship entity** (so a second ship brings its own rooms) or to the book (my recommendation: the entity owns them)?
-3. **The planet backdrop under the bridge:** keep it as a derived view (my recommendation) or drop it and show the planet only through the window/helm view?
-4. **Is rpg-edit one app that opens any book** (my recommendation, per the vision) or a mode inside each game?
-5. **What does "exported as a game binary" mean to you:** a package folder with a launcher, or one compiled executable with the data embedded?
-6. **Beam down:** pick the cell on the map (2D/3D pick) or "nearest surface cell with a free standing spot"?
+## 7. Decisions (owner, 2026-10-28) and what is still open
+**DECIDED**
+1. **Book format:** owner "probably" the thin manifest (explained: `book.pdl` over the existing maps folder, no file conversion; the livedesk session shape would mean turning each ~12-file room map into one page file). **Taken as: manifest first**; a bridge so the taskbar lists game books can come later.
+2. **Who owns the interior pages:** **the BOOK owns every page** (ship rooms, planets, space are all just pages of the book). **The entity is the way to teleport to them**, and **the entity is a PAL** (a taskbar/bottom-toolbar entity, see 7a). This **replaces** my earlier "the entity owns its interior pages" (section 2): pages have no `owner=`; an entity has `pages=` (the pages it can take you to) and `at=` (the page it stands on).
+3. **Planet backdrop:** owner "probably" a **derived view** (explained: the planet is never copied into the ship rooms; the renderer composes it from the page the ship stands on, so there is one source of truth). **Taken as: derived view.**
+4. **rpg-edit is one app that opens any book:** **yes.**
+5. **Export:** the **user's game** as an executable in a **directory** together with whatever else it needs (data, engine pieces, launcher); **later one export per console / OS** (so the export target is a parameter, first target Linux desktop).
+
+**7a. What a PAL is (📖 READ today).** A folder `pals/<name>/` in a user's livedesk home (e.g. `terumon_001_ember`) with `pal.pdl` (`PAL | name`, `PAL | hash`, `PAL | glyph`), `objects.pdl` (a menu: `PAGE | main` then `OBJECT | label=... | action=...` rows such as `Events (hq)`, `Dir`, `Inventory`, `Act` = `GOTO:act` (go to another page of the menu), `Cli-io`, `Close`), `meta.pdl`, `entity_uid.txt`, `desktop_pos.txt`, an `inventory/` with a phone and a word bank, and `event_pkg/`. It shows on the taskbar as its glyph and its menu opens on click. `18.pc-hq/XELECTOR-ENTITY.md` (2026-10-05) says the same idea for pc-hq: the xelector is an entity "we want on the bottom tb". So **the ship as a PAL** = the ship gets a pal folder; its `objects.pdl` menu lists its destinations as rows. 📝 **PROPOSED:** a new action kind (e.g. `action=TELEPORT:<book>:<page>`; the existing `GOTO:` moves between pages of the MENU, not of the game) so `Bridge / Quarters / Hold / Engine` appear in the ship's menu and a click moves the controlled entity (or the view) to that page. ⚠️ I did not read how the taskbar or the board's bottom bar builds its entity list.
+
+**STILL OPEN (asked the owner)**
+A. Is the ship PAL a **real livedesk pal** (a folder under `pals/`, visible on the taskbar everywhere) or an **entity of the board's own bottom toolbar** (like Solvent / the skiff in the picture), or both?
+B. A teleport click: does it **move the controlled character** to that page, or **move the view/camera** only, or ask which?
+C. Do **planets and space** also get a PAL / menu row (a "go to planet" list), or are they reached only by the helm and the map?
+D. Does an exported book include **its own copy of the engine pieces** (self-contained folder) or **depend on an installed TEARIT runtime**?
 
 ## 8. Backburn decision (my call, 2026-10-28)
 Safe to backburn pet evolution and food. The fridge slice is **committed and self-contained** (`27a37faab`; gates 58/0 and 29/0; nothing half-done); the terumon and research work is **documents plus two finished tools** (`views_to_voxel`, `tree_lint`), no code in flight. I do **not** hand it to a subagent: nothing is mid-air to hand over, a cold agent would re-derive all of it, and the pivot needs the same context I have. Parked, in order, to resume after S2: the camera-starts-in-the-floor bug (owner's report, cause unconfirmed), the greenhouse, `form_op`, `WHY` rows.
