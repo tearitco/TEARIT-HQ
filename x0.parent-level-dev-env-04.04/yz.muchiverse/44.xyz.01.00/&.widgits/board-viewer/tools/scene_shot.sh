@@ -6,6 +6,8 @@
 #   <app_dir>    <house>/@.apps/<app> (its board/state/ui.txt names the session: bv_session=)
 #   key=value    camera / state lines written into the COPY's pieces/system/bv_state.txt (focused_project_root is pointed at the pc-hq COPY)
 #   cfg:key=value   a line written into the pc-hq COPY's pieces/system/arrow_config.txt (e.g. cfg:tp_distance=1 cfg:tp_height=6), same replace-or-append rule
+#   look:key=value  the engine's debug camera in the pc-hq COPY (pieces/system/cam_look.txt, look_on is set): eye_x eye_y eye_z at_x at_y at_z in WORLD coordinates (X column, Y up with a painted floor top at 1.0, Z row), or look_dist/look_yaw/look_pitch to orbit the target
+#   edit:<path relative to the pc-hq folder>|<sed expression>  edit a file of the pc-hq COPY (e.g. blank a map cell to see what it contributes to a picture)
 #   env SHOT_XEL="x y z" puts the xelector of the COPY there (pieces/xelector_01/state.txt pos_x pos_y pos_z) (e.g. camera_mode=3 cam_yaw=180 cam_pitch=-60 cam_base_x=4 cam_base_z=8 cam_z_level=0 selector_x=4 selector_y=8); the file is shown first as `before`
 #   env SHOT_BIN = another engine binary to render with (a patched build under test); SHOT_INSET (default 25) = percent cut from each side before measuring; SHOT_KEEP=1 keeps the scratch copy; SHOT_TIMEOUT (default 150 s)
 # Writes <out.png>, <out.png>.engine.txt (what the engine printed) and <out.png>.receipt.txt (session id, engine binary, every override, the camera lines AS RENDERED, the frame_stats numbers). Prints the verdict line.
@@ -37,8 +39,10 @@ EOF_XEL
   XS="$W/pchq/pieces/xelector_01/state.txt"; setkv "$XS" pos_x "$XX"; setkv "$XS" pos_y "$XY"; setkv "$XS" pos_z "$XZ"; fi
 echo "before: $(grep -E '^(camera_mode|cam_yaw|cam_pitch|cam_base_x|cam_base_z|cam_pan_[xyz]|cam_z_level|current_z|selector_[xy])=' "$ST" 2>/dev/null | tr '\n' ' ')"
 for kv in "$@"; do
-  case "$kv" in *=*) ;; *) echo "scene_shot: bad override $kv (need key=value)" >&2; exit 2;; esac
-  case "$kv" in cfg:*) kv=${kv#cfg:}; setkv "$CFG" "${kv%%=*}" "${kv#*=}";; *) setkv "$ST" "${kv%%=*}" "${kv#*=}";; esac
+  case "$kv" in edit:*|*=*) ;; *) echo "scene_shot: bad override $kv (need key=value, edit:<file>|<sed>)" >&2; exit 2;; esac
+  case "$kv" in look:*) kv=${kv#look:}; setkv "$W/pchq/pieces/system/cam_look.txt" look_on 1; setkv "$W/pchq/pieces/system/cam_look.txt" "${kv%%=*}" "${kv#*=}";;
+    edit:*) e=${kv#edit:}; sed -i "${e#*|}" "$W/pchq/${e%%|*}" || { echo "scene_shot: edit failed: $kv" >&2; exit 2; };;
+    cfg:*) kv=${kv#cfg:}; setkv "$CFG" "${kv%%=*}" "${kv#*=}";; *) setkv "$ST" "${kv%%=*}" "${kv#*=}";; esac
 done
 rm -f pieces/system/cam_home.txt
 BIN=${SHOT_BIN:-ops/+x/bv_render_3d.+x}; [ -x "$BIN" ] || BIN="$HOUSE/&.widgits/board-viewer/ops/+x/bv_render_3d.+x"
