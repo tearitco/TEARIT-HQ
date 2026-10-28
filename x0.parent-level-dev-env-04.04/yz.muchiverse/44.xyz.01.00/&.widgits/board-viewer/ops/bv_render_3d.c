@@ -3535,6 +3535,7 @@ static int render_one_frame(void) {
     double tp_distance = read_kv_double(cam_cfg_path, "tp_distance", 3.0);
     double tp_height = read_kv_double(cam_cfg_path, "tp_height", 4.0);
     double tp_look_down_deg = read_kv_double(cam_cfg_path, "tp_look_down_deg", 20.0);
+    int tp_collide = read_kv_int(cam_cfg_path, "tp_collide", 1);      /* 1 = the third-person eye is pulled toward the character out of solid blocks (spring arm); 0 = old behaviour */
     int use_gpu_render = read_kv_int(cam_cfg_path, "use_gpu_render", 0);
     /* leave a flag bv_dispatch can cheaply stat, so it knows whether to
      * route 3D frames to the resident GPU daemon (no config parsing in
@@ -4311,6 +4312,18 @@ static int render_one_frame(void) {
             ADDBOX(g_hero_x+0.5-hs/2.0, g_hero_z+0.0, g_hero_y+0.5-hs/2.0,
                    g_hero_x+0.5+hs/2.0, g_hero_z+hs,  g_hero_y+0.5+hs/2.0, 200,90,60, 0);
             if (hm >= 0) sc.box[sc.box_n-1].model = hm;
+        }
+        if (camera_mode == 2 && tp_collide > 0 && sc.grid) {      /* THIRD-PERSON SPRING ARM (owner 2026-10-28: "cam shouldn't start in floor"; found with scene_shot: the game's reported character height is not a world level (here -8), so eye = that + tp_height
+             * landed INSIDE a tall hull wall and every ray hit its inside face = one flat colour). Pull the eye along the line to the character until it is in air. */
+            double tgt[3] = { anchor_x - vox, 0.0, anchor_z - voy }, eyp[3] = { sc.eye[0], sc.eye[1], sc.eye[2] };
+            int ft = bv_gpu_column_top(&sc, (int)floor(tgt[0]), (int)floor(tgt[2]));
+            tgt[1] = ft >= 0 ? ft + 1.5 : eyp[1];
+            double kept = bv_gpu_pull_in(&sc, tgt, eyp, 40);
+            if (kept < 1.0) {
+                fprintf(stderr, "tp_collide: eye (%.2f,%.2f,%.2f) was inside a solid block; pulled to (%.2f,%.2f,%.2f), kept %.0f%% of the distance\n", sc.eye[0], sc.eye[1], sc.eye[2], eyp[0], eyp[1], eyp[2], kept * 100.0);
+                sc.eye[0] = (float)eyp[0]; sc.eye[1] = (float)eyp[1]; sc.eye[2] = (float)eyp[2];
+                cam.eye.x = eyp[0] + vox; cam.eye.y = eyp[1]; cam.eye.z = eyp[2] + voy;
+            }
         }
         /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can
          * see through the building"). view.pdl (this map) or #.desktop/hq_ui.pdl: view_cut_on=1, view_cut_alpha=<percent, default 30>,

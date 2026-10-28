@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -49,6 +50,28 @@ int bv_gpu_column_top(const BvGpuScene *s, int gx, int gz) {
         for (int i = 0; i < s->legend_n && i < BV_GPU_MAX_LEGEND; i++) if (s->legend_glyph[i] == b) return l;
     }
     return -1;
+}
+int bv_gpu_solid_at(const BvGpuScene *s, double x, double y, double z) {
+    if (!s || !s->grid) return 0;
+    int gx = (int)floor(x), gl = (int)floor(y), gz = (int)floor(z);
+    if (gx < 0 || gz < 0 || gl < 0 || gx >= s->board_w || gz >= s->board_h || gl >= s->z_count) return 0;
+    unsigned char b = s->grid[gx + gz * s->board_w + gl * s->board_w * s->board_h];
+    for (int i = 0; i < s->legend_n && i < BV_GPU_MAX_LEGEND; i++) if (s->legend_glyph[i] == b) return 1;
+    return 0;
+}
+double bv_gpu_pull_in(const BvGpuScene *s, const double target[3], double eye[3], int steps) {
+    if (steps < 1) steps = 1;
+    if (!bv_gpu_solid_at(s, eye[0], eye[1], eye[2])) return 1.0;
+    for (int k = 1; k <= steps; k++) {
+        double t = 1.0 - (double)k / steps, p[3] = { target[0] + (eye[0] - target[0]) * t, target[1] + (eye[1] - target[1]) * t, target[2] + (eye[2] - target[2]) * t };
+        if (!bv_gpu_solid_at(s, p[0], p[1], p[2])) {
+            double t2 = t - 1.0 / steps; if (t2 < 0) t2 = 0;
+            double q[3] = { target[0] + (eye[0] - target[0]) * t2, target[1] + (eye[1] - target[1]) * t2, target[2] + (eye[2] - target[2]) * t2 };
+            if (bv_gpu_solid_at(s, q[0], q[1], q[2])) t2 = t, q[0] = p[0], q[1] = p[1], q[2] = p[2];
+            eye[0] = q[0]; eye[1] = q[1]; eye[2] = q[2]; return t2;
+        }
+    }
+    return 0.0;
 }
 void bv_gpu_set_shader_path(const char *path) { snprintf(s_fs_path, sizeof s_fs_path, "%s", path ? path : ""); }
 static char *load_fs(void) {

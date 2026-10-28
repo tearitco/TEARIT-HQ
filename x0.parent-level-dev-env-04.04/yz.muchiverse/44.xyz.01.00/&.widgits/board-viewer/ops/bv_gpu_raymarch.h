@@ -116,6 +116,12 @@ int  bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out);
  * calls (daemon mode). Passing 0 tears them down. */
 void bv_gpu_set_persistent(int on);
 int bv_gpu_column_top(const BvGpuScene *s, int gx, int gz);   /* highest solid level of a grid column, -1 = none / outside; the cutaway floor */
+/* 1 when the point (x = column, y = up / level, z = row, grid coordinates) lies inside a solid voxel of the grid; 0 for air and for anything outside the grid. */
+int bv_gpu_solid_at(const BvGpuScene *s, double x, double y, double z);
+/* Third-person spring arm (owner 2026-10-28: "the camera must not start in the floor"): eye[3] is the camera, target[3] the character. If the eye is in a solid voxel it is pulled toward the
+ * target along the straight line, in `steps` equal steps, to the first point that is clear, plus one more step of slack. Returns the fraction of the original distance kept (1.0 = untouched,
+ * 0.0 = no clear point on the line, eye left where it was). Pure: reads the grid only. */
+double bv_gpu_pull_in(const BvGpuScene *s, const double target[3], double eye[3], int steps);
 void bv_gpu_set_shader_path(const char *path);   /* where ops/bv_raymarch.frag is (the fragment shader lives in that file, read when the GL context is created; BV_SHADER_FILE overrides) */
 
 /* Explicit teardown (called on daemon exit; also implied by
