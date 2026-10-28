@@ -1,0 +1,4 @@
+# tree_lint.pal - LOCKED acceptance harness for the generic tree linter (evolution / tech / part trees). Read results/tree_lint.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/tree_lint.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/tree_lint.pdl
+halt

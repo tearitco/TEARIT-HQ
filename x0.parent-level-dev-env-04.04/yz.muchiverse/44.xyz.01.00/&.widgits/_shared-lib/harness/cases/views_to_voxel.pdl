@@ -1,0 +1,133 @@
+# views_to_voxel: LOCKED cases for the visual-hull op. Source: &.widgits/_shared-lib/ops/views_to_voxel.c, compiled from source into the scratch. EXPECTED VALUES COME FROM AN INDEPENDENT PYTHON ORACLE
+# (a second implementation of the same maths, written when this file was authored), not from the C program's own output. Axes: front = X across, Y up; side = Z across, Y up; top = X across, Z down the rows.
+RESULTS | ../results/views_to_voxel.txt
+SCRATCH |
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/box_front.png | box_front.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/box_side.png | box_side.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/box_top.png | box_top.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/L_front.png | L_front.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/L_side.png | L_side.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/L_top.png | L_top.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/T_front.png | T_front.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/T_side.png | T_side.png
+COPY | &.widgits/_shared-lib/harness/fixtures/vhull/T_top.png | T_top.png
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/v.+x | $HOUSE/&.widgits/_shared-lib/ops/views_to_voxel.c | -lpng | -lm
+EXPECT_EXIT | 0 | compiles-clean-with-werror
+
+CASE | cube
+WRITE | f.txt | ###\n###\n###\n
+RUN | $T/v.+x | $T/cube.txt | $T/f.txt | $T/f.txt | $T/f.txt
+EXPECT_EXIT | 0 | consistent-cube-accepted
+EXPECT_OUT | hull_voxels=27 | cube-hull-is-27
+EXPECT_OUT | written_voxels=26 | surface-only-by-default-the-centre-is-dropped
+EXPECT_OUT | consistency=1.0000 | pictures-agree
+EXPECT_OUT | fits_engine=1 | small-model-fits-the-gpu-slot
+EXPECT_HAS | cube.txt | dim 3 3 3 | model-starts-with-the-dim-line
+EXPECT_LACKS | cube.txt | 1 1 1 160 160 160 | the-centre-voxel-is-not-written
+RUN | $T/v.+x | $T/cube_solid.txt | $T/f.txt | $T/f.txt | $T/f.txt | --solid
+EXPECT_OUT | written_voxels=27 | solid-keeps-every-voxel
+EXPECT_HAS | cube_solid.txt | 1 1 1 160 160 160 | the-centre-voxel-is-written-with-solid
+
+CASE | disc-intersection-of-three-cylinders
+WRITE | disc.txt | .###.\n#####\n#####\n#####\n.###.\n
+RUN | $T/v.+x | $T/disc_m.txt | $T/disc.txt | $T/disc.txt | $T/disc.txt
+EXPECT_EXIT | 0 | disc-views-are-consistent
+EXPECT_OUT | hull_voxels=81 | hull-count-matches-the-oracle
+EXPECT_OUT | written_voxels=54 | surface-count-matches-the-oracle
+EXPECT_OUT | consistency=1.0000 | consistent
+
+CASE | a-real-solids-own-views-are-always-consistent
+WRITE | rs_f.txt | #.#...\n##.#.#\n#..##.\n.#....\n###..#\n
+WRITE | rs_s.txt | #..#\n##.#\n##.#\n..#.\n#.#.\n
+WRITE | rs_t.txt | ####.#\n#.....\n.##...\n##.##.\n
+RUN | $T/v.+x | $T/rs.txt | $T/rs_f.txt | $T/rs_s.txt | $T/rs_t.txt
+EXPECT_EXIT | 0 | pictures-projected-from-a-solid-are-consistent
+EXPECT_OUT | dim_x=6 dim_y=5 dim_z=4 | dims-from-the-pictures
+EXPECT_OUT | hull_voxels=24 | hull-count-matches-the-oracle-the-solid-had-15
+EXPECT_OUT | written_voxels=24 | surface-count-matches-the-oracle
+EXPECT_OUT | consistency=1.0000 | consistent
+
+CASE | pictures-that-disagree
+WRITE | full.txt | ###\n###\n###\n
+WRITE | side_bad.txt | ###\n###\n...\n
+RUN | $T/v.+x | $T/bad.txt | $T/full.txt | $T/side_bad.txt | $T/full.txt
+EXPECT_EXIT | 4 | disagreeing-pictures-rejected
+EXPECT_OUT | consistency_front=0.6667 | the-front-bottom-row-is-not-reproduced-6-of-9
+EXPECT_OUT | consistency_side=1.0000 | side-is-fully-reproduced
+EXPECT_OUT | hull_voxels=18 | hull-is-the-two-upper-layers
+RUN | ls | $T/bad.txt
+EXPECT_EXIT | 2 | no-model-file-is-left-behind
+RUN | $T/v.+x | $T/bad2.txt | $T/full.txt | $T/side_bad.txt | $T/full.txt | --min-consistency | 0.6
+EXPECT_EXIT | 0 | a-lower-threshold-accepts-it
+EXPECT_HAS | bad2.txt | dim 3 3 3 | and-writes-the-model
+
+CASE | empty-hull
+WRITE | left.txt | #..\n#..\n#..\n
+WRITE | right.txt | ..#\n..#\n..#\n
+RUN | $T/v.+x | $T/empty.txt | $T/left.txt | $T/full.txt | $T/right.txt
+EXPECT_EXIT | 4 | pictures-sharing-no-volume-rejected
+EXPECT_OUT | hull_voxels=0 | empty-hull
+RUN | ls | $T/empty.txt
+EXPECT_EXIT | 2 | no-model-file-left
+
+CASE | input-errors
+WRITE | tall.txt | ###\n###\n###\n###\n
+RUN | $T/v.+x | $T/x.txt | $T/f.txt | $T/f.txt | $T/tall.txt
+EXPECT_EXIT | 2 | size-mismatch-between-pictures
+RUN | $T/v.+x | $T/x.txt | $T/nothere.txt | $T/f.txt | $T/f.txt
+EXPECT_EXIT | 2 | unreadable-picture
+WRITE | pic.jpg | not a picture\n
+RUN | $T/v.+x | $T/x.txt | $T/pic.jpg | $T/f.txt | $T/f.txt
+EXPECT_EXIT | 2 | unsupported-extension
+RUN | $T/v.+x | $T/x.txt | $T/f.txt
+EXPECT_EXIT | 1 | usage-error
+RUN | $T/v.+x | $T/x.txt | $T/f.txt | $T/f.txt | $T/f.txt | --bogus
+EXPECT_EXIT | 1 | unknown-option
+RUN | $T/v.+x | $T/over.txt | $T/f.txt | $T/f.txt | $T/f.txt | --max-vox | 10
+EXPECT_EXIT | 3 | over-max-vox-refused-before-writing
+RUN | ls | $T/over.txt
+EXPECT_EXIT | 2 | no-model-file-left-after-max-vox
+
+CASE | legend-colours-from-txt
+WRITE | fa.txt | # legend A 255 0 0\nA##\n###\n###\n
+RUN | $T/v.+x | $T/leg.txt | $T/fa.txt | $T/f.txt | $T/f.txt
+EXPECT_EXIT | 0 | legend-picture-accepted
+EXPECT_HAS | leg.txt | 0 2 0 255 0 0 | the-front-most-top-left-voxel-takes-the-legend-colour
+EXPECT_HAS | leg.txt | 1 2 0 160 160 160 | other-cells-default-grey
+
+CASE | png-colours-by-visibility
+RUN | $T/v.+x | $T/box.txt | $T/box_front.png | $T/box_side.png | $T/box_top.png | --bg | 1,2,3
+EXPECT_EXIT | 0 | png-box-accepted
+EXPECT_OUT | dim_x=4 dim_y=3 dim_z=2 | dims-from-the-png-sizes
+EXPECT_OUT | hull_voxels=24 | box-hull-is-4x3x2
+EXPECT_OUT | written_voxels=24 | every-voxel-of-a-2-deep-box-is-surface
+EXPECT_HAS | box.txt | 0 0 0 255 0 0 | front-most-voxel-takes-the-front-picture-red
+EXPECT_HAS | box.txt | 0 2 1 0 255 0 | back-top-voxel-takes-the-top-picture-green
+EXPECT_HAS | box.txt | 3 0 1 0 0 255 | back-right-voxel-takes-the-side-picture-blue
+EXPECT_HAS | box.txt | 0 0 1 255 0 0 | a-hidden-voxel-falls-back-to-the-front-colour
+
+CASE | png-background
+RUN | $T/v.+x | $T/L.txt | $T/L_front.png | $T/L_side.png | $T/L_top.png | --bg | 255,255,255
+EXPECT_EXIT | 0 | opaque-pngs-with-an-explicit-background
+EXPECT_OUT | hull_voxels=80 | l-shaped-hull-matches-the-oracle
+EXPECT_OUT | written_voxels=77 | surface-matches-the-oracle
+EXPECT_OUT | consistency=1.0000 | consistent
+RUN | $T/v.+x | $T/Lg.txt | $T/L_front.png | $T/L_side.png | $T/L_top.png
+EXPECT_EXIT | 4 | a-flat-colour-picture-without-bg-takes-its-own-colour-as-background-and-is-empty
+EXPECT_OUT | hull_voxels=0 | empty-hull
+RUN | $T/v.+x | $T/T.txt | $T/T_front.png | $T/T_side.png | $T/T_top.png
+EXPECT_EXIT | 0 | transparent-pngs-need-no-background
+EXPECT_OUT | hull_voxels=8 | 2x2x2-from-the-alpha-silhouettes
+EXPECT_OUT | written_voxels=8 | all-surface
+EXPECT_HAS | T.txt | 1 1 1 255 128 0 | colour-from-the-png-the-hull-is-x-y-z-1-to-2
+
+CASE | engine-slot-limit
+WRITE | w_f.txt | ###\n###\n
+WRITE | w_s.txt | ####################\n####################\n
+WRITE | w_t.txt | ###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n###\n
+RUN | $T/v.+x | $T/wide.txt | $T/w_f.txt | $T/w_s.txt | $T/w_t.txt
+EXPECT_EXIT | 0 | long-model-is-still-written
+EXPECT_OUT | dim_x=3 dim_y=2 dim_z=20 | dims
+EXPECT_OUT | fits_engine=0 | z-above-16-does-not-fit-the-gpu-model-slot-and-the-report-says-so
+CLEAN |

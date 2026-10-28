@@ -1,0 +1,130 @@
+# tree_lint: LOCKED cases for the generic tree linter (creature evolution / shapeshift trees, tech trees, anatomy part trees). Source: &.widgits/_shared-lib/ops/tree_lint.c, compiled from source into the scratch.
+# Rows are `NODE | id | title | parent= | needs= | cost= | tier= | ...` (bars written \p in this file). Every failure is one `FAIL <code> <id> <detail>` line and the run goes on, so all problems are listed.
+RESULTS | ../results/tree_lint.txt
+SCRATCH |
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/tl.+x | $HOUSE/&.widgits/_shared-lib/ops/tree_lint.c
+EXPECT_EXIT | 0 | compiles-clean-with-werror
+
+CASE | a-clean-tree
+WRITE | good.pdl | # a creature evolution tree with a research prerequisite\nNODE \p egg \p Egg \p cost=0 \p tier=0\nNODE \p pup \p Pup \p parent=egg \p cost=5 \p tier=1\nNODE \p wolf \p Wolf \p parent=pup \p cost=12 \p tier=2 \p mood=fierce\nNODE \p fox \p Fox \p parent=pup \p cost=10 \p tier=2 \p needs=glow\nNODE \p glow \p Glow lore \p cost=7 \p tier=1\nROW \p rows \p only NODE rows count\n
+RUN | $T/tl.+x | $T/good.pdl | --single-root
+EXPECT_EXIT | 1 | glow-is-a-second-root-so-single-root-fails
+EXPECT_OUT | FAIL multi_root - 2 roots, expected 1 | the-second-root-is-reported
+RUN | $T/tl.+x | $T/good.pdl | --tier-monotone | --path | wolf | --closure | fox
+EXPECT_EXIT | 0 | a-clean-forest
+EXPECT_OUT | nodes=5 | five-nodes
+EXPECT_OUT | roots=2 | two-roots-egg-and-glow
+EXPECT_OUT | edges=3 | pup-to-egg-wolf-to-pup-fox-to-pup
+EXPECT_OUT | needs_edges=1 | one-prerequisite
+EXPECT_OUT | max_depth=2 | wolf-is-two-below-egg
+EXPECT_OUT | failures=0 | no-failures
+EXPECT_OUT | path=egg/pup/wolf | the-ancestor-chain
+EXPECT_OUT | closure=egg,pup,glow,fox | everything-needed-to-reach-fox-the-node-last
+EXPECT_OUT | closure_cost=22 | 0-plus-5-plus-7-plus-10
+RUN | $T/tl.+x | $T/good.pdl | --max-depth | 1
+EXPECT_EXIT | 1 | max-depth
+EXPECT_OUT | FAIL too_deep wolf depth 2 > 1 | too-deep-names-the-node
+RUN | $T/tl.+x | $T/good.pdl | --require | cost,tier
+EXPECT_EXIT | 0 | every-node-has-cost-and-tier
+RUN | $T/tl.+x | $T/good.pdl | --require | mood
+EXPECT_EXIT | 1 | only-wolf-has-mood
+EXPECT_OUT | FAIL missing_key egg missing required key mood | missing-key-reported
+
+CASE | dup_id
+WRITE | dup_id.pdl | NODE \p a \p A\nNODE \p a \p A again\n
+RUN | $T/tl.+x | $T/dup_id.pdl
+EXPECT_EXIT | 1 | dup_id-is-refused
+EXPECT_OUT | FAIL dup_id a defined twice | dup_id-reported
+
+CASE | unknown_parent
+WRITE | unknown_parent.pdl | NODE \p a \p A \p parent=ghost\n
+RUN | $T/tl.+x | $T/unknown_parent.pdl
+EXPECT_EXIT | 1 | unknown_parent-is-refused
+EXPECT_OUT | FAIL unknown_parent a ghost | unknown_parent-reported
+
+CASE | unknown_need
+WRITE | unknown_need.pdl | NODE \p a \p A \p needs=ghost\n
+RUN | $T/tl.+x | $T/unknown_need.pdl
+EXPECT_EXIT | 1 | unknown_need-is-refused
+EXPECT_OUT | FAIL unknown_need a ghost | unknown_need-reported
+
+CASE | self_parent
+WRITE | self_parent.pdl | NODE \p a \p A \p parent=a\nNODE \p r \p R\n
+RUN | $T/tl.+x | $T/self_parent.pdl
+EXPECT_EXIT | 1 | self_parent-is-refused
+EXPECT_OUT | FAIL self_parent a its own parent | self_parent-reported
+
+CASE | self_need
+WRITE | self_need.pdl | NODE \p a \p A \p needs=a\n
+RUN | $T/tl.+x | $T/self_need.pdl
+EXPECT_EXIT | 1 | self_need-is-refused
+EXPECT_OUT | FAIL self_need a needs itself | self_need-reported
+
+CASE | parent_cycle
+WRITE | parent_cycle.pdl | NODE \p r \p R\nNODE \p a \p A \p parent=b\nNODE \p b \p B \p parent=a\n
+RUN | $T/tl.+x | $T/parent_cycle.pdl
+EXPECT_EXIT | 1 | parent_cycle-is-refused
+EXPECT_OUT | FAIL parent_cycle a following parent= never reaches a root | parent_cycle-reported
+
+CASE | needs_cycle
+WRITE | needs_cycle.pdl | NODE \p a \p A \p needs=b\nNODE \p b \p B \p needs=c\nNODE \p c \p C \p needs=a\n
+RUN | $T/tl.+x | $T/needs_cycle.pdl
+EXPECT_EXIT | 1 | needs_cycle-is-refused
+EXPECT_OUT | FAIL needs_cycle | needs_cycle-reported
+
+CASE | no_root
+WRITE | no_root.pdl | NODE \p a \p A \p parent=b\nNODE \p b \p B \p parent=a\n
+RUN | $T/tl.+x | $T/no_root.pdl
+EXPECT_EXIT | 1 | no_root-is-refused
+EXPECT_OUT | FAIL no_root - every node has a parent | no_root-reported
+
+CASE | bad_number
+WRITE | bad_number.pdl | NODE \p a \p A \p cost=-3\nNODE \p b \p B \p tier=x\n
+RUN | $T/tl.+x | $T/bad_number.pdl
+EXPECT_EXIT | 1 | bad_number-is-refused
+EXPECT_OUT | FAIL bad_number a cost must be a non-negative whole number | bad_number-reported
+EXPECT_OUT | FAIL bad_number b tier must be a non-negative whole number | and-the-tier-too
+
+CASE | bad_id
+WRITE | bad_id.pdl | NODE \p bad id! \p X\n
+RUN | $T/tl.+x | $T/bad_id.pdl
+EXPECT_EXIT | 1 | bad_id-is-refused
+EXPECT_OUT | FAIL bad_id bad id! ids are [A-Za-z0-9_.-], 1..64 characters | bad_id-reported
+
+CASE | bad_row
+WRITE | bad_row.pdl | NODE \p onlyid\n
+RUN | $T/tl.+x | $T/bad_row.pdl
+EXPECT_EXIT | 1 | bad_row-is-refused
+EXPECT_OUT | FAIL bad_row onlyid NODE needs at least \p id \p title \p | bad_row-reported
+
+CASE | tier_parent
+WRITE | tier_parent.pdl | NODE \p a \p A \p tier=2\nNODE \p b \p B \p parent=a \p tier=2\n
+RUN | $T/tl.+x | $T/tier_parent.pdl | --tier-monotone
+EXPECT_EXIT | 1 | tier_parent-is-refused
+EXPECT_OUT | FAIL tier_order b tier must exceed its parent's | tier_parent-reported
+
+CASE | tier_needs
+WRITE | tier_needs.pdl | NODE \p a \p A \p tier=3\nNODE \p b \p B \p needs=a \p tier=1\n
+RUN | $T/tl.+x | $T/tier_needs.pdl | --tier-monotone
+EXPECT_EXIT | 1 | tier_needs-is-refused
+EXPECT_OUT | FAIL tier_order b tier must exceed every prerequisite's | tier_needs-reported
+
+CASE | all-problems-listed-in-one-run
+WRITE | many.pdl | NODE \p a \p A \p parent=ghost \p cost=q\nNODE \p a \p again\nNODE \p b \p B \p needs=nobody\n
+RUN | $T/tl.+x | $T/many.pdl
+EXPECT_EXIT | 1 | several-problems
+EXPECT_OUT | failures=4 | a-bad-number-an-unknown-parent-a-duplicate-and-an-unknown-need-in-one-run
+EXPECT_OUT | FAIL unknown_parent a ghost | first
+EXPECT_OUT | FAIL unknown_need b nobody | and-last
+
+CASE | usage-and-input-errors
+RUN | $T/tl.+x
+EXPECT_EXIT | 2 | no-arguments
+RUN | $T/tl.+x | $T/nothere.pdl
+EXPECT_EXIT | 2 | unreadable-file
+RUN | $T/tl.+x | $T/good.pdl | --bogus
+EXPECT_EXIT | 2 | unknown-option
+RUN | $T/tl.+x | $T/good.pdl | --path | ghost
+EXPECT_EXIT | 2 | path-of-an-unknown-node
+CLEAN |
