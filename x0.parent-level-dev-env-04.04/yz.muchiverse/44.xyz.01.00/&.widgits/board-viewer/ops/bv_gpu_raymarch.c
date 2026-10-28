@@ -73,6 +73,7 @@ static char *load_fs(void) {
 static int        s_persist = 0;
 static EGLDisplay s_dpy = EGL_NO_DISPLAY;
 static EGLContext s_ctx = EGL_NO_CONTEXT;
+static GLuint     s_tex_ptex = 0;   /* unit 7: the tile pictures of tile-faced pieces (24x24 x BV_GPU_MAX_PTEX layers) */
 static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0, s_tex_atlas = 0, s_tex_cells = 0, s_tex_para = 0;
 static int        s_maker_id = -1;            /* maker_id currently uploaded to s_tex_atlas / s_tex_cells */
 static int        s_para_id = -1, s_para_ver = -1;
@@ -83,7 +84,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin, cut, cuty, cutp, cutr, cuta, cutt, cutb;
+    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin, cut, cuty, cutp, cutr, cuta, cutt, cutb, ptex;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -205,6 +206,17 @@ static int gl_ensure_context(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     s_maker_id = -1;
+    GLuint ptx = 0;      /* tile pictures for tile-faced pieces: a 2D array on unit 7, allocated once, refreshed when its content changes */
+    glGenTextures(1, &ptx);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, ptx);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, BV_GPU_PTEX_PX, BV_GPU_PTEX_PX, BV_GPU_MAX_PTEX, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    s_tex_ptex = ptx;
     GLuint para = 0;
     glGenTextures(1, &para);
     glActiveTexture(GL_TEXTURE6);
@@ -226,7 +238,7 @@ static int gl_ensure_context(void) {
     s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     s_u.cut=UL("u_cut"); s_u.cuty=UL("u_cuty"); s_u.cutp=UL("u_cutp"); s_u.cutr=UL("u_cutr"); s_u.cuta=UL("u_cuta"); s_u.cutt=UL("u_cutt"); s_u.cutb=UL("u_cutb");
-    s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
+    s_u.ptex=UL("u_ptex"); s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
     return 0;
 }
@@ -283,13 +295,14 @@ void bv_gpu_shutdown(void) {
     if (s_tex_para) glDeleteTextures(1, &s_tex_para);
     if (s_tex_cells) glDeleteTextures(1, &s_tex_cells);
     if (s_tex_mdl) glDeleteTextures(1, &s_tex_mdl);
+    if (s_tex_ptex) glDeleteTextures(1, &s_tex_ptex);
     if (s_rbo) glDeleteRenderbuffers(1, &s_rbo);
     if (s_fbo) glDeleteFramebuffers(1, &s_fbo);
     eglMakeCurrent(s_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     if (s_ctx != EGL_NO_CONTEXT) eglDestroyContext(s_dpy, s_ctx);
     eglTerminate(s_dpy);
     s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
-    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = s_tex_atlas = s_tex_cells = s_tex_para = 0;
+    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = s_tex_atlas = s_tex_cells = s_tex_para = s_tex_ptex = 0;
     s_fw = s_fh = s_gw = s_gh = s_gd = 0;
     s_leg_alloc = 0;
     s_terr_alloc = 0;
@@ -403,6 +416,13 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
         glUniform3iv(s_u.mdim, BV_GPU_MAX_MODEL, mdim);
     }
     glUniform1i(s_u.mdl, 3);
+    glUniform1i(s_u.ptex, 7);
+    if (s->ptex_n > 0 && s_tex_ptex) {      /* tile pictures of tile-faced pieces: re-sent only when they changed (a hash of the used layers) */
+        static unsigned long long ph; unsigned long long hv = 1469598103934665603ULL; size_t nbytes = (size_t)(s->ptex_n > BV_GPU_MAX_PTEX ? BV_GPU_MAX_PTEX : s->ptex_n) * BV_GPU_PTEX_PX * BV_GPU_PTEX_PX * 4;
+        const unsigned char *pp = &s->ptex[0][0]; for (size_t i = 0; i < nbytes; i += 7) hv = (hv ^ pp[i]) * 1099511628211ULL; hv ^= nbytes;
+        if (hv != ph) { ph = hv; glPixelStorei(GL_UNPACK_ALIGNMENT, 1); glActiveTexture(GL_TEXTURE7); glBindTexture(GL_TEXTURE_2D_ARRAY, s_tex_ptex);
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, BV_GPU_PTEX_PX, BV_GPU_PTEX_PX, s->ptex_n > BV_GPU_MAX_PTEX ? BV_GPU_MAX_PTEX : s->ptex_n, GL_RGBA, GL_UNSIGNED_BYTE, s->ptex); glActiveTexture(GL_TEXTURE0); }
+    }
 
     glUniform3fv(s_u.eye,   1, s->eye);
     glUniform3fv(s_u.fwd,   1, s->fwd);
@@ -472,9 +492,10 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
                 bcol[i*4+3]=s->box[i].wire == 2 ? 0.15f : s->box[i].wire ? 0.25f : (s->box[i].self_lit ? 0.0f : 1.0f);
                 {
-                    int m = s->box[i].model, sw = 0;
+                    int m = s->box[i].model, sw = 0, ti = 0;
+                    if (m >= 256) { ti = 1; m -= 256; }      /* tile-faced piece (BvGpuScene.ptex) */
                     if (m >= 128) { sw = 1; m -= 128; }
-                    bmdl[i] = (m >= 0 && m < BV_GPU_MAX_MODEL) ? (m + (sw ? 128 : 0)) : -1;
+                    bmdl[i] = (m >= 0 && m < BV_GPU_MAX_MODEL) ? (m + (sw ? 128 : 0) + (ti ? 256 : 0)) : -1;
                 }
             }
             glUniform3fv(s_u.bmin, nb, bmin);

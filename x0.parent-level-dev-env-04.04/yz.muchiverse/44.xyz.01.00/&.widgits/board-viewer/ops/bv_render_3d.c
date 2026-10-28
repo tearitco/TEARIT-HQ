@@ -976,7 +976,10 @@ static void load_entities(const char *root) {
 typedef struct { int lx, ly, lz; unsigned char r, g, b; } VehVox;
 #define VEH_MAX 25      /* ship_01 + veh_1..veh_24 (2026-10-27: 1..9 are the space objects, 10..24 the small voxel things lying in a room: remnants, resource nodes; was 10) */
 #define VEH_VOX 4096
-typedef struct { int dim[3], n, selflit; float x, y, z, sx, sy, sh; VehVox *vox; } VehPiece;
+/* TILE-FACED PIECES (owner 2026-10-27: the skiff is tile cubes with real tile pictures like the ship): a piece may also carry pieces/<name>/tile_model.txt (`dim X Y Z`, then `x y z top side` per CELL, top and
+ * side = tile numbers) and pieces/<name>/tiles.rgba (24 x 24 RGBA tiles, one after the other). The GPU path then draws each cell's faces with those pictures (BvGpuScene.ptex); the voxel model.txt stays as
+ * the fallback for the CPU path and for an engine without this. */
+typedef struct { int dim[3], n, selflit; float x, y, z, sx, sy, sh; VehVox *vox; int tn, tdim[3], tex_n; VehVox *tvox; unsigned char *tex; } VehPiece;
 static VehPiece g_veh[VEH_MAX]; static int g_veh_cnt = 0;
 static const char *veh_name(int k) { static char nm[VEH_MAX][10]; if (k == 0) return "ship_01"; snprintf(nm[k], sizeof nm[k], "veh_%d", k); return nm[k]; }
 static void load_vehicle(const char *root) {      /* every vehicle piece that exists, whose desk= (if given) is the desk on show */
@@ -1005,10 +1008,23 @@ static void load_vehicle(const char *root) {      /* every vehicle piece that ex
             if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &P.dim[0], &P.dim[1], &P.dim[2]); continue; }
             if (P.n < VEH_VOX && sscanf(line, "%d %d %d %d %d %d", &a, &b, &c, &r, &g, &bl) == 6) { VehVox *v = &P.vox[P.n++]; v->lx = a; v->ly = b; v->lz = c; v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)bl; }
         }
-        fclose(f); if (P.n > 0 && P.dim[0] > 0 && P.dim[1] > 0 && P.dim[2] > 0) g_veh[g_veh_cnt++] = P; else free(P.vox);
+        fclose(f);
+        if (P.n > 0 && P.dim[0] > 0 && P.dim[1] > 0 && P.dim[2] > 0) {
+            char tp[PATH_BUF]; snprintf(tp, sizeof(tp), "%s/pieces/%s/tile_model.txt", root, veh_name(k)); FILE *tf = host_fopen(tp, "r");
+            if (tf) { VehVox *tv = (VehVox *)malloc(sizeof(VehVox) * 1024); int tn = 0, td[3] = {0, 0, 0};
+                while (tv && fgets(line, sizeof(line), tf)) { int a, b, c, tt, ts;
+                    if (!strncmp(line, "dim ", 4)) { sscanf(line + 4, "%d %d %d", &td[0], &td[1], &td[2]); continue; }
+                    if (tn < 1024 && sscanf(line, "%d %d %d %d %d", &a, &b, &c, &tt, &ts) == 5 && tt >= 0 && tt < 128 && ts >= 0 && ts < 128) { tv[tn].lx = a; tv[tn].ly = b; tv[tn].lz = c; tv[tn].r = (unsigned char)tt; tv[tn].g = (unsigned char)ts; tv[tn].b = 0; tn++; } }
+                fclose(tf);
+                snprintf(tp, sizeof(tp), "%s/pieces/%s/tiles.rgba", root, veh_name(k)); FILE *xf = host_fopen(tp, "rb"); unsigned char *tex = NULL; int tex_n = 0;
+                if (xf) { tex = (unsigned char *)malloc(32 * 24 * 24 * 4); if (tex) { size_t got = fread(tex, 1, 32 * 24 * 24 * 4, xf); tex_n = (int)(got / (24 * 24 * 4)); } fclose(xf); }
+                if (tv && tex && tn > 0 && tex_n > 0 && td[0] > 0 && td[1] > 0 && td[2] > 0) { P.tn = tn; P.tdim[0] = td[0]; P.tdim[1] = td[1]; P.tdim[2] = td[2]; P.tvox = tv; P.tex = tex; P.tex_n = tex_n; }
+                else { free(tv); free(tex); } }
+            g_veh[g_veh_cnt++] = P;
+        } else free(P.vox);
     }
 }
-static void free_vehicles(void) { for (int k = 0; k < g_veh_cnt; k++) free(g_veh[k].vox); g_veh_cnt = 0; }
+static void free_vehicles(void) { for (int k = 0; k < g_veh_cnt; k++) { free(g_veh[k].vox); free(g_veh[k].tvox); free(g_veh[k].tex); } g_veh_cnt = 0; }
 
 /* Real xelector cursor marker, added 2026-08-03 (direct user report:
  * "everything looks really great but i cant see the xelector indicator
@@ -4069,9 +4085,16 @@ static int render_one_frame(void) {
           if (lf) { float b[6]; if (fscanf(lf, "%f %f %f %f %f %f", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) ADDWIRE(b[0], b[1], b[2], b[3], b[4], b[5], 200, 200, 210); fclose(lf); } }
         if (g_land_box_on) ADDWIRE(g_land_box[0], g_land_box[1], g_land_box[2], g_land_box[3], g_land_box[4], g_land_box[5], 235, 235, 255);      /* the land entity's cube (debug_land) */
         for (int vk = 0; vk < g_veh_cnt; vk++) {      /* vehicle pieces: one box each, a dense voxel model inside; world (X, Y = height, Z) = (grid x, up, grid y) */
-            VehPiece *V = &g_veh[vk]; int vm = GPU_ADD_MODEL(V->vox, V->n, V->dim[0] - 1, V->dim[1] - 1, V->dim[2] - 1);
+            VehPiece *V = &g_veh[vk]; int vm = -1, tiled = 0;
+            if (V->tn > 0 && V->tex_n > 0 && sc.ptex_n + V->tex_n <= BV_GPU_MAX_PTEX) {      /* a tile-faced piece: its cells carry tile numbers (offset to this frame's tile list) */
+                static VehVox tmp[1024]; int base = sc.ptex_n; memcpy(sc.ptex[base], V->tex, (size_t)V->tex_n * 24 * 24 * 4);
+                for (int q = 0; q < V->tn; q++) { tmp[q] = V->tvox[q]; tmp[q].r = (unsigned char)(tmp[q].r + base); tmp[q].g = (unsigned char)(tmp[q].g + base); }
+                vm = GPU_ADD_MODEL(tmp, V->tn, V->tdim[0] - 1, V->tdim[1] - 1, V->tdim[2] - 1);
+                if (vm >= 0) { tiled = 1; sc.ptex_n += V->tex_n; }
+            }
+            if (!tiled) vm = GPU_ADD_MODEL(V->vox, V->n, V->dim[0] - 1, V->dim[1] - 1, V->dim[2] - 1);
             ADDBOX(V->x, V->z, V->y, V->x + V->sx, V->z + V->sh, V->y + V->sy, 150, 150, 160, V->selflit);
-            if (vm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = vm;
+            if (vm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = vm + (tiled ? 256 : 0);
         }
         /* Map events. A 16x24 frame (written by tsots_events.py) is one
          * voxel slice. The shader stretches that slice through the box,

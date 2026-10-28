@@ -23,6 +23,8 @@
 
 #define BV_GPU_MAX_LEGEND 64
 #define BV_GPU_MAX_BOX    128
+#define BV_GPU_MAX_PTEX   32     /* tile pictures a frame can carry for tile-faced pieces */
+#define BV_GPU_PTEX_PX    24
 #define BV_GPU_MAX_MODEL  80     /* charset extrusions share this list with hero/trees; 24 left classic-board people as flat boxes */
 #define BV_GPU_MDL_DIM    32     /* max local grid side */
 #define BV_GPU_MDL_DEPTH  16     /* phymoji lz is 0..7; vehicle pieces (ship_01) use up to 16 */
@@ -97,6 +99,11 @@ typedef struct {
      * = {lx_count, ly_count, lz_count}; voxel (x,y,z) at
      * model_vox[m][((z*BV_GPU_MDL_DIM + y)*BV_GPU_MDL_DIM + x)*4],
      * RGBA, a=255 solid. */
+    /* TILE-FACED MODEL PIECES (owner 2026-10-27: the skiff is tile cubes with real tile textures like the ship, not a mosaic of voxel colours): a box whose .model is
+     * (model id + 256) carries a model whose voxels are CELLS: r = tile index for the top face, g = tile index for the side faces (into ptex), a = 255 solid. The shader gives each
+     * cell's faces the picture of that tile (BV_GPU_PTEX_PX x BV_GPU_PTEX_PX RGBA, uv across the whole face), exactly how the ship's own tile cubes are drawn. ptex_n tiles are used. */
+    int   ptex_n;
+    unsigned char ptex[BV_GPU_MAX_PTEX][BV_GPU_PTEX_PX * BV_GPU_PTEX_PX * 4];
     int   model_n;
     int   model_dim[BV_GPU_MAX_MODEL][3];
     unsigned char model_vox[BV_GPU_MAX_MODEL][BV_GPU_MDL_DIM * BV_GPU_MDL_DIM * BV_GPU_MDL_DEPTH * 4];

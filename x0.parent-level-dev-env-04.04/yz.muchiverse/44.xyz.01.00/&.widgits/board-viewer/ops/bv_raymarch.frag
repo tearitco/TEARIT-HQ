@@ -14,6 +14,7 @@ uniform vec3  u_wext;
 uniform highp usampler3D u_grid;
 uniform sampler2D u_leg;
 uniform sampler2DArray u_terr;
+uniform sampler2DArray u_ptex;      // 24x24 tile pictures of tile-faced pieces (unit 7)
 uniform vec4  u_lbbox[64];
 uniform float u_light;
 uniform int   u_nl, u_amb_on;
@@ -110,6 +111,8 @@ void main() {
     float t; int f;
     if (!slab(ro, rd, u_bmin[i], u_bmax[i], t, f) || t >= bestT) continue;
     int raw = u_bmdl[i];
+    bool tiled = raw >= 256;      // a tile-faced piece: the model voxels are CELLS, r = top tile, g = side tile
+    if (tiled) raw -= 256;
     bool swp = raw >= 128;
     int mdl = swp ? raw - 128 : raw;
     if (mdl < 0) {
@@ -137,6 +140,22 @@ void main() {
       ivec3 li0 = clamp(ivec3(lf * vec3(md)), ivec3(0), md - 1);
       ivec3 li = swp ? li0.zyx : li0;
       vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 16 + li.z), 0);
+      if (mv.a > 0.5 && tiled) {
+        // the exact entry point on the CELL, so each face shows the whole tile picture (the ship's tile cubes are drawn the same way)
+        vec3 vmin = u_bmin[i] + vec3(li0) * cellw;
+        float tt; int ff;
+        vec3 hp = ro + rd * mt;
+        if (slab(ro, rd, vmin - 0.0004, vmin + cellw + 0.0004, tt, ff)) { tt = max(tt, t); hp = ro + rd * tt; } else { tt = mt; ff = f; }
+        vec3 fr = clamp((hp - vmin) / cellw, 0.0, 0.999);
+        vec2 tuv;
+        if (ff == 2 || ff == 3)      tuv = vec2(fr.x, fr.z);
+        else if (ff == 4 || ff == 5) tuv = vec2(fr.x, 1.0 - fr.y);
+        else                         tuv = vec2(fr.z, 1.0 - fr.y);
+        int tl = (ff == 2 || ff == 3) ? int(mv.r * 255.0 + 0.5) : int(mv.g * 255.0 + 0.5);
+        vec4 px = texelFetch(u_ptex, ivec3(clamp(ivec2(tuv * 24.0), ivec2(0), ivec2(23)), tl), 0);
+        if (tt < bestT) { bestT = tt; col = px.rgb; hit = true; self_lit = (u_bcol[i].a < 0.5); face = ff; mshade = (ff == 3) ? 1.0 : 0.75; }
+        break;
+      }
       if (mv.a > 0.5) {
         if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = (u_bcol[i].a < 0.5); face = f; mshade = -1.0;
           if (!swp && pli.x >= 0) {      // the face of the VOXEL the ray entered, not of the piece's box: top bright, sides dimmer, the two side axes differ, so a lump of voxels reads as a solid

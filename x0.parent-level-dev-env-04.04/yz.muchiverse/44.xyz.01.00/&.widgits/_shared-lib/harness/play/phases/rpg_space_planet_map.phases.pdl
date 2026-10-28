@@ -96,6 +96,9 @@ HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_x=4.50 | skiff-at-world-8-minu
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-8.50 | skiff-at-world-y-minus-6-centred-on-its-6-deep-box
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | skiff-box-is-6-cells-wide
 HAS | rpg-space-pchq/pieces/veh_4/state.txt | size_h=4.00 | and-4-cells-high-a-floor-cube-plus-3-wall-cubes
+HAS | rpg-space-pchq/pieces/veh_4/tile_model.txt | dim 6 4 6 | the-skiff-also-has-a-tile-model-of-6x4x6-cells-for-the-textured-faces
+HAS | rpg-space-pchq/pieces/veh_4/tile_model.txt | 0 0 0 0 0 | its-first-cell-is-a-floor-cube-with-tile-0
+NOFILE | rpg-space-pchq/pieces/veh_1/tile_model.txt | an-asteroid-has-no-tile-model-only-the-skiff-does
 NOFILE | rpg-space-pchq/pieces/veh_5/state.txt | only-four-objects-so-no-fifth-piece
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | flown-another-cell-east

@@ -994,12 +994,15 @@ static const char *const SK_SKIFF[SK_SKIFF_N] = { "######", "#.MM.#", "#.CC.#", 
 static void sk_cube_avg(const unsigned char *t, int u, int w, int vpc, double *r, double *g, double *b) {      /* the mean colour of block (u, w) of a tile cut into vpc x vpc blocks */
     int a = u * XT / vpc, a2 = (u + 1) * XT / vpc, c = w * XT / vpc, c2 = (w + 1) * XT / vpc; double sr = 0, sg = 0, sb = 0; int n = 0;
     for (int y = c; y < c2; y++) for (int x = a; x < a2; x++) { const unsigned char *q = t + (y * XT + x) * 4; sr += q[0]; sg += q[1]; sb += q[2]; n++; } if (!n) n = 1; *r = sr / n; *g = sg / n; *b = sb / n; }
+/* the four tile pictures of the skiff (24 x 24 RGBA each): floor, wall, monitor, chair, from the ship's own tile sheets; flat colours when a scratch copy has no sheets (the shape is still the ship) */
+static void sk_skiff_tiles_px(const unsigned char *t[4]) {
+    t[0] = sk_tile_in("SF_Inside_A4", 8, 11); t[1] = sk_tile_in("SF_Inside_A4", 6, 2); t[2] = sk_tile_in("SF_Inside_B", 8, 0); t[3] = sk_tile_in("SF_Inside_B", 8, 3);
+    static unsigned char flat[4][XT * XT * 4]; static const unsigned char FC[4][3] = { { 45, 143, 77 }, { 70, 75, 85 }, { 40, 60, 120 }, { 60, 60, 160 } };
+    for (int q = 0; q < 4; q++) for (int i = 0; i < XT * XT; i++) { flat[q][i * 4] = FC[q][0]; flat[q][i * 4 + 1] = FC[q][1]; flat[q][i * 4 + 2] = FC[q][2]; flat[q][i * 4 + 3] = 255; }
+    for (int q = 0; q < 4; q++) if (!t[q]) t[q] = flat[q]; }
 static int sk_skiff_build(SkVox *v, int cap, int dim[3], int *vpc, double *edge) {
     int vp = tune("skiff_vpc", 4), wh = tune("skiff_wall", 3); if (vp < 1) vp = 1; if (vp > 5) vp = 5; if (wh < 1) wh = 1; if (wh > 4) wh = 4;
-    const unsigned char *fl = sk_tile_in("SF_Inside_A4", 8, 11), *wl = sk_tile_in("SF_Inside_A4", 6, 2), *mo = sk_tile_in("SF_Inside_B", 8, 0), *ch = sk_tile_in("SF_Inside_B", 8, 3);
-    static unsigned char flat[4][XT * XT * 4]; static const unsigned char FC[4][3] = { { 45, 143, 77 }, { 70, 75, 85 }, { 40, 60, 120 }, { 60, 60, 160 } };      /* no tile sheets (a scratch copy without assets): flat colours, the shape is still the ship */
-    for (int q = 0; q < 4; q++) for (int i = 0; i < XT * XT; i++) { flat[q][i * 4] = FC[q][0]; flat[q][i * 4 + 1] = FC[q][1]; flat[q][i * 4 + 2] = FC[q][2]; flat[q][i * 4 + 3] = 255; }
-    if (!fl) fl = flat[0]; if (!wl) wl = flat[1]; if (!mo) mo = flat[2]; if (!ch) ch = flat[3];
+    const unsigned char *tx[4]; sk_skiff_tiles_px(tx); const unsigned char *fl = tx[0], *wl = tx[1], *mo = tx[2], *ch = tx[3];
     int W = SK_SKIFF_N * vp, H = (1 + wh) * vp; if (W > 32 || H > 32) return 0; static signed char tl[32][32][32]; memset(tl, 0, sizeof tl);      /* tl: 1 floor, 2 wall, 3 monitor, 4 chair, 0 empty */
     for (int cz = 0; cz < SK_SKIFF_N; cz++) for (int cx = 0; cx < SK_SKIFF_N; cx++) { char c = SK_SKIFF[cz][cx]; int levels = 1, kind[5] = { 1, 0, 0, 0, 0 };
         if (c == '#') { levels = 1 + wh; for (int l = 1; l <= wh; l++) kind[l] = 2; } else if (c == 'M') { levels = 2; kind[1] = 3; } else if (c == 'C') { levels = 2; kind[1] = 4; }
@@ -1013,13 +1016,30 @@ static int sk_skiff_build(SkVox *v, int cap, int dim[3], int *vpc, double *edge)
         { double lift = tune("skiff_lift_pct", 120) / 100.0; r *= lift; g *= lift; b *= lift; }      /* an unlit voxel renders the tile darker than the flat tile: the same lift as before; tuning.pdl skiff_lift_pct (owner 2026-10-27: the skiff reads paler than the ship) */
         v[n++] = (SkVox){x, y, z, r > 255 ? 255 : (int)r, g > 255 ? 255 : (int)g, b > 255 ? 255 : (int)b}; }
     *vpc = vp; *edge = 1.0 / vp; return n; }
+/* TILE-FACED SKIFF (owner 2026-10-27: the skiff should be real tile cubes like the ship, not a mosaic of voxel colours). pieces/veh_<slot>/tile_model.txt (`dim X Y Z`, then `x y z top side` per exposed CELL, tile numbers into tiles.rgba) and
+ * tiles.rgba (the four 24 x 24 tile pictures: 0 floor, 1 wall, 2 monitor, 3 chair). The engine's GPU path draws each cell's faces with those pictures, exactly how the ship's cubes are drawn; model.txt stays as the fallback. on = 0 removes both files
+ * (a slot that held the skiff and now holds an asteroid must not keep drawing tiles). The layout is the same SK_SKIFF as sk_skiff_build. */
+static void sk_tile_files(int slot, int on) {
+    char d[PATH_MAX], pm[PATH_MAX], pt[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); snprintf(pm, sizeof pm, "%s/tile_model.txt", d); snprintf(pt, sizeof pt, "%s/tiles.rgba", d);
+    if (!on) { unlink(pm); unlink(pt); return; }
+    int wh = tune("skiff_wall", 3); if (wh < 1) wh = 1; if (wh > 4) wh = 4; const int N = SK_SKIFF_N, Hh = 1 + wh;
+    static signed char tl[SK_SKIFF_N][5][SK_SKIFF_N]; memset(tl, 0, sizeof tl);      /* tl[x][level][z]: 1 floor, 2 wall, 3 monitor, 4 chair, 0 empty (the tile number is that minus 1) */
+    for (int z = 0; z < N; z++) for (int x = 0; x < N; x++) { char c = SK_SKIFF[z][x]; tl[x][0][z] = 1;
+        if (c == '#') for (int l = 1; l <= wh; l++) tl[x][l][z] = 2; else if (c == 'M') tl[x][1][z] = 3; else if (c == 'C') tl[x][1][z] = 4; }
+    static char mb[4096]; char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", N, Hh, N);
+    for (int x = 0; x < N; x++) for (int l = 0; l < Hh; l++) for (int z = 0; z < N; z++) { int t = tl[x][l][z]; if (!t) continue;
+        int open = (l + 1 >= Hh || !tl[x][l + 1][z]) || x == 0 || !tl[x - 1][l][z] || x + 1 >= N || !tl[x + 1][l][z] || z == 0 || !tl[x][l][z - 1] || z + 1 >= N || !tl[x][l][z + 1];      /* the underside is never seen: only the other five neighbours count */
+        if (open) w += snprintf(w, sizeof mb - (size_t)(w - mb), "%d %d %d %d %d\n", x, l, z, t - 1, t - 1); }
+    write_if_changed(pm, mb, (size_t)(w - mb));
+    const unsigned char *tx[4]; sk_skiff_tiles_px(tx); static unsigned char tb[4 * XT * XT * 4]; for (int q = 0; q < 4; q++) memcpy(tb + (size_t)q * XT * XT * 4, tx[q], (size_t)XT * XT * 4);
+    write_if_changed(pt, tb, sizeof tb); }
 static int sk_veh_model(int slot, const SkVox *v, int n, const int dim[3]) {      /* pieces/veh_<slot>/model.txt (`dim X Y Z`, then `x y z r g b` per voxel); returns 1 when the file changed */
     static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
     char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", dim[0], dim[1], dim[2]);
     for (int i = 0; i < n && (size_t)(w - mb) < sizeof mb - 40; i++) w += snprintf(w, sizeof mb - (size_t)(w - mb), "%d %d %d %d %d %d\n", v[i].x, v[i].y, v[i].z, v[i].r, v[i].g, v[i].b);
     snprintf(p, sizeof p, "%s/model.txt", d); return write_if_changed(p, mb, (size_t)(w - mb)); }
 static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3], double edge) {
-    char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); sk_veh_model(slot, v, n, dim);
+    char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); sk_veh_model(slot, v, n, dim); sk_tile_files(slot, 0);      /* the caller of a tile-faced piece writes its tile files after this */
     double cell = edge * tune("obj_vox_pct", 100) / 100.0, sx = dim[0] * cell, sy = dim[2] * cell, sh = dim[1] * cell;
     snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=%s\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", tune("space_all_desks", 1) ? "*" : "bridge", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
     snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); }
@@ -1030,7 +1050,7 @@ static void sk_veh_write(void) {
     if (!tune("obj_draw", 1) || !sk_world_here()) { sk_veh_clear(); return; }
     static SkVox v[SK_VEH_MAXV]; int dim[3], slot = 1; sk_craft_load(); sk_nodes_load();
     for (int i = 0; i < sk_nnodes && slot <= 9; i++) if (sk_nodes[i].room == SK_SHIP && sk_nodes[i].amount != 0) { int n = sk_nugget(sk_nodes[i].kind, sk_nodes[i].x, sk_nodes[i].y, v, dim), vp = 1; if (strncmp(sk_nodes[i].kind, "gen:", 4) || sk_gen_model_missing(sk_nodes[i].kind + 4)) { vp = tune("rock_vpc", 4); if (vp < 1) vp = 1; if (vp > 5) vp = 5; if (strncmp(sk_nodes[i].kind, "gen:", 4) == 0) vp = 1; n = sk_fine(v, n, dim, vp, SK_VEH_MAXV); sk_retile(v, n, dim, 6, 2, 6, 2, sk_nodes[i].kind, vp > 1 ? vp : 0); } sk_veh_put(slot++, sk_nodes[i].x, sk_nodes[i].y, v, n, dim, 1.0 / vp); }
-    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_build(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) sk_veh_put(slot++, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); }
+    for (int i = 0; i < sk_ncraft && slot <= 9; i++) if (sk_craft[i].wx >= 0) { int vpc = 1; double edge = 1; int n = sk_skiff_build(v, SK_VEH_MAXV, dim, &vpc, &edge); if (n > 0) { sk_veh_put(slot, sk_craft[i].wx, sk_craft[i].wy, v, n, dim, edge); if (tune("skiff_tiled", 1)) sk_tile_files(slot, 1); slot++; } }
     for (char p[PATH_MAX]; slot <= 9; slot++) { snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, slot); unlink(p); } }
 /* THE BOTTOM BAR LISTS THE SHIPS AND ASTEROIDS NEAR THE SHIP (owner 2026-10-27: 'all ships/asteroids within a radius ... should show up on bottom tb', radius from a .pdl figure: tuning.pdl bar_radius, default 16 = one planet page). Rows of the planet map (asteroids that still have loads, crafts with a world cell), nearest first, distance = Chebyshev cells from the centre of the hull; a click row moves the cursor to the object's desk cell. Ship rooms only. */
 static int sk_bar_extra(int r, char *bb, int bo, int cap, int *id) {
