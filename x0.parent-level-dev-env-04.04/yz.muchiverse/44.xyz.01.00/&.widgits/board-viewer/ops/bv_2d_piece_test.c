@@ -51,6 +51,8 @@ static int input_keys(const char *keys) { const char *bin = getenv("BV2D_INPUT_B
     char cmd[1700]; snprintf(cmd, sizeof cmd, "cd '%s' && PRISC_PROJECT_ROOT='%s' timeout 20 '%s' %s >/dev/null 2>&1", dir, dir, abs, keys); return system(cmd) == 0 ? 0 : 2; }
 static int state_int(const char *key) { char p[800], l[200]; snprintf(p, sizeof p, "%s/pieces/system/bv_state.txt", dir); FILE *f = fopen(p, "r"); if (!f) return -9999; size_t kl = strlen(key); int v = 0; while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
 static void state_mode(int m) { char b[600]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=%d\nselector_x=3\nselector_y=3\n", dir, m); wr("pieces/system/bv_state.txt", b); }
+static void xel_at(int x, int y) { char b[700], t[200]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=%d\nselector_y=%d\nview_2d_zoom=0\n", dir, x, y); wr("pieces/system/bv_state.txt", b); snprintf(t, sizeof t, "entity_type=xelector\npos_x=%d\npos_y=%d\npos_z=0\n", x, y); wr("pieces/xelector_01/state.txt", t); }
+static int greens(const unsigned char *f) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] < 60 && p[1] > 240 && p[2] > 60 && p[2] < 100) n++; } return n; }
 static void check(int ok, const char *what) { printf("%s: %s\n", ok ? "ok  " : "FAIL", what); if (!ok) bad = 1; }
 static void count(int *red, int *blue, int *green, int *outside_diff) {
     int x0 = (2 - ox) * cell, y0 = (2 - oy) * cell, x1 = x0 + 2 * cell, y1 = y0 + 2 * cell; *red = *blue = *green = *outside_diff = 0;
@@ -85,4 +87,10 @@ int main(int argc, char **argv) {
     if (input_keys("87")) return 2; check(state_int("view_2d_pan_y") == -1, "keys: Shift+W pans -1 cell up");
     if (input_keys("59")) return 2; check(state_int("view_2d_pan_x") == 0 && state_int("view_2d_pan_y") == 0, "keys: ; drops the pan (follow the xelector again)");
     state_mode(1); if (input_keys("68 68")) return 2; check(state_int("view_2d_pan_x") == 0, "keys: in 3D (render_mode 1) the same keys do not pan the 2D view");
+    /* the xelector (owner 2026-10-27: yellow and "stuck in the ship"): drawn green like the 3D wire box, and the view follows it when it leaves the page */
+    nopiece(); minimap_setting(1); pan_x = pan_y = 0; xel_at(2, 2); if (render(cur)) return 2; r = greens(cur); printf("xelector on the page: green px %d\n", r); check(r > 1000, "xelector: drawn green on the page");
+    check(yellows(cur) == 0, "xelector on the page: no minimap (the scene is just the page)");
+    xel_at(10, 2); if (render(cur)) return 2; r = greens(cur); printf("xelector past the page edge: green px %d\n", r); check(r > 1000, "xelector: still visible after it leaves the page (the view follows it)");
+    check(yellows(cur) > 20, "xelector past the page: the minimap shows (part of the scene is off screen)");
+    xel_at(2, 2); if (render(base)) return 2; xel_at(2, 2); if (render(cur)) return 2; check(memcmp(base, cur, sizeof cur) == 0, "xelector back on the page: the same frame as before it left (page view unchanged)");
     return bad; }

@@ -40,6 +40,11 @@ EXPECT_OUT | ok  : keys: Shift+D three times pans the 2D view +3 cells | key-shi
 EXPECT_OUT | ok  : keys: Shift+W pans -1 cell up | key-shift-w-pans-up
 EXPECT_OUT | ok  : keys: ; drops the pan (follow the xelector again) | key-semicolon-drops-the-pan
 EXPECT_OUT | ok  : keys: in 3D (render_mode 1) the same keys do not pan the 2D view | pan-keys-do-nothing-in-3d
+EXPECT_OUT | ok  : xelector: drawn green on the page | xelector-drawn-green
+EXPECT_OUT | ok  : xelector on the page: no minimap (the scene is just the page) | no-minimap-when-the-xelector-is-on-the-page
+EXPECT_OUT | ok  : xelector: still visible after it leaves the page (the view follows it) | view-follows-the-xelector-off-the-page
+EXPECT_OUT | ok  : xelector past the page: the minimap shows (part of the scene is off screen) | minimap-shows-when-the-xelector-is-off-the-page
+EXPECT_OUT | ok  : xelector back on the page: the same frame as before it left (page view unchanged) | page-view-unchanged-when-the-xelector-returns
 EXPECT_OUT_LACKS | FAIL | no-failed-check
 CASE    | negative-renderer-without-pieces
 ENV | BV2D_BIN | $T/r2d_nopieces

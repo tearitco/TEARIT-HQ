@@ -1178,8 +1178,10 @@ static void p2d_load(const char *root, const char *desk) {
 }
 
 /* the scene = the page (0,0 .. cols,rows) and every piece's footprint, in cells */
+static int g_xel_on = 0, g_xel_x = 0, g_xel_y = 0;      /* the xelector cell, counted into the scene only while it lies OUTSIDE the page (owner 2026-10-27: the 2D xelector was "stuck in the ship": the cursor moved on, the view stayed on the page) */
 static void p2d_scene(int cols, int rows, float *x0, float *y0, float *x1, float *y1) {
     *x0 = 0; *y0 = 0; *x1 = (float)cols; *y1 = (float)rows;
+    if (g_xel_on) { if (g_xel_x < *x0) *x0 = (float)g_xel_x; if (g_xel_y < *y0) *y0 = (float)g_xel_y; if (g_xel_x + 1 > *x1) *x1 = (float)(g_xel_x + 1); if (g_xel_y + 1 > *y1) *y1 = (float)(g_xel_y + 1); }
     for (int k = 0; k < g_np2d; k++) { if (g_p2d[k].x < *x0) *x0 = g_p2d[k].x; if (g_p2d[k].y < *y0) *y0 = g_p2d[k].y; if (g_p2d[k].x + g_p2d[k].sx > *x1) *x1 = g_p2d[k].x + g_p2d[k].sx; if (g_p2d[k].y + g_p2d[k].sy > *y1) *y1 = g_p2d[k].y + g_p2d[k].sy; } }
 /* MINIMAP in 2D (owner 2026-10-27: "there should be a minimap in 2d if the map is bigger than the view"): the whole scene at a few pixels per cell in the top-right corner - the page as its own picture, every piece as its average colour, the
  * visible part as a yellow outline, the followed cell (xelector) as a red dot. Drawn only when part of the scene is outside the view. view.pdl `VIEW | view_2d_minimap | 0` turns it off. (vx0,vy0,vx1,vy1) = the visible rectangle in cells. */
@@ -1391,13 +1393,13 @@ int main(void) {
              * the same size, so `cell` takes it. */
             int draw = cell, world_fit = 0; float wcx = 0, wcy = 0;
             { int mrows = map_tile > 0 ? map_h / map_tile : 0;
+              g_xel_on = (sel_x >= 0 && sel_y >= 0 && map_cols > 0 && mrows > 0 && (sel_x >= map_cols || sel_y >= mrows)); g_xel_x = sel_x; g_xel_y = sel_y;
               if (map_cols > 0 && mrows > 0) {
                   static const int zpct[6] = {100, 125, 150, 200, 300, 400};
                   char zs[16] = ""; read_kv_str(st, "view_2d_zoom", zs, sizeof(zs)); int z = atoi(zs); if (z < -1) z = -1; if (z > 5) z = 5;
                   int fit = W / map_cols, fh = H / mrows; if (fh < fit) fit = fh; if (fit < 4) fit = 4;
                   if (z == -1 && g_np2d > 0) {      /* -1 = the whole scene: the page and every piece (entity frames spec, 2D camera = the parent frame) */
-                      float ux0 = 0, uy0 = 0, ux1 = (float)map_cols, uy1 = (float)mrows;
-                      for (int k = 0; k < g_np2d; k++) { if (g_p2d[k].x < ux0) ux0 = g_p2d[k].x; if (g_p2d[k].y < uy0) uy0 = g_p2d[k].y; if (g_p2d[k].x + g_p2d[k].sx > ux1) ux1 = g_p2d[k].x + g_p2d[k].sx; if (g_p2d[k].y + g_p2d[k].sy > uy1) uy1 = g_p2d[k].y + g_p2d[k].sy; }
+                      float ux0, uy0, ux1, uy1; p2d_scene(map_cols, mrows, &ux0, &uy0, &ux1, &uy1);
                       int f2 = (int)((float)W / (ux1 - ux0)), f3 = (int)((float)H / (uy1 - uy0)); if (f3 < f2) f2 = f3; if (f2 < 2) f2 = 2; fit = f2; world_fit = 1; wcx = (ux0 + ux1) / 2; wcy = (uy0 + uy1) / 2; z = 0; }
                   if (z < 0) z = 0;      /* -1 with no piece to show: just the fit-page size (never index zpct[-1]) */
                   draw = fit * zpct[z] / 100;
@@ -1423,7 +1425,7 @@ int main(void) {
                 } else map_py0 = -(view_h - map_h) / 2;
                 {   /* detached pan (Shift+W/A/S/D, bv_menu_input.c): the view centre moves off the followed cell and is clamped to the whole scene (page + pieces), not just the page */
                     int pnx = read_kv_int(st, "view_2d_pan_x", 0), pny = read_kv_int(st, "view_2d_pan_y", 0);
-                    if (!world_fit && (pnx || pny)) {
+                    if (!world_fit && (pnx || pny || g_xel_on)) {
                         float sx0, sy0, sx1, sy1; p2d_scene(map_cols, map_h / map_tile, &sx0, &sy0, &sx1, &sy1);
                         int lox = (int)(sx0 * map_tile), hix = (int)(sx1 * map_tile) - view_w, loy = (int)(sy0 * map_tile), hiy = (int)(sy1 * map_tile) - view_h;
                         map_px0 = (cx + pnx) * map_tile - view_w / 2; map_py0 = (cy + pny) * map_tile - view_h / 2;
@@ -1604,7 +1606,7 @@ int main(void) {
         int x0 = (sel_x * map_tile - map_px0) * box / map_tile;
         int y0 = (sel_y * map_tile - map_py0) * box / map_tile;
         if (x0 < W && y0 < H && x0 + box > 0 && y0 + box > 0) {
-            unsigned char xr = 255, xg = 204, xb = 0;
+            unsigned char xr = 40, xg = 255, xb = 80;
             /* 6px, not 2. A 2px line disappeared into the painted tiles. */
             for (int t = 0; t < 6; t++) {
                 for (int x = x0; x < x0 + box; x++) {
@@ -1624,7 +1626,7 @@ int main(void) {
     } else if (!side_mode) {
         int scx = sel_x - ox, scy = sel_y - oy;
         if (sel_x >= 0 && sel_y >= 0 && scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
-            unsigned char xr = 255, xg = 204, xb = 0;
+            unsigned char xr = 40, xg = 255, xb = 80;
             int x0 = scx * cell, y0 = scy * cell;
             for (int t = 1; t <= 2; t++) {
                 for (int x = x0 + t; x < x0 + cell - t; x++)
