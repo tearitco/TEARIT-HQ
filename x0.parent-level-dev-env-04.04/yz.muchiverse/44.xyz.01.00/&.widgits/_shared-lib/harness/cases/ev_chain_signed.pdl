@@ -1,0 +1,161 @@
+# ev_chain_signed: LOCKED cases for ev_chain signing through sig_op under a POLICY cap (signatures, ev_chain slice; design 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md section 28).
+# ev_chain and the chain ops are COMPILED FROM SOURCE into a SCRATCH house (never the real chain). The account's key lives in $T/keys (outside every chain folder, mode 0600), its passphrase comes from the
+# environment variable named in the entity's signer.pdl, the cap from <chain>/policy.pdl. Keys are the TEST fixture keys (passphrase harness-test-only): sig_test_key.pem = alice, sig_test_key2.pem = bob.
+RESULTS | ../results/ev_chain_signed.txt
+SCRATCH |
+MKDIR | 041.pal-chain/ops/+x
+MKDIR | keys
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/ev.+x | $HOUSE/&.widgits/chain-events/ops/ev_chain.c
+EXPECT_EXIT | 0 | ev_chain-compiles-clean
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_new.+x | $HOUSE/041.pal-chain⛓️/ops/chain_new.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_new-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_send.+x | $HOUSE/041.pal-chain⛓️/ops/chain_send.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_send-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_balance.+x | $HOUSE/041.pal-chain⛓️/ops/chain_balance.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_balance-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_miner.+x | $HOUSE/041.pal-chain⛓️/ops/chain_miner.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_miner-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | $HOUSE/041.pal-chain⛓️/ops/chain_create_wallet.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_create_wallet-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/041.pal-chain/ops/+x/chain_escrow.+x | $HOUSE/041.pal-chain⛓️/ops/chain_escrow.c | -lcrypto | -lm
+EXPECT_EXIT | 0 | chain_escrow-builds
+COPY | &.widgits/_shared-lib/ops/+x/sig_op.+x | 041.pal-chain/ops/+x/sig_op.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/sig_test_key.pem | keys/alice.pem
+COPY | &.widgits/_shared-lib/harness/fixtures/sig_test_key.pem | keys/alice_open.pem
+COPY | &.widgits/_shared-lib/harness/fixtures/sig_test_key2.pem | keys/bob.pem
+COPY | &.widgits/_shared-lib/harness/fixtures/sig_test_key.pem | 041.pal-chain/leak.pem
+RUN | chmod | 600 | $T/keys/alice.pem | $T/keys/bob.pem | $T/041.pal-chain/leak.pem
+RUN | chmod | 644 | $T/keys/alice_open.pem
+
+CASE | setup
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain
+ENV | CHAIN_DIFFICULTY_HEX_ZEROS | 1
+ENV | EVSIG_PASS | harness-test-only
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | sg | --signing | 1 | --cap | 0
+EXPECT_EXIT | 0 | signed-chain-created
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | lax
+EXPECT_EXIT | 0 | unsigned-chain-created
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/sg
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | alice | pw | fde83f690ff40fc4a8e891ac18e0376e43a23c493dc8b0cbd829b5e0086fcf0a
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | bob | pw | 2bf6f4e6e22c967f062c25b2c2b20b112bee003973ce79c0289b6e84a1b3fa85
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | carol | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | alice-funded
+MKDIR | st
+WRITE | st/wallet_id.txt | alice\n
+WRITE | st/signer.pdl | SIGNER | key_file | $T/keys/alice.pem\nSIGNER | pass_env | EVSIG_PASS\n
+MKDIR | stnosig
+WRITE | stnosig/wallet_id.txt | alice\n
+MKDIR | stbad
+WRITE | stbad/wallet_id.txt | alice\n
+WRITE | stbad/signer.pdl | SIGNER | key_file | $T/keys/bob.pem\nSIGNER | pass_env | EVSIG_PASS\n
+MKDIR | stopen
+WRITE | stopen/wallet_id.txt | alice\n
+WRITE | stopen/signer.pdl | SIGNER | key_file | $T/keys/alice_open.pem\nSIGNER | pass_env | EVSIG_PASS\n
+MKDIR | stleak
+WRITE | stleak/wallet_id.txt | alice\n
+WRITE | stleak/signer.pdl | SIGNER | key_file | $T/041.pal-chain/leak.pem\nSIGNER | pass_env | EVSIG_PASS\n
+MKDIR | stenv
+WRITE | stenv/wallet_id.txt | alice\n
+WRITE | stenv/signer.pdl | SIGNER | key_file | $T/keys/alice.pem\nSIGNER | pass_env | EVSIG_UNSET_VAR\n
+
+CASE | no-policy-means-no-signing
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 5
+EXPECT_EXIT | 1 | signing-chain-without-a-cap-refused
+EXPECT_HAS | st/op_errors.txt | signing chain without a policy cap | refusal-names-the-missing-cap
+EXPECT_HAS | st/variables.txt | chain_ok=0 | chain_ok-zero
+
+CASE | signed-calls-under-the-cap
+WRITE | 041.pal-chain/chains/sg/policy.pdl | # test policy\nPOLICY | chain:sg | ev_cap_per_day | 30\n
+RUN | $T/ev.+x | $T/stnosig | $T | sg | send | bob | 5
+EXPECT_EXIT | 1 | entity-without-signer-pdl-refused-never-unsigned
+EXPECT_HAS | stnosig/op_errors.txt | no signer.pdl | refusal-says-why
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 5
+EXPECT_EXIT | 0 | signed-send-under-the-cap
+EXPECT_HAS | st/variables.txt | chain_ok=1 | send-ok
+EXPECT_HAS | 041.pal-chain/chains/sg/data/pending_tx.txt | TX\palice\pbob\p5\p | tx-queued
+EXPECT_HAS | 041.pal-chain/chains/sg/data/pending_tx.txt | \pn= | nonce-attached
+EXPECT_HAS | 041.pal-chain/chains/sg/data/pending_tx.txt | \ps= | signature-attached
+EXPECT_LACKS | st/chain_events.txt | s= | the-event-ledger-never-holds-a-signature
+EXPECT_LACKS | st/chain_events.txt | EVSIG | nor-the-passphrase-variable
+EXPECT_HAS | 041.pal-chain/chains/sg/data/ev_spend.txt | SPEND\palice\p | spend-recorded
+RUN | $T/ev.+x | $T/st | $T | sg | lock | e1 | 10
+EXPECT_EXIT | 0 | signed-lock-under-the-cap
+EXPECT_HAS | 041.pal-chain/chains/sg/data/pending_tx.txt | LOCK\pe1\palice\p10\palice\p | lock-queued
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 15
+EXPECT_EXIT | 0 | second-signed-send-distinct-nonce-accepted
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | one-over-the-daily-cap-refused
+EXPECT_HAS | st/op_errors.txt | spend cap exceeded (cap 30, spent today 30, asked 1) | the-cap-arithmetic-is-in-the-error
+RUN | $T/ev.+x | $T/st | $T | sg | payout | e1 | bob | 1
+EXPECT_EXIT | 1 | payout-refused-once-the-cap-is-used-up
+RUN | grep | -c | ^TX | $T/041.pal-chain/chains/sg/data/pending_tx.txt
+EXPECT_OUT_IS | 2 | only-the-two-allowed-sends-queued
+WRITE | 041.pal-chain/chains/sg/policy.pdl | POLICY | chain:sg | ev_cap_per_day | 100\n
+RUN | $T/ev.+x | $T/st | $T | sg | payout | e1 | bob | 3
+EXPECT_EXIT | 0 | agent-signed-payout-under-the-raised-cap
+RUN | $T/ev.+x | $T/st | $T | sg | refund | e1 | carol | 2
+EXPECT_EXIT | 0 | agent-signed-refund
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | miner-accepts-every-ev_chain-signature
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | bob
+EXPECT_OUT_IS | 23 | bob-got-5-plus-15-plus-the-payout-3
+RUN | $T/041.pal-chain/ops/+x/chain_balance.+x | carol
+EXPECT_OUT_IS | 2 | carol-got-the-refund
+RUN | $T/041.pal-chain/ops/+x/chain_escrow.+x | audit
+EXPECT_OUT_HAS | conserved=1 | money-conserved
+
+CASE | refusals-never-fall-back-to-unsigned
+RUN | $T/ev.+x | $T/stbad | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | another-accounts-key-fails-the-chain-verification
+RUN | $T/ev.+x | $T/stopen | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | key-file-readable-by-group-or-other-refused
+EXPECT_HAS | stopen/op_errors.txt | mode 0600 | refusal-names-the-mode-rule
+RUN | $T/ev.+x | $T/stleak | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | key-inside-a-chain-folder-refused
+EXPECT_HAS | stleak/op_errors.txt | outside every chain folder | refusal-names-the-location-rule
+RUN | $T/ev.+x | $T/stenv | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | unset-passphrase-variable-refused
+EXPECT_HAS | stenv/op_errors.txt | passphrase environment variable is not set | refusal-names-the-variable
+ENV | EVSIG_PASS | wrong-passphrase
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | wrong-passphrase-cannot-sign
+EXPECT_HAS | st/op_errors.txt | signing failed | refusal-says-signing-failed
+ENV | EVSIG_PASS | harness-test-only
+RUN | grep | -c | ^TX | $T/041.pal-chain/chains/sg/data/pending_tx.txt
+EXPECT_OUT_IS | 0 | nothing-queued-by-any-refused-call-pending-was-mined-before
+EXPECT_LACKS | 041.pal-chain/chains/sg/data/ev_spend.txt | send\p1\p | refused-calls-record-no-spend
+
+CASE | policy-values-and-days
+WRITE | 041.pal-chain/chains/sg/policy.pdl | POLICY | chain:sg | ev_cap_per_day | -5\n
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | negative-cap-falls-back-to-the-default-and-refuses
+EXPECT_HAS | st/op_errors.txt | out of range or not a number | the-bad-value-is-logged
+WRITE | 041.pal-chain/chains/sg/policy.pdl | POLICY | chain:sg | ev_cap_per_day | abc\n
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | non-number-cap-refused
+WRITE | 041.pal-chain/chains/sg/policy.pdl | POLICY | * | ev_cap_per_day | 10\n
+WRITE | 041.pal-chain/chains/sg/data/ev_spend.txt | SPEND\palice\p20200101\psend\p999\p1\n
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 5
+EXPECT_EXIT | 0 | wildcard-scope-works-and-a-past-day-does-not-count
+WRITE | 041.pal-chain/chains/sg/policy.pdl | POLICY | chain:sg | ev_cap_per_day | 5\nPOLICY | * | ev_cap_per_day | 1000\n
+RUN | $T/ev.+x | $T/st | $T | sg | send | bob | 1
+EXPECT_EXIT | 1 | the-chain-row-beats-the-wildcard-row
+
+CASE | unsigned-chain-with-a-cap-and-without
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/lax
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | dan | pw
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | erin | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | dan | --blocks | 1
+MKDIR | stdan
+WRITE | stdan/wallet_id.txt | dan\n
+RUN | $T/ev.+x | $T/stdan | $T | lax | send | erin | 5
+EXPECT_EXIT | 0 | no-policy-no-signing-exactly-the-old-behaviour
+EXPECT_LACKS | 041.pal-chain/chains/lax/data/pending_tx.txt | \pn= | and-the-tx-carries-no-signature
+WRITE | 041.pal-chain/chains/lax/policy.pdl | POLICY | chain:lax | ev_cap_per_day | 3\n
+RUN | $T/ev.+x | $T/stdan | $T | lax | send | erin | 5
+EXPECT_EXIT | 1 | a-cap-binds-an-unsigned-chain-too
+RUN | $T/ev.+x | $T/stdan | $T | lax | send | erin | 3
+EXPECT_EXIT | 0 | within-the-cap-unsigned-chain-sends
+CLEAN |

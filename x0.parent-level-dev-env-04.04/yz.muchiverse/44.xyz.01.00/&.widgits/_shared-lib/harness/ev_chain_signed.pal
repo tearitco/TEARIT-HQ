@@ -1,0 +1,4 @@
+# ev_chain_signed.pal - LOCKED acceptance harness for ev_chain SIGNING under a POLICY cap. Read results/ev_chain_signed.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/ev_chain_signed.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/ev_chain_signed.pdl
+halt

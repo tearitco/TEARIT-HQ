@@ -18,7 +18,13 @@
  *     and is refused: game events never move real cones.
  *  3. Ids and amounts are validated ([A-Za-z0-9_-]+, positive integer <= 1e9); chain_escrow re-checks everything at issue time and again at mining.
  *  4. A hard timeout (10 s) on the child; one-shot, no polling.
- * NOT a substitute for signing: the chain ops' agent/by fields are still honor fields (chain_escrow.c header), so this is meaningful on test chains only.
+ * SIGNING (signatures, ev_chain slice; design section 28): on a chain with `SIGNING | required | 1` the op signs for the running entity through sig_op and passes <nonce> <sig> to chain_send /
+ * chain_escrow, which verify it (and the miner again). The op NEVER holds a key: <state_dir>/signer.pdl names the account's key file (`SIGNER | key_file | <abs path>`) and the ENVIRONMENT VARIABLE
+ * that carries its passphrase (`SIGNER | pass_env | <NAME>`); the key file must live OUTSIDE every 041.pal-chain* folder and be mode 0600 (no group/other bits), else the call is refused. A missing
+ * or unusable key REFUSES the call (never an unsigned fallback). It signs only under a POLICY cap: <chain root>/policy.pdl `POLICY | chain:<id> or * | ev_cap_per_day | <millicones>`; coins moved per
+ * wallet per UTC day by send / lock / payout / refund are summed from <chain root>/data/ev_spend.txt (rows SPEND|wallet|YYYYMMDD|verb|amount|ts, appended after a successful call); a call that would
+ * exceed the cap, a missing cap row on a signing chain, or an out-of-range value (0..1e9; the default 0 refuses) is refused. A chain WITHOUT signing and WITHOUT a cap row behaves exactly as before.
+ * Honest limit: the spend file is an ordinary file, so the cap binds the op, not a process that can write the chain folder (same honor boundary as the rest of the test chains).
  * Exit: 0 ok | 1 op failed / refused | 2 usage. Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/ev_chain.+x ev_chain.c */
 #define _GNU_SOURCE
 #pragma GCC diagnostic ignored "-Wformat-truncation"
@@ -34,6 +40,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <limits.h>
 #define PL 4096
 static char STATE[PL], HOUSE[PL], CHAIN[64], WALLET[128], ROOT[PL];
 
@@ -82,6 +89,56 @@ static int find_root(void) {                                           /* <house
 static int bin(char *out, size_t cap, const char *name) {              /* the op binary of the PARENT root (a chain's ops dir is a symlink to it) */
     char p[PL]; snprintf(p, sizeof p, "%s/ops/+x/%s.+x", ROOT, name); if (access(p, X_OK)) return 0; snprintf(out, cap, "%s", p); return 1;
 }
+/* ---- signing under a policy cap (see the header) ---- */
+static int pdl_row(const char *file, const char *sec, const char *scope, const char *key, char *out, size_t cap) {      /* `SEC | scope | key | value` (scope "" = two-column `SEC | key | value`); 1 = found */
+    FILE *f = fopen(file, "r"); if (!f) return 0; char line[1024]; int found = 0;
+    while (fgets(line, sizeof line, f)) { if (line[0] == '#') continue; line[strcspn(line, "\r\n")] = 0; char *c = strstr(line, " #"); if (c) *c = 0;
+        char *fld[5]; int n = 0; char *p = line; while (n < 5) { fld[n++] = p; char *b = strchr(p, '|'); if (!b) break; *b = 0; p = b + 1; }
+        for (int i = 0; i < n; i++) { char *a = fld[i]; while (*a == ' ' || *a == '\t') a++; char *e = a + strlen(a); while (e > a && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0; fld[i] = a; }
+        if (strcmp(fld[0], sec)) continue;
+        if (scope[0]) { if (n >= 4 && !strcmp(fld[1], scope) && !strcmp(fld[2], key)) { snprintf(out, cap, "%s", fld[3]); found = 1; } }
+        else if (n >= 3 && !strcmp(fld[1], key)) { snprintf(out, cap, "%s", fld[2]); found = 1; } }
+    fclose(f); return found; }
+static long long spent_today(const char *day) {
+    char p[PL + 32], line[512]; snprintf(p, sizeof p, "%s/data/ev_spend.txt", ROOT); FILE *f = fopen(p, "r"); if (!f) return 0; long long sum = 0;
+    while (fgets(line, sizeof line, f)) { char *fld[6]; int n = 0; char *q = line; line[strcspn(line, "\r\n")] = 0; while (n < 6) { fld[n++] = q; char *b = strchr(q, '|'); if (!b) break; *b = 0; q = b + 1; }
+        if (n >= 5 && !strcmp(fld[0], "SPEND") && !strcmp(fld[1], WALLET) && !strcmp(fld[2], day)) sum += atoll(fld[4]); }
+    fclose(f); return sum; }
+static void today(char *day) { time_t t = time(NULL); struct tm g; gmtime_r(&t, &g); strftime(day, 16, "%Y%m%d", &g); }
+static void note_spend(const char *verb, const char *amount) {
+    char p[PL + 32], day[16]; today(day); snprintf(p, sizeof p, "%s/data/ev_spend.txt", ROOT); FILE *f = fopen(p, "a"); if (f) { fprintf(f, "SPEND|%s|%s|%s|%s|%ld\n", WALLET, day, verb, amount, (long)time(NULL)); fclose(f); } }
+static int g_signed = 0, g_capped = 0; static char g_nonce[24], g_sig[200], g_amount[16], g_verb[16];
+/* Decides signing + cap for one money-moving call. 0 = go ahead (g_signed / g_capped say what applies), -1 = refused (errrow written). amount = the coins the call moves. */
+static int prepare(const char *verb, const char *esc, const char *to, const char *amount) {
+    g_signed = g_capped = 0; snprintf(g_amount, sizeof g_amount, "%s", amount); snprintf(g_verb, sizeof g_verb, "%s", verb);
+    char chainpdl[PL + 32], polpdl[PL + 32], v[256]; snprintf(chainpdl, sizeof chainpdl, "%s/chain.pdl", ROOT); snprintf(polpdl, sizeof polpdl, "%s/policy.pdl", ROOT);
+    int req = pdl_row(chainpdl, "SIGNING", "", "required", v, sizeof v) && atoi(v) == 1;
+    char scope[80]; snprintf(scope, sizeof scope, "chain:%s", CHAIN); long long cap = 0; int have_cap = 0;
+    if (pdl_row(polpdl, "POLICY", scope, "ev_cap_per_day", v, sizeof v) || pdl_row(polpdl, "POLICY", "*", "ev_cap_per_day", v, sizeof v)) {
+        have_cap = 1; char *e = NULL; long long x = strtoll(v, &e, 10); if (e && !*e && v[0] && x >= 0 && x <= 1000000000LL) cap = x; else { errrow("policy ev_cap_per_day out of range or not a number, default 0 used", v); cap = 0; } }
+    if (!req && !have_cap) return 0;                                       /* an unsigned chain with no policy: exactly the old behaviour */
+    if (req && !have_cap) { errrow("signing chain without a policy cap (policy.pdl ev_cap_per_day): refused", CHAIN); return -1; }
+    char day[16]; today(day); long long amt = atoll(amount), spent = spent_today(day);
+    if (cap <= 0 || spent + amt > cap) { char m[96]; snprintf(m, sizeof m, "spend cap exceeded (cap %lld, spent today %lld, asked %lld)", cap, spent, amt); errrow(m, WALLET); return -1; }
+    g_capped = 1; if (!req) return 0;
+    char sp[PL + 32], kf[PL] = "", pe[96] = ""; snprintf(sp, sizeof sp, "%s/signer.pdl", STATE);
+    if (!pdl_row(sp, "SIGNER", "", "key_file", kf, sizeof kf) || !pdl_row(sp, "SIGNER", "", "pass_env", pe, sizeof pe)) { errrow("no signer.pdl (SIGNER key_file and pass_env) for this entity: refused, never unsigned", ""); return -1; }
+    char rk[PATH_MAX], rh[PATH_MAX]; if (kf[0] != '/' || !realpath(kf, rk)) { errrow("signer key file missing or not an absolute path", ""); return -1; }
+    { char hp[PL + 32]; snprintf(hp, sizeof hp, "%s", HOUSE); if (realpath(hp, rh)) { size_t hl = strlen(rh); DIR *d = opendir(rh); struct dirent *e; int bad = 0;
+        if (d) { while ((e = readdir(d))) { if (strncmp(e->d_name, "041.pal-chain", 13)) continue; char cp[PATH_MAX + 300]; snprintf(cp, sizeof cp, "%s/%s", rh, e->d_name); size_t cl = strlen(cp); if (!strncmp(rk, cp, cl) && (rk[cl] == '/' || !rk[cl])) bad = 1; } closedir(d); }
+        (void)hl; if (bad) { errrow("the signing key must live outside every chain folder", ""); return -1; } } }
+    struct stat st; if (stat(rk, &st) || !S_ISREG(st.st_mode) || (st.st_mode & 077)) { errrow("signing key file must be a regular file with mode 0600 (no group/other access)", ""); return -1; }
+    const char *pass = getenv(pe); if (!pass || !*pass || !ident_ok(pe, 64)) { errrow("passphrase environment variable is not set", pe); return -1; }
+    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); snprintf(g_nonce, sizeof g_nonce, "%lld", (long long)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000);
+    char msg[640];
+    if (!strcmp(verb, "send")) snprintf(msg, sizeof msg, "TX|%s|%s|%s|%s|%s", CHAIN, WALLET, to, amount, g_nonce);
+    else if (!strcmp(verb, "lock")) snprintf(msg, sizeof msg, "LOCK|%s|%s|%s|%s|%s|%s", CHAIN, esc, WALLET, amount, WALLET, g_nonce);
+    else snprintf(msg, sizeof msg, "%s|%s|%s|%s|%s|%s|%s", !strcmp(verb, "payout") ? "PAYOUT" : "REFUND", CHAIN, esc, WALLET, to, amount, g_nonce);
+    char exe[PL], ctx[96], out[512] = "", *av[8]; if (!bin(exe, sizeof exe, "sig_op")) { errrow("sig_op binary missing", ""); return -1; }
+    snprintf(ctx, sizeof ctx, "chain:%s", CHAIN); av[0] = exe; av[1] = "sign"; av[2] = rk; av[3] = ctx; av[4] = msg; av[5] = NULL;
+    setenv("SIG_PASSPHRASE", pass, 1); int rc = run(av, out, sizeof out); unsetenv("SIG_PASSPHRASE");
+    out[strcspn(out, "\r\n")] = 0; if (rc || strlen(out) != 128) { errrow("signing failed (wrong passphrase or unusable key)", ""); return -1; }
+    snprintf(g_sig, sizeof g_sig, "%s", out); g_signed = 1; return 0; }
 int main(int argc, char **argv) {
     if (argc < 5) { fprintf(stderr, "usage: ev_chain <state_dir> <house_root> <chain_id> <verb> [args]\n"); return 2; }
     snprintf(STATE, sizeof STATE, "%s", argv[1]); snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); snprintf(CHAIN, sizeof CHAIN, "%s", argv[3]);
@@ -91,17 +148,17 @@ int main(int argc, char **argv) {
       if (!f || !fgets(WALLET, sizeof WALLET, f)) { if (f) fclose(f); errrow("no wallet bound to this entity (wallet_id.txt)", ""); setvar("chain_ok", 0); return 1; }
       fclose(f); WALLET[strcspn(WALLET, "\r\n")] = 0; if (!ident_ok(WALLET, 120)) { errrow("bad wallet id", WALLET); setvar("chain_ok", 0); return 1; } }
     if (!find_root()) { errrow("unknown chain (no chains/<id>/chain.pdl)", CHAIN); setvar("chain_ok", 0); return 1; }
-    char exe[PL], out[2048] = ""; char *av[8]; int rc = 1, n = 0;
+    char exe[PL], out[2048] = ""; char *av[12]; int rc = 1, n = 0;
     if (!strcmp(verb, "balance") && argc == 5) { if (!bin(exe, sizeof exe, "chain_balance")) goto nobin; av[n++] = exe; av[n++] = WALLET; av[n] = NULL; rc = run(av, out, sizeof out);
         if (!rc) setvar("chain_balance", atoll(out)); }
-    else if (!strcmp(verb, "send") && argc == 7 && ident_ok(argv[5], 120) && amount_ok(argv[6])) { if (!bin(exe, sizeof exe, "chain_send")) goto nobin; av[n++] = exe; av[n++] = WALLET; av[n++] = argv[5]; av[n++] = argv[6]; av[n] = NULL; rc = run(av, out, sizeof out); }
-    else if (!strcmp(verb, "lock") && argc == 7 && ident_ok(argv[5], 100) && amount_ok(argv[6])) { if (!bin(exe, sizeof exe, "chain_escrow")) goto nobin; av[n++] = exe; av[n++] = "lock"; av[n++] = argv[5]; av[n++] = WALLET; av[n++] = argv[6]; av[n++] = WALLET; av[n] = NULL; rc = run(av, out, sizeof out); }
-    else if ((!strcmp(verb, "payout") || !strcmp(verb, "refund")) && argc == 8 && ident_ok(argv[5], 100) && ident_ok(argv[6], 120) && amount_ok(argv[7])) { if (!bin(exe, sizeof exe, "chain_escrow")) goto nobin; av[n++] = exe; av[n++] = (char *)verb; av[n++] = argv[5]; av[n++] = WALLET; av[n++] = argv[6]; av[n++] = argv[7]; av[n] = NULL; rc = run(av, out, sizeof out); }
+    else if (!strcmp(verb, "send") && argc == 7 && ident_ok(argv[5], 120) && amount_ok(argv[6])) { if (!bin(exe, sizeof exe, "chain_send")) goto nobin; if (prepare("send", "", argv[5], argv[6])) { setvar("chain_ok", 0); return 1; } av[n++] = exe; av[n++] = WALLET; av[n++] = argv[5]; av[n++] = argv[6]; if (g_signed) { av[n++] = g_nonce; av[n++] = g_sig; } av[n] = NULL; rc = run(av, out, sizeof out); }
+    else if (!strcmp(verb, "lock") && argc == 7 && ident_ok(argv[5], 100) && amount_ok(argv[6])) { if (!bin(exe, sizeof exe, "chain_escrow")) goto nobin; if (prepare("lock", argv[5], "", argv[6])) { setvar("chain_ok", 0); return 1; } av[n++] = exe; av[n++] = "lock"; av[n++] = argv[5]; av[n++] = WALLET; av[n++] = argv[6]; av[n++] = WALLET; if (g_signed) { av[n++] = g_nonce; av[n++] = g_sig; } av[n] = NULL; rc = run(av, out, sizeof out); }
+    else if ((!strcmp(verb, "payout") || !strcmp(verb, "refund")) && argc == 8 && ident_ok(argv[5], 100) && ident_ok(argv[6], 120) && amount_ok(argv[7])) { if (!bin(exe, sizeof exe, "chain_escrow")) goto nobin; if (prepare(verb, argv[5], argv[6], argv[7])) { setvar("chain_ok", 0); return 1; } av[n++] = exe; av[n++] = (char *)verb; av[n++] = argv[5]; av[n++] = WALLET; av[n++] = argv[6]; av[n++] = argv[7]; if (g_signed) { av[n++] = g_nonce; av[n++] = g_sig; } av[n] = NULL; rc = run(av, out, sizeof out); }
     else if (!strcmp(verb, "status") && argc == 6 && ident_ok(argv[5], 100)) { if (!bin(exe, sizeof exe, "chain_escrow")) goto nobin; av[n++] = exe; av[n++] = "status"; av[n++] = argv[5]; av[n] = NULL; rc = run(av, out, sizeof out);
         if (!rc) { const char *k[4] = {"locked=", "paid_out=", "refunded=", "remaining="}; const char *v[4] = {"chain_locked", "chain_paid", "chain_refunded", "chain_remaining"};
             for (int i = 0; i < 4; i++) { char *p = strstr(out, k[i]); if (p) setvar(v[i], atoll(p + strlen(k[i]))); } } }
     else { errrow("bad verb or arguments", verb); setvar("chain_ok", 0); return 2; }
-    out[strcspn(out, "\n")] = 0; ledger(verb, args, rc, out);
+    out[strcspn(out, "\n")] = 0; ledger(verb, args, rc, out); if (!rc && g_capped) note_spend(g_verb, g_amount);
     setvar("chain_rc", rc); setvar("chain_ok", rc == 0);
     if (rc) errrow("chain op failed", out);
     return rc ? 1 : 0;
