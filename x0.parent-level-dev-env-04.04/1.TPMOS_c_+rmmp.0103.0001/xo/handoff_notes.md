@@ -1,5 +1,10 @@
 # Handoff: tomom Dashboard & Relay Tests — 2026-10-25
 
+## Related Handoff Documents
+- **`opencode-browser-handoff-er.txt`** (repo root) — emergency handoff for the QUICKJS NETWORK BROWSER work (ops/nb_js_worker.c, network_browser_manager.c). Written by a prior opencode session. Contains detailed diagnostic records, protocol contracts, and rung-based next steps (RUNG 0-4).
+- **`2026-10-18-BROWSER-LANE-HANDOFF.md`** — browser lane handoff with KPIs, build commands, and acceptance criteria.
+- **`from-grok-game-dev-office.md`** (HQ-IQ-BOOK/13.agent-coms/2026-10-20/) — game-dev office handoff from grok.
+
 ## What was done this session
 
 ### Completed
