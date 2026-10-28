@@ -180,3 +180,27 @@ COUNT | rpg-space-pchq/pieces/veh_1/model.txt | \n | 11 | all-ten-voxels-plus-th
 HAS | rpg-space-pchq/pieces/veh_1/model.txt | 0 0 0 200 40 40 | and-keeps-the-colours-of-the-file-not-the-rock-tile
 DO | helm | off
 
+
+PHASE | p8_scene_vox | remnants and resource nodes lying in a room are small VOXEL pieces (pieces/veh_10..24, desk = their room), a remnant is a loot bag that is rewritten turned by eighths (owner 2026-10-27: not flat sprite sheets) | voxel remnants, loot bag, spin
+PUT | state/nodes.txt | bridge\p12\p10\pore\p4\n
+PUT | state/drops.txt | 1\pbridge\p5\p5\p1\piron\p0\p0\ptest\n
+DO | space | scene | 0
+SAY | 1 remnants and 1 nodes | the-remnant-and-the-node-are-drawn-as-pieces-not-sprites
+HAS | rpg-space-pchq/pieces/veh_10/state.txt | desk=bridge | it-belongs-to-the-room-the-engine-shows
+HAS | rpg-space-pchq/pieces/veh_10/state.txt | pos_z=1.000 | and-rests-on-the-floor
+HAS | rpg-space-pchq/pieces/veh_10/model.txt | dim 7 6 7 | the-loot-bag-is-7-by-6-by-7-voxels
+COUNT | rpg-space-pchq/pieces/veh_10/model.txt | \n | 67 | 66-voxels-plus-the-dim-line
+HAS | rpg-space-pchq/pieces/veh_10/model.txt | 5 1 3 235 228 200 | the-pale-patch-is-on-the-x-side-at-angle-0
+LACKS | rpg-space-pchq/pieces/veh_10/model.txt | 3 1 5 235 228 200 | and-not-on-the-z-side
+HAS | rpg-space-pchq/pieces/veh_10/model.txt | 3 5 3 230 187 170 | the-tip-takes-the-iron-colour-lightened
+HAS | rpg-space-pchq/pieces/veh_11/state.txt | desk=bridge | the-first-resource-node-is-a-piece-too
+DO | space | scene | 2
+HAS | rpg-space-pchq/pieces/veh_10/model.txt | 3 1 5 235 228 200 | a-quarter-turn-moves-the-patch-to-the-z-side
+LACKS | rpg-space-pchq/pieces/veh_10/model.txt | 5 1 3 235 228 200 | and-it-left-the-x-side
+DO | space | scene | 1
+HAS | rpg-space-pchq/pieces/veh_10/model.txt | 5 1 4 235 228 200 | an-eighth-turn-puts-the-patch-on-the-diagonal-it-does-not-vanish
+HAS | rpg-space-pchq/pieces/veh_10/model.txt | 4 1 5 235 228 200 | with-its-second-voxel
+PUT | state/drops.txt | \n
+DO | space | scene
+NOFILE | rpg-space-pchq/pieces/veh_11/state.txt | a-collected-remnant-leaves-no-piece-for-the-next-one
+LACKS | rpg-space-pchq/pieces/veh_10/model.txt | dim 7 6 7 | and-its-slot-now-holds-the-node-not-a-bag

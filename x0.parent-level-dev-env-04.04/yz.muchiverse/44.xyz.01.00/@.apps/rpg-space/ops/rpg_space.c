@@ -69,7 +69,7 @@ static int sk_node_idx(const char *item) {      /* frame index of a resource nod
         FILE *f = fopen(p, "wb"); if (f) { fwrite(out, 1, sizeof out, f); fclose(f); } }
     return idx; }
 static char sk_rem_rows[16][1100];      /* per room: the remnant rows appended to that room's events.txt (section 43), "x y r g b rem 0 2 0 *" = a coloured box in the cell (the same path the pets are drawn by) */
-static int sk_remnants_tick(void); static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
+static void sk_scene_verb(int step, char *msg, size_t cap); static int sk_remnants_tick(void); static int sk_coll_check(int nx, int ny, int nz, char *msg, size_t cap); static void sk_coll_verb(int argc, char **argv, char *msg, size_t cap);
 static void sk_helm_verb(int argc, char **argv, char *msg, size_t cap);      /* the helm (section 75) */
 static int sk_pilot_move(int dx, int dy, char *msg, size_t cap);      /* 1 = the helm is flying another ship (state/pilot.txt) and handled the arrow */
 static void sk_pilot_clear(void);
@@ -999,11 +999,13 @@ static int sk_skiff_build(SkVox *v, int cap, int dim[3], int *vpc, double *edge)
         r *= 1.6; g *= 1.6; b *= 1.6;      /* an unlit voxel renders the tile darker than the flat tile: the same lift as before */
         v[n++] = (SkVox){x, y, z, r > 255 ? 255 : (int)r, g > 255 ? 255 : (int)g, b > 255 ? 255 : (int)b}; }
     *vpc = vp; *edge = 1.0 / vp; return n; }
-static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3], double edge) {
-    static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
+static int sk_veh_model(int slot, const SkVox *v, int n, const int dim[3]) {      /* pieces/veh_<slot>/model.txt (`dim X Y Z`, then `x y z r g b` per voxel); returns 1 when the file changed */
+    static char mb[SK_VEH_MAXV * 32 + 64]; char d[PATH_MAX], p[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); mkdir(d, 0775);
     char *w = mb; w += snprintf(w, sizeof mb, "dim %d %d %d\n", dim[0], dim[1], dim[2]);
     for (int i = 0; i < n && (size_t)(w - mb) < sizeof mb - 40; i++) w += snprintf(w, sizeof mb - (size_t)(w - mb), "%d %d %d %d %d %d\n", v[i].x, v[i].y, v[i].z, v[i].r, v[i].g, v[i].b);
-    snprintf(p, sizeof p, "%s/model.txt", d); write_if_changed(p, mb, (size_t)(w - mb));
+    snprintf(p, sizeof p, "%s/model.txt", d); return write_if_changed(p, mb, (size_t)(w - mb)); }
+static void sk_veh_put(int slot, int wx, int wy, const SkVox *v, int n, const int dim[3], double edge) {
+    char d[PATH_MAX], p[PATH_MAX], sb[300]; snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot); sk_veh_model(slot, v, n, dim);
     double cell = edge * tune("obj_vox_pct", 100) / 100.0, sx = dim[0] * cell, sy = dim[2] * cell, sh = dim[1] * cell;
     snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=bridge\npos_x=%.2f\npos_y=%.2f\npos_z=%d\nsize_x=%.2f\nsize_y=%.2f\nsize_h=%.2f\n", wx - sk_dox + 0.5 - sx / 2, wy - sk_doy + 0.5 - sy / 2, tune("obj_z", 0) - sk_doz_get(), sx, sy, sh);
     snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); }
@@ -1071,6 +1073,7 @@ static void sk_space_verb(int argc, char **argv, char *msg, size_t cap) {      /
         if (!flag_on("helm", 0) || !sk_helm_direct()) { snprintf(msg, cap, "take the helm first (Direct): its arrows then fly the other ship"); return; }
         for (int i = 0; i < sk_ncraft; i++) if (!strcmp(sk_craft[i].id, argv[2])) { if (sk_craft[i].wx < 0) { snprintf(msg, cap, "%s is not on the planet map", sk_craft[i].id); return; } char p[PATH_MAX], b[40]; spath(p, "pilot.txt"); snprintf(b, sizeof b, "%s\n", sk_craft[i].id); write_if_changed(p, b, strlen(b)); snprintf(msg, cap, "you fly %s: the arrows move it, Esc lets go (space pilot off: your own ship again)", sk_craft[i].label); return; }
         snprintf(msg, cap, "space: no ship %s", argv[2]); return; }
+    if (!strcmp(a, "scene")) { sk_scene_verb(argc > 2 ? atoi(argv[2]) : -1, msg, cap); return; }      /* space scene [step]: write the voxel pieces of the room things once (step 0..7 forces the bag turn; the gate uses it) */
     if (!strcmp(a, "world")) { if (!sk_world_switch(msg, cap)) snprintf(msg, cap, "world: already this planet's"); return; }
     snprintf(msg, cap, "usage: space status | hail <id> | move <id> <gx> <gy> | pilot <id>|off | world"); }
 static void sk_destroy_effect(const char *kind, int room, int x, int y, const char *src, char *msg, size_t cap) {      /* what events/destroyed calls: the BLOCK row becomes remnants where it stood */
@@ -1189,6 +1192,60 @@ static void sk_tick_stats(void) {
     static long ticks, w0_wall; static double w0_cpu; struct timespec cw, cc; clock_gettime(CLOCK_MONOTONIC, &cw); clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cc); long wall = cw.tv_sec * 1000L + cw.tv_nsec / 1000000L; double cpu = cc.tv_sec * 1000.0 + cc.tv_nsec / 1e6; static long born; if (!born) born = wall; ticks++;
     if (!w0_wall) { w0_wall = wall; w0_cpu = cpu; return; } if (wall - w0_wall < 10000) return;
     char p[PATH_MAX], b[120]; spath(p, "tick_stats.txt"); snprintf(b, sizeof b, "ticks=%ld\ncpu_permille=%d\nuptime_s=%ld\n", ticks, (int)((cpu - w0_cpu) * 1000.0 / (double)(wall - w0_wall)), (wall - born) / 1000L); write_if_changed(p, b, strlen(b)); w0_wall = wall; w0_cpu = cpu; ticks = 0; }
+/* SMALL THINGS IN A ROOM ARE VOXELS TOO (owner 2026-10-27: 'resource nodes, remnants, the skiff should look like voxel tiles/blocks, a remnant turns like a real block, a loot bag for dropped items'). The 16 x 24 sprite rows (`rem` events, sk_rem_idx / sk_node_idx) were flat pictures squeezed to fake a turn. Now each remnant and each resource node of a ship room or planet page is a vehicle piece pieces/veh_10..24 (desk = its room, so the engine draws only the shown room's): a remnant is a small LOOT BAG (7 x 6 x 7 voxels, rope at the neck, a pale patch on one side so the turn is visible) rotated about the vertical axis in eighth turns by REWRITING its model.txt (the engine pieces are axis-aligned boxes; spin_ms per quarter turn); a node is the same random nugget as the asteroids in the ship's tiles, about a cell wide. Only remnants in the SHOWN room spin (others rest at angle 0), so a room with no remnant costs nothing and the others cost no rewrites. tuning.pdl scene_flat=1 brings the old sprites back; items past the 15 slots stay sprites. Slots 1..9 stay the planet-map objects (sk_veh_write). */
+#define SK_SC0 10
+#define SK_SCN 15
+typedef struct { int room, x, y, id, dmg, node, idx; double fx, fy, fz; char item[24]; } SkScItem;
+static int sk_vd_ids[SK_SCN], sk_vd_n; static unsigned char sk_vn_done[32]; static int sk_scene_force = -1;      /* drop ids / node indices drawn as voxels in the last pass (their sprite rows are skipped); the force is for the `space scene <step>` verb and the gate */
+static int sk_drawn_drop(int id) { for (int i = 0; i < sk_vd_n; i++) if (sk_vd_ids[i] == id) return 1; return 0; }
+static int sk_bag_build(int rr, int gg, int bb, int step, SkVox *v, int dim[3]) {      /* the loot bag, turned step * 45 degrees; 7 x 6 x 7 voxels, bottom row y = 0 */
+    double th = step * 0.78539816339744831, c = cos(th), s = sin(th); int n = 0; dim[0] = 7; dim[1] = 6; dim[2] = 7;
+    for (int y = 0; y < 6; y++) for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
+        double sxf = dx * c + dz * s, szf = -dx * s + dz * c; int sx = (int)lround(sxf), sz = (int)lround(szf), ax = abs(sx), az = abs(sz), in = 0, r = rr, g = gg, b = bb;      /* the voxel of the unturned bag that lands here */
+        if (y == 0) in = ax <= 1 && az <= 1; else if (y <= 2) in = ax <= 2 && az <= 2 && ax + az <= 3; else if (y == 3) in = ax <= 1 && az <= 1; else if (y == 4) in = ax + az <= 1; else in = !ax && !az;
+        if (!in) continue;
+        if (y == 0) { r = rr * 60 / 100; g = gg * 60 / 100; b = bb * 60 / 100; }
+        else if (y == 3) { r = 115; g = 80; b = 45; }      /* the rope that ties it */
+        else if (y >= 4) { r = (rr + 255) / 2; g = (gg + 255) / 2; b = (bb + 255) / 2; }
+        else if (sxf > 1.5 && sxf < 2.6 && fabs(szf) < 0.75) { r = 235; g = 228; b = 200; }      /* a pale patch on one side: the turn can be seen */
+        v[n++] = (SkVox){ dx + 3, y, dz + 3, r, g, b }; }
+    return n; }
+static int sk_shown_room(void) { char p[PATH_MAX], b[1200]; snprintf(p, sizeof p, "%s/pieces/world_01/state.txt", PCHQ); read_file(p, b, sizeof b); char *q = strstr(b, "desk_id="); if (!q) return -1; q += 8; char id[32]; size_t k = strcspn(q, "\r\n"); if (k >= sizeof id) return -1; memcpy(id, q, k); id[k] = 0; for (int r = 0; r < nroom; r++) if (!strcmp(rooms[r].id, id)) return r; return -1; }
+static int sk_scene_vox(long now) {      /* returns 1 when a piece changed (the engine needs a nudge) */
+    static char sig[SK_SCN][200]; static SkScItem it[64]; static SkVox v[SK_VEH_MAXV]; int changed = 0, nit = 0, dim[3];
+    sk_vd_n = 0; memset(sk_vn_done, 0, sizeof sk_vn_done);
+    if (!tune("scene_flat", 0)) {
+        int shown = sk_shown_room(); sk_nodes_load();
+        for (int pass = 0; pass < 2; pass++) {      /* the shown room's things first: they get the slots */
+            for (int i = 0; i < sk_ndrops && nit < 60; i++) { SkDrop *d = &sk_drops[i]; if (d->room < 0 || d->room >= nroom || d->room == SK_SHIP || (d->room == shown) != (pass == 0)) continue;
+                SkScItem *m = &it[nit++]; memset(m, 0, sizeof *m); m->room = d->room; m->x = d->x; m->y = d->y; m->id = d->id; m->dmg = d->dmg; m->idx = i; snprintf(m->item, sizeof m->item, "%s", d->item); m->fx = d->x; m->fy = d->y; m->fz = 0;
+                for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) { double t = (double)(now - sk_anim[k].start) / (double)(sk_pk_ms > 0 ? sk_pk_ms : 1); if (t > 1) t = 1; Ent *e = pl_life_ent(sk_anim[k].slot); m->fx = d->x + (e->x - d->x) * t; m->fy = d->y + (e->y - d->y) * t; m->fz = sin(3.14159265 * t) * 0.9; m->node = 2; } }      /* node = 2: sliding to its picker (hops) */
+            for (int i = 0; i < sk_nnodes && i < 32 && nit < 62; i++) { SkNode *nd = &sk_nodes[i]; if (nd->room < 0 || nd->room >= nroom || nd->room == SK_SHIP || nd->amount == 0 || (nd->room == shown) != (pass == 0)) continue;
+                SkScItem *m = &it[nit++]; memset(m, 0, sizeof *m); m->room = nd->room; m->x = nd->x; m->y = nd->y; m->node = 1; m->idx = i; m->id = -1; snprintf(m->item, sizeof m->item, "%s", nd->kind); m->fx = nd->x; m->fy = nd->y; } }
+        if (nit > SK_SCN) nit = SK_SCN;
+        int fl = tune("obj_z", 1);
+        for (int k = 0; k < nit; k++) { SkScItem *m = &it[k]; char sg[200]; int step = 0, n; double edge;
+            if (m->node != 1) {
+                step = sk_scene_force >= 0 ? sk_scene_force & 7 : (m->room == shown && sk_pk_spin > 0) ? (int)((now / (sk_pk_spin / 2 > 0 ? sk_pk_spin / 2 : 1) + m->id) % 8) : 0;
+                int r, g, b; sk_item_rgb(m->item, m->dmg, &r, &g, &b); edge = sk_pk_size / 100.0 / 5.0;
+                snprintf(sg, sizeof sg, "D|%d|%d|%d|%d|%s|%d|%d|%d|%d", m->room, (int)lround(m->fx * 100), (int)lround(m->fy * 100), (int)lround(m->fz * 100), m->item, m->dmg, step, fl, sk_pk_size);
+                if (!strcmp(sig[k], sg)) { sk_vd_ids[sk_vd_n++] = m->id; continue; }
+                n = sk_bag_build(r, g, b, step, v, dim); }
+            else {
+                edge = tune("node_cell_pct", 150) / 100.0 / 5.0;
+                snprintf(sg, sizeof sg, "N|%d|%d|%d|%s|%d", m->room, m->x, m->y, m->item, tune("node_cell_pct", 150));
+                if (!strcmp(sig[k], sg)) { sk_vn_done[m->idx] = 1; continue; }
+                n = sk_nugget(m->item, m->x, m->y, v, dim); if (strncmp(m->item, "gen:", 4) || sk_gen_model_missing(m->item + 4)) sk_retile(v, n, dim, 6, 2, 6, 2, m->item, 0); }
+            if (n <= 0) { sig[k][0] = 0; continue; }
+            char sb[320], p[PATH_MAX], d[PATH_MAX]; int slot = SK_SC0 + k; double sx = dim[0] * edge, sy = dim[2] * edge, sh = dim[1] * edge;
+            sk_veh_model(slot, v, n, dim);
+            snprintf(d, sizeof d, "%s/pieces/veh_%d", PCHQ, slot);
+            snprintf(sb, sizeof sb, "entity_type=vehicle\ndesk=%s\npos_x=%.3f\npos_y=%.3f\npos_z=%.3f\nsize_x=%.3f\nsize_y=%.3f\nsize_h=%.3f\n", rooms[m->room].id, m->fx + 0.5 - sx / 2, m->fy + 0.5 - sy / 2, fl + m->fz, sx, sy, sh);
+            snprintf(p, sizeof p, "%s/state.txt", d); write_if_changed(p, sb, strlen(sb)); snprintf(sig[k], sizeof sig[k], "%s", sg); changed = 1;
+            if (m->node != 1) sk_vd_ids[sk_vd_n++] = m->id; else sk_vn_done[m->idx] = 1; } }
+    static int first = 1; for (int k = nit; k < SK_SCN; k++) if (sig[k][0] || first) { char p[PATH_MAX]; snprintf(p, sizeof p, "%s/pieces/veh_%d/state.txt", PCHQ, SK_SC0 + k); if (unlink(p) == 0) changed = 1; sig[k][0] = 0; }      /* slots no longer used (the first pass also clears what an earlier daemon left) */
+    first = 0; return changed; }
+static void sk_scene_verb(int step, char *msg, size_t cap) { load_tune(); sk_drops_load(); sk_scene_force = step; int ch = sk_scene_vox(now_ms()); sk_scene_force = -1; int nn = 0; for (int i = 0; i < 32; i++) nn += sk_vn_done[i]; snprintf(msg, cap, "scene voxels: %d remnants and %d nodes drawn as pieces (%s)", sk_vd_n, nn, ch ? "written" : "unchanged"); }
 static int sk_remnants_tick(void) {
     sk_tick_stats();
     { static long wsw; long wn = now_ms(); if (!wsw || wn - wsw >= 1500) { wsw = wn; sk_world_switch(NULL, 0); } }      /* the planet below changes rarely: look every 1.5 s, not every tick */
@@ -1204,12 +1261,13 @@ static int sk_remnants_tick(void) {
         SkDrop *d = &sk_drops[i]; int a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k; if (a >= 0) continue;
         int best = -1, bd = 1000; for (int s = 0; s <= nparty; s++) { if (pl_life[s].dead) continue; Ent *e = pl_life_ent(s); if (e->room != d->room) continue; int dist = abs(e->x - d->x) + abs(e->y - d->y); if (dist <= sk_pk_range && dist < bd) { bd = dist; best = s; } }
         if (best >= 0 && sk_nanim < 16) { sk_anim[sk_nanim].id = d->id; sk_anim[sk_nanim].slot = best; sk_anim[sk_nanim++].start = now; } }
+    if (sk_scene_vox(now)) changed = 1;      /* the voxel things in the rooms; their sprite rows below are skipped */
     static char prev[16][1100]; char rows[16][1100]; for (int r = 0; r < 16; r++) rows[r][0] = 0; int cnt[16] = {0};
     for (int i = 0; i < sk_ndrops; i++) {
-        SkDrop *d = &sk_drops[i]; if (d->room < 0 || d->room >= 16 || d->room >= nroom || cnt[d->room] >= 24) continue; int x = d->x, y = d->y, a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k;
+        SkDrop *d = &sk_drops[i]; if (d->room < 0 || d->room >= 16 || d->room >= nroom || cnt[d->room] >= 24 || sk_drawn_drop(d->id)) continue; int x = d->x, y = d->y, a = -1; for (int k = 0; k < sk_nanim; k++) if (sk_anim[k].id == d->id) a = k;
         if (a >= 0) { double t = (double)(now - sk_anim[a].start) / (double)(sk_pk_ms > 0 ? sk_pk_ms : 1); if (t > 1) t = 1; Ent *e = pl_life_ent(sk_anim[a].slot); x = (int)lround(d->x + (e->x - d->x) * t); y = (int)lround(d->y + (e->y - d->y) * t); }
         int r, g, b; sk_item_rgb(d->item, d->dmg, &r, &g, &b); size_t o = strlen(rows[d->room]); snprintf(rows[d->room] + o, sizeof rows[0] - o, "%d %d %d %d %d rem %d %d 0 *\n", x, y, r, g, b, sk_rem_idx(d->item, d->dmg), a >= 0 || sk_pk_spin <= 0 ? 2 : (int[]){ 2, 6, 4, 8 }[(int)((now / sk_pk_spin + d->id) % 4)]); cnt[d->room]++; }
-    sk_nodes_load(); for (int i = 0; i < sk_nnodes; i++) { SkNode *nd = &sk_nodes[i]; if (nd->room >= 16 || cnt[nd->room] >= 28) continue; SkBlk *bk = sk_blk_find(nd->kind); int r, g, b; sk_item_rgb(bk ? bk->drop : nd->kind, 0, &r, &g, &b); size_t o = strlen(rows[nd->room]); snprintf(rows[nd->room] + o, sizeof rows[0] - o, "%d %d %d %d %d rem %d 2 0 *\n", nd->x, nd->y, r, g, b, sk_node_idx(bk ? bk->drop : nd->kind)); cnt[nd->room]++; }
+    sk_nodes_load(); for (int i = 0; i < sk_nnodes; i++) { SkNode *nd = &sk_nodes[i]; if (nd->room >= 16 || cnt[nd->room] >= 28 || (i < 32 && sk_vn_done[i])) continue; SkBlk *bk = sk_blk_find(nd->kind); int r, g, b; sk_item_rgb(bk ? bk->drop : nd->kind, 0, &r, &g, &b); size_t o = strlen(rows[nd->room]); snprintf(rows[nd->room] + o, sizeof rows[0] - o, "%d %d %d %d %d rem %d 2 0 *\n", nd->x, nd->y, r, g, b, sk_node_idx(bk ? bk->drop : nd->kind)); cnt[nd->room]++; }
     for (int r = 0; r < nroom && r < 16; r++) { if (strcmp(rows[r], prev[r])) { snprintf(prev[r], sizeof prev[0], "%s", rows[r]); snprintf(sk_rem_rows[r], sizeof sk_rem_rows[0], "%s", rows[r]); write_room_events(r); changed = 1; } }
     for (int k = 0; k < sk_nanim; k++) {      /* finished slides: the pickup itself */
         if (now - sk_anim[k].start < sk_pk_ms) continue; int id = sk_anim[k].id, slot = sk_anim[k].slot; char ib[16], m2[160]; snprintf(ib, sizeof ib, "%d", id); char *hv[4] = { "life", "take", ib, (char *)pl_life_id(slot) }; pl_life_verb(4, hv, m2, sizeof m2); sk_drops_load(); changed = 1;
