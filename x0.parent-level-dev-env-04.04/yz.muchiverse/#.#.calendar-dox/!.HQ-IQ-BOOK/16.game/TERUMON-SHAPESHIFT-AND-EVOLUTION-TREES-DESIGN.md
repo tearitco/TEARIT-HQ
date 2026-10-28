@@ -40,6 +40,7 @@ Registry commands wrapping one op, `form_op`, so any event page or the player me
 * `form revert <entity>` / automatic revert at MP 0.
 * `form tick`: one slow op, like `life_op`: charges hold cost, reverts the broke. **Footprint rule:** idle cost ≈ 0 (a counter and a row), complex work only for the entity in focus (decision Q2).
 Every change is a ledger row; nothing is auto-promoted; the harness is the judge.
+* **Explainable choices (2026-10-28):** when a terumon shifts or evolves on its own (a wild one, an agent-driven one), the choice also appends a `WHY` row (candidates, weights as used, seeded draw) to the sibling ledger proposed in `AI-SIDE-ANSWERS-BLOCK-A-2026-10-28.md` A6, so "why did it turn into a wolf" is answerable from data. Human-driven shifts are recorded as `by=player` and are not training input for the terumon's own weights.
 
 ## 6. Levelling and evolving (how this joins what exists)
 * Level and EXP stay in the skill book (decision Q3: training happens only by use; deliberate practice is a costed skill use). New skills `shift_enter`, `shift_hold` give EXP like `play` does, so shapeshifting is itself trainable and the **MP pool grows with level** (existing `mp_per_level`).
