@@ -90,3 +90,7 @@ Deliberately NOT next: more design documents (the design is ahead of the evidenc
 
 **Update (S2 data side, 2026-10-28):** `game_page_export` writes a page file + session for a game from its live state; a staging copy of rpg-space bound to it passes `book_check` 14/14 (A3..A10 SKIP -> PASS). Harness 58/0, 9 mutations each fail it. Findings: the three private position files of the live game disagree (trainer bridge 7,5 vs hero/xelector 4,5); the engines read ONE house-wide pin (`@.apps/piececraft-hq/.../open_book_page.txt`), not the game's own, so S3 = make them read the game's pin. The live game is still `source=board`.
 
+
+
+**Update (S3a, 2026-10-28):** the page now FOLLOWS the game by pull: `game_page_export --if-changed` writes `<app>/state/page/` only when the content changed. `book_check --page` on the exported page: rpg-space, rpg-dust and rpg-edit-hq all 14/14 (INFO 4 each). Harness 74/0. Private position files: rpg-space and rpg-dust disagree with their trainer, rpg-edit-hq agrees. Engines unchanged and the pins still `source=board` until S3b.
+\n

@@ -1,6 +1,8 @@
 /* game_page_export - write a BOOK:PAGE page file for a petslike game from the game's OWN live state files (S2 of the games-as-books pivot, BOOK 16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md section 13;
  * the format is 18.pc-hq/PAGE-FILE.md). It only READS the game and WRITES the session folder you name; it never touches the game.
- * Usage:  game_page_export <app_dir> <session_dir> [--house <house_root>]
+ * Usage:  game_page_export <app_dir> [<session_dir>|-] [--house <house_root>] [--if-changed]
+ *   <session_dir>  omitted or `-` = <app_dir>/state/page (the game's own runtime folder; nothing else of the game is touched)
+ *   --if-changed   write a file only when its content differs from what is on disk (a reader that polls the page by file size / marker sees no churn); prints `unchanged <page>` when nothing was written
  *   <app_dir>      the game, e.g. @.apps/rpg-space (state/trainer.txt, <app>/<name>-pchq/)
  *   <session_dir>  where to write: <session_dir>/session.pdl (STATE | name | <game>, STATE | active_desk | <room>) and <session_dir>/desks/<room>.pdl
  * The page is the room the controlled character is in (state/trainer.txt room=). Rows: hero_01 at the trainer's cell; xelector_01 at the SAME cell with its possessed id in the glyph field (the standard: a possessing xelector
@@ -27,15 +29,20 @@ static int kv(const char *file, const char *key, char *out, size_t cap) {
 }
 static int whole(const char *s) { if (!*s) return 0; for (; *s; s++) if (*s < '0' || *s > '9') return 0; return 1; }
 static int name_ok(const char *s) { size_t n = strlen(s); if (!n || n > 48) return 0; for (size_t i = 0; i < n; i++) if (!((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_' || s[i] == '-')) return 0; return 1; }
+static int write_file(const char *path, const char *content, int if_changed) {      /* 1 written, 0 unchanged, -1 error */
+    if (if_changed) { FILE *o = fopen(path, "r"); if (o) { char b[4096]; size_t n = fread(b, 1, sizeof b - 1, o); b[n] = 0; fclose(o); if (!strcmp(b, content)) return 0; } }
+    FILE *f = fopen(path, "w"); if (!f) return -1; fputs(content, f); fclose(f); return 1;
+}
 static int mkpath(const char *p) { char t[PATH_MAX + 8]; snprintf(t, sizeof t, "%s", p); for (char *q = t + 1; *q; q++) if (*q == '/') { *q = 0; if (mkdir(t, 0755) && errno != EEXIST) return -1; *q = '/'; } return mkdir(t, 0755) && errno != EEXIST ? -1 : 0; }
 int main(int argc, char **argv) {
-    if (argc < 3) goto usage;
-    char app[PATH_MAX], sess[PATH_MAX], house[PATH_MAX] = ""; snprintf(app, sizeof app, "%s", argv[1]); snprintf(sess, sizeof sess, "%s", argv[2]);
-    for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "--house") && i + 1 < argc) snprintf(house, sizeof house, "%s", argv[++i]); else goto usage; }
+    if (argc < 2) goto usage;
+    char app[PATH_MAX], sess[PATH_MAX] = "", house[PATH_MAX] = ""; int if_changed = 0, have_sess = 0; snprintf(app, sizeof app, "%s", argv[1]);
+    for (int i = 2; i < argc; i++) { if (!strcmp(argv[i], "--house") && i + 1 < argc) snprintf(house, sizeof house, "%s", argv[++i]); else if (!strcmp(argv[i], "--if-changed")) if_changed = 1; else if (!have_sess && argv[i][0] != '-') { snprintf(sess, sizeof sess, "%s", argv[i]); have_sess = 1; } else if (!have_sess && !strcmp(argv[i], "-")) have_sess = 1; else goto usage; }
     char *ap = realpath(app, NULL); if (!ap) { fprintf(stderr, "game_page_export: no such game folder %s\n", app); return 1; }
     snprintf(app, sizeof app, "%s", ap); free(ap);
     if (!house[0]) { char d[PATH_MAX]; snprintf(d, sizeof d, "%s", app); for (int up = 0; up < 10 && !house[0]; up++) { char *s = strrchr(d, '/'); if (!s || s == d) break; *s = 0; char t[PATH_MAX + 16]; snprintf(t, sizeof t, "%s/&.widgits", d); if (is_dir(t)) snprintf(house, sizeof house, "%s", d); } }
     if (!house[0]) { fprintf(stderr, "game_page_export: no house root above %s; pass --house\n", app); return 2; }
+    if (!sess[0]) snprintf(sess, sizeof sess, "%s/state/page", app);
     const char *game = strrchr(app, '/') + 1;
     char pchq[PATH_MAX + 80] = ""; { DIR *d = opendir(app); struct dirent *e; while (d && (e = readdir(d))) { size_t n = strlen(e->d_name); if (n > 5 && !strcmp(e->d_name + n - 5, "-pchq")) { snprintf(pchq, sizeof pchq, "%s/%s", app, e->d_name); break; } } if (d) closedir(d); }
     if (!pchq[0]) { fprintf(stderr, "game_page_export: %s has no <name>-pchq folder\n", app); return 1; }
@@ -56,17 +63,16 @@ int main(int argc, char **argv) {
     if (mkpath(sess)) { fprintf(stderr, "game_page_export: cannot create %s\n", sess); return 1; }
     if (mkpath(desks)) { fprintf(stderr, "game_page_export: cannot create %s\n", desks); return 1; }
     char sp[PATH_MAX + 40], pp[PATH_MAX + 120]; snprintf(sp, sizeof sp, "%s/session.pdl", sess); snprintf(pp, sizeof pp, "%s/%s.pdl", desks, room);
-    FILE *f = fopen(sp, "w"); if (!f) { fprintf(stderr, "game_page_export: cannot write %s\n", sp); return 1; }
-    fprintf(f, "STATE | name | %s\nSTATE | active_desk | %s\n", game, room); fclose(f);
-    f = fopen(pp, "w"); if (!f) { fprintf(stderr, "game_page_export: cannot write %s\n", pp); return 1; }
-    fprintf(f, "# page `%s` of book `%s`, written by game_page_export from %s/state/trainer.txt (S2 of the games-as-books pivot)\n", room, game, game);
-    char r1[PATH_MAX + 200], r2[PATH_MAX + 200], r3[PATH_MAX + 200];
+    char sc[256]; snprintf(sc, sizeof sc, "STATE | name | %s\nSTATE | active_desk | %s\n", game, room);
+    char r1[PATH_MAX + 200], r2[PATH_MAX + 200], r3[PATH_MAX + 200], pc[3 * (PATH_MAX + 200) + PATH_MAX + 300];
     snprintf(r1, sizeof r1, "DESK | hero_01 | %s/pieces/hero_01 | %d | %d | %d | %d | . | 0", rel, cx * 80, cy * 80, cx, cy);
     snprintf(r2, sizeof r2, "DESK | xelector_01 | %s/pieces/xelector_01 | %d | %d | %d | %d | %s | 0", rel, cx * 80, cy * 80, cx, cy, poss[0] ? poss : "none");
     snprintf(r3, sizeof r3, "DESK | camera_01 | %s/pieces/display | 80 | 0 | 1 | 0 | m=%d,y=180,p=%d,z=0,h=0 | 0", rel, mode, pitch);
-    fprintf(f, "%s\n%s\n%s\n", r1, r2, r3); fclose(f);
-    printf("ROW %s\nROW %s\nROW %s\nwrote %s rows=3 disagreements=%d\n", r1, r2, r3, pp, disagree);
+    snprintf(pc, sizeof pc, "# page `%s` of book `%s`, written by game_page_export from %s/state/trainer.txt (S2/S3a of the games-as-books pivot)\n%s\n%s\n%s\n", room, game, game, r1, r2, r3);
+    int w1 = write_file(sp, sc, if_changed), w2 = write_file(pp, pc, if_changed);
+    if (w1 < 0 || w2 < 0) { fprintf(stderr, "game_page_export: cannot write under %s\n", sess); return 1; }
+    printf("ROW %s\nROW %s\nROW %s\n%s %s rows=3 disagreements=%d\n", r1, r2, r3, (w1 || w2) ? "wrote" : "unchanged", pp, disagree);
     return 0;
 usage:
-    fprintf(stderr, "Usage: game_page_export <app_dir> <session_dir> [--house <house_root>]\n"); return 2;
+    fprintf(stderr, "Usage: game_page_export <app_dir> [<session_dir>|-] [--house <house_root>] [--if-changed]\n"); return 2;
 }

@@ -250,6 +250,76 @@ RUN | $T/gpe.+x | $T/no_pchq/h/@.apps/g | $T/no_pchq/sess | --house | $T/no_pchq
 EXPECT_EXIT | 1 | no_pchq-exit-1
 EXPECT_NOFILE | no_pchq/sess/session.pdl | nothing-written
 
+CASE | default_dir
+MKDIR | default_dir/h/&.widgits
+MKDIR | default_dir/h/@.apps/g/state
+WRITE | default_dir/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | default_dir/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | default_dir/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | default_dir/h/@.apps/g/g-pchq/pieces/display
+MKDIR | default_dir/h/@.apps/g/g-pchq/pieces/system
+WRITE | default_dir/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | default_dir/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | default_dir/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | default_dir/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | default_dir/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | default_dir/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/default_dir/h/@.apps/g | --house | $T/default_dir/h
+EXPECT_EXIT | 0 | no-session-argument
+EXPECT_HAS | default_dir/h/@.apps/g/state/page/desks/bridge.pdl | DESK \p hero_01 | page-under-the-games-own-state-folder
+EXPECT_HAS | default_dir/h/@.apps/g/state/page/session.pdl | STATE \p active_desk \p bridge | session-beside-it
+
+CASE | dash_dir
+MKDIR | dash_dir/h/&.widgits
+MKDIR | dash_dir/h/@.apps/g/state
+WRITE | dash_dir/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | dash_dir/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dash_dir/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dash_dir/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dash_dir/h/@.apps/g/g-pchq/pieces/system
+WRITE | dash_dir/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | dash_dir/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | dash_dir/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dash_dir/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dash_dir/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dash_dir/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/dash_dir/h/@.apps/g | - | --house | $T/dash_dir/h
+EXPECT_EXIT | 0 | a-dash-means-the-default
+EXPECT_HAS | dash_dir/h/@.apps/g/state/page/desks/bridge.pdl | camera_01 | page-written
+
+CASE | if_changed
+MKDIR | if_changed/h/&.widgits
+MKDIR | if_changed/h/@.apps/g/state
+WRITE | if_changed/h/@.apps/g/state/trainer.txt | room=bridge\nx=7\ny=5\ndir=3\n
+MKDIR | if_changed/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | if_changed/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | if_changed/h/@.apps/g/g-pchq/pieces/display
+MKDIR | if_changed/h/@.apps/g/g-pchq/pieces/system
+WRITE | if_changed/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=5\npossessed_id=hero_01\n
+WRITE | if_changed/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=5\n
+WRITE | if_changed/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | if_changed/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | if_changed/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | if_changed/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+RUN | $T/gpe.+x | $T/if_changed/h/@.apps/g | --if-changed | --house | $T/if_changed/h
+EXPECT_EXIT | 0 | first-run
+EXPECT_OUT | wrote | the-first-run-writes
+RUN | $T/gpe.+x | $T/if_changed/h/@.apps/g | --if-changed | --house | $T/if_changed/h
+EXPECT_EXIT | 0 | second-run
+EXPECT_OUT | unchanged | nothing-changed-so-nothing-written
+EXPECT_OUT | rows=3 disagreements=0 | still-reports
+RUN | $T/gpe.+x | $T/if_changed/h/@.apps/g | --house | $T/if_changed/h
+EXPECT_OUT | wrote | without-the-flag-it-always-writes
+WRITE | if_changed/h/@.apps/g/state/trainer.txt | room=bridge\nx=3\ny=2\n
+RUN | $T/gpe.+x | $T/if_changed/h/@.apps/g | --if-changed | --house | $T/if_changed/h
+EXPECT_OUT | wrote | a-moved-hero-is-written
+EXPECT_OUT | DISAGREE xelector_01/state.txt 7,5 vs trainer 3,2 | and-the-private-file-now-disagrees
+EXPECT_HAS | if_changed/h/@.apps/g/state/page/desks/bridge.pdl | \p 240 \p 160 \p 3 \p 2 \p . | with-the-new-cell
+WRITE | if_changed/h/@.apps/g/state/trainer.txt | room=quarters\nx=3\ny=2\n
+RUN | $T/gpe.+x | $T/if_changed/h/@.apps/g | --if-changed | --house | $T/if_changed/h
+EXPECT_OUT | wrote | a-room-change-is-written
+EXPECT_HAS | if_changed/h/@.apps/g/state/page/session.pdl | STATE \p active_desk \p quarters | open-page-follows
+
 CASE | usage
 RUN | $T/gpe.+x
 EXPECT_EXIT | 2 | no-arguments
