@@ -87,7 +87,9 @@ typedef struct {
     float fog_start, fog_end;    /* distance fog in cells: hits fade to the sky colour between start and end; fog_end <= fog_start = off */
     float wire_edge, wire_thin;  /* edge half-widths in cells for wire 1 / wire 2; 0 = defaults (0.10 / 0.03) */
     int   cut_on, cut_y;         /* see-through cutaway: cells with level >= cut_y between the eye and cut_pos are blended over what is behind them */
-    float cut_pos[3], cut_r, cut_a;  /* cut_pos = world point to keep visible (the character); cut_r = tube radius in cells (0 = 1.6); cut_a = alpha of the blended cells (0 = 0.3) */
+    float cut_pos[3], cut_r, cut_a;  /* cut_pos = world point to keep visible (the character); cut_r = half-width of the blended wall face in cells (0 = 8); cut_a = opacity of the blended cells (0 = 0.3) */
+    float cut_depth;            /* how many cells toward the camera the face reaches (0 = 12) */
+    int   cut_base;             /* levels above cut_y that stay solid, so furniture is not blended (0 = none) */
     int   box_n;
     BvGpuBox box[BV_GPU_MAX_BOX];
 

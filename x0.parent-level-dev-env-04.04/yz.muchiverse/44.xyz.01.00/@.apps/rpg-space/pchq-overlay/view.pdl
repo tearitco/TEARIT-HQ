@@ -14,8 +14,12 @@ event_draw=billboard
 debug_land=1
 ent_bar_hero=0
 # See-through cutaway (2026-10-27): view_cut_on=1 blends the wall (and roof) cells between the camera and the character so the room behind them shows.
-# view_cut_alpha = opacity of those cells in percent (5..95, default 30); view_cut_radius = tube width in tenths of a cell (5..80, default 16). Off = 0 or delete the line.
+# The whole wall face toward the camera (and the roof) of the room the character is in is blended, one even layer. view_cut_alpha = its opacity in percent (5..95, default 30);
+# view_cut_radius = half-width of the face in tenths of a cell (default 80 = 8 cells); view_cut_depth = how many cells toward the camera it reaches (default 12);
+# view_cut_base = levels above the feet left solid so furniture is not blended (default 1). Off = view_cut_on=0 or delete the line.
 # Read every frame (wake the engine to see it). GPU path only; the CPU fallback draws walls solid.
 view_cut_on=1
 view_cut_alpha=30
-view_cut_radius=16
+view_cut_radius=80
+view_cut_depth=12
+view_cut_base=1

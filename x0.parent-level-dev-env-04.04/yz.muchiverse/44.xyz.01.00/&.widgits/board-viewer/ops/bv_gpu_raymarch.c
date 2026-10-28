@@ -64,7 +64,7 @@ static const char *FS_SRC =
 "uniform int   u_rock;\n"
 "uniform int   u_cut, u_cuty;\n"          /* see-through cutaway (view.pdl view_cut_on): 1 = cells between the eye and u_cutp, level >= u_cuty, are blended at u_cuta */
 "uniform vec3  u_cutp;\n"
-"uniform float u_cutr, u_cuta;\n"
+"uniform float u_cutr, u_cuta, u_cutt, u_cutb;\n"      /* u_cutr half-width of the wall face in cells, u_cutt how far toward the camera it reaches, u_cutb levels above the feet left solid (furniture) */
 "uniform ivec2 u_mk;\n"
 "uniform sampler2D u_atlas;\n"
 "uniform highp usampler2D u_cells;\n"
@@ -102,13 +102,16 @@ static const char *FS_SRC =
 "}\n"
 "\n"
 "bool is_ghost(ivec3 c) {\n"
-"  if (u_cut == 0 || c.y < u_cuty) return false;\n"
-"  vec3 p = vec3(c) + 0.5, ab = u_cutp - u_eye;\n"
-"  float l2 = dot(ab, ab);\n"
-"  if (l2 < 1e-6) return false;\n"
-"  float s = dot(p - u_eye, ab) / l2;\n"
-"  if (s < 0.0 || s > 1.0 - 0.7 / sqrt(l2)) return false;\n"      /* only cells in front of the character, never the ones around or behind it */
-"  return distance(p, u_eye + s * ab) < u_cutr;\n"
+"  if (u_cut == 0 || float(c.y) < float(u_cuty) + u_cutb) return false;\n"
+"  vec2 h = vec2(float(c.x) + 0.5 - u_cutp.x, float(c.z) + 0.5 - u_cutp.z);\n"
+"  vec2 e = u_eye.xz - u_cutp.xz;\n"
+"  float el = length(e);\n"
+"  if (el > 0.5) {\n"                                        /* the wall face toward the camera: in front of the character, as wide as the room, up to u_cutt cells out (never past the eye) */
+"    vec2 d = e / el;\n"
+"    float t = dot(h, d), s = dot(h, vec2(-d.y, d.x));\n"
+"    if (abs(s) < u_cutr && t > 0.5 && t < min(u_cutt, el + 0.5)) return true;\n"
+"  }\n"
+"  return float(c.y) >= float(u_cuty) + 3.0 && abs(h.x) < u_cutr && abs(h.y) < u_cutr;\n"   /* the roof over the room: well above head height */
 "}\n"
 "\n"
 "bool on_edge(vec3 hp, vec3 bn, vec3 bx, float e) {\n"
@@ -229,7 +232,7 @@ static const char *FS_SRC =
 "          }\n"
 "          if (is_ghost(c) && gA < 0.97) {\n"
 "            vec3 gc = col * (cf != 3 ? 0.75 : 1.0) * vec3(u_amb_on != 0 ? u_amb : u_light);\n"
-"            gacc += (1.0 - gA) * u_cuta * gc; gA += (1.0 - gA) * u_cuta;\n"
+"            if (gA < 0.001) { gacc = u_cuta * gc; gA = u_cuta; }\n"      /* only the first blended cell of a ray shows: a wall face stays one even glass, however many cells deep */
 "            bestT = b0; hit = h0; self_lit = s0; face = f0; col = c0; ghosted = true;\n"
 "          }\n"
 "        }\n"
@@ -290,7 +293,7 @@ static int        s_terr_alloc = 0;           /* terrain-array storage created *
 static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin, cut, cuty, cutp, cutr, cuta;
+    GLint under, nl, amb_on, amb, lpos, lcol, zoff, rock, maker, mk, atlas, cells, para, para_on, para_size, para_loop, eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, clear, fog_start, fog_end, nbox, bmin, bmax, bcol, bmdl, mdl, mdim, wire_edge, wire_thin, cut, cuty, cutp, cutr, cuta, cutt, cutb;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -430,7 +433,7 @@ static int gl_ensure_context(void) {
     s_u.maker=UL("u_maker"); s_u.zoff=UL("u_zoff"); s_u.rock=UL("u_rock"); s_u.mk=UL("u_mk"); s_u.atlas=UL("u_atlas"); s_u.cells=UL("u_cells"); s_u.under=UL("u_under");
     s_u.para=UL("u_para"); s_u.para_on=UL("u_para_on"); s_u.para_size=UL("u_para_size"); s_u.para_loop=UL("u_para_loop");
     s_u.wire_edge=UL("u_wire_edge"); s_u.wire_thin=UL("u_wire_thin"); s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
-    s_u.cut=UL("u_cut"); s_u.cuty=UL("u_cuty"); s_u.cutp=UL("u_cutp"); s_u.cutr=UL("u_cutr"); s_u.cuta=UL("u_cuta");
+    s_u.cut=UL("u_cut"); s_u.cuty=UL("u_cuty"); s_u.cutp=UL("u_cutp"); s_u.cutr=UL("u_cutr"); s_u.cuta=UL("u_cuta"); s_u.cutt=UL("u_cutt"); s_u.cutb=UL("u_cutb");
     s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
     return 0;
@@ -662,7 +665,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform1f(s_u.fog_start, s->fog_start);
     glUniform1f(s_u.fog_end,   s->fog_end);
     glUniform1i(s_u.cut, s->cut_on ? 1 : 0); glUniform1i(s_u.cuty, s->cut_y); glUniform3fv(s_u.cutp, 1, s->cut_pos);
-    glUniform1f(s_u.cutr, s->cut_r > 0 ? s->cut_r : 1.6f); glUniform1f(s_u.cuta, s->cut_a > 0 ? s->cut_a : 0.3f);
+    glUniform1f(s_u.cutr, s->cut_r > 0 ? s->cut_r : 8.0f); glUniform1f(s_u.cuta, s->cut_a > 0 ? s->cut_a : 0.3f); glUniform1f(s_u.cutt, s->cut_depth > 0 ? s->cut_depth : 12.0f); glUniform1f(s_u.cutb, (float)s->cut_base);
     {
         int nb = s->box_n; if (nb > BV_GPU_MAX_BOX) nb = BV_GPU_MAX_BOX; if (nb > 128) nb = 128;
         glUniform1i(s_u.nbox, nb);

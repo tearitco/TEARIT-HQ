@@ -1,7 +1,7 @@
 /* bv_gpu_cut_test - the see-through cutaway of the GPU raymarcher (BvGpuScene.cut_*), checked headless. Build against the shader under test:
  *   gcc -O2 -I. -o bv_gpu_cut_test bv_gpu_cut_test.c bv_gpu_raymarch.c -lm -lEGL -lGLESv2
- * Scene: a grey floor (level 0), a red wall three levels tall between the eye and a green hero box. Checks: cut off = hero hidden behind the wall;
- * cut on = the wall is blended (green appears where the hero is, red stays around it); the floor and pixels outside the tube are byte-identical;
+ * Scene: a grey floor (level 0), a red wall face (the whole row, three levels tall) between the eye and a green hero box. Checks: cut off = hero hidden behind the wall;
+ * cut on = the wall is blended (green appears where the hero is, red stays around it); the floor and pixels outside the face half-width are byte-identical, a wider half-width blends more of the same wall;
  * cut_y above the wall changes nothing; alpha 0.9 shows less hero than 0.3. Exit 0 = every check held, 1 = a check failed, 2 = no GL. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +13,7 @@ static unsigned char out[W * H * 4], ref[W * H * 4];
 static void scene(BvGpuScene *s) {
     memset(s, 0, sizeof *s); s->w = W; s->h = H; s->focal = (H / 2.0f) / 0.8391f; s->board_w = 8; s->board_h = 8; s->z_count = 4;
     static unsigned char grid[8 * 8 * 4]; memset(grid, 0, sizeof grid); for (int i = 0; i < 64; i++) grid[i] = 's';
-    for (int lvl = 1; lvl < 4; lvl++) for (int x = 3; x <= 5; x++) grid[x + 2 * 8 + lvl * 64] = 'w';      /* the wall: row 2, columns 3..5, levels 1..3 */
+    for (int lvl = 1; lvl < 4; lvl++) for (int x = 0; x <= 7; x++) grid[x + 2 * 8 + lvl * 64] = 'w';      /* the wall face: all of row 2, levels 1..3 */
     s->grid = grid; s->legend_n = 2; s->legend_glyph[0] = 's'; s->legend_glyph[1] = 'w';
     s->legend_rgb[0][0] = s->legend_rgb[0][1] = s->legend_rgb[0][2] = 0.8f; s->legend_rgb[1][0] = 0.9f; s->legend_rgb[1][1] = 0.1f; s->legend_rgb[1][2] = 0.1f;
     s->light_level = 1.0f; s->sky[0] = 0.1f; s->sky[1] = 0.1f; s->sky[2] = 0.2f; s->eye[0] = 4; s->eye[1] = 8; s->eye[2] = -6;
@@ -21,7 +21,7 @@ static void scene(BvGpuScene *s) {
     s->up[0] = s->right[1] * s->fwd[2] - s->right[2] * s->fwd[1]; s->up[1] = s->right[2] * s->fwd[0] - s->right[0] * s->fwd[2]; s->up[2] = s->right[0] * s->fwd[1] - s->right[1] * s->fwd[0];
     BvGpuBox *b = &s->box[s->box_n++]; b->min_x = 4.05f; b->max_x = 4.95f; b->min_y = 1.0f; b->max_y = 1.9f; b->min_z = 4.05f; b->max_z = 4.95f; b->r = 0.1f; b->g = 0.9f; b->b = 0.1f; b->self_lit = 1; b->model = -1;
 }
-static void cut(BvGpuScene *s, int y, float a) { s->cut_on = 1; s->cut_y = y; s->cut_pos[0] = 4.5f; s->cut_pos[1] = 1.45f; s->cut_pos[2] = 4.5f; s->cut_r = 1.6f; s->cut_a = a; }
+static void cut(BvGpuScene *s, int y, float a) { s->cut_on = 1; s->cut_y = y; s->cut_pos[0] = 4.5f; s->cut_pos[1] = 1.45f; s->cut_pos[2] = 4.5f; s->cut_r = 1.6f; s->cut_a = a; s->cut_depth = 12; s->cut_base = 0; }
 static int greener(const unsigned char *a, const unsigned char *b, int *minx, int *maxx) { int n = 0; *minx = W; *maxx = -1; for (int i = 0; i < W * H; i++) if (a[i * 4 + 1] > b[i * 4 + 1] + 30 && a[i * 4] < b[i * 4]) { n++; int x = i % W; if (x < *minx) *minx = x; if (x > *maxx) *maxx = x; } return n; }
 static int bad = 0;
 static void check(int ok, const char *what) { printf("%s: %s\n", ok ? "ok  " : "FAIL", what); if (!ok) bad = 1; }
@@ -37,8 +37,11 @@ int main(int argc, char **argv) {
     check(n3 > 40, "cut on: the hero shows through the wall (greener, less red pixels)");
     scene(s); cut(s, 1, 0.9f); bv_gpu_raymarch(s, c9); int n9, m1, m2; n9 = greener(c9, ref, &m1, &m2);
     check(n9 < n3, "higher wall alpha (0.9): less of the hero shows than at 0.3 (alpha is the wall's opacity)");
-    int diff_outside = 0; for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if ((x < 40 || x > 200) && memcmp(c3 + (y * W + x) * 4, ref + (y * W + x) * 4, 4)) diff_outside++;
-    check(diff_outside == 0, "pixels far outside the tube are byte-identical");
+    static unsigned char cw[W * H * 4]; scene(s); cut(s, 1, 0.3f); s->cut_r = 8.0f; bv_gpu_raymarch(s, cw);
+    int more = 0, redc3 = 0, redcw = 0; for (int i = 0; i < W * H; i++) { if (memcmp(cw + i * 4, c3 + i * 4, 4)) more++; if (c3[i * 4] > 150 && c3[i * 4 + 1] < 60) redc3++; if (cw[i * 4] > 150 && cw[i * 4 + 1] < 60) redcw++; }
+    printf("half-width 1.6: %d solid-red pixels left, half-width 8: %d; %d pixels differ\n", redc3, redcw, more);
+    check(more > 150 && redcw < redc3, "a wider half-width blends more of the same wall (the outer columns stop being solid red)");
+    check(redc3 > 100, "half-width 1.6 leaves the outer wall columns solid (the face is limited to the half-width)");
     int diff_floor = 0; for (int y = H - 20; y < H; y++) for (int x = 0; x < W; x++) if (memcmp(c3 + (y * W + x) * 4, ref + (y * W + x) * 4, 4)) diff_floor++;
     check(diff_floor == 0, "the floor below the character is not ghosted");
     int tint = 0; for (int i = 0; i < W * H; i++) if (c3[i * 4] > c3[i * 4 + 1] + 30) tint++;

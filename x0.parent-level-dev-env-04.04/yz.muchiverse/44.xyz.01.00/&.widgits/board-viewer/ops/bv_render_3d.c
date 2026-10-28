@@ -4283,34 +4283,36 @@ static int render_one_frame(void) {
         }
         /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can
          * see through the building"). view.pdl (this map) or #.desktop/hq_ui.pdl: view_cut_on=1, view_cut_alpha=<percent, default 30>,
-         * view_cut_radius=<tenths of a cell, default 16>. Cells at or above the character's level inside a tube from the eye to the character
+         * view_cut_radius=<half-width of the wall face in tenths of a cell, default 80>, view_cut_depth=<cells toward the camera, default 12>, view_cut_base=<levels left solid above the feet, default 1>. Cells at or above the character's level inside a tube from the eye to the character
          * are blended by the GPU shader (u_cut*); off by default. The target is the hero when one is possessed, else the xelector (painted or emoji-tile map): in rpg-space the selector sits on the controlled character. */
         {
             /* the three keys are read from two files; look at them once a second, not every frame (a frame is a few ms, a read is a file open) */
-            static int cut_con = 0, cut_ca = 30, cut_cr = 16; static struct timespec cut_t;
+            static int cut_con = 0, cut_ca = 30, cut_cr = 80, cut_cd = 12, cut_cb = 1; static struct timespec cut_t;
             struct timespec cn; clock_gettime(CLOCK_MONOTONIC, &cn);
             if (cut_t.tv_sec == 0 || (cn.tv_sec - cut_t.tv_sec) * 1000 + (cn.tv_nsec - cut_t.tv_nsec) / 1000000 >= 1000) {
                 char cvp[PATH_BUF], chp[PATH_BUF]; snprintf(cvp, sizeof(cvp), "%s/pieces/system/view.pdl", focused_project_root);
                 snprintf(chp, sizeof(chp), "%s/#.desktop/hq_ui.pdl", house_root);
                 cut_t = cn;
                 cut_con = read_kv_int(cvp, "view_cut_on", -1); if (cut_con < 0) cut_con = house_root[0] ? read_kv_int(chp, "view_cut_on", 0) : 0;
-                cut_ca = 30; cut_cr = 16;
+                cut_ca = 30; cut_cr = 80; cut_cd = 12; cut_cb = 1;
                 if (cut_con > 0) {
                     cut_ca = read_kv_int(cvp, "view_cut_alpha", -1); if (cut_ca < 0) cut_ca = house_root[0] ? read_kv_int(chp, "view_cut_alpha", 30) : 30;
-                    cut_cr = read_kv_int(cvp, "view_cut_radius", -1); if (cut_cr < 0) cut_cr = house_root[0] ? read_kv_int(chp, "view_cut_radius", 16) : 16;
+                    cut_cr = read_kv_int(cvp, "view_cut_radius", -1); if (cut_cr < 0) cut_cr = house_root[0] ? read_kv_int(chp, "view_cut_radius", 80) : 80;
+                    cut_cd = read_kv_int(cvp, "view_cut_depth", -1); if (cut_cd < 0) cut_cd = house_root[0] ? read_kv_int(chp, "view_cut_depth", 12) : 12;
+                    cut_cb = read_kv_int(cvp, "view_cut_base", -1); if (cut_cb < 0) cut_cb = house_root[0] ? read_kv_int(chp, "view_cut_base", 1) : 1;
                 }
             }
             int con = cut_con;
             if (con > 0 && camera_mode != 1 && (g_hero_present || g_xelector_present)) {
                 int ca = cut_ca, cr = cut_cr;
-                ca = ca < 5 ? 5 : ca > 95 ? 95 : ca; cr = cr < 5 ? 5 : cr > 80 ? 80 : cr;
+                ca = ca < 5 ? 5 : ca > 95 ? 95 : ca; cr = cr < 5 ? 5 : cr > 400 ? 400 : cr;
                 double fy, ty;   /* feet and head height of the target */
                 double tx, tz;
                 if (g_hero_present) { tx = g_hero_x + 0.5; tz = g_hero_y + 0.5; if (sc.maker) { fy = 1.0; ty = 2.6; } else { fy = g_hero_z; ty = g_hero_z + 0.9; } }
                 else if (sc.maker) { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = 1.0 + g_xelector_z; ty = 2.6 + g_xelector_z; }
                 else { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = g_xelector_z; ty = g_xelector_z + 0.85; }      /* emoji-tile boards (rpg-space bridge): the selector sits on the controlled character, its box stands on level g_xelector_z */
                 sc.cut_on = 1; sc.cut_y = (int)floor(fy + 0.001); sc.cut_pos[0] = (float)tx; sc.cut_pos[1] = (float)((fy + ty) / 2.0); sc.cut_pos[2] = (float)tz;
-                sc.cut_r = cr / 10.0f; sc.cut_a = ca / 100.0f;
+                sc.cut_r = cr / 10.0f; sc.cut_a = ca / 100.0f; sc.cut_depth = (float)(cut_cd < 1 ? 1 : cut_cd > 60 ? 60 : cut_cd); sc.cut_base = cut_cb < 0 ? 0 : cut_cb > 8 ? 8 : cut_cb;
             }
         }
         int tmpl_model[MAX_PHYMOJI_TEMPLATES];
