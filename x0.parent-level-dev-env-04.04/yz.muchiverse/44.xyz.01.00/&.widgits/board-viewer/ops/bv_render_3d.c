@@ -3564,6 +3564,27 @@ static int render_one_frame(void) {
                                anchor_x, anchor_z, anchor_h,
                                fp_face_dist, fp_eye_height, tp_distance, tp_height,
                                tp_look_down_deg);
+    {   /* DEBUG CAMERA (owner 2026-10-27: "you should be able to jump to whatever camera angle you need"): pieces/system/cam_look.txt of the focused project,
+         * look_on=1 plus eye_x/eye_y/eye_z and at_x/at_y/at_z in WORLD coordinates (X = column, Y = up / level, Z = row; a painted map's floor top is Y 1.0).
+         * It replaces the mode camera for the picture, the click pick and the cutaway; delete the file or look_on=0 to go back. Written by `board_ctl look`. */
+        char lp[PATH_BUF]; snprintf(lp, sizeof(lp), "%s/pieces/system/cam_look.txt", focused_project_root);
+        if (read_kv_int(lp, "look_on", 0) > 0) {
+            Vec3 ey = { read_kv_double(lp, "eye_x", 0), read_kv_double(lp, "eye_y", 10), read_kv_double(lp, "eye_z", 0) };
+            Vec3 at = { read_kv_double(lp, "at_x", 0), read_kv_double(lp, "at_y", 0), read_kv_double(lp, "at_z", 0) };
+            if (read_kv_int(lp, "look_sel", 0) > 0 && g_xelector_present) {      /* look_sel=1: the target is the selector (in rpg-space the character you control), whatever the desk offset */
+                at.x = g_xelector_x + 0.5; at.z = g_xelector_y + 0.5; at.y = (maker_ground ? 1.0 + g_xelector_z + 0.8 : g_xelector_z + 0.5);
+            }
+            {   double ld = read_kv_double(lp, "look_dist", 0);      /* look_dist above 0: orbit the target (look_yaw / look_pitch degrees, pitch negative = looking down) */
+                if (ld > 0) { double yw = read_kv_double(lp, "look_yaw", 180) * M_PI_LOCAL / 180.0, pt = read_kv_double(lp, "look_pitch", -35) * M_PI_LOCAL / 180.0;
+                    ey.x = at.x - ld * cos(pt) * sin(yw); ey.y = at.y - ld * sin(pt); ey.z = at.z - ld * cos(pt) * cos(yw); } }
+            Vec3 dv = { at.x - ey.x, at.y - ey.y, at.z - ey.z };
+            if (dv.x * dv.x + dv.y * dv.y + dv.z * dv.z > 1e-9) {
+                cam.eye = ey; cam.forward = v3_norm(dv);
+                if (fabs(cam.forward.y) > 0.999) { Vec3 fu = { 0, 0, 1 }; Vec3 rr = v3_norm(v3_cross(fu, cam.forward)); cam.up = v3_norm(v3_cross(rr, cam.forward)); cam.right = v3_scale(rr, -1.0); }
+                else { Vec3 wu = { 0, 1, 0 }; cam.right = v3_norm(v3_cross(wu, cam.forward)); cam.up = v3_norm(v3_cross(cam.forward, cam.right)); }
+            }
+        }
+    }
 
     g_click_board = board3d;
     g_click_bw = board_w; g_click_bh = board_h; g_click_zc = z_count;

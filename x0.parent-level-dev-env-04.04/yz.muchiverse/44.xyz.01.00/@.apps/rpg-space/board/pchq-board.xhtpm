@@ -14,6 +14,7 @@
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
+      <tab id="tb-debug" class="pchq-tb" label="debug ▾" onclick="ACTIVATE" target_id="tb-debug"/>
       <tab id="tb-air" class="pchq-tb" label="${env_label}" onclick="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' env status" show="${env_ok}"/>
       <tab id="tb-airw" class="pchq-tb pchq-tb-warn" label="${env_label}" onclick="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' env status" show="${env_warn}"/>
       <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
@@ -47,6 +48,11 @@
       <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
       <item id="db-sql" class="pchq-menu-row dropdown-child " target_id="tb-db" label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
       <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db" label="- cancel -" action="void"/>
+      <cli_io id="dbg-look" target_id="tb-debug" class="pchq-menu-row dropdown-child" label="look x y z: " action="'${HOUSE}/&.widgits/board-viewer/tools/+x/bv_look.+x'"/>
+      <item id="dbg-sel-hi" class="pchq-menu-row dropdown-child" target_id="tb-debug" label="bridge, from above (7 7 1)" action="'${HOUSE}/&.widgits/board-viewer/tools/+x/bv_look.+x' '${HOUSE}/@.apps/rpg-space' '${HOUSE}' '7 7 1 12 180 -55'"/>
+      <item id="dbg-sel-side" class="pchq-menu-row dropdown-child" target_id="tb-debug" label="hold, from the side (11 9 1)" action="'${HOUSE}/&.widgits/board-viewer/tools/+x/bv_look.+x' '${HOUSE}/@.apps/rpg-space' '${HOUSE}' '11 9 1 9 90 -30'"/>
+      <item id="dbg-look-off" class="pchq-menu-row dropdown-child" target_id="tb-debug" label="look off (normal camera)" action="'${HOUSE}/&.widgits/board-viewer/tools/+x/bv_look.+x' '${HOUSE}/@.apps/rpg-space' '${HOUSE}' 'off'"/>
+      <item id="dbg-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-debug" label="- cancel -" action="void"/>
       <item id="pm-int" class="pchq-menu-row dropdown-child " target_id="tb-player" label="INT on/off (arrow keys drive a pet)" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' int"/>
       <item id="pm-mode" class="pchq-menu-row dropdown-child " target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' mode"/>
       <item id="pm-play" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' play"/>
