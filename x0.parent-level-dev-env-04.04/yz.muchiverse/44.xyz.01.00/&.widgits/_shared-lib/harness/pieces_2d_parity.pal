@@ -1,0 +1,4 @@
+# pieces_2d_parity.pal - pal harness for the 2D view of entity pieces (cases/pieces_2d_parity.pdl, entity frames spec section 5). Read results/pieces_2d_parity.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/pieces_2d_parity.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pieces_2d_parity.pdl
+halt

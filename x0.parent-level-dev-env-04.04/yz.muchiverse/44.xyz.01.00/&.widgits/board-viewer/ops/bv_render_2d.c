@@ -1345,7 +1345,11 @@ int main(void) {
      * and every desk with no file keep the glyph path below. */
     {   /* entity pieces (skiff, asteroids, ...): the same files the 3D engine draws */
         const char *proot = focused_root[0] ? focused_root : project_root; char wst[PATH_BUF], cdesk[64] = "";
-        snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", proot); read_kv_str(wst, "desk_id", cdesk, sizeof(cdesk)); p2d_load(proot, cdesk); }
+        snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", proot); read_kv_str(wst, "desk_id", cdesk, sizeof(cdesk));
+#ifndef BV_2D_NO_PIECES      /* -DBV_2D_NO_PIECES builds the renderer as it was before the piece code: the harness uses it as the NEGATIVE fixture of the parity gate */
+        p2d_load(proot, cdesk);
+#endif
+    }
     unsigned char *map_px = NULL;
     int map_w = 0, map_h = 0, map_tile = 0, map_ok = 0;
     int map_px0 = 0, map_py0 = 0;
@@ -1373,6 +1377,7 @@ int main(void) {
                       float ux0 = 0, uy0 = 0, ux1 = (float)map_cols, uy1 = (float)mrows;
                       for (int k = 0; k < g_np2d; k++) { if (g_p2d[k].x < ux0) ux0 = g_p2d[k].x; if (g_p2d[k].y < uy0) uy0 = g_p2d[k].y; if (g_p2d[k].x + g_p2d[k].sx > ux1) ux1 = g_p2d[k].x + g_p2d[k].sx; if (g_p2d[k].y + g_p2d[k].sy > uy1) uy1 = g_p2d[k].y + g_p2d[k].sy; }
                       int f2 = (int)((float)W / (ux1 - ux0)), f3 = (int)((float)H / (uy1 - uy0)); if (f3 < f2) f2 = f3; if (f2 < 2) f2 = 2; fit = f2; world_fit = 1; wcx = (ux0 + ux1) / 2; wcy = (uy0 + uy1) / 2; z = 0; }
+                  if (z < 0) z = 0;      /* -1 with no piece to show: just the fit-page size (never index zpct[-1]) */
                   draw = fit * zpct[z] / 100;
               } }
             if (draw < (world_fit ? 2 : 4)) draw = world_fit ? 2 : 4;

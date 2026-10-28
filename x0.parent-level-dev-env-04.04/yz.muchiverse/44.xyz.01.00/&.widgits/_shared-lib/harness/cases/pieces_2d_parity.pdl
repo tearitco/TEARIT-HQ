@@ -1,0 +1,40 @@
+# 2D view of entity pieces (owner 2026-10-27: everything drawn in 3D must also be in the 2D views). The renderer and the test are COMPILED FROM SOURCE into the scratch dir, so the gate follows the code: bv_2d_piece_test.c
+# builds a scratch project (page, xelector, one piece veh_1), runs the renderer and counts pixels in the piece's footprint. POSITIVE = the real renderer; NEGATIVE = the same source built with -DBV_2D_NO_PIECES (the renderer as it
+# was before the piece code): the drawing checks must FAIL there, which proves the test can fail.
+RESULTS | ../results/pieces_2d_parity.txt
+CASE    | build
+SCRATCH |
+MKDIR | g1
+MKDIR | g2
+RUN | gcc | -O2 | -w | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_real | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
+EXPECT_EXIT | 0 | renderer-builds-from-source
+RUN | gcc | -O2 | -w | -DBV_2D_NO_PIECES | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_nopieces | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
+EXPECT_EXIT | 0 | negative-fixture-renderer-builds
+RUN | gcc | -O2 | -w | -I/usr/include/libpng16 | -o | $T/ptest | $HOUSE/&.widgits/board-viewer/ops/bv_2d_piece_test.c | -lpng16 | -lz
+EXPECT_EXIT | 0 | test-program-builds
+CASE    | positive-real-renderer
+ENV | BV2D_BIN | $T/r2d_real
+RUN | $T/ptest | $T/g1
+EXPECT_EXIT | 0 | every-check-of-the-test-holds
+EXPECT_OUT | ok  : no piece: no red in the footprint (baseline) | baseline-has-no-red
+EXPECT_OUT | ok  : a voxel piece of the shown desk is drawn over its footprint (red top) | voxel-piece-drawn-on-its-desk
+EXPECT_OUT | ok  : nothing outside the footprint changed | nothing-outside-the-footprint-changes
+EXPECT_OUT | ok  : a piece of another desk is not drawn (same rule as the 3D engine) | other-desk-not-drawn
+EXPECT_OUT | ok  : desk=* is drawn on every desk | desk-star-drawn
+EXPECT_OUT | ok  : a tile-faced piece shows its tile picture (both halves) and not the voxel colour | tile-faced-piece-shows-its-tiles
+EXPECT_OUT | ok  : desk-picture branch: a piece on the page is drawn | desk-picture-branch-draws-a-piece-on-the-page
+EXPECT_OUT | ok  : a piece outside the page is not visible at fit-page zoom 0 | outside-the-page-invisible-at-fit-page
+EXPECT_OUT | ok  : zoom -1 (whole scene) shows the piece that lies outside the page | zoom-minus-one-shows-the-piece-outside-the-page
+EXPECT_OUT | ok  : zoom -1 with no piece looks exactly like fit-page (no crash, no change) | zoom-minus-one-without-pieces-equals-fit-page
+EXPECT_OUT_LACKS | FAIL | no-failed-check
+CASE    | negative-renderer-without-pieces
+ENV | BV2D_BIN | $T/r2d_nopieces
+RUN | $T/ptest | $T/g2
+EXPECT_EXIT | 1 | the-test-fails-on-a-renderer-that-ignores-pieces
+EXPECT_OUT | FAIL: a voxel piece of the shown desk is drawn over its footprint (red top) | voxel-check-fails-without-piece-code
+EXPECT_OUT | FAIL: desk=* is drawn on every desk | desk-star-check-fails-without-piece-code
+EXPECT_OUT | FAIL: a tile-faced piece shows its tile picture (both halves) and not the voxel colour | tile-check-fails-without-piece-code
+EXPECT_OUT | FAIL: desk-picture branch: a piece on the page is drawn | desk-picture-check-fails-without-piece-code
+EXPECT_OUT | FAIL: zoom -1 (whole scene) shows the piece that lies outside the page | zoom-minus-one-check-fails-without-piece-code
+EXPECT_OUT | ok  : a piece of another desk is not drawn (same rule as the 3D engine) | the-desk-rule-check-alone-cannot-tell-so-it-passes-here
+CLEAN |

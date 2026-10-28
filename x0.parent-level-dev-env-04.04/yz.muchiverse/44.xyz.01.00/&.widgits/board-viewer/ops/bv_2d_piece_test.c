@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <png.h>
 #define W 640
 #define H 480
 static char dir[600]; static int bad = 0; static unsigned char base[W * H * 4], cur[W * H * 4]; static int ox, oy, cell;
@@ -31,6 +32,17 @@ static int render(unsigned char *out) {
     char cmd[1700]; snprintf(cmd, sizeof cmd, "cd '%s' && timeout 30 '%s' >/dev/null 2>&1", dir, abs); if (system(cmd) != 0) return 2;
     char p[800]; snprintf(p, sizeof p, "%s/pieces/display/rgb_frame_2d.raw", dir); FILE *f = fopen(p, "rb"); if (!f) return 2; size_t n = fread(out, 1, W * H * 4, f); fclose(f); if (n != (size_t)W * H * 4) return 2;
     snprintf(p, sizeof p, "%s/pieces/display/view_map.txt", dir); f = fopen(p, "r"); if (!f) return 2; char l[64]; ox = oy = 0; cell = 80; while (fgets(l, sizeof l, f)) { if (!strncmp(l, "ox=", 3)) ox = atoi(l + 3); if (!strncmp(l, "oy=", 3)) oy = atoi(l + 3); if (!strncmp(l, "cell=", 5)) cell = atoi(l + 5); } fclose(f); return 0; }
+/* the desk-picture branch (what rpg-space uses): maps/m/d1/map.png (8 x 6 tiles of 24 px, solid grey) + map.txt (first line = 8 columns) */
+static void map_branch(void) {
+    char p[800]; md("pieces/system/maps"); md("pieces/system/maps/m"); md("pieces/system/maps/m/d1"); snprintf(p, sizeof p, "%s/pieces/system/maps/m/d1/map.txt", dir); FILE *f = fopen(p, "w"); fputs("........\n", f); fclose(f);
+    snprintf(p, sizeof p, "%s/pieces/system/maps/m/d1/map.png", dir); f = fopen(p, "wb"); png_structp pg = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); png_infop in = png_create_info_struct(pg); png_init_io(pg, f);
+    png_set_IHDR(pg, in, 192, 144, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT); png_write_info(pg, in);
+    static unsigned char row[192 * 4]; for (int x = 0; x < 192; x++) { row[x * 4] = row[x * 4 + 1] = row[x * 4 + 2] = 90; row[x * 4 + 3] = 255; } for (int y = 0; y < 144; y++) png_write_row(pg, row);
+    png_write_end(pg, NULL); png_destroy_write_struct(&pg, &in); fclose(f); }
+static void zoom(int z) { char b[600]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=3\nselector_y=3\nview_2d_zoom=%d\n", dir, z); wr("pieces/system/bv_state.txt", b); }
+static void piece_at(int x, int y) { char t[320]; snprintf(t, sizeof t, "entity_type=vehicle\ndesk=d1\npos_x=%d\npos_y=%d\npos_z=0\nsize_x=2\nsize_y=2\nsize_h=1\n", x, y); wr("pieces/veh_1/state.txt", t);
+    wr("pieces/veh_1/model.txt", "dim 2 1 2\n0 0 0 255 0 0\n1 0 0 255 0 0\n0 0 1 255 0 0\n1 0 1 255 0 0\n"); }
+static int reds(const unsigned char *f) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] > 200 && p[1] < 60 && p[2] < 60) n++; } return n; }
 static void check(int ok, const char *what) { printf("%s: %s\n", ok ? "ok  " : "FAIL", what); if (!ok) bad = 1; }
 static void count(int *red, int *blue, int *green, int *outside_diff) {
     int x0 = (2 - ox) * cell, y0 = (2 - oy) * cell, x1 = x0 + 2 * cell, y1 = y0 + 2 * cell; *red = *blue = *green = *outside_diff = 0;
@@ -46,4 +58,10 @@ int main(int argc, char **argv) {
     piece("*", 0); if (render(cur)) return 2; count(&r, &b, &g, &od); check(r > 15000, "desk=* is drawn on every desk");
     piece("*", 1); if (render(cur)) return 2; count(&r, &b, &g, &od); printf("tile-faced piece: red %d blue %d green %d\n", r, b, g);
     check(b > 3000 && g > 3000 && r == 0, "a tile-faced piece shows its tile picture (both halves) and not the voxel colour"); check(od == 0, "tile-faced: nothing outside the footprint changed");
+    /* the desk-picture branch: a piece inside the page is drawn; a piece outside the page shows only at zoom -1 (the whole scene); zoom -1 with no piece must not break the frame */
+    nopiece(); map_branch(); zoom(0); if (render(base)) return 2; check(reds(base) == 0, "desk picture, no piece: no red");
+    piece_at(2, 2); zoom(0); if (render(cur)) return 2; r = reds(cur); printf("desk picture, piece on the page: red %d\n", r); check(r > 5000, "desk-picture branch: a piece on the page is drawn");
+    piece_at(12, 2); zoom(0); if (render(cur)) return 2; check(reds(cur) == 0, "a piece outside the page is not visible at fit-page zoom 0");
+    zoom(-1); if (render(cur)) return 2; r = reds(cur); printf("desk picture, piece off the page, zoom -1: red %d\n", r); check(r > 300, "zoom -1 (whole scene) shows the piece that lies outside the page");
+    nopiece(); zoom(-1); if (render(cur)) return 2; zoom(0); if (render(base)) return 2; check(memcmp(cur, base, sizeof cur) == 0, "zoom -1 with no piece looks exactly like fit-page (no crash, no change)");
     return bad; }
