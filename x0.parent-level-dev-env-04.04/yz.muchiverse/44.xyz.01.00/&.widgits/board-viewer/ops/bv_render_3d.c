@@ -4263,7 +4263,7 @@ static int render_one_frame(void) {
         /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can
          * see through the building"). view.pdl (this map) or #.desktop/hq_ui.pdl: view_cut_on=1, view_cut_alpha=<percent, default 30>,
          * view_cut_radius=<tenths of a cell, default 16>. Cells at or above the character's level inside a tube from the eye to the character
-         * are blended by the GPU shader (u_cut*); off by default. The target is the hero, or the xelector on painted maps while In: is off. */
+         * are blended by the GPU shader (u_cut*); off by default. The target is the hero when one is possessed, else the xelector (painted or emoji-tile map): in rpg-space the selector sits on the controlled character. */
         {
             /* the three keys are read from two files; look at them once a second, not every frame (a frame is a few ms, a read is a file open) */
             static int cut_con = 0, cut_ca = 30, cut_cr = 16; static struct timespec cut_t;
@@ -4280,13 +4280,14 @@ static int render_one_frame(void) {
                 }
             }
             int con = cut_con;
-            if (con > 0 && camera_mode != 1 && (g_hero_present || (g_xelector_present && sc.maker))) {
+            if (con > 0 && camera_mode != 1 && (g_hero_present || g_xelector_present)) {
                 int ca = cut_ca, cr = cut_cr;
                 ca = ca < 5 ? 5 : ca > 95 ? 95 : ca; cr = cr < 5 ? 5 : cr > 80 ? 80 : cr;
                 double fy, ty;   /* feet and head height of the target */
                 double tx, tz;
                 if (g_hero_present) { tx = g_hero_x + 0.5; tz = g_hero_y + 0.5; if (sc.maker) { fy = 1.0; ty = 2.6; } else { fy = g_hero_z; ty = g_hero_z + 0.9; } }
-                else { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = 1.0 + g_xelector_z; ty = 2.6 + g_xelector_z; }
+                else if (sc.maker) { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = 1.0 + g_xelector_z; ty = 2.6 + g_xelector_z; }
+                else { tx = g_xelector_x + 0.5; tz = g_xelector_y + 0.5; fy = g_xelector_z; ty = g_xelector_z + 0.85; }      /* emoji-tile boards (rpg-space bridge): the selector sits on the controlled character, its box stands on level g_xelector_z */
                 sc.cut_on = 1; sc.cut_y = (int)floor(fy + 0.001); sc.cut_pos[0] = (float)tx; sc.cut_pos[1] = (float)((fy + ty) / 2.0); sc.cut_pos[2] = (float)tz;
                 sc.cut_r = cr / 10.0f; sc.cut_a = ca / 100.0f;
             }
