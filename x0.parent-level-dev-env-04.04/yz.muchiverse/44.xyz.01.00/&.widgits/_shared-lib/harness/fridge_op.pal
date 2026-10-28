@@ -1,0 +1,4 @@
+# fridge_op.pal - LOCKED acceptance harness for the ship's fridge op (stock, a hungry character eats ONE food by a fixed best-fit rule, life file + ledger). Read results/fridge_op.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/fridge_op.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/fridge_op.pdl
+halt

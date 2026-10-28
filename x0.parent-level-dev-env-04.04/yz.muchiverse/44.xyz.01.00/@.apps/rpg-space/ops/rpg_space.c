@@ -212,6 +212,55 @@ static void dec_bank(void) { char dp[PATH_MAX], bp[PATH_MAX]; spath(dp, "decisio
 static void dec_log(const char *actor, const char *state, const char *action, const char *target, const char *outcome) {
     char p[PATH_MAX], st[24] = ""; static int since; spath(p, "decisions.txt"); dec_row(p, st, actor, state, action, target, outcome);
     if (++since >= 200) { since = 0; dec_bank(); } }      /* the bank follows the ledger every 200 decisions (off the tick, niced), and on the review verb */
+/* THE FRIDGE (owner 2026-10-28: "food seeking, and a refrigerator on the ship"). foods.pdl FRIDGE rows say where it stands and how hungry is hungry; the OP &.widgits/_shared-lib/ops/+x/fridge_op.+x does the stock and
+ * the eating. A character at least seek_hunger hungry walks to a cell next to the fridge (fm_aim, called from section 37 INSTEAD of the random target pick: this is the first place a NEED changes a CHOICE, BOOK
+ * 16.game/AI-SIDE-ANSWERS-BLOCK-A-2026-10-28.md A2/A3); next to it and at least eat_hunger hungry, the step wrapper (section 35) runs `eat` (fm_try_eat). An empty fridge stops the seeking for fm_empty_s seconds so nobody
+ * stands at it starving. Both ends write DEC rows (seek_food / eat). Idle cost: foods.pdl is re-read every 2 s, one life-file read per AI step; the op runs only when a meal happens (fork/exec, 5 s watchdog, niced). */
+static char fm_room[16] = "quarters", fm_sheet[24] = "SF_Inside_B"; static int fm_x = 1, fm_y = 5, fm_w = 1, fm_h = 2, fm_tc = 8, fm_tr = 6, fm_seek = 40, fm_eat = 25, fm_on, fm_have, g_fm_aimed; static long fm_cfg_at; static time_t fm_empty_until;
+static void fm_cfg(void) {
+    long t = now_ms(); if (fm_cfg_at && t - fm_cfg_at < 2000) return; fm_cfg_at = t; fm_on = fm_have = 0;
+    char p[PATH_MAX], ln[300], *f[8]; snprintf(p, sizeof p, "%s/foods.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return; int any = 0;
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#' || split_bar(ln, f, 8) < 3 || strcmp(f[0], "FRIDGE")) continue; any = 1;
+        if (!strcmp(f[1], "room")) snprintf(fm_room, sizeof fm_room, "%s", f[2]); else if (!strcmp(f[1], "x")) fm_x = atoi(f[2]); else if (!strcmp(f[1], "y")) fm_y = atoi(f[2]);
+        else if (!strcmp(f[1], "seek_hunger")) fm_seek = atoi(f[2]); else if (!strcmp(f[1], "eat_hunger")) fm_eat = atoi(f[2]);
+        else if (!strcmp(f[1], "tile")) { char sh[24]; int c = 0, r = 0, w = 0, h = 0; if (sscanf(f[2], "%23s %d %d %d %d", sh, &c, &r, &w, &h) == 5 && w >= 1 && h >= 1 && c >= 0 && r >= 0) { snprintf(fm_sheet, sizeof fm_sheet, "%s", sh); fm_tc = c; fm_tr = r; fm_w = w; fm_h = h; } } }
+    fclose(fp); char exe[PATH_MAX]; snprintf(exe, sizeof exe, "%s/&.widgits/_shared-lib/ops/+x/fridge_op.+x", HOUSE[0] ? HOUSE : APP); fm_have = any; fm_on = any && !access(exe, X_OK) && room_idx(fm_room) >= 0;
+}
+/* the life-file id of the actor stepped by ai_step(i): -1 = the trainer (the hero's lower-case name), else the pet's id */
+static void fm_id(int i, char *o, size_t n) { if (i >= 0) { snprintf(o, n, "%s", party[i].id); return; } snprintf(o, n, "%s", hero.name); for (char *q = o; *q; q++) if (*q >= 'A' && *q <= 'Z') *q += 32; }
+static int fm_hunger(const char *id) { char p[PATH_MAX], b[900], nm[48]; snprintf(nm, sizeof nm, "life_%s.txt", id); spath(p, nm); if (!read_file(p, b, sizeof b)) return -1; if (strstr(b, "dead=1")) return -1; char *q = strstr(b, "hunger="); return q ? atoi(q + 7) : -1; }
+/* run fridge_op <verb> <state> <app> [a] [b]: stdout into out (cap), 5 s watchdog, no popen; returns the exit code or -1 */
+static int fm_exec(const char *verb, const char *a, const char *b, char *out, size_t cap) {
+    char exe[PATH_MAX]; snprintf(exe, sizeof exe, "%s/&.widgits/_shared-lib/ops/+x/fridge_op.+x", HOUSE[0] ? HOUSE : APP); if (access(exe, X_OK)) return -1;
+    int pf[2]; if (pipe(pf)) return -1; pid_t pid = fork(); if (pid < 0) return -1;
+    if (!pid) { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(pf[1], 1); dup2(dn, 2); } close(pf[0]); close(pf[1]); (void)!nice(10); execl(exe, exe, verb, ST, APP, a ? a : (char *)NULL, b ? b : (char *)NULL, (char *)NULL); _exit(97); }
+    close(pf[1]); size_t n = 0; time_t t0 = time(NULL); fcntl(pf[0], F_SETFL, O_NONBLOCK); int done = 0, st = 0;
+    while (!done && time(NULL) - t0 < 5) { ssize_t r = read(pf[0], out + n, cap - 1 - n); if (r > 0) { n += (size_t)r; if (n >= cap - 1) break; } else if (r == 0) done = 1; else usleep(10000); }
+    out[n] = 0; close(pf[0]); if (!done) kill(pid, SIGKILL); waitpid(pid, &st, 0); return done && WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+static int g_fm_tx, g_fm_ty;      /* the target fm_aim just set (for the seek_food row) */
+static int fm_next_to(int room, int x, int y) { if (room != room_idx(fm_room)) return 0; for (int j = 0; j < fm_h; j++) for (int i = 0; i < fm_w; i++) if (abs(x - (SOX + fm_x + i)) + abs(y - (SOY + fm_y + j)) == 1) return 1; return 0; }
+/* the current entity (use_ent(i) was called) wants food: 1 = handled (a target was set, or it already stands at the fridge), 0 = not hungry / no fridge / no way there / the fridge is empty: the normal pick runs */
+static int fm_aim(int i) {
+    fm_cfg(); if (!fm_on || time(NULL) < fm_empty_until) return 0; char id[24]; fm_id(i, id, sizeof id); int h = fm_hunger(id); if (h < fm_seek) return 0;
+    int fr = room_idx(fm_room); if (fm_next_to(pet.room, pet.x, pet.y)) return 1;
+    if (pet.room == fr) { static const int nx[4] = {1, -1, 0, 0}, ny[4] = {0, 0, 1, -1};
+        for (int j = 0; j < fm_h; j++) for (int k = 0; k < fm_w; k++) for (int d = 0; d < 4; d++) { int cx = SOX + fm_x + k + nx[d], cy = SOY + fm_y + j + ny[d]; if (fm_next_to(fr, cx, cy) && passable(cx, cy) && door_here(fr, cx, cy) < 0) { pet.tx = cx; pet.ty = cy; g_fm_tx = cx; g_fm_ty = cy; g_fm_aimed = 1; return 1; } }
+        return 0; }
+    int dist[16]; for (int r = 0; r < 16; r++) dist[r] = -1; dist[fr] = 0;      /* hops to the fridge room over the doors pets walk through (autow), breadth first from the fridge room backwards */
+    for (int lvl = 0; lvl < 16; lvl++) for (int d = 0; d < ndoor; d++) if (doors[d].autow && doors[d].dest >= 0 && doors[d].dest < 16 && doors[d].room >= 0 && doors[d].room < 16 && dist[doors[d].dest] == lvl && dist[doors[d].room] < 0) dist[doors[d].room] = lvl + 1;
+    if (pet.room < 0 || pet.room >= 16 || dist[pet.room] < 0) return 0;
+    for (int d = 0; d < ndoor; d++) if (doors[d].room == pet.room && doors[d].autow && doors[d].dest >= 0 && doors[d].dest < 16 && dist[doors[d].dest] == dist[pet.room] - 1) { pet.tx = doors[d].tx; pet.ty = doors[d].ty + 1; g_fm_tx = pet.tx; g_fm_ty = pet.ty; g_fm_aimed = 1; return 1; }
+    return 0;
+}
+/* after the step: the entity e of ai_step(i) stands next to the fridge and is hungry enough: eat one food (at most one attempt per actor every 3 s) */
+static void fm_try_eat(int i, const Ent *e) {
+    fm_cfg(); if (!fm_on || !fm_next_to(e->room, e->x, e->y)) return; char id[24]; fm_id(i, id, sizeof id); int h = fm_hunger(id); if (h < fm_eat) return;
+    static time_t last[NP + 2]; int k = i + 1; if (k < 0 || k > NP) return; time_t now = time(NULL); if (now - last[k] < 3) return; last[k] = now;
+    char out[300]; int rc = fm_exec("eat", id, NULL, out, sizeof out); char food[32] = "-";
+    if (rc == 0 && sscanf(out, "ate=%31s", food) == 1) dec_log(i < 0 ? "trainer" : party[i].id, "hungry", "eat", food, "ok");
+    else { int empty = strstr(out, "empty") != NULL; if (empty) fm_empty_until = now + 60; dec_log(i < 0 ? "trainer" : party[i].id, "hungry", "eat", "fridge", empty ? "empty" : "refused"); }
+}
 /* the read-back that closes the loop: how readily a pet picks a new target. 45 % with no evidence; the op computes it from the walk weight (45 + (0.5 - w) * 60, clamped 15..85) and
  * writes state/bank/dec_rpg-space_pick_pct.txt; a pet that keeps being blocked retargets sooner. The file is re-read at most every 10 s. */
 static int dec_pick_pct(void) {
@@ -226,13 +275,15 @@ static int ai_step_inner(int i);
     if (moved && (e->x != x0 || e->y != y0 || e->room != r0)) { act = e->room != r0 ? "door" : "walk"; snprintf(tg, sizeof tg, "%d,%d", e->x, e->y); }
     else if (tx0 < 0 && e->tx >= 0) { act = "pick"; snprintf(tg, sizeof tg, "%d,%d", e->tx, e->ty); }
     else if (tx0 >= 0 && !moved) { act = "walk"; out = "blocked"; snprintf(tg, sizeof tg, "%d,%d", tx0, ty0); }
+    if (g_fm_aimed) { char sg[32]; snprintf(sg, sizeof sg, "%d,%d", g_fm_tx, g_fm_ty); dec_log(i < 0 ? "trainer" : party[i].id, "hungry", "seek_food", sg, "ok"); g_fm_aimed = 0; }      /* the NEED-driven choice has its own row: the step below usually moves in the same call, and a move is logged as walk */
     if (act) dec_log(i < 0 ? "trainer" : party[i].id, tx0 >= 0 ? "goal" : "idle", act, tg, out);
+    fm_try_eat(i, e);
     return moved;
 }
 static int ai_step_inner(int i) {
 #elif PET_SECTION == 36
 #elif PET_SECTION == 37
-    if (pet.tx < 0 && rand() % 100 < dec_pick_pct()) pick_target();
+    if (pet.tx < 0) { if (fm_aim(i)) { /* hungry: toward the fridge, or already next to it */ } else if (rand() % 100 < dec_pick_pct()) pick_target(); }
 #elif PET_SECTION == 38
 #elif PET_SECTION == 39
 static void end_turn(void) { if (!run_on() || !turn_mode()) return; clock_turn(); int in = flag_on("int", 0), c = ctl_idx(); for (int i = 0; i < nparty; i++) if (!(in && i == c)) ai_step(i); use_ent(active); }      /* the pet you control does not act on its own */
@@ -315,6 +366,14 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "review")) {      /* the daily review of state/decisions.txt -> state/review.txt (review [day-number], default the latest day) */
         char dp[PATH_MAX], rp[PATH_MAX]; spath(dp, "decisions.txt"); spath(rp, "review.txt"); char ds[16]; snprintf(ds, sizeof ds, "%d", argc > 1 ? atoi(argv[1]) : -1); int n = dec_exec("review", dp, rp, ds, 1); dec_bank();
         if (n < 0) snprintf(msg, cap, "review: no decisions yet"); else snprintf(msg, cap, "review: %d decisions reviewed, written to review.txt", n); return; }
+    if (!strcmp(v, "fridge")) {      /* fridge status | stock <food> <n> | eat <id>: the ship's fridge (foods.pdl, op fridge_op); eat = that character eats one food NOW if it is hungry enough */
+        const char *a = argc >= 2 ? argv[1] : "status"; char out[1200]; int rc;
+        if (!strcmp(a, "status")) rc = fm_exec("status", NULL, NULL, out, sizeof out); else if (!strcmp(a, "stock") && argc >= 4) rc = fm_exec("stock", argv[2], argv[3], out, sizeof out);
+        else if (!strcmp(a, "eat") && argc >= 3) rc = fm_exec("eat", argv[2], NULL, out, sizeof out); else { snprintf(msg, cap, "usage: fridge status | stock <food> <n> | eat <id>"); return; }
+        if (rc < 0) { snprintf(msg, cap, "fridge: the op is missing or failed (build &.widgits/_shared-lib/ops/build_fridge_op.sh)"); return; }
+        for (char *q = out; *q; q++) {
+            if (*q == '\n') *q = ';'; }
+        snprintf(msg, cap, "fridge: %s", out); return; }
     if (!strcmp(v, "mine") || !strcmp(v, "destroy") || !strcmp(v, "hold") || !strcmp(v, "build")) { sk_wd_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "playpage") && argc >= 2) { int ok = run_event_x(argv[1], argc >= 3 ? argv[2] : "parallel", ""); snprintf(msg, cap, "playpage %s: %s", argv[1], ok ? "page played" : "no page / failed"); return; }      /* what events-hq's Play does: the page by name (a harness plays the air and collision pages with it) */
     if (!strcmp(v, "collision")) { sk_coll_verb(argc, argv, msg, cap); return; }
@@ -479,6 +538,10 @@ static void sk_ship_deco(void) {
             int x = SOX + d[5] + i, y = SOY + d[6] + j; if (sk_glyph[d[0]][y][x] != '.') continue;      /* never over a wall, a door or another object */
             unsigned char a[XT * XT * 4], f[XT * XT * 4]; tile24(b, (d[1] + i) * S48, (d[2] + j) * S48, a); memcpy(f, slotpx[sk_fs[d[0]][y][x]], sizeof f); over24(f, a);
             sk_glyph[d[0]][y][x] = 'f'; sk_ws[d[0]][y][x] = slot_of(f); } }
+    fm_cfg();      /* the ship's FRIDGE (foods.pdl FRIDGE rows: room, cell, picture), stamped like any other object: blocked cell(s), the same tile in the 2D and the 3D picture */
+    { int g = fm_have ? room_idx(fm_room) : -1; Sheet *fs = g >= 0 && g < SK_SHIP ? sheet("tilesets", fm_sheet) : NULL;
+      for (int j = 0; fs && j < fm_h; j++) for (int i = 0; i < fm_w; i++) { int x = SOX + fm_x + i, y = SOY + fm_y + j; if (x < 0 || y < 0 || x >= SK_W || y >= SK_H || sk_glyph[g][y][x] != '.') continue;
+            unsigned char a[XT * XT * 4], f[XT * XT * 4]; tile24(fs, (fm_tc + i) * S48, (fm_tr + j) * S48, a); memcpy(f, slotpx[sk_fs[g][y][x]], sizeof f); over24(f, a); sk_glyph[g][y][x] = 'f'; sk_ws[g][y][x] = slot_of(f); } }
 }
 /* the room's name with its exits, for the toolbar: a ship room is shown as "Engine (door E)" so nobody has to hunt for the way out; compass letters are the walls of the 3D / 2D picture (N = top) */
 static const char *sk_room_label(int room) {

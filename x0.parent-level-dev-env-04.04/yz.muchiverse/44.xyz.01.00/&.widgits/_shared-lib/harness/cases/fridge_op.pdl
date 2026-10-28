@@ -1,0 +1,151 @@
+# fridge_op: LOCKED cases. Source: &.widgits/_shared-lib/ops/fridge_op.c compiled -Wall -Wextra -Werror from source into the scratch. Expected values are worked out BY HAND from the rule, not read from the program:
+# the stocked kind with the LARGEST nourishment <= the hunger is eaten (no waste); when every stocked kind is bigger than the hunger, the SMALLEST; hunger never goes below 0; eat is refused under eat_hunger. Bars are written \p in this file.
+RESULTS | ../results/fridge_op.txt
+SCRATCH |
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/fo.+x | $HOUSE/&.widgits/_shared-lib/ops/fridge_op.c
+EXPECT_EXIT | 0 | compiles-clean-with-werror
+MKDIR | app
+MKDIR | st
+WRITE | app/foods.pdl | FOOD \p a \p Alpha \p 5 \p tiny\nFOOD \p b \p Bravo \p 12 \p small\nFOOD \p c \p Charlie \p 25 \p medium\nFOOD \p d \p Delta \p 40 \p big\nSTOCK \p a \p 2\nSTOCK \p b \p 2\nSTOCK \p c \p 2\nSTOCK \p d \p 2\nFRIDGE \p room \p hold\nFRIDGE \p x \p 3\nFRIDGE \p y \p 4\nFRIDGE \p tile \p SF_Inside_B 8 6 1 2\nFRIDGE \p seek_hunger \p 50\nFRIDGE \p eat_hunger \p 20\n
+
+CASE | where-and-seeding
+RUN | $T/fo.+x | where | $T/app
+EXPECT_EXIT | 0 | where-reads-the-fridge-rows
+EXPECT_OUT | room=hold x=3 y=4 tile=SF_Inside_B 8 6 1 2 seek_hunger=50 eat_hunger=20 foods=4 | every-row-parsed-from-the-file
+RUN | $T/fo.+x | status | $T/st | $T/app
+EXPECT_OUT | kinds=4 total=8 seeded=1 | a-new-fridge-is-seeded-from-the-STOCK-rows-once
+EXPECT_OUT | food=c n=2 nourish=25 | the-stock-lines-follow
+EXPECT_HAS | st/fridge.txt | c=2 | the-state-file-exists
+RUN | $T/fo.+x | status | $T/st | $T/app
+EXPECT_OUT | seeded=0 | a-second-call-does-not-reseed
+
+CASE | an-empty-file-is-an-empty-fridge-not-a-new-one
+MKDIR | st_empty
+WRITE | st_empty/fridge.txt | 
+RUN | $T/fo.+x | status | $T/st_empty | $T/app
+EXPECT_OUT | kinds=0 total=0 seeded=0 | an-existing-empty-file-is-NOT-reseeded
+
+CASE | best-fit-and-clamp
+MKDIR | st1
+WRITE | st1/life_alice.txt | hp=18\nhunger=30\ndead=0\ndeaths=2\ninv=bread:3,iron:1\n
+RUN | $T/fo.+x | eat | $T/st1 | $T/app | alice
+EXPECT_EXIT | 0 | alice-eats
+EXPECT_OUT | ate=c nourish=25 hunger=30->5 left=1 | at-hunger-30-the-largest-food-not-over-30-is-charlie-25
+EXPECT_HAS | st1/life_alice.txt | hunger=5 | the-life-file-has-the-new-hunger
+EXPECT_HAS | st1/life_alice.txt | inv=bread:3,iron:1 | the-other-lines-are-untouched
+EXPECT_HAS | st1/life_alice.txt | deaths=2 | deaths-untouched
+EXPECT_HAS | st1/fridge.txt | c=1 | the-stock-went-down-by-one
+EXPECT_HAS | st1/events.txt | EAT\p | a-ledger-row-was-written
+EXPECT_HAS | st1/events.txt | \palice\pc\p25\p30\p5\pleft=1 | with-who-what-nourishment-old-new-and-left
+EXPECT_NOFILE | st1/life_alice.txt.tmp | no-temp-file-is-left-behind
+EXPECT_NOFILE | st1/fridge.txt.tmp | and-none-for-the-stock
+RUN | $T/fo.+x | eat | $T/st1 | $T/app | alice
+EXPECT_EXIT | 1 | under-the-eat-limit-is-refused
+EXPECT_OUT | refused: not hungry (hunger 5 < 20) | with-the-numbers
+EXPECT_HAS | st1/life_alice.txt | hunger=5 | nothing-changed
+
+CASE | the-big-meal-and-the-small-meal
+MKDIR | st2
+WRITE | st2/life_dave.txt | hp=18\nhunger=90\ndead=0\ndeaths=2\ninv=bread:3,iron:1\n
+WRITE | st2/life_erin.txt | hp=18\nhunger=22\ndead=0\ndeaths=2\ninv=bread:3,iron:1\n
+RUN | $T/fo.+x | eat | $T/st2 | $T/app | dave
+EXPECT_OUT | ate=d nourish=40 hunger=90->50 left=1 | at-hunger-90-delta-40
+RUN | $T/fo.+x | eat | $T/st2 | $T/app | erin
+EXPECT_OUT | ate=b nourish=12 hunger=22->10 left=1 | at-hunger-22-bravo-12-is-the-largest-not-over-22
+
+CASE | nothing-fits-so-the-smallest-and-hunger-stops-at-zero
+MKDIR | st3
+WRITE | st3/life_fay.txt | hp=18\nhunger=22\ndead=0\ndeaths=2\ninv=bread:3,iron:1\n
+WRITE | st3/fridge.txt | d=1\n
+RUN | $T/fo.+x | eat | $T/st3 | $T/app | fay
+EXPECT_OUT | ate=d nourish=40 hunger=22->0 left=0 | only-delta-40-is-stocked-it-is-bigger-than-22-so-it-is-eaten-and-hunger-stops-at-0
+EXPECT_HAS | st3/life_fay.txt | hunger=0 | never-negative
+MKDIR | st3b
+WRITE | st3b/life_gus.txt | hp=18\nhunger=22\ndead=0\ndeaths=2\ninv=bread:3,iron:1\n
+WRITE | st3b/fridge.txt | d=1\nc=1\n
+RUN | $T/fo.+x | eat | $T/st3b | $T/app | gus
+EXPECT_OUT | ate=c nourish=25 hunger=22->0 left=0 | with-charlie-and-delta-both-bigger-the-smaller-charlie-25-is-eaten
+
+CASE | refusals
+MKDIR | st4
+WRITE | st4/life_hal.txt | hp=18\nhunger=60\ndead=1\ndeaths=2\ninv=bread:3,iron:1\n
+WRITE | st4/life_ivy.txt | hp=5\ndead=0\n
+WRITE | st4/life_jo.txt | hp=18\nhunger=60\ndead=0\ndeaths=2\ninv=bread:3,iron:1\n
+WRITE | st4/fridge.txt | \n
+RUN | $T/fo.+x | eat | $T/st4 | $T/app | hal
+EXPECT_EXIT | 1 | a-dead-character-is-refused
+EXPECT_OUT | refused: dead characters do not eat | dead
+EXPECT_HAS | st4/life_hal.txt | hunger=60 | and-unchanged
+RUN | $T/fo.+x | eat | $T/st4 | $T/app | nobody
+EXPECT_EXIT | 1 | an-unknown-character-is-refused
+EXPECT_OUT | refused: unknown character (no life file) | no-life-file
+RUN | $T/fo.+x | eat | $T/st4 | $T/app | ../st1/life_alice
+EXPECT_EXIT | 1 | a-path-is-refused-as-an-id
+EXPECT_OUT | refused: unknown character | traversal-is-not-possible
+RUN | $T/fo.+x | eat | $T/st4 | $T/app | ivy
+EXPECT_EXIT | 1 | a-life-file-without-hunger-is-refused
+EXPECT_OUT | refused: the life file has no hunger line | no-hunger-line
+RUN | $T/fo.+x | eat | $T/st4 | $T/app | jo
+EXPECT_EXIT | 1 | an-empty-fridge-is-refused
+EXPECT_OUT | refused: the fridge is empty | empty
+EXPECT_HAS | st4/life_jo.txt | hunger=60 | nothing-was-invented
+EXPECT_NOFILE | st4/events.txt | no-ledger-row-for-a-refusal
+
+CASE | an-id-cannot-climb-out-of-the-state-folder
+MKDIR | st6/life_x
+WRITE | st6/y.txt | hp=18\nhunger=60\ndead=0\ndeaths=0\ninv=\n
+WRITE | st6/fridge.txt | d=1\n
+RUN | $T/fo.+x | eat | $T/st6 | $T/app | x/../y
+EXPECT_EXIT | 1 | an-id-with-a-slash-is-refused
+EXPECT_OUT | refused: unknown character | even-when-the-folder-life_x-exists-so-that-st6-life_x-../y.txt-would-resolve
+EXPECT_HAS | st6/y.txt | hunger=60 | the-file-outside-the-naming-scheme-was-not-touched
+EXPECT_HAS | st6/fridge.txt | d=1 | and-the-stock-neither
+
+CASE | stock-verb
+MKDIR | st5
+RUN | $T/fo.+x | stock | $T/st5 | $T/app | a | 3
+EXPECT_EXIT | 0 | stock-adds
+EXPECT_OUT | stocked=a n=3 now=5 | two-were-seeded-plus-three
+EXPECT_HAS | st5/fridge.txt | a=5 | in-the-file
+RUN | $T/fo.+x | stock | $T/st5 | $T/app | zzz | 1
+EXPECT_EXIT | 1 | an-unknown-food-is-refused
+EXPECT_OUT | refused: unknown food | unknown
+RUN | $T/fo.+x | stock | $T/st5 | $T/app | a | 0
+EXPECT_EXIT | 1 | zero-is-refused
+RUN | $T/fo.+x | stock | $T/st5 | $T/app | a | abc
+EXPECT_EXIT | 1 | a-non-number-is-refused
+EXPECT_HAS | st5/fridge.txt | a=5 | and-nothing-changed
+
+CASE | bad-data-duplicate
+MKDIR | ap_duplicate
+WRITE | ap_duplicate/foods.pdl | FOOD \p a \p A \p 5 \p x\nFOOD \p a \p A again \p 6 \p x\n
+RUN | $T/fo.+x | status | $T/st | $T/ap_duplicate
+EXPECT_EXIT | 2 | a-duplicate-food-is-a-config-error
+
+CASE | bad-data-nofood
+MKDIR | ap_nofood
+WRITE | ap_nofood/foods.pdl | STOCK \p a \p 1\n
+RUN | $T/fo.+x | status | $T/st | $T/ap_nofood
+EXPECT_EXIT | 2 | no-food-rows-is-a-config-error
+
+CASE | bad-data-badnourish
+MKDIR | ap_badnourish
+WRITE | ap_badnourish/foods.pdl | FOOD \p a \p A \p 0 \p x\n
+RUN | $T/fo.+x | status | $T/st | $T/ap_badnourish
+EXPECT_EXIT | 2 | nourish-0-is-a-config-error
+
+CASE | bad-data-badkey
+MKDIR | ap_badkey
+WRITE | ap_badkey/foods.pdl | FOOD \p a b \p A \p 5 \p x\n
+RUN | $T/fo.+x | status | $T/st | $T/ap_badkey
+EXPECT_EXIT | 2 | a-key-with-a-space-is-a-config-error
+
+CASE | usage-and-missing-file
+RUN | $T/fo.+x | status | $T/st | $T/nodir
+EXPECT_EXIT | 2 | a-missing-foods-file-is-a-config-error
+RUN | $T/fo.+x
+EXPECT_EXIT | 2 | no-arguments
+RUN | $T/fo.+x | dance | $T/st | $T/app
+EXPECT_EXIT | 2 | an-unknown-verb
+CLEAN |

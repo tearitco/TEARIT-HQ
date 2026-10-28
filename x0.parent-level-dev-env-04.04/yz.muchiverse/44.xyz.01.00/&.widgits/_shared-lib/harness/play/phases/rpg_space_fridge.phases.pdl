@@ -1,0 +1,181 @@
+# rpg_space_fridge.phases.pdl - the ship's FRIDGE and FOOD SEEKING (owner 2026-10-28: "lets add some food seeking, and a refrigerator on the ship, with lots of different food in its inventory ... lets see if it really works").
+# Runner: ops/+x/playthrough_op.+x run play/phases/rpg_space_fridge.phases.pdl (a scratch house under /tmp; nothing live is touched). Every pet step below is one `walk` verb = one ai_step of the active pet (Ember, party 0).
+# Geometry the expected values come from: the fridge stands at foods.pdl FRIDGE x=1 y=5 (local to the ship footprint at desk (2,2)) = desk cells (3,7) and (3,8) in the quarters; cells next to it: (4,7) (4,8) (3,9) ((3,6) is a cabinet). Hunger limits seek 40 / eat 25.
+# Nourishment (foods.pdl): the stocked kind with the LARGEST value <= the hunger is eaten, and a pet next to the fridge keeps eating while its hunger is at least 25: hunger 70 -> ration pack (40) -> 30 -> paste tube (30) -> 0; hunger 80 -> the last ration pack -> 40 -> space stew (35) -> 5.
+GAME | rpg-space | rpg_space
+EVENTS | yes
+NEEDS | &.widgits/world-ops/ops/+x/wo.+x
+# the rpg-space skin text-includes the shared petslike core and its helpers (the scratch house has only what is listed)
+NEEDS | &.widgits/_shared-lib/petslike_core.c
+NEEDS | &.widgits/_shared-lib/petslike_toolbar.c
+NEEDS | &.widgits/_shared-lib/pet_sky.c
+NEEDS | &.widgits/_shared-lib/pet_footer.c
+NEEDS | &.widgits/_shared-lib/pet_nudge.c
+NEEDS | &.widgits/_shared-lib/kh_state_notify.h
+NEEDS | &.widgits/_shared-lib/csv_frames.c
+NEEDS | &.widgits/_shared-lib/petslike_skin_lib.c
+NEEDS | &.widgits/_shared-lib/petslike_autotile.c
+NEEDS | &.widgits/_shared-lib/petslike_life.c
+NEEDS | @.apps/rpg-space/ops/+x/dust_gen.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_seed.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_zoom.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_orbit.+x
+NEEDS | @.apps/rpg-space/ops/+x/dust_check.+x
+# the planet pages are painted from RPG Maker sheets (the assets live above the house)
+NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
+NEEDS | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+CFLAGS | -I$T/@.apps/rpg-space/ops
+NEEDS | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt
+NEEDS | @.apps/rpg-space/foods.pdl
+NEEDS | &.widgits/_shared-lib/ops/+x/fridge_op.+x
+INIT | state/pet_ember.txt | room=quarters\nx=8\ny=8\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+INIT | state/life_ember.txt | hp=20\nhunger=70\ndead=0\ndeaths=0\ninv=bread:5\n
+
+PHASE | p1_hungry_in_the_quarters | a pet at hunger 70 in the quarters walks to a cell next to the fridge and eats by itself, until it is under the eat limit (two meals: 70 to 30 to 0) | food seeking, fridge, need changes a choice
+DO | fridge | status
+SAY | kinds=14 total=62 | a-new-fridge-holds-fourteen-kinds-and-sixty-two-portions
+HAS | state/fridge.txt | hydro_apple=6 | the-fridge-file-was-seeded-from-the-STOCK-rows
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+HAS | state/events.txt | EAT\p | a-meal-was-written-to-the-game-ledger
+HAS | state/events.txt | \pember\pration_pack\p40\p70\p30\pleft=1 | the-pet-ate-the-ration-pack-hunger-70-to-30
+HAS | state/events.txt | \pember\ppaste_tube\p30\p30\p0\pleft=4 | at-hunger-30-it-eats-again-the-paste-tube-30-to-0-it-eats-until-under-the-eat-limit
+HAS | state/life_ember.txt | hunger=0 | the-life-file-says-hunger-0
+HAS | state/fridge.txt | ration_pack=1 | one-ration-pack-less
+HAS | state/decisions.txt | \pember\phungry\pseek_food\p | the-decision-ledger-has-a-seek-food-row
+HAS | state/decisions.txt | \pember\phungry\peat\pration_pack\pok | and-an-eat-row
+
+PHASE | p2_from_the_hold | a hungry pet in the hold finds the fridge through the doors (hold to bridge to quarters) and eats | food seeking, routing, doors
+PUT | state/pet_ember.txt | room=hold\nx=8\ny=8\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+PUT | state/life_ember.txt | hp=20\nhunger=80\ndead=0\ndeaths=0\ninv=bread:5\n
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+COUNT | state/events.txt | EAT\p | 4 | two-more-meals-were-eaten-in-the-second-phase
+HAS | state/events.txt | \pember\pration_pack\p40\p80\p40\pleft=0 | at-hunger-80-the-last-ration-pack-went-80-to-40
+HAS | state/events.txt | \pember\pspace_stew\p35\p40\p5\pleft=2 | then-the-space-stew-40-to-5
+HAS | state/fridge.txt | space_stew=2 | the-stew-is-down-by-one
+HAS | state/fridge.txt | hydro_apple=6 | and-the-apples-are-untouched
+
+PHASE | p3_not_hungry | a pet under the seek limit (40) does not go to the fridge, and one under the eat limit (25) does not eat | need, threshold
+PUT | state/decisions.txt | \n
+PUT | state/pet_ember.txt | room=quarters\nx=9\ny=9\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+PUT | state/life_ember.txt | hp=20\nhunger=35\ndead=0\ndeaths=0\ninv=bread:5\n
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+LACKS | state/decisions.txt | seek_food | hunger-35-is-under-the-seek-limit-so-no-food-seeking
+LACKS | state/decisions.txt | \peat\p | and-no-eating
+COUNT | state/events.txt | EAT\p | 4 | no-new-meal
+HAS | state/life_ember.txt | hunger=35 | hunger-unchanged
+PUT | state/pet_ember.txt | room=quarters\nx=4\ny=8\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+PUT | state/life_ember.txt | hp=20\nhunger=10\ndead=0\ndeaths=0\ninv=bread:5\n
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+COUNT | state/events.txt | EAT\p | 4 | next-to-the-fridge-at-hunger-10-it-does-not-eat-either
+HAS | state/life_ember.txt | hunger=10 | hunger-unchanged-again
+
+PHASE | p4_empty_fridge | with an empty fridge the pet is refused, nothing is invented, and it is logged as empty | refusal, empty
+PUT | state/fridge.txt | \n
+PUT | state/pet_ember.txt | room=quarters\nx=4\ny=8\ndir=1\nsteps=5\ntx=-1\nty=-1\n
+PUT | state/life_ember.txt | hp=20\nhunger=90\ndead=0\ndeaths=0\ninv=bread:5\n
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+DO | walk
+COUNT | state/events.txt | EAT\p | 4 | still-four-meals
+HAS | state/life_ember.txt | hunger=90 | hunger-unchanged
+HAS | state/decisions.txt | \pember\phungry\peat\pfridge\pempty | the-refusal-is-logged-as-empty
+DO | fridge | status
+SAY | kinds=0 total=0 | status-says-empty
+DO | fridge | stock | bread | 3
+SAY | stocked=bread n=3 now=3 | stocking-works-through-the-verb
+DO | fridge | eat | ember
+SAY | ate=bread nourish=15 hunger=90->75 left=2 | and-the-verb-feeds-by-hand
+

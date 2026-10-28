@@ -1,0 +1,40 @@
+# foods.pdl - the ship's fridge and what it can hold (owner 2026-10-28: "a refrigerator on the ship, with lots of different food in its inventory"). Re-read on every call of the op, no rebuild.
+# Op: &.widgits/_shared-lib/ops/fridge_op.c (verbs status / stock / eat / where); the game walks a hungry pet to the fridge (rpg_space.c, section 37) and runs `eat` when it stands next to it (section 35).
+# FOOD | key | label | nourish | what it is          nourish = how much hunger (0..100) ONE portion removes. Hunger rises 1 per hunger_ms (life.pdl, 60 s), so 20 = about 20 minutes of not being hungry.
+# All numbers are first guesses: tune them here.
+FOOD | hydro_apple    | Hydroponic apple    |  8 | crisp, grown in the garden ring
+FOOD | hot_cocoa      | Hot cocoa           |  6 | a cup, mostly comfort
+FOOD | egg            | Boiled egg          | 10 | the ship's hens are a legend
+FOOD | fruit_cup      | Fruit cup           | 12 | sealed, three kinds of fruit
+FOOD | cheese         | Vat cheese          | 14 | sharp and a little blue
+FOOD | bread          | Bread               | 15 | the same bread the crew carries
+FOOD | jerky          | Smoked jerky        | 16 | no one asks what animal
+FOOD | protein_bar    | Protein bar         | 18 | tastes of vanilla and metal
+FOOD | soup           | Noodle soup         | 20 | hot, from the galley tap
+FOOD | cake           | Moon cake           | 22 | a birthday leftover
+FOOD | noodles        | Noodle bowl         | 25 | a full bowl
+FOOD | paste_tube     | Nutrient paste      | 30 | squeezed from a tube
+FOOD | space_stew     | Space stew          | 35 | root vegetables and something green
+FOOD | ration_pack    | Ration pack         | 40 | the big one; sealed for a long trip
+# STOCK | key | n    what a NEW fridge holds. state/fridge.txt is seeded from these rows once, when it does not exist (delete it to reseed).
+STOCK | hydro_apple | 6
+STOCK | hot_cocoa   | 4
+STOCK | egg         | 8
+STOCK | fruit_cup   | 5
+STOCK | cheese      | 4
+STOCK | bread       | 6
+STOCK | jerky       | 3
+STOCK | protein_bar | 6
+STOCK | soup        | 4
+STOCK | cake        | 2
+STOCK | noodles     | 4
+STOCK | paste_tube  | 5
+STOCK | space_stew  | 3
+STOCK | ration_pack | 2
+# FRIDGE rows: where it stands (cells local to the ship footprint, like SK_DECO in rpg_space.c), its picture (SF_Inside_B, col row w h: the steel fridge) and the two hunger limits.
+FRIDGE | room        | quarters
+FRIDGE | x           | 1
+FRIDGE | y           | 5
+FRIDGE | tile        | SF_Inside_B 8 6 1 2
+FRIDGE | seek_hunger | 40
+FRIDGE | eat_hunger  | 25

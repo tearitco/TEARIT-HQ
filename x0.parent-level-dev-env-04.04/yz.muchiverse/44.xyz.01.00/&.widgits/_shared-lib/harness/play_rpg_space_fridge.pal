@@ -1,0 +1,7 @@
+# play_rpg_space_fridge.pal - the ship fridge and food seeking (owner 2026-10-28) as a playthrough: same five ops as play_game_dev_hq.pal, pointed at its phase table. Read results/play_rpg_space_fridge.txt.verdict.txt
+exec ./ops/+x/playthrough_op.+x compile play/phases/rpg_space_fridge.phases.pdl cases
+exec ./ops/+x/harness_case_op.+x cases/play_rpg_space_fridge.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/play_rpg_space_fridge.pdl
+exec ./ops/+x/playthrough_op.+x ledger play/phases/rpg_space_fridge.phases.pdl cases
+exec ./ops/+x/harness_bank_op.+x cases/play_rpg_space_fridge.pdl
+halt
