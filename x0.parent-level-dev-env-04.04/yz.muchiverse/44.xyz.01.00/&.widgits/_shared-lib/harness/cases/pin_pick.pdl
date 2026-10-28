@@ -1,0 +1,93 @@
+# pin_pick: LOCKED cases for khtpm_pin_pick.c (which open_book_page.txt a board obeys; S3b-1). The driver ops/pin_pick_test.c is compiled -Wall -Wextra -Werror from source into the scratch. Each case builds a tiny house
+# (@.apps/piececraft-hq house-wide pin, @.apps/g/g-pchq board folder). Expected paths are the two fixed shapes: <house>/@.apps/piececraft-hq/pieces/display/open_book_page.txt and <board>/pieces/display/open_book_page.txt.
+RESULTS | ../results/pin_pick.txt
+SCRATCH |
+CASE | build
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/pp.+x | $HOUSE/&.widgits/_shared-lib/ops/pin_pick_test.c
+EXPECT_EXIT | 0 | driver-compiles-clean
+
+CASE | board_pin_wins
+MKDIR | board_pin_wins/h/@.apps/piececraft-hq/pieces/display
+MKDIR | board_pin_wins/h/@.apps/g/g-pchq/pieces/display
+WRITE | board_pin_wins/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk\n
+WRITE | board_pin_wins/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/pp.+x | $T/board_pin_wins/h | $T/board_pin_wins/h/@.apps/g/g-pchq
+EXPECT_EXIT | 0 | board_pin_wins-exit-0
+EXPECT_OUT | /board_pin_wins/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | the-boards-own-pin-is-chosen
+
+CASE | no_board_pin
+MKDIR | no_board_pin/h/@.apps/piececraft-hq/pieces/display
+MKDIR | no_board_pin/h/@.apps/g/g-pchq/pieces/display
+WRITE | no_board_pin/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk\n
+RUN | $T/pp.+x | $T/no_board_pin/h | $T/no_board_pin/h/@.apps/g/g-pchq
+EXPECT_EXIT | 0 | no_board_pin-exit-0
+EXPECT_OUT | /no_board_pin/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | falls-back-to-the-house-wide-pin
+
+CASE | no_board_root
+MKDIR | no_board_root/h/@.apps/piececraft-hq/pieces/display
+MKDIR | no_board_root/h/@.apps/g/g-pchq/pieces/display
+WRITE | no_board_root/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=board\n
+WRITE | no_board_root/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/pp.+x | $T/no_board_root/h | -
+EXPECT_EXIT | 0 | no_board_root-exit-0
+EXPECT_OUT | /no_board_root/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | a-dash-means-no-board
+
+CASE | no_pins_at_all
+MKDIR | no_pins_at_all/h/@.apps/piececraft-hq/pieces/display
+MKDIR | no_pins_at_all/h/@.apps/g/g-pchq/pieces/display
+RUN | $T/pp.+x | $T/no_pins_at_all/h | $T/no_pins_at_all/h/@.apps/g/g-pchq
+EXPECT_EXIT | 0 | no_pins_at_all-exit-0
+EXPECT_OUT | /no_pins_at_all/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | nothing-readable-so-the-house-wide-path-is-returned-and-the-caller-finds-it-absent
+
+CASE | board_is_piececraft
+MKDIR | board_is_piececraft/h/@.apps/piececraft-hq/pieces/display
+MKDIR | board_is_piececraft/h/@.apps/g/g-pchq/pieces/display
+WRITE | board_is_piececraft/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk\n
+RUN | $T/pp.+x | $T/board_is_piececraft/h | $T/board_is_piececraft/h/@.apps/piececraft-hq
+EXPECT_EXIT | 0 | board_is_piececraft-exit-0
+EXPECT_OUT | /board_is_piececraft/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | piececraft-hq-picks-its-own-which-is-the-house-wide-file
+
+CASE | board_pin_only
+MKDIR | board_pin_only/h/@.apps/piececraft-hq/pieces/display
+MKDIR | board_pin_only/h/@.apps/g/g-pchq/pieces/display
+WRITE | board_pin_only/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/pp.+x | $T/board_pin_only/h | $T/board_pin_only/h/@.apps/g/g-pchq
+EXPECT_EXIT | 0 | board_pin_only-exit-0
+EXPECT_OUT | /board_pin_only/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | the-boards-pin-without-any-house-wide-file
+
+CASE | other_board_pin_ignored
+MKDIR | other_board_pin_ignored/h/@.apps/piececraft-hq/pieces/display
+MKDIR | other_board_pin_ignored/h/@.apps/g/g-pchq/pieces/display
+WRITE | other_board_pin_ignored/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk\n
+WRITE | other_board_pin_ignored/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/pp.+x | $T/other_board_pin_ignored/h | $T/other_board_pin_ignored/h/@.apps/g/elsewhere
+EXPECT_EXIT | 0 | other_board_pin_ignored-exit-0
+EXPECT_OUT | /other_board_pin_ignored/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | a-board-folder-without-a-pin-does-not-borrow-another-boards
+
+CASE | small_buffer
+MKDIR | small_buffer/h/@.apps/piececraft-hq/pieces/display
+MKDIR | small_buffer/h/@.apps/g/g-pchq/pieces/display
+WRITE | small_buffer/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk\n
+WRITE | small_buffer/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/pp.+x | $T/small_buffer/h | $T/small_buffer/h/@.apps/g/g-pchq | 16
+EXPECT_EXIT | 0 | small_buffer-exit-0
+EXPECT_OUT | len=15 | cut-to-n-minus-1
+EXPECT_OUT | pick=/tmp/ | starts-with-the-scratch-root
+
+CASE | one_byte_buffer
+MKDIR | one_byte_buffer/h/@.apps/piececraft-hq/pieces/display
+MKDIR | one_byte_buffer/h/@.apps/g/g-pchq/pieces/display
+WRITE | one_byte_buffer/h/@.apps/piececraft-hq/pieces/display/open_book_page.txt | source=desk\n
+WRITE | one_byte_buffer/h/@.apps/g/g-pchq/pieces/display/open_book_page.txt | source=board\n
+RUN | $T/pp.+x | $T/one_byte_buffer/h | $T/one_byte_buffer/h/@.apps/g/g-pchq | 1
+EXPECT_EXIT | 0 | one_byte_buffer-exit-0
+EXPECT_OUT | len=0 | only-the-terminator-fits
+EXPECT_OUT | pick=
+ | empty-string
+
+CASE | usage
+RUN | $T/pp.+x
+EXPECT_EXIT | 2 | no-arguments
+RUN | $T/pp.+x | x | y | 0
+EXPECT_EXIT | 2 | zero-size
+CLEAN |

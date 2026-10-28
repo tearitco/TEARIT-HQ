@@ -63,6 +63,7 @@
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
 #include "bv_move_range.c"    /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
+#include "../../_shared-lib/khtpm_pin_pick.c"   /* pin_path_pick(): a board obeys its OWN open_book_page.txt before the house-wide one (S3b-1) */
 #include <signal.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -212,12 +213,19 @@ static int page_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
+static char g_board_root[PATH_BUF] = "";      /* the board being drawn (its focused pc-hq folder), set once per frame; empty = unknown: the house-wide pin decides as before */
+static int pin_readable(const char *p) {
+    FILE *f = host_fopen(p, "r");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
 /* 1 = the synch pin's desk file, -1 = the board owns its map, 0 = no pin.
  * A later livedesk page change does not move this view. Synch writes
  * a new pdl= line; that is the only time the desk page changes here. */
 static int page_bound_pdl(const char *house, char *out, int n) {
     char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
-    snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
+    pin_path_pick(house, g_board_root, pin_readable, ob, sizeof(ob));      /* the board's own pin first, then the house-wide one (S3b-1) */
     FILE *f = host_fopen(ob, "r");
     if (!f) return 0;
     while (fgets(line, sizeof(line), f)) {
@@ -3231,6 +3239,7 @@ static int render_one_frame(void) {
     read_kv_str(state_path, "focused_project_root", focused_raw, sizeof(focused_raw));
     resolve_host_root(focused_raw, focused_project_root, sizeof(focused_project_root));
     if (!focused_project_root[0]) { free(g_fbuf); g_fbuf = NULL; return 2; }
+    snprintf(g_board_root, sizeof(g_board_root), "%s", focused_project_root);
 
     /* REAL FIX 2026-08-04, direct user report ("still blank - map
      * screens are black"): this file's own render_mode default used to

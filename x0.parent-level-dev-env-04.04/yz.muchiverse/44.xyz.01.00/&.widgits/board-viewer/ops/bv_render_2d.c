@@ -40,6 +40,7 @@
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
+#include "../../_shared-lib/khtpm_pin_pick.c"   /* pin_path_pick(): a board obeys its OWN open_book_page.txt before the house-wide one (S3b-1) */
 
 #define MAX_LINE     1024
 #define PATH_BUF     4096
@@ -412,6 +413,12 @@ static int read_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
+static int pin_readable(const char *p) {
+    FILE *f = host_fopen(p, "r");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
 /* open_book_page.txt:
  *   source=desk  — the pdl= path Synch wrote. A later desk switch
  *                   does not move this view until the next Synch.
@@ -421,7 +428,7 @@ static int read_pdl_value(const char *path, const char *key, char *out, int n) {
  * page, 0 when this file does not decide (caller may use active_desk). */
 static int page_bound_pdl(const char *house, char *out, int n) {
     char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
-    snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
+    pin_path_pick(house, focused_root, pin_readable, ob, sizeof(ob));      /* the board's own pin first, then the house-wide one (S3b-1) */
     FILE *f = host_fopen(ob, "r");
     if (!f) return 0;
     while (fgets(line, sizeof(line), f)) {
