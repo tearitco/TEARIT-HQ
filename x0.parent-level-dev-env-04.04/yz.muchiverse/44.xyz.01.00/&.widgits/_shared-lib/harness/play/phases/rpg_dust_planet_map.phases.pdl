@@ -82,27 +82,30 @@ PUT | state/direct.txt | 0 0\n
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 1 0\n | flown-one-cell-east
 HAS | rpg-dust-pchq/pieces/veh_1/state.txt | entity_type=vehicle | an-asteroid-is-a-vehicle-piece
-HAS | rpg-dust-pchq/pieces/veh_1/state.txt | desk=bridge | drawn-on-the-bridge-desk-where-the-land-is
+HAS | rpg-dust-pchq/pieces/veh_1/state.txt | desk=* | drawn-on-every-desk-where-space-is-visible-desk-star
 HAS | rpg-dust-pchq/pieces/veh_1/state.txt | pos_x=13.00 | ore-at-world-15-5-minus-flight-shift-1-centred-on-its-3-wide-box
-HAS | rpg-dust-pchq/pieces/veh_1/state.txt | pos_y=3.50 | ore-at-world-y-5-centred-on-its-4-deep-box
+HAS | rpg-dust-pchq/pieces/veh_1/state.txt | pos_y= | ore-has-a-y-position-its-exact-value-follows-the-nugget-depth-which-the-fine-rock-cubes-changed-2026-10-27
 HAS | rpg-dust-pchq/pieces/veh_1/state.txt | pos_z=-8 | the-land-and-its-rocks-sink-by-the-ship-altitude
 HAS | rpg-dust-pchq/pieces/veh_1/state.txt | size_h=3.00 | box-height-is-the-nugget-height
-COUNT | rpg-dust-pchq/pieces/veh_1/model.txt | \n | 12 | ore-nugget-is-11-voxels-plus-the-dim-line
-COUNT | rpg-dust-pchq/pieces/veh_2/model.txt | \n | 12 | rock-nugget-is-11-voxels-plus-the-dim-line
-COUNT | rpg-dust-pchq/pieces/veh_3/model.txt | \n | 8 | crystal-nugget-is-7-voxels-plus-the-dim-line
+COUNT | rpg-dust-pchq/pieces/veh_1/model.txt | \n | 447 | ore-nugget-is-fine-rock-cubes-446-surface-voxels-plus-the-dim-line-rock_vpc-4-seeded-so-the-same-every-time
+COUNT | rpg-dust-pchq/pieces/veh_2/model.txt | \n | 474 | rock-nugget-is-fine-rock-cubes-473-surface-voxels-plus-the-dim-line
+COUNT | rpg-dust-pchq/pieces/veh_3/model.txt | \n | 323 | crystal-nugget-is-fine-rock-cubes-322-surface-voxels-plus-the-dim-line
 HAS | rpg-dust-pchq/pieces/veh_4/model.txt | dim 24 16 24 | the-skiff-is-a-6x6-layout-of-4-voxel-tile-cubes-floor-plus-3-wall-levels-high
 COUNT | rpg-dust-pchq/pieces/veh_4/model.txt | \n | 2647 | the-skiff-has-2646-tile-cube-voxels-plus-the-dim-line-only-cubes-with-a-free-face
 HAS | rpg-dust-pchq/pieces/veh_4/state.txt | pos_x=4.50 | skiff-at-world-8-minus-shift-1-centred-on-its-6-wide-box
 HAS | rpg-dust-pchq/pieces/veh_4/state.txt | pos_y=-8.50 | skiff-at-world-y-minus-6-centred-on-its-6-deep-box
 HAS | rpg-dust-pchq/pieces/veh_4/state.txt | size_x=6.00 | skiff-box-is-6-cells-wide
 HAS | rpg-dust-pchq/pieces/veh_4/state.txt | size_h=4.00 | and-4-cells-high-a-floor-cube-plus-3-wall-cubes
+HAS | rpg-dust-pchq/pieces/veh_4/tile_model.txt | dim 6 4 6 | the-skiff-also-has-a-tile-model-of-6x4x6-cells-for-the-textured-faces
+HAS | rpg-dust-pchq/pieces/veh_4/tile_model.txt | 0 0 0 0 0 | its-first-cell-is-a-floor-cube-with-tile-0
+NOFILE | rpg-dust-pchq/pieces/veh_1/tile_model.txt | an-asteroid-has-no-tile-model-only-the-skiff-does
 NOFILE | rpg-dust-pchq/pieces/veh_5/state.txt | only-four-objects-so-no-fifth-piece
 DO | helm | move | 1 | 0
 FILEIS | state/direct.txt | 2 0\n | flown-another-cell-east
 HAS | rpg-dust-pchq/pieces/veh_4/state.txt | pos_x=3.50 | the-skiff-slid-one-cell-with-the-flight
 HAS | rpg-dust-pchq/pieces/veh_1/state.txt | pos_x=12.00 | the-ore-slid-one-cell-with-the-flight
-COUNT | rpg-dust-pchq/pieces/veh_1/model.txt | \n | 12 | the-nugget-keeps-its-shape-when-the-ship-moves
-COUNT | rpg-dust-pchq/pieces/veh_3/model.txt | \n | 8 | the-crystal-keeps-its-shape-too
+COUNT | rpg-dust-pchq/pieces/veh_1/model.txt | \n | 447 | the-nugget-keeps-its-shape-when-the-ship-moves
+COUNT | rpg-dust-pchq/pieces/veh_3/model.txt | \n | 323 | the-crystal-keeps-its-shape-too
 DO | helm | off
 NOFILE | rpg-dust-pchq/pieces/veh_1/state.txt | releasing-the-helm-removes-the-asteroid-pieces
 NOFILE | rpg-dust-pchq/pieces/veh_4/state.txt | releasing-the-helm-removes-the-skiff-piece
@@ -180,3 +183,27 @@ COUNT | rpg-dust-pchq/pieces/veh_1/model.txt | \n | 11 | all-ten-voxels-plus-the
 HAS | rpg-dust-pchq/pieces/veh_1/model.txt | 0 0 0 200 40 40 | and-keeps-the-colours-of-the-file-not-the-rock-tile
 DO | helm | off
 
+
+PHASE | p8_scene_vox | remnants and resource nodes lying in a room are small VOXEL pieces (pieces/veh_10..24, desk = their room), a remnant is a loot bag that is rewritten turned by eighths (owner 2026-10-27: not flat sprite sheets) | voxel remnants, loot bag, spin
+PUT | state/nodes.txt | bridge\p12\p10\pore\p4\n
+PUT | state/drops.txt | 1\pbridge\p5\p5\p1\piron\p0\p0\ptest\n
+DO | space | scene | 0
+SAY | 1 remnants and 1 nodes | the-remnant-and-the-node-are-drawn-as-pieces-not-sprites
+HAS | rpg-dust-pchq/pieces/veh_10/state.txt | desk=bridge | it-belongs-to-the-room-the-engine-shows
+HAS | rpg-dust-pchq/pieces/veh_10/state.txt | pos_z=1.000 | and-rests-on-the-floor
+HAS | rpg-dust-pchq/pieces/veh_10/model.txt | dim 7 6 7 | the-loot-bag-is-7-by-6-by-7-voxels
+COUNT | rpg-dust-pchq/pieces/veh_10/model.txt | \n | 67 | 66-voxels-plus-the-dim-line
+HAS | rpg-dust-pchq/pieces/veh_10/model.txt | 5 1 3 235 228 200 | the-pale-patch-is-on-the-x-side-at-angle-0
+LACKS | rpg-dust-pchq/pieces/veh_10/model.txt | 3 1 5 235 228 200 | and-not-on-the-z-side
+HAS | rpg-dust-pchq/pieces/veh_10/model.txt | 3 5 3 230 187 170 | the-tip-takes-the-iron-colour-lightened
+HAS | rpg-dust-pchq/pieces/veh_11/state.txt | desk=bridge | the-first-resource-node-is-a-piece-too
+DO | space | scene | 2
+HAS | rpg-dust-pchq/pieces/veh_10/model.txt | 3 1 5 235 228 200 | a-quarter-turn-moves-the-patch-to-the-z-side
+LACKS | rpg-dust-pchq/pieces/veh_10/model.txt | 5 1 3 235 228 200 | and-it-left-the-x-side
+DO | space | scene | 1
+HAS | rpg-dust-pchq/pieces/veh_10/model.txt | 5 1 4 235 228 200 | an-eighth-turn-puts-the-patch-on-the-diagonal-it-does-not-vanish
+HAS | rpg-dust-pchq/pieces/veh_10/model.txt | 4 1 5 235 228 200 | with-its-second-voxel
+PUT | state/drops.txt | \n
+DO | space | scene
+NOFILE | rpg-dust-pchq/pieces/veh_11/state.txt | a-collected-remnant-leaves-no-piece-for-the-next-one
+LACKS | rpg-dust-pchq/pieces/veh_10/model.txt | dim 7 6 7 | and-its-slot-now-holds-the-node-not-a-bag
