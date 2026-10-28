@@ -3426,6 +3426,13 @@ static int render_one_frame(void) {
     int cam_pan_x = read_kv_int(state_path, "cam_pan_x", selector_x);
     int cam_pan_y = read_kv_int(state_path, "cam_pan_y", selector_y);
     int cam_pan_z = read_kv_int(state_path, "cam_pan_z", 0);
+    /* FREE CAMERA BASE (owner 2026-10-27: "arrows move the xelector, not the camera ... same for 3D"): in mode 3 the camera used to sit at selector_x/y + pan, so every arrow press moved the camera. bv_menu_input.c now writes cam_base_x/z (the
+     * camera's own anchor cell) the first time an arrow moves the xelector in mode 3, and pans it only when the xelector would leave the view. Without those keys mode 3 behaves exactly as before. */
+    int cam_base_x = read_kv_int(state_path, "cam_base_x", -99999), cam_base_z = read_kv_int(state_path, "cam_base_z", -99999);
+    int have_cam_base = (camera_mode == 3 && cam_base_x != -99999 && cam_base_z != -99999);
+#ifdef BV_NO_CAM_BASE      /* -DBV_NO_CAM_BASE builds the engine as it was before the free camera base: the harness uses it as the NEGATIVE fixture of the 3D camera gate */
+    have_cam_base = 0;
+#endif
     /* REAL FIX 2026-08-04, direct user report ("still blank - map
      * screens are black"): mode 3/4's own eye.y = 12.0 + z_level*2.0
      * formula (build_camera(), deliberately anchor_h-FREE per this
@@ -3483,6 +3490,7 @@ static int render_one_frame(void) {
         anchor_x = g_xelector_x + 0.5;
         anchor_z = g_xelector_y + 0.5;
     }
+    if (have_cam_base) { anchor_x = cam_base_x + 0.5; anchor_z = cam_base_z + 0.5; }      /* mode 3 with its own base: the xelector no longer drags the camera */
     /* REAL FIX 2026-08-03 (direct user diagnosis: "why doesn't it look
      * like a 3d game"): anchor_h used to come from terrain_height() of
      * a single glyph (the OLD single-slice extrusion model's own

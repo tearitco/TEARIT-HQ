@@ -248,6 +248,7 @@ static int default_render_mode(const char *root) {
     return has_z_manifest(root, z_base, sizeof(z_base), &z_count) ? 1 : 0;
 }
 
+static void cam3_follow(const char *state_path, int old_sx, int old_sy, int sx, int sy);      /* defined below, used by the arrow handler */
 static int default_camera_mode(const char *root) {
     if (!root || !root[0]) return 2;
     char cfg[PATH_BUF];
@@ -716,10 +717,12 @@ static int handle_one_key(int key) {
              * It is a free cursor: the limit is the world limit (MAX_BOARD_DIM), not one chunk. */
             int lim_w = board_w > MAX_BOARD_DIM ? board_w : MAX_BOARD_DIM;
             int lim_h = board_h > MAX_BOARD_DIM ? board_h : MAX_BOARD_DIM;
+            int old_sel_x = selector_x, old_sel_y = selector_y;
             selector_x = clamp_int(selector_x + dx, 0, lim_w - 1);
             selector_y = clamp_int(selector_y + dy, 0, lim_h - 1);
             write_kv_int(state_path, "selector_x", selector_x);
             write_kv_int(state_path, "selector_y", selector_y);
+            if (read_kv_int(state_path, "render_mode", 1) == 1 && read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root)) == 3) cam3_follow(state_path, old_sel_x, old_sel_y, selector_x, selector_y);      /* the 3D free camera keeps its own base */
 
             /* REAL FIX 2026-08-03, direct user correction ("arrow key
              * is moving the camera, not xelector like it should and
@@ -1243,6 +1246,7 @@ static int handle_one_key(int key) {
         write_kv_int(state_path, "cam_yaw", 180);
         write_kv_int(state_path, "cam_pitch", clamp_int(read_kv_int(state_path, "cam_snap_pitch", -49), PITCH_MIN, PITCH_MAX));
         write_kv_int(state_path, "cam_z_level", hl);
+        if (read_kv_int(state_path, "cam_base_x", -99999) != -99999) { write_kv_int(state_path, "cam_base_x", read_kv_int(state_path, "selector_x", 0)); write_kv_int(state_path, "cam_base_z", read_kv_int(state_path, "selector_y", 0)); }      /* the free camera base goes back onto the xelector too */
         bump_screen_changed(project_root);
         return 0;
     }
@@ -1449,6 +1453,24 @@ static int handle_one_key(int key) {
     return 0;
 }
 
+/* 3D free camera follow (owner 2026-10-27: "arrows move the xelector, not the camera; it should pan"). In camera mode 3 the camera has its own base cell (cam_base_x/z, read by bv_render_3d.c); the arrows move only the xelector.
+ * The first arrow press writes the base (and the pan the engine would have defaulted to) so nothing jumps; after each move the base follows the xelector only when it would leave the view: the view centre on the ground is
+ * the eye plus the forward ray down to the floor, the half-width of the view is about 0.45 * height * tan(fov/2); the base moves by the excess. State used: cam_pan_x/z, cam_z_level, cam_yaw, cam_pitch, cam_home.txt (the desk's opening pan,
+ * which the engine subtracts). An approximation by design: a conventional edge-pan, not a projection. */
+static void cam3_follow(const char *state_path, int old_sx, int old_sy, int sx, int sy) {
+    int bx = read_kv_int(state_path, "cam_base_x", -99999), bz = read_kv_int(state_path, "cam_base_z", -99999);
+    int px = read_kv_int(state_path, "cam_pan_x", old_sx), py = read_kv_int(state_path, "cam_pan_y", old_sy), pz = read_kv_int(state_path, "cam_pan_z", 0);
+    if (bx == -99999 || bz == -99999) { bx = old_sx; bz = old_sy; write_kv_int(state_path, "cam_pan_x", px); write_kv_int(state_path, "cam_pan_y", py); write_kv_int(state_path, "cam_pan_z", pz); }
+    int hx = 0, hy = 0, hz = 0, hl = 0; { char hp[MAX_PATH]; snprintf(hp, sizeof hp, "%s", state_path); char *sl = strrchr(hp, '/'); if (sl) { snprintf(sl + 1, 24, "cam_home.txt"); FILE *hf = fopen(hp, "r"); if (hf) { if (fscanf(hf, "%d %d %d %d", &hx, &hy, &hz, &hl) != 4) hx = hy = hz = hl = 0; fclose(hf); } } }
+    double yaw = read_kv_int(state_path, "cam_yaw", 180) * M_PI / 180.0, pitch_d = read_kv_int(state_path, "cam_pitch", -90), pitch = pitch_d * M_PI / 180.0;
+    double eyeh = 12.0 + (read_kv_int(state_path, "cam_z_level", hl) - hl) * 2.0, ex = bx + 0.5 + (px - hx), ez = bz + 0.5 + (pz - hz);
+    double t = (sin(pitch) < -0.1) ? (eyeh - 1.0) / -sin(pitch) : 0.0, gx = ex + t * cos(pitch) * sin(yaw), gz = ez + t * cos(pitch) * cos(yaw);
+    double r = 0.45 * (eyeh - 1.0) * 0.869; if (r < 3.0) r = 3.0;
+    double dx = sx + 0.5 - gx, dz = sy + 0.5 - gz;
+    if (fabs(dx) > r) bx += (int)lround(dx - (dx > 0 ? r : -r));
+    if (fabs(dz) > r) bz += (int)lround(dz - (dz > 0 ? r : -r));
+    write_kv_int(state_path, "cam_base_x", bx); write_kv_int(state_path, "cam_base_z", bz);
+}
 int main(int argc, char **argv) {
     if (argc < 2) return 1;
     resolve_root();

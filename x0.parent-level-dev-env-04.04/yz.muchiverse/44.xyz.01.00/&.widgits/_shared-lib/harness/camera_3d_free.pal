@@ -1,0 +1,4 @@
+# camera_3d_free.pal - pal harness for the 3D free camera (cases/camera_3d_free.pdl): arrows move only the xelector, the camera pans only when it would leave the view. Read results/camera_3d_free.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/camera_3d_free.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/camera_3d_free.pdl
+halt
