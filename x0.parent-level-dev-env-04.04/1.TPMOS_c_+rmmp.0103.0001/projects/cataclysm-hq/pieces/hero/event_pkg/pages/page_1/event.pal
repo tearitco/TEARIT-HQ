@@ -1,0 +1,9 @@
+# page_1: Game Loop - runs every turn tick (parallel trigger)
+# Dispatches cataclysm-hq game_loop.asm via the relay event bus
+exec cmd_1.sh
+exec cmd_2.sh
+exec cmd_3.sh
+exec cmd_4.sh
+exec cmd_5.sh
+exec cmd_6.sh
+halt

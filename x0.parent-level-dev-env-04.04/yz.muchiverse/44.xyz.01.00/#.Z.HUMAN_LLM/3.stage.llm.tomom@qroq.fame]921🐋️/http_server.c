@@ -347,6 +347,14 @@ int main() {
         }
         buffer[valread] = '\0';
 
+        // Find the body BEFORE tokenizing - strtok() will modify buffer
+        char* body = NULL;
+        if (strstr(buffer, "\r\n\r\n")) {
+            body = strstr(buffer, "\r\n\r\n") + 4;
+        } else {
+            body = "";
+        }
+
         // Parse the request line (first line of HTTP request)
         char* method = strtok(buffer, " ");
         char* path = strtok(NULL, " ");
@@ -359,13 +367,6 @@ int main() {
 
         // Check if it's an API request
         if (strncmp(path, "/api/", 5) == 0) {
-            // Find the body of the request (after headers)
-            char* body = strstr(buffer, "\r\n\r\n");
-            if (body) {
-                body += 4; // Skip the \r\n\r\n
-            } else {
-                body = "";
-            }
 
             handle_api_request(client_socket, method, path, body);
         } else {

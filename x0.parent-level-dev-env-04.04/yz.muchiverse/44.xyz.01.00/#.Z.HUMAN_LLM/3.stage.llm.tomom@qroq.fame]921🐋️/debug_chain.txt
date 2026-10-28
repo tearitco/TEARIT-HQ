@@ -1,8 +1,8 @@
 === Chatbot MOE Debug Log ===
-Prompt: teacher explains
-Desired length: 5
+Prompt: math
+Desired length: 6
 Temperature: 1.000000
-Using 10 training sets:
+Using 27 training sets:
   1. curriculum/Grade1_math/Grade1_math.txt
   2. curriculum/Grade1_science/Grade1_science.txt
   3. curriculum/Grade2_math/Grade2_math.txt
@@ -13,99 +13,26 @@ Using 10 training sets:
   8. curriculum/Grade4_science/Grade4_science.txt
   9. curriculum/Grade5_math/Grade5_math.txt
   10. curriculum/Grade5_science/Grade5_science.txt
+  11. curriculum/Grade6_math/Grade6_math.txt
+  12. curriculum/Grade6_science/Grade6_science.txt
+  13. curriculum/Grade7_math/Grade7_math.txt
+  14. curriculum/Grade7_science/Grade7_science.txt
+  15. curriculum/Grade8_math/Grade8_math.txt
+  16. curriculum/Grade8_science/Grade8_science.txt
+  17. curriculum/HighSchool_algebra/HighSchool_algebra.txt
+  18. curriculum/HighSchool_biology/HighSchool_biology.txt
+  19. curriculum/HighSchool_chemistry/HighSchool_chemistry.txt
+  20. curriculum/HighSchool_physics/HighSchool_physics.txt
+  21. curriculum/College_calculus/College_calculus.txt
+  22. curriculum/College_organic_chemistry/College_organic_chemistry.txt
+  23. curriculum/College_quantum_physics/College_quantum_physics.txt
+  24. curriculum/remedial/remedial.txt
+  25. curriculum/teacher_time/teacher_time.txt
+  26. curriculum/extra_credit/extra_credit.txt
+  27. curriculum/recess/recess.txt
 ========================
 
 
-Debug: Current word: start-token (index: 0, curriculum 0)
-Temperature: 1.000000
-Considering top 10 scores:
-  1. number (index: 14): 0.041137
-  2. counting (index: 11): 0.031169
-  3. numbers (index: 26): 0.030500
-  4. to (index: 23): 0.029243
-  5. and (index: 30): 0.028998
-  6. Students (index: 17): 0.026924
-  7. and (index: 13): 0.025211
-  8. learn (index: 18): 0.025077
-  9. They (index: 36): 0.023217
-  10. a (index: 7): 0.022676
-Chosen word: number (index: 14)
-
-Debug: Current word: number (index: 14, curriculum 0)
-Temperature: 1.000000
-Considering top 10 scores:
-  1. number (index: 14): 0.039936
-  2. numbers (index: 26): 0.034073
-  3. and (index: 30): 0.033642
-  4. They (index: 36): 0.029826
-  5. to (index: 23): 0.028955
-  6. counting (index: 11): 0.025867
-  7. Students (index: 17): 0.025740
-  8. like (index: 41): 0.025637
-  9. shapes (index: 40): 0.025508
-  10. forms (index: 29): 0.024815
-Chosen word: and (index: 30)
-
-Debug: Current word: and (index: 13, curriculum 0)
-Temperature: 1.000000
-Considering top 10 scores:
-  1. forms (index: 29): 0.029208
-  2. number (index: 14): 0.024082
-  3. single-digit (index: 33): 0.022515
-  4. triangles (index: 45): 0.021472
-  5. to (index: 23): 0.021153
-  6. basic (index: 39): 0.020774
-  7. and (index: 30): 0.020764
-  8. shapes (index: 40): 0.020154
-  9. to (index: 51): 0.020059
-  10. concepts (index: 54): 0.019903
-Chosen word: triangles (index: 45)
-
-Debug: Current word: triangles (index: 45, curriculum 0)
-Temperature: 1.000000
-Considering top 10 scores:
-  1. forms (index: 29): 0.041262
-  2. number (index: 14): 0.039321
-  3. and (index: 30): 0.030986
-  4. to (index: 23): 0.029289
-  5. They (index: 36): 0.027950
-  6. single-digit (index: 33): 0.027395
-  7. shapes (index: 40): 0.026469
-  8. numbers (index: 26): 0.026387
-  9. like (index: 41): 0.025326
-  10. end-token (index: 35): 0.023387
-Chosen word: They (index: 36)
-
-Debug: Current word: They (index: 36, curriculum 0)
-Temperature: 1.000000
-Considering top 10 scores:
-  1. forms (index: 29): 0.038872
-  2. number (index: 14): 0.035936
-  3. single-digit (index: 33): 0.030556
-  4. to (index: 23): 0.027969
-  5. counting (index: 11): 0.026862
-  6. basic (index: 39): 0.026347
-  7. triangles (index: 45): 0.025495
-  8. end-token (index: 35): 0.023675
-  9. numbers (index: 34): 0.023587
-  10. in (index: 27): 0.023239
-Chosen word: number (index: 14)
-
-Debug: Current word: number (index: 14, curriculum 0)
-Temperature: 1.000000
-Considering top 10 scores:
-  1. number (index: 14): 0.039936
-  2. numbers (index: 26): 0.034073
-  3. and (index: 30): 0.033642
-  4. They (index: 36): 0.029826
-  5. to (index: 23): 0.028955
-  6. counting (index: 11): 0.025867
-  7. Students (index: 17): 0.025740
-  8. like (index: 41): 0.025637
-  9. shapes (index: 40): 0.025508
-  10. forms (index: 29): 0.024815
-Chosen word: number (index: 14)
-
 === Final Response ===
-number and triangles They number 
+the language their their learners the 
 ======================

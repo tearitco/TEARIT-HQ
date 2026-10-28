@@ -40,7 +40,7 @@ FAIL=0
 fail() { echo "FAIL: $*"; FAIL=1; }
 
 command -v python3 >/dev/null || { echo "FAIL: python3 missing"; exit 1; }
-RPID="$(sh "$HERE/browser_pid.sh")"
+RPID="$(sh "$HERE/browser_pid.sh" --house "$HR")"
 [ -n "$RPID" ] || { echo "FAIL: no live network-browser renderer"; exit 1; }
 RELAY="$HR/#.desktop/entity_menu_history/$RPID.txt"
 PANE="$HR/#.desktop/khtpm_pane_geom.state.txt"

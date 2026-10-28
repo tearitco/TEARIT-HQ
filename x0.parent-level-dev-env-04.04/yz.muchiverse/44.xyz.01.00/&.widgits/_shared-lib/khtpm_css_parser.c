@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <ctype.h>
 
 
 /* UI-scale-aware length (2026-10-07, TASKBAR-LOOK-UNIFICATION doc sec 7).
@@ -57,6 +58,11 @@ static void css_style_merge(CssStyle *dst, const CssStyle *src) {
     if (src->has_flex_grow)      { dst->has_flex_grow = 1; dst->flex_grow = src->flex_grow; }
     if (src->has_flex_wrap)      { dst->has_flex_wrap = 1; dst->flex_wrap = src->flex_wrap; }
     if (src->has_gap)            { dst->has_gap = 1; dst->gap = src->gap; }
+    if (src->has_grid_template_columns) {
+        dst->has_grid_template_columns = 1;
+        dst->grid_cols = src->grid_cols;
+        for (int i = 0; i < 8; i++) dst->grid_col_w[i] = src->grid_col_w[i];
+    }
 }
 
 static void trim(char *s) {
@@ -92,7 +98,9 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
         out->has_border_width = 1; out->border_width = w;
         out->has_border_color = 1; snprintf(out->border_color, sizeof(out->border_color), "%s", color);
     } else if (strcmp(prop, "position") == 0) {
-        out->has_position = 1; out->position_absolute = (strcmp(v, "absolute") == 0);
+        out->has_position = 1;
+        out->position_absolute = (strcmp(v, "absolute") == 0);
+        out->position_fixed = (strcmp(v, "fixed") == 0);
     } else if (strcmp(prop, "top") == 0) {
         out->has_top = 1; out->top = css_len(v);
     } else if (strcmp(prop, "left") == 0) {
@@ -116,13 +124,10 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
     } else if (strcmp(prop, "z-index") == 0) {
         out->has_z_index = 1; out->z_index = atoi(v);
     } else if (strcmp(prop, "display") == 0) {
-        /* REAL START 2026-08-16, Stage 3 - real, inventory-confirmed
-         * subset only (khtpm-merge-how2.md §5.1b) - "flex" is the only
-         * real value any of the 3 current apps' own layouts would need;
-         * anything else (grid, inline-block, none) parses as block
-         * (has_display=1, display_flex=0), same as omitting the
-         * property entirely - real, deliberate, not a silent bug. */
-        out->has_display = 1; out->display_flex = (strcmp(v, "flex") == 0);
+        out->has_display = 1;
+        if (strcmp(v, "flex") == 0) out->display_flex = 1;
+        else if (strcmp(v, "grid") == 0) out->display_flex = 2; /* treat grid as 2 */
+        else out->display_flex = 0;
     } else if (strcmp(prop, "flex-direction") == 0) {
         out->has_flex_direction = 1; out->flex_row = (strcmp(v, "row") == 0);
     } else if (strcmp(prop, "flex-grow") == 0) {
@@ -131,6 +136,54 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
         out->has_flex_wrap = 1; out->flex_wrap = (strcmp(v, "wrap") == 0);
     } else if (strcmp(prop, "gap") == 0) {
         out->has_gap = 1; out->gap = css_len(v);
+    } else if (strcmp(prop, "grid-template-columns") == 0) {
+        out->has_grid_template_columns = 1;
+        /* try to parse simple: repeat(N, minmax(0,1fr)) or px values */
+        /* minimal: count N from repeat(N, ...) */
+        char *r = strstr(v, "repeat(");
+        if (r) {
+            r += 7;
+            int N = atoi(r);
+            if (N < 0) N = 0;
+            if (N > 8) N = 8;
+            out->grid_cols = N;
+            for (int i = 0; i < N && i < 8; i++) out->grid_col_w[i] = 0;
+        } else {
+            int N = 0;
+            const char *q = v;
+            /* count tokens separated by spaces */
+            while (*q) {
+                if (!isspace((unsigned char)*q) && (!q[1] || isspace((unsigned char)q[1]) || q[1]==',')) {
+                    int n2 = N;
+                    /* increment if we haven't seen? count non-empty length units-ish */
+                    N++;
+                    q++;
+                    while (*q && (isdigit((unsigned char)*q)||*q=='.'||*q=='-'||*q=='p'||*q=='x'||*q=='e'||*q=='m'||*q=='t'||*q=='r'||*q=='c'||*q=='h' || *q=='%')) q++;
+                    if (N > n2 && n2 < 8) {
+                        /* crude: if token ends with px, parse */
+                        const char *tk = q - (q - (v + (q-v-1) < v?0:0)); /* rough */
+                    }
+                } else q++;
+            }
+            /* easier: tokenize */
+            N = 0;
+            char buf[512]; strncpy(buf,v,511); buf[511]=0;
+            char *tok = strtok(buf, " ,");
+            while (tok && N < 8) {
+                /* skip "1fr", "minmax", etc */
+                if (strstr(tok, "fr") || strstr(tok, "minmax") || strstr(tok, "auto")) {
+                    out->grid_col_w[N] = 0;
+                    N++;
+                } else {
+                    int len = css_len(tok);
+                    if (len == 0 && isdigit((unsigned char)*tok)) len = atoi(tok);
+                    out->grid_col_w[N] = len;
+                    N++;
+                }
+                tok = strtok(NULL, " ,");
+            }
+            out->grid_cols = N;
+        }
     }
     /* unrecognized properties (box-shadow, border-radius, grid, etc.) are
      * silently ignored - out of scope for this minimal subset. */

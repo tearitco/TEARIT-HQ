@@ -1,0 +1,254 @@
+[
+  {
+    "name": "google",
+    "url": "https://www.google.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "bing",
+    "url": "https://www.bing.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "duckduckgo",
+    "url": "https://duckduckgo.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "yahoo",
+    "url": "https://www.yahoo.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "youtube",
+    "url": "https://www.youtube.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "facebook",
+    "url": "https://www.facebook.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "instagram",
+    "url": "https://www.instagram.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "twitter",
+    "url": "https://www.twitter.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "linkedin",
+    "url": "https://www.linkedin.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "reddit",
+    "url": "https://www.reddit.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "wikipedia",
+    "url": "https://en.wikipedia.org/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "nytimes",
+    "url": "https://www.nytimes.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "bbc",
+    "url": "https://www.bbc.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "guardian",
+    "url": "https://www.theguardian.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "cnn",
+    "url": "https://www.cnn.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "reuters",
+    "url": "https://www.reuters.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "washingtonpost",
+    "url": "https://www.washingtonpost.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "hackernews",
+    "url": "https://news.ycombinator.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "amazon",
+    "url": "https://www.amazon.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "ebay",
+    "url": "https://www.ebay.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "etsy",
+    "url": "https://www.etsy.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "github",
+    "url": "https://github.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "gitlab",
+    "url": "https://gitlab.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "stackoverflow",
+    "url": "https://stackoverflow.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "mdn",
+    "url": "https://developer.mozilla.org/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "theverge",
+    "url": "https://www.theverge.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "techcrunch",
+    "url": "https://www.techcrunch.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "arstechnica",
+    "url": "https://arstechnica.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "engadget",
+    "url": "https://www.engadget.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "britannica",
+    "url": "https://www.britannica.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "dictionary",
+    "url": "https://www.dictionary.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "amazon",
+    "url": "https://www.amazon.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "netflix",
+    "url": "https://www.netflix.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "spotify",
+    "url": "https://www.spotify.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "twitch",
+    "url": "https://www.twitch.tv/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "discord",
+    "url": "https://www.discord.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "slack",
+    "url": "https://www.slack.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "notion",
+    "url": "https://www.notion.so/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "figma",
+    "url": "https://www.figma.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "canva",
+    "url": "https://www.canva.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "shopify",
+    "url": "https://www.shopify.com/",
+    "status": "loaded",
+    "js_errors": []
+  },
+  {
+    "name": "stripe",
+    "url": "https://www.stripe.com/",
+    "status": "loaded",
+    "js_errors": []
+  }
+]

@@ -55,20 +55,20 @@ Unit: **one sprint** = a scoped feature plus tests plus live proof plus commit, 
 
 | id | group | items | sprints (low-high) | rung |
 |---|---|---|---|---|
-| A | already queued (burndown) | flex row 1-2; `@media` + cascade 1-2; grid 2-3; print 1; Milestone 3 JS-to-box-tree reflow 4-8 | **9-16** | R1-R3 |
+| A | already queued (burndown) | ~~flex row 1-2~~ (done per the opencode lane 2026-10-20: `nb_flex_test.sh` PASS, commit f4dd683cb; not re-run by me); `@media` + cascade 1-2; grid 2-3 (groundwork landed 2026-10-20, no suite yet); print 1; Milestone 3 JS-to-box-tree reflow 4-8 | **8-14** | R1-R3 |
 | B | layout and paint | full page cascade (margin, padding, border, colour, font, position); `position:fixed/sticky/absolute`, `z-index`, stacking; overflow scroll containers; transforms, transitions, animations; pseudo-elements and counters; inline SVG; form control fidelity; iframes (embedded documents) | **12-22** | R1-R3 |
 | C | text | web fonts (`@font-face`), shaping, bidi, CJK, emoji, IME input | **4-8** | R2 |
 | D | images and media | WebP, AVIF, SVG images, animated GIF 2-4; `<audio>`/`<video>` with controls, seeking, codecs through a library 6-10 | **8-14** | R2 |
 | D-DRM | protected video | Widevine-class streaming (Netflix, Spotify, Prime) | **DECISION (section 5)** | R4 |
-| E | JS platform | page ES modules and `import()` 1-2; WebSocket 2; Web Workers 2-3; IndexedDB 3-4; Service Workers 4-6; Intersection/Resize observers 1; FormData/Blob/File/streams 2-3; WebCrypto 2-3; Intl 2; **WebAssembly 5-10** (QuickJS has none); WebRTC 8-15; WebAudio 3-5; clipboard, drag and drop, `contenteditable` and rich text 4-6; geolocation, notifications, permissions 2 | **41-64** | R2-R4 |
+| E | JS platform | page ES modules and `import()` 1-2; WebSocket 2; Web Workers 2-3; IndexedDB 3-4; Service Workers 4-6; Intersection/Resize observers 1; FormData/Blob/File/streams 2-3; WebCrypto 2-3; Intl 2; **WebAssembly 5-10** (QuickJS has none); WebRTC 8-15; WebAudio 3-5; clipboard, drag and drop, `contenteditable` and rich text 4-6; geolocation, notifications, permissions 2; **WebGL 4-8 (vendor/renderer/extensions); canvas fingerprinting (font enumeration, image data); AudioContext fingerprinting; WebGL fingerprinting (vendor/renderer/extensions); bot detection bypass (Cloudflare, reCAPTCHA, hCaptcha)** | **45-72** | R2-R4 |
 | F | **JIT (owner decision 2026-10-20: "we need JIT")**: F0 profile and cache compiled code 3-8; F1 benchmark suite and baseline numbers 1; F2 evaluate and adopt a JIT-enabled QuickJS (the Longbridge `quickjs-jit` fork, a QuickJS-NG JIT with interpreter fallback; licence, build, wiring into the worker, all 37 suites green with JIT on and a kill switch) 4-7; F3 JIT-safe sandbox (executable memory under W^X and the seccomp policy of group G) 2-3. **Contingency, not in the total:** F4 our own baseline JIT for x86-64 if the fork is unfit 10-18; F5 an optimising tier 15-30 if the baseline is not enough by measurement | **10-19** (adopt route) | R3 |
 | G | network and security | send `--compressed` and handle HTTP caching (ETag, cache-control); cookie attributes (SameSite, Secure, HttpOnly, partitioning); CORS; CSP; same-origin policy; mixed content; HSTS; certificate-error UI; permission prompts; **sandboxing the JS worker (seccomp or namespaces)**; site isolation | **12-20** | R2-R4 |
 | H | browser product | password manager and autofill hardening; sync; **extensions (WebExtensions API) 10-20**; **DevTools (inspector, network, debugger) 10-16**; profiles and incognito; settings and search engines; session restore; tab drag and multi-window; downloads manager; PDF viewer 5-8; spellcheck; translate; **accessibility (screen-reader support)** 5-8; updater and default-browser | **40-75** | R1-R4 |
 | I | conformance and compatibility | I1 import Web Platform Tests and wire a pass-rate KPI 3-5 (once); I2 site-compat sweeps and per-site fixes, ongoing 10-30 | **13-35** | all |
-| | **total** | | **about 149-273 sprints** (JIT adopt route; own-JIT contingency F4/F5 adds 25-48 more) | |
+| | **total** | | **about 150-275 sprints** (JIT adopt route; own-JIT contingency F4/F5 adds 25-48 more) | |
 
 ### What that means in time (EST; not measured)
-- **One lane, no parallel work:** 149-273 sprints at 2-4 days is about **9 months at the very best to about 3 years**.
+- **One lane, no parallel work:** 148-271 sprints at 2-4 days is about **9 months at the very best to about 3 years**.
 - **Several lanes at once:** groups B, C, D, E, G, H are mostly independent of each other (they share the worker and the renderer, so they touch the same files; the merge point is still `network_browser_manager.c`). Three to four lanes could compress this to roughly **a quarter to a year**, if the lanes exist and the merge cost stays manageable. I have not run that experiment.
 - **Rung dates, EST, assuming 3 lanes from now:** R1 about 3-6 weeks (A plus the cheap parts of B/G/H); R2 about 3-5 months; R3 about 6-12 months (Milestone 3 reflow, WebAssembly, Service Workers, JIT are the long poles); R4 a year or more, gated on the two decisions. These are estimates for planning, not commitments.
 
@@ -76,8 +76,9 @@ Unit: **one sprint** = a scoped feature plus tests plus live proof plus commit, 
 1. **Finish what is queued** (A): flex, `@media`/cascade, grid, print. Reason: layout is what every later group stands on.
 2. **Get measuring equipment before building more** (I1): import the Web Platform Tests and a top-site sweep. Without it "fully Chrome-replaceable" cannot be tested; with it every sprint gets a pass-rate number. This is cheap (3-5 sprints) and changes how the other items are chosen. Recommended **second**, in parallel with A.
 3. **Cheap compatibility wins** that are not yet done: send `--compressed`, page ES modules, FormData/Blob, observers, `position:fixed`/`z-index`, `@font-face`. Each is under two sprints and moves R1.
-4. **Security before exposure** (G): sandbox the worker before the browser is used for real accounts; a browser that replaces Chrome is trusted with passwords and banking.
-5. **Heavy platform items** (WebAssembly, Service Workers, IndexedDB, WebRTC, extensions, DevTools): start the design docs now so they can run as parallel lanes.
+4. **Bot detection bypass** (WebGL fingerprinting, canvas fingerprinting, Cloudflare challenge): **Cloudflare blocks R1/R2 sites (4chan, etc.); needed for R1 daily reader**.
+5. **Security before exposure** (G): sandbox the worker before the browser is used for real accounts; a browser that replaces Chrome is trusted with passwords and banking.
+6. **Heavy platform items** (WebAssembly, Service Workers, IndexedDB, WebRTC, extensions, DevTools): start the design docs now so they can run as parallel lanes.
 
 ## 5. Decisions
 1. **JIT: DECIDED 2026-10-20 (owner: "we need JIT").** The browser gets a JIT; this is group F, no longer a question. The measured case for it is below. Route: adopt first (F2), build our own only if the evaluation fails (F4/F5 contingency).
@@ -100,11 +101,12 @@ External lead (REF, web search): the `quickjs-jit` fork reports about 32x on a s
 ## 6. What to do next (proposed sprint order for the lane)
 | next | what | why |
 |---|---|---|
-| 1 | G2.3 flex (existing sprint A) | already pinned by a red test |
+| 1 | G2.4 grid, then `@media`/cascade and print (rest of sprint A; flex landed 2026-10-20) | grid groundwork is in; no suite yet |
 | 2 | I1 Web Platform Tests import + top-50 site sweep as the replaceability yardstick | makes R1-R3 measurable |
-| 3 | `--compressed`, page ES modules, FormData/Blob | smallest changes with real compatibility value |
-| 4 | worker sandbox design (seccomp/namespaces) | gate for trusting it with accounts |
-| 5 | F1: JIT benchmark suite on real pages, then F2: evaluate and adopt a JIT-enabled QuickJS | the owner decided on JIT; this measures the gain and picks the route |
+| 3 | `--compressed`, page ES modules, FormData/Blob, observers, `position:fixed`/`z-index`, `@font-face` | cheap compatibility wins |
+| 4 | **Bot detection bypass** (WebGL fingerprinting, canvas fingerprinting, Cloudflare challenge) | **Cloudflare blocks R1/R2 sites (4chan, etc.); needed for R1 daily reader** |
+| 5 | worker sandbox design (seccomp/namespaces) | gate for trusting it with accounts |
+| 6 | F1: JIT benchmark suite on real pages, then F2: evaluate and adopt a JIT-enabled QuickJS | the owner decided on JIT; this measures the gain and picks the route |
 
 ## 7. Status of this document
 Written 2026-10-20 in a research sprint. Sizes are estimates from the October pace and the reference projects above; none were tested. The first line to correct when real work lands is the calendar mapping in section 3. Report: `XO/28.oct20/browser-report-oct20.html`.

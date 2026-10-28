@@ -1,0 +1,15 @@
+# interact_relay.txt for tomom dashboard
+# Format: one key event per line, format: KEYCODE ACTION
+# Read by tomom_dashboard_module.pal via read_history
+# KEYCODEs follow TPMOS convention (1=Enter, 2=Up, 3=Down, etc.)
+#
+# Current action mappings:
+# 1  GENERATE   - run chatbot_moe_v1 with prompt_input
+# 2  WEIGHTEDIT - apply weight edit from word_edit + weight_edit inputs
+# 3  HANDDUNE   - run run_handtune.py cycle
+# 4  REFRESH    - regenerate tomom_dashboard_data.txt
+#
+# cli_io elements write typed values to:
+#   pieces/display/prompt_input.txt
+#   pieces/display/word_edit.txt
+#   pieces/display/weight_edit.txt

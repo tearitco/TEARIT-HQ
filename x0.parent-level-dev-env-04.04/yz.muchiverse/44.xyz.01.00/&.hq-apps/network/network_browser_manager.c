@@ -1613,11 +1613,10 @@ static void acquire_house_lock(const char *lock_path) {
     }
 }
 
-/* Browsers execute only classic-JS scripts (absent/empty type, or a
- * javascript MIME). Everything else — module, application/json,
- * application/ld+json, text/template, and any other custom type — is
- * skipped; the DOM parser already drops those nodes, so running them would
- * just emit WERR noise (and module syntax the engine can't parse anyway). */
+/* Browsers execute classic-JS scripts (absent/empty type, or a
+ * javascript MIME) and ES modules (type=module). Other types —
+ * application/json, application/ld+json, text/template, etc. — are
+ * skipped; the DOM parser already drops those nodes. */
 static int script_type_skip(const char *tag, const char *tag_end) {
     const char *t = strcasestr_local(tag, "type=");
     if (!t || t >= tag_end) return 0;
@@ -1634,7 +1633,27 @@ static int script_type_skip(const char *tag, const char *tag_end) {
     memcpy(buf, t, n); buf[n] = 0;
     for (size_t i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
     if (strstr(buf, "javascript")) return 0;
+    if (strcmp(buf, "module") == 0) return 0;
     return 1;
+}
+
+/* Return 1 if the script tag has type=module. */
+static int script_is_module(const char *tag, const char *tag_end) {
+    const char *t = strcasestr_local(tag, "type=");
+    if (!t || t >= tag_end) return 0;
+    t += 5;
+    char q = 0;
+    if (*t == '"' || *t == '\'') { q = *t; t++; }
+    const char *u = t;
+    while (u < tag_end && *u && (q ? (*u != q)
+                            : (*u != ' ' && *u != '\t' && *u != '>'))) u++;
+    size_t n = (size_t)(u - t);
+    if (n == 0) return 0;
+    if (n >= 32) n = 32;
+    char buf[64];
+    memcpy(buf, t, n); buf[n] = 0;
+    for (size_t i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
+    return strcmp(buf, "module") == 0;
 }
 
 /* True if `tag` sits inside an unclosed <noscript> element. With scripting
@@ -1701,6 +1720,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
             p = close + 9;
             continue;
         }
+        int is_module = script_is_module(tag, gt);
         const char *src = strcasestr_local(tag, "src=");
         if (src && src < gt) {
             if (n_ext >= NB_MAX_EXT_SCRIPTS) { p = close + 9; continue; }
@@ -1726,6 +1746,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
                         char buf[4096];
                         size_t r;
                         fprintf(js_out, SCRIPT_BOUNDARY "\n");
+                        if (is_module) fprintf(js_out, "/*nbjs-module*/\n");
                         while ((r = fread(buf, 1, sizeof(buf), ef)) > 0) fwrite(buf, 1, r, js_out);
                         fprintf(js_out, "\n");
                         fclose(ef);
@@ -1740,6 +1761,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         const char *body = gt + 1;
         if (close > body) {
             fprintf(js_out, SCRIPT_BOUNDARY "\n");
+            if (is_module) fprintf(js_out, "/*nbjs-module*/\n");
             fwrite(body, 1, (size_t)(close - body), js_out);
             fprintf(js_out, "\n");
             n++;
@@ -2381,8 +2403,17 @@ static int handle_worker_fetch(const char *payload) {
         if (want > 0 && want <= 16) nreq = want;
     }
     for (int i = 0; i < nreq; i++) cur = fetch_line(cur, reqhdr[i], sizeof reqhdr[i]);
-    if (nreq > 0 && cur) cur = fetch_line(cur, nb, sizeof nb);   /* blank separator */
+    /* The frame ALWAYS carries a blank separator line between the header list
+     * and the body. This used to run only when nreq > 0, so a header-less
+     * request (what plain fetch(url) sends) left the separator in reqbody; it
+     * then went out as `data = " "` - a GET with a one-space BODY. Measured
+     * 2026-10-26: www.coinmarketcap.com/robots.txt answered 403 through the
+     * manager and 200 to the byte-identical curl from a shell; the only
+     * difference was that invented body. WAFs reject GET-with-body, so this
+     * looked exactly like "Cloudflare blocks the browser". */
+    if (cur) cur = fetch_line(cur, nb, sizeof nb);   /* blank separator */
     const char *reqbody = cur ? cur : "";
+    while (*reqbody == '\n' || *reqbody == '\r' || *reqbody == ' ') reqbody++;
 
     char *body = NULL; size_t body_len = 0; int status = 0;
     char err[256] = "";
@@ -2422,7 +2453,11 @@ static int handle_worker_fetch(const char *payload) {
                 mcfg_line(cf, "write-out", "%{http_code}");
                 fputs("silent\nlocation\nfail\n", cf);
                 for (int i = 0; i < nreq; i++) mcfg_line(cf, "header", reqhdr[i]);
-                if (*reqbody) mcfg_data(cf, reqbody);
+                /* GET/HEAD never carry a body: a WAF treats one as bot
+                 * behaviour even when the method stays GET (see the
+                 * separator comment above). */
+                if (*reqbody && strcasecmp(method, "GET") != 0 &&
+                    strcasecmp(method, "HEAD") != 0) mcfg_data(cf, reqbody);
                 fclose(cf);
                 /* Only mkstemp paths and literal flags reach this string, never
                  * page data - the point of the config file. */
@@ -2578,9 +2613,58 @@ static void worker_err_tail(void) {
     }
 }
 
+/* 2026-10-26: report an UNEXPECTED worker death instead of leaving a zombie
+ * and a pane that silently stops updating. worker_close() - the normal path -
+ * sets g_worker_pid = -1 itself, so a pid still here means the worker died on
+ * its own: a hostile/oversized page script taking the process down, a fatal
+ * signal, or an abort. Seen while loading Cloudflare's orchestrate/chl_page
+ * challenge script on glassdoor (the worker vanished once right after
+ * "resolved script URL") and reproduced deterministically with kill -SEGV:
+ * the zombie sat in ps for the rest of the session, status still read "ready",
+ * and every later eval reported "eval error". The next worker_load()/worker_eval()
+ * spawns a fresh process; rows already merged stay on screen. */
+static void worker_reap_unexpected(void) {
+    if (g_worker_pid <= 0) return;
+    int st = 0;
+    pid_t r = waitpid(g_worker_pid, &st, WNOHANG);
+    if (r != g_worker_pid) return;
+    if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+    g_worker_pid = -1;
+    if (WIFSIGNALED(st))
+        fprintf(stderr, "[worker] died unexpectedly (signal %d); respawns on the next request\n",
+                WTERMSIG(st));
+    else
+        fprintf(stderr, "[worker] died unexpectedly (exit %d); respawns on the next request\n",
+                WIFEXITED(st) ? WEXITSTATUS(st) : st);
+    publish_status("script aborted - partial page");
+    worker_err_tail();
+}
+
 /* Spawn the worker on first need. Child keeps socketpair end as stdin/stdout. */
 static void worker_spawn(void) {
-    if (g_worker_fd >= 0) return;
+    if (g_worker_fd >= 0) {
+        /* Reap any zombie worker process first. */
+        if (g_worker_pid > 0) {
+            int status;
+            pid_t r = waitpid(g_worker_pid, &status, WNOHANG);
+            if (r == g_worker_pid) {
+                /* Worker exited, clean up */
+                if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+                g_worker_pid = -1;
+            } else if (r == 0) {
+                /* Worker still alive */
+                return;
+            } else if (r < 0 && errno == ECHILD) {
+                /* No such child, clean up */
+                if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+                g_worker_pid = -1;
+            } else {
+                return;  /* Worker is alive, fd is valid */
+            }
+        } else {
+            return;  /* Worker is alive, fd is valid */
+        }
+    }
     if (!g_js_worker_path[0]) return;
     FILE *probe = fopen(g_js_worker_path, "r");
     if (!probe) return;
@@ -2622,7 +2706,10 @@ static void worker_spawn(void) {
          * merge, then "eval" reports "no page loaded". The one-shot row-31
          * path already overrides NB_EVAL_BUDGET for the same bundle; give the
          * RESIDENT browser a generous-but-bounded per-slice ceiling too. */
-        setenv("NB_EVAL_BUDGET", "60", 1);
+        /* An explicit NB_EVAL_BUDGET from the launcher wins: a test needs to
+         * shrink the window to prove the watchdog path in seconds instead of
+         * waiting a full minute. The 60s default stands for the reason above. */
+        if (!getenv("NB_EVAL_BUDGET")) setenv("NB_EVAL_BUDGET", "60", 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -2649,6 +2736,7 @@ static char g_push_buf[65536];
 static int worker_load(const char *js_path, const char *dom_path,
                        const char *href, const char *title,
                        const char *css_path) {
+    fprintf(stderr, "DEBUG MANAGER: worker_load called with href='%s'\n", href ? href : "NULL");
     worker_spawn();
     if (g_worker_fd < 0) return 0;
     char payload[8192];
@@ -2913,7 +3001,18 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
      * (document.title=, el.textContent=, appendChild, ...). The legacy
      * one-shot nb_js_eval effects path is gone — the worker is the single
      * DOM writer. A worker that fails leaves the static DOM in place. */
-    worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path);
+    if (!worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path) &&
+        g_worker_pid <= 0) {
+        /* The worker is GONE (worker_load closed it), not merely reporting
+         * "STATUS err" from a live one. Until 2026-10-26 this failure was
+         * discarded: the pane kept saying "loading" forever, evals answered
+         * "eval error", and nothing named the cause. The static DOM plus any
+         * RENDER rows already received are still merged below; only the
+         * status changes, so the user sees an honest partial page. */
+        fprintf(stderr, "[worker] LOAD did not finish: page scripts aborted; "
+                        "static DOM kept, worker respawns on the next request\n");
+        publish_status("script aborted - partial page");
+    }
     (void)merge_render_rows();
 }
 
@@ -7404,6 +7503,7 @@ int main(int argc, char **argv) {
             break;
         }
         video_reap();
+        worker_reap_unexpected();
         usleep(300000);
     }
     return 0;

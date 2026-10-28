@@ -38,9 +38,29 @@ typedef struct NbCssRule {
     int n_id, n_cls, n_type;/* specificity triple (summed over the list) */
 } NbCssRule;
 
+/* @font-face rule (2026-10-22). Minimal: font-family, src, font-weight, font-style. */
+typedef struct {
+    char font_family[64];
+    char src[256];
+    int font_weight;  /* 400 normal, 700 bold, etc. */
+    int font_style;   /* 0 normal, 1 italic, 2 oblique */
+    unsigned char *font_data;
+    size_t font_data_len;
+} NbFontFace;
+
 typedef struct NbCss {
     NbCssRule *r;
     size_t nr, cap;
+    /* @font-face rules (2026-10-22). Up to 8 fonts. */
+    int font_face_count;
+    struct {
+        char font_family[64];
+        char src[256];
+        int font_weight;    /* 400 normal, 700 bold, etc. */
+        int font_style;     /* 0 normal, 1 italic, 2 oblique */
+        unsigned char *font_data;
+        size_t font_data_len;
+    } font_faces[8];
 } NbCss;
 
 /* Resolved computed style for one element (the properties we model). */
@@ -61,12 +81,14 @@ typedef struct NbCssStyle {
      * has_display_flex is DELIBERATELY separate from display[16] above:
      * display keeps the raw keyword for getComputedStyle, while these are
      * the typed values layout reads. Same split the renderer makes. */
-    int has_display_flex, display_flex;      /* 1 when display:flex on this node */
+    int has_display_flex, display_flex;      /* 1 flex, 2 grid */
     int has_flex_direction, flex_row;        /* 1=row, 0=column. CSS default (like the
                                               * renderer's model) is ROW, so layout must
                                               * treat "no direction set" as row, NOT column:
                                               * only an explicit column is vertical. */
     int has_flex_grow; double flex_grow;     /* weight for remaining main-axis space */
+    int has_grid_template_columns, grid_cols;
+    int grid_col_w[8];
     /* Box model (2026-10-14, G2.1). These existed NOWHERE before: the
      * resolver had no fields for them, so a declared padding/margin was
      * silently dropped and layout_xy could not offset a child from its
@@ -77,6 +99,16 @@ typedef struct NbCssStyle {
      * carries; `padding: 1px 2px` parses its first component. */
     double pad_top, pad_bottom, mar_top, mar_bottom;
     int has_pad_top, has_pad_bottom, has_mar_top, has_mar_bottom;
+    /* Position (2026-10-21). Mirrors khtpm_css_parser.h: position_absolute,
+     * position_fixed, top, left, z_index. Used by layout_xy() for
+     * fixed/absolute positioning. */
+    int has_position;       int position_absolute;  /* 0=static/relative, 1=absolute */
+    int position_fixed;     /* 1=fixed (viewport-relative), 0=absolute/relative */
+    int has_top;            double top;    /* px, signed */
+    int has_left;           double left;   /* px, signed */
+    int has_z_index;        int z_index;   /* stacking context */
+    /* font-family (2026-10-22). Resolved font-family for @font-face resolution. */
+    char font_family[64];
 } NbCssStyle;
 
 /* Parse CSS text into a fresh NbCss (never NULL; rules may be 0). Free with

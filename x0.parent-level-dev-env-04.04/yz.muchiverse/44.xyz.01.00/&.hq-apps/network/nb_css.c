@@ -17,6 +17,8 @@ static int is_ws(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
 
+static void parse_font_face_block(const char *block, NbCss *css);
+
 /* Strip C-style comments in place (they can hide braces/selectors). */
 static void strip_comments(char *s) {
     char *w = s, *r = s;
@@ -212,7 +214,26 @@ NbCss *nb_css_parse(const char *text, size_t len) {
         }
         const char *hstart = head;
         while (hstart < lb && is_ws(*hstart)) hstart++;
-        if (hstart < lb && *hstart == '@') {       /* @media/@keyframes: skip body */
+        if (hstart < lb && *hstart == '@') {       /* @-rules */
+            const char *at_name = hstart + 1;
+            while (at_name < lb && is_ws(*at_name)) at_name++;
+            if (strncasecmp(at_name, "font-face", 9) == 0) {
+                /* @font-face rule: parse descriptors */
+                const char *after = skip_block(lb + 1, s + slen);
+                size_t block_len = (size_t)(after - lb - 2); /* exclude { } */
+                if (block_len > 0) {
+                    char *block = malloc(block_len + 1);
+                    if (block) {
+                        memcpy(block, lb + 1, block_len);
+                        block[block_len] = 0;
+                        parse_font_face_block(block, css);
+                        free(block);
+                    }
+                }
+                i = (size_t)(after - s);
+                continue;
+            }
+            /* @media/@keyframes/@import/@supports: skip body */
             const char *after = skip_block(lb + 1, s + slen);
             i = (size_t)(after - s);
             continue;
@@ -248,17 +269,75 @@ NbCss *nb_css_parse(const char *text, size_t len) {
     return css;
 }
 
+/* Parse @font-face descriptor block and store in css->font_faces */
+static void parse_font_face_block(const char *block, NbCss *css) {
+    if (css->font_face_count >= 8) return;
+    int weight = 0, style = 0;
+    char src[256] = {0};
+    char family[64] = {0};
+    const char *p = block;
+    while (*p) {
+        while (*p && is_ws(*p)) p++;
+        if (!*p) break;
+        const char *key = p;
+        while (*p && *p != ':') p++;
+        if (!*p) break;
+        size_t kl = (size_t)(p - key);
+        char key_buf[32];
+        if (kl >= sizeof(key_buf)) kl = sizeof(key_buf) - 1;
+        for (size_t k = 0; k < kl; k++) key_buf[k] = (char)tolower((unsigned char)key[k]);
+        key_buf[kl] = 0;
+        p++;
+        while (*p && is_ws(*p)) p++;
+        const char *val = p;
+        while (*p && *p != ';') p++;
+        size_t vl = (size_t)(p - val);
+        char val_buf[256];
+        if (vl >= sizeof(val_buf)) vl = sizeof(val_buf) - 1;
+        for (size_t v = 0; v < vl; v++) val_buf[v] = val[v];
+        val_buf[vl] = 0;
+        if (p && *p == ';') p++;
+        if (strcasecmp(key_buf, "font-family") == 0) {
+            char *q = val_buf;
+            if (*q == '"' || *q == '\'') { q++; }
+            char *end = val_buf + strlen(val_buf) - 1;
+            if (end > val_buf && (*end == '"' || *end == '\'')) *end = 0;
+            if (*val_buf == '"' || *val_buf == '\'') memmove(val_buf, val_buf + 1, strlen(val_buf));
+            strncpy(family, val_buf, 63);
+        } else if (strcasecmp(key_buf, "src") == 0) {
+            strncpy(src, val_buf, 255);
+        } else if (strcasecmp(key_buf, "font-weight") == 0) {
+            if (strcasecmp(val_buf, "bold") == 0) weight = 700;
+            else if (strcasecmp(val_buf, "normal") == 0) weight = 400;
+            else {
+                char *ep = NULL;
+                long w = strtol(val_buf, &ep, 10);
+                if (ep && ep != val_buf && *ep == 0) weight = (int)w;
+            }
+        } else if (strcasecmp(key_buf, "font-style") == 0) {
+            if (strcasecmp(val_buf, "italic") == 0) style = 1;
+            else if (strcasecmp(val_buf, "oblique") == 0) style = 2;
+        }
+    }
+    if (family[0] && src[0] && css->font_face_count < 8) {
+        int idx = css->font_face_count;
+        strncpy(css->font_faces[idx].font_family, family, 63);
+        strncpy(css->font_faces[idx].src, src, 255);
+        css->font_faces[idx].font_weight = weight ? weight : 400;
+        css->font_faces[idx].font_style = 0;
+        css->font_face_count++;
+    }
+}
+
 /* ----------------------- cascade ----------------------- */
 
 enum { PD_DISPLAY = 0, PD_VIS, PD_OP, PD_W, PD_H,
        PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM,
-       /* G2.3 steps 6.2/6.3 (2026-10-19). Two new properties only -
-        * `display` itself already carries flex-ness via PD_DISPLAY above,
-        * so there is no separate PD_DISPLAY_FLEX (that would let
-        * `display:flex` and `display:block` fight over two score slots).
-        * Mirrors the renderer's shared parser, which likewise keys
-        * display_flex off its single `display` property. */
-       PD_FLEX_DIR, PD_FLEX_GROW, PD_COUNT };
+       PD_FLEX_DIR, PD_FLEX_GROW,
+       PD_GRID_TEMPLATE_COLUMNS,
+       PD_POSITION, PD_TOP, PD_LEFT, PD_Z_INDEX,
+       PD_FONT_FAMILY, PD_SRC, PD_FONT_WEIGHT, PD_FONT_STYLE,
+       PD_COUNT };
 
 static int prop_id(const char *key) {
     if (strcmp(key, "display") == 0) return PD_DISPLAY;
@@ -274,6 +353,15 @@ static int prop_id(const char *key) {
     if (strcmp(key, "margin-bottom") == 0) return PD_MAR_BOTTOM;
     if (strcmp(key, "flex-direction") == 0) return PD_FLEX_DIR;
     if (strcmp(key, "flex-grow") == 0) return PD_FLEX_GROW;
+    if (strcmp(key, "grid-template-columns") == 0) return PD_GRID_TEMPLATE_COLUMNS;
+    if (strcmp(key, "position") == 0) return PD_POSITION;
+    if (strcmp(key, "top") == 0) return PD_TOP;
+    if (strcmp(key, "left") == 0) return PD_LEFT;
+    if (strcmp(key, "z-index") == 0) return PD_Z_INDEX;
+    if (strcmp(key, "font-family") == 0) return PD_FONT_FAMILY;
+    if (strcmp(key, "src") == 0) return PD_SRC;
+    if (strcmp(key, "font-weight") == 0) return PD_FONT_WEIGHT;
+    if (strcmp(key, "font-style") == 0) return PD_FONT_STYLE;
     return -1;
 }
 
@@ -344,8 +432,9 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
             /* 6.2/6.3: the typed flag layout reads. Set in the SAME
              * score-gated slot as the keyword so it can never disagree
              * with display[16] - a single property, a single decision. */
-            out->has_display_flex = (strcasecmp(cv, "flex") == 0);
-            out->display_flex     = out->has_display_flex;
+            if (strcasecmp(cv, "flex") == 0) { out->has_display_flex = 1; out->display_flex = 1; }
+            else if (strcasecmp(cv, "grid") == 0) { out->has_display_flex = 1; out->display_flex = 2; }
+            else { out->has_display_flex = 0; out->display_flex = 0; }
             scores[pid] = score;
         }
         break;
@@ -404,6 +493,40 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
         }
         break;
     }
+    case PD_GRID_TEMPLATE_COLUMNS: {
+        char tmp[512];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        if (score >= scores[pid]) {
+            out->has_grid_template_columns = 1;
+            char buf[512];
+            strncpy(buf, v2, 511); buf[511] = 0;
+            char *r = strstr(buf, "repeat(");
+            if (r) {
+                r += 7;
+                int N = atoi(r);
+                if (N < 0) N = 0;
+                if (N > 8) N = 8;
+                out->grid_cols = N;
+                for (int i = 0; i < N && i < 8; i++) out->grid_col_w[i] = 0;
+            } else {
+                char *tok = strtok(buf, " ,");
+                int N = 0;
+                while (tok && N < 8) {
+                    if (strstr(tok, "fr") || strcasecmp(tok, "auto") == 0 || strstr(tok, "minmax")) {
+                        out->grid_col_w[N] = 0; N++; tok = strtok(NULL, " ,"); continue;
+                    }
+                    if (strstr(tok, "px")) { out->grid_col_w[N] = atoi(tok); N++; tok = strtok(NULL, " ,"); continue; }
+                    if (isdigit((unsigned char)*tok) || (*tok=='-' && isdigit((unsigned char)tok[1]))) { out->grid_col_w[N] = atoi(tok); N++; tok = strtok(NULL, " ,"); continue; }
+                    out->grid_col_w[N] = 0; N++;
+                    tok = strtok(NULL, " ,");
+                }
+                out->grid_cols = N;
+            }
+            scores[pid] = score;
+        }
+        break;
+    }
     case PD_W:
     case PD_H:
     case PD_PAD_TOP:
@@ -436,6 +559,82 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
         }
         break;
     }
+    case PD_POSITION:
+        if (score >= scores[pid]) {
+            if (strcasecmp(cv, "absolute") == 0) {
+                out->has_position = 1; out->position_absolute = 1; out->position_fixed = 0;
+            } else if (strcasecmp(cv, "fixed") == 0) {
+                out->has_position = 1; out->position_absolute = 1; out->position_fixed = 1;
+            } else if (strcasecmp(cv, "relative") == 0) {
+                /* relative: creates positioning context but stays in flow.
+                 * has_position=1, position_absolute=0 marks it as a
+                 * positioned ancestor for absolute children. */
+                out->has_position = 1; out->position_absolute = 0; out->position_fixed = 0;
+            } else {
+                /* static/others: no positioning context */
+                out->has_position = 0; out->position_absolute = 0; out->position_fixed = 0;
+            }
+            scores[pid] = score;
+        }
+        break;
+    case PD_TOP: {
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        double dv = strtod(v2, &ep);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && (*ep == 0 || (ep[0] == 'p' && ep[1] == 'x' && ep[2] == 0))) {
+            if (score >= scores[pid]) {
+                out->top = dv; out->has_top = 1;
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_LEFT: {
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        double dv = strtod(v2, &ep);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && (*ep == 0 || (ep[0] == 'p' && ep[1] == 'x' && ep[2] == 0))) {
+            if (score >= scores[pid]) {
+                out->left = dv; out->has_left = 1;
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_Z_INDEX: {
+        char tmp[64];
+        int i2 = 0;
+        const char *v2 = clean_value(val, vlen, tmp, sizeof(tmp), &i2);
+        char *ep = NULL;
+        long iv = strtol(v2, &ep, 10);
+        while (ep && is_ws(*ep)) ep++;
+        if (ep && ep != v2 && *ep == 0) {
+            if (score >= scores[pid]) {
+                out->z_index = (int)iv; out->has_z_index = 1;
+                scores[pid] = score;
+            }
+        }
+        break;
+    }
+    case PD_FONT_FAMILY:
+        if (score >= scores[pid]) {
+            /* Store font-family for @font-face resolution */
+            char *q = cv;
+            if (*q == '"' || *q == '\'') { q++; }
+            char *end = cv + strlen(cv) - 1;
+            if (end > cv && (*end == '"' || *end == '\'')) *end = 0;
+            if (*cv == '"' || *cv == '\'') memmove(cv, cv + 1, strlen(cv));
+            strncpy(out->font_family, cv, sizeof(out->font_family) - 1);
+            out->font_family[sizeof(out->font_family) - 1] = 0;
+            scores[pid] = score;
+        }
+        break;
     }
 }
 

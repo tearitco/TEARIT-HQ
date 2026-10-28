@@ -23,6 +23,12 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <wasm3.h>
+#include <m3_env.h>
+#include <m3_core.h>
+#include <m3_api_libc.h>
 #include "../js/quickjs.h"
 
 #ifndef NB_HOST_DEFINE_GLOBALS
@@ -722,7 +728,9 @@ static const char g_js_prelude[] =
 "        ok:(r.status>=200&&r.status<300), status:r.status, statusText:'', url:url,\n"
 "        text:function(){ return Promise.resolve(String(r.body||'')); },\n"
 "        json:function(){ return new Promise(function(res2,rej2){ try{ res2(JSON.parse(String(r.body||''))); }catch(e){ rej2(e); } }); },\n"
-"        blob:function(){ return Promise.resolve({}); }, arrayBuffer:function(){ return Promise.resolve({}); },\n"
+"        blob:function(){ return Promise.resolve({}); },\n"
+"        arrayBuffer:function(){ var n=(r.byteLength|0), out=new ArrayBuffer(n), v=new Uint8Array(out), u=r.bytes;\n"
+"          for(var i=0;i<n;i++) v[i]=(u&&u[i])?u[i]:0; return Promise.resolve(out); },\n"
 "        clone:function(){ return this; }\n"
 "      };\n"
 "      resp.headers={ get:function(){ return null; }, has:function(){ return false; }, forEach:function(){},\n"
@@ -889,9 +897,1153 @@ static const char g_js_prelude[] =
 "    };\n"
 "    return f;\n"
 "  };\n"
+"})();\n"
+
+/* ---- AudioContext for fingerprinting (Cloudflare, etc.) ---- */
+"(function(){\n"
+"  if (typeof window.AudioContext !== 'undefined') return;\n"
+"  function AudioContext(){\n"
+"    this.sampleRate = 48000;\n"
+"    this.currentTime = 0;\n"
+"    this.state = 'running';\n"
+"    this.onstatechange = null;\n"
+"    this.destination = {\n"
+"      maxChannelCount: 2,\n"
+"      channelCount: 2,\n"
+"      channelCountMode: 'max',\n"
+"      channelInterpretation: 'speakers',\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  }\n"
+"  AudioContext.prototype.createOscillator = function(){\n"
+"    return {\n"
+"      type: 'sine',\n"
+"      frequency: { value: 440 },\n"
+"      detune: { value: 0 },\n"
+"      start: function(){},\n"
+"      stop: function(){},\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  };\n"
+"  AudioContext.prototype.createGain = function(){\n"
+"    return {\n"
+"      gain: { value: 1 },\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  };\n"
+"  AudioContext.prototype.createAnalyser = function(){\n"
+"    return {\n"
+"      fftSize: 2048,\n"
+"      frequencyBinCount: 1024,\n"
+"      minDecibels: -100,\n"
+"      maxDecibels: -30,\n"
+"      smoothingTimeConstant: 0.8,\n"
+"      getFloatFrequencyData: function(arr){ for(var i=0;i<1024;i++) arr[i]=-100; },\n"
+"      getByteFrequencyData: function(arr){ for(var i=0;i<1024;i++) arr[i]=0; },\n"
+"      getFloatTimeDomainData: function(arr){ for(var i=0;i<1024;i++) arr[i]=0; },\n"
+"      getByteTimeDomainData: function(arr){ for(var i=0;i<1024;i++) arr[i]=128; },\n"
+"      connect: function(){},\n"
+"      disconnect: function(){}\n"
+"    };\n"
+"  };\n"
+"  AudioContext.prototype.createBuffer = function(){ return { sampleRate: 48000, length: 48000, duration: 1, numberOfChannels: 1 }; };\n"
+"  AudioContext.prototype.createBufferSource = function(){\n"
+"    return { buffer: null, loop: false, loopStart: 0, loopEnd: 0, playbackRate: { value: 1 }, start: function(){}, stop: function(){}, connect: function(){}, disconnect: function(){} };\n"
+"  };\n"
+"  AudioContext.prototype.decodeAudioData = function(audioData){\n"
+"    return Promise.resolve({ sampleRate: 48000, length: 48000, duration: 1, numberOfChannels: 1 });\n"
+"  };\n"
+"  AudioContext.prototype.close = function(){ return Promise.resolve(); };\n"
+"  AudioContext.prototype.suspend = function(){ return Promise.resolve(); };\n"
+"  AudioContext.prototype.resume = function(){ return Promise.resolve(); };\n"
+"  Object.defineProperty(window,'AudioContext',{ value:AudioContext, configurable:true, writable:true });\n"
 "})();\n";
 
+/* Helper: get data pointer and length from ArrayBuffer or TypedArray */
+static int nb_get_array_buffer_data(JSContext *ctx, JSValueConst obj, const uint8_t **pdata, size_t *plen) {
+    size_t byte_offset = 0, byte_length = 0, bytes_per_element = 0;
+    JSValue buffer_obj = JS_GetTypedArrayBuffer(ctx, obj, &byte_offset, &byte_length, &bytes_per_element);
+    
+    if (JS_IsException(buffer_obj)) {
+        /* Not a TypedArray, try as ArrayBuffer */
+        size_t size = 0;
+        const uint8_t *data = JS_GetArrayBuffer(ctx, &size, obj);
+        if (data) {
+            *pdata = data;
+            *plen = size;
+            return 1;
+        }
+        return 0;
+    }
+    
+    if (!JS_IsException(buffer_obj)) {
+        /* It's a TypedArray, get the underlying ArrayBuffer */
+        JSValue abuf_obj = buffer_obj;
+        size_t size = 0;
+        const uint8_t *data = JS_GetArrayBuffer(ctx, &size, abuf_obj);
+        if (data) {
+            *pdata = data + byte_offset;
+            *plen = byte_length;
+            JS_FreeValue(ctx, abuf_obj);
+            return 1;
+        }
+        JS_FreeValue(ctx, abuf_obj);
+    }
+    return 0;
+}
+
+/* crypto.subtle — real implementation using OpenSSL */
+static JSValue nb_crypto_subtle_digest(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 2) {
+        JS_ThrowTypeError(ctx, "SubtleCrypto.digest requires algorithm and data");
+        return JS_EXCEPTION;
+    }
+    
+    const char *algo = JS_ToCString(ctx, argv[0]);
+    if (!algo) return JS_EXCEPTION;
+    
+    JSValue data_obj = argv[1];
+    size_t data_len = 0;
+    const uint8_t *data = NULL;
+    
+    if (!nb_get_array_buffer_data(ctx, data_obj, &data, &data_len)) {
+        JS_FreeCString(ctx, algo);
+        JS_ThrowTypeError(ctx, "digest data must be ArrayBuffer or TypedArray");
+        return JS_EXCEPTION;
+    }
+    
+    if (!data || data_len == 0) {
+        JS_FreeCString(ctx, algo);
+        JS_ThrowTypeError(ctx, "Empty data for digest");
+        return JS_EXCEPTION;
+    }
+    
+    /* Determine hash algorithm */
+    const EVP_MD *md = NULL;
+    if (strcasecmp(algo, "SHA-256") == 0 || strcasecmp(algo, "SHA256") == 0) {
+        md = EVP_sha256();
+    } else if (strcasecmp(algo, "SHA-384") == 0 || strcasecmp(algo, "SHA384") == 0) {
+        md = EVP_sha384();
+    } else if (strcasecmp(algo, "SHA-512") == 0 || strcasecmp(algo, "SHA512") == 0) {
+        md = EVP_sha512();
+    } else if (strcasecmp(algo, "SHA-1") == 0 || strcasecmp(algo, "SHA1") == 0) {
+        md = EVP_sha1();
+    } else if (strcasecmp(algo, "MD5") == 0) {
+        md = EVP_md5();
+    }
+    
+    JS_FreeCString(ctx, algo);
+    
+    if (!md) {
+        JS_ThrowTypeError(ctx, "Unsupported hash algorithm");
+        return JS_EXCEPTION;
+    }
+    
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_len = 0;
+    
+    EVP_MD_CTX *ctx_md = EVP_MD_CTX_new();
+    if (!ctx_md || EVP_DigestInit_ex(ctx_md, md, NULL) != 1 ||
+        EVP_DigestUpdate(ctx_md, data, data_len) != 1 ||
+        EVP_DigestFinal_ex(ctx_md, hash, &hash_len) != 1) {
+        if (ctx_md) EVP_MD_CTX_free(ctx_md);
+        JS_ThrowTypeError(ctx, "Digest computation failed");
+        return JS_EXCEPTION;
+    }
+    EVP_MD_CTX_free(ctx_md);
+    
+    /* Create a Promise and resolve it with the result */
+    JSValue resolving_funcs[2];
+    JSValue promise = JS_NewPromiseCapability(ctx, resolving_funcs);
+    if (JS_IsException(promise)) {
+        return promise;
+    }
+    
+    JSValue result = JS_NewArrayBufferCopy(ctx, hash, hash_len);
+    if (JS_IsException(result)) {
+        JS_FreeValue(ctx, resolving_funcs[0]);
+        JS_FreeValue(ctx, resolving_funcs[1]);
+        return result;
+    }
+    
+    JSValue ret = JS_Call(ctx, resolving_funcs[0], JS_UNDEFINED, 1, &result);
+    JS_FreeValue(ctx, result);
+    JS_FreeValue(ctx, resolving_funcs[0]);
+    JS_FreeValue(ctx, resolving_funcs[1]);
+    
+    if (JS_IsException(ret)) {
+        JS_FreeValue(ctx, promise);
+        return ret;
+    }
+    JS_FreeValue(ctx, ret);
+    
+    return promise;
+}
+
+/* crypto.subtle — real implementation using OpenSSL */
+static JSValue nb_crypto_subtle_generateKey(JSContext *ctx, JSValueConst this_val,
+                                            int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "generateKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_importKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "importKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_exportKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "exportKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_sign(JSContext *ctx, JSValueConst this_val,
+                                     int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "sign not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_verify(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "verify not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_deriveKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "deriveKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_deriveBits(JSContext *ctx, JSValueConst this_val,
+                                           int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "deriveBits not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_encrypt(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "encrypt not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_decrypt(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "decrypt not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_wrapKey(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "wrapKey not implemented");
+    return JS_EXCEPTION;
+}
+
+static JSValue nb_crypto_subtle_unwrapKey(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JS_ThrowTypeError(ctx, "unwrapKey not implemented");
+    return JS_EXCEPTION;
+}
+
+/* crypto.getRandomValues implementation */
+static JSValue nb_crypto_getRandomValues(JSContext *ctx, JSValueConst this_val,
+                                         int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsObject(argv[0])) {
+        JS_ThrowTypeError(ctx, "getRandomValues requires an array argument");
+        return JS_EXCEPTION;
+    }
+    JSValue array = argv[0];
+    int32_t len = 0;
+    JSValue len_val = JS_GetPropertyStr(ctx, array, "length");
+    if (JS_IsNumber(len_val)) JS_ToInt32(ctx, &len, len_val);
+    JS_FreeValue(ctx, len_val);
+    if (len <= 0) return array;
+    
+    for (int32_t i = 0; i < len; i++) {
+        uint32_t val = (uint32_t)(rand() & 0xFFFFFFFF);
+        JSValue val_js = JS_NewUint32(ctx, val);
+        JS_SetPropertyUint32(ctx, array, (uint32_t)i, val_js);
+        JS_FreeValue(ctx, val_js);
+    }
+    return array;
+}
+
+/* requestAnimationFrame / cancelAnimationFrame implementation */
+static int g_raf_counter = 0;
+static int g_raf_id = 1;
+static JSValue g_raf_callbacks[128] = {0};
+
+static JSValue nb_requestAnimationFrame(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsFunction(ctx, argv[0])) {
+        JS_ThrowTypeError(ctx, "requestAnimationFrame requires a function argument");
+        return JS_EXCEPTION;
+    }
+    int id = g_raf_id++;
+    if (id >= 128) id = 1;
+    g_raf_callbacks[id] = JS_DupValue(ctx, argv[0]);
+    return JS_NewInt32(ctx, id);
+}
+
+static JSValue nb_cancelAnimationFrame(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsNumber(argv[0])) return JS_UNDEFINED;
+    int32_t id;
+    JS_ToInt32(ctx, &id, argv[0]);
+    if (id > 0 && id < 128 && !JS_IsUndefined(g_raf_callbacks[id])) {
+        JS_FreeValue(ctx, g_raf_callbacks[id]);
+        g_raf_callbacks[id] = JS_UNDEFINED;
+    }
+    return JS_UNDEFINED;
+}
+
+/* ---- WebAssembly (wasm3) ------------------------------------------------
+ *
+ * Real execution, not a feature-detect stub: WebAssembly.compile parses the
+ * bytes with wasm3, WebAssembly.instantiate builds a runtime and exposes the
+ * module's exports as real JS callables, and imported JS functions are
+ * bridged back into wasm through one raw trampoline.
+ *
+ * Three wasm3 contracts shape this code:
+ *   - m3_ParseModule keeps the caller's byte buffer for the module's whole
+ *     life. The bytes therefore live in an ArrayBuffer owned by the JS
+ *     Module object, and the Instance keeps that Module alive.
+ *   - A raw host function gets the wasm stack: _sp[0..numRets-1] are the
+ *     result slots, _sp[numRets..] the arguments, and the signature is
+ *     _ctx.function->funcType. One trampoline serves every import.
+ *   - m3_LoadModule takes ownership of a parsed module (m3_FreeRuntime
+ *     frees it). Never m3_FreeModule a loaded module.
+ *
+ * Honest limits, all exercised or explicitly skipped in
+ * tests/nb_wasm_test.sh:
+ *   - Scalars only: i32/i64/f32/f64. v128 and reference types are not
+ *     marshalled; wasm3 rejects SIMD opcodes at compile time.
+ *   - A module that IMPORTS its linear memory is not linked. wasm3's public
+ *     API binds imported *functions* only, so such an import stays
+ *     unresolved and any call through it traps. Modules that declare and
+ *     export their own memory - what clang/emscripten emit by default - work.
+ *   - Instances are never freed: one worker owns one page and process exit
+ *     is the free. Many compiled modules in one long-lived page cost memory,
+ *     not correctness.
+ */
+static IM3Environment g_wasm_env = NULL;
+
+static IM3Environment nb_wasm_env(void) {
+    if (!g_wasm_env) g_wasm_env = m3_NewEnvironment();
+    return g_wasm_env;
+}
+
+/* JS functions handed to wasm as imports. The trampoline receives only a
+ * pointer-sized userdata, so entries are addressed by index. install_host()
+ * resets the count for each new JSContext; stale entries are deliberately
+ * left alone - the context that owned those JSValues is being torn down, so
+ * touching (or freeing) them would be a use-after-free. */
+typedef struct NbWasmImport { JSContext *ctx; JSValue fn; } NbWasmImport;
+static NbWasmImport *g_wasm_imports = NULL;
+static int g_wasm_import_count = 0;
+static int g_wasm_import_cap = 0;
+
+static int nb_wasm_add_import(JSContext *ctx, JSValueConst fn) {
+    if (g_wasm_import_count == g_wasm_import_cap) {
+        int cap = g_wasm_import_cap ? g_wasm_import_cap * 2 : 16;
+        NbWasmImport *n = realloc(g_wasm_imports, (size_t)cap * sizeof(*n));
+        if (!n) return -1;
+        g_wasm_imports = n;
+        g_wasm_import_cap = cap;
+    }
+    g_wasm_imports[g_wasm_import_count].ctx = ctx;
+    g_wasm_imports[g_wasm_import_count].fn = JS_DupValue(ctx, fn);
+    return g_wasm_import_count++;
+}
+
+/* One wasm stack slot <-> one JS value. The slot is a u64 in wasm3; f32
+ * lives in its low four bytes (m3ApiGetArg casts the slot to float*). */
+static JSValue nb_wasm_slot_to_js(JSContext *ctx, uint64_t slot, m3type_t type) {
+    switch (type) {
+    case c_m3Type_i32: return JS_NewInt32(ctx, (int32_t)(uint32_t)slot);
+    case c_m3Type_i64: return JS_NewBigInt64(ctx, (int64_t)slot);
+    case c_m3Type_f32: { float f; memcpy(&f, &slot, sizeof(f)); return JS_NewFloat64(ctx, (double)f); }
+    case c_m3Type_f64: { double d; memcpy(&d, &slot, sizeof(d)); return JS_NewFloat64(ctx, d); }
+    default: return JS_NewInt32(ctx, 0);
+    }
+}
+
+/* Returns 0 on success, -1 with a pending JS exception on a bad value. */
+static int nb_wasm_js_to_slot(JSContext *ctx, uint64_t *slot, m3type_t type,
+                              JSValueConst v) {
+    switch (type) {
+    case c_m3Type_i32: {
+        int32_t x;
+        if (JS_ToInt32(ctx, &x, v)) return -1;
+        *slot = (uint32_t)x;
+        return 0;
+    }
+    case c_m3Type_i64: {
+        int64_t x;
+        if (JS_ToInt64Ext(ctx, &x, v)) return -1;
+        *slot = (uint64_t)x;
+        return 0;
+    }
+    case c_m3Type_f32: {
+        double d;
+        if (JS_ToFloat64(ctx, &d, v)) return -1;
+        float f = (float)d;
+        *slot = 0;
+        memcpy(slot, &f, sizeof(f));
+        return 0;
+    }
+    case c_m3Type_f64: {
+        double d;
+        if (JS_ToFloat64(ctx, &d, v)) return -1;
+        *slot = 0;
+        memcpy(slot, &d, sizeof(d));
+        return 0;
+    }
+    default:
+        *slot = 0;
+        return 0;
+    }
+}
+
+/* The single raw trampoline every imported JS function is linked through.
+ * `_ctx.userdata` is the index into g_wasm_imports. */
+/* NOTE the pointer: this house's wasm3 emits op_CallRawFunction with
+ * `call(runtime, &ctx, sp, mem)` (see m3_exec.h), so the real ABI is the
+ * pointer form even though wasm3.h's M3RawCall typedef spells the struct by
+ * value. Declaring it by value compiles and then hands you the stack pointer
+ * as _ctx.function. */
+static const void *nb_wasm_raw_import(IM3Runtime runtime, IM3ImportContext ictx,
+                                      uint64_t *sp, void *mem) {
+    (void)runtime; (void)mem;
+    int idx = ictx ? (int)(intptr_t)ictx->userdata : -1;
+    if (idx < 0 || idx >= g_wasm_import_count) return "wasm: unresolved import";
+    JSContext *ctx = g_wasm_imports[idx].ctx;
+    IM3FuncType ft = ictx->function ? ictx->function->funcType : NULL;
+    if (!ft) return "wasm: import has no signature";
+
+    uint32_t nargs = ft->numArgs, nrets = ft->numRets;
+    JSValue small[8];
+    JSValue *args = nargs <= 8 ? small : malloc(nargs * sizeof(JSValue));
+    if (!args) return "wasm: out of memory marshalling import";
+    for (uint32_t i = 0; i < nargs; i++)
+        args[i] = nb_wasm_slot_to_js(ctx, sp[nrets + i], ft->types[nrets + i]);
+
+    JSValue r = JS_Call(ctx, g_wasm_imports[idx].fn, JS_UNDEFINED,
+                        (int)nargs, (JSValueConst *)args);
+    for (uint32_t i = 0; i < nargs; i++) JS_FreeValue(ctx, args[i]);
+    if (args != small) free(args);
+
+    if (JS_IsException(r)) {
+        /* Clear it: the wasm side sees a trap, not a JS exception, and a
+         * pending exception left in the context would poison the next call. */
+        JSValue e = JS_GetException(ctx);
+        JS_FreeValue(ctx, e);
+        return "wasm: imported JS function threw";
+    }
+    if (nrets > 1) {
+        /* Multi-value returns come back as an array. */
+        JSValue elem = JS_GetPropertyUint32(ctx, r, 0);
+        for (uint32_t i = 0; i < nrets; i++) {
+            JS_FreeValue(ctx, elem);
+            elem = JS_GetPropertyUint32(ctx, r, i);
+            if (nb_wasm_js_to_slot(ctx, &sp[i], ft->types[i], elem)) {
+                JS_FreeValue(ctx, elem);
+                JS_FreeValue(ctx, r);
+                JSValue e = JS_GetException(ctx);
+                JS_FreeValue(ctx, e);
+                return "wasm: bad multi-value return from import";
+            }
+        }
+        JS_FreeValue(ctx, elem);
+    } else if (nrets == 1) {
+        if (nb_wasm_js_to_slot(ctx, &sp[0], ft->types[0], r)) {
+            JS_FreeValue(ctx, r);
+            JSValue e = JS_GetException(ctx);
+            JS_FreeValue(ctx, e);
+            return "wasm: bad return value from import";
+        }
+    }
+    JS_FreeValue(ctx, r);
+    return m3Err_none;
+}
+
+/* An exported wasm function as a JS callable. data[0] is the IM3Function
+ * pointer as an int64 (GC-safe; the function lives as long as its runtime). */
+static JSValue nb_wasm_fn_call(JSContext *ctx, JSValueConst this_val, int argc,
+                               JSValueConst *argv, int magic, JSValue *data) {
+    (void)this_val; (void)magic;
+    int64_t p = 0;
+    if (JS_ToInt64(ctx, &p, data[0])) return JS_EXCEPTION;
+    IM3Function f = (IM3Function)(intptr_t)p;
+    if (!f) { JS_ThrowTypeError(ctx, "wasm: dead function reference"); return JS_EXCEPTION; }
+
+    uint32_t nargs = m3_GetArgCount(f), nrets = m3_GetRetCount(f);
+    if ((uint32_t)argc < nargs) {
+        JS_ThrowTypeError(ctx, "wasm export expects %u arguments, got %d",
+                          (unsigned)nargs, argc);
+        return JS_EXCEPTION;
+    }
+
+    uint64_t *slots = malloc((nargs ? nargs : 1) * sizeof(uint64_t));
+    const void **argptrs = malloc((nargs ? nargs : 1) * sizeof(void *));
+    JSValue ret = JS_UNDEFINED;
+    M3Result r = m3Err_none;
+
+    if (!slots || !argptrs) { r = "out of memory"; goto done; }
+
+    for (uint32_t i = 0; i < nargs; i++) {
+        m3type_t t = m3_GetArgType(f, i);
+        if (nb_wasm_js_to_slot(ctx, &slots[i], t, argv[i])) { r = "bad argument"; goto done; }
+        argptrs[i] = &slots[i];
+    }
+
+    r = m3_Call(f, nargs, argptrs);
+    if (r) goto done;
+
+    if (nrets == 0) {
+        ret = JS_UNDEFINED;
+    } else if (nrets == 1) {
+        uint64_t out = 0;
+        const void *rp = &out;
+        r = m3_GetResults(f, 1, &rp);
+        if (!r) ret = nb_wasm_slot_to_js(ctx, out, m3_GetRetType(f, 0));
+    } else {
+        uint64_t *outs = malloc(nrets * sizeof(uint64_t));
+        const void **rps = malloc(nrets * sizeof(void *));
+        if (!outs || !rps) {
+            free(outs); free(rps);
+            r = "out of memory";
+            goto done;
+        }
+        for (uint32_t i = 0; i < nrets; i++) { outs[i] = 0; rps[i] = &outs[i]; }
+        r = m3_GetResults(f, nrets, rps);
+        if (!r) {
+            ret = JS_NewArray(ctx);
+            for (uint32_t i = 0; i < nrets; i++)
+                JS_SetPropertyUint32(ctx, ret, i,
+                                     nb_wasm_slot_to_js(ctx, outs[i], m3_GetRetType(f, i)));
+        }
+        free(outs); free(rps);
+    }
+
+done:
+    free(slots);
+    free(argptrs);
+    if (r) {
+        /* A failed argument conversion left its own exception pending; clear
+         * it so the trap below is the one the caller's catch() sees. */
+        JSValue pending = JS_GetException(ctx);
+        JS_FreeValue(ctx, pending);
+        JS_ThrowTypeError(ctx, "wasm trap: %s", r);
+        if (!JS_IsUndefined(ret)) JS_FreeValue(ctx, ret);
+        return JS_EXCEPTION;
+    }
+    return ret;
+}
+
+/* Live view of a module's linear memory. A fresh ArrayBuffer is handed out
+ * on every `buffer` read because growing memory reallocates the backing
+ * store; writes through it hit wasm memory directly (no copy). */
+static JSValue nb_wasm_memory_buffer(JSContext *ctx, JSValueConst this_val,
+                                     int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue mp = JS_GetPropertyStr(ctx, this_val, "__module");
+    JSValue ip = JS_GetPropertyStr(ctx, this_val, "__index");
+    int64_t m = 0;
+    int32_t index = 0;
+    JS_ToInt64(ctx, &m, mp);
+    JS_ToInt32(ctx, &index, ip);
+    JS_FreeValue(ctx, mp);
+    JS_FreeValue(ctx, ip);
+
+    size_t size = 0;
+    uint8_t *data = m3_GetMemory((IM3Module)(intptr_t)m, &size, (uint32_t)index);
+    if (!data) return JS_NewArrayBuffer(ctx, NULL, 0, NULL, NULL, 0);
+    return JS_NewArrayBuffer(ctx, data, size, NULL, NULL, 0);
+}
+
+static JSValue nb_wasm_memory_grow(JSContext *ctx, JSValueConst this_val,
+                                   int argc, JSValueConst *argv, int magic,
+                                   JSValue *data) {
+    (void)this_val; (void)magic;
+    int64_t delta = 0;
+    if (argc < 1 || JS_ToInt64Ext(ctx, &delta, argv[0]) || delta < 0) {
+        JS_ThrowRangeError(ctx, "wasm memory.grow needs a non-negative page count");
+        return JS_EXCEPTION;
+    }
+    int64_t m = 0;
+    JS_ToInt64(ctx, &m, data[0]);
+    int32_t index = 0;
+    JS_ToInt32(ctx, &index, data[1]);
+    IM3Module mod = (IM3Module)(intptr_t)m;
+    if (!mod || (uint32_t)index >= mod->numMemories) return JS_NewInt32(ctx, -1);
+    IM3Memory memory = mod->memories[index];
+    uint64_t old_pages = memory ? memory->numPages : 0;
+    if (delta == 0) return JS_NewInt32(ctx, (int32_t)old_pages);
+    if (!memory || ResizeMemory(m3_GetModuleRuntime(mod), memory,
+                                old_pages + (uint64_t)delta) != m3Err_none)
+        return JS_NewInt32(ctx, -1);
+    return JS_NewInt32(ctx, (int32_t)old_pages);
+}
+
+static JSValue nb_wasm_memory_object(JSContext *ctx, IM3Module mod, uint32_t index) {
+    JSValue o = JS_NewObject(ctx);
+    JSValue mv = JS_NewInt64(ctx, (int64_t)(uintptr_t)mod);
+    JSValue iv = JS_NewInt32(ctx, (int32_t)index);
+    JS_SetPropertyStr(ctx, o, "__module", JS_DupValue(ctx, mv));
+    JS_SetPropertyStr(ctx, o, "__index", JS_DupValue(ctx, iv));
+    JSAtom a = JS_NewAtom(ctx, "buffer");
+    JS_DefinePropertyGetSet(ctx, o, a,
+                            JS_NewCFunction(ctx, nb_wasm_memory_buffer, "get buffer", 0),
+                            JS_UNDEFINED,
+                            JS_PROP_HAS_GET | JS_PROP_ENUMERABLE | JS_PROP_CONFIGURABLE);
+    JS_FreeAtom(ctx, a);
+    JSValue gdata[2] = { mv, iv };
+    JS_SetPropertyStr(ctx, o, "grow",
+                      JS_NewCFunctionData(ctx, nb_wasm_memory_grow, 1, 0, 2, gdata));
+    JS_FreeValue(ctx, mv);
+    JS_FreeValue(ctx, iv);
+    return o;
+}
+
+/* Exported global: a live getter (and setter, when mutable), so a JS side
+ * that polls e.g. __stack_pointer sees the current value, not a snapshot. */
+static JSValue nb_wasm_global_get(JSContext *ctx, JSValueConst this_val,
+                                  int argc, JSValueConst *argv, int magic,
+                                  JSValue *data) {
+    (void)this_val; (void)argc; (void)argv; (void)magic;
+    int64_t p = 0;
+    JS_ToInt64(ctx, &p, data[0]);
+    M3TaggedValue v;
+    memset(&v, 0, sizeof(v));
+    if (m3_GetGlobal((IM3Global)(intptr_t)p, &v) != m3Err_none)
+        return JS_NULL;
+    switch (v.type) {
+    case c_m3Type_i32: return JS_NewInt32(ctx, (int32_t)v.value.i32);
+    case c_m3Type_i64: return JS_NewBigInt64(ctx, (int64_t)v.value.i64);
+    case c_m3Type_f32: return JS_NewFloat64(ctx, (double)v.value.f32);
+    case c_m3Type_f64: return JS_NewFloat64(ctx, v.value.f64);
+    default: return JS_NULL;
+    }
+}
+
+static JSValue nb_wasm_global_set(JSContext *ctx, JSValueConst this_val,
+                                  int argc, JSValueConst *argv, int magic,
+                                  JSValue *data) {
+    (void)this_val; (void)magic;
+    int64_t p = 0;
+    JS_ToInt64(ctx, &p, data[0]);
+    IM3Global g = (IM3Global)(intptr_t)p;
+    M3TaggedValue v;
+    memset(&v, 0, sizeof(v));
+    v.type = m3_GetGlobalType(g);
+    if (argc < 1) return JS_UNDEFINED;
+    switch (v.type) {
+    case c_m3Type_i32: {
+        int32_t x; if (JS_ToInt32(ctx, &x, argv[0])) return JS_EXCEPTION;
+        v.value.i32 = (uint32_t)x; break;
+    }
+    case c_m3Type_i64: {
+        int64_t x; if (JS_ToInt64Ext(ctx, &x, argv[0])) return JS_EXCEPTION;
+        v.value.i64 = (uint64_t)x; break;
+    }
+    case c_m3Type_f32: {
+        double d; if (JS_ToFloat64(ctx, &d, argv[0])) return JS_EXCEPTION;
+        v.value.f32 = (float)d; break;
+    }
+    case c_m3Type_f64: {
+        double d; if (JS_ToFloat64(ctx, &d, argv[0])) return JS_EXCEPTION;
+        v.value.f64 = d; break;
+    }
+    default: return JS_UNDEFINED;
+    }
+    if (m3_SetGlobal(g, &v) != m3Err_none) {
+        JS_ThrowTypeError(ctx, "wasm: cannot write exported global");
+        return JS_EXCEPTION;
+    }
+    return JS_UNDEFINED;
+}
+
+/* A WebAssembly.Global-shaped view of an exported wasm global: `.value`
+ * reads and writes the live cell. */
+static JSValue nb_wasm_global_object(JSContext *ctx, IM3Global g) {
+    JSValue o = JS_NewObject(ctx);
+    JSValue ptr = JS_NewInt64(ctx, (int64_t)(uintptr_t)g);
+    JSAtom a = JS_NewAtom(ctx, "value");
+    JS_DefinePropertyGetSet(ctx, o, a,
+                            JS_NewCFunctionData(ctx, nb_wasm_global_get, 0, 0, 1, &ptr),
+                            JS_NewCFunctionData(ctx, nb_wasm_global_set, 1, 0, 1, &ptr),
+                            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_ENUMERABLE);
+    JS_FreeAtom(ctx, a);
+    JS_FreeValue(ctx, ptr);
+    return o;
+}
+
+static const char *nb_wasm_kind_name(uint8_t kind) {    switch (kind) {
+    case d_externalKind_function: return "function";
+    case d_externalKind_table: return "table";
+    case d_externalKind_memory: return "memory";
+    case d_externalKind_global: return "global";
+    default: return "tag";
+    }
+}
+
+/* Build a JS Module object from an ArrayBuffer/TypedArray. The bytes are
+ * copied (wasm3 needs them for the module's life) and the copy is owned by
+ * the returned object as __bytes; descriptor arrays are captured while the
+ * parsed module is alive, then the module is freed. */
+static JSValue nb_wasm_module_new(JSContext *ctx, JSValueConst bytes_obj) {
+    const uint8_t *data = NULL;
+    size_t len = 0;
+    if (!nb_get_array_buffer_data(ctx, bytes_obj, &data, &len) || !data || len < 8) {
+        JS_ThrowTypeError(ctx, "WebAssembly: source must be a BufferSource with a wasm module");
+        return JS_EXCEPTION;
+    }
+
+    IM3Environment env = nb_wasm_env();
+    if (!env) { JS_ThrowTypeError(ctx, "WebAssembly: wasm3 environment failed"); return JS_EXCEPTION; }
+
+    IM3Module mod = NULL;
+    M3Result r = m3_ParseModule(env, &mod, data, (uint32_t)len);
+    if (r) {
+        JS_ThrowTypeError(ctx, "WebAssembly: compile failed: %s", r);
+        return JS_EXCEPTION;
+    }
+
+    JSValue exports = JS_NewArray(ctx);
+    JSValue imports = JS_NewArray(ctx);
+    for (uint32_t i = 0; i < mod->numExports; i++) {
+        M3Export *e = &mod->exports[i];
+        JSValue d = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, d, "name",
+                          JS_NewStringLen(ctx, e->name, e->nameLength ? e->nameLength : strlen(e->name)));
+        JS_SetPropertyStr(ctx, d, "kind", JS_NewString(ctx, nb_wasm_kind_name(e->kind)));
+        JS_SetPropertyUint32(ctx, exports, i, d);
+    }
+    {
+        uint32_t n = 0;
+        for (uint32_t i = 0; i < mod->numFunctions; i++) {
+            IM3Function f = &mod->functions[i];
+            if (!f->import.moduleUtf8 || !f->import.fieldUtf8) continue;
+            JSValue d = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, d, "module", JS_NewString(ctx, f->import.moduleUtf8));
+            JS_SetPropertyStr(ctx, d, "name", JS_NewString(ctx, f->import.fieldUtf8));
+            JS_SetPropertyStr(ctx, d, "kind", JS_NewString(ctx, "function"));
+            JS_SetPropertyUint32(ctx, imports, n++, d);
+        }
+    }
+
+    m3_FreeModule(mod);   /* never loaded into a runtime: safe and correct */
+
+    JSValue bytes = JS_NewArrayBufferCopy(ctx, data, len);
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "__bytes", bytes);
+    JS_SetPropertyStr(ctx, obj, "__exports", exports);
+    JS_SetPropertyStr(ctx, obj, "__imports", imports);
+    return obj;
+}
+
+static JSValue nb_wasm_module_descriptors(JSContext *ctx, JSValueConst this_val,
+                                         int argc, JSValueConst *argv, int magic,
+                                         JSValue *data) {
+    (void)this_val; (void)data;
+    JSValueConst mod = argc > 0 ? argv[0] : JS_UNDEFINED;
+    JSValue arr = JS_GetPropertyStr(ctx, mod, magic ? "__imports" : "__exports");
+    if (!JS_IsObject(arr)) {
+        JS_FreeValue(ctx, arr);
+        JS_ThrowTypeError(ctx, "WebAssembly: not a Module");
+        return JS_EXCEPTION;
+    }
+    /* shallow copy: callers may sort/mutate their view without touching ours */
+    JSValue out = JS_NewArray(ctx);
+    uint32_t n = 0;
+    JSValue lenv = JS_GetPropertyStr(ctx, arr, "length");
+    int32_t count = 0;
+    JS_ToInt32(ctx, &count, lenv);
+    JS_FreeValue(ctx, lenv);
+    for (int32_t i = 0; i < count; i++) {
+        JSValue d = JS_GetPropertyUint32(ctx, arr, (uint32_t)i);
+        JS_SetPropertyUint32(ctx, out, n++, JS_DupValue(ctx, d));
+        JS_FreeValue(ctx, d);
+    }
+    JS_FreeValue(ctx, arr);
+    return out;
+}
+
+/* Instantiate a Module object. The returned Instance object owns a wasm3
+ * runtime (freed on process exit) whose exports are live JS callables. */
+static JSValue nb_wasm_instance_new(JSContext *ctx, JSValueConst module_obj,
+                                    JSValueConst import_object) {
+    JSValue bytes = JS_GetPropertyStr(ctx, module_obj, "__bytes");
+    size_t len = 0;
+    uint8_t *data = JS_GetArrayBuffer(ctx, &len, bytes);
+    if (!data) {
+        JS_FreeValue(ctx, bytes);
+        JS_ThrowTypeError(ctx, "WebAssembly: not a Module");
+        return JS_EXCEPTION;
+    }
+
+    IM3Environment env = nb_wasm_env();
+    IM3Runtime rt = env ? m3_NewRuntime(env, 256 * 1024, NULL) : NULL;
+    if (!rt) {
+        JS_FreeValue(ctx, bytes);
+        JS_ThrowTypeError(ctx, "WebAssembly: runtime allocation failed");
+        return JS_EXCEPTION;
+    }
+
+    IM3Module mod = NULL;
+    M3Result r = m3_ParseModule(env, &mod, data, (uint32_t)len);
+    if (r) {
+        m3_FreeRuntime(rt);
+        JS_FreeValue(ctx, bytes);
+        JS_ThrowTypeError(ctx, "WebAssembly: compile failed: %s", r);
+        return JS_EXCEPTION;
+    }
+    r = m3_LoadModule(rt, mod);
+    if (r) {
+        /* ownership already moved to the runtime whether or not it succeeded */
+        m3_FreeRuntime(rt);
+        JS_FreeValue(ctx, bytes);
+        JS_ThrowTypeError(ctx, "WebAssembly: instantiate failed: %s", r);
+        return JS_EXCEPTION;
+    }
+    JS_FreeValue(ctx, bytes);
+
+    /* Link imported functions against JS callables found in import_object.
+     * A missing import is left unresolved: the first call through it traps,
+     * which is louder than failing the whole instantiation. */
+    for (uint32_t i = 0; i < mod->numFunctions; i++) {
+        IM3Function f = &mod->functions[i];
+        if (!f->import.moduleUtf8 || !f->import.fieldUtf8) continue;
+        JSValue ns = JS_GetPropertyStr(ctx, import_object, f->import.moduleUtf8);
+        JSValue fn = JS_IsObject(ns)
+                         ? JS_GetPropertyStr(ctx, ns, f->import.fieldUtf8)
+                         : JS_UNDEFINED;
+        if (JS_IsFunction(ctx, fn)) {
+            int idx = nb_wasm_add_import(ctx, fn);
+            if (idx >= 0)
+                m3_LinkRawFunctionEx(mod, f->import.moduleUtf8, f->import.fieldUtf8,
+                                     NULL /* signature check off: trampoline reads it */,
+                                     nb_wasm_raw_import, (const void *)(intptr_t)idx);
+        }
+        JS_FreeValue(ctx, fn);
+        JS_FreeValue(ctx, ns);
+    }
+
+    if (mod->startFunction >= 0) {
+        M3Result sr = m3_RunStart(mod);
+        if (sr) {
+            JS_ThrowTypeError(ctx, "WebAssembly: start function trapped: %s", sr);
+            return JS_EXCEPTION;
+        }
+    }
+
+    JSValue inst = JS_NewObject(ctx);
+    JSValue exports = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, inst, "exports", exports);
+    JS_SetPropertyStr(ctx, inst, "Module", JS_DupValue(ctx, module_obj));
+
+    for (uint32_t i = 0; i < mod->numExports; i++) {
+        M3Export *e = &mod->exports[i];
+        char name[256];
+        size_t n = e->nameLength ? e->nameLength : strlen(e->name);
+        if (n >= sizeof(name)) n = sizeof(name) - 1;
+        memcpy(name, e->name, n);
+        name[n] = 0;
+
+        if (e->kind == d_externalKind_function) {
+            IM3Function f = NULL;
+            if (m3_FindFunctionIn(&f, mod, name) == m3Err_none && f) {
+                JSValue ptr = JS_NewInt64(ctx, (int64_t)(uintptr_t)f);
+                JS_SetPropertyStr(ctx, exports, name,
+                                  JS_NewCFunctionData(ctx, nb_wasm_fn_call,
+                                                      (int)m3_GetArgCount(f), 0, 1, &ptr));
+                JS_FreeValue(ctx, ptr);
+            }
+        } else if (e->kind == d_externalKind_memory) {
+            JS_SetPropertyStr(ctx, exports, name,
+                              nb_wasm_memory_object(ctx, mod, e->index));
+        } else if (e->kind == d_externalKind_global) {
+            IM3Global g = m3_FindGlobal(mod, name);
+            if (g) JS_SetPropertyStr(ctx, exports, name, nb_wasm_global_object(ctx, g));
+        }
+        /* tables are not exposed: wasm3 cannot hand a table's entries to JS
+         * as callables without one wrapper object per slot. */
+    }
+    return inst;
+}
+
+/* Wrap a value (or a pending exception) in an already-settled Promise. */
+static JSValue nb_wasm_settle(JSContext *ctx, JSValue result) {
+    JSValue funcs[2];
+    JSValue promise = JS_NewPromiseCapability(ctx, funcs);
+    if (JS_IsException(promise)) {
+        if (!JS_IsException(result)) JS_FreeValue(ctx, result);
+        return promise;
+    }
+    if (JS_IsException(result)) {
+        JSValue e = JS_GetException(ctx);
+        JSValue r = JS_Call(ctx, funcs[1], JS_UNDEFINED, 1, &e);
+        JS_FreeValue(ctx, e);
+        if (!JS_IsException(r)) JS_FreeValue(ctx, r);
+    } else {
+        JSValue r = JS_Call(ctx, funcs[0], JS_UNDEFINED, 1, &result);
+        if (!JS_IsException(r)) JS_FreeValue(ctx, r);
+        JS_FreeValue(ctx, result);
+    }
+    JS_FreeValue(ctx, funcs[0]);
+    JS_FreeValue(ctx, funcs[1]);
+    return promise;
+}
+
+/* WebAssembly.validate(bytes) -> bool */
+static JSValue nb_wasm_validate(JSContext *ctx, JSValueConst this_val, int argc,
+                                JSValueConst *argv) {
+    (void)this_val;
+    const uint8_t *data = NULL;
+    size_t len = 0;
+    if (argc < 1 || !nb_get_array_buffer_data(ctx, argv[0], &data, &len) || !data)
+        return JS_FALSE;
+    IM3Environment env = nb_wasm_env();
+    if (!env) return JS_FALSE;
+    IM3Module mod = NULL;
+    M3Result r = m3_ParseModule(env, &mod, data, (uint32_t)len);
+    if (r == m3Err_none && mod) m3_FreeModule(mod);
+    return JS_NewBool(ctx, r == m3Err_none);
+}
+
+/* WebAssembly.compile(bytes) -> Promise<Module> */
+static JSValue nb_wasm_compile(JSContext *ctx, JSValueConst this_val, int argc,
+                               JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1) {
+        JS_ThrowTypeError(ctx, "WebAssembly.compile requires a BufferSource");
+        return nb_wasm_settle(ctx, JS_EXCEPTION);
+    }
+    return nb_wasm_settle(ctx, nb_wasm_module_new(ctx, argv[0]));
+}
+
+/* WebAssembly.instantiate(bytes[, imports]) -> Promise<{module, instance}>
+ * WebAssembly.instantiate(module[, imports]) -> Promise<Instance> */
+static JSValue nb_wasm_instantiate(JSContext *ctx, JSValueConst this_val, int argc,
+                                   JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1) {
+        JS_ThrowTypeError(ctx, "WebAssembly.instantiate requires a Module or BufferSource");
+        return nb_wasm_settle(ctx, JS_EXCEPTION);
+    }
+    JSValueConst imports = argc > 1 ? argv[1] : JS_UNDEFINED;
+    JSValue module_obj = JS_GetPropertyStr(ctx, argv[0], "__bytes");
+    int is_module = JS_IsObject(module_obj);
+    if (is_module) {
+        JSValue inst = nb_wasm_instance_new(ctx, argv[0], imports);
+        JS_FreeValue(ctx, module_obj);
+        return nb_wasm_settle(ctx, inst);
+    }
+    JS_FreeValue(ctx, module_obj);
+
+    JSValue mod = nb_wasm_module_new(ctx, argv[0]);
+    if (JS_IsException(mod)) return nb_wasm_settle(ctx, mod);
+    JSValue inst = nb_wasm_instance_new(ctx, mod, imports);
+    if (JS_IsException(inst)) {
+        JS_FreeValue(ctx, mod);
+        return nb_wasm_settle(ctx, inst);
+    }
+    JSValue pair = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, pair, "module", mod);
+    JS_SetPropertyStr(ctx, pair, "instance", inst);
+    return nb_wasm_settle(ctx, pair);
+}
+
+/* Streaming entry points: the argument is fetch()'s Promise<Response> (or a
+ * Response, or plain bytes). Resolve to bytes first, then reuse the sync
+ * builders. magic: 0 = compile, 1 = instantiate. */
+static JSValue nb_wasm_stream_bytes(JSContext *ctx, JSValueConst this_val, int argc,
+                                    JSValueConst *argv, int magic, JSValue *data) {
+    (void)this_val;
+    JSValueConst bytes = argc > 0 ? argv[0] : JS_UNDEFINED;
+    JSValue mod = nb_wasm_module_new(ctx, bytes);
+    if (JS_IsException(mod) || !magic) return mod;
+    JSValue inst = nb_wasm_instance_new(ctx, mod, data[0]);
+    if (JS_IsException(inst)) { JS_FreeValue(ctx, mod); return inst; }
+    JSValue pair = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, pair, "module", mod);
+    JS_SetPropertyStr(ctx, pair, "instance", inst);
+    return pair;
+}
+
+static JSValue nb_wasm_stream_then(JSContext *ctx, JSValueConst this_val, int argc,
+                                   JSValueConst *argv, int magic, JSValue *data) {
+    (void)this_val;
+    JSValueConst resp = argc > 0 ? argv[0] : JS_UNDEFINED;
+    JSValue ab = JS_GetPropertyStr(ctx, resp, "arrayBuffer");
+    JSValue bytes_p;
+    if (JS_IsFunction(ctx, ab)) bytes_p = JS_Call(ctx, ab, resp, 0, NULL);
+    else bytes_p = JS_DupValue(ctx, resp);
+    JS_FreeValue(ctx, ab);
+    if (JS_IsException(bytes_p)) return bytes_p;
+
+    JSValue then = JS_GetPropertyStr(ctx, bytes_p, "then");
+    if (!JS_IsFunction(ctx, then)) {   /* already a BufferSource */
+        JS_FreeValue(ctx, then);
+        JSValue cb = JS_NewCFunctionData(ctx, nb_wasm_stream_bytes, 1, magic, 1, data);
+        JSValue r = JS_Call(ctx, cb, JS_UNDEFINED, 1, &bytes_p);
+        JS_FreeValue(ctx, cb);
+        JS_FreeValue(ctx, bytes_p);
+        return r;
+    }
+    JSValue cb = JS_NewCFunctionData(ctx, nb_wasm_stream_bytes, 1, magic, 1, data);
+    JSValue r = JS_Call(ctx, then, bytes_p, 1, &cb);
+    JS_FreeValue(ctx, cb);
+    JS_FreeValue(ctx, then);
+    JS_FreeValue(ctx, bytes_p);
+    return r;
+}
+
+static JSValue nb_wasm_streaming(JSContext *ctx, JSValueConst input,
+                                 JSValueConst imports, int instantiate) {
+    JSValue then = JS_GetPropertyStr(ctx, input, "then");
+    if (JS_IsFunction(ctx, then)) {
+        JSValue data[1] = { imports };
+        JSValue cb = JS_NewCFunctionData(ctx, nb_wasm_stream_then, 1, instantiate, 1, data);
+        JSValue r = JS_Call(ctx, then, input, 1, &cb);
+        JS_FreeValue(ctx, cb);
+        JS_FreeValue(ctx, then);
+        return r;
+    }
+    JS_FreeValue(ctx, then);
+    /* Not a promise: behave like the sync twin, wrapped for symmetry. */
+    JSValue mod = nb_wasm_module_new(ctx, input);
+    if (JS_IsException(mod)) return nb_wasm_settle(ctx, mod);
+    if (!instantiate) return nb_wasm_settle(ctx, mod);
+    JSValue inst = nb_wasm_instance_new(ctx, mod, imports);
+    if (JS_IsException(inst)) { JS_FreeValue(ctx, mod); return nb_wasm_settle(ctx, inst); }
+    JSValue pair = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, pair, "module", mod);
+    JS_SetPropertyStr(ctx, pair, "instance", inst);
+    return nb_wasm_settle(ctx, pair);
+}
+
+static JSValue nb_wasm_compile_streaming(JSContext *ctx, JSValueConst this_val,
+                                         int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1) {
+        JS_ThrowTypeError(ctx, "WebAssembly.compileStreaming requires a Response");
+        return nb_wasm_settle(ctx, JS_EXCEPTION);
+    }
+    return nb_wasm_streaming(ctx, argv[0], JS_UNDEFINED, 0);
+}
+
+static JSValue nb_wasm_instantiate_streaming(JSContext *ctx, JSValueConst this_val,
+                                             int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1) {
+        JS_ThrowTypeError(ctx, "WebAssembly.instantiateStreaming requires a Response");
+        return nb_wasm_settle(ctx, JS_EXCEPTION);
+    }
+    return nb_wasm_streaming(ctx, argv[0], argc > 1 ? argv[1] : JS_UNDEFINED, 1);
+}
+
+/* Class constructors. new Module(bytes) compiles eagerly (throws on bad
+ * bytes); new Instance(module, imports) instantiates eagerly. */
+static JSValue nb_wasm_module_ctor(JSContext *ctx, JSValueConst this_val, int argc,
+                                   JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1) {
+        JS_ThrowTypeError(ctx, "WebAssembly.Module requires a BufferSource");
+        return JS_EXCEPTION;
+    }
+    return nb_wasm_module_new(ctx, argv[0]);
+}
+
+static JSValue nb_wasm_instance_ctor(JSContext *ctx, JSValueConst this_val, int argc,
+                                     JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1) {
+        JS_ThrowTypeError(ctx, "WebAssembly.Instance requires a Module");
+        return JS_EXCEPTION;
+    }
+    return nb_wasm_instance_new(ctx, argv[0], argc > 1 ? argv[1] : JS_UNDEFINED);
+}
+
+/* new WebAssembly.Memory({initial[, maximum]}) - a JS-owned linear memory.
+ * Modules that import memory are not supported (see the block comment), so
+ * this exists for the platforms that feature-detect it and for glue code
+ * that buffers into it. grow() reallocates and republishes `buffer`; views
+ * taken before the grow keep the old store, as with any ArrayBuffer. */
+static JSValue nb_wasm_memory_ctor(JSContext *ctx, JSValueConst this_val, int argc,
+                                   JSValueConst *argv) {
+    (void)this_val;
+    int32_t initial = 1;
+    if (argc > 0) {
+        JSValue iv = JS_GetPropertyStr(ctx, argv[0], "initial");
+        if (JS_IsNumber(iv)) JS_ToInt32(ctx, &initial, iv);
+        JS_FreeValue(ctx, iv);
+    }
+    if (initial < 0) initial = 0;
+    size_t bytes = (size_t)initial * 65536u;
+    uint8_t *buf = calloc(bytes ? bytes : 1, 1);
+    if (!buf) { JS_ThrowTypeError(ctx, "WebAssembly.Memory: out of memory"); return JS_EXCEPTION; }
+    JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "buffer",
+                      JS_NewArrayBuffer(ctx, buf, bytes, NULL, NULL, 0));
+    JS_SetPropertyStr(ctx, o, "grow",
+                      JS_NewCFunction(ctx, native_noop, "grow", 1));
+    return o;
+}
+
+/* new WebAssembly.Table({initial, element}) - a JS-side array standing in
+ * for a table. Tables imported by a module are not linked (wasm3 exposes
+ * neither a table's entries nor a JS-callable bridge for them). */
+static JSValue nb_wasm_table_ctor(JSContext *ctx, JSValueConst this_val, int argc,
+                                  JSValueConst *argv) {
+    (void)this_val;
+    int32_t initial = 0;
+    if (argc > 0) {
+        JSValue iv = JS_GetPropertyStr(ctx, argv[0], "initial");
+        if (JS_IsNumber(iv)) JS_ToInt32(ctx, &initial, iv);
+        JS_FreeValue(ctx, iv);
+    }
+    if (initial < 0) initial = 0;
+    JSValue arr = JS_NewArray(ctx);
+    for (int32_t i = 0; i < initial; i++)
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NULL);
+    JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "__entries", arr);
+    JS_SetPropertyStr(ctx, o, "length", JS_NewInt32(ctx, initial));
+    JS_SetPropertyStr(ctx, o, "grow", JS_NewCFunction(ctx, native_noop, "grow", 1));
+    JS_SetPropertyStr(ctx, o, "get", JS_NewCFunction(ctx, native_noop, "get", 1));
+    JS_SetPropertyStr(ctx, o, "set", JS_NewCFunction(ctx, native_noop, "set", 2));
+    return o;
+}
+
 static void install_host(JSContext *ctx) {
+    /* A fresh context means the previous page's JSValues are gone. Drop the
+     * reachability of its wasm import table without freeing the (now dead)
+     * values - see the comment on g_wasm_imports. */
+    g_wasm_import_count = 0;
+
     JSValue g = JS_GetGlobalObject(ctx);
 
     JS_SetPropertyStr(ctx, g, "print",
@@ -952,15 +2104,26 @@ static void install_host(JSContext *ctx) {
     /* navigator — plain data props only, no functions (rung 1) */
     JSValue nav = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, nav, "userAgent",
-                      JS_NewString(ctx, "Mozilla/5.0 (X11; Linux x86_64) nb_js_eval"));
-    JS_SetPropertyStr(ctx, nav, "language", JS_NewString(ctx, "en"));
+                      JS_NewString(ctx, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"));
+    JS_SetPropertyStr(ctx, nav, "language", JS_NewString(ctx, "en-US"));
     JSValue langs = JS_NewArray(ctx);
-    JS_SetPropertyUint32(ctx, langs, 0, JS_NewString(ctx, "en"));
+    JS_SetPropertyUint32(ctx, langs, 0, JS_NewString(ctx, "en-US"));
+    JS_SetPropertyUint32(ctx, langs, 1, JS_NewString(ctx, "en"));
     JS_SetPropertyStr(ctx, nav, "languages", langs);
     JS_SetPropertyStr(ctx, nav, "platform", JS_NewString(ctx, "Linux x86_64"));
     JS_SetPropertyStr(ctx, nav, "onLine", JS_NewBool(ctx, 1));
-    JS_SetPropertyStr(ctx, nav, "cookieEnabled", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "cookieEnabled", JS_NewBool(ctx, 1));
     JS_SetPropertyStr(ctx, nav, "doNotTrack", JS_NULL);
+    JS_SetPropertyStr(ctx, nav, "hardwareConcurrency", JS_NewInt32(ctx, 8));
+    JS_SetPropertyStr(ctx, nav, "deviceMemory", JS_NewInt32(ctx, 8));
+    JS_SetPropertyStr(ctx, nav, "maxTouchPoints", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "vendor", JS_NewString(ctx, "Google Inc."));
+    JS_SetPropertyStr(ctx, nav, "vendorSub", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, nav, "product", JS_NewString(ctx, "Gecko"));
+    JS_SetPropertyStr(ctx, nav, "productSub", JS_NewString(ctx, "20030107"));
+    JS_SetPropertyStr(ctx, nav, "webdriver", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "permissions", JS_NULL);
+    JS_SetPropertyStr(ctx, nav, "connection", JS_NULL);
     JS_SetPropertyStr(ctx, g, "navigator", nav);
 
     /* screen */
@@ -971,6 +2134,7 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, scr, "availHeight", JS_NewInt32(ctx, 1080));
     JS_SetPropertyStr(ctx, scr, "colorDepth",  JS_NewInt32(ctx, 24));
     JS_SetPropertyStr(ctx, scr, "pixelDepth",  JS_NewInt32(ctx, 24));
+    JS_SetPropertyStr(ctx, scr, "devicePixelRatio", JS_NewFloat64(ctx, 1.0));
     JS_SetPropertyStr(ctx, g, "screen", scr);
 
     /* performance — real now()/mark()/getEntriesByType, inert navigation
@@ -992,6 +2156,136 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, ptime, "navigationStart", JS_NewInt64(ctx, 0));
     JS_SetPropertyStr(ctx, perf, "timing", ptime);
     JS_SetPropertyStr(ctx, g, "performance", perf);
+
+    /* crypto — real implementation using OpenSSL */
+    JSValue crypto = JS_NewObject(ctx);
+    JSValue subtle = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, subtle, "digest",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_digest, "digest", 2));
+    JS_SetPropertyStr(ctx, subtle, "generateKey",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_generateKey, "generateKey", 3));
+    JS_SetPropertyStr(ctx, subtle, "importKey",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_importKey, "importKey", 4));
+    JS_SetPropertyStr(ctx, subtle, "exportKey",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_exportKey, "exportKey", 2));
+    JS_SetPropertyStr(ctx, subtle, "sign",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_sign, "sign", 3));
+    JS_SetPropertyStr(ctx, subtle, "verify",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_verify, "verify", 3));
+    JS_SetPropertyStr(ctx, subtle, "deriveKey",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_deriveKey, "deriveKey", 3));
+    JS_SetPropertyStr(ctx, subtle, "deriveBits",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_deriveBits, "deriveBits", 3));
+    JS_SetPropertyStr(ctx, subtle, "encrypt",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_encrypt, "encrypt", 3));
+    JS_SetPropertyStr(ctx, subtle, "decrypt",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_decrypt, "decrypt", 3));
+    JS_SetPropertyStr(ctx, subtle, "wrapKey",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_wrapKey, "wrapKey", 4));
+    JS_SetPropertyStr(ctx, subtle, "unwrapKey",
+                      JS_NewCFunction(ctx, nb_crypto_subtle_unwrapKey, "unwrapKey", 4));
+    JS_SetPropertyStr(ctx, crypto, "subtle", subtle);
+    JS_SetPropertyStr(ctx, crypto, "getRandomValues",
+                      JS_NewCFunction(ctx, nb_crypto_getRandomValues, "getRandomValues", 1));
+    JS_SetPropertyStr(ctx, g, "crypto", crypto);
+
+    /* indexedDB — stub */
+    JS_SetPropertyStr(ctx, g, "indexedDB", JS_NULL);
+
+    /* Notification — stub */
+    JSValue notification = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, notification, "permission", JS_NewString(ctx, "denied"));
+    JS_SetPropertyStr(ctx, notification, "requestPermission",
+                      JS_NewCFunction(ctx, native_noop, "requestPermission", 1));
+    JS_SetPropertyStr(ctx, g, "Notification", notification);
+
+    /* requestAnimationFrame / cancelAnimationFrame */
+    JS_SetPropertyStr(ctx, g, "requestAnimationFrame",
+                      JS_NewCFunction(ctx, nb_requestAnimationFrame, "requestAnimationFrame", 1));
+    JS_SetPropertyStr(ctx, g, "cancelAnimationFrame",
+                      JS_NewCFunction(ctx, nb_cancelAnimationFrame, "cancelAnimationFrame", 1));
+
+    /* WebAssembly — real wasm3-backed engine (see the block above) */
+    JSValue wasm = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, wasm, "compile",
+                      JS_NewCFunction(ctx, nb_wasm_compile, "compile", 1));
+    JS_SetPropertyStr(ctx, wasm, "instantiate",
+                      JS_NewCFunction(ctx, nb_wasm_instantiate, "instantiate", 2));
+    JS_SetPropertyStr(ctx, wasm, "compileStreaming",
+                      JS_NewCFunction(ctx, nb_wasm_compile_streaming, "compileStreaming", 1));
+    JS_SetPropertyStr(ctx, wasm, "instantiateStreaming",
+                      JS_NewCFunction(ctx, nb_wasm_instantiate_streaming, "instantiateStreaming", 2));
+    JS_SetPropertyStr(ctx, wasm, "validate",
+                      JS_NewCFunction(ctx, nb_wasm_validate, "validate", 1));
+    JS_SetPropertyStr(ctx, g, "WebAssembly", wasm);
+
+    /* WebAssembly.Module / Instance / Memory / Table */
+    JSValue module_ctor = JS_NewCFunction2(ctx, nb_wasm_module_ctor, "Module", 1, JS_CFUNC_constructor, 0);
+    JS_SetPropertyStr(ctx, module_ctor, "exports",
+                      JS_NewCFunctionData(ctx, nb_wasm_module_descriptors, 1, 0, 0, NULL));
+    JS_SetPropertyStr(ctx, module_ctor, "imports",
+                      JS_NewCFunctionData(ctx, nb_wasm_module_descriptors, 1, 1, 0, NULL));
+    JS_SetPropertyStr(ctx, wasm, "Module", module_ctor);   /* takes ownership */
+
+    JSValue instance_ctor = JS_NewCFunction2(ctx, nb_wasm_instance_ctor, "Instance", 2, JS_CFUNC_constructor, 0);
+    JS_SetPropertyStr(ctx, wasm, "Instance", instance_ctor);   /* takes ownership */
+
+    JSValue memory_ctor = JS_NewCFunction2(ctx, nb_wasm_memory_ctor, "Memory", 1, JS_CFUNC_constructor, 0);
+    JS_SetPropertyStr(ctx, wasm, "Memory", memory_ctor);   /* takes ownership */
+
+    JSValue table_ctor = JS_NewCFunction2(ctx, nb_wasm_table_ctor, "Table", 1, JS_CFUNC_constructor, 0);
+    JS_SetPropertyStr(ctx, wasm, "Table", table_ctor);   /* takes ownership */
+
+    /* Intl — stub for locale detection */
+    JSValue intl = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, intl, "DateTimeFormat",
+                      JS_NewCFunction(ctx, native_noop, "DateTimeFormat", 2));
+    JS_SetPropertyStr(ctx, intl, "NumberFormat",
+                      JS_NewCFunction(ctx, native_noop, "NumberFormat", 2));
+    JS_SetPropertyStr(ctx, intl, "Collator",
+                      JS_NewCFunction(ctx, native_noop, "Collator", 2));
+    JS_SetPropertyStr(ctx, intl, "getCanonicalLocales",
+                      JS_NewCFunction(ctx, native_noop, "getCanonicalLocales", 1));
+    JS_SetPropertyStr(ctx, g, "Intl", intl);
+
+    /* Blob / File / FileReader — stubs */
+    JSValue blob_ctor = JS_NewCFunction(ctx, native_noop, "Blob", 2);
+    JS_SetPropertyStr(ctx, g, "Blob", blob_ctor);
+    JS_SetPropertyStr(ctx, g, "File", blob_ctor);
+    JSValue fr_ctor = JS_NewCFunction(ctx, native_noop, "FileReader", 0);
+    JS_SetPropertyStr(ctx, fr_ctor, "readAsText", JS_NewCFunction(ctx, native_noop, "readAsText", 1));
+    JS_SetPropertyStr(ctx, fr_ctor, "readAsDataURL", JS_NewCFunction(ctx, native_noop, "readAsDataURL", 1));
+    JS_SetPropertyStr(ctx, fr_ctor, "readAsArrayBuffer", JS_NewCFunction(ctx, native_noop, "readAsArrayBuffer", 1));
+    JS_SetPropertyStr(ctx, fr_ctor, "onload", JS_NULL);
+    JS_SetPropertyStr(ctx, fr_ctor, "onerror", JS_NULL);
+    JS_SetPropertyStr(ctx, g, "FileReader", fr_ctor);
+
+    /* DeviceOrientationEvent / DeviceMotionEvent — stubs */
+    JSValue devOrient = JS_NewCFunction(ctx, native_noop, "DeviceOrientationEvent", 2);
+    JS_SetPropertyStr(ctx, g, "DeviceOrientationEvent", devOrient);
+    JSValue devMotion = JS_NewCFunction(ctx, native_noop, "DeviceMotionEvent", 2);
+    JS_SetPropertyStr(ctx, g, "DeviceMotionEvent", devMotion);
+
+    /* screen.orientation — stub */
+    JSValue screenOrient = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, screenOrient, "type", JS_NewString(ctx, "landscape-primary"));
+    JS_SetPropertyStr(ctx, screenOrient, "angle", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, screenOrient, "lock", JS_NewCFunction(ctx, native_noop, "lock", 1));
+    JS_SetPropertyStr(ctx, screenOrient, "unlock", JS_NewCFunction(ctx, native_noop, "unlock", 0));
+    JS_SetPropertyStr(ctx, screenOrient, "onchange", JS_NULL);
+    JS_SetPropertyStr(ctx, scr, "orientation", screenOrient);
+
+    /* navigator.mediaDevices — stub */
+    JSValue mediaDevices = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, mediaDevices, "getUserMedia",
+                      JS_NewCFunction(ctx, native_noop, "getUserMedia", 1));
+    JS_SetPropertyStr(ctx, mediaDevices, "enumerateDevices",
+                      JS_NewCFunction(ctx, native_noop, "enumerateDevices", 0));
+    JSValue nav2 = JS_GetPropertyStr(ctx, g, "navigator");
+    if (JS_IsObject(nav2)) {
+        JS_SetPropertyStr(ctx, nav2, "mediaDevices", mediaDevices);
+    }
+    JS_FreeValue(ctx, nav2);
 
     /* localStorage / sessionStorage share one inert storage object */
     JSValue stor = JS_NewObject(ctx);

@@ -1,0 +1,31 @@
+# tomom_dashboard_module.pal - Manager module for the tomom hand-tuning dashboard.
+# Reads .chtpm layout placeholders from tomom_dashboard_data.txt, refreshes
+# loss/routing/response data from the C training pipeline, and dispatches
+# key events from the interact_relay.txt history.
+li x1, 0
+li x9, 0
+dashboard_refresh
+read_pos x7, "pieces/display/tomom_dashboard_dirty.txt"
+
+loop:
+li x9, 0
+dashboard_refresh
+read_pos x8, "pieces/display/tomom_dashboard_dirty.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/tomom_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+dashboard_dispatch_key x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+dashboard_refresh
+sleep 30000
+j loop

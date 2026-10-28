@@ -1,8 +1,0 @@
-# Custom operations for board-viewer's own prisc+x program
-# Format: name type handler {description}
-
-halt void builtin_halt {stop execution}
-out void builtin_out {print register to stdout}
-bv_menu_input void ops/+x/bv_menu_input.+x {handle keyboard input, update board-viewer state}
-bv_compose_frame void ops/+x/bv_compose_frame.+x {render the current board-viewer screen into view.txt}
-bv_render_3d void ops/+x/bv_render_3d.+x {sole writer of rgb_frame.raw while render_mode==1 - real 3D perspective rasterizer, see its own header comment for why this bypasses system/chtpm_rgb_render}

@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | cataclysm_hero_game_loop
+STATE        | source               | events-hq
+NODE         | id=1 type=chq_game_loop |
+NODE         | id=2 type=chq_move | direction=N
+NODE         | id=3 type=chq_look |
+NODE         | id=4 type=chq_combat |
+NODE         | id=5 type=chq_rest |
+NODE         | id=6 type=chq_inv |

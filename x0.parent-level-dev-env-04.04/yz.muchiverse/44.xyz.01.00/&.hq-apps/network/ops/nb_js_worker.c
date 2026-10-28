@@ -20,6 +20,7 @@
  * manager -> worker: QUIT            (shut down cleanly)
  */
 #include "nb_host.h"
+#include <execinfo.h>   /* NB_CRASH_BT: fatal-signal backtrace into the worker log */
 #include "../nb_css.h"
 #include "../nb_dom.h"
 
@@ -59,6 +60,7 @@ static char g_title[512];
 static int g_cli = 0;            /* argv mode: plain text out, no RPC framing */
 static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
 static int g_nav_emit = 0;       /* rung-6 slice 2: daemon only (!g_cli, set */
+static int g_module_page_loaded = 0;  /* set when a module page is loaded; worker exits after */
                                  /* per run_page) - NAV frames go to manager */
 
 /* devtools console EVAL: the last LOAD's QuickJS context + DOM tree stay live
@@ -575,6 +577,14 @@ static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data);
 static int img_get_decoded(const NbNode *n, int *w, int *h);
 static unsigned char *b64_decode(const char *in, size_t *out_len);
 
+/* Forward declarations for functions used in script src setter */
+static void cookie_header_for_url(const char *url, char *out, size_t olen);
+static void cfg_line(FILE *f, const char *key, const char *val);
+static void resolve_doc_url(const char *rel, char *out, size_t olen);
+static int peval_budget(JSContext *ctx, const char *src, size_t src_n, char *errbuf, size_t errbuf_sz);
+static NbNode *get_this(JSContext *ctx, JSValueConst this_val);
+static char *attrs_set(const NbNode *n, const char *name, const char *val);
+
 #define MAX_IMG_SRC 256
 static struct { NbNode *n; char src[1024]; } g_img_src[256];
 static int g_img_src_count = 0;
@@ -585,6 +595,142 @@ static void img_set_src(NbNode *n, const char *s) {
 static const char *img_get_src(const NbNode *n) {
     for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
     return nb_attr_get(n, "src");
+}
+
+/* ---- script src getter/setter for dynamic script loading (Cloudflare challenge) ---- */
+#define MAX_SCRIPT_SRC 256
+static struct { NbNode *n; char src[1024]; } g_script_src[256];
+static int g_script_src_count = 0;
+
+static void script_set_src(NbNode *n, const char *s) {
+    for (int i = 0; i < g_script_src_count; i++) if (g_script_src[i].n == n) { snprintf(g_script_src[i].src, sizeof(g_script_src[i].src), "%s", s); return; }
+    if (g_script_src_count < MAX_SCRIPT_SRC) { g_script_src[g_script_src_count].n = n; snprintf(g_script_src[g_script_src_count].src, sizeof(g_script_src[g_script_src_count].src), "%s", s); g_script_src_count++; }
+}
+
+static const char *script_get_src(const NbNode *n) {
+    for (int i = 0; i < g_script_src_count; i++) if (g_script_src[i].n == n) return g_script_src[i].src;
+    return nb_attr_get(n, "src");
+}
+
+/* Execute a script in the worker context. Called from script src setter. */
+static void nb_execute_script_in_worker(JSContext *ctx, const char *script_url, const char *script_src) {
+    if (!script_src || !script_src[0]) return;
+    char errbuf[512];
+    if (peval_budget(ctx, script_src, strlen(script_src), errbuf, sizeof(errbuf)) != 0) {
+        fprintf(stderr, "WERR| dynamic script %s: %s\n", script_url, errbuf[0] ? errbuf : "eval error");
+    }
+}
+
+static JSValue nb_script_src_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewString(ctx, "");
+    const char *s = script_get_src(n);
+    return JS_NewString(ctx, s ? s : "");
+}
+
+static JSValue nb_script_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_UNDEFINED;
+    const char *s = JS_ToCString(ctx, argv[0]);
+    if (!s) return JS_UNDEFINED;
+    
+    fprintf(stderr, "DEBUG: script src set to: %s\n", s);
+    
+    /* Update the attribute and our cache */
+    char *new_attrs = attrs_set(n, "src", s);
+    free(n->attrs);
+    n->attrs = new_attrs;
+    script_set_src(n, s);
+    
+    /* Resolve URL against current page URL */
+    char resolved_url[2048];
+    resolve_doc_url(s, resolved_url, sizeof(resolved_url));
+    fprintf(stderr, "DEBUG: resolved script URL: %s\n", resolved_url);
+    
+    /* Fetch the script content using nbFetchSync logic */
+    char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
+    
+    if (strncmp(resolved_url, "file:", 5) == 0) {
+        const char *p = resolved_url + 5;
+        while (*p == '/') p++;
+        if (strncmp(p, "localhost", 9) == 0 && p[9] == '/') p += 10;
+        char abspath[2048];
+        snprintf(abspath, sizeof(abspath), "/%s", p);
+        if (read_file(abspath, &rb, &rn)) status = 200;
+        else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
+    } else if (strncmp(resolved_url, "http:", 5) == 0 || strncmp(resolved_url, "https:", 6) == 0) {
+        /* Use the same direct curl fallback as nb_fetch_sync for script loading */
+        char cfgpath[1024] = "";
+        char t1[] = "/tmp/nbfetch.XXXXXX";
+        int fd1 = mkstemp(t1);
+        if (fd1 < 0) {
+            snprintf(errbuf, sizeof(errbuf), "mkstemp failed");
+        } else {
+            close(fd1);
+            snprintf(cfgpath, sizeof(cfgpath), "%s", t1);
+            FILE *cf = fopen(cfgpath, "w");
+            if (!cf) {
+                snprintf(errbuf, sizeof(errbuf), "cannot write curl config");
+            } else {
+                cfg_line(cf, "url", resolved_url);
+                cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
+                cfg_line(cf, "max-time", "8");
+                fputs("silent\nlocation\nfail\n", cf);
+                {
+                    char ckhdr[4096];
+                    cookie_header_for_url(resolved_url, ckhdr, sizeof(ckhdr));
+                    if (ckhdr[0]) cfg_line(cf, "header", ckhdr);
+                }
+                char hdrpath[256] = "";
+                {
+                    char t3[] = "/tmp/nbfetchhdr.XXXXXX";
+                    int fd3 = mkstemp(t3);
+                    if (fd3 >= 0) { close(fd3); snprintf(hdrpath, sizeof(hdrpath), "%s", t3); cfg_line(cf, "dump-header", hdrpath); }
+                }
+                cfg_line(cf, "output", "/tmp/nbfetchbody");
+                fclose(cf);
+                
+                char cmd[2048];
+                snprintf(cmd, sizeof(cmd), "curl -K '%s' 2>/dev/null", cfgpath);
+                int rc = system(cmd);
+                unlink(cfgpath);
+                
+                if (rc == 0) {
+                    FILE *bf = fopen("/tmp/nbfetchbody", "rb");
+                    if (bf) {
+                        fseek(bf, 0, SEEK_END);
+                        long fsize = ftell(bf);
+                        fseek(bf, 0, SEEK_SET);
+                        if (fsize > 0 && fsize < 4 * 1024 * 1024) {
+                            rb = malloc((size_t)fsize + 1);
+                            if (rb) {
+                                rn = fread(rb, 1, (size_t)fsize, bf);
+                                rb[rn] = 0;
+                                status = 200;
+                            }
+                        }
+                        fclose(bf);
+                    }
+                    unlink("/tmp/nbfetchbody");
+                    if (hdrpath[0]) unlink(hdrpath);
+                }
+            }
+        }
+    }
+    
+    if (status == 200 && rb && rn > 0) {
+        /* Execute the script in the worker context */
+        nb_execute_script_in_worker(ctx, resolved_url, rb);
+        free(rb);
+    } else {
+        if (rb) free(rb);
+        if (errbuf[0]) fprintf(stderr, "WERR| script load %s: %s\n", resolved_url, errbuf);
+    }
+    
+    JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
 }
 #define MAX_IMG_DECODED 256
 static struct { NbNode *n; int w, h; unsigned char *data; } g_img_decoded[256];
@@ -903,6 +1049,7 @@ static JSValue push_computed_style(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, o, "opacity", JS_NewString(ctx, st.opacity[0] ? st.opacity : "1"));
     JS_SetPropertyStr(ctx, o, "width", JS_NewFloat64(ctx, st.width));
     JS_SetPropertyStr(ctx, o, "height", JS_NewFloat64(ctx, st.height));
+    JS_SetPropertyStr(ctx, o, "font-family", JS_NewString(ctx, st.font_family[0] ? st.font_family : ""));
     /* font-size is read as a CSS string (kevlar: fontSize.replace('px','')) */
     JS_SetPropertyStr(ctx, o, "fontSize", JS_NewString(ctx, "16px"));
     JS_SetPropertyStr(ctx, o, "getPropertyValue",
@@ -1186,7 +1333,29 @@ static double nb_box_w(NbNode *n) {
     if (n->parent && n->parent->tag) {
         NbCssStyle pst;
         nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
-        if (pst.has_display_flex && pst.display_flex &&
+        if (pst.has_display_flex && pst.display_flex == 2) {
+            /* simple grid: distribute across grid_cols */
+            int cols = pst.has_grid_template_columns && pst.grid_cols > 0 ? pst.grid_cols : 1;
+            if (cols < 1) cols = 1;
+            double row_w = nb_box_w(n->parent);
+            if (row_w > 0) {
+                /* count visible children to place */
+                int idx = 0;
+                for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
+                    if (layout_hidden_anc(s)) continue;
+                    idx++;
+                }
+                int col = idx % cols;
+                /* compute column width */
+                double col_w = row_w / (double)cols;
+                if (pst.has_grid_template_columns) {
+                    /* rough equal split */
+                    col_w = row_w / (double)cols;
+                }
+                return col_w;
+            }
+        }
+        if (pst.has_display_flex && pst.display_flex == 1 &&
             !(pst.has_flex_direction && !pst.flex_row) &&  /* default is ROW */
             layout_is_block_tag(n->tag)) {
             double row_w = nb_box_w(n->parent);
@@ -1308,6 +1477,42 @@ static double nb_outer_h(NbNode *n) {
 
 static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    /* position:absolute or position:fixed handling - positioned elements
+     * are taken out of normal flow and positioned via top/left. */
+    if (st.has_position && (st.position_absolute || st.position_fixed)) {
+        double x = st.has_left ? st.left : 0;
+        double y = st.has_top ? st.top : 0;
+        if (st.position_fixed) {
+            /* fixed: relative to viewport (window), not parent. Viewport
+             * origin is (0,0) at window top-left. g_viewport_px is width. */
+            *out_x = x;
+            *out_y = y;
+            return;
+        }
+        /* absolute: relative to nearest positioned ancestor (one with
+         * has_position). relative/absolute/fixed all create positioning
+         * contexts. If none, use viewport. */
+        NbNode *anc = n->parent;
+        while (anc && anc->tag) {
+            NbCssStyle ast;
+            nb_css_resolve(g_css, anc, nb_attr_get(anc, "style"), &ast);
+            if (ast.has_position) {
+                layout_xy(anc, out_x, out_y);
+                *out_x += x;
+                *out_y += y;
+                return;
+            }
+            anc = anc->parent;
+        }
+        /* no positioned ancestor: fall back to viewport origin */
+        *out_x = x;
+        *out_y = y;
+        return;
+    }
+
+    /* normal flow layout - original code continues below */
     double x = 0, y = 0;
     if (n->parent && n->parent->tag) {
         double px, py;
@@ -1342,15 +1547,33 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     int parent_is_row = 0;
     if (n->parent && n->parent->tag) {
         nb_css_resolve(g_css, n->parent, nb_attr_get(n->parent, "style"), &pst);
+        if (pst.has_display_flex && pst.display_flex == 2) {
+            /* grid layout */
+            int cols = pst.has_grid_template_columns && pst.grid_cols > 0 ? pst.grid_cols : 1;
+            if (cols < 1) cols = 1;
+            int idx = 0;
+            for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
+                if (layout_hidden_anc(s)) continue;
+                idx++;
+            }
+            int col = idx % cols;
+            double row_w = nb_box_w(n->parent);
+            if (row_w <= 0) row_w = g_col_px(n->parent);
+            double gap = 0;
+            double col_w = row_w / (double)cols;
+            if (cols > 1) col_w = (row_w - gap * (cols - 1)) / (double)cols;
+            if (col_w < 0) col_w = row_w / (double)cols;
+            x += col * (col_w + gap);
+            int row_idx = idx / cols;
+            y += row_idx * 30;
+            *out_x = x;
+            *out_y = y;
+            return;
+        }
         /* flex-direction DEFAULTS TO ROW, per CSS. Only an explicit
-         * `flex-direction:column` turns the main axis vertical. The first
-         * cut of this required an explicit flex-direction:row, which made a
-         * bare `display:flex` stack - the exact page nb_flex_test.sh uses,
-         * so the test stayed red with the children stacked. Found by
-         * probing the resolver directly rather than guessing: fx resolved
-         * display_flex=1 but has_flex_direction=0. */
+         * `flex-direction:column` turns the main axis vertical. */
         int dir_col = pst.has_flex_direction && !pst.flex_row;
-        parent_is_row = pst.has_display_flex && pst.display_flex && !dir_col;
+        parent_is_row = pst.has_display_flex && pst.display_flex == 1 && !dir_col;
     }
     if (parent_is_row) {
         for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) {
@@ -1427,6 +1650,13 @@ static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int ar
 
 static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
+
+static JSValue get_global_attr(JSContext *ctx, const char *name);
+
+static JSValue nb_doc_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_doc_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_doc_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 
 /* ---- document natives ---- */
 static JSValue nb_dom_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -1784,6 +2014,20 @@ static JSValue nb_dom_head(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     return push_node(ctx, head);
 }
 
+/* document.createEvent — create a synthetic event object */
+static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_UNDEFINED;
+    const char *type = JS_ToCString(ctx, argv[0]);
+    if (!type) return JS_UNDEFINED;
+    JSValue Event = get_global_attr(ctx, "Event");
+    if (!JS_IsFunction(ctx, Event)) { JS_FreeValue(ctx, Event); JS_FreeCString(ctx, type); return JS_UNDEFINED; }
+    JSValue ev = JS_CallConstructor(ctx, Event, 1, argv);
+    JS_FreeValue(ctx, Event);
+    JS_FreeCString(ctx, type);
+    return ev;
+}
+
 /* ---- element natives (this = element object) ---- */
 static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
@@ -2120,6 +2364,101 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
     node_detach(ch);
     orphan_remove(ch);
     local_append(n, ch);
+    
+    /* If a script element with src is appended to head/body, fetch and execute it */
+    if (ch && ch->tag && !strcmp(ch->tag, "script")) {
+        fprintf(stderr, "DEBUG: script element appended, tag: %s\n", ch->tag);
+        const char *src = nb_attr_get(ch, "src");
+        fprintf(stderr, "DEBUG: script src: %s\n", src ? src : "(null)");
+        if (src && src[0]) {
+            /* Resolve URL against current page URL */
+            char resolved_url[2048];
+            resolve_doc_url(src, resolved_url, sizeof(resolved_url));
+            
+            /* Fetch the script content */
+            char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
+            
+            if (strncmp(resolved_url, "file:", 5) == 0) {
+                const char *p = resolved_url + 5;
+                while (*p == '/') p++;
+                if (strncmp(p, "localhost", 9) == 0 && p[9] == '/') p += 10;
+                char abspath[2048];
+                snprintf(abspath, sizeof(abspath), "/%s", p);
+                if (read_file(abspath, &rb, &rn)) status = 200;
+                else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
+            } else if (strncmp(resolved_url, "http:", 5) == 0 || strncmp(resolved_url, "https:", 6) == 0) {
+                /* Direct curl fallback */
+                char cfgpath[1024] = "";
+                char t1[] = "/tmp/nbfetch.XXXXXX";
+                int fd1 = mkstemp(t1);
+                if (fd1 < 0) {
+                    snprintf(errbuf, sizeof(errbuf), "mkstemp failed");
+                } else {
+                    close(fd1);
+                    snprintf(cfgpath, sizeof(cfgpath), "%s", t1);
+                    FILE *cf = fopen(cfgpath, "w");
+                    if (!cf) {
+                        snprintf(errbuf, sizeof(errbuf), "cannot write curl config");
+                    } else {
+                        cfg_line(cf, "url", resolved_url);
+                        cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
+                        cfg_line(cf, "max-time", "8");
+                        fputs("silent\nlocation\nfail\n", cf);
+                        {
+                            char ckhdr[4096];
+                            cookie_header_for_url(resolved_url, ckhdr, sizeof(ckhdr));
+                            if (ckhdr[0]) cfg_line(cf, "header", ckhdr);
+                        }
+                        char hdrpath[256] = "";
+                        {
+                            char t3[] = "/tmp/nbfetchhdr.XXXXXX";
+                            int fd3 = mkstemp(t3);
+                            if (fd3 >= 0) { close(fd3); snprintf(hdrpath, sizeof(hdrpath), "%s", t3); cfg_line(cf, "dump-header", hdrpath); }
+                        }
+                        cfg_line(cf, "output", "/tmp/nbfetchbody");
+                        fclose(cf);
+                        
+                        char cmd[2048];
+                        snprintf(cmd, sizeof(cmd), "curl -K '%s' 2>/dev/null", cfgpath);
+                        int rc = system(cmd);
+                        unlink(cfgpath);
+                        
+                        if (rc == 0) {
+                            FILE *bf = fopen("/tmp/nbfetchbody", "rb");
+                            if (bf) {
+                                fseek(bf, 0, SEEK_END);
+                                long fsize = ftell(bf);
+                                fseek(bf, 0, SEEK_SET);
+                                if (fsize > 0 && fsize < 4 * 1024 * 1024) {
+                                    rb = malloc((size_t)fsize + 1);
+                                    if (rb) {
+                                        rn = fread(rb, 1, (size_t)fsize, bf);
+                                        rb[rn] = 0;
+                                        status = 200;
+                                    }
+                                }
+                                fclose(bf);
+                            }
+                            unlink("/tmp/nbfetchbody");
+                            if (hdrpath[0]) unlink(hdrpath);
+                        }
+                    }
+                }
+            }
+            
+            if (status == 200 && rb && rn > 0) {
+                char errbuf2[512];
+                if (peval_budget(ctx, rb, rn, errbuf2, sizeof(errbuf2)) != 0) {
+                    fprintf(stderr, "WERR| dynamic script appendChild %s: %s\n", resolved_url, errbuf2[0] ? errbuf2 : "eval error");
+                }
+                free(rb);
+            } else {
+                if (rb) free(rb);
+                if (errbuf[0]) fprintf(stderr, "WERR| script load appendChild %s: %s\n", resolved_url, errbuf);
+            }
+        }
+    }
+    
     return push_node(ctx, ch);
 }
 /* rung-2 remainder: the tree mutators. A removed node is orphaned, not
@@ -2565,19 +2904,29 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
                 JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
         } else {
-            static const char *src_tags[] = { "script","iframe","input",
-                "source","track","embed","video","audio","frame", NULL };
-            static const char *href_tags[] = { "a","link","area","base", NULL };
-            for (int i = 0; src_tags[i]; i++)
-                if (!strcmp(n->tag, src_tags[i])) {
-                    JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
-                    break;
-                }
-            for (int i = 0; href_tags[i]; i++)
-                if (!strcmp(n->tag, href_tags[i])) {
-                    JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
-                    break;
-                }
+            if (!strcmp(n->tag, "script")) {
+                /* script.src setter: when set, fetch and execute the script (Cloudflare challenge) */
+                JSAtom nm = JS_NewAtom(ctx, "src");
+                JS_DefinePropertyGetSet(ctx, el, nm,
+                    JS_NewCFunction(ctx, nb_script_src_get, "get src", 0),
+                    JS_NewCFunction(ctx, nb_script_src_set, "set src", 1),
+                    JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+                JS_FreeAtom(ctx, nm);
+            } else {
+                static const char *src_tags[] = { "iframe","input",
+                    "source","track","embed","video","audio","frame", NULL };
+                static const char *href_tags[] = { "a","link","area","base", NULL };
+                for (int i = 0; src_tags[i]; i++)
+                    if (!strcmp(n->tag, src_tags[i])) {
+                        JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
+                        break;
+                    }
+                for (int i = 0; href_tags[i]; i++)
+                    if (!strcmp(n->tag, href_tags[i])) {
+                        JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
+                        break;
+                    }
+            }
         }
     }
     /* canvas 2D (2026-09-18): real bundles probe <canvas> via
@@ -3538,6 +3887,225 @@ static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, J
 static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewObject(ctx);
 }
+/* ---- FormData / Blob / FileReader: real instance state (2026-10-20) ----
+ * Stub constructors alone were not enough: `new FormData()` worked but
+ * `new FormData().append('a','b')` threw TypeError, and form-posting SPAs
+ * hit exactly that. These carry real data, not just a name.
+ * FormData entries live in a hidden `__nb_fd` array as [k,v,k,v,...]. */
+static JSValue add_class(JSContext *ctx, const char *name, JSValueConst parent);
+static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_fd_entries(JSContext *ctx, JSValueConst this_val) {
+    JSValue a = JS_GetPropertyStr(ctx, this_val, "__nb_fd");
+    if (!JS_IsArray(ctx, a)) {
+        JS_FreeValue(ctx, a);
+        a = JS_NewArray(ctx);
+        JS_SetPropertyStr(ctx, this_val, "__nb_fd", JS_DupValue(ctx, a));
+    }
+    return a;
+}
+static JSValue nb_fd_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 2) return JS_UNDEFINED;
+    JSValue a = nb_fd_entries(ctx, this_val);
+    uint32_t n = 0;
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    JS_SetPropertyUint32(ctx, a, n,     JS_DupValue(ctx, argv[0]));
+    /* form fields are stringified; a File/Blob value keeps its object */
+    JSValue v = argv[1];
+    if (JS_IsObject(v) && !JS_IsFunction(ctx, v)) {
+        JS_SetPropertyUint32(ctx, a, n + 1, JS_DupValue(ctx, v));
+    } else {
+        JSValue s = JS_ToString(ctx, v);
+        JS_SetPropertyUint32(ctx, a, n + 1, s);
+    }
+    JS_FreeValue(ctx, a);
+    return JS_UNDEFINED;
+}
+static JSValue nb_fd_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1) return JS_NULL;
+    JSValue key = JS_ToString(ctx, argv[0]);
+    JSValue a = nb_fd_entries(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    JSValue out = JS_NULL;
+    for (uint32_t i = 0; i + 1 < n; i += 2) {
+        JSValue k = JS_GetPropertyUint32(ctx, a, i);
+        int eq = JS_StrictEq(ctx, k, key);
+        JS_FreeValue(ctx, k);
+        if (eq) { out = JS_GetPropertyUint32(ctx, a, i + 1); break; }
+    }
+    JS_FreeValue(ctx, key); JS_FreeValue(ctx, a);
+    return out;
+}
+static JSValue nb_fd_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue v = nb_fd_get(ctx, this_val, argc, argv);
+    int r = !JS_IsNull(v);
+    JS_FreeValue(ctx, v);
+    return JS_NewBool(ctx, r);
+}
+static JSValue nb_fd_getAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue arr = JS_NewArray(ctx);
+    if (argc < 1) return arr;
+    JSValue key = JS_ToString(ctx, argv[0]);
+    JSValue a = nb_fd_entries(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    uint32_t o = 0;
+    for (uint32_t i = 0; i + 1 < n; i += 2) {
+        JSValue k = JS_GetPropertyUint32(ctx, a, i);
+        int eq = JS_StrictEq(ctx, k, key);
+        JS_FreeValue(ctx, k);
+        if (eq) {
+            JSValue v = JS_GetPropertyUint32(ctx, a, i + 1);
+            JS_SetPropertyUint32(ctx, arr, o++, v);
+        }
+    }
+    JS_FreeValue(ctx, key); JS_FreeValue(ctx, a);
+    return arr;
+}
+static JSValue nb_fd_delete(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1) return JS_UNDEFINED;
+    JSValue key = JS_ToString(ctx, argv[0]);
+    JSValue a = nb_fd_entries(ctx, this_val);
+    JSValue out = JS_NewArray(ctx);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    uint32_t o = 0;
+    for (uint32_t i = 0; i + 1 < n; i += 2) {
+        JSValue k = JS_GetPropertyUint32(ctx, a, i);
+        JSValue v = JS_GetPropertyUint32(ctx, a, i + 1);
+        int eq = JS_StrictEq(ctx, k, key);
+        if (eq) { JS_FreeValue(ctx, k); JS_FreeValue(ctx, v); }
+        else {
+            JS_SetPropertyUint32(ctx, out, o++, k);
+            JS_SetPropertyUint32(ctx, out, o++, v);
+        }
+    }
+    JS_SetPropertyStr(ctx, this_val, "__nb_fd", out);
+    JS_FreeValue(ctx, key); JS_FreeValue(ctx, a);
+    return JS_UNDEFINED;
+}
+/* Blob: real bytes (hidden `__nb_bytes` string) + size/type/slice.
+ * slice and size are attached as own properties of every instance rather
+ * than on Blob.prototype: registering on the prototype of a
+ * JS_NewCFunction2 constructor did not take in this QuickJS build (measured
+ * live 2026-10-21: typeof new Blob(['x']).slice was undefined, while the
+ * identical add_class pattern works for FormData). Per-instance attachment
+ * is equivalent for an immutable value object and cannot silently miss. */
+static JSValue nb_blob_bytes(JSContext *ctx, JSValueConst this_val) {
+    JSValue b = JS_GetPropertyStr(ctx, this_val, "__nb_bytes");
+    if (JS_IsUndefined(b)) { JS_FreeValue(ctx, b); b = JS_NewString(ctx, ""); }
+    return b;
+}
+static JSValue nb_blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue b = nb_blob_bytes(ctx, this_val);
+    size_t n = 0; const char *s = JS_ToCStringLen(ctx, &n, b);
+    int32_t a = 0, z = (int32_t)n;
+    if (argc > 0) JS_ToInt32(ctx, &a, argv[0]);
+    if (argc > 1) JS_ToInt32(ctx, &z, argv[1]);
+    if (a < 0) a += (int32_t)n;
+    if (z < 0) z += (int32_t)n;
+    if (a < 0) a = 0; if (z > (int32_t)n) z = (int32_t)n; if (z < a) z = a;
+    JSValue out = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, out, "__nb_bytes", JS_NewStringLen(ctx, s + a, (size_t)(z - a)));
+    JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)(z - a)));
+    JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    if (argc > 1) {
+        JSValue t = JS_GetPropertyStr(ctx, this_val, "type");
+        if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
+        else JS_FreeValue(ctx, t);
+    }
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, b);
+    return out;
+}
+static JSValue nb_blob_from_parts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue out = JS_NewObject(ctx);
+    JSValue parts_out = JS_NewArray(ctx);
+    uint32_t o = 0;
+    if (argc > 0) {
+        JSValue parts = JS_GetPropertyStr(ctx, argv[0], "length");
+        uint32_t n = 0; JS_ToUint32(ctx, &n, parts); JS_FreeValue(ctx, parts);
+        for (uint32_t i = 0; i < n; i++) {
+            JSValue el = JS_GetPropertyUint32(ctx, argv[0], i);
+            JSValue es = JS_ToString(ctx, el);
+            JS_SetPropertyUint32(ctx, parts_out, o++, es);
+            JS_FreeValue(ctx, el);
+        }
+    }
+    /* join in the engine: no public JS_ConcatString in this QuickJS build */
+    JSAtom join_atom = JS_NewAtom(ctx, "join");
+    JSValue sep = JS_NewString(ctx, "");
+    JSValue joined = JS_Invoke(ctx, parts_out, join_atom, 1, &sep);
+    JS_FreeValue(ctx, sep);
+    JS_FreeAtom(ctx, join_atom);
+    JS_FreeValue(ctx, parts_out);
+    JS_SetPropertyStr(ctx, out, "__nb_bytes", joined);
+    /* size as a plain data property; slice attached per-instance */
+    {
+        size_t n = 0;
+        const char *cs = JS_ToCStringLen(ctx, &n, joined);
+        if (cs) JS_FreeCString(ctx, cs);
+        JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)n));
+    }
+    JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    if (argc > 1) {
+        JSValue t = JS_GetPropertyStr(ctx, argv[1], "type");
+        if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
+        else JS_FreeValue(ctx, t);
+    }
+    return out;
+}
+/* FileReader: synchronous readAs* — the async model is not modelled yet,
+ * but `result` and onload fire so feature-detect paths keep working. */
+static JSValue nb_fr_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue b = (argc > 0) ? JS_GetPropertyStr(ctx, argv[0], "__nb_bytes") : JS_UNDEFINED;
+    if (JS_IsUndefined(b)) { JS_FreeValue(ctx, b); b = JS_NewString(ctx, ""); }
+    JS_SetPropertyStr(ctx, this_val, "result", JS_DupValue(ctx, b));
+    JS_SetPropertyStr(ctx, this_val, "readyState", JS_NewInt32(ctx, 2));
+    JSValue cb = JS_GetPropertyStr(ctx, this_val, "onload");
+    if (JS_IsFunction(ctx, cb)) {
+        JSValue ev = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ev, "target", JS_DupValue(ctx, this_val));
+        JSValue r = JS_Call(ctx, cb, this_val, 1, &ev);
+        JS_FreeValue(ctx, r); JS_FreeValue(ctx, ev);
+    }
+    JS_FreeValue(ctx, cb);
+    JS_FreeValue(ctx, b);
+    return JS_UNDEFINED;
+}
+static void nb_install_formdata_blob(JSContext *ctx, JSValueConst g) {
+    JSValue f = add_class(ctx, "FormData", JS_UNDEFINED);
+    JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
+    JS_SetPropertyStr(ctx, p, "append",  JS_NewCFunction(ctx, nb_fd_append,  "append", 2));
+    JS_SetPropertyStr(ctx, p, "set",     JS_NewCFunction(ctx, nb_fd_append,  "set", 2));
+    JS_SetPropertyStr(ctx, p, "get",     JS_NewCFunction(ctx, nb_fd_get,     "get", 1));
+    JS_SetPropertyStr(ctx, p, "getAll",  JS_NewCFunction(ctx, nb_fd_getAll,  "getAll", 1));
+    JS_SetPropertyStr(ctx, p, "has",     JS_NewCFunction(ctx, nb_fd_has,     "has", 1));
+    JS_SetPropertyStr(ctx, p, "delete",  JS_NewCFunction(ctx, nb_fd_delete,  "delete", 1));
+    JS_FreeValue(ctx, p);
+    JS_SetPropertyStr(ctx, g, "FormData", f);
+
+    /* Blob needs a custom constructor, so build its prototype explicitly and
+     * attach it — mirroring add_class. Reading the auto-created .prototype off
+     * a JS_CFUNC_constructor right after creation did not stick: slice ended
+     * up undefined on every instance (measured live, 2026-10-21). */
+    f = JS_NewCFunction2(ctx, nb_blob_from_parts, "Blob", 2, JS_CFUNC_constructor, 0);
+    p = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, p, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    JS_SetPropertyStr(ctx, f, "prototype", p);
+    JS_FreeValue(ctx, p);
+    JS_SetPropertyStr(ctx, g, "Blob", f);
+
+    f = add_class(ctx, "FileReader", JS_UNDEFINED);
+    p = JS_GetPropertyStr(ctx, f, "prototype");
+    JS_SetPropertyStr(ctx, p, "readAsText",    JS_NewCFunction(ctx, nb_fr_read, "readAsText", 1));
+    JS_SetPropertyStr(ctx, p, "readAsDataURL", JS_NewCFunction(ctx, nb_fr_read, "readAsDataURL", 1));
+    JS_SetPropertyStr(ctx, p, "readAsArrayBuffer", JS_NewCFunction(ctx, nb_fr_read, "readAsArrayBuffer", 1));
+    JS_SetPropertyStr(ctx, p, "abort",         JS_NewCFunction(ctx, class_noop, "abort", 0));
+    JS_FreeValue(ctx, p);
+    JS_SetPropertyStr(ctx, g, "FileReader", f);
+}
 /* construct an inert constructor whose .prototype chains off `parent`
  * (or Object.prototype when parent is not an object). Returns an owned
  * function object; calling it yields undefined (see class_noop). */
@@ -3705,10 +4273,15 @@ static void install_dom_classes(JSContext *ctx) {
             "Event", "CustomEvent", "MouseEvent", "KeyboardEvent",
             "PointerEvent", "TouchEvent", "FocusEvent", "InputEvent",
             "WheelEvent", "UIEvent", "ProgressEvent", "ErrorEvent",
-            "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent"
+            "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent",
+            "File", "URLSearchParams",
+            "IntersectionObserver", "ResizeObserver", "PerformanceObserver"
         };
         for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++)
             add_global_class(ctx, g, plain[i], JS_UNDEFINED);
+        /* FormData / Blob / FileReader carry real state, so they are built
+         * explicitly rather than by the inert-stub loop above. */
+        nb_install_formdata_blob(ctx, g);
         /* MutationObserver / DOMParser are newable with instance methods */
         JSValue f = add_class(ctx, "MutationObserver", JS_UNDEFINED);
         JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
@@ -3717,6 +4290,23 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "MutationObserver", f);
+        /* IntersectionObserver */
+        f = add_class(ctx, "IntersectionObserver", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 1));
+        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, class_noop, "unobserve", 1));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "IntersectionObserver", f);
+        /* ResizeObserver */
+        f = add_class(ctx, "ResizeObserver", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 1));
+        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, class_noop, "unobserve", 1));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "ResizeObserver", f);
         f = add_class(ctx, "DOMParser", JS_UNDEFINED);
         p = JS_GetPropertyStr(ctx, f, "prototype");
         JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
@@ -3978,6 +4568,65 @@ static void nb_font_blit(NbCanvas *cv, unsigned gid, double pen_x, double baseli
     }
 }
 /* "12px sans-serif" -> 12 (default 10) */
+/* Font family mapping for canvas fingerprinting - returns a multiplier for width */
+static double nb_font_family_scale(const char *font_family) {
+    if (!font_family) return 1.0;
+    /* Common font families with different average character widths */
+    if (strstr(font_family, "Arial") || strstr(font_family, "Helvetica") || strstr(font_family, "sans-serif")) return 1.0;
+    if (strstr(font_family, "Times") || strstr(font_family, "serif")) return 0.85;
+    if (strstr(font_family, "Courier") || strstr(font_family, "monospace")) return 1.2;
+    if (strstr(font_family, "Verdana")) return 1.1;
+    if (strstr(font_family, "Georgia")) return 0.9;
+    if (strstr(font_family, "Tahoma")) return 1.05;
+    if (strstr(font_family, "Trebuchet")) return 0.95;
+    if (strstr(font_family, "Impact")) return 1.3;
+    if (strstr(font_family, "Comic")) return 1.15;
+    return 1.0;
+}
+
+/* Extract font family from canvas font string (e.g., "16px Arial" -> "Arial", "16px 'Times New Roman'" -> "Times New Roman") */
+static void nb_font_family_from_ctx(JSContext *ctx, JSValueConst o, char *out, size_t n) {
+    JSValue v = JS_GetPropertyStr(ctx, o, "font");
+    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    if (s) {
+        const char *p = s;
+        /* Skip leading non-digit, non-dot characters (font style/weight) */
+        while (*p && (*p < '0' || *p > '9') && *p != '.') p++;
+        if (*p) {
+            /* Skip the font size number */
+            while (*p && (*p >= '0' && *p <= '9' || *p == '.')) p++;
+            /* Skip unit (px, pt, em, rem, etc.) - skip letters */
+            while (*p && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z'))) p++;
+            /* Skip whitespace */
+            while (*p && *p == ' ') p++;
+            if (*p) {
+                const char *end = p;
+                char quote = 0;
+                if (*p == '"' || *p == '\'') {
+                    quote = *p;
+                    p++;
+                    end = p;
+                    /* Find closing quote, but don't go past end of string */
+                    while (*end && *end != quote && end - p < 63) end++;
+                } else {
+                    /* Unquoted: find end of font family (space, comma, or end of string) */
+                    while (*end && *end != '"' && *end != '\'' && *end != ',' && *end != ';' && end - p < 63) end++;
+                }
+                size_t len = end - p;
+                if (len >= n) len = n - 1;
+                memcpy(out, p, len);
+                out[len] = 0;
+                JS_FreeCString(ctx, s);
+                JS_FreeValue(ctx, v);
+                return;
+            }
+        }
+        JS_FreeCString(ctx, s);
+    }
+    JS_FreeValue(ctx, v);
+    snprintf(out, n, "sans-serif");
+}
+
 static double nb_font_size_px(JSContext *ctx, JSValueConst o) {
     JSValue v = JS_GetPropertyStr(ctx, o, "font");
     const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
@@ -4604,7 +5253,11 @@ static JSValue nb_c2d_measureText(JSContext *ctx, JSValueConst this_val, int arg
     JSValue m = JS_NewObject(ctx);
     nb_font_load();
     double px = nb_font_size_px(ctx, this_val);
+    char font_family[64];
+    nb_font_family_from_ctx(ctx, this_val, font_family, sizeof(font_family));
+    double family_scale = nb_font_family_scale(font_family);
     double scale = g_font_upm ? px / g_font_upm : 0;
+    scale *= family_scale;
     double w = 0;
     if (argc >= 1 && JS_IsString(argv[0])) {
         const char *s = JS_ToCString(ctx, argv[0]);
@@ -4634,7 +5287,11 @@ static JSValue nb_c2d_fillText(JSContext *ctx, JSValueConst this_val, int argc, 
     if (!s) return JS_UNDEFINED;
     double x = nb_c2d_argd(ctx, argv, argc, 1, 0), y = nb_c2d_argd(ctx, argv, argc, 2, 0);
     double px = nb_font_size_px(ctx, this_val);
+    char font_family[64];
+    nb_font_family_from_ctx(ctx, this_val, font_family, sizeof(font_family));
+    double family_scale = nb_font_family_scale(font_family);
     double scale = g_font_upm ? px / g_font_upm : 0;
+    scale *= family_scale;
     char align[32], base[32];
     nb_ctx_str(ctx, this_val, "textAlign", align, sizeof(align), "start");
     nb_ctx_str(ctx, this_val, "textBaseline", base, sizeof(base), "alphabetic");
@@ -4679,7 +5336,11 @@ static JSValue nb_c2d_strokeText(JSContext *ctx, JSValueConst this_val, int argc
     nb_font_load();
     double x = nb_c2d_argd(ctx, argv, argc, 1, 0), y = nb_c2d_argd(ctx, argv, argc, 2, 0);
     double px = nb_font_size_px(ctx, this_val);
+    char font_family[64];
+    nb_font_family_from_ctx(ctx, this_val, font_family, sizeof(font_family));
+    double family_scale = nb_font_family_scale(font_family);
     double scale = g_font_upm ? px / g_font_upm : 0;
+    scale *= family_scale;
     char align[32], base[32];
     nb_ctx_str(ctx, this_val, "textAlign", align, sizeof(align), "start");
     nb_ctx_str(ctx, this_val, "textBaseline", base, sizeof(base), "alphabetic");
@@ -5385,6 +6046,84 @@ static JSValue nb_gl_getError(JSContext *ctx, JSValueConst this_val, int argc, J
     NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_NewInt32(ctx, 0);
     return JS_NewInt32(ctx, (int32_t)glGetError());
 }
+
+static JSValue nb_gl_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+
+/* getExtension: WEBGL_debug_renderer_info for fingerprinting (UNMASKED_VENDOR_WEBGL, UNMASKED_RENDERER_WEBGL) */
+static JSValue nb_gl_getExtension(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_NULL;
+    const char *name = JS_ToCString(ctx, argv[0]);
+    if (!name) return JS_NULL;
+    JSValue ext = JS_UNDEFINED;
+    if (strcmp(name, "WEBGL_debug_renderer_info") == 0) {
+        JSValue ext_obj = JS_NewObject(ctx);
+        const char *vendor = (const char *)glGetString(GL_VENDOR);
+        const char *renderer = (const char *)glGetString(GL_RENDERER);
+        if (vendor) JS_SetPropertyStr(ctx, ext_obj, "UNMASKED_VENDOR_WEBGL", JS_NewString(ctx, vendor));
+        if (renderer) JS_SetPropertyStr(ctx, ext_obj, "UNMASKED_RENDERER_WEBGL", JS_NewString(ctx, renderer));
+        ext = ext_obj;
+    } else if (strcmp(name, "OES_vertex_array_object") == 0) {
+        ext = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ext, "createVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "createVertexArrayOES", 0));
+        JS_SetPropertyStr(ctx, ext, "deleteVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "deleteVertexArrayOES", 1));
+        JS_SetPropertyStr(ctx, ext, "bindVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "bindVertexArrayOES", 1));
+        JS_SetPropertyStr(ctx, ext, "isVertexArrayOES", JS_NewCFunction(ctx, nb_gl_noop, "isVertexArrayOES", 1));
+    } else if (strcmp(name, "ANGLE_instanced_arrays") == 0) {
+        ext = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ext, "drawArraysInstancedANGLE", JS_NewCFunction(ctx, nb_gl_noop, "drawArraysInstancedANGLE", 4));
+        JS_SetPropertyStr(ctx, ext, "drawElementsInstancedANGLE", JS_NewCFunction(ctx, nb_gl_noop, "drawElementsInstancedANGLE", 5));
+        JS_SetPropertyStr(ctx, ext, "vertexAttribDivisorANGLE", JS_NewCFunction(ctx, nb_gl_noop, "vertexAttribDivisorANGLE", 2));
+    } else if (strcmp(name, "EXT_texture_filter_anisotropic") == 0) {
+        ext = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ext, "TEXTURE_MAX_ANISOTROPY_EXT", JS_NewInt32(ctx, 0x84FE));
+        JS_SetPropertyStr(ctx, ext, "MAX_TEXTURE_MAX_ANISOTROPY_EXT", JS_NewInt32(ctx, 0x84FF));
+    } else if (strcmp(name, "WEBGL_depth_texture") == 0 ||
+               strcmp(name, "OES_texture_float") == 0 ||
+               strcmp(name, "OES_texture_half_float") == 0 ||
+               strcmp(name, "OES_standard_derivatives") == 0 ||
+               strcmp(name, "WEBGL_draw_buffers") == 0 ||
+               strcmp(name, "EXT_frag_depth") == 0 ||
+               strcmp(name, "EXT_shader_texture_lod") == 0 ||
+               strcmp(name, "EXT_sRGB") == 0 ||
+               strcmp(name, "OES_element_index_uint") == 0) {
+        /* Return empty object for these extensions - they're just markers */
+        ext = JS_NewObject(ctx);
+    }
+    JS_FreeCString(ctx, name);
+    return ext;
+}
+
+static JSValue nb_gl_getSupportedExtensions(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
+    JSValue arr = JS_NewArray(ctx);
+    const char *exts[] = {
+        "WEBGL_debug_renderer_info",
+        "OES_texture_float",
+        "OES_texture_half_float",
+        "OES_standard_derivatives",
+        "OES_vertex_array_object",
+        "WEBGL_depth_texture",
+        "WEBGL_draw_buffers",
+        "EXT_texture_filter_anisotropic",
+        "EXT_frag_depth",
+        "EXT_shader_texture_lod",
+        "EXT_sRGB",
+        "ANGLE_instanced_arrays",
+        "OES_element_index_uint",
+        NULL
+    };
+    int i = 0;
+    while (exts[i]) {
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NewString(ctx, exts[i]));
+        i++;
+    }
+    return arr;
+}
+
 static JSValue nb_gl_getParameter(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbGL *g = nb_gl_for(ctx, this_val); if (!g) return JS_UNDEFINED;
     GLenum p = (GLenum)nb_gl_argi(ctx, argv, argc, 0, 0);
@@ -5561,6 +6300,8 @@ static JSValue nb_gl_new_context(JSContext *ctx, JSValueConst elem, int cid, int
     JS_SetPropertyStr(ctx, c, "drawElements", JS_NewCFunction(ctx, nb_gl_drawElements, "drawElements", 4));
     JS_SetPropertyStr(ctx, c, "getError", JS_NewCFunction(ctx, nb_gl_getError, "getError", 0));
     JS_SetPropertyStr(ctx, c, "getParameter", JS_NewCFunction(ctx, nb_gl_getParameter, "getParameter", 1));
+    JS_SetPropertyStr(ctx, c, "getExtension", JS_NewCFunction(ctx, nb_gl_getExtension, "getExtension", 1));
+    JS_SetPropertyStr(ctx, c, "getSupportedExtensions", JS_NewCFunction(ctx, nb_gl_getSupportedExtensions, "getSupportedExtensions", 0));
     JS_SetPropertyStr(ctx, c, "enable", JS_NewCFunction(ctx, nb_gl_enable, "enable", 1));
     JS_SetPropertyStr(ctx, c, "disable", JS_NewCFunction(ctx, nb_gl_disable, "disable", 1));
     JS_SetPropertyStr(ctx, c, "blendFunc", JS_NewCFunction(ctx, nb_gl_blendFunc, "blendFunc", 2));
@@ -5824,6 +6565,19 @@ static void install_dom(JSContext *ctx) {
                 JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
         }
+        JS_SetPropertyStr(ctx, doc, "referrer", JS_NewString(ctx, ""));
+        JS_SetPropertyStr(ctx, doc, "domain", JS_NewString(ctx, ""));
+        JS_SetPropertyStr(ctx, doc, "visibilityState", JS_NewString(ctx, "visible"));
+        JS_SetPropertyStr(ctx, doc, "hidden", JS_NewBool(ctx, 0));
+        JS_SetPropertyStr(ctx, doc, "readyState", JS_NewString(ctx, "complete"));
+        JS_SetPropertyStr(ctx, doc, "createEvent",
+                          JS_NewCFunction(ctx, nb_dom_createEvent, "createEvent", 1));
+        JS_SetPropertyStr(ctx, doc, "addEventListener",
+                          JS_NewCFunction(ctx, nb_doc_addEventListener, "addEventListener", 2));
+        JS_SetPropertyStr(ctx, doc, "removeEventListener",
+                          JS_NewCFunction(ctx, nb_doc_removeEventListener, "removeEventListener", 2));
+        JS_SetPropertyStr(ctx, doc, "dispatchEvent",
+                          JS_NewCFunction(ctx, nb_doc_dispatchEvent, "dispatchEvent", 1));
     }
     JS_FreeValue(ctx, doc);
 
@@ -5880,7 +6634,6 @@ static int nb_budget(void) {
     return b;
 }
 #define MAX_DRAIN_MS 800    /* commit 7: bounded wait so short timers fire pre-RENDER */
-static void sigalrm(int sig);   /* used by run_event_loop below */
 
 /* ===================== Phase 2 (commit 7): timers + microtasks + events ================ */
 
@@ -5920,6 +6673,40 @@ static uint64_t now_ms(void) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)(ts.tv_nsec / 1000000);
 }
+
+/* ---- eval watchdog (2026-10-26) ----
+ * This used to be signal(SIGALRM, sigalrm) + alarm(nb_budget()), with the
+ * handler calling _exit(128 + sig). Every script slower than the budget was
+ * treated as hostile: a heavy-but-legitimate page slice killed the whole
+ * worker mid-page, the process stayed a zombie, every later eval reported
+ * "eval error", and the page was dead with no message anywhere.
+ * QuickJS's runtime interrupt handler aborts the running script with a
+ * CATCHABLE-BY-C exception instead, so the worker survives with its DOM
+ * intact and the abort is visible in the log as "interrupted".
+ * The abort is NOT catchable by page JS: a fixture wrapping three
+ * `while(true)` loops in try/catch ended at the first abort with a single
+ * "interrupted" line and no re-loop (2026-10-26), so one abort per armed
+ * window is enough - a page cannot swallow it and keep spinning.
+ * Measured on Cloudflare's orchestrate/chl_page challenge script (glassdoor,
+ * 2026-10-26): it finishes in seconds here and then throws TypeError: not a
+ * function from a browser API this engine lacks - that challenge needs the R4
+ * fingerprint surface, not a bigger budget. */
+static uint64_t g_watchdog_deadline = 0;   /* CLOCK_MONOTONIC ms; 0 = paused */
+
+static int nb_watchdog_cb(JSRuntime *rt, void *opaque) {
+    (void)rt; (void)opaque;
+    if (!g_watchdog_deadline) return 0;
+    if (now_ms() <= g_watchdog_deadline) return 0;
+    g_watchdog_deadline = 0;               /* one abort ends the script */
+    return 1;
+}
+static void nb_watchdog_install(JSRuntime *rt) {
+    JS_SetInterruptHandler(rt, nb_watchdog_cb, NULL);
+}
+static void nb_watchdog_begin(void) {
+    g_watchdog_deadline = now_ms() + (uint64_t)nb_budget() * 1000u;
+}
+static void nb_watchdog_pause(void) { g_watchdog_deadline = 0; }
 
 /* Format + clear the current context exception into buf; returns buf. */
 static const char *js_error_to_cstr(JSContext *ctx, char *buf, size_t bl) {
@@ -6829,7 +7616,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
 
     char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
 
-    alarm(0);   /* a blocking curl must never trip the EVAL_BUDGET_SEC watchdog */
+    nb_watchdog_pause();   /* a blocking curl must never trip the EVAL_BUDGET_SEC watchdog */
 
     if (strncmp(url, "file:", 5) == 0) {
         /* normalize file://host/path, file:///path, file:/path -> /path */
@@ -6901,7 +7688,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
                 fputs("write-out = \"%{http_code}\"\n", cf);
                 fclose(cf);
                 char cmd[2048];
-                snprintf(cmd, sizeof(cmd), "curl -sS -K '%s' 2>/dev/null", cfgpath);
+                snprintf(cmd, sizeof(cmd), "curl --compressed -sS -K '%s' 2>/dev/null", cfgpath);
                 FILE *po = popen(cmd, "r");
                 if (po) {
                     char code[16] = ""; size_t got = 0;
@@ -6914,7 +7701,13 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
                     int rc = pclose(po);
                     status = (int)strtol(code, NULL, 10);
                     if (status <= 0) status = 0;
-                    if (status > 0 && read_file(bodypath, &rb, &rn)) {
+                    /* Page/asset bodies are legitimately larger than the
+                     * 512KB fs-lite guard: read_file() returned 0 for a
+                     * 940KB homepage, so nbFetchSync reported status 200 with
+                     * an empty body (measured 2026-10-26 on
+                     * www.coinmarketcap.com). read_file_big is the existing
+                     * chunked reader with a 64MB ceiling. */
+                    if (status > 0 && read_file_big(bodypath, &rb, &rn)) {
                         /* treats zero-byte bodies as a successful empty read */
                     }
                     if (!rb) snprintf(errbuf, sizeof(errbuf),
@@ -7839,8 +8632,7 @@ static int run_event_loop(JSContext *ctx) {
             } \
         } \
     } while (0)
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());   /* phase-1 backstop also covers timer/job callbacks */
+    nb_watchdog_begin();   /* phase-1 backstop also covers timer/job callbacks */
     drain_jobs(ctx);
     if (!g_pending_err) fire_event(ctx, EVT_DOC, NULL, "DOMContentLoaded");
     drain_jobs(ctx);
@@ -7866,7 +8658,7 @@ static int run_event_loop(JSContext *ctx) {
             continue;
         }
     }
-    alarm(0);
+    nb_watchdog_pause();
     nb_wire_search_proxy(ctx);
     return g_pending_err;
 }
@@ -7972,17 +8764,15 @@ static void boot_install_safe(JSContext *ctx) {
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
  * the engine is running; the deadly default _exit kills the worker mid-eval, the
  * manager sees the socket close and respawns on the next LOAD. */
-static void sigalrm(int sig) { _exit(128 + sig); }
 /* Evaluate src with a SIGALRM CPU budget. Returns 0 on success; on error
  * returns 1 and, if errbuf is non-NULL, formats the exception message into
  * it (the exception is always consumed/cleared). The completion value is
  * discarded — use peval_budget_value() when the result is wanted. */
 static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
                         char *errbuf, size_t errlen) {
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
-    alarm(0);
+    nb_watchdog_pause();
     if (JS_IsException(r)) {
         if (errbuf && errlen) {
             char tmp[512];
@@ -8001,11 +8791,32 @@ static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
 /* Like peval_budget but returns the completion JSValue (owned; freed by the
  * caller — also on JS_EXCEPTION). No exception is consumed here. */
 static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n) {
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
-    alarm(0);
+    nb_watchdog_pause();
     return r;
+}
+/* Like peval_budget but uses JS_EVAL_TYPE_MODULE for ES module scripts.
+ * Modules without imports work; imports need a module loader (not yet set). */
+static int peval_budget_module(JSContext *ctx, const char *src, size_t src_n,
+                               char *errbuf, size_t errlen) {
+    nb_watchdog_begin();
+    JSValue r = JS_Eval(ctx, src, src_n, "<module>", JS_EVAL_TYPE_MODULE);
+    nb_watchdog_pause();
+    if (JS_IsException(r)) {
+        if (errbuf && errlen) {
+            char tmp[512];
+            const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
+            snprintf(errbuf, errlen, "%s", m);
+        } else {
+            JSValue e = JS_GetException(ctx);
+            JS_FreeValue(ctx, e);
+        }
+        JS_FreeValue(ctx, r);
+        return 1;
+    }
+    JS_FreeValue(ctx, r);
+    return 0;
 }
 /* Format a value for console display (duk_safe_to_string semantics); clears
  * any exception a throwing toString() may have left behind. */
@@ -8179,8 +8990,33 @@ static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
              * contiguous buffer, so terminate in place; the boundary's first
              * byte is never read again (next = the position after it). */
             ((char *)p)[slice] = 0;
-            if (peval_budget(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
-                fprintf(stderr, "WERR| script %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
+            /* Check for module marker at slice start (skip leading whitespace). */
+            int is_module = 0;
+            const char *p2 = p;
+            size_t slice2 = slice;
+            while (slice2 > 0 && (*p2 == '\n' || *p2 == '\r' || *p2 == ' ' || *p2 == '\t')) {
+                p2++; slice2--;
+            }
+            if (slice2 >= 15 && memcmp(p2, "/*nbjs-module*/", 15) == 0) {
+                is_module = 1;
+                /* Advance p past the marker and optional whitespace. */
+                const char *marker_end = p2 + 15;
+                while (marker_end < p + slice && (*marker_end == '\n' || *marker_end == '\r' || *marker_end == ' ' || *marker_end == '\t'))
+                    marker_end++;
+                size_t skip = (size_t)(marker_end - p);
+                p = marker_end;
+                slice = (slice > skip) ? (slice - skip) : 0;
+            }
+            if (slice > 0) {
+                fprintf(stderr, "DEBUG: executing script slice %d, size: %zu, first 100 chars: %.100s\n", idx, slice, p);
+                if (is_module) {
+                    if (peval_budget_module(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
+                        fprintf(stderr, "WERR| module %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
+                } else {
+                    if (peval_budget(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
+                        fprintf(stderr, "WERR| script %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
+                }
+            }
         }
         idx++;
         if (!bn) break;
@@ -8214,6 +9050,7 @@ static void run_page(void) {
     node_index_reset();
 
     /* build the DOM tree from the manager's fetch.dom (if present) */
+    fprintf(stderr, "DEBUG: g_fetch_dom = '%s'\n", g_fetch_dom);
     if (g_fetch_dom[0]) {
         FILE *df = fopen(g_fetch_dom, "rb");
         if (!df) {
@@ -8226,8 +9063,10 @@ static void run_page(void) {
                      g_fetch_dom);
             send_worker_error(m);
         } else {
+            fprintf(stderr, "DEBUG: loading DOM from fetch.dom\n");
             g_dom_root = nb_dom_load(df);
             fclose(df);
+            fprintf(stderr, "DEBUG: nb_dom_load returned %p\n", (void*)g_dom_root);
             if (!g_dom_root) {
                 /* Same silence, same consequence. nb_dom_load() reads the
                  * nb_serialize() wire format, not HTML - anything else
@@ -8238,6 +9077,13 @@ static void run_page(void) {
                                   "(nb_dom_load returned NULL; the file must be "
                                   "nb_serialize output, not HTML) - the page will "
                                   "render as its title only");
+            } else {
+                fprintf(stderr, "DEBUG: DOM loaded, root tag: %s, children: %d\n", g_dom_root->tag ? g_dom_root->tag : "NULL", g_dom_root->first_child ? 1 : 0);
+                if (g_dom_root->first_child) {
+                    for (NbNode *c = g_dom_root->first_child; c; c = c->next_sibling) {
+                        fprintf(stderr, "DEBUG: child tag: %s\n", c->tag ? c->tag : "NULL");
+                    }
+                }
             }
         }
     } else if (g_cli) {
@@ -8257,26 +9103,7 @@ static void run_page(void) {
         }
     }
 
-    JSRuntime *rt = JS_NewRuntime();
-    if (!rt) { live_teardown(); send_status("STATUS err:heap"); return; }
-    JSContext *ctx = JS_NewContext(rt);
-    if (!ctx) { JS_FreeRuntime(rt); live_teardown(); send_status("STATUS err:heap"); return; }
-    g_live_rt = rt;
-    g_live_ctx = ctx;   /* resident from here on — kept alive for EVAL */
-    install_host(ctx);
-
-    /* rung 7: the resident worker's CSS resolve wins over install_host's
-     * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
-    JSValue ge = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, ge, "__nb_ges",
-                      JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
-    JS_FreeValue(ctx, ge);
-
-    /* rung-6 prelude: swallow its own failure, page continues */
-    (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
-
-    boot_install_safe(ctx);
-
+    /* Read page.js FIRST to detect modules BEFORE creating runtime. */
     char *src = NULL;
     size_t src_n = 0;
     if (!read_file_big(g_page_js, &src, &src_n)) {
@@ -8286,66 +9113,214 @@ static void run_page(void) {
     }
     if (src_n == 0) { free(src); send_status("STATUS ok"); return; }
 
-    run_scripts_slices(ctx, src, src_n);
-    free(src);
-    /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
-    int ev_err = run_event_loop(ctx);
-    if (ev_err) {
-        char msg[1100];
-        snprintf(msg, sizeof(msg), "STATUS err:%s",
-                 g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
-        send_status(msg);
-        live_teardown();
-        return;
-    }
-
-    /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
-     * manager merges these into page.state.txt so JS mutations show. */
-    SB r = {0, 0, 0};
-    dom_render_rows(&r);
-    if (r.s && r.s[0]) {
-        size_t rn = strlen(r.s);
-        char *pay = NULL;
-        size_t pn = 0;
-        if (rn < RENDER_MAX) {
-            pn = 7 + rn;                       /* "RENDER\n" + rows */
-            pay = malloc(pn + 1);
-            if (pay) {
-                memcpy(pay, "RENDER\n", 7);
-                memcpy(pay + 7, r.s, rn);
-                pay[pn] = 0;
-                send_payload(pay, pn);
-            }
-        }
-        free(pay);
-    }
-    free(r.s);
-
-    /* rung-6 slice 2: if the page asked to navigate, ship a NAV frame so the
-     * manager follows it through its own fetch/stack machinery (manager
-     * worker_load captures it, the main loop consumes it next tick). */
-    if (g_nav_emit && g_nav_kind[0]) {
-        char pay[4600];
-        int pn = 0;
-        if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')  /* BACK/FORWARD: step count */
-            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
-                          g_nav_count > 0 ? g_nav_count : 1);
-        else
-            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
-        if (pn > 0 && pn < (int)sizeof(pay)) {
-            char *ppay = malloc((size_t)pn + 1);
-            if (ppay) {
-                memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
-                send_payload(ppay, (size_t)pn);
-                free(ppay);
+    /* Detect if page has any module scripts (by checking for marker). */
+    int has_module = 0;
+    if (src_n >= 15 && memcmp(src, "/*nbjs-module*/", 15) == 0) has_module = 1;
+    else {
+        const char *p = src;
+        for (; p + 15 < src + src_n; p++) {
+            if (p[0] == '/' && p[1] == '*' && memcmp(p, "/*nbjs-module*/", 15) == 0) {
+                has_module = 1; break;
             }
         }
     }
 
-    /* devtools console EVAL: keep the heap + DOM tree resident so an
-     * eval:<js> snippet can run against this page context (see cmd_eval);
-     * live_teardown() reclaims it at the next LOAD / QUIT / error. */
-    send_status("STATUS ok");
+    if (has_module) {
+        /* Module page: use a completely isolated, non-resident runtime.
+         * Module evaluation corrupts the runtime (GC list not empty), so we
+         * create a fresh runtime, run the page, and free it immediately.
+         * No resident context = no EVAL support for module pages. */
+        JSRuntime *rt = JS_NewRuntime();
+        nb_watchdog_install(rt);
+        if (!rt) { free(src); send_status("STATUS err:heap"); return; }
+        JSContext *ctx = JS_NewContext(rt);
+        if (!ctx) { JS_FreeRuntime(rt); free(src); send_status("STATUS err:heap"); return; }
+        install_host(ctx);
+
+        /* rung 7: the worker's CSS resolve wins over install_host's
+         * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
+        JSValue ge = JS_GetGlobalObject(ctx);
+        JS_SetPropertyStr(ctx, ge, "__nb_ges",
+                          JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
+        JS_FreeValue(ctx, ge);
+
+        /* rung-6 prelude: swallow its own failure, page continues */
+        (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
+
+        boot_install_safe(ctx);
+
+        /* For module pages in isolated runtime: strip 'export ' and module markers,
+         * evaluate as classic script to avoid JS_EVAL_TYPE_MODULE GC corruption. */
+        {
+            char *buf = malloc(src_n + 1);
+            if (buf) {
+                size_t j = 0;
+                for (size_t i = 0; i < src_n; ) {
+                    if (i + 7 <= src_n && memcmp(src + i, "export ", 7) == 0) {
+                        i += 7;
+                    } else if (i + 6 <= src_n && memcmp(src + i, "export", 6) == 0 &&
+                               (i+6 == src_n || isspace((unsigned char)src[i+6]))) {
+                        i += 6;
+                    } else if (i + 15 <= src_n && memcmp(src + i, "/*nbjs-module*/", 15) == 0) {
+                        i += 15;
+                        /* skip optional whitespace/newline after marker */
+                        while (i < src_n && (src[i] == '\n' || src[i] == '\r' || src[i] == ' ' || src[i] == '\t'))
+                            i++;
+                    } else {
+                        buf[j++] = src[i++];
+                    }
+                }
+                buf[j] = 0;
+                run_scripts_slices(ctx, buf, j);
+                free(buf);
+            } else {
+                run_scripts_slices(ctx, src, src_n);
+            }
+        }
+        free(src);
+
+        /* phase-2: lifecycle + event loop — timers/microtasks now fire */
+        int ev_err = run_event_loop(ctx);
+        if (ev_err) {
+            char msg[1100];
+            snprintf(msg, sizeof(msg), "STATUS err:%s",
+                     g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
+            send_status(msg);
+            JS_FreeContext(ctx);
+            JS_FreeRuntime(rt);
+            return;
+        }
+
+        /* Emit RENDER rows from the post-JS DOM, then STATUS. */
+        SB r = {0, 0, 0};
+        dom_render_rows(&r);
+        if (r.s && r.s[0]) {
+            size_t rn = strlen(r.s);
+            char *pay = NULL;
+            size_t pn = 0;
+            if (rn < RENDER_MAX) {
+                pn = 7 + rn;
+                pay = malloc(pn + 1);
+                if (pay) {
+                    memcpy(pay, "RENDER\n", 7);
+                    memcpy(pay + 7, r.s, rn);
+                    pay[pn] = 0;
+                    send_payload(pay, pn);
+                }
+            }
+            free(pay);
+        }
+        free(r.s);
+
+        /* Navigation handling */
+        if (g_nav_emit && g_nav_kind[0]) {
+            char pay[4600];
+            int pn = 0;
+            if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                              g_nav_count > 0 ? g_nav_count : 1);
+            else
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+            if (pn > 0 && pn < (int)sizeof(pay)) {
+                char *ppay = malloc((size_t)pn + 1);
+                if (ppay) {
+                    memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
+                    send_payload(ppay, (size_t)pn);
+                    free(ppay);
+                }
+            }
+        }
+
+        /* Free the isolated runtime immediately - no resident context */
+        JS_FreeContext(ctx);
+        JS_FreeRuntime(rt);
+        g_module_page_loaded = 1;
+        send_status("STATUS ok (no EVAL for module pages)");
+    } else {
+        /* Classic page: use the standard resident runtime for EVAL support. */
+        JSRuntime *rt = JS_NewRuntime();
+        nb_watchdog_install(rt);
+        if (!rt) { free(src); live_teardown(); send_status("STATUS err:heap"); return; }
+        JSContext *ctx = JS_NewContext(rt);
+        if (!ctx) { JS_FreeRuntime(rt); free(src); live_teardown(); send_status("STATUS err:heap"); return; }
+        g_live_rt = rt;
+        g_live_ctx = ctx;   /* resident from here on — kept alive for EVAL */
+        install_host(ctx);
+
+        /* rung 7: the resident worker's CSS resolve wins over install_host's
+         * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
+        JSValue ge = JS_GetGlobalObject(ctx);
+        JS_SetPropertyStr(ctx, ge, "__nb_ges",
+                          JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
+        JS_FreeValue(ctx, ge);
+
+        /* rung-6 prelude: swallow its own failure, page continues */
+        (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
+
+        boot_install_safe(ctx);
+
+        run_scripts_slices(ctx, src, src_n);
+        free(src);
+
+        /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
+        int ev_err = run_event_loop(ctx);
+        if (ev_err) {
+            char msg[1100];
+            snprintf(msg, sizeof(msg), "STATUS err:%s",
+                     g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
+            send_status(msg);
+            live_teardown();
+            return;
+        }
+
+        /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
+         * manager merges these into page.state.txt so JS mutations show. */
+        SB r = {0, 0, 0};
+        dom_render_rows(&r);
+        if (r.s && r.s[0]) {
+            size_t rn = strlen(r.s);
+            char *pay = NULL;
+            size_t pn = 0;
+            if (rn < RENDER_MAX) {
+                pn = 7 + rn;                       /* "RENDER\n" + rows */
+                pay = malloc(pn + 1);
+                if (pay) {
+                    memcpy(pay, "RENDER\n", 7);
+                    memcpy(pay + 7, r.s, rn);
+                    pay[pn] = 0;
+                    send_payload(pay, pn);
+                }
+            }
+            free(pay);
+        }
+        free(r.s);
+
+        /* rung-6 slice 2: if the page asked to navigate, ship a NAV frame so the
+         * manager follows it through its own fetch/stack machinery (manager
+         * worker_load captures it, the main loop consumes it next tick). */
+        if (g_nav_emit && g_nav_kind[0]) {
+            char pay[4600];
+            int pn = 0;
+            if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')  /* BACK/FORWARD: step count */
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                              g_nav_count > 0 ? g_nav_count : 1);
+            else
+                pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+            if (pn > 0 && pn < (int)sizeof(pay)) {
+                char *ppay = malloc((size_t)pn + 1);
+                if (ppay) {
+                    memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
+                    send_payload(ppay, (size_t)pn);
+                    free(ppay);
+                }
+            }
+        }
+
+        /* devtools console EVAL: keep the heap + DOM tree resident so an
+         * eval:<js> snippet can run against this page context (see cmd_eval);
+         * live_teardown() reclaims it at the next LOAD / QUIT / error. */
+        send_status("STATUS ok");
+    }
 }
 
 /* devtools console EVAL: run a <js> snippet against the resident page heap
@@ -8483,6 +9458,7 @@ static void      nb_install_fs(JSContext *ctx);
 static const char g_cjs_prelude[];
 static int repl_main(void) {
     JSRuntime *rt = JS_NewRuntime();
+    nb_watchdog_install(rt);
     if (!rt) return 1;
     JSContext *ctx = rt ? JS_NewContext(rt) : NULL;
     if (!ctx) { if (rt) JS_FreeRuntime(rt); return 1; }
@@ -8515,12 +9491,11 @@ static int repl_main(void) {
     av[0] = JS_NewString(ctx, cwd_buf);
     av[1] = JS_NewString(ctx, "[repl]");
     JSValue g0 = JS_GetGlobalObject(ctx);
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue rr = JS_Call(ctx, install, g0, 2, av);
     JS_FreeValue(ctx, g0);
     JS_FreeValue(ctx, install);
-    alarm(0);
+    nb_watchdog_pause();
     JS_FreeValue(ctx, av[0]); JS_FreeValue(ctx, av[1]);
     if (JS_IsException(rr)) {
         char tmp[512];
@@ -8595,8 +9570,7 @@ g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
         fflush(stdout);
 
         /* drain jobs + timers (no lifecycle events), CPU-bounded */
-        signal(SIGALRM, sigalrm);
-        alarm(nb_budget());
+        nb_watchdog_begin();
         uint64_t start = now_ms();
         for (int guard = 0; guard < 10000 && !g_pending_err; guard++) {
             if (now_ms() - start > 200) break;
@@ -8612,7 +9586,7 @@ g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
                 nanosleep(&ts, NULL);
             }
         }
-        alarm(0);
+        nb_watchdog_pause();
     }
     free_held_callbacks(ctx);
     JS_FreeContext(ctx);
@@ -9079,6 +10053,7 @@ static int cli_main(int argc, char **argv) {
     }
 
     JSRuntime *rt = JS_NewRuntime();
+    nb_watchdog_install(rt);
     if (!rt) return 1;
     JSContext *ctx = JS_NewContext(rt);
     if (!ctx) { JS_FreeRuntime(rt); return 1; }
@@ -9150,12 +10125,11 @@ static int cli_main(int argc, char **argv) {
     av[0] = JS_NewString(ctx, entry_dir);
     av[1] = JS_NewString(ctx, entry_file);
     JSValue g1 = JS_GetGlobalObject(ctx);
-    signal(SIGALRM, sigalrm);
-    alarm(nb_budget());
+    nb_watchdog_begin();
     JSValue rr = JS_Call(ctx, install, g1, 2, av);
     JS_FreeValue(ctx, g1);
     JS_FreeValue(ctx, install);
-    alarm(0);
+    nb_watchdog_pause();
     JS_FreeValue(ctx, av[0]); JS_FreeValue(ctx, av[1]);
     if (JS_IsException(rr)) {
         char tmp[512];
@@ -9233,7 +10207,36 @@ static int cli_main(int argc, char **argv) {
     return 0;
 }
 
+/* ---- fatal-signal backtrace (2026-10-26) ----
+ * A hostile or oversized page script can take the worker down in ways that
+ * leave NOTHING in the log: no WERR, no STATUS, just a zombie the manager
+ * never hears from again. Measured on Cloudflare's orchestrate/chl_page
+ * script: the last line in the worker log is "resolved script URL", and the
+ * process is then gone. Without gdb on the box, the only way to tell a
+ * SIGSEGV from an abort() is to have the worker report it itself. Gated by
+ * NB_CRASH_BT so normal runs stay quiet. backtrace_symbols_fd() is the
+ * async-signal-safe half of execinfo, and stderr is already the per-house
+ * worker log, so the trace lands next to the page errors. */
+static void nb_crash_handler(int sig) {
+    void *bt[64];
+    static const char hdr[] = "CRASH| fatal signal in worker (see frames below)\n";
+    ssize_t w = write(STDERR_FILENO, hdr, sizeof(hdr) - 1);
+    (void)w;
+    int n = backtrace(bt, 64);
+    backtrace_symbols_fd(bt, n, STDERR_FILENO);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+static void nb_crash_install(void) {
+    if (!getenv("NB_CRASH_BT")) return;
+    signal(SIGSEGV, nb_crash_handler);
+    signal(SIGABRT, nb_crash_handler);
+    signal(SIGBUS, nb_crash_handler);
+    signal(SIGFPE, nb_crash_handler);
+}
+
 int main(int argc, char **argv) {
+    nb_crash_install();
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
     if (getenv("NB_TRACE_CB")) g_trace_cb = 1;   /* full callback exceptions to stderr */
     {
@@ -9288,6 +10291,7 @@ int main(int argc, char **argv) {
             if (f[1]) snprintf(g_page_js, sizeof(g_page_js), "%s", f[1]);
             if (f[2]) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", f[2]);
             if (f[3]) snprintf(g_href, sizeof(g_href), "%s", f[3]);
+            fprintf(stderr, "DEBUG: LOAD received, g_href = '%s'\n", g_href);
             if (f[4]) snprintf(g_title, sizeof(g_title), "%s", f[4]);
             if (f[5]) snprintf(g_style_css, sizeof(g_style_css), "%s", f[5]);
             /* f[6] = the viewport width this page will be laid out in.
@@ -9325,6 +10329,10 @@ int main(int argc, char **argv) {
             g_gutter_state = -1;
             free(g_last_push); g_last_push = NULL;   /* rows are per-page */
             run_page();
+            if (g_module_page_loaded) {
+                g_module_page_loaded = 0;
+                break;  /* exit worker so manager respawns fresh worker */
+            }
         } else if (strcmp(cmd, "TICK") == 0) {
             /* TICK\n<ms>\n - enable periodic ticking with stdin waits capped
              * at <ms>. TICK\n0 disables it, restoring the historical

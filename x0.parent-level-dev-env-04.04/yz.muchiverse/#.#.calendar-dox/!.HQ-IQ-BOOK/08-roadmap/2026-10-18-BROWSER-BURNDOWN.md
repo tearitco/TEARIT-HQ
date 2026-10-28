@@ -29,8 +29,8 @@ suites. Where a claim is not backed by one of those, it says so.
 | G2.1 box tree | ✅ | `nb_geometry_test.sh` |
 | G2.2 gBCR honesty | ✅ **100 %** | `nb_gbcr_test.sh` — 9/9 within ±2 px (§9.12) |
 | G2.2b conditional gutter | ✅ | `nb_gutter_test.sh`, negative-tested both directions |
-| **G2.3 flex row** | ❌ | `nb_flex_test.sh` written, RED by design (handoff §5a) |
-| **G2.4 grid** | ❌ | no suite; roadmap rule: grid only after flex |
+| G2.3 flex row | ✅ | `nb_flex_test.sh` PASS; worker+renderer (f4dd683cb) |
+| G2.4 grid | ✅ | `nb_grid_test.sh` PASS; shared engine+worker (bebba94b8+) |
 | **G2.5 `@media`** | ❌ | no suite; OPEN-ITEMS item 11: "`@media` never fires (no viewport)" |
 | **G2.6 cascade completeness** | ❌ | no suite; needs the property list defined by G2.1–G2.5 |
 | G3.1 find in page | ✅ | `nb_find_test.sh` (`cdc514b98`, 2026-10-13) |
@@ -344,18 +344,9 @@ design decision that deserves its own note before code — which is exactly the
 kind of call the plan's §5.5 reserves for the owner. **Do not ship the worker
 half alone** (it would re-open G2.2 with a confident wrong number).
 
-> **SUPERSEDED 2026-10-19 — the owner chose (b), and reading the real code
-> changed the answer.** The design note is
-> `design-docs/2026-10-19-G2.3-FLEX-6.4-DESIGN.md`. Headline: **neither (a)
-> nor (b) is what is missing.** `css_layout_pass()` **already is** a complete
-> general flexbox engine (display:flex, flex-direction, flex-grow,
-> flex-wrap, padding/gap, absolute out-of-flow), the CSS layer already parses
-> and cascades all of it (`khtpm_css_parser.h:42-45`), and it is already
-> reachable from CSS — `<page style="display:flex; flex-direction:row">`
-> routes sidebar+panels through it, generalized live since 2026-09-11. The
-> browser does not get flex because **its `<page>` never asks for it**
-> (verified: 0 occurrences of `flex` in the 182-line template), not because
-> of a chrome-class gate. So "touches every window" was too pessimistic: the
+> **SUPERSEDED 2026-10-19 — see `design-docs/2026-10-19-G2.3-FLEX-6.4-DESIGN.md`.**
+
+**6.4 DONE 2026-10-20 — generic `class="flex-row"` added to content scroll region; shared engine defaults flex-direction to row; `nb_flex_test.sh` PASS, `nb_gbcr_test.sh` 100%.** The missing half was the content lane — option (a) shape (content row kind) — implemented as a general class opt-in in `khtpm_core_render.c` with css_layout_pass.
 > generalization already happened, and its only consumer is this browser.
 >
 > **What is actually missing is the *worker* half** — `nb_flex_test.sh`

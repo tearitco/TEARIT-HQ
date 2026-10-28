@@ -1,0 +1,8 @@
+# Default Custom Operations for pRISC+X
+# Format: name type handler {description}
+
+out void builtin_out {print register to stdout}
+halt void builtin_halt {stop execution}
+move_player void +x/move_player.+x {changes player_xyz value}
+console_print void +x/console_print.+x {prints input to console}
+layout_op void +x/layout_op.+x {display menu and get selection}
