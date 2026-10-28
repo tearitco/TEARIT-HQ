@@ -257,7 +257,17 @@ static int fm_aim(int i) {
 static void fm_try_eat(int i, const Ent *e) {
     fm_cfg(); if (!fm_on || !fm_next_to(e->room, e->x, e->y)) return; char id[24]; fm_id(i, id, sizeof id); int h = fm_hunger(id); if (h < fm_eat) return;
     static time_t last[NP + 2]; int k = i + 1; if (k < 0 || k > NP) return; time_t now = time(NULL); if (now - last[k] < 3) return; last[k] = now;
-    char out[300]; int rc = fm_exec("eat", id, NULL, out, sizeof out); char food[32] = "-";
+    char out[300] = "", food[32] = "-"; int rc = -1, via_page = 0;
+    {   /* the EVENT PAGE first (house pattern, like death/respawn): the actor goes through state/life_actor.txt, the page `eat` runs `fridge eat @actor`, which leaves rc + fridge_op's lines in state/fridge_last.txt. No page, no runner or no page matching the trigger (play_event.sh exits 1) = the C fallback below
+         * runs fridge_op itself. A page that RAN (play_event.sh exits 0 even when the page's command failed) but left no answer is a refusal, never a second meal (no fallback after a page that may have eaten);
+         * the one gap: a page killed by the 20 s watchdog counts as `no page` and the fallback may run. */
+        char ap[PATH_MAX], ab[40], lp[PATH_MAX], rb[400]; spath(ap, "life_actor.txt"); snprintf(ab, sizeof ab, "%s\n", id); write_if_changed(ap, ab, strlen(ab)); spath(lp, "fridge_last.txt"); remove(lp);
+        if (run_event_x("eat", "parallel", "")) {
+            via_page = 1;
+            if (read_file(lp, rb, sizeof rb) > 0 && sscanf(rb, "rc=%d", &rc) == 1) { char *nl = strchr(rb, '\n'); snprintf(out, sizeof out, "%s", nl ? nl + 1 : ""); } else rc = -1;
+        }
+    }
+    if (!via_page) rc = fm_exec("eat", id, NULL, out, sizeof out);
     if (rc == 0 && sscanf(out, "ate=%31s", food) == 1) dec_log(i < 0 ? "trainer" : party[i].id, "hungry", "eat", food, "ok");
     else { int empty = strstr(out, "empty") != NULL; if (empty) fm_empty_until = now + 60; dec_log(i < 0 ? "trainer" : party[i].id, "hungry", "eat", "fridge", empty ? "empty" : "refused"); }
 }
@@ -369,7 +379,12 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     if (!strcmp(v, "fridge")) {      /* fridge status | stock <food> <n> | eat <id>: the ship's fridge (foods.pdl, op fridge_op); eat = that character eats one food NOW if it is hungry enough */
         const char *a = argc >= 2 ? argv[1] : "status"; char out[1200]; int rc;
         if (!strcmp(a, "status")) rc = fm_exec("status", NULL, NULL, out, sizeof out); else if (!strcmp(a, "stock") && argc >= 4) rc = fm_exec("stock", argv[2], argv[3], out, sizeof out);
-        else if (!strcmp(a, "eat") && argc >= 3) rc = fm_exec("eat", argv[2], NULL, out, sizeof out); else { snprintf(msg, cap, "usage: fridge status | stock <food> <n> | eat <id>"); return; }
+        else if (!strcmp(a, "eat") && argc >= 3) {
+            char who[32] = ""; const char *wid = argv[2];
+            if (!strcmp(wid, "@actor")) { char ap[PATH_MAX]; spath(ap, "life_actor.txt"); read_file(ap, who, sizeof who); who[strcspn(who, "\r\n")] = 0; wid = who; }      /* @actor = the character the game named in state/life_actor.txt before it played the eat page (the same file the life verbs use) */
+            rc = fm_exec("eat", wid, NULL, out, sizeof out);
+            char lp[PATH_MAX], lb[400]; spath(lp, "fridge_last.txt"); snprintf(lb, sizeof lb, "rc=%d\n%s", rc, rc < 0 ? "" : out); write_if_changed(lp, lb, strlen(lb));      /* the page's answer for the game: rc, then fridge_op's own lines */
+        } else { snprintf(msg, cap, "usage: fridge status | stock <food> <n> | eat <id>"); return; }
         if (rc < 0) { snprintf(msg, cap, "fridge: the op is missing or failed (build &.widgits/_shared-lib/ops/build_fridge_op.sh)"); return; }
         for (char *q = out; *q; q++) {
             if (*q == '\n') *q = ';'; }

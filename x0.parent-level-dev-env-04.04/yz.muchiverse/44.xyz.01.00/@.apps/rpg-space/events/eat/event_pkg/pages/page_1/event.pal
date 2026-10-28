@@ -1,0 +1,4 @@
+# event.pal - a hungry character at the ship fridge EATS as an EVENT PAGE (owner 2026-10-28: food seeking in blueprintz). The game writes the actor id to state/life_actor.txt, plays this page (trigger parallel), the page runs the engine verb `fridge eat @actor`, which leaves its answer in state/fridge_last.txt for the game to log. No page = the game runs fridge_op itself (the C fallback).
+# pkg=eat page=page_1
+exec cmd_1.sh
+halt

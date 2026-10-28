@@ -1,0 +1,4 @@
+# eat_page.pal - LOCKED harness for the fridge EAT EVENT PAGE (events/eat run by fm_try_eat): page present, no page (C fallback), a page that runs but gives no answer (refusal, no second meal), a page that passes an empty-fridge refusal on. The game is compiled from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/eat_page.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/eat_page.pdl
+halt
