@@ -1,0 +1,4 @@
+# page_follow.pal - LOCKED acceptance harness for petslike_core.c page_follow() (S3b-3: when a game board's OWN pin says source=game, a CHANGE of the page's room / hero cell moves the controlled character). The game is compiled from the scratch copy of the core. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/page_follow.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/page_follow.pdl
+halt

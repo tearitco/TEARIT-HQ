@@ -1159,6 +1159,103 @@ static void clock_event(const char *ev);
 #define PET_SECTION 55
 #include PET_SKIN
 #undef PET_SECTION
+/* PAGE -> GAME (S3b-3, 2026-10-28; BOOK 16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md section 27). Only when THIS board's own pin <pchq>/pieces/display/open_book_page.txt says `source=game` and names a page (`pdl=`, house-relative
+ * or absolute; the file is <room>.pdl and carries `DESK | hero_01 | <path> | px | py | cx | cy | ...`): a CHANGE of the page's room or hero cell moves the CONTROLLED character (ctl_idx, the same rule game_page_export uses) there.
+ * Rules, each one a test case: the FIRST time a page is seen it is only recorded (a stale page can never teleport anyone at startup); a page that already agrees with the game moves nothing; an unknown room, a missing hero row or an unsafe cell
+ * moves nothing; a blocked or door cell falls back to the same free-cell search `goto` uses; the sign of what was last seen lives in state/page_seen.txt (content, not mtime: a page rewritten with the same byte length still counts); nothing is ever
+ * written into the page (the pull export writes it). Idle cost: one small file read per call (the daemon calls it with the 2 s reload). Returns 1 when it moved someone (msg says who). */
+static int page_follow(char *msg, size_t cap) {
+    char pp[PATH_MAX], pb[1024] = "", source[32] = "", stored[PATH_MAX] = "", *sv = NULL;
+    if (snprintf(pp, sizeof pp, "%s/pieces/display/open_book_page.txt", PCHQ) >= (int)sizeof pp || read_file(pp, pb, sizeof pb) <= 0) {
+        return 0;
+    }
+    for (char *l = strtok_r(pb, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) {
+        l[strcspn(l, "\r")] = 0;
+        if (!strncmp(l, "source=", 7)) {
+            snprintf(source, sizeof source, "%s", l + 7);
+        } else if (!strncmp(l, "pdl=", 4)) {
+            snprintf(stored, sizeof stored, "%s", l + 4);
+        }
+    }
+    if (strcmp(source, "game") || !stored[0]) {
+        return 0;
+    }
+    char page[PATH_MAX], buf[8192];
+    int pw = stored[0] == '/' ? snprintf(page, sizeof page, "%s", stored) : snprintf(page, sizeof page, "%s/%s", HOUSE, stored);
+    if (pw >= (int)sizeof page || read_file(page, buf, sizeof buf) <= 0) {
+        return 0;
+    }
+    const char *base = strrchr(page, '/');
+    char room[64];
+    if (snprintf(room, sizeof room, "%s", base ? base + 1 : page) >= (int)sizeof room) {
+        return 0;
+    }
+    char *dot = strstr(room, ".pdl");
+    if (!dot || dot[4]) {
+        return 0;
+    }
+    *dot = 0;
+    int r = room_idx(room);
+    if (r < 0) {
+        return 0;
+    }
+    int cx = -1, cy = -1, have = 0;
+    for (char *l = strtok_r(buf, "\n", &sv); l && !have; l = strtok_r(NULL, "\n", &sv)) {
+        if (strncmp(l, "DESK", 4)) {
+            continue;
+        }
+        char *f[10];
+        int nf = split_bar(l, f, 10);
+        if (nf >= 7 && !strcmp(f[1], "hero_01") && f[5][0] >= '0' && f[5][0] <= '9' && f[6][0] >= '0' && f[6][0] <= '9') {
+            cx = atoi(f[5]);
+            cy = atoi(f[6]);
+            have = 1;
+        }
+    }
+    if (!have || cx >= rooms[r].cols || cy >= rooms[r].rows) {      /* the TARGET room's size (COLS/ROWS follow g_gr, the room being processed, which is not r yet) */
+        return 0;
+    }
+    char sig[160], seen[160] = "", sp[PATH_MAX];
+    snprintf(sig, sizeof sig, "%s:%d,%d\n", room, cx, cy);
+    spath(sp, "page_seen.txt");
+    int had = read_file(sp, seen, sizeof seen) > 0;
+    if (had && !strcmp(seen, sig)) {
+        return 0;
+    }
+    write_if_changed(sp, sig, strlen(sig));
+    if (!had) {
+        return 0;
+    }
+    int ci = ctl_idx();
+    use_ent(ci);
+    if (pet.room == r && pet.x == cx && pet.y == cy) {
+        return 0;
+    }
+    pet.room = r;
+    g_gr = r;
+    pet.dir = 0;
+    pet.tx = pet.ty = -1;
+    if (passable(cx, cy) && door_here(r, cx, cy) < 0) {
+        pet.x = cx;
+        pet.y = cy;
+    } else {
+        int placed = 0;
+        for (int k = 0; k < COLS * ROWS && !placed; k++) {
+            int x = (6 + k) % COLS, y = TRIG_ROW + 3 + ((6 + k) / COLS) % (ROWS - TRIG_ROW - 3 > 0 ? ROWS - TRIG_ROW - 3 : 1);
+            if (passable(x, y) && door_here(r, x, y) < 0) {
+                pet.x = x;
+                pet.y = y;
+                placed = 1;
+            }
+        }
+    }
+    char row[200];
+    snprintf(row, sizeof row, "PAGE|%ld|%s|%s,%d,%d", (long)time(NULL), ci < 0 ? "player" : party[ci].id, rooms[r].id, pet.x, pet.y);
+    append_line("events.txt", row);
+    pet_save();
+    snprintf(msg, cap, "page: %s follows the page to the %s (%d,%d)", ci < 0 ? "you" : party[ci].name, rooms[r].name, pet.x, pet.y);
+    return 1;
+}
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
@@ -1256,6 +1353,12 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (!strncmp(res, "OK ", 3)) { snprintf(msg, cap, "synch: the desk now shows book:" PET_APP " page:%s", rooms[vroom].name); return; }
         const char *why = !strcmp(res, "NOGO other-book") ? "the desk has another book open" : !strcmp(res, "NOGO no-such-page") ? "the desk's page is not a room of this game" : !strcmp(res, "NOGO book-not-on-desk") ? "this game is not a book on the desk yet" : !strcmp(res, "NOGO page-not-in-book") ? "this room is not a page of the book on the desk" : !strcmp(res, "NOGO no-desk") ? "no LyfeDesk session found" : "nothing to do";
         snprintf(msg, cap, "synch: %s (desk: %s)", why, dline[0] ? dline : "-"); return; }
+    if (!strcmp(v, "pagefollow")) {      /* one page_follow() call, for the harness and for a person: moves the controlled character when this board's pin says source=game and the page changed since last seen */
+        if (!page_follow(msg, cap)) {
+            snprintf(msg, cap, "page: nothing to follow");
+        }
+        return;
+    }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();
@@ -1423,7 +1526,7 @@ static int daemon_main(void) {
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
         usleep(100000); while (waitpid(-1, NULL, WNOHANG) > 0) {}      /* reap fire-and-forget children (run_quiet wait=0): no zombies pile up */
-        int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
+        int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); if (page_follow(msg, sizeof msg)) dirty = 1; } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
 #define PET_SECTION 67
 #include PET_SKIN
 #undef PET_SECTION

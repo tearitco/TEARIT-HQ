@@ -1,0 +1,154 @@
+# page_follow: LOCKED cases for petslike_core.c page_follow() (S3b-3: the controlled character follows a CHANGED page when this board's own pin says source=game). The game is compiled from the scratch copy of the core, so these cases judge the code in the repo.
+# Sequence in ONE scratch house (state carries from step to step). Expectations come from the rules in the function header, not from observed output; the one exception is marked.
+RESULTS | ../results/page_follow.txt
+CASE | page_follow
+SCRATCH |
+# setup: a minimal house skeleton under $T (the game finds its house by walking up to &.widgits and #.NNEST_ASSETS), the game folder without runtime state, the text-included sources, the pet DB, lc_clock
+COPYDIR | @.apps/rpg-space | @.apps/rpg-space | state,board,audit,+x,saves,rpg-space-pchq,.hq_manager
+MKDIR | @.apps/rpg-space/ops/+x
+MKDIR | @.apps/rpg-space/state
+MKDIR | #.NNEST_ASSETS/rmmv-www-img
+COPY | &.widgits/_shared-lib/stb_image.h | &.widgits/_shared-lib/stb_image.h
+COPY | &.widgits/_shared-lib/stb_image_write.h | &.widgits/_shared-lib/stb_image_write.h
+COPY | &.widgits/_shared-lib/game_events.c | &.widgits/_shared-lib/game_events.c
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | &.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPY | &.widgits/db-hq/data/system.pdl | &.widgits/db-hq/data/system.pdl
+COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl
+# EVENTS: a scratch house that can run and edit event pages: xyzfs marker (the pages find the game by walking up to it), the real play_event.sh, the command registry, the events-hq manager, bp_edit_op, and a prisc VM in a 101.mutaclsym*/system dir (play_event.sh walks up to find one)
+MKDIR | xyzfs
+MKDIR | #.ref/menu
+MKDIR | 101.mutaclsym-scratch/system
+COPY | &.widgits/events-hq/ops/play_event.sh | &.widgits/events-hq/ops/play_event.sh
+COPY | #.ref/menu/event_commands.registry.pdl | #.ref/menu/event_commands.registry.pdl
+COPY | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x
+COPY | &.hq-apps/blueprintz/+x/blueprintz_manager.+x | &.hq-apps/blueprintz/+x/blueprintz_manager.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | &.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x
+COPY | 101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x | 101.mutaclsym-scratch/system/prisc+x
+COPY | &.widgits/world-ops/ops/+x/wo.+x | &.widgits/world-ops/ops/+x/wo.+x
+COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_core.c
+COPY | &.widgits/_shared-lib/petslike_toolbar.c | &.widgits/_shared-lib/petslike_toolbar.c
+COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
+COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
+COPY | &.widgits/_shared-lib/kh_state_notify.h | &.widgits/_shared-lib/kh_state_notify.h
+COPY | &.widgits/_shared-lib/csv_frames.c | &.widgits/_shared-lib/csv_frames.c
+COPY | &.widgits/_shared-lib/petslike_skin_lib.c | &.widgits/_shared-lib/petslike_skin_lib.c
+COPY | &.widgits/_shared-lib/petslike_autotile.c | &.widgits/_shared-lib/petslike_autotile.c
+COPY | &.widgits/_shared-lib/petslike_life.c | &.widgits/_shared-lib/petslike_life.c
+COPY | @.apps/rpg-space/ops/+x/dust_gen.+x | @.apps/rpg-space/ops/+x/dust_gen.+x
+COPY | @.apps/rpg-space/ops/+x/dust_seed.+x | @.apps/rpg-space/ops/+x/dust_seed.+x
+COPY | @.apps/rpg-space/ops/+x/dust_zoom.+x | @.apps/rpg-space/ops/+x/dust_zoom.+x
+COPY | @.apps/rpg-space/ops/+x/dust_orbit.+x | @.apps/rpg-space/ops/+x/dust_orbit.+x
+COPY | @.apps/rpg-space/ops/+x/dust_check.+x | @.apps/rpg-space/ops/+x/dust_check.+x
+COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
+COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+COPY | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt
+COPY | @.apps/rpg-space/foods.pdl | @.apps/rpg-space/foods.pdl
+COPY | &.widgits/_shared-lib/ops/+x/fridge_op.+x | &.widgits/_shared-lib/ops/+x/fridge_op.+x
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-space/ops | -o | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | $T/@.apps/rpg-space/ops/rpg_space.c | -lm
+EXPECT_EXIT | 0 | setup.build
+EXPECT_EXISTS | @.apps/rpg-space/ops/+x/rpg_space.+x | setup.binary-exists
+MKDIR | pages
+MKDIR | @.apps/rpg-space/rpg-space-pchq/pieces/display
+WRITE | @.apps/rpg-space/state/flag_ctl.txt | pet\n
+WRITE | @.apps/rpg-space/state/active.txt | solvent\n
+WRITE | @.apps/rpg-space/state/pet_solvent.txt | room=bridge\nx=7\ny=5\ndir=1\nsteps=1\ntx=-1\nty=-1\n
+WRITE | @.apps/rpg-space/state/trainer.txt | room=bridge\nx=3\ny=5\ndir=1\nsteps=1\ntx=-1\nty=-1\n
+# C1 no pin at all
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c1.no-pin-nothing-to-follow
+EXPECT_NOFILE | @.apps/rpg-space/state/page_seen.txt | c1.nothing-recorded
+# C2 the pin says source=board (the default): a page is ignored
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 320 \p 400 \p 4 \p 5 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 320 \p 400 \p 4 \p 5 \p none \p 0\n
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=board\npdl=pages/quarters.pdl\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c2.board-pin-ignores-the-page
+EXPECT_NOFILE | @.apps/rpg-space/state/page_seen.txt | c2.nothing-recorded
+# C3 source=game: the FIRST sight only records (a stale page cannot teleport anyone at startup)
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game\npdl=pages/quarters.pdl\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c3.first-sight-moves-nobody
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:4,5 | c3.the-sight-is-recorded
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | room=bridge | c3.the-pet-did-not-move
+# C4 the same page again: nothing
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c4.unchanged-page-moves-nobody
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | room=bridge | c4.still-on-the-bridge
+# C5 the page changes to the quarters 8,8: the CONTROLLED pet (flag_ctl pet, active solvent) goes there
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 640 \p 640 \p 8 \p 8 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 640 \p 640 \p 8 \p 8 \p none \p 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | follows the page to the | c5.the-pet-follows
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | room=quarters | c5.in-the-quarters
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | x=8 | c5.at-x-8
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | y=8 | c5.at-y-8
+EXPECT_HAS | @.apps/rpg-space/state/events.txt | PAGE\p | c5.a-PAGE-row-was-logged
+EXPECT_HAS | @.apps/rpg-space/state/events.txt | solvent\pquarters,8,8 | c5.row-names-the-pet-and-the-cell
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:8,8 | c5.sight-updated
+EXPECT_HAS | @.apps/rpg-space/state/trainer.txt | room=bridge | c5.the-trainer-was-not-the-one-moved
+# C6 a rewrite with the SAME byte length (8,8 -> 4,5) still counts (content, not size)
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 320 \p 400 \p 4 \p 5 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 320 \p 400 \p 4 \p 5 \p none \p 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | follows the page to the | c6.same-length-rewrite-is-seen
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:4,5 | c6.sight-updated
+# C7 the page already agrees with the game: nothing moves and no PAGE row is added
+WRITE | @.apps/rpg-space/state/pet_solvent.txt | room=quarters\nx=8\ny=8\ndir=1\nsteps=2\ntx=-1\nty=-1\n
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 640 \p 640 \p 8 \p 8 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 640 \p 640 \p 8 \p 8 \p none \p 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c7.agreeing-page-moves-nobody
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:8,8 | c7.but-the-sight-is-recorded
+RUN | grep | -c | ^PAGE\p | $T/@.apps/rpg-space/state/events.txt
+EXPECT_OUT_IS | 2 | c7.exactly-two-PAGE-rows-so-far
+# C8 a page for a room the game does not have: nothing, sight unchanged
+WRITE | pages/nowhere.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 320 \p 400 \p 4 \p 5 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 320 \p 400 \p 4 \p 5 \p none \p 0\n
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game\npdl=pages/nowhere.pdl\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c8.unknown-room
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:8,8 | c8.sight-unchanged
+# C9 a page with no hero_01 row: nothing
+WRITE | pages/quarters.pdl | DESK \p xelector_01 \p @.apps/g/xelector_01 \p 0 \p 0 \p 1 \p 1 \p none \p 0\n
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game\npdl=pages/quarters.pdl\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c9.no-hero-row
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:8,8 | c9.sight-unchanged
+# C10 a cell outside the room: nothing
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 7920 \p 400 \p 99 \p 5 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 7920 \p 400 \p 99 \p 5 \p none \p 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | page: nothing to follow | c10.cell-outside-the-room
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:8,8 | c10.sight-unchanged
+# C11 a blocked cell (row 0 is above the floor): the pet follows into the room but not onto that cell
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 0 \p 0 \p 0 \p 0 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 0 \p 0 \p 0 \p 0 \p none \p 0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | follows the page to the | c11.follows-into-the-room
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | room=quarters | c11.in-the-quarters
+RUN | grep | -q | ^y=0$ | $T/@.apps/rpg-space/state/pet_solvent.txt
+EXPECT_EXIT | 1 | c11.not-on-the-blocked-row
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:0,0 | c11.sight-recorded-as-the-page-says
+# C12 flag_ctl player: the TRAINER follows (a record already exists, so the first run of this page applies at once), the pet stays
+WRITE | @.apps/rpg-space/state/flag_ctl.txt | player\n
+WRITE | pages/hold.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 480 \p 400 \p 6 \p 5 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 480 \p 400 \p 6 \p 5 \p none \p 0\n
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game\npdl=pages/hold.pdl\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | follows the page to the | c12.the-trainer-follows
+EXPECT_HAS | @.apps/rpg-space/state/trainer.txt | room=hold | c12.the-trainer-is-in-the-hold
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | room=quarters | c12.the-pet-stayed
+EXPECT_HAS | @.apps/rpg-space/state/events.txt | \pplayer\phold, | c12.the-row-names-the-player
+# C13 flag_ctl pet again, an ABSOLUTE pdl path, a changed page (quarters 8,8; the pet is somewhere else in the quarters): the pet follows to 8,8
+WRITE | @.apps/rpg-space/state/flag_ctl.txt | pet\n
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 640 \p 640 \p 8 \p 8 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 640 \p 640 \p 8 \p 8 \p none \p 0\n
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game\npdl=$T/pages/quarters.pdl\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | pagefollow
+EXPECT_OUT | follows the page to the | c13.absolute-pdl-works
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | x=8 | c13.at-x-8
+EXPECT_HAS | @.apps/rpg-space/state/pet_solvent.txt | y=8 | c13.at-y-8
+EXPECT_HAS | @.apps/rpg-space/state/trainer.txt | room=hold | c13.the-trainer-stayed
+# C14 a HOUSE-RELATIVE pdl, run from another working directory (the daemon does not run from the house root): the path is resolved against the house
+WRITE | @.apps/rpg-space/rpg-space-pchq/pieces/display/open_book_page.txt | source=game\npdl=pages/quarters.pdl\n
+WRITE | pages/quarters.pdl | DESK \p hero_01 \p @.apps/g/hero_01 \p 320 \p 400 \p 4 \p 5 \p . \p 0\nDESK \p xelector_01 \p @.apps/g/xelector_01 \p 320 \p 400 \p 4 \p 5 \p none \p 0\n
+RUN | sh | -c | cd / && nice -n 15 $T/@.apps/rpg-space/ops/+x/rpg_space.+x pagefollow
+EXPECT_OUT | follows the page to the | c14.relative-pdl-resolved-against-the-house
+EXPECT_HAS | @.apps/rpg-space/state/page_seen.txt | quarters:4,5 | c14.sight-updated
+CLEAN |
