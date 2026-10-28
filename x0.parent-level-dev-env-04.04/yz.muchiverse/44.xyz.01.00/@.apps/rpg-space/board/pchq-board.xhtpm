@@ -77,6 +77,8 @@
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-space/board/state/sides.txt' side_left hide"/>
         <text id="light" label="${run_label}" class="${run_cls}"/>
         <text label="${addr_line}" class="ph-quiet"/>
+        <cli_io id="sl-look" target_id="sl-look" rows="1" class="rp-say" label="cam x y z: " action="'${HOUSE}/&.widgits/board-viewer/tools/+x/bv_look.+x'"/>
+        <item id="sl-look-off" class="pchq-ft skin-bar" label="cam: back to normal" action="'${HOUSE}/&.widgits/board-viewer/tools/+x/bv_look.+x' '${HOUSE}/@.apps/rpg-space' '${HOUSE}' 'off'"/>
         <item id="regen" class="pchq-ft skin-bar" label="Regen (next seed)" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' regen"/>
         <item id="zin" class="pchq-ft skin-bar" label="Zoom in here" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' zoomhere"/>
         <item id="zout" class="pchq-ft skin-bar" label="Zoom out" action="'${HOUSE}/@.apps/rpg-space/ops/+x/rpg_space.+x' zoomout"/>

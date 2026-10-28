@@ -966,6 +966,8 @@ static void follow_pchq(void) {
     int pin = g_pin_now; g_pin_now = 0;
     if (pin || e->room != lr || e->x != lx || e->y != ly) { lr = e->room; lx = e->x; ly = e->y; changed = 1;
         kv_set_int(xp, "pos_x", e->x); kv_set_int(xp, "pos_y", e->y); kv_set_int(hp, "pos_x", e->x); kv_set_int(hp, "pos_y", e->y); sync_selector(e->x, e->y); }
+    {   /* the cell of the controlled character, for the board engine's see-through cutaway (pieces/system/cut_target.txt): the selector only follows when the character moves or In: is on, so it is not a reliable "where is the character" */
+        char ct[PATH_MAX], cb[160]; snprintf(ct, sizeof ct, "%s/pieces/system/cut_target.txt", PCHQ); int cn = snprintf(cb, sizeof cb, "x=%d\ny=%d\nroom=%s\n", e->x, e->y, rooms[e->room].id); write_if_changed(ct, cb, (size_t)cn); }
     static long lsend = 0; if (strcmp(dk, rooms[e->room].id) && (lw != e->room || now_ms() - lsend > 3000)) { lw = e->room; lsend = now_ms();      /* the desk request is sent again every 3 s while the engine still shows another desk (a book reload or a camera reset puts it back on the first desk and swallows the request) */ char ib[PATH_MAX], c[96]; snprintf(ib, sizeof ib, "%s/pieces/system/widget_cmds/inbox.txt", PCHQ); snprintf(c, sizeof c, "CONFIRM_SET_DESK:%s", rooms[e->room].id); FILE *f = fopen(ib, "a"); if (f) { fprintf(f, "%s\n", c); fclose(f); } changed = 1; }
     if (!strcmp(dk, rooms[e->room].id)) lw = e->room;
     /* any pet/Harold stepping changes the sprites too: redraw when the events text changed (write_room_events reports via the checksum below) */
