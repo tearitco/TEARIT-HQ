@@ -44,6 +44,7 @@
 .row-click { width: 400px; }
 .row-sound, .row-soundui, .row-soundstart { width: 400px; }
 .row-prismtoggle { width: 400px; }
+.prism-preview { width: 128px; height: 128px; }
 .tone-dark  { color: #ffffff; }
 .tone-light { color: #111111; }
 

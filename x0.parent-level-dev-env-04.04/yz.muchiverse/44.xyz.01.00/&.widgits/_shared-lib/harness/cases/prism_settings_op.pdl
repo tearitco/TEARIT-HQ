@@ -93,4 +93,9 @@ EXPECT_HAS | r2.txt | cmp=0 | s6.same-variables-same-picture
 # S7 no sibling renderer: exit 1
 RUN | $T/nop/ps.+x | $T/h | PRISM_SHOW
 EXPECT_EXIT | 1 | s7.no-prism_op-exit-1
+# S8 the 128 px preview for the settings window canvas
+RUN | $T/ps.+x | $T/h | PRISM_SHOW
+EXPECT_EXISTS | h/#.desktop/prism_preview.rgba | s8.preview-rendered
+EXPECT_HAS | h/#.desktop/prism_preview.rgba.receipt.txt | overlay_w=128 | s8.preview-is-128
+EXPECT_HAS | h/#.desktop/prism_theme.rgba.receipt.txt | overlay_w=256 | s8.theme-picture-stays-256
 CLEAN |

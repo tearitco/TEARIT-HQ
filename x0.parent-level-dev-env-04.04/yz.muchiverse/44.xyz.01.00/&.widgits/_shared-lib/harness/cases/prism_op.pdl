@@ -8,8 +8,8 @@ EXPECT_EXIT | 0 | setup.compiles-clean
 RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60
 EXPECT_EXIT | 0 | d1.default-exit-0
 EXPECT_OUT | shape=1 algo=2 hue=0 light=60 size=256 fnv=d651f84368d6a854 | d1.default-rainbow-pinned
-EXPECT_FILE | o.rgba | d1.rgba-written
-EXPECT_FILE | o.png | d1.png-written
+EXPECT_EXISTS | o.rgba | d1.rgba-written
+EXPECT_EXISTS | o.png | d1.png-written
 EXPECT_HAS | o.png | PNG | d1.png-signature
 RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60
 EXPECT_OUT | fnv=d651f84368d6a854 | d2.same-variables-same-pixels
@@ -55,4 +55,11 @@ RUN | $T/po.+x | $T/o
 EXPECT_EXIT | 2 | r7.missing-args-usage
 RUN | $T/po.+x | $T/nodir/o | 1 | 2 | 0 | 60
 EXPECT_EXIT | 1 | r8.unwritable-output-exit-1
+# R the receipt the shared <canvas sprite=...> element reads (overlay_w= / overlay_h=)
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60
+EXPECT_HAS | o.rgba.receipt.txt | overlay_w=256 | rc1.receipt-width
+EXPECT_HAS | o.rgba.receipt.txt | overlay_h=256 | rc1.receipt-height
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60 | 64
+EXPECT_HAS | o.rgba.receipt.txt | overlay_w=64 | rc2.receipt-follows-the-size
+EXPECT_HAS | o.rgba.receipt.txt | overlay_h=64 | rc2.receipt-height-follows-the-size
 CLEAN |

@@ -363,6 +363,7 @@ static size_t append_prism_labels(const char *house, char *ui, size_t cap, size_
     if (hue < 0 || hue > 359) hue = 0;
     if (light < 0 || light > 100) light = 60;
     custom = custom != 0;
+    off += (size_t)snprintf(ui + off, cap - off, "prism_preview_raw=%s/#.desktop/prism_preview.rgba\n", house);
     off += (size_t)snprintf(ui + off, cap - off, "prism_custom_label=Custom theme (prism): %s (press to switch)\n", custom ? "ON" : "OFF");
     off += (size_t)snprintf(ui + off, cap - off, "prism_shape_label=Prism shape: %s\n", shapes[shape]);
     off += (size_t)snprintf(ui + off, cap - off, "prism_algo_label=Prism light: %s\n", algos[algo]);

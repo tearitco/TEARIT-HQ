@@ -3,7 +3,7 @@
  *   prism_op <out_prefix> <shape> <algo> <hue> <light> [size]
  *     shape 0 triangle | 1 hexagon | 2 diamond | 3 circle        algo 0 radial | 1 linear | 2 spiral | 3 noise (how the rainbow spreads over the facets)
  *     hue   0-359 (rotates the whole rainbow)                     light 0-100 (brightness of the facets)         size 64-1024, default 256 (square)
- *   Writes <out_prefix>.rgba (size*size*4 bytes, R G B A) and <out_prefix>.png (uncompressed PNG), prints
+ *   Writes <out_prefix>.rgba (size*size*4 bytes, R G B A), <out_prefix>.rgba.receipt.txt (overlay_w=/overlay_h=, what the shared <canvas sprite=...> element reads to show it) and <out_prefix>.png (uncompressed PNG), prints
  *   `prism: shape=<s> algo=<a> hue=<h> light=<l> size=<n> fnv=<16 hex of the pixels>`.   Exit 0 | 1 cannot write | 2 usage / out of range.
  * The default preset is shape 1, algo 2, hue 0, light 60 ("rainbow").   Build: sh build_prism_op.sh (links -lm) */
 #include <stdio.h>
@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
         for (int k = 0; k < 4; k++) { fnv ^= p[k]; fnv *= 1099511628211ull; }
     }
     char path[4200]; snprintf(path, sizeof path, "%.4000s.rgba", argv[1]); FILE *f = fopen(path, "wb"); if (!f || fwrite(px, 1, (size_t)n * n * 4, f) != (size_t)n * n * 4) { if (f) { fclose(f); } free(px); return 1; } if (fclose(f)) { free(px); return 1; }
+    snprintf(path, sizeof path, "%.4000s.rgba.receipt.txt", argv[1]); f = fopen(path, "w"); if (!f) { free(px); return 1; } fprintf(f, "overlay_w=%d\noverlay_h=%d\n", n, n); if (fclose(f)) { free(px); return 1; }
     snprintf(path, sizeof path, "%.4000s.png", argv[1]); if (!write_png(path, px, n)) { free(px); return 1; }
     free(px); printf("prism: shape=%ld algo=%ld hue=%ld light=%ld size=%d fnv=%016llx\n", shape, algo, hue, light, n, (unsigned long long)fnv); return 0;
 }
