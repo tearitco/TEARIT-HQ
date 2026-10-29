@@ -1,0 +1,4 @@
+# piece_check.pal - LOCKED harness for piece_check (BOOK 16.game/PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md section 6): read-only audit of piece identity across games and the Master Pal List. The op is compiled -Wall -Wextra -Werror from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/piece_check.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/piece_check.pdl
+halt

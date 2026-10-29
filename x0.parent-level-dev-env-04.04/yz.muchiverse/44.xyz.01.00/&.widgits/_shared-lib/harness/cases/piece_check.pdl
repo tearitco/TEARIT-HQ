@@ -1,0 +1,63 @@
+# piece_check: LOCKED cases (BOOK 16.game/PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md section 6). Read-only audit of piece identity; expectations come from the op header rules.
+RESULTS | ../results/piece_check.txt
+CASE | piece_check
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/piece_check.c | pc.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/pc.+x | $T/pc.c
+EXPECT_EXIT | 0 | setup.compiles-clean
+MKDIR | h
+MKDIR | h/@.apps/g1/state
+MKDIR | h/@.apps/g2/state
+MKDIR | h/@.apps/g3/state
+WRITE | h/@.apps/g1/toy.pdl | x\n
+WRITE | h/@.apps/g2/toy.pdl | x\n
+WRITE | h/@.apps/g3/toy.pdl | x\n
+WRITE | h/@.apps/g1/.gitignore | state/\n
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/rex
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/rex/entity_uid.txt | dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/broken
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/broken/entity_uid.txt | zz\n
+# P1 clean: g1 rex, g2 rex (different uids), g3 pip. Warnings only; exit 0
+WRITE | h/@.apps/g1/state/uid_rex.txt | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n
+WRITE | h/@.apps/g2/state/uid_rex.txt | bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n
+WRITE | h/@.apps/g3/state/uid_pip.txt | cccccccccccccccccccccccccccccccc\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_HAS | h/out.txt | piece_check: games=3 pets=3 master=2 errors=0 | p1.summary
+EXPECT_HAS | h/out.txt | exit=0 | p1.no-error-exit-0
+EXPECT_HAS | h/out.txt | WARN name_collision rex games=2 uids=2 | p1.same-name-different-uids-warned
+EXPECT_LACKS | h/out.txt | name_collision pip | p1.single-game-name-not-flagged
+EXPECT_HAS | h/out.txt | WARN not_durable g1 files=1 | p1.ignored-state-warned
+EXPECT_LACKS | h/out.txt | not_durable g2 | p1.game-without-ignore-not-flagged
+EXPECT_HAS | h/out.txt | WARN master_bad_uid u1/broken | p1.bad-master-uid-warned
+EXPECT_LACKS | h/out.txt | master_bad_uid u1/rex | p1.64-hex-master-uid-is-valid
+EXPECT_HAS | h/out.txt | WARN no_master g3 pip | p1.pet-without-master-pal-warned
+EXPECT_LACKS | h/out.txt | no_master g1 rex | p1.pet-with-master-pal-not-flagged
+EXPECT_HAS | h/out.txt | WARN mixed_uid_formats games32=3 master64=1 | p1.mixed-lengths-warned
+# P2 an empty uid file is an ERROR (exit 1)
+WRITE | h/@.apps/g3/state/uid_pip.txt | \n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_HAS | h/out.txt | ERROR empty_uid g3 pip | p2.empty-uid-error
+EXPECT_HAS | h/out.txt | exit=1 | p2.error-exit-1
+# P2b a too-short or non-hex uid is also an ERROR
+WRITE | h/@.apps/g3/state/uid_pip.txt | gggggggggggggggggggggggggggggggg\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_HAS | h/out.txt | ERROR empty_uid g3 pip | p2b.non-hex-error
+# P2c a valid-hex but wrong-length uid is an ERROR
+WRITE | h/@.apps/g3/state/uid_pip.txt | abc123\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_HAS | h/out.txt | ERROR empty_uid g3 pip | p2c.short-hex-error
+# P3 one uid used by two different pets is an ERROR
+WRITE | h/@.apps/g3/state/uid_pip.txt | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_HAS | h/out.txt | ERROR dup_uid aaaaaaaa g1:rex g3:pip | p3.dup-uid-error
+EXPECT_HAS | h/out.txt | exit=1 | p3.exit-1
+# P4 the audit writes nothing
+# P5 a master pal named <prefix>_<slug> matches the slug; a mere substring does not
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/terumon_001_ember
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/terumon_001_ember/entity_uid.txt | dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n
+WRITE | h/@.apps/g2/state/uid_ember.txt | eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n
+WRITE | h/@.apps/g2/state/uid_mber.txt | ffffffffffffffffffffffffffffffff\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_LACKS | h/out.txt | no_master g2 ember | p5.prefixed-master-pal-matches
+EXPECT_HAS | h/out.txt | WARN no_master g2 mber | p5.substring-does-not-match
+CLEAN |
