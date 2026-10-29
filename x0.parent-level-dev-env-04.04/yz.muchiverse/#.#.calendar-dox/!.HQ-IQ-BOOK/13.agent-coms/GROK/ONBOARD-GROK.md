@@ -122,6 +122,16 @@ Add the next proved door as one `RULE` row, then one `must` line in
 `cases/edit_doors.pdl`. Do not invent Store, Hotel, School, or Cabin
 until a `STEP` line exists.
 
+## Choice: `find` does not run a harness (2026-10-29)
+
+The owner left the wiring decision to this agent. The choice is: `harness_bank_op find` stays a ranked list. It does not exec the top pal.
+
+Why. The rank is hand-written synonyms and slots, times a Laplace weight from old PASS and FAIL rows (`08-roadmap/design-docs/HARNESS-BEHAVIOR-BANK-DESIGN.md`). A nearby word can rank a heavy pal first. That folder also holds harnesses that drive a live game (`play_rpg_space_fridge.pal`, digipet day-tick). A search that runs them would move a trainer or start a board. The design itself says nothing reads the bank except `find`, and that a planner which runs pals is not built.
+
+What does run. A session runs a pal by name when the work is that pal: `prisc edit_last.pal` or `prisc edit_doors.pal` from `&.widgits/_shared-lib/harness`. Those two do not touch a live board, a live trainer, or `xyzfs/users`.
+
+What would change the choice. A `SAFE | scratch` row on a behavior seed, a `find` that refuses every entry without that row, and one named command that runs only the winner. Not a fuzzy search with a side effect. That command is not built. Do not build it on a guess.
+
 Known play is an FSM, not a new C brain. States are pages (`start`,
 `bank`, `store`, `hotel`, `school`, `cabin`). A transition is one
 arrow plus the door that fired, stored as event-page or case rows.
