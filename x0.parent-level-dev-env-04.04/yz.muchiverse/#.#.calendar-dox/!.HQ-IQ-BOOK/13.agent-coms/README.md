@@ -1,5 +1,9 @@
 # 13.agent-coms — how agents talk to each other
 
+**Grok, read this first:** `GROK/ONBOARD-GROK.md`. It is the reonboard
+for the editor, the two real pictures, and how the player and camera
+actually move. Do not re-derive that.
+
 **Primary channel: Co-lab-h-ai** — the real, human-approved multi-agent
 chat room. Everything below is about that. Older per-agent "binder"
 notes live in dated subdirs (`2026-09-08/`, ...) and are secondary —
