@@ -181,3 +181,52 @@ says the cost.
 
 Everything else in this note is settled enough to start slice 1 in
 section 5 once those three are answered.
+
+## 7. Owner answers, checked on the machine (2026-10-29, later)
+
+The owner answered the three open items: the editor opens whichever
+book was last edited, or an empty/demo project; run what is needed;
+test which picture is the proof.
+
+**Last edited vs demo. RAN, no new window.** There is no last-edited
+picker in `rpg-edit-hq/button.sh`. That script opens the floating-island
+edit board. The daemon already running (`rpg_edit_hq.+x`, nice 15)
+has `state/ui.txt` saying `book:rpg-edit-hq` and `page:Bank`.
+`rooms.pdl` names the demo town: Islands, Bank, Store, Hotel, School,
+Cabin. That is the demo project, and it is what is open in the
+editor process now.
+
+The desk copies under the owner's livedesk `sessions/` are not a
+last-edit list. `cdda-hq`, `civ-rpgce`, `df-hq`, `dsr-rpg`, `gta-hq`,
+`mcl-hq`, `rpg-dust`, `rpg-edit-hq` and `tcg-rpgce` share one
+`session.pdl` timestamp (`1793237243`), so the last name in that
+install (`tcg-rpgce`) is not "last edited". The newest desk book with
+its own earlier stamp is `rpg-space` (`bridge`, `1793193932`).
+`pre-design` / `office` is older (`1792593145`).
+
+**INFER, the rule to build.** On save, write one row naming the book
+and page. On open, read that row. If the file is missing or the book
+is gone, open the demo `rpg-edit-hq` Islands (page `start`), not a
+blank map and not `tcg-rpgce`.
+
+**Pictures. RAN.** `dump_board_frame.sh` on `rpg-edit-hq-pchq` exited
+1: `no 2d frame`. The edit board session directory
+`1793230715-81882` is deleted; a `pc_trigger_watcher` still has that
+deleted cwd. `/tmp/entity-menu-frame.png` was not created. Key `p`
+only converts `pieces/display/rgb_frame_2d.raw` into that PNG. It is
+the 2D frame the board painted, and only after a live board session
+exists.
+
+`dump_frame_png_op e00002 /tmp/grok-tile-dump.png` on the already-open
+cursword tile wrote a real PNG, 80x80, 1060 bytes, exit 0. That tool
+is the X-window capture. It sees a LyfeDesk window, including a 3D
+canvas when that window is the one you pass. No board was launched.
+Load after the dump was 1.69. The 2026-10-28 15:21 freeze is still a
+reason not to start a second board while this daemon is up.
+
+**Which file proves what.** Text state first. Key `p` proves the 2D
+board frame, and it failed closed here because that frame was absent.
+`dump_frame_png_op` proves pixels of a real X window, and it worked
+on a window that was already open. A 3D proof waits until a board
+window is actually on screen. Do not treat a missing `p` PNG as a
+failed edit.
