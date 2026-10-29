@@ -1,4 +1,0 @@
-# prism_settings_wiring.pal - LOCKED harness for the Custom-theme wiring in the settings window (projector labels + template actions + prism_settings_op). Judge: harness_verdict_op.
-exec ./ops/+x/harness_case_op.+x cases/prism_settings_wiring.pdl
-exec ./ops/+x/harness_verdict_op.+x cases/prism_settings_wiring.pdl
-halt

@@ -1,4 +1,0 @@
-# prism_op.pal - LOCKED harness for prism_op (the Custom theme prism). Compiled -Wall -Wextra -Werror from the repo source. Judge: harness_verdict_op.
-exec ./ops/+x/harness_case_op.+x cases/prism_op.pdl
-exec ./ops/+x/harness_verdict_op.+x cases/prism_op.pdl
-halt

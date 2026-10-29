@@ -336,42 +336,6 @@ static size_t append_sound_labels(const char *house, char *ui, size_t cap, size_
     return off;
 }
 
-/* Custom theme (prism) labels, read-only view of #.desktop/livedesk_prism.pdl (written by prism_settings_op; owner 2026-10-28): shape, algorithm, hue, brightness, on/off.
- * A missing or out-of-range value shows the default rainbow (shape 1 hexagon, algo 2 spiral, hue 0, light 60, off). */
-static size_t append_prism_labels(const char *house, char *ui, size_t cap, size_t off) {
-    static const char *shapes[] = {"triangle", "hexagon", "diamond", "circle"};
-    static const char *algos[] = {"radial", "linear", "spiral", "noise"};
-    int shape = 1, algo = 2, hue = 0, light = 60, custom = 0;
-    char path[PATH_MAX], line[256];
-    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_prism.pdl", house);
-    FILE *f = fopen(path, "r");
-    if (f) {
-        while (fgets(line, sizeof(line), f)) {
-            char *a = strchr(line, '|'); if (!a || strncmp(line, "PRISM", 5) != 0) continue;
-            a++; while (*a == ' ') a++;
-            char *b = strchr(a, '|'); if (!b) continue;
-            char *e = b - 1; while (e > a && *e == ' ') *e-- = '\0';
-            *b++ = '\0'; while (*b == ' ') b++;
-            if (strcmp(a, "shape") == 0) shape = atoi(b); else if (strcmp(a, "algo") == 0) algo = atoi(b);
-            else if (strcmp(a, "hue") == 0) hue = atoi(b); else if (strcmp(a, "light") == 0) light = atoi(b);
-            else if (strcmp(a, "custom") == 0) custom = atoi(b);
-        }
-        fclose(f);
-    }
-    if (shape < 0 || shape > 3) shape = 1;
-    if (algo < 0 || algo > 3) algo = 2;
-    if (hue < 0 || hue > 359) hue = 0;
-    if (light < 0 || light > 100) light = 60;
-    custom = custom != 0;
-    off += (size_t)snprintf(ui + off, cap - off, "prism_preview_png=%s/#.desktop/prism_preview.png\n", house);
-    off += (size_t)snprintf(ui + off, cap - off, "prism_custom_label=Custom theme (prism): %s (press to switch)\n", custom ? "ON" : "OFF");
-    off += (size_t)snprintf(ui + off, cap - off, "prism_shape_label=Prism shape: %s\n", shapes[shape]);
-    off += (size_t)snprintf(ui + off, cap - off, "prism_algo_label=Prism light: %s\n", algos[algo]);
-    off += (size_t)snprintf(ui + off, cap - off, "prism_hue_label=Prism hue: %d\n", hue);
-    off += (size_t)snprintf(ui + off, cap - off, "prism_light_label=Prism brightness: %d%%\n", light);
-    return off;
-}
-
 static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family,
                      double opacity, double font_scale, const char *bar_label, int grid_cell) {
     const char *prompt =
@@ -407,7 +371,6 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     off += (size_t)snprintf(ui + off, cap - off, "size_label=Size: %d%%\n", (int)(font_scale * 100.0 + 0.5));
     off += (size_t)snprintf(ui + off, cap - off, "grid_label=Grid: %d px\n", grid_cell);
     off = append_sound_labels(g_house_for_skins, ui, cap, off);
-    off = append_prism_labels(g_house_for_skins, ui, cap, off);
     off += (size_t)snprintf(ui + off, cap - off, "colors_label=Colors - background: %s, text: %s. Pick below (green ring = background, gold ring = text)\n",
                             (bg >= 0 && bg < g_n_swatches) ? g_name_buf[bg] : "-",
                             (fg >= 0 && fg < g_n_swatches) ? g_name_buf[fg] : "-");
