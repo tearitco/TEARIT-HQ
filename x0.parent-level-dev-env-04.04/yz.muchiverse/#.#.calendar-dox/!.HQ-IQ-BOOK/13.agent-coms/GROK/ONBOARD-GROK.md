@@ -108,10 +108,19 @@ pc-hq's camera to "fix" the edit board.
 
 A playability fact that was proved by hand gets written down once as
 a pal harness (`&.widgits/_shared-lib/harness/`: a `.pal`, a
-`cases/<name>.pdl`, the shared case and verdict ops). `edit_last.pal`
-is the shape. The case rows are the arrows, the expected `STEP` line,
-and the expected room. The next session runs `prisc <name>.pal` and
-reads `results/<name>.txt.verdict.txt`. It does not retype the relay.
+`cases/<name>.pdl`, the shared case and verdict ops). Run from that
+folder: `prisc <name>.pal`, then read `results/<name>.txt.verdict.txt`.
+
+Use these. Do not retype the relays they already cover.
+
+| pal | what it is |
+|---|---|
+| `edit_last.pal` | last book row, or Islands when the row is missing or the book is gone |
+| `edit_doors.pal` | the door FSM. Table is `@.apps/rpg-edit-hq/doors.fsm.pdl`. Checker is `ops/edit_doors.sh`. The proved row is Islands `4,4` + up (`1002`) to Bank `12,13`. An unproved door is exit 2. `scene-self black` fails, `scene-self good` passes. |
+
+Add the next proved door as one `RULE` row, then one `must` line in
+`cases/edit_doors.pdl`. Do not invent Store, Hotel, School, or Cabin
+until a `STEP` line exists.
 
 Known play is an FSM, not a new C brain. States are pages (`start`,
 `bank`, `store`, `hotel`, `school`, `cabin`). A transition is one
