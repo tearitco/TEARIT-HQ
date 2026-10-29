@@ -1,0 +1,58 @@
+# prism_op: LOCKED cases. The pinned fnv values are the pixels hash of the good op, observed once and decoded independently (PNG CRCs + inflate + pixel match with the .rgba) outside the op; each of the four variables must change the pixels.
+RESULTS | ../results/prism_op.txt
+CASE | prism_op
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/prism_op.c | po.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/po.+x | $T/po.c | -lm
+EXPECT_EXIT | 0 | setup.compiles-clean
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60
+EXPECT_EXIT | 0 | d1.default-exit-0
+EXPECT_OUT | shape=1 algo=2 hue=0 light=60 size=256 fnv=d651f84368d6a854 | d1.default-rainbow-pinned
+EXPECT_FILE | o.rgba | d1.rgba-written
+EXPECT_FILE | o.png | d1.png-written
+EXPECT_HAS | o.png | PNG | d1.png-signature
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60
+EXPECT_OUT | fnv=d651f84368d6a854 | d2.same-variables-same-pixels
+RUN | $T/po.+x | $T/o | 2 | 2 | 0 | 60
+EXPECT_OUT | fnv=53bc7488b5e9bb00 | v1.shape-changes-the-pixels
+RUN | $T/po.+x | $T/o | 0 | 2 | 0 | 60
+EXPECT_OUT | fnv=2cf3da9608300019 | v1.triangle
+RUN | $T/po.+x | $T/o | 3 | 2 | 0 | 60
+EXPECT_OUT | fnv=e02b4d877cff669b | v1.circle
+RUN | $T/po.+x | $T/o | 1 | 0 | 0 | 60
+EXPECT_OUT | fnv=f7b06bdddb3bf473 | v2.radial
+RUN | $T/po.+x | $T/o | 1 | 1 | 0 | 60
+EXPECT_OUT | fnv=e7e3fb508691af98 | v2.linear
+RUN | $T/po.+x | $T/o | 1 | 3 | 0 | 60
+EXPECT_OUT | fnv=0bdc99ca01185ba6 | v2.noise
+RUN | $T/po.+x | $T/o | 1 | 2 | 120 | 60
+EXPECT_OUT | fnv=20c46d155420af06 | v3.hue-changes-the-pixels
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 40
+EXPECT_OUT | fnv=9445919616b7173d | v4.light-changes-the-pixels
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60 | 64
+EXPECT_OUT | size=64 fnv=59613579227faf70 | v5.size-64
+RUN | $T/po.+x | $T/o | 4 | 2 | 0 | 60
+EXPECT_EXIT | 2 | r1.shape-4-refused
+RUN | $T/po.+x | $T/o | -1 | 2 | 0 | 60
+EXPECT_EXIT | 2 | r1.shape-negative-refused
+RUN | $T/po.+x | $T/o | 1 | 4 | 0 | 60
+EXPECT_EXIT | 2 | r2.algo-4-refused
+RUN | $T/po.+x | $T/o | 1 | 2 | 360 | 60
+EXPECT_EXIT | 2 | r3.hue-360-refused
+RUN | $T/po.+x | $T/o | 1 | 2 | -1 | 60
+EXPECT_EXIT | 2 | r3.hue-negative-refused
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 101
+EXPECT_EXIT | 2 | r4.light-101-refused
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | -1
+EXPECT_EXIT | 2 | r4.light-negative-refused
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60 | 63
+EXPECT_EXIT | 2 | r5.size-63-refused
+RUN | $T/po.+x | $T/o | 1 | 2 | 0 | 60 | 1025
+EXPECT_EXIT | 2 | r5.size-1025-refused
+RUN | $T/po.+x | $T/o | x | 2 | 0 | 60
+EXPECT_EXIT | 2 | r6.not-a-number-refused
+RUN | $T/po.+x | $T/o
+EXPECT_EXIT | 2 | r7.missing-args-usage
+RUN | $T/po.+x | $T/nodir/o | 1 | 2 | 0 | 60
+EXPECT_EXIT | 1 | r8.unwritable-output-exit-1
+CLEAN |
