@@ -749,6 +749,116 @@ RUN | sh | -c | sed -n "s/^DESK . pet_\([a-z]*\) .*/\1/p" $T/oth_sort/sess/desks
 EXPECT_OUT | alpha bravo charlie delta kilo mike yankee zulu | oth_sort.rows-are-sorted-by-id
 RUN | $T/gpe.+x | $T/oth_sort/h/@.apps/g | $T/oth_sort/sess | --house | $T/oth_sort/h | --if-changed
 EXPECT_OUT | unchanged | oth_sort.a-second-run-writes-nothing
+# D (2026-10-28): a game that was NEVER PLAYED has no cell: the core first-run default (first room, cell 8,8, clamped) is used, with a note; refused where the rule does not really apply.
+CASE | dflt_missing
+MKDIR | dflt_missing/h/&.widgits
+MKDIR | dflt_missing/h/@.apps/g/state
+MKDIR | dflt_missing/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dflt_missing/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dflt_missing/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dflt_missing/h/@.apps/g/g-pchq/pieces/system
+WRITE | dflt_missing/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | dflt_missing/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | dflt_missing/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dflt_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dflt_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dflt_missing/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | dflt_missing/h/@.apps/g/rooms.pdl | ROOM \p city \p City \p 0 \p 0 \p over \p 20 \p 13 \p 32 \p worldmap\nROOM \p bank \p Bank \p 1 \p 4\n
+RUN | $T/gpe.+x | $T/dflt_missing/h/@.apps/g | $T/dflt_missing/sess | --house | $T/dflt_missing/h
+EXPECT_EXIT | 0 | dflt_missing-exit-0
+EXPECT_OUT | note: trainer.txt has no room/x/y yet (the game was never played) | dflt_missing.says-so
+EXPECT_OUT | first room `city` cell 8,8 | dflt_missing.room-0-cell-8-8
+EXPECT_HAS | dflt_missing/sess/desks/city.pdl | DESK \p hero_01 \p @.apps/g/g-pchq/pieces/hero_01 \p 640 \p 640 \p 8 \p 8 \p . \p 0 | dflt_missing.hero-row-at-8-8
+EXPECT_HAS | dflt_missing/sess/session.pdl | STATE \p active_desk \p city | dflt_missing.page-is-room-0
+CASE | dflt_empty
+MKDIR | dflt_empty/h/&.widgits
+MKDIR | dflt_empty/h/@.apps/g/state
+MKDIR | dflt_empty/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dflt_empty/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dflt_empty/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dflt_empty/h/@.apps/g/g-pchq/pieces/system
+WRITE | dflt_empty/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | dflt_empty/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | dflt_empty/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dflt_empty/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dflt_empty/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dflt_empty/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | dflt_empty/h/@.apps/g/rooms.pdl | ROOM \p city \p City \p 0 \p 0 \p over \p 20 \p 13 \p 32 \p worldmap\nROOM \p bank \p Bank \p 1 \p 4\n
+WRITE | dflt_empty/h/@.apps/g/state/trainer.txt | 
+RUN | $T/gpe.+x | $T/dflt_empty/h/@.apps/g | $T/dflt_empty/sess | --house | $T/dflt_empty/h
+EXPECT_EXIT | 0 | dflt_empty-exit-0
+EXPECT_OUT | the game was never played | dflt_empty.empty-file-counts-as-never-played
+EXPECT_HAS | dflt_empty/sess/desks/city.pdl | \p 8 \p 8 \p . \p 0 | dflt_empty.cell-8-8
+CASE | dflt_small
+MKDIR | dflt_small/h/&.widgits
+MKDIR | dflt_small/h/@.apps/g/state
+MKDIR | dflt_small/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dflt_small/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dflt_small/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dflt_small/h/@.apps/g/g-pchq/pieces/system
+WRITE | dflt_small/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | dflt_small/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | dflt_small/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dflt_small/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dflt_small/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dflt_small/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | dflt_small/h/@.apps/g/rooms.pdl | ROOM \p city \p City \p 0 \p 0 \p over \p 6 \p 5 \p 32 \p worldmap\n
+RUN | $T/gpe.+x | $T/dflt_small/h/@.apps/g | $T/dflt_small/sess | --house | $T/dflt_small/h
+EXPECT_EXIT | 0 | dflt_small-exit-0
+EXPECT_OUT | cell 3,2 | dflt_small.out-of-room-cell-becomes-cols-2-rows-2
+CASE | dflt_skin
+MKDIR | dflt_skin/h/&.widgits
+MKDIR | dflt_skin/h/@.apps/g/state
+MKDIR | dflt_skin/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dflt_skin/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dflt_skin/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dflt_skin/h/@.apps/g/g-pchq/pieces/system
+WRITE | dflt_skin/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | dflt_skin/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | dflt_skin/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dflt_skin/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dflt_skin/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dflt_skin/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | dflt_skin/h/@.apps/g/rooms.pdl | ROOM \p city \p City \p 0 \p 0 \p over \p 20 \p 13 \p 32 \p worldmap\nROOM \p bank \p Bank \p 1 \p 4\n
+MKDIR | dflt_skin/h/@.apps/g/ops
+WRITE | dflt_skin/h/@.apps/g/ops/g.c | #if PET_SECTION == 74\n#endif\n
+RUN | $T/gpe.+x | $T/dflt_skin/h/@.apps/g | $T/dflt_skin/sess | --house | $T/dflt_skin/h
+EXPECT_EXIT | 1 | dflt_skin.a-skin-with-its-own-spawn-is-refused
+EXPECT_NOFILE | dflt_skin/sess/desks/city.pdl | dflt_skin.no-page-written
+CASE | dflt_partial
+MKDIR | dflt_partial/h/&.widgits
+MKDIR | dflt_partial/h/@.apps/g/state
+MKDIR | dflt_partial/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dflt_partial/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dflt_partial/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dflt_partial/h/@.apps/g/g-pchq/pieces/system
+WRITE | dflt_partial/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | dflt_partial/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | dflt_partial/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dflt_partial/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dflt_partial/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dflt_partial/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | dflt_partial/h/@.apps/g/rooms.pdl | ROOM \p city \p City \p 0 \p 0 \p over \p 20 \p 13 \p 32 \p worldmap\nROOM \p bank \p Bank \p 1 \p 4\n
+WRITE | dflt_partial/h/@.apps/g/state/trainer.txt | room=city\n
+RUN | $T/gpe.+x | $T/dflt_partial/h/@.apps/g | $T/dflt_partial/sess | --house | $T/dflt_partial/h
+EXPECT_EXIT | 1 | dflt_partial.a-half-written-file-is-refused
+EXPECT_NOFILE | dflt_partial/sess/desks/city.pdl | dflt_partial.no-page-written
+CASE | dflt_nosize
+MKDIR | dflt_nosize/h/&.widgits
+MKDIR | dflt_nosize/h/@.apps/g/state
+MKDIR | dflt_nosize/h/@.apps/g/g-pchq/pieces/hero_01
+MKDIR | dflt_nosize/h/@.apps/g/g-pchq/pieces/xelector_01
+MKDIR | dflt_nosize/h/@.apps/g/g-pchq/pieces/display
+MKDIR | dflt_nosize/h/@.apps/g/g-pchq/pieces/system
+WRITE | dflt_nosize/h/@.apps/g/g-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=4\npos_y=5\npossessed_id=hero_01\n
+WRITE | dflt_nosize/h/@.apps/g/g-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=4\npos_y=5\n
+WRITE | dflt_nosize/h/@.apps/g/g-pchq/pieces/system/arrow_config.txt | default_camera_mode=2\n
+MKDIR | dflt_nosize/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge
+WRITE | dflt_nosize/h/@.apps/g/g-pchq/pieces/system/maps/g/game.pdl | GAME \p n_desks \p 1\nGAME \p desk_1_id \p bridge\n
+WRITE | dflt_nosize/h/@.apps/g/g-pchq/pieces/system/maps/g/bridge/map.txt | ....\n
+WRITE | dflt_nosize/h/@.apps/g/rooms.pdl | ROOM \p bedroom \p Bedroom \p 1 \p 2\n
+RUN | $T/gpe.+x | $T/dflt_nosize/h/@.apps/g | $T/dflt_nosize/sess | --house | $T/dflt_nosize/h
+EXPECT_EXIT | 1 | dflt_nosize.a-first-room-without-size-is-refused
 CASE | chain
 MKDIR | chain/h/&.widgits
 MKDIR | chain/h/@.apps/g/state

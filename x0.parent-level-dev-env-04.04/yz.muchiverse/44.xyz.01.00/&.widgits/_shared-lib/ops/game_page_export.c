@@ -10,6 +10,9 @@
  * controlled pet) the page still named the old room. Rows: hero_01 at the controlled character's cell; xelector_01 at the SAME cell with its possessed id in the glyph field (the standard: a possessing xelector
  * stands on what it controls; the private xelector file may say otherwise, and that is reported); camera_01 with the fresh-start camera packed m=<mode>,y=<yaw>,p=<pitch>,z=0,h=0 (mode from arrow_config.txt default_camera_mode, yaw 180,
  * pitch 6 for modes 1/2 and -90 otherwise: the engine's own fresh defaults). Pixels are cells x 80. The `n` column is written as 0 (its meaning is not documented in PAGE-FILE.md).
+ * NEVER-PLAYED GAMES (D, 2026-10-28): when the source state file is MISSING or EMPTY (no room=, x= or y= line at all) the core's own first-run default is used: the first ROOM of <app>/rooms.pdl, cell 8,8, an
+ * out-of-room coordinate replaced by cols/2 or rows/2 (petslike_core.c load_ent), and a `note:` line says so. It is refused (the old error) when a skin sets its own first-run spawn (a source file in ops/ holds `PET_SECTION == 74`:
+ * rpg-space, rpg-dust, rpg-edit-hq), when that first ROOM row has no cols/rows, or when the file has some but not all of the three lines (a half-written file is not a position).
  * OTHER CHARACTERS IN THE ROOM (C, 2026-10-28): every state/pet_<id>.txt whose room= is the exported room and which is not the controlled one becomes `DESK | pet_<id> | <game>/state/pet_<id>.txt | px | py | cx | cy | <id> | 0`;
  * when a PET is the controlled one and state/trainer.txt is in the same room, the trainer becomes `DESK | trainer | <game>/state/trainer.txt | ... | trainer | 0`. Sorted by id (stable page text). The path column names the state file because these
  * characters have no pal folder: a reader that wants a sprite from <path>/sprite.csv finds none and skips the row (place_desk_sprites does), and game mode never reads them (only hero_01 is followed, page_follow). Unsafe ids/cells are skipped.
@@ -60,7 +63,23 @@ int main(int argc, char **argv) {
         char pf[PATH_MAX + 120], r_[64], x_[16], y_[16]; snprintf(pf, sizeof pf, "%s/state/pet_%s.txt", app, ab);
         if (name_ok(ab) && kv(pf, "room", r_, sizeof r_) >= 1 && kv(pf, "x", x_, sizeof x_) >= 1 && kv(pf, "y", y_, sizeof y_) >= 1 && name_ok(r_) && whole(x_) && whole(y_)) { snprintf(tp, sizeof tp, "%s", pf); snprintf(srcname, sizeof srcname, "pet_%s.txt", ab); snprintf(srclabel, sizeof srclabel, "pet %s", ab); }
         else printf("note: flag_ctl is pet and active.txt names `%s`, but state/pet_%s.txt is missing, incomplete or unsafe: using trainer.txt\n", ab, ab); } }
-    if (kv(tp, "room", room, sizeof room) < 1 || kv(tp, "x", hx, sizeof hx) < 1 || kv(tp, "y", hy, sizeof hy) < 1) { fprintf(stderr, "game_page_export: %s lacks room=, x= or y=\n", tp); return 1; }
+    int defaulted = 0;
+    {   /* D: a game that was never played has no cell yet: apply the core's first-run default, only where that is really the core's rule */
+        int nr = kv(tp, "room", room, sizeof room), nx = kv(tp, "x", hx, sizeof hx), ny = kv(tp, "y", hy, sizeof hy);
+        if (nr < 1 && nx < 1 && ny < 1) {
+            int override = 0; { char od[PATH_MAX + 20]; snprintf(od, sizeof od, "%s/ops", app); DIR *d = opendir(od); struct dirent *e;
+                while (d && (e = readdir(d))) { size_t n = strlen(e->d_name); if (n > 2 && !strcmp(e->d_name + n - 2, ".c")) { char cp[PATH_MAX + 300], b[65536]; snprintf(cp, sizeof cp, "%s/%s", od, e->d_name); FILE *f = fopen(cp, "r"); if (f) { size_t m = fread(b, 1, sizeof b - 1, f); b[m] = 0; fclose(f); if (strstr(b, "PET_SECTION == 74")) override = 1; } } }
+                if (d) closedir(d); }
+            char rp[PATH_MAX + 40], l[512]; int cols = 0, rows = 0, got = 0; snprintf(rp, sizeof rp, "%s/rooms.pdl", app); FILE *f = fopen(rp, "r");
+            while (f && fgets(l, sizeof l, f) && !got) if (!strncmp(l, "ROOM", 4)) {
+                char *fld[12]; int nf = 0; for (char *q = l; nf < 12; ) { fld[nf++] = q; q = strchr(q, '|'); if (!q) break; *q++ = 0; }
+                for (int i = 0; i < nf; i++) { char *t = fld[i]; while (*t == ' ') t++; fld[i] = t; size_t n = strlen(t); while (n && (t[n - 1] == ' ' || t[n - 1] == '\n' || t[n - 1] == '\r')) t[--n] = 0; }
+                if (nf >= 9 && name_ok(fld[1]) && whole(fld[6]) && whole(fld[7])) { snprintf(room, sizeof room, "%s", fld[1]); cols = atoi(fld[6]); rows = atoi(fld[7]); got = 1; } else break; }
+            if (f) fclose(f);
+            if (!override && got && cols > 0 && rows > 0) {
+                int x = 8, y = 8; if (x >= cols) x = cols / 2; if (y >= rows) y = rows / 2; snprintf(hx, sizeof hx, "%d", x); snprintf(hy, sizeof hy, "%d", y);
+                printf("note: %s has no room/x/y yet (the game was never played): using the core's first-run default, first room `%s` cell %d,%d\n", srcname, room, x, y); defaulted = 1; } } }
+    if (!defaulted && (kv(tp, "room", room, sizeof room) < 1 || kv(tp, "x", hx, sizeof hx) < 1 || kv(tp, "y", hy, sizeof hy) < 1)) { fprintf(stderr, "game_page_export: %s lacks room=, x= or y=\n", tp); return 1; }
     if (!name_ok(room) || !whole(hx) || !whole(hy)) { fprintf(stderr, "game_page_export: %s has an unusable room/x/y (%s %s %s)\n", tp, room, hx, hy); return 1; }
     int cx = atoi(hx), cy = atoi(hy), disagree = 0;
     char xp[PATH_MAX + 120], px[16] = "", py[16] = "", poss[64] = "", hp_[PATH_MAX + 120], hpx[16] = "", hpy[16] = "";
