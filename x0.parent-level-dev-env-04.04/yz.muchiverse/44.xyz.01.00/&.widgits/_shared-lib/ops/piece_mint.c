@@ -2,9 +2,10 @@
  * v1 = PAPER: no chain, price and fee are 0. Sources built: grant | copy | fork. mine buy auction npc market are REFUSED ("source not built") until the chain work exists.
  * The wallet id comes from the sibling op hash_op.+x (`hash_op wallet <uid>`), run by fork/exec: no shared header, no copy of hash code.
  *
- * Usage: piece_mint <house> --user <uuid> --template <actor name> --source grant|copy|fork [--slug <s>] [--kind <k>] [--book <id>] [--parent <uid>]
+ * Usage: piece_mint <house> --user <uuid> --template <actor name> --source grant|copy|fork [--slug <s>] [--pal-name <n>] [--kind <k>] [--book <id>] [--parent <uid>]
  *                          [--key <idempotency key>] [--len 8..64] [--adopt-uid <hex>] [--dry]
- *   --template  a name in the trunk db actors.pdl (or, with --book, in that book's db layer)      --slug  default = the template in lowercase; a pal folder of that name must not exist
+ *   --template  a name in the trunk db actors.pdl (or, with --book, in that book's db layer)      --slug  the IN-BOOK id, default = the template in lowercase; unique within the book's cast
+ *   --pal-name  the name of the pal folder and index entry, unique in the whole Master Pal List, default = --slug (use it when the same slug lives in several books: df-hq_rex, mcl-hq_rex)
  *   --book      also place the piece in <house>/@.apps/<book> (cast row, home_book = active_book = book); the book folder must exist and its cast must not already use the slug
  *   --parent    required for copy and fork (a uid in master_pals.pdl), forbidden for grant      --key   a second call with the same key returns the SAME piece and writes nothing
  *   --len       uid length in hex characters, default 32                                       --adopt-uid  grant only: use this existing uid instead of a random one (migration of game-local ids)
@@ -92,12 +93,12 @@ static int random_hex(int len, char *out) {
 }
 int main(int argc, char **argv) {
     if (argc < 2) goto usage;
-    const char *house = argv[1], *user = NULL, *tmpl = NULL, *source = NULL, *slug = NULL, *kind = "pet", *book = NULL, *parent = NULL, *key = NULL, *adopt = NULL; int len = 32, dry = 0;
+    const char *house = argv[1], *user = NULL, *tmpl = NULL, *source = NULL, *slug = NULL, *pal = NULL, *kind = "pet", *book = NULL, *parent = NULL, *key = NULL, *adopt = NULL; int len = 32, dry = 0;
     for (int i = 2; i < argc; i++) {
         if (!strcmp(argv[i], "--dry")) dry = 1;
         else if (i + 1 >= argc) goto usage;
         else if (!strcmp(argv[i], "--user")) user = argv[++i]; else if (!strcmp(argv[i], "--template")) tmpl = argv[++i]; else if (!strcmp(argv[i], "--source")) source = argv[++i];
-        else if (!strcmp(argv[i], "--slug")) slug = argv[++i]; else if (!strcmp(argv[i], "--kind")) kind = argv[++i]; else if (!strcmp(argv[i], "--book")) book = argv[++i];
+        else if (!strcmp(argv[i], "--slug")) slug = argv[++i]; else if (!strcmp(argv[i], "--pal-name")) pal = argv[++i]; else if (!strcmp(argv[i], "--kind")) kind = argv[++i]; else if (!strcmp(argv[i], "--book")) book = argv[++i];
         else if (!strcmp(argv[i], "--parent")) parent = argv[++i]; else if (!strcmp(argv[i], "--key")) key = argv[++i]; else if (!strcmp(argv[i], "--adopt-uid")) adopt = argv[++i];
         else if (!strcmp(argv[i], "--len")) len = atoi(argv[++i]); else goto usage;
     }
@@ -113,6 +114,8 @@ int main(int argc, char **argv) {
     if (len < 8 || len > 64) return refuse("--len must be 8 to 64");
     if (!slug) { static char sl[80]; snprintf(sl, sizeof sl, "%s", tmpl); for (char *c = sl; *c; c++) if (*c >= 'A' && *c <= 'Z') *c = (char)(*c + 32); slug = sl; }
     if (!name_ok(slug, 1) || strlen(slug) > 48) return refuse("bad slug (lowercase letters, digits, _ -)");
+    if (!pal) { pal = slug; }
+    if (!name_ok(pal, 1) || strlen(pal) > 48) return refuse("bad pal name (lowercase letters, digits, _ -)");
     if (key && !name_ok(key, 0)) return refuse("bad key");
     if (book && !name_ok(book, 0)) return refuse("bad book id");
     if (adopt && strcmp(source, "grant")) return refuse("--adopt-uid is for source grant only");
@@ -130,15 +133,15 @@ int main(int argc, char **argv) {
         cast = slurp(castp, &ok3); if (!ok3) return refuse("cannot read the book's cast");
         if (cast && find_row(cast, "CAST", 2, slug, 2, found, sizeof found)) return refuse("slug taken in the book"); }
     if (!actor_named(trunk, tmpl) && !(lay[0] && actor_named(lay, tmpl))) return refuse("unknown template");
-    char folder[PATH_MAX + 96], uidp[PATH_MAX + 160]; snprintf(folder, sizeof folder, "%s/%s", pals, slug); snprintf(uidp, sizeof uidp, "%s/entity_uid.txt", folder);
-    if (exists(folder) || (idx && find_row(idx, "PIECE", 2, slug, 2, found, sizeof found))) return refuse("slug taken (a pal of that name exists)");
+    char folder[PATH_MAX + 96], uidp[PATH_MAX + 160]; snprintf(folder, sizeof folder, "%s/%s", pals, pal); snprintf(uidp, sizeof uidp, "%s/entity_uid.txt", folder);
+    if (exists(folder) || (idx && find_row(idx, "PIECE", 2, pal, 2, found, sizeof found))) return refuse("slug taken (a pal of that name exists)");
     char uid[80];
     if (adopt) { if (idx && find_row(idx, "PIECE", 1, adopt, 1, found, sizeof found)) return refuse("uid already in the Master Pal List"); snprintf(uid, sizeof uid, "%s", adopt); }
     else { int tries = 0; do { if (!random_hex(len, uid)) return refuse("no random source"); } while (idx && find_row(idx, "PIECE", 1, uid, 1, found, sizeof found) && ++tries < 16); if (tries >= 16) return refuse("could not find a free uid"); }
     char wallet[40]; if (!run_hash_wallet(uid, wallet, sizeof wallet)) return refuse("hash_op unavailable");
-    if (dry) { printf("dry: would mint uid=%s wallet=%s slug=%s source=%s price=0 fee=0\n", uid, wallet, slug, source); return 0; }
+    if (dry) { printf("dry: would mint uid=%s wallet=%s slug=%s source=%s price=0 fee=0 pal=%s\n", uid, wallet, slug, source, pal); return 0; }
     long ts = (long)time(NULL); char row[1024], crow[512], lrow[512];
-    snprintf(row, sizeof row, "PIECE | %s | %s | %s | %s | %s | %s | %s | %s | %s | %ld | %s\n", uid, slug, kind, tmpl, user, source, parent ? parent : "-", book ? book : "-", book ? book : "-", ts, wallet);
+    snprintf(row, sizeof row, "PIECE | %s | %s | %s | %s | %s | %s | %s | %s | %s | %ld | %s\n", uid, pal, kind, tmpl, user, source, parent ? parent : "-", book ? book : "-", book ? book : "-", ts, wallet);
     snprintf(crow, sizeof crow, "CAST | %s | %s | %s | 0 | %s\n", uid, slug, kind, book ? book : "-");
     snprintf(lrow, sizeof lrow, "MINT | %ld | %s | %s | 0 | 0 | %s\n", ts, uid, source, key ? key : "-");
     int made_dir = 0, made_uid = 0, w_idx = 0, w_cast = 0, w_led = 0, good = 0; int ok = 1;
@@ -160,8 +163,8 @@ int main(int argc, char **argv) {
         if (made_dir) { rmdir(folder); }
         return refuse("write failed (rolled back)");
     }
-    printf("minted uid=%s wallet=%s slug=%s source=%s price=0 fee=0\n", uid, wallet, slug, source);
+    printf("minted uid=%s wallet=%s slug=%s source=%s price=0 fee=0 pal=%s\n", uid, wallet, slug, source, pal);
     return 0;
 usage:
-    fprintf(stderr, "Usage: piece_mint <house> --user <uuid> --template <actor> --source grant|copy|fork [--slug s] [--kind k] [--book id] [--parent uid] [--key k] [--len 8..64] [--adopt-uid hex] [--dry]\n"); return 2;
+    fprintf(stderr, "Usage: piece_mint <house> --user <uuid> --template <actor> --source grant|copy|fork [--slug s] [--pal-name n] [--kind k] [--book id] [--parent uid] [--key k] [--len 8..64] [--adopt-uid hex] [--dry]\n"); return 2;
 }

@@ -106,6 +106,23 @@ RUN | $T/pm.+x | $T/h | --user | ../x | --template | Rex | --source | grant | --
 EXPECT_OUT | refused: bad user id | r9.bad-user-id
 RUN | $T/pm.+x | $T/h | --user | nobody | --template | Rex | --source | grant | --slug | rexu
 EXPECT_OUT | refused: owner unknown | r9.user-without-pals
+# N --pal-name: the in-book slug may repeat across books while the pal name stays unique in the whole list
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rex | --pal-name | bookb_rex | --book | bookB | --adopt-uid | 5555aaaa
+EXPECT_EXIT | 0 | n1.exit-0
+EXPECT_OUT | slug=rex source=grant price=0 fee=0 pal=bookb_rex | n1.slug-and-pal-reported
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | PIECE \p 5555aaaa \p bookb_rex \p pet | n1.index-uses-the-pal-name
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/bookb_rex/entity_uid.txt | 5555aaaa | n1.folder-uses-the-pal-name
+EXPECT_HAS | h/@.apps/bookB/db/cast.pdl | CAST \p 5555aaaa \p rex \p pet | n1.cast-uses-the-slug
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/rex/entity_uid.txt | abcdef12 | n1.the-other-rex-is-untouched
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rex | --pal-name | booka_rex2 | --book | bookA
+EXPECT_OUT | refused: slug taken in the book | n2.slug-still-unique-within-a-book
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/booka_rex2 | n2.nothing-written
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexq | --pal-name | rex
+EXPECT_OUT | refused: slug taken | n3.pal-name-taken-by-a-folder
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | zz | --pal-name | indexonly
+EXPECT_OUT | refused: slug taken | n3.pal-name-taken-only-in-the-index
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | zz | --pal-name | Bad Pal
+EXPECT_OUT | refused: bad pal name | n4.bad-pal-name
 # D dry run writes nothing
 RUN | $T/pm.+x | $T/h | --user | u1 | --dry | --template | Pip | --source | grant | --slug | dryone | --adopt-uid | 12345678 | --book | bookA | --key | kd
 EXPECT_EXIT | 0 | d1.exit-0

@@ -10,7 +10,7 @@ Read this first, then `PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md`,
 | Designs: pieces + Master Pal List; chain as master bank / Fed / contracts | WRITTEN, not built | `3c500396f` |
 | `piece_check` (read-only audit of piece identity) | DONE, harness 22/0, 13 mutants | `3ab6acd5e`, `ffdf1ccbc` |
 | `hash_op` (SHA-256 + the wallet id, one tiny op) | DONE, harness 13/0, 8 mutants | `2ae9d4077` |
-| `piece_mint` v1 (the mint OP; paper, grant / copy / fork) | **DONE as an op**, harness 68/0, 30 mutants; the event page + registry command are NOT built; never run for real on the owner's `pals/` (dry run only) | the commit titled `piece_mint v1` |
+| `piece_mint` v1 (the mint OP; paper, grant / copy / fork) | **DONE as an op**, harness 79/0, 35 mutants; the event page + registry command are NOT built; never run for real on the owner's `pals/` (dry run only) | the commit titled `piece_mint v1` |
 | `master_pals.pdl` index | written by `piece_mint` (header + rows); no reader besides it yet; the check-out / check-in verbs for `active_book` are NOT built | with `piece_mint v1` |
 | Per-record db layer (`cast.pdl`), db window shows the book's cast | NOT STARTED | none |
 | Chain: NFT_MINT, fees, tribute, bonds, contracts | DESIGN ONLY; chain hardening comes first | none |
@@ -53,7 +53,7 @@ Suggested split (MINE): Claude keeps 1, 2, 4 (shared core); 3 needs the owner; 5
 7. Live test: may I open the db window (niced, one process) to look at the open book's db?
 
 ## 6. How to check
-`piece_check <house>` (read-only); `db_publish <house> --dry` (writes nothing); `hash_op wallet <uid>`; harness: `cd &.widgits/_shared-lib/harness && /home/no/scratch-gab/bin/prisc <name>.pal`, then `results/<name>.txt.verdict.txt` (cases: `db_publish` 17, `piece_check` 22, `hash_op` 13, `piece_mint` 68); `piece_mint <house> --user <uuid> --template <actor> --source grant --dry` (writes nothing).
+`piece_check <house>` (read-only); `db_publish <house> --dry` (writes nothing); `hash_op wallet <uid>`; harness: `cd &.widgits/_shared-lib/harness && /home/no/scratch-gab/bin/prisc <name>.pal`, then `results/<name>.txt.verdict.txt` (cases: `db_publish` 17, `piece_check` 22, `hash_op` 13, `piece_mint` 79); `piece_mint <house> --user <uuid> --template <actor> --source grant --dry` (writes nothing).
 
 ## 7. `piece_mint` v1: what it does NOT do (so nobody assumes it)
 No price, fee, chain call, signature or `NFT_MINT` (price and fee are written as 0, paper). `mine buy auction npc market` are refused with "source not built". No share / transfer / check-out / check-in verb (`shared` is always 0 in the cast row; `active_book` is set to the book at mint and nothing moves it). Template is checked against the trunk `actors.pdl` (or the book's layer) by name only. `fork` records the parent but not the change. The idempotency key is looked up in `piece_ledger.txt`; the same key with different arguments returns the first piece. It was run for real only in the harness's scratch house; against the owner's house only with `--dry` (pals folder hashed before and after: unchanged).
