@@ -113,5 +113,10 @@ Each is a **C op with a stable CLI**, an **events-hq page**, a **registry comman
 6. Which chain is "the" master chain: the new `pet-cones` chain, a third chain, or both with the exchange converting?
 7. Real value: this stays **paper `play` units** until the chain hardening of section 10 step 1 is done and you say go.
 
-## 12. Not verified
+## 12. Owner answers of 2026-10-28 (to section 11)
+- **Q1 master tax and fee: BOTH** (SAID: "5 both"). Percentages and floors stay in `policy.pdl`; the numbers in section 3 are still placeholders.
+- **Q2 tribute (SAID: "some kind of payment? suggestions?")** - my proposal, not yet decided: a tribute is a payment to the master account that buys a **mint right** at a **tier**; each tier has a price and an odds table in `policy.pdl`; the roll uses the hash of a block a few blocks AFTER the payment is confirmed (the payer cannot pick it, anyone can replay it); most of the tribute goes to the master account and a small share to a prize pool (split in the policy). Alternatives that fit the same `ACQUIRE` rows later: a recurring tribute that rents a mining slot; a tribute paid in mined cones by pets.
+- Still open: bonds (who may buy, coupon, deficit), reseller fees, royalty depth, which chain is the master chain, paper `play` units until chain hardening.
+
+## 13. Not verified
 Everything is design. I did not run the chain ops, read the chain replay code in full, or check `ev_chain` beyond its documentation; `NFT_MINT`, fees, tax, bonds and contracts do not exist in code (grep). The tribute reading is my guess.

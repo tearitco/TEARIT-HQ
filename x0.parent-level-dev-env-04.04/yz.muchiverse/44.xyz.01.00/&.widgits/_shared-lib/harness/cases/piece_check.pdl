@@ -32,7 +32,7 @@ EXPECT_HAS | h/out.txt | WARN master_bad_uid u1/broken | p1.bad-master-uid-warne
 EXPECT_LACKS | h/out.txt | master_bad_uid u1/rex | p1.64-hex-master-uid-is-valid
 EXPECT_HAS | h/out.txt | WARN no_master g3 pip | p1.pet-without-master-pal-warned
 EXPECT_LACKS | h/out.txt | no_master g1 rex | p1.pet-with-master-pal-not-flagged
-EXPECT_HAS | h/out.txt | WARN mixed_uid_formats games32=3 master64=1 | p1.mixed-lengths-warned
+EXPECT_LACKS | h/out.txt | mixed_uid | p1.mixed-lengths-are-fine
 # P2 an empty uid file is an ERROR (exit 1)
 WRITE | h/@.apps/g3/state/uid_pip.txt | \n
 RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
@@ -42,7 +42,15 @@ EXPECT_HAS | h/out.txt | exit=1 | p2.error-exit-1
 WRITE | h/@.apps/g3/state/uid_pip.txt | gggggggggggggggggggggggggggggggg\n
 RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
 EXPECT_HAS | h/out.txt | ERROR empty_uid g3 pip | p2b.non-hex-error
-# P2c a valid-hex but wrong-length uid is an ERROR
+# P2d an 8-hex uid is valid (any length 8-64)
+WRITE | h/@.apps/g3/state/uid_pip.txt | abcdef12\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_LACKS | h/out.txt | ERROR empty_uid g3 pip | p2d.8-hex-is-valid
+# P2e a 65-hex uid is too long: ERROR
+WRITE | h/@.apps/g3/state/uid_pip.txt | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_HAS | h/out.txt | ERROR empty_uid g3 pip | p2e.65-hex-error
+# P2c a valid-hex uid shorter than 8 is an ERROR
 WRITE | h/@.apps/g3/state/uid_pip.txt | abc123\n
 RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
 EXPECT_HAS | h/out.txt | ERROR empty_uid g3 pip | p2c.short-hex-error
