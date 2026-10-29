@@ -55,6 +55,6 @@ EXPECT_EXIT | 0 | w0.script-ran
 EXPECT_HAS | tok.txt | ok=9 bad=0 | w1.all-9-template-actions-are-accepted-by-the-op
 EXPECT_HAS | lab.txt | labels_ok=5 labels_missing=0 | w2.all-5-template-labels-exist-in-the-projector-output
 # V the live preview: the projector publishes the picture path, the template shows it with a canvas
-EXPECT_HAS | h/#.desktop/taskbar_settings_ui.txt | /#.desktop/prism_preview.rgba | v1.projector-publishes-the-preview-path
-EXPECT_HAS | x.xhtpm | <canvas id="prism-preview" class="row-prismpreview prism-preview" sprite="${prism_preview_raw}"/> | v2.template-shows-it-with-a-canvas
+EXPECT_HAS | h/#.desktop/taskbar_settings_ui.txt | prism_preview_png=$T/h/#.desktop/prism_preview.png | v1.projector-publishes-the-preview-png-path
+EXPECT_HAS | x.xhtpm | <item id="prism-preview" class="row-prismpreview prism-preview" sprite="${prism_preview_png}"/> | v2.template-shows-it-as-a-png-sprite-item
 CLEAN |

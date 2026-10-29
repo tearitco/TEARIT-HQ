@@ -104,7 +104,7 @@
     <!-- Custom theme (2026-10-28, owner: "a custom theme ... a default rainbow made with a prism of shapes and color/light hex algo, 4 vars adjustable"): the switch and the four variables.
          PICK:PRISM_* tokens are routed by swatch_picker_manager to prism_settings_op, which saves #.desktop/livedesk_prism.pdl and renders #.desktop/prism_theme.png. They never touch the colour swatches.
          Slice 2: the controls and the saved variables exist; drawing the prism behind the windows is slice 3 (renderer), so the switch does not change the window yet. -->
-    <canvas id="prism-preview" class="row-prismpreview prism-preview" sprite="${prism_preview_raw}"/>
+    <item id="prism-preview" class="row-prismpreview prism-preview" sprite="${prism_preview_png}"/>
     <item id="prism-toggle" action="PICK:PRISM_TOGGLE" class="row-prismtoggle opacity-btn" label="${prism_custom_label}"/>
     <item id="prism-shape-value" class="row-prismshape info-chip skin-bar info-long" label="${prism_shape_label}"/>
     <item id="prism-shape-prev" action="PICK:PRISM_SHAPE_PREV" class="row-prismshape opacity-btn step-btn" label="&lt;"/>
