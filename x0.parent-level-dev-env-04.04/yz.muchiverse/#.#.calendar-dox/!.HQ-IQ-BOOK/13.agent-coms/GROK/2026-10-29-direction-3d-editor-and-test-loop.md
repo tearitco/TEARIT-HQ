@@ -230,3 +230,35 @@ board frame, and it failed closed here because that frame was absent.
 on a window that was already open. A 3D proof waits until a board
 window is actually on screen. Do not treat a missing `p` PNG as a
 failed edit.
+
+## 8. Last book row (built 2026-10-29)
+
+`@.apps/rpg-edit-hq/ops/edit_last.sh` writes `state/last_book.txt`
+(`book=` and `page=`). `resolve` prints `book=<id> page=<id>`. A
+missing row, a book with no matching `rooms.pdl` ROOM, or a missing
+`<maps>/<book>/<page>/map.txt` returns the demo `rpg-edit-hq` page
+`start` (Islands). `save` of a pair that is not real writes nothing
+and exits 2.
+
+`board/open_board.sh` calls `resolve` before the inbox line. The map
+id is that book only when `rpg-edit-hq-pchq/pieces/system/maps/<book>`
+exists. Otherwise the window still opens `rpg-edit-hq` page `start`,
+and the row is left as it was. Today that maps folder has only
+`rpg-edit-hq`, so a saved `mcl-hq` is remembered and the next launch
+still shows the demo map until the editor can export another book.
+The inbox line is `CONFIRM_START_MAP` plus `CONFIRM_SET_DESK`.
+
+**RAN.** `prisc edit_last.pal` from the harness folder:
+`VERDICT|PASS|passed=8|failed=0`. A copy of the script whose missing
+row opened `bank` printed `book=rpg-edit-hq page=bank`, so the Islands
+check can fail. No board was launched. `results/` is gitignored.
+
+**Presentation.** The house pipeline is
+`10-user-docs/PRESENTATION-VIDEO-PIPELINE.md` and the gate in
+`06-testing/AIGENT-TESTING-K9.txt`: a video is real PNG frames, a
+`manifest.txt` (`file | seconds | caption`), `REPRODUCE.md`, and
+`make_presentation_video.py` from the media archive, pet voice, one
+ffmpeg pass. The owner named the folder
+`/home/no/Desktop/github/work/XO/!.PRESENTATIONS`. No MP4 was built.
+There is no board frame of this row yet, and key `p` still has no 2D
+frame to convert.

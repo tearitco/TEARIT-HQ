@@ -1,0 +1,38 @@
+# edit_last.sh on a scratch house. No window. The demo is rpg-edit-hq page start.
+RESULTS | ../results/edit_last.txt
+CASE    | edit-last
+SCRATCH |
+COPY    | @.apps/rpg-edit-hq/ops/edit_last.sh | edit_last.sh
+MKDIR   | house/@.apps/rpg-edit-hq
+MKDIR   | house/@.apps/mcl-hq
+MKDIR   | maps/rpg-edit-hq/start
+WRITE   | house/@.apps/rpg-edit-hq/rooms.pdl | ROOM \p start \p Islands\nROOM \p bank \p Bank\n
+WRITE   | house/@.apps/mcl-hq/rooms.pdl | ROOM \p city \p City\n
+WRITE   | maps/rpg-edit-hq/start/map.txt | start\n
+
+# missing row -> demo
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_EXIT | 0 | missing-exits-0
+EXPECT_OUT | book=rpg-edit-hq page=start | missing-is-islands
+
+# a real save reopens that book and page
+RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | mcl-hq | city
+EXPECT_EXIT | 0 | save-mcl
+EXPECT_FILE | state/last_book.txt | row-written
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_OUT | book=mcl-hq page=city | saved-reopens-mcl
+
+# a page that is not a room is refused and the old row stays
+RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | rpg-edit-hq | nowhere
+EXPECT_EXIT | 2 | bad-page-refused
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_OUT | book=mcl-hq page=city | refused-save-keeps-the-row
+
+# a book that disappeared falls back to the demo
+WRITE | house/@.apps/mcl-hq/rooms.pdl | ROOM \p other \p Other\n
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_OUT | book=rpg-edit-hq page=start | gone-book-is-islands
+
+# a path is not a book id
+RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | ../rpg-edit-hq | start
+EXPECT_EXIT | 2 | slash-refused
