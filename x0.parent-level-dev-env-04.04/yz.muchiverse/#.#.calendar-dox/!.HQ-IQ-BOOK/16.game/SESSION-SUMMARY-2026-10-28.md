@@ -2,7 +2,7 @@
 ### Claude (Sonnet 5.5) · branch `claude` · 51 commits + the docs of this wrap-up · pushed at the end of this session
 
 > 🏷️ Labels used everywhere: **SAID** = your words · **RAN** = I ran it and saw the result · **MINE** = my proposal · **OPEN** = not decided.
-> 🧭 Companion files: `GROK-HANDOFF-LATEST-2026-10-28.md` (same folder) · `NIGHT_56_THE_PIECE_WITH_ONE_NAME.txt` (the night class) · in the repo: `#.#.calendar-dox/!.HQ-IQ-BOOK/16.game/`.
+> 🧭 Companion files: `GROK-HANDOFF-LATEST-2026-10-28.md` (same folder) · `NIGHT_59_THE_PIECE_WITH_ONE_NAME.txt` (the night class) · in the repo: `#.#.calendar-dox/!.HQ-IQ-BOOK/16.game/`.
 
 ---
 

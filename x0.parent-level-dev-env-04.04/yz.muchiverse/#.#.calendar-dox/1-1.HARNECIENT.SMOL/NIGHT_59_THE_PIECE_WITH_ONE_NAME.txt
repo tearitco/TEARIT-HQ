@@ -1,6 +1,6 @@
-# 💎🪪 NIGHT 56 — The Piece With One Name 🪪💎
+# 💎🪪 NIGHT 59 — The Piece With One Name 🪪💎
 # ====================================================================
-# Title: "💎🪪 NIGHT 56 — The Piece With One Name 🪪💎"
+# Title: "💎🪪 NIGHT 59 — The Piece With One Name 🪪💎"
 # Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
 # Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
 # Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
@@ -8,7 +8,7 @@
 # Long-form: everything called measured was run on 2026-10-28. Everything called a plan is a plan. Nothing here is claimed done that was not run again afterwards.
 # Companion documents: SESSION-SUMMARY-2026-10-28 (XO 30.rpg-dust-work oct-28.6), BOOK 16.game PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN, PER-BOOK-DB, CHAIN-MASTER-BANK-FED-AND-CONTRACTS-DESIGN, HANDOFF-2026-10-28-PIECES-DB-CHAIN.
 
-**THE NARRATOR:** NIGHT 55 ended with pages you can read. Tonight is a smaller question with a long tail. Who is this pet?
+**THE NARRATOR:** Tonight is a smaller question with a long tail. Who is this pet?
 
 **MAXINE:** That sounds easy. It is called Rex.
 
