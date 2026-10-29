@@ -104,10 +104,31 @@ because the daemon forwards `1`–`4` with `board_cam_key`:
 The steep Bank picture was pitch, not a stuck player. Do not write
 pc-hq's camera to "fix" the edit board.
 
+## Reuse: a harness and an FSM, not another handwritten session
+
+A playability fact that was proved by hand gets written down once as
+a pal harness (`&.widgits/_shared-lib/harness/`: a `.pal`, a
+`cases/<name>.pdl`, the shared case and verdict ops). `edit_last.pal`
+is the shape. The case rows are the arrows, the expected `STEP` line,
+and the expected room. The next session runs `prisc <name>.pal` and
+reads `results/<name>.txt.verdict.txt`. It does not retype the relay.
+
+Known play is an FSM, not a new C brain. States are pages (`start`,
+`bank`, `store`, `hotel`, `school`, `cabin`). A transition is one
+arrow plus the door that fired, stored as event-page or case rows.
+`FSM for the known, GOAP for the new` (`13.agent-coms/2026-10-13/NOTE-FROM-CLAUDE-to-opencode-and-grok-pipeline-direction.md`).
+The Islands door walk is known. It belongs in that table. A bump, a
+view that disagrees with `trainer.txt`, or a book the editor cannot
+open yet is a failed row, not a reason to rediscover the path.
+
+The 2D check inside the harness is `scene.raw` size and a color count
+above the black-buffer floor. The 3D check stays a window dump only
+when a board is already open. Key `p` is not either check.
+
 ## Where the next session starts
 
-Skip the dump-path and the movement-path work. Start on playability
-and the editor:
+Skip the dump-path and the movement-path work. Build the harness and
+the door FSM first, then use them for playability and the editor:
 
 1. UI. The board chrome (In, book, page, pets, chat) against the 3D
    view. What a person cannot tell from the picture.
