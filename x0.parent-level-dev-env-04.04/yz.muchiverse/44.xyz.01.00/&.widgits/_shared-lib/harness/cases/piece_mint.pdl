@@ -1,0 +1,138 @@
+# piece_mint: LOCKED cases (BOOK 16.game/PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md sections 3-5, HANDOFF-2026-10-28-PIECES-DB-CHAIN.md slice 1). Paper mint: grant|copy|fork. Scratch house only.
+# The wallet value is the one hash_op.pdl pins against an independent sha256sum; the rest comes from the rules in the op header.
+RESULTS | ../results/piece_mint.txt
+CASE | piece_mint
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/piece_mint.c | pm.c
+COPY | &.widgits/_shared-lib/ops/hash_op.c | ho.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/pm.+x | $T/pm.c
+EXPECT_EXIT | 0 | setup.piece_mint-compiles-clean
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/hash_op.+x | $T/ho.c | -lcrypto
+EXPECT_EXIT | 0 | setup.hash_op-compiles-clean
+MKDIR | nohash
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/nohash/pm.+x | $T/pm.c
+EXPECT_EXIT | 0 | setup.copy-without-hash_op
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals
+MKDIR | h/&.widgits/db-hq/data
+WRITE | h/&.widgits/db-hq/data/actors.pdl | SECTION \p KEY \p VALUE\nACTOR \p id \p 1\nACTOR \p name \p Rex\nACTOR \p id \p 2\nACTOR \p name \p Pip\n
+MKDIR | h/@.apps/bookA
+MKDIR | h/@.apps/bookB/db
+WRITE | h/@.apps/bookB/db/actors.pdl | ACTOR \p name \p Zed\n
+# G1 grant with an adopted uid, placed in bookA, with a key
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --adopt-uid | abcdef12 | --book | bookA | --key | k1
+EXPECT_EXIT | 0 | g1.exit-0
+EXPECT_OUT | minted uid=abcdef12 wallet=e4c737b00edc6603507641bcf slug=rex source=grant price=0 fee=0 | g1.minted-line-with-wallet-from-hash_op
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | PIECE \p abcdef12 \p rex \p pet \p Rex \p u1 \p grant \p - \p bookA \p bookA \p | g1.index-row
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | # PIECE \p uid \p slug | g1.index-header-created
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/rex/entity_uid.txt | abcdef12 | g1.pal-folder-uid
+EXPECT_HAS | h/@.apps/bookA/db/cast.pdl | CAST \p abcdef12 \p rex \p pet \p 0 \p bookA | g1.cast-row
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/piece_ledger.txt | \p abcdef12 \p grant \p 0 \p 0 \p k1 | g1.ledger-row
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | e4c737b00edc6603507641bcf | g1.index-has-the-wallet
+# G2 the same key again returns the SAME piece and writes nothing, even for another template
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Pip | --source | grant | --key | k1
+EXPECT_EXIT | 0 | g2.exit-0
+EXPECT_OUT | existing uid=abcdef12 | g2.same-key-same-piece
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | Pip | g2.nothing-written
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/pip/entity_uid.txt | g2.no-second-folder
+# G3 random uids: default 32 hex, --len 8 gives 8
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Pip | --source | grant
+EXPECT_EXIT | 0 | g3.random-exit-0
+EXPECT_OUT | minted uid= | g3.minted
+RUN | sh | -c | awk '{print "len=" length($1)}' $T/h/xyzfs/users/u1/home/livedesk/pals/pip/entity_uid.txt > $T/len32.txt
+EXPECT_HAS | len32.txt | len=32 | g3.default-length-32
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Pip | --source | grant | --slug | pip8 | --len | 8
+EXPECT_EXIT | 0 | g3.len8-exit-0
+RUN | sh | -c | awk '{print "len=" length($1)}' $T/h/xyzfs/users/u1/home/livedesk/pals/pip8/entity_uid.txt > $T/len8.txt
+EXPECT_HAS | len8.txt | len=8 | g3.len-8-honoured
+# G4 a template that only the book layer knows
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Zed | --source | grant | --adopt-uid | 2222aaaa | --book | bookB
+EXPECT_OUT | minted uid=2222aaaa | g4.layer-template-with-book
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Zed | --source | grant | --slug | zed2
+EXPECT_OUT | refused: unknown template | g4.layer-template-not-known-without-book
+# C copy and fork need a parent that is in the list; grant takes none
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | copy | --slug | rexc
+EXPECT_OUT | refused: copy and fork need --parent | c1.copy-needs-parent
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexg | --parent | abcdef12
+EXPECT_OUT | refused: grant takes no --parent | c2.grant-takes-no-parent
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | copy | --slug | rexc | --parent | 99999999
+EXPECT_OUT | refused: parent not in the Master Pal List | c3.unknown-parent
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | copy | --slug | rexc | --parent | abcdef12
+EXPECT_EXIT | 0 | c4.copy-exit-0
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | \p copy \p abcdef12 \p | c4.copy-records-the-parent
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | fork | --slug | rexf | --parent | abcdef12
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | \p fork \p abcdef12 \p | c5.fork-records-the-parent
+# R refusals (each leaves nothing behind)
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Nope | --source | grant
+EXPECT_EXIT | 1 | r1.exit-1
+EXPECT_OUT | refused: unknown template | r1.unknown-template
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/nope/entity_uid.txt | r1.nothing-written
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | mine | --slug | rexm
+EXPECT_OUT | refused: source not built | r2.mine-not-built
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | buy | --slug | rexm
+EXPECT_OUT | refused: source not built | r2.buy-not-built
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | weird | --slug | rexm
+EXPECT_OUT | refused: unknown source | r2.unknown-source
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant
+EXPECT_OUT | refused: slug taken | r3.slug-taken-by-an-existing-pal
+WRITE | extra_row.txt | PIECE \p cafe0001 \p indexonly \p pet \p Rex \p u1 \p grant \p - \p - \p - \p 1 \p e0\n
+RUN | sh | -c | cat $T/extra_row.txt >> $T/h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl
+EXPECT_EXIT | 0 | r3.fixture-row-appended
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | PIECE \p abcdef12 | r3.fixture-kept-the-earlier-rows
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | indexonly
+EXPECT_OUT | refused: slug taken | r3.slug-in-the-index-without-a-folder
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/folderonly
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | folderonly
+EXPECT_OUT | refused: slug taken | r3.folder-without-an-index-row
+WRITE | h/@.apps/bookB/db/cast.pdl | CAST \p f00dbabe \p ghost \p pet \p 0 \p bookB\n
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Zed | --source | grant | --slug | ghost | --book | bookB
+EXPECT_OUT | refused: slug taken in the book | r4.slug-taken-in-the-book
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexu | --adopt-uid | abcdef12
+EXPECT_OUT | refused: uid already in the Master Pal List | r5.adopted-uid-already-used
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | copy | --slug | rexu | --parent | abcdef12 | --adopt-uid | 77777777
+EXPECT_OUT | refused: --adopt-uid is for source grant only | r5.adopt-only-for-grant
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexu | --adopt-uid | ABCDEF12
+EXPECT_OUT | refused: --adopt-uid must be 8-64 lowercase hex | r5.adopt-format
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexu | --len | 7
+EXPECT_OUT | refused: --len must be 8 to 64 | r6.len-too-short
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexu | --len | 65
+EXPECT_OUT | refused: --len must be 8 to 64 | r6.len-too-long
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | Bad Slug
+EXPECT_OUT | refused: bad slug | r7.bad-slug
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexu | --key | bad key
+EXPECT_OUT | refused: bad key | r7.bad-key
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Rex | --source | grant | --slug | rexu | --book | nobook
+EXPECT_OUT | refused: book folder not found | r8.book-missing
+RUN | $T/pm.+x | $T/h | --user | ../x | --template | Rex | --source | grant | --slug | rexu
+EXPECT_OUT | refused: bad user id | r9.bad-user-id
+RUN | $T/pm.+x | $T/h | --user | nobody | --template | Rex | --source | grant | --slug | rexu
+EXPECT_OUT | refused: owner unknown | r9.user-without-pals
+# D dry run writes nothing
+RUN | $T/pm.+x | $T/h | --user | u1 | --dry | --template | Pip | --source | grant | --slug | dryone | --adopt-uid | 12345678 | --book | bookA | --key | kd
+EXPECT_EXIT | 0 | d1.exit-0
+EXPECT_OUT | dry: would mint uid=12345678 | d1.dry-line
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/dryone/entity_uid.txt | d1.no-folder
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | 12345678 | d1.index-untouched
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/piece_ledger.txt | 12345678 | d1.ledger-untouched
+EXPECT_LACKS | h/@.apps/bookA/db/cast.pdl | 12345678 | d1.cast-untouched
+# H hash_op missing: refuse, write nothing
+RUN | $T/nohash/pm.+x | $T/h | --user | u1 | --template | Pip | --source | grant | --slug | nohashone | --adopt-uid | 33333333
+EXPECT_OUT | refused: hash_op unavailable | h1.refused
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/nohashone/entity_uid.txt | h1.nothing-written
+# U usage
+RUN | $T/pm.+x
+EXPECT_EXIT | 2 | u1.no-args-usage-2
+# B rollback: a failing write after earlier steps leaves nothing behind (a directory named like the temp file blocks the atomic write)
+MKDIR | h/@.apps/bookC/db/cast.pdl.tmp
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Pip | --source | grant | --slug | rollme | --book | bookC | --adopt-uid | 99999999
+EXPECT_EXIT | 1 | b1.exit-1
+EXPECT_OUT | refused: write failed (rolled back) | b1.refused
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/rollme | b1.folder-removed
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | 99999999 | b1.index-restored
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/piece_ledger.txt | 99999999 | b1.ledger-untouched
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/piece_ledger.txt.tmp
+RUN | $T/pm.+x | $T/h | --user | u1 | --template | Pip | --source | grant | --slug | rollme2 | --book | bookA | --adopt-uid | 88888888
+EXPECT_OUT | refused: write failed (rolled back) | b2.refused-at-the-ledger-step
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/rollme2 | b2.folder-removed
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | 88888888 | b2.index-restored
+EXPECT_LACKS | h/@.apps/bookA/db/cast.pdl | 88888888 | b2.cast-restored
+CLEAN |

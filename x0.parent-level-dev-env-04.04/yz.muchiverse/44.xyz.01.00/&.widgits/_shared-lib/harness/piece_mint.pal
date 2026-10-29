@@ -1,0 +1,4 @@
+# piece_mint.pal - LOCKED harness for piece_mint v1 (paper mint: grant|copy|fork) in a scratch house; piece_mint and hash_op are compiled -Wall -Wextra -Werror from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/piece_mint.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/piece_mint.pdl
+halt
