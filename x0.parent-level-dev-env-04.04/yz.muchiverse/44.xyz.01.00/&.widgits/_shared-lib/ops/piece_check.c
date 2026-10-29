@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
     }
     char users[PATH_MAX]; snprintf(users, sizeof users, "%.3000s/xyzfs/users", house); d = opendir(users);
     while (d && (e = readdir(d))) { if (e->d_name[0] == '.') continue; char pd[PATH_MAX]; snprintf(pd, sizeof pd, "%.3000s/%.100s/home/livedesk/pals", users, e->d_name); DIR *pp = opendir(pd); struct dirent *x; if (!pp) continue;
-        while ((x = readdir(pp))) { if (x->d_name[0] == '.') continue; char up[PATH_MAX], u[80]; snprintf(up, sizeof up, "%.3000s/%.100s/entity_uid.txt", pd, x->d_name); if (!is_dir(up) && nm < 512) { snprintf(M[nm++], 80, "%.79s", x->d_name); if (!read_uid(up, u, sizeof u)) { printf("WARN master_bad_uid %.60s/%.60s\n", e->d_name, x->d_name); warns++; nmaster_bad++; } } }
+        while ((x = readdir(pp))) { if (x->d_name[0] == '.') continue; char up[PATH_MAX], u[80], pf[PATH_MAX]; snprintf(pf, sizeof pf, "%.3000s/%.100s", pd, x->d_name); snprintf(up, sizeof up, "%.3000s/%.100s/entity_uid.txt", pd, x->d_name); if (is_dir(pf) && nm < 512) { snprintf(M[nm++], 80, "%.79s", x->d_name); if (!read_uid(up, u, sizeof u)) { printf("WARN master_bad_uid %.60s/%.60s\n", e->d_name, x->d_name); warns++; nmaster_bad++; } } }
         closedir(pp); }
     if (d) { closedir(d); }
     for (int i = 0; i < np; i++) if (!P[i].valid) { printf("ERROR empty_uid %s %s\n", P[i].game, P[i].slug); errors++; }

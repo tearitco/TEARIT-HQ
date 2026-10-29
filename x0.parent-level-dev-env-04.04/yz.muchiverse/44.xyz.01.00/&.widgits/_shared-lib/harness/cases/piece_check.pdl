@@ -68,4 +68,11 @@ WRITE | h/@.apps/g2/state/uid_mber.txt | ffffffffffffffffffffffffffffffff\n
 RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
 EXPECT_LACKS | h/out.txt | no_master g2 ember | p5.prefixed-master-pal-matches
 EXPECT_HAS | h/out.txt | WARN no_master g2 mber | p5.substring-does-not-match
+# P6 plain files in pals/ (the index, the ledger) are not pals
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/master_pals.pdl | # PIECE\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/piece_ledger.txt | MINT\n
+RUN | sh | -c | $T/pc.+x $T/h > $T/h/out.txt; echo exit=$? >> $T/h/out.txt
+EXPECT_LACKS | h/out.txt | master_bad_uid u1/master_pals.pdl | p6.index-file-is-not-a-pal
+EXPECT_LACKS | h/out.txt | master_bad_uid u1/piece_ledger.txt | p6.ledger-file-is-not-a-pal
+EXPECT_HAS | h/out.txt | master=3 | p6.pals-counted-by-folder
 CLEAN |
