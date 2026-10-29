@@ -310,6 +310,11 @@ static long g_skin_tile_tick = 0;
  * the hash joins the key: same sprite over the same backdrop is one XCopyArea, a different backdrop is a different tile, so the result is pixel-identical to the slow path. A tile that is not
  * fully inside the buffer is drawn the slow way, uncached. */
 static void kh_blit_skin_tile(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel, int sample) {
+    /* LIVE THEME CHANGE (owner 2026-10-28: "old theme still rendering behind some entities on the bottom tb where alpha transparency was and didn't update"). The per-row backdrop band below is read ONCE at the
+     * first tile of a row, which is only true for a grid of tiles that nothing paints over. A dock cell paints its own skin right before its icon, i.e. after that band was read, so the cache key could not tell
+     * stone from no skin: after a skin or theme change an icon blended over the OLD backdrop was served again from the cache (a taskbar restart emptied the cache, which is why a restart "fixed" it). Measured:
+     * fresh bar vs the same bar after a live switch differed by 1353 pixels, all inside the icon rows. A dock holds a handful of small icons, so it blends over its true live backdrop every paint and skips the cache. */
+    if (sample && window_is_dock()) { hq_blit_sprite(sp, x0, y0, px, bg_pixel, 1); return; }
     Window root_ret; int gx, gy; unsigned int gw, gh, gb, gd;
     int inside = x0 >= 0 && y0 >= 0 && XGetGeometry(dpy, buf, &root_ret, &gx, &gy, &gw, &gh, &gb, &gd) && x0 + px <= (int)gw && y0 + px <= (int)gh;
     unsigned long long bd = 0;
