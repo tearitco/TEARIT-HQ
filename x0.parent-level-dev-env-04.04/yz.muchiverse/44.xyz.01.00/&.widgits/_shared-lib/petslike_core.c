@@ -413,7 +413,7 @@ static int lp_trim(const char *layer, const char *trunk) {      /* remove layer 
 static void lp_add(char *dst, size_t cap, const char *sep, const char *s) { size_t l = strlen(dst); if (l + 64 < cap) snprintf(dst + l, cap - l, "%s%.60s", l ? sep : "", s); }
 static void lp_status(const char *layer, const char *trunk, char *out, size_t cap) {      /* "<n> file(s) overridden: a, b; trunk moved: b" */
     DIR *d = opendir(layer); int n = 0, moved = 0; char ov[200] = "", mv[200] = ""; struct dirent *e; char names[64][72]; int nn = 0;
-    while (d && (e = readdir(d)) && nn < 64) { if (lp_name_ok(e->d_name) && strcmp(e->d_name, "LAYER")) { snprintf(names[nn++], sizeof names[0], "%.71s", e->d_name); } }
+    while (d && (e = readdir(d)) && nn < 64) { if (lp_name_ok(e->d_name) && strcmp(e->d_name, "LAYER") && strcmp(e->d_name, "cast.pdl")) { snprintf(names[nn++], sizeof names[0], "%.71s", e->d_name); } }      /* cast.pdl is the book's pet identity (piece_mint), not a branched copy of a trunk file: never an "override" */
     if (d) { closedir(d); }
     for (int i = 0; i < nn; i++) { char tp[PATH_MAX]; snprintf(tp, sizeof tp, "%.3000s/%.71s", trunk, names[i]); unsigned long long b, th = lp_hash(tp); n++; lp_add(ov, sizeof ov, ", ", names[i]);
         if (lp_base(layer, names[i], &b) && th != b) { moved++; lp_add(mv, sizeof mv, ", ", names[i]); } }
@@ -498,8 +498,22 @@ static void load_data(void) {
 }
 
 /* each pet is its OWN entity: a stable entity_uid (32 hex, made once, state/uid_<id>.txt) -> wallet id "e" + the first 24 hex (the house rule, see CHAIN-ECONOMY-DESIGN.md). No chain wallet is created yet. */
+/* PIECE IDENTITY (owner 2026-10-28: "a pet in a game is only an appearance; the piece, one uid, lives in the user's Master Pal List"). The durable copy of a game's pet ids is <app>/db/cast.pdl, rows
+ * `CAST | <uid> | <slug> | <role> | <shared> | <home>` written by piece_mint (adoption kept every id unchanged). That row WINS over state/uid_<id>.txt, which is git-ignored, per clone and was minted by "whoever ran first"; the
+ * state file stays only as the fallback for a pet with no cast row (the hero, a pet nobody adopted yet). A valid uid = 8 to 64 lowercase hex (the same rule as piece_check); a malformed row is skipped, never used. Nothing is
+ * minted or written here: identity is minted once by piece_mint, never by a game. Read-only, one small file per call. */
+static int cast_uid(const char *id, char *out, size_t cap) {
+    char p[PATH_MAX], line[300]; out[0] = 0; if (cap < 65 || snprintf(p, sizeof p, "%.3000s/db/cast.pdl", APP) >= (int)sizeof p) return 0; FILE *fp = fopen(p, "r"); if (!fp) return 0;
+    while (fgets(line, sizeof line, fp)) {
+        char *f[6]; if (split_bar(line, f, 6) < 3 || strcmp(f[0], "CAST") || strcmp(f[2], id)) continue;
+        size_t l = strlen(f[1]); int ok = l >= 8 && l <= 64; for (size_t k = 0; ok && k < l; k++) if (!((f[1][k] >= '0' && f[1][k] <= '9') || (f[1][k] >= 'a' && f[1][k] <= 'f'))) ok = 0;
+        if (ok) { snprintf(out, cap, "%s", f[1]); fclose(fp); return 1; }
+    }
+    fclose(fp); return 0;
+}
 static void ent_wallet(const char *id, char *out, size_t cap) {
-    char p[PATH_MAX], n[64], b[64]; snprintf(n, sizeof n, "uid_%s.txt", id); spath(p, n); read_file(p, b, sizeof b);
+    char p[PATH_MAX], n[64], b[80]; if (cast_uid(id, b, sizeof b)) { snprintf(out, cap, "e%.24s", b); return; }
+    snprintf(n, sizeof n, "uid_%s.txt", id); spath(p, n); read_file(p, b, sizeof b);
     if (strlen(b) < 32) { unsigned char r[16]; FILE *u = fopen("/dev/urandom", "rb"); if (u) { if (fread(r, 1, 16, u) != 16) memset(r, 7, 16); fclose(u); } else memset(r, 7, 16); for (int k = 0; k < 16; k++) snprintf(b + k * 2, 3, "%02x", r[k]); strncat(b, "\n", 2); write_if_changed(p, b, strlen(b)); }
     snprintf(out, cap, "e%.24s", b);
 }

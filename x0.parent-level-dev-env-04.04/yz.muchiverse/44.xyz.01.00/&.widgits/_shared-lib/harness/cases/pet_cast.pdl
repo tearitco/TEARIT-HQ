@@ -1,0 +1,120 @@
+# pet_cast: LOCKED cases for the game core's pet identity (owner 2026-10-28: a pet in a game is only an appearance, the piece with one uid lives in the Master Pal List). The core reads <app>/db/cast.pdl (`CAST | uid | slug | role | shared | home`, written by piece_mint) BEFORE state/uid_<slug>.txt, never mints when a cast row exists, skips a malformed row, and `db status` no longer calls cast.pdl an override.
+# How it is observed: the wallet shown in state/ui.txt is `e` + the first 24 hex of the pet's uid and the UI prints its first 14 characters (`wallet_line=wallet e` + 13 hex + `...`), so a different uid in the cast row and in the state file shows which one the core used. Expectations come from those rules, not from observed output.
+RESULTS | ../results/pet_cast.txt
+CASE | pet_cast
+SCRATCH |
+# setup: a minimal house skeleton under $T (the game finds its house by walking up to &.widgits and #.NNEST_ASSETS), the game folder without runtime state, the text-included sources, the pet DB, lc_clock
+COPYDIR | @.apps/rpg-space | @.apps/rpg-space | state,board,audit,+x,saves,rpg-space-pchq,.hq_manager,db
+MKDIR | @.apps/rpg-space/ops/+x
+MKDIR | @.apps/rpg-space/state
+MKDIR | #.NNEST_ASSETS/rmmv-www-img
+COPY | &.widgits/_shared-lib/stb_image.h | &.widgits/_shared-lib/stb_image.h
+COPY | &.widgits/_shared-lib/stb_image_write.h | &.widgits/_shared-lib/stb_image_write.h
+COPY | &.widgits/_shared-lib/game_events.c | &.widgits/_shared-lib/game_events.c
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | &.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPY | &.widgits/db-hq/data/system.pdl | &.widgits/db-hq/data/system.pdl
+COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl
+# EVENTS: a scratch house that can run and edit event pages: xyzfs marker (the pages find the game by walking up to it), the real play_event.sh, the command registry, the events-hq manager, bp_edit_op, and a prisc VM in a 101.mutaclsym*/system dir (play_event.sh walks up to find one)
+MKDIR | xyzfs
+MKDIR | #.ref/menu
+MKDIR | 101.mutaclsym-scratch/system
+COPY | &.widgits/events-hq/ops/play_event.sh | &.widgits/events-hq/ops/play_event.sh
+COPY | #.ref/menu/event_commands.registry.pdl | #.ref/menu/event_commands.registry.pdl
+COPY | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x
+COPY | &.hq-apps/blueprintz/+x/blueprintz_manager.+x | &.hq-apps/blueprintz/+x/blueprintz_manager.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | &.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x
+COPY | 101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x | 101.mutaclsym-scratch/system/prisc+x
+COPY | &.widgits/world-ops/ops/+x/wo.+x | &.widgits/world-ops/ops/+x/wo.+x
+COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_core.c
+COPY | &.widgits/_shared-lib/petslike_toolbar.c | &.widgits/_shared-lib/petslike_toolbar.c
+COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
+COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
+COPY | &.widgits/_shared-lib/kh_state_notify.h | &.widgits/_shared-lib/kh_state_notify.h
+COPY | &.widgits/_shared-lib/csv_frames.c | &.widgits/_shared-lib/csv_frames.c
+COPY | &.widgits/_shared-lib/petslike_skin_lib.c | &.widgits/_shared-lib/petslike_skin_lib.c
+COPY | &.widgits/_shared-lib/petslike_autotile.c | &.widgits/_shared-lib/petslike_autotile.c
+COPY | &.widgits/_shared-lib/petslike_life.c | &.widgits/_shared-lib/petslike_life.c
+COPY | @.apps/rpg-space/ops/+x/dust_gen.+x | @.apps/rpg-space/ops/+x/dust_gen.+x
+COPY | @.apps/rpg-space/ops/+x/dust_seed.+x | @.apps/rpg-space/ops/+x/dust_seed.+x
+COPY | @.apps/rpg-space/ops/+x/dust_zoom.+x | @.apps/rpg-space/ops/+x/dust_zoom.+x
+COPY | @.apps/rpg-space/ops/+x/dust_orbit.+x | @.apps/rpg-space/ops/+x/dust_orbit.+x
+COPY | @.apps/rpg-space/ops/+x/dust_check.+x | @.apps/rpg-space/ops/+x/dust_check.+x
+COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
+COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+COPY | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt
+COPY | @.apps/rpg-space/foods.pdl | @.apps/rpg-space/foods.pdl
+COPY | &.widgits/_shared-lib/ops/+x/fridge_op.+x | &.widgits/_shared-lib/ops/+x/fridge_op.+x
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-space/ops | -o | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | $T/@.apps/rpg-space/ops/rpg_space.c | -lm
+EXPECT_EXIT | 0 | setup.build
+EXPECT_EXISTS | @.apps/rpg-space/ops/+x/rpg_space.+x | setup.binary-exists
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-space/ops | -o | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | $T/@.apps/rpg-space/ops/rpg_space.c | -lm
+EXPECT_EXIT | 0 | setup.build
+RUN | cp | /usr/bin/tail | $T/khtpm_core_render
+SPAWN | viewer | $T/khtpm_core_render | -f | /dev/null | rpg-space.xhtpm
+EXPECT_ALIVE | $viewer | setup.viewer-alive
+# C0 baseline, no cast row: the old state file is the identity (the fallback must keep working)
+WRITE | @.apps/rpg-space/state/active.txt | ember\n
+WRITE | @.apps/rpg-space/state/uid_ember.txt | bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet ebbbbbbbbbbbbb... | c0.no-cast-row-uses-the-state-file
+# C1 a cast row WINS over the state file (they differ on purpose)
+MKDIR | @.apps/rpg-space/db
+WRITE | @.apps/rpg-space/db/cast.pdl | # CAST \p uid \p slug \p role \p shared \p home\nCAST \p aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet eaaaaaaaaaaaaa... | c1.cast-row-wins
+EXPECT_LACKS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet ebbbbbbbbbbbbb | c1.the-state-uid-is-not-shown
+EXPECT_HAS | @.apps/rpg-space/state/uid_ember.txt | bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb | c1.state-file-left-alone
+# C2 with a cast row the game mints NOTHING: the state file may be gone and stays gone
+RUN | rm | -f | $T/@.apps/rpg-space/state/uid_ember.txt
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_NOFILE | @.apps/rpg-space/state/uid_ember.txt | c2.no-uid-minted-when-the-cast-has-one
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet eaaaaaaaaaaaaa... | c2.still-the-cast-uid
+# C3 a row for ANOTHER slug is not this pet's identity: ember has no row, so it falls back (and the fallback mints, as before)
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \p rex \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_EXISTS | @.apps/rpg-space/state/uid_ember.txt | c3.other-slug-row-ignored-fallback-mints
+EXPECT_LACKS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet eaaaaaaaaaaaaa | c3.rex-uid-not-used-for-ember
+# C4 malformed rows are skipped, never used: uppercase, 7 hex (one short), 65 hex (one long), non-hex; the state file answers
+WRITE | @.apps/rpg-space/state/uid_ember.txt | bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet ebbbbbbbbbbbbb... | c4.uppercase-row-skipped
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p 1234567 \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet ebbbbbbbbbbbbb... | c4.seven-hex-row-skipped
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet ebbbbbbbbbbbbb... | c4.sixty-five-hex-row-skipped
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p gggggggggggggggggggggggggggggggg \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet ebbbbbbbbbbbbb... | c4.non-hex-row-skipped
+# C5 the boundaries ARE valid: 8 hex and 64 hex
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p 12345678 \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet e12345678... | c5.eight-hex-is-valid
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet eddddddddddddd... | c5.sixty-four-hex-is-valid
+# C6 a bad row first, a good row after it: the first VALID row wins; comments and other roles are not rows for this pet
+WRITE | @.apps/rpg-space/db/cast.pdl | # CAST \p eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \p ember \p pet \p 0 \p x\nNOTCAST \p ffffffffffffffffffffffffffffffff \p ember \p pet \p 0 \p x\nCAST \p ZZ \p ember \p pet \p 0 \p x\nCAST \p aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \p ember \p pet \p 0 \p x\nCAST \p cccccccccccccccccccccccccccccccc \p ember \p pet \p 0 \p x\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_HAS | @.apps/rpg-space/state/ui.txt | wallet_line=wallet eaaaaaaaaaaaaa... | c6.first-valid-row-wins
+# C7 db status: a layer holding ONLY cast.pdl overrides nothing; a really branched file is still listed and cast.pdl never is
+WRITE | @.apps/rpg-space/db/cast.pdl | CAST \p aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \p ember \p pet \p 0 \p rpg-space\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | seed
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
+EXPECT_OUT | 0 file(s) overridden | c7.cast-only-layer-overrides-nothing
+EXPECT_OUT_LACKS | cast.pdl | c7.status-never-names-cast.pdl
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | edit | system.pdl
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
+EXPECT_OUT | 1 file(s) overridden: system.pdl | c7.a-branched-file-is-still-counted
+EXPECT_OUT_LACKS | cast.pdl | c7.still-no-cast.pdl
+# C8 db trim keeps cast.pdl (it is not in the trunk, so it is never identical to a trunk file)
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | trim
+EXPECT_EXISTS | @.apps/rpg-space/db/cast.pdl | c8.trim-keeps-the-cast
+CLEAN |

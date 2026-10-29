@@ -91,7 +91,7 @@
 ## 🚧 5. Not done (said plainly)
 
 - 🪟 **No live window was opened today** (db-hq, Synch, a game board). The 15:21 freeze is still unexplained.
-- 🎮 **The games do not read `cast.pdl` or the Master Pal List yet** — their pet ids still come from their `state/uid_<slug>.txt`.
+- 🎮 ~~The games do not read `cast.pdl`~~ ✅ **DONE 2026-10-29:** the shared core reads `<app>/db/cast.pdl` first (`cast_uid`; harness `pet_cast` 24/0, 9 mutants). `state/uid_<slug>.txt` is the fallback only for a pet with no cast row. **Still not done:** the games do not read the Master Pal List itself, and the wallet shown is still `e` + the first 24 hex of the uid, not the `hash_op wallet` id (OPEN, owner decision).
 - ❓ **4 pets not adopted:** `cdda-hq/harold`, `tcg-rpgce/pal_1` (empty ids → need a real mint + your OK), `civ-rpgce/blue`, `gta-hq/nico` (not db actors).
 - 🧪 `piece_mint` has **no events-hq page / registry command** yet, **no price, fee, chain**, **no share / transfer / check-out** verbs, no fork change note.
 - ⛓️ **The chain work is design only**: NFT_MINT, master tax + fee, tribute, bonds, contracts. Chain hardening comes first.
@@ -99,7 +99,7 @@
 - 🔄 The **open** db window does not follow a book switch (only a window opened after it).
 - ✏️ Row writers (entity-cli) don't branch into a layer yet; no in-window row editing.
 - 🏷️ `CHAIN-ECONOMY-DESIGN.md` still states the old wallet rule (not edited).
-- 🔔 Game `db status` now says "own layer: cast.pdl overridden" (wording only; fix is in the shared core).
+- 🔔 ~~Game `db status` says "own layer: cast.pdl overridden"~~ ✅ **FIXED 2026-10-29** (`0 file(s) overridden`; harness `pet_cast` C7).
 
 ---
 

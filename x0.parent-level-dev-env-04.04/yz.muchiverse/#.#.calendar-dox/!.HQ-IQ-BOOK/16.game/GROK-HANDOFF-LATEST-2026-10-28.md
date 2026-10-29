@@ -30,7 +30,8 @@
 - ⚠️ **If you edit the TRUNK (`&.widgits/db-hq/data/actors.pdl` / `system.pdl`) you change 5–11 games at once. Never do that.** Branch the file into mcl-hq's layer first.
 - 🌿 **How to branch:** `@.apps/mcl-hq/ops/+x/mcl_hq.+x db status` · `db edit <file>` (copy-on-write into `@.apps/mcl-hq/db/`, stamped with the trunk's hash) · `db trim` (drops layer files identical to the trunk). Full description: `PER-BOOK-DB-2026-10-28.md` sections 1–7.
 - 😬 **Today the layer is PER FILE**: a branched `actors.pdl` is a full 777-line copy (all 30 actors). A **per-record** layer is planned (Claude's job). Until then: branch only when you really must, on a scratch copy, and say so in the commit.
-- 🔔 `db status` will say "own layer: **cast.pdl** overridden" — that is a **wording quirk** (cast.pdl is not an override). Ignore it; don't "fix" it (it is in the shared core).
+- 🔔 ✅ **FIXED 2026-10-29:** `db status` no longer calls `cast.pdl` an override (it prints `0 file(s) overridden` for a layer that holds only the cast). Harness `pet_cast` case C7. The ten game binaries were rebuilt; a game process already running keeps the old code until it is restarted.
+- 🆔 ✅ **2026-10-29: the core now reads `db/cast.pdl` FIRST** for a pet's uid (`cast_uid` in `petslike_core.c`); `state/uid_<slug>.txt` is only the fallback for a pet with no cast row. Still true: **do not touch `petslike_core.c`** (11 games share it), mint nothing, ask the owner for new pets.
 
 ---
 
