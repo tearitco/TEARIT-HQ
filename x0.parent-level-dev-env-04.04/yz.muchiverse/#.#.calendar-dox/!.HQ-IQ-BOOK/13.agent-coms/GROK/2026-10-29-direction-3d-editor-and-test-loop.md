@@ -262,3 +262,7 @@ ffmpeg pass. The owner named the folder
 `/home/no/Desktop/github/work/XO/!.PRESENTATIONS`. No MP4 was built.
 There is no board frame of this row yet, and key `p` still has no 2D
 frame to convert.
+
+## 9. Key p fallback (2026-10-29)
+
+`dump_board_frame.sh` still prefers `rgb_frame_2d.raw`. When that pair is missing it reads `rgb_frame.raw`, the buffer piececraft-hq already writes. RAN: a 2x2 synthetic 2D frame wrote a 2x2 PNG (`source=rgb_frame_2d.raw`). The piececraft session `1792731983-3237854` wrote `/tmp/entity-menu-frame.png` 640x768, 8039 bytes, `source=rgb_frame.raw`. The edit board still has no session frame of its own. No board was launched.

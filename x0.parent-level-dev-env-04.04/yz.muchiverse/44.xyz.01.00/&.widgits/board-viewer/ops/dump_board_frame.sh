@@ -1,16 +1,24 @@
 #!/bin/sh
 # House 'p' dump for a pc-hq board. The board window does not own an X id
 # the way khtpm_core_render does, so this writes the same receipt path from
-# the frame the board just painted (pieces/display/rgb_frame_2d.raw).
+# the frame the board just painted. Prefer the 2D frame. A project that
+# only painted the flat buffer (piececraft-hq writes rgb_frame.raw) uses
+# that file instead, same width and height keys.
 # Output: /tmp/entity-menu-frame.png and /tmp/entity-menu-frame.png.receipt.txt
 ROOT="${1:-}"
 [ -n "$ROOT" ] && [ -d "$ROOT" ] || { echo "dump_board_frame: need the board project root" >&2; exit 1; }
 RAW="$ROOT/pieces/display/rgb_frame_2d.raw"
 REC="$ROOT/pieces/display/rgb_frame_2d.receipt.txt"
+SRC=rgb_frame_2d.raw
+if [ ! -f "$RAW" ] || [ ! -f "$REC" ]; then
+    RAW="$ROOT/pieces/display/rgb_frame.raw"
+    REC="$ROOT/pieces/display/rgb_frame.receipt.txt"
+    SRC=rgb_frame.raw
+fi
 [ -f "$RAW" ] && [ -f "$REC" ] || { echo "dump_board_frame: no 2d frame under $ROOT" >&2; exit 1; }
-python3 - "$RAW" "$REC" <<'PY'
+python3 - "$RAW" "$REC" "$SRC" <<'PY'
 import pathlib, struct, sys, time, zlib
-raw, rec = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+raw, rec, src = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
 w = h = 0
 for line in rec.read_text().splitlines():
     if line.startswith("frame_w="): w = int(line.split("=", 1)[1])
@@ -25,6 +33,6 @@ png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 
 out = pathlib.Path("/tmp/entity-menu-frame.png")
 out.write_bytes(png)
 pathlib.Path("/tmp/entity-menu-frame.png.receipt.txt").write_text(
-    "ok=1 png=/tmp/entity-menu-frame.png w=%d h=%d t=%d source=rgb_frame_2d.raw\n" % (w, h, int(time.time())))
+    "ok=1 png=/tmp/entity-menu-frame.png w=%d h=%d t=%d source=%s\n" % (w, h, int(time.time()), src))
 print("ok /tmp/entity-menu-frame.png %dx%d" % (w, h))
 PY
