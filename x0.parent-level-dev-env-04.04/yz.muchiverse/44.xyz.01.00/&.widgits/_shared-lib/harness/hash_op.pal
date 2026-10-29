@@ -1,0 +1,4 @@
+# hash_op.pal - LOCKED harness for hash_op (SHA-256 + the piece wallet id as one tiny op). Compiled -Wall -Wextra -Werror from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/hash_op.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/hash_op.pdl
+halt

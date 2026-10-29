@@ -1,0 +1,32 @@
+# hash_op: LOCKED cases. Expected values are the published SHA-256 test vectors and an independent `sha256sum` of "wallet\0abcdef12" computed outside the op.
+RESULTS | ../results/hash_op.txt
+CASE | hash_op
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/hash_op.c | ho.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/ho.+x | $T/ho.c | -lcrypto
+EXPECT_EXIT | 0 | setup.compiles-clean
+RUN | $T/ho.+x | sha256 | abc
+EXPECT_EXIT | 0 | h1.exit-0
+EXPECT_OUT_IS | ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad | h1.abc-vector
+RUN | $T/ho.+x | sha256 | 
+EXPECT_OUT_IS | e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | h2.empty-vector
+WRITE | f.txt | abc
+RUN | $T/ho.+x | sha256 | --file | $T/f.txt
+EXPECT_OUT_IS | ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad | h3.file-same-as-text
+RUN | $T/ho.+x | sha256 | --file | $T/nope.txt
+EXPECT_EXIT | 1 | h4.missing-file-exit-1
+RUN | $T/ho.+x | wallet | abcdef12
+EXPECT_OUT_IS | e4c737b00edc6603507641bcf | h5.wallet-derived-by-hash-with-domain
+RUN | $T/ho.+x | wallet | ABCDEF12
+EXPECT_EXIT | 1 | h6.uppercase-uid-refused
+RUN | $T/ho.+x | wallet | abcdef1
+EXPECT_EXIT | 1 | h7.7-hex-uid-refused
+RUN | $T/ho.+x | wallet | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EXPECT_EXIT | 1 | h8.65-hex-uid-refused
+RUN | $T/ho.+x | wallet | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EXPECT_EXIT | 0 | h9.64-hex-uid-ok
+RUN | $T/ho.+x | wallet | abcdef12xyz
+EXPECT_EXIT | 1 | h10.non-hex-refused
+RUN | $T/ho.+x
+EXPECT_EXIT | 2 | h11.no-args-usage-2
+CLEAN |
