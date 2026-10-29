@@ -34,6 +34,9 @@ command runs on.
 - `HANDOFF-2026-10-21-0512-CLAUDE.md` — 05:12 PDT handoff, added 05:19. Edit board still needs RPG Maker buildings, trees, doors, and the eight walking sprites. Later the same window edits RPG events the way palettes and the events editor do.
 - `HANDOFF-2026-10-21-CASINO-AND-RPG-EDIT.md` — where Casino Island actually is (`bet-rpg`, not the TON board, not `rpg-bet`), and the first-pass plan for `rpg-edit-hq` on book TON page centroid-u. Read before building that app.
 - `PET-HQ-MUST-HAVES.md` — one template for the pet boards: one footer of pets, acts on the left, doors, clock, and INT `0` / `1`–`4` that actually move the board camera. Survey of which daemons only store `flag_pov`.
+- `PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md` - **design (2026-10-28, nothing built):** a piece (rare, valuable, one uid) vs an actor (db template) vs an appearance (a book); the user's Master Pal List ("Bill's PC"); minting as an op + event (`piece_mint`); copy / fork / share / buy; the checker `piece_check`; migration of today's 30 game-local ids.
+- `CHAIN-MASTER-BANK-FED-AND-CONTRACTS-DESIGN-2026-10-28.md` - **design (2026-10-28, nothing built):** the chain as master bank / "Fed": tributes and mining for pieces, master tax and master tx fee on every purchase, bonds, owner contracts (tax, dividend, royalty, annuity), `policy.pdl` knobs, what "uncheatable" really needs.
+- `PER-BOOK-DB-2026-10-28.md` - the db as a layer over a shared trunk, the db window following the open book, the cast and identity consequences.
 - `GAMES-DECISIONS-2026-10-13.md` — owner decisions for cdda-hq, df-hq,
   gta-hq: z-levels, vehicles as part-cell grids, scale, physics in the
   concept bank, learning with review. Read before touching those games.
