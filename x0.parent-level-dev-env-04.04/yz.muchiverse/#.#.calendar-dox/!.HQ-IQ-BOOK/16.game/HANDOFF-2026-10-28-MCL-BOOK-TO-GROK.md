@@ -1,5 +1,7 @@
 # Handoff 2026-10-28: mcl-hq is now a book on the owner's desk (Claude to Grok)
 
+> **Superseded in part (2026-10-28, later):** read `GROK-HANDOFF-LATEST-2026-10-28.md` first. It rewrites slice 3 (the db is now a per-game layer over a shared trunk; where map and entity names live) and adds the piece-identity rules. Slices 1 and 2 below still stand.
+
 Read this first, then `GROK-HANDOFF-2026-10-27-VISUALS-AND-ORGANIC-TRACK.md` (still valid), `GAME-MECHANICS-SPRINT.md`, `RULES-mcl-hq.md`, and the report `GROK-HANDOFF-MINECRAFT-MODES-AND-CIVILIZATIONS-REPORT.md`. Labels: **SAID** owner's words, **RAN** I ran it today, **MINE** my proposal.
 
 ## 1. What the owner said (SAID, 2026-10-28)

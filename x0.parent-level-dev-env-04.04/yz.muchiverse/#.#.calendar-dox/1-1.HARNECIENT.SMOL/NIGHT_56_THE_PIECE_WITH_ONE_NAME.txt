@@ -1,0 +1,105 @@
+# 💎🪪 NIGHT 56 — The Piece With One Name 🪪💎
+# ====================================================================
+# Title: "💎🪪 NIGHT 56 — The Piece With One Name 🪪💎"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: One long day (2026-10-28) that started with "each game should have its own database" and ended with twenty-six pets moved into one list without changing a single id. A database that shares until it is changed, a name that is not an identity, a tiny tool for a hash, and a stack of mistakes that were found by trying to break the tests.
+# Long-form: everything called measured was run on 2026-10-28. Everything called a plan is a plan. Nothing here is claimed done that was not run again afterwards.
+# Companion documents: SESSION-SUMMARY-2026-10-28 (XO 30.rpg-dust-work oct-28.6), BOOK 16.game PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN, PER-BOOK-DB, CHAIN-MASTER-BANK-FED-AND-CONTRACTS-DESIGN, HANDOFF-2026-10-28-PIECES-DB-CHAIN.
+
+**THE NARRATOR:** NIGHT 55 ended with pages you can read. Tonight is a smaller question with a long tail. Who is this pet?
+
+**MAXINE:** That sounds easy. It is called Rex.
+
+**TOMO:** Which Rex? Five games have a pet called Rex. Each one has its own id, thirty-two letters and digits, made the first time that game ran. Five games, five Rexes, five different ids. Harold is the same story, five games, five ids. Ember, four. Solvent, three.
+
+**RAHWEH:** So they are different pets with the same name. That is fine.
+
+**TOMO:** It is fine if that is the plan. Nobody had planned it. And there was a second problem. Those ids were written into a folder that git ignores. Thirty id files, none of them saved in the code. Wipe the folder and the game makes new ids, and the pet is somebody else.
+
+**MAXINE:** And the owner said?
+
+**THE NARRATOR:** The owner said that pieces are rare and have value. If two pets are different, they get different ids. If they are the same piece in two games, that has to be said out loud. Nothing in between.
+
+**RAHWEH:** Then the first job was to count what was true.
+
+**TOMO:** Thirty id files, twenty-eight real ones. Two files were empty. Those two even looked like the only shared id, because an empty text is the same as another empty text.
+
+**MAXINE:** That is a funny way to be shared.
+
+**TOMO:** It is a wrong way. The checker that found it is called piece_check. It only reads. It reports an empty id as an error and everything else as a warning.
+
+**RAHWEH:** Before that you worked on the database.
+
+**TOMO:** That came first, in the morning. Each of the eleven games had a full copy of the database, about one and a half megabytes in all, and the owner wanted two things. A game should have its own database, not a house-wide one. And the copies should share until someone changes them.
+
+**MAXINE:** Like a branch.
+
+**TOMO:** Exactly like a branch. There is one trunk. A game has a layer on top. The layer holds only the files that game changed, and when a file is branched, a stamp of the trunk's content is written beside it. If the trunk moves later, the game can see that its branch is old. Nothing merges by itself.
+
+**RAHWEH:** And the one and a half megabytes?
+
+**TOMO:** A hundred and fifty-four files were identical to the trunk. The game's own trim command removed those and nothing else. Eleven games now have an empty layer. The trunk did not change.
+
+**THE NARRATOR:** Then came the window.
+
+**TOMO:** The owner said the database menu on the taskbar already existed and should load the book that is open. It does exist, and it only appears when a session is open. So the open book is the active session. A small tool now writes that book's database, layer over trunk, into the files the window shows, and only when the bytes differ.
+
+**MAXINE:** And it worked?
+
+**TOMO:** The tool did, in a test house, and a dry run on the real house named the book that is open. But I never opened the window. The machine had frozen once that afternoon on a board launch and nobody knows why. So the window is untested, and I say so.
+
+**RAHWEH:** What did you find in the old window?
+
+**TOMO:** Old rows. The actors file the window reads had two hundred and ninety-one lines. The real data had seven hundred and seventy-seven. Nothing was refreshing it.
+
+**THE NARRATOR:** Now the part about hashes.
+
+**TOMO:** A wallet needs an id derived from the piece's id. The old rule cut the first twenty-four letters of the id. The owner said an id may be as short as eight letters. Then the cut fails. So the wallet id is a hash of the id, and a hash needs code.
+
+**MAXINE:** And you reached for a header file.
+
+**TOMO:** I did. The owner stopped me. We do not share headers here. We make an op, an event or a pal. So the hash is a tiny program of its own. You give it a text, it gives you the hash. The mint tool starts it as a separate process. If it is missing, the mint refuses and writes nothing.
+
+**RAHWEH:** That is the mint tool. Say what it does.
+
+**TOMO:** It makes one piece. It can grant one, copy one or fork one. It does not touch money yet. The five other ways, mining, buying, auctions, shops and markets, are refused with a plain sentence that says the chain does not exist yet. It checks everything before it writes the first byte, and if a later write fails it puts the earlier ones back.
+
+**MAXINE:** And the pets that already exist?
+
+**TOMO:** One option adopts an id that a game already has. Nothing is invented. That was the migration.
+
+**THE NARRATOR:** And before you ran it on the owner's list?
+
+**TOMO:** A backup. Two thousand three hundred and thirteen files, counted three ways: on disk, in the hash list, in the archive. Then a rehearsal on a copy. The first run made twenty-six pieces. The second run found all twenty-six already there and made none. Only then the real house.
+
+**RAHWEH:** And the result?
+
+**TOMO:** Seventy-nine pal folders, fifty-three plus twenty-six. All two thousand three hundred and thirteen original files byte for byte identical. Every new id equals the id the game had. Ten small cast files saved in the code, so the ids no longer live only in an ignored folder.
+
+**MAXINE:** Four were left out.
+
+**TOMO:** Two had empty ids, and those need a real new id, which changes a pet, so the owner has to say yes. Two, called blue and nico, are not actors in the database at all. I do not yet know what they are.
+
+**RAHWEH:** Now the honest part. How many things did you get wrong today?
+
+**TOMO:** Many, and most were found by trying to break my own tests. A test that has never failed is a guess.
+
+**TOMO:** A change that is supposed to break the test sometimes never applied, and it looked like the test had passed. A change that broke the test only because it no longer compiled proved nothing. A missing check of one past the maximum let a broken tool survive until I added it. A buffer that held thirty-nine letters read the sixty-four-letter ids of the owner's list and called all fifty-three pals bad. One of my own test files overwrote the index where it should have added to it, and gave a failure that was my fault. One test used a capital letter in a name, and the tool was right to refuse.
+
+**MAXINE:** And one that was not a test.
+
+**TOMO:** The checker counted the new index file and the ledger file as if they were pets. It said eighty-one, when there are seventy-nine. Fixed, and the old mistake now fails three cases.
+
+**THE NARRATOR:** What is not done?
+
+**TOMO:** The games still read their ids from their old folders. They do not read the cast files yet. The money part, the fees, the bonds, the tribute, is written down and nothing more. The database layer works by file, so one changed name still copies a whole file. The open database window does not follow a switch of book. And no window was opened today.
+
+**RAHWEH:** And what is the rule you keep?
+
+**TOMO:** A name is not an identity. Only the id is. And a check is only worth anything after you have seen it fail.
+
+**MAXINE:** Good night, Rex. All five of you.
+
+**THE NARRATOR:** Good night.
