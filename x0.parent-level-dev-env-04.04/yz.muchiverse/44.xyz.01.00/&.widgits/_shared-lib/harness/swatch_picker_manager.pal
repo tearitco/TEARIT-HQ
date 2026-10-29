@@ -1,0 +1,4 @@
+# swatch_picker_manager.pal - LOCKED harness for the Custom-theme routing in swatch_picker_manager (the real manager, driven through the action file in a scratch house). Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/swatch_picker_manager.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/swatch_picker_manager.pdl
+halt

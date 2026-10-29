@@ -96,7 +96,21 @@ int main(int argc, char **argv) {
                 char *pick = strstr(buf, "PICK:");
                 char *cls = strstr(buf, "CLOSE");
                 if (cls && (!pick || cls < pick)) return 0;
-                if (pick) {
+                if (pick && strncmp(pick + 5, "PRISM_", 6) == 0) {
+                    /* Custom theme controls (owner 2026-10-28): PICK:PRISM_<VAR>_<STEP> goes to prism_settings_op and never touches the swatch phase.
+                     * The token is checked to be only A-Z and _ before it reaches a shell (the action file is written by the renderer, but any process can write it). */
+                    char tok[64]; size_t tl = 0;
+                    while (pick[5 + tl] && pick[5 + tl] != '\n' && pick[5 + tl] != '\r' && pick[5 + tl] != ' ' && tl < sizeof(tok) - 1) { tok[tl] = pick[5 + tl]; tl++; }
+                    tok[tl] = 0;
+                    int clean = tl > 0;
+                    for (size_t i = 0; i < tl; i++) { if (!((tok[i] >= 'A' && tok[i] <= 'Z') || tok[i] == '_')) { clean = 0; } }
+                    if (clean) {
+                        char cmd[PATH_BUF * 3];
+                        snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/prism_settings_op.+x' '%s' '%s'", house, house, tok);
+                        int rc = system(cmd);
+                        (void)rc;
+                    }
+                } else if (pick && pick[5] >= '0' && pick[5] <= '9') {
                     int idx = atoi(pick + 5);
                     if (idx >= 0 && idx < g_n_swatches) {
                         if (phase == 0) { bg = idx; phase = 1; }
