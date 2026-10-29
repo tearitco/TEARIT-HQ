@@ -1,0 +1,4 @@
+# prism_settings_op.pal - LOCKED harness for prism_settings_op (settings > theme > Custom controls). Compiled -Wall -Wextra -Werror from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/prism_settings_op.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/prism_settings_op.pdl
+halt
