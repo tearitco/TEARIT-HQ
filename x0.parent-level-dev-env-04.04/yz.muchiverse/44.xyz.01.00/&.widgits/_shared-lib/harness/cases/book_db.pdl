@@ -1,10 +1,10 @@
-# book_db: LOCKED cases for the per-book db (owner 2026-10-28: the db is not meant to be house-wide). A game uses PET_DB, then its own <app>/db, and only without one the shared &.widgits/db-hq/data; `db seed` copies once, never overwrites.
+# book_db: LOCKED cases for the per-book db as a LAYER over the shared trunk (owner 2026-10-28: the db is not house-wide, and books share a trunk till branched). A reader takes layer/<file> else trunk/<file>; the layer holds only branched files; BASE stamps the trunk hash; PET_DB is a plain folder and wins.
 # The party is read from the db by name (PET_PARTY picks the SYSTEM party row); a pet shows up as state/pet_<id>.txt after a walk. Expectations come from those rules, not from observed output.
 RESULTS | ../results/book_db.txt
 CASE | book_db
 SCRATCH |
 # setup: a minimal house skeleton under $T (the game finds its house by walking up to &.widgits and #.NNEST_ASSETS), the game folder without runtime state, the text-included sources, the pet DB, lc_clock
-COPYDIR | @.apps/rpg-space | @.apps/rpg-space | state,board,audit,+x,saves,rpg-space-pchq,.hq_manager
+COPYDIR | @.apps/rpg-space | @.apps/rpg-space | state,board,audit,+x,saves,rpg-space-pchq,.hq_manager,db
 MKDIR | @.apps/rpg-space/ops/+x
 MKDIR | @.apps/rpg-space/state
 MKDIR | #.NNEST_ASSETS/rmmv-www-img
@@ -57,34 +57,65 @@ EXPECT_EXIT | 0 | setup.build
 RUN | cp | /usr/bin/tail | $T/khtpm_core_render
 SPAWN | viewer | $T/khtpm_core_render | -f | /dev/null | rpg-space.xhtpm
 EXPECT_ALIVE | $viewer | setup.viewer-alive
-# B1 no own db: the game says it uses the shared one, and a party that exists only in a book db is unknown to it
+# B1 no layer: the game reads the shared trunk, which does not know TestParty
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
-EXPECT_OUT | no own db yet, using the shared db | b1.says-shared
+EXPECT_OUT | no layer yet, this game reads the shared trunk | b1.says-trunk
 WRITE | @.apps/rpg-space/state/active.txt | ember\n
 RUN | env | PET_PARTY=TestParty | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
-EXPECT_NOFILE | @.apps/rpg-space/state/pet_zed.txt | b1.the-shared-db-does-not-know-TestParty
-# B2 db seed copies the shared db once
+EXPECT_NOFILE | @.apps/rpg-space/state/pet_zed.txt | b1.the-trunk-does-not-know-TestParty
+# B2 seed makes an EMPTY layer: it copies nothing (that is the whole point: space is shared)
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | seed
-EXPECT_OUT | seeded | b2.seeded
-EXPECT_HAS | @.apps/rpg-space/db/system.pdl | SYSTEM | b2.the-copy-has-the-shared-rows
+EXPECT_OUT | made the empty layer | b2.made
+EXPECT_EXISTS | @.apps/rpg-space/db/LAYER | b2.LAYER-file
+EXPECT_NOFILE | @.apps/rpg-space/db/system.pdl | b2.nothing-copied
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
-EXPECT_OUT | uses its own db | b2.now-says-own
+EXPECT_OUT | 0 file(s) overridden | b2.zero-overrides
 # B3 a second seed overwrites nothing
 WRITE | @.apps/rpg-space/db/marker.txt | mine\n
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | seed
 EXPECT_OUT | already exists (kept, nothing overwritten) | b3.second-seed-refuses
-EXPECT_HAS | @.apps/rpg-space/db/marker.txt | mine | b3.the-marker-is-still-there
-# B4 the game reads ITS OWN db: a party that exists only there is loaded
+EXPECT_HAS | @.apps/rpg-space/db/marker.txt | mine | b3.marker-kept
+RUN | rm | -f | $T/@.apps/rpg-space/db/marker.txt
+# B4 db edit BRANCHES one file: it is copied in and the trunk hash is stamped; a second edit keeps the book copy
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | edit | system.pdl
+EXPECT_OUT | branched system.pdl | b4.branched
+EXPECT_HAS | @.apps/rpg-space/db/system.pdl | SYSTEM | b4.copy-has-the-trunk-rows
+EXPECT_HAS | @.apps/rpg-space/db/LAYER | BASE \p system.pdl \p | b4.BASE-stamp
 WRITE | @.apps/rpg-space/db/system.pdl | SYSTEM \p name \p TestParty\nSYSTEM \p member1 \p Zed\nSYSTEM \p member2 \p Yara\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | edit | system.pdl
+EXPECT_OUT | already in the layer (kept) | b4.second-edit-keeps
+EXPECT_HAS | @.apps/rpg-space/db/system.pdl | TestParty | b4.the-book-edit-survived
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
+EXPECT_OUT | 1 file(s) overridden: system.pdl | b4.one-override
+# B5 the game reads ITS layer for the file it branched, and the trunk for the rest (actors.pdl is not in the layer)
 RUN | env | PET_PARTY=TestParty | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
-EXPECT_EXISTS | @.apps/rpg-space/state/pet_zed.txt | b4.zed-comes-from-the-own-db
-# B5 PET_DB still wins over the own db
+EXPECT_EXISTS | @.apps/rpg-space/state/pet_zed.txt | b5.zed-comes-from-the-layer
+EXPECT_NOFILE | @.apps/rpg-space/db/actors.pdl | b5.actors-still-only-in-the-trunk
+# B6 the trunk has not moved yet, then it does: the layer says so (nothing merges by itself)
+RUN | sh | -c | $T/@.apps/rpg-space/ops/+x/rpg_space.+x db \p grep -c moved || true
+EXPECT_OUT_IS | 0 | b6.not-moved-yet
+RUN | sh | -c | echo "# edited later in the trunk" >> "$T/&.widgits/db-hq/data/system.pdl"
+RUN | sh | -c | $T/@.apps/rpg-space/ops/+x/rpg_space.+x db
+EXPECT_OUT | trunk moved (review): system.pdl | b6.trunk-moved-is-reported
+# B7 db trim drops layer files identical to the trunk and keeps the changed ones
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | edit | actors.pdl
+EXPECT_EXISTS | @.apps/rpg-space/db/actors.pdl | b7.branched-actors
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | trim
+EXPECT_OUT | dropped 1 layer file(s) | b7.dropped-exactly-the-identical-one
+EXPECT_NOFILE | @.apps/rpg-space/db/actors.pdl | b7.identical-file-gone
+EXPECT_EXISTS | @.apps/rpg-space/db/system.pdl | b7.changed-file-kept
+# B8 bad requests are refused
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | edit | nosuchfile.pdl
+EXPECT_OUT | cannot branch | b8.not-in-the-trunk
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | edit | LAYER
+EXPECT_OUT | cannot branch | b8.LAYER-is-not-a-db-file
+# B9 PET_DB is a plain folder and still wins over the layer
 MKDIR | other
 WRITE | other/system.pdl | SYSTEM \p name \p TestParty\nSYSTEM \p member1 \p Quill\n
 RUN | env | PET_DB=$T/other | PET_PARTY=TestParty | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
-EXPECT_EXISTS | @.apps/rpg-space/state/pet_quill.txt | b5.PET_DB-wins
-# B6 without an own db the game is back on the shared one
+EXPECT_EXISTS | @.apps/rpg-space/state/pet_quill.txt | b9.PET_DB-wins
+# B10 without the layer the game is back on the trunk
 RUN | rm | -rf | $T/@.apps/rpg-space/db
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
-EXPECT_OUT | no own db yet | b6.back-to-shared
+EXPECT_OUT | no layer yet | b10.back-to-trunk
 CLEAN |

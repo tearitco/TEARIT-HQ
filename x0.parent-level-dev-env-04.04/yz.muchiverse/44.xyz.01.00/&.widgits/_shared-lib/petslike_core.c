@@ -380,14 +380,54 @@ static struct { char k[24], v[120]; } g_cfg[24]; static int g_ncfg;
 static void cfg_load(void) { char p[PATH_MAX], line[300]; snprintf(p, sizeof p, "%s/toy.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return; g_ncfg = 0;
     while (fgets(line, sizeof line, fp) && g_ncfg < 24) { char *f[4]; if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SECTION")) continue; snprintf(g_cfg[g_ncfg].k, sizeof g_cfg[g_ncfg].k, "%s", f[1]); snprintf(g_cfg[g_ncfg].v, sizeof g_cfg[g_ncfg].v, "%s", f[2]); g_ncfg++; } fclose(fp); }
 static const char *cfg(const char *k, const char *d) { for (int i = 0; i < g_ncfg; i++) if (!strcmp(g_cfg[i].k, k)) return g_cfg[i].v; return d; }
+/* LAYER OVER A TRUNK (2026-10-28, owner: "share a common trunk of data till branched ... to save space"; BOOK 16.game/PER-BOOK-DB-2026-10-28.md). A book's db is a LAYER folder <app>/db over the shared TRUNK &.widgits/db-hq/data:
+ * a reader takes layer/<file> when it exists, else trunk/<file>; the layer holds ONLY files the book changed (the first write copies the trunk file in = the branch point, `db edit <file>`), and <layer>/LAYER records
+ * `BASE | <file> | <hash of the trunk file at that moment>` so a later trunk change shows as "trunk moved" for review (nothing merges by itself). Pure file I/O, prefix lp_, one consumer today = inline (promote to a
+ * text-include when the taskbar managers need it). The hash is FNV-1a 64 (change detection, not security). File names are plain (no / or .. or leading dot). */
+static int lp_name_ok(const char *n) { size_t l = strlen(n); if (!l || l > 64 || n[0] == '.') return 0; for (size_t i = 0; i < l; i++) { char c = n[i]; if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.')) return 0; } return 1; }
+static int lp_resolve(const char *layer, const char *trunk, const char *name, char *out, size_t n) {      /* 1 = the layer's file, 0 = the trunk's (also when neither exists) */
+    char p[PATH_MAX]; if (lp_name_ok(name) && snprintf(p, sizeof p, "%.3000s/%s", layer, name) < (int)sizeof p && fexists(p)) { snprintf(out, n, "%s", p); return 1; }
+    snprintf(out, n, "%.3000s/%s", trunk, name); return 0;
+}
+static unsigned long long lp_hash(const char *path) { FILE *f = fopen(path, "rb"); if (!f) return 0; unsigned long long h = 1469598103934665603ULL; int c; while ((c = fgetc(f)) != EOF) { h ^= (unsigned char)c; h *= 1099511628211ULL; } fclose(f); return h ? h : 1; }
+static int lp_copy(const char *from, const char *to) { FILE *a = fopen(from, "rb"); if (!a) return -1; char tmp[PATH_MAX]; if (snprintf(tmp, sizeof tmp, "%.3000s.tmp", to) >= (int)sizeof tmp) { fclose(a); return -1; } FILE *b = fopen(tmp, "wb"); if (!b) { fclose(a); return -1; } char buf[8192]; size_t r; int ok = 1; while ((r = fread(buf, 1, sizeof buf, a)) > 0) if (fwrite(buf, 1, r, b) != r) { ok = 0; break; } fclose(a); if (fclose(b)) ok = 0; if (!ok || rename(tmp, to)) { remove(tmp); return -1; } return 0; }
+static int lp_base(const char *layer, const char *name, unsigned long long *h) {      /* the hash of the trunk file recorded in <layer>/LAYER when it was branched; 0 = none */
+    char p[PATH_MAX], l[256]; *h = 0; if (snprintf(p, sizeof p, "%.3000s/LAYER", layer) >= (int)sizeof p) return 0; FILE *f = fopen(p, "r"); if (!f) return 0; int found = 0;
+    while (fgets(l, sizeof l, f)) { char *fl[4]; if (split_bar(l, fl, 3) < 3 || strcmp(fl[0], "BASE") || strcmp(fl[1], name)) continue; *h = strtoull(fl[2], NULL, 16); found = 1; } fclose(f); return found;
+}
+static int lp_cow(const char *layer, const char *trunk, const char *name) {      /* branch one file: 1 copied now, 0 the layer already has it, -1 error (no layer, bad name, no trunk file) */
+    char lp[PATH_MAX], tp[PATH_MAX], ml[PATH_MAX]; if (!lp_name_ok(name) || !strcmp(name, "LAYER") || !is_dir(layer)) return -1;
+    if (snprintf(lp, sizeof lp, "%.3000s/%s", layer, name) >= (int)sizeof lp || snprintf(tp, sizeof tp, "%.3000s/%s", trunk, name) >= (int)sizeof tp || snprintf(ml, sizeof ml, "%.3000s/LAYER", layer) >= (int)sizeof ml) return -1;
+    if (fexists(lp)) { return 0; }
+    unsigned long long h = lp_hash(tp);
+    if (!h || lp_copy(tp, lp)) { return -1; }
+    FILE *f = fopen(ml, "a"); if (f) { fprintf(f, "BASE | %s | %016llx\n", name, h); fclose(f); } return 1;
+}
+static int lp_trim(const char *layer, const char *trunk) {      /* remove layer files that are byte-identical to the trunk's; returns how many */
+    DIR *d = opendir(layer); if (!d) return 0; int n = 0; struct dirent *e; char names[64][72]; int nn = 0;
+    while ((e = readdir(d)) && nn < 64) { if (lp_name_ok(e->d_name) && strcmp(e->d_name, "LAYER")) { snprintf(names[nn++], sizeof names[0], "%.71s", e->d_name); } }
+    closedir(d);
+    for (int i = 0; i < nn; i++) { char lp[PATH_MAX], tp[PATH_MAX]; snprintf(lp, sizeof lp, "%.3000s/%.71s", layer, names[i]); snprintf(tp, sizeof tp, "%.3000s/%.71s", trunk, names[i]); unsigned long long a = lp_hash(lp), b = lp_hash(tp); if (a && a == b && remove(lp) == 0) n++; }
+    return n;
+}
+static void lp_add(char *dst, size_t cap, const char *sep, const char *s) { size_t l = strlen(dst); if (l + 64 < cap) snprintf(dst + l, cap - l, "%s%.60s", l ? sep : "", s); }
+static void lp_status(const char *layer, const char *trunk, char *out, size_t cap) {      /* "<n> file(s) overridden: a, b; trunk moved: b" */
+    DIR *d = opendir(layer); int n = 0, moved = 0; char ov[200] = "", mv[200] = ""; struct dirent *e; char names[64][72]; int nn = 0;
+    while (d && (e = readdir(d)) && nn < 64) { if (lp_name_ok(e->d_name) && strcmp(e->d_name, "LAYER")) { snprintf(names[nn++], sizeof names[0], "%.71s", e->d_name); } }
+    if (d) { closedir(d); }
+    for (int i = 0; i < nn; i++) { char tp[PATH_MAX]; snprintf(tp, sizeof tp, "%.3000s/%.71s", trunk, names[i]); unsigned long long b, th = lp_hash(tp); n++; lp_add(ov, sizeof ov, ", ", names[i]);
+        if (lp_base(layer, names[i], &b) && th != b) { moved++; lp_add(mv, sizeof mv, ", ", names[i]); } }
+    snprintf(out, cap, "%d file(s) overridden%s%.150s%s%.150s", n, n ? ": " : "", ov, moved ? "; trunk moved (review): " : "", mv);
+}
 /* the pets are RPG Maker DB entries: SYSTEM PetParty member1..6 names, then each ACTOR block by name (db-hq data). party.pdl only picks the picture. */
 static void load_party(void) {
     char db[PATH_MAX], p[PATH_MAX], line[400]; char *f[6]; FILE *fp; const char *env = getenv("PET_DB");
     /* THE BOOK'S OWN DB (2026-10-28, owner: the db is not meant to be house-wide): PET_DB wins, then this game's own <app>/db (seeded once by `db seed`), and only a game that has none yet falls back to the shared
      * &.widgits/db-hq/data. BOOK 16.game/PER-BOOK-DB-2026-10-28.md. The db WINDOW and the taskbar actors manager still read the shared one (next steps in that doc). */
-    if (env && env[0]) snprintf(db, sizeof db, "%s", env); else { snprintf(db, sizeof db, "%.3000s/db", APP); if (!is_dir(db)) snprintf(db, sizeof db, "%.3000s/&.widgits/db-hq/data", HOUSE); }
+    char dbl[PATH_MAX], dbt[PATH_MAX]; snprintf(dbl, sizeof dbl, "%.3000s/db", APP); snprintf(dbt, sizeof dbt, "%.3000s/&.widgits/db-hq/data", HOUSE);
+    if (env && env[0]) snprintf(db, sizeof db, "%s", env); else snprintf(db, sizeof db, "%s", dbt);      /* PET_DB = a plain folder (no layering); otherwise each file = the layer's, else the trunk's */
     nparty = 0; char names[NP][24]; int nn = 0, inparty = 0, inhero = 0; memset(&hero, 0, sizeof hero); snprintf(hero.name, 24, "%s", cfg("hero_name", "Harold")); snprintf(hero.sheet, 24, "%s", cfg("hero_sheet", "Actor1"));
-    snprintf(p, sizeof p, "%s/system.pdl", db);
+    if (env && env[0]) snprintf(p, sizeof p, "%s/system.pdl", db); else lp_resolve(dbl, dbt, "system.pdl", p, sizeof p);
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) { inparty = !strcmp(f[2], getenv("PET_PARTY") && getenv("PET_PARTY")[0] ? getenv("PET_PARTY") : cfg("party_row", "RpgPetParty")); inhero = !strcmp(cfg("hero_from_db", "1"), "1") && !strcmp(f[2], "Party"); } else if (inhero && !strcmp(f[1], "member1")) snprintf(hero.name, 24, "%s", f[2]); else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
     { const char *fbp = cfg("fallback_party", ""); if (nn == 0 && fbp[0]) { char fbb[96]; snprintf(fbb, sizeof fbb, "%s", fbp); for (char *t = strtok(fbb, ","); t && nn < NP; t = strtok(NULL, ",")) snprintf(names[nn++], 24, "%s", t); } }
     for (int i = 0; i < nn; i++) { memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].name, 24, "%s", names[i]); snprintf(party[nparty].id, 16, "%s", names[i]); for (char *c = party[nparty].id; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32; party[nparty].idx = i + atoi(cfg("party_idx_base", "0")); snprintf(party[nparty].sheet, 24, "%s", cfg("party_sheet", "Monster")); nparty++; }
@@ -395,7 +435,7 @@ static void load_party(void) {
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { char *g[6]; if (split_bar(line, g, 6) < 4 || strcmp(g[0], "PAL") || nparty >= NP) continue;
         memset(&party[nparty], 0, sizeof party[nparty]); snprintf(party[nparty].id, 16, "%s", g[1]); snprintf(party[nparty].name, 24, "%s", g[2]); snprintf(party[nparty].nick, 24, "pal"); snprintf(party[nparty].profile, 96, "A pal made in the Pals menu.");
         party[nparty].idx = atoi(g[3]) & 7; snprintf(party[nparty].sheet, 24, "%s", nparty ? party[0].sheet : "Monster"); party[nparty].mhp = 40; party[nparty].mmp = 20; party[nparty].atk = party[nparty].def = party[nparty].agi = party[nparty].luk = 10; party[nparty].mat = party[nparty].mdf = 8; nparty++; } fclose(fp); }
-    snprintf(p, sizeof p, "%s/actors.pdl", db); int cur = -1, curh = 0;
+    if (env && env[0]) snprintf(p, sizeof p, "%s/actors.pdl", db); else lp_resolve(dbl, dbt, "actors.pdl", p, sizeof p); int cur = -1, curh = 0;
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "ACTOR")) continue;
         if (!strcmp(f[1], "name")) { cur = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].name, f[2])) cur = i; curh = !strcmp(f[2], hero.name); continue; }
         if (curh) { if (!strcmp(f[1], "nickname")) snprintf(hero.nick, 24, "%s", f[2]); else if (!strcmp(f[1], "profile")) snprintf(hero.profile, 96, "%s", f[2]); else if (!strcmp(f[1], "mhp")) hero.mhp = atoi(f[2]); else if (!strcmp(f[1], "mmp")) hero.mmp = atoi(f[2]); else if (!strcmp(f[1], "atk")) hero.atk = atoi(f[2]); else if (!strcmp(f[1], "def")) hero.def = atoi(f[2]);
@@ -1355,16 +1395,20 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (!strncmp(res, "OK ", 3)) { snprintf(msg, cap, "synch: the desk now shows book:" PET_APP " page:%s", rooms[vroom].name); return; }
         const char *why = !strcmp(res, "NOGO other-book") ? "the desk has another book open" : !strcmp(res, "NOGO no-such-page") ? "the desk's page is not a room of this game" : !strcmp(res, "NOGO book-not-on-desk") ? "this game is not a book on the desk yet" : !strcmp(res, "NOGO page-not-in-book") ? "this room is not a page of the book on the desk" : !strcmp(res, "NOGO no-desk") ? "no LyfeDesk session found" : "nothing to do";
         snprintf(msg, cap, "synch: %s (desk: %s)", why, dline[0] ? dline : "-"); return; }
-    if (!strcmp(v, "db")) {      /* db | db seed: which db this game uses; `seed` copies the shared db into <app>/db ONCE (never overwrites) so the game owns its rows (owner 2026-10-28: the db is per book, not house-wide) */
+    if (!strcmp(v, "db")) {      /* db | db seed | db edit <file> | db trim: this book's db is a LAYER over the shared trunk (see lp_* above). seed = make the empty layer (copies nothing), edit = branch ONE file (copy it in, stamp the trunk hash), trim = drop layer files identical to the trunk */
         char od[PATH_MAX], sh[PATH_MAX]; if (snprintf(od, sizeof od, "%s/db", APP) >= (int)sizeof od || snprintf(sh, sizeof sh, "%s/&.widgits/db-hq/data", HOUSE) >= (int)sizeof sh) { snprintf(msg, cap, "db: path too long"); return; }
-        if (argc >= 2 && !strcmp(argv[1], "seed")) {
+        const char *sub = argc >= 2 ? argv[1] : "";
+        if (!strcmp(sub, "seed")) {
             if (is_dir(od)) { snprintf(msg, cap, "db: %.100s already exists (kept, nothing overwritten)", od); return; }
-            if (!is_dir(sh)) { snprintf(msg, cap, "db: no shared db at %.200s to seed from", sh); return; }
-            if (strchr(od, '\'') || strchr(sh, '\'')) { snprintf(msg, cap, "db: refusing a path with a quote"); return; }
-            char cmd[2 * PATH_MAX + 40]; if (snprintf(cmd, sizeof cmd, "cp -r '%s' '%s'", sh, od) >= (int)sizeof cmd) { snprintf(msg, cap, "db: path too long"); return; }
-            if (sh_timed(cmd, 20) != 0 || !is_dir(od)) { snprintf(msg, cap, "db: the copy failed"); return; }
-            snprintf(msg, cap, "db: seeded %.200s from the shared db", od); return; }
-        snprintf(msg, cap, is_dir(od) ? "db: this game uses its own db at %.200s" : "db: no own db yet, using the shared db at %.200s (run: db seed)", is_dir(od) ? od : sh); return; }
+            if (!is_dir(sh)) { snprintf(msg, cap, "db: no shared trunk at %.200s", sh); return; }
+            char lf[PATH_MAX]; if (mkdir(od, 0755) || snprintf(lf, sizeof lf, "%s/LAYER", od) >= (int)sizeof lf) { snprintf(msg, cap, "db: cannot create the layer"); return; }
+            FILE *f = fopen(lf, "w"); if (!f) { snprintf(msg, cap, "db: cannot write LAYER"); return; } fprintf(f, "SECTION | KEY | VALUE\n------------------------------\nLAYER | trunk | &.widgits/db-hq/data\n"); fclose(f);
+            snprintf(msg, cap, "db: made the empty layer %.100s over the shared trunk", od); return; }
+        if (!strcmp(sub, "edit") && argc >= 3) {
+            int r = lp_cow(od, sh, argv[2]); snprintf(msg, cap, r > 0 ? "db: branched %.60s into the layer (the trunk hash is stamped in LAYER)" : r == 0 ? "db: %.60s is already in the layer (kept)" : "db: cannot branch %.60s (no layer: run db seed; or a bad name; or not in the trunk)", argv[2]); return; }
+        if (!strcmp(sub, "trim")) { int n = is_dir(od) ? lp_trim(od, sh) : 0; snprintf(msg, cap, "db: dropped %d layer file(s) identical to the trunk", n); return; }
+        if (!is_dir(od)) { snprintf(msg, cap, "db: no layer yet, this game reads the shared trunk (run: db seed)"); return; }
+        char st[400]; lp_status(od, sh, st, sizeof st); snprintf(msg, cap, "db: this game has its own layer: %.150s", st); return; }
     if (!strcmp(v, "pagefollow")) {      /* one page_follow() call, for the harness and for a person: moves the controlled character when this board's pin says source=game and the page changed since last seen */
         if (!page_follow(msg, cap)) {
             snprintf(msg, cap, "page: nothing to follow");
