@@ -1,6 +1,6 @@
 # rpg-pvp-hq revival: a TOY on the toys menu, a BOOK on the desk (plan, 2026-10-29)
 
-Status: **plan for the owner. Nothing in this document has been built or changed.** Labels: **SAID** = the owner's words · **READ** = read from files today, not run · **RAN** = I ran it and saw the result · **MINE** = my proposal, needs the owner · **OPEN** = a decision, do not guess.
+Status: **R0 and R1 are DONE (2026-10-29, section 10); R2 to R5 are not.** The rest of this page is the plan as written before the work. Labels: **SAID** = the owner's words · **READ** = read from files today, not run · **RAN** = I ran it and saw the result · **MINE** = my proposal, needs the owner · **OPEN** = a decision, do not guess.
 
 This page is about the *shape* (how pvp becomes a toy and a book). The *game* (city, guns, duel, AI, building, steps P0 to P9) stays in `RPG-PVP-HQ-DESIGN.md`; read that first or after. Nothing there is replaced.
 
@@ -94,3 +94,24 @@ R1 comes first because R2 to R4 depend on it; R4 can run earlier if the owner wa
 - `GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md`, `HANDOFF-2026-10-28-MCL-BOOK-TO-GROK.md` - the book recipe and a finished example.
 - `PETSLIKE-FRAMEWORK-PLAN.md`, `PETSLIKE-NEW-ENTRIES.md` - how a game becomes a skin of the core.
 - `PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md` - the piece rules behind R4.
+
+## 10. STATUS 2026-10-29: R0 and R1 done (RAN)
+
+**Owner's answer (SAID): "do it fast use wisdom (all q's)"**, so the six decisions of section 7 were taken by me: A (convert to a skin), me building it, `rex` a separate piece (nothing adopted yet), the toys title stays `rpg-pvp-hq`, 2D first with respawn (guns and building follow the design page), a window may be opened niced and one at a time. Say so if any of them is wrong.
+
+**R0, backup.** `/home/no/scratch-gab/pvp-backup/rpg-pvp-hq-<stamp>.tgz` + `SHA256`: 726 files live = 726 in the tarball. The old 10-21 binary is beside it.
+
+**R1, the skin.** `ops/rpg_pvp_hq.c` went from **1,673 lines (fork) to 681 (skin of `petslike_core.c`)**. It is the cdda-hq skin renamed, plus pvp's own pieces copied verbatim from the fork: the held-gun state and the `equip` / `fire` / `reload` rule branches, the city map and loot, walking onto loot, the seat / session rows, and the verbs `equip fire reload pickup net`. Only the city loader was rewritten: it reads the city file name from `rooms.pdl` itself, because the core's `Room.biome` is 16 characters and `city:downtown.txt` is 17 (so **`petslike_core.c` was not touched**). The party is pvp's own: a **`db/` layer** with a `PvpParty` row and six actors (Joss Keel Moss Ryn Pike Sable) cloned from the DsrRpgParty slots, which is the fork's own rule (names from `party.pdl`, stats from the same slot); `toy.pdl` got the constants the core reads (`party_row PvpParty`, hero Harold, ...). The layer holds two full copies of trunk files (the per-record layer is still future work).
+
+**Proof that can fail.**
+- *Old vs new*: the same script of 23 commands (wall bump, step, pickup twice, a non-gun, equip, fire, reload, auto, walk onto loot, wall of the middle building, net, peer seats x2, leave) run on the fork **built from git HEAD** and on the skin, each in its own scratch house: every output identical, and so are `events.txt`, `trainer.txt`, `note.txt`, `wounds.pdl`, `pet_joss.txt`, `session.txt` (apart from the process id inside the session name) and the **rendered Downtown frame: 0 of 283,800 pixels differ (160 distinct colours)**. The first run showed the controlled pet was `blip`, not `joss`: the core takes names from the db, not from `party.pdl`; that is what the db layer fixes.
+- *Permanent gate*: harness `pvp_skin` (33 expectations, from the fork's observed outputs, not the skin's). Mutants it catches: walls not blocking, no pickup on a step, fire keeps the round, peer seat not written, equip accepts any name, a wrong-size city file accepted, pickup ignoring "already taken", layer ignored. Two of my own first mutants survived (the script never walked onto untouched loot; a bad file that would still have been walkable) and the case was tightened until they failed. One mutant ("city not drawn") only changes the picture; the harness cannot see it, the old-vs-new frame comparison can (it failed that mutant).
+- *Live window* (niced, one process, then stopped by pid): `rpg-pvp-hq - City` and `rpg-pvp-hq - Downtown` both render; Joss shows HP 34 MP 6 atk 6 def 5 (Rex's stats); the Network tab is there; the six pets are in the bar; the chat log already showed pets walking between City and Downtown. Pictures: `/home/no/scratch-gab/out/pvp_window_1.png` and `pvp_window_2.png` (not in the repo). The live `state/` folder was restored to its original files with their original times (`clock_ui.txt` is the tarball copy; my earlier read-only `db` check had rewritten it).
+- Builds: the live binary was rebuilt with `build_rpg_pvp_hq.sh` (niced); the read-only `db` verb now says `2 file(s) overridden: actors.pdl, system.pdl`.
+
+**Not done in R1 (said plainly).**
+- The window still uses pvp's **old template** (`rpg-pvp-hq.xhtpm`); the data-driven `toolbar.pdl`, `life.pdl` and the cdda template were not installed (they would be dead files until the template is switched). That switch is part of R2.
+- No `-board` toy and no `-pchq` folder (the 3D board), so **R3 (the book) is still blocked**: `game_page_export` needs the pchq folder.
+- R4 (adopt `joss` and `rex`) not started: `piece_check` still flags pvp.
+- The old fork's INT / window behaviour was checked only through the verbs and two screenshots, not by driving the window with keys.
+- `net/` in the folder is an old untracked leftover, not from this work.

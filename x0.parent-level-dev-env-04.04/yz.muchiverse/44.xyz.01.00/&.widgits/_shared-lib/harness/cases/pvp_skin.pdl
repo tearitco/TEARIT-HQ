@@ -1,0 +1,96 @@
+# pvp_skin: LOCKED cases for rpg-pvp-hq as a SKIN of the shared core (petslike_core.c), the conversion of the 1,673-line fork (BOOK 16.game/RPG-PVP-REVIVAL-AS-TOY-AND-BOOK-2026-10-29.md step R1).
+# EXPECTATIONS COME FROM THE OLD FORK, not from the new skin: the same 25-command script was run on the fork built from git HEAD 2026-10-29 and every output below is what the fork printed (ledger, trainer, wounds, seats and the rendered Downtown frame were also identical, 0 of 283,800 pixels differ; the frame is not in this case because it needs the tile art).
+RESULTS | ../results/pvp_skin.txt
+CASE | pvp_skin
+SCRATCH |
+COPYDIR | @.apps/rpg-pvp-hq | @.apps/rpg-pvp-hq | state,+x,audit,net,rpg-pvp-hq-pchq,.hq_manager
+MKDIR | @.apps/rpg-pvp-hq/ops/+x
+MKDIR | @.apps/rpg-pvp-hq/state
+MKDIR | #.NNEST_ASSETS/rmmv-www-img
+COPY | &.widgits/_shared-lib/game_events.c | &.widgits/_shared-lib/game_events.c
+COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
+COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
+COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_core.c
+COPY | &.widgits/_shared-lib/petslike_life.c | &.widgits/_shared-lib/petslike_life.c
+COPY | &.widgits/_shared-lib/petslike_toolbar.c | &.widgits/_shared-lib/petslike_toolbar.c
+COPY | &.widgits/_shared-lib/stb_image.h | &.widgits/_shared-lib/stb_image.h
+COPY | &.widgits/_shared-lib/stb_image_write.h | &.widgits/_shared-lib/stb_image_write.h
+COPY | &.widgits/_shared-lib/kh_state_notify.h | &.widgits/_shared-lib/kh_state_notify.h
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | &.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPY | &.widgits/db-hq/data/system.pdl | &.widgits/db-hq/data/system.pdl
+COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-pvp-hq/ops | -o | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | $T/@.apps/rpg-pvp-hq/ops/rpg_pvp_hq.c | -lm
+EXPECT_EXIT | 0 | setup.build
+EXPECT_EXISTS | @.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | setup.binary
+# P1 the db layer: pvp has its OWN cast (Joss Keel Moss Ryn Pike Sable), a layer over the shared trunk, not Rex Gus Pip
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | db
+EXPECT_OUT | 2 file(s) overridden: actors.pdl, system.pdl | p1.own-layer-two-files
+EXPECT_HAS | @.apps/rpg-pvp-hq/db/system.pdl | PvpParty | p1.party-row-in-the-layer
+EXPECT_HAS | @.apps/rpg-pvp-hq/toy.pdl | party_row     \p PvpParty | p1.toy-names-the-party
+# P2 who is controlled: with ctl=pet the first pet, Joss (the fork's own cast), is the actor in the ledger
+WRITE | @.apps/rpg-pvp-hq/state/flag_running.txt | 1\n
+WRITE | @.apps/rpg-pvp-hq/state/flag_int.txt | 1\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | equip | pistol
+EXPECT_OUT | refused: not in the bag | p2.equip-without-the-gun-is-refused
+EXPECT_HAS | @.apps/rpg-pvp-hq/state/events.txt | EVENT\p | p2.row-written
+EXPECT_HAS | @.apps/rpg-pvp-hq/state/events.txt | \pjoss\pequip\ppistol\p | p2.the-actor-is-joss
+# P3 the trainer in Downtown: walls block, loot is taken once, guns have magazines
+WRITE | @.apps/rpg-pvp-hq/state/flag_ctl.txt | player\n
+WRITE | @.apps/rpg-pvp-hq/state/trainer.txt | room=downtown\nx=4\ny=4\ndir=0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | step | -1 | 0
+EXPECT_OUT | bump | p3.wall-blocks
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | step | 1 | 0
+EXPECT_OUT | at 5,4 | p3.floor-walks
+WRITE | @.apps/rpg-pvp-hq/state/trainer.txt | room=downtown\nx=5\ny=6\ndir=0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | pickup
+EXPECT_OUT | picked up pistol | p3.loot-is-taken
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | pickup
+EXPECT_OUT | nothing to pick up here | p3.only-once
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | equip | railgun
+EXPECT_OUT | refused: railgun is not a gun | p3.not-a-gun
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | equip | pistol
+EXPECT_OUT | equipped pistol:28 | p3.full-magazine-28
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | fire | fire
+EXPECT_OUT | fired pistol:27 | p3.one-round-used
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | reload
+EXPECT_OUT | refused: not in the bag | p3.reload-needs-ammo
+WRITE | @.apps/rpg-pvp-hq/state/trainer.txt | room=downtown\nx=8\ny=7\ndir=0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | pickup
+EXPECT_OUT | picked up auto | p3.second-loot
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | equip | auto
+EXPECT_OUT | equipped auto:48 | p3.auto-48
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | fire | fire
+EXPECT_OUT | fired auto:47 | p3.auto-47
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | fire | fire
+EXPECT_OUT | fired auto:46 | p3.auto-46
+# P3b walking onto loot that is still lying there takes it, with no verb
+WRITE | @.apps/rpg-pvp-hq/state/trainer.txt | room=downtown\nx=17\ny=6\ndir=0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | step | 0 | 1
+EXPECT_OUT | at 17,7 | p3b.walked-onto-loot
+EXPECT_OUT | picked up pistol | p3b.and-took-it
+EXPECT_HAS | @.apps/rpg-pvp-hq/state/events.txt | give_item\ppistol\pdowntown:17,7 | p3b.ledger-row-for-the-walk-pickup
+# P3c a wall of the middle building blocks from outside too
+WRITE | @.apps/rpg-pvp-hq/state/trainer.txt | room=downtown\nx=16\ny=4\ndir=0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | step | 0 | 1
+EXPECT_OUT | bump | p3c.second-wall-blocks
+# P4 seats: one session id, peer seats go to the outbox only (no socket), leaving gives the seat back to the AI
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | net
+EXPECT_OUT | session rpg- | p4.session-id
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | net | peer
+EXPECT_OUT | peer seat peer1 | p4.first-peer
+EXPECT_OUT | (outbox line only) | p4.no-socket
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | net | peer
+EXPECT_OUT | peer seat peer2 | p4.second-peer
+EXPECT_HAS | @.apps/rpg-pvp-hq/state/session.txt | SEAT\ppeer1\ppeer\ppeer | p4.seat-row
+EXPECT_HAS | @.apps/rpg-pvp-hq/net/outbox.txt | SEAT\ppeer2\ppeer | p4.outbox-row
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | net | leave
+EXPECT_OUT | logged out: the AI has the seat | p4.leave
+# P5 an untrusted city file is never half-loaded: 30 rows of 39 wall glyphs (the room is 40 wide; if it were loaded, (3,4) would be a wall) means the room is the plain island, so the wall cell is walkable
+WRITE | @.apps/rpg-pvp-hq/downtown.txt | #######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n#######################################\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | int
+EXPECT_OUT | INT | p5.int-back-on
+WRITE | @.apps/rpg-pvp-hq/state/trainer.txt | room=downtown\nx=4\ny=4\ndir=0\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-pvp-hq/ops/+x/rpg_pvp_hq.+x | step | -1 | 0
+EXPECT_OUT | at 3,4 | p5.bad-city-file-gives-the-plain-island
+CLEAN |

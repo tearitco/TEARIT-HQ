@@ -1,0 +1,4 @@
+# pvp_skin.pal - LOCKED harness for rpg-pvp-hq as a skin of the shared core (REVIVAL doc step R1). Cases: cases/pvp_skin.pdl
+exec ./ops/+x/harness_case_op.+x cases/pvp_skin.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pvp_skin.pdl
+halt
