@@ -13,9 +13,9 @@
  * NEVER-PLAYED GAMES (D, 2026-10-28): when the source state file is MISSING or EMPTY (no room=, x= or y= line at all) the core's own first-run default is used: the first ROOM of <app>/rooms.pdl, cell 8,8, an
  * out-of-room coordinate replaced by cols/2 or rows/2 (petslike_core.c load_ent), and a `note:` line says so. It is refused (the old error) when a skin sets its own first-run spawn (a source file in ops/ holds `PET_SECTION == 74`:
  * rpg-space, rpg-dust, rpg-edit-hq), when that first ROOM row has no cols/rows, or when the file has some but not all of the three lines (a half-written file is not a position).
- * OTHER CHARACTERS IN THE ROOM (C, 2026-10-28): every state/pet_<id>.txt whose room= is the exported room and which is not the controlled one becomes `DESK | pet_<id> | <game>/state/pet_<id>.txt | px | py | cx | cy | <id> | 0`;
- * when a PET is the controlled one and state/trainer.txt is in the same room, the trainer becomes `DESK | trainer | <game>/state/trainer.txt | ... | trainer | 0`. Sorted by id (stable page text). The path column names the state file because these
- * characters have no pal folder: a reader that wants a sprite from <path>/sprite.csv finds none and skips the row (place_desk_sprites does), and game mode never reads them (only hero_01 is followed, page_follow). Unsafe ids/cells are skipped.
+ * OTHER CHARACTERS IN THE ROOM (C, 2026-10-28): every state/pet_<id>.txt whose room= is the exported room and which is not the controlled one becomes `DESK | pet_<id> | @.apps/<game>/state | px | py | cx | cy | <id> | 0`;
+ * when a PET is the controlled one and state/trainer.txt is in the same room, the trainer becomes `DESK | trainer | @.apps/<game>/state | ... | trainer | 0`. Sorted by id (stable page text). The path column names the game's STATE FOLDER (an existing folder, as book_check A9 requires; the characters have no pal
+ * folder of their own): a reader that wants a sprite from <path>/sprite.csv finds none and skips the row (place_desk_sprites does), and game mode never reads them (only hero_01 is followed, page_follow). Unsafe ids/cells are skipped.
  * NOT rows yet: the ship (it lives on the `space` page, not the room) and asteroids (bar rows with no pal folder).
  * Output (stdout): one line per fact: ROW ..., DISAGREE <what> <a> vs <b>, then `wrote <page> rows=<3 + other characters> disagreements=<n>`.  Exit 0 written, 1 a needed file is missing (named), 2 usage.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/game_page_export.+x game_page_export.c */
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
             if (i < 0) { if (strcmp(srcname, "trainer.txt") == 0) continue; snprintf(who, sizeof who, "trainer"); snprintf(fp, sizeof fp, "%s/state/trainer.txt", app); snprintf(lab, sizeof lab, "trainer"); }
             else { snprintf(who, sizeof who, "pet_%s", ids[i]); snprintf(fp, sizeof fp, "%s/state/pet_%s.txt", app, ids[i]); snprintf(lab, sizeof lab, "%s", ids[i]); if (strcmp(srcname, fp + strlen(app) + 7) == 0) continue; }
             if (kv(fp, "room", r_, sizeof r_) < 1 || kv(fp, "x", x_, sizeof x_) < 1 || kv(fp, "y", y_, sizeof y_) < 1 || !name_ok(r_) || !whole(x_) || !whole(y_) || strcmp(r_, room)) continue;
-            char relp[PATH_MAX]; size_t hl = strlen(house); snprintf(relp, sizeof relp, "%s", strncmp(fp, house, hl) == 0 && fp[hl] == '/' ? fp + hl + 1 : fp);
+            char relp[PATH_MAX]; size_t hl = strlen(house); snprintf(relp, sizeof relp, "%s", strncmp(sd, house, hl) == 0 && sd[hl] == '/' ? sd + hl + 1 : sd);      /* the path column must be an existing FOLDER (book_check A9): the game's state folder */
             char row[PATH_MAX + 200]; snprintf(row, sizeof row, "DESK | %s | %s | %d | %d | %d | %d | %s | 0\n", who, relp, atoi(x_) * 80, atoi(y_) * 80, atoi(x_), atoi(y_), lab);
             strncat(extra, row, sizeof extra - strlen(extra) - 1); nextra++;
         }

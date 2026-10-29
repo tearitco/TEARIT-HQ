@@ -647,7 +647,7 @@ WRITE | oth_trainer/h/@.apps/g/state/pet_solvent.txt | room=quarters\nx=4\ny=5\n
 RUN | $T/gpe.+x | $T/oth_trainer/h/@.apps/g | $T/oth_trainer/sess | --house | $T/oth_trainer/h
 EXPECT_EXIT | 0 | oth_trainer-exit-0
 EXPECT_OUT | rows=4 disagreements= | oth_trainer.the-pet-in-the-room-is-a-row
-EXPECT_HAS | oth_trainer/sess/desks/bridge.pdl | DESK \p pet_ember \p @.apps/g/state/pet_ember.txt \p 240 \p 480 \p 3 \p 6 \p ember \p 0 | oth_trainer.ember-row-is-cell-3-6-times-80
+EXPECT_HAS | oth_trainer/sess/desks/bridge.pdl | DESK \p pet_ember \p @.apps/g/state \p 240 \p 480 \p 3 \p 6 \p ember \p 0 | oth_trainer.ember-row-is-cell-3-6-times-80
 EXPECT_LACKS | oth_trainer/sess/desks/bridge.pdl | pet_solvent | oth_trainer.a-pet-in-another-room-is-not-a-row
 EXPECT_LACKS | oth_trainer/sess/desks/bridge.pdl | DESK \p trainer | oth_trainer.the-controlled-trainer-is-the-hero-not-a-second-row
 CASE | oth_pet
@@ -671,8 +671,8 @@ WRITE | oth_pet/h/@.apps/g/state/pet_ember.txt | room=quarters\nx=9\ny=9\ndir=1\
 RUN | $T/gpe.+x | $T/oth_pet/h/@.apps/g | $T/oth_pet/sess | --house | $T/oth_pet/h
 EXPECT_EXIT | 0 | oth_pet-exit-0
 EXPECT_OUT | rows=5 disagreements= | oth_pet.hero-xelector-camera-plus-the-trainer-and-ember
-EXPECT_HAS | oth_pet/sess/desks/quarters.pdl | DESK \p trainer \p @.apps/g/state/trainer.txt \p 560 \p 400 \p 7 \p 5 \p trainer \p 0 | oth_pet.trainer-row
-EXPECT_HAS | oth_pet/sess/desks/quarters.pdl | DESK \p pet_ember \p @.apps/g/state/pet_ember.txt \p 720 \p 720 \p 9 \p 9 \p ember \p 0 | oth_pet.ember-row
+EXPECT_HAS | oth_pet/sess/desks/quarters.pdl | DESK \p trainer \p @.apps/g/state \p 560 \p 400 \p 7 \p 5 \p trainer \p 0 | oth_pet.trainer-row
+EXPECT_HAS | oth_pet/sess/desks/quarters.pdl | DESK \p pet_ember \p @.apps/g/state \p 720 \p 720 \p 9 \p 9 \p ember \p 0 | oth_pet.ember-row
 EXPECT_LACKS | oth_pet/sess/desks/quarters.pdl | DESK \p pet_solvent | oth_pet.the-controlled-pet-is-only-hero_01
 CASE | oth_far
 MKDIR | oth_far/h/&.widgits
