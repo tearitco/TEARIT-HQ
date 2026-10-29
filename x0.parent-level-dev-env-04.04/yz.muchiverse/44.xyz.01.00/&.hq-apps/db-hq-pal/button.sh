@@ -31,6 +31,11 @@ MGR="$HOUSE_ROOT/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x"
 [ -x "$BRIDGE" ] || { echo "db-hq-pal: missing $BRIDGE" >&2; exit 1; }
 [ -f "$XHTPM" ] || { echo "db-hq-pal: missing $XHTPM" >&2; exit 1; }
 mkdir -p "$HERE/state" "$HERE/debug/frames"
+# THE OPEN BOOK'S DB (owner 2026-10-28: "it should just auto load depending on which book is open"; BOOK 16.game/PER-BOOK-DB-2026-10-28.md section 8):
+# before the window opens, publish the open book's db (its layer over the shared trunk) to the #.desktop/db_hq_*.state.txt mirrors the window shows. Never blocks the launch.
+DBPUB="$HOUSE_ROOT/&.widgits/_shared-lib/ops/+x/db_publish.+x"
+[ -x "$DBPUB" ] || sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/build_db_publish.sh" >/dev/null 2>&1 || true
+[ -x "$DBPUB" ] && nice -n 15 "$DBPUB" "$HOUSE_ROOT" >/dev/null 2>&1 || true
 
 for p in $(pgrep -f "khtpm_core_render\.\+x .*dashboard\.xhtpm" 2>/dev/null || true) \
          $(pgrep -f "prisc\+x\.\+x .*dbhq_projector\.pal" 2>/dev/null || true); do

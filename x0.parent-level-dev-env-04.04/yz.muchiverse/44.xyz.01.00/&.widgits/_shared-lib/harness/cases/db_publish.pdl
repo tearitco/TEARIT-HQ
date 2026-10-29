@@ -1,0 +1,57 @@
+# db_publish: LOCKED cases (owner 2026-10-28: the db window follows the OPEN book). The open book = the LyfeDesk active session; a table comes from the book's layer, else the shared trunk; a mirror is rewritten only when its bytes differ.
+# Expectations come from the rules in the op header, not from observed output.
+RESULTS | ../results/db_publish.txt
+CASE | db_publish
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/db_publish.c | dp.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/dp.+x | $T/dp.c
+EXPECT_EXIT | 0 | setup.compiles-clean
+MKDIR | h/0.user-palX/00.login-signup
+WRITE | h/0.user-palX/00.login-signup/current_login.txt | current_user_id=\ncurrent_user_uuid=u1\ncurrent_xyzfs=\n
+MKDIR | h/xyzfs/users/u1/home/livedesk/sessions
+WRITE | h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p bookA\n
+MKDIR | h/&.widgits/db-hq/data
+WRITE | h/&.widgits/db-hq/data/actors.pdl | TRUNK_ACTORS\n
+WRITE | h/&.widgits/db-hq/data/items.pdl | TRUNK_ITEMS\n
+MKDIR | h/@.apps/bookA/db
+WRITE | h/@.apps/bookA/db/actors.pdl | LAYER_ACTORS\n
+MKDIR | h/@.apps/bookB
+MKDIR | h/#.desktop
+# P1 the open book (bookA) has a layer: its file wins, the rest comes from the trunk, tables with no data file are skipped
+RUN | $T/dp.+x | $T/h
+EXPECT_EXIT | 0 | p1.exit-0
+EXPECT_OUT | book=bookA layer=yes updated=2 same=0 skipped=11 | p1.summary
+EXPECT_HAS | h/#.desktop/db_hq_actors.state.txt | LAYER_ACTORS | p1.actors-from-the-layer
+EXPECT_HAS | h/#.desktop/db_hq_items.state.txt | TRUNK_ITEMS | p1.items-from-the-trunk
+# P2 nothing changed: nothing is rewritten
+RUN | $T/dp.+x | $T/h
+EXPECT_OUT | updated=0 same=2 skipped=11 | p2.second-run-writes-nothing
+# P3 the open book changes to bookB (no layer): the window follows
+WRITE | h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p bookB\n
+RUN | $T/dp.+x | $T/h
+EXPECT_OUT | book=bookB layer=no updated=1 same=1 | p3.follows-the-open-book
+EXPECT_HAS | h/#.desktop/db_hq_actors.state.txt | TRUNK_ACTORS | p3.actors-back-to-the-trunk
+# P4 a STALE mirror is refreshed
+WRITE | h/#.desktop/db_hq_items.state.txt | OLD\n
+RUN | $T/dp.+x | $T/h
+EXPECT_OUT | updated=1 same=1 | p4.stale-refreshed
+EXPECT_HAS | h/#.desktop/db_hq_items.state.txt | TRUNK_ITEMS | p4.items-fixed
+# P5 --book overrides the session
+RUN | $T/dp.+x | $T/h | --book | bookA
+EXPECT_OUT | book=bookA layer=yes updated=1 | p5.book-flag
+EXPECT_HAS | h/#.desktop/db_hq_actors.state.txt | LAYER_ACTORS | p5.layer-again
+# P6 --dry reports and writes nothing
+WRITE | h/#.desktop/db_hq_actors.state.txt | OLD\n
+RUN | $T/dp.+x | $T/h | --dry | --book | bookA
+EXPECT_OUT | actors: would update (layer) | p6.dry-says-so
+EXPECT_HAS | h/#.desktop/db_hq_actors.state.txt | OLD | p6.dry-wrote-nothing
+# P7 a bad book id is refused; P8 no active session = the trunk; P9 a bad id in the session file is ignored
+RUN | $T/dp.+x | $T/h | --book | ../x
+EXPECT_EXIT | 2 | p7.bad-book-id-refused
+WRITE | h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p name \p x\n
+RUN | $T/dp.+x | $T/h
+EXPECT_OUT | book=- layer=no | p8.no-active-session-uses-the-trunk
+WRITE | h/xyzfs/users/u1/home/livedesk/sessions/session.pdl | STATE \p active_session \p ../evil\n
+RUN | $T/dp.+x | $T/h
+EXPECT_OUT | book=- layer=no | p9.bad-session-value-ignored
+CLEAN |

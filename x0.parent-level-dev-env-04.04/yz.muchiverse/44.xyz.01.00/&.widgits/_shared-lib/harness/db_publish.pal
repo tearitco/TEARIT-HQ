@@ -1,0 +1,4 @@
+# db_publish.pal - LOCKED harness for db_publish (BOOK 16.game/PER-BOOK-DB-2026-10-28.md section 8): the db window mirrors follow the open book, layer over trunk, content-compared. The op is compiled -Wall -Wextra -Werror from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/db_publish.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/db_publish.pdl
+halt
