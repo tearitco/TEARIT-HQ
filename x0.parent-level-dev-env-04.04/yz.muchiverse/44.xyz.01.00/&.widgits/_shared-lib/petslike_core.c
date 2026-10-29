@@ -383,7 +383,9 @@ static const char *cfg(const char *k, const char *d) { for (int i = 0; i < g_ncf
 /* the pets are RPG Maker DB entries: SYSTEM PetParty member1..6 names, then each ACTOR block by name (db-hq data). party.pdl only picks the picture. */
 static void load_party(void) {
     char db[PATH_MAX], p[PATH_MAX], line[400]; char *f[6]; FILE *fp; const char *env = getenv("PET_DB");
-    if (env && env[0]) snprintf(db, sizeof db, "%s", env); else snprintf(db, sizeof db, "%s/&.widgits/db-hq/data", HOUSE);
+    /* THE BOOK'S OWN DB (2026-10-28, owner: the db is not meant to be house-wide): PET_DB wins, then this game's own <app>/db (seeded once by `db seed`), and only a game that has none yet falls back to the shared
+     * &.widgits/db-hq/data. BOOK 16.game/PER-BOOK-DB-2026-10-28.md. The db WINDOW and the taskbar actors manager still read the shared one (next steps in that doc). */
+    if (env && env[0]) snprintf(db, sizeof db, "%s", env); else { snprintf(db, sizeof db, "%.3000s/db", APP); if (!is_dir(db)) snprintf(db, sizeof db, "%.3000s/&.widgits/db-hq/data", HOUSE); }
     nparty = 0; char names[NP][24]; int nn = 0, inparty = 0, inhero = 0; memset(&hero, 0, sizeof hero); snprintf(hero.name, 24, "%s", cfg("hero_name", "Harold")); snprintf(hero.sheet, 24, "%s", cfg("hero_sheet", "Actor1"));
     snprintf(p, sizeof p, "%s/system.pdl", db);
     if ((fp = fopen(p, "r"))) { while (fgets(line, sizeof line, fp)) { if (split_bar(line, f, 3) < 3 || strcmp(f[0], "SYSTEM")) continue; if (!strcmp(f[1], "name")) { inparty = !strcmp(f[2], getenv("PET_PARTY") && getenv("PET_PARTY")[0] ? getenv("PET_PARTY") : cfg("party_row", "RpgPetParty")); inhero = !strcmp(cfg("hero_from_db", "1"), "1") && !strcmp(f[2], "Party"); } else if (inhero && !strcmp(f[1], "member1")) snprintf(hero.name, 24, "%s", f[2]); else if (inparty && !strncmp(f[1], "member", 6) && nn < NP) snprintf(names[nn++], 24, "%s", f[2]); } fclose(fp); }
@@ -1353,6 +1355,16 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         if (!strncmp(res, "OK ", 3)) { snprintf(msg, cap, "synch: the desk now shows book:" PET_APP " page:%s", rooms[vroom].name); return; }
         const char *why = !strcmp(res, "NOGO other-book") ? "the desk has another book open" : !strcmp(res, "NOGO no-such-page") ? "the desk's page is not a room of this game" : !strcmp(res, "NOGO book-not-on-desk") ? "this game is not a book on the desk yet" : !strcmp(res, "NOGO page-not-in-book") ? "this room is not a page of the book on the desk" : !strcmp(res, "NOGO no-desk") ? "no LyfeDesk session found" : "nothing to do";
         snprintf(msg, cap, "synch: %s (desk: %s)", why, dline[0] ? dline : "-"); return; }
+    if (!strcmp(v, "db")) {      /* db | db seed: which db this game uses; `seed` copies the shared db into <app>/db ONCE (never overwrites) so the game owns its rows (owner 2026-10-28: the db is per book, not house-wide) */
+        char od[PATH_MAX], sh[PATH_MAX]; if (snprintf(od, sizeof od, "%s/db", APP) >= (int)sizeof od || snprintf(sh, sizeof sh, "%s/&.widgits/db-hq/data", HOUSE) >= (int)sizeof sh) { snprintf(msg, cap, "db: path too long"); return; }
+        if (argc >= 2 && !strcmp(argv[1], "seed")) {
+            if (is_dir(od)) { snprintf(msg, cap, "db: %.100s already exists (kept, nothing overwritten)", od); return; }
+            if (!is_dir(sh)) { snprintf(msg, cap, "db: no shared db at %.200s to seed from", sh); return; }
+            if (strchr(od, '\'') || strchr(sh, '\'')) { snprintf(msg, cap, "db: refusing a path with a quote"); return; }
+            char cmd[2 * PATH_MAX + 40]; if (snprintf(cmd, sizeof cmd, "cp -r '%s' '%s'", sh, od) >= (int)sizeof cmd) { snprintf(msg, cap, "db: path too long"); return; }
+            if (sh_timed(cmd, 20) != 0 || !is_dir(od)) { snprintf(msg, cap, "db: the copy failed"); return; }
+            snprintf(msg, cap, "db: seeded %.200s from the shared db", od); return; }
+        snprintf(msg, cap, is_dir(od) ? "db: this game uses its own db at %.200s" : "db: no own db yet, using the shared db at %.200s (run: db seed)", is_dir(od) ? od : sh); return; }
     if (!strcmp(v, "pagefollow")) {      /* one page_follow() call, for the harness and for a person: moves the controlled character when this board's pin says source=game and the page changed since last seen */
         if (!page_follow(msg, cap)) {
             snprintf(msg, cap, "page: nothing to follow");

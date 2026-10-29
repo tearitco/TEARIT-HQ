@@ -1,0 +1,4 @@
+# book_db.pal - LOCKED harness for the per-book db (BOOK 16.game/PER-BOOK-DB-2026-10-28.md): own <app>/db before the shared db, db seed once and never overwriting, PET_DB still first. The game is compiled from the repo source. Judge: harness_verdict_op.
+exec ./ops/+x/harness_case_op.+x cases/book_db.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/book_db.pdl
+halt

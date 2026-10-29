@@ -1,0 +1,90 @@
+# book_db: LOCKED cases for the per-book db (owner 2026-10-28: the db is not meant to be house-wide). A game uses PET_DB, then its own <app>/db, and only without one the shared &.widgits/db-hq/data; `db seed` copies once, never overwrites.
+# The party is read from the db by name (PET_PARTY picks the SYSTEM party row); a pet shows up as state/pet_<id>.txt after a walk. Expectations come from those rules, not from observed output.
+RESULTS | ../results/book_db.txt
+CASE | book_db
+SCRATCH |
+# setup: a minimal house skeleton under $T (the game finds its house by walking up to &.widgits and #.NNEST_ASSETS), the game folder without runtime state, the text-included sources, the pet DB, lc_clock
+COPYDIR | @.apps/rpg-space | @.apps/rpg-space | state,board,audit,+x,saves,rpg-space-pchq,.hq_manager
+MKDIR | @.apps/rpg-space/ops/+x
+MKDIR | @.apps/rpg-space/state
+MKDIR | #.NNEST_ASSETS/rmmv-www-img
+COPY | &.widgits/_shared-lib/stb_image.h | &.widgits/_shared-lib/stb_image.h
+COPY | &.widgits/_shared-lib/stb_image_write.h | &.widgits/_shared-lib/stb_image_write.h
+COPY | &.widgits/_shared-lib/game_events.c | &.widgits/_shared-lib/game_events.c
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | &.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPY | &.widgits/db-hq/data/system.pdl | &.widgits/db-hq/data/system.pdl
+COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl
+# EVENTS: a scratch house that can run and edit event pages: xyzfs marker (the pages find the game by walking up to it), the real play_event.sh, the command registry, the events-hq manager, bp_edit_op, and a prisc VM in a 101.mutaclsym*/system dir (play_event.sh walks up to find one)
+MKDIR | xyzfs
+MKDIR | #.ref/menu
+MKDIR | 101.mutaclsym-scratch/system
+COPY | &.widgits/events-hq/ops/play_event.sh | &.widgits/events-hq/ops/play_event.sh
+COPY | #.ref/menu/event_commands.registry.pdl | #.ref/menu/event_commands.registry.pdl
+COPY | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | &.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | &.hq-apps/blueprintz/ops/+x/bp_edit_op.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x | &.hq-apps/blueprintz/ops/+x/bp_book_op.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x | &.hq-apps/blueprintz/ops/+x/bp_win_op.+x
+COPY | &.hq-apps/blueprintz/+x/blueprintz_manager.+x | &.hq-apps/blueprintz/+x/blueprintz_manager.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_scan.+x | &.hq-apps/blueprintz/ops/+x/bp_scan.+x
+COPY | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x | &.hq-apps/blueprintz/ops/+x/bp_ctl.+x
+COPY | 101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x | 101.mutaclsym-scratch/system/prisc+x
+COPY | &.widgits/world-ops/ops/+x/wo.+x | &.widgits/world-ops/ops/+x/wo.+x
+COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_core.c
+COPY | &.widgits/_shared-lib/petslike_toolbar.c | &.widgits/_shared-lib/petslike_toolbar.c
+COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
+COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
+COPY | &.widgits/_shared-lib/kh_state_notify.h | &.widgits/_shared-lib/kh_state_notify.h
+COPY | &.widgits/_shared-lib/csv_frames.c | &.widgits/_shared-lib/csv_frames.c
+COPY | &.widgits/_shared-lib/petslike_skin_lib.c | &.widgits/_shared-lib/petslike_skin_lib.c
+COPY | &.widgits/_shared-lib/petslike_autotile.c | &.widgits/_shared-lib/petslike_autotile.c
+COPY | &.widgits/_shared-lib/petslike_life.c | &.widgits/_shared-lib/petslike_life.c
+COPY | @.apps/rpg-space/ops/+x/dust_gen.+x | @.apps/rpg-space/ops/+x/dust_gen.+x
+COPY | @.apps/rpg-space/ops/+x/dust_seed.+x | @.apps/rpg-space/ops/+x/dust_seed.+x
+COPY | @.apps/rpg-space/ops/+x/dust_zoom.+x | @.apps/rpg-space/ops/+x/dust_zoom.+x
+COPY | @.apps/rpg-space/ops/+x/dust_orbit.+x | @.apps/rpg-space/ops/+x/dust_orbit.+x
+COPY | @.apps/rpg-space/ops/+x/dust_check.+x | @.apps/rpg-space/ops/+x/dust_check.+x
+COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png
+COPY | ../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+COPY | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt | @.apps/rpg-space/rpg-space-pchq/pieces/ship_01/model.txt
+COPY | @.apps/rpg-space/foods.pdl | @.apps/rpg-space/foods.pdl
+COPY | &.widgits/_shared-lib/ops/+x/fridge_op.+x | &.widgits/_shared-lib/ops/+x/fridge_op.+x
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-space/ops | -o | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | $T/@.apps/rpg-space/ops/rpg_space.c | -lm
+EXPECT_EXIT | 0 | setup.build
+EXPECT_EXISTS | @.apps/rpg-space/ops/+x/rpg_space.+x | setup.binary-exists
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/rpg-space/ops | -o | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | $T/@.apps/rpg-space/ops/rpg_space.c | -lm
+EXPECT_EXIT | 0 | setup.build
+RUN | cp | /usr/bin/tail | $T/khtpm_core_render
+SPAWN | viewer | $T/khtpm_core_render | -f | /dev/null | rpg-space.xhtpm
+EXPECT_ALIVE | $viewer | setup.viewer-alive
+# B1 no own db: the game says it uses the shared one, and a party that exists only in a book db is unknown to it
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
+EXPECT_OUT | no own db yet, using the shared db | b1.says-shared
+WRITE | @.apps/rpg-space/state/active.txt | ember\n
+RUN | env | PET_PARTY=TestParty | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_NOFILE | @.apps/rpg-space/state/pet_zed.txt | b1.the-shared-db-does-not-know-TestParty
+# B2 db seed copies the shared db once
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | seed
+EXPECT_OUT | seeded | b2.seeded
+EXPECT_HAS | @.apps/rpg-space/db/system.pdl | SYSTEM | b2.the-copy-has-the-shared-rows
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
+EXPECT_OUT | uses its own db | b2.now-says-own
+# B3 a second seed overwrites nothing
+WRITE | @.apps/rpg-space/db/marker.txt | mine\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db | seed
+EXPECT_OUT | already exists (kept, nothing overwritten) | b3.second-seed-refuses
+EXPECT_HAS | @.apps/rpg-space/db/marker.txt | mine | b3.the-marker-is-still-there
+# B4 the game reads ITS OWN db: a party that exists only there is loaded
+WRITE | @.apps/rpg-space/db/system.pdl | SYSTEM \p name \p TestParty\nSYSTEM \p member1 \p Zed\nSYSTEM \p member2 \p Yara\n
+RUN | env | PET_PARTY=TestParty | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_EXISTS | @.apps/rpg-space/state/pet_zed.txt | b4.zed-comes-from-the-own-db
+# B5 PET_DB still wins over the own db
+MKDIR | other
+WRITE | other/system.pdl | SYSTEM \p name \p TestParty\nSYSTEM \p member1 \p Quill\n
+RUN | env | PET_DB=$T/other | PET_PARTY=TestParty | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | walk
+EXPECT_EXISTS | @.apps/rpg-space/state/pet_quill.txt | b5.PET_DB-wins
+# B6 without an own db the game is back on the shared one
+RUN | rm | -rf | $T/@.apps/rpg-space/db
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | db
+EXPECT_OUT | no own db yet | b6.back-to-shared
+CLEAN |
