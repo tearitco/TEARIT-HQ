@@ -945,7 +945,7 @@ int main(int argc, char **argv) {
                 snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, book_ids[bi]);
                 read_pdl_kv(gp, "icon", icon, sizeof(icon));
                 read_pdl_kv(gp, "label", lbl, sizeof(lbl));
-                if (!lbl[0]) snprintf(lbl, sizeof(lbl), "%s", book_ids[bi]);
+                if (!lbl[0] || strcmp(lbl, "RPG-Pet") == 0) snprintf(lbl, sizeof(lbl), "%s", book_ids[bi]);
                 if (icon[0]) snprintf(full, sizeof(full), "%s %s", icon, lbl); else snprintf(full, sizeof(full), "%s", lbl);
                 sanitize(full);
                 off += (size_t)snprintf(ui + off, UIBUF - off,

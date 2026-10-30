@@ -19,7 +19,15 @@ BOOK=${LINE#book=}; BOOK=${BOOK%% page=*}; PAGE=${LINE#*page=}
 case "$BOOK" in
     *[!A-Za-z0-9_-]*|"") exit 1 ;;
 esac
-# The edit package only ships its own map. Another book is a link to that book's map tree, not a copy.
+# The edit package only ships its own map. Every other book with a game.pdl is a link, so the book dropdown can list it. A new book appears without a code change.
+for src in "$HOUSE"/@.apps/*/*-pchq/pieces/system/maps/*/game.pdl; do
+    [ -f "$src" ] || continue
+    bookdir=$(dirname "$src")
+    bookname=$(basename "$bookdir")
+    link="$PCHQ_PKG/pieces/system/maps/$bookname"
+    [ -e "$link" ] || [ -L "$link" ] && continue
+    ln -s "$bookdir" "$link"
+done
 LINK="$PCHQ_PKG/pieces/system/maps/$BOOK"
 SRC="$HOUSE/@.apps/$BOOK/$BOOK-pchq/pieces/system/maps/$BOOK"
 if [ ! -d "$LINK" ] && [ -d "$SRC" ]; then
