@@ -1041,7 +1041,13 @@ static void write_room_events(int r) {
     char bb[2048]; int bo = 0, id = 1; if (tr.room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\t%s\n", id++, hero.name, tr.x, tr.y, PET_BAR_HP(0));
     for (int i = 0; i < nparty; i++) if (others[i].room == r) bo += snprintf(bb + bo, sizeof bb - bo, "%d\t%s\t%d\t%d\ton-click\t%s\n", id++, party[i].name, others[i].x, others[i].y, PET_BAR_HP(i + 1));
     bo = PET_BAR_EXTRA(r, bb, bo, (int)sizeof bb, &id);
-    snprintf(p, sizeof p, "%s/bar.txt", d); write_if_changed(p, bb, bo);
+    snprintf(p, sizeof p, "%s/bar.txt", d);
+    /* The cast is rebuilt every export. A touch page is not a cast member. Keep those rows or the step that should fire them finds only on-click names. */
+    { char old[2048]; if (read_file(p, old, sizeof old) > 0) for (char *l = strtok(old, "\n"); l; l = strtok(NULL, "\n")) {
+        if (!strstr(l, "\tplayer-touch") && !strstr(l, "\tevent-touch") && !strstr(l, "\ton-touch")) continue;
+        if (bo + (int)strlen(l) + 2 >= (int)sizeof bb) break;
+        bo += snprintf(bb + bo, sizeof bb - bo, "%s\n", l); } }
+    write_if_changed(p, bb, bo);
 }
 /* ---------- the pc-hq 3D view follows the SELECTED entity ----------
  * pc-hq's camera (modes 1 and 2) anchors on the xelector's pos_x/pos_y, and for a painted map the renderer stands the xelector on the floor as the same box as a sprite. So following is state files:
