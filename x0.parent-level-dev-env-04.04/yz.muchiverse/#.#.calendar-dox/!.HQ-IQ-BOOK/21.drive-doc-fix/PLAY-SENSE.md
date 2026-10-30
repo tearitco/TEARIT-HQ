@@ -37,7 +37,7 @@ previous launch. These are the files that already exist.
 
 | Edit board, 2026-10-29 19:56 | piece 8, 8 and selector 8, 8. Eye `cam_eye_x=8.50` | The corner was the map fallback in `pc_generate_chunk.c`: no `START.txt` meant 1, 1, while the selector defaults to `board_w / 2`. Bridge now has `START.txt` at 8, 8. A page whose `events.pdl` marks `x=8 y=8` still starts at 1, 1 (the cdda door). Receipt `xelector_z` was 0 and `pos_z` became 17. Window stopped. Die 69 C. |
 
-The 19:40 open started in the corner. The 19:56 open has the piece, the selector, and the eye on x at 8. The height still disagrees: the receipt's `xelector_z` was 0 and the piece `pos_z` became 17. That is the next row, not this one.
+The 19:40 open started in the corner. The 19:56 open has the piece, the selector, and the eye on x at 8. The two heights are the same cell. `board_manifest.txt` says `floor_z=16`. The piece file stores the voxel, `pos_z=17`, which is one above that floor. `bv_render_3d.c` then publishes the receipt as levels above the floor: `pos_z - floor_z - 1`, which is 0. The hero file is the same cell, 8, 8, 17. No second writer. Do not chase receipt `xelector_z=0` against `pos_z=17`.
 
 ## Other first-frame rows already seen
 
