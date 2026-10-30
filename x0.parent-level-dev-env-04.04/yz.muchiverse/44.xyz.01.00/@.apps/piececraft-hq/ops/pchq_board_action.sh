@@ -259,11 +259,17 @@ case "$VERB" in
         [ -d "$BOOK/$CUR" ] || exit 0
         N=2; while [ -e "$BOOK/page_$N" ]; do N=$((N + 1)); done
         NEW="page_$N"
-        # A new page is intentionally empty. Remove both halves of the
-        # event representation: leaving events.pdl while deleting bar.txt
-        # creates an event definition that the touch runner cannot discover
-        # because it requires the matching tab-separated bar row.
+        # A new page has its own map and touch events, but the party roster
+        # remains part of the editor chrome. The old bar mixes on-click party
+        # rows with page-specific player-touch rows, so preserve only the
+        # former. Also remove both halves of the touch-event representation:
+        # leaving events.pdl while deleting bar.txt creates an event definition
+        # that the touch runner cannot discover.
         cp -r "$BOOK/$CUR" "$BOOK/$NEW" && rm -f "$BOOK/$NEW/bar.txt" "$BOOK/$NEW/events.pdl"
+        if [ -f "$BOOK/$CUR/bar.txt" ]; then
+            awk -F '\t' 'NF >= 5 && $5 == "on-click"' "$BOOK/$CUR/bar.txt" > "$BOOK/$NEW/bar.txt"
+            [ -s "$BOOK/$NEW/bar.txt" ] || rm -f "$BOOK/$NEW/bar.txt"
+        fi
         blank_page "$BOOK/$NEW"
         COUNT="$(sed -n 's/^GAME *| *n_desks *| *//p' "$BOOK/game.pdl" | head -n1)"; COUNT=$((COUNT + 1))
         sed -i "s/^\(GAME *| *n_desks *| *\).*/\1$COUNT/" "$BOOK/game.pdl"
