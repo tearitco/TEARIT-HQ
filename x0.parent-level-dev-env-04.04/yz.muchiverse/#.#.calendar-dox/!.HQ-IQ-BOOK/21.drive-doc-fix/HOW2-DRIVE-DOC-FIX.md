@@ -105,7 +105,7 @@ Clicks are two-step (`click_two_step=1`). The first click only focuses the tab (
 
 `board/pchq-board.xhtpm`. The toolbar tabs use `onclick="ACTIVATE"`. The dropdown rows are `<item class="dropdown-child" target_id="tb-...">` in the side rail.
 
-Toolbar and menu rows follow LyfeDesk. The source is `#.desktop/livedesk_taskbar.pdl` (`player_menu_*`, `strip_btn_*`). Do not invent a row on book or db that LyfeDesk puts on player. blueprintz is `player_menu_4`, after stop, opened by `_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh`. It is the debugger, not a book-menu row.
+Toolbar and menu rows follow LyfeDesk. The source is `#.desktop/livedesk_taskbar.pdl` (`player_menu_*`, `strip_btn_*`). Do not invent a row on book or db that LyfeDesk puts on player. blueprintz is `player_menu_4`, after stop, opened by `_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh`. It is the debugger, not a book-menu row. Driven 2026-10-29: two clicks at (985, 48) on the player tab. `entity_menu_frame_3312177.txt` has `pm-stop` at y=153 and `pm-blueprintz` at y=183. It is not on the book menu.
 
 As of the fix in this same note:
 
