@@ -1,0 +1,5 @@
+# edit_open.pal - read-only book:page listing. Read results/edit_open.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/edit_open.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/edit_open.pdl
+exec ./ops/+x/harness_bank_op.+x cases/edit_open.pdl
+halt

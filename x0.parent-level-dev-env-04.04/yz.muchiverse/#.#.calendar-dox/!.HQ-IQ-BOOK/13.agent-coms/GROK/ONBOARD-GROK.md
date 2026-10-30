@@ -117,6 +117,7 @@ Use these. Do not retype the relays they already cover.
 |---|---|
 | `edit_last.pal` | last book row, or Islands when the row is missing or the book is gone |
 | `edit_doors.pal` | the door FSM. Table is `@.apps/rpg-edit-hq/doors.fsm.pdl`. Checker is `ops/edit_doors.sh`. The proved row is Islands `4,4` + up (`1002`) to Bank `12,13`. An unproved door is exit 2. `scene-self black` fails, `scene-self good` passes. |
+| `edit_open.pal` | read-only `book:page`. Checker is `ops/edit_open.sh`. Real listing: `rpg-space` page `bridge`, event `col_breach`, 7 pages, 15 events. The order after that is `ROADMAP-EDITOR-2026-10-29.md`. |
 
 Add the next proved door as one `RULE` row, then one `must` line in
 `cases/edit_doors.pdl`. Do not invent Store, Hotel, School, or Cabin

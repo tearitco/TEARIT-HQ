@@ -1,0 +1,18 @@
+# A scratch book with two pages and one event. No window.
+RESULTS | ../results/edit_open.txt
+CASE    | edit-open
+SCRATCH |
+COPY    | @.apps/rpg-edit-hq/ops/edit_open.sh | edit_open.sh
+MKDIR   | house/@.apps/demo-book/demo-book-pchq/pieces/system/maps/demo-book
+MKDIR   | house/@.apps/demo-book/events/helm
+WRITE   | house/@.apps/demo-book/demo-book-pchq/pieces/system/maps/demo-book/game.pdl | GAME | n_desks | 2\nGAME | desk_1_id | bridge\nGAME | desk_2_id | hold\n
+
+RUN | sh | $T/edit_open.sh | $T/house | demo-book | bridge
+EXPECT_EXIT | 0 | open-exits-0
+EXPECT_OUT | book=demo-book page=bridge event=helm pages=2 events=1 | lists-page-and-event
+
+RUN | sh | $T/edit_open.sh | $T/house | demo-book | missing
+EXPECT_EXIT | 2 | missing-page-refused
+
+RUN | sh | $T/edit_open.sh | $T/house | no-such-book | bridge
+EXPECT_EXIT | 2 | missing-book-refused
