@@ -131,7 +131,7 @@ Still open unless a new frame says otherwise:
 
 Fixed in the toolbar file, not yet re-driven:
 
-7. Book rows are in the menu after two clicks on the book tab. Frame `/tmp/edit-bookopen.png` and `entity_menu_frame_3302618.txt`: `fo-2` and `fo-3` are both labeled `🏠 RPG-Pet`, args `rpg-edit-hq` and `rpg-space`. Picking one and seeing the bar change is the next click. The labels ought to be the folder names.
+7. The book menu used to show two rows, both labeled `🏠 RPG-Pet`. The see stage now reads `f_*_arg` before calling a book editable. As of `aef3bbf25` the editor open publishes `cdda-hq`, `mcl-hq`, and `df-hq` as their own labels. Picking one is still open: session `1793338115` was sent `CONFIRM_START_MAP:cdda-hq` and `CONFIRM_SET_DESK:bank`, the inbox was consumed, and the bar stayed `book:rpg-space` / `page:Bridge`.
 
 ## Harnesses, by name
 
