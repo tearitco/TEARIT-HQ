@@ -47,7 +47,7 @@ House, seen on the guard, 2026-10-29:
 | 19:37 | 100%, die 54 C | `rg` 296% (two pids), `pet_tts_local.p` 123%, `lc_clock.+x` 105% | Incident `20261029-193740-ACT.txt`. Guard classed rg and the python as outside. The clock pid 1400343 is the edit daemon's clock and was labeled HOUSE. Guard ended 0 house processes. Both hot processes had exited by the review. |
 | 19:40 | 27%, die 86 C | `pet_tts_local.p` 145% | During the xelector-start open. Board stopped. Daemon 1400329 left up. |
 
-`pet_tts_local.py` is the editor daemon speaking pal chat. It starts with no board window. Do not leave an edit board up while it is firing. 2026-10-29: `state/flag_voice.txt` is `0`, so `speak()` returns. There was no flag file, and the default is on. The wav cache was one file per pet, so the same line was synthesized again for each pal (278 files, 62 lines, matching pairs byte-identical). `reuse_line` in `petslike_core.c` hard-links an existing wav of the same words and the same voice. The editor daemon was restarted onto that binary (pid 3366898). Voice stays off until the Menu row turns it on.
+`pet_tts_local.py` is the editor daemon speaking pal chat. It starts with no board window. Do not leave an edit board up while it is firing. 2026-10-29: there was no flag file, and the default is on. The wav cache was one file per pet, so the same line was synthesized again for each pal (278 files, 62 lines, matching pairs byte-identical). `reuse_line` in `petslike_core.c` hard-links an existing wav of the same words and the same voice. Voice is on when nobody is driving. A test sets `state/flag_voice.txt` to `0` before a launch and writes `1` again when the window is stopped. Do not leave it at `0`.
 
 ## Loop
 
