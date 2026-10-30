@@ -114,7 +114,42 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     return o;
 }
 #elif PET_SECTION == 26
-    char p[PATH_MAX]; spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
+    /* The 3D pane draws the open page's events.txt. scene.raw was still the island town, so one edit showed in one picture. When the open book is not this town, stamp those same rows into scene.raw. Only when the file changes, so a 3D board does not repaint the town every tick. out_all still uses p after this section. */
+    char p[PATH_MAX];
+    {
+        char wp[PATH_MAX], wb[512], map[64] = "", desk[64] = "", evp[PATH_MAX], eb[8192];
+        snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
+        if (read_file(wp, wb, sizeof wb) > 0) {
+            for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) {
+                if (!strncmp(l, "map_id=", 7)) snprintf(map, sizeof map, "%s", l + 7);
+                else if (!strncmp(l, "desk_id=", 8)) snprintf(desk, sizeof desk, "%s", l + 8);
+            }
+        }
+        int foreign = map[0] && desk[0] && strcmp(map, PET_APP);
+        if (foreign) {
+            snprintf(evp, sizeof evp, "%s/pieces/system/maps/%s/%s/events.txt", PCHQ, map, desk);
+            static char last_ev[8192];
+            int n = read_file(evp, eb, sizeof eb);
+            if (n > 0 && strcmp(eb, last_ev)) {
+                memcpy(last_ev, eb, (size_t)n + 1);
+                for (int i = 0; i < FW * FH; i++) { fr[i * 4] = 14; fr[i * 4 + 1] = 14; fr[i * 4 + 2] = 18; fr[i * 4 + 3] = 255; }
+                for (char *l = strtok(eb, "\n"); l; l = strtok(NULL, "\n")) {
+                    int x, y, r, g, b; char name[40];
+                    if (sscanf(l, "%d %d %d %d %d %39s", &x, &y, &r, &g, &b, name) < 6) continue;
+                    if (x < 0 || y < 0 || x > 40 || y > 16) continue;
+                    for (int py = 0; py < 16; py++) for (int px = 0; px < 16; px++) {
+                        int X = 8 + x * 24 + px, Y = 8 + y * 24 + py;
+                        if (X < 0 || Y < 0 || X >= FW || Y >= FH) continue;
+                        size_t o = ((size_t)Y * FW + X) * 4;
+                        fr[o] = (unsigned char)r; fr[o + 1] = (unsigned char)g; fr[o + 2] = (unsigned char)b; fr[o + 3] = 255;
+                    }
+                }
+                spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
+            }
+        } else {
+            spath(p, "scene.raw"); if (write_if_changed(p, fr, sizeof fr)) g_scene_ver++;
+        }
+    }
 #elif PET_SECTION == 27
     int chat = flag_on("chat", 0), hb = flag_on("hb", 0), in = flag_on("int", 0); char view[16]; flag_str("view", "2d", view, sizeof view); for (char *c = view; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
     W("title=rpg-edit-hq  -  %s  -  coins %d\nscene_raw=%s\ncanvas_raw=%s\ncoins=%d\nmsg=%s\nroom_label=%s\n", rooms[vroom].name, coins, raw, raw, coins, msg && msg[0] ? msg : (in ? "INT on: turn based like a roguelike. Time moves when you act. Tab switches pet/player." : "real time: the pets live on their own. INT lets you control a pet or the player."), rooms[vroom].name);
