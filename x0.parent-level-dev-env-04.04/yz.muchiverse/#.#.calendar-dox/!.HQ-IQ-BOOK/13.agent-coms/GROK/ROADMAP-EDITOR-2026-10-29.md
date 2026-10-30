@@ -15,9 +15,13 @@ book=rpg-space page=bridge event=col_breach pages=7 events=15
 
 `book_check --events` on `rpg-space-pchq` the same day: desks pass (B1–B4, 7 pages), blueprintz passes (D1–D2, 15 events, flags=0). `conformant=no` because A2 fails: the board still keeps position in private files instead of a page file. The same A2 failure is on `mcl-hq` and on `rpg-edit-hq`. The text open does not claim the book is conformant.
 
-## 2. Show that page in this window. Next. Not done.
+## 2. Show that page in this window. Done for the 3D bar. 2026-10-29.
 
-The edit instance's map folder only contains `rpg-edit-hq`, so `CONFIRM_START_MAP` cannot name `rpg-space`. A2 is the reason a rendered page would still be the board's private state, not the page file. Do not launch a second board to fake this. The proof, when it exists, is the top bar reading `book:rpg-space` and `page:bridge`, then `scene.raw` of that page.
+`open_board.sh` links `maps/<book>` at the other book's map tree when the edit package does not have it, then sends `CONFIRM_START_MAP` and `CONFIRM_SET_DESK`. The link lives under `rpg-edit-hq-pchq`, which is gitignored.
+
+Observed on window `0xa00003`, 1260×556: the top bar read `book:rpg-space` and `page:bridge`. The debug line read `rpg-space:bridge`. The view was a ship corridor and a starfield, not the Islands room. The engine log said `Map 'rpg-space' loaded`. `board/state/ui.txt` had the same two labels. Picture: `/tmp/edit-bridge.png`.
+
+`state/scene.raw` is still the editor daemon's own 2D paint. It did not become the bridge. A2 is still open: the page file is not the authority. The next proof of one edit is a row that changes both `scene.raw` and this window.
 
 ## 3. One edit, both pictures.
 

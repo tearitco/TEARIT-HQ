@@ -19,6 +19,12 @@ BOOK=${LINE#book=}; BOOK=${BOOK%% page=*}; PAGE=${LINE#*page=}
 case "$BOOK" in
     *[!A-Za-z0-9_-]*|"") exit 1 ;;
 esac
+# The edit package only ships its own map. Another book is a link to that book's map tree, not a copy.
+LINK="$PCHQ_PKG/pieces/system/maps/$BOOK"
+SRC="$HOUSE/@.apps/$BOOK/$BOOK-pchq/pieces/system/maps/$BOOK"
+if [ ! -d "$LINK" ] && [ -d "$SRC" ]; then
+    ln -s "$SRC" "$LINK"
+fi
 if [ ! -d "$PCHQ_PKG/pieces/system/maps/$BOOK" ]; then
     BOOK=rpg-edit-hq
     PAGE=start
