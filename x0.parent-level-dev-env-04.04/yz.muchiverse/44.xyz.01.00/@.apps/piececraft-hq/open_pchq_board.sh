@@ -201,7 +201,18 @@ for _p in $(pgrep -f "chtpm_parser_pal|system/renderer|prisc\+x|system/orchestra
     _sid="$(ps -o sid= -p "$_p" 2>/dev/null | tr -d ' ')"
     [ -n "$_sid" ] || continue
     _leader_pp="$(ps -o ppid= -p "$_sid" 2>/dev/null | tr -d ' ')"
-    [ "$_leader_pp" = "1" ] || [ "$_leader_pp" = "1003" ] || continue   # orphaned only
+    # setsid parents the engine shell to init on purpose. Parent 1 while
+    # that shell is alive is not an orphan (2026-10-29: a second open
+    # during the first second SIGKILLed the new stack, pane stayed on
+    # loading...). Orphan means the leader is gone, or it is alive and
+    # is not the engine shell.
+    if kill -0 "$_sid" 2>/dev/null; then
+        _lcmd="$(ps -o cmd= -p "$_sid" 2>/dev/null || true)"
+        case "$_lcmd" in
+            *button.sh*|*orchestrator*) continue ;;
+        esac
+        [ "$_leader_pp" = "1" ] || [ "$_leader_pp" = "1003" ] || continue
+    fi
     kill -KILL "$_p" 2>/dev/null || true
 done
 # drop session dirs with nothing live in them
@@ -209,7 +220,15 @@ echo "$SESS_BASES" | while IFS= read -r _base; do
     [ -d "$_base" ] || continue
     for _d in "$_base"/*/; do
         [ -d "$_d" ] || continue
-        case " $_live_sessions " in *" $(basename "$_d") "*) continue ;; esac
+        _bn="$(basename "$_d")"
+        case " $_live_sessions " in *" $_bn "*) continue ;; esac
+        # A session created this same second is the launch in progress.
+        # Its orchestrator is not in pgrep yet. Do not delete it.
+        _sts="${_bn%%-*}"
+        case "$_sts" in ''|*[!0-9]*) ;; *)
+            _age=$(( $(date +%s) - _sts ))
+            [ "$_age" -ge 0 ] && [ "$_age" -lt 5 ] && continue ;;
+        esac
         rm -rf "$_d" 2>/dev/null || true
     done
 done
@@ -220,15 +239,14 @@ done
 # its PID lives, so the projector latches a deleted bv_session -> blank
 # canvas). If no live prisc VM has a cwd under an existing board-viewer
 # session dir, the widget is dead weight - kill it.
-for _w in $(pgrep -f "board-viewer/button.sh run-widget [^ ]*/$INST( |\$)" 2>/dev/null); do
-    _ok=0
-    for _p in $(pgrep -f "prisc\+x pal/main_module" 2>/dev/null); do
-        _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
-        case "$_c" in
-            "$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions/"*) [ -d "$_c" ] && _ok=1 ;;
-        esac
-    done
-    [ "$_ok" = 1 ] || { echo "open_pchq_board: reaping orphan board-viewer widget $_w (no live session)"; kill -KILL "$_w" 2>/dev/null || true; }
+for _w in $(pgrep -f "piececraft-hq/button.sh run(-widget)? [^ ]*/$INST( |\$)" 2>/dev/null); do
+    _c="$(readlink "/proc/$_w/cwd" 2>/dev/null)" || _c=""
+    case "$_c" in
+        *'(deleted)') ;;
+        *) [ -n "$_c" ] && [ -d "$_c" ] && continue ;;
+    esac
+    echo "open_pchq_board: reaping orphan board-viewer widget $_w (session dir gone)"
+    kill -KILL "$_w" 2>/dev/null || true
 done
 
 # ── single-instance guard: clean-restart the board window ────────────
@@ -261,7 +279,7 @@ fi
 # an ON-DISK board-viewer session (a bash wrapper alone is not enough -
 # see the orphan-reap above).
 engine_up() {
-    pgrep -f "board-viewer/button.sh run-widget [^ ]*/$INST( |\$)" >/dev/null 2>&1 || return 1
+    pgrep -f "piececraft-hq/button.sh run(-widget)? [^ ]*/$INST( |\$)" >/dev/null 2>&1 || return 1
     for _p in $(pgrep -f "prisc\+x pal/main_module" 2>/dev/null); do
         _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
         case "$_c" in
@@ -272,8 +290,8 @@ engine_up() {
 }
 # One engine launch; its output is KEPT in $ENGLOG (until 2026-10-26 it went to /dev/null: a launch that died left the board window on "loading..." with nothing to read). Sets _eng to its pid.
 start_engine() {
-    if [ "$DATA" = "$PKG" ]; then setsid nohup env PCHQ_ENGINE_MODE=1 sh -c 'sh "$0" run' "$PKG/button.sh" >>"$ENGLOG" 2>&1 &
-    else setsid nohup env PCHQ_ENGINE_MODE=1 PCHQ_PKG="$DATA" sh -c 'sh "$0" run' "$PKG/button.sh" >>"$ENGLOG" 2>&1 &
+    if [ "$DATA" = "$PKG" ]; then setsid nohup env PCHQ_ENGINE_MODE=1 PCHQ_FOCUS_PROJECT_ROOT="$DATA" sh -c 'sh "$0" run "$1"' "$PKG/button.sh" "$DATA" >>"$ENGLOG" 2>&1 &
+    else setsid nohup env PCHQ_ENGINE_MODE=1 PCHQ_PKG="$DATA" PCHQ_FOCUS_PROJECT_ROOT="$DATA" sh -c 'sh "$0" run "$1"' "$PKG/button.sh" "$DATA" >>"$ENGLOG" 2>&1 &
     fi
     _eng=$!
 }
