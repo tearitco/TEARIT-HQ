@@ -1,241 +1,121 @@
-<!-- pchq-board.xhtpm - MILESTONE A + A-2 + B
-     (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a): the board window as a
-     normal HQ window with a horizontal toolbar + a footer.
-
-       <tabbar id="toolbar">  - In/File/Desk/Menu/Player/clock as a
-         horizontal <tab> row just under the chrome (direct feedback:
-         "header should be <tabbar> horizontal row"). <tab> click
-         dispatches onclick=, so shell actions + ACTIVATE dropdowns both
-         work; kh_scan_interact_relay now also finds a relay= trigger
-         inside a <tabbar>.
-       <sidebar id="rail">  - width:0, present only to satisfy
-         layout_sidebar_panel()'s sidebar+panel trigger.
-       <panel id="view-panel"><canvas id="view"/>  - the 2D/3D blit;
-         kh_layout_canvas_in_region() fills it, sets g_has_canvas, wires
-         canvas_raw, writes #.desktop/pchq_board_view.txt (1:1 blit).
-       <footer id="statusbar">  - horizontal bottom strip; milestone C
-         puts the entities bar here.
-
-     Free: X/!/_ chrome, taskbar entry, minimize/restore, REAL Desk/Menu
-     dropdowns. Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
-<window label="edit" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt state/pchq/ui.txt state/ctx.txt">
+<!-- rpg-edit-hq BOARD window (owner 2026-10-11: rpg-edit-hq as a module of the pc-hq board engine; the old standalone @.apps/rpg-edit-hq/rpg-edit-hq.xhtpm stays beside it for comparison).
+     A copy of the layout-studio sandbox board (pinned side bars) with rpg-edit-hq's own rows: the pets and stats are the LEFT bar, chat is the RIGHT bar, the bag hotbar is the bottom overlay,
+     the dropdowns are rpg-edit-hq's. The canvas is the board engine frame (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view) of the book maps/rpg-edit-hq that rpg_edit_hq.+x exports.
+     Launch: sh @.apps/rpg-edit-hq/board/open_board.sh. vars: rpg-edit-hq's state files FIRST, the board's after, so canvas_raw / interact_* are the board's. RULES: no angle brackets inside comments. -->
+<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/ctx.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rpg-edit-hq-pchq"/>
-  <!-- the hotbar's manager (@.apps/hotbar-hq, 18.pc-hq/CURSWORD-POSSESSION-DESIGN.md): publishes
-       state/pchq/ui.txt (hb_ keys) for the overlay strip in the view panel below. -->
-  <module src="@.apps/hotbar-hq/ops/+x/hotbar_manager.+x pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
-      <tab id="tb-in" class="pchq-tb skin-bar ${interact_class}" label="In: ${interact_label}"
-           relay="${bv_h1},${bv_h2}"
-           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
-      <!-- REAL FIX 2026-09-15 (5), direct live report ("none:none...
-           it says none:none for file:desk. thats wrong" - traced to
-           tb-file calling 'file-hq' DIRECTLY, which opens File
-           Explorer, not a quick-pick menu; the real n_file_opts/f_*
-           rows the projector has published this whole session were
-           never wired into any actual UI element - confirmed dead,
-           the exact reason clicking "File" never actually loaded
-           "default"). Now a real ACTIVATE dropdown, same shape as
-           tb-desk/tb-menu/tb-player right next to it - "Open File
-           Explorer" is still reachable as one of its own real rows
-           (f_1 below), not removed, just no longer the ONLY thing a
-           File click can do. -->
-      <!-- REAL FIX 2026-09-30, direct instruction ("the 'FILE:DESK' tb
-           headers are old before 'BOOK PAGE RENAME'"): only the
-           user-visible label text changes here, same precedent already
-           set in khtpm_taskbar_manager.c's ktb_get_file_label()/
-           ktb_get_desks_label() comments - ids (tb-file/tb-desk),
-           target_id, actions, and every f_N_*/d_N_* key stay exactly
-           as-is. A pc-hq "file" (a loaded project) and "desk" (a map
-           inside it) already map naturally onto BOOK (a session/
-           container) and PAGE (a view inside it) - this isn't a forced
-           relabel, the concepts genuinely correspond. -->
-      <tab id="tb-file" class="pchq-tb skin-bar" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-file"/>
-      <tab id="tb-desk" class="pchq-tb skin-bar" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-desk"/>
-      <tab id="tb-menu" class="pchq-tb skin-bar" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
-      <!-- REAL FIX 2026-09-15, direct live correction ("player should
-           have dropdown that says play, reset, stop, notes-db, cancel
-           ... like tb hq dropdown []9.player") - same real dropdown
-           shape as tb-desk right above (ACTIVATE + dropdown-child rows
-           in the rail below), matching the desktop taskbar's own
-           player menu (khtpm_taskbar_manager.c's livedesk_build_
-           player_menu()) instead of a flat single-click toggle. -->
-      <tab id="tb-player" class="pchq-tb skin-bar" label="${player_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
-      <tab id="tb-db" class="pchq-tb skin-bar" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
+      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' int"/>
+      <tab id="tb-book" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
+      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
+      <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
+      <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
+      <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
       <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
       <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
-      <tab id="tb-clock" class="pchq-tb skin-bar" label="${clock}" onclick="void"/>
     </tabbar>
-
-    <!-- zero-width rail: satisfies layout_sidebar_panel's sidebar+panel
-         trigger AND hosts the dropdown rows. The generic overlay pass
-         (in layout_fixed_rows_and_scrolllist) wants FLAT sibling
-         <item class="dropdown-child" target_id="X">, stacked below
-         trigger X (same shape co-lab-hai uses), NOT a wrapping panel.
-         Triggers stay in the <tabbar>, found window-wide by id.
-         Painted last (over the canvas) - kh_serialize_frame_deferred. -->
     <sidebar id="rail" class="pchq-rail sidebar">
+      <repeat count="${n_party}" bind="party">
+        <item id="bk-${party.#}" class="pchq-menu-row dropdown-child ${party.cls}" target_id="tb-pals" label="${party.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' select ${party.id}"/>
+      </repeat>
+      <item id="tp-book-0" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_0_label}" action="${book_post_0_act}" show="${book_post_0_label}"/>
+      <item id="tp-book-1" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_1_label}" action="${book_post_1_act}" show="${book_post_1_label}"/>
+      <item id="tp-book-2" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_2_label}" action="${book_post_2_act}" show="${book_post_2_label}"/>
+      <item id="tp-book-3" class="pchq-menu-row dropdown-child" target_id="tb-pals" label="${book_post_3_label}" action="${book_post_3_act}" show="${book_post_3_label}"/>
       <repeat count="${n_file_opts}" bind="f">
-        <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-file"
-              label="${f.label}"
-              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
+        <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
       </repeat>
-      <item id="fm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-file"
-            label="- cancel -" action="void"/>
+      <item id="bk-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
       <repeat count="${n_desk_opts}" bind="d">
-        <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-desk"
-              label="${d.label}"
-              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
+        <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-page" label="${d.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
       </repeat>
-      <item id="dm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-desk"
-            label="- cancel -" action="void"/>
-      <!-- Desk search (owner 2026-10-09): pinned under "- cancel -". Typing is live-synced to cli_io_state.txt as tb-desk=<text>
-           (the field's state key is its target_id); pchq_board_projector narrows the published desk rows to labels containing it
-           and publishes desk_first_id = the first match, which Enter opens (same pchq_board_action.sh desk verb as a row click).
-           The dropdown jumps nav focus here when it opens. Empty text = full list; empty desk_first_id = the script exits. -->
-      <cli_io id="dm-search" target_id="tb-desk" class="pchq-menu-row dropdown-child" label="search: "
-              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${desk_first_id}'"/>
-      <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
-            label="Entities bar on/off"
-            action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
-      <!-- db tab (owner 2026-10-11, replaces the old "Db (todo)" Menu row): the database / events editors, same rows as the desktop taskbar's db menu. blueprintz is not here: it is under the Player menu (the debugger, BLUEPRINTZ-DESIGN.md).
-           Every pc-hq game window gets this tab from this one file. -->
-      <item id="db-hq" class="pchq-menu-row dropdown-child" target_id="tb-db"
-            label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
-      <item id="db-sql" class="pchq-menu-row dropdown-child" target_id="tb-db"
-            label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
-      <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db"
-            label="- cancel -" action="void"/>
-      <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
-            label="- cancel -" action="void"/>
-      <!-- REAL, NEW 2026-09-15, direct live report ("player should
-           have dropdown that says play, reset, stop, notes-db,
-           cancel") - matches the desktop taskbar's own player menu
-           row set (play/reset/Cancel) plus the two rows it's missing
-           there too (stop, notes-db) - see khtpm_taskbar_manager.c's
-           livedesk_build_player_menu() for the sibling fix. -->
-      <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="${player_label}"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'start'"/>
-      <item id="pm-playtest" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="${playtest_label}"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'playtest'"/>
-      <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Stop"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'stop'"/>
-      <item id="pm-reset" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Reset"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'reset'"/>
-      <item id="pm-notes" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Notes"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'notes'"/>
-      <item id="pm-synch" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Synch"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'synch'"/>
-      <item id="pm-save-1" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 1"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:1'"/>
-      <item id="pm-load-1" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 1"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:1'"/>
-      <item id="pm-save-2" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 2"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:2'"/>
-      <item id="pm-load-2" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 2"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:2'"/>
-      <item id="pm-save-3" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 3"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:3'"/>
-      <item id="pm-load-3" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 3"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:3'"/>
-      <item id="pm-save-4" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 4"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:4'"/>
-      <item id="pm-load-4" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 4"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:4'"/>
-      <item id="pm-save-5" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 5"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:5'"/>
-      <item id="pm-load-5" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 5"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:5'"/>
-      <item id="pm-save-6" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 6"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:6'"/>
-      <item id="pm-load-6" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 6"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:6'"/>
-      <item id="pm-save-7" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 7"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:7'"/>
-      <item id="pm-load-7" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 7"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:7'"/>
-      <item id="pm-save-8" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Save 8"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'save:8'"/>
-      <item id="pm-load-8" class="pchq-menu-row dropdown-child" target_id="tb-player"
-            label="Load 8"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'load:8'"/>
-      <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player"
-            label="- cancel -" action="void"/>
+      <item id="tp-page-0" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
+      <item id="tp-page-1" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
+      <item id="tp-page-2" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_2_label}" action="${page_post_2_act}" show="${page_post_2_label}"/>
+      <item id="tp-page-3" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_3_label}" action="${page_post_3_act}" show="${page_post_3_label}"/>
+      <repeat count="${n_item}" bind="it"><item id="ti-${it.#}" class="pchq-menu-row dropdown-child" target_id="${it.tab}" label="${it.label}" action="${it.act}"/></repeat>
+      <repeat count="${n_shop}" bind="shop">
+        <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire buy ${shop.key}"/>
+      </repeat>
+      <item id="sh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
+      <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire control"/>
+      <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle voice"/>
+      <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' reset"/>
+      <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/pchq.pdl' 'entities_bar'"/>
+      <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu" label="- cancel -" action="void"/>
+      <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
+      <item id="db-sql" class="pchq-menu-row dropdown-child " target_id="tb-db" label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
+      <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db" label="- cancel -" action="void"/>
+      <item id="pm-int" class="pchq-menu-row dropdown-child " target_id="tb-player" label="INT on/off (arrow keys drive a pet)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' int"/>
+      <item id="pm-mode" class="pchq-menu-row dropdown-child " target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' mode"/>
+      <item id="pm-play" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' play"/>
+      <item id="pm-stop" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' stop"/>
+      <item id="pm-blueprintz" class="pchq-menu-row dropdown-child " target_id="tb-player" label="blueprintz" action="sh '${HOUSE}/_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh'"/>
+      <item id="pm-save" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire save 1"/>
+      <item id="pm-load" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire load 1"/>
+      <item id="pm-synch" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (desk to game)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch"/>
+      <item id="pm-synch2" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (game to desk)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch to-desk"/>
+      <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <item id="tm-cent" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate cent"/>
+      <item id="tm-sec" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate sec"/>
+      <item id="tm-min" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: normal (1 min/sec)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate min"/>
+      <item id="tm-hour" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate hour"/>
+      <item id="tm-adv1h" class="pchq-menu-row dropdown-child " target_id="tb-time" label="skip +1 hour" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock advance 1h"/>
+      <item id="tm-adv1d" class="pchq-menu-row dropdown-child " target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock advance 1d"/>
+      <item id="tm-reinst" class="pchq-menu-row dropdown-child " target_id="tb-time" label="reinstall schedule" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock reinstall"/>
+      <item id="tm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
     </sidebar>
-
     <panel id="view-panel" class="pchq-view">
       <canvas id="view" sprite="${canvas_raw}"/>
-      <!-- hotbar, drawn IN the board window over the bottom-centre of the game view (generic class
-           canvas-overlay-bottom, see kh_layout_canvas_in_region): the holder's inventory slots - the
-           possessed entity's, else the xelector's. Hidden/shown by the "hotbar" cell in the bottom bar
-           (show= drops it at parse). Feed: hotbar_manager, hb_ keys. -->
-      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x pchq-hotbar theme" show="${hb_visible}">
-        <text label="${hb_holder} - slot: ${hb_sel_name}" class="hb-quiet ov-title theme-3"/>
-        <!-- the holder's own picture (the xelector = the coloured cube, the mouse) at the left of the title line: display only (no nav number, slot digits unchanged). Gated: absent = hidden. class ov-badge: renderer overlay layout -->
-        <item id="hb-badge" class="ov-badge sprite-inline theme-3" label=" " sprite="${hb_holder_sprite}" action="void" show="${hb_holder_sprite}"/>
-        <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_"
-              action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/rpg-edit-hq/board' hide"/>   <!-- HIDE, not toggle: two quick clicks must not cancel (owner, 2026-10-06); the bottom bar's "hotbar" cell shows it again -->
-        <repeat count="${hb_n_slots}" bind="hb_s">
-          <item id="hbs${hb_s.#}" class="hb-slot skin-bar sprite-inline sprite-big ${hb_s.cls}" label="${hb_s.text}" sprite="${hb_s.sprite}"
-                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_action.sh' '${hb_s.#}' '${HOUSE}/@.apps/rpg-edit-hq/board/state/pchq'"/>
+      <!-- LEFT pinned bar: the pets and their stats. Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl), the _ hides it, the footer cell left toggles it. -->
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_left}">
+        <text label="pets - coins ${coins}" class="hb-quiet ov-title theme-3"/>
+        <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_left hide"/>
+        <text id="light" label="${run_label}" class="${run_cls}"/>
+        <text label="${nick_line}" class="ph-quiet"/>
+        <text label="${stat_line}" class="ph-quiet"/>
+        <text label="${stat_line2}" class="ph-quiet"/>
+        <repeat count="${n_party}" bind="party">
+          <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' select ${party.id}"/>
         </repeat>
-        <!-- terminal readout line between the slots and the command field (the desk's blank band); v1 = the last command typed. class ov-readout: renderer overlay layout. Gated on hb_readout_on, published only by the NEW manager, so a board still running the old renderer never sees an extra title line. -->
-        <text id="hb-readout" class="hb-quiet ov-readout" label="${hb_readout}" show="${hb_readout_on}"/>
-        <cli_io id="hbcmd" target_id="hbcmd" class="hb-cli" label="&gt; "
-                action="'${HOUSE}/@.apps/hotbar-hq/ops/hotbar_cli.sh' 'pchq'"/>
       </row>
-      <!-- in-board entity context menu (IN-GAME-LAYOUTS-PLAN.md): pc_entity_ctx.sh writes state/ctx_menu.chtpm (the
-           same menu markup the floating window used) + state/ctx.txt (ctx_visible, ctx_x, ctx_y) when state/ctx_overlay.on
-           exists. inner="page" splices that file's page content; its first <text> is the title bar, its Close row is
-           dropped (the chrome x does it). ov-focus: takes keyboard focus when it opens. -->
-      <row id="ctx" class="canvas-overlay-at ov-chrome ov-focus ctx-menu theme" show="${ctx_visible}">
-        <overlay src="@.apps/piececraft-hq/state/ctx_menu.chtpm" inner="page"/>
-        <item id="ctx-min" class="ov-min theme-3" label="_" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/piececraft-hq/state'"/>
-        <item id="ctx-x" class="ov-close theme-3" label="x" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_ctx_close.sh' '${HOUSE}/@.apps/piececraft-hq/state'"/>
+      <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
+      <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">
+        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
+        <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
+        <text label="${chat_0}" class="rp-chat"/>
+        <text label="${chat_1}" class="rp-chat"/>
+        <text label="${chat_2}" class="rp-chat"/>
+        <text label="${chat_3}" class="rp-chat"/>
+        <text label="${chat_4}" class="rp-chat"/>
+        <text label="${chat_5}" class="rp-chat"/>
+        <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clearchat"/>
+        <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_edit_hq.+x'"/>
+      </row>
+      <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
+        <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>
+        <item id="hb-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle hb"/>
+        <repeat count="${hb_n_slots}" bind="hb">
+          <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire use ${hb.key}"/>
+        </repeat>
       </row>
     </panel>
-
-    <!-- MILESTONE C: entities bar. show= drops the whole strip when
-         entities_bar is 0 in pchq.pdl (Menu > Entities bar toggles it). -->
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
       <text label="ents" class="quiet"/>
-      <!-- show/hide the hotbar overlay ("minimize" it into this bar) -->
-      <item id="hb-toggle" class="pchq-ft skin-bar" label="hotbar"
-            action="sh '${HOUSE}/@.apps/hotbar-hq/ops/hotbar_toggle.sh' pchq '${HOUSE}/@.apps/rpg-edit-hq/board'"/>
+      <item id="sl-toggle" class="pchq-ft" label="pets" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_left toggle"/>
+      <item id="sr-toggle" class="pchq-ft" label="chat" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right toggle"/>
+      <item id="hb-toggle" class="pchq-ft" label="hb" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle hb"/>
       <repeat count="${n_ent}" bind="ent">
-        <item id="e${ent.#}" class="pchq-ft skin-bar sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}"
-              action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
+        <item id="eok${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-ok" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_ok}"/>
+        <item id="elow${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-low" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_low}"/>
+        <item id="eko${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-ko" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_ko}"/>
+        <item id="enone${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_none}"/>
       </repeat>
     </footer>
-    <footer id="subbar" class="pchq-footer" show="${n_sub}">
-      <text label="more" class="quiet"/>
-      <repeat count="${n_sub}" bind="sub">
-        <item id="s${sub.#}" class="pchq-ft" label="${sub.label}"
-              action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${sub.x}' '${sub.y}' '${sub.z}' '${sub.kind}' '${sub.id}'"/>
-      </repeat>
-    </footer>
-
-    <text label="No live board-viewer session - open 'View Board' from the game first." class="quiet" show="${no_session}"/>
+    <text label="No live board-viewer session - open the board with open_board.sh." class="quiet" show="${no_session}"/>
   </page>
 </window>

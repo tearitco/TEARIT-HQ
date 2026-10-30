@@ -105,6 +105,8 @@ Clicks are two-step (`click_two_step=1`). The first click only focuses the tab (
 
 `board/pchq-board.xhtpm`. The toolbar tabs use `onclick="ACTIVATE"`. The dropdown rows are `<item class="dropdown-child" target_id="tb-...">` in the side rail.
 
+Toolbar and menu rows follow LyfeDesk. The source is `#.desktop/livedesk_taskbar.pdl` (`player_menu_*`, `strip_btn_*`). Do not invent a row on book or db that LyfeDesk puts on player. blueprintz is `player_menu_4`, after stop, opened by `_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh`. It is the debugger, not a book-menu row.
+
 As of the fix in this same note:
 
 - Book rows are `n_file_opts` / `f_*`, written by `pchq_board_projector.c` from `pieces/system/maps/*/game.pdl`. The action is `pchq_board_action.sh <bv_session> load-map <id>`.
