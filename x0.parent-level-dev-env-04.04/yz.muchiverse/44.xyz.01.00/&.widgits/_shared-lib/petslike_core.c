@@ -703,9 +703,20 @@ static int viewer_kinds(void);
 static void speak(int i, const char *text);
 static void speak_greet(int i, int variant, const char *other, int reply) { char t[160]; const char *fmt = (reply ? RE : HI)[pet_lang(i)][variant & 3]; snprintf(t, sizeof t, fmt, other); speak(i, t); }
 static void speak_reply(int i) { char t[160]; int k = g_rk < 0 ? 4 : g_rk; snprintf(t, sizeof t, RP[pet_lang(i)][k][g_rk < 0 ? 0 : g_ry ? 1 : 0], npl); speak(i, t); }
+/* A renderer can outlive the widget. no_session=1 is the loading pane: nobody is looking at a page, so do not talk. */
+static int page_is_up(void) {
+    char p[PATH_MAX], line[80];
+    snprintf(p, sizeof p, "%s/board/state/ui.txt", APP);
+    FILE *f = fopen(p, "r");
+    if (!f) return 1;
+    int up = 1;
+    while (fgets(line, sizeof line, f)) if (!strncmp(line, "no_session=", 11)) { up = line[11] != '1'; break; }
+    fclose(f);
+    return up;
+}
 static void speak(int i, const char *text) {
     /* No window: do not synthesize and do not play. A closed board must stay quiet. */
-    if (!flag_on("voice", 1) || !viewer_kinds() || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;     /* a pet speaks aloud only while on screen */
+    if (!flag_on("voice", 1) || !viewer_kinds() || !page_is_up() || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;     /* a pet speaks aloud only while on screen */
     char p[PATH_MAX], line[300], *f[6], voice[48] = "en-US-AnaNeural", rate[16] = "+0%", pitch[16] = "+0Hz"; snprintf(p, sizeof p, "%s/voices.pdl", APP); FILE *fp = fopen(p, "r");
     if (fp) { while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 5 && !strcmp(f[0], "VOICE") && !strcmp(f[1], party[i].id)) { snprintf(voice, sizeof voice, "%s", f[2]); snprintf(rate, sizeof rate, "%s", f[3]); snprintf(pitch, sizeof pitch, "%s", f[4]); } fclose(fp); }
     unsigned long h = 5381; for (const char *c = text; *c; c++) h = h * 33 + (unsigned char)*c; char dir[PATH_MAX], wav[PATH_MAX], mp3[PATH_MAX]; snprintf(dir, sizeof dir, "%s/audio", ST); mkdir(dir, 0755);
@@ -718,7 +729,7 @@ static void speak(int i, const char *text) {
         char *av[] = {"nice", "-n", "15", edge, "--voice", voice, rateA, pitchA, "--text", (char *)text, "--write-media", mp3, NULL}; if (run_quiet(av, 1) != 0 || !fexists(mp3)) _exit(0);
         char *cv[] = {"nice", "-n", "15", "ffmpeg", "-loglevel", "quiet", "-y", "-i", mp3, "-ar", "22050", "-ac", "1", wav, NULL}; run_quiet(cv, 1); remove(mp3); }
     if (sfd >= 0) close(sfd);      /* synthesis over: the next greeting may synthesize while this one plays */
-    if (!fexists(wav) || !viewer_kinds()) _exit(0);
+    if (!fexists(wav) || !viewer_kinds() || !page_is_up()) _exit(0);
     { char lp[PATH_MAX], pp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/play.lock", dir); snprintf(pp, sizeof pp, "%s/play.pid", dir); FILE *pf = fopen(pp, "w"); if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); } int fd = open(lp, O_CREAT | O_RDWR, 0644); if (fd < 0 || flock(fd, LOCK_EX | LOCK_NB) != 0 || !viewer_kinds()) { remove(pp); _exit(0); } char *pv[] = {"nice", "-n", "10", "paplay", "--volume=32000", wav, NULL}; run_quiet(pv, 1); remove(pp); }
     _exit(0);
 }
