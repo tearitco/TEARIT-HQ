@@ -13,7 +13,9 @@ A second hole, different signal: the engine is started with `setsid`, so its ses
 
 The 18:58 launch stayed up. Its engine shell was `3202906`, not the pid written to `engine.pid`. Stopping the window did not stop that shell. `quit_flag.txt` was empty, `orchestrator.log` was only the ready line, and the parser was about 0.7% CPU. That shell was stopped after this reading. The editor daemon that was already running was left up.
 
-The code change that stops the SIGTERM is not made yet. Next edit: do not signal a `run-widget` whose pid is still alive, and do not treat a setsid leader with parent 1 as dead while its own orchestrator is alive.
+Fixed in `piececraft-hq/button.sh` and `open_pchq_board.sh`, not re-driven. A start-of-run kill now skips a widget whose session directory still exists, and skips an orchestrator whose parent is still `button.sh`. The quit path still signals them. The orphan reap no longer treats a live `setsid` engine shell (parent 1) as dead, and it does not delete a session directory younger than 5 seconds. A widget is reaped only when its own session directory is already gone.
+
+Stray pollers on deleted session directories were stopped after that reading: four board-viewer stacks (renderer, parser, rgb) and `pc_trigger_watcher` pid 82433. The editor daemon pid 1400329 was left up.
 
 ## Page is on screen (2026-10-29 18:58)
 
