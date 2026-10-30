@@ -884,6 +884,27 @@ int main(int argc, char **argv) {
         }
         sanitize(book_label);
         sanitize(page_label);
+        /* The 3D pane raymarches only when a key arrives or
+         * bv_screen_changed.txt grows. The bar already follows
+         * world_01. A book or page change appends one byte so the
+         * pane reloads that desk. The first sample only remembers
+         * the labels, so a projector start does not redraw. */
+        {
+            static char held_book[80] = "", held_page[80] = "";
+            static int held_init = 0;
+            if (have && bv[0] && held_init &&
+                (strcmp(held_book, book_label) != 0 || strcmp(held_page, page_label) != 0)) {
+                char mk[PATH_MAX];
+                snprintf(mk, sizeof(mk), "%s/pieces/display/bv_screen_changed.txt", bv);
+                FILE *mf = fopen(mk, "a");
+                if (mf) { fputc('B', mf); fclose(mf); }
+            }
+            if (have && bv[0]) {
+                snprintf(held_book, sizeof(held_book), "%s", book_label);
+                snprintf(held_page, sizeof(held_page), "%s", page_label);
+                held_init = 1;
+            }
+        }
 
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,
