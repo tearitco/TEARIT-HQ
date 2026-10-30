@@ -13,5 +13,10 @@ not a handoff. A new agent starts here.
   starts here. Do not launch a board to re-read a row that already has
   a frame.
 
+- `CHROME-COMPARE.md` — LyfeDesk `strip_btn_N` beside the edit-board
+  tab, one row each, including the clock and the pid cell. Fill it
+  before saying the toolbar matches. A sentence that says "follow
+  LyfeDesk" is not that check.
+
 Grok's personal reonboard stays `13.agent-coms/GROK/ONBOARD-GROK.md`.
 The old path `13.agent-coms/HOW2-DRIVE-DOC-FIX.md` is a pointer.
