@@ -71,26 +71,26 @@
       <canvas id="view" sprite="${canvas_raw}"/>
       <!-- LEFT pinned bar: the pets and their stats. Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl), the _ hides it, the footer cell left toggles it. -->
       <row id="side-l" class="canvas-overlay-left ov-pin ov-chrome pchq-hotbar theme" show="${side_left}">
-        <text label="pets - coins ${coins}" class="hb-quiet ov-title theme-3"/>
+        <text label="pets - coins ${coins}" class="hb-quiet ov-title theme-3 ov-line"/>
         <item id="sl-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_left hide"/>
-        <text id="light" label="${run_label}" class="${run_cls}"/>
-        <text label="${nick_line}" class="ph-quiet"/>
-        <text label="${stat_line}" class="ph-quiet"/>
-        <text label="${stat_line2}" class="ph-quiet"/>
+        <text id="light" label="${run_label}" class="${run_cls} ov-line"/>
+        <text label="${nick_line}" class="ph-quiet ov-line"/>
+        <text label="${stat_line}" class="ph-quiet ov-line"/>
+        <text label="${stat_line2}" class="ph-quiet ov-line"/>
         <repeat count="${n_party}" bind="party">
           <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' select ${party.id}"/>
         </repeat>
       </row>
       <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">
-        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3"/>
+        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3 ov-line"/>
         <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
-        <text label="${chat_0}" class="rp-chat"/>
-        <text label="${chat_1}" class="rp-chat"/>
-        <text label="${chat_2}" class="rp-chat"/>
-        <text label="${chat_3}" class="rp-chat"/>
-        <text label="${chat_4}" class="rp-chat"/>
-        <text label="${chat_5}" class="rp-chat"/>
+        <text label="${chat_0}" class="rp-chat ov-line"/>
+        <text label="${chat_1}" class="rp-chat ov-line"/>
+        <text label="${chat_2}" class="rp-chat ov-line"/>
+        <text label="${chat_3}" class="rp-chat ov-line"/>
+        <text label="${chat_4}" class="rp-chat ov-line"/>
+        <text label="${chat_5}" class="rp-chat ov-line"/>
         <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clearchat"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_edit_hq.+x'"/>
       </row>

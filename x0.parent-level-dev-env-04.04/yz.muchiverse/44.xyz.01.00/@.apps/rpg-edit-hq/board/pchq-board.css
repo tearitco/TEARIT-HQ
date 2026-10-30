@@ -88,6 +88,7 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
 .ov-title { background-color: #666666; color: #ffffff; }
 .ov-min { width: 40px; height: 20px; font-size: 14px; background-color: #444444; border: 1px solid #666666; color: #ffffff; }
 .rp-chat-ov { width: 190px; }
+.ov-line { width: 190px; }
 .rp-menu-row { background-color: #1c1c1c; color: #cccccc; font-weight: bold; width: 200px; height: 20px; font-size: 10px; padding: 2px; border: 1px solid #333333; }
 .ph-quiet { color: #aaaaaa; }
 .ph-green { color: #33dd55; font-weight: bold; padding: 4px 8px; }

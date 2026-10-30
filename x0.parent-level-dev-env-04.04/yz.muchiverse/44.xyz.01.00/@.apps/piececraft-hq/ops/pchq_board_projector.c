@@ -175,6 +175,11 @@ static int emit_xelector(char *ui, size_t *off, int n, const char *host_app_root
     return 1;
 }
 
+static int host_view_flag(const char *host, const char *key, int def);
+static int host_is_rpg_edit(const char *host) {
+    return host && strstr(host, "/@.apps/rpg-edit-hq/") != NULL;
+}
+
 /* Footer rows from the synch pin's pdl= while source=desk (or an older
  * pin that still has pdl=). A later livedesk page change does not
  * move this strip. source=board means the board picked its own map:
@@ -199,7 +204,9 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
         "ent_0_label=map\nent_0_id=map\nent_0_kind=page\n"
         "ent_0_x=0\nent_0_y=0\nent_0_z=0\n");
     n = 1;
-    if (emit_xelector(ui, off, n, host_app_root)) n++;
+    if (host_view_flag(host_app_root, "ent_bar_xelector",
+                       host_is_rpg_edit(host_app_root) ? 0 : 1)
+        && emit_xelector(ui, off, n, host_app_root)) n++;
     char line[512];
     while (n < 24 && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
@@ -238,7 +245,8 @@ static size_t emit_hp_flags(char *ui, size_t *off, int n) {
         *off += (size_t)snprintf(ui + *off, UIBUF - *off, "ent_%d_hp_ok=%s\nent_%d_hp_low=%s\nent_%d_hp_ko=%s\nent_%d_hp_none=%s\n", i, ok ? "1" : "", i, low ? "1" : "", i, ko ? "1" : "", i, (ok || low || ko) ? "" : "1");
         if (ok || low || ko) *off += (size_t)snprintf(ui + *off, UIBUF - *off, "ent_%d_hpb=%s\n", i, ok ? "\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac" : low ? "\xe2\x96\xac\xc2\xb7\xc2\xb7\xc2\xb7" : "\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac"); }      /* ent_N_hpb: a small bar after the name (a line break inside an item label drops the whole item in this renderer, so no second line yet) */
     return *off; }
-/* view.pdl key=value of the host app (e.g. ent_bar_hero=0 hides the hero entry of the bottom bar). */
+/* view.pdl key=value of the host app (e.g. ent_bar_hero=0 hides the hero entry
+ * and ent_bar_xelector=0 hides the xelector entry of the bottom bar). */
 static int host_view_flag(const char *host, const char *key, int def) {
     char p[PATH_MAX], l[160]; snprintf(p, sizeof p, "%s/pieces/system/view.pdl", host); FILE *f = fopen(p, "r"); if (!f) return def; size_t kl = strlen(key); int v = def;
     while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
@@ -314,7 +322,9 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
             else if (!strncmp(l, "pos_z=", 6)) sscanf(l + 6, "%15s", hz);
         }
         fclose(hf);
-        if (hx[0] && hy[0] && hz[0] && host_view_flag(host_app_root, "ent_bar_hero", 1)) {
+        if (hx[0] && hy[0] && hz[0]
+            && host_view_flag(host_app_root, "ent_bar_hero",
+                              host_is_rpg_edit(host_app_root) ? 0 : 1)) {
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "ent_%d_label=hero\nent_%d_id=hero_01\nent_%d_kind=hero\n"
                 "ent_%d_x=%s\nent_%d_y=%s\nent_%d_z=%s\n",
@@ -322,7 +332,9 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
             n++;
         }
     }
-    if (emit_xelector(ui, &off, n, host_app_root)) n++;
+    if (host_view_flag(host_app_root, "ent_bar_xelector",
+                       host_is_rpg_edit(host_app_root) ? 0 : 1)
+        && emit_xelector(ui, &off, n, host_app_root)) n++;
     const char *files[2] = { "pieces/world_01/animals.txt",
                              "pieces/world_01/phymoji_entities.txt" };
     for (int fi = 0; fi < 2 && n < 16; fi++) {
