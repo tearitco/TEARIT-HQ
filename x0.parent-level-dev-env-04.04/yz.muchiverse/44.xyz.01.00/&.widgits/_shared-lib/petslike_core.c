@@ -714,13 +714,31 @@ static int page_is_up(void) {
     fclose(f);
     return up;
 }
+static void voice_of(const char *id, char *voice, size_t vc, char *rate, size_t rc, char *pitch, size_t pc) {
+    snprintf(voice, vc, "en-US-AnaNeural"); snprintf(rate, rc, "+0%%"); snprintf(pitch, pc, "+0Hz");
+    char p[PATH_MAX], line[300], *f[6]; snprintf(p, sizeof p, "%s/voices.pdl", APP); FILE *fp = fopen(p, "r"); if (!fp) return;
+    while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 5 && !strcmp(f[0], "VOICE") && !strcmp(f[1], id)) { snprintf(voice, vc, "%s", f[2]); snprintf(rate, rc, "%s", f[3]); snprintf(pitch, pc, "%s", f[4]); }
+    fclose(fp);
+}
+/* Same words and the same Kokoro voice already have a wav under another pet's name. The editor had 278 files and 62 lines; glacine and cursword were byte-identical. Play that file. Do not call Kokoro again. */
+static int reuse_line(const char *dir, unsigned long h, const char *voice, const char *rate, const char *pitch, char *out, size_t cap) {
+    char suf[32]; snprintf(suf, sizeof suf, "_%08lx.wav", h & 0xffffffffUL); DIR *d = opendir(dir); if (!d) return 0; struct dirent *e; int hit = 0;
+    while ((e = readdir(d))) {
+        size_t n = strlen(e->d_name), sn = strlen(suf); if (n < 5 + sn || strncmp(e->d_name, "say_", 4) != 0 || strcmp(e->d_name + n - sn, suf) != 0) continue;
+        char id[64]; size_t idn = n - 4 - sn; if (idn == 0 || idn >= sizeof id) continue; memcpy(id, e->d_name + 4, idn); id[idn] = 0;
+        char v[48], r[16], pth[16]; voice_of(id, v, sizeof v, r, sizeof r, pth, sizeof pth);
+        if (strcmp(v, voice) || strcmp(r, rate) || strcmp(pth, pitch)) continue;
+        snprintf(out, cap, "%s/%s", dir, e->d_name); hit = 1; break;
+    }
+    closedir(d); return hit;
+}
 static void speak(int i, const char *text) {
     /* No window: do not synthesize and do not play. A closed board must stay quiet. */
     if (!flag_on("voice", 1) || !viewer_kinds() || !page_is_up() || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;     /* a pet speaks aloud only while on screen */
-    char p[PATH_MAX], line[300], *f[6], voice[48] = "en-US-AnaNeural", rate[16] = "+0%", pitch[16] = "+0Hz"; snprintf(p, sizeof p, "%s/voices.pdl", APP); FILE *fp = fopen(p, "r");
-    if (fp) { while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 5 && !strcmp(f[0], "VOICE") && !strcmp(f[1], party[i].id)) { snprintf(voice, sizeof voice, "%s", f[2]); snprintf(rate, sizeof rate, "%s", f[3]); snprintf(pitch, sizeof pitch, "%s", f[4]); } fclose(fp); }
+    char voice[48], rate[16], pitch[16]; voice_of(party[i].id, voice, sizeof voice, rate, sizeof rate, pitch, sizeof pitch);
     unsigned long h = 5381; for (const char *c = text; *c; c++) h = h * 33 + (unsigned char)*c; char dir[PATH_MAX], wav[PATH_MAX], mp3[PATH_MAX]; snprintf(dir, sizeof dir, "%s/audio", ST); mkdir(dir, 0755);
     snprintf(wav, sizeof wav, "%s/say_%s_%08lx.wav", dir, party[i].id, h & 0xffffffffUL); snprintf(mp3, sizeof mp3, "%s/say_%s_%08lx.mp3", dir, party[i].id, h & 0xffffffffUL);
+    if (!fexists(wav)) { char other[PATH_MAX]; if (reuse_line(dir, h, voice, rate, pitch, other, sizeof other) && strcmp(other, wav) != 0 && link(other, wav) != 0) snprintf(wav, sizeof wav, "%s", other); }
     /* one synthesis at a time, decided BEFORE the fork: each greeting is a fresh verb process, so a static timer cannot throttle; this lock is held by the grandchild until its wav exists, a speech that finds it taken is dropped, not queued (20 queued Kokoro processes at 200 MB each pegged the machine, 2026-10-16) */
     int sfd = -1; if (!fexists(wav)) { char sp[PATH_MAX]; snprintf(sp, sizeof sp, "%s/synth.busy", dir); sfd = open(sp, O_CREAT | O_RDWR, 0644); if (sfd < 0 || flock(sfd, LOCK_EX | LOCK_NB) != 0) { if (sfd >= 0) close(sfd); return; } }
     pid_t pid = fork(); if (pid < 0) { if (sfd >= 0) close(sfd); return; } if (pid > 0) { waitpid(pid, NULL, 0); if (sfd >= 0) close(sfd); return; }          /* double fork: the grandchild does the slow work and is reparented */
