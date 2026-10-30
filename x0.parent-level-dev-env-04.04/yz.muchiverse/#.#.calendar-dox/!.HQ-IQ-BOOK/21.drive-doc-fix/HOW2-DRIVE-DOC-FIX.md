@@ -44,6 +44,8 @@ House, seen on the guard, 2026-10-29:
 | 19:20 | 99% | `rg` 186%, `pet_tts_local.py` 113%, board `prisc+x` 11% and 10% | Guard classed the python and rg as outside because the exe is not under the house. The script and the search are ours. Answer was Yes, so rg ended. The board from the book-tab click was still up. |
 | 19:22 | 62% sample, then one core at 238% | `pet_tts_local.py` text `Pal 13! over here` | Board was already stopped. The editor daemon kept speaking. That process was stopped. The daemon was left up. |
 | 19:28 | 42%, die 86 C | `pet_tts_local.py` 155% | After the player-menu drive. The speech process had already exited when checked. Daemon left up. |
+| 19:37 | 100%, die 54 C | `rg` 296% (two pids), `pet_tts_local.p` 123%, `lc_clock.+x` 105% | Incident `20261029-193740-ACT.txt`. Guard classed rg and the python as outside. The clock pid 1400343 is the edit daemon's clock and was labeled HOUSE. Guard ended 0 house processes. Both hot processes had exited by the review. |
+| 19:40 | 27%, die 86 C | `pet_tts_local.p` 145% | During the xelector-start open. Board stopped. Daemon 1400329 left up. |
 
 `pet_tts_local.py` is the editor daemon speaking pal chat. It starts with no board window. Do not leave an edit board up while it is firing.
 

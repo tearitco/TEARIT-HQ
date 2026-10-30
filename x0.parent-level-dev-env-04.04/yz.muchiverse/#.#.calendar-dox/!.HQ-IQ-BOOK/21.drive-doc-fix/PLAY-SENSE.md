@@ -33,12 +33,16 @@ previous launch. These are the files that already exist.
 | `piececraft-hq/pieces/xelector_01/state.txt` | 6, 6, z 26 | possesses `hero_01`. `pre_possess` is 9, 8. This file is leftover state, not a fresh open. |
 | `18.pc-hq/INTENDED.md` | selector still 5, 12 while the xelector row is 8, 8 | A mode 2 receipt wrote `cam_eye_x=8.50` and `xelector_x=8`. The selector and the body had split. That is the documented "off" case. |
 | Design, not built | one starting-position entity per game | `XELECTOR-CURSWORD-POSSESSION-DESIGN.md` section 5. Play is supposed to start there. There is no such entity on the edit board yet. |
-| Edit board, this drive | not read | Next open writes the cell here, from that frame's `xelector_01/state.txt`, and says whether it matches 8,8, 6,6, or a wall. |
+| Edit board, 2026-10-29 19:40 | xelector 1, 1, z 9. Selector 8, 8. Eye `cam_eye_x=1.50` `cam_eye_z=8.50` | `rpg-edit-hq-pchq/pieces/xelector_01/state.txt` and `pieces/display/scene_receipt.pdl`. Book `rpg-space`, page Bridge. `possessed_id=none`, `last_possessed_id=hero_01`, `pre_possess` 9, 8. Session `1793328028-3346259`. `no_session` empty, canvas set. The body is in the corner. The selector is the page center. The eye followed the body on x and not the selector. Same split INTENDED already recorded, now on this board. Not moved. Die was 86 C and `pet_tts` was 145%, so the window was stopped. |
 
-Until that frame exists, do not call the edit-board start wrong and do
-not call it fine. The thing that already looks off, on the standard
-project, is the split in INTENDED: the selector stayed at 5,12 while
-the body and the eye were at 8.
+The edit board starts off. The xelector is at 1, 1 while the selector
+is at 8, 8, and the camera eye sits on the body's x. A fresh page
+should put the body on the starting cell, which the engine uses as
+`board_w / 2` when no selector is stored, and which the house file
+holds as 8, 8. Nothing was written into `state.txt`. The 1, 1 is
+leftover package state (`pre_possess` still 9, 8). The next fix is to
+find who leaves it at 1, 1, then one more open that shows 8, 8 for
+both the piece and the selector.
 
 ## Other first-frame rows already seen
 
