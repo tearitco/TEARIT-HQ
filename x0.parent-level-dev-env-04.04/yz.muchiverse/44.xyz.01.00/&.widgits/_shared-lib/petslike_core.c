@@ -699,11 +699,13 @@ static const char *RP[4][5][2] = {{{"I have no bed yet.", "zzz... a bed!"}, {"I 
     {{"我还没有床。", "呼呼……有床了！"}, {"我没地方吃饭。", "好吃，有桌子可以吃饭"}, {"这里没有书。", "我喜欢看书。"}, {"没有钢琴……", "啦啦啦"}, {"家里有%d件东西", "家里有%d件东西"}},
     {{"まだベッドがないよ。", "ぐーぐー…ベッドだ！"}, {"ご飯を食べる場所がないよ。", "おいしい！テーブルがある"}, {"ここには本がないよ。", "本を読むのが好き。"}, {"ピアノがないなあ…", "らんらんらん"}, {"家に%d個の物があるよ", "家に%d個の物があるよ"}},
     {{"아직 침대가 없어.", "쿨쿨… 침대다!"}, {"밥 먹을 곳이 없어.", "맛있다, 식탁이 있네"}, {"여기엔 책이 없어.", "나는 책 읽는 게 좋아."}, {"피아노가 없네…", "랄랄라"}, {"집에 물건이 %d개 있어", "집에 물건이 %d개 있어"}}};
+static int viewer_kinds(void);
 static void speak(int i, const char *text);
 static void speak_greet(int i, int variant, const char *other, int reply) { char t[160]; const char *fmt = (reply ? RE : HI)[pet_lang(i)][variant & 3]; snprintf(t, sizeof t, fmt, other); speak(i, t); }
 static void speak_reply(int i) { char t[160]; int k = g_rk < 0 ? 4 : g_rk; snprintf(t, sizeof t, RP[pet_lang(i)][k][g_rk < 0 ? 0 : g_ry ? 1 : 0], npl); speak(i, t); }
 static void speak(int i, const char *text) {
-    if (!flag_on("voice", 1) || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;     /* a pet speaks aloud only while on screen */
+    /* No window: do not synthesize and do not play. A closed board must stay quiet. */
+    if (!flag_on("voice", 1) || !viewer_kinds() || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;     /* a pet speaks aloud only while on screen */
     char p[PATH_MAX], line[300], *f[6], voice[48] = "en-US-AnaNeural", rate[16] = "+0%", pitch[16] = "+0Hz"; snprintf(p, sizeof p, "%s/voices.pdl", APP); FILE *fp = fopen(p, "r");
     if (fp) { while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 5 && !strcmp(f[0], "VOICE") && !strcmp(f[1], party[i].id)) { snprintf(voice, sizeof voice, "%s", f[2]); snprintf(rate, sizeof rate, "%s", f[3]); snprintf(pitch, sizeof pitch, "%s", f[4]); } fclose(fp); }
     unsigned long h = 5381; for (const char *c = text; *c; c++) h = h * 33 + (unsigned char)*c; char dir[PATH_MAX], wav[PATH_MAX], mp3[PATH_MAX]; snprintf(dir, sizeof dir, "%s/audio", ST); mkdir(dir, 0755);
@@ -716,8 +718,8 @@ static void speak(int i, const char *text) {
         char *av[] = {"nice", "-n", "15", edge, "--voice", voice, rateA, pitchA, "--text", (char *)text, "--write-media", mp3, NULL}; if (run_quiet(av, 1) != 0 || !fexists(mp3)) _exit(0);
         char *cv[] = {"nice", "-n", "15", "ffmpeg", "-loglevel", "quiet", "-y", "-i", mp3, "-ar", "22050", "-ac", "1", wav, NULL}; run_quiet(cv, 1); remove(mp3); }
     if (sfd >= 0) close(sfd);      /* synthesis over: the next greeting may synthesize while this one plays */
-    if (!fexists(wav)) _exit(0);
-    { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/play.lock", dir); int fd = open(lp, O_CREAT | O_RDWR, 0644); if (fd < 0 || flock(fd, LOCK_EX | LOCK_NB) != 0) _exit(0); char *pv[] = {"nice", "-n", "10", "paplay", "--volume=32000", wav, NULL}; run_quiet(pv, 1); }
+    if (!fexists(wav) || !viewer_kinds()) _exit(0);
+    { char lp[PATH_MAX], pp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/play.lock", dir); snprintf(pp, sizeof pp, "%s/play.pid", dir); FILE *pf = fopen(pp, "w"); if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); } int fd = open(lp, O_CREAT | O_RDWR, 0644); if (fd < 0 || flock(fd, LOCK_EX | LOCK_NB) != 0 || !viewer_kinds()) { remove(pp); _exit(0); } char *pv[] = {"nice", "-n", "10", "paplay", "--volume=32000", wav, NULL}; run_quiet(pv, 1); remove(pp); }
     _exit(0);
 }
 
@@ -1676,7 +1678,7 @@ static int daemon_main(void) {
 #include PET_SKIN
 #undef PET_SECTION
         { char tp[PATH_MAX], tb[300]; snprintf(tp, sizeof tp, "%s/world/screen_state.pdl", ST); read_file(tp, tb, sizeof tb); if (strcmp(tb, lasttone)) { snprintf(lasttone, sizeof lasttone, "%s", tb); g_tone_stale = 1; dirty = 1; } }      /* an events-hq tint_screen wrote a new tone */
-        { static int was_vo = 1; int vo = viewer_kinds() != 0; if (vo && !was_vo) dirty = 1; was_vo = vo; if (!vo) dirty = 0; }      /* nobody is looking (no <app> / board window): the scene frame and the ui files have no reader, so they are not rendered; a window opening renders at once */
+        { static int was_vo = 1; int vo = viewer_kinds() != 0; if (vo && !was_vo) dirty = 1; was_vo = vo; if (!vo) { dirty = 0; char pp[PATH_MAX]; snprintf(pp, sizeof pp, "%s/audio/play.pid", ST); FILE *pf = fopen(pp, "r"); if (pf) { int sp = 0; if (fscanf(pf, "%d", &sp) == 1 && sp > 1) kill(-sp, SIGTERM); fclose(pf); remove(pp); } } }      /* nobody is looking: do not paint, and stop a line that is still playing */
         { static int pend_out = 0; static long last_out = 0; int om = tune("out_min_ms", 0); if (dirty) pend_out = 1;      /* out_min_ms (tuning.pdl, default 0 = every change): several pets stepping in one second are drawn and written together */
           if (pend_out && (om <= 0 || now_ms() - last_out >= om)) { pend_out = 0; last_out = now_ms(); replay(); out_all(msg); } }    /* nothing changed -> nothing rendered, nothing written, nothing repainted */
         if ((dirty || now_ms() - last_follow >= tune("follow_ms", 400)) && board_window_open()) { last_follow = now_ms(); follow_pchq(); }      /* the pc-hq 3D view (if open on the <app> book) follows the selected entity; it re-compares the exported files of every room, so at most every 400 ms unless something changed */
