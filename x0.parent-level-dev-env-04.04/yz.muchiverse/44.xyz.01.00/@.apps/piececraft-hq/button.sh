@@ -40,7 +40,21 @@ HOUSE_DIR="$(cd "$CODE_DIR/../.." && pwd)"
 # directly (board-viewer/button.sh run-widget <this project's own real
 # path>) - simpler and more direct than parsing the ledger from bash.
 kill_own_board_widget() {
-    pkill -f "board-viewer/button.sh run-widget $SCRIPT_DIR" 2>/dev/null || true
+    # spare-live (start of run): a widget whose session directory still
+    # exists is the board that is up. Signaling it is what left the pane
+    # on loading... (2026-10-29, ledger OFFLINE twice = SIGTERM then EXIT).
+    # Quit passes no argument and still signals this instance's widget.
+    local pid cwd spare="$1"
+    for pid in $(pgrep -f "board-viewer/button.sh run-widget $SCRIPT_DIR" 2>/dev/null); do
+        if [ "$spare" = "spare-live" ]; then
+            cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null)" || cwd=""
+            case "$cwd" in
+                *'(deleted)') ;;
+                *) [ -n "$cwd" ] && [ -d "$cwd" ] && continue ;;
+            esac
+        fi
+        kill -TERM "$pid" 2>/dev/null || true
+    done
 }
 
 # REAL, NEW 2026-08-04, direct instruction ("make sure we add demons to
@@ -104,7 +118,23 @@ kill_own_hq_status_manager() {
 # a bare "system/orchestrator" match would kill every OTHER project's
 # orchestrator too (confirmed real collateral-kill incident that day).
 kill_own_orchestrator() {
-    kill_cwd_in_own_sessions "system/orchestrator"
+    # spare-live: do not kill an orchestrator whose parent is still a
+    # button.sh. A second `run` in the same second used to SIGTERM that
+    # parent-less-looking sibling, its EXIT trap then deleted the widget,
+    # and the pane stayed on loading...
+    local mode="$1" pid cwd pp cmd
+    for pid in $(pgrep -f "system/orchestrator" 2>/dev/null); do
+        cwd="$(readlink -f "/proc/$pid/cwd" 2>/dev/null)"; cwd="${cwd% (deleted)}"
+        case "$cwd" in "$SCRIPT_DIR/pieces/sessions/"*) ;; *) continue ;; esac
+        if [ "$mode" = "spare-live" ]; then
+            pp="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')"
+            if [ -n "$pp" ] && kill -0 "$pp" 2>/dev/null; then
+                cmd="$(ps -o cmd= -p "$pp" 2>/dev/null || true)"
+                case "$cmd" in *button.sh*) continue ;; esac
+            fi
+        fi
+        kill "$pid" 2>/dev/null || true
+    done
 }
 
 case "$ACTION" in
@@ -153,10 +183,10 @@ case "$ACTION" in
             done
         fi
         if [ "$RECENT_SESSION" -eq 0 ]; then
-            kill_own_board_widget
+            kill_own_board_widget spare-live
             kill_own_clock_daemon
             kill_own_hq_status_manager
-            kill_own_orchestrator
+            kill_own_orchestrator spare-live
         fi
         SESSION_ID="$(date +%s)-$$"
         SESSION_DIR="$SCRIPT_DIR/pieces/sessions/$SESSION_ID"
@@ -426,7 +456,7 @@ EOSTATE
                 # entirely independent of it (confirmed via default_op
                 # .txt's own comment: "bypasses system/chtpm_rgb_
                 # render"), so the real data pipeline is unaffected.
-                NO_GL=1 setsid bash "$BOARD_BTN" run-widget "$SCRIPT_DIR" >/dev/null 2>&1 < /dev/null &
+                NO_GL=1 setsid bash "$BOARD_BTN" run-widget "${PCHQ_FOCUS_PROJECT_ROOT:-$SCRIPT_DIR}" >/dev/null 2>&1 < /dev/null &
             fi
             # REAL, NEW 2026-08-30, direct live report ("the khtpm
             # piececraft is the one that is supposed to open when
@@ -496,7 +526,7 @@ EOSTATE
             cp -p "$SESSION_DIR/pieces/system/entities.txt" "$SCRIPT_DIR/pieces/system/entities.txt" 2>/dev/null
         }
 
-        trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; kill_own_orchestrator; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
+        trap 'cp -p "$SESSION_DIR/pieces/system/orchestrator.log" /tmp/pchq-orch-last.log 2>/dev/null; kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; kill_own_orchestrator; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
         # PCHQ_ENGINE_MODE (set by open_pchq_board.sh, the taskbar entry
         # point - PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md steps 2-3): the
