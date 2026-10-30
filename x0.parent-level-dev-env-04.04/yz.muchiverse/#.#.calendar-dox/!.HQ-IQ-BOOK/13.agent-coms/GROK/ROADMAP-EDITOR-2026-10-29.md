@@ -31,6 +31,17 @@ Change one entity row on the opened page. `scene.raw` and the window dump show t
 
 Store, Hotel, School, Cabin. One arrow, one `STEP` line, then one `RULE` in `doors.fsm.pdl`. A bump stays out of the table.
 
+## Seen while driving, 2026-10-29. Not fixed yet.
+
+A person-style pass on the open window `0xa00003`. Frames `/tmp/human-1-open.png`, `human-2-pitch.png`, `human-3-step.png`, `human-4-bookclick.png`. Fix these in one row later. Do not start that row from this list alone.
+
+1. The 3D picture does not fill its pane on the first frame. `human-1-open` left a black gap around the view. The pane filled only after the view changed (`human-3-step`). The owner called this a nit and still wants it fixed.
+2. On open, In was off. The bar said `book:rpg-space` and `page:bridge`, and the person was not in the world until a later key.
+3. Key `1` (code 49) did not change the picture. `human-1-open` and `human-2-pitch` are the same bytes.
+4. One right arrow on the session relay did move the 3D view: `pos 5,4,-7` became `pos 9,8,-7`, still labeled `rpg-space:bridge`. The same arrow also wrote `STEP|trainer|store|8|15`. The daemon's Harold is in the Store. The window's Harold is on the bridge. Two positions, one key.
+5. Clicking the book tab did nothing. `menu_open` and `desk_menu_open` stayed empty. `human-4-bookclick` matches `human-3-step`. There is no way, from that click, to switch back to `rpg-edit-hq`.
+6. The debug block (`time`, `pos`, `ray`, `pid`) sits on top of the 3D view. The chat on the right was still talking about the Cabin while the bar said bridge.
+
 ## 5. `find` stays a list.
 
 It does not run a pal. `edit_open.pal`, `edit_doors.pal`, and `edit_last.pal` run by name.
