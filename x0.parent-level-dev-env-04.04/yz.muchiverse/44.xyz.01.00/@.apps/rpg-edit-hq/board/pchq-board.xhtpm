@@ -15,8 +15,8 @@
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
-      <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
-      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
+      <tab id="tb-load" class="pchq-tb no-nav" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
+      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn no-nav" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_party}" bind="party">
