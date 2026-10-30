@@ -131,7 +131,7 @@ Still open unless a new frame says otherwise:
 
 Fixed in the toolbar file, not yet re-driven:
 
-7. The book menu used to show two rows, both labeled `🏠 RPG-Pet`. The see stage now reads `f_*_arg` before calling a book editable. As of `aef3bbf25` the editor open publishes `cdda-hq`, `mcl-hq`, and `df-hq` as their own labels. Picking one is still open: session `1793338115` was sent `CONFIRM_START_MAP:cdda-hq` and `CONFIRM_SET_DESK:bank`, the inbox was consumed, and the bar stayed `book:rpg-space` / `page:Bridge`.
+7. The book menu used to show two rows, both labeled `🏠 RPG-Pet`. The see stage now reads `f_*_arg` before calling a book editable. As of `aef3bbf25` the editor open publishes `cdda-hq`, `mcl-hq`, and `df-hq` as their own labels. A pick that only rewrites `world_01` updates the bar and leaves the 3D pane on the boot frame: the viewer raymarches when `bv_screen_changed.txt` grows, and a book change did not grow it. Session `1793338561-26401` had `book:cdda-hq` / `page:Bank` while the overlay was still the 22:36 boot hash `d9abcbb8`. One appended byte redrew it (`b9117028`, a 13 by 8 room, `/tmp/cdda-bank-pane.png`). The projector now appends that byte when `book_label` or `page_label` changes after its first sample. A later `CONFIRM_SET_DESK:city` grew the marker from 1 byte to 2 and the overlay hash moved from `b9117028` to `98ebc85a` with the bar on `page:City`. The desk was set back to `bank`.
 
 ## Harnesses, by name
 
