@@ -12,6 +12,19 @@ The edit board is `@.apps/rpg-edit-hq`. Grok's own reonboard is
 `13.agent-coms/GROK/ONBOARD-GROK.md`. The open bug list is
 `13.agent-coms/GROK/ROADMAP-EDITOR-2026-10-29.md`.
 
+## What each run is for
+
+The long-range stop is RPG Maker MV editing, then the same event mechanics on the other books. One run keeps going until a real failure blocks that, then fixes that failure.
+
+The bar, in order:
+
+1. Open a book and a page and see the place (the 3D pane is the page, not `loading...`).
+2. Edit the environment on that page.
+3. Edit event pages: the expected result and the effect.
+4. The same event edit on mineclonia (`mcl-hq`), Cataclysm (`cdda-hq`), Dwarf Fortress (`df-hq`), and any other book that uses the page file.
+
+A failure-limit is a frame or a text file that shows the next one of those cannot be done. Chrome nits get written down and waited. They are not the stop. Do not open a second board to keep driving past a pane that has no session.
+
 ## Loop
 
 1. Drive one thing a person would do. One key or one click.

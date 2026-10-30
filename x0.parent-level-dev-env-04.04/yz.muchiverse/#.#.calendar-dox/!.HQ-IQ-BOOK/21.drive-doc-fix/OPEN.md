@@ -3,6 +3,19 @@
 Research queue. A row stays until a new window PNG changes and the
 text file agrees. Do not launch a second board to collect these again.
 
+## Failure-limit (2026-10-29): no engine session, so no page to edit
+
+`board/state/ui.txt` still says `bv_session=` empty, `canvas_raw=` empty, `no_session=1`. That is why the pane stayed on `loading...` after the chrome had `book:rpg-space` / `page:bridge`. Nothing on the page can be edited until this row clears.
+
+What the files showed, with the window already closed:
+
+- Launch log `/tmp/rpg-edit-menu.log` started an engine and then said the board window launched. It did not print the "engine not registered" line.
+- Engine log `/tmp/pchq-engine-rpg-edit-hq-pchq.log` reached "Board widget launching". The pid in `rpg-edit-hq-pchq/pieces/system/engine.pid` (3135209) is dead.
+- `session_dir.txt` names `rpg-edit-hq-pchq/pieces/sessions/1793324117-3135212`. That directory is gone (the engine trap removes it on exit).
+- The projector looks up `board-viewer:rpg-edit-hq-pchq` through `ledger_peers`. It published `no_session=1` the whole time the window was up, so that lookup never returned a live directory with a frame.
+
+Next fix is that lookup, then one niced relaunch. Proof is `no_session` empty, `canvas_raw` set, and a window PNG of the page with no `loading...`. Do not relaunch while another board engine is starting.
+
 ## Stuck `loading...` (2026-10-29 18:40)
 
 Frame `/tmp/stuck-load.png`, window `0xa00003`, 1260×556. The toolbar,
