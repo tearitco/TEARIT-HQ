@@ -51,3 +51,4 @@ stay open until a new frame clears them.
 | Key `1` | pitch 6 | picture did not change, 2026-10-29 |
 | Debug overlay | a toggle | `pos`, `ray`, `pid` sit on the view |
 | Two bodies | one key, one Harold | bar `rpg-space:bridge` while `trainer.txt` said `room=store` |
+| Edit then play | a changed place, one event page, a walk, a fire, a new line in `events.txt` | 2026-10-29 19:59, session `1793329165-3404375`. Bridge `events.txt` is 5 sprite rows, sha256 `d3cb9831…` before and after. No event page with an expected result and an effect. `hotspots.txt` is four labels the 3D view outlines. `bv_menu_input.c` has no hotspot fire. A down arrow `1003` written to the engine `pieces/keyboard/history.txt` was still there one second later and `pos_x` stayed 8. The window had no X id for the renderer, so a real key could not be aimed. This is the stop. |
