@@ -13152,7 +13152,11 @@ static void handle_key(KeySym ks, char ch) {
     /* An ARMED typing field takes priority over Interact forwarding (owner 2026-10-05, the pc-hq hotbar's
      * cli_io): arming it is an explicit act, Esc disarms it (handled below), and only then do keys go
      * back to the game. Without this the board forwarded every key and the field never got one. */
-    if (g_interact_relay_on && !g_default_input_elem && ks == XK_Escape) {
+    /* An open menu is closed by Escape before the board relay sees it.
+     * The close itself is the block further down. Without this guard
+     * the relay returns here and the menu stays up. */
+    int menu_open = (g_default_active_scope_root || g_default_active_scope_id[0]);
+    if (g_interact_relay_on && !g_default_input_elem && ks == XK_Escape && !menu_open) {
         /* 27 goes ONLY to keyboard/history.txt - see the double-arrow
          * comment in the general branch below. */
         g_x11_window_focused = 1;
@@ -13165,7 +13169,7 @@ static void handle_key(KeySym ks, char ch) {
         }
         return;
     }
-    if (g_interact_relay_on && g_x11_window_focused && !g_default_input_elem) {
+    if (g_interact_relay_on && g_x11_window_focused && !g_default_input_elem && !(ks == XK_Escape && menu_open)) {
         int code = kh_key_history_code(ks, ch);
         /* REAL FIX 2026-09-04 (see PLAN-pchq-interact-camera-pov.md
          * Part A for the full citation trail) - tpmos/board-viewer's
@@ -15287,15 +15291,36 @@ static void popup_handle_click(int px, int py) {
      * direct instruction was for uniformity over that distinction, so
      * this follows it rather than silently keeping an exception. */
     int i0 = 0, i1 = g_n_nav;
+    /* An open in-window menu paints over the footer. The footer rows
+     * have the lower nav numbers, and this loop returns on the first
+     * hit, so a cancel row that sits on the bottom bar never ran.
+     * Test the open menu first. A miss still falls through to the bar. */
+    int prefer_dd = 0, dd0 = 0, dd1 = 0;
     if (g_dock_click_menu && g_dock_drop_lo) {
         i0 = g_dock_drop_lo - 1;
         i1 = g_dock_drop_hi;
+    } else if (g_default_active_scope_id[0] && g_dock_drop_lo) {
+        prefer_dd = 1;
+        dd0 = g_dock_drop_lo - 1;
+        dd1 = g_dock_drop_hi;
     } else if (g_dock_peer && g_dock_header_nav_hi > 0) {
         if (g_dock_click_peer) { i0 = g_dock_header_nav_hi; i1 = g_n_nav; }
         else { i0 = 0; i1 = g_dock_header_nav_hi; }
     }
-    for (int i = i0; i < i1; i++) {
+    int nscan = i1 - i0;
+    if (prefer_dd) nscan = (dd1 - dd0) + (i1 - i0);
+    for (int k = 0; k < nscan; k++) {
+        int i = i0 + k;
+        if (prefer_dd) {
+            if (k < dd1 - dd0) i = dd0 + k;
+            else {
+                i = i0 + (k - (dd1 - dd0));
+                if (i >= dd0 && i < dd1) continue;
+            }
+        }
+        if (i < 0 || i >= g_n_nav) continue;
         Elem *it = g_nav[i];
+        if (!it) continue;
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
             /* INLINE SPANS step 4: a click landing on a link segment runs
              * THAT segment's action (baked by the projector - the same
