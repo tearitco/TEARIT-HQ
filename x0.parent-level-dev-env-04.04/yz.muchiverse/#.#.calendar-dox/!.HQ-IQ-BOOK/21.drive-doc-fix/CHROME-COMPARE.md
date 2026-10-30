@@ -21,6 +21,12 @@ Filled 2026-10-29 from the pdl and from `entity_menu_frame_3326873.txt`
 (book through clock on one row, In wrapped, pid nav 0). Die hit 94 C
 on that launch. The window was stopped. Daemon 1400329 was left up.
 
+In is an exception. It was tab 1 from the board's first commit
+(`170a277b6`, 2026-10-21) until `731247c9b` (2026-10-29 19:35) moved it
+after the clock so the strip would line up. The owner put it back:
+option 1 on this toolbar, always, for now. The LyfeDesk order starts
+at book.
+
 ## Strip order
 
 | n | LyfeDesk | edit board | match |
@@ -40,7 +46,7 @@ on that launch. The window was stopped. Daemon 1400329 was left up.
 | 12 | tools | absent | not invented. |
 | 13 | (reserved) | absent | not invented. |
 | 14 | h-ai | absent | not invented. |
-| after the strip | no strip button | `tb-in` (In) | board-only. Sits after the clock. Wrapped to the next row on a 1260-wide window. |
+| before the strip | no strip button | `tb-in` (In) | owner exception, 2026-10-29. Tab 1, before book. Not a LyfeDesk slot. |
 | status, not a button | dock pid cell is `no-nav` | `tb-load` / `tb-loadw` (`3326873 %15`, nav 0) | same rule. It draws. It is not a nav target. |
 
 ## Player menu
