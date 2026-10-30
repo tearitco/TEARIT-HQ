@@ -5796,8 +5796,12 @@ static int kh_layout_tabbar_wrap(Elem *tabbar, int x0, int y0) {
             rows++;
         }
         tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
-        tab->nav_index = ++g_n_nav;
-        g_nav[g_n_nav - 1] = tab;
+        if (elem_has_class(tab, "no-nav")) {
+            tab->nav_index = 0;
+        } else {
+            tab->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = tab;
+        }
         tx += tw + scaled(3);
     }
     {
@@ -7215,7 +7219,12 @@ static int layout_sidebar_panel(Elem *page) {
                     tw += gi.xOff;
                 }
                 tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
-                tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
+                if (elem_has_class(tab, "no-nav")) {
+                    tab->nav_index = 0;
+                } else {
+                    tab->nav_index = ++g_n_nav;
+                    g_nav[g_n_nav - 1] = tab;
+                }
                 tx += tw + scaled(3);
             }
             /* REAL FIX 2026-10-10 (owner: "pet screen flickers"; found by capturing the live window 2 min:

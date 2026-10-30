@@ -6,17 +6,17 @@
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rpg-edit-hq-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
-      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' int"/>
       <tab id="tb-book" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-page" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
-      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
-      <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
-      <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
-      <tab id="tb-load" class="pchq-tb" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
-      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
+      <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
+      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
+      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' int"/>
+      <tab id="tb-load" class="pchq-tb no-nav" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
+      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn no-nav" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_party}" bind="party">
