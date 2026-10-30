@@ -259,7 +259,11 @@ case "$VERB" in
         [ -d "$BOOK/$CUR" ] || exit 0
         N=2; while [ -e "$BOOK/page_$N" ]; do N=$((N + 1)); done
         NEW="page_$N"
-        cp -r "$BOOK/$CUR" "$BOOK/$NEW" && rm -f "$BOOK/$NEW/bar.txt"
+        # A new page is intentionally empty. Remove both halves of the
+        # event representation: leaving events.pdl while deleting bar.txt
+        # creates an event definition that the touch runner cannot discover
+        # because it requires the matching tab-separated bar row.
+        cp -r "$BOOK/$CUR" "$BOOK/$NEW" && rm -f "$BOOK/$NEW/bar.txt" "$BOOK/$NEW/events.pdl"
         blank_page "$BOOK/$NEW"
         COUNT="$(sed -n 's/^GAME *| *n_desks *| *//p' "$BOOK/game.pdl" | head -n1)"; COUNT=$((COUNT + 1))
         sed -i "s/^\(GAME *| *n_desks *| *\).*/\1$COUNT/" "$BOOK/game.pdl"
