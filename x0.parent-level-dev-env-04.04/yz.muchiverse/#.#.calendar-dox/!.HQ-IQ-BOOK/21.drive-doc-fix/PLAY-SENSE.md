@@ -48,6 +48,8 @@ stay open until a new frame clears them.
 |---|---|---|
 | First 3D paint | the page, full pane | filled only after the view changed |
 | First-frame canvas fit | the page fills the available canvas | seen-ok 2026-10-30. Before the fix, the editor board reached `no_session=` empty but letterboxed the scene. After the shared renderer rebuild and fresh relaunch, session `1793344110-307254` reports canvas `846×410`; `/tmp/rpg-edit-fullscreen.png` shows the Bridge filling the canvas between the pinned bars. |
+| Pinned bar bounds | pets and chat text stays inside its bar | open 2026-10-30. `/home/no/Pictures/Screenshots/Screenshot from 2026-10-30 00-13-02.png` shows the `pets - coins 500` and `chat - Harold` content escaping or clipping at the pinned bar bounds. Investigate the bar width and text wrapping before changing it. |
+| Vestigial footer entities | the editor footer shows only useful entity controls | open 2026-10-30. The same screenshot shows `hero` and `xelector` cells in the bottom entity strip. They are vestigial on the edit board and can be removed after documenting their intended replacement. |
 | In on open | off means watch. On means the body moves. | In was off. Arrows and the picture can disagree. |
 | Key `1` | pitch 6 | picture did not change, 2026-10-29 |
 | Debug overlay | a toggle | `pos`, `ray`, `pid` sit on the view |
