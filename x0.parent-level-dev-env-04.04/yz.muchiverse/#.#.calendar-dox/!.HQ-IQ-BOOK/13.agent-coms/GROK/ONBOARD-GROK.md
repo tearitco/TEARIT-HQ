@@ -168,6 +168,44 @@ with `snapshots/`, `manifest.txt` (`file | seconds | caption`), and
 `make_presentation_video.py`. The 2026-10-29 cut is
 `30.edit-board-page-bank/`. Do not build one for a black `p` frame.
 
+## Dropdown thumb sits in the menu (owner frame, 2026-10-29 23:00)
+
+The book menu on the edit board is open. The scroll thumb is in the
+middle of the rows. On pc-hq it sits at the right of the menu. Do not
+invent a new scrollbar. Two existing paths already draw this thumb.
+
+The taskbar / dock menu (`layout_dock_bar` in
+`_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`) is the one that
+looks right. When the list scrolls it adds `DD_STRIP_W` (62) to the
+menu width and sets each row to `col_w - DD_STRIP_W`. The `^` / `v`
+arrows and the thumb live in that strip, to the right of the labels.
+
+The edit board does not take that path. Its book rows are
+`<item class="dropdown-child">` inside `<sidebar id="rail">` of
+`@.apps/rpg-edit-hq/board/pchq-board.xhtpm`. Those are laid out by the
+sidebar dropdown pass in the same C file (the comment that starts
+"menu shape: a windowed list"). That pass sets the row width to the
+trigger width, caps it at 320, and registers the generic bar at
+`dw + 66`. The bar is then not at the right edge of the painted rows.
+`.dropdown-child { width: 210px }` is in both `pchq-board.css` files.
+
+A second thumb is the pet column. `<row id="side-l" class="ov-scroll">`
+registers `generic_sbar_register` on the pinned bar's own width
+(same file, the `ov-scroll` comment, 2026-10-23). The book menu opens
+on top of that column, so the pet thumb draws through the middle of
+the menu. pc-hq's board has no `ov-scroll` pet bar.
+
+Fix with those two pieces. Do not add a third scrollbar, and do not
+bring back the pals commit that capped a dropdown at 12 rows and
+never drew a thumb (`04-bugs/bug_bounty.md`, 2026-09-22). While a
+dropdown scope is open, skip the `ov-scroll` register. Give the
+sidebar dropdown the same `DD_STRIP_W` split the dock menu already
+uses, so the row width and the thumb share one menu width.
+
+The see stage missed this. A long menu is not done when the labels
+are distinct. The thumb has to be on the right of the rows, the same
+place pc-hq puts it.
+
 ## Do not redo
 
 - Do not treat key `p` as the 2D or the 3D picture.

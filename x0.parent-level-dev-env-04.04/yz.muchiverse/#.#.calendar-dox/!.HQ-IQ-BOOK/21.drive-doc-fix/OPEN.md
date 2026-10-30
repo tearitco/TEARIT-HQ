@@ -1,5 +1,25 @@
 # Open, seen on a real frame
 
+## Book-menu thumb is in the rows (2026-10-29 23:00)
+
+Owner frame of the edit board, book menu open, page Bank. The scroll
+thumb cuts through the middle of the book rows. On pc-hq the same
+thumb is at the right of the menu.
+
+Do not invent a scrollbar. `khtpm_core_render.c` already has both
+pieces. `layout_dock_bar` adds `DD_STRIP_W` (62) and shrinks each row
+by that strip. That is the right-hand thumb. The edit board's book
+rows are sidebar `dropdown-child` items, laid out by the other pass,
+which registers the bar at `dw + 66` against the trigger width. The
+pet column `side-l` is `ov-scroll`, so its thumb also draws at the
+right of the pet column, through the open menu. pc-hq's board has no
+`ov-scroll` pet bar.
+
+Next edit: skip `ov-scroll` while a dropdown is open, and use the
+existing `DD_STRIP_W` split for the sidebar dropdown. Do not revive
+the 12-row pals cap in `04-bugs/bug_bounty.md`. Full note:
+`13.agent-coms/GROK/ONBOARD-GROK.md`.
+
 Research queue. A row stays until a new window PNG changes and the
 text file agrees. Do not launch a second board to collect these again.
 
