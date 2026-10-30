@@ -231,6 +231,17 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
 
 /* Open desk bar.txt. Numbers start at 1. First rows share the main
  * bar. The rest are the subbar. */
+/* Per-slot health state for the bottom bar (rpg-space life, owner 2026-10-25): bar.txt may carry a 6th tab field ok | low | ko; emitted as ent_N_hp_ok / _low / _ko / _none (1 or empty) so a template can draw a coloured bar under the name. */
+static char g_ent_hp[32][8], g_ent_lab[32][64];
+static size_t emit_hp_flags(char *ui, size_t *off, int n) {
+    for (int i = 0; i < n && i < 32; i++) { const char *h = g_ent_hp[i]; int ok = !strcmp(h, "ok"), low = !strcmp(h, "low"), ko = !strcmp(h, "ko");
+        *off += (size_t)snprintf(ui + *off, UIBUF - *off, "ent_%d_hp_ok=%s\nent_%d_hp_low=%s\nent_%d_hp_ko=%s\nent_%d_hp_none=%s\n", i, ok ? "1" : "", i, low ? "1" : "", i, ko ? "1" : "", i, (ok || low || ko) ? "" : "1");
+        if (ok || low || ko) *off += (size_t)snprintf(ui + *off, UIBUF - *off, "ent_%d_hpb=%s\n", i, ok ? "\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac" : low ? "\xe2\x96\xac\xc2\xb7\xc2\xb7\xc2\xb7" : "\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac\xe2\x96\xac"); }      /* ent_N_hpb: a small bar after the name (a line break inside an item label drops the whole item in this renderer, so no second line yet) */
+    return *off; }
+/* view.pdl key=value of the host app (e.g. ent_bar_hero=0 hides the hero entry of the bottom bar). */
+static int host_view_flag(const char *host, const char *key, int def) {
+    char p[PATH_MAX], l[160]; snprintf(p, sizeof p, "%s/pieces/system/view.pdl", host); FILE *f = fopen(p, "r"); if (!f) return def; size_t kl = strlen(key); int v = def;
+    while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
 static int emit_map_events(char *ui, size_t *off, int n, const char *host, int *n_sub) {
     *n_sub = 0;
     char w[PATH_MAX], map[64] = "", desk[64] = "";
@@ -253,11 +264,12 @@ static int emit_map_events(char *ui, size_t *off, int n, const char *host, int *
     int num = 1;
     while (fgets(line, sizeof(line), f)) {
         int id = 0, x = 0, y = 0;
-        char name[48] = "", trig[32] = "";
-        if (sscanf(line, "%d\t%47[^\t]\t%d\t%d\t%31s", &id, name, &x, &y, trig) < 5) continue;
+        char name[48] = "", trig[32] = "", hpk[8] = "";
+        if (sscanf(line, "%d\t%47[^\t]\t%d\t%d\t%31s\t%7s", &id, name, &x, &y, trig, hpk) < 5) continue;
         char label[64];
         snprintf(label, sizeof(label), "%d %s", num, name);
         if (n < 16) {
+            if (n < 32) { snprintf(g_ent_hp[n], sizeof g_ent_hp[n], "%s", hpk); snprintf(g_ent_lab[n], sizeof g_ent_lab[n], "%s", label); }
             *off += (size_t)snprintf(ui + *off, UIBUF - *off,
                 "ent_%d_label=%s\nent_%d_id=%d\nent_%d_kind=mapev\n"
                 "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=0\n",
@@ -281,10 +293,11 @@ static int emit_map_events(char *ui, size_t *off, int n, const char *host, int *
  * The open desk page wins. The private hero/animal lists are only
  * the fallback when no page file is bound. Capped at 16. */
 static size_t emit_entities(char *ui, size_t off, const char *house, const char *host_app_root, int on) {
+    memset(g_ent_hp, 0, sizeof g_ent_hp); memset(g_ent_lab, 0, sizeof g_ent_lab);
     int n = emit_page_entities(ui, &off, house, host_app_root);
     if (n >= 0) {
         int n_sub = 0;
-        n = emit_map_events(ui, &off, n, host_app_root, &n_sub);
+        n = emit_map_events(ui, &off, n, host_app_root, &n_sub); emit_hp_flags(ui, &off, n);
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "n_ent=%d\nn_sub=%d\nentities_bar_on=%s\n", n, n_sub, on ? "1" : "");
         return off;
@@ -301,7 +314,7 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
             else if (!strncmp(l, "pos_z=", 6)) sscanf(l + 6, "%15s", hz);
         }
         fclose(hf);
-        if (hx[0] && hy[0] && hz[0]) {
+        if (hx[0] && hy[0] && hz[0] && host_view_flag(host_app_root, "ent_bar_hero", 1)) {
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "ent_%d_label=hero\nent_%d_id=hero_01\nent_%d_kind=hero\n"
                 "ent_%d_x=%s\nent_%d_y=%s\nent_%d_z=%s\n",
@@ -334,7 +347,7 @@ static size_t emit_entities(char *ui, size_t off, const char *house, const char 
         fclose(f);
     }
     int n_sub = 0;
-    n = emit_map_events(ui, &off, n, host_app_root, &n_sub);
+    n = emit_map_events(ui, &off, n, host_app_root, &n_sub); emit_hp_flags(ui, &off, n);
     off += (size_t)snprintf(ui + off, UIBUF - off,
         "n_ent=%d\nn_sub=%d\nentities_bar_on=%s\n", n, n_sub, on ? "1" : "");
     return off;
@@ -750,8 +763,14 @@ int main(int argc, char **argv) {
         if (!active_desk_id[0]) snprintf(active_desk_id, sizeof(active_desk_id), "desk1");
         char proj_id[64];
         snprintf(proj_id, sizeof(proj_id), "%s", active_level[0] ? active_level : "default");
+        /* Books live in the instance data folder (PCHQ_PKG), not in the
+         * board template directory the renderer passes as pkg. Scanning
+         * pkg left n_file_opts at the fixed head+tail (default, File
+         * Explorer, default-legacy) and the page list at one fake desk. */
+        char data_root[PATH_MAX];
+        snprintf(data_root, sizeof(data_root), "%s", host_root(house, host_id));
         char game_pdl[PATH_MAX];
-        snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", pkg, proj_id);
+        snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", data_root, proj_id);
         char proj_label[64] = "";
         read_pdl_kv(game_pdl, "label", proj_label, sizeof(proj_label));
         char n_desks_s[8] = "";
@@ -893,7 +912,7 @@ int main(int argc, char **argv) {
          * game.pdl GAME rows (folder name when there is no label); fixed tail: default-legacy. Verb load-map, arg = the folder name. */
         {
             char maps_dir[PATH_MAX];
-            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", pkg);
+            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", data_root);
             static char book_ids[64][64];
             int n_books = 0;
             DIR *md = opendir(maps_dir);
