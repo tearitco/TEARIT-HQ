@@ -1,10 +1,18 @@
 # Open, seen on a real frame
 
-## Book-menu thumb is in the rows (2026-10-29 23:00)
+## Book-menu thumb was in the rows (fixed 2026-10-29 23:16)
 
 Owner frame of the edit board, book menu open, page Bank. The scroll
-thumb cuts through the middle of the book rows. On pc-hq the same
-thumb is at the right of the menu.
+thumb cut through the middle of the book rows. That thumb was the pet
+column (`side-l` `ov-scroll`), drawn at the column's right edge while
+the menu covered it. The menu's own bar is the existing one: row width
+is the `.dropdown-child` width, and `generic_sbar_register` is passed
+that width plus 66 so the arrows start at the row's right edge.
+
+Live check, renderer pid `104961`, book menu open: `fo-0` at x=120 w=200,
+`bk-cancel` at y=513. No `sbar-up` / `sbar-down` in
+`entity_menu_frame_104961.txt`. The pet thumb is not registered while a
+dropdown scope is open. It comes back when the menu closes.
 
 Do not invent a scrollbar. `khtpm_core_render.c` already has both
 pieces. `layout_dock_bar` adds `DD_STRIP_W` (62) and shrinks each row

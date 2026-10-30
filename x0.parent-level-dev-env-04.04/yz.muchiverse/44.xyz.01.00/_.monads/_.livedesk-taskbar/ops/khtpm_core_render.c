@@ -6672,6 +6672,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             /* menu shape: a windowed (long) list is a narrow menu with the bar to the right of the rows, not a full-width
              * strip with the arrows lying on top of the labels */
             int dw = trigger ? (trigger->w > 0 ? trigger->w : w) : w;
+            if (c->style.has_width && c->style.width > dw) dw = c->style.width;
             if (dd_scrolling && dw > 320) dw = 320;
             if (open && shown) {
                 c->x = trigger->x; c->y = trigger->y + trigger->h + slot * ROW_H; c->w = dw; c->h = ROW_H;
