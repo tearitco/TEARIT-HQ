@@ -3,6 +3,18 @@
 Research queue. A row stays until a new window PNG changes and the
 text file agrees. Do not launch a second board to collect these again.
 
+## Why the session died in one second (2026-10-29, researched, not fixed)
+
+The 18:35 ledger row for widget pid `3135383` is ONLINE at 18:35:19 and OFFLINE twice at 18:35:20, same pid, same session. The widget trap is installed on TERM and on EXIT, so one SIGTERM runs it twice and writes two OFFLINE lines. A parser that exited on its own would write one. `open_pchq_board.sh`'s orphan reap uses SIGKILL, which would not run the trap. The signal was SIGTERM.
+
+That SIGTERM is `kill_own_board_widget` in `@.apps/piececraft-hq/button.sh`. It is `pkill -f "board-viewer/button.sh run-widget $SCRIPT_DIR"`. It runs at the start of every `run` when no session directory is younger than 5 seconds, and again from the engine shell's EXIT trap. Either a second `run`, or the engine shell exiting, deletes the widget session. The projector then publishes `no_session=1` and the pane stays on `loading...`.
+
+A second hole, different signal: the engine is started with `setsid`, so its session leader's parent is 1 from the first moment, and the reap treats parent 1 as a dead orphan. It spares a session only when the orchestrator or the widget bash is already visible to `pgrep`. A second `open_pchq_board.sh` in the gap before that process exists SIGKILLs the new stack.
+
+The 18:58 launch stayed up. Its engine shell was `3202906`, not the pid written to `engine.pid`. Stopping the window did not stop that shell. `quit_flag.txt` was empty, `orchestrator.log` was only the ready line, and the parser was about 0.7% CPU. That shell was stopped after this reading. The editor daemon that was already running was left up.
+
+The code change that stops the SIGTERM is not made yet. Next edit: do not signal a `run-widget` whose pid is still alive, and do not treat a setsid leader with parent 1 as dead while its own orchestrator is alive.
+
 ## Page is on screen (2026-10-29 18:58)
 
 One niced relaunch. `board/state/ui.txt` had `no_session=` empty and `canvas_raw` set to `rgb_frame_3d_overlay.raw` of session `1793325472-3202959`. Window `0xa00003`. Frame `/tmp/edit-page.png`: the pane is the bridge (star field, a wall, `rpg-space:bridge`), not `loading...`. The board from that launch was stopped after the frame. The editor daemon that was already running was left up.
