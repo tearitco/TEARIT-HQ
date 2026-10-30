@@ -496,7 +496,7 @@ EOSTATE
             cp -p "$SESSION_DIR/pieces/system/entities.txt" "$SCRIPT_DIR/pieces/system/entities.txt" 2>/dev/null
         }
 
-        trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; kill_own_orchestrator; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
+        trap 'cp -p "$SESSION_DIR/pieces/system/orchestrator.log" /tmp/pchq-orch-last.log 2>/dev/null; kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; kill_own_orchestrator; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
         # PCHQ_ENGINE_MODE (set by open_pchq_board.sh, the taskbar entry
         # point - PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md steps 2-3): the

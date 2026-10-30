@@ -189,7 +189,9 @@ EOSTATE
 
     ./system/renderer &
     RENDERER_PID=$!
-    ./system/chtpm_parser_pal pieces/chtpm/layouts/board_viewer.chtpm >/dev/null 2>&1 &
+    # Keep the parser's own words. A one-second exit used to delete the
+    # session and leave the board on loading... with nothing to read.
+    ./system/chtpm_parser_pal pieces/chtpm/layouts/board_viewer.chtpm > pieces/system/parser.log 2>&1 &
     CHTPM_PID=$!
     # REAL FIX 2026-09-15, direct live report ("they should show up in
     # proc-mon, thats why its there") - these three top-level spawns
@@ -317,7 +319,7 @@ EOSTATE
             (cd "$SESSION_DIR" 2>/dev/null && PRISC_PROJECT_ROOT="$SESSION_DIR" "$SCRIPT_DIR/ops/+x/ledger_append.+x" OFFLINE widget "$LEDGER_PROJECT_ID" "$SESSION_DIR" "$$" "Board Viewer" "pieces/system/bv_state.txt" >/dev/null 2>&1) || true
         fi
     }
-    trap 'mark_offline; kill "$RENDERER_PID" "$CHTPM_PID" "$GL_PID" "$RGB_PID" 2>/dev/null; kill_own_module; rm -rf "$SESSION_DIR"' EXIT INT TERM
+    trap 'cp -p "$SESSION_DIR/pieces/system/parser.log" "/tmp/bv-parser-$SESSION_ID.log" 2>/dev/null; mark_offline; kill "$RENDERER_PID" "$CHTPM_PID" "$GL_PID" "$RGB_PID" 2>/dev/null; kill_own_module; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
     if [ "$PROFILE" = "widget" ]; then
         # Widget profile has NO foreground keyboard_input (GL owns

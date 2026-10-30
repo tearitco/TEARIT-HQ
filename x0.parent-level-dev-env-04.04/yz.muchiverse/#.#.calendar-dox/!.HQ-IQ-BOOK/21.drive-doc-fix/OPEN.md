@@ -3,6 +3,12 @@
 Research queue. A row stays until a new window PNG changes and the
 text file agrees. Do not launch a second board to collect these again.
 
+## Page is on screen (2026-10-29 18:58)
+
+One niced relaunch. `board/state/ui.txt` had `no_session=` empty and `canvas_raw` set to `rgb_frame_3d_overlay.raw` of session `1793325472-3202959`. Window `0xa00003`. Frame `/tmp/edit-page.png`: the pane is the bridge (star field, a wall, `rpg-space:bridge`), not `loading...`. The board from that launch was stopped after the frame. The editor daemon that was already running was left up.
+
+The launch before this one had registered `board-viewer:rpg-edit-hq-pchq` and gone OFFLINE one second later, and the session directory was removed with it. That is why the pane stayed on `loading...`. The widget and the engine now copy `parser.log` and `orchestrator.log` to `/tmp` before that delete, so the next one-second exit can be read.
+
 ## Failure-limit (2026-10-29): no engine session, so no page to edit
 
 `board/state/ui.txt` still says `bv_session=` empty, `canvas_raw=` empty, `no_session=1`. That is why the pane stayed on `loading...` after the chrome had `book:rpg-space` / `page:bridge`. Nothing on the page can be edited until this row clears.
