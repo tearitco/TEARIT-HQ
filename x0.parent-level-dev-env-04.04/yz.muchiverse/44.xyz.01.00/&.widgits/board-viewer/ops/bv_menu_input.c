@@ -49,6 +49,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include <unistd.h>
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -316,6 +317,31 @@ static void bump_screen_changed(const char *root) {
     snprintf(marker_path, sizeof(marker_path), "%s/pieces/display/bv_screen_changed.txt", root);
     FILE *mf = fopen(marker_path, "a");
     if (mf) { fputc('.', mf); fclose(mf); }
+}
+
+/* A step onto a cell runs the page that lives on the real project.
+ * The board-viewer session has no tsots_touch_event.sh, so passing
+ * that session made the step a no-op. The script lives with piececraft. */
+static void touch_event_at(const char *focused_project_root, int x, int y) {
+    char app[PATH_BUF], rr[PATH_BUF], house[PATH_BUF], touch[PATH_BUF * 3];
+    snprintf(rr, sizeof(rr), "%s/pieces/system/real_project_root.txt", focused_project_root);
+    app[0] = '\0';
+    FILE *rf = fopen(rr, "r");
+    if (rf) { if (fgets(app, sizeof(app), rf)) app[strcspn(app, "\r\n")] = '\0'; fclose(rf); }
+    if (!app[0]) snprintf(app, sizeof(app), "%s", focused_project_root);
+    snprintf(house, sizeof(house), "%s", app);
+    for (;;) {
+        char probe[PATH_BUF];
+        snprintf(probe, sizeof(probe), "%s/xyzfs", house);
+        if (access(probe, F_OK) == 0) break;
+        char *sl = strrchr(house, '/');
+        if (!sl || sl == house) break;
+        *sl = '\0';
+    }
+    snprintf(touch, sizeof(touch),
+        "sh '%s/@.apps/piececraft-hq/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
+        house, app, x, y);
+    system(touch);
 }
 
 /* send_action_to_host - real widget->host command delivery, factored
@@ -721,13 +747,7 @@ static int handle_one_key(int key) {
             write_kv_int(xelector_state_path, "pos_y", selector_y);
             /* Play mode steps onto a map event here. The script no-ops
              * when play is off, so edit movement stays a cursor move. */
-            {
-                char touch[PATH_BUF * 2];
-                snprintf(touch, sizeof(touch),
-                    "sh '%s/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
-                    focused_project_root, focused_project_root, selector_x, selector_y);
-                system(touch);
-            }
+            touch_event_at(focused_project_root, selector_x, selector_y);
 
             /* REAL FIX 2026-08-03, direct instruction ("the tick should
              * only happen when xelector moves 'hero-avatar'" - real
@@ -1042,13 +1062,7 @@ static int handle_one_key(int key) {
         write_kv_int(state_path, "selector_y", selector_y);
         write_kv_int(xelector_state_path, "pos_x", selector_x);
         write_kv_int(xelector_state_path, "pos_y", selector_y);
-        {
-            char touch[PATH_BUF * 2];
-            snprintf(touch, sizeof(touch),
-                "sh '%s/ops/tsots_touch_event.sh' '%s' %d %d >/dev/null 2>&1 &",
-                focused_project_root, focused_project_root, selector_x, selector_y);
-            system(touch);
-        }
+        touch_event_at(focused_project_root, selector_x, selector_y);
         char possessed_id[64] = "";
         read_kv_str(xelector_state_path, "possessed_id", possessed_id, sizeof(possessed_id));
         if (strcmp(possessed_id, "hero_01") == 0) {
