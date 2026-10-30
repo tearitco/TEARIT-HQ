@@ -775,8 +775,14 @@ int main(int argc, char **argv) {
         if (!active_desk_id[0]) snprintf(active_desk_id, sizeof(active_desk_id), "desk1");
         char proj_id[64];
         snprintf(proj_id, sizeof(proj_id), "%s", active_level[0] ? active_level : "default");
+        /* Books live in the instance data folder (PCHQ_PKG), not in the
+         * board template directory the renderer passes as pkg. Scanning
+         * pkg left n_file_opts at the fixed head+tail (default, File
+         * Explorer, default-legacy) and the page list at one fake desk. */
+        char data_root[PATH_MAX];
+        snprintf(data_root, sizeof(data_root), "%s", host_root(house, host_id));
         char game_pdl[PATH_MAX];
-        snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", pkg, proj_id);
+        snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", data_root, proj_id);
         char proj_label[64] = "";
         read_pdl_kv(game_pdl, "label", proj_label, sizeof(proj_label));
         char n_desks_s[8] = "";
@@ -939,7 +945,7 @@ int main(int argc, char **argv) {
          * game.pdl GAME rows (folder name when there is no label); fixed tail: default-legacy. Verb load-map, arg = the folder name. */
         {
             char maps_dir[PATH_MAX];
-            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", pkg);
+            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", data_root);
             static char book_ids[64][64];
             int n_books = 0;
             DIR *md = opendir(maps_dir);
