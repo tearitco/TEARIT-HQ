@@ -14,14 +14,15 @@ The edit board is `@.apps/rpg-edit-hq`. Grok's own reonboard is
 
 ## What each run is for
 
-The long-range stop is RPG Maker MV editing, then the same event mechanics on the other books. One run keeps going until a real failure blocks that, then fixes that failure.
+The long-range stop is RPG Maker MV editing, then playing what that edit does, on this book and on the others. One run keeps going until a real failure blocks the next step, then fixes that failure.
 
 The bar, in order:
 
 1. Open a book and a page and see the place (the 3D pane is the page, not `loading...`).
 2. Edit the environment on that page.
 3. Edit event pages: the expected result and the effect.
-4. The same event edit on mineclonia (`mcl-hq`), Cataclysm (`cdda-hq`), Dwarf Fortress (`df-hq`), and any other book that uses the page file.
+4. Play it. Walk the page, fire the event, and read the result in the frame and in `events.txt`. An edit that cannot be played is not done.
+5. The same edit, then the same play, on mineclonia (`mcl-hq`), Cataclysm (`cdda-hq`), Dwarf Fortress (`df-hq`), and any other book that uses the page file.
 
 A failure-limit is a frame or a text file that shows the next one of those cannot be done. Chrome nits get written down and waited. They are not the stop. Do not open a second board to keep driving past a pane that has no session.
 

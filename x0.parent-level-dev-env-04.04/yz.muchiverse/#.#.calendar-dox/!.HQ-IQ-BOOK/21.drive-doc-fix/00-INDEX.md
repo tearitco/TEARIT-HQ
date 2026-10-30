@@ -6,8 +6,9 @@ not a handoff. A new agent starts here.
 
 - `HOW2-DRIVE-DOC-FIX.md` — the procedure, and the long-range stop
   for every run: RPG Maker MV editing (place, event page, expected
-  result, effect), then the same event edit on mcl-hq, cdda-hq,
-  df-hq, and any other book. Drive until a real failure blocks that.
+  result, effect), then play that event, then the same edit and play
+  on mcl-hq, cdda-hq, df-hq, and any other book. Drive until a real
+  failure blocks the next step.
 - `OPEN.md` — bugs already seen, with the file that draws them. Research
   starts here. Do not launch a board to re-read a row that already has
   a frame.
