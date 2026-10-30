@@ -97,7 +97,9 @@ DISPLAY=:0 xdotool mousemove --window <id> <x> <y>
 printf 'MOUSE_EVENT: 1 <x> <y> 1\nMOUSE_EVENT: 1 <x> <y> 0\n' >> <house>/#.desktop/entity_menu_history/<render_pid>.txt
 ```
 
-The render pid is the `khtpm_core_render` whose argv contains `pchq-board.xhtpm`. A bare `xdotool click` does not. After the click, read `menu_open` in `board/state/ui.txt`. Empty means the menu did not open.
+The render pid is the `khtpm_core_render` whose argv contains `pchq-board.xhtpm`. A bare `xdotool click` does not. The toolbar sits at about y=48, not in the title strip at y=22. The book tab on a 1260-wide window is about x=221.
+
+Clicks are two-step (`click_two_step=1`). The first click only focuses the tab (the `[>]` badge). The second click on the same spot runs `ACTIVATE` and the rows draw. `menu_open` stays empty either way. This template does not use `menu.txt`. Proof the menu is open is a row in `#.desktop/entity_menu_frame_<render_pid>.txt` with a y greater than 0 (`fo-0` at y=63 under the book tab, 2026-10-29). A closed dropdown is omitted from that file.
 
 ## What the chrome is
 
@@ -124,7 +126,7 @@ Still open unless a new frame says otherwise:
 
 Fixed in the toolbar file, not yet re-driven:
 
-7. Book and page menus now use the loaded map's `game.pdl` (file rows and desk rows) instead of the daemon's Islands list. Re-drive: open the book tab, confirm a row named rpg-space and a row named rpg-edit-hq, pick one, and confirm the bar and one frame.
+7. Book rows are in the menu after two clicks on the book tab. Frame `/tmp/edit-bookopen.png` and `entity_menu_frame_3302618.txt`: `fo-2` and `fo-3` are both labeled `🏠 RPG-Pet`, args `rpg-edit-hq` and `rpg-space`. Picking one and seeing the bar change is the next click. The labels ought to be the folder names.
 
 ## Harnesses, by name
 
