@@ -47,6 +47,7 @@ stay open until a new frame clears them.
 | thing | ought to be | frame |
 |---|---|---|
 | First 3D paint | the page, full pane | filled only after the view changed |
+| First-frame canvas fit | the page fills the available canvas | seen-ok 2026-10-30. Before the fix, the editor board reached `no_session=` empty but letterboxed the scene. After the shared renderer rebuild and fresh relaunch, session `1793344110-307254` reports canvas `846×410`; `/tmp/rpg-edit-fullscreen.png` shows the Bridge filling the canvas between the pinned bars. |
 | In on open | off means watch. On means the body moves. | In was off. Arrows and the picture can disagree. |
 | Key `1` | pitch 6 | picture did not change, 2026-10-29 |
 | Debug overlay | a toggle | `pos`, `ray`, `pid` sit on the view |
