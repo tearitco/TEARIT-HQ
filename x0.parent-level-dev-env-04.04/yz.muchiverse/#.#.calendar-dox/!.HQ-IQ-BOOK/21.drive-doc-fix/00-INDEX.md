@@ -12,7 +12,6 @@ not a handoff. A new agent starts here.
 - `OPEN.md` — bugs already seen, with the file that draws them. Research
   starts here. Do not launch a board to re-read a row that already has
   a frame.
-
 - `PLAY-SENSE.md` — first-frame feel: xelector cell, camera, In,
   debug text, empty pane. Add a row when a new kind of thing shows up.
   Write it before it is named. Fix it only after it is named.
@@ -20,6 +19,11 @@ not a handoff. A new agent starts here.
   tab, one row each, including the clock and the pid cell. Fill it
   before saying the toolbar matches. A sentence that says "follow
   LyfeDesk" is not that check.
+- `DONE.md` — rows already driven, documented, and fixed. Read this
+  before a launch. Do not re-drive a row that has a proof.
+- `PROOF-2026-10-29.md` — the hashes and sessions for those rows.
+- `harness/editor-skip.sh` — read-only check of the closed editor
+  rows. It does not open a board.
 
 Grok's personal reonboard stays `13.agent-coms/GROK/ONBOARD-GROK.md`.
 The old path `13.agent-coms/HOW2-DRIVE-DOC-FIX.md` is a pointer.

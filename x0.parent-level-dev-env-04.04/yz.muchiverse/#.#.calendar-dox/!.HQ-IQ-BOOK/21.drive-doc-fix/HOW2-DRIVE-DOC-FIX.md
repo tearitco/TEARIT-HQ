@@ -135,6 +135,10 @@ Fixed in the toolbar file, not yet re-driven:
 
 ## Harnesses, by name
 
+Closed rows and their proofs are `DONE.md` and `PROOF-2026-10-29.md`.
+`sh 21.drive-doc-fix/harness/editor-skip.sh` checks them and does not
+open a board. Do not re-drive a row that script prints as ok.
+
 From `&.widgits/_shared-lib/harness`, `prisc <name>.pal`. `find` does not run them.
 
 | pal | what |
