@@ -722,8 +722,29 @@ int main(int argc, char **argv) {
      * `x=8 y=8 glyph=D` row), so spawning there would land the player
      * directly on an event before the trigger-layer proof even starts
      * moving. Procedural/flat worlds keep the original center spawn. */
-    int spawn_col = map_id ? 1 : 8;
-    int spawn_row = map_id ? 1 : 8;
+    /* No START.txt used to mean (1,1) on every real map. The selector
+     * still defaults to board_w/2, so the edit board opened with the
+     * piece in the corner and the selector at 8,8. The center is the
+     * fallback. (1,1) stays only for a page whose center is an event
+     * (cdda_sample's door, events.pdl `x=8 y=8`). */
+    int spawn_col = 8;
+    int spawn_row = 8;
+    if (map_id && map_id[0]) {
+        char epath[PATH_BUF];
+        snprintf(epath, sizeof(epath), "%s/pieces/system/maps/%s/events.pdl", real_root, map_id);
+        FILE *ef = host_fopen(epath, "r");
+        if (ef) {
+            char eline[256];
+            while (fgets(eline, sizeof(eline), ef)) {
+                if (strstr(eline, "x=8") && strstr(eline, "y=8")) {
+                    spawn_col = 1;
+                    spawn_row = 1;
+                    break;
+                }
+            }
+            fclose(ef);
+        }
+    }
 
     char hero_state_path[PATH_BUF];
     snprintf(hero_state_path, sizeof(hero_state_path), "%s/state.txt", hero_dir);
