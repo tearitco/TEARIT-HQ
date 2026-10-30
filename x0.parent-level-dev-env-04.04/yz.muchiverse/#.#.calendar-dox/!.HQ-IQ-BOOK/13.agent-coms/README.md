@@ -1,5 +1,7 @@
 # 13.agent-coms — how agents talk to each other
 
+**Drive, document, fix:** chapter `21.drive-doc-fix/` (`HOW2-DRIVE-DOC-FIX.md`, open rows in `OPEN.md`). Any agent. One loop. The file in this folder is a pointer.
+
 **Grok, read this first:** `GROK/ONBOARD-GROK.md`. It is the reonboard
 for the editor, the two real pictures, and how the player and camera
 actually move. Do not re-derive that.

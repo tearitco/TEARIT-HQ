@@ -1,5 +1,7 @@
 # TEARIT-HQ Book
 
+**Start here for the roadmap: [`ROADMAP.md`](ROADMAP.md)** - one page for customers, investors and developers (3D and worlds, AI integration, platform), every row with a status word, a source and a date.
+
 The house's documentation, organized as a book: index, chapters,
 glossary, examples, and a living appendix of daily progress. This is
 the ONE place house-level (not per-app) documentation lives. Per-app
@@ -27,6 +29,7 @@ content.
 - **[16.game](16.game/00-INDEX.md)** — the game machine: desks, actors, events, playtest. The AI that may append a command is chapter 17.
 - **[17.ai](17.ai/00-INDEX.md)** — AI across the house: game, dev, and productivity. The game it drives is chapter 16.
 - **[18.pc-hq](18.pc-hq/00-INDEX.md)** — the piececraft board: 2D and 3D drawers, the hero diamond, Book/Page, and Synch. The game machine is chapter 16.
+- **[21.drive-doc-fix](21.drive-doc-fix/00-INDEX.md)** — how any agent drives a board, writes what the frame showed, and fixes one named row. Start here before a live test.
 
 ## House path quick reference (as of 2026-09-01 migration)
 

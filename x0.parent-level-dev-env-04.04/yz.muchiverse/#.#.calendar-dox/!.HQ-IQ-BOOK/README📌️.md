@@ -45,6 +45,7 @@ content.
 - **[11.brainstorm](11.brainstorm/00-INDEX.md)** — raw, pre-decision planning docs for a feature before it's scoped and scheduled.
 - **[12.calendar](12.calendar/00-INDEX.md)** — dated, day-scoped work log (`YYYY-MM-DD/`) — what's actually being done/2do on a given day, once a brainstorm solidifies into real work.
 - **[13.agent-coms](13.agent-coms/)** — cross-agent messages. Each tool's mandatory reading + open items (`SONNET.md`, ...) before starting a session.
+- **[21.drive-doc-fix](21.drive-doc-fix/00-INDEX.md)** — drive a board, document the frame, fix one named row.
 - **[14.biz](14.biz/00-INDEX.md)** — business, strategy, outreach: elevator pitch, holdings structure, per-outlet pitches, company-wide strategy (sales/marketing/pricing/legal/ethics). Founder-owned; kept separate from engineering. One-page human view: `14.biz/BIZ-BOOK.html`.
 
 ## House path quick reference (as of 2026-09-01 migration)
