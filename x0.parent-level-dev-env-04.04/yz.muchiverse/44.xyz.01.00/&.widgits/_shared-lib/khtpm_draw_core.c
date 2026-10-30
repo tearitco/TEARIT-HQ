@@ -917,11 +917,10 @@ static void kh_draw_canvas(Elem *e) {
      * on screen, camera should be wider". A larger frame is cropped. */
     if (w == e->w && h == e->h) {
         XPutImage(dpy, buf, gc, c_img, 0, 0, e->x, e->y, (unsigned)w, (unsigned)h);
-    } else if (w > e->w || h > e->h) {
-        /* The frame is bigger than the canvas (a pinned side bar took width out of it, or the window is small; standalone game windows draw a fixed-size frame): scale it DOWN to fit, keeping the aspect ratio, nearest neighbour,
-         * instead of cropping the middle. Cached: the scaled image is rebuilt only for a new decoded frame or a new target size, so an idle repaint costs one XPutImage. A frame smaller than the canvas still draws 1:1, centred. */
-        int sw = w, sh = h;
-        if ((long)e->w * h <= (long)e->h * w) { sw = e->w; sh = (int)((long)h * e->w / w); } else { sh = e->h; sw = (int)((long)w * e->h / h); }
+    } else {
+        /* Cover the canvas, preserving the frame's aspect ratio and cropping the excess. */
+        int sw = e->w, sh = (int)(((long)h * e->w + w - 1) / w);
+        if (sh < e->h) { sh = e->h; sw = (int)(((long)w * e->h + h - 1) / h); }
         if (sw < 1) sw = 1; if (sh < 1) sh = 1;
         static XImage *s_img; static int s_w, s_h; static unsigned long s_gen;
         if (!s_img || s_w != sw || s_h != sh || s_gen != c_gen) {
@@ -943,19 +942,8 @@ static void kh_draw_canvas(Elem *e) {
         }
         XSetForeground(dpy, gc, alloc_pixel("#0c0c0c"));
         XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
-        if (s_img) XPutImage(dpy, buf, gc, s_img, 0, 0, e->x + (e->w - sw) / 2, e->y + (e->h - sh) / 2, (unsigned)sw, (unsigned)sh);
-    } else {
-        int bw = w < e->w ? w : e->w;
-        int bh = h < e->h ? h : e->h;
-        int offx = (e->w - bw) / 2; if (offx < 0) offx = 0;
-        int offy = (e->h - bh) / 2; if (offy < 0) offy = 0;
-        int srcx = w > e->w ? (w - e->w) / 2 : 0;
-        int srcy = h > e->h ? (h - e->h) / 2 : 0;
-        /* fill the letterbox so an old frame doesn't ghost around it */
-        XSetForeground(dpy, gc, alloc_pixel("#0c0c0c"));
-        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
-        XPutImage(dpy, buf, gc, c_img, srcx, srcy, e->x + offx, e->y + offy,
-                  (unsigned)bw, (unsigned)bh);
+        if (s_img) XPutImage(dpy, buf, gc, s_img, (sw - e->w) / 2, (sh - e->h) / 2,
+                             e->x, e->y, (unsigned)e->w, (unsigned)e->h);
     }
 }
 
