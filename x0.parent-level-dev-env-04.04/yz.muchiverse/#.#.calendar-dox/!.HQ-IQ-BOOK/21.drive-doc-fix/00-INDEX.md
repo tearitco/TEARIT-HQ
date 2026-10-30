@@ -24,6 +24,9 @@ not a handoff. A new agent starts here.
 - `PROOF-2026-10-29.md` — the hashes and sessions for those rows.
 - `harness/editor-skip.sh` — read-only check of the closed editor
   rows. It does not open a board.
+- `ONBOARD-CODEX.md` — Codex-specific re-onboarding from the 2026-10-30
+  editor drive: intended screen roles, party/footer distinctions, verified
+  new-page edit/play, projector rebuild, and branch handoff.
 
 Grok's personal reonboard stays `13.agent-coms/GROK/ONBOARD-GROK.md`.
 The old path `13.agent-coms/HOW2-DRIVE-DOC-FIX.md` is a pointer.
