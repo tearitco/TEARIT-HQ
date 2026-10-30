@@ -13,6 +13,9 @@ not a handoff. A new agent starts here.
   starts here. Do not launch a board to re-read a row that already has
   a frame.
 
+- `PLAY-SENSE.md` — first-frame feel: xelector cell, camera, In,
+  debug text, empty pane. Add a row when a new kind of thing shows up.
+  Write it before it is named. Fix it only after it is named.
 - `CHROME-COMPARE.md` — LyfeDesk `strip_btn_N` beside the edit-board
   tab, one row each, including the clock and the pid cell. Fill it
   before saying the toolbar matches. A sentence that says "follow

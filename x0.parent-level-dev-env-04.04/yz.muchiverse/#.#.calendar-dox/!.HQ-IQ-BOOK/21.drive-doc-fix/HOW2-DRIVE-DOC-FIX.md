@@ -51,7 +51,7 @@ House, seen on the guard, 2026-10-29:
 
 1. Drive one thing a person would do. One key or one click. Check the guard first. If busy is up and the top process is house, add it to the table above and stop. Do not drive through it.
 2. Read the text (`trainer.txt`, `events.txt`, `board/state/ui.txt`) and one window PNG.
-3. Write the mismatch on the list, with the frame path and what it ought to be.
+3. Write the mismatch on the list, with the frame path and what it ought to be. On the first frame, also fill one row of `PLAY-SENSE.md` for anything a person would notice before they know the bug list: where the xelector starts, whether that cell is center, a door, or a wall, whether the camera is on that cell, whether In is off, whether debug text covers the walk. Chrome rows go on `CHROME-COMPARE.md`. A feel row is written even when the owner has not named it. It is not fixed until they do.
 4. Fix only the rows the owner has said to fix. Then drive that same click again. A new frame that changed is the proof. A compile is not.
 
 Do not launch a second board while one engine is starting. `nice -n 15`. Stop only the pids you started. Do not `git add` under `xyzfs/users`. Commit on your own branch with an explicit pathspec. The pc-hq camera is the owner's. Do not restore it. The edit board's session camera is fair to drive.
