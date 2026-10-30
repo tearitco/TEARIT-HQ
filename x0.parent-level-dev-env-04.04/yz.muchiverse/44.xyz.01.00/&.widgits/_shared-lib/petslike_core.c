@@ -721,9 +721,20 @@ static int reuse_line(const char *dir, unsigned long h, const char *voice, const
     }
     closedir(d); return hit;
 }
+/* A renderer can outlive the widget. no_session=1 is the loading pane: nobody is looking at a page, so do not talk. */
+static int page_is_up(void) {
+    char p[PATH_MAX], line[80];
+    snprintf(p, sizeof p, "%s/board/state/ui.txt", APP);
+    FILE *f = fopen(p, "r");
+    if (!f) return 1;
+    int up = 1;
+    while (fgets(line, sizeof line, f)) if (!strncmp(line, "no_session=", 11)) { up = line[11] != '1'; break; }
+    fclose(f);
+    return up;
+}
 static void speak(int i, const char *text) {
-    /* No window: do not synthesize and do not play. A closed board must stay quiet. */
-    if (!flag_on("voice", 1) || !viewer_kinds() || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;
+    /* No window, or a window stuck on loading: do not synthesize and do not play. */
+    if (!flag_on("voice", 1) || !viewer_kinds() || !page_is_up() || i < 0 || !text || !text[0]) return; static long last = 0; long now = now_ms(); if (now - last < 2500) return; last = now;
     char voice[48], rate[16], pitch[16]; voice_of(party[i].id, voice, sizeof voice, rate, sizeof rate, pitch, sizeof pitch);
     unsigned long h = 5381; for (const char *c = text; *c; c++) h = h * 33 + (unsigned char)*c; char dir[PATH_MAX], wav[PATH_MAX], mp3[PATH_MAX]; snprintf(dir, sizeof dir, "%s/audio", ST); mkdir(dir, 0755);
     snprintf(wav, sizeof wav, "%s/say_%s_%08lx.wav", dir, party[i].id, h & 0xffffffffUL); snprintf(mp3, sizeof mp3, "%s/say_%s_%08lx.mp3", dir, party[i].id, h & 0xffffffffUL);
@@ -736,7 +747,7 @@ static void speak(int i, const char *text) {
         char *av[] = {"nice", "-n", "15", edge, "--voice", voice, rateA, pitchA, "--text", (char *)text, "--write-media", mp3, NULL}; if (run_quiet(av, 1) != 0 || !fexists(mp3)) _exit(0);
         char *cv[] = {"nice", "-n", "15", "ffmpeg", "-loglevel", "quiet", "-y", "-i", mp3, "-ar", "22050", "-ac", "1", wav, NULL}; run_quiet(cv, 1); remove(mp3); }
     if (sfd >= 0) close(sfd);      /* synthesis over: the next greeting may synthesize while this one plays */
-    if (!fexists(wav) || !viewer_kinds()) _exit(0);
+    if (!fexists(wav) || !viewer_kinds() || !page_is_up()) _exit(0);
     { char lp[PATH_MAX], pp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/play.lock", dir); snprintf(pp, sizeof pp, "%s/play.pid", dir); FILE *pf = fopen(pp, "w"); if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); } int fd = open(lp, O_CREAT | O_RDWR, 0644); if (fd < 0 || flock(fd, LOCK_EX | LOCK_NB) != 0 || !viewer_kinds()) { remove(pp); _exit(0); } char *pv[] = {"nice", "-n", "10", "paplay", "--volume=32000", wav, NULL}; run_quiet(pv, 1); remove(pp); }
     _exit(0);
 }
