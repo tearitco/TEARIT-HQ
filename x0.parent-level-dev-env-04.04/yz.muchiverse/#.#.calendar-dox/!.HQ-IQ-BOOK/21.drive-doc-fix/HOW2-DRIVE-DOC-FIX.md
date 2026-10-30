@@ -43,6 +43,7 @@ House, seen on the guard, 2026-10-29:
 | 18:33 | 99% | `pet_tts_local.py` ~147%, `rg` 247% | pals line `hi Pal 15!` into `rpg-edit-hq/state/audio/`. Guard ended 0 house processes. |
 | 19:20 | 99% | `rg` 186%, `pet_tts_local.py` 113%, board `prisc+x` 11% and 10% | Guard classed the python and rg as outside because the exe is not under the house. The script and the search are ours. Answer was Yes, so rg ended. The board from the book-tab click was still up. |
 | 19:22 | 62% sample, then one core at 238% | `pet_tts_local.py` text `Pal 13! over here` | Board was already stopped. The editor daemon kept speaking. That process was stopped. The daemon was left up. |
+| 19:28 | 42%, die 86 C | `pet_tts_local.py` 155% | After the player-menu drive. The speech process had already exited when checked. Daemon left up. |
 
 `pet_tts_local.py` is the editor daemon speaking pal chat. It starts with no board window. Do not leave an edit board up while it is firing.
 
