@@ -27,7 +27,9 @@ Observed on window `0xa00003`, 1260×556: the top bar read `book:rpg-space` and 
 
 Change one entity row on the opened page. `scene.raw` and the window dump show that same row. No second list for 3D.
 
-2026-10-29 20:35. One row appended to the open page, bridge `events.txt` (`10 10 255 0 255 Marker …`). That path is the link into `rpg-space-pchq`, so the edit landed on the real book. The 3D overlay (`846×395`, session `1793331267-3514057`) had 318 pixels with r>160, g<40, b>160 while the row was present and 0 after it was removed. The editor daemon's `state/events.txt` never contained `Marker`. `state/scene.raw` changed hash during the open (`ce0d030c…` to `7d97db99…`) with no marker in it, so that change is the town repainting, not this row. The row was removed. The window shows the page edit. The daemon picture does not. This is the stop until one write updates both.
+2026-10-29 20:35. One row appended to the open page, bridge `events.txt` (`10 10 255 0 255 Marker …`). That path is the link into `rpg-space-pchq`, so the edit landed on the real book. The 3D overlay (`846×395`, session `1793331267-3514057`) had 318 pixels with r>160, g<40, b>160 while the row was present and 0 after it was removed. The editor daemon's `state/events.txt` never contained `Marker`. `state/scene.raw` changed hash during the open (`ce0d030c…` to `7d97db99…`) with no marker in it, so that change is the town repainting, not this row. The row was removed. The window showed the page edit. The daemon picture did not.
+
+Fixed in `rpg_edit_hq.c` section 26. While the open book is not this town, a change to that page's `events.txt` stamps the same rows into `state/scene.raw` (one write, not every tick). Proof with the board open, session `1793332823-3592394`: the Marker row put 256 pixels in `scene.raw` and 318 in the 3D overlay. One second after the row was deleted both counts were 0. The book hash is `d3cb9831…` again. The daemon was rebuilt and restarted; it is pid `3590405`. The window is stopped.
 
 ## 4. The other Islands doors.
 
