@@ -18,10 +18,6 @@ COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl
 COPYDIR | &.widgits/_shared-lib/harness/fixtures/mcl_touch_page/ev20 | ev20 |
 RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I | $T/@.apps/mcl-hq/ops | -o | $T/@.apps/mcl-hq/ops/+x/mcl_hq.+x | $T/@.apps/mcl-hq/ops/mcl_hq.c | -lm
 EXPECT_EXIT | 0 | setup.build-game
-RUN | nice | -n | 15 | gcc | -O1 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
-EXPECT_EXIT | 0 | setup.build-prisc
-RUN | nice | -n | 15 | gcc | -O1 | -w | -o | $T/event_page_op | $HOUSE/&.widgits/digipet/ops/event_page_op.c
-EXPECT_EXIT | 0 | setup.build-page-runner
 RUN | cp | /usr/bin/tail | $T/khtpm_core_render
 SPAWN | viewer | $T/khtpm_core_render | -f | /dev/null | mcl-hq.xhtpm
 EXPECT_ALIVE | $viewer | setup.viewer-alive
@@ -31,16 +27,16 @@ WRITE | @.apps/mcl-hq/state/active.txt | rex\n
 WRITE | @.apps/mcl-hq/state/pet_rex.txt | room=city\nx=8\ny=4\ndir=2\nsteps=1\ntx=-1\nty=-1\n
 # a character is standing on 8,4 and no help has been shown yet
 EXPECT_NOFILE | @.apps/mcl-hq/state/help_step.txt | before.no-help-step
-RUN | $T/event_page_op | $T/ev20 | $T | --trigger | player-touch | --prisc | $T/prisc | --state | $T/ev20/event_pkg/pages/page_1
+PLAY_PAGE | ev20 | player-touch |
 EXPECT_EXIT | 0 | touch-1.page-ran
 EXPECT_HAS | @.apps/mcl-hq/state/help_step.txt | 1 | touch-1.help-step-advanced
 EXPECT_HAS | @.apps/mcl-hq/state/note.txt | 1/6 Pick who acts | touch-1.note-shows-line-1
-RUN | $T/event_page_op | $T/ev20 | $T | --trigger | player-touch | --prisc | $T/prisc | --state | $T/ev20/event_pkg/pages/page_1
+PLAY_PAGE | ev20 | player-touch |
 EXPECT_EXIT | 0 | touch-2.page-ran-again
 EXPECT_HAS | @.apps/mcl-hq/state/help_step.txt | 2 | touch-2.help-step-advanced-again
 EXPECT_HAS | @.apps/mcl-hq/state/note.txt | 2/6 INT on | touch-2.note-shows-line-2
 # a different trigger must not run the page (and must not move the state)
-RUN | $T/event_page_op | $T/ev20 | $T | --trigger | on-click | --prisc | $T/prisc | --state | $T/ev20/event_pkg/pages/page_1
+PLAY_PAGE | ev20 | on-click |
 EXPECT_EXIT | 1 | other-trigger.page-does-not-run
 EXPECT_HAS | @.apps/mcl-hq/state/help_step.txt | 2 | other-trigger.state-unchanged
 RUN | sh | -c | if [ -d $HOUSE/@.apps/mcl-hq/mcl-hq-pchq/pieces/system/maps/mcl-hq/city/ev/20 ]; then cmp $HOUSE/@.apps/mcl-hq/mcl-hq-pchq/pieces/system/maps/mcl-hq/city/ev/20/event.ir.pdl $T/ev20/event.ir.pdl && cmp $HOUSE/@.apps/mcl-hq/mcl-hq-pchq/pieces/system/maps/mcl-hq/city/ev/20/event_pkg/pages/page_1/event.pal $T/ev20/event_pkg/pages/page_1/event.pal && cmp $HOUSE/@.apps/mcl-hq/mcl-hq-pchq/pieces/system/maps/mcl-hq/city/ev/20/event_pkg/pages/page_1/cmd_1.sh $T/ev20/event_pkg/pages/page_1/cmd_1.sh && cmp $HOUSE/@.apps/mcl-hq/mcl-hq-pchq/pieces/system/maps/mcl-hq/city/ev/20/event_pkg/pages/page_1/condition.pdl $T/ev20/event_pkg/pages/page_1/condition.pdl; fi

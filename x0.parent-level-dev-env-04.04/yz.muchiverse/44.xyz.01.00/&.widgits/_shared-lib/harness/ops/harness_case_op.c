@@ -8,6 +8,7 @@
  *   SCRATCH   |                        create a scratch dir (/tmp/hc_XXXXXX) = $T
  *   MKDIR     | <path under $T>
  *   COPY      | <src under $HOUSE> | <dst under $T>      copies a file, keeps its mode
+ *   PLAY_PAGE | <event package dir under $T> | <trigger> | [state dir under $T, default <pkg>/event_pkg/pages/page_1]   plays the package with digipet/ops/event_page_op (prisc and event_page_op are compiled into $T on first use) and acts as a RUN row: follow it with EXPECT_EXIT / EXPECT_HAS. Exit 1 = no page matched the trigger. Needs xyzfs under $T if the page walks up to the house (cmd_N.sh does).
  *   COPYDIR   | <dir under $HOUSE> | <dst dir under $T> | <names to skip, comma separated, optional>     copies a whole tree (regular files and dirs only, modes kept, symlinks skipped); a skipped name is
  *                                                  left out at ANY depth (e.g. state,board,+x). Added 2026-10-17 so a playthrough harness can copy a game folder without a shell
  *   WRITE     | <path under $T> | <text>                write a file (the text is everything after the path, so it may contain ' | ')
@@ -192,9 +193,19 @@ int main(int argc, char **argv) {
         const char *v = fld[0]; char a[P], b[P], pa[P + 8], pb[P + 8];
         {   /* more fields than the verb takes = an unescaped '|' in the text (use \p): fail loudly instead of misreading the row */
             static const struct { const char *verb; int max; } LIM[] = { {"RESULTS",2},{"CASE",2},{"SCRATCH",1},{"MKDIR",2},{"COPY",3},{"COPYDIR",4},{"EXPECT_EXIT",3},{"EXPECT_FILE",4},{"EXPECT_NOFILE",3},{"CAPTURE",2},{"SUMTREE",3},{"EXPECT_EQ",4},{"EXPECT_NE",4},{"EXPECT_EXISTS",3},
-                {"EXPECT_HAS",4},{"EXPECT_LACKS",4},{"EXPECT_OUT",3},{"EXPECT_OUT_IS",3},{"EXPECT_OUT_LACKS",3},{"ENV",3},{"SLEEP",2},{"WAIT_HAS",5},{"EXPECT_ALIVE",3},{"EXPECT_DEAD",3},{"CLEAN",1} };
+                {"EXPECT_HAS",4},{"EXPECT_LACKS",4},{"EXPECT_OUT",3},{"EXPECT_OUT_IS",3},{"EXPECT_OUT_LACKS",3},{"ENV",3},{"SLEEP",2},{"WAIT_HAS",5},{"EXPECT_ALIVE",3},{"EXPECT_DEAD",3},{"CLEAN",1},{"PLAY_PAGE",4} };
             int bad = 0; for (size_t li = 0; li < sizeof LIM / sizeof LIM[0]; li++) if (!strcmp(v, LIM[li].verb) && nf > LIM[li].max && !(nf == LIM[li].max + 1 && !fld[nf - 1][0])) bad = 1;
             if (bad) { check(0, v, "row has extra fields: an unescaped | in the text? use \\p"); continue; }
+        }
+        if (!strcmp(v, "PLAY_PAGE") && nf >= 3 && T[0]) {      /* PLAY_PAGE | <event package dir under $T> | <trigger> | [state dir under $T]: builds prisc + event_page_op into $T once, then becomes a RUN row, so EXPECT_EXIT / EXPECT_OUT / EXPECT_HAS judge it (2026-11-01) */
+            static char pk[P], tr[64], sd[P], pr[P], ep[P]; struct stat bst; char cmd[4 * P];
+            expand(fld[1], a, sizeof a); snprintf(pk, sizeof pk, "%s/%s", T, a); snprintf(tr, sizeof tr, "%s", fld[2]);
+            if (nf >= 4 && fld[3][0]) { expand(fld[3], b, sizeof b); snprintf(sd, sizeof sd, "%s/%s", T, b); } else snprintf(sd, sizeof sd, "%s/event_pkg/pages/page_1", pk);      /* a page's `exec cmd_1.sh` is relative to the state dir */
+            snprintf(pr, sizeof pr, "%s/prisc", T); snprintf(ep, sizeof ep, "%s/event_page_op", T);
+            if (stat(pr, &bst) != 0) { snprintf(cmd, sizeof cmd, "nice -n 15 gcc -O1 -w -o '%s' '%s/&.widgits/_shared-lib/system/prisc+x.c' -lm", pr, HOUSE); if (system(cmd)) {} }
+            if (stat(ep, &bst) != 0) { snprintf(cmd, sizeof cmd, "nice -n 15 gcc -O1 -w -o '%s' '%s/&.widgits/digipet/ops/event_page_op.c'", ep, HOUSE); if (system(cmd)) {} }
+            if (stat(pr, &bst) != 0 || stat(ep, &bst) != 0) { check(0, "PLAY_PAGE", "could not build prisc / event_page_op"); continue; }
+            nf = 0; fld[nf++] = (char *)"RUN"; fld[nf++] = ep; fld[nf++] = pk; fld[nf++] = T; fld[nf++] = (char *)"--trigger"; fld[nf++] = tr; fld[nf++] = (char *)"--prisc"; fld[nf++] = pr; fld[nf++] = (char *)"--state"; fld[nf++] = sd; v = fld[0];
         }
         if (!strcmp(v, "RESULTS") && nf >= 2) {
             snprintf(RESULTS, sizeof RESULTS, "%s/%s", cdir, fld[1]);
