@@ -1,0 +1,4 @@
+# mcl_touch_page.pal - the mcl-hq touch page proved by playing it. Read results/mcl_touch_page.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/mcl_touch_page.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/mcl_touch_page.pdl
+halt

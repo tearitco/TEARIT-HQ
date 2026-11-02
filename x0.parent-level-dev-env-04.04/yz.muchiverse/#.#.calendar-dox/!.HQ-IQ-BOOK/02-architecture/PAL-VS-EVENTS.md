@@ -41,7 +41,7 @@ Rule of thumb (MINE): if the owner could say "the door opens when you touch it",
 
 1. **No verdict.** The mcl touch page `city/ev/20` has `event.pal` containing only `halt` and a condition `COND | trigger | player-touch`. Its ledger shows it triggered, and also shows two earlier failures (no `event.pal` for 20; a missing `default_op.txt`) that no one was told about until someone read the file. A page reports by writing a line, not by failing.
 2. **Needs a living game.** A page plays only while a board or daemon is up. A closed window means no page runs, so "the check ran and passed" cannot be distinguished from "nothing ran". The harness's whole point is that it runs and judges even when nothing is up.
-3. **A page that does nothing still looks fine.** The touch page's "effect" today is "this page runs" (its own comment: `# expected: step onto 8,4. effect: this page runs.`). That proves the trigger fires. It does not prove a result. A real effect needs an op behind the page and a harness row that reads what the op wrote.
+3. **A page that does nothing still looks fine.** Before 2026-11-01 the mcl touch page's "effect" was "this page runs" (its own comment). That proved the trigger fires, not a result; it now runs a real verb and `mcl_touch_page.pal` reads what that verb wrote. A real effect needs an op behind the page and a harness row that reads what the op wrote.
 
 ## 5. Why a harness is not enough alone (MINE, from the same session)
 
@@ -67,4 +67,4 @@ Rule of thumb (MINE): if the owner could say "the door opens when you touch it",
 ## 8. Open items
 
 - No verb yet plays a named page in a scratch copy and returns its ledger row to the case. Proposed as one verb to replace three (see `21.drive-doc-fix/HARNESS-REUSE.md` section 2). Not built.
-- The mcl touch page has no effect yet; the first real event-plus-harness proof should give it one.
+- Done 2026-11-01: the mcl touch page `city/ev/20` now has an effect (it runs the game's `help` verb, so `state/help_step.txt` advances and `state/note.txt` holds the next help line) and `harness/mcl_touch_page.pal` plays it with `event_page_op` in a scratch house and reads those files (14 checks; a wrong verb and a wrong trigger each made it fail). Still open: a generic `PLAY_PAGE` case verb, so the next page does not need its own build-and-copy setup.

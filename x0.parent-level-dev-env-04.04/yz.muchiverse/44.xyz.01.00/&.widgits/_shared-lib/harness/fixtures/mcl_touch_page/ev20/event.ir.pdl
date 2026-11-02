@@ -1,0 +1,1 @@
+# expected: a character steps onto 8,4 in the city. effect: the next line of the 6-step help is shown (state/help_step.txt advances by one, state/note.txt holds that line).

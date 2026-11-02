@@ -1,0 +1,4 @@
+# event.pal - compiled from event.ir.pdl (same form verbgen writes for the other mcl-hq verb pages)
+# pkg=step-south page=page_1
+exec cmd_1.sh
+halt
