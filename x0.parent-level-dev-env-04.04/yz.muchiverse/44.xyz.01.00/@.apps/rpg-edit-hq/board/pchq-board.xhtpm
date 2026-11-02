@@ -29,7 +29,6 @@
       <repeat count="${n_file_opts}" bind="f">
         <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
       </repeat>
-      <item id="bk-blueprintz" class="pchq-menu-row dropdown-child " target_id="tb-book" label="blueprintz (events of this book)" action="sh '${HOUSE}/&.hq-apps/blueprintz/button.sh' '${HOUSE}'"/>
       <item id="bk-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
       <repeat count="${n_room}" bind="room">
         <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire goto ${room.id}"/>
