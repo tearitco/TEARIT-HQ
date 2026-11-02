@@ -1,0 +1,2 @@
+# wallet files hold password_hash (unsalted SHA-256): runtime secrets, never tracked (untracked 2026-11-02, see HQ-IQ-BOOK 16.game/WALLET-CONVENTIONS-2026-11-02.md)
+wallets/*/wallet.txt
