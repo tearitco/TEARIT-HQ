@@ -8,7 +8,7 @@ The loop itself is `HOW2-DRIVE-DOC-FIX.md`. Open bugs that are written
 and still open stay in `OPEN.md` and in HOW2 "Seen". Those are not
 redone either. They wait for a named fix.
 
-Check without a window: `sh harness/editor-skip.sh` from this folder.
+Check without a window: run `editor_skip.pal` in `&.widgits/_shared-lib/harness` (see `HARNESS-REUSE.md`).
 
 ## Closed
 

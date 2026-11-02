@@ -1,0 +1,5 @@
+# editor_skip.pal - read results/editor_skip.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/editor_skip.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/editor_skip.pdl
+exec ./ops/+x/harness_bank_op.+x cases/editor_skip.pdl
+halt

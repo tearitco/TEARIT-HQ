@@ -1,0 +1,48 @@
+# editor_skip - the closed rows of 21.drive-doc-fix/DONE.md that can be checked from SOURCE, with no window, no relay, no camera.
+# Replaces the source half of 21.drive-doc-fix/harness/editor-skip.sh. Live board state is editor_skip_live.pdl (it only means something while a board is open).
+# Reads the live house files read-only. Writes only the results ledger.
+RESULTS | ../results/editor_skip.txt
+CASE    | skip
+SCRATCH |
+
+# DONE: a book or page change redraws the pane (projector appends one byte to bv_screen_changed.txt)
+RUN | grep | -qF | -e | bv_screen_changed.txt | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-wakes-pane
+
+# DONE: the editor book menu lists every book with its own name (repeat over n_file_opts, rows fo-N, label is f.label)
+RUN | grep | -qF | -e | n_file_opts | $HOUSE/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | menu-repeat-over-file-opts
+RUN | grep | -qF | -e | label="${f.label}" | $HOUSE/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | menu-row-uses-own-label
+RUN | grep | -qF | -e | n_file_opts | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-file-opts
+
+# DONE: In is toolbar tab 1, Menu/Book after it
+RUN | grep | -qF | -e | id="tb-in" | $HOUSE/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | in-tab-present
+RUN | grep | -qF | -e | id="tb-book" | $HOUSE/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | book-tab-present
+
+# DONE: blueprintz under Stop in the player menu
+RUN | grep | -qF | -e | id="pm-blueprintz" | $HOUSE/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | player-menu-blueprintz
+
+# DONE: touch rows survive a bar.txt rewrite (mcl touch page)
+RUN | grep | -qF | -e | player-touch | $HOUSE/&.widgits/_shared-lib/petslike_core.c
+EXPECT_EXIT | 0 | core-keeps-touch-rows
+
+# DONE: voice stays on; a closed or loading window stays quiet
+RUN | grep | -qF | -e | page_is_up | $HOUSE/&.widgits/_shared-lib/petslike_core.c
+EXPECT_EXIT | 0 | core-quiet-without-page
+RUN | grep | -qF | -e | play.pid | $HOUSE/&.widgits/_shared-lib/petslike_core.c
+EXPECT_EXIT | 0 | core-stops-line-on-close
+RUN | grep | -qF | -e | reuse_line | $HOUSE/&.widgits/_shared-lib/petslike_core.c
+EXPECT_EXIT | 0 | core-reuses-wav
+RUN | grep | -qF | -e | 0 | $HOUSE/@.apps/rpg-edit-hq/state/flag_voice.txt
+EXPECT_EXIT | 1 | voice-flag-not-zero
+
+# DONE: a map with no start cell spawns at the center (fallback), START.txt still wins
+RUN | grep | -qF | -e | START.txt | $HOUSE/@.apps/piececraft-hq/ops/pc_generate_chunk.c
+EXPECT_EXIT | 0 | spawn-start-file-wins
+RUN | grep | -qF | -e | int spawn_col = 8; | $HOUSE/@.apps/piececraft-hq/ops/pc_generate_chunk.c
+EXPECT_EXIT | 0 | spawn-center-fallback

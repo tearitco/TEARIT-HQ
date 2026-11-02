@@ -22,8 +22,8 @@ not a handoff. A new agent starts here.
 - `DONE.md` — rows already driven, documented, and fixed. Read this
   before a launch. Do not re-drive a row that has a proof.
 - `PROOF-2026-10-29.md` — the hashes and sessions for those rows.
-- `harness/editor-skip.sh` — read-only check of the closed editor
-  rows. It does not open a board.
+- `HARNESS-REUSE.md` — what harnesses exist, the gaps the drive loop hits, rules for new checks.
+- The closed-row check is a pal harness: `cd '&.widgits/_shared-lib/harness'; prisc editor_skip.pal` (source, always valid) and `editor_skip_live.pal` (state files, only while a board is open). It does not open a board.
 - `ONBOARD-CODEX.md` — Codex-specific re-onboarding from the 2026-10-30
   editor drive: intended screen roles, party/footer distinctions, verified
   new-page edit/play, projector rebuild, and branch handoff.

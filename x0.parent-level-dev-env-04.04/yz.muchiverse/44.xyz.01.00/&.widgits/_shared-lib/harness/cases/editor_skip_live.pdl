@@ -1,0 +1,16 @@
+# editor_skip_live - the same closed rows read from the LIVE board state files. Only meaningful while the edit board is open:
+# board/state/ui.txt is written by the projector and is STALE once the window closes (2026-11-01: it still said n_file_opts=003, label default-legacy,
+# from an old run, while the source already lists every book). A FAIL here with no window up is not a regression; run editor_skip.pal for that.
+RESULTS | ../results/editor_skip_live.txt
+CASE    | live
+SCRATCH |
+RUN | test | -e | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+EXPECT_EXIT | 0 | ui-file-exists
+RUN | grep | -qF | -e | arg=cdda-hq | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+EXPECT_EXIT | 0 | menu-lists-cdda
+RUN | grep | -qF | -e | arg=mcl-hq | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+EXPECT_EXIT | 0 | menu-lists-mcl
+RUN | grep | -qF | -e | arg=df-hq | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+EXPECT_EXIT | 0 | menu-lists-df
+RUN | grep | -qF | -e | no_session=1 | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+EXPECT_EXIT | 1 | pane-has-a-session
