@@ -416,3 +416,23 @@ Still true, and worth keeping in view: the structural version of this fix
 — one element per row with the kind as data, instead of 24 gated siblings
 — is still the better end state. It just stopped being the bottleneck,
 because making the gated ones free was worth 33x.
+
+
+---
+
+## 9.15 2026-10-29 — GL-OS stalled direction & wraith-alpha path
+
+**Problem:** GL-OS (in `pieces/apps/gl_os/`) stalled due to bad direction — over-engineered as a desktop host with hardcoded project paths, parser tag limitations, and broken sovereignty sync.
+
+**Observation:** The `.xhtpm` layout files (e.g. `network-browser-hq.xhtpm` in `&.hq-apps/network/`) define the row-projection UI chrome — one `<text>`/`<item>`/`<cli_io>`/`<bar>`/`<canvas>` per content kind per row, hidden by `show="${c.is_*}"`. These are the terminal-side UI overlay for the browser window.
+
+**Path forward (turning GL-OS into "wraith-alpha for TPMOS"):**
+- Wraith-alpha (`projects/wraith-alpha/`) already solves GL-OS's problem — a thin GL frame consumer that mirrors TPMOS content via `current_frame.rgba32` + `rgb_frame_changed.txt` polling
+- Repurpose `gl_desktop.c` as a wraith-style frame consumer instead of a project-mirroring host
+- Reuse wraith-alpha's `wraith_gl.c` GLUT setup (1024x640, frame buffer polling, input receipts)
+- Use `.xhtpm`/`.chtpm` layouts for the terminal-side UI overlay (same pattern as network-browser-hq)
+- Strip `gltpm_parser.c`, `gl_os_project_scan.c`, and per-project manager plugins
+
+**Also updated:** x86-64 build path fixed for `http_server.c` in the tomom project; `button.sh` RENDERER path corrected.
+
+**Docs:** See `xo/HANDOFF_DOCS_SUMMARY.md` and `xo-cal/oct-29-2026/` for full relay testing report.
