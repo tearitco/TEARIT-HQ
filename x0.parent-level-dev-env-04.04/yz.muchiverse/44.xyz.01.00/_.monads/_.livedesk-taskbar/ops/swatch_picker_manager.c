@@ -96,14 +96,16 @@ int main(int argc, char **argv) {
                 char *pick = strstr(buf, "PICK:");
                 char *cls = strstr(buf, "CLOSE");
                 if (cls && (!pick || cls < pick)) return 0;
+                int completed = 0;
                 if (pick) {
                     int idx = atoi(pick + 5);
                     if (idx >= 0 && idx < g_n_swatches) {
                         if (phase == 0) { bg = idx; phase = 1; }
-                        else if (phase == 1) { fg = idx; phase = 2; }
+                        else if (phase == 1) { fg = idx; phase = 2; completed = 1; }
+                        else { bg = idx; fg = -1; phase = 1; } /* a pick after "applied" = start over (don't like the pair) */
                     }
                 }
-                int apply = (phase >= 2 && bg >= 0 && fg >= 0) ? 1 : 0;
+                int apply = (completed && bg >= 0 && fg >= 0) ? 1 : 0;
                 write_state(state_path, phase, bg, fg, apply);
                 if (apply) {
                     char cmd[PATH_BUF * 3];
@@ -111,7 +113,7 @@ int main(int argc, char **argv) {
                              "'%s/_.monads/_.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
                              house, house, g_hex[bg], g_hex[fg]);
                     (void)system(cmd);
-                    return 0;
+                    /* stay alive: the window keeps showing "applied" and the next PICK re-picks */
                 }
             }
         }
