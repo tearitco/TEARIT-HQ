@@ -5795,6 +5795,8 @@ static int g_default_has_sidebar_panel = 0;
  * needing the <sidebar>+<panel> structure that flag is tied to. Set
  * once from the window class in main(). */
 static int g_default_persistent = 0;
+/* a real app window for the taskbar: has an entry, minimizes, restores. Sidebar+panel windows always did; persistent grid windows (class database-window / palettes-pal, e.g. the settings window) were drawn a "_" button that silently did nothing (owner 2026-11-02). */
+#define HQ_APP_WINDOW() (g_default_has_sidebar_panel || g_default_persistent)
 /* REAL, NEW 2026-09-09 - leftmost x of the has_canvas layout's template
  * chrome trio (x / ! / _), captured during layout (post window-frame
  * shift). The ButtonPress drag-start zone uses it to know which part of
@@ -10523,7 +10525,7 @@ static void dispatch(const char *action) {
         return;
     }
     if (strcmp(action, "MINIMIZE") == 0) {
-        if (!window_is_dock() && g_default_has_sidebar_panel) {
+        if (!window_is_dock() && HQ_APP_WINDOW()) {
             g_hq_minimized = 1;
             if (g_window && elem_has_class(g_window, "vars-positioned")) hq_min_put(g_window->label, 1);
             {
@@ -12599,7 +12601,7 @@ static void redraw_body(void) {
          * every tick for the title bar right above), so the taskbar's
          * own poll (not yet built, §2.1) always sees fresh focus/
          * position state with zero new IPC beyond a plain text file. */
-        if (g_default_has_sidebar_panel && !window_is_dock()) {
+        if (HQ_APP_WINDOW() && !window_is_dock()) {
             char reg_path[PATH_BUF], reg_tmp[PATH_BUF];
             snprintf(reg_path, sizeof(reg_path), "%s/#.desktop/livedesk_hq_windows_%d.txt", g_house_root, (int)getpid());
             snprintf(reg_tmp, sizeof(reg_tmp), "%s.tmp", reg_path);
@@ -15245,7 +15247,7 @@ static void hq_idle_tick(void) {
     }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
     dock_poll_strip_state();   /* mirror terminal-driven nav into strip_ascii_current_frame.txt promptly */
-    if (g_default_has_sidebar_panel && !window_is_dock() && dpy && win) {
+    if (HQ_APP_WINDOW() && !window_is_dock() && dpy && win) {
         char restore_path[PATH_BUF];
         snprintf(restore_path, sizeof(restore_path),
                  "%s/#.desktop/livedesk_hq_restore_%d.txt", g_house_root, (int)getpid());
