@@ -53,6 +53,7 @@
       <item id="pm-mode" class="pchq-menu-row dropdown-child " target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' mode"/>
       <item id="pm-play" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Play" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' play"/>
       <item id="pm-stop" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Stop" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' stop"/>
+      <item id="pm-blueprintz" class="pchq-menu-row dropdown-child " target_id="tb-player" label="blueprintz" action="sh '${HOUSE}/_.monads/_.livedesk-taskbar/ops/open_blueprintz.sh'"/>
       <item id="pm-save" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Save (slot 1)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire save 1"/>
       <item id="pm-load" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Load (slot 1)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire load 1"/>
       <item id="pm-synch" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (desk to game)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch"/>
