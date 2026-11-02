@@ -202,8 +202,8 @@ static const char *skin_tone(const char *house, const char *reldir) {
     long sum = 0; int n = 0, r, g, b, a;
     while (fgets(line, sizeof(line), f)) {
         if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
-        if (a < 16) continue;
-        sum += (r * 299 + g * 587 + b * 114) / 1000;
+        /* blend over the chip's own #2c2c2c fill (.skin-pick): a mostly transparent skin (white-panel is 40% opaque) reads dark, so its label must be white */
+        sum += ((r * 299 + g * 587 + b * 114) / 1000 * a + 44 * (255 - a)) / 255;
         n++;
     }
     fclose(f);
