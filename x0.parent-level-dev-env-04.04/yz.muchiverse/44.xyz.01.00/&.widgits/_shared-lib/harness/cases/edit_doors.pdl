@@ -1,0 +1,24 @@
+# The proved Islands door, and a refusal of a door that was not proved. No live trainer. No window.
+RESULTS | ../results/edit_doors.txt
+CASE    | edit-doors
+SCRATCH |
+COPY    | @.apps/rpg-edit-hq/ops/edit_doors.sh | edit_doors.sh
+COPY    | @.apps/rpg-edit-hq/doors.fsm.pdl | doors.fsm.pdl
+
+RUN | sh | $T/edit_doors.sh | list | $T/doors.fsm.pdl
+EXPECT_EXIT | 0 | list-exits-0
+EXPECT_OUT | rule start 4 4 arrow 1002 -> bank 12 13 | bank-door-is-listed
+
+# the step we drove: Islands 4,4 + up enters the Bank at 12,13
+RUN | sh | $T/edit_doors.sh | must | $T/doors.fsm.pdl | start | 4 | 4 | 1002 | bank | 12 | 13
+EXPECT_EXIT | 0 | proved-door-matches
+
+# right from that cell did not enter the Bank. The table must refuse that claim.
+RUN | sh | $T/edit_doors.sh | must | $T/doors.fsm.pdl | start | 4 | 4 | 1001 | bank | 12 | 13
+EXPECT_EXIT | 2 | unproved-door-refused
+
+# a real 2D frame has more than two colors. A black p-buffer does not.
+RUN | sh | $T/edit_doors.sh | scene-self | good
+EXPECT_EXIT | 0 | colored-frame-passes
+RUN | sh | $T/edit_doors.sh | scene-self | black
+EXPECT_EXIT | 2 | black-frame-fails
