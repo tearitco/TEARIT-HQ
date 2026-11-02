@@ -16,7 +16,15 @@ if [ "${1:-}" = "debounce" ]; then
     [ "$(cat "$TOK" 2>/dev/null)" = "$$" ] || exit 0
 fi
 command -v python3 >/dev/null 2>&1 || exit 0
-python3 "$HOUSE/\$.crypts/livedesk-icon-gen.py" "$HOUSE" "$ICON.new" 256 >/dev/null 2>&1 && mv -f "$ICON.new" "$ICON"
-rm -f "$ICON.new"
+# Serialize redraws and give each its own temp file: two overlapping redraws used to share "$ICON.new", so the older one's rm
+# could delete the newer one's output and the icon stayed on the previous pattern until the next click (owner 2026-11-02).
+# Under the lock, a caller that is no longer the newest (token changed) leaves the job to the newer one.
+(
+    command -v flock >/dev/null 2>&1 && flock -x 9
+    if [ "${1:-}" = "debounce" ] && [ "$(cat "$TOK" 2>/dev/null)" != "$$" ]; then exit 0; fi
+    NEW="$ICON.$$.new"
+    python3 "$HOUSE/\$.crypts/livedesk-icon-gen.py" "$HOUSE" "$NEW" 256 >/dev/null 2>&1 && mv -f "$NEW" "$ICON"
+    rm -f "$NEW"
+) 9>"$HOUSE/#.desktop/.icon_refresh.lock"
 touch "$HOME/.local/share/applications/lyfedesk.desktop" "$HOME/Desktop/LyfeDesk.desktop" 2>/dev/null
 exit 0
