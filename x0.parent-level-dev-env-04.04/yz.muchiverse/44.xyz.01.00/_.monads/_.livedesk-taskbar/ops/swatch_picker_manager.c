@@ -5,6 +5,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <ctype.h>
+#include <time.h>
 
 #define PATH_BUF 4096
 #define MAX_SWATCHES 64
@@ -45,6 +48,29 @@ static void load_swatches(const char *house) {
     fclose(f);
 }
 
+/* 1 while a settings window (khtpm_core_render started on taskbar-settings-pal.xhtpm) exists. Closing the window never tells this manager,
+ * and since it stays alive after an applied pair it would otherwise run forever (found as an orphan 2026-11-02). */
+static int settings_window_alive(void) {
+    DIR *d = opendir("/proc");
+    if (!d) return 1;
+    int found = 0;
+    struct dirent *e;
+    while (!found && (e = readdir(d))) {
+        if (!isdigit((unsigned char)e->d_name[0])) continue;
+        char p[64], buf[2048];
+        snprintf(p, sizeof(p), "/proc/%s/cmdline", e->d_name);
+        FILE *f = fopen(p, "r");
+        if (!f) continue;
+        size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+        fclose(f);
+        for (size_t i = 0; i < n; i++) if (buf[i] == '\0') buf[i] = ' ';
+        buf[n] = '\0';
+        if (strstr(buf, "khtpm_core_render") && strstr(buf, "taskbar-settings-pal.xhtpm")) found = 1;
+    }
+    closedir(d);
+    return found;
+}
+
 static void write_state(const char *state_path, int phase, int bg, int fg, int apply) {
     FILE *out = fopen(state_path, "w");
     if (!out) return;
@@ -78,7 +104,14 @@ int main(int argc, char **argv) {
         }
     }
 
+    time_t t_start = time(NULL), t_check = 0;
+    int misses = 0;
     for (;;) {
+        /* every 2 s (after a 15 s start-up grace, the launcher starts us before the window): two misses in a row = window closed */
+        if (time(NULL) - t_start > 15 && time(NULL) - t_check >= 2) {
+            t_check = time(NULL);
+            if (settings_window_alive()) misses = 0; else if (++misses >= 2) return 0;
+        }
         FILE *af = fopen(action_path, "r");
         if (af) {
             unsigned long ck = 5381;
