@@ -22,11 +22,42 @@
 #include "nb_host.h"
 #include <execinfo.h>   /* NB_CRASH_BT: fatal-signal backtrace into the worker log */
 #include <time.h>
+#include <sys/random.h>  /* getrandom(2) for nb_rand_bytes (crypto entropy) */
+#include <errno.h>       /* EINTR in nb_rand_bytes' getrandom loop */
 #include "../nb_css.h"
 #include "../nb_dom.h"
 
 /* R4 minimal shims */
 static unsigned char _nbbd(char c){ if(c>='A'&&c<='Z')return c-'A'; if(c>='a'&&c<='z')return c-'a'+26; if(c>='0'&&c<='9')return c-'0'+52; if(c=='+')return 62; if(c=='/')return 63; if(c=='=')return 64; return 255; }
+/* OS entropy for the crypto surfaces (2026-11-02).
+ *
+ * WHY: getRandomValues used rand()&0xFF and NOTHING calls srand(), so glibc
+ * seeded from 1 and every worker process produced the SAME bytes. Measured on
+ * three separate processes: all returned 67c6697351ff4aec, and the same
+ * randomUUID. That is a real correctness bug in a CSPRNG-shaped API, and a
+ * loud bot signal - a browser whose "random" values repeat every session.
+ *
+ * Read the kernel CSPRNG via getrandom(2). rand() survives only as the
+ * fallback for the case where the kernel call fails: degraded, but explicitly
+ * so, rather than silently deterministic. (getrandom rather than
+ * open("/dev/urandom") because this translation unit already has a `read`
+ * symbol that collides with <unistd.h>'s.) */
+static void nb_rand_bytes(unsigned char *out, size_t n){
+    size_t got = 0;
+    while (got < n) {
+        ssize_t r = getrandom(out + got, n - got, 0);
+        if (r <= 0) { if (r < 0 && errno == EINTR) continue; break; }
+        got += (size_t)r;
+    }
+    if (got == n) return;
+    for (size_t i = 0; i < n; i++) out[i] = (unsigned char)(rand() & 0xFF);
+}
+/* crypto.randomUUID (2026-11-02): a v4 UUID from the same OS entropy.
+ * getRandomValues already draws from. Lives here, not in the prelude, because
+ * install_events_timers builds `crypto` AFTER the prelude is evaluated - a
+ * prelude guard on getRandomValues never fires. Format per spec: version
+ * nibble 4 in byte 6, variant bits 10 in byte 8. */
+static JSValue _nb_uuid(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; (void)argc; (void)argv; unsigned char b[16]; nb_rand_bytes(b,16); b[6]=(unsigned char)((b[6]&0x0F)|0x40); b[8]=(unsigned char)((b[8]&0x3F)|0x80); char s[40]; snprintf(s,sizeof(s),"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]); return JS_NewString(ctx,s); }
 static JSValue _nb_atob(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'atob'"); const char *str=JS_ToCString(ctx,argv[0]); if(!str)return JS_EXCEPTION; size_t n=strlen(str); unsigned char *out=malloc((n/4+2)*3); if(!out){JS_FreeCString(ctx,str);return JS_EXCEPTION;} size_t o=0,i=0,ti=0; unsigned char t[4]; while(i<n){ char c=str[i++]; if(c==' '||c=='\n'||c=='\r'||c=='\t'||c=='\f'||c=='\v')continue; if(c=='=')break; unsigned char v=_nbbd(c); if(v==255)continue; t[ti++]=v; if(ti==4){ out[o++]=(t[0]<<2)|(t[1]>>4); out[o++]=((t[1]&0xF)<<4)|(t[2]>>2); out[o++]=((t[2]&0x3)<<6)|t[3]; ti=0; }} /* Flush the final partial group. Without this a padded tail was silently DROPPED: 'yhbPEA==' carries three bytes plus one, and only the three were emitted, so every padded base64 string came back short by its last byte. Verified 2026-11-02: Cloudflare's orchestrate decoder read its integer strings one character short and BigInt() then failed. */ if(ti==2){ out[o++]=(t[0]<<2)|(t[1]>>4); } else if(ti==3){ out[o++]=(t[0]<<2)|(t[1]>>4); out[o++]=((t[1]&0xF)<<4)|(t[2]>>2); } JS_FreeCString(ctx,str); /* atob yields a BINARY string: one char per byte, code 0..255. JS_NewStringLen decodes its buffer as UTF-8, so passing the raw bytes turned every byte >= 0x80 into U+FFFD (0xCA -> U+FFFD) and left every charCodeAt() consumer reading garbage. Verified 2026-11-02 against Cloudflare's orchestrate decoder, whose base64+XOR integer strings arrived as "\uff0ax\uff0a0\uff0a3..." and made BigInt() throw "invalid bigint literal". Re-encode each byte as a 2-byte UTF-8 sequence (0xC0|b>>6, 0x80|b&0x3F) when b >= 0x80 so the decode round-trips to exactly b. */ { unsigned char *u8=malloc(o*2+1); if(!u8){ free(out); return JS_ThrowOutOfMemory(ctx); } size_t u=0; for(size_t k=0;k<o;k++){ unsigned char b=out[k]; if(b<0x80){ u8[u++]=b; } else { u8[u++]=(unsigned char)(0xC0|(b>>6)); u8[u++]=(unsigned char)(0x80|(b&0x3F)); } } JSValue r=JS_NewStringLen(ctx,(const char*)u8,u); free(u8); free(out); return r; } }
 /* btoa: base64 of a BINARY string.
  *
@@ -40,7 +71,7 @@ static JSValue _nb_atob(JSContext *ctx, JSValueConst this_val,int argc,JSValueCo
  * the same family of bug and IS fixed (see tests/nb_atob_test.sh). */
 static JSValue _nb_btoa(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'btoa'"); const char *str=JS_ToCString(ctx,argv[0]); if(!str)return JS_EXCEPTION; const char tbl[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; size_t len=strlen(str); size_t olen=((len+2)/3)*4; char *out=malloc(olen+1); if(!out){JS_FreeCString(ctx,str);return JS_EXCEPTION;} size_t i=0,j=0; const unsigned char *p=(const unsigned char*)str; while(i+2<len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)|((p[i+1]>>4)&0xF)]; out[j++]=tbl[((p[i+1]&0xF)<<2)|((p[i+2]>>6)&0x3)]; out[j++]=tbl[p[i+2]&0x3F]; i+=3; } if(i+1==len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)]; out[j++]='='; out[j++]='='; }else if(i<len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)|((p[i+1]>>4)&0xF)]; out[j++]=tbl[((p[i+1]&0xF)<<2)]; out[j++]='='; } out[j]=0; JS_FreeCString(ctx,str); JSValue r=JS_NewStringLen(ctx,out,j); free(out); return r; }
 static JSValue _nb_perfnow(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val;(void)argc;(void)argv; struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts); return JS_NewFloat64(ctx, ts.tv_sec*1000.0 + ts.tv_nsec/1000000.0); }
-static JSValue _nb_grv(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'getRandomValues'"); JSValue arr=argv[0]; JSValue lval = JS_GetPropertyStr(ctx, arr, "length"); int64_t lenv = 0; JS_ToInt64(ctx, &lenv, lval); JS_FreeValue(ctx, lval); uint32_t len = (uint32_t)lenv; if(len==0||len>65536)return JS_ThrowTypeError(ctx,"Invalid typed array length"); for(uint32_t i=0;i<len;i++){ JS_SetPropertyUint32(ctx,arr,i,JS_NewInt32(ctx,rand()&0xFF)); } return JS_DupValue(ctx,arr); }
+static JSValue _nb_grv(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'getRandomValues'"); JSValue arr=argv[0]; JSValue lval = JS_GetPropertyStr(ctx, arr, "length"); int64_t lenv = 0; JS_ToInt64(ctx, &lenv, lval); JS_FreeValue(ctx, lval); uint32_t len = (uint32_t)lenv; if(len==0||len>65536)return JS_ThrowTypeError(ctx,"Invalid typed array length"); { unsigned char *buf=malloc(len?len:1); if(!buf)return JS_ThrowOutOfMemory(ctx); nb_rand_bytes(buf,len); for(uint32_t i=0;i<len;i++){ JS_SetPropertyUint32(ctx,arr,i,JS_NewInt32(ctx,buf[i])); } free(buf); } return JS_DupValue(ctx,arr); }
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../js/stb_image.h"
@@ -9057,7 +9088,7 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx,g,"atob",JS_NewCFunction(ctx,_nb_atob,"atob",1));
     JS_SetPropertyStr(ctx,g,"btoa",JS_NewCFunction(ctx,_nb_btoa,"btoa",1));
     { JSValue p=JS_NewObject(ctx); JS_SetPropertyStr(ctx,p,"now",JS_NewCFunction(ctx,_nb_perfnow,"now",0)); JS_SetPropertyStr(ctx,g,"performance",p); }
-    { JSValue c=JS_NewObject(ctx); JS_SetPropertyStr(ctx,c,"getRandomValues",JS_NewCFunction(ctx,_nb_grv,"getRandomValues",1)); JS_SetPropertyStr(ctx,g,"crypto",c); }
+    { JSValue c=JS_NewObject(ctx); JS_SetPropertyStr(ctx,c,"getRandomValues",JS_NewCFunction(ctx,_nb_grv,"getRandomValues",1)); JS_SetPropertyStr(ctx,c,"randomUUID",JS_NewCFunction(ctx,_nb_uuid,"randomUUID",0)); JS_SetPropertyStr(ctx,g,"crypto",c); }
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);

@@ -169,16 +169,27 @@ def main():
     payload = "LOAD\n%s\n%s\n%s\n%s\n%s\n%d\n%d" % (
         args.page, args.dom, args.href, args.title, args.css,
         args.width, args.height)
-    wsend(fd, payload)
-    st = pump(fd, rfile, fetch_log, args.load_timeout, frames)
-    if st is None:
+    try:
+        wsend(fd, payload)
+    except (BrokenPipeError, OSError) as e:
+        errors.append("worker died before LOAD could be written: %s" % e)
+    st = pump(fd, rfile, fetch_log, args.load_timeout, frames) if not errors else None
+    if st is None and not errors:
         errors.append("no STATUS from LOAD within %.0fs" % args.load_timeout)
 
     probe = open(args.probe, "r").read().replace("\n", " ")
-    wsend(fd, "EVAL\n%s" % probe)
-    st2 = pump(fd, rfile, fetch_log, args.eval_timeout, frames)
-    if st2 is None:
-        errors.append("no STATUS from EVAL within %.0fs" % args.eval_timeout)
+    st2 = None
+    # A worker that died during LOAD leaves us writing into a closed pipe. That
+    # is a RESULT - it says the worker crashed - and must be reported as one,
+    # not raised as a harness traceback that hides the worker's own stderr.
+    try:
+        wsend(fd, "EVAL\n%s" % probe)
+    except (BrokenPipeError, OSError) as e:
+        errors.append("worker is gone, EVAL could not be written: %s" % e)
+    if not errors:
+        st2 = pump(fd, rfile, fetch_log, args.eval_timeout, frames)
+        if st2 is None:
+            errors.append("no STATUS from EVAL within %.0fs" % args.eval_timeout)
 
     try:
         wsend(fd, "QUIT")
