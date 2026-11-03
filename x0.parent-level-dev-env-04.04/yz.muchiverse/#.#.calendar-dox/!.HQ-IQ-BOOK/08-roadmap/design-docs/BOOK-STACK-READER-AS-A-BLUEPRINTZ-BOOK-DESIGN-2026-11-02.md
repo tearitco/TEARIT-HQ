@@ -49,7 +49,7 @@ Vocabulary from `BLUEPRINTZ-DESIGN.md` section 2: book = set of pages, page = de
 Rule for every phase: harness case first (pal, `_shared-lib/harness`), negative test once, commit with explicit pathspec.
 
 ## 6. Risks
-- **blueprintz is a shell today** (B0 done, B1 read-only tree partly); R2 can proceed with events-hq alone and only gets the book view when B1 lands. Do not build the reader's own editor.
+- **Correction 2026-11-02:** an earlier draft said blueprintz is a shell. That came from the stale status line at the top of `BLUEPRINTZ-DESIGN.md`. Per its own sections 11-12 and the git log (`&.hq-apps/blueprintz`: `bp_edit_op`, `bp_book_op` book compiler, multi-page and common-event editing, switch editor, delete-page, Games menu, scale-safe page navigation), it edits events today. What is NOT yet verified for the reader: that it can load the reader's app-local `event_pkg` and compile a `reader` book; that is phase R2's first check, and any gap found there goes into the blueprintz fix list.
 - **Two event stores** (desk events vs app-local packages): the reader is app-local, which blueprintz must read anyway (design section 2).
 - **Asset share** is a mounted partition; the resolver must fail loudly (one visible line), because the old silent skip is what hid the TTS bug.
 - **Fire-and-forget `show_text`**: no "wait for dismiss", so a command after it runs at once. Fine for the reader (Show Text is last); needed before using it elsewhere.
