@@ -123,6 +123,12 @@ x0.parent-level-dev-env-04.04_*.7z
 
 # proc-lifecycle registry (runtime, PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md)
 **/#.desktop/livedesk_proc_list.txt
+**/#.desktop/proc_registry.pdl
+**/#.desktop/proc_registry.log.txt
+**/#.desktop/.proc_registry.lock
+**/#.desktop/.proc_orphan_seen
+**/#.desktop/proc_adopt_rules.pdl
+**/#.desktop/proc_violations.txt
 
 # ---------------------------------------------------------------------
 # 2026-09-28 - #.desktop/ascii_frames/ (khtpm_core_render.c's terminal-
