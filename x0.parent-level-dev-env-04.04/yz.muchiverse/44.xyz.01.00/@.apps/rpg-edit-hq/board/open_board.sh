@@ -36,6 +36,9 @@ INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"
 # Last edited book, or the Islands demo (page start) when the row is missing or names a book this instance cannot open.
 LINE=$(sh "$APP/ops/edit_last.sh" resolve "$APP/state/last_book.txt" --house "$HOUSE" --maps "$PCHQ_PKG/pieces/system/maps" --demo-book rpg-edit-hq --demo-page start) || exit 1
 BOOK=${LINE#book=}; BOOK=${BOOK%% page=*}; PAGE=${LINE#*page=}
+# User preference (#.desktop/prefs.txt, key=value, written by the future Settings HQ or by hand): editor_open=last (default: the book you edited last) | own (always this editor's own Islands book,
+# the only book where its voxel placement is allowed: the daemon refuses on any other book).
+case "$(sed -n 's/^editor_open=//p' "$HOUSE/#.desktop/prefs.txt" 2>/dev/null | tail -1)" in own) BOOK=rpg-edit-hq; PAGE=start ;; esac
 case "$BOOK" in
     *[!A-Za-z0-9_-]*|"") exit 1 ;;
 esac
