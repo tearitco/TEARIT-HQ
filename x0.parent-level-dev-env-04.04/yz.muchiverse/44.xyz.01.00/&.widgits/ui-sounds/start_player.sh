@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # start_player.sh - start (or stop) the LyfeDesk UI sound player. BOOK 19.audio/UI-SOUNDS-AND-STARTUP-DESIGN.md.  Usage: start_player.sh [boot|run|stop|status]
 #   boot       : (re)build the two ops if missing, render the sound files if ui_sounds.pdl changed, start ONE player detached; the player plays the startup chime once per HQ start (autostart uses this; stamp = boot_id + 90 s bucket)
 #   run        : the same but WITHOUT the startup chime (khtpm_core_render starts the player this way when it writes a cue and none is running)
@@ -33,7 +33,7 @@ if [ ! -d "$SND" ] || [ "$(cat "$SND/.rendered" 2>/dev/null)" != "$SUM" ]; then
 fi
 # The chime plays once per HQ START (owner 2026-11-02: a restart in the same login session was silent). `boot` runs from the autostart row on every start;
 # the stamp id is <boot_id>:<90 s bucket>, so a second call inside the same start (login autostart + launcher) stays quiet, a restart a minute or more later plays.
-BOOTARGS=(); [ "$ACTION" = "boot" ] && BOOTARGS=(--boot-stamp "$SND/startup_stamp.txt" --boot-id "$(cat /proc/sys/kernel/random/boot_id 2>/dev/null):$(( $(date +%s) / 90 ))")
-setsid nohup nice -n 10 "$PLAY" --pdl "$PDL" --sounds "$SND" --settings "$DESK/hq_ui.pdl" --cues "$DESK/ui_cue.txt" "${BOOTARGS[@]}" >"$STATE/player.log" 2>&1 < /dev/null &
+[ "$ACTION" = "boot" ] && set -- --boot-stamp "$SND/startup_stamp.txt" --boot-id "$(cat /proc/sys/kernel/random/boot_id 2>/dev/null):$(( $(date +%s) / 90 ))" || set --
+setsid nohup nice -n 10 "$PLAY" --pdl "$PDL" --sounds "$SND" --settings "$DESK/hq_ui.pdl" --cues "$DESK/ui_cue.txt" "$@" >"$STATE/player.log" 2>&1 < /dev/null &
 echo $! > "$PIDF"
 echo "ui sound player started (pid $!)"
