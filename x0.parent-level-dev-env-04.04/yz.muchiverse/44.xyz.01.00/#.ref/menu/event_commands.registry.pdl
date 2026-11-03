@@ -76,6 +76,16 @@ END
 # on the very next poll tick with no restart. Reuses mr_change_gold.+x
 # (a negative delta) rather than needing a new op - see
 # EVENT-COMMAND-REGISTRY-ARCHITECTURE.md for the full test record.
+COMMAND run_script
+  LABEL Run Script
+  FIELD1 Script in this event's folder:
+  FIELD2 -
+  PARAMS script
+  PAL exec ./{script}
+END
+# run_script (2026-11-02, book-stack reader phase R2): runs <script> from the folder of the event's own page (the VM resolves a relative exec target against the
+# .pal's directory, which is how the reader's event.pal has always called ./dispatch.sh). General: any event can hand a step to a script that lives beside it.
+
 COMMAND take_gold
   LABEL Take Gold
   FIELD1 Amount:
