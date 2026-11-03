@@ -59,3 +59,12 @@ Rule for every phase: harness case first (pal, `_shared-lib/harness`), negative 
 2. Verse data as `.pdl` rows (human-editable) or keep one file per source? *Recommend rows; the Chinese stays CUV, English KJV, both public domain.*
 3. Speak the Chinese line too (needs a Kokoro Chinese voice mapped in `voices.pdl`)? *Recommend later; English only now.*
 4. TTS auto-play with the text (as now) or a Play button? *Recommend auto-play now, button when the layout exists.*
+
+## 8. Live verification (2026-11-02, RAN on the owner's running house, the book-stack tile's own Read command)
+Ran the exact `Read` method command of `entities/book-stack/meta.pdl` (`sh -c ... prisc+x .../page_1/event.pal`, `PACKAGE_DIR` = the live pal) three times, driving the real picker with arrow keys + Enter through its relay:
+- **Menu:** the real picker shows Tao Te Ching, Proverbs 31 (daily), Bible verse (with TTS), Bible verse (text), Cancel, in that order.
+- **Proverbs 31:** the tile's own `history.txt` logged `SHOW_TEXT_FILE ... (7 lines)` and the popup (screenshot) showed `Proverbs 31:2`, the English wrapped at 70 columns and the Chinese `箴言 31:2` wrapped by character, intact. The popup stays on screen until dismissed.
+- **Bible verse (with TTS):** the tile logged an 8-line text (ID, Reference, English, Chinese); the sink-monitor recording caught one 9 s burst (the English line); the owner then reported hearing the Chinese as well, so both languages speak through the live chain. (My second recording window missed the Chinese clip, which comes after a second, slower synthesis.)
+- **Not exercised live:** Tao Te Ching, Bible verse (text), and the Cancel row in the running house (Cancel was proven against the real picker earlier; Tao/text on the real assets from the shell).
+- **Noise seen, not caused by this work:** the VM prints `[Prisc Error] Could not open ops file: .../101.mutaclsym.../system/default_op.txt` (the file is at the folder root, not `system/`) and carries on; it printed the same before R2.
+
