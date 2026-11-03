@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -66,6 +67,20 @@ static int board_window_alive(const char *root) {
     closedir(d); return found; }
 static void guard_log(const char *fmt, const char *a, const char *b) {      /* one line per decision to pieces/display/.loop_guard.log (cap 40 lines: it is only for finding out why a loop ended) */
     FILE *f = fopen("pieces/display/.loop_guard.log", "a"); if (!f) return; fprintf(f, "%ld ", (long)time(NULL)); fprintf(f, fmt, a, b); fputc('\n', f); fclose(f); }
+/* Enforced cap on the session's frame log (2026-11-03, AGENTS.md "runtime files must have an enforced cap"): pieces/display/frame_history.txt grows about 12 KB a second while the 3D board
+ * is driven (measured: 604 KB -> 1.23 MB in 17 min, nothing ever trimmed it; 45 MB an hour). This guard already runs every ~8 s inside every board's pal loop, so it is the natural place:
+ * past HIST_CAP bytes keep only the last HIST_KEEP bytes, cut at a line start. The writer appends with fopen("a") per frame, so after the truncate its next append lands at the new end. */
+#define HIST_CAP  (1L << 20)
+#define HIST_KEEP (256L << 10)
+static void trim_history(const char *path) {
+    struct stat st; if (stat(path, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= HIST_CAP) return;
+    FILE *f = fopen(path, "rb"); if (!f) return; char *buf = malloc((size_t)HIST_KEEP + 1); if (!buf) { fclose(f); return; }
+    size_t n = 0; if (fseek(f, -HIST_KEEP, SEEK_END) == 0) n = fread(buf, 1, (size_t)HIST_KEEP, f); fclose(f);
+    if (n == 0) { free(buf); return; }
+    size_t s = 0; while (s < n && buf[s] != '\n') s++; if (s < n) s++;      /* start at a line start */
+    if (truncate(path, 0) == 0) { FILE *o = fopen(path, "ab"); if (o) { fwrite(buf + s, 1, n - s, o); fclose(o); } }
+    { char was[24], kept[24]; snprintf(was, sizeof was, "%ld", (long)st.st_size); snprintf(kept, sizeof kept, "%ld", (long)(n - s)); free(buf); guard_log("frame_history.txt was %s bytes: kept the last %s", was, kept); }
+}
 int main(int argc, char **argv) {
     /* No arguments = the session defaults. The board-viewer session copies the OLD prisc VM, whose exec delivers no arguments (prisc_exec_args.pal fails on it), so the loop
      * runs this bare; arguments exist only so a test can point it elsewhere. */
@@ -76,6 +91,7 @@ int main(int argc, char **argv) {
         if (rf) { char root[3800] = ""; if (fgets(root, sizeof root, rf)) { root[strcspn(root, "\r\n")] = 0; if (root[0]) snprintf(mk, sizeof mk, "%s/pieces/system/stack_stop.txt", root); } fclose(rf); }
         marker = mk;
     }
+    trim_history("pieces/display/frame_history.txt");      /* cheap: one stat per pass (~8 s); harmless when run by hand */
     pid_t parent = getppid(); if (parent <= 1) return 0;      /* started by hand or reparented: never kill init */
     { char cp[64], cm[64] = ""; snprintf(cp, sizeof cp, "/proc/%d/comm", (int)parent); FILE *f = fopen(cp, "r"); if (f) { if (fgets(cm, sizeof cm, f)) cm[strcspn(cm, "\n")] = 0; fclose(f); }
       if (strcmp(cm, "prisc+x")) return 0; }      /* only a pal VM is ever ended: run by hand from a shell (or any other parent) the guard does nothing, it used to SIGTERM that shell */
