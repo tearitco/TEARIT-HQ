@@ -24,6 +24,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <pulse/simple.h>
 #include <pulse/error.h>
@@ -326,7 +327,19 @@ static void handle(const char *line, const Set *s, const char *sounds, long now)
         }
     }
 }
+/* Who ended me? (2026-11-03: after a desktop reset the player vanished 22-28 s after start with nothing in its log.) A fatal signal is written to stderr (= state/player.log) with the
+ * sender's pid and command line, then the player exits as it always did. Only write/open/read are used in the handler. */
+#include <signal.h>
+static void who_ended_me(int sig, siginfo_t *si, void *ctx) {
+    (void)ctx; char b[600]; int n = 0; const char *m = "ui_sound_player: ended by signal "; while (*m) b[n++] = *m++;
+    b[n++] = (char)('0' + (sig / 10) % 10); b[n++] = (char)('0' + sig % 10); const char *f = " from pid "; while (*f) b[n++] = *f++;
+    long pid = si ? (long)si->si_pid : 0; char t[24]; int k = 0; if (pid == 0) t[k++] = '0'; while (pid > 0 && k < 20) { t[k++] = (char)('0' + pid % 10); pid /= 10; } while (k) b[n++] = t[--k];
+    b[n++] = ' '; if (si && si->si_pid > 0) { char path[48]; const char *pre = "/proc/"; int q = 0; while (*pre) path[q++] = *pre++; long pp = si->si_pid; char u[24]; int uk = 0; while (pp > 0 && uk < 20) { u[uk++] = (char)('0' + pp % 10); pp /= 10; } while (uk) path[q++] = u[--uk];
+        const char *suf = "/cmdline"; while (*suf) path[q++] = *suf++; path[q] = 0; int fd = open(path, O_RDONLY); if (fd >= 0) { ssize_t r = read(fd, b + n, 400); close(fd); if (r > 0) { for (ssize_t i = 0; i < r; i++) if (!b[n + i]) b[n + i] = ' '; n += (int)r; } } }
+    b[n++] = '\n'; ssize_t w = write(2, b, (size_t)n); (void)w; _exit(0);
+}
 int main(int argc, char **argv) {
+    { struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_sigaction = who_ended_me; sa.sa_flags = SA_SIGINFO; sigemptyset(&sa.sa_mask); int sg[] = { SIGTERM, SIGHUP, SIGINT, SIGQUIT, SIGPIPE }; for (size_t k = 0; k < sizeof sg / sizeof sg[0]; k++) sigaction(sg[k], &sa, NULL); }
     const char *pdl = NULL, *sounds = NULL, *settings = NULL, *cues = NULL, *dry = NULL;
     int drain = 0, have_now = 0;
     long fixed_now = 0, max_bytes = 65536;
