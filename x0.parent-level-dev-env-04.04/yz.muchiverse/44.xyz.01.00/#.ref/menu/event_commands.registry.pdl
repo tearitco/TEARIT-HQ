@@ -86,6 +86,17 @@ END
 # run_script (2026-11-02, book-stack reader phase R2): runs <script> from the folder of the event's own page (the VM resolves a relative exec target against the
 # .pal's directory, which is how the reader's event.pal has always called ./dispatch.sh). General: any event can hand a step to a script that lives beside it.
 
+COMMAND run_menu
+  LABEL Run Menu
+  FIELD1 Menu file (relative to the house root):
+  FIELD2 -
+  PARAMS menu
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_run_menu.+x" "$ENT" "$D" '{menu}'
+END
+# run_menu (2026-11-02, book-stack reader phase R2b): shows a DATA-driven menu (rows `SOURCE | order | action | label` in the menu file) in the shared picker, waits with no
+# timeout (show_choices auto-picks its default after 30 s), and runs <dir of the menu file>/../branches/<action>/run.sh for the picked row. Only a listed action with a script
+# is run. See ops/mr_run_menu.c.
+
 COMMAND take_gold
   LABEL Take Gold
   FIELD1 Amount:

@@ -1,0 +1,5 @@
+# run_menu.pal - pal harness (cases/run_menu.pdl). Read results/run_menu.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/run_menu.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/run_menu.pdl
+exec ./ops/+x/harness_bank_op.+x cases/run_menu.pdl
+halt

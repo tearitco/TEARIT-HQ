@@ -2,4 +2,4 @@ SECTION      | KEY                | VALUE
 ----------------------------------------
 META         | piece_id           | reader
 STATE        | source               | events-hq
-NODE         | id=1 type=run_script | script=dispatch.sh
+NODE         | id=1 type=run_menu | menu=_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/data/sources.pdl

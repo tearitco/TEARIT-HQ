@@ -1,0 +1,62 @@
+# run_menu (BOOK-STACK-READER-AS-A-BLUEPRINTZ-BOOK-DESIGN-2026-11-02.md R2b): the events-hq op mr_run_menu.c behind the `run_menu` registry command.
+# Scratch house: a menu file (SOURCE rows), branch scripts that only leave a marker file, and a STUB picker that prints a fixed token (the real picker is a window).
+# Proves: only the picked, listed branch runs; cancel / CLOSE / an unlisted name run nothing; rows sort by order and bad rows are dropped; unsafe menu paths are refused.
+RESULTS | ../results/run_menu.txt
+CASE    | picked-branch-runs-others-do-not
+SCRATCH |
+COPY    | &.widgits/events-hq/ops/+x/mr_run_menu.+x | bin/menu
+MKDIR   | pkg
+MKDIR   | house/&.widgits/tile-picker/ops/+x
+MKDIR   | house/book/pg/branches/tao
+MKDIR   | house/book/pg/branches/pro
+MKDIR   | house/book/pg/branches/ghost
+WRITE   | house/book/pg/data/sources.pdl | # menu\nSOURCE \p 2 \p pro \p Proverbs\nSOURCE \p 1 \p tao \p Tao Te Ching\nSOURCE \p 3 \p noscript \p No script here\nSOURCE \p 4 \p bad-name \p Bad name\nSOURCE \p x \p tao \p Bad order\n
+WRITE   | house/book/pg/branches/tao/run.sh | #!/bin/bash\necho "$PACKAGE_DIR" > "$(dirname "$0")/ran"\n
+WRITE   | house/book/pg/branches/pro/run.sh | #!/bin/bash\necho "$PACKAGE_DIR" > "$(dirname "$0")/ran"\n
+WRITE   | house/book/pg/branches/ghost/run.sh | #!/bin/bash\necho x > "$(dirname "$0")/ran"\n
+WRITE   | house/&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x | #!/bin/sh\ncp "$2" "$(dirname "$0")/choices.seen"\nprintf tao\n
+RUN     | chmod | +x | $T/house/&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x
+RUN     | env | PACKAGE_DIR=$T/pkg | $T/bin/menu | $T/ent | $T/house | book/pg/data/sources.pdl
+EXPECT_EXIT | 0 | picking-tao-exits-zero
+EXPECT_HAS  | house/book/pg/branches/tao/ran | pkg | the-picked-branch-ran-with-PACKAGE_DIR
+EXPECT_NOFILE | house/book/pg/branches/pro/ran | an-unpicked-branch-did-not-run
+EXPECT_HAS  | house/&.widgits/tile-picker/ops/+x/choices.seen | label=Tao Te Ching | the-menu-lists-the-sorted-rows
+EXPECT_LACKS | house/&.widgits/tile-picker/ops/+x/choices.seen | No script here | a-row-without-a-script-is-dropped
+EXPECT_LACKS | house/&.widgits/tile-picker/ops/+x/choices.seen | Bad name | a-bad-action-name-is-dropped
+EXPECT_LACKS | house/&.widgits/tile-picker/ops/+x/choices.seen | Bad order | a-bad-order-is-dropped
+EXPECT_NOFILE | pkg/.run_menu_choices.tmp.pdl | the-temp-choices-file-is-removed
+CLEAN   |
+CASE    | cancel-close-and-unlisted-run-nothing
+SCRATCH |
+COPY    | &.widgits/events-hq/ops/+x/mr_run_menu.+x | bin/menu
+MKDIR   | pkg
+MKDIR   | house/&.widgits/tile-picker/ops/+x
+MKDIR   | house/book/pg/branches/tao
+MKDIR   | house/book/pg/branches/ghost
+WRITE   | house/book/pg/data/sources.pdl | SOURCE \p 1 \p tao \p Tao\n
+WRITE   | house/book/pg/branches/tao/run.sh | #!/bin/bash\necho x > "$(dirname "$0")/ran"\n
+WRITE   | house/book/pg/branches/ghost/run.sh | #!/bin/bash\necho x > "$(dirname "$0")/ran"\n
+WRITE   | house/&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x | #!/bin/sh\nexit 0\n
+RUN     | chmod | +x | $T/house/&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x
+RUN     | env | PACKAGE_DIR=$T/pkg | $T/bin/menu | $T/ent | $T/house | book/pg/data/sources.pdl
+EXPECT_EXIT | 0 | cancel-exits-zero
+EXPECT_NOFILE | house/book/pg/branches/tao/ran | cancel-runs-nothing
+WRITE   | house/&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x | #!/bin/sh\nprintf CLOSE\n
+RUN     | env | PACKAGE_DIR=$T/pkg | $T/bin/menu | $T/ent | $T/house | book/pg/data/sources.pdl
+EXPECT_NOFILE | house/book/pg/branches/tao/ran | CLOSE-runs-nothing
+WRITE   | house/&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x | #!/bin/sh\nprintf ghost\n
+RUN     | env | PACKAGE_DIR=$T/pkg | $T/bin/menu | $T/ent | $T/house | book/pg/data/sources.pdl
+EXPECT_NOFILE | house/book/pg/branches/ghost/ran | a-name-that-has-a-script-but-is-not-in-the-menu-does-not-run
+CLEAN   |
+CASE    | unsafe-menu-paths-are-refused
+SCRATCH |
+COPY    | &.widgits/events-hq/ops/+x/mr_run_menu.+x | bin/menu
+MKDIR   | house/a
+RUN     | $T/bin/menu | $T/ent | $T/house | /etc/passwd
+EXPECT_EXIT | 1 | absolute-path-refused
+EXPECT_OUT  | relative to the house root | and-says-why
+RUN     | $T/bin/menu | $T/ent | $T/house | a/../a/x.pdl
+EXPECT_EXIT | 1 | dotdot-refused
+RUN     | $T/bin/menu | $T/ent | $T/house | a/missing.pdl
+EXPECT_EXIT | 1 | missing-file-is-an-error-not-a-silent-success
+CLEAN   |
