@@ -7,7 +7,7 @@
  *                                                      priority; its exit status is returned. One row per run in #.desktop/heavy_runs.txt (capped at 200 rows).
  * limits (defaults come from #.desktop/proc_mon_guard.pdl warn_pct / temp_warn_c, else 70 / 85):  --max-busy <pct>  --max-temp <C>  --max-house <pct of the machine, default 30>
  * busy = the whole machine over a 1 s sample (/proc/stat); house = CPU used by processes whose command line names this house, over the same second, as a percent of the machine;
- * temp = the hottest /sys/class/thermal zone (0 when unreadable, then the check ignores it).
+ * temp = the hottest of the /sys/class/thermal zones and the hwmon k10temp / coretemp die sensor (the one cpu_guard reads; 0 when unreadable, then the check ignores it).
  * Plain fork/exec, no shell. Exit: 0 ok / child's status, 2 usage, 3 busy, 4 heavy lock held. */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -45,6 +45,9 @@ static unsigned long long house_ticks(void) {
 }
 static int hottest(void) {
     int best = 0; for (int z = 0; z < 24; z++) { char p[96]; snprintf(p, sizeof p, "/sys/class/thermal/thermal_zone%d/temp", z); FILE *f = fopen(p, "r"); if (!f) continue; long v = 0; if (fscanf(f, "%ld", &v) == 1 && v / 1000 > best && v / 1000 < 150) best = (int)(v / 1000); fclose(f); }
+    /* 2026-11-03: the die sensor. On this Ryzen laptop the acpitz zones read 38-47 C while k10temp (the CPU die, what cpu_guard reads) read 70-87 C, so the gate called a hot machine cool. Same sources as the guard: hwmon k10temp / coretemp temp1_input. */
+    for (int h = 0; h < 24; h++) { char np[96], nm[32] = ""; snprintf(np, sizeof np, "/sys/class/hwmon/hwmon%d/name", h); FILE *nf = fopen(np, "r"); if (!nf) continue; if (fgets(nm, sizeof nm, nf)) nm[strcspn(nm, "\n")] = 0; fclose(nf);
+        if (strncmp(nm, "k10temp", 7) && strncmp(nm, "coretemp", 8)) continue; char tp[96]; snprintf(tp, sizeof tp, "/sys/class/hwmon/hwmon%d/temp1_input", h); FILE *tf = fopen(tp, "r"); if (!tf) continue; long v = 0; if (fscanf(tf, "%ld", &v) == 1 && v / 1000 > best && v / 1000 < 150) best = (int)(v / 1000); fclose(tf); }
     return best;
 }
 static int pdl_int(const char *key, int def) {
