@@ -174,3 +174,51 @@ fingerprint-grade and justify it separately. Recommended direction: back to the
 KPI ladder (K1/K2 standing, then G1.4 focus safety, G2.5 `@media`), measuring
 against pages that do not gate, so progress is visible rather than blocked on
 one hostile endpoint.
+
+
+### 6a. Attribution run + a correction to section 1 (same day, 2026-11-02)
+
+**The three red suites are not ours.** Method: build the worker from
+`2ed13fdd7` (the last commit before this session - which also lacks the
+previous session's shim block), then re-run them. Control first, and it earned
+its keep: the swap was verified by md5 (worker differed) and by the source
+containing none of the new code.
+
+| suite | pre-session build | HEAD build | verdict |
+|---|---|---|---|
+| `nb_find_test.sh` | fails, the SAME two assertions | fails, same two | deterministic, pre-existing |
+| `nb_span_drag_test.sh` | rc 0,1,1 (3 runs) | rc 0,0,0 then 1,1 earlier (5 runs) | flaky on BOTH, no build correlation |
+| `nb_span_select_test.sh` | fails (S2) | pass once, then S6, then S1/S2 | flaky on BOTH, varying failure point |
+
+They also cannot reach the changed code: `nb_find_test.sh` navigates to
+`tests/fixtures/mini-article.html`, which is 453 bytes with **no `<script>`
+tag** (the worker parses static HTML and nothing else), and the `span_*`
+fixtures are `.xhtpm` khtpm windows whose selection, highlight band and
+clipboard are C + X11 (driven by `XSendEvent`/`xclipget` via ctypes).
+
+`nb_find_test.sh`'s two failures are therefore a pre-existing defect in
+find-in-page, worth its own ticket: "mirror says 3, frame says 2" (the find
+system counts a match the frame never paints) and "no wrap (at=3)".
+
+**CORRECTION to section 1.** That section says the `atob` bug "survived for
+months because `rung6_atob_test.js` round-tripped ASCII only". The duration is
+WRONG, and the causal claim with it. The pre-session build passes the new atob
+gate **6/6** - so the engine's `atob`, which is the pure-JS implementation in
+`nb_host.h`'s prelude, was already CORRECT.
+
+The buggy C `_nb_atob` (UTF-8 mis-decode + missing padded-tail flush) arrived
+with the **R4 shim block** - the uncommitted work sitting in the worktree at the
+start of this session (verified: `grep -c "R4 minimal shims"` is 0 at
+`2ed13fdd7` and 1 at HEAD). That block installed `_nb_atob` with
+`JS_SetPropertyStr(ctx, g, "atob", ...)`, **overriding a working
+implementation** and replacing it with a broken one.
+
+So the defect was a regression introduced by a shim, days old - not a
+months-old engine bug. The rung6 test's ASCII-only weakness is real, but it is
+not why this existed; nothing re-tested `atob` *after* the override. That is
+the transferable lesson, and it is the same error made again later in this
+session when a prelude block overrode the working C `Blob`/`File` and wedged
+the worker (lesson 2 above).
+
+The fix stands: `atob` is now correct at the C layer as well. But the shim that
+caused it should not have reimplemented `atob` at all.
