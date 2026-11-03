@@ -5,6 +5,9 @@
 HERE="$(cd "$(dirname "$0")" && pwd)"; APP="$(dirname "$HERE")"; HOUSE="$(cd "$APP/../.." && pwd)"
 # rpg-edit-hq runs on its OWN pc-hq instance (PCHQ-SESSIONS-DESIGN.md): data folder <app>/rpg-edit-hq-pchq (world, hero, xelector, maps, engine sessions), programs shared from @.apps/piececraft-hq. The launcher
 # creates the folder when it is missing and only ever replaces THIS instance's board window, never another game's.
+# Ask first (cpu_gate, hq-cpu-safety.md section 10): a relaunch starts a daemon, an engine and a window; do not start it on a machine that is already hot (waits up to 90 s for it to calm).
+GATE="$HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x"
+[ -x "$GATE" ] && { "$GATE" "$HOUSE" check --wait 90 >/dev/null || { echo "open_board: the machine is too busy right now (cpu_gate); not relaunching" >&2; exit 1; }; }
 export PCHQ_PKG="$APP/rpg-edit-hq-pchq"
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
 mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf "side_left=1\nside_right=1\n" > "$HERE/state/sides.txt"

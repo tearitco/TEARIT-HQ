@@ -193,7 +193,10 @@ case "$ACTION" in
             _blog="$TB_DIR/+x/build_error.log"
             _brc="$(mktemp 2>/dev/null || echo "/tmp/khtpm_build_rc.$$")"
             mkdir -p "$TB_DIR/+x"
-            { sh "$TB_DIR/build_khtpm_strip.sh"; echo $? > "$_brc"; } 2>&1 | tee "$_blog"
+            # the build asks first and runs niced, one heavy job at a time (cpu_gate, HQ-IQ-BOOK hq-cpu-safety.md section 10); without the gate binary it runs as before
+            _gate="$HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x"
+            if [ -x "$_gate" ]; then { "$_gate" "$HOUSE" run reset-build --wait 120 -- sh "$TB_DIR/build_khtpm_strip.sh"; echo $? > "$_brc"; } 2>&1 | tee "$_blog"
+            else { sh "$TB_DIR/build_khtpm_strip.sh"; echo $? > "$_brc"; } 2>&1 | tee "$_blog"; fi
             _brc_val="$(cat "$_brc" 2>/dev/null || echo 1)"
             rm -f "$_brc"
             [ "$_brc_val" = 0 ] || { echo "BUILD FAILED — desktop left stopped, not relaunched with a stale binary (full output: $_blog)"; exit 1; }

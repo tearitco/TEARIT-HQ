@@ -256,6 +256,9 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
 #elif PET_SECTION == 68
     { static long vsz = -1; char vp[PATH_MAX]; struct stat vs; snprintf(vp, sizeof vp, "%s/voxels.pdl", ST); long cur = stat(vp, &vs) == 0 ? (long)vs.st_size : 0;
       if (vsz >= 0 && cur != vsz) { load_data(); replay(); } vsz = cur; }      /* a verb process placed a new voxel kind: the catalog gained a row */
+    {   /* the 3D book follows the ledger: any change of house.txt (a placement, a REMOVE, a MOVE, a buy - from this daemon or any verb process) re-exports the rooms once. Found 2026-11-03: a REMOVE left the block in the 3D view because only a placement exported. One stat per tick. */
+        static long hsz = -1; char hp[PATH_MAX]; struct stat hs; snprintf(hp, sizeof hp, "%s/house.txt", ST); long cur = stat(hp, &hs) == 0 ? (long)hs.st_size : 0;
+        if (hsz >= 0 && cur != hsz) { replay(); char em[200]; export3d(em, sizeof em); } hsz = cur; }
     {   /* the engine's brush placer (bv_menu_input.c: Enter in brush mode appends "x y z" to <session>/pieces/display/place_requests.txt): place each new request, never an old one */
         static char rsess[PATH_MAX] = ""; static long roff = -1; char up[PATH_MAX], sess[PATH_MAX] = "", ub[2048]; snprintf(up, sizeof up, "%s/board/state/ui.txt", APP); read_file(up, ub, sizeof ub);
         for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
