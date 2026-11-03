@@ -1,6 +1,6 @@
 # CPU-LINT-BASELINE-2026-11-03.txt - the throttling-pattern hits that existed when cpu_lint landed (HQ-IQ-BOOK 03-pitfalls/hq-cpu-safety.md section 10). A file may only ever have FEWER hits than listed. Regenerate: cpu_lint <house> --emit. A hit that is on purpose gets a 'cpu-ok: <why>' comment on its line instead.
 # kinds: c-busy-loop (a loop that cannot leave and never blocks), c-tight-sleep (usleep <= 5 ms), sh-heavy-no-nice (compile / ffmpeg / convert without nice or cpu_gate), sh-loop-no-sleep
-
+# 2026-11-03 later: build_rpg_edit_hq.sh compiles niced: 570 -> 569
 c-tight-sleep &.widgits/_shared-lib/petslike_core.c:160
 c-tight-sleep &.widgits/_shared-lib/petslike_core.c:161
 c-tight-sleep &.widgits/file-menu/ops/fm_menu_input.c:321
@@ -71,8 +71,8 @@ sh-heavy-no-nice #.z.mirror_llm]z5]IQABOD🪞️+4/xsh.compile-all.+x.sh:27
 sh-heavy-no-nice #.z.mirror_llm]z5]IQABOD🪞️+4/xsh.compile-all.+x.sh:46
 sh-heavy-no-nice #.z.mirror_llm]z5]IQABOD🪞️+4/xsh.compile-all.+x.sh:67
 sh-heavy-no-nice $.crypts/button.sh:107
-sh-heavy-no-nice $.crypts/button.sh:204
-sh-heavy-no-nice $.crypts/button.sh:227
+sh-heavy-no-nice $.crypts/button.sh:207
+sh-heavy-no-nice $.crypts/button.sh:230
 sh-heavy-no-nice %.harnesses/file-menu+editor/button.sh:23
 sh-heavy-no-nice %.harnesses/install-xyzos/button.sh:26
 sh-heavy-no-nice &.hq-apps/auction-hq/ops/build_auction_manager.sh:5
@@ -510,7 +510,6 @@ sh-heavy-no-nice @.apps/piececraft-xyz/scripts/build.sh:47
 sh-heavy-no-nice @.apps/piececraft-xyz/scripts/build.sh:48
 sh-heavy-no-nice @.apps/piececraft-xyz/scripts/build.sh:49
 sh-heavy-no-nice @.apps/rpg-dust/ops/build_dust_check.sh:6
-sh-heavy-no-nice @.apps/rpg-edit-hq/ops/build_rpg_edit_hq.sh:6
 sh-heavy-no-nice @.apps/rpg-edit-hq/ops/edit_last.sh:57
 sh-heavy-no-nice @.apps/rpg-space/ops/build_dust_check.sh:6
 sh-heavy-no-nice @.apps/screen-rec-hq/ops/build_screen_rec_manager.sh:6

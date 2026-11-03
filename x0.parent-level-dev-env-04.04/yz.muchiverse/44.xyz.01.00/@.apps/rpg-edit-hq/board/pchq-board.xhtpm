@@ -97,12 +97,14 @@
       <!-- LEFT pinned bar, palettes (shares the left slot with the pets bar: pal_side writes side_left / side_pal together, so only one shows). Two views by state key: the category list (pal_is_list), or one category (pal_is_tiles) with a back row. Tiles: the category's tiles as sprite rows; a click arms the brush (pal_side arm). -->
       <row id="side-p" class="canvas-overlay-left ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_pal}">
         <text label="${pal_title}" class="hb-quiet ov-title theme-3 ov-line"/>
+        <text label="${pal_sub}" class="ph-quiet ov-line" show="${pal_sub}"/>
         <item id="sp-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' none"/>
+        <item id="sp-back" class="pchq-ft skin-bar" label="&lt; back" show="${pal_can_back}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' back"/>
         <repeat count="${n_pcat}" bind="pcat">
-          <item id="pc${pcat.#}" class="pchq-ft skin-bar" label="${pcat.label}" show="${pal_is_list}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' tiles ${pcat.key}"/>
+          <item id="pc${pcat.#}" class="pchq-ft skin-bar" label="${pcat.label}" show="${pal_is_list}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' pick ${pcat.key}"/>
         </repeat>
-        <item id="sp-back" class="pchq-ft skin-bar" label="&lt; back" show="${pal_is_tiles}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' back"/>
         <text label="no tile grid for this palette yet" class="ph-quiet ov-line" show="${pal_empty}"/>
+        <text label="${pal_more}" class="ph-quiet ov-line" show="${pal_more}"/>
         <text label="armed: ${pal_armed}" class="ph-quiet ov-line" show="${pal_armed}"/>
         <repeat count="${n_ptile}" bind="ptile">
           <item id="pt-${ptile.#}" class="pchq-ft sprite-inline sprite-big skin-bar" label="${ptile.glyph}" sprite="${ptile.sprite}" show="${pal_is_tiles}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' arm ${ptile.#}"/>
