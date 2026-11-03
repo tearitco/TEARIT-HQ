@@ -74,7 +74,7 @@ static void kv_get(const char *path, const char *key, char *out, size_t n) {
 }
 /* Sidebar layout history + start preference (owner 2026-11-03: "set in a .pdl history like the other thing, changeable by preference").
  * state/sides_history.pdl: append-only rows `SIDES | <epoch> | pets|palettes|none`, one per change (capped: past 8 KB the last 20 rows are kept; read by identity, last row wins).
- * Start layout, applied by `pal_side <house> restore` when the window opens: #.desktop/prefs.txt `sidebar_start=last|pets|palettes|none`; default `last`; with no history yet, SIDE_FIRST_RUN. */
+ * Start layout, applied by `pal_side <house> restore` when the window opens: state/prefs.txt (set from the editor's Settings tab) `sidebar_start=last|pets|palettes|none`; default `last`; with no history yet, SIDE_FIRST_RUN. */
 #define SIDE_FIRST_RUN "palettes"
 static void hist_path(const char *house, char *o, size_t n) { snprintf(o, n, "%s/@.apps/rpg-edit-hq/state/sides_history.pdl", house); }
 static void hist_add(const char *house, const char *mode) {
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
     load_cats(house);
     int tiles = 0, log_hist = 1; char key[64] = "", title[96] = "";
     if (!strcmp(verb, "restore")) {   /* the window just opened: apply the start layout (preference, else the last one, else the first-run default) without logging a new row */
-        char pr[4200], want[32], last[32]; snprintf(pr, sizeof pr, "%s/#.desktop/prefs.txt", house); kv_get(pr, "sidebar_start", want, sizeof want); hist_last(house, last, sizeof last);
+        char pr[4200], want[32], last[32]; snprintf(pr, sizeof pr, "%s/@.apps/rpg-edit-hq/state/prefs.txt", house); kv_get(pr, "sidebar_start", want, sizeof want); hist_last(house, last, sizeof last);
         const char *m = (!strcmp(want, "pets") || !strcmp(want, "palettes") || !strcmp(want, "none")) ? want : (last[0] ? last : SIDE_FIRST_RUN);
         static char mv[16]; snprintf(mv, sizeof mv, "%s", !strcmp(m, "palettes") ? "open" : !strcmp(m, "pets") ? "pets" : !strcmp(m, "none") ? "none" : "open"); verb = mv; log_hist = 0;
     }

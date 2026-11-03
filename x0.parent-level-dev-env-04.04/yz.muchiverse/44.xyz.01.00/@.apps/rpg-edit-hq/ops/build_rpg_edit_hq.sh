@@ -4,3 +4,5 @@ cd "$(dirname "$0")" && mkdir -p +x && gcc -std=gnu11 -O2 -Wall -Wextra -Wno-unu
 
 # the left-bar switch (pets <-> palettes), see pal_side.c
 gcc -std=c11 -O2 -Wall -Wextra -o +x/pal_side.+x pal_side.c || exit 1
+# the editor's own preferences (the Settings tab in its toolbar), see edit_prefs.c
+gcc -std=c11 -O2 -Wall -Wextra -o +x/edit_prefs.+x edit_prefs.c || exit 1

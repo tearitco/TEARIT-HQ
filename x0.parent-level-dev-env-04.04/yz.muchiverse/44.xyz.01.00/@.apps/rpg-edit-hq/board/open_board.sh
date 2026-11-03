@@ -36,9 +36,9 @@ INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"
 # Last edited book, or the Islands demo (page start) when the row is missing or names a book this instance cannot open.
 LINE=$(sh "$APP/ops/edit_last.sh" resolve "$APP/state/last_book.txt" --house "$HOUSE" --maps "$PCHQ_PKG/pieces/system/maps" --demo-book rpg-edit-hq --demo-page start) || exit 1
 BOOK=${LINE#book=}; BOOK=${BOOK%% page=*}; PAGE=${LINE#*page=}
-# User preference (#.desktop/prefs.txt, key=value, written by the future Settings HQ or by hand): editor_open=last (default: the book you edited last) | own (always this editor's own Islands book,
+# User preference (state/prefs.txt, key=value, set from the editor's own Settings tab by ops/edit_prefs.c): editor_open=last (default: the book you edited last) | own (always this editor's own Islands book,
 # the only book where its voxel placement is allowed: the daemon refuses on any other book).
-case "$(sed -n 's/^editor_open=//p' "$HOUSE/#.desktop/prefs.txt" 2>/dev/null | tail -1)" in own) BOOK=rpg-edit-hq; PAGE=start ;; esac
+case "$(sed -n 's/^editor_open=//p' "$APP/state/prefs.txt" 2>/dev/null | tail -1)" in own) BOOK=rpg-edit-hq; PAGE=start ;; esac
 case "$BOOK" in
     *[!A-Za-z0-9_-]*|"") exit 1 ;;
 esac
@@ -70,5 +70,6 @@ if [ -x "$REG" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
     "$REG" "$HOUSE" rule-add "$WPID" "@file:$HERE/state/ui.txt#bv_session" engine rpg-edit-hq bv-session >/dev/null 2>&1 || true
     "$REG" "$HOUSE" apply-rules >/dev/null 2>&1 || true
 fi
-# Sidebar start layout: last used (state/sides_history.pdl), or the `sidebar_start=` preference in #.desktop/prefs.txt (last|pets|palettes|none); first run = palettes with pets minimized.
+# Sidebar start layout: last used (state/sides_history.pdl), or the `sidebar_start=` preference in state/prefs.txt (last|pets|palettes|none); first run = palettes with pets minimized.
+[ -x "$APP/ops/+x/edit_prefs.+x" ] && "$APP/ops/+x/edit_prefs.+x" "$HOUSE" show >/dev/null 2>&1
 [ -x "$APP/ops/+x/pal_side.+x" ] && "$APP/ops/+x/pal_side.+x" "$HOUSE" restore >/dev/null 2>&1 || true

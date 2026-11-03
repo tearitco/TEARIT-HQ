@@ -2,7 +2,7 @@
      A copy of the layout-studio sandbox board (pinned side bars) with rpg-edit-hq's own rows: the pets and stats are the LEFT bar, chat is the RIGHT bar, the bag hotbar is the bottom overlay,
      the dropdowns are rpg-edit-hq's. The canvas is the board engine frame (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view) of the book maps/rpg-edit-hq that rpg_edit_hq.+x exports.
      Launch: sh @.apps/rpg-edit-hq/board/open_board.sh. vars: rpg-edit-hq's state files FIRST, the board's after, so canvas_raw / interact_* are the board's. RULES: no angle brackets inside comments. -->
-<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/pal.txt state/ctx.txt">
+<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/pal.txt state/prefs_ui.txt state/ctx.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rpg-edit-hq-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
@@ -16,8 +16,9 @@
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
-      <tab id="tb-load" class="pchq-tb no-nav" label="${PID} ${load_label}" onclick="void" show="${load_ok}"/>
-      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn no-nav" label="${PID} ${load_label}" onclick="void" show="${load_warn}"/>
+      <tab id="tb-set" class="pchq-tb" label="Settings ▾" onclick="ACTIVATE" target_id="tb-set"/>
+      <tab id="tb-load" class="pchq-tb no-nav" label="${load_label}" onclick="void" show="${load_ok}"/>
+      <tab id="tb-loadw" class="pchq-tb pchq-tb-warn no-nav" label="${load_label}" onclick="void" show="${load_warn}"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_party}" bind="party">
@@ -51,6 +52,11 @@
       <item id="db-hq" class="pchq-menu-row dropdown-child " target_id="tb-db" label="db-hq" action="sh '${HOUSE}/&.hq-apps/db-hq-pal/button.sh' '${HOUSE}'"/>
       <item id="db-bp" class="pchq-menu-row dropdown-child " target_id="tb-db" label="blueprintz" action="sh '${HOUSE}/&.hq-apps/blueprintz/button.sh' '${HOUSE}'"/>
       <item id="db-sql" class="pchq-menu-row dropdown-child " target_id="tb-db" label="sql-hq" action="sh '${HOUSE}/&.hq-apps/sql-hq/button.sh' '${HOUSE}'"/>
+      <!-- Settings (2026-11-03, owner: "a different settings for the rpg-edit inside the player, not the old settings menu"): one row per preference, press = next value. edit_prefs rewrites
+           state/prefs.txt (values) and board/state/prefs_ui.txt (these labels); open_board.sh reads editor_open, pal_side.c reads sidebar_start. Add a preference = a row in ops/edit_prefs.c + a row here. -->
+      <item id="set-open" class="pchq-menu-row dropdown-child " target_id="tb-set" label="${pref_editor_open_label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/edit_prefs.+x' '${HOUSE}' cycle editor_open"/>
+      <item id="set-side" class="pchq-menu-row dropdown-child " target_id="tb-set" label="${pref_sidebar_start_label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/edit_prefs.+x' '${HOUSE}' cycle sidebar_start"/>
+      <item id="set-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-set" label="- close -" action="void"/>
       <item id="db-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-db" label="- cancel -" action="void"/>
       <item id="pm-int" class="pchq-menu-row dropdown-child " target_id="tb-player" label="INT on/off (arrow keys drive a pet)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' int"/>
       <item id="pm-mode" class="pchq-menu-row dropdown-child " target_id="tb-player" label="${mode_label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' mode"/>
