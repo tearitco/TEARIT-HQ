@@ -185,9 +185,25 @@ static int ktb_system_recorded(const char *house_root, const char *cmd) {
          * kh_proc_reap_all; a future "close just this app" reaps via
          * kh_proc_reap_subtree(<the app's own root pid>) once apps
          * register their own forks (§5 step 5). */
-        if (last > 1)
+        if (last > 1) {
             kh_proc_register_owned(house_root, last, last,
                                    (long)getpid(), "tb-launch");
+            /* Also record it in the v2 process registry (#.desktop/proc_registry.pdl, AGENTS.md "every process the house starts is registered in a file"):
+             * `register-v1` mirrors the pid just written above as a `house` row and never touches the v1 ledger. Plain fork/exec, no shell; a missing op is not an error. */
+            char op[KTB_PATH_BUF], pidtxt[32];
+            snprintf(op, sizeof(op), "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", house_root);
+            snprintf(pidtxt, sizeof(pidtxt), "%ld", last);
+            if (access(op, X_OK) == 0) {
+                pid_t c = fork();
+                if (c == 0) {
+                    int nul = open("/dev/null", O_RDWR);
+                    if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); }
+                    execl(op, op, house_root, "register-v1", pidtxt, "tb-launch", (char *)NULL);
+                    _exit(127);
+                }
+                if (c > 0) { int wst; waitpid(c, &wst, 0); }
+            }
+        }
     }
     return rc;
 }

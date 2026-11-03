@@ -45,6 +45,12 @@ case "$ACTION" in
         # already handles the "process is really dead" case).
         echo "$$" > "$PIDFILE"
 
+        # Record this process in the process registry BEFORE it does any work (AGENTS.md: every process the house starts is registered in a file). `exec` keeps the pid,
+        # so the row names the real prisc+x. Lifetime `house`: it lives with the desktop and is ended by a house quit. A missing op is not an error.
+        _HOUSE="$(cd "$SCRIPT_DIR/../.." && pwd)"
+        _REG="$_HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"
+        [ -x "$_REG" ] && "$_REG" "$_HOUSE" register "$$" house 0 manager world-manager world-manager "prisc+x world_manager.pal" >/dev/null 2>&1
+
         # Execute world_manager.pal via prisc+x with relative paths
         exec "./system/prisc+x" "./world_manager.pal"
         ;;

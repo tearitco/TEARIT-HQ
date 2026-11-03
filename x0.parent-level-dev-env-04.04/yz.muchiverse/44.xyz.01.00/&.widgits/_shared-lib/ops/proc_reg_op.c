@@ -16,6 +16,7 @@
  *   proc_reg_op <house> adopt <owner_pid> <exe_prefix> <role> <app> <name>    register unregistered house processes whose exe starts with the prefix, owned by owner_pid
  *   proc_reg_op <house> rule-add <owner_pid> <exe_prefix|@file:path#key> <role> <app> <name>   declare ownership of a detached stack; applied every pass while the owner lives
  *   proc_reg_op <house> apply-rules                 apply the declared rules now (reap-orphans does it first)
+ *   proc_reg_op <house> register-v1 <pid> [name]   mirror a process already in the v1 ledger into the registry as a house row (no v1 write)
  *   proc_reg_op <house> hold <seconds>             test helper: sleep (a process whose exe is this op, so a harness can put one under a scratch house)
  * Exit: 0 ok, 2 usage, 3 violations found (audit), 1 failure. Plan: PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md */
 #define _GNU_SOURCE
@@ -160,6 +161,8 @@ static void khp_save(const char *house, const KhpRow *rows, int n) {
     if (fclose(o) == 0) rename(tmp, p); else remove(tmp);
 }
 
+/* set by `register-v1`: the process is ALREADY in the legacy v1 ledger (it put itself there), so this registration must not write, replace or drop a v1 line */
+static int g_no_legacy = 0;
 static int pr_register(const char *house, long pid, int lifetime, long owner_pid, const char *role, const char *app, const char *name, const char *cmd_override) {
     if (!house || pid <= 1) return -1;
     long st = pr_starttime(pid);
@@ -179,9 +182,9 @@ static int pr_register(const char *house, long pid, int lifetime, long owner_pid
     static KhpRow rows[KHP_MAXROWS];
     int n = khp_load(house, rows, KHP_MAXROWS - 1), at = -1;
     for (int i = 0; i < n; i++) if (rows[i].pid == pid) at = i;
-    if (at >= 0) { khp_legacy_drop(house, pid); rows[at] = r; } else rows[n++] = r;     /* re-registering a pid replaces its row (an exec'd script) */
+    if (at >= 0) { if (!g_no_legacy) khp_legacy_drop(house, pid); rows[at] = r; } else rows[n++] = r;     /* re-registering a pid replaces its row (an exec'd script) */
     khp_save(house, rows, n);
-    khp_legacy_add(house, &r);
+    if (!g_no_legacy) khp_legacy_add(house, &r);
     char d[300]; snprintf(d, sizeof d, "%s app=%s name=%s life=%s owner=%ld", r.role, r.app, r.name, khp_life(lifetime), r.owner);
     khp_log(house, "START", pid, d);
     khp_unlock(lk);
@@ -415,6 +418,11 @@ int main(int argc, char **argv) {
     if (!strcmp(cmd, "register")) {
         if (argc < 9) { fprintf(stderr, "usage: proc_reg_op <house> register <pid> <owner|keep|house> <owner_pid> <role> <app> <name>\n"); return 2; }
         return pr_register(house, atol(argv[3]), life_of(argv[4]), atol(argv[5]), argv[6], argv[7], argv[8], argc > 9 ? argv[9] : NULL) == 0 ? 0 : 1;
+    }
+    if (!strcmp(cmd, "register-v1")) {      /* register-v1 <pid> [name [role [app]]]: mirror a process that is already in the v1 ledger (kh_proc_register_owned does this) into the v2 registry as a `house` row, role legacy */
+        if (argc < 4) { fprintf(stderr, "usage: proc_reg_op <house> register-v1 <pid> [name]\n"); return 2; }
+        g_no_legacy = 1;
+        return pr_register(house, atol(argv[3]), PR_HOUSE, 0, argc > 5 ? argv[5] : "legacy", argc > 6 ? argv[6] : "-", argc > 4 ? argv[4] : "legacy", NULL) == 0 ? 0 : 1;
     }
     if (!strcmp(cmd, "unregister")) { if (argc < 4) return 2; pr_unregister(house, atol(argv[3]), "unregister"); return 0; }
     if (!strcmp(cmd, "list")) {

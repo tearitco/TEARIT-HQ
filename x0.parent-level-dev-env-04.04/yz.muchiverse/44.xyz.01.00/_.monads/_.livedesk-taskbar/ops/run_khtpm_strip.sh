@@ -196,16 +196,21 @@ case "$ACTION" in
         #  entities load fast now - so nothing is started here.)
         MANAGER="$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x"
         HEADER_CHTPM="$(cd "$SCRIPT_DIR/.." && pwd)/khtpm_strip_header.xhtpm"
-        (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$MANAGER" "$HOUSE" \
-            >> "$KHTPM_LOG" 2>&1 < /dev/null &)
+        # Started through the spawn funnel (AGENTS.md: every process the house starts is registered in a file, before it does any work): lifetime `house`, log kept.
+        FUNNEL="$HOUSE/&.widgits/_shared-lib/kh_spawn.sh"
+        tb_spawn() { # <name> <cmd...>
+            _n="$1"; shift
+            [ -f "$FUNNEL" ] || { echo "run_khtpm_strip: missing the spawn funnel $FUNNEL" >&2; return 1; }
+            (cd "$HOUSE" && KH_ROLE=manager KH_APP=taskbar KH_LIFETIME=house sh "$FUNNEL" "$HOUSE" 0 "$_n" -- sh -c 'log="$1"; shift; exec "$@" >> "$log" 2>&1 < /dev/null' tb_launch "$KHTPM_LOG" env DISPLAY="${DISPLAY:-:0}" "$@" >/dev/null)
+        }
+        tb_spawn taskbar-manager "$MANAGER" "$HOUSE"
         i=0
         while [ "$i" -lt 50 ]; do
             [ -s "$HOUSE/#.desktop/strip_ui.txt" ] && break
             sleep 0.1
             i=$((i + 1))
         done
-        (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$PARSER" "$HOUSE" "$HEADER_CHTPM" \
-            >> "$KHTPM_LOG" 2>&1 < /dev/null &)
+        tb_spawn taskbar-strip "$PARSER" "$HOUSE" "$HEADER_CHTPM"
         sleep 2
         # restart the HQ windows listed in $.crypts/close_on_restart.pdl too (the hotbar): `new` only restarts the strip, so the OLD hotbar stayed on screen and nothing relaunched it
         # (owner report 2026-10-06). Only rows that were running are brought back. Proof: the pal harness harness/close_listed.pal (run from &.widgits/_shared-lib/harness, README there)

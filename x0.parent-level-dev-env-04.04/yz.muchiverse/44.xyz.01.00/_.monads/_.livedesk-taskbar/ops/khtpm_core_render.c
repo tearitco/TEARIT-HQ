@@ -1011,6 +1011,22 @@ static pid_t launch_module(const char *src, const char *house_root, const char *
         if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
         if (package_dir) { setenv("KHTPM_PKG", package_dir, 1);
                            setenv("PRISC_PROJECT_ROOT", package_dir, 1); }
+        /* Process registry (AGENTS.md: every process the house starts is registered in a file, BEFORE it does any work): this module records ITSELF, owned by this
+         * renderer (getppid), so closing the window ends its manager and a stray one shows up in the audit. Plain fork/exec of the one op, no shell; a missing op or
+         * house_root is not an error. */
+        if (house_root && *house_root) {
+            char op[2200], me[32], ow[32]; const char *base = strrchr(argv[0], '/'); base = base ? base + 1 : argv[0];
+            snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", house_root);
+            snprintf(me, sizeof me, "%ld", (long)getpid()); snprintf(ow, sizeof ow, "%ld", (long)getppid());
+            if (access(op, X_OK) == 0) {
+                pid_t rp = fork();
+                if (rp == 0) {
+                    execl(op, op, house_root, "register", me, "owner", ow, "manager", "window-module", base, (char *)NULL);
+                    _exit(127);
+                }
+                if (rp > 0) { int rst; waitpid(rp, &rst, 0); }
+            }
+        }
         execv(argv[0], argv);
         _exit(1);
     } else if (pid < 0) {
@@ -20953,6 +20969,22 @@ static int tp_main(int argc, char **argv) {
     if (!g_house_root[0]) snprintf(g_house_root, sizeof(g_house_root), ".");
 #endif
     snprintf(g_house_root_for_lock, sizeof(g_house_root_for_lock), "%s", g_house_root);
+#ifndef _WIN32
+    /* Process registry (AGENTS.md: every process the house starts is registered in a file): EVERY way a desk entity is started (the taskbar manager, the palette's place, a
+     * pet's button.sh, openall) ends up here, so the entity records ITSELF once, as a `house` row (role entity, app = its pal folder). `register-v1` never touches the v1
+     * ledger, so a manager-made row/owner there is left alone. Plain fork/exec of the one op, no shell; a missing op or house root is not an error. */
+    if (g_house_root[0] && strcmp(g_house_root, ".") != 0) {
+        char rop[TP_PATH_BUF + 64], rme[32], rpk[TP_PATH_BUF]; snprintf(rop, sizeof rop, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", g_house_root);
+        snprintf(rme, sizeof rme, "%ld", (long)getpid()); snprintf(rpk, sizeof rpk, "%s", package_dir);
+        size_t rl = strlen(rpk); while (rl > 1 && rpk[rl - 1] == '/') rpk[--rl] = 0;
+        const char *rapp = strrchr(rpk, '/'); rapp = rapp ? rapp + 1 : rpk;
+        if (access(rop, X_OK) == 0) {
+            pid_t rp = fork();
+            if (rp == 0) { execl(rop, rop, g_house_root, "register-v1", rme, "entity", "entity", rapp, (char *)NULL); _exit(127); }
+            if (rp > 0) { int rst; waitpid(rp, &rst, 0); }
+        }
+    }
+#endif
     /* REAL FIX 2026-09-09, direct report ("bookstack ... its this part
      * that hasn't changed color ... look deeper"): tile/entity mode
      * (tp_main) - which hosts every desktop entity incl. book-stack and

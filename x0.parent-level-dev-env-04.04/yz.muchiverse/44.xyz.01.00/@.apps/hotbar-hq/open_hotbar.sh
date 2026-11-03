@@ -62,10 +62,12 @@ for p in $(hb_pids); do kill "$p" 2>/dev/null || true; done
 sleep 0.3
 fi
 rm -f "$HOUSE_ROOT"/#.desktop/hq_mapped_*.txt 2>/dev/null
-$SETSID nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"/tmp/hotbar-$MODE.log" 2>&1 < /dev/null &
-# real starttime/pgid so the C reaper does not skip it on quit/restart (a "0 0" line is ignored by its PID-reuse guard; the hotbar survived restarts because of that)
-NEWPID="$!"
-sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/proc_ledger_add.sh" "$HOUSE_ROOT" "$!" "hotbar-$MODE"
+# Started through the spawn funnel (AGENTS.md: every process the house starts is registered in #.desktop/proc_registry.pdl before it does any work). The funnel also writes the
+# real starttime/pgid line into the v1 ledger the C reaper reads (a "0 0" line is ignored by its PID-reuse guard; the hotbar once survived restarts because of that).
+# Lifetime `house`: it lives with the desktop and is ended by a house quit; the log is kept.
+FUNNEL="$HOUSE_ROOT/&.widgits/_shared-lib/kh_spawn.sh"
+[ -f "$FUNNEL" ] || { echo "open_hotbar: missing the spawn funnel $FUNNEL" >&2; exit 1; }
+NEWPID="$(KH_ROLE=window KH_APP=hotbar-hq KH_LIFETIME=house sh "$FUNNEL" "$HOUSE_ROOT" 0 "hotbar-$MODE" -- sh -c 'log="$1"; shift; exec "$@" >"$log" 2>&1 < /dev/null' hb_launch "/tmp/hotbar-$MODE.log" "$BIN" "$HOUSE_ROOT" "$XHTPM")"
 if [ -n "$SWAP_OLD" ]; then
     # one tab in the bottom bar at all times: as soon as the new window has registered its row, the old window is frozen (it stays on screen as it is), its row removed and the taskbar told
     i=0; while [ ! -e "$HOUSE_ROOT/#.desktop/livedesk_hq_windows_$NEWPID.txt" ] && kill -0 "$NEWPID" 2>/dev/null && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i+1)); done
