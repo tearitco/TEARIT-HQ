@@ -318,6 +318,28 @@ Percentages are of the whole machine. "House" = process whose executable is unde
 
 **Limits and open decisions.** `kill_house` and the thresholds are the owner's to tune. The die ran 77 to 87 C in scratch tests with only 3 busy loops, so `temp_act_c=92` may be close to normal on this machine under real load; watch `cpu_guard_last.txt` before lowering it. A cgroup CPU cap for the house (section 7, tier 1) still needs the root `Delegate=` drop-in and would be the stronger fix.
 
+## 8b. The stray reaper (2026-11-02)
+
+Owner: "we need to guard in code so no more strays get created for sure." Strays kept appearing after every window was closed: an orphaned swatch-picker manager
+and settings projector, a board's daemon plus its game clock replaying for hours, a taskbar manager with no strip left running, engine stacks. Fixing each leak at
+its source is still the rule (a helper that outlives its window should exit when the window is gone, as `swatch_picker_manager` now does), but nothing can
+guarantee that no future helper leaks, so the always-on guard (section 8) now carries an independent backstop.
+
+- **Rule.** When no LyfeDesk window exists anywhere (no `khtpm_core_render.+x` under this house) and nothing is starting up (`livedesk_splash`, `button.sh`,
+  `livedesk-launch.sh`, `boot-splash.sh`, `build_khtpm_strip.sh`, `compile-runner.sh`, `crypt_autostart`) for `stray_grace_s` seconds, every remaining house
+  process is ended, **including the taskbar leftovers** (`khtpm_taskbar_manager_main`, `khtpm_strip_parser`, `run_khtpm_strip.sh`: protected from the CPU kill, but
+  strays once there is no strip). It never touches the guard and its ancestors, the splash, or anything outside the house.
+- **Settings** (`#.desktop/proc_mon_guard.pdl`, re-read live): `stray_reap=1`, `stray_grace_s=120` (minimum 30: a restart takes seconds, it must not look like a
+  close), `stray_scan_s=30`. Off: `stray_reap=0` or the file `#.desktop/stray_reap_off`. `dry_run=1` logs `WOULD-KILL` only.
+- **Log.** `STRAY | no LyfeDesk window, N house processes left: reaping in S s ...`, then `KILL | stray, ...` per process and `STRAY | reaped N ...` in
+  `&.hq-apps/proc-mon/state/cpu_guard.log`. A window opening in the grace period cancels it.
+- **Tested** on a scratch house with stand-in processes (copies of `sleep` under the house path): window open = nothing touched; window closed + 30 s = the daemon
+  and a leftover taskbar manager ended, an outside process and the guard untouched; a running `livedesk_splash` holds the reaper; `stray_reap_off` holds it and
+  removing the file lets it reap.
+- **Limits, honestly.** It runs only when NO window is open: a stray that outlives one closed window while another window stays open (an engine stack of a closed
+  board, say) is not caught by this rule; `mon_scan.sh` classifies those (orphan, dead-parent, stale-unreg). It cannot stop a helper being created, it bounds how
+  long a stray lives to about `stray_grace_s` + `stray_scan_s` after the last window closes.
+
 ## 9. The design principle: our programs run ALONGSIDE normal user activity (owner 2026-10-27)
 
 The house is not the only thing on the machine. The owner has a browser (Chrome, Firefox) with many tabs, a terminal, media, and

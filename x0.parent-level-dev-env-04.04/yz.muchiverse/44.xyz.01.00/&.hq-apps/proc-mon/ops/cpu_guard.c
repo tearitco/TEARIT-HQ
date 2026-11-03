@@ -69,6 +69,7 @@ typedef struct {
     int enabled, sample_ms, warn_pct, act_pct, warn_samples, act_samples;
     int temp_warn_c, temp_act_c, house_min_pct, ask_min_pct;
     int cooldown_s, ask_timeout_s, ask_cooldown_s, kill_house, dry_run;
+    int stray_reap, stray_grace_s, stray_scan_s;   /* the stray reaper: no LyfeDesk window for stray_grace_s => end every house process */
 } Cfg;
 static Cfg cfg;
 
@@ -114,7 +115,7 @@ static void logf_(const char *fmt, ...) {
 }
 
 static void cfg_defaults(void) {
-    cfg = (Cfg){1, 2000, 70, 85, 3, 5, 85, 92, 20, 15, 120, 90, 600, 1, 0};
+    cfg = (Cfg){1, 2000, 70, 85, 3, 5, 85, 92, 20, 15, 120, 90, 600, 1, 0, 1, 120, 30};
 }
 
 static void cfg_load(void) {
@@ -141,6 +142,9 @@ static void cfg_load(void) {
         else if (!strcmp(line, "ask_cooldown_s")) cfg.ask_cooldown_s = v;
         else if (!strcmp(line, "kill_house")) cfg.kill_house = v;
         else if (!strcmp(line, "dry_run")) cfg.dry_run = v;
+        else if (!strcmp(line, "stray_reap")) cfg.stray_reap = v;
+        else if (!strcmp(line, "stray_grace_s")) cfg.stray_grace_s = v < 30 ? 30 : v;   /* never less than 30 s: a restart must not look like a close */
+        else if (!strcmp(line, "stray_scan_s")) cfg.stray_scan_s = v < 5 ? 5 : v;
     }
     fclose(f);
 }
@@ -161,10 +165,12 @@ static void cfg_seed(void) {
         "# an outside program is only offered for killing when it uses at least this share\n"
         "ask_min_pct=%d\n"
         "cooldown_s=%d\nask_timeout_s=%d\nask_cooldown_s=%d\n"
-        "kill_house=%d\n# 1 = log what would be killed, kill nothing\ndry_run=%d\n",
+        "kill_house=%d\n# 1 = log what would be killed, kill nothing\ndry_run=%d\n"
+        "# stray reaper: with no LyfeDesk window anywhere for stray_grace_s seconds, end every house process (the taskbar leftovers too). Off: stray_reap=0 or a file #.desktop/stray_reap_off\n"
+        "stray_reap=%d\nstray_grace_s=%d\nstray_scan_s=%d\n",
         cfg.enabled, cfg.sample_ms, cfg.warn_pct, cfg.warn_samples, cfg.temp_warn_c, cfg.act_pct,
         cfg.act_samples, cfg.temp_act_c, cfg.house_min_pct, cfg.ask_min_pct, cfg.cooldown_s,
-        cfg.ask_timeout_s, cfg.ask_cooldown_s, cfg.kill_house, cfg.dry_run);
+        cfg.ask_timeout_s, cfg.ask_cooldown_s, cfg.kill_house, cfg.dry_run, cfg.stray_reap, cfg.stray_grace_s, cfg.stray_scan_s);
     fclose(f);
 }
 
@@ -545,6 +551,72 @@ static int kill_set(int cls, const char *only_comm, int scripts_first, const cha
 
 /* ---- main loop ---- */
 
+/* ---- stray reaper (2026-11-02) --------------------------------------------------------------------------------------------------------
+ * Owner: "we need to guard in code so no more strays get created". Strays kept showing up after every window was closed (an orphaned picker manager, a board's
+ * daemon + clock replaying for hours, a taskbar manager with no strip, an engine stack). The guard is the one process that survives quit/reset, so it is the
+ * independent backstop: when NO LyfeDesk window exists anywhere (no khtpm_core_render under this house) and nothing is starting up (splash, button.sh, launcher,
+ * build) for stray_grace_s seconds (default 120, minimum 30: a restart takes seconds), every remaining house process is ended, the taskbar leftovers included
+ * (they are 'protected' from the CPU kill, but without a strip they are strays). Never touches: the guard itself and its ancestors, the splash, anything outside
+ * the house. Off: stray_reap=0 in proc_mon_guard.pdl, or the file #.desktop/stray_reap_off. Dry run follows dry_run=1. Standard: 03-pitfalls/hq-cpu-safety.md */
+static const char *taskbar_leftover_pats[] = {"khtpm_taskbar_manager_main", "khtpm_strip_parser", "run_khtpm_strip.sh", NULL};
+static const char *starting_pats[] = {"livedesk_splash", "button.sh", "livedesk-launch.sh", "boot-splash.sh", "build_khtpm_strip.sh", "compile-runner.sh", "crypt_autostart", NULL};
+static double stray_since = 0, stray_next = 0;
+static void stray_tick_inner(double now) {
+    if (!cfg.stray_reap || now < stray_next) return;
+    stray_next = now + cfg.stray_scan_s;
+    char off[PATH_MAX + 40];
+    snprintf(off, sizeof off, "%s/#.desktop/stray_reap_off", house);
+    if (access(off, F_OK) == 0) { stray_since = 0; return; }
+    scan_procs();
+    for (int i = 0; i < ncur; i++) cur[i].cls = 0;
+    classify_all();
+    int windows = 0, starting = 0, cand = 0;
+    char cl[2048], exe[PATH_MAX], path[64];
+    for (int i = 0; i < ncur; i++) {
+        Proc *p = &cur[i];
+        if (!strncmp(p->comm, "khtpm_core_re", 13)) {
+            snprintf(path, sizeof path, "/proc/%d/exe", p->pid);
+            ssize_t l = readlink(path, exe, sizeof exe - 1);
+            if (l > 0) { exe[l] = 0; char *del = strstr(exe, " (deleted)"); if (del) *del = 0; if (under_house(exe)) windows++; }
+        }
+        if (p->cls != 1 && p->cls != 3 && p->cls != 2) continue;
+        cmdline_of(p->pid, cl, sizeof cl);
+        if (p->cls != 1) for (int k = 0; starting_pats[k]; k++) if (strstr(cl, starting_pats[k])) { starting++; break; }
+    }
+    if (windows || starting) { stray_since = 0; return; }
+    for (int i = 0; i < ncur; i++) {
+        Proc *p = &cur[i];
+        if (p->pid == self_pid || is_ancestor_protected(p->pid)) continue;
+        if (p->cls == 3) {      /* protected shell pieces: only the taskbar leftovers count as strays, never the guard / splash */
+            cmdline_of(p->pid, cl, sizeof cl);
+            if (strstr(cl, "cpu_guard") || strstr(cl, "livedesk_splash")) continue;
+            int hit = 0;
+            for (int k = 0; taskbar_leftover_pats[k]; k++) if (strstr(cl, taskbar_leftover_pats[k]) || strstr(p->comm, taskbar_leftover_pats[k])) hit = 1;
+            if (hit) { p->cls = 2; cand++; }
+        } else if (p->cls == 2) cand++;
+    }
+    if (!cand) { stray_since = 0; return; }
+    if (stray_since == 0) { stray_since = now; logf_("STRAY | no LyfeDesk window, %d house processes left: reaping in %d s unless a window opens", cand, cfg.stray_grace_s); return; }
+    if (now - stray_since < cfg.stray_grace_s) return;
+    char why[96];
+    snprintf(why, sizeof why, "stray, no LyfeDesk window for %d s", (int)(now - stray_since));
+    int n = kill_set(2, NULL, 1, why);
+    logf_("STRAY | reaped %d stray house processes (%s)", n, cfg.dry_run ? "dry run" : "ended");
+    stray_since = 0;
+}
+
+/* the reaper scans and classifies on its own copy: the main loop's cur/prv are the CPU sampler's (deltas between two scans), so save and restore them */
+static void stray_tick(double now) {
+    if (!cfg.stray_reap || now < stray_next) return;
+    static Proc keep_cur[MAXP], keep_prv[MAXP];
+    int kc = ncur, kp = nprv;
+    memcpy(keep_cur, cur, sizeof(Proc) * (size_t)ncur);
+    memcpy(keep_prv, prv, sizeof(Proc) * (size_t)nprv);
+    stray_tick_inner(now);
+    memcpy(cur, keep_cur, sizeof(Proc) * (size_t)kc); ncur = kc;
+    memcpy(prv, keep_prv, sizeof(Proc) * (size_t)kp); nprv = kp;
+}
+
 /* ---- runtime-file hygiene (2026-11-02) ----------------------------------------------------------------------------------------------
  * The renderer's frame snapshots (#.desktop/ascii_frames/<pid>.<seq>.objects.pdl / .receipt.pdl) are meant to be capped at 50 by the renderer
  * itself, but its trim silently stopped once index.txt outgrew a buffer: 1.68M files, 7.6 GB, disk 94% full before anyone saw it. This is the
@@ -702,7 +774,8 @@ int main(int argc, char **argv) {
         else if (dt > 3.0 * cfg.sample_ms / 1000.0)
             logf_("STALL | the guard slept %.1fs (asked for %.1fs): the machine was nearly frozen", dt, cfg.sample_ms / 1000.0);
         if (++tick % 5 == 0) cfg_load();
-        if (now >= hygiene_at) { hygiene_at = now + 120.0; hygiene_sweep(); }   /* independent of enabled: disk hygiene is not a CPU decision */
+        if (now >= hygiene_at) { hygiene_at = now + 120.0; hygiene_sweep(); }
+        stray_tick(now);   /* independent of enabled, like the hygiene sweep */   /* independent of enabled: disk hygiene is not a CPU decision */
         if (!cfg.enabled) { read_cpu_busy(&pb, &pt); continue; }
 
         unsigned long long b, t;
