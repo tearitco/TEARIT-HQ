@@ -714,7 +714,20 @@ static int dead_pid_sweep(const char *sub, const char *prefix, const char *suffi
     return removed;
 }
 
+/* A dead writer must not leave a lying number (2026-11-03: the guard ended the taskbar manager as a stray; #.desktop/load_state.txt stayed at `load_label=!%95` for 90 minutes, so every board's `%` tab
+ * read 95 % on a machine at 6 %). The manager is the only writer of that file: when no process named khtpm_taskbar_m exists, a non-empty label is rewritten empty (the tabs have show="${load_ok}", so empty = hidden). */
+static int comm_alive(const char *comm15) {
+    DIR *d = opendir("/proc"); if (!d) return 1; struct dirent *e; int found = 0;      /* unreadable /proc: assume alive, do nothing */
+    while (!found && (e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char p[64], cm[32] = ""; snprintf(p, sizeof p, "/proc/%s/comm", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue;
+        if (fgets(cm, sizeof cm, f)) { cm[strcspn(cm, "\n")] = 0; if (!strncmp(cm, comm15, 15)) found = 1; } fclose(f); }
+    closedir(d); return found;
+}
+static int clear_stale_label(const char *path, int writer_alive) {
+    if (writer_alive) return 0; FILE *f = fopen(path, "r"); if (!f) return 0; char ln[128]; int has = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "load_label=", 11) && ln[11] != '\n' && ln[11] != 0) has = 1; fclose(f);
+    if (!has) return 0; char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *o = fopen(tmp, "w"); if (!o) return 0; fputs("load_label=\nload_ok=\nload_warn=\n", o); fclose(o); return rename(tmp, path) == 0;
+}
 static void hygiene_sweep(void) {
+    { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/#.desktop/load_state.txt", house); if (clear_stale_label(lp, comm_alive("khtpm_taskbar_m"))) logf_("HYGIENE | load_state.txt held a label but no taskbar manager is running: cleared (a dead writer must not show a number)"); }
     char dir[PATH_MAX + 32];
     snprintf(dir, sizeof dir, "%s/#.desktop/ascii_frames", house);
     DIR *d = opendir(dir);

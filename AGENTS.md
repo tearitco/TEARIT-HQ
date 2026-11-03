@@ -122,6 +122,10 @@ it checks load, temperature and the house share, allows ONE heavy job at a time,
 engine daemon when you are not testing. New code is checked by `cpu_lint` (`CPU-LINT-BASELINE-2026-11-03.txt`: a file may only get fewer hits). A guard kill is a finding in our own
 footprint, never "the browser". Details: HQ-IQ-BOOK `03-pitfalls/hq-cpu-safety.md` section 10.
 
+## CPU work: read the pitfalls first (REQUIRED, since 2026-11-03)
+
+Before any CPU optimization, load test or "the cpu is high" investigation read HQ-IQ-BOOK `03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md` (22 pitfalls, each from a real failure that night: wrong sampler, wrong sensor, an unread producer, an orphaned clock, test loops that got the house killed, a `%` tab frozen by a dead writer). A number shown to the user needs a live writer; a producer is optimized only after finding who reads it.
+
 ## Never report a number you did not observe (REQUIRED)
 
 Three wrong conclusions in one session traced to this, all from my own
