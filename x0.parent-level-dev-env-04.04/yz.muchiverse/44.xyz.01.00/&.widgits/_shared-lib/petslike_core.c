@@ -94,7 +94,7 @@ static int g_gr;
 #define WALL_ROW 1
 #define TRIG_ROW (rooms[g_gr].trig)
 #define START_COINS 500
-#define MAXI 40
+#define MAXI 200      /* catalog items (was 40; rpg-edit-hq adds one generated item per palette sprite it places, state/voxels.pdl) */
 #define MAXP 200
 #ifndef NP
 #define NP 8      /* up to 6 DB members + the pals made with "+ new pal" (pals.pdl) */
@@ -126,7 +126,7 @@ static Scen scen[24]; static int nscen;
 #include PET_SKIN
 #undef PET_SECTION
 static Placed pl[MAXP]; static int npl, nid = 1, owned[MAXI], coins;
-static Sheet sheets[24]; static int nsheet;
+static Sheet sheets[128]; static int nsheet;      /* was 24: one tiny generated sheet per placed palette sprite (rpg-edit-hq) */
 static unsigned char fr[FW * FH * 4];
 static int g_bg_only = 0;      /* render() without pets, Harold and the day/night tint: the static background the pc-hq 2D view blits as map.png (its sprites come from events.txt) */
 /* the standard RPG Maker screen tone written by events-hq's tint_screen command: state/world/screen_state.pdl has "mode=tint" and "value=r,g,b,gray" (1 = a tone is set). Read at most every 400 ms. */
@@ -605,7 +605,7 @@ static int first_free(int room, int item, int *ox, int *oy) { Item *d = &cat[ite
 /* ---------- drawing ---------- */
 static Sheet *sheet(const char *dir, const char *name) {
     for (int i = 0; i < nsheet; i++) if (!strcmp(sheets[i].name, name)) return &sheets[i];
-    if (nsheet >= 24) return NULL;
+    if (nsheet >= 128) return NULL;
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/%s/%s.png", ASSETS, dir, name);
 #define PET_SECTION 72
 #include PET_SKIN
