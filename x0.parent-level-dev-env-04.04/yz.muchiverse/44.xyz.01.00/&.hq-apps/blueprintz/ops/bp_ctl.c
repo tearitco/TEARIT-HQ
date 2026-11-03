@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -91,6 +92,25 @@ static int cursor_get(void) { char c[P], l[64]; join(c, state, "queue.cursor"); 
 static void cursor_set(int v) { char c[P], t[32]; join(c, state, "queue.cursor"); snprintf(t, sizeof t, "%d\n", v); write_text(c, t); }
 static int queue_total(void) { char q[P]; join(q, state, "queue.txt"); return count_lines(q); }
 
+/* Process registry (AGENTS.md: every process the house starts is recorded in a file): the detached play_event.sh run records itself through the one op (plain fork/exec),
+ * owned by the blueprintz window when state/renderer.pid names a live process (closing the window then ends a held run: the registry kills a setsid leader's whole
+ * group), otherwise `keep` (visible in the registry; ended by a house quit or an explicit reap). A missing op is not an error. */
+static void register_run(void) {
+    char op[P], rp[P], rb[64] = ""; snprintf(op, P, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", house);
+    if (access(op, X_OK) != 0) return;
+    join(rp, state, "renderer.pid"); long owner = 0;
+    if (last_line(rp, rb, sizeof rb)) owner = atol(rb);
+    char ownp[32], me[32], proc[64]; snprintf(me, sizeof me, "%d", (int)getpid()); snprintf(ownp, sizeof ownp, "%ld", owner); snprintf(proc, sizeof proc, "/proc/%ld", owner);
+    int owned = owner > 1 && access(proc, F_OK) == 0;
+    pid_t c = fork(); if (c < 0) return;
+    if (c == 0) {
+        int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); }
+        execl(op, op, house, "register", me, owned ? "owner" : "keep", owned ? ownp : "0", "tool", "blueprintz", "bp-step-run", "play_event.sh", (char *)NULL);
+        _exit(127);
+    }
+    int st; waitpid(c, &st, 0);
+}
+
 /* run play_event.sh for pkg/trigger. release: pass BLUEPRINTZ_RELEASE=1. stepcmd: BLUEPRINTZ_STEPCMD=1.
  * background: detach and return at once. Returns the exit status (foreground) or 0. */
 static int run_play(const char *pkg, const char *trig, int release, int stepcmd, int background) {
@@ -100,6 +120,7 @@ static int run_play(const char *pkg, const char *trig, int release, int stepcmd,
         if (background) {
             if (setsid() < 0) _exit(1);
             pid_t p2 = fork(); if (p2 != 0) _exit(0);
+            register_run();       /* this detached run (it may be HELD between steps) is a house process: record it in the process registry before it does any work */
         }
         if (release) setenv("BLUEPRINTZ_RELEASE", "1", 1); else unsetenv("BLUEPRINTZ_RELEASE");
         if (stepcmd) setenv("BLUEPRINTZ_STEPCMD", "1", 1);

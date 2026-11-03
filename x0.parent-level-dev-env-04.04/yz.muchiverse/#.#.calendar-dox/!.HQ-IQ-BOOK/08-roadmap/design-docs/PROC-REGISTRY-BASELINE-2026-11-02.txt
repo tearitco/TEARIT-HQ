@@ -2,9 +2,8 @@
 # C: setsid() in a file that never touches the registry). Generated 2026-11-02 by a one-off scan (excluded: tests/, harness/, pieces/sessions, +x, xyzfs/users copies).
 # The refactor plan (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md) makes this file a RATCHET: the lint may only ever see FEWER rows than this; a new row is a failure.
 # format: <kind> <path relative to the house root>:<line>
-# regenerated with spawn_lint --emit: 2026-11-02 (scope widened to .h); after the rpg-edit-hq pilot 150 -> 148; after the 11 petslike launchers 148 -> 137
+# regenerated with spawn_lint --emit: 2026-11-02 (scope widened to .h); rpg-edit-hq pilot 150 -> 148; 11 petslike launchers 148 -> 137; blueprintz launcher and step run 137 -> 135
 
-c-setsid &.hq-apps/blueprintz/ops/bp_ctl.c:100
 c-setsid &.hq-apps/exchange-hq/ops/exchange_manager.c:186
 c-setsid &.hq-apps/img-hai/img_hai_manager.c:132
 c-setsid &.hq-apps/irc-chat-hq/ops/irc_chat_manager.c:144
@@ -39,7 +38,6 @@ sh-setsid-nohup #.desktop/scripts/notes.sh:47
 sh-setsid-nohup $.crypts/scrypts/openall/run.sh:80
 sh-setsid-nohup $.crypts/scrypts/openall/run.sh:81
 sh-setsid-nohup &.hq-apps/_template-hq/button.sh:40
-sh-setsid-nohup &.hq-apps/blueprintz/button.sh:30
 sh-setsid-nohup &.hq-apps/chat-hai/button.sh:94
 sh-setsid-nohup &.hq-apps/court-hq/button.sh:40
 sh-setsid-nohup &.hq-apps/db-hq-pal/button.sh:49

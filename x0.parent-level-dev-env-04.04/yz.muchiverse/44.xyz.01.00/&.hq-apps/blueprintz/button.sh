@@ -27,6 +27,10 @@ if [ "$ACTION" = "stop" ]; then stop_old; echo "blueprintz stopped"; exit 0; fi
 [ -x "$HERE/+x/blueprintz_manager.+x" ] || { echo "blueprintz: build failed" >&2; exit 1; }
 stop_old
 sleep 1
-setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >/dev/null 2>&1 < /dev/null &
-echo $! > "$HERE/state/renderer.pid"
+# Started through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl, BEFORE it does any work). The window is its own
+# owner (owner 0 = a `keep` row that goes away when the window does); its manager is forked by the renderer and ends with it.
+FUNNEL="$HOUSE_ROOT/&.widgits/_shared-lib/kh_spawn.sh"
+[ -f "$FUNNEL" ] || { echo "blueprintz: missing the spawn funnel $FUNNEL" >&2; exit 1; }
+NEWPID="$(KH_ROLE=window KH_APP=blueprintz sh "$FUNNEL" "$HOUSE_ROOT" 0 blueprintz-window -- "$BIN" "$HOUSE_ROOT" "$XHTPM")"
+echo "$NEWPID" > "$HERE/state/renderer.pid"
 echo "blueprintz launched (renderer pid $(cat "$HERE/state/renderer.pid"))"
