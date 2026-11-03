@@ -1406,6 +1406,17 @@ static void reg_run(const char *what, const char *owner_kind, long owner_pid) {
     int st; waitpid(c, &st, 0);
 }
 
+/* Who owns this clock? (2026-11-03) The resident game daemon (petslike_core daemon_main) sets LC_OWNER_PID before it starts the clock, but the clock is ALSO started by short-lived VERB processes
+ * (the In: toggle, clock verbs), which never set it: the clock then registered as `keep`, outlived the window and kept ticking game days and spawning event helpers with nobody watching
+ * (measured: 6 % of a core, D5379 -> D5493 in 3 h with every window closed; part of the 118 % in the 00:54 guard incident). A game folder's resident daemon holds an flock on
+ * <state>/daemon.lock and the clock root is <state>/clock_root: the holder pid, read from /proc/locks by the lock file's inode, is the owner. No resident daemon holding it = unchanged (keep). */
+static long owner_from_daemon_lock(const char *root) {
+    char lp[PBUF]; snprintf(lp, sizeof lp, "%s/../daemon.lock", root); struct stat st; if (stat(lp, &st) != 0) return 0;
+    FILE *f = fopen("/proc/locks", "r"); if (!f) return 0; char ln[512]; long found = 0;
+    while (fgets(ln, sizeof ln, f)) { char kind[16] = ""; long pid = 0; unsigned maj = 0, mnr = 0; unsigned long ino = 0;
+        if (sscanf(ln, "%*d: %15s %*s %*s %ld %x:%x:%lu", kind, &pid, &maj, &mnr, &ino) == 5 && !strcmp(kind, "FLOCK") && ino == (unsigned long)st.st_ino && pid > 1 && kill((pid_t)pid, 0) == 0) { found = pid; break; } }
+    fclose(f); return found;
+}
 static int cmd_daemon(const char *house) {
     signal(SIGTERM, on_sig);
     signal(SIGINT, on_sig);
@@ -1422,7 +1433,7 @@ static int cmd_daemon(const char *house) {
 
     FILE *pf = fopen(pidpath, "w");
     if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); }
-    { const char *ow = getenv("LC_OWNER_PID"); long owp = ow ? atol(ow) : 0; reg_run("register", owp > 1 ? "owner" : "keep", owp > 1 ? owp : 0); }
+    { const char *ow = getenv("LC_OWNER_PID"); long owp = ow ? atol(ow) : 0; if (owp <= 1) owp = owner_from_daemon_lock(house); reg_run("register", owp > 1 ? "owner" : "keep", owp > 1 ? owp : 0); }
 
     long long last = mono_ms_now();
     while (!g_exit) {
