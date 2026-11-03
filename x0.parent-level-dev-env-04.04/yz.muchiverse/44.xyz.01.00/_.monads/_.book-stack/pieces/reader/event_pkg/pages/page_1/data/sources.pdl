@@ -1,0 +1,7 @@
+# sources.pdl - the reader's menu, in display order. choices.objects.pdl and choices.chtpm are GENERATED from this file by gen_choices.sh (do not edit them by hand).
+#   SOURCE | order | action | label
+# action = the folder under branches/ whose run.sh is run when the row is picked (dispatch.sh runs branches/<action>/run.sh, nothing else).
+SOURCE | 1 | tao | Tao Te Ching (random chapter)
+SOURCE | 2 | proverbs31 | Proverbs 31 (daily)
+SOURCE | 3 | bible_tts | Bible verse (with TTS)
+SOURCE | 4 | bible_text | Bible verse (text)

@@ -41,7 +41,7 @@ Vocabulary from `BLUEPRINTZ-DESIGN.md` section 2: book = set of pages, page = de
 | Phase | What | Evidence |
 |---|---|---|
 | R0 | Today's fixes (done) | sink-monitor recording; relay file content |
-| R1 | Data out of code: `sources.pdl`, `verses_proverbs31.pdl`, `asset_roots.pdl`; one `reader_pick` script reads them (still bash) | menu order changed by editing one row; same verses as the arrays (diff) |
+| R1 | **DONE 2026-11-02.** Data out of code: `data/sources.pdl` (menu order, labels, actions), `data/verses_proverbs31.pdl` (31 rows, `V \| day \| EN \| ZH`); `gen_choices.sh` writes `choices.*` from the sources (refuses an action with no `branches/<action>/run.sh`); `dispatch.sh` is generic (runs only a listed, identifier-shaped action); `proverbs31/run.sh` reads the data, `PROVERBS_DAY` overrides today. NOT done in R1: `asset_roots.pdl` (the 3 copied path hunts stay for now). | Gate RAN: all 31 days through the new script equal the old arrays (0 mismatches; a changed word is detected); dispatcher: valid pick runs, unlisted / traversal / empty / injected picks do nothing |
 | R2 | Events/pal: the `pick` event + common events as an `event_pkg` the events-hq / blueprintz can open; branches deleted | blueprintz B1 tree shows book `reader`; click path in the live menu |
 | R3 | The three ops in C, python only inside `speak_op`'s child | harness case per op (stub assets); speak recorded again |
 | R4 | Layouts: `reader-menu` + `reader-text` in the board | before/after PNG of the reader inside the game window |

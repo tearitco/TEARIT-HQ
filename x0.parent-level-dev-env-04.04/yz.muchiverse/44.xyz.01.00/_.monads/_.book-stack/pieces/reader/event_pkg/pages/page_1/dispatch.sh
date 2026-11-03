@@ -46,9 +46,10 @@ if [ ! -x "$CHOICES_BIN" ]; then echo "Error: CHOICES_BIN not found: $CHOICES_BI
 # Call the choices picker
 PICKED=$("$CHOICES_BIN" "$PACKAGE_DIR" "$CHOICES_FILE")
 
-case "$PICKED" in
-    bible_text) bash "$SCRIPT_DIR/branches/bible_text/run.sh" ;;
-    bible_tts)  bash "$SCRIPT_DIR/branches/bible_tts/run.sh" ;;
-    tao)        bash "$SCRIPT_DIR/branches/tao/run.sh" ;;
-    proverbs31) bash "$SCRIPT_DIR/branches/proverbs31/run.sh" ;;
-esac
+# Generic dispatch (2026-11-02): the picked action must be a plain identifier, listed in data/sources.pdl, with a branches/<action>/run.sh; anything else does nothing.
+# Menu order, labels and the action list live in data/sources.pdl (gen_choices.sh writes choices.* from it); adding a source needs no edit here.
+case "$PICKED" in ""|*[!A-Za-z0-9_]*) exit 0 ;; esac
+if awk -F' [|] ' -v a="$PICKED" '$1 == "SOURCE" && $3 == a {f = 1} END {exit !f}' "$SCRIPT_DIR/data/sources.pdl" 2>/dev/null && [ -f "$SCRIPT_DIR/branches/$PICKED/run.sh" ]; then
+    bash "$SCRIPT_DIR/branches/$PICKED/run.sh"
+fi
+
