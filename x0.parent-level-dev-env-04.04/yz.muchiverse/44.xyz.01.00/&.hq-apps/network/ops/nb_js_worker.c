@@ -4151,6 +4151,273 @@ static void add_global_class(JSContext *ctx, JSValueConst g, const char *name, J
     if (present) return;
     JS_SetPropertyStr(ctx, g, name, add_class(ctx, name, parent));
 }
+/* ==================== Element/Node methods (2026-11-02) ====================
+ *
+ * WHY: a probe of the shipped engine (tests/probe_fingerprint.js, group
+ * elementMethods.missing) found prepend, append, before, after, replaceWith,
+ * remove, matches, closest, cloneNode, isEqualNode, getClientRects,
+ * scrollIntoView, replaceChildren, element.querySelector/querySelectorAll and
+ * element.getElementsBy* all absent. glassdoor.com's own page script throws
+ * "TypeError: not a function" at `t.prepend(e)` - i.e. exactly here - and
+ * these are bread-and-butter methods on any real page, not anything
+ * site-specific, which is why they are worth building once properly.
+ *
+ * WHERE: installed on Element.prototype / Node.prototype in
+ * install_dom_classes, so every element gets them - including ones created
+ * later by createElement - which is how a browser exposes them. The natives
+ * resolve `this` through get_node(), so it does not matter that the wrapper
+ * also carries many of its older methods as own properties.
+ *
+ * WHAT IS DELIBERATELY NOT SPEC: these take Nodes and strings (a string
+ * becomes a Text node). A DocumentFragment inserts as ONE node rather than
+ * being expanded into its children, because the worker has no fragment node
+ * type; inserting a node into itself or into its own descendant is skipped
+ * rather than raising HierarchyRequestError. Both are noted where they
+ * matter; neither is something an observed page depends on. */
+
+#define NBI_APPEND  0
+#define NBI_PREPEND 1
+#define NBI_BEFORE  2
+#define NBI_AFTER   3
+
+/* Resolve argument v into a node ready to be linked in, or NULL. Also
+ * performs the two housekeeping steps every insertion needs: detach from any
+ * current parent (insertion MOVES a node, it does not copy it) and drop it
+ * from the orphan list, whose next_sibling field would otherwise be
+ * clobbered by the link. `into` is the subtree the node is being inserted
+ * into, used to refuse self/ancestor insertion. */
+static NbNode *nbi_arg(JSContext *ctx, JSValueConst v, NbNode *into) {
+    NbNode *n = NULL;
+    if (JS_IsString(v)) {
+        const char *s = JS_ToCString(ctx, v);
+        if (!s) return NULL;
+        n = calloc(1, sizeof(*n));
+        if (n) { n->text = strdup(s); orphan_add(n); }
+        JS_FreeCString(ctx, s);
+        if (!n) return NULL;
+    } else if (JS_IsObject(v)) {
+        n = get_node(ctx, v);
+        if (!n) return NULL;
+    } else {
+        return NULL;
+    }
+    for (NbNode *p = into; p; p = p->parent) if (p == n) return NULL;   /* would make a cycle */
+    node_detach(n);
+    orphan_remove(n);
+    return n;
+}
+
+/* The four variadic inserts. Order is the part that is easy to get wrong, so
+ * each is stated and tested explicitly:
+ *   append(a,b)  -> ..., a, b
+ *   prepend(a,b) -> a, b, ...
+ *   before(a,b)  -> a, b, ref
+ *   after(a,b)   -> ref, a, b
+ * All four walk the arguments FORWARD against an anchor captured before the
+ * loop (the pre-existing first child, the receiver, or the receiver's
+ * original next sibling). Reversing the walk instead would be the bug. */
+static void nbi_do(JSContext *ctx, int argc, JSValueConst *argv, NbNode *self, int mode) {
+    if (!self) return;
+    NbNode *anchor = NULL;
+    if (mode == NBI_APPEND || mode == NBI_PREPEND) {
+        anchor = self->first_child;              /* NULL when empty -> append */
+    } else {
+        if (!self->parent) return;               /* detached: nothing to sit beside */
+        anchor = (mode == NBI_BEFORE) ? self : self->next_sibling;
+    }
+    NbNode *into = (mode == NBI_APPEND || mode == NBI_PREPEND) ? self : self->parent;
+    for (int i = 0; i < argc; i++) {
+        NbNode *n = nbi_arg(ctx, argv[i], into);
+        if (!n) continue;
+        local_insert_before(into, n, mode == NBI_APPEND ? NULL : anchor);
+    }
+}
+
+static JSValue nb_el_append_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_APPEND);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_prepend_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_PREPEND);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_before_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_BEFORE);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_after_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_AFTER);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_replaceWith_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    nbi_do(ctx, argc, argv, self, NBI_BEFORE);   /* before(ref) then unlink ref */
+    if (self) { node_detach(self); orphan_add(self); }
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_remove_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    /* orphan_add as well as detach: a detached node is no longer reachable
+     * from g_dom_root, so without it teardown would never free it. A later
+     * re-insertion takes it back off the list. */
+    if (self) { node_detach(self); orphan_add(self); }
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_replaceChildren_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    if (!self) return JS_UNDEFINED;
+    clear_children(self);
+    nbi_do(ctx, argc, argv, self, NBI_APPEND);
+    return JS_UNDEFINED;
+}
+
+/* el.matches(sel) / el.closest(sel). matches() tests the element ITSELF -
+ * that is the whole difference from querySelector, which is scoped BELOW its
+ * receiver. closest() walks self-then-ancestors, which is what makes it
+ * usable on an event target. */
+static JSValue nb_el_matches(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    int r = (n && sel) ? match_any_selector(n, sel) : 0;
+    JS_FreeCString(ctx, owned);
+    return JS_NewBool(ctx, r);
+}
+static JSValue nb_el_closest(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    NbNode *hit = NULL;
+    if (n && sel)
+        for (NbNode *p = n; p; p = p->parent)
+            if (match_any_selector(p, sel)) { hit = p; break; }
+    JS_FreeCString(ctx, owned);
+    return hit ? push_node(ctx, hit) : JS_NULL;
+}
+static JSValue nb_el_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    NbNode *hit = NULL;
+    /* descendants only: query_first() tests the node it is given, so start at
+     * the children rather than at n, or an element would match itself. */
+    if (n && sel)
+        for (NbNode *c = n->first_child; c && !hit; c = c->next_sibling)
+            hit = query_first(c, sel);
+    JS_FreeCString(ctx, owned);
+    return hit ? push_node(ctx, hit) : JS_NULL;
+}
+static JSValue nb_el_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && sel) {
+        int i = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling)
+            qsa_into(ctx, c, sel, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_el_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling)
+            collect_tag_into(ctx, c, tag, arr, &i);   /* descendants only, as above */
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_el_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && tok && *tok) {
+        int i = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling)
+            collect_cls_into(ctx, c, tok, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+
+/* Deep/shallow copy. A shallow copy keeps tag/id/class/attrs/text but no
+ * children, which is what cloneNode(false) means. The copy is orphan-listed
+ * so teardown reclaims it if the page never inserts it. */
+static NbNode *nbi_clone(const NbNode *n, int deep) {
+    if (!n) return NULL;
+    NbNode *c = calloc(1, sizeof(*c));
+    if (!c) return NULL;
+    if (n->tag)   c->tag   = strdup(n->tag);
+    if (n->id)    c->id    = strdup(n->id);
+    if (n->cls)   c->cls   = strdup(n->cls);
+    if (n->attrs) c->attrs = strdup(n->attrs);
+    if (n->text)  c->text  = strdup(n->text);
+    orphan_add(c);
+    if (deep) {
+        for (const NbNode *k = n->first_child; k; k = k->next_sibling) {
+            NbNode *kc = nbi_clone(k, 1);
+            if (!kc) break;
+            orphan_remove(kc);        /* it is inside the copy now, not loose */
+            local_append(c, kc);
+        }
+    }
+    return c;
+}
+static JSValue nb_el_cloneNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NULL;
+    int deep = (argc > 0) ? JS_ToBool(ctx, argv[0]) : 0;
+    NbNode *c = nbi_clone(n, deep);
+    return c ? push_node(ctx, c) : JS_NULL;
+}
+static int nbi_streq(const char *a, const char *b) {
+    if (!a) a = "";
+    if (!b) b = "";
+    return strcmp(a, b) == 0;
+}
+static int nbi_equal(const NbNode *a, const NbNode *b) {
+    if (a == b) return 1;
+    if (!a || !b) return 0;
+    if (!nbi_streq(a->tag, b->tag) || !nbi_streq(a->id, b->id) ||
+        !nbi_streq(a->cls, b->cls) || !nbi_streq(a->text, b->text) ||
+        !nbi_streq(a->attrs, b->attrs)) return 0;
+    const NbNode *x = a->first_child, *y = b->first_child;
+    while (x && y) { if (!nbi_equal(x, y)) return 0; x = x->next_sibling; y = y->next_sibling; }
+    return x == y;   /* both NULL, or different child counts */
+}
+static JSValue nb_el_isEqualNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *a = get_this(ctx, this_val);
+    NbNode *b = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    return JS_NewBool(ctx, nbi_equal(a, b));
+}
+
+/* The box tree already models one rect per element, so getClientRects()
+ * answers with that single-box list rather than an empty one - a page that
+ * counts boxes would otherwise conclude the element is invisible.
+ * scrollIntoView is a no-op: the renderer owns scrolling and exposes no
+ * channel for a page to drive it, and returning quietly is what keeps a
+ * page's call from throwing. */
+static JSValue nb_el_getClientRects(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue arr = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, arr, 0, nb_el_getBoundingClientRect(ctx, this_val, 0, NULL));
+    JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, 1));
+    return arr;
+}
+static JSValue nb_el_scrollIntoView(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+
 static void install_dom_classes(JSContext *ctx) {
     JSValue ETf = JS_NewCFunction2(ctx, class_noop, "EventTarget", 1, JS_CFUNC_constructor, 0);
     JSValue Nf = JS_NewCFunction2(ctx, class_noop, "Node", 1, JS_CFUNC_constructor, 0);
@@ -4173,6 +4440,30 @@ static void install_dom_classes(JSContext *ctx) {
      * the customElements section. Native path so kevlar can stamp after
      * upgrade. */
     JS_SetPropertyStr(ctx, Ep, "attachShadow", JS_NewCFunction(ctx, nb_el_attachShadow, "attachShadow", 1));
+    /* Element methods (2026-11-02). Installed on Element.prototype rather
+     * than per wrapper so elements made later by createElement get them too,
+     * which is how a browser behaves. See the block above for what these do
+     * and what is deliberately not-to-spec. */
+    JS_SetPropertyStr(ctx, Ep, "matches",        JS_NewCFunction(ctx, nb_el_matches, "matches", 1));
+    JS_SetPropertyStr(ctx, Ep, "closest",        JS_NewCFunction(ctx, nb_el_closest, "closest", 1));
+    JS_SetPropertyStr(ctx, Ep, "querySelector",  JS_NewCFunction(ctx, nb_el_querySelector, "querySelector", 1));
+    JS_SetPropertyStr(ctx, Ep, "querySelectorAll", JS_NewCFunction(ctx, nb_el_querySelectorAll, "querySelectorAll", 1));
+    JS_SetPropertyStr(ctx, Ep, "getElementsByTagName",   JS_NewCFunction(ctx, nb_el_getElementsByTagName, "getElementsByTagName", 1));
+    JS_SetPropertyStr(ctx, Ep, "getElementsByClassName", JS_NewCFunction(ctx, nb_el_getElementsByClassName, "getElementsByClassName", 1));
+    JS_SetPropertyStr(ctx, Ep, "prepend",        JS_NewCFunction(ctx, nb_el_prepend_js, "prepend", 0));
+    JS_SetPropertyStr(ctx, Ep, "append",         JS_NewCFunction(ctx, nb_el_append_js, "append", 0));
+    JS_SetPropertyStr(ctx, Ep, "before",         JS_NewCFunction(ctx, nb_el_before_js, "before", 0));
+    JS_SetPropertyStr(ctx, Ep, "after",          JS_NewCFunction(ctx, nb_el_after_js, "after", 0));
+    JS_SetPropertyStr(ctx, Ep, "replaceWith",    JS_NewCFunction(ctx, nb_el_replaceWith_js, "replaceWith", 0));
+    JS_SetPropertyStr(ctx, Ep, "replaceChildren", JS_NewCFunction(ctx, nb_el_replaceChildren_js, "replaceChildren", 0));
+    JS_SetPropertyStr(ctx, Ep, "getClientRects", JS_NewCFunction(ctx, nb_el_getClientRects, "getClientRects", 0));
+    JS_SetPropertyStr(ctx, Ep, "scrollIntoView", JS_NewCFunction(ctx, nb_el_scrollIntoView, "scrollIntoView", 0));
+    /* Node-level methods live on Node.prototype: every element, text and
+     * document node shares them. remove() is on Element (ChildNode) in the
+     * spec; put it there, not here. */
+    JS_SetPropertyStr(ctx, Np, "cloneNode",      JS_NewCFunction(ctx, nb_el_cloneNode, "cloneNode", 1));
+    JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
+    JS_SetPropertyStr(ctx, Ep, "remove",         JS_NewCFunction(ctx, nb_el_remove_js, "remove", 0));
     JSValue Hp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Hp, Ep);
     JS_SetPropertyStr(ctx, Hf, "prototype", JS_DupValue(ctx, Hp));

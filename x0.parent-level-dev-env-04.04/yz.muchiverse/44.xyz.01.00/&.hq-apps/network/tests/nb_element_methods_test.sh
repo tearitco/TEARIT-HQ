@@ -1,0 +1,68 @@
+#!/bin/bash
+# nb_element_methods_test.sh - the element-method batch must really work, not
+# merely exist. Hermetic: no window, no renderer, no network.
+#
+# WHY THIS EXISTS (2026-11-02)
+# ---------------------------
+# A fingerprint-surface probe (tests/probe_fingerprint.js, added 2026-11-02)
+# listed Element.prototype.prepend/append/before/after/replaceWith/remove,
+# matches/closest, element.querySelector/querySelectorAll, cloneNode and
+# isEqualNode all missing, and glassdoor.com's own page script throws
+# "TypeError: not a function" at its t.prepend(e). None of those are
+# site-specific hacks: a modern page is built out of them.
+#
+# The assertions below verify BEHAVIOUR, not presence - argument order for the
+# variadic inserts, element-scoping of querySelector (an element never matches
+# itself), shallow vs deep clones, attribute-sensitive equality, and that a
+# node can be MOVED between parents by inserting it. A green run therefore
+# proves the semantics, not just the names. Every assertion is named, and the
+# failure line carries got=[...] want=[...] so a red run says which one broke.
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PKG="$(cd "$HERE/.." && pwd)"
+WORKER="$PKG/ops/+x/nb_js_worker.+x"
+FAIL=0
+
+command -v python3 >/dev/null || { echo "FAIL: python3 missing"; exit 1; }
+[ -x "$WORKER" ] || { echo "FAIL: worker binary missing at $WORKER"; exit 1; }
+[ -f "$HERE/nb_probe.py" ] || { echo "FAIL: harness missing at $HERE/nb_probe.py"; exit 1; }
+
+WORK="$(mktemp -d /tmp/nb_em.XXXXXX)"
+trap 'rm -rf "$WORK"' EXIT INT TERM
+
+# Fixture: an empty <html> document. Every element the test uses is created by
+# the page itself, so nothing leaks in from a real deployment.
+printf '/*nbjs-script-boundary*/\nvar __nb_em_fixture = 1;\n' > "$WORK/page.js"
+printf 'N|#document|||0||0|\nD\nN|html|||0||0|\nU\n' > "$WORK/dom.txt"
+
+cat > "$WORK/probe.js" <<'PROBE'
+(function(){   var pass=0,total=0;   function T(name,got,want){total++;if(String(got)===String(want)){pass++;console.log('ELEMENTOK '+name);}else{console.log('ELEMENTFAIL '+name+' got=['+got+'] want=['+want+']');}}   function mk(t,id,cls){var e=document.createElement(t);if(id)e.setAttribute('id',id);if(cls)e.setAttribute('class',cls);return e;}   function orderIds(el){var s='',c=el.firstChild;while(c){s+=(c.id||'?')+',';c=c.nextSibling;}return s;}   function tree(){var root=mk('div','root');var a=mk('div','cA','box'),b=mk('div','cB','box'),c=mk('div','cC','other');root.appendChild(a);root.appendChild(b);root.appendChild(c);var apex=mk('div','apex');a.appendChild(apex);document.documentElement.appendChild(root);return {root:root,a:a,b:b,c:c,apex:apex};}   var t=tree();   T('qsel-child', t.root.querySelector('#cA')===t.a, 'true');   T('qsel-excludes-self', t.root.querySelector('#root')===null, 'true');   T('qsel-descendant', t.a.querySelector('#cB')===null, 'true');   T('qsel-nested', t.a.querySelector('#apex')===t.apex, 'true');   T('qselAll-count', t.root.querySelectorAll('.box').length, '2');   T('qselAll-other', t.root.querySelectorAll('.other').length, '1');   T('qsa-excludes-self', t.b.querySelectorAll('#cB').length, '0');   T('closest-self', t.root.closest('#root')===t.root, 'true');   T('closest-ancestor', t.apex.closest('#cA')===t.a, 'true');   T('closest-no-match', t.apex.closest('#no_such_element_xyz')===null, 'true');   T('matches-yes', t.a.matches('.box'), 'true');   T('matches-no', t.a.matches('#nope'), 'false');   var r2=mk('div','r2');r2.prepend(mk('p','px'),mk('p','py'));   T('prepend-order', orderIds(r2), 'px,py,');   var r3=mk('div','r3');var s0=mk('p','s0');r3.appendChild(s0);r3.prepend(mk('p','s1'),mk('p','s2'));   T('prepend-keeps-order-with-existing', orderIds(r3), 's1,s2,s0,');   var r4=mk('div','r4');var m0=mk('p','m0'),m1=mk('p','m1');r4.appendChild(m0);r4.appendChild(m1);   m0.before(mk('p','beforeA'),mk('p','beforeB'));   T('before-order', orderIds(r4), 'beforeA,beforeB,m0,m1,');   m1.after(mk('p','afterA'),mk('p','afterB'));   T('after-order', orderIds(r4), 'beforeA,beforeB,m0,m1,afterA,afterB,');   var r5=mk('div','r5');r5.appendChild(mk('p','u'));r5.appendChild(mk('p','v'));r5.appendChild(mk('p','w'));   r5.querySelector('#v').replaceWith(mk('p','r1'),mk('p','r2'));   T('replaceWith-order', orderIds(r5), 'u,r1,r2,w,');   var r6=mk('div','r6');r6.appendChild(mk('p','x'));r6.appendChild(mk('p','y'));r6.querySelector('#y').remove();   T('remove-basic', orderIds(r6), 'x,');   var r7=mk('div','r7');r7.appendChild(mk('p','x1'));r7.prepend('hello');   T('insert-string-creates-text', r7.firstChild.textContent, 'hello');   var r8=mk('div','r8');r8.appendChild(mk('p','c1'));r8.appendChild(mk('p','c2'));r8.replaceChildren(mk('p','c3'),mk('p','c4'));   T('replaceChildren-order', orderIds(r8), 'c3,c4,');   var r9=mk('div','r9');var s1=mk('span','s1-cls'),s2=mk('span','s2-cls');s1.appendChild(s2);s1.setAttribute('class','cls');s2.setAttribute('class','cls');r9.appendChild(s1);   T('el-getElementsByTagName', r9.getElementsByTagName('span').length, '2');   T('el-getElementsByClassName', r9.getElementsByClassName('cls').length, '2');   var src=mk('div','src');var kid=mk('div','kid');kid.setAttribute('class','kid');src.appendChild(kid);   var shallow=src.cloneNode(false), deep=src.cloneNode(true);   T('clone-shallow', shallow.childNodes.length, '0');   T('clone-deep', deep.childNodes.length, '1');   T('clone-id', deep.id, 'src');   T('clone-kid-cls', deep.firstChild.getAttribute('class'), 'kid');   T('clone-new-object', deep===src, 'false');   T('clone-shape-equal', shallow.isEqualNode(deep), 'false');   var e1=mk('div','eq'),e2=mk('div','eq'),e3=mk('div','ne');   T('isEqualNode-yes', e1.isEqualNode(e2), 'true');   T('isEqualNode-no', e1.isEqualNode(e3), 'false');   e2.setAttribute('data-x','1');   T('isEqualNode-attrs', e1.isEqualNode(e2), 'false');   var rc=r9.getClientRects();   T('clientRects-length', rc.length, '1');   var err=null;try{r9.scrollIntoView();}catch(e){err=e;}   T('scrollIntoView-no-throw', err===null, 'true');   var r10=mk('div','r10');r10.appendChild(mk('p','m'));r10.appendChild(mk('p','n'));r10.prepend(r10.querySelector('#n'));   T('prepend-moves-existing-node', orderIds(r10), 'n,m,');   console.log('ELEMENTRESULT '+pass+'/'+total);   return 'ELEMENTDONE'; })();
+PROBE
+
+python3 "$HERE/nb_probe.py" \
+    --worker "$WORKER" --page "$WORK/page.js" --dom "$WORK/dom.txt" \
+    --href https://example.invalid/ --title element:fixture \
+    --probe "$WORK/probe.js" --console "$WORK/console.txt" \
+    --load-timeout 30 --eval-timeout 60 > "$WORK/out.json" 2> "$WORK/err.log" \
+    || { echo "FAIL: harness could not complete the probe"; sed -n '1,30p' "$WORK/err.log"; exit 1; }
+
+# The console capture echoes the probe's own SOURCE, which contains these very
+# tokens, so every assertion is anchored to an "=>" or "LOG|" OUTPUT line.
+grep -q '^=>ELEMENTDONE' "$WORK/console.txt" \
+    || { echo "FAIL: the probe never ran"; sed -n '1,30p' "$WORK/err.log"; exit 1; }
+
+if grep -q '^LOG|ELEMENTFAIL' "$WORK/console.txt"; then
+    echo "FAIL: an element-method assertion did not hold"
+    grep '^LOG|ELEMENTFAIL' "$WORK/console.txt"
+    FAIL=1
+fi
+
+res=$(sed -n 's/^LOG|ELEMENTRESULT //p' "$WORK/console.txt" | head -1)
+[ -z "$res" ] && { echo "FAIL: no element-method result line"; FAIL=1; }
+echo "measured: ${res:-none}"
+if [ "$FAIL" -eq 0 ]; then
+    echo "nb_element_methods_test.sh PASS ($res assertions)"
+    exit 0
+fi
+echo "nb_element_methods_test.sh FAIL"
+exit 1
