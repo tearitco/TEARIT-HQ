@@ -4053,6 +4053,40 @@ static JSValue nb_blob_bytes(JSContext *ctx, JSValueConst this_val) {
     if (JS_IsUndefined(b)) { JS_FreeValue(ctx, b); b = JS_NewString(ctx, ""); }
     return b;
 }
+/* Resolve `val` into a real Promise via the global Promise, taking ownership
+ * of val. Blob.text()/arrayBuffer() are promise-returning in the spec, and a
+ * page that awaits a plain value would silently see undefined. Falls back to
+ * handing back the raw value if Promise is somehow absent. */
+static JSValue nb_promise_resolve(JSContext *ctx, JSValue val) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue P = JS_GetPropertyStr(ctx, g, "Promise");
+    JS_FreeValue(ctx, g);
+    if (!JS_IsFunction(ctx, P)) { JS_FreeValue(ctx, P); return val; }
+    JSAtom a = JS_NewAtom(ctx, "resolve");
+    JSValue r = JS_Invoke(ctx, P, a, 1, (JSValueConst *)&val);
+    JS_FreeAtom(ctx, a);
+    JS_FreeValue(ctx, P);
+    JS_FreeValue(ctx, val);
+    return r;
+}
+/* Blob.text() / Blob.arrayBuffer() (2026-11-02): the worker models a blob's
+ * bytes as the string in __nb_bytes (see nb_blob_from_parts), so text() hands
+ * that string over and arrayBuffer() is its UTF-8 bytes - not an empty or
+ * fabricated buffer, which is what a page reading bytes would mis-handle.
+ * Installed PER INSTANCE, like slice: the constructor returns a plain object,
+ * so nothing on Blob.prototype is reachable from an instance. */
+static JSValue nb_blob_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return nb_promise_resolve(ctx, nb_blob_bytes(ctx, this_val));
+}
+static JSValue nb_blob_arraybuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue b = nb_blob_bytes(ctx, this_val);
+    size_t n = 0;
+    const char *s = JS_ToCStringLen(ctx, &n, b);
+    JSValue ab = JS_NewArrayBufferCopy(ctx, (const uint8_t *)(s ? s : ""), s ? n : 0);
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, b);
+    return nb_promise_resolve(ctx, ab);
+}
 static JSValue nb_blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue b = nb_blob_bytes(ctx, this_val);
     size_t n = 0; const char *s = JS_ToCStringLen(ctx, &n, b);
@@ -4066,6 +4100,9 @@ static JSValue nb_blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JS
     JS_SetPropertyStr(ctx, out, "__nb_bytes", JS_NewStringLen(ctx, s + a, (size_t)(z - a)));
     JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)(z - a)));
     JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    /* A slice is itself a Blob, so it needs the same reader set. */
+    JS_SetPropertyStr(ctx, out, "text", JS_NewCFunction(ctx, nb_blob_text, "text", 0));
+    JS_SetPropertyStr(ctx, out, "arrayBuffer", JS_NewCFunction(ctx, nb_blob_arraybuffer, "arrayBuffer", 0));
     if (argc > 1) {
         JSValue t = JS_GetPropertyStr(ctx, this_val, "type");
         if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
@@ -4105,6 +4142,8 @@ static JSValue nb_blob_from_parts(JSContext *ctx, JSValueConst this_val, int arg
         JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)n));
     }
     JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    JS_SetPropertyStr(ctx, out, "text", JS_NewCFunction(ctx, nb_blob_text, "text", 0));
+    JS_SetPropertyStr(ctx, out, "arrayBuffer", JS_NewCFunction(ctx, nb_blob_arraybuffer, "arrayBuffer", 0));
     if (argc > 1) {
         JSValue t = JS_GetPropertyStr(ctx, argv[1], "type");
         if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
