@@ -508,11 +508,7 @@ static void pet_own_export_room(int r, const char *d) {
 /* LIFE (owner 2026-10-27: the generic things every pets game has, backwards-merged from rpg-space): hp, hunger, death, respawn, life bars and the `life` verb from the shared text-include. OFF until this app's life.pdl says LIFE | enabled | 1. No drop list in this game (the PL_DROP hook defaults to nothing), so a death costs no items. */
 #include "../../../&.widgits/_shared-lib/petslike_life.c"
 #elif PET_SECTION == 76
-            if (c == 'b') {      /* b: build - place the armed brush at the xelector cell (the Move placer's Enter will do the same once the engine writes the request) */
-                char xp2[PATH_MAX], kb2[512]; snprintf(xp2, sizeof xp2, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp2, kb2, sizeof kb2); int xx2 = -1, xy2 = -1;
-                for (char *l = strtok(kb2, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) xx2 = atoi(l + 6); else if (!strncmp(l, "pos_y=", 6)) xy2 = atoi(l + 6); }
-                if (xx2 < 0 || xy2 < 0) snprintf(msg, sizeof msg, "no selector cell"); else vx_place(xx2, xy2, msg, sizeof msg);
-                dirty = 1; continue; }
+            /* (the daemon-side `b` build key was removed 2026-11-03: keys typed in the board window go to the engine, never to this daemon; building is the engine placer's Enter -> place_requests.txt, consumed in section 68) */
 #elif PET_SECTION == 79
         if (run_on() && pl_life_tick()) dirty = 1;      /* hunger, starving, death, respawn (life.pdl; nothing runs while it is disabled) */
 #endif
