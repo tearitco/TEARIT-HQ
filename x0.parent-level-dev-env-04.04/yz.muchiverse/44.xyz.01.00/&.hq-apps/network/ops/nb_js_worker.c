@@ -21,8 +21,26 @@
  */
 #include "nb_host.h"
 #include <execinfo.h>   /* NB_CRASH_BT: fatal-signal backtrace into the worker log */
+#include <time.h>
 #include "../nb_css.h"
 #include "../nb_dom.h"
+
+/* R4 minimal shims */
+static unsigned char _nbbd(char c){ if(c>='A'&&c<='Z')return c-'A'; if(c>='a'&&c<='z')return c-'a'+26; if(c>='0'&&c<='9')return c-'0'+52; if(c=='+')return 62; if(c=='/')return 63; if(c=='=')return 64; return 255; }
+static JSValue _nb_atob(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'atob'"); const char *str=JS_ToCString(ctx,argv[0]); if(!str)return JS_EXCEPTION; size_t n=strlen(str); unsigned char *out=malloc((n/4+2)*3); if(!out){JS_FreeCString(ctx,str);return JS_EXCEPTION;} size_t o=0,i=0,ti=0; unsigned char t[4]; while(i<n){ char c=str[i++]; if(c==' '||c=='\n'||c=='\r'||c=='\t'||c=='\f'||c=='\v')continue; if(c=='=')break; unsigned char v=_nbbd(c); if(v==255)continue; t[ti++]=v; if(ti==4){ out[o++]=(t[0]<<2)|(t[1]>>4); out[o++]=((t[1]&0xF)<<4)|(t[2]>>2); out[o++]=((t[2]&0x3)<<6)|t[3]; ti=0; }} /* Flush the final partial group. Without this a padded tail was silently DROPPED: 'yhbPEA==' carries three bytes plus one, and only the three were emitted, so every padded base64 string came back short by its last byte. Verified 2026-11-02: Cloudflare's orchestrate decoder read its integer strings one character short and BigInt() then failed. */ if(ti==2){ out[o++]=(t[0]<<2)|(t[1]>>4); } else if(ti==3){ out[o++]=(t[0]<<2)|(t[1]>>4); out[o++]=((t[1]&0xF)<<4)|(t[2]>>2); } JS_FreeCString(ctx,str); /* atob yields a BINARY string: one char per byte, code 0..255. JS_NewStringLen decodes its buffer as UTF-8, so passing the raw bytes turned every byte >= 0x80 into U+FFFD (0xCA -> U+FFFD) and left every charCodeAt() consumer reading garbage. Verified 2026-11-02 against Cloudflare's orchestrate decoder, whose base64+XOR integer strings arrived as "\uff0ax\uff0a0\uff0a3..." and made BigInt() throw "invalid bigint literal". Re-encode each byte as a 2-byte UTF-8 sequence (0xC0|b>>6, 0x80|b&0x3F) when b >= 0x80 so the decode round-trips to exactly b. */ { unsigned char *u8=malloc(o*2+1); if(!u8){ free(out); return JS_ThrowOutOfMemory(ctx); } size_t u=0; for(size_t k=0;k<o;k++){ unsigned char b=out[k]; if(b<0x80){ u8[u++]=b; } else { u8[u++]=(unsigned char)(0xC0|(b>>6)); u8[u++]=(unsigned char)(0x80|(b&0x3F)); } } JSValue r=JS_NewStringLen(ctx,(const char*)u8,u); free(u8); free(out); return r; } }
+/* btoa: base64 of a BINARY string.
+ *
+ * KNOWN LIMITATION (verified 2026-11-02, NOT fixed - it is not the blocker):
+ * this converts its input with JS_ToCString, i.e. as UTF-8, so a code unit
+ * >= 0x80 is encoded as the bytes of its UTF-8 form instead of its own low
+ * byte. btoa(String.fromCharCode(0xCA)) returns 'w4o=' (the encoding of
+ * C3 8A) where a browser returns 'yg=='. ASCII input is unaffected, which is
+ * why the ASCII-only rung6 test never caught it. Fixing it needs the string's
+ * CODE UNITS rather than its UTF-8 bytes: a separate change. atob() below is
+ * the same family of bug and IS fixed (see tests/nb_atob_test.sh). */
+static JSValue _nb_btoa(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'btoa'"); const char *str=JS_ToCString(ctx,argv[0]); if(!str)return JS_EXCEPTION; const char tbl[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; size_t len=strlen(str); size_t olen=((len+2)/3)*4; char *out=malloc(olen+1); if(!out){JS_FreeCString(ctx,str);return JS_EXCEPTION;} size_t i=0,j=0; const unsigned char *p=(const unsigned char*)str; while(i+2<len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)|((p[i+1]>>4)&0xF)]; out[j++]=tbl[((p[i+1]&0xF)<<2)|((p[i+2]>>6)&0x3)]; out[j++]=tbl[p[i+2]&0x3F]; i+=3; } if(i+1==len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)]; out[j++]='='; out[j++]='='; }else if(i<len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)|((p[i+1]>>4)&0xF)]; out[j++]=tbl[((p[i+1]&0xF)<<2)]; out[j++]='='; } out[j]=0; JS_FreeCString(ctx,str); JSValue r=JS_NewStringLen(ctx,out,j); free(out); return r; }
+static JSValue _nb_perfnow(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val;(void)argc;(void)argv; struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts); return JS_NewFloat64(ctx, ts.tv_sec*1000.0 + ts.tv_nsec/1000000.0); }
+static JSValue _nb_grv(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'getRandomValues'"); JSValue arr=argv[0]; JSValue lval = JS_GetPropertyStr(ctx, arr, "length"); int64_t lenv = 0; JS_ToInt64(ctx, &lenv, lval); JS_FreeValue(ctx, lval); uint32_t len = (uint32_t)lenv; if(len==0||len>65536)return JS_ThrowTypeError(ctx,"Invalid typed array length"); for(uint32_t i=0;i<len;i++){ JS_SetPropertyUint32(ctx,arr,i,JS_NewInt32(ctx,rand()&0xFF)); } return JS_DupValue(ctx,arr); }
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../js/stb_image.h"
@@ -1596,6 +1614,13 @@ static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, J
 }
 
 static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    /* Deliberately NOT guarded against a null/undefined `this`: a browser
+     * throws "cannot read property 'getBoundingClientRect' of null" in
+     * exactly that case, that error is what the CALLER wrote (it did not
+     * check its own lookup), and swallowing it into a zeroed rect would hide
+     * a page bug while looking like a fix. Removing this guard on 2026-11-02:
+     * it was added earlier the same day against that error message, which
+     * turned out to be correct browser behaviour rather than a gap here. */
     NbNode *n = get_this(ctx, this_val);
     double w = 0, h = 0, x = 0, y = 0;
     if (n && !layout_hidden_anc(n)) {
@@ -6570,6 +6595,7 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "visibilityState", JS_NewString(ctx, "visible"));
         JS_SetPropertyStr(ctx, doc, "hidden", JS_NewBool(ctx, 0));
         JS_SetPropertyStr(ctx, doc, "readyState", JS_NewString(ctx, "complete"));
+        JS_SetPropertyStr(ctx, doc, "currentScript", JS_NULL);
         JS_SetPropertyStr(ctx, doc, "createEvent",
                           JS_NewCFunction(ctx, nb_dom_createEvent, "createEvent", 1));
         JS_SetPropertyStr(ctx, doc, "addEventListener",
@@ -8737,6 +8763,10 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "__shady_native_addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "__shady_native_addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "__shady_native_removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "__shady_native_removeEventListener", 2));
     JS_SetPropertyStr(ctx, g, "__shady_native_dispatchEvent",       JS_NewCFunction(ctx, nb_win_dispatchEvent, "__shady_native_dispatchEvent", 1));
+    JS_SetPropertyStr(ctx,g,"atob",JS_NewCFunction(ctx,_nb_atob,"atob",1));
+    JS_SetPropertyStr(ctx,g,"btoa",JS_NewCFunction(ctx,_nb_btoa,"btoa",1));
+    { JSValue p=JS_NewObject(ctx); JS_SetPropertyStr(ctx,p,"now",JS_NewCFunction(ctx,_nb_perfnow,"now",0)); JS_SetPropertyStr(ctx,g,"performance",p); }
+    { JSValue c=JS_NewObject(ctx); JS_SetPropertyStr(ctx,c,"getRandomValues",JS_NewCFunction(ctx,_nb_grv,"getRandomValues",1)); JS_SetPropertyStr(ctx,g,"crypto",c); }
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
