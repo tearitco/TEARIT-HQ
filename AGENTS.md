@@ -138,6 +138,14 @@ HQ-IQ-BOOK `03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md`. A trim that skips an o
 because the renderer's trim returned early on a big `index.txt`, in a gitignored folder nobody looked at. A commit that adds a writer states its files or
 bytes per hour. `cpu_guard`'s `hygiene_sweep()` is the second guard; add new folders to it.
 
+## Every process the house starts is registered in a file (REQUIRED, since 2026-11-02)
+
+"If it's not a file, it's a lie" applies to processes. A process the house starts must be recorded by the process itself or by the spawn funnel (`kh_spawn.h` /
+`kh_spawn.sh`, registry `#.desktop/livedesk_proc_list.txt`, moving to `proc_registry.pdl`) before it does any work, and a long-lived one must exit when its owner is gone.
+Do not write a new `setsid nohup X &` or `fork`+`setsid()` outside the funnel. The 149 existing unregistered sites are listed in
+HQ-IQ-BOOK `08-roadmap/design-docs/PROC-REGISTRY-BASELINE-2026-11-02.txt` and are being converted (plan: `PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md`); the
+list may only shrink. The CPU guard ends house processes when no LyfeDesk window exists for 120 s (`hq-cpu-safety.md` 8b).
+
 ## Product name: LyfeDesk (2026-10-15)
 
 The product is **LyfeDesk** (written "LyfeDesk"), formerly "livedesk", renamed to avoid a future trademark conflict. Anything a user
