@@ -11,6 +11,7 @@
       <tab id="tb-page" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
+      <tab id="tb-chat" class="pchq-tb" label="${chat_mode_label} ▾" onclick="ACTIVATE" target_id="tb-chat"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
@@ -61,6 +62,9 @@
       <item id="pm-synch" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (desk to game)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch"/>
       <item id="pm-synch2" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (game to desk)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch to-desk"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <item id="ch-edit" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="edit (pet chat)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode edit"/>
+      <item id="ch-hai" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="h-ai (API, edits this book)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode hai"/>
+      <item id="ch-net" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="network (later)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode network"/>
       <item id="tm-cent" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate cent"/>
       <item id="tm-sec" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate sec"/>
       <item id="tm-min" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: normal (1 min/sec)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate min"/>
@@ -86,7 +90,9 @@
       </row>
       <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-chrome pchq-hotbar theme" show="${side_right}">
-        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3 ov-line"/>
+        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_edit}"/>
+        <text label="h-ai - ${book_label}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
+        <text label="network - later" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
         <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
         <text label="${chat_0}" class="rp-chat ov-line"/>
         <text label="${chat_1}" class="rp-chat ov-line"/>
@@ -94,7 +100,7 @@
         <text label="${chat_3}" class="rp-chat ov-line"/>
         <text label="${chat_4}" class="rp-chat ov-line"/>
         <text label="${chat_5}" class="rp-chat ov-line"/>
-        <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clearchat"/>
+        <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatclear"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_edit_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">

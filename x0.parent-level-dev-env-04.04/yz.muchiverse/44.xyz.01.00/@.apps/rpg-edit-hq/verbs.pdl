@@ -35,3 +35,7 @@ VERB | sync      | no     | ui     | -             | engine: re-render
 VERB | toggle    | no     | ui     | -             | UI state: chat / hb / voice / left panels
 VERB | view      | no     | ui     | -             | UI state: 2d / 3d / glyph
 VERB | walk      | no     | ui     | -             | one pet step (test)
+VERB | chatmode  | no     | ui     | edit|hai|network | chat pane mode (the Chat tab)
+VERB | haisay    | no     | ui     | text          | typed text while the chat pane is in h-ai mode
+VERB | netsay    | no     | ui     | -             | typed text in network mode (later)
+VERB | chatclear | no     | ui     | -             | clear the chat of the current mode

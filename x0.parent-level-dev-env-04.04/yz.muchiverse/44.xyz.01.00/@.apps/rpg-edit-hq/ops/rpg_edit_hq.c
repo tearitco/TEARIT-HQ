@@ -25,6 +25,13 @@ static const char *pl_life_bar_state(int slot);
 #include "../../../&.widgits/_shared-lib/kh_state_notify.h"      /* STATE_BACKEND=file|marker|shmem: "did it change" without reading it (branch marker, 2026-10-12) */
 #include "../../../&.widgits/_shared-lib/csv_frames.c"      /* a pet's sprite.csv -> the 16x24 3D walk frames */
 #elif PET_SECTION == 3
+/* chat pane modes (owner 2026-11-02): edit = the pet chat (chat.txt), hai = the API chat (hai_chat.txt), network = later. Mode lives in flag_chatmode.txt, the Chat tab sets it (verb chatmode).
+ * hai_chat.txt is capped like chat.txt (past 24 KB keep the newest 8 KB): HQ-IQ-BOOK 03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md */
+static void spath(char *o, const char *n); static int write_if_changed(const char *p, const void *data, size_t n); static void append_line(const char *name, const char *line); static int read_tail(const char *p, char *buf, size_t cap);      /* the core defines these later */
+static void hai_line(const char *who, const char *text) {
+    char b[400]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("hai_chat.txt", b);
+    char p[PATH_MAX]; spath(p, "hai_chat.txt"); struct stat st; if (stat(p, &st) || st.st_size < 24000) return;
+    static char keep[9000]; read_tail(p, keep, sizeof keep); write_if_changed(p, keep, strlen(keep)); }
 static void pl_life_verb(int argc, char **argv, char *msg, size_t cap); static void pl_life_ui(char *out, size_t cap); static int pl_life_tick(void);      /* the generic life layer (section 75) */
 /* ---- rpg-edit-hq: the floating-island town (BOOK 16.game/EDIT-ISLANDS-DESIGN.md). sk_ensure_map() (section 73) builds the map into these arrays once per process; the index is the room's place in rooms.pdl
  * (start, bank, store, hotel, school, cabin). glyph: G grass, p path, T pine, B building, D door, ~ water, b bridge, s ramp, F fire, S sign, r rubble, _ void (a hole in the island), W wall, . floor.
@@ -157,7 +164,9 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     W("left_visible=%s\n", flag_on("left", 1) ? "1" : "");      /* the pinned info bar (default on, Menu > Info show / hide, its _ button) */
     W("chat_visible=%s\nhb_visible=%s\nview_label=view %s\nchat_toggle_label=window %s\n", chat ? "1" : "", hb ? "1" : "", view, chat ? "on" : "off");
     { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
-    { char cp[PATH_MAX], cb[4000]; spath(cp, "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
+    { char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"), net = !strcmp(cm, "network");
+      W("chat_mode_label=chat: %s\nchat_is_edit=%s\nchat_is_hai=%s\nchat_is_net=%s\n", hai ? "h-ai" : net ? "network" : "edit", !hai && !net ? "1" : "", hai ? "1" : "", net ? "1" : ""); }
+    { char cp[PATH_MAX], cb[4000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
@@ -225,6 +234,13 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } sn_bump(&g_sn, SL_PETS); sn_bump(&g_sn, SL_FLAGS); sn_bump(&g_sn, SL_DAY); g_flag_epoch++; pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
+    if (!strcmp(v, "chatmode") && argc >= 2) { const char *m = !strcmp(argv[1], "hai") ? "hai" : !strcmp(argv[1], "network") ? "network" : "edit"; set_flag("chatmode", m); snprintf(msg, cap, "chat: %s", m); return; }
+    if (!strcmp(v, "haisay") && argc >= 2) {      /* typed text while the pane is in h-ai mode (section 70 turns it into this verb). Step 1: a canned reply, the API call comes next */
+        hai_line("you", argv[1]); hai_line("h-ai", "[canned] not connected to the API yet. Soon: ask me for an event change in this book and I will propose it for you to apply."); snprintf(msg, cap, "h-ai: asked"); return; }
+    if (!strcmp(v, "netsay")) { snprintf(msg, cap, "network chat comes later"); return; }
+    if (!strcmp(v, "chatclear")) {      /* clear the chat of the current mode (edit: the same rename the core clearchat does) */
+        char cm[16], p[PATH_MAX], q[PATH_MAX]; flag_str("chatmode", "edit", cm, sizeof cm); spath(p, !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt");
+        snprintf(q, sizeof q, "%s.%ld.bak", p, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as %s.%ld.bak)", !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt", now); return; }
     if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }
     if (!strcmp(v, "toggle") && argc >= 2 && (!strcmp(argv[1], "chat") || !strcmp(argv[1], "hb") || !strcmp(argv[1], "voice") || !strcmp(argv[1], "left"))) { set_flag(argv[1], flag_on(argv[1], !strcmp(argv[1], "voice") || !strcmp(argv[1], "left")) ? "0" : "1"); snprintf(msg, cap, "%s toggled", argv[1]); return; }
 #elif PET_SECTION == 66
@@ -240,6 +256,10 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon */
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon */
     snprintf(ST, sizeof ST, "%s/state", APP); mkdir(ST, 0755); sn_init(&g_sn, ST);
+    if (mode == 0 && argc >= 4 && is_dir(argv[1]) && argv[3][0] && argv[3][0] != '/') {      /* the chat box: in h-ai / network mode its text is not a pet line (a leading / still runs a verb) */
+        char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); static char full[300];
+        if (!strcmp(cm, "hai")) { snprintf(full, sizeof full, "%s", argv[3]); vargv[0] = "haisay"; vargv[1] = full; vargc = 2; }
+        else if (!strcmp(cm, "network")) { vargv[0] = "netsay"; vargc = 1; } }
     snprintf(PCHQ, sizeof PCHQ, "%s/rpg-edit-hq-pchq", APP);
 #elif PET_SECTION == 71
     load_data(); replay(); pet_load(); clock_paths();
