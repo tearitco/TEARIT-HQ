@@ -105,6 +105,8 @@
         </repeat>
         <text label="no tile grid for this palette yet" class="ph-quiet ov-line" show="${pal_empty}"/>
         <text label="${pal_more}" class="ph-quiet ov-line" show="${pal_more}"/>
+        <item id="sp-prev" class="pchq-ft skin-bar" label="&lt; previous 48" show="${pal_can_prev}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' prev"/>
+        <item id="sp-next" class="pchq-ft skin-bar" label="next 48 &gt;" show="${pal_can_next}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' next"/>
         <text label="armed: ${pal_armed}" class="ph-quiet ov-line" show="${pal_armed}"/>
         <repeat count="${n_ptile}" bind="ptile">
           <item id="pt-${ptile.#}" class="pchq-ft sprite-inline sprite-big skin-bar" label="${ptile.glyph}" sprite="${ptile.sprite}" show="${pal_is_tiles}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' arm ${ptile.#}"/>

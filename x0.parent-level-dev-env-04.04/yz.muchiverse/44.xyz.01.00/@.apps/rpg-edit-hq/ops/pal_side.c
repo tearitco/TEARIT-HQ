@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #define _POSIX_C_SOURCE 200809L
 /* pal_side - the editor's left side bar switch: pets <-> palettes (BOOK RPG-EDIT-HQ-PALETTES-SIDEBAR-RESEARCH-2026-11-02.md).
  * Usage: pal_side <house> <verb> [arg]
@@ -63,6 +64,7 @@ static void kv_get(const char *path, const char *key, char *out, size_t n) {
 #define MAXR 60
 static char RK[3][MAXR][96], RL[3][MAXR][96]; static int RN[3];   /* 0 types, 1 sheets, 2 sets */
 static int g_busy = 0;                                            /* set when a refresh was skipped because the machine is busy */
+static int g_off = 0;                                             /* first tile shown: page * MAXT (paging past the first 48, 2026-11-03) */
 static int ntot = 0;                                              /* tiles in the active tileset (only MAXT are shown) */
 /* Bounded helper runs (CPU: the first version ran `timeout 3 manager` and `timeout 2 projector` per pick: both are polling daemons that never exit by themselves, so EVERY pick burned the full
  * 5 s; 14 picks in a row next to a browser were part of the 2026-11-03 02:49 guard kill, a finding in our own footprint). Now: (1) not started at all when the machine is already busy
@@ -110,8 +112,8 @@ static void load_ui(const char *house, const char *key, int force) {
     FILE *f = fopen(p, "r"); if (!f) return; static char ln[2048];
     while (fgets(ln, sizeof ln, f)) {
         int i; char *eq = strchr(ln, '='); if (!eq) continue; *eq = 0; char *v = eq + 1; v[strcspn(v, "\r\n")] = 0;
-        if (sscanf(ln, "t_%d_glyph", &i) == 1 && !strstr(ln, "sprite") && i >= 0 && i < MAXT) { snprintf(TG[i], sizeof TG[0], "%.14s", v); if (i + 1 > nt) nt = i + 1; }
-        else if (sscanf(ln, "t_%d_sprite", &i) == 1 && i >= 0 && i < MAXT) { snprintf(TS[i], sizeof TS[0], "%s", v); if (i + 1 > nt) nt = i + 1; }
+        if (sscanf(ln, "t_%d_glyph", &i) == 1 && !strstr(ln, "sprite") && (i -= g_off) >= 0 && i < MAXT) { snprintf(TG[i], sizeof TG[0], "%.14s", v); if (i + 1 > nt) nt = i + 1; }
+        else if (sscanf(ln, "t_%d_sprite", &i) == 1 && (i -= g_off) >= 0 && i < MAXT) { snprintf(TS[i], sizeof TS[0], "%s", v); if (i + 1 > nt) nt = i + 1; }
         else if (!strcmp(ln, "n_tiles")) ntot = atoi(v);
         else if (idx_of(ln, "d_", "_key", &i) && i >= 0 && i < MAXR) { snprintf(RK[0][i], 96, "%s", v); if (i + 1 > RN[0]) RN[0] = i + 1; }
         else if (idx_of(ln, "d_", "_label", &i) && i >= 0 && i < MAXR) snprintf(RL[0][i], 96, "%s", v);
@@ -172,6 +174,7 @@ int main(int argc, char **argv) {
         /* pick <key>: at the list = open that palette (at its first level with a choice), at a level = choose it and go down */
         char np[4300]; snprintf(np, sizeof np, "%s/@.apps/rpg-edit-hq/board/state/pal_nav.txt", house); char nk[64], nl[16]; kv_get(np, "kind", nk, sizeof nk); kv_get(np, "level", nl, sizeof nl);
         int lvl = nk[0] && nl[0] ? atoi(nl) : 0;
+        g_off = 0;      /* a pick starts at the first page of whatever it opens */
         if (lvl == 0) {
             int at = -1; for (int i = 0; i < nc; i++) if (!strcmp(KEY[i], arg)) at = i;
             if (at < 0) { fprintf(stderr, "pal_side: no such category %s\n", arg); return 1; }
@@ -182,7 +185,7 @@ int main(int argc, char **argv) {
             if (vb[0]) { run_menu(house, vb, arg); load_ui(house, nk, 1); } else load_ui(house, nk, 0);
             lvl = descend(lvl);
         }
-        char sl[16]; snprintf(sl, sizeof sl, "%d", lvl); kv_set(np, "kind", nk); kv_set(np, "level", sl);
+        char sl[16]; snprintf(sl, sizeof sl, "%d", lvl); kv_set(np, "kind", nk); kv_set(np, "level", sl); kv_set(np, "page", "0");
         kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", "");
     } else if (!strcmp(verb, "arm")) {
         int i = atoi(arg); char g[64], sp[1024], k[64], pm[4200];
@@ -206,21 +209,29 @@ int main(int argc, char **argv) {
                 pid_t c = fork(); if (c == 0) { if (!strcmp(k, "rmmv")) execlp("sh", "sh", pm, av, sp, ats, acat, g, (char *)NULL); else execlp("sh", "sh", pm, av, sp, g, (char *)NULL); _exit(127); }
                 if (c > 0) { int st; waitpid(c, &st, 0); } } }
         return 0;
-    } else if (strcmp(verb, "back") && strcmp(verb, "list")) { fprintf(stderr, "pal_side: unknown verb %s\n", verb); return 2; }
+    } else if (strcmp(verb, "back") && strcmp(verb, "list") && strcmp(verb, "next") && strcmp(verb, "prev")) { fprintf(stderr, "pal_side: unknown verb %s\n", verb); return 2; }
     /* the view = the nav state (kind, level): back goes up to the previous level that has a choice, list resets, every other verb (open / pets / none / restore / pick) shows where you are */
     char np[4300]; snprintf(np, sizeof np, "%s/@.apps/rpg-edit-hq/board/state/pal_nav.txt", house); char nk[64] = "", nl[16] = ""; kv_get(np, "kind", nk, sizeof nk); kv_get(np, "level", nl, sizeof nl);
     int lvl = nk[0] && nl[0] ? atoi(nl) : 0; if (lvl < 0 || lvl > 4) lvl = 0;
     if (!strcmp(verb, "list")) lvl = 0;
-    if (lvl > 0) { load_ui(house, nk, 0); if (!strcmp(verb, "back")) lvl = ascend(lvl); } else RN[0] = RN[1] = RN[2] = nt = ntot = 0;
+    int page = 0; { char pg[16]; kv_get(np, "page", pg, sizeof pg); page = atoi(pg); if (page < 0) page = 0; }
+    if (lvl > 0) {
+        g_off = (strcmp(verb, "pick") && strcmp(verb, "tiles")) ? page * MAXT : 0; load_ui(house, nk, 0);
+        if (lvl == 4 && (!strcmp(verb, "next") || !strcmp(verb, "prev"))) {      /* page within bounds, then read that page */
+            int np2 = page + (!strcmp(verb, "next") ? 1 : -1); if (np2 >= 0 && np2 * MAXT < ntot) { page = np2; g_off = page * MAXT; load_ui(house, nk, 0); } }
+        if (!strcmp(verb, "back")) { lvl = ascend(lvl); page = 0; }
+        if (strcmp(verb, "pick") == 0 || strcmp(verb, "tiles") == 0) page = 0;
+        { char pg[16]; snprintf(pg, sizeof pg, "%d", page); kv_set(np, "page", pg); }
+    } else { RN[0] = RN[1] = RN[2] = nt = ntot = 0; g_off = 0; }
     { char sl[16]; snprintf(sl, sizeof sl, "%d", lvl); kv_set(np, "kind", lvl ? nk : ""); kv_set(np, "level", sl); }
     int kl = -1; for (int i = 0; i < nc; i++) if (!strcmp(KEY[i], nk)) kl = i; const char *kname = kl >= 0 ? LAB[kl] : nk;
     static const char *LV[] = { "palettes", "tile type", "sheet", "tileset", "tiles" };
     snprintf(title, sizeof title, "%s", lvl == 0 ? "palettes" : lvl == 4 ? kname : LV[lvl]);   /* a level shows its own name; the palette name goes on the line below (pal_sub) */
     int nrow = lvl == 0 ? nc : (lvl >= 1 && lvl <= 3) ? RN[lvl - 1] : 0;
     char tmp[4300]; snprintf(tmp, sizeof tmp, "%s.tmp", pal); FILE *o = fopen(tmp, "w"); if (!o) return 1;
-    fprintf(o, "n_pcat=%d\npal_is_list=%s\npal_is_tiles=%s\npal_can_back=%s\npal_key=%s\npal_title=%s\npal_sub=%s\n", nrow, lvl != 4 ? "1" : "", lvl == 4 ? "1" : "", lvl > 0 ? "1" : "", nk, title, (lvl >= 1 && lvl <= 3) ? kname : "");
+    fprintf(o, "n_pcat=%d\npal_is_list=%s\npal_is_tiles=%s\npal_can_back=%s\npal_key=%s\npal_title=%s\npal_sub=%s\npal_can_prev=%s\npal_can_next=%s\n", nrow, lvl != 4 ? "1" : "", lvl == 4 ? "1" : "", lvl > 0 ? "1" : "", nk, title, (lvl >= 1 && lvl <= 3) ? kname : "", (lvl == 4 && g_off > 0) ? "1" : "", (lvl == 4 && g_off + MAXT < ntot) ? "1" : "");
     for (int i = 0; i < nrow; i++) { const char *k2 = lvl == 0 ? KEY[i] : RK[lvl - 1][i], *l2 = lvl == 0 ? LAB[i] : (RL[lvl - 1][i][0] ? RL[lvl - 1][i] : RK[lvl - 1][i]); fprintf(o, "pcat_%d_key=%s\npcat_%d_label=%s\n", i, k2, i, l2); }
-    char more[64] = ""; if (lvl == 4 && ntot > nt) snprintf(more, sizeof more, "first %d of %d tiles", nt, ntot);
+    char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");
     fprintf(o, "n_ptile=%d\npal_empty=%s\npal_more=%s\n", lvl == 4 ? nt : 0, (lvl == 4 && nt == 0) ? "1" : "", more);
     if (lvl == 4) for (int i = 0; i < nt; i++) fprintf(o, "ptile_%d_glyph=%s\nptile_%d_sprite=%s\n", i, TG[i], i, TS[i]);
