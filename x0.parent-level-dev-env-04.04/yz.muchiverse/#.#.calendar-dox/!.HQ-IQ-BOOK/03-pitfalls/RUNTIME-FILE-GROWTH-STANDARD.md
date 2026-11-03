@@ -41,9 +41,13 @@ Anything the house writes while it runs (frames, logs, ledgers, relays, snapshot
 | `#.desktop/ascii_frames/index.txt` + `<pid>.<seq>.{objects,receipt}.pdl` | every `khtpm_core_render` window | 50 index lines, their files | renderer trim (reads the tail if the index is oversize, fixed 2026-11-02) | `cpu_guard` `hygiene_sweep()`: 3000 entries / 900 s |
 | free disk under the house | everything | 5 GB free warning | n/a | `cpu_guard` `hygiene_sweep()` -> `disk_alert.txt` |
 
-Known, not yet capped (candidates for the next sweep row): `#.desktop/entity_menu_history/<pid>.txt` (dead-pid files were 1,677 until the
-2026-11-02 cleanup; 5 MB), `#.desktop/entity_menu_frame_<pid>.txt` (1,570 dead-pid files), `<pid>.frame_history.txt` in `ascii_frames` (about 200 MB,
-one per window), `petslike` `events.txt` (4 MiB cap drops silently, see its own note).
+Dead-pid leftovers (added 2026-11-02, same sweep, every 2 minutes, a file goes only when `/proc/<pid>` is gone and its name is exactly
+prefix + digits + suffix): `#.desktop/entity_menu_history/<pid>.txt`, `#.desktop/entity_menu_frame_<pid>.txt`, `taskbar_settings_frame_<pid>.txt`,
+`livedesk_hq_windows_<pid>.txt`, `livedesk_hq_restore_<pid>.txt`, and `#.desktop/ascii_frames/<pid>.{frame_history,frame,pulse}.txt`. Tested on a scratch
+house: the 8 dead-pid files went, the live-pid files, look-alike names and config stayed.
+
+Known, not yet capped: `petslike` `events.txt` (4 MiB cap drops silently, rotation is an owner decision, see its own note) and the history file of a LIVE
+window (grows while the window lives; removed when it dies).
 
 ## Cleaning up by hand (what was done 2026-11-02)
 

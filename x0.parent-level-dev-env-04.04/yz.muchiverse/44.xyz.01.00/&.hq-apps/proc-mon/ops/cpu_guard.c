@@ -567,6 +567,33 @@ static int is_snapshot_name(const char *n) {   /* <digits>.<digits>.objects.pdl 
     p++;
     return strcmp(p, "objects.pdl") == 0 || strcmp(p, "receipt.pdl") == 0;
 }
+/* Per-pid runtime files whose process is gone: <dir>/<prefix><digits><suffix> is removed when /proc/<pid> does not exist. The shape is exact
+ * (prefix + all digits + suffix) so no other file can match. At most FRAME_PASS per call. Returns how many were removed. */
+static int dead_pid_sweep(const char *sub, const char *prefix, const char *suffix) {
+    char dir[PATH_MAX + 64];
+    snprintf(dir, sizeof dir, "%s/%s", house, sub);
+    DIR *d = opendir(dir);
+    if (!d) return 0;
+    size_t pl = strlen(prefix), sl = strlen(suffix);
+    int removed = 0;
+    struct dirent *e;
+    while ((e = readdir(d)) && removed < FRAME_PASS) {
+        size_t nl = strlen(e->d_name);
+        if (nl <= pl + sl || strncmp(e->d_name, prefix, pl) != 0 || strcmp(e->d_name + nl - sl, suffix) != 0) continue;
+        int digits = 1;
+        for (size_t i = pl; i < nl - sl; i++) if (!isdigit((unsigned char)e->d_name[i])) { digits = 0; break; }
+        if (!digits) continue;
+        char pp[64], fp[PATH_MAX + 300];
+        struct stat st;
+        snprintf(pp, sizeof pp, "/proc/%.*s", (int)(nl - sl - pl), e->d_name + pl);
+        if (stat(pp, &st) == 0) continue;   /* process still alive: keep */
+        snprintf(fp, sizeof fp, "%s/%s", dir, e->d_name);
+        if (unlink(fp) == 0) removed++;
+    }
+    closedir(d);
+    return removed;
+}
+
 static void hygiene_sweep(void) {
     char dir[PATH_MAX + 32];
     snprintf(dir, sizeof dir, "%s/#.desktop/ascii_frames", house);
@@ -589,6 +616,21 @@ static void hygiene_sweep(void) {
             logf_("HYGIENE | ascii_frames had %d entries (cap %d): removed %d snapshot files older than %d s", total, FRAME_MAX, removed, FRAME_AGE_S);
         }
         closedir(d);
+    }
+    {   /* dead-pid leftovers: relay files, per-window frame/history files, window registries */
+        static const char *rules[][3] = {
+            {"#.desktop/entity_menu_history", "", ".txt"},
+            {"#.desktop", "entity_menu_frame_", ".txt"},
+            {"#.desktop", "taskbar_settings_frame_", ".txt"},
+            {"#.desktop", "livedesk_hq_windows_", ".txt"},
+            {"#.desktop", "livedesk_hq_restore_", ".txt"},
+            {"#.desktop/ascii_frames", "", ".frame_history.txt"},
+            {"#.desktop/ascii_frames", "", ".frame.txt"},
+            {"#.desktop/ascii_frames", "", ".pulse.txt"},
+        };
+        int n = 0;
+        for (size_t i = 0; i < sizeof rules / sizeof rules[0]; i++) n += dead_pid_sweep(rules[i][0], rules[i][1], rules[i][2]);
+        if (n > 0) logf_("HYGIENE | removed %d per-pid files of processes that no longer exist", n);
     }
     struct statvfs vf;
     if (statvfs(house, &vf) == 0) {
