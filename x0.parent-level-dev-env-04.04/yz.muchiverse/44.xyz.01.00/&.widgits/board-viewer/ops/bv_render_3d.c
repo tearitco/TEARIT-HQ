@@ -58,6 +58,7 @@
  * pchq_board_projector.c: a real cause whose visible symptom points
  * somewhere else entirely. Kept unconditional, above the GPU guard. */
 #include <time.h>
+#include "../../_shared-lib/load_governor.c"   /* lg_min_interval_ms(): the engine paces frames by the machine load (2026-11-03) */
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
@@ -5272,6 +5273,8 @@ int main(int argc, char **argv) {
             clock_gettime(CLOCK_MONOTONIC, &ta);
             int rc = render_one_frame();
             clock_gettime(CLOCK_MONOTONIC, &tb);
+            /* the engine paces itself by the machine's load (load_governor.c, 2026-11-03): after a frame wait out what is left of the minimum gap (40 ms calm, 80 ms / 150 ms when busy) */
+            { long fu = (tb.tv_sec - ta.tv_sec) * 1000000L + (tb.tv_nsec - ta.tv_nsec) / 1000L; long gap = (long)lg_min_interval_ms() * 1000L - fu; if (gap > 0) house_wait_us((int)gap); }
             /* A slow frame must not be followed at the 30ms floor.
              * house_wait_us is the house wait; back off by the frame
              * itself so a pegged raymarch cannot queue the next one. */

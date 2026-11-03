@@ -978,6 +978,7 @@ static void render_once(unsigned char fb[FRAME_H][FRAME_W][4], const char *frame
     fclose(f);
 }
 
+#include "../../_shared-lib/load_governor.c"   /* lg_min_interval_ms(): longer gap between renders when the machine is busy (2026-11-03) */
 int main(void) {
     resolve_root();
     load_glyphs();
@@ -1105,10 +1106,13 @@ int main(void) {
      * verifies the actual thing being read is done changing, rather
      * than guessing how long that takes. */
     uint64_t last_published = 0; int have_published = 0;      /* checksum of the last frame announced to consumers */
+    long long last_render_ms = 0;
     for (;;) {
         long m = file_size(pulse_path);
         long sm = file_size(renderer_pulse_path);
-        if (m != last_pulse || sm != last_renderer_pulse) {
+        /* a pulse seen too soon after the last render is NOT consumed (last_pulse stays): the next pass renders it, so nothing is lost, the stream is just thinner while the machine is busy */
+        if ((m != last_pulse || sm != last_renderer_pulse) && lg_now_ms() - last_render_ms >= lg_min_interval_ms()) {
+            last_render_ms = lg_now_ms();
             last_pulse = m;
             last_renderer_pulse = sm;
             long prev_frame_size = -2, cur_frame_size = file_size(frame_path);
