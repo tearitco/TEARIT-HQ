@@ -162,6 +162,12 @@ static int emit_body_row(const Row *r) {
         NEED(2); if (!CT->common) return bad_row("PLAYCE needs `EVENTS | yes` and `COMMON | yes` rows", r);
         emit("RUN | bash | $T/&.widgits/events-hq/ops/play_event.sh | $T/%s/ce_caller | $T | %s", CAPP, r->f[1]);
     }
+    else if (!strcmp(v, "BPCTL")) {   /* BPCTL | <command> [| <arg> [| <arg>]]: run the blueprintz debugger controller bp_ctl against the scratch house (its debug flag and queue live inside the scratch house, where play_event.sh looks for them): pause, resume, status, queue, step-event, step-cmd, run-to-end, abort, clear-queue, detach, fire <event folder> <trigger>; its output is the row's output for SAY / SAYIS / NOSAY */
+        NEED(2); if (!CT->common) return bad_row("BPCTL needs `EVENTS | yes` and `COMMON | yes` rows", r);
+        if (r->n >= 4) emit("RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_ctl.+x | $T | %s | %s | %s", r->f[1], r->f[2], r->f[3]);
+        else if (r->n == 3) emit("RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_ctl.+x | $T | %s | %s", r->f[1], r->f[2]);
+        else emit("RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_ctl.+x | $T | %s", r->f[1]);
+    }
     else if (!strcmp(v, "BOOKCE")) {   /* BOOKCE | <trigger>: compile the scratch house's common events into book.<trigger>.pal (bp_book_op, B4b) and run that ONE program for the caller <app>/ce_caller: the whole-book twin of PLAYCE */
         NEED(2); if (!CT->common) return bad_row("BOOKCE needs `EVENTS | yes` and `COMMON | yes` rows", r);
         emit("RUN | $T/&.hq-apps/blueprintz/ops/+x/bp_book_op.+x | $T | - | $T/book_out");

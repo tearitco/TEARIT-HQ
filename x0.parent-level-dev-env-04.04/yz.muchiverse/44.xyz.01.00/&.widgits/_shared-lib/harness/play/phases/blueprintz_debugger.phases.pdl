@@ -1,0 +1,83 @@
+# blueprintz_debugger.phases.pdl - the blueprintz DEBUGGER (pause / queue / step-event / step-cmd / abort / clear-queue) on a COMMON event played through the real
+# play_event.sh, in a scratch house under /tmp (nothing live is touched). BOOK 08-roadmap/design-docs/BLUEPRINTZ-DESIGN.md section 12 + the 2026-11-02 audit.
+# The caller entity <app>/ce_caller starts with qolq=35; the common event `bump` (trigger player-touch) has TWO Change Gold +10 commands, so one full run adds 20
+# and a command step adds 10. `BPCTL | <command>` runs bp_ctl against the scratch house; its output is checked with SAY. Common events were NOT part of the original
+# 23-case proof (BLUEPRINTZ-DESIGN.md 12.4 "Not done"): this file is the first to step them.
+# Runner: ops/+x/playthrough_op.+x run play/phases/blueprintz_debugger.phases.pdl
+GAME | game-dev-hq | game_dev_hq
+EVENTS | yes
+COMMON | yes
+
+PHASE | p1_no_debugger | with no debug file Play behaves as it always did and creates no debugger state | debugger, gate
+MKDIRROOT | common_events/bump/event_pkg/pages
+MKDIRROOT | #.desktop
+BPCE | bump | trigger | player-touch
+EXIT | 0 | the-manager-made-page-1-with-its-trigger
+BPCE | bump | append | change_gold | amount=10
+EXIT | 0 | first-change-gold
+BPCE | bump | append | change_gold | amount=10
+EXIT | 0 | second-change-gold
+PLAYCE | player-touch
+EXIT | 0 | play-ran
+HAS | ce_caller/inventory.txt | qolq=55 | gold-moved-35-to-55
+NOFILEROOT | #.desktop/blueprintz_debug.txt | no-debug-file-was-created
+
+PHASE | p2_pause_queues_step_event_runs | paused: Play queues the trigger and runs nothing; step-event runs it whole | debugger, pause, step-event
+BPCTL | pause
+EXIT | 0 | paused
+PLAYCE | player-touch
+EXIT | 0 | the-play-call-itself-succeeds
+HAS | ce_caller/inventory.txt | qolq=55 | nothing-ran-gold-unchanged
+BPCTL | status
+SAY | queue_pending=1 | one-event-is-waiting
+BPCTL | step-event
+EXIT | 0 | step-event-ran-it
+HAS | ce_caller/inventory.txt | qolq=75 | the-whole-event-ran-both-commands
+BPCTL | status
+SAY | queue_pending=0 | nothing-waiting-now
+BPCTL | step-event
+EXIT | 3 | an-empty-queue-is-exit-3-not-a-silent-success
+
+PHASE | p3_clear_queue | clear-queue drops queued events WITHOUT running them; a later trigger queues again | debugger, clear-queue
+PLAYCE | player-touch
+PLAYCE | player-touch
+BPCTL | status
+SAY | queue_pending=2 | two-waiting
+BPCTL | clear-queue
+SAY | cleared 2 | cleared-two
+BPCTL | status
+SAY | queue_pending=0 | nothing-waiting
+HAS | ce_caller/inventory.txt | qolq=75 | the-cleared-events-never-ran
+PLAYCE | player-touch
+BPCTL | status
+SAY | queue_pending=1 | a-new-trigger-after-a-clear-queues-again
+BPCTL | clear-queue
+SAY | cleared 1 | and-clears
+
+PHASE | p4_step_cmd | step-cmd runs ONE command at a time: gold 75 -> 85 -> 95, then the run ends and nothing is held | debugger, step-cmd
+PLAYCE | player-touch
+BPCTL | step-cmd
+SAY | held at | the-run-is-held-at-its-first-instruction
+HAS | ce_caller/inventory.txt | qolq=75 | nothing-ran-yet
+BPCTL | step-cmd
+HAS | ce_caller/inventory.txt | qolq=85 | first-change-gold-ran
+BPCTL | step-cmd
+HAS | ce_caller/inventory.txt | qolq=95 | second-change-gold-ran
+BPCTL | step-cmd
+BPCTL | status
+SAY | vm_active=- | the-run-ended-nothing-is-held
+
+PHASE | p5_abort | abort stops a held run: the commands that had not run stay un-run | debugger, abort
+PLAYCE | player-touch
+BPCTL | step-cmd
+BPCTL | step-cmd
+HAS | ce_caller/inventory.txt | qolq=105 | one-command-ran-before-the-abort
+BPCTL | abort
+EXIT | 0 | abort-accepted
+SLEEP | 1500
+BPCTL | status
+SAY | vm_active=- | nothing-is-held-after-abort
+HAS | ce_caller/inventory.txt | qolq=105 | the-second-command-never-ran
+BPCTL | detach
+EXIT | 0 | detached
+NOFILEROOT | #.desktop/blueprintz_debug.txt | the-debug-file-is-gone-after-detach
