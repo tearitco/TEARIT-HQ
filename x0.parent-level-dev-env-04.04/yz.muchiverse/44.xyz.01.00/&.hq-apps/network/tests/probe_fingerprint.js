@@ -176,6 +176,40 @@
     return "monospace=" + w1 + " fallback=" + w2;
   });
 
+  /* ---- 4. ELEMENT METHOD SURFACE ----
+   * A browser page reaches for these constantly. Reporting them as one
+   * group is what turned "TypeError: not a function" (Glassdoor's own
+   * timestamp script, at its element.prepend() call) into a named worklist
+   * on 2026-11-02. `element.querySelector` being absent while
+   * `document.querySelector` works is the surprising one. */
+  (function () {
+    var el = document.createElement("div");
+    var names = ["prepend", "append", "before", "after", "replaceWith",
+                 "remove", "matches", "closest", "contains", "cloneNode",
+                 "isEqualNode", "normalize", "getClientRects", "scrollIntoView",
+                 "insertAdjacentElement", "insertAdjacentHTML", "insertAdjacentText",
+                 "replaceChildren", "querySelector", "querySelectorAll",
+                 "getElementsByClassName", "getElementsByTagName", "animate"];
+    var miss = [];
+    for (var i = 0; i < names.length; i++) {
+      var v;
+      try { v = el[names[i]]; } catch (e) { miss.push(names[i]); continue; }
+      if (typeof v !== "function") miss.push(names[i]);
+    }
+    out["elementMethods.missing"] = miss.length ? miss.join(",") : "(none)";
+    /* The same question for document, so a gap can be told apart from a
+     * whole-family gap. */
+    var dmiss = [];
+    var dnames = ["createElement", "createTextNode", "createDocumentFragment",
+                  "getElementById", "querySelector", "querySelectorAll",
+                  "getElementsByTagName", "getElementsByClassName",
+                  "createEvent", "importNode", "adoptNode"];
+    for (var j = 0; j < dnames.length; j++) {
+      if (typeof document[dnames[j]] !== "function") dmiss.push(dnames[j]);
+    }
+    out["documentMethods.missing"] = dmiss.length ? dmiss.join(",") : "(none)";
+  })();
+
   /* Emit in CHUNKS, not one JSON blob: the worker's console capture truncates
    * a long line (~500 chars), so a single-line dump silently loses the tail -
    * which is exactly where the interesting values are. */
