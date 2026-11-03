@@ -1,0 +1,6 @@
+# books.pdl - extra event sources for blueprintz that are not a game's @.apps/<app>/events/ (they have no verbs.pdl). Each row is one entry of the Games menu.
+#   BOOK | id | kind | folder relative to the target house
+#   kind single : the folder itself holds event_pkg/pages (one event, e.g. the book-stack reader)
+#   kind events : the folder holds event folders, each with event_pkg/pages (like a game's events/)
+# id: letters, digits, _ - . only. Loaded with the Games menu row; edits go through the same ops as any other loaded event.
+BOOK | reader | single | _.monads/_.book-stack/pieces/reader

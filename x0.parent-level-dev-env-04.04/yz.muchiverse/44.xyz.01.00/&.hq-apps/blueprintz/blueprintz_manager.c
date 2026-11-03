@@ -330,6 +330,36 @@ static void load_common(void) {
     char dir[P]; snprintf(dir, P, "%s/common_events", g_target);
     write_rows(dir, "common_events", "common events");
 }
+/* BOOK rows of books.pdl (app folder): extra sources that are not a game's events/ folder (the book-stack reader has an event_pkg but no verbs.pdl) */
+typedef struct { char id[64], kind[16], rel[P]; } Book;
+static int books_load(Book *b, int max) {
+    char p[P]; snprintf(p, P, "%s/books.pdl", g_pkg); FILE *f = fopen(p, "r"); int n = 0; if (!f) return 0;
+    char l[P + 160];
+    while (n < max && fgets(l, sizeof l, f)) {
+        if (strncmp(l, "BOOK |", 6) != 0) continue;
+        char *t[3]; char *c = l + 6; int k = 0;
+        while (k < 3) { while (*c == ' ') c++; t[k++] = c; char *bar = strchr(c, '|'); if (!bar) break; *bar = 0; c = bar + 1; }
+        if (k < 3) continue;
+        for (int i = 0; i < 3; i++) { char *e = t[i] + strlen(t[i]); while (e > t[i] && (e[-1] == ' ' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; }
+        if (!t[0][0] || strlen(t[0]) >= 64 || !clean(t[0], 0) || strlen(t[1]) >= 16 || strlen(t[2]) >= (size_t)P - 8 || strstr(t[2], "..")) continue;
+        snprintf(b[n].id, 64, "%s", t[0]); snprintf(b[n].kind, 16, "%s", t[1]); snprintf(b[n].rel, P, "%s", t[2]); n++;
+    }
+    fclose(f); return n;
+}
+static void load_book(const char *id) {
+    static Book bk[32]; int n = books_load(bk, 32), at = -1;
+    for (int i = 0; i < n; i++) if (!strcmp(bk[i].id, id)) at = i;
+    if (at < 0) { snprintf(msg, sizeof msg, "no such book in books.pdl: %s", id); return; }
+    char dir[P]; snprintf(dir, P, "%s/%s", g_target, bk[at].rel);
+    if (!strcmp(bk[at].kind, "events")) { write_rows(dir, bk[at].rel, bk[at].id); return; }
+    char t[P]; snprintf(t, P, "%s/event_pkg/pages", dir);
+    if (access(t, F_OK) != 0) { snprintf(msg, sizeof msg, "book %s: no event_pkg/pages in %s", id, dir); return; }
+    char out[P], tmp[P]; join(out, g_state, "bp_sources.pdl"); snprintf(tmp, P, "%s.tmp", out);
+    FILE *f = fopen(tmp, "w"); if (!f) { snprintf(msg, sizeof msg, "cannot write bp_sources.pdl"); return; }
+    fprintf(f, "EVENT | %s | %s\n", bk[at].id, bk[at].rel);
+    fclose(f); rename(tmp, out); sel = 0; csel = -1; cpage[0] = 0; nU = 0;
+    snprintf(msg, sizeof msg, "loaded book %s (1 event, undo history cleared)", id);
+}
 static void load_game(const char *app) {
     if (!app[0] || !clean(app, 0)) { snprintf(msg, sizeof msg, "refused: bad game name"); return; }
     char dir[P]; snprintf(dir, P, "%s/@.apps/%s/events", g_target, app);
@@ -504,8 +534,11 @@ static void write_ui(void) {
     /* every game of the target house that has a verbs.pdl (the verb-page manifest, BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md) is one row of the Games menu: LOAD:<app> */
     { char ad[P]; snprintf(ad, P, "%s/@.apps", g_target); static char gn[32][64]; int ng = 0; DIR *d = opendir(ad);
       if (d) { struct dirent *de; while ((de = readdir(d)) && ng < 32) { if (de->d_name[0] == '.' || strlen(de->d_name) >= 64 || !clean(de->d_name, 0)) continue; char vp[P]; snprintf(vp, P, "%s/%s/verbs.pdl", ad, de->d_name); if (access(vp, F_OK) == 0) snprintf(gn[ng++], 64, "%s", de->d_name); } closedir(d); }
-      qsort(gn, (size_t)ng, 64, cmp_s); PUT("g_count=%d\n", ng);
-      for (int i = 0; i < ng; i++) { PUT("g_%d_label=%s\n", i, gn[i]); PUT("g_%d_action=%s 'LOAD:%s'\n", i, act, gn[i]); } }
+      qsort(gn, (size_t)ng, 64, cmp_s);
+      static Book bk[32]; int nb = books_load(bk, 32); int tot = ng + nb;       /* books.pdl rows follow the games: label "<id> (book)", request LOADBOOK:<id> */
+      PUT("g_count=%d\n", tot);
+      for (int i = 0; i < ng; i++) { PUT("g_%d_label=%s\n", i, gn[i]); PUT("g_%d_action=%s 'LOAD:%s'\n", i, act, gn[i]); }
+      for (int i = 0; i < nb; i++) { PUT("g_%d_label=%s (book)\n", ng + i, bk[i].id); PUT("g_%d_action=%s 'LOADBOOK:%s'\n", ng + i, act, bk[i].id); } }
     PUT("edit_action=%s 'EDIT'\nadd_action=%s 'ADD'\ncdel_action=%s 'CDEL'\nundo_action=%s 'UNDO'\nundo_line=undo steps: %d\n", act, act, act, act, nU);
     PUT("t_count=%d\n", ntrace);
     for (int i = 0; i < ntrace; i++) PUT("t_%d_label=%s\n", i, trace_rows[i]);
@@ -531,6 +564,7 @@ static void handle(const char *verb) {
         return;
     }
     if (!strcmp(verb, "LOADCE")) { load_common(); return; }
+    if (!strncmp(verb, "LOADBOOK:", 9)) { load_book(verb + 9); return; }
     if (!strncmp(verb, "LOAD:", 5)) { load_game(verb + 5); return; }
     if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5) || !strncmp(verb, "PDEL:", 5) || !strncmp(verb, "SWITCH", 6)) { edit_verb(verb); return; }
     if (!strcmp(verb, "REFRESH")) { snprintf(msg, sizeof msg, "refreshed"); return; }
