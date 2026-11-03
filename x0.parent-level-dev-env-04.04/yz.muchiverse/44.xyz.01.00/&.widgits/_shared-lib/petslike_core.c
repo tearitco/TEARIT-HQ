@@ -1624,6 +1624,7 @@ static void board_cam_key(int code) {
 static int daemon_main(void) {
     { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/daemon.lock", ST); static int lfd; lfd = open(lp, O_CREAT | O_RDWR, 0644);      /* ONE resident daemon per game folder (2026-10-17: a board launch and the standalone window each started one, both ticking the same state): flock is dropped by the kernel when this process dies, close-on-exec so a leftover child cannot hold it */
       if (lfd >= 0) { fcntl(lfd, F_SETFD, FD_CLOEXEC); if (flock(lfd, LOCK_EX | LOCK_NB) != 0) { fprintf(stderr, "daemon already running for %s: this one exits\n", ST); return 0; } } }
+    { char ow[24]; snprintf(ow, sizeof ow, "%d", (int)getpid()); setenv("LC_OWNER_PID", ow, 1); setenv("LC_APP", PET_APP, 1); }   /* the game clock this daemon starts registers as OWNED by it (process registry) */
 #define PET_SECTION 66
 #include PET_SKIN
 #undef PET_SECTION
