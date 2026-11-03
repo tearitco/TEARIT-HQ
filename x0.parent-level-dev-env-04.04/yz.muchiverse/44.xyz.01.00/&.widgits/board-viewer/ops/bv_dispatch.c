@@ -33,6 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -466,6 +467,18 @@ int main(void) {
                         int devnull = open("/dev/null", O_RDWR);
                         if (devnull >= 0) { dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
                                             if (devnull > 2) close(devnull); }
+                        /* AGENTS.md: every process the house starts is registered in a file, and heavy work is niced (2026-11-03: this engine was unregistered and ran at normal priority,
+                         * and it was part of the load that made the CPU guard end 31 house processes). The house root is the part of the session path before /&.widgits/board-viewer/pieces/sessions/;
+                         * the row is lifetime `house` (a house quit ends it; loop_guard ends it when its window is gone). A missing op or an unrecognised path is not an error. */
+                        setpriority(PRIO_PROCESS, 0, 10);
+                        {
+                            char cwd[4096]; const char *mark = "/&.widgits/board-viewer/pieces/sessions/";
+                            if (getcwd(cwd, sizeof cwd)) { char *at = strstr(cwd, mark);
+                                if (at) { *at = 0; char op[4200], me[32]; snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", cwd); snprintf(me, sizeof me, "%ld", (long)getpid());
+                                    if (access(op, X_OK) == 0) { pid_t rp = fork();
+                                        if (rp == 0) { execl(op, op, cwd, "register", me, "house", "0", "engine", "board-viewer", "bv-render-3d-daemon", "bv_render_3d.+x --daemon", (char *)NULL); _exit(127); }
+                                        if (rp > 0) { int rst; waitpid(rp, &rst, 0); } } } }
+                        }
                         char *av[] = { (char *)"ops/+x/bv_render_3d.+x", (char *)"--daemon", NULL };
                         execv(av[0], av);
                         _exit(127);

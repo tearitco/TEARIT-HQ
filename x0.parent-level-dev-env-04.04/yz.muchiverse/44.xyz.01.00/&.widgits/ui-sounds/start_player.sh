@@ -37,6 +37,8 @@ fi
 # Started through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl before it does any work): lifetime `house` (it lives
 # with the desktop, not with one window). The funnel sends output to /dev/null, so the command is wrapped to keep player.log; every `exec` keeps the pid, so the row names the
 # real player. (khtpm_core_render also starts the player, through `start_player.sh run`, so this one site covers both.)
+# the sound server socket lives under XDG_RUNTIME_DIR; a launcher with a stripped environment (a detached autostart) has none: default it (2026-11-03)
+[ -n "${XDG_RUNTIME_DIR:-}" ] || { XDG_RUNTIME_DIR="/run/user/$(id -u)"; export XDG_RUNTIME_DIR; }
 FUNNEL="$HOUSE/&.widgits/_shared-lib/kh_spawn.sh"
 [ -f "$FUNNEL" ] || { echo "ui sounds: missing the spawn funnel $FUNNEL, starting without sound" >&2; exit 0; }
 NEWPID="$(KH_ROLE=sound KH_APP=ui-sounds KH_LIFETIME=house sh "$FUNNEL" "$HOUSE" 0 ui-sound-player -- sh -c 'log="$1"; shift; exec "$@" >"$log" 2>&1 < /dev/null' ui_sound_launch "$STATE/player.log" nice -n 10 "$PLAY" --pdl "$PDL" --sounds "$SND" --settings "$DESK/hq_ui.pdl" --cues "$DESK/ui_cue.txt" "$@")"

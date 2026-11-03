@@ -361,6 +361,10 @@ EOSTATE
         if [ -x "$REG_OP" ]; then
             "$REG_OP" "$HOUSE_DIR" "$ORCH_PID" "pchq-orchestrator" >/dev/null 2>&1 || true
         fi
+        # also in the process registry v2 (#.desktop/proc_registry.pdl, AGENTS.md: every process the house starts is registered in a file): register-v1 mirrors the pid just put in the v1 ledger
+        # as a `house` row and never touches the v1 ledger. It was the one unregistered process left on every board launch (2026-11-03).
+        V2_OP="$HOUSE_DIR/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"
+        [ -x "$V2_OP" ] && "$V2_OP" "$HOUSE_DIR" register-v1 "$ORCH_PID" pchq-orchestrator engine piececraft-hq >/dev/null 2>&1 || true
 
         # OPTIONAL GL/RGB MIRROR - gated on NO_GL and a real DISPLAY,
         # skips gracefully otherwise. MUST wait for chtpm_parser_pal's

@@ -382,6 +382,9 @@ int main(int argc, char **argv) {
         ba.minreq = (uint32_t)-1;
         ba.fragsize = (uint32_t)-1;
         g_pa = pa_simple_new(NULL, "LyfeDesk", PA_STREAM_PLAYBACK, NULL, "ui sounds", &ss, NULL, &ba, &err);
+        /* the sound server may not be up yet when the desktop autostarts us (2026-11-03: after a reset the player exited with "Connection refused" and stayed gone): retry about 30 s,
+         * but only in the resident player, never in the one-shot drain mode */
+        for (int tries = 0; !g_pa && !drain && tries < 15; tries++) { sleep(2); g_pa = pa_simple_new(NULL, "LyfeDesk", PA_STREAM_PLAYBACK, NULL, "ui sounds", &ss, NULL, &ba, &err); }
         g_drain_sync = drain;
         if (!g_pa) {
             fprintf(stderr, "ui_sound_player: no sound server (%s); UI sounds are off\n", pa_strerror(err));
