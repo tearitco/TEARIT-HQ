@@ -8,6 +8,7 @@
  *   step-event             run the oldest queued event (all of it), stay paused
  *   step-cmd               if a VM run is held, let it run ONE instruction (one marker byte);
  *                          otherwise start the oldest queued event in command-stepping mode
+ *   clear-queue            drop every queued event without running it (moves the release cursor to the end; queue.txt is not truncated)
  *   run-to-end | abort     free-run / stop the held VM run
  *   fire <pkg_dir> <trigger>   send a trigger the way a click would (goes through the pause gate)
  * State (all append-only text, change detection by size growth, never mtime):
@@ -138,6 +139,7 @@ int main(int argc, char **argv) {
     }
     if (!strcmp(cmd, "pause")) { if (write_text(flagp, "paused=1\n")) { perror("debug file"); return 4; } printf("ok paused\n"); return 0; }
     if (!strcmp(cmd, "detach")) { unlink(flagp); printf("ok detached\n"); return 0; }
+    if (!strcmp(cmd, "clear-queue")) { int n = queue_total(), c = cursor_get(); int pend = n > c ? n - c : 0; cursor_set(n); printf("ok cleared %d queued event(s)\n", pend); return 0; }   /* release every queued row WITHOUT running it; queue.txt itself stays append-only */
     if (!strcmp(cmd, "resume")) {
         if (write_text(flagp, "paused=0\n")) { perror("debug file"); return 4; }
         int n = 0, i;

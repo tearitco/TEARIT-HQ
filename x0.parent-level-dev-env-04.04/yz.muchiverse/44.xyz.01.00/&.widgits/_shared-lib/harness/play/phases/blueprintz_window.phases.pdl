@@ -39,3 +39,12 @@ BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:EDIT:verb=contract\parg= | EXPECT
 EXIT | 0 | window-edited-it-back
 DO | fire | contract | q0
 UI | week | 3 | the-contract-plays-again-two-weeks
+
+PHASE | p6_fields | the selected command shows one labelled field per parameter; setting one field edits only that value, undo restores it, bad field requests are refused
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | EXPECT:fp_count~2 | EXPECT:fp_0_name~verb | EXPECT:fp_0_value~contract | EXPECT:fp_1_name~arg | REQ:SETP.0:advance | EXPECT:n_0_label~verb=advance\parg= | EXPECT:fp_0_value~advance | EXPECT:undo_line~undo steps: 1 | REQ:UNDO | EXPECT:n_0_label~verb=contract\parg=
+EXIT | 0 | field-edit-changes-only-that-value-and-undo-restores-it
+HAS | events/contract/event_pkg/pages/page_1/event.ir.pdl | verb=contract | the-page-file-is-back-to-contract
+BPWIN | REQ:LOAD:game-dev-hq | REQ:SEL:5 | REQ:SETP.0:a\pb | EXPECT:msg~refused | EXPECT:n_0_label~verb=contract | REQ:SETP.9:x | EXPECT:msg~no such field 9 | REQ:SETP.0:a;touch /tmp/bp_pwned2;b | EXPECT:msg~refused | EXPECT:undo_line~undo steps: 0
+EXIT | 0 | pipe-bad-index-and-hostile-value-are-refused-and-nothing-changes
+HAS | events/contract/event_pkg/pages/page_1/event.ir.pdl | verb=contract | the-page-file-is-unchanged
+

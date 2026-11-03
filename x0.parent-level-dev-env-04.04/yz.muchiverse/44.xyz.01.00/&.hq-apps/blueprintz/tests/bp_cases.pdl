@@ -10,6 +10,11 @@ CASE | d1 pause then fire: queued and gold unchanged | 0 | qolq=35 | qolq=70 | e
 CASE | d1 status shows one pending | 0 | queue_pending=1 | paused=0 | "$B" "$R" status
 CASE | d1 status shows paused | 0 | paused=1 | paused=0 | "$B" "$R" status
 CASE | d1 queue lists the event | 0 | on-click | (empty) | "$B" "$R" queue
+# ---- clear-queue: queued events can be dropped without running (found 2026-11-02: Abort and Detach left queued=1 forever) -----------------
+CASE | d1c clear-queue reports how many it dropped | 0 | cleared 1 queued | - | "$B" "$R" clear-queue
+CASE | d1c status shows nothing pending afterwards | 0 | queue_pending=0 | queue_pending=1 | "$B" "$R" status
+CASE | d1c the gold never moved: a cleared event was not run | 0 | qolq=35 | qolq=70 | head -1 "$E/inventory.txt"
+CASE | d1c clearing an empty queue is a harmless no-op | 0 | cleared 0 queued | - | "$B" "$R" clear-queue
 CASE | d2 step-event runs it, gold becomes 70 | 0 | qolq=70 | qolq=35 | "$B" "$R" step-event >/dev/null; head -1 "$E/inventory.txt"
 CASE | d2 queue is empty afterwards | 0 | queue_pending=0 | queue_pending=1 | "$B" "$R" status
 CASE | d2 trace has START and END rows | 0 | END | - | cat "$BLUEPRINTZ_STATE_DIR/trace.txt"

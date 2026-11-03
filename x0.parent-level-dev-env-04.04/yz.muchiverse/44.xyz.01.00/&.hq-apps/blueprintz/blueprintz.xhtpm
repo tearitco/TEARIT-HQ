@@ -39,6 +39,7 @@
       <row class="toolbar">
         <item id="loadce" label="Load common events" action="${loadce_action}"/>
         <item id="bookc" label="Compile book" action="${book_action}"/>
+        <item id="clearq" label="Clear queue" action="${clearq_action}"/>
       </row>
       <scrolllist class="from-top">
         <text label="${sel_line}" class="quiet"/>
@@ -56,6 +57,10 @@
           <item id="nd${n.#}" class="${n.class}" label="${n.label}" action="${n.action}"/>
         </repeat>
         <text label="${n_none}" class="quiet"/>
+        <text label="${fp_head}" class="bp-head"/>
+        <repeat count="${fp_count}" bind="fp">
+          <cli_io id="fp${fp.#}" target_id="fp${fp.#}" rows="1" class="bp-edit top" label="${fp.name} = " content="${fp.value}" action="${fp.action}"/>
+        </repeat>
         <text label="${n_hint}" class="quiet"/>
         <cli_io id="editline" target_id="editline" rows="1" class="bp-edit top" label="edit selected ..." action="${edit_action}"/>
         <cli_io id="addline" target_id="addline" rows="1" class="bp-edit top" label="add command ..." action="${add_action}"/>

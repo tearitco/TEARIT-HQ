@@ -435,6 +435,25 @@ static void edit_verb(const char *verb) {
         else snprintf(msg, sizeof msg, "deleting command %d ...", old.id);
         return;
     }
+    /* SETP.<i>:<value> (one labelled field of the selected command): rebuild "k=v|k=v" with field i's value replaced, then it is a normal EDIT (same checks, same undo, same diff message) */
+    char ebuf[640];
+    if (!strncmp(verb, "SETP.", 5)) {
+        if (!cur) { snprintf(msg, sizeof msg, "no command selected"); return; }
+        char *colon = strchr(verb + 5, ':'); int want = atoi(verb + 5);
+        if (!colon || want < 0) { snprintf(msg, sizeof msg, "bad field request"); return; }
+        const char *val = colon + 1;
+        if (strchr(val, '|')) { snprintf(msg, sizeof msg, "refused: a field value cannot contain |"); return; }
+        char out[400] = ""; size_t used = 0; int idx = 0, hit = 0; char tmp[400]; snprintf(tmp, sizeof tmp, "%s", cur->params);
+        for (char *f = strtok(tmp, "|"); f; f = strtok(NULL, "|"), idx++) {
+            char piece[420]; char *eq = strchr(f, '=');
+            if (idx == want) { hit = 1; if (eq) snprintf(piece, sizeof piece, "%.*s=%s", (int)(eq - f), f, val); else snprintf(piece, sizeof piece, "%s", val); }
+            else snprintf(piece, sizeof piece, "%s", f);
+            size_t pl = strlen(piece); if (used + pl + 2 >= sizeof out) { snprintf(msg, sizeof msg, "refused: parameters too long"); return; }
+            used += (size_t)snprintf(out + used, sizeof out - used, "%s%s", idx ? "|" : "", piece);
+        }
+        if (!hit) { snprintf(msg, sizeof msg, "no such field %d", want); return; }
+        snprintf(ebuf, sizeof ebuf, "EDIT:%s", out); verb = ebuf;
+    }
     int is_add = !strncmp(verb, "ADD:", 4); const char *typed = verb + (is_add ? 4 : 5);
     if (!is_add && strncmp(verb, "EDIT:", 5)) { snprintf(msg, sizeof msg, "unknown verb %s", verb); return; }
     if (!*typed) { snprintf(msg, sizeof msg, "type a value first"); return; }
@@ -529,6 +548,13 @@ static void write_ui(void) {
       }
       total = xi; PUT("x_count=%d\n", total); PUT("x_none=%s\n", total ? "" : "no calls to or from this event (loaded events and the house's common events)"); }
     PUT("pgnew_action=%s 'PNEW'\ntrig_action=%s 'TRIG'\nloadce_action=%s 'LOADCE'\nbook_action=%s 'BOOK'\npdel_action=%s 'PDEL'\nsw_action=%s 'SWITCH'\n", act, act, act, act, act, act);
+    { Nd *sc = csel >= 0 ? node_by_id(csel) : NULL; int nf = 0;       /* one labelled field per parameter of the selected command (the typed key=value line below stays for add / change type) */
+      if (sc) { char tmp[400]; snprintf(tmp, sizeof tmp, "%s", sc->params);
+        for (char *f = strtok(tmp, "|"); f && nf < 16; f = strtok(NULL, "|"), nf++) {
+            char *eq = strchr(f, '='); char nm[64];
+            if (eq) snprintf(nm, sizeof nm, "%.*s", (int)(eq - f) > 60 ? 60 : (int)(eq - f), f); else snprintf(nm, sizeof nm, "value %d", nf + 1);
+            PUT("fp_%d_name=%s\nfp_%d_value=%s\nfp_%d_action=%s 'SETP.%d'\n", nf, nm, nf, eq ? eq + 1 : f, nf, act, nf); } }
+      PUT("fp_count=%d\nfp_head=%s\n", nf, nf ? "Fields of the selected command (type a value, Enter)" : ""); }
     PUT("n_hint=%s\n", nN && csel >= 0 ? "type below: key=value|key=value  edits the selected command;  type|key=value  sets both" : "");
     PUT("load_gdh_action=%s 'LOAD:game-dev-hq'\nload_rpg_action=%s 'LOAD:rpg-pvp-hq'\n", act, act);
     /* every game of the target house that has a verbs.pdl (the verb-page manifest, BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md) is one row of the Games menu: LOAD:<app> */
@@ -543,7 +569,7 @@ static void write_ui(void) {
     PUT("t_count=%d\n", ntrace);
     for (int i = 0; i < ntrace; i++) PUT("t_%d_label=%s\n", i, trace_rows[i]);
     static const char *verbs[][2] = { {"play","PLAY"}, {"stopplay","STOPPLAY"}, {"pause","PAUSE"}, {"resume","RESUME"}, {"stepev","STEPEV"}, {"stepcmd","STEPCMD"},
-                                      {"runend","RUNEND"}, {"abort","ABORT"}, {"fire","FIRE"}, {"detach","DETACH"}, {"refresh","REFRESH"} };
+                                      {"runend","RUNEND"}, {"abort","ABORT"}, {"fire","FIRE"}, {"detach","DETACH"}, {"clearq","CLEARQ"}, {"refresh","REFRESH"} };
     for (size_t i = 0; i < sizeof verbs / sizeof verbs[0]; i++) PUT("%s_action=%s '%s'\n", verbs[i][0], act, verbs[i][1]);
 #undef PUT
     if (ui_cut) fprintf(stderr, "blueprintz_manager: ui.txt is over %d bytes, the end was cut\n", (int)sizeof buf);
@@ -566,7 +592,7 @@ static void handle(const char *verb) {
     if (!strcmp(verb, "LOADCE")) { load_common(); return; }
     if (!strncmp(verb, "LOADBOOK:", 9)) { load_book(verb + 9); return; }
     if (!strncmp(verb, "LOAD:", 5)) { load_game(verb + 5); return; }
-    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5) || !strncmp(verb, "PDEL:", 5) || !strncmp(verb, "SWITCH", 6)) { edit_verb(verb); return; }
+    if (!strncmp(verb, "CSEL:", 5) || !strncmp(verb, "SETP.", 5) || !strncmp(verb, "EDIT:", 5) || !strncmp(verb, "ADD:", 4) || !strcmp(verb, "CDEL") || !strcmp(verb, "UNDO") || !strncmp(verb, "PSEL:", 5) || !strcmp(verb, "PNEW") || !strncmp(verb, "TRIG:", 5) || !strncmp(verb, "PDEL:", 5) || !strncmp(verb, "SWITCH", 6)) { edit_verb(verb); return; }
     if (!strcmp(verb, "REFRESH")) { snprintf(msg, sizeof msg, "refreshed"); return; }
     if (!strcmp(verb, "PLAY")) {
         set_play(1); int n = 0;
@@ -581,6 +607,7 @@ static void handle(const char *verb) {
     if (!strcmp(verb, "STEPCMD")) { ctl("step-cmd", NULL, NULL); return; }
     if (!strcmp(verb, "RUNEND")) { ctl("run-to-end", NULL, NULL); return; }
     if (!strcmp(verb, "ABORT")) { ctl("abort", NULL, NULL); return; }
+    if (!strcmp(verb, "CLEARQ")) { ctl("clear-queue", NULL, NULL); return; }
     if (!strcmp(verb, "FIRE")) {
         if (!nE) { snprintf(msg, sizeof msg, "no event selected"); return; }
         char t[200]; first_trigger(&E[sel], t, sizeof t);
