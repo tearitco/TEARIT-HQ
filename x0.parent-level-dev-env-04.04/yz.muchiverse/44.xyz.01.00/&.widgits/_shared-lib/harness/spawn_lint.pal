@@ -1,0 +1,5 @@
+# spawn_lint.pal - pal harness (cases/spawn_lint.pdl). Read results/spawn_lint.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/spawn_lint.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/spawn_lint.pdl
+exec ./ops/+x/harness_bank_op.+x cases/spawn_lint.pdl
+halt

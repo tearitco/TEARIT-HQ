@@ -2,6 +2,7 @@
 # C: setsid() in a file that never touches the registry). Generated 2026-11-02 by a one-off scan (excluded: tests/, harness/, pieces/sessions, +x, xyzfs/users copies).
 # The refactor plan (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md) makes this file a RATCHET: the lint may only ever see FEWER rows than this; a new row is a failure.
 # format: <kind> <path relative to the house root>:<line>
+# regenerated 2026-11-02 with spawn_lint --emit (scope widened to .h: khtpm_strip_posix_win.h had a setsid)
 
 c-setsid &.hq-apps/blueprintz/ops/bp_ctl.c:100
 c-setsid &.hq-apps/exchange-hq/ops/exchange_manager.c:186
@@ -31,6 +32,7 @@ c-setsid _.monads/_.hard-vvar-agent-Q0000/ops/send_message.c:1021
 c-setsid _.monads/_.hard-vvar-agent-Q0000/ops/send_message.c:1095
 c-setsid _.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c:1198
 c-setsid _.monads/_.livedesk-taskbar/ops/khtpm_strip_posix_win.c:86
+c-setsid _.monads/_.livedesk-taskbar/ops/khtpm_strip_posix_win.h:83
 c-setsid _.monads/_.livedesk-taskbar/ops/ktb_zorder_op.c:209
 sh-setsid-nohup #.desktop/scripts/notes.sh:43
 sh-setsid-nohup #.desktop/scripts/notes.sh:45

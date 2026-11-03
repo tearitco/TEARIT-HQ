@@ -140,9 +140,10 @@ bytes per hour. `cpu_guard`'s `hygiene_sweep()` is the second guard; add new fol
 
 ## Every process the house starts is registered in a file (REQUIRED, since 2026-11-02)
 
-"If it's not a file, it's a lie" applies to processes. A process the house starts must be recorded by the process itself or by the spawn funnel (`kh_spawn.h` /
-`kh_spawn.sh`, registry `#.desktop/livedesk_proc_list.txt`, moving to `proc_registry.pdl`) before it does any work, and a long-lived one must exit when its owner is gone.
-Do not write a new `setsid nohup X &` or `fork`+`setsid()` outside the funnel. The 149 existing unregistered sites are listed in
+"If it's not a file, it's a lie" applies to processes. A process the house starts must be recorded before it does any work, by the shell funnel (`&.widgits/_shared-lib/kh_spawn.sh`) or by running
+the op `&.widgits/_shared-lib/ops/+x/proc_reg_op.+x <house> register ...` (plain fork/exec, no header; registry `#.desktop/proc_registry.pdl`), and a long-lived one must exit when
+its owner is gone (default lifetime `owner`; `keep` only by an explicit `keep_running` setting). Do not write a new `setsid nohup X &` or `fork`+`setsid()` outside the funnel;
+the harness case `spawn_lint` fails on it. The 150 existing unregistered sites are listed in
 HQ-IQ-BOOK `08-roadmap/design-docs/PROC-REGISTRY-BASELINE-2026-11-02.txt` and are being converted (plan: `PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md`); the
 list may only shrink. The CPU guard ends house processes when no LyfeDesk window exists for 120 s (`hq-cpu-safety.md` 8b).
 

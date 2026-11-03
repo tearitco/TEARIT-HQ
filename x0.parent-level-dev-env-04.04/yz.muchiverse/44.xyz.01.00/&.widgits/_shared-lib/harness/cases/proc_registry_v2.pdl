@@ -1,0 +1,93 @@
+# proc_registry_v2 (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md, phase 1): the v2 process registry op (ops/proc_reg_op.c) on a scratch house with throwaway processes.
+# A process registered with an owner is ended when that owner dies; a keep / house row is not; a row with a wrong start time (pid reuse) is never acted on; an unregistered
+# process whose exe is under the house is a violation; bad registrations are refused.
+RESULTS | ../results/proc_registry_v2.txt
+CASE    | register-and-owner-death
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | bin/reg
+MKDIR   | house/#.desktop
+SPAWN | OWN | sleep | 300
+SPAWN | KID | sleep | 300
+SPAWN | KEEP | sleep | 300
+SPAWN | INFRA | sleep | 300
+SLEEP | 200
+RUN | $T/bin/reg | $T/house | register | $KID | owner | $OWN | worker | demo | kid
+EXPECT_EXIT | 0 | register-owned-ok
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | PROC \p $KID | row-written
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | \p owner \p $OWN \p | row-says-lifetime-owner-and-names-its-owner
+EXPECT_HAS | house/#.desktop/livedesk_proc_list.txt | $KID | legacy-ledger-mirrored-so-the-taskbar-reaper-reaches-it
+RUN | $T/bin/reg | $T/house | register | $KEEP | keep | 0 | world | demo | keeper
+EXPECT_EXIT | 0 | register-keep-ok
+RUN | $T/bin/reg | $T/house | register | $INFRA | house | 0 | manager | demo | infra
+EXPECT_EXIT | 0 | register-house-ok
+RUN | $T/bin/reg | $T/house | register | $KID | owner | 0 | worker | demo | no-owner
+EXPECT_EXIT | 1 | owned-process-without-an-owner-refused
+RUN | $T/bin/reg | $T/house | register | 999999 | keep | 0 | worker | demo | ghost
+EXPECT_EXIT | 1 | dead-pid-refused
+EXPECT_LACKS | house/#.desktop/proc_registry.pdl | ghost | refused-rows-not-written
+RUN | $T/bin/reg | $T/house | reap-orphans | 200
+EXPECT_ALIVE | $KID | owner-alive-so-nothing-is-reaped
+RUN | sh | -c | kill $OWN
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | reap-orphans | 200
+SLEEP | 500
+EXPECT_DEAD  | $KID | owner-died-so-its-process-is-ended
+EXPECT_ALIVE | $KEEP | keep-row-survives-its-owner
+EXPECT_ALIVE | $INFRA | house-row-never-orphan-reaped
+EXPECT_LACKS | house/#.desktop/proc_registry.pdl | worker | reaped-row-removed-from-registry
+EXPECT_LACKS | house/#.desktop/livedesk_proc_list.txt | demo | reaped-row-removed-from-the-legacy-ledger
+EXPECT_HAS | house/#.desktop/proc_registry.log.txt | END $KID orphan | audit-trail-says-why
+RUN | $T/bin/reg | $T/house | unregister | $KEEP
+EXPECT_LACKS | house/#.desktop/proc_registry.pdl | keeper | unregister-removes-the-row
+CLEAN |
+CASE    | pid-reuse-guard
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | bin/reg
+MKDIR   | house/#.desktop
+SPAWN | FORGE | sleep | 300
+SLEEP | 200
+WRITE   | house/#.desktop/proc_registry.pdl | PROC | $FORGE | 1 | $FORGE | owner | 999999 | 1 | worker | demo | forged | 1 | x\n
+RUN | $T/bin/reg | $T/house | reap-orphans | 200
+SLEEP | 400
+EXPECT_ALIVE | $FORGE | a-row-with-a-wrong-start-time-is-never-signalled
+EXPECT_LACKS | house/#.desktop/proc_registry.pdl | forged | the-stale-row-is-dropped
+CLEAN |
+CASE    | audit-violations
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | bin/reg
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/ops/lurker
+MKDIR   | house/#.desktop
+SPAWN | LURK | $T/house/ops/lurker | $T/house | hold | 120
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | audit | 0
+EXPECT_EXIT | 3 | unregistered-house-process-is-a-violation
+EXPECT_OUT | VIOLATION | violation-line-printed
+EXPECT_HAS | house/#.desktop/proc_violations.txt | lurker | violations-file-written
+RUN | $T/bin/reg | $T/house | register | $LURK | house | 0 | tool | demo | lurker
+RUN | $T/bin/reg | $T/house | audit | 0
+EXPECT_EXIT | 0 | registered-process-is-not-a-violation
+EXPECT_OUT | violations=0 | count-is-zero
+CLEAN |
+CASE    | shell-funnel
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | bin/ops/+x/proc_reg_op.+x
+COPY    | &.widgits/_shared-lib/kh_spawn.sh | bin/kh_spawn.sh
+MKDIR   | house/#.desktop
+SPAWN | OWN | sleep | 300
+SLEEP | 200
+RUN | sh | $T/bin/kh_spawn.sh | $T/house | $OWN | demo-daemon | -- | sleep | 120
+CAPTURE | D
+SLEEP | 500
+EXPECT_ALIVE | $D | funnel-started-process-is-running
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | PROC \p $D | funnel-registered-the-real-pid-not-a-wrapper
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | \p owner \p $OWN \p | default-lifetime-is-owner
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | demo-daemon | name-recorded
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | sleep 120 | cmdline-recorded-for-the-audit
+RUN | sh | -c | kill $OWN
+SLEEP | 300
+RUN | $T/bin/ops/+x/proc_reg_op.+x | $T/house | reap-orphans | 200
+SLEEP | 600
+EXPECT_DEAD | $D | owner-died-so-the-detached-daemon-is-ended
+RUN | sh | -c | kill $D 2>/dev/null; true
+CLEAN |
+

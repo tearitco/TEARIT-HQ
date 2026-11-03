@@ -1,0 +1,51 @@
+# spawn_lint (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md section 3.4): the ratchet against new unregistered launch sites (ops/spawn_lint.c).
+# Scratch tree: what is flagged, what is not (registered, proc-ok, tests/), and how the per-file baseline behaves. Last case: the REAL tree must have no new site.
+RESULTS | ../results/spawn_lint.txt
+CASE    | flags-and-skips
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/spawn_lint.+x | bin/lint
+WRITE   | tree/a/launch.sh | #!/bin/sh\nsetsid nohup mydaemon &\n
+WRITE   | tree/b/ok.sh | #!/bin/sh\nsetsid nohup foo &\nproc_reg_op h register $! owner 1 d a n\nsh kh_spawn.sh h 1 n -- bar\n
+WRITE   | tree/c/allowed.sh | #!/bin/sh\n# proc-ok: one-shot notifier, ends in a second\nsetsid nohup notify &\n
+WRITE   | tree/tests/skip.sh | setsid nohup testthing &\n
+WRITE   | tree/d/x.c | int main(void){ setsid(); return 0; }\n
+WRITE   | tree/d/y.c | /* registered via kh_spawn */\nint main(void){ setsid(); return 0; }\n
+WRITE   | tree/e/comment.sh | # setsid nohup commented &\n
+WRITE   | base.txt | # empty baseline\n
+RUN | $T/bin/lint | $T/tree | $T/base.txt
+EXPECT_EXIT | 3 | new-sites-fail-the-lint
+EXPECT_OUT | NEW sh-setsid-nohup a/launch.sh:2 | unregistered-setsid-nohup-flagged
+EXPECT_OUT | NEW c-setsid d/x.c:1 | unregistered-c-setsid-flagged
+EXPECT_OUT_LACKS | ok.sh | registered-by-a-nearby-registry-call-not-flagged
+EXPECT_OUT_LACKS | allowed.sh | proc-ok-comment-allows-it
+EXPECT_OUT_LACKS | skip.sh | tests-folder-excluded
+EXPECT_OUT_LACKS | y.c | c-file-that-mentions-the-funnel-not-flagged
+EXPECT_OUT_LACKS | comment.sh | commented-line-ignored
+EXPECT_OUT | new=2 | exactly-two-new-sites
+RUN | $T/bin/lint | $T/tree | --emit
+EXPECT_OUT | sh-setsid-nohup a/launch.sh:2 | emit-prints-baseline-rows
+CLEAN |
+CASE    | baseline-ratchet
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/spawn_lint.+x | bin/lint
+WRITE   | tree/a/launch.sh | #!/bin/sh\nsetsid nohup mydaemon &\n
+WRITE   | base.txt | sh-setsid-nohup a/launch.sh:2\n
+RUN | $T/bin/lint | $T/tree | $T/base.txt
+EXPECT_EXIT | 0 | listed-site-is-allowed-by-the-baseline
+EXPECT_OUT | new=0 | nothing-new
+WRITE   | tree/a/launch.sh | #!/bin/sh\n\n\nsetsid nohup mydaemon &\n
+RUN | $T/bin/lint | $T/tree | $T/base.txt
+EXPECT_EXIT | 0 | a-line-number-shift-does-not-trip-the-ratchet
+WRITE   | tree/a/launch.sh | #!/bin/sh\nsetsid nohup mydaemon &\nsetsid nohup another &\n
+RUN | $T/bin/lint | $T/tree | $T/base.txt
+EXPECT_EXIT | 3 | a-second-site-in-the-same-file-is-new
+EXPECT_OUT | new=1 | exactly-one-new
+WRITE   | tree/a/launch.sh | #!/bin/sh\nsh kh_spawn.sh h 1 n -- mydaemon\n
+RUN | $T/bin/lint | $T/tree | $T/base.txt
+EXPECT_EXIT | 0 | converting-a-site-passes
+EXPECT_OUT | fixed=1 | and-it-is-counted-as-fixed
+CLEAN |
+CASE    | real-tree-has-no-new-site
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/spawn_lint.+x | $HOUSE | $HOUSE/../#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/PROC-REGISTRY-BASELINE-2026-11-02.txt
+EXPECT_EXIT | 0 | no-new-unregistered-launch-site-anywhere-in-the-house
+EXPECT_OUT | new=0 | new-is-zero

@@ -5,6 +5,11 @@ manager with no strip): *"we should scan for a code pattern that creates strays 
 file for killing this way. 'If it's not a file it's a lie' applies to procs also. I don't care if we have to spend the entire next week refactoring, this has to be
 fixed."*
 
+**Status (end of 2026-11-02): phase 1 BUILT and harness-proven; phases 2-6 not started.** Owner decisions of today: a game's world **stops with its window by default**, with an
+opt-in `keep` lifetime set in a `.pdl` (section 8, decision 1); **no header: the whole registry is one op, called with plain fork/exec** (owner: "do we have to use .h, can't we
+use std exec/fork?" - no; that is also the house rule for stateful shared logic). Built: `&.widgits/_shared-lib/ops/proc_reg_op.c` (register, unregister, list, prune,
+reap-orphans, audit, owner-alive), `kh_spawn.sh` v2, `ops/spawn_lint.c` + the regenerated baseline (150 rows), harness `proc_registry_v2` (30 checks) and `spawn_lint` (19 checks).
+
 Labels: **RAN** (observed this session), **READ** (read in code/docs), **MINE** (proposal, the owner decides), **OPEN** (needs the owner).
 
 Read with: `PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md` (the 2026-09-09 design this plan finishes), `PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md`,
@@ -67,13 +72,17 @@ PROC | pid | starttime | pgid | owner_kind | owner | role | app | name | started
 * `livedesk_proc_list.txt` stays as a **mirror** while old readers exist (taskbar reaper, `kill_hq_windows.sh`), then is deleted (phase 5).
 
 ### 3.2 One way to start a process: the funnel, and what it guarantees
-1. **Self-register before work.** The child writes its own row first thing (`kh_proc_self_register`, or `proc_reg.sh` as the first line of a script). This removes the
+**No header, nothing linked (decided 2026-11-02).** The registry logic exists once, in `ops/proc_reg_op.c`; a C program, a shell script, a pal and the guard all call it with
+plain `fork`+`exec` (`proc_reg_op <house> register <pid> <owner|keep|house> <owner_pid> <role> <app> <name> [cmd]`). `kh_proc_registry.h` / `kh_spawn.h` (the v1 header funnel)
+stay until their callers are converted, then go. The owner-watch check inside a daemon's loop is the only inline code: `kill(owner,0)` plus the start-time compare, or just run
+`proc_reg_op <house> owner-alive <pid> <start>` every few seconds (a fork per few seconds costs nothing measurable).
+1. **Self-register before work.** The child registers its own pid first thing (the funnel's `sh -c 'register $$; exec "$@"'`, or a C daemon that execs `proc_reg_op register <its pid>` at the top of `main`). This removes the
    race where the parent dies between `fork` and `register`, and it covers daemons that double-fork, which a parent can never see.
-2. **Owner-death rule built in.** C: `prctl(PR_SET_PDEATHSIG, SIGTERM)` for children whose owner is their parent; for detached daemons a **owner watch** every 2-5 s
-   (`kh_owner_alive()`: does the owner row's pid with that starttime still exist; is the owner window file present). The daemon exits when its owner is gone, which is what
+2. **Owner-death rule built in.** C: `prctl(PR_SET_PDEATHSIG, SIGTERM)` for children whose owner is their parent; for detached daemons an **owner watch** every 2-5 s
+   (does the owner row's pid with that start time still exist: `proc_reg_op owner-alive`), and `proc_reg_op reap-orphans` ends any `owner` row whose owner is gone. The daemon exits when its owner is gone, which is what
    `swatch_picker_manager` does today by hand (`settings_window_alive()`), generalised.
-3. **Exit unregisters** (`atexit` + signal handlers write `END`), so a clean exit leaves no row and a crash leaves a row the reaper can prove is dead.
-4. **Shell:** `kh_spawn.sh` v2 runs `setsid nohup sh -c 'proc_reg.sh ...; exec "$@"'`, so the registered pid is the final process (exec keeps the pid), not a wrapper.
+3. **Exit unregisters** (a daemon runs `proc_reg_op unregister <pid>` from its exit path; the reaper also drops rows whose process is gone and logs `END gone`), so a clean exit leaves no row and a crash leaves a row the reaper can prove is dead.
+4. **Shell:** `kh_spawn.sh` v2 (built) runs `setsid nohup sh -c 'proc_reg_op register $$ ...; exec "$@"'`, so the registered pid is the final process (exec keeps the pid), not a wrapper; the command line is passed explicitly because the registration happens before the exec.
 5. **pal / prisc:** the VM registers itself (already true in the canonical `chtpm_parser_pal.c`); `exec` of a custom op is a child of the VM, covered by owner = the VM.
 
 ### 3.3 The reaper reads the file
@@ -114,11 +123,11 @@ Rollout in three modes, switchable in `proc_mon_guard.pdl` (`proc_enforce=audit|
 
 **Phase 0 (done today).** The scan, the baseline file, this document, the AGENTS.md rule. Stray reaper (window-based) live. The picker manager exits with its window.
 
-**Phase 1: registry v2 and the primitives (day 1-2).**
-1. `kh_proc_registry.h` gains the PDL row, `owner_kind/owner/role/app/cmd`, the `.log.txt` sidecar, `kh_owner_alive()`, `kh_proc_reap_orphans()`; the old 5-field reader stays.
-2. `kh_spawn.h` v2 (self-register, PDEATHSIG, owner watch helper), `kh_spawn.sh` v2 (exec-preserving), `proc_reg.sh` (first line of any script daemon).
-3. Harness: `proc_registry_v2.pdl` (register, owner-death orphan, pid-reuse refusal with a forged start time, self-unregister on exit, double-fork daemon, crash leaves a row the reaper proves dead).
-4. `spawn_lint` C op + harness case + the baseline ratchet.
+**Phase 1: registry v2 and the primitives (day 1-2). DONE 2026-11-02 except the C-daemon convention (a documented snippet) and the keep-running `.pdl` key.**
+1. DONE: `ops/proc_reg_op.c` (the PDL row with lifetime/owner/role/app/cmd, the `.log.txt` sidecar capped at 256 KB, `owner-alive`, `reap-orphans`, `audit`, `prune`); every change mirrors into the legacy v1 ledger so the taskbar quit reaper reaches v2 rows unchanged.
+2. DONE: `kh_spawn.sh` v2 (exec-preserving). TODO: the keep-running switch (`keep_running=1` in the app's `toy.pdl`, read by the launcher, passes `KH_LIFETIME=keep`), and a short C snippet for a daemon's owner watch.
+3. DONE: harness `proc_registry_v2` (30 checks: register owner/keep/house, refusals, owner death ends the process, keep/house survive, pid-reuse guard with a forged start time, audit violations, the shell funnel end to end).
+4. DONE: `spawn_lint` C op + harness case (19 checks, including the real-tree check) + the baseline regenerated by the tool (150 rows; the scope widened to `.h`, which found one more site).
 
 **Phase 2: the guard enforces from the file (day 2).** `cpu_guard`: registry reaper pass, the audit/violations file, `proc_enforce` modes; the window-based reaper stays as backstop.
 
@@ -153,12 +162,12 @@ process exists outside the registry; baseline file reaches zero rows (or only `#
 * The shared core `petslike_core.c` serves 8 games: changes there go through the verb-script diff gate and a per-game harness run, one game at a time.
 
 ## 8. Open decisions for the owner (OPEN)
-1. **Should a game's world keep running when its board window is closed?** Today the resident daemon and clock do (by design, for the world's sake). The standard says owner =
+1. **DECIDED 2026-11-02: default stop, opt-in keep.** (Original question: should a game's world keep running when its board window is closed?) Today the resident daemon and clock do (by design, for the world's sake). The standard says owner =
    the board window, so the world stops when the window closes. If you want a world that keeps running, it needs an explicit `owner_kind=app` with a visible "keep running" switch,
-   and it still appears in the registry. My recommendation: owner = window by default; a per-game opt-in for always-on worlds.
+   and it still appears in the registry. Owner's answer: stop by default, with the option in a `.pdl`: `keep_running=1` in the game's `toy.pdl`, read by its launcher, registers the resident daemon and the clock with `lifetime=keep` (still in the registry, ended by a house quit or an explicit reap).
 2. File name and shape: `proc_registry.pdl` (PDL rows, as proposed) versus extending the existing flat text file. I recommend the new PDL file with the old one mirrored until phase 5.
 3. Enforcement date: audit for how many days before `enforce`? Proposed: one clean normal day.
 
 ## 9. What changes in the rules (AGENTS.md)
-A REQUIRED section was added: every process the house starts is registered in the registry file by the process or the funnel; the lint ratchet blocks new unregistered
+A REQUIRED section was added: every process the house starts is registered in the registry file by the process or the funnel (`kh_spawn.sh`, or exec `proc_reg_op`); the lint ratchet blocks new unregistered
 launch sites; the baseline file is the list of what remains to convert.

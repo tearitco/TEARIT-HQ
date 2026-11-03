@@ -1,0 +1,5 @@
+# proc_registry_v2.pal - pal harness (cases/proc_registry_v2.pdl). Read results/proc_registry_v2.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/proc_registry_v2.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/proc_registry_v2.pdl
+exec ./ops/+x/harness_bank_op.+x cases/proc_registry_v2.pdl
+halt
