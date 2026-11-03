@@ -74,9 +74,12 @@ static void scan_file(const char *full, const char *rel, int is_c) {
             const char *p = l;
             while ((p = strstr(p, "setsid"))) { const char *q = p + 6; while (*q == ' ') q++; if (*q == '(' && (p == l || !(isalnum((unsigned char)p[-1]) || p[-1] == '_'))) { hit = 1; break; } p += 6; }
         }
+        const char *kind = is_c ? "c-setsid" : "sh-setsid-nohup";
+        if (is_c && !hit && !file_reg) {      /* 2026-11-03: a shell command built inside a C string: system("setsid nohup X &"), popen, execl("sh","-c","setsid ...") */
+            const char *q = strchr(l, '"'); if (q && has_word(q, "setsid") && (strstr(l, "system") || strstr(l, "popen") || strstr(l, "exec") || strstr(l, "snprintf") || strstr(l, "\"sh\""))) { hit = 1; kind = "c-string-setsid"; } }
         if (!hit) continue;
         if (strstr(l, "proc-ok:") || (i > 0 && strstr(lines[i - 1], "proc-ok:"))) { allowed++; if (list_all) printf("ALLOWED %s:%d\n", rel, i + 1); continue; }
-        add_site(is_c ? "c-setsid" : "sh-setsid-nohup", rel, i + 1);
+        add_site(kind, rel, i + 1);
     }
     for (int i = 0; i < n; i++) free(lines[i]);
     free(lines);

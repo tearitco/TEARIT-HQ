@@ -137,3 +137,12 @@ sh-setsid-nohup _.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh:103
 sh-setsid-nohup _.monads/_.muchi-pet/ops/open_db_hq.sh:105
 sh-setsid-nohup _.monads/_.muchi-pet/ops/open_event_ez.sh:50
 sh-setsid-nohup _.monads/_.muchi-pet/pieces/monster/button.sh:93
+c-string-setsid &.widgits/_shared-lib/petslike_core.c:1398
+c-string-setsid &.widgits/board-viewer/tools/board_ctl.c:96
+c-string-setsid &.widgits/open-hai/ops/khtpm_open_hai_render.c:1675
+c-string-setsid &.widgits/tile-picker/ops/tp_menu_input.c:168
+c-string-setsid &.widgits/tile-picker/ops/tp_place_desktop.c:436
+c-string-setsid &.widgits/tile-picker/ops/tp_place_desktop_rmmv.c:432
+c-string-setsid @.apps/piececraft-hq/ops/pc_menu_input.c:1471
+c-string-setsid @.apps/piececraft-hq/ops/pc_menu_input.c:1475
+c-string-setsid @.apps/piececraft-hq/ops/pc_menu_input.c:1478
