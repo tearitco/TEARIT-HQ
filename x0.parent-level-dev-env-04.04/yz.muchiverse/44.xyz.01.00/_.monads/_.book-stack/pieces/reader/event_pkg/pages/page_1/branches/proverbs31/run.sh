@@ -3,7 +3,9 @@
 # Shows both English (KJV) and Chinese (CUV, public domain)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-HOUSE="$(cd "$SCRIPT_DIR/../../../../../../.." && pwd)"
+# house root = 9 levels up (page_1/branches/<this> -> pages -> event_pkg -> reader -> pieces -> _.book-stack -> _.monads -> house); it was 7, which landed on _.book-stack,
+# so the show-text binary was never found and the verse only went to stdout (no window).
+HOUSE="$(cd "$SCRIPT_DIR/../../../../../../../../.." && pwd)"
 PACKAGE_DIR="${PACKAGE_DIR:-$HOUSE/_.monads/_.book-stack/entities/book-stack}"
 
 # Proverbs 31:1-31 (KJV + CUV public domain)
@@ -81,10 +83,10 @@ if [ "$DAY" -lt 1 ] || [ "$DAY" -gt 31 ]; then DAY=1; fi
 
 VERSE_EN="${VERSES_EN[$((DAY - 1))]}"
 VERSE_ZH="${VERSES_ZH[$((DAY - 1))]}"
-OUT="Proverbs 31:$DAY\n$VERSE_EN\n\n箴言 31:$DAY\n$VERSE_ZH"
 
 TMP=$(mktemp --suffix=.txt 2>/dev/null || echo /tmp/proverbs31_$$.txt)
-echo -e "$OUT" | fold -s -w 70 > "$TMP"
+# wrap by CHARACTER, not byte: byte-wise fold cut Chinese characters in half
+{ printf "Proverbs 31:%s\n" "$DAY"; printf "%s\n" "$VERSE_EN" | fold -s -w 70; printf "\n箴言 31:%s\n" "$DAY"; printf "%s\n" "$VERSE_ZH" | LC_ALL=C.UTF-8 sed -E 's/(.{1,24})/\1\n/g' | sed '/^$/d'; } > "$TMP"
 
 SHOW="$HOUSE/&.widgits/tile-picker/ops/+x/khtpm_show_text.+x"
 if [ -x "$SHOW" ]; then
