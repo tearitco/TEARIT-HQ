@@ -1672,8 +1672,8 @@ static void activate_focused(void) {
             if (g_session_dir[0]) {
                 sscanf(g_session_dir, "%*[^/]/%31s", session_id);
             }
-            snprintf(cmd, sizeof(cmd), "setsid nohup bash '%s/open_session_stats.sh' '%s' '%s' >/dev/null 2>&1 &",
-                     g_house_root, session_id, g_house_root);
+            snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/_shared-lib/kh_spawn.sh' '%s' 0 %s -- bash '%s/open_session_stats.sh' '%s' '%s' >/dev/null 2>&1 &",
+                     g_house_root, g_house_root, "open-hai-session-stats", g_house_root, session_id, g_house_root);
             system(cmd);
             break;
         }

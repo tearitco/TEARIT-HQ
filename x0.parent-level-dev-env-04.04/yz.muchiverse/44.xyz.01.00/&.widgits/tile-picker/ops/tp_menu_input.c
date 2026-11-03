@@ -165,8 +165,8 @@ static void arm_placer_for_glyph(const char *glyph, char *status_out, size_t sta
      * invocation and hold its global grab independently, same "must
      * outlive its calling process" requirement tp_place_desktop.c's own
      * window-spawn already has. */
-    snprintf(cmd, sizeof(cmd), "setsid '%s/tp_arm_placer.+x' '%s' '%s' '%s' '%s' >/dev/null 2>&1 < /dev/null &",
-             ops_dir, project_root, wdir, desk, glyph);
+    snprintf(cmd, sizeof(cmd), "sh '%s/../../../_shared-lib/kh_spawn.sh' '%s/../../../..' 0 tile-arm-placer -- '%s/tp_arm_placer.+x' '%s' '%s' '%s' '%s' >/dev/null 2>&1 < /dev/null &",
+             ops_dir, ops_dir, ops_dir, project_root, wdir, desk, glyph);
     system(cmd);
 
     snprintf(status_out, status_sz, "^ arming %s...", glyph);

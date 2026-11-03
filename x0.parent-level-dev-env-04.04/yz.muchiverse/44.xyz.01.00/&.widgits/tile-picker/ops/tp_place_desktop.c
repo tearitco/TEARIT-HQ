@@ -433,7 +433,7 @@ int main(int argc, char **argv) {
     {
         char exe_path[PATH_BUF], spawn_cmd[PATH_BUF * 2];
         snprintf(exe_path, sizeof(exe_path), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
-        snprintf(spawn_cmd, sizeof(spawn_cmd), "setsid '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe_path, dir);
+        snprintf(spawn_cmd, sizeof(spawn_cmd), "sh '%s/&.widgits/_shared-lib/kh_spawn.sh' '%s' 0 %s -- '%s' '%s' >/dev/null 2>&1 < /dev/null &", house_root, house_root, "tile-desktop-window", exe_path, dir);
         int rc = system(spawn_cmd);
         (void)rc;
     }
