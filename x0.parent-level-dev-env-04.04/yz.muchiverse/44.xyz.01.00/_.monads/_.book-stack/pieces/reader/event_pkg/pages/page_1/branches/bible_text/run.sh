@@ -58,6 +58,19 @@ elif [ -x ./bible_verses.exe ]; then
 else
     OUT="(bible_verses binary missing in $BIBLE_ROOT/bible.ch2en.ran)"
 fi
+# BIBLE_SPEAK=1 (set by the bible_tts branch): speak the English line of THIS verse with the local Kokoro voice (offline; edge-tts has been 403 since 2026-10-12),
+# in the background so the text window still opens at once. Niced: the machine is shared with a browser.
+if [ -n "$BIBLE_SPEAK" ]; then
+    SPEAK_TXT=$(printf '%s\n' "$OUT" | sed -n 's/^English: *//p' | head -1)
+    TTS_PY="$HOUSE/@.apps/pet-trainer/ops/pet_tts_local.py"
+    if [ -n "$SPEAK_TXT" ] && [ -f "$TTS_PY" ] && [ -f "$HOME/.local/share/kokoro/kokoro-v1.0.int8.onnx" ]; then
+        WAV=$(mktemp --suffix=.wav 2>/dev/null || echo /tmp/bible_tts_$$.wav)
+        ( nice -n 15 python3 "$TTS_PY" --voice en-US-AnaNeural --rate=+0% --text "$SPEAK_TXT" --write-media "$WAV" >/dev/null 2>&1 \
+            && { command -v paplay >/dev/null 2>&1 && paplay "$WAV" || aplay -q "$WAV"; } >/dev/null 2>&1; rm -f "$WAV" ) >/dev/null 2>&1 < /dev/null &
+    else
+        echo "bible_tts: no speech (text line, pet_tts_local.py or the kokoro model is missing)" >&2
+    fi
+fi
 TMP=$(mktemp --suffix=.txt 2>/dev/null || echo /tmp/bible_verse_$$.txt)
 echo "$OUT" | fold -s -w 70 > "$TMP" 2>/dev/null || echo "$OUT" > "$TMP"
 SHOW="$HOUSE/&.widgits/tile-picker/ops/+x/khtpm_show_text.+x"

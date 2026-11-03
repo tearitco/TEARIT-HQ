@@ -1,3 +1,4 @@
-OBJECT | label=Bible verse (text) | action=bible_text
-OBJECT | label=Bible verse (with TTS) | action=bible_tts
 OBJECT | label=Tao Te Ching (random chapter) | action=tao
+OBJECT | label=Proverbs 31 (daily) | action=proverbs31
+OBJECT | label=Bible verse (with TTS) | action=bible_tts
+OBJECT | label=Bible verse (text) | action=bible_text

@@ -6,8 +6,9 @@
 -->
 <window class="entity-menu">
   <page name="main">
-    <item label="Bible verse (text)" action="bible_text"/>
-    <item label="Bible verse (with TTS)" action="bible_tts"/>
     <item label="Tao Te Ching (random chapter)" action="tao"/>
+    <item label="Proverbs 31 (daily)" action="proverbs31"/>
+    <item label="Bible verse (with TTS)" action="bible_tts"/>
+    <item label="Bible verse (text)" action="bible_text"/>
   </page>
 </window>

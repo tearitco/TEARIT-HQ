@@ -50,4 +50,5 @@ case "$PICKED" in
     bible_text) bash "$SCRIPT_DIR/branches/bible_text/run.sh" ;;
     bible_tts)  bash "$SCRIPT_DIR/branches/bible_tts/run.sh" ;;
     tao)        bash "$SCRIPT_DIR/branches/tao/run.sh" ;;
+    proverbs31) bash "$SCRIPT_DIR/branches/proverbs31/run.sh" ;;
 esac
