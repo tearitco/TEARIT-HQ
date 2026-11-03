@@ -2,7 +2,7 @@
 # C: setsid() in a file that never touches the registry). Generated 2026-11-02 by a one-off scan (excluded: tests/, harness/, pieces/sessions, +x, xyzfs/users copies).
 # The refactor plan (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md) makes this file a RATCHET: the lint may only ever see FEWER rows than this; a new row is a failure.
 # format: <kind> <path relative to the house root>:<line>
-# regenerated with spawn_lint --emit: 2026-11-02 (scope widened to .h); rpg-edit-hq pilot 150 -> 148; 11 petslike launchers 148 -> 137; blueprintz launcher and step run 137 -> 135
+# regenerated with spawn_lint --emit: 2026-11-02 (scope widened to .h); rpg-edit-hq pilot 150 -> 148; 11 petslike launchers 148 -> 137; blueprintz launcher and step run 137 -> 135; ui-sounds player 135 -> 134
 
 c-setsid &.hq-apps/exchange-hq/ops/exchange_manager.c:186
 c-setsid &.hq-apps/img-hai/img_hai_manager.c:132
@@ -79,7 +79,6 @@ sh-setsid-nohup &.widgits/palettes/palettes_menu.sh:354
 sh-setsid-nohup &.widgits/palettes/palettes_menu.sh:376
 sh-setsid-nohup &.widgits/robot-chat/button.sh:49
 sh-setsid-nohup &.widgits/tile-picker/ops/tp_paste_tile.sh:53
-sh-setsid-nohup &.widgits/ui-sounds/start_player.sh:37
 sh-setsid-nohup 044.pal-chat-irc👥️+2/testing/test_real_ux_2users.sh:77
 sh-setsid-nohup 044.pal-chat-irc👥️+2/testing/test_real_ux_2users.sh:80
 sh-setsid-nohup 103.media-studio/103.3d=blender-clone/button.sh:38

@@ -34,6 +34,11 @@ fi
 # The chime plays once per HQ START (owner 2026-11-02: a restart in the same login session was silent). `boot` runs from the autostart row on every start;
 # the stamp id is <boot_id>:<90 s bucket>, so a second call inside the same start (login autostart + launcher) stays quiet, a restart a minute or more later plays.
 [ "$ACTION" = "boot" ] && set -- --boot-stamp "$SND/startup_stamp.txt" --boot-id "$(cat /proc/sys/kernel/random/boot_id 2>/dev/null):$(( $(date +%s) / 90 ))" || set --
-setsid nohup nice -n 10 "$PLAY" --pdl "$PDL" --sounds "$SND" --settings "$DESK/hq_ui.pdl" --cues "$DESK/ui_cue.txt" "$@" >"$STATE/player.log" 2>&1 < /dev/null &
-echo $! > "$PIDF"
-echo "ui sound player started (pid $!)"
+# Started through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl before it does any work): lifetime `house` (it lives
+# with the desktop, not with one window). The funnel sends output to /dev/null, so the command is wrapped to keep player.log; every `exec` keeps the pid, so the row names the
+# real player. (khtpm_core_render also starts the player, through `start_player.sh run`, so this one site covers both.)
+FUNNEL="$HOUSE/&.widgits/_shared-lib/kh_spawn.sh"
+[ -f "$FUNNEL" ] || { echo "ui sounds: missing the spawn funnel $FUNNEL, starting without sound" >&2; exit 0; }
+NEWPID="$(KH_ROLE=sound KH_APP=ui-sounds KH_LIFETIME=house sh "$FUNNEL" "$HOUSE" 0 ui-sound-player -- sh -c 'log="$1"; shift; exec "$@" >"$log" 2>&1 < /dev/null' ui_sound_launch "$STATE/player.log" nice -n 10 "$PLAY" --pdl "$PDL" --sounds "$SND" --settings "$DESK/hq_ui.pdl" --cues "$DESK/ui_cue.txt" "$@")"
+echo "$NEWPID" > "$PIDF"
+echo "ui sound player started (pid $NEWPID)"
