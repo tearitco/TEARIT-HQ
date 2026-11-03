@@ -92,6 +92,14 @@ int main(int argc, char **argv) {
         char bp[4200], bt[4300]; snprintf(bp, sizeof bp, "%s/@.apps/rpg-edit-hq/board/state/brush.txt", house); snprintf(bt, sizeof bt, "%s.tmp", bp);
         FILE *o = fopen(bt, "w"); if (!o) return 1; fprintf(o, "key=%s\nglyph=%s\nsprite=%s\n", k, g, sp); fclose(o); rename(bt, bp);
         kv_set(pal, "pal_armed", g[0] ? g : "tile");
+        {   /* engine side: brush mode + the green placer armed at the selector (the Move placer's shape; Enter then places, Esc leaves) */
+            char ui[4200], sess[4200], xp[4300], xb[512] = "", bm[4400], pp[4400]; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house); kv_get(ui, "bv_session", sess, sizeof sess);
+            if (sess[0] && access(sess, F_OK) == 0) {
+                int px = 8, py = 8, pz = 0; snprintf(xp, sizeof xp, "%s/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt", house);
+                char v[32]; kv_get(xp, "pos_x", v, sizeof v); if (v[0]) px = atoi(v); kv_get(xp, "pos_y", v, sizeof v); if (v[0]) py = atoi(v); kv_get(xp, "pos_z", v, sizeof v); if (v[0]) pz = atoi(v); (void)xb;
+                snprintf(bm, sizeof bm, "%s/pieces/display/brush_mode.txt", sess); FILE *bf = fopen(bm, "w"); if (bf) { fprintf(bf, "glyph=%s\n", g); fclose(bf); }
+                snprintf(pp, sizeof pp, "%s/pieces/display/placer.txt", sess); char nb[16]; snprintf(nb, sizeof nb, "%d", px); kv_set(pp, "x", nb); snprintf(nb, sizeof nb, "%d", py); kv_set(pp, "y", nb); snprintf(nb, sizeof nb, "%d", pz); kv_set(pp, "z", nb); kv_set(pp, "armed", "1");
+            } }
         if (!strcmp(k, "piececraft")) { snprintf(pm, sizeof pm, "%s/&.widgits/palettes/palettes_menu.sh", house); pid_t c = fork(); if (c == 0) { execlp("sh", "sh", pm, "arm-pc", sp, g, (char *)NULL); _exit(127); } if (c > 0) { int st; waitpid(c, &st, 0); } }
         return 0;
     } else if (strcmp(verb, "back") && strcmp(verb, "list")) { fprintf(stderr, "pal_side: unknown verb %s\n", verb); return 2; }

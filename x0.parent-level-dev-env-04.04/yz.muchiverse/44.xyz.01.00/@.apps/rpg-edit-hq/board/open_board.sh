@@ -20,6 +20,12 @@ PCHQ_BOARD_TPL="$HERE/pchq-board.xhtpm" sh "$HOUSE/@.apps/piececraft-hq/open_pch
 KEEP="$(awk -F'|' '$2 ~ /keep_running/ {gsub(/[ \t]/, "", $3); print $3}' "$APP/toy.pdl" 2>/dev/null)"
 WPID="$(cat "$PCHQ_PKG/pieces/system/board_window.pid" 2>/dev/null)"
 DPID="$([ -x "$REG" ] && "$REG" "$HOUSE" list 2>/dev/null | awk -F' [|] ' '$10 == "rpg-edit-hq-daemon" {print $2}' | tail -1)"
+# Relaunch race (found 2026-11-03): when this runs over an OPEN editor, the daemon the check above saw alive belonged to the OLD window, and the registry ended it when that window was replaced.
+# If the daemon is gone by now, start a fresh one (through the funnel) before handing it to the new window.
+if [ -z "$DPID" ] || [ ! -d "/proc/$DPID" ]; then
+    KH_ROLE=daemon KH_APP=rpg-edit-hq sh "$FUNNEL" "$HOUSE" 0 rpg-edit-hq-daemon -- "$APP/ops/+x/rpg_edit_hq.+x" "$HOUSE" "$APP" >/dev/null 2>&1; sleep 2
+    DPID="$([ -x "$REG" ] && "$REG" "$HOUSE" list 2>/dev/null | awk -F' [|] ' '$10 == "rpg-edit-hq-daemon" {print $2}' | tail -1)"
+fi
 if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$DPID" ] && [ -d "/proc/$WPID" ] && [ -d "/proc/$DPID" ]; then
     "$REG" "$HOUSE" register "$DPID" owner "$WPID" daemon rpg-edit-hq rpg-edit-hq-daemon "$APP/ops/+x/rpg_edit_hq.+x $HOUSE $APP" >/dev/null 2>&1 || true
 fi

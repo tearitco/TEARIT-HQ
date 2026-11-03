@@ -209,8 +209,6 @@ static int viewer_kinds(void) {      /* idle-cost gate (df-hq's N3 version): the
         if (!strstr(b, "khtpm_core_render")) continue; for (size_t i = 0; i < n; i++) if (!b[i]) b[i] = ' '; int hit = 0; if (strstr(b, "/@.apps/rpg-edit-hq/board/pchq-board.xhtpm")) { v |= 1; hit = 1; } if (strstr(b, "rpg-edit-hq.xhtpm")) { v |= 2; hit = 1; } if (hit && np < 8) pids[np++] = (pid_t)atoi(e->d_name); }
 #elif PET_SECTION == 47
 #elif PET_SECTION == 48
-    { static long vsz = -1; char vp[PATH_MAX]; struct stat vs; snprintf(vp, sizeof vp, "%s/voxels.pdl", ST); long cur = stat(vp, &vs) == 0 ? (long)vs.st_size : 0;
-      if (vsz >= 0 && cur != vsz) { load_data(); replay(); } vsz = cur; }      /* a verb process placed a new voxel kind: the catalog gained a row */
 #elif PET_SECTION == 49
 #elif PET_SECTION == 50
 #elif PET_SECTION == 51
@@ -256,6 +254,16 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         { static long pl_safety = 0; long pn = now_ms(); if (!sn_active(&g_sn) || sn_changed(&g_sn, SL_PETS) || pn - pl_safety > 30000) { pl_safety = pn; pet_load(); } }      /* marker/shmem: reload the pets only when a writer moved the slot (or every 30 s for a hand edit) */
         int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
 #elif PET_SECTION == 68
+    { static long vsz = -1; char vp[PATH_MAX]; struct stat vs; snprintf(vp, sizeof vp, "%s/voxels.pdl", ST); long cur = stat(vp, &vs) == 0 ? (long)vs.st_size : 0;
+      if (vsz >= 0 && cur != vsz) { load_data(); replay(); } vsz = cur; }      /* a verb process placed a new voxel kind: the catalog gained a row */
+    {   /* the engine's brush placer (bv_menu_input.c: Enter in brush mode appends "x y z" to <session>/pieces/display/place_requests.txt): place each new request, never an old one */
+        static char rsess[PATH_MAX] = ""; static long roff = -1; char up[PATH_MAX], sess[PATH_MAX] = "", ub[2048]; snprintf(up, sizeof up, "%s/board/state/ui.txt", APP); read_file(up, ub, sizeof ub);
+        for (char *l = strtok(ub, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "bv_session=", 11)) snprintf(sess, sizeof sess, "%s", l + 11);
+        if (sess[0]) { char rq[PATH_MAX]; snprintf(rq, sizeof rq, "%s/pieces/display/place_requests.txt", sess); struct stat rs; long sz = stat(rq, &rs) == 0 ? (long)rs.st_size : 0;
+            if (strcmp(rsess, sess) || roff < 0 || sz < roff) { snprintf(rsess, sizeof rsess, "%s", sess); roff = sz; }      /* first look at this session: everything already there is history */
+            else if (sz > roff) { FILE *rf = fopen(rq, "r"); if (rf) { fseek(rf, roff, SEEK_SET); char ln[80]; while (fgets(ln, sizeof ln, rf)) { int rx, ry, rz; if (sscanf(ln, "%d %d %d", &rx, &ry, &rz) >= 2) { char pm[200], wb[2048], wmap[64] = "", wdesk[64] = "", wp[PATH_MAX]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
+                    for (char *wl = strtok(wb, "\n"); wl; wl = strtok(NULL, "\n")) { if (!strncmp(wl, "map_id=", 7)) snprintf(wmap, sizeof wmap, "%s", wl + 7); else if (!strncmp(wl, "desk_id=", 8)) snprintf(wdesk, sizeof wdesk, "%s", wl + 8); }
+                    if (strcmp(wmap, "" PET_APP "")) snprintf(pm, sizeof pm, "not placed: the board shows the book %s, not this editor's own", wmap); else vx_place_in(room_idx(wdesk), rx, ry, pm, sizeof pm); append_line("voxel_log.txt", pm); } } roff = ftell(rf); fclose(rf); } } } }
         if (in && n) { char kl[300], one[16]; kl[0] = 0; for (int i = 0; i < n && i < 20; i++) { snprintf(one, sizeof one, "%d ", codes[i]); strncat(kl, one, sizeof kl - strlen(kl) - 1); } char kp[PATH_MAX]; spath(kp, "keys_seen.txt"); write_if_changed(kp, kl, strlen(kl)); }      /* last batch of codes, for debugging */
 #elif PET_SECTION == 69
         { char dp[PATH_MAX], db[40]; static long dl_safety = 0; long dn = now_ms(); if (!sn_active(&g_sn) || sn_changed(&g_sn, SL_DAY) || dn - dl_safety > 30000) { dl_safety = dn; spath(dp, "daylight.txt"); read_file(dp, db, sizeof db); } else snprintf(db, sizeof db, "%s", lastday); if (strcmp(db, lastday)) { snprintf(lastday, sizeof lastday, "%s", db); dirty = 1; } }
@@ -311,12 +319,13 @@ static int vx_item(char *msg, size_t cap) {
 }
 static void export3d(char *msg, size_t cap);      /* defined later in the shared core: a placement rewrites the 3D book (maps/rpg-edit-hq) so the engine shows it */
 /* place the armed brush at cell x,y of the viewed room: BUY (price 0) + PLACE rows in house.txt, then replay so the daemon's own list is current */
-static void vx_place(int x, int y, char *msg, size_t cap) {
-    int i = vx_item(msg, cap); if (i < 0) return; const char *bad = check_place(vroom, i, x, y, 0); if (bad[0]) { snprintf(msg, cap, "not placed: %s", bad); return; }
+static void vx_place_in(int room, int x, int y, char *msg, size_t cap) {
+    int i = vx_item(msg, cap); if (i < 0) return; if (room < 0 || room >= nroom) { snprintf(msg, cap, "not placed: no such room"); return; } const char *bad = check_place(room, i, x, y, 0); if (bad[0]) { snprintf(msg, cap, "not placed: %s", bad); return; }
     char b[300]; long now = (long)time(NULL); snprintf(b, sizeof b, "BUY|%ld|%s|0", now, cat[i].key); append_line("house.txt", b);
-    snprintf(b, sizeof b, "PLACE|%d|%ld|%s|%d|%d|%s", nid, now, cat[i].key, x, y, rooms[vroom].id); append_line("house.txt", b); snprintf(msg, cap, "placed %s as #%d at %d,%d", cat[i].label, nid, x, y); replay();
+    snprintf(b, sizeof b, "PLACE|%d|%ld|%s|%d|%d|%s", nid, now, cat[i].key, x, y, rooms[room].id); append_line("house.txt", b); snprintf(msg, cap, "placed %s as #%d at %d,%d in %s", cat[i].label, nid, x, y, rooms[room].id); replay();
     { char em[200]; export3d(em, sizeof em); }
 }
+static void vx_place(int x, int y, char *msg, size_t cap) { vx_place_in(vroom, x, y, msg, cap); }
 /* ===== rpg-edit-hq: the island town. Ported from the old standalone rpg_edit.c (map painter, taper, atlas, pet sheets); everything else is the shared core. ===== */
 /* The island page, drawn in EDIT-ISLANDS-DESIGN.md section 2: G grass, p path, T pine, B building, D door, ~ water, b bridge, s ramp, F fire, S sign, r rubble, . sky */
 static const char *SK_ISL[SK_H] = {

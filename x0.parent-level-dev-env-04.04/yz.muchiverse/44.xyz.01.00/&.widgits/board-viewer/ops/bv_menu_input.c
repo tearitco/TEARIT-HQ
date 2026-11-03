@@ -693,8 +693,18 @@ static int handle_one_key(int key) {
         char pp[PATH_BUF];
         snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
         int armed = read_kv_int(pp, "armed", 0);
+        char bmp[PATH_BUF];                 /* brush mode (rpg-edit-hq palettes bar, 2026-11-03): pieces/display/brush_mode.txt present = the armed placer places a brush */
+        snprintf(bmp, sizeof(bmp), "%s/pieces/display/brush_mode.txt", project_root);
         if (key == 27 && armed) {
             write_kv_int(pp, "armed", 0);
+            unlink(bmp);                    /* Esc leaves brush mode too */
+            bump_screen_changed(project_root);
+            return 0;
+        }
+        if (key == 13 && armed && access(bmp, F_OK) == 0) {      /* Enter = place the brush here: one request row (x y z) in an append-only ledger the editor daemon consumes; the placer stays armed */
+            char rq[PATH_BUF]; snprintf(rq, sizeof(rq), "%s/pieces/display/place_requests.txt", project_root);
+            FILE *rf = fopen(rq, "a");
+            if (rf) { fprintf(rf, "%d %d %d\n", read_kv_int(pp, "x", 0), read_kv_int(pp, "y", 0), read_kv_int(pp, "z", 0)); fclose(rf); }
             bump_screen_changed(project_root);
             return 0;
         }
