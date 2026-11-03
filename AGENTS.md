@@ -114,6 +114,14 @@ done. Launch heavy things niced (`nice -n 15`) and one at a time, keep idle cost
 active, measured with a browser running) in its commit, and treat a `cpu_guard` kill (`sh '&.hq-apps/proc-mon/guard.sh' status`)
 as a finding in our own footprint, never as "the browser". Details: HQ-IQ-BOOK `03-pitfalls/hq-cpu-safety.md` section 9.
 
+## Heavy work asks first (REQUIRED, since 2026-11-03)
+
+The CPU guard reacts after the machine is hot (2026-11-03 00:54: it ended 31 house processes while a compile, the 3D engine and a screenshot loop ran next to a browser).
+Start every compile, engine start/relaunch, nudge/screenshot loop and TTS/ffmpeg batch as `cpu_gate <house> run <label> -- <cmd>` (`&.widgits/_shared-lib/ops/+x/cpu_gate.+x`):
+it checks load, temperature and the house share, allows ONE heavy job at a time, and runs it niced. Never two relaunches back to back; never compile while an engine runs; stop the
+engine daemon when you are not testing. New code is checked by `cpu_lint` (`CPU-LINT-BASELINE-2026-11-03.txt`: a file may only get fewer hits). A guard kill is a finding in our own
+footprint, never "the browser". Details: HQ-IQ-BOOK `03-pitfalls/hq-cpu-safety.md` section 10.
+
 ## Never report a number you did not observe (REQUIRED)
 
 Three wrong conclusions in one session traced to this, all from my own

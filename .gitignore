@@ -229,3 +229,6 @@ x0.parent-level-dev-env-04.04_*.7z
 # python bytecode from the night class audio converter
 __pycache__/
 *.pyc
+# cpu_gate (2026-11-03): the one-heavy-job lock and its run log
+**/#.desktop/heavy.lock
+**/#.desktop/heavy_runs.txt

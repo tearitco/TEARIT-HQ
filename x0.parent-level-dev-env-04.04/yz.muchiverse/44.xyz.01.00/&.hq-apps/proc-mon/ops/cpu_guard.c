@@ -752,6 +752,15 @@ static void hygiene_sweep(void) {
         for (size_t i = 0; i < sizeof rules / sizeof rules[0]; i++) n += dead_pid_sweep(rules[i][0], rules[i][1], rules[i][2]);
         if (n > 0) logf_("HYGIENE | removed %d per-pid files of processes that no longer exist", n);
     }
+    {   /* second guard for #.desktop/heavy_runs.txt (written by ops/cpu_gate.c, which trims it to 200 rows itself): past 64 KB keep only the last 100 rows (RUNTIME-FILE-GROWTH-STANDARD.md) */
+        char hp[PATH_MAX + 32]; struct stat hs; snprintf(hp, sizeof hp, "%s/#.desktop/heavy_runs.txt", house);
+        if (stat(hp, &hs) == 0 && hs.st_size > 65536) {
+            FILE *hf = fopen(hp, "r"); static char hrows[100][300]; int hn = 0, hw = 0;
+            if (hf) { char ln[300]; while (fgets(ln, sizeof ln, hf)) { snprintf(hrows[hw], sizeof hrows[0], "%s", ln); hw = (hw + 1) % 100; hn++; } fclose(hf); }
+            int cnt = hn < 100 ? hn : 100, from = hn < 100 ? 0 : hw; char tp[PATH_MAX + 40]; snprintf(tp, sizeof tp, "%s.tmp", hp); FILE *ho = fopen(tp, "w");
+            if (ho) { for (int k = 0; k < cnt; k++) fputs(hrows[(from + k) % 100], ho); if (fclose(ho) == 0 && rename(tp, hp) == 0) logf_("HYGIENE | heavy_runs.txt was %ld bytes: kept the last %d rows", (long)hs.st_size, cnt); else remove(tp); }
+        }
+    }
     struct statvfs vf;
     if (statvfs(house, &vf) == 0) {
         double free_gb = (double)vf.f_bavail * (double)vf.f_frsize / 1073741824.0;

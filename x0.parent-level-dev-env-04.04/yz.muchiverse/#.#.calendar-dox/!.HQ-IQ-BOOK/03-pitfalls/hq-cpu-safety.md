@@ -370,3 +370,25 @@ house has the whole machine.** Budget for coexistence:
 
 Docs and handoffs should repeat this where it matters (the Grok handoff does); when you write a design, add a "footprint" paragraph.
 
+
+## 10. Ask BEFORE the machine is hot: `cpu_gate` and `cpu_lint` (owner 2026-11-03)
+
+**The incident.** 2026-11-03 00:54:54: busy 92 % (normal ~25 %), 62 C, house 42 % of the machine; the guard ended 31 house processes, the whole editor stack. The newest `&.hq-apps/proc-mon/state/incidents/` file named the house share: `lc_clock.+x` 118 % of a core (the editor's game clock: about 19 game days in 25 minutes, each day fires ~6 events at about 1.8 s of CPU each, and EVERY daemon restart replays a bounded catch-up, I restarted that daemon six times), the board session's two prisc loops 78 % and a renderer 51 %, a `cc1` compile 87 %, and Chrome 187 %. Section 9 already said "launch heavy things niced and one at a time, never two relaunches back to back": the rule existed and nothing enforced it. The guard is reactive by design; these two tools are the missing proactive half.
+
+**`cpu_gate`** (`&.widgits/_shared-lib/ops/cpu_gate.c`, build `build_cpu_gate.sh`) - the launch-time check:
+- `cpu_gate <house> check [--max-busy P] [--max-temp C] [--max-house P]` samples one second: whole-machine busy, the house's own CPU share (processes whose command line names the house), the hottest thermal zone. Defaults come from `#.desktop/proc_mon_guard.pdl` (`warn_pct`, `temp_warn_c`), house limit 30 %. Exit 0 ok, 3 too busy (the reason on stderr).
+- `cpu_gate <house> run <label> [limits] [--wait S] -- <cmd...>` the same check (waiting up to S seconds for the machine to calm), then ONE heavy job at a time (flock `#.desktop/heavy.lock`, exit 4 when another holds it, naming it), then the command runs at nice 15 with idle I/O priority; its exit status is returned; one row per run goes to `#.desktop/heavy_runs.txt`.
+- **Standing rule (also in AGENTS.md):** a compile, an engine start or relaunch, a screenshot/nudge loop, a TTS or ffmpeg batch is started as `cpu_gate <house> run <label> -- <cmd>`, never bare, and never two at once.
+- Tested 2026-11-03 (all observed): calm check ok (36 % busy); `--max-busy 0` and `--max-house 0` refuse (rc 3, negative controls); `run` shows `nice=15 io=idle`; the child's exit status 7 passes through; a second job while one runs is refused with rc 4 and names the holder; the lock frees afterwards; under 8 loops at nice 19 (all 8 CPUs) the check refuses at 100 % busy, and `--wait 20` waits then runs after the load ends; one loop whose command line names the house reads 13 % of the 8-core machine (1/8 = 12.5 %) and trips `--max-house 1`.
+
+**`cpu_lint`** (`ops/cpu_lint.c`, build `build_cpu_lint.sh`, baseline `08-roadmap/design-docs/CPU-LINT-BASELINE-2026-11-03.txt`) - the static pre-check, the same ratchet as `spawn_lint` (a file may only get FEWER hits; `cpu-ok: <why>` on the line allows one on purpose):
+- `c-busy-loop`: `for (;;)` / `while (1)` whose own body (found by brace matching) has no blocking call and no way out. Found 0 in the house today (an earlier version with a looser rule flagged 345, almost all vendored code or loops that exit; the house sleeps through `kh_plat_sleep_ms`, which the lint knows).
+- `c-tight-sleep`: `usleep(N)` with a literal N <= 5000: 52 sites in the baseline.
+- `sh-heavy-no-nice`: a shell line running gcc / cc / clang / make / ffmpeg / convert / montage without `nice` or `cpu_gate` on it or the line before: 516 sites in the baseline (mostly per-project build scripts; the first to convert are the ones the desktop runs by itself: `$.crypts/button.sh` reset/build -> `build_khtpm_strip.sh`).
+- `sh-loop-no-sleep`: 2 (`proc-mon/mon_scan.sh:330`, `_.START_BUTTON/button.sh:135`: to review, not yet judged).
+- Negative control run: a planted spinner, a 1 ms usleep, an un-niced gcc and a sleepless `while true` were all caught; a 200 ms loop, a loop with `break`, a niced gcc and a `cpu-ok:` line were not.
+- It is a heuristic: it cannot see a hot loop made of fork/exec per tick (the `bv_dispatch` per-tick spawn) or a daemon whose cost is its work (the game clock). Those are found by measuring (`state/tick_stats.txt`, `cpu_gate check` before and after), not by lint.
+
+**Second guard and files.** `#.desktop/heavy_runs.txt` (capped at 200 rows by `cpu_gate`; `cpu_guard`'s `hygiene_sweep()` keeps the last 100 rows past 64 KB: tested, 171,780 bytes -> 100 rows, logged) and `#.desktop/heavy.lock` (one line, a flock, released when the holder exits). One row per heavy job: a few rows per hour.
+
+**Open (own footprint, not fixed):** the editor's game clock rate (`time_rate=sec` ran ~60x real time) and its restart catch-up are the largest house cost in this incident; a restart storm (six daemon restarts in 25 minutes) is what made it bad. Candidates: `cpu_gate check` inside `open_board.sh` before it starts the engine; a lower default clock rate for the editor; the clock paused while the window is not focused. The 3D engine daemon is started by `bv_dispatch.c` with a bare double fork (unregistered, not niced).
