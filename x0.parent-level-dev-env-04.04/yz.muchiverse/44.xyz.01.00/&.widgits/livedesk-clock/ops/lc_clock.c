@@ -348,7 +348,13 @@ static unsigned month_len(long long y, unsigned m) {
 /* (Jan 31 -> Feb 28/29 -> Mar 31), clamped to the month length.         */
 /* ------------------------------------------------------------------ */
 
-#define CATCHUP_CAP 400
+/* Missed occurrences fired in one poll. Every fire launches a full event run (fork+exec+waitpid, about 1.8 s of CPU for the rpg games), so the old cap of 400
+ * was a 12 minute burn at 100% of a core, and the 'caught up N' row that moves the cursor only came AFTER all 400 (2026-11-02: the fast rate, 1 game hour per
+ * second, out-ran its own events; the backlog replayed for ~75 minutes, 28,866 ledger rows, the CPU guard ended the whole house). 12 keeps a short, bounded catch-up. */
+#define CATCHUP_CAP 12
+/* the ledger is append-only and IS the cursor, so it needs a cap of its own (HQ-IQ-BOOK 03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md): past this many bytes it is
+ * compacted to the last row of each schedule id (that row is the cursor). LC_CLOCK_LEDGER_MAX_BYTES overrides it (the harness uses a tiny one). */
+#define LEDGER_MAX_BYTES 262144
 #define DAY_MS 86400000LL
 
 typedef struct { int n; long long step_ms; int months; } Repeat; /* months>0 => calendar unit */
@@ -467,13 +473,52 @@ static int ledger_cursor(const char *id, long long *occ) {
     return 0;
 }
 
+/* keep only the LAST row of each schedule id (the cursor), under the caller's flock on the ledger; rename = new inode, ledger_refresh re-folds */
+static void ledger_compact(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char (*rows)[MAX_LINE] = NULL; char (*ids)[64] = NULL; int n = 0, cap = 0; char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        if (len == 0 || line[len - 1] != '\n') break;
+        char id[64]; long long occ;
+        if (sscanf(line, "SCHED|%63[^|]|%lld|", id, &occ) != 2) continue;
+        int at = -1;
+        for (int i = 0; i < n; i++) if (strcmp(ids[i], id) == 0) { at = i; break; }
+        if (at < 0) {
+            if (n == cap) { cap = cap ? cap * 2 : 32; rows = realloc(rows, (size_t)cap * sizeof(*rows)); ids = realloc(ids, (size_t)cap * sizeof(*ids)); if (!rows || !ids) { fclose(f); return; } }
+            at = n++; snprintf(ids[at], 64, "%s", id);
+        }
+        snprintf(rows[at], MAX_LINE, "%s", line);
+    }
+    fclose(f);
+    char tmp[PBUF + 16]; snprintf(tmp, sizeof(tmp), "%s.%ld.tmp", path, (long)getpid());
+    FILE *o = fopen(tmp, "w");
+    if (o) {
+        for (int i = 0; i < n; i++) fputs(rows[i], o);
+        if (fclose(o) == 0) rename(tmp, path); else remove(tmp);
+    }
+    free(rows); free(ids);
+}
+
 static void ledger_append(const char *house, const char *id, long long occ, long long wall, const char *result) {
     char path[PBUF];
     ledger_path(path, sizeof(path), house);
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    int fd = -1;
+    for (int tries = 0; tries < 4; tries++) {      /* a compaction renames the file: re-open if the one we locked is no longer the ledger */
+        fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (fd < 0) return;
+        flock(fd, LOCK_EX);
+        struct stat a, b;
+        if (fstat(fd, &a) == 0 && stat(path, &b) == 0 && a.st_ino == b.st_ino && a.st_dev == b.st_dev) break;
+        close(fd); fd = -1;
+    }
     if (fd < 0) return;
-    flock(fd, LOCK_EX);
     dprintf(fd, "SCHED|%s|%lld|%lld|%s\n", id, occ, wall, result);
+    const char *mx = getenv("LC_CLOCK_LEDGER_MAX_BYTES");
+    long long max_bytes = mx && atoll(mx) > 0 ? atoll(mx) : LEDGER_MAX_BYTES;
+    struct stat st;
+    if (fstat(fd, &st) == 0 && st.st_size > max_bytes) ledger_compact(path);
     flock(fd, LOCK_UN);
     close(fd);
     cur_note(id, occ); /* keep the in-memory cursor in step; refresh will skip nothing twice (max) */

@@ -39,6 +39,7 @@ Anything the house writes while it runs (frames, logs, ledgers, relays, snapshot
 | folder / file | writer | cap | enforced by | second guard |
 |---|---|---|---|---|
 | `#.desktop/ascii_frames/index.txt` + `<pid>.<seq>.{objects,receipt}.pdl` | every `khtpm_core_render` window | 50 index lines, their files | renderer trim (reads the tail if the index is oversize, fixed 2026-11-02) | `cpu_guard` `hygiene_sweep()`: 3000 entries / 900 s |
+| `<app>/state/clock_root/#.desktop/clocks/schedule_ledger.txt` (the clock's recurrence cursor) | `lc_clock.+x` (one per game clock) | 256 KB, then compacted to the last row per schedule id (that row is the cursor); env `LC_CLOCK_LEDGER_MAX_BYTES` | `ledger_append()` in `&.widgits/livedesk-clock/ops/lc_clock.c` (2026-11-02) | none yet (it was 1.1 MB, 28,866 rows, after the incident below) |
 | free disk under the house | everything | 5 GB free warning | n/a | `cpu_guard` `hygiene_sweep()` -> `disk_alert.txt` |
 
 Dead-pid leftovers (added 2026-11-02, same sweep, every 2 minutes, a file goes only when `/proc/<pid>` is gone and its name is exactly
@@ -55,3 +56,14 @@ Keep the newest 50 index entries; delete every other `*.objects.pdl` / `*.receip
 `entity_menu_history/<pid>.txt`, `entity_menu_frame_<pid>.txt` and `taskbar_settings_frame_<pid>.txt` whose pid is dead (`[ -d /proc/<pid> ]`). Run it
 niced and `ionice -c3`; 1.2 million unlinks took about a minute. Result: 7.6 GB -> 208 MB, 1.68M -> 1,840 files.
 Windows started before the renderer fix keep the old trim until they are restarted; the guard covers them meanwhile.
+
+## Second incident the same day: the game clock out-ran its own events (2026-11-02)
+
+- RAN: `lc_clock.+x` showed at 100% of a core (inclusive of the event runs it launches) and the CPU guard ended 40 house processes at 19:56. The clock of rpg-edit-hq
+  was at day 5022 while schedule `r5` was at about day 2522: 2,500 missed daily occurrences being replayed one by one, each a full event run (about 1.8 s of CPU).
+  Cause 1: the rate was `sec` ("fast", 1 game hour per real second = one game day every 24 s) and the events of one game day cost more than 24 s, so the backlog
+  could only grow. Cause 2: the catch-up cap was 400, i.e. a 12 minute burn per batch, and the 'caught up N' row that moves the cursor came only after all 400; a
+  stop in the middle (a restart, the guard) restarted the burn. Cause 3: the append-only ledger grew without a cap.
+- Fix: `CATCHUP_CAP` 12, ledger compaction (above), harness cases updated (`lc_clock_recur`, 57 checks) and one added.
+- Still true: a fast rate costs real CPU. Events per game day times their cost must be well under the real seconds per game day, or the clock will always be
+  catching up (the cap now makes that a short bounded burst instead of a runaway). The owner's saved rate for the edit board is `sec`.

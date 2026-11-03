@@ -1,4 +1,4 @@
-# lc_clock_recur (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 3.3, build steps 2-3): repeat=every:<n><unit>, calendar-aware month/year, until=, catch-up cap 400,
+# lc_clock_recur (CLOCK-AS-THE-PLAY-SPINE-DESIGN.md 3.3, build steps 2-3): repeat=every:<n><unit>, calendar-aware month/year, until=, catch-up cap 12 (was 400 until 2026-11-02: see lc_clock.c CATCHUP_CAP), ledger compaction,
 # schedule ledger as cursor, event run safety (fork/exec/waitpid + watchdog). Same scratch + no-popup rules as lc_clock_base. Calendar: epoch 0 = year 0 Jan 1 (year 0 is leap).
 RESULTS | ../results/lc_clock_recur.txt
 ENV     | LC_CLOCK_NO_POPUP | 1
@@ -30,7 +30,7 @@ COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
 RUN | $T/lc.+x | $T | new | g1
 RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | a | every:2day
 RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | b | every:1week
-RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | c | every:90min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | c | every:36hour
 RUN | $T/lc.+x | $T | endturn | g1 | 1209600000
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1
@@ -38,7 +38,7 @@ EXPECT_OUT_IS | 7 | every-2-days-days-1-3-5-7-9-11-13
 RUN | $T/lc.+x | $T | sched-count | r2
 EXPECT_OUT_IS | 2 | every-week-days-1-and-8-then-15-not-yet
 RUN | $T/lc.+x | $T | sched-count | r3
-EXPECT_OUT_IS | 209 | every-90min-days-1-to-14-is-209-occurrences-under-cap
+EXPECT_OUT_IS | 9 | every-36hours-days-1-to-14-is-9-occurrences-under-cap
 CLEAN |
 CASE    | monthly-non-leap
 SCRATCH |
@@ -98,20 +98,20 @@ RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | big | every:1day
 RUN | $T/lc.+x | $T | endturn | g1 | 86400000000
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1 | ok
-EXPECT_OUT_IS | 400 | cap-400-fired-in-order
+EXPECT_OUT_IS | 12 | cap-12-fired-in-order
 RUN | $T/lc.+x | $T | sched-count | r1 | caught up
 EXPECT_OUT_IS | 1 | one-collapsed-row
-EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | \pcaught up 600 | collapsed-row-says-caught-up-600
-EXPECT_HAS | #.desktop/clocks/schedule_flags.txt | FLAG\pr1\pcaught_up\p600\p | collapse-flagged
-EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p34560000000\p | row-400-is-day-400
-EXPECT_LACKS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p34646400000\p | day-401-not-individually-fired
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | \pcaught up 988 | collapsed-row-says-caught-up-988
+EXPECT_HAS | #.desktop/clocks/schedule_flags.txt | FLAG\pr1\pcaught_up\p988\p | collapse-flagged
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p1036800000\p | row-12-is-day-12
+EXPECT_LACKS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p1123200000\p | day-13-not-individually-fired
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1
-EXPECT_OUT_IS | 401 | no-refire-after-collapse
+EXPECT_OUT_IS | 13 | no-refire-after-collapse
 RUN | $T/lc.+x | $T | endturn | g1 | 86400000
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1
-EXPECT_OUT_IS | 402 | day-1001-resumes-after-collapsed-cursor
+EXPECT_OUT_IS | 14 | day-1001-resumes-after-collapsed-cursor
 CLEAN |
 CASE    | restart-replay
 SCRATCH |
@@ -220,3 +220,17 @@ EXPECT_OUT_IS | 1 | timeout-row-is-the-only-row
 ENV | LC_CLOCK_EVENT_TIMEOUT_S | 
 ENV | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
 CLEAN |
+CLEAN |
+CASE    | ledger-compaction-keeps-the-cursor
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 |  | big | every:1day
+RUN | $T/lc.+x | $T | endturn | g1 | 86400000000
+RUN | sh | -c | cd $T && LC_CLOCK_LEDGER_MAX_BYTES=100 ./lc.+x $T step 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | ledger-compacted-to-one-row-for-the-schedule
+EXPECT_HAS | #.desktop/clocks/schedule_ledger.txt | SCHED\pr1\p86400000000\p | the-one-row-is-the-last-occurrence-the-cursor
+RUN | sh | -c | cd $T && LC_CLOCK_LEDGER_MAX_BYTES=100 ./lc.+x $T step 0
+RUN | $T/lc.+x | $T | sched-count | r1
+EXPECT_OUT_IS | 1 | no-refire-after-compaction
