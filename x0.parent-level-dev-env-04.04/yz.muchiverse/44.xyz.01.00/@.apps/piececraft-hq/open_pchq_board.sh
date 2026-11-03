@@ -43,6 +43,13 @@ if [ -n "${PCHQ_PKG:-}" ]; then
     [ "$DATA" = "$PKG" ] || [ -f "$DATA/pieces/system/.instance-ready" ] || sh "$PKG/ops/pchq_instance_init.sh" "$DATA" || { echo "open_pchq_board: could not initialise instance $DATA" >&2; exit 1; }
 fi
 INST="$(basename "$DATA")"
+# Process registry (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md): every process this script starts is recorded in #.desktop/proc_registry.pdl by the op
+# (plain exec, no header); the op also mirrors the legacy ledger line the taskbar quit reaper reads. Without the op built, the old ledger line is written as before.
+PREG="$HOUSE_ROOT/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"
+proc_reg_op_register() {   # proc_reg_op_register <pid> <owner|keep> <owner_pid> <role> <name>
+    if [ -x "$PREG" ]; then "$PREG" "$HOUSE_ROOT" register "$1" "$2" "$3" "$4" "$INST" "$5" >/dev/null 2>&1 || true
+    else printf '%s %s 0 0 %s\n' "$1" "$1" "$5" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true; fi
+}
 # which instance does a running pc-hq process belong to? Its environment carries PCHQ_PKG (empty = the default instance).
 same_instance() { _v="$(tr '\0' '\n' < "/proc/$1/environ" 2>/dev/null | sed -n 's/^PCHQ_PKG=//p' | head -1)"; [ -n "$_v" ] && _v="$(cd "$_v" 2>/dev/null && pwd)"; [ "${_v:-$PKG}" = "$DATA" ]; }
 
@@ -318,8 +325,7 @@ if ! engine_up; then
             # proc-ledger: a taskbar quit (ktb_reap_launched) now
             # kill(-pgid, SIGTERM)s it -> its trap fires -> clean.
             printf '%s\n' "$_eng" > "$DATA/pieces/system/engine.pid" 2>/dev/null || true
-            printf '%s %s 0 0 pchq-engine\n' "$_eng" "$_eng" \
-                >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+            proc_reg_op_register "$_eng" keep 0 engine pchq-engine      # re-registered below as owned by the window once it exists
         fi
     fi
     # wait up to ~8s for the widget session to register
@@ -348,11 +354,16 @@ fi
 # ── launch the board window — standard x11-hq shape ─────────────────
 if [ "$DATA" = "$PKG" ]; then
     setsid nohup "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq >/tmp/pchq-board.log 2>&1 < /dev/null &
-    printf '%s %s 0 0 pchq-board\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+    WPID=$!; proc_reg_op_register "$WPID" keep 0 window pchq-board
 else   # another instance: its window carries PCHQ_PKG in its environment (that is how same_instance() tells the windows apart)
     setsid nohup env PCHQ_PKG="$DATA" "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq >"/tmp/pchq-board-$INST.log" 2>&1 < /dev/null &
-    printf '%s %s 0 0 pchq-board-%s\n' "$!" "$!" "$INST" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
+    WPID=$!; proc_reg_op_register "$WPID" keep 0 window "pchq-board-$INST"
 fi
 disown 2>/dev/null || true
+# The window is the OWNER of this board's engine (and, through the app's own launcher, of its daemon): the window's pid is written next to engine.pid, and the engine row
+# is re-registered as owner=window, so closing the window ends the engine within ~35 s (the guard's registry pass; 15-20 s orphan grace covers a window relaunch).
+printf '%s\n' "$WPID" > "$DATA/pieces/system/board_window.pid" 2>/dev/null || true
+_ep="$(cat "$DATA/pieces/system/engine.pid" 2>/dev/null)"
+case "$_ep" in ''|*[!0-9]*) ;; *) [ -d "/proc/$_ep" ] && proc_reg_op_register "$_ep" owner "$WPID" engine pchq-engine ;; esac
 
 echo "open_pchq_board: board window launched"

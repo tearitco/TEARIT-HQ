@@ -25,11 +25,16 @@ EXPECT_EXIT | 1 | owned-process-without-an-owner-refused
 RUN | $T/bin/reg | $T/house | register | 999999 | keep | 0 | worker | demo | ghost
 EXPECT_EXIT | 1 | dead-pid-refused
 EXPECT_LACKS | house/#.desktop/proc_registry.pdl | ghost | refused-rows-not-written
-RUN | $T/bin/reg | $T/house | reap-orphans | 200
+RUN | $T/bin/reg | $T/house | reap-orphans | 200 | 0
 EXPECT_ALIVE | $KID | owner-alive-so-nothing-is-reaped
 RUN | sh | -c | kill $OWN
 SLEEP | 300
-RUN | $T/bin/reg | $T/house | reap-orphans | 200
+RUN | $T/bin/reg | $T/house | reap-orphans | 200 | 30
+SLEEP | 300
+EXPECT_ALIVE | $KID | orphan-grace-keeps-it-while-a-window-may-be-relaunching
+EXPECT_OUT | WAIT | and-says-it-is-waiting
+EXPECT_HAS | house/#.desktop/.proc_orphan_seen | $KID | first-sighting-recorded
+RUN | $T/bin/reg | $T/house | reap-orphans | 200 | 0
 SLEEP | 500
 EXPECT_DEAD  | $KID | owner-died-so-its-process-is-ended
 EXPECT_ALIVE | $KEEP | keep-row-survives-its-owner
@@ -47,7 +52,7 @@ MKDIR   | house/#.desktop
 SPAWN | FORGE | sleep | 300
 SLEEP | 200
 WRITE   | house/#.desktop/proc_registry.pdl | PROC | $FORGE | 1 | $FORGE | owner | 999999 | 1 | worker | demo | forged | 1 | x\n
-RUN | $T/bin/reg | $T/house | reap-orphans | 200
+RUN | $T/bin/reg | $T/house | reap-orphans | 200 | 0
 SLEEP | 400
 EXPECT_ALIVE | $FORGE | a-row-with-a-wrong-start-time-is-never-signalled
 EXPECT_LACKS | house/#.desktop/proc_registry.pdl | forged | the-stale-row-is-dropped
@@ -85,9 +90,78 @@ EXPECT_HAS | house/#.desktop/proc_registry.pdl | demo-daemon | name-recorded
 EXPECT_HAS | house/#.desktop/proc_registry.pdl | sleep 120 | cmdline-recorded-for-the-audit
 RUN | sh | -c | kill $OWN
 SLEEP | 300
-RUN | $T/bin/ops/+x/proc_reg_op.+x | $T/house | reap-orphans | 200
+RUN | $T/bin/ops/+x/proc_reg_op.+x | $T/house | reap-orphans | 200 | 0
 SLEEP | 600
 EXPECT_DEAD | $D | owner-died-so-the-detached-daemon-is-ended
 RUN | sh | -c | kill $D 2>/dev/null; true
+CLEAN |
+CASE    | adopt-a-detached-stack
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | bin/reg
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/stack/w1
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/stack/w2
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/other/w3
+MKDIR   | house/#.desktop
+SPAWN | OWN | sleep | 300
+SPAWN | S1 | $T/house/stack/w1 | $T/house | hold | 120
+SPAWN | S2 | $T/house/stack/w2 | $T/house | hold | 120
+SPAWN | S3 | $T/house/other/w3 | $T/house | hold | 120
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | adopt | $OWN | $T/house/stack/ | engine | demo | stack-part
+EXPECT_OUT_IS | 2 | exactly-the-two-processes-under-the-prefix-adopted
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | PROC \p $S1 | first-part-registered
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | PROC \p $S2 | second-part-registered
+EXPECT_LACKS | house/#.desktop/proc_registry.pdl | PROC \p $S3 | a-process-outside-the-prefix-is-not-adopted
+RUN | $T/bin/reg | $T/house | adopt | $OWN | $T/house/stack/ | engine | demo | stack-part
+EXPECT_OUT_IS | 0 | adopting-again-adds-nothing
+RUN | sh | -c | kill $OWN
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | reap-orphans | 200 | 0
+SLEEP | 500
+EXPECT_DEAD  | $S1 | adopted-part-ends-with-its-owner
+EXPECT_DEAD  | $S2 | second-adopted-part-ends-too
+EXPECT_ALIVE | $S3 | the-unadopted-process-is-untouched
+CLEAN |
+CASE    | adoption-rules
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | bin/reg
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/stack/w1
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/stack/w2
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/stack/w3
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/dyn/d1
+COPY    | &.widgits/_shared-lib/ops/+x/proc_reg_op.+x | house/other/x1
+MKDIR   | house/#.desktop
+WRITE   | house/state/ui.txt | note=x\nbv_session=$T/house/dyn\n
+SPAWN | OWN | sleep | 300
+RUN | $T/bin/reg | $T/house | rule-add | $OWN | $T/house/stack/ | engine | demo | stack
+EXPECT_EXIT | 0 | rule-declared
+RUN | $T/bin/reg | $T/house | rule-add | $OWN | @file:$T/house/state/ui.txt#bv_session | engine | demo | dyn
+EXPECT_EXIT | 0 | dynamic-rule-declared
+EXPECT_HAS | house/#.desktop/proc_adopt_rules.pdl | RULE \p $OWN | the-rules-are-a-readable-file
+SPAWN | S1 | $T/house/stack/w1 | $T/house | hold | 120
+SPAWN | D1 | $T/house/dyn/d1 | $T/house | hold | 120
+SPAWN | X1 | $T/house/other/x1 | $T/house | hold | 120
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | apply-rules
+EXPECT_OUT_IS | 2 | static-and-file-driven-rules-adopt-their-processes
+EXPECT_HAS | house/#.desktop/proc_registry.pdl | PROC \p $D1 | file-driven-prefix-resolved-from-the-key
+EXPECT_LACKS | house/#.desktop/proc_registry.pdl | PROC \p $X1 | process-outside-every-rule-not-adopted
+SPAWN | S2 | $T/house/stack/w2 | $T/house | hold | 120
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | apply-rules
+EXPECT_OUT_IS | 1 | a-respawned-process-is-picked-up-on-the-next-pass
+RUN | sh | -c | kill $OWN
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | reap-orphans | 200 | 0
+SLEEP | 600
+EXPECT_DEAD  | $S1 | adopted-process-ends-with-its-owner
+EXPECT_DEAD  | $S2 | the-respawned-one-too
+EXPECT_DEAD  | $D1 | and-the-file-driven-one
+EXPECT_ALIVE | $X1 | unadopted-process-untouched
+EXPECT_NOFILE | house/#.desktop/proc_adopt_rules.pdl | rules-die-with-their-owner-and-the-file-goes-when-none-are-left
+SPAWN | S3 | $T/house/stack/w3 | $T/house | hold | 120
+SLEEP | 300
+RUN | $T/bin/reg | $T/house | apply-rules
+EXPECT_OUT_IS | 0 | nothing-is-adopted-for-a-dead-owner
 CLEAN |
 

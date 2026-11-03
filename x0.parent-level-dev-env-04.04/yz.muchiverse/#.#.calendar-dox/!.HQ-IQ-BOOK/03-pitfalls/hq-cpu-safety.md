@@ -333,6 +333,9 @@ guarantee that no future helper leaks, so the always-on guard (section 8) now ca
   close), `stray_scan_s=30`. Off: `stray_reap=0` or the file `#.desktop/stray_reap_off`. `dry_run=1` logs `WOULD-KILL` only.
 - **Log.** `STRAY | no LyfeDesk window, N house processes left: reaping in S s ...`, then `KILL | stray, ...` per process and `STRAY | reaped N ...` in
   `&.hq-apps/proc-mon/state/cpu_guard.log`. A window opening in the grace period cancels it.
+- **Registry pass (same day).** The guard also registers itself and, every `stray_scan_s`, runs `proc_reg_op reap-orphans` (ends a registered process whose owner has been gone 20 s, applying the
+  declared adoption rules first) and `proc_reg_op audit` (house processes with no row in `#.desktop/proc_registry.pdl`: logged as `AUDIT | N ...` when the count changes, listed in
+  `#.desktop/proc_violations.txt`, audit only). Key `proc_registry=0` turns it off. Plan: `PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md`.
 - **Tested** on a scratch house with stand-in processes (copies of `sleep` under the house path): window open = nothing touched; window closed + 30 s = the daemon
   and a leftover taskbar manager ended, an outside process and the guard untouched; a running `livedesk_splash` holds the reaper; `stray_reap_off` holds it and
   removing the file lets it reap.

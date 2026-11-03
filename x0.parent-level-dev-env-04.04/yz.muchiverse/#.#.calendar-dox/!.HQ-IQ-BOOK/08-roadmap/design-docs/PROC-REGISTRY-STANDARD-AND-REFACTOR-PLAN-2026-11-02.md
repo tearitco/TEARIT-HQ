@@ -5,10 +5,20 @@ manager with no strip): *"we should scan for a code pattern that creates strays 
 file for killing this way. 'If it's not a file it's a lie' applies to procs also. I don't care if we have to spend the entire next week refactoring, this has to be
 fixed."*
 
-**Status (end of 2026-11-02): phase 1 BUILT and harness-proven; phases 2-6 not started.** Owner decisions of today: a game's world **stops with its window by default**, with an
-opt-in `keep` lifetime set in a `.pdl` (section 8, decision 1); **no header: the whole registry is one op, called with plain fork/exec** (owner: "do we have to use .h, can't we
-use std exec/fork?" - no; that is also the house rule for stateful shared logic). Built: `&.widgits/_shared-lib/ops/proc_reg_op.c` (register, unregister, list, prune,
-reap-orphans, audit, owner-alive), `kh_spawn.sh` v2, `ops/spawn_lint.c` + the regenerated baseline (150 rows), harness `proc_registry_v2` (30 checks) and `spawn_lint` (19 checks).
+**Status (end of 2026-11-02): phases 1 and 2 DONE, phase 3 piloted on rpg-edit-hq and PROVEN LIVE; the other apps are not converted yet.** Owner decisions of today: a game's world
+**stops with its window by default**, with an opt-in `keep` lifetime set in a `.pdl` (`SECTION | keep_running | 1` in the app's `toy.pdl`, proven live); **no header: the whole
+registry is one op, called with plain fork/exec** (owner: "do we have to use .h, can't we use std exec/fork?" - no; the house rule for stateful shared logic).
+Built and tested: `ops/proc_reg_op.c` (register, unregister, list, prune, reap-orphans with a 15-20 s orphan grace, audit, owner-alive, **adopt**, **rule-add / apply-rules**),
+`kh_spawn.sh` v2, `ops/spawn_lint.c` + baseline (148 rows, shrank from 150), the CPU guard's registry pass (registers itself, ends orphans, audits, logs `REGISTRY` / `AUDIT`),
+harness `proc_registry_v2` (54 checks) and `spawn_lint` (19). **Pilot result (RAN, real board):** open the edit board, close its window: all 13 board processes (daemon, game clock,
+engine, 7 session processes, 4 board-viewer processes) were gone within 40 s, no registry rows and no rules file left; with `keep_running=1` the daemon and its clock survived the
+window as `keep` rows (then restored by hash). Before: the daemon and clock ran for 16 h and the engine stack for hours.
+
+**Next (not started):** convert the other petslike games' `open_board.sh` the same way (rpg-space, rpg-dust, rpg-pet, dsr-rpg, df-hq, cdda-hq, mcl-hq ...: three edits each: funnel for the
+daemon, hand it to the window, two adoption rules), then the taskbar-side processes the guard's audit lists today (khtpm_entity x6, the strip's renderers, the taskbar manager,
+`world_manager`, `hotbar_manager`: 11 at last count, in `#.desktop/proc_violations.txt`), then phases 4-6. Side effect already live for EVERY pchq board: `open_pchq_board.sh` now
+registers the window and the engine (engine owned by its window), so closing any pchq board ends its engine; the engine's detached session stack of boards other than rpg-edit-hq is
+still unowned until their launchers add the two rules.
 
 Labels: **RAN** (observed this session), **READ** (read in code/docs), **MINE** (proposal, the owner decides), **OPEN** (needs the owner).
 
@@ -70,6 +80,12 @@ PROC | pid | starttime | pgid | owner_kind | owner | role | app | name | started
 * `role`: `window | manager | daemon | projector | engine | clock | worker | sound | tool`. `app`: `rpg-edit-hq`, `dsr`, ... `cmd`: argv, for the audit.
 * Append-only sidecar `#.desktop/proc_registry.log.txt` (capped, section 3.5): `START` and `END reason` rows, so "what ran, who started it, why it ended" is answerable next week.
 * `livedesk_proc_list.txt` stays as a **mirror** while old readers exist (taskbar reaper, `kill_hq_windows.sh`), then is deleted (phase 5).
+
+**Adoption rules (added the same day, found by the pilot).** A detached stack leaves the process we registered, and it RESPAWNS (the pchq engine makes a new session whenever the board
+reloads its book), so a one-time `adopt` missed the new processes. A launcher therefore declares ownership in a file instead: `#.desktop/proc_adopt_rules.pdl`,
+`RULE | owner_pid | owner_start | prefix | role | app | name`, where the prefix is an exe-path prefix or `@file:<path>#<key>` (the board-viewer session id, re-read every pass from
+the board's `state/ui.txt`). `proc_reg_op reap-orphans` (the guard calls it every ~30 s) applies the rules first, adopting every unregistered house process under a live owner's
+prefix as a `lifetime=owner` row, then ends what is orphaned. A rule dies with its owner, and the file is removed when none are left.
 
 ### 3.2 One way to start a process: the funnel, and what it guarantees
 **No header, nothing linked (decided 2026-11-02).** The registry logic exists once, in `ops/proc_reg_op.c`; a C program, a shell script, a pal and the guard all call it with

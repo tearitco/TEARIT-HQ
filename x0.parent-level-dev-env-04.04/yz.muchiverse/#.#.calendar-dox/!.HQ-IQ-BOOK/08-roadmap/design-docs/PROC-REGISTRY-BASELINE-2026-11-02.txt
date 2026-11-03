@@ -2,13 +2,12 @@
 # C: setsid() in a file that never touches the registry). Generated 2026-11-02 by a one-off scan (excluded: tests/, harness/, pieces/sessions, +x, xyzfs/users copies).
 # The refactor plan (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md) makes this file a RATCHET: the lint may only ever see FEWER rows than this; a new row is a failure.
 # format: <kind> <path relative to the house root>:<line>
-# regenerated 2026-11-02 with spawn_lint --emit (scope widened to .h: khtpm_strip_posix_win.h had a setsid)
+# regenerated with spawn_lint --emit: 2026-11-02 (scope widened to .h), again after the rpg-edit-hq pilot (150 -> 148)
 
 c-setsid &.hq-apps/blueprintz/ops/bp_ctl.c:100
 c-setsid &.hq-apps/exchange-hq/ops/exchange_manager.c:186
 c-setsid &.hq-apps/img-hai/img_hai_manager.c:132
 c-setsid &.hq-apps/irc-chat-hq/ops/irc_chat_manager.c:144
-c-setsid &.hq-apps/proc-mon/ops/cpu_guard.c:473
 c-setsid &.hq-apps/sfx-hai/sfx_hai_manager.c:74
 c-setsid &.hq-apps/sfx-hai/sfx_hai_manager.c:75
 c-setsid &.hq-apps/voice-fx/voice_fx_manager.c:76
@@ -122,8 +121,8 @@ sh-setsid-nohup @.apps/pets/pieces/chicken/button.sh:60
 sh-setsid-nohup @.apps/pets/pieces/dog/button.sh:60
 sh-setsid-nohup @.apps/piececraft-hq/button.sh:459
 sh-setsid-nohup @.apps/piececraft-hq/button.sh:495
-sh-setsid-nohup @.apps/piececraft-hq/open_pchq_board.sh:293
-sh-setsid-nohup @.apps/piececraft-hq/open_pchq_board.sh:294
+sh-setsid-nohup @.apps/piececraft-hq/open_pchq_board.sh:300
+sh-setsid-nohup @.apps/piececraft-hq/open_pchq_board.sh:301
 sh-setsid-nohup @.apps/piececraft-hq/ops/pc_entity_ctx.sh:173
 sh-setsid-nohup @.apps/piececraft-hq/ops/pc_entity_ctx.sh:175
 sh-setsid-nohup @.apps/piececraft-hq/ops/pc_entity_ctx.sh:323
@@ -133,7 +132,6 @@ sh-setsid-nohup @.apps/piececraft-hq/ops/pchq_board_action.sh:401
 sh-setsid-nohup @.apps/piececraft-xyz/button.sh:292
 sh-setsid-nohup @.apps/rpg-dust/board/open_board.sh:14
 sh-setsid-nohup @.apps/rpg-dust/button.sh:8
-sh-setsid-nohup @.apps/rpg-edit-hq/board/open_board.sh:13
 sh-setsid-nohup @.apps/rpg-edit-hq/button.sh:6
 sh-setsid-nohup @.apps/rpg-pet-board/button.sh:8
 sh-setsid-nohup @.apps/rpg-pet/board/open_board.sh:13

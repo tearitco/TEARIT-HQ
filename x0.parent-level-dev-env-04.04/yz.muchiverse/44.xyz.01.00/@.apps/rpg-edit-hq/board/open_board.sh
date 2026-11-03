@@ -10,8 +10,19 @@ sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/nul
 mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf "side_left=1\nside_right=1\n" > "$HERE/state/sides.txt"
 "$APP/ops/+x/rpg_edit_hq.+x" export3d >/dev/null 2>&1
 # the ONE rpg-edit-hq daemon (walks the pets, chat, clock, writes ../state/ui.txt): not a <module> of this window, a module runs with THIS folder as its app dir and would start a second house in board/state
-ps -eo stat,comm | awk '$2=="rpg_edit_hq.+x" && $1 !~ /Z/{f=1} END{exit !f}' || { setsid nohup "$APP/ops/+x/rpg_edit_hq.+x" "$HOUSE" "$APP" >/dev/null 2>&1 < /dev/null & }
+# Registered through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl); it starts as lifetime keep and is handed to the window below.
+FUNNEL="$HOUSE/&.widgits/_shared-lib/kh_spawn.sh"; REG="$HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"
+ps -eo stat,comm | awk '$2=="rpg_edit_hq.+x" && $1 !~ /Z/{f=1} END{exit !f}' || {
+    KH_ROLE=daemon KH_APP=rpg-edit-hq sh "$FUNNEL" "$HOUSE" 0 rpg-edit-hq-daemon -- "$APP/ops/+x/rpg_edit_hq.+x" "$HOUSE" "$APP" >/dev/null 2>&1; }
 PCHQ_BOARD_TPL="$HERE/pchq-board.xhtpm" sh "$HOUSE/@.apps/piececraft-hq/open_pchq_board.sh" "$HOUSE" || exit 1
+# The world stops with its window (owner decision 2026-11-02): hand the daemon to the board window, so closing the window ends the daemon (and the game clock it owns) within ~35 s.
+# Opt-in to a world that keeps running with the window closed: SECTION | keep_running | 1 in this app's toy.pdl (the row then stays lifetime keep, still listed in the registry).
+KEEP="$(awk -F'|' '$2 ~ /keep_running/ {gsub(/[ \t]/, "", $3); print $3}' "$APP/toy.pdl" 2>/dev/null)"
+WPID="$(cat "$PCHQ_PKG/pieces/system/board_window.pid" 2>/dev/null)"
+DPID="$([ -x "$REG" ] && "$REG" "$HOUSE" list 2>/dev/null | awk -F' [|] ' '$10 == "rpg-edit-hq-daemon" {print $2}' | tail -1)"
+if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$DPID" ] && [ -d "/proc/$WPID" ] && [ -d "/proc/$DPID" ]; then
+    "$REG" "$HOUSE" register "$DPID" owner "$WPID" daemon rpg-edit-hq rpg-edit-hq-daemon "$APP/ops/+x/rpg_edit_hq.+x $HOUSE $APP" >/dev/null 2>&1 || true
+fi
 INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"
 # Last edited book, or the Islands demo (page start) when the row is missing or names a book this instance cannot open.
 LINE=$(sh "$APP/ops/edit_last.sh" resolve "$APP/state/last_book.txt" --house "$HOUSE" --maps "$PCHQ_PKG/pieces/system/maps" --demo-book rpg-edit-hq --demo-page start) || exit 1
@@ -38,3 +49,12 @@ if [ ! -d "$PCHQ_PKG/pieces/system/maps/$BOOK" ]; then
     PAGE=start
 fi
 sleep 8; printf 'CONFIRM_START_MAP:%s\nCONFIRM_SET_DESK:%s\n' "$BOOK" "$PAGE" >> "$INBOX"
+# Declare the window the OWNER of the engine's detached stack: it leaves the process we registered, and it RESPAWNS when the board reloads its book, which is how a closed board
+# used to leave a trigger watcher, a clock daemon and the board-viewer prisc / parser / renderer running for hours. Two explicit rules in #.desktop/proc_adopt_rules.pdl, applied on
+# every registry pass (the guard, every ~30 s) while the window lives: this instance's session folder, and the board-viewer session this window reports in state/ui.txt
+# (bv_session, re-read each pass). What they adopt becomes rows in proc_registry.pdl (auditable) and ends with the window.
+if [ -x "$REG" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
+    "$REG" "$HOUSE" rule-add "$WPID" "$PCHQ_PKG/pieces/sessions/" engine rpg-edit-hq pchq-session >/dev/null 2>&1 || true
+    "$REG" "$HOUSE" rule-add "$WPID" "@file:$HERE/state/ui.txt#bv_session" engine rpg-edit-hq bv-session >/dev/null 2>&1 || true
+    "$REG" "$HOUSE" apply-rules >/dev/null 2>&1 || true
+fi

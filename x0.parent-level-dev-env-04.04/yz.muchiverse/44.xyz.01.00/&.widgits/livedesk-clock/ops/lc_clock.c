@@ -1376,6 +1376,36 @@ static int cmd_clock_command(const char *house, int argc, char **argv) {
     return 0;
 }
 
+/* Process registry (PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN-2026-11-02.md): the daemon records itself in #.desktop/proc_registry.pdl by running the one op (plain
+ * fork/exec, nothing linked). Owner = LC_OWNER_PID when the starter set it (an app's resident daemon: the clock then ends with it), else lifetime keep. The house root is
+ * found from this binary's own path (<house>/&.widgits/livedesk-clock/ops/+x/lc_clock.+x); the clock ROOT passed as `house` here is an app's state folder. */
+static int reg_house_root(char *out, size_t n) {
+    char exe[PBUF]; ssize_t l = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+    if (l <= 0) return 0;
+    exe[l] = 0; char *m = strstr(exe, "/&.widgits/livedesk-clock/");
+    if (!m) return 0;
+    *m = 0; snprintf(out, n, "%s", exe);
+    return 1;
+}
+static void reg_run(const char *what, const char *owner_kind, long owner_pid) {
+    char hr[PBUF], op[PBUF + 64];
+    if (!reg_house_root(hr, sizeof hr)) return;
+    snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", hr);
+    if (access(op, X_OK) != 0) return;
+    char pid[24], own[24], cmd[160];
+    snprintf(pid, sizeof pid, "%d", (int)getpid()); snprintf(own, sizeof own, "%ld", owner_pid);
+    const char *app = getenv("LC_APP"); snprintf(cmd, sizeof cmd, "lc_clock.+x daemon");
+    pid_t c = fork();
+    if (c < 0) return;
+    if (c == 0) {
+        int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); }
+        if (!strcmp(what, "register")) execl(op, op, hr, "register", pid, owner_kind, own, "clock", app && *app ? app : "-", "lc-clock", cmd, (char *)NULL);
+        else execl(op, op, hr, "unregister", pid, (char *)NULL);
+        _exit(127);
+    }
+    int st; waitpid(c, &st, 0);
+}
+
 static int cmd_daemon(const char *house) {
     signal(SIGTERM, on_sig);
     signal(SIGINT, on_sig);
@@ -1392,6 +1422,7 @@ static int cmd_daemon(const char *house) {
 
     FILE *pf = fopen(pidpath, "w");
     if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); }
+    { const char *ow = getenv("LC_OWNER_PID"); long owp = ow ? atol(ow) : 0; reg_run("register", owp > 1 ? "owner" : "keep", owp > 1 ? owp : 0); }
 
     long long last = mono_ms_now();
     while (!g_exit) {
@@ -1408,6 +1439,7 @@ static int cmd_daemon(const char *house) {
         usleep(300000);
     }
     unlink(pidpath);
+    reg_run("unregister", "", 0);
     return 0;
 }
 

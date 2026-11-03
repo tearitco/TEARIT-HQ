@@ -69,6 +69,7 @@ typedef struct {
     int enabled, sample_ms, warn_pct, act_pct, warn_samples, act_samples;
     int temp_warn_c, temp_act_c, house_min_pct, ask_min_pct;
     int cooldown_s, ask_timeout_s, ask_cooldown_s, kill_house, dry_run;
+    int proc_registry;                              /* run the process registry reaper + audit every stray_scan_s (proc_reg_op) */
     int stray_reap, stray_grace_s, stray_scan_s;   /* the stray reaper: no LyfeDesk window for stray_grace_s => end every house process */
 } Cfg;
 static Cfg cfg;
@@ -115,7 +116,7 @@ static void logf_(const char *fmt, ...) {
 }
 
 static void cfg_defaults(void) {
-    cfg = (Cfg){1, 2000, 70, 85, 3, 5, 85, 92, 20, 15, 120, 90, 600, 1, 0, 1, 120, 30};
+    cfg = (Cfg){1, 2000, 70, 85, 3, 5, 85, 92, 20, 15, 120, 90, 600, 1, 0, 1, 1, 120, 30};
 }
 
 static void cfg_load(void) {
@@ -142,6 +143,7 @@ static void cfg_load(void) {
         else if (!strcmp(line, "ask_cooldown_s")) cfg.ask_cooldown_s = v;
         else if (!strcmp(line, "kill_house")) cfg.kill_house = v;
         else if (!strcmp(line, "dry_run")) cfg.dry_run = v;
+        else if (!strcmp(line, "proc_registry")) cfg.proc_registry = v;
         else if (!strcmp(line, "stray_reap")) cfg.stray_reap = v;
         else if (!strcmp(line, "stray_grace_s")) cfg.stray_grace_s = v < 30 ? 30 : v;   /* never less than 30 s: a restart must not look like a close */
         else if (!strcmp(line, "stray_scan_s")) cfg.stray_scan_s = v < 5 ? 5 : v;
@@ -167,10 +169,10 @@ static void cfg_seed(void) {
         "cooldown_s=%d\nask_timeout_s=%d\nask_cooldown_s=%d\n"
         "kill_house=%d\n# 1 = log what would be killed, kill nothing\ndry_run=%d\n"
         "# stray reaper: with no LyfeDesk window anywhere for stray_grace_s seconds, end every house process (the taskbar leftovers too). Off: stray_reap=0 or a file #.desktop/stray_reap_off\n"
-        "stray_reap=%d\nstray_grace_s=%d\nstray_scan_s=%d\n",
+        "# process registry (proc_reg_op): end rows whose owner is gone, and audit house processes that have no row (logged only)\nproc_registry=%d\nstray_reap=%d\nstray_grace_s=%d\nstray_scan_s=%d\n",
         cfg.enabled, cfg.sample_ms, cfg.warn_pct, cfg.warn_samples, cfg.temp_warn_c, cfg.act_pct,
         cfg.act_samples, cfg.temp_act_c, cfg.house_min_pct, cfg.ask_min_pct, cfg.cooldown_s,
-        cfg.ask_timeout_s, cfg.ask_cooldown_s, cfg.kill_house, cfg.dry_run, cfg.stray_reap, cfg.stray_grace_s, cfg.stray_scan_s);
+        cfg.ask_timeout_s, cfg.ask_cooldown_s, cfg.kill_house, cfg.dry_run, cfg.proc_registry, cfg.stray_reap, cfg.stray_grace_s, cfg.stray_scan_s);
     fclose(f);
 }
 
@@ -617,6 +619,52 @@ static void stray_tick(double now) {
     memcpy(prv, keep_prv, sizeof(Proc) * (size_t)kp); nprv = kp;
 }
 
+/* ---- process registry (2026-11-02): the guard's side of PROC-REGISTRY-STANDARD-AND-REFACTOR-PLAN ------------------------------------------------
+ * "If it's not a file, it's a lie": the registry file #.desktop/proc_registry.pdl is the source of truth. Plain fork/exec of the one op (no header, nothing linked).
+ * The guard registers ITSELF (lifetime house), then every stray_scan_s: (1) reap-orphans: a registered process whose owner has been gone 20 s is ended; (2) audit:
+ * house processes with no row are counted, logged when the count changes, and listed in #.desktop/proc_violations.txt. AUDIT ONLY: nothing unregistered is ended
+ * by this pass (the window-based stray reaper above is the backstop) until the audit has been clean for a normal day. */
+static int run_op(const char *const *argv, char *out, size_t cap, int *code) {
+    int pfd[2]; if (pipe(pfd) != 0) return -1;
+    pid_t pid = fork();
+    if (pid < 0) { close(pfd[0]); close(pfd[1]); return -1; }
+    if (pid == 0) { dup2(pfd[1], 1); int nul = open("/dev/null", O_WRONLY); if (nul >= 0) dup2(nul, 2); close(pfd[0]); close(pfd[1]); execv(argv[0], (char *const *)argv); _exit(127); }
+    close(pfd[1]);
+    size_t used = 0; ssize_t n;
+    while (out && used + 1 < cap && (n = read(pfd[0], out + used, cap - used - 1)) > 0) used += (size_t)n;
+    if (out) out[used] = 0;
+    close(pfd[0]);
+    int st = 0; waitpid(pid, &st, 0);
+    if (code) *code = WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+    return 0;
+}
+static char reg_op[PATH_MAX + 64];
+static void registry_self_register(void) {
+    snprintf(reg_op, sizeof reg_op, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", house);
+    if (access(reg_op, X_OK) != 0) { reg_op[0] = 0; return; }
+    char pid[16]; snprintf(pid, sizeof pid, "%d", (int)self_pid);
+    const char *av[] = {reg_op, house, "register", pid, "house", "0", "daemon", "proc-mon", "cpu-guard", "./cpu_guard.+x", NULL};
+    int code = 0; run_op(av, NULL, 0, &code);
+}
+static double registry_next = 0; static int registry_last_violations = -1;
+static void registry_tick(double now) {
+    if (!cfg.proc_registry || !reg_op[0] || now < registry_next) return;
+    registry_next = now + cfg.stray_scan_s;
+    char out[4096]; int code = 0;
+    const char *ro[] = {reg_op, house, "reap-orphans", "300", "20", NULL};
+    if (run_op(ro, out, sizeof out, &code) == 0) { int n = atoi(out); if (n > 0) logf_("REGISTRY | ended %d registered processes whose owner is gone", n); }
+    char au[8192]; code = 0;
+    const char *ad[] = {reg_op, house, "audit", "20", NULL};
+    if (run_op(ad, au, sizeof au, &code) == 0 && (code == 0 || code == 3)) {
+        int v = 0; const char *p = strstr(au, "violations="); if (p) v = atoi(p + 11);
+        if (v != registry_last_violations) {
+            registry_last_violations = v;
+            char first[160] = ""; const char *vl = strstr(au, "VIOLATION"); if (vl) { size_t k = strcspn(vl, "\n"); if (k > 150) k = 150; memcpy(first, vl, k); first[k] = 0; }
+            logf_("AUDIT | %d house processes have no row in proc_registry.pdl (audit only, see #.desktop/proc_violations.txt)%s%s", v, v ? "; first: " : "", first);
+        }
+    }
+}
+
 /* ---- runtime-file hygiene (2026-11-02) ----------------------------------------------------------------------------------------------
  * The renderer's frame snapshots (#.desktop/ascii_frames/<pid>.<seq>.objects.pdl / .receipt.pdl) are meant to be capped at 50 by the renderer
  * itself, but its trim silently stopped once index.txt outgrew a buffer: 1.68M files, 7.6 GB, disk 94% full before anyone saw it. This is the
@@ -747,6 +795,7 @@ int main(int argc, char **argv) {
     cfg_load();
     temp_open();
     signal(SIGPIPE, SIG_IGN);
+    registry_self_register();
     logf_("START | pid=%d house=%s threads=%d temp=%s warn=%d%% act=%d%% dry_run=%d", self_pid, house, ncpu, temp_fd >= 0 ? "k10temp" : "none",
           cfg.warn_pct, cfg.act_pct, cfg.dry_run);
 
@@ -775,7 +824,8 @@ int main(int argc, char **argv) {
             logf_("STALL | the guard slept %.1fs (asked for %.1fs): the machine was nearly frozen", dt, cfg.sample_ms / 1000.0);
         if (++tick % 5 == 0) cfg_load();
         if (now >= hygiene_at) { hygiene_at = now + 120.0; hygiene_sweep(); }
-        stray_tick(now);   /* independent of enabled, like the hygiene sweep */   /* independent of enabled: disk hygiene is not a CPU decision */
+        stray_tick(now);   /* independent of enabled, like the hygiene sweep */
+        registry_tick(now);   /* independent of enabled: disk hygiene is not a CPU decision */
         if (!cfg.enabled) { read_cpu_busy(&pb, &pt); continue; }
 
         unsigned long long b, t;
