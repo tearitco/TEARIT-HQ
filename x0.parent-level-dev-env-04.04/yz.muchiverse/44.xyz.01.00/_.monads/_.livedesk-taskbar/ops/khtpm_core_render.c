@@ -12179,6 +12179,15 @@ static void kh_write_frame_receipt(const char *dir, int pid, const char *base, u
       if (fi) {
           long sz; fseek(fi, 0, SEEK_END); sz = ftell(fi); fseek(fi, 0, SEEK_SET);
           if (sz > 0 && sz < (long)sizeof(all) - 1) { alln = (size_t)fread(all, 1, (size_t)sz, fi); all[alln] = '\0'; }
+          else if (sz > 0) {
+              /* index grew past the buffer (it reached 58 MB / 840k lines once the trim stopped running, 2026-10-09 to 11-02, and 1.68M
+               * snapshot files piled up): read only the newest half-buffer, drop the cut first line, and let the trim below shrink it. */
+              long keep = (long)sizeof(all) / 2;
+              fseek(fi, sz - keep, SEEK_SET);
+              alln = (size_t)fread(all, 1, (size_t)keep, fi); all[alln] = '\0';
+              char *nlp = strchr(all, '\n');
+              if (nlp) { memmove(all, nlp + 1, strlen(nlp + 1) + 1); }
+          }
           fclose(fi); } }
     int nl = 0;
     for (char *p = all; (p = strchr(p, '\n')) != NULL; p++) nl++;
