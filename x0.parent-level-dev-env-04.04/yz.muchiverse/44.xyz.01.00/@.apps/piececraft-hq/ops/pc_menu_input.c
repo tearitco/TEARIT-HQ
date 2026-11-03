@@ -1468,14 +1468,14 @@ int main(int argc, char **argv) {
                         char c[PATH_BUF * 3];
                         if (strcmp(verb, "EVENTS") == 0) {
                             snprintf(c, sizeof(c),
-                                "setsid sh -c 'exec \"%s/&.widgits/events-hq/button.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
-                                house_root, ent_dir, house_root);
+                                "sh '%s/&.widgits/_shared-lib/kh_spawn.sh' '%s' 0 %s -- sh -c 'exec \"%s/&.widgits/events-hq/button.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                                house_root, house_root, "pchq-events-hq", house_root, ent_dir, house_root);
                         } else if (strcmp(verb, "INVENTORY") == 0) {
                             snprintf(c, sizeof(c),
-                                "setsid sh -c 'H=\"%s\"; I=\"$H/&.widgits/file-explorer/instances/inv-pchq-%s\"; mkdir -p \"%s/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%s/inventory\\n\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"' >/dev/null 2>&1 &",
-                                house_root, id, ent_dir, ent_dir);
+                                "sh '%s/&.widgits/_shared-lib/kh_spawn.sh' '%s' 0 %s -- sh -c 'H=\"%s\"; I=\"$H/&.widgits/file-explorer/instances/inv-pchq-%s\"; mkdir -p \"%s/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%s/inventory\\n\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"' >/dev/null 2>&1 &",
+                                house_root, house_root, "pchq-inventory-fe", house_root, id, ent_dir, ent_dir);
                         } else {
-                            snprintf(c, sizeof(c), "setsid xdg-open '%s' >/dev/null 2>&1 &", ent_dir);
+                            snprintf(c, sizeof(c), "sh '%s/&.widgits/_shared-lib/kh_spawn.sh' '%s' 0 %s -- xdg-open '%s' >/dev/null 2>&1 &", house_root, house_root, "pchq-xdg-open", ent_dir);
                         }
                         int rc = system(c); (void)rc;
 #endif

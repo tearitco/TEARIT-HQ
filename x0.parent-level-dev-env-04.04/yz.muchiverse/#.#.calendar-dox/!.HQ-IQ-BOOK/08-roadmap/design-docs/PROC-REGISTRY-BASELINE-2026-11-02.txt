@@ -143,6 +143,3 @@ c-string-setsid &.widgits/open-hai/ops/khtpm_open_hai_render.c:1675
 c-string-setsid &.widgits/tile-picker/ops/tp_menu_input.c:168
 c-string-setsid &.widgits/tile-picker/ops/tp_place_desktop.c:436
 c-string-setsid &.widgits/tile-picker/ops/tp_place_desktop_rmmv.c:432
-c-string-setsid @.apps/piececraft-hq/ops/pc_menu_input.c:1471
-c-string-setsid @.apps/piececraft-hq/ops/pc_menu_input.c:1475
-c-string-setsid @.apps/piececraft-hq/ops/pc_menu_input.c:1478
