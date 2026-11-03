@@ -295,6 +295,11 @@ EOSTATE
         # (NO_RGB_COMPOSITOR) - NO_GL alone (the common real case) now
         # still lets a real caller read a real, fully-composited
         # rgb_frame.raw with no window ever mapping.
+        # 2026-11-03 (owner: "cpu is still crazy"): a khtpm board (PCHQ_ENGINE_MODE=1) with no GL mirror (NO_GL=1) has NO reader of rgb_frame.raw: the khtpm window takes its canvas from
+        # rgb_frame_3d_overlay.raw / rgb_frame_2d.raw (pchq_board_projector.c, "replaces the old rgb_frame.raw / chtpm_rgb_render text-chrome hack"). Measured on rpg-dust and rpg-edit-hq with the 3D
+        # camera in use: this compositor took 34-53 % of a core re-composing and rewriting a 2 MB file ~28 times a second for nobody; ending it left the picture updating and the house at
+        # 63 % instead of 106 % of a core. So it is not started there. FORCE_RGB_COMPOSITOR=1 starts it anyway (a tool that does read rgb_frame.raw).
+        if [ -n "$PCHQ_ENGINE_MODE" ] && [ -n "$NO_GL" ] && [ -z "$FORCE_RGB_COMPOSITOR" ]; then NO_RGB_COMPOSITOR=1; fi
         if [ -z "$NO_RGB_COMPOSITOR" ] && [ -x ./system/chtpm_rgb_render ]; then
             ./system/chtpm_rgb_render >/dev/null 2>&1 &
             RGB_PID=$!

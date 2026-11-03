@@ -5271,8 +5271,10 @@ int main(int argc, char **argv) {
             last_vw = vw; last_vh = vh;
             struct timespec ta, tb;
             clock_gettime(CLOCK_MONOTONIC, &ta);
+            struct timespec ca; clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ca);
             int rc = render_one_frame();
             clock_gettime(CLOCK_MONOTONIC, &tb);
+            struct timespec cb; clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cb);
             /* the engine paces itself by the machine's load (load_governor.c, 2026-11-03): after a frame wait out what is left of the minimum gap (40 ms calm, 80 ms / 150 ms when busy) */
             { long fu = (tb.tv_sec - ta.tv_sec) * 1000000L + (tb.tv_nsec - ta.tv_nsec) / 1000L; long gap = (long)lg_min_interval_ms() * 1000L - fu; if (gap > 0) house_wait_us((int)gap); }
             /* A slow frame must not be followed at the 30ms floor.
@@ -5284,10 +5286,15 @@ int main(int argc, char **argv) {
                 if (frame_us > BV_IDLE_POLL_USEC)
                     house_wait_us((int)frame_us);
             }
-            if (getenv("BV_GPU_DEBUG"))
-                fprintf(stderr, "bv_gpu daemon frame %lld: %.1f ms  [load %.1f | gpu %.1f | write %.1f] (rc=%d)\n",
-                        served + 1, (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6,
-                        g_prof_load_ms, g_prof_gpu_ms, g_prof_write_ms, rc);
+            /* Per-frame profile (2026-11-03): the daemon's stderr is /dev/null, so BV_GPU_DEBUG printed nowhere. Now: env BV_GPU_DEBUG OR the marker file pieces/display/.gpu_debug (create/remove it
+             * in a live session, no relaunch) appends one line per frame to pieces/display/engine_debug.log, with the frame's real CPU time next to its wall time; the log is cut to its last
+             * 64 KB past 256 KB. Off by default: one access() per frame. */
+            if (getenv("BV_GPU_DEBUG") || access("pieces/display/.gpu_debug", F_OK) == 0) {
+                const char *dl = "pieces/display/engine_debug.log"; struct stat dst; if (stat(dl, &dst) == 0 && dst.st_size > 256 * 1024) { if (truncate(dl, 0) != 0) { /* best effort */ } }
+                FILE *df = fopen(dl, "a");
+                if (df) { fprintf(df, "frame %lld: wall %.1f ms cpu %.1f ms [load %.1f | gpu %.1f | write %.1f] (rc=%d)\n", served + 1, (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6,
+                          (cb.tv_sec - ca.tv_sec) * 1e3 + (cb.tv_nsec - ca.tv_nsec) / 1e6, g_prof_load_ms, g_prof_gpu_ms, g_prof_write_ms, rc); fclose(df); }
+            }
             served++;
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
