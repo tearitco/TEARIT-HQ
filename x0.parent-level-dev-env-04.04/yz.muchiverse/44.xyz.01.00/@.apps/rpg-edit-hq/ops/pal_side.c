@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <sys/wait.h>
 #define MAXC 40
 static char KEY[MAXC][64], LAB[MAXC][96]; static int nc;
@@ -70,16 +72,37 @@ static void kv_get(const char *path, const char *key, char *out, size_t n) {
     while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, key, kl) && ln[kl] == '=') { snprintf(out, n, "%s", ln + kl + 1); out[strcspn(out, "\r\n")] = 0; }
     fclose(f);
 }
+/* Sidebar layout history + start preference (owner 2026-11-03: "set in a .pdl history like the other thing, changeable by preference").
+ * state/sides_history.pdl: append-only rows `SIDES | <epoch> | pets|palettes|none`, one per change (capped: past 8 KB the last 20 rows are kept; read by identity, last row wins).
+ * Start layout, applied by `pal_side <house> restore` when the window opens: #.desktop/prefs.txt `sidebar_start=last|pets|palettes|none`; default `last`; with no history yet, SIDE_FIRST_RUN. */
+#define SIDE_FIRST_RUN "palettes"
+static void hist_path(const char *house, char *o, size_t n) { snprintf(o, n, "%s/@.apps/rpg-edit-hq/state/sides_history.pdl", house); }
+static void hist_add(const char *house, const char *mode) {
+    char p[4200]; hist_path(house, p, sizeof p); struct stat st;
+    if (stat(p, &st) == 0 && st.st_size > 8192) { static char rows[64][64]; int nr = 0; FILE *r = fopen(p, "r"); if (r) { static char ln[256]; while (fgets(ln, sizeof ln, r)) { snprintf(rows[nr % 64], 64, "%s", ln); nr++; } fclose(r); }
+        FILE *w = fopen(p, "w"); if (w) { int from = nr > 20 ? nr - 20 : 0; for (int i = from; i < nr; i++) fputs(rows[i % 64], w); fclose(w); } }
+    FILE *f = fopen(p, "a"); if (f) { fprintf(f, "SIDES | %ld | %s\n", (long)time(NULL), mode); fclose(f); }
+}
+static void hist_last(const char *house, char *o, size_t n) {
+    char p[4200]; hist_path(house, p, sizeof p); o[0] = 0; FILE *f = fopen(p, "r"); if (!f) return; static char ln[256];
+    while (fgets(ln, sizeof ln, f)) { char *b = strrchr(ln, '|'); if (b && !strncmp(ln, "SIDES", 5)) { b++; while (*b == ' ') b++; b[strcspn(b, "\r\n ")] = 0; snprintf(o, n, "%s", b); } }
+    fclose(f);
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: pal_side <house> open|pets|none|tiles <key>|back|list\n"); return 2; }
     const char *house = argv[1], *verb = argv[2], *arg = argc > 3 ? argv[3] : "";
     char sides[4200], pal[4200]; snprintf(sides, sizeof sides, "%s/@.apps/rpg-edit-hq/board/state/sides.txt", house); snprintf(pal, sizeof pal, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
     load_cats(house);
-    int tiles = 0; char key[64] = "", title[96] = "";
-    if (!strcmp(verb, "open")) { kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); }
-    else if (!strcmp(verb, "pets")) { kv_set(sides, "side_left", "1"); kv_set(sides, "side_pal", ""); }
-    else if (!strcmp(verb, "none")) { kv_set(sides, "side_left", ""); kv_set(sides, "side_pal", ""); }
-    else if (!strcmp(verb, "tiles")) {
+    int tiles = 0, log_hist = 1; char key[64] = "", title[96] = "";
+    if (!strcmp(verb, "restore")) {   /* the window just opened: apply the start layout (preference, else the last one, else the first-run default) without logging a new row */
+        char pr[4200], want[32], last[32]; snprintf(pr, sizeof pr, "%s/#.desktop/prefs.txt", house); kv_get(pr, "sidebar_start", want, sizeof want); hist_last(house, last, sizeof last);
+        const char *m = (!strcmp(want, "pets") || !strcmp(want, "palettes") || !strcmp(want, "none")) ? want : (last[0] ? last : SIDE_FIRST_RUN);
+        static char mv[16]; snprintf(mv, sizeof mv, "%s", !strcmp(m, "palettes") ? "open" : !strcmp(m, "pets") ? "pets" : !strcmp(m, "none") ? "none" : "open"); verb = mv; log_hist = 0;
+    }
+    if (!strcmp(verb, "open")) { if (log_hist) hist_add(house, "palettes"); kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); }
+    else if (!strcmp(verb, "pets")) { if (log_hist) hist_add(house, "pets"); kv_set(sides, "side_left", "1"); kv_set(sides, "side_pal", ""); }
+    else if (!strcmp(verb, "none")) { if (log_hist) hist_add(house, "none"); kv_set(sides, "side_left", ""); kv_set(sides, "side_pal", ""); }
+    else if (!strcmp(verb, "tiles")) { if (log_hist) hist_add(house, "palettes");
         int at = -1; for (int i = 0; i < nc; i++) if (!strcmp(KEY[i], arg)) at = i;
         if (at < 0) { fprintf(stderr, "pal_side: no such category %s\n", arg); return 1; }
         tiles = 1; snprintf(key, sizeof key, "%s", KEY[at]); snprintf(title, sizeof title, "%s", LAB[at]);

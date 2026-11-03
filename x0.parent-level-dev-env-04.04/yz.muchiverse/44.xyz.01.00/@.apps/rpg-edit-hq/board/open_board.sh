@@ -70,3 +70,5 @@ if [ -x "$REG" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
     "$REG" "$HOUSE" rule-add "$WPID" "@file:$HERE/state/ui.txt#bv_session" engine rpg-edit-hq bv-session >/dev/null 2>&1 || true
     "$REG" "$HOUSE" apply-rules >/dev/null 2>&1 || true
 fi
+# Sidebar start layout: last used (state/sides_history.pdl), or the `sidebar_start=` preference in #.desktop/prefs.txt (last|pets|palettes|none); first run = palettes with pets minimized.
+[ -x "$APP/ops/+x/pal_side.+x" ] && "$APP/ops/+x/pal_side.+x" "$HOUSE" restore >/dev/null 2>&1 || true

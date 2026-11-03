@@ -40,6 +40,7 @@ Anything the house writes while it runs (frames, logs, ledgers, relays, snapshot
 |---|---|---|---|---|
 | `#.desktop/ascii_frames/index.txt` + `<pid>.<seq>.{objects,receipt}.pdl` | every `khtpm_core_render` window | 50 index lines, their files | renderer trim (reads the tail if the index is oversize, fixed 2026-11-02) | `cpu_guard` `hygiene_sweep()`: 3000 entries / 900 s |
 | `<app>/state/clock_root/#.desktop/clocks/schedule_ledger.txt` (the clock's recurrence cursor) | `lc_clock.+x` (one per game clock) | 256 KB, then compacted to the last row per schedule id (that row is the cursor); env `LC_CLOCK_LEDGER_MAX_BYTES` | `ledger_append()` in `&.widgits/livedesk-clock/ops/lc_clock.c` (2026-11-02) | none yet (it was 1.1 MB, 28,866 rows, after the incident below) |
+| `@.apps/rpg-edit-hq/state/sides_history.pdl` | `ops/pal_side.c` (one row per sidebar change) | 8 KB (~300 rows) | `pal_side` trims to the last 20 rows past 8 KB (measured: 700 changes never passed 8,216 bytes) | not yet in `cpu_guard` hygiene (a few rows per hour by hand clicks) |
 | `#.desktop/heavy_runs.txt` | `ops/cpu_gate.c` (one row per heavy job) | 200 rows | `cpu_gate` trims on every write | `cpu_guard` `hygiene_sweep()`: past 64 KB keeps the last 100 rows |
 | free disk under the house | everything | 5 GB free warning | n/a | `cpu_guard` `hygiene_sweep()` -> `disk_alert.txt` |
 
