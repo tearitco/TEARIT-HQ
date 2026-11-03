@@ -131,6 +131,13 @@ instrumentation rather than the code under test:
 Corollary: read artifacts by identity (our own pid), never "newest on disk" —
 with two clones running that is another window's file.
 
+## Runtime files must have an enforced cap (REQUIRED, since 2026-11-02)
+
+Anything the house writes while it runs (frames, logs, ledgers, relays, snapshots) needs a cap enforced on disk, an independent second guard, and a row in
+HQ-IQ-BOOK `03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md`. A trim that skips an oversize input is a bug: 1.68M frame files / 7.6 GB piled up for three weeks
+because the renderer's trim returned early on a big `index.txt`, in a gitignored folder nobody looked at. A commit that adds a writer states its files or
+bytes per hour. `cpu_guard`'s `hygiene_sweep()` is the second guard; add new folders to it.
+
 ## Product name: LyfeDesk (2026-10-15)
 
 The product is **LyfeDesk** (written "LyfeDesk"), formerly "livedesk", renamed to avoid a future trademark conflict. Anything a user

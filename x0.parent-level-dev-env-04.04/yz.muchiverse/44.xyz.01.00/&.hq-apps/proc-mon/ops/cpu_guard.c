@@ -45,6 +45,7 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -544,6 +545,66 @@ static int kill_set(int cls, const char *only_comm, int scripts_first, const cha
 
 /* ---- main loop ---- */
 
+/* ---- runtime-file hygiene (2026-11-02) ----------------------------------------------------------------------------------------------
+ * The renderer's frame snapshots (#.desktop/ascii_frames/<pid>.<seq>.objects.pdl / .receipt.pdl) are meant to be capped at 50 by the renderer
+ * itself, but its trim silently stopped once index.txt outgrew a buffer: 1.68M files, 7.6 GB, disk 94% full before anyone saw it. This is the
+ * independent second guard. Every 2 minutes: count the folder; over FRAME_MAX files, delete snapshot files untouched for FRAME_AGE_S seconds
+ * (at most FRAME_PASS per pass, so one pass never stalls the box) and log it. Only names of the exact snapshot shape are ever removed, and
+ * only inside this house's #.desktop/ascii_frames. Also warns (log + alert file) when the disk is nearly full. Standard:
+ * HQ-IQ-BOOK 03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md */
+#define FRAME_MAX 3000
+#define FRAME_AGE_S 900
+#define FRAME_PASS 20000
+#define DISK_WARN_GB 5.0
+static int is_snapshot_name(const char *n) {   /* <digits>.<digits>.objects.pdl | .receipt.pdl */
+    const char *p = n;
+    int d1 = 0, d2 = 0;
+    while (isdigit((unsigned char)*p)) { p++; d1++; }
+    if (!d1 || *p != '.') return 0;
+    p++;
+    while (isdigit((unsigned char)*p)) { p++; d2++; }
+    if (!d2 || *p != '.') return 0;
+    p++;
+    return strcmp(p, "objects.pdl") == 0 || strcmp(p, "receipt.pdl") == 0;
+}
+static void hygiene_sweep(void) {
+    char dir[PATH_MAX + 32];
+    snprintf(dir, sizeof dir, "%s/#.desktop/ascii_frames", house);
+    DIR *d = opendir(dir);
+    int total = 0;
+    if (d) {
+        struct dirent *e;
+        while ((e = readdir(d))) total++;
+        if (total > FRAME_MAX) {
+            rewinddir(d);
+            time_t now = time(NULL);
+            int removed = 0;
+            while ((e = readdir(d)) && removed < FRAME_PASS) {
+                if (!is_snapshot_name(e->d_name)) continue;
+                char fp[PATH_MAX + 300];
+                struct stat st;
+                snprintf(fp, sizeof fp, "%s/%s", dir, e->d_name);
+                if (lstat(fp, &st) == 0 && S_ISREG(st.st_mode) && now - st.st_mtime > FRAME_AGE_S && unlink(fp) == 0) removed++;
+            }
+            logf_("HYGIENE | ascii_frames had %d entries (cap %d): removed %d snapshot files older than %d s", total, FRAME_MAX, removed, FRAME_AGE_S);
+        }
+        closedir(d);
+    }
+    struct statvfs vf;
+    if (statvfs(house, &vf) == 0) {
+        double free_gb = (double)vf.f_bavail * (double)vf.f_frsize / 1073741824.0;
+        static int warned = 0;
+        if (free_gb < DISK_WARN_GB && !warned) {
+            warned = 1;
+            logf_("HYGIENE | disk nearly full: %.1f GB free under the house", free_gb);
+            char ap[PATH_MAX + 40];
+            snprintf(ap, sizeof ap, "%s/disk_alert.txt", state_dir);
+            FILE *f = fopen(ap, "w");
+            if (f) { fprintf(f, "disk nearly full: %.1f GB free. Check #.desktop/ascii_frames and 03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md. Delete this file when handled.\n", free_gb); fclose(f); }
+        } else if (free_gb >= DISK_WARN_GB * 2) warned = 0;
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc < 2 || !realpath(argv[1], house)) { fprintf(stderr, "usage: cpu_guard <house_root> [config]\n"); return 2; }
     self_pid = getpid();
@@ -581,6 +642,7 @@ int main(int argc, char **argv) {
     double t_prev = mono(), t_next = t_prev, baseline = -1;
     int warn_n = 0, act_n = 0, cool_n = 0, tick = 0, in_episode = 0, need_ask = 0;
     double cooldown_until = 0, ask_cooldown_until = 0, recheck_at = 0;
+    double hygiene_at = 0;
     int last_fd = open(last_path, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
     char summary[700];
 
@@ -598,6 +660,7 @@ int main(int argc, char **argv) {
         else if (dt > 3.0 * cfg.sample_ms / 1000.0)
             logf_("STALL | the guard slept %.1fs (asked for %.1fs): the machine was nearly frozen", dt, cfg.sample_ms / 1000.0);
         if (++tick % 5 == 0) cfg_load();
+        if (now >= hygiene_at) { hygiene_at = now + 120.0; hygiene_sweep(); }   /* independent of enabled: disk hygiene is not a CPU decision */
         if (!cfg.enabled) { read_cpu_busy(&pb, &pt); continue; }
 
         unsigned long long b, t;

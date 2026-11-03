@@ -3,6 +3,8 @@
 - `HOUSE_CODE_PITFALLS.md` — real, live-confirmed problems + fixes,
   general-purpose. Moved verbatim (`git mv`) from
   `44.xyz.01.00/HOUSE_CODE_PITFALLS.md`. **Append new entries here.**
+- `RUNTIME-FILE-GROWTH-STANDARD.md` — every runtime writer needs an enforced cap, an independent second guard (`cpu_guard`
+  `hygiene_sweep()`), and a row in its table. Born from 1.68M frame files / 7.6 GB (2026-11-02).
 - `OPERATIONAL-LANDMINES.md` — habits/judgment landmines (build-script
   overwrites, per-mode file broadcast, xdotool dangers, verification
   discipline). Condensed from `SKILLS.md` §3-4.
