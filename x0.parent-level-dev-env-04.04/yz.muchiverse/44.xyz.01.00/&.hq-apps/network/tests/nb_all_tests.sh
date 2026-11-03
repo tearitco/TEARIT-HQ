@@ -16,6 +16,28 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 HR="$(cd "$HERE/../../.." && pwd)"
 RC=0
 
+# Hermetic worker gates first (2026-11-02): no window, no renderer, no
+# network - each drives the worker directly through tests/nb_probe.py. They
+# run before anything that needs a live browser so a broken engine is obvious
+# immediately rather than after ten minutes of browser-dependent suite, and
+# they are the only coverage for the byte-level paths (atob, UTF-8, entropy)
+# where a bug is invisible to any ASCII-only test.
+echo "########## atob is a binary string and flushes a padded tail (hermetic)"
+bash "$HERE/nb_atob_test.sh" || RC=1
+
+echo
+echo "########## element/Node methods: behaviour, not presence (hermetic)"
+bash "$HERE/nb_element_methods_test.sh" || RC=1
+
+echo
+echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
+bash "$HERE/nb_crypto_random_test.sh" || RC=1
+
+echo
+echo "########## TextEncoder/TextDecoder + Blob readers (hermetic)"
+bash "$HERE/nb_text_blob_test.sh" || RC=1
+
+echo
 echo "########## projection invariants (needs a running browser)"
 bash "$HERE/nb_projection_test.sh" || RC=1
 
