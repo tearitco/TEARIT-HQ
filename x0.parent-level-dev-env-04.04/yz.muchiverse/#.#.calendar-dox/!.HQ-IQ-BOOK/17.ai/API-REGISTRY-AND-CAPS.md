@@ -13,6 +13,9 @@ Owner 2026-10-27: "there should be docs on last api testing; if not, make sure w
 |---|---|---|---|---|---|---|
 | Mac Ollama `gemma3:270m` (10.0.0.144:11434) | free | `ai_backend.pdl` gemma_lan_url / gemma_lan_model | none (own hardware) | CPU only | 2026-10-27 `api/tags` reachable (curl exit 0; the model list includes other models) | micro-task candidate #1 (chemistry exam taker) |
 | OpenRouter free models (key in open-hai state; account is free tier, $0.20 lifetime usage) | free | open-hai / `^.hai-horn/ops/horn_chat_openrouter.c` | **50/day stated by the API header (`X-RateLimit-Limit`); 83 calls actually succeeded before the first refusal** (discrepancy unexplained) ; shared across all `:free` models (a second model was refused too); +10 credits would unlock 1000/day | no per-minute limit hit (30 calls in 69 s, then 53 more, all 200) | 2026-10-27 | quota per account; competency in OPENROUTER-MODEL-COMPETENCY.md |
+| Groq `openai/gpt-oss-120b` (also `gpt-oss-20b`) | free | `&.widgits/open-hai/state/raw_groq.txt` (gitignored), `horn_chat_backend` provider 1 | **1000 requests/day** (header `x-ratelimit-limit-requests`) | 8000 tokens/min (header) | 2026-11-02 | works: 200 and "ok" from 120b. `gpt-oss-20b` is a reasoning model: with `max_tokens` 8 it returns an empty reply (200), give it 300+. |
+| Poolside `poolside/laguna-xs-2.1`, `laguna-s-2.1` | free (account) | `raw_poolside.txt` (gitignored), `horn_chat_backend` provider 2 | unknown | **60/min** (header) | 2026-11-02 | key authenticates and `/v1/models` lists both, but every chat call returns HTTP 400 "Model version ... is deactivated. It needs to be activated before running predictions": **the account owner must activate a model in the Poolside console.** Nothing to fix on our side. |
+| NVIDIA direct (build.nvidia.com) | free tier (unverified) | none | unknown | unknown | never | no key in the house; not wired. The nvidia free slugs on OpenRouter now answer 404 "unavailable for free" (2026-11-02), so they cost money there. |
 | Other free APIs (HORN/ghost workers) | free | `^.hai-horn` | unknown | unknown | never | see DELEGATION-FLYWHEEL design |
 
 ## Findings of the 2026-10-27 probe
@@ -24,6 +27,7 @@ Owner 2026-10-27: "there should be docs on last api testing; if not, make sure w
 | Date | Provider | Calls | Refusal | Text | Cap recorded |
 |---|---|---|---|---|---|
 | 2026-10-27 | OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, max_tokens=1 prompt "hi", niced | 83 ok (30 + 53), the next refused | HTTP 429 | `Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day`; headers Limit=50 Remaining=0 Reset=epoch-ms 1793145600000 | daily cap reached; per-minute not reached |
+| 2026-11-02 | Groq 120b + 20b, Poolside xs + s, OpenRouter `nvidia/nemotron-3-super-120b-a12b:free` | 6 (one each, prompt "Reply with exactly: ok") | Poolside 400 (deactivated), OpenRouter 404 | Groq ok; Poolside deactivated on the account; OpenRouter slug paid-only now | Groq 1000/day + 8000 tokens/min; Poolside 60/min |
 
 ## Per-task worker grades (filled by the exam taker and later tasks)
 | Task family | Worker | n | reward | punish | grade | Updated |
