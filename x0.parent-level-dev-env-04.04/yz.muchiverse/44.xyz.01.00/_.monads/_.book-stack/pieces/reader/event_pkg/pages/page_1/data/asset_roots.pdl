@@ -1,0 +1,11 @@
+# asset_roots.pdl - where this machine keeps the book assets. Read by asset_root_op (&.widgits/_shared-lib/ops/asset_root_op.c); the reader's branches call it instead of each hunting for paths.
+# Order: $BIBLE_ASSET_ROOT / $BOOK_SHARE_ROOT (checked first by the op), then these ROOT rows in file order for this OS. A row counts only when <path>/<PROBE> exists.
+#   ROOT | os | path of the BIBLE folder | mount   (os: linux | darwin | win | any; leading ~ = $HOME; mount 1 = try mounting the shared drive when nothing else exists)
+# The share folder is the PARENT of the bible folder: it also holds tao-te-ching-tty/. `asset_root_op ... share` prints it.
+PROBE | bible.ch2en.ran
+BIBLEDIR | bible-ench.twins+ai]b2
+ROOT | win | C:\Users\jbro8\OneDrive\Desktop\assets-4win\bible-ench.twins+ai]b2 | 0
+ROOT | win | /c/Users/jbro8/OneDrive/Desktop/assets-4win/bible-ench.twins+ai]b2 | 0
+ROOT | win | C:/Users/jbro8/OneDrive/Desktop/assets-4win/bible-ench.twins+ai]b2 | 0
+ROOT | any | ~/Desktop/bible]as.DeathNote]0000/book-stack/bible-ench.twins+ai]b2 | 0
+ROOT | linux | /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/!.🫁️.BIBLE.📔️]z3+/bible-ench.twins+ai]b2 | 1

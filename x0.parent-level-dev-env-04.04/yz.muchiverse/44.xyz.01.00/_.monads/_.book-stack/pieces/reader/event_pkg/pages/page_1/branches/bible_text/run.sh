@@ -9,47 +9,13 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BOOK_STACK="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
 HOUSE="$(cd "$BOOK_STACK/../../.." && pwd)"
-BIBLE_ROOT="${BIBLE_ASSET_ROOT:-}"
-if [ -z "$BIBLE_ROOT" ] && [ -f "$BOOK_STACK/assets_root_win.txt" ]; then
-    BIBLE_ROOT="$(grep -v '^\s*#' "$BOOK_STACK/assets_root_win.txt" | head -1 | tr -d '\r')"
-fi
-# Git-bash / MSYS path for user Desktop assets
-if [ -z "$BIBLE_ROOT" ] || [ ! -d "$BIBLE_ROOT/bible.ch2en.ran" ]; then
-    if [ -d "/c/Users/jbro8/OneDrive/Desktop/assets-4win/bible-ench.twins+ai]b2/bible.ch2en.ran" ]; then
-        BIBLE_ROOT="/c/Users/jbro8/OneDrive/Desktop/assets-4win/bible-ench.twins+ai]b2"
-    elif [ -d "C:/Users/jbro8/OneDrive/Desktop/assets-4win/bible-ench.twins+ai]b2/bible.ch2en.ran" ]; then
-        BIBLE_ROOT="C:/Users/jbro8/OneDrive/Desktop/assets-4win/bible-ench.twins+ai]b2"
-    fi
-fi
-if [ -z "$BIBLE_ROOT" ] || [ ! -d "$BIBLE_ROOT/bible.ch2en.ran" ]; then
-    # macOS leg (2026-08-22, direct report "mac local bookstack books are
-    # in book-stack/ dir on this Desktop"): this Mac keeps its books at
-    # ~/Desktop/bible]as.DeathNote]0000/book-stack (different on every
-    # OS — win uses assets_root_win.txt above). Validate loudly per
-    # HOUSE_STDS §I.25 rather than silently showing nothing.
-    if [ -d "$HOME/Desktop/bible]as.DeathNote]0000/book-stack/bible-ench.twins+ai]b2/bible.ch2en.ran" ]; then
-        BIBLE_ROOT="$HOME/Desktop/bible]as.DeathNote]0000/book-stack/bible-ench.twins+ai]b2"
-    fi
-fi
-if [ -z "$BIBLE_ROOT" ] || [ ! -d "$BIBLE_ROOT/bible.ch2en.ran" ]; then
-    BIBLE_ROOT="/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/!.🫁️.BIBLE.📔️]z3+/bible-ench.twins+ai]b2"
-    # Linux leg: the shared asset drive is a partition that is auto-
-    # mounted by udisks2. Ensure it's up before the existence check below,
-    # so the verse doesn't silently fail just because the drive wasn't
-    # mounted at login. No-op on macOS/Windows (no udisksctl there).
-    if [ "$(uname)" = "Linux" ] && command -v udisksctl >/dev/null 2>&1; then
-        MNT_SHARED="$BOOK_STACK/_shared/ensure_book_mount.sh"
-        if [ -f "$MNT_SHARED" ]; then
-            # shellcheck disable=SC1090  # sourced path is computed
-            . "$MNT_SHARED"
-            ensure_book_mount >/dev/null 2>&1 || true
-        fi
-    fi
-fi
-if [ ! -d "$BIBLE_ROOT/bible.ch2en.ran" ]; then
-    echo "ERROR: bible assets not found at $BIBLE_ROOT (set BIBLE_ASSET_ROOT?)" >&2
-    exit 1
-fi
+# The asset folder comes from ONE resolver (asset_root_op, rows in ../../data/asset_roots.pdl): $BIBLE_ASSET_ROOT / $BOOK_SHARE_ROOT first, then the per-OS rows, mounting the
+# shared drive on Linux when needed. It fails loudly (every tried path on stderr) instead of silently showing nothing. Before 2026-11-02 this hunt was copied into three scripts.
+ASSET_OP="$HOUSE/&.widgits/_shared-lib/ops/+x/asset_root_op.+x"
+ROOTS="$SCRIPT_DIR/../../data/asset_roots.pdl"
+MOUNT_SCRIPT="$BOOK_STACK/_shared/ensure_book_mount.sh"
+[ -x "$ASSET_OP" ] || { echo "ERROR: $ASSET_OP is not built (sh &.widgits/_shared-lib/ops/build_asset_root_op.sh)" >&2; exit 1; }
+BIBLE_ROOT="$("$ASSET_OP" "$ROOTS" bible "$MOUNT_SCRIPT")" || exit 1
 cd "$BIBLE_ROOT/bible.ch2en.ran" || exit 1
 if [ -x ./bible_verses ]; then
     OUT=$(./bible_verses --short bible.en_translation.txt "bible]ch.txt" 2>/dev/null)

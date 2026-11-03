@@ -1,0 +1,5 @@
+# asset_root.pal - pal harness (cases/asset_root.pdl). Read results/asset_root.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/asset_root.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/asset_root.pdl
+exec ./ops/+x/harness_bank_op.+x cases/asset_root.pdl
+halt

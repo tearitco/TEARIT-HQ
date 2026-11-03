@@ -1,0 +1,59 @@
+# asset_root (BOOK-STACK-READER-AS-A-BLUEPRINTZ-BOOK-DESIGN-2026-11-02.md R3a): ops/asset_root_op.c, the one resolver that replaced three copied path hunts.
+# Scratch trees stand in for the machine's folders; roots.pdl rows point at them. Proves: first existing row wins, a folder without the probe is skipped, os filter,
+# environment overrides (bible folder, share folder), `share` = parent, a missing drive is a loud failure that lists what was tried, and the mount script runs only when needed.
+RESULTS | ../results/asset_root.txt
+CASE    | rows-order-probe-and-os-filter
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/asset_root_op.+x | bin/ar
+MKDIR   | m1/book/bible-x/probe.d
+MKDIR   | m2/book/bible-x/probe.d
+MKDIR   | noprobe/bible-x
+MKDIR   | mac/bible-x/probe.d
+WRITE   | roots.pdl | PROBE \p probe.d\nBIBLEDIR \p bible-x\nROOT \p linux \p $T/noprobe/bible-x \p 0\nROOT \p darwin \p $T/mac/bible-x \p 0\nROOT \p linux \p $T/m1/book/bible-x \p 0\nROOT \p any \p $T/m2/book/bible-x \p 0\n
+RUN     | $T/bin/ar | $T/roots.pdl | bible
+EXPECT_EXIT | 0 | found
+EXPECT_OUT_IS | $T/m1/book/bible-x | first-row-with-the-probe-wins-a-folder-without-it-and-a-darwin-row-are-skipped
+RUN     | $T/bin/ar | $T/roots.pdl | share
+EXPECT_OUT_IS | $T/m1/book | share-is-the-parent-of-the-bible-folder
+CLEAN   |
+CASE    | environment-overrides
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/asset_root_op.+x | bin/ar
+MKDIR   | e1/bible-x/probe.d
+MKDIR   | e2/share/bible-x/probe.d
+MKDIR   | e3/bible-x/probe.d
+MKDIR   | rows/bible-x/probe.d
+WRITE   | roots.pdl | PROBE \p probe.d\nBIBLEDIR \p bible-x\nROOT \p linux \p $T/rows/bible-x \p 0\n
+RUN     | env | BIBLE_ASSET_ROOT=$T/e1/bible-x | $T/bin/ar | $T/roots.pdl | bible
+EXPECT_OUT_IS | $T/e1/bible-x | BIBLE_ASSET_ROOT-as-the-bible-folder-beats-the-rows
+RUN     | env | BIBLE_ASSET_ROOT=$T/e2/share | $T/bin/ar | $T/roots.pdl | bible
+EXPECT_OUT_IS | $T/e2/share/bible-x | BIBLE_ASSET_ROOT-as-a-share-folder-works-too-the-two-old-meanings
+RUN     | env | BOOK_SHARE_ROOT=$T/e3 | $T/bin/ar | $T/roots.pdl | share
+EXPECT_OUT_IS | $T/e3 | BOOK_SHARE_ROOT-is-the-share-folder
+RUN     | env | BIBLE_ASSET_ROOT=$T/nowhere | $T/bin/ar | $T/roots.pdl | bible
+EXPECT_OUT_IS | $T/rows/bible-x | a-bad-override-falls-through-to-the-rows
+CLEAN   |
+CASE    | missing-drive-is-loud-and-mount-runs-only-when-needed
+SCRATCH |
+COPY    | &.widgits/_shared-lib/ops/+x/asset_root_op.+x | bin/ar
+WRITE   | roots.pdl | PROBE \p probe.d\nBIBLEDIR \p bible-x\nROOT \p linux \p $T/drive/bible-x \p 1\n
+WRITE   | mount_ok.sh | ensure_book_mount() { mkdir -p "$T/drive/bible-x/probe.d"; echo called >> "$T/mount.log"; }\n
+WRITE   | mount_never.sh | ensure_book_mount() { echo called >> "$T/mount.log"; }\n
+RUN     | $T/bin/ar | $T/roots.pdl | bible
+EXPECT_EXIT | 1 | no-assets-no-mount-script-is-a-failure-not-a-silent-success
+EXPECT_OUT  | no book assets found | and-it-says-so
+EXPECT_OUT  | drive/bible-x | and-lists-what-it-tried
+EXPECT_OUT  | needs the shared drive mounted | and-hints-at-the-mount
+RUN     | $T/bin/ar | $T/roots.pdl | bible | $T/mount_never.sh
+EXPECT_EXIT | 1 | a-mount-that-does-not-help-is-still-a-failure
+EXPECT_HAS  | mount.log | called | the-mount-script-was-tried
+RUN     | rm | -f | $T/mount.log
+RUN     | $T/bin/ar | $T/roots.pdl | bible | $T/mount_ok.sh
+EXPECT_EXIT | 0 | after-a-successful-mount-it-is-found
+EXPECT_OUT_IS | $T/drive/bible-x | at-the-row-path
+RUN     | rm | -f | $T/mount.log
+RUN     | $T/bin/ar | $T/roots.pdl | bible | $T/mount_ok.sh
+EXPECT_NOFILE | mount.log | already-there-so-the-mount-script-is-not-run-again
+RUN     | $T/bin/ar | $T/roots.pdl | nonsense
+EXPECT_EXIT | 2 | bad-argument-is-a-usage-error
+CLEAN   |

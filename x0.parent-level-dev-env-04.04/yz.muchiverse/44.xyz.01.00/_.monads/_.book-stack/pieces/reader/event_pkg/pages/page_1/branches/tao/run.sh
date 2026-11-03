@@ -7,30 +7,16 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BOOK_STACK="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
 HOUSE="$(cd "$BOOK_STACK/../../.." && pwd)"
-# Asset root is per-machine (HOUSE_STDS §I.25): env wins, then this
-# Mac's local books dir, then the legacy Linux SHARE] mount. Validate
-# loudly rather than silently showing nothing.
-TAO_FILE="${BIBLE_ASSET_ROOT:-}"
-if [ -z "$TAO_FILE" ] || [ ! -f "$TAO_FILE/tao-te-ching-tty/tao-te-ching]a1.txt" ]; then
-    TAO_FILE="$HOME/Desktop/bible]as.DeathNote]0000/book-stack"
-fi
-if [ -f "$TAO_FILE/tao-te-ching-tty/tao-te-ching]a1.txt" ]; then
-    TAO_FILE="$TAO_FILE/tao-te-ching-tty/tao-te-ching]a1.txt"
-else
-    # Linux leg: ensure the shared asset drive is up before falling back
-    # to the Linux SHARE] mount path below. No-op on macOS/Windows.
-    if [ "$(uname)" = "Linux" ] && command -v udisksctl >/dev/null 2>&1; then
-        MNT_SHARED="$BOOK_STACK/_shared/ensure_book_mount.sh"
-        if [ -f "$MNT_SHARED" ]; then
-            # shellcheck disable=SC1090  # sourced path is computed
-            . "$MNT_SHARED"
-            ensure_book_mount >/dev/null 2>&1 || true
-        fi
-    fi
-    TAO_FILE="/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/!.🫁️.BIBLE.📔️]z3+/tao-te-ching-tty/tao-te-ching]a1.txt"
-fi
+# The asset folder comes from ONE resolver (asset_root_op, rows in ../../data/asset_roots.pdl): $BIBLE_ASSET_ROOT / $BOOK_SHARE_ROOT first, then the per-OS rows, mounting the
+# shared drive on Linux when needed. It fails loudly (every tried path on stderr) instead of silently showing nothing. Before 2026-11-02 this hunt was copied into three scripts.
+ASSET_OP="$HOUSE/&.widgits/_shared-lib/ops/+x/asset_root_op.+x"
+ROOTS="$SCRIPT_DIR/../../data/asset_roots.pdl"
+MOUNT_SCRIPT="$BOOK_STACK/_shared/ensure_book_mount.sh"
+[ -x "$ASSET_OP" ] || { echo "ERROR: $ASSET_OP is not built (sh &.widgits/_shared-lib/ops/build_asset_root_op.sh)" >&2; exit 1; }
+SHARE="$("$ASSET_OP" "$ROOTS" share "$MOUNT_SCRIPT")" || exit 1
+TAO_FILE="$SHARE/tao-te-ching-tty/tao-te-ching]a1.txt"
 if [ ! -f "$TAO_FILE" ]; then
-    echo "ERROR: tao text not found at $TAO_FILE (set BIBLE_ASSET_ROOT?)" >&2
+    echo "ERROR: tao text not found at $TAO_FILE" >&2
     exit 1
 fi
 N_CHAPTERS=$(grep -c "^Chapter " "$TAO_FILE")
