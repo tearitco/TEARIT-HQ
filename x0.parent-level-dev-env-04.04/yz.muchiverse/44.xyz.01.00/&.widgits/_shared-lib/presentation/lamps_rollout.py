@@ -6,7 +6,7 @@ to what it was before (absent, or the skin's own rows); then the game is loaded 
 control: the 'on' step fails when the lamp row is missing, the 'off' step when it is still there. Refuses a skin whose slot 9 exists. Exit 1 on any FAIL."""
 import os, sys, glob, shutil, subprocess, re, time
 HERE = os.path.dirname(os.path.abspath(__file__)); HOUSE = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-SKINS = ["cdda-hq", "df-hq", "dsr-rpg", "gta-hq", "mcl-hq", "rpg-dust", "rpg-pet", "rpg-pvp-hq", "rpg-space", "rpg-edit-hq"]
+SKINS = ["cdda-hq", "df-hq", "dsr-rpg", "gta-hq", "mcl-hq", "rpg-dust", "rpg-pet", "rpg-pvp-hq", "rpg-space", "rpg-edit-hq", "civ-rpgce", "tcg-rpgce"]
 def rd(p):
     try: return open(p, errors="replace").read()
     except OSError: return None

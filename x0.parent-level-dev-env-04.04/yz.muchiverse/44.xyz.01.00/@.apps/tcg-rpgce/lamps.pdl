@@ -1,0 +1,4 @@
+# tcg-rpgce lamps (2026-11-04, shared code in petslike_core.c): an item named here lights its room while `lamps on` (state/lamps_on.txt = 1; the phase_dusk page turns them on, phase_dawn off where the skin has them).
+# LAMP | item_key | r | g | b | radius | strength | z       colour 0..1, radius in cells, z = cells above the floor top; at most 8 per room (engine limit)
+# The art of the `lamp` item is a placeholder (a white pillar of the shared Inside_B tileset); a real lamp tile can replace it in catalog.pdl without touching this file.
+LAMP | lamp | 1.00 | 0.85 | 0.55 | 6 | 0.90 | 2
