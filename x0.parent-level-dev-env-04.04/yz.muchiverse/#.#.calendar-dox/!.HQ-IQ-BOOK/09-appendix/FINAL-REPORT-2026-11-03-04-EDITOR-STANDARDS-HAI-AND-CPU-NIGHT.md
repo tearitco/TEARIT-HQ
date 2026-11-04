@@ -12,7 +12,7 @@ Legend: **VERIFIED** = observed in a fresh run; **STATE-LEVEL** = driven through
 | load governor for the 3D frame stream; `frame_history.txt` capped; orphan game clock owned by the resident daemon | VERIFIED (idle house 1%; no engine frames after input stops; 400-key flood leaves no backlog) |
 | `cpu_gate` reads the CPU die sensor (k10temp/coretemp) | VERIFIED: gate 70 C vs raw 72 C; refused a run at 87-89 C twice during the sprint |
 | `cpu_guard`: clears a stale `%` label when the taskbar manager is dead; trims `kh_focus_debug.log` (>1 MB) and `active_session.pdl` (>16 KB) and dormant clock ledgers (>1 MB) | VERIFIED: dead-manager label cleared in ~80 s on the real path; the real sweep trimmed the ledgers (4.7 MB -> 131 KB, 1.2 MB -> 131 KB) |
-| `spawn_lint` sees `setsid` inside C strings (`c-string-setsid`), 10 of 11 sites converted to the registered funnel | VERIFIED negative test (new unregistered `system("setsid ...")` -> exit 3); converted launches tested by build + one registry row, not each menu click |
+| `spawn_lint` sees `setsid` inside C strings (`c-string-setsid`), 8 of the 9 sites it found converted to the registered funnel (the 9th, `board_ctl.c:96`, is a false positive and stays baselined) | VERIFIED negative test (new unregistered `system("setsid ...")` -> exit 3); converted launches tested by build + one registry row, not each menu click |
 | renderer: `kh_focus_debug.log` capped at the source (256 KB -> `.old`) | VERIFIED build; windows pick it up at relaunch |
 
 ### 1.2 The editor (rpg-edit-hq)
