@@ -273,3 +273,69 @@ Lesson worth keeping: a red suite is not evidence of a product defect until the
 assertion has been checked against the feature's own definition. Here the
 suite had been red for a while against correct code, and the "bug" lived
 entirely in the expectation.
+
+---
+
+## 2026-11-04 (evening) — nb_span_drag_test: input was never dropped; the instrument was
+
+Picked up the one item the 2026-11-04 ledger entry left open: the known-flaky
+span-drag suite. The whole arc is now dated and reproducible, and the earlier
+"synthetic input was dropped" reading is corrected.
+
+### The three-stage diagnosis
+
+1. **Fixed sleeps.** Every dispatch assertion did `sleep 1; grep` against a
+   click.log written by an action.sh child spawned by the renderer. Under load
+   the child landed after the sleep — the failing T6 message printed
+   `log: CLICKED LINK1;`, i.e. the line HAD landed. Three theories were built
+   before the failure payload was read.
+2. **Stale grep.** The first fix (wait_log greping for the marker) turned a
+   sometimes-flake into 0/8: every check matched stale T1/T3 lines. Line counts
+   only increase, so the honest receipt is a **delta**, not a pattern. Delivered
+   as `wait_count`.
+3. **Unsynchronized bursts.** `xe()` now waits for the renderer's own capture
+   line in the relay before returning (real press/release are appended
+   synchronously inside the dispatcher; FIFO relay ⇒ queued motions are covered
+   too). Absence assertions use `settle` instead of a bare `sleep 1`.
+
+After these fixes, **T1–T5 pass deterministically** (7/7 consecutive batches,
+including the two runs that used to fail and the T2 band check).
+
+### What remains: a renderer-side race, not delivery
+
+T6 still fails ~1 in 3 runs, always the same shape: press captured, release
+captured, `press alone dispatched nothing` passes, and the late release **never**
+dispatches (waited 180s; an 8+ iteration clean-room replay of the full T1–T6
+sequence never reproduced it). The failing fixture's relay and
+`human_input/<pid>.txt` both confirm every event arrived — so the
+"synthetic XSendEvent dropped input" theory is dead.
+
+`kh_focus_debug.log` from the failing run shows why: **every dispatch forces a
+full content rebuild** (`ANCHOR cleared by content rebuild` +
+`SPAN kept ... (content identical)`), and T6's press/release pair brackets
+exactly one such rebuild (14:34:49.486 / 14:34:59.602). The deferred span pair
+evaluated against the rebuilt tree intermittently declines to dispatch —
+deterministically silent afterwards, never merely "slow".
+
+### Consequences
+
+- `tests/nb_span_drag_test.sh` is honest: it waits on receipts and reports the
+  failure; it cannot make the renderer's rebuild race impossible. Its red now
+  means exactly one thing: **T6's span pair lost to the rebuild cycle** (a
+  renderer task), not a product span-drag defect and not dropped input.
+- `nb_all_tests.sh` still gates on it (RC=1 on fail) — left as is, deliberately:
+  the gate stays honest and red-when-broken. Do not paper over it by reordering
+  or sleeping the fixture.
+- If picked up next, the fix lives in the renderer: the release-side span pair
+  must be evaluated against post-rebuild state (or the fixture stops rebuilding
+  per click). It needs its own verification loop — do not "fix" it from the
+  test side.
+
+### State after this session
+
+- `tests/nb_span_drag_test.sh`: rewritten to receipt-based waiting
+  (`wait_count`, `wc_lines`, `settle`, synchronized `xe`); T1–T5 deterministic.
+- KPI ledger: new entry 9.18 records the correction (two 9.17 claims were
+  wrong: "dropped input" and "fix target = xsendevent.py"), with the evidence.
+- Everything else in the standing suite is unchanged; see S9.17 / nb_all_tests
+  results for the full picture.

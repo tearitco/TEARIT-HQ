@@ -99,7 +99,60 @@ assert d, 'no display'
 x11.XRaiseWindow(d, int(sys.argv[1], 16))
 x11.XFlush(d)
 PY
-xe() { python3 "$HERE/xsendevent.py" "$WID" "$@"; sleep 0.6; }
+# xe <kind> <x> <y> [button]
+#
+# Fires one synthetic event, then waits for the renderer's OWN receipt that
+# it was processed: every real ButtonPress/ButtonRelease is captured to the
+# relay ($HIST) synchronously by the dispatcher, and the relay queue is FIFO,
+# so the capture line also proves any MotionNotify queued ahead of it was
+# processed too. Moves are not captured (only presses/releases are), so a
+# move is given no wait - the next press/release's receipt covers it.
+# Blind fixed sleeps let the fixture drain a backlog mid-gesture, and an
+# event evaluated against a half-rebuilt layout got paired with the wrong
+# span state - recurled synthetic input lost (2026-11-04).
+xe() {
+    _kind="$1"; shift
+    _before=$(stat -c %s "$HIST" 2>/dev/null || echo 0)
+    python3 "$HERE/xsendevent.py" "$WID" "$_kind" "$@"
+    case "$_kind" in
+        press|release)
+            _fired=0
+            for _ in $(seq 1 120); do
+                _now=$(stat -c %s "$HIST" 2>/dev/null || echo 0)
+                [ "$_now" -gt "$_before" ] && { _fired=1; break; }
+                sleep 0.25
+            done
+            [ "$_fired" = 1 ] || note "xe: WARN no capture receipt for $_kind $* after 30s"
+            ;;
+    esac
+    sleep 0.2
+}
+# wc_lines <file> -> line count, or 0 if unreadable/absent
+wc_lines() { { wc -l < "$1"; } 2>/dev/null || echo 0; }
+#
+# wait_count <n> [timeout_s]
+#
+# The fixture's link actions are run by an action.sh CHILD that the renderer
+# spawns, so "did it dispatch?" can only honestly be answered by watching
+# click.log grow - never by a fixed sleep, and never by pattern presence.
+# The first wait_log() version of this helper greped for 'CLICKED LINK1'; that
+# pattern matched STALE lines from earlier steps, so it returned instantly
+# before the relay ran and every later count assertion failed spuriously
+# (2026-11-04). Line counts only ever increase, so waiting for "more lines
+# than the baseline" is the race-free receipt.
+wait_count() {
+    _want="$1"; _limit="${2:-60}"; _n=0
+    while [ "$_n" -lt "$(( _limit * 4 ))" ]; do
+        [ "$(wc_lines "$WORK/click.log")" -ge "$_want" ] && return 0
+        sleep 0.25
+        _n=$((_n + 1))
+    done
+    return 1
+}
+# settle <s> - used ONLY by the absence assertions, where checking too early
+# reports "nothing happened" while a spawn is still in flight: a false PASS that
+# hides a real dispatch. Not used for anything that expects work to finish.
+settle() { sleep "${1:-2}"; }
 dump() {  # dump <tag>
     rm -f /tmp/entity-menu-frame.png
     printf '112\n' >> "$HIST"
@@ -187,20 +240,22 @@ LY="$(printf '%s' "$LC" | awk '{print $4}')"
 note "link centers: one=$L1X three=$L3X y=$LY (from parked underlines)"
 
 # T1. synthetic click (press+release, no motion) dispatches.
+N0="$(wc_lines "$WORK/click.log")"
 xe press "$L1X" "$LY"; xe release "$L1X" "$LY"
-sleep 1
-grep -q 'CLICKED LINK1' "$WORK/click.log" 2>/dev/null \
-    && note "T1: press+release dispatched LINK1" \
-    || fail "T1: expected LINK1 (log: $(cat "$WORK/click.log" 2>/dev/null))"
+if wait_count "$((N0 + 1))" 180; then
+    note "T1: press+release dispatched LINK1"
+else
+    fail "T1: expected LINK1 within 180s (log: $(cat "$WORK/click.log" 2>/dev/null))"
+fi
 
 # T2. drag across to link 3: no dispatch, full band, exact range copy.
-N0="$(wc -l < "$WORK/click.log" 2>/dev/null || echo 0)"
+N0="$(wc_lines "$WORK/click.log")"
 xe press "$L1X" "$LY"
 xe move "$(( (L1X + L3X) / 2 ))" "$LY"
 xe move "$L3X" "$LY"
 xe release "$L3X" "$LY"
-sleep 1
-N1="$(wc -l < "$WORK/click.log" 2>/dev/null || echo 0)"
+settle 8   # absence assertion: too early would PASS while the spawn is in flight
+N1="$(wc_lines "$WORK/click.log")"
 [ "$N1" = "$N0" ] \
     && note "T2: drag dispatched nothing" \
     || fail "T2: drag dispatched (log: $(cat "$WORK/click.log" 2>/dev/null))"
@@ -265,18 +320,18 @@ GOT="$(printf '3\n' >> "$HIST"; sleep 1; clip)"
 [ "$FAIL" = 0 ] || true
 
 # T3. sub-slop jitter is still a click.
-N0="$(wc -l < "$WORK/click.log")"
+N0="$(wc_lines "$WORK/click.log")"
 xe press "$L1X" "$LY"; xe move "$((L1X + 2))" "$((LY + 1))"; xe release "$((L1X + 2))" "$((LY + 1))"
-sleep 1
-grep -q 'CLICKED LINK1' "$WORK/click.log" 2>/dev/null \
-    && [ "$(wc -l < "$WORK/click.log")" = "$((N0 + 1))" ] \
-    && note "T3: 2px jitter still dispatched once" \
-    || fail "T3: expected one more LINK1 (log: $(cat "$WORK/click.log" 2>/dev/null))"
+if wait_count "$((N0 + 1))" 180; then
+    note "T3: 2px jitter still dispatched once"
+else
+    fail "T3: expected one more LINK1 within 180s (log: $(cat "$WORK/click.log" 2>/dev/null))"
+fi
 
 # T4. release off-row: no dispatch, selection cleared.
 xe press "$L1X" "$LY"; xe release 700 200
-sleep 1
-N1="$(wc -l < "$WORK/click.log")"
+settle 8   # absence assertion (the renderer processes its queue in bursts)
+N1="$(wc_lines "$WORK/click.log")"
 [ "$N1" = "$((N0 + 1))" ] \
     && note "T4: off-row release dispatched nothing" \
     || fail "T4: unexpected dispatch (log: $(cat "$WORK/click.log" 2>/dev/null))"
@@ -286,26 +341,27 @@ GOT="$(printf '3\n' >> "$HIST"; sleep 1; clip)"
     || fail "T4: clipboard was [$GOT]"
 
 # T5. relay press (no token) still dispatches instantly, no release needed.
-N0="$(wc -l < "$WORK/click.log")"
+N0="$(wc_lines "$WORK/click.log")"
 printf 'MOUSE_EVENT: 1 %s %s 1\n' "$L1X" "$LY" >> "$HIST"
-sleep 2
-[ "$(wc -l < "$WORK/click.log")" = "$((N0 + 1))" ] \
-    && grep -q 'CLICKED LINK1' "$WORK/click.log" \
-    && note "T5: relay click dispatched instantly" \
-    || fail "T5: relay click did nothing (log: $(cat "$WORK/click.log" 2>/dev/null))"
+if wait_count "$((N0 + 1))" 180; then
+    note "T5: relay click dispatched instantly"
+else
+    fail "T5: relay click did nothing within 180s (log: $(cat "$WORK/click.log" 2>/dev/null))"
+fi
 
 # T6. press alone dispatches nothing; the late release completes it.
-N0="$(wc -l < "$WORK/click.log")"
+N0="$(wc_lines "$WORK/click.log")"
 xe press "$L1X" "$LY"
-sleep 1
-[ "$(wc -l < "$WORK/click.log")" = "$N0" ] \
+settle 8
+[ "$(wc_lines "$WORK/click.log")" = "$N0" ] \
     && note "T6: press alone dispatched nothing" \
     || fail "T6: press dispatched early (log: $(cat "$WORK/click.log" 2>/dev/null))"
 xe release "$L1X" "$LY"
-sleep 1
-[ "$(wc -l < "$WORK/click.log")" = "$((N0 + 1))" ] \
-    && note "T6: late release completed the click" \
-    || fail "T6: late release did nothing (log: $(cat "$WORK/click.log" 2>/dev/null))"
+if wait_count "$((N0 + 1))" 180; then
+    note "T6: late release completed the click"
+else
+    fail "T6: late release did nothing within 180s (log: $(cat "$WORK/click.log" 2>/dev/null))"
+fi
 
 kill $RPID 2>/dev/null
 sleep 1

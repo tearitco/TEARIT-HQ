@@ -1131,3 +1131,80 @@ way the keyboard suites do instead of XSendEvent), not the renderer.
 `nb_all_tests.sh`: **ALL TESTS PASS, 38 sections, 31 suites** with flex, grid and
 wasm now included. G1.1-G1.6, G2.1-G2.5, G3.1-G3.6 all have registered suites
 except `nb_interact_test.sh` (K3, by design).
+
+### 9.18 2026-11-04 (evening) — span_drag: the input was never dropped; the timing instrument was
+
+The 9.17 note said nb_span_drag_test's red meant "synthetic XSendEvent dropped an
+event" and that the fix target is `tests/xsendevent.py`'s delivery guarantee. Both
+were wrong, and the correction is recorded here so nobody re-investigates from
+those premises again.
+
+**What was actually wrong, measured in three stages**
+
+1. **Fixed sleeps.** Every dispatch assertion did `sleep 1; grep 'CLICKED LINK1'`
+   (or a line count against a stale baseline) against a fixture whose action.sh
+   is a CHILD the renderer spawns. Under load the child lands after the sleep -
+   the failing T6 message literally printed `log: CLICKED LINK1;`, i.e. the line
+   HAD landed, just after the window closed. Failure messages are evidence; they
+   were not being read.
+2. **Stale grep.** The first fix (a `wait_log` that grepped for the marker) made it
+   worse (0/8): every check matched the STALE lines from T1/T3 already in
+   click.log and returned instantly, so every subsequent count assertion failed.
+   Counts only ever increase, so the honest receipt is "more lines than the
+   baseline", never pattern presence. Delivered as `wait_count`.
+3. **Fire-and-forget bursts.** Events were sent with no acknowledgment that the
+   renderer processed them. `xe()` now waits for the renderer's OWN capture line
+   in the relay (every real press/release is appended synchronously inside the
+   dispatcher, and the relay queue is FIFO, so the receipt also proves any queued
+   MotionNotify ahead of it was processed). Absence assertions use `settle`.
+
+After those fixes, **T1-T5 are deterministic green** (7/7 consecutive batches),
+and no batch ever produced a T1/T3/T5/T2-clipboard failure again.
+
+**What remains, and why it is not delivery**
+
+T6 fails in ~2 of 6 runs, always identically: press captured, release captured,
+`press alone dispatched nothing` passes, and the pair then **never** dispatches
+(waited 180s; the replay lab reproducing the full T1-T6 sequence 8+ times never
+reproduced it). Hard evidence that delivery is complete: the relay files from the
+failing runs contain every press and release verbatim, and the fixture's
+`human_input/<pid>.txt` logs all five real presses with nav=1.
+
+The failing runs all show the same signature in `kh_focus_debug.log`: **every
+dispatch triggers a full content rebuild** (`ANCHOR cleared by content rebuild`
++ `SPAN kept ... (content identical, digest ...)`), and T6's press/release pair
+brackets exactly one such rebuild (14:34:49.486 and 14:34:59.602 in the failing
+run). The deferred span pair is evaluated against whatever the rebuild leaves
+behind and intermittently declines to dispatch - deterministically silent
+afterwards, never merely "slow".
+
+**This is a renderer-side race** (the release's span pair vs the post-dispatch
+content rebuild), in the fixture's every-event-rebuild cycle. It cannot be
+closed from the test without touching the renderer's most-loaded path; closing
+it means either the release-side pair is evaluated against post-rebuild state,
+or the fixture stops rebuilding per click - a renderer task with its own
+verification loop, not a test tweak. The test now waits honestly and reports the
+failure; it cannot make the race impossible.
+
+**Corrections to 9.17**
+
+- ~~"synthetic XSendEvent dropped an event"~~ - wrong. Events were always
+  delivered; the instrument was reading stale data and fixed windows.
+- ~~"fix target is tests/xsendevent.py's delivery guarantee"~~ - implemented
+  exactly that class of fix (relay capture receipt in `xe()` + count-based
+  waits); T6 still fails. Delivery was never the binding constraint.
+- The suite's red should now be read as: **one span pair sometimes loses to the
+  rebuild cycle inside the renderer** - not as a product span-drag defect, and
+  not as dropped input. T1/T2/T3/T4/T5 are honest green.
+
+**Lessons**
+
+1. Read the failure's own payload first. "log: CLICKED LINK1;" was the whole
+   diagnosis; three theories were built on top of it before it was read.
+2. Never assert on a marker inside an ever-growing file; assert on a delta.
+3. A test that fires a burst of input into an event-driven app must either
+   serialize on the app's own receipts or be expected to race with everything
+   the app does between events - here, a full content rebuild per click.
+
+Current status of the flake: **T6 only, ~1 in 3 runs, renderer-side race, known
+and documented; the rest of the suite is deterministic.**
