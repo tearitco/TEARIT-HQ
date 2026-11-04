@@ -46,7 +46,7 @@ try:
     _orig = ort.InferenceSession
     ort.InferenceSession = lambda p, *a, **k: _orig(p, sess_options=_so(), *a, **{x: y for x, y in k.items() if x != "sess_options"})
     def _so():
-        s = ort.SessionOptions(); s.intra_op_num_threads = 2; s.inter_op_num_threads = 1; return s
+        s = ort.SessionOptions(); s.intra_op_num_threads = int(os.environ.get("PET_TTS_THREADS", "2")) or 2; s.inter_op_num_threads = 1; return s
     from kokoro_onnx import Kokoro
     import soundfile as sf
     d = os.path.expanduser("~/.local/share/kokoro")

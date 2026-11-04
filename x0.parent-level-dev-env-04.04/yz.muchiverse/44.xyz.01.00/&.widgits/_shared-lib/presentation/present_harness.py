@@ -259,7 +259,7 @@ class Harness:
         if status == "OK" and self.video and self.rows and not self.dry:
             if not os.path.exists(MKVIDEO): self.say("no make_presentation_video.py at " + MKVIDEO)
             else:
-                cmd = [GATE, HOUSE, "run", "present-video", "--wait", "300", "--", "python3", MKVIDEO, self.out, "--fps", "30", "--width", "1280"] + ([] if self.tts else ["--no-tts"])
+                cmd = [GATE, HOUSE, "run", "present-video", "--wait", "300", "--", "env", "PRESENT_TTS=" + os.path.join(HERE, "remote_tts.py"), "OMP_NUM_THREADS=1", "PET_TTS_THREADS=1", "MKL_NUM_THREADS=1", "OPENBLAS_NUM_THREADS=1", "TORCH_NUM_THREADS=1", "nice", "-n", "19", "ionice", "-c3", "python3", MKVIDEO, self.out, "--fps", "30", "--width", "1280"] + ([] if self.tts else ["--no-tts"])
                 r = run(cmd); self.say("video rc=%d %s" % (r.returncode, (r.stdout + r.stderr).strip()[-160:]))
         return status
 
