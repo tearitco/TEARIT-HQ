@@ -33,11 +33,11 @@ Branch `claude` (pushed to origin `claude`, `main`, `grok`). House root = `x0.pa
 
 ## 4. Test guide (how to verify, each with evidence)
 1. **Gate + health:** `"$H/&.widgits/_shared-lib/ops/+x/cpu_gate.+x" "$H" check` prints busy/house %/temp (die temp should match `k10temp`); `--max-temp 20` must exit 3.
-2. **Lint ratchets:** `spawn_lint.+x "$H" <PROC-REGISTRY-BASELINE-2026-11-02.txt>` -> `new=0`; negative test: add `system("setsid nohup x &");` to a scratch .c under the house, expect `NEW c-string-setsid`, then remove it. (Not yet run: do it.) `cpu_lint` -> `new=0` (baseline 569).
+2. **Lint ratchets:** `spawn_lint.+x "$H" <PROC-REGISTRY-BASELINE-2026-11-02.txt>` -> `new=0`; negative test: add `system("setsid nohup x &");` to a scratch .c under the house, expect `NEW c-string-setsid` and exit 3, then remove it (PASSED 2026-11-03). `cpu_lint` -> `new=0` (baseline 569).
 3. **Palette paging:** `ops/+x/pal_side.+x "$H" list; pick cdda; pick pngs_normal_32x32; pick furniture; next` -> `pal_more=tiles 49-96 of 512`, `pal_can_prev=1`; 12x `next` stops at `481-512` with `pal_can_next` empty; `back` then re-pick -> page 0. Real window: `dump_frame_png_op.+x <win> out.png` (editor window 1300x802), crop the left 300 px. Restore with `list` then `pets` and md5-compare `_active.txt` files.
 4. **3D CPU:** after relaunch (`cpu_gate run`), send 100 `rt` via `bv_keys.+x <session> rt` (0.2 s apart, 20 s), sample /proc/<pid>/stat deltas for ALL house processes (relative-path commands too). Expect no `chtpm_rgb_render` in the session, house ~60-75% of a core during keys, 1% within seconds after; canvas must change (PNG diff of 886x640 canvas at x 208,y 105).
 5. **Orphans:** close the window, wait 25 s, list `bv_render_3d|lc_clock|chtpm_rgb|prisc` -> none left.
-6. **`%` tab:** `cat '#.desktop/load_state.txt'` live number while the manager runs; kill the manager (by pid) and within a guard sweep the label must read empty (this real path is NOT tested yet, only the helper functions).
+6. **`%` tab:** `cat '#.desktop/load_state.txt'` live number while the manager runs; kill the manager (by pid) and within a guard sweep the label must read empty (TESTED live 2026-11-03 21:06: manager killed by pid, guard cleared the label in ~80 s, shell restarted through the gate, label live again `%10`).
 7. **Settings tab:** Settings ▾ > editor opens / sidebar start cycles values; `edit_prefs show`; relaunch honours `editor_open`.
 
 ## 5. Open items (ordered by my pick)
