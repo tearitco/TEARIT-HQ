@@ -1071,3 +1071,63 @@ noticed.
 Lesson, and it is the same one as 9.16's other correction: **read the
 implementation, not the comment.** The comment was stale/wrong in exactly the
 way that sent this investigation down the wrong path first.
+
+
+### 9.17 2026-11-04 — G1.4 was ALREADY green; the real gap was three unregistered suites
+
+I picked `G1.4` as "the last untouched G1 KPI". **Wrong** - it has its own suite,
+`tests/nb_focus_safety_test.sh`, it is registered in `nb_all_tests.sh`, and it
+passes, including the assertion that matters:
+
+    after typing: addr=hello
+    PASS: the address bar is armed and holds the typed text
+    PASS: the projection really was reparsed under the armed field
+    PASS: the typed text survived 8 unsolicited republishes
+      after typing one more char: addr=helloX     <- cursor still at the end
+
+The lesson is the same one this session keeps charging for, one step earlier in
+the process: **check what is already covered before choosing work.** I read the
+KPI table (which lists the goal) but not the runner (which lists the coverage),
+so I proposed a KPI that was already closed.
+
+### The gap that was actually there: suites that exist but are not run
+
+`comm` of the suite files against `nb_all_tests.sh`:
+
+    nb_flex_test.sh        G2.3 display:flex      NOT registered
+    nb_grid_test.sh        G2.4 grid              NOT registered
+    nb_wasm_test.sh        WebAssembly            NOT registered
+    nb_interact_test.sh                          deliberately outside (K3 says so)
+
+So **K1 did not cover flex, grid or wasm.** The ledger said G2.3/G2.4 were green
+while the standing gate could not see either: a flex or grid regression would
+have passed `ALL TESTS PASS` silently. Registered in `51584cec2` - flex and grid
+beside G2.2 (they need the live browser), wasm in the hermetic group (it needs
+only python3). Suite is now 38 sections, and each new section prints its PASS in
+the runner.
+
+### Known flake, recorded so nobody re-investigates it
+
+`nb_span_drag_test.sh` is the one non-deterministic suite. Measured 2026-11-04:
+
+| sample | result |
+|---|---|
+| 6 isolated runs | 4 pass / 2 fail - failures at **T6** ("late release did nothing") and **T1** ("expected LINK1, log empty") |
+| T2 specifically, all 6 isolated runs | `T2: drag copy is exact` - passed every time |
+| whole-suite runs | 38-section run 1 = red (T2, `clipboard was [ONE then TWO]`); 38-section run 2 = ALL TESTS PASS |
+
+A failure that lands on a DIFFERENT step each run, in a suite whose input is
+synthetic `XSendEvent` press/motion/release, is dropped input rather than state
+- and it predates this session (then: 3/4, and 0,1,1 across builds). It is NOT a
+product regression, and the suite's red should be read as "the synthetic input
+driver dropped an event", not as "span drag is broken".
+
+If someone wants it green, the target is `tests/xsendevent.py`'s delivery
+guarantee (a retry/ack around each synthetic motion, or driving the relay the
+way the keyboard suites do instead of XSendEvent), not the renderer.
+
+### Where the KPIs actually stand at 2026-11-04
+
+`nb_all_tests.sh`: **ALL TESTS PASS, 38 sections, 31 suites** with flex, grid and
+wasm now included. G1.1-G1.6, G2.1-G2.5, G3.1-G3.6 all have registered suites
+except `nb_interact_test.sh` (K3, by design).
