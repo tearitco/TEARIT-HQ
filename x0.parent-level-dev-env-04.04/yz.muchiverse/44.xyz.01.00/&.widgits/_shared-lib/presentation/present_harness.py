@@ -22,6 +22,9 @@ Step vocabulary (all verified on 2026-11-04 except where noted):
   clockto|HH                         advance the game clock to the next HH:00
   buyplace|item|x|y                  buy a catalog item and put it at x,y (verbs buy + place)
   brighter|shotA|shotB|ratio         assert the canvas of shot B is at least ratio x brighter than shot A
+  pincam|yaw|pitch|dist / unpin      freeze the camera on the xelector cell (cam_look.txt) / release it
+  calgrid|cols|rows|x0|y0|x1|y1      click a grid of pixels with the camera pinned, table -> calibration.txt
+  collect|n|seconds                  wait for n clicks by a HUMAN with the real pointer, record each pick -> calibration.txt
   wait|seconds
   expect|file|substring              (\\p = a literal | inside a field) file is relative to the app dir (state/..., or board/state/...); the step fails when the text is absent
   shot|name|caption                  window PNG -> snapshots/NN_name.png + a manifest row (hold = 6 s, narrated)
@@ -126,6 +129,38 @@ class Harness:
         g = lambda k: next((l.split("=", 1)[1] for l in pr.splitlines() if l.startswith(k + "=")), "?")
         if g("inside") != "1": raise Fail("xclick: raycast round trip failed: click %s is outside the projected box %s of picked cell %s (err_px %s)" % (g("click_px"), g("cell_box"), g("cell"), g("err_px")))
         self.say("real click at %d,%d: published %s (origin %s ok); picked cell %s; round trip inside box %s, centre off by %s px" % (x, y, pub[:2], self.origin, g("cell"), g("cell_box"), g("err_px")))
+    CAMF = os.path.join(APP, "rpg-edit-hq-pchq", "pieces", "system", "cam_look.txt")
+    PROJ = os.path.join(APP, "rpg-edit-hq-pchq", "pieces", "display", "click_proj.txt")
+    def op_pincam(self, yaw="180", pitch="-50", dist="16"):
+        """freeze the camera on the xelector's cell (the engine's debug camera, cam_look.txt: look_on=1, no look_sel) so clicks do not move the view under the pointer"""
+        xp = os.path.join(APP, "rpg-edit-hq-pchq", "pieces", "xelector_01", "state.txt")
+        px = int(kv(xp, "pos_x") or 8); py = int(kv(xp, "pos_y") or 8)
+        os.makedirs(os.path.dirname(self.CAMF), exist_ok=True)
+        open(self.CAMF, "w").write("look_on=1\nat_x=%.1f\nat_y=1.0\nat_z=%.1f\nlook_dist=%s\nlook_yaw=%s\nlook_pitch=%s\n" % (px + 0.5, py + 0.5, dist, yaw, pitch))
+        time.sleep(4); self.say("camera pinned on cell %d,%d (yaw %s pitch %s dist %s)" % (px, py, yaw, pitch, dist))
+    def op_unpin(self):
+        try: os.remove(self.CAMF)
+        except OSError: pass
+        self.say("camera pin removed")
+    def op_calgrid(self, cols="4", rows="3", x0="330", y0="260", x1="900", y1="650"):
+        """click a cols x rows grid of pixels with the camera pinned; every click must pass the xclick checks; the table (pixel, picked cell, centre offset) goes to calibration.txt"""
+        tab = ["# px | py | published | cell | inside | centre_off_px"]
+        for r in range(int(rows)):
+            for c in range(int(cols)):
+                x = int(x0) + (int(x1) - int(x0)) * c // max(int(cols) - 1, 1); y = int(y0) + (int(y1) - int(y0)) * r // max(int(rows) - 1, 1)
+                self.op_xclick(x, y); pr = rd(self.PROJ); g = lambda k: next((l.split("=", 1)[1] for l in pr.splitlines() if l.startswith(k + "=")), "-")
+                tab.append("%d | %d | %s | %s | %s | %s" % (x, y, g("click_px"), g("cell"), g("inside"), g("err_px")))
+        open(os.path.join(self.out, "calibration.txt"), "w").write("\n".join(tab) + "\n"); self.say("calibration table: %d clicks -> calibration.txt" % (len(tab) - 1))
+    def op_collect(self, n="6", seconds="180"):
+        """YOUR clicks: wait until you have clicked n times in the window (real pointer, pointer marker on); record each pick (click pixel, cell, inside, centre offset) in calibration.txt"""
+        tab = ["# your click px | cell | inside | centre_off_px"]; seen = rd(self.PROJ); t0 = time.time(); self.say("COLLECT: click %s times in the board window now (%s s)" % (n, seconds))
+        while len(tab) - 1 < int(n) and time.time() - t0 < float(seconds):
+            time.sleep(0.5); cur = rd(self.PROJ)
+            if cur and cur != seen:
+                seen = cur; g = lambda k: next((l.split("=", 1)[1] for l in cur.splitlines() if l.startswith(k + "=")), "-")
+                tab.append("%s | %s | %s | %s" % (g("click_px"), g("cell"), g("inside"), g("err_px"))); self.say("your click %d: pixel %s -> cell %s inside=%s centre off %s px" % (len(tab) - 1, g("click_px"), g("cell"), g("inside"), g("err_px")))
+        open(os.path.join(self.out, "calibration.txt"), "w").write("\n".join(tab) + "\n")
+        if len(tab) - 1 < int(n): raise Fail("collect: only %d of %s clicks arrived" % (len(tab) - 1, n))
     def op_clickplace(self, x, y):
         """click a cell with a real mouse click, press Enter, and retry on neighbouring pixels while the editor says 'not placed' (someone standing there, off the floor). The camera follows the xelector, so one pixel is never the same cell twice."""
         lg = os.path.join(APP, "state", "voxel_log.txt")
@@ -203,6 +238,8 @@ class Harness:
         finally:
             if self.restore and not self.dry:
                 try:
+                    try: os.remove(self.CAMF)
+                    except OSError: pass
                     run([EDIT, "lamps", "off"])      # lamps_on.txt is not part of a save
                     hp = os.path.join(APP, "state", "house.txt")
                     for i in sorted(self.placed_ids() - self.ids0): run([EDIT, "remove", i]); self.say("removed the test item #" + i)      # the daemon keeps its own list: take the items out in-game first
