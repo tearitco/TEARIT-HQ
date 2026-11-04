@@ -144,3 +144,22 @@ stb_image_write.h in the same shared lib), an `img` element + fetch in
 `nb_dom.c`, a binary `IMG` wire frame, and a draw-image op + clip in the
 renderer. Video needs ffmpeg demux/decode + timed frame push — a real
 upgrade; plan `<img>` first, video last.
+## Scripted drive harness: place things several ways, move them, give them an event (2026-11-04)
+
+**Plan (done in this order):** (1) pick only input paths already proven on the real window; (2) put the steps in a scenario text file, not in code; (3) every step runs behind `cpu_gate`; (4) every claim is an `expect` against a state file (negative-tested: a wrong expectation stops the run and says FAIL with the file's last line); (5) the live game is saved to slot 9 first and loaded back after, `house.txt` and `voxel_log.txt` put back; (6) frames and manifest feed the existing `make_presentation_video.py`.
+
+**Saved, reusable harness:** `&.widgits/_shared-lib/presentation/present_harness.py` + scenarios in `&.widgits/_shared-lib/presentation/scenarios/`. Needs the editor window open (`board_ctl recover <app>`; an unmapped window is mapped by the harness).
+
+    python3 &.widgits/_shared-lib/presentation/present_harness.py \
+        &.widgits/_shared-lib/presentation/scenarios/place_and_move.txt [--no-video] [--no-tts] [--dry]
+
+Output goes to the media archive, `<Month-DD>/<scenario>-<stamp>/` (`snapshots/`, `manifest.txt`, `REPRODUCE.md` with the full step log and OK/FAIL, the mp4 and the yt summary). Step vocabulary is in the script's docstring: `book`, `verb`, `drive`, `armtile`, `xclick`, `clickplace`, `keys`, `event`, `wait`, `expect`, `shot`, `note` (`\p` = a literal `|` in a field).
+
+**Scenario `place_and_move.txt` (first run 2026-11-04, status OK, 6 frames, ~42 s with narration):**
+1. *Way one, palette + mouse:* arm the CDDA fire barrel from the palettes bar, a **real X click** on a floor cell, Enter through `bv_keys`; `expect` the log line `placed 30gal_firebarr as #1`. The click retries neighbouring pixels when the editor answers "not placed: someone is standing there" (the camera follows the xelector, so one pixel is never the same cell twice).
+2. *Way two, verb, no mouse:* `place 1 9 9` (item number, new x, y) moves the placed barrel; `expect` the `MOVE|1|` row and `|9|9` in `house.txt`.
+3. *Way three, drive the pet:* `drive 4` = four `walk` steps of the controlled pet (this is my reading of "driveN"; tell me if you meant something else).
+4. *Event:* `events/demo_automove` (new, 4 `walk` nodes, trigger `ui`) played through `events-hq/play_event.sh`: the same four steps without anyone driving.
+
+**Honest limits:** the scene is dark (game time 03:00, `phase day` did not change the light), so the pet's walk is hard to see in the frames (the HUD position and the `walk` output are the proof, the picture is not); `drive` and `event` have no position `expect` yet; relay clicks do not reach the 3D canvas (only a real X click), so the harness uses `xdotool` for that one step; the first run left `house.txt` behind (daemon list), fixed by removing it before the load and re-checked on the next run.
+Verified 2026-11-04: dry run, 7 real runs (4 failed on purpose or by bug, each fixed), last run restored the desk (no `house.txt`, slot 9 removed).

@@ -1,0 +1,23 @@
+# place_and_move.txt - three ways to place a thing, then drive a pet and give it an event. Needs the editor window open.
+# Run: python3 &.widgits/_shared-lib/presentation/present_harness.py &.widgits/_shared-lib/presentation/scenarios/place_and_move.txt
+book | rpg-edit-hq
+verb | phase day
+wait | 8
+shot | start | We start in the editor's own book, in the Store room. Nothing has been placed yet.
+# way 1: arm a palette tile, click a cell with a real mouse click, press Enter
+armtile | cdda | pngs_normal_32x32 | furniture | 265
+shot | armed | Way one. We arm a palette tile: the CDDA fire barrel. The palettes bar says armed.
+clickplace | 560 | 500
+expect | state/voxel_log.txt | placed 30gal_firebarr as #1
+shot | placed1 | We click a floor cell with the mouse, then press Enter. The barrel is placed exactly where we clicked, and the voxel log says placed.
+# way 2: the place verb moves a placed item by its number, no mouse
+verb | place 1 9 9
+expect | state/house.txt | MOVE\p1\p
+expect | state/house.txt | \p9\p9
+shot | placed2 | Way two. The place verb takes the barrel's number and a new x and y, and moves it to nine, nine. No mouse at all.
+# way 3: move the controlled pet by driving it
+drive | 4
+shot | moved | Way three is movement. We drive the selected pet four steps with the walk verb.
+# give it an event: auto move
+event | demo_automove | ui
+shot | auto | Now we give it an event. The auto move page walks the pet four more steps by itself. Same spine, same events.
