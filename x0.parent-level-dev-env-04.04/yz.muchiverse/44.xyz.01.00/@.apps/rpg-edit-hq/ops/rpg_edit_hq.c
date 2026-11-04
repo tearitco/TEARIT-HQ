@@ -171,12 +171,12 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
       W("chat_mode_label=chat: %s\nchat_is_edit=%s\nchat_is_hai=%s\nchat_is_net=%s\n", hai ? "h-ai" : net ? "network" : "edit", !hai && !net ? "1" : "", hai ? "1" : "", net ? "1" : ""); }
     { char cp[PATH_MAX], cb[4000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb);
       /* 2026-11-04: a wrapped chat line used to be drawn over the next row (fixed-height rows). Wrap each message to the pane width HERE (word boundaries, continuation rows indented) and show the newest 6 ROWS. */
-      enum { CWRAP = 25, CMAXR = 96 }; static char rows[CMAXR][CWRAP + 8]; int nr = 0;
-      for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { size_t len = strlen(l), pos = 0; int first = 1;
+      enum { CWRAP = 25, CMAXR = 96 }; static char rows[CMAXR][CWRAP + 8]; static char rk[CMAXR]; int nr = 0;
+      for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { size_t len = strlen(l), pos = 0; int first = 1; char kind = !strncmp(l, "you:", 4) ? 1 : !strncmp(l, "h-ai:", 5) ? 2 : 3;      /* colour class of the speaker: you / h-ai / anyone else (pets) */
           while (pos < len && nr < CMAXR) { size_t w = first ? CWRAP : CWRAP - 2; size_t take = len - pos < w ? len - pos : w; if (pos + take < len) { size_t sp = take; while (sp > w / 2 && l[pos + sp] != ' ') sp--; if (sp > w / 2) take = sp; }
-              snprintf(rows[nr], sizeof rows[0], "%s%.*s", first ? "" : "  ", (int)take, l + pos); nr++; pos += take; while (pos < len && l[pos] == ' ') pos++; first = 0; }
-          if (nr >= CMAXR) { memmove(rows[0], rows[CMAXR / 2], (size_t)(CMAXR / 2) * sizeof rows[0]); nr = CMAXR / 2; } }
-      for (int i = 0; i < 10; i++) { int j = nr - 10 + i; W("chat_%d=%s\n", i, j >= 0 ? rows[j] : ""); } }
+              snprintf(rows[nr], sizeof rows[0], "%s%.*s", first ? "" : "  ", (int)take, l + pos); rk[nr] = kind; nr++; pos += take; while (pos < len && l[pos] == ' ') pos++; first = 0; }
+          if (nr >= CMAXR) { memmove(rows[0], rows[CMAXR / 2], (size_t)(CMAXR / 2) * sizeof rows[0]); memmove(rk, rk + CMAXR / 2, (size_t)(CMAXR / 2)); nr = CMAXR / 2; } }
+      for (int i = 0; i < 10; i++) { int j = nr - 10 + i; int kk = (j >= 0 && rows[j][0]) ? rk[j] : 0; W("chat_%d=%s\nchat_%d_k0=%s\nchat_%d_k1=%s\nchat_%d_k2=%s\nchat_%d_k3=%s\n", i, j >= 0 ? rows[j] : "", i, kk == 0 ? "1" : "", i, kk == 1 ? "1" : "", i, kk == 2 ? "1" : "", i, kk == 3 ? "1" : ""); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
@@ -266,6 +266,8 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         { static long pl_safety = 0; long pn = now_ms(); if (!sn_active(&g_sn) || sn_changed(&g_sn, SL_PETS) || pn - pl_safety > 30000) { pl_safety = pn; pet_load(); } }      /* marker/shmem: reload the pets only when a writer moved the slot (or every 30 s for a hand edit) */
         int in = flag_on("int", 0), tm = turn_mode(); static int prev_in = 0; static long int_on_at = 0; if (in && !prev_in) int_on_at = now_ms(); prev_in = in;
 #elif PET_SECTION == 68
+    { static long hsz = -1; char hp[PATH_MAX]; struct stat hs; snprintf(hp, sizeof hp, "%s/hai_chat.txt", ST); long hc = stat(hp, &hs) == 0 ? (long)hs.st_size : 0;      /* hai_op (another process) appended a chat line: republish the pane (found 2026-11-04: the answer sat in the file until something else made the daemon dirty). Size, not mtime. */
+      if (hsz >= 0 && hc != hsz) dirty = 1; hsz = hc; }
     { static long vsz = -1; char vp[PATH_MAX]; struct stat vs; snprintf(vp, sizeof vp, "%s/voxels.pdl", ST); long cur = stat(vp, &vs) == 0 ? (long)vs.st_size : 0;
       if (vsz >= 0 && cur != vsz) { load_data(); replay(); } vsz = cur; }      /* a verb process placed a new voxel kind: the catalog gained a row */
     {   /* the 3D book follows the ledger: any change of house.txt (a placement, a REMOVE, a MOVE, a buy - from this daemon or any verb process) re-exports the rooms once. Found 2026-11-03: a REMOVE left the block in the 3D view because only a placement exported. One stat per tick. */
