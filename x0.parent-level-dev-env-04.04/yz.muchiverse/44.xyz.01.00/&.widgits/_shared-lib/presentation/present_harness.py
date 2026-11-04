@@ -19,6 +19,9 @@ Step vocabulary (all verified on 2026-11-04 except where noted):
   keys|text                          engine keys through bv_keys ( \\n = Enter, \\e = Esc )
   event|name[|trigger]               play events/<name> through events-hq play_event.sh (default trigger ui)
   mark|name / moved|name             remember the controlled pet's room,x,y / assert it changed since the mark
+  clockto|HH                         advance the game clock to the next HH:00
+  buyplace|item|x|y                  buy a catalog item and put it at x,y (verbs buy + place)
+  brighter|shotA|shotB|ratio         assert the canvas of shot B is at least ratio x brighter than shot A
   wait|seconds
   expect|file|substring              (\\p = a literal | inside a field) file is relative to the app dir (state/..., or board/state/...); the step fails when the text is absent
   shot|name|caption                  window PNG -> snapshots/NN_name.png + a manifest row (hold = 6 s, narrated)
@@ -132,12 +135,34 @@ class Harness:
         if was is None: raise Fail("moved: no mark named " + nm)
         if now == was: raise Fail("moved: the controlled pet is still at %s since mark %s" % (now, nm))
         self.say("moved ok: %s -> %s" % (was, now))
+    def op_clockto(self, hh):
+        """advance the game clock to the next HH:00 (clock verbs only go forward; the run's final load puts the clock back)"""
+        m = re.search(r"(\d\d):(\d\d)", rd(os.path.join(APP, "state", "clock_ui.txt")))
+        if not m: raise Fail("clockto: no time_label in clock_ui.txt")
+        h, mi = int(m.group(1)), int(m.group(2)); mins = ((int(hh) - h) * 60 - mi) % (24 * 60) or 24 * 60
+        r = run([EDIT, "clock", "advance", "%dm" % mins]); time.sleep(6); self.say("clock -> %s:00 (%s)" % (hh, (r.stdout.strip().splitlines() or ["?"])[-1][:50]))
+    def op_buyplace(self, key, x, y):
+        r = run([EDIT, "buy", key]); out = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
+        m = re.search(r"#(\d+) at", out)
+        if not m: raise Fail("buyplace: %r" % out[:80])
+        r2 = run([EDIT, "place", m.group(1), str(x), str(y)]); time.sleep(3); self.say("bought %s as #%s, %s" % (key, m.group(1), (r2.stdout.strip().splitlines() or ["?"])[-1][:60]))
+    def op_brighter(self, a, b, ratio):
+        from PIL import Image
+        def mean(nm):
+            f = next((x for x in sorted(os.listdir(self.snaps)) if x.endswith("_" + nm + ".png")), None)
+            if not f: raise Fail("brighter: no shot named " + nm)
+            im = Image.open(os.path.join(self.snaps, f)).convert("L").crop((208, 105, 1094, 745)); return sum(im.tobytes()) / float(im.size[0] * im.size[1])
+        ma, mb = mean(a), mean(b)
+        if mb < ma * float(ratio): raise Fail("brighter: %s=%.1f then %s=%.1f is not %.2fx brighter" % (a, ma, b, mb, float(ratio)))
+        self.say("brighter ok: %s %.1f -> %s %.1f (x%.2f)" % (a, ma, b, mb, mb / max(ma, 0.01)))
     def op_wait(self, s): time.sleep(float(s))
     def op_expect(self, f, sub):
         p = os.path.join(APP, f)
         if sub not in rd(p): raise Fail("expect: %r not in %s (last line: %r)" % (sub, f, (rd(p).strip().splitlines() or [""])[-1][:90]))
         self.say("expect ok: %r in %s" % (sub, f))
     def op_shot(self, nm, caption):
+        try: run([BVKEYS, ui_session(), "~"]); time.sleep(5)      # an idle engine only redraws when woken: a changed lights.pdl or event shows after a nudge
+        except Exception: pass
         self.n += 1; fn = "%02d_%s.png" % (self.n, re.sub(r"\W+", "_", nm))
         r = run([RELAY, "shot", find_win(), os.path.join(self.snaps, fn)])
         if not os.path.exists(os.path.join(self.snaps, fn)): raise Fail("shot failed: " + r.stderr[-100:])
@@ -158,6 +183,7 @@ class Harness:
         finally:
             if self.restore and not self.dry:
                 try:
+                    run([EDIT, "lamps", "off"])      # lamps_on.txt is not part of a save
                     hp = os.path.join(APP, "state", "house.txt")
                     for i in sorted(self.placed_ids() - self.ids0): run([EDIT, "remove", i]); self.say("removed the test item #" + i)      # the daemon keeps its own list: take the items out in-game first
                     time.sleep(4)

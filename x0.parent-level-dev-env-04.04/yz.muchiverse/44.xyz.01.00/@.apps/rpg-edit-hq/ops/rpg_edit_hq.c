@@ -3,6 +3,8 @@
 #ifndef PET_SECTION
 #define PET_APP "rpg-edit-hq"
 #define PET_OP "rpg_edit_hq"
+#include <stddef.h>
+static void export3d(char *msg, size_t cap);      /* forward (the shared core defines it): the lamps verb rewrites the 3D book */
 #define PET_SKIN "rpg_edit_hq.c"
 /* what this game needs beyond the core defaults (the core takes them as #ifndef): 16 pets, island pages 56 wide, a 2D frame that holds a 56 x 17 page at 24 px, tiles as the default 2D view, its own room export */
 #define NP 16
@@ -229,6 +231,9 @@ static int viewer_kinds(void) {      /* idle-cost gate (df-hq's N3 version): the
 #elif PET_SECTION == 55
 static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, "rb"); if (!in) return 0; char tmpc[PATH_MAX + 24]; snprintf(tmpc, sizeof tmpc, "%s.tmp.%d", to, (int)getpid()); FILE *out = fopen(tmpc, "wb"); if (!out) { fclose(in); return 0; } char buf[8192]; size_t n; int ok = 1; while ((n = fread(buf, 1, sizeof buf, in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = 0; break; } fclose(in); if (fclose(out) != 0) ok = 0; if (ok && rename(tmpc, to) != 0) ok = 0; if (!ok) remove(tmpc); return ok; }
 #elif PET_SECTION == 56
+    if (!strcmp(v, "lamps") && argc >= 2) {      /* lamps on|off (2026-11-04): the placed lamp items (lamps.pdl) light their room while state/lamps_on.txt says 1; the dusk page turns them on, the dawn page off. Rewrites the 3D book so the engine reads the rooms' lights.pdl. */
+        int on = !strcmp(argv[1], "on"); char lp[PATH_MAX]; spath(lp, "lamps_on.txt"); FILE *lf = fopen(lp, "w"); if (lf) { fputs(on ? "1\n" : "0\n", lf); fclose(lf); }
+        char em[200]; export3d(em, sizeof em); snprintf(msg, cap, "lamps %s", on ? "on" : "off"); turn_taken = 0; return; }
     if (!strcmp(v, "voxel") && argc >= 3) { vx_place(atoi(argv[1]), atoi(argv[2]), msg, cap); turn_taken = 1; return; }      /* voxel <x> <y>: place the armed brush (palettes bar) in the viewed room */
 #elif PET_SECTION == 57
     if (!strcmp(v, "newgame")) {      /* a fresh game: the current one is saved to slot 0 first (Undo new game = Load slot 0), then every game file is removed so the next read starts from the defaults. The clock is not touched. */
@@ -517,6 +522,15 @@ static void pet_own_export_room(int r, const char *d) {
         for (int ci = 0; ci < it->w; ci++) for (int cj = 0; cj < it->h; cj++) { int x = pl[i].x + ci, y = pl[i].y + cj; if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
             tile24(s, (it->c + ci) * S48, (it->r + cj) * S48, a); memset(b, 0, sizeof b); if (fs[y][x]) memcpy(b, slotpx[fs[y][x]], sizeof b); over24(b, a); gl[y][x] = 'f'; ws[y][x] = slot_of(b); } }
     snprintf(p, sizeof p, "%s/map.txt", d); { FILE *f = fopen_tmp(p); if (f) { for (int y = 0; y < rows; y++) fprintf(f, "%.*s\n", cols, gl[y]); fclose_tmp(f, p); } }
+    {   /* LAMPS (2026-11-04): while state/lamps_on.txt is 1, every placed item named in lamps.pdl (`LAMP | item_key | r | g | b | radius | strength | z`) becomes one LIGHT row of this room's lights.pdl (the engine adds it on top of the sun, at most 8 per room); no lamp or lamps off = no file, the room is lit by the sun as before */
+        char lp[PATH_MAX], on[8] = "", out[2048] = ""; size_t o = 0; int nl = 0; spath(lp, "lamps_on.txt"); read_file(lp, on, sizeof on);
+        snprintf(p, sizeof p, "%s/lights.pdl", d);
+        if (on[0] == '1') { char ap[PATH_MAX], ln[256]; snprintf(ap, sizeof ap, "%s/lamps.pdl", APP); FILE *lf = fopen(ap, "r");
+            while (lf && fgets(ln, sizeof ln, lf) && nl < 8) { char *fl[10]; int n = split_bar(ln, fl, 10); if (n < 8 || ln[0] == '#' || strcmp(fl[0], "LAMP")) continue;
+                for (int i = 0; i < npl && nl < 8; i++) if (pl[i].room == r && !strcmp(cat[pl[i].item].key, fl[1])) {
+                    o += (size_t)snprintf(out + o, sizeof out - o, "LIGHT | %d | %d | %s | %s | %s | %s | %s | %s\n", pl[i].x, pl[i].y, fl[7], fl[5], fl[2], fl[3], fl[4], fl[6]); nl++; } }
+            if (lf) fclose(lf); }
+        if (nl) { FILE *f = fopen_tmp(p); if (f) { fputs(out, f); fclose_tmp(f, p); } } else remove(p); }
     snprintf(p, sizeof p, "%s/extrusion.pdl", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | " PET_APP "\nMETA         | desk_id            | %s\nEXTRUDE      | W                  | 3\nEXTRUDE      | D                  | 3\nEXTRUDE      | T                  | 2\nEXTRUDE      | f                  | 1\nEXTRUDE      | B                  | 3\nEXTRUDE      | default            | 0\n", rooms[r].id); fclose_tmp(f, p); } }
     int acols = 16, nrows = (nslot + acols - 1) / acols, aw = acols * XT, ah = nrows * XT; unsigned char *atlas = (unsigned char *)calloc((size_t)aw * ah * 4, 1); if (!atlas) return;
     for (int i = 0; i < nslot; i++) for (int y = 0; y < XT; y++) memcpy(atlas + ((size_t)((i / acols) * XT + y) * aw + (i % acols) * XT) * 4, slotpx[i] + y * XT * 4, XT * 4);
