@@ -38,6 +38,10 @@ echo "########## TextEncoder/TextDecoder + Blob readers (hermetic)"
 bash "$HERE/nb_text_blob_test.sh" || RC=1
 
 echo
+echo "########## G2.5 @media switches at the breakpoint, both sides (hermetic)"
+bash "$HERE/nb_media_test.sh" || RC=1
+
+echo
 echo "########## projection invariants (needs a running browser)"
 bash "$HERE/nb_projection_test.sh" || RC=1
 

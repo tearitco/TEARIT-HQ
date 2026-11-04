@@ -9489,7 +9489,15 @@ static void run_page(void) {
     if (g_style_css[0]) {
         char *sc = NULL; size_t sn = 0;
         if (read_file(g_style_css, &sc, &sn)) {
-            g_css = nb_css_parse(sc, sn);
+            /* G2.5 (2026-11-04): parse WITH the viewport the page was laid
+             * out in, so an @media block whose query matches becomes real
+             * rules. g_viewport_px is set by the LOAD handler (field 6, the
+             * pane's content width) before run_page() is called, and it is
+             * the same value window.innerWidth reports - one viewport, one
+             * number, so a page's own JS and its CSS cannot disagree about
+             * how wide it is. viewport 0 (unmeasured) keeps the old
+             * skip-every-@media behaviour. */
+            g_css = nb_css_parse_vp(sc, sn, (int)g_viewport_px);
             free(sc);
         }
     }

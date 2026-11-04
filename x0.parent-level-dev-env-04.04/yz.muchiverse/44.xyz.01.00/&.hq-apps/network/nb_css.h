@@ -51,6 +51,12 @@ typedef struct {
 typedef struct NbCss {
     NbCssRule *r;
     size_t nr, cap;
+    /* The viewport this sheet is being evaluated for, in CSS px, set by
+     * nb_css_parse_vp(). 0 means "no viewport known", and then @media blocks
+     * are SKIPPED exactly as they were before 2026-11-04 - a media query
+     * cannot fire without a width, and a wrong guess would change layout.
+     * Only nb_css_parse_vp() ever sets it; nb_css_parse() leaves it 0. */
+    int viewport_px;
     /* @font-face rules (2026-10-22). Up to 8 fonts. */
     int font_face_count;
     struct {
@@ -114,6 +120,18 @@ typedef struct NbCssStyle {
 /* Parse CSS text into a fresh NbCss (never NULL; rules may be 0). Free with
  * nb_css_free. `text` need not be NUL-terminated (len given). */
 NbCss *nb_css_parse(const char *text, size_t len);
+
+/* Same, but evaluated for a viewport of `viewport_px` CSS px, so @media
+ * blocks whose query matches become real rules (G2.5, 2026-11-04). The
+ * supported prelude grammar is deliberately only what real pages write:
+ *   [only|all|screen] [and] (min-width: N) [and] (max-width: N) [and] (width: N)
+ * with N in px, em or rem (1em = 16px) and top-level commas as OR. A prelude
+ * naming anything else (print, orientation, prefers-*, a `not`) does NOT
+ * match: a rule that never fires is a missing nicety, while a rule that fires
+ * wrongly changes layout. Nested @media is evaluated recursively, in source
+ * order, so the sheet's cascade order is preserved. viewport_px <= 0 behaves
+ * exactly like nb_css_parse() - every @media block is skipped. */
+NbCss *nb_css_parse_vp(const char *text, size_t len, int viewport_px);
 
 /* Resolve the computed style for `el`. `inline_style` is the element's
  * `style` attribute value (may be NULL/empty) and — matching browsers —
