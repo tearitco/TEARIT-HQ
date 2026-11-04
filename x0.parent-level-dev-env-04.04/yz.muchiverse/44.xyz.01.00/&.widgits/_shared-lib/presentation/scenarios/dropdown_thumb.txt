@@ -1,0 +1,9 @@
+# dropdown_thumb.txt - the book dropdown must hide the sidebar scrollbar thumb behind its rows (fix 2026-11-04). Needs the editor window open with a long tile list (thumb visible).
+book | rpg-edit-hq
+shot | closed | The tile list is long, so the sidebar scrollbar shows its thumb at the right edge of the list.
+hasrun | closed | 184 | 200 | 100 | 545 | 60
+tap | 200 | 45
+shot | open | The book dropdown is open and covers the list. The thumb must not show through its rows.
+norun | open | 184 | 200 | 100 | 545 | 30
+rclick | 230 | 523
+rclick | 230 | 523

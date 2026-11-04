@@ -25,6 +25,8 @@ Step vocabulary (all verified on 2026-11-04 except where noted):
   pincam|yaw|pitch|dist / unpin      freeze the camera on the xelector cell (cam_look.txt) / release it
   calgrid|cols|rows|x0|y0|x1|y1      click a grid of pixels with the camera pinned, table -> calibration.txt
   collect|n|seconds                  wait for n clicks by a HUMAN with the real pointer, record each pick -> calibration.txt
+  tap|x|y / rclick|x|y               relay tap / relay click at window pixels (a dropdown row needs rclick twice)
+  hasrun|shot|x0|x1|y0|y1|min / norun|...|max   longest bright vertical run in a strip of a shot (scrollbar thumb detector; control and negative)
   wait|seconds
   expect|file|substring              (\\p = a literal | inside a field) file is relative to the app dir (state/..., or board/state/...); the step fails when the text is absent
   shot|name|caption                  window PNG -> snapshots/NN_name.png + a manifest row (hold = 6 s, narrated)
@@ -76,6 +78,7 @@ class Harness:
         os.makedirs(self.snaps, exist_ok=True)
         self.had_house = os.path.exists(os.path.join(APP, "state", "house.txt"))
         self.voxel_bak = rd(os.path.join(APP, "state", "voxel_log.txt"))
+        self.BRUSH = os.path.join(APP, "board", "state", "brush.txt"); self.brush_bak = rd(self.BRUSH) if os.path.exists(self.BRUSH) else None      # armtile leaves the brush armed: restore it (found 2026-11-04, the armed brush shortened the tile list)
         self.ids0 = self.placed_ids()
     def placed_ids(self):
         return {l.split("|")[1] for l in rd(os.path.join(APP, "state", "house.txt")).splitlines() if l.startswith("PLACE|") and l.count("|") > 1}
@@ -210,6 +213,31 @@ class Harness:
         ma, mb = mean(a), mean(b)
         if mb < ma * float(ratio): raise Fail("brighter: %s=%.1f then %s=%.1f is not %.2fx brighter" % (a, ma, b, mb, float(ratio)))
         self.say("brighter ok: %s %.1f -> %s %.1f (x%.2f)" % (a, ma, b, mb, mb / max(ma, 0.01)))
+    def op_rclick(self, x, y):
+        """relay click (a menu row needs TWO: the first focuses it, the second activates)"""
+        run([RELAY, win_pid(), "click", str(x), str(y)]); time.sleep(3); self.say("relay click %s,%s" % (x, y))
+    def op_tap(self, x, y):
+        run([RELAY, win_pid(), "tap", str(x), str(y)]); time.sleep(3); self.say("relay tap %s,%s" % (x, y))
+    def _run_len(self, nm, x0, x1, y0, y1, th=110):
+        """longest vertical run of bright pixels (> th) in columns x0..x1 of shot nm: a scrollbar thumb is a long run, text never is"""
+        from PIL import Image
+        f = next((x for x in sorted(os.listdir(self.snaps)) if x.endswith("_" + nm + ".png")), None)
+        if not f: raise Fail("no shot named " + nm)
+        im = Image.open(os.path.join(self.snaps, f)).convert("L"); best = 0
+        for x in range(int(x0), int(x1)):
+            r = 0
+            for y in range(int(y0), int(y1)):
+                if im.getpixel((x, y)) > th: r += 1; best = max(best, r)
+                else: r = 0
+        return best
+    def op_hasrun(self, nm, x0, x1, y0, y1, minrun):
+        b = self._run_len(nm, x0, x1, y0, y1)
+        if b < int(minrun): raise Fail("hasrun: %s longest bright run %d < %s (control failed: no thumb to hide)" % (nm, b, minrun))
+        self.say("hasrun ok: %s run %d >= %s" % (nm, b, minrun))
+    def op_norun(self, nm, x0, x1, y0, y1, maxrun):
+        b = self._run_len(nm, x0, x1, y0, y1)
+        if b > int(maxrun): raise Fail("norun: %s has a bright vertical run of %d > %s (a scrollbar thumb shows through the dropdown)" % (nm, b, maxrun))
+        self.say("norun ok: %s longest run %d <= %s" % (nm, b, maxrun))
     def op_wait(self, s): time.sleep(float(s))
     def op_expect(self, f, sub):
         p = os.path.join(APP, f)
@@ -252,6 +280,10 @@ class Harness:
                         self.say("house.txt came back after the load (%d bytes): the run is NOT fully restored" % os.path.getsize(hp))
                     open(os.path.join(APP, "state", "voxel_log.txt"), "w").write(self.voxel_bak)
                     shutil.rmtree(os.path.join(APP, "state", "slots", "9"), ignore_errors=True)
+                    if self.brush_bak is None:
+                        try: os.remove(self.BRUSH)
+                        except OSError: pass
+                    else: open(self.BRUSH, "w").write(self.brush_bak)
                     self.say("restored: slot 9 loaded back, house.txt/voxel_log.txt as before, slot 9 removed")
                 except Exception as e: self.say("RESTORE PROBLEM: %r (check by hand)" % e)
         open(os.path.join(self.out, "manifest.txt"), "w", encoding="utf-8").write("# written by present_harness.py from %s\n" % os.path.basename(self.scen) + "\n".join(self.rows) + "\n")
