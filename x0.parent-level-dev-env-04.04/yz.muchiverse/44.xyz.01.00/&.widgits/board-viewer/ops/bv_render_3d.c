@@ -3666,6 +3666,10 @@ static int render_one_frame(void) {
             /* Move range finder open: the click selects / places (desk behaviour). */
             /* Painted (maker) maps have no placer: the arrows must drive the xelector (rpg-pet INT moves its monster from it), and a stored canvas click re-arming the placer on every frame turned them into a giant
              * green selector in the sky. */
+            if (maker_ground) {      /* 2026-11-04: a brush armed from the palettes bar places at the placer cell; on a painted map the click must move that cell too (it stayed where the arrows left it) */
+                char bm2[PATH_BUF]; snprintf(bm2, sizeof(bm2), "%s/pieces/display/brush_mode.txt", project_root);
+                if (access(bm2, F_OK) == 0 && read_kv_int(pp, "armed", 0) > 0) { int pz = read_kv_int(pp, "z", 0); FILE *pf2 = host_fopen(pp, "w"); if (pf2) { fprintf(pf2, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, pz); fclose(pf2); } }
+            }
             if (!bvr_click(focused_project_root, project_root, hx, hy, board_w, board_h) && !maker_ground) {
                 FILE *pf = host_fopen(pp, "w");
                 if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
