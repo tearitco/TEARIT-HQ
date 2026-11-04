@@ -164,7 +164,14 @@ int main(int argc, char **argv) {
     int log_hist = 1; char title[96] = "";
     if (!strcmp(verb, "restore")) {   /* the window just opened: apply the start layout (preference, else the last one, else the first-run default) without logging a new row */
         char pr[4200], want[32], last[32]; snprintf(pr, sizeof pr, "%s/@.apps/rpg-edit-hq/state/prefs.txt", house); kv_get(pr, "sidebar_start", want, sizeof want); hist_last(house, last, sizeof last);
-        const char *m = (!strcmp(want, "pets") || !strcmp(want, "palettes") || !strcmp(want, "none")) ? want : (last[0] ? last : SIDE_FIRST_RUN);
+        char ll[32] = "", lr[32] = "";      /* layout.pdl (default): LAYOUT | left | palettes|pets|none, LAYOUT | right | hai|edit|network|none */
+        if (!want[0] || !strcmp(want, "layout")) { char lp[4200], lb[2000] = ""; snprintf(lp, sizeof lp, "%s/@.apps/rpg-edit-hq/layout.pdl", house); FILE *lf = fopen(lp, "r");
+            if (lf) { char row[200]; while (fgets(row, sizeof row, lf)) { char a[24], b[24], c[32]; if (row[0] == '#') continue; if (sscanf(row, " LAYOUT | %23[a-z] | %31[a-z]", a, c) == 2) { (void)b; (void)lb; if (!strcmp(a, "left")) snprintf(ll, sizeof ll, "%s", c); else if (!strcmp(a, "right")) snprintf(lr, sizeof lr, "%s", c); } } fclose(lf); } }
+        if (ll[0] && strcmp(ll, "palettes") && strcmp(ll, "pets") && strcmp(ll, "none")) ll[0] = 0;
+        if (lr[0]) { char cm[4200]; snprintf(cm, sizeof cm, "%s/@.apps/rpg-edit-hq/state/flag_chatmode.txt", house);
+            if (!strcmp(lr, "none")) kv_set(sides, "side_right", "");
+            else if (!strcmp(lr, "hai") || !strcmp(lr, "edit") || !strcmp(lr, "network")) { kv_set(sides, "side_right", "1"); FILE *cf = fopen(cm, "w"); if (cf) { fprintf(cf, "%s\n", lr); fclose(cf); } } }
+        const char *m = ll[0] ? ll : (!strcmp(want, "pets") || !strcmp(want, "palettes") || !strcmp(want, "none")) ? want : (last[0] ? last : SIDE_FIRST_RUN);
         static char mv[16]; snprintf(mv, sizeof mv, "%s", !strcmp(m, "palettes") ? "open" : !strcmp(m, "pets") ? "pets" : !strcmp(m, "none") ? "none" : "open"); verb = mv; log_hist = 0;
     }
     if (!strcmp(verb, "open")) { if (log_hist) hist_add(house, "palettes"); kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); }

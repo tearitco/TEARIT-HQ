@@ -2,7 +2,7 @@
 /* edit_prefs - the rpg-edit-hq preferences: @.apps/rpg-edit-hq/state/prefs.txt (key=value) and the label file board/state/prefs_ui.txt for its own "Settings" toolbar tab (inside the editor window, NOT the theme settings window).
  *   edit_prefs <house> show                 rewrite board/state/prefs_ui.txt from prefs.txt (call once; the window reads it via vars=)
  *   edit_prefs <house> cycle <key>          next allowed value of <key>, wrap around; then rewrite board/state/prefs_ui.txt
- * Keys (add a row to KEYS to add a preference): editor_open = last | own ; sidebar_start = last | pets | palettes | none. Unknown/missing value = the FIRST value (the default).
+ * Keys (add a row to KEYS to add a preference): editor_open = last | own ; sidebar_start = layout (default: layout.pdl) | last | pets | palettes | none. Unknown/missing value = the FIRST value (the default).
  * Both files are rewritten whole (temp + rename), a fixed size (< 1 KB): no growth. Readers: board/open_board.sh (editor_open), ops/pal_side.c (sidebar_start). Built by build_rpg_edit_hq.sh. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 #include <limits.h>
 static const struct { const char *key, *vals, *title; const char *words[5]; } KEYS[] = {
     { "editor_open",   "last,own",                 "editor opens",   { "the last project", "its own book" } },
-    { "sidebar_start", "last,pets,palettes,none",  "editor sidebar", { "last used", "pets", "palettes", "none (both hidden)" } },
+    { "sidebar_start", "layout,last,pets,palettes,none",  "editor sidebar", { "layout.pdl (h-ai + palettes)", "last used", "pets", "palettes", "none (both hidden)" } },
 };
 #define NK (int)(sizeof KEYS / sizeof KEYS[0])
 static char PREF[PATH_MAX], UI[PATH_MAX];

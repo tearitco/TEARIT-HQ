@@ -1,0 +1,6 @@
+# rpg-edit-hq start layout (owner 2026-11-04: h-ai and palettes are the default sidebars for the editor "for now"; change them here).
+# Read by `pal_side <house> restore` when the window opens, UNLESS the preference sidebar_start (editor Settings tab) is last|pets|palettes|none.
+# LAYOUT | left  | palettes | pets | none      the left bar (palettes shares the slot with the pets bar)
+# LAYOUT | right | hai | edit | network | none  the right bar is the chat pane; the value is its mode (hai = the API chat that edits this book, edit = the pet chat)
+LAYOUT | left | palettes
+LAYOUT | right | hai
