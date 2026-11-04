@@ -166,6 +166,12 @@ sees (window titles, labels, banners, launchers, icon, docs prose) says LyfeDesk
 until the deep rename (directories, file names, `livedesk:` command prefix, constants, WM_CLASS, user-data paths): do not rename those
 piecemeal, and do not write new user-facing text with the old name. The plan and checklist are in `04-bugs/bug_bounty.md`.
 
+## Reports to the owner (REQUIRED, since 2026-11-04)
+
+A report for the owner is personal and emoji-friendly, states goals/calls/decisions, and has an "external references" section (repo paths + outside URLs) so other AI agents can
+pick up context. Save it as `.md` and `.html` in `/home/no/Desktop/github/work/XO/<month>/<nov-N>/` as `0.<name>` (docs only; see the XO rule below). Example:
+`XO/31.Nov/nov-4/0.personal-report-2026-11-04.md`.
+
 ## XO is the owner's folder, not for code (REQUIRED, since 2026-10-25)
 
 `/home/no/Desktop/github/work/XO/` is where the owner exfiltrates learnings (docs, mp3, mp4, PNG presentations) to other AI tools. Every owner item there is
