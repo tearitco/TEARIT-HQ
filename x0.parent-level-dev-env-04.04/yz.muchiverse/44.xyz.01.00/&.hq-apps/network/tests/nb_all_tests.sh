@@ -42,6 +42,12 @@ echo "########## G2.5 @media switches at the breakpoint, both sides (hermetic)"
 bash "$HERE/nb_media_test.sh" || RC=1
 
 echo
+# WebAssembly has its own suite and needs only python3 (it was also missing
+# from this runner before 2026-11-04), so it belongs in the hermetic group.
+echo "########## WebAssembly executes scalar exports, memory, globals, JS imports (hermetic)"
+bash "$HERE/nb_wasm_test.sh" || RC=1
+
+echo
 echo "########## projection invariants (needs a running browser)"
 bash "$HERE/nb_projection_test.sh" || RC=1
 
@@ -152,6 +158,19 @@ sh "$HERE/nb_gbcr_test.sh" || RC=1
 echo
 echo "########## G2.2b the scrollbar gutter is CONDITIONAL (both directions, live browser)"
 sh "$HERE/nb_gutter_test.sh" || RC=1
+
+echo
+# G2.3/G2.4 were KPIs with their own suites but the suites were NOT in this
+# runner (found 2026-11-04), so "K1 ALL TESTS PASS" did not actually cover
+# flex or grid - a regression there would have gone unnoticed while the
+# ledger said the KPIs were green. They need the live browser, so they sit
+# here beside G2.2 rather than in the hermetic group at the top.
+echo "########## G2.3 display:flex lays children in a row (live browser)"
+sh "$HERE/nb_flex_test.sh" || RC=1
+
+echo
+echo "########## G2.4 grid-template-columns honoured (live browser)"
+sh "$HERE/nb_grid_test.sh" || RC=1
 
 echo
 echo "########## content-row reachability (live browser + own opt-in fixture)"
