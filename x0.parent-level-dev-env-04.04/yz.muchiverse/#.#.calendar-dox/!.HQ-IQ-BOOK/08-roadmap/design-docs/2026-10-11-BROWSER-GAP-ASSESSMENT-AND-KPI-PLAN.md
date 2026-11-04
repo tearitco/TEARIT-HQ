@@ -1030,3 +1030,44 @@ A pre-existing build break was also found and fixed to get there: commit
 `khtpm_core_render.c`, so HEAD had not compiled since 2026-10-21 and the
 running renderer was two days stale — which is exactly what hides this class
 of bug.
+
+
+### 9.16a CORRECTION (same day, 2026-11-04) — the specificity claim in 9.16 was wrong
+
+9.16 recorded, as an open deviation, that "selector-list specificity is
+SUMMED, not MAXed". **That was wrong.** `specificity()` already took the MAX
+per comma segment; the header comment in `nb_css.h` said "summed" and I
+believed the comment instead of reading the loop.
+
+Chasing the real cause of a `.narrow, .wide {}` base rule defeating both
+`@media` branches turned up two different, both-real defects (fixed in
+`f06d16b42`):
+
+1. **The last rule was silently DROPPED** when a stylesheet's final character
+   is `}`. `skip_block()` returned `end` for both "unterminated" and "closing
+   brace is the last character"; the rule loop reads `close == end` as
+   unterminated and breaks. Measured: `.aa{...} .xx{...}` (no trailing
+   whitespace) -> 1 rule; with a trailing newline -> 2 rules; a single-rule
+   sheet ending in `}` -> **0 rules**. Most stylesheets end with a newline,
+   which is why this stayed invisible.
+
+2. **`n_type` counted alphabetic characters**, so a class NAME contributed its
+   own length: `.narrow` scored n_type=6 and `.wide` scored 4. Equally
+   specific class rules were therefore ordered by name LENGTH, so a later
+   override lost to a longer name. Measured, element carrying both classes:
+   `.aa{block} .xx{none}` -> block (later rule lost);
+   `.aaaaaa{block} .xx{none}` -> '' (longer name won).
+
+A type selector is now counted only where one can begin, so `.cls` is
+(0,1,0) and `p.cls` is (0,1,1). Ties resolve by source order, as CSS says.
+
+`tests/nb_media_test.sh` keeps the realistic comma-list base rule so both
+defects fail the suite if they return, and its header carries the
+measurements. Full standing suite after both fixes: **ALL TESTS PASS**, 35
+sections, 30 suites — which is the evidence that mattered, since a cascade
+change can move every page's layout and nothing else in the suite would have
+noticed.
+
+Lesson, and it is the same one as 9.16's other correction: **read the
+implementation, not the comment.** The comment was stale/wrong in exactly the
+way that sent this investigation down the wrong path first.
