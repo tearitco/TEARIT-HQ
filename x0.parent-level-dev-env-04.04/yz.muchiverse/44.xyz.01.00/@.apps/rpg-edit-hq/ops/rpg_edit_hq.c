@@ -257,6 +257,9 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         snprintf(msg, cap, "h-ai: asking..."); return; }
     if (!strcmp(v, "apply") || !strcmp(v, "no")) {      /* /apply and /no in the h-ai pane: write or drop the proposal (hai_op re-validates; the old file is kept as .hai.bak) */
         char op[PATH_MAX]; snprintf(op, sizeof op, "%s/@.apps/rpg-edit-hq/ops/+x/hai_op.+x", HOUSE); pid_t hp = fork(); if (hp == 0) { char *av[] = { op, HOUSE, !strcmp(v, "apply") ? "apply" : "discard", NULL }; execv(op, av); _exit(127); } int st = 0; if (hp > 0) waitpid(hp, &st, 0); snprintf(msg, cap, "h-ai: %s", !strcmp(v, "apply") ? "apply" : "dropped"); return; }
+    if (!strcmp(v, "chathelp")) {      /* /help in the chat box: the commands, as chat lines of the current mode */
+        char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"); const char *f = hai ? "hai_chat.txt" : "chat.txt";
+        append_line(f, hai ? "help: /clear wipes this chat (a .bak copy is kept). /apply writes the h-ai proposal into the event page (old file kept as .hai.bak). /no drops it. /help shows this." : "help: /clear wipes this chat (a .bak copy is kept). /help shows this."); snprintf(msg, cap, "help"); return; }
     if (!strcmp(v, "netsay")) { snprintf(msg, cap, "network chat comes later"); return; }
     if (!strcmp(v, "chatclear")) {      /* clear the chat of the current mode (edit: the same rename the core clearchat does) */
         char cm[16], p[PATH_MAX], q[PATH_MAX]; flag_str("chatmode", "edit", cm, sizeof cm); spath(p, !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt");
@@ -292,7 +295,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon */
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon */
     snprintf(ST, sizeof ST, "%s/state", APP); mkdir(ST, 0755); sn_init(&g_sn, ST);
-    if (mode == 0 && argc >= 4 && is_dir(argv[1]) && (!strcmp(argv[3], "/apply") || !strcmp(argv[3], "/no") || !strcmp(argv[3], "/clear"))) { char cm0[16]; flag_str("chatmode", "edit", cm0, sizeof cm0); if (!strcmp(argv[3], "/clear")) { vargv[0] = "chatclear"; vargc = 1; } else if (!strcmp(cm0, "hai")) { vargv[0] = strcmp(argv[3], "/no") ? "apply" : "no"; vargc = 1; } }      /* /clear works in every chat mode; /apply and /no answer a proposal in the h-ai pane */      /* in the h-ai pane /apply and /no answer a proposal */
+    if (mode == 0 && argc >= 4 && is_dir(argv[1]) && (!strcmp(argv[3], "/apply") || !strcmp(argv[3], "/no") || !strcmp(argv[3], "/clear") || !strcmp(argv[3], "/help"))) { char cm0[16]; flag_str("chatmode", "edit", cm0, sizeof cm0); if (!strcmp(argv[3], "/clear")) { vargv[0] = "chatclear"; vargc = 1; } else if (!strcmp(argv[3], "/help")) { vargv[0] = "chathelp"; vargc = 1; } else if (!strcmp(cm0, "hai")) { vargv[0] = strcmp(argv[3], "/no") ? "apply" : "no"; vargc = 1; } }      /* /clear works in every chat mode; /apply and /no answer a proposal in the h-ai pane */      /* in the h-ai pane /apply and /no answer a proposal */
     else if (mode == 0 && argc >= 4 && is_dir(argv[1]) && argv[3][0] && argv[3][0] != '/') {      /* the chat box: in h-ai / network mode its text is not a pet line (a leading / still runs a verb) */
         char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); static char full[300];
         if (!strcmp(cm, "hai")) { snprintf(full, sizeof full, "%s", argv[3]); vargv[0] = "haisay"; vargv[1] = full; vargc = 2; }

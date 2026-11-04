@@ -7099,7 +7099,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             n_it++;
         }
         if (pin_i >= 0) colw = pin_w[pin_i];
-        if (n_it == 0) continue;
+        if (n_it == 0 && n_cl == 0) continue;      /* 2026-11-04: a bar with a text-input line (cli_io) but no item drew NOTHING (the editor's h-ai pane went blank when its last button was removed); an empty bar is still skipped */
         {
             int pad4 = scaled(4), hh = (n_tx + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
             int x0 = is_left ? cv->x + scaled(10) : cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;

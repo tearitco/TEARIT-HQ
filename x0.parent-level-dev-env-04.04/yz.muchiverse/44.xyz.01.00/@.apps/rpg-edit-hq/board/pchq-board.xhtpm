@@ -202,7 +202,6 @@
         <text label="${chat_11}" class="rp-chat rp-chat-hait ov-line" show="${chat_11_k4}"/>
         <text label="${chat_11}" class="rp-chat rp-chat-petn ov-line" show="${chat_11_k5}"/>
         <text label="${chat_11}" class="rp-chat rp-chat-pett ov-line" show="${chat_11_k6}"/>
-        <item id="chat-help" class="pchq-ft skin-bar" label="/clear /apply /no" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/hai_op.+x' '${HOUSE}' context"/>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
