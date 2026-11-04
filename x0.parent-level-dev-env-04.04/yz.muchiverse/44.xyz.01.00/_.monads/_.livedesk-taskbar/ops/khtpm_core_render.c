@@ -3447,7 +3447,23 @@ static int reparse_chtpm_if_changed(void) {
      * state that survives a rebuild. */
     g_seg_dot_armed = 0;
     /* INLINE SPANS step 8: hover names the same per-window triple - a
-     * rebuild invalidates it identically. */
+     * rebuild invalidates it identically.
+     *
+     * (2026-11-04) ...but only if the content actually changed. Same
+     * content-identity guard as the span cursor/anchor above, for the same
+     * measured reason: nb_hover_test.sh was flaky (3 of 4 runs passed, and
+     * the failing row moved between runs), and this unconditional clear is
+     * the only thing between a pointer move and the assertion that could
+     * take the hover away. A rebuild landing after the motion but before the
+     * frame is read leaves the row un-whitened - which reads as "hover is
+     * broken" when it is only the repaint that was interrupted. */
+    int saved_hover_nav = g_hover_nav;
+    int saved_hover_idx = g_hover_idx;
+    char saved_hover_id[sizeof(g_hover_id)] = "";
+    snprintf(saved_hover_id, sizeof(saved_hover_id), "%s", g_hover_id);
+    unsigned long long saved_hover_digest = 0;
+    if (saved_hover_idx >= 0)
+        saved_hover_digest = kh_tree_digest(g_window);
     g_hover_nav = 0;
     g_hover_idx = -1;
     g_hover_id[0] = '\0';
@@ -3693,6 +3709,22 @@ static int reparse_chtpm_if_changed(void) {
         } else {
             kh_focus_debug_log("SPAN content changed (digest %016llx -> %016llx), span state stays dead",
                                saved_seg_digest, now_digest);
+        }
+    }
+    /* INLINE SPANS step 8 hover (2026-11-04) - the same guard, for the same
+     * measured flake: restore the hover identity iff the tree says exactly
+     * what the discarded one said. */
+    if (saved_hover_idx >= 0) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_hover_digest) {
+            g_hover_nav = saved_hover_nav;
+            g_hover_idx = saved_hover_idx;
+            snprintf(g_hover_id, sizeof(g_hover_id), "%s", saved_hover_id);
+            kh_focus_debug_log("HOVER kept nav=%d idx=%d (content identical, digest %016llx)",
+                               g_hover_nav, g_hover_idx, now_digest);
+        } else {
+            kh_focus_debug_log("HOVER content changed (digest %016llx -> %016llx), hover stays dead",
+                               saved_hover_digest, now_digest);
         }
     }
     return 1;
