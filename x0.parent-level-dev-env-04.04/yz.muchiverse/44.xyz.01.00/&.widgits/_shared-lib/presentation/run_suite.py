@@ -16,8 +16,9 @@ for n in names:
     ok = r.returncode == 0
     print(("OK   " if ok else "FAIL ") + n)
     if not ok: bad += 1; print((r.stdout + r.stderr)[-400:])
-if not sys.argv[1:]:      # verb-only check, no window: save/load restores the clock on every skin
-    r = subprocess.run([sys.executable, os.path.join(H, "clock_roundtrip.py")], capture_output=True, text=True)
-    print(("OK   " if r.returncode == 0 else "FAIL ") + "clock_roundtrip"); print(r.stdout.strip())
-    bad += r.returncode != 0
+if not sys.argv[1:]:      # verb-only checks, no window: clock restored by load on every skin; lamps light the room on and leave it off
+    for chk in ("clock_roundtrip", "lamps_rollout"):
+        r = subprocess.run([sys.executable, os.path.join(H, chk + ".py")], capture_output=True, text=True)
+        print(("OK   " if r.returncode == 0 else "FAIL ") + chk); print(r.stdout.strip())
+        bad += r.returncode != 0
 sys.exit(1 if bad else 0)

@@ -16,3 +16,4 @@ ITEM | barrel       | Barrel        |  30 | Inside_B | 9  | 10 | 1 | 1 | floor |
 ITEM | clock        | Wall clock    |  80 | Inside_B | 8  | 4  | 1 | 2 | wall  | decor
 ITEM | mirror       | Wall mirror   |  90 | Inside_B | 9  | 4  | 1 | 2 | wall  | decor
 ITEM | window       | Window        |  50 | Inside_B | 0  | 4  | 1 | 2 | wall  | decor
+ITEM | lamp         | Lamp pillar   |  45 | Inside_B | 12 | 10 | 1 | 1 | floor | light
