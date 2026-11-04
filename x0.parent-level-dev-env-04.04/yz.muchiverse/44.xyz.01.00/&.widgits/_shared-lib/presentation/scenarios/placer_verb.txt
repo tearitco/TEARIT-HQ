@@ -1,0 +1,9 @@
+# placer_verb.txt - the shared placer (petslike_placer.c) through the VERB path: arm a tile in the palettes bar, `voxel x y` places it. Verifies the generated voxel item (state/voxels.pdl) and the
+# sheet path (!v_ sheets) in a fresh verb process. The click-and-Enter path through the daemon is place_and_move.txt (needs a daemon started from the same build).
+book | rpg-edit-hq
+armtile | cdda | pngs_normal_32x32 | furniture | 265
+verb | voxel 9 9
+wait | 4
+expect | state/house.txt | PLACE\p
+expect | state/voxels.pdl | ITEM \p v_
+shot | placed | The armed tile was placed with the voxel verb at the cell 9 9 by the shared placer module.

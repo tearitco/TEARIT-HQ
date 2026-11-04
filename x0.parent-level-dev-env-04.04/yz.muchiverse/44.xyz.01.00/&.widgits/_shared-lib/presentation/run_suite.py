@@ -5,7 +5,7 @@ Each scenario runs inside present_harness.py (cpu_gate, desk saved and restored)
 Drives the real editor window: tell the owner before running."""
 import os, sys, subprocess
 H = os.path.dirname(os.path.abspath(__file__))
-names = sys.argv[1:] or ["place_and_move", "lamps_at_dusk", "mouse_align", "dropdown_thumb"]
+names = sys.argv[1:] or ["place_and_move", "lamps_at_dusk", "mouse_align", "dropdown_thumb", "placer_verb"]
 bad = 0
 for n in names:
     sc = os.path.join(H, "scenarios", n + ".txt")
