@@ -3406,6 +3406,23 @@ static int reparse_chtpm_if_changed(void) {
     unsigned long long saved_tree_digest = 0;
     if (saved_run_anchor > 0)
         saved_tree_digest = kh_tree_digest(g_window);
+    /* INLINE SPANS (2026-11-03) - the same content-identity guard that the
+     * ROW-RUN anchor above already carries, applied to the span cursor and
+     * anchor. The unconditional clear below was the same failure mode: a
+     * reparse landing between an extend (Shift+Right) and the next step
+     * wiped the selection that was visibly painted a moment earlier, so the
+     * band vanished and the next Ctrl+C copied the whole label. The span
+     * state is identity by (nav, id) + segment index, which survives a
+     * rebuilt tree whose CONTENT is unchanged - decide on content here,
+     * not on nav inside a reparse. */
+    int saved_seg_nav = g_seg_nav;
+    int saved_seg_idx = g_seg_idx;
+    int saved_seg_anchor = g_seg_anchor;
+    char saved_seg_id[sizeof(g_seg_id)] = "";
+    snprintf(saved_seg_id, sizeof(saved_seg_id), "%s", g_seg_id);
+    unsigned long long saved_seg_digest = 0;
+    if (saved_seg_idx >= 0)
+        saved_seg_digest = kh_tree_digest(g_window);
     /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
      * element-id) triple in the tree being discarded - after this
      * rebuild those numbers may address a different row, or nothing.
@@ -3653,6 +3670,29 @@ static int reparse_chtpm_if_changed(void) {
         } else {
             kh_focus_debug_log("ANCHOR content changed (digest %016llx -> %016llx), anchor stays dead",
                                saved_tree_digest, now_digest);
+        }
+    }
+    /* INLINE SPANS (2026-11-03) - restore the span cursor/anchor only if the
+     * tree just installed says exactly what the discarded one said. Same
+     * reasoning as the row-run guard above, same shape: an unchanged digest
+     * means the nav indices assign_nav_and_layout() re-derives immediately
+     * after this function returns name the same rows, so saved (nav, id)
+     * still names the same row and the segment index still names the same
+     * link within it. A rebuild that changed anything leaves the cursor and
+     * anchor dead, which is honest: the links they named may be gone, or
+     * may have moved. */
+    if (saved_seg_idx >= 0) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_seg_digest) {
+            g_seg_nav = saved_seg_nav;
+            g_seg_idx = saved_seg_idx;
+            snprintf(g_seg_id, sizeof(g_seg_id), "%s", saved_seg_id);
+            g_seg_anchor = saved_seg_anchor;
+            kh_focus_debug_log("SPAN kept nav=%d idx=%d anchor=%d (content identical, digest %016llx)",
+                               g_seg_nav, g_seg_idx, g_seg_anchor, now_digest);
+        } else {
+            kh_focus_debug_log("SPAN content changed (digest %016llx -> %016llx), span state stays dead",
+                               saved_seg_digest, now_digest);
         }
     }
     return 1;
@@ -3981,7 +4021,14 @@ static XftDraw *xftdraw_buf;
 static Colormap cmap;
 static XftFont *font_ui;
 static int g_win_x = 300, g_win_y = 300;
-static int g_win_w = 260, g_win_h = 200;
+/* g_win_w/g_win_h are NOT static: khtpm_render_core.c's css_layout_pass()
+ * reads them via `extern int g_win_w, g_win_h` (three sites: position:fixed,
+ * position:absolute top/left clamping, and its flex/grid budget caps). This
+ * file's own "static int g_win_w" predates that shared-lib requirement
+ * (a7b6084a5 2026-10-21), leaving HEAD to not compile: the running binary is
+ * from 2026-10-20, i.e. two days stale. Lifting the linkage is the only
+ * change that completes that commit, and changes no behaviour. */
+int g_win_w = 260, g_win_h = 200;
 /* Last on-screen position we actually asked the server for via XMoveWindow.
  * The redraw() corrective-move block (2026-09-03) must only touch the server
  * when our INTENDED position (g_win_x/g_win_y) has genuinely changed since we
