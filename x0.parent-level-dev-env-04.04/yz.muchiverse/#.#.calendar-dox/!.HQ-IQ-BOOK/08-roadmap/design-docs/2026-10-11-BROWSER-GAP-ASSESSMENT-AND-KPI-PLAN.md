@@ -957,3 +957,76 @@ own negative control for the gutter was a dead statement (fixed in 9.13).
 **Also updated:** x86-64 build path fixed for `http_server.c` in the tomom project; `button.sh` RENDERER path corrected.
 
 **Docs:** See `xo/HANDOFF_DOCS_SUMMARY.md` and `xo-cal/oct-29-2026/` for full relay testing report.
+
+
+---
+
+## 9.16 2026-11-04 — G2.5 (@media) CLOSED, and two defects found but NOT fixed
+
+### G2.5 closed: `@media` fires against the viewport
+
+`nb_css.c` skipped every `@media` block wholesale, on the stated ground that
+"the engine has no viewport, so a media query can never fire" (`nb_css.h`).
+The worker DOES have one: LOAD carries the pane's content width, and
+`window.innerWidth` is exported from that same number.
+
+- `nb_css_parse_vp(text, len, viewport_px)` evaluates `@media` against it;
+  `nb_css_parse()` keeps the old behaviour through the SAME code path
+  (viewport 0 = unknown = skip), so the two cannot drift.
+- Grammar supported: `[only|all|screen]` with `(min-width: N)` /
+  `(max-width: N)` / `(width: N)`, N in px/em/rem, top-level commas as OR.
+  Everything else (print, orientation, prefers-*, `not`) does NOT match —
+  chosen deliberately: skipping is a missing nicety, firing wrongly moves a
+  page's layout.
+- Matching bodies parse recursively into the same list, in source order, so
+  the cascade order survives; nested `@media` works for free.
+
+Gate `tests/nb_media_test.sh` (hermetic, registered in `nb_all_tests.sh`):
+4 widths straddling the boundary (700/767/768/900), TWO channels each — the
+computed display AND the element's rect, because `display:none` must
+collapse it to 0x0 and that is the consequence a page observes. A
+property-only assertion is a self-report. Negative-tested.
+
+### Found, measured, NOT fixed (each wants its own bite + evidence)
+
+1. **Selector-list specificity is SUMMED, not MAXed.** `.a, .b {}` scores two
+   classes, so it outranks a single-class rule inside an `@media` block and
+   the override never applies. Measured, same stylesheet either way:
+
+       comma-list base      vp=700  wide.display='block'   <- override defeated
+       separate base rules  vp=700  wide.display='none'    <- correct
+
+   CSS takes the MAX over the list. This is pre-existing; fixing it moves the
+   cascade for every page, so it needs its own evidence run. The new gate
+   avoids the trap and says so in its header.
+
+2. **Projected rows do not skip `display:none` for page-created elements.**
+   Both branches appear in the worker's RENDER rows at both widths, so the
+   computed style and the painted rows disagree for JS-created nodes.
+   Measured while building the fixture above; not touched.
+
+### Also this session: two flake classes closed at the renderer
+
+`reparse_chtpm_if_changed()` cleared per-window state UNCONDITIONALLY on every
+rebuild. For the row-run anchor that was already fixed (2026-10-19, with a
+`kh_tree_digest` content-identity guard); the same defect was still live for
+the inline-span cursor/anchor and for hover:
+
+- span selection: `nb_span_select_test.sh` ~6/10 -> **10/10**; receipts show
+  `SPAN kept nav=2 idx=1 anchor=0 (content identical, digest …)`.
+- hover: `nb_hover_test.sh` 3/4 -> **8/8**; receipts show
+  `HOVER kept nav=1 idx=0 (content identical, digest …)`.
+
+Both use the same shape as the 2026-10-19 fix, which is the pattern to copy
+for any future per-window state that must survive a rebuild.
+
+### Standing KPIs at the end of 2026-11-04
+
+`nb_all_tests.sh` -> **ALL TESTS PASS**, 35 sections, 30 suites, 0 failures.
+
+A pre-existing build break was also found and fixed to get there: commit
+`a7b6084a5` added `extern int g_win_w, g_win_h` reads in
+`khtpm_render_core.c` without lifting the matching `static` in
+`khtpm_core_render.c`, so HEAD had not compiled since 2026-10-21 and the
+running renderer was two days stale — which is exactly what hides this class
+of bug.
