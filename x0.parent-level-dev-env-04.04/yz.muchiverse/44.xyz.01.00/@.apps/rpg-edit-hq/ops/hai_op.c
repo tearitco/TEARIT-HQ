@@ -42,6 +42,14 @@ static int locate(long hint, char *why, size_t wn, long *pid_out, char *sess, si
     if (!pid_ok(pid)) { snprintf(why, wn, "refused: window pid %ld is not a live rpg-edit-hq window", pid); return 3; }
     P(f, sizeof f, "board/state/ui.txt"); kv(f, "bv_session", sess, sn); if (!sess[0] || access(sess, F_OK) != 0) { snprintf(why, wn, "window %ld is live but has no engine session yet", pid); *pid_out = pid; return 4; }
     *pid_out = pid; snprintf(why, wn, "ok"); return 0; }
+/* --- the active-session pointer (#.desktop/active_session.pdl): one row per app, rewritten whole, at most 16 rows; the toolbar h-ai reads it to find the editor session it should talk about.
+ * Row: ACTIVE | <app> | <window pid> | <epoch> | <context file>. A reader never trusts a row: it re-checks the pid against /proc (alive + the right program) before using it. */
+static void pointer_path(char *o, size_t n) { snprintf(o, n, "%s/#.desktop/active_session.pdl", HOUSE); }
+static void pointer_set(long pid, const char *ctxfile) {
+    char pf[PATH_MAX], old[6000], out[6400]; pointer_path(pf, sizeof pf); rd(pf, old, sizeof old); size_t k = 0; int rows = 0;
+    k += snprintf(out + k, sizeof out - k, "SECTION | KEY | VALUE\n----------------------------------------\n");
+    char *sv; for (char *l = strtok_r(old, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { if (strncmp(l, "ACTIVE |", 8) || strstr(l, "| rpg-edit-hq |")) continue; if (rows++ >= 14 || k + strlen(l) + 2 > sizeof out - 400) break; k += snprintf(out + k, sizeof out - k, "%s\n", l); }
+    snprintf(out + k, sizeof out - k, "ACTIVE | rpg-edit-hq | %ld | %ld | %s\n", pid, (long)time(NULL), ctxfile); wr(pf, out); }
 static void context(char *out, size_t on) {
     char why[200], sess[PATH_MAX] = "", f[PATH_MAX], book[200], room[64], brush[200], pos[64]; long pid = 0; int rc = locate(0, why, sizeof why, &pid, sess, sizeof sess);
     P(f, sizeof f, "state/last_book.txt"); rd(f, book, sizeof book); book[strcspn(book, "\r\n")] = 0; if (!strncmp(book, "book=", 5)) memmove(book, book + 5, strlen(book + 4));
@@ -51,7 +59,8 @@ static void context(char *out, size_t on) {
     snprintf(pos, sizeof pos, "%s,%s", px, py);
     char md[16]; P(f, sizeof f, "state/flag_chatmode.txt"); rd(f, md, sizeof md); md[strcspn(md, "\r\n")] = 0;
     snprintf(out, on, "app=rpg-edit-hq\nwindow_pid=%ld\nsession_status=%s\nbv_session=%s\nbook=%s\nroom=%s\nselector=%s\narmed_brush=%s\nchat_mode=%s\nupdated=%ld\n", pid, rc == 0 ? "live" : why, sess, book, room, pos, brush, md, (long)time(NULL));
-    P(f, sizeof f, "state/hai_context.txt"); wr(f, out); }
+    P(f, sizeof f, "state/hai_context.txt"); wr(f, out);
+    if (rc == 0) pointer_set(pid, f); }
 static int shape_ok(const char *c) { if (strlen(c) > 8000 || strncmp(c, "SECTION", 7)) return 0; const char *nl = strchr(c, '\n'); if (!nl || strncmp(nl + 1, "----", 4)) return 0; int rows = 0; char *cp = strdup(nl + 1); int ok = 1; char *sv; for (char *l = strtok_r(cp, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { if (!strncmp(l, "----", 4) || !l[strspn(l, " \t")]) continue; if (!strstr(l, " | ") && !strstr(l, "|")) { ok = 0; break; } rows++; } free(cp); return ok && rows > 0; }
 static int name_ok(const char *s) { if (!*s || strlen(s) > 60) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || *s == '_' || *s == '-')) return 0; return 1; }
 static int target(const char *pkg, const char *page, const char *file, char *path, size_t pn, char *why, size_t wn) {
@@ -110,10 +119,22 @@ static int apply(int do_it) {
     char old[9000], bak[PATH_MAX + 12]; if (rd(path, old, sizeof old) >= 0) { snprintf(bak, sizeof bak, "%s.hai.bak", path); wr(bak, old); }
     { size_t cl = strlen(c); if (cl && c[cl - 1] != '\n' && cl + 2 < sizeof b) { c[cl] = '\n'; c[cl + 1] = 0; } }
     if (wr(path, c) != 0) { chat("h-ai", "could not write the file."); return 1; } unlink(pf); char m[200]; snprintf(m, sizeof m, "applied to %s/%s %s.", pkg, page, file); chat("h-ai", m); return 0; }
+/* where: the toolbar h-ai's question "which editor session is live?": newest pointer row first; each row is VERIFIED (window pid alive and the right program) before its context is printed. */
+static int where(void) {
+    char pf[PATH_MAX], b[6000]; pointer_path(pf, sizeof pf); if (rd(pf, b, sizeof b) <= 0) { printf("no editor session is registered (open the editor first)\n"); return 3; }
+    struct { long ep; char app[40]; long pid; char ctx[PATH_MAX]; } r[16]; int n = 0; char *sv;
+    for (char *l = strtok_r(b, "\n", &sv); l && n < 16; l = strtok_r(NULL, "\n", &sv)) { if (strncmp(l, "ACTIVE |", 8)) continue; char app[40]; long pid, ep; char ctx[PATH_MAX]; if (sscanf(l, "ACTIVE | %39s | %ld | %ld | %4000[^\n]", app, &pid, &ep, ctx) == 4) { r[n].ep = ep; snprintf(r[n].app, sizeof r[n].app, "%s", app); r[n].pid = pid; snprintf(r[n].ctx, sizeof r[n].ctx, "%s", ctx); n++; } }
+    int skipped = 0;
+    for (int pass = 0; pass < n; pass++) { int best = -1; for (int i = 0; i < n; i++) if (r[i].pid && (best < 0 || r[i].ep > r[best].ep)) best = i; if (best < 0) break;
+        long pid = r[best].pid; r[best].pid = 0;
+        if (!strcmp(r[best].app, "rpg-edit-hq") && pid_ok(pid)) { char c[2200]; if (rd(r[best].ctx, c, sizeof c) > 0) { printf("session: %s (window pid %ld, verified live; %d stale pointer row(s) skipped)\n%s", r[best].app, pid, skipped, c); return 0; } }
+        skipped++; }
+    printf("no live editor session: %d pointer row(s) checked, none verified\n", n); return 3; }
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: hai_op <house> locate [--pid N] | context | ask <text> | apply | discard\n"); return 2; }
     snprintf(HOUSE, sizeof HOUSE, "%s", argv[1]); snprintf(APP, sizeof APP, "%s/@.apps/rpg-edit-hq", HOUSE); const char *v = argv[2];
     if (!strcmp(v, "locate")) { long hint = (argc >= 5 && !strcmp(argv[3], "--pid")) ? atol(argv[4]) : 0; char why[200], sess[PATH_MAX] = ""; long pid = 0; int rc = locate(hint, why, sizeof why, &pid, sess, sizeof sess); if (rc == 0) printf("OK pid=%ld session=%s\n", pid, sess); else printf("%s\n", why); return rc; }
+    if (!strcmp(v, "where")) return where();
     if (!strcmp(v, "context")) { char c[2200]; context(c, sizeof c); fputs(c, stdout); return 0; }
     if (!strcmp(v, "ask") && argc >= 4) { ask(argv[3]); return 0; }
     if (!strcmp(v, "apply")) return apply(1); if (!strcmp(v, "discard")) return apply(0);

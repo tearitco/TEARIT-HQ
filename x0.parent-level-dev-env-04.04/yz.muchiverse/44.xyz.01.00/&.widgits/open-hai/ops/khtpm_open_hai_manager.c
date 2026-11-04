@@ -1813,6 +1813,17 @@ static void dispatch_send(const char *prompt) {
         snprintf(msg, sizeof(msg), "[cancelled: switched away from %s while it was still answering]", g_pending_model_name);
         cancel_pending(msg);
     }
+    /* 2026-11-04 (sprint SPRINT-2026-11-04-EDITOR-STANDARDS-HAI.md): "@editor <question>" = ask about the game session the owner is editing. The editor publishes its live session
+     * (window pid, engine session, book, room, selector, armed brush) in the active-session pointer; `hai_op where` VERIFIES the pointer row against /proc (alive + the right program)
+     * and prints it, or says there is no live session. Its text is put in front of the question. Instant op, bounded read; no editor = the model is told so, nothing is guessed. */
+    char ctx_prompt[MSG_LEN + 3200];
+    if (!strncmp(prompt, "@editor", 7)) {
+        char cmd[PATH_BUF + 120], blk[2600] = ""; snprintf(cmd, sizeof(cmd), "'%s/@.apps/rpg-edit-hq/ops/+x/hai_op.+x' '%s' where 2>/dev/null", g_house_root, g_house_root);
+        FILE *wp = popen(cmd, "r"); if (wp) { size_t k = fread(blk, 1, sizeof(blk) - 1, wp); blk[k] = 0; pclose(wp); }
+        const char *q = prompt + 7; while (*q == ' ' || *q == ':' || *q == ',') q++;
+        snprintf(ctx_prompt, sizeof(ctx_prompt), "Live state of the game editor session the user is working on (verified just now):\n%s\nAnswer the question using these values only; if the state says there is no live session, say so.\n\nQuestion: %s", blk[0] ? blk : "(could not read the editor session)\n", q);
+        prompt = ctx_prompt;
+    }
     if (backend_mode == BACKEND_AGENT45_LEGACY) { send_to_agent45(prompt); return; }
     if (backend_mode == BACKEND_OPENROUTER) { send_to_openrouter(prompt, model_name); return; }
     if (backend_mode == BACKEND_TOKENROUTER) { send_to_tokenrouter(prompt, model_name); return; }
