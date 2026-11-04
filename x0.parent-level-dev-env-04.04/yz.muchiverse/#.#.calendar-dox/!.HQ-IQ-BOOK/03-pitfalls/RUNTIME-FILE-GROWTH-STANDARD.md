@@ -70,3 +70,4 @@ Windows started before the renderer fix keep the old trim until they are restart
 - Fix: `CATCHUP_CAP` 12, ledger compaction (above), harness cases updated (`lc_clock_recur`, 57 checks) and one added.
 - Still true: a fast rate costs real CPU. Events per game day times their cost must be well under the real seconds per game day, or the clock will always be
   catching up (the cap now makes that a short bounded burst instead of a runaway). The owner's saved rate for the edit board is `sec`.
+| `@.apps/rpg-edit-hq/state/hai_context.txt`, `hai_proposal.txt`, `hai_calls.txt`, `hai_last_error.txt` (hai_op, 2026-11-04) | each rewritten whole (temp + rename): < 2 KB / < 9 KB / one line / < 400 B | on every ask / apply (event-driven, no poll); a day's asks are capped at 200 by hai_calls.txt itself | `.hai_hdr` (the API key header) and `.hai_req.json` / `.hai_resp.json` exist only during a call and are deleted after; `hai_chat.txt` keeps its 24 KB -> 8 KB cap |

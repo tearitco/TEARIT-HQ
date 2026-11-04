@@ -239,8 +239,13 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
     if (!strcmp(v, "chatmode") && argc >= 2) { const char *m = !strcmp(argv[1], "hai") ? "hai" : !strcmp(argv[1], "network") ? "network" : "edit"; set_flag("chatmode", m); snprintf(msg, cap, "chat: %s", m); return; }
-    if (!strcmp(v, "haisay") && argc >= 2) {      /* typed text while the pane is in h-ai mode (section 70 turns it into this verb). Step 1: a canned reply, the API call comes next */
-        hai_line("you", argv[1]); hai_line("h-ai", "[canned] not connected to the API yet. Soon: ask me for an event change in this book and I will propose it for you to apply."); snprintf(msg, cap, "h-ai: asked"); return; }
+    if (!strcmp(v, "haisay") && argc >= 2) {      /* typed text while the pane is in h-ai mode (section 70 turns it into this verb): hand it to hai_op ask, started through the registered funnel (kh_spawn.sh); the answer / proposal lands in hai_chat.txt (sprint 2026-11-04) */
+        char op[PATH_MAX], ks[PATH_MAX]; snprintf(op, sizeof op, "%s/@.apps/rpg-edit-hq/ops/+x/hai_op.+x", HOUSE); snprintf(ks, sizeof ks, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
+        if (access(op, X_OK) != 0) { hai_line("you", argv[1]); hai_line("h-ai", "hai_op is not built (ops/build_rpg_edit_hq.sh)."); snprintf(msg, cap, "h-ai: not built"); return; }
+        pid_t hp = fork(); if (hp == 0) { setsid(); char *av[] = { "sh", ks, HOUSE, "0", "hai-ask", "--", op, HOUSE, "ask", (char *)argv[1], NULL }; int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); } execvp("sh", av); _exit(127); }
+        snprintf(msg, cap, "h-ai: asking..."); return; }
+    if (!strcmp(v, "apply") || !strcmp(v, "no")) {      /* /apply and /no in the h-ai pane: write or drop the proposal (hai_op re-validates; the old file is kept as .hai.bak) */
+        char op[PATH_MAX]; snprintf(op, sizeof op, "%s/@.apps/rpg-edit-hq/ops/+x/hai_op.+x", HOUSE); pid_t hp = fork(); if (hp == 0) { char *av[] = { op, HOUSE, !strcmp(v, "apply") ? "apply" : "discard", NULL }; execv(op, av); _exit(127); } int st = 0; if (hp > 0) waitpid(hp, &st, 0); snprintf(msg, cap, "h-ai: %s", !strcmp(v, "apply") ? "apply" : "dropped"); return; }
     if (!strcmp(v, "netsay")) { snprintf(msg, cap, "network chat comes later"); return; }
     if (!strcmp(v, "chatclear")) {      /* clear the chat of the current mode (edit: the same rename the core clearchat does) */
         char cm[16], p[PATH_MAX], q[PATH_MAX]; flag_str("chatmode", "edit", cm, sizeof cm); spath(p, !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt");
