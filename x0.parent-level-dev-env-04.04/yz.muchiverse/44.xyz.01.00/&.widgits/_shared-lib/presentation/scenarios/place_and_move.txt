@@ -1,8 +1,9 @@
 # place_and_move.txt - three ways to place a thing, then drive a pet and give it an event. Needs the editor window open.
 # Run: python3 &.widgits/_shared-lib/presentation/present_harness.py &.widgits/_shared-lib/presentation/scenarios/place_and_move.txt
 book | rpg-edit-hq
-verb | clock advance 9h
-wait | 8
+clockto | 12
+verb | phase day
+wait | 6
 expect | state/daylight.txt | day
 shot | start | We start in the editor's own book, in the Store room. Nothing has been placed yet.
 # way 1: arm a palette tile, click a cell with a real mouse click, press Enter
@@ -12,9 +13,9 @@ clickplace | 560 | 500
 expect | state/voxel_log.txt | placed 30gal_firebarr as #1
 shot | placed1 | We click a floor cell with the mouse, then press Enter. The barrel is placed exactly where we clicked, and the voxel log says placed.
 # way 2: the place verb moves a placed item by its number, no mouse
-verb | place 1 9 9
+verb | place 1 5 9
 expect | state/house.txt | MOVE\p1\p
-expect | state/house.txt | \p9\p9
+expect | state/house.txt | \p5\p9
 shot | placed2 | Way two. The place verb takes the barrel's number and a new x and y, and moves it to nine, nine. No mouse at all.
 # way 3: drive the controlled character to another room (a visible move), then give it an event that brings it back by itself
 mark | before_drive
