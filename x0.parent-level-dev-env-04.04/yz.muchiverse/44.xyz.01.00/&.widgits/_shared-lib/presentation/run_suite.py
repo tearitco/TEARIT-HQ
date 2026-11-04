@@ -5,7 +5,7 @@ Each scenario runs inside present_harness.py (cpu_gate, desk saved and restored)
 Drives the real editor window: tell the owner before running."""
 import os, sys, subprocess
 H = os.path.dirname(os.path.abspath(__file__))
-names = sys.argv[1:] or ["place_and_move", "lamps_at_dusk", "mouse_align"]
+names = sys.argv[1:] or ["place_and_move", "lamps_at_dusk", "mouse_align", "dropdown_thumb"]
 bad = 0
 for n in names:
     sc = os.path.join(H, "scenarios", n + ".txt")
@@ -16,4 +16,8 @@ for n in names:
     ok = r.returncode == 0
     print(("OK   " if ok else "FAIL ") + n)
     if not ok: bad += 1; print((r.stdout + r.stderr)[-400:])
+if not sys.argv[1:]:      # verb-only check, no window: save/load restores the clock on every skin
+    r = subprocess.run([sys.executable, os.path.join(H, "clock_roundtrip.py")], capture_output=True, text=True)
+    print(("OK   " if r.returncode == 0 else "FAIL ") + "clock_roundtrip"); print(r.stdout.strip())
+    bad += r.returncode != 0
 sys.exit(1 if bad else 0)
