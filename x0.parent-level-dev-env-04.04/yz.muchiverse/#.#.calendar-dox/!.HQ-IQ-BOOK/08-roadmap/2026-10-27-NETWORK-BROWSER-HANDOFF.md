@@ -339,3 +339,54 @@ deterministically silent afterwards, never merely "slow".
   wrong: "dropped input" and "fix target = xsendevent.py"), with the evidence.
 - Everything else in the standing suite is unchanged; see S9.17 / nb_all_tests
   results for the full picture.
+
+---
+
+## 2026-11-04 (night) — span_drag: root cause found with receipts, fixed in the renderer
+
+The 2026-11-04 (evening) section left this open as "a renderer-side race -
+closing it needs the release-side pair evaluated against post-rebuild state,
+or the fixture stops rebuilding per click - a renderer task with its own
+verification loop." Done, and the fixture did not change.
+
+### The mechanism, measured
+
+The fixture renders every event with a FULL content rebuild (debug log:
+`ANCHOR cleared by content rebuild` + `SPAN kept ... content identical` after
+virtually every event). Since INLINE SPANS step 11, the reparse path
+UNCONDITIONALLY cleared `g_span_pend.active` - "a rebuild also orphans any
+armed span press; the paired release must find nothing to resolve."
+
+T6 arms the press, waits 8 seconds (the absence assertion), then releases.
+The rebuild fires ~0.7s after the arm every single time, so the press was
+ALWAYS orphaned before the release was parsed: no SPANPAIR receipt, no
+dispatch, deterministically silent forever. T1/T3 (release ~0.5s after the
+arm) raced the same rebuild and usually won - which is why the failing step
+moved between T1/T3/T6 across runs, and why the input "was never dropped":
+every event was delivered and consumed; the pair just had nothing left to
+pair.
+
+### The fix (mirrors three in-house guards)
+
+Save `g_span_pend` before the rebuild; re-arm after iff `kh_tree_digest` of
+the new tree is byte-identical to the old (the same guard the row-run anchor,
+span cursor/anchor and hover already use). Identical digest => same tree
+order => same nav re-derivation, so the restored press resolves exactly as if
+no rebuild had landed; a tree that changed anything leaves it dead - honest,
+since its row may be gone or may carry a different action.
+
+### Verification
+
+- nb_span_drag_test.sh: **8/8 consecutive green** (was ~1 in 3 red, and the
+  full suite went red on T1 once and T6 twice in recent runs).
+- Receipts prove the mechanism: `SPANPRESS kept nav=1 idx=0 ... content
+  identical`, then `SPANPAIR phit=1 ... same=1`, dispatch happens.
+- **nb_all_tests.sh: ALL TESTS PASS, 38 sections, 31 suites (exit 0)** -
+  with the fix in the house-wide renderer.
+
+### Notes
+
+- SPANARM/SPANPAIR breadcrumbs stay in the renderer (same class and volume
+  as the existing ANCHOR/SPAN receipts).
+- Running renderers keep the old image until restart.
+- The full-suite gate in nb_all_tests.sh stays as it is, now honestly green.

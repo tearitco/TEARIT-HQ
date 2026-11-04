@@ -1208,3 +1208,53 @@ failure; it cannot make the race impossible.
 
 Current status of the flake: **T6 only, ~1 in 3 runs, renderer-side race, known
 and documented; the rest of the suite is deterministic.**
+
+### 9.19 2026-11-04 (night) — span_drag root cause FIXED in the renderer (T6 was one rebuild away)
+
+9.18 said the residual was "a renderer-side race - closing it needs the
+release-side pair evaluated against post-rebuild state (or the fixture stops
+rebuilding per click)." That is now done, and the fixture needed no change.
+
+**Mechanism, measured (not inferred)**
+
+The fixture renders every event with a FULL content rebuild; the debug log
+shows one after virtually every event (`ANCHOR cleared by content rebuild` +
+`SPAN kept ... (content identical, digest cba5db244267da69)`). The reparse
+path (since INLINE SPANS step 11) cleared `g_span_pend.active`
+UNCONDITIONALLY at the top of every rebuild - "a rebuild also orphans any
+armed span press (its row may be gone); the paired release must find nothing
+to resolve."
+
+T6 sends press, waits 8 seconds (the absence assertion), then releases. The
+rebuild fires ~0.7s after the arm every single time (T6's armed press is the
+only pair with an 8-second window), so the press was ALWAYS orphaned before
+the release was parsed - deterministically silent: no SPANPAIR line, no
+dispatch, never. T1/T3 (release ~0.5s after arm) raced the same rebuild and
+usually won; the failing steps moved between T1/T3/T6 across runs because the
+loss depends on which rebuild lands inside the press..release window.
+
+**The fix**
+
+Mirror the house's three existing content-identity guards (ROW-RUN anchor
+2026-10-19, span cursor/anchor 2026-11-03, hover 2026-11-04 - all built on
+`kh_tree_digest`): save `g_span_pend` before the rebuild; re-arm it afterwards
+iff the tree is byte-identical. Identical digest => identical tree order =>
+identical nav re-derivation (assign_nav_and_layout indexes from tree order),
+so the restored press resolves exactly as if no rebuild had landed. A tree
+that changed anything leaves the press orphaned, which is honest (its row may
+be gone, may have moved, or may carry a different action).
+
+**Verification**
+
+- 8/8 consecutive runs of nb_span_drag_test.sh green (previously ~1 in 3 red,
+  failing at a random step; the full suite had failed on T1 in one run and T6
+  in two others).
+- Receipts confirm the mechanism: SPANPRESS kept ... content identical after
+  each rebuild; SPANPAIR phit=1 ... same=1 at the release; dispatch happens.
+- **nb_all_tests.sh: ALL TESTS PASS, 38 sections, 31 suites (exit 0).**
+
+Notes: diagnostic breadcrumbs (SPANARM/SPANPAIR receipts) stay in the
+renderer - same class and volume as the existing ANCHOR/SPAN receipts. The
+running renderers are unchanged until restart. The digest guard is untouched;
+no new untested mechanism was added - the failing leg itself reproduced
+reliably and now logs the keep/dead outcome on every rebuild.

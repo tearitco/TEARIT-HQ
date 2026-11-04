@@ -3423,6 +3423,28 @@ static int reparse_chtpm_if_changed(void) {
     unsigned long long saved_seg_digest = 0;
     if (saved_seg_idx >= 0)
         saved_seg_digest = kh_tree_digest(g_window);
+    /* INLINE SPANS step 11 (2026-11-04) - the same guard, for the armed
+     * press. A rebuild orphans a press because its row may be gone, but
+     * a content-identical rebuild keeps the same rows at the same
+     * geometry (kh_tree_digest covers tag, id, label, segments, cells
+     * and full child structure), so the armed press can - and must -
+     * survive it: deleting it unconditionally meant the paired release,
+     * whenever a rebuild landed in the press..release window, found
+     * nothing to resolve and the click was silently swallowed. Measured
+     * on nb_span_drag_test.sh's T6 (press at T, release 8s later; every
+     * event triggers a full rebuild; the pair NEVER dispatched - not
+     * once in any run where the rebuild landed inside the window). */
+    int saved_pend_active = g_span_pend.active;
+    int saved_pend_button = g_span_pend.button;
+    int saved_pend_px = g_span_pend.px, saved_pend_py = g_span_pend.py;
+    int saved_pend_nav = g_span_pend.nav, saved_pend_idx = g_span_pend.idx;
+    int saved_pend_dragged = g_span_pend.dragged;
+    int saved_pend_two_step = g_span_pend.two_step_ok;
+    char saved_pend_id[sizeof(g_span_pend.id)] = "";
+    snprintf(saved_pend_id, sizeof(saved_pend_id), "%s", g_span_pend.id);
+    unsigned long long saved_pend_digest = 0;
+    if (saved_pend_active)
+        saved_pend_digest = kh_tree_digest(g_window);
     /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
      * element-id) triple in the tree being discarded - after this
      * rebuild those numbers may address a different row, or nothing.
@@ -3493,7 +3515,9 @@ static int reparse_chtpm_if_changed(void) {
      * call's comment for why it must be before the caller's layout. */
     /* INLINE SPANS step 11: a rebuild also orphans any armed span
      * press (its row may be gone) - the paired release must find
-     * nothing to resolve. */
+     * nothing to resolve. Honest unless the tree is byte-identical to
+     * the one being discarded; restored at this function's end when
+     * kh_tree_digest matches (see the SPANPRESS kept receipt). */
     g_span_pend.active = 0;
     g_n_elems = 0;
     /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
@@ -3725,6 +3749,30 @@ static int reparse_chtpm_if_changed(void) {
         } else {
             kh_focus_debug_log("HOVER content changed (digest %016llx -> %016llx), hover stays dead",
                                saved_hover_digest, now_digest);
+        }
+    }
+    /* INLINE SPANS step 11 (2026-11-04) - the same guard, for the armed
+     * press. If the tree is byte-identical to the discarded one, the
+     * row the press hit still exists at the same geometry and the nav
+     * re-derives identically, so re-arming is exact - the release pairs
+     * exactly as it would if no rebuild had landed. A tree that changed
+     * anything leaves the press orphaned, which is honest: its row may
+     * be gone, may have moved, or may carry a different action. */
+    if (saved_pend_active) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_pend_digest) {
+            g_span_pend.active = 1;
+            g_span_pend.button = saved_pend_button;
+            g_span_pend.px = saved_pend_px; g_span_pend.py = saved_pend_py;
+            g_span_pend.nav = saved_pend_nav; g_span_pend.idx = saved_pend_idx;
+            g_span_pend.dragged = saved_pend_dragged;
+            g_span_pend.two_step_ok = saved_pend_two_step;
+            snprintf(g_span_pend.id, sizeof(g_span_pend.id), "%s", saved_pend_id);
+            kh_focus_debug_log("SPANPRESS kept nav=%d idx=%d (content identical, digest %016llx)",
+                               saved_pend_nav, saved_pend_idx, now_digest);
+        } else {
+            kh_focus_debug_log("SPANPRESS content changed (digest %016llx -> %016llx), armed press stays dead",
+                               saved_pend_digest, now_digest);
         }
     }
     return 1;
@@ -14413,7 +14461,9 @@ static int poll_agent_history(void) {
                      * every relay test and agent keeps working. */
                     int pnav = 0, pidx = -1;
                     char pid[64] = "";
-                    if (span_press_hit(mx, my, &pnav, &pidx, pid, sizeof(pid))) {
+                    int _hit = span_press_hit(mx, my, &pnav, &pidx, pid, sizeof(pid));
+                    kh_focus_debug_log("SPANARM hit=%d px=%d py=%d nav=%d idx=%d prefocus=%d", _hit, mx, my, pnav, pidx, g_focus_nav);
+                    if (_hit) {
                         Elem *row = (pnav >= 1 && pnav <= g_n_nav) ? g_nav[pnav - 1] : NULL;
                         g_span_pend.active = 1;
                         g_span_pend.button = 1;
@@ -14426,6 +14476,7 @@ static int poll_agent_history(void) {
                             (g_window && elem_has_class(g_window, "single-click")) ||
                             (row && g_focus_nav == row->nav_index)) ? 1 : 0;
                         g_span_pend.dragged = 0;
+                        kh_focus_debug_log("SPANARM armed nav=%d idx=%d two_step_ok=%d focusA=%d id=%s", pnav, pidx, g_span_pend.two_step_ok, g_focus_nav, pid);
                         snprintf(g_span_pend.id, sizeof(g_span_pend.id), "%s", pid);
                         if (row) g_focus_nav = row->nav_index;
                         g_seg_nav = pnav; g_seg_idx = pidx; g_seg_anchor = pidx;
@@ -14433,6 +14484,7 @@ static int poll_agent_history(void) {
                         redraw();
                         n++;
                     } else {
+                        kh_focus_debug_log("SPANARM miss px=%d py=%d -> popup_handle_click", mx, my);
                         popup_handle_click(mx, my);
                         n++;
                     }
@@ -14462,10 +14514,12 @@ static int poll_agent_history(void) {
                     if (g_span_pend.active && g_span_pend.button == 1) {
                         int rnav = 0, ridx = -1, was_drag, was_ok;
                         char rid[64] = "";
-                        int same = span_press_hit(mx, my, &rnav, &ridx, rid, sizeof(rid)) &&
+                        int phit = span_press_hit(mx, my, &rnav, &ridx, rid, sizeof(rid));
+                        int same = phit &&
                                    rnav == g_span_pend.nav && ridx == g_span_pend.idx &&
                                    strcmp(rid, g_span_pend.id) == 0 &&
                                    g_focus_nav == g_span_pend.nav;
+                        kh_focus_debug_log("SPANPAIR phit=%d rnav=%d ridx=%d rid=%s deq: pn=%d pi=%d pid=%s same=%d focus=%d", phit, rnav, ridx, rid, g_span_pend.nav, g_span_pend.idx, g_span_pend.id, same, g_focus_nav);
                         was_drag = g_span_pend.dragged;
                         was_ok = g_span_pend.two_step_ok;
                         g_span_pend.active = 0;
