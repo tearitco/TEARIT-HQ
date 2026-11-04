@@ -487,6 +487,10 @@ static int g_dock_dd_drag = 0;   /* 1 while button 1 drags the thumb / track of 
  * the in-window dropdowns (pc-hq tabs). Live: the loader re-runs on the hq_ui_pdl_changed marker. Debug sheet:
  * 08-roadmap/design-docs/DROPDOWN-SCROLL-DEBUG-SHEET.md. */
 static int g_dropdown_max_rows = 0;
+/* POINTER MARKER (owner 2026-11-04: "there should also be a light/cursor on screen where the mouse is; and we will work together to calibrate mouse position"): hq_ui.pdl
+ * `show_pointer=1` draws a crosshair + ring at the live pointer over a <canvas>, and a small square at the last click this window published (the numbers the 3D engine picks
+ * from). OFF by default: it costs one redraw per ~2 px of pointer travel over the canvas while on. */
+static int g_show_pointer = 0, g_ptr_x = -1, g_ptr_y = -1, g_last_click_x = -1, g_last_click_y = -1;
 /* Long dock dropdown furniture: a DD_STRIP_W-wide strip right of the rows holds numbered ^ / v arrows (nav items, like the
  * generic scrollbar's) at its ends and the thumb track between them. */
 #define DD_STRIP_W 62
@@ -5770,6 +5774,22 @@ static int kh_sbar_under_dropdown(int i) {
     return 0;
 }
 
+static void kh_draw_pointer_marker(void) {
+    if (!g_show_pointer) return;
+    XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+    if (g_last_click_x >= 0) {      /* the last published click: an orange square (where the engine thinks you clicked) */
+        XSetForeground(dpy, gc, alloc_pixel("#ff8800")); XDrawRectangle(dpy, buf, gc, g_last_click_x - 5, g_last_click_y - 5, 10, 10);
+    }
+    if (g_ptr_x >= 0) {      /* the live pointer: crosshair + ring, black under magenta so it reads on any picture */
+        for (int pass = 0; pass < 2; pass++) {
+            XSetForeground(dpy, gc, alloc_pixel(pass ? "#ff40ff" : "#000000")); int o = pass ? 0 : 1;
+            XDrawLine(dpy, buf, gc, g_ptr_x - 14 + o, g_ptr_y + o, g_ptr_x + 14 + o, g_ptr_y + o);
+            XDrawLine(dpy, buf, gc, g_ptr_x + o, g_ptr_y - 14 + o, g_ptr_x + o, g_ptr_y + 14 + o);
+            XDrawArc(dpy, buf, gc, g_ptr_x - 8 + o, g_ptr_y - 8 + o, 16, 16, 0, 360 * 64);
+        }
+    }
+}
+
 static void draw_generic_scrollbars(void) {
     int i;
     for (i = 0; i < g_n_generic_sbars; i++) {
@@ -9264,6 +9284,7 @@ static void kh_publish_canvas_click(int px, int py, int button) {
     Elem *cv = kh_canvas_at(px, py);
     if (!cv || cv->w < 1 || cv->h < 1) return;
     int cx = px - cv->x, cy = py - cv->y;
+    g_last_click_x = px; g_last_click_y = py;
     char path[PATH_BUF];
     history_path(path, sizeof(path));
     FILE *f = fopen(path, "a");
@@ -12760,6 +12781,7 @@ static void redraw_body(void) {
             }
         }
         draw_generic_scrollbars();
+        kh_draw_pointer_marker();
         if (window_is_dock()) dock_draw_separators(page);
         /* Drop-hover UX: fill already used drop color for the file
          * area; paint a dashed frame + name on TOP of the list so it
@@ -16089,6 +16111,13 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
+    if (ev->type == MotionNotify && g_show_pointer && !(ev->xmotion.state & Button1Mask)) {      /* pointer marker: follow the pointer over a canvas, one redraw per >= 2 px */
+        XEvent mp; while (XCheckTypedWindowEvent(dpy, ev->xmotion.window, MotionNotify, &mp)) *ev = mp;
+        int nx = ev->xmotion.x, ny = ev->xmotion.y, over = kh_canvas_hit(nx, ny);
+        if (!over) nx = ny = -1;
+        if ((nx < 0) != (g_ptr_x < 0) || abs(nx - g_ptr_x) >= 2 || abs(ny - g_ptr_y) >= 2) { g_ptr_x = nx; g_ptr_y = ny; if (!g_quit) redraw(); }
+        return;
+    }
     if (ev->type == MotionNotify && g_canvas_drag && (ev->xmotion.state & Button1Mask)) {
         /* xelector follows a canvas drag (owner 2026-10-06): publish the pointer as a click while button 1 is still held (checked from the event state, the release may land outside
          * the window). Coalesced, and only after the pointer moved >= 6 px, so the raycast consumer (it re-reads pchq_canvas_click.txt on change) is not flooded. */
@@ -17004,6 +17033,7 @@ static void desktop_load_click_two_step(const char *house_root) {
     if (!f) return;
     char line[128];
     g_dropdown_max_rows = 0;   /* key removed from the pdl = back to screen-limited */
+    g_show_pointer = 0;
     g_sbar_track = -1;         /* key removed = auto */
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
@@ -17022,6 +17052,7 @@ static void desktop_load_click_two_step(const char *house_root) {
         else if (strcmp(line, "sound_ui") == 0) g_sound_ui = atoi(val) != 0;
         else if (strcmp(line, "sound_relay") == 0) g_sound_relay = atoi(val) != 0;
         else if (strcmp(line, "dropdown_max_rows") == 0) g_dropdown_max_rows = atoi(val) >= 3 ? atoi(val) : 0;
+        else if (strcmp(line, "show_pointer") == 0) g_show_pointer = atoi(val) > 0;
         /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
          * toggle for the incremental reparse path, OFF (0) unless this
          * key is present and non-zero. A real PDL key, not a
