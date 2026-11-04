@@ -734,10 +734,12 @@ static int trim_tail(const char *path, long cap, long keep) {
     char *b = malloc((size_t)keep + 1); if (!b) { fclose(f); return 0; } size_t n = fread(b, 1, (size_t)keep, f); fclose(f); b[n] = 0; char *nl = memchr(b, '\n', n); char *st2 = nl ? nl + 1 : b;
     char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *o = fopen(tmp, "w"); int ok = 0; if (o) { fwrite(st2, 1, n - (size_t)(st2 - b), o); fclose(o); ok = rename(tmp, path) == 0; } free(b); return ok; }
 static void trim_debug_logs(void) {
-    char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/@.apps", house); DIR *d = opendir(ap); int n = 0; char p[PATH_MAX + 300];
+    char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/@.apps", house); DIR *d = opendir(ap); int n = 0, nl = 0; char p[PATH_MAX + 300];
     snprintf(p, sizeof p, "%s/_.monads/_.livedesk-taskbar/kh_focus_debug.log", house); n += trim_tail(p, 1024 * 1024, 128 * 1024);
-    if (d) { struct dirent *e; while ((e = readdir(d))) { if (e->d_name[0] == '.') continue; snprintf(p, sizeof p, "%s/%s/board/kh_focus_debug.log", ap, e->d_name); n += trim_tail(p, 1024 * 1024, 128 * 1024); snprintf(p, sizeof p, "%s/%s/kh_focus_debug.log", ap, e->d_name); n += trim_tail(p, 1024 * 1024, 128 * 1024); } closedir(d); }
+    if (d) { struct dirent *e; while ((e = readdir(d))) { if (e->d_name[0] == '.') continue; snprintf(p, sizeof p, "%s/%s/board/kh_focus_debug.log", ap, e->d_name); n += trim_tail(p, 1024 * 1024, 128 * 1024); snprintf(p, sizeof p, "%s/%s/kh_focus_debug.log", ap, e->d_name); n += trim_tail(p, 1024 * 1024, 128 * 1024);
+            snprintf(p, sizeof p, "%s/%s/state/clock_root/#.desktop/clocks/schedule_ledger.txt", ap, e->d_name); nl += trim_tail(p, 1024 * 1024, 128 * 1024); } closedir(d); }      /* a game clock that is not running cannot compact its own ledger (lc_clock does it at 256 KB while running): the recurrence cursor is the LAST row per reminder id, which the tail keeps */
     if (n) logf_("HYGIENE | trimmed %d window debug log(s) past 1 MB to their last 128 KB (kh_focus_debug.log: the writer-side cap did not hold)", n);
+    if (nl) logf_("HYGIENE | trimmed %d clock schedule_ledger.txt file(s) past 1 MB to their last 128 KB (dormant game clocks)", nl);
     snprintf(p, sizeof p, "%s/#.desktop/active_session.pdl", house); struct stat st; if (lstat(p, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 16 * 1024 && unlink(p) == 0) logf_("HYGIENE | active_session.pdl was %ld bytes (cap 16 KB): removed, hai_op rewrites it", (long)st.st_size); }
 static void hygiene_sweep(void) {
     trim_debug_logs();

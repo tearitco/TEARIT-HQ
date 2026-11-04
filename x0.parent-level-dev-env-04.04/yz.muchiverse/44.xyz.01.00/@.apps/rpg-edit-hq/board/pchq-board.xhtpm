@@ -77,6 +77,10 @@
       <item id="tm-hour" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: real time" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate hour"/>
       <item id="tm-adv1h" class="pchq-menu-row dropdown-child " target_id="tb-time" label="skip +1 hour" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock advance 1h"/>
       <item id="tm-adv1d" class="pchq-menu-row dropdown-child " target_id="tb-time" label="skip +1 day" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock advance 1d"/>
+      <item id="tm-start" class="pchq-menu-row dropdown-child " target_id="tb-time" label="clock: start / resume" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock start"/>
+      <item id="tm-stop" class="pchq-menu-row dropdown-child " target_id="tb-time" label="clock: pause" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock stop"/>
+      <item id="tm-adv10m" class="pchq-menu-row dropdown-child " target_id="tb-time" label="skip +10 minutes" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock advance 10m"/>
+      <item id="tm-adv6h" class="pchq-menu-row dropdown-child " target_id="tb-time" label="skip +6 hours" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock advance 6h"/>
       <item id="tm-reinst" class="pchq-menu-row dropdown-child " target_id="tb-time" label="reinstall schedule" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock reinstall"/>
       <item id="tm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-time" label="- cancel -" action="void"/>
     </sidebar>

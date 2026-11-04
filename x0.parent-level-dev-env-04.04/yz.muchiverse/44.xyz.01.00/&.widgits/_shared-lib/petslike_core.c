@@ -844,8 +844,17 @@ static int turn_mode(void) { return flag_on("int", 0) && rogue_mode(); }
 static void clock_sync(void) { clock_paths(); clock_pause(!run_on() || turn_mode()); }
 static void clock_start(void) { clock_paths(); if (!clock_ok()) return; clock_install(); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_sync(); lc_run(1, "daemon-start", NULL); clock_ui(); }
 static void clock_stop(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; lc_run(0, "cmd", "rpg", "pause", "--source", "rpg-stop", NULL); usleep(1000000); lc_run(0, "daemon-stop", NULL); }
+/* Is this game's resident clock daemon running? (lc_clock <root> daemon ...). The daemon fires due reminders ONCE, with its event runner; a verb that skips time must not fire them a second time, and when there is no daemon
+ * (Menu > Time > stop ends it) one runner-equipped step from the verb is the only thing that can fire them. 2026-11-04. */
+static int clock_daemon_alive(void) {
+    DIR *d = opendir("/proc"); if (!d) return 0; struct dirent *e; int found = 0;
+    while (!found && (e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; char pp[64], cl[1500]; snprintf(pp, sizeof pp, "/proc/%s/cmdline", e->d_name); FILE *f = fopen(pp, "r"); if (!f) continue; size_t n = fread(cl, 1, sizeof cl - 1, f); fclose(f);
+        for (size_t i = 0; i < n; i++) if (!cl[i]) cl[i] = ' '; cl[n] = 0; if (strstr(cl, "lc_clock") && strstr(cl, " daemon") && strstr(cl, CROOT)) found = 1; }
+    closedir(d); return found; }
+/* after a verb advanced the clock: the resident daemon fires the due events by itself; with no daemon, fire them now (runner env set by lc_run(1, ...)) */
+static void clock_fire_due(void) { if (!clock_daemon_alive()) lc_run(1, "step", "5", NULL); }
 /* a roguelike turn's worth of game time: advance, then one deterministic pass so reminders fire now (no daemon wait) */
-static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; char t[32]; turn_str(t, sizeof t); lc_run(0, "cmd", "rpg", "advance", t, "--source", "rpg-turn", NULL); lc_run(0, "step", "5", NULL); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_ui(); }
+static void clock_turn(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; char t[32]; turn_str(t, sizeof t); lc_run(0, "cmd", "rpg", "advance", t, "--source", "rpg-turn", NULL); clock_fire_due(); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_ui(); }
 
 /* ---------- outputs ---------- */
 #define PET_SECTION 25
@@ -1499,7 +1508,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); snprintf(msg, cap, on ? "INT on: you control %s - turn based like a roguelike, time moves when you act, the other pets act on their own, Tab switches pet/player, Esc leaves" : "INT off: real time, every pet lives on its own", !strcmp(cc, "player") ? "the player" : party[active].name); } return; }
     if (!strcmp(v, "clock") && argc >= 2) { clock_paths(); if (!clock_ok()) { snprintf(msg, cap, "no LyfeDesk clock binary"); return; } clock_install();
         if (!strcmp(argv[1], "rate") && argc >= 3 && lc_amount_ok(argv[2])) { lc_run(0, "cmd", "rpg", "rate", argv[2], "--source", "rpg-menu", NULL); snprintf(msg, cap, "clock speed %s (real time mode)", argv[2]); }
-        else if (!strcmp(argv[1], "advance") && argc >= 3 && lc_amount_ok(argv[2])) { lc_run(0, "cmd", "rpg", "advance", argv[2], "--source", "rpg-menu", NULL);      /* no `step` here (2026-11-04): a step run by this verb has no event runner (SCHED|..|fail, the page never ran) and, if it had one, it would fire the same occurrences a second time next to the resident clock daemon, which fires them once with the runner. The daemon picks the advance up on its next poll. */ long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); snprintf(msg, cap, "skipped %s", argv[2]); }
+        else if (!strcmp(argv[1], "advance") && argc >= 3 && lc_amount_ok(argv[2])) { lc_run(0, "cmd", "rpg", "advance", argv[2], "--source", "rpg-menu", NULL); clock_fire_due();      /* the resident daemon fires them once; only without a daemon does the verb step (2026-11-04): a step run by this verb has no event runner (SCHED|..|fail, the page never ran) and, if it had one, it would fire the same occurrences a second time next to the resident clock daemon, which fires them once with the runner. The daemon picks the advance up on its next poll. */ long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); snprintf(msg, cap, "skipped %s", argv[2]); }
         else if (!strcmp(argv[1], "start")) { clock_start(); snprintf(msg, cap, "clock started"); } else if (!strcmp(argv[1], "stop")) { clock_stop(); snprintf(msg, cap, "clock stopped"); }
         else if (!strcmp(argv[1], "reinstall")) { lc_run(0, "daemon-stop", NULL); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/.schedule_installed", CROOT); remove(q); clock_install(); lc_run(1, "daemon-start", NULL); snprintf(msg, cap, "schedule reinstalled"); }
         clock_ui(); return; }
