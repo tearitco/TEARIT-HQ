@@ -1,7 +1,4 @@
-# event.pal - written by the presentation harness (4 walk steps); edit event.ir.pdl
+# event.pal - written by the presentation harness (one goto node); edit event.ir.pdl
 # pkg=demo_automove page=page_1
 exec cmd_1.sh
-exec cmd_2.sh
-exec cmd_3.sh
-exec cmd_4.sh
 halt

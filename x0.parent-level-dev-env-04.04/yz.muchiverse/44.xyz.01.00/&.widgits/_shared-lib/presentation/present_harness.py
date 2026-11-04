@@ -13,11 +13,12 @@ Step vocabulary (all verified on 2026-11-04 except where noted):
   note|text                          caption-only marker, no frame
   book|<name>                        switch the board's book (pchq_board_action.sh load-map); waits for world_01 map_id
   verb|<verb> [args...]              run rpg_edit_hq.+x <verb> args (place item x y, voxel x y, goto room, control pet, walk, ...)
-  drive|N                            N x `walk` verb steps of the controlled pet (the "drive N" move)
+  drive|N                            N x `walk` verb steps (a pet that is blocked only bumps its step counter: use goto + moved for a visible move)
   armtile|kind|set|group|row_y       pal_side picks the tile list, then a relay click on the tile row at window y=row_y (default 265)
   xclick|x|y                         a REAL X click inside the board window (the only click that reaches the 3D canvas)
   keys|text                          engine keys through bv_keys ( \\n = Enter, \\e = Esc )
   event|name[|trigger]               play events/<name> through events-hq play_event.sh (default trigger ui)
+  mark|name / moved|name             remember the controlled pet's room,x,y / assert it changed since the mark
   wait|seconds
   expect|file|substring              (\\p = a literal | inside a field) file is relative to the app dir (state/..., or board/state/...); the step fails when the text is absent
   shot|name|caption                  window PNG -> snapshots/NN_name.png + a manifest row (hold = 6 s, narrated)
@@ -69,6 +70,9 @@ class Harness:
         os.makedirs(self.snaps, exist_ok=True)
         self.had_house = os.path.exists(os.path.join(APP, "state", "house.txt"))
         self.voxel_bak = rd(os.path.join(APP, "state", "voxel_log.txt"))
+        self.ids0 = self.placed_ids()
+    def placed_ids(self):
+        return {l.split("|")[1] for l in rd(os.path.join(APP, "state", "house.txt")).splitlines() if l.startswith("PLACE|") and l.count("|") > 1}
     def say(self, m): self.log.append(m); print(m, flush=True)
 
     def op(self, name, a):
@@ -116,6 +120,18 @@ class Harness:
         r = subprocess.run(["bash", pl, os.path.join(APP, "events", name), HOUSE, trig], capture_output=True, text=True, env=env, timeout=60)
         time.sleep(2); self.say("event %s (%s) rc=%d" % (name, trig, r.returncode))
         if r.returncode != 0: raise Fail("event %s failed rc=%d" % (name, r.returncode))
+    def petpos(self):
+        """room,x,y of the controlled character: state/pet_<active>.txt (state/active.txt names it; `goto <room>` changes it, `walk` only bumps a step counter when the pet is blocked)"""
+        act = (rd(os.path.join(APP, "state", "active.txt")).split() or ["?"])[0]
+        t = rd(os.path.join(APP, "state", "pet_%s.txt" % act)); g = lambda k: next((l.split("=", 1)[1] for l in t.splitlines() if l.startswith(k + "=")), "?")
+        return "%s@%s,%s,%s" % (act, g("room"), g("x"), g("y"))
+    def op_mark(self, nm):
+        self.marks = getattr(self, "marks", {}); self.marks[nm] = self.petpos(); self.say("mark %s = %s" % (nm, self.marks[nm]))
+    def op_moved(self, nm):
+        now, was = self.petpos(), getattr(self, "marks", {}).get(nm)
+        if was is None: raise Fail("moved: no mark named " + nm)
+        if now == was: raise Fail("moved: the controlled pet is still at %s since mark %s" % (now, nm))
+        self.say("moved ok: %s -> %s" % (was, now))
     def op_wait(self, s): time.sleep(float(s))
     def op_expect(self, f, sub):
         p = os.path.join(APP, f)
@@ -143,6 +159,8 @@ class Harness:
             if self.restore and not self.dry:
                 try:
                     hp = os.path.join(APP, "state", "house.txt")
+                    for i in sorted(self.placed_ids() - self.ids0): run([EDIT, "remove", i]); self.say("removed the test item #" + i)      # the daemon keeps its own list: take the items out in-game first
+                    time.sleep(4)
                     if not self.had_house:      # remove it BEFORE the load: the load replays house.txt into the daemon's own list, and a leftover row would be written back
                         try: os.remove(hp)
                         except OSError: pass
