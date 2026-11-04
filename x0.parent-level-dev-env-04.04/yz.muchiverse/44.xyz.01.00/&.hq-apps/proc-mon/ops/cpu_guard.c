@@ -726,7 +726,21 @@ static int clear_stale_label(const char *path, int writer_alive) {
     if (writer_alive) return 0; FILE *f = fopen(path, "r"); if (!f) return 0; char ln[128]; int has = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "load_label=", 11) && ln[11] != '\n' && ln[11] != 0) has = 1; fclose(f);
     if (!has) return 0; char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *o = fopen(tmp, "w"); if (!o) return 0; fputs("load_label=\nload_ok=\nload_warn=\n", o); fclose(o); return rename(tmp, path) == 0;
 }
+/* Second guard for files with a writer-side cap (RUNTIME-FILE-GROWTH-STANDARD.md): if one is past `cap` bytes the writer's cap failed (old binary, dead trim): keep the last `keep` bytes, line aligned.
+ * 2026-11-04: window debug logs (kh_focus_debug.log, 16 MB seen) and the h-ai active-session pointer (derived data: past 16 KB it is simply removed, hai_op rewrites it). Returns 1 when it acted. */
+static int trim_tail(const char *path, long cap, long keep) {
+    struct stat st; if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= cap) return 0;
+    FILE *f = fopen(path, "r"); if (!f) return 0; if (fseek(f, -keep, SEEK_END) != 0) { fclose(f); return 0; }
+    char *b = malloc((size_t)keep + 1); if (!b) { fclose(f); return 0; } size_t n = fread(b, 1, (size_t)keep, f); fclose(f); b[n] = 0; char *nl = memchr(b, '\n', n); char *st2 = nl ? nl + 1 : b;
+    char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *o = fopen(tmp, "w"); int ok = 0; if (o) { fwrite(st2, 1, n - (size_t)(st2 - b), o); fclose(o); ok = rename(tmp, path) == 0; } free(b); return ok; }
+static void trim_debug_logs(void) {
+    char ap[PATH_MAX]; snprintf(ap, sizeof ap, "%s/@.apps", house); DIR *d = opendir(ap); int n = 0; char p[PATH_MAX + 300];
+    snprintf(p, sizeof p, "%s/_.monads/_.livedesk-taskbar/kh_focus_debug.log", house); n += trim_tail(p, 1024 * 1024, 128 * 1024);
+    if (d) { struct dirent *e; while ((e = readdir(d))) { if (e->d_name[0] == '.') continue; snprintf(p, sizeof p, "%s/%s/board/kh_focus_debug.log", ap, e->d_name); n += trim_tail(p, 1024 * 1024, 128 * 1024); snprintf(p, sizeof p, "%s/%s/kh_focus_debug.log", ap, e->d_name); n += trim_tail(p, 1024 * 1024, 128 * 1024); } closedir(d); }
+    if (n) logf_("HYGIENE | trimmed %d window debug log(s) past 1 MB to their last 128 KB (kh_focus_debug.log: the writer-side cap did not hold)", n);
+    snprintf(p, sizeof p, "%s/#.desktop/active_session.pdl", house); struct stat st; if (lstat(p, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 16 * 1024 && unlink(p) == 0) logf_("HYGIENE | active_session.pdl was %ld bytes (cap 16 KB): removed, hai_op rewrites it", (long)st.st_size); }
 static void hygiene_sweep(void) {
+    trim_debug_logs();
     { char lp[PATH_MAX]; snprintf(lp, sizeof lp, "%s/#.desktop/load_state.txt", house); if (clear_stale_label(lp, comm_alive("khtpm_taskbar_m"))) logf_("HYGIENE | load_state.txt held a label but no taskbar manager is running: cleared (a dead writer must not show a number)"); }
     char dir[PATH_MAX + 32];
     snprintf(dir, sizeof dir, "%s/#.desktop/ascii_frames", house);

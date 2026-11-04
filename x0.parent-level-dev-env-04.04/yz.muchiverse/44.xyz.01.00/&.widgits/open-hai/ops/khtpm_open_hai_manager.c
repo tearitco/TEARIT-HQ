@@ -340,7 +340,7 @@ static void publish_sessions(void) {
  * tested against a real key yet. See au11-hq/openrouter-integration-
  * handoff.md for the full real status + exact next steps for whoever
  * picks this up. */
-typedef enum { BACKEND_OLLAMA_RAW = 0, BACKEND_AGENT45_LEGACY = 1, BACKEND_HARNECIENT = 2, BACKEND_OPENROUTER = 3, BACKEND_TOKENROUTER = 4 } BackendMode;
+typedef enum { BACKEND_OLLAMA_RAW = 0, BACKEND_AGENT45_LEGACY = 1, BACKEND_HARNECIENT = 2, BACKEND_OPENROUTER = 3, BACKEND_TOKENROUTER = 4, BACKEND_GROQ = 5 } BackendMode;
 typedef struct { const char *name; BackendMode mode; } ModelEntry;
 /* REAL 2026-08-16, direct instruction ("i wanna make sure they work...
  * make sure we can get the models going"): both real keys confirmed
@@ -407,6 +407,9 @@ static const ModelEntry g_models[] = {
      * finish_reason:"tool_calls" on first try. */
     { "nvidia/nemotron-3-ultra-550b-a55b:free", BACKEND_OPENROUTER },
     { "poolside/laguna-s-2.1:free", BACKEND_OPENROUTER },
+    /* 2026-11-04: Groq (OpenAI-compatible, free tier 1000 req/day, 8000 tok/min; key in state/raw_groq.txt, gitignored). The "groq:" prefix only selects the backend, it is not sent. */
+    { "groq:openai/gpt-oss-20b", BACKEND_GROQ },
+    { "groq:openai/gpt-oss-120b", BACKEND_GROQ },
     { "dots-studio/dots-3-note-preview:free", BACKEND_OPENROUTER }
 };
 static const int g_n_models = sizeof(g_models) / sizeof(g_models[0]);
@@ -1127,6 +1130,27 @@ static void send_to_tokenrouter(const char *prompt, const char *model_name) {
     }
 }
 
+/* 2026-11-04: Groq backend. Same shape as send_to_openrouter() minus the tools array, but its own key file and URL; the reply is OpenAI-compatible, so it is parsed by the OpenRouter branch
+ * (g_pending_backend_mode is set to BACKEND_OPENROUTER on purpose). The key is read from state/raw_groq.txt and handed to curl in its own argv (as the OpenRouter path does). */
+static void send_to_groq(const char *prompt, const char *model_name) {
+    if (g_pending) { persist_msg(0, "[dropped: previous request to this model is still in flight - wait for it, or switch models to cancel it]"); return; }
+    char kp[PATH_BUF], key[300] = ""; snprintf(kp, sizeof(kp), "%s/&.widgits/open-hai/state/raw_groq.txt", g_house_root);
+    FILE *kf = fopen(kp, "r"); if (kf) { if (fgets(key, sizeof(key), kf)) key[strcspn(key, "\r\n ")] = 0; fclose(kf); }
+    if (strncmp(key, "gsk_", 4) != 0) { persist_msg(0, "[error: no Groq API key - put it in &.widgits/open-hai/state/raw_groq.txt]"); return; }
+    char esc[MSG_LEN * 2 + 4096]; escape_json_string(prompt, esc, sizeof(esc));
+    char payload_path[PATH_BUF]; snprintf(payload_path, sizeof(payload_path), "%s/gq-payload-%d.json", g_audit_dir, (int)getpid());
+    FILE *pf = fopen(payload_path, "w"); if (!pf) return;
+    fprintf(pf, "{\"model\":\"%s\",\"max_tokens\":700,\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}]}", model_name, esc); fclose(pf);
+    snprintf(g_pending_outfile, sizeof(g_pending_outfile), "%s/or-response-%d.json", g_audit_dir, (int)getpid()); unlink(g_pending_outfile);
+    pid_t pid = fork();
+    if (pid == 0) {
+        int fd = open(g_pending_outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) { dup2(fd, 1); close(fd); }
+        char auth_hdr[400]; snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s", key); char data_arg[PATH_BUF + 2]; snprintf(data_arg, sizeof(data_arg), "@%s", payload_path);
+        execlp("nice", "nice", "-n", "10", "curl", "-s", "-m", "60", "-X", "POST", "https://api.groq.com/openai/v1/chat/completions", "-H", "Content-Type: application/json", "-H", auth_hdr, "-d", data_arg, (char *)NULL);
+        _exit(127);
+    } else if (pid > 0) { g_pending = 1; g_pending_pid = pid; g_pending_backend_mode = BACKEND_OPENROUTER; snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name); write_busy_state(); }
+}
+
 static void extract_tokenrouter_content(const char *json, char *out, size_t outsz) {
     /* real key with the space TokenRouter's own JSON formatting uses -
      * see this file's own send_to_tokenrouter() header comment point 2.
@@ -1827,6 +1851,7 @@ static void dispatch_send(const char *prompt) {
     if (backend_mode == BACKEND_AGENT45_LEGACY) { send_to_agent45(prompt); return; }
     if (backend_mode == BACKEND_OPENROUTER) { send_to_openrouter(prompt, model_name); return; }
     if (backend_mode == BACKEND_TOKENROUTER) { send_to_tokenrouter(prompt, model_name); return; }
+    if (backend_mode == BACKEND_GROQ) { send_to_groq(prompt, model_name + (strncmp(model_name, "groq:", 5) == 0 ? 5 : 0)); return; }
     send_to_ollama(prompt);
 }
 
