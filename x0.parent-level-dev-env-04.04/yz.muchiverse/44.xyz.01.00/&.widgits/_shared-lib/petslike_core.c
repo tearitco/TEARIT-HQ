@@ -1206,6 +1206,24 @@ static void follow_pchq(void) {
         for (int k = 0; k < 3; k++) { snprintf(cp[k], sizeof cp[k], "%s/%s", HOUSE, cand[k]); cpp[k] = cp[k]; }
         pet_nudge(cpp, 3); }
 }
+/* LAMPS (2026-11-04, lifted from rpg-edit-hq so every skin has it; opt-in by a <app>/lamps.pdl file): while state/lamps_on.txt is 1, each placed item named in
+   lamps.pdl (`LAMP | item_key | r | g | b | radius | strength | z`) becomes one LIGHT row of the room's lights.pdl (the engine adds it on top of the sun, at most 8 per room).
+   A skin that writes its own lights.pdl (rpg-dust, rpg-space) keeps its rows: ours are appended. lights.lamps is a copy of what WE wrote, so lamps off removes lights.pdl
+   only when it still equals that copy (never a skin's own file). No lamps.pdl = nothing happens. */
+static void lamps_export_room(int r, const char *d) {
+    char ap[PATH_MAX], lp[PATH_MAX], on[8] = "", out[2048] = "", p[PATH_MAX], side[PATH_MAX], ln[256]; size_t o = 0; int nl = 0;
+    snprintf(ap, sizeof ap, "%s/lamps.pdl", APP); FILE *lf = fopen(ap, "r"); if (!lf) return;
+    spath(lp, "lamps_on.txt"); read_file(lp, on, sizeof on);
+    snprintf(p, sizeof p, "%s/lights.pdl", d); snprintf(side, sizeof side, "%s/lights.lamps", d);
+    if (on[0] == '1') while (fgets(ln, sizeof ln, lf) && nl < 8) { char *fl[10]; int n = split_bar(ln, fl, 10); if (n < 8 || ln[0] == '#' || strcmp(fl[0], "LAMP")) continue;
+        for (int i = 0; i < npl && nl < 8; i++) if (pl[i].room == r && !strcmp(cat[pl[i].item].key, fl[1])) {
+            o += (size_t)snprintf(out + o, sizeof out - o, "LIGHT | %d | %d | %s | %s | %s | %s | %s | %s\n", pl[i].x, pl[i].y, fl[7], fl[5], fl[2], fl[3], fl[4], fl[6]); nl++; } }
+    fclose(lf);
+    char cur[4096], mine[4096]; read_file(p, cur, sizeof cur); read_file(side, mine, sizeof mine);
+    if (nl) { char all[6144]; snprintf(all, sizeof all, "%s%s", (mine[0] && !strcmp(cur, mine)) ? "" : cur, out);      /* a skin's own rows stay; our previous rows are replaced */
+        FILE *f = fopen_tmp(p); if (f) { fputs(all, f); fclose_tmp(f, p); } f = fopen_tmp(side); if (f) { fputs(out, f); fclose_tmp(f, side); } }
+    else if (mine[0] && !strcmp(cur, mine)) { remove(p); remove(side); }
+}
 static void export3d(char *msg, size_t cap) {
     char root[PATH_MAX], d[PATH_MAX], p[PATH_MAX]; snprintf(root, sizeof root, "%s/pieces/system/maps/" PET_APP "", PCHQ);
     { char a[PATH_MAX]; snprintf(a, sizeof a, "%s/pieces/system/maps", PCHQ); mkdir(a, 0755); } mkdir(root, 0755);
@@ -1251,6 +1269,7 @@ static void export3d(char *msg, size_t cap) {
         snprintf(p, sizeof p, "%s/cells.txt", d); { FILE *f = fopen_tmp(p); if (f) { fprintf(f, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\ncells\n", COLS, ROWS, XT, nslot); for (int y = 0; y < ROWS; y++) { for (int x = 0; x < COLS; x++) fprintf(f, "%s%d,%d", x ? " " : "", fs[y][x], ws[y][x]); fputc('\n', f); } fclose_tmp(f, p); } }
         write_room_events(r); write_room_png(r);
 #endif
+        lamps_export_room(r, d);
     }
     snprintf(p, sizeof p, "%s/game.pdl", root); { FILE *f = fopen_tmp(p); if (f) { fputs(gl, f); fclose_tmp(f, p); } }
     snprintf(msg, cap, "exported %d rooms as a pc-hq book: maps/" PET_APP " (open it in pc-hq: Desk > " PET_APP ", then 1-4 / 0 for 3D)", nroom);
@@ -1475,6 +1494,9 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         }
         return;
     }
+    if (!strcmp(v, "lamps") && argc >= 2) {      /* lamps on|off (2026-11-04): rewrites the 3D book so the engine reads the rooms' lights.pdl (see lamps_export_room) */
+        int on = !strcmp(argv[1], "on"); char lp[PATH_MAX]; spath(lp, "lamps_on.txt"); FILE *lf = fopen(lp, "w"); if (lf) { fputs(on ? "1\n" : "0\n", lf); fclose(lf); }
+        char em[200]; export3d(em, sizeof em); snprintf(msg, cap, "lamps %s", on ? "on" : "off"); turn_taken = 0; return; }
     if (!strcmp(v, "export3d")) { export3d(msg, cap); return; }
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();
