@@ -125,7 +125,7 @@
         <text label="${chat_4}" class="rp-chat ov-line"/>
         <text label="${chat_5}" class="rp-chat ov-line"/>
         <item id="chat-clear" class="pchq-ft skin-bar" label="clear chat" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatclear"/>
-        <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${PKG}/ops/+x/rpg_edit_hq.+x'"/>
+        <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
         <text label="${hb_title}" class="hb-quiet ov-title theme-3"/>

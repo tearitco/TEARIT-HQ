@@ -279,7 +279,8 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon */
     signal(SIGPIPE, SIG_IGN);      /* a closed pipe / dead child must never kill a verb or the daemon */
     snprintf(ST, sizeof ST, "%s/state", APP); mkdir(ST, 0755); sn_init(&g_sn, ST);
-    if (mode == 0 && argc >= 4 && is_dir(argv[1]) && argv[3][0] && argv[3][0] != '/') {      /* the chat box: in h-ai / network mode its text is not a pet line (a leading / still runs a verb) */
+    if (mode == 0 && argc >= 4 && is_dir(argv[1]) && (!strcmp(argv[3], "/apply") || !strcmp(argv[3], "/no"))) { char cm0[16]; flag_str("chatmode", "edit", cm0, sizeof cm0); if (!strcmp(cm0, "hai")) { vargv[0] = strcmp(argv[3], "/no") ? "apply" : "no"; vargc = 1; } }      /* in the h-ai pane /apply and /no answer a proposal */
+    else if (mode == 0 && argc >= 4 && is_dir(argv[1]) && argv[3][0] && argv[3][0] != '/') {      /* the chat box: in h-ai / network mode its text is not a pet line (a leading / still runs a verb) */
         char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); static char full[300];
         if (!strcmp(cm, "hai")) { snprintf(full, sizeof full, "%s", argv[3]); vargv[0] = "haisay"; vargv[1] = full; vargc = 2; }
         else if (!strcmp(cm, "network")) { vargv[0] = "netsay"; vargc = 1; } }
