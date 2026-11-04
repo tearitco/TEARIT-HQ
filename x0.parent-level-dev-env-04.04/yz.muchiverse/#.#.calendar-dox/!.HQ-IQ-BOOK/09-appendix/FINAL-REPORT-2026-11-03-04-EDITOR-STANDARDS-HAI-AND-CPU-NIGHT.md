@@ -43,8 +43,8 @@ Legend: **VERIFIED** = observed in a fresh run; **STATE-LEVEL** = driven through
 11. `usleep` implicitly declared in `pal_side.c`; `spawn_lint` blind to `setsid` in C strings.
 
 ## 3. Open problems and honest limits
-- Not driven by mouse/relay in the window: the new Time menu rows; the palette kinds other than CDDA/RPG Maker; a turn that crosses a scheduled time in INT mode.
-- The 11 other skins' binaries are not rebuilt; they still behave the old way until rebuilt (and their load line change is unrun).
+- Not driven in the window: the palette kinds other than CDDA (state level only); a turn that crosses a scheduled time in INT mode; anything with the real pointer.
+- The 11 other skins are rebuilt (fix in every binary); the save/load clock round trip ran on rpg-pet, rpg-dust, rpg-space, rpg-pvp-hq (restored exactly), not on the other seven. rpg-dust's clock is 1 h ahead from a pre-fix test.
 - Speech never heard (sink volume).
 - `open-hai` answers are read-only; markdown `**` and one missing glyph show in its font.
 - The pet-chat command `fire <verb>` from a bare shell is read as chat text.
@@ -58,5 +58,5 @@ Legend: **VERIFIED** = observed in a fresh run; **STATE-LEVEL** = driven through
 ## 5. Test guide (short; the long one is in the handoff)
 Gate every round (`cpu_gate check`). Editor: relaunch through `cpu_gate run`, tap the chat field, type, Enter; `/help`. Delegated task: type the dawn request, `/apply`, run `play_event.sh events/phase_dawn <house> clock` or advance the clock past 06:00. Toolbar h-ai: `@editor which room am I in?`; negative: swap the pointer for a dead-pid row. Save/load: `save 8`, change the room and clock, `load 8`, check trainer and `clock_ms`. Restore: palette `_active` files by md5, the pointer file, `sessions/model.txt` (gemma3:1b).
 
-## 6. Mouse (not started)
-See the assessment given at the end of the session: sidebar rows, palette tiles, prev/next, the chat input and the clock rows are the click targets; relay `MOUSE_EVENT` first, real pointer after.
+## 6. Mouse (done with the relay; real pointer still to do)
+Relay clicks drove the Time menu rows (pause, start, +10 min, +6 h), palette levels and tile arming, prev/next paging, back, the pets / palettes / chat bottom buttons, the Settings row and the chat box (details: sprint doc section 16). The real pointer was not used: check by hand (a) does ONE click open a tab (the relay needed two), (b) the new Time rows, (c) the palette tiles of df / doom / ohrrpgce / my-palettes, which were driven at state level only.

@@ -113,3 +113,20 @@ Owner brief: "let me know when we have actually delegated a small in-editor task
 - **Chat:** 13 test lines removed from the pet chat (`Harold: phase_dawn`, `Ember: hmm...`, the doubled `Ember: Ember: Good morning` and the dawn test lines; 905 -> 892 lines; the pre-clean copy is in /tmp only). The stray `Harold: phase_dawn` came from running `rpg_edit_hq.+x fire phase_dawn` from a bare shell (read as chat text): not fixed, CLI verb forms need the exact registered shape.
 - **Ledgers:** `cpu_guard` sweep now trims `@.apps/*/state/clock_root/#.desktop/clocks/schedule_ledger.txt` past 1 MB to the last 128 KB; the REAL sweep acted on the two dormant ledgers (rpg-space 4.7 MB -> 131 KB, dsr-rpg 1.2 MB -> 131 KB), log line `HYGIENE | trimmed 2 clock schedule_ledger.txt file(s) ...` (07:32:27 in the guard log's clock). This also proves the debug-log sweep wiring runs (same function).
 - **Events committed:** `events/phase_dawn` (node 3: Ember says good morning at dawn, `cmd_3.sh`, recompiled `event.pal`); the `.hai.bak` backups are not committed.
+
+## 16. Other skins rebuilt and tested; the mouse pass (2026-11-04 10:30, relay clicks in the real editor window)
+**Other pets-like games.** Rebuilt through `cpu_gate`, one at a time. My first loop took the FIRST `build_*.sh` of each app, which for rpg-dust, rpg-pvp-hq and rpg-space is a helper (`build_dust_check.sh`...), so three binaries were not rebuilt; caught by `strings <binary> | grep allow_settime_back` (0 for those three) and rebuilt with the right scripts: all 11 binaries now contain the fix. Save / +1 h / load round trip (slot 8, removed afterwards): **rpg-pet** restored (`ok:backwards-allowed`); **rpg-dust**, **rpg-space**, **rpg-pvp-hq** restored the saved game-time ms exactly. rpg-dust's first (pre-fix) test had advanced its clock 1 h and that cannot be undone (its clock is 1 h ahead of where it stood). cdda-hq, civ-rpgce, df-hq, dsr-rpg, gta-hq, mcl-hq, tcg-rpgce: rebuilt, fix present in the binary, round trip NOT run.
+
+**Mouse (relay `MOUSE_EVENT` press/release into the real window; the real pointer was not used):**
+| target | result |
+|---|---|
+| Time tab, then each new row: pause, start / resume, skip +10 minutes, skip +6 hours | all four ran: daemon ended / returned; +10 m: 06:01 -> 06:11 and +6 h: 06:11 -> 12:11 with `ok` audit rows. Note: with In: ON the clock stays `running=0` after "start / resume" (turn mode pauses it by design): the label is misleading in turn mode |
+| palette list row "CDDA Tiles" -> tile type -> tileset -> "field" -> tile | each click moved one level (nav 1 -> 3 -> 4); clicking the tile armed it (`pal_armed=fd_cigsmoke`, `brush.txt` written) |
+| "< back" | levels back to the list; NOTE after arming, an `armed: <name>` line pushes the rows down ~30 px: a click at the old y hit the label |
+| "next 48 >" / "< previous 48" (CDDA furniture, 512 tiles) | page 1 -> "tiles 49-96 of 512" -> back to "tiles 1-48" (on page 2 the second row is previous, not next) |
+| bottom bar: pets, palettes, chat | pets/palettes swap the left bar; chat hides / shows the right bar |
+| Settings tab -> "editor sidebar" row | cycled `sidebar_start` layout -> last (restored to layout afterwards) |
+| chat input | typed, Enter, /help /clear /apply /no (earlier) |
+**Relay behaviour to know (not an editor bug):** `relay_drive tap` sends a focus click and an activate click. On a button that is ALREADY focused, the first click activates too, so `tap` toggles twice (net no change: the chat button seemed dead until a single `click` was used). A tab needs two clicks (first focuses, second opens); whether a real pointer opens it on the FIRST click is untested and is the first thing to check by hand.
+**State restored after the pass:** prefs (`sidebar_start=layout`), sides (palettes + h-ai), palette nav (list), brush file removed, `_active` files unchanged.
+**Machine:** the die temperature reached 91 and 95 C while the house used 1-2% of the machine and the gate waited each time (Chrome and the desktop are the load); it fell to 51-63 C within minutes.
