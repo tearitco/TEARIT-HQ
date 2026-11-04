@@ -3050,7 +3050,8 @@ static char g_click_focus[PATH_BUF];
 /* One canvas click -> one voxel. khtpm writes
  * #.desktop/pchq_canvas_click.txt as "cx cy cw ch". World axes match
  * the rasterizer: world (X, Y, Z) = (grid_x, height, grid_y). */
-static int g_pick_maker = 0, g_pick_mw = 0, g_pick_mh = 0;      /* 2026-11-04: a painted (maker) map has no solid voxels to hit: the click is a ray against the floor plane (top = world Y 1.0) inside the map's w x h */
+static int g_pick_maker = 0, g_pick_mw = 0, g_pick_mh = 0;
+static int g_pick_cw = 0, g_pick_ch = 0;      /* the canvas size of the last click (for the round-trip check) */      /* 2026-11-04: a painted (maker) map has no solid voxels to hit: the click is a ray against the floor plane (top = world Y 1.0) inside the map's w x h */
 static int bv_ray_click(const char *house, const Camera *cam,
                         char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
                         int board_w, int board_h, int z_count,
@@ -3074,6 +3075,7 @@ static int bv_ray_click(const char *house, const Camera *cam,
         fclose(f);
     }
     if (cw < 1 || ch < 1) return 0;
+    g_pick_cw = cw; g_pick_ch = ch;
     if (pcx) *pcx = cx;
     if (pcy) *pcy = cy;
     /* Match the picture: screen x is mirrored so desk +x stays on the right. */
@@ -3131,6 +3133,27 @@ static int bv_ray_click(const char *house, const Camera *cam,
     f = host_fopen(seen_path, "w");
     if (f) { fputs(stamp, f); fclose(f); }
     return -1; /* new click, ray missed the board */
+}
+
+/* pixel -> ray -> cell -> pixel round trip of the last pick (see click_proj.txt); called from BOTH click paths (the frame loop and the idle poll) */
+static void bv_write_click_proj(const char *focus, int hit, int hx, int hy, int hz, int cx, int cy, const Camera *cam) {
+    if (hit > 0 && g_pick_cw > 0) {      /* 2026-11-04 ROUND TRIP (owner: "make sure all mouse tests align, including raycasting for 3d"): project the picked cell's centre back through the SAME camera and write where it lands on the canvas, so a test (or you, with the pointer marker) can see pixel -> ray -> cell -> pixel; err_px is the distance to the click */
+            double wx = hx + 0.5, wy = g_pick_maker ? 1.0 : hz + 0.5, wz = hy + 0.5;      /* world X = column, Y = up, Z = row (the DDA's own mapping) */
+            Vec3 v = { wx - cam->eye.x, wy - cam->eye.y, wz - cam->eye.z };
+            double dpt = v3_dot(v, cam->forward), tt = tan(g_fov_deg * M_PI_LOCAL / 180.0 / 2.0), asp = (double)g_pick_cw / (double)g_pick_ch;
+            char pp2[PATH_BUF]; snprintf(pp2, sizeof(pp2), "%s/pieces/display/click_proj.txt", focus); FILE *qf = host_fopen(pp2, "w");
+            if (qf) {
+                if (dpt > 1e-6) { double nx = v3_dot(v, cam->right) / (dpt * tt * asp), ny = v3_dot(v, cam->up) / (dpt * tt);
+                    double ux = (1.0 - nx) * 0.5 * g_pick_cw, uy = (1.0 - ny) * 0.5 * g_pick_ch, ex = ux - cx, ey = uy - cy;
+                    double bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9; int okc = 0;      /* bounding box of the cell's projected corners (a floor square for a painted map, a cube for a voxel hit) */
+                    for (int k = 0; k < 8; k++) { double cxw = wx + ((k & 1) ? 0.5 : -0.5), czw = wz + ((k & 2) ? 0.5 : -0.5), cyw = g_pick_maker ? 1.0 : wy + ((k & 4) ? 0.5 : -0.5);
+                        Vec3 cv = { cxw - cam->eye.x, cyw - cam->eye.y, czw - cam->eye.z }; double cd = v3_dot(cv, cam->forward); if (cd <= 1e-6) continue;
+                        double qx = (1.0 - v3_dot(cv, cam->right) / (cd * tt * asp)) * 0.5 * g_pick_cw, qy = (1.0 - v3_dot(cv, cam->up) / (cd * tt)) * 0.5 * g_pick_ch;
+                        if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy; okc++; }
+                    int inside = okc == 8 && cx >= bx0 - 1 && cx <= bx1 + 1 && cy >= by0 - 1 && cy <= by1 + 1;
+                    fprintf(qf, "cell=%d,%d,%d\nclick_px=%d,%d\ncell_px=%.1f,%.1f\nerr_px=%.1f\ncell_box=%.0f,%.0f,%.0f,%.0f\ninside=%d\ncanvas=%d,%d\nmaker=%d\n", hx, hy, hz, cx, cy, ux, uy, sqrt(ex * ex + ey * ey), bx0, by0, bx1, by1, inside, g_pick_cw, g_pick_ch, g_pick_maker); }
+                else fprintf(qf, "cell=%d,%d,%d\ncell_px=behind-camera\n", hx, hy, hz);
+                fclose(qf); } }
 }
 
 static void bv_write_click_hud(const char *focus, int hit,
@@ -3653,6 +3676,7 @@ static int render_one_frame(void) {
         int hit = bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count,
                                &hx, &hy, &hz, &cx, &cy);
         bv_write_click_hud(focused_project_root, hit, hx, hy, hz, cx, cy);
+        bv_write_click_proj(focused_project_root, hit, hx, hy, hz, cx, cy, &cam);
         if (hit <= 0 && hit != 0) {      /* 2026-11-04: WHY did the pick miss? one extra line of facts next to the HUD (board size, solid voxels, camera) */
             long solid = 0; for (int zz = 0; zz < z_count && zz < MAX_VOXEL_Z; zz++) for (int yy = 0; yy < board_h && yy < MAX_BOARD_DIM; yy++) for (int xx = 0; xx < board_w && xx < MAX_BOARD_DIM; xx++) if (!voxel_is_air(board3d[zz][yy][xx])) solid++;
             char dp[PATH_BUF]; snprintf(dp, sizeof(dp), "%s/pieces/display/click_dbg.txt", focused_project_root); FILE *df = host_fopen(dp, "w");
@@ -5278,6 +5302,7 @@ int main(int argc, char **argv) {
                 snprintf(last_click, sizeof(last_click), "%s", stamp);
                 if (hit != 0) {
                     bv_write_click_hud(g_click_focus, hit, hx, hy, hz, cx, cy);
+                    bv_write_click_proj(g_click_focus, hit, hx, hy, hz, cx, cy, &g_click_cam);
                     if (hit > 0) bv_xelector_to(project_root, g_click_focus, hx, hy);
                     bv_repaint_hud_only();
                     idle_ticks = 0;

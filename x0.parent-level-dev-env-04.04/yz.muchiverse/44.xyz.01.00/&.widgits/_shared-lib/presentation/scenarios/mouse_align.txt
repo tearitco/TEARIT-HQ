@@ -1,0 +1,17 @@
+# mouse_align.txt - the mouse/raycast alignment test. Every xclick checks (1) the published pixel against the pointer marker's number and (2) the 3D pick against a projected round trip.
+# Needs the editor window open with show_pointer=1 in #.desktop/hq_ui.pdl. Run: python3 present_harness.py scenarios/mouse_align.txt --no-video
+book | rpg-edit-hq
+verb | clock advance 9h
+wait | 6
+xclick | 640 | 420
+shot | a | Click one in the middle of the room. The marker and the engine agree.
+xclick | 420 | 330
+shot | b | Click two toward the upper left.
+xclick | 820 | 500
+shot | c | Click three toward the lower right.
+xclick | 520 | 600
+shot | d | Click four near the bottom.
+xclick | 760 | 300
+shot | e | Click five near the top.
+xclick | 300 | 700
+shot | f | Click six near the bottom left corner.

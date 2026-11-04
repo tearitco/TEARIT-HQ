@@ -15,7 +15,7 @@ Step vocabulary (all verified on 2026-11-04 except where noted):
   verb|<verb> [args...]              run rpg_edit_hq.+x <verb> args (place item x y, voxel x y, goto room, control pet, walk, ...)
   drive|N                            N x `walk` verb steps (a pet that is blocked only bumps its step counter: use goto + moved for a visible move)
   armtile|kind|set|group|row_y       pal_side picks the tile list, then a relay click on the tile row at window y=row_y (default 265)
-  xclick|x|y                         a REAL X click inside the board window (the only click that reaches the 3D canvas)
+  xclick|x|y                         a REAL X click inside the board window (the only click that reaches the 3D canvas); checks the published pixel against the pointer marker's number and the picked cell against a projected round trip of the 3D raycast
   keys|text                          engine keys through bv_keys ( \\n = Enter, \\e = Esc )
   event|name[|trigger]               play events/<name> through events-hq play_event.sh (default trigger ui)
   mark|name / moved|name             remember the controlled pet's room,x,y / assert it changed since the mark
@@ -103,9 +103,29 @@ class Harness:
         b = rd(os.path.join(APP, "board", "state", "brush.txt"))
         if "glyph=" not in b: raise Fail("no brush armed after clicking the tile row (row_y=%s)" % row_y)
         self.say("armed: " + [l for l in b.splitlines() if l.startswith("glyph=")][0])
-    def op_xclick(self, x, y):
-        w = find_win(); run(["xdotool", "mousemove", "--window", w, str(x), str(y)]); time.sleep(0.3); run(["xdotool", "click", "1"]); time.sleep(4)
-        self.say("real click at %s,%s; xelector now %s" % (x, y, rd(os.path.join(APP, "rpg-edit-hq-pchq", "pieces", "xelector_01", "state.txt")).replace("\n", " ")[:40]))
+    def op_xclick(self, x, y, tol=None):
+        """A REAL X click, then two alignment checks (owner 2026-11-04: every mouse test must agree with the pointer marker and the 3D raycast):
+        1. the number the window published (canvas_click.txt) = the commanded pixel minus a canvas origin that is the same for every click of the run (learned on the first click);
+        2. the engine's pick, projected back through the same camera (click_proj.txt: pixel -> ray -> cell -> pixel), puts the click INSIDE the picked cell's projected box.
+        A miss (ray=miss) is reported, not failed: an off-map click is a legitimate test input."""
+        w = find_win(); sess = ui_session(); disp = os.path.join(sess, "pieces", "display")
+        proj = os.path.join(APP, "rpg-edit-hq-pchq", "pieces", "display", "click_proj.txt")
+        try: os.remove(proj)
+        except OSError: pass
+        run(["xdotool", "mousemove", "--window", w, str(x), str(y)]); time.sleep(0.3); run(["xdotool", "click", "1"]); time.sleep(4)
+        x, y = int(x), int(y)
+        pub = rd(os.path.join(disp, "canvas_click.txt")).split()
+        if len(pub) < 2: raise Fail("xclick: the window published no canvas click")
+        org = (x - int(pub[0]), y - int(pub[1])); self.origin = getattr(self, "origin", None) or org
+        skew = int(os.environ.get("PRESENT_NEG_SKEW", "0"))      # negative test of this very check: PRESENT_NEG_SKEW=5 must make the run FAIL
+        if abs(org[0] - self.origin[0] - skew * (self.n_x if hasattr(self, 'n_x') else 0)) > 1 or abs(org[1] - self.origin[1]) > 1:
+            raise Fail("xclick: published click %s for pixel %d,%d implies canvas origin %s, the run's origin is %s (the pointer marker and the published click disagree)" % (pub[:2], x, y, org, self.origin))
+        self.n_x = getattr(self, 'n_x', 0) + 1
+        pr = rd(proj)
+        if not pr: self.say("real click at %d,%d: published %s (origin %s ok); ray MISS (no cell picked)" % (x, y, pub[:2], self.origin)); return
+        g = lambda k: next((l.split("=", 1)[1] for l in pr.splitlines() if l.startswith(k + "=")), "?")
+        if g("inside") != "1": raise Fail("xclick: raycast round trip failed: click %s is outside the projected box %s of picked cell %s (err_px %s)" % (g("click_px"), g("cell_box"), g("cell"), g("err_px")))
+        self.say("real click at %d,%d: published %s (origin %s ok); picked cell %s; round trip inside box %s, centre off by %s px" % (x, y, pub[:2], self.origin, g("cell"), g("cell_box"), g("err_px")))
     def op_clickplace(self, x, y):
         """click a cell with a real mouse click, press Enter, and retry on neighbouring pixels while the editor says 'not placed' (someone standing there, off the floor). The camera follows the xelector, so one pixel is never the same cell twice."""
         lg = os.path.join(APP, "state", "voxel_log.txt")
