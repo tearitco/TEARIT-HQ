@@ -5,3 +5,21 @@ SECTION | KEY | VALUE
 # Speech = edge-tts (online, free), cached as a wav per pet and phrase in state/audio, played quietly, one sound at a time. No network / no player = silence, never an error.
 # Chinese, Japanese and Korean are first-class: the house serves those audiences (CJK glyph rendering exists in board-viewer; window text stays English for now, see ROADMAP "language support").
 # A pet only speaks aloud while it is on screen. Menu > Voice on/off (flag voice).
+# 2026-11-04 (owner: "they should have different voices for all"): English voices from the Kokoro map (KMAP rows in pet-trainer/voices.pdl), told apart by voice AND speed.
+# 7 distinct voices x speed; the pitch column is kept at +0Hz (a pitch value only changes the sound when an FX row for it exists).
+VOICE | ember    | en-US-AnaNeural    | +0%   | +0Hz | en
+VOICE | glacine  | en-GB-MaisieNeural | -10%  | +0Hz | en
+VOICE | murmur   | en-GB-ThomasNeural | -15%  | +0Hz | en
+VOICE | solvent  | en-US-GuyNeural    | +0%   | +0Hz | en
+VOICE | ava      | en-GB-FableNeural  | +5%   | +0Hz | en
+VOICE | cursword | en-US-EricNeural   | +15%  | +0Hz | en
+VOICE | asa      | en-GB-RyanNeural   | -5%   | +0Hz | en
+VOICE | robot    | en-US-EricNeural   | -20%  | +0Hz | en
+VOICE | pal_9    | en-US-AnaNeural    | +15%  | +0Hz | en
+VOICE | pal_10   | en-GB-MaisieNeural | +10%  | +0Hz | en
+VOICE | pal_11   | en-GB-ThomasNeural | +5%   | +0Hz | en
+VOICE | pal_12   | en-US-GuyNeural    | -15%  | +0Hz | en
+VOICE | pal_13   | en-GB-FableNeural  | -10%  | +0Hz | en
+VOICE | pal_14   | en-GB-RyanNeural   | +10%  | +0Hz | en
+VOICE | pal_15   | en-US-AnaNeural    | -15%  | +0Hz | en
+VOICE | pal_16   | en-US-GuyNeural    | +15%  | +0Hz | en
