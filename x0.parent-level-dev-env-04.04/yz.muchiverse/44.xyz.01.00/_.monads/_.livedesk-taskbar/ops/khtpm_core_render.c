@@ -5753,10 +5753,28 @@ static int kh_sbar_track_at(int x, int y) {
     return -1;
 }
 
+/* 2026-11-04 ("thumb is misplaced again on book, it is in the middle instead of on the right"): a sidebar's own scrollbar (track + its ^/v nav badges) was painted AFTER an open
+ * dropdown and showed through the middle of the menu. A bar whose track lies under the open dropdown's rows is hidden while the dropdown is open (the dropdown's own bar sits to the
+ * right of its rows, so it is never under them). Called before the frame serialisation (the arrows are drawn from it) and again by draw_generic_scrollbars. */
+static int kh_sbar_under_dropdown(int i) {
+    if (i < 0 || i >= g_n_generic_sbars || g_dock_drop_lo < 1 || g_dock_drop_hi < g_dock_drop_lo || g_dock_drop_hi > g_n_nav) return 0;
+    GenericScrollBar *b = &g_generic_sbars[i];
+    for (int k = g_dock_drop_lo; k <= g_dock_drop_hi; k++) {
+        Elem *r = g_nav[k - 1];
+        if (!r || r->w <= 0 || r->y < 0) continue;
+        if (b->track_x + b->track_w > r->x && b->track_x < r->x + r->w && b->track_y + b->track_h > r->y && b->track_y < r->y + r->h) {
+            if (i < 8) { g_sbar_up_elem[i].w = 0; g_sbar_down_elem[i].w = 0; }
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void draw_generic_scrollbars(void) {
     int i;
     for (i = 0; i < g_n_generic_sbars; i++) {
         GenericScrollBar *b = &g_generic_sbars[i];
+        if (kh_sbar_under_dropdown(i)) continue;      /* 2026-11-04: see kh_sbar_under_dropdown */
         if (g_sbar_track != 0) {
             XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
             XFillRectangle(dpy, buf, gc, b->track_x, b->track_y,
@@ -12692,6 +12710,7 @@ static void redraw_body(void) {
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
         if (ff) {
+            for (int sbq = 0; sbq < g_n_generic_sbars; sbq++) kh_sbar_under_dropdown(sbq);
             g_ser_dd_n = 0;
             kh_serialize_frame_subtree(ff, page);
             /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "X"/"!"
