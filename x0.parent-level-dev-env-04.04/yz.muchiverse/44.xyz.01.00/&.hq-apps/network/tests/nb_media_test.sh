@@ -17,19 +17,30 @@
 # The four widths straddle the boundary (767/768), so an off-by-one in the
 # comparison fails here rather than in the field.
 #
-# COMMA-LIST NOTE - the fixture writes TWO base rules, not one
-# `.narrow, .wide {}` list. That is not style. This engine computes a
-# selector list's specificity as the SUM over the list, so `.narrow, .wide`
-# scores two classes and outranks the single-class rule inside the @media
-# block, which then never applies. Measured 2026-11-04, same stylesheet
-# either way:
-#     comma-list base      vp=700  wide.display='block'   <- override defeated
-#     separate base rules  vp=700  wide.display='none'    <- correct
-#     separate base rules  vp=900  wide.display='block'   <- correct
-# CSS takes the MAX over a selector list, not the sum. That deviation is
-# PRE-EXISTING and untouched here (fixing it moves the cascade for every page
-# and deserves its own bite with its own evidence); this test is about the
-# breakpoint switch, so it avoids the unrelated trap and says so out loud.
+# COMMA-LIST BASE RULE - deliberate, and now load-bearing for a second bug.
+# The fixture writes `.narrow, .wide {}` as its base rule, which is how real
+# stylesheets are written. It used to DEFEAT both @media branches, and finding
+# out why turned up two independent defects in nb_css.c (both fixed alongside
+# this gate, 2026-11-04):
+#
+#   1. `skip_block()` returned `end` for BOTH "unterminated block" and "the
+#      closing brace is the last character of the sheet". The rule loop treats
+#      `close == end` as unterminated and breaks, so ANY stylesheet whose final
+#      character is '}' silently lost its LAST rule - a one-rule sheet parsed
+#      to ZERO rules. (That is why a fixture ending in a newline looked fine.)
+#   2. `specificity()` counted every alphabetic character as a TYPE selector,
+#      so a class NAME contributed its own length: `.narrow` scored n_type=6
+#      and `.wide` scored 4. Two equally-specific class rules were then ordered
+#      by name LENGTH, so a later override lost to a longer name - which is
+#      exactly how the base rule beat the @media branch. Measured before:
+#          ".aa { display: block; } .xx { display: none; }"     -> block (later lost)
+#          ".aaaaaa { display: block; } .xx { display: none; }" -> ''    (longer won)
+#          ".narrow, .wide {...} @media(...){ .wide{display:none} }" -> block
+#      A type selector is now counted only where one can begin (start of a
+#      compound, not after '.', '#', ':' or '*'), so `.cls` is (0,1,0).
+#
+# Keeping the comma list here means this gate fails again if either defect
+# returns - which is the point of writing the fixture the realistic way.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PKG="$(cd "$HERE/.." && pwd)"
@@ -50,8 +61,7 @@ var n=document.createElement('p');n.setAttribute('id','narrow');n.setAttribute('
 
 PAGE
 cat > "$WORK/style.css" <<'CSS'
-.narrow { display: block; }
-.wide { display: block; }
+.narrow, .wide { display: block; }
 @media (max-width: 767px) { .narrow { display: block; } .wide { display: none; } }
 @media (min-width: 768px) { .narrow { display: none; } .wide { display: block; } }
 

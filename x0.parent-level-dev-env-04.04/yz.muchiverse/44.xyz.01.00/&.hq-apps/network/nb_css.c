@@ -36,6 +36,15 @@ static void strip_comments(char *s) {
 
 /* Consume a balanced { ... } block whose `{` is at p; returns the position
  * just past the matching `}` (or end if unterminated). Quotes respected. */
+/* Find the matching '}' for a block whose '{' was just consumed.
+ *
+ * Returns NULL when the block is UNTERMINATED. It used to return `end` for
+ * that, which is indistinguishable from the legitimate case where the closing
+ * brace is the very last character of the stylesheet - and the rule loop
+ * treats "close == end" as unterminated and breaks. Measured: a sheet whose
+ * final character is '}' silently loses its LAST rule (a one-rule sheet parses
+ * to ZERO rules). Only "ran off the end without closing" may mean unterminated.
+ */
 static const char *skip_block(const char *p, const char *end) {
     int depth = 1;
     while (p < end) {
@@ -57,7 +66,7 @@ static const char *skip_block(const char *p, const char *end) {
         }
         p++;
     }
-    return end;
+    return NULL;   /* ran off the end: genuinely unterminated */
 }
 
 static int is_token_char(char c) {
@@ -173,6 +182,22 @@ static int match_part(const NbNode *el, const char *part, size_t len) {
 typedef struct { int n_id, n_cls, n_type; } SelInfo;
 
 /* Specificity: max (id, class, type) triple across the comma parts. */
+/* Specificity triple, MAXed over the comma list (CSS takes the max over a
+ * selector list, not the sum).
+ *
+ * The TYPE counter used to count every alphabetic character in the selector,
+ * so a class NAME contributed its own length: `.narrow` scored n_type=6 and
+ * `.wide` scored 4. Two equally-specific class rules then compared by name
+ * LENGTH, and the longer name won wherever it sat in the sheet - so a later,
+ * equally-specific override (an @media branch, most visibly) silently lost.
+ * Measured before this fix, element carrying both classes:
+ *     ".aa { display: block; } .xx { display: none; }"  -> block   (later rule lost)
+ *     ".aaaaaa { display: block; } .xx { display: none; }" -> ``   (longer name won)
+ *
+ * A type selector is now counted only where one can legally begin: the first
+ * identifier of a compound (start of a selector, or after a combinator), and
+ * not after '.', '#', ':' or '*'. So `.cls` scores (0,1,0) and `p.cls` (0,1,1),
+ * which is what CSS says. */
 static void specificity(const char *sel, size_t len, SelInfo *out) {
     out->n_id = out->n_cls = out->n_type = 0;
     size_t i = 0;
@@ -180,10 +205,18 @@ static void specificity(const char *sel, size_t len, SelInfo *out) {
         size_t j = i;
         while (j < len && sel[j] != ',') j++;
         SelInfo p = {0, 0, 0};
+        int type_start = 1;              /* a tag name may begin here */
         for (size_t k = i; k < j; k++) {
-            if (sel[k] == '#') p.n_id++;
-            else if (sel[k] == '.' || sel[k] == '[') p.n_cls++;
-            else if (is_token_char(sel[k]) && isalpha((unsigned char)sel[k])) p.n_type++;
+            char c = sel[k];
+            if (c == '#') { p.n_id++; type_start = 0; }
+            else if (c == '.' || c == '[') { p.n_cls++; type_start = 0; }
+            else if (c == ':' || c == '*') { type_start = 0; }  /* pseudo/element: not a type */
+            else if (is_ws(c) || c == '>' || c == '+' || c == '~') type_start = 1;
+            else if (isalpha((unsigned char)c)) {
+                if (type_start) { p.n_type++; type_start = 0; }  /* first char only */
+            } else {
+                type_start = 0;
+            }
         }
         if (p.n_id > out->n_id) out->n_id = p.n_id;
         if (p.n_cls > out->n_cls) out->n_cls = p.n_cls;
@@ -317,6 +350,7 @@ static void css_parse_text(NbCss *css, const char *s, size_t slen) {
             if (strncasecmp(at_name, "font-face", 9) == 0) {
                 /* @font-face rule: parse descriptors */
                 const char *after = skip_block(lb + 1, s + slen);
+                if (!after) after = s + slen;
                 size_t block_len = (size_t)(after - lb - 2); /* exclude { } */
                 if (block_len > 0) {
                     char *block = malloc(block_len + 1);
@@ -337,6 +371,7 @@ static void css_parse_text(NbCss *css, const char *s, size_t slen) {
                  * this same list, in source order. viewport_px == 0 means no
                  * viewport is known: skip, exactly as before. */
                 const char *after = skip_block(lb + 1, s + slen);
+                if (!after) after = s + slen;
                 if (css->viewport_px > 0) {
                     const char *pre = at_name + 5;
                     size_t plen = (size_t)(lb - pre);
@@ -358,12 +393,17 @@ static void css_parse_text(NbCss *css, const char *s, size_t slen) {
             }
             /* @keyframes/@supports: skip body */
             const char *after = skip_block(lb + 1, s + slen);
+            if (!after) after = s + slen;
             i = (size_t)(after - s);
             continue;
         }
         const char *in = lb + 1;
         const char *close = skip_block(in, s + slen);
-        if (close == s + slen) break;              /* unterminated: stop */
+        /* NULL, not `close == end`: a block whose closing brace is the last
+         * character of the sheet ends AT end, which is a complete rule, not
+         * an unterminated one. Conflating them silently dropped the final
+         * rule of any stylesheet that does not end with whitespace. */
+        if (!close) break;                         /* unterminated: stop */
         size_t hl = (size_t)(lb - hstart);         /* selector length */
         size_t dl = (size_t)(close - in - 1);      /* decl block length */
         if (hl == 0 || dl == 0) {
