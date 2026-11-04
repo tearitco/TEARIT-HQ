@@ -524,7 +524,7 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
 #elif PET_SECTION == 63
             if (!strcmp(names[i], "events.txt")) { if (copy_file(a, bpath)) ok++; continue; }
 #elif PET_SECTION == 64
-        if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
+        if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "limit", "rpg", "allow_settime_back", "1", NULL); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); clock_fire_due(); /* 2026-11-04: load may set the clock back; due events once (see rpg-edit-hq) */ } pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
     if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }

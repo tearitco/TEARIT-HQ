@@ -436,7 +436,7 @@ static int viewer_kinds(void) {      /* N3 idle-cost gate: the /proc scan (every
             if (!strcmp(names[i], "events.txt") || !strcmp(names[i], "jobs.txt")) { if (copy_file(a, bpath)) ok++; continue; }
 #elif PET_SECTION == 64
         if (!saving) { append_line("world_epoch.txt", "LOAD"); world_sync(); }
-        if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); lc_run(0, "step", "5", NULL); } pet_load(); }
+        if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "limit", "rpg", "allow_settime_back", "1", NULL); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); clock_fire_due(); /* 2026-11-04: load may set the clock back; due events once (see rpg-edit-hq) */ } pet_load(); }
         if (argc >= 2 && !strcmp(argv[1], "fortress")) { snprintf(msg, cap, "test fortress loaded (%d files); your game is in slot 0 (Undo new game)", ok); return; } snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
     if (!strcmp(v, "life")) { pl_life_verb(argc, argv, msg, cap); return; }
