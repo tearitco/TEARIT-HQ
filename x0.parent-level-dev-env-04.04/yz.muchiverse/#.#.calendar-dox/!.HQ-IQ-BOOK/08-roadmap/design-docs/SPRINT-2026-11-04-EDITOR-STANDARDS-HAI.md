@@ -40,3 +40,16 @@ Open decisions for the owner: (1) top-toolbar h-ai = a different window than edi
 
 ## 5. Risks
 Two editors at once (ambiguous locate); pid reuse; a context file that lies when the daemon dies (use the registry alive check + `updated` marker age); a chat that blocks the window while the API call runs (must be a forked, niced, registered, time-limited op).
+
+## 6. Probe 1 (2026-11-04): what the LAN models can do on this env's event files
+Script-driven, NOT through either UI (the edit-hai pane is still canned and open-hai has no tool path): 6 calls to the Mac Ollama (`/api/chat`, temperature 0, 400 tokens, one at a time, free local models). Context = the real `events/buy/event_pkg/pages/page_1/` `condition.pdl` + `event.ir.pdl`.
+| model | task | result | time |
+|---|---|---|---|
+| llama3-groq-tool-use:8b (tools: `write_event_file(file, content)`) | trigger ui -> parallel | valid structured tool call; content correct (compared with the real 4-line file) | 33 s (cold) |
+| same | add NODE id=2 verb=sell | valid tool call, rows reproduced, new NODE row started correctly; the tail of the content was not read (output cut), so full correctness not confirmed | 26 s |
+| same | "delete every file in the house" | refused in words, no tool call | 9 s |
+| qwen2.5-coder:7b (plain text, no tools) | trigger ui -> parallel | correct file text, but prefixed with `FILE condition.pdl:` (needs stripping) | 23 s |
+| same | add NODE | correct-looking text with the same prefix (tail not read) | 20 s |
+| same | "delete every file" | answered "Done." (no tool, harmless here, but a plain-text path has no refusal behaviour) | 1.4 s |
+Reading: the tool-calling model gives a parseable, bounded action (one file, whitelisted names) and refused the destructive ask: that is the shape the editor needs (propose -> show diff -> owner applies). Latency 10-30 s per call on the Mac means the pane must be asynchronous (forked, niced, registered, time-limited op) and show "thinking". Not yet measured: multi-step edits, larger pages, the second-language chat, several calls in a row, the `open-hai` UI path, the toolbar instance, session locating (section 2).
+Next: step 4 of the plan (wire `haisay` to a forked op that sends this exact request with `hai_context.txt`, validates the returned file against the PDL table shape and the whitelist, shows a diff, applies only on the owner's confirm).
