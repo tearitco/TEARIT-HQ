@@ -14239,6 +14239,9 @@ static void kh_focus_debug_log(const char *fmt, ...) {
     if (!g_package_dir[0]) return;
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/kh_focus_debug.log", g_package_dir);
+    /* 2026-11-04 cap (RUNTIME-FILE-GROWTH-STANDARD.md): this "temporary" probe had grown to 16 MB in one window (49 files, 25 MB house-wide). Every 100 lines check the size; past 256 KB move
+     * the log to kh_focus_debug.log.old (replacing the previous one), so at most ~512 KB per window stays on disk. */
+    { static int n_calls = 0; if (++n_calls % 100 == 1) { struct stat cst; if (stat(path, &cst) == 0 && cst.st_size > 256 * 1024) { char old[PATH_BUF + 8]; snprintf(old, sizeof(old), "%s.old", path); rename(path, old); } } }
     FILE *f = fopen(path, "a");
     if (!f) return;
     struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);

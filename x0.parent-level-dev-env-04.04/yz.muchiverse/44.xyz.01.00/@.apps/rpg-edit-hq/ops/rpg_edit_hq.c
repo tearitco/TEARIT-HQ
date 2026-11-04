@@ -169,7 +169,14 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
     { char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"), net = !strcmp(cm, "network");
       W("chat_mode_label=chat: %s\nchat_is_edit=%s\nchat_is_hai=%s\nchat_is_net=%s\n", hai ? "h-ai" : net ? "network" : "edit", !hai && !net ? "1" : "", hai ? "1" : "", net ? "1" : ""); }
-    { char cp[PATH_MAX], cb[4000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb); char *ln[6] = {0}; int k = 0; for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { ln[k % 6] = l; k++; } for (int i = 0; i < 6; i++) { int j = k - 6 + i; W("chat_%d=%s\n", i, j >= 0 ? ln[j % 6] : ""); } }
+    { char cp[PATH_MAX], cb[4000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb);
+      /* 2026-11-04: a wrapped chat line used to be drawn over the next row (fixed-height rows). Wrap each message to the pane width HERE (word boundaries, continuation rows indented) and show the newest 6 ROWS. */
+      enum { CWRAP = 25, CMAXR = 96 }; static char rows[CMAXR][CWRAP + 8]; int nr = 0;
+      for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { size_t len = strlen(l), pos = 0; int first = 1;
+          while (pos < len && nr < CMAXR) { size_t w = first ? CWRAP : CWRAP - 2; size_t take = len - pos < w ? len - pos : w; if (pos + take < len) { size_t sp = take; while (sp > w / 2 && l[pos + sp] != ' ') sp--; if (sp > w / 2) take = sp; }
+              snprintf(rows[nr], sizeof rows[0], "%s%.*s", first ? "" : "  ", (int)take, l + pos); nr++; pos += take; while (pos < len && l[pos] == ' ') pos++; first = 0; }
+          if (nr >= CMAXR) { memmove(rows[0], rows[CMAXR / 2], (size_t)(CMAXR / 2) * sizeof rows[0]); nr = CMAXR / 2; } }
+      for (int i = 0; i < 10; i++) { int j = nr - 10 + i; W("chat_%d=%s\n", i, j >= 0 ? rows[j] : ""); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
