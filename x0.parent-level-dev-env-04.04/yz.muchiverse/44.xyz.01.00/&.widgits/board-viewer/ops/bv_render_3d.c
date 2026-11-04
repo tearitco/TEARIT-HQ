@@ -3050,6 +3050,7 @@ static char g_click_focus[PATH_BUF];
 /* One canvas click -> one voxel. khtpm writes
  * #.desktop/pchq_canvas_click.txt as "cx cy cw ch". World axes match
  * the rasterizer: world (X, Y, Z) = (grid_x, height, grid_y). */
+static int g_pick_maker = 0, g_pick_mw = 0, g_pick_mh = 0;      /* 2026-11-04: a painted (maker) map has no solid voxels to hit: the click is a ray against the floor plane (top = world Y 1.0) inside the map's w x h */
 static int bv_ray_click(const char *house, const Camera *cam,
                         char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
                         int board_w, int board_h, int z_count,
@@ -3086,6 +3087,15 @@ static int bv_ray_click(const char *house, const Camera *cam,
                v3_scale(cam->up, ndc_y * t))));
     double ox = cam->eye.x, oy = cam->eye.z, oz = cam->eye.y;
     double dx = dir.x, dy = dir.z, dz = dir.y;
+    if (g_pick_maker && g_pick_mw > 0 && g_pick_mh > 0) {      /* floor-plane pick */
+        char seenw[PATH_BUF]; (void)seenw;
+        double t_hit = (fabs(dz) > 1e-9) ? (1.0 - oz) / dz : -1.0;
+        int ok = 0, gx = 0, gy = 0;
+        if (t_hit > 0) { double fx = ox + dx * t_hit, fy = oy + dy * t_hit; gx = (int)floor(fx); gy = (int)floor(fy); ok = gx >= 0 && gx < g_pick_mw && gy >= 0 && gy < g_pick_mh; }
+        f = host_fopen(seen_path, "w"); if (f) { fputs(stamp, f); fclose(f); }
+        if (ok) { *hx = gx; *hy = gy; *hz = 0; return 1; }
+        return -1;
+    }
     if (dx == 0) dx = 1e-9;
     if (dy == 0) dy = 1e-9;
     if (dz == 0) dz = 1e-9;
@@ -3639,9 +3649,14 @@ static int render_one_frame(void) {
     snprintf(g_click_focus, sizeof(g_click_focus), "%s", focused_project_root);
     {
         int hx, hy, hz, cx = 0, cy = 0;
+        g_pick_maker = maker_ground; g_pick_mw = g_mk.w; g_pick_mh = g_mk.h;
         int hit = bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count,
                                &hx, &hy, &hz, &cx, &cy);
         bv_write_click_hud(focused_project_root, hit, hx, hy, hz, cx, cy);
+        if (hit <= 0 && hit != 0) {      /* 2026-11-04: WHY did the pick miss? one extra line of facts next to the HUD (board size, solid voxels, camera) */
+            long solid = 0; for (int zz = 0; zz < z_count && zz < MAX_VOXEL_Z; zz++) for (int yy = 0; yy < board_h && yy < MAX_BOARD_DIM; yy++) for (int xx = 0; xx < board_w && xx < MAX_BOARD_DIM; xx++) if (!voxel_is_air(board3d[zz][yy][xx])) solid++;
+            char dp[PATH_BUF]; snprintf(dp, sizeof(dp), "%s/pieces/display/click_dbg.txt", focused_project_root); FILE *df = host_fopen(dp, "w");
+            if (df) { fprintf(df, "board=%dx%dx%d solid=%ld maker_ground=%d eye=%.1f,%.1f,%.1f fwd=%.2f,%.2f,%.2f px=%d,%d\n", board_w, board_h, z_count, solid, (int)maker_ground, cam.eye.x, cam.eye.y, cam.eye.z, cam.forward.x, cam.forward.y, cam.forward.z, cx, cy); fclose(df); } }
         if (hit > 0) {
             g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
             bv_xelector_to(project_root, focused_project_root, hx, hy);
