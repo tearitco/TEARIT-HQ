@@ -76,11 +76,13 @@ static int quota(void) {      /* 1 = ok, 0 = refuse; the counter file is one lin
     char f[PATH_MAX], b[128], day[16]; time_t now = time(NULL); struct tm tm; localtime_r(&now, &tm); strftime(day, sizeof day, "%Y-%m-%d", &tm); P(f, sizeof f, "state/hai_calls.txt"); rd(f, b, sizeof b);
     char d0[16] = ""; int cnt = 0; long last = 0; sscanf(b, "%15s %d %ld", d0, &cnt, &last); if (strcmp(d0, day)) cnt = 0; if (now - last < 3 && !strcmp(d0, day)) return 0; if (cnt >= HAI_DAILY) return 0;
     snprintf(b, sizeof b, "%s %d %ld\n", day, cnt + 1, (long)now); wr(f, b); return 1; }
+static int name_words(const char *name, const char *low) {      /* every '_'-separated word of the event name occurs as a whole word in the (lower-cased, space padded) text: "dawn phase event" finds phase_dawn */
+    char nm[80]; snprintf(nm, sizeof nm, "%s", name); int any = 0; char *sv; for (char *t = strtok_r(nm, "_", &sv); t; t = strtok_r(NULL, "_", &sv)) { char w[90]; snprintf(w, sizeof w, " %s ", t); if (!strstr(low, w)) return 0; any = 1; } return any; }
 static void pages_text(const char *text, char *o, size_t on) {      /* the event pages the user's words name (a whole-word match of an events/<pkg> directory), capped */
     char d[PATH_MAX]; snprintf(d, sizeof d, "%s/events", APP); DIR *dir = opendir(d); size_t k = 0; o[0] = 0; char list[800] = ""; int nl = 0; if (!dir) return; struct dirent *e;
     char low[400]; snprintf(low, sizeof low, " %s ", text); for (char *c = low; *c; c++) { if (*c >= 'A' && *c <= 'Z') *c += 32; if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-' || *c == ' ')) *c = ' '; }
     while ((e = readdir(dir))) { if (e->d_name[0] == '.') continue; if (nl + strlen(e->d_name) + 2 < sizeof list) { nl += snprintf(list + nl, sizeof list - nl, "%s ", e->d_name); }
-        char w[80]; snprintf(w, sizeof w, " %s ", e->d_name); if (!strstr(low, w) || k > on - 3000) continue; char pg[PATH_MAX]; snprintf(pg, sizeof pg, "%s/%s/event_pkg/pages", d, e->d_name); DIR *pd = opendir(pg); if (!pd) continue; struct dirent *q;
+        if (!name_words(e->d_name, low) || k > on - 3000) continue; char pg[PATH_MAX]; snprintf(pg, sizeof pg, "%s/%s/event_pkg/pages", d, e->d_name); DIR *pd = opendir(pg); if (!pd) continue; struct dirent *q;
         while ((q = readdir(pd))) { if (q->d_name[0] == '.') continue; const char *fs[] = { "condition.pdl", "event.ir.pdl" }; for (int i = 0; i < 2; i++) { char fp[PATH_MAX], b[3000]; snprintf(fp, sizeof fp, "%s/%s/%s", pg, q->d_name, fs[i]); if (rd(fp, b, sizeof b) >= 0 && k < on - 3100) k += snprintf(o + k, on - k, "\nEVENT %s PAGE %s FILE %s:\n%s", e->d_name, q->d_name, fs[i], b); } } closedir(pd); }
     closedir(dir); if (k + 900 < on) snprintf(o + k, on - k, "\nEvents in this book: %s\n", list); }
 static int run_curl(const char *body_path, const char *out_path, const char *hdr_path) {
@@ -98,6 +100,9 @@ static void ask(const char *text) {
     FILE *bf = fopen(body, "w"); if (!bf) { unlink(hdr); return; }
     fprintf(bf, "{\"model\":\"%s\",\"temperature\":0,\"max_tokens\":1500,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"write_event_file\",\"description\":\"Propose the full new content of one file of one event page. The owner reviews it before it is applied.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"pkg\":{\"type\":\"string\"},\"page\":{\"type\":\"string\"},\"file\":{\"type\":\"string\",\"enum\":[\"condition.pdl\",\"event.ir.pdl\"]},\"content\":{\"type\":\"string\"}},\"required\":[\"pkg\",\"page\",\"file\",\"content\"]}}}],\"messages\":[{\"role\":\"system\",\"content\":\"", MODEL);
     jesc(bf, "You are h-ai inside the rpg-edit-hq game editor. Event pages are pipe-separated PDL tables: a 'SECTION | KEY | VALUE' header, a dashed line, then rows. To change an event call write_event_file with the COMPLETE new file, keeping every row you were not asked to change exactly as it is. The pkg argument is an event name from the EVENT lines (for example buy), NEVER the book name; page is the PAGE name shown for that event (for example page_1). Never touch anything else. If the request is not about editing an event of this book, answer in one or two plain sentences and call no tool.\nEditor context:\n");
+    jesc(bf, "\nNode rows look like: NODE | id=1 type=rpg_edit_hq_verb | verb=phase|arg=dawn   and   NODE | id=3 type=pet_says | pet=ember|chat=Good morning|voice=Good morning, everyone. To make an event do one more thing, append a NODE row with the next free id (keep every existing row exactly as it is). You may write only node types rpg_edit_hq_verb (verb and arg) and pet_says (pet = a pet id below, chat = the text shown in the chat WITHOUT the pet's name (the game adds the name itself), voice = the spoken line); any other existing node type must be kept unchanged. Plain text only: no quotes, dollar signs or backslashes inside values.\nPet ids: ");
+    { char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/state", APP); DIR *pd = opendir(sd); char pl[500] = ""; if (pd) { struct dirent *e; while ((e = readdir(pd))) if (!strncmp(e->d_name, "pet_", 4) && strstr(e->d_name, ".txt") && strlen(pl) + strlen(e->d_name) < 440) { char nm[64]; snprintf(nm, sizeof nm, "%.*s", (int)(strlen(e->d_name) - 8), e->d_name + 4); strcat(pl, nm); strcat(pl, " "); } closedir(pd); } jesc(bf, pl); }
+    jesc(bf, "\n");
     jesc(bf, ctx); jesc(bf, pages); fprintf(bf, "\"},{\"role\":\"user\",\"content\":\""); jesc(bf, text); fprintf(bf, "\"}]}"); fclose(bf);
     int rc = run_curl(body, out, hdr); unlink(hdr); unlink(body);
     static char resp[24000]; int n = rd(out, resp, sizeof resp); unlink(out);
@@ -111,6 +116,32 @@ static void ask(const char *text) {
     char old[9000]; rd(path, old, sizeof old); int ol = 0, nl2 = 0; for (char *c = old; *c; c++) if (*c == '\n') ol++; for (char *c = content; *c; c++) if (*c == '\n') nl2++;
     char pf[PATH_MAX]; P(pf, sizeof pf, "state/hai_proposal.txt"); static char pb[9400]; snprintf(pb, sizeof pb, "pkg=%s\npage=%s\nfile=%s\n---\n%s", pkg, page, file, content); wr(pf, pb);
     char m[400]; snprintf(m, sizeof m, "proposal: %s/%s %s (%d -> %d lines). Type /apply to write it (old file kept as .hai.bak) or /no.", pkg, page, file, ol, nl2); chat("h-ai", m); }
+/* --- the page compiler (apply of an event.ir.pdl): regenerate event.pal and the cmd_<id>.sh wrappers the way the existing pages have them. Only two node types may be WRITTEN here:
+ *   rpg_edit_hq_verb | verb=<name from verbs.pdl, not a destructive one>|arg=<one word>      pet_says | pet=<id>|chat=<chat line>|voice=<spoken line>
+ * any other node type must already have its cmd_<id>.sh (it is kept as it is); values with a quote, backtick, $, backslash or newline are refused. Returns 1 ok, 0 refused (why filled). */
+static int plain_val(const char *v) { if (!*v || strlen(v) > 160) return 0; for (; *v; v++) if (*v == '\'' || *v == '`' || *v == '$' || *v == '\\' || *v == '\n' || (unsigned char)*v < 32) return 0; return 1; }
+static int verb_ok(const char *v) { static const char *bad[] = { "reset", "newgame", "delpal", "remove", "load", "save", NULL }; for (int i = 0; bad[i]; i++) if (!strcmp(v, bad[i])) return 0; char f[PATH_MAX], b[12000]; P(f, sizeof f, "verbs.pdl"); rd(f, b, sizeof b); char *sv; for (char *l = strtok_r(b, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { char nm[48]; if (sscanf(l, "VERB | %47s |", nm) == 1 && !strcmp(nm, v)) return 1; } return 0; }
+static int compile_page(const char *dir, const char *ir, char *why, size_t wn) {
+    char pal[8000] = "# event.pal - COMPILED from event.ir.pdl by hai_op (the h-ai apply step); wrappers cmd_<id>.sh\n"; size_t pk = strlen(pal); int nodes = 0; char *cp = strdup(ir); char *sv;
+    for (char *l = strtok_r(cp, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { if (strncmp(l, "NODE", 4)) continue; int id = 0; char type[48] = ""; const char *a = strchr(l, '|'); if (!a || sscanf(a + 1, " id=%d type=%47s", &id, type) != 2 || id < 1 || id > 99) { snprintf(why, wn, "a NODE row is not 'NODE | id=N type=T | ...'"); free(cp); return 0; }
+        const char *fields = strchr(a + 1, '|'); if (!fields) fields = ""; else fields++;
+        char cmdp[PATH_MAX]; snprintf(cmdp, sizeof cmdp, "%s/cmd_%d.sh", dir, id); char body[1400] = "";
+        const char *head = "#!/bin/sh\ncd \"$(dirname \"$0\")/../../..\" || exit 1\nENT=\"${MUCHI_TARGET_ENT:-$PWD}\"\nD=\"$ENT\"\nwhile [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n";
+        if (!strcmp(type, "rpg_edit_hq_verb") || !strcmp(type, "pet_says")) {
+            char kvs[6][2][170]; int nk = 0; char *f2 = strdup(fields), *sv2; for (char *t = strtok_r(f2, "|", &sv2); t && nk < 6; t = strtok_r(NULL, "|", &sv2)) { while (*t == ' ') t++; char *eq = strchr(t, '='); if (!eq) continue; *eq = 0; snprintf(kvs[nk][0], 170, "%s", t); char *v = eq + 1; size_t vl = strlen(v); while (vl && v[vl - 1] == ' ') v[--vl] = 0; snprintf(kvs[nk][1], 170, "%s", v); nk++; } free(f2);
+            const char *g[3] = { "", "", "" };
+            for (int i = 0; i < nk; i++) { if (!strcmp(type, "pet_says")) { if (!strcmp(kvs[i][0], "pet")) g[0] = kvs[i][1]; else if (!strcmp(kvs[i][0], "chat")) g[1] = kvs[i][1]; else if (!strcmp(kvs[i][0], "voice")) g[2] = kvs[i][1]; } else { if (!strcmp(kvs[i][0], "verb")) g[0] = kvs[i][1]; else if (!strcmp(kvs[i][0], "arg")) g[1] = kvs[i][1]; } }
+            if (!strcmp(type, "pet_says")) { if (!plain_val(g[0]) || !plain_val(g[1]) || !plain_val(g[2])) { snprintf(why, wn, "node %d: pet_says needs pet, chat, voice (plain text, no quotes or $)", id); free(cp); return 0; } char pf[PATH_MAX]; snprintf(pf, sizeof pf, "%s/state/pet_%s.txt", APP, g[0]); if (access(pf, F_OK) != 0) { snprintf(why, wn, "node %d: no pet called %s", id, g[0]); free(cp); return 0; }
+                snprintf(body, sizeof body, "%sexec \"$D/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x\" pet_says '%s' '%s' '%s' \"$RPG_OTHER\"\n", head, g[0], g[1], g[2]); }
+            else { if (!plain_val(g[0]) || !verb_ok(g[0]) || (g[1][0] && !plain_val(g[1]))) { snprintf(why, wn, "node %d: verb '%s' is not allowed (verbs.pdl names only, no destructive ones)", id, g[0]); free(cp); return 0; }
+                if (g[1][0]) snprintf(body, sizeof body, "%sexec \"$D/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x\" '%s' '%s'\n", head, g[0], g[1]); else snprintf(body, sizeof body, "%sexec \"$D/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x\" '%s'\n", head, g[0]); }
+            char old[1500]; if (rd(cmdp, old, sizeof old) >= 0 && strcmp(old, body)) { char bak[PATH_MAX + 12]; snprintf(bak, sizeof bak, "%s.hai.bak", cmdp); wr(bak, old); }
+            if (wr(cmdp, body) != 0) { snprintf(why, wn, "could not write cmd_%d.sh", id); free(cp); return 0; } chmod(cmdp, 0755);
+        } else if (access(cmdp, F_OK) != 0) { snprintf(why, wn, "node %d has type %s, which only the events-hq editor can create", id, type); free(cp); return 0; }
+        if (pk + 40 < sizeof pal) pk += snprintf(pal + pk, sizeof pal - pk, "exec cmd_%d.sh\n", id); nodes++; }
+    free(cp); if (!nodes) { snprintf(why, wn, "a page needs at least one NODE row"); return 0; }
+    snprintf(pal + pk, sizeof pal - pk, "halt\n"); char pp[PATH_MAX], pold[8000], pbak[PATH_MAX + 12]; snprintf(pp, sizeof pp, "%s/event.pal", dir); if (rd(pp, pold, sizeof pold) >= 0) { snprintf(pbak, sizeof pbak, "%s.hai.bak", pp); wr(pbak, pold); }
+    if (wr(pp, pal) != 0) { snprintf(why, wn, "could not write event.pal"); return 0; } return 1; }
 static int apply(int do_it) {
     char pf[PATH_MAX], b[9400]; P(pf, sizeof pf, "state/hai_proposal.txt"); if (rd(pf, b, sizeof b) <= 0) { chat("h-ai", "nothing to apply."); return 1; }
     if (!do_it) { unlink(pf); chat("h-ai", "dropped the proposal."); return 0; }
@@ -118,7 +149,9 @@ static int apply(int do_it) {
     char path[PATH_MAX], why[200]; if (!target(pkg, page, file, path, sizeof path, why, sizeof why) || !shape_ok(c)) { chat("h-ai", "the proposal no longer validates; dropped."); unlink(pf); return 1; }
     char old[9000], bak[PATH_MAX + 12]; if (rd(path, old, sizeof old) >= 0) { snprintf(bak, sizeof bak, "%s.hai.bak", path); wr(bak, old); }
     { size_t cl = strlen(c); if (cl && c[cl - 1] != '\n' && cl + 2 < sizeof b) { c[cl] = '\n'; c[cl + 1] = 0; } }
-    if (wr(path, c) != 0) { chat("h-ai", "could not write the file."); return 1; } unlink(pf); char m[200]; snprintf(m, sizeof m, "applied to %s/%s %s.", pkg, page, file); chat("h-ai", m); return 0; }
+    if (wr(path, c) != 0) { chat("h-ai", "could not write the file."); return 1; }
+    int compiled = 0; if (!strcmp(file, "event.ir.pdl")) { char dir[PATH_MAX]; snprintf(dir, sizeof dir, "%s/events/%s/event_pkg/pages/%s", APP, pkg, page); if (!compile_page(dir, c, why, sizeof why)) { char bk[PATH_MAX + 12]; snprintf(bk, sizeof bk, "%s.hai.bak", path); char o2b[9000]; if (rd(bk, o2b, sizeof o2b) >= 0) wr(path, o2b); char m[360]; snprintf(m, sizeof m, "not applied: %s (the old page is back).", why); chat("h-ai", m); unlink(pf); return 1; } compiled = 1; }
+    unlink(pf); char m[240]; snprintf(m, sizeof m, "applied to %s/%s %s%s.", pkg, page, file, compiled ? " and recompiled the page" : ""); chat("h-ai", m); return 0; }
 /* where: the toolbar h-ai's question "which editor session is live?": newest pointer row first; each row is VERIFIED (window pid alive and the right program) before its context is printed. */
 static int where(void) {
     char pf[PATH_MAX], b[6000]; pointer_path(pf, sizeof pf); if (rd(pf, b, sizeof b) <= 0) { printf("no editor session is registered (open the editor first)\n"); return 3; }
