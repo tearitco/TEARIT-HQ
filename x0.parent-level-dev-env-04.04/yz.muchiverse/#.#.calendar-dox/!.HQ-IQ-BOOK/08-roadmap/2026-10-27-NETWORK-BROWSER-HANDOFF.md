@@ -222,3 +222,54 @@ the worker (lesson 2 above).
 
 The fix stands: `atob` is now correct at the C layer as well. But the shim that
 caused it should not have reimplemented `atob` at all.
+
+
+### 6b. G3.1 find-in-page: the red was the TEST, not the browser (2026-11-04)
+
+**Correcting 6a.** That section filed this as "a pre-existing defect in
+find-in-page, worth its own ticket: mirror says 3, frame says 2". It is not a
+product defect at all, and nothing in the browser needed changing. The suite
+was measuring the fixture.
+
+Measured, from a diagnostic copy of the suite that printed the frame rows at
+the point of failure:
+
+    DIAG-findline:   [FIND] query="the" 1 of 3
+    DIAG-raw-count:  3        (rows whose label contains "the")
+    DIAG-navgt0:     2        (the same rows, filtered to nav_index > 0)
+      nav=21  First paragraph of body text. Enough to force two lines ...
+      nav=23  See the docs for more.
+      nav=0   >(function(){var u=[...];return Promise.all(...
+                                     ... .then(function(r){ ... })()]
+
+The third match is a **console-panel row**, and it matched because `then`
+contains `the`. Step 3 of the suite counted only `nav_index > 0` rows, so it
+expected 2 while find reported 3. Step 4 then failed as a knock-on: it
+hardcoded two matches, so with three the walk 1 -> 2 -> 3 never wrapped, and
+the suite reported "no wrap".
+
+Why the code is right and the test was wrong:
+
+  - `kh_find_walk()` (`&.widgits/_shared-lib/khtpm_draw_core.c`) matches
+    `item`/`text`/`cli_io`/`text_area`/`bar` and recurses through every
+    container, deliberately with no notion of chrome vs content. Making it
+    skip "console" rows would put per-project knowledge inside the shared
+    renderer - forbidden by `CENTROID_GOLD_STD.md` rule 7.
+  - `nav_index` is a red herring for this count twice over: parked off-screen
+    rows are nav=0, and the suite's own DEEP case REQUIRES find to match them.
+  - The suite's own stated contract is "counts exactly the rows whose label
+    contains it, case-insensitively". The nav>0 filter contradicted it.
+
+Fix: compute the expectation the way the feature computes it (no nav filter)
+and step against the real hit count instead of a hardcoded 2. The assertion is
+not weakened - it still derives its own count from the frame and compares it
+to the mirror's independent one - and it gained an assertion.
+
+Evidence: three consecutive clean runs (14 assertions, 0 failures), plus a
+negative test that forces `expect=2` and a wrong wrap target and reproduces
+the exact original failure text, exit 1.
+
+Lesson worth keeping: a red suite is not evidence of a product defect until the
+assertion has been checked against the feature's own definition. Here the
+suite had been red for a while against correct code, and the "bug" lived
+entirely in the expectation.
