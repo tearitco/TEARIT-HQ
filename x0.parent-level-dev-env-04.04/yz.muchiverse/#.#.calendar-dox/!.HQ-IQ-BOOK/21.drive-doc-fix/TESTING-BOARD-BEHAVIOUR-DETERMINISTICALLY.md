@@ -34,3 +34,7 @@ To test a key the daemon reads from the engine, do not need the engine: run the 
 ## Added 2026-11-05: driving a LIVE board like a person (keys that reach the daemon)
 
 `bv_keys` talks to the ENGINE only (its `interact_relay.txt`); the daemon learns about Enter/Esc from `<session>/pieces/keyboard/history.txt`, which only the WINDOW writes. To test anything the daemon does on a key, append `KEY_PRESSED: <code>` to `#.desktop/entity_menu_history/<window pid>.txt` (the window forwards it exactly like a physical key). Arrows: append `1000..1003` and `126` to the session's `interact_relay.txt`. Freeze wandering pets first (`rpg_edit_hq.+x stop`, restore with `play`), and read the evidence in state files (`ctl_trace.txt`, `active.txt`, `xelector_01/state.txt`), then a frame.
+
+## Added 2026-11-05: after rebuilding an engine binary, sync the sessions (`bv_session_sync`)
+
+A running board session runs ITS OWN copy of `ops/+x/*` (made when it started), so a rebuilt `bv_menu_input.+x` changes nothing live until the session restarts. Do not swap files by hand: `ops/+x/bv_session_sync.+x <house> [--dry-run]` replaces a session's copy only when the session has the file and the bytes differ (temp + rename). A running engine process keeps its old copy until it restarts; the short-lived input op picks the new one on its next key. Compile heavy things with `cpu_gate <house> run <label> --stop-engines -- <cmd>`.

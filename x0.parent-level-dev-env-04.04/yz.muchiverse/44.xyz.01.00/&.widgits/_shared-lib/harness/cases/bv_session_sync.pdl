@@ -1,0 +1,45 @@
+# bv_session_sync: after a build, live sessions' private binary copies are brought up to date (audit decision D5). Scratch house: a freshly built ops/+x with 3 files, two sessions with old copies. Replaced ONLY when the session already has the file and the bytes differ; never adds a file; --dry-run changes nothing; other houses and system/ files are not touched.
+RESULTS | ../results/bv_session_sync.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/board-viewer/ops/+x
+MKDIR | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x
+MKDIR | h/&.widgits/board-viewer/pieces/sessions/s1/system
+MKDIR | h/&.widgits/board-viewer/pieces/sessions/s2/ops/+x
+COPY | &.widgits/board-viewer/ops/+x/bv_session_sync.+x | sync
+WRITE | h/&.widgits/board-viewer/ops/+x/a.+x | NEW a\n
+WRITE | h/&.widgits/board-viewer/ops/+x/b.+x | same b\n
+WRITE | h/&.widgits/board-viewer/ops/+x/c.+x | built but not in the session\n
+WRITE | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/a.+x | OLD a\n
+WRITE | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/b.+x | same b\n
+WRITE | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/only_here.+x | not built here\n
+WRITE | h/&.widgits/board-viewer/pieces/sessions/s1/system/a.+x | system file OLD\n
+WRITE | h/&.widgits/board-viewer/pieces/sessions/s2/ops/+x/a.+x | OLD a too\n
+
+CASE    | dry-run-changes-nothing
+RUN | $T/sync | $T/h | --dry-run
+EXPECT_OUT | would update  s1/a.+x | dry-run-names-the-file-it-would-update
+EXPECT_HAS | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/a.+x | OLD a | and-leaves-it-unchanged
+
+CASE    | sync-updates-only-what-differs
+RUN | $T/sync | $T/h
+EXPECT_OUT | updated  s1/a.+x | s1-copy-updated
+EXPECT_HAS | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/a.+x | NEW a | s1-has-the-new-bytes
+EXPECT_HAS | h/&.widgits/board-viewer/pieces/sessions/s2/ops/+x/a.+x | NEW a | s2-has-the-new-bytes-too
+EXPECT_NOFILE | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/c.+x | a-file-the-session-did-not-have-is-never-added
+EXPECT_OUT | skipped  s1/only_here.+x | a-file-not-built-here-is-skipped-not-deleted
+EXPECT_HAS | h/&.widgits/board-viewer/pieces/sessions/s1/ops/+x/only_here.+x | not built here | and-is-still-there
+EXPECT_HAS | h/&.widgits/board-viewer/pieces/sessions/s1/system/a.+x | system file OLD | system-files-are-never-touched
+
+CASE    | running-it-again-is-a-no-op
+RUN | $T/sync | $T/h
+EXPECT_OUT | 0 updated | the-second-run-updates-nothing
+EXPECT_OUT | 2 session(s) | and-saw-both-sessions
+
+CASE    | usage
+RUN | $T/sync
+EXPECT_EXIT | 2 | no-arguments-is-a-usage-error
+
+CLEAN |

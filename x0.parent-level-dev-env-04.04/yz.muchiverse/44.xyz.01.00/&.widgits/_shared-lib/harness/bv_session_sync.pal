@@ -1,0 +1,4 @@
+# bv_session_sync.pal - bring live sessions' binary copies up to date after a build. See cases/bv_session_sync.pdl
+exec ./ops/+x/harness_case_op.+x cases/bv_session_sync.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/bv_session_sync.pdl
+halt

@@ -50,6 +50,8 @@ gcc $CFLAGS -o "ops/+x/bv_render_2d.+x" "ops/bv_render_2d.c" "ops/bv_cjk_glyph.c
 gcc $CFLAGS -o "ops/+x/bv_dispatch.+x" "ops/bv_dispatch.c"
 # loop_guard: ends the pal loop when the engine daemon is gone (owner 2026-10-26: "have loops exit as well"); see ops/loop_guard.c
 gcc $CFLAGS -o "ops/+x/loop_guard.+x" "ops/loop_guard.c"
+# bv_session_sync: after a build, copy changed ops/+x binaries into every live session (atomic, only files the session already has); see ops/bv_session_sync.c and harness bv_session_sync.pal
+gcc $CFLAGS -o "ops/+x/bv_session_sync.+x" "ops/bv_session_sync.c"
 # Real house-wide widget discovery/registration (Phase 0 follow-up,
 # 2026-08-03 - see ops/ledger_append.c's own header comment: ported
 # from file-menu's own proven mechanism, "default" xyzfs fallback so
