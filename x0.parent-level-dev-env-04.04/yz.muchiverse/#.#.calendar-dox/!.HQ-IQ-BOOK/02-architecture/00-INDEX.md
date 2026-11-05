@@ -68,3 +68,4 @@ Condensed from: `44.xyz.01.00/CENTROID_GOLD_STD.md` (moved),
 `#.#.calendar-dox/1.^V-hq/SKILLS.md` §2, `HOUSE_FAQ.md` (Architecture/
 Files-Compliance/Nav-Input/Assets sections), `44.xyz.01.00/
 !.HOUSE_STDS.md` §A.7/§B.
+- `EVENT-ARCHITECTURE-ONBOARDING-2026-11-05.md` — START HERE for events: the four layers (clock, event pages, ledgers, projection), one traced path, where a new thing goes, and the traps hit so far; routes to the detailed docs

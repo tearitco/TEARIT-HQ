@@ -60,6 +60,9 @@ The owner released exactly one caller from quarantine: the editor's coin shop. `
 ## 3b. Views, layouts, the xelector look (owner, later the same day)
 Read `../18.pc-hq/VIEWS-LAYOUT-STUDIO-AND-XELECTOR-LOOK-2026-11-04.md`: the owner's "Xcode views / MVC / blueprintz" vision (not built), the layout studio's real state, and a spec for a lighter/thinner green xelector while it controls an entity (it is a fixed green in both renderers today; `possessed_id` is already in `xelector_01/state.txt`). UPDATE 2026-11-05: BUILT with defaults of mine (the owner did not pick values): `_shared-lib/xelector_look.c` + `view.pdl` rows `xelector_free_*` / `xelector_ctl_*`; `pieces_2d_parity.pal` 58 PASS; 3D compiled and rebuilt but not run live.
 
+## 3c. Event architecture, read this first
+`../02-architecture/EVENT-ARCHITECTURE-ONBOARDING-2026-11-05.md` routes you through the four layers (clock, event pages, ledgers, projection) with the traps already hit.
+
 ## 4. What I would do next (your call, in this order)
 0. The owner asked whether we need an onboarding guide for the event architecture. Existing pieces: `BLUEPRINT-EVENT-PAGES-GUIDE.md`, `PAL-VS-EVENTS.md`, `XHTPM-WINDOW-BUILD-GUIDE.md`, `EVENT-VERB-PAGES-DESIGN.md`, `S1-EVENT-LEDGER.md`; no single page connects the four layers touched this session (clock `common:` events from `time.pdl`, event pages / choice popups, S1 ledger events, board projection into dropdowns and popups). Proposed: one page written from the coin-shop rework. Not written.
 1. Turn the island page and the planet pages into tear-it co sources (section 1): start by dumping `sk_isl_at` into a legend file `legend_page_op` accepts, with a determinism case like `legend_page.pal`.
