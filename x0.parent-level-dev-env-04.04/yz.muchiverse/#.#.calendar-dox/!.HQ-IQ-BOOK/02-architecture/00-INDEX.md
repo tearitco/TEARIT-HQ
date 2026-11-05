@@ -1,5 +1,7 @@
 # 02 — Architecture
 
+
+- `AGENT-TOOLBOX-AND-CONTROLS.md` — **start here when you drive, test or commit**: every agent tool (commit_scoped, cpu_gate --stop-engines, bv_session_sync, growth_probe, xo_export, board_ctl freeze/thaw/engine-key, harness INCLUDE/SNAPSHOT) with its proof case, the three key paths, the board controls (Enter, Tab, 9, Esc-first, lock to hero) and the runtime files already capped.
 - `PLAYTEST-DESK-AND-PCHQ.md` — how a book:page is playtested. Taskbar
   cell 9 (play / stop / reset) and the PC-HQ Player dropdown write
   the same `khtpm_play_mode.state.txt`. An entity's own play control
