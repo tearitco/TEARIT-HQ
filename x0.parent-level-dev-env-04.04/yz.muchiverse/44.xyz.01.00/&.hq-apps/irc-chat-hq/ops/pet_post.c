@@ -51,7 +51,7 @@ static int recent(const char *pet) {      /* this pet's SENT/APPROVED rows insid
     fclose(f); return c;
 }
 static int send_line(const char *room, const char *pet, const char *text) {
-    char op[PATH_MAX]; const char *e = getenv("PET_POST_CHAT_OP"); if (e && e[0]) snprintf(op, sizeof op, "%s", e); else snprintf(op, sizeof op, "%s/chat_post_message.+x", SELF_DIR);
+    char op[PATH_MAX]; const char *e = getenv("PET_POST_CHAT_OP"); if (e && e[0]) snprintf(op, sizeof op, "%s", e); else { snprintf(op, sizeof op, "%s/chat_post_message.+x", SELF_DIR); if (access(op, X_OK) != 0) snprintf(op, sizeof op, "%s/ops/+x/chat_post_message.+x", ROOT); }      /* beside this binary (harness), else the chat node's own ops/+x (the real house) */
     pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { execl(op, op, room, pet, text, (char *)NULL); _exit(127); }
     int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 0 : -1;
 }
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
         char pet[64] = "", room[64] = "", text[1024] = ""; if (!pending_take(argv[2], pet, room, text)) { printf("no pending line %s\n", argv[2]); return 2; }
         if (!strcmp(argv[1], "veto")) { audit("VETOED", pet, room, text); printf("VETOED %s\n", argv[2]); return 0; }
         if (killed()) { audit("DENY_KILL", pet, room, text); printf("DENY_KILL (kill switch on; line dropped)\n"); return 3; }
-        if (send_line(room, pet, text) != 0) { audit("ERROR", pet, room, text); printf("ERROR chat_post_message failed\n"); return 2; }
+        if (send_line(room, pet, text) != 0) { audit("ERROR", pet, room, text); { char pp[PATH_MAX]; path(pp, "pet_post_pending.txt"); FILE *pf = fopen(pp, "a"); if (pf) { fprintf(pf, "%ld|%ld|%s|%s|%s\n", (long)time(NULL) * 100 + (getpid() % 100), (long)time(NULL), pet, room, text); fclose(pf); } } printf("ERROR chat_post_message failed (line kept pending)\n"); return 2; }
         audit("APPROVED", pet, room, text); printf("APPROVED %s\n", argv[2]); return 0; }
     if (!strcmp(argv[1], "post") && argc >= 5) {
         const char *room = argv[2], *pet = argv[3]; char text[1100] = ""; for (int i = 4; i < argc; i++) { if (i > 4) strncat(text, " ", sizeof text - strlen(text) - 1); strncat(text, argv[i], sizeof text - strlen(text) - 1); } clean(text);
