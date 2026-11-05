@@ -1,0 +1,4 @@
+# loop_guard_logcap.pal - the loop guard's own log is capped. See cases/loop_guard_logcap.pdl
+exec ./ops/+x/harness_case_op.+x cases/loop_guard_logcap.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/loop_guard_logcap.pdl
+halt

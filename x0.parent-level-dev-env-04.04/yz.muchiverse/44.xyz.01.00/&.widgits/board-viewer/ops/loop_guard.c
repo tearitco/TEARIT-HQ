@@ -65,22 +65,27 @@ static int board_window_alive(const char *root) {
         int has_pkg = 0; for (size_t i = 0; i < n; i += strlen(env + i) + 1) { if (!strncmp(env + i, "PCHQ_PKG=", 9)) { has_pkg = 1; if (!strcmp(env + i, want)) found = 1; } }
         if (!has_pkg) { char cl[2048] = ""; snprintf(p, sizeof p, "/proc/%s/cmdline", e->d_name); f = fopen(p, "r"); if (f) { size_t m = fread(cl, 1, sizeof cl - 1, f); for (size_t i = 0; i + 1 < m; i++) if (!cl[i]) cl[i] = ' '; fclose(f); } if (strstr(cl, "pchq-board")) found = 1; } }
     closedir(d); return found; }
-static void guard_log(const char *fmt, const char *a, const char *b) {      /* one line per decision to pieces/display/.loop_guard.log (cap 40 lines: it is only for finding out why a loop ended) */
+static void trim_tail(const char *path, long cap, long keep, const char *label);
+#define LOG_CAP  (8L << 10)
+#define LOG_KEEP (2L << 10)
+static void guard_log(const char *fmt, const char *a, const char *b) {      /* one line per decision to pieces/display/.loop_guard.log. ENFORCED cap (2026-11-05; the old comment said 40 lines but nothing trimmed it: 2774 lines / 410 KB after 9 h of one repeating "idle timeout" line): past LOG_CAP bytes only the last LOG_KEEP survive, cut at a line start */
+    trim_tail("pieces/display/.loop_guard.log", LOG_CAP, LOG_KEEP, NULL);
     FILE *f = fopen("pieces/display/.loop_guard.log", "a"); if (!f) return; fprintf(f, "%ld ", (long)time(NULL)); fprintf(f, fmt, a, b); fputc('\n', f); fclose(f); }
 /* Enforced cap on the session's frame log (2026-11-03, AGENTS.md "runtime files must have an enforced cap"): pieces/display/frame_history.txt grows about 12 KB a second while the 3D board
  * is driven (measured: 604 KB -> 1.23 MB in 17 min, nothing ever trimmed it; 45 MB an hour). This guard already runs every ~8 s inside every board's pal loop, so it is the natural place:
  * past HIST_CAP bytes keep only the last HIST_KEEP bytes, cut at a line start. The writer appends with fopen("a") per frame, so after the truncate its next append lands at the new end. */
 #define HIST_CAP  (1L << 20)
 #define HIST_KEEP (256L << 10)
-static void trim_history(const char *path) {
-    struct stat st; if (stat(path, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= HIST_CAP) return;
-    FILE *f = fopen(path, "rb"); if (!f) return; char *buf = malloc((size_t)HIST_KEEP + 1); if (!buf) { fclose(f); return; }
-    size_t n = 0; if (fseek(f, -HIST_KEEP, SEEK_END) == 0) n = fread(buf, 1, (size_t)HIST_KEEP, f); fclose(f);
+static void trim_tail(const char *path, long cap, long keep, const char *label) {      /* label NULL = say nothing (the guard log trims itself) */
+    struct stat st; if (stat(path, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= cap) return;
+    FILE *f = fopen(path, "rb"); if (!f) return; char *buf = malloc((size_t)keep + 1); if (!buf) { fclose(f); return; }
+    size_t n = 0; if (fseek(f, -keep, SEEK_END) == 0) n = fread(buf, 1, (size_t)keep, f); fclose(f);
     if (n == 0) { free(buf); return; }
     size_t s = 0; while (s < n && buf[s] != '\n') s++; if (s < n) s++;      /* start at a line start */
     if (truncate(path, 0) == 0) { FILE *o = fopen(path, "ab"); if (o) { fwrite(buf + s, 1, n - s, o); fclose(o); } }
-    { char was[24], kept[24]; snprintf(was, sizeof was, "%ld", (long)st.st_size); snprintf(kept, sizeof kept, "%ld", (long)(n - s)); free(buf); guard_log("frame_history.txt was %s bytes: kept the last %s", was, kept); }
+    { char was[24], kept[24]; snprintf(was, sizeof was, "%ld", (long)st.st_size); snprintf(kept, sizeof kept, "%ld", (long)(n - s)); free(buf); if (label) { char m[96]; snprintf(m, sizeof m, "%s was %%s bytes: kept the last %%s", label); guard_log(m, was, kept); } }
 }
+static void trim_history(const char *path) { trim_tail(path, HIST_CAP, HIST_KEEP, "frame_history.txt"); }
 int main(int argc, char **argv) {
     /* No arguments = the session defaults. The board-viewer session copies the OLD prisc VM, whose exec delivers no arguments (prisc_exec_args.pal fails on it), so the loop
      * runs this bare; arguments exist only so a test can point it elsewhere. */

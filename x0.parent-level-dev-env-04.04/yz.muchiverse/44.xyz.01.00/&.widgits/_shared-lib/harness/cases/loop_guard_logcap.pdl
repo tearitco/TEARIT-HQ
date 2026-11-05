@@ -1,0 +1,25 @@
+# loop_guard_logcap: the session loop guard's own log is CAPPED (AGENTS.md "runtime files must have an enforced cap"). Found 2026-11-05: pieces/display/.loop_guard.log had 2774 lines / 410 KB after 9 h of one repeating "engine exited on its idle timeout" line, and its comment said "cap 40 lines" but nothing trimmed it.
+# The REAL ops/loop_guard.+x runs once in a scratch cwd with an oversize log and an oversize frame_history.txt; it trims both (the frame_history trim also writes a line to the log, which proves the log trims BEFORE it appends). Needs: sh &.widgits/board-viewer/scripts/build.sh. Nothing live is touched.
+RESULTS | ../results/loop_guard_logcap.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | w/pieces/display
+COPY | &.widgits/board-viewer/ops/+x/loop_guard.+x | w/loop_guard
+RUN | sh | -c | yes "1793000000 engine exited on its idle timeout (pieces/display/.gpu_render.pid) and the board window is open: loop kept" \p head -n 400 > w/pieces/display/.loop_guard.log
+RUN | sh | -c | yes "frame block of the history file, padding padding padding padding padding padding padding" \p head -n 14000 > w/pieces/display/frame_history.txt
+RUN | sh | -c | test $(wc -c < w/pieces/display/.loop_guard.log) -gt 8192 && echo oversize
+EXPECT_OUT | oversize | the-log-starts-over-the-8-KB-cap
+
+CASE    | the-guard-trims-both-files
+RUN | sh | -c | cd w && ./loop_guard; echo ran
+EXPECT_OUT | ran | the-guard-ran-and-returned
+RUN | sh | -c | cd w && test $(wc -c < pieces/display/.loop_guard.log) -le 3500 && echo log-small
+EXPECT_OUT | log-small | the-log-is-capped-near-2-KB-not-410-KB
+RUN | sh | -c | cd w && test $(wc -c < pieces/display/frame_history.txt) -le 300000 && echo hist-small
+EXPECT_OUT | hist-small | the-frame-history-is-still-capped-after-the-refactor
+RUN | sh | -c | cd w && tail -n 1 pieces/display/.loop_guard.log
+EXPECT_OUT | frame_history.txt was | the-newest-line-is-kept-and-written-after-the-trim
+
+CLEAN |
