@@ -63,6 +63,15 @@ Read `../18.pc-hq/VIEWS-LAYOUT-STUDIO-AND-XELECTOR-LOOK-2026-11-04.md`: the owne
 ## 3c. Event architecture, read this first
 `../02-architecture/EVENT-ARCHITECTURE-ONBOARDING-2026-11-05.md` routes you through the four layers (clock, event pages, ledgers, projection) with the traps already hit.
 
+## 3d. Added 2026-11-05 (all committed on `claude`, last commit c07dad28b)
+- **Xelector look:** lighter/thinner green while possessing, data rows in view.pdl; `possessed_id=none` counts as free (a bug found from a live frame). 2D and 3D both observed; `pieces_2d_parity.pal` 59 PASS.
+- **Wrapping popup text:** class `ov-wraptext` on an overlay `<text>` (khtpm_core_render.c, opt-in, cap 8 rows). One live frame; no harness case.
+- **Possession:** Enter possesses any `pieces/<id>/state.txt` entity (bv_menu_input.c `entity_at_cell`; harness 70 PASS before the later request-path revert, see below). Pets/Harold are chosen by the daemon's existing `possess_at_xelector`; new verb `possess` + `possess_enter.pal` 11 PASS. The lock is per entity in `piece.pdl` (`de_possessible`, `possessable`). Owner decision: ALL possession is controlling; no special hero.
+- **layout_check:** 44 -> 19 errors by passing every `board/state/*.txt` with repeated `--ui`; the 19 are explained (taskbar-published `load_*`, conditional keys, `toolbar.pdl` menu slots).
+- **Event architecture guide:** `02-architecture/EVENT-ARCHITECTURE-ONBOARDING-2026-11-05.md`. **How to test fluid live behaviour:** `21.drive-doc-fix/TESTING-BOARD-BEHAVIOUR-DETERMINISTICALLY.md` (read it before driving the live editor).
+- **Not proven / open:** the engine delivering Enter to the daemon and a live frame of Enter on a non-hero pet (needs pets frozen); an editor UI for `possessable`/`de_possessible`; lock-to-hero toggle (the per-piece flags are the existing lock); `layout_check` is still 19, not green; no harness case for the overlay wrap.
+- **State of the live desk at the end:** the editor window and daemon run binaries built before the `possess` verb (relaunch to pick it up); the 3D engine process was not running at the last check and the CPU guard shows no action (cause not established); book `rpg-space` / page `bridge`. Foreign uncommitted files (hq_ui.pdl show_pointer, the play_rpg_* cases, README lines, .hai.bak files) are the owner's and were left alone.
+
 ## 4. What I would do next (your call, in this order)
 0. The owner asked whether we need an onboarding guide for the event architecture. Existing pieces: `BLUEPRINT-EVENT-PAGES-GUIDE.md`, `PAL-VS-EVENTS.md`, `XHTPM-WINDOW-BUILD-GUIDE.md`, `EVENT-VERB-PAGES-DESIGN.md`, `S1-EVENT-LEDGER.md`; no single page connects the four layers touched this session (clock `common:` events from `time.pdl`, event pages / choice popups, S1 ledger events, board projection into dropdowns and popups). Proposed: one page written from the coin-shop rework. Not written.
 1. Turn the island page and the planet pages into tear-it co sources (section 1): start by dumping `sk_isl_at` into a legend file `legend_page_op` accepts, with a determinism case like `legend_page.pal`.
