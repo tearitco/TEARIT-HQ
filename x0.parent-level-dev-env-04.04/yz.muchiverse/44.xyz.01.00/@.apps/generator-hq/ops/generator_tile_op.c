@@ -14,7 +14,7 @@
 #include <zlib.h>
 
 #define MAXR 12
-#define MAXN 48
+#define MAXN 64
 
 typedef struct { int r, g, b; char name[24]; } Role;
 
@@ -80,6 +80,47 @@ static void paint(unsigned char *px, int n, int x, int y, int r, int g, int b) {
     unsigned char *p = px + (y * n + x) * 4;
     p[0] = (unsigned char)r; p[1] = (unsigned char)g; p[2] = (unsigned char)b; p[3] = 255;
 }
+static int special_style(const char *style) {
+    return strcmp(style, "sprite") == 0 || strcmp(style, "face") == 0 || strcmp(style, "sv") == 0
+        || strcmp(style, "parallax") == 0 || strcmp(style, "battle") == 0 || strcmp(style, "title") == 0
+        || strcmp(style, "system") == 0 || strcmp(style, "anim") == 0;
+}
+static void draw_special(unsigned char *px, int w, int h, unsigned seed, int ri, const Role *role, const char *style, int outline) {
+    int x, y;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        int r = role->r, g = role->g, b = role->b, a = 255;
+        unsigned hv = pixhash(seed, ri, x, y);
+        if (strcmp(style, "parallax") == 0 || strcmp(style, "battle") == 0 || strcmp(style, "title") == 0) {
+            int sky = (h - y) * 40 / h;
+            shade(&r, &g, &b, sky - 20);
+            if (strcmp(style, "parallax") == 0 && y > h * 2 / 3) { r = 70; g = 90; b = 50; }
+            if (strcmp(style, "battle") == 0 && (x - w / 3) * (x - w / 3) + (y - h / 4) * (y - h / 4) < (h / 8) * (h / 8)) { r = 230; g = 230; b = 200; }
+            if (strcmp(style, "title") == 0 && y > h / 3 && y < h / 2) shade(&r, &g, &b, 50);
+        } else if (strcmp(style, "anim") == 0) {
+            int cx = x - w / 2, cy = y - h / 2, rad = 2 + ri * 3;
+            if (cx * cx + cy * cy > rad * rad) a = 0;
+        } else if (strcmp(style, "system") == 0 && strcmp(role->name, "border") == 0) {
+            if (x > 1 && y > 1 && x < w - 2 && y < h - 2) a = 0;
+        } else if (strcmp(style, "system") == 0 && strcmp(role->name, "cursor") == 0) {
+            if (x < y || x > w / 2) a = 0;
+        } else {
+            int cx = w / 2 + (strcmp(style, "sprite") == 0 && ri == 1 ? -w / 8 : ri == 2 ? w / 8 : 0);
+            int cy = h / 3 + (strcmp(style, "sprite") == 0 && ri == 3 ? -h / 8 : ri == 0 && strcmp(style, "sprite") == 0 ? h / 10 : 0);
+            int dx = x - cx, dy = y - cy;
+            int head = (strcmp(style, "face") == 0) ? (w / 3) : (w / 6);
+            int body = (strcmp(style, "sv") == 0) ? w / 3 : w / 5;
+            if (dx * dx + dy * dy < head * head) shade(&r, &g, &b, 24);
+            else if (strcmp(style, "face") != 0 && y > h / 2 && x > cx - body && x < cx + body) shade(&r, &g, &b, -8);
+            else a = 0;
+            if (strcmp(style, "face") == 0 && y == cy && (x == cx - head / 2 || x == cx + head / 2)) { r = g = b = 20; a = 255; }
+            (void)hv;
+        }
+        if (a && outline && (x == 0 || y == 0 || x == w - 1 || y == h - 1) && strcmp(style, "sprite") != 0 && strcmp(style, "face") != 0 && strcmp(style, "sv") != 0 && strcmp(style, "anim") != 0)
+            shade(&r, &g, &b, -40);
+        if (!a) { paint(px, w, x, y, 0, 0, 0); px[(y * w + x) * 4 + 3] = 0; }
+        else paint(px, w, x, y, r, g, b);
+    }
+}
 static void draw_role(unsigned char *px, int n, unsigned seed, int ri, const Role *role, const char *style, int outline) {
     int y, x, step = (strcmp(style, "coarse") == 0) ? (n / 4 > 1 ? n / 4 : 2) : 1;
     const char *nm = role->name;
@@ -120,28 +161,30 @@ static void draw_role(unsigned char *px, int n, unsigned seed, int ri, const Rol
         paint(px, n, x, y, r, g, b);
     }
 }
-static int write_csv(const char *path, const unsigned char *px, int n) {
+static int write_csv(const char *path, const unsigned char *px, int w, int h) {
     FILE *f = fopen(path, "w");
-    int i, count = n * n;
+    int i, count = w * h;
     if (!f) return -1;
-    fprintf(f, "# resolution=%d\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", n);
+    if (w == h) fprintf(f, "# resolution=%d\n", w);
+    else fprintf(f, "# resolution=%dx%d\n", w, h);
+    fprintf(f, "# scale=1.0\n# transform=0,0,0\nr,g,b,a\n");
     for (i = 0; i < count; i++)
         fprintf(f, "%u,%u,%u,%u\n", px[i * 4], px[i * 4 + 1], px[i * 4 + 2], px[i * 4 + 3]);
     fclose(f);
     return 0;
 }
-static int write_png(const char *path, const unsigned char *px, int n) {
+static int write_png(const char *path, const unsigned char *px, int w, int h) {
     FILE *f;
     unsigned char *raw, *comp;
     uLongf clen;
     int y, x;
     unsigned long crc;
-    size_t raw_n = (size_t)n * (n * 4 + 1);
+    size_t raw_n = (size_t)h * (w * 4 + 1);
     raw = malloc(raw_n);
     if (!raw) return -1;
-    for (y = 0; y < n; y++) {
-        raw[y * (n * 4 + 1)] = 0;
-        for (x = 0; x < n; x++) memcpy(raw + y * (n * 4 + 1) + 1 + x * 4, px + (y * n + x) * 4, 4);
+    for (y = 0; y < h; y++) {
+        raw[y * (w * 4 + 1)] = 0;
+        for (x = 0; x < w; x++) memcpy(raw + y * (w * 4 + 1) + 1 + x * 4, px + (y * w + x) * 4, 4);
     }
     clen = compressBound(raw_n);
     comp = malloc(clen);
@@ -155,9 +198,8 @@ static int write_png(const char *path, const unsigned char *px, int n) {
         unsigned char lenb[4], crcb[4];
         uLong c;
         fwrite(sig, 1, 8, f);
-        ihdr[0] = (n >> 24) & 255; ihdr[1] = (n >> 16) & 255; ihdr[2] = (n >> 8) & 255; ihdr[3] = n & 255;
-        ihdr[4] = 0; ihdr[5] = 0; ihdr[6] = 0; ihdr[7] = n & 255; /* height, n <= 48 */
-        ihdr[4] = (n >> 24) & 255; ihdr[5] = (n >> 16) & 255; ihdr[6] = (n >> 8) & 255; ihdr[7] = n & 255;
+        ihdr[0] = (w >> 24) & 255; ihdr[1] = (w >> 16) & 255; ihdr[2] = (w >> 8) & 255; ihdr[3] = w & 255;
+        ihdr[4] = (h >> 24) & 255; ihdr[5] = (h >> 16) & 255; ihdr[6] = (h >> 8) & 255; ihdr[7] = h & 255;
         ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
         lenb[0] = 0; lenb[1] = 0; lenb[2] = 0; lenb[3] = 13;
         fwrite(lenb, 1, 4, f); fwrite("IHDR", 1, 4, f); fwrite(ihdr, 1, 13, f);
@@ -181,30 +223,34 @@ static int write_png(const char *path, const unsigned char *px, int n) {
     fclose(f); free(raw); free(comp);
     return 0;
 }
-static int emit(const char *outdir, const char *sheet, unsigned seed, int cell, const char *style, int outline, Role *roles, int n) {
+static int emit(const char *outdir, const char *sheet, unsigned seed, int w, int h, const char *style, int outline, Role *roles, int n) {
     int i;
-    char dir[512], path[512];
-    unsigned char *px = malloc((size_t)cell * cell * 4);
-    if (!px || cell < 8 || cell > MAXN) { free(px); return 2; }
+    char dir[640], path[700];
+    unsigned char *px;
+    if (w < 8 || h < 8 || w > MAXN || h > MAXN) return 2;
+    px = calloc((size_t)w * h, 4);
+    if (!px) return 2;
     for (i = 0; i < n; i++) {
         snprintf(dir, sizeof dir, "%s/%s/%u/%s", outdir, sheet, seed, roles[i].name);
         mkp(dir);
-        memset(px, 0, (size_t)cell * cell * 4);
-        draw_role(px, cell, seed, i, &roles[i], style, outline);
+        memset(px, 0, (size_t)w * h * 4);
+        if (special_style(style)) draw_special(px, w, h, seed, i, &roles[i], style, outline);
+        else if (w == h) draw_role(px, w, seed, i, &roles[i], style, outline);
+        else { free(px); return 2; }
         snprintf(path, sizeof path, "%s/sprite.csv", dir);
-        if (write_csv(path, px, cell) != 0) { free(px); return 2; }
+        if (write_csv(path, px, w, h) != 0) { free(px); return 2; }
         snprintf(path, sizeof path, "%s/tile.png", dir);
-        if (write_png(path, px, cell) != 0) { free(px); return 2; }
+        if (write_png(path, px, w, h) != 0) { free(px); return 2; }
     }
     free(px);
-    printf("WROTE %s roles=%d cell=%d seed=%u\n", sheet, n, cell, seed);
+    printf("WROTE %s roles=%d cell=%dx%d seed=%u\n", sheet, n, w, h, seed);
     return 0;
 }
 static int run_file(const char *gen, const char *outdir) {
     FILE *f = fopen(gen, "r");
-    char line[512], roles_s[256] = "", pal[256] = "", sheet[64] = "", style[16] = "flat";
+    char line[640], roles_s[320] = "", pal[320] = "", sheet[64] = "", style[16] = "flat";
     Role roles[MAXR];
-    unsigned seed = 0; int cell = 16, outline = 1, n, i;
+    unsigned seed = 0; int w = 16, h = 16, outline = 1, n, i;
     if (!f) { fprintf(stderr, "no gen file\n"); return 2; }
     while (fgets(line, sizeof line, f)) {
         char *k, *v, *p;
@@ -215,7 +261,9 @@ static int run_file(const char *gen, const char *outdir) {
         while (k[0] && k[strlen(k) - 1] == ' ') k[strlen(k) - 1] = 0;
         if (strcmp(k, "sheet") == 0) snprintf(sheet, sizeof sheet, "%s", v);
         else if (strcmp(k, "seed") == 0) seed = (unsigned)strtoul(v, NULL, 10);
-        else if (strcmp(k, "cell") == 0) cell = atoi(v);
+        else if (strcmp(k, "cell") == 0) { w = atoi(v); if (h == 16) h = w; }
+        else if (strcmp(k, "wide") == 0) w = atoi(v);
+        else if (strcmp(k, "tall") == 0) h = atoi(v);
         else if (strcmp(k, "roles") == 0) snprintf(roles_s, sizeof roles_s, "%s", v);
         else if (strcmp(k, "palette") == 0) snprintf(pal, sizeof pal, "%s", v);
         else if (strcmp(k, "style") == 0) snprintf(style, sizeof style, "%s", v);
@@ -227,43 +275,63 @@ static int run_file(const char *gen, const char *outdir) {
     if (n < 1) return 2;
     if (parse_palette(pal, roles, n) != 0) { fprintf(stderr, "palette count does not match roles\n"); return 3; }
     for (i = 0; i < n; i++) if (!roles[i].name[0]) return 3;
-    return emit(outdir, sheet, seed, cell, style, outline, roles, n);
+    return emit(outdir, sheet, seed, w, h, style, outline, roles, n);
 }
 
-typedef struct { const char *sheet, *roles, *pal, *style; int cell, outline; unsigned seed; } Cat;
+typedef struct { const char *sheet, *roles, *pal, *style; int w, h, outline; unsigned seed; } Cat;
 static const Cat CATS[] = {
     { "Outside", "grass,dirt,path,water,water_edge,wall,door,tree,roof",
-      "#3a6b32,#6b4a2a,#c2b48a,#2a5a8a,#245070,#4a4a4a,#8a3a2a,#1e3a16,#6a5a4a", "flat", 16, 1, 20261105u },
+      "#3a6b32,#6b4a2a,#c2b48a,#2a5a8a,#245070,#4a4a4a,#8a3a2a,#1e3a16,#6a5a4a", "flat", 16, 16, 1, 20261105u },
     { "SF_Outside", "grass,dirt,path,water,water_edge,wall,door,tree,roof",
-      "#2a5a48,#5a4038,#b0a898,#1a4068,#183848,#3a4048,#7a3030,#143018,#5a5048", "flat", 16, 1, 20261105u },
+      "#2a5a48,#5a4038,#b0a898,#1a4068,#183848,#3a4048,#7a3030,#143018,#5a5048", "flat", 16, 16, 1, 20261105u },
     { "Inside", "floor,wall,window,door",
-      "#8a7a68,#c8c0b0,#88b0c8,#6a4030", "flat", 16, 1, 20261105u },
+      "#8a7a68,#c8c0b0,#88b0c8,#6a4030", "flat", 16, 16, 1, 20261105u },
     { "Dungeon", "floor,wall,door,water,stairs",
-      "#3a3a3a,#5a5a62,#4a3030,#1a3048,#7a7a82", "flat", 16, 1, 20261105u },
+      "#3a3a3a,#5a5a62,#4a3030,#1a3048,#7a7a82", "flat", 16, 16, 1, 20261105u },
     { "World", "grass,water,mountain,sand,forest",
-      "#2f6a28,#1a4878,#6a6a6a,#c2b070,#143018", "coarse", 16, 1, 20261105u },
+      "#2f6a28,#1a4878,#6a6a6a,#c2b070,#143018", "coarse", 16, 16, 1, 20261105u },
+    { "Characters", "down,left,right,up",
+      "#c4a574,#3a5a8a,#c4a574,#3a5a8a", "sprite", 32, 32, 0, 20261105u },
+    { "Faces", "hero",
+      "#c4a574", "face", 32, 32, 0, 20261105u },
+    { "SvActors", "stand",
+      "#6a8a4a", "sv", 32, 32, 0, 20261105u },
+    { "SvEnemies", "slime",
+      "#3a8a4a", "sv", 32, 32, 0, 20261105u },
+    { "Parallax", "sky",
+      "#6aa0d0", "parallax", 64, 32, 1, 20261105u },
+    { "Battlebacks", "field",
+      "#203040", "battle", 48, 32, 1, 20261105u },
+    { "Titles", "banner",
+      "#1a2030", "title", 64, 24, 1, 20261105u },
+    { "System", "cursor,border,icon",
+      "#f0f0f0,#d0d0e0,#c0a040", "system", 16, 16, 0, 20261105u },
+    { "Animations", "f0,f1,f2,f3",
+      "#f0e060,#f0e060,#f0e060,#f0e060", "anim", 32, 32, 0, 20261105u },
 };
 static int catalog(const char *outdir) {
-    int i, rc = 0;
-    for (i = 0; i < 5; i++) {
+    int i, rc = 0, ncat = (int)(sizeof CATS / sizeof CATS[0]);
+    for (i = 0; i < ncat; i++) {
         char buf[640];
         Role roles[MAXR];
         int n;
         snprintf(buf, sizeof buf, "%s", CATS[i].roles);
         n = split_roles(buf, roles);
         if (parse_palette(CATS[i].pal, roles, n) != 0) return 3;
-        rc = emit(outdir, CATS[i].sheet, CATS[i].seed, CATS[i].cell, CATS[i].style, CATS[i].outline, roles, n);
+        rc = emit(outdir, CATS[i].sheet, CATS[i].seed, CATS[i].w, CATS[i].h, CATS[i].style, CATS[i].outline, roles, n);
         if (rc) return rc;
     }
     return 0;
 }
-static int mean_chan(const char *path, int chan, int *out, int *ncell, int *top_darker) {
+static int mean_chan(const char *path, int chan, int *out, int *ncell, int *nheight, int *top_darker) {
     FILE *f = fopen(path, "r");
-    char line[64];
+    char line[80];
     long sum = 0, n = 0, top = 0, mid = 0, nt = 0, nm = 0;
-    int res = 0, pix = 0;
+    int res = 0, resh = 0, pix = 0;
     if (!f) return -1;
     if (!fgets(line, sizeof line, f) || sscanf(line, "# resolution=%d", &res) != 1) { fclose(f); return -1; }
+    resh = res;
+    { char *x = strchr(line, 'x'); if (x) resh = atoi(x + 1); }
     fgets(line, sizeof line, f); fgets(line, sizeof line, f); fgets(line, sizeof line, f);
     while (fgets(line, sizeof line, f)) {
         int r, g, b, a, v;
@@ -272,8 +340,8 @@ static int mean_chan(const char *path, int chan, int *out, int *ncell, int *top_
         if (a) {
             int y = pix / res;
             sum += v; n++;
-            if (y < res / 5) { top += v; nt++; }
-            if (y > res / 3 && y < 2 * res / 3) { mid += v; nm++; }
+            if (y < resh / 5) { top += v; nt++; }
+            if (y > resh / 3 && y < 2 * resh / 3) { mid += v; nm++; }
         }
         pix++;
     }
@@ -281,12 +349,13 @@ static int mean_chan(const char *path, int chan, int *out, int *ncell, int *top_
     if (n < 1) return -1;
     *out = (int)(sum / n);
     *ncell = res;
+    *nheight = resh;
     *top_darker = (nt && nm && top / nt + 8 < mid / nm) ? 1 : 0;
     return 0;
 }
 static int audit(const char *outdir) {
-    int ci, ri, fails = 0;
-    for (ci = 0; ci < 5; ci++) {
+    int ci, ri, fails = 0, ncat = (int)(sizeof CATS / sizeof CATS[0]);
+    for (ci = 0; ci < ncat; ci++) {
         char buf[640], path[512];
         Role roles[MAXR];
         int n, prev_g = -1, i;
@@ -294,14 +363,14 @@ static int audit(const char *outdir) {
         snprintf(buf, sizeof buf, "%s", CATS[ci].roles);
         n = split_roles(buf, roles);
         for (ri = 0; ri < n; ri++) {
-            int m0, m1, m2, res, dark, a;
+            int m0, m1, m2, res, reh, dark, a;
             FILE *pf;
             snprintf(path, sizeof path, "%s/%s/%u/%s/sprite.csv", outdir, CATS[ci].sheet, CATS[ci].seed, roles[ri].name);
-            if (mean_chan(path, 0, &m0, &res, &dark) || mean_chan(path, 1, &m1, &res, &dark) || mean_chan(path, 2, &m2, &res, &dark)) {
+            if (mean_chan(path, 0, &m0, &res, &reh, &dark) || mean_chan(path, 1, &m1, &res, &reh, &dark) || mean_chan(path, 2, &m2, &res, &reh, &dark)) {
                 printf("FAIL %s %s unreadable\n", CATS[ci].sheet, roles[ri].name); fails++; continue;
             }
             means[ri][0] = m0; means[ri][1] = m1; means[ri][2] = m2;
-            if (res != CATS[ci].cell) { printf("FAIL %s %s cell\n", CATS[ci].sheet, roles[ri].name); fails++; }
+            if (res != CATS[ci].w || reh != CATS[ci].h) { printf("FAIL %s %s cell\n", CATS[ci].sheet, roles[ri].name); fails++; }
             snprintf(path, sizeof path, "%s/%s/%u/%s/tile.png", outdir, CATS[ci].sheet, CATS[ci].seed, roles[ri].name);
             pf = fopen(path, "rb");
             if (!pf) { printf("FAIL %s %s no-png\n", CATS[ci].sheet, roles[ri].name); fails++; }
@@ -311,11 +380,13 @@ static int audit(const char *outdir) {
             if (strcmp(roles[ri].name, "wall") == 0 && !dark) { printf("FAIL %s wall no-top-edge\n", CATS[ci].sheet); fails++; }
             (void)prev_g;
         }
-        for (i = 0; i < n; i++) for (ri = i + 1; ri < n; ri++) {
-            int d = abs(means[i][0] - means[ri][0]) + abs(means[i][1] - means[ri][1]) + abs(means[i][2] - means[ri][2]);
-            if (d < 24) { printf("FAIL %s %s-vs-%s too-alike d=%d\n", CATS[ci].sheet, roles[i].name, roles[ri].name, d); fails++; }
+        if (strcmp(CATS[ci].style, "anim") != 0 && strcmp(CATS[ci].style, "sprite") != 0) {
+            for (i = 0; i < n; i++) for (ri = i + 1; ri < n; ri++) {
+                int d = abs(means[i][0] - means[ri][0]) + abs(means[i][1] - means[ri][1]) + abs(means[i][2] - means[ri][2]);
+                if (d < 24) { printf("FAIL %s %s-vs-%s too-alike d=%d\n", CATS[ci].sheet, roles[i].name, roles[ri].name, d); fails++; }
+            }
         }
-        if (!fails) printf("AUDIT %s roles=%d cell=%d ok\n", CATS[ci].sheet, n, CATS[ci].cell);
+        if (!fails) printf("AUDIT %s roles=%d cell=%dx%d ok\n", CATS[ci].sheet, n, CATS[ci].w, CATS[ci].h);
     }
     return fails ? 4 : 0;
 }

@@ -1726,3 +1726,20 @@ COMMAND store_get_free
   PARAMS item
   TEMPLATE exec "$D/&.widgits/store/ops/+x/ev_store.+x" "$ENT" "$D" get '{item}'
 END
+
+# generator-hq. One painter. The sheet name is a folder under events/ (gen_characters, gen_parallax, ...). Any book event can call it. The GEN rows stay in that folder.
+COMMAND gen_sheet
+  LABEL Generator: Run One Sheet
+  FIELD1 Sheet folder:
+  FIELD2 -
+  PARAMS sheet
+  TEMPLATE exec "$D/@.apps/generator-hq/ops/+x/generator_tile_op.+x" run "$D/@.apps/generator-hq/events/{sheet}/sheet.gen" "$D/@.apps/generator-hq/out"
+END
+
+COMMAND gen_catalog
+  LABEL Generator: Run Every Sheet
+  FIELD1 -
+  FIELD2 -
+  PARAMS -
+  TEMPLATE exec "$D/@.apps/generator-hq/ops/+x/generator_tile_op.+x" catalog "$D/@.apps/generator-hq/out"
+END
