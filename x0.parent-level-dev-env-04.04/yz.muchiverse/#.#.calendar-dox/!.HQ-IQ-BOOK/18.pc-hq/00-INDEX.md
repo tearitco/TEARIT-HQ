@@ -57,3 +57,4 @@ landed and what is still open.
   (and on the livedesk), made in an agent-usable layout studio. Lists what exists (the canvas overlay
   strip the hotbar uses), the gaps (no overlay chrome, one footer, floating menus leave the viewport),
   the phases, and how it builds on the layout-studio seed doc.
+- `VIEWS-LAYOUT-STUDIO-AND-XELECTOR-LOOK-2026-11-04.md` — the owner's vision (Xcode-like views, MVC, chained with event-page scripting; not built), what the layout studio really is (a validator + catalog, layers 1-2; 44 pre-existing errors on the editor board), why the coin popup wraps badly, and the xelector question: no, the green is fixed in both renderers; the data (`possessed_id`) exists; a spec for a lighter/thinner "controlling" look

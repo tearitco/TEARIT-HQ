@@ -99,6 +99,15 @@ Status below is the `GAMES-ROADMAP.md` status of 2026-10-13 (DOC, not re-run tod
 - [ ] Browser fully Chrome-replaceable (owner directive 2026-10-20). DOC: building (`../08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md`, `NB-JS-ENGINE-ROADMAP.md`).
 - [ ] Windows and macOS (macOS via XQuartz today; Windows thin shims). DOC: planned (`OPEN-ITEMS.md` item 2).
 
+## I2. Views, layouts and the xelector look (owner vision 2026-11-04; doc `../18.pc-hq/VIEWS-LAYOUT-STUDIO-AND-XELECTOR-LOOK-2026-11-04.md`)
+
+- [ ] The "views" vision: see views live in a greater editor and chain them with RPG-Maker / blueprintz style scripting (Xcode / MVC shape). VISION, not built; the doc maps each idea to the house piece that exists.
+- [~] Layout studio (`@.apps/layout-studio`): layers 1-2 (validator + catalog) built 2026-10-09; templates, `layout_op`, scaffolds and the editor window NOT built. OBS 2026-11-04: `layout_check` on the editor board = 44 errors (pre-existing, "key not published"); not investigated why. The coin popup's 4 extra errors were fixed (publish every key always).
+- [ ] Make `layout_check` green on the editor board (decide whether the 44 are conditional keys or a checker limit).
+- [ ] A wrap-aware text element for overlay rows (text wraps in width, the row does not grow in height; the coin popup is kept short on purpose). Check `khtpm_core_render.c` before building more popups by hand.
+- [ ] Xelector look: lighter / thinner green while it CONTROLS an entity, bolder when free. OBS: NOT in the code (both renderers use a fixed `40,255,80`, 6 px in 2D); `possessed_id` already exists in `xelector_01/state.txt` and is parsed by both renderers. Spec and test plan in the doc; owner picks the colour and thickness. Also: the 3D HUD `poss` line uses `g_hero_present`, not `possessed_id` (shows `-` while the state says `hero_01`).
+- [ ] An onboarding guide for the event architecture (four layers: clock `common:` events, event pages / choice popups, S1 ledger events, board projection). The pieces exist in `02-architecture/` and `16.game/`; no page connects them. Not written.
+
 ## J. Housekeeping the owner decides
 
 - [ ] `grok` and `main` branches are synced to claude only on request (last sync commit `183048f53`, before this session's later commits).
