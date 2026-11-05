@@ -1,6 +1,6 @@
 # EDIT-ISLANDS-DESIGN — the floating-island town for rpg-edit-hq (paper design, 2026-10-21)
 
-**Status: design only. Nothing of this is built.** The owner's picture ("centroid", a screenshot, no file on disk: no book TON / page centroid-u exists
+**Status: design only. Nothing of this is built.** (STALE as of 2026-11-04: the editor's start room IS an island map now, `@.apps/rpg-edit-hq/rooms.pdl` `ROOM | start | Islands | ... | 56 | 17`, painted by `ops/rpg_edit_hq.c`; this paper design predates it.) The owner's picture ("centroid", a screenshot, no file on disk: no book TON / page centroid-u exists
 anywhere in the house, searched 2026-10-21) shows floating grass islands with dirt cliffs, pines, a pond, wooden bridges and a cabin. This is an
 approximation drawn from that picture, one island at a time. Owner rule for the buildings: **each island has exactly one building, and the five
 buildings are the five teleport-door buildings the usual pet boards have** (mcl-hq `rooms.pdl`: castle/Cabin, bank, store, school, hotel).

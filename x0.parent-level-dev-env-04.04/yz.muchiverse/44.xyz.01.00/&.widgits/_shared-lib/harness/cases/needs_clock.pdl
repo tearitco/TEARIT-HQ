@@ -50,4 +50,16 @@ EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/needs.txt | hero\p20\p30\p
 WRITE | house/@.apps/rpg-edit-hq/survivor_clock.pdl | ENABLED \p 1\nBOOK \p books/lab\nMINUTES \p 60\nACTORS \p \n
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
 EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/needs.txt | hero\p20\p30\p10 | an-empty-actor-list-changes-nothing
+CASE    | ten-minute-ticks-lose-nothing
+WRITE | house/@.apps/rpg-edit-hq/survivor_clock.pdl | ENABLED \p 1\nBOOK \p books/lab\nMINUTES \p 10\nACTORS \p newbie\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/needs.txt | newbie\p10\p15\p5 | six-10-minute-firings-equal-one-60-minute-tick-nothing-lost-to-rounding
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:needs_tick | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/needs.txt | newbie\p11\p17\p5 | the-seventh-firing-adds-one-hunger-and-two-thirst-the-fatigue-remainder-is-still-carried
+
 CLEAN |
