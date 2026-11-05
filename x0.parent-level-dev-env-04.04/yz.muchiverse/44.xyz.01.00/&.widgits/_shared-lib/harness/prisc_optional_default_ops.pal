@@ -1,0 +1,4 @@
+# prisc_optional_default_ops.pal - prisc's fallback default_op.txt is optional. See cases/prisc_optional_default_ops.pdl
+exec ./ops/+x/harness_case_op.+x cases/prisc_optional_default_ops.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/prisc_optional_default_ops.pdl
+halt

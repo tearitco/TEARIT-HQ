@@ -1,0 +1,1 @@
+# default_op.txt - optional project ops for this prisc+x. Intentionally empty (2026-11-05): without a file here, every event page played through this binary wrote "[Prisc Error] Could not open ops file" to its master_ledger. Pages only use built-in ops (exec, halt). Add custom ops below if ever needed.

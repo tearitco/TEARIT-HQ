@@ -1,0 +1,33 @@
+# prisc_optional_default_ops: prisc's fallback default_op.txt (the one next to its own binary) is OPTIONAL. Found 2026-11-05 with growth_probe: every event page played through the 101.mutaclsym*/system/prisc+x binary wrote `[Prisc Error] Could not open ops file: .../system/default_op.txt` to its master_ledger (about half of 13,000 lines in each of 5 ledgers) although the page only runs `exec cmd_N.sh` and `halt`, which are built in. A missing OPTIONAL fallback must be silent; an EXPLICIT ops file and an `#include` that cannot be opened must stay loud (real errors).
+# prisc is built from the shared source into the scratch dir, so this tests the source, not whichever binary is installed.
+RESULTS | ../results/prisc_optional_default_ops.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | quiet
+MKDIR | loud
+MKDIR | inc
+RUN | gcc | -O1 | -w | -o | $T/prisc | $HOUSE/&.widgits/_shared-lib/system/prisc+x.c | -lm
+EXPECT_EXIT | 0 | prisc-builds-from-the-shared-source
+WRITE | quiet/prog.pal | halt\n
+WRITE | loud/prog.pal | halt\n
+WRITE | inc/prog.pal | halt\n
+
+CASE    | a-missing-optional-default-op-is-silent
+RUN | $T/prisc | $T/quiet/prog.pal
+EXPECT_EXIT | 0 | the-program-runs
+EXPECT_OUT_LACKS | Prisc Error | no-error-row-for-the-optional-fallback-file
+
+CASE    | NEGATIVE-an-explicit-ops-file-that-is-missing-stays-loud
+RUN | $T/prisc | $T/loud/prog.pal | - | - | $T/loud/no_such_ops.txt
+EXPECT_OUT | Could not open ops file | a-real-explicit-missing-file-is-still-an-error
+
+CASE    | a-default-op-that-exists-next-to-the-binary-gives-no-error
+WRITE | default_op.txt | # an ordinary default ops file\nmyop void builtin_halt {an alias}\n
+WRITE | inc/prog.pal | halt\n
+RUN | sh | -c | cd $T/inc && $T/prisc prog.pal
+EXPECT_OUT_LACKS | Prisc Error | a-present-fallback-file-loads-without-an-error
+# LIMIT, stated: that a present file is still PARSED is not observable from outside (an unknown op is silent and a custom op's output is discarded by the VM); that path is the unchanged parse_ops_file.
+
+CLEAN |

@@ -1222,7 +1222,8 @@ int main(int argc, char **argv) {
                 *last_slash = '\0';
                 char *alt_path = NULL;
                 if (asprintf(&alt_path, "%s/default_op.txt", binary_path) >= 0) {
-                    parse_ops_file(alt_path);
+                    /* the fallback default_op.txt next to the binary is OPTIONAL: a project without one is normal (2026-11-05: every event page played through the mutaclsym prisc wrote "Could not open ops file" to its ledger, half of five 13,000-line ledgers). An EXPLICIT ops file (argv[4]) and a bad include stay loud. */
+                    { FILE *optf = fopen(alt_path, "r"); if (optf) { fclose(optf); parse_ops_file(alt_path); } }
                     free(alt_path);
                 }
             }
