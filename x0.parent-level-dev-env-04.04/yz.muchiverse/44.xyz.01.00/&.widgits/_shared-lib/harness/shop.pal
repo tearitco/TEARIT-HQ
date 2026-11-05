@@ -1,0 +1,4 @@
+# shop.pal - the shop slice: coins on the ledger, buy / sell as atomic trades, no cross-id swap (early-survivor step 6). See cases/shop.pdl
+exec ./ops/+x/harness_case_op.+x cases/shop.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/shop.pdl
+halt

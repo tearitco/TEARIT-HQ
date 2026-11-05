@@ -1,0 +1,118 @@
+# shop: SCRATCH book only (data copied from the shipped ledger-lab). Every refusal checks that NO balance changed; the coin total is checked after trades; the whole ledger is replayed with check at the end.
+RESULTS | ../results/shop.txt
+ENV | LC_ALL | C
+ENV | ITEM_LEDGER_TS | 1700000000
+
+CASE    | setup
+SCRATCH |
+MKDIR | book
+WRITE | book/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/shop.pdl | $T/book/shop.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | shop | cdda.rag | 5 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | shop | mcl.cobble | 3 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | shop | coin.play | 100 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | coin.play | 50 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.bottle | 2 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | df.stone | 4 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | coin.play
+EXPECT_OUT | 150 | coins-minted-in-total-150
+
+CASE    | list
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | list
+EXPECT_EXIT | 0 | list-runs
+EXPECT_OUT | cdda.rag buy 4 sell 2 stock 5 | a-priced-item-with-the-shops-stock
+EXPECT_OUT | till 100 | the-till-is-shown
+
+CASE    | buy
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.rag | 2
+EXPECT_EXIT | 0 | buying-2-rags
+EXPECT_OUT | BOUGHT 2 x cdda.rag for 8 coins | the-receipt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
+EXPECT_OUT | hero\pcoin.play\p42 | hero-paid-8
+EXPECT_OUT | hero\pcdda.rag\p2 | hero-got-2-rags
+EXPECT_OUT | shop\pcdda.rag\p3 | shop-stock-down-2
+EXPECT_OUT | shop\pcoin.play\p108 | the-till-is-up-8
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | coin.play
+EXPECT_OUT | 150 | the-coin-total-is-unchanged-by-a-trade
+
+CASE    | refusals-change-nothing
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
+CAPTURE | before
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.rag | 4
+EXPECT_EXIT | 3 | NEGATIVE-more-than-the-stock-is-refused
+EXPECT_OUT | the shop has 3 | the-reason-names-the-stock
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | mcl.cobble | 2
+EXPECT_EXIT | 3 | NEGATIVE-60-coins-with-42-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.spear | 1
+EXPECT_EXIT | 3 | NEGATIVE-an-item-with-no-price-row-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.rag | 0
+EXPECT_EXIT | 3 | NEGATIVE-zero-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.rag | 101
+EXPECT_EXIT | 3 | NEGATIVE-101-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.rag | x
+EXPECT_EXIT | 3 | NEGATIVE-a-non-number-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | sell | hero | cdda.can | 1
+EXPECT_EXIT | 3 | NEGATIVE-selling-what-you-do-not-hold-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | shop | cdda.rag | 1
+EXPECT_EXIT | 3 | NEGATIVE-the-shopkeeper-cannot-trade-with-itself
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
+CAPTURE | after
+EXPECT_EQ | $before | $after | not-one-balance-changed-by-any-of-the-eight-refusals
+
+CASE    | sell-and-the-spread
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | sell | hero | cdda.bottle | 2
+EXPECT_EXIT | 0 | selling-2-bottles
+EXPECT_OUT | SOLD 2 x cdda.bottle for 6 coins | the-receipt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
+EXPECT_OUT | hero\pcoin.play\p48 | hero-got-6-coins
+EXPECT_OUT | shop\pcdda.bottle\p2 | the-shop-holds-the-bottles
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.bottle | 2
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
+EXPECT_OUT | hero\pcoin.play\p36 | buying-the-2-bottles-back-costs-12-so-the-loop-LOST-12-minus-6
+EXPECT_OUT | shop\pcoin.play\p114 | and-the-shop-gained-the-spread
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | coin.play
+EXPECT_OUT | 150 | still-150-coins-in-the-world
+
+CASE    | no-cross-id-swap-but-two-trades-work
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | swap | hero | df.stone | mcl.cobble
+EXPECT_EXIT | 2 | NEGATIVE-there-is-no-swap-verb
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | sell | hero | df.stone | 4
+EXPECT_EXIT | 0 | sell-df-stone-for-coins
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | mcl.cobble | 1
+EXPECT_EXIT | 0 | then-buy-mcl-cobble-with-the-coins-an-exchange-across-ids-in-two-trades
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | df.stone
+EXPECT_OUT | 4 | df-stone-is-conserved-4
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | mcl.cobble
+EXPECT_OUT | 3 | mcl-cobble-is-conserved-3
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
+EXPECT_OUT | hero\pmcl.cobble\p1 | hero-ended-with-one-cobble-for-the-stone-sold
+
+CASE    | the-shop-cannot-pay
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | beggar | cdda.can | 3 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | poorshop | cdda.rag | 1 | gift
+WRITE | book/shop_poor.pdl | COIN\pcoin.play\nSHOPKEEPER\ppoorshop\nPRICE\pcdda.can\p8\p4\n
+RUN | /bin/cp | $T/book/shop.pdl | $T/book/shop_keep.pdl
+RUN | /bin/cp | $T/book/shop_poor.pdl | $T/book/shop.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | sell | beggar | cdda.can | 3
+EXPECT_EXIT | 3 | NEGATIVE-the-shop-has-no-coins-so-it-cannot-pay
+EXPECT_OUT | cannot pay | the-reason-says-so
+RUN | /bin/cp | $T/book/shop_keep.pdl | $T/book/shop.pdl
+
+CASE    | a-bad-price-table-is-refused
+WRITE | book/shop.pdl | COIN\pcoin.play\nSHOPKEEPER\pshop\nPRICE\pcdda.rag\p4\p4\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | list
+EXPECT_EXIT | 3 | NEGATIVE-sell-equal-to-buy-is-refused-at-load
+EXPECT_OUT | cycled | the-reason-names-the-free-money-loop
+WRITE | book/shop.pdl | COIN\pcoin.play\nSHOPKEEPER\pshop\nPRICE\pcdda.rag\p4\p9\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.rag | 1
+EXPECT_EXIT | 3 | NEGATIVE-sell-above-buy-is-refused-too
+RUN | /bin/cp | $T/book/shop_keep.pdl | $T/book/shop.pdl
+
+CASE    | replay-and-quarantine
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-whole-ledger-replays-clean-per-id-conservation
+MKDIR | open
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/open | list
+EXPECT_EXIT | 4 | a-folder-without-QUARANTINE-is-refused
+CLEAN |

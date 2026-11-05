@@ -29,3 +29,6 @@ Holds the item ledger lab. NOT listed in the editor's book dropdown and NOT read
 ## Survivor slice step 5 (2026-11-04)
 - `ops/mcl_op.c`: `craft <actor> <recipe> <x> <y>` (2x2 recipes need no bench, 3x3 need a placed bench cell at x,y), `smelt` (furnace cell), `place bench|bed|furnace`, `respawn` (own bed else fallback), `burst <x> <y> <r>` (no drops). Data: `mcl_recipes.pdl`; items `mcl.*` in `items.pdl`. Harness `mcl_bench.pal`. Not called by anything yet.
 
+## Survivor slice step 6, the shop (2026-11-04)
+- `ops/shop_op.c`: `list`, `buy <actor> <item> <n>`, `sell <actor> <item> <n>`. Coins are the ledger item `coin.play`; each sale is one atomic ledger `trade`; the shop never mints. Data: `shop.pdl` (COIN / SHOPKEEPER / PRICE with sell < buy). Spec: `16.game/SHOP-SLICE-SPEC-2026-11-04.md`. Harness `shop.pal`. No verb swaps one item id for another.
+

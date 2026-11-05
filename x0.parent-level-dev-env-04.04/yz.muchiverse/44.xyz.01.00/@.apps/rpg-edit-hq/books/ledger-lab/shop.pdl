@@ -1,0 +1,13 @@
+# shop.pdl - the shop slice (early-survivor step 6, quarantined). Spec: 16.game/SHOP-SLICE-SPEC-2026-11-04.md
+# COIN|<item id>            the coin is a ledger item (named after the exchange-hq unit `play`)
+# SHOPKEEPER|<actor>        holds the stock and the till; the shop never mints
+# PRICE|<item>|<buy>|<sell> buy = coins the player pays for 1; sell = coins the shop pays for 1; integers >= 1 and sell < buy (a buy-sell loop must lose coins)
+COIN|coin.play
+SHOPKEEPER|shop
+PRICE|cdda.rag|4|2
+PRICE|cdda.bottle|6|3
+PRICE|cdda.can|8|4
+PRICE|cdda.stone|12|6
+PRICE|df.stone|10|5
+PRICE|mcl.cobble|30|15
+PRICE|mcl.plank|6|3
