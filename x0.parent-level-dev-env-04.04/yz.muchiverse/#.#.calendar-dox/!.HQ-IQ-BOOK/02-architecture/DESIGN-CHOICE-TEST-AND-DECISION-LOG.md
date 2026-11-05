@@ -67,3 +67,12 @@ Options: A per-vehicle-kind code; B one data model (`parts.pdl`, `vehicles.pdl`,
 
 ## D13 to D18 (2026-11-05, PROPOSED): rated-game roadmap decisions
 What "made with RPG Maker" means (recommend hybrid: headless house sessions and Elo, thin RPG Maker client later), first rated game (True Swords Clash), Elo constants per game kind, public-domain Bible text, client/distribution, Japanese UI. Table and reasons: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 3.
+
+## D20 (2026-11-05, PROPOSED): gyms, zoos and museums are generated from catalogs and checked by harness
+Hand-written exhibits (rot) versus a "Concourse" generated from the catalogs with hand captions and harness-checked gym lanes (recommended: one authority per fact, the 10th catalog is a generator row, the zoo doubles as the editor palette and as agent eval). Doc: `16.game/GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`.
+
+## D21 (2026-11-05, PROPOSED): vehicle physics = one state and force-model rows per domain, two rulesets
+Per-vehicle code versus one integrator op with materials, parts and force rows, fun and realistic rulesets over the same files (recommended; matches "rulesets, not forks"), verified by analytic oracles with mutation proof. Doc: `16.game/VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`.
+
+## D22 (2026-11-05, PROPOSED): the chain stores receipts (hashes), not training data or weights
+Data and weights stay in house files (private, large, changing); the chain, once it exists, carries content hashes of packs and graduation/rated-result records. Doc: `17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md` section 5.

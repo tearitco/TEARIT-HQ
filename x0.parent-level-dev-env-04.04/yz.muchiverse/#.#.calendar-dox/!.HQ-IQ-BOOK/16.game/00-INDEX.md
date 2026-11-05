@@ -67,3 +67,5 @@ command runs on.
 - `RPG-DUST-DESIGN.md` - **paper design, nothing built** (2026-10-23): a pets-like board that simulates a planet from a seed, solar system down to molecules; the scale ladder as data rows, the world as a function of seed + an append-only overrides ledger, what is done by hand (laws), by weights (choices), by events (actions), by ops; how the current boards and the marathon refactor are reused; nine build steps each with a test that can fail; what is not known. Companion: NIGHT 52 (audio class) and the XO email summary.
 
 - Vehicle crafting and modding (design, 2026-11-05): `VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`.
+- Vehicle physics and proving grounds (design, 2026-11-05): `VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`.
+- Gyms, zoos and museums, documentation in the game (design, 2026-11-05): `GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`.

@@ -34,7 +34,7 @@ Labels: **SAID** = the owner said it (2026-11-05); **READ** = in a file (named);
 **D18. Japanese.** The promise is bilingual: UI strings in EN and JP, and the renderer must draw Japanese glyphs (not tested: DOC; M4 gate).
 
 ## 4. The roadmap (milestones, each with a proof gate)
-Critical path: **M0 → M1 → M2 → M3 → M4 → M5** (the promise). M6 to M9 are TSOTS and the University, which reuse the same infrastructure. M10 (vehicles) is a parallel track.
+Critical path: **M0 → M1 → M2 → M3 → M4 → M5** (the promise). M6 to M9 are TSOTS and the University, which reuse the same infrastructure. M10 (vehicles), M11 (physics, proving grounds), M12 (gyms, zoos, museums) and the AI track are parallel.
 
 ### M0. Decisions, naming and legal hygiene (S, now)
 Answer D13 to D18; rename **Diagonal Alley** (the owner's own `legal.txt` already flags Hogwarts and Chrono Cross as trademark risks: see `../22.lore-ip/SOUL-PEN-LORE-SUMMARY-2026-11-05.md`); check the RPG Maker asset license for art used outside RPG Maker; confirm what "cursword" and "てるてる" mean. **Gate:** decisions written in `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md`.
@@ -68,6 +68,15 @@ The University's **arena and tournaments are this same rated infrastructure**; p
 
 ### M10. Vehicle crafting and modding (L, can start in parallel after M1; owner 2026-11-05)
 Boats, spaceships, mechas, drones, cars, trucks: one part/slot/recipe data model, crafting menus driven by humans or agents through the same verbs, GTA-style chop shops, and dev-made vehicles through rpg-editor event pages. Design, difficulty projection and slice order: `../16.game/VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`. Ship class first (helm, hold, collision, remnants exist), a wheeled class second to prove the model. Theft, ownership and heat depend on the courts slice (M9); vehicles in rated PvP need a stock-class ruleset (M2/M3/M9). **Gate:** harness: `check_vehicle` rejects an illegal build and accepts a legal one (mutation-tested); craft, install, scrap round trip on the hold; an agent and a human produce identical state through the menu.
+
+### M11. Vehicle physics and proving grounds (L, parallel; owner 2026-11-05)
+Mass from materials, engines with fuel or an energy source, buoyancy, lift, friction; one integrator, two rulesets (fun and realistic); new test maps (vacuum range, test basin, test track, airfield, mecha yard, weigh station), each lane checked against an analytic oracle. Design and effort table: `../16.game/VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`. Order: space, boat, car, plane/drone, mecha. **Gate:** harness: simulated rocket burn matches the rocket equation within tolerance and fails when a constant is perturbed.
+
+### M12. Gyms, zoos and museums: documentation in the game (M, parallel; first zoo wing can start now)
+One "Concourse" book generated from the catalogs (zoo), measured lanes (gym), explained systems (museum); the editor palette reuses the zoo; agents take gym lanes as scored tasks. Design: `../16.game/GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`. **Gate:** deleting a catalog row removes its pedestal; a drifted gym metric fails the harness.
+
+### AI track A0-A7 (always on, ordered in one page)
+Micro-AI, the delegation flywheel, in-house models and data, token minimization, and what (little) belongs on the chain: `../17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md`. Every milestone above adds a judge; a judge is what lets a cheap model be tried safely.
 
 ## 5. Cross-cutting tracks (always on)
 - **Proof discipline:** every milestone gate is a pal harness case plus a recorded run; no "done" without a fresh build, a fresh run and evidence (AGENTS.md).

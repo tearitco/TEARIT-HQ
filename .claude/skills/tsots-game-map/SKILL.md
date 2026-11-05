@@ -30,7 +30,7 @@ M0 decisions and legal (D13 what "made with RPG Maker" means; rename "Diagonal A
 - **PvP/Elo/lobbies/seats**: the PATTERN doc; seat kinds `human|agent|peer|spectator`; agents use the human command path.
 - **AI bots**: `HARNESS-AS-GAME-BRAIN` (judge built, no caller); free models only; Ollama calls go to the Mac.
 - **Stairs/levels**: `Z-CELL-FORMAT` (paper), decision D12 proposed. **Arena/tournaments/party battles**: M9.
-- Not built: mana/MP, loyalty-capture, crime/courts, lyfebook, soul-pen drawing magic, **vehicle crafting/chop shops (design: `16.game/VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`, roadmap M10)**.
+- Not built: mana/MP, loyalty-capture, crime/courts, lyfebook, soul-pen drawing magic, **vehicle crafting/chop shops (design: `16.game/VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`, roadmap M10), vehicle physics + proving grounds (M11, `VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`), gyms/zoos/museums (M12, `GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`); AI roadmap: `17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md`**.
 
 ## RMMV secrets (READ TSOTS SECRETS folder; summary)
 The core `rpg_*.js` are replaced by owner copies loaded as plugins (`TSOTSrpg_*`); `GAMEVARIABLES.js` overrides `Game_Variables.setValue` and the interpreter commands 201 (Transfer Player), 285 (Get Location Info), 122 (Control Variables; operand 4 = `eval`, an injection hazard); `tilelyfe.js` plans RMMV **regions** as a meta map builder; script-call functions read `$gamePlayer` and `$gameMap.events()`. The house's real bridge is the **map import** (RMMV map → `map.txt`/`cells`/`events`/`extrusion.pdl`). The house renders RMMV art in its own engine: **check the RPG Maker license before shipping**.

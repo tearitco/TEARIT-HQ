@@ -22,3 +22,4 @@ a game at all.
 - `HARNESS-AS-GAME-BRAIN.md` — the whole picture of harness as judge and memory for in-game AI: game verb, ledger, phase table, harness verdict, RESULT ledger, behavior-bank weights, concept bank / tomom / pet decisions, with an ASCII diagram, what is built vs designed, the AI hook, and the planned decision ledger (2026-10-17).
 
 - `API-REGISTRY-AND-CAPS.md` - living record of free-API caps, probe runs and worker grades (2026-10-27).
+- `AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md` — the one-page AI roadmap: flywheel, micro-AI, token minimization, in-house data and models, chain receipts (2026-11-05).
