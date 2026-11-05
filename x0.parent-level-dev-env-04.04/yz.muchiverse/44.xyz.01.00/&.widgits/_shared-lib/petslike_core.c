@@ -580,6 +580,8 @@ static void load_ent(int i, Ent *e) {
     { int cw = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].cols : 13, ch = (nroom > 0 && e->room >= 0 && e->room < nroom) ? rooms[e->room].rows : 8; if (cw < 1) cw = 1; if (ch < 1) ch = 1; if (cw > MAXC) cw = MAXC; if (ch > MAXR) ch = MAXR;
       if (e->x < 0 || e->x >= cw) e->x = cw / 2; if (e->y < 0 || e->y >= ch) e->y = ch / 2; e->dir = ((e->dir % 4) + 4) % 4; if (e->steps < 0 || e->steps > 1000000000) e->steps = 0; if (e->tx < 0 || e->tx >= cw || e->ty < 0 || e->ty >= ch) e->tx = e->ty = -1; }
 }
+static void mark_possessed(const char *id);
+static void follow_selection(const char *id);      /* defined after mark_possessed */
 static void calc_view(void) { char f[40]; flag_str("follow", "pet", f, sizeof f); vroom = !strcmp(f, "player") ? tr.room : others[active].room; if (!strncmp(f, "room:", 5)) { int r = room_idx(f + 5); if (r >= 0) vroom = r; } if (vroom < 0 || vroom >= nroom) vroom = 0; }   /* the window shows the watched pet's room, or a room picked from the Rooms menu */
 static void pet_load(void) {           /* everything: active pet, all pets, the trainer, the view room */
     char p[PATH_MAX], b[40]; spath(p, "active.txt"); read_file(p, b, sizeof b); char *e = strchr(b, '\n'); if (e) *e = 0; active = 0; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, b)) active = i;
@@ -1498,8 +1500,8 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             snprintf(cmd, sizeof cmd, "sh '%s/&.widgits/_shared-lib/kh_spawn.sh' '%s' 0 %s -- sh '%s/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '%s/@.apps/piececraft-hq' '%s' '%s' '%s' '%s' '%s' >/dev/null 2>&1 &", HOUSE, HOUSE, "petslike-entity-ctx", HOUSE, HOUSE, argv[3], argv[4], argv[5], argv[1], argv[6]); if (system(cmd)) { } snprintf(msg, cap, "menu for %s", argv[2]); return; }
     }
     if (!strcmp(v, "select") && argc >= 2) { char hid[24]; snprintf(hid, sizeof hid, "%s", hero.name); for (char *c = hid; *c; c++) if (*c >= 'A' && *c <= 'Z') *c += 32;
-        if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
-        int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; }
+        if (!strcmp(argv[1], hid)) { g_ctl_why = "select-hero-row"; set_flag("ctl", "player"); set_flag("follow", "player"); follow_selection("hero_01"); calc_view(); snprintf(msg, cap, "%s, the hero (owner of the monsters), in the %s - INT controls him", hero.name, rooms[tr.room].name); return; }
+        int k = -1; for (int i = 0; i < nparty; i++) if (!strcmp(party[i].id, argv[1])) k = i; if (k < 0) { snprintf(msg, cap, "no pet %s", argv[1]); return; } follow_selection(party[k].id);
 #define PET_SECTION 60
 #include PET_SKIN
 #undef PET_SECTION
@@ -1752,6 +1754,13 @@ static int lock_hero_set(int on) {
     closedir(dr); return n;
 }
 /* DECISION D1 (02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): the xelector's possessed_id is the ONE authority for "who is the xelector controlling". The engine writes it for pieces; a pet or Harold is game state (not a piece), so the daemon writes it when Enter chooses them. The engine holds such a possession but moves nothing, and 9 / Esc-first release it where the xelector stands (bv_menu_input.c piece_exists). Everything that reads it (HUD poss, the lighter box in 2D and 3D, Esc-first) then needs no change. Harold is the engine's own hero_01. */
+/* Tab / a click on a pet row / the hero row run the verb `select`: if the xelector is possessing someone (possessed_id not none), possession FOLLOWS the selection, so the HUD, the paler box and Esc-first keep telling the truth (found 2026-11-05: selecting another pet left possessed_id on the old one). With nothing possessed a plain selection stays a plain selection. */
+static void follow_selection(const char *id) {
+    char xp[PATH_MAX], kb[512]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); if (!fexists(xp)) return; read_file(xp, kb, sizeof kb);
+    char *l = strstr(kb, "possessed_id="); if (!l) return; l += 13; char cur[64] = ""; size_t n = strcspn(l, "\n"); if (n >= sizeof cur) n = sizeof cur - 1; memcpy(cur, l, n); cur[n] = 0;
+    if (!cur[0] || !strcmp(cur, "none")) return;
+    mark_possessed(id);
+}
 static void mark_possessed(const char *id) {
     char xp[PATH_MAX]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); if (!fexists(xp)) return;
     kv_set_str(xp, "possessed_id", id); kv_set_str(xp, "last_possessed_id", id);

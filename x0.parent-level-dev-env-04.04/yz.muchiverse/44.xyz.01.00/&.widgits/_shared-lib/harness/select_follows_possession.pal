@@ -1,0 +1,4 @@
+# select_follows_possession.pal - selecting a pet while possessing moves possessed_id. See cases/select_follows_possession.pdl
+exec ./ops/+x/harness_case_op.+x cases/select_follows_possession.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/select_follows_possession.pdl
+halt

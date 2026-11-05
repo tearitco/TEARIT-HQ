@@ -1,0 +1,29 @@
+# select_follows_possession: decision D1 follow-up. Tab / a click on a pet row run the verb `select <pet id>`; when the xelector is possessing someone, possessed_id must FOLLOW the selection (it used to stay on the old one, so the HUD, the paler box and Esc-first lied). With NOTHING possessed a plain selection must stay plain (possessed_id stays none). The hero row maps to hero_01. Scratch editor house (fixtures/editor_house.pdl).
+RESULTS | ../results/select_follows_possession.txt
+ENV | LC_ALL | C
+
+INCLUDE | ../fixtures/editor_house.pdl
+
+CASE    | seed
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | ember\n
+RUN | sh | -c | grep -o '^PET[^|]*|[^|]*|' $HOUSE/@.apps/rpg-edit-hq/party.pdl
+
+CASE    | NEGATIVE-selecting-while-nothing-is-possessed-leaves-possession-alone
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | select | asa
+EXPECT_EXIT | 0 | the-verb-runs
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=none | possession-is-still-none
+
+CASE    | selecting-while-possessing-moves-possession-to-the-selected-pet
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=ember\nlast_possessed_id=ember\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | select | asa
+EXPECT_EXIT | 0 | the-verb-runs
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=asa | possession-followed-the-selection
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | last_possessed_id=asa | and-last_possessed_id
+
+CASE    | the-hero-row-maps-to-hero_01
+RUN | sh | -c | cd $T/house/@.apps/rpg-edit-hq && grep -m1 -o 'hero[^|]*' state/hero.txt 2>/dev/null; echo
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | select | harold
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=hero_01 | possession-followed-to-the-hero
+
+CLEAN |
