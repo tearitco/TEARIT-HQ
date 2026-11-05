@@ -1564,12 +1564,23 @@ static void net_say_all(void) {
     for (int k = 0; k < per && k < n; k++) { const char *id = ids[(start + k) % n]; pid_t pid = fork(); if (pid == 0) { setenv("PET_SAY_APP", APP, 1); execl(op, op, HOUSE, id, room, (char *)NULL); _exit(127); } if (pid > 0) { int stt; waitpid(pid, &stt, 0); } }
     char nb[16]; snprintf(nb, sizeof nb, "%d\n", (start + per) % n); write_if_changed(tp, nb, strlen(nb));
 }
+/* 2026-11-04 needs follow the GAME clock (early-survivor slice, QUARANTINED): time.pdl row `AT | needs_tick | +10m | every:10min` makes the clock fire common:needs_tick; this calls ops/+x/survivor_op.+x tick <actor> <minutes> for each actor
+ * listed in <app>/survivor_clock.pdl, inside the quarantined book it names (survivor_op itself refuses a folder without QUARANTINE and writes no item). OPT-IN and shipped OFF: nothing happens unless survivor_clock.pdl exists AND says ENABLED | 1.
+ * Rows: `ENABLED | 0/1`, `BOOK | <path under the app>` (e.g. books/ledger-lab), `MINUTES | <game minutes per firing>` (default 10), `ACTORS | a,b,c`. The clock is paused in play mode (In: ON) and moves per turn, so needs rise per turn there and per clock tick in demo mode. Cost: one fork per actor per firing. */
+static void needs_tick_all(void) {
+    char rp[PATH_MAX], op[PATH_MAX], rb[4096]; snprintf(rp, sizeof rp, "%s/survivor_clock.pdl", APP); snprintf(op, sizeof op, "%s/ops/+x/survivor_op.+x", APP); if (!fexists(rp) || !fexists(op)) return;
+    read_file(rp, rb, sizeof rb); int enabled = 0; long mins = 10; char book[PATH_MAX] = "", actors[512] = ""; { char *sv = NULL; for (char *l = strtok_r(rb, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { char *b = strchr(l, '|'); if (!b) continue; char *v = b + 1; while (*v == ' ') v++; char *e = v + strlen(v); while (e > v && (e[-1] == ' ' || e[-1] == '\r')) *--e = 0;
+        if (!strncmp(l, "ENABLED", 7)) enabled = atoi(v); else if (!strncmp(l, "MINUTES", 7)) mins = atol(v); else if (!strncmp(l, "BOOK", 4)) snprintf(book, sizeof book, "%s/%s", APP, v); else if (!strncmp(l, "ACTORS", 6)) snprintf(actors, sizeof actors, "%s", v); } }
+    if (!enabled || !book[0] || !actors[0] || mins < 1 || mins > 1440) return;
+    char ms[16]; snprintf(ms, sizeof ms, "%ld", mins); char *sv = NULL; for (char *a = strtok_r(actors, ", ", &sv); a; a = strtok_r(NULL, ", ", &sv)) { pid_t pid = fork(); if (pid == 0) { int dn = open("/dev/null", O_WRONLY); if (dn >= 0) dup2(dn, 1); execl(op, op, book, "tick", a, ms, (char *)NULL); _exit(127); } if (pid > 0) { int st; waitpid(pid, &st, 0); } }
+}
 static void clock_event(const char *ev) {
     char b[80];
     if (!strncmp(ev, "phase_", 6)) ev += 6;      /* "phase_night" or "night" */
     if (!strcmp(ev, "dawn") || !strcmp(ev, "day") || !strcmp(ev, "dusk") || !strcmp(ev, "night")) { snprintf(b, sizeof b, "phase=%s\n", ev); char p[PATH_MAX]; spath(p, "daylight.txt"); write_if_changed(p, b, strlen(b)); }
     else if (!strcmp(ev, "day_tick")) { snprintf(b, sizeof b, "DAY|%ld", (long)time(NULL)); append_line("events.txt", b); }
     else if (!strcmp(ev, "pet_say")) net_say_all();
+    else if (!strcmp(ev, "needs_tick")) needs_tick_all();
 }
 /* The clock fires "common:<event>". The event is a real events-hq page in <app>/events/<event>/ (trigger "clock"), played by events-hq's play_event.sh
  * (event.pal -> cmd_1.sh -> the registered <op>_verb command -> this binary's verb). No page = the built-in behaviour above, so a missing events-hq never stops the clock. */

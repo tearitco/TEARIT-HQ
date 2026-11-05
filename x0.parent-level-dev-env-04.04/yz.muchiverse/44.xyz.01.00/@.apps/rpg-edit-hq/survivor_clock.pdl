@@ -1,0 +1,11 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# survivor_clock.pdl - needs rise on the GAME clock (early-survivor slice, QUARANTINED). The clock fires common:needs_tick (time.pdl AT row); the core then runs ops/+x/survivor_op.+x tick <actor> <minutes> in the book named here.
+# ENABLED | 0/1     the OWNER'S SWITCH. Shipped OFF (0): the clock may fire needs_tick but nothing changes. Set 1 to let needs follow the clock.
+# BOOK | <path>     a QUARANTINED book folder under this app (survivor_op refuses any folder without a QUARANTINE file).
+# MINUTES | <n>     game minutes of need per firing (match the AT row's every:<n>min).
+# ACTORS | a,b      who has needs in that book.
+ENABLED | 0
+BOOK | books/ledger-lab
+MINUTES | 10
+ACTORS | hero,scout

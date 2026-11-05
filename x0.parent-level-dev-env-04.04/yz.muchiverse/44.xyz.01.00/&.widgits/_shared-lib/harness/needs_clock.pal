@@ -1,0 +1,4 @@
+# needs_clock.pal - needs rise on the GAME clock (quarantined early-survivor slice, shipped OFF). See cases/needs_clock.pdl
+exec ./ops/+x/harness_case_op.+x cases/needs_clock.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/needs_clock.pdl
+halt
