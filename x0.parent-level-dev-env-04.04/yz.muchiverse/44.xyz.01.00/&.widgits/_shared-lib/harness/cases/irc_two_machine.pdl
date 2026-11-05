@@ -1,0 +1,77 @@
+# irc_two_machine: Phase 2 network proof. The 044.pal-chat-irc ops (palnet_peer, chat_post_message, chat_inbox_watcher) plus the pet_post guard run as one node on THIS machine and one on ANOTHER
+# (scratch folders only: ~/phase2-net on the far side, $T here; no house copy, no user data, no wallets). A pet posts through the guard on one side, the line must appear in the other side's room ledger, and back.
+# Addresses and the login mode come from the environment, never from this file (owner rule: no hardcoded addresses):
+#   NET_REMOTE      user@host of the other machine            NET_REMOTE_IP   its LAN address (what the peers dial)           NET_LOCAL_IP   this machine's LAN address (what the far side dials)
+#   NET_WRAP / NET_WRAP_ARG   how ssh is wrapped: key login = /usr/bin/env + -uPALNET_UNUSED ;  password login (export SSHPASS) = /usr/bin/sshpass + -e
+# LAN TEST ONLY: palnet_peer has no authentication yet (PAL-NET-STANDARD sec. 7). Without these variables the case writes SKIP and the verdict is SKIP.
+# Run: NET_REMOTE=... NET_REMOTE_IP=... NET_LOCAL_IP=... NET_WRAP=/usr/bin/env NET_WRAP_ARG=-uPALNET_UNUSED /tmp/prisc irc_two_machine.pal      (about 40 s)
+RESULTS | ../results/irc_two_machine.txt
+ENV | LC_ALL | C
+NEEDENV | NET_REMOTE | NET_REMOTE_IP | NET_LOCAL_IP | NET_WRAP | NET_WRAP_ARG
+
+CASE    | build-local
+SCRATCH |
+MKDIR | bin
+MKDIR | a/net
+MKDIR | a/rooms
+MKDIR | a/presence
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/bin/palnet_peer.+x | $HOUSE/044.pal-chat-irc👥️+2/ops/palnet_peer.c
+EXPECT_EXIT | 0 | peer-compiles-here
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/bin/chat_post_message.+x | $HOUSE/044.pal-chat-irc👥️+2/ops/chat_post_message.c
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/bin/chat_inbox_watcher.+x | $HOUSE/044.pal-chat-irc👥️+2/ops/chat_inbox_watcher.c
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -w | -o | $T/bin/pet_post.+x | $HOUSE/&.hq-apps/irc-chat-hq/ops/pet_post.c
+EXPECT_EXIT | 0 | guard-compiles-here
+
+CASE    | build-remote
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | -o | StrictHostKeyChecking=accept-new | $NET_REMOTE | rm -rf phase2-net/nodeB phase2-net/src; mkdir -p phase2-net/src phase2-net/bin phase2-net/nodeB/net phase2-net/nodeB/rooms phase2-net/nodeB/presence
+EXPECT_EXIT | 0 | remote-login-and-scratch-folder
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/scp | -q | -o | ConnectTimeout=8 | $HOUSE/044.pal-chat-irc👥️+2/ops/palnet_peer.c | $HOUSE/044.pal-chat-irc👥️+2/ops/chat_post_message.c | $HOUSE/044.pal-chat-irc👥️+2/ops/chat_inbox_watcher.c | $HOUSE/&.hq-apps/irc-chat-hq/ops/pet_post.c | $NET_REMOTE:phase2-net/src/
+EXPECT_EXIT | 0 | sources-copied
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | cd phase2-net/src && for f in palnet_peer chat_post_message chat_inbox_watcher pet_post; do cc -O2 -w -o ../bin/$f.+x $f.c \p\p exit 1; done; ls ../bin \p wc -l
+EXPECT_EXIT | 0 | remote-compiles
+EXPECT_OUT | 4 | four-binaries-built-there
+
+CASE    | start-nodes
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | cd $HOME/phase2-net/nodeB && N=$HOME/phase2-net/nodeB && B=$HOME/phase2-net/bin && export PRISC_PROJECT_ROOT=$N PRISC_PROJECT_ID=pal-chat-irc PRISC_NET_ROOT=$N/presence PALNET_BIND=$NET_REMOTE_IP PALNET_ADVERTISE=$NET_REMOTE_IP && (nohup $B/palnet_peer.+x irc_node pal-chat-irc - $N/net/outbox.txt $N/net/inbox.txt irc_node > $N/peer.log 2>&1 < /dev/null &) && (nohup $B/chat_inbox_watcher.+x > $N/watch.log 2>&1 < /dev/null &) && sleep 2 && grep -h '^port=' $N/presence/*.txt \p cut -d= -f2
+EXPECT_EXIT | 0 | remote-peer-started
+CAPTURE | rport
+ENV | PRISC_PROJECT_ROOT | $T/a
+ENV | PRISC_PROJECT_ID | pal-chat-irc
+ENV | PRISC_NET_ROOT | $T/a/presence
+ENV | PALNET_BIND | $NET_LOCAL_IP
+ENV | PALNET_ADVERTISE | $NET_LOCAL_IP
+ENV | PALNET_SEEDS | $NET_REMOTE_IP:$rport
+SPAWN | PA | $T/bin/palnet_peer.+x | irc_node | pal-chat-irc | - | $T/a/net/outbox.txt | $T/a/net/inbox.txt | irc_node
+SPAWN | WA | $T/bin/chat_inbox_watcher.+x
+EXPECT_ALIVE | $PA | local-peer-running
+WAIT_HAS | a/peers_now.txt | $NET_REMOTE_IP | 25000 | the-two-nodes-see-each-other
+SLEEP | 4000
+
+CASE    | here-to-there
+RUN | $T/bin/pet_post.+x | post | lobby | pet-ember | hello from machine A tokA1
+EXPECT_EXIT | 0 | guard-allows-the-post-here
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do grep -q tokA1 $HOME/phase2-net/nodeB/rooms/lobby/messages.txt 2>/dev/null && echo FOUND && exit 0; sleep 1; done; echo MISSING
+EXPECT_OUT | FOUND | embers-line-reached-the-other-machine
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | grep tokA1 $HOME/phase2-net/nodeB/rooms/lobby/messages.txt
+EXPECT_OUT | \ppet-ember\p | and-it-is-attributed-to-pet-ember-there
+
+CASE    | there-to-here
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | cd $HOME/phase2-net/nodeB && PRISC_PROJECT_ROOT=$HOME/phase2-net/nodeB PRISC_PROJECT_ID=pal-chat-irc $HOME/phase2-net/bin/pet_post.+x post lobby pet-fenn 'hello from machine B tokB1'
+EXPECT_OUT | SENT | guard-allows-the-post-there
+WAIT_HAS | a/rooms/lobby/messages.txt | tokB1 | 20000 | fenns-line-reached-this-machine
+EXPECT_HAS | a/rooms/lobby/messages.txt | \ppet-fenn\p | and-it-is-attributed-to-pet-fenn-here
+EXPECT_LACKS | a/rooms/lobby/messages.txt | tokNeverPosted | negative-a-token-nobody-posted-is-not-here
+
+CASE    | cap-travels-with-the-guard
+RUN | $T/bin/pet_post.+x | post | lobby | pet-rex | r1
+RUN | $T/bin/pet_post.+x | post | lobby | pet-rex | r2
+RUN | $T/bin/pet_post.+x | post | lobby | pet-rex | r3
+RUN | $T/bin/pet_post.+x | post | lobby | pet-rex | r4 tokCapped
+EXPECT_EXIT | 3 | fourth-post-is-refused-by-the-guard
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | sleep 3; grep -c tokCapped $HOME/phase2-net/nodeB/rooms/lobby/messages.txt; true
+EXPECT_OUT_IS | 0 | the-refused-line-never-crossed-the-network
+
+CASE    | teardown
+RUN | $NET_WRAP | $NET_WRAP_ARG | /usr/bin/ssh | -n | -o | ConnectTimeout=8 | $NET_REMOTE | pkill -f 'phase2-net/[b]in/'; sleep 1; pgrep -f 'phase2-net/[b]in/' \p wc -l
+EXPECT_OUT | 0 | no-test-process-left-on-the-other-machine
+CLEAN |

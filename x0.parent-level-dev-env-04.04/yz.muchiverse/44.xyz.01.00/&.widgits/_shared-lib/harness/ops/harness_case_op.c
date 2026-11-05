@@ -19,6 +19,8 @@
  *   EXPECT_HAS    | <path> | <substring> | <label>       file contains it   (EXPECT_LACKS: file does not contain it)
  *   EXPECT_OUT    | <substring>    | <label>              last RUN's output contains it
  *   EXPECT_OUT_IS | <text> | <label>                    last RUN's output (trailing newlines trimmed) equals it exactly;  EXPECT_OUT_LACKS | <substring> | <label>
+ *   NEEDENV   | <NAME> | <NAME> ...                 each NAME is read from the CALLER's environment and becomes $NAME in this case (addresses and logins never live in a case file). If any is unset or empty the case
+ *                                                  writes `SKIP|<case file>|needs environment: ...`, runs nothing after this row and the verdict is SKIP, not FAIL (added 2026-11-04 for the cross-machine checks)
  *   ENV       | <NAME> | <value>                         setenv for every later RUN/SPAWN (an empty value unsets it)
  *   SPAWN     | <var> | <argv0> | <arg> ...              start a background process in its own process group, no shell; $<var> = its pid; killed (group) by CLEAN / at the end
  *   SLEEP     | <ms>
@@ -269,6 +271,10 @@ int main(int argc, char **argv) {
             check(!strcmp(got, a), fld[2], got);
         } else if (!strcmp(v, "EXPECT_OUT_LACKS") && nf >= 3) { expand(fld[1], a, sizeof a); check(strstr(OUT, a) == NULL, fld[2], OUT); }
         else if (!strcmp(v, "ENV") && nf >= 2) { expand(fld[2 < nf ? 2 : 1], b, sizeof b); if (nf >= 3 && b[0]) setenv(fld[1], b, 1); else unsetenv(fld[1]); }
+        else if (!strcmp(v, "NEEDENV") && nf >= 2) {
+            char miss[P] = ""; for (int i = 1; i < nf; i++) { const char *e = getenv(fld[i]); if (!e || !*e) { size_t ml = strlen(miss); snprintf(miss + ml, sizeof miss - ml, "%s%s", ml ? " " : "", fld[i]); } else var_set(fld[i], e); }
+            if (miss[0]) { row("SKIP|%s|needs environment: %s", cpath, miss); break; }
+        }
         else if (!strcmp(v, "SLEEP") && nf >= 2) usleep((useconds_t)atoi(fld[1]) * 1000);
         else if (!strcmp(v, "SPAWN") && nf >= 3 && NSPAWNED < 64) {
             char *av[RUNMAX + 2]; static char store[RUNMAX][P]; int ac = 0; pid_t pid;

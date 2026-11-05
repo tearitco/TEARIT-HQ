@@ -1,0 +1,4 @@
+# irc_two_machine.pal - a pet's IRC post (through the pet_post guard) crosses from THIS machine to ANOTHER machine and back. Needs the NET_* environment, see cases/irc_two_machine.pdl; without it the verdict is SKIP.
+exec ./ops/+x/harness_case_op.+x cases/irc_two_machine.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/irc_two_machine.pdl
+halt

@@ -10,7 +10,7 @@
 #include <libgen.h>
 #define P 4096
 int main(int argc, char **argv) {
-    char cpath[P], cdir[P], line[8192], results[P] = "", vpath[P + 24]; FILE *f; long run_off = 0, off = 0; int pass = 0, fail = 0;
+    char cpath[P], cdir[P], line[8192], results[P] = "", vpath[P + 24]; FILE *f; long run_off = 0, off = 0; int pass = 0, fail = 0, skip = 0;
     if (argc < 2 || !realpath(argv[1], cpath)) { fprintf(stderr, "usage: harness_verdict_op <cases.pdl>\n"); return 2; }
     snprintf(cdir, sizeof cdir, "%s", cpath); { char *d = dirname(cdir); memmove(cdir, d, strlen(d) + 1); }
     if (!(f = fopen(cpath, "r"))) return 2;
@@ -24,12 +24,13 @@ int main(int argc, char **argv) {
         char fails[16384] = ""; size_t fl = 0;
         while (fgets(line, sizeof line, f)) {
             if (!strncmp(line, "PASS|", 5)) pass++;
+            else if (!strncmp(line, "SKIP|", 5)) skip++;
             else if (!strncmp(line, "FAIL|", 5)) { fail++; if (fl + strlen(line) < sizeof fails) { memcpy(fails + fl, line, strlen(line)); fl += strlen(line); fails[fl] = 0; } }
         }
         fclose(f);
         {
             char v[P + 128]; FILE *o;
-            snprintf(v, sizeof v, "VERDICT|%s|passed=%d|failed=%d|cases=%s", (fail == 0 && pass > 0) ? "PASS" : "FAIL", pass, fail, cpath);
+            snprintf(v, sizeof v, "VERDICT|%s|passed=%d|failed=%d|cases=%s", (fail == 0 && pass > 0) ? "PASS" : (fail == 0 && skip > 0) ? "SKIP" : "FAIL", pass, fail, cpath);
             if ((o = fopen(vpath, "w"))) { fprintf(o, "%s\n%s", v, fails); fclose(o); }
             if ((o = fopen(results, "a"))) { fprintf(o, "%s\n", v); fclose(o); }
             puts(v);
