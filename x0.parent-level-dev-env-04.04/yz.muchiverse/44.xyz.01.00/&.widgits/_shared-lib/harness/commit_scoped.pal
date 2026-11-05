@@ -1,0 +1,4 @@
+# commit_scoped.pal - the scoped-commit op. See cases/commit_scoped.pdl
+exec ./ops/+x/harness_case_op.+x cases/commit_scoped.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/commit_scoped.pdl
+halt

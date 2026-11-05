@@ -49,6 +49,7 @@ Rules while sharing a checkout:
   explicit pathspec (`git commit -m ... -- <your paths>`) so other
   agents' staged files can never ride along even if the index changed
   under you. Two sweeps happened before this rule (2026-10-07).
+- The same thing as one op: `&.widgits/_shared-lib/ops/+x/commit_scoped.+x <repo> --branch <your branch> --message-file <file> --trailer '<line>' [--push] -- <your paths>`: refuses the wrong branch, `.`/`-A`, no paths and `xyzfs/users`, commits by pathspec, leaves foreign staged files alone, adds the trailer once. Prefer it (2026-11-05).
 - If a commit lands that you did not author, do not amend or rewrite
   it. Add a follow-up commit that states the correction, and tell
   the user.

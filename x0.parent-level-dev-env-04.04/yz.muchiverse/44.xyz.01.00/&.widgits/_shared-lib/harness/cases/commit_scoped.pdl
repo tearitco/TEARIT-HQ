@@ -1,0 +1,76 @@
+# commit_scoped: the scoped-commit op (audit decision D6). A scratch git repo on branch `claude` with a bare `origin`. A file staged by "someone else" never rides along (pathspec commit) and stays staged; the wrong branch, ".", "-A", no paths and anything under xyzfs/users are REFUSED with nothing committed; the trailer is added once; --push reaches the remote and only the own branch.
+RESULTS | ../results/commit_scoped.txt
+ENV | LC_ALL | C
+ENV | GIT_CONFIG_GLOBAL | /dev/null
+ENV | GIT_AUTHOR_NAME | t
+ENV | GIT_AUTHOR_EMAIL | t@t
+ENV | GIT_COMMITTER_NAME | t
+ENV | GIT_COMMITTER_EMAIL | t@t
+
+CASE    | setup
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/+x/commit_scoped.+x | cs
+RUN | git | init | -q | -b | claude | $T/repo
+RUN | git | init | -q | --bare | $T/remote.git
+WRITE | repo/a.txt | a1\n
+WRITE | repo/b.txt | b1\n
+MKDIR | repo/xyzfs/users/u
+WRITE | repo/xyzfs/users/u/secret.txt | private\n
+RUN | git | -C | $T/repo | add | a.txt | b.txt
+RUN | git | -C | $T/repo | commit | -q | -m | initial
+RUN | git | -C | $T/repo | remote | add | origin | $T/remote.git
+WRITE | msg.txt | feat: only my file\n\nA longer body line.\n
+
+CASE    | a-foreign-staged-file-does-not-ride-along
+WRITE | repo/a.txt | a2\n
+WRITE | repo/b.txt | b2\n
+RUN | git | -C | $T/repo | add | b.txt
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | --trailer | Co-Authored-By: T <t@t> | -- | a.txt
+EXPECT_EXIT | 0 | the-commit-is-made
+EXPECT_OUT | staged for you: 1 file(s); not yours and left alone: 1 | it-says-one-foreign-file-was-left-alone
+RUN | git | -C | $T/repo | show | --name-only | --format= | HEAD
+EXPECT_OUT | a.txt | my-file-is-in-the-commit
+EXPECT_OUT_LACKS | b.txt | the-foreign-staged-file-is-NOT-in-the-commit
+RUN | git | -C | $T/repo | diff | --cached | --name-only
+EXPECT_OUT | b.txt | and-it-is-still-staged-for-its-owner
+RUN | git | -C | $T/repo | log | -1 | --format=%B
+EXPECT_OUT | Co-Authored-By: T <t@t> | the-trailer-was-added
+
+CASE    | the-trailer-is-added-once
+WRITE | repo/a.txt | a3\n
+WRITE | msg2.txt | fix: again\n\nCo-Authored-By: T <t@t>\n
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg2.txt | --trailer | Co-Authored-By: T <t@t> | -- | a.txt
+EXPECT_EXIT | 0 | second-commit-made
+RUN | sh | -c | git -C $T/repo log -1 --format=%B \p grep -c Co-Authored-By
+EXPECT_OUT | 1 | the-trailer-appears-exactly-once
+CASE    | NEGATIVE-the-wrong-branch-is-refused
+RUN | git | -C | $T/repo | checkout | -q | -b | someone-elses
+WRITE | repo/a.txt | a4\n
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | -- | a.txt
+EXPECT_EXIT | 1 | refused-on-another-branch
+RUN | git | -C | $T/repo | rev-list | --count | HEAD
+EXPECT_OUT | 3 | nothing-was-committed-3-commits-still
+RUN | git | -C | $T/repo | checkout | -q | claude
+
+CASE    | NEGATIVE-dangerous-or-empty-paths-are-refused
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | -- | .
+EXPECT_EXIT | 1 | dot-is-refused
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | -- | -A
+EXPECT_EXIT | 1 | dash-A-is-refused
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | --
+EXPECT_EXIT | 1 | no-paths-is-refused
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | -- | xyzfs/users/u/secret.txt
+EXPECT_EXIT | 1 | user-data-is-refused
+EXPECT_OUT_LACKS | committed: | and-nothing-says-it-committed
+RUN | git | -C | $T/repo | rev-list | --count | HEAD
+EXPECT_OUT | 3 | still-3-commits
+
+CASE    | push-reaches-the-remote-on-the-own-branch-only
+WRITE | repo/a.txt | a5\n
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | --push | -- | a.txt
+EXPECT_EXIT | 0 | commit-and-push-ok
+EXPECT_OUT | pushed origin claude | it-says-so
+RUN | git | -C | $T/remote.git | rev-list | --count | claude
+EXPECT_OUT | 4 | the-remote-has-the-4-commits
+
+CLEAN |
