@@ -124,6 +124,10 @@ echo "########## downloads (scratch house + a real fetch from a throwaway server
 sh "$HERE/nb_download_test.sh" || RC=1
 
 echo
+echo "########## page print (scratch house: projected page -> PDF)"
+sh "$HERE/nb_print_test.sh" || RC=1
+
+echo
 echo "########## G1.1 live timer (worker tick loop; hermetic, no browser)"
 sh "$HERE/nb_timer_test.sh" || RC=1
 

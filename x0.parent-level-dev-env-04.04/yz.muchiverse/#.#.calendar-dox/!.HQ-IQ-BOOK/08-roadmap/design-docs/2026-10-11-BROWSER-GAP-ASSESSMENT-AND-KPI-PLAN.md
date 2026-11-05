@@ -1322,3 +1322,53 @@ PASS on the immediate re-run. Same timing-sensitive synthetic-input
 class as the span_drag family; no focus-path code changed by this work.
 If it recurs, instrument the arm/release receipts the way span_drag was
 bisected.
+
+### 9.21 2026-11-04 (night) — G3.4 closed: Ctrl+P prints the projected page to a PDF
+
+The last unbuilt KPI. "A page prints its projected rows to a file/PDF via
+the house print path" — no house print path existed, no printer is
+configured, and the system carries groff/ps2pdf but no HTML-to-PDF
+toolchain. Chosen implementation:
+
+- **Manager invokes the op; the op does the work.** ops/nb_print_page.sh
+  reads the projection (network_browser_page.state.txt), emits PostScript
+  itself (state -> PS -> ps2pdf; letter size; 0.75in margins; TITLE heading,
+  HEAD as bold subheads, TEXT word-wrapped to the margin, LIST indented
+  dashes, Helvetica), and writes the PDF into the app's own downloads/ dir
+  (same location and same naming discipline as downloads: sanitized TITLE,
+  collision-unique, app-owned, never user homes). On any failure it exits 1
+  with "ERROR: <why>" and produces no file - never a fake print.
+- **Pane reports the outcome like a download**: TITLE|Printed +
+  PRINT|<name>|<bytes>|<path> on success (new row kind handled in the
+  projector, mirrors DL|), TITLE|Print failed + TEXT|<why> on failure;
+  publish_status("printed"|"error: print failed").
+- **Triggers**: the manager's own request channel ("print:" line, same
+  truncate-one-line contract as go:) - written by ops/nb_write_print.sh
+  (chrome-action contract, mirrors nb_write_go.sh) or by Ctrl+P (ch==16),
+  added to the shared renderer, gated to the network-browser template -
+  other apps keep Ctrl+P. Relay code 16 added for agent parity (mirrors
+  Ctrl+C/F).
+- **Ghostscript escapes are hand-rolled**: parens/backslashes in page
+  content are escaped in the PS prologue - the failure mode that eats a
+  PostScript page.
+
+**Verified**
+
+- Live browser: PRINTED Mini_article.pdf (2775 bytes, 1 page, valid
+  PDF 1.4, correct title metadata), pane shows the Printed row,
+  page.state.txt carries PRINT|<name>|<bytes>|<path>.
+- New hermetic gate tests/nb_print_test.sh (registered; 40 sections):
+  --out produces valid %PDF- with correct page count; default mode names
+  the file from the sanitized TITLE into the scratch house's downloads/;
+  hostile page (parens/backslashes/UTF-8) yields a valid PDF; missing
+  state file -> rc 1 and NO file; PATH without ps2pdf -> rc 1 with a
+  clear ERROR; nb_write_print.sh writes exactly "print:".
+- nb_all_tests.sh: **ALL TESTS PASS, 40 sections (was 39), 31 suites,
+  exit 0.**
+
+**Scope note**: no "Print" button was added to the browser chrome -
+that is a design decision (where it sits, icon, label) and belongs to a
+UI bite, not this one. Ctrl+P is the universal print gesture; the
+request plumbing and the op are generic (any caller can write "print:").
+- PDF lands in downloads/ by design (same rule as downloads - app-owned,
+  never user homes).

@@ -434,3 +434,47 @@ nb_all_tests.sh: ALL TESTS PASS, 39 sections, 31 suites (exit 0), with
 the worker rebuilt on the fixed parser. G1.4's suite flaked once in one
 run, passed 4/4 isolated and on the re-run; timing-sensitive, recorded
 in ledger 9.20.
+
+---
+
+## 2026-11-04 (night 2) — G3.4 closed: Ctrl+P prints the projected page to a PDF
+
+The last unbuilt KPI in the plan. No house print path existed and no
+printer is configured; the system carries only groff/ps2pdf (no HTML->PDF
+toolchain). Chosen shape:
+
+- ops/nb_print_page.sh generates the document itself: page.state.txt ->
+  PostScript (letter, 0.75in margins, TITLE heading / HEAD bold subheads /
+  TEXT word-wrapped / LIST dash-indented / Helvetica) -> ps2pdf -> the
+  app's own downloads/ dir (same naming as downloads: sanitized TITLE,
+  collision-unique, app-owned). Any failure -> rc 1 + "ERROR: ..." and no
+  file is produced - never a fake print.
+- The manager reports it like a download: success row TITLE|Printed +
+  PRINT|<name>|<bytes>|<path> (new projector row kind, mirrors DL|) and
+  publish_status("printed"); failure row TITLE|Print failed + the reason.
+- Triggers: the manager's request channel (one "print:" line, same
+  contract as go:), via ops/nb_write_print.sh (chrome-action contract,
+  like nb_write_go.sh) or Ctrl+P in the shared renderer, gated to the
+  network-browser template so other apps keep Ctrl+P; relay code 16
+  added for agent parity with Ctrl+C/Ctrl+F.
+
+### Verification
+
+- Live browser (relaunched with the new binaries): print: consumed in
+  2s -> Mini_article.pdf, valid PDF 1.4, 1 page, correct metadata; pane
+  shows the Printed row; page.state.txt carries PRINT|...|2775|<path>.
+- New gate tests/nb_print_test.sh (registered): --out produces a valid
+  PDF; default names from sanitized TITLE into a scratch house's
+  downloads/; hostile chars (parens/backslashes/UTF-8) survive; missing
+  state file and missing ps2pdf both fail clean, no file written.
+- nb_all_tests.sh: ALL TESTS PASS, 40 sections, 31 suites (exit 0).
+
+### Notes / scope
+
+- No chrome Print button yet - that is a UI design decision (placement,
+  icon, label) for its own bite. The plumbing and the op are generic:
+  any caller can write "print:".
+- PDF goes to downloads/ by the same rule as downloads: app-owned dir,
+  never the user's home.
+- The shared renderer and the manager were rebuilt; the live browser is
+  running them.

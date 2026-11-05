@@ -5190,6 +5190,83 @@ do_fetch_publish_done:
     write_chtpm_projection();
 }
 
+/* PRINT: render the projected page to a PDF in the app's downloads dir.
+ * The manager carries no PDF library, so the heavy lifting lives in
+ * ops/nb_print_page.sh (page.state.txt -> PostScript -> ps2pdf); this
+ * function only invokes it and reports the outcome - a PRINT row on
+ * success (mirrors DL|), an error page otherwise. Never a silent
+ * no-op, never a fake success - the downloads contract. */
+static void do_print_page(void) {
+    char cmd[PATH_BUF * 2 + 64];
+    snprintf(cmd, sizeof(cmd), "sh '%s/ops/nb_print_page.sh' '%s' 2>&1",
+             g_package_dir, g_house);
+    FILE *pp = popen(cmd, "r");
+    char out[PATH_BUF * 2] = "";
+    if (pp) {
+        size_t used = 0;
+        while (used < sizeof(out) - 1) {
+            size_t n = fread(out + used, 1, sizeof(out) - 1 - used, pp);
+            if (n == 0) break;
+            used += n;
+        }
+        out[used] = '\0';
+        pclose(pp);
+    }
+    char tmp[PATH_BUF];
+    FILE *f2 = NULL;
+    const char *ok = strstr(out, "PRINTED ");
+    if (ok) {
+        ok += 8;
+        const char *tail = strstr(ok, " (");
+        char path_out[PATH_BUF] = "";
+        long long bytes = 0;
+        if (tail) {
+            size_t pl = (size_t)(tail - ok);
+            if (pl >= sizeof(path_out)) pl = sizeof(path_out) - 1;
+            memcpy(path_out, ok, pl);
+            path_out[pl] = '\0';
+            bytes = atoll(tail + 2);
+        } else {
+            size_t pl = strlen(ok);
+            if (pl >= sizeof(path_out)) pl = sizeof(path_out) - 1;
+            memcpy(path_out, ok, pl);
+            path_out[pl] = '\0';
+            char *nl = strchr(path_out, '\n');
+            if (nl) *nl = '\0';
+        }
+        const char *base = strrchr(path_out, '/');
+        base = base ? base + 1 : path_out;
+        f2 = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+        if (f2) {
+            fprintf(f2, "URL|%s\nTITLE|Printed\nPRINT|%s|%lld|%s\n",
+                    g_current_url, base, bytes, path_out);
+            fclose(f2);
+            atomic_commit(g_page_state_path, tmp);
+        }
+        publish_status("printed");
+    } else {
+        char msg[900] = "unknown print error";
+        const char *e = strstr(out, "ERROR: ");
+        if (e) {
+            e += 7;
+            size_t mi = 0;
+            while (e[mi] && e[mi] != '\n' && mi < sizeof(msg) - 1) {
+                msg[mi] = e[mi];
+                mi++;
+            }
+            msg[mi] = '\0';
+        }
+        f2 = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+        if (f2) {
+            fprintf(f2, "URL|%s\nTITLE|Print failed\nTEXT|%s\n", g_current_url, msg);
+            fclose(f2);
+            atomic_commit(g_page_state_path, tmp);
+        }
+        publish_status("error: print failed");
+    }
+    write_chtpm_projection();
+}
+
 static void handle_request(void) {
     FILE *f = fopen(g_request_path, "r");
     if (!f) return;
@@ -5345,6 +5422,8 @@ static void handle_request(void) {
     } else if (strcmp(line, "reload:") == 0 || strcmp(line, "reload") == 0) {
         if (g_current_url[0]) do_fetch(g_current_url, 0);
         else publish_status("error: nothing to reload");
+    } else if (strcmp(line, "print:") == 0 || strcmp(line, "print") == 0) {
+        do_print_page();
     } else if (strcmp(line, "bookmark:") == 0 || strcmp(line, "bookmark") == 0) {
         char title[512];
         load_page_title(title, sizeof(title));
@@ -7000,6 +7079,35 @@ static void write_ui_projection(void) {
                     uisan(shown, t, sizeof(t));
                     UI_PUT("c_%d_kind=download\nc_%d_is_download=1\nc_%d_is_text=1\nc_%d_text=%s\n",
                            rc, rc, rc, rc, t);
+                    UI_PUT("c_%d_name=%s\nc_%d_size=%lld\nc_%d_path=%s\n",
+                           rc, nm, rc, bytes, rc, pa);
+                } else if (strcmp(kind, "PRINT") == 0) {
+                    /* PRINT (2026-11-04): mirror DL exactly - the manager
+                     * publishes one row after a print job; the pane shows
+                     * it like a download row: file, bytes, path. Same
+                     * 8-char-kind rule, same pipe format:
+                     *   PRINT|<name>|<bytes>|<path>                      */
+                    char nm[512] = "", pa[PATH_BUF] = "";
+                    long long bytes = 0;
+                    const char *p1 = strchr(rest, '|');
+                    if (p1) {
+                        const char *p2 = strchr(p1 + 1, '|');
+                        if (p2) {
+                            size_t nl = (size_t)(p1 - rest);
+                            if (nl >= sizeof(nm)) nl = sizeof(nm) - 1;
+                            memcpy(nm, rest, nl);
+                            nm[nl] = '\0';
+                            bytes = atoll(p1 + 1);
+                            snprintf(pa, sizeof(pa), "%s", p2 + 1);
+                        }
+                    }
+                    if (!nm[0]) snprintf(nm, sizeof(nm), "page");
+                    char shown[PATH_BUF + 400];
+                    snprintf(shown, sizeof(shown), "Printed %s (%lld bytes) - %s",
+                             nm, bytes, pa);
+                    uisan(shown, t, sizeof(t));
+                    UI_PUT("c_%d_kind=print\nc_%d_is_text=1\nc_%d_text=%s\n",
+                           rc, rc, rc, t);
                     UI_PUT("c_%d_name=%s\nc_%d_size=%lld\nc_%d_path=%s\n",
                            rc, nm, rc, bytes, rc, pa);
                 } else if (strcmp(kind, "TEXT") == 0) {

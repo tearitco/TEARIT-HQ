@@ -13401,6 +13401,20 @@ static void handle_key(KeySym ks, char ch) {
          * itself use, so the window stays fully drivable while armed. */
     }
     if (ch == 6) { kh_find_begin(); return; }   /* Ctrl+F: arm find (no field armed here) */
+    /* Ctrl+P: ask the network-browser manager to print this page to a
+     * PDF (<pkg>/downloads/). The renderer has no PDF machinery and the
+     * manager owns the page rows, so the key is just a one-line request
+     * into the manager's own request file (the same channel the chrome
+     * action scripts use) - Ctrl+P does nothing in any other app, and
+     * nothing at all when the file isn't writable. Gated to the browser
+     * template so other apps keep Ctrl+P for themselves. */
+    if (ch == 16 && g_chtpm_path[0] && strstr(g_chtpm_path, "network-browser")) {
+        char req[PATH_BUF];
+        snprintf(req, sizeof(req), "%s/#.desktop/network_browser_request.txt", g_house_root);
+        FILE *rf = fopen(req, "w");
+        if (rf) { fputs("print:\n", rf); fclose(rf); }
+        return;
+    }
     /* REAL, NEW 2026-10-07 (direct ask: copy article text out of the
      * browser) - Ctrl+C with NO armed field copies the focused row's
      * own label (content rows, links, buttons, tabs - anything
@@ -14164,6 +14178,9 @@ static void dispatch_relay_code(int code) {
      * suite proves it). 6 joins 3/22/24 for that reason alone; the real
      * keyboard always delivered it via XLookupString. */
     else if (code == 6) handle_key(0, (char)code);
+    /* 2026-11-04 (print) - Ctrl+P, same shape as Ctrl+C/Ctrl+X/Ctrl+V:
+     * the print key arrives as plain control code 16. */
+    else if (code == 16) handle_key(0, (char)code);
     /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
      * - Shift+arrow / Shift+Home / Shift+End for text selection, which
      * the relay had no way to express (Shift is a modifier, not a
