@@ -1,0 +1,4 @@
+# pet_post.pal - the pet post guard (&.hq-apps/irc-chat-hq/ops/pet_post.c): speaker, per-pet cap, kill switch, length, no forged rows, hold/veto/approve. See cases/pet_post.pdl
+exec ./ops/+x/harness_case_op.+x cases/pet_post.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_post.pdl
+halt

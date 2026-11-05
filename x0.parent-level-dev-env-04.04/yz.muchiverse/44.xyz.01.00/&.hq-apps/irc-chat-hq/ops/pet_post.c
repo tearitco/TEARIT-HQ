@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 /* pet_post - the ONE door a pet's IRC post goes through (Phase 2, owner 2026-11-04: "caps, a kill switch and a visible audit ledger from day one").
  *   pet_post.+x post <room> <pet_id> <text...>   post as a pet, if the rules allow
- *   pet_post.+x approve <id> | veto <id>          release / drop a line that was HELD for a human
+ *   pet_post.+x approve <id|first|last> | veto <id|first|last>   release / drop a line that was HELD for a human
  *   pet_post.+x status                            kill switch, hold mode, the caps, pending lines
  * It does not talk to the network: an allowed post is handed to the real chat_post_message.+x (same folder as this binary, or the one named by PET_POST_CHAT_OP), which writes the
  * room ledger and net/outbox.txt exactly as a player's post does. A pet therefore has NO other way out: the window, the harness and any pet code call this op.
@@ -55,8 +55,9 @@ static int send_line(const char *room, const char *pet, const char *text) {
     pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { execl(op, op, room, pet, text, (char *)NULL); _exit(127); }
     int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 0 : -1;
 }
-static int pending_take(const char *id, char *pet, char *room, char *text) {      /* remove line `id` from the pending file, return it */
-    char p[PATH_MAX], tmp[PATH_MAX + 8], ln[1500]; path(p, "pet_post_pending.txt"); snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(p, "r"), *o = fopen(tmp, "w"); int found = 0; if (!f || !o) { if (f) fclose(f); if (o) fclose(o); return 0; }
+static int pending_take(const char *id0, char *pet, char *room, char *text) {      /* remove line `id` from the pending file, return it; id "first" / "last" = the oldest / newest held line */
+    char p[PATH_MAX], tmp[PATH_MAX + 8], ln[1500], idb[40]; const char *id = id0; path(p, "pet_post_pending.txt");
+    if (!strcmp(id0, "first") || !strcmp(id0, "last")) { FILE *q = fopen(p, "r"); idb[0] = 0; if (q) { while (fgets(ln, sizeof ln, q)) { char *b = strchr(ln, '|'); if (!b) continue; *b = 0; snprintf(idb, sizeof idb, "%s", ln); if (!strcmp(id0, "first")) break; } fclose(q); } id = idb; } snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *f = fopen(p, "r"), *o = fopen(tmp, "w"); int found = 0; if (!f || !o) { if (f) fclose(f); if (o) fclose(o); return 0; }
     while (fgets(ln, sizeof ln, f)) { char cp[1500]; snprintf(cp, sizeof cp, "%s", ln); char *f1[5]; int n = 0; for (char *t = strtok(cp, "|\n"); t && n < 5; t = strtok(NULL, "|\n")) f1[n++] = t;
         if (n >= 5 && !strcmp(f1[0], id) && !found) { found = 1; snprintf(pet, 64, "%s", f1[2]); snprintf(room, 64, "%s", f1[3]); snprintf(text, 1024, "%s", f1[4]); continue; } fputs(ln, o); }
     fclose(f); fclose(o); rename(tmp, p); return found;

@@ -1,0 +1,82 @@
+# pet_post: the one door for a pet's IRC post. No window, no network: a scratch chat node under $T with the real chat_post_message op behind the guard.
+# Every "is not in the room" check has a control row (the same kind of line IS there when allowed), so nothing passes by finding an empty file.
+# (replaces the Python pet_post_test.py, 2026-11-04: harnesses are pal + cases, see ../README.md)
+RESULTS | ../results/pet_post.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -w | -O2 | -o | $T/pet_post.+x | $HOUSE/&.hq-apps/irc-chat-hq/ops/pet_post.c
+EXPECT_EXIT | 0 | guard-compiles
+RUN | /usr/bin/gcc | -O2 | -w | -o | $T/chat_post_message.+x | $HOUSE/044.pal-chat-irc👥️+2/ops/chat_post_message.c
+EXPECT_EXIT | 0 | chat-op-compiles
+MKDIR | net
+MKDIR | rooms
+ENV | PRISC_PROJECT_ROOT | $T
+ENV | PRISC_PROJECT_ID | pal-chat-irc
+
+CASE    | speaker
+RUN | $T/pet_post.+x | post | ra | pet-ember | hello from Ember
+EXPECT_EXIT | 0 | ember-post-allowed
+EXPECT_HAS | rooms/ra/messages.txt | \pra\ppet-ember\p | ember-line-is-in-the-room-under-pet-ember
+EXPECT_HAS | rooms/ra/messages.txt | hello from Ember | the-text-is-there
+RUN | $T/pet_post.+x | post | rb | pet-fenn | hello from Fenn
+EXPECT_HAS | rooms/rb/messages.txt | \prb\ppet-fenn\p | fenn-line-is-under-pet-fenn
+EXPECT_LACKS | rooms/rb/messages.txt | pet-ember | fenn-line-is-not-attributed-to-ember
+EXPECT_HAS | pet_post_audit.txt | \pSENT\ppet-ember\pra\phello from Ember | audit-says-SENT-with-pet-room-and-text
+
+CASE    | cap
+RUN | $T/pet_post.+x | post | rc | pet-rex | one
+RUN | $T/pet_post.+x | post | rc | pet-rex | two
+RUN | $T/pet_post.+x | post | rc | pet-rex | three
+EXPECT_HAS | rooms/rc/messages.txt | three | control-the-third-post-is-in-the-room
+RUN | $T/pet_post.+x | post | rc | pet-rex | fourth too fast
+EXPECT_EXIT | 3 | fourth-post-refused-exit-3
+EXPECT_OUT | DENY_CAP | refusal-says-DENY_CAP
+EXPECT_LACKS | rooms/rc/messages.txt | fourth too fast | refused-line-is-not-in-the-room
+EXPECT_HAS | pet_post_audit.txt | \pDENY_CAP\ppet-rex\prc\p | audit-says-DENY_CAP-for-rex
+RUN | $T/pet_post.+x | post | rc | pet-fenn | Fenn is not capped
+EXPECT_EXIT | 0 | the-cap-is-per-pet
+EXPECT_HAS | rooms/rc/messages.txt | Fenn is not capped | fenn-line-arrived
+
+CASE    | kill-switch
+WRITE | pet_post_kill.txt | stop\n
+RUN | $T/pet_post.+x | post | rd | pet-fenn | during kill
+EXPECT_EXIT | 3 | refused-while-the-kill-file-exists
+EXPECT_OUT_IS | DENY_KILL | says-DENY_KILL
+EXPECT_NOFILE | rooms/rd/messages.txt | nothing-was-written-to-the-room
+WRITE | rd_control.txt | x
+RUN | /bin/rm | $T/pet_post_kill.txt
+RUN | $T/pet_post.+x | post | rd | pet-fenn | after kill
+EXPECT_EXIT | 0 | control-deleting-the-file-resumes-posting
+EXPECT_HAS | rooms/rd/messages.txt | after kill | resumed-line-is-in-the-room
+
+CASE    | length
+RUN | $T/pet_post.+x | post | re | pet-gus | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+EXPECT_EXIT | 3 | a-too-long-line-is-refused
+EXPECT_OUT | DENY_LEN | says-DENY_LEN
+EXPECT_NOFILE | rooms/re/messages.txt | the-long-line-never-reached-the-room
+
+CASE    | forging
+RUN | $T/pet_post.+x | post | rf | pet-gus | a \p b\nMSG\pforged\prf\ppet-ember\p1\pI am Ember
+EXPECT_EXIT | 0 | the-line-is-allowed-after-cleaning
+EXPECT_HAS | rooms/rf/messages.txt | \ppet-gus\p | it-is-attributed-to-the-real-poster
+EXPECT_LACKS | rooms/rf/messages.txt | \ppet-ember\p | no-row-claims-to-be-ember
+
+CASE    | hold
+WRITE | pet_post.pdl | hold \p 1\n
+RUN | $T/pet_post.+x | post | rg | pet-maren | needs a human
+EXPECT_OUT | HELD | line-waits
+EXPECT_NOFILE | rooms/rg/messages.txt | held-line-is-not-in-the-room-yet
+RUN | $T/pet_post.+x | veto | last
+EXPECT_OUT | VETOED | veto-works
+EXPECT_NOFILE | rooms/rg/messages.txt | vetoed-line-never-reaches-the-room
+EXPECT_HAS | pet_post_audit.txt | \pVETOED\ppet-maren\p | audit-says-VETOED
+RUN | $T/pet_post.+x | post | rg | pet-maren | approved one
+RUN | $T/pet_post.+x | approve | last
+EXPECT_OUT | APPROVED | approve-works
+EXPECT_HAS | rooms/rg/messages.txt | \ppet-maren\p | approved-line-is-in-the-room-under-maren
+EXPECT_HAS | rooms/rg/messages.txt | approved one | approved-text-is-there
+EXPECT_LACKS | rooms/rg/messages.txt | needs a human | the-vetoed-text-is-still-absent
+EXPECT_HAS | pet_post_audit.txt | \pAPPROVED\ppet-maren\p | audit-says-APPROVED
+CLEAN |
