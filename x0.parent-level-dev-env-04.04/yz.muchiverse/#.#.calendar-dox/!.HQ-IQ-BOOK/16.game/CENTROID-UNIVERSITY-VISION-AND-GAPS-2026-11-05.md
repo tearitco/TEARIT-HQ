@@ -71,3 +71,11 @@ Each step gets a harness case that can fail, a doc update here, and a decision-l
 6. Which notes carry into the university (section 9 of the summary lists the ones I did not carry)?
 
 **Map atlas (2026-11-05):** `../22.lore-ip/MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md` describes each imported map, says which book it fits (Soul Pen or Centroid), and lists the University districts that still have to be made.
+
+## Owner answers 2026-11-05 (canon proposals adopted)
+- **Stairs: rule A**, **one height per cell plus a step rule** (decision D12). **Above can only be hit from stairs; guns and spirit attacks hit both levels.**
+- **MP: none.** Costs are **energy, stress, time, money and soul.**
+- **Court punishments: fines, service, soul debt through the Soul Bank, AND PRISONS (a jail/dungeon with a sentence); judges can pardon.** CORRECTED by the owner the same day: "we will have prisons, that was a wrong answer"; the proposal said no prisons, and the owner's original dungeon wish stands.
+- **Physical stock: yes**: shops hold real stock supplied by farms and mines.
+- **Map viewer: yes**, build on the existing gallery.
+- Lore link: **map068 = the Temple** (Bible) and **070 = the Concourse museum hall** (see the atlas).

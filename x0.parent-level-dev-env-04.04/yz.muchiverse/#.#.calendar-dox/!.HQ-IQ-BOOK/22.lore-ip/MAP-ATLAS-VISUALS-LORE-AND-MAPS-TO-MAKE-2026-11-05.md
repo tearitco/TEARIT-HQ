@@ -154,3 +154,11 @@ map070 "Holy Imagination" (blank), map027 library (art), map065 space expanse (n
 
 ## 5. Open questions for the owner
 1. Venus is answered by the Venus Fly Trap Phonk DLC (confirm it is the Venus you meant). The hydroverse is answered by the XVS atlas; where does the DLC (6.7) sit in the book order? 2. Is "my chara" the `my-chara` app's character home? 3. Which maps are Bible levels versus Soul Pen levels (the table is a first guess)? 4. Should map070 "Holy Imagination" become the lore/Concourse "museum" hall? 5. Do 023 and 059 get merged?
+
+## 6. Owner answers 2026-11-05 (canon proposals adopted)
+- **Soul Pen maps:** the Afghan, Mars, Moon and station maps. **Bible maps:** **068 = the Temple**, **058 = Eden's Tree**, **064 = the Ark and Galilee** (open sea), **012 = Babel or Jacob's ladder** (the tall sky strip). **070 "Holy Imagination" becomes the Concourse museum hall** (see the gyms/zoos/museums doc).
+- **Merge 023 and 059** (SS online): keep one.
+- **Pillars:** 15 now has a source (rb&u); 16 Tempt Island = a planned demo world; 17 Muchi-pets = the digipet ranch (section 4.4).
+- **"my chara" home** = the player avatar's (cursword's) home space.
+- **Map viewer: yes**, build on the existing gallery (`XO/31.Nov/nov-5/0.tsots-map-gallery.html`).
+- Venus and the Hydroverse are answered by their sources (Venus DLC 6.7 as a "meanwhile" story during Hellride; Hydroverse is part of XVS). Section 5 questions 1 to 5 are therefore answered; the open ones left are which maps still need art and the Bible-level list per section 4.2 (order now fixed in `TSOTS-DEFINITION-AND-PLAYER-LOOP.md` section 6).

@@ -70,3 +70,6 @@ Order: **space (the engine already flies a ship) → boat → car → plane/dron
 
 ## 9. Owner answer 2026-11-05
 Question 1: **fun only for now.** Build the fun ruleset first (simple speed, armor, cargo, fuel as a gauge); keep `MATERIAL`, density, thrust and Isp columns in the data so the realistic ruleset can be switched on later without a schema change; the proving-ground maps and gym lanes still use invariants (a car's top speed follows from its parts) but not the full oracle set. Milestone M11 is therefore scoped to the fun ruleset until the owner asks for realism. New test maps: `../22.lore-ip/MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md` section 4.5.
+
+## 10. Owner answers, round 3 (canon proposals adopted 2026-11-05)
+**Realistic physics is a mode, not the default** (agrees with section 9); **build the vacuum range first** (answers question 5); the spaceship class first, starting with the SSOL. Questions 2-4 (units, rated PvP, sci-fi energy economy) stay open except: vehicles are **out of rated PvP at first**.

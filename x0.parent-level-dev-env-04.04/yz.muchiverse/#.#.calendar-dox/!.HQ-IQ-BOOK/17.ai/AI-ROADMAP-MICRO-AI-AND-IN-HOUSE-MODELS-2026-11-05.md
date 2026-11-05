@@ -54,3 +54,6 @@ Ties: M2 (rated bots), M10 (vehicle designs), M11/M12 (gyms are the eval set). F
 
 ## 7. Open questions
 1. Is "Harnecient" the product name for the router and judge layer, or only the h-ai relay? 2. Which APIs and which Gemma size on the Mac are the official tiers today (`API-REGISTRY-AND-CAPS.md`)? 3. May verified `DATA` rows ever leave the house (a shipped pack), and under what screening? 4. Is a chain receipt for model packs wanted soon, or only after the economy?
+
+## 8. Owner answer, round 3 (canon proposal adopted 2026-11-05)
+Question 3 (may verified `DATA` rows leave the house?): **no. Ship only signed receipts and hashes of verified training rows, never the rows themselves.** This fixes D22 (the chain/pack layer carries hashes and signed receipts) and A6; trained weights or packs, if ever shipped, are a separate owner decision. Questions 1, 2 and 4 stay open.

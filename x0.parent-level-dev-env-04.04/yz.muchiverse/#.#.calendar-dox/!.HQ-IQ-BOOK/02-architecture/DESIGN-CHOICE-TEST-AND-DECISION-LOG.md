@@ -79,3 +79,18 @@ Data and weights stay in house files (private, large, changing); the chain, once
 
 ## D13/D14/D21 DECIDED by the owner (2026-11-05, asked officially)
 D13 **house engine only** (public wording "RPG Maker-style"; imported RPG Maker maps/art; no plugin client). D14 **True Swords Clash first, others close behind, plus a digipet game on a 1v1 mini 4x4 where digipets learn the Bible and play TSC**; one shared rating pool. D21 **fun physics only for now**. Crafted vehicle = entity owned by a piece. Bible text: unconfirmed, see roadmap section 9. Source: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 9.
+
+## Round 3 decisions (2026-11-05, owner adopted canon proposals)
+- **D12 stairs: DECIDED, option A** (one height per cell plus a step rule; above can only be hit from stairs; guns and spirit hit both levels). Still not built.
+- **D15 Elo: DECIDED** start 1000, provisional flag for the first games, one shared pool.
+- **D16 Bible text: DECIDED** KJV or WEB; verify the unlabelled book-stack file first.
+- **Japanese UI: DECIDED** JP and EN menus and branding; Bible text English.
+- **D19 vehicles: refined** tech tiers by lore era (Earth, Lunaria, Mars, Icarus, Extremophile biotech); spaceship first (SSOL); out of rated PvP at first.
+- **D20 zoo: refined** `002.zoo` is the seed; Concourse museum hall = map070; **D21 realistic physics is a mode**; vacuum range first.
+- **D22 refined:** only signed receipts and hashes of verified training rows ship, never the rows.
+- **Court system:** fines, service, soul debt through the Soul Bank, pardons, **and prisons** (owner correction: "we will have prisons, that was a wrong answer").
+- **MP: none** (energy, stress, time, money, soul). **Physical shop stock: yes.**
+Source for all: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 10.
+
+## D23 (2026-11-05, PROPOSED): Chinese characters as a visual mode for every character
+Owner: "we use Chinese for representing all characters as a visual mode; underrated." Options: A glyphs hard-coded per game; B **one `glyphs.pdl` registry (entity uid to hanzi, pinyin, meaning) plus a visual-mode switch in the shared projection** (recommended: one authority per fact; the 10th game adds rows; fits the 2D/3D parity rule and the existing emoji palette; zoo and JP/EN labels read the same rows). Risks: CJK drawing in the renderer is untested (Noto CJK is installed); glyph choice is a creative owner call. Doc: `22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7.

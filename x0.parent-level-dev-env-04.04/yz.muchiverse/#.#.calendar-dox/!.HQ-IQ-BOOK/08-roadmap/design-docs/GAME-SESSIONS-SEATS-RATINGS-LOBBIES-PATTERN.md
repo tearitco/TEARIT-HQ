@@ -59,3 +59,6 @@ Every game in the house (TSC_ELO, DSR, chess/wager, TSOTS, future ones) should u
 
 ## 6. Owner answer 2026-11-05
 Open question 3 (do agents share a rating pool with humans?): **one shared pool** (humans, bots, digipets). Watch for bot swarms distorting human ratings: placement games, a provisional flag, and a report by seat kind. Digipets that have learned the Bible are agent seats in True Swords Clash (roadmap M7b). Roadmap: `../ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 9.
+
+## 7. Owner answers, round 3 (2026-11-05)
+**Elo: start 1000, with a provisional flag for the first games; one shared pool.** Vehicles stay out of rated PvP at first. Open question 1 (FFA rating rule), 2 (per-mode ratings) and 5 (casual result rows) are still open.

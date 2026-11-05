@@ -39,3 +39,11 @@ Owner (asked officially): the first public game is True Swords Clash, with the o
 - fits existing house parts: the pets-like core, the pet world and pet chain economy designs, the seat/rating layer (roadmap M2/M7b).
 Open: do digipets come from the Bible and Soul Pen cast (a captured character becomes a digipet), or from the muchi-pets/fuzzpets line? Do they evolve? Maps to make: the ranch, the 1v1 board and a Bible study room (`MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md` section 4.4).
 Related facts from this round: **cursword = the player's avatar/role**; **てるてる (teru-teru) = the product/series name** of the Tear-it co game line (JP-facing); crafted vehicles are entities owned by a piece.
+
+## 6. Owner answers 2026-11-05 (canon proposals adopted): the Bible layer
+- **Capture rule:** win a **True Swords Clash duel**, then pass a **loyalty check against the target's current bond**. **Clones must have their control chip broken first.** **Good characters join as allies instead of being possessed; evil ones can be possessed.**
+- **Level order:** Eden, Ark and Flood, Babel, Exodus, Jericho, Temple, Galilee and Nativity, Calvary and tomb, Patmos, New Jerusalem.
+- **Handoff from Revelation to the Soul Pen:** the **New Jerusalem opens a Gate (Chronos's Gate)**, which leads to *Asa & Ava: Eden Recursion* (book 102, x2222), and from there to Lucky and *Sol Pen* (book 0). **Start with the Eden trilogy (102) as the bridge, then book 0.**
+- **Pillars 15, 16, 17:** 15 (rb&u) has a source (the Red White & You zine); **16 Tempt Island** is a planned demo world; **17 Muchi-pets** is the **digipet ranch**.
+- **"my chara" home** = the player avatar's (cursword's) home space.
+- Open question 1 ("cursword") was answered earlier: the player's avatar/role. The Bible scope and order, the capture rule and the Revelation-to-Soul-Pen seam are now answered above.

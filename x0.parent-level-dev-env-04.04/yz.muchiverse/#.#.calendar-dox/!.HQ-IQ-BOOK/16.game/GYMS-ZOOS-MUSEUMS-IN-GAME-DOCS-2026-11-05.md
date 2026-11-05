@@ -53,3 +53,6 @@ Roadmap milestone **M12** (parallel track, can start after M1; the first zoo win
 
 ## 7. Open questions
 1. Is `002.zoo` the seed of this, or an unrelated toy? (Owner knows.) 2. Should the Concourse be one book or one per game? (Recommend one, with per-game wings.) 3. Which catalogs first? 4. Do museum rooms also host the lore (Soul Pen museum) for players, separate from the dev rooms?
+
+## 8. Owner answers, round 3 (canon proposals adopted 2026-11-05)
+**`002.zoo` is the seed of the zoo** (question 1; next step: read it and plan the generated-from-catalog upgrade). **Realistic physics is a mode; build the vacuum range first.** **Map 070 "Holy Imagination" becomes the Concourse museum hall** (also answers question 4 in part: it hosts the museum wing). **Ship only signed receipts and hashes of verified training rows, never the rows.**

@@ -74,3 +74,9 @@ Units: S ≈ 1 working session, M ≈ 3-5, L ≈ 10+. "Create" = make the thing;
 ## 8. Owner answers 2026-11-05
 - Question 1: a crafted vehicle is **an entity owned by a piece** (not a piece itself): it has an `owner` field and its own hold; a chop shop or theft is a change of owner; scrapping leaves remnants. Questions 2-5 stay open.
 - Physics is **fun only for now** (see `VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`): the part stats are simple numbers; the material and engine columns stay in the data for a later realistic ruleset.
+
+## 9. Owner answers, round 3 (canon proposals adopted 2026-11-05)
+- **Tech tiers gate parts by lore era: Earth, Lunaria, Mars, Icarus, then Extremophile biotech** (answers question 2: yes, a tier system, tied to the lore).
+- **First class: the spaceship, starting with the SSOL** (answers question 4).
+- **Vehicles stay out of rated PvP at first**; the Equestrian Games mecha mode can come later (answers question 5).
+- Open: questions 3 (theft/chop-shop targets) still depends on the courts slice (fines, service, soul debt, and prisons).

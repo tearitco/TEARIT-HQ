@@ -126,3 +126,25 @@ Micro-AI, the delegation flywheel, in-house models and data, token minimization,
 | Vehicle physics default (D21) | **fun only for now** | Realistic ruleset deferred; the data columns stay so it can be switched on later. |
 | Crafted vehicle kind | **an entity owned by a piece** | Updated in the vehicle docs. |
 | Still open (not yet asked) | D16 JP UI scope, D17 distribution, whether bots count in a rated "public ladder", Venus/hydroverse meaning | see the atlas doc section 5 |
+
+## 10. Owner answers, round 3 (canon proposals adopted 2026-11-05)
+| Topic | Answer | Effect on the roadmap |
+|---|---|---|
+| Elo | **start 1000, a provisional flag for the first games, one shared pool** (humans, bots, digipets) | M2 rating op: add the provisional flag (first N games); D15 decided |
+| Bible text | **ship KJV or WEB; verify the source of the unlabelled book-stack file first** | M1: verse data = KJV or WEB (D16 decided); the book-stack file only after its origin is confirmed |
+| Japanese UI | **menus and branding in JP and EN; the Bible text stays English** | M4: JP/EN strings plus a glyph proof; no translated verses |
+| Capture rule | win a TSC duel, then a **loyalty check** against the target's bond; **clone control chips must be broken first**; **good characters join as allies, evil ones can be possessed** | M6 mechanic |
+| Bible level order | Eden, Ark and Flood, Babel, Exodus, Jericho, Temple, Galilee and Nativity, Calvary and tomb, Patmos, New Jerusalem | M6 level list, in this order |
+| Handoff | New Jerusalem opens **Chronos's Gate** to *Asa & Ava: Eden Recursion*, then Lucky and *Sol Pen*; **start with the Eden trilogy (102) as the bridge, then book 0** | M9 Soul Pen levels start at the Eden trilogy |
+| Maps | 068 Temple, 058 Eden's Tree, 064 Ark/Galilee, 012 Babel/Jacob's ladder, 070 the Concourse museum hall; merge 023/059 | atlas section 6 |
+| Stairs, MP, courts, stock | **stairs rule A; no MP (energy, stress, time, money, soul); fines, service and soul debt via the Soul Bank, **prisons too (a jail with a sentence)**, judges can pardon; physical shop stock from farms and mines** | M9; D12 decided |
+| Vehicles | **tech tiers gate parts by lore era: Earth, Lunaria, Mars, Icarus, Extremophile biotech**; **spaceship class first, starting with the SSOL**; **vehicles stay out of rated PvP at first** (the Equestrian Games mecha mode can come later) | M10; D19 refined |
+| Physics | **realistic is a mode, not the default**; **vacuum range first** | M11 (fun ruleset first, as decided earlier) |
+| Gyms/zoos/museums | **`002.zoo` is the seed of the zoo** | M12 first slice |
+| AI data | **ship only signed receipts and hashes of verified training rows, never the rows themselves** | A6 / D22 refined |
+| Lore canon | the Architect = Open Loop time clone; one dynasty with two queen titles; "Carcazod" canon; etc. | `../22.lore-ip/BOOK-BY-BOOK-SUMMARIES-AND-WORLD-RULES-2026-11-05.md` section 5 |
+**Correction (owner, same day): we WILL have prisons**; the "no prisons" line in the proposal was a wrong answer. The dungeon wish stands, next to fines, service and soul debt (the old TSOTS notes said no prisons; the owner reversed that). **Still open:** D17 distribution (Linux/Mac/Windows/web), the license check for RPG Maker art, and the first-N provisional-games number.
+
+## 11. Added 2026-11-05: Chinese-character visual mode (owner) and the prison correction
+- **Chinese characters as a visual mode for every character** (proposal D23): belongs to M4 (the JP/EN glyph proof covers CJK drawing), M12 (the zoo shows each entity with its glyph) and every game's projection. First slice: a `glyphs.pdl` registry for the True Swords Clash miracles and the first ten characters, plus a render proof of CJK glyphs in the khtpm window. Doc: `../22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7.
+- **Prisons: yes** (owner correction); see section 10.
