@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     char tmpf[] = "/tmp/commit_scoped_XXXXXX"; int fd = mkstemp(tmpf); if (fd < 0) return 1; if (write(fd, msg, strlen(msg)) < 0) { close(fd); unlink(tmpf); return 1; } close(fd);
     char *add[260]; int n = 0; add[n++] = "add"; add[n++] = "--"; for (int i = 0; i < np && n < 258; i++) add[n++] = paths[i]; add[n] = NULL;
     if (git(add, 0) != 0) { fprintf(stderr, "commit_scoped: git add failed\n"); unlink(tmpf); return 1; }
-    { char *a[] = {"diff", "--cached", "--name-only", NULL}; git(a, 1); int mine = 0, foreign = 0; char *save = NULL; char *cp = strdup(OUT);
+    { char *a[] = {"-c", "core.quotepath=false", "diff", "--cached", "--name-only", NULL}; /* quotepath off: git prints non-ASCII names C-quoted otherwise and they would never match the given paths */ git(a, 1); int mine = 0, foreign = 0; char *save = NULL; char *cp = strdup(OUT);
       for (char *l = strtok_r(cp, "\n", &save); l; l = strtok_r(NULL, "\n", &save)) { if (is_mine(l, paths, np)) mine++; else { foreign++; fprintf(stderr, "commit_scoped: staged but NOT yours (left staged, not committed): %s\n", l); } }
       free(cp); printf("staged for you: %d file(s); not yours and left alone: %d\n", mine, foreign); if (!mine) { fprintf(stderr, "commit_scoped: nothing of yours to commit\n"); unlink(tmpf); return 1; } }
     char *com[270]; n = 0; com[n++] = "commit"; com[n++] = "-q"; com[n++] = "-F"; com[n++] = tmpf; com[n++] = "--"; for (int i = 0; i < np && n < 268; i++) com[n++] = paths[i]; com[n] = NULL;

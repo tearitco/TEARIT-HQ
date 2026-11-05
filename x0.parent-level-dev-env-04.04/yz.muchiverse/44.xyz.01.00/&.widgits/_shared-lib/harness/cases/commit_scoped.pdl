@@ -73,4 +73,12 @@ EXPECT_OUT | pushed origin claude | it-says-so
 RUN | git | -C | $T/remote.git | rev-list | --count | claude
 EXPECT_OUT | 4 | the-remote-has-the-4-commits
 
+CASE    | a-non-ascii-path-is-recognised-as-mine
+MKDIR | repo/dír-é🧟
+WRITE | repo/dír-é🧟/x.txt | n1\n
+RUN | $T/cs | $T/repo | --branch | claude | --message-file | $T/msg.txt | -- | dír-é🧟/x.txt
+EXPECT_EXIT | 0 | the-non-ascii-file-is-committed
+EXPECT_OUT | staged for you: 1 file(s) | the-non-ascii-file-is-counted-as-mine
+EXPECT_OUT_LACKS | \\303 | and-its-C-quoted-octal-form-never-shows-up-as-a-foreign-file
+
 CLEAN |
