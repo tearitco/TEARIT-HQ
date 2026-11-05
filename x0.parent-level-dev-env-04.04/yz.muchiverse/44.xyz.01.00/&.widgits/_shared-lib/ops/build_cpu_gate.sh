@@ -3,3 +3,4 @@ cd "$(dirname "$0")" && mkdir -p +x && echo "-- cpu_gate -> +x/cpu_gate.+x" && $
 # the scoped-commit guard rail (AGENTS.md commit discipline) is built with the gate: see ops/commit_scoped.c and harness commit_scoped.pal
 cd "$(dirname "$0")" && echo "-- commit_scoped -> +x/commit_scoped.+x" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/commit_scoped.+x commit_scoped.c && echo "OK +x/commit_scoped.+x"
 cd "$(dirname "$0")" && echo "-- xo_export -> +x/xo_export.+x" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/xo_export.+x xo_export.c && echo "OK +x/xo_export.+x"
+cd "$(dirname "$0")" && echo "-- growth_probe -> +x/growth_probe.+x" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/growth_probe.+x growth_probe.c && echo "OK +x/growth_probe.+x"

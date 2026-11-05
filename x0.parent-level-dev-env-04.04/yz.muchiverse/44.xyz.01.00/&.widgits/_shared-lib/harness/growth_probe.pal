@@ -1,0 +1,4 @@
+# growth_probe.pal - the runtime-growth audit op. See cases/growth_probe.pdl
+exec ./ops/+x/harness_case_op.+x cases/growth_probe.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/growth_probe.pdl
+halt

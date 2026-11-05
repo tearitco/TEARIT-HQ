@@ -1,0 +1,42 @@
+# growth_probe: the runtime-growth audit op (audit decision D9). A scratch house with big files made by `head -c` (1.5 MB): a LIVE one NOT named in the scratch standard is a candidate uncapped writer (exit 1, the line says so); a live one that IS named, a stale one (mtime set 3 days back), a small one, a non-text one, and one under .git/xyzfs are NOT flagged. Nothing in the real house is touched.
+RESULTS | ../results/growth_probe.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/+x/growth_probe.+x | gp
+MKDIR | h/@.apps/g/state
+MKDIR | h/@.apps/g/.git
+MKDIR | h/xyzfs/users/u
+WRITE | std.md | | `named_live.log` | capped at 2 MB |\n
+RUN | sh | -c | head -c 1572864 /dev/zero > $T/h/@.apps/g/state/named_live.log
+RUN | sh | -c | head -c 1572864 /dev/zero > $T/h/@.apps/g/state/stale_unlisted.log
+RUN | sh | -c | head -c 1572864 /dev/zero > $T/h/@.apps/g/state/frame.raw
+RUN | sh | -c | head -c 1572864 /dev/zero > $T/h/@.apps/g/.git/big.log
+RUN | sh | -c | head -c 1572864 /dev/zero > $T/h/xyzfs/users/u/big.log
+RUN | sh | -c | head -c 10 /dev/zero > $T/h/@.apps/g/state/small.log
+RUN | touch | -d | 3 days ago | $T/h/@.apps/g/state/stale_unlisted.log
+
+CASE    | nothing-live-and-unlisted-exits-zero
+RUN | $T/gp | $T/h | --standard | $T/std.md | --min-mb | 1
+EXPECT_EXIT | 0 | no-candidate
+EXPECT_OUT | stale_unlisted.log | the-stale-unlisted-file-is-listed-for-information
+EXPECT_OUT | in-standard | the-named-file-is-marked-in-standard
+EXPECT_OUT_LACKS | frame.raw | a-non-text-file-is-ignored
+EXPECT_OUT_LACKS | small.log | a-small-file-is-ignored
+EXPECT_OUT_LACKS | .git/big.log | dot-git-is-skipped
+EXPECT_OUT_LACKS | xyzfs | user-data-is-skipped
+EXPECT_OUT | 0 live | the-summary-says-zero-candidates
+
+CASE    | NEGATIVE-a-live-unlisted-large-file-is-a-candidate
+RUN | sh | -c | head -c 1572864 /dev/zero > $T/h/@.apps/g/state/rogue.log
+RUN | $T/gp | $T/h | --standard | $T/std.md | --min-mb | 1
+EXPECT_EXIT | 1 | the-uncapped-writer-candidate-fails
+EXPECT_OUT | rogue.log | it-names-the-file
+EXPECT_OUT | candidate uncapped writer | and-says-why
+
+CASE    | usage
+RUN | $T/gp | $T/h
+EXPECT_EXIT | 2 | missing-standard-is-a-usage-error
+
+CLEAN |
