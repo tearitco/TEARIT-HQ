@@ -1,0 +1,72 @@
+# possess_enter_daemon: the DAEMON half of Enter. The resident rpg_edit_hq.+x runs in a scratch house; its board ui.txt names a scratch engine session, and a line KEY_PRESSED: 13 appended to that session's keyboard/history.txt (the exact line the real engine writes when Enter is pressed: seen in the live history 2026-11-05) must make it choose the character on the xelector's cell, only while INT is on. Covers enter_pressed_in_engine() + the main-loop branch; possess_enter.pal covers the same choice through the verb. NOT covered: the engine writing that line (observed live, not asserted here).
+# Timing: the daemon ticks every 100 ms; the first look at the history file only records its size, so the case waits 1.5 s before the Enter.
+RESULTS | ../results/possess_enter_daemon.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/&.widgits
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01
+MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01
+COPY | @.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+COPY | @.apps/rpg-edit-hq/catalog.pdl | house/@.apps/rpg-edit-hq/catalog.pdl
+COPY | @.apps/rpg-edit-hq/doors.fsm.pdl | house/@.apps/rpg-edit-hq/doors.fsm.pdl
+COPY | @.apps/rpg-edit-hq/keybinds.pdl | house/@.apps/rpg-edit-hq/keybinds.pdl
+COPY | @.apps/rpg-edit-hq/lamps.pdl | house/@.apps/rpg-edit-hq/lamps.pdl
+COPY | @.apps/rpg-edit-hq/layout.pdl | house/@.apps/rpg-edit-hq/layout.pdl
+COPY | @.apps/rpg-edit-hq/life.pdl | house/@.apps/rpg-edit-hq/life.pdl
+COPY | @.apps/rpg-edit-hq/net_say.pdl | house/@.apps/rpg-edit-hq/net_say.pdl
+COPY | @.apps/rpg-edit-hq/pals.pdl | house/@.apps/rpg-edit-hq/pals.pdl
+COPY | @.apps/rpg-edit-hq/party.pdl | house/@.apps/rpg-edit-hq/party.pdl
+COPY | @.apps/rpg-edit-hq/rooms.pdl | house/@.apps/rpg-edit-hq/rooms.pdl
+COPY | @.apps/rpg-edit-hq/side_style.pdl | house/@.apps/rpg-edit-hq/side_style.pdl
+COPY | @.apps/rpg-edit-hq/survivor_clock.pdl | house/@.apps/rpg-edit-hq/survivor_clock.pdl
+COPY | @.apps/rpg-edit-hq/time.pdl | house/@.apps/rpg-edit-hq/time.pdl
+COPY | @.apps/rpg-edit-hq/toolbar.pdl | house/@.apps/rpg-edit-hq/toolbar.pdl
+COPY | @.apps/rpg-edit-hq/toy.pdl | house/@.apps/rpg-edit-hq/toy.pdl
+COPY | @.apps/rpg-edit-hq/tuning.pdl | house/@.apps/rpg-edit-hq/tuning.pdl
+COPY | @.apps/rpg-edit-hq/verbs.pdl | house/@.apps/rpg-edit-hq/verbs.pdl
+COPY | @.apps/rpg-edit-hq/voices.pdl | house/@.apps/rpg-edit-hq/voices.pdl
+COPY | @.apps/rpg-edit-hq/world_clock.pdl | house/@.apps/rpg-edit-hq/world_clock.pdl
+WRITE | house/@.apps/rpg-edit-hq/state/pet_ember.txt | room=store\nx=5\ny=5\ndir=0\nsteps=1\ntx=-1\nty=-1\n
+WRITE | house/@.apps/rpg-edit-hq/state/trainer.txt | room=store\nx=7\ny=7\ndir=0\nsteps=1\ntx=-1\nty=-1\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_follow.txt | pet\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq\ndesk_id=store\n
+
+MKDIR | house/@.apps/rpg-edit-hq/board/state
+MKDIR | sess/pieces/keyboard
+WRITE | sess/pieces/keyboard/history.txt | KEY_PRESSED: 65\n
+WRITE | house/@.apps/rpg-edit-hq/board/state/ui.txt | bv_session=$T/sess\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
+MKDIR | house/@.apps/rpg-edit-hq/state/world
+WRITE | house/@.apps/rpg-edit-hq/state/world/switches.txt | int=1\nrunning=0\n
+SPAWN | D | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house | $T/house/@.apps/rpg-edit-hq
+SLEEP | 1500
+# the daemon's first pass pins the xelector to the CONTROLLED character (follow_pchq, first call): place it on Ember only after that, as an engine arrow key would
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=none\n
+SLEEP | 600
+
+CASE    | NEGATIVE-a-key-that-is-not-Enter-chooses-nobody
+APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 65\n
+SLEEP | 800
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | another-key-leaves-the-active-pet
+
+CASE    | Enter-in-the-engine-history-chooses-the-pet-on-the-xelector
+APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 13\n
+WAIT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | ember | 4000 | the-daemon-chose-Ember-from-the-history-line
+EXPECT_ALIVE | $D | the-daemon-is-still-running
+
+CASE    | NEGATIVE-Enter-with-INT-off-chooses-nobody
+WRITE | house/@.apps/rpg-edit-hq/state/world/switches.txt | int=0\nrunning=0\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+SLEEP | 600
+APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 13\n
+SLEEP | 1200
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | Enter-is-ignored-while-INT-is-off
+
+CLEAN |

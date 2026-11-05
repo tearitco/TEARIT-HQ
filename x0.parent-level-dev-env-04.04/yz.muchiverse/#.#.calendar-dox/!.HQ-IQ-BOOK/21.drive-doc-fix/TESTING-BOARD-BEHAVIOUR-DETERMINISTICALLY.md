@@ -26,3 +26,7 @@ When a live board is too fluid to hold still, do NOT keep driving it. Make the b
 
 ## What is NOT proven
 The engine delivering Enter to the daemon (keyboard history) and the board redrawing the choice. The live Enter-on-pet frame was never obtained: the owner's flow is INT off, xelector free, Enter on a pet, and the pets move. A reliable live proof would need a fixture that freezes the pets (e.g. the clock paused) while the key is sent.
+
+## Added 2026-11-05: testing the resident daemon's key handling
+
+To test a key the daemon reads from the engine, do not need the engine: run the real daemon in a scratch house (`SPAWN`), point `board/state/ui.txt` `bv_session=` at a scratch folder and append the line the engine writes (`KEY_PRESSED: <code>`) to `<session>/pieces/keyboard/history.txt` (case: `possess_enter_daemon`). Traps: wait about 1.5 s first (the first look only records the file size); place the xelector AFTER the daemon's first pass (it pins it to the controlled character); `int` and `running` are switches in `state/world/switches.txt`, not the flag files; `EXPECT_HAS` reads only 16 KB; a `|` inside an `sh -c` string splits the row (`\p`). Prove the check can fail by mutating the key code.

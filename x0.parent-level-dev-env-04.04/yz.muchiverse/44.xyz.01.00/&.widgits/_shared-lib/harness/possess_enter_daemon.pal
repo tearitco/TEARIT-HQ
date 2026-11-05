@@ -1,0 +1,4 @@
+# possess_enter_daemon.pal - the resident daemon chooses the character on the xelector when Enter appears in the engine session history. See cases/possess_enter_daemon.pdl
+exec ./ops/+x/harness_case_op.+x cases/possess_enter_daemon.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/possess_enter_daemon.pdl
+halt
