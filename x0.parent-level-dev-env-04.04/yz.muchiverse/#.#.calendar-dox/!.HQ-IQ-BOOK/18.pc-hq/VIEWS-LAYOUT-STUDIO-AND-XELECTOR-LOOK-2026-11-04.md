@@ -76,3 +76,9 @@ Gaps against the vision (OBS unless marked): no live view editor; no UI to chain
 - Window templates: `02-architecture/XHTPM-WINDOW-BUILD-GUIDE.md`; renderer `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`.
 - Xelector: `18.pc-hq/XELECTOR-ENTITY.md`, `18.pc-hq/CURSWORD-POSSESSION-DESIGN.md`, the two renderers above.
 - The coin popup and its harness: `16.game/SHOP-SLICE-SPEC-2026-11-04.md`, `&.widgits/_shared-lib/harness/cases/coin_shop_ui.pdl`.
+
+## Lock to hero: built (2026-11-05)
+
+The owner asked for a toggle between free possession (default) and locked to the hero. It is the existing per-piece flags, set in bulk: verb `lockhero [on|off]` (no argument toggles) writes `SECTION | de_possessible | 1` into `hero_01/piece.pdl` and `SECTION | possessable | 0` into every other engine piece (rows of `piece.pdl` are replaced, other rows kept; the xelector and world are skipped). Pets and Harold live in game state, not in `pieces/`, so `possess_at_xelector()` (petslike_core.c) also reads the hero's flag and refuses a pet while locked. Editor: Menu tab row "Possession: lock to hero / free (toggle)" (`fire lockhero`). Proof: harness `possess_enter.pal` 21 PASS, mutation (refusal inverted) failed exactly that check. NOT proven: the menu row on the live board (the editor window runs the previous build until relaunch), and the engine side of a locked Enter on a real piece beyond the flag read already covered by `pieces_2d_parity`.
+
+Live Enter on a pet, attempted again 2026-11-05 (still unproven): with the board on the editor's own book the xelector would not step onto Ember's cell with arrows (it stopped one cell short at least twice), and a direct edit of `xelector_01/state.txt` is overwritten by the engine at once, so the daemon never saw xelector cell == pet cell. Enter did possess hero_01 each time. The deterministic harness remains the proof for the daemon half.

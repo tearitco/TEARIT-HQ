@@ -1407,6 +1407,7 @@ static int page_follow(char *msg, size_t cap) {
     snprintf(msg, cap, "page: %s follows the page to the %s (%d,%d)", ci < 0 ? "you" : party[ci].name, rooms[r].name, pet.x, pet.y);
     return 1;
 }
+static int hero_locked(void); static int lock_hero_set(int on);
 static int possess_at_xelector(char *msg, size_t cap);      /* defined with the other Enter-possession code below; the `possess` verb runs it once */
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
@@ -1489,6 +1490,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             snprintf(b, sizeof b, "DOOR|%ld|%s|menu|%s", now, ci < 0 ? "player" : party[ci].id, rooms[r].id); append_line("events.txt", b); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); turn_taken = 1; snprintf(msg, cap, "%s is now in the %s", ci < 0 ? "you" : party[ci].name, rooms[r].name); return; }
         snprintf(b, sizeof b, "room:%s", rooms[r].id); set_flag("follow", b); calc_view(); snprintf(msg, cap, "watching the %s", rooms[r].name); return; }
     if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
+    if (!strcmp(v, "lockhero")) { int want = argc >= 2 ? (!strcmp(argv[1], "on") || !strcmp(argv[1], "1")) : !hero_locked(); int n = lock_hero_set(want); snprintf(msg, cap, want ? "possession locked to the hero (%d pieces set)" : "possession free: any entity can be possessed (%d pieces set)", n); return; }
     if (!strcmp(v, "possess")) { pet_load(); if (!possess_at_xelector(msg, cap)) snprintf(msg, cap, "nobody to possess on the xelector's cell (or the board shows another book)"); return; }      /* `possess`: choose the character standing on the xelector, exactly what Enter does in the board (possess_at_xelector), for menus, event pages and the harness (a deterministic test: the live daemon only sees an Enter that arrives through the engine) */
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
 #define PET_SECTION 61
@@ -1690,6 +1692,25 @@ static int follow_xelector(char *msg, size_t cap) {
 }
 /* ENTER = possess (owner 2026-10-12): while INT is on and the xelector stands on a character, Enter chooses that character (same as clicking it in the toolbar): it becomes the one INT controls. Enter reaches the
  * engine, not this daemon, so the daemon reads the engine session's keyboard history for new "KEY_PRESSED: 13" lines (its own engage key, g_own13, is ignored). */
+/* LOCK TO HERO (owner 2026-11-05: all possession is controlling and free by default; "yes it can be locked to a hero ... toggle in .pdl or w/e"). The lock is NOT a new mechanism: it is the two per-piece flags the engine already enforces (bv_menu_input.c piece_pdl_flag):
+ * hero_01/piece.pdl `de_possessible | 1` (release refused) + every other engine piece `possessable | 0` (Enter refused). The pets live in game state, not in pieces/, so possess_at_xelector() reads the hero's flag too. `lockhero [on|off]` (no argument toggles). */
+static int piece_flag_set(const char *id, const char *flag, int val) {
+    char p[PATH_MAX], in[8192] = "", out[8200]; size_t n = 0; snprintf(p, sizeof p, "%s/pieces/%s/piece.pdl", PCHQ, id); read_file(p, in, sizeof in);
+    for (char *l = strtok(in, "\n"); l && n < 8000; l = strtok(NULL, "\n")) if (!strstr(l, flag)) n += (size_t)snprintf(out + n, sizeof out - n, "%s\n", l);
+    n += (size_t)snprintf(out + n, sizeof out - n, "SECTION | %s | %d\n", flag, val); return write_if_changed(p, out, n);
+}
+static int hero_locked(void) {
+    char p[PATH_MAX], b[4096]; snprintf(p, sizeof p, "%s/pieces/hero_01/piece.pdl", PCHQ); read_file(p, b, sizeof b);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (strstr(l, "de_possessible")) return strstr(l, "| 1") || strstr(l, "true") || strstr(l, "=1");
+    return 0;
+}
+static int lock_hero_set(int on) {
+    char d[PATH_MAX]; snprintf(d, sizeof d, "%s/pieces", PCHQ); DIR *dr = opendir(d); if (!dr) return 0; int n = 0; struct dirent *de;
+    while ((de = readdir(dr))) { const char *id = de->d_name; if (id[0] == '.' || !strncmp(id, "xelector", 8) || !strncmp(id, "world_", 6)) continue;
+        char sp[PATH_MAX], sb[1024]; snprintf(sp, sizeof sp, "%s/pieces/%s/state.txt", PCHQ, id); read_file(sp, sb, sizeof sb); if (!strstr(sb, "entity_type=")) continue;
+        if (!strcmp(id, "hero_01")) piece_flag_set(id, "de_possessible", on); else piece_flag_set(id, "possessable", on ? 0 : 1); n++; }
+    closedir(dr); return n;
+}
 static int possess_at_xelector(char *msg, size_t cap) {
     char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
     for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
@@ -1698,6 +1719,7 @@ static int possess_at_xelector(char *msg, size_t cap) {
     int pick = -2; for (int i = 0; i < nparty; i++) if (!strcmp(rooms[others[i].room].id, dk) && others[i].x == xx && others[i].y == xy) pick = i;
     if (pick == -2 && !strcmp(rooms[tr.room].id, dk) && tr.x == xx && tr.y == xy) pick = -1;
     if (pick == -2) return 0;
+    if (pick >= 0 && hero_locked()) return 0;      /* locked to the hero (verb lockhero): a pet is not chosen by Enter */
     if (pick == -1) { g_ctl_why = "enter-possess"; set_flag("ctl", "player"); set_flag("follow", "player"); snprintf(msg, cap, "%s chosen (Enter)", hero.name); }
     else { char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[pick].id); write_if_changed(p, bb, strlen(bb)); g_ctl_why = "enter-possess"; set_flag("ctl", "pet"); set_flag("follow", "pet"); active = pick; snprintf(msg, cap, "%s chosen (Enter)", party[pick].name); }
     calc_view(); return 1;

@@ -51,6 +51,7 @@
       </repeat>
       <item id="lsh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-lshop" label="- cancel -" action="void"/>
       <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire control"/>
+      <item id="mn-lockhero" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Possession: lock to hero / free (toggle)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lockhero"/>
       <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle voice"/>
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' reset"/>
       <item id="mn-entbar" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Entities bar on/off" action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/pchq.pdl' 'entities_bar'"/>

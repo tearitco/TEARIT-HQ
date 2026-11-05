@@ -72,4 +72,34 @@ RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
 EXPECT_OUT | nobody to possess | another-book-is-refused-even-with-a-pet-on-the-cell
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | and-nothing-changed
 
+# LOCK TO HERO (verb lockhero = the existing per-piece flags, owner 2026-11-05 "it can be locked to a hero"): hero_01 de_possessible 1, other engine pieces possessable 0, and the daemon refuses a pet.
+CASE    | lock-to-hero-sets-the-flags
+MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01
+MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/zz_npc
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01/state.txt | entity_type=hero\npos_x=7\npos_y=7\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/zz_npc/state.txt | entity_type=npc\npos_x=3\npos_y=3\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/zz_npc/piece.pdl | SECTION | name | keep me\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq\ndesk_id=store\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lockhero | on
+EXPECT_OUT | possession locked to the hero | the-verb-says-locked
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01/piece.pdl | de_possessible \p 1 | the-hero-cannot-be-released
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/zz_npc/piece.pdl | possessable \p 0 | another-piece-cannot-be-entered
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/zz_npc/piece.pdl | keep me | an-existing-row-is-kept
+EXPECT_NOFILE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/piece.pdl | the-xelector-is-never-touched
+
+CASE    | NEGATIVE-locked-a-pet-on-the-cell-is-refused
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
+EXPECT_OUT | nobody to possess | the-pet-is-refused-while-locked
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | the-active-pet-did-not-change
+
+CASE    | toggle-without-argument-frees-again
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lockhero
+EXPECT_OUT | possession free | no-argument-toggles-back
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/zz_npc/piece.pdl | possessable \p 1 | the-piece-can-be-entered-again
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
+EXPECT_OUT | Ember chosen (Enter) | the-pet-is-chosen-again
+
 CLEAN |
