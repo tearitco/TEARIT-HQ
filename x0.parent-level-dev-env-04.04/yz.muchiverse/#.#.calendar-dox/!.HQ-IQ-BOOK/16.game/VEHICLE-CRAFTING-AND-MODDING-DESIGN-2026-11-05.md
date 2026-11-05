@@ -70,3 +70,7 @@ Units: S ≈ 1 working session, M ≈ 3-5, L ≈ 10+. "Create" = make the thing;
 3. Is vehicle theft/chop-shopping meant for players against NPCs, players against players, or both (needs the law system)?
 4. Which class first: ship (recommended: the engine already flies one), or a car/truck for the University board?
 5. Do vehicles enter the rated PvP arena (parts affect Elo fairness: needs a "stock class" ruleset)?
+
+## 8. Owner answers 2026-11-05
+- Question 1: a crafted vehicle is **an entity owned by a piece** (not a piece itself): it has an `owner` field and its own hold; a chop shop or theft is a change of owner; scrapping leaves remnants. Questions 2-5 stay open.
+- Physics is **fun only for now** (see `VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`): the part stats are simple numbers; the material and engine columns stay in the data for a later realistic ruleset.

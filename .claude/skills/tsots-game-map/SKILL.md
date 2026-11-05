@@ -8,6 +8,7 @@ description: How the TSOTS / True Swords Clash / Tear-it co plans map onto the h
 Long forms: book `#.#.calendar-dox/!.HQ-IQ-BOOK/22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` (tables below in full), `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` (the roadmap), `08-roadmap/design-docs/GAME-SESSIONS-SEATS-RATINGS-LOBBIES-PATTERN.md` (the rating pattern), `22.lore-ip/` (lore; skill `soul-pen-lore`). House paths below are from `44.xyz.01.00/`.
 
 ## The public promise (SAID; the account is Tear-it co on X, about 30 loyal followers)
+(て る て る = the product/series name, owner 2026-11-05; D13 decided: house engine only, wording "RPG Maker-style")
 "coming soon: てるてる : single & multi player AI and human automation ecosystem : online Elo-rated PvP games with RPG Maker!  ~ RPGツクール製の、Eloレーティング対応オンラインPvPゲーム（シングル＆マルチプレイ）！📌". Four clauses: **A single and multi player, B AI and human automation, C online Elo-rated PvP, D made with RPG Maker.** Rule: **no clause is claimed publicly until it has a receipt** (harness case or recorded run). Until then say "coming soon".
 
 ## The game family (READ `+.TSOTS-ALPHA-OMEGA/`)
@@ -37,3 +38,6 @@ The core `rpg_*.js` are replaced by owner copies loaded as plugins (`TSOTSrpg_*`
 
 ## Standing cautions
 Verify before trusting: `TSC_ELO/prog-report-pvp.md` claims a live P2P duel; it was **not re-run** by an agent this session. Heavy work through `cpu_gate`; never loop to a free-API quota. Language rule: C, pal, pdl; no Python, no new `.sh`; a JS RPG Maker plugin client is an **owner decision** (D13). Cross-machine and signed ratings come before any "online" claim.
+
+## Owner decisions 2026-11-05 (asked officially)
+D13 house engine only (public wording "RPG Maker-style"); first game True Swords Clash, others close behind, plus a **digipet / monster-rancher game on a 1v1 mini 4x4 where digipets learn the Bible and play TSC** (roadmap M7b); **one shared Elo pool** (humans, bots, digipets); **physics fun only for now**; **crafted vehicle = entity owned by a piece**; **cursword = the player's avatar/role**; **てるてる = the product/series name**. Bible text for shipping: **unconfirmed** (book-stack's full text is unlabelled, looks machine-translated from Chinese; its Proverbs 31 rows are KJV/CUV, public domain); recommend KJV or WEB. Map facts (which maps are painted, which book each fits, maps to make): `22.lore-ip/MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md`.

@@ -69,3 +69,5 @@ Each step gets a harness case that can fail, a doc update here, and a decision-l
 4. Shops: should stock be real items on the shelf that a thief could take (physical), or a ledger the shop owns?
 5. Map preview: is the HTML gallery enough, or do you want a viewer window (pan/zoom, heights) as a house tool?
 6. Which notes carry into the university (section 9 of the summary lists the ones I did not carry)?
+
+**Map atlas (2026-11-05):** `../22.lore-ip/MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md` describes each imported map, says which book it fits (Soul Pen or Centroid), and lists the University districts that still have to be made.

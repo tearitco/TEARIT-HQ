@@ -16,6 +16,7 @@ Created 2026-11-05 at the owner's request ("we may wanna document this stuff som
 Never type these paths: find them (`find ~/Desktop -maxdepth 6 -type d -name 'TSOTS SECRETS*'` or `-name '!.SP.all-writeez31*'`), copy to scratch with `find -print0` and safe names, and read the copy. The originals are the owner's and are never modified.
 
 ## Also in this chapter (added 2026-11-05)
+- `MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md`: what each of the 98 maps looks like, which book it fits, which maps to make.
 - `TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md`: the TSOTS game family (True Swords Clash, TSOTS-OG, TSOMOJIO, AOW, FFU, B.O.T.S.), the 98 maps by role, lore to house functions, the RMMV secrets.
 - Roadmap to the Tear-it co promise: `../08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md`.
 - Local skills for agents: `.claude/skills/soul-pen-lore`, `.claude/skills/tsots-game-map`.

@@ -67,3 +67,6 @@ Order: **space (the engine already flies a ship) → boat → car → plane/dron
 
 ## 8. Open questions
 1. How realistic by default: ship the fun ruleset to players and keep realistic as a mode (recommended)? 2. SI units everywhere, or scale-ladder units? 3. Do vehicles feed rated PvP only in a "stock class"? 4. Do sci-fi engines get an energy economy tied to the chain/bank, or stay local? 5. Which proving-ground map first (recommend the vacuum range, then the basin)?
+
+## 9. Owner answer 2026-11-05
+Question 1: **fun only for now.** Build the fun ruleset first (simple speed, armor, cargo, fuel as a gauge); keep `MATERIAL`, density, thrust and Isp columns in the data so the realistic ruleset can be switched on later without a schema change; the proving-ground maps and gym lanes still use invariants (a car's top speed follows from its parts) but not the full oracle set. Milestone M11 is therefore scoped to the fun ruleset until the owner asks for realism. New test maps: `../22.lore-ip/MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md` section 4.5.

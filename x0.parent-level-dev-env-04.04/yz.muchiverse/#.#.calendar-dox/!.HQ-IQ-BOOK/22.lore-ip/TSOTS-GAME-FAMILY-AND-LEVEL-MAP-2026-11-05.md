@@ -61,5 +61,8 @@ Imported from the owner's RPG Maker MV project "The Sword of the Spirit". Sizes 
 - House relevance (DOC): the **import path** (RMMV maps to `map.txt`, `cells.*`, `layers.txt`, `events.txt`, `extrusion.pdl`) is the real bridge; RMMV **events** become house event pages; RMMV **variables and switches** are `state/world/switches.txt`-style files; regions are a candidate for the height and collision data (decision D12).
 - **License caution:** the house renders RPG Maker MV tile art in its own engine; check the RPG Maker EULA before shipping (roadmap decision D13).
 
-## 5. Where the long documents are
+## 5. Map atlas
+Visual descriptions of each map (11 viewed, the rest from data), a book/setting guess per map, and the maps still to make (Venus, Metal Sun, hydroverse, Eden, FFU, my chara, Bible levels, University districts, digipet ranch, test maps): `MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md`. Note: map040 (spirit server) and 068 (cathedral) are the most finished lore maps; 070 is blank.
+
+## 6. Where the long documents are
 `../08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` (the roadmap), `SOUL-PEN-LORE-SUMMARY-2026-11-05.md` (lore), `TSOTS-DEFINITION-AND-PLAYER-LOOP.md` (the definition), `../16.game/CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md` (the University), `../16.game/TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` (the old design notes).

@@ -25,8 +25,17 @@ The RPG Maker maps (98 imported, `@.apps/piececraft-hq/pieces/system/maps/tsots/
 6. The **Centroid University** is a place in the Soul Pen world (lore: "The Centroid: School of the Multiverse") where pals can be trained (see the vision doc).
 
 ## 4. Open questions for the owner (none blocks documenting)
-1. **"cursword"**: is it the main character's name, a class, or the pointer-sword? (In the house, "armed cursword" is the name of a display-wide key-grab state, an older, different meaning; see memory `revisit-armed-cursword`. Treat the new meaning as the game character unless told otherwise.) Who is cursword in the lore: Lucky, Asa, the player's custom avatar?
+1. **"cursword"** (ANSWERED 2026-11-05: **the player's avatar / role**, the main character, played good or evil). Earlier question: was it the main character's name, a class, or the pointer-sword? (In the house, "armed cursword" is the name of a display-wide key-grab state, an older, different meaning; see memory `revisit-armed-cursword`. Treat the new meaning as the game character unless told otherwise.) Who is cursword in the lore: Lucky, Asa, the player's custom avatar?
 2. **Bible scope and order**: which books, in which order of levels (Genesis to Revelation?), and which characters are capturable? Are "capturing" and "pals" respectful of the source (a design and tone decision for the owner)?
 3. **Capture rule**: loyalty, a mission reward, a Soul Pen act, a trade? Can a captured character leave?
 4. **The seam**: the Soul Pen volumes start at "after Revelation": which in-world event links the last Bible level to Lucky/Asa/Ava (the notes tie Asa and Ava to Eden and to the recursion; see the lore summary)?
 5. **Maps to levels**: which of the 98 imported maps are Bible levels, which are Soul Pen, and which are neither (the notes' story used Pakistan, a battleship, a saucer, Mars)?
+
+## 5. Added 2026-11-05: the digipet / monster-rancher mode (SAID)
+Owner (asked officially): the first public game is True Swords Clash, with the others close behind, **and** "a digipet, monster-rancher-like thing as a **1v1 version of the 4x4** board, but also digipets should be able to **learn the Bible** so they can also play TSC". Reading:
+- a **digipet** is a raised creature (needs, growth, training) that is also a **pal** in the TSOTS sense (a collectible, tradeable entity);
+- **verse knowledge is a trainable skill**: a digipet that has learned verses is better at the True Swords Clash mana challenge (ordering verses), so it can compete as a rated agent seat, in the **same shared Elo pool** as humans and bots;
+- a **1v1 mini-board**: the chess-like 4x4 board (map071, four players) in a smaller two-player form for digipet duels;
+- fits existing house parts: the pets-like core, the pet world and pet chain economy designs, the seat/rating layer (roadmap M2/M7b).
+Open: do digipets come from the Bible and Soul Pen cast (a captured character becomes a digipet), or from the muchi-pets/fuzzpets line? Do they evolve? Maps to make: the ranch, the 1v1 board and a Bible study room (`MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md` section 4.4).
+Related facts from this round: **cursword = the player's avatar/role**; **てるてる (teru-teru) = the product/series name** of the Tear-it co game line (JP-facing); crafted vehicles are entities owned by a piece.

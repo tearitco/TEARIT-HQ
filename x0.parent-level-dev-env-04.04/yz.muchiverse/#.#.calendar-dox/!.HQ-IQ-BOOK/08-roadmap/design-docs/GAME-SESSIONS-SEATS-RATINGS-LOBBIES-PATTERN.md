@@ -56,3 +56,6 @@ Every game in the house (TSC_ELO, DSR, chess/wager, TSOTS, future ones) should u
 3. Do agents share a rating pool with humans or have their own?
 4. **"Lobbies"** here means matchmaking rooms. If you also meant **in-game lobbying** (interest groups influencing the castle/government in DSR), that is a separate game mechanic; say so and I will design it.
 5. Casual sessions: do they still write a result row (for history) without changing ratings?
+
+## 6. Owner answer 2026-11-05
+Open question 3 (do agents share a rating pool with humans?): **one shared pool** (humans, bots, digipets). Watch for bot swarms distorting human ratings: placement games, a provisional flag, and a report by seat kind. Digipets that have learned the Bible are agent seats in True Swords Clash (roadmap M7b). Roadmap: `../ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 9.

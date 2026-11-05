@@ -76,3 +76,6 @@ Per-vehicle code versus one integrator op with materials, parts and force rows, 
 
 ## D22 (2026-11-05, PROPOSED): the chain stores receipts (hashes), not training data or weights
 Data and weights stay in house files (private, large, changing); the chain, once it exists, carries content hashes of packs and graduation/rated-result records. Doc: `17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md` section 5.
+
+## D13/D14/D21 DECIDED by the owner (2026-11-05, asked officially)
+D13 **house engine only** (public wording "RPG Maker-style"; imported RPG Maker maps/art; no plugin client). D14 **True Swords Clash first, others close behind, plus a digipet game on a 1v1 mini 4x4 where digipets learn the Bible and play TSC**; one shared rating pool. D21 **fun physics only for now**. Crafted vehicle = entity owned by a piece. Bible text: unconfirmed, see roadmap section 9. Source: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 9.
