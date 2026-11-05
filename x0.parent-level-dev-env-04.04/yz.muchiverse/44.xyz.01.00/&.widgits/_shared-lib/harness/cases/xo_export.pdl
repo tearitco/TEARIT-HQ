@@ -1,0 +1,62 @@
+# xo_export: the XO projection op (audit decision D8). XO_ROOT points at a scratch folder, never the owner's real XO. Docs/media with a <pre>.<name> name are copied (temp + rename); code, scripts, binaries, extensionless files, names without a prefix, paths in the name or the subfolder, a missing source, and an overwrite of DIFFERENT bytes (without --force) are REFUSED with nothing written.
+RESULTS | ../results/xo_export.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+ENV | XO_ROOT | $T/XO
+COPY | &.widgits/_shared-lib/ops/+x/xo_export.+x | xo
+WRITE | doc.md | # handoff\n
+WRITE | code.c | int main(){return 0;}\n
+WRITE | run.sh | echo hi\n
+WRITE | noext | data\n
+RUN | /bin/cp | /bin/sleep | $T/bin.md
+
+CASE    | a-doc-with-a-prefix-is-copied
+RUN | $T/xo | $T/doc.md | 31.Nov/nov-5 | 9.handoff.md
+EXPECT_EXIT | 0 | copied
+EXPECT_OUT | copied: | it-says-copied
+EXPECT_HAS | XO/31.Nov/nov-5/9.handoff.md | # handoff | the-file-is-there-with-the-bytes
+EXPECT_NOFILE | XO/31.Nov/nov-5/9.handoff.md.xo_tmp | no-temp-file-is-left
+
+CASE    | the-same-bytes-again-is-already-current
+RUN | $T/xo | $T/doc.md | 31.Nov/nov-5 | 9.handoff.md
+EXPECT_EXIT | 0 | ok
+EXPECT_OUT | already current | reported-as-current
+
+CASE    | NEGATIVE-different-bytes-are-not-overwritten-without-force
+WRITE | XO/31.Nov/nov-5/9.handoff.md | the owner edited this\n
+RUN | $T/xo | $T/doc.md | 31.Nov/nov-5 | 9.handoff.md
+EXPECT_EXIT | 1 | refused
+EXPECT_HAS | XO/31.Nov/nov-5/9.handoff.md | the owner edited this | and-the-owners-text-is-intact
+RUN | $T/xo | $T/doc.md | 31.Nov/nov-5 | 9.handoff.md | --force
+EXPECT_EXIT | 0 | force-replaces
+EXPECT_HAS | XO/31.Nov/nov-5/9.handoff.md | # handoff | the-forced-copy-has-the-new-bytes
+
+CASE    | NEGATIVE-code-and-scripts-never-go-in
+RUN | $T/xo | $T/code.c | 31.Nov/nov-5 | 1.code.c
+EXPECT_EXIT | 1 | dot-c-refused
+RUN | $T/xo | $T/run.sh | 31.Nov/nov-5 | 2.run.sh
+EXPECT_EXIT | 1 | dot-sh-refused
+RUN | $T/xo | $T/noext | 31.Nov/nov-5 | 3.noext
+EXPECT_EXIT | 1 | extensionless-refused
+RUN | $T/xo | $T/code.c | 31.Nov/nov-5 | 4.code.md
+EXPECT_EXIT | 0 | a-doc-extension-is-judged-by-the-NAME-only-so-rename-honestly
+EXPECT_NOFILE | XO/31.Nov/nov-5/1.code.c | and-nothing-code-was-written
+RUN | $T/xo | $T/bin.md | 31.Nov/nov-5 | 5.bin.md
+EXPECT_EXIT | 1 | a-binary-renamed-to-dot-md-is-refused
+EXPECT_NOFILE | XO/31.Nov/nov-5/5.bin.md | and-not-written
+
+CASE    | NEGATIVE-bad-names-and-paths
+RUN | $T/xo | $T/doc.md | 31.Nov/nov-5 | handoff.md
+EXPECT_EXIT | 1 | no-prefix-refused
+RUN | $T/xo | $T/doc.md | 31.Nov/nov-5 | a/b.9.md
+EXPECT_EXIT | 1 | slash-in-the-name-refused
+RUN | $T/xo | $T/doc.md | ../outside | 9.x.md
+EXPECT_EXIT | 1 | dotdot-subfolder-refused
+RUN | $T/xo | $T/nosuch.md | 31.Nov/nov-5 | 9.y.md
+EXPECT_EXIT | 1 | missing-source-refused
+RUN | $T/xo | $T/doc.md
+EXPECT_EXIT | 2 | usage
+
+CLEAN |

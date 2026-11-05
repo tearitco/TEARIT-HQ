@@ -189,6 +189,7 @@ pick up context. Save it as `.md` and `.html` in `/home/no/Desktop/github/work/X
 named `<pre>.<name>` (`0.LLMUD_BIZ`, `$.Brainstorm`, `29.marathon-sprint-drive`). Do not put code, scripts, binaries, game data (`.pdl`), logs, scratch trees or
 "safekeeping" copies there, and do not create unprefixed items in it. Scratch work goes in `/tmp` or the session scratchpad; a frozen reference binary is rebuilt
 from its git tag. 2026-10-25: 333 agent items (15,685 files) were moved out to `XO-quarantine/` (next to `XO/`, with `MANIFEST.tsv`; nothing deleted).
+Refresh a copy of a book doc there with `&.widgits/_shared-lib/ops/+x/xo_export.+x <source> <subfolder> <pre.name>` (docs/media only, never overwrites the owner's edits without `--force`); the book file is the one authority (2026-11-05).
 
 ## Two ways to build it? Ask the design-choice test first (REQUIRED, since 2026-11-05)
 
