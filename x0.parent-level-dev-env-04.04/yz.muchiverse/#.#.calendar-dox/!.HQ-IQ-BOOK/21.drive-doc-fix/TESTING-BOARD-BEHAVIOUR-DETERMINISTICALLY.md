@@ -30,3 +30,7 @@ The engine delivering Enter to the daemon (keyboard history) and the board redra
 ## Added 2026-11-05: testing the resident daemon's key handling
 
 To test a key the daemon reads from the engine, do not need the engine: run the real daemon in a scratch house (`SPAWN`), point `board/state/ui.txt` `bv_session=` at a scratch folder and append the line the engine writes (`KEY_PRESSED: <code>`) to `<session>/pieces/keyboard/history.txt` (case: `possess_enter_daemon`). Traps: wait about 1.5 s first (the first look only records the file size); place the xelector AFTER the daemon's first pass (it pins it to the controlled character); `int` and `running` are switches in `state/world/switches.txt`, not the flag files; `EXPECT_HAS` reads only 16 KB; a `|` inside an `sh -c` string splits the row (`\p`). Prove the check can fail by mutating the key code.
+
+## Added 2026-11-05: driving a LIVE board like a person (keys that reach the daemon)
+
+`bv_keys` talks to the ENGINE only (its `interact_relay.txt`); the daemon learns about Enter/Esc from `<session>/pieces/keyboard/history.txt`, which only the WINDOW writes. To test anything the daemon does on a key, append `KEY_PRESSED: <code>` to `#.desktop/entity_menu_history/<window pid>.txt` (the window forwards it exactly like a physical key). Arrows: append `1000..1003` and `126` to the session's `interact_relay.txt`. Freeze wandering pets first (`rpg_edit_hq.+x stop`, restore with `play`), and read the evidence in state files (`ctl_trace.txt`, `active.txt`, `xelector_01/state.txt`), then a frame.
