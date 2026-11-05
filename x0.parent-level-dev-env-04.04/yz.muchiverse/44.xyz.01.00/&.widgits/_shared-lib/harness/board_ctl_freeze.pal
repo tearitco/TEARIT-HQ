@@ -1,0 +1,4 @@
+# board_ctl_freeze.pal - board_ctl freeze/thaw/engine-key. See cases/board_ctl_freeze.pdl
+exec ./ops/+x/harness_case_op.+x cases/board_ctl_freeze.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/board_ctl_freeze.pdl
+halt

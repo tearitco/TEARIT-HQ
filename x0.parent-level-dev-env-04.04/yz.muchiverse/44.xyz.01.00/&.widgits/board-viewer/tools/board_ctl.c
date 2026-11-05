@@ -4,6 +4,8 @@
  *   board_ctl status    <app>                       one line per check: session folder, engine process (cwd not deleted), bv_state lines, window, game daemon; exit 0 when all hold, 1 otherwise
  *   board_ctl preflight <app>                       status + the engine really renders (nudge, the frame file must change within 10 s); exit 0 only then. Run before ANY proof or recording.
  *   board_ctl recover   <app>                       end the app's window and engine by pid, relaunch (button.sh run, then the piececraft engine by hand when no engine appears), wait for a live session
+ *   board_ctl freeze    <app> / thaw <app>          stop the world (pets stop wandering) / play it again ONLY if it was running before; the first freeze value is kept in state/.ctl_frozen_was
+ *   board_ctl engine-key <app> <text>               text for the ENGINE relay (bv_keys): xelector, camera, 9; does NOT reach the game daemon (use `key` for that); every input command prints its consumer
  *   board_ctl key       <app> <xdotool key> [ms]    put the pointer inside the window (the desktop is focus-follows-mouse: a key goes to the window under the pointer), focus it, press one real key, wait ms (default 1500)
  *   board_ctl click     <app> <x> <y>               a click in window pixels: pointer moved onto the spot, then the press through the per-pid relay (a bare xdotool click did not reach the popup, and the relay click without the pointer there did nothing)
  *   board_ctl camera    <app> <preset>              absolute camera from tools/camera_presets.pdl (written into the session's bv_state.txt without touching the other lines), then a redraw nudge
@@ -99,7 +101,7 @@ static int do_recover(void) {
 static int do_key(const char *key, int ms) {
     char wid[64], cmd[256]; if (!window_id(wid, sizeof wid)) { printf("FAIL key: no window\n"); return 1; }
     snprintf(cmd, sizeof cmd, "xdotool mousemove --window %s 400 350 2>/dev/null; xdotool windowfocus %s 2>/dev/null && sleep 0.3 && xdotool key %s", wid, wid, key); if (run(cmd, NULL, 0) != 0) { printf("FAIL key: xdotool could not focus %s (window unmapped or gone: board_ctl status)\n", wid); return 1; } if (load_session()) for (int i = 0; i < 3; i++) { usleep(700000); nudge(); }      /* an idle engine only reads its relay when woken: 126 is the unbound "render now" key (without it a key took 30 s to show) */
-    usleep((useconds_t)ms * 1000); printf("key %s sent to %s\n", key, wid); return 0;
+    usleep((useconds_t)ms * 1000); printf("key %s sent to %s: consumer = the WINDOW (physical key: history.txt grows, the daemon and the engine both see it)\n", key, wid); return 0;
 }
 static int do_click(int x, int y) {
     int wp = window_pid(); if (!wp) { printf("FAIL click: no window\n"); return 1; } char p[PATH_MAX + 64]; snprintf(p, sizeof p, "%s/#.desktop/entity_menu_history/%d.txt", HOUSE, wp);
@@ -165,6 +167,32 @@ static int do_camset(int argc, char **argv) {      /* camset <app> key=value ...
     slurp(sp, b, sizeof b); for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "cam_", 4) || !strncmp(l, "camera_mode", 11) || !strncmp(l, "current_z", 9)) printf("%s\n", l);
     return 0;
 }
+/* freeze / thaw (decision D4, 2026-11-05): pets wander even with INT on and may leave the room, which fooled a whole session ("stopped one cell short of Ember"). The ONE authority for "is the world
+ * running" is the game's own state/flag_running.txt, set by its own verbs `stop` / `play`, so these call those verbs (the binary is the GAME row of <app>/verbs.pdl) and only remember what they found in
+ * state/.ctl_frozen_was: freeze twice keeps the FIRST value, thaw plays only when the world was running before the freeze, then removes the marker. */
+static int game_bin(char *out, size_t cap) {
+    char p[PATH_MAX + 40], b[8192]; snprintf(p, sizeof p, "%s/verbs.pdl", APP); slurp(p, b, sizeof b);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (strncmp(l, "GAME", 4)) continue; char *f[8]; int n = 0; char *s = l; while (n < 8) { f[n++] = s; char *bar = strchr(s, '|'); if (!bar) break; *bar = 0; s = bar + 1; }
+        if (n < 4) continue; char *v = f[3]; while (*v == ' ') v++; char *e = v + strlen(v); while (e > v && (e[-1] == ' ' || e[-1] == '\r')) *--e = 0; snprintf(out, cap, "%s/%s", APP, v); return exists(out); }
+    return 0;
+}
+static int do_freeze(int thaw) {
+    char bin[PATH_MAX + 80], flag[PATH_MAX + 40], mark[PATH_MAX + 40], cmd[PATH_MAX * 2 + 64], b[16]; snprintf(flag, sizeof flag, "%s/state/flag_running.txt", APP); snprintf(mark, sizeof mark, "%s/state/.ctl_frozen_was", APP);
+    if (!game_bin(bin, sizeof bin)) { printf("FAIL %s: no game binary (GAME row of %s/verbs.pdl)\n", thaw ? "thaw" : "freeze", APP); return 1; }
+    if (!thaw) { slurp(flag, b, sizeof b); int was = atoi(b) == 1; if (!exists(mark)) { FILE *m = fopen(mark, "w"); if (m) { fprintf(m, "%d\n", was); fclose(m); } }
+        snprintf(cmd, sizeof cmd, "'%s' fire stop >/dev/null 2>&1", bin); run(cmd, NULL, 0); slurp(flag, b, sizeof b);
+        if (atoi(b) != 0) { printf("FAIL freeze: flag_running.txt is still %d\n", atoi(b)); return 1; } printf("frozen: world stopped (was %s)\n", exists(mark) ? "recorded" : "unknown"); return 0; }
+    char mb[16]; slurp(mark, mb, sizeof mb); if (!exists(mark)) { printf("thaw: not frozen by board_ctl, nothing to do\n"); return 0; }
+    if (atoi(mb) == 1) { snprintf(cmd, sizeof cmd, "'%s' fire play >/dev/null 2>&1", bin); run(cmd, NULL, 0); slurp(flag, b, sizeof b); if (atoi(b) != 1) { printf("FAIL thaw: flag_running.txt is %d, expected 1\n", atoi(b)); return 1; } }
+    unlink(mark); printf("thawed: world %s\n", atoi(mb) == 1 ? "running again" : "left stopped (it was stopped before the freeze)"); return 0;
+}
+/* engine-key: text for the ENGINE relay (xelector, camera, 9, engine-side Enter) through tools/bv_keys.+x. It does NOT reach the game daemon: that reads <session>/pieces/keyboard/history.txt, which only the
+ * WINDOW writes. For daemon behaviour (Enter possesses, Esc-first) use `key` (a physical key). Every command that sends input says which consumer it reached. */
+static int do_enginekey(const char *text) {
+    if (!load_session() || !exists(SESS)) { printf("FAIL engine-key: no live session\n"); return 1; } char bk[PATH_MAX + 40], cmd[PATH_MAX * 2 + 200]; snprintf(bk, sizeof bk, "%s/+x/bv_keys.+x", HERE);
+    if (!exists(bk)) { printf("FAIL engine-key: %s missing\n", bk); return 1; } snprintf(cmd, sizeof cmd, "'%s' '%s' '%s' >/dev/null 2>&1", bk, SESS, text); if (run(cmd, NULL, 0) != 0) { printf("FAIL engine-key: bv_keys failed\n"); return 1; }
+    nudge(); printf("engine-key %s sent: consumer = the ENGINE relay (xelector/camera); NOT the game daemon, NOT the window\n", text); return 0;
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: board_ctl status|preflight|recover|key|click|camera|snap <app dir> ...   |   manifest <dir> <steps.txt>   (see the header of tools/board_ctl.c)\n"); return 2; }
     char self[PATH_MAX]; ssize_t r = readlink("/proc/self/exe", self, sizeof self - 1); if (r > 0) { self[r] = 0; char *s = strrchr(self, '/'); if (s) *s = 0; s = strrchr(self, '/'); if (s) *s = 0; snprintf(HERE, sizeof HERE, "%s", self); }      /* tools/+x/board_ctl.+x -> .../tools */
@@ -174,6 +202,9 @@ int main(int argc, char **argv) {
     load_session();
     if (!strcmp(cmd, "status")) return do_status(0);
     if (!strcmp(cmd, "preflight")) return do_preflight();
+    if (!strcmp(cmd, "freeze")) return do_freeze(0);
+    if (!strcmp(cmd, "thaw")) return do_freeze(1);
+    if (!strcmp(cmd, "engine-key") && argc >= 4) return do_enginekey(argv[3]);
     if (!strcmp(cmd, "recover")) return do_recover();
     if (!strcmp(cmd, "key") && argc >= 4) return do_key(argv[3], argc >= 5 ? atoi(argv[4]) : 1500);
     if (!strcmp(cmd, "click") && argc >= 5) return do_click(atoi(argv[3]), atoi(argv[4]));

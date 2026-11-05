@@ -1,0 +1,53 @@
+# board_ctl_freeze: board_ctl freeze / thaw / engine-key (decision D4). Freeze calls the game's own `stop` verb (the GAME row of verbs.pdl names the binary) and remembers the prior running value in state/.ctl_frozen_was; thaw plays again ONLY when the world was running before. A second freeze keeps the FIRST remembered value. engine-key reaches the engine relay and says so; with no live session it refuses. Scratch editor house.
+RESULTS | ../results/board_ctl_freeze.txt
+ENV | LC_ALL | C
+
+INCLUDE | ../fixtures/editor_house.pdl
+
+CASE    | setup
+COPY | &.widgits/board-viewer/tools/+x/board_ctl.+x | house/&.widgits/board-viewer/tools/+x/board_ctl.+x
+COPY | &.widgits/board-viewer/tools/+x/bv_keys.+x | house/&.widgits/board-viewer/tools/+x/bv_keys.+x
+COPY | &.widgits/board-viewer/tools/camera_presets.pdl | house/&.widgits/board-viewer/tools/camera_presets.pdl
+MKDIR | house/@.apps/rpg-edit-hq/board/state
+WRITE | house/@.apps/rpg-edit-hq/state/flag_running.txt | 1\n
+
+CASE    | freeze-stops-the-world-and-remembers-it-was-running
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | freeze | $T/house/@.apps/rpg-edit-hq
+EXPECT_EXIT | 0 | freeze-succeeds
+EXPECT_OUT | frozen | it-says-frozen
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_running.txt | 0 | the-game-flag-is-0
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/.ctl_frozen_was | 1 | and-the-prior-value-1-is-remembered
+
+CASE    | a-second-freeze-keeps-the-first-remembered-value
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | freeze | $T/house/@.apps/rpg-edit-hq
+EXPECT_EXIT | 0 | second-freeze-succeeds
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/.ctl_frozen_was | 1 | still-1-not-overwritten-with-the-stopped-0
+
+CASE    | thaw-plays-again-because-it-was-running
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | thaw | $T/house/@.apps/rpg-edit-hq
+EXPECT_EXIT | 0 | thaw-succeeds
+EXPECT_OUT | running again | it-says-so
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_running.txt | 1 | the-flag-is-1-again
+EXPECT_NOFILE | house/@.apps/rpg-edit-hq/state/.ctl_frozen_was | the-marker-is-removed
+
+CASE    | NEGATIVE-a-world-that-was-stopped-stays-stopped-after-thaw
+WRITE | house/@.apps/rpg-edit-hq/state/flag_running.txt | 0\n
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | freeze | $T/house/@.apps/rpg-edit-hq
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | thaw | $T/house/@.apps/rpg-edit-hq
+EXPECT_OUT | left stopped | thaw-says-it-left-the-world-stopped
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_running.txt | 0 | and-it-is-still-0
+
+CASE    | thaw-without-a-freeze-does-nothing
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | thaw | $T/house/@.apps/rpg-edit-hq
+EXPECT_OUT | not frozen | it-says-so
+
+CASE    | engine-key-says-which-consumer-it-reaches
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | engine-key | $T/house/@.apps/rpg-edit-hq | 9
+EXPECT_OUT | no live session | with-no-session-it-refuses
+MKDIR | sess/pieces/apps/player_app
+WRITE | house/@.apps/rpg-edit-hq/board/state/ui.txt | bv_session=$T/sess\n
+RUN | $T/house/&.widgits/board-viewer/tools/+x/board_ctl.+x | engine-key | $T/house/@.apps/rpg-edit-hq | 9
+EXPECT_OUT | consumer = the ENGINE relay | it-names-the-engine-relay-as-the-consumer
+EXPECT_OUT | NOT the game daemon | and-says-the-daemon-is-not-reached
+
+CLEAN |
