@@ -116,6 +116,14 @@ Status below is the `GAMES-ROADMAP.md` status of 2026-10-13 (DOC, not re-run tod
 
 ---
 
+## K. Maybes (ideas the owner has NOT decided; do not build unprompted)
+
+One line each: the idea, who raised it, the open question, what it would reuse. Move a line to the right section above when the owner says go; delete it if the owner says no.
+
+| Idea | Raised | Open question | Would reuse |
+|---|---|---|---|
+| Cycle possessed pals with a key (first thought: Shift+Left / Shift+Right; owner may prefer Tab, which is disabled while INT is on, decided 2026-10-12) | owner 2026-11-05 | which key; roster order or toolbar order; skip locked/other-room pets? | the `select <id>` verb (its `follow_selection` moves `possessed_id`), `keybinds.pdl` rows as data; harness case: next, previous, wrap, nothing when not possessing |
+
 # Technical spec library (what to read, and what is still unwritten)
 
 Each row: in-house spec (path in this book) | external reference (the URL returned HTTP 200 on 2026-11-04; its content was NOT read) | spec still to write.
