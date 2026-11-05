@@ -1,0 +1,4 @@
+# survivor_slice.pal - early-survivor slice step 1, quarantined: smash a bench into items through the ledger, needs, eat/drink, wield, light a fire. See cases/survivor_slice.pdl
+exec ./ops/+x/harness_case_op.+x cases/survivor_slice.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/survivor_slice.pdl
+halt

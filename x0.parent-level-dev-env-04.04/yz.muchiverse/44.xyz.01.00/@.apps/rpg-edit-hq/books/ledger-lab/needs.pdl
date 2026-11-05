@@ -1,0 +1,4 @@
+# needs.pdl - how fast a need rises. RATE|need|points|per_minutes   (clamped 0..100). survivor_op tick <actor> <minutes> applies it; the game clock's turn is 5 minutes (time.pdl TURN).
+RATE|hunger|10|60
+RATE|thirst|15|60
+RATE|fatigue|5|60

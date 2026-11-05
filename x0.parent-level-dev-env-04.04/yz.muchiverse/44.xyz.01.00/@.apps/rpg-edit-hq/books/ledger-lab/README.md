@@ -7,3 +7,9 @@ Holds the item ledger lab. NOT listed in the editor's book dropdown and NOT read
 - Harness: `&.widgits/_shared-lib/harness/item_ledger.pal` (scratch book only, never this folder).
 - Rule: do not call the op on this folder from a game or a pet until the owner lifts quarantine. The harness uses scratch copies.
 - Release criteria (proposal): harness green, one real run in this book with a hand-read ledger, owner reads `check` output, then ONE named caller.
+
+## Survivor slice step 1 (2026-11-04)
+- `ops/survivor_op.c` (built to `ops/+x/survivor_op.+x`): place/smash/tick/eat/drink/wield/light/status. Also refuses any folder without `QUARANTINE`; writes items only through `item_ledger_op`.
+- Data: `furniture.pdl`, `needs.pdl`, `itemdata.pdl`; items `cdda.plank cdda.rag cdda.pipe cdda.can cdda.bottle` added next to the three owner ids.
+- `state/` here holds the one hand-read real run (7 ledger rows, `check` OK); the harness `survivor_slice.pal` never touches this folder.
+- Not connected to cdda-hq or to the clock.

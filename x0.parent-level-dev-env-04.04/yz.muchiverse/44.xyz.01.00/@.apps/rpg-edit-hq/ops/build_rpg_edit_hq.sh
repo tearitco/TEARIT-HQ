@@ -10,3 +10,4 @@ nice -n 15 gcc -std=c11 -O2 -Wall -Wextra -o +x/edit_prefs.+x edit_prefs.c || ex
 nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/hai_op.+x hai_op.c || exit 1
 nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/item_ledger_op.+x item_ledger_op.c || exit 1   # the quarantined item ledger, see item_ledger_op.c and harness item_ledger.pal
 nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/pet_net_say.+x pet_net_say.c || exit 1   # a pet chooses its network line from its own state, see pet_net_say.c and harness pet_net_say.pal
+nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -Wno-misleading-indentation -o +x/survivor_op.+x survivor_op.c || exit 1   # quarantined early-survivor slice (smash/needs/eat/wield/light), see survivor_op.c and harness survivor_slice.pal

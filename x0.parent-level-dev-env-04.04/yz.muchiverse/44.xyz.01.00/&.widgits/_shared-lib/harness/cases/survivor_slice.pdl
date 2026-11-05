@@ -1,0 +1,145 @@
+# survivor_slice: SCRATCH books only (data files copied from the shipped ledger-lab; the lab itself is never touched). Items move ONLY through item_ledger_op; every refusal also checks nothing changed.
+RESULTS | ../results/survivor_slice.txt
+ENV | LC_ALL | C
+ENV | ITEM_LEDGER_TS | 1700000000
+
+CASE    | setup
+SCRATCH |
+MKDIR | book
+WRITE | book/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/furniture.pdl | $T/book/furniture.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/needs.pdl | $T/book/needs.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/itemdata.pdl | $T/book/itemdata.pdl
+MKDIR | plain
+
+CASE    | quarantine
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/plain | status | hero
+EXPECT_EXIT | 4 | a-folder-without-QUARANTINE-is-refused
+EXPECT_OUT | NOT A QUARANTINED BOOK | and-says-why
+
+CASE    | place
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | place | bench | 4 | 5
+EXPECT_EXIT | 0 | a-bench-is-placed
+EXPECT_OUT | PLACED bench at 4,5 hp 3 | with-hp-from-furniture.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | place | bench | 4 | 5
+EXPECT_EXIT | 3 | a-second-piece-on-the-same-cell-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | place | sofa | 1 | 1
+EXPECT_EXIT | 3 | an-unknown-furniture-id-is-refused
+
+CASE    | smash-mints-exactly-the-drops-once
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 9 | 9
+EXPECT_EXIT | 3 | smashing-an-empty-cell-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+EXPECT_OUT | HIT bench hp 2 | first-hit
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT_IS |  | hits-mint-nothing-yet
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+EXPECT_OUT | HIT bench hp 1 | second-hit
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+EXPECT_OUT | SMASHED bench | the-third-hit-consumes-it
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.plank\p2 | two-planks
+EXPECT_OUT | hero\pcdda.rag\p1 | one-rag
+EXPECT_OUT | hero\pcdda.pipe\p1 | one-pipe
+EXPECT_OUT | hero\pcdda.can\p1 | one-can
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+EXPECT_EXIT | 3 | the-consumed-bench-cannot-be-smashed-again-no-double-drops
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.plank
+EXPECT_OUT_IS | 2 | plank-supply-is-exactly-the-drop
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-ledger-passes-check
+
+CASE    | needs-tick-and-clamp
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | tick | hero | 120
+EXPECT_OUT | hunger=20 thirst=30 fatigue=10 | 120-minutes-at-the-pdl-rates
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | tick | hero | 600
+EXPECT_OUT | hunger=100 thirst=100 fatigue=60 | clamped-at-100
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | tick | hero | 0
+EXPECT_EXIT | 3 | zero-minutes-is-refused
+
+CASE    | eat-and-drink
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | eat | hero | cdda.can
+EXPECT_OUT | ATE cdda.can: hunger now 60 | eating-lowers-hunger-by-40
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.can
+EXPECT_OUT_IS | 0 | the-can-was-burned-through-the-ledger
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | eat | hero | cdda.can
+EXPECT_EXIT | 3 | no-can-no-meal
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | eat | hero | cdda.pipe
+EXPECT_EXIT | 3 | an-item-without-a-USE-row-cannot-be-eaten
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | drink | hero | cdda.bottle
+EXPECT_EXIT | 3 | holding-no-bottle-means-no-drink
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.bottle | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | eat | hero | cdda.bottle
+EXPECT_EXIT | 3 | a-drink-only-item-cannot-be-eaten
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | drink | hero | cdda.bottle
+EXPECT_OUT | DRANK cdda.bottle: thirst now 60 | drinking-lowers-thirst-by-40
+
+CASE    | wield
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | wield | hero | cdda.pipe
+EXPECT_OUT | WIELDING cdda.pipe | the-pipe-is-held
+EXPECT_HAS | book/state/wield.txt | hero\pcdda.pipe | in-the-wield-slot
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | wield | hero | cdda.can
+EXPECT_EXIT | 3 | an-item-the-actor-does-not-hold-cannot-be-wielded
+
+CASE    | light-is-all-or-nothing
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | light | hero | 4 | 6
+EXPECT_OUT | FIRE at 4,6 fuel 20 | a-fire-with-the-LIGHT-rows-fuel
+EXPECT_HAS | book/state/fire.txt | 4\p6\p20 | in-fire.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.plank\p1 | one-plank-left-the-fire-burned-one
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | light | hero | 5 | 6
+EXPECT_EXIT | 3 | with-no-rag-left-a-second-fire-is-refused
+EXPECT_OUT | nothing burned | and-says-nothing-was-burned
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.plank\p1 | NEGATIVE-the-refused-fire-did-not-burn-the-plank
+
+CASE    | conservation-and-tamper
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-whole-play-passes-the-ledger-check
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.plank
+EXPECT_OUT_IS | 1 | plank-2-minted-1-burned-in-the-fire
+RUN | /usr/bin/sed | -i | s/\pMINT\p-\phero\pcdda.plank\p2\psmash/\pMINT\p-\phero\pcdda.plank\p20\psmash/ | $T/book/state/ledger.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 1 | NEGATIVE-inflating-the-smash-drop-in-the-ledger-fails-check
+RUN | /usr/bin/sed | -i | s/\pMINT\p-\phero\pcdda.plank\p20\psmash/\pMINT\p-\phero\pcdda.plank\p2\psmash/ | $T/book/state/ledger.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | restoring-it-heals-the-chain
+
+CASE    | deterministic
+MKDIR | book2
+WRITE | book2/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book2/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/furniture.pdl | $T/book2/furniture.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/needs.pdl | $T/book2/needs.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/itemdata.pdl | $T/book2/itemdata.pdl
+MKDIR | book3
+WRITE | book3/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book3/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/furniture.pdl | $T/book3/furniture.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/needs.pdl | $T/book3/needs.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/itemdata.pdl | $T/book3/itemdata.pdl
+CASE    | play-twice
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | place | bench | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | tick | hero | 120
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | eat | hero | cdda.can
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | wield | hero | cdda.pipe
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | light | hero | 4 | 6
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | place | bench | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | tick | hero | 120
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | eat | hero | cdda.can
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | wield | hero | cdda.pipe
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | light | hero | 4 | 6
+RUN | /usr/bin/cmp | $T/book2/state/ledger.txt | $T/book3/state/ledger.txt
+EXPECT_EXIT | 0 | same-play-gives-a-byte-identical-ledger
+RUN | /usr/bin/cmp | $T/book2/state/events.txt | $T/book3/state/events.txt
+EXPECT_EXIT | 0 | and-a-byte-identical-event-log
+RUN | /usr/bin/cmp | $T/book2/state/ledger.txt | $T/book/state/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-different-play-is-not-identical-so-cmp-can-fail
+CLEAN |

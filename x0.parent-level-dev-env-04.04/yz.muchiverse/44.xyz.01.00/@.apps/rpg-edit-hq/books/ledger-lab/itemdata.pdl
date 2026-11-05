@@ -1,0 +1,4 @@
+# itemdata.pdl - what an item does when used. USE|item|eat|drink|need|delta   (burns 1 of the item through the ledger); LIGHT|item:n,item:n|fuel|N = what a fire costs and how long it burns.
+USE|cdda.can|eat|hunger|-40
+USE|cdda.bottle|drink|thirst|-40
+LIGHT|cdda.rag:1,cdda.plank:1|fuel|20
