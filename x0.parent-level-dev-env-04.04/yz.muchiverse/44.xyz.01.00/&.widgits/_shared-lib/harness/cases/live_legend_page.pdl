@@ -1,0 +1,70 @@
+# live_legend_page: a page written by legend_page_op loads and draws in the running editor board. LIVE (LIVE_OK=1 or SKIP; tell the owner first).
+# Pages: base (the Store page), blank 24x17 floor, legend 24x17 (a wall ring with a wall run across row 8). The legend picture must differ from the blank one (the walls render) and both from the Store page; after the restore the picture returns to base.
+# Store cells.txt is restored and hash-checked. Reload = load-map (a keyboard nudge does not redraw this board).
+RESULTS | ../results/live_legend_page.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt | $T/cells.bak
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker | $T/marker.bak
+RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CAPTURE | hash0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/cat | $HOUSE/@.apps/rpg-edit-hq/board/module_parent.pid
+CAPTURE | wpid
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-base
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/base.png
+
+CASE    | blank
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank.txt | 24 | 17
+EXPECT_EXIT | 0 | blank-written
+RUN | /bin/cp | $T/blank.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-blank
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/blank.png
+
+CASE    | legend
+WRITE | legend.txt | L # 1,3,1\nL . 1,0,1\nMAP\n########################\n#......................#\n#......................#\n#......................#\n#......................#\n#......................#\n#......................#\n#....#############.....#\n#......................#\n#......................#\n#......................#\n#......................#\n#......................#\n#......................#\n#......................#\n#......................#\n########################\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/cells.bak | $T/legend.txt | $T/legend_cells.txt
+EXPECT_EXIT | 0 | legend-page-written
+EXPECT_OUT | PAGE 24x17 | the-page-is-24-by-17
+RUN | /bin/cp | $T/legend_cells.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-legend
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/legend.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/blank.png | 208 | 105 | 1094 | 745
+CAPTURE | d_blank
+EXPECT_GE | $d_blank | 3000 | blank-differs-from-the-store-page
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/legend.png | 208 | 105 | 1094 | 745
+CAPTURE | d_legend
+EXPECT_GE | $d_legend | 3000 | legend-differs-from-the-store-page
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/blank.png | $T/legend.png | 208 | 105 | 1094 | 745
+CAPTURE | d_bl
+EXPECT_GE | $d_bl | 3000 | the-legend-walls-render-the-legend-picture-differs-from-the-blank-page
+
+CASE    | restore
+RUN | /bin/cp | $T/cells.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /bin/cp | $T/marker.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-end
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/end.png
+RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CAPTURE | hash1
+EXPECT_EQ | $hash0 | $hash1 | cells.txt-byte-identical-to-before
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/end.png | 208 | 105 | 1094 | 745
+CAPTURE | d_end
+EXPECT_LE | $d_end | 3000 | CONTROL-after-the-restore-the-picture-is-back
+CLEAN |

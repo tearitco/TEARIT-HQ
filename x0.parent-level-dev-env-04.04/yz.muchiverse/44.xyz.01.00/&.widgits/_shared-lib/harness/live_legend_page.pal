@@ -1,0 +1,4 @@
+# live_legend_page.pal - LIVE case (LIVE_OK=1): a legend-written page loads and draws in the editor board. See cases/live_legend_page.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_legend_page.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_legend_page.pdl
+halt
