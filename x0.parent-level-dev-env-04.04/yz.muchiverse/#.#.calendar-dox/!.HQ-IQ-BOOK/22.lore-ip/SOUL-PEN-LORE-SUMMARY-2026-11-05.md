@@ -77,3 +77,31 @@ READ (screenplay, first 100 lines) and T&T summary:
 3. Lucky's many ages and surnames: one soul across timelines, or separate characters?
 4. Where exactly does Revelation hand off to the Soul Pen (which Bible event, which Soul Pen volume first)?
 5. May the adult and crude content in the drafts be ignored for the game (this summary does)?
+
+## Added 2026-11-05 (later): clones, Venus Fly Trap Phonk, Red White & You, XVS
+Found by searching the raw source folders after the owner asked ("venus fly trap phonk? xvs? u see no mentions of either?"). **My earlier compiled-book copy did not include these folders, so my first answer ("no source for Venus") was wrong.** Labels: READ = a file; SAID = the owner; DOC = my reading.
+
+### Clones (what I understand; READ from the books, the zine and the DLC; DOC where marked)
+- **Clones are manufactured people.** In the world's economy they are **labour and soldiers**: Mars clone slums/pits, "clone guards" in the Sol Pen book, clone slaves on Venus. They are **property of a corporation/emperor** (Sol Enterprises in the zine; the "Supreme Emperor Soul" in the Venus DLC).
+- **Control:** a new clone is memory-wiped ("blank slate memory processing"), physiology optimized, and given **control chips** with "obedience routing"; the zine's note says "the hum you hear is the conditioning".
+- **Souls as a resource:** in the Sol Pen book the clones' "souls" fuel the SolPen and are integrated into a collective consciousness when new clones are activated (READ). In the game maps this is the "killing rooms ENGINE" (map025).
+- **Clones are also characters with agency:** Gem (artist, spy) and the security consultant in the character bible are clones; the recurring theme (stated in the Venus beat sheet) is **"is a clone just property, or do they have a soul worth fighting for?"**
+- **The Red Mass** (zine): something that infects the host and changes you.
+- Map hooks: clone wing / rooms / bathrooms (020-022), killing rooms engine (025), Mars clone slums (034), Circus Ville slums (zine map).
+- DOC: the "clone question" is the same question as TSOTS's capture-and-possess loop (a character is a pal with a soul): worth writing down as the game's theme.
+
+### Venus Fly Trap Phonk (VFTP), "Phonk & U", DLC book 6.7 (READ: folder `6.7=VENUS.FLY.TRAP.Ph&U]DLC`, 59 files, plus the companion folder `&.VFTP-6.7`)
+- **What it is:** a **choose-your-own-adventure** (CYOA) of **50 pages** ("The Gel-Slag Chronicles"), a micro-story, a 15-beat "Save the Cat" sheet and companion science notes (bio-sci: hyperthermostable proteins and clone bio-engineering for 92 atmospheres and 465 degrees C; mineral-sci), plus audio overviews, a manual video and a "Clonal Strain Matrix" play set. It is a **DLC off the main franchise**: the owner's note says it has **no Lucky or Sol** and no Tempt book; it is "a clone celeb CYOA break-up", a Rimworld-style survival with **chemistry, buying supplies, colonies, gaining influence, mutations with a market that links back to Mars life and Tempt**, and the owner wants it as **a story generator using an FSM / small-LLM laboratory** (mini stories; CYOA and mini stories are "the same thing but tangled").
+- **Setting (READ):** you are clone **VFT-099** (a "Duchan-Hybrid" laborer) dropped to **Floating Outpost Alpha-Zeta, "The Slag Drip"**, 48.2 km above the Venusian low plains where pressure is about 1 bar. Rich people live in floating cities above; clone slaves work the toxic, neon-lit clouds below; the **Metal Mafia** (space pirates from the Metal Sun) raid; the **Supreme Emperor Soul** broadcasts "you are the soil from which the new Earth grows". A **mother Venus fly trap mutant** (a Sarlacc-like core organism, the "Garden Mind" in the character bible) is the planet-scale terraforming super-organism. Stats in the CYOA: Compliance, Reputation, System Integrity. **Phonk** is the soundtrack: drift phonk and 808-heavy bass from the station broadcaster; the final image is a phonk track playing as Venus shows a terraformed green patch.
+- **Book numbering:** "6.7" is the folder's own label; how it sits against the 20-pillar list is unconfirmed.
+
+### Red White & You (RB&U) (READ: `T&TT=TRIPLE_ROUNDR+1/+rb&u/Red_White_and_You.pdf`, 11 pages, image only; **I looked at pages 1-3**)
+- **A CYOA survival zine** made in NotebookLM style: "**Sol Enterprises: New Clone Orientation** (designation JANIGTOR, a janitor clone), Biotech Facility Sector 4". Margin notes in a second voice: "They wiped your memory before you woke up. **Don't trust the Red Queen's lies.**" Page 2: the control-chip anatomy and **the Red Mass**. Page 3: two maps with a warning: **SS.Sol Space Station** (Engineering Rooms, Cargo Bays with anomalous energy signatures, **Ratchet's Realm**; "Don't leave the goddamn ship") and a **Mars map** (Head Security Group compound, **The Temple**, **Circus Ville slums**: "dust devils and death, where the clowns hide").
+- **Master-list line (READ):** pillar 15 is "red blu & u". The owner's notes tie it to the red-pill/blue-pill choice ("take either path, like red blue and (you)"), the "didn't eat from the tree" free-will motif, G-man cloning and Sol tunnels. **DOC:** RB&U = the reader, as a clone, choosing the red or blue path through the Sol Enterprises / Mars / station world. Pages 4-11 not read.
+
+### XVS (two uses; owner's definition wins for the game)
+- **SAID (owner 2026-11-05): "XVS = expanse maps from RMMV games."** In this repo that means the big open **Expanse MMO maps**: map064 Ocean Expanse (80x70), map065 Space Expanse (100x100), map066 Mars Expanse (66x66) (and, by the owner's term, any other expanse map). Whether XVS is an abbreviation of something is unknown.
+- **READ:** the books (`100_nglyre`, `102_x3333x`, `102_x4444x`) mention "XVS police" (I listed them among creatures). **Unconfirmed whether this is the same name reused** (a police force named after the expanse maps) **or two meanings.** Ask the owner.
+
+## Correction 2026-11-05
+The section above says "XVS police" and Hydroverse were unconfirmed; the beat-sheet pass found the XVS series (`101.XVS++[FLEXOPEDAI]`, seven worlds + Hydroverse atlas). See `BOOK-BY-BOOK-SUMMARIES-AND-WORLD-RULES-2026-11-05.md` section 1.5; clones, time clones, Carcazods and clowns are explained in its section 1.

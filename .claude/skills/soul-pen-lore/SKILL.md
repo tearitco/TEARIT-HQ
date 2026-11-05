@@ -36,3 +36,9 @@ Read: the design notes, the 20-pillar list, tabletop and worldbuilding notes, So
 Invent canon; copy trademarked names; paste lore outside the house; write new lore instead of shipping (the owner's own note: priority is code, games, outreach, marketing, data science); decide Bible scope, capture rule or tone without the owner.
 
 Map atlas (what each of the 98 maps looks like, which book it fits, maps to make: Venus, Metal Sun, hydroverse, Eden, FFU, my chara...): `22.lore-ip/MAP-ATLAS-VISUALS-LORE-AND-MAPS-TO-MAKE-2026-11-05.md`.
+
+## Clones, time clones, Carcazods, clowns, XVS (owner 2026-11-05; full rules in `22.lore-ip/BOOK-BY-BOOK-SUMMARIES-AND-WORLD-RULES-2026-11-05.md`)
+- **Clones** are manufactured people (labour, soldiers, guards), wiped and chip-controlled; **clone souls power the SolPen**; clone rebels hold Mars; **Gem is a clone** (disguised spy for SOL; mother of Riley, Sol's clone son). Theme: property or soul?
+- **Lucky and Sol are time clones**: when Sol goes back he makes a time clone; his future self still exists; both real. Sol = future Lucky; the Footrace Fu "Time Twin" is the same idea. **Carcazods** = bio-engineered plague (the Architect made it and the clowns to sell the cure; Mutagen = the cure); **clowns** = painted-face rebels who spread Carcazod bio-weapons ("Clown World"); the **Clean Zone** is Sol's safe zone.
+- **XVS** = (owner) the expanse maps; (lore) a series of seven worlds with the Hydroverse atlas, and a command that briefs the Anglers. **Venus** = the Venus Fly Trap Phonk DLC (clone-survival CYOA). **rb&u** = the "Red White & You" clone CYOA zine.
+- Read the beat sheets, not the books, for structure: each book folder has `chapter_outline.txt` / `book_outline.txt` / `screenplay_outline.txt`.

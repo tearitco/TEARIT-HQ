@@ -31,3 +31,5 @@ Never type these paths: find them (`find ~/Desktop -maxdepth 6 -type d -name 'TS
 
 ## Relation to the rest of the book
 Game machinery stays in `16.game`; this chapter is the content it will play. The Bible levels and Soul Pen levels of TSOTS are future games: when a level is designed, link its lore row here and its build doc in `16.game`.
+- Later 2026-11-05 additions in `SOUL-PEN-LORE-SUMMARY-2026-11-05.md`: clones, Venus Fly Trap Phonk (DLC 6.7), Red White & You (rb&u), XVS.
+- **`BOOK-BY-BOOK-SUMMARIES-AND-WORLD-RULES-2026-11-05.md`: our own summary of each book from its beat sheet, and the rules for clones, time clones, Carcazods, clowns and XVS (owner: "this is our franchise").**

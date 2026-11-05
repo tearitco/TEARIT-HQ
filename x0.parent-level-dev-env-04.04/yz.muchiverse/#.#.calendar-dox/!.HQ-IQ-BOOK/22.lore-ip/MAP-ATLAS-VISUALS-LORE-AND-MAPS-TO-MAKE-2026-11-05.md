@@ -5,7 +5,7 @@ Labels: **VIEWED** = I looked at the painted picture (`map.painted.png`) in this
 ## 1. How to read this, and how much I actually saw
 - The 98 imported RPG Maker maps live in `44.xyz.01.00/@.apps/piececraft-hq/pieces/system/maps/tsots/mapNNN/` (`map.painted.png` is the picture, 24 px per tile; `map.txt` the glyph grid; `events.txt` one row per event with its sprite sheet; `parallax.pdl` the backdrop).
 - **I viewed 11 pictures:** 006, 012, 014, 017, 027, 030, 040, 064, 068, 070 and 071. Everything else is described from its **name, size, backdrop and event sprites** only. A row says VIEWED when the visual text is from a picture. The owner has seen all of them in RPG Maker; where the owner's memory differs from this table, the owner wins.
-- Names are the owner's RPG Maker names (typos kept). "Book" is **SP** (the Soul Pen story), **Centroid** (the University), **Board** (game-mode and online maps), **Meta** (placeholders, tests, spiritual rooms).
+- Names are the owner's RPG Maker names (typos kept). **XVS = the expanse maps** (owner 2026-11-05): 064 Ocean, 065 Space, 066 Mars; in the lore XVS is also a series of seven worlds with the Hydroverse atlas (`BOOK-BY-BOOK-SUMMARIES-AND-WORLD-RULES-2026-11-05.md` section 1.5). "Book" is "Book" is **SP** (the Soul Pen story), **Centroid** (the University), **Board** (game-mode and online maps), **Meta** (placeholders, tests, spiritual rooms).
 
 ## 2. Surprises worth knowing (all VIEWED or counted from DATA)
 1. **Names and pictures do not always match.** map006 "RABBIT HOLE" is a desert bazaar; map014 "FINAL BATTLE" is a large Mars-style industrial city; map012 "OUT OF THIS WORLD" is a tall, almost empty sky strip (a deliberate scrolling journey: dishes and one planet).
@@ -125,13 +125,15 @@ Existing maps cover **Soul Pen (Afghanistan, Mars, the Moon, the station), the C
 ### 4.1 Lore worlds (SAID by the owner unless marked)
 | Map to make | Book | What it is for | Notes |
 |---|---|---|---|
-| **Venus** | SP | a planet level (SAID) | no source seen in the lore I read: ask what Venus is in the story |
+| **Venus** | SP DLC (book 6.7, Venus Fly Trap Phonk) | the Floating Outpost Alpha-Zeta "The Slag Drip" (48.2 km up, upper-sulfur deck, acid clouds, floating luxury cities above), the toxic surface hellscape, the mother Venus fly trap (Garden Mind) cave, crash site of the luxury transport, Metal Mafia raid zones | SOURCE FOUND 2026-11-05 (`VENUS.FLY.TRAP.Ph&U]DLC`: 50-page CYOA, 15 beats). Not a Lucky/Sol book; clone-survival Rimworld style; see `SOUL-PEN-LORE-SUMMARY-2026-11-05.md` |
 | **Metal Sun / Icarus** | SP (pillar 10 and Superwar Ikkarus) | the Architect's ship-star; Eden lives inside it per the owner's theology | interior decks, bridge, engine core |
-| **Hydroverse(s)** | SP (named in the Living Testament list) | water worlds/universes; fits the boat proving ground and the 80x70 ocean map | what a hydroverse is needs an owner answer |
+| **Hydroverse (XVS)** | SP / XVS | water worlds of the XVS expanse, navigated by [H hydrogen density, T thermal variance, P pressure]: Puffara-Kai (puffer-folk shield world), Venom-Spire (lion-fish aristocratic ice), Carchar-Industrial (shark-kin forge); the Angler Empire and the Unlit Tribe fight there | SOURCE FOUND: `101.XVS++[FLEXOPEDAI]00.05/XVS_PLANETS_ATLAS/HYDROVERSE_EXPANSION_ATLAS.md`; the XVS series has seven worlds (Aeterna Medusa, Detritus Prime, Crabfold, Nearth, Dark, Fungi, Lux). map064 Ocean Expanse is the nearest existing map |
 | **Eden / Edin** | SP + Bible | the Garden: Adam and Eve, the snake (the first possession level in `#.wussup+@o.txt`), the Tree of Life (map058 is a tiny stub) | first Bible level candidate |
 | **Footrace Fu / Land of Time (FFU)** | SP pillar 12 | ninja racing: night, alien, gold/red architecture, cherry blossoms, time crystals; track and chutes-and-ladders boards | the FFU rules exist (`+.TSOTS-ALPHA-OMEGA/#.RULES`); the dojo map011 is the nearest piece |
 | **"my chara" home** (SAID) | SP pillar 0 (charanon) | the player's own character space/home | I assume this relates to the `my-chara-txt` app family: confirm |
 | Angler Empyre | SP pillar 14 | the Angler Empire (deep-sea/space predators) | named in the lore; map not requested yet |
+| **Mars: Circus Ville slums, HSG compound, The Temple** | SP (Red White & You zine) | the clone-slum and security map from the zine; map034 (Mars clone slums) and map104/105 are the nearest | from `Red_White_and_You.pdf` page 3 |
+| **SS.Sol station: Engineering, Cargo Bays, Ratchet's Realm** | SP (zine) | ship-station decks; maps 068/069/078/079 are the nearest | "Don't leave the ship" |
 | Atlantis Prime, Avanta.C, Glitch World, Planet X | SP | places named in the lore | map040 is the seed of Avanta.C |
 | Tempt Island, Dustopedia, Muchi-pets village | SP pillars 16/18/17 | pet and micro-world levels | Dustopia is already a house design (`RPG-DUST-DESIGN`) |
 
@@ -151,4 +153,4 @@ Vacuum range, test basin (map064 is a ready-made open sea to start from), test t
 map070 "Holy Imagination" (blank), map027 library (art), map065 space expanse (nearly empty), map012 (decide whether the near-empty strip is finished), the placeholders 029/043/062/074 and 1001-1004, and the unpopulated towns (events).
 
 ## 5. Open questions for the owner
-1. What are Venus and a hydroverse in the story, and where do they sit in the book order? 2. Is "my chara" the `my-chara` app's character home? 3. Which maps are Bible levels versus Soul Pen levels (the table is a first guess)? 4. Should map070 "Holy Imagination" become the lore/Concourse "museum" hall? 5. Do 023 and 059 get merged?
+1. Venus is answered by the Venus Fly Trap Phonk DLC (confirm it is the Venus you meant). The hydroverse is answered by the XVS atlas; where does the DLC (6.7) sit in the book order? 2. Is "my chara" the `my-chara` app's character home? 3. Which maps are Bible levels versus Soul Pen levels (the table is a first guess)? 4. Should map070 "Holy Imagination" become the lore/Concourse "museum" hall? 5. Do 023 and 059 get merged?
