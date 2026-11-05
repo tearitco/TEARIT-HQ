@@ -1,0 +1,28 @@
+# overlay_wrap_wiring: WIRING ONLY, not behaviour. The wrap itself (kh_ov_text_rows -> scroll_row_span) needs X11 font metrics and returns 1 headless, so a number of rows cannot be asserted here; the live proof is the 2026-11-05 frame of the coin-shop popup (see views page). This case fails if the popup text rows lose the ov-wraptext class, or the renderer loses the rule, the 8-row cap, or the popup growth.
+# HARNESS PITFALL found here: EXPECT_HAS reads only the first 16 KB of a file; both files are bigger, so every check failed until it was done with RUN grep -o -F + EXPECT_OUT (grep prints the match, exit 1 and no output when it is absent).
+RESULTS | ../results/overlay_wrap_wiring.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/a
+COPY | @.apps/rpg-edit-hq/board/pchq-board.xhtpm | house/a/board.xhtpm
+COPY | _.monads/_.livedesk-taskbar/ops/khtpm_core_render.c | house/a/render.c
+
+CASE    | popup-rows-opt-in
+RUN | grep | -o | -F | label="${lshop_ov_text}" class="rp-big ov-wraptext" | house/a/board.xhtpm
+EXPECT_OUT | ov-wraptext | the-popup-text-row-wraps
+RUN | grep | -o | -F | label="${lshop_ov_last}" class="hb-quiet ov-wraptext" | house/a/board.xhtpm
+EXPECT_OUT | ov-wraptext | the-last-line-row-wraps
+
+CASE    | renderer-keeps-the-rule
+RUN | grep | -o | -F | elem_has_class((Elem *)t, "ov-wraptext") | house/a/render.c
+EXPECT_OUT | ov-wraptext | it-is-opt-in-by-class
+RUN | grep | -o | -F | (r > 8 ? 8 : r) | house/a/render.c
+EXPECT_OUT | 8 : r | the-8-row-cap-is-there
+RUN | grep | -o | -F | wx += kh_ov_text_rows | house/a/render.c
+EXPECT_OUT | wx += kh_ov_text_rows | the-popup-grows-by-the-extra-rows
+RUN | grep | -o | -F | t->h = tr * rowh | house/a/render.c
+EXPECT_OUT | tr * rowh | placement-uses-the-row-count
+
+CLEAN |

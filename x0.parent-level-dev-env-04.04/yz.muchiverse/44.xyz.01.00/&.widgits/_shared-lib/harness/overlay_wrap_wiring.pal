@@ -1,0 +1,4 @@
+# overlay_wrap_wiring.pal - wiring check for the wrapping popup text. See cases/overlay_wrap_wiring.pdl
+exec ./ops/+x/harness_case_op.+x cases/overlay_wrap_wiring.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/overlay_wrap_wiring.pdl
+halt
