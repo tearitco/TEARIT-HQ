@@ -1,0 +1,40 @@
+# lamps_clock_df_hq.phases.pdl - df-hq: save/load restores the game clock, and the shared lamp system lights a room (both fixes of 2026-11-04). Scratch house only; nothing live is touched.
+# Runner: ops/+x/playthrough_op.+x run play/phases/lamps_clock_df_hq.phases.pdl   (generated once from the cdda_hq.phases.pdl pattern by a one-off converter)
+GAME | df-hq | df_hq
+NEEDS | &.widgits/world-ops/ops/+x/wo.+x
+NEEDS | &.widgits/_shared-lib/petslike_core.c
+NEEDS | &.widgits/_shared-lib/petslike_toolbar.c
+NEEDS | &.widgits/_shared-lib/pet_sky.c
+NEEDS | &.widgits/_shared-lib/pet_footer.c
+NEEDS | &.widgits/_shared-lib/pet_nudge.c
+NEEDS | &.widgits/_shared-lib/kh_state_notify.h
+NEEDS | &.widgits/_shared-lib/csv_frames.c
+NEEDS | &.widgits/_shared-lib/petslike_skin_lib.c
+NEEDS | &.widgits/_shared-lib/petslike_autotile.c
+NEEDS | &.widgits/_shared-lib/petslike_life.c
+CFLAGS | -I$T/@.apps/df-hq/ops
+INIT | df-hq-pchq/pieces/system/maps/.keep | scratch board folder (export3d makes only the last two levels, so the parents must exist)\n
+
+PHASE | p1_clock_load | save, move the clock on, load: the game clock is back where it was saved | clock, save, load
+DO | clock | advance | 2h
+MARK | c0 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+DO | save | 9
+SAY | saved | save-says-saved
+DO | clock | advance | 3h
+MARK | c1 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+DELTA | c0 | c1 | 10800000 | control-the-advance-moved-the-clock-three-hours
+DO | load | 9
+MARK | c2 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+EQ | c0 | c2 | load-restored-the-saved-clock
+NE | c1 | c2 | the-clock-really-moved-back-from-the-advanced-value
+
+PHASE | p2_lamps | a bought lamp lights its room while lamps are on, and the light file is gone when they are off | lamps, light, 3d book
+DO | buy | lamp
+SAY | Lamp pillar | lamp-bought-and-placed
+DO | lamps | on
+SAY | lamps on | lamps-verb-answers
+EXISTS | df-hq-pchq/pieces/system/maps/df-hq/game.pdl | export3d-wrote-the-book
+EXISTS | lamps.pdl | lamps-pdl-is-in-the-scratch-game
+HAS | df-hq-pchq/pieces/system/maps/df-hq/city/lights.pdl | LIGHT | lamps-on-writes-a-light-row-for-the-lamp
+DO | lamps | off
+NOFILE | df-hq-pchq/pieces/system/maps/df-hq/city/lights.pdl | lamps-off-removes-the-light-file

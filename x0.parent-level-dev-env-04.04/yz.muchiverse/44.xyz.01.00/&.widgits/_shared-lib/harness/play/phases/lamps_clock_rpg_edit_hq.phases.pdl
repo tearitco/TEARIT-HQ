@@ -1,0 +1,39 @@
+# lamps_clock_rpg_edit_hq.phases.pdl - rpg-edit-hq: clock restored by load + shared lamps, scratch house only (2026-11-04)
+GAME | rpg-edit-hq | rpg_edit_hq
+NEEDS | &.widgits/world-ops/ops/+x/wo.+x
+NEEDS | &.widgits/_shared-lib/petslike_core.c
+NEEDS | &.widgits/_shared-lib/petslike_toolbar.c
+NEEDS | &.widgits/_shared-lib/pet_sky.c
+NEEDS | &.widgits/_shared-lib/pet_footer.c
+NEEDS | &.widgits/_shared-lib/pet_nudge.c
+NEEDS | &.widgits/_shared-lib/kh_state_notify.h
+NEEDS | &.widgits/_shared-lib/csv_frames.c
+NEEDS | &.widgits/_shared-lib/petslike_skin_lib.c
+NEEDS | &.widgits/_shared-lib/petslike_autotile.c
+NEEDS | &.widgits/_shared-lib/petslike_life.c
+NEEDS | &.widgits/_shared-lib/petslike_placer.c
+CFLAGS | -I$T/@.apps/rpg-edit-hq/ops
+INIT | rpg-edit-hq-pchq/pieces/system/maps/.keep | scratch board folder\n
+
+PHASE | p1_clock_load | save, move the clock on, load: the game clock is back where it was saved | clock, save, load
+DO | clock | advance | 2h
+MARK | c0 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+DO | save | 9
+SAY | saved | save-says-saved
+DO | clock | advance | 3h
+MARK | c1 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+DELTA | c0 | c1 | 10800000 | control-the-advance-moved-the-clock-three-hours
+DO | load | 9
+MARK | c2 | state/clock_root/#.desktop/clocks/rpg.pdl | game_time_epoch_ms
+EQ | c0 | c2 | load-restored-the-saved-clock
+NE | c1 | c2 | the-clock-really-moved-back-from-the-advanced-value
+
+PHASE | p2_lamps | a bought lamp lights its room while lamps are on, and the lamp rows are gone when they are off | lamps, light, 3d book
+DO | buy | lamp
+SAY | Lamp pillar | lamp-bought-and-placed
+DO | lamps | on
+SAY | lamps on | lamps-verb-answers
+EXISTS | lamps.pdl | lamps-pdl-is-in-the-scratch-game
+HAS | rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/start/lights.pdl | LIGHT | lamps-on-writes-a-light-row-for-the-lamp
+DO | lamps | off
+NOFILE | rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/start/lights.pdl | lamps-off-removes-the-light-file

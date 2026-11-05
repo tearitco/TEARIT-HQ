@@ -16,9 +16,5 @@ for n in names:
     ok = r.returncode == 0
     print(("OK   " if ok else "FAIL ") + n)
     if not ok: bad += 1; print((r.stdout + r.stderr)[-400:])
-if not sys.argv[1:]:      # verb-only checks, no window: clock restored by load on every skin; lamps light the room on and leave it off
-    for chk in ("clock_roundtrip", "lamps_rollout"):
-        r = subprocess.run([sys.executable, os.path.join(H, chk + ".py")], capture_output=True, text=True)
-        print(("OK   " if r.returncode == 0 else "FAIL ") + chk); print(r.stdout.strip())
-        bad += r.returncode != 0
+# The verb-only checks (clock restored by load, lamps) are pal playthrough tables now, run in a scratch house: see &.widgits/_shared-lib/harness/README.md 'lamps_clock_*'.
 sys.exit(1 if bad else 0)
