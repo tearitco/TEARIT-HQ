@@ -1,0 +1,36 @@
+# layout_check_editor: the editor board template (rpg-edit-hq/board/pchq-board.xhtpm) must pass the Layout Studio checker with the keys the editor publishes. TEMPLATE FOR OTHER BOARDS: copy this file, change the app name and the COPY rows; every other row is generic.
+# NOT hermetic by design: the published keys are the LIVE runtime state files (state/ui.txt, clock_ui.txt, board/state/*.txt, gitignored), read-only COPIES into the scratch dir, so a template that starts using a name the daemon does not publish turns this red. If the editor has never run, those files are missing and the case reports it.
+# Declared keys: board/layout_runtime_keys.txt (name=writer per line, rule in its header). Needs the built checker @.apps/layout-studio/ops/+x/layout_check.+x (sh @.apps/layout-studio/ops/build_layout_check.sh).
+RESULTS | ../results/layout_check_editor.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | w/state
+MKDIR | w/bstate
+COPY | @.apps/layout-studio/ops/+x/layout_check.+x | w/layout_check
+COPY | @.apps/rpg-edit-hq/board/pchq-board.xhtpm | w/board.xhtpm
+COPY | @.apps/rpg-edit-hq/board/layout_runtime_keys.txt | w/declared.txt
+COPY | @.apps/rpg-edit-hq/state/ui.txt | w/state/ui.txt
+COPY | @.apps/rpg-edit-hq/state/clock_ui.txt | w/state/clock_ui.txt
+COPY | @.apps/rpg-edit-hq/board/state/ui.txt | w/bstate/ui.txt
+COPY | @.apps/rpg-edit-hq/board/state/sides.txt | w/bstate/sides.txt
+COPY | @.apps/rpg-edit-hq/board/state/pal.txt | w/bstate/pal.txt
+COPY | @.apps/rpg-edit-hq/board/state/prefs_ui.txt | w/bstate/prefs_ui.txt
+
+CASE    | the-editor-template-passes
+RUN | $T/w/layout_check | $T/w/board.xhtpm | --ui | $T/w/state/ui.txt | --ui | $T/w/state/clock_ui.txt | --ui | $T/w/bstate/ui.txt | --ui | $T/w/bstate/sides.txt | --ui | $T/w/bstate/pal.txt | --ui | $T/w/bstate/prefs_ui.txt | --ui | $T/w/declared.txt
+EXPECT_EXIT | 0 | no-ERROR-with-the-declared-keys
+
+CASE    | NEGATIVE-without-the-declared-keys-it-fails
+RUN | $T/w/layout_check | $T/w/board.xhtpm | --ui | $T/w/state/ui.txt | --ui | $T/w/state/clock_ui.txt | --ui | $T/w/bstate/ui.txt | --ui | $T/w/bstate/sides.txt | --ui | $T/w/bstate/pal.txt | --ui | $T/w/bstate/prefs_ui.txt
+EXPECT_EXIT | 1 | the-declared-file-is-what-clears-the-runtime-names
+EXPECT_OUT | load_label | and-it-names-a-runtime-key
+
+CASE    | NEGATIVE-a-name-nobody-publishes-is-an-error
+WRITE | w/bad.xhtpm | <window><panel><text label="${nobody_publishes_this}"/></panel></window>\n
+RUN | $T/w/layout_check | $T/w/bad.xhtpm | --ui | $T/w/state/ui.txt | --ui | $T/w/declared.txt
+EXPECT_EXIT | 1 | an-undeclared-unpublished-name-fails
+EXPECT_OUT | nobody_publishes_this | and-the-message-names-it
+
+CLEAN |

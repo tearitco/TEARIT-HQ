@@ -1,0 +1,4 @@
+# layout_check_editor.pal - the editor board template passes the Layout Studio checker. See cases/layout_check_editor.pdl (a template for other boards)
+exec ./ops/+x/harness_case_op.+x cases/layout_check_editor.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/layout_check_editor.pdl
+halt
