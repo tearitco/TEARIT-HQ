@@ -16,6 +16,7 @@ RUN | /bin/cp | $HOUSE/044.pal-chat-irc👥️+2/ops/+x/chat_post_message.+x | $
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+RUN | /usr/bin/sed | -i | s/^ENABLED \p 0/ENABLED \p 1/ | $T/house/@.apps/rpg-edit-hq/net_say.pdl
 WRITE | house/@.apps/rpg-edit-hq/state/active.txt | robot\n
 WRITE | house/@.apps/rpg-edit-hq/state/pet_robot.txt | room=store\nx=1\ny=1\nsteps=5\n
 WRITE | house/@.apps/rpg-edit-hq/state/pet_asa.txt | room=store\nx=2\ny=2\nsteps=5\n
@@ -23,6 +24,15 @@ WRITE | house/@.apps/rpg-edit-hq/state/pet_ember.txt | room=bank\nx=3\ny=3\nstep
 WRITE | house/@.apps/rpg-edit-hq/state/pet_rex.txt | room=hotel\nx=4\ny=4\nsteps=5\n
 WRITE | house/@.apps/rpg-edit-hq/state/daylight.txt | phase=dawn\n
 WRITE | house/044.pal-chat-irc-scratch/pet_post.pdl | cap_n | 50\n
+
+CASE    | shipped-off-by-default
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/shipped.pdl
+EXPECT_HAS | shipped.pdl | ENABLED \p 0 | the-shipped-file-has-the-owner-switch-OFF
+RUN | /usr/bin/sed | -i | s/^ENABLED \p 1/ENABLED \p 0/ | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:pet_say | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_EXIT | 0 | the-clock-event-runs-clean-when-disabled
+EXPECT_NOFILE | house/044.pal-chat-irc-scratch/rooms/pets/messages.txt | NEGATIVE-with-ENABLED-0-the-clock-fires-and-nobody-speaks
+RUN | /usr/bin/sed | -i | s/^ENABLED \p 0/ENABLED \p 1/ | $T/house/@.apps/rpg-edit-hq/net_say.pdl
 
 CASE    | first-firing
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:pet_say | $T/house/@.apps/rpg-edit-hq/state/clock_root
