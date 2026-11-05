@@ -18,6 +18,8 @@ EXPECT_OUT | WROTE Dungeon roles=5 cell=16x16 seed=20261105 | dungeon
 EXPECT_OUT | WROTE World roles=5 cell=16x16 seed=20261105 | world
 EXPECT_FILE | a/Outside/20261105/grass/sprite.csv | outside-grass-csv
 EXPECT_FILE | a/Outside/20261105/grass/tile.png | outside-grass-png
+EXPECT_FILE | a/Outside/20261105/sheet.png | outside-sheet-png-for-viewing
+EXPECT_FILE | a/Parallax/20261105/sheet.png | parallax-sheet-png
 EXPECT_FILE | a/SF_Outside/20261105/roof/sprite.csv | sf-roof
 EXPECT_FILE | a/Inside/20261105/window/sprite.csv | inside-window
 EXPECT_FILE | a/Dungeon/20261105/stairs/sprite.csv | dungeon-stairs

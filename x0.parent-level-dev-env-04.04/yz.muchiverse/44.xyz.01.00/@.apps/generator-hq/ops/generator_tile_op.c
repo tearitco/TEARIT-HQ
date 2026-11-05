@@ -11,7 +11,8 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include <zlib.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 #define MAXR 12
 #define MAXN 64
@@ -174,62 +175,26 @@ static int write_csv(const char *path, const unsigned char *px, int w, int h) {
     return 0;
 }
 static int write_png(const char *path, const unsigned char *px, int w, int h) {
-    FILE *f;
-    unsigned char *raw, *comp;
-    uLongf clen;
-    int y, x;
-    unsigned long crc;
-    size_t raw_n = (size_t)h * (w * 4 + 1);
-    raw = malloc(raw_n);
-    if (!raw) return -1;
-    for (y = 0; y < h; y++) {
-        raw[y * (w * 4 + 1)] = 0;
-        for (x = 0; x < w; x++) memcpy(raw + y * (w * 4 + 1) + 1 + x * 4, px + (y * w + x) * 4, 4);
+    return stbi_write_png(path, w, h, 4, px, w * 4) ? 0 : -1;
+}
+static void blit_x4(unsigned char *dst, int dw, const unsigned char *src, int sw, int sh, int ox) {
+    int y, x, sy, sx;
+    for (y = 0; y < sh; y++) for (x = 0; x < sw; x++) {
+        const unsigned char *s = src + (y * sw + x) * 4;
+        for (sy = 0; sy < 4; sy++) for (sx = 0; sx < 4; sx++) {
+            unsigned char *d = dst + (((y * 4 + sy) * dw + (ox + x * 4 + sx)) * 4);
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
+        }
     }
-    clen = compressBound(raw_n);
-    comp = malloc(clen);
-    if (!comp || compress(comp, &clen, raw, raw_n) != Z_OK) { free(raw); free(comp); return -1; }
-    f = fopen(path, "wb");
-    if (!f) { free(raw); free(comp); return -1; }
-    /* PNG signature, IHDR, IDAT, IEND. CRC via zlib. */
-    {
-        unsigned char sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
-        unsigned char ihdr[17];
-        unsigned char lenb[4], crcb[4];
-        uLong c;
-        fwrite(sig, 1, 8, f);
-        ihdr[0] = (w >> 24) & 255; ihdr[1] = (w >> 16) & 255; ihdr[2] = (w >> 8) & 255; ihdr[3] = w & 255;
-        ihdr[4] = (h >> 24) & 255; ihdr[5] = (h >> 16) & 255; ihdr[6] = (h >> 8) & 255; ihdr[7] = h & 255;
-        ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
-        lenb[0] = 0; lenb[1] = 0; lenb[2] = 0; lenb[3] = 13;
-        fwrite(lenb, 1, 4, f); fwrite("IHDR", 1, 4, f); fwrite(ihdr, 1, 13, f);
-        c = crc32(crc32(0, Z_NULL, 0), (unsigned char *)"IHDR", 4);
-        c = crc32(c, ihdr, 13);
-        crcb[0] = (c >> 24) & 255; crcb[1] = (c >> 16) & 255; crcb[2] = (c >> 8) & 255; crcb[3] = c & 255;
-        fwrite(crcb, 1, 4, f);
-        lenb[0] = (clen >> 24) & 255; lenb[1] = (clen >> 16) & 255; lenb[2] = (clen >> 8) & 255; lenb[3] = clen & 255;
-        fwrite(lenb, 1, 4, f); fwrite("IDAT", 1, 4, f); fwrite(comp, 1, clen, f);
-        c = crc32(crc32(0, Z_NULL, 0), (unsigned char *)"IDAT", 4);
-        c = crc32(c, comp, clen);
-        crcb[0] = (c >> 24) & 255; crcb[1] = (c >> 16) & 255; crcb[2] = (c >> 8) & 255; crcb[3] = c & 255;
-        fwrite(crcb, 1, 4, f);
-        lenb[0] = lenb[1] = lenb[2] = lenb[3] = 0;
-        fwrite(lenb, 1, 4, f); fwrite("IEND", 1, 4, f);
-        c = crc32(crc32(0, Z_NULL, 0), (unsigned char *)"IEND", 4);
-        crcb[0] = (c >> 24) & 255; crcb[1] = (c >> 16) & 255; crcb[2] = (c >> 8) & 255; crcb[3] = c & 255;
-        fwrite(crcb, 1, 4, f);
-        (void)crc;
-    }
-    fclose(f); free(raw); free(comp);
-    return 0;
 }
 static int emit(const char *outdir, const char *sheet, unsigned seed, int w, int h, const char *style, int outline, Role *roles, int n) {
     int i;
     char dir[640], path[700];
-    unsigned char *px;
+    unsigned char *px, *strip;
     if (w < 8 || h < 8 || w > MAXN || h > MAXN) return 2;
     px = calloc((size_t)w * h, 4);
-    if (!px) return 2;
+    strip = calloc((size_t)n * w * 4 * h * 4, 4);
+    if (!px || !strip) { free(px); free(strip); return 2; }
     for (i = 0; i < n; i++) {
         snprintf(dir, sizeof dir, "%s/%s/%u/%s", outdir, sheet, seed, roles[i].name);
         mkp(dir);
@@ -240,8 +205,13 @@ static int emit(const char *outdir, const char *sheet, unsigned seed, int w, int
         snprintf(path, sizeof path, "%s/sprite.csv", dir);
         if (write_csv(path, px, w, h) != 0) { free(px); return 2; }
         snprintf(path, sizeof path, "%s/tile.png", dir);
-        if (write_png(path, px, w, h) != 0) { free(px); return 2; }
+        if (write_png(path, px, w, h) != 0) { free(px); free(strip); return 2; }
+        blit_x4(strip, n * w * 4, px, w, h, i * w * 4);
     }
+    snprintf(dir, sizeof dir, "%s/%s/%u", outdir, sheet, seed);
+    snprintf(path, sizeof path, "%s/sheet.png", dir);
+    if (write_png(path, strip, n * w * 4, h * 4) != 0) { free(px); free(strip); return 2; }
+    free(strip);
     free(px);
     printf("WROTE %s roles=%d cell=%dx%d seed=%u\n", sheet, n, w, h, seed);
     return 0;
