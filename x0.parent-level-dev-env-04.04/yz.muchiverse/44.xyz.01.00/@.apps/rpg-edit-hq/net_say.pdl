@@ -1,0 +1,9 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# net_say.pdl - what a pet says on the IRC network, chosen from its own state (ops/pet_net_say.c). First matching row whose text is not the pet's last line wins; no match = quiet. Edit, no rebuild.
+# SAY | <cond> | <text>      cond = comma-joined key=value / key>n / key<n over: room x y steps phase lamps. Text may use {pet} {room} {phase} {x} {y}.
+SAY | phase=dusk,lamps=1 | the lamps are on in the {room}, it is dusk
+SAY | phase=night,lamps=0 | it is night in the {room} and the lamps are off
+SAY | phase=dawn | good morning from the {room}
+SAY | steps>10000 | {pet} has walked {steps} steps today
+SAY | | {pet} is in the {room} at {x},{y}

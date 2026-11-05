@@ -9,3 +9,4 @@ nice -n 15 gcc -std=c11 -O2 -Wall -Wextra -o +x/edit_prefs.+x edit_prefs.c || ex
 # the editor h-ai (locate session, context, API ask, proposal, apply), see hai_op.c
 nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/hai_op.+x hai_op.c || exit 1
 nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/item_ledger_op.+x item_ledger_op.c || exit 1   # the quarantined item ledger, see item_ledger_op.c and harness item_ledger.pal
+nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/pet_net_say.+x pet_net_say.c || exit 1   # a pet chooses its network line from its own state, see pet_net_say.c and harness pet_net_say.pal

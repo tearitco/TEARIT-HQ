@@ -1,0 +1,4 @@
+# pet_net_say.pal - a pet chooses its network line from its own state and posts only through the guard. See cases/pet_net_say.pdl
+exec ./ops/+x/harness_case_op.+x cases/pet_net_say.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_net_say.pdl
+halt

@@ -1,0 +1,86 @@
+# pet_net_say: a SCRATCH house with the REAL folder layout (guard in &.hq-apps/irc-chat-hq/ops/+x, chat op in the node's ops/+x, copied from the real house; no PET_POST_CHAT_OP pin: a pinned path hid two bugs on 2026-11-04). Never touches the live node.
+RESULTS | ../results/pet_net_say.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/&.hq-apps/irc-chat-hq/ops/+x
+MKDIR | house/044.pal-chat-irc-scratch/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+RUN | /bin/cp | $HOUSE/&.hq-apps/irc-chat-hq/ops/+x/pet_post.+x | $T/house/&.hq-apps/irc-chat-hq/ops/+x/pet_post.+x
+RUN | /bin/cp | $HOUSE/044.pal-chat-irc👥️+2/ops/+x/chat_post_message.+x | $T/house/044.pal-chat-irc-scratch/ops/+x/chat_post_message.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+WRITE | house/@.apps/rpg-edit-hq/state/pet_rex.txt | room=store\nx=3\ny=4\nsteps=12\n
+WRITE | house/@.apps/rpg-edit-hq/state/daylight.txt | phase=dusk\n
+WRITE | house/@.apps/rpg-edit-hq/state/lamps_on.txt | 1\n
+WRITE | house/044.pal-chat-irc-scratch/pet_post.pdl | cap_n | 50\n
+
+CASE    | speaks-from-state
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_EXIT | 0 | the-pet-posts
+EXPECT_OUT | SENT | through-the-guard
+EXPECT_OUT | the lamps are on in the store, it is dusk | the-line-comes-from-its-state-dusk-and-lamps-on
+EXPECT_HAS | house/044.pal-chat-irc-scratch/rooms/lobby/messages.txt | \ppet-rex\p | the-real-chat-op-wrote-the-room-ledger-with-the-pet-as-author
+EXPECT_HAS | house/044.pal-chat-irc-scratch/pet_post_audit.txt | \pSENT\ppet-rex\plobby\p | the-guard-audited-it
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/net_say_last_rex.txt | the lamps are on | the-pet-remembers-what-it-said
+
+CASE    | never-repeats-itself
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | rex is in the store at 3,4 | the-next-line-is-a-different-rule-not-the-same-text
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | the lamps are on in the store | and-it-alternates-never-the-same-line-twice-in-a-row
+
+CASE    | state-changes-the-line
+WRITE | house/@.apps/rpg-edit-hq/state/daylight.txt | phase=night\n
+WRITE | house/@.apps/rpg-edit-hq/state/lamps_on.txt | 0\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | it is night in the store and the lamps are off | night-and-lamps-off-gives-a-different-line
+WRITE | house/@.apps/rpg-edit-hq/state/pet_rex.txt | room=bank\nx=9\ny=1\nsteps=20000\n
+WRITE | house/@.apps/rpg-edit-hq/state/daylight.txt | phase=noon\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | rex has walked 20000 steps today | a-numeric-condition-steps-over-10000-fires-only-when-true
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | rex is in the bank at 9,1 | and-the-room-fact-follows-the-state
+
+CASE    | quiet-when-nothing-new
+WRITE | house/@.apps/rpg-edit-hq/net_say.pdl | SAY | phase=noon | only line\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | only line | first-time-it-speaks
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT_IS | QUIET | second-time-it-has-nothing-new-and-stays-quiet
+EXPECT_EXIT | 0 | quiet-is-not-an-error
+WRITE | house/@.apps/rpg-edit-hq/net_say.pdl | SAY | phase=never | no match\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT_IS | QUIET | NEGATIVE-no-row-matches-so-it-says-nothing
+
+CASE    | the-guard-still-rules
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+RUN | /bin/rm | -f | $T/house/@.apps/rpg-edit-hq/state/net_say_last_rex.txt
+RUN | /usr/bin/awk | END { print NR } | $T/house/044.pal-chat-irc-scratch/rooms/lobby/messages.txt
+CAPTURE | rows0
+WRITE | house/044.pal-chat-irc-scratch/pet_post_kill.txt | stop\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_EXIT | 3 | with-the-kill-switch-the-guard-refuses
+EXPECT_OUT | DENY_KILL | and-says-so
+RUN | /usr/bin/awk | END { print NR } | $T/house/044.pal-chat-irc-scratch/rooms/lobby/messages.txt
+EXPECT_OUT_IS | $rows0 | nothing-was-posted
+RUN | /bin/rm | -f | $T/house/044.pal-chat-irc-scratch/pet_post_kill.txt
+WRITE | house/044.pal-chat-irc-scratch/pet_post.pdl | cap_n | 50\nhold | 1\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | HELD | with-hold-mode-the-line-waits-for-a-human
+RUN | /usr/bin/awk | END { print NR } | $T/house/044.pal-chat-irc-scratch/rooms/lobby/messages.txt
+EXPECT_OUT_IS | $rows0 | and-is-not-in-the-room-yet
+EXPECT_HAS | house/044.pal-chat-irc-scratch/pet_post_pending.txt | \ppet-rex\plobby\p | it-is-in-the-pending-file
+
+CASE    | the-rate-cap-applies
+WRITE | house/044.pal-chat-irc-scratch/pet_post.pdl | cap_n | 1\ncap_window_s | 600\n
+RUN | /bin/rm | -f | $T/house/@.apps/rpg-edit-hq/state/net_say_last_rex.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_OUT | DENY_CAP | a-pet-that-already-posted-is-refused-by-the-guards-rate-cap
+EXPECT_EXIT | 3 | and-the-op-reports-the-refusal
+
+CASE    | no-rules
+RUN | /bin/rm | -f | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house | rex | lobby
+EXPECT_EXIT | 2 | without-a-rules-file-it-is-a-usage-error-not-a-crash
+CLEAN |
