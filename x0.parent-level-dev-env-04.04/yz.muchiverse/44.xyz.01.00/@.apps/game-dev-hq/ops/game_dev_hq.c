@@ -331,7 +331,7 @@ static void write_ui(void) {
     { char rate[32] = "week"; char rp[1200]; snprintf(rp, sizeof rp, "%s/clock_rate.txt", ST);
       FILE *rf = fopen(rp, "r"); if (rf) { if (fscanf(rf, "%31s", rate) != 1) snprintf(rate, sizeof rate, "week"); fclose(rf); }
       fprintf(f, "week_label=Wk %ld\n", week); }
-    fprintf(f, "run_label=%s\nrun_cls=%s\n", run ? "GO started" : "STOP stopped", run ? "ph-green" : "ph-red");
+    fprintf(f, "run_label=%s\nrun_cls=%s\n", run ? "Player: playing" : "Player: stopped", run ? "ph-green" : "ph-red");
     fprintf(f, "control_label=control: %s\n", who);
     fprintf(f, "n_staff=%d\nn_party=%d\n", nstaff, nstaff);
     for (int i = 0; i < nstaff; i++) {

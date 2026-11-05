@@ -202,7 +202,7 @@ status() {
           fi
           mo=$(cat "$PET/menu_open.txt" 2>/dev/null || echo 0); shown=0; [ "$mo" = 1 ] && shown=$i
           printf 'n_menu=%s\nn_menu_shown=%s\nmenu_visible=%s\nmenu_group=%s\n' "$i" "$shown" "$mo" "$grp"; cat "$PET/menu.tmp"; }
-        if running; then printf 'run_cls=ph-green\nrun_label=GO started\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=STOP stopped\nrun_on=0\n'; fi
+        if running; then printf 'run_cls=ph-green\nrun_label=Player: playing\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=Player: stopped\nrun_on=0\n'; fi
         printf 'event_n=%s\n' "$(grep -c . "$PET/event_pkg/events_index.txt" 2>/dev/null)"
         printf 'anim=%s\nscene_raw=%s/scene.raw\n' "$anim" "$PET"
         n=0; tail -4 "$CHAT" 2>/dev/null | while IFS= read -r line; do printf 'chat_%s=%s\n' "$n" "$line"; n=$((n+1)); done

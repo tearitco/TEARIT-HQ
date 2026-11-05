@@ -435,7 +435,7 @@ status() {
           fi
           mo=$(cat "$PET/menu_open.txt" 2>/dev/null || echo 0); [ "$(cat "$SHARED/view.txt" 2>/dev/null)" = room ] || [ ! -f "$SHARED/view.txt" ] || mo=0; shown=0; [ "$mo" = 1 ] && shown=$i
           printf 'n_menu=%s\nn_menu_shown=%s\nmenu_visible=%s\nmenu_group=%s\n' "$i" "$shown" "$mo" "$grp"; cat "$PET/menu.tmp.$$"; }
-        if running; then printf 'run_cls=ph-green\nrun_label=GO started\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=STOP stopped\nrun_on=0\n'; fi
+        if running; then printf 'run_cls=ph-green\nrun_label=Player: playing\nrun_on=1\n'; else printf 'run_cls=ph-red\nrun_label=Player: stopped\nrun_on=0\n'; fi
         printf 'event_n=%s\n' "$(grep -c . "$PET/event_pkg/events_index.txt" 2>/dev/null)"
         printf 'anim=%s\nscene_raw=%s/scene.raw\ncanvas_raw=%s/scene.raw\nview=%s\nactive_id=%s\nactive_dir=%s\n' "$anim" "$SHARED" "$SHARED" "$(cat "$SHARED/view.txt" 2>/dev/null || echo room)" "$ACTIVE" "$PET"
         ia=$(cat "$SHARED/interact_armed.txt" 2>/dev/null); if [ "$ia" = 1 ]; then printf 'interact_armed=1\ninteract_class=interact-active\ninteract_label=on\n'; else printf 'interact_armed=0\ninteract_class=\ninteract_label=off\n'; fi
