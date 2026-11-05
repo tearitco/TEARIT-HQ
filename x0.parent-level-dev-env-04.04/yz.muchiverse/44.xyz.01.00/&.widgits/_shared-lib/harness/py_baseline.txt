@@ -43,10 +43,7 @@ x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests
 x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/widthscan.py
 x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/xclipget.py
 x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/xsendevent.py
-OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/make_deck.py
 OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/present_harness.py
-OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/remote_one_line.py
-OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/remote_tts.py
 OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/run_suite.py
 x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/concept-bank/data/img/draft/img_draft.py
 x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/eden/presentation/eden_gameplay_harness.py

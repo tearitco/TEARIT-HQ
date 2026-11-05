@@ -1,0 +1,4 @@
+# deck_video.pal - a narrated slide-deck video from a deck text file (presentation/decks/*.txt), no Python: ops/video_op.c + ffmpeg + the Kokoro service on another machine. See cases/deck_video.pdl
+exec ./ops/+x/harness_case_op.+x cases/deck_video.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/deck_video.pdl
+halt

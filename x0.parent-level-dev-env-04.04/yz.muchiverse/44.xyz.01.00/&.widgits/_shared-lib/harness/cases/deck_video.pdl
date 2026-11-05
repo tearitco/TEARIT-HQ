@@ -1,0 +1,27 @@
+# deck_video: deck text -> 1280x720 slides -> narrated mp4, with checks that the files exist and the video has BOTH a video and an audio stream (a silent track is the false success the pipeline once had).
+# Environment (never in the file): DECK = path of the deck .txt, OUT = output folder (outside the repo: XO/<month>/<nov-N>/..., docs/media only), PRESENT_TTS_HOST = user@host of the narration machine (Kokoro). Unset = verdict SKIP.
+# Run: DECK=.../presentation/decks/phase1_lock.txt OUT=/path/out PRESENT_TTS_HOST=user@host /tmp/prisc deck_video.pal        (heavy: the case runs ffmpeg behind cpu_gate; narration happens on the other machine)
+RESULTS | ../results/deck_video.txt
+ENV | LC_ALL | C
+NEEDENV | DECK | OUT | PRESENT_TTS_HOST
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -w | -o | $T/video_op.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/video_op.c
+EXPECT_EXIT | 0 | video-op-compiles
+
+CASE    | slides
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | $HOUSE | run | deck-slides | --wait | 300 | -- | $T/video_op.+x | deck | $DECK | $OUT
+EXPECT_EXIT | 0 | slides-are-rendered
+EXPECT_OUT | slides= | the-op-reports-the-slide-count
+RUN | /usr/bin/test | -s | $OUT/manifest.txt
+EXPECT_EXIT | 0 | manifest-exists
+
+CASE    | video
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | $HOUSE | run | deck-video | --wait | 300 | -- | $T/video_op.+x | render | $OUT
+EXPECT_EXIT | 0 | video-is-rendered
+EXPECT_OUT | narrated= | the-op-reports-how-many-rows-were-narrated
+RUN | /usr/bin/ffprobe | -v | error | -show_entries | stream=codec_type | -of | csv=p=0 | $OUT/video.mp4
+EXPECT_OUT | video | there-is-a-video-stream
+EXPECT_OUT | audio | and-an-audio-stream-not-a-silent-track
+CLEAN |
