@@ -18,6 +18,7 @@ RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pet_net_say.+x | $T/house/@.app
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
 RUN | /usr/bin/sed | -i | s/^ENABLED \p 0/ENABLED \p 1/ | $T/house/@.apps/rpg-edit-hq/net_say.pdl
 WRITE | house/@.apps/rpg-edit-hq/state/active.txt | robot\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_int.txt | 1\n
 WRITE | house/@.apps/rpg-edit-hq/state/pet_robot.txt | room=store\nx=1\ny=1\nsteps=5\n
 WRITE | house/@.apps/rpg-edit-hq/state/pet_asa.txt | room=store\nx=2\ny=2\nsteps=5\n
 WRITE | house/@.apps/rpg-edit-hq/state/pet_ember.txt | room=bank\nx=3\ny=3\nsteps=5\n
@@ -52,11 +53,20 @@ RUN | /usr/bin/awk | END { print NR } | $T/house/044.pal-chat-irc-scratch/rooms/
 EXPECT_OUT_IS | 4 | two-more-lines-four-in-total
 EXPECT_LACKS | house/044.pal-chat-irc-scratch/rooms/pets/messages.txt | pet-robot | still-never-the-controlled-pet
 
+CASE    | demo-mode-everyone-speaks
+WRITE | house/@.apps/rpg-edit-hq/state/flag_int.txt | 0\n
+WRITE | house/@.apps/rpg-edit-hq/state/net_say_turn.txt | 2\n
+RUN | /bin/rm | -f | $T/house/@.apps/rpg-edit-hq/state/net_say_last_robot.txt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:pet_say | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_EXIT | 0 | the-clock-event-runs-clean-in-demo-mode
+EXPECT_HAS | house/044.pal-chat-irc-scratch/rooms/pets/messages.txt | \ppet-robot\p | In-OFF-is-demo-mode-the-would-be-controlled-pet-speaks-too
+WRITE | house/@.apps/rpg-edit-hq/state/flag_int.txt | 1\n
+
 CASE    | the-guard-silences-the-clock-too
 WRITE | house/044.pal-chat-irc-scratch/pet_post_kill.txt | stop\n
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:pet_say | $T/house/@.apps/rpg-edit-hq/state/clock_root
 RUN | /usr/bin/awk | END { print NR } | $T/house/044.pal-chat-irc-scratch/rooms/pets/messages.txt
-EXPECT_OUT_IS | 4 | with-the-kill-switch-the-clock-firing-posts-nothing
+EXPECT_OUT_IS | 6 | with-the-kill-switch-the-clock-firing-posts-nothing
 EXPECT_HAS | house/044.pal-chat-irc-scratch/pet_post_audit.txt | DENY_KILL | and-the-guard-audited-the-refusals
 RUN | /bin/rm | -f | $T/house/044.pal-chat-irc-scratch/pet_post_kill.txt
 
@@ -65,5 +75,5 @@ RUN | /bin/rm | -f | $T/house/@.apps/rpg-edit-hq/net_say.pdl
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:pet_say | $T/house/@.apps/rpg-edit-hq/state/clock_root
 EXPECT_EXIT | 0 | no-net_say.pdl-is-not-an-error
 RUN | /usr/bin/awk | END { print NR } | $T/house/044.pal-chat-irc-scratch/rooms/pets/messages.txt
-EXPECT_OUT_IS | 4 | and-nothing-is-posted-a-skin-without-the-file-is-untouched
+EXPECT_OUT_IS | 6 | and-nothing-is-posted-a-skin-without-the-file-is-untouched
 CLEAN |
