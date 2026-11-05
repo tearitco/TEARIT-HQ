@@ -76,3 +76,5 @@ A block world. The player breaks and places. Mineclonia textures stay the art. N
 4. mcl-hq: the same dig and build, plus gravity and the 3×3 shape match.
 
 Tiles, INT, and the board stay as they are. This page does not change them.
+
+The early survivor loop (smash furniture into fire, water, food, and a weapon; books raise a skill cap; practice raises the level; DF starts from the wagon; water, lava, rain, and fire are common events) is specified in `EARLY-SURVIVOR-AND-COMMON-EVENTS.md`. This sprint still lists weather and liquid flow as waiting. That page is the slice that pulls them forward.

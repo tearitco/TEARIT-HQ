@@ -11,6 +11,9 @@ command runs on.
   on the placing grid (not built; tactics proof waits on Ember's HP).
 - `GAME-MECHANICS-SPRINT.md` — short loops for df-hq, cdda-hq, and
   mcl-hq. Shared event verbs.
+- `EARLY-SURVIVOR-AND-COMMON-EVENTS.md` — smash-for-supplies, books
+  and practice, DF wagon start, MCL bench/bed/creeper, gen_map, and
+  the water/lava/rain/fire common events. Technical needs. Not built.
 - `S1-EVENT-LEDGER.md` — the event line that is built.
 - `RULES-df-hq.md`, `RULES-cdda-hq.md`, `RULES-mcl-hq.md` — verb, who, cost, result, file.
 - `GAME-DEV-HQ-DESIGN.md` — Game Dev Story as a studio week: staff, one game, ship. Not built.
