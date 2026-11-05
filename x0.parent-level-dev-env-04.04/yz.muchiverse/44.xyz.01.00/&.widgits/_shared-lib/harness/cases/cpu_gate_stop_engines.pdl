@@ -1,0 +1,31 @@
+# cpu_gate_stop_engines: cpu_gate run --stop-engines (decision D7): "never compile while an engine runs" done by the gate. Two FAKE engines (a copy of /bin/sleep named bv_render_3d.+x, started in a session folder): one under the scratch house, one OUTSIDE it. Without the flag nothing is touched; with it only the house's own engine is stopped (exact pid, listed), the other house's is never touched. The machine limits are opened wide so the case does not depend on the load of the machine it runs on.
+RESULTS | ../results/cpu_gate_stop_engines.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/#.desktop
+MKDIR | house/&.widgits/board-viewer/pieces/sessions/s1
+MKDIR | other/sessions/s2
+COPY | &.widgits/_shared-lib/ops/+x/cpu_gate.+x | gate
+RUN | /bin/cp | /bin/sleep | $T/house/&.widgits/board-viewer/pieces/sessions/s1/bv_render_3d.+x
+RUN | /bin/cp | /bin/sleep | $T/other/sessions/s2/bv_render_3d.+x
+SPAWN | E1 | /bin/sh | -c | cd '$T/house/&.widgits/board-viewer/pieces/sessions/s1' && exec ./bv_render_3d.+x 300
+SPAWN | E2 | /bin/sh | -c | cd $T/other/sessions/s2 && exec ./bv_render_3d.+x 300
+SLEEP | 600
+EXPECT_ALIVE | $E1 | the-house-engine-is-up
+EXPECT_ALIVE | $E2 | the-other-engine-is-up
+
+CASE    | without-the-flag-nothing-is-touched
+RUN | $T/gate | $T/house | run | t | --max-busy | 100 | --max-temp | 200 | --max-house | 100 | -- | /bin/true
+EXPECT_EXIT | 0 | the-gate-runs-the-job
+EXPECT_ALIVE | $E1 | no-flag-leaves-the-engine-alone
+
+CASE    | stop-engines-stops-only-this-houses-engine
+RUN | $T/gate | $T/house | run | t | --max-busy | 100 | --max-temp | 200 | --max-house | 100 | --stop-engines | -- | /bin/true
+EXPECT_EXIT | 0 | the-gate-runs-the-job-after-stopping
+EXPECT_OUT | stopping engine pid | the-stopped-pid-is-listed
+EXPECT_DEAD | $E1 | the-house-engine-is-gone
+EXPECT_ALIVE | $E2 | an-engine-of-another-house-is-never-touched
+
+CLEAN |

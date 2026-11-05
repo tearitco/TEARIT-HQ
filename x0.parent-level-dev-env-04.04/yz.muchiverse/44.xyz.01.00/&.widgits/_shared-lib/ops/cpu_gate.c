@@ -5,6 +5,8 @@
  *                                                      the same check (waiting up to S s for the machine to calm down), then ONE heavy job at a time (flock on
  *                                                      #.desktop/heavy.lock; exit 4 when another holds it and S ran out), then <cmd> runs niced 15 at idle I/O
  *                                                      priority; its exit status is returned. One row per run in #.desktop/heavy_runs.txt (capped at 200 rows).
+
+ * --stop-engines (run only): SIGTERM this house's bv_render_3d.+x engines (by exact pid, listed on stderr, never another house's) after the checks and before the job.
  * limits (defaults come from #.desktop/proc_mon_guard.pdl warn_pct / temp_warn_c, else 70 / 85):  --max-busy <pct>  --max-temp <C>  --max-house <pct of the machine, default 30>
  * busy = the whole machine over a 1 s sample (/proc/stat); house = CPU used by processes whose command line names this house, over the same second, as a percent of the machine;
  * temp = the hottest of the /sys/class/thermal zones and the hwmon k10temp / coretemp die sensor (the one cpu_guard reads; 0 when unreadable, then the check ignores it).
@@ -24,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#include <signal.h>
 
 static char house[PATH_MAX];
 static int read_total(unsigned long long *busy, unsigned long long *all) {
@@ -71,10 +74,21 @@ static void trim_log(const char *p) {
     if (n < 399 && !more) return; int from = n > 200 ? n - 200 : 0; char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", p); FILE *o = fopen(tmp, "w"); if (!o) return;
     for (int i = from; i < n; i++) fputs(rows[i], o); if (fclose(o) == 0) rename(tmp, p); else remove(tmp);
 }
+/* --stop-engines (2026-11-05, decision D7 in 02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): "never compile while an engine runs" was a manual step (find the pid, kill it, then compile). Now the gate does it, and only for THIS house: a process whose name is bv_render_3d.+x and whose working directory (its session folder) is under the house. SIGTERM by exact pid, up to 3 s to leave, each pid listed on stderr. An engine of another house or checkout is never touched. The board window respawns the engine on its next request. */
+static int stop_engines(void) {
+    DIR *d = opendir("/proc"); if (!d) return 0; struct dirent *e; pid_t pids[32]; int n = 0; char hp[PATH_MAX + 2]; snprintf(hp, sizeof hp, "%s/", house); size_t hl = strlen(hp);
+    while ((e = readdir(d)) && n < 32) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue;
+        char p[96], comm[64] = "", cwd[PATH_MAX] = ""; snprintf(p, sizeof p, "/proc/%s/comm", e->d_name); FILE *f = fopen(p, "r"); if (!f) continue; if (fgets(comm, sizeof comm, f)) comm[strcspn(comm, "\n")] = 0; fclose(f);
+        if (strcmp(comm, "bv_render_3d.+x")) continue; snprintf(p, sizeof p, "/proc/%s/cwd", e->d_name); ssize_t k = readlink(p, cwd, sizeof cwd - 1); if (k <= 0) continue; cwd[k] = 0;
+        if (strncmp(cwd, hp, hl)) continue; pids[n++] = (pid_t)atoi(e->d_name); fprintf(stderr, "cpu_gate: stopping engine pid %d (%s)\n", (int)pids[n - 1], cwd); kill(pids[n - 1], SIGTERM); }
+    closedir(d);
+    for (int i = 0; i < n; i++) for (int w = 0; w < 30 && kill(pids[i], 0) == 0; w++) { int st; if (waitpid(pids[i], &st, WNOHANG) == pids[i]) break; usleep(100000); }
+    return n;
+}
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: cpu_gate <house> check [limits] | run <label> [limits] [--wait S] -- <cmd...>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: cpu_gate <house> check [limits] | run <label> [limits] [--wait S] [--stop-engines] -- <cmd...>\n"); return 2; }
     snprintf(house, sizeof house, "%s", argv[1]); const char *verb = argv[2];
-    L.busy = pdl_int("warn_pct", 70); L.temp = pdl_int("temp_warn_c", 85); L.hse = 30; int wait_s = 0, ci = -1; const char *label = "heavy";
+    L.busy = pdl_int("warn_pct", 70); L.temp = pdl_int("temp_warn_c", 85); L.hse = 30; int wait_s = 0, ci = -1, stop_eng = 0; const char *label = "heavy";
     int i = 3; if (!strcmp(verb, "run")) { if (argc < 4) return 2; label = argv[3]; i = 4; } else if (strcmp(verb, "check")) { fprintf(stderr, "cpu_gate: unknown verb %s\n", verb); return 2; }
     for (; i < argc; i++) {
         if (!strcmp(argv[i], "--")) { ci = i + 1; break; }
@@ -82,6 +96,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--max-temp") && i + 1 < argc) L.temp = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--max-house") && i + 1 < argc) L.hse = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--wait") && i + 1 < argc) wait_s = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--stop-engines")) stop_eng = 1;
         else { fprintf(stderr, "cpu_gate: unknown argument %s\n", argv[i]); return 2; }
     }
     char why[200]; int busy = 0; time_t t0 = time(NULL); int rc;
@@ -95,6 +110,7 @@ int main(int argc, char **argv) {
         sleep(2);
     }
     { char me[200]; int n = snprintf(me, sizeof me, "%s pid=%d since=%ld\n", label, (int)getpid(), (long)time(NULL)); if (ftruncate(lfd, 0) == 0) { ssize_t w = pwrite(lfd, me, (size_t)n, 0); (void)w; } }
+    if (stop_eng) stop_engines();      /* after the machine check and the lock, before the job: a compile never runs next to this house's 3D engine */
     time_t t1 = time(NULL); pid_t pid = fork(); if (pid < 0) return 2;
     if (pid == 0) {
         setpriority(PRIO_PROCESS, 0, 15); syscall(SYS_ioprio_set, 1, 0, (3 << 13));      /* idle I/O class */

@@ -1,0 +1,4 @@
+# cpu_gate_stop_engines.pal - cpu_gate run --stop-engines. See cases/cpu_gate_stop_engines.pdl
+exec ./ops/+x/harness_case_op.+x cases/cpu_gate_stop_engines.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/cpu_gate_stop_engines.pdl
+halt
