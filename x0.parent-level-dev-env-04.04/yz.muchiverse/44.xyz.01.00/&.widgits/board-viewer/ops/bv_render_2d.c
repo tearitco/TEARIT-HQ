@@ -41,6 +41,7 @@
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
 #include "../../_shared-lib/khtpm_pin_pick.c"   /* pin_path_pick(): a board obeys its OWN open_book_page.txt before the house-wide one (S3b-1) */
+#include "../../_shared-lib/xelector_look.c"   /* xel_look_pick(): the free / controlling look of the xelector, data-driven (view.pdl xelector_* rows) */
 
 #define MAX_LINE     1024
 #define PATH_BUF     4096
@@ -1126,6 +1127,17 @@ static int view_pdl_get(const char *key, char *out, size_t osz) {
         size_t n = strcspn(p, "\r\n"); while (n && p[n - 1] == ' ') n--; if (n >= osz) n = osz - 1; memcpy(out, p, n); out[n] = 0; got = 1; }
     fclose(vf); return got;
 }
+/* the xelector's look for THIS frame: controlling (state.txt possessed_id names an entity) or free; the four rows come from the board's view.pdl, absent = the defaults in xelector_look.c */
+static XelLook xel_resolve(void) {
+    char sp[PATH_BUF], poss[64] = "", fr[40] = "", fp[16] = "", cr[40] = "", cp[16] = "";
+    snprintf(sp, sizeof sp, "%s/pieces/xelector_01/state.txt", focused_root[0] ? focused_root : project_root); read_kv_str(sp, "possessed_id", poss, sizeof poss);
+    view_pdl_get("xelector_free_rgb", fr, sizeof fr); view_pdl_get("xelector_free_px", fp, sizeof fp); view_pdl_get("xelector_ctl_rgb", cr, sizeof cr); view_pdl_get("xelector_ctl_px", cp, sizeof cp);
+#ifdef BV_2D_NO_XEL_LOOK
+    return xel_look_pick(0, fr, fp, cr, cp);      /* negative fixture for the harness (pieces_2d_parity): possession is ignored, the test must FAIL on this build */
+#else
+    return xel_look_pick(xel_look_controlling(poss), fr, fp, cr, cp);
+#endif
+}
 static int blit_scene(unsigned char *px, int W, int H) {
     char path[PATH_BUF], b[32]; int sw = 0, sh = 0;
     if (!view_pdl_get("scene_raw", path, sizeof(path)) || !path[0]) return 0;
@@ -1633,9 +1645,9 @@ int main(void) {
         int x0 = (sel_x * map_tile - map_px0) * box / map_tile;
         int y0 = (sel_y * map_tile - map_py0) * box / map_tile;
         if (x0 < W && y0 < H && x0 + box > 0 && y0 + box > 0) {
-            unsigned char xr = 40, xg = 255, xb = 80;
-            /* 6px, not 2. A 2px line disappeared into the painted tiles. */
-            for (int t = 0; t < 6; t++) {
+            XelLook xl = xel_resolve(); unsigned char xr = xl.r, xg = xl.g, xb = xl.b;
+            /* 6px free, not 2: a 2px line disappeared into the painted tiles. While controlling an entity the look is lighter and thinner (xelector_look.c, view.pdl rows). */
+            for (int t = 0; t < xl.px; t++) {
                 for (int x = x0; x < x0 + box; x++) {
                     if (x < 0 || x >= W) continue;
                     int yA = y0 + t, yB = y0 + box - 1 - t;
@@ -1653,17 +1665,17 @@ int main(void) {
     } else if (!side_mode) {
         int scx = sel_x - ox, scy = sel_y - oy;
         if (sel_x >= 0 && sel_y >= 0 && scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
-            unsigned char xr = 40, xg = 255, xb = 80;
+            XelLook xl = xel_resolve(); unsigned char xr = xl.r, xg = xl.g, xb = xl.b; int tb = xl.px >= 6 ? 2 : 1;      /* free (6) keeps today's 2-line border, a thinner look gets 1 */
             int x0 = scx * cell, y0 = scy * cell;
-            for (int t = 1; t <= 2; t++) {
+            for (int t = 1; t <= tb; t++) {
                 for (int x = x0 + t; x < x0 + cell - t; x++)
-                    for (int yy = 0; yy < 2; yy++) {
+                    for (int yy = 0; yy < tb; yy++) {
                         unsigned char *a = VP_PXR(x, y0 + t + yy);
                         unsigned char *cc = VP_PXR(x, y0 + cell - 1 - t - yy);
                         a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; cc[0]=xr; cc[1]=xg; cc[2]=xb; cc[3]=255;
                     }
                 for (int y = y0 + t; y < y0 + cell - t; y++)
-                    for (int xx = 0; xx < 2; xx++) {
+                    for (int xx = 0; xx < tb; xx++) {
                         unsigned char *a = VP_PXR(x0 + t + xx, y);
                         unsigned char *cc = VP_PXR(x0 + cell - 1 - t - xx, y);
                         a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; cc[0]=xr; cc[1]=xg; cc[2]=xb; cc[3]=255;

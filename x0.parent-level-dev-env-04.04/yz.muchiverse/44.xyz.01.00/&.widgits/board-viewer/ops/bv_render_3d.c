@@ -59,6 +59,7 @@
  * somewhere else entirely. Kept unconditional, above the GPU guard. */
 #include <time.h>
 #include "../../_shared-lib/load_governor.c"   /* lg_min_interval_ms(): the engine paces frames by the machine load (2026-11-03) */
+#include "../../_shared-lib/xelector_look.c"   /* xel_look_pick(): the free / controlling look of the xelector, shared with bv_render_2d.c (view.pdl xelector_* rows) */
 
 #ifdef BV_HAVE_GPU
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
@@ -2330,6 +2331,12 @@ static void hud_pdl_str(const char *pdl_path, const char *name, char *out, size_
     }
     fclose(f);
 }
+/* the xelector's look in 3D (owner 2026-11-04): the wire-box COLOUR, lighter while it controls an entity (the box has no thickness knob; the px rows are 2D only). Cached: view.pdl is re-read at most every 60 frames or when the possessed id changes. */
+static XelLook xel_look_3d(const char *view_pdl) {
+    static XelLook cache; static char last_poss[64] = "\x01"; static int age = 999;
+    if (age < 60 && !strcmp(last_poss, g_xelector_possessed_id)) { age++; return cache; }
+    char fr[40] = "", cr[40] = ""; hud_pdl_str(view_pdl, "xelector_free_rgb", fr, sizeof fr, ""); hud_pdl_str(view_pdl, "xelector_ctl_rgb", cr, sizeof cr, "");
+    cache = xel_look_pick(xel_look_controlling(g_xelector_possessed_id), fr, "", cr, ""); snprintf(last_poss, sizeof last_poss, "%s", g_xelector_possessed_id); age = 0; return cache; }
 
 /* Cheap always-on fps (no BV_HAVE_GPU dependency - this file's own
  * bv_now_ms_ profiling helper is GPU-only). One static last-timestamp,
@@ -2438,7 +2445,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     if (hud_pdl_int(pdl, "hud_zlevel", 1) && n < 8)
         snprintf(lines[n++], sizeof(lines[0]), "z=%d", hud_level);
     if (hud_pdl_int(pdl, "hud_possess", 1) && n < 8)
-        snprintf(lines[n++], sizeof(lines[0]), "poss %s", g_hero_present ? "hero_01" : "-");
+        snprintf(lines[n++], sizeof(lines[0]), "poss %s", xel_look_controlling(g_xelector_possessed_id) ? g_xelector_possessed_id : "-");      /* 2026-11-04: the xelector's own possessed_id (it used to print g_hero_present, which said "-" while state.txt said possessed_id=hero_01) */
     if (hud_pdl_int(pdl, "hud_pick", 1) && n < 8) {
         char pickp[PATH_BUF], kind[32] = "-", id[64] = "-";
         snprintf(pickp, sizeof(pickp), "%s/pieces/display/pick.txt", game_root);
@@ -4099,7 +4106,8 @@ static int render_one_frame(void) {
             if (sc.maker) {
                 /* z / x move the selector in levels: the floor (board_manifest floor_z + 1) is where it stands, each level down goes into the hung rock (the grid is lifted by zoff, so that is room for zoff levels) */
                 double mdz = (double)g_xelector_z;      /* already relative to the floor (see maker_ground above) and clamped to the hung depth */
-                ADDWIRE(g_xelector_x+0.15, 1.0+mdz, g_xelector_y+0.15, g_xelector_x+0.85, 2.6+mdz, g_xelector_y+0.85, 40,255,80);
+                char xlv[PATH_BUF]; snprintf(xlv, sizeof(xlv), "%s/pieces/system/view.pdl", focused_project_root); XelLook xl3 = xel_look_3d(xlv);      /* bolder while free, lighter while controlling (xelector_look.c) */
+                ADDWIRE(g_xelector_x+0.15, 1.0+mdz, g_xelector_y+0.15, g_xelector_x+0.85, 2.6+mdz, g_xelector_y+0.85, xl3.r, xl3.g, xl3.b);
             }      /* event voxels, orange, while In: is off (see MakerAtlas.hot_n); the same lifted box space as the selector above */
             if (sc.maker && g_mk.hot_n > 0) {
                 char gp[PATH_BUF]; snprintf(gp, sizeof(gp), "%s/pieces/display/active_gui_is_typing.txt", project_root);

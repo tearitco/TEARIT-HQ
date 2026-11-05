@@ -6,10 +6,13 @@ CASE    | build
 SCRATCH |
 MKDIR | g1
 MKDIR | g2
+MKDIR | g3
 RUN | gcc | -O2 | -w | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_real | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
 EXPECT_EXIT | 0 | renderer-builds-from-source
 RUN | gcc | -O2 | -w | -DBV_2D_NO_PIECES | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_nopieces | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
 EXPECT_EXIT | 0 | negative-fixture-renderer-builds
+RUN | gcc | -O2 | -w | -DBV_2D_NO_XEL_LOOK | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_nolook | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
+EXPECT_EXIT | 0 | negative-fixture-renderer-that-ignores-possession-builds
 RUN | gcc | -O2 | -w | -I/usr/include/libpng16 | -o | $T/ptest | $HOUSE/&.widgits/board-viewer/ops/bv_2d_piece_test.c | -lpng16 | -lz
 EXPECT_EXIT | 0 | test-program-builds
 RUN | gcc | -O2 | -w | -o | $T/menu_input | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
@@ -42,6 +45,11 @@ EXPECT_OUT | ok  : camera: ; deletes the camera file (default view again) | came
 EXPECT_OUT | ok  : camera: after ; the default view follows the xelector again (piece out of view) | camera-after-the-default-view-follows-the-xelector-again-piece-out-of-
 EXPECT_OUT | ok  : camera: in 3D (render_mode 1) the same keys do not move the 2D camera | camera-in-3d-render-mode-1-the-same-keys-do-not-move-the-2d-camera
 EXPECT_OUT | ok  : xelector: drawn green | xelector-drawn-green
+EXPECT_OUT | ok  : xelector look: FREE is the saturated green and none of the controlling colour | xelector-look-free-is-the-saturated-green
+EXPECT_OUT | ok  : xelector look: CONTROLLING is the lighter green and none of the free colour | xelector-look-controlling-is-the-lighter-green
+EXPECT_OUT | ok  : xelector look: CONTROLLING is thinner than FREE (fewer border pixels) | xelector-look-controlling-is-thinner-than-free
+EXPECT_OUT | ok  : xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults) | xelector-look-colour-and-thickness-are-data
+EXPECT_OUT | ok  : xelector look: a malformed view.pdl row falls back to the default look | xelector-look-a-malformed-row-falls-back-to-the-default
 EXPECT_OUT | ok  : arrows: the xelector moves inside the view and the CAMERA DOES NOT MOVE | arrows-the-xelector-moves-inside-the-view-and-the-camera-does-not-move
 EXPECT_OUT | ok  : arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible | arrows-past-the-edge-the-camera-pans-scrolls-by-the-least-amount-and-t
 EXPECT_OUT | ok  : xelector: still visible far past the page (the camera panned after it) | xelector-still-visible-far-past-the-page-the-camera-panned-after-it
@@ -66,4 +74,10 @@ EXPECT_OUT | FAIL: minimap: shown when a piece lies outside the view (cyan view 
 EXPECT_OUT | FAIL: camera: Shift+D moves the view over to a piece outside the page | fails-without-piece-code-camera-shift-d-moves-the-view-over-to-a-
 EXPECT_OUT | FAIL: camera: a far pan is clamped to the scene edge (same frame) | fails-without-piece-code-camera-a-far-pan-is-clamped-to-the-scene
 EXPECT_OUT | FAIL: parallax: 2D draws the sky from parallax.rgba (the file the 3D engine reads) outside the page | fails-without-piece-code-parallax-2d-draws-the-sky-from-parallax-
+CASE    | negative-renderer-that-ignores-possession
+ENV | BV2D_BIN | $T/r2d_nolook
+RUN | $T/ptest | $T/g3
+EXPECT_EXIT | 1 | the-test-fails-on-a-renderer-that-ignores-possession
+EXPECT_OUT | FAIL: xelector look: CONTROLLING is the lighter green and none of the free colour | fails-without-the-look-the-controlling-colour-is-missing
+EXPECT_OUT | FAIL: xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults) | fails-without-the-look-the-data-override-has-no-effect
 CLEAN |

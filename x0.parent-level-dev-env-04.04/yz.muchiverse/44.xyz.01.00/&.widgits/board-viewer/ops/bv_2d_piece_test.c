@@ -54,7 +54,9 @@ static int input_keys(const char *keys) { const char *bin = getenv("BV2D_INPUT_B
     char cmd[1700]; snprintf(cmd, sizeof cmd, "cd '%s' && PRISC_PROJECT_ROOT='%s' timeout 20 '%s' %s >/dev/null 2>&1", dir, dir, abs, keys); return system(cmd) == 0 ? 0 : 2; }
 static int state_int(const char *key) { char p[800], l[200]; snprintf(p, sizeof p, "%s/pieces/system/bv_state.txt", dir); FILE *f = fopen(p, "r"); if (!f) return -9999; size_t kl = strlen(key); int v = 0; while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
 static void state_mode(int m) { char b[600]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=%d\nselector_x=3\nselector_y=3\n", dir, m); wr("pieces/system/bv_state.txt", b); }
-static void xel_at(int x, int y) { char b[700], t[200]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=%d\nselector_y=%d\nview_2d_zoom=%d\n", dir, x, y, cur_zoom); wr("pieces/system/bv_state.txt", b); snprintf(t, sizeof t, "entity_type=xelector\npos_x=%d\npos_y=%d\npos_z=0\n", x, y); wr("pieces/xelector_01/state.txt", t); }
+static char g_poss[64] = "";      /* possessed_id written into the xelector state (empty = free) */
+static void xel_at(int x, int y) { char b[700], t[200]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=%d\nselector_y=%d\nview_2d_zoom=%d\n", dir, x, y, cur_zoom); wr("pieces/system/bv_state.txt", b); snprintf(t, sizeof t, "entity_type=xelector\npos_x=%d\npos_y=%d\npos_z=0\n%s%s%s", x, y, g_poss[0] ? "possessed_id=" : "", g_poss, g_poss[0] ? "\n" : ""); wr("pieces/xelector_01/state.txt", t); }
+static int count_rgb(const unsigned char *f, int r, int g, int b) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] == r && p[1] == g && p[2] == b) n++; } return n; }
 static int greens(const unsigned char *f) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] < 60 && p[1] > 240 && p[2] > 60 && p[2] < 100) n++; } return n; }
 static int file_int(const char *rel, const char *key) { char p[800], l[200]; snprintf(p, sizeof p, "%s/%s", dir, rel); FILE *f = fopen(p, "r"); if (!f) return -9999; size_t kl = strlen(key); int v = -9999; while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
 static void parallax(int on) { char p[800]; md("pieces/system/maps/m/d1"); wr("pieces/system/maps/m/d1/parallax.pdl", "PARALLAX | show | 1\nPARALLAX | name | night\nPARALLAX | width | 480\nPARALLAX | height | 360\n"); snprintf(p, sizeof p, "%s/pieces/system/maps/m/d1/parallax.rgba", dir);
@@ -101,6 +103,19 @@ int main(int argc, char **argv) {
     xel_at(5, 2); if (render(cur)) return 2; printf("xelector at the view edge: cam x %.3f\n", cam_x()); check(cam_x() > ca + 0.3f && greens(cur) > 1000, "arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible");
     xel_at(10, 2); if (render(cur)) return 2; check(greens(cur) > 1000, "xelector: still visible far past the page (the camera panned after it)");
     xel_at(2, 2); if (render(cur)) return 2; check(cam_x() > ca + 0.3f, "xelector back where it was: the camera stays where it panned to (not re-centred)");
+    /* 2026-11-04 the xelector's look (owner): the saturated green while FREE, a lighter and thinner green while it CONTROLS an entity (state.txt possessed_id); both looks are view.pdl rows (xelector_free_* / xelector_ctl_*) with defaults in _shared-lib/xelector_look.c */
+    { nopiece(); minimap_setting(1); cam_reset(); zoom(2); g_poss[0] = 0; xel_at(2, 2); if (render(cur)) return 2;
+      int fr = count_rgb(cur, 40, 255, 80), fl = count_rgb(cur, 150, 255, 170);
+      check(fr > 1000 && fl == 0, "xelector look: FREE is the saturated green and none of the controlling colour");
+      snprintf(g_poss, sizeof g_poss, "hero_01"); xel_at(2, 2); if (render(cur)) return 2;
+      int cf = count_rgb(cur, 40, 255, 80), cc = count_rgb(cur, 150, 255, 170);
+      check(cc > 200 && cf == 0, "xelector look: CONTROLLING is the lighter green and none of the free colour");
+      check(cc < fr, "xelector look: CONTROLLING is thinner than FREE (fewer border pixels)");
+      wr("pieces/system/maps/m/view.pdl", "VIEW | view_2d_minimap | 1\nVIEW | xelector_ctl_rgb | 255,0,255\nVIEW | xelector_ctl_px | 5\n"); if (render(cur)) return 2;
+      check(count_rgb(cur, 255, 0, 255) > cc && count_rgb(cur, 150, 255, 170) == 0, "xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults)");
+      wr("pieces/system/maps/m/view.pdl", "VIEW | view_2d_minimap | 1\nVIEW | xelector_ctl_rgb | 999,0,0\nVIEW | xelector_ctl_px | 99\n"); if (render(cur)) return 2;
+      check(count_rgb(cur, 150, 255, 170) == cc, "xelector look: a malformed view.pdl row falls back to the default look");
+      g_poss[0] = 0; minimap_setting(1); xel_at(2, 2); }
     /* the camera keys (w/a/s/d) move the CAMERA and never the xelector; the arrows move the xelector and never the camera */
     nopiece(); piece_at(12, 2); minimap_setting(0); state_mode(0); cam_reset(); zoom(0); xel_at(2, 2); if (render(cur)) return 2; float k0 = cam_x();
     if (input_keys("100 100 100")) return 2; check(cam_x() == k0 + 3.0f, "keys: w/a/s/d (here 'd' x3) move the 2D camera"); check(file_int("pieces/xelector_01/state.txt", "pos_x") == 2 && state_int("selector_x") == 2, "keys: the camera keys did NOT move the xelector");
