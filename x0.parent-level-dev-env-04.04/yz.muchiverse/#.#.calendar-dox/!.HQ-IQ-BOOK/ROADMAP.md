@@ -2,6 +2,8 @@
 
 **Written 2026-10-26.** One page for three readers: customers, investors, developers. It is a map, not a promise: it says what is proven, what is being built, and what is only planned, and it points to the document that holds the evidence. If a row has no source, it does not belong here.
 
+**Checklist view (2026-11-04):** every feature area as `[x]` / `[~]` / `[ ]` with spec links is `08-roadmap/GRAND-ROADMAP-CHECKLIST-2026-11-04.md`.
+
 **How to read the status words** (the house rule from `16.game/GAMES-ROADMAP.md`): `proven` = it was run and the result recorded; `building` = work is under way, not finished; `designing` = a written design exists, no code; `planned` = an intention only. A row is never `proven` without a place to check it.
 
 **Not on this page, on purpose:** the house's own prices, traction, revenue, legal structure, headcount. Those are founder facts and live as drafts in `14.biz/` (see `14.biz/00-INDEX.md`). Nothing here was invented to fill that gap. The only market numbers are third-party comparables in the investor view, each with its source and date.

@@ -309,5 +309,7 @@ pointers were the only outright deletions.
 
 > **2026-10-08, Grok handoff:** `design-docs/GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md` (supersedes the 2026-09-02 one) and `design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md`; Eden retention: `design-docs/EDEN-STATE-RETENTION-DESIGN-2026-10-08.md`.
 
+> **2026-11-04, the grand checklist:** `GRAND-ROADMAP-CHECKLIST-2026-11-04.md` (this folder) = every feature area on one page, `[x]` / `[~]` / `[ ]`, evidence tag per row (OBS = run today, DOC = an older doc's claim), plus a technical spec library (in-house specs, external references, specs still to write). Correction: my earlier note below says there is no house-wide roadmap; `../ROADMAP.md` (front door by track) and `../16.game/GAMES-ROADMAP.md` (per-game milestones) exist and this page sits on top of them.
+
 > **2026-11-04, early-survivor slice:** the one status checklist (steps 1-6, what is proven, what is not) is `16.game/EARLY-SURVIVOR-AND-COMMON-EVENTS.md` "Order to build". Day-by-day proof labels (OBSERVED / READ / CLAIM) are in `09-appendix/HANDOFF-INDEX-2026-11-04.md`. There is still no single grand roadmap across the whole house: this index, `ROADMAP.md` and `FORWARD-ROADMAP-2026-09-02.md` are the nearest.
 

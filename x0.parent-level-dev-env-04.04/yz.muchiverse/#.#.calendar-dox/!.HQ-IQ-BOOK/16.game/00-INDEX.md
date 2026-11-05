@@ -47,6 +47,7 @@ command runs on.
 - `GAMES-DECISIONS-2026-10-13.md` — owner decisions for cdda-hq, df-hq,
   gta-hq: z-levels, vehicles as part-cell grids, scale, physics in the
   concept bank, learning with review. Read before touching those games.
+- `../08-roadmap/GRAND-ROADMAP-CHECKLIST-2026-11-04.md` — one-page checklist of every feature, done vs not done, with spec links
 - `GAMES-ROADMAP.md` — milestones with proof/KPI, how to use/modify
   (filled as each lands), and the tangent documents to write. All
   rows start NOT BUILT.

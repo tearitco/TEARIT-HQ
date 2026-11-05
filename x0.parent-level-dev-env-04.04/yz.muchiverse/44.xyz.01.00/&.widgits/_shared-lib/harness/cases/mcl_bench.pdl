@@ -1,0 +1,121 @@
+# mcl_bench: SCRATCH book only (data copied from the shipped ledger-lab). Items move only through item_ledger_op; every refusal checks that NOTHING was burned; burst checks that the ledger did not change.
+RESULTS | ../results/mcl_bench.txt
+ENV | LC_ALL | C
+ENV | ITEM_LEDGER_TS | 1700000000
+
+CASE    | setup
+SCRATCH |
+MKDIR | book
+WRITE | book/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/mcl_recipes.pdl | $T/book/mcl_recipes.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.log | 2 | gift
+
+CASE    | 2x2-needs-no-bench
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | planks | 0 | 0
+EXPECT_EXIT | 0 | a-2x2-recipe-crafts-with-no-bench
+EXPECT_OUT | CRAFTED planks | crafted
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pmcl.plank\p4 | four-planks-from-one-log
+EXPECT_OUT | hero\pmcl.log\p1 | one-log-burned
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | planks | 0 | 0
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | planks | 0 | 0
+EXPECT_EXIT | 3 | NEGATIVE-no-log-left-the-craft-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pmcl.plank\p8 | and-nothing-was-burned-by-the-refusal
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | stick | 0 | 0
+EXPECT_EXIT | 0 | a-stick-recipe-is-2x2-too
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | bench | 0 | 0
+EXPECT_EXIT | 0 | the-bench-recipe-is-a-2x2-grid-and-needs-no-bench
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pmcl.bench\p1 | the-bench-item-exists
+EXPECT_OUT | hero\pmcl.plank\p2 | planks-8-minus-2-minus-4
+
+CASE    | 3x3-needs-a-bench-cell
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.plank | 3 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | pickaxe | 0 | 0
+EXPECT_EXIT | 3 | NEGATIVE-a-3x3-recipe-with-no-bench-cell-is-refused
+EXPECT_OUT | 3x3 recipe | the-reason-names-the-3x3-rule
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pmcl.plank\p5 | nothing-burned-by-the-refusal
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | place | hero | bench | 5 | 5
+EXPECT_EXIT | 0 | the-bench-item-is-placed-on-a-cell
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | place | hero | bench | 5 | 5
+EXPECT_EXIT | 3 | NEGATIVE-a-taken-cell-refuses-a-second-piece
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | pickaxe | 0 | 0
+EXPECT_EXIT | 3 | standing-elsewhere-is-still-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | pickaxe | 5 | 5
+EXPECT_EXIT | 0 | standing-on-the-bench-the-3x3-recipe-works
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pmcl.pickaxe\p1 | the-pickaxe-exists
+EXPECT_OUT | hero\pmcl.stick\p2 | two-sticks-burned
+EXPECT_OUT | hero\pmcl.plank\p2 | three-planks-burned
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | place | hero | bench | 6 | 6
+EXPECT_EXIT | 3 | NEGATIVE-the-bench-item-was-consumed-by-placing-so-a-second-place-is-refused
+
+CASE    | furnace
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.log | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.coal | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | smelt | hero | 6 | 5
+EXPECT_EXIT | 3 | NEGATIVE-no-furnace-cell-no-smelting
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.stone | 8 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | furnace | 5 | 5
+EXPECT_EXIT | 0 | the-3x3-furnace-recipe-on-the-bench
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | place | hero | furnace | 6 | 5
+EXPECT_EXIT | 0 | the-furnace-is-placed
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | smelt | hero | 5 | 5
+EXPECT_EXIT | 3 | NEGATIVE-the-bench-cell-is-not-a-furnace
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | smelt | hero | 6 | 5
+EXPECT_EXIT | 0 | the-furnace-smelts
+EXPECT_OUT | 10 game minutes | the-minutes-are-reported-for-the-clock
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pmcl.coal\p1 | burn-one-coal-mint-one-coal
+EXPECT_OUT_LACKS | mcl.log | the-log-was-consumed
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | smelt | hero | 6 | 5
+EXPECT_EXIT | 3 | NEGATIVE-no-input-left-so-the-smelt-is-refused
+
+CASE    | bed-and-respawn
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.wool | 3 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | mcl.plank | 3 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | craft | hero | bed | 5 | 5
+EXPECT_EXIT | 0 | a-bed-is-a-3x3-recipe-on-the-bench
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | respawn | hero | 9 | 9
+EXPECT_OUT | at 9,9 | no-bed-placed-yet-the-fallback-is-used
+EXPECT_OUT | no bed | and-it-says-so
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | place | hero | bed | 2 | 2
+EXPECT_EXIT | 0 | the-bed-is-placed
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | respawn | hero | 9 | 9
+EXPECT_OUT | RESPAWN hero at 2,2 | the-owner-respawns-at-their-own-bed
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | respawn | scout | 9 | 9
+EXPECT_OUT | RESPAWN scout at 9,9 | NEGATIVE-another-actor-does-not-use-hero's-bed
+
+CASE    | burst
+WRITE | book/state/mcl_blocks.txt | 1\p1\pstone\n0\p2\pstone\n2\p2\pstone\n6\p6\pstone\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+CAPTURE | before
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | burst | 0 | 0 | 2
+EXPECT_EXIT | 0 | the-creeper-bursts
+EXPECT_OUT | 2 blocks | two-blocks-inside-radius-2-became-air
+EXPECT_OUT | NO drops | the-log-says-no-drops
+EXPECT_HAS | book/state/mcl_blocks.txt | 2\p2\pstone | a-block-on-the-corner-just-outside-the-radius-stays
+EXPECT_HAS | book/state/mcl_blocks.txt | 6\p6\pstone | and-a-far-block-stays
+EXPECT_LACKS | book/state/mcl_blocks.txt | 1\p1 | the-near-block-is-gone
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+CAPTURE | after
+EXPECT_EQ | $before | $after | no-item-appeared-or-disappeared-burst-writes-no-drops
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | burst | 0 | 0 | 9
+EXPECT_EXIT | 3 | NEGATIVE-a-huge-radius-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | burst | 0 | 0 | 0
+EXPECT_EXIT | 3 | and-a-zero-radius
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | burst | 2 | 2 | 1
+EXPECT_OUT | 1 placed cells | a-burst-also-destroys-placed-cells-the-bed
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/book | respawn | hero | 9 | 9
+EXPECT_OUT | RESPAWN hero at 9,9 | with-the-bed-destroyed-hero-falls-back
+
+CASE    | conservation-and-quarantine
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-whole-ledger-still-replays-clean
+MKDIR | open
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/open | craft | hero | planks | 0 | 0
+EXPECT_EXIT | 4 | a-folder-without-QUARANTINE-is-refused
+CLEAN |

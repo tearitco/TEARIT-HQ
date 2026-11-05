@@ -26,3 +26,6 @@ Holds the item ledger lab. NOT listed in the editor's book dropdown and NOT read
 ## Survivor slice step 4 (2026-11-04)
 - `ops/world_common_op.c`: `flow`, `rain [on|off]`, `fire`, `status` (one cell per call, no items). Files in `state/`: `fluids.txt`, `fire.txt`, `solid.txt`, `roofed.txt`, `containers.txt`, `dirt.txt`, `wet.txt`, `rain.txt`. Harness `world_common.pal`. Not run from the clock yet.
 
+## Survivor slice step 5 (2026-11-04)
+- `ops/mcl_op.c`: `craft <actor> <recipe> <x> <y>` (2x2 recipes need no bench, 3x3 need a placed bench cell at x,y), `smelt` (furnace cell), `place bench|bed|furnace`, `respawn` (own bed else fallback), `burst <x> <y> <r>` (no drops). Data: `mcl_recipes.pdl`; items `mcl.*` in `items.pdl`. Harness `mcl_bench.pal`. Not called by anything yet.
+

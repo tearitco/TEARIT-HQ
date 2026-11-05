@@ -1,0 +1,10 @@
+# mcl_recipes.pdl - early-survivor step 5 (quarantined). RECIPE|id|grid|output|count   grid = nine cells row-major, "," between cells, "." empty; a cell name `x` is the item mcl.x (one of it is burned per cell).
+# Rule (mcl_op craft): a recipe whose cells fit inside a 2x2 corner needs no bench; anything bigger needs the actor to stand on a placed `bench` cell.
+# SMELT|input|fuel|output|count|minutes   needs a placed `furnace` cell; burns 1 input + 1 fuel, mints the output (the minutes are logged for the clock to spend).
+RECIPE|planks|log,.,.,.,.,.,.,.,.|mcl.plank|4
+RECIPE|stick|plank,.,.,plank,.,.,.,.,.|mcl.stick|4
+RECIPE|bench|plank,plank,.,plank,plank,.,.,.,.|mcl.bench|1
+RECIPE|pickaxe|plank,plank,plank,.,stick,.,.,stick,.|mcl.pickaxe|1
+RECIPE|bed|wool,wool,wool,plank,plank,plank,.,.,.|mcl.bed|1
+RECIPE|furnace|stone,stone,stone,stone,.,stone,stone,stone,stone|mcl.furnace|1
+SMELT|mcl.log|mcl.coal|mcl.coal|1|10

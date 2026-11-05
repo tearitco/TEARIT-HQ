@@ -1,0 +1,123 @@
+# Grand roadmap checklist (one page, by feature, done vs not done)
+
+Written 2026-11-04. This is the CHECKLIST view. The narrative front door is `../ROADMAP.md` (customers / investors / developers); the per-game milestone tables with proof columns are `../16.game/GAMES-ROADMAP.md`; the day-by-day proof labels for the editor work are `../09-appendix/HANDOFF-INDEX-2026-11-04.md`. This page does not replace them: it lists every feature area in one place, says whether each row is done, and points to the spec that holds the detail.
+
+## How to read it
+
+- `[x]` done AND proven: a harness or a live run passed, evidence named. `[~]` partly done, the gap is written on the row. `[ ]` not done.
+- Evidence tags: **OBS** = I ran it on 2026-11-04 (harness name and count, or a screenshot / state file). **DOC** = an older doc says so and I did NOT re-run it today; treat it as a claim until re-run. **NONE** = nothing yet.
+- A `[x]` with a scratch harness only is still "scratch": it says nothing about the live window unless the row says so. Every harness named here is under `44.xyz.01.00/&.widgits/_shared-lib/harness/` (`prisc <name>.pal`, or `ops/+x/playthrough_op.+x run play/phases/<name>.phases.pdl`).
+- Owner decisions are marked **OWNER**. Nothing in a quarantined book is released without one.
+
+## A. Editor platform (`@.apps/rpg-edit-hq`)
+
+- [x] Chat pane with three modes (edit = pet chat, h-ai = the API chat that edits this book, network = IRC rooms); h-ai is the saved default (`layout.pdl`, commit `0721c2820`). OBS: screenshot of the right pane 2026-11-04 after `chatmode hai`. Gap: a fresh window open landing on h-ai was not re-tested, and the Settings preference `sidebar_start` may override it.
+- [x] Player tab says `Player: playing` / `Player: stopped` (editor family, game-dev-hq, pet-house, pet-trainer). OBS: live screenshot and stop/play flip in the editor; the other three by binary/script text only.
+- [x] In: ON = play (turn based, clock paused, each act = `TURN` row), In: OFF = demo (clock runs live). OBS: `play/phases/turn_clock_rpg_edit_hq.phases.pdl` 3 phases (acts advance 5 min, a 10-min event fires once, In: OFF act does not move the clock). Gaps: acts were `buy` not an arrow `step`; no resident clock daemon in scratch.
+- [ ] Play mode starts the game clock at 00:00 / resets unless the game is reset (OWNER's stated rule). NONE: not in the code (`clock_day0` is written once at install).
+- [x] Pets speak on the game clock (opt-in, shipped OFF); the controlled pet is silent in play mode only. OBS: `pet_say_clock.pal` 19; live: `clock advance 1h` produced 4 posts, restored byte for byte.
+- [x] Pet-post guard (kill switch, caps, hold, approve / veto, audit). OBS: `pet_post.pal` 36; live approve/veto done earlier.
+- [x] Two-machine IRC (debil, Mac). OBS: `irc_two_machine.pal` 19. Gap: `~/phase2-net` left on both machines (OWNER to clean).
+- [x] Network pane controls (`netroom`, `netguard`), pane scrolling by wheel. Gap: PageUp/PageDown relay keys had no effect on the chat pane.
+- [x] Placer, mouse alignment, dropdown thumb, lamps at dusk, blank-page size test. OBS: `live_placer_verb`, `live_place_and_move`, `live_mouse_align`, `live_mouse_calibrate`, `live_dropdown_thumb`, `live_lamps_at_dusk`, `blank_page_size` (all gated by `NEEDENV | LIVE_OK`).
+- [x] Legend writer (`legend_page_op`) incl. live load. OBS: `legend_page.pal` 19, `live_legend_page.pal` 13.
+- [ ] 2D / ASCII parity of the editor's views. NONE: never checked (owner rule: 3D must have 2D parity).
+- [ ] `cpu_guard` hygiene sweep loop run live (only `trim_tail` was tested).
+- [ ] Owner-pending live items: `show_pointer=1` left in `#.desktop/hq_ui.pdl`; stray Mac palnet node; three `.hai.bak` files under `events/phase_dawn`; the pre-modified `play_rpg_{dust,space}_planet_map.pdl`.
+
+## B. Early-survivor slice (quarantined in the editor's own book, `books/ledger-lab/`)
+
+Design: `../16.game/EARLY-SURVIVOR-AND-COMMON-EVENTS.md` (has the same checklist with as-built notes). All ops refuse a folder without a `QUARANTINE` file. **OWNER** lifts quarantine.
+
+- [x] Item ledger: append-only hash chain, mint only from allowed sources, no negative balances, per-id conservation, compaction, size and x/y/z limit test. OBS: `item_ledger.pal` 39 (+ size test 43).
+- [x] Step 1 smash / needs / eat / drink / wield / light. OBS: `survivor_slice.pal` 44.
+- [x] Step 2 books / skills / read / practice / craft. OBS: `survivor_craft.pal` 37.
+- [x] Needs follow the GAME clock, shipped OFF. OBS: `needs_clock.pal` 13 + mutation run. Gap: schedule row not installed on the live clock; live daemon firing it not seen.
+- [x] Step 3 deterministic map writer (CDDA house chunk, DF 8x8x12 column). OBS: `gen_map.pal` 21. Gaps: no MCL chunks, no generation on stepping onto a house, no loot pickup verb, chunk not loaded into the editor.
+- [x] Step 4 flow / rain / fire. OBS: `world_common.pal` 38 + mutation run. Gaps: not run from the clock, one room only, no MCL water.
+- [x] Step 5 MCL bench, 3x3 craft, furnace, bed + respawn, creeper burst. OBS: `mcl_bench.pal` 49 + mutation run. Gaps: not run from the clock or a player action; no night spawn; the respawn position file is not read by any real spawn yet.
+- [ ] Step 6 shop slice with the three item ids mapped (cdda / df / mcl). NONE. Not before step 5 is wired.
+- [ ] Release of quarantine: harness green + one real run in the lab book with a hand-read ledger + owner reads `check` + ONE named caller (criteria in the lab README). **OWNER**.
+- [ ] Tear-it co source pages: the editor's two floating islands, and the multi-planet pages from rpg-space / rpg-dust (spaceship / asteroid skiff). NONE: not located yet.
+
+## C. CDDA (`cdda-hq`) - rules grok, infrastructure claude
+
+Status below is the `GAMES-ROADMAP.md` status of 2026-10-13 (DOC, not re-run today).
+
+- [ ] C0 cdda-hq spec (menus, movement, stats, inventory, crafting, stairs, vehicles, NPCs, enemies, mass building, map generation). DOC: designing.
+- [ ] C1 one room with CDDA ids (UltiCa 32 px tiles). DOC: planned.
+- [ ] C2 building with cellar, floors and a stair (first z build). DOC: planned.
+- [ ] C3 a car as a part-cell grid. DOC: planned.
+- [ ] C4 menus, stats, inventory, crafting on db-hq rows and events-hq pages. DOC: planned. Partial overlap: step 2 craft is in the lab book, not in cdda-hq.
+- [ ] C5 NPC / enemy FSM with logged decisions. DOC: planned.
+- [ ] C6 scripted cdda playthrough. DOC: planned. (A `play/phases` playthrough table style exists for the editor.)
+
+## D. Dwarf Fortress style (`df-hq`) - grok
+
+- [ ] D1 designation becomes a job row; one mover walks to the stand tile. DOC: planned.
+- [ ] D2 several movers under a per-tick path budget. DOC: planned.
+- [ ] D3 stockpiles and a save shape (`meta/map/items/units`), save / reload equal state. DOC: planned.
+- [ ] D4 z-levels. DOC: planned (needs the shared z-cell format).
+- [ ] D5 scripted df playthrough. DOC: planned.
+- [~] DF column generation with mineral ids written up front (digging reveals): the writer exists in the lab book (OBS: `gen_map.pal`), no digging verb and no df-hq consumer.
+
+## E. Minecraft style (`mcl-hq`)
+
+- [x] MCL recipes with a 9-cell grid exist in `@.apps/mcl-hq/recipes.pdl` (2 rows). DOC. The 2x2 vs 3x3 + bench rule was "not checked yet" there; it IS checked in the lab book's `mcl_op` (OBS: `mcl_bench.pal` 49), not yet in mcl-hq.
+- [ ] Port the bench / furnace / bed / burst rules from the lab book into `mcl-hq` (needs the quarantine decision). NONE.
+- [ ] Biome / height / trees / ore / sea-level water volume generation, new chunks when the player walks off the loaded set. NONE.
+- [ ] Redstone, mobs beyond the creeper, a second z world: out of this slice.
+
+## F. GTA style, vehicles, space (`gta-hq`, `rpg-space`, `rpg-dust`)
+
+- [x] rpg-space / rpg-dust playable with life layer, ambient asteroids, tick cost file; both gates 83 PASS. DOC (2026-10-27 roadmap). Helm flight, collision, mining, remnants: `16.game/RPG-SPACE-*.md`.
+- [ ] gta-hq milestones. DOC: designing.
+- [ ] Ships and vehicles as entities with relative positions; draw vehicle pieces that load but are not drawn. DOC: designing.
+- [ ] "Micro" scenes inside a ship's voxels; deep simulation per entity opt-in. DOC: planned.
+
+## G. AI
+
+- [x] h-ai API chat in the editor: locate session, context file, Groq ask with a tool whitelist, propose, `/apply` `/no`, recompiles event pages from whitelisted nodes. OBS: the pane showed the applied proposal 2026-11-04; first delegated task (Ember says good morning at dawn) done end to end in commit `fb225e512`.
+- [~] Harness as game brain: judge built, **no caller exists**. DOC. `../17.ai/HARNESS-AS-GAME-BRAIN.md`.
+- [ ] Pets drive the same input path as a human, learn with house models and harnesses. DOC: designing.
+- [ ] Promotion of a high-weight step into a concept-bank entry / training example / default plan. DOC: designing. Before touching chat or promotion-ledger code read `ROBOT-CHAT-BLUEPRINT.md` and the latest `2do.md` (an earlier session invented a disconnected mechanism by skipping this).
+- [ ] Describe -> score -> store loop with a rejectable store. DOC: designing (`../17.ai/AI.md`).
+- Standing rule: free models and a local model server only; Ollama calls go to the Mac. Never loop to a rate limit.
+
+## H. Chain, store, economy
+
+- [x] `ev_chain`, `ev_store`, 9 registry commands tested by hand (free `get` only, test chains only, unsigned). DOC.
+- [ ] Money and trust layer, signatures, courts, creator loop. DOC: medium term in `../16.game/ROADMAP-2026-10-27-GAMES-STORE-CHAIN-AI.md`.
+- [ ] Shop slice for the survivor games (B step 6).
+
+## I. Network, social, cross-machine
+
+- [x] Same-machine and two-machine IRC (A above).
+- [ ] General cross-machine networking (`palnet_peer.c` hardcodes 127.0.0.1). DOC: a plan only.
+- [ ] Browser fully Chrome-replaceable (owner directive 2026-10-20). DOC: building (`../08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md`, `NB-JS-ENGINE-ROADMAP.md`).
+- [ ] Windows and macOS (macOS via XQuartz today; Windows thin shims). DOC: planned (`OPEN-ITEMS.md` item 2).
+
+## J. Housekeeping the owner decides
+
+- [ ] `grok` and `main` branches are synced to claude only on request (last sync commit `183048f53`, before this session's later commits).
+- [ ] Python: the baseline in `harness/py_baseline.txt` may only shrink; nothing new was added.
+- [ ] `README.md` has someone else's uncommitted edit (a `21.drive-doc-fix` line); I did not commit it.
+
+---
+
+# Technical spec library (what to read, and what is still unwritten)
+
+Each row: in-house spec (path in this book) | external reference (the URL returned HTTP 200 on 2026-11-04; its content was NOT read) | spec still to write.
+
+| Area | In-house specs | External technical references | Spec still to write |
+|---|---|---|---|
+| CDDA data and rules | `../16.game/RULES-cdda-hq.md`, `../08-roadmap/design-docs/CDDA-DF-SUBAGENT-BUILD-2026-10-12.md`, `../08-roadmap/design-docs/CDDA-HQ-AND-DF-HQ-HANDOFF-2026-10-12.md`, `../16.game/Z-CELL-FORMAT.md`, `../16.game/EARLY-SURVIVOR-AND-COMMON-EVENTS.md` | https://docs.cataclysmdda.org/ , https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/JSON/JSON_INFO.md | A CDDA JSON import map: terrain / furniture / item / recipe ids to our three item ids and tile ids, with the subset we accept and the fields we ignore. Also a `furniture.pdl` drop-table spec (the lab book's smash rows) tied to CDDA `bash` data. |
+| Dwarf Fortress style | `../16.game/RULES-df-hq.md`, same subagent doc and handoff, `../16.game/GAMES-ROADMAP.md` D1-D5 | https://dwarffortresswiki.org/index.php/Raw_file , https://dwarffortresswiki.org/index.php/Fluid | Job and designation row format; the per-tick path budget; the save shape `meta/map/items/units`; a fluid model note (our flow is 1 volume per call, sum conserved; DF's pressure model is out of scope and should be said so). |
+| Minecraft style | `../16.game/RULES-mcl-hq.md`, `../16.game/HANDOFF-2026-10-28-MCL-BOOK-TO-GROK.md`, `../16.game/GROK-HANDOFF-MINECRAFT-MODES-AND-CIVILIZATIONS-REPORT.md` | https://minecraft.wiki/w/Crafting , https://minecraft.wiki/w/Explosion , https://minecraft.wiki/w/Bed | A chunk and biome generation spec (seeded, file output, byte-identical, same gate as `gen_map_op`); a mob night-spawn page spec (clock wakes a mob page; the creeper page calls `burst` once). |
+| Engine, z, events | `../16.game/Z-CELL-FORMAT.md`, `../16.game/S1-EVENT-LEDGER.md`, `../16.game/GAME-MECHANICS-SPRINT.md`, `../16.game/EVENT-VERB-PAGES-DESIGN.md`, `../16.game/PETSLIKE-FRAMEWORK-PLAN.md` | (house-specific) | `todo:walk / dig / build / craft` bodies for the S1 ledger (today they return `todo:<verb>`); how the lab-book ops become ledger verbs without a second inventory writer. |
+| AI side | `../17.ai/AI.md`, `../17.ai/HARNESS-AS-GAME-BRAIN.md`, `../17.ai/AI-BACKENDS-DISAMBIGUATION.md`, `../17.ai/API-REGISTRY-AND-CAPS.md`, `../08-roadmap/design-docs/H-AI-LAB-DESIGN.md`, `../16.game/HANDOFF-2026-10-27-AI-SIDE-COMPANION.md`, `../16.game/AI-SIDE-ANSWERS-BLOCK-A-2026-10-28.md` | Voyager (skill library from a game loop): https://arxiv.org/abs/2305.16291 ; Generative Agents (memory + planning for simulated actors): https://arxiv.org/abs/2304.03442 | A pet-caller interface spec: what an actor may propose to the harness, what the judge scores, how a weight change is recorded and promoted. The harness judge exists; no caller does. |
+| Chain, store, economy | `../16.game/CHAIN-MASTER-BANK-FED-AND-CONTRACTS-DESIGN-2026-10-28.md`, `../08-roadmap/design-docs/PAL-CHAIN-MULTICHAIN-ESCROW-FAUCET-DESIGN.md`, `../16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md`, `../16.game/WALLET-CONVENTIONS-AND-OPEN-CALLS-2026-11-02.md`, `../16.game/PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md` | (house-specific) | The shop slice: the three-id mapping table (cdda / df / mcl), price rows, atomic trade rule and conservation per id (the ledger already enforces atomic trades). |
+| Network and chat | `../08-roadmap/design-docs/IRC-FORUM-CHAIN-HQ-WINDOWS.md`, `../08-roadmap/design-docs/HAI-ROBOTS-PHONES-SERVER-DESIGN.md`, `../08-roadmap/design-docs/HARNECIENT-H-AI-RELAY.md` | https://modern.ircdocs.horse/ , https://www.rfc-editor.org/rfc/rfc2812 | A cross-machine peer spec (replace the hardcoded 127.0.0.1 in `palnet_peer.c`, discovery, auth) and a rate / abuse spec for pets speaking on a public room (the guard's caps are the start). |
+| Harness and proof | `harness/README.md` (in the house), `../06-testing/HARNESS-AUTHORING-GUIDE.md`, `../06-testing/GAME-PLAYTHROUGH-HARNESSES.md`, `../10-user-docs/PRESENTATION-VIDEO-PIPELINE.md` | (house-specific) | A one-page "negative test" recipe (mutation run: change an expectation, the case must fail) so every new case carries one. |
+
+Missing-spec rule: when a row above says "still to write", write it BEFORE building the feature, and put the spec path in the checklist row.
