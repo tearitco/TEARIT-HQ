@@ -1547,11 +1547,27 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
 
 /* ---------- event runner: the clock daemon calls  <op>.+x <pkg> <root>  when a time.pdl event fires ---------- */
 /* what a clock event does (the verbs "phase <name>" and "day_tick" call it too: the event pages' <op>_verb command runs them) */
+/* 2026-11-04 pets talk on the GAME clock (owner: the player controls the clock/turns; no wall-clock timer). time.pdl row `AT | pet_say | 00:00 | every:30min` makes the clock fire common:pet_say; this runs ops/+x/pet_net_say.+x
+ * (which picks a line from the pet's own state and posts it ONLY through the pet_post guard) for up to PER_TICK pets per firing, round-robin over the pets that are NOT the controlled one (state/active.txt). OPT-IN: nothing happens unless
+ * the app has both net_say.pdl and ops/+x/pet_net_say.+x (so other skins are untouched). Clock paused = no firing = silence. Rules file rows: `ROOM | <room>` (default lobby), `PER_TICK | <n>` (default 2). Cost: one short fork per speaking pet. */
+static void net_say_all(void) {
+    char rp[PATH_MAX], op[PATH_MAX], rb[8192]; snprintf(rp, sizeof rp, "%s/net_say.pdl", APP); snprintf(op, sizeof op, "%s/ops/+x/pet_net_say.+x", APP); if (!fexists(rp) || !fexists(op)) return;
+    int per = 2; read_file(rp, rb, sizeof rb); char room[96] = "lobby"; { char *sv = NULL; for (char *l = strtok_r(rb, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { char *b = strchr(l, '|'); if (!b) continue; char *v = b + 1; while (*v == ' ') v++; if (!strncmp(l, "PER_TICK", 8)) per = atoi(v); else if (!strncmp(l, "ROOM", 4)) { snprintf(room, sizeof room, "%s", v); room[strcspn(room, " \r\n")] = 0; } } }
+    if (per < 1) per = 1; if (per > 6) per = 6;
+    char ap[PATH_MAX], ab[64] = "", act[48] = ""; snprintf(ap, sizeof ap, "%s/active.txt", ST); if (read_file(ap, ab, sizeof ab) > 0) snprintf(act, sizeof act, "%.47s", ab), act[strcspn(act, " \r\n")] = 0;
+    static char ids[40][48]; int n = 0; DIR *d = opendir(ST); if (!d) return; struct dirent *e;
+    while ((e = readdir(d)) && n < 40) { size_t L = strlen(e->d_name); if (strncmp(e->d_name, "pet_", 4) || L < 9 || strcmp(e->d_name + L - 4, ".txt")) continue; char id[48]; snprintf(id, sizeof id, "%.*s", (int)(L - 8), e->d_name + 4); int ok = id[0] != 0; for (char *c = id; *c; c++) if (!(isalnum((unsigned char)*c) || *c == '_')) ok = 0; if (!ok || !strcmp(id, act)) continue; snprintf(ids[n++], 48, "%s", id); }
+    closedir(d); if (!n) return; for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) if (strcmp(ids[i], ids[j]) > 0) { char t[48]; memcpy(t, ids[i], 48); memcpy(ids[i], ids[j], 48); memcpy(ids[j], t, 48); }
+    char tp[PATH_MAX], tb[16] = ""; snprintf(tp, sizeof tp, "%s/net_say_turn.txt", ST); int start = read_file(tp, tb, sizeof tb) > 0 ? atoi(tb) : 0; if (start < 0 || start >= n) start = 0;
+    for (int k = 0; k < per && k < n; k++) { const char *id = ids[(start + k) % n]; pid_t pid = fork(); if (pid == 0) { setenv("PET_SAY_APP", APP, 1); execl(op, op, HOUSE, id, room, (char *)NULL); _exit(127); } if (pid > 0) { int stt; waitpid(pid, &stt, 0); } }
+    char nb[16]; snprintf(nb, sizeof nb, "%d\n", (start + per) % n); write_if_changed(tp, nb, strlen(nb));
+}
 static void clock_event(const char *ev) {
     char b[80];
     if (!strncmp(ev, "phase_", 6)) ev += 6;      /* "phase_night" or "night" */
     if (!strcmp(ev, "dawn") || !strcmp(ev, "day") || !strcmp(ev, "dusk") || !strcmp(ev, "night")) { snprintf(b, sizeof b, "phase=%s\n", ev); char p[PATH_MAX]; spath(p, "daylight.txt"); write_if_changed(p, b, strlen(b)); }
     else if (!strcmp(ev, "day_tick")) { snprintf(b, sizeof b, "DAY|%ld", (long)time(NULL)); append_line("events.txt", b); }
+    else if (!strcmp(ev, "pet_say")) net_say_all();
 }
 /* The clock fires "common:<event>". The event is a real events-hq page in <app>/events/<event>/ (trigger "clock"), played by events-hq's play_event.sh
  * (event.pal -> cmd_1.sh -> the registered <op>_verb command -> this binary's verb). No page = the built-in behaviour above, so a missing events-hq never stops the clock. */

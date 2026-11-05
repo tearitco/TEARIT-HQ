@@ -30,11 +30,12 @@ static void fill(char *out, size_t cap, const char *tpl, const char *pet) {
 }
 int main(int argc, char **argv) {
     if (argc != 4) { fprintf(stderr, "usage: pet_net_say <house_root> <pet_id> <room>\n"); return 2; }
-    const char *house = argv[1], *pet = argv[2], *room = argv[3]; const char *e = getenv("PET_SAY_APP"); if (e && e[0]) snprintf(APP, sizeof APP, "%s", e); else snprintf(APP, sizeof APP, "%s/@.apps/rpg-edit-hq", house);
+    const char *house = argv[1], *pet = argv[2]; char roomb[96]; snprintf(roomb, sizeof roomb, "%s", argv[3]); const char *room = roomb; const char *e = getenv("PET_SAY_APP"); if (e && e[0]) snprintf(APP, sizeof APP, "%s", e); else snprintf(APP, sizeof APP, "%s/@.apps/rpg-edit-hq", house);
     char p[PATH_MAX]; snprintf(p, sizeof p, "%s/state/pet_%s.txt", APP, pet); kvfile(p, NULL); snprintf(p, sizeof p, "%s/state/daylight.txt", APP); kvfile(p, "phase");
     { snprintf(p, sizeof p, "%s/state/lamps_on.txt", APP); FILE *f = fopen(p, "r"); setf("lamps", "0"); if (f) { char b[16]; if (fgets(b, sizeof b, f)) { b[strcspn(b, "\r\n")] = 0; setf("lamps", b); } fclose(f); } }
     snprintf(p, sizeof p, "%s/state/net_say_last_%s.txt", APP, pet); char last[400] = ""; { FILE *f = fopen(p, "r"); if (f) { if (fgets(last, sizeof last, f)) last[strcspn(last, "\r\n")] = 0; fclose(f); } }
     char rp[PATH_MAX]; snprintf(rp, sizeof rp, "%s/net_say.pdl", APP); FILE *rf = fopen(rp, "r"); if (!rf) { fprintf(stderr, "no rules: %s\n", rp); return 2; }
+    if (!strcmp(room, "-")) { snprintf(roomb, sizeof roomb, "lobby"); char l2[300]; while (fgets(l2, sizeof l2, rf)) if (!strncmp(l2, "ROOM", 4)) { char *b = strchr(l2, '|'); if (b) { b++; while (*b == ' ') b++; b[strcspn(b, " \r\n")] = 0; if (*b) snprintf(roomb, sizeof roomb, "%s", b); } } rewind(rf); }      /* room "-" = the ROOM row of the rules file */
     char ln[600], text[400] = ""; int found = 0;
     while (!found && fgets(ln, sizeof ln, rf)) { if (strncmp(ln, "SAY", 3)) continue; ln[strcspn(ln, "\r\n")] = 0; char *a = strchr(ln, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue; *b = 0; char cond[256]; snprintf(cond, sizeof cond, "%s", a + 1);
         { char *s = cond; while (*s == ' ') s++; memmove(cond, s, strlen(s) + 1); } if (cond[0] && !cond_ok(cond)) continue;

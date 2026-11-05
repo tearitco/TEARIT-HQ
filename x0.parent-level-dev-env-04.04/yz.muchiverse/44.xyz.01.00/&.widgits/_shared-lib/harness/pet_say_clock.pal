@@ -1,0 +1,4 @@
+# pet_say_clock.pal - the game clock fires common:pet_say: pets speak round-robin, never the controlled one, only through the guard. See cases/pet_say_clock.pdl
+exec ./ops/+x/harness_case_op.+x cases/pet_say_clock.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/pet_say_clock.pdl
+halt

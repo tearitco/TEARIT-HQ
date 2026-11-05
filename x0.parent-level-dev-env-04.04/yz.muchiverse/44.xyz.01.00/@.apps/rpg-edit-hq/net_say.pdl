@@ -2,6 +2,10 @@ SECTION | KEY | VALUE
 ----------------------------------------
 # net_say.pdl - what a pet says on the IRC network, chosen from its own state (ops/pet_net_say.c). First matching row whose text is not the pet's last line wins; no match = quiet. Edit, no rebuild.
 # SAY | <cond> | <text>      cond = comma-joined key=value / key>n / key<n over: room x y steps phase lamps. Text may use {pet} {room} {phase} {x} {y}.
+# ROOM | <room>      where the pets talk when the game clock fires common:pet_say (a dedicated room, not the humans' lobby)
+# PER_TICK | <n>     how many pets speak per firing (round-robin, never the controlled one; 1..6)
+ROOM | pets
+PER_TICK | 2
 SAY | phase=dusk,lamps=1 | the lamps are on in the {room}, it is dusk
 SAY | phase=night,lamps=0 | it is night in the {room} and the lamps are off
 SAY | phase=dawn | good morning from the {room}
