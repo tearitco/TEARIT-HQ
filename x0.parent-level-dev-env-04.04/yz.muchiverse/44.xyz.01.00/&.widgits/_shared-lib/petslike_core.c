@@ -151,14 +151,19 @@ static int fexists(const char *p) { struct stat s; return stat(p, &s) == 0; }
 static int lshop_on(char *book, size_t cap, char *op, size_t opcap) { char rp[PATH_MAX]; snprintf(book, cap, "%s/books/shop", APP); snprintf(rp, PATH_MAX, "%s/RELEASE", book); snprintf(op, opcap, "%s/ops/+x/shop_op.+x", APP); return fexists(rp) && fexists(op); }
 static int lshop_rows(char keys[][48], int bp[], int sp[], int max) { char book[PATH_MAX], op[PATH_MAX]; if (!lshop_on(book, sizeof book, op, sizeof op)) return 0; char p[PATH_MAX], ln[200]; snprintf(p, sizeof p, "%s/shop.pdl", book); FILE *f = fopen(p, "r"); if (!f) return 0; int n = 0;
     while (n < max && fgets(ln, sizeof ln, f)) { if (strncmp(ln, "PRICE|", 6)) continue; char it[48]; int b = 0, sv = 0; if (sscanf(ln + 6, "%47[^|]|%d|%d", it, &b, &sv) == 3) { snprintf(keys[n], 48, "%s", it); bp[n] = b; sp[n] = sv; n++; } } fclose(f); return n; }
+/* the player's coin count for the Coin buy tab label: cached in <app>/state/lshop_coins.txt (read each refresh = free; rewritten after every lshop verb, and once when the file is missing). */
+static long lshop_refresh_coins(const char *book, const char *op) { int pf[2]; if (pipe(pf) != 0) return -1; pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { dup2(pf[1], 1); close(pf[0]); execl(op, op, book, "wallet", "player", (char *)NULL); _exit(127); }
+    close(pf[1]); char out[600]; size_t got = 0; ssize_t r; while (got + 1 < sizeof out && (r = read(pf[0], out + got, sizeof out - 1 - got)) > 0) got += (size_t)r; out[got] = 0; close(pf[0]); int st; waitpid(pid, &st, 0);
+    long n = 0; char *q = strstr(out, "coin.play "); if (q) n = atol(q + 10); char p[PATH_MAX]; snprintf(p, sizeof p, "%s/state/lshop_coins.txt", APP); FILE *f = fopen(p, "w"); if (f) { fprintf(f, "%ld\n", n); fclose(f); } return n; }
+static long lshop_coins(void) { char book[PATH_MAX], op[PATH_MAX]; if (!lshop_on(book, sizeof book, op, sizeof op)) return 0; char p[PATH_MAX]; snprintf(p, sizeof p, "%s/state/lshop_coins.txt", APP); FILE *f = fopen(p, "r"); if (f) { long n = 0; if (fscanf(f, "%ld", &n) == 1) { fclose(f); return n; } fclose(f); } return lshop_refresh_coins(book, op); }
 static void lshop_verb(int argc, char **argv, char *msg, size_t cap) {
     char book[PATH_MAX], op[PATH_MAX]; if (!lshop_on(book, sizeof book, op, sizeof op)) { snprintf(msg, cap, "ledger shop: not released (no books/shop/RELEASE)"); return; }
     const char *sub = argc >= 2 ? argv[1] : "list"; char n[12] = "1"; if (argc >= 4) snprintf(n, sizeof n, "%d", atoi(argv[3]));
-    const char *av[8]; int k = 0; av[k++] = op; av[k++] = book; if (!strcmp(sub, "list")) av[k++] = "list"; else if ((!strcmp(sub, "buy") || !strcmp(sub, "sell")) && argc >= 3) { av[k++] = sub; av[k++] = "player"; av[k++] = argv[2]; av[k++] = n; } else { snprintf(msg, cap, "usage: lshop list | buy <item> [n] | sell <item> [n]"); return; } av[k] = NULL;
+    const char *av[8]; int k = 0; av[k++] = op; av[k++] = book; if (!strcmp(sub, "list")) av[k++] = "list"; else if (!strcmp(sub, "wallet")) { av[k++] = "wallet"; av[k++] = "player"; } else if ((!strcmp(sub, "buy") || !strcmp(sub, "sell")) && argc >= 3) { av[k++] = sub; av[k++] = "player"; av[k++] = argv[2]; av[k++] = n; } else { snprintf(msg, cap, "usage: lshop list | wallet | buy <item> [n] | sell <item> [n]"); return; } av[k] = NULL;
     int pf[2]; if (pipe(pf) != 0) { snprintf(msg, cap, "ledger shop: pipe failed"); return; } pid_t pid = fork(); if (pid < 0) { snprintf(msg, cap, "ledger shop: fork failed"); return; }
     if (pid == 0) { dup2(pf[1], 1); close(pf[0]); execv(op, (char *const *)av); _exit(127); }
     close(pf[1]); char out[600]; size_t got = 0; ssize_t r; while (got + 1 < sizeof out && (r = read(pf[0], out + got, sizeof out - 1 - got)) > 0) got += (size_t)r; out[got] = 0; close(pf[0]); int st; waitpid(pid, &st, 0);
-    char *first = out; while (*first == '\n') first++; char *nl = strchr(first, '\n'); if (nl) *nl = 0; snprintf(msg, cap, "ledger shop: %s", first[0] ? first : "no answer");
+    char *first = out; while (*first == '\n') first++; char *nl = strchr(first, '\n'); if (nl) *nl = 0; snprintf(msg, cap, "ledger shop: %s", first[0] ? first : "no answer"); if (strcmp(sub, "list")) lshop_refresh_coins(book, op);
 }
 static int is_dir(const char *p) { struct stat s; return stat(p, &s) == 0 && S_ISDIR(s.st_mode); }
 /* SHELL SAFETY (owner 2026-10-26: "make sure theres nothing unsafe in spaceboard code"): every system() / popen() command line in the skins wraps its arguments in single quotes, so an argument that holds a ' (or a newline or another control character) closes the quote and runs the rest as a shell command. Found and shown with a harmless `touch` through `selev`: the entity context menu passed click arguments straight into the command. 1 = the text is safe to put inside '...'. */
@@ -893,7 +898,7 @@ static void out_all(const char *msg) {
 #include PET_SKIN
 #undef PET_SECTION
     W("n_shop=%d\n", ncat); for (int i = 0; i < ncat; i++) { char own[16] = ""; if (owned[i] > 0) snprintf(own, sizeof own, " x%d", owned[i]); W("shop_%d_label=%s %dc%s\nshop_%d_key=%s\n", i, cat[i].label, cat[i].price, own, i, cat[i].key); }
-    { static char lk[40][48]; static int lb[40], ls[40]; int nl = lshop_rows(lk, lb, ls, 40); W("n_lshop=%d\n", nl); for (int i = 0; i < nl; i++) W("lshop_%d_buy=buy %s %dc\nlshop_%d_sell=sell %s %dc\nlshop_%d_key=%s\n", i, lk[i], lb[i], i, lk[i], ls[i], i, lk[i]); }      /* opt-in: n_lshop=0 when the app has no released shop book */
+    { static char lk[40][48]; static int lb[40], ls[40]; int nl = lshop_rows(lk, lb, ls, 40); W("n_lshop=%d\nlshop_coins=%ld\n", nl, nl ? lshop_coins() : 0L); for (int i = 0; i < nl; i++) W("lshop_%d_buy=buy %s %dc\nlshop_%d_sell=sell %s %dc\nlshop_%d_key=%s\n", i, lk[i], lb[i], i, lk[i], ls[i], i, lk[i]); }      /* opt-in: n_lshop=0 when the app has no released shop book */
 #define PET_SECTION 29
 #include PET_SKIN
 #undef PET_SECTION

@@ -13,8 +13,9 @@
       <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
       <tab id="tb-chat" class="pchq-tb" label="${chat_mode_label} ▾" onclick="ACTIVATE" target_id="tb-chat"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
-      <!-- 2026-11-04: the ledger (coin) shop, the owner's ONE released caller: its own tab because the furniture shop dropdown already fills the screen; hidden unless books/shop/RELEASE exists (n_lshop=0) -->
-      <tab id="tb-lshop" class="pchq-tb" label="Coin shop ▾" onclick="ACTIVATE" target_id="tb-lshop" show="${n_lshop}"/>
+      <!-- 2026-11-04: the ledger (coin) shop, the owner's ONE released caller: two tabs (buy / sell, about 9 rows each) because a dropdown that would run off the screen scrolls, and 16 rows hid the first ones; hidden unless books/shop/RELEASE exists (n_lshop=0) -->
+      <tab id="tb-lbuy" class="pchq-tb" label="Coin buy ${lshop_coins}c ▾" onclick="ACTIVATE" target_id="tb-lbuy" show="${n_lshop}"/>
+      <tab id="tb-lsell" class="pchq-tb" label="Coin sell ▾" onclick="ACTIVATE" target_id="tb-lsell" show="${n_lshop}"/>
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
@@ -45,13 +46,17 @@
       <repeat count="${n_shop}" bind="shop">
         <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire buy ${shop.key}"/>
       </repeat>
-      <item id="lsh-list" class="pchq-menu-row dropdown-child " target_id="tb-lshop" label="ledger shop: my coins and stock" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop list" show="${n_lshop}"/>
-      <repeat count="${n_lshop}" bind="lshop">
-        <item id="lshb${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lshop" label="${lshop.buy}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop buy ${lshop.key}"/>
-        <item id="lshs${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lshop" label="${lshop.sell}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop sell ${lshop.key}"/>
-      </repeat>
       <item id="sh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
-      <item id="lsh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-lshop" label="- cancel -" action="void" show="${n_lshop}"/>
+      <item id="lsh-list" class="pchq-menu-row dropdown-child " target_id="tb-lbuy" label="my wallet" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop wallet"/>
+      <repeat count="${n_lshop}" bind="lshop">
+        <item id="lshb${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lbuy" label="${lshop.buy}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop buy ${lshop.key}"/>
+      </repeat>
+      <item id="lsh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-lbuy" label="- cancel -" action="void"/>
+      <item id="lsh-list2" class="pchq-menu-row dropdown-child " target_id="tb-lsell" label="my wallet" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop wallet"/>
+      <repeat count="${n_lshop}" bind="lshop">
+        <item id="lshs${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lsell" label="${lshop.sell}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop sell ${lshop.key}"/>
+      </repeat>
+      <item id="lsh-cancel2" class="pchq-menu-row dropdown-child quiet" target_id="tb-lsell" label="- cancel -" action="void"/>
       <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire control"/>
       <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle voice"/>
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' reset"/>

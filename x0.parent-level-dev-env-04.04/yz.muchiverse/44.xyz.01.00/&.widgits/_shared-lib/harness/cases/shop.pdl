@@ -36,6 +36,13 @@ EXPECT_OUT | shop\pcoin.play\p108 | the-till-is-up-8
 RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | coin.play
 EXPECT_OUT | 150 | the-coin-total-is-unchanged-by-a-trade
 
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | wallet | hero
+EXPECT_OUT | WALLET hero: | the-wallet-line-names-the-actor
+EXPECT_OUT | coin.play 42 | the-wallet-shows-the-42-coins
+EXPECT_OUT | cdda.rag 2 | and-the-2-rags
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | wallet | nobody
+EXPECT_OUT | empty | NEGATIVE-an-actor-with-nothing-says-empty
+
 CASE    | refusals-change-nothing
 RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance
 CAPTURE | before

@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 /* shop_op - early-survivor step 6, the shop slice (16.game/SHOP-SLICE-SPEC-2026-11-04.md), QUARANTINED in the editor's own book (2026-11-04). Coins are ledger items; every sale is ONE atomic ledger `trade`; this op never edits a count and never mints.
  *   shop_op <book> list                         each priced item: buy, sell, the shop's stock
+ *   shop_op <book> wallet <actor>               what the actor holds (coins and items), one line
  *   shop_op <book> buy  <actor> <item> <n>      actor pays n*buy coins, the shop hands over n items
  *   shop_op <book> sell <actor> <item> <n>      the shop pays n*sell coins, the actor hands over n items
  * There is NO verb that swaps one item id for another: cdda / df / mcl stay three ids; an exchange across ids is two trades through coins. Files: shop.pdl (COIN / SHOPKEEPER / PRICE rows; any sell >= buy is refused), state/shop_events.txt (log, capped 64 KB -> 32 KB).
@@ -45,12 +46,13 @@ static int do_trade(int buying, const char *actor, const char *item, const char 
     char d[200]; snprintf(d, sizeof d, "%s %s %ld x %s for %ld coins", actor, buying ? "bought" : "sold", n, item, coins); logev(d); printf("%s %ld x %s for %ld coins\n", buying ? "BOUGHT" : "SOLD", n, item, coins); return 0;
 }
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: shop_op <book_dir> list | buy|sell <actor> <item> <n>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: shop_op <book_dir> list | wallet <actor> | buy|sell <actor> <item> <n>\n"); return 2; }
     snprintf(BOOK, sizeof BOOK, "%s", argv[1]); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/QUARANTINE", BOOK); { char rl[PATH_MAX], ln[80] = ""; snprintf(rl, sizeof rl, "%s/RELEASE", BOOK); FILE *rf = fopen(rl, "r"); int rel = 0; if (rf) { if (fgets(ln, sizeof ln, rf)) { ln[strcspn(ln, "\r\n")] = 0; rel = !strcmp(ln, "shop_op"); } fclose(rf); } if (access(q, F_OK) != 0 && !rel) { printf("NOT A QUARANTINED BOOK: %s has no QUARANTINE file (and no RELEASE naming shop_op)\n", BOOK); return 4; } }
     setenv("ITEM_LEDGER_CALLER", "shop_op", 1);
     const char *lo = getenv("SHOP_LEDGER_OP"); if (lo && lo[0]) snprintf(LOP, sizeof LOP, "%s", lo); else { char self[PATH_MAX]; ssize_t k = readlink("/proc/self/exe", self, sizeof self - 1); if (k < 0) return 2; self[k] = 0; char *sl = strrchr(self, '/'); if (sl) *sl = 0; snprintf(LOP, sizeof LOP, "%s/item_ledger_op.+x", self); }
     char sd[PATH_MAX]; P(sd, "state"); mkdir(sd, 0755); const char *v = argv[2];
     if (!strcmp(v, "list") && argc == 3) { int rc = load_shop(); if (rc) return rc; printf("SHOP %s, coin %s, till %ld\n", KEEPER, COIN, held(KEEPER, COIN)); for (int i = 0; i < np; i++) printf("%s buy %ld sell %ld stock %ld\n", pr[i].item, pr[i].buy, pr[i].sell, held(KEEPER, pr[i].item)); return 0; }
+    if (!strcmp(v, "wallet") && argc == 4) { char actor[64]; snprintf(actor, sizeof actor, "%s", argv[3]); sanit(actor); char o[4096]; if (ledger(o, sizeof o, "balance", actor, NULL, NULL, NULL, NULL, NULL, NULL) != 0) { printf("REFUSED: ledger: %s\n", o); return 3; } char line[600] = ""; for (char *sv = NULL, *l = strtok_r(o, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { char *x = strchr(l, '|'); if (!x) continue; *x++ = 0; char *y = strchr(x, '|'); if (!y) continue; *y++ = 0; if (strcmp(l, actor)) continue; size_t n = strlen(line); snprintf(line + n, sizeof line - n, "%s%s %s", n ? ", " : "", x, y); } printf("WALLET %s: %s\n", actor, line[0] ? line : "empty"); return 0; }
     if ((!strcmp(v, "buy") || !strcmp(v, "sell")) && argc == 6) { int rc = load_shop(); if (rc) return rc; char actor[64]; snprintf(actor, sizeof actor, "%s", argv[3]); sanit(actor); return do_trade(!strcmp(v, "buy"), actor, argv[4], argv[5]); }
-    fprintf(stderr, "usage: shop_op <book_dir> list | buy|sell <actor> <item> <n>\n"); return 2;
+    fprintf(stderr, "usage: shop_op <book_dir> list | wallet <actor> | buy|sell <actor> <item> <n>\n"); return 2;
 }
