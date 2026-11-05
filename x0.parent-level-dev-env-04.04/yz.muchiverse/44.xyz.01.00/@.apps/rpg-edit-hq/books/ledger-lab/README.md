@@ -13,3 +13,6 @@ Holds the item ledger lab. NOT listed in the editor's book dropdown and NOT read
 - Data: `furniture.pdl`, `needs.pdl`, `itemdata.pdl`; items `cdda.plank cdda.rag cdda.pipe cdda.can cdda.bottle` added next to the three owner ids.
 - `state/` here holds the one hand-read real run (7 ledger rows, `check` OK); the harness `survivor_slice.pal` never touches this folder.
 - Not connected to cdda-hq or to the clock.
+
+## Survivor slice step 2 (2026-11-04)
+- `survivor_op` verbs `read`, `practice`, `recipes`, `craft`; data `books.pdl`, `skills.pdl`, `recipes.pdl`; items `cdda.book_fab cdda.spear cdda.bandage`. Real run as actor `scout` is in `state/` (18 ledger rows, `check` OK). Harness: `survivor_craft.pal` (scratch only).

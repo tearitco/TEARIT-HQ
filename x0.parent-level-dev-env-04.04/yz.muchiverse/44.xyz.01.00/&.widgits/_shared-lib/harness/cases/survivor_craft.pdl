@@ -1,0 +1,147 @@
+# survivor_craft: SCRATCH books only (data copied from the shipped ledger-lab). Items move ONLY through item_ledger_op; every refused craft also checks that NOTHING was burned.
+RESULTS | ../results/survivor_craft.txt
+ENV | LC_ALL | C
+ENV | ITEM_LEDGER_TS | 1700000000
+
+CASE    | setup
+SCRATCH |
+MKDIR | book
+WRITE | book/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/furniture.pdl | $T/book/furniture.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/needs.pdl | $T/book/needs.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/itemdata.pdl | $T/book/itemdata.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/books.pdl | $T/book/books.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/skills.pdl | $T/book/skills.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/recipes.pdl | $T/book/recipes.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | place | bench | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.rag | 1 | gift
+
+CASE    | hidden-recipes
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | recipes | hero
+EXPECT_OUT | RECIPE bandage | a-skill-free-recipe-is-visible
+EXPECT_OUT_LACKS | spear | the-spear-is-hidden-no-fabrication-skill
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | spear
+EXPECT_EXIT | 3 | crafting-a-hidden-recipe-is-refused
+EXPECT_OUT | hidden | and-says-it-is-hidden
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.pipe\p1 | NEGATIVE-the-refused-craft-burned-nothing-the-pipe-is-still-there
+EXPECT_OUT | hero\pcdda.rag\p2 | and-both-rags
+
+CASE    | the-book-raises-only-the-cap
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | read | hero | cdda.book_fab
+EXPECT_EXIT | 3 | reading-a-book-you-do-not-hold-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.book_fab | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | read | hero | cdda.pipe
+EXPECT_EXIT | 3 | an-item-that-is-not-a-book-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | read | hero | cdda.book_fab
+EXPECT_OUT | READ cdda.book_fab: fabrication cap 2 (level 0 unchanged, 60 minutes) | the-cap-is-2-the-level-stays-0
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | status | hero
+EXPECT_OUT | hunger=10 thirst=15 fatigue=5 | reading-took-60-minutes-and-the-needs-rose
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.book_fab\p1 | the-book-is-not-consumed
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | spear
+EXPECT_EXIT | 3 | cap-alone-does-not-unlock-it-level-0-is-below-1
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | recipes | hero
+EXPECT_OUT_LACKS | spear | still-hidden
+
+CASE    | practice-levels-up-to-the-cap-only
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | practice | hero | fabrication | 2
+EXPECT_OUT | level 0 cap 2 xp 2 | two-xp-no-level-yet
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | practice | hero | fabrication
+EXPECT_OUT | level 1 cap 2 xp 0 | the-third-xp-gives-level-1
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | recipes | hero
+EXPECT_OUT | RECIPE spear | now-the-spear-is-visible
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | practice | hero | fabrication | 0
+EXPECT_EXIT | 3 | zero-points-are-refused
+
+CASE    | craft-spends-the-pile
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | spear
+EXPECT_EXIT | 0 | the-spear-is-crafted
+EXPECT_OUT | CRAFTED cdda.spear x1 (30 min | with-its-time
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.spear\p1 | one-spear
+EXPECT_OUT | hero\pcdda.rag\p1 | one-rag-burned-one-left
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | status | hero
+EXPECT_OUT | hunger=15 thirst=22 fatigue=7 | the-30-minutes-cost-needs-too
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | spear
+EXPECT_EXIT | 3 | a-second-spear-without-a-pipe-is-refused
+EXPECT_OUT | nothing burned | and-says-so
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.rag\p1 | NEGATIVE-the-refused-craft-did-not-burn-the-remaining-rag
+
+CASE    | bandage-needs-no-skill
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | bandage
+EXPECT_OUT | CRAFTED cdda.bandage x1 (10 min | the-skill-free-recipe-works
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | bandage
+EXPECT_EXIT | 3 | and-with-no-rag-left-it-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | craft | hero | nosuch
+EXPECT_EXIT | 3 | an-unknown-recipe-is-refused
+
+CASE    | level-stops-at-the-cap
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book | practice | hero | fabrication | 20
+EXPECT_OUT | level 2 cap 2 xp 18 | the-level-stops-at-the-cap-and-xp-keeps-counting
+
+CASE    | conservation-and-tamper
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-whole-play-passes-the-ledger-check
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.rag
+EXPECT_OUT_IS | 0 | rag-2-minted-2-burned
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.spear
+EXPECT_OUT_IS | 1 | exactly-one-spear-exists
+RUN | /usr/bin/sed | -i | s/\pMINT\p-\phero\pcdda.spear\p1\pcraft/\pMINT\p-\phero\pcdda.spear\p9\pcraft/ | $T/book/state/ledger.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 1 | NEGATIVE-inflating-the-crafted-output-fails-check
+RUN | /usr/bin/sed | -i | s/\pMINT\p-\phero\pcdda.spear\p9\pcraft/\pMINT\p-\phero\pcdda.spear\p1\pcraft/ | $T/book/state/ledger.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | restoring-it-heals-the-chain
+
+CASE    | deterministic
+MKDIR | book2
+WRITE | book2/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book2/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/furniture.pdl | $T/book2/furniture.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/needs.pdl | $T/book2/needs.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/itemdata.pdl | $T/book2/itemdata.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/books.pdl | $T/book2/books.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/skills.pdl | $T/book2/skills.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/recipes.pdl | $T/book2/recipes.pdl
+MKDIR | book3
+WRITE | book3/QUARANTINE | q\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/items.pdl | $T/book3/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/furniture.pdl | $T/book3/furniture.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/needs.pdl | $T/book3/needs.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/itemdata.pdl | $T/book3/itemdata.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/books.pdl | $T/book3/books.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/skills.pdl | $T/book3/skills.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/recipes.pdl | $T/book3/recipes.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | place | bench | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book2 | mint | hero | cdda.book_fab | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book2 | mint | hero | cdda.rag | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | read | hero | cdda.book_fab
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | practice | hero | fabrication | 3
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | craft | hero | spear
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book2 | craft | hero | bandage
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | place | bench | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | smash | hero | 4 | 5
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book3 | mint | hero | cdda.book_fab | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book3 | mint | hero | cdda.rag | 1 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | read | hero | cdda.book_fab
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | practice | hero | fabrication | 3
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | craft | hero | spear
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/book3 | craft | hero | bandage
+RUN | /usr/bin/cmp | $T/book2/state/ledger.txt | $T/book3/state/ledger.txt
+EXPECT_EXIT | 0 | same-play-gives-a-byte-identical-ledger
+RUN | /usr/bin/cmp | $T/book2/state/skills.txt | $T/book3/state/skills.txt
+EXPECT_EXIT | 0 | and-identical-skills
+RUN | /usr/bin/cmp | $T/book2/state/ledger.txt | $T/book/state/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-different-play-is-not-identical
+CLEAN |

@@ -1,0 +1,5 @@
+# recipes.pdl - one resolver for the CDDA place (no bench). RECIPE|id|output|count|tool|skill|level|minutes|inputs
+#   tool = an item that must be held but is NOT used up ("-" = none). skill "-" or level 0 = always visible. A recipe stays HIDDEN until the actor's skill LEVEL and CAP both reach `level`.
+#   inputs = item:count,item:count. craft burns the inputs (reason craft:<id>), mints the output (source craft), spends the minutes, practises the skill once.
+RECIPE|bandage|cdda.bandage|1|-|-|0|10|cdda.rag:1
+RECIPE|spear|cdda.spear|1|-|fabrication|1|30|cdda.pipe:1,cdda.rag:1

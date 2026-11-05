@@ -1,0 +1,2 @@
+# books.pdl - a book raises the CAP of a skill (never the level). BOOK|item|skill|cap|minutes   reading spends the minutes (needs rise on the game clock's terms). The book is not consumed.
+BOOK|cdda.book_fab|fabrication|2|60

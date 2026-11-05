@@ -1,0 +1,2 @@
+# skills.pdl - XPLEVEL|per|<xp needed per level>. Practice adds xp; a level is gained only while level < the cap a book set. State per actor is state/skills.txt (actor|skill|level|cap|xp).
+XPLEVEL|per|3

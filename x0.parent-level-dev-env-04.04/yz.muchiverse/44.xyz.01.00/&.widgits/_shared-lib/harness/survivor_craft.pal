@@ -1,0 +1,4 @@
+# survivor_craft.pal - early-survivor slice step 2, quarantined: books raise a skill CAP, practice raises the level up to the cap, recipes stay hidden until both clear, craft spends the smash pile. See cases/survivor_craft.pdl
+exec ./ops/+x/harness_case_op.+x cases/survivor_craft.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/survivor_craft.pdl
+halt
