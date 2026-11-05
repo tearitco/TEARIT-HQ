@@ -1,0 +1,15 @@
+layout_runtime_keys.txt - names the board template uses that are NOT in any state file at rest, with who writes them. Used as one more --ui file by layout_check (one name, an equals sign, then its writer, per line; a line without an equals sign is a comment).
+Invoke: layout_check pchq-board.xhtpm --ui ../state/ui.txt --ui ../state/clock_ui.txt --ui state/ui.txt --ui state/sides.txt --ui state/pal.txt --ui state/prefs_ui.txt --ui layout_runtime_keys.txt
+Rule: a name belongs here only if a named writer exists in code and it is conditional or slot-based. A name nobody writes is a bug in the template, not a line here.
+load_label=taskbar manager khtpm_taskbar_manager_main.c, from the cpu_guard load reading; drawn in this window by the shared renderer
+load_ok=same writer, shown while the load is normal
+load_warn=same writer, shown while the load is high
+pal_armed=ops/pal_side.c arm verb, written to pal.txt only while a palette tile is armed as the brush
+book_post_3_label=toolbar.pdl book_menu_post_N slot 3, empty slot is hidden by its show attribute
+book_post_3_act=same slot, its action
+page_post_1_label=toolbar.pdl page_menu_post_N slot 1, empty slot hidden by show
+page_post_1_act=same slot, its action
+page_post_2_label=toolbar.pdl page_menu_post_N slot 2, empty slot hidden by show
+page_post_2_act=same slot, its action
+page_post_3_label=toolbar.pdl page_menu_post_N slot 3, empty slot hidden by show
+page_post_3_act=same slot, its action

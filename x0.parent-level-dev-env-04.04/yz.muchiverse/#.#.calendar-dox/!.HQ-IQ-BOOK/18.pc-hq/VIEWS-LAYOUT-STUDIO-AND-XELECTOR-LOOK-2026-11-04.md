@@ -86,3 +86,7 @@ Live Enter on a pet, attempted again 2026-11-05 (still unproven): with the board
 ## Wrapping popup text: wiring case (2026-11-05)
 
 `overlay_wrap_wiring.pal` (6 PASS) guards the wiring only: the popup rows keep `ov-wraptext` and the renderer keeps the class rule, the 8-row cap, the popup growth and the placement. The row count itself cannot be asserted headless (font metrics; `scroll_row_span` returns 1 without X11), so the behaviour proof stays the live coin-shop popup frame. Harness pitfall found: `EXPECT_HAS` reads only 16 KB of a file.
+
+## layout_check on the editor board: 19 -> 0 (2026-11-05)
+
+Observed: with the five state files plus `state/clock_ui.txt` (it holds `time_label`) the checker reports 18 errors; adding `@.apps/rpg-edit-hq/board/layout_runtime_keys.txt` as one more `--ui` file gives 0 and exit 0. The file is NOT a silencer: every line names a writer found in code (taskbar manager for `load_*`, `ops/pal_side.c` for `pal_armed` while a tile is armed, `toolbar.pdl` slots for the `*_post_N_*` rows, empty slots hidden by `show=`). Rule written in its header: a name nobody writes is a template bug and does not go in. Negative check: a copy of the template with `${nobody_publishes_this}` still reports that name as an error. Not yet wired into a harness case or a pre-commit step; the invocation is in the file header.
