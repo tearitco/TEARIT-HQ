@@ -81,3 +81,13 @@ Read `../18.pc-hq/VIEWS-LAYOUT-STUDIO-AND-XELECTOR-LOOK-2026-11-04.md`: the owne
 5. Housekeeping the owner knows about: `show_pointer=1` left in `#.desktop/hq_ui.pdl`; stray Mac palnet node; `~/phase2-net` on debil and the Mac; three `.hai.bak` files under `events/phase_dawn`; the two modified `play_rpg_*_planet_map.pdl` cases.
 
 Presentation video of all this: `XO/31.Nov/nov-4/8.deck-survivor-slice-and-roadmap/video.mp4` (149.5 s, progress cut from before the coin-shop release and the live clock run).
+
+### 3e. Added 2026-11-05 (later): what changed since 3d
+
+- **Lock to hero BUILT**: verb `lockhero [on|off]` (toggle without argument) + Menu row; it sets the per-piece flags and the daemon refuses pets while locked. `possess_enter.pal` 21 PASS. The editor window needs a relaunch to show the Menu row.
+- **Daemon half of Enter PROVEN** in a scratch house: `possess_enter_daemon.pal` 4 PASS (mutation-tested). Still not shown live: a frame of Enter on a pet reached by arrow keys (xelector stopped one cell short of Ember twice, cause not found). Explanation for hand-placed xelectors: `follow_pchq` pins it to the controlled character.
+- **layout_check on the editor board = 0 errors** with `board/layout_runtime_keys.txt` (every line names a writer); harness `layout_check_editor.pal` 5 PASS, a template for other boards.
+- **Overlay wrap**: `overlay_wrap_wiring.pal` 6 PASS guards the wiring only; behaviour proof stays the live frame.
+- **3D engine absence explained**: its own idle timeout (by design), not a crash or a guard kill. Side fix: `.loop_guard.log` had no cap (2774 lines in 9 h); now capped, `loop_guard_logcap.pal` 5 PASS.
+- **Entity menus**: the owner reported Enter doing nothing in the older `menu.chtpm` windows (book-stack) vs newer overlay menus; could not reproduce (relay Enter works for every variant; whether a new menu window gets X focus varied per open, even for the same menu); owner later said it works. Difference to know: overlay menus focus their first item by rule (`ov-focus`, `kh_ov_finish`), the old windows rely on grab timing. No code changed.
+- Harness traps recorded in the README: `EXPECT_HAS` reads 16 KB only; `|` inside `sh -c` splits a row; `int`/`running` are switch files.
