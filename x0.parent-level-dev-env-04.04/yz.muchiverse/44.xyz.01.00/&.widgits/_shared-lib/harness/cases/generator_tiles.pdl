@@ -1,0 +1,52 @@
+# generator-hq: five ground sheets. Scratch only. Same catalog twice is byte-identical. A flipped seed is not. A short palette is refused. Audit checks each sheet: green grass, blue water, a darker wall top, and roles that are not the same color.
+RESULTS | ../results/generator_tiles.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+WRITE | outside.gen | GEN \p sheet \p Outside\nGEN \p seed \p 20261105\nGEN \p cell \p 16\nGEN \p roles \p grass,dirt,path,water,water_edge,wall,door,tree,roof\nGEN \p palette \p #3a6b32,#6b4a2a,#c2b48a,#2a5a8a,#245070,#4a4a4a,#8a3a2a,#1e3a16,#6a5a4a\nGEN \p style \p flat\nGEN \p outline \p 1\n
+WRITE | bad.gen | GEN \p sheet \p Outside\nGEN \p seed \p 20261105\nGEN \p cell \p 16\nGEN \p roles \p grass,dirt\nGEN \p palette \p #3a6b32\nGEN \p style \p flat\nGEN \p outline \p 1\n
+WRITE | flip.gen | GEN \p sheet \p Outside\nGEN \p seed \p 20261106\nGEN \p cell \p 16\nGEN \p roles \p grass,dirt,path,water,water_edge,wall,door,tree,roof\nGEN \p palette \p #3a6b32,#6b4a2a,#c2b48a,#2a5a8a,#245070,#4a4a4a,#8a3a2a,#1e3a16,#6a5a4a\nGEN \p style \p flat\nGEN \p outline \p 1\n
+
+CASE    | five-sheets
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | catalog | $T/a
+EXPECT_EXIT | 0 | catalog-writes
+EXPECT_OUT | WROTE Outside roles=9 cell=16 seed=20261105 | outside
+EXPECT_OUT | WROTE SF_Outside roles=9 cell=16 seed=20261105 | sf-outside
+EXPECT_OUT | WROTE Inside roles=4 cell=16 seed=20261105 | inside
+EXPECT_OUT | WROTE Dungeon roles=5 cell=16 seed=20261105 | dungeon
+EXPECT_OUT | WROTE World roles=5 cell=16 seed=20261105 | world
+EXPECT_FILE | a/Outside/20261105/grass/sprite.csv | outside-grass-csv
+EXPECT_FILE | a/Outside/20261105/grass/tile.png | outside-grass-png
+EXPECT_FILE | a/SF_Outside/20261105/roof/sprite.csv | sf-roof
+EXPECT_FILE | a/Inside/20261105/window/sprite.csv | inside-window
+EXPECT_FILE | a/Dungeon/20261105/stairs/sprite.csv | dungeon-stairs
+EXPECT_FILE | a/World/20261105/forest/sprite.csv | world-forest
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | catalog | $T/b
+RUN | /usr/bin/cmp | -s | $T/a/Outside/20261105/grass/sprite.csv | $T/b/Outside/20261105/grass/sprite.csv
+EXPECT_EXIT | 0 | outside-grass-byte-identical
+RUN | /usr/bin/cmp | -s | $T/a/World/20261105/mountain/sprite.csv | $T/b/World/20261105/mountain/sprite.csv
+EXPECT_EXIT | 0 | world-mountain-byte-identical
+RUN | /usr/bin/cmp | -s | $T/a/Outside/20261105/grass/sprite.csv | $T/a/SF_Outside/20261105/grass/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-second-palette-is-not-a-copy-of-the-first
+
+CASE    | seed-and-refusal
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | run | $T/flip.gen | $T/flip
+EXPECT_EXIT | 0 | flipped-seed-writes
+RUN | /usr/bin/cmp | -s | $T/a/Outside/20261105/grass/sprite.csv | $T/flip/Outside/20261106/grass/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-a-different-seed-is-detected
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | run | $T/bad.gen | $T/bad
+EXPECT_EXIT | 3 | a-short-palette-is-refused
+EXPECT_NOFILE | bad/Outside/20261105/grass/sprite.csv | refused-run-writes-nothing
+
+CASE    | audit-each-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | audit | $T/a
+EXPECT_EXIT | 0 | audit-passes
+EXPECT_OUT | AUDIT Outside roles=9 cell=16 ok | outside-quality
+EXPECT_OUT | AUDIT SF_Outside roles=9 cell=16 ok | sf-quality
+EXPECT_OUT | AUDIT Inside roles=4 cell=16 ok | inside-quality
+EXPECT_OUT | AUDIT Dungeon roles=5 cell=16 ok | dungeon-quality
+EXPECT_OUT | AUDIT World roles=5 cell=16 ok | world-quality
+WRITE | a/Outside/20261105/grass/sprite.csv | # resolution=16\nr,g,b,a\n0,0,0,255\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | audit | $T/a
+EXPECT_EXIT | 4 | NEGATIVE-a-blank-grass-tile-fails-the-quality-check

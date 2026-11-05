@@ -1,0 +1,4 @@
+# generator_tiles.pal - five ground sheets, deterministic, quality-checked. See cases/generator_tiles.pdl
+exec ./ops/+x/harness_case_op.+x cases/generator_tiles.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/generator_tiles.pdl
+halt
