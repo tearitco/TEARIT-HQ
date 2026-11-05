@@ -50,6 +50,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <dirent.h>
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -196,6 +197,28 @@ static int piece_pdl_flag(const char *host_root, const char *entity_id,
     }
     fclose(f);
     return r;
+}
+/* The entity standing on cell (x,y): any pieces/<id>/state.txt with entity_type and that pos_x/pos_y (owner 2026-11-05: ALL possession is controlling, there is no special hero; before this Enter could only possess hero_01). hero_01 is tried first so a cell shared with it behaves as before; the xelector and the world piece are never targets. Returns 1 and fills out. */
+static int entity_at_cell(const char *root, int x, int y, char *out, size_t osz) {
+    char dir[PATH_BUF]; snprintf(dir, sizeof(dir), "%s/pieces", root);
+    const char *first = "hero_01"; char best[64] = "";
+    for (int pass = 0; pass < 2 && !best[0]; pass++) {
+        DIR *d = pass ? opendir(dir) : NULL; struct dirent *de;
+        for (int i = 0; ; i++) {
+            const char *id;
+            if (pass == 0) { if (i) break; id = first; } else { if (!d || !(de = readdir(d))) break; id = de->d_name; }
+#ifdef BV_MENU_HERO_ONLY
+            if (strcmp(id, "hero_01") != 0) continue;      /* negative fixture for the harness (pieces_2d_parity): the old hero-only behaviour */
+#endif
+            if (id[0] == '.' || !strncmp(id, "xelector", 8) || !strncmp(id, "world_", 6) || strlen(id) >= sizeof(best)) continue;
+            char sp[PATH_BUF], et[32] = ""; snprintf(sp, sizeof(sp), "%s/%s/state.txt", dir, id);
+            read_kv_str(sp, "entity_type", et, sizeof(et));
+            if (!et[0] || !strcmp(et, "xelector") || !strcmp(et, "world")) continue;
+            if (read_kv_int(sp, "pos_x", -99999) == x && read_kv_int(sp, "pos_y", -99999) == y) { snprintf(best, sizeof(best), "%s", id); break; }
+        }
+        if (d) closedir(d);
+    }
+    if (!best[0]) return 0; snprintf(out, osz, "%s", best); return 1;
 }
 
 /* Forward declaration - has_z_manifest() is defined further down this
@@ -972,13 +995,16 @@ static int handle_one_key(int key) {
 
         if (key == key_possess_commit) {
             /* Enter = possess entity under the xlector. */
-            if (!possessing && xx == hx && xy == hy &&
-                piece_pdl_flag(focused_project_root, "hero_01", "possessable", 1)) {
-                write_kv(xs, "possessed_id", "hero_01");
-                write_kv(xs, "last_possessed_id", "hero_01");
-                write_kv_int(state_path, "selector_x", hx);
-                write_kv_int(state_path, "selector_y", hy);
-                write_kv_int(state_path, "current_z", hz);
+            char tid[64] = "";
+            if (!possessing && entity_at_cell(focused_project_root, xx, xy, tid, sizeof(tid)) &&
+                piece_pdl_flag(focused_project_root, tid, "possessable", 1)) {
+                char ts[PATH_BUF]; snprintf(ts, sizeof(ts), "%s/pieces/%s/state.txt", focused_project_root, tid);
+                int tx = read_kv_int(ts, "pos_x", xx), ty = read_kv_int(ts, "pos_y", xy), tz = read_kv_int(ts, "pos_z", hz);
+                write_kv(xs, "possessed_id", tid);
+                write_kv(xs, "last_possessed_id", tid);
+                write_kv_int(state_path, "selector_x", tx);
+                write_kv_int(state_path, "selector_y", ty);
+                write_kv_int(state_path, "current_z", tz);
                 bump_screen_changed(project_root);
             }
             return 0;
@@ -991,6 +1017,10 @@ static int handle_one_key(int key) {
             }
             write_kv(xs, "last_possessed_id", possessed_id);
             write_kv(xs, "possessed_id", "none");
+            {   /* step out onto the POSSESSED entity's own cell (was the hero's cell: wrong once any entity can be possessed) */
+                char ps[PATH_BUF]; snprintf(ps, sizeof(ps), "%s/pieces/%s/state.txt", focused_project_root, possessed_id);
+                hx = read_kv_int(ps, "pos_x", hx); hy = read_kv_int(ps, "pos_y", hy); hz = read_kv_int(ps, "pos_z", hz);
+            }
             /* step the xlector out onto the entity's own current cell */
             write_kv_int(xs, "pos_x", hx);
             write_kv_int(xs, "pos_y", hy);

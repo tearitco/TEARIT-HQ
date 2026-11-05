@@ -7,6 +7,7 @@ SCRATCH |
 MKDIR | g1
 MKDIR | g2
 MKDIR | g3
+MKDIR | g4
 RUN | gcc | -O2 | -w | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_real | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
 EXPECT_EXIT | 0 | renderer-builds-from-source
 RUN | gcc | -O2 | -w | -DBV_2D_NO_PIECES | -I/usr/include/freetype2 | -I/usr/include/libpng16 | -o | $T/r2d_nopieces | $HOUSE/&.widgits/board-viewer/ops/bv_render_2d.c | $HOUSE/&.widgits/board-viewer/ops/bv_cjk_glyph.c | -lfreetype | -lpng16 | -lz | -lm
@@ -17,6 +18,8 @@ RUN | gcc | -O2 | -w | -I/usr/include/libpng16 | -o | $T/ptest | $HOUSE/&.widgit
 EXPECT_EXIT | 0 | test-program-builds
 RUN | gcc | -O2 | -w | -o | $T/menu_input | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
 EXPECT_EXIT | 0 | input-op-builds-from-source
+RUN | gcc | -O2 | -w | -DBV_MENU_HERO_ONLY | -o | $T/menu_input_hero | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
+EXPECT_EXIT | 0 | negative-input-op-hero-only-builds
 CASE    | positive-real-renderer
 ENV | BV2D_INPUT_BIN | $T/menu_input
 ENV | BV2D_BIN | $T/r2d_real
@@ -51,6 +54,13 @@ EXPECT_OUT | ok  : xelector look: CONTROLLING is thinner than FREE (fewer border
 EXPECT_OUT | ok  : xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults) | xelector-look-colour-and-thickness-are-data
 EXPECT_OUT | ok  : xelector look: a malformed view.pdl row falls back to the default look | xelector-look-a-malformed-row-falls-back-to-the-default
 EXPECT_OUT | ok  : xelector look: possessed_id=none (what the house state file writes) is FREE, not controlling | xelector-look-possessed-id-none-is-free
+EXPECT_OUT | ok  : possession: Enter possesses a NON-hero entity on the xelector's cell (pet_1) | possession-0
+EXPECT_OUT | ok  : possession: last_possessed_id records it | possession-1
+EXPECT_OUT | ok  : possession: 9 releases and the xelector steps out onto the POSSESSED entity's cell (3), not the hero's (6) | possession-2
+EXPECT_OUT | ok  : possession: piece.pdl possessable=false stops Enter | possession-3
+EXPECT_OUT | ok  : possession: piece.pdl de_possessible=true locks the entity in (9 does nothing) | possession-4
+EXPECT_OUT | ok  : possession: an empty cell possesses nothing | possession-5
+EXPECT_OUT | ok  : possession: hero_01 can still be possessed like any entity | possession-6
 EXPECT_OUT | ok  : arrows: the xelector moves inside the view and the CAMERA DOES NOT MOVE | arrows-the-xelector-moves-inside-the-view-and-the-camera-does-not-move
 EXPECT_OUT | ok  : arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible | arrows-past-the-edge-the-camera-pans-scrolls-by-the-least-amount-and-t
 EXPECT_OUT | ok  : xelector: still visible far past the page (the camera panned after it) | xelector-still-visible-far-past-the-page-the-camera-panned-after-it
@@ -81,4 +91,11 @@ RUN | $T/ptest | $T/g3
 EXPECT_EXIT | 1 | the-test-fails-on-a-renderer-that-ignores-possession
 EXPECT_OUT | FAIL: xelector look: CONTROLLING is the lighter green and none of the free colour | fails-without-the-look-the-controlling-colour-is-missing
 EXPECT_OUT | FAIL: xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults) | fails-without-the-look-the-data-override-has-no-effect
+CASE    | negative-input-op-hero-only
+ENV | BV2D_BIN | $T/r2d_real
+ENV | BV2D_INPUT_BIN | $T/menu_input_hero
+RUN | $T/ptest | $T/g4
+EXPECT_EXIT | 1 | the-test-fails-on-the-old-hero-only-input
+EXPECT_OUT | FAIL: possession: Enter possesses a NON-hero entity on the xelector's cell (pet_1) | fails-hero-only-non-hero-not-possessed
+EXPECT_OUT | FAIL: possession: 9 releases and the xelector steps out onto the POSSESSED entity's cell (3), not the hero's (6) | fails-hero-only-release-cell
 CLEAN |

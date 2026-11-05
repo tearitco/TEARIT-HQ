@@ -56,6 +56,8 @@ static int state_int(const char *key) { char p[800], l[200]; snprintf(p, sizeof 
 static void state_mode(int m) { char b[600]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=%d\nselector_x=3\nselector_y=3\n", dir, m); wr("pieces/system/bv_state.txt", b); }
 static char g_poss[64] = "";      /* possessed_id written into the xelector state (empty = free) */
 static void xel_at(int x, int y) { char b[700], t[200]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=0\nselector_x=%d\nselector_y=%d\nview_2d_zoom=%d\n", dir, x, y, cur_zoom); wr("pieces/system/bv_state.txt", b); snprintf(t, sizeof t, "entity_type=xelector\npos_x=%d\npos_y=%d\npos_z=0\n%s%s%s", x, y, g_poss[0] ? "possessed_id=" : "", g_poss, g_poss[0] ? "\n" : ""); wr("pieces/xelector_01/state.txt", t); }
+static void kv_of(const char *rel, const char *key, char *out, size_t osz) { char p[800], l[200]; out[0] = 0; snprintf(p, sizeof p, "%s/%s", dir, rel); FILE *f = fopen(p, "r"); if (!f) return; size_t kl = strlen(key); while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') { snprintf(out, osz, "%s", l + kl + 1); out[strcspn(out, "\r\n")] = 0; break; } fclose(f); }
+static void ent(const char *id, const char *type, int x, int y) { char rel[200], b[300]; snprintf(rel, sizeof rel, "pieces/%s", id); md(rel); snprintf(rel, sizeof rel, "pieces/%s/state.txt", id); snprintf(b, sizeof b, "entity_type=%s\npos_x=%d\npos_y=%d\npos_z=0\n", type, x, y); wr(rel, b); }
 static int count_rgb(const unsigned char *f, int r, int g, int b) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] == r && p[1] == g && p[2] == b) n++; } return n; }
 static int greens(const unsigned char *f) { int n = 0; for (int i = 0; i < W * H; i++) { const unsigned char *p = f + (size_t)i * 4; if (p[0] < 60 && p[1] > 240 && p[2] > 60 && p[2] < 100) n++; } return n; }
 static int file_int(const char *rel, const char *key) { char p[800], l[200]; snprintf(p, sizeof p, "%s/%s", dir, rel); FILE *f = fopen(p, "r"); if (!f) return -9999; size_t kl = strlen(key); int v = -9999; while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') v = atoi(l + kl + 1); fclose(f); return v; }
@@ -118,6 +120,21 @@ int main(int argc, char **argv) {
       snprintf(g_poss, sizeof g_poss, "none"); minimap_setting(1); xel_at(2, 2); if (render(cur)) return 2;
       check(count_rgb(cur, 40, 255, 80) == fr && count_rgb(cur, 150, 255, 170) == 0, "xelector look: possessed_id=none (what the house state file writes) is FREE, not controlling");
       g_poss[0] = 0; minimap_setting(1); xel_at(2, 2); }
+    /* 2026-11-05 (owner: ALL possession is controlling, there is no special hero): Enter possesses ANY entity on the xelector's cell (it used to work for hero_01 only); piece.pdl possessable=false stops it, de_possessible=true stops the release; release steps out onto the POSSESSED entity's own cell */
+    { char v[64], v2[64]; g_poss[0] = 0; ent("hero_01", "hero", 6, 6); ent("pet_1", "pet", 3, 2); state_mode(0); xel_at(3, 2);
+      if (input_keys("13")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v);
+      check(!strcmp(v, "pet_1"), "possession: Enter possesses a NON-hero entity on the xelector's cell (pet_1)");
+      kv_of("pieces/xelector_01/state.txt", "last_possessed_id", v, sizeof v); check(!strcmp(v, "pet_1"), "possession: last_possessed_id records it");
+      if (input_keys("57")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v); kv_of("pieces/xelector_01/state.txt", "pos_x", v2, sizeof v2);
+      check(!strcmp(v, "none") && !strcmp(v2, "3"), "possession: 9 releases and the xelector steps out onto the POSSESSED entity's cell (3), not the hero's (6)");
+      wr("pieces/pet_1/piece.pdl", "PIECE | possessable | false\n"); g_poss[0] = 0; xel_at(3, 2); if (input_keys("13")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v);
+      check(strcmp(v, "pet_1") != 0, "possession: piece.pdl possessable=false stops Enter");
+      wr("pieces/pet_1/piece.pdl", "PIECE | de_possessible | true\n"); snprintf(g_poss, sizeof g_poss, "pet_1"); xel_at(3, 2); if (input_keys("57")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v);
+      check(!strcmp(v, "pet_1"), "possession: piece.pdl de_possessible=true locks the entity in (9 does nothing)");
+      wr("pieces/pet_1/piece.pdl", "PIECE | note | none\n"); g_poss[0] = 0; xel_at(4, 4); if (input_keys("13")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v);
+      check(strcmp(v, "pet_1") != 0 && strcmp(v, "hero_01") != 0, "possession: an empty cell possesses nothing");
+      g_poss[0] = 0; xel_at(6, 6); if (input_keys("13")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v); check(!strcmp(v, "hero_01"), "possession: hero_01 can still be possessed like any entity");
+      g_poss[0] = 0; xel_at(2, 2); }
     /* the camera keys (w/a/s/d) move the CAMERA and never the xelector; the arrows move the xelector and never the camera */
     nopiece(); piece_at(12, 2); minimap_setting(0); state_mode(0); cam_reset(); zoom(0); xel_at(2, 2); if (render(cur)) return 2; float k0 = cam_x();
     if (input_keys("100 100 100")) return 2; check(cam_x() == k0 + 3.0f, "keys: w/a/s/d (here 'd' x3) move the 2D camera"); check(file_int("pieces/xelector_01/state.txt", "pos_x") == 2 && state_int("selector_x") == 2, "keys: the camera keys did NOT move the xelector");
