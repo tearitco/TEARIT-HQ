@@ -874,7 +874,7 @@ static void out_all(const char *msg) {
 #include PET_SKIN
 #undef PET_SECTION
     { char cc[16]; flag_str("ctl", "pet", cc, sizeof cc); char who[40]; snprintf(who, sizeof who, "on: %s", !strcmp(cc, "player") ? "you" : party[active].name); W("interact_class=%s\ninteract_label=%s\nrp_h1=%s\nrp_h2=%s\ncontrol_label=control: %s\n", in ? "interact-active" : "", in ? who : "off", h1, h2, !strcmp(cc, "player") ? "player" : party[active].name); }
-    W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "GO started" : "STOP stopped", run_on() ? "ph-green" : "ph-red");
+    W("run_on=%d\nrun_label=%s\nrun_cls=%s\n", run_on(), run_on() ? "Player: playing" : "Player: stopped", run_on() ? "ph-green" : "ph-red");      /* 2026-11-04 (owner): the tab is the PLAYER menu; it was labelled "GO started" / "STOP stopped" */
     W("mode_label=%s\nmode_cls=%s\n", rogue_mode() ? "[rogue] live" : "rogue [live]", rogue_mode() ? "ph-green" : "ph-red");
 #define PET_SECTION 28
 #include PET_SKIN

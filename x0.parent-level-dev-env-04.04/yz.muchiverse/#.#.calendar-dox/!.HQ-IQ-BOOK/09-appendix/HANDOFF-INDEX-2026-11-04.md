@@ -47,6 +47,9 @@ Tags: **OBSERVED** = I ran it that day and saw the result. **READ** = opened, no
 - Modified before this session: `harness/cases/play_rpg_{dust,space}_planet_map.pdl`, `%.harnesses/harnecient-fsm/stats_summary.txt`.
 - Owner-pending: `show_pointer=1` in live `#.desktop/hq_ui.pdl` (backup `/tmp/claude-1000/hq_ui.pdl.pre-pointer`); `~/phase2-net` scratch on debil and the Mac; a stray palnet node on the Mac (pid 13406 when seen).
 
+## Player tab label (2026-11-04)
+- The toolbar tab `tb-player` (the Player menu: INT, mode, Play, Stop, blueprintz, Save/Load, Synch) was labelled `GO started` / `STOP stopped`. Now `Player: playing` / `Player: stopped` (one line in `petslike_core.c`, the editor family). OBSERVED live: screenshot shows `Player: playing`; `stop` then `play` flipped the label both ways and was restored. Still say `GO started` in their own writers (separate apps, not changed): `game-dev-hq`, `pet-house`, `pet-trainer`.
+
 ## Modes (owner 2026-11-04, from the code + the owner's words)
 - `In: ON` = official PLAY mode: turn based (each act of the controlled character = `TURN | advance | 5m`), the real-time clock is PAUSED (`clock_sync`: paused when `running` is off or INT is on). The controlled pet is the player and never speaks for itself. `In: OFF` = DEMO mode: the clock runs live at the chosen speed, everyone acts (pets roam), the game can be saved. `play`, `int_on`, `int_off` are event pages that only set the `running`/`int` switches and call `sync`. The owner says play mode differs mainly by the clock resetting / starting at 00:00 unless the game is reset: I could NOT find that reset in the code (clock_day0 is written only at first install), so it is an intended rule, not a built one. NOT observed: a turn-driven (arrow-key) firing of a clock event with In: ON; only `clock advance` (skip time) firings were observed.
 
