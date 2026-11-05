@@ -12,6 +12,9 @@ command runs on.
 - `GAME-MECHANICS-SPRINT.md` — short loops for df-hq, cdda-hq, and
   mcl-hq. Shared event verbs.
 - `EARLY-SURVIVOR-AND-COMMON-EVENTS.md` — smash-for-supplies, books
+- `GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` — stop using RPG
+  Maker sheets one tileset at a time; in-house generator wired to the
+  palettes Generate row. Not built.
   and practice, DF wagon start, MCL bench/bed/creeper, gen_map, and
   the water/lava/rain/fire common events. Technical needs. Not built.
 - `S1-EVENT-LEDGER.md` — the event line that is built.
