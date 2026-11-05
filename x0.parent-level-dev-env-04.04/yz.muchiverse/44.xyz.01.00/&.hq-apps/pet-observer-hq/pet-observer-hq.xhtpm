@@ -1,0 +1,37 @@
+<!-- pet-observer-hq.xhtpm - read-only window: watch pets talk on the IRC rooms + the pet_post guard. Generic renderer path (same trick as irc-chat-hq.xhtpm), zero renderer C.
+     Manager: ops/+x/pet_observer_manager.+x publishes pet_observer_ui.txt. The only actions are the three guard buttons (kill switch, approve, veto), each via ops/obs_action.sh. -->
+<window label="Pet observer  ·  #${cur_room}" class="irc-chat-window database-window" vars="pet_observer_ui.txt">
+  <module src="&.hq-apps/pet-observer-hq/ops/+x/pet_observer_manager.+x"/>
+  <page name="main" class="obs-cols">
+    <sidebar id="sidebar" class="obs-sidebar">
+      <text id="side-hdr" label="Rooms" class="obs-side-hdr"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_rooms}" bind="r">
+          <item id="rm${r.#}" class="obs-room ${r.cls}" label="# ${r.name}" action="'${PKG}/ops/obs_action.sh' 'ROOM:${r.name}'"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="content" class="obs-panel">
+      <text id="status" class="obs-status" label="${status}"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_msgs}" bind="m">
+          <text id="m${m.#}" class="${m.cls}" label="${m.text}"/>
+        </repeat>
+        <text id="empty-hint" class="obs-quiet" label="${empty_hint}" show="${empty_hint}"/>
+      </scrolllist>
+    </panel>
+    <panel id="guard" class="obs-guard">
+      <text id="g-hdr" class="obs-side-hdr" label="Guard (pet_post)"/>
+      <item id="g-kill" class="obs-btn" label="${kill_label}" action="'${PKG}/ops/obs_action.sh' 'KILL'"/>
+      <text id="g-hold" class="obs-status" label="${hold_label}"/>
+      <text id="g-pend" class="obs-status" label="${pend_label}"/>
+      <item id="g-ok" class="obs-btn" label="Approve oldest held line" action="'${PKG}/ops/obs_action.sh' 'APPROVE'"/>
+      <item id="g-no" class="obs-btn" label="Veto oldest held line" action="'${PKG}/ops/obs_action.sh' 'VETO'"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_aud}" bind="a">
+          <text id="a${a.#}" class="${a.cls}" label="${a.text}"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>
