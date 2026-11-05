@@ -1,0 +1,139 @@
+# live_mouse_align: six REAL clicks (xdotool) on the 3D canvas. After each click: (1) the canvas click the window published (<session>/pieces/display/canvas_click.txt) must equal the commanded pixel minus ONE canvas
+# origin, the same for every click of the run (the pointer marker and the published number agree); (2) the engine's pick projected back through the same camera (click_proj.txt: pixel -> ray -> cell -> pixel)
+# must put the click INSIDE the picked cell's projected box (inside=1). LIVE: LIVE_OK=1 or SKIP. Restore: slot 9 is loaded back. (replaces scenarios/mouse_align.txt)
+RESULTS | ../results/live_mouse_align.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | save | 9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /usr/bin/xdotool | windowmap | $win
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq | 90000 | the-board-shows-the-editors-own-book
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | phase | day
+SLEEP | 6000
+
+CASE    | click1
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 640 | 420
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox0 | 640 | - | $cx
+CALC | oy0 | 420 | - | $cy
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt | inside=1 | the-click-is-inside-the-picked-cells-projected-box
+
+CASE    | click2
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 420 | 450
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 420 | - | $cx
+CALC | oy | 450 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-runs-canvas-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-runs-canvas-origin-low
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt | inside=1 | the-click-is-inside-the-picked-cells-projected-box
+
+CASE    | click3
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 820 | 500
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 820 | - | $cx
+CALC | oy | 500 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-runs-canvas-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-runs-canvas-origin-low
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt | inside=1 | the-click-is-inside-the-picked-cells-projected-box
+
+CASE    | click4
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 520 | 600
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 520 | - | $cx
+CALC | oy | 600 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-runs-canvas-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-runs-canvas-origin-low
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt | inside=1 | the-click-is-inside-the-picked-cells-projected-box
+
+CASE    | click5
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 760 | 440
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 760 | - | $cx
+CALC | oy | 440 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-runs-canvas-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-runs-canvas-origin-low
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt | inside=1 | the-click-is-inside-the-picked-cells-projected-box
+
+CASE    | click6
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 300 | 700
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 300 | - | $cx
+CALC | oy | 700 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-runs-canvas-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-runs-canvas-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-runs-canvas-origin-low
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt | inside=1 | the-click-is-inside-the-picked-cells-projected-box
+
+CASE    | restore
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | load | 9
+RUN | /bin/rm | -rf | $HOUSE/@.apps/rpg-edit-hq/state/slots/9
+CLEAN |

@@ -1,0 +1,48 @@
+# live_dropdown_thumb: the book dropdown must hide the sidebar scrollbar thumb behind its rows (fix 2026-11-04). LIVE: it clicks in the real editor window and takes photographs, so it needs LIVE_OK=1 in the
+# environment (the NEEDENV gate = "the owner knows"; unset = SKIP). The game is saved to slot 9 first and loaded back at the end. The editor window must be open on a long tile list (board_ctl recover).
+# Control and negative in one: with the dropdown CLOSED the same detector reports a long run (it CAN see a thumb), so a short run when OPEN is a real result. With the dropdown CLOSED the thumb is a long bright vertical run in the strip; OPEN, the run must be short. (replaces scenarios/dropdown_thumb.txt + present_harness.py)
+RESULTS | ../results/live_dropdown_thumb.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | save | 9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/cat | $HOUSE/@.apps/rpg-edit-hq/board/module_parent.pid
+CAPTURE | wpid
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /usr/bin/xdotool | windowmap | $win
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq | 90000 | the-board-shows-the-editors-own-book
+
+CASE    | closed
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/closed.png
+EXPECT_EXIT | 0 | photograph-taken
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | vrun | $T/closed.png | 184 | 200 | 100 | 545
+CAPTURE | closedrun
+EXPECT_GE | $closedrun | 60 | control-the-thumb-is-visible-with-the-dropdown-closed
+
+CASE    | open
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | tap | 200 | 45
+SLEEP | 3000
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/open.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | vrun | $T/open.png | 184 | 200 | 100 | 545
+CAPTURE | openrun
+EXPECT_LE | $openrun | 30 | no-thumb-shows-through-the-open-dropdown
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | click | 230 | 523
+SLEEP | 3000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | click | 230 | 523
+SLEEP | 3000
+
+CASE    | restore
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | load | 9
+RUN | /bin/rm | -rf | $HOUSE/@.apps/rpg-edit-hq/state/slots/9
+CLEAN |

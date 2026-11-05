@@ -1,0 +1,112 @@
+# live_place_and_move: three ways to place or move things in the editor, with checks. LIVE (real window, real clicks): LIVE_OK=1 or SKIP. Way 1: arm a palette tile, a REAL click on a floor cell, Enter: the item is placed
+# on the clicked cell (engine brush placer polled by the shared petslike_placer). Way 2: the `place <id> x y` verb moves it. Way 3: `goto bank` moves the controlled character, the demo_automove event page sends it back.
+# Restore: the item is removed, brush.txt put back, slot 9 loaded. (replaces scenarios/place_and_move.txt)
+RESULTS | ../results/live_place_and_move.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | save | 9
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | $T/house.bak
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt | $T/brush.bak
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/state/voxel_log.txt | $T/vl.bak
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/cat | $HOUSE/@.apps/rpg-edit-hq/board/module_parent.pid
+CAPTURE | wpid
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /usr/bin/xdotool | windowmap | $win
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq | 90000 | the-board-shows-the-editors-own-book
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | goto | store
+SLEEP | 3000
+
+CASE    | way1-click-and-enter
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | list
+SLEEP | 500
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | pick | cdda
+SLEEP | 500
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | pick | pngs_normal_32x32
+SLEEP | 500
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | pick | furniture
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | tap | 95 | 265
+SLEEP | 6000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt | glyph= | a-tile-is-armed-as-the-brush
+RUN | /usr/bin/awk | END { print NR } | $HOUSE/@.apps/rpg-edit-hq/state/voxel_log.txt
+CAPTURE | vl0
+# up to three real clicks on three floor cells: a cell with someone standing on it is refused ("someone is standing there"), the next click tries another. At least one must place.
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 560 | 500
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | \\n
+SLEEP | 6000
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 700 | 560
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | \\n
+SLEEP | 6000
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 460 | 560
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | \\n
+SLEEP | 6000
+RUN | /usr/bin/awk | END { print NR } | $HOUSE/@.apps/rpg-edit-hq/state/voxel_log.txt
+CAPTURE | vl1
+CALC | vlneed | $vl0 | + | 3
+EXPECT_GE | $vl1 | $vlneed | each-click-and-enter-wrote-a-NEW-log-line
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | PLACE\p | at-least-one-click-placed-the-armed-tile-a-PLACE-row-exists
+
+CASE    | way2-place-verb
+RUN | /usr/bin/awk | -F\p | /^PLACE[\p]/ { n++; if (n == 1) print $2 } | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+CAPTURE | pid1
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | place | $pid1 | 5 | 9
+EXPECT_OUT | moved | the-verb-moves-the-item
+SLEEP | 3000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | MOVE\p$pid1\p | a-MOVE-row-is-in-the-ledger
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | \p5\p9 | to-the-new-cell
+
+CASE    | way3-drive-and-event
+RUN | /usr/bin/awk | {print $1} | $HOUSE/@.apps/rpg-edit-hq/state/active.txt
+CAPTURE | act
+RUN | /usr/bin/grep | -E | ^(room\px\py)= | $HOUSE/@.apps/rpg-edit-hq/state/pet_$act.txt
+CAPTURE | pos0
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | goto | bank
+SLEEP | 4000
+RUN | /usr/bin/grep | -E | ^(room\px\py)= | $HOUSE/@.apps/rpg-edit-hq/state/pet_$act.txt
+CAPTURE | pos1
+EXPECT_NE | $pos0 | $pos1 | driving-moved-the-controlled-character
+ENV | MUCHI_TARGET_ENT | $HOUSE/@.apps/rpg-edit-hq/state/world
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $HOUSE/@.apps/rpg-edit-hq/events/demo_automove | $HOUSE | ui
+SLEEP | 4000
+RUN | /usr/bin/grep | -E | ^(room\px\py)= | $HOUSE/@.apps/rpg-edit-hq/state/pet_$act.txt
+CAPTURE | pos2
+EXPECT_NE | $pos1 | $pos2 | the-event-page-moved-it-again-by-itself
+
+CASE    | restore
+RUN | /usr/bin/awk | -F\p | /^PLACE[\p]/ { n++; if (n == 1) print $2 } | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+CAPTURE | rm1
+RUN | /usr/bin/awk | -F\p | /^PLACE[\p]/ { n++; if (n == 2) print $2 } | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+CAPTURE | rm2
+RUN | /usr/bin/awk | -F\p | /^PLACE[\p]/ { n++; if (n == 3) print $2 } | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+CAPTURE | rm3
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | remove | $rm1
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | remove | $rm2
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | remove | $rm3
+SLEEP | 4000
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+RUN | /bin/cp | $T/house.bak | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | load | 9
+RUN | /bin/rm | -rf | $HOUSE/@.apps/rpg-edit-hq/state/slots/9
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt
+RUN | /bin/cp | $T/brush.bak | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/state/voxel_log.txt
+RUN | /bin/cp | $T/vl.bak | $HOUSE/@.apps/rpg-edit-hq/state/voxel_log.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | list
+CLEAN |

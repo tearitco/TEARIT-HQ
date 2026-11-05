@@ -1,9 +1,0 @@
-# mouse_calibrate.txt - automatic part: pinned camera, a 4x3 grid of real clicks, every one checked against the pointer marker and the 3D raycast round trip.
-book | rpg-edit-hq
-verb | clock advance 9h
-wait | 6
-pincam | 180 | -50 | 16
-shot | pinned | The camera is pinned on one cell, so a click no longer moves the view under the pointer.
-calgrid | 4 | 3
-shot | after | Twelve real clicks later the view has not moved.
-unpin

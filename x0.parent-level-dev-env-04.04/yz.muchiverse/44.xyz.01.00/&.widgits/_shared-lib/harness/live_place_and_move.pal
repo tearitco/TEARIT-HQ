@@ -1,0 +1,4 @@
+# live_place_and_move.pal - LIVE case (LIVE_OK=1): place and move things three ways (click + Enter, the place verb, drive + event). See cases/live_place_and_move.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_place_and_move.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_place_and_move.pdl
+halt

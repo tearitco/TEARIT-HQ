@@ -1,0 +1,4 @@
+# live_mouse_calibrate.pal - LIVE case (LIVE_OK=1): the camera is pinned on one cell, twelve real clicks (4 x 3 grid) all pass the alignment checks and the view does not move. See cases/live_mouse_calibrate.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_mouse_calibrate.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_mouse_calibrate.pdl
+halt

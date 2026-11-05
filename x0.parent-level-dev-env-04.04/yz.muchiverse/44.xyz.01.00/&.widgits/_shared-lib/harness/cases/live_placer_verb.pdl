@@ -1,0 +1,56 @@
+# live_placer_verb: the shared placer (petslike_placer.c) through the verb path: arm a CDDA furniture tile in the palettes bar (pal_side verbs + a click on the first tile row), then `voxel 9 9`.
+# LIVE (real window, LIVE_OK=1 or SKIP). Restore: the placed item is removed, brush.txt is put back as it was (removed if it did not exist), slot 9 is loaded back. (replaces scenarios/placer_verb.txt)
+RESULTS | ../results/live_placer_verb.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | save | 9
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | $T/house.bak
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt | $T/brush.bak
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/cat | $HOUSE/@.apps/rpg-edit-hq/board/module_parent.pid
+CAPTURE | wpid
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /usr/bin/xdotool | windowmap | $win
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq | 90000 | the-board-shows-the-editors-own-book
+
+CASE    | arm
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | list
+SLEEP | 500
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | pick | cdda
+SLEEP | 500
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | pick | pngs_normal_32x32
+SLEEP | 500
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | pick | furniture
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | tap | 95 | 265
+SLEEP | 6000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt | glyph= | a-tile-is-armed-as-the-brush
+
+CASE    | place
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | voxel | 9 | 9
+EXPECT_OUT | placed | the-verb-reports-a-placement
+EXPECT_OUT | at 9,9 | at-the-requested-cell
+SLEEP | 4000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | PLACE\p | a-PLACE-row-is-in-the-house-ledger
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/voxels.pdl | ITEM \p v_ | the-generated-voxel-item-exists
+
+CASE    | restore
+RUN | /usr/bin/awk | -F\p | /^PLACE[\p]/ { id = $2 } END { print id } | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+CAPTURE | pid1
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | remove | $pid1
+SLEEP | 4000
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+RUN | /bin/cp | $T/house.bak | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | load | 9
+RUN | /bin/rm | -rf | $HOUSE/@.apps/rpg-edit-hq/state/slots/9
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt
+RUN | /bin/cp | $T/brush.bak | $HOUSE/@.apps/rpg-edit-hq/board/state/brush.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $HOUSE | list
+CLEAN |

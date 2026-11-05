@@ -1,0 +1,4 @@
+# live_placer_verb.pal - LIVE case (LIVE_OK=1): arm a tile in the palettes bar, `voxel 9 9` places it through the shared placer. See cases/live_placer_verb.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_placer_verb.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_placer_verb.pdl
+halt

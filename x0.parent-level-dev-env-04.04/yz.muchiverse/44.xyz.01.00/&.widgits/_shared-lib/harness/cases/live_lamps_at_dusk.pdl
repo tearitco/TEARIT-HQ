@@ -1,0 +1,69 @@
+# live_lamps_at_dusk: night, one bought lamp, the dusk event page turns lamps on (state/lamps_on.txt = 1) and the 3D canvas gets measurably brighter; the dawn page turns them off. LIVE: real window + real events,
+# so LIVE_OK=1 is required (unset = SKIP). The game is saved to slot 9 first; the lamp is removed, lamps are switched off and slot 9 is loaded back at the end. (replaces scenarios/lamps_at_dusk.txt)
+RESULTS | ../results/live_lamps_at_dusk.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | save | 9
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/state/house.txt | $T/house.bak
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /usr/bin/xdotool | windowmap | $win
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq | 90000 | the-board-shows-the-editors-own-book
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | goto | store
+RUN | /usr/bin/sed | -n | s/^time_label=.* \([0-9][0-9]\):.*/\1/p | $HOUSE/@.apps/rpg-edit-hq/state/clock_ui.txt
+CAPTURE | hh
+CALC | adv | 23 | - | $hh
+RUN | /usr/bin/printf | %sh | $adv
+CAPTURE | advh
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | clock | advance | $advh
+SLEEP | 6000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/daylight.txt | night | it-is-night
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | buy | lamp
+EXPECT_OUT | Lamp pillar | a-lamp-pillar-was-bought-and-placed
+SLEEP | 4000
+
+CASE    | dark
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/dark.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/dark.png | 208 | 105 | 1094 | 745
+CAPTURE | dark_mean
+
+CASE    | dusk-page
+ENV | MUCHI_TARGET_ENT | $HOUSE/@.apps/rpg-edit-hq/state/world
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $HOUSE/@.apps/rpg-edit-hq/events/phase_dusk | $HOUSE | clock
+EXPECT_EXIT | 0 | the-dusk-page-runs
+SLEEP | 6000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/lamps_on.txt | 1 | the-dusk-page-switched-the-lamps-on
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/lit.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/lit.png | 208 | 105 | 1094 | 745
+CAPTURE | lit_mean
+CALC | need | $dark_mean | * | 1.003
+EXPECT_GE | $lit_mean | $need | the-room-is-measurably-brighter-with-the-lamp-lit
+
+CASE    | dawn-page
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $HOUSE/@.apps/rpg-edit-hq/events/phase_dawn | $HOUSE | clock
+EXPECT_EXIT | 0 | the-dawn-page-runs
+SLEEP | 6000
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/lamps_on.txt | 0 | the-dawn-page-switched-the-lamps-off
+
+CASE    | restore
+RUN | /usr/bin/awk | -F\p | /^PLACE[\p]/ { id = $2 } END { print id } | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+CAPTURE | lampid
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | remove | $lampid
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | lamps | off
+SLEEP | 4000
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+RUN | /bin/cp | $T/house.bak | $HOUSE/@.apps/rpg-edit-hq/state/house.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | load | 9
+RUN | /bin/rm | -rf | $HOUSE/@.apps/rpg-edit-hq/state/slots/9
+CLEAN |

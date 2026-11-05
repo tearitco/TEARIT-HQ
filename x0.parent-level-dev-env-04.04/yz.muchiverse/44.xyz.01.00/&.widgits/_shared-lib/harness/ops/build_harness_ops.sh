@@ -14,3 +14,7 @@ done
 $CC -std=gnu11 -Wall -I "../.." -o +x/proc_reap_op.+x proc_reap_op.c && echo "OK +x/proc_reap_op.+x"
 # player_menu_query_op text-includes the taskbar manager source (needs the taskbar ops dir and the shared lib on the include path)
 $CC -std=c11 -O2 -w -I "../../../../_.monads/_.livedesk-taskbar/ops" -I .. -I ../.. -o +x/player_menu_query_op.+x player_menu_query_op.c && echo "OK +x/player_menu_query_op.+x"
+# img_op (PNG numbers for live window cases), video_op (slides + narrated video, needs ffmpeg at run time), py_lint (ratchet against new Python): self-contained, 2026-11-04
+$CC -std=gnu11 -Wall -Wextra -Wno-misleading-indentation -O2 -o +x/img_op.+x img_op.c -lm && echo "OK +x/img_op.+x"
+$CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -O2 -o +x/video_op.+x video_op.c && echo "OK +x/video_op.+x"
+$CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/py_lint.+x py_lint.c && echo "OK +x/py_lint.+x"

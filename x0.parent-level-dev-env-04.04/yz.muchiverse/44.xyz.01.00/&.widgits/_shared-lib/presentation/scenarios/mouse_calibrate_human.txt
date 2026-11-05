@@ -1,7 +1,0 @@
-# mouse_calibrate_human.txt - the part for YOU: the camera is pinned; click six places with your real pointer (the pointer marker must be on: show_pointer=1). Each pick is recorded.
-book | rpg-edit-hq
-pincam | 180 | -50 | 16
-shot | pinned | Camera pinned. Click six places with the real pointer.
-collect | 6 | 240
-shot | after | Done. The table of your clicks is in calibration.txt.
-unpin

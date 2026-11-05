@@ -1,0 +1,4 @@
+# live_lamps_at_dusk.pal - LIVE case (LIVE_OK=1): a lamp in a dark room, the dusk page switches the lamps on and the room gets brighter, the dawn page switches them off. See cases/live_lamps_at_dusk.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_lamps_at_dusk.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_lamps_at_dusk.pdl
+halt

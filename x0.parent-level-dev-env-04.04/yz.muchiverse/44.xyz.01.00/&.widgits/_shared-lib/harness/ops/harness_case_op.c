@@ -3,6 +3,7 @@
  *
  * Usage: harness_case_op <cases.pdl> [house_root]      (house_root defaults to the case file's own folder walked up to the dir that holds `xyzfs`)
  * Case file (pipe-delimited `VERB | a | b | ...`, '#' comments; strings may use \n \t \p (a literal '|') and $T = the scratch dir, $HOUSE = the house root):
+ *   Escapes in any field: \n newline, \t tab, \p a literal bar, \\ one backslash
  *   RESULTS   | <path>                 results ledger, relative to the case file's folder (required, first)
  *   CASE      | <name>                 label prefix for the checks that follow
  *   SCRATCH   |                        create a scratch dir (/tmp/hc_XXXXXX) = $T
@@ -14,11 +15,14 @@
  *   WRITE     | <path under $T> | <text>                write a file (the text is everything after the path, so it may contain ' | ')
  *   RUN       | <argv0> | <arg1> | ...                   fork/exec (NO shell), stdout+stderr captured, exit code kept; fields are argv entries, so no quoting
  *   EXPECT_EXIT   | <n>            | <label>
+ *   (the READ verbs below and WAIT_HAS also take an ABSOLUTE path, e.g. a live state file; WRITE/APPEND/MKDIR/COPY never leave $T)
  *   EXPECT_FILE   | <path> | <exact text> | <label>
  *   EXPECT_NOFILE | <path>         | <label>          EXPECT_EXISTS | <path> | <label>      the path exists (a touched, empty file counts)
  *   EXPECT_HAS    | <path> | <substring> | <label>       file contains it   (EXPECT_LACKS: file does not contain it)
  *   EXPECT_OUT    | <substring>    | <label>              last RUN's output contains it
  *   EXPECT_OUT_IS | <text> | <label>                    last RUN's output (trailing newlines trimmed) equals it exactly;  EXPECT_OUT_LACKS | <substring> | <label>
+ *   CALC      | <var> | <a> | <op> | <b>               $var = a op b as numbers (op: + - * /; printed with up to 4 decimals, trailing zeros trimmed). a and b are expanded first ($vars, numbers)
+ *   EXPECT_GE | <a> | <b> | <label>   /   EXPECT_LE | <a> | <b> | <label>      numeric a >= b / a <= b (a and b expanded; a non-number counts as a FAIL, never a pass)   (added 2026-11-04 for image and clock checks)
  *   NEEDENV   | <NAME> | <NAME> ...                 each NAME is read from the CALLER's environment and becomes $NAME in this case (addresses and logins never live in a case file). If any is unset or empty the case
  *                                                  writes `SKIP|<case file>|needs environment: ...`, runs nothing after this row and the verdict is SKIP, not FAIL (added 2026-11-04 for the cross-machine checks)
  *   ENV       | <NAME> | <value>                         setenv for every later RUN/SPAWN (an empty value unsets it)
@@ -59,6 +63,8 @@ static int last_exit = -1, made_scratch;
 #define MAXVAR 32
 static struct { char name[48], val[P]; } VARS[MAXVAR]; static int NVARS;
 static pid_t SPAWNED[64]; static int NSPAWNED;
+/* READ verbs (EXPECT_FILE/HAS/LACKS/EXISTS/NOFILE, WAIT_HAS) accept an absolute path (a live file the case only looks at); writers (WRITE, APPEND, MKDIR, COPY) stay under $T */
+static void rpath(char *o, size_t cap, const char *a) { if (a[0] == '/') snprintf(o, cap, "%s", a); else snprintf(o, cap, "%s/%s", T, a); }
 static const char *var_get(const char *name) {
     if (!strcmp(name, "T")) return T;
     if (!strcmp(name, "HOUSE")) return HOUSE;
@@ -99,6 +105,7 @@ static void expand(const char *in, char *out, size_t n) {
         if (p[0] == '\\' && p[1] == 'n') { out[o++] = '\n'; p += 2; }
         else if (p[0] == '\\' && p[1] == 't') { out[o++] = '\t'; p += 2; }
         else if (p[0] == '\\' && p[1] == 'p') { out[o++] = '|'; p += 2; }   /* \p = a literal bar (a field cannot contain one) */
+        else if (p[0] == '\\' && p[1] == '\\') { out[o++] = '\\'; p += 2; }   /* \\ = one backslash (2026-11-04: bv_keys wants the two characters backslash-n for Enter: write \\n) */
         else if (p[0] == '$' && (isalnum((unsigned char)p[1]) || p[1] == '_')) {
             char nm[48]; size_t k = 0; const char *q = p + 1; const char *val;
             while ((isalnum((unsigned char)*q) || *q == '_') && k < sizeof nm - 1) nm[k++] = *q++;
@@ -242,18 +249,29 @@ int main(int argc, char **argv) {
             close(pfd[0]); waitpid(pid, &st, 0); last_exit = WIFEXITED(st) ? WEXITSTATUS(st) : 128 + WTERMSIG(st);
         } else if (!strcmp(v, "EXPECT_EXIT") && nf >= 3) { char seen[64]; snprintf(seen, sizeof seen, "exit=%d", last_exit); check(last_exit == atoi(fld[1]), fld[2], seen); }
         else if (!strcmp(v, "EXPECT_FILE") && nf >= 4 && T[0]) {
-            char got[8192]; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); snprintf(pa, sizeof pa, "%s/%s", T, a);
+            char got[8192]; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); rpath(pa, sizeof pa, a);
             if (rd_all(pa, got, sizeof got) < 0) check(0, fld[3], "file missing");
             else check(!strcmp(got, b), fld[3], "content differs");
         } else if ((!strcmp(v, "EXPECT_HAS") || !strcmp(v, "EXPECT_LACKS")) && nf >= 4 && T[0]) {
-            char got[16384]; int has; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); snprintf(pa, sizeof pa, "%s/%s", T, a);
+            char got[16384]; int has; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); rpath(pa, sizeof pa, a);
             if (rd_all(pa, got, sizeof got) < 0) check(0, fld[3], "file missing");
             else if (!b[0]) check(0, fld[3], "EMPTY expectation (a bar in the text? use \\p)");
             else { has = strstr(got, b) != NULL; check(!strcmp(v, "EXPECT_HAS") ? has : !has, fld[3], got); }
-        } else if (!strcmp(v, "EXPECT_EXISTS") && nf >= 3 && T[0]) { expand(fld[1], a, sizeof a); snprintf(pa, sizeof pa, "%s/%s", T, a); check(access(pa, F_OK) == 0, fld[2], "no such file");
-        } else if (!strcmp(v, "EXPECT_NOFILE") && nf >= 3 && T[0]) { expand(fld[1], a, sizeof a); snprintf(pa, sizeof pa, "%s/%s", T, a); check(access(pa, F_OK) != 0, fld[2], "file exists"); }
+        } else if (!strcmp(v, "EXPECT_EXISTS") && nf >= 3 && T[0]) { expand(fld[1], a, sizeof a); rpath(pa, sizeof pa, a); check(access(pa, F_OK) == 0, fld[2], "no such file");
+        } else if (!strcmp(v, "EXPECT_NOFILE") && nf >= 3 && T[0]) { expand(fld[1], a, sizeof a); rpath(pa, sizeof pa, a); check(access(pa, F_OK) != 0, fld[2], "file exists"); }
         else if (!strcmp(v, "CAPTURE") && nf >= 2) { char got[sizeof OUT]; size_t gl; snprintf(got, sizeof got, "%s", OUT); gl = strlen(got); while (gl && (got[gl - 1] == '\n' || got[gl - 1] == '\r')) got[--gl] = 0; var_set(fld[1], got); }
         else if (!strcmp(v, "SUMTREE") && nf >= 3 && T[0]) { char hs[40]; expand(fld[2], a, sizeof a); snprintf(pa, sizeof pa, "%s/%s", T, a); tree_hash(pa, hs, sizeof hs); var_set(fld[1], hs); }
+        else if (!strcmp(v, "CALC") && nf >= 5) {
+            char e1[P], e2[P], *x1, *x2; expand(fld[2], e1, sizeof e1); expand(fld[4], e2, sizeof e2); double d1 = strtod(e1, &x1), d2 = strtod(e2, &x2), r = 0; int ok = *e1 && *e2 && !*x1 && !*x2;
+            if (ok) { switch (fld[3][0]) { case '+': r = d1 + d2; break; case '-': r = d1 - d2; break; case '*': r = d1 * d2; break; case '/': if (d2 == 0) ok = 0; else r = d1 / d2; break; default: ok = 0; } }
+            if (!ok) { char seen[P * 2 + 32]; snprintf(seen, sizeof seen, "cannot compute '%s' %s '%s'", e1, fld[3], e2); check(0, fld[1], seen); }
+            else { char o[64]; snprintf(o, sizeof o, "%.4f", r); char *dot = strchr(o, '.'); if (dot) { char *e = o + strlen(o); while (e > dot + 1 && e[-1] == '0') *--e = 0; if (e[-1] == '.') *--e = 0; } var_set(fld[1], o); }
+        }
+        else if ((!strcmp(v, "EXPECT_GE") || !strcmp(v, "EXPECT_LE")) && nf >= 4) {
+            char e1[P], e2[P], *x1, *x2; expand(fld[1], e1, sizeof e1); expand(fld[2], e2, sizeof e2); double d1 = strtod(e1, &x1), d2 = strtod(e2, &x2); int num = *e1 && *e2 && !*x1 && !*x2;
+            char seen[P * 2 + 32]; snprintf(seen, sizeof seen, "%s %s %s", e1, !strcmp(v, "EXPECT_GE") ? "is not >=" : "is not <=", e2);
+            check(num && (!strcmp(v, "EXPECT_GE") ? d1 >= d2 : d1 <= d2), fld[3], num ? seen : "not a number");
+        }
         else if ((!strcmp(v, "EXPECT_EQ") || !strcmp(v, "EXPECT_NE")) && nf >= 4) {
             expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b);
             if (!a[0] && !b[0]) check(0, fld[3], "both sides empty (an unset $var?)");
@@ -284,7 +302,7 @@ int main(int argc, char **argv) {
             if ((pid = fork()) == 0) { setpgid(0, 0); { int dn = open("/dev/null", O_RDWR); if (dn >= 0) { dup2(dn, 0); dup2(dn, 1); dup2(dn, 2); if (dn > 2) close(dn); } } if (T[0]) { if (chdir(T)) {} } execvp(av[0], av); _exit(127); }
             setpgid(pid, pid); SPAWNED[NSPAWNED++] = pid; snprintf(b, sizeof b, "%d", (int)pid); var_set(fld[1], b);
         } else if (!strcmp(v, "WAIT_HAS") && nf >= 5 && T[0]) {
-            char got[16384]; long long t0 = now_ms(), max = atoll(fld[3]); int ok = 0; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); snprintf(pa, sizeof pa, "%s/%s", T, a);
+            char got[16384]; long long t0 = now_ms(), max = atoll(fld[3]); int ok = 0; expand(fld[1], a, sizeof a); expand(fld[2], b, sizeof b); rpath(pa, sizeof pa, a);
             do { if (rd_all(pa, got, sizeof got) >= 0 && strstr(got, b)) { ok = 1; break; } usleep(10000); } while (now_ms() - t0 <= max);
             { char seen[96]; snprintf(seen, sizeof seen, "not there after %lld ms", now_ms() - t0); check(ok, fld[4], seen); if (ok) printf("  (%s took %lld ms)\n", fld[4], now_ms() - t0); }
         } else if ((!strcmp(v, "EXPECT_ALIVE") || !strcmp(v, "EXPECT_DEAD")) && nf >= 3) {

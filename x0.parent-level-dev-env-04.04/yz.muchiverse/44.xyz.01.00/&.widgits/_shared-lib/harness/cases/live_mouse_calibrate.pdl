@@ -1,0 +1,273 @@
+# live_mouse_calibrate: pin the camera (state/cam_look.txt, the engine's debug camera: a click no longer moves the view), then twelve REAL clicks on a 4 x 3 grid of pixels. Each click: the published canvas click agrees with
+# ONE canvas origin for the whole run, and the raycast round trip puts the click inside the picked cell's projected box. After all twelve the canvas picture is unchanged (img_op diff under a small count: the HUD and the
+# pointer marker are outside the compared box). The pin is removed at the end. LIVE: LIVE_OK=1 or SKIP. (replaces scenarios/mouse_calibrate.txt; the human-collect variant is dropped)
+RESULTS | ../results/live_mouse_calibrate.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | save | 9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | /usr/bin/xdotool | windowmap | $win
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq | 90000 | the-board-shows-the-editors-own-book
+RUN | /usr/bin/awk | -F= | /^pos_x=/ { print $2 + 0.5 } | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt
+CAPTURE | ax
+RUN | /usr/bin/awk | -F= | /^pos_y=/ { print $2 + 0.5 } | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt
+CAPTURE | az
+
+CASE    | pin
+WRITE | cam_look.txt | look_on=1\nat_x=$ax\nat_y=1.0\nat_z=$az\nlook_dist=16\nlook_yaw=180\nlook_pitch=-50\n
+RUN | /bin/cp | $T/cam_look.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/cam_look.txt
+SLEEP | 4000
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/pinned.png
+EXPECT_EXIT | 0 | photograph-of-the-pinned-view
+
+CASE    | click1
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 330 | 260
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 330 | - | $cx
+CALC | oy | 260 | - | $cy
+CALC | ox0 | $ox | + | 0
+CALC | oy0 | $oy | + | 0
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click2
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 520 | 260
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 520 | - | $cx
+CALC | oy | 260 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click3
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 710 | 260
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 710 | - | $cx
+CALC | oy | 260 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click4
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 900 | 260
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 900 | - | $cx
+CALC | oy | 260 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click5
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 330 | 455
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 330 | - | $cx
+CALC | oy | 455 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click6
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 520 | 455
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 520 | - | $cx
+CALC | oy | 455 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click7
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 710 | 455
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 710 | - | $cx
+CALC | oy | 455 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click8
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 900 | 455
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 900 | - | $cx
+CALC | oy | 455 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click9
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 330 | 650
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 330 | - | $cx
+CALC | oy | 650 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click10
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 520 | 650
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 520 | - | $cx
+CALC | oy | 650 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click11
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 710 | 650
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 710 | - | $cx
+CALC | oy | 650 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | click12
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/display/click_proj.txt
+RUN | /usr/bin/xdotool | mousemove | --window | $win | 900 | 650
+SLEEP | 300
+RUN | /usr/bin/xdotool | click | 1
+SLEEP | 4000
+RUN | /usr/bin/awk | {print $1} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cx
+RUN | /usr/bin/awk | {print $2} | $sess/pieces/display/canvas_click.txt
+CAPTURE | cy
+CALC | ox | 900 | - | $cx
+CALC | oy | 650 | - | $cy
+CALC | dx | $ox | - | $ox0
+CALC | dy | $oy | - | $oy0
+EXPECT_LE | $dx | 1 | published-x-agrees-with-the-origin-high
+EXPECT_GE | $dx | -1 | published-x-agrees-with-the-origin-low
+EXPECT_LE | $dy | 1 | published-y-agrees-with-the-origin-high
+EXPECT_GE | $dy | -1 | published-y-agrees-with-the-origin-low
+
+CASE    | view-unchanged-and-restore
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/after.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/pinned.png | $T/after.png | 420 | 320 | 1080 | 740
+CAPTURE | changed
+EXPECT_LE | $changed | 6000 | twelve-clicks-did-not-move-the-view-few-pixels-differ
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/cam_look.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | load | 9
+RUN | /bin/rm | -rf | $HOUSE/@.apps/rpg-edit-hq/state/slots/9
+CLEAN |

@@ -1,0 +1,4 @@
+# live_dropdown_thumb.pal - LIVE case: drives the real editor window (needs LIVE_OK=1; tell the owner first). See cases/live_dropdown_thumb.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_dropdown_thumb.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_dropdown_thumb.pdl
+halt
