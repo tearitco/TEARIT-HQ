@@ -1,0 +1,58 @@
+# legend_page: scratch only. Determinism = same legend twice gives a byte-identical cells.txt; a mutated legend must NOT (so the cmp can fail); bad input is refused with the line and column.
+RESULTS | ../results/legend_page.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+WRITE | template.txt | width=24\nheight=17\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n9,9,9\n
+WRITE | legend.txt | # tower test\nL # 1,3,1\nL . 1,0,1\nL ~ 0,0,0\nMAP\n~~~~~~~\n~#####~\n~#...#~\n~#...#~\n~#####~\n~~~~~~~\n
+
+CASE    | deterministic
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/legend.txt | $T/a.txt
+EXPECT_EXIT | 0 | the-page-is-written
+EXPECT_OUT | PAGE 7x6 legend=3 | size-comes-from-the-map
+EXPECT_HAS | a.txt | width=7 | header-width-replaced
+EXPECT_HAS | a.txt | height=6 | header-height-replaced
+EXPECT_HAS | a.txt | tile_px=24 | template-header-kept
+EXPECT_HAS | a.txt | 0,0,0 1,3,1 1,3,1 1,3,1 1,3,1 1,3,1 0,0,0 | the-second-row-is-the-wall-run
+EXPECT_LACKS | a.txt | 9,9,9 | the-template-cells-are-not-copied
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/legend.txt | $T/b.txt
+RUN | /usr/bin/cmp | $T/a.txt | $T/b.txt
+EXPECT_EXIT | 0 | same-legend-twice-is-byte-identical
+
+CASE    | negative-mutation
+WRITE | legend2.txt | L # 1,3,1\nL . 1,0,1\nL ~ 0,0,0\nMAP\n~~~~~~~\n~#####~\n~#...#~\n~#.#.#~\n~#####~\n~~~~~~~\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/legend2.txt | $T/c.txt
+RUN | /usr/bin/cmp | $T/a.txt | $T/c.txt
+EXPECT_EXIT | 1 | NEGATIVE-one-changed-cell-is-detected-so-the-determinism-check-can-fail
+WRITE | legend3.txt | L # 1,4,1\nL . 1,0,1\nL ~ 0,0,0\nMAP\n~~~~~~~\n~#####~\n~#...#~\n~#...#~\n~#####~\n~~~~~~~\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/legend3.txt | $T/d.txt
+RUN | /usr/bin/cmp | $T/a.txt | $T/d.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-changed-legend-token-is-detected
+
+CASE    | refusals
+WRITE | bad1.txt | L # 1,3,1\nL . 1,0,1\nMAP\n#####\n#.x.#\n#####\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/bad1.txt | $T/e.txt
+EXPECT_EXIT | 3 | a-character-not-in-the-legend-is-refused
+EXPECT_OUT | row 2 column 3 | with-its-row-and-column
+WRITE | bad2.txt | L # 1,3,1\nL . 1,0,1\nMAP\n#####\n#...\n#####\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/bad2.txt | $T/e.txt
+EXPECT_EXIT | 3 | ragged-rows-are-refused
+EXPECT_OUT | row 2 has width 4 | naming-the-row
+WRITE | bad3.txt | L # 1,3,1\nL # 1,0,1\nMAP\n###\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/bad3.txt | $T/e.txt
+EXPECT_EXIT | 3 | a-character-defined-twice-is-refused
+WRITE | bad4.txt | L # 1,3,1\nMAP\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/bad4.txt | $T/e.txt
+EXPECT_EXIT | 3 | an-empty-map-is-refused
+WRITE | bad5.txt | L # 1,3,1,1,1,1,1,1,1,1,1,1,1,1,1\nMAP\n#\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/bad5.txt | $T/e.txt
+EXPECT_EXIT | 3 | a-token-longer-than-the-field-is-refused-not-truncated
+WRITE | bad6.txt | hello\nMAP\n#\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/legend_page_op.+x | $T/template.txt | $T/bad6.txt | $T/e.txt
+EXPECT_EXIT | 3 | an-unknown-directive-is-refused
+
+CASE    | wide-page-limit
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/template.txt | $T/wide.txt | 3000 | 2
+EXPECT_EXIT | 3 | the-blank-generator-also-refuses-a-row-past-the-engine-buffer
+CLEAN |
