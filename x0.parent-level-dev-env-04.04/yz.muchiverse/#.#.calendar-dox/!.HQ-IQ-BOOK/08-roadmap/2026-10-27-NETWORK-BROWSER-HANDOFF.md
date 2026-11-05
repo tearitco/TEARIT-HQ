@@ -390,3 +390,47 @@ since its row may be gone or may carry a different action.
   as the existing ANCHOR/SPAN receipts).
 - Running renderers keep the old image until restart.
 - The full-suite gate in nb_all_tests.sh stays as it is, now honestly green.
+
+---
+
+## 2026-11-04 (night) — G2.6 closed: property list documented, two product bugs fixed, gate registered
+
+The KPI plan's last unverified G2 item is closed. What mattered:
+
+### The list was an undocumented, partly dead table
+
+nb_css.c resolved exactly what the page projection reads (display, the
+vertical box model, position family, flex-grow/direction,
+grid-template-columns, @media grammar, @font-face, and visibility/
+opacity/width/height for getComputedStyle) - but three enum entries
+(src, font-weight, font-style) were recognized by prop_id and consumed
+by NOTHING, and the header still documented the pre-2026-11-04 engine.
+A page writing those keywords got a silent no-op. All three removed
+(declarations now drop like any unlisted property; @font-face parses
+its own three via parse_font_face_block). The contract is now written
+in-source directly above prop_id - complete, grouped by consumption
+(layout / computed-style-only / parsed-unread mirrors / @font-face /
+not-recognized-with-reasons), with the three-step rule for adding one.
+
+### Two product bugs found by the new gate work, both fixed
+
+- @font-face italic faces could never match: the parser set
+  font_style = 0 unconditionally instead of the computed value
+  (compiler even warned the local was unused).
+- display:none cleared has_display_flex but not display_flex, breaking
+  the typed-pair invariant the code itself documents.
+
+### The gate
+
+tests/nb_css_props_test.sh (registered in nb_all_tests.sh): links
+nb_css.c + nb_dom.c directly, asserts every recognized property's
+resolved value + the drop-totally contract + @media both branches.
+45/45 PASS; negative-tested by reintroducing the font-style bug
+(exactly one FAIL, then green).
+
+### State
+
+nb_all_tests.sh: ALL TESTS PASS, 39 sections, 31 suites (exit 0), with
+the worker rebuilt on the fixed parser. G1.4's suite flaked once in one
+run, passed 4/4 isolated and on the re-run; timing-sensitive, recorded
+in ledger 9.20.

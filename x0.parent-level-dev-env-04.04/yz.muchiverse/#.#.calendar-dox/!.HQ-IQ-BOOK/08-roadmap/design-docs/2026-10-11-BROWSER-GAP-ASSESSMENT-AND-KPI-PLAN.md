@@ -1258,3 +1258,67 @@ renderer - same class and volume as the existing ANCHOR/SPAN receipts. The
 running renderers are unchanged until restart. The digest guard is untouched;
 no new untested mechanism was added - the failing leg itself reproduced
 reliably and now logs the keep/dead outcome on every rebuild.
+
+### 9.20 2026-11-04 (night) — G2.6 closed: the recognized-property list is real, documented, and gated
+
+G2.6's definition of done: the recognized-property list in nb_css.c
+covers the G2.1-G2.5 set, the list is documented in-source, no silent
+drops. Reality before this session: the list was an undocumented table,
+the header still described the pre-2026-11-04 engine
+("only display/visibility/opacity/width/height; @media can never
+fire"), and three enum entries (src, font-weight, font-style) were
+recognized by prop_id but consumed by NOTHING - a declaration with
+those keywords was accepted and silently discarded, the textbook
+silent drop G2.6 exists to prevent.
+
+**What was done**
+
+1. The contract is now written in-source, directly above prop_id:
+   the complete list grouped by how each property is consumed (layout /
+   getComputedStyle-only / parsed-but-unread mirrors / @font-face-only /
+   not-recognized-at-all with the reasons), the hard rule that every
+   property the projection reads MUST resolve here, and the three-step
+   rule for adding one (NbCssStyle + apply_decl + the worker, plus the
+   gate below).
+2. The dead entries were REMOVED (nothing else referenced them;
+   @font-face parses src/font-weight/font-style through its own block,
+   which is where they are legal). A declaration of those keywords now
+   drops like any other unlisted property - loudly unambiguous, never
+   half-applied.
+3. nb_css.h's stale module comment rewritten to match the engine that
+   actually exists (pointing at the documented list instead of
+   duplicating a stale enumeration).
+
+**Two genuine product bugs the gate caught before it ever passed**
+
+- parse_font_face_block computed font-style (italic/oblique) into a
+  local, then stored font_style = 0 UNCONDITIONALLY - the compiler
+  warned "variable 'style' set but not used". Italic @font-face faces
+  can never match. Fixed: font_faces[idx].font_style = style.
+- display:none cleared has_display_flex but left display_flex stale
+  (2 from display:grid), violating the typed-pair invariant the code
+  itself documents ("never disagree"). Fixed: display_flex = 0 too.
+
+**The gate**
+
+tests/nb_css_props_test.sh (registered in nb_all_tests.sh): links
+nb_css.c + nb_dom.c directly (zero JS/engine deps, no window, no net),
+45 checks, one per recognized property + the drop-silently contract +
+@media both branches + inline-style-beats-sheet + @font-face. Negative
+tested: reintroducing the font-style bug reproduces exactly one FAIL;
+restoring it is green. PASS: 45/45.
+
+**Verification**
+
+- nb_css_props_test.sh: 45/45 PASS (and the deliberate negative test).
+- nb_all_tests.sh: **ALL TESTS PASS, 39 sections (was 38), 31 suites,
+  exit 0** - with the worker rebuilt on the fixed nb_css.c.
+
+**Flake observation (not fixed, recorded)**
+
+nb_focus_safety_test.sh (G1.4) failed once in the full-suite re-run at
+2026-11-04 ("the next keystroke went nowhere"); 4/4 isolated passes and
+PASS on the immediate re-run. Same timing-sensitive synthetic-input
+class as the span_drag family; no focus-path code changed by this work.
+If it recurs, instrument the arm/release receipts the way span_drag was
+bisected.

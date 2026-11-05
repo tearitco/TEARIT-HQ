@@ -38,6 +38,10 @@ echo "########## TextEncoder/TextDecoder + Blob readers (hermetic)"
 bash "$HERE/nb_text_blob_test.sh" || RC=1
 
 echo
+echo "########## G2.6 recognized-property list complete, drops total (hermetic)"
+bash "$HERE/nb_css_props_test.sh" || RC=1
+
+echo
 echo "########## G2.5 @media switches at the breakpoint, both sides (hermetic)"
 bash "$HERE/nb_media_test.sh" || RC=1
 

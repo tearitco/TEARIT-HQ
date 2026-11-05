@@ -512,19 +512,95 @@ static void parse_font_face_block(const char *block, NbCss *css) {
         strncpy(css->font_faces[idx].font_family, family, 63);
         strncpy(css->font_faces[idx].src, src, 255);
         css->font_faces[idx].font_weight = weight ? weight : 400;
-        css->font_faces[idx].font_style = 0;
+        css->font_faces[idx].font_style = style;
         css->font_face_count++;
     }
 }
 
 /* ----------------------- cascade ----------------------- */
 
+/* ======================================================================
+ * THE RECOGNIZED PROPERTY LIST - and the contract around it.
+ *
+ * This module is deliberately NOT a full CSS engine. The table below is
+ * the COMPLETE set of properties the engine resolves; anything NOT
+ * listed is silently dropped, by design. The failing shape to avoid is
+ * a rule that is half-applied, and this module refuses to become that.
+ *
+ * THE RULE (do not break it): every property the page projection reads
+ * for layout MUST be resolved here - otherwise a real page changes
+ * behaviour the moment one is missing, with no error anywhere. The set
+ * below is the one G2.1-G2.5 are built on. Adding a property means
+ * touching ALL THREE together:
+ *   1. NbCssStyle (nb_css.h) - the resolved-style fields, and
+ *   2. apply_decl() below - how the declaration maps onto them, and
+ *   3. ops/nb_js_worker.c - ONLY if the projection should act on it.
+ * Then extend tests/nb_css_props_test.sh, which asserts every property
+ * below end-to-end through nb_css_resolve().
+ *
+ * RESOLVED AND CONSUMED BY THE LAYOUT / PROJECTION
+ *   display               - none/hidden/flex/grid/block/... ; flex =>
+ *                          display_flex=1, grid => display_flex=2
+ *   visibility            - hidden (self or any ancestor => hidden walk)
+ *   opacity               - stored as the normalized string
+ *   width, height         - px and bare numbers only
+ *   padding, padding-top, padding-bottom
+ *                         - shorthand parses its FIRST component only
+ *   margin, margin-top, margin-bottom
+ *                         - shorthand parses its FIRST component only
+ *   position              - absolute | fixed (others => 0=static/relative)
+ *   top, left             - px, signed
+ *   flex-direction        - row | column (CSS default is row)
+ *   flex-grow             - number weight for remaining main-axis space
+ *   grid-template-columns - tracks in px or fr (repeat(N,1fr) expands)
+ *
+ * RESOLVED FOR getComputedStyle ONLY (never feeds layout)
+ *   font-family           - @font-face resolution + computed style
+ *
+ * PARSED BUT UNREAD BY THE CURRENT LAYOUT (mirrors khtpm_css_parser.h
+ * exactly; carried so the two engines cannot drift apart in shape -
+ * CENTROID_GOLD_STD §1a. No consumer yet, do not document as behaviour)
+ *   z-index
+ *
+ * NOT RECOGNIZED AT ALL (silently dropped, deliberately - add one only
+ * with the layout-side change that gives it meaning, never "for
+ * completeness"):
+ *   padding-left, padding-right, margin-left, margin-right
+ *                         - the engine's box model is VERTICAL only
+ *   gap, justify-content, align-items, align-self,
+ *   flex-wrap, flex-basis, flex-shrink, order
+ *                         - no flex alignment/wrapping axis exists yet
+ *   box-sizing, border*, background*, color
+ *   font-size, line-height, text-align, letter-spacing,
+ *   src, font-weight, font-style
+ *                         - these three are @font-face-only (parsed by
+ *                         parse_font_face_block()); as declarations they
+ *                         carry no computed meaning and are dropped like
+ *                         any other unlisted property, on purpose - no
+ *                         half-applied rules.
+ *   max/min-width, max/min-height, overflow
+ *
+ * @font-face: font-family, src, font-weight, font-style (up to 8 faces;
+ * not declarations - parsed by their own block, not the table above).
+ *
+ * @media prelude grammar (not a property): only | all | screen,
+ * optional 'and' clauses, (min-width|max-width|width: N) with
+ * N in px/em/rem (1em = 16px), top-level commas act as OR. Anything
+ * else (print, orientation, prefers-*, 'not') does NOT match - a rule
+ * that never fires is a missing nicety, a rule that fires wrongly
+ * changes layout. Nested @media evaluates recursively in source order.
+ * A sheet parsed with viewport_px <= 0 skips every @media block.
+ *
+ * Tests: tests/nb_css_props_test.sh links this file directly and asserts
+ * every property above lands in NbCssStyle with the expected value; the
+ * G2.x suites (flex/grid/geometry/@media) gate the layout consequences.
+ * ====================================================================== */
 enum { PD_DISPLAY = 0, PD_VIS, PD_OP, PD_W, PD_H,
        PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM,
        PD_FLEX_DIR, PD_FLEX_GROW,
        PD_GRID_TEMPLATE_COLUMNS,
        PD_POSITION, PD_TOP, PD_LEFT, PD_Z_INDEX,
-       PD_FONT_FAMILY, PD_SRC, PD_FONT_WEIGHT, PD_FONT_STYLE,
+       PD_FONT_FAMILY,
        PD_COUNT };
 
 static int prop_id(const char *key) {
@@ -547,9 +623,13 @@ static int prop_id(const char *key) {
     if (strcmp(key, "left") == 0) return PD_LEFT;
     if (strcmp(key, "z-index") == 0) return PD_Z_INDEX;
     if (strcmp(key, "font-family") == 0) return PD_FONT_FAMILY;
-    if (strcmp(key, "src") == 0) return PD_SRC;
-    if (strcmp(key, "font-weight") == 0) return PD_FONT_WEIGHT;
-    if (strcmp(key, "font-style") == 0) return PD_FONT_STYLE;
+    /* NB: @font-face's src/font-weight/font-style are NOT handled here.
+     * They carry no computed meaning in the declaration table (nothing
+     * consumed them), so they are deliberately NOT recognized - a page
+     * writing 'font-weight: 700' inside a normal rule gets nothing,
+     * exactly like any other property not listed here. @font-face is
+     * parsed by parse_font_face_block() instead, which reads src,
+     * font-weight and font-style directly. */
     return -1;
 }
 
@@ -598,6 +678,7 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
             if (score >= scores[pid]) {
                 snprintf(out->display, sizeof(out->display), "none");
                 out->has_display_flex = 0;   /* 6.2: none is not flex */
+                out->display_flex = 0;       /* keep the typed pair consistent */
                 scores[pid] = score;
             }
         } else if (score >= scores[pid]) {

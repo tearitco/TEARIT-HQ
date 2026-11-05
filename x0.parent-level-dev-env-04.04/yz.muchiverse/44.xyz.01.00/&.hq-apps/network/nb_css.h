@@ -9,26 +9,25 @@
 extern "C" {
 #endif
 
-/* nb_css.c — rung 7 slice 1: a browser-flavoured *subset* of CSS for the
- * NB-JS worker. Parses stylesheet/`<style>` text into a flat rule list and
- * resolves a tiny computed-style surface per element:
- *   display, visibility, opacity, width, height (px/number only)
- * plus the layout-intent queries that hide/measure real widgets:
- *   display:none / visibility:hidden (self or any ancestor) => hidden.
+/* nb_css.c — a browser-flavoured *subset* of CSS for the NB-JS worker.
+ * Parses stylesheet/`<style>` text into a flat rule list and resolves a
+ * deliberately small computed-style surface per element. The COMPLETE
+ * property list, the contract around it, and the maintenance rule for
+ * adding one live in nb_css.c, directly above the prop_id table - read
+ * that comment before touching anything here; it is the module's law.
  *
- * Deliberately NOT a full CSS engine. Selector matching covers element
- * (#id), explicit class (.cls), tag name, `*`, descendant combinator
- * (space) and comma lists; attribute selectors and pseudo-classes are
- * tolerated (stripped) rather than evaluated. @media/@supports/@keyframes
- * blocks and @import/@charset (head-only) are skipped wholesale (the
- * engine has no viewport, so a media query can never fire). Cascade:
- * source order with the standard id/class/type specificity triple —
- * matching declarations override only when the new rule is more specific
- * or appears later; !important bumps a rule above non-important ones.
- * Inline `style="..."` (passed separately) always wins. There is no
- * inheritance of any property. Units: px and bare numbers; %/em/rem are
- * ignored. Sizes resolve to 0 when absent. This module has zero JS/engine
- * deps so the headless suite can link it directly.
+ * Selector matching covers element, #id, .cls, `*`, descendant
+ * combinator (space) and comma lists; attribute selectors and pseudo-
+ * classes are tolerated (stripped) rather than evaluated. @media rules
+ * are real since 2026-11-04 (nb_css_parse_vp(); viewport_px <= 0 skips
+ * every block, exactly as before). Cascade: source order with the
+ * standard id/class/type specificity triple - matching declarations
+ * override only when the new rule is more specific or appears later;
+ * !important bumps a rule above non-important ones. Inline
+ * `style="..."` (passed separately) always wins. There is no inheritance
+ * of any property. Units: px and bare numbers; %/em/rem are ignored.
+ * This module has zero JS/engine deps so the headless suite can link it
+ * directly (tests/nb_css_props_test.sh does).
  */
 
 typedef struct NbCssRule {
