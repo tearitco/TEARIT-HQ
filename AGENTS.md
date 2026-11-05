@@ -189,6 +189,10 @@ named `<pre>.<name>` (`0.LLMUD_BIZ`, `$.Brainstorm`, `29.marathon-sprint-drive`)
 "safekeeping" copies there, and do not create unprefixed items in it. Scratch work goes in `/tmp` or the session scratchpad; a frozen reference binary is rebuilt
 from its git tag. 2026-10-25: 333 agent items (15,685 files) were moved out to `XO-quarantine/` (next to `XO/`, with `MANIFEST.tsv`; nothing deleted).
 
+## Two ways to build it? Ask the design-choice test first (REQUIRED, since 2026-11-05)
+
+Owner: "which is more modular / scalable, long-term wise and spiritually aligned with the best practices of the house? ALWAYS ASK THAT. DOC IT." Before choosing between shapes, answer in order: one authority per fact? modular (data / one small shared piece, no per-project code in shared files)? scalable (the 10th consumer)? long term (where the roadmap points)? the house shapes (text-include / op+IPC / `.pdl` / marker files / a harness that can fail / capped runtime files)? cost and risk of the better one? Recommend one with the deciding reason and add an entry to HQ-IQ-BOOK `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md`. A quick stopgap is fine only when labelled with its removal condition.
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:
