@@ -1407,6 +1407,7 @@ static int page_follow(char *msg, size_t cap) {
     snprintf(msg, cap, "page: %s follows the page to the %s (%d,%d)", ci < 0 ? "you" : party[ci].name, rooms[r].name, pet.x, pet.y);
     return 1;
 }
+static int possess_at_xelector(char *msg, size_t cap);      /* defined with the other Enter-possession code below; the `possess` verb runs it once */
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
@@ -1488,6 +1489,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             snprintf(b, sizeof b, "DOOR|%ld|%s|menu|%s", now, ci < 0 ? "player" : party[ci].id, rooms[r].id); append_line("events.txt", b); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); turn_taken = 1; snprintf(msg, cap, "%s is now in the %s", ci < 0 ? "you" : party[ci].name, rooms[r].name); return; }
         snprintf(b, sizeof b, "room:%s", rooms[r].id); set_flag("follow", b); calc_view(); snprintf(msg, cap, "watching the %s", rooms[r].name); return; }
     if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
+    if (!strcmp(v, "possess")) { pet_load(); if (!possess_at_xelector(msg, cap)) snprintf(msg, cap, "nobody to possess on the xelector's cell (or the board shows another book)"); return; }      /* `possess`: choose the character standing on the xelector, exactly what Enter does in the board (possess_at_xelector), for menus, event pages and the harness (a deterministic test: the live daemon only sees an Enter that arrives through the engine) */
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }
 #define PET_SECTION 61
 #include PET_SKIN

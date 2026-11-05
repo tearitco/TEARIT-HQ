@@ -1,0 +1,75 @@
+# possess_enter: the `possess` verb = what Enter does in the board (possess_at_xelector, owner 2026-10-12 control model): choose the character standing on the xelector's cell. SCRATCH house, the REAL editor binary, FIXED cells (the live board cannot test this: with INT off the pets wander and the daemon re-pins the xelector every tick, 2026-11-05). Pet files are ONE key=value PER LINE (a single-line file parses as nothing: the 2026-11-05 mistake).
+# NOT covered: the engine delivering the Enter key to the daemon (keyboard history), and the board drawing the choice; see HANDOFF-INDEX 2026-11-04 for the live frames.
+RESULTS | ../results/possess_enter.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/&.widgits
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01
+MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01
+COPY | @.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+COPY | @.apps/rpg-edit-hq/catalog.pdl | house/@.apps/rpg-edit-hq/catalog.pdl
+COPY | @.apps/rpg-edit-hq/doors.fsm.pdl | house/@.apps/rpg-edit-hq/doors.fsm.pdl
+COPY | @.apps/rpg-edit-hq/keybinds.pdl | house/@.apps/rpg-edit-hq/keybinds.pdl
+COPY | @.apps/rpg-edit-hq/lamps.pdl | house/@.apps/rpg-edit-hq/lamps.pdl
+COPY | @.apps/rpg-edit-hq/layout.pdl | house/@.apps/rpg-edit-hq/layout.pdl
+COPY | @.apps/rpg-edit-hq/life.pdl | house/@.apps/rpg-edit-hq/life.pdl
+COPY | @.apps/rpg-edit-hq/net_say.pdl | house/@.apps/rpg-edit-hq/net_say.pdl
+COPY | @.apps/rpg-edit-hq/pals.pdl | house/@.apps/rpg-edit-hq/pals.pdl
+COPY | @.apps/rpg-edit-hq/party.pdl | house/@.apps/rpg-edit-hq/party.pdl
+COPY | @.apps/rpg-edit-hq/rooms.pdl | house/@.apps/rpg-edit-hq/rooms.pdl
+COPY | @.apps/rpg-edit-hq/side_style.pdl | house/@.apps/rpg-edit-hq/side_style.pdl
+COPY | @.apps/rpg-edit-hq/survivor_clock.pdl | house/@.apps/rpg-edit-hq/survivor_clock.pdl
+COPY | @.apps/rpg-edit-hq/time.pdl | house/@.apps/rpg-edit-hq/time.pdl
+COPY | @.apps/rpg-edit-hq/toolbar.pdl | house/@.apps/rpg-edit-hq/toolbar.pdl
+COPY | @.apps/rpg-edit-hq/toy.pdl | house/@.apps/rpg-edit-hq/toy.pdl
+COPY | @.apps/rpg-edit-hq/tuning.pdl | house/@.apps/rpg-edit-hq/tuning.pdl
+COPY | @.apps/rpg-edit-hq/verbs.pdl | house/@.apps/rpg-edit-hq/verbs.pdl
+COPY | @.apps/rpg-edit-hq/voices.pdl | house/@.apps/rpg-edit-hq/voices.pdl
+COPY | @.apps/rpg-edit-hq/world_clock.pdl | house/@.apps/rpg-edit-hq/world_clock.pdl
+WRITE | house/@.apps/rpg-edit-hq/state/pet_ember.txt | room=store\nx=5\ny=5\ndir=0\nsteps=1\ntx=-1\nty=-1\n
+WRITE | house/@.apps/rpg-edit-hq/state/trainer.txt | room=store\nx=7\ny=7\ndir=0\nsteps=1\ntx=-1\nty=-1\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_follow.txt | pet\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq\ndesk_id=store\n
+
+CASE    | a-pet-on-the-xelector-cell-is-chosen
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
+EXPECT_OUT | Ember chosen (Enter) | the-pet-under-the-xelector-is-chosen
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | ember | active-pet-is-now-ember
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet | control-stays-on-a-pet
+
+CASE    | the-trainer-on-the-cell-is-chosen
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
+EXPECT_OUT | Harold chosen (Enter) | harold-the-trainer-is-chosen
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | player | control-goes-to-the-player
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | the-active-pet-is-left-alone
+
+CASE    | NEGATIVE-an-empty-cell-chooses-nobody
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=1\npos_y=1\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
+EXPECT_OUT | nobody to possess | an-empty-cell-is-refused
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | the-active-pet-did-not-change
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet | control-did-not-change
+
+CASE    | NEGATIVE-the-board-shows-another-book
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=5\npos_y=5\npos_z=0\npossessed_id=none\n
+WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
+WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-space\ndesk_id=store\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
+EXPECT_OUT | nobody to possess | another-book-is-refused-even-with-a-pet-on-the-cell
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | and-nothing-changed
+
+CLEAN |

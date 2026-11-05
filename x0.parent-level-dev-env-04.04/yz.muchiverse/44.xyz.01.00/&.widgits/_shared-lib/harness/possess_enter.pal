@@ -1,0 +1,4 @@
+# possess_enter.pal - the `possess` verb (what Enter does in the editor board) on fixed cells in a scratch house. See cases/possess_enter.pdl
+exec ./ops/+x/harness_case_op.+x cases/possess_enter.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/possess_enter.pdl
+halt
