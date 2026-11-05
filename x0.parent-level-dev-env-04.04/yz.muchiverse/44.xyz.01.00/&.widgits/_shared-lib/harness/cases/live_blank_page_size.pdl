@@ -1,7 +1,8 @@
-# live_blank_page_size: step 0 of the tear-it co plan: how big a BLANK page does the running editor board hold? LIVE (real engine; LIVE_OK=1 or SKIP; tell the owner first).
-# The editor's current page (Store) has its cells.txt swapped for a blank WxH page (ops/blank_page_op.c: flat floor only), then cells.marker is grown by one byte (the engine reloads on the marker SIZE, never mtime).
-# Per size: the window process must still be alive (this setup has no separate engine process to count), and a fresh photograph of the canvas must be a drawn floor (mean brightness) that differs from the Store page. Both files are restored at the end and the cells.txt hash must match the one taken first.
-# A size that fails stops being a candidate: the campus legend must be smaller. Known hard limit from the code: the engine reads a cells.txt row into a 16384-byte line buffer, so a blank row of "1,0,1" tokens ends near 2700 columns.
+# live_blank_page_size: step 0 of the tear-it co plan: the x, y AND z limits of a BLANK page in the running editor board. LIVE (real engine; LIVE_OK=1 or SKIP; tell the owner first).
+# The Store page's cells.txt (and extrusion.pdl for the z series) is swapped for a generated blank page (ops/blank_page_op.c), the board is reloaded with load-map (the step that reliably redraws this board; a keyboard nudge did NOT, see the handoff index),
+# then: the window is alive, the canvas is a drawn picture, and it DIFFERS from the Store page (the control: the same detector sees "no change" at the end, after the restore).
+# x,y: 64, 128, 192, 256 square. z: hung depth 1, 16 (the engine's max), 17 and 255 (ignored by the engine: bv_render_3d.c keeps only 1..16), and wall extrusion default 8 and 64. Passing means "loads and draws, window survives", NOT "looks right".
+# Both files are restored and hash-checked. Known hard limit from the code: a cells.txt row goes through a 16384-byte buffer, so a blank row breaks near 2700 columns (the op exits 3 past it).
 RESULTS | ../results/live_blank_page_size.txt
 ENV | LC_ALL | C
 NEEDENV | LIVE_OK
@@ -10,8 +11,11 @@ CASE    | setup
 SCRATCH |
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt | $T/cells.bak
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker | $T/marker.bak
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/extrusion.pdl | $T/extr.bak
 RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
 CAPTURE | hash0
+RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/extrusion.pdl
+CAPTURE | ehash0
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
 EXPECT_EXIT | 0 | the-editor-window-is-open
 CAPTURE | win
@@ -19,86 +23,183 @@ RUN | /usr/bin/cat | $HOUSE/@.apps/rpg-edit-hq/board/module_parent.pid
 CAPTURE | wpid
 RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
 CAPTURE | sess
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/base.png
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/base.png | 208 | 105 | 1094 | 745
-CAPTURE | base_mean
 
-CASE    | size-64x64
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank64.txt | 64 | 64
-EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
-RUN | /bin/cp | $T/blank64.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CASE    | xy-64x64
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 64 | 64
+EXPECT_EXIT | 0 | blank-64-written-rows-fit-the-line-buffer
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
 RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
-SLEEP | 30000
-EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
-RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
-SLEEP | 6000
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s64.png
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s64.png | 208 | 105 | 1094 | 745
-CAPTURE | mean64
-EXPECT_GE | $mean64 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s64.png | 208 | 105 | 1094 | 745
-CAPTURE | diff64
-EXPECT_GE | $diff64 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-xy64
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/xy64.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/xy64.png | 208 | 105 | 1094 | 745
+CAPTURE | m_xy64
+EXPECT_GE | $m_xy64 | 15 | xy64-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/xy64.png | 208 | 105 | 1094 | 745
+CAPTURE | d_xy64
+EXPECT_GE | $d_xy64 | 3000 | xy64-differs-from-the-store-page-so-the-engine-loaded-it
 
-CASE    | size-128x128
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank128.txt | 128 | 128
-EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
-RUN | /bin/cp | $T/blank128.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CASE    | xy-128x128
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 128 | 128
+EXPECT_EXIT | 0 | blank-128-written-rows-fit-the-line-buffer
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
 RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
-SLEEP | 30000
-EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
-RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
-SLEEP | 6000
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s128.png
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s128.png | 208 | 105 | 1094 | 745
-CAPTURE | mean128
-EXPECT_GE | $mean128 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s128.png | 208 | 105 | 1094 | 745
-CAPTURE | diff128
-EXPECT_GE | $diff128 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-xy128
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/xy128.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/xy128.png | 208 | 105 | 1094 | 745
+CAPTURE | m_xy128
+EXPECT_GE | $m_xy128 | 15 | xy128-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/xy128.png | 208 | 105 | 1094 | 745
+CAPTURE | d_xy128
+EXPECT_GE | $d_xy128 | 3000 | xy128-differs-from-the-store-page-so-the-engine-loaded-it
 
-CASE    | size-192x192
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank192.txt | 192 | 192
-EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
-RUN | /bin/cp | $T/blank192.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CASE    | xy-192x192
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 192 | 192
+EXPECT_EXIT | 0 | blank-192-written-rows-fit-the-line-buffer
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
 RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
-SLEEP | 30000
-EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
-RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
-SLEEP | 6000
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s192.png
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s192.png | 208 | 105 | 1094 | 745
-CAPTURE | mean192
-EXPECT_GE | $mean192 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s192.png | 208 | 105 | 1094 | 745
-CAPTURE | diff192
-EXPECT_GE | $diff192 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-xy192
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/xy192.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/xy192.png | 208 | 105 | 1094 | 745
+CAPTURE | m_xy192
+EXPECT_GE | $m_xy192 | 15 | xy192-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/xy192.png | 208 | 105 | 1094 | 745
+CAPTURE | d_xy192
+EXPECT_GE | $d_xy192 | 3000 | xy192-differs-from-the-store-page-so-the-engine-loaded-it
 
-CASE    | size-256x256
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank256.txt | 256 | 256
-EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
-RUN | /bin/cp | $T/blank256.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CASE    | xy-256x256
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 256 | 256
+EXPECT_EXIT | 0 | blank-256-written-rows-fit-the-line-buffer
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
 RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
-SLEEP | 30000
-EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
-RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
-SLEEP | 6000
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s256.png
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s256.png | 208 | 105 | 1094 | 745
-CAPTURE | mean256
-EXPECT_GE | $mean256 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s256.png | 208 | 105 | 1094 | 745
-CAPTURE | diff256
-EXPECT_GE | $diff256 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-xy256
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/xy256.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/xy256.png | 208 | 105 | 1094 | 745
+CAPTURE | m_xy256
+EXPECT_GE | $m_xy256 | 15 | xy256-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/xy256.png | 208 | 105 | 1094 | 745
+CAPTURE | d_xy256
+EXPECT_GE | $d_xy256 | 3000 | xy256-differs-from-the-store-page-so-the-engine-loaded-it
 
-CASE    | restore
+CASE    | z-depth-1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 64 | 64 | 1
+EXPECT_EXIT | 0 | blank-64-depth-1-written
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-zd1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/zd1.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/zd1.png | 208 | 105 | 1094 | 745
+CAPTURE | m_zd1
+EXPECT_GE | $m_zd1 | 15 | zd1-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/zd1.png | 208 | 105 | 1094 | 745
+CAPTURE | d_zd1
+EXPECT_GE | $d_zd1 | 3000 | zd1-differs-from-the-store-page-so-the-engine-loaded-it
+
+CASE    | z-depth-16
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 64 | 64 | 16
+EXPECT_EXIT | 0 | blank-64-depth-16-written
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-zd16
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/zd16.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/zd16.png | 208 | 105 | 1094 | 745
+CAPTURE | m_zd16
+EXPECT_GE | $m_zd16 | 15 | zd16-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/zd16.png | 208 | 105 | 1094 | 745
+CAPTURE | d_zd16
+EXPECT_GE | $d_zd16 | 3000 | zd16-differs-from-the-store-page-so-the-engine-loaded-it
+
+CASE    | z-depth-17
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 64 | 64 | 17
+EXPECT_EXIT | 0 | blank-64-depth-17-written
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-zd17
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/zd17.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/zd17.png | 208 | 105 | 1094 | 745
+CAPTURE | m_zd17
+EXPECT_GE | $m_zd17 | 15 | zd17-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/zd17.png | 208 | 105 | 1094 | 745
+CAPTURE | d_zd17
+EXPECT_GE | $d_zd17 | 3000 | zd17-differs-from-the-store-page-so-the-engine-loaded-it
+
+CASE    | z-depth-255
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/b.txt | 64 | 64 | 255
+EXPECT_EXIT | 0 | blank-64-depth-255-written
+RUN | /bin/cp | $T/b.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-zd255
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/zd255.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/zd255.png | 208 | 105 | 1094 | 745
+CAPTURE | m_zd255
+EXPECT_GE | $m_zd255 | 15 | zd255-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/zd255.png | 208 | 105 | 1094 | 745
+CAPTURE | d_zd255
+EXPECT_GE | $d_zd255 | 3000 | zd255-differs-from-the-store-page-so-the-engine-loaded-it
+
+CASE    | z-extrude-8
+WRITE | extr.pdl | SECTION      \p KEY                \p VALUE\nMETA         \p map_id             \p rpg-edit-hq\nMETA         \p desk_id            \p store\nEXTRUDE      \p W                  \p 8\nEXTRUDE      \p default            \p 8\n
+RUN | /bin/cp | $T/extr.pdl | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/extrusion.pdl
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-ze8
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/ze8.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/ze8.png | 208 | 105 | 1094 | 745
+CAPTURE | m_ze8
+EXPECT_GE | $m_ze8 | 15 | ze8-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/ze8.png | 208 | 105 | 1094 | 745
+CAPTURE | d_ze8
+EXPECT_GE | $d_ze8 | 3000 | ze8-differs-from-the-store-page-so-the-engine-loaded-it
+
+CASE    | z-extrude-64
+WRITE | extr.pdl | SECTION      \p KEY                \p VALUE\nMETA         \p map_id             \p rpg-edit-hq\nMETA         \p desk_id            \p store\nEXTRUDE      \p W                  \p 64\nEXTRUDE      \p default            \p 64\n
+RUN | /bin/cp | $T/extr.pdl | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/extrusion.pdl
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
+EXPECT_ALIVE | $wpid | window-alive-after-ze64
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/ze64.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/ze64.png | 208 | 105 | 1094 | 745
+CAPTURE | m_ze64
+EXPECT_GE | $m_ze64 | 15 | ze64-draws-a-picture-not-black
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/ze64.png | 208 | 105 | 1094 | 745
+CAPTURE | d_ze64
+EXPECT_GE | $d_ze64 | 3000 | ze64-differs-from-the-store-page-so-the-engine-loaded-it
+
+CASE    | restore-and-control
 RUN | /bin/cp | $T/cells.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /bin/cp | $T/extr.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/extrusion.pdl
 RUN | /bin/cp | $T/marker.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /bin/sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $sess | load-map | rpg-edit-hq
+SLEEP | 45000
 RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
 CAPTURE | hash1
-EXPECT_EQ | $hash0 | $hash1 | cells.txt-is-byte-identical-to-before
-SLEEP | 25000
-RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
-SLEEP | 5000
-EXPECT_ALIVE | $wpid | the-editor-window-survived-the-whole-run
+EXPECT_EQ | $hash0 | $hash1 | cells.txt-byte-identical-to-before
+RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/extrusion.pdl
+CAPTURE | ehash1
+EXPECT_EQ | $ehash0 | $ehash1 | extrusion.pdl-byte-identical-to-before
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/end.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/end.png | 208 | 105 | 1094 | 745
+CAPTURE | d_end
+EXPECT_LE | $d_end | 3000 | CONTROL-after-the-restore-the-picture-is-back-the-detector-can-see-no-change
+EXPECT_ALIVE | $wpid | the-window-survived-the-whole-run
 CLEAN |

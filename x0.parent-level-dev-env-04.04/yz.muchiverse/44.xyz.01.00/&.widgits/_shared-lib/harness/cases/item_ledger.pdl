@@ -1,0 +1,113 @@
+# item_ledger: scratch book under $T only (never a live game book). Every refusal case also checks the ledger did NOT change; the tamper case proves `check` can fail.
+RESULTS | ../results/item_ledger.txt
+ENV | LC_ALL | C
+ENV | ITEM_LEDGER_TS | 1700000000
+
+CASE    | quarantine
+SCRATCH |
+MKDIR | book
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 4 | no-QUARANTINE-file-means-the-op-refuses-to-run
+EXPECT_OUT | NOT A QUARANTINED BOOK | and-says-why
+WRITE | book/QUARANTINE | quarantined: item ledger lab, not released to any live game book\n
+
+CASE    | define-three-ids
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | define | cdda.stone | Stone (CDDA)
+EXPECT_EXIT | 0 | cdda.stone-defined
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | define | df.stone | Stone (DF)
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | define | mcl.cobble | Cobblestone (MCL)
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | define | Stone | bad
+EXPECT_EXIT | 3 | an-id-without-game-prefix-and-with-capitals-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | define | cdda.stone | again
+EXPECT_EXIT | 3 | a-duplicate-id-is-refused
+EXPECT_HAS | book/items.pdl | ITEM \p df.stone | df.stone-is-its-own-id
+
+CASE    | mint-rules
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.stone | 5 | smash
+EXPECT_EXIT | 0 | mint-from-an-allowed-source
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.stone | 5 | hack
+EXPECT_EXIT | 3 | a-mint-from-a-made-up-source-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.stone | 0 | smash
+EXPECT_EXIT | 3 | a-zero-mint-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | nope.item | 1 | smash
+EXPECT_EXIT | 3 | an-undefined-item-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.stone
+EXPECT_OUT_IS | 5 | refusals-created-nothing-supply-is-still-5
+
+CASE    | move-conserves
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | move | hero | pet-rex | cdda.stone | 2
+EXPECT_EXIT | 0 | move-2
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | move | hero | pet-rex | cdda.stone | 9
+EXPECT_EXIT | 3 | overdraw-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | move | hero | hero | cdda.stone | 1
+EXPECT_EXIT | 3 | move-to-self-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pcdda.stone\p3 | hero-holds-3
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | pet-rex
+EXPECT_OUT | pet-rex\pcdda.stone\p2 | rex-holds-2
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.stone
+EXPECT_OUT_IS | 5 | a-move-does-not-change-supply
+
+CASE    | trade-is-atomic-and-ids-do-not-convert
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | shop | df.stone | 4 | mine
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | trade | hero | shop | cdda.stone | 1 | df.stone | 2
+EXPECT_EXIT | 0 | trade-1-cdda.stone-for-2-df.stone
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | trade | hero | shop | cdda.stone | 1 | df.stone | 9
+EXPECT_EXIT | 3 | a-trade-where-the-shop-is-short-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pdf.stone\p2 | hero-got-df.stone
+EXPECT_OUT | hero\pcdda.stone\p2 | and-still-has-2-cdda.stone-the-refused-leg-moved-nothing
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.stone
+EXPECT_OUT_IS | 5 | cdda.stone-supply-unchanged
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | df.stone
+EXPECT_OUT_IS | 4 | df.stone-supply-unchanged-no-conversion-between-ids
+
+CASE    | burn
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | burn | pet-rex | cdda.stone | 1 | eaten
+EXPECT_EXIT | 0 | burn-1
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | burn | pet-rex | cdda.stone | 5 | eaten
+EXPECT_EXIT | 3 | burning-more-than-held-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.stone
+EXPECT_OUT_IS | 4 | supply-fell-by-exactly-the-burn
+
+CASE    | check-and-tamper
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-honest-ledger-passes
+EXPECT_OUT | CHECK OK | and-says-so
+RUN | /usr/bin/sed | -i | s/\pMINT\p-\phero\pcdda.stone\p5\psmash/\pMINT\p-\phero\pcdda.stone\p50\psmash/ | $T/book/state/ledger.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 1 | NEGATIVE-an-edited-row-makes-check-fail
+EXPECT_OUT | hash chain broken | with-the-reason
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | mint | hero | cdda.stone | 1 | smash
+EXPECT_EXIT | 3 | and-writing-on-a-broken-ledger-is-refused
+RUN | /usr/bin/sed | -i | s/\pMINT\p-\phero\pcdda.stone\p50\psmash/\pMINT\p-\phero\pcdda.stone\p5\psmash/ | $T/book/state/ledger.txt
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | restoring-the-row-heals-the-chain
+
+CASE    | compact-keeps-balances
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | compact
+EXPECT_EXIT | 0 | compact
+EXPECT_HAS | book/state/ledger.txt | \pSNAP\p | snapshot-rows-replace-the-history
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
+EXPECT_EXIT | 0 | the-compacted-ledger-passes-check
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | total | cdda.stone
+EXPECT_OUT_IS | 4 | supply-survives-compaction
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | balance | hero
+EXPECT_OUT | hero\pdf.stone\p2 | balances-survive-compaction
+
+CASE    | deterministic
+MKDIR | book2
+WRITE | book2/QUARANTINE | q\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book2 | define | cdda.stone | Stone (CDDA)
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book2 | mint | hero | cdda.stone | 5 | smash
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book2 | move | hero | pet-rex | cdda.stone | 2
+MKDIR | book3
+WRITE | book3/QUARANTINE | q\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book3 | define | cdda.stone | Stone (CDDA)
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book3 | mint | hero | cdda.stone | 5 | smash
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book3 | move | hero | pet-rex | cdda.stone | 2
+RUN | /usr/bin/cmp | $T/book2/state/ledger.txt | $T/book3/state/ledger.txt
+EXPECT_EXIT | 0 | same-operations-give-a-byte-identical-ledger
+RUN | /usr/bin/cmp | $T/book/state/ledger.txt | $T/book2/state/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-different-history-is-not-byte-identical-so-cmp-can-fail
+CLEAN |

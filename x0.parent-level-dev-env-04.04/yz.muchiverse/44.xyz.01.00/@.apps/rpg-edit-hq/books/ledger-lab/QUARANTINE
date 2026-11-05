@@ -1,0 +1,2 @@
+quarantined 2026-11-04 (owner: keep the item ledger and its siblings inside their own book in the editor until we are sure they are safe).
+item_ledger_op refuses to run in any folder without this file. Release = the owner deletes this file AND names the book that may call the op; nothing else may.
