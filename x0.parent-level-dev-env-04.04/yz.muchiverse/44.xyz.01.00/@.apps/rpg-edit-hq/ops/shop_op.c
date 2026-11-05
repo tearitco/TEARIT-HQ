@@ -4,7 +4,7 @@
  *   shop_op <book> buy  <actor> <item> <n>      actor pays n*buy coins, the shop hands over n items
  *   shop_op <book> sell <actor> <item> <n>      the shop pays n*sell coins, the actor hands over n items
  * There is NO verb that swaps one item id for another: cdda / df / mcl stay three ids; an exchange across ids is two trades through coins. Files: shop.pdl (COIN / SHOPKEEPER / PRICE rows; any sell >= buy is refused), state/shop_events.txt (log, capped 64 KB -> 32 KB).
- * Runs only in a folder that holds QUARANTINE (exit 4). Exit 0 ok, 2 usage, 3 refused (reason on stdout, nothing written). Env SHOP_LEDGER_OP overrides the ledger op path. COST: one short process, 3-4 ledger processes per call. */
+ * Runs only in a folder that holds QUARANTINE, OR a folder whose RELEASE file names shop_op (the owner's one released caller, 2026-11-04; exit 4 otherwise). Exit 0 ok, 2 usage, 3 refused (reason on stdout, nothing written). Env SHOP_LEDGER_OP overrides the ledger op path. COST: one short process, 3-4 ledger processes per call. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +46,8 @@ static int do_trade(int buying, const char *actor, const char *item, const char 
 }
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: shop_op <book_dir> list | buy|sell <actor> <item> <n>\n"); return 2; }
-    snprintf(BOOK, sizeof BOOK, "%s", argv[1]); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/QUARANTINE", BOOK); if (access(q, F_OK) != 0) { printf("NOT A QUARANTINED BOOK: %s has no QUARANTINE file\n", BOOK); return 4; }
+    snprintf(BOOK, sizeof BOOK, "%s", argv[1]); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/QUARANTINE", BOOK); { char rl[PATH_MAX], ln[80] = ""; snprintf(rl, sizeof rl, "%s/RELEASE", BOOK); FILE *rf = fopen(rl, "r"); int rel = 0; if (rf) { if (fgets(ln, sizeof ln, rf)) { ln[strcspn(ln, "\r\n")] = 0; rel = !strcmp(ln, "shop_op"); } fclose(rf); } if (access(q, F_OK) != 0 && !rel) { printf("NOT A QUARANTINED BOOK: %s has no QUARANTINE file (and no RELEASE naming shop_op)\n", BOOK); return 4; } }
+    setenv("ITEM_LEDGER_CALLER", "shop_op", 1);
     const char *lo = getenv("SHOP_LEDGER_OP"); if (lo && lo[0]) snprintf(LOP, sizeof LOP, "%s", lo); else { char self[PATH_MAX]; ssize_t k = readlink("/proc/self/exe", self, sizeof self - 1); if (k < 0) return 2; self[k] = 0; char *sl = strrchr(self, '/'); if (sl) *sl = 0; snprintf(LOP, sizeof LOP, "%s/item_ledger_op.+x", self); }
     char sd[PATH_MAX]; P(sd, "state"); mkdir(sd, 0755); const char *v = argv[2];
     if (!strcmp(v, "list") && argc == 3) { int rc = load_shop(); if (rc) return rc; printf("SHOP %s, coin %s, till %ld\n", KEEPER, COIN, held(KEEPER, COIN)); for (int i = 0; i < np; i++) printf("%s buy %ld sell %ld stock %ld\n", pr[i].item, pr[i].buy, pr[i].sell, held(KEEPER, pr[i].item)); return 0; }

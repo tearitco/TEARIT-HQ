@@ -109,6 +109,36 @@ RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/book | buy | hero | cdda.
 EXPECT_EXIT | 3 | NEGATIVE-sell-above-buy-is-refused-too
 RUN | /bin/cp | $T/book/shop_keep.pdl | $T/book/shop.pdl
 
+CASE    | release-gate-one-caller
+MKDIR | rel
+WRITE | rel/QUARANTINE | q\n
+RUN | /bin/cp | $T/book/items.pdl | $T/rel/items.pdl
+RUN | /bin/cp | $T/book/shop_keep.pdl | $T/rel/shop.pdl
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/rel | mint | shop | cdda.rag | 5 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/rel | mint | shop | coin.play | 100 | gift
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/rel | mint | player | coin.play | 50 | gift
+RUN | /bin/rm | $T/rel/QUARANTINE
+WRITE | rel/RELEASE | shop_op\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/rel | buy | player | cdda.rag | 2
+EXPECT_EXIT | 0 | the-released-folder-works-for-shop_op
+EXPECT_OUT | BOUGHT 2 x cdda.rag for 8 coins | and-trades-normally
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/rel | balance
+EXPECT_EXIT | 4 | NEGATIVE-the-ledger-op-run-directly-is-still-refused-no-caller-env
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/rel | status | player
+EXPECT_EXIT | 4 | NEGATIVE-survivor_op-is-refused-the-other-ops-stay-quarantined
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/rel | status
+EXPECT_EXIT | 4 | NEGATIVE-world_common_op-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/mcl_op.+x | $T/rel | status
+EXPECT_EXIT | 4 | NEGATIVE-mcl_op-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/rel | verify_house | $T/rel
+EXPECT_EXIT | 4 | NEGATIVE-gen_map_op-is-refused
+WRITE | rel/RELEASE | someone_else\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/rel | list
+EXPECT_EXIT | 4 | NEGATIVE-a-RELEASE-naming-another-caller-does-not-open-it
+RUN | /bin/rm | $T/rel/RELEASE
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/rel | list
+EXPECT_EXIT | 4 | NEGATIVE-with-neither-QUARANTINE-nor-RELEASE-it-is-refused
+
 CASE    | replay-and-quarantine
 RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/book | check
 EXPECT_EXIT | 0 | the-whole-ledger-replays-clean-per-id-conservation

@@ -1,0 +1,22 @@
+ITEM | cdda.stone | Stone (CDDA)
+ITEM | df.stone | Stone (DF)
+ITEM | mcl.cobble | Cobblestone (MCL)
+ITEM | cdda.plank | Plank
+ITEM | cdda.rag | Rag
+ITEM | cdda.pipe | Steel pipe
+ITEM | cdda.can | Canned food
+ITEM | cdda.bottle | Bottle of water
+ITEM | cdda.book_fab | Fabrication manual
+ITEM | cdda.spear | Pipe spear
+ITEM | cdda.bandage | Rag bandage
+ITEM | mcl.log | Log (MCL)
+ITEM | mcl.plank | Plank (MCL)
+ITEM | mcl.stick | Stick (MCL)
+ITEM | mcl.wool | Wool (MCL)
+ITEM | mcl.coal | Coal (MCL)
+ITEM | mcl.stone | Stone (MCL)
+ITEM | mcl.pickaxe | Wooden pickaxe (MCL)
+ITEM | mcl.bench | Crafting bench (MCL)
+ITEM | mcl.bed | Bed (MCL)
+ITEM | mcl.furnace | Furnace (MCL)
+ITEM | coin.play | Play coin (ledger copy of the exchange unit play)

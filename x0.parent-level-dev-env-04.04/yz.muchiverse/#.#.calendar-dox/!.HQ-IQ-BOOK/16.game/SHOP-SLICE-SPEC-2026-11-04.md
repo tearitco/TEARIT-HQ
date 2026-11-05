@@ -33,5 +33,8 @@ Status: spec written BEFORE the code (the checklist rule). Built in the editor's
 - Each trade is the ledger's atomic `trade` (both legs checked, written together or not at all), so per item id and for the coin id, sum of balances = minted - burned always holds; `item_ledger_op check` replays it.
 - Harness proves: a refusal changes no balance; total coins unchanged after every trade; buy-then-sell loses exactly the spread; a bad `shop.pdl` is refused.
 
+## Release (2026-11-04, owner)
+The owner released ONE caller from quarantine: the editor's coin shop. `books/shop/` holds a `RELEASE` file (first line `shop_op`); `shop_op` accepts it, `item_ledger_op` accepts it only with env `ITEM_LEDGER_CALLER=shop_op` (shop_op sets it). The other ops (`survivor_op`, `gen_map_op`, `world_common_op`, `mcl_op`) know only `QUARANTINE` and refuse it. The editor has an opt-in verb `lshop list|buy|sell <item> [n]` (actor `player`) and a `Coin shop ▾` tab. To take it back: delete `RELEASE`.
+
 ## Not in this slice
 Dynamic prices (supply and demand), shop inventory restock rules, a real player or pet as customer, the editor Shop tab, exchange-hq settlement, taxes / fees, per-user wallets (`WALLET-CONVENTIONS-AND-OPEN-CALLS-2026-11-02.md`), multiple coin ids.

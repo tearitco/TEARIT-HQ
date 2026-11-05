@@ -76,10 +76,12 @@ static int compact(void) {
 }
 static int maybe_compact(void) { struct stat st; if (stat(LEDGER, &st) == 0 && st.st_size > CAP_BYTES) return compact(); return 0; }
 
+/* 2026-11-04 RELEASE (owner decision: the editor Shop tab is the ONE released caller): a folder with a file RELEASE whose first line names a caller is usable when the env ITEM_LEDGER_CALLER is exactly that name (shop_op sets it). It is a soft guard, not a security boundary: the point is that no other op or game gets this folder by accident. */
+static int released_for_caller(const char *book) { const char *c = getenv("ITEM_LEDGER_CALLER"); if (!c || !c[0]) return 0; char p[PATH_MAX], ln[80]; snprintf(p, sizeof p, "%s/RELEASE", book); FILE *f = fopen(p, "r"); if (!f) return 0; int ok = fgets(ln, sizeof ln, f) != NULL; fclose(f); if (!ok) return 0; ln[strcspn(ln, "\r\n")] = 0; return !strcmp(ln, c); }
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: item_ledger_op <book_dir> define|mint|burn|move|trade|balance|total|check|compact ...\n"); return 2; }
     snprintf(BOOK, sizeof BOOK, "%s", argv[1]); char q[PATH_MAX]; snprintf(q, sizeof q, "%s/QUARANTINE", BOOK);
-    if (access(q, F_OK) != 0) { printf("NOT A QUARANTINED BOOK: %s has no QUARANTINE file (this op never runs in a live game book)\n", BOOK); return 4; }
+    if (access(q, F_OK) != 0 && !released_for_caller(BOOK)) { printf("NOT A QUARANTINED BOOK: %s has no QUARANTINE file (this op never runs in a live game book)\n", BOOK); return 4; }
     snprintf(ITEMS, sizeof ITEMS, "%s/items.pdl", BOOK); snprintf(LEDGER, sizeof LEDGER, "%s/state/ledger.txt", BOOK); { char d[PATH_MAX]; snprintf(d, sizeof d, "%s/state", BOOK); mkdir(d, 0755); }
     const char *v = argv[2]; load_items(); load_sources(); char why[300], rb[1000];
     int lk = open(LEDGER, O_RDWR | O_CREAT, 0644); if (lk >= 0) { struct flock fl = { .l_type = F_WRLCK, .l_whence = SEEK_SET }; fcntl(lk, F_SETLKW, &fl); }      /* one writer at a time; released at exit */
