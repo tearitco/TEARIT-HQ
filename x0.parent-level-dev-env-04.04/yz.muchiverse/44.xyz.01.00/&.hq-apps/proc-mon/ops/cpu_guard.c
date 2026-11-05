@@ -740,6 +740,9 @@ static void trim_debug_logs(void) {
             snprintf(p, sizeof p, "%s/%s/state/clock_root/#.desktop/clocks/schedule_ledger.txt", ap, e->d_name); nl += trim_tail(p, 1024 * 1024, 128 * 1024); } closedir(d); }      /* a game clock that is not running cannot compact its own ledger (lc_clock does it at 256 KB while running): the recurrence cursor is the LAST row per reminder id, which the tail keeps */
     if (n) logf_("HYGIENE | trimmed %d window debug log(s) past 1 MB to their last 128 KB (kh_focus_debug.log: the writer-side cap did not hold)", n);
     if (nl) logf_("HYGIENE | trimmed %d clock schedule_ledger.txt file(s) past 1 MB to their last 128 KB (dormant game clocks)", nl);
+    {   /* 2026-11-04: pet_post_audit.txt (every pet post attempt, written by pet_post.+x in the chat node) - second guard besides the writer's own cap; also its pending file */
+        DIR *hd = opendir(house); int na = 0; if (hd) { struct dirent *he; while ((he = readdir(hd))) if (!strncmp(he->d_name, "044.pal-chat-irc", 16)) { snprintf(p, sizeof p, "%s/%s/pet_post_audit.txt", house, he->d_name); na += trim_tail(p, 1024 * 1024, 128 * 1024); snprintf(p, sizeof p, "%s/%s/pet_post_pending.txt", house, he->d_name); na += trim_tail(p, 256 * 1024, 32 * 1024); } closedir(hd); }
+        if (na) logf_("HYGIENE | trimmed %d pet_post audit/pending file(s) (audit past 1 MB, pending past 256 KB)", na); }
     snprintf(p, sizeof p, "%s/#.desktop/active_session.pdl", house); struct stat st; if (lstat(p, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 16 * 1024 && unlink(p) == 0) logf_("HYGIENE | active_session.pdl was %ld bytes (cap 16 KB): removed, hai_op rewrites it", (long)st.st_size); }
 static void hygiene_sweep(void) {
     trim_debug_logs();
