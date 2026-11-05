@@ -1,0 +1,4 @@
+# py_lint.pal - the ratchet against new Python in the repo (cases/py_lint.pdl, baseline py_baseline.txt). Run it before every commit that adds a file.
+exec ./ops/+x/harness_case_op.+x cases/py_lint.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/py_lint.pdl
+halt

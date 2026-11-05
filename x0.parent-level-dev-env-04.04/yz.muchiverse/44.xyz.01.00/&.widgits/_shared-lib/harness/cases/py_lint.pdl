@@ -1,0 +1,38 @@
+# py_lint: the ratchet against new Python (owner 2026-11-04). A scratch git repo under $T proves the linter itself: a tracked .py that is in the baseline passes, a new one is named and fails, an OWED one is listed
+# but tolerated, and a baseline row for a deleted file is reported as GONE. Then the REAL repo is checked against ../py_baseline.txt: no tracked .py outside it.
+RESULTS | ../results/py_lint.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/pl.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/py_lint.c
+EXPECT_EXIT | 0 | compiles-clean-with-werror
+
+CASE    | scratch-repo
+RUN | /usr/bin/git | init | -q | $T/r
+EXPECT_EXIT | 0 | scratch-repo-created
+MKDIR | r/tools
+WRITE | r/tools/old.py | print(1)\n
+WRITE | r/tools/owed.py | print(2)\n
+WRITE | r/readme.txt | not python\n
+RUN | /usr/bin/git | -C | $T/r | add | .
+WRITE | base.txt | # grandfathered and owed\ntools/old.py\nOWED tools/owed.py\ntools/deleted.py\n
+RUN | $T/pl.+x | $T/r | $T/base.txt
+EXPECT_EXIT | 0 | baseline-and-owed-files-pass
+EXPECT_OUT | OWED_PY tools/owed.py | owed-is-listed-not-hidden
+EXPECT_OUT | GONE tools/deleted.py | a-baseline-row-for-a-missing-file-is-reported
+EXPECT_OUT_LACKS | NEW_PY | no-new-python-yet
+WRITE | r/tools/new_harness.py | print(3)\n
+RUN | /usr/bin/git | -C | $T/r | add | .
+RUN | $T/pl.+x | $T/r | $T/base.txt
+EXPECT_EXIT | 1 | a-new-tracked-python-file-fails
+EXPECT_OUT | NEW_PY tools/new_harness.py | and-it-is-named
+RUN | /usr/bin/git | -C | $T/r | rm | -q | -f | tools/new_harness.py
+RUN | $T/pl.+x | $T/r | $T/base.txt
+EXPECT_EXIT | 0 | removing-it-passes-again-control
+
+CASE    | the-real-repo
+RUN | $T/pl.+x | $HOUSE/../../.. | $HOUSE/&.widgits/_shared-lib/harness/py_baseline.txt
+EXPECT_EXIT | 0 | no-tracked-python-outside-the-baseline
+EXPECT_OUT | new=0 | new-is-zero
+CLEAN |

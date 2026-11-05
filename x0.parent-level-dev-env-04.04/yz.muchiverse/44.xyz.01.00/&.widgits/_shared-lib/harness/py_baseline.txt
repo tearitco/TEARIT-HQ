@@ -1,0 +1,74 @@
+# py_baseline.txt - tracked Python that exists today (2026-11-04), paths relative to the repo root (git ls-files). The list may only SHRINK: never add a row to cover a new file (py_lint.pal fails on it). Rewrite as pal + cases + C, then delete the row.
+# OWED = written by Claude on 2026-11-04 against the owner's rule (harnesses are pal + cases); to be replaced by pal cases + C ops.
+x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/#.dev-storage/#.dox/TPMOSTEXTBOOK_v05.01/make_tpmos_pdf.py
+x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/#.dev-storage/0.fondu.+instal_00.01=MT/#.dev-storage/TPMOSTEXTBOOK_v05.01/make_tpmos_pdf.py
+x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/#.dev-storage/0.fondu.+instal_00.01=MT/xo/0.iqaida.g🪛️+FSM-i=022.0005/#.dox/1.IQ-AIDA-10.05.py
+x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/xo/!.gem-xo=00.03/#.dev-storage/TPMOSTEXTBOOK_v05.01/make_tpmos_pdf.py
+x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/xo/!.gem-xo=00.03/xo/0.iqaida.g🪛️+FSM-i=022.0005/#.dox/1.IQ-AIDA-10.05.py
+x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001/xo/0.iqaida.g🪛️+FSM-i=022.0005/#.dox/1.IQ-AIDA-10.05.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/browser-prompting/build-html.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/bar_skin_scan.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_all_sessions.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_night32_to_audio.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_night_cast.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_night_to_audio.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_night_to_audio_local.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_night_to_audio_remote.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_one_session.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/convert_user_guide_to_audio.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/create_pdf.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/make_tpmos_pdf.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/reformat_all_sessions.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/remote_tts/render_lines.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1-1.HARNECIENT.SMOL/tts_book_0pauses_tomo.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.ref/2.diffusion.fast]🖼️🖌️🎨️]c4]cl++/nn_test.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.ref/2.diffusion.fast]🖼️🖌️🎨️]c4]cl++/py_test.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/#.ref/3.diffusion.mp3🎹️]c4]a0/py_test.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/concept_bank_bridge.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/run_handtune.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/tomom_dashboard.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/tune.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/tune_output.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/validate.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/$.crypts/livedesk-icon-gen.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/blueprintz/tools/doom_verb_fix.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/blueprintz/tools/map_trigger_convert.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/bluebands.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/colscan.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/frame_geom.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/g1_timer_probe.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/nb_wasm_gen.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/themecheck.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/themescan.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/widthscan.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/xclipget.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/xsendevent.py
+OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/make_deck.py
+OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/present_harness.py
+OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/remote_one_line.py
+OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/remote_tts.py
+OWED x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/presentation/run_suite.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/concept-bank/data/img/draft/img_draft.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/eden/presentation/eden_gameplay_harness.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/listener/tools/synth_set.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/taskbar-settings/make_bar_skin.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_book.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_event_ir.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_event_pages.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_events.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_layers.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_map004.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_paint.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tsots-map-convert/tsots_parallax.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/pet-trainer/ops/pet_stt.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/pet-trainer/ops/pet_tts_local.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/ops/chess_rules.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/meta_to_menu_chtpm.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.muchi-pet/ops/csv_to_png_preview.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/shared/cdda_tiles_to_pdl.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/_seed/livedesk/pals/cursword/harnesses/bookmark_badge_contrast_fix_harness.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/_seed/livedesk/pals/cursword/harnesses/presentation_harness.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/_seed/livedesk/pals/cursword/presentations/make_presentation_video.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/44xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/harnec/tune.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/_hq_cap.py
+x0.parent-level-dev-env-04.04/yz.muchiverse/_hq_fit_keys.py

@@ -126,6 +126,16 @@ footprint, never "the browser". Details: HQ-IQ-BOOK `03-pitfalls/hq-cpu-safety.m
 
 Before any CPU optimization, load test or "the cpu is high" investigation read HQ-IQ-BOOK `03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md` (22 pitfalls, each from a real failure that night: wrong sampler, wrong sensor, an unread producer, an orphaned clock, test loops that got the house killed, a `%` tab frozen by a dead writer). A number shown to the user needs a live writer; a producer is optimized only after finding who reads it.
 
+## NO Python: harnesses and tools are pal + cases + C (REQUIRED, since 2026-11-04)
+
+The owner does not allow Python in this repo ("we really dont allow any python"). A test or verification harness is **pal + a case file (.pdl) + compiled C ops**, exactly like the 120+ existing ones:
+`&.widgits/_shared-lib/harness/` (README there: verbs `RUN`, `SPAWN`, `EXPECT_*`, `WAIT_HAS`, `NEEDENV`, ...), playthrough tables `harness/play/phases/*.phases.pdl` for game verbs, scratch house under `/tmp`, never the live house.
+Read `harness/README.md` **before** writing any harness; if something you need is missing (an ssh step, an image check), add a small **C op** or a verb to `harness_case_op.c`, do not reach for a script.
+What a language is allowed here: C (ops), pal (assembly for the prisc VM), pdl (data). Not Python, and not new `.sh` either.
+Enforced: `harness/py_lint.pal` fails when a tracked `*.py` is not in `harness/py_baseline.txt`; the baseline may only shrink (never add a row to cover a new file). Run it before committing anything that adds files.
+Why this exists: on 2026-11-04 I wrote six Python harnesses (window driver, clock/lamp checks, two-machine network test, guard test) in one day without opening `harness/README.md`; the owner had to correct it twice. Two of the six duplicated a pal harness that already existed (`palnet_peer_net.pal`).
+Calling an outside program from a case is fine (`RUN | ssh ...`, `ffmpeg`, `git`); writing our own logic in Python is not. A model runner that is itself Python (Kokoro on debil) is an external service, not our code.
+
 ## Never report a number you did not observe (REQUIRED)
 
 Three wrong conclusions in one session traced to this, all from my own

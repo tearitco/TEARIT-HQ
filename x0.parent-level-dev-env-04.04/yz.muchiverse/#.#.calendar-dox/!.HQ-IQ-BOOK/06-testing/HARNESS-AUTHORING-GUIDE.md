@@ -1,3 +1,8 @@
+> **NO PYTHON (owner rule, 2026-11-04):** a harness is **pal + a case file (.pdl) + compiled C ops**: `&.widgits/_shared-lib/harness/` (read its README first), game verb scripts as
+> `harness/play/phases/*.phases.pdl`, always in a scratch house, never the live house. Need a step that does not exist (ssh, an image check)? Add a C op or a verb to `harness_case_op.c`
+> (`NEEDENV` and `RUN | ssh ...` already cover cross-machine checks). Python and new `.sh` are not allowed; `harness/py_lint.pal` fails on a tracked `*.py` outside `harness/py_baseline.txt`
+> (the list only shrinks). A day of Python harnesses on 2026-11-04 was written without reading this guide and had to be redone: read it, then the harness README, *then* write.
+
 > **PATH NOTE (added 2026-08-29, doc-audit pass):** the §4 table's flat
 > per-mode history file paths (`db_hq_history.txt`, `events_hq_history.txt`,
 > `chat_hai_history.txt`) are superseded as of 2026-08-29 — relay input
