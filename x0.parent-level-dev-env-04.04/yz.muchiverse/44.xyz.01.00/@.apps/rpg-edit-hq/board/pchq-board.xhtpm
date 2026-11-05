@@ -13,9 +13,8 @@
       <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
       <tab id="tb-chat" class="pchq-tb" label="${chat_mode_label} ▾" onclick="ACTIVATE" target_id="tb-chat"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
-      <!-- 2026-11-04: the ledger (coin) shop, the owner's ONE released caller: two tabs (buy / sell, about 9 rows each) because a dropdown that would run off the screen scrolls, and 16 rows hid the first ones; hidden unless books/shop/RELEASE exists (n_lshop=0) -->
-      <tab id="tb-lbuy" class="pchq-tb" label="Coin buy ${lshop_coins}c ▾" onclick="ACTIVATE" target_id="tb-lbuy" show="${n_lshop}"/>
-      <tab id="tb-lsell" class="pchq-tb" label="Coin sell ▾" onclick="ACTIVATE" target_id="tb-lsell" show="${n_lshop}"/>
+      <!-- 2026-11-04: the ledger (coin) shop, the owner's ONE released caller: ONE tab with 7 item rows (a dropdown that would run off the screen scrolls, so keep it short); picking an item opens the popup below; hidden unless books/shop/RELEASE exists (n_lshop=0) -->
+      <tab id="tb-lshop" class="pchq-tb" label="Coin shop ${lshop_coins}c ▾" onclick="ACTIVATE" target_id="tb-lshop" show="${n_lshop}"/>
       <tab id="tb-player" class="pchq-tb" label="${run_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-time" class="pchq-tb" label="${time_label} ▾" onclick="ACTIVATE" target_id="tb-time"/>
       <tab id="tb-db" class="pchq-tb" label="db ▾" onclick="ACTIVATE" target_id="tb-db"/>
@@ -47,16 +46,10 @@
         <item id="sh${shop.#}" class="pchq-menu-row dropdown-child " target_id="tb-shop" label="${shop.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire buy ${shop.key}"/>
       </repeat>
       <item id="sh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-shop" label="- cancel -" action="void"/>
-      <item id="lsh-list" class="pchq-menu-row dropdown-child " target_id="tb-lbuy" label="my wallet" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop wallet"/>
       <repeat count="${n_lshop}" bind="lshop">
-        <item id="lshb${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lbuy" label="${lshop.buy}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop buy ${lshop.key}"/>
+        <item id="lshp${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lshop" label="${lshop.row}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop pick ${lshop.key}"/>
       </repeat>
-      <item id="lsh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-lbuy" label="- cancel -" action="void"/>
-      <item id="lsh-list2" class="pchq-menu-row dropdown-child " target_id="tb-lsell" label="my wallet" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop wallet"/>
-      <repeat count="${n_lshop}" bind="lshop">
-        <item id="lshs${lshop.#}" class="pchq-menu-row dropdown-child " target_id="tb-lsell" label="${lshop.sell}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop sell ${lshop.key}"/>
-      </repeat>
-      <item id="lsh-cancel2" class="pchq-menu-row dropdown-child quiet" target_id="tb-lsell" label="- cancel -" action="void"/>
+      <item id="lsh-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-lshop" label="- cancel -" action="void"/>
       <item id="mn-control" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="${control_label} (switch: Tab)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire control"/>
       <item id="mn-voice" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Voice on / off" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle voice"/>
       <item id="mn-reset" class="pchq-menu-row dropdown-child " target_id="tb-menu" label="Reset house (keeps a backup)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' reset"/>
@@ -148,6 +141,16 @@
         <repeat count="${hb_n_slots}" bind="hb">
           <item id="hbs${hb.#}" class="hb-slot skin-bar" label="${hb.text}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire use ${hb.key}"/>
         </repeat>
+      </row>
+      <!-- 2026-11-04 the coin shop popup: pick an item in the Coin shop tab, then Buy / Sell / Close here (the "Show Choices" pattern of the rpg-space helm popup); it stays open so you can repeat, and shows the last answer -->
+      <row id="lshop-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${lshop_ov}">
+        <text label="${lshop_ov_title}" class="hb-quiet ov-title theme-3"/>
+        <text label="${lshop_ov_text}" class="rp-big"/>
+        <text label="${lshop_ov_coins}" class="hb-quiet"/>
+        <text label="${lshop_ov_last}" class="hb-quiet"/>
+        <item id="lshop-buy" class="rp-menu-row" label="Buy 1" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop buy"/>
+        <item id="lshop-sell" class="rp-menu-row" label="Sell 1" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop sell"/>
+        <item id="lshop-close" class="rp-menu-row" label="Close" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop close"/>
       </row>
     </panel>
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">

@@ -1,0 +1,80 @@
+# coin_shop_ui: SCRATCH house with the real folder layout; the REAL editor binary runs the verbs (`rpg_edit_hq.+x fire lshop ...`), the ledger is read through shop_op wallet. Never touches the live app or the live shop book.
+# NOT covered: the window drawing the popup (see the live screenshots in the handoff index).
+RESULTS | ../results/coin_shop_ui.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/&.widgits
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+MKDIR | house/@.apps/rpg-edit-hq/books/shop/state
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/shop_op.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/shop/items.pdl | $T/house/@.apps/rpg-edit-hq/books/shop/items.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/books/shop/shop.pdl | $T/house/@.apps/rpg-edit-hq/books/shop/shop.pdl
+WRITE | house/@.apps/rpg-edit-hq/books/shop/QUARANTINE | q\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | mint | shop | cdda.rag | 20 | gift
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | mint | shop | coin.play | 500 | gift
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | mint | player | coin.play | 50 | gift
+RUN | /bin/rm | $T/house/@.apps/rpg-edit-hq/books/shop/QUARANTINE
+WRITE | house/@.apps/rpg-edit-hq/books/shop/RELEASE | shop_op\n
+
+CASE    | before-any-pick
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | wallet
+EXPECT_EXIT | 0 | the-verb-runs-in-the-scratch-house
+EXPECT_OUT | WALLET player: coin.play 50 | the-player-has-50-coins
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | n_lshop=7 | seven-priced-items-are-projected
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_0_row=cdda.rag  4c/2c | an-item-row-carries-its-prices
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_coins=50 | the-tab-label-value-is-the-coins
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov= | NEGATIVE-no-pick-means-no-popup
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov=1 | and-the-popup-flag-is-not-1
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | buy
+EXPECT_OUT | pick an item first | NEGATIVE-buy-with-nothing-picked-is-refused
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | wallet | player
+EXPECT_OUT | coin.play 50 | and-no-coin-moved
+
+CASE    | pick-buy-sell
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | pick | cdda.rag
+EXPECT_OUT | picked cdda.rag | the-pick-is-accepted
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/lshop_pick.txt | cdda.rag | the-pick-is-a-file
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov=1 | the-popup-is-shown
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov_title=Coin shop: cdda.rag | with-the-item-as-its-title
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov_text=buy 4c   sell 2c | with-the-prices
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov_coins=you have 50 coins | and-the-coins-on-their-own-line
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | buy
+EXPECT_OUT | BOUGHT 1 x cdda.rag for 4 coins | buy-uses-the-picked-item
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | wallet | player
+EXPECT_OUT | coin.play 46 | the-player-paid-4
+EXPECT_OUT | cdda.rag 1 | and-got-a-rag
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov_last=bought 1 cdda.rag  -4c | the-popup-shows-a-short-receipt-of-the-last-answer
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov_coins=you have 46 coins | and-the-coins-in-the-popup-updated
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_coins=46 | and-the-tab-label-value
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | sell
+EXPECT_OUT | SOLD 1 x cdda.rag for 2 coins | sell-uses-the-picked-item
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov_last=sold 1 cdda.rag  +2c | and-the-popup-receipt-says-sold-plus-2c
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | wallet | player
+EXPECT_OUT | coin.play 48 | the-spread-cost-2-coins-in-the-round-trip
+
+CASE    | refusals-and-close
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | pick | cdda.spear
+EXPECT_OUT | not in the price list | NEGATIVE-an-unpriced-item-cannot-be-picked
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/lshop_pick.txt | cdda.rag | and-the-old-pick-is-kept
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | buy | cdda.rag | 999
+EXPECT_OUT | REFUSED | NEGATIVE-an-impossible-amount-is-refused
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/shop_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | wallet | player
+EXPECT_OUT | coin.play 48 | nothing-moved
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | close
+EXPECT_OUT | closed | close-works
+EXPECT_NOFILE | house/@.apps/rpg-edit-hq/state/lshop_pick.txt | the-pick-file-is-gone
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov= | the-popup-flag-is-empty-again
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/ui.txt | lshop_ov=1 | so-the-popup-is-hidden
+
+CASE    | not-released
+RUN | /bin/rm | $T/house/@.apps/rpg-edit-hq/books/shop/RELEASE
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | pick | cdda.rag
+EXPECT_OUT | not released | NEGATIVE-without-RELEASE-the-verb-refuses
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/ui.txt | n_lshop=0 | and-the-rows-are-not-projected-so-the-tab-hides
+CLEAN |
