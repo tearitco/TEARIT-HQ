@@ -8,7 +8,7 @@ Tags: **OBSERVED** = I ran it that day and saw the result. **READ** = opened, no
 | Pet post guard (kill switch, caps, audit, hold, approve/veto) | OBSERVED | `pet_post.pal` | 36 PASS |
 | IRC post propagates across two real machines | OBSERVED | `irc_two_machine.pal` with `NET_REMOTE NET_REMOTE_IP NET_LOCAL_IP [NET_WRAP NET_WRAP_ARG]`; unset = SKIP | 19 PASS vs debil, 19 PASS vs Mac (two rows in `results/irc_two_machine.txt`) |
 | Editor live cases (real window; restore after) | OBSERVED | `LIVE_OK=1 prisc live_<name>.pal`, editor window open, tell the owner first | dropdown_thumb 5, lamps_at_dusk 9, placer_verb 7, place_and_move 10, mouse_align 28, mouse_calibrate 52 |
-| Clock restore + lamps per skin (scratch house) | OBSERVED | `ops/+x/playthrough_op.+x run play/phases/lamps_clock_<skin>.phases.pdl` | 11 PASS (py_lint-era run) |
+| Clock restore + lamps per skin (scratch house) | OBSERVED for df_hq only today; the other 9 skin tables (10 `lamps_clock_*` files) and cdda_hq p7/p8 passed in the earlier session but were not re-run today (CLAIM) | `ops/+x/playthrough_op.+x run play/phases/lamps_clock_<skin>.phases.pdl` (niced; one at a time) | df_hq: p1_clock_load PASS, p2_lamps PASS |
 | No new Python | OBSERVED | `py_lint.pal` | PASS; baseline `py_baseline.txt` (72 grandfathered), only shrinks |
 | Narrated deck video, audio stream required | OBSERVED | `DECK=… OUT=… PRESENT_TTS_HOST=user@host prisc deck_video.pal` (run WITHOUT a cpu_gate wrapper: the case gates its own steps) | 8 PASS, 69 s |
 | Network pane in the editor (chat dropdown: network) | OBSERVED | `rpg_edit_hq.+x chatmode network`, screenshot via `relay_drive.+x shot` | real lobby rows, amber pets / blue people / green guard line |
