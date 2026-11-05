@@ -32,6 +32,7 @@ static const char *pl_life_bar_state(int slot);
  * hai_chat.txt is capped like chat.txt (past 24 KB keep the newest 8 KB): HQ-IQ-BOOK 03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md */
 static void spath(char *o, const char *n); static int write_if_changed(const char *p, const void *data, size_t n); static void append_line(const char *name, const char *line); static int read_tail(const char *p, char *buf, size_t cap);      /* the core defines these later */
 #include <dirent.h>
+#include <sys/wait.h>
 static void flag_str(const char *name, const char *def, char *out, size_t cap);
 /* 2026-11-04 network pane (owner: pet chat belongs in the editor's right pane): READ-ONLY view of the IRC node's room ledger as "user: text" lines for the chat writer. Node = HOUSE/044.pal-chat-irc<emoji>+2 (glob by prefix), room = flag netroom (default lobby, else the first room). Also a one-line guard summary from pet_post_kill.txt / pet_post_pending.txt. The guard buttons stay in the standalone pet-observer-hq window / pet_post.+x. Cost: reads <=16 KB tail only while the pane is in network mode. */
 static void netchat_fill(char *out, size_t cap) {
@@ -41,7 +42,7 @@ static void netchat_fill(char *out, size_t cap) {
     char room[96]; flag_str("netroom", "lobby", room, sizeof room); char mp[PATH_MAX]; snprintf(mp, sizeof mp, "%s/rooms/%s/messages.txt", nd, room);
     if (access(mp, F_OK) != 0) { char rd[PATH_MAX]; snprintf(rd, sizeof rd, "%s/rooms", nd); DIR *r = opendir(rd); if (r) { while ((e = readdir(r))) if (e->d_name[0] != '.') { snprintf(room, sizeof room, "%s", e->d_name); snprintf(mp, sizeof mp, "%s/rooms/%s/messages.txt", nd, room); if (access(mp, F_OK) == 0) break; } closedir(r); } }
     char kp[PATH_MAX], pp[PATH_MAX]; snprintf(kp, sizeof kp, "%s/pet_post_kill.txt", nd); snprintf(pp, sizeof pp, "%s/pet_post_pending.txt", nd); int held = 0; { FILE *f = fopen(pp, "r"); if (f) { int c; while ((c = fgetc(f)) != EOF) if (c == '\n') held++; fclose(f); } }
-    size_t o = (size_t)snprintf(out, cap, "net: #%s, pet kill switch %s, %d held\n", room, access(kp, F_OK) == 0 ? "ON" : "off", held);
+    size_t o = (size_t)snprintf(out, cap, "guard: #%s - pet kill switch %s - %d held\n", room, access(kp, F_OK) == 0 ? "ON" : "off", held);
     static char raw[16384]; read_tail(mp, raw, sizeof raw);
     for (char *l = strtok(raw, "\n"); l && o + 400 < cap; l = strtok(NULL, "\n")) { char *fl[6]; int k = 0; char *q = l; while (k < 6) { fl[k++] = q; char *b = strchr(q, '|'); if (!b || k == 6) break; *b = 0; q = b + 1; }
         if (k < 6 || strcmp(fl[0], "MSG")) continue; o += (size_t)snprintf(out + o, cap - o, "%.24s: %.300s\n", fl[3], fl[5]); }
@@ -190,7 +191,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
       /* each message = one NAME row (bright, bold) + its wrapped BODY rows (a slightly dimmer shade of the same hue); kinds 1/2 you, 3/4 h-ai, 5/6 anyone else */
       enum { CWRAP = 25, CMAXR = 128, CSHOW = 12 }; static char rows[CMAXR][CWRAP + 8]; static char rk[CMAXR]; int nr = 0;
       for (char *l = strtok(cb, "\n"); l; l = strtok(NULL, "\n")) { char *colon = strstr(l, ": "); char who[40] = "", *body = l; char base = 5;
-          if (colon && colon - l < 30) { snprintf(who, sizeof who, "%.*s", (int)(colon - l), l); body = colon + 2; base = !strcmp(who, "you") ? 1 : !strcmp(who, "h-ai") ? 3 : 5; }
+          if (colon && colon - l < 30) { snprintf(who, sizeof who, "%.*s", (int)(colon - l), l); body = colon + 2; base = !strcmp(who, "you") ? 1 : !strcmp(who, "h-ai") ? 3 : (!strcmp(cm, "network") && !strncmp(who, "guard", 5)) ? 9 : (!strcmp(cm, "network") && strncmp(who, "pet-", 4)) ? 7 : 5; }
           if (who[0] && nr < CMAXR) { snprintf(rows[nr], sizeof rows[0], "%.24s", who); rk[nr] = base; nr++; }
           size_t len = strlen(body), pos = 0;
           while (pos < len && nr < CMAXR) { size_t w = CWRAP, take = len - pos < w ? len - pos : w; if (pos + take < len) { size_t sp = take; while (sp > w / 2 && body[pos + sp] != ' ') sp--; if (sp > w / 2) take = sp; }
@@ -198,8 +199,8 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
           if (nr >= CMAXR - 20) { memmove(rows[0], rows[CMAXR / 2], (size_t)(CMAXR / 2) * sizeof rows[0]); memmove(rk, rk + CMAXR / 2, (size_t)(CMAXR / 2)); nr -= CMAXR / 2; } }
       /* 2026-11-04 (owner: "we have a normal thumb scroll"): every wrapped row is written (CMAXR newest) and the pane's repeat of ov-scrolltext rows scrolls with the house's generic bar (thumb, arrows, wheel, page keys); it follows the newest row until the user scrolls up */
       W("n_chat=%d\n", nr);
-      static const char *kcls[7] = { "", "rp-chat-youn", "rp-chat-yout", "rp-chat-hain", "rp-chat-hait", "rp-chat-petn", "rp-chat-pett" };
-      for (int j = 0; j < nr; j++) { int kk = rows[j][0] ? rk[j] : 0; if (kk < 0 || kk > 6) kk = 0; W("chat_%d_label=%s\nchat_%d_cls=%s\n", j, rows[j], j, kcls[kk]); } }
+      static const char *kcls[11] = { "", "rp-chat-youn", "rp-chat-yout", "rp-chat-hain", "rp-chat-hait", "rp-chat-petn", "rp-chat-pett", "rp-chat-humn", "rp-chat-humt", "rp-chat-gdn", "rp-chat-gdt" };
+      for (int j = 0; j < nr; j++) { int kk = rows[j][0] ? rk[j] : 0; if (kk < 0 || kk > 10) kk = 0; W("chat_%d_label=%s\nchat_%d_cls=%s\n", j, rows[j], j, kcls[kk]); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
@@ -268,6 +269,18 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         if (!saving) { char b[40]; read_file(mp, b, sizeof b); long long ms = atoll(b); if (ms > 0) { clock_paths(); clock_install(); char ma[32]; snprintf(ma, sizeof ma, "%lld", ms); lc_run(0, "limit", "rpg", "allow_settime_back", "1", NULL); lc_run(0, "cmd", "rpg", "settime", ma, "--source", "rpg-load", NULL); clock_fire_due(); }      /* 2026-11-04: loading an older save must be able to set the clock BACK (it was refused:backwards and the game kept the later time); the due-event pass goes through clock_fire_due (daemon or runner-equipped step) */ sn_bump(&g_sn, SL_PETS); sn_bump(&g_sn, SL_FLAGS); sn_bump(&g_sn, SL_DAY); g_flag_epoch++; pet_load(); }
         snprintf(msg, cap, "%s slot %d (%d files)", saving ? "saved to" : "loaded from", slot, ok); return; }
 #elif PET_SECTION == 65
+    if (!strcmp(v, "netroom") || !strcmp(v, "netguard")) {      /* 2026-11-04 network pane controls. netroom [next|<name>]; netguard kill|approve|veto (the ONLY writes: the kill file and pet_post.+x itself) */
+        char nd[PATH_MAX] = "", rd[PATH_MAX]; DIR *dd = opendir(HOUSE); struct dirent *e; if (dd) { while ((e = readdir(dd))) if (!strncmp(e->d_name, "044.pal-chat-irc", 16)) { snprintf(nd, sizeof nd, "%s/%s", HOUSE, e->d_name); break; } closedir(dd); }
+        if (!nd[0]) { snprintf(msg, cap, "no chat node"); return; }
+        if (!strcmp(v, "netroom")) { char names[24][96]; int n = 0; snprintf(rd, sizeof rd, "%s/rooms", nd); DIR *r = opendir(rd); if (r) { while ((e = readdir(r)) && n < 24) if (e->d_name[0] != '.') snprintf(names[n++], 96, "%s", e->d_name); closedir(r); }
+            if (!n) { snprintf(msg, cap, "no rooms"); return; } for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) if (strcmp(names[i], names[j]) > 0) { char t[96]; memcpy(t, names[i], 96); memcpy(names[i], names[j], 96); memcpy(names[j], t, 96); }
+            char cur[96]; flag_str("netroom", "lobby", cur, sizeof cur); const char *pick = names[0];
+            if (argc >= 2 && strcmp(argv[1], "next")) pick = argv[1]; else { for (int i = 0; i < n; i++) if (!strcmp(names[i], cur)) { pick = names[(i + 1) % n]; break; } }
+            set_flag("netroom", pick); snprintf(msg, cap, "room: %s", pick); return; }
+        const char *a = argc >= 2 ? argv[1] : ""; char kp[PATH_MAX]; snprintf(kp, sizeof kp, "%s/pet_post_kill.txt", nd);
+        if (!strcmp(a, "kill")) { if (access(kp, F_OK) == 0) { remove(kp); snprintf(msg, cap, "pet kill switch: off"); } else { FILE *f = fopen(kp, "w"); if (f) { fputs("stop\n", f); fclose(f); } snprintf(msg, cap, "pet kill switch: ON"); } return; }
+        if (!strcmp(a, "approve") || !strcmp(a, "veto")) { char op[PATH_MAX]; snprintf(op, sizeof op, "%s/&.hq-apps/irc-chat-hq/ops/+x/pet_post.+x", HOUSE); setenv("PRISC_PROJECT_ROOT", nd, 1); pid_t pid = fork(); if (pid == 0) { execl(op, op, a, "first", (char *)NULL); _exit(127); } if (pid > 0) { int st; waitpid(pid, &st, 0); } snprintf(msg, cap, "guard: %s sent", a); return; }
+        snprintf(msg, cap, "netguard kill|approve|veto"); return; }
     if (!strcmp(v, "chatmode") && argc >= 2) { const char *m = !strcmp(argv[1], "hai") ? "hai" : !strcmp(argv[1], "network") ? "network" : "edit"; set_flag("chatmode", m); snprintf(msg, cap, "chat: %s", m); return; }
     if (!strcmp(v, "haisay") && argc >= 2) {      /* typed text while the pane is in h-ai mode (section 70 turns it into this verb): hand it to hai_op ask, started through the registered funnel (kh_spawn.sh); the answer / proposal lands in hai_chat.txt (sprint 2026-11-04) */
         char op[PATH_MAX], ks[PATH_MAX]; snprintf(op, sizeof op, "%s/@.apps/rpg-edit-hq/ops/+x/hai_op.+x", HOUSE); snprintf(ks, sizeof ks, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
