@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# world_clock.pdl - flow / rain / fire follow the GAME clock (early-survivor step 4, QUARANTINED). time.pdl AT rows fire common:world_flow / world_rain / world_fire; the core then runs ops/+x/world_common_op.+x <book> flow|rain|fire.
+# ENABLED | 0/1   the OWNER'S SWITCH. Shipped OFF (0): the clock may fire the events but nothing changes.
+# BOOK | <path>    a QUARANTINED book folder under this app (the op refuses any folder without a QUARANTINE file).
+ENABLED | 0
+BOOK | books/ledger-lab

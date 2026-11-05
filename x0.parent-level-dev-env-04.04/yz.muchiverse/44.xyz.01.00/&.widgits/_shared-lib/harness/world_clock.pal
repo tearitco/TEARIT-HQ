@@ -1,0 +1,4 @@
+# world_clock.pal - flow / rain / fire follow the GAME clock, shipped OFF (early-survivor step 4). See cases/world_clock.pdl
+exec ./ops/+x/harness_case_op.+x cases/world_clock.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/world_clock.pdl
+halt

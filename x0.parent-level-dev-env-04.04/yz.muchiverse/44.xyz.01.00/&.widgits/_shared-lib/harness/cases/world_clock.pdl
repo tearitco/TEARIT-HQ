@@ -1,0 +1,56 @@
+# world_clock: SCRATCH house, real folder layout. Trigger = the clock daemon's own command line (rpg_edit_hq.+x <root>/common_events/common:world_<x> <abs root>). Never touches the live app or the lab book.
+# NOT covered: the lc_clock daemon firing the AT rows on schedule.
+RESULTS | ../results/world_clock.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/&.widgits
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state/clock_root/common_events
+MKDIR | house/@.apps/rpg-edit-hq/books/lab/state
+MKDIR | house/@.apps/rpg-edit-hq/books/open/state
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x
+WRITE | house/@.apps/rpg-edit-hq/books/lab/QUARANTINE | q\n
+WRITE | house/@.apps/rpg-edit-hq/books/lab/state/fluids.txt | 5\p5\pwater\p3\n
+WRITE | house/@.apps/rpg-edit-hq/books/lab/state/fire.txt | 7\p7\p3\n
+WRITE | house/@.apps/rpg-edit-hq/books/lab/state/rain.txt | on\n
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/world_clock.pdl | $T/shipped.pdl
+EXPECT_HAS | shipped.pdl | ENABLED \p 0 | the-shipped-file-has-the-owner-switch-OFF
+
+CASE    | off-by-default-and-opt-in
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_flow | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_fire | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_rain | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_EXIT | 0 | the-clock-fires-clean-with-no-config
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fluids.txt | 5\p5\pwater\p3 | NEGATIVE-opt-in-no-world_clock.pdl-the-water-did-not-move
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fire.txt | 7\p7\p3 | NEGATIVE-and-the-fire-did-not-burn
+WRITE | house/@.apps/rpg-edit-hq/world_clock.pdl | ENABLED \p 0\nBOOK \p books/lab\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_flow | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_fire | $T/house/@.apps/rpg-edit-hq/state/clock_root
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_rain | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fluids.txt | 5\p5\pwater\p3 | NEGATIVE-ENABLED-0-the-water-did-not-move
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fire.txt | 7\p7\p3 | NEGATIVE-ENABLED-0-the-fire-did-not-burn
+
+CASE    | enabled-each-event-runs-its-own-verb
+WRITE | house/@.apps/rpg-edit-hq/world_clock.pdl | ENABLED \p 1\nBOOK \p books/lab\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_flow | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fluids.txt | 5\p5\pwater\p2 | world_flow-moved-one-volume
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fire.txt | 7\p7\p3 | and-only-flow-ran-the-fire-is-untouched
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_fire | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fire.txt | 7\p7\p2 | world_fire-burned-one-fuel
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fluids.txt | 5\p5\pwater\p2 | and-the-water-did-not-flow-again
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_rain | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/lab/state/fire.txt | 7\p7\p1 | world_rain-lowered-the-exposed-fire
+RUN | /usr/bin/awk | -F\p | { s += $4 } END { print s } | $T/house/@.apps/rpg-edit-hq/books/lab/state/fluids.txt
+EXPECT_OUT_IS | 3 | the-water-volume-sum-is-still-3
+
+CASE    | quarantine-is-still-enforced
+WRITE | house/@.apps/rpg-edit-hq/books/open/state/fluids.txt | 5\p5\pwater\p3\n
+WRITE | house/@.apps/rpg-edit-hq/world_clock.pdl | ENABLED \p 1\nBOOK \p books/open\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root/common_events/common:world_flow | $T/house/@.apps/rpg-edit-hq/state/clock_root
+EXPECT_EXIT | 0 | the-clock-does-not-crash-on-an-unquarantined-book
+EXPECT_HAS | house/@.apps/rpg-edit-hq/books/open/state/fluids.txt | 5\p5\pwater\p3 | NEGATIVE-the-op-refused-the-folder-without-QUARANTINE
+CLEAN |

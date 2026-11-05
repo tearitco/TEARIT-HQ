@@ -32,3 +32,5 @@ Holds the item ledger lab. NOT listed in the editor's book dropdown and NOT read
 ## Survivor slice step 6, the shop (2026-11-04)
 - `ops/shop_op.c`: `list`, `buy <actor> <item> <n>`, `sell <actor> <item> <n>`. Coins are the ledger item `coin.play`; each sale is one atomic ledger `trade`; the shop never mints. Data: `shop.pdl` (COIN / SHOPKEEPER / PRICE with sell < buy). Spec: `16.game/SHOP-SLICE-SPEC-2026-11-04.md`. Harness `shop.pal`. No verb swaps one item id for another.
 
+## Flow / rain / fire on the clock (2026-11-04)
+- Core `clock_event` handles `common:world_flow` / `world_rain` / `world_fire` and runs `world_common_op` in the book named by `@.apps/rpg-edit-hq/world_clock.pdl` (ships `ENABLED | 0`). Harness `world_clock.pal`. Not installed on the live clock.

@@ -1574,6 +1574,13 @@ static void needs_tick_all(void) {
     if (!enabled || !book[0] || !actors[0] || mins < 1 || mins > 1440) return;
     char ms[16]; snprintf(ms, sizeof ms, "%ld", mins); char *sv = NULL; for (char *a = strtok_r(actors, ", ", &sv); a; a = strtok_r(NULL, ", ", &sv)) { pid_t pid = fork(); if (pid == 0) { int dn = open("/dev/null", O_WRONLY); if (dn >= 0) dup2(dn, 1); execl(op, op, book, "tick", a, ms, (char *)NULL); _exit(127); } if (pid > 0) { int st; waitpid(pid, &st, 0); } }
 }
+/* 2026-11-04 flow / rain / fire follow the GAME clock (early-survivor step 4, QUARANTINED): time.pdl AT rows fire common:world_flow / world_rain / world_fire; this runs ops/+x/world_common_op.+x <book> flow|rain|fire in the book named by <app>/world_clock.pdl
+ * (`ENABLED | 0/1`, `BOOK | <path under the app>`). OPT-IN and shipped OFF: nothing happens unless world_clock.pdl exists AND says ENABLED | 1. The op refuses a folder without QUARANTINE. Cost: one short fork per firing. */
+static void world_tick(const char *verb) {
+    char rp[PATH_MAX], op[PATH_MAX], rb[2048]; snprintf(rp, sizeof rp, "%s/world_clock.pdl", APP); snprintf(op, sizeof op, "%s/ops/+x/world_common_op.+x", APP); if (!fexists(rp) || !fexists(op)) return;
+    read_file(rp, rb, sizeof rb); int enabled = 0; char book[PATH_MAX] = ""; { char *sv = NULL; for (char *l = strtok_r(rb, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { char *b = strchr(l, '|'); if (!b) continue; char *v = b + 1; while (*v == ' ') v++; char *e = v + strlen(v); while (e > v && (e[-1] == ' ' || e[-1] == '\r')) *--e = 0; if (!strncmp(l, "ENABLED", 7)) enabled = atoi(v); else if (!strncmp(l, "BOOK", 4)) snprintf(book, sizeof book, "%s/%s", APP, v); } }
+    if (!enabled || !book[0]) return; pid_t pid = fork(); if (pid == 0) { int dn = open("/dev/null", O_WRONLY); if (dn >= 0) dup2(dn, 1); execl(op, op, book, verb, (char *)NULL); _exit(127); } if (pid > 0) { int st; waitpid(pid, &st, 0); }
+}
 static void clock_event(const char *ev) {
     char b[80];
     if (!strncmp(ev, "phase_", 6)) ev += 6;      /* "phase_night" or "night" */
@@ -1581,6 +1588,9 @@ static void clock_event(const char *ev) {
     else if (!strcmp(ev, "day_tick")) { snprintf(b, sizeof b, "DAY|%ld", (long)time(NULL)); append_line("events.txt", b); }
     else if (!strcmp(ev, "pet_say")) net_say_all();
     else if (!strcmp(ev, "needs_tick")) needs_tick_all();
+    else if (!strcmp(ev, "world_flow")) world_tick("flow");
+    else if (!strcmp(ev, "world_rain")) world_tick("rain");
+    else if (!strcmp(ev, "world_fire")) world_tick("fire");
 }
 /* The clock fires "common:<event>". The event is a real events-hq page in <app>/events/<event>/ (trigger "clock"), played by events-hq's play_event.sh
  * (event.pal -> cmd_1.sh -> the registered <op>_verb command -> this binary's verb). No page = the built-in behaviour above, so a missing events-hq never stops the clock. */
