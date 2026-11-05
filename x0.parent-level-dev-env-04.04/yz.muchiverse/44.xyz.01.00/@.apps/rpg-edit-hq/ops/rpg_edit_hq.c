@@ -31,6 +31,21 @@ static const char *pl_life_bar_state(int slot);
 /* chat pane modes (owner 2026-11-02): edit = the pet chat (chat.txt), hai = the API chat (hai_chat.txt), network = later. Mode lives in flag_chatmode.txt, the Chat tab sets it (verb chatmode).
  * hai_chat.txt is capped like chat.txt (past 24 KB keep the newest 8 KB): HQ-IQ-BOOK 03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md */
 static void spath(char *o, const char *n); static int write_if_changed(const char *p, const void *data, size_t n); static void append_line(const char *name, const char *line); static int read_tail(const char *p, char *buf, size_t cap);      /* the core defines these later */
+#include <dirent.h>
+static void flag_str(const char *name, const char *def, char *out, size_t cap);
+/* 2026-11-04 network pane (owner: pet chat belongs in the editor's right pane): READ-ONLY view of the IRC node's room ledger as "user: text" lines for the chat writer. Node = HOUSE/044.pal-chat-irc<emoji>+2 (glob by prefix), room = flag netroom (default lobby, else the first room). Also a one-line guard summary from pet_post_kill.txt / pet_post_pending.txt. The guard buttons stay in the standalone pet-observer-hq window / pet_post.+x. Cost: reads <=16 KB tail only while the pane is in network mode. */
+static void netchat_fill(char *out, size_t cap) {
+    out[0] = 0; char nd[PATH_MAX] = "", d[PATH_MAX]; snprintf(d, sizeof d, "%s", HOUSE); DIR *dd = opendir(d); struct dirent *e;
+    if (dd) { while ((e = readdir(dd))) if (!strncmp(e->d_name, "044.pal-chat-irc", 16)) { snprintf(nd, sizeof nd, "%s/%s", HOUSE, e->d_name); break; } closedir(dd); }
+    if (!nd[0]) { snprintf(out, cap, "net: no chat node found\n"); return; }
+    char room[96]; flag_str("netroom", "lobby", room, sizeof room); char mp[PATH_MAX]; snprintf(mp, sizeof mp, "%s/rooms/%s/messages.txt", nd, room);
+    if (access(mp, F_OK) != 0) { char rd[PATH_MAX]; snprintf(rd, sizeof rd, "%s/rooms", nd); DIR *r = opendir(rd); if (r) { while ((e = readdir(r))) if (e->d_name[0] != '.') { snprintf(room, sizeof room, "%s", e->d_name); snprintf(mp, sizeof mp, "%s/rooms/%s/messages.txt", nd, room); if (access(mp, F_OK) == 0) break; } closedir(r); } }
+    char kp[PATH_MAX], pp[PATH_MAX]; snprintf(kp, sizeof kp, "%s/pet_post_kill.txt", nd); snprintf(pp, sizeof pp, "%s/pet_post_pending.txt", nd); int held = 0; { FILE *f = fopen(pp, "r"); if (f) { int c; while ((c = fgetc(f)) != EOF) if (c == '\n') held++; fclose(f); } }
+    size_t o = (size_t)snprintf(out, cap, "net: #%s, pet kill switch %s, %d held\n", room, access(kp, F_OK) == 0 ? "ON" : "off", held);
+    static char raw[16384]; read_tail(mp, raw, sizeof raw);
+    for (char *l = strtok(raw, "\n"); l && o + 400 < cap; l = strtok(NULL, "\n")) { char *fl[6]; int k = 0; char *q = l; while (k < 6) { fl[k++] = q; char *b = strchr(q, '|'); if (!b || k == 6) break; *b = 0; q = b + 1; }
+        if (k < 6 || strcmp(fl[0], "MSG")) continue; o += (size_t)snprintf(out + o, cap - o, "%.24s: %.300s\n", fl[3], fl[5]); }
+}
 static void hai_line(const char *who, const char *text) {
     char b[400]; snprintf(b, sizeof b, "%s: %s", who, text); append_line("hai_chat.txt", b);
     char p[PATH_MAX]; spath(p, "hai_chat.txt"); struct stat st; if (stat(p, &st) || st.st_size < 24000) return;
@@ -170,7 +185,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
     { char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"), net = !strcmp(cm, "network");
       W("chat_mode_label=chat: %s\nchat_is_edit=%s\nchat_is_hai=%s\nchat_is_net=%s\n", hai ? "h-ai" : net ? "network" : "edit", !hai && !net ? "1" : "", hai ? "1" : "", net ? "1" : ""); }
-    { char cp[PATH_MAX], cb[16000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb);      /* 2026-11-04: cb is 16000 bytes now (was 4000): older lines are reachable with chatscroll */
+    { char cp[PATH_MAX], cb[16000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); if (!strcmp(cm, "network")) netchat_fill(cb, sizeof cb); else read_tail(cp, cb, sizeof cb);      /* 2026-11-04: cb is 16000 bytes now (was 4000): older lines are reachable with chatscroll */
       /* 2026-11-04: a wrapped chat line used to be drawn over the next row (fixed-height rows). Wrap each message to the pane width HERE (word boundaries, continuation rows indented) and show the newest 6 ROWS. */
       /* each message = one NAME row (bright, bold) + its wrapped BODY rows (a slightly dimmer shade of the same hue); kinds 1/2 you, 3/4 h-ai, 5/6 anyone else */
       enum { CWRAP = 25, CMAXR = 128, CSHOW = 12 }; static char rows[CMAXR][CWRAP + 8]; static char rk[CMAXR]; int nr = 0;

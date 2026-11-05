@@ -70,7 +70,7 @@
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <item id="ch-edit" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="edit (pet chat)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode edit"/>
       <item id="ch-hai" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="h-ai (API, edits this book)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode hai"/>
-      <item id="ch-net" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="network (later)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode network"/>
+      <item id="ch-net" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="network (pets, read only)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode network"/>
       <item id="tm-cent" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: turbo (testing)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate cent"/>
       <item id="tm-sec" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: fast (1 hour/sec)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate sec"/>
       <item id="tm-min" class="pchq-menu-row dropdown-child " target_id="tb-time" label="speed: normal (1 min/sec)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' clock rate min"/>
@@ -120,7 +120,7 @@
       <row id="side-r" class="canvas-overlay-right ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_right}">
         <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_edit}"/>
         <text label="h-ai (API)" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
-        <text label="network - later" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
+        <text label="network - pets and people (read only)" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
         <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
         <repeat count="${n_chat}" bind="chat"><text label="${chat.label}" class="rp-chat ov-line ov-scrolltext ${chat.cls}"/></repeat>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x'"/>
