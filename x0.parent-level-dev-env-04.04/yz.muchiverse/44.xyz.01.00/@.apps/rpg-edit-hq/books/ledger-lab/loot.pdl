@@ -1,0 +1,4 @@
+# loot.pdl - what gen_map_op may scatter on a generated house floor (LOOTITEM|item). Rows only: a pickup verb mints later, gen_map_op never writes an item.
+LOOTITEM|cdda.rag
+LOOTITEM|cdda.can
+LOOTITEM|cdda.bottle

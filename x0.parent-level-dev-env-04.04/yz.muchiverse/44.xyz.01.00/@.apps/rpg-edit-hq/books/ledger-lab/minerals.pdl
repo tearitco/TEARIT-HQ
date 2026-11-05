@@ -1,0 +1,3 @@
+# minerals.pdl - MINERAL|id|tile|item. gen_map_op writes the id into the DF column up front; digging reveals it, there is no second roll.
+MINERAL|coal|c|df.stone
+MINERAL|iron|i|df.stone

@@ -1,0 +1,82 @@
+# gen_map: SCRATCH copy of the lab book data. Same seed twice = byte-identical files; verify re-reads the invariants; mutations (a broken wall, a mismatched placed row, a column cell out of range) must be refused; furniture is smashable by survivor_op.
+RESULTS | ../results/gen_map.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/books/lab
+MKDIR | house/@.apps/rpg-edit-hq/books/open
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x
+RUN | /bin/sh | -c | cp $HOUSE/@.apps/rpg-edit-hq/books/ledger-lab/*.pdl $T/house/@.apps/rpg-edit-hq/books/lab/
+WRITE | house/@.apps/rpg-edit-hq/books/lab/QUARANTINE | q\n
+
+CASE    | determinism
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | cdda_house | alpha | $T/o1
+EXPECT_EXIT | 0 | house-generated
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | cdda_house | alpha | $T/o2
+RUN | /usr/bin/cmp | $T/o1/chunk.txt | $T/o2/chunk.txt
+EXPECT_EXIT | 0 | same-seed-chunk-is-byte-identical
+RUN | /usr/bin/cmp | $T/o1/placed.txt | $T/o2/placed.txt
+EXPECT_EXIT | 0 | same-seed-placed-rows-identical
+RUN | /usr/bin/cmp | $T/o1/loot.txt | $T/o2/loot.txt
+EXPECT_EXIT | 0 | same-seed-loot-identical
+RUN | /usr/bin/cmp | $T/o1/legend.txt | $T/o2/legend.txt
+EXPECT_EXIT | 0 | same-seed-legend-identical
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | cdda_house | beta | $T/o3
+RUN | /usr/bin/cmp | -s | $T/o1/chunk.txt | $T/o3/chunk.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-different-seed-gives-a-different-chunk
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | df_column | alpha | $T/c1
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | df_column | alpha | $T/c2
+RUN | /usr/bin/cmp | $T/c1/column.txt | $T/c2/column.txt
+EXPECT_EXIT | 0 | same-seed-column-is-byte-identical
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | df_column | beta | $T/c3
+RUN | /usr/bin/cmp | -s | $T/c1/column.txt | $T/c3/column.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-different-seed-gives-a-different-column
+
+CASE    | verify-accepts-good-output
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | verify_house | $T/o1
+EXPECT_EXIT | 0 | the-house-verifies
+EXPECT_OUT | VERIFY OK | verify-says-ok
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | verify_column | $T/c1
+EXPECT_EXIT | 0 | the-column-verifies
+RUN | /usr/bin/awk | END { print NR } | $T/c1/column.txt
+EXPECT_OUT_IS | 769 | column-is-8x8x12-cells-plus-a-header
+
+CASE    | mutations-are-refused
+RUN | /bin/cp | -r | $T/o1 | $T/m1
+RUN | /usr/bin/sed | -i | 2s/^#/./ | $T/m1/chunk.txt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | verify_house | $T/m1
+EXPECT_EXIT | 1 | MUTATION-a-hole-in-the-outer-wall-is-refused
+RUN | /bin/cp | -r | $T/o1 | $T/m2
+RUN | /bin/sh | -c | sed -i '1s/^[^\p]*\p/ghost\p/' $T/m2/placed.txt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | verify_house | $T/m2
+EXPECT_EXIT | 1 | MUTATION-a-placed-row-that-does-not-match-the-chunk-is-refused
+RUN | /bin/cp | -r | $T/c1 | $T/m3
+RUN | /bin/sh | -c | sed -i '5s/\pstone\p/\psoil\p/' $T/m3/column.txt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | verify_column | $T/m3
+EXPECT_EXIT | 1 | MUTATION-wrong-kind-for-the-depth-is-refused
+RUN | /bin/sh | -c | sed -i '5s/^[0-9]*\p/9\p/' $T/m3/column.txt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | verify_column | $T/m3
+EXPECT_EXIT | 1 | MUTATION-a-cell-outside-the-column-is-refused
+
+CASE    | quarantine-and-bounds
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/open | cdda_house | alpha | $T/q1
+EXPECT_EXIT | 4 | a-book-without-QUARANTINE-is-refused
+EXPECT_NOFILE | q1/chunk.txt | NEGATIVE-nothing-written-for-an-unquarantined-book
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/gen_map_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | cdda_house | | $T/q2
+EXPECT_EXIT | 3 | an-empty-seed-is-refused
+
+CASE    | the-generated-furniture-is-smashable
+MKDIR | house/@.apps/rpg-edit-hq/books/lab/state
+RUN | /bin/cp | $T/o1/placed.txt | $T/house/@.apps/rpg-edit-hq/books/lab/state/placed.txt
+RUN | /usr/bin/awk | -F\p | NR==1{print $2} | $T/o1/placed.txt
+CAPTURE | fx
+RUN | /usr/bin/awk | -F\p | NR==1{print $3} | $T/o1/placed.txt
+CAPTURE | fy
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/survivor_op.+x | $T/house/@.apps/rpg-edit-hq/books/lab | smash | hero | $fx | $fy
+EXPECT_EXIT | 0 | survivor_op-smashes-a-generated-furniture-cell
+EXPECT_OUT | HIT | the-first-blow-lowers-its-hp-the-generated-hp-is-honoured
+CLEAN |

@@ -1,0 +1,4 @@
+# gen_map.pal - deterministic quarantined map writer (early-survivor step 3). See cases/gen_map.pdl
+exec ./ops/+x/harness_case_op.+x cases/gen_map.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/gen_map.pdl
+halt

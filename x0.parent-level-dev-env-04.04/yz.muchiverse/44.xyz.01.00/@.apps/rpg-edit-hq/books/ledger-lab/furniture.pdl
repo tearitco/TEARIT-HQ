@@ -1,2 +1,3 @@
 # furniture.pdl - what a piece of furniture is made of (early-survivor slice, step 1). FURNITURE|id|hp|drops   drops = item:count,item:count (the same shape as a recipe's inputs). Smashing it to 0 hp consumes it and mints EXACTLY these.
 FURNITURE|bench|3|cdda.plank:2,cdda.rag:1,cdda.pipe:1,cdda.can:1
+FURNITURE|crate|2|cdda.plank:1,cdda.rag:1
