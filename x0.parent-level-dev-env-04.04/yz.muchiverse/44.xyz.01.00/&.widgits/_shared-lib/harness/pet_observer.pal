@@ -1,4 +1,0 @@
-# pet_observer.pal - the read-only pet observer manager: --dump shows rooms, wrapped pet/human lines, guard rows, kill state. See cases/pet_observer.pdl
-exec ./ops/+x/harness_case_op.+x cases/pet_observer.pdl
-exec ./ops/+x/harness_verdict_op.+x cases/pet_observer.pdl
-halt
