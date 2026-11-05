@@ -68,6 +68,9 @@
       <item id="pm-synch" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (desk to game)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch"/>
       <item id="pm-synch2" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (game to desk)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch to-desk"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <item id="ch-older" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="scroll: older lines" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatscroll older"/>
+      <item id="ch-newer" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="scroll: newer lines" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatscroll newer"/>
+      <item id="ch-end" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="scroll: back to newest" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatscroll end"/>
       <item id="ch-edit" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="edit (pet chat)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode edit"/>
       <item id="ch-hai" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="h-ai (API, edits this book)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode hai"/>
       <item id="ch-net" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="network (later)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode network"/>
@@ -118,9 +121,9 @@
       </row>
       <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_right}">
-        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_edit}"/>
-        <text label="h-ai (API)" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
-        <text label="network - later" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
+        <text label="chat - ${active_name}${chat_more}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_edit}"/>
+        <text label="h-ai (API)${chat_more}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
+        <text label="network - later${chat_more}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
         <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
         <text label="${chat_0}" class="rp-chat ov-line" show="${chat_0_k0}"/>
         <text label="${chat_0}" class="rp-chat rp-chat-youn ov-line" show="${chat_0_k1}"/>

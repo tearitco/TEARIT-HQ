@@ -170,7 +170,7 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
     { char lb[1200]; pl_life_ui(lb, sizeof lb); W("%s", lb); }      /* the bottom bar: a life bar per character (petslike_life.c) */
     { char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"), net = !strcmp(cm, "network");
       W("chat_mode_label=chat: %s\nchat_is_edit=%s\nchat_is_hai=%s\nchat_is_net=%s\n", hai ? "h-ai" : net ? "network" : "edit", !hai && !net ? "1" : "", hai ? "1" : "", net ? "1" : ""); }
-    { char cp[PATH_MAX], cb[4000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb);
+    { char cp[PATH_MAX], cb[16000], cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); spath(cp, !strcmp(cm, "hai") ? "hai_chat.txt" : !strcmp(cm, "network") ? "net_chat.txt" : "chat.txt"); read_tail(cp, cb, sizeof cb);      /* 2026-11-04: cb is 16000 bytes now (was 4000): older lines are reachable with chatscroll */
       /* 2026-11-04: a wrapped chat line used to be drawn over the next row (fixed-height rows). Wrap each message to the pane width HERE (word boundaries, continuation rows indented) and show the newest 6 ROWS. */
       /* each message = one NAME row (bright, bold) + its wrapped BODY rows (a slightly dimmer shade of the same hue); kinds 1/2 you, 3/4 h-ai, 5/6 anyone else */
       enum { CWRAP = 25, CMAXR = 128, CSHOW = 12 }; static char rows[CMAXR][CWRAP + 8]; static char rk[CMAXR]; int nr = 0;
@@ -181,7 +181,9 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
           while (pos < len && nr < CMAXR) { size_t w = CWRAP, take = len - pos < w ? len - pos : w; if (pos + take < len) { size_t sp = take; while (sp > w / 2 && body[pos + sp] != ' ') sp--; if (sp > w / 2) take = sp; }
               snprintf(rows[nr], sizeof rows[0], "%.*s", (int)take, body + pos); rk[nr] = base + 1; nr++; pos += take; while (pos < len && body[pos] == ' ') pos++; }
           if (nr >= CMAXR - 20) { memmove(rows[0], rows[CMAXR / 2], (size_t)(CMAXR / 2) * sizeof rows[0]); memmove(rk, rk + CMAXR / 2, (size_t)(CMAXR / 2)); nr -= CMAXR / 2; } }
-      for (int i = 0; i < CSHOW; i++) { int j = nr - CSHOW + i; int kk = (j >= 0 && rows[j][0]) ? rk[j] : 0; W("chat_%d=%s\n", i, j >= 0 ? rows[j] : ""); for (int k = 0; k <= 6; k++) W("chat_%d_k%d=%s\n", i, k, kk == k ? "1" : ""); } }
+      int cscr = 0; { char sp[PATH_MAX], sb[16]; spath(sp, "chat_scroll.txt"); read_file(sp, sb, sizeof sb); cscr = atoi(sb); if (cscr < 0) cscr = 0; if (cscr > nr - CSHOW) cscr = nr - CSHOW > 0 ? nr - CSHOW : 0; }      /* rows back from the newest (verb chatscroll) */
+      W("chat_more=%s\n", cscr > 0 ? " ^" : ""); W("chat_more_n=%d\n", cscr);
+      for (int i = 0; i < CSHOW; i++) { int j = nr - CSHOW - cscr + i; int kk = (j >= 0 && rows[j][0]) ? rk[j] : 0; W("chat_%d=%s\n", i, j >= 0 ? rows[j] : ""); for (int k = 0; k <= 6; k++) W("chat_%d_k%d=%s\n", i, k, kk == k ? "1" : ""); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
@@ -262,6 +264,10 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"); const char *f = hai ? "hai_chat.txt" : "chat.txt";
         append_line(f, hai ? "help: /clear wipes this chat (a .bak copy is kept). /apply writes the h-ai proposal into the event page (old file kept as .hai.bak). /no drops it. /help shows this." : "help: /clear wipes this chat (a .bak copy is kept). /help shows this."); snprintf(msg, cap, "help"); return; }
     if (!strcmp(v, "netsay")) { snprintf(msg, cap, "network chat comes later"); return; }
+    if (!strcmp(v, "chatscroll") && argc >= 2) {      /* chatscroll older|newer|end (2026-11-04): the chat pane shows 12 rows; this moves the window back through the history, 6 rows a step (state/chat_scroll.txt = rows back from the newest) */
+        char sp[PATH_MAX], sb[16]; spath(sp, "chat_scroll.txt"); read_file(sp, sb, sizeof sb); int c = atoi(sb); if (c < 0) c = 0;
+        if (!strcmp(argv[1], "older")) c += 6; else if (!strcmp(argv[1], "newer")) c = c > 6 ? c - 6 : 0; else c = 0;
+        char ob[16]; snprintf(ob, sizeof ob, "%d\n", c); write_if_changed(sp, ob, strlen(ob)); snprintf(msg, cap, "chat scroll %d", c); turn_taken = 0; return; }
     if (!strcmp(v, "chatclear")) {      /* clear the chat of the current mode (edit: the same rename the core clearchat does) */
         char cm[16], p[PATH_MAX], q[PATH_MAX]; flag_str("chatmode", "edit", cm, sizeof cm); spath(p, !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt");
         snprintf(q, sizeof q, "%s.%ld.bak", p, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as %s.%ld.bak)", !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt", now); return; }
