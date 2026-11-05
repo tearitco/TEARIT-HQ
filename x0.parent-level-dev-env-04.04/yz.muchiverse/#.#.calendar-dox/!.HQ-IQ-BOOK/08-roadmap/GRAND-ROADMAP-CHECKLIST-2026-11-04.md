@@ -124,6 +124,20 @@ One line each: the idea, who raised it, the open question, what it would reuse. 
 |---|---|---|---|
 | Cycle possessed pals with a key (first thought: Shift+Left / Shift+Right; owner may prefer Tab, which is disabled while INT is on, decided 2026-10-12) | owner 2026-11-05 | which key; roster order or toolbar order; skip locked/other-room pets? | the `select <id>` verb (its `follow_selection` moves `possessed_id`), `keybinds.pdl` rows as data; harness case: next, previous, wrap, nothing when not possessing |
 
+## L. Centroid University and the chimochio 4x4 board (owner vision 2026-11-05; nothing built)
+
+Docs: `../16.game/CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md` (vision, gap table, suggested order, questions) and `../16.game/TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` (what the owner's old TSOTS notes say). Target map: `map071` (42x52, "classic board4 plys") in `@.apps/piececraft-hq/pieces/system/maps/tsots/` (98 imported maps; gallery exported to XO `31.Nov/nov-5/0.tsots-map-gallery.html`).
+
+| Item | Status |
+|---|---|
+| Stairs / inclines without a jump, with collision | paper only (`Z-CELL-FORMAT.md`); D12 proposed in the decision log |
+| Attack choices and animations, magic with MP drain | not built; MP vs the notes' energy/soul costs is an owner question |
+| Skill / tech tree for entities and items | docs exist; no shared data format |
+| Physical shops, hotels, schools | coin shop slice exists (ledger); buildings not built |
+| Courts, laws, officers, dungeon | not built; old notes said "no arrests", the vision reverses it |
+| Arena, tournaments, party battles (manual / auto / hybrid) | not built |
+| Map71 viewable in the house | imported; first step is to open it in the board viewer |
+
 # Technical spec library (what to read, and what is still unwritten)
 
 Each row: in-house spec (path in this book) | external reference (the URL returned HTTP 200 on 2026-11-04; its content was NOT read) | spec still to write.
