@@ -18,3 +18,4 @@ $CC -std=c11 -O2 -w -I "../../../../_.monads/_.livedesk-taskbar/ops" -I .. -I ..
 $CC -std=gnu11 -Wall -Wextra -Wno-misleading-indentation -O2 -o +x/img_op.+x img_op.c -lm && echo "OK +x/img_op.+x"
 $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -O2 -o +x/video_op.+x video_op.c && echo "OK +x/video_op.+x"
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/py_lint.+x py_lint.c && echo "OK +x/py_lint.+x"
+$CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/blank_page_op.+x blank_page_op.c && echo "OK +x/blank_page_op.+x"

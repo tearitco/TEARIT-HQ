@@ -1,0 +1,104 @@
+# live_blank_page_size: step 0 of the tear-it co plan: how big a BLANK page does the running editor board hold? LIVE (real engine; LIVE_OK=1 or SKIP; tell the owner first).
+# The editor's current page (Store) has its cells.txt swapped for a blank WxH page (ops/blank_page_op.c: flat floor only), then cells.marker is grown by one byte (the engine reloads on the marker SIZE, never mtime).
+# Per size: the window process must still be alive (this setup has no separate engine process to count), and a fresh photograph of the canvas must be a drawn floor (mean brightness) that differs from the Store page. Both files are restored at the end and the cells.txt hash must match the one taken first.
+# A size that fails stops being a candidate: the campus legend must be smaller. Known hard limit from the code: the engine reads a cells.txt row into a 16384-byte line buffer, so a blank row of "1,0,1" tokens ends near 2700 columns.
+RESULTS | ../results/live_blank_page_size.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt | $T/cells.bak
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker | $T/marker.bak
+RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CAPTURE | hash0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | findwin | 1300 | 802
+EXPECT_EXIT | 0 | the-editor-window-is-open
+CAPTURE | win
+RUN | /usr/bin/cat | $HOUSE/@.apps/rpg-edit-hq/board/module_parent.pid
+CAPTURE | wpid
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
+CAPTURE | sess
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/base.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/base.png | 208 | 105 | 1094 | 745
+CAPTURE | base_mean
+
+CASE    | size-64x64
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank64.txt | 64 | 64
+EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
+RUN | /bin/cp | $T/blank64.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+SLEEP | 30000
+EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 6000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s64.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s64.png | 208 | 105 | 1094 | 745
+CAPTURE | mean64
+EXPECT_GE | $mean64 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s64.png | 208 | 105 | 1094 | 745
+CAPTURE | diff64
+EXPECT_GE | $diff64 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+
+CASE    | size-128x128
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank128.txt | 128 | 128
+EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
+RUN | /bin/cp | $T/blank128.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+SLEEP | 30000
+EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 6000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s128.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s128.png | 208 | 105 | 1094 | 745
+CAPTURE | mean128
+EXPECT_GE | $mean128 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s128.png | 208 | 105 | 1094 | 745
+CAPTURE | diff128
+EXPECT_GE | $diff128 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+
+CASE    | size-192x192
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank192.txt | 192 | 192
+EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
+RUN | /bin/cp | $T/blank192.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+SLEEP | 30000
+EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 6000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s192.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s192.png | 208 | 105 | 1094 | 745
+CAPTURE | mean192
+EXPECT_GE | $mean192 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s192.png | 208 | 105 | 1094 | 745
+CAPTURE | diff192
+EXPECT_GE | $diff192 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+
+CASE    | size-256x256
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/blank_page_op.+x | $T/cells.bak | $T/blank256.txt | 256 | 256
+EXPECT_EXIT | 0 | the-blank-page-is-written-and-its-rows-fit-the-engines-line-buffer
+RUN | /bin/cp | $T/blank256.txt | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /usr/bin/truncate | -s | +1 | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+SLEEP | 30000
+EXPECT_ALIVE | $wpid | the-editor-window-process-is-still-alive
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 6000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $T/s256.png
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | mean | $T/s256.png | 208 | 105 | 1094 | 745
+CAPTURE | mean256
+EXPECT_GE | $mean256 | 15 | a-floor-is-drawn-not-a-black-or-empty-frame
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | diff | $T/base.png | $T/s256.png | 208 | 105 | 1094 | 745
+CAPTURE | diff256
+EXPECT_GE | $diff256 | 20000 | the-picture-changed-the-engine-loaded-the-blank-page
+
+CASE    | restore
+RUN | /bin/cp | $T/cells.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+RUN | /bin/cp | $T/marker.bak | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.marker
+RUN | /usr/bin/sha256sum | $HOUSE/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps/rpg-edit-hq/store/cells.txt
+CAPTURE | hash1
+EXPECT_EQ | $hash0 | $hash1 | cells.txt-is-byte-identical-to-before
+SLEEP | 25000
+RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | ~
+SLEEP | 5000
+EXPECT_ALIVE | $wpid | the-editor-window-survived-the-whole-run
+CLEAN |
