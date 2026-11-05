@@ -1,0 +1,4 @@
+# item_ledger.pal - the quarantined item ledger: conservation, three separate ids, hash chain, quarantine refusal. See cases/item_ledger.pdl
+exec ./ops/+x/harness_case_op.+x cases/item_ledger.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/item_ledger.pdl
+halt

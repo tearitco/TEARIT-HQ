@@ -8,3 +8,4 @@ nice -n 15 gcc -std=c11 -O2 -Wall -Wextra -o +x/pal_side.+x pal_side.c || exit 1
 nice -n 15 gcc -std=c11 -O2 -Wall -Wextra -o +x/edit_prefs.+x edit_prefs.c || exit 1
 # the editor h-ai (locate session, context, API ask, proposal, apply), see hai_op.c
 nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/hai_op.+x hai_op.c || exit 1
+nice -n 15 gcc -std=gnu11 -O2 -Wall -Wextra -Wno-format-truncation -o +x/item_ledger_op.+x item_ledger_op.c || exit 1   # the quarantined item ledger, see item_ledger_op.c and harness item_ledger.pal
