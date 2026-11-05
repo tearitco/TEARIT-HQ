@@ -69,3 +69,4 @@ command runs on.
 - Vehicle crafting and modding (design, 2026-11-05): `VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`.
 - Vehicle physics and proving grounds (design, 2026-11-05): `VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`.
 - Gyms, zoos and museums, documentation in the game (design, 2026-11-05): `GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`.
+- Final handoff to Grok, 2026-11-05 (roadmap, lore, decisions, how to ask claude questions): `GROK-HANDOFF-FINAL-2026-11-05-ROADMAP-LORE-AND-QA.md`; Q&A files in `../13.agent-coms/GROK/QUESTIONS-FOR-CLAUDE.md` and `ANSWERS-FROM-CLAUDE.md`.

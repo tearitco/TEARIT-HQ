@@ -57,3 +57,6 @@ Ties: M2 (rated bots), M10 (vehicle designs), M11/M12 (gyms are the eval set). F
 
 ## 8. Owner answer, round 3 (canon proposal adopted 2026-11-05)
 Question 3 (may verified `DATA` rows leave the house?): **no. Ship only signed receipts and hashes of verified training rows, never the rows themselves.** This fixes D22 (the chain/pack layer carries hashes and signed receipts) and A6; trained weights or packs, if ever shipped, are a separate owner decision. Questions 1, 2 and 4 stay open.
+
+## 9. A new task family from the owner: learned glyph senses (2026-11-05)
+The owner: glyphs "will be learned as we go, using our tomom / Tear-It; multiple meanings; magic". It is the **best first real family for the attrition model**: input `glyph + context row`, output one fixed line (a candidate sense), judge = shape check + dictionary cross-check + human review; rows `GLYPH`, `SENSE` in `glyphs.pdl`; graduation = senses served in-house. It also gives the harness-as-judge a real caller (step A1) beyond True Swords Clash bots. Design: `../22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7b; decision D23.
