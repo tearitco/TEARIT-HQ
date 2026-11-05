@@ -44,6 +44,7 @@ RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
 EXPECT_OUT | Ember chosen (Enter) | the-pet-under-the-xelector-is-chosen
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | ember | active-pet-is-now-ember
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet | control-stays-on-a-pet
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=ember | D1-the-xelector-shows-the-pet-as-possessed
 
 CASE    | the-trainer-on-the-cell-is-chosen
 WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=none\n
@@ -53,6 +54,7 @@ RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
 EXPECT_OUT | Harold chosen (Enter) | harold-the-trainer-is-chosen
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | player | control-goes-to-the-player
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | the-active-pet-is-left-alone
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=hero_01 | D1-harold-is-the-engines-hero_01
 
 CASE    | NEGATIVE-an-empty-cell-chooses-nobody
 WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=1\npos_y=1\npos_z=0\npossessed_id=none\n
@@ -61,6 +63,7 @@ WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
 EXPECT_OUT | nobody to possess | an-empty-cell-is-refused
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | the-active-pet-did-not-change
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=none | D1-nothing-chosen-leaves-the-xelector-free
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet | control-did-not-change
 
 CASE    | NEGATIVE-the-board-shows-another-book
@@ -71,6 +74,7 @@ WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | ma
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
 EXPECT_OUT | nobody to possess | another-book-is-refused-even-with-a-pet-on-the-cell
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | and-nothing-changed
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=none | D1-another-book-leaves-the-xelector-free
 
 # LOCK TO HERO (verb lockhero = the existing per-piece flags, owner 2026-11-05 "it can be locked to a hero"): hero_01 de_possessible 1, other engine pieces possessable 0, and the daemon refuses a pet.
 CASE    | lock-to-hero-sets-the-flags
@@ -94,6 +98,7 @@ WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | possess
 EXPECT_OUT | nobody to possess | the-pet-is-refused-while-locked
 EXPECT_HAS | house/@.apps/rpg-edit-hq/state/active.txt | asa | the-active-pet-did-not-change
+EXPECT_HAS | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | possessed_id=none | D1-nothing-chosen-leaves-the-xelector-free
 
 CASE    | toggle-without-argument-frees-again
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lockhero

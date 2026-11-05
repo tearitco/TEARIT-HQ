@@ -1122,11 +1122,12 @@ static void write_room_events(int r) {
  * @.apps/piececraft-hq/pieces/xelector_01/state.txt and hero_01/state.txt get the selected entity's cell, the pc-hq desk is switched (inbox CONFIRM_SET_DESK) when it changes room, and the
  * board-viewer session is nudged to redraw (append to its interact_relay.txt: code 1 is unbound, a pure "render now"). Only when the selected entity's room/cell/facing changed, so a
  * human driving the pc-hq xelector by hand between steps is not fought. Does nothing unless pc-hq has the <app> book open. */
-static int kv_set_int(const char *path, const char *key, int val) {
+static int kv_set_str(const char *path, const char *key, const char *val) {      /* one implementation for both setters; returns 0 (and writes nothing) when the file does not exist */
     char b[8192]; int n = read_file(path, b, sizeof b); if (n <= 0) return 0; char out[8300]; int o = 0, found = 0; size_t kl = strlen(key);
-    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, key, kl) && l[kl] == '=') { o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); found = 1; } else o += snprintf(out + o, sizeof out - o, "%s\n", l); }
-    if (!found) o += snprintf(out + o, sizeof out - o, "%s=%d\n", key, val); return write_if_changed(path, out, o);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, key, kl) && l[kl] == '=') { o += snprintf(out + o, sizeof out - o, "%s=%s\n", key, val); found = 1; } else o += snprintf(out + o, sizeof out - o, "%s\n", l); }
+    if (!found) o += snprintf(out + o, sizeof out - o, "%s=%s\n", key, val); return write_if_changed(path, out, o);
 }
+static int kv_set_int(const char *path, const char *key, int val) { char v[24]; snprintf(v, sizeof v, "%d", val); return kv_set_str(path, key, v); }
 /* the engine keeps its own cursor (selector_x / selector_y in the session's bv_state.txt) and an arrow key moves THAT by one and then rewrites the xelector from it: if it is not on the monster the first
  * arrow jumps the xelector somewhere stale. Put it on the monster whenever the xelector is put there. */
 static void sync_selector(int x, int y) {
@@ -1725,6 +1726,11 @@ static int lock_hero_set(int on) {
         if (!strcmp(id, "hero_01")) piece_flag_set(id, "de_possessible", on); else piece_flag_set(id, "possessable", on ? 0 : 1); n++; }
     closedir(dr); return n;
 }
+/* DECISION D1 (02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): the xelector's possessed_id is the ONE authority for "who is the xelector controlling". The engine writes it for pieces; a pet or Harold is game state (not a piece), so the daemon writes it when Enter chooses them. The engine holds such a possession but moves nothing, and 9 / Esc-first release it where the xelector stands (bv_menu_input.c piece_exists). Everything that reads it (HUD poss, the lighter box in 2D and 3D, Esc-first) then needs no change. Harold is the engine's own hero_01. */
+static void mark_possessed(const char *id) {
+    char xp[PATH_MAX]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); if (!fexists(xp)) return;
+    kv_set_str(xp, "possessed_id", id); kv_set_str(xp, "last_possessed_id", id);
+}
 static int possess_at_xelector(char *msg, size_t cap) {
     char wp[PATH_MAX], wb[2048], m[64] = "", dk[64] = "", xp[PATH_MAX], kb[512]; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ); read_file(wp, wb, sizeof wb);
     for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
@@ -1734,8 +1740,8 @@ static int possess_at_xelector(char *msg, size_t cap) {
     if (pick == -2 && !strcmp(rooms[tr.room].id, dk) && tr.x == xx && tr.y == xy) pick = -1;
     if (pick == -2) return 0;
     if (pick >= 0 && hero_locked()) return 0;      /* locked to the hero (verb lockhero): a pet is not chosen by Enter */
-    if (pick == -1) { g_ctl_why = "enter-possess"; set_flag("ctl", "player"); set_flag("follow", "player"); snprintf(msg, cap, "%s chosen (Enter)", hero.name); }
-    else { char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[pick].id); write_if_changed(p, bb, strlen(bb)); g_ctl_why = "enter-possess"; set_flag("ctl", "pet"); set_flag("follow", "pet"); active = pick; snprintf(msg, cap, "%s chosen (Enter)", party[pick].name); }
+    if (pick == -1) { g_ctl_why = "enter-possess"; set_flag("ctl", "player"); set_flag("follow", "player"); mark_possessed("hero_01"); snprintf(msg, cap, "%s chosen (Enter)", hero.name); }
+    else { char p[PATH_MAX], bb[40]; spath(p, "active.txt"); snprintf(bb, sizeof bb, "%s\n", party[pick].id); write_if_changed(p, bb, strlen(bb)); g_ctl_why = "enter-possess"; set_flag("ctl", "pet"); set_flag("follow", "pet"); active = pick; mark_possessed(party[pick].id); snprintf(msg, cap, "%s chosen (Enter)", party[pick].name); }
     calc_view(); return 1;
 }
 static int enter_pressed_in_engine(void) {

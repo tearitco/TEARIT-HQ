@@ -135,6 +135,15 @@ int main(int argc, char **argv) {
       check(strcmp(v, "pet_1") != 0 && strcmp(v, "hero_01") != 0, "possession: an empty cell possesses nothing");
       g_poss[0] = 0; xel_at(6, 6); if (input_keys("13")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v); check(!strcmp(v, "hero_01"), "possession: hero_01 can still be possessed like any entity");
       g_poss[0] = 0; xel_at(2, 2); }
+    /* 2026-11-05 DECISION D1 (02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): possessed_id is the ONE authority for "who is the xelector controlling", and an id with NO pieces/<id>/state.txt (a pet or Harold: game state, driven by the daemon) is EXTERNALLY DRIVEN: the possession holds, nothing is dragged or moved by the engine, 9 releases it WHERE THE XELECTOR STANDS (not at the hero), and a second 9 does not jump anywhere */
+    { char v[64], v2[64]; nopiece(); ent("hero_01", "hero", 6, 6); state_mode(0); snprintf(g_poss, sizeof g_poss, "pet_ext"); xel_at(4, 4);
+      if (input_keys("1001")) return 2; check(file_int("pieces/xelector_01/state.txt", "pos_x") == 5 && file_int("pieces/hero_01/state.txt", "pos_x") == 6, "externally driven: an arrow moves the xelector and does NOT drag the hero (hero_01 stays at 6)");
+      if (input_keys("57")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v);
+      check(!strcmp(v, "none") && file_int("pieces/xelector_01/state.txt", "pos_x") == 5 && file_int("pieces/xelector_01/state.txt", "pos_y") == 4, "externally driven: 9 releases it and the xelector STAYS where it is (5,4), it does not jump to the hero (6,6)");
+      kv_of("pieces/xelector_01/state.txt", "last_possessed_id", v2, sizeof v2); check(!strcmp(v2, "pet_ext"), "externally driven: last_possessed_id records it");
+      if (input_keys("57")) return 2; kv_of("pieces/xelector_01/state.txt", "possessed_id", v, sizeof v);
+      check(!strcmp(v, "none") && file_int("pieces/xelector_01/state.txt", "pos_x") == 5, "externally driven: a second 9 (reverse jump) does not re-possess a thing with no piece file or move the xelector");
+      g_poss[0] = 0; xel_at(2, 2); }
     /* the camera keys (w/a/s/d) move the CAMERA and never the xelector; the arrows move the xelector and never the camera */
     nopiece(); piece_at(12, 2); minimap_setting(0); state_mode(0); cam_reset(); zoom(0); xel_at(2, 2); if (render(cur)) return 2; float k0 = cam_x();
     if (input_keys("100 100 100")) return 2; check(cam_x() == k0 + 3.0f, "keys: w/a/s/d (here 'd' x3) move the 2D camera"); check(file_int("pieces/xelector_01/state.txt", "pos_x") == 2 && state_int("selector_x") == 2, "keys: the camera keys did NOT move the xelector");

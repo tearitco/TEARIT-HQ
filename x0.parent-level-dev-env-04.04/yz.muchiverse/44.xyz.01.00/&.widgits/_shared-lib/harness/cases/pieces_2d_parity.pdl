@@ -61,6 +61,10 @@ EXPECT_OUT | ok  : possession: piece.pdl possessable=false stops Enter | possess
 EXPECT_OUT | ok  : possession: piece.pdl de_possessible=true locks the entity in (9 does nothing) | possession-4
 EXPECT_OUT | ok  : possession: an empty cell possesses nothing | possession-5
 EXPECT_OUT | ok  : possession: hero_01 can still be possessed like any entity | possession-6
+EXPECT_OUT | ok  : externally driven: an arrow moves the xelector and does NOT drag the hero (hero_01 stays at 6) | externally-driven-arrow-does-not-drag-the-hero
+EXPECT_OUT | ok  : externally driven: 9 releases it and the xelector STAYS where it is (5,4), it does not jump to the hero (6,6) | externally-driven-release-keeps-the-xelector-cell
+EXPECT_OUT | ok  : externally driven: last_possessed_id records it | externally-driven-last-possessed-recorded
+EXPECT_OUT | ok  : externally driven: a second 9 (reverse jump) does not re-possess a thing with no piece file or move the xelector | externally-driven-no-reverse-jump
 EXPECT_OUT | ok  : arrows: the xelector moves inside the view and the CAMERA DOES NOT MOVE | arrows-the-xelector-moves-inside-the-view-and-the-camera-does-not-move
 EXPECT_OUT | ok  : arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible | arrows-past-the-edge-the-camera-pans-scrolls-by-the-least-amount-and-t
 EXPECT_OUT | ok  : xelector: still visible far past the page (the camera panned after it) | xelector-still-visible-far-past-the-page-the-camera-panned-after-it

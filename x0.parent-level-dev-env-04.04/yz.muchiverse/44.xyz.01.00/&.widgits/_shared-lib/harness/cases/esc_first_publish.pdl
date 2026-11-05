@@ -45,6 +45,8 @@ WRITE | house/@.apps/rpg-edit-hq/state/active.txt | asa\n
 WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
 MKDIR | house/@.apps/rpg-edit-hq/state/world
 WRITE | house/@.apps/rpg-edit-hq/state/world/switches.txt | int=1\nrunning=0\n
+# a stand-in board window: the daemon only publishes while a khtpm_core_render of the editor board exists (viewer_kinds scans /proc cmdlines at start), so a sleeping process carrying that cmdline makes its own 400 ms update run (the Enter trigger no longer works: Enter on Harold now possesses him, D1)
+SPAWN | V | /bin/sh | -c | sleep 300 | khtpm_core_render | $T/house/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
 SPAWN | D | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house | $T/house/@.apps/rpg-edit-hq
 SLEEP | 1500
 MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01
@@ -52,27 +54,28 @@ WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01/state.txt | ent
 
 CASE    | possessed-publishes-the-release-key
 WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=hero_01\n
-SLEEP | 600
-APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 13\n
 WAIT_HAS | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | 57 | 4000 | the-release-key-is-published-while-possessed
 
+CASE    | a-pet-possessed-by-id-publishes-it-too
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=none\n
+SLEEP | 1500
+EXPECT_NOFILE | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | free-xelector-leaves-no-file
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=ember\n
+WAIT_HAS | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | 57 | 4000 | D1-an-id-with-no-piece-file-is-published-like-any-other
+
 CASE    | NEGATIVE-a-locked-piece-removes-it
+WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=hero_01\n
+WAIT_HAS | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | 57 | 4000 | present-before-the-lock
 WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01/piece.pdl | SECTION | de_possessible | 1\n
-SLEEP | 3200
-APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 13\n
 SLEEP | 1500
 EXPECT_NOFILE | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | a-locked-hero-keeps-the-old-Esc-so-Esc-leaves-In
 
 CASE    | unlocking-publishes-it-again
 WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01/piece.pdl | SECTION | de_possessible | 0\n
-SLEEP | 3200
-APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 13\n
 WAIT_HAS | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | 57 | 4000 | back-after-the-unlock
 
 CASE    | NEGATIVE-nothing-possessed-removes-it
 WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=7\npos_y=7\npos_z=0\npossessed_id=none\n
-SLEEP | 3200
-APPEND | sess/pieces/keyboard/history.txt | KEY_PRESSED: 13\n
 SLEEP | 1500
 EXPECT_NOFILE | house/@.apps/rpg-edit-hq/board/state/esc_first.txt | possessed-id-none-leaves-no-file
 

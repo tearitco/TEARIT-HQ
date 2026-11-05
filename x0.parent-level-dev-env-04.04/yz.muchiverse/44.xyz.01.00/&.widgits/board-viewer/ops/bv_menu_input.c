@@ -198,6 +198,10 @@ static int piece_pdl_flag(const char *host_root, const char *entity_id,
     fclose(f);
     return r;
 }
+/* Is there an engine PIECE called entity_id? A possessed_id with no pieces/<id>/state.txt names something the DAEMON drives (a pet or Harold: game state, not a piece; DECISION D1, 02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): the engine holds that possession but moves nothing and never reads a position it does not have. */
+static int piece_exists(const char *host_root, const char *entity_id) {
+    char p[PATH_BUF]; snprintf(p, sizeof(p), "%s/pieces/%s/state.txt", host_root, entity_id); return access(p, F_OK) == 0;
+}
 /* The entity standing on cell (x,y): any pieces/<id>/state.txt with entity_type and that pos_x/pos_y (owner 2026-11-05: ALL possession is controlling, there is no special hero; before this Enter could only possess hero_01). hero_01 is tried first so a cell shared with it behaves as before; the xelector and the world piece are never targets. Returns 1 and fills out. */
 static int entity_at_cell(const char *root, int x, int y, char *out, size_t osz) {
     char dir[PATH_BUF]; snprintf(dir, sizeof(dir), "%s/pieces", root);
@@ -1019,7 +1023,8 @@ static int handle_one_key(int key) {
             write_kv(xs, "possessed_id", "none");
             {   /* step out onto the POSSESSED entity's own cell (was the hero's cell: wrong once any entity can be possessed) */
                 char ps[PATH_BUF]; snprintf(ps, sizeof(ps), "%s/pieces/%s/state.txt", focused_project_root, possessed_id);
-                hx = read_kv_int(ps, "pos_x", hx); hy = read_kv_int(ps, "pos_y", hy); hz = read_kv_int(ps, "pos_z", hz);
+                if (piece_exists(focused_project_root, possessed_id)) { hx = read_kv_int(ps, "pos_x", hx); hy = read_kv_int(ps, "pos_y", hy); hz = read_kv_int(ps, "pos_z", hz); }
+                else { hx = xx; hy = xy; hz = read_kv_int(xs, "pos_z", hz); }      /* externally driven (a pet / Harold): the xelector stays where it is */
             }
             /* step the xlector out onto the entity's own current cell */
             write_kv_int(xs, "pos_x", hx);
@@ -1030,7 +1035,7 @@ static int handle_one_key(int key) {
             write_kv_int(state_path, "current_z", hz);
             bump_screen_changed(project_root);
         } else if (last_possessed_id[0] && strcmp(last_possessed_id, "none") != 0 &&
-                   piece_pdl_flag(focused_project_root, last_possessed_id, "possessable", 1)) {
+                   piece_exists(focused_project_root, last_possessed_id) && piece_pdl_flag(focused_project_root, last_possessed_id, "possessable", 1)) {
             /* reverse-jump: snap to last entity and re-possess */
             char le[PATH_BUF];
             snprintf(le, sizeof(le), "%s/pieces/%s/state.txt", focused_project_root, last_possessed_id);
