@@ -1203,6 +1203,20 @@ static void write_entity_sprites(const char *room_id) {
         pet_write_footer(PCHQ, k, blk);
     }
 }
+/* ESC FIRST (owner 2026-11-05: "esc to leave the xelector, stay In until esc is pressed again"): Esc backs out ONE level, innermost first: possession, then In. The board window forwards Esc to the TPMOS parser, which leaves Interact on its own (shared prebuilt binary, not touched). So while something is possessed this publishes
+ * <app>/board/state/esc_first.txt = the engine's release key code (57 = '9'); the window (khtpm_core_render.c kh_esc_first_code) sends THAT instead of Esc and deletes the file (one shot), so the parser never sees the Esc and In: stays on. Not possessed, or the possessed piece has de_possessible | 1 (locked): no file, Esc leaves In as before. */
+static int piece_release_locked(const char *id) {
+    char p[PATH_MAX], b[4096]; snprintf(p, sizeof p, "%s/pieces/%s/piece.pdl", PCHQ, id); read_file(p, b, sizeof b);
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) if (strstr(l, "de_possessible")) return strstr(l, "| 1") || strstr(l, "true") || strstr(l, "=1");
+    return 0;
+}
+static void publish_esc_first(void) {
+    char xp[PATH_MAX], xb[1024], ep[PATH_MAX], id[64] = ""; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", PCHQ); read_file(xp, xb, sizeof xb);
+    for (char *l = strtok(xb, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "possessed_id=", 13)) snprintf(id, sizeof id, "%s", l + 13);
+    snprintf(ep, sizeof ep, "%s/@.apps/" PET_APP "/board/state/esc_first.txt", HOUSE);
+    int possessed = id[0] && strcmp(id, "-") && strcmp(id, ".") && strcasecmp(id, "none");
+    if (possessed && !piece_release_locked(id)) { if (!fexists(ep)) write_if_changed(ep, "57\n", 3); } else if (fexists(ep)) remove(ep);
+}
 static void follow_pchq(void) {
     char wp[PATH_MAX], xp[PATH_MAX], hp[PATH_MAX], m[64] = "", dk[64] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", PCHQ);
     char wb[2048]; read_file(wp, wb, sizeof wb); for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "map_id=", 7)) snprintf(m, sizeof m, "%s", l + 7); else if (!strncmp(l, "desk_id=", 8)) snprintf(dk, sizeof dk, "%s", l + 8); }
@@ -1212,7 +1226,7 @@ static void follow_pchq(void) {
         char vp[PATH_MAX], vb[4096] = ""; snprintf(vp, sizeof vp, "%s/pieces/system/view.pdl", PCHQ); read_file(vp, vb, sizeof vb);
         if (!strstr(vb, "xelector_z_min")) { FILE *vf = fopen(vp, "a"); if (vf) { fputs("# painted map: z / x stop at the floor (levels relative to the floor)\nxelector_z_min=1\n", vf); fclose(vf); } } } }
 #endif
-    publish_sky(wp);
+    publish_sky(wp); publish_esc_first();
     for (int r = 0; r < nroom; r++) write_room_events(r);
 #define PET_SECTION 48
 #include PET_SKIN

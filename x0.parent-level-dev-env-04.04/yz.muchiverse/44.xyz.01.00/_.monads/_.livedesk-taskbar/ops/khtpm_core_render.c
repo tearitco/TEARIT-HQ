@@ -6213,6 +6213,14 @@ static int kh_ov_text_rows(const Elem *t, int colw, int pad4) {
     if (!t || strcmp(t->tag, "text") != 0 || !elem_has_class((Elem *)t, "ov-wraptext")) return 1;
     int r = scroll_row_span(t, colw - 2 * pad4); return r < 1 ? 1 : (r > 8 ? 8 : r);      /* capped at 8 rows: a runaway label cannot fill the canvas */
 }
+/* ESC FIRST (owner 2026-11-05, "esc to leave the xelector, stay In till esc is pressed again"): a board may publish <dir of this window's .xhtpm>/state/esc_first.txt = ONE decimal key code. The next Esc in an engaged Interact window sends THAT code to the game relay instead of Esc, and deletes the file (one shot), so the TPMOS parser never sees the Esc and Interact stays on; with no file Esc is forwarded as always. Generic: this file knows nothing about what the code does (the editor publishes the xelector's release key while something is possessed; petslike_core.c publish_esc_first). Read only on an Esc press, no idle cost. Returns the code (1..255) or 0. */
+static int kh_esc_first_code(void) {
+    char dir[PATH_BUF], p[PATH_BUF + 32]; snprintf(dir, sizeof(dir), "%s", g_chtpm_path); char *sl = strrchr(dir, '/'); if (!sl) return 0; *sl = '\0';
+    snprintf(p, sizeof(p), "%s/state/esc_first.txt", dir);
+    FILE *f = fopen(p, "r"); if (!f) return 0; int c = 0; if (fscanf(f, "%d", &c) != 1) c = 0; fclose(f);
+    unlink(p);      /* consumed even when unreadable: a bad file must not trap Esc */
+    return (c > 0 && c < 256) ? c : 0;
+}
 
 static void layout_scroll_sprite_grid_row(Elem *row, int x, int y, int w, int h_box, int visible, int *out_lo, int *out_hi) {
     int j, col = 0, line = 0;
@@ -13321,6 +13329,19 @@ static void handle_key(KeySym ks, char ch) {
      * The close itself is the block further down. Without this guard
      * the relay returns here and the menu stays up. */
     int menu_open = (g_default_active_scope_root || g_default_active_scope_id[0]);
+    if (g_interact_relay_on && !g_default_input_elem && ks == XK_Escape && !menu_open) {
+        int ec = kh_esc_first_code();      /* ESC FIRST: the board asked for another key before Esc leaves Interact (see kh_esc_first_code) */
+        if (ec) {
+            struct timespec ets; clock_gettime(CLOCK_MONOTONIC, &ets); long long ems = (long long)ets.tv_sec * 1000 + ets.tv_nsec / 1000000;
+            g_x11_window_focused = 1;
+            for (int i = 0; i < g_interact_relay_n; i++) {
+                const char *p = g_interact_relay_paths[i];
+                if (!p[0] || strstr(p, "keyboard/history.txt")) continue;      /* a game key goes to the camera relay only, like every non-parser key below */
+                FILE *f = fopen(p, "a"); if (f) { fprintf(f, "%d %lld\n", ec, ems); fclose(f); }
+            }
+            return;
+        }
+    }
     if (g_interact_relay_on && !g_default_input_elem && ks == XK_Escape && !menu_open) {
         /* 27 goes ONLY to keyboard/history.txt - see the double-arrow
          * comment in the general branch below. */

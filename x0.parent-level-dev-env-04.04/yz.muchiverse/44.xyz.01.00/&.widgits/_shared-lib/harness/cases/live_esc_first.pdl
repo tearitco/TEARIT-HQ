@@ -1,0 +1,42 @@
+# live_esc_first: the WINDOW half of "Esc backs out one level" (owner 2026-11-05). A tiny scratch window (the installed khtpm_core_render.+x, Interact armed through its vars) with <dir>/state/esc_first.txt = 57 sends the release key to the game relay INSTEAD of Esc, consumes the file, and the TPMOS parser's history gets no Esc; the next Esc (no file) is forwarded as always. Generic: the renderer does not know what 57 means.
+# LIVE (opens a 400x400 window for about 12 s; LIVE_OK=1 or SKIP). Restore: the window is killed by CLEAN, its per-pid relay file is removed. A template needs a ${...} so the renderer loads its vars (found 2026-11-05: without it Interact never arms).
+RESULTS | ../results/live_esc_first.txt
+ENV | LC_ALL | C
+NEEDENV | LIVE_OK
+
+CASE    | setup
+SCRATCH |
+MKDIR | w/state
+MKDIR | w/keyboard
+WRITE | w/w.xhtpm | <window vars="state/ui.txt">\n  <page name="main">\n    <text label="esc first ${interact_armed}"/>\n  </page>\n</window>\n
+WRITE | w/state/ui.txt | interact_armed=1\nbv_h1=$T/w/interact_relay.txt\nbv_h2=$T/w/keyboard/history.txt\n
+WRITE | w/interact_relay.txt | \n
+WRITE | w/keyboard/history.txt | \n
+WRITE | w/state/esc_first.txt | 57\n
+SPAWN | W | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | $HOUSE | $T/w/w.xhtpm | 400 | 400
+SLEEP | 6000
+EXPECT_ALIVE | $W | the-scratch-window-is-up
+
+CASE    | esc-with-the-file-sends-the-key-not-Esc
+RUN | /bin/sh | -c | echo "KEY_PRESSED: 27" >> "$HOUSE/#.desktop/entity_menu_history/$W.txt"
+SLEEP | 2500
+EXPECT_HAS | w/interact_relay.txt | 57 | the-release-key-reached-the-game-relay
+EXPECT_NOFILE | w/state/esc_first.txt | the-file-was-consumed
+EXPECT_LACKS | w/keyboard/history.txt | KEY_PRESSED: 27 | the-parser-never-saw-the-Esc-so-In-stays-on
+
+CASE    | the-next-Esc-is-a-normal-Esc
+RUN | /bin/sh | -c | echo "KEY_PRESSED: 27" >> "$HOUSE/#.desktop/entity_menu_history/$W.txt"
+SLEEP | 2500
+EXPECT_HAS | w/keyboard/history.txt | KEY_PRESSED: 27 | with-no-file-Esc-goes-to-the-parser-as-before
+
+CASE    | NEGATIVE-a-bad-file-cannot-trap-Esc
+WRITE | w/state/esc_first.txt | banana\n
+RUN | /bin/sh | -c | echo "KEY_PRESSED: 27" >> "$HOUSE/#.desktop/entity_menu_history/$W.txt"
+SLEEP | 2500
+EXPECT_NOFILE | w/state/esc_first.txt | the-bad-file-is-consumed-too
+RUN | /usr/bin/grep | -c | KEY_PRESSED: 27 | w/keyboard/history.txt
+EXPECT_OUT | 2 | and-that-Esc-went-to-the-parser
+
+CASE    | cleanup
+RUN | /bin/rm | -f | $HOUSE/#.desktop/entity_menu_history/$W.txt
+CLEAN |

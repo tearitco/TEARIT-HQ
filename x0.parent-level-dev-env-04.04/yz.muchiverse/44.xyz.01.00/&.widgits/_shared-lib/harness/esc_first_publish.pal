@@ -1,0 +1,4 @@
+# esc_first_publish.pal - the daemon publishes the Esc-first key while something is possessed. See cases/esc_first_publish.pdl
+exec ./ops/+x/harness_case_op.+x cases/esc_first_publish.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/esc_first_publish.pdl
+halt

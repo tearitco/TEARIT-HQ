@@ -1,0 +1,4 @@
+# live_esc_first.pal - the window half of Esc-first (LIVE_OK=1). See cases/live_esc_first.pdl
+exec ./ops/+x/harness_case_op.+x cases/live_esc_first.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/live_esc_first.pdl
+halt
