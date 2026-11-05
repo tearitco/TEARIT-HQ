@@ -126,7 +126,7 @@ One line each: the idea, who raised it, the open question, what it would reuse. 
 
 ## L. Centroid University and the chimochio 4x4 board (owner vision 2026-11-05; nothing built)
 
-Docs: `../16.game/CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md` (vision, gap table, suggested order, questions) and `../16.game/TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` (what the owner's old TSOTS notes say). Target map: `map071` (42x52, "classic board4 plys") in `@.apps/piececraft-hq/pieces/system/maps/tsots/` (98 imported maps; gallery exported to XO `31.Nov/nov-5/0.tsots-map-gallery.html`).
+Lore and IP chapter: `../22.lore-ip/00-INDEX.md` (TSOTS = Bible levels + capturing characters as pals with "cursword"; the Soul Pen franchise picks up after Revelation; story mode = most of the 98 imported maps). Docs: `../16.game/CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md` (vision, gap table, suggested order, questions) and `../16.game/TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` (what the owner's old TSOTS notes say). Target map: `map071` (42x52, "classic board4 plys") in `@.apps/piececraft-hq/pieces/system/maps/tsots/` (98 imported maps; gallery exported to XO `31.Nov/nov-5/0.tsots-map-gallery.html`).
 
 | Item | Status |
 |---|---|

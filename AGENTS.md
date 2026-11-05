@@ -196,6 +196,8 @@ Refresh a copy of a book doc there with `&.widgits/_shared-lib/ops/+x/xo_export.
 Owner: "which is more modular / scalable, long-term wise and spiritually aligned with the best practices of the house? ALWAYS ASK THAT. DOC IT." Before choosing between shapes, answer in order: one authority per fact? modular (data / one small shared piece, no per-project code in shared files)? scalable (the 10th consumer)? long term (where the roadmap points)? the house shapes (text-include / op+IPC / `.pdl` / marker files / a harness that can fail / capped runtime files)? cost and risk of the better one? Recommend one with the deciding reason and add an entry to HQ-IQ-BOOK `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md`. A quick stopgap is fine only when labelled with its removal condition.
 
 Agent tools and board controls on one page: `02-architecture/AGENT-TOOLBOX-AND-CONTROLS.md` in the HQ-IQ-BOOK (2026-11-05): start there when you drive, test or commit.
+Lore and IP (what TSOTS means, the Soul Pen franchise, the Centroid): chapter `22.lore-ip/00-INDEX.md` in the HQ-IQ-BOOK (2026-11-05): read it before designing any level, character or quest; the source folders are outside the repo and have a newline in a name (see its index).
+
 
 ## Source of truth
 
