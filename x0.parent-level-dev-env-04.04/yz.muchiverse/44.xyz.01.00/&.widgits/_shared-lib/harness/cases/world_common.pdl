@@ -1,0 +1,123 @@
+# world_common: SCRATCH book folder only. Each case re-writes the state files it needs. Volume sums are read with awk after EVERY step (conservation), negatives prove the detectors can fail.
+RESULTS | ../results/world_common.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | book/state
+WRITE | book/QUARANTINE | q\n
+MKDIR | nobook/state
+
+CASE    | flow-moves-one-and-conserves
+WRITE | book/state/fluids.txt | 5\p5\pwater\p3\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_EXIT | 0 | flow-runs
+EXPECT_OUT | FLOW water 1 from 5,5 to 5,4 | the-first-open-neighbour-is-north
+EXPECT_HAS | book/state/fluids.txt | 5\p5\pwater\p2 | the-source-lost-one
+EXPECT_HAS | book/state/fluids.txt | 5\p4\pwater\p1 | the-neighbour-gained-one
+RUN | /usr/bin/awk | -F\p | { s += $4 } END { print s } | $T/book/state/fluids.txt
+EXPECT_OUT_IS | 3 | the-volume-sum-is-unchanged
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+RUN | /usr/bin/awk | -F\p | { s += $4 } END { print s } | $T/book/state/fluids.txt
+EXPECT_OUT_IS | 3 | after-six-steps-the-volume-sum-is-still-3
+RUN | /usr/bin/awk | -F\p | $4 <= 0 { n++ } END { print n + 0 } | $T/book/state/fluids.txt
+EXPECT_OUT_IS | 0 | no-empty-rows-are-kept
+
+CASE    | flow-edges
+WRITE | book/state/fluids.txt | 5\p5\pwater\p3\n
+WRITE | book/state/solid.txt | 5\p4\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | to 6,5 | a-solid-north-cell-is-skipped-east-is-used
+WRITE | book/state/solid.txt | 5\p4\n6\p5\n5\p6\n4\p5\n
+WRITE | book/state/fluids.txt | 5\p5\pwater\p3\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | NOTHING | NEGATIVE-fully-walled-in-nothing-moves
+EXPECT_HAS | book/state/fluids.txt | 5\p5\pwater\p3 | and-the-volume-is-untouched
+WRITE | book/state/solid.txt | \n
+WRITE | book/state/fluids.txt | 0\p0\pwater\p1\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | to 1,0 | the-page-edge-is-respected-north-and-west-are-outside-so-east
+WRITE | book/state/fluids.txt | 5\p5\pwater\p2\n5\p4\pwater\p1\n5\p6\pwater\p1\n6\p5\pwater\p1\n4\p5\pwater\p1\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | NOTHING | a-neighbour-only-one-lower-is-not-lowered-no-oscillation
+RUN | /usr/bin/awk | -F\p | { s += $4 } END { print s } | $T/book/state/fluids.txt
+EXPECT_OUT_IS | 6 | and-the-sum-is-6
+WRITE | book/state/fluids.txt | 5\p5\pwater\p3\n5\p4\plava\p0\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | to 6,5 | water-and-lava-do-not-mix-north-is-skipped
+
+CASE    | lava-lights-and-water-puts-out
+WRITE | book/state/fluids.txt | 5\p5\plava\p2\n
+WRITE | book/state/placed.txt | bench\p5\p4\p3\n
+WRITE | book/state/fire.txt | \n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | lava lit the furniture at 5,4 | lava-landing-on-furniture-lights-it
+EXPECT_HAS | book/state/fire.txt | 5\p4\p3 | a-fire-row-exists
+WRITE | book/state/fluids.txt | 5\p5\pwater\p2\n
+WRITE | book/state/fire.txt | 5\p4\p3\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_OUT | water put out the fire at 5,4 | water-landing-on-a-fire-puts-it-out
+EXPECT_LACKS | book/state/fire.txt | 5\p4 | the-fire-row-is-gone
+WRITE | book/state/fluids.txt | 5\p5\pwater\p2\n
+WRITE | book/state/placed.txt | \n
+WRITE | book/state/fire.txt | \n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | flow
+EXPECT_LACKS | book/state/fire.txt | 5 | NEGATIVE-water-with-no-fire-makes-no-fire-row
+
+CASE    | fire-tick
+WRITE | book/state/placed.txt | bench\p5\p4\p3\n
+WRITE | book/state/fire.txt | 5\p5\p3\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | fire
+EXPECT_HAS | book/state/fire.txt | 5\p5\p2 | the-fire-lost-one-fuel
+EXPECT_HAS | book/state/fire.txt | 5\p4\p3 | and-lit-the-neighbouring-furniture
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | fire
+EXPECT_HAS | book/state/fire.txt | 5\p5\p1 | second-tick-fuel-1
+EXPECT_HAS | book/state/fire.txt | 5\p4\p2 | the-new-fire-burns-down-too
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | fire
+EXPECT_LACKS | book/state/fire.txt | 5\p5\p | at-zero-the-first-row-is-deleted
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | fire
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | fire
+RUN | /usr/bin/awk | END { print NR + 0 } | $T/book/state/fire.txt
+EXPECT_OUT_IS | 0 | the-fire-burns-out-completely-no-endless-spread
+WRITE | book/state/placed.txt | \n
+WRITE | book/state/fire.txt | 5\p5\p3\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | fire
+RUN | /usr/bin/awk | END { print NR + 0 } | $T/book/state/fire.txt
+EXPECT_OUT_IS | 1 | NEGATIVE-with-no-furniture-nearby-the-fire-does-not-spread
+
+CASE    | rain
+WRITE | book/state/rain.txt | off\n
+WRITE | book/state/containers.txt | 1\p1\p0\p2\n
+WRITE | book/state/fire.txt | 7\p7\p3\n8\p8\p3\n
+WRITE | book/state/roofed.txt | 8\p8\n
+WRITE | book/state/dirt.txt | 2\p2\n
+WRITE | book/state/wet.txt | \n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain
+EXPECT_OUT | NOTHING | NEGATIVE-rain-off-does-nothing
+EXPECT_HAS | book/state/containers.txt | 1\p1\p0\p2 | the-container-is-untouched
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain | on
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain
+EXPECT_HAS | book/state/containers.txt | 1\p1\p1\p2 | rain-adds-1-water-to-an-open-container
+EXPECT_HAS | book/state/fire.txt | 7\p7\p2 | the-exposed-fire-lost-1-fuel
+EXPECT_HAS | book/state/fire.txt | 8\p8\p3 | the-roofed-fire-is-untouched
+EXPECT_HAS | book/state/wet.txt | 2\p2 | the-dirt-cell-is-wet
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain
+EXPECT_HAS | book/state/containers.txt | 1\p1\p2\p2 | the-container-stops-at-its-cap
+EXPECT_LACKS | book/state/fire.txt | 7\p7 | the-exposed-fire-is-out-at-0
+RUN | /usr/bin/awk | END { print NR + 0 } | $T/book/state/wet.txt
+EXPECT_OUT_IS | 1 | a-wet-cell-is-recorded-once
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain | off
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | rain
+EXPECT_HAS | book/state/wet.txt | 2\p2 | turning-rain-off-does-not-dry-the-cell
+
+CASE    | quarantine-and-usage
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/nobook | flow
+EXPECT_EXIT | 4 | a-folder-without-QUARANTINE-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/world_common_op.+x | $T/book | wibble
+EXPECT_EXIT | 2 | an-unknown-verb-is-a-usage-error
+CLEAN |

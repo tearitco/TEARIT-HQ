@@ -308,3 +308,6 @@ pointers were the only outright deletions.
 > **2026-10-08:** per-doc status, next steps and tiers for the Oct 7 to 8 design docs: `design-docs/DOC-STATUS-AND-PATHS-FORWARD-2026-10-08.md`.
 
 > **2026-10-08, Grok handoff:** `design-docs/GROK-HANDOFF-GAMES-ECONOMY-AND-VISIBLE-ENTITIES-2026-10-08.md` (supersedes the 2026-09-02 one) and `design-docs/INSTALL-STORE-ACCOUNTS-AND-USER-DATA-COMPLICATIONS-2026-10-08.md`; Eden retention: `design-docs/EDEN-STATE-RETENTION-DESIGN-2026-10-08.md`.
+
+> **2026-11-04, early-survivor slice:** the one status checklist (steps 1-6, what is proven, what is not) is `16.game/EARLY-SURVIVOR-AND-COMMON-EVENTS.md` "Order to build". Day-by-day proof labels (OBSERVED / READ / CLAIM) are in `09-appendix/HANDOFF-INDEX-2026-11-04.md`. There is still no single grand roadmap across the whole house: this index, `ROADMAP.md` and `FORWARD-ROADMAP-2026-09-02.md` are the nearest.
+

@@ -1,6 +1,6 @@
 # Early survivor loops, books, and common events
 
-2026-11-04. Owner ask, written into the game chapter. The prose version is `XO/31.Nov/nov-4/6.grok-read-and-tear-it-co-2026-11-04.md`. This page is the technical needs. Nothing here is built. `GAME-MECHANICS-SPRINT.md` still lists weather and liquid flow under what waits. `S1-EVENT-LEDGER.md` still returns `todo:<verb>` for `walk`, `dig`, `build`, and `craft`.
+2026-11-04. Owner ask, written into the game chapter. The prose version is `XO/31.Nov/nov-4/6.grok-read-and-tear-it-co-2026-11-04.md`. This page is the technical needs. Status 2026-11-04: steps 1-4 are built in the editor's QUARANTINED book (see the checklist under "Order to build"); steps 5-6 are not. `GAME-MECHANICS-SPRINT.md` still lists weather and liquid flow under what waits. `S1-EVENT-LEDGER.md` still returns `todo:<verb>` for `walk`, `dig`, `build`, and `craft`.
 
 One resolver. Three places a craft may run. New facts are files, not a second C game.
 
@@ -81,14 +81,19 @@ Creepers, beds, and benches are not common events. Night spawn is the clock waki
 
 Per item id, and per fluid kind. A smash that lists `plank:2` must have those planks in the drop row before the call, and the furniture cell must be consumed. A flow step conserves volume. `burst` is the exception that is allowed to destroy blocks and drop nothing. The event writes that, so a replay does not invent drops. Coins are unchanged by this slice. The shop check stays a separate page.
 
-## Order to build
+## Order to build (status checklist, updated 2026-11-04)
 
-1. `furniture.pdl` and `smash` for one bench: plank, rag, pipe, can. Needs tick already specified in the sprint. One fire, one drink, one eat, one `wield`.
-2. `books.pdl`, `skills.pdl`, `read`, `practice`. One recipe hidden until the cap rises, then one craft that spends the smash pile.
-3. `gen_map` for one CDDA house chunk and one DF column. Same seed twice, identical files. One mutation case must fail.
-4. `fluids.pdl`, one `flow` step, one `rain` phase, one fire tick.
-5. MCL bench, 3×3, bed cell, one `burst`.
-6. Shop slice after this, with the three item ids mapped. Not before.
+Where it lives: the editor's own book `@.apps/rpg-edit-hq/books/ledger-lab/` (has a `QUARANTINE` file; every op refuses a folder without one). "Proven" means a scratch-house harness passes AND a mutation run fails; nothing below runs in cdda-hq, df-hq or mcl-hq yet.
+
+- [x] **1. furniture + smash + needs + eat/drink/wield/light.** `ops/survivor_op.c`. Harness `survivor_slice.pal` 44 PASS. One real hand-read run in the lab book.
+- [x] **2. books, skills, read, practice, craft.** Same op. `survivor_craft.pal` 37 PASS. One recipe hidden until the cap rises, then spends the smash pile.
+- [x] **needs follow the game clock** (added, not in the original list). Core `clock_event` handles `common:needs_tick` via `survivor_clock.pdl`, shipped `ENABLED | 0`. `needs_clock.pal` 13 PASS. The schedule row is in `time.pdl` but NOT installed on the live clock.
+- [x] **3. gen_map for one CDDA house chunk + one DF column.** `ops/gen_map_op.c` (splitmix64 over FNV-1a of the seed text, files only). `gen_map.pal` 21 PASS: same seed = byte-identical files, different seed differs, 4 mutations refused, generated furniture is smashable. Not done: MCL chunks, generation when the player steps onto a house, loot pickup verb, loading the chunk into the editor.
+- [x] **4. fluids, one `flow` step, one `rain` phase, one fire tick.** `ops/world_common_op.c`. `world_common.pal` 38 PASS, mutation run fails as it must. As built (differs from the table above): one room only (no room column), fire stays in `state/fire.txt` (`x|y|fuel`, the file `light` already writes), fluids in `state/fluids.txt` (`x|y|water or lava|volume`), page bounds 0..63; flow gives 1 volume to the first N,E,S,W neighbour that is empty or at least 2 lower (so it cannot oscillate) and refuses a move that would change the volume sum; water and lava never mix; lava landing on furniture lights it; water landing on a fire puts it out; rain fills containers (cap), lowers exposed fire fuel (a `roofed.txt` cell is exempt), writes `wet.txt` rows for `dirt.txt` cells, and turning rain off does not dry them. Not done: running these from the clock (`common:flow/rain/fire` events), MCL water volume at sea level, creeper/night spawn.
+- [ ] **5. MCL bench, 3x3 craft, bed cell, one `burst`.** Not started.
+- [ ] **6. Shop slice with the three item ids mapped.** Not started. Not before 5.
+
+Items the owner decided: three separate item ids (cdda / df / mcl); everything quarantined in the editor's own book until the owner lifts it (release criteria in the lab book README).
 
 ## Out of this slice
 

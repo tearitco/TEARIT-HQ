@@ -1,0 +1,4 @@
+# world_common.pal - flow / rain / fire common events, quarantined (early-survivor step 4). See cases/world_common.pdl
+exec ./ops/+x/harness_case_op.+x cases/world_common.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/world_common.pdl
+halt

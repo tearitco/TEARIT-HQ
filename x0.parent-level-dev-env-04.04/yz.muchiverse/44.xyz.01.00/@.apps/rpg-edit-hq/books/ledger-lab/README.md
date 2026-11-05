@@ -16,3 +16,13 @@ Holds the item ledger lab. NOT listed in the editor's book dropdown and NOT read
 
 ## Survivor slice step 2 (2026-11-04)
 - `survivor_op` verbs `read`, `practice`, `recipes`, `craft`; data `books.pdl`, `skills.pdl`, `recipes.pdl`; items `cdda.book_fab cdda.spear cdda.bandage`. Real run as actor `scout` is in `state/` (18 ledger rows, `check` OK). Harness: `survivor_craft.pal` (scratch only).
+
+## Needs on the game clock (2026-11-04)
+- Core `clock_event` handles `common:needs_tick` and runs `survivor_op tick` for the actors in `@.apps/rpg-edit-hq/survivor_clock.pdl`, which ships `ENABLED | 0` (owner switch). Harness `needs_clock.pal`. Not installed on the live clock.
+
+## Survivor slice step 3 (2026-11-04)
+- `ops/gen_map_op.c`: `cdda_house <seed> <out>` and `df_column <seed> <out>`, plus `verify_house` / `verify_column`. Data here: `furniture.pdl` (bench, crate), `loot.pdl`, `minerals.pdl`. Same seed = byte-identical files. Harness `gen_map.pal`. Writes only into the out folder it is given; never an item.
+
+## Survivor slice step 4 (2026-11-04)
+- `ops/world_common_op.c`: `flow`, `rain [on|off]`, `fire`, `status` (one cell per call, no items). Files in `state/`: `fluids.txt`, `fire.txt`, `solid.txt`, `roofed.txt`, `containers.txt`, `dirt.txt`, `wet.txt`, `rain.txt`. Harness `world_common.pal`. Not run from the clock yet.
+
