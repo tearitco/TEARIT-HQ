@@ -1,0 +1,4 @@
+# harness_snapshot.pal - SNAPSHOT / RESTORE of the case op. See cases/harness_snapshot.pdl
+exec ./ops/+x/harness_case_op.+x cases/harness_snapshot.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/harness_snapshot.pdl
+halt

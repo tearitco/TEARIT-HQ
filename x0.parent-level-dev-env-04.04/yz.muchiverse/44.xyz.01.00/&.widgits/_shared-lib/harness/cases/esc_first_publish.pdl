@@ -3,38 +3,7 @@
 RESULTS | ../results/esc_first_publish.txt
 ENV | LC_ALL | C
 
-CASE    | setup
-SCRATCH |
-MKDIR | house/&.widgits
-MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
-MKDIR | house/@.apps/rpg-edit-hq/ops/+x
-MKDIR | house/@.apps/rpg-edit-hq/state
-MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01
-MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01
-COPY | @.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
-COPY | @.apps/rpg-edit-hq/catalog.pdl | house/@.apps/rpg-edit-hq/catalog.pdl
-COPY | @.apps/rpg-edit-hq/doors.fsm.pdl | house/@.apps/rpg-edit-hq/doors.fsm.pdl
-COPY | @.apps/rpg-edit-hq/keybinds.pdl | house/@.apps/rpg-edit-hq/keybinds.pdl
-COPY | @.apps/rpg-edit-hq/lamps.pdl | house/@.apps/rpg-edit-hq/lamps.pdl
-COPY | @.apps/rpg-edit-hq/layout.pdl | house/@.apps/rpg-edit-hq/layout.pdl
-COPY | @.apps/rpg-edit-hq/life.pdl | house/@.apps/rpg-edit-hq/life.pdl
-COPY | @.apps/rpg-edit-hq/net_say.pdl | house/@.apps/rpg-edit-hq/net_say.pdl
-COPY | @.apps/rpg-edit-hq/pals.pdl | house/@.apps/rpg-edit-hq/pals.pdl
-COPY | @.apps/rpg-edit-hq/party.pdl | house/@.apps/rpg-edit-hq/party.pdl
-COPY | @.apps/rpg-edit-hq/rooms.pdl | house/@.apps/rpg-edit-hq/rooms.pdl
-COPY | @.apps/rpg-edit-hq/side_style.pdl | house/@.apps/rpg-edit-hq/side_style.pdl
-COPY | @.apps/rpg-edit-hq/survivor_clock.pdl | house/@.apps/rpg-edit-hq/survivor_clock.pdl
-COPY | @.apps/rpg-edit-hq/time.pdl | house/@.apps/rpg-edit-hq/time.pdl
-COPY | @.apps/rpg-edit-hq/toolbar.pdl | house/@.apps/rpg-edit-hq/toolbar.pdl
-COPY | @.apps/rpg-edit-hq/toy.pdl | house/@.apps/rpg-edit-hq/toy.pdl
-COPY | @.apps/rpg-edit-hq/tuning.pdl | house/@.apps/rpg-edit-hq/tuning.pdl
-COPY | @.apps/rpg-edit-hq/verbs.pdl | house/@.apps/rpg-edit-hq/verbs.pdl
-COPY | @.apps/rpg-edit-hq/voices.pdl | house/@.apps/rpg-edit-hq/voices.pdl
-COPY | @.apps/rpg-edit-hq/world_clock.pdl | house/@.apps/rpg-edit-hq/world_clock.pdl
-WRITE | house/@.apps/rpg-edit-hq/state/pet_ember.txt | room=store\nx=5\ny=5\ndir=0\nsteps=1\ntx=-1\nty=-1\n
-WRITE | house/@.apps/rpg-edit-hq/state/trainer.txt | room=store\nx=7\ny=7\ndir=0\nsteps=1\ntx=-1\nty=-1\n
-WRITE | house/@.apps/rpg-edit-hq/state/flag_follow.txt | pet\n
-WRITE | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=rpg-edit-hq\ndesk_id=store\n
+INCLUDE | ../fixtures/editor_house.pdl
 
 MKDIR | house/@.apps/rpg-edit-hq/board/state
 MKDIR | sess/pieces/keyboard

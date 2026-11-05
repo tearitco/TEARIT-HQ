@@ -1,0 +1,35 @@
+# harness_snapshot: SNAPSHOT / RESTORE of the case op (decision D3). The "live" files here are ordinary files under $T (SNAPSHOT takes absolute paths, which is what a live case passes as $HOUSE/...). Positive: a changed file and a CREATED file are put back and the hashes verify. Negatives are run through a nested op on small case files: an unknown name, a relative path, and a restore that cannot write all produce a FAIL row, never silence.
+RESULTS | ../results/harness_snapshot.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | op
+MKDIR | live
+WRITE | live/a.txt | original a\n
+WRITE | live/c.txt | original c\n
+
+CASE    | restore-puts-changed-and-created-files-back
+SNAPSHOT | s1 | $T/live/a.txt | $T/live/b.txt | $T/live/c.txt
+WRITE | live/a.txt | CHANGED a\n
+WRITE | live/b.txt | new file b\n
+WRITE | live/c.txt | CHANGED c\n
+RESTORE | s1 | all-three-files-verified-by-hash
+EXPECT_HAS | live/a.txt | original a | a-changed-file-has-its-old-bytes
+EXPECT_HAS | live/c.txt | original c | a-second-changed-file-too
+EXPECT_NOFILE | live/b.txt | a-file-that-did-not-exist-is-removed-again
+
+CASE    | negatives-fail-loudly
+WRITE | n1.pdl | RESULTS | n1_res.txt\nSCRATCH |\nCASE | x\nRESTORE | nosuch | r\nCLEAN |\n
+RUN | $T/op | $T/n1.pdl | $HOUSE
+EXPECT_HAS | n1_res.txt | no snapshot named nosuch | an-unknown-snapshot-name-FAILs
+WRITE | n2.pdl | RESULTS | n2_res.txt\nSCRATCH |\nCASE | x\nSNAPSHOT | s | relative/file.txt\nCLEAN |\n
+RUN | $T/op | $T/n2.pdl | $HOUSE
+EXPECT_HAS | n2_res.txt | SNAPSHOT takes absolute paths | a-relative-path-FAILs
+MKDIR | ro
+WRITE | ro/x.txt | keep\n
+WRITE | n3.pdl | RESULTS | n3_res.txt\nSCRATCH |\nCASE | x\nSNAPSHOT | s | $T/ro/x.txt\nRUN | /bin/chmod | 555 | $T/ro\nRESTORE | s | r\nRUN | /bin/chmod | 755 | $T/ro\nCLEAN |\n
+RUN | $T/op | $T/n3.pdl | $HOUSE
+EXPECT_HAS | n3_res.txt | could not write back | a-restore-that-cannot-write-FAILs-not-passes
+
+CLEAN |

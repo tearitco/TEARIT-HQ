@@ -5,6 +5,8 @@
  * Case file (pipe-delimited `VERB | a | b | ...`, '#' comments; strings may use \n \t \p (a literal '|') and $T = the scratch dir, $HOUSE = the house root):
  *   Escapes in any field: \n newline, \t tab, \p a literal bar, \\ one backslash
  *   RESULTS   | <path>                 results ledger, relative to the case file's folder (required, first)
+ *   INCLUDE   | <fixture.pdl>          run the rows of a fixture (path relative to this case file's folder, e.g. ../fixtures/editor_house.pdl, fixtures live in harness/fixtures) in place; nests up to 4 deep; a missing file FAILs. Added 2026-11-05
+ *   SNAPSHOT  | <name> | <abs file> | ...   save live files (hash + a copy under $T) before a LIVE case changes them; RESTORE | <name> | <label>  puts them back and PASSes only if every hash matches again (a file that did not exist is removed). Absolute paths and files only; RESTORE writes only what a SNAPSHOT recorded. Added 2026-11-05
  *   CASE      | <name>                 label prefix for the checks that follow
  *   SCRATCH   |                        create a scratch dir (/tmp/hc_XXXXXX) = $T
  *   MKDIR     | <path under $T>
@@ -185,6 +187,27 @@ static int copy_tree(const char *src, const char *dst, const char *skip) {
 }
 static void mkdirs(const char *path) { char t[P]; snprintf(t, sizeof t, "%s", path); for (char *p = t + 1; *p; p++) if (*p == '/') { *p = 0; mkdir(t, 0755); *p = '/'; } mkdir(t, 0755); }
 
+/* SNAPSHOT / RESTORE (2026-11-05, decision D3): a LIVE case that changes the real desk saves the named files first and puts them back at the end, VERIFIED BY HASH (owner rule: "restore live changes after proof, verify by hash"). 5 of 9 live cases hand-rolled this with cp. Only ABSOLUTE paths (the live files, e.g. $HOUSE/@.apps/...); only files; RESTORE can only write the paths a SNAPSHOT recorded, so a case cannot overwrite anything else. A file that did not exist is removed again. */
+#define SNAPMAX 96
+static struct { char name[40]; char path[P]; int existed; char hash[20]; char copy[P]; } g_snap[SNAPMAX]; static int g_nsnap = 0;
+static void file_hash(const char *path, char *out, size_t n) {
+    unsigned long long h = 1469598103934665603ULL; unsigned char buf[8192]; size_t k; FILE *f = fopen(path, "rb");
+    if (!f) { snprintf(out, n, "absent"); return; }
+    while ((k = fread(buf, 1, sizeof buf, f)) > 0) for (size_t j = 0; j < k; j++) { h ^= buf[j]; h *= 1099511628211ULL; }
+    fclose(f); snprintf(out, n, "%016llx", h);
+}
+static int cp_bytes(const char *src, const char *dst) {
+    unsigned char buf[8192]; size_t k; FILE *a = fopen(src, "rb"), *b; char tmp[P + 8]; if (!a) return -1; snprintf(tmp, sizeof tmp, "%s.hc_tmp", dst);
+    if (!(b = fopen(tmp, "wb"))) { fclose(a); return -1; }
+    while ((k = fread(buf, 1, sizeof buf, a)) > 0) if (fwrite(buf, 1, k, b) != k) { fclose(a); fclose(b); remove(tmp); return -1; }
+    fclose(a); if (fclose(b) != 0) { remove(tmp); return -1; } return rename(tmp, dst);
+}
+/* INCLUDE (2026-11-05, decision D2 in 02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): rows of another .pdl (a FIXTURE, e.g. ../fixtures/editor_house.pdl, fixtures live in harness/fixtures) are run in place, then the case file goes on. A small stack, so a fixture may include another one; the depth is limited and a missing fixture fails loudly. */
+#define INCMAX 4
+static FILE *g_inc[INCMAX]; static int g_ninc = 0;
+static char *next_line(char *buf, size_t n, FILE **cur) {
+    for (;;) { if (fgets(buf, (int)n, *cur)) return buf; if (!g_ninc) return NULL; fclose(*cur); *cur = g_inc[--g_ninc]; }
+}
 int main(int argc, char **argv) {
     char line[P], cdir[P], cpath[P]; FILE *f;
     if (argc < 2) { fprintf(stderr, "usage: harness_case_op <cases.pdl> [house_root]\n"); return 2; }
@@ -193,7 +216,7 @@ int main(int argc, char **argv) {
     if (argc > 2) snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
     else { snprintf(HOUSE, sizeof HOUSE, "%s", cdir); while (strlen(HOUSE) > 1) { char t[P]; struct stat st; snprintf(t, sizeof t, "%s/xyzfs", HOUSE); if (stat(t, &st) == 0) break; char *s = strrchr(HOUSE, '/'); if (!s || s == HOUSE) break; *s = 0; } }
     if (!(f = fopen(cpath, "r"))) return 2;
-    while (fgets(line, sizeof line, f)) {
+    while (next_line(line, sizeof line, &f)) {
         char *fld[FMAX]; int nf = 0; char *p = trim(line), *q;
         if (!*p || *p == '#') continue;
         /* split on '|'; the LAST slot keeps the whole remainder (bars included) instead of silently dropping it */
@@ -201,10 +224,15 @@ int main(int argc, char **argv) {
         for (int i = 0; i < nf; i++) fld[i] = trim(fld[i]);
         const char *v = fld[0]; char a[P], b[P], pa[P + 8], pb[P + 8];
         {   /* more fields than the verb takes = an unescaped '|' in the text (use \p): fail loudly instead of misreading the row */
-            static const struct { const char *verb; int max; } LIM[] = { {"RESULTS",2},{"CASE",2},{"SCRATCH",1},{"MKDIR",2},{"COPY",3},{"COPYDIR",4},{"EXPECT_EXIT",3},{"EXPECT_FILE",4},{"EXPECT_NOFILE",3},{"CAPTURE",2},{"SUMTREE",3},{"EXPECT_EQ",4},{"EXPECT_NE",4},{"EXPECT_EXISTS",3},
+            static const struct { const char *verb; int max; } LIM[] = { {"RESULTS",2},{"INCLUDE",2},{"SNAPSHOT",64},{"RESTORE",3},{"CASE",2},{"SCRATCH",1},{"MKDIR",2},{"COPY",3},{"COPYDIR",4},{"EXPECT_EXIT",3},{"EXPECT_FILE",4},{"EXPECT_NOFILE",3},{"CAPTURE",2},{"SUMTREE",3},{"EXPECT_EQ",4},{"EXPECT_NE",4},{"EXPECT_EXISTS",3},
                 {"EXPECT_HAS",4},{"EXPECT_LACKS",4},{"EXPECT_OUT",3},{"EXPECT_OUT_IS",3},{"EXPECT_OUT_LACKS",3},{"ENV",3},{"SLEEP",2},{"WAIT_HAS",5},{"EXPECT_ALIVE",3},{"EXPECT_DEAD",3},{"CLEAN",1},{"PLAY_PAGE",4} };
             int bad = 0; for (size_t li = 0; li < sizeof LIM / sizeof LIM[0]; li++) if (!strcmp(v, LIM[li].verb) && nf > LIM[li].max && !(nf == LIM[li].max + 1 && !fld[nf - 1][0])) bad = 1;
             if (bad) { check(0, v, "row has extra fields: an unescaped | in the text? use \\p"); continue; }
+        }
+        if (!strcmp(v, "INCLUDE")) {      /* INCLUDE | <fixture .pdl, relative to this case file's folder>: run its rows here */
+            char ip[P + 8]; snprintf(ip, sizeof ip, "%s/%s", cdir, nf >= 2 ? fld[1] : ""); FILE *nf2 = nf >= 2 ? fopen(ip, "r") : NULL;
+            if (!nf2) check(0, "INCLUDE", "no such fixture file"); else if (g_ninc >= INCMAX) { fclose(nf2); check(0, "INCLUDE", "includes nested too deep"); } else { g_inc[g_ninc++] = f; f = nf2; }
+            continue;
         }
         if (!strcmp(v, "PLAY_PAGE") && nf >= 3 && T[0]) {      /* PLAY_PAGE | <event package dir under $T> | <trigger> | [state dir under $T]: builds prisc + event_page_op into $T once, then becomes a RUN row, so EXPECT_EXIT / EXPECT_OUT / EXPECT_HAS judge it (2026-11-01) */
             static char pk[P], tr[64], sd[P], pr[P], ep[P]; struct stat bst; char cmd[4 * P];
@@ -260,6 +288,24 @@ int main(int argc, char **argv) {
         } else if (!strcmp(v, "EXPECT_EXISTS") && nf >= 3 && T[0]) { expand(fld[1], a, sizeof a); rpath(pa, sizeof pa, a); check(access(pa, F_OK) == 0, fld[2], "no such file");
         } else if (!strcmp(v, "EXPECT_NOFILE") && nf >= 3 && T[0]) { expand(fld[1], a, sizeof a); rpath(pa, sizeof pa, a); check(access(pa, F_OK) != 0, fld[2], "file exists"); }
         else if (!strcmp(v, "CAPTURE") && nf >= 2) { char got[sizeof OUT]; size_t gl; snprintf(got, sizeof got, "%s", OUT); gl = strlen(got); while (gl && (got[gl - 1] == '\n' || got[gl - 1] == '\r')) got[--gl] = 0; var_set(fld[1], got); }
+        else if (!strcmp(v, "SNAPSHOT") && nf >= 3 && T[0]) {      /* SNAPSHOT | <name> | <abs file> | ... */
+            int bad = 0; for (int i = 2; i < nf; i++) {
+                expand(fld[i], a, sizeof a);
+                if (a[0] != '/' || g_nsnap >= SNAPMAX) { check(0, fld[1], a[0] != '/' ? "SNAPSHOT takes absolute paths (use $HOUSE/...)" : "too many snapshot files"); bad = 1; continue; }
+                snprintf(g_snap[g_nsnap].name, sizeof g_snap[0].name, "%s", fld[1]); snprintf(g_snap[g_nsnap].path, sizeof g_snap[0].path, "%s", a);
+                g_snap[g_nsnap].existed = access(a, F_OK) == 0; file_hash(a, g_snap[g_nsnap].hash, sizeof g_snap[0].hash);
+                snprintf(g_snap[g_nsnap].copy, sizeof g_snap[0].copy, "%s/.snap_%d", T, g_nsnap);
+                if (g_snap[g_nsnap].existed && cp_bytes(a, g_snap[g_nsnap].copy) != 0) { check(0, fld[1], "could not save a copy"); bad = 1; continue; }
+                g_nsnap++; }
+            (void)bad;
+        } else if (!strcmp(v, "RESTORE") && nf >= 3) {      /* RESTORE | <name> | <label>: put every file of that snapshot back, then compare hashes */
+            int n = 0, ok = 1; char seen[P + 64] = "all files back, hashes equal";
+            for (int i = 0; i < g_nsnap; i++) if (!strcmp(g_snap[i].name, fld[1])) { n++; char hs[20];
+                if (g_snap[i].existed) { if (cp_bytes(g_snap[i].copy, g_snap[i].path) != 0) { ok = 0; snprintf(seen, sizeof seen, "could not write back %s", g_snap[i].path); continue; } } else remove(g_snap[i].path);
+                file_hash(g_snap[i].path, hs, sizeof hs); if (strcmp(hs, g_snap[i].hash)) { ok = 0; snprintf(seen, sizeof seen, "hash differs after restore: %s", g_snap[i].path); } }
+            if (!n) { ok = 0; snprintf(seen, sizeof seen, "no snapshot named %s", fld[1]); }
+            check(ok, fld[2], seen);
+        }
         else if (!strcmp(v, "SUMTREE") && nf >= 3 && T[0]) { char hs[40]; expand(fld[2], a, sizeof a); snprintf(pa, sizeof pa, "%s/%s", T, a); tree_hash(pa, hs, sizeof hs); var_set(fld[1], hs); }
         else if (!strcmp(v, "CALC") && nf >= 5) {
             char e1[P], e2[P], *x1, *x2; expand(fld[2], e1, sizeof e1); expand(fld[4], e2, sizeof e2); double d1 = strtod(e1, &x1), d2 = strtod(e2, &x2), r = 0; int ok = *e1 && *e2 && !*x1 && !*x2;

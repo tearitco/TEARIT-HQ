@@ -1,0 +1,27 @@
+# harness_include: the INCLUDE verb of harness_case_op (decision D2). A nested pair of fixtures runs in place and sees the scratch dir; a missing fixture FAILs loudly; includes nested too deep FAIL. The op is run on small case files written under $T (a case that runs the harness itself).
+RESULTS | ../results/harness_include.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | op
+WRITE | good.pdl | RESULTS | good_res.txt\nSCRATCH |\nINCLUDE | fix_a.pdl\nCASE | after\nEXPECT_EXISTS | from_b.txt | the-nested-fixture-wrote-its-file-after-the-outer-one\nCLEAN |\n
+WRITE | fix_a.pdl | # fixture A\nMKDIR | from_a\nINCLUDE | fix_b.pdl\nWRITE | from_b.txt | b\n
+WRITE | fix_b.pdl | # fixture B\nWRITE | from_a/inner.txt | inner\n
+WRITE | bad.pdl | RESULTS | bad_res.txt\nCASE | x\nINCLUDE | nope.pdl\n
+WRITE | deep.pdl | RESULTS | deep_res.txt\nCASE | d\nINCLUDE | loop.pdl\n
+WRITE | loop.pdl | INCLUDE | loop.pdl\n
+
+CASE    | nested-fixtures-run-in-place
+RUN | $T/op | $T/good.pdl | $HOUSE
+EXPECT_HAS | good_res.txt | PASS\pafter/the-nested-fixture-wrote-its-file-after-the-outer-one | the-nested-include-ran-and-the-scratch-dir-was-visible
+
+CASE    | NEGATIVE-a-missing-fixture-fails-loudly
+RUN | $T/op | $T/bad.pdl | $HOUSE
+EXPECT_HAS | bad_res.txt | FAIL\px/INCLUDE\pno such fixture file | missing-fixture-is-a-FAIL-row-not-silence
+
+CASE    | NEGATIVE-a-self-including-fixture-stops-at-the-depth-limit
+RUN | $T/op | $T/deep.pdl | $HOUSE
+EXPECT_HAS | deep_res.txt | includes nested too deep | the-loop-ends-with-a-FAIL-not-a-hang
+
+CLEAN |
