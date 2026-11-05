@@ -21,3 +21,8 @@ WORD | w_32            | 32 pixel sprite           | size     | 0.90
 WORD | w_nobg          | plain flat background     | style    | 0.80
 WORD | w_nowords       | text, watermark           | negative | 0.90
 WORD | w_noblur        | blurry                    | negative | 0.80
+WORD | w_grass         | one square of top-down grass, blades and a few pebbles, no character and no object | subject | 1.00
+WORD | w_green         | three shades of green, darker toward the bottom edge | colour | 0.90
+WORD | w_16            | 16 pixel game tile                    | size    | 1.00
+WORD | w_light         | light from the top left               | style   | 0.80
+WORD | w_tile          | seamless ground tile, fills the whole square | style | 0.90

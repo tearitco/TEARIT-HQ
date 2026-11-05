@@ -6,3 +6,4 @@ PART | car_door       | w_car_door,w_steel,w_red,w_top,w_pixel,w_crisp,w_32,w_no
 PART | car_wheel      | w_car_wheel,w_rubber,w_grey,w_top,w_pixel,w_crisp,w_32,w_nobg,w_dust,w_nowords | rolls
 PART | car_windshield | w_car_windshield,w_glass,w_side,w_pixel,w_crisp,w_32,w_nobg,w_nowords | front glass
 PART | person_torso   | w_person_torso,w_cloth,w_grey,w_top,w_pixel,w_32,w_nobg,w_nowords,w_noblur | root of a person
+PART | outside_grass  | w_grass,w_green,w_top,w_pixel,w_crisp,w_light,w_tile,w_16,w_nobg,w_nowords,w_noblur | first Outside role. one cell, not a field photo
