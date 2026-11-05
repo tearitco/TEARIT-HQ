@@ -1,0 +1,35 @@
+# relations_cap: relations.txt (MEET rows, one per pet meeting; 58,882 rows / 1.5 MB in the editor book on 2026-11-05) is capped by COMPACTION, not truncation: old MEET rows of a pair fold into one `TOT|lastts|a|b|count` row, the newest relations_keep rows stay, and the friend counts the pets show ("friends: X x42") do NOT change. Scratch house (fixtures/editor_house.pdl); verb `fire relations` compacts if over relations_cap_kb and prints each pet's friend line.
+RESULTS | ../results/relations_cap.txt
+ENV | LC_ALL | C
+
+INCLUDE | ../fixtures/editor_house.pdl
+
+CASE    | seed-relations
+RUN | sh | -c | P=$(printf '\174'); : > $T/house/@.apps/rpg-edit-hq/state/relations.txt; i=0; while [ $i -lt 40 ]; do echo "MEET${P}$((1700000000+i*30))${P}0${P}1${P}store" >> $T/house/@.apps/rpg-edit-hq/state/relations.txt; i=$((i+1)); done; i=0; while [ $i -lt 10 ]; do echo "MEET${P}$((1700002000+i*30))${P}1${P}0${P}store" >> $T/house/@.apps/rpg-edit-hq/state/relations.txt; echo "MEET${P}$((1700003000+i*30))${P}2${P}0${P}store" >> $T/house/@.apps/rpg-edit-hq/state/relations.txt; i=$((i+1)); done
+
+CASE    | counts-before-any-compaction
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | relations
+EXPECT_EXIT | 0 | the-verb-runs
+EXPECT_OUT | x50 | the-pair-0-1-has-50-meetings-in-the-friend-line-before
+RUN | sh | -c | wc -l < $T/house/@.apps/rpg-edit-hq/state/relations.txt
+EXPECT_OUT | 60 | and-the-file-has-all-sixty-rows-it-is-under-the-default-cap
+
+CASE    | after-compaction-the-counts-are-the-same-and-the-file-is-small
+RUN | sh | -c | printf 'SECTION \p relations_cap_kb \p 1\nSECTION \p relations_keep \p 5\n' >> $T/house/@.apps/rpg-edit-hq/toy.pdl
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | relations
+EXPECT_EXIT | 0 | the-verb-runs-again
+EXPECT_OUT | x50 | the-friend-count-is-still-50
+RUN | sh | -c | wc -l < $T/house/@.apps/rpg-edit-hq/state/relations.txt
+EXPECT_OUT | 7 | five-kept-meetings-plus-two-total-rows-two-pairs-exist
+RUN | sh | -c | grep -c '^TOT' $T/house/@.apps/rpg-edit-hq/state/relations.txt
+EXPECT_OUT | 2 | one-TOT-row-per-pair
+RUN | sh | -c | P=$(printf '\174'); grep "^TOT${P}[0-9]*${P}0${P}1${P}" $T/house/@.apps/rpg-edit-hq/state/relations.txt
+EXPECT_OUT | \p48 | the-pair-0-1-total-is-48-the-other-2-meetings-are-in-the-kept-tail
+
+CASE    | a-second-compaction-changes-nothing-and-leaves-no-temp
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | relations
+EXPECT_OUT | x50 | the-count-is-stable
+RUN | sh | -c | ls $T/house/@.apps/rpg-edit-hq/state \p grep -c 'relations.txt.*tmp'
+EXPECT_OUT | 0 | no-temp-file-left
+
+CLEAN |

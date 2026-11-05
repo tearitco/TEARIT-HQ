@@ -1,0 +1,4 @@
+# relations_cap.pal - relations.txt is capped by compaction, friend counts unchanged. See cases/relations_cap.pdl
+exec ./ops/+x/harness_case_op.+x cases/relations_cap.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/relations_cap.pdl
+halt

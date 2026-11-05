@@ -1,0 +1,35 @@
+# mr_log_cap: the events-hq ops' shared audit writer (mr_clock_common.h mr_log) caps messages.txt and history.txt (RUNTIME-FILE-GROWTH-STANDARD 2026-11-05: the editor book's state/world/messages.txt had 25,874 rows / 1.2 MB, uncapped). mr_world.c is built from the CURRENT header into a scratch dir. Past 256 KB the newest 64 KB survive (cut at a line, replaced by temp + rename); under the cap nothing is touched; no temp file is left.
+RESULTS | ../results/mr_log_cap.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | gcc | -O1 | -w | -I | $HOUSE/&.widgits/events-hq/ops | -o | $T/mr_world | $HOUSE/&.widgits/events-hq/ops/mr_world.c
+EXPECT_EXIT | 0 | mr_world-builds-from-the-current-header
+MKDIR | ent
+RUN | sh | -c | i=0; while [ $i -lt 3000 ]; do echo "[1] SCREEN row $i padding padding padding padding"; i=$((i+1)); done > $T/ent/messages.txt; cp $T/ent/messages.txt $T/ent/history.txt
+RUN | sh | -c | ls -l $T/ent/messages.txt | awk '{print $5}'
+
+CASE    | a-file-under-the-cap-is-untouched
+RUN | $T/mr_world | $T/ent | tint | 1,2,3,4 | 60
+EXPECT_EXIT | 0 | the-op-runs
+RUN | sh | -c | wc -l < $T/ent/messages.txt
+EXPECT_OUT | 3001 | three-thousand-rows-plus-the-new-one-all-kept
+
+CASE    | a-file-over-the-cap-keeps-only-the-newest-tail
+RUN | sh | -c | i=0; while [ $i -lt 6000 ]; do echo "[1] SCREEN row $i padding padding padding padding"; i=$((i+1)); done >> $T/ent/messages.txt; cp $T/ent/messages.txt $T/ent/history.txt
+RUN | $T/mr_world | $T/ent | tint | 1,2,3,4 | 61
+EXPECT_EXIT | 0 | the-op-runs-again
+RUN | sh | -c | wc -c < $T/ent/messages.txt
+RUN | sh | -c | test $(wc -c < $T/ent/messages.txt) -le 70000 && echo SMALL
+EXPECT_OUT | SMALL | at-most-the-keep-size-plus-one-row
+RUN | sh | -c | tail -1 $T/ent/messages.txt
+EXPECT_OUT | frames=61 | the-newest-row-survived
+RUN | sh | -c | head -1 $T/ent/messages.txt
+EXPECT_OUT | [1] SCREEN row | the-first-kept-line-is-whole-not-cut-in-the-middle
+RUN | sh | -c | ls $T/ent \p grep -c captmp
+EXPECT_OUT | 0 | no-temp-file-is-left
+RUN | sh | -c | test $(wc -c < $T/ent/history.txt) -le 70000 && echo HSMALL
+EXPECT_OUT | HSMALL | history.txt-is-capped-too
+
+CLEAN |

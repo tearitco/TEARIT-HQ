@@ -781,13 +781,37 @@ static void speak(int i, const char *text) {
 
 /* association: two pets side by side greet each other (at most once per 25 real seconds per pair). Every meeting is an append-only MEET row: the data a later
  * "share a room because of a relationship" rule will read (see HOW-TO-RPG-PET.md, plan: a room per pet). */
+/* relations.txt cap (RUNTIME-FILE-GROWTH-STANDARD 2026-11-05: the editor book's file had 58,882 MEET rows / 1.5 MB, and last_meet() rescans it on EVERY meeting). Rows: `MEET|ts|a|b|room` (one meeting)
+ * and `TOT|lastts|a|b|count` (many old meetings of one pair folded into one row). Both readers below understand both, so a compaction changes neither the "friends: X x42" counts nor the 25 s
+ * re-meet gate. Past relations_cap_kb (default 128) the file is rewritten as the TOT rows plus the newest relations_keep (default 200) MEET rows, temp + rename. Pair ids are 0..NP-1; a row
+ * outside that range is kept verbatim as a MEET so nothing is lost silently. */
+static void relations_compact(void) {
+    char p[PATH_MAX], tp[PATH_MAX + 32]; spath(p, "relations.txt"); struct stat st; long capb = atol(cfg("relations_cap_kb", "128")) * 1024, keep = atol(cfg("relations_keep", "200"));
+    if (capb <= 0 || stat(p, &st) || st.st_size <= capb) return;
+    FILE *f = fopen(p, "r"); if (!f) return; static long cnt[NP][NP], lastts[NP][NP]; memset(cnt, 0, sizeof cnt); memset(lastts, 0, sizeof lastts);
+    long nrows = 0; char line[240]; char *g[6];
+    while (fgets(line, sizeof line, f)) nrows++;
+    rewind(f); long skip = nrows > keep ? nrows - keep : 0, idx = 0; snprintf(tp, sizeof tp, "%s.%ld.tmp", p, (long)getpid()); FILE *o = fopen(tp, "w"); if (!o) { fclose(f); return; }
+    char *tail = malloc((size_t)(keep > 0 ? keep : 1) * 240 + 1); size_t tl = 0; if (!tail) { fclose(f); fclose(o); remove(tp); return; }
+    while (fgets(line, sizeof line, f)) {
+        char raw[240]; snprintf(raw, sizeof raw, "%s", line); int ng = split_bar(line, g, 6); int is_meet = ng >= 4 && !strcmp(g[0], "MEET"), is_tot = ng >= 5 && !strcmp(g[0], "TOT");
+        int x = (is_meet || is_tot) ? atoi(g[2]) : -1, y = (is_meet || is_tot) ? atoi(g[3]) : -1; int ok = x >= 0 && x < NP && y >= 0 && y < NP; if (ok && x > y) { int t = x; x = y; y = t; }
+        if (is_tot && ok) { cnt[x][y] += atol(g[4]); if (atol(g[1]) > lastts[x][y]) lastts[x][y] = atol(g[1]); }
+        else if (is_meet && ok && idx < skip) { cnt[x][y]++; if (atol(g[1]) > lastts[x][y]) lastts[x][y] = atol(g[1]); }
+        else { size_t rl = strlen(raw); if (tl + rl <= (size_t)keep * 240) { memcpy(tail + tl, raw, rl); tl += rl; } }
+        idx++;
+    }
+    fclose(f); int good = 1;
+    for (int x = 0; x < NP; x++) for (int y = x; y < NP; y++) if (cnt[x][y] > 0 && fprintf(o, "TOT|%ld|%d|%d|%ld\n", lastts[x][y], x, y, cnt[x][y]) < 0) good = 0;
+    if (tl && fwrite(tail, 1, tl, o) != tl) good = 0; free(tail); if (fclose(o) != 0) good = 0; if (!good || rename(tp, p)) remove(tp);
+}
 static long last_meet(int a, int b) {
     char p[PATH_MAX], line[200]; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); long best = 0; if (!f) return 0; char *g[6];
-    while (fgets(line, sizeof line, f)) { if (split_bar(line, g, 6) >= 4 && !strcmp(g[0], "MEET")) { int x = atoi(g[2]), y = atoi(g[3]); if ((x == a && y == b) || (x == b && y == a)) best = atol(g[1]); } } fclose(f); return best;
+    while (fgets(line, sizeof line, f)) { int ng = split_bar(line, g, 6); if ((ng >= 4 && !strcmp(g[0], "MEET")) || (ng >= 5 && !strcmp(g[0], "TOT"))) { int x = atoi(g[2]), y = atoi(g[3]); if (((x == a && y == b) || (x == b && y == a)) && atol(g[1]) > best) best = atol(g[1]); } } fclose(f); return best;
 }
 static void meet(int a, int b) {
     long now = (long)time(NULL); if (now - last_meet(a, b) < 25) return;
-    char l[200]; snprintf(l, sizeof l, "MEET|%ld|%d|%d|%s", now, a, b, rooms[others[a].room].id); append_line("relations.txt", l);
+    char l[200]; snprintf(l, sizeof l, "MEET|%ld|%d|%d|%s", now, a, b, rooms[others[a].room].id); append_line("relations.txt", l); relations_compact();
     int v1 = rand() % 4, v2 = rand() % 4; char t[120];       /* English in the chat, the pet's own language aloud */
     /* The greeting lines are DATA in event pages: events/greet_<pet>/ has a page per line (trigger hi0..hi3 = greets, re0..re3 = answers) whose pet_says command carries the chat line and the spoken line
      * ({other} = the other pet's name, passed as RPG_OTHER). The C keeps what must not move into a page: who may be heard (RPG_SAY / RPG_SPEAK), the 2.5 s voice throttle, and the old tables below as the fallback. */
@@ -801,7 +825,7 @@ static void meet(int a, int b) {
 }
 static void friend_line(int i, char *out, size_t cap) {
     char p[PATH_MAX], line[200]; int cnt[NP] = {0}; spath(p, "relations.txt"); FILE *f = fopen(p, "r"); char *g[6];
-    if (f) { while (fgets(line, sizeof line, f)) { if (split_bar(line, g, 6) >= 4 && !strcmp(g[0], "MEET")) { int x = atoi(g[2]), y = atoi(g[3]); if (x == i && y >= 0 && y < NP) cnt[y]++; else if (y == i && x >= 0 && x < NP) cnt[x]++; } } fclose(f); }
+    if (f) { while (fgets(line, sizeof line, f)) { int ng = split_bar(line, g, 6), tot = ng >= 5 && !strcmp(g[0], "TOT"); if ((ng >= 4 && !strcmp(g[0], "MEET")) || tot) { int x = atoi(g[2]), y = atoi(g[3]), w = tot ? atoi(g[4]) : 1; if (x == i && y >= 0 && y < NP) cnt[y] += w; else if (y == i && x >= 0 && x < NP) cnt[x] += w; } } fclose(f); }
     int b1 = -1, b2 = -1; for (int k = 0; k < nparty; k++) if (cnt[k] > 0) { if (b1 < 0 || cnt[k] > cnt[b1]) { b2 = b1; b1 = k; } else if (b2 < 0 || cnt[k] > cnt[b2]) b2 = k; }
     if (b1 < 0) snprintf(out, cap, "no friends met yet"); else if (b2 < 0) snprintf(out, cap, "friends: %s x%d", party[b1].name, cnt[b1]); else snprintf(out, cap, "friends: %s x%d, %s x%d", party[b1].name, cnt[b1], party[b2].name, cnt[b2]);
 }
@@ -1505,6 +1529,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
             snprintf(b, sizeof b, "DOOR|%ld|%s|menu|%s", now, ci < 0 ? "player" : party[ci].id, rooms[r].id); append_line("events.txt", b); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); turn_taken = 1; snprintf(msg, cap, "%s is now in the %s", ci < 0 ? "you" : party[ci].name, rooms[r].name); return; }
         snprintf(b, sizeof b, "room:%s", rooms[r].id); set_flag("follow", b); calc_view(); snprintf(msg, cap, "watching the %s", rooms[r].name); return; }
     if (!strcmp(v, "step") && argc >= 3) { if (!run_on()) { snprintf(msg, cap, "stopped: press Play (Player tab) first"); return; } if (!flag_on("int", 0)) { snprintf(msg, cap, "turn INT on first: INT lets you control %s or the player", party[active].name); return; } int ci = ctl_idx(); use_ent(ci); int moved = do_step(atoi(argv[1]), atoi(argv[2]), msg, cap); pet_save(); set_flag("follow", ci < 0 ? "player" : "pet"); if (moved) turn_taken = 1; return; }
+    if (!strcmp(v, "relations")) { relations_compact(); int o = 0; for (int k = 0; k < nparty && o < (int)cap - 120; k++) { char fl[120]; friend_line(k, fl, sizeof fl); o += snprintf(msg + o, cap - (size_t)o, "%s%s: %s", k ? " ; " : "", party[k].name, fl); } if (!nparty) snprintf(msg, cap, "no pets"); return; }      /* compact relations.txt if over its cap, then print each pet's friend line: the test surface of the cap (counts must not change) */
     if (!strcmp(v, "lockhero")) { int want = argc >= 2 ? (!strcmp(argv[1], "on") || !strcmp(argv[1], "1")) : !hero_locked(); int n = lock_hero_set(want); snprintf(msg, cap, want ? "possession locked to the hero (%d pieces set)" : "possession free: any entity can be possessed (%d pieces set)", n); return; }
     if (!strcmp(v, "possess")) { pet_load(); if (!possess_at_xelector(msg, cap)) snprintf(msg, cap, "nobody to possess on the xelector's cell (or the board shows another book)"); return; }      /* `possess`: choose the character standing on the xelector, exactly what Enter does in the board (possess_at_xelector), for menus, event pages and the harness (a deterministic test: the live daemon only sees an Enter that arrives through the engine) */
     if (!strcmp(v, "control")) { g_ctl_why = "control-menu-verb"; char cur[16]; flag_str("ctl", "pet", cur, sizeof cur); const char *n = argc >= 2 ? argv[1] : (!strcmp(cur, "pet") ? "player" : "pet"); if (strcmp(n, "pet") && strcmp(n, "player")) { snprintf(msg, cap, "control pet or player"); return; } set_flag("ctl", n); set_flag("follow", !strcmp(n, "player") ? "player" : "pet"); calc_view(); snprintf(msg, cap, !strcmp(n, "player") ? "INT now controls you (the player)" : "INT now controls %s", party[active].name); return; }

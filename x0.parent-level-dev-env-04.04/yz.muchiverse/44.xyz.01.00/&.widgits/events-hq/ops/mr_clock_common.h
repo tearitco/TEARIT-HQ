@@ -43,6 +43,22 @@
 #define ROW_OBJECTS_TMP ".mr_objects.tmp.pdl"
 #define ROW_RESULT_TMP ".mr_result.tmp.txt"
 
+/* Runtime-file cap (RUNTIME-FILE-GROWTH-STANDARD, 2026-11-05): messages.txt and history.txt were append-only with no limit (the editor book's state/world/messages.txt reached
+ * 25,874 rows / 1.2 MB). Past MR_LOG_CAP bytes keep the newest MR_LOG_KEEP bytes, cut at a line boundary, replaced by temp + rename (a reader sees the old or the new file, never a
+ * half one). Both files cost one stat() per log call when under the cap. */
+#define MR_LOG_CAP (256L * 1024)
+#define MR_LOG_KEEP (64L * 1024)
+static MR_UNUSED void mr_cap_file(const char *path) {
+    struct stat st; if (stat(path, &st) != 0 || st.st_size <= MR_LOG_CAP) return;
+    FILE *in = fopen(path, "rb"); if (!in) return;
+    if (fseek(in, st.st_size - MR_LOG_KEEP, SEEK_SET) != 0) { fclose(in); return; }
+    char tmp[MR_PATH_BUF + 32]; snprintf(tmp, sizeof(tmp), "%s.%ld.captmp", path, (long)getpid());
+    FILE *out = fopen(tmp, "wb"); if (!out) { fclose(in); return; }
+    int c, started = 0, ok = 1;
+    while ((c = fgetc(in)) != EOF) { if (!started) { if (c == '\n') started = 1; continue; } if (fputc(c, out) == EOF) { ok = 0; break; } }
+    fclose(in); if (fclose(out) != 0) ok = 0;
+    if (!ok || rename(tmp, path) != 0) remove(tmp);
+}
 /* Audit to <package_dir>/messages.txt + history.txt, same ledger habit
  * as mr_show_text/mr_show_choices. */
 static MR_UNUSED void mr_log(const char *package_dir, const char *fmt, ...) {
@@ -53,10 +69,10 @@ static MR_UNUSED void mr_log(const char *package_dir, const char *fmt, ...) {
     va_end(ap);
     snprintf(msg_path, sizeof(msg_path), "%s/messages.txt", package_dir);
     FILE *mf = fopen(msg_path, "a");
-    if (mf) { fprintf(mf, "[%ld] %s\n", (long)time(NULL), line); fclose(mf); }
+    if (mf) { fprintf(mf, "[%ld] %s\n", (long)time(NULL), line); fclose(mf); mr_cap_file(msg_path); }
     snprintf(hist_path, sizeof(hist_path), "%s/history.txt", package_dir);
     FILE *hf = fopen(hist_path, "a");
-    if (hf) { fprintf(hf, "%s\n", line); fclose(hf); }
+    if (hf) { fprintf(hf, "%s\n", line); fclose(hf); mr_cap_file(hist_path); }
 }
 
 /* Where should the op send a PLAYER-VISIBLE popup? Mirrors

@@ -1,0 +1,4 @@
+# mr_log_cap.pal - the events-hq audit writer caps its files. See cases/mr_log_cap.pdl
+exec ./ops/+x/harness_case_op.+x cases/mr_log_cap.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/mr_log_cap.pdl
+halt
