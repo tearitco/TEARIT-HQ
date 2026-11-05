@@ -2,6 +2,8 @@
 
 **Start here for the roadmap: [`ROADMAP.md`](ROADMAP.md)** - one page for customers, investors and developers (3D and worlds, AI integration, platform), every row with a status word, a source and a date.
 
+**Checklist of everything, done vs not done, with technical spec links: [`08-roadmap/GRAND-ROADMAP-CHECKLIST-2026-11-04.md`](08-roadmap/GRAND-ROADMAP-CHECKLIST-2026-11-04.md)**
+
 The house's documentation, organized as a book: index, chapters,
 glossary, examples, and a living appendix of daily progress. This is
 the ONE place house-level (not per-app) documentation lives. Per-app
