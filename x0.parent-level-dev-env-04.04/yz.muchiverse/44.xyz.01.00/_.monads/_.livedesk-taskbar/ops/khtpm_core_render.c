@@ -6208,6 +6208,11 @@ static int scroll_row_span(const Elem *c, int w) {
     }
     return 1;
 }
+/* canvas-overlay text rows that WRAP (owner 2026-11-04/05: "wrap should be auto"): a <text class="ov-wraptext"> in an overlay gets as many ROW_H rows as its label needs at the column width, the popup grows to fit, and the rows below move down (no overlap). OPT-IN per row: every other overlay <text> keeps exactly one row. Uses scroll_row_span() = the same greedy wrap the draw uses. */
+static int kh_ov_text_rows(const Elem *t, int colw, int pad4) {
+    if (!t || strcmp(t->tag, "text") != 0 || !elem_has_class((Elem *)t, "ov-wraptext")) return 1;
+    int r = scroll_row_span(t, colw - 2 * pad4); return r < 1 ? 1 : (r > 8 ? 8 : r);      /* capped at 8 rows: a runaway label cannot fill the canvas */
+}
 
 static void layout_scroll_sprite_grid_row(Elem *row, int x, int y, int w, int h_box, int visible, int *out_lo, int *out_hi) {
     int j, col = 0, line = 0;
@@ -7139,7 +7144,9 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
         if (pin_i >= 0) colw = pin_w[pin_i];
         if (n_it == 0 && n_cl == 0 && n_st == 0) continue;      /* 2026-11-04: a bar with a text-input line (cli_io) but no item drew NOTHING (the editor's h-ai pane went blank when its last button was removed); an empty bar is still skipped */
         {
-            int pad4 = scaled(4), hh = (n_tx + n_st + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
+            int pad4 = scaled(4), wx = 0, hh;
+            for (k = 0; k < ov->n_children; k++) wx += kh_ov_text_rows(ov->children[k], colw, pad4) - 1;      /* extra rows the ov-wraptext rows need */
+            hh = (n_tx + wx + n_st + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
             int x0 = is_left ? cv->x + scaled(10) : cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
             if (at_pt) {   /* class canvas-overlay-at: the point comes from the vars <id>_x / <id>_y (canvas pixels); absent = centred */
                 char kx[80], ky[80];
@@ -7162,8 +7169,9 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
                 Elem *t = ov->children[k];
                 if (strcmp(t->tag, "text") != 0 || elem_has_class(t, "ov-scrolltext")) continue;
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
-                t->x = x0 + pad4; t->y = yy; t->w = colw - 2 * pad4; t->h = rowh; t->nav_index = 0;
-                yy += rowh;
+                int tr = kh_ov_text_rows(t, colw, pad4);
+                t->x = x0 + pad4; t->y = yy; t->w = colw - 2 * pad4; t->h = tr * rowh; t->nav_index = 0;
+                yy += tr * rowh;
             }
             kh_ov_min_place(ov, x0, y0, colw, rowh, pad4);
             /* class ov-scroll on a PINNED bar (owner 2026-10-23: "i can't read the other planets in the left bar, we need a scroll thumb if the window is small"):

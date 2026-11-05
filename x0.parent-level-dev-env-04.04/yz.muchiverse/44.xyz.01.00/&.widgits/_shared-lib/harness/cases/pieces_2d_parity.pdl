@@ -50,6 +50,7 @@ EXPECT_OUT | ok  : xelector look: CONTROLLING is the lighter green and none of t
 EXPECT_OUT | ok  : xelector look: CONTROLLING is thinner than FREE (fewer border pixels) | xelector-look-controlling-is-thinner-than-free
 EXPECT_OUT | ok  : xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults) | xelector-look-colour-and-thickness-are-data
 EXPECT_OUT | ok  : xelector look: a malformed view.pdl row falls back to the default look | xelector-look-a-malformed-row-falls-back-to-the-default
+EXPECT_OUT | ok  : xelector look: possessed_id=none (what the house state file writes) is FREE, not controlling | xelector-look-possessed-id-none-is-free
 EXPECT_OUT | ok  : arrows: the xelector moves inside the view and the CAMERA DOES NOT MOVE | arrows-the-xelector-moves-inside-the-view-and-the-camera-does-not-move
 EXPECT_OUT | ok  : arrows: past the edge the camera pans (scrolls by the least amount) and the xelector stays visible | arrows-past-the-edge-the-camera-pans-scrolls-by-the-least-amount-and-t
 EXPECT_OUT | ok  : xelector: still visible far past the page (the camera panned after it) | xelector-still-visible-far-past-the-page-the-camera-panned-after-it

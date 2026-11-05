@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 typedef struct { unsigned char r, g, b; int px; } XelLook;
 /* "r,g,b" with 0..255 each; returns 1 and fills out on success, 0 (out untouched) on anything else */
 static int xel_look_rgb(const char *s, unsigned char out[3]) {
@@ -15,8 +16,8 @@ static int xel_look_rgb(const char *s, unsigned char out[3]) {
     out[0] = (unsigned char)a; out[1] = (unsigned char)b; out[2] = (unsigned char)c; return 1; }
 /* 1..12 pixels; returns the default for empty, non-numeric or out-of-range text */
 static int xel_look_px(const char *s, int def) { if (!s || !s[0]) return def; char *e; long v = strtol(s, &e, 10); if (*e || v < 1 || v > 12) return def; return (int)v; }
-/* is this possessed_id a real entity? ("", "-" and "." mean none; the 2D page uses "." for none) */
-static int xel_look_controlling(const char *possessed_id) { return possessed_id && possessed_id[0] && strcmp(possessed_id, "-") != 0 && strcmp(possessed_id, ".") != 0; }
+/* is this possessed_id a real entity? ("", "-", "." and "none" mean nobody: the 2D page uses "." and the house xelector state writes possessed_id=none; a live frame showed `poss none`) */
+static int xel_look_controlling(const char *possessed_id) { return possessed_id && possessed_id[0] && strcmp(possessed_id, "-") != 0 && strcmp(possessed_id, ".") != 0 && strcasecmp(possessed_id, "none") != 0; }
 static XelLook xel_look_pick(int controlling, const char *free_rgb, const char *free_px, const char *ctl_rgb, const char *ctl_px) {
     XelLook l = controlling ? (XelLook){ 150, 255, 170, 3 } : (XelLook){ 40, 255, 80, 6 }; unsigned char c[3];
     if (controlling) { if (xel_look_rgb(ctl_rgb, c)) { l.r = c[0]; l.g = c[1]; l.b = c[2]; } l.px = xel_look_px(ctl_px, l.px); }

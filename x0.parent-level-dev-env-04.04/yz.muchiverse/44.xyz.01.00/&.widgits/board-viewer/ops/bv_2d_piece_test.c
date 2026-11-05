@@ -115,6 +115,8 @@ int main(int argc, char **argv) {
       check(count_rgb(cur, 255, 0, 255) > cc && count_rgb(cur, 150, 255, 170) == 0, "xelector look: colour and thickness are DATA (view.pdl xelector_ctl_rgb / xelector_ctl_px override the defaults)");
       wr("pieces/system/maps/m/view.pdl", "VIEW | view_2d_minimap | 1\nVIEW | xelector_ctl_rgb | 999,0,0\nVIEW | xelector_ctl_px | 99\n"); if (render(cur)) return 2;
       check(count_rgb(cur, 150, 255, 170) == cc, "xelector look: a malformed view.pdl row falls back to the default look");
+      snprintf(g_poss, sizeof g_poss, "none"); minimap_setting(1); xel_at(2, 2); if (render(cur)) return 2;
+      check(count_rgb(cur, 40, 255, 80) == fr && count_rgb(cur, 150, 255, 170) == 0, "xelector look: possessed_id=none (what the house state file writes) is FREE, not controlling");
       g_poss[0] = 0; minimap_setting(1); xel_at(2, 2); }
     /* the camera keys (w/a/s/d) move the CAMERA and never the xelector; the arrows move the xelector and never the camera */
     nopiece(); piece_at(12, 2); minimap_setting(0); state_mode(0); cam_reset(); zoom(0); xel_at(2, 2); if (render(cur)) return 2; float k0 = cam_x();

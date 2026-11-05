@@ -145,9 +145,9 @@
       <!-- 2026-11-04 the coin shop popup: pick an item in the Coin shop tab, then Buy / Sell / Close here (the "Show Choices" pattern of the rpg-space helm popup); it stays open so you can repeat, and shows the last answer -->
       <row id="lshop-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${lshop_ov}">
         <text label="${lshop_ov_title}" class="hb-quiet ov-title theme-3"/>
-        <text label="${lshop_ov_text}" class="rp-big"/>
+        <text label="${lshop_ov_text}" class="rp-big ov-wraptext"/>
         <text label="${lshop_ov_coins}" class="hb-quiet"/>
-        <text label="${lshop_ov_last}" class="hb-quiet"/>
+        <text label="${lshop_ov_last}" class="hb-quiet ov-wraptext"/>
         <item id="lshop-buy" class="rp-menu-row" label="Buy 1" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop buy"/>
         <item id="lshop-sell" class="rp-menu-row" label="Sell 1" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop sell"/>
         <item id="lshop-close" class="rp-menu-row" label="Close" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire lshop close"/>
