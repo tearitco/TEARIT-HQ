@@ -68,9 +68,6 @@
       <item id="pm-synch" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (desk to game)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch"/>
       <item id="pm-synch2" class="pchq-menu-row dropdown-child " target_id="tb-player" label="Synch (game to desk)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' synch to-desk"/>
       <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
-      <item id="ch-older" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="scroll: older lines" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatscroll older"/>
-      <item id="ch-newer" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="scroll: newer lines" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatscroll newer"/>
-      <item id="ch-end" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="scroll: back to newest" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatscroll end"/>
       <item id="ch-edit" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="edit (pet chat)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode edit"/>
       <item id="ch-hai" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="h-ai (API, edits this book)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode hai"/>
       <item id="ch-net" class="pchq-menu-row dropdown-child " target_id="tb-chat" label="network (later)" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' chatmode network"/>
@@ -121,94 +118,11 @@
       </row>
       <!-- RIGHT pinned bar: chat as the selected entity (Harold or a pet). -->
       <row id="side-r" class="canvas-overlay-right ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_right}">
-        <text label="chat - ${active_name}${chat_more}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_edit}"/>
-        <text label="h-ai (API)${chat_more}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
-        <text label="network - later${chat_more}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
+        <text label="chat - ${active_name}" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_edit}"/>
+        <text label="h-ai (API)" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
+        <text label="network - later" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
         <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
-        <text label="${chat_0}" class="rp-chat ov-line" show="${chat_0_k0}"/>
-        <text label="${chat_0}" class="rp-chat rp-chat-youn ov-line" show="${chat_0_k1}"/>
-        <text label="${chat_0}" class="rp-chat rp-chat-yout ov-line" show="${chat_0_k2}"/>
-        <text label="${chat_0}" class="rp-chat rp-chat-hain ov-line" show="${chat_0_k3}"/>
-        <text label="${chat_0}" class="rp-chat rp-chat-hait ov-line" show="${chat_0_k4}"/>
-        <text label="${chat_0}" class="rp-chat rp-chat-petn ov-line" show="${chat_0_k5}"/>
-        <text label="${chat_0}" class="rp-chat rp-chat-pett ov-line" show="${chat_0_k6}"/>
-        <text label="${chat_1}" class="rp-chat ov-line" show="${chat_1_k0}"/>
-        <text label="${chat_1}" class="rp-chat rp-chat-youn ov-line" show="${chat_1_k1}"/>
-        <text label="${chat_1}" class="rp-chat rp-chat-yout ov-line" show="${chat_1_k2}"/>
-        <text label="${chat_1}" class="rp-chat rp-chat-hain ov-line" show="${chat_1_k3}"/>
-        <text label="${chat_1}" class="rp-chat rp-chat-hait ov-line" show="${chat_1_k4}"/>
-        <text label="${chat_1}" class="rp-chat rp-chat-petn ov-line" show="${chat_1_k5}"/>
-        <text label="${chat_1}" class="rp-chat rp-chat-pett ov-line" show="${chat_1_k6}"/>
-        <text label="${chat_2}" class="rp-chat ov-line" show="${chat_2_k0}"/>
-        <text label="${chat_2}" class="rp-chat rp-chat-youn ov-line" show="${chat_2_k1}"/>
-        <text label="${chat_2}" class="rp-chat rp-chat-yout ov-line" show="${chat_2_k2}"/>
-        <text label="${chat_2}" class="rp-chat rp-chat-hain ov-line" show="${chat_2_k3}"/>
-        <text label="${chat_2}" class="rp-chat rp-chat-hait ov-line" show="${chat_2_k4}"/>
-        <text label="${chat_2}" class="rp-chat rp-chat-petn ov-line" show="${chat_2_k5}"/>
-        <text label="${chat_2}" class="rp-chat rp-chat-pett ov-line" show="${chat_2_k6}"/>
-        <text label="${chat_3}" class="rp-chat ov-line" show="${chat_3_k0}"/>
-        <text label="${chat_3}" class="rp-chat rp-chat-youn ov-line" show="${chat_3_k1}"/>
-        <text label="${chat_3}" class="rp-chat rp-chat-yout ov-line" show="${chat_3_k2}"/>
-        <text label="${chat_3}" class="rp-chat rp-chat-hain ov-line" show="${chat_3_k3}"/>
-        <text label="${chat_3}" class="rp-chat rp-chat-hait ov-line" show="${chat_3_k4}"/>
-        <text label="${chat_3}" class="rp-chat rp-chat-petn ov-line" show="${chat_3_k5}"/>
-        <text label="${chat_3}" class="rp-chat rp-chat-pett ov-line" show="${chat_3_k6}"/>
-        <text label="${chat_4}" class="rp-chat ov-line" show="${chat_4_k0}"/>
-        <text label="${chat_4}" class="rp-chat rp-chat-youn ov-line" show="${chat_4_k1}"/>
-        <text label="${chat_4}" class="rp-chat rp-chat-yout ov-line" show="${chat_4_k2}"/>
-        <text label="${chat_4}" class="rp-chat rp-chat-hain ov-line" show="${chat_4_k3}"/>
-        <text label="${chat_4}" class="rp-chat rp-chat-hait ov-line" show="${chat_4_k4}"/>
-        <text label="${chat_4}" class="rp-chat rp-chat-petn ov-line" show="${chat_4_k5}"/>
-        <text label="${chat_4}" class="rp-chat rp-chat-pett ov-line" show="${chat_4_k6}"/>
-        <text label="${chat_5}" class="rp-chat ov-line" show="${chat_5_k0}"/>
-        <text label="${chat_5}" class="rp-chat rp-chat-youn ov-line" show="${chat_5_k1}"/>
-        <text label="${chat_5}" class="rp-chat rp-chat-yout ov-line" show="${chat_5_k2}"/>
-        <text label="${chat_5}" class="rp-chat rp-chat-hain ov-line" show="${chat_5_k3}"/>
-        <text label="${chat_5}" class="rp-chat rp-chat-hait ov-line" show="${chat_5_k4}"/>
-        <text label="${chat_5}" class="rp-chat rp-chat-petn ov-line" show="${chat_5_k5}"/>
-        <text label="${chat_5}" class="rp-chat rp-chat-pett ov-line" show="${chat_5_k6}"/>
-        <text label="${chat_6}" class="rp-chat ov-line" show="${chat_6_k0}"/>
-        <text label="${chat_6}" class="rp-chat rp-chat-youn ov-line" show="${chat_6_k1}"/>
-        <text label="${chat_6}" class="rp-chat rp-chat-yout ov-line" show="${chat_6_k2}"/>
-        <text label="${chat_6}" class="rp-chat rp-chat-hain ov-line" show="${chat_6_k3}"/>
-        <text label="${chat_6}" class="rp-chat rp-chat-hait ov-line" show="${chat_6_k4}"/>
-        <text label="${chat_6}" class="rp-chat rp-chat-petn ov-line" show="${chat_6_k5}"/>
-        <text label="${chat_6}" class="rp-chat rp-chat-pett ov-line" show="${chat_6_k6}"/>
-        <text label="${chat_7}" class="rp-chat ov-line" show="${chat_7_k0}"/>
-        <text label="${chat_7}" class="rp-chat rp-chat-youn ov-line" show="${chat_7_k1}"/>
-        <text label="${chat_7}" class="rp-chat rp-chat-yout ov-line" show="${chat_7_k2}"/>
-        <text label="${chat_7}" class="rp-chat rp-chat-hain ov-line" show="${chat_7_k3}"/>
-        <text label="${chat_7}" class="rp-chat rp-chat-hait ov-line" show="${chat_7_k4}"/>
-        <text label="${chat_7}" class="rp-chat rp-chat-petn ov-line" show="${chat_7_k5}"/>
-        <text label="${chat_7}" class="rp-chat rp-chat-pett ov-line" show="${chat_7_k6}"/>
-        <text label="${chat_8}" class="rp-chat ov-line" show="${chat_8_k0}"/>
-        <text label="${chat_8}" class="rp-chat rp-chat-youn ov-line" show="${chat_8_k1}"/>
-        <text label="${chat_8}" class="rp-chat rp-chat-yout ov-line" show="${chat_8_k2}"/>
-        <text label="${chat_8}" class="rp-chat rp-chat-hain ov-line" show="${chat_8_k3}"/>
-        <text label="${chat_8}" class="rp-chat rp-chat-hait ov-line" show="${chat_8_k4}"/>
-        <text label="${chat_8}" class="rp-chat rp-chat-petn ov-line" show="${chat_8_k5}"/>
-        <text label="${chat_8}" class="rp-chat rp-chat-pett ov-line" show="${chat_8_k6}"/>
-        <text label="${chat_9}" class="rp-chat ov-line" show="${chat_9_k0}"/>
-        <text label="${chat_9}" class="rp-chat rp-chat-youn ov-line" show="${chat_9_k1}"/>
-        <text label="${chat_9}" class="rp-chat rp-chat-yout ov-line" show="${chat_9_k2}"/>
-        <text label="${chat_9}" class="rp-chat rp-chat-hain ov-line" show="${chat_9_k3}"/>
-        <text label="${chat_9}" class="rp-chat rp-chat-hait ov-line" show="${chat_9_k4}"/>
-        <text label="${chat_9}" class="rp-chat rp-chat-petn ov-line" show="${chat_9_k5}"/>
-        <text label="${chat_9}" class="rp-chat rp-chat-pett ov-line" show="${chat_9_k6}"/>
-        <text label="${chat_10}" class="rp-chat ov-line" show="${chat_10_k0}"/>
-        <text label="${chat_10}" class="rp-chat rp-chat-youn ov-line" show="${chat_10_k1}"/>
-        <text label="${chat_10}" class="rp-chat rp-chat-yout ov-line" show="${chat_10_k2}"/>
-        <text label="${chat_10}" class="rp-chat rp-chat-hain ov-line" show="${chat_10_k3}"/>
-        <text label="${chat_10}" class="rp-chat rp-chat-hait ov-line" show="${chat_10_k4}"/>
-        <text label="${chat_10}" class="rp-chat rp-chat-petn ov-line" show="${chat_10_k5}"/>
-        <text label="${chat_10}" class="rp-chat rp-chat-pett ov-line" show="${chat_10_k6}"/>
-        <text label="${chat_11}" class="rp-chat ov-line" show="${chat_11_k0}"/>
-        <text label="${chat_11}" class="rp-chat rp-chat-youn ov-line" show="${chat_11_k1}"/>
-        <text label="${chat_11}" class="rp-chat rp-chat-yout ov-line" show="${chat_11_k2}"/>
-        <text label="${chat_11}" class="rp-chat rp-chat-hain ov-line" show="${chat_11_k3}"/>
-        <text label="${chat_11}" class="rp-chat rp-chat-hait ov-line" show="${chat_11_k4}"/>
-        <text label="${chat_11}" class="rp-chat rp-chat-petn ov-line" show="${chat_11_k5}"/>
-        <text label="${chat_11}" class="rp-chat rp-chat-pett ov-line" show="${chat_11_k6}"/>
+        <repeat count="${n_chat}" bind="chat"><text label="${chat.label}" class="rp-chat ov-line ov-scrolltext ${chat.cls}"/></repeat>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">

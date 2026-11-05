@@ -181,9 +181,10 @@ static int ui_wrap_keys(char *u, int o, size_t cap) {
           while (pos < len && nr < CMAXR) { size_t w = CWRAP, take = len - pos < w ? len - pos : w; if (pos + take < len) { size_t sp = take; while (sp > w / 2 && body[pos + sp] != ' ') sp--; if (sp > w / 2) take = sp; }
               snprintf(rows[nr], sizeof rows[0], "%.*s", (int)take, body + pos); rk[nr] = base + 1; nr++; pos += take; while (pos < len && body[pos] == ' ') pos++; }
           if (nr >= CMAXR - 20) { memmove(rows[0], rows[CMAXR / 2], (size_t)(CMAXR / 2) * sizeof rows[0]); memmove(rk, rk + CMAXR / 2, (size_t)(CMAXR / 2)); nr -= CMAXR / 2; } }
-      int cscr = 0; { char sp[PATH_MAX], sb[16]; spath(sp, "chat_scroll.txt"); read_file(sp, sb, sizeof sb); cscr = atoi(sb); if (cscr < 0) cscr = 0; if (cscr > nr - CSHOW) cscr = nr - CSHOW > 0 ? nr - CSHOW : 0; }      /* rows back from the newest (verb chatscroll) */
-      W("chat_more=%s\n", cscr > 0 ? " ^" : ""); W("chat_more_n=%d\n", cscr);
-      for (int i = 0; i < CSHOW; i++) { int j = nr - CSHOW - cscr + i; int kk = (j >= 0 && rows[j][0]) ? rk[j] : 0; W("chat_%d=%s\n", i, j >= 0 ? rows[j] : ""); for (int k = 0; k <= 6; k++) W("chat_%d_k%d=%s\n", i, k, kk == k ? "1" : ""); } }
+      /* 2026-11-04 (owner: "we have a normal thumb scroll"): every wrapped row is written (CMAXR newest) and the pane's repeat of ov-scrolltext rows scrolls with the house's generic bar (thumb, arrows, wheel, page keys); it follows the newest row until the user scrolls up */
+      W("n_chat=%d\n", nr);
+      static const char *kcls[7] = { "", "rp-chat-youn", "rp-chat-yout", "rp-chat-hain", "rp-chat-hait", "rp-chat-petn", "rp-chat-pett" };
+      for (int j = 0; j < nr; j++) { int kk = rows[j][0] ? rk[j] : 0; if (kk < 0 || kk > 6) kk = 0; W("chat_%d_label=%s\nchat_%d_cls=%s\n", j, rows[j], j, kcls[kk]); } }
 #elif PET_SECTION == 29
 #elif PET_SECTION == 30
 #elif PET_SECTION == 31
@@ -264,10 +265,6 @@ static int copy_file(const char *from, const char *to) { FILE *in = fopen(from, 
         char cm[16]; flag_str("chatmode", "edit", cm, sizeof cm); int hai = !strcmp(cm, "hai"); const char *f = hai ? "hai_chat.txt" : "chat.txt";
         append_line(f, hai ? "help: /clear wipes this chat (a .bak copy is kept). /apply writes the h-ai proposal into the event page (old file kept as .hai.bak). /no drops it. /help shows this." : "help: /clear wipes this chat (a .bak copy is kept). /help shows this."); snprintf(msg, cap, "help"); return; }
     if (!strcmp(v, "netsay")) { snprintf(msg, cap, "network chat comes later"); return; }
-    if (!strcmp(v, "chatscroll") && argc >= 2) {      /* chatscroll older|newer|end (2026-11-04): the chat pane shows 12 rows; this moves the window back through the history, 6 rows a step (state/chat_scroll.txt = rows back from the newest) */
-        char sp[PATH_MAX], sb[16]; spath(sp, "chat_scroll.txt"); read_file(sp, sb, sizeof sb); int c = atoi(sb); if (c < 0) c = 0;
-        if (!strcmp(argv[1], "older")) c += 6; else if (!strcmp(argv[1], "newer")) c = c > 6 ? c - 6 : 0; else c = 0;
-        char ob[16]; snprintf(ob, sizeof ob, "%d\n", c); write_if_changed(sp, ob, strlen(ob)); snprintf(msg, cap, "chat scroll %d", c); turn_taken = 0; return; }
     if (!strcmp(v, "chatclear")) {      /* clear the chat of the current mode (edit: the same rename the core clearchat does) */
         char cm[16], p[PATH_MAX], q[PATH_MAX]; flag_str("chatmode", "edit", cm, sizeof cm); spath(p, !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt");
         snprintf(q, sizeof q, "%s.%ld.bak", p, now); if (fexists(p)) rename(p, q); snprintf(msg, cap, "chat cleared (kept as %s.%ld.bak)", !strcmp(cm, "hai") ? "hai_chat.txt" : "chat.txt", now); return; }

@@ -7121,14 +7121,14 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
      * overlay was dropped at parse). Other children are parked off-screen like the bottom strip. */
     for (int oi = 0; oi < region->n_children; oi++) {
         Elem *ov = region->children[oi];
-        int n_it = 0, n_tx = 0, n_cl = 0, colw = scaled(180), rowh = ROW_H, itemh = ROW_H + scaled(8), k;
+        int n_it = 0, n_tx = 0, n_st = 0, n_cl = 0, colw = scaled(180), rowh = ROW_H, itemh = ROW_H + scaled(8), k;
         int at_pt = elem_has_class(ov, "canvas-overlay-at"), is_left = elem_has_class(ov, "canvas-overlay-left"), pin_i = -1;
         if (!at_pt && !is_left && !elem_has_class(ov, "canvas-overlay-right")) continue;
         for (int pk = 0; pk < npin; pk++) if (pin_ov[pk] == ov) pin_i = pk;
         css_compute_style(&g_sheet, ov->tag, ov->id, ov->classes, ov->n_classes, 0, &ov->style);
         for (k = 0; k < ov->n_children; k++) {
             Elem *it = ov->children[k];
-            if (strcmp(it->tag, "text") == 0) { n_tx++; continue; }
+            if (strcmp(it->tag, "text") == 0) { if (elem_has_class(it, "ov-scrolltext")) n_st++; else n_tx++; continue; }      /* 2026-11-04: ov-scrolltext = a text row that scrolls with the bar (chat history), see the ov-scroll block below */
             if (strcmp(it->tag, "cli_io") == 0) { n_cl++; continue; }
             if (strcmp(it->tag, "item") == 0 && (elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close"))) continue;   /* placed by kh_ov_min_place */
             if (strcmp(it->tag, "item") != 0) { it->x = rx; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; continue; }
@@ -7137,9 +7137,9 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             n_it++;
         }
         if (pin_i >= 0) colw = pin_w[pin_i];
-        if (n_it == 0 && n_cl == 0) continue;      /* 2026-11-04: a bar with a text-input line (cli_io) but no item drew NOTHING (the editor's h-ai pane went blank when its last button was removed); an empty bar is still skipped */
+        if (n_it == 0 && n_cl == 0 && n_st == 0) continue;      /* 2026-11-04: a bar with a text-input line (cli_io) but no item drew NOTHING (the editor's h-ai pane went blank when its last button was removed); an empty bar is still skipped */
         {
-            int pad4 = scaled(4), hh = (n_tx + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
+            int pad4 = scaled(4), hh = (n_tx + n_st + n_cl) * rowh + n_it * itemh + 2 * pad4 + (n_it ? (n_it - 1) * scaled(2) : 0);
             int x0 = is_left ? cv->x + scaled(10) : cv->x + cv->w - colw - scaled(10), y0 = cv->y + (cv->h - hh) / 2, yy;
             if (at_pt) {   /* class canvas-overlay-at: the point comes from the vars <id>_x / <id>_y (canvas pixels); absent = centred */
                 char kx[80], ky[80];
@@ -7160,7 +7160,7 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
             yy = y0 + pad4;
             for (k = 0; k < ov->n_children; k++) {
                 Elem *t = ov->children[k];
-                if (strcmp(t->tag, "text") != 0) continue;
+                if (strcmp(t->tag, "text") != 0 || elem_has_class(t, "ov-scrolltext")) continue;
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
                 t->x = x0 + pad4; t->y = yy; t->w = colw - 2 * pad4; t->h = rowh; t->nav_index = 0;
                 yy += rowh;
@@ -7170,25 +7170,31 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
              * when the items do not fit the bar's height, only the ones in view are placed, the rest are parked off screen (y = -100000, no nav number: clip, never
              * translate), and the house's generic scrollbar (track, thumb, ^ v arrows, wheel, page keys) is registered over them. A bar whose items fit, or one
              * without the class, is laid out exactly as before. The scroll cursor is per pinned bar and is only clamped here, so this pass stays idempotent. */
-            static int s_ov_scroll[8];
-            int per = itemh + scaled(2), items_top = yy, n_vis = n_it, sc0 = 0, bar_w = 0, scr = 0, idx = 0;
+            static int s_ov_scroll[8], s_ov_prev_max[8];
+            int per = (n_st > 0 && n_it == 0) ? rowh : itemh + scaled(2), items_top = yy, n_tot = n_it + n_st, n_vis = n_tot, sc0 = 0, bar_w = 0, scr = 0, idx = 0;
             if (pin_i >= 0 && elem_has_class(ov, "ov-scroll")) {
                 n_vis = ((y0 + hh - pad4) - yy - n_cl * rowh) / per; if (n_vis < 1) n_vis = 1;
-                if (n_it > n_vis) {
-                    int max_sc = n_it - n_vis, *sp = &s_ov_scroll[pin_i];
+                if (n_tot > n_vis) {
+                    int max_sc = n_tot - n_vis, *sp = &s_ov_scroll[pin_i];
+                    /* a bar of ov-scrolltext rows (a chat) follows its newest row: a cursor that sat at the bottom stays at the bottom when rows are added; one the user moved up stays put */
+                    if (n_st > 0 && *sp >= s_ov_prev_max[pin_i]) *sp = max_sc;
                     if (*sp > max_sc) *sp = max_sc;
                     if (*sp < 0) *sp = 0;
+                    s_ov_prev_max[pin_i] = max_sc;
                     sc0 = *sp; scr = 1; bar_w = scaled(GENERIC_SCROLLBAR_W + 16);
-                    generic_sbar_register(x0, items_top, colw, n_vis * per, sp, n_it, n_vis, max_sc);
-                }
+                    generic_sbar_register(x0, items_top, colw, n_vis * per, sp, n_tot, n_vis, max_sc);
+                } else s_ov_prev_max[pin_i] = 0;
             }
             for (k = 0; k < ov->n_children; k++) {
                 Elem *it = ov->children[k];
-                if (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close")) continue;
+                int is_st = strcmp(it->tag, "text") == 0 && elem_has_class(it, "ov-scrolltext");
+                if (!is_st && (strcmp(it->tag, "item") != 0 || elem_has_class(it, "ov-min") || elem_has_class(it, "ov-close"))) continue;
                 if (scr && (idx < sc0 || idx >= sc0 + n_vis)) { it->x = x0 + pad4; it->y = -100000; it->w = 0; it->h = 0; it->nav_index = 0; idx++; continue; }
-                it->x = x0 + pad4; it->y = scr ? items_top + (idx - sc0) * per : yy; it->w = colw - 2 * pad4 - bar_w; it->h = itemh;
-                if (!scr) yy += itemh + scaled(2);
+                if (is_st) css_compute_style(&g_sheet, it->tag, it->id, it->classes, it->n_classes, 0, &it->style);
+                it->x = x0 + pad4; it->y = scr ? items_top + (idx - sc0) * per : yy; it->w = colw - 2 * pad4 - bar_w; it->h = is_st ? rowh : itemh;
+                if (!scr) yy += (is_st ? rowh : itemh + scaled(2));
                 idx++;
+                if (is_st) { it->nav_index = 0; continue; }      /* a scrolling text row has no nav number */
                 it->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = it;
             }
