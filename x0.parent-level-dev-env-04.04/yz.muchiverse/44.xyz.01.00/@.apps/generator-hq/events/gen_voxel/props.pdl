@@ -21,10 +21,6 @@ CYL | bucket_water | body | 12 | 12 | 0 | 6 | 8 | #8a5a3a
 CYL | bucket_water | band1 | 12 | 12 | 2 | 6 | 1 | #4a4a52
 CYL | bucket_water | band2 | 12 | 12 | 6 | 6 | 1 | #4a4a52
 CYL | bucket_water | water | 12 | 12 | 8 | 5 | 1 | #4a8ac8
-MODEL | stone_well | prop
-CYL | stone_well | wall | 12 | 12 | 0 | 8 | 9  | #8a8a92
-CYL | stone_well | cap  | 12 | 12 | 9 | 8 | 1  | #b0b0b8
-CYL | stone_well | water | 12 | 12 | 10 | 5 | 1 | #1a2a3a
 MODEL | signpost | prop
 PART | signpost | post   | 11 | 11 | 0  | 2  | 2 | 20 | #6a4228
 PART | signpost | arrow1 | 4  | 10 | 13 | 14 | 3 | 4  | #a07848
@@ -44,15 +40,6 @@ PART | log | body | 3  | 9  | 0 | 18 | 6 | 5 | #8a5a3a
 PART | log | top  | 4  | 10 | 5 | 16 | 4 | 1 | #8a5a3a
 PART | log | cut  | 3  | 10 | 1 | 1  | 4 | 3 | #c8a070
 PART | log | bark | 5  | 9  | 2 | 14 | 1 | 1 | #6a4228
-MODEL | firepit | prop
-CYL | firepit | stones | 12 | 12 | 0 | 8 | 4 | #8a8a92
-CYL | firepit | ash    | 12 | 12 | 3 | 5 | 1 | #3a2a22
-MODEL | firepit_lit | prop
-CYL | firepit_lit | stones | 12 | 12 | 0 | 8 | 4 | #8a8a92
-CYL | firepit_lit | ash    | 12 | 12 | 3 | 5 | 1 | #3a2a22
-PART | firepit_lit | logs   | 8  | 11 | 4 | 8 | 2 | 2 | #5a3a24
-ELL | firepit_lit | flame  | 12 | 12 | 8 | 3 | 3 | 4 | #ff9a2a
-ELL | firepit_lit | core   | 12 | 12 | 8 | 2 | 2 | 3 | #ffe066
 MODEL | rock_grey | prop
 ELL | rock_grey | body | 12 | 12 | 5 | 8 | 6 | 5 | #8a8a92
 ELL | rock_grey | light | 11 | 10 | 7 | 4 | 3 | 3 | #aaaab2
@@ -69,55 +56,6 @@ CYL | pine | tier2 | 12 | 12 | 8  | 5 | 4 | #2f7a3f
 CYL | pine | tier3 | 12 | 12 | 12 | 4 | 4 | #358a45
 CYL | pine | tier4 | 12 | 12 | 16 | 3 | 3 | #3c9a4c
 CYL | pine | tip   | 12 | 12 | 19 | 1 | 3 | #4aaa5a
-MODEL | grass_tuft | prop
-PART | grass_tuft | b1 | 9  | 12 | 0 | 1 | 1 | 4 | #4a9a3a
-PART | grass_tuft | b2 | 11 | 11 | 0 | 1 | 1 | 6 | #5aaa48
-PART | grass_tuft | b3 | 13 | 12 | 0 | 1 | 1 | 5 | #4a9a3a
-PART | grass_tuft | b4 | 15 | 11 | 0 | 1 | 1 | 3 | #5aaa48
-PART | grass_tuft | b5 | 12 | 10 | 0 | 1 | 1 | 3 | #3a8a30
-MODEL | flowers_white | prop
-PART | flowers_white | s1 | 8  | 11 | 0 | 1 | 1 | 4 | #3a8a30
-PART | flowers_white | h1 | 7  | 11 | 4 | 3 | 1 | 2 | #f4f0e8
-PART | flowers_white | s2 | 13 | 12 | 0 | 1 | 1 | 5 | #3a8a30
-PART | flowers_white | h2 | 12 | 12 | 5 | 3 | 1 | 2 | #f4f0e8
-PART | flowers_white | s3 | 17 | 10 | 0 | 1 | 1 | 3 | #3a8a30
-PART | flowers_white | h3 | 16 | 10 | 3 | 3 | 1 | 2 | #f4f0e8
-MODEL | flowers_pink | prop
-PART | flowers_pink | s1 | 8  | 11 | 0 | 1 | 1 | 4 | #3a8a30
-PART | flowers_pink | h1 | 7  | 11 | 4 | 3 | 1 | 2 | #e87aa8
-PART | flowers_pink | s2 | 13 | 12 | 0 | 1 | 1 | 5 | #3a8a30
-PART | flowers_pink | h2 | 12 | 12 | 5 | 3 | 1 | 2 | #e87aa8
-PART | flowers_pink | s3 | 17 | 10 | 0 | 1 | 1 | 3 | #3a8a30
-PART | flowers_pink | h3 | 16 | 10 | 3 | 3 | 1 | 2 | #e87aa8
-MODEL | flowers_blue | prop
-PART | flowers_blue | s1 | 8  | 11 | 0 | 1 | 1 | 4 | #3a8a30
-PART | flowers_blue | h1 | 7  | 11 | 4 | 3 | 1 | 2 | #5a7ae8
-PART | flowers_blue | s2 | 13 | 12 | 0 | 1 | 1 | 5 | #3a8a30
-PART | flowers_blue | h2 | 12 | 12 | 5 | 3 | 1 | 2 | #5a7ae8
-PART | flowers_blue | s3 | 17 | 10 | 0 | 1 | 1 | 3 | #3a8a30
-PART | flowers_blue | h3 | 16 | 10 | 3 | 3 | 1 | 2 | #5a7ae8
-MODEL | flowers_orange | prop
-PART | flowers_orange | s1 | 8  | 11 | 0 | 1 | 1 | 4 | #3a8a30
-PART | flowers_orange | h1 | 7  | 11 | 4 | 3 | 1 | 2 | #f08a2a
-PART | flowers_orange | s2 | 13 | 12 | 0 | 1 | 1 | 5 | #3a8a30
-PART | flowers_orange | h2 | 12 | 12 | 5 | 3 | 1 | 2 | #f08a2a
-PART | flowers_orange | s3 | 17 | 10 | 0 | 1 | 1 | 3 | #3a8a30
-PART | flowers_orange | h3 | 16 | 10 | 3 | 3 | 1 | 2 | #f08a2a
-MODEL | wood_stack | prop
-PART | wood_stack | a1 | 5  | 8 | 0 | 4 | 8 | 4 | #6a4228
-PART | wood_stack | a2 | 10 | 8 | 0 | 4 | 8 | 4 | #7a5232
-PART | wood_stack | a3 | 15 | 8 | 0 | 4 | 8 | 4 | #6a4228
-PART | wood_stack | b1 | 7  | 8 | 4 | 4 | 8 | 4 | #7a5232
-PART | wood_stack | b2 | 12 | 8 | 4 | 4 | 8 | 4 | #6a4228
-PART | wood_stack | e1 | 5  | 8 | 0 | 4 | 1 | 4 | #c8a070
-PART | wood_stack | e2 | 10 | 8 | 0 | 4 | 1 | 4 | #c8a070
-PART | wood_stack | e3 | 15 | 8 | 0 | 4 | 1 | 4 | #c8a070
-PART | wood_stack | e4 | 7  | 8 | 4 | 4 | 1 | 4 | #c8a070
-PART | wood_stack | e5 | 12 | 8 | 4 | 4 | 1 | 4 | #c8a070
-MODEL | pebbles | prop
-ELL | pebbles | p1 | 8  | 11 | 1 | 3 | 2 | 1 | #9a9aa2
-ELL | pebbles | p2 | 14 | 13 | 1 | 2 | 2 | 1 | #b0b0b8
-ELL | pebbles | p3 | 15 | 8  | 1 | 3 | 2 | 1 | #8a8a92
 MODEL | hole | prop
 CYL | hole | rim   | 12 | 12 | 0 | 9 | 1 | #6a4228
 CYL | hole | dark  | 12 | 12 | 0 | 7 | 1 | #2a1a14
@@ -130,3 +68,161 @@ MODEL | grave_cross | prop
 PART | grave_cross | up   | 11 | 11 | 0  | 2  | 2 | 18 | #8a5a3a
 PART | grave_cross | arm  | 7  | 11 | 11 | 10 | 2 | 2  | #8a5a3a
 CYL | grave_cross | mound | 12 | 13 | 0 | 5 | 2 | #7a6a52
+
+# --- polish pass (2026-11-05): redrawn after the first look (flame looked like a hydrant, well like a grey pot, small things too small) ---
+MODEL | stone_well | prop
+CYL | stone_well | wall    | 12 | 12 | 0  | 8 | 9 | #8a8a92
+CYL | stone_well | mortar1 | 12 | 12 | 2  | 8 | 1 | #6e6e78
+CYL | stone_well | mortar2 | 12 | 12 | 5  | 8 | 1 | #6e6e78
+CYL | stone_well | cap     | 12 | 12 | 9  | 8 | 1 | #b0b0b8
+CYL | stone_well | water   | 12 | 12 | 10 | 5 | 1 | #1a2a3a
+PART | stone_well | postl  | 3  | 11 | 10 | 2  | 2 | 9 | #6a4228
+PART | stone_well | postr  | 19 | 11 | 10 | 2  | 2 | 9 | #6a4228
+PART | stone_well | beam   | 3  | 11 | 19 | 18 | 2 | 2 | #8a5a3a
+PART | stone_well | rope   | 12 | 12 | 13 | 1  | 1 | 6 | #c8b080
+PART | stone_well | pail   | 10 | 11 | 11 | 4  | 3 | 3 | #8a5a3a
+MODEL | firepit | prop
+CYL | firepit | ash | 12 | 12 | 0 | 6 | 4 | #2a1a14
+CYL | firepit | pile | 12 | 12 | 4 | 4 | 1 | #5a4a42
+ELL | firepit | s1 | 19 | 12 | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit | s2 | 17 | 17 | 2 | 3 | 3 | 2 | #9a9aa2
+ELL | firepit | s3 | 12 | 19 | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit | s4 | 7  | 17 | 2 | 3 | 3 | 2 | #9a9aa2
+ELL | firepit | s5 | 5  | 12 | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit | s6 | 7  | 7  | 2 | 3 | 3 | 2 | #9a9aa2
+ELL | firepit | s7 | 12 | 5  | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit | s8 | 17 | 7  | 2 | 3 | 3 | 2 | #9a9aa2
+MODEL | firepit_lit | prop
+CYL | firepit_lit | ash | 12 | 12 | 0 | 6 | 4 | #2a1a14
+ELL | firepit_lit | s1 | 19 | 12 | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit_lit | s2 | 17 | 17 | 2 | 3 | 3 | 2 | #9a9aa2
+ELL | firepit_lit | s3 | 12 | 19 | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit_lit | s4 | 7  | 17 | 2 | 3 | 3 | 2 | #9a9aa2
+ELL | firepit_lit | s5 | 5  | 12 | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit_lit | s6 | 7  | 7  | 2 | 3 | 3 | 2 | #9a9aa2
+ELL | firepit_lit | s7 | 12 | 5  | 2 | 3 | 3 | 2 | #8a8a92
+ELL | firepit_lit | s8 | 17 | 7  | 2 | 3 | 3 | 2 | #9a9aa2
+PART | firepit_lit | log1 | 7  | 11 | 2 | 10 | 2 | 2 | #5a3a24
+PART | firepit_lit | log2 | 11 | 7  | 3 | 2  | 10 | 2 | #6a4228
+ELL | firepit_lit | flame_base | 12 | 12 | 5  | 4 | 4 | 2 | #d6481a
+ELL | firepit_lit | flame_mid  | 12 | 12 | 7  | 3 | 3 | 3 | #ff8a22
+ELL | firepit_lit | flame_core | 12 | 12 | 8  | 2 | 2 | 3 | #ffe066
+ELL | firepit_lit | flame_tip  | 12 | 12 | 11 | 1 | 1 | 3 | #ffcf40
+PART | firepit_lit | spark1 | 7  | 9  | 9  | 1 | 1 | 1 | #ffcf40
+PART | firepit_lit | spark2 | 17 | 13 | 11 | 1 | 1 | 1 | #ff8a22
+MODEL | grass_tuft | prop
+PART | grass_tuft | b1 | 6  | 12 | 0 | 1 | 1 | 5 | #4a9a3a
+PART | grass_tuft | b2 | 8  | 11 | 0 | 1 | 1 | 8 | #5aaa48
+PART | grass_tuft | b3 | 10 | 12 | 0 | 1 | 1 | 6 | #4a9a3a
+PART | grass_tuft | b4 | 12 | 11 | 0 | 1 | 1 | 9 | #6aba54
+PART | grass_tuft | b5 | 14 | 12 | 0 | 1 | 1 | 7 | #4a9a3a
+PART | grass_tuft | b6 | 16 | 11 | 0 | 1 | 1 | 5 | #5aaa48
+PART | grass_tuft | b7 | 18 | 12 | 0 | 1 | 1 | 4 | #4a9a3a
+PART | grass_tuft | b8 | 9  | 9  | 0 | 1 | 1 | 4 | #3a8a30
+PART | grass_tuft | b9 | 15 | 9  | 0 | 1 | 1 | 4 | #3a8a30
+MODEL | pebbles | prop
+ELL | pebbles | p1 | 7  | 11 | 2 | 4 | 3 | 2 | #9a9aa2
+ELL | pebbles | p2 | 14 | 13 | 2 | 3 | 3 | 2 | #b0b0b8
+ELL | pebbles | p3 | 17 | 8  | 2 | 4 | 3 | 2 | #8a8a92
+ELL | pebbles | p4 | 10 | 16 | 1 | 3 | 2 | 1 | #a8a8b0
+ELL | pebbles | p5 | 5  | 17 | 1 | 2 | 2 | 1 | #9a9aa2
+MODEL | wood_stack | prop
+PART | wood_stack | a1 | 3  | 7 | 0 | 5 | 9 | 5 | #6a4228
+PART | wood_stack | a2 | 9  | 7 | 0 | 5 | 9 | 5 | #7a5232
+PART | wood_stack | a3 | 15 | 7 | 0 | 5 | 9 | 5 | #6a4228
+PART | wood_stack | b1 | 6  | 7 | 5 | 5 | 9 | 5 | #7a5232
+PART | wood_stack | b2 | 12 | 7 | 5 | 5 | 9 | 5 | #6a4228
+PART | wood_stack | e1 | 3  | 6 | 0 | 5 | 1 | 5 | #c8a070
+PART | wood_stack | e2 | 9  | 6 | 0 | 5 | 1 | 5 | #c8a070
+PART | wood_stack | e3 | 15 | 6 | 0 | 5 | 1 | 5 | #c8a070
+PART | wood_stack | e4 | 6  | 6 | 5 | 5 | 1 | 5 | #c8a070
+PART | wood_stack | e5 | 12 | 6 | 5 | 5 | 1 | 5 | #c8a070
+PART | wood_stack | r1 | 5  | 6 | 2 | 1 | 1 | 1 | #8a6a40
+PART | wood_stack | r2 | 11 | 6 | 2 | 1 | 1 | 1 | #8a6a40
+PART | wood_stack | r3 | 17 | 6 | 2 | 1 | 1 | 1 | #8a6a40
+PART | wood_stack | r4 | 8  | 6 | 7 | 1 | 1 | 1 | #8a6a40
+PART | wood_stack | r5 | 14 | 6 | 7 | 1 | 1 | 1 | #8a6a40
+MODEL | flowers_white | prop
+PART | flowers_white | s1 | 6 | 11 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_white | l1 | 5 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_white | h1 | 5 | 11 | 5 | 3 | 1 | 3 | #f4f0e8
+PART | flowers_white | c1 | 6 | 10 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_white | s2 | 10 | 12 | 0 | 1 | 1 | 7 | #3a8a30
+PART | flowers_white | l2 | 9 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_white | h2 | 9 | 12 | 7 | 3 | 1 | 3 | #f4f0e8
+PART | flowers_white | c2 | 10 | 11 | 8 | 1 | 1 | 1 | #ffe066
+PART | flowers_white | s3 | 14 | 11 | 0 | 1 | 1 | 6 | #3a8a30
+PART | flowers_white | l3 | 13 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_white | h3 | 13 | 11 | 6 | 3 | 1 | 3 | #f4f0e8
+PART | flowers_white | c3 | 14 | 10 | 7 | 1 | 1 | 1 | #ffe066
+PART | flowers_white | s4 | 18 | 12 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_white | l4 | 17 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_white | h4 | 17 | 12 | 5 | 3 | 1 | 3 | #f4f0e8
+PART | flowers_white | c4 | 18 | 11 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_white | s5 | 12 | 9 | 0 | 1 | 1 | 4 | #3a8a30
+PART | flowers_white | l5 | 11 | 9 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_white | h5 | 11 | 9 | 4 | 3 | 1 | 3 | #f4f0e8
+PART | flowers_white | c5 | 12 | 8 | 5 | 1 | 1 | 1 | #ffe066
+MODEL | flowers_pink | prop
+PART | flowers_pink | s1 | 6 | 11 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_pink | l1 | 5 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_pink | h1 | 5 | 11 | 5 | 3 | 1 | 3 | #e87aa8
+PART | flowers_pink | c1 | 6 | 10 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_pink | s2 | 10 | 12 | 0 | 1 | 1 | 7 | #3a8a30
+PART | flowers_pink | l2 | 9 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_pink | h2 | 9 | 12 | 7 | 3 | 1 | 3 | #e87aa8
+PART | flowers_pink | c2 | 10 | 11 | 8 | 1 | 1 | 1 | #ffe066
+PART | flowers_pink | s3 | 14 | 11 | 0 | 1 | 1 | 6 | #3a8a30
+PART | flowers_pink | l3 | 13 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_pink | h3 | 13 | 11 | 6 | 3 | 1 | 3 | #e87aa8
+PART | flowers_pink | c3 | 14 | 10 | 7 | 1 | 1 | 1 | #ffe066
+PART | flowers_pink | s4 | 18 | 12 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_pink | l4 | 17 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_pink | h4 | 17 | 12 | 5 | 3 | 1 | 3 | #e87aa8
+PART | flowers_pink | c4 | 18 | 11 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_pink | s5 | 12 | 9 | 0 | 1 | 1 | 4 | #3a8a30
+PART | flowers_pink | l5 | 11 | 9 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_pink | h5 | 11 | 9 | 4 | 3 | 1 | 3 | #e87aa8
+PART | flowers_pink | c5 | 12 | 8 | 5 | 1 | 1 | 1 | #ffe066
+MODEL | flowers_blue | prop
+PART | flowers_blue | s1 | 6 | 11 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_blue | l1 | 5 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_blue | h1 | 5 | 11 | 5 | 3 | 1 | 3 | #5a7ae8
+PART | flowers_blue | c1 | 6 | 10 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_blue | s2 | 10 | 12 | 0 | 1 | 1 | 7 | #3a8a30
+PART | flowers_blue | l2 | 9 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_blue | h2 | 9 | 12 | 7 | 3 | 1 | 3 | #5a7ae8
+PART | flowers_blue | c2 | 10 | 11 | 8 | 1 | 1 | 1 | #ffe066
+PART | flowers_blue | s3 | 14 | 11 | 0 | 1 | 1 | 6 | #3a8a30
+PART | flowers_blue | l3 | 13 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_blue | h3 | 13 | 11 | 6 | 3 | 1 | 3 | #5a7ae8
+PART | flowers_blue | c3 | 14 | 10 | 7 | 1 | 1 | 1 | #ffe066
+PART | flowers_blue | s4 | 18 | 12 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_blue | l4 | 17 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_blue | h4 | 17 | 12 | 5 | 3 | 1 | 3 | #5a7ae8
+PART | flowers_blue | c4 | 18 | 11 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_blue | s5 | 12 | 9 | 0 | 1 | 1 | 4 | #3a8a30
+PART | flowers_blue | l5 | 11 | 9 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_blue | h5 | 11 | 9 | 4 | 3 | 1 | 3 | #5a7ae8
+PART | flowers_blue | c5 | 12 | 8 | 5 | 1 | 1 | 1 | #ffe066
+MODEL | flowers_orange | prop
+PART | flowers_orange | s1 | 6 | 11 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_orange | l1 | 5 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_orange | h1 | 5 | 11 | 5 | 3 | 1 | 3 | #f08a2a
+PART | flowers_orange | c1 | 6 | 10 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_orange | s2 | 10 | 12 | 0 | 1 | 1 | 7 | #3a8a30
+PART | flowers_orange | l2 | 9 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_orange | h2 | 9 | 12 | 7 | 3 | 1 | 3 | #f08a2a
+PART | flowers_orange | c2 | 10 | 11 | 8 | 1 | 1 | 1 | #ffe066
+PART | flowers_orange | s3 | 14 | 11 | 0 | 1 | 1 | 6 | #3a8a30
+PART | flowers_orange | l3 | 13 | 11 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_orange | h3 | 13 | 11 | 6 | 3 | 1 | 3 | #f08a2a
+PART | flowers_orange | c3 | 14 | 10 | 7 | 1 | 1 | 1 | #ffe066
+PART | flowers_orange | s4 | 18 | 12 | 0 | 1 | 1 | 5 | #3a8a30
+PART | flowers_orange | l4 | 17 | 12 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_orange | h4 | 17 | 12 | 5 | 3 | 1 | 3 | #f08a2a
+PART | flowers_orange | c4 | 18 | 11 | 6 | 1 | 1 | 1 | #ffe066
+PART | flowers_orange | s5 | 12 | 9 | 0 | 1 | 1 | 4 | #3a8a30
+PART | flowers_orange | l5 | 11 | 9 | 1 | 3 | 1 | 1 | #4a9a3a
+PART | flowers_orange | h5 | 11 | 9 | 4 | 3 | 1 | 3 | #f08a2a
+PART | flowers_orange | c5 | 12 | 8 | 5 | 1 | 1 | 1 | #ffe066

@@ -85,6 +85,13 @@ static int check_refs(void) { /* every PART and POSE names a real model; every P
     return bad ? 2 : 0;
 }
 static unsigned G[N][N][N]; /* [z][y][x]: 0 empty, else 0xFF000000 | rgb */
+static unsigned lit(unsigned r, unsigned g, unsigned b, double f) { /* scale a colour by a lighting factor and mark it as a smooth (round) surface: alpha 0xFE */
+    double R = r * f, Gc = g * f, B = b * f;
+    if (R > 255) { R = 255; }
+    if (Gc > 255) { Gc = 255; }
+    if (B > 255) { B = 255; }
+    return 0xFE000000u | ((unsigned)R << 16) | ((unsigned)Gc << 8) | (unsigned)B;
+}
 static int build(const char *model, const char *pose, int *count) {
     int i, j, x, y, z; *count = 0;
     memset(G, 0, sizeof G);
@@ -96,11 +103,12 @@ static int build(const char *model, const char *pose, int *count) {
             int cx = P[i].x + dx, cy = P[i].y + dy, cz = P[i].z + dz, X, Y, Z;
             for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) {
                 int in;
-                if (P[i].kind == 1) { int ddx = X - cx, ddy = Y - cy; in = Z >= cz && Z < cz + P[i].h && (ddx * ddx + ddy * ddy) * 2 <= (2 * P[i].w * P[i].w + P[i].w); }
-                else { double ax = (double)(X - cx) / P[i].w, ay = (double)(Y - cy) / P[i].d, az = (double)(Z - cz) / P[i].h; in = ax * ax + ay * ay + az * az <= 1.0; }
+                double f = 1.0;
+                if (P[i].kind == 1) { int ddx = X - cx, ddy = Y - cy; in = Z >= cz && Z < cz + P[i].h && (ddx * ddx + ddy * ddy) * 2 <= (2 * P[i].w * P[i].w + P[i].w); f = 1.12 - 0.34 * (double)(ddx + P[i].w) / (2.0 * P[i].w); }
+                else { double ax = (double)(X - cx) / P[i].w, ay = (double)(Y - cy) / P[i].d, az = (double)(Z - cz) / P[i].h; in = ax * ax + ay * ay + az * az <= 1.0; f = 1.04 - 0.22 * ax + 0.22 * az - 0.08 * ay; }
                 if (!in) continue;
                 if (!G[Z][Y][X]) (*count)++;
-                G[Z][Y][X] = 0xFF000000u | (P[i].r << 16) | (P[i].g << 8) | P[i].b;
+                G[Z][Y][X] = lit(P[i].r, P[i].g, P[i].b, f);
             }
             continue;
         }
@@ -130,7 +138,7 @@ static void view(unsigned char *o, int ox, int sw, int v) {
         sx = x * 2; sy = 44 - z * 2 - y / 2;
         { int rx, ry; int ex = 0; /* is the voxel to the right (in view) empty? */
           rx = x + 1; if (rx >= N) ex = 1; else { int RX, RY; if (v == 0) { RX = rx; RY = y; } else if (v == 3) { RX = N - 1 - rx; RY = N - 1 - y; } else if (v == 1) { RX = y; RY = N - 1 - rx; } else { RX = N - 1 - y; RY = rx; } ex = !G[z][RY][RX]; }
-          px(o, ox, sw, sx, sy, c, 0); px(o, ox, sw, sx, sy + 1, c, 0); px(o, ox, sw, sx + 1, sy, c, ex ? -1 : 0); px(o, ox, sw, sx + 1, sy + 1, c, ex ? -1 : 0);
+          { int side = (ex && (c >> 24) != 0xFE) ? -1 : 0; px(o, ox, sw, sx, sy, c, 0); px(o, ox, sw, sx, sy + 1, c, 0); px(o, ox, sw, sx + 1, sy, c, side); px(o, ox, sw, sx + 1, sy + 1, c, side); }
           { int tz = z + 1, empty; if (tz >= N) empty = 1; else empty = !G[tz][Y][X]; if (empty) { px(o, ox, sw, sx, sy - 1, c, 1); px(o, ox, sw, sx + 1, sy - 1, c, 1); } }
           (void)ry; }
     }
@@ -502,6 +510,18 @@ static int icons(const char *kind, int cols, const char *out) {
  *   cells.pdl:  SHEET | name | width px | height px      CELL | col | row | w tiles | h tiles | thing | model
  * Each CELL renders the model (front view, idle) at 48 px; a thing that is w x h tiles is enlarged by max(w, h) (nearest) and cropped to its cell box, centred across, bottom aligned.
  * Nothing is read from an RPG Maker file: the list and the positions are the only things taken from the original sheet. */
+/* Scale2x (EPX): enlarge by 2 and keep diagonals smooth instead of doubling every pixel into a block */
+static int same4(const unsigned char *a, const unsigned char *b) { return a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3]; }
+static void scale2x(const unsigned char *src, int S, unsigned char *dst) { /* src S x S RGBA, dst 2S x 2S */
+    int x, y;
+    for (y = 0; y < S; y++) for (x = 0; x < S; x++) {
+        const unsigned char *P = src + ((size_t)y * S + x) * 4, *A = y > 0 ? P - S * 4 : P, *D = y < S - 1 ? P + S * 4 : P, *C = x > 0 ? P - 4 : P, *B = x < S - 1 ? P + 4 : P;
+        const unsigned char *E0 = (same4(C, A) && !same4(C, D) && !same4(A, B)) ? A : P, *E1 = (same4(A, B) && !same4(A, C) && !same4(B, D)) ? B : P;
+        const unsigned char *E2 = (same4(D, C) && !same4(D, B) && !same4(C, A)) ? C : P, *E3 = (same4(B, D) && !same4(B, A) && !same4(D, C)) ? D : P;
+        memcpy(dst + ((size_t)(2 * y) * 2 * S + 2 * x) * 4, E0, 4); memcpy(dst + ((size_t)(2 * y) * 2 * S + 2 * x + 1) * 4, E1, 4);
+        memcpy(dst + ((size_t)(2 * y + 1) * 2 * S + 2 * x) * 4, E2, 4); memcpy(dst + ((size_t)(2 * y + 1) * 2 * S + 2 * x + 1) * 4, E3, 4);
+    }
+}
 static int objsheet(int argc, char **argv) {
     FILE *f; char line[400]; int sw = 0, sh = 0, cells = 0, rc = 0, i;
     unsigned char *sheet = NULL;
@@ -524,7 +544,8 @@ static int objsheet(int argc, char **argv) {
             if (col < 0 || row < 0 || w < 1 || h < 1 || n > 2 || (col + w) * 48 > sw || (row + h) * 48 > sh || !has_model(model)) { fprintf(stderr, "bad CELL %s (model %s, position or size)\n", thing, model); rc = 2; break; }
             memset(st, 0, sizeof st); if (render_row(st, 0, 192, model, "idle", &c)) { fprintf(stderr, "model %s has no voxels\n", model); rc = 2; break; }
             S = 48 * n; memset(big, 0, sizeof big);
-            for (y = 0; y < S; y++) for (x = 0; x < S; x++) memcpy(big + ((size_t)y * S + x) * 4, st + (((size_t)(y / n)) * 192 + (x / n)) * 4, 4);
+            if (n == 2) { static unsigned char one[48 * 48 * 4]; for (y = 0; y < 48; y++) memcpy(one + (size_t)y * 48 * 4, st + (size_t)y * 192 * 4, 48 * 4); scale2x(one, 48, big); }
+            else for (y = 0; y < S; y++) for (x = 0; x < S; x++) memcpy(big + ((size_t)y * S + x) * 4, st + (((size_t)(y / n)) * 192 + (x / n)) * 4, 4);
             ox = (S - 48 * w) / 2; oy = S - 48 * h;
             for (y = 0; y < 48 * h; y++) for (x = 0; x < 48 * w; x++) { const unsigned char *s = big + ((size_t)(oy + y) * S + ox + x) * 4; if (s[3]) memcpy(sheet + ((size_t)(row * 48 + y) * sw + col * 48 + x) * 4, s, 4); }
             cells++;
