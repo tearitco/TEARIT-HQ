@@ -12,3 +12,45 @@ PART | tower | base  | 8  | 8  | 0  | 8  | 8  | 16 | #8a8aa0
 PART | tower | cap   | 7  | 7  | 16 | 10 | 10 | 2 | #5a5a70
 PART | tower | spire | 10 | 10 | 18 | 4  | 4  | 5 | #c0286a
 PART | tower | door  | 10 | 7  | 0  | 4  | 1  | 5  | #3a2a1a
+# --- more buildings: massing with a roof, door and windows each; colours are DOC, themed buildings come from the world themes ---
+MODEL | shop | building
+PART | shop | walls | 2 | 6 | 0 | 20 | 12 | 8 | #c8a878
+PART | shop | awn   | 2 | 4 | 6 | 20 | 3 | 2 | #d03a3a
+PART | shop | roof  | 1 | 5 | 8 | 22 | 14 | 2 | #5a3a24
+PART | shop | door  | 10 | 5 | 0 | 4 | 1 | 6 | #3a2a1a
+PART | shop | win   | 4 | 5 | 2 | 5 | 1 | 3 | #7ad0ff
+PART | shop | sign  | 16 | 4 | 5 | 4 | 1 | 2 | #ffd24a
+MODEL | inn | building
+PART | inn | walls  | 3 | 6 | 0 | 18 | 12 | 11 | #b89868
+PART | inn | roof1  | 2 | 5 | 11 | 20 | 14 | 2 | #3a6a8a
+PART | inn | roof2  | 5 | 7 | 13 | 14 | 10 | 3 | #3a6a8a
+PART | inn | door   | 10 | 5 | 0 | 4 | 1 | 6 | #5a3a24
+PART | inn | win1   | 5 | 5 | 6 | 3 | 1 | 3 | #ffe066
+PART | inn | win2   | 16 | 5 | 6 | 3 | 1 | 3 | #ffe066
+MODEL | barn | building
+PART | barn | walls | 3 | 6 | 0 | 18 | 14 | 8 | #a03a2e
+PART | barn | roof1 | 2 | 5 | 8 | 20 | 16 | 2 | #5a5a66
+PART | barn | roof2 | 5 | 7 | 10 | 14 | 12 | 3 | #5a5a66
+PART | barn | door  | 8 | 5 | 0 | 8 | 1 | 7 | #f4ecd8
+MODEL | hut | building
+PART | hut | walls | 6 | 8 | 0 | 12 | 8 | 6 | #8a6a4a
+PART | hut | roof1 | 5 | 7 | 6 | 14 | 10 | 2 | #c8a050
+PART | hut | roof2 | 7 | 9 | 8 | 10 | 6 | 2 | #c8a050
+PART | hut | door  | 10 | 7 | 0 | 4 | 1 | 5 | #3a2a1a
+MODEL | gate | building
+PART | gate | pil1 | 2  | 9 | 0 | 5 | 5 | 14 | #8a8aa0
+PART | gate | pil2 | 17 | 9 | 0 | 5 | 5 | 14 | #8a8aa0
+PART | gate | arch | 2  | 9 | 14 | 20 | 5 | 3 | #6a6a80
+PART | gate | cap1 | 2  | 9 | 17 | 5 | 5 | 2 | #c0286a
+PART | gate | cap2 | 17 | 9 | 17 | 5 | 5 | 2 | #c0286a
+MODEL | temple | building
+PART | temple | base  | 2  | 5 | 0 | 20 | 14 | 2 | #d8d4c8
+PART | temple | hall  | 4  | 7 | 2 | 16 | 10 | 8 | #f0ecdc
+PART | temple | pedi  | 3  | 6 | 10 | 18 | 12 | 2 | #ffd24a
+PART | temple | top   | 7  | 8 | 12 | 10 | 8 | 3 | #ffd24a
+PART | temple | door  | 10 | 6 | 2 | 4 | 1 | 6 | #3a2a1a
+MODEL | ruin | building
+PART | ruin | wall1 | 4  | 8 | 0 | 8 | 2 | 8 | #8a8a8a
+PART | ruin | wall2 | 4  | 8 | 0 | 2 | 10 | 5 | #7a7a7a
+PART | ruin | wall3 | 14 | 12 | 0 | 6 | 2 | 4 | #8a8a8a
+PART | ruin | rubble | 10 | 10 | 0 | 4 | 3 | 2 | #6a6a6a

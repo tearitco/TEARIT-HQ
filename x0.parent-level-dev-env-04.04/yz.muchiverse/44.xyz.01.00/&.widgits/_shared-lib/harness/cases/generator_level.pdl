@@ -1,0 +1,21 @@
+# generator_level: a test level drawn from any asset root, so a replacement is judged in place (owner 2026-11-05: "start building the levels to test them"). A missing sheet is an error, never a silent fallback.
+RESULTS | ../results/generator_level.txt
+ENV | LC_ALL | C
+
+CASE    | yard
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cv.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | cast-sheets | $T/cv.pdl | $HOUSE/@.apps/generator-hq/events/gen_cast/slots.pdl | $T/x/slots
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | item | 8 | $T/x/items.png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl | building | 4 | $T/x/buildings.png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | level | $HOUSE/@.apps/generator-hq/events/gen_level/yard_rpgmaker.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/a.png
+EXPECT_OUT | LEVEL 576x384 draws=107 sheets=5 | the-original-yard
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | level | $HOUSE/@.apps/generator-hq/events/gen_level/yard_tearit.pdl | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good | $T/b.png | $T/x
+EXPECT_OUT | LEVEL 576x384 draws=113 sheets=7 | the-tearit-yard-from-good-and-the-voxel-output
+RUN | /usr/bin/cmp | -s | $T/a.png | $T/b.png
+EXPECT_EXIT | 1 | NEGATIVE-the-two-yards-are-different-pictures
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | level | $HOUSE/@.apps/generator-hq/events/gen_level/yard_tearit.pdl | $T/nothing | $T/c.png | $T/x
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-root-is-an-error-not-a-fallback
+WRITE | nolevel.pdl | FILL \p tilesets/Outside_A2.png \p 0 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | level | $T/nolevel.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/d.png
+EXPECT_EXIT | 2 | NEGATIVE-a-level-without-a-LEVEL-row-is-refused

@@ -14,3 +14,50 @@ MODEL | sword | item
 PART | sword | blade | 11 | 11 | 6  | 2 | 1 | 12 | #c9ced6
 PART | sword | guard | 8  | 11 | 5  | 8 | 1 | 1  | #ffd24a
 PART | sword | grip  | 11 | 11 | 1  | 2 | 1 | 4  | #5a3a24
+# --- more items: tools for block breaking, food, treasure, furniture ---
+MODEL | pickaxe | item
+PART | pickaxe | shaft | 11 | 11 | 0 | 2 | 1 | 14 | #8a5a3a
+PART | pickaxe | head  | 5  | 11 | 13 | 14 | 1 | 2 | #c9ced6
+PART | pickaxe | tipl  | 4  | 11 | 12 | 1 | 1 | 2 | #c9ced6
+PART | pickaxe | tipr  | 19 | 11 | 12 | 1 | 1 | 2 | #c9ced6
+MODEL | axe | item
+PART | axe | shaft | 11 | 11 | 0 | 2 | 1 | 14 | #8a5a3a
+PART | axe | blade | 13 | 11 | 9  | 5 | 1 | 5 | #c9ced6
+MODEL | coin | item
+PART | coin | disc | 9 | 11 | 8 | 6 | 1 | 6 | #ffd24a
+PART | coin | rim  | 10 | 11 | 9 | 4 | 1 | 4 | #ffe88a
+MODEL | heart | item
+PART | heart | lobel | 8  | 11 | 9  | 4 | 1 | 3 | #d62828
+PART | heart | lober | 12 | 11 | 9  | 4 | 1 | 3 | #d62828
+PART | heart | mid   | 8  | 11 | 7  | 8 | 1 | 2 | #d62828
+PART | heart | tip   | 10 | 11 | 5  | 4 | 1 | 2 | #d62828
+MODEL | torch | item
+PART | torch | stick | 11 | 11 | 0  | 2 | 2 | 9 | #5a3a24
+PART | torch | flame | 10 | 10 | 9  | 4 | 4 | 5 | #ff9a2a
+PART | torch | core  | 11 | 11 | 10 | 2 | 2 | 3 | #ffe066
+MODEL | chest | item
+PART | chest | box  | 6 | 8 | 0 | 12 | 8 | 6 | #8a5a3a
+PART | chest | lid  | 6 | 8 | 6 | 12 | 8 | 3 | #6a4228
+PART | chest | lock | 11 | 7 | 5 | 2 | 1 | 3 | #ffd24a
+MODEL | barrel | item
+PART | barrel | mid  | 8 | 9 | 0 | 8 | 6 | 10 | #8a5a3a
+PART | barrel | band1 | 8 | 9 | 2 | 8 | 6 | 1 | #5a5a66
+PART | barrel | band2 | 8 | 9 | 7 | 8 | 6 | 1 | #5a5a66
+MODEL | book | item
+PART | book | cover | 8 | 10 | 5 | 8 | 4 | 3 | #3a4a9a
+PART | book | pages | 9 | 10 | 5 | 7 | 4 | 3 | #f4ecd8
+PART | book | spine | 8 | 10 | 5 | 1 | 4 | 3 | #2a3a7a
+MODEL | shield | item
+PART | shield | body | 8 | 11 | 4 | 8 | 1 | 9 | #3a6aa0
+PART | shield | boss | 11 | 10 | 8 | 2 | 1 | 2 | #ffd24a
+MODEL | bread | item
+PART | bread | loaf | 7 | 9 | 0 | 10 | 6 | 4 | #c8924a
+PART | bread | top  | 8 | 10 | 4 | 8 | 4 | 2 | #a8722a
+MODEL | gem | item
+PART | gem | low  | 9 | 11 | 5 | 6 | 1 | 2 | #6ad0f0
+PART | gem | mid  | 8 | 11 | 7 | 8 | 1 | 3 | #8ae0ff
+PART | gem | top  | 10 | 11 | 10 | 4 | 1 | 2 | #c8f4ff
+MODEL | scroll | item
+PART | scroll | roll | 8 | 10 | 5 | 8 | 4 | 4 | #f4ecd8
+PART | scroll | endl | 7 | 10 | 5 | 1 | 4 | 4 | #8a5a3a
+PART | scroll | endr | 16 | 10 | 5 | 1 | 4 | 4 | #8a5a3a

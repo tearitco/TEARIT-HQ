@@ -7,9 +7,9 @@ SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/chars.pdl
 EXPECT_OUT | VOXELCHECK models=1 parts=8 poses=6 | characters-thread-parses
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl
-EXPECT_OUT | VOXELCHECK models=4 parts=11 poses=0 | items-thread-parses
+EXPECT_OUT | VOXELCHECK models=16 parts=45 poses=0 | items-thread-parses
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl
-EXPECT_OUT | VOXELCHECK models=2 parts=11 poses=0 | buildings-thread-parses
+EXPECT_OUT | VOXELCHECK models=9 parts=45 poses=0 | buildings-thread-parses
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl | cottage | idle | $T/c.png
 EXPECT_EXIT | 0 | cottage-renders
 EXPECT_OUT | VOXEL model=cottage pose=idle views=4 voxels=2986 | cottage-voxel-count
@@ -43,3 +43,28 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/b3.pd
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | nothing | idle | $T/n.png
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-model-is-refused
+
+# All three threads at scale: the whole cast as voxel models, RPG Maker walk sheets and slots, icon sheets for items and buildings.
+CASE    | threads-at-scale
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cv.pdl
+EXPECT_OUT | FROMCAST models=126 | every-cast-row-becomes-a-model
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/cv.pdl
+EXPECT_EXIT | 0 | the-generated-recipes-parse
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | walksheet | $T/cv.pdl | asa | $T/w.png
+EXPECT_OUT | VOXELWALK model=asa size=144x192 frames=12 | rpg-maker-walk-layout
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | walksheet | $T/cv.pdl | fang | $T/w2.png
+EXPECT_OUT | VOXELWALK model=fang size=144x192 | a-creature-walks-too
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | cast-sheets | $T/cv.pdl | $HOUSE/@.apps/generator-hq/events/gen_cast/slots.pdl | $T/s
+EXPECT_OUT | VOXELSLOTS sheets=10 | ten-slot-sheets
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-root | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/s
+EXPECT_OUT | VERIFYROOT files=20 same_name_and_size=20 problems=0 | voxel-sheets-match-the-rpg-maker-names-and-sizes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | item | 8 | $T/i.png
+EXPECT_OUT | VOXELICONS kind=item models=16 size=384x96 | sixteen-items
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl | building | 4 | $T/b.png
+EXPECT_OUT | VOXELICONS kind=building models=9 size=192x144 | nine-buildings
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | tree | 4 | $T/n.png
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-has-no-icons
+WRITE | bs.pdl | SLOT \p Actor1 \p ghost\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | cast-sheets | $T/cv.pdl | $T/bs.pdl | $T/bad
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-model-in-a-slot-is-refused

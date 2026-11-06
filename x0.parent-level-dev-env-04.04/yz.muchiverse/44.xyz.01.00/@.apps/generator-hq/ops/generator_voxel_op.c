@@ -12,9 +12,9 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
 #define N 24
-#define MAXP 256
-#define MAXO 256
-#define MAXM 64
+#define MAXP 6000
+#define MAXO 6000
+#define MAXM 400
 typedef struct { char model[40], id[40]; int x, y, z, w, d, h; unsigned r, g, b; } Part;
 typedef struct { char model[40], pose[40], part[40]; int dx, dy, dz; } Pose;
 typedef struct { char id[40], kind[16]; } Model;
@@ -125,9 +125,132 @@ static int render_row(unsigned char *o, int row, int sw, const char *model, cons
     return 0;
 }
 static int opaque(const unsigned char *o, int sw, int row, int n) { int c = 0, x, y; for (y = 0; y < 48; y++) for (x = 0; x < n; x++) if (o[((row * 48 + y) * sw + x) * 4 + 3]) c++; return c; }
+/* ---- characters from the cast file, walk sheets, RPG Maker slots, icons (D29 threads 1 to 3) ---- */
+static void col(char *out, const char *s) { snprintf(out, 16, "%s%.7s", *s == '#' ? "" : "#", s); }
+static void emit(FILE *o, const char *m, const char *id, int x, int y, int z, int w, int d, int h, const char *c) { char b[16]; col(b, c); fprintf(o, "PART | %s | %s | %d | %d | %d | %d | %d | %d | %s\n", m, id, x, y, z, w, d, h, b); }
+static void pose(FILE *o, const char *m, const char *p, const char *part, int dx, int dy, int dz) { fprintf(o, "POSE | %s | %s | %s | %d | %d | %d\n", m, p, part, dx, dy, dz); }
+static void human(FILE *o, const char *m, const char *skin, const char *style, const char *hair, const char *gar, const char *trim, int body, int mark) {
+    int bw = body == 0 ? 6 : body == 2 ? 10 : 8, tx = 12 - bw / 2; int masked = !strcmp(style, "masked"), clown = !strcmp(style, "clown");
+    fprintf(o, "MODEL | %s | char\n", m);
+    emit(o, m, "legl", tx + 1, 10, 0, 3, 3, 5, "#15161a"); emit(o, m, "legr", tx + bw - 4, 10, 0, 3, 3, 5, "#15161a");
+    emit(o, m, "torso", tx, 9, 5, bw, 5, 6, gar);
+    if (mark == 1) emit(o, m, "chain", 10, 8, 8, 4, 1, 1, trim);
+    emit(o, m, "head", 8, 9, 11, 8, 5, 6, masked ? hair : clown ? "#f4f0e8" : skin);
+    emit(o, m, "eyel", 10, 8, 14, 1, 1, 1, masked ? trim : "#15161a"); emit(o, m, "eyer", 13, 8, 14, 1, 1, 1, masked ? trim : "#15161a");
+    if (clown) { emit(o, m, "nose", 12, 8, 13, 1, 1, 1, "#d62828"); emit(o, m, "wigl", 7, 9, 12, 1, 5, 5, hair); emit(o, m, "wigr", 16, 9, 12, 1, 5, 5, hair); emit(o, m, "wigt", 8, 9, 17, 8, 5, 2, hair); }
+    else if (!strcmp(style, "short")) { emit(o, m, "hairt", 8, 9, 17, 8, 5, 1, hair); emit(o, m, "hairb", 8, 13, 12, 8, 1, 5, hair); }
+    else if (!strcmp(style, "long")) { emit(o, m, "hairt", 8, 9, 17, 8, 5, 1, hair); emit(o, m, "hairb", 7, 13, 6, 10, 2, 11, hair); emit(o, m, "hairl", 7, 9, 12, 1, 4, 5, hair); emit(o, m, "hairr", 16, 9, 12, 1, 4, 5, hair); }
+    else if (!strcmp(style, "mohawk")) emit(o, m, "hairt", 11, 9, 17, 2, 5, 3, hair);
+    emit(o, m, "armr", tx + bw, 10, 7, 2, 3, 4, gar); emit(o, m, "handr", tx + bw, 10, 6, 2, 3, 1, skin);
+    emit(o, m, "arml", tx - 2, 10, 7, 2, 3, 4, gar); emit(o, m, "handl", tx - 2, 10, 6, 2, 3, 1, skin);
+    pose(o, m, "attack", "armr", -1, -6, 2); pose(o, m, "attack", "handr", -1, -6, 2);
+    pose(o, m, "mine", "armr", -2, -5, 3); pose(o, m, "mine", "handr", -2, -5, 3); pose(o, m, "mine", "arml", 2, -5, 3); pose(o, m, "mine", "handl", 2, -5, 3);
+    pose(o, m, "w1", "legl", 0, -2, 1); pose(o, m, "w1", "legr", 0, 2, 0); pose(o, m, "w1", "armr", 0, 2, 0); pose(o, m, "w1", "handr", 0, 2, 0); pose(o, m, "w1", "arml", 0, -2, 0); pose(o, m, "w1", "handl", 0, -2, 0);
+    pose(o, m, "w2", "legr", 0, -2, 1); pose(o, m, "w2", "legl", 0, 2, 0); pose(o, m, "w2", "arml", 0, 2, 0); pose(o, m, "w2", "handl", 0, 2, 0); pose(o, m, "w2", "armr", 0, -2, 0); pose(o, m, "w2", "handr", 0, -2, 0);
+}
+static void creature(FILE *o, const char *m, const char *kind, const char *body, const char *belly, const char *ear, const char *glow) {
+    fprintf(o, "MODEL | %s | char\n", m);
+    if (!strcmp(kind, "quad")) {
+        emit(o, m, "legl", 8, 9, 0, 2, 2, 4, ear); emit(o, m, "legr", 14, 9, 0, 2, 2, 4, ear); emit(o, m, "legl2", 8, 14, 0, 2, 2, 4, ear); emit(o, m, "legr2", 14, 14, 0, 2, 2, 4, ear);
+        emit(o, m, "body", 7, 8, 4, 10, 8, 5, body); emit(o, m, "belly", 8, 8, 4, 8, 1, 2, belly); emit(o, m, "head", 9, 5, 6, 6, 4, 5, body);
+        emit(o, m, "earl", 9, 6, 11, 2, 2, 2, ear); emit(o, m, "earr", 13, 6, 11, 2, 2, 2, ear); emit(o, m, "eyel", 10, 4, 9, 1, 1, 1, glow); emit(o, m, "eyer", 13, 4, 9, 1, 1, 1, glow);
+        pose(o, m, "w1", "legl", 0, -1, 1); pose(o, m, "w1", "legr2", 0, 1, 1); pose(o, m, "w2", "legr", 0, -1, 1); pose(o, m, "w2", "legl2", 0, 1, 1);
+    } else if (!strcmp(kind, "blob")) {
+        emit(o, m, "base", 7, 8, 0, 10, 8, 2, body); emit(o, m, "mid", 8, 9, 2, 8, 6, 3, body); emit(o, m, "top", 9, 10, 5, 6, 4, 2, belly);
+        emit(o, m, "eyel", 10, 8, 3, 1, 1, 1, glow); emit(o, m, "eyer", 13, 8, 3, 1, 1, 1, glow);
+        pose(o, m, "w1", "top", 0, 0, 1); pose(o, m, "w2", "base", 0, 0, 0); pose(o, m, "w2", "mid", 0, 0, -1);
+    } else if (!strcmp(kind, "winged")) {
+        emit(o, m, "body", 9, 9, 6, 6, 5, 7, body); emit(o, m, "belly", 10, 8, 7, 4, 1, 4, belly); emit(o, m, "head", 9, 9, 13, 6, 5, 4, body);
+        emit(o, m, "wingl", 3, 10, 8, 6, 1, 4, ear); emit(o, m, "wingr", 15, 10, 8, 6, 1, 4, ear); emit(o, m, "eyel", 10, 8, 15, 1, 1, 1, glow); emit(o, m, "eyer", 13, 8, 15, 1, 1, 1, glow);
+        pose(o, m, "w1", "wingl", 0, 0, 3); pose(o, m, "w1", "wingr", 0, 0, 3); pose(o, m, "w2", "wingl", 0, 0, -2); pose(o, m, "w2", "wingr", 0, 0, -2);
+    } else if (!strcmp(kind, "plant")) {
+        emit(o, m, "stem", 11, 11, 0, 2, 2, 8, ear); emit(o, m, "leafl", 7, 11, 1, 4, 2, 1, ear); emit(o, m, "leafr", 15, 11, 1, 4, 2, 1, ear);
+        emit(o, m, "bulb", 8, 8, 8, 8, 8, 4, body); emit(o, m, "jaws", 8, 8, 12, 8, 8, 2, belly); emit(o, m, "eyel", 10, 7, 11, 1, 1, 1, glow); emit(o, m, "eyer", 13, 7, 11, 1, 1, 1, glow);
+        pose(o, m, "w1", "jaws", 0, 0, 2); pose(o, m, "w2", "jaws", 0, 0, 4);
+    } else {
+        emit(o, m, "dome", 6, 8, 8, 12, 8, 4, body); emit(o, m, "top", 8, 9, 12, 8, 6, 2, belly); emit(o, m, "eyel", 9, 7, 10, 1, 1, 1, glow); emit(o, m, "eyer", 14, 7, 10, 1, 1, 1, glow);
+        emit(o, m, "t1", 7, 10, 0, 1, 1, 8, ear); emit(o, m, "t2", 10, 12, 0, 1, 1, 8, ear); emit(o, m, "t3", 13, 10, 0, 1, 1, 8, ear); emit(o, m, "t4", 16, 12, 0, 1, 1, 8, ear);
+        pose(o, m, "w1", "t1", 1, 0, 0); pose(o, m, "w1", "t3", -1, 0, 0); pose(o, m, "w2", "t2", 1, 0, 0); pose(o, m, "w2", "t4", -1, 0, 0);
+    }
+}
+static unsigned hash32(unsigned x) { x ^= x << 13; x ^= x >> 17; x ^= x << 5; x *= 2654435761u; x ^= x >> 15; return x; }
+static int fromcast(const char *castf, const char *outf) {
+    FILE *f = fopen(castf, "r"), *o; char line[600]; int made = 0;
+    static const char *skins[5] = { "#e6bfa0", "#d6a47c", "#c08a60", "#8a5a3a", "#5a3a24" }, *hairs[6] = { "#1a1410", "#4a3020", "#8a5a30", "#c8a050", "#5a5a66", "#c04a8a" }, *gars[8] = { "#8a4a2e", "#2a4a7a", "#3a6a3a", "#6a3a7a", "#7a7a86", "#a08a3a", "#2a2a3a", "#a03a3a" }, *sty[3] = { "short", "long", "mohawk" };
+    if (!f) { fprintf(stderr, "cannot open %s\n", castf); return 2; }
+    o = fopen(outf, "w"); if (!o) { fclose(f); return 2; }
+    fprintf(o, "# GENERATED by generator_voxel_op fromcast from %s. Do not edit: edit the cast file. Echo (mark 2) is not drawn (voxels have no alpha); masked, clown and the kinds are.\n", castf);
+    while (fgets(line, sizeof line, f)) {
+        char *p = line, *k, id[40], skin[16], style[16], hair[16], gar[16], trim[16], kind[16], pre[40]; int body, mark;
+        if (line[0] == '#' || line[0] == '\n') continue;
+        k = fld(&p);
+        if (!strcmp(k, "CAST")) {
+            snprintf(id, sizeof id, "%s", fld(&p)); snprintf(skin, sizeof skin, "%s", fld(&p)); snprintf(style, sizeof style, "%s", fld(&p)); snprintf(hair, sizeof hair, "%s", fld(&p));
+            snprintf(gar, sizeof gar, "%s", fld(&p)); snprintf(trim, sizeof trim, "%s", fld(&p)); body = atoi(fld(&p)); mark = atoi(fld(&p)); snprintf(kind, sizeof kind, "%s", fld(&p));
+            if (!id[0] || !skin[0]) { fprintf(stderr, "bad CAST row\n"); fclose(f); fclose(o); return 2; }
+            if (kind[0] && strcmp(kind, "humanoid")) creature(o, id, kind, skin, hair, gar, trim); else human(o, id, skin, style, hair, gar, trim, body, mark);
+            made++;
+        } else if (!strcmp(k, "GENERIC")) {
+            int n, i; unsigned seed; snprintf(pre, sizeof pre, "%s", fld(&p)); n = atoi(fld(&p)); seed = (unsigned)atoi(fld(&p));
+            for (i = 0; i < n; i++) { unsigned h = hash32(seed + (unsigned)i * 7919u + 1); char nm[64]; snprintf(nm, sizeof nm, "%s_%02d", pre, i);
+                human(o, nm, skins[h % 5], sty[(h >> 4) % 3], hairs[(h >> 8) % 6], gars[(h >> 12) % 8], "#ffd24a", (int)((h >> 16) % 3), 0); made++; }
+        }
+    }
+    fclose(f); fclose(o); printf("FROMCAST models=%d\n", made); return 0;
+}
+static void cellcopy(unsigned char *dst, int dw, int dx, int dy, const unsigned char *strip, int v, int mirror) {
+    int x, y;
+    for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) memcpy(dst + ((dy + y) * dw + dx + x) * 4, strip + (y * 192 + v * 48 + (mirror ? 47 - x : x)) * 4, 4);
+}
+static int walk_into(unsigned char *dst, int dw, int ox, int oy, const char *model, unsigned char *face) {
+    static unsigned char st[3][192 * 48 * 4]; const char *pn[3] = { "w1", "idle", "w2" }; int i, c, rc = 0;
+    for (i = 0; i < 3; i++) { memset(st[i], 0, sizeof st[i]); rc = render_row(st[i], 0, 192, model, pn[i], &c); if (rc) return rc; }
+    for (i = 0; i < 3; i++) { cellcopy(dst, dw, ox + i * 48, oy, st[i], 0, 0); cellcopy(dst, dw, ox + i * 48, oy + 48, st[i], 1, 0); cellcopy(dst, dw, ox + i * 48, oy + 96, st[i], 1, 1); cellcopy(dst, dw, ox + i * 48, oy + 144, st[i], 3, 0); }
+    if (face) { int x, y; memset(face, 0, 144 * 144 * 4);
+        for (y = 0; y < 144; y++) for (x = 0; x < 128; x++) memcpy(face + (y * 144 + 8 + x) * 4, st[1] + ((y / 4) * 192 + 8 + x / 4) * 4, 4); }
+    return 0;
+}
+static int cast_sheets(const char *slotf, const char *outroot) {
+    FILE *f = fopen(slotf, "r"); char line[900]; int rows = 0, rc = 0;
+    unsigned char *cs = malloc((size_t)576 * 384 * 4), *fs = malloc((size_t)576 * 288 * 4), *face = malloc(144 * 144 * 4);
+    if (!f || !cs || !fs || !face) { fprintf(stderr, "no slots file\n"); return 2; }
+    while (fgets(line, sizeof line, f)) {
+        char *p, *name, *ids, *tok, dir[900], path[1000]; int j = 0, y;
+        if (strncmp(line, "SLOT |", 6) != 0) continue;
+        p = line + 6; name = fld(&p); ids = fld(&p);
+        memset(cs, 0, (size_t)576 * 384 * 4); memset(fs, 0, (size_t)576 * 288 * 4);
+        for (tok = strtok(ids, ","); tok; tok = strtok(NULL, ",")) {
+            if (!has_model(tok) || j >= 8) { fprintf(stderr, "SLOT %s: unknown model or more than 8: %s\n", name, tok); rc = 2; break; }
+            if (walk_into(cs, 576, (j % 4) * 144, (j / 4) * 192, tok, face)) { fprintf(stderr, "model %s has no voxels\n", tok); rc = 2; break; }
+            for (y = 0; y < 144; y++) memcpy(fs + (((j / 4) * 144 + y) * 576 + (j % 4) * 144) * 4, face + y * 144 * 4, 144 * 4);
+            j++;
+        }
+        if (rc) break;
+        snprintf(dir, sizeof dir, "%.600s/characters", outroot); { char cmd[1000]; snprintf(cmd, sizeof cmd, "mkdir -p '%s'", dir); if (system(cmd)) { rc = 2; break; } }
+        snprintf(path, sizeof path, "%.600s/%.40s.png", dir, name); if (!stbi_write_png(path, 576, 384, 4, cs, 576 * 4)) { rc = 2; break; }
+        snprintf(dir, sizeof dir, "%.600s/faces", outroot); { char cmd[1000]; snprintf(cmd, sizeof cmd, "mkdir -p '%s'", dir); if (system(cmd)) { rc = 2; break; } }
+        snprintf(path, sizeof path, "%.600s/%.40s.png", dir, name); if (!stbi_write_png(path, 576, 288, 4, fs, 576 * 4)) { rc = 2; break; }
+        rows++;
+    }
+    fclose(f); free(cs); free(fs); free(face);
+    if (!rc && !rows) { fprintf(stderr, "no SLOT rows\n"); rc = 2; }
+    if (!rc) printf("VOXELSLOTS sheets=%d\n", rows);
+    return rc;
+}
+static int icons(const char *kind, int cols, const char *out) {
+    int i, n = 0, rows; unsigned char *o;
+    for (i = 0; i < nm; i++) if (!strcmp(M[i].kind, kind)) n++;
+    if (!n || cols < 1) { fprintf(stderr, "no models of kind %s\n", kind); return 2; }
+    rows = (n + cols - 1) / cols; o = calloc((size_t)cols * 48 * rows * 48 * 4, 1); if (!o) return 2;
+    n = 0;
+    for (i = 0; i < nm; i++) { static unsigned char st[192 * 48 * 4]; int c; if (strcmp(M[i].kind, kind)) continue; memset(st, 0, sizeof st); if (render_row(st, 0, 192, M[i].id, "idle", &c)) continue; cellcopy(o, cols * 48, (n % cols) * 48, (n / cols) * 48, st, 0, 0); n++; }
+    if (!stbi_write_png(out, cols * 48, rows * 48, 4, o, cols * 48 * 4)) { free(o); return 2; }
+    printf("VOXELICONS kind=%s models=%d size=%dx%d\n", kind, n, cols * 48, rows * 48); free(o); return 0;
+}
 int main(int argc, char **argv) {
     int rc;
-    if (argc < 3) { fprintf(stderr, "usage: render <recipes> <model> <pose> <out.png> | sheet <recipes> <model> <out.png> | check <recipes>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
+    if (!strcmp(argv[1], "fromcast") && argc == 4) return fromcast(argv[2], argv[3]);
     rc = read_rows(argv[2]); if (rc) return rc;
     rc = check_refs(); if (rc) return rc;
     if (!strcmp(argv[1], "check") && argc == 3) { printf("VOXELCHECK models=%d parts=%d poses=%d\n", nm, np, no); return 0; }
@@ -148,5 +271,8 @@ int main(int argc, char **argv) {
         if (!stbi_write_png(argv[4], 192, 48 * k, 4, o, 192 * 4)) { free(o); return 2; }
         printf("VOXELSHEET model=%s poses=%d size=192x%d\n", argv[3], k, 48 * k); free(o); return 0;
     }
+    if (!strcmp(argv[1], "walksheet") && argc == 5) { static unsigned char w[144 * 192 * 4]; if (!has_model(argv[3])) { fprintf(stderr, "unknown model %s\n", argv[3]); return 2; } memset(w, 0, sizeof w); if (walk_into(w, 144, 0, 0, argv[3], NULL)) return 3; if (!stbi_write_png(argv[4], 144, 192, 4, w, 144 * 4)) return 2; printf("VOXELWALK model=%s size=144x192 frames=12\n", argv[3]); return 0; }
+    if (!strcmp(argv[1], "cast-sheets") && argc == 5) return cast_sheets(argv[3], argv[4]);
+    if (!strcmp(argv[1], "icons") && argc == 6) return icons(argv[3], atoi(argv[4]), argv[5]);
     fprintf(stderr, "bad arguments\n"); return 2;
 }
