@@ -1,0 +1,10 @@
+# palette-studio templates (D33 step 3): the sheet types the studio can open. Read by palette_studio_op.
+#   TEMPLATE | id | kind objects|ground | label | knobs (comma list) | file1 | file2 ...   (paths are house relative; root: = repository root)
+#   objects: <cells.pdl> <recipes.pdl>...      (generator_voxel_op objsheet; knobs are deltas on the Concept Bank prop_* weights)
+#   ground:  <ground.pdl> <original sheet.png> (generator_ground_op; only the original transparency is read; knobs are deltas on the ground_* weights)
+# A new sheet type is a row here plus its data files, no code.
+TEMPLATE | outside_b    | objects | Outside B: props, signs, walls, windows | warm,worn,round,big,metal | @.apps/generator-hq/events/gen_objects/outside_b.pdl | @.apps/generator-hq/events/gen_voxel/props.pdl
+TEMPLATE | outside_a2 | ground  | Outside A2: ground autotile blocks | warm,wet,wear,grain,edge | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png
+TEMPLATE | world_a2 | ground  | World A2: ground autotile blocks | warm,wet,wear,grain,edge | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/World_A2.png
+TEMPLATE | inside_a2 | ground  | Inside A2: ground autotile blocks | warm,wet,wear,grain,edge | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Inside_A2.png
+TEMPLATE | dungeon_a2 | ground  | Dungeon A2: ground autotile blocks | warm,wet,wear,grain,edge | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Dungeon_A2.png

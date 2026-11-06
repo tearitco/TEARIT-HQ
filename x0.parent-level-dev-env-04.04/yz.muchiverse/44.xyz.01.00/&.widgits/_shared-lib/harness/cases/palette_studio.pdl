@@ -1,0 +1,42 @@
+# palette_studio: one front door for the generators: templates, knobs, selection, save as sheet or crop with a reproducing record, replay that proves the bytes (D33 step 3, 2026-11-05).
+RESULTS | ../results/palette_studio.txt
+ENV | LC_ALL | C
+
+CASE    | studio
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | templates | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl
+EXPECT_OUT | TEMPLATES count=5 | five-templates-listed
+EXPECT_OUT | TEMPLATE outside_b kind=objects | the-object-sheet-is-a-template
+EXPECT_OUT | TEMPLATE dungeon_a2 kind=ground | a-ground-sheet-is-a-template
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ob.png
+RUN | /usr/bin/sha256sum | $T/ob.png
+EXPECT_OUT | 137a6f3ce273bb7ffdd1a49ef6d1bd55c5211f4d74b671bc396400784d6d2089 | no-knobs-reproduces-the-pinned-object-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/oa.png
+RUN | /usr/bin/sha256sum | $T/oa.png
+EXPECT_OUT | e035291e2c218d5b9254a61d1a9cbd41fee955cd9d2daf9f4e096d506f05e8eb | no-knobs-reproduces-the-pinned-ground-sheet
+MKDIR | out
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/out | signs_worn | crop | knob=worn:0.7 | crop=1,0,7,1
+EXPECT_OUT | STUDIO saved signs_worn mode=crop bytes=5259 sha256=80ea1ae1a161c135174c5c66c89e715d00c3a4da373e994f6ab6e3e17435ad24 | save-crop-records-the-hash
+RUN | /usr/bin/sha256sum | $T/out/signs_worn.png
+EXPECT_OUT | 80ea1ae1a161c135174c5c66c89e715d00c3a4da373e994f6ab6e3e17435ad24 | the-recorded-hash-is-the-real-sha256-of-the-file
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/out/signs_worn.studio.pdl | $T/replayed.png
+EXPECT_OUT | REPLAY ok | replay-reproduces-the-saved-crop
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/out | ground_wet | sheet | knob=wet:0.8 | select=0,0,4,1
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/out/ground_wet.studio.pdl | $T/replayed2.png
+EXPECT_OUT | REPLAY ok | replay-reproduces-a-saved-ground-sheet-with-a-selection
+WRITE | bad.studio.pdl | TEMPLATES \p @.apps/generator-hq/events/gen_studio/templates.pdl\nTEMPLATE \p outside_b\nMODE \p crop\nOPT \p knob=worn:0.7\nOPT \p crop=1,0,7,1\nRESULT \p bytes=5259 \p sha256=0000000000000000000000000000000000000000000000000000000000000000\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/bad.studio.pdl | $T/bad.png
+EXPECT_EXIT | 1 | NEGATIVE-a-record-with-the-wrong-hash-fails-the-replay
+WRITE | good.studio.pdl | TEMPLATES \p @.apps/generator-hq/events/gen_studio/templates.pdl\nTEMPLATE \p outside_b\nMODE \p crop\nOPT \p knob=worn:0.7\nOPT \p crop=1,0,7,1\nRESULT \p bytes=5259 \p sha256=80ea1ae1a161c135174c5c66c89e715d00c3a4da373e994f6ab6e3e17435ad24\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/good.studio.pdl | $T/good.png
+EXPECT_OUT | REPLAY ok | a-hand-written-record-with-the-right-hash-replays
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/out | x | crop | knob=worn:0.7
+EXPECT_EXIT | 2 | NEGATIVE-crop-mode-without-a-crop-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/out | x | sheet | crop=1,0,7,1
+EXPECT_EXIT | 2 | NEGATIVE-sheet-mode-with-a-crop-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | nope | $T/x.png
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-template-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | knob=wet:1
+EXPECT_EXIT | 2 | NEGATIVE-a-ground-knob-on-an-object-sheet-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | volume=11
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-option-is-refused

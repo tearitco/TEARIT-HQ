@@ -51,3 +51,6 @@ The first version of this doc named the generators only in passing (section 4) a
 
 ## 8. Progress after section 7 (2026-11-05, ground)
 Priority 1 (Outside ground) has its generator: `generator_ground_op` (decision log D33 step 2): recipes and knobs in the Concept Bank, all four A2 sheets generate with identical transparency and gate correlation 0.11 to 0.24. **Still open for priority 1:** A1 water, A3 roofs, A4 walls, A5 floors; a real-level test; the visible 24-px repeat; per-block recipes instead of the old style map. Then priority 0 (map-use scan) to decide which blocks matter most.
+
+## 9. Palette-studio status (2026-11-05)
+Built: headless front door `palette_studio_op` (templates, render, save as sheet or crop with a reproducing record, replay with a sha256 check) over the object generator and the ground generator; knobs and selection work on both. Not built: the window (D33 step 4), character/face/icon templates, ground A1/A3/A4/A5 sheets. A new generator should be added as a template row so the studio picks it up.

@@ -73,3 +73,6 @@ Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3
 
 ## 16. Update: ground generator with knobs (handoff priority 1, first half)
 `generator_ground_op ground events/gen_ground/ground.pdl <rmmv-www-img>/tilesets/Outside_A2.png <out.png> bank=<house>/&.widgits/concept-bank knob=wet:0.8 select=0,0,4,1`. Edit weights in `&.widgits/concept-bank/data/spokes/ground_<recipe>.pdl` (warm, wet, wear, grain, edge). All four A2 sheets generate into `interim/ground/tilesets/` (local, gitignored). Suite `generator_ground.pal` 17/0. Not yet: test in a real level, `good/` approval, A1 water, A3 roofs, A4 walls, A5 floors, a 24-px repeat that is visible on big fields.
+
+## 17. Update: palette-studio front door (test drive it)
+`palette_studio_op templates <house>/@.apps/generator-hq/events/gen_studio/templates.pdl` lists the five templates. `render <templates> outside_a2 out.png knob=wet:0.8 select=0,0,4,1`, `save <templates> outside_b <dir> signs_worn crop knob=worn:0.7 crop=1,0,7,1` (writes the png and a `.studio.pdl` record), `replay <dir>/signs_worn.studio.pdl out.png` (REPLAY ok or mismatch). Suite `palette_studio.pal` 16/0. The window is not built yet.
