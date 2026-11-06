@@ -23,7 +23,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/wait.h>
-#include <dirent.h>
 #define MAXC 40
 static char KEY[MAXC][64], LAB[MAXC][96]; static int nc, SIDE[MAXC];
 static void trim(char *s) { size_t n = strlen(s); while (n && (s[n-1]==' '||s[n-1]=='\n'||s[n-1]=='\r'||s[n-1]=='\t')) s[--n]=0; char *p=s; while (*p==' '||*p=='\t') p++; if (p!=s) memmove(s,p,strlen(p)+1); }
@@ -293,40 +292,26 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
-        /* Harness tab: pals whose name starts with the open book. Another book does not see these. A row selects; it does not run. */
-        char book[64] = "";
+        /* One harness for the open page: <book>_<page>.pal. Page test shows centroid_test.pal and nothing else. A row selects; it does not run. */
+        char book[64] = "", page[64] = "";
         char ui[4200]; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
         FILE *uf = fopen(ui, "r");
         if (uf) {
             char uln[256];
             while (fgets(uln, sizeof uln, uf)) {
-                if (!strncmp(uln, "book_label=book:", 16)) {
-                    snprintf(book, sizeof book, "%s", uln + 16);
-                    trim(book);
-                    break;
-                }
+                if (!strncmp(uln, "book_label=book:", 16)) { snprintf(book, sizeof book, "%s", uln + 16); trim(book); }
+                else if (!strncmp(uln, "page_label=page:", 16)) { snprintf(page, sizeof page, "%s", uln + 16); trim(page); }
             }
             fclose(uf);
         }
         int hn = 0;
-        if (book[0]) {
-            char hd[4200]; snprintf(hd, sizeof hd, "%s/&.widgits/_shared-lib/harness", house);
-            DIR *dir = opendir(hd);
-            if (dir) {
-                char prefix[80]; snprintf(prefix, sizeof prefix, "%s_", book);
-                size_t pl = strlen(prefix);
-                struct dirent *de;
-                while ((de = readdir(dir)) && hn < 24) {
-                    size_t nl = strlen(de->d_name);
-                    if (nl < pl + 4 || strncmp(de->d_name, prefix, pl)) continue;
-                    if (strcmp(de->d_name + nl - 4, ".pal")) continue;
-                    fprintf(o, "tbhar_%d_label=%s\n", hn, de->d_name);
-                    hn++;
-                }
-                closedir(dir);
-            }
+        if (book[0] && page[0]) {
+            char want[160], full[4200];
+            snprintf(want, sizeof want, "%s_%s.pal", book, page);
+            snprintf(full, sizeof full, "%s/&.widgits/_shared-lib/harness/%s", house, want);
+            if (access(full, R_OK) == 0) { fprintf(o, "tbhar_0_label=%s\n", want); hn = 1; }
         }
-        fprintf(o, "n_tbhar=%d\nbook_for_harness=%s\n", hn, book);
+        fprintf(o, "n_tbhar=%d\nbook_for_harness=%s\npage_for_harness=%s\n", hn, book, page);
     }
     char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");
