@@ -1,0 +1,23 @@
+# CHAR rows: a seed plus optional knobs (D30 step 2). Anything left out is filled from the seed, so a seed is a repeatable character; a STYLE is a preset (a patch) like a synth patch.
+# STYLE | name | knob=value ...        knobs: hair_style (short long mohawk masked clown none), skin hair gar trim (#rrggbb), build 0..2, legs 3..7, head 0..2, mark 0|1
+# CHAR  | id | seed | knob=value ...   strength: knobs written here, then preset=<name>, then the seed.
+STYLE | chunky  | build=2 legs=4 head=2
+STYLE | slender | build=0 legs=7 head=0
+STYLE | heroic  | build=1 legs=6 head=1 mark=1
+STYLE | grim    | build=2 legs=5 head=0 hair_style=none gar=#2a2a3a trim=#a03a3a
+CHAR | try_c1 | 101 | preset=chunky
+CHAR | try_c2 | 102 | preset=chunky
+CHAR | try_c3 | 103 | preset=chunky hair_style=mohawk
+CHAR | try_s1 | 201 | preset=slender
+CHAR | try_s2 | 202 | preset=slender
+CHAR | try_s3 | 203 | preset=slender gar=#3a6ea5
+CHAR | try_h1 | 301 | preset=heroic
+CHAR | try_h2 | 302 | preset=heroic
+CHAR | try_g1 | 401 | preset=grim
+CHAR | try_g2 | 402 | preset=grim
+CHAR | try_r1 | 1
+CHAR | try_r2 | 2
+CHAR | try_r3 | 3
+CHAR | try_r4 | 4
+CHAR | try_r5 | 5
+CHAR | try_r6 | 6

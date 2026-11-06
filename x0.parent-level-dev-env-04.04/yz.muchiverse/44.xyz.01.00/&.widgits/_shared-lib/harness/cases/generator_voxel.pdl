@@ -87,7 +87,7 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1
 RUN | /usr/bin/cmp | -s | $T/o1.pdl | $T/o2.pdl
 EXPECT_EXIT | 1 | NEGATIVE-editing-one-data-row-changes-the-output
 RUN | /usr/bin/grep | -c | #ff0000 | $T/o1.pdl
-EXPECT_OUT | 1 | the-edited-colour-is-what-the-model-got
+EXPECT_OUT_IS | 1 | the-edited-colour-is-what-the-model-got
 WRITE | pw.pdl | PS \p humanoid \p torso \p tx \p 9 \p 5 \p width \p 5 \p 6 \p #ff0000\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o3.pdl | $T/pw.pdl
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-variable-in-an-expression-is-refused
@@ -99,3 +99,55 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1
 EXPECT_EXIT | 2 | NEGATIVE-a-file-without-PS-rows-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o6.pdl | $T/nothing.pdl
 EXPECT_EXIT | 2 | NEGATIVE-a-missing-partsets-file-is-refused
+
+# D30 step 2: a seed plus optional knobs, STYLE presets. Strength: knobs on the row, then preset, then the seed. Same seed and knobs = same bytes.
+CASE    | seed-and-knobs
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $HOUSE/@.apps/generator-hq/events/gen_voxel/characters.pdl | $T/a.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=16 presets=4 | sixteen-characters-four-presets
+RUN | /usr/bin/sha256sum | $T/a.pdl
+EXPECT_OUT | a991a8f702e391255a02ed99ce1733739cf8ad2fcec65ee297546f05a2942f3f | pinned-output-of-the-sample-characters-file
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $HOUSE/@.apps/generator-hq/events/gen_voxel/characters.pdl | $T/b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+RUN | /usr/bin/cmp | -s | $T/a.pdl | $T/b.pdl
+EXPECT_EXIT | 0 | same-seeds-same-bytes
+RUN | /usr/bin/grep | -c | try_c1 ..torso ..7 ..9 ..4 ..10 ..5 ..6 | $T/a.pdl
+EXPECT_OUT_IS | 1 | the-chunky-preset-gives-a-wide-torso-and-short-legs
+RUN | /usr/bin/grep | -c | try_s1 ..torso ..9 ..9 ..7 ..6 ..5 ..6 | $T/a.pdl
+EXPECT_OUT_IS | 1 | the-slender-preset-gives-a-narrow-torso-and-long-legs
+WRITE | s1.pdl | CHAR \p x \p 1\n
+WRITE | s2.pdl | CHAR \p x \p 2\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/s1.pdl | $T/o1.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/s2.pdl | $T/o2.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+RUN | /usr/bin/cmp | -s | $T/o1.pdl | $T/o2.pdl
+EXPECT_EXIT | 1 | NEGATIVE-two-different-seeds-give-two-different-characters
+WRITE | k1.pdl | STYLE \p chunky \p build=2 legs=4 head=2\nCHAR \p o \p 5 \p preset=chunky build=0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/k1.pdl | $T/o3.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+RUN | /usr/bin/grep | -c | PART ..o ..torso ..9 ..9 ..4 ..6 ..5 ..6 | $T/o3.pdl
+EXPECT_OUT_IS | 1 | a-knob-on-the-row-beats-the-preset
+WRITE | k2.pdl | CHAR \p k \p 7 \p skin=#112233\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/k2.pdl | $T/o4.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+RUN | /usr/bin/grep | -c | #112233 | $T/o4.pdl
+EXPECT_OUT_IS | 3 | an-explicit-skin-beats-the-seed-head-and-both-hands
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/a.pdl | try_c1 | idle | $T/r.png
+EXPECT_OUT | VOXEL model=try_c1 pose=idle views=4 | a-seeded-model-renders
+WRITE | e1.pdl | CHAR \p x \p 1 \p wings=2\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e1.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-knob-is-refused
+WRITE | e2.pdl | CHAR \p x \p 1 \p preset=nope\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e2.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-preset-is-refused
+WRITE | e3.pdl | CHAR \p x \p 1 \p skin=red\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e3.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-colour-that-is-not-rrggbb-is-refused
+WRITE | e4.pdl | CHAR \p x \p 1 \p legs=9\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e4.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-legs-out-of-range-is-refused
+WRITE | e5.pdl | CHAR \p x \p notanumber\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e5.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-seed-that-is-not-a-number-is-refused
+WRITE | e6.pdl | STYLE \p a \p build=1\nSTYLE \p b \p preset=a\nCHAR \p x \p 1 \p preset=b\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e6.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-preset-inside-a-preset-is-refused
+WRITE | e7.pdl | STYLE \p a \p build=1\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e7.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-file-without-CHAR-rows-is-refused

@@ -129,9 +129,10 @@ static int opaque(const unsigned char *o, int sw, int row, int n) { int c = 0, x
 static void col(char *out, const char *s) { snprintf(out, 16, "%s%.7s", *s == '#' ? "" : "#", s); }
 static void emit(FILE *o, const char *m, const char *id, int x, int y, int z, int w, int d, int h, const char *c) { char b[16]; col(b, c); fprintf(o, "PART | %s | %s | %d | %d | %d | %d | %d | %d | %s\n", m, id, x, y, z, w, d, h, b); }
 static void pose(FILE *o, const char *m, const char *p, const char *part, int dx, int dy, int dz) { fprintf(o, "POSE | %s | %s | %s | %d | %d | %d\n", m, p, part, dx, dy, dz); }
-/* ---- PARTSET reader (D30 step 1): the humanoid body is data in events/gen_voxel/partsets.pdl ---- */
+/* ---- PARTSET reader (D30): the humanoid body is data in events/gen_voxel/partsets.pdl; Look carries the knobs ---- */
 typedef struct { char set[40], id[40], ex[6][40], colour[24], when[120]; } PsRow;
 typedef struct { char set[40], pose[40], part[40]; int dx, dy, dz; } PpRow;
+typedef struct { char skin[16], style[16], hair[16], gar[16], trim[16]; int bw, lh, hw, mark; } Look;
 static PsRow PS[600]; static int nps;
 static PpRow PP[600]; static int npp;
 static int load_partsets(const char *path) {
@@ -162,16 +163,18 @@ static int load_partsets(const char *path) {
     return nps ? 0 : (fprintf(stderr, "no PS rows in %s\n", path), 2);
 }
 #define EV_BAD (-99999)
-static int ev(const char *s, int tx, int bw) { /* integers and the variables tx and bw joined by + and - */
-    int sum = 0, sign = 1;
+static int ev(const char *s, const Look *L) { /* integers and the variables tx bw lh hx hw joined by + and - */
+    int sum = 0, sign = 1, tx = 12 - L->bw / 2, hx = 12 - L->hw / 2;
     while (*s) {
+        int v;
         if (*s == ' ') { s++; continue; }
         if (*s == '+') { sign = 1; s++; continue; }
         if (*s == '-') { sign = -1; s++; continue; }
-        if (!strncmp(s, "tx", 2)) { sum += sign * tx; s += 2; sign = 1; }
-        else if (!strncmp(s, "bw", 2)) { sum += sign * bw; s += 2; sign = 1; }
-        else if (*s >= '0' && *s <= '9') { int v = 0; while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0'); sum += sign * v; sign = 1; }
+        if (!strncmp(s, "tx", 2)) v = tx; else if (!strncmp(s, "bw", 2)) v = L->bw; else if (!strncmp(s, "lh", 2)) v = L->lh;
+        else if (!strncmp(s, "hx", 2)) v = hx; else if (!strncmp(s, "hw", 2)) v = L->hw;
+        else if (*s >= '0' && *s <= '9') { v = 0; while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0'); sum += sign * v; sign = 1; continue; }
         else return EV_BAD;
+        sum += sign * v; sign = 1; s += 2;
     }
     return sum;
 }
@@ -187,18 +190,22 @@ static int when_ok(const char *when, const char *style, int mark, int *bad) { /*
     }
     return 1;
 }
-static const char *colour_of(const char *c, const char *skin, const char *hair, const char *gar, const char *trim) {
-    return !strcmp(c, "$skin") ? skin : !strcmp(c, "$hair") ? hair : !strcmp(c, "$gar") ? gar : !strcmp(c, "$trim") ? trim : c;
+static const char *colour_of(const char *c, const Look *L) {
+    return !strcmp(c, "$skin") ? L->skin : !strcmp(c, "$hair") ? L->hair : !strcmp(c, "$gar") ? L->gar : !strcmp(c, "$trim") ? L->trim : c;
 }
-static int human(FILE *o, const char *m, const char *skin, const char *style, const char *hair, const char *gar, const char *trim, int body, int mark) {
-    int bw = body == 0 ? 6 : body == 2 ? 10 : 8, tx = 12 - bw / 2, i, bad = 0;
+static void lookof(Look *L, const char *skin, const char *style, const char *hair, const char *gar, const char *trim, int body, int mark) {
+    snprintf(L->skin, 16, "%s", skin); snprintf(L->style, 16, "%s", style); snprintf(L->hair, 16, "%s", hair); snprintf(L->gar, 16, "%s", gar); snprintf(L->trim, 16, "%s", trim);
+    L->bw = body == 0 ? 6 : body == 2 ? 10 : 8; L->lh = 5; L->hw = 8; L->mark = mark;
+}
+static int human(FILE *o, const char *m, const Look *L) {
+    int i, bad = 0;
     fprintf(o, "MODEL | %s | char\n", m);
     for (i = 0; i < nps; i++) {
         PsRow *q = &PS[i]; int v[6], j;
         if (strcmp(q->set, "humanoid")) continue;
-        if (q->when[0] && !when_ok(q->when, style, mark, &bad)) { if (bad) { fprintf(stderr, "bad condition in PS %s: %s\n", q->id, q->when); return 2; } continue; }
-        for (j = 0; j < 6; j++) { v[j] = ev(q->ex[j], tx, bw); if (v[j] == EV_BAD) { fprintf(stderr, "bad expression in PS %s: %s\n", q->id, q->ex[j]); return 2; } }
-        emit(o, m, q->id, v[0], v[1], v[2], v[3], v[4], v[5], colour_of(q->colour, skin, hair, gar, trim));
+        if (q->when[0] && !when_ok(q->when, L->style, L->mark, &bad)) { if (bad) { fprintf(stderr, "bad condition in PS %s: %s\n", q->id, q->when); return 2; } continue; }
+        for (j = 0; j < 6; j++) { v[j] = ev(q->ex[j], L); if (v[j] == EV_BAD) { fprintf(stderr, "bad expression in PS %s: %s\n", q->id, q->ex[j]); return 2; } }
+        emit(o, m, q->id, v[0], v[1], v[2], v[3], v[4], v[5], colour_of(q->colour, L));
     }
     for (i = 0; i < npp; i++) if (!strcmp(PP[i].set, "humanoid")) pose(o, m, PP[i].pose, PP[i].part, PP[i].dx, PP[i].dy, PP[i].dz);
     return 0;
@@ -244,15 +251,91 @@ static int fromcast(const char *castf, const char *outf, const char *psf) {
             snprintf(id, sizeof id, "%s", fld(&p)); snprintf(skin, sizeof skin, "%s", fld(&p)); snprintf(style, sizeof style, "%s", fld(&p)); snprintf(hair, sizeof hair, "%s", fld(&p));
             snprintf(gar, sizeof gar, "%s", fld(&p)); snprintf(trim, sizeof trim, "%s", fld(&p)); body = atoi(fld(&p)); mark = atoi(fld(&p)); snprintf(kind, sizeof kind, "%s", fld(&p));
             if (!id[0] || !skin[0]) { fprintf(stderr, "bad CAST row\n"); fclose(f); fclose(o); return 2; }
-            if (kind[0] && strcmp(kind, "humanoid")) creature(o, id, kind, skin, hair, gar, trim); else if (human(o, id, skin, style, hair, gar, trim, body, mark)) { fclose(f); fclose(o); return 2; }
+            if (kind[0] && strcmp(kind, "humanoid")) creature(o, id, kind, skin, hair, gar, trim); else { Look L; lookof(&L, skin, style, hair, gar, trim, body, mark); if (human(o, id, &L)) { fclose(f); fclose(o); return 2; } }
             made++;
         } else if (!strcmp(k, "GENERIC")) {
             int n, i; unsigned seed; snprintf(pre, sizeof pre, "%s", fld(&p)); n = atoi(fld(&p)); seed = (unsigned)atoi(fld(&p));
             for (i = 0; i < n; i++) { unsigned h = hash32(seed + (unsigned)i * 7919u + 1); char nm[64]; snprintf(nm, sizeof nm, "%s_%02d", pre, i);
-                if (human(o, nm, skins[h % 5], sty[(h >> 4) % 3], hairs[(h >> 8) % 6], gars[(h >> 12) % 8], "#ffd24a", (int)((h >> 16) % 3), 0)) { fclose(f); fclose(o); return 2; } made++; }
+                { Look L; lookof(&L, skins[h % 5], sty[(h >> 4) % 3], hairs[(h >> 8) % 6], gars[(h >> 12) % 8], "#ffd24a", (int)((h >> 16) % 3), 0); if (human(o, nm, &L)) { fclose(f); fclose(o); return 2; } } made++; }
         }
     }
     fclose(f); fclose(o); printf("FROMCAST models=%d\n", made); return 0;
+}
+/* ---- fromchars (D30 step 2): CHAR rows with a seed and optional knobs, STYLE presets ----
+ *   STYLE | name | knob=value knob=value ...        a preset (a patch)
+ *   CHAR  | id | seed | knob=value ...               knobs, in order of strength: explicit here, then preset=<STYLE name>, then filled from the seed
+ * knobs: preset hair_style(short long mohawk masked clown none) skin hair gar trim (#rrggbb) build(0..2) legs(3..7) head(0..2) mark(0|1)
+ * The same seed and knobs always give the same character: every unset knob comes from hash32(seed, knob number). */
+typedef struct { char name[40], kv[300]; } StyleRow;
+static StyleRow STY[64]; static int nsty;
+enum { K_SKIN, K_HAIR, K_HSTYLE, K_GAR, K_BUILD, K_LEGS, K_HEAD, K_TRIM, K_MARK, K_N };
+static int valid_colour(const char *c) { int i; if (c[0] != '#' || strlen(c) != 7) return 0; for (i = 1; i < 7; i++) if (hexv(c[i]) < 0) return 0; return 1; }
+static int num_in(const char *s, int lo, int hi, int *out) { char *e; long v = strtol(s, &e, 10); if (*s == 0 || *e || v < lo || v > hi) return 0; *out = (int)v; return 1; }
+/* applies "k=v k=v" to the knob slots that are still unset; returns 2 on a bad token */
+static int apply_kv(const char *kv, char *vals[K_N], char store[K_N][16], int set[K_N], char *preset, int presetok) {
+    char b[300], *t, *sv = NULL;
+    snprintf(b, sizeof b, "%s", kv);
+    for (t = strtok_r(b, " ", &sv); t; t = strtok_r(NULL, " ", &sv)) {
+        char *eq = strchr(t, '='), *k, *v; int slot = -1, n;
+        if (!eq) { fprintf(stderr, "bad knob (need key=value): %s\n", t); return 2; }
+        *eq = 0; k = t; v = eq + 1;
+        if (!strcmp(k, "preset")) { if (!presetok) { fprintf(stderr, "preset inside a preset is not allowed\n"); return 2; } if (!preset[0]) snprintf(preset, 40, "%s", v); continue; }
+        if (!strcmp(k, "skin")) slot = K_SKIN; else if (!strcmp(k, "hair")) slot = K_HAIR; else if (!strcmp(k, "gar")) slot = K_GAR; else if (!strcmp(k, "trim")) slot = K_TRIM;
+        else if (!strcmp(k, "hair_style")) slot = K_HSTYLE; else if (!strcmp(k, "build")) slot = K_BUILD; else if (!strcmp(k, "legs")) slot = K_LEGS; else if (!strcmp(k, "head")) slot = K_HEAD; else if (!strcmp(k, "mark")) slot = K_MARK;
+        else { fprintf(stderr, "unknown knob: %s\n", k); return 2; }
+        if (slot == K_SKIN || slot == K_HAIR || slot == K_GAR || slot == K_TRIM) { if (!valid_colour(v)) { fprintf(stderr, "knob %s needs #rrggbb, got %s\n", k, v); return 2; } }
+        else if (slot == K_HSTYLE) { if (strcmp(v, "short") && strcmp(v, "long") && strcmp(v, "mohawk") && strcmp(v, "masked") && strcmp(v, "clown") && strcmp(v, "none")) { fprintf(stderr, "unknown hair_style: %s\n", v); return 2; } }
+        else { int lo = 0, hi = 2; if (slot == K_LEGS) { lo = 3; hi = 7; } if (slot == K_MARK) hi = 1; if (!num_in(v, lo, hi, &n)) { fprintf(stderr, "knob %s must be %d..%d, got %s\n", k, lo, hi, v); return 2; } }
+        if (!set[slot]) { snprintf(store[slot], 16, "%s", v); vals[slot] = store[slot]; set[slot] = 1; }
+    }
+    return 0;
+}
+static unsigned kh(unsigned seed, int k) { return hash32(seed * 2654435761u + (unsigned)k * 977u + 13u); }
+static int fromchars(const char *charf, const char *outf, const char *psf) {
+    FILE *f = fopen(charf, "r"), *o; char line[900]; int made = 0, i;
+    static const char *skins[5] = { "#e6bfa0", "#d6a47c", "#c08a60", "#8a5a3a", "#5a3a24" }, *hairs[6] = { "#1a1410", "#4a3020", "#8a5a30", "#c8a050", "#5a5a66", "#c04a8a" }, *gars[8] = { "#8a4a2e", "#2a4a7a", "#3a6a3a", "#6a3a7a", "#7a7a86", "#a08a3a", "#2a2a3a", "#a03a3a" }, *hst[4] = { "short", "long", "mohawk", "none" };
+    if (!f) { fprintf(stderr, "cannot open %s\n", charf); return 2; }
+    if (load_partsets(psf)) { fclose(f); return 2; }
+    o = fopen(outf, "w"); if (!o) { fclose(f); return 2; }
+    fprintf(o, "# GENERATED by generator_voxel_op fromchars from the characters file and partsets.pdl. Do not edit: edit those.\n");
+    while (fgets(line, sizeof line, f)) { /* pass 1: presets */
+        char *p = line, *k;
+        if (line[0] == '#' || line[0] == '\n') continue;
+        k = fld(&p);
+        if (!strcmp(k, "STYLE")) { if (nsty >= 64) { fprintf(stderr, "too many STYLE rows\n"); fclose(f); fclose(o); return 2; } snprintf(STY[nsty].name, 40, "%s", fld(&p)); snprintf(STY[nsty].kv, 300, "%s", fld(&p)); nsty++; }
+    }
+    rewind(f);
+    while (fgets(line, sizeof line, f)) {
+        char *p = line, *k, id[40], *vals[K_N] = { 0 }, store[K_N][16], preset[40] = "", kvs[300]; int set[K_N] = { 0 }, seed;
+        Look L;
+        if (line[0] == '#' || line[0] == '\n') continue;
+        k = fld(&p);
+        if (strcmp(k, "CHAR")) continue;
+        snprintf(id, sizeof id, "%s", fld(&p));
+        { char *sd = fld(&p); if (!id[0] || !num_in(sd, 0, 2000000000, &seed)) { fprintf(stderr, "bad CHAR row (id | seed | knobs): %s\n", line); fclose(f); fclose(o); return 2; } }
+        snprintf(kvs, sizeof kvs, "%s", fld(&p));
+        if (apply_kv(kvs, vals, store, set, preset, 1)) { fclose(f); fclose(o); return 2; }
+        if (preset[0]) {
+            int found = 0;
+            for (i = 0; i < nsty; i++) if (!strcmp(STY[i].name, preset)) { found = 1; if (apply_kv(STY[i].kv, vals, store, set, preset, 0)) { fclose(f); fclose(o); return 2; } }
+            if (!found) { fprintf(stderr, "unknown preset: %s\n", preset); fclose(f); fclose(o); return 2; }
+        }
+        for (i = 0; i < K_N; i++) if (!set[i]) { /* the seed fills what is left */
+            unsigned h = kh((unsigned)seed, i);
+            switch (i) {
+            case K_SKIN: snprintf(store[i], 16, "%s", skins[h % 5]); break; case K_HAIR: snprintf(store[i], 16, "%s", hairs[h % 6]); break;
+            case K_HSTYLE: snprintf(store[i], 16, "%s", hst[h % 4]); break; case K_GAR: snprintf(store[i], 16, "%s", gars[h % 8]); break;
+            case K_BUILD: snprintf(store[i], 16, "%u", h % 3); break; case K_LEGS: snprintf(store[i], 16, "%u", 3 + h % 5); break;
+            case K_HEAD: snprintf(store[i], 16, "%u", h % 3); break; case K_TRIM: snprintf(store[i], 16, "#ffd24a"); break; default: snprintf(store[i], 16, "0"); break;
+            }
+            vals[i] = store[i];
+        }
+        lookof(&L, vals[K_SKIN], vals[K_HSTYLE], vals[K_HAIR], vals[K_GAR], vals[K_TRIM], atoi(vals[K_BUILD]), atoi(vals[K_MARK]));
+        L.lh = atoi(vals[K_LEGS]); L.hw = 6 + 2 * atoi(vals[K_HEAD]);
+        if (human(o, id, &L)) { fclose(f); fclose(o); return 2; }
+        made++;
+    }
+    fclose(f); fclose(o); printf("FROMCHARS models=%d presets=%d\n", made, nsty); return made ? 0 : (fprintf(stderr, "no CHAR rows\n"), 2);
 }
 static void cellcopy(unsigned char *dst, int dw, int dx, int dy, const unsigned char *strip, int v, int mirror) {
     int x, y;
@@ -305,8 +388,9 @@ static int icons(const char *kind, int cols, const char *out) {
 }
 int main(int argc, char **argv) {
     int rc;
-    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
+    if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);
     rc = read_rows(argv[2]); if (rc) return rc;
     rc = check_refs(); if (rc) return rc;
     if (!strcmp(argv[1], "check") && argc == 3) { printf("VOXELCHECK models=%d parts=%d poses=%d\n", nm, np, no); return 0; }

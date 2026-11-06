@@ -67,7 +67,7 @@ EXPECT_EXIT | 1 | NEGATIVE-two-worlds-do-not-look-alike
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/v.png
 EXPECT_EXIT | 0 | the-themed-sheet-keeps-the-original-alpha
 RUN | /usr/bin/grep | -c | ^BLOCK | $T/blocks-venus.pdl
-EXPECT_OUT | 128 | the-block-map-covers-four-sheets-of-32
+EXPECT_OUT_IS | 128 | the-block-map-covers-four-sheets-of-32
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-venus.pdl | $T/rvenus | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
 EXPECT_EXIT | 0 | venus-ramp-parses
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-metalsun.pdl | $T/rmetalsun | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
@@ -134,6 +134,6 @@ EXPECT_OUT | b6c7b8151a4b4cf960f07626cadb1736bff8b4eb3ba54a1d015eea99e606a7fb | 
 CASE    | seamless-floors
 SCRATCH |
 RUN | /usr/bin/grep | -c | _A5.png ..0 ..14$ | $HOUSE/@.apps/generator-hq/events/gen_restyle/sheets.pdl
-EXPECT_OUT | 3 | the-three-a5-floor-sheets-use-14-levels-and-no-outline
+EXPECT_OUT_IS | 3 | the-three-a5-floor-sheets-use-14-levels-and-no-outline
 RUN | /usr/bin/grep | -c | Inside_A5.png ..1$ | $HOUSE/@.apps/generator-hq/events/gen_restyle/sheets.pdl
-EXPECT_OUT | 0 | NEGATIVE-no-a5-sheet-is-left-on-the-6-level-default-with-outline
+EXPECT_OUT_IS | 0 | NEGATIVE-no-a5-sheet-is-left-on-the-6-level-default-with-outline
