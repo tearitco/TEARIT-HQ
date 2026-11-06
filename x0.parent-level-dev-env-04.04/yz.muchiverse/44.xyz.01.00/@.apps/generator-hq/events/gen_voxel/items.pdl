@@ -1,0 +1,16 @@
+# THREAD 2: items as voxel part recipes (D29). Replaces the recolour pass for objects, whose shapes stayed RPG Maker's.
+MODEL | potion | item
+PART | potion | flask | 9  | 9  | 0  | 6 | 6 | 7  | #3a7ad0
+PART | potion | neck  | 11 | 11 | 7  | 2 | 2 | 3  | #cfe8ff
+PART | potion | cork  | 11 | 11 | 10 | 2 | 2 | 1  | #8a5a3a
+MODEL | key | item
+PART | key | bow   | 9  | 11 | 7  | 4 | 1 | 4 | #ffd24a
+PART | key | shaft | 11 | 11 | 1  | 1 | 1 | 6 | #ffd24a
+PART | key | teeth | 12 | 11 | 1  | 2 | 1 | 2 | #ffd24a
+MODEL | crate | item
+PART | crate | box   | 6  | 8  | 0  | 12 | 8 | 10 | #8a5a3a
+PART | crate | band  | 6  | 8  | 4  | 12 | 8 | 2  | #5a3a24
+MODEL | sword | item
+PART | sword | blade | 11 | 11 | 6  | 2 | 1 | 12 | #c9ced6
+PART | sword | guard | 8  | 11 | 5  | 8 | 1 | 1  | #ffd24a
+PART | sword | grip  | 11 | 11 | 1  | 2 | 1 | 4  | #5a3a24

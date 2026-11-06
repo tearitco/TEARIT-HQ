@@ -203,3 +203,4 @@ The IRC window version (the same peers started by `irc-chat-hq`, one scratch hou
 
 ### BOOKCE row (2026-10-21)
 `BOOKCE | <trigger>` compiles the scratch house's common events with `bp_book_op` and runs the book program for that trigger on the caller `<app>/ce_caller`: the whole-book twin of `PLAYCE`. Table `common_events` p5 compares the two.
+| `generator_voxel.pal` (`cases/generator_voxel.pdl`, `@.apps/generator-hq/ops/generator_voxel_op.c`, recipes `events/gen_voxel/{chars,items,buildings}.pdl`) | 14 | D29 voxel part recipes: the three threads (characters with poses, items, buildings) parse and render; same recipe same bytes; the attack pose changes the picture (negative); a part outside the 24 grid, a pose naming a missing part, an unknown kind and an unknown model are refused |

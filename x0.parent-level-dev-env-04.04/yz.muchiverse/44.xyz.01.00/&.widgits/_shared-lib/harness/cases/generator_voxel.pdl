@@ -1,0 +1,45 @@
+# generator_voxel: voxel part recipes for characters, items and buildings (D29, owner 2026-11-05). Three threads, one op: events/gen_voxel/{chars,items,buildings}.pdl.
+RESULTS | ../results/generator_voxel.txt
+ENV | LC_ALL | C
+
+CASE    | threads
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/chars.pdl
+EXPECT_OUT | VOXELCHECK models=1 parts=8 poses=6 | characters-thread-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl
+EXPECT_OUT | VOXELCHECK models=4 parts=11 poses=0 | items-thread-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl
+EXPECT_OUT | VOXELCHECK models=2 parts=11 poses=0 | buildings-thread-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl | cottage | idle | $T/c.png
+EXPECT_EXIT | 0 | cottage-renders
+EXPECT_OUT | VOXEL model=cottage pose=idle views=4 voxels=2986 | cottage-voxel-count
+EXPECT_FILE | c.png | cottage-strip-written
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | sword | idle | $T/s.png
+EXPECT_OUT | VOXEL model=sword pose=idle views=4 voxels=40 | sword-voxel-count
+
+CASE    | poses
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/chars.pdl | asa_vox | idle | $T/i1.png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/chars.pdl | asa_vox | idle | $T/i2.png
+RUN | /usr/bin/cmp | -s | $T/i1.png | $T/i2.png
+EXPECT_EXIT | 0 | the-same-recipe-gives-the-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/chars.pdl | asa_vox | attack | $T/a.png
+EXPECT_EXIT | 0 | attack-renders
+RUN | /usr/bin/cmp | -s | $T/i1.png | $T/a.png
+EXPECT_EXIT | 1 | NEGATIVE-the-attack-pose-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | sheet | $HOUSE/@.apps/generator-hq/events/gen_voxel/chars.pdl | asa_vox | $T/sheet.png
+EXPECT_OUT | VOXELSHEET model=asa_vox poses=4 size=192x192 | idle-plus-three-poses
+
+CASE    | bad-rows
+SCRATCH |
+WRITE | b1.pdl | MODEL \p m \p item\nPART \p m \p p \p 20 \p 0 \p 0 \p 10 \p 1 \p 1 \p #ffffff\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/b1.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-part-outside-the-24-grid-is-refused
+WRITE | b2.pdl | MODEL \p m \p item\nPART \p m \p p \p 0 \p 0 \p 0 \p 1 \p 1 \p 1 \p #ffffff\nPOSE \p m \p hit \p ghost \p 1 \p 0 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/b2.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-pose-naming-a-missing-part-is-refused
+WRITE | b3.pdl | MODEL \p m \p tree\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/b3.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | nothing | idle | $T/n.png
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-model-is-refused

@@ -1,0 +1,18 @@
+# THREAD 1: characters and monsters as voxel part recipes (D29). Owner: more nuance for animations and POV (attacking, block breaking).
+# Grid 24 x 24 x 24, x right, y depth (0 = front), z up. A POSE row moves one named part for that pose.
+# Looks here are DOC placeholders drawn to prove the format; real characters come from cast.pdl colours and the lore rows.
+MODEL | asa_vox | char
+PART | asa_vox | legl  | 9  | 10 | 0  | 3 | 3 | 5 | #15161a
+PART | asa_vox | legr  | 12 | 10 | 0  | 3 | 3 | 5 | #15161a
+PART | asa_vox | torso | 8  | 9  | 5  | 8 | 5 | 6 | #15161a
+PART | asa_vox | chain | 10 | 8  | 8  | 4 | 1 | 1 | #ffd24a
+PART | asa_vox | head  | 8  | 9  | 11 | 8 | 5 | 6 | #8a5a3a
+PART | asa_vox | mohawk| 11 | 9  | 17 | 2 | 5 | 3 | #c0392b
+PART | asa_vox | armr  | 16 | 10 | 6  | 2 | 3 | 5 | #8a5a3a
+PART | asa_vox | arml  | 6  | 10 | 6  | 2 | 3 | 5 | #8a5a3a
+POSE | asa_vox | attack | armr | -1 | -6 | 2
+POSE | asa_vox | attack | torso | 0 | -1 | 0
+POSE | asa_vox | mine   | armr | -2 | -5 | 3
+POSE | asa_vox | mine   | arml | 2  | -5 | 3
+POSE | asa_vox | walk   | legl | 0  | -2 | 0
+POSE | asa_vox | walk   | legr | 0  | 2  | 1
