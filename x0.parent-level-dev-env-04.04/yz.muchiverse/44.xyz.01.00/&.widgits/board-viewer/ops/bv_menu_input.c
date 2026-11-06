@@ -902,6 +902,37 @@ static int handle_one_key(int key) {
     /* backslash (92) - 2D style toggle between the book's own painted frame ("scene": view.pdl scene_raw, rpg-pet draws its own picture) and the engine's tiles. Always lands in 2D. A book with no
      * scene file shows tiles either way. */
     if (key == 92) {
+        /* centroid: backslash swaps the desk atlas between the RPG Maker sheet (cells-rmmv.rgba) and the generated sheet (cells-gen.rgba). The camera is not written. Other books keep the handlers below. */
+        {
+            char wp[PATH_BUF], wb[2048] = "", mid[64] = "", did[64] = "";
+            snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focused_project_root);
+            FILE *wf = fopen(wp, "r");
+            if (wf) { size_t wn = fread(wb, 1, sizeof(wb) - 1, wf); wb[wn] = 0; fclose(wf); }
+            for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) {
+                if (!strncmp(l, "map_id=", 7)) snprintf(mid, sizeof(mid), "%s", l + 7);
+                else if (!strncmp(l, "desk_id=", 8)) snprintf(did, sizeof(did), "%s", l + 8);
+            }
+            if (!strcmp(mid, "centroid") && did[0]) {
+                char dir[PATH_BUF], skinp[PATH_BUF], cur[16] = "rmmv", next[16], src[PATH_BUF], dst[PATH_BUF], mark[PATH_BUF];
+                snprintf(dir, sizeof(dir), "%s/pieces/system/maps/centroid/%s", focused_project_root, did);
+                snprintf(skinp, sizeof(skinp), "%s/skin.txt", dir);
+                FILE *sf = fopen(skinp, "r");
+                if (sf) { if (!fgets(cur, sizeof cur, sf)) cur[0] = 0; fclose(sf); cur[strcspn(cur, "\r\n")] = 0; }
+                snprintf(next, sizeof(next), "%s", strcmp(cur, "gen") == 0 ? "rmmv" : "gen");
+                snprintf(src, sizeof(src), "%s/cells-%s.rgba", dir, next);
+                snprintf(dst, sizeof(dst), "%s/cells.rgba", dir);
+                if (strcmp(next, "gen") == 0 && access(src, R_OK) != 0) snprintf(next, sizeof(next), "rmmv");
+                snprintf(src, sizeof(src), "%s/cells-%s.rgba", dir, next);
+                FILE *in = fopen(src, "rb"); FILE *out = in ? fopen(dst, "wb") : NULL;
+                if (in && out) { char buf[8192]; size_t n; while ((n = fread(buf, 1, sizeof buf, in)) > 0) fwrite(buf, 1, n, out); }
+                if (in) fclose(in); if (out) fclose(out);
+                snprintf(mark, sizeof(mark), "%s/cells.marker", dir);
+                FILE *mf = fopen(mark, "ab"); if (mf) { fputc('x', mf); fclose(mf); }
+                sf = fopen(skinp, "w"); if (sf) { fprintf(sf, "%s\n", next); fclose(sf); }
+                bump_screen_changed(project_root);
+                return 0;
+            }
+        }
         /* gta-hq: backslash cycles brixel -> rmmv -> cdda and stays on the painted scene. Other books keep the scene/tiles flip. The daemon reads "92" from its interact relay. */
         if (strstr(focused_project_root, "/gta-hq/")) {
             char relay[PATH_BUF];
