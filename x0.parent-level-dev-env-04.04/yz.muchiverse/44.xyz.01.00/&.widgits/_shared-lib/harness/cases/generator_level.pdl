@@ -4,7 +4,7 @@ ENV | LC_ALL | C
 
 CASE    | yard
 SCRATCH |
-RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cv.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cv.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | cast-sheets | $T/cv.pdl | $HOUSE/@.apps/generator-hq/events/gen_cast/slots.pdl | $T/x/slots
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/items.pdl | item | 8 | $T/x/items.png
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/buildings.pdl | building | 4 | $T/x/buildings.png

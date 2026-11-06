@@ -47,7 +47,7 @@ EXPECT_EXIT | 2 | NEGATIVE-an-unknown-model-is-refused
 # All three threads at scale: the whole cast as voxel models, RPG Maker walk sheets and slots, icon sheets for items and buildings.
 CASE    | threads-at-scale
 SCRATCH |
-RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cv.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cv.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
 EXPECT_OUT | FROMCAST models=126 | every-cast-row-becomes-a-model
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/cv.pdl
 EXPECT_EXIT | 0 | the-generated-recipes-parse
@@ -68,3 +68,34 @@ EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-has-no-icons
 WRITE | bs.pdl | SLOT \p Actor1 \p ghost\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | cast-sheets | $T/cv.pdl | $T/bs.pdl | $T/bad
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-model-in-a-slot-is-refused
+
+# D30 step 1: the humanoid body is data (events/gen_voxel/partsets.pdl). The generated recipes must stay byte-identical to the pre-refactor C output.
+CASE    | partsets
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/a.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCAST models=126 | all-126-models
+RUN | /usr/bin/sha256sum | $T/a.pdl
+EXPECT_OUT | 978f2188c8c228d33812090ddfc8920cf87d4d8c8c332b97525029129cd72ce8 | identical-to-the-output-of-the-old-C-shapes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+RUN | /usr/bin/cmp | -s | $T/a.pdl | $T/b.pdl
+EXPECT_EXIT | 0 | same-data-same-bytes
+WRITE | c1.pdl | CAST \p t \p #8a5a3a \p short \p #4a3020 \p #3a6ea5 \p #ffd24a \p 1 \p 0\n
+WRITE | p1.pdl | PS \p humanoid \p torso \p tx \p 9 \p 5 \p bw \p 5 \p 6 \p #ff0000\n
+WRITE | p2.pdl | PS \p humanoid \p torso \p tx \p 9 \p 5 \p bw \p 5 \p 6 \p #00ff00\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o1.pdl | $T/p1.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o2.pdl | $T/p2.pdl
+RUN | /usr/bin/cmp | -s | $T/o1.pdl | $T/o2.pdl
+EXPECT_EXIT | 1 | NEGATIVE-editing-one-data-row-changes-the-output
+RUN | /usr/bin/grep | -c | #ff0000 | $T/o1.pdl
+EXPECT_OUT | 1 | the-edited-colour-is-what-the-model-got
+WRITE | pw.pdl | PS \p humanoid \p torso \p tx \p 9 \p 5 \p width \p 5 \p 6 \p #ff0000\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o3.pdl | $T/pw.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-variable-in-an-expression-is-refused
+WRITE | pc.pdl | PS \p humanoid \p torso \p tx \p 9 \p 5 \p bw \p 5 \p 6 \p #ff0000 \p mark>1\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o4.pdl | $T/pc.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-condition-is-refused
+WRITE | pe.pdl | # no rows here\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o5.pdl | $T/pe.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-file-without-PS-rows-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $T/c1.pdl | $T/o6.pdl | $T/nothing.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-partsets-file-is-refused

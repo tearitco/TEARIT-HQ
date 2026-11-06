@@ -1,0 +1,50 @@
+# PARTSET: the humanoid body as DATA (D30 step 1, 2026-11-05). Before this, the same shapes were written in C (human() in generator_voxel_op.c); the output is pinned byte-identical by the harness.
+# PS | set | part | x | y | z | w | d | h | colour | when      (a solid box in the 24 grid; x right, y depth (0 = front), z up)
+# PP | set | pose | part | dx | dy | dz                       (moves one named part for that pose)
+# x y z w d h are integers or sums of integers and the variables  tx (left edge of the torso) and bw (torso width: 6, 8 or 10 by the cast body 0, 1, 2).
+# colour is #rrggbb or one of $skin $hair $gar $trim (the cast row's skin, hair, garment, trim).
+# when is optional, comma separated, all must hold:  mark=1   style=X   style!=X   (styles: short long mohawk masked clown none). Rows are emitted in file order: a later part draws over an earlier one.
+PS | humanoid | legl  | tx+1    | 10 | 0  | 3  | 3 | 5 | #15161a
+PS | humanoid | legr  | tx+bw-4 | 10 | 0  | 3  | 3 | 5 | #15161a
+PS | humanoid | torso | tx      | 9  | 5  | bw | 5 | 6 | $gar
+PS | humanoid | chain | 10      | 8  | 8  | 4  | 1 | 1 | $trim | mark=1
+PS | humanoid | head  | 8       | 9  | 11 | 8  | 5 | 6 | $hair | style=masked
+PS | humanoid | head  | 8       | 9  | 11 | 8  | 5 | 6 | #f4f0e8 | style=clown
+PS | humanoid | head  | 8       | 9  | 11 | 8  | 5 | 6 | $skin | style!=masked,style!=clown
+PS | humanoid | eyel  | 10      | 8  | 14 | 1  | 1 | 1 | $trim | style=masked
+PS | humanoid | eyel  | 10      | 8  | 14 | 1  | 1 | 1 | #15161a | style!=masked
+PS | humanoid | eyer  | 13      | 8  | 14 | 1  | 1 | 1 | $trim | style=masked
+PS | humanoid | eyer  | 13      | 8  | 14 | 1  | 1 | 1 | #15161a | style!=masked
+PS | humanoid | nose  | 12      | 8  | 13 | 1  | 1 | 1 | #d62828 | style=clown
+PS | humanoid | wigl  | 7       | 9  | 12 | 1  | 5 | 5 | $hair | style=clown
+PS | humanoid | wigr  | 16      | 9  | 12 | 1  | 5 | 5 | $hair | style=clown
+PS | humanoid | wigt  | 8       | 9  | 17 | 8  | 5 | 2 | $hair | style=clown
+PS | humanoid | hairt | 8       | 9  | 17 | 8  | 5 | 1 | $hair | style=short
+PS | humanoid | hairb | 8       | 13 | 12 | 8  | 1 | 5 | $hair | style=short
+PS | humanoid | hairt | 8       | 9  | 17 | 8  | 5 | 1 | $hair | style=long
+PS | humanoid | hairb | 7       | 13 | 6  | 10 | 2 | 11 | $hair | style=long
+PS | humanoid | hairl | 7       | 9  | 12 | 1  | 4 | 5 | $hair | style=long
+PS | humanoid | hairr | 16      | 9  | 12 | 1  | 4 | 5 | $hair | style=long
+PS | humanoid | hairt | 11      | 9  | 17 | 2  | 5 | 3 | $hair | style=mohawk
+PS | humanoid | armr  | tx+bw   | 10 | 7  | 2  | 3 | 4 | $gar
+PS | humanoid | handr | tx+bw   | 10 | 6  | 2  | 3 | 1 | $skin
+PS | humanoid | arml  | tx-2    | 10 | 7  | 2  | 3 | 4 | $gar
+PS | humanoid | handl | tx-2    | 10 | 6  | 2  | 3 | 1 | $skin
+PP | humanoid | attack | armr  | -1 | -6 | 2
+PP | humanoid | attack | handr | -1 | -6 | 2
+PP | humanoid | mine | armr  | -2 | -5 | 3
+PP | humanoid | mine | handr | -2 | -5 | 3
+PP | humanoid | mine | arml  | 2  | -5 | 3
+PP | humanoid | mine | handl | 2  | -5 | 3
+PP | humanoid | w1 | legl  | 0 | -2 | 1
+PP | humanoid | w1 | legr  | 0 | 2  | 0
+PP | humanoid | w1 | armr  | 0 | 2  | 0
+PP | humanoid | w1 | handr | 0 | 2  | 0
+PP | humanoid | w1 | arml  | 0 | -2 | 0
+PP | humanoid | w1 | handl | 0 | -2 | 0
+PP | humanoid | w2 | legr  | 0 | -2 | 1
+PP | humanoid | w2 | legl  | 0 | 2  | 0
+PP | humanoid | w2 | arml  | 0 | 2  | 0
+PP | humanoid | w2 | handl | 0 | 2  | 0
+PP | humanoid | w2 | armr  | 0 | -2 | 0
+PP | humanoid | w2 | handr | 0 | -2 | 0
