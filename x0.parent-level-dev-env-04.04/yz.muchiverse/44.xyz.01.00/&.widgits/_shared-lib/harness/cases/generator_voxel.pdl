@@ -346,3 +346,32 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/
 EXPECT_OUT | VOXEL model=gravestone pose=idle views=4 voxels=..*
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gB.png | bank=$T/sB
 EXPECT_OUT | voxels=..*
+
+# D33 step 1: palette-studio verbs on objsheet: knob=<warm|worn|round|big|metal>:<delta> (sheet-wide), select=col,row,w,h (limits knobs to an area), crop=col,row,w,h (saves one rectangle).
+CASE    | palette-studio
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/n.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/a.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | knob=metal:0.8
+RUN | /usr/bin/cmp | -s | $T/n.png | $T/a.png
+EXPECT_EXIT | 1 | a-sheet-wide-knob-changes-the-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/a2.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | knob=metal:0.8
+RUN | /usr/bin/cmp | -s | $T/a.png | $T/a2.png
+EXPECT_EXIT | 0 | same-knobs-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/b.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | knob=warm:0.9 | select=0,2,8,1
+EXPECT_OUT | OBJSHEET size=768x768 cells=60 | the-selected-sheet-still-has-60-cells
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/n.png | 1 | $T/n_signs.png | 0 | 0 | 384 | 96
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/b.png | 1 | $T/b_signs.png | 0 | 0 | 384 | 96
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $T/n_signs.png | $T/b_signs.png
+EXPECT_OUT | changed_pct=0.0 | NEGATIVE-cells-outside-the-selection-do-not-change
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/n.png | 1 | $T/n_wall.png | 0 | 96 | 384 | 96
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/b.png | 1 | $T/b_wall.png | 0 | 96 | 384 | 96
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $T/n_wall.png | $T/b_wall.png
+EXPECT_OUT | changed_pct=65.1 | the-selected-wall-row-changes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/c.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | knob=worn:0.7 | crop=1,0,7,1
+EXPECT_OUT | STUDIO crop=1,0,7,1 size=336x48 | a-crop-saves-only-the-rectangle
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/d.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | knob=shiny:1
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-knob-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/e.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | crop=15,15,3,3
+EXPECT_EXIT | 2 | NEGATIVE-a-crop-outside-the-sheet-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/f.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | select=0,0,0,1
+EXPECT_EXIT | 2 | NEGATIVE-an-empty-selection-is-refused

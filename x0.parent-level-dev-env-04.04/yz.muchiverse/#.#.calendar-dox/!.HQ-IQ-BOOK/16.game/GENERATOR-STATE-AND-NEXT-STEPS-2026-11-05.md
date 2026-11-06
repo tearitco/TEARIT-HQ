@@ -67,3 +67,6 @@ Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3
 
 ## 14. Update: shop signs, walls, bases, windows (D31 slice 2)
 60 cells of Outside_B are now our own drawings (25 props + 35 signs/walls/bases/windows). Still original-only or empty: rows 6 to 7 (big windows, doors), plants, snow, tents, lamps, ladders, and the Outside_A2/A4 ground and wall autotiles. Three exceptions over the 0.5 gate are listed in the decision log. Picture (local, gitignored): `interim/try/2026-11-05-new-art-outside-b/ours_signs_walls_windows_2x.png`.
+
+## 15. Update: palette-studio first slice (test drive it)
+`generator_voxel_op objsheet <out.png> @.apps/generator-hq/events/gen_objects/outside_b.pdl @.apps/generator-hq/events/gen_voxel/props.pdl [bank=<concept-bank>] knob=warm:0.9 select=0,2,8,1` turns the warm knob on the wall row only; drop `select` for the whole sheet; add `crop=1,0,7,1` to save just the signs. Knobs: warm, worn, round, big, metal (deltas on top of the bank weights). Pictures (local, gitignored): `interim/try/2026-11-05-palette-studio/`. Next in D33: ground knobs, more templates, save with the reproducing `.pdl`, then the window.

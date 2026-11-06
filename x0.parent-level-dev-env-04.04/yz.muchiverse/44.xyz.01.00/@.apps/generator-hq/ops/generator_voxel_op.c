@@ -88,6 +88,8 @@ static unsigned G[N][N][N]; /* [z][y][x]: 0 empty, else 0xFF000000 | rgb */
 /* ---- Concept Bank weights (D32): a thing is a SPOKE prop_<model>; its look is the WEIGHT of the slot that POINTS_TO a look master (look_warm, look_worn).
  * Read-only: argument bank=<concept-bank dir>. A missing spoke or slot means 0.0 (the recipe as drawn). A weight outside -1..1 is refused (exit 2 at the call site). ---- */
 static char g_bank[600];
+/* ---- palette-studio (D33): sheet-wide knob deltas added to the bank weights, optionally only inside a selection; crop saves one rectangle ---- */
+static double g_knob[5]; static int g_knob_on, g_sel_on, g_sel[4], g_crop_on, g_crop[4], g_cell_sel = 1; /* order: warm worn round big metal */
 static unsigned hash32(unsigned x);
 static int bank_weight(const char *model, const char *master, double *w, int *bad) { /* returns 1 when found */
     char path[900], line[300]; FILE *f; int found = 0;
@@ -137,10 +139,11 @@ static void look_round(double w) { /* per layer: keep the voxels inside a supere
 }
 static int apply_look(const char *model, int *count) {
     double warm = 0.0, worn = 0.0, big = 0.0, rnd = 0.0, metal = 0.0; int bad = 0, b, X, Y, Z; unsigned mh = 5381; const char *c;
-    if (!g_bank[0]) return 0;
-    b = 0; bank_weight(model, "look_warm", &warm, &b); bad |= b; b = 0; bank_weight(model, "look_worn", &worn, &b); bad |= b;
-    b = 0; bank_weight(model, "look_big", &big, &b); bad |= b; b = 0; bank_weight(model, "look_round", &rnd, &b); bad |= b; b = 0; bank_weight(model, "look_metal", &metal, &b); bad |= b;
+    if (!g_bank[0] && !(g_knob_on && g_cell_sel)) return 0;
+    if (g_bank[0]) { b = 0; bank_weight(model, "look_warm", &warm, &b); bad |= b; b = 0; bank_weight(model, "look_worn", &worn, &b); bad |= b;
+    b = 0; bank_weight(model, "look_big", &big, &b); bad |= b; b = 0; bank_weight(model, "look_round", &rnd, &b); bad |= b; b = 0; bank_weight(model, "look_metal", &metal, &b); bad |= b; }
     if (bad) { fprintf(stderr, "bank weight out of range for prop_%s (must be -1..1)\n", model); return 2; }
+    if (g_knob_on && g_cell_sel) { warm += g_knob[0]; worn += g_knob[1]; rnd += g_knob[2]; big += g_knob[3]; metal += g_knob[4]; if (warm > 1) warm = 1; if (warm < -1) warm = -1; if (rnd > 1) rnd = 1; if (big > 1) big = 1; if (big < -1) big = -1; if (metal > 1) metal = 1; if (metal < -1) metal = -1; if (worn > 1) worn = 1; }
     if (worn < 0.0) worn = 0.0;
     if (warm == 0.0 && worn == 0.0 && big == 0.0 && rnd <= 0.0 && metal == 0.0) return 0;
     for (c = model; *c; c++) mh = mh * 33 + (unsigned char)*c;
@@ -620,6 +623,7 @@ static int objsheet(int argc, char **argv) {
             col = atoi(fld(&p)); row = atoi(fld(&p)); w = atoi(fld(&p)); h = atoi(fld(&p)); snprintf(thing, sizeof thing, "%s", fld(&p)); snprintf(model, sizeof model, "%s", fld(&p));
             n = w > h ? w : h;
             if (col < 0 || row < 0 || w < 1 || h < 1 || n > 2 || (col + w) * 48 > sw || (row + h) * 48 > sh || !has_model(model)) { fprintf(stderr, "bad CELL %s (model %s, position or size)\n", thing, model); rc = 2; break; }
+            g_cell_sel = !g_sel_on || (col < g_sel[0] + g_sel[2] && col + w > g_sel[0] && row < g_sel[1] + g_sel[3] && row + h > g_sel[1]);
             memset(st, 0, sizeof st); if (render_row(st, 0, 192, model, "idle", &c)) { fprintf(stderr, "model %s has no voxels\n", model); rc = 2; break; }
             S = 48 * n; memset(big, 0, sizeof big);
             if (n == 2) { static unsigned char one[48 * 48 * 4]; for (y = 0; y < 48; y++) memcpy(one + (size_t)y * 48 * 4, st + (size_t)y * 192 * 4, 48 * 4); scale2x(one, 48, big); }
@@ -631,13 +635,14 @@ static int objsheet(int argc, char **argv) {
     }
     fclose(f);
     if (!rc && !sheet) { fprintf(stderr, "no SHEET row\n"); rc = 2; }
-    if (!rc && !stbi_write_png(argv[2], sw, sh, 4, sheet, sw * 4)) rc = 2;
-    if (!rc) printf("OBJSHEET size=%dx%d cells=%d\n", sw, sh, cells);
+    if (!rc && g_crop_on) { int cw = g_crop[2] * 48, ch = g_crop[3] * 48, yy; unsigned char *cr; if (g_crop[0] < 0 || g_crop[1] < 0 || g_crop[2] < 1 || g_crop[3] < 1 || (g_crop[0] + g_crop[2]) * 48 > sw || (g_crop[1] + g_crop[3]) * 48 > sh) { fprintf(stderr, "crop outside the sheet\n"); rc = 2; } else { cr = malloc((size_t)cw * ch * 4); if (!cr) rc = 2; else { for (yy = 0; yy < ch; yy++) memcpy(cr + (size_t)yy * cw * 4, sheet + ((size_t)(g_crop[1] * 48 + yy) * sw + g_crop[0] * 48) * 4, (size_t)cw * 4); if (!stbi_write_png(argv[2], cw, ch, 4, cr, cw * 4)) rc = 2; else printf("STUDIO crop=%d,%d,%d,%d size=%dx%d\n", g_crop[0], g_crop[1], g_crop[2], g_crop[3], cw, ch); free(cr); } } }
+    else if (!rc && !stbi_write_png(argv[2], sw, sh, 4, sheet, sw * 4)) rc = 2;
+    if (!rc && !g_crop_on) printf("OBJSHEET size=%dx%d cells=%d\n", sw, sh, cells);
     free(sheet); return rc;
 }
 int main(int argc, char **argv) {
     int rc;
-    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face") || !strncmp(argv[argc - 1], "bank=", 5))) { if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else if (!strcmp(argv[argc - 1], "face")) g_face = 1; else snprintf(g_bank, sizeof g_bank, "%s", argv[argc - 1] + 5); argc--; }
+    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face") || !strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5))) { if (!strncmp(argv[argc - 1], "knob=", 5)) { char *nm = argv[argc - 1] + 5, *cl = strchr(nm, ':'); static const char *kn[5] = {"warm", "worn", "round", "big", "metal"}; int ki, hit = 0; if (cl) { *cl = 0; for (ki = 0; ki < 5; ki++) if (!strcmp(nm, kn[ki])) { g_knob[ki] += atof(cl + 1); g_knob_on = 1; hit = 1; } } if (!hit) { fprintf(stderr, "bad knob (use warm|worn|round|big|metal:<value>)\n"); return 2; } argc--; continue; } if (!strncmp(argv[argc - 1], "select=", 7)) { if (sscanf(argv[argc - 1] + 7, "%d,%d,%d,%d", &g_sel[0], &g_sel[1], &g_sel[2], &g_sel[3]) != 4 || g_sel[2] < 1 || g_sel[3] < 1) { fprintf(stderr, "bad select (col,row,w,h)\n"); return 2; } g_sel_on = 1; argc--; continue; } if (!strncmp(argv[argc - 1], "crop=", 5)) { if (sscanf(argv[argc - 1] + 5, "%d,%d,%d,%d", &g_crop[0], &g_crop[1], &g_crop[2], &g_crop[3]) != 4) { fprintf(stderr, "bad crop (col,row,w,h)\n"); return 2; } g_crop_on = 1; argc--; continue; } if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else if (!strcmp(argv[argc - 1], "face")) g_face = 1; else snprintf(g_bank, sizeof g_bank, "%s", argv[argc - 1] + 5); argc--; }
     if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | objsheet <out.png> <cells.pdl> <recipes.pdl>... | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);
