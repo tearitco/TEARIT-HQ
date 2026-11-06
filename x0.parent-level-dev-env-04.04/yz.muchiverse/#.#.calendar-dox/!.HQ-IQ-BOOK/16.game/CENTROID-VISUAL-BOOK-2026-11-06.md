@@ -77,7 +77,7 @@ The owner wants the pets to build the campus, using the Dwarf Fortress job loop:
 
 The harness for that already exists. `playthrough_op` runs a phase table on a scratch house and can fail. mcl-hq's table already mines stone and logs, crafts planks, and places a block (43 checks). df-hq's table digs and gives stone (36 checks). The build rows in df-hq (wall, door, workshop) are still marked later, and no build rule exists there yet. So the first new table is one room, not the campus: a pet mines a counted pile of stone, the pile is the only source (nothing is created by the craft), the pet places the floor, the walls, the roof, and one door, then the door proof in section 4b runs. A second attempt is another phase table. The bank keeps which attempt passed.
 
-That one-room table is the piece that fits in the next build. The three islands, both bridges, and the tower are the same verbs repeated. They are not the first run.
+That one-room table is **centroid-test**. The same table on the board, plus the sheet toggle, is **centroid-live**. Food, sleep, planting, and beds are part of the test, not a later mode. The stock-take and the order are `CENTROID-TEST-AND-LIVE-2026-11-06.md`. The three islands, both bridges, and the tower are the same verbs repeated. They are not the first run.
 
 ## 5. What this slice does not do
 
