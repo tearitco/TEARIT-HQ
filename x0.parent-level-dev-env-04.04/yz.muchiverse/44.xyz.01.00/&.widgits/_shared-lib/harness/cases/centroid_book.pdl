@@ -25,3 +25,14 @@ RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house 
 EXPECT_EXIT | 2 | NEGATIVE-a-missing-page-is-refused
 RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
 EXPECT_OUT | book=centroid page=live | refused-save-keeps-live
+
+COPY | @.apps/rpg-edit-hq/ops/edit_open.sh | edit_open.sh
+MKDIR | house/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid
+COPY | @.apps/centroid/centroid-pchq/pieces/system/maps/centroid/game.pdl | house/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/game.pdl
+RUN | sh | $T/edit_open.sh | $T/house | centroid | test
+EXPECT_EXIT | 0 | open-test
+EXPECT_OUT | book=centroid page=test event=none pages=2 events=0 | open-says-two-pages
+RUN | sh | $T/edit_open.sh | $T/house | centroid | live
+EXPECT_OUT | book=centroid page=live event=none pages=2 events=0 | open-live
+RUN | sh | $T/edit_open.sh | $T/house | centroid | nowhere
+EXPECT_EXIT | 2 | NEGATIVE-open-refuses-a-missing-page

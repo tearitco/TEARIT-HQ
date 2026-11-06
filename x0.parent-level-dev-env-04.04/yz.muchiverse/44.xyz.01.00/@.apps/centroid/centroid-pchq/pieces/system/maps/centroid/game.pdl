@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+GAME         | type               | board-game
+GAME         | icon               | 
+GAME         | label              | Centroid
+GAME         | n_chunks           | 1
+GAME         | chunk_0_x          | 0
+GAME         | chunk_0_y          | 0
+GAME         | n_desks            | 2
+GAME         | desk_1_id          | test
+GAME         | desk_1_label       | test
+GAME         | desk_2_id          | live
+GAME         | desk_2_label       | live

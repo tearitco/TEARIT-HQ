@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | centroid
+META         | desk_id            | test
+META         | note               | centroid page test, the harness campus
