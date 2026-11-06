@@ -50,6 +50,12 @@ Until a studio sheet exists for stone, wood, plant, bed, and door, that face sta
 
 Designations and Build gain the rows the test proved: plant, bed, wall, door. Stocks gains food and planks beside stone. Units gains hunger and energy beside the name, because a need you cannot see is not on. The skin toggle is one row under View, labeled with the sheet set, not a new menu.
 
+## Customer video
+
+SAID 2026-11-06: harness proofs that go to potential customers are a YouTube video, made with the house presentation pipeline (`10-user-docs/PRESENTATION-VIDEO-PIPELINE.md`). One folder per proof: `snapshots/`, `manifest.txt` (`file | seconds | caption`, no pipe inside a caption), `REPRODUCE.md`, then the archive `make_presentation_video.py` (ffmpeg re-encode, pet voice, a `-yt-summary.txt` beside the mp4). The copy customers can be handed also lives under `XO/!.PRESENTATIONS/<prefix>.<name>/`.
+
+A video is a picture of the run, not a reading of the verdict line. centroid-test step 1 has no board frame, so it has no mp4 yet. The first customer cut is the first real frame of the loaded court, with the harness verdict in the caption, and the reproduce steps naming `centroid_test.pal`.
+
 ## Not in either run yet
 
 The second bridge's twin island details beyond the one prebuilt bridge, the tower, shops, and the school, unless they are in the loaded chunk. The manager and the employees. Labor skills. Death. A generator that draws the campus. The manager waits on a passing centroid-test.
