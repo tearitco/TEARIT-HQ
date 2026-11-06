@@ -49,6 +49,12 @@ static void write_event(const char *cells, int x, int y) {
     if (!f) return;
     /* Same brown as the office door emoji voxels. Name door loads door_0_2_1.rgba. */
     fprintf(f, "%d %d 132 75 49 door 0 2 1\n", x, y);
+    /* One flat cap on every cell of the room, including the wall tops. The
+     * opening stays open underneath. Gray so it is not the door. */
+    int x0 = 6, y0 = 6;
+    for (int ry = y0; ry < y0 + RH; ry++)
+        for (int rx = x0; rx < x0 + RW; rx++)
+            fprintf(f, "%d %d 158 156 150 roof 0 0 0\n", rx, ry);
     fclose(f);
 }
 static void write_door_file(const char *cells, int bit) {

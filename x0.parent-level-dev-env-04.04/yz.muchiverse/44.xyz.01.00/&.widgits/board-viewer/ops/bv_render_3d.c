@@ -4371,6 +4371,11 @@ static int render_one_frame(void) {
                     ADDBOX(g_mk.ev[i].x + 0.05f, 1.0, g_mk.ev[i].y + 0.45f,
                            g_mk.ev[i].x + 0.95f, 4.0f, g_mk.ev[i].y + 0.55f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                } else if (!strcmp(g_mk.ev[i].name, "roof")) {
+                    /* A cap on this cell, sitting on the 3-high wall. The column under it stays the floor. */
+                    ADDBOX(g_mk.ev[i].x, 4.0, g_mk.ev[i].y,
+                           g_mk.ev[i].x + 1.0f, 4.35f, g_mk.ev[i].y + 1.0f,
+                           g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else {
                 ADDBOX(g_mk.ev[i].x + 0.15f, 1.0, g_mk.ev[i].y + 0.15f,
                        g_mk.ev[i].x + 0.85f, top, g_mk.ev[i].y + 0.85f,

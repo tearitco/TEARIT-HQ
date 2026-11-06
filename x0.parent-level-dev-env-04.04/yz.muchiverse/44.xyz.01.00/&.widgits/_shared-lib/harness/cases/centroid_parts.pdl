@@ -14,6 +14,7 @@ EXPECT_OUT | STAMP w=32 h=24 | says-size
 EXPECT_HAS | cells.txt | width=32 | wide
 EXPECT_HAS | cells.txt | 1,36, | wall-column
 EXPECT_HAS | events.txt | door | door-picture
+EXPECT_HAS | events.txt | roof | roof-cap
 EXPECT_HAS | centroid.parts.pdl | wood | wood-count
 EXPECT_HAS | centroid.parts.pdl | stone | stone-count
 RUN | ./centroid_parts_op | door | cells.txt

@@ -4,11 +4,14 @@ PART | centroid.island | 32 | 24 | taper
 PART | centroid.room | 5 | 5 | wall
 PART | centroid.wall | 1 | 1 | wall
 PART | centroid.door | 2 | 1 | door
+PART | centroid.roof | 5 | 5 | roof
 NEED | centroid.island | stone | 1
 NEED | centroid.room | wood | 15
 NEED | centroid.room | stone | 15
 NEED | centroid.wall | stone | 1
 NEED | centroid.door | wood | 2
+NEED | centroid.roof | stone | 25
 CONCEPT | centroid.island | centroid | centroid | tapered flying island; stone under the grass
 CONCEPT | centroid.room | centroid | centroid | grass room of wall columns; wood and stone
 CONCEPT | centroid.wall | centroid | centroid | one column, wall slot 36; stone
+CONCEPT | centroid.roof | centroid | centroid | one cap on the room, on the wall tops; stone
