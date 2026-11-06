@@ -46,3 +46,29 @@ Source: `~/Desktop/🤖️🪤️🏠️/GITS/RPGAtlas-main/` (76 files, 1.7 MB,
 2. Write the D30 seed-and-knobs reader with a **theme table** shaped like their `THEMES`.
 3. Try one billboard test: a voxel character 4-view strip as a 3D-board billboard.
 4. Optional: read their remaining tile drawers (lines 200-615) for water and animated tiles, and `engine.js` battle code for enemy variance; record in this file.
+
+## 5. Second reading: verdicts (adopt, adapt or skip) (DOC)
+Rule from the owner: take it only if it is better than what we have. "Ours" below is what I verified in this repo today; where I did not check, it says so.
+| Their idea (READ) | Verdict | Why |
+|---|---|---|
+| **Traits** (`classes[].traits = [{type: param/special/element/skill/state/equip, key, value}]`; `traitRate` multiplies the percents, `traitSum` adds; `canEquip` reads `equip` traits) | **ADAPT for armor and weapons** | It is a small, data-only way to let any piece (class, gear, state) carry stat modifiers that combine by one fixed rule. Our `PARTSET` equipment pieces (D30) can carry `TRAIT` rows the same way, so a helmet is a model **and** its stats in one row. First check our own actor and item stats in `&.widgits/db-hq/data/actors.pdl` and the petslike core so we extend the house model, not add a second one. |
+| **`migrateProject` with `meta.version`** (idempotent upgrades, tests for old files) | **ADAPT, later** | Our recipe files (`cast.pdl`, future `PARTSET`/`STYLE`) will outlive the code that reads them. A `# version` row plus a migrate verb with a harness case is cheap insurance once D30 lands; not needed today. |
+| **Tile roster** (57 keys incl. cactus, deadtree, snowtree, pine, waterlily, cobweb, lava_rock, crystals, statue, pillar, bookshelf, torch, crate, flowerpot, checkered, swamp, ice, snow) | **ADOPT as a checklist** | A cheap list of object and ground types a level kit needs. Cross-check against `Outside_B/C`, `Dungeon_*` before generating new object recipes (voxel items thread). |
+| Tiles as one whole-cell draw each, no autotile | **SKIP** | Ours is better: the 48-shape floor table (A2) and per-block ramps give real edges and joins. |
+| **`TERRAIN_KEYS`** (terrain vs decoration, drives their Auto layer) | **SKIP** | Our catalogs already tag `kind floor/wall`; equivalent. |
+| **Enemy roster** (slime, bat, orc, ghost, golem, wasp, wolf, shroom, skeleton, imp, crystal, serpent) | **ADAPT two body plans** | Our creature kinds cover quad, blob, winged, plant, jelly. Missing and useful: **serpent** (a chain of boxes that tapers and sways, poses move segments) and **undead biped / ghost** (humanoid with hollow parts, floating hem). Add as `PARTSET` body plans in D30, not as code. |
+| `enemyCanvas(type, colour, size)` cache by key | **SKIP** | Same shape as ours (cast id + seed + knobs) once D30 lands. |
+| **Weighted enemy action table** (`actions: [{skillId, weight}]`, roll against the total) | **SKIP for now** | Fine for a simple game; our attrition model is FSM/GOAP and richer. Remember it as the fallback "dumb AI" row format. |
+| Random encounters: counter `>= rate * (0.7 + rand * 0.6)` | **NOTE only** | A one-line jittered step counter; use it if a new level needs encounters. |
+| Damage variance `0.85 + rand * 0.3` | **SKIP** | Standard; no value in writing it down twice. |
+| **Plugin bridge** (`atlas.onMapLoad/onUpdate/onRender`, `registerCommand`, `startBattle`) | **SKIP** | Our extension points are ops, event pages and `.pdl` rows; no in-process script engine wanted. Their hook names are a useful list of the places a mod would want. |
+| **Procedural SFX** (`tone(freq, dur, wave, vol, slideTo)`, `noise(dur, vol, lowpass)`, `arp([...])`; each effect one line) | **ADAPT as a future thread** | A C op that writes a WAV from `SFX | name | wave | freq | slide | dur | vol` rows gives deterministic, versioned, harness-testable game sounds, with the same knob feel. Check what the house already has first (pulse short sounds, TTS) before building. |
+| **Music themes** (tempo, root, scale, seed, lead, density, bass pattern, drums; seeded random walk) | **ADAPT, optional** | Same knob-and-patch shape as D30. A `MUSIC | theme | ...` row set rendered offline to WAV (mp3s stay out of the repo, per the house rule). Lower priority than characters. |
+| **`light #rrggbb radius` event names** | **NOTE** | Their sugar for lights. Our rows already carry named fields; keep names as sugar only. |
+| **Message text codes** (`\i[n]`, `\c[n]`, BBCode) | **SKIP** | Not generation; check house text rules before any adoption. |
+| **Auto layer** in the editor (sorts terrain and decoration) | **NOTE** | Could become a `generator_level_op` row type later (place by catalog kind). |
+| **Height mode** (per-tile elevation extruded into blocks) | **SKIP** | Our 3D board has its own height model; their value for us is the billboard trick (section 2). |
+| **Exports** (standalone .exe, .html, Tauri wrapper), **i18n** | **SKIP** | Not part of the generator spine. |
+| **Tests** are tiny Node scripts that load the real files in a VM and assert | **SKIP** | Our pal harness with negatives is stronger (a check must be seen failing). |
+| `AGENTS.md` patch-notes rule | **SKIP** | Our commit messages already carry the user-visible changes. |
+**Net:** from the second reading we keep three things (traits for armor, versioned recipe files, two body plans) and two optional future threads (SFX and music as seeded offline renderers). Everything else is either already in the house or worse than what we have.
