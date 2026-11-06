@@ -2,56 +2,64 @@
 
 Status: **design only. Nothing here is built.** Labels: SAID = the owner on 2026-11-06; READ = lore skill and the 2026-11-05 University gap doc; OBS = files opened for this note; DOC = the recommendation.
 
-The owner asked for the Centroid design, and said the important part is the visual: one place drawn twice, once with the RPG Maker sheets and once with the sheets the palette studio already generates, then look and see which is better. A key could swap them. A new book in the editor is the other shape.
+The owner asked for the Centroid design, and said the important part is the visual. The first reading of that (one flat editor page, two sheet bindings, a key) is **withdrawn** the same day. The owner corrected it with a picture: one big open campus, several stories, towers, a water court, a grand stair, roofs you can stand on. It is built from **voxels**, so the picture stresses the engine. The RPG Maker sheets and the studio sheets are two skins of that same volume, still swapped by one view field, after the volume exists.
+
+The picture is the owner's attachment of 2026-11-06 (a grey-stone campus on a moat, cliff trees around it, a clock tower, colonnades, roof gardens). It is the target look. It is not a map to trace tile by tile, and it is not a claim about which tool drew it.
 
 ## 1. What this slice is
 
-One outdoor court of the University, small enough to see in 2D and in 3D at once. Grass, a short stair-run (three cells, heights 1, 2, 3), one building with a door, one path, sky around the edges. The building is a school front, because the Centroid is a school (READ: pillar 13, "School of the Multiverse"). The shop quarter is not on this page. The draft name Diagonal Alley is not used.
+One open volume: the campus in that picture, reduced to masses the engine can hold. A moat, a gate stair of many steps, a front court, one tower, one colonnade, one roof you can walk that has a room under it, and the tree cliffs around the edge. Several stories on the same footprint. No loading seam inside the campus.
 
-The page is new. It is not `map071` (that map is the 4-player board) and it is not the editor's Islands start room (`rooms.pdl` `ROOM | start | Islands`). Those stay as they are.
+That is the engine test. D12's rule A (one height per cell) draws a stair and blocks a cliff, and its own note says it cannot put two floors on the same x,y. This picture is that case. So the campus is voxels, the shape D29 already chose for buildings (stacked boxes: roof, door, window) and the chunk shape mutaclysm already stores (`19.00-VOXEL-3D-ARCHITECTURE.md`: a column of z slices). D12 stays the rule for a flat board. It is not the campus.
 
-Working names, owner can rename: book **Centroid**, page **Spiral Court**. "Spiral" is from the screenplay's "report to Spiral Alley" (READ). It is a working title, not a shipped sign.
+Working name, owner can rename: world **Centroid**, place **Spiral Court**. "Spiral" is from the screenplay's "report to Spiral Alley" (READ). The draft name Diagonal Alley is not used. This is not `map071` and not the Islands start room. The editor's `rooms.pdl` is a flat grid (`ROOM | ... | cols | rows`). A new book there cannot hold this volume until a room can be a voxel chunk. The book comes after the volume renders. The first authority is the chunk, not a second Islands page.
 
 ## 2. The choice
 
-Question: where do the two looks live?
+Question: what is the first Centroid, after the picture?
 
-| Option | One authority | Modular | The 10th look | Long term | House shape | Cost |
+| Option | One authority | Modular | The 10th wing | Long term | House shape | Cost |
 |---|---|---|---|---|---|---|
-| **A. One page, two sheet bindings, one key** | the cells, heights and doors are one page; only the sheet id changes | a third look is another binding row | same | the kept look deletes the other binding | one `.pdl` page, two sheet-set rows, one view command | small; the painter already takes a sheet name (`rpg_edit_hq.c` `sheet("tilesets", ...)`) |
-| **B. Two pages in one new book** | the layout is copied | the copies drift | a tenth look is a tenth page | two courts to maintain | two ROOM rows | the comparison lies as soon as one page is edited |
-| **C. A second book whose only job is the generated look** | two books, two authorities | worse than B | a book per art pass | the editor's book list fills with looks | a new book | same drift, plus a book that is not a game |
+| **A. Flat editor page, sheet key** (the withdrawn reading) | one page | a skin is a row | a wing is another flat page | cannot stack a roof on a room | `rooms.pdl` | small, and it is not the picture |
+| **B. One voxel volume, two skins, one view field** | the chunk is the campus; a skin only names which texels cover a face | a wing is more columns; a skin is a row | same | roofs, towers and the moat are the same object the board already marches | chunk files plus a `VIEW` row; harness counts solid columns and a roof-over-room | the engine's cost: draw, collision, and memory on one weak CPU |
+| **C. Import the picture as a mesh** | the mesh is a second world | no | a new picture is a new mesh | the engine never learns voxels | an outside file | looks right once, teaches nothing |
 
-**Recommendation: A.** Deciding reason: the thing being judged is the art, so the geometry has to be the same picture. A key (or the same command from the palette bar) swaps which sheet set the painter samples. The book is still new, because the University is not the Islands town. Logged as D36.
+**Recommendation: B.** Deciding reason: the owner named voxels and named the engine. The sheet swap survives as the skin. It is not the world. Logged as D37, which replaces the flat-page half of D36.
 
-The key is a view command, recorded when the editor's key list is read at build time. This note does not assign a letter. It must not be a camera key. The pc-hq camera is the owner's and is not reset by this work.
+The view command is recorded when the key list is read at build time. This note does not assign a letter. It must not be a camera key. The pc-hq camera is the owner's and is not reset by this work.
 
 ## 3. What the eye should be able to compare
 
-Same camera, same minute, both looks:
+One camera on the volume. The pass is the engine, then the skin.
 
-- Floor tiles meet without a seam on the grass and on the stair tops.
-- The stair reads as a walk up, not a jump, in 2D and in 3D. Heights are the extrusion values already used for drawing. The walk rule (D12, owner already chose height plus a step limit) is the next code after the picture; the first picture only has to show the steps.
-- The building reads as one building: wall, roof, door. The door is a floor cell, the same way the Islands doors are.
-- A person can stand on the path and the two screenshots differ only in the pixels of the sheets.
+Engine, before either skin is judged:
 
-Sheet set `rmmv` is the sheets the editor already paints with (`Outside_A5`, `Outside_B`, `World_B`, and the door sheet the Islands room uses). Sheet set `studio` is a palette-studio render of the same cell jobs (ground, wall, door), saved as sheets, not as a second map. Until a studio sheet exists for a job, that job stays on `rmmv` and the corner of the screen says which jobs are still the old art. `out/good/` stays empty until the owner keeps a sheet in writing. Nothing in this slice copies a sheet into `0.good/`.
+- A roof voxel sits on the same column as a room voxel, and both draw.
+- The gate stair is a run of voxels. A walker climbs it without a jump. A wall taller than the step limit blocks. That is D12's step rule applied per voxel face, not one height for the whole column.
+- Water is a surface. The cliff trees sit on the bank, outside the building mass.
+- Standing on the roof and standing in the room under it are two places. The 2D projection and the 3D view name the same column.
+- The frame names its cost: columns drawn, and whether the machine stayed inside the guard. A campus that only exists while the guard is tripping has not passed.
+
+Skin, after that massing is on screen:
+
+- `rmmv` covers faces with the sheets the editor already paints with.
+- `studio` covers the same faces with a palette-studio sheet of the same jobs (stone, roof, water, tree).
+- The two screenshots differ in texels. The columns do not change.
+- Until a studio sheet exists for a job, that face stays on `rmmv` and the corner says so. `out/good/` stays empty until a sheet is kept in writing.
 
 ## 4. Data, when it is built
 
-One book file for the University, first page only:
+The campus is a chunk column, the same idea mutaclysm already writes (one z slice per file under a chunk). A column may hold air, stone, a floor, and another floor. A face has a job (`stone`, `stair`, `roof`, `water`, `tree`, `door`). The skin binds a job to a sheet. `VIEW` picks the skin.
 
 ```
-BOOK  | centroid | Centroid
-ROOM  | court    | Spiral Court | over | 24 | 17 | 24
-BIND  | rmmv     | ground Outside_A5 | wall Outside_B | door !Door1
-BIND  | studio   | ground <studio sheet> | wall <studio sheet> | door <studio sheet>
+WORLD | centroid | Centroid
+PLACE | court    | Spiral Court
+BIND  | rmmv     | stone Outside_B | roof Outside_B | water World_A1 | tree Outside_B
+BIND  | studio   | stone <sheet> | roof <sheet> | water <sheet> | tree <sheet>
 VIEW  | rmmv
 ```
 
-`VIEW` is the live binding. The key writes that one field. Cells store a job (`ground`, `stair`, `wall`, `door`, `sky`), not a sheet coordinate. The binding turns a job into a cell on a sheet. That is what lets the key change the art without rewriting the page.
-
-Heights stay the one field D12 already chose. A wall is a cell whose height is above the step limit. Sky is no floor.
+The first chunk is the gate stair, the front court, one tower, and one roof over one room. The rest of the picture is the same format added beside it, not a new kind of file. An editor book is a later view of this chunk. It is not a flat `ROOM` row pretending to be the campus.
 
 ## 5. What this slice does not do
 
@@ -59,7 +67,7 @@ Shops, the Soul Bank, hotels, courts, the dungeon, the arena, party battles, and
 
 ## 6. Proof, when it is built
 
-Two screenshots of Spiral Court, same camera: `view-rmmv` and `view-studio`. A harness checks that flipping `VIEW` does not change a single cell job or height, and that a missing studio sheet is reported instead of sampling a random PNG. A clean compile is not that proof.
+One screenshot from the gate, one from the roof, one from the room under that roof. A harness counts a column that contains both a room voxel and a roof voxel, refuses a build that drops the roof, and checks that flipping `VIEW` changes no column. A missing studio sheet is reported. The run says the column count and goes through `cpu_gate`. A clean compile is not that proof.
 
 ## 7. Open, owner
 
