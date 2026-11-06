@@ -1,0 +1,3 @@
+# Editor event: every sheet the catalog knows (tiles, sprites, faces, side-view, parallax, battleback, title, system, animation).
+exec ../../ops/+x/generator_tile_op.+x catalog ../../out
+halt

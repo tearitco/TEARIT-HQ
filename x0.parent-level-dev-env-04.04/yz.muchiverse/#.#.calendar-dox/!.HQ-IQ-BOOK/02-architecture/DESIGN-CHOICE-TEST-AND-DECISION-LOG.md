@@ -95,3 +95,23 @@ Source for all: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` sec
 ## D23 (2026-11-05, PROPOSED; refined: glyphs are LEARNED, with several senses): Chinese characters as a visual mode for every character
 Owner: "we use Chinese for representing all characters as a visual mode; underrated." Options: A glyphs hard-coded per game; B **one `glyphs.pdl` registry (entity uid to hanzi, pinyin, meaning) plus a visual-mode switch in the shared projection** (recommended: one authority per fact; the 10th game adds rows; fits the 2D/3D parity rule and the existing emoji palette; zoo and JP/EN labels read the same rows). Risks: CJK drawing in the renderer is untested (Noto CJK is installed); glyph choice is a creative owner call. Doc: `22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7.
 **D23 refinement (owner, same day): glyphs are learned as we go, by tomom and Tear-It; one glyph has multiple meanings; it is magic.** So the registry is an **append-only learned store** (`GLYPH` rows plus `SENSE` rows with context, weight, verdict), fed by a `glyph_sense` task family in the flywheel (shape check + dictionary cross-check + human review for promotion); glyphs are spell components for Soul Pen / Tear It magic. Test: one authority per fact (the registry), modular (a family, not code), scalable (senses grow by data), long term (matches "AI is the entire goal"), house shapes (`.pdl`, harness-judged task, review). Risk: polysemy is harder to judge. Doc: `22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7b.
+
+## D24 (2026-11-05, owner): new tiles are an algorithm run on the RPG Maker sheet
+
+Owner, in order: the flat C painter is unacceptable; the model does not draw, it classifies; grass and rocks (especially shapes) come from the original tiles; "we can diffuse using the rpg maker tilesets algorithmically."
+
+Options: (A) a text-to-image model invents the cell. (B) the C painter invents a silhouette. (C) copy a named RTP cell and stop. (D) the only pixels an algorithm may use are pixels from a named RTP cell. A new cell is that sheet rearranged: the same outline, a shift of its own colors, a neighbor quilted from its own edges. The label is still a classification a person can correct.
+
+Test: (1) `roles.pdl` names the source cell. The algorithm reads that `sprite.csv` and writes another. There is no second art authority. (2) One op, data in the role row. No per-sheet branch in the shared renderer. (3) The 10th shape is another source cell, not another painter. (4) The roadmap still wants a small in-house model later, trained only on cells a person accepted. Those cells are RTP or RTP-derived, so D is the corpus. A is not. (5) Pal + case + C. The case fails if a written pixel is not a color that already exists in the source cell. (6) Cost is a new verb on `generator_tile_op`, not a model runtime. A stays rejected: the 2026-11-05 grass draft drew a map.
+
+DECISION: D. C is the first row of D (grass `Outside_a2/001`, rock `Outside_b/165`) and is already named. A and B do not ship. Not built yet: the rearrange verb. Doc: `16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md`.
+
+## D25 (2026-11-05, owner): a tiling sheet is one op, run from an event page
+
+Owner: we are going to make tiling-compliant tile sheets. Can the generator do that with an op, or with plugins / event pal?
+
+Options: (A) a new plugin API whose each sheet is a plugin. (B) the event page itself contains the autotile math. (C) one new verb on `generator_tile_op`, and an `event.pal` whose only job is `exec` of that verb. The shape table stays `tile_autotile.c` (`FLOOR_AUTOTILE_TABLE`, 48 rows, already checked on a real World_A2 sheet).
+
+Test: (1) one table of how a floor tiles, one op that writes pixels. A plugin per sheet and a pal page that inlines the table are both a second authority. (2) the page is data, the same shape as `gen_characters/event.pal`. (3) the 10th sheet is another source block plus another page, not another compositor. (4) the map renderer already points at `tile_autotile.c`. The generator writing a different 48 would drift from placement. (5) op + event.pal + a harness case. (6) cost is a verb that reads the existing table, not a plugin host.
+
+DECISION: C. Built 2026-11-05 as `shapes` / `shapes-check` on `generator_tile_op`, linked to `tile_autotile_blits` in `tile_autotile.c` (the table was not copied). Event page `events/gen_floor_shapes/event.pal`. Harness `generator_tiles.pal` passed 37, failed 0. The sheet it writes is a proof block in `out/bad/`, not a branded grass sheet and not yet on a map. Doc: `16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` and `16.game/TEAR-IT-TILES-100-2026-11-05.md`.

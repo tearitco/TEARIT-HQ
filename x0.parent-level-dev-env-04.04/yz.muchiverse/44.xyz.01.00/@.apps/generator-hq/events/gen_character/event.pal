@@ -1,0 +1,3 @@
+# Editor event: stack the character layers. Body is on. Clothes stay off until the LAYER row names one.
+exec ../../ops/+x/generator_char_op.+x run ./layers.pdl ../../out/bad/character ../../../../&.widgits/concept-bank/data/img/words.pdl
+halt

@@ -1,0 +1,30 @@
+# Character layers. Naked and shirt are different bytes. Same file twice matches.
+RESULTS | ../results/generator_char.txt
+ENV | LC_ALL | C
+
+CASE    | stack
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_character/layers.pdl | layers.pdl
+COPY | @.apps/generator-hq/events/gen_character/layers-shirt.pdl | layers-shirt.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_char_op.+x | run | $T/layers.pdl | $T/naked | $HOUSE/&.widgits/concept-bank/data/img/words.pdl
+EXPECT_EXIT | 0 | naked-writes
+EXPECT_OUT | GUIDANCE: 7.50 | colour-word-maps-to-guidance
+EXPECT_OUT | STEPS: 24 | crisp-word-maps-to-steps
+EXPECT_OUT | MAP color=w_grey:0.50 detail=w_crisp:0.70 | the-weights-are-the-bank-rows
+EXPECT_OUT | CHAR layers=3 pixel24_28=214,164,130,255 | torso-is-skin
+EXPECT_OUT | PART body | part-body
+EXPECT_FILE | naked/sprite.csv | naked-csv
+EXPECT_FILE | naked/tile.png | naked-png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_char_op.+x | run | $T/layers.pdl | $T/naked2 | $HOUSE/&.widgits/concept-bank/data/img/words.pdl
+RUN | /usr/bin/cmp | -s | $T/naked/sprite.csv | $T/naked2/sprite.csv
+EXPECT_EXIT | 0 | same-layers-match
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_char_op.+x | run | $T/layers-shirt.pdl | $T/shirt | $HOUSE/&.widgits/concept-bank/data/img/words.pdl
+EXPECT_EXIT | 0 | shirt-writes
+EXPECT_OUT | CHAR layers=3 pixel24_28=48,72,120,255 | torso-is-cloth
+RUN | /usr/bin/cmp | -s | $T/naked/sprite.csv | $T/shirt/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-a-garment-is-not-the-bare-body
+WRITE | missing.pdl | CONCEPT \p color \p w_no_such\nCONCEPT \p detail \p w_crisp\nLAYER \p 10 \p body \p naked\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_char_op.+x | run | $T/missing.pdl | $T/missing | $HOUSE/&.widgits/concept-bank/data/img/words.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-word-id-is-refused
+COPY | @.apps/generator-hq/events/gen_character/event.pal | gen_character.pal
+EXPECT_HAS | gen_character.pal | generator_char_op.+x | the-editor-event-stacks-layers

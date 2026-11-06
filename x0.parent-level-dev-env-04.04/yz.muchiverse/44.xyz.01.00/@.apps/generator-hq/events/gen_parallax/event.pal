@@ -1,0 +1,3 @@
+# Editor event: one parallax. Wide sprite.csv, same painter, same GEN rows.
+exec ../../ops/+x/generator_tile_op.+x run ./sheet.gen ../../out
+halt

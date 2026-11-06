@@ -180,6 +180,22 @@ static QuadrantState autotile_pick_quadrant(unsigned char eff_mask, int edge_a_b
     return QSTATE_ISOLATED;
 }
 
+/* One caller outside this file: generator_tile_op shapes.
+ * kind 0 floor, 1 wall, 2 waterfall. bx and by stay 0. The table stays here. */
+int tile_autotile_blits(int kind, int shape, int tile_px, int out[4][6]) {
+    BlitRect r[4];
+    int i;
+    if (kind < 0 || kind > 2) return 0;
+    if (!autotile_compute_blits((AutotileKind)kind, shape, 0, 0, tile_px, r)) return 0;
+    for (i = 0; i < 4; i++) {
+        out[i][0] = r[i].sx; out[i][1] = r[i].sy;
+        out[i][2] = r[i].dx_off; out[i][3] = r[i].dy_off;
+        out[i][4] = r[i].w; out[i][5] = r[i].h;
+    }
+    return 1;
+}
+
+#ifndef TILE_AUTOTILE_LIB
 /* ---------------- standalone structural test (no rendering, no X11) ---------------- */
 static int g_fail = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { fprintf(stderr, "FAIL: %s\n", msg); g_fail = 1; } } while (0)
@@ -236,3 +252,4 @@ int main(void) {
     printf("output of the same configuration - see this file's own header comment.\n");
     return 0;
 }
+#endif

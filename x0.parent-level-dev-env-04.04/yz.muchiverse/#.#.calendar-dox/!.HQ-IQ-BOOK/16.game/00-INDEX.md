@@ -16,6 +16,12 @@ command runs on.
 - `EARLY-SURVIVOR-AND-COMMON-EVENTS.md` — smash-for-supplies, books
   and practice, DF wagon start, MCL bench/bed/creeper, gen_map, and
   the water/lava/rain/fire common events. Technical needs. Not built.
+- `GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` — stop using RPG
+  Maker sheets one tileset at a time; in-house generator wired to the
+  palettes Generate row. The 48-shape floor verb is built. A map swap is not.
+- `TEAR-IT-TILES-100-2026-11-05.md` — the bar for calling a sheet
+  Tear-it: equal or greater than the RPG Maker cell it replaces, and
+  the questions that block a 100% swap.
 - `S1-EVENT-LEDGER.md` — the event line that is built.
 - `RULES-df-hq.md`, `RULES-cdda-hq.md`, `RULES-mcl-hq.md` — verb, who, cost, result, file.
 - `GAME-DEV-HQ-DESIGN.md` — Game Dev Story as a studio week: staff, one game, ship. Not built.

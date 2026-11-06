@@ -1,0 +1,3 @@
+# Editor event: one character sheet. Same painter as the tiles. GEN rows live beside this page.
+exec ../../ops/+x/generator_tile_op.+x run ./sheet.gen ../../out
+halt

@@ -4,6 +4,7 @@
  * Prints PROMPT / NEGATIVE / USED / DROPPED. Order inside the prompt: subject, material, colour, angle, style, size; within a kind by weight (high first), ties by file order. Negative words go to NEGATIVE.
  * Exit 0 ok, 1 invalid bank/overlay or unknown brixel, 2 cannot open a file. Pure: reads files, writes stdout, never a model call, never writes the bank. */
 #include "img_bank.c"
+#include "sd_map.h"
 static int cmp_pick(const void *a, const void *b) { const IbWord *x = *(IbWord *const *)a, *y = *(IbWord *const *)b; int kx = ib_kind_index(x->kind), ky = ib_kind_index(y->kind); if (kx != ky) return kx - ky; if (x->w != y->w) return x->w < y->w ? 1 : -1; return x->ord - y->ord; }
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: img_prompt words.pdl parts.pdl brixel [min_weight] [overlay.cand]\n"); return 2; }
@@ -16,6 +17,12 @@ int main(int argc, char **argv) {
     for (int k = 0; k < part->n; k++) { IbWord *w = ib_word(part->ids[k]); if (w->w < cut) { strncat(dropped, w->id, sizeof dropped - strlen(dropped) - 2); strcat(dropped, " "); continue; } pick[np++] = w; }
     qsort(pick, np, sizeof *pick, cmp_pick);
     char pos[1024] = "", neg[512] = "", used[1024] = ""; for (int i = 0; i < np; i++) { char *d = !strcmp(pick[i]->kind, "negative") ? neg : pos; if (d[0]) strcat(d, ", "); strcat(d, pick[i]->text); char u[80]; snprintf(u, sizeof u, "%s(%.2f) ", pick[i]->id, pick[i]->w); strcat(used, u); }
-    printf("PROMPT: %s\nNEGATIVE: %s\nUSED: %s\nDROPPED(<%.2f): %s\n", pos, neg, used, cut, dropped[0] ? dropped : "-");
+    double colour_w = 0.50, detail_w = 0.50; int saw_colour = 0, saw_crisp = 0;
+    for (int i = 0; i < np; i++) {
+        if (!saw_colour && !strcmp(pick[i]->kind, "colour")) { colour_w = pick[i]->w; saw_colour = 1; }
+        if (!strcmp(pick[i]->id, "w_crisp")) { detail_w = pick[i]->w; saw_crisp = 1; }
+    }
+    if (!saw_crisp) for (int i = 0; i < np; i++) if (!strcmp(pick[i]->kind, "style")) { detail_w = pick[i]->w; break; }
+    printf("PROMPT: %s\nNEGATIVE: %s\nUSED: %s\nDROPPED(<%.2f): %s\nGUIDANCE: %.2f\nSTEPS: %d\n", pos, neg, used, cut, dropped[0] ? dropped : "-", sd_guidance(colour_w), sd_steps(detail_w));
     return 0;
 }

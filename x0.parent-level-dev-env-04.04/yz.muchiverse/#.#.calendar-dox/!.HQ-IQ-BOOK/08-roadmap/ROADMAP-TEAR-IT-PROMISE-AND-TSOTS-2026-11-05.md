@@ -81,6 +81,19 @@ One "Concourse" book generated from the catalogs (zoo), measured lanes (gym), ex
 ### AI track A0-A7 (always on, ordered in one page)
 Micro-AI, the delegation flywheel, in-house models and data, token minimization, and what (little) belongs on the chain: `../17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md`. Every milestone above adds a judge; a judge is what lets a cheap model be tried safely.
 
+### Art. Tear-it tiles (parked 2026-11-05, swap sheets later)
+Owner: ignore the sheet restyle for now and return to the handoff's first tasks. The generator work stays where it is. Sheets can be swapped later.
+
+Where that work lives:
+
+- Plan and bar: `16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md`, `16.game/TEAR-IT-TILES-100-2026-11-05.md`, `16.game/WORD-BANK-TO-IMAGE.md`. Decision D24 and D25 in `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md`.
+- Ops: `@.apps/generator-hq/ops/generator_tile_op.c` (48 floor shapes) and `generator_char_op.c` (layer stack). Events: `events/gen_floor_shapes/`, `events/gen_character/`. Weight map: `&.widgits/concept-bank/ops/sd_map.h`, printed by `img_prompt.c`, read by `data/img/draft/img_draft.py`.
+- Harness: `generator_tiles.pal` (37 pass, 0 fail) and `generator_char.pal` (12 pass, 0 fail).
+- Pictures: `XO/31.Nov/nov-5/1.generator-sheets/0.bad/` (rejected and proof), `0.standin/0.ground-tiles.jpg` only. `0.good/` is empty. The paste prompt is `XO/31.Nov/nov-5/0.sheet-restyle-prompt.md`.
+
+### Art. Tear-it tiles in place of RPG Maker (owner 2026-11-05, parallel with M0)
+The sprite is first (owner, 2026-11-05), and it is the Soul Pen cast, starting with Asa and Ava. Actor1 copies were rejected. Ground tiling waits. Every shipped picture is Tear-it branded and at least the RPG Maker cell it replaces. The spec, the pass/fail bar, and the open questions are `../16.game/TEAR-IT-TILES-100-2026-11-05.md`. The floor tool is `generator_tile_op shapes`, using the table in `tile_autotile.c`, proven by `generator_tiles.pal` (37 pass, 0 fail on 2026-11-05). That proof sheet is a color code in `out/bad/`. It is not on a map. **Gate for the first view:** one existing small room, 2D seams checked, then the same painted floor in 3D. **Gate for 100%:** every sheet class in the spec has a kept file under `out/good/` and no shipped screen still samples an RPG Maker PNG. Owner, 2026-11-05: a kept file may contain RPG Maker pixels. The first room is the rpg-edit cabin. The Tear-it mark is the opened Asa and Ava portraits (black clothing, gold at the neck). A keep still waits on the owner approving that pattern. The first sprite is one standing frame. The walk is a later generator.
+
 ## 5. Cross-cutting tracks (always on)
 - **Proof discipline:** every milestone gate is a pal harness case plus a recorded run; no "done" without a fresh build, a fresh run and evidence (AGENTS.md).
 - **Footprint:** idle cost near zero, heavy jobs through `cpu_gate`, runtime files capped (`growth_probe`); say the cost in each commit.

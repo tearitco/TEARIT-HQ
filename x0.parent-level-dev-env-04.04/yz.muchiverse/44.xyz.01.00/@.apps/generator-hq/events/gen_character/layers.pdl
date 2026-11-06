@@ -1,0 +1,11 @@
+# color and detail name WORD rows in the image word bank. The weight is that row's weight.
+# color (a colour word) maps to guidance_scale. detail (w_crisp) maps to num_inference_steps.
+# The map is sd_map.h. Neutral 0.50 is the draft script's default of 7.5 and 20.
+# Body first. Clothes are another LAYER. "none" leaves that part off.
+# This body is a mannequin in the RPG Maker super-deformed proportion:
+# a large head, a short torso, short legs. It is not Asa, Ava, Lucky, or Astra.
+CONCEPT | color | w_grey
+CONCEPT | detail | w_crisp
+LAYER | 10 | body | naked
+LAYER | 20 | clothing | none
+LAYER | 30 | hair | none
