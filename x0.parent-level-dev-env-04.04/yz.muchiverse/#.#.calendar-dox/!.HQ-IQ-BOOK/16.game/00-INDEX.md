@@ -6,6 +6,7 @@ numeric step). The AI that may later append a command is chapter
 `17.ai`. This chapter does not own that. It owns the machine the
 command runs on.
 
+- **Trainable mechanics (2026-11-06):** `GAME-MECHANICS-TRAINABLE-EVENTS-2026-11-06.md`. Each verb page gets concepts and a counted weight. Evolution is a new row, not a new ledger. Not built.
 - **Self-coding harness plans (2026-11-06):** `SELF-CODING-HARNESS-PLANS-2026-11-06.md`. Six plans. The learner emits data. Small voxels include molecules. Not built past the campus look gate.
 - **Where weights already land (2026-11-06):** `WEIGHTS-ATTENTION-HARNESSES-AND-EVENTS-2026-11-06.md`. Harnesses already count pass and fail. The material gate does not drive the campus yet. One event page can call the gate.
 - **Lore and IP (owner 2026-11-05):** what TSOTS means and the Soul Pen franchise live in chapter `22.lore-ip`; the old TSOTS design notes are summarized in `TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` and the University plan in `CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md`. The first look (one voxel campus, two skins) is `CENTROID-VISUAL-BOOK-2026-11-06.md`. The two runs (needs, then the skin toggle) are `CENTROID-TEST-AND-LIVE-2026-11-06.md`.
