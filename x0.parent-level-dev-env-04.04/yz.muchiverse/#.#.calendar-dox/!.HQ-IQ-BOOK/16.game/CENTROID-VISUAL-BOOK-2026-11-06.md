@@ -71,6 +71,14 @@ That is the opposite of the Islands town, whose `DOOR` rows send you to a bank, 
 
 The picture of the door may use Mineclonia's wood door (the owner already called Mineclonia art safe). The open and shut state is ours: one bit on that voxel, the same bit in 2D and in 3D. The first proof is one door. Shut, the room cannot be entered. Open, the walker stands on the interior floor under the roof, and both views show the opening. An editor book is a later view of this chunk. It is not a flat `ROOM` row pretending to be the campus.
 
+## 4c. Who builds it (SAID 2026-11-06)
+
+The owner wants the pets to build the campus, using the Dwarf Fortress job loop: gather the material, then craft, then place. A generator does not lay the blocks. The studio sheets are the skin, and they wait until a room stands.
+
+The harness for that already exists. `playthrough_op` runs a phase table on a scratch house and can fail. mcl-hq's table already mines stone and logs, crafts planks, and places a block (43 checks). df-hq's table digs and gives stone (36 checks). The build rows in df-hq (wall, door, workshop) are still marked later, and no build rule exists there yet. So the first new table is one room, not the campus: a pet mines a counted pile of stone, the pile is the only source (nothing is created by the craft), the pet places the floor, the walls, the roof, and one door, then the door proof in section 4b runs. A second attempt is another phase table. The bank keeps which attempt passed.
+
+That one-room table is the piece that fits in the next build. The three islands, both bridges, and the tower are the same verbs repeated. They are not the first run.
+
 ## 5. What this slice does not do
 
 Shops, the Soul Bank, hotels, courts, the dungeon, the arena, party battles, and the 4x4 board stay in `CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md`. TSC's window conversion is someone else's job. This page does not claim the public "play now" line.
