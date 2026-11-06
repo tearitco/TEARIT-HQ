@@ -315,29 +315,17 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
-        /* Harness tab: the pals for the open book. all runs those cases. clear is last. */
+        /* Harness tab: only the open page. harness/<book>/<page>.pal. No file, no rows. */
         {
-            char ui[4200], bl[80] = ""; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
-            kv_get(ui, "book_label", bl, sizeof bl);
+            char ui[4200], bl[80] = "", pl[80] = "";
+            snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+            kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
             char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
-            char hd[4300]; snprintf(hd, sizeof hd, "%s/&.widgits/_shared-lib/harness/%s", house, bl);
-            char names[16][64]; int nn = 0;
-            DIR *d = bl[0] ? opendir(hd) : NULL;
-            if (d) {
-                struct dirent *de;
-                while ((de = readdir(d)) && nn < 16) {
-                    size_t L = strlen(de->d_name);
-                    if (L < 5 || strcmp(de->d_name + L - 4, ".pal")) continue;
-                    if (!strcmp(de->d_name, "all.pal") || !strcmp(de->d_name, "clear.pal")) continue;
-                    snprintf(names[nn], 64, "%s", de->d_name); names[nn][L - 4] = 0; nn++;
-                }
-                closedir(d);
-            }
-            for (int a = 0; a + 1 < nn; a++) for (int b = a + 1; b < nn; b++) if (strcmp(names[a], names[b]) > 0) { char t[64]; memcpy(t, names[a], 64); memcpy(names[a], names[b], 64); memcpy(names[b], t, 64); }
+            char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+            char hp[4300]; snprintf(hp, sizeof hp, "%s/&.widgits/_shared-lib/harness/%s/%s.pal", house, bl, pl);
             int nhr = 0;
-            for (int i = 0; i < nn; i++) { fprintf(o, "tbhar_%d_label=%s/%s\n", nhr, bl, names[i]); nhr++; }
-            if (bl[0] && nn) {
-                fprintf(o, "tbhar_%d_label=%s/all\n", nhr, bl); nhr++;
+            if (bl[0] && pl[0] && access(hp, R_OK) == 0) {
+                fprintf(o, "tbhar_%d_label=%s/%s\n", nhr, bl, pl); nhr++;
                 fprintf(o, "tbhar_%d_label=%s/clear\n", nhr, bl); nhr++;
             }
             fprintf(o, "n_tbhar=%d\n", nhr);
