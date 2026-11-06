@@ -37,8 +37,8 @@ static void load_cats(const char *house) {
         trim(fld[1]); trim(fld[2]);
         if (!fld[1][0] || !fld[2][0]) continue;
         snprintf(KEY[nc], sizeof KEY[0], "%s", fld[1]); snprintf(LAB[nc], sizeof LAB[0], "%s", fld[2]);
-        /* Top tabs own these two. The left list skips them. pick and toparm still find them in KEY. */
-        SIDE[nc] = strcmp(fld[1], "my-pals") && strcmp(fld[1], "my-palettes");
+        /* My Pals is the Pals tab only. My Palettes is both the palettes dropdown and this left list. */
+        SIDE[nc] = strcmp(fld[1], "my-pals") != 0;
         nc++;
     }
     fclose(f);
