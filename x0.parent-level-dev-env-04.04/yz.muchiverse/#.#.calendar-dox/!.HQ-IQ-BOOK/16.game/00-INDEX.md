@@ -6,7 +6,7 @@ numeric step). The AI that may later append a command is chapter
 `17.ai`. This chapter does not own that. It owns the machine the
 command runs on.
 
-- **Lore and IP (owner 2026-11-05):** what TSOTS means and the Soul Pen franchise live in chapter `22.lore-ip`; the old TSOTS design notes are summarized in `TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` and the University plan in `CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md`.
+- **Lore and IP (owner 2026-11-05):** what TSOTS means and the Soul Pen franchise live in chapter `22.lore-ip`; the old TSOTS design notes are summarized in `TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` and the University plan in `CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md`. The first look (one page, two sheet bindings, a key) is `CENTROID-VISUAL-BOOK-2026-11-06.md`.
 
 - `GAME.md` — start here. Includes the open parity gaps: the
   battle screen, loading or saving an RPG Maker project, and range
