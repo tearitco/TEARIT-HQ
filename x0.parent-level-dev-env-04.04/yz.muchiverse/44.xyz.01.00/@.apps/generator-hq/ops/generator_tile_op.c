@@ -408,6 +408,10 @@ static void proof_block(unsigned char *src) {
         p[3] = 255;
     }
 }
+/* Optional per-shape hook: the sheet verb restyles each shape in memory so unrestyled RPG Maker pixels are never written. */
+static int g_quiet; /* the sheet verb prints one summary line, not one line per shape */
+static void (*g_shape_cb)(int shape, const unsigned char *tile, void *ctx);
+static void *g_shape_ctx;
 static int shapes_from(const char *outdir, unsigned char *src, const char *label) {
     unsigned char *tile = calloc(48 * 48, 4);
     unsigned char *sheet = calloc((size_t)8 * 48 * 6 * 48, 4);
@@ -430,6 +434,7 @@ static int shapes_from(const char *outdir, unsigned char *src, const char *label
             unsigned char *d = tile + (dy * 48 + dx) * 4;
             if (s[0] != d[0] || s[1] != d[1] || s[2] != d[2] || s[3] != d[3]) fails++;
         }
+        if (g_shape_cb) g_shape_cb(shape, tile, g_shape_ctx);
         if (outdir) {
             char dir[700], path[760];
             int col = shape % 8, row = shape / 8;
@@ -449,7 +454,7 @@ static int shapes_from(const char *outdir, unsigned char *src, const char *label
         if (write_png(path, sheet, 8 * 48, 6 * 48) != 0) fails++;
         printf("SHAPES floor=48%s wrote=%s quad=%s\n", bl, outdir, fails ? "bad" : "ok");
     } else {
-        printf("SHAPES floor=48%s quad=%s\n", bl, fails ? "bad" : "ok");
+        if (!g_quiet) printf("SHAPES floor=48%s quad=%s\n", bl, fails ? "bad" : "ok");
     }
     free(tile); free(sheet);
     return fails ? 4 : 0;
@@ -560,17 +565,16 @@ static int read_style(const char *path, RStyle *st) {
     fclose(f);
     return (st->n >= 2 && st->accent_per256 >= 0 && st->accent_per256 <= 255) ? 0 : -1;
 }
-static int restyle_cell(const RStyle *st, const char *outdir, const char *csv) {
-    int w, h, x, y, lo = 1 << 20, hi = -1, opaque = 0, changed = 0, outl = 0, acc = 0, i;
-    unsigned char *src = read_cell(csv, &w, &h), *out;
-    char name[208], dir[1000], path[1100], tmp[512], *a, *b;
+static int restyle_px(const RStyle *st, const char *outdir, const char *name, const unsigned char *src, int w, int h) {
+    int x, y, lo = 1 << 20, hi = -1, opaque = 0, changed = 0, outl = 0, acc = 0, i;
+    unsigned char *out;
+    char dir[1000], path[1100];
     unsigned *ci, *co;
     int cin = 0, cout = 0;
-    if (!src) { fprintf(stderr, "cannot read cell %s\n", csv); return 2; }
     out = malloc((size_t)w * h * 4);
-    if (!out) { free(src); return 2; }
+    if (!out) return 2;
     memcpy(out, src, (size_t)w * h * 4);
-    { int any = 0; for (i = 0; i < w * h; i++) if (src[i * 4 + 3]) { any = 1; break; } if (!any) { free(src); free(out); return 0; } }
+    { int any = 0; for (i = 0; i < w * h; i++) if (src[i * 4 + 3]) { any = 1; break; } if (!any) { free(out); return 0; } }
     for (i = 0; i < w * h; i++) if (src[i * 4 + 3] > 0) {
         int l = (299 * src[i * 4] + 587 * src[i * 4 + 1] + 114 * src[i * 4 + 2]) / 1000;
         if (l < lo) lo = l;
@@ -578,7 +582,7 @@ static int restyle_cell(const RStyle *st, const char *outdir, const char *csv) {
         opaque++;
     }
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
-        unsigned char *s = src + (y * w + x) * 4, *d = out + (y * w + x) * 4;
+        const unsigned char *s = src + (y * w + x) * 4; unsigned char *d = out + (y * w + x) * 4;
         int l, lev, edge = 0;
         if (s[3] == 0) continue;
         l = (299 * s[0] + 587 * s[1] + 114 * s[2]) / 1000;
@@ -597,37 +601,46 @@ static int restyle_cell(const RStyle *st, const char *outdir, const char *csv) {
         }
     }
     ci = calloc((size_t)w * h, sizeof *ci); co = calloc((size_t)w * h, sizeof *co);
-    if (!ci || !co) { free(ci); free(co); free(src); free(out); return 2; }
+    if (!ci || !co) { free(ci); free(co); free(out); return 2; }
     for (i = 0; i < w * h; i++) {
-        unsigned char *s = src + i * 4, *d = out + i * 4;
+        const unsigned char *s = src + i * 4; unsigned char *d = out + i * 4;
         if (s[3] == 0) continue;
         if (memcmp(s, d, 3) != 0) changed++;
         { unsigned k = ((unsigned)s[0] << 16) | ((unsigned)s[1] << 8) | s[2], j; for (j = 0; j < (unsigned)cin && ci[j] != k; j++) ; if (j == (unsigned)cin) ci[cin++] = k; }
         { unsigned k = ((unsigned)d[0] << 16) | ((unsigned)d[1] << 8) | d[2], j; for (j = 0; j < (unsigned)cout && co[j] != k; j++) ; if (j == (unsigned)cout) co[cout++] = k; }
     }
+    snprintf(dir, sizeof dir, "%s/%s", outdir, name);
+    mkp(dir);
+    snprintf(path, sizeof path, "%s/sprite.csv", dir);
+    if (write_csv(path, out, w, h) != 0) { free(out); return 2; }
+    {
+        unsigned char *big = calloc((size_t)w * 4 * h * 4, 4);
+        if (!big) { free(out); return 2; }
+        blit_x4(big, w * 4, out, w, h, 0);
+        snprintf(path, sizeof path, "%s/tile.png", dir);
+        i = write_png(path, big, w * 4, h * 4);
+        free(big);
+        if (i != 0) { free(out); return 2; }
+    }
+    free(ci); free(co);
+    if (!g_quiet) printf("RESTYLE %s %dx%d opaque=%d changed=%d outline=%d accent=%d colours_in=%d colours_out=%d\n", name, w, h, opaque, changed, outl, acc, cin, cout);
+    free(out);
+    return 0;
+}
+static int restyle_cell(const RStyle *st, const char *outdir, const char *csv) {
+    int w, h, rc;
+    unsigned char *src = read_cell(csv, &w, &h);
+    char name[208], tmp[512], *a, *b;
+    if (!src) { fprintf(stderr, "cannot read cell %s\n", csv); return 2; }
     snprintf(tmp, sizeof tmp, "%s", csv);
     b = strrchr(tmp, '/'); if (b) *b = 0;
     b = strrchr(tmp, '/'); b = b ? b + 1 : tmp;
     a = b - 1;
     if (a > tmp) { *a = 0; a = strrchr(tmp, '/'); a = a ? a + 1 : tmp; } else a = (char *)"";
     snprintf(name, sizeof name, "%.100s_%.100s", a, b);
-    snprintf(dir, sizeof dir, "%s/%s", outdir, name);
-    mkp(dir);
-    snprintf(path, sizeof path, "%s/sprite.csv", dir);
-    if (write_csv(path, out, w, h) != 0) { free(src); free(out); return 2; }
-    {
-        unsigned char *big = calloc((size_t)w * 4 * h * 4, 4);
-        if (!big) { free(src); free(out); return 2; }
-        blit_x4(big, w * 4, out, w, h, 0);
-        snprintf(path, sizeof path, "%s/tile.png", dir);
-        i = write_png(path, big, w * 4, h * 4);
-        free(big);
-        if (i != 0) { free(src); free(out); return 2; }
-    }
-    free(ci); free(co);
-    printf("RESTYLE %s %dx%d opaque=%d changed=%d outline=%d accent=%d colours_in=%d colours_out=%d\n", name, w, h, opaque, changed, outl, acc, cin, cout);
-    free(src); free(out);
-    return 0;
+    rc = restyle_px(st, outdir, name, src, w, h);
+    free(src);
+    return rc;
 }
 static int restyle(const char *stylef, const char *outdir, int ncell, char **cells) {
     RStyle st;
@@ -661,18 +674,67 @@ static int contact(const char *outpng, int cols, int ncell, char **cells) {
     return rc == 0 ? 0 : 2;
 }
 
+/* sheet <map.pdl> <sheet.png> <outdir>: restyle every listed block of one whole sheet in one command.
+ * Map rows (data, one authority for which style a block gets):  BLOCK | <Sheet name> | <block> | <style>
+ * <style> is a file <style>.pdl next to the map. Each block's 48 floor shapes are cut, restyled IN MEMORY and
+ * written to <outdir>/<style>/<Sheet>_b<NN>_s<NN>/ (sprite.csv + tile.png). No original pixel is written.
+ * Exit 3 if the map has no row for this sheet or a style file is bad; 2 for an unreadable sheet or block. */
+typedef struct { const RStyle *st; char dir[600], prefix[100]; int shapes, rc; } SheetCtx;
+static void sheet_cb(int shape, const unsigned char *tile, void *ctx) {
+    SheetCtx *c = ctx;
+    char name[220];
+    snprintf(name, sizeof name, "%s_s%02d", c->prefix, shape);
+    if (restyle_px(c->st, c->dir, name, tile, 48, 48) != 0) c->rc = 2;
+    c->shapes++;
+}
+static int sheet_run(const char *mapf, const char *sheet, const char *outdir) {
+    FILE *f = fopen(mapf, "r");
+    char line[400], mapdir[500], sname[100], *base, *dot;
+    int blocks = 0, shapes = 0, rc = 0;
+    if (!f) { fprintf(stderr, "no map file\n"); return 3; }
+    snprintf(mapdir, sizeof mapdir, "%s", mapf);
+    base = strrchr(mapdir, '/'); if (base) *base = 0; else snprintf(mapdir, sizeof mapdir, ".");
+    base = strrchr(sheet, '/'); base = base ? base + 1 : (char *)sheet;
+    snprintf(sname, sizeof sname, "%.90s", base);
+    dot = strrchr(sname, '.'); if (dot) *dot = 0;
+    while (fgets(line, sizeof line, f)) {
+        char *p, *fld[4]; int n = 0, idx;
+        RStyle st; SheetCtx c; char stylef[900];
+        if (strncmp(line, "BLOCK |", 7) != 0) continue;
+        p = strchr(line, '\n'); if (p) *p = 0;
+        p = line + 7;
+        while (n < 4 && p) { char *q = strchr(p, '|'); if (q) *q = 0; while (*p == ' ') p++; { char *e = p + strlen(p); while (e > p && e[-1] == ' ') *--e = 0; } fld[n++] = p; p = q ? q + 1 : NULL; }
+        if (n < 3 || strcmp(fld[0], sname) != 0) continue;
+        idx = atoi(fld[1]);
+        snprintf(stylef, sizeof stylef, "%s/%.60s.pdl", mapdir, fld[2]);
+        if (read_style(stylef, &st) != 0) { fprintf(stderr, "bad style file %s\n", stylef); fclose(f); return 3; }
+        memset(&c, 0, sizeof c);
+        c.st = &st;
+        snprintf(c.dir, sizeof c.dir, "%s/%.60s", outdir, fld[2]);
+        snprintf(c.prefix, sizeof c.prefix, "%.80s_b%02d", sname, idx);
+        g_shape_cb = sheet_cb; g_shape_ctx = &c; g_quiet = 1;
+        { int r = shapes_sheet(NULL, sheet, idx); g_shape_cb = NULL; g_quiet = 0; if (r != 0) rc = r; if (c.rc) rc = c.rc; }
+        blocks++; shapes += c.shapes;
+    }
+    fclose(f);
+    if (blocks == 0) { fprintf(stderr, "map has no BLOCK row for sheet %s\n", sname); return 3; }
+    printf("SHEET %s blocks=%d shapes=%d rc=%d\n", sname, blocks, shapes, rc);
+    return rc;
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
     if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
     if (argc == 5 && strcmp(argv[1], "shapes") == 0) return shapes_sheet(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "shapes-check") == 0) return shapes_sheet(NULL, argv[2], atoi(argv[3]));
     if (argc >= 5 && strcmp(argv[1], "restyle") == 0) return restyle(argv[2], argv[3], argc - 4, argv + 4);
+    if (argc == 5 && strcmp(argv[1], "sheet") == 0) return sheet_run(argv[2], argv[3], argv[4]);
     if (argc >= 5 && strcmp(argv[1], "contact") == 0) return contact(argv[2], atoi(argv[3]), argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
     return 2;
 }

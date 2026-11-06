@@ -55,3 +55,31 @@ EXPECT_OUT | CONTACT | the-contact-line
 EXPECT_OUT | cells=4 cols=2 size=96x96 | four-cells-in-two-columns
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | contact | $T/d.png | 2 | $T/r/s_s20/sprite.csv | $T/no-such-cell.csv
 EXPECT_EXIT | 2 | NEGATIVE-a-missing-cell-stops-the-contact-sheet
+
+# One command restyles every block the map lists (blocks.pdl), in memory: no original pixel is written.
+CASE    | sheet
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/blocks.pdl | blocks.pdl
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-green.pdl | tearit-green.pdl
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-sand.pdl | tearit-sand.pdl
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-stone.pdl | tearit-stone.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/blocks.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/o
+EXPECT_EXIT | 0 | whole-sheet-restyled
+EXPECT_OUT | SHEET Outside_A2 blocks=12 shapes=576 rc=0 | twelve-blocks-of-48-shapes
+EXPECT_FILE | o/tearit-sand/Outside_A2_b01_s20/sprite.csv | sand-block-lands-in-the-sand-style
+EXPECT_FILE | o/tearit-stone/Outside_A2_b10_s47/sprite.csv | stone-block-lands-in-the-stone-style
+EXPECT_FILE | o/tearit-green/Outside_A2_b20_s00/sprite.csv | green-block-lands-in-the-green-style
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/raw | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 1
+RUN | /usr/bin/cmp | -s | $T/raw/s20/sprite.csv | $T/o/tearit-sand/Outside_A2_b01_s20/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-the-written-shape-is-not-the-original-pixels
+RUN | /usr/bin/awk | -F, | NR==FNR{a[FNR]=$4;next} a[FNR]!=$4{b++} END{exit b>0} | $T/raw/s20/sprite.csv | $T/o/tearit-sand/Outside_A2_b01_s20/sprite.csv
+EXPECT_EXIT | 0 | alpha-identical-in-the-whole-sheet-path
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/blocks.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Inside_A2.png | $T/p
+EXPECT_EXIT | 3 | NEGATIVE-a-sheet-with-no-map-row-is-refused
+WRITE | badmap.pdl | BLOCK \p Outside_A2 \p 0 \p no-such-style\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/badmap.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/q
+EXPECT_EXIT | 3 | NEGATIVE-a-missing-style-file-is-refused
+WRITE | farmap.pdl | BLOCK \p Outside_A2 \p 99 \p tearit-green\n
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-green.pdl | tearit-green.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/farmap.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/r
+EXPECT_EXIT | 2 | NEGATIVE-a-block-outside-the-sheet-is-refused

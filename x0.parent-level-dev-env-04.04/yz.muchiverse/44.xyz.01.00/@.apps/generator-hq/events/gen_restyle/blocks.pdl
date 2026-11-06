@@ -1,0 +1,16 @@
+# Which style each block of a whole RPG Maker sheet gets (decision D27). One row per block; one authority.
+#   BLOCK | <Sheet name> | <block 0..> | <style file name without .pdl, next to this file>
+# Blocks are 96x144, 8 across (A2 sheet: 768x576 = 8 x 4). Chosen by eye from Outside_A2.png on 2026-11-05.
+# Left out on purpose until they have their own treatment: frames (3 5 11 13), fences (6 14 22), holes and smoke (7 15 21 23 29 31), snow and ice (24 26 28 30).
+BLOCK | Outside_A2 | 0 | tearit-green
+BLOCK | Outside_A2 | 1 | tearit-sand
+BLOCK | Outside_A2 | 2 | tearit-stone
+BLOCK | Outside_A2 | 4 | tearit-green
+BLOCK | Outside_A2 | 8 | tearit-sand
+BLOCK | Outside_A2 | 9 | tearit-sand
+BLOCK | Outside_A2 | 10 | tearit-stone
+BLOCK | Outside_A2 | 12 | tearit-green
+BLOCK | Outside_A2 | 16 | tearit-sand
+BLOCK | Outside_A2 | 17 | tearit-sand
+BLOCK | Outside_A2 | 18 | tearit-stone
+BLOCK | Outside_A2 | 20 | tearit-green
