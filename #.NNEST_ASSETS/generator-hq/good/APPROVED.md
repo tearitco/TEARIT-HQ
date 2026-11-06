@@ -32,3 +32,6 @@
 ## CORRECTION (2026-11-05, late): the six tile files above are recolours, not the art direction
 The owner: "we didn't want to just change the color, but the actual images art meant to be displayed. art style of same things is fine." (SAID)
 **OBS** (`generator_tile_op compare-png`, original vs ours): Outside_B changed 90% of its pixels with a mean colour shift of 16/255 and luminance correlation 0.903 (the same drawings repainted: the sword, shield, armor, bag, teapot icons are identical shapes); Grassland 0.989; the A2 ground sheets 0.67 to 0.81 (new palette and grain, but the same cobblestone and layout shapes). These are **derived from RPG Maker pixels**, so they are interim placeholders for plumbing tests only. They stay in this folder for now so the harness and the test yard keep working, but **do not treat them as approved art**. They are to be REPLACED by newly drawn art of the same things (see decision D31). The character sheets (Actor1, Evil, Monster, People1, faces) are generated from our own part recipes and are not affected by this correction.
+
+## 2026-11-05 note: new art with no original lives in `../good-new/`
+Buildings, items and the cast/face sheets were approved into `../good-new/` (see its APPROVED.md), not here, because `verify-root` fails on a file with no same-name original.
