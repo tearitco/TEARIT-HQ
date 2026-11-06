@@ -13,6 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <dirent.h>
 #include <sys/wait.h>
 #define MAXT 32
 #define MAXF 8
@@ -54,6 +55,86 @@ static int read_templates(const char *path) {
     fclose(f); return 0;
 }
 static Template *find_t(const char *id) { int i; for (i = 0; i < nt; i++) if (!strcmp(T[i].id, id)) return &T[i]; return NULL; }
+/* ---- user concepts (D34 step 1): bank-format master files concept_<name>.pdl in one or more scope dirs (user first, desk last: a desk concept of the same name overrides the user's).
+ *   NODE | concept_<name>   KIND | master   VALUE | 0..1 (how much the user values it: a standing bias on every use, bias = 0.5 + VALUE, so 0.5 is neutral)
+ *   SLOT | n | POINTS_TO=<knob master or concept_<other>> | WEIGHT=<-1..1>        (the bank's own master-to-master pointer)
+ * Option concept=<name>:<weight 0..1 or NN%> becomes knob= deltas: contribution = weight x bias x tie strength, followed through concept ties (depth at most 3, a cycle is refused). ---- */
+#define MAXC 160
+#define MAXS 8
+#define CAP_PER_DIR 64
+#define CAP_FILE 2048
+typedef struct { char name[32]; double value; int ns; char tgt[MAXS][48]; double str[MAXS]; } Concept;
+static Concept C[MAXC]; static int nc;
+static const char *KM[10] = {"look_warm", "look_worn", "look_round", "look_big", "look_metal", "ground_warm", "ground_wet", "ground_wear", "ground_grain", "ground_edge"};
+static const char *KNOBN[2][5] = {{"warm", "worn", "round", "big", "metal"}, {"warm", "wet", "wear", "grain", "edge"}};
+static int knob_of(const char *master, int family) { int i; for (i = 0; i < 5; i++) if (!strcmp(master, KM[family * 5 + i])) return i; return -1; }
+static int is_knob_master(const char *m) { int i; for (i = 0; i < 10; i++) if (!strcmp(m, KM[i])) return 1; return 0; }
+static Concept *find_c(const char *name) { int i; for (i = 0; i < nc; i++) if (!strcmp(C[i].name, name)) return &C[i]; return NULL; }
+static int load_concept_dir(const char *dir) {
+    DIR *d = opendir(dir); struct dirent *e; int count = 0;
+    if (!d) { fprintf(stderr, "cannot open concepts dir %s\n", dir); return 2; }
+    while ((e = readdir(d))) {
+        char path[PATH_MAX], line[400], nm[32]; FILE *f; Concept cc; long sz; size_t ln = strlen(e->d_name); int slot_n = 0; Concept *ex;
+        if (strncmp(e->d_name, "concept_", 8) || ln < 13 || strcmp(e->d_name + ln - 4, ".pdl")) continue;
+        if (++count > CAP_PER_DIR) { fprintf(stderr, "too many concepts in %s (cap %d)\n", dir, CAP_PER_DIR); closedir(d); return 2; }
+        snprintf(path, sizeof path, "%.2000s/%s", dir, e->d_name); f = fopen(path, "r"); if (!f) continue;
+        fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+        if (sz > CAP_FILE) { fprintf(stderr, "concept file over %d bytes: %s\n", CAP_FILE, e->d_name); fclose(f); closedir(d); return 2; }
+        memset(&cc, 0, sizeof cc); cc.value = 0.5; snprintf(nm, sizeof nm, "%.*s", (int)(ln - 12), e->d_name + 8); snprintf(cc.name, sizeof cc.name, "%s", nm);
+        while (fgets(line, sizeof line, f)) {
+            char *p = line, *k; if (line[0] == '#' || line[0] == '\n') continue; k = fld(&p);
+            if (!strcmp(k, "VALUE")) { cc.value = atof(fld(&p)); if (cc.value < 0 || cc.value > 1) { fprintf(stderr, "VALUE outside 0..1 in %s\n", e->d_name); fclose(f); closedir(d); return 2; } }
+            else if (!strcmp(k, "SLOT")) {
+                char *tp, *wp, *rest; fld(&p); rest = fld(&p); tp = strstr(rest, "POINTS_TO="); wp = strstr(p, "WEIGHT=");
+                if (!tp || !wp || slot_n >= MAXS) { fprintf(stderr, "bad SLOT in %s (at most %d)\n", e->d_name, MAXS); fclose(f); closedir(d); return 2; }
+                snprintf(cc.tgt[slot_n], sizeof cc.tgt[0], "%s", tp + 10); cc.str[slot_n] = atof(wp + 7);
+                if (cc.str[slot_n] < -1 || cc.str[slot_n] > 1) { fprintf(stderr, "tie strength outside -1..1 in %s\n", e->d_name); fclose(f); closedir(d); return 2; }
+                slot_n++;
+            }
+        }
+        fclose(f); cc.ns = slot_n;
+        ex = find_c(cc.name);
+        if (ex) *ex = cc; else if (nc < MAXC) C[nc++] = cc; else { fprintf(stderr, "too many concepts\n"); closedir(d); return 2; }
+    }
+    closedir(d); return 0;
+}
+static int resolve_c(const char *name, double factor, int depth, const char **path, int family, double *acc) {
+    Concept *c = find_c(name); int i;
+    if (!c) { fprintf(stderr, "unknown concept %s\n", name); return 2; }
+    if (depth > 3) { fprintf(stderr, "concept ties deeper than 3 at %s\n", name); return 2; }
+    for (i = 0; i < depth; i++) if (!strcmp(path[i], name)) { int j; fprintf(stderr, "concept cycle: "); for (j = 0; j <= depth; j++) fprintf(stderr, "%s%s", j ? " > " : "", j < depth ? path[j] : name); fprintf(stderr, "\n"); return 2; }
+    path[depth] = c->name;
+    for (i = 0; i < c->ns; i++) {
+        double f = factor * (0.5 + c->value) * c->str[i];
+        if (!strncmp(c->tgt[i], "concept_", 8)) { if (resolve_c(c->tgt[i] + 8, f, depth + 1, path, family, acc)) return 2; }
+        else if (is_knob_master(c->tgt[i])) { int k = knob_of(c->tgt[i], family); if (k >= 0) acc[k] += f; }
+        else { fprintf(stderr, "concept %s ties to unknown target %s\n", c->name, c->tgt[i]); return 2; }
+    }
+    return 0;
+}
+static double parse_weight(const char *s, int *bad) { char *end; double v = strtod(s, &end); if (end == s) { *bad = 1; return 0; } if (*end == '%') { v /= 100.0; end++; } if (*end || v < 0 || v > 1) *bad = 1; return v; }
+/* turn concepts= / concept= options into knob= deltas; other options pass through. out must hold MAXA strings; audit gets one line per concept used */
+static char g_audit[MAXA][240]; static int g_naudit;
+static int expand_opts(const Template *t, int argc, char **argv, int first, char **out, int *nout, char store[][200]) {
+    int i, no = 0, family = !strcmp(t->kind, "ground"), k; double acc[5] = {0, 0, 0, 0, 0}; int any = 0;
+    g_naudit = 0;
+    for (i = first; i < argc; i++) if (!strncmp(argv[i], "concepts=", 9)) { if (load_concept_dir(argv[i] + 9)) return 2; }
+    for (i = first; i < argc; i++) {
+        if (!strncmp(argv[i], "concepts=", 9)) continue;
+        if (!strncmp(argv[i], "concept=", 8)) {
+            char nm[48], *cl; int bad = 0; double w; const char *path[6]; Concept *c; int j;
+            snprintf(nm, sizeof nm, "%s", argv[i] + 8); cl = strchr(nm, ':'); if (!cl) { fprintf(stderr, "concept= needs name:weight\n"); return 2; }
+            *cl = 0; w = parse_weight(cl + 1, &bad); if (bad) { fprintf(stderr, "concept weight must be 0..1 or 0%%..100%%\n"); return 2; }
+            c = find_c(nm); if (!c) { fprintf(stderr, "unknown concept %s\n", nm); return 2; }
+            if (resolve_c(nm, w, 0, path, family, acc)) return 2;
+            if (g_naudit < MAXA) { int n = snprintf(g_audit[g_naudit], sizeof g_audit[0], "CONCEPT | %s | weight=%.4f | bias=%.2f | ties=", nm, w, 0.5 + c->value); for (j = 0; j < c->ns && n < 200; j++) n += snprintf(g_audit[g_naudit] + n, sizeof g_audit[0] - (size_t)n, "%s%s:%.2f", j ? "," : "", c->tgt[j], c->str[j]); g_naudit++; }
+            any = 1; continue;
+        }
+        if (no < MAXA - 6) { snprintf(store[no], 200, "%s", argv[i]); out[no] = store[no]; no++; }
+    }
+    if (any) for (k = 0; k < 5; k++) if (acc[k] != 0.0 && no < MAXA) { snprintf(store[no], 200, "knob=%s:%.4f", KNOBN[family][k], acc[k]); out[no] = store[no]; no++; }
+    *nout = no; return 0;
+}
 static int run_argv(char **av) { /* fork + exec, wait; the child's own output passes through */
     pid_t pid = fork(); int st;
     if (pid < 0) return 2;
@@ -109,15 +190,15 @@ static int sha_file(const char *path, char *hex, long *size) {
     for (i = 0; i < 8; i++) snprintf(hex + i * 8, 9, "%08x", s.h[i]);
     return 0;
 }
-static int is_opt(const char *a) { return !strncmp(a, "knob=", 5) || !strncmp(a, "select=", 7) || !strncmp(a, "crop=", 5); }
+static int is_opt(const char *a) { return !strncmp(a, "concept=", 8) || !strncmp(a, "concepts=", 9) || !strncmp(a, "knob=", 5) || !strncmp(a, "select=", 7) || !strncmp(a, "crop=", 5); }
 static int cmd_render(int argc, char **argv) { /* render <templates> <id> <out> [opts] */
     Template *t; if (argc < 5) return 2;
     if (read_templates(argv[2])) return 2;
     t = find_t(argv[3]); if (!t) { fprintf(stderr, "unknown template %s\n", argv[3]); return 2; }
-    return render_t(t, argv[4], argv + 5, argc - 5);
+    { char *eo[MAXA]; static char st[MAXA][200]; int ne = 0; if (expand_opts(t, argc, argv, 5, eo, &ne, st)) return 2; return render_t(t, argv[4], eo, ne); }
 }
 static int cmd_save(int argc, char **argv) { /* save <templates> <id> <outdir> <name> sheet|crop [opts] */
-    Template *t; char png[PATH_MAX], rep[PATH_MAX], hex[65], rel[PATH_MAX]; long size; int i, has_crop = 0, rc; FILE *f; char *tp;
+    Template *t; char png[PATH_MAX], rep[PATH_MAX], hex[65], rel[PATH_MAX]; long size; int i, has_crop = 0, rc, neo = 0; FILE *f; char *tp; static char *eoo[MAXA];
     if (argc < 7) return 2;
     if (read_templates(argv[2])) return 2;
     t = find_t(argv[3]); if (!t) { fprintf(stderr, "unknown template %s\n", argv[3]); return 2; }
@@ -126,12 +207,13 @@ static int cmd_save(int argc, char **argv) { /* save <templates> <id> <outdir> <
     if (!strcmp(argv[6], "crop") && !has_crop) { fprintf(stderr, "crop mode needs crop=a,b,c,d\n"); return 2; }
     if (!strcmp(argv[6], "sheet") && has_crop) { fprintf(stderr, "sheet mode refuses crop= (use crop mode)\n"); return 2; }
     snprintf(png, sizeof png, "%s/%s.png", argv[4], argv[5]); snprintf(rep, sizeof rep, "%s/%s.studio.pdl", argv[4], argv[5]);
-    rc = render_t(t, png, argv + 7, argc - 7); if (rc) return rc;
+    { char *eo[MAXA]; static char st[MAXA][200]; if (expand_opts(t, argc, argv, 7, eo, &neo, st)) return 2; for (i = 0; i < neo; i++) eoo[i] = eo[i]; rc = render_t(t, png, eo, neo); if (rc) return rc; }
     if (sha_file(png, hex, &size)) return 2;
     f = fopen(rep, "w"); if (!f) { fprintf(stderr, "cannot write %s\n", rep); return 2; }
     tp = argv[2]; if (!strncmp(tp, g_house, strlen(g_house)) && tp[strlen(g_house)] == '/') tp += strlen(g_house) + 1; snprintf(rel, sizeof rel, "%s", tp);
     fprintf(f, "# palette-studio save (D33): replay with  palette_studio_op replay <this file> <out.png>\nTEMPLATES | %s\nTEMPLATE | %s\nMODE | %s\n", rel, t->id, argv[6]);
-    for (i = 7; i < argc; i++) fprintf(f, "OPT | %s\n", argv[i]);
+    for (i = 0; i < g_naudit; i++) fprintf(f, "%s\n", g_audit[i]); /* audit only: a replay uses the resolved OPT rows below, never live concept files */
+    for (i = 0; i < neo; i++) fprintf(f, "OPT | %s\n", eoo[i]);
     fprintf(f, "RESULT | bytes=%ld | sha256=%s\n", size, hex); fclose(f);
     printf("STUDIO saved %s mode=%s bytes=%ld sha256=%s\n", argv[5], argv[6], size, hex); return 0;
 }

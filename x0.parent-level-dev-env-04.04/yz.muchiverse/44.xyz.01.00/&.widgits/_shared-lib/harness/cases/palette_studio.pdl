@@ -40,3 +40,88 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@
 EXPECT_EXIT | 2 | NEGATIVE-a-ground-knob-on-an-object-sheet-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | volume=11
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-option-is-refused
+
+# D34 step 1: user concepts (bank-format master files, ties to existing masters, VALUE bias, user and desk scopes). Expected knob deltas were computed by hand: weight x (0.5 + VALUE) x tie strength.
+CASE    | concepts
+SCRATCH |
+MKDIR | user
+MKDIR | desk
+WRITE | user/concept_cozy.pdl | NODE \p concept_cozy\nKIND \p master\nVALUE \p 0.50\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.60\nSLOT \p 1 \p POINTS_TO=ground_warm \p WEIGHT=0.50\nSLOT \p 2 \p POINTS_TO=ground_wet \p WEIGHT=0.20\nSLOT \p 3 \p POINTS_TO=concept_rustic \p WEIGHT=0.30\n
+WRITE | user/concept_rustic.pdl | NODE \p concept_rustic\nKIND \p master\nVALUE \p 0.50\nSLOT \p 0 \p POINTS_TO=look_worn \p WEIGHT=0.70\nSLOT \p 1 \p POINTS_TO=look_warm \p WEIGHT=0.30\nSLOT \p 2 \p POINTS_TO=ground_wear \p WEIGHT=0.70\n
+WRITE | desk/concept_cozy.pdl | NODE \p concept_cozy\nKIND \p master\nVALUE \p 1.00\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.20\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ck.png | concepts=$T/user | concept=cozy:0.5
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/kk.png | knob=warm:0.3450 | knob=worn:0.1050
+RUN | /usr/bin/cmp | -s | $T/ck.png | $T/kk.png
+EXPECT_EXIT | 0 | a-concept-equals-its-hand-computed-knob-deltas-through-a-tie
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/cp.png | concepts=$T/user | concept=cozy:50%
+RUN | /usr/bin/cmp | -s | $T/ck.png | $T/cp.png
+EXPECT_EXIT | 0 | fifty-percent-equals-0.5
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/n0.png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/cz.png | concepts=$T/user | concept=cozy:0
+RUN | /usr/bin/cmp | -s | $T/n0.png | $T/cz.png
+EXPECT_EXIT | 0 | NEGATIVE-weight-zero-changes-nothing
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/dk.png | concepts=$T/user | concepts=$T/desk | concept=cozy:0.5
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/dw.png | knob=warm:0.1500
+RUN | /usr/bin/cmp | -s | $T/dk.png | $T/dw.png
+EXPECT_EXIT | 0 | the-desk-concept-overrides-the-user-one-with-its-own-bias
+RUN | /usr/bin/cmp | -s | $T/ck.png | $T/dk.png
+EXPECT_EXIT | 1 | NEGATIVE-the-desk-scope-really-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/gk.png | concepts=$T/user | concept=cozy:0.5
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/gw.png | knob=warm:0.2500 | knob=wet:0.1000 | knob=wear:0.1050
+RUN | /usr/bin/cmp | -s | $T/gk.png | $T/gw.png
+EXPECT_EXIT | 0 | a-concept-resolves-to-the-ground-family-on-a-ground-template
+MKDIR | lo
+MKDIR | hi
+WRITE | lo/concept_b.pdl | NODE \p concept_b\nKIND \p master\nVALUE \p 0.00\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.60\n
+WRITE | hi/concept_b.pdl | NODE \p concept_b\nKIND \p master\nVALUE \p 1.00\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.60\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/bl.png | concepts=$T/lo | concept=b:0.5
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/bh.png | concepts=$T/hi | concept=b:0.5
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/b1.png | knob=warm:0.1500
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/b2.png | knob=warm:0.4500
+RUN | /usr/bin/cmp | -s | $T/bl.png | $T/b1.png
+EXPECT_EXIT | 0 | bias-0.5-halves-the-effect
+RUN | /usr/bin/cmp | -s | $T/bh.png | $T/b2.png
+EXPECT_EXIT | 0 | bias-1.5-triples-it
+RUN | /usr/bin/cmp | -s | $T/bl.png | $T/bh.png
+EXPECT_EXIT | 1 | NEGATIVE-the-value-bias-changes-the-picture
+MKDIR | out
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/out | cz_sheet | sheet | concepts=$T/user | concept=cozy:0.5
+EXPECT_OUT | STUDIO saved cz_sheet mode=sheet | save-with-a-concept
+RUN | /usr/bin/grep | CONCEPT | $T/out/cz_sheet.studio.pdl
+EXPECT_OUT | bias=1.00 | the-record-holds-the-concept-audit-row
+RUN | /usr/bin/rm | -rf | $T/user
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/out/cz_sheet.studio.pdl | $T/out/r.png
+EXPECT_OUT | REPLAY ok | replay-works-after-the-concept-files-are-deleted
+MKDIR | cyc
+WRITE | cyc/concept_a.pdl | NODE \p concept_a\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=concept_b \p WEIGHT=0.5\n
+WRITE | cyc/concept_b.pdl | NODE \p concept_b\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=concept_a \p WEIGHT=0.5\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/cyc | concept=a:0.5
+EXPECT_EXIT | 2 | NEGATIVE-a-cycle-is-refused
+MKDIR | deep
+WRITE | deep/concept_a.pdl | NODE \p concept_a\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=concept_b \p WEIGHT=0.5\n
+WRITE | deep/concept_b.pdl | NODE \p concept_b\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=concept_c \p WEIGHT=0.5\n
+WRITE | deep/concept_c.pdl | NODE \p concept_c\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=concept_d \p WEIGHT=0.5\n
+WRITE | deep/concept_d.pdl | NODE \p concept_d\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=concept_e \p WEIGHT=0.5\n
+WRITE | deep/concept_e.pdl | NODE \p concept_e\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.5\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/deep | concept=a:0.5
+EXPECT_EXIT | 2 | NEGATIVE-ties-deeper-than-3-are-refused
+MKDIR | bad
+WRITE | bad/concept_t.pdl | NODE \p concept_t\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=look_shiny \p WEIGHT=0.5\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/bad | concept=t:0.5
+EXPECT_EXIT | 2 | NEGATIVE-a-tie-to-an-unknown-target-is-refused
+MKDIR | val
+WRITE | val/concept_v.pdl | NODE \p concept_v\nKIND \p master\nVALUE \p 1.5\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.5\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/val | concept=v:0.5
+EXPECT_EXIT | 2 | NEGATIVE-a-VALUE-outside-0-to-1-is-refused
+MKDIR | many
+WRITE | many/concept_m.pdl | NODE \p concept_m\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 1 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 2 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 3 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 4 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 5 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 6 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 7 \p POINTS_TO=look_warm \p WEIGHT=0.1\nSLOT \p 8 \p POINTS_TO=look_warm \p WEIGHT=0.1\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/many | concept=m:0.5
+EXPECT_EXIT | 2 | NEGATIVE-more-than-8-ties-are-refused
+MKDIR | cc
+WRITE | cc/concept_k.pdl | NODE \p concept_k\nKIND \p master\nVALUE \p 0.5\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.5\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/cc | concept=k:1.2
+EXPECT_EXIT | 2 | NEGATIVE-a-weight-over-1-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/cc | concept=k:150%
+EXPECT_EXIT | 2 | NEGATIVE-150-percent-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/cc | concept=nobody:0.5
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-concept-is-refused

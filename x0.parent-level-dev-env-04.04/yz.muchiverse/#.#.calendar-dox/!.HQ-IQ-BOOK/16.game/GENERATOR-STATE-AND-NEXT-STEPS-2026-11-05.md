@@ -79,3 +79,6 @@ Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3
 
 ## 18. Update: palette-studio window design written (D34)
 `16.game/PALETTE-STUDIO-WINDOW-AND-USER-CONCEPTS-DESIGN-2026-11-05.md`: window as a generate tab in the palettes widget, user concepts tied to existing masters with weights, live preview, cli_io command line, caps, build order (step 1 = the `concept=` resolver in `palette_studio_op`). Four open questions for the owner are in section 5. Not built.
+
+## 19. Update: user concepts with value bias (D34 step 1)
+Try: put `concept_cozy.pdl` (bank format: `NODE`, `KIND | master`, `VALUE | 0.5`, `SLOT | n | POINTS_TO=look_warm | WEIGHT=0.6`, ties to other `concept_*` allowed) in a folder, then `palette_studio_op render <templates> outside_b out.png concepts=<folder> concept=cozy:50%`. A second `concepts=<desk folder>` overrides by name. Suite `palette_studio.pal` 36/0. The window, the typed commands and the manager are next.
