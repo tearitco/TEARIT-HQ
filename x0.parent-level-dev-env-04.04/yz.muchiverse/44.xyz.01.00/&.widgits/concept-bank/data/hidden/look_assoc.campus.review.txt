@@ -1,0 +1,6 @@
+# Accept the five campus phrases as written.
+REVIEW | 1 | accept | by=owner-2026-11-06 | weathered stone wall kept
+REVIEW | 2 | accept | by=owner-2026-11-06 | terracotta roof kept
+REVIEW | 3 | accept | by=owner-2026-11-06 | lush grass kept
+REVIEW | 4 | accept | by=owner-2026-11-06 | wood door kept
+REVIEW | 5 | accept | by=owner-2026-11-06 | bridge stone kept

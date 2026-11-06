@@ -1,0 +1,6 @@
+# Same five phrases. Row 1 is worn harder so the stone wall query moves.
+REVIEW | 1 | adjust | warm=-0.10 | wet=0.10 | wear=0.95 | grain=0.60 | edge=0.40 | round=0.10 | metal=0.00 | big=0.20 | worn=0.90 | by=owner-2026-11-06 | more wear and worn on the stone wall
+REVIEW | 2 | accept | by=owner-2026-11-06 | terracotta roof kept
+REVIEW | 3 | accept | by=owner-2026-11-06 | lush grass kept
+REVIEW | 4 | accept | by=owner-2026-11-06 | wood door kept
+REVIEW | 5 | accept | by=owner-2026-11-06 | bridge stone kept

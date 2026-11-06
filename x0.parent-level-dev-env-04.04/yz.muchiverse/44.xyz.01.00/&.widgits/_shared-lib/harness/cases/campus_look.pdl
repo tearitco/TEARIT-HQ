@@ -1,0 +1,26 @@
+# Five campus phrases train a look table. A wear nudge on the stone wall must change the gate's second material.
+RESULTS | ../results/campus_look.txt
+ENV | LC_ALL | C
+ENV | HL_KEYS | warm,wet,wear,grain,edge,round,metal,big,worn
+
+CASE | campus
+SCRATCH |
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | apply | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.campus.draft.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.campus.review.txt | $T/approved.txt
+EXPECT_OUT | approved=5 adjusted=0 rejected=0 | five-accepted
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | train | $T/approved.txt | $T/words.txt
+EXPECT_OUT | words=10 | ten-words
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $T/words.txt | $T/approved.txt | - | 0.15 | weathered | stone | wall
+EXPECT_OUT | TOP2 stone=0.962 brick_brown=0.038 | stone-then-brown-brick
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | apply | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.campus.draft.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.campus.review-worn.txt | $T/worn.txt
+EXPECT_OUT | approved=5 adjusted=1 rejected=0 | one-wear-adjust
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | train | $T/worn.txt | $T/words-worn.txt
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $T/words-worn.txt | $T/worn.txt | - | 0.15 | weathered | stone | wall
+EXPECT_OUT | TOP2 stone=0.925 rust=0.075 | wear-moves-second-to-rust
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $T/words.txt | $T/approved.txt | - | 0.15 | terracotta | roof
+EXPECT_OUT | TOP2 roof_red=0.651 roof_orange=0.349 | roof-is-red
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $T/words.txt | $T/approved.txt | - | 0.15 | lush | grass
+EXPECT_OUT | TOP2 grass=0.983 timber=0.017 | grass-is-grass
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $T/words.txt | $T/approved.txt | - | 0.15 | wood | door
+EXPECT_OUT | TOP2 timber=0.902 thatch=0.098 | door-is-timber
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $T/words.txt | $T/approved.txt | - | 0.15 | bridge | stone
+EXPECT_OUT | TOP2 stone=0.932 rust=0.068 | bridge-is-stone
