@@ -1,0 +1,5 @@
+# Shapes come from the original Outside sheet already sliced under palettes.
+# A rock, a tree, a roof, an edge: copy that cell. The label is the only thing we add.
+# Paint a shape only when this sheet has no cell for it.
+ROLE | Outside | Outside_a2/001 | grass | original rmmv autotile, full green ground cell
+ROLE | Outside | Outside_b/165 | rock | original rmmv object, grey boulder cluster

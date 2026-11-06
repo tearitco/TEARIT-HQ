@@ -12,6 +12,8 @@ pos = neg = ""
 for ln in open(a.prompt_file):
     if ln.startswith("PROMPT:"): pos = ln[7:].strip()
     elif ln.startswith("NEGATIVE:"): neg = ln[9:].strip()
+    elif ln.startswith("GUIDANCE:"): a.guidance = float(ln[9:].strip())
+    elif ln.startswith("STEPS:"): a.steps = int(ln[6:].strip())
 if not pos: raise SystemExit("no PROMPT: line in " + a.prompt_file)
 import torch
 from diffusers import StableDiffusionPipeline

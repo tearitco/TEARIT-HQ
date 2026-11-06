@@ -1,0 +1,117 @@
+# Design-choice test and decision log (owner 2026-11-05: "which is more modular / scalable, long-term wise and spiritually aligned with the best practices of the house? ALWAYS ASK THAT. DOC IT")
+
+Every time there are two or more ways to build something, ask these questions BEFORE picking, write the answer down, and put the decision in the log below. A fast stopgap is allowed only when it is labelled as one with its removal condition.
+
+## The test (ask in this order)
+
+1. **One authority per fact?** Is there already a file or field that says this? Adding a second one for the same fact makes every reader pick or merge (DSR bridge rule: one authority per fact, everything else a projection).
+2. **Modular?** Does the change stay in data (`.pdl` rows) or in one small shared piece, or does it add per-project knowledge to a shared file (the shared renderer, the TPMOS parser)? Per-project branches in shared code are the thing the house keeps removing.
+3. **Scalable?** What happens at the 10th consumer, the 10th kind of entity, the 2nd board? Does a new reader have to remember a special case?
+4. **Long term?** Which way does the roadmap point (pieces with one uid, "all characters playable", one scene for 2D and 3D, the in-memory DB)? Prefer the choice that is still right after that lands; if the other is chosen, name the migration.
+5. **Matches the house shapes?** Pure text-include for shared pure logic, op + IPC for stateful, data in `.pdl`, marker files not mtime, a harness case that can fail (pal + case + C, no Python), explicit cap on anything written at runtime.
+6. **Cost and risk of the better choice?** Heavy-collision files, a contract change, a migration. Say it, and say how a harness case guards it.
+
+Output: a recommendation and the one reason that decides it, then a log entry.
+
+## Decision log
+
+### 2026-11-05 D1: how a PET (or Harold) chosen by Enter shows as "possessed" (HUD, look, Esc-first)
+
+Facts (verified): the xelector's `possessed_id` is written by the ENGINE (`bv_menu_input.c`) and means "arrows drive this PIECE". HUD `poss`, the lighter box, and Esc-first (`esc_first.txt`) all read it. Pets are NOT pieces: they are numbered map events (`pieces/1..17`, footers) whose state is game state (`state/pet_<id>.txt`); the daemon chooses them (`possess_at_xelector`) and keeps `active.txt` + `flag_ctl` + `flag_follow`. Result today: a chosen pet leaves `possessed_id=none`, so the box stays free-looking, HUD says `poss -`, and Esc leaves In. This breaks the owner rule that ALL possession is controlling.
+
+Options: (A) a second field `controlled_id` written by the daemon, readers take whichever is set. (B) the daemon writes the pet id into `possessed_id`, and the engine treats an id with no `pieces/<id>/state.txt` as externally driven: it holds the possession, moves nothing, and `9` / Esc-first releases it; the daemon mirrors the id into `active`/`ctl`/`follow` and reacts when it goes back to `none`.
+
+Test: (1) A makes two authorities for "who is the xelector controlling"; B keeps one. (2) A needs every reader (2D, 3D, HUD, Esc-first, future ones) to union two fields; B changes none of them. (3) A's 10th reader repeats the union; B's costs nothing. (4) The roadmap makes pets ordinary entities/pieces ("piece = one uid", "all characters playable", Harold is not special): then A's second field is dead weight and needs a migration, B's contract ("possessed_id names whatever is controlled") is already the end state. (5) B is a small contract extension plus data, testable with the scratch input op already used by `pieces_2d_parity` and the scratch daemon method (`possess_enter_daemon`). (6) B's cost: a small edit in `bv_menu_input.c` (the heavy-collision file) and a release coupling in the daemon; guard with a negative harness case (a missing piece file must not move or crash anything).
+
+DECISION: B. A is acceptable only as a labelled stopgap if B is blocked; its removal condition would be "pets are pieces".
+Build order for B: (1) harness case for the engine contract (id without a piece file: Enter-set possession holds, arrows do not move a piece, `9` releases), (2) the engine change, (3) the daemon writes the id on Enter and clears it on release (and reads `none` back as "xelector detached"), (4) re-run `pieces_2d_parity`, `possess_enter*`, `esc_first_*`, then a live frame (HUD `poss <pet>`, paler box, Esc releases then leaves In).
+STATUS: BUILT and proven live 2026-11-05. Engine: `bv_menu_input.c` `piece_exists()`; release keeps the xelector cell and the reverse jump is skipped when there is no piece file. Daemon: `petslike_core.c` `mark_possessed()` (pet id, or `hero_01` for Harold) + one `kv_set_str` shared with `kv_set_int`. Harness: `pieces_2d_parity` 70 -> 74 (RED on the old engine: the release and reverse-jump checks), `possess_enter` 21 -> 26 (RED on the old daemon), `esc_first_publish` 4 -> 7. LIVE on the real editor board with PHYSICAL keys: Return on the frozen pet pal_12 -> `possessed_id=pal_12`, HUD `poss pal_12`, paler box; Esc 1 -> `none`, xelector stays on the pet, INT stays on; Esc 2 -> INT off. Not changed (follow-up): Tab / select-by-click switching of the controlled pet does not update `possessed_id`.
+
+## Audit of our daily macro processes (2026-11-05, owner: apply the same test to every pattern we use daily)
+
+Method: for each recurring process the six questions above, with the FACTS gathered first (counts from the repo, not from memory). Verdict = keep / extend the existing tool / build one small shared piece. Nothing below was built yet unless it says so; build order at the end.
+
+| # | Process | What it is today (facts) | Verdict |
+|---|---|---|---|
+| D2 | Harness fixtures (a scratch editor house for a daemon case) | 3 of 154 cases copy the editor's 19 `.pdl` COPY rows + state writes by hand (all three written 2026-11-05: `possess_enter`, `possess_enter_daemon`, `esc_first_publish`); the case op has no INCLUDE or fixture verb | BUILT 2026-11-05 (see build log): a small `INCLUDE \| <file>` verb in `harness_case_op.c` (a fixture is a `.pdl` fragment under `harness/fixtures/`) and move the editor setup there |
+| D3 | Live cases: back up and restore the desk | 5 of 9 `live_*` cases hand-roll `cp ... .bak` and restore; the owner rule is "restore by hash"; no SNAPSHOT/RESTORE verb exists | BUILT 2026-11-05 (see build log): `SNAPSHOT \| <name> \| <paths...>` and `RESTORE \| <name>` (hash-verified, reports a mismatch as FAIL) in the case op; the live cases then lose their bespoke code |
+| D4 | Driving a live board like a person | `board_ctl` already is the ONE tool (status, preflight, recover, key, click, camera, snap with receipts, expect). In this session I bypassed it with three ad hoc paths (`bv_keys` = engine only, the per-pid window relay = needs X focus or it activates a menu item, `xdotool key` = reliable) and lost an hour to which path reaches which consumer | EXTEND `board_ctl` (do not add a tool): a `key` mode that says which consumer it reaches, `freeze`/`thaw` (stop/play the clock), and the skill `rpg-space-board-driving` made app-generic (it names only rpg-space; the editor board is the same pattern). Update the skill with the three-path table (written in the testing guide 2026-11-05) |
+| D5 | Build and install a changed binary | Official `build.sh` scripts use hash gates and build everything; I compile one file to scratch, install by temp + rename, and swap each live session's private copy by hand (3 times today). The hash manifest then does not know the installed file | KEEP the official scripts as the authority; BUILT 2026-11-05 (see build log): one op `bv_session_sync` that, after a build, copies the changed `ops/+x` binaries into every live session atomically (temp + rename) and prints which sessions it touched; and let `build.sh <target>` build a single target |
+| D6 | Scoped commit and push | Every commit is the same incantation: explicit pathspec, `git diff --cached --name-only` read, message with the required trailer, push. One wrong `git add -A` is the incident class AGENTS.md exists for | BUILT 2026-11-05 (see build log): a tiny C op `commit_scoped <message-file> <paths...>` that refuses when anything else is staged, prints the staged list, commits with the pathspec, adds the trailer, pushes the own branch; no new `.sh` |
+| D7 | Heavy-work gate | `cpu_gate run` checks load, heat and ONE job at a time; the rule "never compile while an engine runs" is still a manual step (I killed the engine by pid before each compile) | BUILT 2026-11-05 (see build log): `cpu_gate run --stop-engines`; was: EXTEND `cpu_gate run` with `--stop-engines` (kill by exact pid, listed in the output) instead of a new tool |
+| D8 | Docs as running logs | The views page is a dated append-only page (125 lines) and the Grok handoff has sections 3b..3e; the handoff is copied by hand to the owner's XO folder (22 items there) | KEEP append-only but give every addition a dated heading (already done); treat the XO copy as a PROJECTION of the book file (one authority): BUILT 2026-11-05 (see build log): `xo_export` that copies and refuses anything but docs/media; decisions go ONLY in this log and the other docs link to them |
+| D9 | Runtime file caps | A standard + `hygiene_sweep` exist; found today that `.loop_guard.log` claimed a cap it did not have (fixed, harness `loop_guard_logcap`). The live session now holds no uncapped big file (largest are the frame and the exe/dll copies) | KEEP the standard; ADD a harness case that greps every `fopen(..., "a")` writer in the board ops against the standard's rows (a drift test), so a writer cannot ship without a row; not built |
+| D10 | Evidence for "it works" | State files + a frame; the frame names and what they show are ad hoc (`/tmp/.../frames/6_free_on_pet.png`) while `board_ctl snap` writes a receipt (hash + state values) that I did not use | KEEP the rule (state first, then a frame); USE `board_ctl snap` so every frame carries its receipt |
+| D11 | Memory and index | `MEMORY.md` has 90+ one-line entries; each fact in one file | KEEP |
+
+Build order (cheapest, most reuse first): D2 INCLUDE, D3 SNAPSHOT/RESTORE, D7 `--stop-engines`, D5 `bv_session_sync`, D6 `commit_scoped`, D4 board_ctl extensions + skill, D8 `xo_export`, D9 drift test. Each gets its own harness case that can fail before it is trusted, per the house rule.
+
+Why this order: D2 and D3 remove duplication I created today and every later case benefits; D7 and D5 remove the two manual steps that cost the most time; D6 and D8 close the two "one wrong command" risks; D4 and D9 are documentation-heavy and best done once the verbs above exist.
+
+### Build log of the audit
+- **D2 BUILT** (2026-11-05): `INCLUDE | <fixture>` in `harness_case_op.c` (file stack, depth 4, a missing fixture FAILs), fixture `harness/fixtures/editor_house.pdl` replaces 31 copied lines in each of 3 cases (counts unchanged). Red/green: the converted cases fail on the old op, `harness_include.pal` 3 PASS with its two negatives.
+- **D3 BUILT** (2026-11-05): `SNAPSHOT` / `RESTORE` with a file hash, a copy under `$T`, restore through temp + rename, hash re-check; `harness_snapshot.pal` 7 PASS (RED on the op without the verbs). Not yet adopted by the 5 hand-rolled live cases.
+- **D7 BUILT** (2026-11-05): `cpu_gate run --stop-engines` (this house's `bv_render_3d.+x` only, by exact pid, listed); `cpu_gate_stop_engines.pal` 8 PASS (RED on the old gate).
+- **D5 BUILT** (2026-11-05): `board-viewer/ops/bv_session_sync.c` (built by `scripts/build.sh`), `bv_session_sync.pal` 12 PASS; real house dry-run: 1 session, 11 binaries current. Still manual: running it after each build (add it as the last line of any build that changes `board-viewer/ops/+x`).
+- **D6 BUILT** (2026-11-05): `_shared-lib/ops/commit_scoped.c` (built by `ops/build_cpu_gate.sh`), `commit_scoped.pal` 19 PASS, mutation-tested; used for its own commit. Usage in AGENTS.md.
+- **D8 BUILT** (2026-11-05): `_shared-lib/ops/xo_export.c` (built by `ops/build_cpu_gate.sh`), `xo_export.pal` 22 PASS, mutation-tested; real run on the Grok handoff: already current. AGENTS.md XO section points to it.
+- **D4 BUILT** (2026-11-05): the three-path table is in `21.drive-doc-fix/TESTING-BOARD-BEHAVIOUR-DETERMINISTICALLY.md` and skill section 14; `board_ctl freeze|thaw` (the game's own stop/play verbs, prior value remembered) and `board_ctl engine-key` (names its consumer; `key` now says it is the window) built, `board_ctl_freeze.pal` 16 PASS, mutation-tested. The skill is app-generic in section 14. NOT done: using `board_ctl snap` receipts in more cases.
+- **D9 DECIDED DIFFERENTLY, then built** (2026-11-05): the planned code-grep drift test was dropped after a prototype (only 1 of about 19 append sites has a literal path: it would give false assurance). Built `growth_probe` instead, which OBSERVES files; `growth_probe.pal` 12 PASS, mutation-tested. It found real, unfixed items (the table in RUNTIME-FILE-GROWTH-STANDARD, section "Observed 2026-11-05": five phase ledgers about half full of one repeated Prisc error, relations.txt, world/messages.txt).
+- Remaining: D4 code (board_ctl freeze/thaw, key consumer) + the skill once its other edits are committed; fix or decide the three growth items; convert the 5 live cases to SNAPSHOT/RESTORE.
+
+## D12 (2026-11-05): stairs and inclines, smooth and with collision: PROPOSED, not built
+Question: how does a character walk up stairs or an incline without a jump while collision stays in force (Centroid University)? Options and the test run in `16.game/CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md` section 3: (A) one height value per cell + a step rule (`abs(dh) <= step_max`), renderer interpolates z; (B) discrete z-levels with ZLINKs (the paper `Z-CELL-FORMAT.md`); (C) scripted slide by event pages. Recommendation: A first, B later for stacked floors, C rejected (it is the jump). Deciding reason: a height value already exists in the data and the 3D look, and one move rule over it gives stairs, walls and the "above cannot be attacked except on stairs" rule with no new object type. OBS: no game rule currently uses height for walking. Status: awaiting the owner's yes; first proof would be a harness case on a scratch staircase.
+
+## D19 (2026-11-05, PROPOSED, not built): vehicle crafting and modding = one part/slot/recipe data model
+Options: A per-vehicle-kind code; B one data model (`parts.pdl`, `vehicles.pdl`, recipes with a station column, derived stats, one `check_vehicle`) plus shared verbs. Recommended **B**: one authority per fact (stats derived from parts), the 10th vehicle kind is rows, matches events/pal/pdl and the entity rule; risk of over-generalizing is limited by building the ship class end to end first, then a wheeled class. Full test and difficulty projection: `16.game/VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`. Removal condition for any stopgap per-class code: the second class is built.
+
+## D13 to D18 (2026-11-05, PROPOSED): rated-game roadmap decisions
+What "made with RPG Maker" means (recommend hybrid: headless house sessions and Elo, thin RPG Maker client later), first rated game (True Swords Clash), Elo constants per game kind, public-domain Bible text, client/distribution, Japanese UI. Table and reasons: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 3.
+
+## D20 (2026-11-05, PROPOSED): gyms, zoos and museums are generated from catalogs and checked by harness
+Hand-written exhibits (rot) versus a "Concourse" generated from the catalogs with hand captions and harness-checked gym lanes (recommended: one authority per fact, the 10th catalog is a generator row, the zoo doubles as the editor palette and as agent eval). Doc: `16.game/GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`.
+
+## D21 (2026-11-05, PROPOSED): vehicle physics = one state and force-model rows per domain, two rulesets
+Per-vehicle code versus one integrator op with materials, parts and force rows, fun and realistic rulesets over the same files (recommended; matches "rulesets, not forks"), verified by analytic oracles with mutation proof. Doc: `16.game/VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`.
+
+## D22 (2026-11-05, PROPOSED): the chain stores receipts (hashes), not training data or weights
+Data and weights stay in house files (private, large, changing); the chain, once it exists, carries content hashes of packs and graduation/rated-result records. Doc: `17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md` section 5.
+
+## D13/D14/D21 DECIDED by the owner (2026-11-05, asked officially)
+D13 **house engine only** (public wording "RPG Maker-style"; imported RPG Maker maps/art; no plugin client). D14 **True Swords Clash first, others close behind, plus a digipet game on a 1v1 mini 4x4 where digipets learn the Bible and play TSC**; one shared rating pool. D21 **fun physics only for now**. Crafted vehicle = entity owned by a piece. Bible text: unconfirmed, see roadmap section 9. Source: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 9.
+
+## Round 3 decisions (2026-11-05, owner adopted canon proposals)
+- **D12 stairs: DECIDED, option A** (one height per cell plus a step rule; above can only be hit from stairs; guns and spirit hit both levels). Still not built.
+- **D15 Elo: DECIDED** start 1000, provisional flag for the first games, one shared pool.
+- **D16 Bible text: DECIDED** KJV or WEB; verify the unlabelled book-stack file first.
+- **Japanese UI: DECIDED** JP and EN menus and branding; Bible text English.
+- **D19 vehicles: refined** tech tiers by lore era (Earth, Lunaria, Mars, Icarus, Extremophile biotech); spaceship first (SSOL); out of rated PvP at first.
+- **D20 zoo: refined** `002.zoo` is the seed; Concourse museum hall = map070; **D21 realistic physics is a mode**; vacuum range first.
+- **D22 refined:** only signed receipts and hashes of verified training rows ship, never the rows.
+- **Court system:** fines, service, soul debt through the Soul Bank, pardons, **and prisons** (owner correction: "we will have prisons, that was a wrong answer").
+- **MP: none** (energy, stress, time, money, soul). **Physical shop stock: yes.**
+Source for all: `08-roadmap/ROADMAP-TEAR-IT-PROMISE-AND-TSOTS-2026-11-05.md` section 10.
+
+## D23 (2026-11-05, PROPOSED; refined: glyphs are LEARNED, with several senses): Chinese characters as a visual mode for every character
+Owner: "we use Chinese for representing all characters as a visual mode; underrated." Options: A glyphs hard-coded per game; B **one `glyphs.pdl` registry (entity uid to hanzi, pinyin, meaning) plus a visual-mode switch in the shared projection** (recommended: one authority per fact; the 10th game adds rows; fits the 2D/3D parity rule and the existing emoji palette; zoo and JP/EN labels read the same rows). Risks: CJK drawing in the renderer is untested (Noto CJK is installed); glyph choice is a creative owner call. Doc: `22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7.
+**D23 refinement (owner, same day): glyphs are learned as we go, by tomom and Tear-It; one glyph has multiple meanings; it is magic.** So the registry is an **append-only learned store** (`GLYPH` rows plus `SENSE` rows with context, weight, verdict), fed by a `glyph_sense` task family in the flywheel (shape check + dictionary cross-check + human review for promotion); glyphs are spell components for Soul Pen / Tear It magic. Test: one authority per fact (the registry), modular (a family, not code), scalable (senses grow by data), long term (matches "AI is the entire goal"), house shapes (`.pdl`, harness-judged task, review). Risk: polysemy is harder to judge. Doc: `22.lore-ip/TSOTS-GAME-FAMILY-AND-LEVEL-MAP-2026-11-05.md` section 7b.
+
+## D24 (2026-11-05, owner): new tiles are an algorithm run on the RPG Maker sheet
+
+Owner, in order: the flat C painter is unacceptable; the model does not draw, it classifies; grass and rocks (especially shapes) come from the original tiles; "we can diffuse using the rpg maker tilesets algorithmically."
+
+Options: (A) a text-to-image model invents the cell. (B) the C painter invents a silhouette. (C) copy a named RTP cell and stop. (D) the only pixels an algorithm may use are pixels from a named RTP cell. A new cell is that sheet rearranged: the same outline, a shift of its own colors, a neighbor quilted from its own edges. The label is still a classification a person can correct.
+
+Test: (1) `roles.pdl` names the source cell. The algorithm reads that `sprite.csv` and writes another. There is no second art authority. (2) One op, data in the role row. No per-sheet branch in the shared renderer. (3) The 10th shape is another source cell, not another painter. (4) The roadmap still wants a small in-house model later, trained only on cells a person accepted. Those cells are RTP or RTP-derived, so D is the corpus. A is not. (5) Pal + case + C. The case fails if a written pixel is not a color that already exists in the source cell. (6) Cost is a new verb on `generator_tile_op`, not a model runtime. A stays rejected: the 2026-11-05 grass draft drew a map.
+
+DECISION: D. C is the first row of D (grass `Outside_a2/001`, rock `Outside_b/165`) and is already named. A and B do not ship. Not built yet: the rearrange verb. Doc: `16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md`.
+
+## D25 (2026-11-05, owner): a tiling sheet is one op, run from an event page
+
+Owner: we are going to make tiling-compliant tile sheets. Can the generator do that with an op, or with plugins / event pal?
+
+Options: (A) a new plugin API whose each sheet is a plugin. (B) the event page itself contains the autotile math. (C) one new verb on `generator_tile_op`, and an `event.pal` whose only job is `exec` of that verb. The shape table stays `tile_autotile.c` (`FLOOR_AUTOTILE_TABLE`, 48 rows, already checked on a real World_A2 sheet).
+
+Test: (1) one table of how a floor tiles, one op that writes pixels. A plugin per sheet and a pal page that inlines the table are both a second authority. (2) the page is data, the same shape as `gen_characters/event.pal`. (3) the 10th sheet is another source block plus another page, not another compositor. (4) the map renderer already points at `tile_autotile.c`. The generator writing a different 48 would drift from placement. (5) op + event.pal + a harness case. (6) cost is a verb that reads the existing table, not a plugin host.
+
+DECISION: C. Built 2026-11-05 as `shapes` / `shapes-check` on `generator_tile_op`, linked to `tile_autotile_blits` in `tile_autotile.c` (the table was not copied). Event page `events/gen_floor_shapes/event.pal`. Harness `generator_tiles.pal` passed 37, failed 0. The sheet it writes is a proof block in `out/bad/`, not a branded grass sheet and not yet on a map. Doc: `16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` and `16.game/TEAR-IT-TILES-100-2026-11-05.md`.

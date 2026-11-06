@@ -69,3 +69,15 @@ EXPECT_HAS | gen_characters.pal | run | and-passes-the-sheet
 WRITE | a/Outside/20261105/grass/sprite.csv | # resolution=16\nr,g,b,a\n0,0,0,255\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | audit | $T/a
 EXPECT_EXIT | 4 | NEGATIVE-a-blank-grass-tile-fails-the-quality-check
+
+CASE    | floor-shapes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes-check
+EXPECT_EXIT | 0 | floor-48-quadrants-match-the-table
+EXPECT_OUT | SHAPES floor=48 quad=ok | floor-shape-line
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/bad/floor-proof
+EXPECT_EXIT | 0 | floor-shapes-write
+EXPECT_FILE | bad/floor-proof/s00/sprite.csv | shape-0-csv
+EXPECT_FILE | bad/floor-proof/s47/tile.png | shape-47-png
+EXPECT_FILE | bad/floor-proof/sheet.png | shape-sheet
+COPY | @.apps/generator-hq/events/gen_floor_shapes/event.pal | gen_floor.pal
+EXPECT_HAS | gen_floor.pal | shapes | the-editor-event-asks-for-the-48-shapes

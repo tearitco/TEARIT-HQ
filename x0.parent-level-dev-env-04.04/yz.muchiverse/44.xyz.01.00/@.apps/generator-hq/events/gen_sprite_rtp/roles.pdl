@@ -1,0 +1,12 @@
+# Sprites are Tear-it people. An RPG Maker body is not a source for these rows.
+# Actor1 frames 091-098 were opened and rejected (2026-11-05): they are copies of the RTP cast.
+# Asa and Ava have no costume row in the lore summary. Do not invent a face. Do not paste an RTP frame.
+# READ: Asa preserves, Ava wants meaning. They are the last two ageless humans in the Eden archive.
+# READ: Lucky = Asa = Sol is one identity line, not David, Solomon, or Jesus. Astra is Ava's later name in the book mapping.
+# Portraits opened 2026-11-05. Owner: generated, not RPG Maker, safe.
+# pals/asa/assets/portrait.png and pals/ava/assets/portrait.png under the live desk.
+# Not kept. A keep waits on the owner approving the black-and-gold pattern.
+ROLE | Characters |  | asa | Eden. Portrait exists. Red mohawk, black hoodie, gold chain. Not kept.
+ROLE | Characters |  | ava | Eden. Portrait exists. Brown hair, black hoodie, thin gold chain. Not kept.
+ROLE | Characters |  | lucky | same identity line as Asa, later era. No picture yet.
+ROLE | Characters |  | astra | partner. Book mapping names her Ava's later self. No picture yet.

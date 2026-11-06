@@ -106,6 +106,65 @@ That is the pass. Inside is the next pass, with its own role list, written down 
 
 Not a rewrite of the raymarch. Not a new atlas format. Not a replacement for CDDA, DF, Doom, or Mineclonia art. Not an image model in the house. Not a batch that regenerates every sheet in one night. Characters and faces stay on the RTP until the ground sheets are done, and they get their own role list when their pass starts.
 
+## Rejected, 2026-11-05
+
+The catalog that shipped (`generator_tile_op`) is flat fills, a little noise, and a few shapes. The owner looked at the sheet PNGs and rejected them. They are not a stand-in for an RPG Maker sheet. More roles drawn the same way will not fix it.
+
+What an Outside grass cell actually has, and this painter does not: a light direction, two or three shades of the same green, an outline, blades or pebbles that repeat on a 16 px grid, and an edge that meets the next cell. Water is an autotile (corners and sides), not one blue square. A character is a shaded body with a face, not an oval.
+
+The model does not draw the cell. A shape comes from the original sheet.
+
+That is the rule for anything with an outline: a rock, a tree, a roof, a door, a character, a water edge, an autotile corner. Copy that cell. Do not invent a new silhouette in the painter, and do not ask a model to invent one. A flat fill is the only thing a generator may still color, and even grass already has a real cell, so the fill is not the art.
+
+Grass and rock use the original RPG Maker Outside sheet. The sliced cells are already in `palettes/sprites/rmmv/Outside_a2` and `Outside_b`. `events/gen_outside_rtp/roles.pdl` names `Outside_a2/001` as grass and `Outside_b/165` as a rock. Those two were opened: a full grass cell, and a grey boulder cluster. `Outside_a2/008`, `Outside_b/157`, and `Outside_b/164` were opened and dropped. The first two are fragments. `164` is a stone ring around a yellow center. `fromcsv` writes a viewable PNG from that `sprite.csv`. A person paints a shape only when the original sheet has no cell for it.
+
+A person makes the 16 px tile (or picks one we already have the right to use). The same `sprite.csv` and `sheet.png` path still publishes it. The model's job is classification only: given that picture and the role list, it writes the label (`grass`, `water_edge`, `wall`, which sheet, whether the cell is a side or a corner). A wrong label is the thing a person corrects. The word bank is the list of allowed labels, not a prompt for a picture.
+
+The October diffusion trial and the grass draft of 2026-11-05 (`0.grass-draft-512.png`, a map with a grid and blobs, 117 s on debil) are examples of the model drawing a scene. They are not the art path. Do not run another draft to get a better grass cell.
+
+The way to that detail is already written, and it is not a bigger C painter.
+
+- `16.game/WORD-BANK-TO-IMAGE.md`. W0 is built: word rows and `img_prompt` turn a part into a prompt. W1 is a model that drafts a PNG off this machine. W2 is a small in-house model trained only on drafts a person accepted. tomom is that student, later. It is not the teacher, and it is not wired.
+- `16.game/GAMES-DECISIONS-2026-10-13.md` section 8: Stable Diffusion, hand-tuned with word banks and concept banks, workers where we have them, a person as the judge. Nothing is generated while a game runs.
+- The one trial that was run (2026-10-13, debil, CPU, tiny SD, about two minutes a picture) drew cars, not a door, and not pixel art. The bank words were the thing to change next. No larger model was tried. This machine has no GPU and, at that reading, no weights.
+
+The next Outside shapes are more original cells, each opened before it is named. A missing shape is hand-painted. generator-hq publishes the cell. It does not become a neural-network runtime.
+
+## Algorithmic diffusion, 2026-11-05
+
+Owner: we can diffuse using the RPG Maker tilesets, algorithmically.
+
+The sheet is the only source of pixels. A new cell is a rearrangement of a named cell, not a picture invented from words. The outline stays the outline of that cell. Colors in the new cell are colors that already occur in it. An edge is quilted from that cell's own edge, which is how an autotile grows without a new shape. Grass `Outside_a2/001` and the boulder `Outside_b/165` are the first two sources. The same rule covers a tree, a roof, a door, and a character.
+
+What this word does not mean: the Stable Diffusion draft. That model drew a scene. It is not rerun. Classification still only writes the label. A person corrects a wrong label and paints a shape only when the sheet has no cell for it.
+
+The proof, when this verb is built, is a harness case: every output pixel's color exists in the source `sprite.csv`, the same seed matches byte for byte, and a source with one color cannot grow a second color. Decision log D24.
+
+## Good and bad stay in different directories
+
+Owner, 2026-11-05: the bad versions and the good ones must not sit in one folder.
+
+View copies, already split:
+
+- Good: `XO/31.Nov/nov-5/1.generator-sheets/0.good/` holds `0.rmmv-grass.png` (`Outside_a2/001`) and `0.rmmv-rock.png` (`Outside_b/165`).
+- Bad: `XO/31.Nov/nov-5/1.generator-sheets/0.bad/` holds the flat catalog sheets (`0.Outside.png` and the other thirteen) and the rejected grass draft (`0.grass-draft-512.png`, `0.grass-draft-16.png`).
+
+A later run writes the same way. The painter and any draft land in `out/bad/<sheet>/<seed>/`. A cell moves to `out/good/<sheet>/<role>/` only after it is a named source cell, or an algorithmic rearrangement of one, and a person has kept it. `roles.pdl` names the good cells. It does not name anything under `out/bad`.
+
+## Tiling-compliant sheets, 2026-11-05
+
+Owner: the generator does make sheets that tile, and the way it runs is an op called from an event page.
+
+A ground sheet is tiling-compliant when each placed cell is one of 48 shapes, and each shape is four quadrants taken from the source block. That table already exists. It is `FLOOR_AUTOTILE_TABLE` in `_.monads/_.livedesk-taskbar/ops/tile_autotile.c`, the real MV floor table, 48 rows, checked against a real `World_A2` sheet. Walls use the 16-row table in the same file. The generator does not grow a second copy of those numbers.
+
+The op is still `generator_tile_op`. A new verb reads one named source block (the good cell's autotile block, not a flat fill) and writes the 48 shapes with that table. The event page is the editor's button, the same shape as `events/gen_characters/event.pal`: one `exec` of the op, then `halt`. There is no plugin list. A second program would be a second place that knows how a sheet tiles.
+
+Output of that verb goes to `out/bad/` until the edge check passes and a person keeps it, then `out/good/`. The check is: a shape's quadrant pixels equal the source block at the table's coordinates. Decision log D25.
+
+Built 2026-11-05: `generator_tile_op shapes` and `shapes-check`. The table is still only in `tile_autotile.c` (`tile_autotile_blits`). The first source is an in-memory proof block, 96×144, each 24×24 half a flat color, so a wrong quadrant cannot hide. `shapes-check` exits 0 only when all 48 shapes match. `shapes <outdir>` writes `s00`–`s47` plus `sheet.png`. The editor page is `events/gen_floor_shapes/event.pal`. Harness `generator_tiles.pal` verdict after that case: `VERDICT|PASS|passed=37|failed=0`. The written proof sheet is in `out/bad/floor-proof/` and the view copy is `XO/31.Nov/nov-5/1.generator-sheets/0.bad/0.floor-shapes-proof.png`. It is a color code, not grass, and it stays in bad.
+
+Not done: reading a real 96×144 RPG Maker block (no `World_A2.png` under `palettes` on this pass), pointing one live map at the sheet, or a 3D frame of that map. The quality bar for calling a sheet Tear-it is `16.game/TEAR-IT-TILES-100-2026-11-05.md`.
+
 ## First build, when the owner says go
 
 1. `roles.pdl` for Outside only, the nine roles above.

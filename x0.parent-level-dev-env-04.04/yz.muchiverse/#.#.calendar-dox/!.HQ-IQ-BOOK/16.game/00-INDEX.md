@@ -6,17 +6,22 @@ numeric step). The AI that may later append a command is chapter
 `17.ai`. This chapter does not own that. It owns the machine the
 command runs on.
 
+- **Lore and IP (owner 2026-11-05):** what TSOTS means and the Soul Pen franchise live in chapter `22.lore-ip`; the old TSOTS design notes are summarized in `TSOTS-SECRETS-VISION-SUMMARY-2026-11-05.md` and the University plan in `CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md`.
+
 - `GAME.md` — start here. Includes the open parity gaps: the
   battle screen, loading or saving an RPG Maker project, and range
   on the placing grid (not built; tactics proof waits on Ember's HP).
 - `GAME-MECHANICS-SPRINT.md` — short loops for df-hq, cdda-hq, and
   mcl-hq. Shared event verbs.
 - `EARLY-SURVIVOR-AND-COMMON-EVENTS.md` — smash-for-supplies, books
-- `GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` — stop using RPG
-  Maker sheets one tileset at a time; in-house generator wired to the
-  palettes Generate row. Not built.
   and practice, DF wagon start, MCL bench/bed/creeper, gen_map, and
   the water/lava/rain/fire common events. Technical needs. Not built.
+- `GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` — stop using RPG
+  Maker sheets one tileset at a time; in-house generator wired to the
+  palettes Generate row. The 48-shape floor verb is built. A map swap is not.
+- `TEAR-IT-TILES-100-2026-11-05.md` — the bar for calling a sheet
+  Tear-it: equal or greater than the RPG Maker cell it replaces, and
+  the questions that block a 100% swap.
 - `S1-EVENT-LEDGER.md` — the event line that is built.
 - `RULES-df-hq.md`, `RULES-cdda-hq.md`, `RULES-mcl-hq.md` — verb, who, cost, result, file.
 - `GAME-DEV-HQ-DESIGN.md` — Game Dev Story as a studio week: staff, one game, ship. Not built.
@@ -50,6 +55,8 @@ command runs on.
 - `GAMES-DECISIONS-2026-10-13.md` — owner decisions for cdda-hq, df-hq,
   gta-hq: z-levels, vehicles as part-cell grids, scale, physics in the
   concept bank, learning with review. Read before touching those games.
+- `GROK-HANDOFF-2026-11-04-SURVIVOR-SLICE-AND-TEAR-IT-CO-SOURCES.md` — latest handoff to Grok: what is built, the one released caller, and the exact paths of the tear-it co source pages (editor islands, rpg-space / rpg-dust planets and skiff)
+- `../08-roadmap/GRAND-ROADMAP-CHECKLIST-2026-11-04.md` — one-page checklist of every feature, done vs not done, with spec links
 - `GAMES-ROADMAP.md` — milestones with proof/KPI, how to use/modify
   (filled as each lands), and the tangent documents to write. All
   rows start NOT BUILT.
@@ -64,3 +71,8 @@ command runs on.
 - `PETSLIKE-NEW-ENTRIES.md` - the "+ new page / book / room" rows of every pets-like board (two families, what each verb does, evidence) and the research + plan for "+ new pet" under a "pals" tab.
 - `PETSLIKE-FRAMEWORK-PLAN.md` - are the pets-like boards one framework yet (no): what exists, measured duplication of the eight copies, the best-of table, proposed core + rules + data split, the diff gate.
 - `RPG-DUST-DESIGN.md` - **paper design, nothing built** (2026-10-23): a pets-like board that simulates a planet from a seed, solar system down to molecules; the scale ladder as data rows, the world as a function of seed + an append-only overrides ledger, what is done by hand (laws), by weights (choices), by events (actions), by ops; how the current boards and the marathon refactor are reused; nine build steps each with a test that can fail; what is not known. Companion: NIGHT 52 (audio class) and the XO email summary.
+
+- Vehicle crafting and modding (design, 2026-11-05): `VEHICLE-CRAFTING-AND-MODDING-DESIGN-2026-11-05.md`.
+- Vehicle physics and proving grounds (design, 2026-11-05): `VEHICLE-PHYSICS-AND-PROVING-GROUNDS-2026-11-05.md`.
+- Gyms, zoos and museums, documentation in the game (design, 2026-11-05): `GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md`.
+- Final handoff to Grok, 2026-11-05 (roadmap, lore, decisions, how to ask claude questions): `GROK-HANDOFF-FINAL-2026-11-05-ROADMAP-LORE-AND-QA.md`; Q&A files in `../13.agent-coms/GROK/QUESTIONS-FOR-CLAUDE.md` and `ANSWERS-FROM-CLAUDE.md`.

@@ -1,0 +1,4 @@
+# generator_char.pal — body, then clothes. See cases/generator_char.pdl
+exec ./ops/+x/harness_case_op.+x cases/generator_char.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/generator_char.pdl
+halt

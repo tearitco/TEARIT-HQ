@@ -1,0 +1,5 @@
+CONCEPT | color | w_grey
+CONCEPT | detail | w_crisp
+LAYER | 10 | body | naked
+LAYER | 20 | clothing | shirt
+LAYER | 30 | hair | none

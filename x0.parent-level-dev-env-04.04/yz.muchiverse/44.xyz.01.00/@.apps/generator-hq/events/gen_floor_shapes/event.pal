@@ -1,0 +1,3 @@
+# Editor event: 48 floor shapes from the one autotile table. Lands in bad until a person keeps it.
+exec ../../ops/+x/generator_tile_op.+x shapes ../../out/bad/floor-proof
+halt

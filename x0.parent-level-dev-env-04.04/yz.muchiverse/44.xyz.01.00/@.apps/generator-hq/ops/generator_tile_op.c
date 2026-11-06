@@ -360,10 +360,103 @@ static int audit(const char *outdir) {
     }
     return fails ? 4 : 0;
 }
+static int from_csv(const char *csv, const char *png, int scale) {
+    FILE *f = fopen(csv, "r");
+    char line[80];
+    int w = 0, h = 0, n = 0, cap = 0, i, y, x, sy, sx;
+    unsigned char *px = NULL, *big;
+    if (!f) return 2;
+    if (!fgets(line, sizeof line, f) || sscanf(line, "# resolution=%d", &w) != 1) { fclose(f); return 2; }
+    h = w;
+    { char *xp = strchr(line, 'x'); if (xp) h = atoi(xp + 1); }
+    fgets(line, sizeof line, f); fgets(line, sizeof line, f); fgets(line, sizeof line, f);
+    while (fgets(line, sizeof line, f)) {
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        if (n >= cap) { cap = cap ? cap * 2 : w * h; px = realloc(px, (size_t)cap * 4); if (!px) { fclose(f); return 2; } }
+        px[n * 4] = (unsigned char)r; px[n * 4 + 1] = (unsigned char)g; px[n * 4 + 2] = (unsigned char)b; px[n * 4 + 3] = (unsigned char)a;
+        n++;
+    }
+    fclose(f);
+    if (n != w * h || scale < 1 || scale > 8) { free(px); return 2; }
+    big = calloc((size_t)w * scale * h * scale, 4);
+    if (!big) { free(px); return 2; }
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) for (sy = 0; sy < scale; sy++) for (sx = 0; sx < scale; sx++) {
+        unsigned char *s = px + (y * w + x) * 4;
+        unsigned char *d = big + (((y * scale + sy) * (w * scale) + (x * scale + sx)) * 4);
+        d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
+    }
+    i = write_png(png, big, w * scale, h * scale);
+    free(px); free(big);
+    return i == 0 ? 0 : 2;
+}
+int tile_autotile_blits(int kind, int shape, int tile_px, int out[4][6]);
+
+static void proof_block(unsigned char *src) {
+    int y, x;
+    for (y = 0; y < 144; y++) for (x = 0; x < 96; x++) {
+        int qx = x / 24, qy = y / 24;
+        unsigned char *p = src + (y * 96 + x) * 4;
+        p[0] = (unsigned char)(qx * 40);
+        p[1] = (unsigned char)(qy * 30);
+        p[2] = 17;
+        p[3] = 255;
+    }
+}
+static int shapes(const char *outdir) {
+    unsigned char *src = calloc(96 * 144, 4);
+    unsigned char *tile = calloc(48 * 48, 4);
+    unsigned char *sheet = calloc((size_t)8 * 48 * 6 * 48, 4);
+    int shape, q, y, x, fails = 0;
+    if (!src || !tile || !sheet) { free(src); free(tile); free(sheet); return 2; }
+    proof_block(src);
+    for (shape = 0; shape < 48; shape++) {
+        int b[4][6];
+        if (!tile_autotile_blits(0, shape, 48, b)) { fails++; continue; }
+        memset(tile, 0, 48 * 48 * 4);
+        for (q = 0; q < 4; q++) for (y = 0; y < b[q][5]; y++) for (x = 0; x < b[q][4]; x++) {
+            int sx = b[q][0] + x, sy = b[q][1] + y, dx = b[q][2] + x, dy = b[q][3] + y;
+            if (sx < 0 || sy < 0 || sx >= 96 || sy >= 144 || dx < 0 || dy < 0 || dx >= 48 || dy >= 48) { fails++; continue; }
+            memcpy(tile + (dy * 48 + dx) * 4, src + (sy * 96 + sx) * 4, 4);
+        }
+        for (q = 0; q < 4; q++) for (y = 0; y < b[q][5]; y++) for (x = 0; x < b[q][4]; x++) {
+            int sx = b[q][0] + x, sy = b[q][1] + y, dx = b[q][2] + x, dy = b[q][3] + y;
+            unsigned char *s = src + (sy * 96 + sx) * 4;
+            unsigned char *d = tile + (dy * 48 + dx) * 4;
+            if (s[0] != d[0] || s[1] != d[1] || s[2] != d[2] || s[3] != d[3]) fails++;
+        }
+        if (outdir) {
+            char dir[700], path[760];
+            int col = shape % 8, row = shape / 8;
+            snprintf(dir, sizeof dir, "%s/s%02d", outdir, shape);
+            mkp(dir);
+            snprintf(path, sizeof path, "%s/sprite.csv", dir);
+            if (write_csv(path, tile, 48, 48) != 0) fails++;
+            snprintf(path, sizeof path, "%s/tile.png", dir);
+            if (write_png(path, tile, 48, 48) != 0) fails++;
+            for (y = 0; y < 48; y++) for (x = 0; x < 48; x++)
+                memcpy(sheet + (((row * 48 + y) * (8 * 48) + col * 48 + x) * 4), tile + (y * 48 + x) * 4, 4);
+        }
+    }
+    if (outdir) {
+        char path[760];
+        snprintf(path, sizeof path, "%s/sheet.png", outdir);
+        if (write_png(path, sheet, 8 * 48, 6 * 48) != 0) fails++;
+        printf("SHAPES floor=48 wrote=%s quad=%s\n", outdir, fails ? "bad" : "ok");
+    } else {
+        printf("SHAPES floor=48 quad=%s\n", fails ? "bad" : "ok");
+    }
+    free(src); free(tile); free(sheet);
+    return fails ? 4 : 0;
+}
 int main(int argc, char **argv) {
+    if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
+    if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
+    if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
+    if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | shapes-check | shapes <outdir>\n");
     return 2;
 }

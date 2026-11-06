@@ -51,6 +51,7 @@ No model was loaded and no image generated; no speed was measured on any machine
 
 ## 7. Proof for W0 (observed 2026-10-13, fresh build of `img_prompt.c`)
 - `img_prompt data/img/words.pdl data/img/parts.pdl car_door` printed: `a car door panel, painted steel, dark red, seen from above, pixel art, plain flat background, crisp outline, 32 pixel sprite` with negative `text, watermark, blurry`.
+- 2026-11-05: the same op also prints `GUIDANCE` and `STEPS`. Colour weight maps to `guidance_scale`, the crisp word maps to `num_inference_steps`, by `ops/sd_map.h`. A weight of 0.50 is the draft default (7.5 and 20). `car_door` (`w_red` 0.60, `w_crisp` 0.70) prints `GUIDANCE: 8.25` and `STEPS: 24`. `img_draft.py` reads those lines and passes them into `StableDiffusionPipeline`. The prompt text is unchanged. No image was generated for this map.
 - Raising `w_dust` from 0.20 to 0.50 changed the `car_wheel` prompt (it gained `worn and dusty`); raising the cutoff to 0.85 cut the door prompt to `a car door panel, seen from above, pixel art, 32 pixel sprite`.
 - Negative tests, each exits 1 with its message: weight 1.8, unknown word id in a part, unknown brixel, bad kind, duplicate word id (copies in `data/img/bad/`).
 - How to use: run the op as in `data/img/README.md`. To change what a part looks like, edit its word ids in `parts.pdl` or a word's weight in `words.pdl`; rerun and read `PROMPT`.
