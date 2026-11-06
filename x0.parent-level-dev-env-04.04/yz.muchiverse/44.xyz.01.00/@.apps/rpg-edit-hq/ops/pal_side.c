@@ -169,8 +169,26 @@ int main(int argc, char **argv) {
         char palp[4300]; snprintf(palp, sizeof palp, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
         kv_set(palp, "harness_sel", arg);
         printf("HARNESS %s\n", arg);
-        /* centroid/clear wipes the open page's stamp. Every other row runs that pal from the harness folder. */
-        if (strstr(arg, "/clear")) {
+        /* clear wipes the open page. floor/wall/door/roof/bridge/all/centroid/test stamp that page. */
+        if (!strcmp(arg, "floor") || !strcmp(arg, "wall") || !strcmp(arg, "door") || !strcmp(arg, "roof") || !strcmp(arg, "bridge") || !strcmp(arg, "all") || !strcmp(arg, "centroid/test")) {
+            char ui[4200], bl[80] = "", pl[80] = "", cells[4300], op[4300], pdl[4300];
+            snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+            kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
+            char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
+            char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+            if (bl[0] && pl[0]) {
+                snprintf(cells, sizeof cells, "%s/@.apps/centroid/centroid-pchq/pieces/system/maps/%s/%s/cells.txt", house, bl, pl);
+                snprintf(op, sizeof op, "%s/@.apps/centroid/ops/+x/centroid_parts_op.+x", house);
+                snprintf(pdl, sizeof pdl, "%s/@.apps/centroid/parts/centroid.parts.pdl", house);
+                const char *part = (!strcmp(arg, "all") || !strcmp(arg, "centroid/test")) ? "all" : arg;
+                pid_t c = fork(); if (c == 0) { execl(op, op, "apply", part, cells, pdl, (char *)NULL); _exit(127); }
+                if (c > 0) { int st; waitpid(c, &st, 0); }
+                char mk[4300]; snprintf(mk, sizeof mk, "%s/@.apps/centroid/centroid-pchq/pieces/system/maps/%s/%s/cells.marker", house, bl, pl);
+                FILE *mf = fopen(mk, "a"); if (mf) { fputc('x', mf); fclose(mf); }
+            }
+            return 0;
+        }
+        if (!strcmp(arg, "clear") || strstr(arg, "/clear")) {
             char ui[4200], bl[80] = "", pl[80] = "", cells[4300];
             snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
             kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
@@ -325,8 +343,12 @@ int main(int argc, char **argv) {
             char hp[4300]; snprintf(hp, sizeof hp, "%s/&.widgits/_shared-lib/harness/%s/%s.pal", house, bl, pl);
             int nhr = 0;
             if (bl[0] && pl[0] && access(hp, R_OK) == 0) {
-                fprintf(o, "tbhar_%d_label=%s/%s\n", nhr, bl, pl); nhr++;
-                fprintf(o, "tbhar_%d_label=%s/clear\n", nhr, bl); nhr++;
+                static const char *lab[] = { "drop-down floor", "wall", "door", "roof", "bridge", "all", "clear" };
+                static const char *key[] = { "floor", "wall", "door", "roof", "bridge", "all", "clear" };
+                for (int i = 0; i < 7; i++) {
+                    fprintf(o, "tbhar_%d_label=%s\ntbhar_%d_key=%s\n", nhr, lab[i], nhr, key[i]);
+                    nhr++;
+                }
             }
             fprintf(o, "n_tbhar=%d\n", nhr);
         }

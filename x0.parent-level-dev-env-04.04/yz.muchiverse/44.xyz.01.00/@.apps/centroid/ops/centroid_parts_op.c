@@ -201,10 +201,32 @@ static int door_flip(const char *cells) {
     printf("%s bit=%d\n", nb ? "OPEN" : "SHUT", nb);
     return 0;
 }
+static int apply_part(const char *part, const char *cells, const char *pdl) {
+    static const char *shown[] = { "floor", "wall", "door", "roof", "bridge" };
+    if (!strcmp(part, "all")) {
+        for (int i = 0; i < 5; i++) {
+            int rc = stamp(cells, pdl);
+            if (rc) return rc;
+            printf("APPLY %s\n", shown[i]);
+        }
+        return 0;
+    }
+    int known = 0;
+    for (int i = 0; i < 5; i++) if (!strcmp(part, shown[i])) known = 1;
+    if (!known) { fprintf(stderr, "no part %s\n", part); return 2; }
+    int rc = stamp(cells, pdl);
+    if (rc) return rc;
+    printf("APPLY %s\n", part);
+    return 0;
+}
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: centroid_parts_op stamp <cells.txt> [parts.pdl] | door <cells.txt>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: centroid_parts_op stamp <cells.txt> [parts.pdl] | apply <floor|wall|door|roof|bridge|all> <cells.txt> [parts.pdl] | door <cells.txt>\n"); return 2; }
     if (!strcmp(argv[1], "stamp")) return stamp(argv[2], argc > 3 ? argv[3] : "centroid.parts.pdl");
+    if (!strcmp(argv[1], "apply")) {
+        if (argc < 4) { fprintf(stderr, "usage: centroid_parts_op apply <part> <cells.txt> [parts.pdl]\n"); return 2; }
+        return apply_part(argv[2], argv[3], argc > 4 ? argv[4] : "centroid.parts.pdl");
+    }
     if (!strcmp(argv[1], "door")) return door_flip(argv[2]);
-    fprintf(stderr, "usage: centroid_parts_op stamp <cells.txt> [parts.pdl] | door <cells.txt>\n");
+    fprintf(stderr, "usage: centroid_parts_op stamp <cells.txt> [parts.pdl] | apply <floor|wall|door|roof|bridge|all> <cells.txt> [parts.pdl] | door <cells.txt>\n");
     return 2;
 }

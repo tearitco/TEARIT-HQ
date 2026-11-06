@@ -19,6 +19,17 @@ EXPECT_OUT | SPLIT ok | islands-split
 EXPECT_HAS | cells.txt | height=33 | map-grows
 EXPECT_HAS | cells.txt | 0,0,0 | air-between
 EXPECT_HAS | cells.txt | 1,0,0 | bridge-no-body
+RUN | ./centroid_parts_op | apply | door | cells.txt | centroid.parts.pdl
+EXPECT_EXIT | 0 | apply-door-rebuilds
+EXPECT_OUT | APPLY door | apply-door-line
+EXPECT_HAS | events.txt | door | apply-door-kept
+RUN | ./centroid_parts_op | apply | all | cells.txt | centroid.parts.pdl
+EXPECT_EXIT | 0 | apply-all
+EXPECT_OUT | APPLY floor | all-runs-floor
+EXPECT_OUT | APPLY wall | all-runs-wall
+EXPECT_OUT | APPLY door | all-runs-door
+EXPECT_OUT | APPLY roof | all-runs-roof
+EXPECT_OUT | APPLY bridge | all-runs-bridge
 EXPECT_HAS | centroid.parts.pdl | wood | wood-count
 EXPECT_HAS | centroid.parts.pdl | stone | stone-count
 RUN | ./centroid_parts_op | door | cells.txt
