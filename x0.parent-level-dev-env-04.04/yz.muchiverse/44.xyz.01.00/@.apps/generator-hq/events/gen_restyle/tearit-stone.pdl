@@ -1,0 +1,6 @@
+# Restyle style: Tear-it stone (interim reference sheets, D27). Cool violet-grey ramp for rocks, walls and cliffs; gold accent speckle.
+GEN | ramp | #14121c,#2e2c40,#4d4b66,#7d7b9a,#bcbad4
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

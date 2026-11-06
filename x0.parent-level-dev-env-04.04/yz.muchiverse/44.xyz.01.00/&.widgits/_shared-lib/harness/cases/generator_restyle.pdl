@@ -1,0 +1,33 @@
+# generator_restyle: the restyle verb recolours sliced RPG Maker cells (D27) without touching the shape. Real cells from palettes/sprites/rmmv.
+RESULTS | ../results/generator_restyle.txt
+ENV | LC_ALL | C
+
+CASE    | restyle
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-green.pdl | green.pdl
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-stone.pdl | stone.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/green.pdl | $T/a | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_a2/001/sprite.csv | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | two-cells-restyled
+EXPECT_OUT | RESTYLE Outside_a2_001 48x48 opaque=2304 changed=2304 outline=0 | a-ground-tile-has-no-outline-so-tiles-still-meet
+EXPECT_OUT | RESTYLE Outside_b_165 48x48 opaque=1773 changed=1773 outline=120 | the-boulder-gets-an-outline-on-its-transparent-edge
+EXPECT_FILE | a/Outside_b_165/sprite.csv | boulder-csv
+EXPECT_FILE | a/Outside_b_165/tile.png | boulder-png
+RUN | /usr/bin/cmp | -s | $T/a/Outside_b_165/sprite.csv | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-restyled-is-not-the-original
+RUN | /usr/bin/awk | -F, | NR==FNR{a[FNR]=$4;next} a[FNR]!=$4{b++} END{exit b>0} | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv | $T/a/Outside_b_165/sprite.csv
+EXPECT_EXIT | 0 | alpha-is-identical-pixel-for-pixel
+RUN | /usr/bin/awk | -F, | NR==FNR{a[FNR]=$4;next} a[FNR]!=$4{b++} END{exit b>0} | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/100/sprite.csv | $T/a/Outside_b_165/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-the-alpha-check-can-fail-on-a-different-shape
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/green.pdl | $T/b | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+RUN | /usr/bin/cmp | -s | $T/a/Outside_b_165/sprite.csv | $T/b/Outside_b_165/sprite.csv
+EXPECT_EXIT | 0 | same-style-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/stone.pdl | $T/c | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+RUN | /usr/bin/cmp | -s | $T/a/Outside_b_165/sprite.csv | $T/c/Outside_b_165/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-another-style-gives-other-bytes
+WRITE | bad.pdl | GEN \p ramp \p #123456\nGEN \p accent_per256 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/bad.pdl | $T/d | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_a2/001/sprite.csv
+EXPECT_EXIT | 3 | NEGATIVE-a-one-colour-ramp-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/green.pdl | $T/e | $T/no-such-cell.csv
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-cell-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/green.pdl | $T/f | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/001/sprite.csv
+EXPECT_EXIT | 0 | a-blank-cell-is-skipped-not-an-error

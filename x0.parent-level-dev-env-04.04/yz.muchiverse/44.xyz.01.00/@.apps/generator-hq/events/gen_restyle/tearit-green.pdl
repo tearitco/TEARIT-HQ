@@ -1,0 +1,7 @@
+# Restyle style: Tear-it green (interim reference sheets, D27). Dark to light ramp, a gold accent speckle.
+# Run: generator_tile_op.+x restyle <this file> <outdir> <cell sprite.csv>...   Candidates go to out/bad/, never out/good/.
+GEN | ramp | #12181c,#27403a,#3c6a4c,#69a368,#b3d88c
+GEN | accent | #ffd24a
+GEN | accent_per256 | 6
+GEN | seed | 20261105
+GEN | outline | 1

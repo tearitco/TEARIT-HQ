@@ -451,14 +451,166 @@ static int shapes(const char *outdir) {
     free(src); free(tile); free(sheet);
     return fails ? 4 : 0;
 }
+/* ---- restyle: recolour sliced RPG Maker cells into a Tear-it look (decision D27, option A) ----
+ *   generator_tile_op.+x restyle <style.pdl> <outdir> <cell sprite.csv>...
+ * Same cell size and same pixel grid, so a restyled cell still fits the autotile table. ALPHA IS NEVER CHANGED.
+ * Each opaque pixel is mapped to a step of the style's ramp by its luminance, scaled to that cell's own
+ * min..max so the cell keeps its contrast. An opaque pixel next to a transparent one INSIDE the cell gets
+ * the darkest ramp step (an outline; the cell border is never outlined, so tiles still meet). A few
+ * deterministic accent pixels (hash of seed, x, y: no rand) land on the lightest step.
+ * Style file rows (same shape as GEN rows):  GEN | ramp | #dark,#..,#light   GEN | accent | #rrggbb
+ *   GEN | accent_per256 | 0..255   GEN | seed | n   GEN | outline | 0 or 1
+ * Output: <outdir>/<sheet>_<cell>/sprite.csv + tile.png (x4 view). Candidates only; the owner moves a kept
+ * file to out/good/ (TEAR-IT-TILES-100). This op does not read from or write to out/good/. */
+#define RS_MAXRAMP 8
+typedef struct { int n, ramp[RS_MAXRAMP][3], accent[3], accent_per256, outline; unsigned seed; } RStyle;
+static unsigned char *read_cell(const char *csv, int *w, int *h) {
+    FILE *f = fopen(csv, "r");
+    char line[80];
+    int n = 0, i;
+    unsigned char *px;
+    if (!f) return NULL;
+    if (!fgets(line, sizeof line, f) || sscanf(line, "# resolution=%d", w) != 1) { fclose(f); return NULL; }
+    *h = *w;
+    { char *xp = strchr(line, 'x'); if (xp) *h = atoi(xp + 1); }
+    if (*w < 1 || *h < 1 || *w > 256 || *h > 256) { fclose(f); return NULL; }
+    for (i = 0; i < 3; i++) if (!fgets(line, sizeof line, f)) { fclose(f); return NULL; }
+    px = calloc((size_t)*w * *h, 4);
+    if (!px) { fclose(f); return NULL; }
+    while (fgets(line, sizeof line, f)) {
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        if (n >= *w * *h) { free(px); fclose(f); return NULL; }
+        px[n * 4] = (unsigned char)r; px[n * 4 + 1] = (unsigned char)g; px[n * 4 + 2] = (unsigned char)b; px[n * 4 + 3] = (unsigned char)a;
+        n++;
+    }
+    fclose(f);
+    if (n != *w * *h) { free(px); return NULL; }
+    return px;
+}
+static int parse_hex3(const char *s, int *rgb) {
+    if (*s == '#') s++;
+    if (hex2(s) < 0 || hex2(s + 2) < 0 || hex2(s + 4) < 0) return -1;
+    rgb[0] = hex2(s); rgb[1] = hex2(s + 2); rgb[2] = hex2(s + 4);
+    return 0;
+}
+static int read_style(const char *path, RStyle *st) {
+    FILE *f = fopen(path, "r");
+    char line[400];
+    memset(st, 0, sizeof *st);
+    st->outline = 1; st->seed = 1;
+    if (!f) return -1;
+    while (fgets(line, sizeof line, f)) {
+        char *k, *v, *p;
+        if (strncmp(line, "GEN |", 5) != 0) continue;
+        p = line + 5; while (*p == ' ') p++;
+        k = p; p = strchr(p, '|'); if (!p) continue; *p = 0; v = p + 1; while (*v == ' ') v++;
+        p = strchr(v, '\n'); if (p) *p = 0;
+        while (k[0] && k[strlen(k) - 1] == ' ') k[strlen(k) - 1] = 0;
+        if (strcmp(k, "ramp") == 0) {
+            char *q = v;
+            st->n = 0;
+            while (*q) {
+                if (st->n >= RS_MAXRAMP || parse_hex3(q, st->ramp[st->n]) != 0) { fclose(f); return -1; }
+                st->n++;
+                q += (*q == '#') ? 7 : 6;
+                if (*q == ',') q++; else break;
+            }
+        }
+        else if (strcmp(k, "accent") == 0) { if (parse_hex3(v, st->accent) != 0) { fclose(f); return -1; } }
+        else if (strcmp(k, "accent_per256") == 0) st->accent_per256 = atoi(v);
+        else if (strcmp(k, "seed") == 0) st->seed = (unsigned)strtoul(v, NULL, 10);
+        else if (strcmp(k, "outline") == 0) st->outline = atoi(v);
+    }
+    fclose(f);
+    return (st->n >= 2 && st->accent_per256 >= 0 && st->accent_per256 <= 255) ? 0 : -1;
+}
+static int restyle_cell(const RStyle *st, const char *outdir, const char *csv) {
+    int w, h, x, y, lo = 1 << 20, hi = -1, opaque = 0, changed = 0, outl = 0, acc = 0, i;
+    unsigned char *src = read_cell(csv, &w, &h), *out;
+    char name[208], dir[1000], path[1100], tmp[512], *a, *b;
+    unsigned *ci, *co;
+    int cin = 0, cout = 0;
+    if (!src) { fprintf(stderr, "cannot read cell %s\n", csv); return 2; }
+    out = malloc((size_t)w * h * 4);
+    if (!out) { free(src); return 2; }
+    memcpy(out, src, (size_t)w * h * 4);
+    { int any = 0; for (i = 0; i < w * h; i++) if (src[i * 4 + 3]) { any = 1; break; } if (!any) { free(src); free(out); return 0; } }
+    for (i = 0; i < w * h; i++) if (src[i * 4 + 3] > 0) {
+        int l = (299 * src[i * 4] + 587 * src[i * 4 + 1] + 114 * src[i * 4 + 2]) / 1000;
+        if (l < lo) lo = l;
+        if (l > hi) hi = l;
+        opaque++;
+    }
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        unsigned char *s = src + (y * w + x) * 4, *d = out + (y * w + x) * 4;
+        int l, lev, edge = 0;
+        if (s[3] == 0) continue;
+        l = (299 * s[0] + 587 * s[1] + 114 * s[2]) / 1000;
+        lev = (hi == lo) ? st->n / 2 : (l - lo) * st->n / (hi - lo + 1);
+        if (lev >= st->n) lev = st->n - 1;
+        d[0] = (unsigned char)st->ramp[lev][0]; d[1] = (unsigned char)st->ramp[lev][1]; d[2] = (unsigned char)st->ramp[lev][2];
+        if (st->outline) {
+            if (x > 0 && src[(y * w + x - 1) * 4 + 3] == 0) edge = 1;
+            if (x < w - 1 && src[(y * w + x + 1) * 4 + 3] == 0) edge = 1;
+            if (y > 0 && src[((y - 1) * w + x) * 4 + 3] == 0) edge = 1;
+            if (y < h - 1 && src[((y + 1) * w + x) * 4 + 3] == 0) edge = 1;
+        }
+        if (edge) { d[0] = (unsigned char)st->ramp[0][0]; d[1] = (unsigned char)st->ramp[0][1]; d[2] = (unsigned char)st->ramp[0][2]; outl++; }
+        else if (lev == st->n - 1 && st->accent_per256 > 0 && (int)(pixhash(st->seed, 0, x, y) & 255) < st->accent_per256) {
+            d[0] = (unsigned char)st->accent[0]; d[1] = (unsigned char)st->accent[1]; d[2] = (unsigned char)st->accent[2]; acc++;
+        }
+    }
+    ci = calloc((size_t)w * h, sizeof *ci); co = calloc((size_t)w * h, sizeof *co);
+    if (!ci || !co) { free(ci); free(co); free(src); free(out); return 2; }
+    for (i = 0; i < w * h; i++) {
+        unsigned char *s = src + i * 4, *d = out + i * 4;
+        if (s[3] == 0) continue;
+        if (memcmp(s, d, 3) != 0) changed++;
+        { unsigned k = ((unsigned)s[0] << 16) | ((unsigned)s[1] << 8) | s[2], j; for (j = 0; j < (unsigned)cin && ci[j] != k; j++) ; if (j == (unsigned)cin) ci[cin++] = k; }
+        { unsigned k = ((unsigned)d[0] << 16) | ((unsigned)d[1] << 8) | d[2], j; for (j = 0; j < (unsigned)cout && co[j] != k; j++) ; if (j == (unsigned)cout) co[cout++] = k; }
+    }
+    snprintf(tmp, sizeof tmp, "%s", csv);
+    b = strrchr(tmp, '/'); if (b) *b = 0;
+    b = strrchr(tmp, '/'); b = b ? b + 1 : tmp;
+    a = b - 1;
+    if (a > tmp) { *a = 0; a = strrchr(tmp, '/'); a = a ? a + 1 : tmp; } else a = (char *)"";
+    snprintf(name, sizeof name, "%.100s_%.100s", a, b);
+    snprintf(dir, sizeof dir, "%s/%s", outdir, name);
+    mkp(dir);
+    snprintf(path, sizeof path, "%s/sprite.csv", dir);
+    if (write_csv(path, out, w, h) != 0) { free(src); free(out); return 2; }
+    {
+        unsigned char *big = calloc((size_t)w * 4 * h * 4, 4);
+        if (!big) { free(src); free(out); return 2; }
+        blit_x4(big, w * 4, out, w, h, 0);
+        snprintf(path, sizeof path, "%s/tile.png", dir);
+        i = write_png(path, big, w * 4, h * 4);
+        free(big);
+        if (i != 0) { free(src); free(out); return 2; }
+    }
+    free(ci); free(co);
+    printf("RESTYLE %s %dx%d opaque=%d changed=%d outline=%d accent=%d colours_in=%d colours_out=%d\n", name, w, h, opaque, changed, outl, acc, cin, cout);
+    free(src); free(out);
+    return 0;
+}
+static int restyle(const char *stylef, const char *outdir, int ncell, char **cells) {
+    RStyle st;
+    int i, rc = 0;
+    if (read_style(stylef, &st) != 0) { fprintf(stderr, "bad style file (needs GEN | ramp with 2..%d colours)\n", RS_MAXRAMP); return 3; }
+    for (i = 0; i < ncell; i++) { int r = restyle_cell(&st, outdir, cells[i]); if (r) rc = r; }
+    return rc;
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
     if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
+    if (argc >= 5 && strcmp(argv[1], "restyle") == 0) return restyle(argv[2], argv[3], argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | shapes-check | shapes <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | shapes-check | shapes <outdir>\n");
     return 2;
 }
