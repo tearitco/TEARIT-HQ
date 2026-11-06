@@ -299,3 +299,40 @@ RUN | /usr/bin/grep | variant=1 | $T/st/studio_saves/slot0.studio.pdl
 EXPECT_OUT | OPT \p variant=1 | the-record-keeps-the-variant
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
 EXPECT_OUT | REPLAY ok | the-record-replays-exactly
+
+# D34 scramble: a diffuse that keeps tiling (ground, wrapped inside the 24 px cell) and keeps silhouettes (props)
+CASE    | scramble
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/o0.png | scramble=0
+RUN | /usr/bin/sha256sum | $T/o0.png
+EXPECT_OUT | 137a6f3ce273bb7f | scramble-0-is-byte-identical-to-the-neutral-object-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/o6.png | scramble=0.6
+RUN | /usr/bin/cmp | -s | $T/o0.png | $T/o6.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-prop-pixels
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/o6.png
+EXPECT_OUT | unique=61 | scrambled-props-have-no-repeated-tiles-posts-and-arches-differ
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $T/o0.png | $T/o6.png
+EXPECT_OUT | alpha_changed=0 | the-prop-silhouettes-are-untouched
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/g0.png | variant=1 | scramble=0
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/g0.png | 24 | 48 | 24 | 24 | 24
+EXPECT_OUT | mismatches=0 | an-unscrambled-ground-block-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/g5.png | variant=1 | scramble=0.5
+RUN | /usr/bin/cmp | -s | $T/g0.png | $T/g5.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-ground-pixels
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/g5.png | 24 | 48 | 24 | 24 | 24
+EXPECT_OUT | mismatches=0 | THE-SCRAMBLED-GROUND-STILL-REPEATS-EVERY-24-PX-so-it-still-tiles
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/g5.png | 24 | 48 | 24 | 24 | 23
+EXPECT_EXIT | 1 | NEGATIVE-the-tiling-check-can-fail-a-wrong-period-has-mismatches
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/bad.png | scramble=2
+EXPECT_EXIT | 2 | NEGATIVE-a-scramble-above-1-is-refused-ground
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/bad.png | scramble=2
+EXPECT_EXIT | 2 | NEGATIVE-a-scramble-above-1-is-refused-props
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | scramble | 0.5 | state=$T/st
+RUN | /usr/bin/grep | kb_5_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_5_val=+50% | the-scramble-knob-is-in-the-window
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | /usr/bin/grep | scramble | $T/st/studio_saves/slot0.studio.pdl
+EXPECT_OUT | OPT \p scramble=0.5000 | the-record-keeps-the-scramble
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
+EXPECT_OUT | REPLAY ok | the-scrambled-record-replays-exactly

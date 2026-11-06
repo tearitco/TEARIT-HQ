@@ -606,6 +606,23 @@ static void scale2x(const unsigned char *src, int S, unsigned char *dst) { /* sr
         memcpy(dst + ((size_t)(2 * y + 1) * 2 * S + 2 * x) * 4, E2, 4); memcpy(dst + ((size_t)(2 * y + 1) * 2 * S + 2 * x + 1) * 4, E3, 4);
     }
 }
+/* scramble=S (D34, S 0..1): a silhouette-preserving diffuse of colours INSIDE each cell. Alpha is never touched, so shapes and outlines stay; each opaque pixel with probability S takes the colour of a random opaque neighbour within 3 px, but only if the two are close in brightness (difference under 90), so ink outlines do not melt into fills. Seed = the cell position, so repeated models (posts, arches) come out different. S = 0 changes nothing. */
+static double g_scramble;
+static void scramble_cell(unsigned char *sh, int sw, int x0, int y0, int w, int h, unsigned seed) {
+    unsigned char *tmp = malloc((size_t)w * h * 4); int x, y;
+    if (!tmp) return;
+    for (y = 0; y < h; y++) memcpy(tmp + (size_t)y * w * 4, sh + ((size_t)(y0 + y) * sw + x0) * 4, (size_t)w * 4);
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        unsigned char *p = sh + ((size_t)(y0 + y) * sw + x0 + x) * 4; unsigned hh = hash32(seed ^ (unsigned)(x * 73856093u) ^ (unsigned)(y * 19349663u)); int dx, dy, qx, qy, lp, lq; const unsigned char *q;
+        if (!p[3] || (hh & 1023) >= (unsigned)(g_scramble * 1023.0)) continue;
+        dx = (int)((hh >> 10) % 7) - 3; dy = (int)((hh >> 14) % 7) - 3; qx = x + dx; qy = y + dy;
+        if ((!dx && !dy) || qx < 0 || qy < 0 || qx >= w || qy >= h) continue;
+        q = tmp + ((size_t)qy * w + qx) * 4; if (!q[3]) continue;
+        lp = (p[0] * 3 + p[1] * 6 + p[2]) / 10; lq = (q[0] * 3 + q[1] * 6 + q[2]) / 10; if (abs(lp - lq) >= 90) continue;
+        p[0] = q[0]; p[1] = q[1]; p[2] = q[2];
+    }
+    free(tmp);
+}
 static int objsheet(int argc, char **argv) {
     FILE *f; char line[400]; int sw = 0, sh = 0, cells = 0, rc = 0, i;
     unsigned char *sheet = NULL;
@@ -633,6 +650,7 @@ static int objsheet(int argc, char **argv) {
             else for (y = 0; y < S; y++) for (x = 0; x < S; x++) memcpy(big + ((size_t)y * S + x) * 4, st + (((size_t)(y / n)) * 192 + (x / n)) * 4, 4);
             ox = (S - 48 * w) / 2; oy = S - 48 * h;
             for (y = 0; y < 48 * h; y++) for (x = 0; x < 48 * w; x++) { const unsigned char *s = big + ((size_t)(oy + y) * S + ox + x) * 4; if (s[3]) memcpy(sheet + ((size_t)(row * 48 + y) * sw + col * 48 + x) * 4, s, 4); }
+            if (g_scramble > 0 && g_cell_sel) scramble_cell(sheet, sw, col * 48, row * 48, 48 * w, 48 * h, (unsigned)(col * 1009 + row * 9176 + 77));
             cells++;
         }
     }
@@ -645,7 +663,7 @@ static int objsheet(int argc, char **argv) {
 }
 int main(int argc, char **argv) {
     int rc;
-    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face") || !strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5))) { if (!strncmp(argv[argc - 1], "knob=", 5)) { char *nm = argv[argc - 1] + 5, *cl = strchr(nm, ':'); static const char *kn[5] = {"warm", "worn", "round", "big", "metal"}; int ki, hit = 0; if (cl) { *cl = 0; for (ki = 0; ki < 5; ki++) if (!strcmp(nm, kn[ki])) { g_knob[ki] += atof(cl + 1); g_knob_on = 1; hit = 1; } } if (!hit) { fprintf(stderr, "bad knob (use warm|worn|round|big|metal:<value>)\n"); return 2; } argc--; continue; } if (!strncmp(argv[argc - 1], "select=", 7)) { if (sscanf(argv[argc - 1] + 7, "%d,%d,%d,%d", &g_sel[0], &g_sel[1], &g_sel[2], &g_sel[3]) != 4 || g_sel[2] < 1 || g_sel[3] < 1) { fprintf(stderr, "bad select (col,row,w,h)\n"); return 2; } g_sel_on = 1; argc--; continue; } if (!strncmp(argv[argc - 1], "crop=", 5)) { if (sscanf(argv[argc - 1] + 5, "%d,%d,%d,%d", &g_crop[0], &g_crop[1], &g_crop[2], &g_crop[3]) != 4) { fprintf(stderr, "bad crop (col,row,w,h)\n"); return 2; } g_crop_on = 1; argc--; continue; } if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else if (!strcmp(argv[argc - 1], "face")) g_face = 1; else snprintf(g_bank, sizeof g_bank, "%s", argv[argc - 1] + 5); argc--; }
+    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face") || !strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5) || !strncmp(argv[argc - 1], "scramble=", 9))) { if (!strncmp(argv[argc - 1], "scramble=", 9)) { char *e; double v = strtod(argv[argc - 1] + 9, &e); if (e == argv[argc - 1] + 9 || *e || v < 0 || v > 1) { fprintf(stderr, "bad scramble (0..1)\n"); return 2; } g_scramble = v; argc--; continue; } if (!strncmp(argv[argc - 1], "knob=", 5)) { char *nm = argv[argc - 1] + 5, *cl = strchr(nm, ':'); static const char *kn[5] = {"warm", "worn", "round", "big", "metal"}; int ki, hit = 0; if (cl) { *cl = 0; for (ki = 0; ki < 5; ki++) if (!strcmp(nm, kn[ki])) { g_knob[ki] += atof(cl + 1); g_knob_on = 1; hit = 1; } } if (!hit) { fprintf(stderr, "bad knob (use warm|worn|round|big|metal:<value>)\n"); return 2; } argc--; continue; } if (!strncmp(argv[argc - 1], "select=", 7)) { if (sscanf(argv[argc - 1] + 7, "%d,%d,%d,%d", &g_sel[0], &g_sel[1], &g_sel[2], &g_sel[3]) != 4 || g_sel[2] < 1 || g_sel[3] < 1) { fprintf(stderr, "bad select (col,row,w,h)\n"); return 2; } g_sel_on = 1; argc--; continue; } if (!strncmp(argv[argc - 1], "crop=", 5)) { if (sscanf(argv[argc - 1] + 5, "%d,%d,%d,%d", &g_crop[0], &g_crop[1], &g_crop[2], &g_crop[3]) != 4) { fprintf(stderr, "bad crop (col,row,w,h)\n"); return 2; } g_crop_on = 1; argc--; continue; } if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else if (!strcmp(argv[argc - 1], "face")) g_face = 1; else snprintf(g_bank, sizeof g_bank, "%s", argv[argc - 1] + 5); argc--; }
     if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | objsheet <out.png> <cells.pdl> <recipes.pdl>... | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);

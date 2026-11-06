@@ -1,5 +1,5 @@
 /* generator_ground_op: ground (RPG Maker A2) blocks drawn from a RECIPE and KNOBS, not repainted from the original. Decision D33 step 2.
- *   ground <ground.pdl> <original-sheet.png> <out.png> [bank=<concept-bank dir>] [knob=<warm|wet|wear|grain|edge>:<delta>]... [select=bc,br,bw,bh] [crop=bc,br,bw,bh] [variant=N]
+ *   ground <ground.pdl> <original-sheet.png> <out.png> [bank=<concept-bank dir>] [knob=<warm|wet|wear|grain|edge>:<delta>]... [select=bc,br,bw,bh] [crop=bc,br,bw,bh] [variant=N] [scramble=0..1]
  *   check  <ground.pdl>        parse only
  * What is kept from the original sheet: ONLY its transparency (the autotile geometry the RPG Maker runtime cuts the 48 shapes from; a block is 96 x 144 = 4 x 6 quarters of 24 px).
  * What is generated: every colour. Interior = a 24-pixel-periodic texture (so any two quarters meet without a seam), edge ring = darker ink steps by distance to the transparent area,
@@ -26,6 +26,8 @@ typedef struct { char sheet[60], recipe[40]; int idx; } Block;
 static Recipe R[MAXR]; static int nr;
 static Block B[MAXB]; static int nb;
 static char g_bank[600];
+/* scramble=S (D34, 0..1): a wrapped diffuse of the 24 px texture cell. Each cell position reads its texture value from a hashed neighbour offset within radius 1 + 5S, taken modulo 24 in both axes. It is a function of (x mod 24, y mod 24) only, so the result is still 24 px periodic and tiles with no seam; the autotile shape is untouched (it comes from the original transparency). S = 0 changes nothing. */
+static double g_scramble;
 static unsigned g_variant; /* variant=N (D34 reseed): 0 = every block of a recipe shares the recipe seed (the old look, replays of old records stay exact); N > 0 = each block gets its own seed from (recipe seed, block number, N), so no two blocks repeat */
 static double g_knob[5]; static int g_knob_on, g_sel_on, g_sel[4], g_crop_on, g_crop[4];
 static const char *KN[5] = {"warm", "wet", "wear", "grain", "edge"};
@@ -143,7 +145,7 @@ static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigne
             if (!tr) continue;
             dd = abs(dx) > abs(dy) ? abs(dx) : abs(dy); if (dd < dist) dist = dd;
         }
-        v = texture(r, x, y);
+        { int tx = x, ty = y; if (g_scramble > 0) { int cx24 = ((x % 24) + 24) % 24, cy24 = ((y % 24) + 24) % 24, R = 1 + (int)(g_scramble * 5.0 + 0.5); unsigned hh = hash32(r->seed ^ 0x5c4a77u ^ (unsigned)cx24 * 2246822519u ^ (unsigned)cy24 * 3266489917u); if ((hh & 1023) < (unsigned)(g_scramble * 1023.0)) { tx = (cx24 + (int)((hh >> 10) % (unsigned)(2 * R + 1)) - R + 48) % 24; ty = (cy24 + (int)((hh >> 18) % (unsigned)(2 * R + 1)) - R + 48) % 24; } } v = texture(r, tx, ty); }
         if (v < 0) { step = 0; v = 0.1; } else {
             double gr = ((hash32((r->seed + 91u) ^ (unsigned)(x % 24) * 7919u ^ (unsigned)(y % 24) * 104729u) & 255) / 255.0 - 0.5) * (0.12 + 1.2 * grain);
             v = clampd(v + gr, 0, 0.999); step = (int)(v * 5);
@@ -196,9 +198,10 @@ static int ground(char **argv) {
     stbi_image_free(img); free(out); return rc;
 }
 int main(int argc, char **argv) {
-    while (argc > 3 && (!strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5) || !strncmp(argv[argc - 1], "variant=", 8))) {
+    while (argc > 3 && (!strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5) || !strncmp(argv[argc - 1], "variant=", 8) || !strncmp(argv[argc - 1], "scramble=", 9))) {
         char *a = argv[argc - 1];
         if (!strncmp(a, "bank=", 5)) snprintf(g_bank, sizeof g_bank, "%s", a + 5);
+        else if (!strncmp(a, "scramble=", 9)) { char *e; double v = strtod(a + 9, &e); if (e == a + 9 || *e || v < 0 || v > 1) { fprintf(stderr, "bad scramble (0..1)\n"); return 2; } g_scramble = v; }
         else if (!strncmp(a, "variant=", 8)) { char *e; unsigned long v = strtoul(a + 8, &e, 10); if (e == a + 8 || *e || v > 1000000UL) { fprintf(stderr, "bad variant (0..1000000)\n"); return 2; } g_variant = (unsigned)v; }
         else if (!strncmp(a, "knob=", 5)) { char *cl = strchr(a + 5, ':'); int k, hit = 0; if (cl) { *cl = 0; for (k = 0; k < 5; k++) if (!strcmp(a + 5, KN[k])) { g_knob[k] += atof(cl + 1); g_knob_on = hit = 1; } } if (!hit) { fprintf(stderr, "bad knob (use warm|wet|wear|grain|edge:<value>)\n"); return 2; } }
         else if (!strncmp(a, "select=", 7)) { if (sscanf(a + 7, "%d,%d,%d,%d", &g_sel[0], &g_sel[1], &g_sel[2], &g_sel[3]) != 4 || g_sel[2] < 1 || g_sel[3] < 1) { fprintf(stderr, "bad select (bc,br,bw,bh)\n"); return 2; } g_sel_on = 1; }

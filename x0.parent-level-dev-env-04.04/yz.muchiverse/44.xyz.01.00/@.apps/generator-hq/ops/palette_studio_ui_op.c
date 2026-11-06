@@ -20,7 +20,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image.h"
 #define MAXT 16
-#define MAXK 5
+#define MAXK 6
 #define SAVE_SLOTS 20
 #define PW 768
 #define PH 576
@@ -102,7 +102,7 @@ static int run_argv(char **av) {
 static int knob_opts(char store[][64], char **av, int n) {
     if (!g_knobs_on) return n; /* compare mode: render the original */
     static char vbuf[32]; if (g_variant && !strcmp(T[cur].kind, "ground") && n < 30) { snprintf(vbuf, sizeof vbuf, "variant=%d", g_variant); av[n++] = vbuf; }
-    int k; for (k = 0; k < T[cur].nk; k++) if (fabs(T[cur].v[k]) > 1e-9 && n < 30) { snprintf(store[k], 64, "knob=%s:%.4f", T[cur].kn[k], T[cur].v[k]); av[n++] = store[k]; } return n;
+    int k; for (k = 0; k < T[cur].nk; k++) if (fabs(T[cur].v[k]) > 1e-9 && n < 30) { if (!strcmp(T[cur].kn[k], "scramble")) snprintf(store[k], 64, "scramble=%.4f", T[cur].v[k]); else snprintf(store[k], 64, "knob=%s:%.4f", T[cur].kn[k], T[cur].v[k]); av[n++] = store[k]; /* scramble is an option of both generators, not a bank knob */ } return n;
 }
 static int studio_cmd(const char *verb, const char *outpng, const char *name, int crop_top) { /* palette_studio_op render|save ... */
     char *av[48]; char bin[2400], tpl[2400], outdir[2400], store[MAXK][64]; int n = 0;
