@@ -1,0 +1,7 @@
+# Restyle style: world theme "centroid". READ cue: The Centroid: the School of the Multiverse, Golden Ratio, Spiral Alley, the Soul Bank
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #0a1030,#1a2a6a,#3a5aa0,#c8a84a,#fff0b0
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

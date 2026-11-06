@@ -1,0 +1,7 @@
+# Restyle style: world theme "mars". READ cue: Mars: Shepherd's Farm, the Circus Ville clone slums, the HSG compound
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #1a0e0a,#4a2216,#8a4a2a,#c88a5a,#f0d0a0
+GEN | accent | #7ad0ff
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

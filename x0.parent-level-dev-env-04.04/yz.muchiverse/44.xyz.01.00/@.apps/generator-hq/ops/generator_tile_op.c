@@ -933,6 +933,39 @@ static int sheet_png(const char *mapf, const char *sheet, const char *outpng) {
     return rc;
 }
 
+/* verify-root <orig root> <replacement root>: every PNG under the replacement root must have a same-named original with the SAME WIDTH AND HEIGHT.
+ * That is the contract the old RPG Maker levels rely on: they load a sheet by name and cut it by pixel offsets, so a replacement of another size would shift every tile.
+ * Exit 1 if any file has no original or another size; exit 3 if the replacement root has no PNG. Alpha is not compared here (a person sheet is a different drawing). */
+#include <dirent.h>
+static int vr_files, vr_ok, vr_bad;
+static void vr_walk(const char *orig, const char *repl, const char *rel) {
+    char dir[1200]; DIR *d; struct dirent *e;
+    snprintf(dir, sizeof dir, "%s%s%s", repl, rel[0] ? "/" : "", rel);
+    d = opendir(dir);
+    if (!d) return;
+    while ((e = readdir(d))) {
+        char r[1200], pr[1300], po[1300]; struct stat st; int w1, h1, n1, w2, h2, n2;
+        if (e->d_name[0] == '.') continue;
+        snprintf(r, sizeof r, "%s%s%s", rel, rel[0] ? "/" : "", e->d_name);
+        snprintf(pr, sizeof pr, "%s/%s", repl, r); snprintf(po, sizeof po, "%s/%s", orig, r);
+        if (stat(pr, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { vr_walk(orig, repl, r); continue; }
+        if (strlen(r) < 5 || strcmp(r + strlen(r) - 4, ".png") != 0) continue;
+        vr_files++;
+        if (!stbi_info(pr, &w1, &h1, &n1)) { fprintf(stderr, "unreadable: %s\n", r); vr_bad++; continue; }
+        if (!stbi_info(po, &w2, &h2, &n2)) { fprintf(stderr, "no original for: %s\n", r); vr_bad++; continue; }
+        if (w1 != w2 || h1 != h2) { fprintf(stderr, "SIZE %s: %dx%d, original %dx%d\n", r, w1, h1, w2, h2); vr_bad++; continue; }
+        vr_ok++;
+    }
+    closedir(d);
+}
+static int verify_root(const char *orig, const char *repl) {
+    vr_files = vr_ok = vr_bad = 0;
+    vr_walk(orig, repl, "");
+    printf("VERIFYROOT files=%d same_name_and_size=%d problems=%d result=%s\n", vr_files, vr_ok, vr_bad, (vr_files && !vr_bad) ? "ok" : "FAIL");
+    return vr_files == 0 ? 3 : (vr_bad ? 1 : 0);
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
     if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
@@ -945,12 +978,13 @@ int main(int argc, char **argv) {
     if (argc == 5 && strcmp(argv[1], "tone-run") == 0) return tone_run(argv[2], argv[3], argv[4]);
     if (argc == 5 && strcmp(argv[1], "sheet-png") == 0) return sheet_png(argv[2], argv[3], argv[4]);
     if (argc == 4 && strcmp(argv[1], "verify-png") == 0) return verify_png(argv[2], argv[3]);
+    if (argc == 4 && strcmp(argv[1], "verify-root") == 0) return verify_root(argv[2], argv[3]);
     if (argc >= 5 && strcmp(argv[1], "contact") == 0) return contact(argv[2], atoi(argv[3]), argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> [<contactdir>] | verify-sheet <map.pdl> <sheet.png> <outdir> | tone-run <sheets.pdl> <srcroot> <outroot> | sheet-png <blocks.pdl> <sheet.png> <out.png> | verify-png <a.png> <b.png> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> [<contactdir>] | verify-sheet <map.pdl> <sheet.png> <outdir> | tone-run <sheets.pdl> <srcroot> <outroot> | sheet-png <blocks.pdl> <sheet.png> <out.png> | verify-png <a.png> <b.png> | verify-root <orig root> <replacement root> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
     return 2;
 }

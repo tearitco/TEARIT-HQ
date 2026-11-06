@@ -1,0 +1,10 @@
+# World theme venus: a small themed pack (objects, a background) recoloured with this world's tone. READ cue: Venus DLC: the Slag Drip outpost, upper-sulphur deck, acid clouds, the Garden Mind cave, luxury cities above
+GEN | hue | 55
+GEN | sat | 130
+GEN | levels | 6
+GEN | outline | 1
+SHEET | tilesets/Outside_B.png | 1
+SHEET | tilesets/Outside_C.png | 1
+SHEET | tilesets/Dungeon_B.png | 1
+SHEET | tilesets/SF_Outside_B.png | 1
+SHEET | battlebacks1/Grassland.png | 0 | 14

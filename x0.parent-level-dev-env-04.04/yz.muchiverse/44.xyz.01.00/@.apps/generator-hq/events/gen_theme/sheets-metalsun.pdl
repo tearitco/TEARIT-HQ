@@ -1,0 +1,10 @@
+# World theme metalsun: a small themed pack (objects, a background) recoloured with this world's tone. READ cue: The Metal Sun / Icarus: the Architect's ship-star, a Dyson sphere, interior decks and engine core
+GEN | hue | -25
+GEN | sat | 85
+GEN | levels | 5
+GEN | outline | 1
+SHEET | tilesets/Outside_B.png | 1
+SHEET | tilesets/Outside_C.png | 1
+SHEET | tilesets/Dungeon_B.png | 1
+SHEET | tilesets/SF_Outside_B.png | 1
+SHEET | battlebacks1/Grassland.png | 0 | 14

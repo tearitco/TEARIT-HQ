@@ -1,0 +1,8 @@
+venus|Venus DLC: the Slag Drip outpost, upper-sulphur deck, acid clouds, the Garden Mind cave, luxury cities above|#16160a,#464a12,#8a9a1e,#c8d84a,#f4f4a8|#c0286a|55 130 6
+metalsun|The Metal Sun / Icarus: the Architect's ship-star, a Dyson sphere, interior decks and engine core|#101014,#38383f,#6a6a78,#ff7a1a,#ffe2a8|#fff0c0|-25 85 5
+hydro|Hydroverse (XVS): water worlds, Puffara-Kai, Venom-Spire ice, Carchar-Industrial forge|#04141e,#0a3a52,#1a7a9a,#5ac8d8,#d8f8ff|#ff7a2a|150 110 6
+eden|Eden / Edin: the Garden, the Tree of Life, the Eden archive|#1a2a14,#3a6a2a,#8ab04a,#e8d890,#fff8e0|#ffd24a|25 95 6
+ffu|Footrace Fu / Land of Time: night, alien, gold and red architecture, cherry blossoms, time crystals|#10102a,#3a1a4a,#a02a4a,#f06a8a,#ffd88a|#7ad0ff|-65 120 6
+mars|Mars: Shepherd's Farm, the Circus Ville clone slums, the HSG compound|#1a0e0a,#4a2216,#8a4a2a,#c88a5a,#f0d0a0|#7ad0ff|-18 92 6
+centroid|The Centroid: the School of the Multiverse, Golden Ratio, Spiral Alley, the Soul Bank|#0a1030,#1a2a6a,#3a5aa0,#c8a84a,#fff0b0|#ffd24a|185 100 6
+planetx|Planet X: twin suns, jungle, alien hounds|#0a1a14,#1a4a3a,#3a8a6a,#c88a2a,#ffd870|#ff9a2a|80 120 6

@@ -47,3 +47,85 @@ EXPECT_EXIT | 3 | NEGATIVE-a-sheet-with-no-map-rows-is-refused
 WRITE | far.pdl | BLOCK \p Outside_A2 \p 99 \p tearit-sand\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet-png | $T/far.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/out/c.png
 EXPECT_EXIT | 2 | NEGATIVE-a-block-outside-the-sheet-is-refused
+
+# The eight world themes (Venus, Metal Sun, Hydroverse, Eden, Footrace Fu, Mars, Centroid, Planet X), each from a READ cue in the lore chapter: a ramp, a block map and a small themed pack.
+CASE    | themes
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_theme/tearit-venus.pdl | tearit-venus.pdl
+COPY | @.apps/generator-hq/events/gen_theme/tearit-eden.pdl | tearit-eden.pdl
+COPY | @.apps/generator-hq/events/gen_theme/blocks-venus.pdl | blocks-venus.pdl
+COPY | @.apps/generator-hq/events/gen_theme/blocks-eden.pdl | blocks-eden.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | tone-run | $HOUSE/@.apps/generator-hq/events/gen_theme/sheets-venus.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/pack
+EXPECT_EXIT | 0 | a-themed-pack-is-recoloured
+EXPECT_OUT | TONE files=5 ok=5 failed=0 | five-sheets-and-all-verified
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet-png | $T/blocks-venus.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/v.png
+EXPECT_EXIT | 0 | venus-a2-sheet
+EXPECT_OUT | SHEETPNG Outside_A2 768x576 blocks=32 | all-32-blocks-in-the-venus-ramp
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet-png | $T/blocks-eden.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/e.png
+RUN | /usr/bin/cmp | -s | $T/v.png | $T/e.png
+EXPECT_EXIT | 1 | NEGATIVE-two-worlds-do-not-look-alike
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/v.png
+EXPECT_EXIT | 0 | the-themed-sheet-keeps-the-original-alpha
+RUN | /usr/bin/grep | -c | ^BLOCK | $T/blocks-venus.pdl
+EXPECT_OUT | 128 | the-block-map-covers-four-sheets-of-32
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-venus.pdl | $T/rvenus | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | venus-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-metalsun.pdl | $T/rmetalsun | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | metalsun-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-hydro.pdl | $T/rhydro | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | hydro-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-eden.pdl | $T/reden | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | eden-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-ffu.pdl | $T/rffu | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | ffu-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-mars.pdl | $T/rmars | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | mars-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-centroid.pdl | $T/rcentroid | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | centroid-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $HOUSE/@.apps/generator-hq/events/gen_theme/tearit-planetx.pdl | $T/rplanetx | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | planetx-ramp-parses
+
+# good/: what the owner delegated claude to approve (2026-11-05). The folder must stay compatible with the old RPG Maker levels and must not change by accident.
+CASE    | approved
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-root | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good
+EXPECT_EXIT | 0 | approved-files-match-the-originals-by-name-and-size
+EXPECT_OUT | VERIFYROOT files=11 same_name_and_size=11 problems=0 result=ok | eleven-approved-files
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
+EXPECT_EXIT | 0 | Outside_B-alpha-identical-and-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_A2.png
+EXPECT_EXIT | 0 | Outside_A2-alpha-identical-and-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/World_A2.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/World_A2.png
+EXPECT_EXIT | 0 | World_A2-alpha-identical-and-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Inside_A2.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Inside_A2.png
+EXPECT_EXIT | 0 | Inside_A2-alpha-identical-and-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Dungeon_A2.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Dungeon_A2.png
+EXPECT_EXIT | 0 | Dungeon_A2-alpha-identical-and-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/battlebacks1/Grassland.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/battlebacks1/Grassland.png
+EXPECT_EXIT | 0 | Grassland-alpha-identical-and-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/characters/Actor1.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/characters/Actor1.png
+EXPECT_EXIT | 1 | NEGATIVE-a-person-sheet-is-a-different-drawing-so-the-recolour-check-fails
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-root | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/none
+EXPECT_EXIT | 3 | NEGATIVE-an-empty-replacement-root-is-refused
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/battlebacks1/Grassland.png
+EXPECT_OUT | 4b366a1e7d6585524cb913a3aefe2d7158c936e6a04f8732125cbf236bcf0373 | pinned-battlebacks1-Grassland-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/characters/Actor1.png
+EXPECT_OUT | 5dfc6a922091c00858e1d824e73dee1359129a66d57276090c77443da3b1559e | pinned-characters-Actor1-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/characters/Evil.png
+EXPECT_OUT | 5a0f8f0579ba582cd4287743d4e1ec6c6d62dbc6f42097f87e7660ac2799f086 | pinned-characters-Evil-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/characters/Monster.png
+EXPECT_OUT | 7a8e3a94df7580161bfddf43957db5e17e2da9a6c6daec1038b7baf47a788db7 | pinned-characters-Monster-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/characters/People1.png
+EXPECT_OUT | dc58d9c8ea426be1ea3e350c163f471c08680c6b04eecab970dd48feea305547 | pinned-characters-People1-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/faces/Actor1.png
+EXPECT_OUT | 8f2078fb1e79ae6615bbbd30179bc1bc492514ba0a3f2ec07dcab304ae6f6e51 | pinned-faces-Actor1-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Dungeon_A2.png
+EXPECT_OUT | 898a21f67b0f77b58ea7f975def40b80bf3d363777be379964ec9cac0effaded | pinned-tilesets-Dungeon_A2-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Inside_A2.png
+EXPECT_OUT | 4b89bbfe0de69dbdc270b5e2d5141985337181fce65e85b0f8ec0804a96d6888 | pinned-tilesets-Inside_A2-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_A2.png
+EXPECT_OUT | a364a54a6709684483ef93ca164448fc75d8a5f31026b0fa061736bb0a5db8d4 | pinned-tilesets-Outside_A2-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
+EXPECT_OUT | a023ba9e60f85bfe386686c3129a53224d0bf4e8315eca0c3cd68c997f189cd5 | pinned-tilesets-Outside_B-png
+RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/World_A2.png
+EXPECT_OUT | b6c7b8151a4b4cf960f07626cadb1736bff8b4eb3ba54a1d015eea99e606a7fb | pinned-tilesets-World_A2-png

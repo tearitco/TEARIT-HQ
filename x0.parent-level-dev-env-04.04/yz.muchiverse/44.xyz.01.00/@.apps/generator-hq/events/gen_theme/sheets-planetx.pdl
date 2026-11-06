@@ -1,0 +1,10 @@
+# World theme planetx: a small themed pack (objects, a background) recoloured with this world's tone. READ cue: Planet X: twin suns, jungle, alien hounds
+GEN | hue | 80
+GEN | sat | 120
+GEN | levels | 6
+GEN | outline | 1
+SHEET | tilesets/Outside_B.png | 1
+SHEET | tilesets/Outside_C.png | 1
+SHEET | tilesets/Dungeon_B.png | 1
+SHEET | tilesets/SF_Outside_B.png | 1
+SHEET | battlebacks1/Grassland.png | 0 | 14

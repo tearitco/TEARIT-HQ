@@ -1,0 +1,12 @@
+# Which character sits in which RPG Maker people sheet (and the same name in faces/): the old levels load characters/<Name>.png and faces/<Name>.png by name.
+# SLOT | <RPG Maker sheet name> | up to 8 cast ids (4 x 2). Grouping is DOC (my proposal, drawn from the lore chapter); the owner can reorder it.
+SLOT | Actor1   | asa,ava,harold,lucky,astra,gem,loona,kael
+SLOT | Actor2   | lyra,tomokazu,sol,architect,black_queen,megan8r,elara,lucky_twin
+SLOT | Actor3   | fang,gruk,draxa,gargo,bonz,xvs_police,clone,elara_echo
+SLOT | Evil     | nihilator,clown_red,clown_blue,time_police,carcazod,planet_x_hound,angler,shark_kin
+SLOT | Monster  | garden_mind,jelly_god,puffer_folk,lionfish_noble,chronos,caretaker,murmur,solvent
+SLOT | Nature   | zick,zack,inkling,blip,ember,glacine,bonz,fang
+SLOT | People1  | npc_00,npc_01,npc_02,npc_03,npc_04,npc_05,npc_06,npc_07
+SLOT | People2  | npc_08,npc_09,npc_10,npc_11,npc_12,npc_13,npc_14,npc_15
+SLOT | People3  | npc_16,npc_17,npc_18,npc_19,npc_20,npc_21,npc_22,npc_23
+SLOT | People4  | npc_24,npc_25,npc_26,npc_27,npc_28,npc_29,npc_30,npc_31

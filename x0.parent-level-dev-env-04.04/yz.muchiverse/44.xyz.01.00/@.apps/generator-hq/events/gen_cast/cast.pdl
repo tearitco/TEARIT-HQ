@@ -5,7 +5,7 @@
 CAST | asa | #8a5a3a | mohawk | #c0392b | #15161a | #ffd24a | 2 | 1
 CAST | ava | #e6bfa0 | long   | #5a3a24 | #15161a | #ffd24a | 1 | 1
 CAST | harold | #d6a47c | short | #2a2018 | #1e2a3a | #ffd24a | 1 | 0
-GENERIC | npc | 8 | 20261105
+GENERIC | npc | 80 | 20261105
 # Pets and monsters (kind quad, blob, winged; body 0 small, 1 normal, 2 large). skin = body, garment = belly and patches, hair = ears, mane and wings, trim = eyes and glow.
 # PLACEHOLDERS: the real looks of Harold's pets and the terumon are NOT documented in the files I read; the colours and kinds below are guessed from the names. The owner edits these rows.
 CAST | blip    | #5fae5f | none | #3a7a3a | #bfe8a0 | #ffe066 | 0 | 0 | blob
@@ -18,3 +18,73 @@ CAST | ember   | #e8742a | none | #ffb04a | #ffd890 | #fff0a0 | 1 | 0 | blob
 CAST | glacine | #6ab4e8 | none | #c8ecff | #e8f8ff | #ffffff | 1 | 0 | blob
 CAST | murmur  | #8a5ac0 | none | #5a3a8a | #c8a8f0 | #ffe066 | 1 | 0 | winged
 CAST | solvent | #7ac04a | none | #4a8a2a | #d8f0a0 | #ff7ad0 | 1 | 0 | blob
+
+# ===== The Soul Pen and TSOTS cast, drawn from the IP (owner 2026-11-05: "we should draw from our ip themes whenever possible"). =====
+# Source: BOOK 22.lore-ip (SOUL-PEN-LORE-SUMMARY, BOOK-BY-BOOK-SUMMARIES-AND-WORLD-RULES, MAP-ATLAS) and the soul-pen-lore skill.
+# Every row says what is documented (READ) and what I chose (DOC). A DOC colour is a proposal for the owner, NOT canon.
+# New styles: masked (full-face mask in the hair colour, eye slits in the trim colour), clown (white paint, red nose, wig in the hair colour).
+# New mark: 2 = an echo, a translucent Time Twin. New kinds: plant, jelly.
+# --- people ---
+# Sol: READ masked leader of the lunar society, wields the SolPen, Temporal Body Suit that holds his flickering atoms, future Lucky. DOC: silver mask, dark suit, cyan slits.
+CAST | sol          | #d6a47c | masked | #c9ced6 | #1a1d2e | #7ad0ff | 2 | 0
+# Lucky: READ Shepherd/Starr, Shepherd's Farm on Mars, Sol's past self. DOC: Mars-rust work clothes, short brown hair.
+CAST | lucky        | #d6a47c | short  | #4a3020 | #8a4a2e | #ffd24a | 1 | 0
+# Time Twin of Lucky: READ a translucent temporal echo that fights beside you (Footrace Fu). The same figure at 55 percent opacity.
+CAST | lucky_twin   | #d6a47c | short  | #4a3020 | #8a4a2e | #7ad0ff | 1 | 2
+# Astra: READ the master list says Astra = Ava; scientist. DOC: Ava's look under a pale lab coat.
+CAST | astra        | #e6bfa0 | long   | #5a3a24 | #e4e6f0 | #ffd24a | 1 | 1
+# Gem: READ artist, a clone, a spy for SOL, mother of Riley. DOC: paint-purple smock, a clone chip glow in the trim.
+CAST | gem          | #e0b090 | short  | #c04a8a | #5a3a7a | #7ad0ff | 1 | 0
+# Loona Twilight: READ leader of the moon crew (Lunaria). DOC: moon silver and lavender.
+CAST | loona        | #e8d4c0 | long   | #cfd8ff | #7a76a8 | #e8e8ff | 1 | 0
+# Kael: READ Halo body, Glitch World, leads the team in Eden Recursion. DOC: glitch teal with a magenta HUD trim.
+CAST | kael         | #c89070 | short  | #1a2a2a | #1a8a8a | #ff3acf | 1 | 0
+# Lyra: READ a cartographer of the multiverse at the Centroid. DOC: Centroid navy and gold.
+CAST | lyra         | #c8906a | long   | #2a1a14 | #1a2a5a | #ffd24a | 1 | 1
+# Mother Tomokazu: READ the quantum Dungeon Master. DOC: a dark robe with a cyan circuit trim.
+CAST | tomokazu     | #e0c0a0 | long   | #14141c | #22223a | #7ad0ff | 1 | 0
+# The Architect: READ builds the Metal Sun with the Soul Ray; owner ruling: a time clone of Lucky from a failed loop (the Open Loop). DOC: Lucky's face, an engineer's black suit, molten orange trim.
+CAST | architect    | #d6a47c | short  | #4a3020 | #16161c | #ff7a1a | 2 | 0
+# Black Queen (Sophia): READ leads the rebels; Megan8r her daughter, a Mars princess. DOC: black royal dress, crimson trim.
+CAST | black_queen  | #b88a6a | long   | #14101a | #1c1020 | #d02a3a | 1 | 1
+CAST | megan8r      | #c89878 | long   | #3a1a14 | #5a1a1a | #d02a3a | 1 | 0
+# Elara Veyn: READ three Elaras are one soul's echoes. DOC: a violet coat; her echoes are translucent copies.
+CAST | elara        | #e0b8a0 | long   | #3a2a5a | #4a2a7a | #ffd24a | 1 | 0
+CAST | elara_echo   | #e0b8a0 | long   | #3a2a5a | #4a2a7a | #7ad0ff | 1 | 2
+# The Nihilator: READ eats souls. DOC: a void-black figure, red slits.
+CAST | nihilator    | #101014 | masked | #0c0c10 | #0a0a0e | #ff2a2a | 2 | 0
+# XVS police: READ exist (the expanse authority). DOC: helmeted, blue-grey, cyan visor slits.
+CAST | xvs_police   | #8aa0b8 | masked | #5a6a82 | #2a3448 | #7ad0ff | 1 | 0
+# Melting Red Wax Time Police: READ they hunt the Open Loop. DOC: red wax skin and suit, a pale glow.
+CAST | time_police  | #a82a2a | none   | #8a1a1a | #6a1212 | #ffb08a | 1 | 0
+# Clones: READ manufactured labour and soldiers, wiped and chip-controlled, their souls power the SolPen. DOC: grey uniform, no hair, a blue chip glow. All clones look the same on purpose.
+CAST | clone        | #c8b8a8 | none   | #6a6a72 | #50505a | #7ad0ff | 1 | 0
+# Clowns: READ painted-face rebels who run Clown World and spread Carcazod bio-weapons. DOC colours.
+CAST | clown_red    | #e8e0d0 | clown  | #d03a3a | #3a2a5a | #ffd24a | 1 | 0
+CAST | clown_blue   | #e8e0d0 | clown  | #3a7ad0 | #2a2a3a | #ffd24a | 1 | 0
+# Shark-kin of Carchar-Industrial: READ shark-kin forge world (Hydroverse atlas). DOC: grey skin, forge-black and orange.
+CAST | shark_kin     | #6a7a88 | none   | #2a3038 | #1a1a1e | #ff7a2a | 2 | 0
+# --- robots and creatures ---
+# Chronos: READ the angel-class robot of the Eden trilogy. DOC: white and gold, large, winged.
+CAST | chronos      | #e8e4d8 | none   | #ffd24a | #f4f0e4 | #ffd24a | 2 | 0 | winged
+# Avian caretaker robots of the Eden archive: READ avian, guard the last humans. DOC: ivory and gold.
+CAST | caretaker    | #e0dccc | none   | #c8a050 | #f0ecdc | #7ad0ff | 1 | 0 | winged
+# Carcazod: READ the bio-engineered plague monster. DOC: sickly green-grey, a red glow.
+CAST | carcazod     | #6a7a4a | none   | #3a4a2a | #8a6a5a | #ff3a2a | 2 | 0 | quad
+# Alien hounds of Planet X: READ twin suns, jungle, alien hounds. DOC: violet and teal, twin-sun orange eyes.
+CAST | planet_x_hound | #4a3a7a | none | #1a8a7a | #7a5aaa | #ff9a2a | 1 | 0 | quad
+# Angler: READ the Angler Empire, deep-sea and space predators. DOC: a deep blue body and a glowing lure.
+CAST | angler       | #1a2a4a | none   | #0e1a30 | #2a4a7a | #ffe066 | 2 | 0 | quad
+# Puffer-folk of Puffara-Kai: READ a puffer-folk shield world (Hydroverse atlas). DOC: a round pale body.
+CAST | puffer_folk  | #e8d890 | none   | #c8a850 | #f4ecc0 | #3a4a5a | 1 | 0 | blob
+# Lion-fish aristocrat of Venom-Spire: READ aristocratic ice world. DOC: red and white fins, ice glow.
+CAST | lionfish_noble | #d03a3a | none | #f0f0f8 | #fff4f0 | #9ad8ff | 1 | 0 | winged
+# Garden Mind: READ the mother Venus fly trap in her cave (Venus DLC). DOC: green bulb, magenta jaws.
+CAST | garden_mind  | #3a8a3a | none   | #c0286a | #2a5a2a | #ffd24a | 2 | 0 | plant
+# Jelly Fish God (Turritid): READ Turritids, Jelly Fish God / Jesus per the lore summary. DOC: pale pink dome, white glow.
+CAST | jelly_god    | #e8c8f0 | none   | #fff0fa | #d8a8e8 | #ffffff | 2 | 0 | jelly
+# Zick and Zack: READ fuzzballs. DOC: round and fuzzy, orange and teal.
+CAST | zick         | #e89030 | none   | #ffb860 | #f8d8a0 | #20202a | 0 | 0 | blob
+CAST | zack         | #2aa8a0 | none   | #5ad0c8 | #b0eee8 | #20202a | 0 | 0 | blob
+# Elara's Inkling: READ it exists. DOC: an ink-dark blob with bright eyes.
+CAST | inkling      | #1a1a3a | none   | #2a2a5a | #3a3a6a | #ffffff | 0 | 0 | blob

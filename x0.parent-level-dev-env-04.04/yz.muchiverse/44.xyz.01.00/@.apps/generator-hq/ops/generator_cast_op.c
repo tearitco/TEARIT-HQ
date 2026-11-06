@@ -59,6 +59,8 @@ static int style_of(const char *s) {
     if (!strcmp(s, "long")) return 1;
     if (!strcmp(s, "mohawk")) return 2;
     if (!strcmp(s, "none")) return 3;
+    if (!strcmp(s, "masked")) return 4; /* a full-face mask in the hair colour, glowing eye slits in the trim colour (Sol) */
+    if (!strcmp(s, "clown")) return 5;  /* white face paint, a red nose, a wig in the hair colour (the clowns) */
     return -1;
 }
 static Col shade(Col c, int pct) { Col o; o.r = c.r * pct / 100; o.g = c.g * pct / 100; o.b = c.b * pct / 100; if (o.r > 255) o.r = 255; if (o.g > 255) o.g = 255; if (o.b > 255) o.b = 255; return o; }
@@ -105,7 +107,7 @@ static void draw_creature(unsigned char *px, const Who *w, int dir, int step) {
             rect(px, cx - 1 + ex, cy + 3, cx + 1 + ex, cy + 3, body_d);
         }
         rect(px, cx - 5, cy - ry + 2, cx - 3, cy - ry + 3, belly); rect(px, cx - 4, cy - ry + 4, cx - 4, cy - ry + 4, belly);
-    } else { /* winged: a bat or small dragon, wings beat across the three frames */
+    } else if (w->kind == 3) { /* winged: a bat or small dragon, wings beat across the three frames */
         int wy = (step == 0) ? 20 : (step == 1 ? 26 : 32);
         if (!side) { ell(px, cx - 13, wy, 9, 4, ear); ell(px, cx + 13, wy, 9, 4, ear); }
         else ell(px, cx + 4, wy, 9, 4, ear);
@@ -114,6 +116,17 @@ static void draw_creature(unsigned char *px, const Who *w, int dir, int step) {
         rect(px, cx - 6 + (side ? -3 : 0), 10, cx - 4 + (side ? -3 : 0), 13, ear); rect(px, cx + 4 + (side ? -3 : 0), 10, cx + 6 + (side ? -3 : 0), 13, ear);
         if (!back) { rect(px, cx - 4 + (side ? -3 : 0), 17, cx - 3 + (side ? -3 : 0), 18, glow); if (!side) rect(px, cx + 3, 17, cx + 4, 18, glow); }
         rect(px, cx - 3, 37, cx - 1, 41 - lift_a / 2, body_d); rect(px, cx + 1, 37, cx + 3, 41 - lift_b / 2, body_d);
+    } else if (w->kind == 4) { /* plant: a fly-trap (the Venus Garden Mind): a bulb on a stem, the jaws open and close across the three frames */
+        int open = (step == 0) ? 1 : (step == 1 ? 4 : 8);
+        rect(px, cx - 1, 30, cx + 1, 43, belly); ell(px, cx - 7, 41, 5, 2, belly); ell(px, cx + 7, 41, 5, 2, belly);
+        ell(px, cx, 22 + open / 2, 11, 7, body); ell(px, cx, 22 - open / 2, 11, 7, body_d);
+        if (!back) { rect(px, cx - 8, 22 - open / 2 + 2, cx + 8, 22 + open / 2 - 2, ear); for (x = cx - 8; x <= cx + 8; x += 3) { put(px, x, 22 - open / 2 + 2, glow); put(px, x, 22 + open / 2 - 2, glow); } }
+        rect(px, cx - 4, 14 - open / 2, cx - 3, 15 - open / 2, eye);
+    } else { /* jelly: a dome with tentacles that sway (the Turritid, the Jelly Fish God) */
+        int sway = (step == 0) ? -2 : (step == 2 ? 2 : 0);
+        ell(px, cx, 20 + wob, 12, 10, body); rect(px, cx - 12, 22 + wob, cx + 12, 24 + wob, body); ell(px, cx, 17 + wob, 8, 5, belly);
+        for (x = -9; x <= 9; x += 3) rect(px, cx + x + (x > 0 ? sway : -sway) / 2, 25, cx + x + 1 + (x > 0 ? sway : -sway) / 2, 38 + (x % 2 ? 4 : 0), ear);
+        if (!back) { rect(px, cx - 5, 18 + wob, cx - 4, 19 + wob, glow); rect(px, cx + 4, 18 + wob, cx + 5, 19 + wob, glow); }
     }
 }
 
@@ -135,7 +148,7 @@ static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
         rect(px, cx - 4, 26 + bob, cx + 4, 36 + bob, gar); rect(px, cx + 1, 26 + bob, cx + 4, 36 + bob, gar_d);
         /* arm swings fore and aft */
         rect(px, cx - 2 + fx, 27 + bob, cx + 1 + fx, 33 + bob, gar_d); rect(px, cx - 2 + fx, 34 + bob, cx + 1 + fx, 35 + bob, skin);
-        if (w->mark) { rect(px, cx - 2 + fx, 34 + bob, cx - 1 + fx, 35 + bob, w->trim); rect(px, cx - 4, 26 + bob, cx - 2, 26 + bob, w->trim); }
+        if (w->mark == 1) { rect(px, cx - 2 + fx, 34 + bob, cx - 1 + fx, 35 + bob, w->trim); rect(px, cx - 4, 26 + bob, cx - 2, 26 + bob, w->trim); }
         /* head */
         ell(px, cx - 1, hy, 8, 8, skin);
         for (y = hy - 8; y <= hy + 8; y++) for (x = cx - 9; x <= cx + 7; x++) if (in_ell(x, y, cx - 1, hy, 8, 8) && x > cx + 2) put(px, x, y, skin_d);
@@ -143,6 +156,8 @@ static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
         if (w->style == 0 || w->style == 1) for (y = hy - 8; y <= hy + 8; y++) for (x = cx - 9; x <= cx + 7; x++) if (in_ell(x, y, cx - 1, hy, 8, 8) && (y < hy - 1 || x > cx + 1)) put(px, x, y, w->hair);
         if (w->style == 1) rect(px, cx + 1, hy + 2, cx + 6, hy + 14, w->hair);
         if (w->style == 2) rect(px, cx - 2, hy - 12, cx + 3, hy - 4, w->hair);
+        if (w->style == 4) { ell(px, cx - 1, hy, 8, 8, w->hair); rect(px, cx - 7, hy + 1, cx - 5, hy + 2, w->trim); }
+        if (w->style == 5) { const Col white = { 244, 240, 232 }, red = { 214, 40, 40 }; ell(px, cx - 1, hy, 8, 8, white); put(px, cx - 6, hy + 1, eye); put(px, cx - 6, hy + 2, eye); rect(px, cx - 9, hy + 3, cx - 8, hy + 4, red); rect(px, cx + 2, hy - 2, cx + 7, hy + 6, w->hair); }
     } else {
         /* legs */
         rect(px, cx - 5, 36 + bob + lift_l / 2, cx - 1, 43 - lift_l, leg); rect(px, cx - 5, 42 - lift_l, cx - 1, 44 - lift_l, shoe);
@@ -153,7 +168,7 @@ static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
         /* arms, swinging against the legs */
         rect(px, cx - bw - 3, 27 + bob + sw_l, cx - bw - 1, 33 + bob + sw_l, gar_d); rect(px, cx - bw - 3, 34 + bob + sw_l, cx - bw - 1, 35 + bob + sw_l, skin);
         rect(px, cx + bw, 27 + bob + sw_r, cx + bw + 2, 33 + bob + sw_r, gar_d); rect(px, cx + bw, 34 + bob + sw_r, cx + bw + 2, 35 + bob + sw_r, skin);
-        if (w->mark && !back) { rect(px, cx - 4, 26 + bob, cx + 3, 26 + bob, w->trim); put(px, cx - 1, 27 + bob, w->trim); put(px, cx - 1, 28 + bob, w->trim); put(px, cx, 28 + bob, w->trim);
+        if (w->mark == 1 && !back) { rect(px, cx - 4, 26 + bob, cx + 3, 26 + bob, w->trim); put(px, cx - 1, 27 + bob, w->trim); put(px, cx - 1, 28 + bob, w->trim); put(px, cx, 28 + bob, w->trim);
                                 rect(px, cx + bw, 34 + bob + sw_r, cx + bw + 1, 35 + bob + sw_r, w->trim); }
         /* head */
         ell(px, cx, hy, 9, 8, skin);
@@ -166,6 +181,12 @@ static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
             if (in_ell(x, y, cx, hy, 9, 8) && (back ? y < hy + 5 : (y < hy - 1 || ((x < cx - 7 || x > cx + 7) && y < hy + 3)))) put(px, x, y, w->hair);
         if (w->style == 1) { rect(px, cx - 10, hy + 1, cx - 7, hy + 13, w->hair); rect(px, cx + 7, hy + 1, cx + 10, hy + 13, w->hair); if (back) rect(px, cx - 8, hy + 3, cx + 8, hy + 14, w->hair); }
         if (w->style == 2) rect(px, cx - 1, hy - 13, cx + 1, hy - 4, w->hair);
+        if (w->style == 4) { ell(px, cx, hy, 9, 8, w->hair); if (!back) { rect(px, cx - 6, hy + 1, cx - 3, hy + 2, w->trim); rect(px, cx + 3, hy + 1, cx + 6, hy + 2, w->trim); } }
+        if (w->style == 5) {
+            const Col white = { 244, 240, 232 }, red = { 214, 40, 40 };
+            if (back) ell(px, cx, hy, 9, 8, w->hair);
+            else { ell(px, cx, hy, 9, 8, white); rect(px, cx - 5, hy + 1, cx - 4, hy + 2, eye); rect(px, cx + 3, hy + 1, cx + 4, hy + 2, eye); rect(px, cx - 1, hy + 3, cx, hy + 4, red); rect(px, cx - 12, hy - 4, cx - 8, hy + 4, w->hair); rect(px, cx + 8, hy - 4, cx + 12, hy + 4, w->hair); rect(px, cx - 7, hy - 9, cx + 7, hy - 5, w->hair); }
+        }
     }
     /* outline: any transparent pixel next to an opaque one becomes ink (a plain 4-neighbour pass) */
     {
@@ -177,6 +198,8 @@ static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
                 (y > 0 && src[((y - 1) * CW + x) * 4 + 3]) || (y < CH - 1 && src[((y + 1) * CW + x) * 4 + 3])) put(px, x, y, ink);
         }
     }
+    /* mark 2 = an echo: a translucent Time Twin (the same figure, 55 percent opaque) */
+    if (w->mark == 2) for (x = 0; x < CW * CH; x++) px[x * 4 + 3] = (unsigned char)(px[x * 4 + 3] * 55 / 100);
 }
 static void mirror(unsigned char *dst, const unsigned char *src) { int x, y; for (y = 0; y < CH; y++) for (x = 0; x < CW; x++) memcpy(dst + (y * CW + x) * 4, src + (y * CW + (CW - 1 - x)) * 4, 4); }
 static void blit(unsigned char *sheet, int sw, const unsigned char *cell, int ox, int oy) { int y; for (y = 0; y < CH; y++) memcpy(sheet + ((oy + y) * sw + ox) * 4, cell + y * CW * 4, CW * 4); }
@@ -253,8 +276,8 @@ static int read_cast(const char *path) {
                 fprintf(stderr, "line %d: bad hair style or colour for %s\n", ln, id); fclose(f); return 2;
             }
             w->body = atoi(bd); w->mark = atoi(mk);
-            w->kind = (!kd[0] || !strcmp(kd, "humanoid")) ? 0 : !strcmp(kd, "quad") ? 1 : !strcmp(kd, "blob") ? 2 : !strcmp(kd, "winged") ? 3 : -1;
-            if (w->kind < 0) { fprintf(stderr, "line %d: kind must be humanoid, quad, blob or winged\n", ln); fclose(f); return 2; }
+            w->kind = (!kd[0] || !strcmp(kd, "humanoid")) ? 0 : !strcmp(kd, "quad") ? 1 : !strcmp(kd, "blob") ? 2 : !strcmp(kd, "winged") ? 3 : !strcmp(kd, "plant") ? 4 : !strcmp(kd, "jelly") ? 5 : -1;
+            if (w->kind < 0) { fprintf(stderr, "line %d: kind must be humanoid, quad, blob, winged, plant or jelly\n", ln); fclose(f); return 2; }
             if (w->body < 0 || w->body > 2) { fprintf(stderr, "line %d: body must be 0..2\n", ln); fclose(f); return 2; }
             g_n++;
         } else if (!strncmp(line, "GENERIC |", 9)) {
@@ -295,6 +318,11 @@ static int cast_run(const char *outdir) {
         snprintf(path, sizeof path, "%.800s/sprite.csv", dir);
         if (write_csv(path, sheet, SW, SH) != 0) { rc = 2; break; }
         { static unsigned char face[144 * 144 * 4]; face_from_sheet(sheet, face); snprintf(path, sizeof path, "%.800s/face.png", dir); if (!stbi_write_png(path, 144, 144, 4, face, 144 * 4)) { rc = 2; break; } }
+        { static unsigned char bigs[288 * 384 * 4], bat[192 * 192 * 4]; int bx, by;
+          for (by = 0; by < 384; by++) for (bx = 0; bx < 288; bx++) memcpy(bigs + (by * 288 + bx) * 4, sheet + ((by / 2) * SW + bx / 2) * 4, 4);
+          for (by = 0; by < 192; by++) for (bx = 0; bx < 192; bx++) memcpy(bat + (by * 192 + bx) * 4, sheet + ((by / 4) * SW + CW + bx / 4) * 4, 4);
+          snprintf(path, sizeof path, "%.800s/big.png", dir); if (!stbi_write_png(path, 288, 384, 4, bigs, 288 * 4)) { rc = 2; break; }
+          snprintf(path, sizeof path, "%.800s/battler.png", dir); if (!stbi_write_png(path, 192, 192, 4, bat, 192 * 4)) { rc = 2; break; } }
         printf("CAST %s %dx%d frames=12 opaque=%d\n", g_who[i].id, SW, SH, opaque);
     }
     /* RPG Maker layout: 4 x 2 characters of 144x192 per 576x384 sheet, so it drops into an existing map */
@@ -324,9 +352,50 @@ static int cast_run(const char *outdir) {
     free(sheet); free(big);
     return rc;
 }
+/* slots <cast.pdl> <slots.pdl> <outroot>: compose the RPG Maker people and face sheets from the cast.
+ *   SLOT | <RPG Maker sheet name, e.g. Actor1> | id1,id2,...,id8      (up to 8 ids; the rest of the sheet stays transparent)
+ * Writes <outroot>/characters/<Name>.png (576x384) and <outroot>/faces/<Name>.png (576x288): the same names, sizes and 4 x 2 layout as the RPG Maker files, so the old levels load them unchanged.
+ * Exit 2 on an unknown id, a row with more than 8 ids, or no rows. */
+static int find_who(const char *id) { int i; for (i = 0; i < g_n; i++) if (!strcmp(g_who[i].id, id)) return i; return -1; }
+static int slots_run(const char *slotf, const char *outroot) {
+    FILE *f = fopen(slotf, "r");
+    char line[900];
+    int rows = 0, rc = 0;
+    unsigned char *sheet = malloc(SW * SH * 4), *cs = malloc((size_t)576 * 384 * 4), *fs = malloc((size_t)576 * 288 * 4);
+    if (!f || !sheet || !cs || !fs) { fprintf(stderr, "no slots file\n"); if (f) fclose(f); free(sheet); free(cs); free(fs); return 2; }
+    while (fgets(line, sizeof line, f)) {
+        char *p, *name, *ids, *tok, dir[900], path[1000];
+        int j = 0, y;
+        if (strncmp(line, "SLOT |", 6) != 0) continue;
+        p = line + 6; name = fld(&p); ids = fld(&p);
+        if (!name[0] || !ids[0] || strlen(name) > 40) { fprintf(stderr, "bad SLOT row\n"); rc = 2; break; }
+        memset(cs, 0, (size_t)576 * 384 * 4); memset(fs, 0, (size_t)576 * 288 * 4);
+        for (tok = strtok(ids, ","); tok; tok = strtok(NULL, ",")) {
+            int wi = find_who(tok);
+            static unsigned char fc[144 * 144 * 4];
+            if (wi < 0 || j >= 8) { fprintf(stderr, "SLOT %s: unknown id or more than 8: %s\n", name, tok); rc = 2; break; }
+            memset(sheet, 0, SW * SH * 4); draw_sheet(sheet, &g_who[wi]); face_from_sheet(sheet, fc);
+            for (y = 0; y < SH; y++) memcpy(cs + (((j / 4) * SH + y) * 576 + (j % 4) * SW) * 4, sheet + y * SW * 4, SW * 4);
+            for (y = 0; y < 144; y++) memcpy(fs + (((j / 4) * 144 + y) * 576 + (j % 4) * 144) * 4, fc + y * 144 * 4, 144 * 4);
+            j++;
+        }
+        if (rc) break;
+        snprintf(dir, sizeof dir, "%.600s/characters", outroot); mkp(dir);
+        snprintf(path, sizeof path, "%.600s/%.40s.png", dir, name); if (!stbi_write_png(path, 576, 384, 4, cs, 576 * 4)) { rc = 2; break; }
+        snprintf(dir, sizeof dir, "%.600s/faces", outroot); mkp(dir);
+        snprintf(path, sizeof path, "%.600s/%.40s.png", dir, name); if (!stbi_write_png(path, 576, 288, 4, fs, 576 * 4)) { rc = 2; break; }
+        rows++;
+    }
+    fclose(f); free(sheet); free(cs); free(fs);
+    if (!rc && rows == 0) { fprintf(stderr, "slots file has no SLOT rows\n"); rc = 2; }
+    if (!rc) printf("SLOTS sheets=%d characters_and_faces_written\n", rows);
+    return rc;
+}
+
 int main(int argc, char **argv) {
     if (argc == 3 && !strcmp(argv[1], "cast-check")) { int r = read_cast(argv[2]); if (!r) printf("CASTCHECK characters=%d\n", g_n); return r; }
     if (argc == 4 && !strcmp(argv[1], "cast")) { int r = read_cast(argv[2]); return r ? r : cast_run(argv[3]); }
-    fprintf(stderr, "usage: cast <cast.pdl> <outdir> | cast-check <cast.pdl>\n");
+    if (argc == 5 && !strcmp(argv[1], "slots")) { int r = read_cast(argv[2]); return r ? r : slots_run(argv[3], argv[4]); }
+    fprintf(stderr, "usage: cast <cast.pdl> <outdir> | cast-check <cast.pdl> | slots <cast.pdl> <slots.pdl> <outroot>\n");
     return 2;
 }

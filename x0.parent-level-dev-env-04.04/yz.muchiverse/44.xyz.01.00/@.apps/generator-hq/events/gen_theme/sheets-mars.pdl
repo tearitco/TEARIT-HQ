@@ -1,0 +1,10 @@
+# World theme mars: a small themed pack (objects, a background) recoloured with this world's tone. READ cue: Mars: Shepherd's Farm, the Circus Ville clone slums, the HSG compound
+GEN | hue | -18
+GEN | sat | 92
+GEN | levels | 6
+GEN | outline | 1
+SHEET | tilesets/Outside_B.png | 1
+SHEET | tilesets/Outside_C.png | 1
+SHEET | tilesets/Dungeon_B.png | 1
+SHEET | tilesets/SF_Outside_B.png | 1
+SHEET | battlebacks1/Grassland.png | 0 | 14

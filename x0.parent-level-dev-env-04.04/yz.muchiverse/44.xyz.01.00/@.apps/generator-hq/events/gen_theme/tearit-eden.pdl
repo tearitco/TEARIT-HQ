@@ -1,0 +1,7 @@
+# Restyle style: world theme "eden". READ cue: Eden / Edin: the Garden, the Tree of Life, the Eden archive
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #1a2a14,#3a6a2a,#8ab04a,#e8d890,#fff8e0
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

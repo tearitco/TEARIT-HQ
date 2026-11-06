@@ -1,0 +1,7 @@
+# Restyle style: world theme "metalsun". READ cue: The Metal Sun / Icarus: the Architect's ship-star, a Dyson sphere, interior decks and engine core
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #101014,#38383f,#6a6a78,#ff7a1a,#ffe2a8
+GEN | accent | #fff0c0
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

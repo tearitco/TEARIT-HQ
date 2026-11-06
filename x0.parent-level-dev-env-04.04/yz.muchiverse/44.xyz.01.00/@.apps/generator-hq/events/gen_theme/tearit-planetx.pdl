@@ -1,0 +1,7 @@
+# Restyle style: world theme "planetx". READ cue: Planet X: twin suns, jungle, alien hounds
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #0a1a14,#1a4a3a,#3a8a6a,#c88a2a,#ffd870
+GEN | accent | #ff9a2a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

@@ -1,0 +1,10 @@
+# World theme hydro: a small themed pack (objects, a background) recoloured with this world's tone. READ cue: Hydroverse (XVS): water worlds, Puffara-Kai, Venom-Spire ice, Carchar-Industrial forge
+GEN | hue | 150
+GEN | sat | 110
+GEN | levels | 6
+GEN | outline | 1
+SHEET | tilesets/Outside_B.png | 1
+SHEET | tilesets/Outside_C.png | 1
+SHEET | tilesets/Dungeon_B.png | 1
+SHEET | tilesets/SF_Outside_B.png | 1
+SHEET | battlebacks1/Grassland.png | 0 | 14

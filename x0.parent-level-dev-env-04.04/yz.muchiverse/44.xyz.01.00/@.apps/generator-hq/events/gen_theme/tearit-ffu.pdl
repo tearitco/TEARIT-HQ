@@ -1,0 +1,7 @@
+# Restyle style: world theme "ffu". READ cue: Footrace Fu / Land of Time: night, alien, gold and red architecture, cherry blossoms, time crystals
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #10102a,#3a1a4a,#a02a4a,#f06a8a,#ffd88a
+GEN | accent | #7ad0ff
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

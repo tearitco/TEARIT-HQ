@@ -45,7 +45,7 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/empty.p
 EXPECT_EXIT | 2 | NEGATIVE-a-cast-with-no-rows-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-check | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl
 EXPECT_EXIT | 0 | the-real-cast-file-parses
-EXPECT_OUT | CASTCHECK characters=21 | asa-ava-harold-eight-npcs-and-ten-pets
+EXPECT_OUT | CASTCHECK characters=126 | the-whole-cast-file-asa-to-the-lore-cast
 
 # Pets and monsters (kind quad, blob, winged) and faces: same sheet layout, same mirror rule, our outline.
 CASE    | creatures
@@ -76,3 +76,40 @@ EXPECT_EXIT | 0 | same-row-same-face
 WRITE | badkind.pdl | CAST \p x \p #8a8f99 \p none \p #4a4e57 \p #d8dce6 \p #ffd24a \p 1 \p 0 \p dragon\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/badkind.pdl | $T/c
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused
+
+# The IP cast: masked Sol, painted-face clowns, a translucent Time Twin, a fly-trap, a jellyfish god (all from the lore chapter, see cast.pdl).
+CASE    | lore-cast
+SCRATCH |
+WRITE | l.pdl | CAST \p sol \p #d6a47c \p masked \p #c9ced6 \p #1a1d2e \p #7ad0ff \p 2 \p 0\nCAST \p man \p #d6a47c \p short \p #c9ced6 \p #1a1d2e \p #7ad0ff \p 2 \p 0\nCAST \p twin \p #d6a47c \p short \p #4a3020 \p #8a4a2e \p #7ad0ff \p 1 \p 2\nCAST \p solid \p #d6a47c \p short \p #4a3020 \p #8a4a2e \p #7ad0ff \p 1 \p 0\nCAST \p clown \p #e8e0d0 \p clown \p #d03a3a \p #3a2a5a \p #ffd24a \p 1 \p 0\nCAST \p trap \p #3a8a3a \p none \p #c0286a \p #2a5a2a \p #ffd24a \p 2 \p 0 \p plant\nCAST \p jelly \p #e8c8f0 \p none \p #fff0fa \p #d8a8e8 \p #ffffff \p 2 \p 0 \p jelly\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/l.pdl | $T/a
+EXPECT_EXIT | 0 | lore-kinds-written
+EXPECT_OUT | CASTSET characters=7 sheets=1 rc=0 | seven-characters
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/sol/sprite.csv
+EXPECT_EXIT | 0 | the-masked-figure-has-a-body-in-all-12-frames
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/clown/sprite.csv
+EXPECT_EXIT | 0 | the-clown-has-a-body-in-all-12-frames
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/trap/sprite.csv
+EXPECT_EXIT | 0 | the-fly-trap-has-a-body-in-all-12-frames
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/jelly/sprite.csv
+EXPECT_EXIT | 0 | the-jellyfish-has-a-body-in-all-12-frames
+RUN | /usr/bin/cmp | -s | $T/a/sol/sprite.csv | $T/a/man/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-the-mask-changes-the-picture
+RUN | /usr/bin/awk | -F, | NR>4&&$4>0&&$4<255{n++} END{exit n<500} | $T/a/twin/sprite.csv
+EXPECT_EXIT | 0 | the-echo-is-translucent
+RUN | /usr/bin/awk | -F, | NR>4&&$4>0&&$4<255{n++} END{exit n<500} | $T/a/solid/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-the-solid-twin-is-not-translucent
+RUN | /usr/bin/awk | -F, | NR>4&&$4>0{n++} END{exit n<1000} | $T/a/twin/sprite.csv
+EXPECT_EXIT | 0 | the-echo-is-still-drawn-not-erased
+
+# slots: compose the RPG Maker people and face sheets by name (the old levels load characters/<Name>.png and faces/<Name>.png).
+CASE    | slots
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | slots | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $HOUSE/@.apps/generator-hq/events/gen_cast/slots.pdl | $T/s
+EXPECT_EXIT | 0 | the-real-slots-file-composes
+EXPECT_OUT | SLOTS sheets=10 | ten-sheets
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-root | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/s
+EXPECT_EXIT | 0 | same-names-and-sizes-as-the-rpg-maker-files
+EXPECT_OUT | VERIFYROOT files=20 same_name_and_size=20 problems=0 | ten-people-and-ten-face-sheets
+WRITE | bad.pdl | SLOT \p Actor1 \p nobody_here\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | slots | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/bad.pdl | $T/b
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-id-is-refused

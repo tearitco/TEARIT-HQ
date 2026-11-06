@@ -1,0 +1,7 @@
+# Restyle style: world theme "venus". READ cue: Venus DLC: the Slag Drip outpost, upper-sulphur deck, acid clouds, the Garden Mind cave, luxury cities above
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #16160a,#464a12,#8a9a1e,#c8d84a,#f4f4a8
+GEN | accent | #c0286a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

@@ -1,0 +1,7 @@
+# Restyle style: world theme "hydro". READ cue: Hydroverse (XVS): water worlds, Puffara-Kai, Venom-Spire ice, Carchar-Industrial forge
+# The ramp colours are DOC (my proposal for the owner, not canon).
+GEN | ramp | #04141e,#0a3a52,#1a7a9a,#5ac8d8,#d8f8ff
+GEN | accent | #ff7a2a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1
