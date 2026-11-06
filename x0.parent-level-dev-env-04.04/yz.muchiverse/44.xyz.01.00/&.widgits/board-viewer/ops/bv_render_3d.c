@@ -4369,7 +4369,7 @@ static int render_one_frame(void) {
                 if (!strcmp(g_mk.ev[i].name, "door")) {
                     /* A door is a slab 0.1 of a cell thick, standing in the wall opening. Not a full voxel column. */
                     ADDBOX(g_mk.ev[i].x + 0.05f, 1.0, g_mk.ev[i].y + 0.45f,
-                           g_mk.ev[i].x + 0.95f, 1.9f, g_mk.ev[i].y + 0.55f,
+                           g_mk.ev[i].x + 0.95f, 4.0f, g_mk.ev[i].y + 0.55f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else {
                 ADDBOX(g_mk.ev[i].x + 0.15f, 1.0, g_mk.ev[i].y + 0.15f,
