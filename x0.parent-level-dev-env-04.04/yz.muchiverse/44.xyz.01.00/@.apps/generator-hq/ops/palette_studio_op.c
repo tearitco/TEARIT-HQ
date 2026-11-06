@@ -6,7 +6,7 @@
  *   replay    <name.studio.pdl> <out.png>                              re-renders from the recorded rows; REPLAY ok / REPLAY mismatch (exit 1)
  * The studio never draws anything itself: it starts the real op (generator_voxel_op objsheet for kind objects, generator_ground_op for kind ground) with fork + exec, so the knobs, the selection
  * and the Concept Bank weights stay owned by those ops. Rows ('|' separated, '#' comments), paths are house relative, or start with "root:" for the repository root:
- *   TEMPLATE | id | kind objects|ground | label | knobs (comma list) | file1 | file2 ...      objects: cells.pdl, recipes.pdl...     ground: ground.pdl, source sheet.png */
+ *   TEMPLATE | id | kind objects|ground|icons | label | knobs (comma list) | file1 | file2 ...      objects: cells.pdl, recipes.pdl...     ground: ground.pdl, source sheet.png */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +49,7 @@ static int read_templates(const char *path) {
         t = &T[nt]; memset(t, 0, sizeof *t);
         snprintf(t->id, sizeof t->id, "%s", fld(&p)); snprintf(t->kind, sizeof t->kind, "%s", fld(&p)); snprintf(t->label, sizeof t->label, "%s", fld(&p)); snprintf(t->knobs, sizeof t->knobs, "%s", fld(&p));
         while (*p && t->nf < MAXF) { a = fld(&p); if (a[0]) snprintf(t->file[t->nf++], sizeof t->file[0], "%s", a); }
-        if ((strcmp(t->kind, "objects") && strcmp(t->kind, "ground")) || (!strcmp(t->kind, "objects") && t->nf < 2) || (!strcmp(t->kind, "ground") && t->nf != 2)) { fprintf(stderr, "bad TEMPLATE %s\n", t->id); fclose(f); return 2; }
+        if ((strcmp(t->kind, "objects") && strcmp(t->kind, "ground") && strcmp(t->kind, "icons")) || (!strcmp(t->kind, "objects") && t->nf < 2) || (!strcmp(t->kind, "ground") && t->nf != 2) || (!strcmp(t->kind, "icons") && t->nf != 3)) { fprintf(stderr, "bad TEMPLATE %s\n", t->id); fclose(f); return 2; }
         nt++;
     }
     fclose(f); return 0;
@@ -146,7 +146,10 @@ static int run_argv(char **av) { /* fork + exec, wait; the child's own output pa
 static int render_t(const Template *t, const char *out, char **opts, int no) {
     char *av[MAXA + MAXF + 12]; char buf[MAXF + 4][PATH_MAX]; int n = 0, i, b = 0; char bank[PATH_MAX];
     snprintf(bank, sizeof bank, "bank=%s/&.widgits/concept-bank", g_house);
-    if (!strcmp(t->kind, "objects")) {
+    if (!strcmp(t->kind, "icons")) { /* icons: file1 = recipes.pdl, file2 = model kind (item|building|tree|prop), file3 = columns */
+        snprintf(buf[b], PATH_MAX, "%s/@.apps/generator-hq/ops/+x/generator_voxel_op.+x", g_house); av[n++] = buf[b++]; av[n++] = "icons";
+        resolve(t->file[0], buf[b], PATH_MAX); av[n++] = buf[b++]; av[n++] = (char *)t->file[1]; av[n++] = (char *)t->file[2]; av[n++] = (char *)out;
+    } else if (!strcmp(t->kind, "objects")) {
         snprintf(buf[b], PATH_MAX, "%s/@.apps/generator-hq/ops/+x/generator_voxel_op.+x", g_house); av[n++] = buf[b++]; av[n++] = "objsheet"; av[n++] = (char *)out;
         for (i = 0; i < t->nf; i++) { resolve(t->file[i], buf[b], PATH_MAX); av[n++] = buf[b++]; }
     } else {

@@ -579,13 +579,15 @@ static int cast_sheets(const char *slotf, const char *outroot) {
     if (!rc) printf("VOXELSLOTS sheets=%d\n", rows);
     return rc;
 }
+static double g_scramble; /* tentative: the real comment is at scramble_cell below */
+static void scramble_cell(unsigned char *sh, int sw, int x0, int y0, int w, int h, unsigned seed);
 static int icons(const char *kind, int cols, const char *out) {
     int i, n = 0, rows; unsigned char *o;
     for (i = 0; i < nm; i++) if (!strcmp(M[i].kind, kind)) n++;
     if (!n || cols < 1) { fprintf(stderr, "no models of kind %s\n", kind); return 2; }
     rows = (n + cols - 1) / cols; o = calloc((size_t)cols * 48 * rows * 48 * 4, 1); if (!o) return 2;
     n = 0;
-    for (i = 0; i < nm; i++) { static unsigned char st[192 * 48 * 4]; int c; if (strcmp(M[i].kind, kind)) continue; memset(st, 0, sizeof st); if (render_row(st, 0, 192, M[i].id, "idle", &c)) continue; cellcopy(o, cols * 48, (n % cols) * 48, (n / cols) * 48, st, 0, 0); n++; }
+    for (i = 0; i < nm; i++) { static unsigned char st[192 * 48 * 4]; int c; if (strcmp(M[i].kind, kind)) continue; memset(st, 0, sizeof st); if (render_row(st, 0, 192, M[i].id, "idle", &c)) continue; cellcopy(o, cols * 48, (n % cols) * 48, (n / cols) * 48, st, 0, 0); if (g_scramble > 0) scramble_cell(o, cols * 48, (n % cols) * 48, (n / cols) * 48, 48, 48, (unsigned)(n * 1009 + 55)); n++; }
     if (!stbi_write_png(out, cols * 48, rows * 48, 4, o, cols * 48 * 4)) { free(o); return 2; }
     printf("VOXELICONS kind=%s models=%d size=%dx%d\n", kind, n, cols * 48, rows * 48); free(o); return 0;
 }

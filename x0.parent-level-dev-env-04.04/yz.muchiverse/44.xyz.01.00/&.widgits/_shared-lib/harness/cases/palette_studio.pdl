@@ -5,7 +5,7 @@ ENV | LC_ALL | C
 CASE    | studio
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | templates | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl
-EXPECT_OUT | TEMPLATES count=8 | eight-templates-listed-5-objects-and-ground-plus-3-a5-floors
+EXPECT_OUT | TEMPLATES count=11 | eleven-templates-listed-objects-ground-a5-floors-and-3-icon-sheets
 EXPECT_OUT | TEMPLATE outside_b kind=objects | the-object-sheet-is-a-template
 EXPECT_OUT | TEMPLATE dungeon_a2 kind=ground | a-ground-sheet-is-a-template
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ob.png
@@ -366,3 +366,28 @@ EXPECT_OUT | 1769472 | the-a5-picker-keeps-the-canvas-size
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | view | state=$T/st
 RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
 EXPECT_OUT | 1769472 | the-a5-full-view-keeps-the-canvas-size
+
+# icon sheets (items, buildings, props) as studio templates
+CASE    | icons
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_items | $T/i0.png
+RUN | /usr/bin/sha256sum | $T/i0.png
+EXPECT_OUT | 401679026e8618ca | the-neutral-items-template-is-byte-identical-to-the-approved-items-png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_items | $T/i1.png | scramble=0.5
+RUN | /usr/bin/cmp | -s | $T/i0.png | $T/i1.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-item-pixels
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $T/i0.png | $T/i1.png
+EXPECT_OUT | alpha_changed=0 | the-item-silhouettes-are-untouched
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_items | $T/i2.png | knob=warm:0.3
+RUN | /usr/bin/cmp | -s | $T/i0.png | $T/i2.png
+EXPECT_EXIT | 1 | NEGATIVE-a-warm-knob-changes-the-item-colours
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_buildings | $T/b.png
+EXPECT_OUT | models=9 | the-buildings-template-renders-9-models
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_props | $T/p.png
+EXPECT_OUT | models=55 | the-props-template-renders-55-models
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | icons_items | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | the-icons-picker-keeps-the-canvas-size
+RUN | /usr/bin/cmp | -s | $T/st/studio_preview.raw | /dev/zero
+EXPECT_EXIT | 1 | NEGATIVE-the-icons-picker-is-not-blank
