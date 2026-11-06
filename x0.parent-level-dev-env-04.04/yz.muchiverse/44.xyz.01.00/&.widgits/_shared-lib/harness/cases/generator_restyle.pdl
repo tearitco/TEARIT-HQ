@@ -114,3 +114,23 @@ RUN | /usr/bin/cmp | -s | $T/e/Outside_b_165/sprite.csv | $T/z/Outside_b_165/spr
 EXPECT_EXIT | 1 | NEGATIVE-warm-and-cool-ramps-give-different-bytes
 RUN | /usr/bin/cmp | -s | $T/z/Outside_b_165/sprite.csv | $T/p/Outside_b_165/sprite.csv
 EXPECT_EXIT | 1 | NEGATIVE-cool-and-purple-ramps-give-different-bytes
+
+# Reusable checks that replace my hand loops: contact sheets written in memory, and verify-sheet re-cuts the raw shapes and checks what was written.
+CASE    | sheet-tools
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-sand.pdl | tearit-sand.pdl
+WRITE | map1.pdl | BLOCK \p Outside_A2 \p 1 \p tearit-sand\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/map1.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/o | $T/contact
+EXPECT_EXIT | 0 | sheet-with-contact-dir
+EXPECT_OUT | SHEET Outside_A2 blocks=1 shapes=48 rc=0 | one-block-of-48
+EXPECT_FILE | contact/Outside_A2_b01_tearit-sand.png | contact-sheet-written-in-memory
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-sheet | $T/map1.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/o
+EXPECT_EXIT | 0 | verify-passes-on-a-good-run
+EXPECT_OUT | checked=48 changed_alpha=0 identical_to_original=0 skipped_transparent=0 missing_or_wrong=0 result=ok | verify-numbers
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-sheet | $T/map1.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/nothing-here
+EXPECT_EXIT | 1 | NEGATIVE-verify-fails-when-the-cells-are-missing
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/raw | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 1
+RUN | /bin/cp | $T/raw/s20/sprite.csv | $T/o/tearit-sand/Outside_A2_b01_s20/sprite.csv
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-sheet | $T/map1.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/o
+EXPECT_EXIT | 1 | NEGATIVE-verify-fails-when-a-cell-is-the-original-pixels
+EXPECT_OUT | identical_to_original=1 | the-copied-original-is-named

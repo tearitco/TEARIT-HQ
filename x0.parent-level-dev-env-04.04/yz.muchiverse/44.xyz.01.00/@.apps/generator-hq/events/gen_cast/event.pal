@@ -1,0 +1,3 @@
+# Editor event: write the Tear-it cast (one row per character in cast.pdl). Candidates go to out/bad/, never out/good/.
+exec ../../ops/+x/generator_cast_op.+x cast ./cast.pdl ../../out/bad/cast
+halt

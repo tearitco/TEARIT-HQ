@@ -1,0 +1,48 @@
+# generator_cast: a Tear-it cast built from rows (owner 2026-11-05: our own version of ALL characters, in our brand). Same layout as the RPG Maker character sheet.
+RESULTS | ../results/generator_cast.txt
+ENV | LC_ALL | C
+
+CASE    | cast
+SCRATCH |
+WRITE | cast.pdl | CAST \p t1 \p #8a5a3a \p mohawk \p #c0392b \p #15161a \p #ffd24a \p 2 \p 1\nCAST \p t2 \p #e6bfa0 \p long \p #5a3a24 \p #15161a \p #ffd24a \p 1 \p 0\nGENERIC \p g \p 3 \p 7\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/cast.pdl | $T/a
+EXPECT_EXIT | 0 | cast-written
+EXPECT_OUT | CAST t1 144x192 frames=12 | a-sheet-is-3-frames-by-4-directions
+EXPECT_OUT | CASTSET characters=5 sheets=1 rc=0 | two-named-plus-three-generic
+EXPECT_FILE | a/t1/sheet.png | sheet-png
+EXPECT_FILE | a/t1/sprite.csv | sprite-csv-in-the-house-format
+EXPECT_FILE | a/CastSheet_00.png | rpg-maker-layout-cast-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/cast.pdl | $T/b
+RUN | /usr/bin/cmp | -s | $T/a/t1/sprite.csv | $T/b/t1/sprite.csv
+EXPECT_EXIT | 0 | same-row-same-bytes
+RUN | /usr/bin/cmp | -s | $T/a/t1/sprite.csv | $T/a/t2/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-two-characters-are-not-the-same-picture
+RUN | /usr/bin/cmp | -s | $T/a/g_00/sprite.csv | $T/a/g_01/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-generic-npcs-differ-from-each-other
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/t1/sprite.csv
+EXPECT_EXIT | 0 | all-twelve-frames-have-a-body
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; if(y<48&&x<48)a[y*48+x]=$0; if(y<48&&x>=96)b[y*48+(x-96)]=$0} END{for(k in a) if(a[k]!=b[k]) d++; exit d==0} | $T/a/t1/sprite.csv
+EXPECT_EXIT | 0 | the-two-walk-frames-differ
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; p[y*144+x]=$0} END{for(c=0;c<3;c++) for(y=0;y<48;y++) for(x=0;x<48;x++) if(p[(96+y)*144+c*48+x]!=p[(48+y)*144+c*48+(47-x)]) bad++; exit bad>0} | $T/a/t1/sprite.csv
+EXPECT_EXIT | 0 | right-is-the-exact-mirror-of-left
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; p[y*144+x]=$0} END{for(c=0;c<3;c++) for(y=0;y<48;y++) for(x=0;x<48;x++) if(p[(96+y)*144+c*48+x]!=p[(48+y)*144+c*48+x]) bad++; exit bad>0} | $T/a/t1/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-right-is-not-a-plain-copy-of-left
+RUN | /usr/bin/awk | -F, | NR==3821{exit $0!="255,210,74,255"} | $T/a/t1/sprite.csv
+EXPECT_EXIT | 0 | the-marked-character-has-the-gold-neck-line
+RUN | /usr/bin/awk | -F, | NR==3821{exit $0!="255,210,74,255"} | $T/a/t2/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-an-unmarked-character-has-no-gold-line
+WRITE | bad1.pdl | CAST \p x \p #8a5a3a \p curly \p #c0392b \p #15161a \p #ffd24a \p 1 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/bad1.pdl | $T/c
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-hair-style-is-refused
+WRITE | bad2.pdl | CAST \p x \p #8a5a3a \p short \p notacolour \p #15161a \p #ffd24a \p 1 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/bad2.pdl | $T/d
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-colour-is-refused
+WRITE | bad3.pdl | CAST \p x \p #8a5a3a \p short \p #c0392b \p #15161a \p #ffd24a \p 5 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/bad3.pdl | $T/e
+EXPECT_EXIT | 2 | NEGATIVE-a-body-size-outside-0-to-2-is-refused
+WRITE | empty.pdl | # nothing here\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/empty.pdl | $T/f
+EXPECT_EXIT | 2 | NEGATIVE-a-cast-with-no-rows-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-check | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl
+EXPECT_EXIT | 0 | the-real-cast-file-parses
+EXPECT_OUT | CASTCHECK characters=11 | asa-ava-harold-and-eight-npcs

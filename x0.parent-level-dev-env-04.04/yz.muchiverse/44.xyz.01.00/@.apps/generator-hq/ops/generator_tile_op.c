@@ -410,6 +410,7 @@ static void proof_block(unsigned char *src) {
 }
 /* Optional per-shape hook: the sheet verb restyles each shape in memory so unrestyled RPG Maker pixels are never written. */
 static int g_quiet; /* the sheet verb prints one summary line, not one line per shape */
+static unsigned char *g_cap; /* when set, restyle_px copies the restyled cell here (used for in-memory contact sheets) */
 static int g_blk_lo, g_blk_hi = -1; /* sheet verb: brightness range of the WHOLE block, so shapes cut from one block map one source colour to one output colour (no seams between neighbours) */
 static void (*g_shape_cb)(int shape, const unsigned char *tile, void *ctx);
 static void *g_shape_ctx;
@@ -627,6 +628,7 @@ static int restyle_px(const RStyle *st, const char *outdir, const char *name, co
     }
     free(ci); free(co);
     if (!g_quiet) printf("RESTYLE %s %dx%d opaque=%d changed=%d outline=%d accent=%d colours_in=%d colours_out=%d\n", name, w, h, opaque, changed, outl, acc, cin, cout);
+    if (g_cap) memcpy(g_cap, out, (size_t)w * h * 4);
     free(out);
     return 0;
 }
@@ -682,24 +684,52 @@ static int contact(const char *outpng, int cols, int ncell, char **cells) {
  * <style> is a file <style>.pdl next to the map. Each block's 48 floor shapes are cut, restyled IN MEMORY and
  * written to <outdir>/<style>/<Sheet>_b<NN>_s<NN>/ (sprite.csv + tile.png). No original pixel is written.
  * Exit 3 if the map has no row for this sheet or a style file is bad; 2 for an unreadable sheet or block. */
-typedef struct { const RStyle *st; char dir[600], prefix[100]; int shapes, rc; } SheetCtx;
+typedef struct {
+    const RStyle *st; char dir[600], prefix[100]; int shapes, rc;
+    unsigned char *contact;                       /* 8 x 6 shapes of 48x48, or NULL */
+    int verify, v_checked, v_alpha, v_ident, v_skipped, v_bad; /* verify mode: compare the written cells to freshly cut raw shapes */
+} SheetCtx;
 static void sheet_cb(int shape, const unsigned char *tile, void *ctx) {
     SheetCtx *c = ctx;
     char name[220];
+    static unsigned char cap[48 * 48 * 4];
+    int i, y;
     snprintf(name, sizeof name, "%s_s%02d", c->prefix, shape);
-    if (restyle_px(c->st, c->dir, name, tile, 48, 48) != 0) c->rc = 2;
     c->shapes++;
+    if (c->verify) {
+        char path[900];
+        int w = 0, h = 0, opaque = 0;
+        unsigned char *o;
+        for (i = 0; i < 48 * 48; i++) if (tile[i * 4 + 3]) opaque++;
+        snprintf(path, sizeof path, "%.600s/%s/sprite.csv", c->dir, name);
+        o = read_cell(path, &w, &h);
+        if (!o) { if (opaque == 0) c->v_skipped++; else c->v_bad++; return; }
+        if (w != 48 || h != 48) { c->v_bad++; free(o); return; }
+        for (i = 0; i < 48 * 48; i++) if (o[i * 4 + 3] != tile[i * 4 + 3]) { c->v_alpha++; break; }
+        if (memcmp(o, tile, 48 * 48 * 4) == 0) c->v_ident++;
+        c->v_checked++;
+        free(o);
+        return;
+    }
+    if (c->contact) { memset(cap, 0, sizeof cap); g_cap = cap; }
+    if (restyle_px(c->st, c->dir, name, tile, 48, 48) != 0) c->rc = 2;
+    if (c->contact) {
+        g_cap = NULL;
+        for (y = 0; y < 48; y++) memcpy(c->contact + (((shape / 8) * 48 + y) * 384 + (shape % 8) * 48) * 4, cap + y * 48 * 4, 48 * 4);
+    }
 }
-static int sheet_run(const char *mapf, const char *sheet, const char *outdir) {
+/* mode: sheet writes cells (and, with contactdir, one contact sheet per block); verify re-cuts the raw shapes and checks what was written. */
+static int sheet_run(const char *mapf, const char *sheet, const char *outdir, const char *contactdir, int verify) {
     FILE *f = fopen(mapf, "r");
     char line[400], mapdir[500], sname[100], *base, *dot;
-    int blocks = 0, shapes = 0, rc = 0;
+    int blocks = 0, shapes = 0, rc = 0, v_checked = 0, v_alpha = 0, v_ident = 0, v_skipped = 0, v_bad = 0;
     if (!f) { fprintf(stderr, "no map file\n"); return 3; }
     snprintf(mapdir, sizeof mapdir, "%s", mapf);
     base = strrchr(mapdir, '/'); if (base) *base = 0; else snprintf(mapdir, sizeof mapdir, ".");
     base = strrchr(sheet, '/'); base = base ? base + 1 : (char *)sheet;
     snprintf(sname, sizeof sname, "%.90s", base);
     dot = strrchr(sname, '.'); if (dot) *dot = 0;
+    if (contactdir && !verify) mkp(contactdir);
     while (fgets(line, sizeof line, f)) {
         char *p, *fld[4]; int n = 0, idx;
         RStyle st; SheetCtx c; char stylef[900];
@@ -712,15 +742,28 @@ static int sheet_run(const char *mapf, const char *sheet, const char *outdir) {
         snprintf(stylef, sizeof stylef, "%s/%.60s.pdl", mapdir, fld[2]);
         if (read_style(stylef, &st) != 0) { fprintf(stderr, "bad style file %s\n", stylef); fclose(f); return 3; }
         memset(&c, 0, sizeof c);
-        c.st = &st;
-        snprintf(c.dir, sizeof c.dir, "%s/%.60s", outdir, fld[2]);
+        c.st = &st; c.verify = verify;
+        if (contactdir && !verify) { c.contact = calloc((size_t)384 * 288, 4); if (!c.contact) { fclose(f); return 2; } }
+        snprintf(c.dir, sizeof c.dir, "%.500s/%.60s", outdir, fld[2]);
         snprintf(c.prefix, sizeof c.prefix, "%.80s_b%02d", sname, idx);
         g_shape_cb = sheet_cb; g_shape_ctx = &c; g_quiet = 1;
         { int r = shapes_sheet(NULL, sheet, idx); g_shape_cb = NULL; g_quiet = 0; g_blk_hi = -1; if (r != 0) rc = r; if (c.rc) rc = c.rc; }
+        if (c.contact) {
+            char cp[1000];
+            snprintf(cp, sizeof cp, "%.600s/%s_%.60s.png", contactdir, c.prefix, fld[2]);
+            if (write_png(cp, c.contact, 384, 288) != 0) rc = 2;
+            free(c.contact);
+        }
         blocks++; shapes += c.shapes;
+        v_checked += c.v_checked; v_alpha += c.v_alpha; v_ident += c.v_ident; v_skipped += c.v_skipped; v_bad += c.v_bad;
     }
     fclose(f);
     if (blocks == 0) { fprintf(stderr, "map has no BLOCK row for sheet %s\n", sname); return 3; }
+    if (verify) {
+        int bad = (v_alpha || v_ident || v_bad);
+        printf("VERIFY %s blocks=%d checked=%d changed_alpha=%d identical_to_original=%d skipped_transparent=%d missing_or_wrong=%d result=%s\n", sname, blocks, v_checked, v_alpha, v_ident, v_skipped, v_bad, bad ? "FAIL" : "ok");
+        return rc ? rc : (bad ? 1 : 0);
+    }
     printf("SHEET %s blocks=%d shapes=%d rc=%d\n", sname, blocks, shapes, rc);
     return rc;
 }
@@ -731,13 +774,15 @@ int main(int argc, char **argv) {
     if (argc == 5 && strcmp(argv[1], "shapes") == 0) return shapes_sheet(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "shapes-check") == 0) return shapes_sheet(NULL, argv[2], atoi(argv[3]));
     if (argc >= 5 && strcmp(argv[1], "restyle") == 0) return restyle(argv[2], argv[3], argc - 4, argv + 4);
-    if (argc == 5 && strcmp(argv[1], "sheet") == 0) return sheet_run(argv[2], argv[3], argv[4]);
+    if (argc == 5 && strcmp(argv[1], "sheet") == 0) return sheet_run(argv[2], argv[3], argv[4], NULL, 0);
+    if (argc == 6 && strcmp(argv[1], "sheet") == 0) return sheet_run(argv[2], argv[3], argv[4], argv[5], 0);
+    if (argc == 5 && strcmp(argv[1], "verify-sheet") == 0) return sheet_run(argv[2], argv[3], argv[4], NULL, 1);
     if (argc >= 5 && strcmp(argv[1], "contact") == 0) return contact(argv[2], atoi(argv[3]), argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> [<contactdir>] | verify-sheet <map.pdl> <sheet.png> <outdir> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
     return 2;
 }

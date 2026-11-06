@@ -1,0 +1,3 @@
+exec ./ops/+x/harness_case_op.+x cases/generator_cast.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/generator_cast.pdl
+halt

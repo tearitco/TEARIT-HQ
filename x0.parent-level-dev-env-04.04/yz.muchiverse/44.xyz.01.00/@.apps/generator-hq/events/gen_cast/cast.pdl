@@ -1,0 +1,8 @@
+# The Tear-it cast: one row per character (owner 2026-11-05: our own version of ALL characters, similar in style to RPG Maker, clearly our brand).
+#   CAST | id | skin | hair_style (short long mohawk none) | hair | garment | trim | body (0 slim 1 normal 2 broad) | mark (1 = gold chain and wrist)
+#   GENERIC | prefix | count | seed      -> prefix_00.. from a fixed palette by hash (the 80 generic NPCs are rows like this)
+# Asa and Ava follow the owner's portrait description (TEAR-IT-TILES-100, answer 3). Harold's look is NOT documented: this row is a placeholder for the owner to change.
+CAST | asa | #8a5a3a | mohawk | #c0392b | #15161a | #ffd24a | 2 | 1
+CAST | ava | #e6bfa0 | long   | #5a3a24 | #15161a | #ffd24a | 1 | 1
+CAST | harold | #d6a47c | short | #2a2018 | #1e2a3a | #ffd24a | 1 | 0
+GENERIC | npc | 8 | 20261105
