@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
-        /* One harness for the open page: <book>_<page>.pal. Page test shows centroid_test.pal and nothing else. A row selects; it does not run. */
+        /* Nested harness/<book>/<page>.pal. Open page test of book centroid shows the row centroid/test and no other page. A row selects; it does not run. */
         char book[64] = "", page[64] = "";
         char ui[4200]; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
         FILE *uf = fopen(ui, "r");
@@ -306,10 +306,9 @@ int main(int argc, char **argv) {
         }
         int hn = 0;
         if (book[0] && page[0]) {
-            char want[160], full[4200];
-            snprintf(want, sizeof want, "%s_%s.pal", book, page);
-            snprintf(full, sizeof full, "%s/&.widgits/_shared-lib/harness/%s", house, want);
-            if (access(full, R_OK) == 0) { fprintf(o, "tbhar_0_label=%s\n", want); hn = 1; }
+            char full[4200];
+            snprintf(full, sizeof full, "%s/&.widgits/_shared-lib/harness/%s/%s.pal", house, book, page);
+            if (access(full, R_OK) == 0) { fprintf(o, "tbhar_0_label=%s/%s\ntbhar_0_pal=%s/%s.pal\n", book, page, book, page); hn = 1; }
         }
         fprintf(o, "n_tbhar=%d\nbook_for_harness=%s\npage_for_harness=%s\n", hn, book, page);
     }

@@ -40,7 +40,7 @@
       </repeat>
       <item id="pal-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-palettes" label="- cancel -" action="void"/>
       <repeat count="${n_tbhar}" bind="tbhar">
-        <item id="hz${tbhar.#}" class="pchq-menu-row dropdown-child" target_id="tb-harness" label="${tbhar.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' hpick ${tbhar.label}"/>
+        <item id="hz${tbhar.#}" class="pchq-menu-row dropdown-child" target_id="tb-harness" label="${tbhar.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' hpick ${tbhar.pal}"/>
       </repeat>
       <repeat count="${n_file_opts}" bind="f">
         <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
