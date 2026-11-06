@@ -16,18 +16,18 @@ RUN | /usr/bin/sha256sum | $T/oa.png
 EXPECT_OUT | e035291e2c218d5b9254a61d1a9cbd41fee955cd9d2daf9f4e096d506f05e8eb | no-knobs-reproduces-the-pinned-ground-sheet
 MKDIR | out
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/out | signs_worn | crop | knob=worn:0.7 | crop=1,0,7,1
-EXPECT_OUT | STUDIO saved signs_worn mode=crop bytes=5259 sha256=80ea1ae1a161c135174c5c66c89e715d00c3a4da373e994f6ab6e3e17435ad24 | save-crop-records-the-hash
+EXPECT_OUT | STUDIO saved signs_worn mode=crop bytes=5837 sha256=6e7d63245a4d544d2b71fc69026256a5fa8cd0b4b5569460cf0c4530f6d53bbb | save-crop-records-the-hash
 RUN | /usr/bin/sha256sum | $T/out/signs_worn.png
-EXPECT_OUT | 80ea1ae1a161c135174c5c66c89e715d00c3a4da373e994f6ab6e3e17435ad24 | the-recorded-hash-is-the-real-sha256-of-the-file
+EXPECT_OUT | 6e7d63245a4d544d2b71fc69026256a5fa8cd0b4b5569460cf0c4530f6d53bbb | the-recorded-hash-is-the-real-sha256-of-the-file
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/out/signs_worn.studio.pdl | $T/replayed.png
 EXPECT_OUT | REPLAY ok | replay-reproduces-the-saved-crop
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/out | ground_wet | sheet | knob=wet:0.8 | select=0,0,4,1
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/out/ground_wet.studio.pdl | $T/replayed2.png
 EXPECT_OUT | REPLAY ok | replay-reproduces-a-saved-ground-sheet-with-a-selection
-WRITE | bad.studio.pdl | TEMPLATES \p @.apps/generator-hq/events/gen_studio/templates.pdl\nTEMPLATE \p outside_b\nMODE \p crop\nOPT \p knob=worn:0.7\nOPT \p crop=1,0,7,1\nRESULT \p bytes=5259 \p sha256=0000000000000000000000000000000000000000000000000000000000000000\n
+WRITE | bad.studio.pdl | TEMPLATES \p @.apps/generator-hq/events/gen_studio/templates.pdl\nTEMPLATE \p outside_b\nMODE \p crop\nOPT \p knob=worn:0.7\nOPT \p crop=1,0,7,1\nRESULT \p bytes=5837 \p sha256=0000000000000000000000000000000000000000000000000000000000000000\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/bad.studio.pdl | $T/bad.png
 EXPECT_EXIT | 1 | NEGATIVE-a-record-with-the-wrong-hash-fails-the-replay
-WRITE | good.studio.pdl | TEMPLATES \p @.apps/generator-hq/events/gen_studio/templates.pdl\nTEMPLATE \p outside_b\nMODE \p crop\nOPT \p knob=worn:0.7\nOPT \p crop=1,0,7,1\nRESULT \p bytes=5259 \p sha256=80ea1ae1a161c135174c5c66c89e715d00c3a4da373e994f6ab6e3e17435ad24\n
+WRITE | good.studio.pdl | TEMPLATES \p @.apps/generator-hq/events/gen_studio/templates.pdl\nTEMPLATE \p outside_b\nMODE \p crop\nOPT \p knob=worn:0.7\nOPT \p crop=1,0,7,1\nRESULT \p bytes=5837 \p sha256=6e7d63245a4d544d2b71fc69026256a5fa8cd0b4b5569460cf0c4530f6d53bbb\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/good.studio.pdl | $T/good.png
 EXPECT_OUT | REPLAY ok | a-hand-written-record-with-the-right-hash-replays
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | save | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/out | x | crop | knob=worn:0.7
@@ -207,3 +207,22 @@ RUN | /usr/bin/test | -e | $T/st/studio_saves/slot20.png
 EXPECT_EXIT | 1 | NEGATIVE-there-is-no-21st-slot-the-saves-folder-is-capped
 RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/&.widgits/palettes/palettes-studio.xhtpm
 EXPECT_OUT | 0 error(s), 0 warning(s) | the-window-layout-passes-the-house-layout-check
+
+# D34 knob strength: compare toggle (original vs tuned) and the stronger response.
+CASE    | compare
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.1 | state=$T/st
+RUN | /usr/bin/cp | $T/st/studio_preview.raw | $T/tuned.raw
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | compare | state=$T/st
+RUN | /usr/bin/grep | cmp_state | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | cmp_state=on | compare-switches-on
+RUN | /usr/bin/cmp | -s | $T/tuned.raw | $T/st/studio_preview.raw
+EXPECT_EXIT | 1 | NEGATIVE-the-original-differs-from-the-tuned-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | compare | state=$T/st
+RUN | /usr/bin/cmp | -s | $T/tuned.raw | $T/st/studio_preview.raw
+EXPECT_EXIT | 0 | compare-off-returns-the-identical-tuned-pixels
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | compare | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | worn | 0.1 | state=$T/st
+RUN | /usr/bin/grep | cmp_state | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | cmp_state=off | a-knob-press-leaves-compare-mode

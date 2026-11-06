@@ -10,6 +10,7 @@
       <tab id="tb-save" class="tab ps-tb" label="Save ▾" onclick="ACTIVATE" target_id="tb-save"/>
       <tab id="tb-view" class="tab ps-tb" label="View ▾" onclick="ACTIVATE" target_id="tb-view"/>
       <tab id="tb-knobs" class="tab ps-tb" label="Knobs ${knobs_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
+      <tab id="tb-cmp" class="tab ps-tb" label="Orig ${cmp_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' compare"/>
     </tabbar>
     <sidebar id="rail" class="ps-rail sidebar">
       <repeat count="${n_templates}" bind="tp">
@@ -29,8 +30,8 @@
         <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
         <repeat count="${n_knobs}" bind="kb">
           <text id="kt${kb.#}" label="${kb.name}  ${kb.val}" class="ps-knob"/>
-          <item id="kd${kb.#}" class="ps-btn" label="${kb.name} -5%" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' nudge ${kb.name} -0.05"/>
-          <item id="ku${kb.#}" class="ps-btn" label="${kb.name} +5%" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' nudge ${kb.name} 0.05"/>
+          <item id="kd${kb.#}" class="ps-btn" label="${kb.name} -10%" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' nudge ${kb.name} -0.10"/>
+          <item id="ku${kb.#}" class="ps-btn" label="${kb.name} +10%" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' nudge ${kb.name} 0.10"/>
         </repeat>
         <text id="status" label="${status}" class="ps-quiet"/>
       </row>

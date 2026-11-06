@@ -112,19 +112,22 @@ static double texture(const Recipe *r, int x, int y) {
 }
 static double angdiff(double to, double from) { double d = fmod(to - from + 540.0, 360.0) - 180.0; return d; } /* shortest signed angle from -> to */
 static void ramp5(const Recipe *r, double warm, double wet, unsigned char ramp[5][3]) {
-    int k; double h = r->hue + (warm >= 0 ? warm * 0.45 * angdiff(30.0, r->hue) : -warm * 0.45 * angdiff(220.0, r->hue)); /* warm: toward orange; cool: toward blue */
+    int k; double h = r->hue + (warm >= 0 ? fmin(1.0, 2.0 * warm) * angdiff(30.0, r->hue) : fmin(1.0, -2.0 * warm) * angdiff(220.0, r->hue)); /* warm: toward orange; cool: toward blue */
     for (k = 0; k < 5; k++) {
-        double l = r->light / 100.0 + ((k - 2) / 4.0) * (r->contrast / 100.0) - wet * 0.10, s = r->sat / 100.0 * (1.0 - 0.08 * (k - 2)) + wet * 0.12;
+        double l = r->light / 100.0 + ((k - 2) / 4.0) * (r->contrast / 100.0) - wet * 0.25, s = r->sat / 100.0 * (1.0 - 0.08 * (k - 2)) + wet * 0.25;
         l = clampd(l, 0.04, 0.96); s = clampd(s, 0, 1);
         hsl(h, s, l, ramp[k]);
     }
 }
+/* knob response (D34): sign(w) * |w|^0.6, so a 10%% press acts like 25%%; 0 stays 0 (neutral output untouched) */
+static double curve(double w) { return w < 0 ? -pow(-w, 0.6) : pow(w, 0.6); }
 static const Recipe *find_recipe(const char *name) { int i; for (i = 0; i < nr; i++) if (!strcmp(R[i].name, name)) return &R[i]; return NULL; }
 static double clampd(double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; }
 /* paint one 96 x 144 block: alpha from the original block, colours generated */
 static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigned char *dst, int dw, int ox, int oy, const Recipe *r, double warm, double wet, double wear, double grain, double edge) {
-    int x, y, ring = 2 + (int)(edge * 4.0 + 0.5), dy, dx, painted = 0, open_below = 0; unsigned char ramp[5][3];
+    int x, y, ring = 2 + (int)(edge * 10.0), dy, dx, painted = 0, open_below = 0; unsigned char ramp[5][3];
     for (y = 48; y < 144 && !open_below; y++) for (x = 0; x < 96; x++) if (src[((size_t)(by + y) * sw + bx + x) * 4 + 3] == 0) { open_below = 1; break; } /* a lower region with no transparency is a flat floor tile: no border to draw */
+    if (ring > RING_MAX) ring = RING_MAX;
     ramp5(r, warm, wet, ramp);
     for (y = 0; y < 144; y++) for (x = 0; x < 96; x++) {
         const unsigned char *s = src + ((size_t)(by + y) * sw + bx + x) * 4; unsigned char *d = dst + ((size_t)(oy + y) * dw + ox + x) * 4;
@@ -141,11 +144,11 @@ static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigne
         }
         v = texture(r, x, y);
         if (v < 0) { step = 0; v = 0.1; } else {
-            double gr = ((hash32((r->seed + 91u) ^ (unsigned)(x % 24) * 7919u ^ (unsigned)(y % 24) * 104729u) & 255) / 255.0 - 0.5) * (0.12 + 0.5 * grain);
+            double gr = ((hash32((r->seed + 91u) ^ (unsigned)(x % 24) * 7919u ^ (unsigned)(y % 24) * 104729u) & 255) / 255.0 - 0.5) * (0.12 + 1.2 * grain);
             v = clampd(v + gr, 0, 0.999); step = (int)(v * 5);
         }
         if (wet > 0 && v > 0.93 - 0.1 * wet && (hash32(r->seed ^ (unsigned)(x % 24) * 31u ^ (unsigned)(y % 24) * 17u) & 3) == 0) step = 4;
-        if (wear > 0 && (hash32((r->seed + 5u) ^ (unsigned)(x % 24) * 13u ^ (unsigned)(y % 24) * 101u) % 1000) < (unsigned)(wear * 110.0)) step = step > 0 ? step - 2 : 0;
+        if (wear > 0 && (hash32((r->seed + 5u) ^ (unsigned)(x % 24) * 13u ^ (unsigned)(y % 24) * 101u) % 1000) < (unsigned)(wear * 700.0)) step = step > 0 ? step - 2 : 0;
         if (step < 0) step = 0;
         memcpy(c, ramp[step], 3);
         if (dist <= ring) { /* edge ring: ink at the outermost step, then the dark ramp end */
@@ -178,6 +181,7 @@ static int ground(char **argv) {
         sel = !g_sel_on || (bc >= g_sel[0] && bc < g_sel[0] + g_sel[2] && br >= g_sel[1] && br < g_sel[1] + g_sel[3]);
         if (g_knob_on && sel) for (k = 0; k < 5; k++) wt[k] += g_knob[k];
         wt[0] = clampd(wt[0], -1, 1); for (k = 1; k < 5; k++) wt[k] = clampd(wt[k], 0, 1);
+        for (k = 0; k < 5; k++) wt[k] = curve(wt[k]);
         paint_block(img, w, bc * 96, br * 144, out, w, bc * 96, br * 144, r, wt[0], wt[1], wt[2], wt[3], wt[4]);
         blocks++;
     }

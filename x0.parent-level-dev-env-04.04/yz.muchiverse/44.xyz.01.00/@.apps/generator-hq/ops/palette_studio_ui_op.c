@@ -26,7 +26,7 @@
 #define PH 576
 typedef struct { char id[40], kind[16], label[100], knobs[80]; char kn[MAXK][16]; int nk; double v[MAXK]; } Tpl;
 static Tpl T[MAXT]; static int nt, cur;
-static int g_saves, g_left = 1; /* g_left: the knob panel is shown (1) or collapsed (0) */
+static int g_saves, g_left = 1, g_cmp, g_knobs_on = 1; /* g_cmp: the preview shows the ORIGINAL (no knobs); g_knobs_on: whether knob options are passed to the render */ /* g_left: the knob panel is shown (1) or collapsed (0) */
 static char g_house[2048], g_state[2300], g_status[200];
 static char *fld(char **p) {
     char *s = *p, *e; while (*s == ' ') s++;
@@ -67,6 +67,7 @@ static void load_session(void) {
         if (!strncmp(line, "template=", 9)) { for (i = 0; i < nt; i++) if (!strcmp(T[i].id, line + 9)) cur = i; }
         else if (!strncmp(line, "saves=", 6)) g_saves = atoi(line + 6);
         else if (!strncmp(line, "left=", 5)) g_left = atoi(line + 5) ? 1 : 0;
+        else if (!strncmp(line, "cmp=", 4)) g_cmp = atoi(line + 4) ? 1 : 0;
         else if (!strncmp(line, "k.", 2)) { char *eq = strchr(line, '='), *dot2; if (!eq) continue; *eq = 0; dot2 = strchr(line + 2, '.'); if (!dot2) continue; *dot2 = 0;
             for (i = 0; i < nt; i++) if (!strcmp(T[i].id, line + 2)) for (k = 0; k < T[i].nk; k++) if (!strcmp(T[i].kn[k], dot2 + 1)) T[i].v[k] = atof(eq + 1); }
     }
@@ -80,7 +81,7 @@ static int write_atomic(const char *path, const char *data, size_t n) {
 }
 static void save_session(void) {
     char p[2400], buf[4096]; int n, i, k;
-    n = snprintf(buf, sizeof buf, "template=%s\nsaves=%d\nleft=%d\n", T[cur].id, g_saves, g_left);
+    n = snprintf(buf, sizeof buf, "template=%s\nsaves=%d\nleft=%d\ncmp=%d\n", T[cur].id, g_saves, g_left, g_cmp);
     for (i = 0; i < nt; i++) for (k = 0; k < T[i].nk; k++) n += snprintf(buf + n, sizeof buf - (size_t)n, "k.%s.%s=%.4f\n", T[i].id, T[i].kn[k], T[i].v[k]);
     sess_path(p, sizeof p); write_atomic(p, buf, (size_t)n);
 }
@@ -93,6 +94,7 @@ static int run_argv(char **av) {
 }
 /* knob options of the current template as "knob=name:delta" strings (only non-zero ones) */
 static int knob_opts(char store[][64], char **av, int n) {
+    if (!g_knobs_on) return n; /* compare mode: render the original */
     int k; for (k = 0; k < T[cur].nk; k++) if (fabs(T[cur].v[k]) > 1e-9 && n < 30) { snprintf(store[k], 64, "knob=%s:%.4f", T[cur].kn[k], T[cur].v[k]); av[n++] = store[k]; } return n;
 }
 static int studio_cmd(const char *verb, const char *outpng, const char *name, int crop_top) { /* palette_studio_op render|save ... */
@@ -108,7 +110,7 @@ static int studio_cmd(const char *verb, const char *outpng, const char *name, in
 static int render_preview(void) {
     char png[2400], raw[2400], rcp[2400], rc_[100]; unsigned char *px; int w = 0, h = 0, c = 0, rc;
     snprintf(png, sizeof png, "%s/studio_preview.png", g_state); snprintf(raw, sizeof raw, "%s/studio_preview.raw", g_state); snprintf(rcp, sizeof rcp, "%s/studio_preview.receipt.txt", g_state);
-    rc = studio_cmd("render", png, NULL, !strcmp(T[cur].kind, "objects")); if (rc) { snprintf(g_status, sizeof g_status, "render failed (exit %d)", rc); return rc; }
+    g_knobs_on = !g_cmp; rc = studio_cmd("render", png, NULL, !strcmp(T[cur].kind, "objects")); g_knobs_on = 1; if (rc) { snprintf(g_status, sizeof g_status, "render failed (exit %d)", rc); return rc; }
     px = stbi_load(png, &w, &h, &c, 4); if (!px) { snprintf(g_status, sizeof g_status, "cannot read the preview"); return 2; }
     if (w != PW || h != PH) { snprintf(g_status, sizeof g_status, "preview is %dx%d, expected %dx%d", w, h, PW, PH); stbi_image_free(px); return 2; }
     rc = write_atomic(raw, (const char *)px, (size_t)w * h * 4); stbi_image_free(px); if (rc) return rc;
@@ -121,25 +123,26 @@ static void write_ui(void) {
     for (i = 0; i < nt; i++) n += snprintf(buf + n, sizeof buf - (size_t)n, "tp_%d_id=%s\ntp_%d_label=%s\ntp_%d_active=%s\n", i, T[i].id, i, T[i].label, i, i == cur ? "active" : "");
     n += snprintf(buf + n, sizeof buf - (size_t)n, "n_knobs=%d\n", T[cur].nk);
     for (k = 0; k < T[cur].nk; k++) { int pc = (int)lround(T[cur].v[k] * 100.0); n += snprintf(buf + n, sizeof buf - (size_t)n, "kb_%d_name=%s\nkb_%d_val=%s%d%%\n", k, T[cur].kn[k], k, pc > 0 ? "+" : "", pc); }
-    n += snprintf(buf + n, sizeof buf - (size_t)n, "status=%s\ncanvas_raw=%s/studio_preview.raw\nleft_visible=%s\nknobs_state=%s\ntpl_short=%s\n", g_status, g_state, g_left ? "1" : "", g_left ? "on" : "off", T[cur].id);
+    n += snprintf(buf + n, sizeof buf - (size_t)n, "status=%s\ncanvas_raw=%s/studio_preview.raw\nleft_visible=%s\nknobs_state=%s\ntpl_short=%s\ncmp_state=%s\n", g_status, g_state, g_left ? "1" : "", g_left ? "on" : "off", T[cur].id, g_cmp ? "on" : "off");
     snprintf(p, sizeof p, "%s/palettes-studio_ui.txt", g_state); write_atomic(p, buf, (size_t)n);
 }
 int main(int argc, char **argv) {
     char d[2500]; int i, k, rc = 0;
-    if (argc < 2) { fprintf(stderr, "usage: init | pick <template> | nudge <knob> <delta> | reset | save | toggle left\n"); return 2; }
+    if (argc < 2) { fprintf(stderr, "usage: init | pick <template> | nudge <knob> <delta> | reset | save | toggle left | compare\n"); return 2; }
     if (find_house() || read_templates()) { fprintf(stderr, "cannot find the house or the templates\n"); return 2; }
     for (i = 1; i < argc; i++) if (!strncmp(argv[i], "state=", 6)) snprintf(g_state, sizeof g_state, "%.2200s", argv[i] + 6); /* test and scratch use: every file goes to that folder, never the live window state */
     snprintf(d, sizeof d, "%s/studio_saves", g_state); mkdir(g_state, 0755); mkdir(d, 0755);
     if (strcmp(argv[1], "init")) load_session();
     g_status[0] = 0;
     if (!strcmp(argv[1], "init")) { cur = 0; g_saves = 0; snprintf(g_status, sizeof g_status, "ready: pick a template, then press + or -"); }
-    else if (!strcmp(argv[1], "pick") && argc >= 3) { /* the renderer appends two arguments (package dir, house root) to every action: accept extras */ int hit = 0; for (i = 0; i < nt; i++) if (!strcmp(T[i].id, argv[2])) { cur = i; hit = 1; } if (!hit) { fprintf(stderr, "unknown template %s\n", argv[2]); return 2; } snprintf(g_status, sizeof g_status, "template %s", T[cur].id); }
-    else if (!strcmp(argv[1], "nudge") && argc >= 4) {
+    else if (!strcmp(argv[1], "compare")) { g_cmp = !g_cmp; snprintf(g_status, sizeof g_status, g_cmp ? "showing the ORIGINAL (knobs off)" : "showing your TUNED sheet"); }
+    else if (!strcmp(argv[1], "pick") && argc >= 3) { g_cmp = 0; /* the renderer appends two arguments (package dir, house root) to every action: accept extras */ int hit = 0; for (i = 0; i < nt; i++) if (!strcmp(T[i].id, argv[2])) { cur = i; hit = 1; } if (!hit) { fprintf(stderr, "unknown template %s\n", argv[2]); return 2; } snprintf(g_status, sizeof g_status, "template %s", T[cur].id); }
+    else if (!strcmp(argv[1], "nudge") && argc >= 4) { g_cmp = 0;
         int hit = 0; for (k = 0; k < T[cur].nk; k++) if (!strcmp(T[cur].kn[k], argv[2])) { double v = T[cur].v[k] + atof(argv[3]), lo = knob_lo(argv[2]); if (v < lo) v = lo; if (v > 1.0) v = 1.0; if (fabs(v) < 1e-9) v = 0; T[cur].v[k] = v; hit = 1; }
         if (!hit) { fprintf(stderr, "template %s has no knob %s\n", T[cur].id, argv[2]); return 2; }
         snprintf(g_status, sizeof g_status, "%s %s", argv[2], argv[3]);
     } else if (!strcmp(argv[1], "toggle") && argc >= 3 && !strcmp(argv[2], "left")) { g_left = !g_left; snprintf(g_status, sizeof g_status, "knob panel %s", g_left ? "shown" : "hidden"); save_session(); write_ui(); return 0;
-    } else if (!strcmp(argv[1], "reset")) { for (k = 0; k < T[cur].nk; k++) T[cur].v[k] = 0; snprintf(g_status, sizeof g_status, "knobs reset"); }
+    } else if (!strcmp(argv[1], "reset")) { g_cmp = 0; for (k = 0; k < T[cur].nk; k++) T[cur].v[k] = 0; snprintf(g_status, sizeof g_status, "knobs reset"); }
     else if (!strcmp(argv[1], "save")) {
         char name[40]; snprintf(name, sizeof name, "slot%d", g_saves % SAVE_SLOTS);
         rc = studio_cmd("save", NULL, name, 0);

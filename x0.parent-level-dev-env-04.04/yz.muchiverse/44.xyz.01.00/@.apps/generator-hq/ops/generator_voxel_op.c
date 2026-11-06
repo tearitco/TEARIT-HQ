@@ -122,7 +122,7 @@ static void look_scale(double s) { /* resample about the centre of the floor pla
     memcpy(G, G2, sizeof G);
 }
 static void look_round(double w) { /* per layer: keep the voxels inside a superellipse of the layer's own bounding box (exponent 8 = boxy .. 2 = round) */
-    double p = 8.0 - 6.0 * w; int X, Y, Z;
+    double p = 8.0 - 7.5 * sqrt(w); int X, Y, Z; if (p < 2.0) p = 2.0;
     for (Z = 0; Z < N; Z++) {
         int minx = N, maxx = -1, miny = N, maxy = -1;
         double cx, cy, hx, hy;
@@ -137,6 +137,8 @@ static void look_round(double w) { /* per layer: keep the voxels inside a supere
         }
     }
 }
+/* knob response (D34): a perceptual curve so small presses are visible: effective = sign(w) * |w|^0.6 (10%% acts like 25%%, 100%% stays 1; 0 stays 0, so neutral output is untouched) */
+static double curve(double w) { return w < 0 ? -pow(-w, 0.6) : pow(w, 0.6); }
 static int apply_look(const char *model, int *count) {
     double warm = 0.0, worn = 0.0, big = 0.0, rnd = 0.0, metal = 0.0; int bad = 0, b, X, Y, Z; unsigned mh = 5381; const char *c;
     if (!g_bank[0] && !(g_knob_on && g_cell_sel)) return 0;
@@ -145,9 +147,10 @@ static int apply_look(const char *model, int *count) {
     if (bad) { fprintf(stderr, "bank weight out of range for prop_%s (must be -1..1)\n", model); return 2; }
     if (g_knob_on && g_cell_sel) { warm += g_knob[0]; worn += g_knob[1]; rnd += g_knob[2]; big += g_knob[3]; metal += g_knob[4]; if (warm > 1) warm = 1; if (warm < -1) warm = -1; if (rnd > 1) rnd = 1; if (big > 1) big = 1; if (big < -1) big = -1; if (metal > 1) metal = 1; if (metal < -1) metal = -1; if (worn > 1) worn = 1; }
     if (worn < 0.0) worn = 0.0;
+    warm = curve(warm); worn = curve(worn); big = curve(big); rnd = curve(rnd); metal = curve(metal);
     if (warm == 0.0 && worn == 0.0 && big == 0.0 && rnd <= 0.0 && metal == 0.0) return 0;
     for (c = model; *c; c++) mh = mh * 33 + (unsigned char)*c;
-    if (big != 0.0) look_scale(1.0 + 0.4 * big);
+    if (big != 0.0) look_scale(1.0 + 0.7 * big);
     if (rnd > 0.0) look_round(rnd);
     if (big != 0.0 || rnd > 0.0) { int n = 0; for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) if (G[Z][Y][X]) n++; *count = n; }
     if (warm == 0.0 && worn == 0.0 && metal == 0.0) return 0;
@@ -156,10 +159,10 @@ static int apply_look(const char *model, int *count) {
         if (!v) continue;
         a = v >> 24; r = (v >> 16) & 255; g = (v >> 8) & 255; bl = v & 255;
         R = r; Gc = g; B = bl; lum = 0.299 * R + 0.587 * Gc + 0.114 * B;
-        if (metal > 0.0) { double t = 0.6 * metal; R += (lum * 0.95 - R) * t; Gc += (lum * 1.00 - Gc) * t; B += (lum * 1.12 - B) * t; }
-        else if (metal < 0.0) { double t = 1.0 - 0.4 * metal; R = lum + (R - lum) * t; Gc = lum + (Gc - lum) * t; B = lum + (B - lum) * t; }
-        R *= (1.0 + 0.18 * warm); Gc *= (1.0 + 0.05 * warm); B *= (1.0 - 0.25 * warm);
-        if (worn > 0.0 && (hash32((unsigned)X * 73856093u ^ (unsigned)Y * 19349663u ^ (unsigned)Z * 83492791u ^ mh) % 100) < (unsigned)(worn * 40.0)) { R *= 0.78; Gc *= 0.78; B *= 0.78; }
+        if (metal > 0.0) { double t = 1.0 * metal; R += (lum * 0.95 - R) * t; Gc += (lum * 1.00 - Gc) * t; B += (lum * 1.12 - B) * t; }
+        else if (metal < 0.0) { double t = 1.0 - 1.0 * metal; R = lum + (R - lum) * t; Gc = lum + (Gc - lum) * t; B = lum + (B - lum) * t; }
+        R *= (1.0 + 0.45 * warm); Gc *= (1.0 + 0.12 * warm); B *= (1.0 - 0.55 * warm);
+        if (worn > 0.0 && (hash32((unsigned)X * 73856093u ^ (unsigned)Y * 19349663u ^ (unsigned)Z * 83492791u ^ mh) % 100) < (unsigned)(worn * 70.0)) { R *= 0.62; Gc *= 0.62; B *= 0.62; }
         if (R > 255) { R = 255; } if (Gc > 255) { Gc = 255; } if (B > 255) { B = 255; }
         if (R < 0) { R = 0; } if (Gc < 0) { Gc = 0; } if (B < 0) { B = 0; }
         G[Z][Y][X] = (a << 24) | ((unsigned)R << 16) | ((unsigned)Gc << 8) | (unsigned)B;
