@@ -40,6 +40,17 @@ static int depth_at(int x, int y) {
     int d = edge + 1;
     return d > 6 ? 6 : d;
 }
+static void write_event(const char *cells, int x, int y) {
+    char p[4200]; snprintf(p, sizeof p, "%s", cells);
+    char *sl = strrchr(p, '/');
+    if (sl) snprintf(sl + 1, sizeof p - (size_t)(sl + 1 - p), "events.txt");
+    else snprintf(p, sizeof p, "events.txt");
+    FILE *f = fopen(p, "w");
+    if (!f) return;
+    /* Same brown as the office door emoji voxels. Name door loads door_0_2_1.rgba. */
+    fprintf(f, "%d %d 132 75 49 door 0 2 1\n", x, y);
+    fclose(f);
+}
 static void write_door_file(const char *cells, int bit) {
     char p[4200];
     snprintf(p, sizeof p, "%s", cells);
@@ -66,13 +77,14 @@ static int stamp(const char *cells, const char *pdl) {
             int rim = in && (x == x0 || x == x0 + RW - 1 || y == y0 || y == y0 + RH - 1);
             int door = 0;
             for (int i = 0; i < leaf_n; i++) if (x == sx[i] && y == sy[i]) door = 1;
-            if (rim || door) wall = wall_slot;
+            if (rim && !door) wall = wall_slot;
             fprintf(o, "%s1,%d,%d", x ? " " : "", wall, depth_at(x, y));
         }
         fputc('\n', o);
     }
     fclose(o);
     write_door_file(cells, 0);
+    write_event(cells, sx[1], sy[1]);
     printf("STAMP w=%d h=%d room=%dx%d door=%d,%d+%d,%d\n", W, H, RW, RH, sx[0], sy[0], sx[1], sy[1]);
     return 0;
 }
@@ -144,6 +156,7 @@ static int door_flip(const char *cells) {
     fprintf(out, "bit=%d\n", nb);
     for (int i = 0; i < leaf_n; i++) fprintf(out, "leaf=%d,%d,%d,%d\n", sx[i], sy[i], ox[i], oy[i]);
     fclose(out);
+    write_event(cells, nb ? ox[1] : sx[1], nb ? oy[1] : sy[1]);
     printf("%s bit=%d\n", nb ? "OPEN" : "SHUT", nb);
     return 0;
 }
