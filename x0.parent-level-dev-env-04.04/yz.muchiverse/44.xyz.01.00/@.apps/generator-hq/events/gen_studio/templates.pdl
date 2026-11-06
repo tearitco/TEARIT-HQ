@@ -22,3 +22,10 @@ TEMPLATE | cast_chars_02 | cast | Cast people sheet 02: characters | warm,worn |
 TEMPLATE | cast_faces_02 | cast | Cast people sheet 02: faces | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | faces | 2
 TEMPLATE | sf_outside_a5 | ground  | Sci-fi Outside A5: floor tiles | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/SF_Outside_A5.png
 TEMPLATE | icons_scifi | icons | Sci-fi props: icon sheet (clone pod, Soul Pen stand, time beacon...) | warm,worn,round,big,metal,scramble | @.apps/generator-hq/events/gen_voxel/scifi.pdl | prop | 6
+TEMPLATE | outside_a3 | ground  | Outside A3: buildings (roofs and house walls) | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A3.png
+TEMPLATE | sf_outside_a3 | ground  | Sci-fi Outside A3: buildings | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/SF_Outside_A3.png
+TEMPLATE | outside_a4 | ground  | Outside A4: walls | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A4.png
+TEMPLATE | inside_a4 | ground  | Inside A4: walls | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Inside_A4.png
+TEMPLATE | dungeon_a4 | ground  | Dungeon A4: walls | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/Dungeon_A4.png
+TEMPLATE | sf_outside_a4 | ground  | Sci-fi Outside A4: walls | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/SF_Outside_A4.png
+TEMPLATE | sf_inside_a4 | ground  | Sci-fi Inside A4: walls | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/SF_Inside_A4.png

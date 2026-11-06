@@ -75,6 +75,8 @@ static int g_save_crop; /* save writes the selection as a crop instead of the wh
 static int sel_dims(int *cols, int *rows, int *uw, int *uh) {
     const char *id = T[cur].id; size_t l = strlen(id);
     if (!strcmp(T[cur].kind, "objects")) { *cols = 16; *rows = 16; *uw = 48; *uh = 48; return 1; }
+    if (!strcmp(T[cur].kind, "ground") && l >= 2 && !strcmp(id + l - 2, "a4")) return 0; /* A4 has tops and sides of different sizes: no selection */
+    if (!strcmp(T[cur].kind, "ground") && l >= 2 && !strcmp(id + l - 2, "a3")) { *cols = 8; *rows = 4; *uw = 96; *uh = 96; return 1; }
     if (!strcmp(T[cur].kind, "ground")) { if (l >= 2 && !strcmp(id + l - 2, "a5")) { *cols = 8; *rows = 16; *uw = 48; *uh = 48; } else { *cols = 8; *rows = 4; *uw = 96; *uh = 144; } return 1; }
     return 0;
 }
@@ -166,7 +168,7 @@ static int studio_cmd(const char *verb, const char *outpng, const char *name, in
  * representatives are skipped, so the grid is packed. Scale 2x when 48 or fewer tiles, else 1x. Preview only: saved sheets are never touched. *step* = the grid step in px. */
 static int g_step = 48;
 static unsigned char *picker_compose(const unsigned char *src, int w, int h, int ground) {
-    unsigned char *o = calloc((size_t)PW * PH * 4, 1); int a5 = (w == 384 && h == 768), bc = ground && !a5 ? 2 : 1, br = ground && !a5 ? 3 : 1, kx = (w / 48) / bc, ky = (h / 48) / br, n = 0, s, per, i, x, y, a, b;
+    unsigned char *o = calloc((size_t)PW * PH * 4, 1); int a5 = (w == 384 && h == 768), a34 = (w == 768 && (h == 384 || h == 720)), bc = ground && !a5 ? 2 : 1, br = ground && !a5 ? (a34 ? 2 : 3) : 1, kx = (w / 48) / bc, ky = (h / 48) / br, n = 0, s, per, i, x, y, a, b;
     int *cx, *cy; if (!o) return NULL;
     cx = malloc(sizeof(int) * (size_t)(kx * ky + 1)); cy = malloc(sizeof(int) * (size_t)(kx * ky + 1)); if (!cx || !cy) { free(o); free(cx); free(cy); return NULL; }
     for (y = 0; y < ky; y++) for (x = 0; x < kx; x++) {

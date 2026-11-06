@@ -5,7 +5,7 @@ ENV | LC_ALL | C
 CASE    | ground
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl
-EXPECT_OUT | GROUNDCHECK recipes=12 blocks=636 | recipes-and-blocks-parse-128-a2-plus-4-times-127-a5-cells-and-12-recipes
+EXPECT_OUT | GROUNDCHECK recipes=25 blocks=940 | recipes-and-blocks-parse-a2-a5-a3-a4-rows-and-25-recipes
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/n.png | bank=$HOUSE/&.widgits/concept-bank
 EXPECT_OUT | GROUND size=768x576 blocks=32 | all-32-outside-a2-blocks-generated
 RUN | /usr/bin/sha256sum | $T/n.png

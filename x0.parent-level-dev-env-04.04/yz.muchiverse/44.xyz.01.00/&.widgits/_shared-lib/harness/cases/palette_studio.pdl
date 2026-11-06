@@ -5,7 +5,7 @@ ENV | LC_ALL | C
 CASE    | studio
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | templates | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl
-EXPECT_OUT | TEMPLATES count=19 | nineteen-templates-listed-plus-the-sci-fi-floors-and-props
+EXPECT_OUT | TEMPLATES count=26 | twenty-six-templates-listed-plus-3-A3-and-A4-building-and-wall-sheets
 EXPECT_OUT | TEMPLATE outside_b kind=objects | the-object-sheet-is-a-template
 EXPECT_OUT | TEMPLATE dungeon_a2 kind=ground | a-ground-sheet-is-a-template
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ob.png
@@ -576,3 +576,41 @@ RUN | /usr/bin/grep | -c | ^---$ | $T/st/studio_undo.txt
 EXPECT_OUT | 20 | the-undo-file-holds-at-most-20-records-after-25-changes
 RUN | /usr/bin/stat | -c | %s | $T/st/studio_undo.txt
 EXPECT_EXIT | 0 | the-undo-file-has-a-size
+
+# A3 building sheets and A4 wall sheets (D34): wall-type blocks, border from the block outline, brick and shingle patterns 24 px periodic
+CASE    | walls
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a3 | $T/a3.png | variant=1
+EXPECT_OUT | GROUND size=768x384 blocks=32 | the-A3-building-sheet-has-32-kinds
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a4 | $T/a4.png | variant=1
+EXPECT_OUT | GROUND size=768x720 blocks=48 | the-A4-wall-sheet-has-48-blocks-24-tops-and-24-sides
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a3 | $T/a3s.png | variant=1 | scramble=0.5
+RUN | /usr/bin/cmp | -s | $T/a3.png | $T/a3s.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-building-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/a3.png | 24 | 24 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-shingle-roof-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/a3s.png | 24 | 24 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-scrambled-shingle-roof-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/a3.png | 120 | 120 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-brick-wall-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/a3s.png | 120 | 120 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-scrambled-brick-wall-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/a3.png | 120 | 120 | 24 | 24 | 23
+EXPECT_EXIT | 1 | NEGATIVE-the-tiling-check-fails-on-a-wrong-period-on-the-brick-wall
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | sf_outside_a3 | $T/sf3.png
+EXPECT_OUT | blocks=32 | the-sci-fi-A3-sheet-renders
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | sf_inside_a4 | $T/sf4.png
+EXPECT_OUT | blocks=48 | the-sci-fi-inside-A4-sheet-renders
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | dungeon_a4 | $T/d4.png
+EXPECT_OUT | blocks=48 | the-dungeon-A4-sheet-renders
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a3 | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=template outside_a3 | the-A3-template-renders-without-a-size-error
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | top | state=$T/st
+RUN | /usr/bin/grep | sel_label | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | selection: 0,0 size 8x2 | A3-selects-in-96-px-blocks
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a4 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | top | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | selection works on object and ground sheets | NEGATIVE-A4-has-no-selection
