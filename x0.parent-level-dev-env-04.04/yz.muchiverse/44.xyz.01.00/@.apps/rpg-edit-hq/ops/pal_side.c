@@ -37,7 +37,7 @@ static void load_cats(const char *house) {
         trim(fld[1]); trim(fld[2]);
         if (!fld[1][0] || !fld[2][0]) continue;
         snprintf(KEY[nc], sizeof KEY[0], "%s", fld[1]); snprintf(LAB[nc], sizeof LAB[0], "%s", fld[2]);
-        /* My Pals is the Pals tab. Harness is the top harness tab, and only the open book's pals. My Palettes stays on this list. */
+        /* My Pals is the Pals tab. Harness is not a bar row. My Palettes stays on this list. */
         SIDE[nc] = strcmp(fld[1], "my-pals") != 0 && strcmp(fld[1], "harness") != 0;
         nc++;
     }
@@ -292,25 +292,8 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
-        /* Nested harness/<book>/<page>.pal. Open page test of book centroid shows the row centroid/test and no other page. A row selects; it does not run. */
-        char book[64] = "", page[64] = "";
-        char ui[4200]; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
-        FILE *uf = fopen(ui, "r");
-        if (uf) {
-            char uln[256];
-            while (fgets(uln, sizeof uln, uf)) {
-                if (!strncmp(uln, "book_label=book:", 16)) { snprintf(book, sizeof book, "%s", uln + 16); trim(book); }
-                else if (!strncmp(uln, "page_label=page:", 16)) { snprintf(page, sizeof page, "%s", uln + 16); trim(page); }
-            }
-            fclose(uf);
-        }
-        int hn = 0;
-        if (book[0] && page[0]) {
-            char full[4200];
-            snprintf(full, sizeof full, "%s/&.widgits/_shared-lib/harness/%s/%s.pal", house, book, page);
-            if (access(full, R_OK) == 0) { fprintf(o, "tbhar_0_label=%s/%s\ntbhar_0_pal=%s/%s.pal\n", book, page, book, page); hn = 1; }
-        }
-        fprintf(o, "n_tbhar=%d\nbook_for_harness=%s\npage_for_harness=%s\n", hn, book, page);
+        /* The harness tab row was taken off the editor bar. n_tbhar stays 0 so a stale window drops it. */
+        fprintf(o, "n_tbhar=0\n");
     }
     char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");

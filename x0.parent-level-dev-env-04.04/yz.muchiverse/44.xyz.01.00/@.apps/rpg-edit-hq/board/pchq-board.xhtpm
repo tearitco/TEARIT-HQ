@@ -12,7 +12,6 @@
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
       <tab id="tb-palettes" class="pchq-tb" label="palettes ▾" onclick="ACTIVATE" target_id="tb-palettes"/>
-      <tab id="tb-harness" class="pchq-tb" label="harness ▾" onclick="ACTIVATE" target_id="tb-harness"/>
       <tab id="tb-chat" class="pchq-tb" label="${chat_mode_label} ▾" onclick="ACTIVATE" target_id="tb-chat"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <!-- 2026-11-04: the ledger (coin) shop, the owner's ONE released caller: ONE tab with 7 item rows (a dropdown that would run off the screen scrolls, so keep it short); picking an item opens the popup below; hidden unless books/shop/RELEASE exists (n_lshop=0) -->
@@ -39,9 +38,6 @@
         <item id="ml${tbpal.#}" class="pchq-menu-row dropdown-child" target_id="tb-palettes" label="${tbpal.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' pick ${tbpal.key}"/>
       </repeat>
       <item id="pal-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-palettes" label="- cancel -" action="void"/>
-      <repeat count="${n_tbhar}" bind="tbhar">
-        <item id="hz${tbhar.#}" class="pchq-menu-row dropdown-child" target_id="tb-harness" label="${tbhar.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' hpick ${tbhar.pal}"/>
-      </repeat>
       <repeat count="${n_file_opts}" bind="f">
         <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
       </repeat>
