@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/wait.h>
+#include <dirent.h>
 #define MAXC 40
 static char KEY[MAXC][64], LAB[MAXC][96]; static int nc, SIDE[MAXC];
 static void trim(char *s) { size_t n = strlen(s); while (n && (s[n-1]==' '||s[n-1]=='\n'||s[n-1]=='\r'||s[n-1]=='\t')) s[--n]=0; char *p=s; while (*p==' '||*p=='\t') p++; if (p!=s) memmove(s,p,strlen(p)+1); }
@@ -37,8 +38,8 @@ static void load_cats(const char *house) {
         trim(fld[1]); trim(fld[2]);
         if (!fld[1][0] || !fld[2][0]) continue;
         snprintf(KEY[nc], sizeof KEY[0], "%s", fld[1]); snprintf(LAB[nc], sizeof LAB[0], "%s", fld[2]);
-        /* My Pals is the Pals tab only. My Palettes is both the palettes dropdown and this left list. */
-        SIDE[nc] = strcmp(fld[1], "my-pals") != 0;
+        /* My Pals is the Pals tab. Harness is the top harness tab, and only the open book's pals. My Palettes stays on this list. */
+        SIDE[nc] = strcmp(fld[1], "my-pals") != 0 && strcmp(fld[1], "harness") != 0;
         nc++;
     }
     fclose(f);
@@ -164,6 +165,12 @@ int main(int argc, char **argv) {
     const char *house = argv[1], *verb = argv[2], *arg = argc > 3 ? argv[3] : "";
     /* toparm <key> <index>: the top Pals / Palettes row. Same as picking that library from an empty nav, then arming that thumb. */
     int topix = -1;
+    if (!strcmp(verb, "hpick") && arg[0]) {
+        char palp[4300]; snprintf(palp, sizeof palp, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
+        kv_set(palp, "harness_sel", arg);
+        printf("HARNESS %s\n", arg);
+        return 0;
+    }
     if (!strcmp(verb, "toparm") && arg[0]) {
         char np0[4300]; snprintf(np0, sizeof np0, "%s/@.apps/rpg-edit-hq/board/state/pal_nav.txt", house);
         kv_set(np0, "kind", ""); kv_set(np0, "level", "0");
@@ -286,6 +293,40 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
+        /* Harness tab: pals whose name starts with the open book. Another book does not see these. A row selects; it does not run. */
+        char book[64] = "";
+        char ui[4200]; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+        FILE *uf = fopen(ui, "r");
+        if (uf) {
+            char uln[256];
+            while (fgets(uln, sizeof uln, uf)) {
+                if (!strncmp(uln, "book_label=book:", 16)) {
+                    snprintf(book, sizeof book, "%s", uln + 16);
+                    trim(book);
+                    break;
+                }
+            }
+            fclose(uf);
+        }
+        int hn = 0;
+        if (book[0]) {
+            char hd[4200]; snprintf(hd, sizeof hd, "%s/&.widgits/_shared-lib/harness", house);
+            DIR *dir = opendir(hd);
+            if (dir) {
+                char prefix[80]; snprintf(prefix, sizeof prefix, "%s_", book);
+                size_t pl = strlen(prefix);
+                struct dirent *de;
+                while ((de = readdir(dir)) && hn < 24) {
+                    size_t nl = strlen(de->d_name);
+                    if (nl < pl + 4 || strncmp(de->d_name, prefix, pl)) continue;
+                    if (strcmp(de->d_name + nl - 4, ".pal")) continue;
+                    fprintf(o, "tbhar_%d_label=%s\n", hn, de->d_name);
+                    hn++;
+                }
+                closedir(dir);
+            }
+        }
+        fprintf(o, "n_tbhar=%d\nbook_for_harness=%s\n", hn, book);
     }
     char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");
