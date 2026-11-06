@@ -1,5 +1,5 @@
 /* generator_ground_op: ground (RPG Maker A2) blocks drawn from a RECIPE and KNOBS, not repainted from the original. Decision D33 step 2.
- *   ground <ground.pdl> <original-sheet.png> <out.png> [bank=<concept-bank dir>] [knob=<warm|wet|wear|grain|edge>:<delta>]... [select=bc,br,bw,bh] [crop=bc,br,bw,bh]
+ *   ground <ground.pdl> <original-sheet.png> <out.png> [bank=<concept-bank dir>] [knob=<warm|wet|wear|grain|edge>:<delta>]... [select=bc,br,bw,bh] [crop=bc,br,bw,bh] [variant=N]
  *   check  <ground.pdl>        parse only
  * What is kept from the original sheet: ONLY its transparency (the autotile geometry the RPG Maker runtime cuts the 48 shapes from; a block is 96 x 144 = 4 x 6 quarters of 24 px).
  * What is generated: every colour. Interior = a 24-pixel-periodic texture (so any two quarters meet without a seam), edge ring = darker ink steps by distance to the transparent area,
@@ -26,6 +26,7 @@ typedef struct { char sheet[60], recipe[40]; int idx; } Block;
 static Recipe R[MAXR]; static int nr;
 static Block B[MAXB]; static int nb;
 static char g_bank[600];
+static unsigned g_variant; /* variant=N (D34 reseed): 0 = every block of a recipe shares the recipe seed (the old look, replays of old records stay exact); N > 0 = each block gets its own seed from (recipe seed, block number, N), so no two blocks repeat */
 static double g_knob[5]; static int g_knob_on, g_sel_on, g_sel[4], g_crop_on, g_crop[4];
 static const char *KN[5] = {"warm", "wet", "wear", "grain", "edge"};
 static double clampd(double v, double lo, double hi);
@@ -182,7 +183,7 @@ static int ground(char **argv) {
         if (g_knob_on && sel) for (k = 0; k < 5; k++) wt[k] += g_knob[k];
         wt[0] = clampd(wt[0], -1, 1); for (k = 1; k < 5; k++) wt[k] = clampd(wt[k], 0, 1);
         for (k = 0; k < 5; k++) wt[k] = curve(wt[k]);
-        paint_block(img, w, bc * 96, br * 144, out, w, bc * 96, br * 144, r, wt[0], wt[1], wt[2], wt[3], wt[4]);
+        { Recipe rr = *r; if (g_variant) rr.seed = hash32(r->seed ^ hash32((unsigned)B[i].idx * 2654435761u + g_variant * 40503u)); paint_block(img, w, bc * 96, br * 144, out, w, bc * 96, br * 144, &rr, wt[0], wt[1], wt[2], wt[3], wt[4]); }
         blocks++;
     }
     if (!rc && blocks == 0) { fprintf(stderr, "no BLOCK row for sheet %s\n", sname); rc = 2; }
@@ -195,9 +196,10 @@ static int ground(char **argv) {
     stbi_image_free(img); free(out); return rc;
 }
 int main(int argc, char **argv) {
-    while (argc > 3 && (!strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5))) {
+    while (argc > 3 && (!strncmp(argv[argc - 1], "bank=", 5) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "select=", 7) || !strncmp(argv[argc - 1], "crop=", 5) || !strncmp(argv[argc - 1], "variant=", 8))) {
         char *a = argv[argc - 1];
         if (!strncmp(a, "bank=", 5)) snprintf(g_bank, sizeof g_bank, "%s", a + 5);
+        else if (!strncmp(a, "variant=", 8)) { char *e; unsigned long v = strtoul(a + 8, &e, 10); if (e == a + 8 || *e || v > 1000000UL) { fprintf(stderr, "bad variant (0..1000000)\n"); return 2; } g_variant = (unsigned)v; }
         else if (!strncmp(a, "knob=", 5)) { char *cl = strchr(a + 5, ':'); int k, hit = 0; if (cl) { *cl = 0; for (k = 0; k < 5; k++) if (!strcmp(a + 5, KN[k])) { g_knob[k] += atof(cl + 1); g_knob_on = hit = 1; } } if (!hit) { fprintf(stderr, "bad knob (use warm|wet|wear|grain|edge:<value>)\n"); return 2; } }
         else if (!strncmp(a, "select=", 7)) { if (sscanf(a + 7, "%d,%d,%d,%d", &g_sel[0], &g_sel[1], &g_sel[2], &g_sel[3]) != 4 || g_sel[2] < 1 || g_sel[3] < 1) { fprintf(stderr, "bad select (bc,br,bw,bh)\n"); return 2; } g_sel_on = 1; }
         else if (sscanf(a + 5, "%d,%d,%d,%d", &g_crop[0], &g_crop[1], &g_crop[2], &g_crop[3]) != 4) { fprintf(stderr, "bad crop (bc,br,bw,bh)\n"); return 2; } else g_crop_on = 1;

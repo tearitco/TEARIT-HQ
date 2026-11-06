@@ -190,7 +190,7 @@ static int sha_file(const char *path, char *hex, long *size) {
     for (i = 0; i < 8; i++) snprintf(hex + i * 8, 9, "%08x", s.h[i]);
     return 0;
 }
-static int is_opt(const char *a) { return !strncmp(a, "concept=", 8) || !strncmp(a, "concepts=", 9) || !strncmp(a, "knob=", 5) || !strncmp(a, "select=", 7) || !strncmp(a, "crop=", 5); }
+static int is_opt(const char *a) { return !strncmp(a, "concept=", 8) || !strncmp(a, "concepts=", 9) || !strncmp(a, "knob=", 5) || !strncmp(a, "select=", 7) || !strncmp(a, "crop=", 5) || !strncmp(a, "variant=", 8); }
 static int cmd_render(int argc, char **argv) { /* render <templates> <id> <out> [opts] */
     Template *t; if (argc < 5) return 2;
     if (read_templates(argv[2])) return 2;

@@ -263,4 +263,39 @@ RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
 EXPECT_OUT | 1769472 | ground-picker-keeps-the-canvas-size
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
 RUN | /usr/bin/stat | -c | %s | $T/st/studio_saves/slot0.png
-EXPECT_OUT | 146291 | a-saved-ground-sheet-is-the-full-sheet-not-the-picker
+EXPECT_OUT | 183019 | a-saved-ground-sheet-is-the-full-sheet-not-the-picker-variant-1
+
+# D34 reseed: variant=N gives every ground block its own seed (variant 0 = the old recipe look)
+CASE    | variant
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/v0.png | variant=0
+RUN | /usr/bin/sha256sum | $T/v0.png
+EXPECT_OUT | e035291e2c218d5b | variant-0-is-byte-identical-to-the-pinned-recipe-look
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/v1.png | variant=1
+RUN | /usr/bin/sha256sum | $T/v1.png
+EXPECT_OUT | 694e97d49650705d | variant-1-is-pinned
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/v1b.png | variant=1
+RUN | /usr/bin/cmp | -s | $T/v1.png | $T/v1b.png
+EXPECT_EXIT | 0 | the-same-variant-renders-the-same-bytes
+RUN | /usr/bin/cmp | -s | $T/v0.png | $T/v1.png
+EXPECT_EXIT | 1 | NEGATIVE-variant-1-differs-from-variant-0
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/v0.png
+EXPECT_OUT | unique=92 | variant-0-has-92-unique-tiles-of-192
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/v1.png
+EXPECT_OUT | unique=107 | variant-1-has-107-unique-tiles-no-two-blocks-repeat
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a2 | $T/bad.png | variant=abc
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-variant-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a2 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | /usr/bin/grep | variant_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | variant_val=2 | roll-steps-the-variant
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | 0 | state=$T/st
+RUN | /usr/bin/grep | variant_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | variant_val=0 | roll-0-goes-back-to-the-recipe-look
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | 1 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | /usr/bin/grep | variant=1 | $T/st/studio_saves/slot0.studio.pdl
+EXPECT_OUT | OPT \p variant=1 | the-record-keeps-the-variant
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
+EXPECT_OUT | REPLAY ok | the-record-replays-exactly

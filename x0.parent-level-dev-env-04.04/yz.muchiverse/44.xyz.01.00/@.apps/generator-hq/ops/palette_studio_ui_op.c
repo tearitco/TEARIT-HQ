@@ -26,6 +26,7 @@
 #define PH 576
 typedef struct { char id[40], kind[16], label[100], knobs[80]; char kn[MAXK][16]; int nk; double v[MAXK]; } Tpl;
 static Tpl T[MAXT]; static int nt, cur;
+static int g_variant = 1; /* reseed number for ground templates: 0 = the recipe look (old), N = every block gets its own seed (D34); Roll steps it */
 static int g_view = 1; /* 1 = Picker view (default), 0 = the full sheet */
 static int g_grid = 1; /* faint 48 px tile gridlines drawn into the PREVIEW only (never into a saved sheet) */
 static int g_saves, g_left = 1, g_cmp, g_knobs_on = 1; /* g_cmp: the preview shows the ORIGINAL (no knobs); g_knobs_on: whether knob options are passed to the render */ /* g_left: the knob panel is shown (1) or collapsed (0) */
@@ -72,6 +73,7 @@ static void load_session(void) {
         else if (!strncmp(line, "cmp=", 4)) g_cmp = atoi(line + 4) ? 1 : 0;
         else if (!strncmp(line, "grid=", 5)) g_grid = atoi(line + 5) ? 1 : 0;
         else if (!strncmp(line, "view=", 5)) g_view = atoi(line + 5) ? 1 : 0;
+        else if (!strncmp(line, "variant=", 8)) { g_variant = atoi(line + 8); if (g_variant < 0 || g_variant > 999999) g_variant = 1; }
         else if (!strncmp(line, "k.", 2)) { char *eq = strchr(line, '='), *dot2; if (!eq) continue; *eq = 0; dot2 = strchr(line + 2, '.'); if (!dot2) continue; *dot2 = 0;
             for (i = 0; i < nt; i++) if (!strcmp(T[i].id, line + 2)) for (k = 0; k < T[i].nk; k++) if (!strcmp(T[i].kn[k], dot2 + 1)) T[i].v[k] = atof(eq + 1); }
     }
@@ -85,7 +87,7 @@ static int write_atomic(const char *path, const char *data, size_t n) {
 }
 static void save_session(void) {
     char p[2400], buf[4096]; int n, i, k;
-    n = snprintf(buf, sizeof buf, "template=%s\nsaves=%d\nleft=%d\ncmp=%d\ngrid=%d\nview=%d\n", T[cur].id, g_saves, g_left, g_cmp, g_grid, g_view);
+    n = snprintf(buf, sizeof buf, "template=%s\nsaves=%d\nleft=%d\ncmp=%d\ngrid=%d\nview=%d\nvariant=%d\n", T[cur].id, g_saves, g_left, g_cmp, g_grid, g_view, g_variant);
     for (i = 0; i < nt; i++) for (k = 0; k < T[i].nk; k++) n += snprintf(buf + n, sizeof buf - (size_t)n, "k.%s.%s=%.4f\n", T[i].id, T[i].kn[k], T[i].v[k]);
     sess_path(p, sizeof p); write_atomic(p, buf, (size_t)n);
 }
@@ -99,6 +101,7 @@ static int run_argv(char **av) {
 /* knob options of the current template as "knob=name:delta" strings (only non-zero ones) */
 static int knob_opts(char store[][64], char **av, int n) {
     if (!g_knobs_on) return n; /* compare mode: render the original */
+    static char vbuf[32]; if (g_variant && !strcmp(T[cur].kind, "ground") && n < 30) { snprintf(vbuf, sizeof vbuf, "variant=%d", g_variant); av[n++] = vbuf; }
     int k; for (k = 0; k < T[cur].nk; k++) if (fabs(T[cur].v[k]) > 1e-9 && n < 30) { snprintf(store[k], 64, "knob=%s:%.4f", T[cur].kn[k], T[cur].v[k]); av[n++] = store[k]; } return n;
 }
 static int studio_cmd(const char *verb, const char *outpng, const char *name, int crop_top) { /* palette_studio_op render|save ... */
@@ -149,18 +152,19 @@ static void write_ui(void) {
     for (i = 0; i < nt; i++) n += snprintf(buf + n, sizeof buf - (size_t)n, "tp_%d_id=%s\ntp_%d_label=%s\ntp_%d_active=%s\n", i, T[i].id, i, T[i].label, i, i == cur ? "active" : "");
     n += snprintf(buf + n, sizeof buf - (size_t)n, "n_knobs=%d\n", T[cur].nk);
     for (k = 0; k < T[cur].nk; k++) { int pc = (int)lround(T[cur].v[k] * 100.0); n += snprintf(buf + n, sizeof buf - (size_t)n, "kb_%d_name=%s\nkb_%d_val=%s%d%%\n", k, T[cur].kn[k], k, pc > 0 ? "+" : "", pc); }
-    n += snprintf(buf + n, sizeof buf - (size_t)n, "status=%s\ncanvas_raw=%s/studio_preview.raw\nleft_visible=%s\nknobs_state=%s\ntpl_short=%s\ncmp_state=%s\ngrid_state=%s\nview_state=%s\n", g_status, g_state, g_left ? "1" : "", g_left ? "on" : "off", T[cur].id, g_cmp ? "on" : "off", g_grid ? "on" : "off", g_view ? "picker" : "sheet");
+    n += snprintf(buf + n, sizeof buf - (size_t)n, "status=%s\ncanvas_raw=%s/studio_preview.raw\nleft_visible=%s\nknobs_state=%s\ntpl_short=%s\ncmp_state=%s\ngrid_state=%s\nview_state=%s\nvariant_val=%d\n", g_status, g_state, g_left ? "1" : "", g_left ? "on" : "off", T[cur].id, g_cmp ? "on" : "off", g_grid ? "on" : "off", g_view ? "picker" : "sheet", g_variant);
     snprintf(p, sizeof p, "%s/palettes-studio_ui.txt", g_state); write_atomic(p, buf, (size_t)n);
 }
 int main(int argc, char **argv) {
     char d[2500]; int i, k, rc = 0;
-    if (argc < 2) { fprintf(stderr, "usage: init | pick <template> | nudge <knob> <delta> | reset | save | toggle left | compare | grid | view\n"); return 2; }
+    if (argc < 2) { fprintf(stderr, "usage: init | pick <template> | nudge <knob> <delta> | reset | save | toggle left | compare | grid | view | roll [n]\n"); return 2; }
     if (find_house() || read_templates()) { fprintf(stderr, "cannot find the house or the templates\n"); return 2; }
     for (i = 1; i < argc; i++) if (!strncmp(argv[i], "state=", 6)) snprintf(g_state, sizeof g_state, "%.2200s", argv[i] + 6); /* test and scratch use: every file goes to that folder, never the live window state */
     snprintf(d, sizeof d, "%s/studio_saves", g_state); mkdir(g_state, 0755); mkdir(d, 0755);
     if (strcmp(argv[1], "init")) load_session();
     g_status[0] = 0;
     if (!strcmp(argv[1], "init")) { cur = 0; g_saves = 0; snprintf(g_status, sizeof g_status, "ready: pick a template, then press + or -"); }
+    else if (!strcmp(argv[1], "roll")) { int v = argc >= 3 && argv[2][0] >= 0x30 && argv[2][0] <= 0x39 ? atoi(argv[2]) : g_variant + 1; g_variant = v > 999999 ? 1 : v; g_cmp = 0; if (strcmp(T[cur].kind, "ground")) snprintf(g_status, sizeof g_status, "variant %d saved, but reseeding only changes ground sheets", g_variant); else snprintf(g_status, sizeof g_status, g_variant ? "variant %d (each block reseeded)" : "variant 0 (recipe look)", g_variant); }
     else if (!strcmp(argv[1], "view")) { g_view = !g_view; snprintf(g_status, sizeof g_status, g_view ? "picker view (one tile per kind, packed)" : "full sheet view"); }
     else if (!strcmp(argv[1], "grid")) { g_grid = !g_grid; snprintf(g_status, sizeof g_status, g_grid ? "gridlines on" : "gridlines off"); }
     else if (!strcmp(argv[1], "compare")) { g_cmp = !g_cmp; snprintf(g_status, sizeof g_status, g_cmp ? "showing the ORIGINAL (knobs off)" : "showing your TUNED sheet"); }
