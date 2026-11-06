@@ -1,0 +1,6 @@
+# Restyle style: Tear-it azure (interim reference sheets, D27). Cool ramp for blue carpet, ice and water.
+GEN | ramp | #0a1220,#1c3a6a,#2f6bb0,#6aa8e0,#c8e8ff
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

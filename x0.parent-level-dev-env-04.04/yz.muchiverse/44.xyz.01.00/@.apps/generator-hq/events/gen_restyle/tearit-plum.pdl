@@ -1,0 +1,6 @@
+# Restyle style: Tear-it plum (interim reference sheets, D27). Purple ramp for maroon tile, pink rock and violet ponds.
+GEN | ramp | #160a1c,#3c1a4a,#7a3a86,#c06ac0,#f0b8e8
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

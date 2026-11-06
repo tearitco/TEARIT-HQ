@@ -97,3 +97,20 @@ EXPECT_EXIT | 0 | same-source-colour-gives-same-output-colour-across-shapes
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/seam.pdl | $T/old | $T/raw/s00/sprite.csv | $T/raw/s05/sprite.csv | $T/raw/s20/sprite.csv | $T/raw/s30/sprite.csv | $T/raw/s40/sprite.csv | $T/raw/s47/sprite.csv
 RUN | /usr/bin/awk | -F, | FNR==1{fi++} fi<=6{raw[fi,FNR]=$1","$2","$3; next} {k=fi-6; m=raw[k,FNR]; o=$1","$2","$3; if((m in map)&&map[m]!=o)bad++; map[m]=o} END{exit bad>0} | $T/raw/s00/sprite.csv | $T/raw/s05/sprite.csv | $T/raw/s20/sprite.csv | $T/raw/s30/sprite.csv | $T/raw/s40/sprite.csv | $T/raw/s47/sprite.csv | $T/old/raw_s00/sprite.csv | $T/old/raw_s05/sprite.csv | $T/old/raw_s20/sprite.csv | $T/old/raw_s30/sprite.csv | $T/old/raw_s40/sprite.csv | $T/old/raw_s47/sprite.csv
 EXPECT_EXIT | 1 | NEGATIVE-per-cell-normalising-breaks-the-seam-check
+
+# The warm, cool and purple ramps keep lava, carpet and ice from collapsing into grey: each style file must parse and give its own bytes.
+CASE    | hue-ramps
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-ember.pdl | ember.pdl
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-azure.pdl | azure.pdl
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-plum.pdl | plum.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/ember.pdl | $T/e | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | ember-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/azure.pdl | $T/z | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | azure-ramp-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/plum.pdl | $T/p | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/165/sprite.csv
+EXPECT_EXIT | 0 | plum-ramp-parses
+RUN | /usr/bin/cmp | -s | $T/e/Outside_b_165/sprite.csv | $T/z/Outside_b_165/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-warm-and-cool-ramps-give-different-bytes
+RUN | /usr/bin/cmp | -s | $T/z/Outside_b_165/sprite.csv | $T/p/Outside_b_165/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-cool-and-purple-ramps-give-different-bytes

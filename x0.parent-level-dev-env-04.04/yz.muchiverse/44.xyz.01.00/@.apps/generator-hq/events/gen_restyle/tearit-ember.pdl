@@ -1,0 +1,6 @@
+# Restyle style: Tear-it ember (interim reference sheets, D27). Warm ramp for lava, embers and orange carpet; keeps the heat that the stone ramp loses.
+GEN | ramp | #1a0a08,#5a1a0e,#b2400f,#f08a1c,#ffd45a
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1
