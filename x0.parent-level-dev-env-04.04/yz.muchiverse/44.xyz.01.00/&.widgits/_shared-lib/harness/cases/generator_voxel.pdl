@@ -228,24 +228,24 @@ EXPECT_EXIT | 1 | NEGATIVE-the-pixel-pass-changes-the-picture
 CASE    | new-art-outside-b
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
-EXPECT_OUT | VOXELCHECK models=25 parts=199 poses=0 | twenty-five-props
+EXPECT_OUT | VOXELCHECK models=55 parts=497 poses=0 | fifty-five-props
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/b.png
 EXPECT_OUT | voxels=2851 | the-barrel-is-a-pinned-cylinder-stack
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | pine | idle | $T/p.png
 EXPECT_OUT | voxels=1294 | the-pine-is-pinned
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | prop | 8 | $T/i.png
-EXPECT_OUT | VOXELICONS kind=prop models=25 size=384x192 | an-icon-sheet-of-props
+EXPECT_OUT | VOXELICONS kind=prop models=55 size=384x336 | an-icon-sheet-of-props
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/s1.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
-EXPECT_OUT | OBJSHEET size=768x768 cells=25 | the-catalog-places-25-things
+EXPECT_OUT | OBJSHEET size=768x768 cells=60 | the-catalog-places-60-things
 RUN | /usr/bin/sha256sum | $T/s1.png
-EXPECT_OUT | fd310476c29c757e7edfa73690762bcd02b1469cc2d9050a34fa62638ada0e0b | the-sheet-is-pinned
+EXPECT_OUT | 137a6f3ce273bb7ffdd1a49ef6d1bd55c5211f4d74b671bc396400784d6d2089 | the-sheet-is-pinned
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/s2.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
 RUN | /usr/bin/cmp | -s | $T/s1.png | $T/s2.png
 EXPECT_EXIT | 0 | same-recipes-same-sheet
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-root | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/none
 EXPECT_EXIT | 3 | NEGATIVE-control-an-empty-root-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $T/s1.png
-EXPECT_OUT | luminance_correlation=0.164 overlap_pct=5.0 | THE-GATE-the-new-sheet-is-a-different-drawing-not-a-repaint
+EXPECT_OUT | luminance_correlation=0.372 overlap_pct=19.5 | THE-GATE-the-new-sheet-is-a-different-drawing-not-a-repaint
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
 EXPECT_OUT | luminance_correlation=0.903 | CONTRAST-the-old-recolour-is-the-same-drawing
 WRITE | cb1.pdl | SHEET \p S \p 768 \p 768\nCELL \p 0 \p 0 \p 1 \p 1 \p ghost \p no_such_model\n
@@ -268,9 +268,9 @@ EXPECT_EXIT | 2 | NEGATIVE-an-ellipsoid-with-radius-0-is-refused
 CASE    | concept-bank
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/neutral.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | bank=$HOUSE/&.widgits/concept-bank
-EXPECT_OUT | OBJSHEET size=768x768 cells=25 | the-real-bank-is-read
+EXPECT_OUT | OBJSHEET size=768x768 cells=60 | the-real-bank-is-read
 RUN | /usr/bin/sha256sum | $T/neutral.png
-EXPECT_OUT | fd310476c29c757e7edfa73690762bcd02b1469cc2d9050a34fa62638ada0e0b | neutral-weights-reproduce-the-pinned-sheet-byte-for-byte
+EXPECT_OUT | 137a6f3ce273bb7ffdd1a49ef6d1bd55c5211f4d74b671bc396400784d6d2089 | neutral-weights-reproduce-the-pinned-sheet-byte-for-byte
 MKDIR | bankA/data/spokes
 MKDIR | bankB/data/spokes
 MKDIR | bankC/data/spokes

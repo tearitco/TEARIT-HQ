@@ -226,3 +226,333 @@ PART | flowers_orange | s5 | 12 | 9 | 0 | 1 | 1 | 4 | #3a8a30
 PART | flowers_orange | l5 | 11 | 9 | 1 | 3 | 1 | 1 | #4a9a3a
 PART | flowers_orange | h5 | 11 | 9 | 4 | 3 | 1 | 3 | #f08a2a
 PART | flowers_orange | c5 | 12 | 8 | 5 | 1 | 1 | 1 | #ffe066
+
+# --- D31 slice 2 (2026-11-05): shop signs, wall panels and bases, windows. Positions in gen_objects/outside_b.pdl were READ from the original sheet; the drawings are new. ---
+MODEL | sign_sword | prop
+PART | sign_sword | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_sword | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_sword | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_sword | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_sword | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_sword | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_sword | blade | 11 | 1 | 6 | 2 | 1 | 7 | #dcdce4
+PART | sign_sword | tip | 11 | 1 | 13 | 2 | 1 | 1 | #f4f4fa
+PART | sign_sword | guard | 8 | 1 | 5 | 8 | 1 | 1 | #c8a040
+PART | sign_sword | grip | 11 | 1 | 3 | 2 | 1 | 2 | #6a4228
+PART | sign_sword | pom | 10 | 1 | 2 | 4 | 1 | 1 | #c8a040
+MODEL | sign_shield | prop
+PART | sign_shield | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_shield | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_shield | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_shield | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_shield | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_shield | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_shield | top | 7 | 1 | 7 | 10 | 1 | 5 | #3a6ab0
+PART | sign_shield | mid | 8 | 1 | 5 | 8 | 1 | 2 | #3a6ab0
+PART | sign_shield | pt | 10 | 1 | 3 | 4 | 1 | 2 | #3a6ab0
+PART | sign_shield | cv | 11 | 1 | 4 | 2 | 1 | 9 | #e8e8f0
+PART | sign_shield | ch | 8 | 1 | 9 | 8 | 1 | 1 | #e8e8f0
+MODEL | sign_armor | prop
+PART | sign_armor | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_armor | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_armor | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_armor | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_armor | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_armor | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_armor | body | 7 | 1 | 3 | 10 | 1 | 8 | #8a8a98
+PART | sign_armor | shl | 4 | 1 | 9 | 4 | 1 | 3 | #9a9aa8
+PART | sign_armor | shr | 16 | 1 | 9 | 4 | 1 | 3 | #9a9aa8
+PART | sign_armor | neck | 10 | 1 | 10 | 4 | 1 | 2 | #4a4a58
+PART | sign_armor | hi | 9 | 1 | 4 | 2 | 1 | 5 | #b8b8c8
+PART | sign_armor | belt | 7 | 1 | 3 | 10 | 1 | 1 | #5a5a68
+MODEL | sign_pouch | prop
+PART | sign_pouch | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_pouch | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_pouch | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_pouch | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_pouch | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_pouch | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+ELL | sign_pouch | bag | 12 | 1 | 7 | 6 | 1 | 5 | #d8b868
+PART | sign_pouch | neck | 10 | 1 | 11 | 4 | 1 | 1 | #c8a050
+PART | sign_pouch | tie | 9 | 1 | 12 | 6 | 1 | 1 | #8a5a3a
+PART | sign_pouch | hi | 8 | 1 | 7 | 1 | 1 | 3 | #f0d890
+MODEL | sign_teapot | prop
+PART | sign_teapot | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_teapot | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_teapot | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_teapot | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_teapot | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_teapot | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+ELL | sign_teapot | body | 11 | 1 | 7 | 5 | 1 | 4 | #d86a8a
+PART | sign_teapot | lid | 9 | 1 | 11 | 4 | 1 | 1 | #e88aa8
+PART | sign_teapot | knob | 10 | 1 | 12 | 2 | 1 | 1 | #d86a8a
+PART | sign_teapot | spout | 15 | 1 | 8 | 3 | 1 | 1 | #d86a8a
+PART | sign_teapot | sp2 | 17 | 1 | 9 | 1 | 1 | 2 | #d86a8a
+PART | sign_teapot | hl | 4 | 1 | 6 | 1 | 1 | 4 | #d86a8a
+PART | sign_teapot | hl2 | 5 | 1 | 9 | 1 | 1 | 1 | #d86a8a
+PART | sign_teapot | hl3 | 5 | 1 | 5 | 1 | 1 | 1 | #d86a8a
+PART | sign_teapot | hi | 8 | 1 | 8 | 2 | 1 | 1 | #f4b0c4
+MODEL | sign_inn | prop
+PART | sign_inn | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_inn | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_inn | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_inn | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_inn | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_inn | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_inn | i1 | 2 | 1 | 4 | 2 | 1 | 8 | #f2f2f2
+PART | sign_inn | n1l | 6 | 1 | 4 | 2 | 1 | 8 | #f2f2f2
+PART | sign_inn | n1r | 11 | 1 | 4 | 2 | 1 | 8 | #f2f2f2
+PART | sign_inn | n1a | 7 | 1 | 10 | 2 | 1 | 2 | #f2f2f2
+PART | sign_inn | n1b | 8 | 1 | 8 | 2 | 1 | 2 | #f2f2f2
+PART | sign_inn | n1c | 9 | 1 | 6 | 2 | 1 | 2 | #f2f2f2
+PART | sign_inn | n2l | 15 | 1 | 4 | 2 | 1 | 8 | #f2f2f2
+PART | sign_inn | n2r | 20 | 1 | 4 | 2 | 1 | 8 | #f2f2f2
+PART | sign_inn | n2a | 16 | 1 | 10 | 2 | 1 | 2 | #f2f2f2
+PART | sign_inn | n2b | 17 | 1 | 8 | 2 | 1 | 2 | #f2f2f2
+PART | sign_inn | n2c | 18 | 1 | 6 | 2 | 1 | 2 | #f2f2f2
+MODEL | sign_beer | prop
+PART | sign_beer | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_beer | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_beer | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_beer | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_beer | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_beer | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_beer | body | 8 | 1 | 3 | 7 | 1 | 9 | #f0b830
+PART | sign_beer | foam | 8 | 1 | 11 | 7 | 1 | 2 | #fff8e0
+PART | sign_beer | ht | 15 | 1 | 9 | 2 | 1 | 1 | #d8d8e0
+PART | sign_beer | hs | 16 | 1 | 6 | 1 | 1 | 3 | #d8d8e0
+PART | sign_beer | hb | 15 | 1 | 5 | 2 | 1 | 1 | #d8d8e0
+PART | sign_beer | hl | 9 | 1 | 4 | 1 | 1 | 6 | #fff0b0
+MODEL | sign_plate | prop
+PART | sign_plate | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_plate | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_plate | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_plate | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_plate | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_plate | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+ELL | sign_plate | plate | 12 | 1 | 8 | 5 | 1 | 5 | #e8e8f0
+ELL | sign_plate | inner | 12 | 1 | 8 | 3 | 1 | 3 | #f8f8ff
+PART | sign_plate | fork | 4 | 1 | 3 | 1 | 1 | 10 | #d0d0d8
+PART | sign_plate | kn | 19 | 1 | 3 | 1 | 1 | 10 | #d0d0d8
+MODEL | sign_gem | prop
+PART | sign_gem | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_gem | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_gem | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_gem | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_gem | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_gem | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+ELL | sign_gem | out | 12 | 1 | 8 | 6 | 1 | 5 | #2a9a98
+ELL | sign_gem | mid | 12 | 1 | 8 | 4 | 1 | 3 | #40c8c0
+ELL | sign_gem | core | 12 | 1 | 8 | 2 | 1 | 2 | #a0f4ee
+MODEL | sign_staff | prop
+PART | sign_staff | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_staff | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_staff | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_staff | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_staff | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_staff | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_staff | rod | 11 | 1 | 2 | 2 | 1 | 9 | #a05030
+ELL | sign_staff | orb | 12 | 1 | 11 | 3 | 1 | 3 | #e83030
+ELL | sign_staff | hi | 11 | 1 | 12 | 1 | 1 | 1 | #ffb0b0
+MODEL | sign_ring | prop
+PART | sign_ring | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_ring | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_ring | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_ring | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_ring | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_ring | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+ELL | sign_ring | out | 12 | 1 | 8 | 5 | 1 | 5 | #e8b820
+ELL | sign_ring | hole | 12 | 1 | 8 | 3 | 1 | 3 | #8a5a3a
+ELL | sign_ring | gem | 12 | 1 | 13 | 1 | 1 | 1 | #e83030
+MODEL | sign_necklace | prop
+PART | sign_necklace | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_necklace | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_necklace | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_necklace | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_necklace | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_necklace | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_necklace | c1 | 5 | 1 | 10 | 1 | 1 | 2 | #d8b030
+PART | sign_necklace | c2 | 6 | 1 | 8 | 1 | 1 | 2 | #d8b030
+PART | sign_necklace | c3 | 7 | 1 | 6 | 1 | 1 | 2 | #d8b030
+PART | sign_necklace | c4 | 8 | 1 | 5 | 8 | 1 | 1 | #d8b030
+PART | sign_necklace | c5 | 16 | 1 | 6 | 1 | 1 | 2 | #d8b030
+PART | sign_necklace | c6 | 17 | 1 | 8 | 1 | 1 | 2 | #d8b030
+PART | sign_necklace | c7 | 18 | 1 | 10 | 1 | 1 | 2 | #d8b030
+ELL | sign_necklace | gem | 12 | 1 | 4 | 2 | 1 | 2 | #3060e0
+MODEL | sign_hammer | prop
+PART | sign_hammer | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_hammer | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_hammer | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_hammer | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_hammer | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_hammer | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+PART | sign_hammer | head | 7 | 1 | 8 | 10 | 1 | 4 | #8a8a98
+PART | sign_hammer | hl | 8 | 1 | 11 | 8 | 1 | 1 | #b8b8c8
+PART | sign_hammer | handle | 11 | 1 | 2 | 2 | 1 | 7 | #8a5a3a
+MODEL | sign_crown | prop
+PART | sign_crown | board | 0 | 3 | 0 | 24 | 3 | 16 | #8a5a3a
+PART | sign_crown | ft | 0 | 2 | 15 | 24 | 1 | 1 | #5a3a24
+PART | sign_crown | fb | 0 | 2 | 0 | 24 | 1 | 1 | #5a3a24
+PART | sign_crown | fl | 0 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_crown | fr | 23 | 2 | 0 | 1 | 1 | 16 | #5a3a24
+PART | sign_crown | hi | 1 | 2 | 14 | 22 | 1 | 1 | #a87848
+ELL | sign_crown | out | 12 | 1 | 8 | 7 | 1 | 5 | #e8b820
+ELL | sign_crown | hole | 12 | 1 | 8 | 5 | 1 | 3 | #8a5a3a
+ELL | sign_crown | gem | 12 | 1 | 12 | 2 | 1 | 2 | #f0d060
+PART | sign_crown | pl | 3 | 1 | 8 | 2 | 1 | 4 | #e8b820
+PART | sign_crown | pr | 19 | 1 | 8 | 2 | 1 | 4 | #e8b820
+MODEL | wall_log_h | prop
+PART | wall_log_h | b | 0 | 2 | 0 | 24 | 4 | 24 | #8a5a3a
+PART | wall_log_h | r0 | 0 | 1 | 0 | 24 | 1 | 7 | #9a6a44
+PART | wall_log_h | s0 | 0 | 1 | 7 | 24 | 1 | 1 | #4a2a18
+PART | wall_log_h | r8 | 0 | 1 | 8 | 24 | 1 | 7 | #9a6a44
+PART | wall_log_h | s8 | 0 | 1 | 15 | 24 | 1 | 1 | #4a2a18
+PART | wall_log_h | r16 | 0 | 1 | 16 | 24 | 1 | 7 | #9a6a44
+PART | wall_log_h | s16 | 0 | 1 | 23 | 24 | 1 | 1 | #4a2a18
+PART | wall_log_h | e1 | 0 | 1 | 0 | 1 | 1 | 24 | #6a4228
+PART | wall_log_h | e2 | 23 | 1 | 0 | 1 | 1 | 24 | #6a4228
+MODEL | wall_log_v | prop
+PART | wall_log_v | b | 0 | 2 | 0 | 24 | 4 | 24 | #8a5a3a
+PART | wall_log_v | c0 | 0 | 1 | 0 | 5 | 1 | 24 | #a07040
+PART | wall_log_v | s0 | 5 | 1 | 0 | 1 | 1 | 24 | #4a2a18
+PART | wall_log_v | c6 | 6 | 1 | 0 | 5 | 1 | 24 | #a07040
+PART | wall_log_v | s6 | 11 | 1 | 0 | 1 | 1 | 24 | #4a2a18
+PART | wall_log_v | c12 | 12 | 1 | 0 | 5 | 1 | 24 | #a07040
+PART | wall_log_v | s12 | 17 | 1 | 0 | 1 | 1 | 24 | #4a2a18
+PART | wall_log_v | c18 | 18 | 1 | 0 | 5 | 1 | 24 | #a07040
+PART | wall_log_v | s18 | 23 | 1 | 0 | 1 | 1 | 24 | #4a2a18
+MODEL | wall_plank_h | prop
+PART | wall_plank_h | b | 0 | 2 | 0 | 24 | 4 | 24 | #c8a060
+PART | wall_plank_h | s0 | 0 | 1 | 0 | 24 | 1 | 1 | #8a6a38
+PART | wall_plank_h | s6 | 0 | 1 | 6 | 24 | 1 | 1 | #8a6a38
+PART | wall_plank_h | s12 | 0 | 1 | 12 | 24 | 1 | 1 | #8a6a38
+PART | wall_plank_h | s18 | 0 | 1 | 18 | 24 | 1 | 1 | #8a6a38
+PART | wall_plank_h | n1 | 2 | 1 | 3 | 1 | 1 | 1 | #6a4a28
+PART | wall_plank_h | n2 | 21 | 1 | 9 | 1 | 1 | 1 | #6a4a28
+PART | wall_plank_h | n3 | 3 | 1 | 15 | 1 | 1 | 1 | #6a4a28
+PART | wall_plank_h | n4 | 20 | 1 | 21 | 1 | 1 | 1 | #6a4a28
+MODEL | wall_plank_v | prop
+PART | wall_plank_v | b | 0 | 2 | 0 | 24 | 4 | 24 | #b8904c
+PART | wall_plank_v | s0 | 0 | 1 | 0 | 1 | 1 | 24 | #6a4a28
+PART | wall_plank_v | s4 | 4 | 1 | 0 | 1 | 1 | 24 | #6a4a28
+PART | wall_plank_v | s8 | 8 | 1 | 0 | 1 | 1 | 24 | #6a4a28
+PART | wall_plank_v | s12 | 12 | 1 | 0 | 1 | 1 | 24 | #6a4a28
+PART | wall_plank_v | s16 | 16 | 1 | 0 | 1 | 1 | 24 | #6a4a28
+PART | wall_plank_v | s20 | 20 | 1 | 0 | 1 | 1 | 24 | #6a4a28
+PART | wall_plank_v | h1 | 2 | 1 | 10 | 1 | 1 | 5 | #d0a868
+PART | wall_plank_v | h2 | 14 | 1 | 4 | 1 | 1 | 6 | #d0a868
+MODEL | wall_stone | prop
+PART | wall_stone | b | 0 | 2 | 0 | 24 | 4 | 24 | #9a9aa2
+PART | wall_stone | m0 | 0 | 1 | 0 | 24 | 1 | 1 | #6e6e78
+PART | wall_stone | m6 | 0 | 1 | 6 | 24 | 1 | 1 | #6e6e78
+PART | wall_stone | m12 | 0 | 1 | 12 | 24 | 1 | 1 | #6e6e78
+PART | wall_stone | m18 | 0 | 1 | 18 | 24 | 1 | 1 | #6e6e78
+PART | wall_stone | j6_1 | 6 | 1 | 1 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j18_1 | 18 | 1 | 1 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j12_7 | 12 | 1 | 7 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j0_7 | 0 | 1 | 7 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j23_7 | 23 | 1 | 7 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j6_13 | 6 | 1 | 13 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j18_13 | 18 | 1 | 13 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j12_19 | 12 | 1 | 19 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j0_19 | 0 | 1 | 19 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | j23_19 | 23 | 1 | 19 | 1 | 1 | 5 | #6e6e78
+PART | wall_stone | hi | 2 | 1 | 3 | 4 | 1 | 2 | #b0b0b8
+PART | wall_stone | hi2 | 14 | 1 | 9 | 5 | 1 | 2 | #b0b0b8
+MODEL | wall_white | prop
+PART | wall_white | b | 0 | 2 | 0 | 24 | 4 | 24 | #e0e0e8
+PART | wall_white | f1 | 0 | 1 | 0 | 24 | 1 | 1 | #a0a0ac
+PART | wall_white | f2 | 0 | 1 | 23 | 24 | 1 | 1 | #a0a0ac
+PART | wall_white | f3 | 0 | 1 | 0 | 1 | 1 | 24 | #a0a0ac
+PART | wall_white | f4 | 23 | 1 | 0 | 1 | 1 | 24 | #a0a0ac
+PART | wall_white | m1 | 11 | 1 | 0 | 2 | 1 | 24 | #a0a0ac
+PART | wall_white | hi | 3 | 1 | 4 | 6 | 1 | 14 | #f4f4fa
+PART | wall_white | hi2 | 14 | 1 | 4 | 6 | 1 | 14 | #f4f4fa
+MODEL | wall_green_a | prop
+PART | wall_green_a | b | 0 | 2 | 0 | 24 | 4 | 24 | #8a9a70
+PART | wall_green_a | f1 | 0 | 1 | 0 | 24 | 1 | 1 | #5a6a48
+PART | wall_green_a | f2 | 0 | 1 | 23 | 24 | 1 | 1 | #5a6a48
+PART | wall_green_a | f3 | 0 | 1 | 0 | 1 | 1 | 24 | #5a6a48
+PART | wall_green_a | f4 | 23 | 1 | 0 | 1 | 1 | 24 | #5a6a48
+PART | wall_green_a | m1 | 11 | 1 | 0 | 2 | 1 | 24 | #5a6a48
+PART | wall_green_a | m2 | 0 | 1 | 11 | 24 | 1 | 2 | #5a6a48
+PART | wall_green_a | r1 | 3 | 1 | 3 | 1 | 1 | 1 | #b8c8a0
+PART | wall_green_a | r2 | 20 | 1 | 3 | 1 | 1 | 1 | #b8c8a0
+PART | wall_green_a | r3 | 3 | 1 | 20 | 1 | 1 | 1 | #b8c8a0
+PART | wall_green_a | r4 | 20 | 1 | 20 | 1 | 1 | 1 | #b8c8a0
+MODEL | wall_green_b | prop
+PART | wall_green_b | b | 0 | 2 | 0 | 24 | 4 | 24 | #8a9a70
+PART | wall_green_b | s0 | 0 | 1 | 0 | 24 | 1 | 1 | #5a6a48
+PART | wall_green_b | h0 | 1 | 1 | 2 | 22 | 1 | 2 | #a0b088
+PART | wall_green_b | s8 | 0 | 1 | 8 | 24 | 1 | 1 | #5a6a48
+PART | wall_green_b | h8 | 1 | 1 | 10 | 22 | 1 | 2 | #a0b088
+PART | wall_green_b | s16 | 0 | 1 | 16 | 24 | 1 | 1 | #5a6a48
+PART | wall_green_b | h16 | 1 | 1 | 18 | 22 | 1 | 2 | #a0b088
+PART | wall_green_b | r1 | 2 | 1 | 6 | 1 | 1 | 1 | #b8c8a0
+PART | wall_green_b | r2 | 21 | 1 | 14 | 1 | 1 | 1 | #b8c8a0
+MODEL | base_wood | prop
+PART | base_wood | beam | 0 | 2 | 18 | 24 | 4 | 6 | #6a4228
+PART | base_wood | bt | 0 | 1 | 23 | 24 | 1 | 1 | #8a5a3a
+PART | base_wood | post | 10 | 2 | 0 | 4 | 4 | 18 | #7a5232
+PART | base_wood | bl1 | 6 | 2 | 14 | 4 | 3 | 2 | #7a5232
+PART | base_wood | bl2 | 4 | 2 | 12 | 3 | 3 | 2 | #7a5232
+PART | base_wood | br1 | 14 | 2 | 14 | 4 | 3 | 2 | #7a5232
+PART | base_wood | br2 | 17 | 2 | 12 | 3 | 3 | 2 | #7a5232
+MODEL | base_stone | prop
+PART | base_stone | band | 0 | 2 | 16 | 24 | 4 | 8 | #8a8a96
+PART | base_stone | m | 0 | 1 | 16 | 24 | 1 | 1 | #5a5a66
+PART | base_stone | pl | 0 | 2 | 0 | 5 | 4 | 16 | #7a7a86
+PART | base_stone | pr | 19 | 2 | 0 | 5 | 4 | 16 | #7a7a86
+PART | base_stone | a1 | 5 | 2 | 12 | 2 | 4 | 4 | #7a7a86
+PART | base_stone | a2 | 17 | 2 | 12 | 2 | 4 | 4 | #7a7a86
+PART | base_stone | a3 | 7 | 2 | 14 | 2 | 4 | 2 | #7a7a86
+PART | base_stone | a4 | 15 | 2 | 14 | 2 | 4 | 2 | #7a7a86
+MODEL | window_plain | prop
+PART | window_plain | fr | 2 | 2 | 2 | 20 | 3 | 18 | #a87a38
+PART | window_plain | gl | 4 | 1 | 4 | 16 | 1 | 14 | #2a1a14
+PART | window_plain | m1 | 11 | 0 | 4 | 2 | 1 | 14 | #a87a38
+PART | window_plain | m2 | 4 | 0 | 10 | 16 | 1 | 2 | #a87a38
+MODEL | window_shutters | prop
+PART | window_shutters | b | 2 | 2 | 2 | 20 | 3 | 18 | #a07840
+PART | window_shutters | v5 | 5 | 1 | 3 | 1 | 1 | 16 | #5a3a24
+PART | window_shutters | v11 | 11 | 1 | 3 | 1 | 1 | 16 | #5a3a24
+PART | window_shutters | v17 | 17 | 1 | 3 | 1 | 1 | 16 | #5a3a24
+PART | window_shutters | h6 | 3 | 1 | 6 | 18 | 1 | 1 | #7a5232
+PART | window_shutters | h12 | 3 | 1 | 12 | 18 | 1 | 1 | #7a5232
+MODEL | window_black | prop
+PART | window_black | fr | 1 | 2 | 5 | 22 | 3 | 12 | #6a6a72
+PART | window_black | gl | 2 | 1 | 6 | 20 | 1 | 10 | #14141a
+MODEL | window_barred | prop
+PART | window_barred | fr | 1 | 2 | 3 | 22 | 3 | 16 | #8a8a96
+PART | window_barred | gl | 3 | 1 | 5 | 18 | 1 | 12 | #14141a
+PART | window_barred | bar5 | 5 | 0 | 5 | 1 | 1 | 12 | #a0a0ac
+PART | window_barred | bar8 | 8 | 0 | 5 | 1 | 1 | 12 | #a0a0ac
+PART | window_barred | bar11 | 11 | 0 | 5 | 1 | 1 | 12 | #a0a0ac
+PART | window_barred | bar14 | 14 | 0 | 5 | 1 | 1 | 12 | #a0a0ac
+PART | window_barred | bar17 | 17 | 0 | 5 | 1 | 1 | 12 | #a0a0ac
+MODEL | window_awning | prop
+PART | window_awning | fr | 1 | 2 | 2 | 22 | 3 | 10 | #6a6a72
+PART | window_awning | gl | 3 | 1 | 4 | 18 | 1 | 6 | #14141a
+PART | window_awning | aw | 0 | 1 | 12 | 24 | 2 | 4 | #8a6a30
+PART | window_awning | st0 | 0 | 0 | 12 | 2 | 1 | 4 | #6a4a20
+PART | window_awning | fg0 | 0 | 0 | 11 | 2 | 1 | 1 | #8a6a30
+PART | window_awning | st4 | 4 | 0 | 12 | 2 | 1 | 4 | #6a4a20
+PART | window_awning | fg4 | 4 | 0 | 11 | 2 | 1 | 1 | #8a6a30
+PART | window_awning | st8 | 8 | 0 | 12 | 2 | 1 | 4 | #6a4a20
+PART | window_awning | fg8 | 8 | 0 | 11 | 2 | 1 | 1 | #8a6a30
+PART | window_awning | st12 | 12 | 0 | 12 | 2 | 1 | 4 | #6a4a20
+PART | window_awning | fg12 | 12 | 0 | 11 | 2 | 1 | 1 | #8a6a30
+PART | window_awning | st16 | 16 | 0 | 12 | 2 | 1 | 4 | #6a4a20
+PART | window_awning | fg16 | 16 | 0 | 11 | 2 | 1 | 1 | #8a6a30
+PART | window_awning | st20 | 20 | 0 | 12 | 2 | 1 | 4 | #6a4a20
+PART | window_awning | fg20 | 20 | 0 | 11 | 2 | 1 | 1 | #8a6a30
+MODEL | window_stained | prop
+PART | window_stained | fr | 6 | 2 | 2 | 12 | 3 | 14 | #6a6a72
+ELL | window_stained | arch | 12 | 3 | 16 | 6 | 1 | 4 | #6a6a72
+PART | window_stained | in | 7 | 1 | 3 | 10 | 1 | 12 | #4a6ac8
+ELL | window_stained | ai | 12 | 1 | 16 | 5 | 1 | 3 | #4a6ac8
+PART | window_stained | red | 8 | 0 | 4 | 4 | 1 | 4 | #d84040
+PART | window_stained | grn | 12 | 0 | 8 | 4 | 1 | 4 | #40b060
+PART | window_stained | yel | 8 | 0 | 11 | 4 | 1 | 3 | #e8c830
+PART | window_stained | pur | 12 | 0 | 3 | 4 | 1 | 3 | #a050c8
+PART | window_stained | org | 10 | 0 | 14 | 4 | 1 | 3 | #e87830

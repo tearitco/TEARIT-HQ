@@ -27,3 +27,39 @@ CELL | 6  | 12 | 1 | 1 | round bush    | bush_round
 CELL | 7  | 12 | 1 | 1 | brown rock    | rock_brown
 CELL | 1  | 13 | 1 | 1 | hole          | hole
 CELL | 2  | 13 | 1 | 1 | wood stack    | wood_stack
+# --- slice 2: positions READ from the original sheet (2x zoom of rows 0 to 5, 2026-11-05); rows 4 to 5 take only the clearly gridded cells ---
+CELL | 1 | 0 | 1 | 1 | sign_sword | sign_sword
+CELL | 2 | 0 | 1 | 1 | sign_shield | sign_shield
+CELL | 3 | 0 | 1 | 1 | sign_armor | sign_armor
+CELL | 4 | 0 | 1 | 1 | sign_pouch | sign_pouch
+CELL | 5 | 0 | 1 | 1 | sign_teapot | sign_teapot
+CELL | 6 | 0 | 1 | 1 | sign_inn | sign_inn
+CELL | 7 | 0 | 1 | 1 | sign_beer | sign_beer
+CELL | 0 | 1 | 1 | 1 | sign_plate | sign_plate
+CELL | 1 | 1 | 1 | 1 | sign_gem | sign_gem
+CELL | 2 | 1 | 1 | 1 | sign_staff | sign_staff
+CELL | 3 | 1 | 1 | 1 | sign_ring | sign_ring
+CELL | 4 | 1 | 1 | 1 | sign_necklace | sign_necklace
+CELL | 5 | 1 | 1 | 1 | sign_hammer | sign_hammer
+CELL | 6 | 1 | 1 | 1 | sign_crown | sign_crown
+CELL | 0 | 2 | 1 | 1 | wall_log_h | wall_log_h
+CELL | 1 | 2 | 1 | 1 | wall_log_v | wall_log_v
+CELL | 2 | 2 | 1 | 1 | wall_plank_h | wall_plank_h
+CELL | 3 | 2 | 1 | 1 | wall_plank_v | wall_plank_v
+CELL | 4 | 2 | 1 | 1 | wall_stone | wall_stone
+CELL | 5 | 2 | 1 | 1 | wall_white | wall_white
+CELL | 6 | 2 | 1 | 1 | wall_green_a | wall_green_a
+CELL | 7 | 2 | 1 | 1 | wall_green_b | wall_green_b
+CELL | 0 | 3 | 1 | 1 | base_wood | base_wood
+CELL | 1 | 3 | 1 | 1 | base_wood | base_wood
+CELL | 3 | 3 | 1 | 1 | base_wood | base_wood
+CELL | 4 | 3 | 1 | 1 | base_stone | base_stone
+CELL | 5 | 3 | 1 | 1 | base_stone | base_stone
+CELL | 6 | 3 | 1 | 1 | base_stone | base_stone
+CELL | 7 | 3 | 1 | 1 | base_stone | base_stone
+CELL | 0 | 4 | 1 | 1 | window_plain | window_plain
+CELL | 3 | 4 | 1 | 1 | window_shutters | window_shutters
+CELL | 0 | 5 | 1 | 1 | window_black | window_black
+CELL | 1 | 5 | 1 | 1 | window_barred | window_barred
+CELL | 2 | 5 | 1 | 1 | window_awning | window_awning
+CELL | 3 | 5 | 1 | 1 | window_stained | window_stained

@@ -64,3 +64,6 @@ Tune a thing: open `&.widgits/concept-bank/data/spokes/prop_barrel.pdl`, change 
 
 ## 13. Update: shape and material weights
 Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3 look_big, 4 look_metal. Ranges: warm -1..1, worn 0..1, round 0..1, big -1..1, metal -1..1; all 0.00 = the recipe as drawn. Big weights clip at the 24-voxel grid. Picture: `interim/try/2026-11-05-concept-weights/barrel_shape_material_strip_3x.png` (local, gitignored).
+
+## 14. Update: shop signs, walls, bases, windows (D31 slice 2)
+60 cells of Outside_B are now our own drawings (25 props + 35 signs/walls/bases/windows). Still original-only or empty: rows 6 to 7 (big windows, doors), plants, snow, tents, lamps, ladders, and the Outside_A2/A4 ground and wall autotiles. Three exceptions over the 0.5 gate are listed in the decision log. Picture (local, gitignored): `interim/try/2026-11-05-new-art-outside-b/ours_signs_walls_windows_2x.png`.
