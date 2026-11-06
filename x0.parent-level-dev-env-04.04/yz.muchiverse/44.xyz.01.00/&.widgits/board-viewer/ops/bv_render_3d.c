@@ -4373,14 +4373,17 @@ static int render_one_frame(void) {
                 }
                 float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
                 if (!strcmp(g_mk.ev[i].name, "door")) {
-                    /* A door is a slab 0.1 of a cell thick, standing in the wall opening. Not a full voxel column. */
-                    ADDBOX(g_mk.ev[i].x + 0.05f, 1.0, g_mk.ev[i].y + 0.45f,
-                           g_mk.ev[i].x + 0.95f, 4.0f, g_mk.ev[i].y + 0.55f,
+                    /* The wall is 3 cubes. The door is the lower 2. The top cube is a window, not a third door cube. Both are 0.1 thick. */
+                    ADDBOX(g_mk.ev[i].x + 0.08f, 3.05f, g_mk.ev[i].y + 0.45f,
+                           g_mk.ev[i].x + 0.92f, 3.90f, g_mk.ev[i].y + 0.55f,
+                           176, 214, 230, 0);
+                    ADDBOX(g_mk.ev[i].x + 0.08f, 1.0f, g_mk.ev[i].y + 0.45f,
+                           g_mk.ev[i].x + 0.92f, 2.95f, g_mk.ev[i].y + 0.55f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else if (!strcmp(g_mk.ev[i].name, "roof")) {
-                    /* A cap on this cell, sitting on the 3-high wall. The column under it stays the floor. */
+                    /* A 0.1 cap on the wall top, one sheet per cell. Not a second voxel stacked on the door. */
                     ADDBOX(g_mk.ev[i].x, 4.0, g_mk.ev[i].y,
-                           g_mk.ev[i].x + 1.0f, 4.35f, g_mk.ev[i].y + 1.0f,
+                           g_mk.ev[i].x + 1.0f, 4.10f, g_mk.ev[i].y + 1.0f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else {
                 ADDBOX(g_mk.ev[i].x + 0.15f, 1.0, g_mk.ev[i].y + 0.15f,
