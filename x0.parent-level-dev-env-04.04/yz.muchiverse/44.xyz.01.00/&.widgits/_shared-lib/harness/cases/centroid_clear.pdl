@@ -1,0 +1,16 @@
+# Clears a stamped desk back to a flat 16x16. Scratch only. No window.
+RESULTS | ../results/centroid_clear.txt
+ENV | LC_ALL | C
+
+CASE | clear
+SCRATCH |
+COPY | @.apps/centroid/ops/centroid_clear_op.c | centroid_clear_op.c
+RUN | gcc | -O2 | -o | centroid_clear_op | centroid_clear_op.c
+EXPECT_EXIT | 0 | compiles
+RUN | ./centroid_clear_op | cells.txt
+EXPECT_EXIT | 0 | clears
+EXPECT_OUT | CLEARED 16x16 | says-cleared
+EXPECT_HAS | cells.txt | width=16 | small-again
+EXPECT_LACKS | events.txt | door | no-door
+RUN | ./centroid_clear_op
+EXPECT_EXIT | 2 | NEGATIVE-usage

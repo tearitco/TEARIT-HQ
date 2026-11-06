@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/wait.h>
+#include <dirent.h>
 #define MAXC 40
 static char KEY[MAXC][64], LAB[MAXC][96]; static int nc, SIDE[MAXC];
 static void trim(char *s) { size_t n = strlen(s); while (n && (s[n-1]==' '||s[n-1]=='\n'||s[n-1]=='\r'||s[n-1]=='\t')) s[--n]=0; char *p=s; while (*p==' '||*p=='\t') p++; if (p!=s) memmove(s,p,strlen(p)+1); }
@@ -168,6 +169,28 @@ int main(int argc, char **argv) {
         char palp[4300]; snprintf(palp, sizeof palp, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
         kv_set(palp, "harness_sel", arg);
         printf("HARNESS %s\n", arg);
+        /* centroid/clear wipes the open page's stamp. Every other row runs that pal from the harness folder. */
+        if (strstr(arg, "/clear")) {
+            char ui[4200], bl[80] = "", pl[80] = "", cells[4300];
+            snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+            kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
+            char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
+            char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+            if (bl[0] && pl[0]) {
+                snprintf(cells, sizeof cells, "%s/@.apps/centroid/centroid-pchq/pieces/system/maps/%s/%s/cells.txt", house, bl, pl);
+                char op[4300]; snprintf(op, sizeof op, "%s/@.apps/centroid/ops/+x/centroid_clear_op.+x", house);
+                pid_t c = fork(); if (c == 0) { execl(op, op, cells, (char *)NULL); _exit(127); }
+                if (c > 0) { int st; waitpid(c, &st, 0); }
+            }
+        } else {
+            char dir[4300], paln[4300], pr[4200];
+            snprintf(dir, sizeof dir, "%s/&.widgits/_shared-lib/harness", house);
+            snprintf(paln, sizeof paln, "%s.pal", arg);
+            snprintf(pr, sizeof pr, "/tmp/prisc");
+            pid_t c = fork();
+            if (c == 0) { if (chdir(dir) != 0) _exit(127); execl(pr, pr, paln, (char *)NULL); _exit(127); }
+            if (c > 0) { int st; waitpid(c, &st, 0); }
+        }
         return 0;
     }
     if (!strcmp(verb, "toparm") && arg[0]) {
@@ -292,8 +315,33 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
-        /* The harness tab row was taken off the editor bar. n_tbhar stays 0 so a stale window drops it. */
-        fprintf(o, "n_tbhar=0\n");
+        /* Harness tab: the pals for the open book. all runs those cases. clear is last. */
+        {
+            char ui[4200], bl[80] = ""; snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+            kv_get(ui, "book_label", bl, sizeof bl);
+            char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
+            char hd[4300]; snprintf(hd, sizeof hd, "%s/&.widgits/_shared-lib/harness/%s", house, bl);
+            char names[16][64]; int nn = 0;
+            DIR *d = bl[0] ? opendir(hd) : NULL;
+            if (d) {
+                struct dirent *de;
+                while ((de = readdir(d)) && nn < 16) {
+                    size_t L = strlen(de->d_name);
+                    if (L < 5 || strcmp(de->d_name + L - 4, ".pal")) continue;
+                    if (!strcmp(de->d_name, "all.pal") || !strcmp(de->d_name, "clear.pal")) continue;
+                    snprintf(names[nn], 64, "%s", de->d_name); names[nn][L - 4] = 0; nn++;
+                }
+                closedir(d);
+            }
+            for (int a = 0; a + 1 < nn; a++) for (int b = a + 1; b < nn; b++) if (strcmp(names[a], names[b]) > 0) { char t[64]; memcpy(t, names[a], 64); memcpy(names[a], names[b], 64); memcpy(names[b], t, 64); }
+            int nhr = 0;
+            for (int i = 0; i < nn; i++) { fprintf(o, "tbhar_%d_label=%s/%s\n", nhr, bl, names[i]); nhr++; }
+            if (bl[0] && nn) {
+                fprintf(o, "tbhar_%d_label=%s/all\n", nhr, bl); nhr++;
+                fprintf(o, "tbhar_%d_label=%s/clear\n", nhr, bl); nhr++;
+            }
+            fprintf(o, "n_tbhar=%d\n", nhr);
+        }
     }
     char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");

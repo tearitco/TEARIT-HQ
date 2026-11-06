@@ -2369,6 +2369,11 @@ static int bv_hud_fps(void) {
 static char (*g_mm_board3d)[MAX_BOARD_DIM][MAX_BOARD_DIM] = NULL;
 static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
 static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
+/* Maker pages draw the cells file, not the glyph board. The corner map follows those cells: grass, wall, and air (the gap under a bridge). */
+static int g_mm_maker = 0;
+static unsigned char g_mm_r[MAX_BOARD_DIM][MAX_BOARD_DIM];
+static unsigned char g_mm_g[MAX_BOARD_DIM][MAX_BOARD_DIM];
+static unsigned char g_mm_b[MAX_BOARD_DIM][MAX_BOARD_DIM];
 /* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
 static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
@@ -2653,9 +2658,10 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         for (int col = 0; col < ww; col++) {
             int bx = wx0 + col, by = wy0 + row;
             if (bx < 0 || by < 0 || bx >= g_mm_board_w || by >= g_mm_board_h) { bv_fill_rect(mm_x + col * cellpx, mm_y + row * cellpx, mm_x + (col + 1) * cellpx, mm_y + (row + 1) * cellpx, 12, 12, 24); continue; }      /* outside the desk: the map's open space */
-            int lvl = g_mm_col_top[by][bx];
+            int lvl = g_mm_maker ? 0 : g_mm_col_top[by][bx];
             unsigned char r, g, b;
-            if (lvl < 0) { r = 18; g = 18; b = 22; } /* empty column - near-black */
+            if (g_mm_maker) { r = g_mm_r[by][bx]; g = g_mm_g[by][bx]; b = g_mm_b[by][bx]; }
+            else if (lvl < 0) { r = 18; g = 18; b = 22; } /* empty column - near-black */
             else {
                 char glyph = g_mm_board3d[lvl][by][bx];
                 const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
@@ -5108,6 +5114,17 @@ static int render_one_frame(void) {
      * g_fbuf, on top of the raymarch, before the atomic write. */
     g_mm_board3d = board3d; g_mm_col_top = col_top;
     g_mm_board_w = board_w; g_mm_board_h = board_h;
+    g_mm_maker = 0;
+    if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= MAX_BOARD_DIM && g_mk.h <= MAX_BOARD_DIM && g_mk.cells) {
+        g_mm_maker = 1; g_mm_board_w = g_mk.w; g_mm_board_h = g_mk.h;
+        for (int my = 0; my < g_mk.h; my++) for (int mx = 0; mx < g_mk.w; mx++) {
+            unsigned short fl = g_mk.cells[((size_t)my * g_mk.w + mx) * 2];
+            unsigned short wl = g_mk.cells[((size_t)my * g_mk.w + mx) * 2 + 1];
+            if (!fl && !wl) { g_mm_r[my][mx] = 90; g_mm_g[my][mx] = 150; g_mm_b[my][mx] = 210; }          /* air, the gap around the bridge */
+            else if (wl) { g_mm_r[my][mx] = 150; g_mm_g[my][mx] = 100; g_mm_b[my][mx] = 60; }
+            else { g_mm_r[my][mx] = 70; g_mm_g[my][mx] = 160; g_mm_b[my][mx] = 55; }
+        }
+    }
     { double fl = sqrt(cam.forward.x * cam.forward.x + cam.forward.z * cam.forward.z), dx = cam.forward.x, dz = cam.forward.z;
       if (fl < 0.25) { dx = cam.up.x; dz = cam.up.z; fl = sqrt(dx * dx + dz * dz); }      /* looking straight down: the screen-up direction is the way it faces */
       g_mm_cam_x = cam.eye.x; g_mm_cam_z = cam.eye.z; g_mm_cam_ok = fl > 1e-6; if (g_mm_cam_ok) { g_mm_cam_dx = dx / fl; g_mm_cam_dz = dz / fl; } }
