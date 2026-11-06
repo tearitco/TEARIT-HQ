@@ -1983,14 +1983,14 @@ static void mypal_maybe_import(void) {
 static void publish_mypal(void) {
     mypal_maybe_import();
     char lib[PATH_BUF];
-    snprintf(lib, sizeof(lib), "%s/my-library", g_package_dir);
+    snprintf(lib, sizeof(lib), "%s/%s", g_package_dir, strcmp(g_category, "my-pals") == 0 ? "my-pals" : "my-library");
     char mk[PATH_BUF * 2];
     snprintf(mk, sizeof(mk), "mkdir -p '%s'", lib);
     int ign = system(mk); (void)ign;
     char active_dir[64], active_set[64];
-    read_active_kv("my-palettes", active_dir, sizeof(active_dir), active_set, sizeof(active_set), "", "");
+    read_active_kv(g_category, active_dir, sizeof(active_dir), active_set, sizeof(active_set), "", "");
     char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
-    snprintf(opt_path, sizeof(opt_path), "%s/my-palettes_options.txt", g_package_dir);
+    snprintf(opt_path, sizeof(opt_path), "%s/%s_options.txt", g_package_dir, g_category);
     snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
     FILE *opt = fopen(opt_tmp, "w");
     if (!opt) return;
@@ -2061,13 +2061,34 @@ static void publish_mypal(void) {
         if (!png[0]) continue;
         char sprite_root[PATH_BUF];
         snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/mypal/%s/%s", g_package_dir, active_dir, sets[i]);
-        publish_grid_from_png_named(png, 0, 0, 0, sprite_root, out, sets[i]);
+        publish_grid_from_png_named(png, 24, 24, 0, sprite_root, out, sets[i]);
     }
     fclose(out);
     rename(tmp_path, g_state_path);
 }
 
+/* Harness tab: one row per level generator and its pal. No sprite sheet. */
+static void publish_harness(void) {
+    char opt_path[PATH_BUF], st_path[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/harness_options.txt", g_package_dir);
+    snprintf(st_path, sizeof(st_path), "%s.tmp", g_state_path);
+    FILE *opt = fopen(opt_path, "w");
+    if (opt) {
+        fprintf(opt, "ACTIVE_DIR|centroid\nACTIVE_TILESET|centroid\nACTIVE_CATEGORY|centroid\nDIR|centroid|Centroid\n");
+        fclose(opt);
+    }
+    FILE *out = fopen(st_path, "w");
+    if (!out) return;
+    const char *rows[] = {
+        "centroid_parts_op", "centroid_book.pal", "centroid_test.pal", "centroid.parts.pdl", NULL
+    };
+    for (int i = 0; rows[i]; i++) fprintf(out, "%s\t%s\t\n", rows[i], rows[i]);
+    fclose(out);
+    rename(st_path, g_state_path);
+}
+
 static void publish(void) {
+    if (strcmp(g_category, "harness") == 0) { publish_harness(); return; }
     if (strcmp(g_category, "debug") == 0) { publish_debug(); return; }
     struct stat st;
     if (strcmp(g_category, "rmmv") == 0) {
@@ -2181,7 +2202,7 @@ static void publish(void) {
         return;
     }
     if (strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0
-        || strcmp(g_category, "my-palettes") == 0) {
+        || strcmp(g_category, "my-palettes") == 0 || strcmp(g_category, "my-pals") == 0) {
         static char s_last_atlas[256] = "";
         char active_path[PATH_BUF];
         snprintf(active_path, sizeof(active_path), "%s/%s_active.txt", g_package_dir, g_category);
@@ -2194,7 +2215,7 @@ static void publish(void) {
         }
         int changed = strcmp(active_content, s_last_atlas) != 0;
         snprintf(s_last_atlas, sizeof(s_last_atlas), "%s", active_content);
-        if (!changed && g_source_mtime != 0 && strcmp(g_category, "my-palettes") != 0) return;
+        if (!changed && g_source_mtime != 0 && strcmp(g_category, "my-palettes") != 0 && strcmp(g_category, "my-pals") != 0) return;
         g_source_mtime = 1;
         if (!strcmp(g_category, "tiled")) publish_tiled();
         else if (!strcmp(g_category, "ohrrpgce")) publish_ohr();
@@ -2236,7 +2257,7 @@ int main(int argc, char **argv) {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv", g_house_root);
     } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0
             || strcmp(g_category, "df") == 0 || strcmp(g_category, "doom") == 0
-            || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) {
+            || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0 || strcmp(g_category, "my-pals") == 0 || strcmp(g_category, "harness") == 0) {
         g_source_path[0] = '\0';
     } else if (strcmp(g_category, "emojis") == 0) {
         char pdl[PATH_BUF];
@@ -2274,7 +2295,7 @@ int main(int argc, char **argv) {
         /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
          * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
          * palettes still 1s. */
-        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "df") == 0 || strcmp(g_category, "doom") == 0 || strcmp(g_category, "emojis") == 0 || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) ? 100000 : 1000000);
+        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "df") == 0 || strcmp(g_category, "doom") == 0 || strcmp(g_category, "emojis") == 0 || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0 || strcmp(g_category, "my-pals") == 0) ? 100000 : 1000000);
     }
     return 0;
 }

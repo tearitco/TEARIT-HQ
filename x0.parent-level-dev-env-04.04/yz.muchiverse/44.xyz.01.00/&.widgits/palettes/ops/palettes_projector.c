@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     int is_chooser_grid = is_rmmv || is_piececraft || is_cdda || is_emojis
         || strcmp(cat, "df") == 0 || strcmp(cat, "doom") == 0
         || strcmp(cat, "tiled") == 0 || strcmp(cat, "ohrrpgce") == 0
-        || strcmp(cat, "my-palettes") == 0;
+        || strcmp(cat, "my-palettes") == 0 || strcmp(cat, "my-pals") == 0 || strcmp(cat, "harness") == 0;
     const char *opt_stem = cat;
 
     char in_path[PATH_MAX], out_path[PATH_MAX], tmp_path[PATH_MAX];
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
              * -> palettes-my-palettes_focus.txt), so it never collides
              * with a concurrently-open rmmv/tiled/etc. window sharing
              * the same package_dir. */
-            if (strcmp(cat, "my-palettes") == 0) {
+            if (strcmp(cat, "my-palettes") == 0 || strcmp(cat, "my-pals") == 0) {
                 char hover_label[128] = "";
                 char fpath[PATH_MAX];
                 snprintf(fpath, sizeof(fpath), "%s/state/palettes-%s_focus.txt", pkg, cat);

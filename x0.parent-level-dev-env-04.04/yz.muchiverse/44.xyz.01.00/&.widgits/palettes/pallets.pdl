@@ -2,6 +2,7 @@ SECTION      | KEY                | LABEL              | PICKER      | WIDE
 ---------------------------------------------------------------------------
 CATEGORY     | user-pallet        | Canvas-Craft       | canvascraft | 0
 CATEGORY     | my-palettes        | My Palettes        | mypal       | 0
+CATEGORY     | my-pals            | My Pals            | mypals      | 0
 CATEGORY     | tiled              | Tiled Tiles        | tiled       | 0
 CATEGORY     | ohrrpgce           | OHR Tiles          | ohr         | 0
 CATEGORY     | tile-editor        | Tile Editor        | tedit       | 0
@@ -15,4 +16,5 @@ CATEGORY     | doom               | Doom               | doom        | 0
 CATEGORY     | kenney             | Kenney 3D          | stub        | 0
 CATEGORY     | paint              | Paint Colors       | paint       | 0
 CATEGORY     | generate           | Generate           | generate    | 0
+CATEGORY     | harness            | Harness            | harness     | 0
 CATEGORY     | debug              | Debug              | debug       | 1

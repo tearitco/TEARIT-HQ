@@ -1,0 +1,8 @@
+# Centroid part. Ingredients are the NEED rows. Slots point at masters the bank already has.
+NODE | centroid_island
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=ground_edge | WEIGHT=1.00
+SLOT | 1 | POINTS_TO=look_big | WEIGHT=1.00
+NEED | stone | 1
+GRADE | 0

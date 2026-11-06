@@ -1,0 +1,8 @@
+# Centroid part. The room is fifteen wall columns. Wood and stone are the counts for now.
+NODE | centroid_room
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=look_big | WEIGHT=0.50
+NEED | wood | 15
+NEED | stone | 15
+GRADE | 0

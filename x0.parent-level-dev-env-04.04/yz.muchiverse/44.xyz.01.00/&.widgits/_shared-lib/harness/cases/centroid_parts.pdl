@@ -1,0 +1,19 @@
+# The centroid part generator stamps a tapered island and a room. No window.
+RESULTS | ../results/centroid_parts.txt
+ENV | LC_ALL | C
+
+CASE | stamp
+SCRATCH |
+COPY | @.apps/centroid/ops/centroid_parts_op.c | centroid_parts_op.c
+COPY | @.apps/centroid/parts/centroid.parts.pdl | centroid.parts.pdl
+RUN | gcc | -O2 | -o | centroid_parts_op | centroid_parts_op.c
+EXPECT_EXIT | 0 | compiles
+RUN | ./centroid_parts_op | stamp | cells.txt
+EXPECT_EXIT | 0 | stamps
+EXPECT_OUT | STAMP w=32 h=24 | says-size
+EXPECT_HAS | cells.txt | width=32 | wide
+EXPECT_HAS | cells.txt | 1,36, | wall-column
+EXPECT_HAS | centroid.parts.pdl | wood | wood-count
+EXPECT_HAS | centroid.parts.pdl | stone | stone-count
+RUN | ./centroid_parts_op
+EXPECT_EXIT | 2 | NEGATIVE-usage-without-stamp

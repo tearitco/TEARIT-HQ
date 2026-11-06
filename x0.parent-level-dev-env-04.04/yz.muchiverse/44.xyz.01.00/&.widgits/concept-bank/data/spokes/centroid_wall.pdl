@@ -1,0 +1,7 @@
+# Centroid part. One column.
+NODE | centroid_wall
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=look_worn | WEIGHT=0.40
+NEED | stone | 1
+GRADE | 0
