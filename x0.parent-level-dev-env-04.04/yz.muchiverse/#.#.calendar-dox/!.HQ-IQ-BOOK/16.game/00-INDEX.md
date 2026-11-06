@@ -17,6 +17,7 @@ command runs on.
   and practice, DF wagon start, MCL bench/bed/creeper, gen_map, and
   the water/lava/rain/fire common events. Technical needs. Not built.
 - `GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` — stop using RPG
+- `HANDOFF-GENERATOR-GROK-WORK-AND-INTERIM-ASSETS-2026-11-05.md` — next-agent handoff: what Grok built, what the generator really draws (proofs, not art), the RTP catalog as a checklist, and the restyle-first plan for usable assets (D27)
   Maker sheets one tileset at a time; in-house generator wired to the
   palettes Generate row. The 48-shape floor verb is built. A map swap is not.
 - `TEAR-IT-TILES-100-2026-11-05.md` — the bar for calling a sheet

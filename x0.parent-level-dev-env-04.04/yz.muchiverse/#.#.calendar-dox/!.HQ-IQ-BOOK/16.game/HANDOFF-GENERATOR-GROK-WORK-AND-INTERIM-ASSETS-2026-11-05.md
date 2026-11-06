@@ -1,0 +1,61 @@
+# Handoff: what Grok built, what the generator draws today, and how to get usable assets meanwhile (2026-11-05)
+
+For the next agent, Grok or claude. Both are done for now. Labels: **OBS** observed by claude this session (command or file named); **READ** in a named doc; **SAID** the owner; **DOC** claude's plan, **not built, not run**. Paths are from `44.xyz.01.00/` unless they start with `BOOK`. `BOOK` = `#.#.calendar-dox/!.HQ-IQ-BOOK/`.
+
+## 1. State of the repo (OBS)
+`claude`, `grok` and `main` are all at the same commit and pushed to origin. Grok's six commits are merged (`5dc39f56d`), the three merge issues are fixed (`cdb1cae21`, decision D26), Grok's four questions are committed and answered (`BOOK/13.agent-coms/GROK/`). Left uncommitted on purpose: runtime noise, plus Grok's untracked generator output `@.apps/generator-hq/out/` (101 files, 2.0 MB measured; **no enforced cap yet**, a runtime-file-growth follow-up, see section 6).
+
+## 2. What Grok built (OBS unless marked)
+| Piece | Where | What it does |
+|---|---|---|
+| Tile op | `@.apps/generator-hq/ops/generator_tile_op.c` (verbs `run`, `catalog`, `audit`, `shapes`, `shapes-check`) | Writes `sprite.csv` plus a PNG per sheet from a `.gen` file; same GEN rows and seed give the same bytes. `shapes` builds the 48 floor shapes by calling `tile_autotile_blits` (the house table), text-included since D26. |
+| Character op | `@.apps/generator-hq/ops/generator_char_op.c` | Stacks `LAYER` rows (naked body, optional shirt, any 48x48 `sprite.csv` as a further layer) into one 48x48 cell. |
+| Event pages | `@.apps/generator-hq/events/gen_*` | `gen_catalog`, `gen_character`, `gen_characters`, `gen_floor_shapes`, `gen_outside_rtp`, `gen_parallax`, `gen_sprite_rtp`; one command `gen_sheet` in `#.ref/menu/event_commands.registry.pdl` runs a sheet by folder name. |
+| Word to diffusion mapping | `&.widgits/concept-bank/ops/sd_map.h`, `img_prompt.c` | Colour weight maps to `guidance_scale`, the crisp word to steps (0.50 is the default, 7.5 and 20). `img_draft.py` takes them as `--guidance` and `--steps` flags. |
+| Harness | `&.widgits/_shared-lib/harness/generator_tiles.pal` (37), `generator_char.pal` (12) | **Run by me before and after the D26 fixes through `cpu_gate`: 37 pass / 0 fail and 12 / 0 both times.** |
+| Docs | `BOOK/16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md`, `TEAR-IT-TILES-100-2026-11-05.md`, decisions D24/D25 | The bar ("100%"), the sheet order, the owner's answers. |
+| Recon | `BOOK/16.game/GYMS-ZOOS-MUSEUMS-IN-GAME-DOCS-2026-11-05.md` section 8 | `002.zoo` is a July 26 plan for pets in and out of a simplified zoo, not an animal catalog. |
+
+## 3. What the generator actually draws today (OBS, I opened the pictures)
+- **Character** (`out/bad/character-shirt/tile.png`, 48x48): a flat blob figure, round head, blue shirt, no outline detail. A proof that the layer stack works, **not a usable sprite**.
+- **Floor** (`out/bad/floor-proof/sheet.png`, 384x288): a grid of flat red, green and brown squares. They are **colour codes** so a wrong quadrant shows as a wrong colour; the pass criterion is the table, not the look. **Not art.**
+- **Nothing is kept.** `XO/31.Nov/nov-5/1.generator-sheets/0.good/` is empty by design (READ `TEAR-IT-TILES-100`: a kept file needs the owner's written approval of the pattern, nothing was moved).
+- **Not built (READ the same doc):** the 12-frame walk, reading a real 96x144 block (it uses a flat proof block), faces, side-view beyond the catalog, swapping one real map in 2D and 3D, the Tear-it mark applied to cells.
+So the honest status: **the tiling math and the layer stack are proven; no shippable picture exists yet.**
+
+## 4. Owner decisions already given (READ `TEAR-IT-TILES-100`, "Answers, 2026-11-05")
+1. A kept file **may contain RPG Maker pixels**; **not a clean room**; "good enough for a game" is the bar. Same cell size and same autotile table so it fits, plus a restyle pass so it is not the original PNG. (It is not a licence reading: section 6.)
+2. The first room is the **rpg-edit cabin** (Ava already walks through its door, `BOOK/16.game/EDIT-ISLANDS-DESIGN.md`).
+3. The mark is taken from the two portraits: **Asa** brown skin, red mohawk, black hoodie, gold chain and watch; **Ava** lighter skin, long brown hair, black hoodie, thin gold chain, gold wrist. A Tear-it cell is black clothing plus a gold line at the neck.
+4. The agent moves a file to `out/good/` **only after the owner approves the pattern in writing**.
+5. The sheets needed are **Harold, the monsters and the pets** (Harold owns Blip, Fang, Gruk, Draxa, Gargo, Bonz; terumon pets Ember, Glacine, Murmur, Solvent). Asa and Ava portraits are safe but are not the replacement sprite set.
+6. A debil diffusion draft may sit under the hand as a layer. 7. The first kept sprite is **one standing frame, body plus one garment**; the 12-frame walk is the next job.
+
+## 5. The RTP file and what it is good for (`XO/31.Nov/nov-5/rtp-grok-online-rtp.md`)
+**What it is (OBS):** a 189-line, emoji-styled **catalog of names and themes**: 6 default tilesets, sheet groups A1 (6 sheets), A2 (6), A3 (2), A4 (5), A5 (5), B/C/D/E (6 groups), character groups (Actor, People, Evil/Monster, Nature/Animal, SF, Object), faces and sideview. It contains **no pixels and no sizes**, it is the web-chat's recollection ("exact file list can vary", its own note), so treat it as a **checklist to compare against the house folder, never as ground truth**.
+**What the house actually has (OBS, `ls` of `&.widgits/palettes/sprites/rmmv/`):** cells already **sliced into one `sprite.csv` per cell**, not whole sheets: `Outside_a2` 32, `Outside_b` 256, `Outside_c` 256, the same for `Inside`, `Dungeon`, `World`, `SF_Outside_b/c`, plus `SF_Inside_a4` 56, `SF_Outside_a3` 32, `SF_Inside_c` 256, and the `dir_*` folders (`characters` 52, `faces` 20, `battlebacks1/2` 13/11, `sv_actors` 3, `sv_enemies` 44, `parallaxes` 9, `system` 13, `animations` 22, titles). **Not found under those names: any A1 (water), A5, Outside/Inside/Dungeon A4, Outside_a3.** (I searched sliced folders and `*.png` names; I did not search the whole disk, and Grok notes `World_A2.png` itself is absent while `World_a2` cells exist.)
+**Use it as:** (a) the **role list** for `events/gen_*/roles.pdl` (one `ROLE` row per sheet class, so nothing is forgotten), (b) the **gap list** above (a sheet in the catalog with no sliced folder is a sheet the swap cannot restyle yet), (c) the **theme text** that feeds `img_prompt` word-bank rows (`parts.pdl`, `words.pdl`) when a diffusion layer is wanted.
+
+## 6. Plan: usable assets in the meantime (DOC, nothing below is built)
+**Design-choice test (D27):** three shapes for "assets we can ship soon". **A. Restyle op over the sliced cells** (a new verb in `generator_tile_op`: read a cell's `sprite.csv`, remap colours to a Tear-it palette row, optionally add an outline pass, write a candidate): one authority per fact (the sliced cell is the shape source, the palette is a `.pdl` row), modular (data-driven, a new sheet is a new role row), scalable (the 10th sheet is one row), house shapes (op plus `.pdl` plus harness), cheap (no GPU, no model). **B. Diffusion drafts** (debil, `img_draft.py`): useful as a layer, but slow, costs quota-free but heavy compute, and the output is not shape-safe for autotiles; **C. Hand paint:** best quality, slowest, needs a person for every cell. **Recommendation: A first, B as an optional layer per owner answer 6, C only for a cell the sheets lack.** Matches owner answer 1 ("same cell size, same table, restyle so it is not the original").
+
+Steps, smallest first, each with the check that can fail:
+1. **`restyle` verb** in `generator_tile_op.c` (text-include, no new Python). Input: a role row (`ROLE | sheet | cell | name | note`), a `PALETTE` row (source-hue to target mapping, gold and black accent). Output: candidate under `out/bad/` (never `good/`; the owner approves, owner answer 4). Harness case: restyled bytes differ from the source; the **alpha mask is identical** (shape preserved); same seed same bytes; a mutated palette must change the hash (negative test).
+2. **Real 96x144 block** for `shapes`: read an `Outside_a2` cell as the source block instead of the colour-code proof (check its dimensions first: I did not open a cell file), so the 48 shapes carry real pixels; the existing 37-case harness must still pass.
+3. **First swap: the rpg-edit cabin room**, 2D then 3D, one screenshot pair by `board_ctl snap` (the `rpg-space-board-driving` skill); the 3D view must use the same painted floor (owner evidence rule: before and after PNG with a click path).
+4. **Characters:** the standing frame (body plus one garment) for Harold, then the pets, with the Tear-it mark (answer 3); the 12-frame walk as the same cell run 12 times with a frame layer; **no RTP body** (rejected, `TEAR-IT-TILES-100`).
+5. **Fill the gap list** from section 5 in the order the first rooms need; add `ROLE` rows from the RTP catalog.
+6. **Cap `generator-hq/out/`** (AGENTS.md runtime-file rule): an enforced file/byte cap, a second guard in `cpu_guard`'s `hygiene_sweep()`, a row in `BOOK/03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md`.
+Cost: restyle is CPU-only and small; run niced through `cpu_gate`, one job at a time; no idle cost (it is a verb, not a poller).
+
+## 7. Open items that are the owner's, not an agent's
+- **The RPG Maker asset licence.** Owner answer 1 allows copied pixels; **nobody has read the actual terms** (M0 of the roadmap names this check). Until a person reads them, treat every restyled cell as **internal only**, not shipped.
+- Approval of the Tear-it pattern in writing (unlocks `out/good/`), and yes/no on each contact sheet.
+- Which sheet class after the cabin; whether a debil diffusion layer is wanted at all.
+- Pending from earlier rounds: per-caster vs global glyph senses (A-001), signing-key owner (A-004).
+
+## 8. Known leftovers (OBS)
+- `generator_tile_op.c` has 10 pre-existing `-Wall -Wextra` warnings (misleading indentation, ignored `fgets` results), left as Grok wrote them.
+- No mutation test yet on the shape table (shape check has not been seen to fail).
+- ~27 other copies of `stb_image_write.h` exist (md5 845b8b43); a separate cleanup.
+- Reports for the owner: `XO/31.Nov/nov-5/` (this doc is copied there as `0.handoff-generator-grok-work-and-interim-assets-2026-11-05.md`).
