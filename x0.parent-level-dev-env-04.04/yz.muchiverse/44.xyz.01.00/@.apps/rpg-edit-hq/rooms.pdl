@@ -10,3 +10,6 @@ ROOM | store  | Store   | 1 | 2 | over | 24 | 17 | 24 | interior
 ROOM | hotel  | Hotel   | 3 | 4 | over | 24 | 17 | 24 | interior
 ROOM | school | School  | 5 | 4 | over | 24 | 17 | 24 | interior
 ROOM | cabin  | Cabin   | 0 | 2 | over | 24 | 17 | 24 | interior
+# book centroid. These two pages are rooms of the editor (the page menu lists every ROOM). The 6x5 voxel court is not painted here yet.
+ROOM | test   | test    | 1 | 4 | over | 24 | 17 | 24 | interior
+ROOM | live   | live    | 1 | 4 | over | 24 | 17 | 24 | interior
