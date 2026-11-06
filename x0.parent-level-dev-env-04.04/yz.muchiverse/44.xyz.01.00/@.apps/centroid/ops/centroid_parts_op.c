@@ -75,9 +75,9 @@ static int stamp(const char *cells, const char *pdl) {
             int wall = 0;
             int in = x >= x0 && x < x0 + RW && y >= y0 && y < y0 + RH;
             int rim = in && (x == x0 || x == x0 + RW - 1 || y == y0 || y == y0 + RH - 1);
-            int door = 0;
-            for (int i = 0; i < leaf_n; i++) if (x == sx[i] && y == sy[i]) door = 1;
-            if (rim && !door) wall = wall_slot;
+            /* One opening, the cell the door picture stands in. The other rim cells stay wall. */
+            int opening = (x == sx[1] && y == sy[1]);
+            if (rim && !opening) wall = wall_slot;
             fprintf(o, "%s1,%d,%d", x ? " " : "", wall, depth_at(x, y));
         }
         fputc('\n', o);
@@ -135,14 +135,7 @@ static int door_flip(const char *cells) {
     }
     fclose(cf);
     int nb = bit ? 0 : 1;
-    for (int i = 0; i < leaf_n; i++) {
-        int fx = bit ? ox[i] : sx[i], fy = bit ? oy[i] : sy[i];
-        int tx = bit ? sx[i] : ox[i], ty = bit ? sy[i] : oy[i];
-        if (fy < 0 || fx < 0 || ty < 0 || tx < 0 || fy >= gh || fx >= gw || ty >= gh || tx >= gw) return 1;
-        int moved = Wv[fy][fx] ? Wv[fy][fx] : wall_slot;
-        Wv[fy][fx] = 0;
-        Wv[ty][tx] = moved;
-    }
+    /* The opening stays a hole in the wall. The picture moves; the rock does not. */
     cf = fopen(cells, "w");
     if (!cf) return 1;
     fputs(head, cf);

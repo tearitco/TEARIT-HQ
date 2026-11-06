@@ -4347,7 +4347,8 @@ static int render_one_frame(void) {
                             for (int px = 0; px < 16; px++) {
                                 const unsigned char *s = frame + ((py * 16 + px) * 4);
                                 if (s[3] < 16) continue;
-                                for (int z = 0; z < 8 && nv < 16 * 24 * 8; z++) {
+                                int zlim = strcmp(g_mk.ev[i].name, "door") == 0 ? 1 : 8;
+                                for (int z = 0; z < zlim && nv < 16 * 24 * 8; z++) {
                                     vox[nv].lx = (unsigned char)px;
                                     vox[nv].ly = (unsigned char)(23 - py);
                                     vox[nv].lz = (unsigned char)z;
@@ -4365,9 +4366,16 @@ static int render_one_frame(void) {
                     }
                 }
                 float top = (g_mk.ev[i].name[0] == '!') ? 1.9f : 2.6f;
+                if (!strcmp(g_mk.ev[i].name, "door")) {
+                    /* A door is a slab 0.1 of a cell thick, standing in the wall opening. Not a full voxel column. */
+                    ADDBOX(g_mk.ev[i].x + 0.05f, 1.0, g_mk.ev[i].y + 0.45f,
+                           g_mk.ev[i].x + 0.95f, 1.9f, g_mk.ev[i].y + 0.55f,
+                           g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                } else {
                 ADDBOX(g_mk.ev[i].x + 0.15f, 1.0, g_mk.ev[i].y + 0.15f,
                        g_mk.ev[i].x + 0.85f, top, g_mk.ev[i].y + 0.85f,
                        g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                }
                 if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
             }
         }

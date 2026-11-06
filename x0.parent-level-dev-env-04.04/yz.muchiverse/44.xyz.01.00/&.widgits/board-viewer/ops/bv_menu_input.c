@@ -870,7 +870,7 @@ static int handle_one_key(int key) {
          * lands on tiles, never the Chinese/ascii view (that's '`').
          * Without this, once '`' has set view_2d_style=ascii it stays
          * ascii on every later '0' -> 2D. */
-        if (render_mode) write_kv(state_path, "view_2d_style", "");      /* empty = the book default 2D style (view.pdl VIEW | default_style), tiles for a book without one */
+        if (render_mode) write_kv(state_path, "view_2d_style", "tiles");      /* '0' into 2D is the RPG Maker tile picture, not ascii and not the book's scene */
         bump_screen_changed(project_root);
         return 0;
     }
