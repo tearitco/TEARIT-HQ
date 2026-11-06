@@ -19,7 +19,7 @@
 #include <sys/wait.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image.h"
-#define MAXT 16
+#define MAXT 64
 #define MAXK 6
 #define SAVE_SLOTS 20
 #define PW 768

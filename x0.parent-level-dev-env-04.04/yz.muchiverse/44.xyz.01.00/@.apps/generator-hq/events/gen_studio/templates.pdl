@@ -20,3 +20,5 @@ TEMPLATE | cast_chars_01 | cast | Cast people sheet 01: characters | warm,worn |
 TEMPLATE | cast_faces_01 | cast | Cast people sheet 01: faces | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | faces | 1
 TEMPLATE | cast_chars_02 | cast | Cast people sheet 02: characters | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | chars | 2
 TEMPLATE | cast_faces_02 | cast | Cast people sheet 02: faces | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | faces | 2
+TEMPLATE | sf_outside_a5 | ground  | Sci-fi Outside A5: floor tiles | warm,wet,wear,grain,edge,scramble | @.apps/generator-hq/events/gen_ground/ground.pdl | root:#.NNEST_ASSETS/rmmv-www-img/tilesets/SF_Outside_A5.png
+TEMPLATE | icons_scifi | icons | Sci-fi props: icon sheet (clone pod, Soul Pen stand, time beacon...) | warm,worn,round,big,metal,scramble | @.apps/generator-hq/events/gen_voxel/scifi.pdl | prop | 6

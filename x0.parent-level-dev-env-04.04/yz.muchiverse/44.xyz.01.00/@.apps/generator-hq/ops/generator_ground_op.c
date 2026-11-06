@@ -5,7 +5,7 @@
  * What is generated: every colour. Interior = a 24-pixel-periodic texture (so any two quarters meet without a seam), edge ring = darker ink steps by distance to the transparent area,
  * colours = a 5-step ramp from hue / saturation / lightness / contrast. Blocks with no BLOCK row stay transparent (nothing of the original is copied).
  * Rows ('|' separated, '#' comments):
- *   RECIPE | name | hue 0..359 | sat 0..100 | light 0..100 | contrast 0..100 | pattern noise|cobble|plank|blades | scale 1..3 | seed
+ *   RECIPE | name | hue 0..359 | sat 0..100 | light 0..100 | contrast 0..100 | pattern noise|cobble|plank|blades|plate|grating|circuit | scale 1..3 | seed
  *   BLOCK  | <sheet name without .png> | <block 0.. row-major, 8 across> | <recipe name>
  * Knobs (weights): warm -1..1 (hue toward orange / blue), wet 0..1 (darker, more saturated, specular glints), wear 0..1 (dark speckle), grain 0..1 (fine noise), edge 0..1 (ring 2..6 px).
  * Weights come from the Concept Bank spoke ground_<recipe>.pdl (slots POINTS_TO=ground_warm|ground_wet|ground_wear|ground_grain|ground_edge, WEIGHT) when bank= is given; a missing
@@ -51,7 +51,7 @@ static int read_rows(const char *path) {
             r = &R[nr]; snprintf(r->name, sizeof r->name, "%s", fld(&p)); r->hue = atof(fld(&p)); r->sat = atof(fld(&p)); r->light = atof(fld(&p)); r->contrast = atof(fld(&p));
             snprintf(r->pattern, sizeof r->pattern, "%s", fld(&p)); r->scale = atoi(fld(&p)); r->seed = (unsigned)strtoul(fld(&p), NULL, 10);
             if (r->hue < 0 || r->hue > 359 || r->sat < 0 || r->sat > 100 || r->light < 0 || r->light > 100 || r->contrast < 0 || r->contrast > 100 || r->scale < 1 || r->scale > 3 ||
-                (strcmp(r->pattern, "noise") && strcmp(r->pattern, "cobble") && strcmp(r->pattern, "plank") && strcmp(r->pattern, "blades"))) { fprintf(stderr, "bad RECIPE %s\n", r->name); fclose(f); return 2; }
+                (strcmp(r->pattern, "noise") && strcmp(r->pattern, "cobble") && strcmp(r->pattern, "plank") && strcmp(r->pattern, "blades") && strcmp(r->pattern, "plate") && strcmp(r->pattern, "grating") && strcmp(r->pattern, "circuit"))) { fprintf(stderr, "bad RECIPE %s\n", r->name); fclose(f); return 2; }
             nr++;
         } else if (!strcmp(k, "BLOCK")) {
             Block *b; int i, ok = 0; if (nb >= MAXB) { fprintf(stderr, "too many blocks\n"); fclose(f); return 2; }
@@ -109,6 +109,25 @@ static double texture(const Recipe *r, int x, int y) {
         int row = y / 6, off = (int)(hash32(r->seed ^ (unsigned)row) % 24), xx = (x + off) % 24;
         if (y % 6 == 0 || xx == 0) return -1.0;
         return 0.3 + 0.4 * ((hash32(r->seed ^ (unsigned)row * 31u) & 255) / 255.0) + 0.25 * (vn(x * 3 % 24, y, 4, 12, r->seed) - 0.5);
+    }
+    if (!strcmp(r->pattern, "plate")) { /* hull plating (sci-fi): 12 px panels, dark seams, a rivet in each panel corner, a brightness per panel; 24 px periodic */
+        int px = x % 12, py = y % 12, pi = x / 12, pj = y / 12;
+        if (px == 0 || py == 0) return -1.0;
+        if ((px == 2 || px == 10) && (py == 2 || py == 10)) return 0.95;
+        return 0.4 + 0.3 * ((hash32(r->seed ^ (unsigned)(pi * 31 + pj * 17)) & 255) / 255.0) + 0.12 * (vn(x, y, 6, 6, r->seed) - 0.5);
+    }
+    if (!strcmp(r->pattern, "grating")) { /* deck grating (sci-fi): 6 px slats with a dark gap and a highlight line, a bolt every 12 px; 24 px periodic */
+        int sy = y % 6;
+        if (sy == 0) return -1.0;
+        if (x % 12 == 0) return 0.2;
+        if (sy == 1) return 0.8;
+        return 0.4 + 0.15 * (vn(x, y, 6, 6, r->seed) - 0.5);
+    }
+    if (!strcmp(r->pattern, "circuit")) { /* circuit board (sci-fi): dark base, 6 px cells each carrying a horizontal, vertical or elbow trace, a bright node at the middle; 24 px periodic */
+        int cx = x / 6, cy = y / 6, sx = x % 6, sy = y % 6, o = (int)(hash32(r->seed ^ (unsigned)(cx * 31 + cy * 17)) % 3);
+        if (sx == 3 && sy == 3) return 0.95;
+        if ((o == 0 && sy == 3) || (o == 1 && sx == 3) || (o == 2 && ((sy == 3 && sx <= 3) || (sx == 3 && sy >= 3)))) return 0.72;
+        return 0.22 + 0.1 * (vn(x, y, 6, 6, r->seed) - 0.5);
     }
     if (!strcmp(r->pattern, "blades")) return 0.15 + 0.7 * (0.6 * vn(x, y, 12, 4, r->seed) + 0.4 * vn(x, y, 6, 12, r->seed + 7));
     return 0.65 * vn(x, y, r->scale == 1 ? 6 : r->scale == 2 ? 4 : 3, r->scale == 1 ? 6 : r->scale == 2 ? 4 : 3, r->seed) + 0.35 * vn(x, y, 12, 12, r->seed + 3);
@@ -186,7 +205,7 @@ static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigne
     return painted;
 }
 /* floormap <A5 sheet.png>: print BLOCK rows (a starting point to paste into ground.pdl, then hand-edit) for every non-empty 48 px cell of an A5 floor sheet. The recipe is picked from the cell's mean colour (the D27 style rule): grey = stone, green = grass, orange/brown = dirt, blue = ice, red = lava, purple = violet. The data authority stays in ground.pdl. */
-static int floormap(const char *path) {
+static int floormap(const char *path, int scifi) {
     int w, h, c, x, y, cx, cy; unsigned char *px; char sname[100], *base, *dot;
     px = stbi_load(path, &w, &h, &c, 4); if (!px) { fprintf(stderr, "cannot read %s\n", path); return 2; }
     if (w != 384 || h != 768) { fprintf(stderr, "floormap wants an A5 sheet of 384 x 768\n"); stbi_image_free(px); return 2; }
@@ -198,7 +217,9 @@ static int floormap(const char *path) {
         sr /= cnt * 255.0; sg /= cnt * 255.0; sb /= cnt * 255.0; mx = fmax(sr, fmax(sg, sb)); mn = fmin(sr, fmin(sg, sb)); lig = (mx + mn) / 2; d = mx - mn;
         sat = d < 1e-9 ? 0 : d / (1 - fabs(2 * lig - 1));
         if (d > 1e-9) { if (mx == sr) hue = 60 * fmod((sg - sb) / d + 6, 6); else if (mx == sg) hue = 60 * ((sb - sr) / d + 2); else hue = 60 * ((sr - sg) / d + 4); }
-        if (sat < 0.14) rec = "stone"; else if (hue >= 70 && hue < 170) rec = "grass"; else if (hue >= 170 && hue < 250) rec = "ice"; else if (hue >= 250 && hue < 340) rec = "violet"; else if (hue >= 15 && hue < 70) rec = "dirt"; else rec = "lava";
+        if (scifi) { /* sci-fi set: dark = deck, cyan/blue = circuit, red/orange = rust or sunmetal, light grey = hull, warm grey = regolith */
+            if (lig < 0.26) rec = "deck"; else if (sat > 0.25 && hue >= 160 && hue < 260) rec = "circuit"; else if (sat > 0.3 && (hue < 20 || hue >= 340)) rec = "rust"; else if (sat > 0.3 && hue >= 20 && hue < 70) rec = lig > 0.42 ? "sunmetal" : "rust"; else if (hue >= 20 && hue < 70 && lig < 0.6) rec = "regolith"; else rec = "hull";
+        } else if (sat < 0.14) rec = "stone"; else if (hue >= 70 && hue < 170) rec = "grass"; else if (hue >= 170 && hue < 250) rec = "ice"; else if (hue >= 250 && hue < 340) rec = "violet"; else if (hue >= 15 && hue < 70) rec = "dirt"; else rec = "lava";
         printf("BLOCK | %s | %d | %s\n", sname, cy * 8 + cx, rec);
     }
     stbi_image_free(px); return 0;
@@ -251,8 +272,8 @@ int main(int argc, char **argv) {
         argc--;
     }
     if (argc == 3 && !strcmp(argv[1], "check")) { int rc = read_rows(argv[2]); if (!rc) printf("GROUNDCHECK recipes=%d blocks=%d\n", nr, nb); return rc; }
-    if (argc == 3 && !strcmp(argv[1], "floormap")) return floormap(argv[2]);
+    if ((argc == 3 || (argc == 4 && !strcmp(argv[3], "scifi"))) && !strcmp(argv[1], "floormap")) return floormap(argv[2], argc == 4);
     if (argc == 5 && !strcmp(argv[1], "ground")) return ground(argv);
-    fprintf(stderr, "usage: ground <ground.pdl> <original-sheet.png> <out.png> [bank=<dir>] [knob=name:delta] [select=bc,br,bw,bh] [crop=bc,br,bw,bh] | check <ground.pdl> | floormap <A5 sheet.png>\n");
+    fprintf(stderr, "usage: ground <ground.pdl> <original-sheet.png> <out.png> [bank=<dir>] [knob=name:delta] [select=bc,br,bw,bh] [crop=bc,br,bw,bh] | check <ground.pdl> | floormap <A5 sheet.png> [scifi]\n");
     return 2;
 }

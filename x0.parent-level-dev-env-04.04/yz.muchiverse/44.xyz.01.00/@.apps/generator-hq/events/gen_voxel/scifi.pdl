@@ -1,0 +1,63 @@
+# Sci-fi props, kind prop in their OWN file so a template reads only these (the voxel op accepts the kinds char, item, building, prop). D34, owner 2026-11-05: "i wish we had our own scifi in / outside"). New models of kind scifi, drawn from round and box primitives like props.pdl (grid 24, y = depth, front 0, z up).
+#   PART | model | part | x | y | z | w | d | h | colour      CYL | model | part | cx | cy | z | radius | height | colour      ELL | model | part | cx | cy | cz | rx | ry | rz | colour
+# Names borrow the Soul Pen lore lightly (DOC, not canon, local data only): clone pods (clones are manufactured), the Soul Pen stand, a time beacon (the timeship), a Metal Sun fuel cell, a Centroid terminal, Lunaria lamps. Colours: hull steel #5a6a7a, dark steel #3a4654, glass cyan #4ae0ff, warning amber #ffb040.
+MODEL | console | prop
+PART | console | base   | 3 | 4 | 0  | 18 | 12 | 8  | #3a4654
+PART | console | slope  | 3 | 4 | 8  | 18 | 12 | 2  | #5a6a7a
+PART | console | screen | 5 | 3 | 8  | 14 | 1  | 6  | #1a2430
+PART | console | glow   | 6 | 2 | 9  | 12 | 1  | 4  | #4ae0ff
+PART | console | keys   | 5 | 3 | 5  | 14 | 1  | 2  | #ffb040
+MODEL | centroid_terminal | prop
+CYL | centroid_terminal | foot   | 12 | 12 | 0  | 6 | 3  | #3a4654
+CYL | centroid_terminal | stem   | 12 | 12 | 3  | 2 | 7  | #5a6a7a
+PART | centroid_terminal | screen | 5 | 9 | 10 | 14 | 3 | 9 | #20242c
+PART | centroid_terminal | glow   | 6 | 8 | 11 | 12 | 1 | 7 | #4ae0ff
+MODEL | clone_pod | prop
+CYL | clone_pod | base  | 12 | 12 | 0  | 8 | 3  | #3a4654
+CYL | clone_pod | glass | 12 | 12 | 3  | 6 | 15 | #5ad0e8
+ELL | clone_pod | body  | 12 | 12 | 10 | 3 | 3 | 6 | #d6b090
+CYL | clone_pod | cap   | 12 | 12 | 18 | 7 | 2  | #5a6a7a
+CYL | clone_pod | rim   | 12 | 12 | 3  | 7 | 1  | #4ae0ff
+MODEL | soul_pen_stand | prop
+CYL | soul_pen_stand | pedestal | 12 | 12 | 0 | 5 | 6  | #3a4654
+CYL | soul_pen_stand | collar   | 12 | 12 | 6 | 6 | 1  | #5a6a7a
+CYL | soul_pen_stand | pen      | 12 | 12 | 7 | 1 | 11 | #ffd24a
+ELL | soul_pen_stand | halo     | 12 | 12 | 13 | 4 | 4 | 4 | #ffe890
+MODEL | time_beacon | prop
+CYL | time_beacon | base | 12 | 12 | 0  | 6 | 3  | #3a4654
+CYL | time_beacon | mast | 12 | 12 | 3  | 2 | 14 | #5a6a7a
+ELL | time_beacon | lamp | 12 | 12 | 17 | 5 | 5 | 3 | #ff6a4a
+MODEL | metal_sun_cell | prop
+PART | metal_sun_cell | body  | 4 | 4 | 0  | 16 | 16 | 12 | #5a6a7a
+PART | metal_sun_cell | band1 | 4 | 4 | 3  | 16 | 16 | 1  | #3a4654
+PART | metal_sun_cell | band2 | 4 | 4 | 8  | 16 | 16 | 1  | #3a4654
+ELL | metal_sun_cell | core  | 12 | 12 | 12 | 6 | 6 | 4 | #ffb040
+MODEL | airlock_door | prop
+PART | airlock_door | frame  | 1 | 10 | 0 | 22 | 4 | 22 | #5a6a7a
+PART | airlock_door | panel  | 4 | 9  | 1 | 16 | 2 | 19 | #8a96a6
+PART | airlock_door | seam   | 11 | 8 | 1 | 2  | 1 | 19 | #20242c
+PART | airlock_door | window | 6 | 8  | 12 | 4 | 1 | 4  | #4ae0ff
+PART | airlock_door | stripe | 1 | 8  | 0 | 22 | 1 | 2  | #ffb040
+MODEL | supply_crate | prop
+PART | supply_crate | body  | 3 | 3 | 0 | 18 | 18 | 14 | #6a7a8a
+PART | supply_crate | band1 | 3 | 2 | 3 | 18 | 1 | 2 | #3a4654
+PART | supply_crate | band2 | 3 | 2 | 9 | 18 | 1 | 2 | #3a4654
+PART | supply_crate | label | 8 | 2 | 5 | 8 | 1 | 3 | #ffb040
+MODEL | hologram_table | prop
+CYL | hologram_table | foot | 12 | 12 | 0 | 8 | 6  | #3a4654
+CYL | hologram_table | top  | 12 | 12 | 6 | 7 | 1  | #20242c
+ELL | hologram_table | holo | 12 | 12 | 11 | 5 | 5 | 4 | #4ae0ff
+MODEL | lunar_lamp | prop
+CYL | lunar_lamp | post | 12 | 12 | 0  | 1 | 18 | #5a6a7a
+CYL | lunar_lamp | foot | 12 | 12 | 0  | 3 | 2  | #3a4654
+ELL | lunar_lamp | bulb | 12 | 12 | 19 | 3 | 3 | 2 | #fff0a0
+MODEL | comm_mast | prop
+CYL | comm_mast | base | 12 | 12 | 0  | 4 | 2  | #3a4654
+CYL | comm_mast | mast | 12 | 12 | 2  | 1 | 18 | #5a6a7a
+ELL | comm_mast | dish | 12 | 12 | 16 | 6 | 2 | 6 | #c8d4e0
+MODEL | storage_locker | prop
+PART | storage_locker | body  | 5 | 6 | 0  | 14 | 12 | 20 | #4a5a6a
+PART | storage_locker | seam  | 11 | 5 | 1 | 2  | 1  | 18 | #20242c
+PART | storage_locker | vent1 | 7 | 5 | 16 | 4 | 1 | 1 | #20242c
+PART | storage_locker | vent2 | 13 | 5 | 16 | 4 | 1 | 1 | #20242c
+PART | storage_locker | light | 7 | 5 | 3 | 2 | 1 | 2 | #4ae0ff

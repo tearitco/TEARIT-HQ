@@ -5,7 +5,7 @@ ENV | LC_ALL | C
 CASE    | studio
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | templates | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl
-EXPECT_OUT | TEMPLATES count=17 | seventeen-templates-listed-plus-6-cast-sheets
+EXPECT_OUT | TEMPLATES count=19 | nineteen-templates-listed-plus-the-sci-fi-floors-and-props
 EXPECT_OUT | TEMPLATE outside_b kind=objects | the-object-sheet-is-a-template
 EXPECT_OUT | TEMPLATE dungeon_a2 kind=ground | a-ground-sheet-is-a-template
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ob.png
@@ -430,3 +430,42 @@ EXPECT_OUT | status=template cast_chars_00 | the-cast-template-renders-without-a
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
 EXPECT_OUT | REPLAY ok | a-saved-cast-record-replays-exactly
+
+# sci-fi (D34): hull plate, deck grating and circuit patterns, sunmetal/rust/regolith recipes, the SF_Outside_A5 floors and 12 props; every new pattern must stay 24 px periodic
+CASE    | scifi
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | sf_outside_a5 | $T/sf.png | variant=1
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/sf.png
+EXPECT_OUT | non_empty=127 unique=127 | the-sci-fi-floor-sheet-has-127-unique-cells
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | sf_outside_a5 | $T/sfs.png | variant=1 | scramble=0.5
+RUN | /usr/bin/cmp | -s | $T/sf.png | $T/sfs.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-sci-fi-floors
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sf.png | 96 | 0 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-hull-pattern-repeats-every-24-px-cell-2-all-576-pixels-checked
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sfs.png | 96 | 0 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-scrambled-hull-pattern-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sf.png | 0 | 0 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-deck-pattern-repeats-every-24-px-cell-0-all-576-pixels-checked
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sfs.png | 0 | 0 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-scrambled-deck-pattern-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sf.png | 288 | 288 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-circuit-pattern-repeats-every-24-px-cell-54-all-576-pixels-checked
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sfs.png | 288 | 288 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-scrambled-circuit-pattern-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sf.png | 48 | 192 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-sunmetal-pattern-repeats-every-24-px-cell-33-all-576-pixels-checked
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sfs.png | 48 | 192 | 24 | 24 | 24
+EXPECT_OUT | checked=576 mismatches=0 | the-scrambled-sunmetal-pattern-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/sf.png | 48 | 0 | 24 | 24 | 23
+EXPECT_EXIT | 1 | NEGATIVE-the-tiling-check-fails-on-a-wrong-period-on-the-sci-fi-floors
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/scifi.pdl
+EXPECT_OUT | models=12 parts=48 | the-sci-fi-props-parse
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_scifi | $T/p.png
+EXPECT_OUT | models=12 | the-sci-fi-icon-template-renders-12-props
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | icons_scifi | $T/p2.png | scramble=0.5
+RUN | /usr/bin/cmp | -s | $T/p.png | $T/p2.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-sci-fi-props
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | sf_outside_a5 | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=template sf_outside_a5 | the-nineteenth-template-can-be-picked-the-ui-limit-was-16
