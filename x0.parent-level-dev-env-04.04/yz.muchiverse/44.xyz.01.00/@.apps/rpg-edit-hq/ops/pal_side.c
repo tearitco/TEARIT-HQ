@@ -250,23 +250,42 @@ int main(int argc, char **argv) {
     fprintf(o, "n_pcat=%d\npal_is_list=%s\npal_is_tiles=%s\npal_can_back=%s\npal_key=%s\npal_title=%s\npal_sub=%s\npal_can_prev=%s\npal_can_next=%s\n", nrow, lvl != 4 ? "1" : "", lvl == 4 ? "1" : "", lvl > 0 ? "1" : "", nk, title, (lvl >= 1 && lvl <= 3) ? kname : "", (lvl == 4 && g_off > 0) ? "1" : "", (lvl == 4 && g_off + MAXT < ntot) ? "1" : "");
     if (lvl == 0) { int w = 0; for (int i = 0; i < nc; i++) if (SIDE[i]) { fprintf(o, "pcat_%d_key=%s\npcat_%d_label=%s\n", w, KEY[i], w, LAB[i]); w++; } }
     else for (int i = 0; i < nrow; i++) { const char *k2 = RK[lvl - 1][i], *l2 = RL[lvl - 1][i][0] ? RL[lvl - 1][i] : RK[lvl - 1][i]; fprintf(o, "pcat_%d_key=%s\npcat_%d_label=%s\n", i, k2, i, l2); }
-    /* Top bar: one dropdown row per published thumb. Pals gets my-pals, Palettes gets my-palettes. The state file is glyph, label, sprite. */
+    /* Pals tab: the published my-pals thumbs. Palettes tab: the same rows as LyfeDesk's palettes cell (#.desktop/livedesk_taskbar.pdl palettes_menu_N). */
     {
-        static const char *cats[2] = { "my-pals", "my-palettes" };
-        static const char *pres[2] = { "tbpals", "tbpal" };
-        for (int c = 0; c < 2; c++) {
-            char sp[4200]; snprintf(sp, sizeof sp, "%s/&.widgits/palettes/palettes-%s_state.txt", house, cats[c]);
-            FILE *sf = fopen(sp, "r"); int n = 0; char sln[1024];
-            if (sf) while (n < 24 && fgets(sln, sizeof sln, sf)) {
-                char *t1 = strchr(sln, '\t'); if (!t1) continue; t1++;
-                char *t2 = strchr(t1, '\t'); char lab[96];
-                size_t L = t2 ? (size_t)(t2 - t1) : strlen(t1); if (L > 90) L = 90; memcpy(lab, t1, L); lab[L] = 0; trim(lab);
-                if (!lab[0]) continue;
-                fprintf(o, "%s_%d_label=%s\n", pres[c], n, lab); n++;
-            }
-            if (sf) fclose(sf);
-            fprintf(o, "n_%s=%d\n", pres[c], n);
+        char sp[4200]; snprintf(sp, sizeof sp, "%s/&.widgits/palettes/palettes-my-pals_state.txt", house);
+        FILE *sf = fopen(sp, "r"); int n = 0; char sln[1024];
+        if (sf) while (n < 24 && fgets(sln, sizeof sln, sf)) {
+            char *t1 = strchr(sln, '\t'); if (!t1) continue; t1++;
+            char *t2 = strchr(t1, '\t'); char lab[96];
+            size_t L = t2 ? (size_t)(t2 - t1) : strlen(t1); if (L > 90) L = 90; memcpy(lab, t1, L); lab[L] = 0; trim(lab);
+            if (!lab[0]) continue;
+            fprintf(o, "tbpals_%d_label=%s\n", n, lab); n++;
         }
+        if (sf) fclose(sf);
+        fprintf(o, "n_tbpals=%d\n", n);
+        char pd[4200]; snprintf(pd, sizeof pd, "%s/#.desktop/livedesk_taskbar.pdl", house);
+        char plab[24][64]; int have[24]; memset(have, 0, sizeof have); memset(plab, 0, sizeof plab);
+        char pkey[24][64]; memset(pkey, 0, sizeof pkey);
+        FILE *pf = fopen(pd, "r");
+        if (pf) while (fgets(sln, sizeof sln, pf)) {
+            char *a = strchr(sln, '|'); if (!a) continue; a++;
+            char *b = strchr(a, '|'); if (!b) continue; *b = 0; char *val = b + 1;
+            trim(a); trim(val);
+            int idx = 0; char suf[16] = "";
+            if (sscanf(a, "palettes_menu_%d_%15s", &idx, suf) != 2 || idx < 1 || idx > 24) continue;
+            if (!strcmp(suf, "label")) { snprintf(plab[idx - 1], 64, "%s", val); have[idx - 1] = 1; }
+            else { const char *c = strrchr(val, ':'); snprintf(pkey[idx - 1], 64, "%s", c ? c + 1 : val); }
+        }
+        if (pf) fclose(pf);
+        n = 0;
+        for (int i = 0; i < 24; i++) {
+            if (!have[i] || !plab[i][0] || !strcmp(plab[i], "cancel")) continue;
+            /* terumon art lives in my-pals now; the taskbar row still names the old library */
+            if (!strcmp(plab[i], "terumon")) snprintf(pkey[i], 64, "my-pals");
+            fprintf(o, "tbpal_%d_label=%s\ntbpal_%d_key=%s\n", n, plab[i], n, pkey[i]);
+            n++;
+        }
+        fprintf(o, "n_tbpal=%d\n", n);
     }
     char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");
