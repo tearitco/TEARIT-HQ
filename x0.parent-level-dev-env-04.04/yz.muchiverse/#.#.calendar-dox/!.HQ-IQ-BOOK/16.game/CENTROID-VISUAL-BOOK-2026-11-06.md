@@ -14,7 +14,7 @@ Several stories on the main island's footprint. No loading seam between the thre
 
 That is the engine test. D12's rule A (one height per cell) draws a stair and blocks a cliff, and its own note says it cannot put two floors on the same x,y. This picture is that case. So the campus is voxels, the shape D29 already chose for buildings (stacked boxes: roof, door, window) and the chunk shape mutaclysm already stores (`19.00-VOXEL-3D-ARCHITECTURE.md`: a column of z slices). D12 stays the rule for a flat board. It is not the campus.
 
-Working name, owner can rename: world **Centroid**, place **Spiral Court**. "Spiral" is from the screenplay's "report to Spiral Alley" (READ). The draft name Diagonal Alley is not used. This is not `map071` and not the Islands start room. The editor's `rooms.pdl` is a flat grid (`ROOM | ... | cols | rows`). A new book there cannot hold this volume until a room can be a voxel chunk. The book comes after the volume renders. The first authority is the chunk, not a second Islands page.
+Working name, owner can rename: world **Centroid**, place **Spiral Court**. "Spiral" is from the screenplay's "report to Spiral Alley" (READ). The draft name Diagonal Alley is not used. This is not `map071` and not the Islands start room. The editor book is **centroid**. It has two pages, **test** and **live**. The cell rows of a page may be a voxel chunk, because a flat `ROOM` grid cannot stack a roof on a room. The chunk stays the authority for the columns. The book is how you open them. Neither page is in rpg-edit yet.
 
 ## 2. The choice
 

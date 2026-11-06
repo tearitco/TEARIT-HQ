@@ -5,7 +5,8 @@ Status: **plan. Nothing here is built.** SAID = the owner on 2026-11-06. OBS = f
 Two runs of the same campus, named by the owner:
 
 - **centroid-test** is a playthrough on a scratch house. The University is **already built** when the run starts. Pets meet food and sleep, plant food, and make beds on that campus. They do not raise the buildings in this run. The harness can fail, and a second attempt is another phase table.
-- **centroid-live** is that same table on the board you watch. It adds one toggle: the RPG Maker skin or the generated skin. The columns do not change.
+- **centroid-live** is the same campus on the editor page `live`. It adds one toggle: the RPG Maker skin or the generated skin. The columns do not change.
+- Both pages live in one editor book, **centroid**. Page **test** is the harness campus. Page **live** is the one you open and watch. The book menu in rpg-edit is the pals list today, and the page menu is the rooms list. These two pages are rooms of that book. They are not in the editor yet.
 - **Later, not this test:** a manager is shown the master blueprint of that prebuilt campus and asked to break it into jobs for employees. The prebuilt volume is the answer. The manager passes only if the employees' placed columns match it. That run is not part of centroid-test.
 
 The campus shape stays `CENTROID-VISUAL-BOOK-2026-11-06.md` (three floating islands, voxel rooms, a swinging door). This note is only how the two runs are fed.

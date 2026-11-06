@@ -210,6 +210,9 @@ Owner: "do they have concept banks to go with them? with weights etc, that would
 
 **D34 scramble (2026-11-05): `scramble=S` on both generators + `tile_period_op`.** Owner: "i didn't see the scramble, lets do that". One authority per fact: the same option name and 0..1 meaning in both ops; the studio only passes it. Modular/scalable: a function of (x mod 24, y mod 24) for ground, a per-cell pass for props: a new recipe or model needs nothing. Long term: the bank master (per-recipe weights) is the labelled stopgap: scramble is a sheet-wide option for now, removal condition = per-concept scramble weights wanted. House shapes: option on existing ops, recorded and replayable, a pal harness with negatives (a wrong period must fail; S 2 refused; S 0 byte-identical), one new small read-only C op. **OBS:** scrambled ground still has 0 mismatches at period 24; props keep alpha (alpha_changed=0) and 61 of 61 tiles unique. Harness: studio 96/0, voxel 119, ground 17, sheets 60, level 11, char 12, tiles 37, restyle 44, all pass. Cost: none at idle; a render is unchanged for S 0.
 
+## D43 (SAID, 2026-11-06): book centroid, pages test and live, in the editor
+The owner corrected the container. One book, `centroid`, in rpg-edit. Page `test` is the harness campus. Page `live` is the one you watch, including the sheet toggle. D37 withdrew a flat page as the *volume*, not the book. The columns stay a voxel chunk. The pages are how that chunk is opened. Neither page exists in the editor yet.
+
 ## D42 (SAID, 2026-11-06): the centroid-test building is larger than the island buildings
 The 31-cell `court.pdl` is a checker, not the University. The Islands buildings are a 2×2 stamp plus a teleport interior. The test building, when it lands, has several floors on one footprint and a walkable room inside the voxels, and it is bigger than those stamps. Say so in `CENTROID-TEST-AND-LIVE-2026-11-06.md` when that file is the one the harness loads. Not built.
 
