@@ -11,6 +11,9 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#include "../../../&.widgits/_shared-lib/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
 /* tile_autotile.c is text-included, not linked (house sharing rule: inline, text-include or op+IPC, never header+link). It is a pure table; its main() is compiled out by TILE_AUTOTILE_LIB. */
@@ -405,13 +408,13 @@ static void proof_block(unsigned char *src) {
         p[3] = 255;
     }
 }
-static int shapes(const char *outdir) {
-    unsigned char *src = calloc(96 * 144, 4);
+static int shapes_from(const char *outdir, unsigned char *src, const char *label) {
     unsigned char *tile = calloc(48 * 48, 4);
     unsigned char *sheet = calloc((size_t)8 * 48 * 6 * 48, 4);
     int shape, q, y, x, fails = 0;
-    if (!src || !tile || !sheet) { free(src); free(tile); free(sheet); return 2; }
-    proof_block(src);
+    char bl[200] = "";
+    if (label) snprintf(bl, sizeof bl, " block=%.150s", label);
+    if (!tile || !sheet) { free(tile); free(sheet); return 2; }
     for (shape = 0; shape < 48; shape++) {
         int b[4][6];
         if (!tile_autotile_blits(0, shape, 48, b)) { fails++; continue; }
@@ -444,12 +447,44 @@ static int shapes(const char *outdir) {
         char path[760];
         snprintf(path, sizeof path, "%s/sheet.png", outdir);
         if (write_png(path, sheet, 8 * 48, 6 * 48) != 0) fails++;
-        printf("SHAPES floor=48 wrote=%s quad=%s\n", outdir, fails ? "bad" : "ok");
+        printf("SHAPES floor=48%s wrote=%s quad=%s\n", bl, outdir, fails ? "bad" : "ok");
     } else {
-        printf("SHAPES floor=48 quad=%s\n", fails ? "bad" : "ok");
+        printf("SHAPES floor=48%s quad=%s\n", bl, fails ? "bad" : "ok");
     }
-    free(src); free(tile); free(sheet);
+    free(tile); free(sheet);
     return fails ? 4 : 0;
+}
+/* The proof block: flat colours, so a wrong quadrant shows as a wrong colour (the original check). */
+static int shapes(const char *outdir) {
+    int rc;
+    unsigned char *src = calloc(96 * 144, 4);
+    if (!src) return 2;
+    proof_block(src);
+    rc = shapes_from(outdir, src, NULL);
+    free(src);
+    return rc;
+}
+/* A real block: block N (96x144) of a whole RPG Maker autotile sheet, 8 blocks across (A2: 768x576 = 8 x 4 blocks).
+ * The table is the same, so the 48 shapes now carry real pixels, edges included. */
+static int shapes_sheet(const char *outdir, const char *sheet, int idx) {
+    int w = 0, h = 0, n = 0, bx, by, y, rc;
+    unsigned char *img = stbi_load(sheet, &w, &h, &n, 4), *src;
+    char label[160], *base;
+    if (!img) { fprintf(stderr, "cannot read PNG %s\n", sheet); return 2; }
+    if (w % 96 != 0 || h % 144 != 0 || idx < 0 || idx >= (w / 96) * (h / 144)) {
+        fprintf(stderr, "sheet %dx%d has no block %d (blocks are 96x144)\n", w, h, idx);
+        stbi_image_free(img); return 2;
+    }
+    bx = (idx % (w / 96)) * 96; by = (idx / (w / 96)) * 144;
+    src = malloc(96 * 144 * 4);
+    if (!src) { stbi_image_free(img); return 2; }
+    for (y = 0; y < 144; y++) memcpy(src + y * 96 * 4, img + ((by + y) * w + bx) * 4, 96 * 4);
+    stbi_image_free(img);
+    base = strrchr(sheet, '/'); base = base ? base + 1 : (char *)sheet;
+    snprintf(label, sizeof label, "%.100s#%d", base, idx);
+    rc = shapes_from(outdir, src, label);
+    free(src);
+    return rc;
 }
 /* ---- restyle: recolour sliced RPG Maker cells into a Tear-it look (decision D27, option A) ----
  *   generator_tile_op.+x restyle <style.pdl> <outdir> <cell sprite.csv>...
@@ -602,15 +637,42 @@ static int restyle(const char *stylef, const char *outdir, int ncell, char **cel
     return rc;
 }
 
+/* contact <out.png> <cols> <cell sprite.csv>...: lay cells out in a grid, in the order given (the owner reviews one contact sheet at a time). */
+static int contact(const char *outpng, int cols, int ncell, char **cells) {
+    int rows, cw = 0, ch = 0, i, y, rc;
+    unsigned char *img = NULL;
+    if (cols < 1 || cols > 32 || ncell < 1) return 2;
+    rows = (ncell + cols - 1) / cols;
+    for (i = 0; i < ncell; i++) {
+        int w, h;
+        unsigned char *c = read_cell(cells[i], &w, &h);
+        if (!c) { fprintf(stderr, "cannot read cell %s\n", cells[i]); free(img); return 2; }
+        if (i == 0) {
+            cw = w; ch = h;
+            img = calloc((size_t)cols * cw * rows * ch, 4);
+            if (!img) { free(c); return 2; }
+        } else if (w != cw || h != ch) { fprintf(stderr, "cell size differs: %s\n", cells[i]); free(c); free(img); return 2; }
+        for (y = 0; y < ch; y++) memcpy(img + (((i / cols) * ch + y) * (cols * cw) + (i % cols) * cw) * 4, c + y * cw * 4, (size_t)cw * 4);
+        free(c);
+    }
+    rc = write_png(outpng, img, cols * cw, rows * ch);
+    if (rc == 0) printf("CONTACT %s cells=%d cols=%d size=%dx%d\n", outpng, ncell, cols, cols * cw, rows * ch);
+    free(img);
+    return rc == 0 ? 0 : 2;
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
     if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
+    if (argc == 5 && strcmp(argv[1], "shapes") == 0) return shapes_sheet(argv[2], argv[3], atoi(argv[4]));
+    if (argc == 4 && strcmp(argv[1], "shapes-check") == 0) return shapes_sheet(NULL, argv[2], atoi(argv[3]));
     if (argc >= 5 && strcmp(argv[1], "restyle") == 0) return restyle(argv[2], argv[3], argc - 4, argv + 4);
+    if (argc >= 5 && strcmp(argv[1], "contact") == 0) return contact(argv[2], atoi(argv[3]), argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | shapes-check | shapes <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
     return 2;
 }

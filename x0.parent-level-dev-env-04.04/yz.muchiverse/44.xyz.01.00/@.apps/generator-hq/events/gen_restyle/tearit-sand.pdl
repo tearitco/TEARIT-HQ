@@ -1,0 +1,6 @@
+# Restyle style: Tear-it sand (interim reference sheets, D27). Warm ramp for sand, desert and wood floors; gold accent speckle.
+GEN | ramp | #1c1410,#4a3524,#7d5a38,#b88c58,#ecd29a
+GEN | accent | #ffd24a
+GEN | accent_per256 | 1
+GEN | seed | 20261105
+GEN | outline | 1

@@ -31,3 +31,27 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/gree
 EXPECT_EXIT | 2 | NEGATIVE-a-missing-cell-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/green.pdl | $T/f | $HOUSE/&.widgits/palettes/sprites/rmmv/Outside_b/001/sprite.csv
 EXPECT_EXIT | 0 | a-blank-cell-is-skipped-not-an-error
+
+# A whole RPG Maker sheet in #.NNEST_ASSETS gives real 96x144 blocks; the same 48-shape table runs on real pixels.
+CASE    | real-block
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-sand.pdl | sand.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/s | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 1
+EXPECT_EXIT | 0 | real-block-shapes-written
+EXPECT_OUT | SHAPES floor=48 block=Outside_A2.png#1 | the-line-names-the-real-block
+EXPECT_OUT | quad=ok | every-quadrant-matches-the-source-block
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/p | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 99
+EXPECT_EXIT | 2 | NEGATIVE-a-block-outside-the-sheet-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/q | $T/no-such-sheet.png | 0
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-sheet-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/s0 | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 0
+RUN | /usr/bin/cmp | -s | $T/s/s20/sprite.csv | $T/s0/s20/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-two-different-blocks-give-different-shapes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/sand.pdl | $T/r | $T/s/s20/sprite.csv | $T/s/s21/sprite.csv | $T/s/s22/sprite.csv | $T/s/s23/sprite.csv
+EXPECT_EXIT | 0 | real-edge-shapes-restyle
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | contact | $T/c.png | 2 | $T/r/s_s20/sprite.csv | $T/r/s_s21/sprite.csv | $T/r/s_s22/sprite.csv | $T/r/s_s23/sprite.csv
+EXPECT_EXIT | 0 | contact-sheet-written
+EXPECT_OUT | CONTACT | the-contact-line
+EXPECT_OUT | cells=4 cols=2 size=96x96 | four-cells-in-two-columns
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | contact | $T/d.png | 2 | $T/r/s_s20/sprite.csv | $T/no-such-cell.csv
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-cell-stops-the-contact-sheet
