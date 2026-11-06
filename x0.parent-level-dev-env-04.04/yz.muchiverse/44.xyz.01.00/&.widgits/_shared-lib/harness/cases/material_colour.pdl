@@ -1,0 +1,38 @@
+# material_colour: the periodic-element colour as a shared include and the chemistry colour of materials (D35 steps M0 and M1, 2026-11-05).
+RESULTS | ../results/material_colour.txt
+ENV | LC_ALL | C
+
+# M0: the lift out of elements_palette_manager.c changed nothing: all 118 colours equal the pin taken from the palette before the lift
+CASE    | lift
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | verify | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | $HOUSE/@.apps/generator-hq/events/gen_material/elements_colour.pin
+EXPECT_OUT | ELEMENTS pinned=118 match=118 mismatch=0 | all-118-element-colours-equal-the-pre-lift-pin
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | verify | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | $HOUSE/@.apps/generator-hq/events/gen_material/bad/elements_wrong.pin
+EXPECT_EXIT | 1 | NEGATIVE-a-pin-with-one-wrong-colour-is-caught
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | elements | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_OUT | t_78_color=#eea34c | gold-is-warm
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | elements | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_OUT | t_117_color=#daa65f | the-118th-element-has-its-pinned-colour
+
+# M1: materials are compositions; colour is derived, mixed in linear light
+CASE    | materials
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/materials.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_OUT | MATERIALCHECK materials=25 pigments=16 | the-material-table-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | material | $HOUSE/@.apps/generator-hq/events/gen_material/materials.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | plaster
+EXPECT_OUT | MATERIAL plaster hex= | plaster-derives-a-colour
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | material | $HOUSE/@.apps/generator-hq/events/gen_material/materials.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | gold
+EXPECT_OUT | refl=0.87 | pure-gold-reflects-like-a-metal
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | material | $HOUSE/@.apps/generator-hq/events/gen_material/materials.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | nothing
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-material-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/no_pigment.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_EXIT | 2 | NEGATIVE-no-pigment-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/zero_fraction.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_EXIT | 2 | NEGATIVE-zero-fraction-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/duplicate.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_EXIT | 2 | NEGATIVE-duplicate-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/element_in_ceramic.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl
+EXPECT_EXIT | 2 | NEGATIVE-element-in-ceramic-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | compare | $HOUSE/@.apps/generator-hq/events/gen_material/materials.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl
+EXPECT_OUT | COMPARE rust | rust-has-a-recipe-to-compare-with
+EXPECT_OUT | COMPARE sunmetal | sunmetal-too

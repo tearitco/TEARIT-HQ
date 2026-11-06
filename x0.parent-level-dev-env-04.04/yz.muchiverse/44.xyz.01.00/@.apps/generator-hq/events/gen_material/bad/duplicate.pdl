@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+------------------------------
+PIGMENT | SiO2 | #cfc8b8 | 0.55 | DOC
+MATERIAL | x | ceramic | SiO2:1 | - | one
+MATERIAL | x | ceramic | SiO2:1 | - | two

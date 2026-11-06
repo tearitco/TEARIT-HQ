@@ -1,0 +1,48 @@
+SECTION | KEY | VALUE
+------------------------------
+# materials.pdl - D35 step M1 (BOOK 16.game/MATERIAL-ATTENTION-AND-EXPERT-MIX-GENERATOR-DESIGN-2026-11-05.md). A material is a COMPOSITION; its base colour is DERIVED, never typed:
+#   metal/alloy components are element symbols -> the periodic-element Drude colour (_shared-lib/material_colour.c) unless a PIGMENT row overrides that key;
+#   every other component is a formula with a PIGMENT row. Components are mixed by fraction in LINEAR light (gamma 2.2), not by averaging hex.
+# PIGMENT | key | hex | reflectance 0..1 | source        source=DOC means a hand estimate by the agent, NOT a measurement. Edit freely; the studio shows derived next to the hand colour.
+# MATERIAL | name | class metal|alloy|ceramic|mineral|organic|ice | components key:fraction,... | recipe (the ground.pdl recipe it stands for, or -) | note
+PIGMENT | Fe2O3    | #8e3b2a | 0.25 | DOC iron(III) oxide, brick and tile red
+PIGMENT | FeOOH    | #a8742c | 0.30 | DOC goethite, ochre and rust
+PIGMENT | Fe3O4    | #2c2c30 | 0.10 | DOC magnetite, black
+PIGMENT | SiO2     | #cfc8b8 | 0.55 | DOC quartz sand
+PIGMENT | Al2O3    | #d6d4d0 | 0.55 | DOC alumina
+PIGMENT | CaCO3    | #e4dfd0 | 0.70 | DOC limestone and marble
+PIGMENT | CaSO4    | #ece6d6 | 0.75 | DOC gypsum plaster
+PIGMENT | C6H10O5  | #b99a62 | 0.40 | DOC cellulose, straw and wood
+PIGMENT | C9H10O2  | #6b4a2b | 0.20 | DOC lignin, dark wood
+PIGMENT | C55H72MgN4O5 | #3f7a2a | 0.25 | DOC chlorophyll a, leaf green
+PIGMENT | H2O      | #b9dcf2 | 0.60 | DOC water ice
+PIGMENT | MgAl2Si2O8 | #4a5260 | 0.18 | DOC slate (a stand-in formula)
+PIGMENT | CuCO3    | #3a8f7a | 0.35 | DOC verdigris roof
+PIGMENT | CoAl2O4  | #2f4a9a | 0.30 | DOC cobalt blue
+PIGMENT | NH4MnP2O7 | #7a4a8a | 0.30 | DOC manganese violet
+PIGMENT | C        | #2a2a2c | 0.08 | DOC carbon black
+MATERIAL | grass       | organic  | C55H72MgN4O5:0.55,C6H10O5:0.45 | grass       | blades of leaf over dry fibre
+MATERIAL | dirt        | mineral  | FeOOH:0.35,SiO2:0.45,C9H10O2:0.20 | dirt     | clay soil with humus
+MATERIAL | stone       | mineral  | SiO2:0.45,MgAl2Si2O8:0.35,Al2O3:0.20 | stone | cool grey cobble
+MATERIAL | ice         | ice      | H2O:0.85,SiO2:0.15 | ice | water ice with grit
+MATERIAL | roof_red    | ceramic  | Fe2O3:0.60,SiO2:0.40 | roof_red | fired clay tile
+MATERIAL | roof_orange | ceramic  | FeOOH:0.50,Fe2O3:0.20,SiO2:0.30 | roof_orange | lighter fired clay
+MATERIAL | roof_blue   | ceramic  | CoAl2O4:0.45,MgAl2Si2O8:0.55 | roof_blue | glazed blue slate
+MATERIAL | roof_teal   | mineral  | CuCO3:0.70,SiO2:0.30 | roof_teal | weathered copper
+MATERIAL | roof_purple | ceramic  | NH4MnP2O7:0.60,SiO2:0.40 | roof_purple | violet glaze
+MATERIAL | roof_slate  | mineral  | MgAl2Si2O8:0.85,C:0.15 | roof_slate | dark slate
+MATERIAL | brick_red   | ceramic  | Fe2O3:0.45,SiO2:0.35,Al2O3:0.20 | brick_red | red brick
+MATERIAL | brick_brown | ceramic  | FeOOH:0.35,Fe2O3:0.15,SiO2:0.30,C9H10O2:0.20 | brick_brown | brown brick
+MATERIAL | brick_grey  | ceramic  | MgAl2Si2O8:0.40,SiO2:0.35,Al2O3:0.25 | brick_grey | grey brick
+MATERIAL | plaster     | mineral  | CaSO4:0.80,SiO2:0.20 | plaster | gypsum plaster
+MATERIAL | timber      | organic  | C6H10O5:0.45,C9H10O2:0.55 | timber | oak plank
+MATERIAL | thatch      | organic  | C6H10O5:0.90,FeOOH:0.10 | thatch | dry straw
+MATERIAL | marble      | mineral  | CaCO3:0.90,SiO2:0.10 | marble | polished marble
+MATERIAL | hull        | alloy    | Al:0.90,Mg:0.05,Ti:0.05 | hull | sci-fi aluminium hull
+MATERIAL | rust        | mineral  | Fe2O3:0.50,FeOOH:0.50 | rust | weathered iron
+MATERIAL | sunmetal    | alloy    | Au:0.60,Cu:0.40 | sunmetal | gold-copper plate
+MATERIAL | deck        | alloy    | Fe:0.90,C:0.10 | deck | steel deck plate
+MATERIAL | gold        | metal    | Au:1.0 | - | pure gold (no recipe: Drude check)
+MATERIAL | copper      | metal    | Cu:1.0 | - | pure copper (no recipe: Drude check)
+MATERIAL | iron        | metal    | Fe:1.0 | - | pure iron (no recipe: Drude check)
+MATERIAL | silver      | metal    | Ag:1.0 | - | pure silver (no recipe: Drude check)

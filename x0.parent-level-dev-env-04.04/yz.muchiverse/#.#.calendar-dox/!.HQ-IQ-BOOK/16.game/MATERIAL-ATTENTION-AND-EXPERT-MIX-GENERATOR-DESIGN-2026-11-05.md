@@ -82,3 +82,18 @@ Alternative rejected: hand-tune more recipes (cheap now, but the human stays the
 
 ## 9. Relation to the studio work
 Sections 8 to 17 of `PALETTE-STUDIO-WINDOW-AND-USER-CONCEPTS-DESIGN-2026-11-05.md` are the window and the sheets this feeds. The remaining sheets (Inside, Dungeon, World and sci-fi B and C, A1 water) can be built first with hand recipes, as the owner asked, and are *re-expressed* as materials at M1 without changing their output (the byte-identical proof above).
+
+## 10. Status and reuse map (2026-11-05, after reading tomom, attrition and the concept bank)
+**Built (OBS):** M0 `_shared-lib/material_colour.c` (verbatim lift of `drude_color`; all 118 colours equal the pre-lift pin, a pin with one wrong colour exits 1); M1 `events/gen_material/materials.pdl` (16 pigments, all source=DOC estimates; 25 materials) and `material_colour_op` (`elements`, `verify`, `check`, `material`, `compare`); harness `material_colour.pal` 14/0 with four bad-input fixtures refused.
+**Calibration (OBS, `compare`, 21 recipes with a material):** hue within 10 degrees for 13 of the 17 coloured recipes; saturation within 10 points for 9 of 21; lightness within 10 points for 10 of 21. Cause of the lightness gap: the derived value is a bright surface colour, a recipe's number is the mid-tone of a shade ramp, so M1b is a light-to-ramp mapping. The Drude heuristic itself makes copper gold-ish and silver warm; not changed.
+**Reuse map (READ, then decided):**
+| Existing | Decision |
+|---|---|
+| `concept-bank/ops/hidden_layer.c` (word table = mean of reviewed phrases, stop words, exact/words/none; 3 keys) | **Retool to N keys** (9 look dimensions); its harness `hidden_layer.pal` must pass unchanged for the 3-key case. This is the corpus-to-weights step |
+| `img_bank.c` / `img_prompt.c` / `img_edit.c` / `sd_map.h` / img-hai | **Reuse as is** for the raw text-to-image path; add word kinds role, place, pattern, lore, concept |
+| `concept_edit_validate.c`, candidates folders, AUTO-PROMOTION-RULE (stub) | **Reuse**; add one edit type `tile_concept_delta`; never auto-promote |
+| Attrition loop (Watch, one-line DESCRIBE by a model on the Mac, code maps strength to delta, validate, human review) | **This is the words-to-edit path**; studio `.studio.pdl` saves are the Watch records |
+| tomom `attention.c`, `chatbot_moe_v1.c` (softmax with temperature gate) | **Shape only now** (the studio gate is a small text-include); tomom later learns the gate bias (M5) as a candidate file. Its own goals report: MoE, distillation, emoji renderer not implemented; not on the critical path |
+| `tiny-ai.goal` (student distilled from a teacher) | Long road, needs a GPU |
+**Caveat (OBS):** the 119 approved phrase rows that exist (`phrase_assoc`, `chem_assoc`) are signed `by=claude-manager`, an agent, not the owner; tile looks should be reviewed by the owner.
+**Owner report:** `17.ai/AI-WORDS-TEXT-TO-IMAGE-AND-TILESET-EDITING-REPORT-2026-11-05.md` (+ `-EMOJI`), copied to XO nov-6 with .html.
