@@ -65,7 +65,7 @@ COPY | @.apps/generator-hq/events/gen_restyle/tearit-sand.pdl | tearit-sand.pdl
 COPY | @.apps/generator-hq/events/gen_restyle/tearit-stone.pdl | tearit-stone.pdl
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/blocks.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/o
 EXPECT_EXIT | 0 | whole-sheet-restyled
-EXPECT_OUT | SHEET Outside_A2 blocks=12 shapes=576 rc=0 | twelve-blocks-of-48-shapes
+EXPECT_OUT | SHEET Outside_A2 blocks=32 shapes=1536 rc=0 | thirty-two-blocks-of-48-shapes
 EXPECT_FILE | o/tearit-sand/Outside_A2_b01_s20/sprite.csv | sand-block-lands-in-the-sand-style
 EXPECT_FILE | o/tearit-stone/Outside_A2_b10_s47/sprite.csv | stone-block-lands-in-the-stone-style
 EXPECT_FILE | o/tearit-green/Outside_A2_b20_s00/sprite.csv | green-block-lands-in-the-green-style
@@ -74,7 +74,7 @@ RUN | /usr/bin/cmp | -s | $T/raw/s20/sprite.csv | $T/o/tearit-sand/Outside_A2_b0
 EXPECT_EXIT | 1 | NEGATIVE-the-written-shape-is-not-the-original-pixels
 RUN | /usr/bin/awk | -F, | NR==FNR{a[FNR]=$4;next} a[FNR]!=$4{b++} END{exit b>0} | $T/raw/s20/sprite.csv | $T/o/tearit-sand/Outside_A2_b01_s20/sprite.csv
 EXPECT_EXIT | 0 | alpha-identical-in-the-whole-sheet-path
-RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/blocks.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Inside_A2.png | $T/p
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/blocks.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $T/p
 EXPECT_EXIT | 3 | NEGATIVE-a-sheet-with-no-map-row-is-refused
 WRITE | badmap.pdl | BLOCK \p Outside_A2 \p 0 \p no-such-style\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/badmap.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/q
@@ -83,3 +83,17 @@ WRITE | farmap.pdl | BLOCK \p Outside_A2 \p 99 \p tearit-green\n
 COPY | @.apps/generator-hq/events/gen_restyle/tearit-green.pdl | tearit-green.pdl
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/farmap.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/r
 EXPECT_EXIT | 2 | NEGATIVE-a-block-outside-the-sheet-is-refused
+
+# Seams: shapes cut from one block must map one source colour to one output colour, or neighbouring tiles will not meet.
+CASE    | seams
+SCRATCH |
+WRITE | seam.pdl | GEN \p ramp \p #000000,#404040,#808080,#c0c0c0,#ffffff\nGEN \p accent_per256 \p 0\nGEN \p outline \p 0\n
+WRITE | map.pdl | BLOCK \p Outside_A2 \p 1 \p seam\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet | $T/map.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/o
+EXPECT_EXIT | 0 | seam-style-block-written
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | shapes | $T/raw | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 1
+RUN | /usr/bin/awk | -F, | FNR==1{fi++} fi<=6{raw[fi,FNR]=$1","$2","$3; next} {k=fi-6; m=raw[k,FNR]; o=$1","$2","$3; if((m in map)&&map[m]!=o)bad++; map[m]=o} END{exit bad>0} | $T/raw/s00/sprite.csv | $T/raw/s05/sprite.csv | $T/raw/s20/sprite.csv | $T/raw/s30/sprite.csv | $T/raw/s40/sprite.csv | $T/raw/s47/sprite.csv | $T/o/seam/Outside_A2_b01_s00/sprite.csv | $T/o/seam/Outside_A2_b01_s05/sprite.csv | $T/o/seam/Outside_A2_b01_s20/sprite.csv | $T/o/seam/Outside_A2_b01_s30/sprite.csv | $T/o/seam/Outside_A2_b01_s40/sprite.csv | $T/o/seam/Outside_A2_b01_s47/sprite.csv
+EXPECT_EXIT | 0 | same-source-colour-gives-same-output-colour-across-shapes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | restyle | $T/seam.pdl | $T/old | $T/raw/s00/sprite.csv | $T/raw/s05/sprite.csv | $T/raw/s20/sprite.csv | $T/raw/s30/sprite.csv | $T/raw/s40/sprite.csv | $T/raw/s47/sprite.csv
+RUN | /usr/bin/awk | -F, | FNR==1{fi++} fi<=6{raw[fi,FNR]=$1","$2","$3; next} {k=fi-6; m=raw[k,FNR]; o=$1","$2","$3; if((m in map)&&map[m]!=o)bad++; map[m]=o} END{exit bad>0} | $T/raw/s00/sprite.csv | $T/raw/s05/sprite.csv | $T/raw/s20/sprite.csv | $T/raw/s30/sprite.csv | $T/raw/s40/sprite.csv | $T/raw/s47/sprite.csv | $T/old/raw_s00/sprite.csv | $T/old/raw_s05/sprite.csv | $T/old/raw_s20/sprite.csv | $T/old/raw_s30/sprite.csv | $T/old/raw_s40/sprite.csv | $T/old/raw_s47/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-per-cell-normalising-breaks-the-seam-check

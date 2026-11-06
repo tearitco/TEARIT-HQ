@@ -410,6 +410,7 @@ static void proof_block(unsigned char *src) {
 }
 /* Optional per-shape hook: the sheet verb restyles each shape in memory so unrestyled RPG Maker pixels are never written. */
 static int g_quiet; /* the sheet verb prints one summary line, not one line per shape */
+static int g_blk_lo, g_blk_hi = -1; /* sheet verb: brightness range of the WHOLE block, so shapes cut from one block map one source colour to one output colour (no seams between neighbours) */
 static void (*g_shape_cb)(int shape, const unsigned char *tile, void *ctx);
 static void *g_shape_ctx;
 static int shapes_from(const char *outdir, unsigned char *src, const char *label) {
@@ -485,6 +486,7 @@ static int shapes_sheet(const char *outdir, const char *sheet, int idx) {
     if (!src) { stbi_image_free(img); return 2; }
     for (y = 0; y < 144; y++) memcpy(src + y * 96 * 4, img + ((by + y) * w + bx) * 4, 96 * 4);
     stbi_image_free(img);
+    if (g_shape_cb) { int k, lo = 1 << 20, hi = -1; for (k = 0; k < 96 * 144; k++) if (src[k * 4 + 3]) { int l = (299 * src[k * 4] + 587 * src[k * 4 + 1] + 114 * src[k * 4 + 2]) / 1000; if (l < lo) lo = l; if (l > hi) hi = l; } g_blk_lo = lo; g_blk_hi = hi; }
     base = strrchr(sheet, '/'); base = base ? base + 1 : (char *)sheet;
     snprintf(label, sizeof label, "%.100s#%d", base, idx);
     rc = shapes_from(outdir, src, label);
@@ -581,6 +583,7 @@ static int restyle_px(const RStyle *st, const char *outdir, const char *name, co
         if (l > hi) hi = l;
         opaque++;
     }
+    if (g_blk_hi >= 0) { lo = g_blk_lo; hi = g_blk_hi; }
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
         const unsigned char *s = src + (y * w + x) * 4; unsigned char *d = out + (y * w + x) * 4;
         int l, lev, edge = 0;
@@ -713,7 +716,7 @@ static int sheet_run(const char *mapf, const char *sheet, const char *outdir) {
         snprintf(c.dir, sizeof c.dir, "%s/%.60s", outdir, fld[2]);
         snprintf(c.prefix, sizeof c.prefix, "%.80s_b%02d", sname, idx);
         g_shape_cb = sheet_cb; g_shape_ctx = &c; g_quiet = 1;
-        { int r = shapes_sheet(NULL, sheet, idx); g_shape_cb = NULL; g_quiet = 0; if (r != 0) rc = r; if (c.rc) rc = c.rc; }
+        { int r = shapes_sheet(NULL, sheet, idx); g_shape_cb = NULL; g_quiet = 0; g_blk_hi = -1; if (r != 0) rc = r; if (c.rc) rc = c.rc; }
         blocks++; shapes += c.shapes;
     }
     fclose(f);
