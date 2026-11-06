@@ -61,7 +61,15 @@ BIND  | studio   | stone <sheet> | roof <sheet> | water <sheet> | tree <sheet>
 VIEW  | rmmv
 ```
 
-The first chunk is the gate stair, the front court, one tower, one roof over one room, and **one bridge to one smaller island** (sky under the bridge). The second bridge and the rest of the picture are the same format added beside it, not a new kind of file. A removed bridge cell must leave the side island unreachable. The islands do not touch. An editor book is a later view of this chunk. It is not a flat `ROOM` row pretending to be the campus.
+The first chunk is the gate stair, the front court, one tower, one roof over one room, a door in that room's wall, and **one bridge to one smaller island** (sky under the bridge). The second bridge and the rest of the picture are the same format added beside it, not a new kind of file. A removed bridge cell must leave the side island unreachable. The islands do not touch.
+
+## 4b. Doors and insides (SAID 2026-11-06)
+
+The campus uses Minecraft-like doors. A door is two voxels in the wall. Shut, it blocks. Open, it swings and the walker steps through into the room that is already there: the floor, the walls, and the roof on that same column. There is no second page and no teleport.
+
+That is the opposite of the Islands town, whose `DOOR` rows send you to a bank, store, school, hotel, or cabin page. Those rows stay on that town. A campus door never writes a room id.
+
+The picture of the door may use Mineclonia's wood door (the owner already called Mineclonia art safe). The open and shut state is ours: one bit on that voxel, the same bit in 2D and in 3D. The first proof is one door. Shut, the room cannot be entered. Open, the walker stands on the interior floor under the roof, and both views show the opening. An editor book is a later view of this chunk. It is not a flat `ROOM` row pretending to be the campus.
 
 ## 5. What this slice does not do
 
