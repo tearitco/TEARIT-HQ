@@ -107,20 +107,55 @@ static int bank_weight(const char *model, const char *master, double *w, int *ba
     }
     fclose(f); return found;
 }
-/* apply warmth and wear to the built voxel grid; weights 0.0 change nothing */
-static int apply_look(const char *model) {
-    double warm = 0.0, worn = 0.0; int bw = 0, bn = 0, X, Y, Z; unsigned mh = 5381; const char *c;
-    if (!g_bank[0]) return 0;
-    bank_weight(model, "look_warm", &warm, &bw); bank_weight(model, "look_worn", &worn, &bn);
-    if (bw || bn) { fprintf(stderr, "bank weight out of range for prop_%s (must be -1..1)\n", model); return 2; }
-    if (worn < 0.0) worn = 0.0;
-    if (warm == 0.0 && worn == 0.0) return 0;
-    for (c = model; *c; c++) mh = mh * 33 + (unsigned char)*c;
+/* apply the look weights to the built voxel grid; every weight at 0.0 changes nothing.
+ * Order: shape (look_big, look_round), then material and colour (look_metal, look_warm, look_worn). */
+static unsigned G2[N][N][N];
+static void look_scale(double s) { /* resample about the centre of the floor plan and the ground: s > 1 bigger, s < 1 smaller; nearest voxel */
+    int X, Y, Z;
+    memset(G2, 0, sizeof G2);
     for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) {
-        unsigned v = G[Z][Y][X], a, r, g, b; double R, Gc, B;
+        int sx = (int)floor(12.0 + (X + 0.5 - 12.0) / s), sy = (int)floor(12.0 + (Y + 0.5 - 12.0) / s), sz = (int)floor((Z + 0.5) / s);
+        if (sx >= 0 && sx < N && sy >= 0 && sy < N && sz >= 0 && sz < N) G2[Z][Y][X] = G[sz][sy][sx];
+    }
+    memcpy(G, G2, sizeof G);
+}
+static void look_round(double w) { /* per layer: keep the voxels inside a superellipse of the layer's own bounding box (exponent 8 = boxy .. 2 = round) */
+    double p = 8.0 - 6.0 * w; int X, Y, Z;
+    for (Z = 0; Z < N; Z++) {
+        int minx = N, maxx = -1, miny = N, maxy = -1;
+        double cx, cy, hx, hy;
+        for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) if (G[Z][Y][X]) { if (X < minx) minx = X; if (X > maxx) maxx = X; if (Y < miny) miny = Y; if (Y > maxy) maxy = Y; }
+        if (maxx - minx < 2 || maxy - miny < 2) continue;
+        cx = (minx + maxx) / 2.0; cy = (miny + maxy) / 2.0; hx = (maxx - minx + 1) / 2.0; hy = (maxy - miny + 1) / 2.0;
+        for (Y = miny; Y <= maxy; Y++) for (X = minx; X <= maxx; X++) {
+            double u, v;
+            if (!G[Z][Y][X]) continue;
+            u = fabs((X - cx) / hx); v = fabs((Y - cy) / hy);
+            if (pow(u, p) + pow(v, p) > 1.0) G[Z][Y][X] = 0;
+        }
+    }
+}
+static int apply_look(const char *model, int *count) {
+    double warm = 0.0, worn = 0.0, big = 0.0, rnd = 0.0, metal = 0.0; int bad = 0, b, X, Y, Z; unsigned mh = 5381; const char *c;
+    if (!g_bank[0]) return 0;
+    b = 0; bank_weight(model, "look_warm", &warm, &b); bad |= b; b = 0; bank_weight(model, "look_worn", &worn, &b); bad |= b;
+    b = 0; bank_weight(model, "look_big", &big, &b); bad |= b; b = 0; bank_weight(model, "look_round", &rnd, &b); bad |= b; b = 0; bank_weight(model, "look_metal", &metal, &b); bad |= b;
+    if (bad) { fprintf(stderr, "bank weight out of range for prop_%s (must be -1..1)\n", model); return 2; }
+    if (worn < 0.0) worn = 0.0;
+    if (warm == 0.0 && worn == 0.0 && big == 0.0 && rnd <= 0.0 && metal == 0.0) return 0;
+    for (c = model; *c; c++) mh = mh * 33 + (unsigned char)*c;
+    if (big != 0.0) look_scale(1.0 + 0.4 * big);
+    if (rnd > 0.0) look_round(rnd);
+    if (big != 0.0 || rnd > 0.0) { int n = 0; for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) if (G[Z][Y][X]) n++; *count = n; }
+    if (warm == 0.0 && worn == 0.0 && metal == 0.0) return 0;
+    for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) {
+        unsigned v = G[Z][Y][X], a, r, g, bl; double R, Gc, B, lum;
         if (!v) continue;
-        a = v >> 24; r = (v >> 16) & 255; g = (v >> 8) & 255; b = v & 255;
-        R = r * (1.0 + 0.18 * warm); Gc = g * (1.0 + 0.05 * warm); B = b * (1.0 - 0.25 * warm);
+        a = v >> 24; r = (v >> 16) & 255; g = (v >> 8) & 255; bl = v & 255;
+        R = r; Gc = g; B = bl; lum = 0.299 * R + 0.587 * Gc + 0.114 * B;
+        if (metal > 0.0) { double t = 0.6 * metal; R += (lum * 0.95 - R) * t; Gc += (lum * 1.00 - Gc) * t; B += (lum * 1.12 - B) * t; }
+        else if (metal < 0.0) { double t = 1.0 - 0.4 * metal; R = lum + (R - lum) * t; Gc = lum + (Gc - lum) * t; B = lum + (B - lum) * t; }
+        R *= (1.0 + 0.18 * warm); Gc *= (1.0 + 0.05 * warm); B *= (1.0 - 0.25 * warm);
         if (worn > 0.0 && (hash32((unsigned)X * 73856093u ^ (unsigned)Y * 19349663u ^ (unsigned)Z * 83492791u ^ mh) % 100) < (unsigned)(worn * 40.0)) { R *= 0.78; Gc *= 0.78; B *= 0.78; }
         if (R > 255) { R = 255; } if (Gc > 255) { Gc = 255; } if (B > 255) { B = 255; }
         if (R < 0) { R = 0; } if (Gc < 0) { Gc = 0; } if (B < 0) { B = 0; }
@@ -162,7 +197,7 @@ static int build(const char *model, const char *pose, int *count) {
             G[Z][Y][X] = 0xFF000000u | (P[i].r << 16) | (P[i].g << 8) | P[i].b;
         }
     }
-    return apply_look(model);
+    return apply_look(model, count);
 }
 static void px(unsigned char *o, int ox, int sw, int x, int y, unsigned c, int shade) {
     unsigned char *q; int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;

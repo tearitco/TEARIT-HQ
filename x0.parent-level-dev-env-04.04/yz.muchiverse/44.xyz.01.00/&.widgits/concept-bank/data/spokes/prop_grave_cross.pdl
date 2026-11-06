@@ -1,7 +1,10 @@
-# CONCEPT_SPOKE — prop_grave_cross.pdl (generator thing, D32). Weights: slot 0 look_warm, slot 1 look_worn (0.0 = neutral). Hand-tune here.
+# CONCEPT_SPOKE — prop_grave_cross.pdl (generator thing, D32). Slots: 0 look_warm, 1 look_worn, 2 look_round, 3 look_big, 4 look_metal (0.0 = as drawn). Hand-tune here.
 NODE | prop_grave_cross
 KIND | spoke
 N_SLOTS | 8
 SLOT | 0 | POINTS_TO=look_warm | WEIGHT=0.00
 SLOT | 1 | POINTS_TO=look_worn | WEIGHT=0.00
+SLOT | 2 | POINTS_TO=look_round | WEIGHT=0.00
+SLOT | 3 | POINTS_TO=look_big | WEIGHT=0.00
+SLOT | 4 | POINTS_TO=look_metal | WEIGHT=0.00
 GRADE | 0

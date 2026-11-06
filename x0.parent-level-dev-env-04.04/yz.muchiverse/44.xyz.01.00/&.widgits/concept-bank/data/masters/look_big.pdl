@@ -1,0 +1,5 @@
+# CONCEPT_MASTER — look_big.pdl (generator look concept, D32). Size of a thing: the model is resampled about the centre of its floor plan and the ground by 1 + 0.4 x WEIGHT (-1 = 0.6x, 0 = as drawn, +1 = 1.4x; clipped to the 24-voxel grid).
+# WEIGHT lives in each SPOKE's slot that POINTS_TO this master (one authoritative copy). The MIRROR table is rebuilt by ops/concept_mirror_rebuild.sh.
+NODE | look_big
+KIND | master
+N_SLOTS | 8

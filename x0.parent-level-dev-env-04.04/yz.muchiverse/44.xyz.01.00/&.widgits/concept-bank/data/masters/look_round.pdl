@@ -1,0 +1,5 @@
+# CONCEPT_MASTER — look_round.pdl (generator look concept, D32). Roundness of a thing: each layer is cut to a superellipse of its own bounding box, exponent 8 - 6 x WEIGHT (0 = as drawn, 1 = fully round). Negative weights change nothing.
+# WEIGHT lives in each SPOKE's slot that POINTS_TO this master (one authoritative copy).
+NODE | look_round
+KIND | master
+N_SLOTS | 8

@@ -1,0 +1,4 @@
+# CONCEPT_MASTER — look_metal.pdl (generator look concept, D32). Material: +1 = metal (colours drained toward a cool grey), 0 = as drawn, -1 = saturated and organic. WEIGHT lives in each SPOKE's slot that POINTS_TO this master.
+NODE | look_metal
+KIND | master
+N_SLOTS | 8

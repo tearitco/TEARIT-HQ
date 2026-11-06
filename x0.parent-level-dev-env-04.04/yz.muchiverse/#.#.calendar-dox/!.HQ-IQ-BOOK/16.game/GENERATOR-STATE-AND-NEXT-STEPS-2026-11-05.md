@@ -61,3 +61,6 @@ Polish: smooth lighting on round parts (no ribs), Scale2x for 2x things, redrawn
 
 ## 12. Update: D32 decided and built (concept-bank weights tune the look)
 Tune a thing: open `&.widgits/concept-bank/data/spokes/prop_barrel.pdl`, change `WEIGHT=` on the `look_warm` slot (-1 cool .. +1 warm) or `look_worn` slot (0 clean .. 1 worn), then `generator_voxel_op objsheet <out.png> events/gen_objects/outside_b.pdl events/gen_voxel/props.pdl bank=<house>/&.widgits/concept-bank` (or `render ... bank=<dir>`). Weights at 0.00 give exactly the pinned sheet. Check an edit first with `concept_edit_validate.+x <bank> <edit record>`. Picture: `interim/try/2026-11-05-concept-weights/`. To add a concept: a master `look_<name>.pdl`, a slot in each spoke, a line in `apply_look`. To add a thing: a recipe, a `CELL` row, a spoke `prop_<name>.pdl`.
+
+## 13. Update: shape and material weights
+Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3 look_big, 4 look_metal. Ranges: warm -1..1, worn 0..1, round 0..1, big -1..1, metal -1..1; all 0.00 = the recipe as drawn. Big weights clip at the 24-voxel grid. Picture: `interim/try/2026-11-05-concept-weights/barrel_shape_material_strip_3x.png` (local, gitignored).

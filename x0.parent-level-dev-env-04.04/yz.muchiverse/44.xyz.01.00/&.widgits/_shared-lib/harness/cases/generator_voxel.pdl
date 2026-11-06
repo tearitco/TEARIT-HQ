@@ -310,6 +310,39 @@ EXPECT_EXIT | 1 | NEGATIVE-an-edit-bigger-than-0.2-is-rejected
 WRITE | ed3.txt | EDIT \p id=t3 \p type=spoke_weight_delta \p target=prop_ghost \p slot=look_warm \p delta=0.1 \p reason="no such thing" \p proposer=owner \p status=candidate\n
 RUN | $HOUSE/&.widgits/concept-bank/ops/+x/concept_edit_validate.+x | $HOUSE/&.widgits/concept-bank | $T/ed3.txt
 EXPECT_EXIT | 1 | NEGATIVE-an-edit-to-a-thing-that-is-not-in-the-bank-is-rejected
-WRITE | ed4.txt | EDIT \p id=t4 \p type=spoke_weight_delta \p target=prop_barrel \p slot=look_round \p delta=0.1 \p reason="no such master" \p proposer=owner \p status=candidate\n
+WRITE | ed4.txt | EDIT \p id=t4 \p type=spoke_weight_delta \p target=prop_barrel \p slot=look_shiny \p delta=0.1 \p reason="no such master" \p proposer=owner \p status=candidate\n
 RUN | $HOUSE/&.widgits/concept-bank/ops/+x/concept_edit_validate.+x | $HOUSE/&.widgits/concept-bank | $T/ed4.txt
 EXPECT_EXIT | 1 | NEGATIVE-an-edit-pointing-at-a-master-the-thing-does-not-use-is-rejected
+
+# D32 step 2: shape and material weights (look_round, look_big, look_metal). 0.0 = the recipe as drawn.
+MKDIR | sR/data/spokes
+MKDIR | sB/data/spokes
+MKDIR | sS/data/spokes
+MKDIR | sM/data/spokes
+MKDIR | sZ/data/spokes
+WRITE | sR/data/spokes/prop_gravestone.pdl | NODE \p prop_gravestone\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 2 \p POINTS_TO=look_round \p WEIGHT=1.0\nSLOT \p 3 \p POINTS_TO=look_big \p WEIGHT=0\nSLOT \p 4 \p POINTS_TO=look_metal \p WEIGHT=0\nGRADE \p 0\n
+WRITE | sB/data/spokes/prop_gravestone.pdl | NODE \p prop_gravestone\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 2 \p POINTS_TO=look_round \p WEIGHT=0\nSLOT \p 3 \p POINTS_TO=look_big \p WEIGHT=0.6\nSLOT \p 4 \p POINTS_TO=look_metal \p WEIGHT=0\nGRADE \p 0\n
+WRITE | sS/data/spokes/prop_gravestone.pdl | NODE \p prop_gravestone\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 2 \p POINTS_TO=look_round \p WEIGHT=0\nSLOT \p 3 \p POINTS_TO=look_big \p WEIGHT=-0.6\nSLOT \p 4 \p POINTS_TO=look_metal \p WEIGHT=0\nGRADE \p 0\n
+WRITE | sM/data/spokes/prop_gravestone.pdl | NODE \p prop_gravestone\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 2 \p POINTS_TO=look_round \p WEIGHT=0\nSLOT \p 3 \p POINTS_TO=look_big \p WEIGHT=0\nSLOT \p 4 \p POINTS_TO=look_metal \p WEIGHT=1.0\nGRADE \p 0\n
+WRITE | sZ/data/spokes/prop_gravestone.pdl | NODE \p prop_gravestone\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 2 \p POINTS_TO=look_round \p WEIGHT=0\nSLOT \p 3 \p POINTS_TO=look_big \p WEIGHT=0\nSLOT \p 4 \p POINTS_TO=look_metal \p WEIGHT=0\nGRADE \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/g0.png
+EXPECT_OUT | voxels=..*
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gZ.png | bank=$T/sZ
+RUN | /usr/bin/cmp | -s | $T/g0.png | $T/gZ.png
+EXPECT_EXIT | 0 | all-three-shape-and-material-weights-at-0-change-nothing
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gR.png | bank=$T/sR
+RUN | /usr/bin/cmp | -s | $T/g0.png | $T/gR.png
+EXPECT_EXIT | 1 | weight-R-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gB.png | bank=$T/sB
+RUN | /usr/bin/cmp | -s | $T/g0.png | $T/gB.png
+EXPECT_EXIT | 1 | weight-B-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gS.png | bank=$T/sS
+RUN | /usr/bin/cmp | -s | $T/g0.png | $T/gS.png
+EXPECT_EXIT | 1 | weight-S-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gM.png | bank=$T/sM
+RUN | /usr/bin/cmp | -s | $T/g0.png | $T/gM.png
+EXPECT_EXIT | 1 | weight-M-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gR.png | bank=$T/sR
+EXPECT_OUT | VOXEL model=gravestone pose=idle views=4 voxels=..*
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | gravestone | idle | $T/gB.png | bank=$T/sB
+EXPECT_OUT | voxels=..*
