@@ -4,8 +4,9 @@ Status: **plan. Nothing here is built.** SAID = the owner on 2026-11-06. OBS = f
 
 Two runs of the same campus, named by the owner:
 
-- **centroid-test** is a playthrough on a scratch house. Pets meet food and sleep, plant food, make beds, gather stone, and raise one room. The harness can fail, and a second attempt is another phase table.
+- **centroid-test** is a playthrough on a scratch house. The University is **already built** when the run starts. Pets meet food and sleep, plant food, and make beds on that campus. They do not raise the buildings in this run. The harness can fail, and a second attempt is another phase table.
 - **centroid-live** is that same table on the board you watch. It adds one toggle: the RPG Maker skin or the generated skin. The columns do not change.
+- **Later, not this test:** a manager is shown the master blueprint of that prebuilt campus and asked to break it into jobs for employees. The prebuilt volume is the answer. The manager passes only if the employees' placed columns match it. That run is not part of centroid-test.
 
 The campus shape stays `CENTROID-VISUAL-BOOK-2026-11-06.md` (three floating islands, voxel rooms, a swinging door). This note is only how the two runs are fed.
 
@@ -25,15 +26,19 @@ The campus shape stays `CENTROID-VISUAL-BOOK-2026-11-06.md` (three floating isla
 
 ## What centroid-test still needs
 
-One phase table, `play/phases/centroid_test.phases.pdl`, on the verbs above. The missing rules, in order:
+The campus volume is data loaded at the start of the scratch house, not a thing the pets place during the test. One phase table, `play/phases/centroid_test.phases.pdl`. The missing rules, in order:
 
-1. **Needs on.** Hunger and sleep start on for these pets only. A day tick with no food raises hunger. A night with no bed drops energy. The table fails if a pet finishes the room while starving or exhausted. Dying stays off for this run.
-2. **Plant.** A farm cell spends a seed from the pile and, after a counted number of day ticks, gives food. The food is the only thing that lowers hunger. No craft invents a meal.
-3. **Bed.** `place bed` spends planks (mined logs, the mcl craft). Sleep on that cell restores energy. Sleep on the ground does not.
-4. **Room.** The stone pile from digging is the only stone. Place floor, walls, roof, and one door. The door proof stays the one in the campus note: shut blocks, open enters the room under the roof.
-5. **Order.** A pet that is hungry plants or eats before it hauls. A pet that is tired sleeps before it places. That is the DF job pick, and it is the thing the table is for. Build-tab rows for wall, door, and workshop stop being "later" only for the rows this table uses.
+1. **The prebuild.** One chunk file: the main island's court, one roof over one room, one swinging door, one bridge, one smaller island. Loading it twice gives the same columns. The pets' bags start empty of building stone.
+2. **Needs on.** Hunger and sleep start on for these pets only. A day tick with no food raises hunger. A night with no bed drops energy. Dying stays off.
+3. **Plant.** A farm cell is already on the smaller island. A seed from the pile, after a counted number of day ticks, gives food. That food is the only thing that lowers hunger.
+4. **Bed.** A bed is crafted from planks and placed in the room. Sleep on it restores energy. Sleep on the ground does not.
+5. **The day.** A hungry pet plants or eats before anything else. A tired pet sleeps before anything else. The table fails if a pet ends the counted days starving or exhausted, or if any campus column changed.
 
 A second attempt edits the phase table. It does not edit the pets by hand.
+
+## The manager, later
+
+After centroid-test passes, a second table may hand a manager the blueprint (the same chunk file, read-only) and a crew whose bags start empty. The manager's only output is jobs: dig, haul, craft, place. Employees run those jobs and no others. The run passes when their columns match the blueprint and fail when a column differs. centroid-test does not include this, and the manager is not taught by rewriting the prebuild.
 
 ## What centroid-live adds
 
@@ -47,4 +52,4 @@ Designations and Build gain the rows the test proved: plant, bed, wall, door. St
 
 ## Not in either run yet
 
-The second bridge, the second island, the tower, shops, and the school. Labor skills. Death. A generator that draws the campus. Those wait on a passing centroid-test.
+The second bridge's twin island details beyond the one prebuilt bridge, the tower, shops, and the school, unless they are in the loaded chunk. The manager and the employees. Labor skills. Death. A generator that draws the campus. The manager waits on a passing centroid-test.
