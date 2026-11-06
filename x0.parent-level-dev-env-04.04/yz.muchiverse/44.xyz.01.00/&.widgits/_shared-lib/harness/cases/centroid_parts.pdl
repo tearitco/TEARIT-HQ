@@ -15,5 +15,14 @@ EXPECT_HAS | cells.txt | width=32 | wide
 EXPECT_HAS | cells.txt | 1,36, | wall-column
 EXPECT_HAS | centroid.parts.pdl | wood | wood-count
 EXPECT_HAS | centroid.parts.pdl | stone | stone-count
+RUN | ./centroid_parts_op | door | cells.txt
+EXPECT_EXIT | 0 | door-opens
+EXPECT_OUT | OPEN bit=1 | door-open-line
+EXPECT_HAS | door.txt | bit=1 | door-open-bit
+RUN | ./centroid_parts_op | door | cells.txt
+EXPECT_EXIT | 0 | door-shuts
+EXPECT_OUT | SHUT bit=0 | door-shut-line
+RUN | ./centroid_parts_op | stamp | cells.txt | missing.pdl
+EXPECT_EXIT | 1 | NEGATIVE-missing-blueprint
 RUN | ./centroid_parts_op
 EXPECT_EXIT | 2 | NEGATIVE-usage-without-stamp
