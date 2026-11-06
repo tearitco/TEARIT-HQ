@@ -180,7 +180,7 @@ static QuadrantState autotile_pick_quadrant(unsigned char eff_mask, int edge_a_b
     return QSTATE_ISOLATED;
 }
 
-/* One caller outside this file: generator_tile_op shapes.
+/* One caller outside this file: generator_tile_op, which TEXT-INCLUDES this file with TILE_AUTOTILE_LIB defined (no linking).
  * kind 0 floor, 1 wall, 2 waterfall. bx and by stay 0. The table stays here. */
 int tile_autotile_blits(int kind, int shape, int tile_px, int out[4][6]) {
     BlitRect r[4];

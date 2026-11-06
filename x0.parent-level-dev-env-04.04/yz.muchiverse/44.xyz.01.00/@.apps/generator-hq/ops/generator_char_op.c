@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "../../../&.widgits/_shared-lib/stb_image_write.h"
 #include "../../../&.widgits/concept-bank/ops/sd_map.h"
 
 #define TW 48

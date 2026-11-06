@@ -12,7 +12,10 @@
 #include <errno.h>
 #include <sys/stat.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "../../../&.widgits/_shared-lib/stb_image_write.h"
+/* tile_autotile.c is text-included, not linked (house sharing rule: inline, text-include or op+IPC, never header+link). It is a pure table; its main() is compiled out by TILE_AUTOTILE_LIB. */
+#define TILE_AUTOTILE_LIB
+#include "../../../_.monads/_.livedesk-taskbar/ops/tile_autotile.c"
 
 #define MAXR 12
 #define MAXN 64
@@ -390,7 +393,6 @@ static int from_csv(const char *csv, const char *png, int scale) {
     free(px); free(big);
     return i == 0 ? 0 : 2;
 }
-int tile_autotile_blits(int kind, int shape, int tile_px, int out[4][6]);
 
 static void proof_block(unsigned char *src) {
     int y, x;

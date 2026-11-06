@@ -88,7 +88,7 @@ Where that work lives:
 
 - Plan and bar: `16.game/GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md`, `16.game/TEAR-IT-TILES-100-2026-11-05.md`, `16.game/WORD-BANK-TO-IMAGE.md`. Decision D24 and D25 in `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md`.
 - Ops: `@.apps/generator-hq/ops/generator_tile_op.c` (48 floor shapes) and `generator_char_op.c` (layer stack). Events: `events/gen_floor_shapes/`, `events/gen_character/`. Weight map: `&.widgits/concept-bank/ops/sd_map.h`, printed by `img_prompt.c`, read by `data/img/draft/img_draft.py`.
-- Harness: `generator_tiles.pal` (37 pass, 0 fail) and `generator_char.pal` (12 pass, 0 fail).
+- Harness, re-run 2026-11-05 from `&.widgits/_shared-lib/harness` with `prisc+x.+x`: `generator_tiles.pal` wrote `VERDICT|PASS|passed=37|failed=0` in `results/generator_tiles.txt`. `generator_char.pal` wrote `VERDICT|PASS|passed=12|failed=0` in `results/generator_char.txt`. Both commands exited 0.
 - Pictures: `XO/31.Nov/nov-5/1.generator-sheets/0.bad/` (rejected and proof), `0.standin/0.ground-tiles.jpg` only. `0.good/` is empty. The paste prompt is `XO/31.Nov/nov-5/0.sheet-restyle-prompt.md`.
 
 ### Art. Tear-it tiles in place of RPG Maker (owner 2026-11-05, parallel with M0)
