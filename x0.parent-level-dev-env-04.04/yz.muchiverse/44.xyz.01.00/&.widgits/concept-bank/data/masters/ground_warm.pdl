@@ -1,0 +1,5 @@
+# CONCEPT_MASTER — ground_warm.pdl (generator ground concept, D33 step 2, 2026-11-05). warmth: -1 cool (toward blue) .. 0 as written .. +1 warm (toward orange).
+# WEIGHT lives in each SPOKE's slot (ground_<recipe>.pdl) that POINTS_TO this master (one authoritative copy). Read by generator_ground_op (bank=<dir>).
+NODE | ground_warm
+KIND | master
+N_SLOTS | 8

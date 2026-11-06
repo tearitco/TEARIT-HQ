@@ -1,0 +1,5 @@
+# CONCEPT_MASTER — ground_wet.pdl (generator ground concept, D33 step 2, 2026-11-05). wetness: 0 dry .. 1 wet (darker, more saturated, glints).
+# WEIGHT lives in each SPOKE's slot (ground_<recipe>.pdl) that POINTS_TO this master (one authoritative copy). Read by generator_ground_op (bank=<dir>).
+NODE | ground_wet
+KIND | master
+N_SLOTS | 8

@@ -1,0 +1,52 @@
+# generator_ground: ground (A2) blocks drawn from recipes and knobs; only the original transparency is read (D33 step 2, 2026-11-05).
+RESULTS | ../results/generator_ground.txt
+ENV | LC_ALL | C
+
+CASE    | ground
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl
+EXPECT_OUT | GROUNDCHECK recipes=6 blocks=128 | recipes-and-blocks-parse
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/n.png | bank=$HOUSE/&.widgits/concept-bank
+EXPECT_OUT | GROUND size=768x576 blocks=32 | all-32-outside-a2-blocks-generated
+RUN | /usr/bin/sha256sum | $T/n.png
+EXPECT_OUT | e035291e2c218d5b9254a61d1a9cbd41fee955cd9d2daf9f4e096d506f05e8eb | the-sheet-is-pinned
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/n2.png
+RUN | /usr/bin/cmp | -s | $T/n.png | $T/n2.png
+EXPECT_EXIT | 0 | neutral-bank-equals-no-bank-and-reruns-are-identical
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/n.png
+EXPECT_OUT | alpha_changed=0 | the-geometry-is-the-originals-transparency
+EXPECT_OUT | result=ok | changed-and-not-identical
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/n.png
+EXPECT_OUT | luminance_correlation=0.129 | THE-GATE-not-a-recolour-of-the-original
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/k.png | knob=wet:0.8 | select=0,0,4,1
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/n.png | 1 | $T/n_u.png | 0 | 288 | 384 | 144
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/k.png | 1 | $T/k_u.png | 0 | 288 | 384 | 144
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $T/n_u.png | $T/k_u.png
+EXPECT_OUT | changed_pct=0.0 | NEGATIVE-blocks-outside-the-selection-do-not-change
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/n.png | 1 | $T/n_s.png | 0 | 0 | 384 | 144
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | zoom | $T/k.png | 1 | $T/k_s.png | 0 | 0 | 384 | 144
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $T/n_s.png | $T/k_s.png
+EXPECT_OUT | changed_pct=100.0 | the-selected-row-changes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/c.png | crop=0,0,2,1
+EXPECT_OUT | GROUND crop=0,0,2,1 size=192x144 | a-crop-saves-only-the-rectangle
+MKDIR | bw/data/spokes
+WRITE | bw/data/spokes/ground_grass.pdl | NODE \p ground_grass\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 1 \p POINTS_TO=ground_wet \p WEIGHT=0.8\nGRADE \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/bw.png | bank=$T/bw
+RUN | /usr/bin/cmp | -s | $T/n.png | $T/bw.png
+EXPECT_EXIT | 1 | a-bank-weight-changes-the-picture
+MKDIR | bx/data/spokes
+WRITE | bx/data/spokes/ground_grass.pdl | NODE \p ground_grass\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 1 \p POINTS_TO=ground_wet \p WEIGHT=3.0\nGRADE \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/bx.png | bank=$T/bx
+EXPECT_EXIT | 2 | NEGATIVE-a-bank-weight-outside-its-range-is-refused
+MKDIR | be/data/spokes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/be.png | bank=$T/be
+RUN | /usr/bin/cmp | -s | $T/n.png | $T/be.png
+EXPECT_EXIT | 0 | a-missing-spoke-means-the-recipe-as-written
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/d.png | knob=shiny:1
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-knob-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/e.png | crop=7,3,3,3
+EXPECT_EXIT | 2 | NEGATIVE-a-crop-outside-the-sheet-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/f.png | select=0,0,0,1
+EXPECT_EXIT | 2 | NEGATIVE-an-empty-selection-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | ground | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_C.png | $T/g.png
+EXPECT_EXIT | 2 | NEGATIVE-a-sheet-that-is-not-an-a2-grid-is-refused

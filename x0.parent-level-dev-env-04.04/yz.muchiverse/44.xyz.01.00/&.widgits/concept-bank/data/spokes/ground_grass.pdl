@@ -1,0 +1,10 @@
+# CONCEPT_SPOKE — ground_grass.pdl (ground recipe, D33). Slots: 0 ground_warm (-1..1), 1 ground_wet, 2 ground_wear, 3 ground_grain, 4 ground_edge (0..1); 0.0 = the recipe as written. Hand-tune here.
+NODE | ground_grass
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=ground_warm | WEIGHT=0.00
+SLOT | 1 | POINTS_TO=ground_wet | WEIGHT=0.00
+SLOT | 2 | POINTS_TO=ground_wear | WEIGHT=0.00
+SLOT | 3 | POINTS_TO=ground_grain | WEIGHT=0.00
+SLOT | 4 | POINTS_TO=ground_edge | WEIGHT=0.00
+GRADE | 0

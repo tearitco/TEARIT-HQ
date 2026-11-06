@@ -1,0 +1,5 @@
+# CONCEPT_MASTER — ground_wear.pdl (generator ground concept, D33 step 2, 2026-11-05). wear: 0 clean .. 1 heavily worn (dark speckle).
+# WEIGHT lives in each SPOKE's slot (ground_<recipe>.pdl) that POINTS_TO this master (one authoritative copy). Read by generator_ground_op (bank=<dir>).
+NODE | ground_wear
+KIND | master
+N_SLOTS | 8
