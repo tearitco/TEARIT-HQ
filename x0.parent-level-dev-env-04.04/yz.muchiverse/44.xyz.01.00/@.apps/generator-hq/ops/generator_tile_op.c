@@ -966,6 +966,27 @@ static int verify_root(const char *orig, const char *repl) {
     return vr_files == 0 ? 3 : (vr_bad ? 1 : 0);
 }
 
+/* compare-png <a.png> <b.png>: how alike two same-size pictures are: share of opaque pixels whose colour changed, mean absolute colour change (0-255), and the correlation of their luminance over the pixels opaque in both (1.0 = the same pattern, only recoloured; near 0 = a different pattern).
+ * Written for the question "does the Tear-it sheet just look like the original?". Exit 2 when the sizes differ. */
+static int compare_png(const char *pa, const char *pb) {
+    int w1, h1, n1, w2, h2, n2; unsigned char *a = stbi_load(pa, &w1, &h1, &n1, 4), *b = stbi_load(pb, &w2, &h2, &n2, 4);
+    long i, N, opq = 0, chg = 0, both = 0; double sad = 0, sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0, corr = 0;
+    if (!a || !b || w1 != w2 || h1 != h2) { fprintf(stderr, "compare-png: unreadable or different sizes\n"); return 2; }
+    N = (long)w1 * h1;
+    for (i = 0; i < N; i++) {
+        const unsigned char *p = a + i * 4, *q = b + i * 4; double la, lb;
+        if (!p[3]) continue;
+        opq++;
+        if (p[0] != q[0] || p[1] != q[1] || p[2] != q[2]) chg++;
+        sad += (abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2])) / 3.0;
+        if (!q[3]) continue;
+        la = 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]; lb = 0.299 * q[0] + 0.587 * q[1] + 0.114 * q[2];
+        both++; sa += la; sb += lb; saa += la * la; sbb += lb * lb; sab += la * lb;
+    }
+    if (both > 1) { double ma = sa / both, mb = sb / both, va = saa / both - ma * ma, vb = sbb / both - mb * mb, cv = sab / both - ma * mb; corr = (va > 1e-9 && vb > 1e-9) ? cv / sqrt(va * vb) : 0; }
+    printf("COMPARE %dx%d opaque=%ld changed_pct=%.1f mean_colour_shift=%.1f luminance_correlation=%.3f\n", w1, h1, opq, opq ? 100.0 * chg / opq : 0.0, opq ? sad / opq : 0.0, corr);
+    return 0;
+}
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
     if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
@@ -979,6 +1000,7 @@ int main(int argc, char **argv) {
     if (argc == 5 && strcmp(argv[1], "sheet-png") == 0) return sheet_png(argv[2], argv[3], argv[4]);
     if (argc == 4 && strcmp(argv[1], "verify-png") == 0) return verify_png(argv[2], argv[3]);
     if (argc == 4 && strcmp(argv[1], "verify-root") == 0) return verify_root(argv[2], argv[3]);
+    if (argc == 4 && strcmp(argv[1], "compare-png") == 0) return compare_png(argv[2], argv[3]);
     if (argc >= 5 && strcmp(argv[1], "contact") == 0) return contact(argv[2], atoi(argv[3]), argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));

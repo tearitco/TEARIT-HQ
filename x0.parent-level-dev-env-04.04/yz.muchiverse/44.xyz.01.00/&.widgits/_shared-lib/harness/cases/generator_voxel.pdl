@@ -199,3 +199,27 @@ EXPECT_EXIT | 2 | NEGATIVE-two-items-for-the-weapon-slot-are-refused
 WRITE | bad_slot.pdl | PS \p humanoid \p torso \p tx \p 9 \p lh \p bw \p 5 \p 6 \p #112233\nEQ \p x \p feet \p - \p boot \p hx \p 8 \p lh \p hw \p 5 \p 2 \p #ffffff \p -\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check-equip | $T/bad_slot.pdl | $HOUSE/&.widgits/db-hq/data
 EXPECT_EXIT | 2 | NEGATIVE-a-slot-that-is-not-a-house-equipment-type-is-refused
+
+# D30 step 4: the 2D finishing options (face rows, a bevel pixel pass). The quality gate against the flat cast op FAILED (see interim/try/2026-11-05-quality-gate); these options are kept and pinned, the flat op stays as the 2D finisher.
+CASE    | finish
+SCRATCH |
+WRITE | fa.pdl | STYLE \p s \p build=1\nCHAR \p f \p 3 \p preset=s face=1\n
+WRITE | fb.pdl | STYLE \p s \p build=1\nCHAR \p f \p 3 \p preset=s\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/fa.pdl | $T/oa.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=1 | the-face-character-was-generated
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/fb.pdl | $T/ob.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=1 | the-plain-character-was-generated
+RUN | /usr/bin/grep | -c | PART ..f ..mouth | $T/oa.pdl
+EXPECT_OUT_IS | 1 | face-equals-1-adds-a-mouth
+RUN | /usr/bin/grep | -c | PART ..f ..mouth | $T/ob.pdl
+EXPECT_OUT_IS | 0 | NEGATIVE-the-default-has-no-mouth
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromcast | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | $T/cf.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl | face
+EXPECT_OUT | FROMCAST models=126 | the-face-flag-on-fromcast
+RUN | /usr/bin/grep | -c | mouth | $T/cf.pdl
+EXPECT_OUT_IS | 101 | 101-cast-characters-get-a-mouth-masked-ones-do-not
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/cf.pdl | asa | idle | $T/p0.png
+EXPECT_OUT | opaque=2732 | plain-render-pixel-count
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/cf.pdl | asa | idle | $T/p1.png | pixel
+EXPECT_OUT | opaque=2642 | the-bevel-takes-corner-pixels-off
+RUN | /usr/bin/cmp | -s | $T/p0.png | $T/p1.png
+EXPECT_EXIT | 1 | NEGATIVE-the-pixel-pass-changes-the-picture

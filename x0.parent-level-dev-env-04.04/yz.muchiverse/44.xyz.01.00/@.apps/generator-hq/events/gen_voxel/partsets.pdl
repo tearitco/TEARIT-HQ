@@ -3,9 +3,9 @@
 # PP | set | pose | part | dx | dy | dz                       (moves one named part for that pose)
 # x y z w d h are integers or sums of integers and these variables (the knobs, D30 step 2):
 #   tx  left edge of the torso     bw  torso width (build 0, 1, 2 = 6, 8, 10)
-#   lh  leg height (knob legs 3..7, default 5)     hx  left edge of the head     hw  head width (knob head 0, 1, 2 = 6, 8, 10)
+#   lh  leg height (knob legs 3..7, default 5)     hx  left edge of the head     hw  head width (knob head 0, 1, 2 = 6, 8, 10)     hc  half the head width
 # colour is #rrggbb or one of $skin $hair $gar $trim.
-# when is optional, comma separated, all must hold:  mark=1   style=X   style!=X   (styles: short long mohawk masked clown none). Rows are emitted in file order: a later part draws over an earlier one.
+# when is optional, comma separated, all must hold:  mark=1   face=1 (knob face)   style=X   style!=X   (styles: short long mohawk masked clown none). Rows are emitted in file order: a later part draws over an earlier one.
 PS | humanoid | legl  | tx+1    | 10 | 0     | 3    | 3 | lh | #15161a
 PS | humanoid | legr  | tx+bw-4 | 10 | 0     | 3    | 3 | lh | #15161a
 PS | humanoid | torso | tx      | 9  | lh    | bw   | 5 | 6 | $gar
@@ -17,6 +17,9 @@ PS | humanoid | eyel  | hx+2    | 8  | lh+9  | 1    | 1 | 1 | $trim | style=mask
 PS | humanoid | eyel  | hx+2    | 8  | lh+9  | 1    | 1 | 1 | #15161a | style!=masked
 PS | humanoid | eyer  | hx+5    | 8  | lh+9  | 1    | 1 | 1 | $trim | style=masked
 PS | humanoid | eyer  | hx+5    | 8  | lh+9  | 1    | 1 | 1 | #15161a | style!=masked
+PS | humanoid | mouth  | hx+hc-1 | 8  | lh+7  | 2    | 1 | 1 | #7a2a2a | face=1,style!=masked
+PS | humanoid | blushl | hx+1    | 8  | lh+8  | 1    | 1 | 1 | #e08a7a | face=1,style!=masked
+PS | humanoid | blushr | hx+hw-2 | 8  | lh+8  | 1    | 1 | 1 | #e08a7a | face=1,style!=masked
 PS | humanoid | nose  | hx+4    | 8  | lh+8  | 1    | 1 | 1 | #d62828 | style=clown
 PS | humanoid | wigl  | hx-1    | 9  | lh+7  | 1    | 5 | 5 | $hair | style=clown
 PS | humanoid | wigr  | hx+hw   | 9  | lh+7  | 1    | 5 | 5 | $hair | style=clown

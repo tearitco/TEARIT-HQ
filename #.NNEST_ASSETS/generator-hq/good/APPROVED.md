@@ -28,3 +28,7 @@
 **Not approved** (generated and verified by the tools, but claude has NOT opened them): the other ~90 recoloured sheets, the other six people sheets and nine face sheets, the themed world packs, and everything for which no RPG Maker slot exists yet (side-view actors, side-view enemies, big monsters, vehicles).
 
 **Hashes** (`APPROVED.sha256`, run `sha256sum -c APPROVED.sha256` in this folder). Rebuild commands: see `../README.md` and `../interim/*/README.md`.
+
+## CORRECTION (2026-11-05, late): the six tile files above are recolours, not the art direction
+The owner: "we didn't want to just change the color, but the actual images art meant to be displayed. art style of same things is fine." (SAID)
+**OBS** (`generator_tile_op compare-png`, original vs ours): Outside_B changed 90% of its pixels with a mean colour shift of 16/255 and luminance correlation 0.903 (the same drawings repainted: the sword, shield, armor, bag, teapot icons are identical shapes); Grassland 0.989; the A2 ground sheets 0.67 to 0.81 (new palette and grain, but the same cobblestone and layout shapes). These are **derived from RPG Maker pixels**, so they are interim placeholders for plumbing tests only. They stay in this folder for now so the harness and the test yard keep working, but **do not treat them as approved art**. They are to be REPLACED by newly drawn art of the same things (see decision D31). The character sheets (Actor1, Evil, Monster, People1, faces) are generated from our own part recipes and are not affected by this correction.

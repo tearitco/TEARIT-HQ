@@ -110,6 +110,25 @@ static void view(unsigned char *o, int ox, int sw, int v) {
           (void)ry; }
     }
 }
+static int g_pixel; /* trailing argument "pixel": the 2D finishing pass (D30 step 4) */
+/* bevel: take off the corner pixel of every large convex corner (a 3 x 3 solid block or more), so heads, torsos and helmets read round; 2 px wide parts (eyes, blades) are left alone */
+static void bevel(unsigned char *o, int ox, int sw) {
+    static unsigned char t[48 * 48], kill[48 * 48]; int x, y;
+    #define T(X, Y) ((X) >= 0 && (Y) >= 0 && (X) < 48 && (Y) < 48 && t[(Y) * 48 + (X)])
+    for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) t[y * 48 + x] = o[(y * sw + ox + x) * 4 + 3] != 0;
+    memset(kill, 0, sizeof kill);
+    for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) {
+        int l, r, u, d;
+        if (!t[y * 48 + x]) continue;
+        l = T(x - 1, y); r = T(x + 1, y); u = T(x, y - 1); d = T(x, y + 1);
+        if (!l && !u && r && d && T(x + 2, y) && T(x, y + 2) && T(x + 1, y + 1)) kill[y * 48 + x] = 1;
+        if (!r && !u && l && d && T(x - 2, y) && T(x, y + 2) && T(x - 1, y + 1)) kill[y * 48 + x] = 1;
+        if (!l && !d && r && u && T(x + 2, y) && T(x, y - 2) && T(x + 1, y - 1)) kill[y * 48 + x] = 1;
+        if (!r && !d && l && u && T(x - 2, y) && T(x, y - 2) && T(x - 1, y - 1)) kill[y * 48 + x] = 1;
+    }
+    #undef T
+    for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) if (kill[y * 48 + x]) memset(o + (y * sw + ox + x) * 4, 0, 4);
+}
 static void outline(unsigned char *o, int ox, int sw) { /* a dark ink pixel on every empty pixel that touches a filled one (inside the 48 x 48 cell) */
     static unsigned char t[48 * 48]; int x, y;
     for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) t[y * 48 + x] = o[(y * sw + ox + x) * 4 + 3] != 0;
@@ -121,7 +140,7 @@ static void outline(unsigned char *o, int ox, int sw) { /* a dark ink pixel on e
 static int render_row(unsigned char *o, int row, int sw, const char *model, const char *pose, int *count) {
     int v; build(model, pose, count);
     if (!*count) return 3;
-    for (v = 0; v < 4; v++) { unsigned char *base = o + (size_t)row * 48 * sw * 4; view(base, v * 48, sw, v); outline(base, v * 48, sw); }
+    for (v = 0; v < 4; v++) { unsigned char *base = o + (size_t)row * 48 * sw * 4; view(base, v * 48, sw, v); if (g_pixel) bevel(base, v * 48, sw); outline(base, v * 48, sw); }
     return 0;
 }
 static int opaque(const unsigned char *o, int sw, int row, int n) { int c = 0, x, y; for (y = 0; y < 48; y++) for (x = 0; x < n; x++) if (o[((row * 48 + y) * sw + x) * 4 + 3]) c++; return c; }
@@ -130,9 +149,10 @@ static void col(char *out, const char *s) { snprintf(out, 16, "%s%.7s", *s == '#
 static void emit(FILE *o, const char *m, const char *id, int x, int y, int z, int w, int d, int h, const char *c) { char b[16]; col(b, c); fprintf(o, "PART | %s | %s | %d | %d | %d | %d | %d | %d | %s\n", m, id, x, y, z, w, d, h, b); }
 static void pose(FILE *o, const char *m, const char *p, const char *part, int dx, int dy, int dz) { fprintf(o, "POSE | %s | %s | %s | %d | %d | %d\n", m, p, part, dx, dy, dz); }
 /* ---- PARTSET reader (D30): the humanoid body is data in events/gen_voxel/partsets.pdl; Look carries the knobs ---- */
+static int g_face; /* trailing argument "face" on fromcast: the cast characters get the face rows (mouth, blush) */
 typedef struct { char set[40], id[40], ex[6][40], colour[24], when[120]; } PsRow;
 typedef struct { char set[40], pose[40], part[40]; int dx, dy, dz; } PpRow;
-typedef struct { char skin[16], style[16], hair[16], gar[16], trim[16], equip[160]; int bw, lh, hw, mark; } Look;
+typedef struct { char skin[16], style[16], hair[16], gar[16], trim[16], equip[160]; int bw, lh, hw, mark, face; } Look;
 typedef struct { char id[40], slot[16], item[40], part[40], ex[6][40], colour[24], follow[40]; } EqRow;
 static EqRow EQ[200]; static int neq;
 static PsRow PS[600]; static int nps;
@@ -182,19 +202,20 @@ static int ev(const char *s, const Look *L) { /* integers and the variables tx b
         if (*s == '+') { sign = 1; s++; continue; }
         if (*s == '-') { sign = -1; s++; continue; }
         if (!strncmp(s, "tx", 2)) v = tx; else if (!strncmp(s, "bw", 2)) v = L->bw; else if (!strncmp(s, "lh", 2)) v = L->lh;
-        else if (!strncmp(s, "hx", 2)) v = hx; else if (!strncmp(s, "hw", 2)) v = L->hw;
+        else if (!strncmp(s, "hx", 2)) v = hx; else if (!strncmp(s, "hw", 2)) v = L->hw; else if (!strncmp(s, "hc", 2)) v = L->hw / 2;
         else if (*s >= '0' && *s <= '9') { v = 0; while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0'); sum += sign * v; sign = 1; continue; }
         else return EV_BAD;
         sum += sign * v; sign = 1; s += 2;
     }
     return sum;
 }
-static int when_ok(const char *when, const char *style, int mark, int *bad) { /* "mark=1,style=short,style!=masked": all must hold */
+static int when_ok(const char *when, const char *style, int mark, int face, int *bad) { /* "mark=1,style=short,style!=masked": all must hold */
     char b[120], *t, *sv = NULL;
     snprintf(b, sizeof b, "%s", when);
     for (t = strtok_r(b, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) {
         while (*t == ' ') t++;
         if (!strncmp(t, "mark=", 5)) { if (atoi(t + 5) != mark) return 0; }
+        else if (!strncmp(t, "face=", 5)) { if (atoi(t + 5) != face) return 0; }
         else if (!strncmp(t, "style!=", 7)) { if (!strcmp(t + 7, style)) return 0; }
         else if (!strncmp(t, "style=", 6)) { if (strcmp(t + 6, style)) return 0; }
         else { *bad = 1; return 0; }
@@ -206,7 +227,7 @@ static const char *colour_of(const char *c, const Look *L) {
 }
 static void lookof(Look *L, const char *skin, const char *style, const char *hair, const char *gar, const char *trim, int body, int mark) {
     snprintf(L->skin, 16, "%s", skin); snprintf(L->style, 16, "%s", style); snprintf(L->hair, 16, "%s", hair); snprintf(L->gar, 16, "%s", gar); snprintf(L->trim, 16, "%s", trim);
-    L->bw = body == 0 ? 6 : body == 2 ? 10 : 8; L->lh = 5; L->hw = 8; L->mark = mark; L->equip[0] = 0;
+    L->bw = body == 0 ? 6 : body == 2 ? 10 : 8; L->lh = 5; L->hw = 8; L->mark = mark; L->face = g_face; L->equip[0] = 0;
 }
 static int human(FILE *o, const char *m, const Look *L) {
     int i, bad = 0;
@@ -214,7 +235,7 @@ static int human(FILE *o, const char *m, const Look *L) {
     for (i = 0; i < nps; i++) {
         PsRow *q = &PS[i]; int v[6], j;
         if (strcmp(q->set, "humanoid")) continue;
-        if (q->when[0] && !when_ok(q->when, L->style, L->mark, &bad)) { if (bad) { fprintf(stderr, "bad condition in PS %s: %s\n", q->id, q->when); return 2; } continue; }
+        if (q->when[0] && !when_ok(q->when, L->style, L->mark, L->face, &bad)) { if (bad) { fprintf(stderr, "bad condition in PS %s: %s\n", q->id, q->when); return 2; } continue; }
         for (j = 0; j < 6; j++) { v[j] = ev(q->ex[j], L); if (v[j] == EV_BAD) { fprintf(stderr, "bad expression in PS %s: %s\n", q->id, q->ex[j]); return 2; } }
         emit(o, m, q->id, v[0], v[1], v[2], v[3], v[4], v[5], colour_of(q->colour, L));
     }
@@ -296,7 +317,7 @@ static int fromcast(const char *castf, const char *outf, const char *psf) {
  * The same seed and knobs always give the same character: every unset knob comes from hash32(seed, knob number). */
 typedef struct { char name[40], kv[300]; } StyleRow;
 static StyleRow STY[64]; static int nsty;
-enum { K_SKIN, K_HAIR, K_HSTYLE, K_GAR, K_BUILD, K_LEGS, K_HEAD, K_TRIM, K_MARK, K_EQUIP, K_N };
+enum { K_SKIN, K_HAIR, K_HSTYLE, K_GAR, K_BUILD, K_LEGS, K_HEAD, K_TRIM, K_MARK, K_EQUIP, K_FACE, K_N };
 static int valid_colour(const char *c) { int i; if (c[0] != '#' || strlen(c) != 7) return 0; for (i = 1; i < 7; i++) if (hexv(c[i]) < 0) return 0; return 1; }
 static int num_in(const char *s, int lo, int hi, int *out) { char *e; long v = strtol(s, &e, 10); if (*s == 0 || *e || v < lo || v > hi) return 0; *out = (int)v; return 1; }
 /* applies "k=v k=v" to the knob slots that are still unset; returns 2 on a bad token */
@@ -309,12 +330,12 @@ static int apply_kv(const char *kv, char *vals[K_N], char store[K_N][160], int s
         *eq = 0; k = t; v = eq + 1;
         if (!strcmp(k, "preset")) { if (!presetok) { fprintf(stderr, "preset inside a preset is not allowed\n"); return 2; } if (!preset[0]) snprintf(preset, 40, "%s", v); continue; }
         if (!strcmp(k, "skin")) slot = K_SKIN; else if (!strcmp(k, "hair")) slot = K_HAIR; else if (!strcmp(k, "gar")) slot = K_GAR; else if (!strcmp(k, "trim")) slot = K_TRIM;
-        else if (!strcmp(k, "hair_style")) slot = K_HSTYLE; else if (!strcmp(k, "build")) slot = K_BUILD; else if (!strcmp(k, "legs")) slot = K_LEGS; else if (!strcmp(k, "head")) slot = K_HEAD; else if (!strcmp(k, "mark")) slot = K_MARK; else if (!strcmp(k, "equip")) slot = K_EQUIP; else if (!strcmp(k, "equip")) slot = K_EQUIP;
+        else if (!strcmp(k, "hair_style")) slot = K_HSTYLE; else if (!strcmp(k, "build")) slot = K_BUILD; else if (!strcmp(k, "legs")) slot = K_LEGS; else if (!strcmp(k, "head")) slot = K_HEAD; else if (!strcmp(k, "mark")) slot = K_MARK; else if (!strcmp(k, "equip")) slot = K_EQUIP; else if (!strcmp(k, "face")) slot = K_FACE; else if (!strcmp(k, "equip")) slot = K_EQUIP;
         else { fprintf(stderr, "unknown knob: %s\n", k); return 2; }
         if (slot == K_SKIN || slot == K_HAIR || slot == K_GAR || slot == K_TRIM) { if (!valid_colour(v)) { fprintf(stderr, "knob %s needs #rrggbb, got %s\n", k, v); return 2; } }
         else if (slot == K_EQUIP) { if (strlen(v) > 150) { fprintf(stderr, "equip list too long\n"); return 2; } }
         else if (slot == K_HSTYLE) { if (strcmp(v, "short") && strcmp(v, "long") && strcmp(v, "mohawk") && strcmp(v, "masked") && strcmp(v, "clown") && strcmp(v, "none")) { fprintf(stderr, "unknown hair_style: %s\n", v); return 2; } }
-        else { int lo = 0, hi = 2; if (slot == K_LEGS) { lo = 3; hi = 7; } if (slot == K_MARK) hi = 1; if (!num_in(v, lo, hi, &n)) { fprintf(stderr, "knob %s must be %d..%d, got %s\n", k, lo, hi, v); return 2; } }
+        else { int lo = 0, hi = 2; if (slot == K_LEGS) { lo = 3; hi = 7; } if (slot == K_MARK || slot == K_FACE) hi = 1; if (!num_in(v, lo, hi, &n)) { fprintf(stderr, "knob %s must be %d..%d, got %s\n", k, lo, hi, v); return 2; } }
         if (!set[slot]) { snprintf(store[slot], 160, "%s", v); vals[slot] = store[slot]; set[slot] = 1; }
     }
     return 0;
@@ -395,6 +416,7 @@ static int fromchars(const char *charf, const char *outf, const char *psf) {
         lookof(&L, vals[K_SKIN], vals[K_HSTYLE], vals[K_HAIR], vals[K_GAR], vals[K_TRIM], atoi(vals[K_BUILD]), atoi(vals[K_MARK]));
         if (equip_ok(vals[K_EQUIP], id)) { fclose(f); fclose(o); return 2; }
         snprintf(L.equip, sizeof L.equip, "%s", vals[K_EQUIP]);
+        L.face = atoi(vals[K_FACE]);
         L.lh = atoi(vals[K_LEGS]); L.hw = 6 + 2 * atoi(vals[K_HEAD]);
         if (human(o, id, &L)) { fclose(f); fclose(o); return 2; }
         made++;
@@ -452,6 +474,7 @@ static int icons(const char *kind, int cols, const char *out) {
 }
 int main(int argc, char **argv) {
     int rc;
+    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face"))) { if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else g_face = 1; argc--; }
     if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);

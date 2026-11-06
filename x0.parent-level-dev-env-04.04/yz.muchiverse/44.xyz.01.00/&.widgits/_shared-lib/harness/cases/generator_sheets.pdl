@@ -137,3 +137,17 @@ RUN | /usr/bin/grep | -c | _A5.png ..0 ..14$ | $HOUSE/@.apps/generator-hq/events
 EXPECT_OUT_IS | 3 | the-three-a5-floor-sheets-use-14-levels-and-no-outline
 RUN | /usr/bin/grep | -c | Inside_A5.png ..1$ | $HOUSE/@.apps/generator-hq/events/gen_restyle/sheets.pdl
 EXPECT_OUT_IS | 0 | NEGATIVE-no-a5-sheet-is-left-on-the-6-level-default-with-outline
+
+# How alike the approved tilesets are to the RPG Maker originals (measured 2026-11-05, owner asked "do they look identical to old?"): these are RECOLOURS of the same drawings. Pinned so the claim stays honest.
+CASE    | likeness
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
+EXPECT_OUT | luminance_correlation=0.903 | outside-b-is-the-same-drawing-repainted
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/battlebacks1/Grassland.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/battlebacks1/Grassland.png
+EXPECT_OUT | luminance_correlation=0.989 | the-grassland-battleback-is-almost-the-original
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_A2.png
+EXPECT_OUT | luminance_correlation=0.674 | outside-a2-differs-more
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
+EXPECT_OUT | changed_pct=0.0 mean_colour_shift=0.0 luminance_correlation=1.000 | NEGATIVE-control-a-file-against-itself-is-identical
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png
+EXPECT_EXIT | 2 | NEGATIVE-different-sizes-are-refused
