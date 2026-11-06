@@ -226,3 +226,17 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | compare | stat
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | worn | 0.1 | state=$T/st
 RUN | /usr/bin/grep | cmp_state | $T/st/palettes-studio_ui.txt
 EXPECT_OUT | cmp_state=off | a-knob-press-leaves-compare-mode
+
+# gridlines: preview only
+CASE    | grid
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | /usr/bin/cp | $T/st/studio_preview.raw | $T/on.raw
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | grid | state=$T/st
+RUN | /usr/bin/cmp | -s | $T/on.raw | $T/st/studio_preview.raw
+EXPECT_EXIT | 1 | NEGATIVE-gridlines-change-the-preview-pixels
+RUN | /usr/bin/grep | grid_state | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | grid_state=off | the-window-var-follows
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | /usr/bin/sha256sum | $T/st/studio_saves/slot0.png
+EXPECT_OUT | 137a6f3ce273bb7f | the-saved-sheet-has-no-gridlines-neutral-pin
