@@ -82,3 +82,6 @@ Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3
 
 ## 19. Update: user concepts with value bias (D34 step 1)
 Try: put `concept_cozy.pdl` (bank format: `NODE`, `KIND | master`, `VALUE | 0.5`, `SLOT | n | POINTS_TO=look_warm | WEIGHT=0.6`, ties to other `concept_*` allowed) in a folder, then `palette_studio_op render <templates> outside_b out.png concepts=<folder> concept=cozy:50%`. A second `concepts=<desk folder>` overrides by name. Suite `palette_studio.pal` 36/0. The window, the typed commands and the manager are next.
+
+## 20. Update: the palette-studio window (open it)
+LyfeDesk taskbar, **7.palettes**, row **palette-studio** (after the taskbar restarts; until then run `sh '&.widgits/palettes/button-pal.sh' studio <house>`). Top bar: template dropdown, Save, View, Knobs on/off; left bar: knobs with -5% / +5% buttons (collapsible); canvas: the live sheet. Saves go to `&.widgits/palettes/state/studio_saves/slotN` (20 slots, rotating) with a record you can replay with `palette_studio_op replay`. Suite `palette_studio.pal` 58/0. Details and the findings: design doc section 8.

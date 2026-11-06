@@ -138,8 +138,8 @@ SECTION      | palettes_menu_9_label  | kenney 3d
 SECTION      | palettes_menu_9_cmd    | livedesk:open-palette:kenney
 SECTION      | palettes_menu_10_label | paint colors
 SECTION      | palettes_menu_10_cmd   | livedesk:open-palette:paint
-SECTION      | palettes_menu_11_label | generate
-SECTION      | palettes_menu_11_cmd   | livedesk:open-palette:generate
+SECTION      | palettes_menu_11_label | palette-studio
+SECTION      | palettes_menu_11_cmd   | livedesk:open-palette:studio
 SECTION      | palettes_menu_12_label | my palettes
 SECTION      | palettes_menu_12_cmd   | livedesk:open-palette:my-palettes
 SECTION      | palettes_menu_13_label | terumon

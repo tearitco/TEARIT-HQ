@@ -30,7 +30,7 @@ esac
 # generic "not implemented yet" stub. NOTHING routes to the old
 # palettes_menu.sh g_is_palettes C path any more.
 case "$CAT" in
-    emojis|elements|piececraft|cdda|df|doom|debug|rmmv|tiled|ohrrpgce|my-palettes|tile-editor) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
+    emojis|elements|piececraft|cdda|df|doom|debug|rmmv|tiled|ohrrpgce|my-palettes|tile-editor|studio) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
     *)  CAT=stub; XHTPM="$HERE/palettes-stub.xhtpm" ;;
 esac
 OPS="$HOUSE/_.monads/_.livedesk-taskbar/ops"
@@ -45,6 +45,13 @@ for f in "$BIN" "$MGR" "$PROJ" "$XHTPM"; do
     [ -e "$f" ] || { echo "palettes-pal: missing $f" >&2; exit 1; }
 done
 mkdir -p "$HERE/state"
+
+# studio: the window has no manager process; one short op resets the session, renders the first preview and writes the window's vars before it opens.
+if [ "$CAT" = studio ]; then
+    UIOP="$HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x"
+    [ -x "$UIOP" ] || { echo "palettes-pal (studio): missing $UIOP (build: gcc -O2 -o ... palette_studio_ui_op.c -lm)" >&2; exit 1; }
+    "$UIOP" init || { echo "palettes-pal (studio): init failed" >&2; exit 1; }
+fi
 
 for p in $(pgrep -f "khtpm_core_render\.\+x .*palettes-$CAT\.xhtpm" 2>/dev/null || true) \
          $(pgrep -f "palettes_projector\.\+x .* $CAT\$" 2>/dev/null || true); do

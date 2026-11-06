@@ -125,3 +125,85 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@
 EXPECT_EXIT | 2 | NEGATIVE-150-percent-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/x.png | concepts=$T/cc | concept=nobody:0.5
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-concept-is-refused
+
+# D34 step 4 (v0/v1): the buttons of the palette-studio window (palette_studio_ui_op). Every run uses state=<scratch>, so the live window state is never touched.
+CASE    | window
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | the-preview-is-768x576-rgba
+RUN | /usr/bin/grep | template_id | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | template_id=outside_b | init-starts-on-the-first-template
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.05 | state=$T/st
+RUN | /usr/bin/grep | kb_0_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_0_val=+5% | a-nudge-moves-the-knob
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.05 | /pkg | /house | state=$T/st
+EXPECT_EXIT | 0 | REGRESSION-the-renderer-appends-two-arguments-to-every-action
+RUN | /usr/bin/grep | kb_0_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_0_val=+10% | and-the-nudge-still-lands
+RUN | /usr/bin/cp | $T/st/studio_preview.raw | $T/before.raw
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | big | 0.5 | state=$T/st
+RUN | /usr/bin/cmp | -s | $T/before.raw | $T/st/studio_preview.raw
+EXPECT_EXIT | 1 | a-nudge-changes-the-preview-pixels
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 5 | state=$T/st
+RUN | /usr/bin/grep | kb_0_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_0_val=+100% | the-top-of-a-knob-is-clamped-at-100-percent
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | worn | -1 | state=$T/st
+RUN | /usr/bin/grep | kb_1_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_1_val=0% | a-0-to-1-knob-cannot-go-below-0
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | metal | -2 | state=$T/st
+RUN | /usr/bin/grep | kb_4_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_4_val=-100% | a-signed-knob-goes-down-to-minus-100
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | reset | state=$T/st
+RUN | /usr/bin/grep | kb_0_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_0_val=0% | reset-zeroes-the-knobs
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a2 | state=$T/st
+RUN | /usr/bin/grep | kb_1_name | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_1_name=wet | picking-a-ground-template-switches-to-the-ground-knobs
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | big | 0.05 | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-a-knob-the-template-does-not-have-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | nowhere | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-template-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | dance | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-command-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | toggle | left | state=$T/st
+RUN | /usr/bin/grep | ^left= | $T/st/studio_session.txt
+EXPECT_OUT | left=0 | the-knob-panel-collapses
+RUN | /usr/bin/grep | -c | left_visible=$ | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | 1 | and-the-window-var-goes-empty
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | toggle | left | state=$T/st
+RUN | /usr/bin/grep | left_visible | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | left_visible=1 | the-panel-comes-back
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_b | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.3 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | saved studio_saves/slot0 | save-writes-a-slot
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
+EXPECT_OUT | REPLAY ok | the-saved-record-replays-to-the-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | /usr/bin/test | -e | $T/st/studio_saves/slot19.png
+EXPECT_EXIT | 0 | slot-19-exists
+RUN | /usr/bin/test | -e | $T/st/studio_saves/slot20.png
+EXPECT_EXIT | 1 | NEGATIVE-there-is-no-21st-slot-the-saves-folder-is-capped
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/&.widgits/palettes/palettes-studio.xhtpm
+EXPECT_OUT | 0 error(s), 0 warning(s) | the-window-layout-passes-the-house-layout-check

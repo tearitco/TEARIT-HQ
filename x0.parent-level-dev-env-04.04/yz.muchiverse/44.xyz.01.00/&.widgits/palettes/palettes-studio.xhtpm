@@ -1,0 +1,39 @@
+<!-- palettes-studio.xhtpm - the palette-studio window (D34 step 4). Same frame as the rpg-edit and rpg-pet screens: a top toolbar of tabs (Template, Save and View are dropdowns, Knobs shows or hides the panel),
+     a 2 px rail that only holds the dropdown rows, and a canvas panel with a pinned collapsible knob bar on the left (its _ button and the Knobs tab flip left_visible).
+     No module and no resident process: every button runs @.apps/generator-hq/ops/+x/palette_studio_ui_op.+x (one short process per click), which updates the session, re-renders the preview
+     (palette_studio_op -> the real generator) and rewrites state/palettes-studio_ui.txt (this window's vars). button-pal.sh studio runs init first.
+     Preview = canvas on state/studio_preview.raw (768 x 576); object sheets show their top 576 px. Design: BOOK 16.game/PALETTE-STUDIO-WINDOW-AND-USER-CONCEPTS-DESIGN-2026-11-05.md. RULES: no angle brackets inside comments. -->
+<window label="palettes: palette-studio" class="ps-win palettes-pal database-window" vars="state/palettes-studio_ui.txt">
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-tpl" class="tab ps-tb" label="${tpl_short} ▾" onclick="ACTIVATE" target_id="tb-tpl"/>
+      <tab id="tb-save" class="tab ps-tb" label="Save ▾" onclick="ACTIVATE" target_id="tb-save"/>
+      <tab id="tb-view" class="tab ps-tb" label="View ▾" onclick="ACTIVATE" target_id="tb-view"/>
+      <tab id="tb-knobs" class="tab ps-tb" label="Knobs ${knobs_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
+    </tabbar>
+    <sidebar id="rail" class="ps-rail sidebar">
+      <repeat count="${n_templates}" bind="tp">
+        <item id="tp${tp.#}" class="ps-menu-row dropdown-child ${tp.active}" target_id="tb-tpl" label="${tp.label}" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' pick ${tp.id}"/>
+      </repeat>
+      <item id="tp-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-tpl" label="- cancel -" action="void"/>
+      <item id="sv-save" class="ps-menu-row dropdown-child" target_id="tb-save" label="Save sheet" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' save"/>
+      <item id="sv-reset" class="ps-menu-row dropdown-child" target_id="tb-save" label="Reset knobs" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' reset"/>
+      <item id="sv-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-save" label="- cancel -" action="void"/>
+      <item id="vw-knobs" class="ps-menu-row dropdown-child" target_id="tb-view" label="Knob panel show / hide" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
+      <item id="vw-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-view" label="- cancel -" action="void"/>
+    </sidebar>
+    <panel id="view-panel" class="ps-panel">
+      <canvas id="ps-view" class="ps-view" sprite="${canvas_raw}"/>
+      <row id="side-l" class="canvas-overlay-left ov-pin ov-scroll ov-chrome ps-pinned theme" show="${left_visible}">
+        <text label="knobs - ${template_id}" class="ps-quiet ov-title theme-3"/>
+        <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
+        <repeat count="${n_knobs}" bind="kb">
+          <text id="kt${kb.#}" label="${kb.name}  ${kb.val}" class="ps-knob"/>
+          <item id="kd${kb.#}" class="ps-btn" label="${kb.name} -5%" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' nudge ${kb.name} -0.05"/>
+          <item id="ku${kb.#}" class="ps-btn" label="${kb.name} +5%" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' nudge ${kb.name} 0.05"/>
+        </repeat>
+        <text id="status" label="${status}" class="ps-quiet"/>
+      </row>
+    </panel>
+  </page>
+</window>
