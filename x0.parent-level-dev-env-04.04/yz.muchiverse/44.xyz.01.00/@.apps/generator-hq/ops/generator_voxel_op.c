@@ -85,6 +85,49 @@ static int check_refs(void) { /* every PART and POSE names a real model; every P
     return bad ? 2 : 0;
 }
 static unsigned G[N][N][N]; /* [z][y][x]: 0 empty, else 0xFF000000 | rgb */
+/* ---- Concept Bank weights (D32): a thing is a SPOKE prop_<model>; its look is the WEIGHT of the slot that POINTS_TO a look master (look_warm, look_worn).
+ * Read-only: argument bank=<concept-bank dir>. A missing spoke or slot means 0.0 (the recipe as drawn). A weight outside -1..1 is refused (exit 2 at the call site). ---- */
+static char g_bank[600];
+static unsigned hash32(unsigned x);
+static int bank_weight(const char *model, const char *master, double *w, int *bad) { /* returns 1 when found */
+    char path[900], line[300]; FILE *f; int found = 0;
+    *w = 0.0; *bad = 0;
+    if (!g_bank[0]) return 0;
+    snprintf(path, sizeof path, "%.600s/data/spokes/prop_%.60s.pdl", g_bank, model);
+    f = fopen(path, "r"); if (!f) return 0;
+    while (fgets(line, sizeof line, f)) {
+        char *p = strstr(line, "POINTS_TO="), *q;
+        if (strncmp(line, "SLOT", 4) != 0 || !p) continue;
+        p += 10; q = p; while (*q && *q != ' ' && *q != '|' && *q != '\n') q++;
+        if ((size_t)(q - p) == strlen(master) && !strncmp(p, master, q - p)) {
+            char *wv = strstr(line, "WEIGHT="); if (!wv) continue;
+            *w = atof(wv + 7); found = 1;
+            if (*w < -1.0 || *w > 1.0) *bad = 1;
+        }
+    }
+    fclose(f); return found;
+}
+/* apply warmth and wear to the built voxel grid; weights 0.0 change nothing */
+static int apply_look(const char *model) {
+    double warm = 0.0, worn = 0.0; int bw = 0, bn = 0, X, Y, Z; unsigned mh = 5381; const char *c;
+    if (!g_bank[0]) return 0;
+    bank_weight(model, "look_warm", &warm, &bw); bank_weight(model, "look_worn", &worn, &bn);
+    if (bw || bn) { fprintf(stderr, "bank weight out of range for prop_%s (must be -1..1)\n", model); return 2; }
+    if (worn < 0.0) worn = 0.0;
+    if (warm == 0.0 && worn == 0.0) return 0;
+    for (c = model; *c; c++) mh = mh * 33 + (unsigned char)*c;
+    for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) {
+        unsigned v = G[Z][Y][X], a, r, g, b; double R, Gc, B;
+        if (!v) continue;
+        a = v >> 24; r = (v >> 16) & 255; g = (v >> 8) & 255; b = v & 255;
+        R = r * (1.0 + 0.18 * warm); Gc = g * (1.0 + 0.05 * warm); B = b * (1.0 - 0.25 * warm);
+        if (worn > 0.0 && (hash32((unsigned)X * 73856093u ^ (unsigned)Y * 19349663u ^ (unsigned)Z * 83492791u ^ mh) % 100) < (unsigned)(worn * 40.0)) { R *= 0.78; Gc *= 0.78; B *= 0.78; }
+        if (R > 255) { R = 255; } if (Gc > 255) { Gc = 255; } if (B > 255) { B = 255; }
+        if (R < 0) { R = 0; } if (Gc < 0) { Gc = 0; } if (B < 0) { B = 0; }
+        G[Z][Y][X] = (a << 24) | ((unsigned)R << 16) | ((unsigned)Gc << 8) | (unsigned)B;
+    }
+    return 0;
+}
 static unsigned lit(unsigned r, unsigned g, unsigned b, double f) { /* scale a colour by a lighting factor and mark it as a smooth (round) surface: alpha 0xFE */
     double R = r * f, Gc = g * f, B = b * f;
     if (R > 255) { R = 255; }
@@ -119,7 +162,7 @@ static int build(const char *model, const char *pose, int *count) {
             G[Z][Y][X] = 0xFF000000u | (P[i].r << 16) | (P[i].g << 8) | P[i].b;
         }
     }
-    return 0;
+    return apply_look(model);
 }
 static void px(unsigned char *o, int ox, int sw, int x, int y, unsigned c, int shade) {
     unsigned char *q; int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
@@ -171,7 +214,7 @@ static void outline(unsigned char *o, int ox, int sw) { /* a dark ink pixel on e
     }
 }
 static int render_row(unsigned char *o, int row, int sw, const char *model, const char *pose, int *count) {
-    int v; build(model, pose, count);
+    int v; if (build(model, pose, count)) return 2;
     if (!*count) return 3;
     for (v = 0; v < 4; v++) { unsigned char *base = o + (size_t)row * 48 * sw * 4; view(base, v * 48, sw, v); if (g_pixel) bevel(base, v * 48, sw); outline(base, v * 48, sw); }
     return 0;
@@ -559,7 +602,7 @@ static int objsheet(int argc, char **argv) {
 }
 int main(int argc, char **argv) {
     int rc;
-    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face"))) { if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else g_face = 1; argc--; }
+    while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face") || !strncmp(argv[argc - 1], "bank=", 5))) { if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else if (!strcmp(argv[argc - 1], "face")) g_face = 1; else snprintf(g_bank, sizeof g_bank, "%s", argv[argc - 1] + 5); argc--; }
     if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | objsheet <out.png> <cells.pdl> <recipes.pdl>... | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);

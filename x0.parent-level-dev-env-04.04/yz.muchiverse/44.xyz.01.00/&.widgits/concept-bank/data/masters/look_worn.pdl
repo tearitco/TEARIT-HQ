@@ -1,0 +1,5 @@
+# CONCEPT_MASTER — look_worn.pdl (generator look concept, D32, 2026-11-05)
+# How weathered, chipped or used a thing looks: a deterministic speckle of darker voxels. 0.0 = clean (the recipe as drawn), 1.0 = heavily worn. WEIGHT lives in each spoke's slot.
+NODE | look_worn
+KIND | master
+N_SLOTS | 8

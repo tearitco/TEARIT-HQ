@@ -1,0 +1,7 @@
+# CONCEPT_MASTER — look_warm.pdl (generator look concept, D32, 2026-11-05)
+# How warm (orange-red) or cool (blue) a thing's colours read. WEIGHT lives in each SPOKE's own slot that POINTS_TO this master (weights live in exactly one place);
+# -1.0 = coolest, 0.0 = the recipe's own colours (neutral, no change), +1.0 = warmest. Read by generator_voxel_op (bank=<dir>); hand-tune by editing a spoke's WEIGHT or by an EDIT record
+# checked with ops/+x/concept_edit_validate.+x (bounded delta). The MIRROR table below is rebuilt by ops/concept_mirror_rebuild.sh; this file has none until that is run.
+NODE | look_warm
+KIND | master
+N_SLOTS | 8

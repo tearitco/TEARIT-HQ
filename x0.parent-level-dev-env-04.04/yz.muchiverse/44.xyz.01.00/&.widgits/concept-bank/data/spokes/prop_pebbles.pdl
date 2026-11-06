@@ -1,0 +1,7 @@
+# CONCEPT_SPOKE — prop_pebbles.pdl (generator thing, D32). Weights: slot 0 look_warm, slot 1 look_worn (0.0 = neutral). Hand-tune here.
+NODE | prop_pebbles
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=look_warm | WEIGHT=0.00
+SLOT | 1 | POINTS_TO=look_worn | WEIGHT=0.00
+GRADE | 0

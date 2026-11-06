@@ -263,3 +263,53 @@ EXPECT_EXIT | 2 | NEGATIVE-a-cylinder-that-leaves-the-grid-is-refused
 WRITE | rb2.pdl | MODEL \p m \p prop\nELL \p m \p e \p 12 \p 12 \p 6 \p 0 \p 3 \p 3 \p #ffffff\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/rb2.pdl
 EXPECT_EXIT | 2 | NEGATIVE-an-ellipsoid-with-radius-0-is-refused
+
+# D32: the look of the new art is tuned by Concept Bank weights (spokes prop_<name> pointing at the masters look_warm and look_worn). Weight 0.0 = the recipe as drawn.
+CASE    | concept-bank
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/neutral.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | bank=$HOUSE/&.widgits/concept-bank
+EXPECT_OUT | OBJSHEET size=768x768 cells=25 | the-real-bank-is-read
+RUN | /usr/bin/sha256sum | $T/neutral.png
+EXPECT_OUT | fd310476c29c757e7edfa73690762bcd02b1469cc2d9050a34fa62638ada0e0b | neutral-weights-reproduce-the-pinned-sheet-byte-for-byte
+MKDIR | bankA/data/spokes
+MKDIR | bankB/data/spokes
+MKDIR | bankC/data/spokes
+MKDIR | bankD/data/spokes
+WRITE | bankA/data/spokes/prop_barrel.pdl | NODE \p prop_barrel\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.90\nSLOT \p 1 \p POINTS_TO=look_worn \p WEIGHT=0.00\nGRADE \p 0\n
+WRITE | bankB/data/spokes/prop_barrel.pdl | NODE \p prop_barrel\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=-0.90\nSLOT \p 1 \p POINTS_TO=look_worn \p WEIGHT=0.00\nGRADE \p 0\n
+WRITE | bankC/data/spokes/prop_barrel.pdl | NODE \p prop_barrel\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=0.00\nSLOT \p 1 \p POINTS_TO=look_worn \p WEIGHT=0.80\nGRADE \p 0\n
+WRITE | bankD/data/spokes/prop_barrel.pdl | NODE \p prop_barrel\nKIND \p spoke\nN_SLOTS \p 8\nSLOT \p 0 \p POINTS_TO=look_warm \p WEIGHT=2.00\nSLOT \p 1 \p POINTS_TO=look_worn \p WEIGHT=0.00\nGRADE \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/rA.png | bank=$T/bankA
+EXPECT_OUT | VOXEL model=barrel pose=idle views=4 voxels=2851 | bank-A-renders-with-the-same-voxel-count
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/rB.png | bank=$T/bankB
+EXPECT_OUT | VOXEL model=barrel pose=idle views=4 voxels=2851 | bank-B-renders-with-the-same-voxel-count
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/rC.png | bank=$T/bankC
+EXPECT_OUT | VOXEL model=barrel pose=idle views=4 voxels=2851 | bank-C-renders-with-the-same-voxel-count
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/r0.png
+RUN | /usr/bin/cmp | -s | $T/r0.png | $T/rA.png
+EXPECT_EXIT | 1 | warm-0.9-changes-the-picture
+RUN | /usr/bin/cmp | -s | $T/rA.png | $T/rB.png
+EXPECT_EXIT | 1 | warm-plus-and-warm-minus-differ
+RUN | /usr/bin/cmp | -s | $T/r0.png | $T/rC.png
+EXPECT_EXIT | 1 | worn-0.8-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/rA2.png | bank=$T/bankA
+RUN | /usr/bin/cmp | -s | $T/rA.png | $T/rA2.png
+EXPECT_EXIT | 0 | same-weights-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/rD.png | bank=$T/bankD
+EXPECT_EXIT | 2 | NEGATIVE-a-weight-outside-minus-1-to-1-is-refused
+MKDIR | bankE/data/spokes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/rE.png | bank=$T/bankE
+RUN | /usr/bin/cmp | -s | $T/r0.png | $T/rE.png
+EXPECT_EXIT | 0 | a-missing-spoke-falls-back-to-the-recipe-as-drawn
+WRITE | ed1.txt | EDIT \p id=t1 \p type=spoke_weight_delta \p target=prop_barrel \p slot=look_warm \p delta=0.1 \p reason="a little warmer" \p proposer=owner \p status=candidate\n
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/concept_edit_validate.+x | $HOUSE/&.widgits/concept-bank | $T/ed1.txt
+EXPECT_EXIT | 0 | the-house-validator-passes-a-bounded-hand-edit
+WRITE | ed2.txt | EDIT \p id=t2 \p type=spoke_weight_delta \p target=prop_barrel \p slot=look_warm \p delta=0.5 \p reason="far too warm" \p proposer=owner \p status=candidate\n
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/concept_edit_validate.+x | $HOUSE/&.widgits/concept-bank | $T/ed2.txt
+EXPECT_EXIT | 1 | NEGATIVE-an-edit-bigger-than-0.2-is-rejected
+WRITE | ed3.txt | EDIT \p id=t3 \p type=spoke_weight_delta \p target=prop_ghost \p slot=look_warm \p delta=0.1 \p reason="no such thing" \p proposer=owner \p status=candidate\n
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/concept_edit_validate.+x | $HOUSE/&.widgits/concept-bank | $T/ed3.txt
+EXPECT_EXIT | 1 | NEGATIVE-an-edit-to-a-thing-that-is-not-in-the-bank-is-rejected
+WRITE | ed4.txt | EDIT \p id=t4 \p type=spoke_weight_delta \p target=prop_barrel \p slot=look_round \p delta=0.1 \p reason="no such master" \p proposer=owner \p status=candidate\n
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/concept_edit_validate.+x | $HOUSE/&.widgits/concept-bank | $T/ed4.txt
+EXPECT_EXIT | 1 | NEGATIVE-an-edit-pointing-at-a-master-the-thing-does-not-use-is-rejected
