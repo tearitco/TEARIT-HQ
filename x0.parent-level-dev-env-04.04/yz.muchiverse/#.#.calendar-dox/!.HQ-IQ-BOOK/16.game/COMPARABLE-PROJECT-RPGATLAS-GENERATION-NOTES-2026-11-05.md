@@ -3,7 +3,9 @@ Labels: **SAID** owner, **READ** a file I opened (named), **OBS** I saw it work,
 Source: `~/Desktop/🤖️🪤️🏠️/GITS/RPGAtlas-main/` (76 files, 1.7 MB, plain JavaScript, no build step, **GPL-3.0-or-later**). Not run; read only.
 
 ## 0. Coverage and licence (do not overclaim)
-**Read:** `README.md` (top), `AGENTS.md`, `js/assets.js` lines 1-200 (helpers, first tiles), 640-830 (humans, objects, charsets), 839-945 (faces, enemies), 1104-1123 (enemy canvas), `js/sfx.js` lines 20-150, `js/gl.js` header and shader list, `wiki/Characters-and-Custom-Assets.md`, grep of every random/seed/generate use. **Not read:** tile drawers lines 200-615, the other eleven enemy drawers, `engine.js` (battles, encounters), `editor.js` beyond the Character Generator hooks, `plugins.js`, tests, the Tauri and C# launchers.
+**Read:** `README.md` (top), `AGENTS.md`, `js/assets.js` lines 1-200 (helpers, first tiles), 640-830 (humans, objects, charsets), 839-945 (faces, enemies), 1104-1123 (enemy canvas), `js/sfx.js` lines 20-150, `js/gl.js` header and shader list, `wiki/Characters-and-Custom-Assets.md`, grep of every random/seed/generate use. 
+**Second reading (same day, owner: read and doc anything useful, do not take it if ours is better):** tile drawers (all 57 keys, lines 200-615), the enemy drawer roster, `engine.js` battle command, damage variance, enemy action choice and random encounters, `js/plugins.js` header and API, `js/data.js` traits and `migrateProject`, `tests/traits.test.js`, the head of `tests/heights.test.js`, `package.json`.
+**Still not read:** the other eleven enemy drawers line by line, `editor.js` outside the Character Generator hooks, `i18n.js`, `project-io.js`, the Tauri and C# launchers, `modules.test.mjs`.
 **Licence:** GPL-3.0. We **mirror ideas and shapes, we do not copy code** (our repo and IP stay unencumbered; our licence reading is parked by the owner but this is the safe default). Reading their code is fine; our implementation is C ops and `.pdl` data written from scratch.
 
 ## 1. What they do (READ), and the algorithm behind each
