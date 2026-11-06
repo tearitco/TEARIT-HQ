@@ -240,3 +240,27 @@ EXPECT_OUT | grid_state=off | the-window-var-follows
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
 RUN | /usr/bin/sha256sum | $T/st/studio_saves/slot0.png
 EXPECT_OUT | 137a6f3ce273bb7f | the-saved-sheet-has-no-gridlines-neutral-pin
+
+# picker view (house picker rule: one tile per kind, packed), preview only
+CASE    | picker
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | /usr/bin/grep | view_state | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | view_state=picker | picker-is-the-default-view
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | the-picker-preview-keeps-the-canvas-size
+RUN | /usr/bin/cp | $T/st/studio_preview.raw | $T/pk.raw
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | view | state=$T/st
+RUN | /usr/bin/grep | view_state | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | view_state=sheet | the-view-toggles
+RUN | /usr/bin/cmp | -s | $T/pk.raw | $T/st/studio_preview.raw
+EXPECT_EXIT | 1 | NEGATIVE-the-full-sheet-differs-from-the-picker
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a2 | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | ground-in-the-full-view-keeps-the-canvas-size
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | view | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | ground-picker-keeps-the-canvas-size
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_saves/slot0.png
+EXPECT_OUT | 146291 | a-saved-ground-sheet-is-the-full-sheet-not-the-picker

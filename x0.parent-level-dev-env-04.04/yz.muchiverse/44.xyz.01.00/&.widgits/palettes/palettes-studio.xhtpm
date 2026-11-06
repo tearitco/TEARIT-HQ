@@ -39,6 +39,7 @@
     <footer id="statusbar" class="ps-footer">
       <item id="ft-knobs" class="ps-ft skin-bar" label="Knobs ${knobs_state}" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
       <item id="ft-cmp" class="ps-ft skin-bar" label="Orig ${cmp_state}" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' compare"/>
+      <item id="ft-view" class="ps-ft skin-bar" label="View ${view_state}" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' view"/>
       <item id="ft-grid" class="ps-ft skin-bar" label="Grid ${grid_state}" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' grid"/>
       <item id="ft-reset" class="ps-ft skin-bar" label="Reset" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' reset"/>
       <item id="ft-save" class="ps-ft skin-bar" label="Save" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' save"/>
