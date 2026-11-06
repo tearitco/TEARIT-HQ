@@ -469,3 +469,110 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | sf_outside_a5 | state=$T/st
 RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
 EXPECT_OUT | status=template sf_outside_a5 | the-nineteenth-template-can-be-picked-the-ui-limit-was-16
+
+# Player and Select tabs: undo, presets, selection (units = cells for objects and A5, blocks for A2), selection-limited knobs, crop save
+CASE    | player
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.1 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.1 | state=$T/st
+RUN | /usr/bin/grep | kb_0_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_0_val=+20% | two-nudges-make-plus-20
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | undo | state=$T/st
+RUN | /usr/bin/grep | kb_0_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_0_val=+10% | undo-steps-back-one-nudge
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | undo | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | undo | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=nothing to undo | NEGATIVE-undo-with-an-empty-history-says-so
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | worn | 0.3 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | 5 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | preset | save | 1 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | reset | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | 0 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | preset | load | 1 | state=$T/st
+RUN | /usr/bin/grep | kb_1_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | kb_1_val=+30% | a-loaded-preset-restores-the-knobs
+RUN | /usr/bin/grep | variant_val | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | variant_val=5 | and-the-variant
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | preset | load | 2 | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=preset 2 is empty | NEGATIVE-an-empty-preset-slot-says-so
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | preset | load | 12 | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-preset-slot-12-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | top | state=$T/st
+RUN | /usr/bin/grep | sel_label | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | sel_label=selection: 0,0 size 16x8 | the-top-half-of-an-object-sheet-is-16-by-8-cells
+RUN | /usr/bin/grep | view_state | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | view_state=sheet | selecting-switches-to-the-full-sheet-so-the-frame-shows
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | rect | 2,1,3,2 | state=$T/st
+RUN | /usr/bin/grep | sel_label | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | sel_label=selection: 2,1 size 3x2 | a-typed-rectangle-is-accepted
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | rect | 20,1,3,2 | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-a-rectangle-outside-the-sheet-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | diagonal | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-selection-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | reset | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | rect | 0,0,4,4 | state=$T/st
+RUN | /usr/bin/cp | $T/st/studio_preview.raw | $T/a.raw
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | nudge | warm | 0.5 | state=$T/st
+RUN | /usr/bin/cmp | -s | $T/a.raw | $T/st/studio_preview.raw
+EXPECT_EXIT | 1 | a-knob-inside-a-selection-changes-the-picture
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | rect | 1,3,4,2 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | savecrop | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=saved crop studio_saves/slot0 (1,3 size 4x2) | savecrop-writes-the-selection
+RUN | /usr/bin/grep | MODE | $T/st/studio_saves/slot0.studio.pdl
+EXPECT_OUT | MODE \p crop | the-record-says-crop
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
+EXPECT_OUT | REPLAY ok | a-crop-record-replays-exactly
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | whole | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | savecrop | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-savecrop-without-a-selection-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | icons_items | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | top | state=$T/st
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=selection works on object and ground sheets | NEGATIVE-icons-have-no-selection
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a2 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | rect | 0,0,8,2 | state=$T/st
+RUN | /usr/bin/grep | sel_label | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | sel_label=selection: 0,0 size 8x2 | ground-a2-selects-in-blocks
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | sf_outside_a5 | state=$T/st
+RUN | /usr/bin/grep | sel_label | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | sel_label=selection: whole sheet | picking-a-template-clears-the-selection
+RUN | /usr/bin/wc | -l | $T/st/studio_undo.txt
+EXPECT_EXIT | 0 | the-undo-history-file-exists
+
+# the undo history is capped (runtime file rule): 25 changes leave exactly 20 records
+CASE    | undocap
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | roll | state=$T/st
+RUN | /usr/bin/grep | -c | ^---$ | $T/st/studio_undo.txt
+EXPECT_OUT | 20 | the-undo-file-holds-at-most-20-records-after-25-changes
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_undo.txt
+EXPECT_EXIT | 0 | the-undo-file-has-a-size

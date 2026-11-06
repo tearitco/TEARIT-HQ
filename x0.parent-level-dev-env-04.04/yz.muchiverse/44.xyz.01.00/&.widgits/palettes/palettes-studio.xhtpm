@@ -8,6 +8,8 @@
     <tabbar id="toolbar" class="tab-bar">
       <tab id="tb-tpl" class="tab ps-tb" label="${tpl_short} ▾" onclick="ACTIVATE" target_id="tb-tpl"/>
       <tab id="tb-save" class="tab ps-tb" label="Save ▾" onclick="ACTIVATE" target_id="tb-save"/>
+      <tab id="tb-sel" class="tab ps-tb" label="Select ▾" onclick="ACTIVATE" target_id="tb-sel"/>
+      <tab id="tb-player" class="tab ps-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-view" class="tab ps-tb" label="View ▾" onclick="ACTIVATE" target_id="tb-view"/>
       <tab id="tb-knobs" class="tab ps-tb" label="Knobs ${knobs_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
       <tab id="tb-cmp" class="tab ps-tb" label="Orig ${cmp_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' compare"/>
@@ -20,6 +22,20 @@
       <item id="sv-save" class="ps-menu-row dropdown-child" target_id="tb-save" label="Save sheet" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' save"/>
       <item id="sv-reset" class="ps-menu-row dropdown-child" target_id="tb-save" label="Reset knobs" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' reset"/>
       <item id="sv-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-save" label="- cancel -" action="void"/>
+      <item id="sl-whole" class="ps-menu-row dropdown-child" target_id="tb-sel" label="Whole sheet" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' select whole"/>
+      <item id="sl-top" class="ps-menu-row dropdown-child" target_id="tb-sel" label="Top half" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' select top"/>
+      <item id="sl-bottom" class="ps-menu-row dropdown-child" target_id="tb-sel" label="Bottom half" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' select bottom"/>
+      <item id="sl-left" class="ps-menu-row dropdown-child" target_id="tb-sel" label="Left half" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' select left"/>
+      <item id="sl-right" class="ps-menu-row dropdown-child" target_id="tb-sel" label="Right half" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' select right"/>
+      <item id="sl-crop" class="ps-menu-row dropdown-child" target_id="tb-sel" label="Save selection as crop" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' savecrop"/>
+      <item id="sl-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-sel" label="- cancel -" action="void"/>
+      <item id="pl-save1" class="ps-menu-row dropdown-child" target_id="tb-player" label="Save preset 1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' preset save 1"/>
+      <item id="pl-save2" class="ps-menu-row dropdown-child" target_id="tb-player" label="Save preset 2" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' preset save 2"/>
+      <item id="pl-load1" class="ps-menu-row dropdown-child" target_id="tb-player" label="Load preset 1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' preset load 1"/>
+      <item id="pl-load2" class="ps-menu-row dropdown-child" target_id="tb-player" label="Load preset 2" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' preset load 2"/>
+      <item id="pl-undo" class="ps-menu-row dropdown-child" target_id="tb-player" label="Undo" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' undo"/>
+      <item id="pl-roll" class="ps-menu-row dropdown-child" target_id="tb-player" label="Roll variant" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' roll"/>
+      <item id="pl-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
       <item id="vw-knobs" class="ps-menu-row dropdown-child" target_id="tb-view" label="Knob panel show / hide" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
       <item id="vw-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-view" label="- cancel -" action="void"/>
     </sidebar>
@@ -27,6 +43,7 @@
       <canvas id="ps-view" class="ps-view" sprite="${canvas_raw}"/>
       <row id="side-l" class="canvas-overlay-left ov-pin ov-scroll ov-chrome ps-pinned theme" show="${left_visible}">
         <text label="knobs - ${template_id}" class="ps-quiet ov-title theme-3"/>
+        <text id="sel-label" label="${sel_label}" class="ps-quiet"/>
         <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
         <repeat count="${n_knobs}" bind="kb">
           <text id="kt${kb.#}" label="${kb.name}  ${kb.val}" class="ps-knob"/>
