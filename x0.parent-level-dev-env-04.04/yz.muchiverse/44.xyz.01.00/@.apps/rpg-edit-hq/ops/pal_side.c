@@ -24,7 +24,7 @@
 #include <time.h>
 #include <sys/wait.h>
 #define MAXC 40
-static char KEY[MAXC][64], LAB[MAXC][96]; static int nc;
+static char KEY[MAXC][64], LAB[MAXC][96]; static int nc, SIDE[MAXC];
 static void trim(char *s) { size_t n = strlen(s); while (n && (s[n-1]==' '||s[n-1]=='\n'||s[n-1]=='\r'||s[n-1]=='\t')) s[--n]=0; char *p=s; while (*p==' '||*p=='\t') p++; if (p!=s) memmove(s,p,strlen(p)+1); }
 static void load_cats(const char *house) {
     char p[4200]; snprintf(p, sizeof p, "%s/&.widgits/palettes/pallets.pdl", house);
@@ -36,7 +36,10 @@ static void load_cats(const char *house) {
         if (k < 3) continue;
         trim(fld[1]); trim(fld[2]);
         if (!fld[1][0] || !fld[2][0]) continue;
-        snprintf(KEY[nc], sizeof KEY[0], "%s", fld[1]); snprintf(LAB[nc], sizeof LAB[0], "%s", fld[2]); nc++;
+        snprintf(KEY[nc], sizeof KEY[0], "%s", fld[1]); snprintf(LAB[nc], sizeof LAB[0], "%s", fld[2]);
+        /* Top tabs own these two. The left list skips them. pick and toparm still find them in KEY. */
+        SIDE[nc] = strcmp(fld[1], "my-pals") && strcmp(fld[1], "my-palettes");
+        nc++;
     }
     fclose(f);
 }
@@ -159,6 +162,13 @@ static void hist_last(const char *house, char *o, size_t n) {
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: pal_side <house> open|pets|none|tiles <key>|back|list\n"); return 2; }
     const char *house = argv[1], *verb = argv[2], *arg = argc > 3 ? argv[3] : "";
+    /* toparm <key> <index>: the top Pals / Palettes row. Same as picking that library from an empty nav, then arming that thumb. */
+    int topix = -1;
+    if (!strcmp(verb, "toparm") && arg[0]) {
+        char np0[4300]; snprintf(np0, sizeof np0, "%s/@.apps/rpg-edit-hq/board/state/pal_nav.txt", house);
+        kv_set(np0, "kind", ""); kv_set(np0, "level", "0");
+        topix = argc > 4 ? atoi(argv[4]) : 0; verb = "pick";
+    }
     char sides[4200], pal[4200]; snprintf(sides, sizeof sides, "%s/@.apps/rpg-edit-hq/board/state/sides.txt", house); snprintf(pal, sizeof pal, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
     load_cats(house);
     int log_hist = 1; char title[96] = "";
@@ -235,12 +245,38 @@ int main(int argc, char **argv) {
     static const char *LV[] = { "palettes", "tile type", "sheet", "tileset", "tiles" };
     snprintf(title, sizeof title, "%s", lvl == 0 ? "palettes" : lvl == 4 ? kname : LV[lvl]);   /* a level shows its own name; the palette name goes on the line below (pal_sub) */
     int nrow = lvl == 0 ? nc : (lvl >= 1 && lvl <= 3) ? RN[lvl - 1] : 0;
+    if (lvl == 0) { int s = 0; for (int i = 0; i < nc; i++) if (SIDE[i]) s++; nrow = s; }
     char tmp[4300]; snprintf(tmp, sizeof tmp, "%s.tmp", pal); FILE *o = fopen(tmp, "w"); if (!o) return 1;
     fprintf(o, "n_pcat=%d\npal_is_list=%s\npal_is_tiles=%s\npal_can_back=%s\npal_key=%s\npal_title=%s\npal_sub=%s\npal_can_prev=%s\npal_can_next=%s\n", nrow, lvl != 4 ? "1" : "", lvl == 4 ? "1" : "", lvl > 0 ? "1" : "", nk, title, (lvl >= 1 && lvl <= 3) ? kname : "", (lvl == 4 && g_off > 0) ? "1" : "", (lvl == 4 && g_off + MAXT < ntot) ? "1" : "");
-    for (int i = 0; i < nrow; i++) { const char *k2 = lvl == 0 ? KEY[i] : RK[lvl - 1][i], *l2 = lvl == 0 ? LAB[i] : (RL[lvl - 1][i][0] ? RL[lvl - 1][i] : RK[lvl - 1][i]); fprintf(o, "pcat_%d_key=%s\npcat_%d_label=%s\n", i, k2, i, l2); }
+    if (lvl == 0) { int w = 0; for (int i = 0; i < nc; i++) if (SIDE[i]) { fprintf(o, "pcat_%d_key=%s\npcat_%d_label=%s\n", w, KEY[i], w, LAB[i]); w++; } }
+    else for (int i = 0; i < nrow; i++) { const char *k2 = RK[lvl - 1][i], *l2 = RL[lvl - 1][i][0] ? RL[lvl - 1][i] : RK[lvl - 1][i]; fprintf(o, "pcat_%d_key=%s\npcat_%d_label=%s\n", i, k2, i, l2); }
+    /* Top bar: one dropdown row per published thumb. Pals gets my-pals, Palettes gets my-palettes. The state file is glyph, label, sprite. */
+    {
+        static const char *cats[2] = { "my-pals", "my-palettes" };
+        static const char *pres[2] = { "tbpals", "tbpal" };
+        for (int c = 0; c < 2; c++) {
+            char sp[4200]; snprintf(sp, sizeof sp, "%s/&.widgits/palettes/palettes-%s_state.txt", house, cats[c]);
+            FILE *sf = fopen(sp, "r"); int n = 0; char sln[1024];
+            if (sf) while (n < 24 && fgets(sln, sizeof sln, sf)) {
+                char *t1 = strchr(sln, '\t'); if (!t1) continue; t1++;
+                char *t2 = strchr(t1, '\t'); char lab[96];
+                size_t L = t2 ? (size_t)(t2 - t1) : strlen(t1); if (L > 90) L = 90; memcpy(lab, t1, L); lab[L] = 0; trim(lab);
+                if (!lab[0]) continue;
+                fprintf(o, "%s_%d_label=%s\n", pres[c], n, lab); n++;
+            }
+            if (sf) fclose(sf);
+            fprintf(o, "n_%s=%d\n", pres[c], n);
+        }
+    }
     char more[64] = ""; if (lvl == 4 && ntot > MAXT) snprintf(more, sizeof more, "tiles %d-%d of %d", g_off + 1, g_off + nt, ntot);
     if (g_busy) snprintf(more, sizeof more, "machine busy: shown as before");
     fprintf(o, "n_ptile=%d\npal_empty=%s\npal_more=%s\n", lvl == 4 ? nt : 0, (lvl == 4 && nt == 0) ? "1" : "", more);
     if (lvl == 4) for (int i = 0; i < nt; i++) fprintf(o, "ptile_%d_glyph=%s\nptile_%d_sprite=%s\n", i, TG[i], i, TS[i]);
-    fclose(o); rename(tmp, pal); return 0;
+    fclose(o); rename(tmp, pal);
+    if (topix >= 0 && topix < nt && (TG[topix][0] || TS[topix][0])) {
+        char bp[4200], bt[4300]; snprintf(bp, sizeof bp, "%s/@.apps/rpg-edit-hq/board/state/brush.txt", house); snprintf(bt, sizeof bt, "%s.tmp", bp);
+        FILE *bf = fopen(bt, "w"); if (bf) { fprintf(bf, "key=%s\nglyph=%s\nsprite=%s\n", arg, TG[topix], TS[topix]); fclose(bf); rename(bt, bp); }
+        kv_set(pal, "pal_armed", TG[topix][0] ? TG[topix] : "tile");
+    }
+    return 0;
 }
