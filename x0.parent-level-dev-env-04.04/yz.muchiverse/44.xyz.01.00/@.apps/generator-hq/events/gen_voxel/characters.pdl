@@ -21,3 +21,9 @@ CHAR | try_r3 | 3
 CHAR | try_r4 | 4
 CHAR | try_r5 | 5
 CHAR | try_r6 | 6
+# --- equipped (D30 step 3): equip=id,id,... one item per slot; ids are the EQ rows in partsets.pdl; weapons and shields follow the hand in every pose ---
+CHAR | try_knight  | 501 | preset=heroic equip=iron_helm,plate_body,wooden_shield,bronze_sword
+CHAR | try_ranger  | 502 | preset=slender equip=leather_cap,leather_armor,short_bow,amulet
+CHAR | try_miner   | 503 | preset=chunky equip=leather_cap,leather_armor,pickaxe
+CHAR | try_mage    | 504 | preset=slender hair_style=long equip=staff,amulet
+CHAR | try_rogue   | 505 | preset=grim equip=dagger,leather_armor

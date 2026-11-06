@@ -104,9 +104,9 @@ EXPECT_EXIT | 2 | NEGATIVE-a-missing-partsets-file-is-refused
 CASE    | seed-and-knobs
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $HOUSE/@.apps/generator-hq/events/gen_voxel/characters.pdl | $T/a.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
-EXPECT_OUT | FROMCHARS models=16 presets=4 | sixteen-characters-four-presets
+EXPECT_OUT | FROMCHARS models=21 presets=4 | twenty-one-characters-four-presets
 RUN | /usr/bin/sha256sum | $T/a.pdl
-EXPECT_OUT | a991a8f702e391255a02ed99ce1733739cf8ad2fcec65ee297546f05a2942f3f | pinned-output-of-the-sample-characters-file
+EXPECT_OUT | 245f01bb0efa10cd3426344c41699d9252c02610ce96138e171103b8528720e8 | pinned-output-of-the-sample-characters-file-incl-equipped
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $HOUSE/@.apps/generator-hq/events/gen_voxel/characters.pdl | $T/b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
 RUN | /usr/bin/cmp | -s | $T/a.pdl | $T/b.pdl
 EXPECT_EXIT | 0 | same-seeds-same-bytes
@@ -130,7 +130,7 @@ RUN | /usr/bin/grep | -c | #112233 | $T/o4.pdl
 EXPECT_OUT_IS | 3 | an-explicit-skin-beats-the-seed-head-and-both-hands
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/a.pdl | try_c1 | idle | $T/r.png
 EXPECT_OUT | VOXEL model=try_c1 pose=idle views=4 | a-seeded-model-renders
-WRITE | e1.pdl | CHAR \p x \p 1 \p wings=2\n
+WRITE | e1.pdl | STYLE \p heroic \p build=1 legs=6 head=1 mark=1\nCHAR \p x \p 1 \p wings=2\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e1.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-knob-is-refused
 WRITE | e2.pdl | CHAR \p x \p 1 \p preset=nope\n
@@ -151,3 +151,51 @@ EXPECT_EXIT | 2 | NEGATIVE-a-preset-inside-a-preset-is-refused
 WRITE | e7.pdl | STYLE \p a \p build=1\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e7.pdl | $T/e.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
 EXPECT_EXIT | 2 | NEGATIVE-a-file-without-CHAR-rows-is-refused
+
+# D30 step 3: equipment. Visuals only (EQ rows in partsets.pdl); stats stay in db-hq. A weapon or shield follows its hand in every pose; one item per slot.
+CASE    | equipment
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check-equip | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl | $HOUSE/&.widgits/db-hq/data
+EXPECT_OUT | EQCHECK items=11 linked=8 no_db_row=3 missing=0 | eight-visuals-are-linked-to-real-db-items-and-three-have-none-yet
+WRITE | bad_eq.pdl | PS \p humanoid \p torso \p tx \p 9 \p lh \p bw \p 5 \p 6 \p #112233\nEQ \p ghost_helm \p head \p Ghost Helm \p dome \p hx \p 8 \p lh+10 \p hw \p 5 \p 2 \p #ffffff \p -\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check-equip | $T/bad_eq.pdl | $HOUSE/&.widgits/db-hq/data
+EXPECT_EXIT | 1 | NEGATIVE-an-item-name-that-is-not-in-the-database-fails-the-check
+WRITE | e0.pdl | STYLE \p heroic \p build=1 legs=6 head=1 mark=1\nCHAR \p e \p 5 \p preset=heroic\n
+WRITE | e1.pdl | STYLE \p heroic \p build=1 legs=6 head=1 mark=1\nCHAR \p e \p 5 \p preset=heroic equip=bronze_sword,wooden_shield,leather_cap\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e0.pdl | $T/o0.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=1 | the-bare-character-was-generated
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/e1.pdl | $T/o1.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=1 | the-equipped-character-was-generated
+RUN | /usr/bin/grep | -c | PART ..e ..bronze_sword_blade | $T/o1.pdl
+EXPECT_OUT_IS | 1 | an-equipped-item-adds-its-parts
+RUN | /usr/bin/grep | -c | PART ..e ..bronze_sword_blade | $T/o0.pdl
+EXPECT_OUT_IS | 0 | NEGATIVE-without-the-knob-there-is-no-sword
+RUN | /usr/bin/grep | -c | POSE ..e ..attack ..bronze_sword_blade ..-1 ..-6 ..2 | $T/o1.pdl
+EXPECT_OUT_IS | 1 | the-sword-copies-the-hands-attack-offset
+RUN | /usr/bin/grep | -c | POSE ..e ..mine ..wooden_shield_board ..2 ..-5 ..3 | $T/o1.pdl
+EXPECT_OUT_IS | 1 | the-shield-follows-the-left-hand-when-mining
+RUN | /usr/bin/grep | -c | POSE ..e ..attack ..leather_cap | $T/o1.pdl
+EXPECT_OUT_IS | 0 | a-cap-has-no-pose-rows-it-stays-on-the-head
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/o1.pdl | e | idle | $T/q1.png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/o0.pdl | e | idle | $T/q0.png
+RUN | /usr/bin/cmp | -s | $T/q0.png | $T/q1.png
+EXPECT_EXIT | 1 | NEGATIVE-the-equipped-picture-differs-from-the-bare-one
+WRITE | f1.pdl | STYLE \p chunky \p build=2 legs=4 head=2\nCHAR \p f \p 9 \p preset=chunky equip=plate_body\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/f1.pdl | $T/of.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=1 | the-chunky-plate-character-was-generated
+RUN | /usr/bin/grep | -c | PART ..f ..plate_body_plate ..6 ..8 ..4 ..12 | $T/of.pdl
+EXPECT_OUT_IS | 1 | the-plate-widens-with-the-chunky-build
+WRITE | f2.pdl | STYLE \p slender \p build=0 legs=7 head=0\nCHAR \p f \p 9 \p preset=slender equip=plate_body\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/f2.pdl | $T/og.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_OUT | FROMCHARS models=1 | the-slender-plate-character-was-generated
+RUN | /usr/bin/grep | -c | PART ..f ..plate_body_plate ..8 ..8 ..7 ..8 | $T/og.pdl
+EXPECT_OUT_IS | 1 | and-narrows-with-the-slender-build-and-rides-higher-on-long-legs
+WRITE | x1.pdl | CHAR \p x \p 1 \p equip=no_such_item\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/x1.pdl | $T/ox.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-equipment-id-is-refused
+WRITE | x2.pdl | CHAR \p x \p 1 \p equip=dagger,bronze_sword\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | fromchars | $T/x2.pdl | $T/ox.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/partsets.pdl
+EXPECT_EXIT | 2 | NEGATIVE-two-items-for-the-weapon-slot-are-refused
+WRITE | bad_slot.pdl | PS \p humanoid \p torso \p tx \p 9 \p lh \p bw \p 5 \p 6 \p #112233\nEQ \p x \p feet \p - \p boot \p hx \p 8 \p lh \p hw \p 5 \p 2 \p #ffffff \p -\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check-equip | $T/bad_slot.pdl | $HOUSE/&.widgits/db-hq/data
+EXPECT_EXIT | 2 | NEGATIVE-a-slot-that-is-not-a-house-equipment-type-is-refused

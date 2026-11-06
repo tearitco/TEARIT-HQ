@@ -132,7 +132,9 @@ static void pose(FILE *o, const char *m, const char *p, const char *part, int dx
 /* ---- PARTSET reader (D30): the humanoid body is data in events/gen_voxel/partsets.pdl; Look carries the knobs ---- */
 typedef struct { char set[40], id[40], ex[6][40], colour[24], when[120]; } PsRow;
 typedef struct { char set[40], pose[40], part[40]; int dx, dy, dz; } PpRow;
-typedef struct { char skin[16], style[16], hair[16], gar[16], trim[16]; int bw, lh, hw, mark; } Look;
+typedef struct { char skin[16], style[16], hair[16], gar[16], trim[16], equip[160]; int bw, lh, hw, mark; } Look;
+typedef struct { char id[40], slot[16], item[40], part[40], ex[6][40], colour[24], follow[40]; } EqRow;
+static EqRow EQ[200]; static int neq;
 static PsRow PS[600]; static int nps;
 static PpRow PP[600]; static int npp;
 static int load_partsets(const char *path) {
@@ -157,6 +159,15 @@ static int load_partsets(const char *path) {
             q->dx = atoi(fld(&p)); q->dy = atoi(fld(&p)); q->dz = atoi(fld(&p));
             if (!q->set[0] || !q->pose[0] || !q->part[0]) { fprintf(stderr, "bad PP row: %s\n", line); fclose(f); return 2; }
             npp++;
+        } else if (!strcmp(k, "EQ")) {
+            EqRow *q = &EQ[neq]; static const char *slots[5] = { "weapon", "shield", "head", "body", "accessory" }; int ok = 0;
+            if (neq >= 200) { fprintf(stderr, "too many EQ rows\n"); fclose(f); return 2; }
+            snprintf(q->id, sizeof q->id, "%s", fld(&p)); snprintf(q->slot, sizeof q->slot, "%s", fld(&p)); snprintf(q->item, sizeof q->item, "%s", fld(&p)); snprintf(q->part, sizeof q->part, "%s", fld(&p));
+            for (i = 0; i < 6; i++) snprintf(q->ex[i], sizeof q->ex[i], "%s", fld(&p));
+            snprintf(q->colour, sizeof q->colour, "%s", fld(&p)); snprintf(q->follow, sizeof q->follow, "%s", fld(&p));
+            for (i = 0; i < 5; i++) if (!strcmp(q->slot, slots[i])) ok = 1;
+            if (!q->id[0] || !ok || !q->item[0] || !q->part[0] || !q->ex[5][0] || !q->colour[0] || !q->follow[0]) { fprintf(stderr, "bad EQ row: %s\n", line); fclose(f); return 2; }
+            neq++;
         }
     }
     fclose(f);
@@ -195,7 +206,7 @@ static const char *colour_of(const char *c, const Look *L) {
 }
 static void lookof(Look *L, const char *skin, const char *style, const char *hair, const char *gar, const char *trim, int body, int mark) {
     snprintf(L->skin, 16, "%s", skin); snprintf(L->style, 16, "%s", style); snprintf(L->hair, 16, "%s", hair); snprintf(L->gar, 16, "%s", gar); snprintf(L->trim, 16, "%s", trim);
-    L->bw = body == 0 ? 6 : body == 2 ? 10 : 8; L->lh = 5; L->hw = 8; L->mark = mark;
+    L->bw = body == 0 ? 6 : body == 2 ? 10 : 8; L->lh = 5; L->hw = 8; L->mark = mark; L->equip[0] = 0;
 }
 static int human(FILE *o, const char *m, const Look *L) {
     int i, bad = 0;
@@ -207,7 +218,24 @@ static int human(FILE *o, const char *m, const Look *L) {
         for (j = 0; j < 6; j++) { v[j] = ev(q->ex[j], L); if (v[j] == EV_BAD) { fprintf(stderr, "bad expression in PS %s: %s\n", q->id, q->ex[j]); return 2; } }
         emit(o, m, q->id, v[0], v[1], v[2], v[3], v[4], v[5], colour_of(q->colour, L));
     }
+    { char b[160], *t, *sv = NULL; /* equipment: the parts of each named item, drawn after the body so they cover it */
+      snprintf(b, sizeof b, "%s", L->equip);
+      for (t = strtok_r(b, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) for (i = 0; i < neq; i++) {
+        EqRow *q = &EQ[i]; int v[6], j; char pid[128];
+        if (strcmp(q->id, t)) continue;
+        for (j = 0; j < 6; j++) { v[j] = ev(q->ex[j], L); if (v[j] == EV_BAD) { fprintf(stderr, "bad expression in EQ %s %s: %s\n", q->id, q->part, q->ex[j]); return 2; } }
+        snprintf(pid, sizeof pid, "%.40s_%.40s", q->id, q->part);
+        emit(o, m, pid, v[0], v[1], v[2], v[3], v[4], v[5], q->colour);
+      } }
     for (i = 0; i < npp; i++) if (!strcmp(PP[i].set, "humanoid")) pose(o, m, PP[i].pose, PP[i].part, PP[i].dx, PP[i].dy, PP[i].dz);
+    { char b[160], *t, *sv = NULL; /* a weapon or shield follows the hand: copy that part's pose offsets */
+      snprintf(b, sizeof b, "%s", L->equip);
+      for (t = strtok_r(b, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) for (i = 0; i < neq; i++) {
+        EqRow *q = &EQ[i]; int k; char pid[128];
+        if (strcmp(q->id, t) || !strcmp(q->follow, "-")) continue;
+        snprintf(pid, sizeof pid, "%.40s_%.40s", q->id, q->part);
+        for (k = 0; k < npp; k++) if (!strcmp(PP[k].set, "humanoid") && !strcmp(PP[k].part, q->follow)) pose(o, m, PP[k].pose, pid, PP[k].dx, PP[k].dy, PP[k].dz);
+      } }
     return 0;
 }
 static void creature(FILE *o, const char *m, const char *kind, const char *body, const char *belly, const char *ear, const char *glow) {
@@ -264,15 +292,15 @@ static int fromcast(const char *castf, const char *outf, const char *psf) {
 /* ---- fromchars (D30 step 2): CHAR rows with a seed and optional knobs, STYLE presets ----
  *   STYLE | name | knob=value knob=value ...        a preset (a patch)
  *   CHAR  | id | seed | knob=value ...               knobs, in order of strength: explicit here, then preset=<STYLE name>, then filled from the seed
- * knobs: preset hair_style(short long mohawk masked clown none) skin hair gar trim (#rrggbb) build(0..2) legs(3..7) head(0..2) mark(0|1)
+ * knobs: preset hair_style(short long mohawk masked clown none) skin hair gar trim (#rrggbb) build(0..2) legs(3..7) head(0..2) mark(0|1) equip(id,id,...: one item per slot, ids from the EQ rows)
  * The same seed and knobs always give the same character: every unset knob comes from hash32(seed, knob number). */
 typedef struct { char name[40], kv[300]; } StyleRow;
 static StyleRow STY[64]; static int nsty;
-enum { K_SKIN, K_HAIR, K_HSTYLE, K_GAR, K_BUILD, K_LEGS, K_HEAD, K_TRIM, K_MARK, K_N };
+enum { K_SKIN, K_HAIR, K_HSTYLE, K_GAR, K_BUILD, K_LEGS, K_HEAD, K_TRIM, K_MARK, K_EQUIP, K_N };
 static int valid_colour(const char *c) { int i; if (c[0] != '#' || strlen(c) != 7) return 0; for (i = 1; i < 7; i++) if (hexv(c[i]) < 0) return 0; return 1; }
 static int num_in(const char *s, int lo, int hi, int *out) { char *e; long v = strtol(s, &e, 10); if (*s == 0 || *e || v < lo || v > hi) return 0; *out = (int)v; return 1; }
 /* applies "k=v k=v" to the knob slots that are still unset; returns 2 on a bad token */
-static int apply_kv(const char *kv, char *vals[K_N], char store[K_N][16], int set[K_N], char *preset, int presetok) {
+static int apply_kv(const char *kv, char *vals[K_N], char store[K_N][160], int set[K_N], char *preset, int presetok) {
     char b[300], *t, *sv = NULL;
     snprintf(b, sizeof b, "%s", kv);
     for (t = strtok_r(b, " ", &sv); t; t = strtok_r(NULL, " ", &sv)) {
@@ -281,16 +309,50 @@ static int apply_kv(const char *kv, char *vals[K_N], char store[K_N][16], int se
         *eq = 0; k = t; v = eq + 1;
         if (!strcmp(k, "preset")) { if (!presetok) { fprintf(stderr, "preset inside a preset is not allowed\n"); return 2; } if (!preset[0]) snprintf(preset, 40, "%s", v); continue; }
         if (!strcmp(k, "skin")) slot = K_SKIN; else if (!strcmp(k, "hair")) slot = K_HAIR; else if (!strcmp(k, "gar")) slot = K_GAR; else if (!strcmp(k, "trim")) slot = K_TRIM;
-        else if (!strcmp(k, "hair_style")) slot = K_HSTYLE; else if (!strcmp(k, "build")) slot = K_BUILD; else if (!strcmp(k, "legs")) slot = K_LEGS; else if (!strcmp(k, "head")) slot = K_HEAD; else if (!strcmp(k, "mark")) slot = K_MARK;
+        else if (!strcmp(k, "hair_style")) slot = K_HSTYLE; else if (!strcmp(k, "build")) slot = K_BUILD; else if (!strcmp(k, "legs")) slot = K_LEGS; else if (!strcmp(k, "head")) slot = K_HEAD; else if (!strcmp(k, "mark")) slot = K_MARK; else if (!strcmp(k, "equip")) slot = K_EQUIP; else if (!strcmp(k, "equip")) slot = K_EQUIP;
         else { fprintf(stderr, "unknown knob: %s\n", k); return 2; }
         if (slot == K_SKIN || slot == K_HAIR || slot == K_GAR || slot == K_TRIM) { if (!valid_colour(v)) { fprintf(stderr, "knob %s needs #rrggbb, got %s\n", k, v); return 2; } }
+        else if (slot == K_EQUIP) { if (strlen(v) > 150) { fprintf(stderr, "equip list too long\n"); return 2; } }
         else if (slot == K_HSTYLE) { if (strcmp(v, "short") && strcmp(v, "long") && strcmp(v, "mohawk") && strcmp(v, "masked") && strcmp(v, "clown") && strcmp(v, "none")) { fprintf(stderr, "unknown hair_style: %s\n", v); return 2; } }
         else { int lo = 0, hi = 2; if (slot == K_LEGS) { lo = 3; hi = 7; } if (slot == K_MARK) hi = 1; if (!num_in(v, lo, hi, &n)) { fprintf(stderr, "knob %s must be %d..%d, got %s\n", k, lo, hi, v); return 2; } }
-        if (!set[slot]) { snprintf(store[slot], 16, "%s", v); vals[slot] = store[slot]; set[slot] = 1; }
+        if (!set[slot]) { snprintf(store[slot], 160, "%s", v); vals[slot] = store[slot]; set[slot] = 1; }
     }
     return 0;
 }
 static unsigned kh(unsigned seed, int k) { return hash32(seed * 2654435761u + (unsigned)k * 977u + 13u); }
+static int equip_ok(const char *list, const char *who) { /* every id exists in EQ, one item per slot */
+    char b[160], *t, *sv = NULL, used[5][16]; int n = 0, i, j;
+    snprintf(b, sizeof b, "%s", list);
+    for (t = strtok_r(b, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) {
+        const char *slot = NULL;
+        for (i = 0; i < neq; i++) if (!strcmp(EQ[i].id, t)) { slot = EQ[i].slot; break; }
+        if (!slot) { fprintf(stderr, "%s: unknown equipment id: %s\n", who, t); return 2; }
+        for (j = 0; j < n; j++) if (!strcmp(used[j], slot)) { fprintf(stderr, "%s: two items for the %s slot (%s)\n", who, slot, t); return 2; }
+        if (n >= 5) return 2;
+        snprintf(used[n++], 16, "%s", slot);
+    }
+    return 0;
+}
+/* check-equip <partsets.pdl> <db data dir>: every EQ item that names a database item must exist in armors.pdl or weapons.pdl (the stats' only home) */
+static int db_has(const char *dir, const char *file, const char *name) {
+    char path[1000], line[400]; FILE *f; int found = 0;
+    snprintf(path, sizeof path, "%s/%s", dir, file); f = fopen(path, "r"); if (!f) return 0;
+    while (fgets(line, sizeof line, f)) { char *p = line, *k, *key, *val; k = fld(&p); (void)k; key = fld(&p); val = fld(&p); if (!strcmp(key, "name") && !strcmp(val, name)) found = 1; }
+    fclose(f); return found;
+}
+static int check_equip(const char *psf, const char *dbdir) {
+    int i, j, ids = 0, linked = 0, none = 0, missing = 0;
+    if (load_partsets(psf)) return 2;
+    for (i = 0; i < neq; i++) {
+        int first = 1; for (j = 0; j < i; j++) if (!strcmp(EQ[j].id, EQ[i].id)) first = 0;
+        if (!first) continue;
+        ids++;
+        if (!strcmp(EQ[i].item, "-")) { none++; continue; }
+        if (db_has(dbdir, "armors.pdl", EQ[i].item) || db_has(dbdir, "weapons.pdl", EQ[i].item)) linked++; else { missing++; fprintf(stderr, "EQ %s names the database item \"%s\" which does not exist\n", EQ[i].id, EQ[i].item); }
+    }
+    printf("EQCHECK items=%d linked=%d no_db_row=%d missing=%d\n", ids, linked, none, missing);
+    return missing ? 1 : 0;
+}
 static int fromchars(const char *charf, const char *outf, const char *psf) {
     FILE *f = fopen(charf, "r"), *o; char line[900]; int made = 0, i;
     static const char *skins[5] = { "#e6bfa0", "#d6a47c", "#c08a60", "#8a5a3a", "#5a3a24" }, *hairs[6] = { "#1a1410", "#4a3020", "#8a5a30", "#c8a050", "#5a5a66", "#c04a8a" }, *gars[8] = { "#8a4a2e", "#2a4a7a", "#3a6a3a", "#6a3a7a", "#7a7a86", "#a08a3a", "#2a2a3a", "#a03a3a" }, *hst[4] = { "short", "long", "mohawk", "none" };
@@ -306,7 +368,7 @@ static int fromchars(const char *charf, const char *outf, const char *psf) {
     }
     rewind(f);
     while (fgets(line, sizeof line, f)) {
-        char *p = line, *k, id[40], *vals[K_N] = { 0 }, store[K_N][16], preset[40] = "", kvs[300]; int set[K_N] = { 0 }, seed;
+        char *p = line, *k, id[40], *vals[K_N] = { 0 }, store[K_N][160], preset[40] = "", kvs[300]; int set[K_N] = { 0 }, seed;
         Look L;
         if (line[0] == '#' || line[0] == '\n') continue;
         k = fld(&p);
@@ -323,14 +385,16 @@ static int fromchars(const char *charf, const char *outf, const char *psf) {
         for (i = 0; i < K_N; i++) if (!set[i]) { /* the seed fills what is left */
             unsigned h = kh((unsigned)seed, i);
             switch (i) {
-            case K_SKIN: snprintf(store[i], 16, "%s", skins[h % 5]); break; case K_HAIR: snprintf(store[i], 16, "%s", hairs[h % 6]); break;
-            case K_HSTYLE: snprintf(store[i], 16, "%s", hst[h % 4]); break; case K_GAR: snprintf(store[i], 16, "%s", gars[h % 8]); break;
-            case K_BUILD: snprintf(store[i], 16, "%u", h % 3); break; case K_LEGS: snprintf(store[i], 16, "%u", 3 + h % 5); break;
-            case K_HEAD: snprintf(store[i], 16, "%u", h % 3); break; case K_TRIM: snprintf(store[i], 16, "#ffd24a"); break; default: snprintf(store[i], 16, "0"); break;
+            case K_SKIN: snprintf(store[i], 160, "%s", skins[h % 5]); break; case K_HAIR: snprintf(store[i], 160, "%s", hairs[h % 6]); break;
+            case K_HSTYLE: snprintf(store[i], 160, "%s", hst[h % 4]); break; case K_GAR: snprintf(store[i], 160, "%s", gars[h % 8]); break;
+            case K_BUILD: snprintf(store[i], 160, "%u", h % 3); break; case K_LEGS: snprintf(store[i], 160, "%u", 3 + h % 5); break;
+            case K_HEAD: snprintf(store[i], 160, "%u", h % 3); break; case K_TRIM: snprintf(store[i], 160, "#ffd24a"); break; case K_EQUIP: store[i][0] = 0; break; default: snprintf(store[i], 160, "0"); break;
             }
             vals[i] = store[i];
         }
         lookof(&L, vals[K_SKIN], vals[K_HSTYLE], vals[K_HAIR], vals[K_GAR], vals[K_TRIM], atoi(vals[K_BUILD]), atoi(vals[K_MARK]));
+        if (equip_ok(vals[K_EQUIP], id)) { fclose(f); fclose(o); return 2; }
+        snprintf(L.equip, sizeof L.equip, "%s", vals[K_EQUIP]);
         L.lh = atoi(vals[K_LEGS]); L.hw = 6 + 2 * atoi(vals[K_HEAD]);
         if (human(o, id, &L)) { fclose(f); fclose(o); return 2; }
         made++;
@@ -388,9 +452,10 @@ static int icons(const char *kind, int cols, const char *out) {
 }
 int main(int argc, char **argv) {
     int rc;
-    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);
+    if (!strcmp(argv[1], "check-equip") && argc == 4) return check_equip(argv[2], argv[3]);
     rc = read_rows(argv[2]); if (rc) return rc;
     rc = check_refs(); if (rc) return rc;
     if (!strcmp(argv[1], "check") && argc == 3) { printf("VOXELCHECK models=%d parts=%d poses=%d\n", nm, np, no); return 0; }

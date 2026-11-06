@@ -74,3 +74,5 @@ Rule from the owner: take it only if it is better than what we have. "Ours" belo
 | **Tests** are tiny Node scripts that load the real files in a VM and assert | **SKIP** | Our pal harness with negatives is stronger (a check must be seen failing). |
 | `AGENTS.md` patch-notes rule | **SKIP** | Our commit messages already carry the user-visible changes. |
 **Net:** from the second reading we keep three things (traits for armor, versioned recipe files, two body plans) and two optional future threads (SFX and music as seeded offline renderers). Everything else is either already in the house or worse than what we have.
+
+**Update (D30 step 3):** the traits verdict above is superseded. We did not adopt `TRAIT` rows: the house already has per-item stats in `db-hq/data/armors.pdl` and `weapons.pdl`, so the equipment layer is visuals only and `check-equip` ties each visual to a database item by name. Taken from RPGAtlas in the end: the idea that a piece of gear is data that combines by fixed rules (our expressions in the body knobs), nothing of their trait numbers.

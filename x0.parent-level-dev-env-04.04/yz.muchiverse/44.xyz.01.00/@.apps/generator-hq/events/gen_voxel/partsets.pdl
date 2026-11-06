@@ -50,3 +50,38 @@ PP | humanoid | w2 | arml  | 0 | 2  | 0
 PP | humanoid | w2 | handl | 0 | 2  | 0
 PP | humanoid | w2 | armr  | 0 | -2 | 0
 PP | humanoid | w2 | handr | 0 | -2 | 0
+
+# EQUIPMENT (D30 step 3): visuals only. Stats stay in db-hq (armors.pdl, weapons.pdl): one authority per fact.
+# EQ | id | slot | item | part | x | y | z | w | d | h | colour | follow
+#   slot: weapon shield head body accessory (the house equipment types).   item: the db-hq name (checked by `check-equip`), or - when no database row exists yet.
+#   follow: a body part whose pose offsets this part copies (a weapon follows handr, a shield handl), or -.   Expressions use the same variables as PS (tx bw lh hx hw).
+#   Used by the knob  equip=id,id,...  (one item per slot).
+EQ | leather_cap   | head      | Leather Cap   | cap    | hx      | 9  | lh+10 | hw   | 5 | 2 | #8a5a3a | -
+EQ | leather_cap   | head      | Leather Cap   | brim   | hx      | 8  | lh+10 | hw   | 1 | 1 | #6a4228 | -
+EQ | iron_helm     | head      | -             | dome   | hx-1    | 8  | lh+10 | hw+2 | 7 | 3 | #c9ced6 | -
+EQ | iron_helm     | head      | -             | guardl | hx-1    | 9  | lh+6  | 1    | 5 | 4 | #aab0ba | -
+EQ | iron_helm     | head      | -             | guardr | hx+hw   | 9  | lh+6  | 1    | 5 | 4 | #aab0ba | -
+EQ | iron_helm     | head      | -             | crest  | hx+3    | 9  | lh+13 | 2    | 5 | 2 | #c0392b | -
+EQ | leather_armor | body      | Leather Armor | chest  | tx      | 8  | lh    | bw   | 1 | 5 | #8a5a3a | -
+EQ | leather_armor | body      | Leather Armor | belt   | tx      | 8  | lh    | bw   | 1 | 1 | #5a3a24 | -
+EQ | plate_body    | body      | -             | plate  | tx-1    | 8  | lh    | bw+2 | 6 | 6 | #aab0ba | -
+EQ | plate_body    | body      | -             | trim   | tx-1    | 8  | lh+5  | bw+2 | 6 | 1 | #ffd24a | -
+EQ | plate_body    | body      | -             | padl   | tx-2    | 9  | lh+4  | 2    | 4 | 2 | #c9ced6 | -
+EQ | plate_body    | body      | -             | padr   | tx+bw   | 9  | lh+4  | 2    | 4 | 2 | #c9ced6 | -
+EQ | wooden_shield | shield    | Wooden Shield | board  | tx-3    | 8  | lh    | 1    | 6 | 6 | #8a5a3a | handl
+EQ | wooden_shield | shield    | Wooden Shield | boss   | tx-4    | 10 | lh+2  | 1    | 2 | 2 | #ffd24a | handl
+EQ | amulet        | accessory | Amulet        | cord   | 10      | 8  | lh+4  | 4    | 1 | 1 | #5a3a24 | -
+EQ | amulet        | accessory | Amulet        | gem    | 11      | 8  | lh+3  | 2    | 1 | 1 | #7ad0ff | -
+EQ | bronze_sword  | weapon    | Bronze Sword  | grip   | tx+bw+2 | 11 | lh+1  | 1    | 1 | 2 | #5a3a24 | handr
+EQ | bronze_sword  | weapon    | Bronze Sword  | guard  | tx+bw+1 | 11 | lh+3  | 3    | 1 | 1 | #ffd24a | handr
+EQ | bronze_sword  | weapon    | Bronze Sword  | blade  | tx+bw+2 | 11 | lh+4  | 1    | 1 | 9 | #c9ced6 | handr
+EQ | dagger        | weapon    | Dagger        | grip   | tx+bw+2 | 11 | lh+1  | 1    | 1 | 2 | #5a3a24 | handr
+EQ | dagger        | weapon    | Dagger        | blade  | tx+bw+2 | 11 | lh+3  | 1    | 1 | 5 | #c9ced6 | handr
+EQ | short_bow     | weapon    | Short Bow     | wood   | tx+bw+2 | 11 | lh    | 1    | 1 | 9 | #8a5a3a | handr
+EQ | short_bow     | weapon    | Short Bow     | string | tx+bw+3 | 11 | lh+1  | 1    | 1 | 7 | #f4ecd8 | handr
+EQ | staff         | weapon    | Staff         | pole   | tx+bw+2 | 11 | lh    | 1    | 1 | 13 | #8a5a3a | handr
+EQ | staff         | weapon    | Staff         | orb    | tx+bw+2 | 11 | lh+13 | 1    | 1 | 2 | #7ad0ff | handr
+EQ | pickaxe       | weapon    | -             | shaft  | tx+bw+2 | 11 | lh    | 1    | 1 | 11 | #8a5a3a | handr
+EQ | pickaxe       | weapon    | -             | head   | tx+bw   | 11 | lh+10 | 5    | 1 | 1 | #c9ced6 | handr
+EQ | pickaxe       | weapon    | -             | tipl   | tx+bw-1 | 11 | lh+9  | 1    | 1 | 2 | #c9ced6 | handr
+EQ | pickaxe       | weapon    | -             | tipr   | tx+bw+4 | 11 | lh+9  | 1    | 1 | 2 | #c9ced6 | handr
