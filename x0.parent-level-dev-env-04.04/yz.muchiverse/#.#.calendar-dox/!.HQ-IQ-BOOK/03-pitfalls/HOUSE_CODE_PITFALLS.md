@@ -1236,6 +1236,23 @@ not start the renderer. `proc-mon` only sees a process that is already
 alive, so it is the check after a launch, not the check before one.
 
 
+## 27. A wall window on the middle course is one voxel too low (2026-11-06)
+
+**Symptom:** the door's top pane looks right, the wall rock is three
+cubes again, and the panes face the right way, but every other window
+sits one voxel too low.
+
+**Real cause:** the door transom is the top cube of a three-cube wall
+(y 3.05–3.90). The rim `FACE` rows were written at y 2.05–2.90 because
+that is the middle of the column. The middle course is wall, the same
+as the two cubes of the door. A window matches the transom, not the
+middle of the rock.
+
+**Real fix:** the window course is the third cube, the same numbers as
+the door transom. `FACE` y is 3.05–3.90. Do not pick a band by eye
+when one pane is already approved. Count courses from the floor:
+1 and 2 are the door, 3 is the window, then the 0.1 roof cap.
+
 ## Manager waits for a child that writes to the manager's own pipe (found 2026-10-08, video-player-hq)
 
 A manager that spawns a decoder (`ffmpeg ... pipe:1`) and reads its output from a pipe froze for good the first time it had to switch videos: it sent SIGTERM and called `waitpid` while still holding the pipe's read end, the decoder was blocked in `write()` into that full pipe, so it could not exit, so the manager never returned (wait channel `do_wait`; the audio child stayed a zombie). **Rules:** close your read end of the pipe *before* waiting for the child; never call `waitpid` on a child without a timeout (SIGTERM, poll `WNOHANG` ~300 ms, then SIGKILL); reap every child you spawn. Diagnose with `ps -o stat,wchan:20` and `ls -l /proc/<pid>/fd`. Fix and context: `&.hq-apps/video-player-hq/README.md`.

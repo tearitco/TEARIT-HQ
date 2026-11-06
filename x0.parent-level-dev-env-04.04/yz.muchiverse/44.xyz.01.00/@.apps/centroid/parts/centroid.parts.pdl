@@ -8,11 +8,12 @@ PART | centroid.roof | 5 | 5 | roof
 PART | centroid.bridge | 2 | 3 | bridge
 PART | centroid.isle | 8 | 6 | taper
 # A window box is in the cell's own space. 0,0,0 is the cell's minimum corner. y is up. dir is the face the pane looks out of.
+# The wall is three cubes: y 1-2 and 2-3 are the door, y 3-4 is the window. Same band as the door transom (3.05-3.90). y 2 is one voxel too low.
 # FACE | dir | x0 | y0 | z0 | x1 | y1 | z1
-FACE | north | 0.08 | 2.05 | -0.10 | 0.92 | 2.90 | 0.00
-FACE | east | 1.00 | 2.05 | 0.08 | 1.10 | 2.90 | 0.92
-FACE | south | 0.08 | 2.05 | 1.00 | 0.92 | 2.90 | 1.10
-FACE | west | -0.10 | 2.05 | 0.08 | 0.00 | 2.90 | 0.92
+FACE | north | 0.08 | 3.05 | -0.10 | 0.92 | 3.90 | 0.00
+FACE | east | 1.00 | 3.05 | 0.08 | 1.10 | 3.90 | 0.92
+FACE | south | 0.08 | 3.05 | 1.00 | 0.92 | 3.90 | 1.10
+FACE | west | -0.10 | 3.05 | 0.08 | 0.00 | 3.90 | 0.92
 # WIN | ox | oy | dir    ox,oy are cells from the room origin, which is 0,0 of the room.
 WIN | 0 | 0 | north
 WIN | 1 | 0 | north
