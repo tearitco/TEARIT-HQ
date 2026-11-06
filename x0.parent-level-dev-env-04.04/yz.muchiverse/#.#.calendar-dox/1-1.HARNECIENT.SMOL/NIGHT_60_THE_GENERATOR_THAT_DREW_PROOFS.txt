@@ -1,0 +1,77 @@
+# 🎨🧱 NIGHT 60 — The Generator That Drew Proofs 🧱🎨
+# ====================================================================
+# Title: "🎨🧱 NIGHT 60 — The Generator That Drew Proofs 🧱🎨"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-05. Grok built a tile and character generator and left. Claude merged it, found three house-rule breaks, fixed them, ran the tests before and after, and then opened the actual pictures. A proof is not a picture. Also: a catalog is not a folder, and a sentence from a chat is not a fact.
+# Long-form: everything called measured was run or opened on 2026-11-05. Everything called a plan is a plan. Nothing here is claimed done that was not run again afterwards.
+# Companion documents: BOOK 16.game HANDOFF-GENERATOR-GROK-WORK-AND-INTERIM-ASSETS-2026-11-05, TEAR-IT-TILES-100-2026-11-05, GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05, decision log D24 to D27, XO 31.Nov nov-5 rtp-grok-online-rtp.
+
+**THE NARRATOR:** Tonight is about a machine that passed every test and still drew nothing you would put in a game.
+
+**MAXINE:** That cannot be right. If every test passes, it works.
+
+**TOMO:** It works at the thing the tests ask. Thirty-seven checks on the tiles, twelve on the characters. I ran them before I touched anything, and again after. Thirty-seven and twelve, no failures, both times.
+
+**RAHWEH:** Then what is the problem?
+
+**TOMO:** I opened the pictures. The character is a round head and a blue shirt, flat. The floor is a grid of red, green and brown squares.
+
+**MAXINE:** That is ugly.
+
+**TOMO:** It is meant to be. Each square is a colour code. If the tile table sends the wrong quarter of a tile to the wrong place, you see the wrong colour. The test is about the table, not the look. It is a proof, and it proves the table.
+
+**RAHWEH:** So the maths is done, and the art is not.
+
+**TOMO:** Yes. And the folder where kept pictures go is empty. On purpose. The owner has to approve the pattern in writing before anything moves in.
+
+**THE NARRATOR:** Why were the tests ever in doubt? Because of a merge.
+
+**MAXINE:** Grok worked in the same folder as everyone else.
+
+**TOMO:** Six commits, built on an old base. Its commits had swept up my documents as well as its own. A normal merge called it a conflict in four files. I found the nearest older version of each document, and it differed from Grok's copy by only Grok's own lines. Twenty, thirteen and three. So I merged against that, and every line of Grok's survived, and so did mine.
+
+**RAHWEH:** You checked?
+
+**TOMO:** Twenty of twenty, thirteen of thirteen, three of three. I counted.
+
+**THE NARRATOR:** Then the rules. Three things in Grok's code broke house rules.
+
+**TOMO:** One. The tile tool declared a function and expected to be linked to somebody else's program. The house does not do that. Sharing is a text include, or a copy of the logic, or a separate process. We chose the include, because the table is pure data and has one owner. Two. It carried its own copy of an image-writing header, byte for byte the same as about twenty-eight other copies. It now uses the shared one. Three. Two lines of Python. The script already had flags for those values. We removed the lines.
+
+**MAXINE:** And the tests after?
+
+**TOMO:** Thirty-seven and twelve. The same. The function now lives inside the tool's own binary; I looked.
+
+**RAHWEH:** What did you not check?
+
+**TOMO:** I did not break the shape table on purpose to watch a test fail. A check you have never seen fail is a hope. And there are ten compiler warnings that were there already. I left them.
+
+**THE NARRATOR:** Now the catalog. The owner pointed us at a file called the online RTP.
+
+**TOMO:** It is a list of names and themes. Tilesets, water sheets, roofs, walls, characters. It has no pixels and no sizes, and it says itself that the list can vary. So I treated it as a checklist, not a fact.
+
+**MAXINE:** And the folder on the disk?
+
+**TOMO:** The house does not hold whole sheets. It holds cells, one small file each. Thirty-two ground blocks for outside. Two hundred and fifty-six objects. The same for inside, dungeon and world. Characters, faces, battle backgrounds. But the catalog lists water sheets, and I found none. Nor the fifth ground class, nor most walls. That is the gap list, and a catalog gave it to me.
+
+**RAHWEH:** A claim from a chat, checked against a folder.
+
+**TOMO:** Yes. I searched the sliced folders and the file names. I did not search the whole disk, and the handoff says so.
+
+**THE NARRATOR:** So what is the plan for pictures people can use?
+
+**TOMO:** Three ways. Paint by hand: best, slowest. Draw with a model on the remote machine: slow, and the shapes do not tile safely. Or restyle the cells we already have. Same cell size, same table, new palette, the shape kept exactly. That one is cheap and a test can fail it. I recommend it first. The model comes in later as an optional layer. The owner said a copied pixel is allowed, good enough for a game is the bar. The licence is parked on purpose.
+
+**MAXINE:** Parked, not solved.
+
+**TOMO:** Parked. Until somebody reads the terms, the restyled cells stay inside the house.
+
+**RAHWEH:** And the rule you keep from today?
+
+**TOMO:** A proof is not a picture. A passing test only says what it was asked. And open the file, with your own eyes, before you tell anyone it is done.
+
+**MAXINE:** Good night, little blue shirt.
+
+**THE NARRATOR:** Good night.
