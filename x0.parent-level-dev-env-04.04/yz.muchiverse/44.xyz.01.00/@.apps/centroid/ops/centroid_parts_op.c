@@ -11,12 +11,38 @@
 static int W = 32, H = 24, RW = 5, RH = 5, BW = 2, BH = 3, IW = 8, IH = 6;
 static int wall_slot = 36;
 static int leaf_n, sx[2], sy[2], ox[2], oy[2];
+static struct { char dir[32]; float b[6]; } faces[8];
+static int face_n;
+static struct { int ox, oy; char dir[32]; } wins[32];
+static int win_n;
+static int face_id(const char *s) {
+    if (!strcmp(s, "north")) return 0;
+    if (!strcmp(s, "east")) return 1;
+    if (!strcmp(s, "south")) return 2;
+    if (!strcmp(s, "west")) return 3;
+    return -1;
+}
 static int read_pdl(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) { fprintf(stderr, "no parts file %s\n", path); return 0; }
+    face_n = 0; win_n = 0;
     char ln[256];
     while (fgets(ln, sizeof ln, f)) {
         int a, b; char name[64], kind[32];
+        float b0, b1, b2, b3, b4, b5;
+        if (face_n < 8 && sscanf(ln, " FACE | %15s | %f | %f | %f | %f | %f | %f", kind, &b0, &b1, &b2, &b3, &b4, &b5) == 7) {
+            snprintf(faces[face_n].dir, sizeof faces[0].dir, "%s", kind);
+            faces[face_n].b[0] = b0; faces[face_n].b[1] = b1; faces[face_n].b[2] = b2;
+            faces[face_n].b[3] = b3; faces[face_n].b[4] = b4; faces[face_n].b[5] = b5;
+            face_n++;
+            continue;
+        }
+        if (win_n < 32 && sscanf(ln, " WIN | %d | %d | %15s", &a, &b, kind) == 3) {
+            wins[win_n].ox = a; wins[win_n].oy = b;
+            snprintf(wins[win_n].dir, sizeof wins[0].dir, "%s", kind);
+            win_n++;
+            continue;
+        }
         if (sscanf(ln, " PART | %63s | %d | %d | %31s", name, &a, &b, kind) == 4) {
             if (!strcmp(name, "centroid.island")) { W = a; H = b; }
             else if (!strcmp(name, "centroid.room")) { RW = a; RH = b; }
@@ -54,14 +80,16 @@ static void write_event(const char *cells, int x, int y) {
     if (!f) return;
     /* Same brown as the office door emoji voxels. Name door loads door_0_2_1.rgba. */
     fprintf(f, "%d %d 132 75 49 door 0 2 1\n", x, y);
-    /* Every other rim cell keeps its lower two cubes as rock. The top cube is a window. */
+    /* Windows come from WIN rows. The wall cells stay three cubes. The pane is only a sheet. */
     int x0 = 6, y0 = 6;
-    for (int ry = y0; ry < y0 + RH; ry++)
-        for (int rx = x0; rx < x0 + RW; rx++) {
-            int rim = (rx == x0 || rx == x0 + RW - 1 || ry == y0 || ry == y0 + RH - 1);
-            if (rim && !(rx == x && ry == y))
-                fprintf(f, "%d %d 176 214 230 window 0 0 0\n", rx, ry);
-        }
+    for (int i = 0; i < win_n; i++) {
+        int id = face_id(wins[i].dir), fi = -1;
+        for (int k = 0; k < face_n; k++) if (!strcmp(faces[k].dir, wins[i].dir)) fi = k;
+        if (id < 0 || fi < 0) continue;
+        float *b = faces[fi].b;
+        fprintf(f, "%d %d 176 214 230 window 0 %d 0 %.2f %.2f %.2f %.2f %.2f %.2f\n",
+                x0 + wins[i].ox, y0 + wins[i].oy, id, b[0], b[1], b[2], b[3], b[4], b[5]);
+    }
     /* One flat cap on every cell of the room, including the wall tops. The
      * opening stays open underneath. Gray so it is not the door. */
     for (int ry = y0; ry < y0 + RH; ry++)

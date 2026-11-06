@@ -7,6 +7,28 @@ PART | centroid.door | 2 | 1 | door
 PART | centroid.roof | 5 | 5 | roof
 PART | centroid.bridge | 2 | 3 | bridge
 PART | centroid.isle | 8 | 6 | taper
+# A window box is in the cell's own space. 0,0,0 is the cell's minimum corner. y is up. dir is the face the pane looks out of.
+# FACE | dir | x0 | y0 | z0 | x1 | y1 | z1
+FACE | north | 0.08 | 2.05 | -0.10 | 0.92 | 2.90 | 0.00
+FACE | east | 1.00 | 2.05 | 0.08 | 1.10 | 2.90 | 0.92
+FACE | south | 0.08 | 2.05 | 1.00 | 0.92 | 2.90 | 1.10
+FACE | west | -0.10 | 2.05 | 0.08 | 0.00 | 2.90 | 0.92
+# WIN | ox | oy | dir    ox,oy are cells from the room origin, which is 0,0 of the room.
+WIN | 0 | 0 | north
+WIN | 1 | 0 | north
+WIN | 2 | 0 | north
+WIN | 3 | 0 | north
+WIN | 4 | 0 | north
+WIN | 0 | 4 | south
+WIN | 1 | 4 | south
+WIN | 3 | 4 | south
+WIN | 4 | 4 | south
+WIN | 0 | 1 | west
+WIN | 0 | 2 | west
+WIN | 0 | 3 | west
+WIN | 4 | 1 | east
+WIN | 4 | 2 | east
+WIN | 4 | 3 | east
 NEED | centroid.island | stone | 1
 NEED | centroid.room | wood | 15
 NEED | centroid.room | stone | 15

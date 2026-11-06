@@ -24,6 +24,8 @@ EXPECT_EXIT | 0 | apply-door-rebuilds
 EXPECT_OUT | APPLY door | apply-door-line
 EXPECT_HAS | events.txt | door | apply-door-kept
 EXPECT_HAS | events.txt | window | rim-windows
+EXPECT_HAS | events.txt | window 0 1 | east-face
+EXPECT_HAS | events.txt | window 0 3 | west-face
 RUN | ./centroid_parts_op | apply | all | cells.txt | centroid.parts.pdl
 EXPECT_EXIT | 0 | apply-all
 EXPECT_OUT | APPLY floor | all-runs-floor

@@ -373,7 +373,7 @@ typedef struct {
     int hot_n; float hot[64][3];
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
-    struct { int x, y, r, g, b, index, dir, pat; char name[40]; } ev[96];
+    struct { int x, y, r, g, b, index, dir, pat, has; float box[6]; char name[40]; } ev[96];
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
@@ -461,9 +461,17 @@ static void maker_read_events(const char *dir) {
     FILE *f = fopen(path, "r"); if (!f) return;
     while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
         int x, y, r, g, b, index, dir_, pat; char name[40];
-        if (sscanf(line, "%d %d %d %d %d %39s %d %d %d", &x, &y, &r, &g, &b, name, &index, &dir_, &pat) != 9) continue;
+        float x0, y0, z0, x1, y1, z1;
+        int got = sscanf(line, "%d %d %d %d %d %39s %d %d %d %f %f %f %f %f %f",
+                         &x, &y, &r, &g, &b, name, &index, &dir_, &pat, &x0, &y0, &z0, &x1, &y1, &z1);
+        if (got != 9 && got != 15) continue;
         g_mk.ev[g_mk.ev_n].x = x; g_mk.ev[g_mk.ev_n].y = y; g_mk.ev[g_mk.ev_n].r = r; g_mk.ev[g_mk.ev_n].g = g; g_mk.ev[g_mk.ev_n].b = b;
         g_mk.ev[g_mk.ev_n].index = index; g_mk.ev[g_mk.ev_n].dir = dir_; g_mk.ev[g_mk.ev_n].pat = pat;
+        g_mk.ev[g_mk.ev_n].has = got == 15;
+        if (got == 15) {
+            g_mk.ev[g_mk.ev_n].box[0] = x0; g_mk.ev[g_mk.ev_n].box[1] = y0; g_mk.ev[g_mk.ev_n].box[2] = z0;
+            g_mk.ev[g_mk.ev_n].box[3] = x1; g_mk.ev[g_mk.ev_n].box[4] = y1; g_mk.ev[g_mk.ev_n].box[5] = z1;
+        }
         snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name); g_mk.ev_n++;
     }
     fclose(f);
@@ -4012,10 +4020,6 @@ static int render_one_frame(void) {
                     }
                     size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
                     if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
-                    if (h > 2 && my >= 0 && mx >= 0) {
-                        for (int ei = 0; ei < g_mk.ev_n; ei++)
-                            if (g_mk.ev[ei].x == mx && g_mk.ev[ei].y == my && !strcmp(g_mk.ev[ei].name, "window")) h = 2;
-                    }
                     if (h > MAX_VOXEL_Z - g_mk.zoff) h = MAX_VOXEL_Z - g_mk.zoff;
                     if (h + g_mk.zoff > z_count) z_count = h + g_mk.zoff;
                 }
@@ -4034,10 +4038,6 @@ static int render_one_frame(void) {
                         else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
                     if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
-                    if (h > 2 && my >= 0 && mx >= 0) {
-                        for (int ei = 0; ei < g_mk.ev_n; ei++)
-                            if (g_mk.ev[ei].x == mx && g_mk.ev[ei].y == my && !strcmp(g_mk.ev[ei].name, "window")) h = 2;
-                    }
                     {   /* holes have no block; DEPTH hangs blocks below the floor level (level zoff) */
                         int zo = g_mk.zoff, lo = zo, hi = zo + h, hole = 0;
                         if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
@@ -4389,20 +4389,12 @@ static int render_one_frame(void) {
                     ADDBOX(g_mk.ev[i].x + 0.08f, 1.0f, g_mk.ev[i].y + 0.45f,
                            g_mk.ev[i].x + 0.92f, 2.95f, g_mk.ev[i].y + 0.55f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
-                } else if (!strcmp(g_mk.ev[i].name, "window")) {
-                    /* Top cube of a wall cell. Thin along the wall's open side. */
-                    int wx = g_mk.ev[i].x, wy = g_mk.ev[i].y, thin_x = 0;
-                    if (g_mk.cells && wx > 0 && wy >= 0 && wx + 1 < g_mk.w && wy < g_mk.h) {
-                        int east = g_mk.cells[((size_t)wy * g_mk.w + (size_t)(wx + 1)) * 2 + 1] != 0;
-                        int west = g_mk.cells[((size_t)wy * g_mk.w + (size_t)(wx - 1)) * 2 + 1] != 0;
-                        thin_x = !(east && west);
-                    }
-                    if (thin_x)
-                        ADDBOX(wx + 0.45f, 3.05f, wy + 0.08f, wx + 0.55f, 3.90f, wy + 0.92f,
-                               g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
-                    else
-                        ADDBOX(wx + 0.08f, 3.05f, wy + 0.45f, wx + 0.92f, 3.90f, wy + 0.55f,
-                               g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                } else if (!strcmp(g_mk.ev[i].name, "window") && g_mk.ev[i].has) {
+                    /* Box is the cell corner plus the FACE row. dir is only which way it looks out. The wall cubes stay. */
+                    float *b = g_mk.ev[i].box;
+                    ADDBOX(g_mk.ev[i].x + b[0], b[1], g_mk.ev[i].y + b[2],
+                           g_mk.ev[i].x + b[3], b[4], g_mk.ev[i].y + b[5],
+                           g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else if (!strcmp(g_mk.ev[i].name, "roof")) {
                     /* A 0.1 cap on the wall top, one sheet per cell. Not a second voxel stacked on the door. */
                     ADDBOX(g_mk.ev[i].x, 4.0, g_mk.ev[i].y,
