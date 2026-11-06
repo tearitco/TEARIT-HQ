@@ -1,0 +1,5 @@
+# Book centroid. The editor resolves a book as @.apps/<book>/rooms.pdl (edit_last.sh).
+# Pages test and live. The 6x5 court file is @.apps/centroid-hq/data/court.pdl.
+# This file does not paint them. The window book list still wants a game.pdl under centroid-pchq.
+ROOM | test | test | 1 | 4 | over | 24 | 17 | 24 | interior
+ROOM | live | live | 1 | 4 | over | 24 | 17 | 24 | interior

@@ -1,0 +1,27 @@
+# The centroid book is @.apps/centroid/rooms.pdl. edit_last.sh must save and reopen test and live. No window.
+RESULTS | ../results/centroid_book.txt
+ENV | LC_ALL | C
+
+CASE | book
+SCRATCH |
+COPY | @.apps/rpg-edit-hq/ops/edit_last.sh | edit_last.sh
+MKDIR | house/@.apps/centroid
+COPY | @.apps/centroid/rooms.pdl | house/@.apps/centroid/rooms.pdl
+MKDIR | house/@.apps/rpg-edit-hq
+WRITE | house/@.apps/rpg-edit-hq/rooms.pdl | ROOM \p start \p Islands\n
+
+RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | centroid | test
+EXPECT_EXIT | 0 | save-test
+EXPECT_OUT | book=centroid page=test | save-says-test
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_OUT | book=centroid page=test | reopen-test
+
+RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | centroid | live
+EXPECT_EXIT | 0 | save-live
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_OUT | book=centroid page=live | reopen-live
+
+RUN | sh | $T/edit_last.sh | save | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | centroid | nowhere
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-page-is-refused
+RUN | sh | $T/edit_last.sh | resolve | $T/state/last_book.txt | --house | $T/house | --maps | $T/maps | --demo-book | rpg-edit-hq | --demo-page | start
+EXPECT_OUT | book=centroid page=live | refused-save-keeps-live
