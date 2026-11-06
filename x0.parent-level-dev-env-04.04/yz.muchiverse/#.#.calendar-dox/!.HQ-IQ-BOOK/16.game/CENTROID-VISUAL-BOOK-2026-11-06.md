@@ -8,7 +8,9 @@ The picture is the owner's attachment of 2026-11-06 (a grey-stone campus on a mo
 
 ## 1. What this slice is
 
-One open volume: the campus in that picture, reduced to masses the engine can hold. A moat, a gate stair of many steps, a front court, one tower, one colonnade, one roof you can walk that has a room under it, and the tree cliffs around the edge. Several stories on the same footprint. No loading seam inside the campus.
+Three floating islands in one open volume. The **main** island is the campus in the 2026-11-06 picture, reduced to masses the engine can hold: a gate stair of many steps, a front court, one tower, one colonnade, one roof you can walk that has a room under it. **Two smaller islands** sit off it. A bridge joins the main island to each of them. Nothing else joins them. Under the grass, under the bridges, and between the islands is sky, the same rule as the floating-island picture written up in `EDIT-ISLANDS-DESIGN.md` (the owner's centroid screenshot of grass, dirt cliffs, pines, and wooden bridges). That town is five walkable islands and is already the editor's start room. This campus is three. The bridges are the engine test as much as the tower: a walkway with no ground under it, held up at the two ends.
+
+Several stories on the main island's footprint. No loading seam between the three islands.
 
 That is the engine test. D12's rule A (one height per cell) draws a stair and blocks a cliff, and its own note says it cannot put two floors on the same x,y. This picture is that case. So the campus is voxels, the shape D29 already chose for buildings (stacked boxes: roof, door, window) and the chunk shape mutaclysm already stores (`19.00-VOXEL-3D-ARCHITECTURE.md`: a column of z slices). D12 stays the rule for a flat board. It is not the campus.
 
@@ -59,7 +61,7 @@ BIND  | studio   | stone <sheet> | roof <sheet> | water <sheet> | tree <sheet>
 VIEW  | rmmv
 ```
 
-The first chunk is the gate stair, the front court, one tower, and one roof over one room. The rest of the picture is the same format added beside it, not a new kind of file. An editor book is a later view of this chunk. It is not a flat `ROOM` row pretending to be the campus.
+The first chunk is the gate stair, the front court, one tower, one roof over one room, and **one bridge to one smaller island** (sky under the bridge). The second bridge and the rest of the picture are the same format added beside it, not a new kind of file. A removed bridge cell must leave the side island unreachable. The islands do not touch. An editor book is a later view of this chunk. It is not a flat `ROOM` row pretending to be the campus.
 
 ## 5. What this slice does not do
 
