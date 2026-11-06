@@ -11,6 +11,7 @@
  *   hidden_layer forward <words.txt> <approved.txt> <text...>
  *       Prints `HIDDEN | energy= | force= | motion= | source=exact|words|none | known=<k> | words=<m>`. exact = the text IS an approved phrase (letters-only, case-insensitive);
  *       words = mean of the known words' vectors; none = no known word (all zeros).
+ * KEYS (2026-11-05, D35): the dimensions are the env var HL_KEYS="warm,wet,wear,grain,edge,round,metal,big,worn" (1..12 names); unset = energy,force,motion, output byte-identical to before.
  * Exit 0 ok | 2 usage / unreadable | 3 review incomplete or invalid. All paths from argv. Build: gcc -std=gnu11 -Wall -Wextra -Werror -O2 -o hidden_layer.+x hidden_layer.c */
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,9 +20,26 @@
 #define MAXR 1024
 #define MAXW 8192
 #define LN 2048
-typedef struct { int n; char phrase[256]; double v[3]; int have; char by[64]; char basis[16]; int act; } Row;
+#define MAXK 12
+typedef struct { int n; char phrase[256]; double v[MAXK]; int have; char by[64]; char basis[16]; int act; } Row;
 static Row R[MAXR]; static int nR = 0;
-static const char *KEYS[3] = { "energy=", "force=", "motion=" };
+static char KEYS[MAXK][28]; static int NK = 3;   /* the keys: env HL_KEYS="warm,wet,..." (comma list, 1..12 names); default energy,force,motion = the original behaviour byte for byte */
+static int init_keys(void) {
+    const char *e = getenv("HL_KEYS"); char buf[256], *t, *sv = NULL; NK = 0;
+    snprintf(buf, sizeof buf, "%s", e && *e ? e : "energy,force,motion");
+    for (t = strtok_r(buf, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) { if (NK >= MAXK || strlen(t) > 20) return 0; snprintf(KEYS[NK++], sizeof KEYS[0], "%s=", t); }
+    return NK > 0;
+}
+static const char *kvs(const double *v, double div) {            /* "k1=0.70 | k2=0.00 | ..." for the NK keys, each value divided by div */
+    static char b[512]; size_t o = 0; b[0] = 0;
+    for (int i = 0; i < NK && o + 40 < sizeof b; i++) o += (size_t)snprintf(b + o, sizeof b - o, "%s%s%.2f", i ? " | " : "", KEYS[i], v[i] / div);
+    return b;
+}
+static const char *khead(void) {                                    /* "k1 | k2 | ..." without the = */
+    static char b[512]; size_t o = 0; b[0] = 0;
+    for (int i = 0; i < NK && o + 40 < sizeof b; i++) { size_t l = strlen(KEYS[i]) - 1; o += (size_t)snprintf(b + o, sizeof b - o, "%s%.*s", i ? " | " : "", (int)l, KEYS[i]); }
+    return b;
+}
 static int col(const char *row, int k, char *out, size_t sz) {      /* trimmed k-th pipe column */
     const char *p = row; for (int i = 0; i < k; i++) { p = strchr(p, '|'); if (!p) return 0; p++; }
     while (*p == ' ') p++;
@@ -30,9 +48,11 @@ static int col(const char *row, int k, char *out, size_t sz) {      /* trimmed k
     if (n >= sz) n = sz - 1;
     memcpy(out, p, n); out[n] = 0; return 1;
 }
-static int weights_of(const char *row, double v[3]) {                 /* all three key=value present and in [-1,1] */
-    for (int i = 0; i < 3; i++) {
-        const char *p = strstr(row, KEYS[i]); char *e;
+static int weights_of(const char *row, double v[MAXK]) {                 /* every key=value present (key starts after a space or a bar) and in [-1,1] */
+    for (int i = 0; i < NK; i++) {
+        const char *p = row, *hit = NULL; char *e;
+        while ((p = strstr(p, KEYS[i])) != NULL) { if (p == row || p[-1] == 0x20 || p[-1] == 0x7c) { hit = p; break; } p++; }
+        p = hit;
         if (!p) return 0;
         v[i] = strtod(p + strlen(KEYS[i]), &e);
         if (e == p + strlen(KEYS[i]) || v[i] < -1.0 || v[i] > 1.0) return 0;
@@ -51,6 +71,7 @@ static void norm(const char *in, char *out, size_t sz) {              /* lower-c
 static int cmp_s(const void *a, const void *b) { return strcmp(*(char *const *)a, *(char *const *)b); }
 int main(int argc, char **argv) {
     char ln[LN];
+    if (!init_keys()) { fprintf(stderr, "bad HL_KEYS (1..12 names, each up to 20 chars)\n"); return 2; }
     if (argc >= 5 && !strcmp(argv[1], "apply")) {
         FILE *d = fopen(argv[2], "r"), *rv = fopen(argv[3], "r");
         if (!d || !rv) { fprintf(stderr, "cannot read draft/review\n"); return 2; }
@@ -70,7 +91,7 @@ int main(int argc, char **argv) {
             if (!strcmp(verdict, "accept")) { R[hit].act = 1; snprintf(R[hit].basis, sizeof R[hit].basis, "accept"); }
             else if (!strcmp(verdict, "reject")) { R[hit].act = 2; }
             else if (!strcmp(verdict, "adjust")) {
-                double w[3]; if (!weights_of(ln, w)) { fprintf(stderr, "adjust for row %d needs energy= force= motion= in [-1,1]\n", n); return 3; }
+                double w[MAXK]; if (!weights_of(ln, w)) { fprintf(stderr, "adjust for row %d needs every key= in [-1,1]\n", n); return 3; }
                 R[hit].act = 3; memcpy(R[hit].v, w, sizeof w); snprintf(R[hit].basis, sizeof R[hit].basis, "adjust");
             } else { fprintf(stderr, "unknown verdict '%s' for row %d\n", verdict, n); return 3; }
         }
@@ -79,19 +100,19 @@ int main(int argc, char **argv) {
         for (int i = 0; i < nR; i++) if (!R[i].act) { missing++; fprintf(stderr, "row %d has no review\n", R[i].n); }
         if (missing) return 3;
         FILE *o = fopen(argv[4], "w"); if (!o) { fprintf(stderr, "cannot write %s\n", argv[4]); return 2; }
-        fprintf(o, "# APPROVED | n | phrase | energy | force | motion | by | basis   (only rows a reviewer accepted or adjusted; built by hidden_layer apply)\n");
+        fprintf(o, "# APPROVED | n | phrase | %s | by | basis   (only rows a reviewer accepted or adjusted; built by hidden_layer apply)\n", khead());
         for (int i = 0; i < nR; i++) {
             if (R[i].act == 2) { rej++; continue; }
             if (R[i].act == 3) adj++;
-            ok++; fprintf(o, "APPROVED | %d | %s | energy=%.2f | force=%.2f | motion=%.2f | by=%s | basis=%s\n", R[i].n, R[i].phrase, R[i].v[0], R[i].v[1], R[i].v[2], R[i].by, R[i].basis);
+            ok++; fprintf(o, "APPROVED | %d | %s | %s | by=%s | basis=%s\n", R[i].n, R[i].phrase, kvs(R[i].v, 1.0), R[i].by, R[i].basis);
         }
         fclose(o); printf("approved=%d adjusted=%d rejected=%d\n", ok, adj, rej); return 0;
     }
     if (argc == 4 && !strcmp(argv[1], "train")) {
         FILE *f = fopen(argv[2], "r"); if (!f) { fprintf(stderr, "cannot read %s\n", argv[2]); return 2; }
-        static char *W[MAXW]; static double S[MAXW][3]; static int C[MAXW]; int nW = 0, nP = 0;
+        static char *W[MAXW]; static double S[MAXW][MAXK]; static int C[MAXW]; int nW = 0, nP = 0;
         while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "APPROVED |", 10)) {
-            char ph[256], nm[300], *seen[64]; int ns = 0; double v[3];
+            char ph[256], nm[300], *seen[64]; int ns = 0; double v[MAXK];
             if (!col(ln, 2, ph, sizeof ph) || !weights_of(ln, v)) continue;
             nP++; norm(ph, nm, sizeof nm);
             for (char *t = strtok(nm, " "); t; t = strtok(NULL, " ")) {
@@ -101,7 +122,7 @@ int main(int argc, char **argv) {
                 char *keep = strdup(t); seen[ns++] = keep;
                 int k = -1; for (int i = 0; i < nW; i++) if (!strcmp(W[i], keep)) { k = i; break; }
                 if (k < 0 && nW < MAXW) { k = nW++; W[k] = strdup(keep); }
-                if (k >= 0) { for (int j = 0; j < 3; j++) S[k][j] += v[j]; C[k]++; }
+                if (k >= 0) { for (int j = 0; j < NK; j++) S[k][j] += v[j]; C[k]++; }
             }
         }
         fclose(f);
@@ -109,9 +130,9 @@ int main(int argc, char **argv) {
         for (int i = 0; i < nW; i++) names[i] = W[i];
         qsort(names, (size_t)nW, sizeof(char *), cmp_s);
         FILE *o = fopen(argv[3], "w"); if (!o) { fprintf(stderr, "cannot write %s\n", argv[3]); return 2; }
-        fprintf(o, "# WORD | word | n | energy | force | motion   (mean of the approved phrases that contain the word; stop=1 = filler, ignored by forward; built by hidden_layer train)\n");
+        fprintf(o, "# WORD | word | n | %s   (mean of the approved phrases that contain the word; stop=1 = filler, ignored by forward; built by hidden_layer train)\n", khead());
         for (int i = 0; i < nW; i++) { int k = 0; for (int j = 0; j < nW; j++) if (!strcmp(W[j], names[i])) { k = j; break; }
-            fprintf(o, "WORD | %s | n=%d | energy=%.2f | force=%.2f | motion=%.2f | stop=%d\n", names[i], C[k], S[k][0] / C[k], S[k][1] / C[k], S[k][2] / C[k], C[k] * 5 > nP ? 1 : 0); }
+            fprintf(o, "WORD | %s | n=%d | %s | stop=%d\n", names[i], C[k], kvs(S[k], (double)C[k]), C[k] * 5 > nP ? 1 : 0); }
         fclose(o); free(idx); free(names); printf("words=%d\n", nW); return 0;
     }
     if (argc >= 5 && !strcmp(argv[1], "forward")) {
@@ -119,28 +140,28 @@ int main(int argc, char **argv) {
         char nt[LN]; norm(text, nt, sizeof nt);
         FILE *a = fopen(argv[3], "r"); if (a) {
             while (fgets(ln, sizeof ln, a)) if (!strncmp(ln, "APPROVED |", 10)) {
-                char ph[256], np[300]; double v[3];
+                char ph[256], np[300]; double v[MAXK];
                 if (!col(ln, 2, ph, sizeof ph) || !weights_of(ln, v)) continue;
                 norm(ph, np, sizeof np);
-                if (!strcmp(np, nt)) { printf("HIDDEN | energy=%.2f | force=%.2f | motion=%.2f | source=exact | known=0 | words=0\n", v[0], v[1], v[2]); fclose(a); return 0; }
+                if (!strcmp(np, nt)) { printf("HIDDEN | %s | source=exact | known=0 | words=0\n", kvs(v, 1.0)); fclose(a); return 0; }
             }
             fclose(a);
         }
         FILE *w = fopen(argv[2], "r"); if (!w) { fprintf(stderr, "cannot read %s\n", argv[2]); return 2; }
-        double sum[3] = { 0, 0, 0 }; int known = 0, words = 0;
+        double sum[MAXK] = { 0 }; int known = 0, words = 0;
         for (char *t = strtok(nt, " "); t; t = strtok(NULL, " ")) {
             if (strlen(t) < 2) continue;
             words++; rewind(w);
             while (fgets(ln, sizeof ln, w)) if (!strncmp(ln, "WORD |", 6)) {
-                char name[64]; double v[3]; if (!col(ln, 1, name, sizeof name) || strcmp(name, t) || !weights_of(ln, v)) continue;
+                char name[64]; double v[MAXK]; if (!col(ln, 1, name, sizeof name) || strcmp(name, t) || !weights_of(ln, v)) continue;
                 if (strstr(ln, "stop=1")) { words--; break; }       /* filler word: ignored */
-                for (int j = 0; j < 3; j++) sum[j] += v[j];
+                for (int j = 0; j < NK; j++) sum[j] += v[j];
                 known++; break;
             }
         }
         fclose(w);
-        if (known) for (int j = 0; j < 3; j++) sum[j] /= known;
-        printf("HIDDEN | energy=%.2f | force=%.2f | motion=%.2f | source=%s | known=%d | words=%d\n", sum[0], sum[1], sum[2], known ? "words" : "none", known, words);
+        if (known) for (int j = 0; j < NK; j++) sum[j] /= known;
+        printf("HIDDEN | %s | source=%s | known=%d | words=%d\n", kvs(sum, 1.0), known ? "words" : "none", known, words);
         return 0;
     }
     fprintf(stderr, "usage: hidden_layer apply <draft> <review> <approved_out> | train <approved> <words_out> | forward <words> <approved> <text...>\n");

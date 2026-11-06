@@ -1,0 +1,4 @@
+SECTION | KEY | VALUE
+------------------------------
+# a user layer that raises roof_orange: the studio writes rows like this to state/studio_bias.pdl
+BIAS | roof_orange | 0.60

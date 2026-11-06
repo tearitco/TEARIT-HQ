@@ -1,0 +1,117 @@
+SECTION | KEY | VALUE
+------------------------------
+# material_concepts.pdl - D35 M3: what each material LOOKS like (the attention keys) and which words pull toward it (the biases). HAND-SET by claude 2026-11-05 under the owner's 2026-11-06 delegation ("u can review weights and even hand tune biases"). Edit freely; the studio writes its own overrides to state/studio_bias.pdl and never this file.
+# DIMS: warm wet wear grain edge round metal big worn, each -1..+1 (same order as concept-bank/data/hidden/look_assoc.*).
+# KEY | material | 9 numbers in DIMS order                 the key vector k_m of the attention
+# BIAS | material | b                                       a prior added to the score of that material (default 0)
+# WORDAFF | word | material | affinity 0..1                 a word in the phrase adds `affinity * word_gain` to that material's score; plural s is tried too
+KEY | grass | -0.1,0.5,-0.1,0.8,0,0,0,0.1,-0.1
+KEY | dirt | 0.4,-0.2,0.5,0.7,0.1,0,0,0,0.4
+KEY | stone | -0.1,0.2,0.4,0.6,0.4,0.2,0,0.2,0.3
+KEY | ice | -0.8,0.5,-0.2,-0.2,0.4,0,0,0.1,-0.2
+KEY | roof_red | 0.6,0,0,0.2,0.3,0,0,0,0
+KEY | roof_orange | 0.8,-0.1,0.1,0.2,0.3,0,0,0,0.1
+KEY | roof_blue | -0.6,0.1,0,0.3,0.4,0,0,0,0
+KEY | roof_teal | -0.2,0.3,0.6,0.3,0.2,0,0.3,0,0.6
+KEY | roof_purple | -0.1,0,-0.2,-0.3,0.3,0,0,0,-0.2
+KEY | roof_slate | -0.4,0.2,0.2,0.4,0.4,0,0,0,0.2
+KEY | brick_red | 0.4,0.1,0.3,0.5,0.5,0,0,0,0.3
+KEY | brick_brown | 0.3,0.1,0.4,0.5,0.5,0,0,0,0.4
+KEY | brick_grey | -0.1,0.1,0.3,0.5,0.5,0,0,0,0.3
+KEY | plaster | 0.1,0,0,-0.4,0.2,0,0,0,0
+KEY | timber | 0.4,0.1,0.3,0.7,0.3,0,0,0.1,0.2
+KEY | thatch | 0.8,-0.2,0.2,0.9,0.1,0.1,0,0,0.2
+KEY | marble | 0,0,-0.5,-0.3,0.2,0,0.1,0,-0.4
+KEY | hull | -0.3,0,-0.2,-0.4,0.5,0,0.9,0.2,-0.2
+KEY | rust | 0.5,0.2,0.8,0.6,0.3,0,0.6,0,0.8
+KEY | sunmetal | 0.9,0,-0.2,-0.2,0.4,0,0.9,0,-0.1
+KEY | deck | -0.1,0.1,0.4,0.3,0.5,0,0.8,0,0.3
+KEY | gold | 0.9,0,-0.4,-0.4,0.3,0.2,1,0,-0.3
+KEY | copper | 0.7,0,0,-0.2,0.3,0.2,1,0,0
+KEY | iron | -0.1,0,0.3,0.1,0.5,0,1,0.3,0.2
+KEY | silver | -0.1,0,-0.3,-0.4,0.4,0.2,1,0,-0.3
+# BIAS rows: none by default (all 0). The studio's Bias +/- writes them to its own layer.
+# WORDAFF rows
+WORDAFF | roof | roof_red | 0.5
+WORDAFF | roof | roof_orange | 0.5
+WORDAFF | roof | roof_blue | 0.5
+WORDAFF | roof | roof_teal | 0.5
+WORDAFF | roof | roof_purple | 0.5
+WORDAFF | roof | roof_slate | 0.5
+WORDAFF | tile | roof_red | 0.3
+WORDAFF | tile | roof_purple | 0.3
+WORDAFF | terracotta | roof_red | 0.9
+WORDAFF | terracotta | roof_orange | 0.6
+WORDAFF | clay | roof_red | 0.5
+WORDAFF | clay | brick_red | 0.4
+WORDAFF | clay | dirt | 0.3
+WORDAFF | slate | roof_slate | 0.9
+WORDAFF | slate | roof_blue | 0.3
+WORDAFF | copper | roof_teal | 0.5
+WORDAFF | copper | copper | 0.9
+WORDAFF | verdigris | roof_teal | 0.9
+WORDAFF | violet | roof_purple | 0.8
+WORDAFF | purple | roof_purple | 0.8
+WORDAFF | brick | brick_red | 0.7
+WORDAFF | brick | brick_brown | 0.7
+WORDAFF | brick | brick_grey | 0.7
+WORDAFF | wall | brick_red | 0.3
+WORDAFF | wall | brick_brown | 0.3
+WORDAFF | wall | brick_grey | 0.3
+WORDAFF | wall | plaster | 0.4
+WORDAFF | wall | stone | 0.4
+WORDAFF | plaster | plaster | 0.9
+WORDAFF | gypsum | plaster | 0.8
+WORDAFF | plank | timber | 0.8
+WORDAFF | timber | timber | 0.9
+WORDAFF | wooden | timber | 0.8
+WORDAFF | wood | timber | 0.8
+WORDAFF | oak | timber | 0.8
+WORDAFF | log | timber | 0.6
+WORDAFF | thatch | thatch | 0.9
+WORDAFF | straw | thatch | 0.9
+WORDAFF | hay | thatch | 0.7
+WORDAFF | marble | marble | 0.9
+WORDAFF | polished | marble | 0.5
+WORDAFF | limestone | marble | 0.4
+WORDAFF | limestone | stone | 0.5
+WORDAFF | stone | stone | 0.8
+WORDAFF | cobblestone | stone | 0.8
+WORDAFF | rock | stone | 0.7
+WORDAFF | pebble | stone | 0.5
+WORDAFF | gravel | stone | 0.6
+WORDAFF | road | stone | 0.5
+WORDAFF | path | dirt | 0.5
+WORDAFF | dirt | dirt | 0.9
+WORDAFF | mud | dirt | 0.8
+WORDAFF | soil | dirt | 0.8
+WORDAFF | sand | dirt | 0.5
+WORDAFF | ground | dirt | 0.4
+WORDAFF | ground | grass | 0.3
+WORDAFF | grass | grass | 0.9
+WORDAFF | field | grass | 0.6
+WORDAFF | lawn | grass | 0.8
+WORDAFF | moss | grass | 0.4
+WORDAFF | ice | ice | 0.9
+WORDAFF | frozen | ice | 0.7
+WORDAFF | snow | ice | 0.5
+WORDAFF | hull | hull | 0.9
+WORDAFF | spaceship | hull | 0.7
+WORDAFF | sci | hull | 0.5
+WORDAFF | fi | hull | 0.4
+WORDAFF | aluminium | hull | 0.7
+WORDAFF | aluminum | hull | 0.7
+WORDAFF | panel | hull | 0.4
+WORDAFF | rust | rust | 0.9
+WORDAFF | rusty | rust | 0.9
+WORDAFF | rusted | rust | 0.9
+WORDAFF | iron | iron | 0.8
+WORDAFF | iron | rust | 0.3
+WORDAFF | steel | iron | 0.6
+WORDAFF | steel | deck | 0.5
+WORDAFF | deck | deck | 0.9
+WORDAFF | gold | gold | 0.9
+WORDAFF | golden | gold | 0.7
+WORDAFF | golden | sunmetal | 0.4
+WORDAFF | brass | sunmetal | 0.7
+WORDAFF | silver | silver | 0.9

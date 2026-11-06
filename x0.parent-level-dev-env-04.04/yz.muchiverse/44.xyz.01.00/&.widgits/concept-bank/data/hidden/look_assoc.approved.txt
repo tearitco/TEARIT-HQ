@@ -1,0 +1,61 @@
+# APPROVED | n | phrase | warm | wet | wear | grain | edge | round | metal | big | worn | by | basis   (only rows a reviewer accepted or adjusted; built by hidden_layer apply)
+APPROVED | 1 | new red clay roof tile | warm=0.60 | wet=0.00 | wear=-0.40 | grain=0.20 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=-0.40 | by=claude-delegated | basis=accept
+APPROVED | 2 | old weathered roof tile | warm=0.20 | wet=0.10 | wear=0.70 | grain=0.30 | edge=0.30 | round=0.00 | metal=0.00 | big=0.00 | worn=0.60 | by=claude-delegated | basis=accept
+APPROVED | 3 | mossy damp stone wall | warm=-0.20 | wet=0.80 | wear=0.50 | grain=0.50 | edge=0.30 | round=0.00 | metal=0.00 | big=0.20 | worn=0.40 | by=claude-delegated | basis=accept
+APPROVED | 4 | clean polished marble floor | warm=0.00 | wet=0.00 | wear=-0.60 | grain=-0.20 | edge=0.10 | round=0.00 | metal=0.10 | big=0.00 | worn=-0.50 | by=claude-delegated | basis=accept
+APPROVED | 5 | cracked dry dirt ground | warm=0.40 | wet=-0.50 | wear=0.60 | grain=0.70 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=0.50 | by=claude-delegated | basis=accept
+APPROVED | 6 | wet muddy path | warm=0.10 | wet=0.90 | wear=0.30 | grain=0.50 | edge=0.00 | round=0.00 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 7 | shiny steel hull plate | warm=-0.30 | wet=0.00 | wear=-0.20 | grain=-0.40 | edge=0.50 | round=0.00 | metal=0.90 | big=0.20 | worn=-0.20 | by=claude-delegated | basis=accept
+APPROVED | 8 | rusty iron deck plate | warm=0.50 | wet=0.20 | wear=0.80 | grain=0.60 | edge=0.40 | round=0.00 | metal=0.70 | big=0.00 | worn=0.80 | by=claude-delegated | basis=accept
+APPROVED | 9 | warm golden straw thatch | warm=0.80 | wet=-0.20 | wear=0.20 | grain=0.90 | edge=0.10 | round=0.10 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 10 | cold blue ice block | warm=-0.80 | wet=0.40 | wear=-0.30 | grain=-0.20 | edge=0.40 | round=0.00 | metal=0.00 | big=0.20 | worn=-0.30 | by=claude-delegated | basis=accept
+APPROVED | 11 | rough grey cobblestone | warm=-0.10 | wet=0.10 | wear=0.50 | grain=0.80 | edge=0.50 | round=0.50 | metal=0.00 | big=0.00 | worn=0.40 | by=claude-delegated | basis=accept
+APPROVED | 12 | smooth round river stone | warm=0.00 | wet=0.40 | wear=0.30 | grain=-0.20 | edge=0.00 | round=0.90 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=adjust
+APPROVED | 13 | big heavy stone block | warm=0.00 | wet=0.00 | wear=0.20 | grain=0.30 | edge=0.70 | round=0.00 | metal=0.00 | big=0.90 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 14 | small tidy brick wall | warm=0.30 | wet=0.00 | wear=0.00 | grain=0.20 | edge=0.60 | round=0.00 | metal=0.00 | big=-0.50 | worn=-0.10 | by=claude-delegated | basis=accept
+APPROVED | 15 | old red brick wall | warm=0.40 | wet=0.10 | wear=0.60 | grain=0.50 | edge=0.50 | round=0.00 | metal=0.00 | big=0.00 | worn=0.60 | by=claude-delegated | basis=accept
+APPROVED | 16 | new wooden plank floor | warm=0.50 | wet=0.00 | wear=-0.40 | grain=0.60 | edge=0.30 | round=0.00 | metal=0.00 | big=0.00 | worn=-0.40 | by=claude-delegated | basis=accept
+APPROVED | 17 | worn wooden plank | warm=0.30 | wet=0.10 | wear=0.70 | grain=0.70 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=0.80 | by=claude-delegated | basis=accept
+APPROVED | 18 | dark oak timber beam | warm=0.30 | wet=0.10 | wear=0.30 | grain=0.60 | edge=0.30 | round=0.00 | metal=0.00 | big=0.40 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 19 | sunlit gold metal plate | warm=0.90 | wet=0.00 | wear=-0.10 | grain=-0.20 | edge=0.40 | round=0.00 | metal=0.90 | big=0.00 | worn=-0.10 | by=claude-delegated | basis=accept
+APPROVED | 20 | copper green weathered roof | warm=-0.10 | wet=0.30 | wear=0.70 | grain=0.30 | edge=0.20 | round=0.00 | metal=0.30 | big=0.00 | worn=0.70 | by=claude-delegated | basis=adjust
+APPROVED | 21 | sandy dry desert ground | warm=0.80 | wet=-0.80 | wear=0.40 | grain=0.80 | edge=0.00 | round=0.00 | metal=0.00 | big=0.10 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 22 | lush green grass field | warm=-0.10 | wet=0.50 | wear=-0.20 | grain=0.80 | edge=0.00 | round=0.00 | metal=0.00 | big=0.20 | worn=-0.20 | by=claude-delegated | basis=accept
+APPROVED | 23 | dead brown dry grass | warm=0.50 | wet=-0.60 | wear=0.50 | grain=0.80 | edge=0.00 | round=0.00 | metal=0.00 | big=0.00 | worn=0.50 | by=claude-delegated | basis=accept
+APPROVED | 24 | snow covered white ground | warm=-0.60 | wet=0.50 | wear=-0.40 | grain=-0.10 | edge=0.00 | round=0.20 | metal=0.00 | big=0.20 | worn=-0.40 | by=claude-delegated | basis=accept
+APPROVED | 25 | dark cavern rock wall | warm=-0.50 | wet=0.30 | wear=0.50 | grain=0.60 | edge=0.60 | round=0.00 | metal=0.00 | big=0.50 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 26 | shiny sci-fi circuit panel | warm=-0.50 | wet=0.00 | wear=-0.50 | grain=-0.50 | edge=0.70 | round=0.00 | metal=0.80 | big=0.00 | worn=-0.40 | by=claude-delegated | basis=accept
+APPROVED | 27 | dusty abandoned floor | warm=0.20 | wet=-0.60 | wear=0.90 | grain=0.40 | edge=0.00 | round=0.00 | metal=0.00 | big=0.00 | worn=0.90 | by=claude-delegated | basis=accept
+APPROVED | 28 | glowing lava rock | warm=1.00 | wet=0.20 | wear=0.20 | grain=0.60 | edge=0.40 | round=0.00 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 29 | smooth white plaster wall | warm=0.10 | wet=0.00 | wear=-0.20 | grain=-0.50 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=-0.20 | by=claude-delegated | basis=accept
+APPROVED | 30 | chipped peeling plaster | warm=0.10 | wet=0.30 | wear=0.80 | grain=0.40 | edge=0.30 | round=0.00 | metal=0.00 | big=0.00 | worn=0.80 | by=claude-delegated | basis=accept
+APPROVED | 31 | round barrel smooth | warm=0.40 | wet=0.00 | wear=-0.20 | grain=-0.20 | edge=0.20 | round=0.90 | metal=0.10 | big=0.00 | worn=0.00 | by=claude-delegated | basis=accept
+APPROVED | 32 | big round tower | warm=0.00 | wet=0.00 | wear=0.10 | grain=0.00 | edge=0.30 | round=0.80 | metal=0.00 | big=0.90 | worn=0.00 | by=claude-delegated | basis=accept
+APPROVED | 33 | sharp edged crystal | warm=-0.40 | wet=0.10 | wear=-0.40 | grain=-0.60 | edge=0.90 | round=0.00 | metal=0.20 | big=0.00 | worn=-0.30 | by=claude-delegated | basis=accept
+APPROVED | 34 | ancient mossy ruin | warm=-0.10 | wet=0.70 | wear=0.90 | grain=0.50 | edge=0.40 | round=0.00 | metal=0.00 | big=0.40 | worn=0.90 | by=claude-delegated | basis=accept
+APPROVED | 35 | clean new metal door | warm=-0.20 | wet=0.00 | wear=-0.60 | grain=-0.30 | edge=0.60 | round=0.00 | metal=0.80 | big=0.00 | worn=-0.60 | by=claude-delegated | basis=accept
+APPROVED | 36 | battered dented armor | warm=0.00 | wet=0.00 | wear=0.80 | grain=0.20 | edge=0.50 | round=0.20 | metal=0.90 | big=0.00 | worn=0.90 | by=claude-delegated | basis=accept
+APPROVED | 37 | damp cellar stone floor | warm=-0.30 | wet=0.80 | wear=0.50 | grain=0.40 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=0.50 | by=claude-delegated | basis=accept
+APPROVED | 38 | hot red clay roof | warm=0.90 | wet=-0.30 | wear=0.20 | grain=0.30 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=0.10 | by=claude-delegated | basis=accept
+APPROVED | 39 | purple glazed tile | warm=-0.10 | wet=0.00 | wear=-0.30 | grain=-0.40 | edge=0.30 | round=0.00 | metal=0.00 | big=0.00 | worn=-0.30 | by=claude-delegated | basis=accept
+APPROVED | 40 | blue slate roof | warm=-0.60 | wet=0.20 | wear=0.20 | grain=0.40 | edge=0.40 | round=0.00 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 41 | pale limestone wall | warm=0.20 | wet=0.00 | wear=0.20 | grain=0.20 | edge=0.40 | round=0.00 | metal=0.00 | big=0.20 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 42 | stone road | warm=0.00 | wet=0.10 | wear=0.50 | grain=0.60 | edge=0.30 | round=0.30 | metal=0.00 | big=0.00 | worn=0.50 | by=claude-delegated | basis=accept
+APPROVED | 43 | bright polished brass | warm=0.80 | wet=0.00 | wear=-0.50 | grain=-0.50 | edge=0.30 | round=0.20 | metal=0.90 | big=0.00 | worn=-0.40 | by=claude-delegated | basis=accept
+APPROVED | 44 | old rusted pipe | warm=0.50 | wet=0.30 | wear=0.80 | grain=0.50 | edge=0.20 | round=0.70 | metal=0.80 | big=0.00 | worn=0.80 | by=claude-delegated | basis=accept
+APPROVED | 45 | tiny pebbles gravel | warm=0.00 | wet=0.10 | wear=0.40 | grain=0.90 | edge=0.00 | round=0.60 | metal=0.00 | big=-0.60 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 46 | tall heavy fortress wall | warm=-0.10 | wet=0.00 | wear=0.30 | grain=0.30 | edge=0.70 | round=0.00 | metal=0.00 | big=1.00 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 47 | soft dry straw bundle | warm=0.70 | wet=-0.50 | wear=0.30 | grain=0.90 | edge=0.00 | round=0.40 | metal=0.00 | big=-0.20 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 48 | wet slippery wooden dock | warm=0.20 | wet=1.00 | wear=0.50 | grain=0.60 | edge=0.20 | round=0.00 | metal=0.00 | big=0.00 | worn=0.50 | by=claude-delegated | basis=accept
+APPROVED | 49 | clean tiled bathroom floor | warm=-0.10 | wet=0.30 | wear=-0.60 | grain=-0.50 | edge=0.70 | round=0.00 | metal=0.10 | big=0.00 | worn=-0.50 | by=claude-delegated | basis=accept
+APPROVED | 50 | cracked broken stone | warm=0.00 | wet=0.00 | wear=0.90 | grain=0.70 | edge=0.70 | round=0.00 | metal=0.00 | big=0.00 | worn=0.80 | by=claude-delegated | basis=accept
+APPROVED | 51 | smooth glass window | warm=-0.20 | wet=0.00 | wear=-0.50 | grain=-0.70 | edge=0.60 | round=0.00 | metal=0.20 | big=0.00 | worn=-0.50 | by=claude-delegated | basis=accept
+APPROVED | 52 | woven cloth curtain | warm=0.30 | wet=0.00 | wear=0.20 | grain=0.90 | edge=0.00 | round=0.20 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 53 | shiny new tile floor | warm=0.10 | wet=0.00 | wear=-0.70 | grain=-0.40 | edge=0.60 | round=0.00 | metal=0.10 | big=0.00 | worn=-0.70 | by=claude-delegated | basis=accept
+APPROVED | 54 | grimy industrial floor | warm=-0.10 | wet=0.30 | wear=0.80 | grain=0.60 | edge=0.30 | round=0.00 | metal=0.40 | big=0.00 | worn=0.80 | by=claude-delegated | basis=accept
+APPROVED | 55 | frozen cold blue metal | warm=-0.70 | wet=0.30 | wear=0.10 | grain=-0.20 | edge=0.50 | round=0.00 | metal=0.60 | big=0.00 | worn=0.10 | by=claude-delegated | basis=accept
+APPROVED | 56 | warm sunny sand | warm=0.80 | wet=-0.50 | wear=0.20 | grain=0.80 | edge=0.00 | round=0.00 | metal=0.00 | big=0.00 | worn=0.20 | by=claude-delegated | basis=accept
+APPROVED | 57 | heavy iron gate | warm=-0.10 | wet=0.00 | wear=0.40 | grain=0.30 | edge=0.70 | round=0.00 | metal=0.90 | big=0.80 | worn=0.50 | by=claude-delegated | basis=accept
+APPROVED | 58 | small wooden crate | warm=0.40 | wet=0.00 | wear=0.20 | grain=0.60 | edge=0.50 | round=0.00 | metal=0.00 | big=-0.60 | worn=0.30 | by=claude-delegated | basis=accept
+APPROVED | 59 | mossy wet log | warm=0.00 | wet=0.80 | wear=0.50 | grain=0.70 | edge=0.00 | round=0.80 | metal=0.00 | big=0.00 | worn=0.60 | by=claude-delegated | basis=accept
+APPROVED | 60 | magical glowing violet stone | warm=0.00 | wet=0.00 | wear=-0.20 | grain=0.20 | edge=0.30 | round=0.00 | metal=0.00 | big=0.00 | worn=-0.20 | by=claude-delegated | basis=adjust

@@ -36,3 +36,39 @@ EXPECT_EXIT | 2 | NEGATIVE-element-in-ceramic-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/material_colour_op.+x | compare | $HOUSE/@.apps/generator-hq/events/gen_material/materials.pdl | $HOUSE/&.widgits/concept-bank/data/chem/elements.pdl | $HOUSE/@.apps/generator-hq/events/gen_ground/ground.pdl
 EXPECT_OUT | COMPARE rust | rust-has-a-recipe-to-compare-with
 EXPECT_OUT | COMPARE sunmetal | sunmetal-too
+
+# M3: the attention gate over materials. Words -> query (hidden_layer, 9 look dimensions, 60 reviewed phrases) -> scores -> softmax; biases and keys are editable through a user layer
+CASE    | gate
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl
+EXPECT_OUT | GATECHECK materials=25 wordaff=83 | the-concept-table-parses
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 0.15 | old | weathered | terracotta | roof
+EXPECT_OUT | GATE 1 roof_red score=0.793 gate=0.460 | a-terracotta-roof-is-roof-red
+EXPECT_OUT | GATESUM 1.000 | the-gate-sums-to-one
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 0.15 | roof | terracotta | weathered | old
+EXPECT_OUT | GATE 1 roof_red score=0.793 gate=0.460 | word-order-does-not-change-a-single-digit
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 0.15 | shiny | new | steel | hull | plate
+EXPECT_OUT | GATE 1 hull | a-steel-hull-plate-is-hull
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 0.15 | cold | frozen | ice
+EXPECT_OUT | GATE 1 ice score=1.148 gate=0.981 | frozen-ice-is-ice
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 0.15 | polished | marble | floor
+EXPECT_OUT | GATE 1 marble | a-marble-floor-is-marble
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 0.15 | zzz | qqq
+EXPECT_OUT | QUERY source=none known=0 words=2 | unknown-words-are-reported-as-source-none-not-guessed
+# the editable layer: a bias row flips the winner, a key row changes how a material looks, neither touches the shared file
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | $HOUSE/@.apps/generator-hq/events/gen_material/test/bias_up.pdl | 0.15 | old | weathered | terracotta | roof
+EXPECT_OUT | GATE 1 roof_orange score=1.288 gate=0.942 | a-user-bias-flips-the-winner
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | $HOUSE/@.apps/generator-hq/events/gen_material/test/key_override.pdl | 0.15 | shiny | new | steel | hull | plate
+EXPECT_OUT | GATE 1 iron score=0.576 gate=0.323 | a-user-key-override-changes-the-result
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | $HOUSE/@.apps/generator-hq/events/gen_material/test/bias_unknown.pdl | 0.15 | roof
+EXPECT_EXIT | 2 | NEGATIVE-a-user-bias-for-an-unknown-material-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | gate | $HOUSE/@.apps/generator-hq/events/gen_material/material_concepts.pdl | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | $HOUSE/&.widgits/concept-bank/data/hidden/look_words.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt | - | 5 | roof
+EXPECT_EXIT | 2 | NEGATIVE-a-temperature-of-5-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/concepts_short_key.pdl
+EXPECT_EXIT | 2 | NEGATIVE-concepts-short-key-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/concepts_range.pdl
+EXPECT_EXIT | 2 | NEGATIVE-concepts-range-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/concepts_duplicate.pdl
+EXPECT_EXIT | 2 | NEGATIVE-concepts-duplicate-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/gate_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_material/bad/concepts_unknown_material.pdl
+EXPECT_EXIT | 2 | NEGATIVE-concepts-unknown-material-is-refused

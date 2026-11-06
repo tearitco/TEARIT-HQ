@@ -614,3 +614,39 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | select | top | state=$T/st
 RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
 EXPECT_OUT | selection works on object and ground sheets | NEGATIVE-A4-has-no-selection
+
+# Material tab (D35 M3 in the window): the gate readout and the EDITABLE weights. Edits go to the user layer state/studio_bias.pdl only; the shared material_concepts.pdl is never written
+CASE    | material_tab
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | gate | hull | plate | steel | state=$T/st
+RUN | /usr/bin/grep | ^gate_l1 | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | gate_l1=1. hull 62% | typed-words-steel-hull-plate-pull-to-hull
+RUN | /usr/bin/grep | ^gate_src | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | gate_src=words: words, 3 of 3 known | the-source-line-says-how-many-words-were-known
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | bias | top | 0.6 | state=$T/st
+RUN | /usr/bin/grep | ^gate_l1 | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | gate_l1=1. hull 99% | a-bias-of-0.6-lifts-hull-from-62-to-99
+RUN | /usr/bin/grep | ^BIAS | $T/st/studio_bias.pdl
+EXPECT_OUT | BIAS \p hull \p 0.60 | the-edit-is-in-the-user-layer
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | keyw | top | warm | 0.2 | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | keyw | top | warm | 0.2 | state=$T/st
+RUN | /usr/bin/grep | ^KEY | $T/st/studio_bias.pdl
+EXPECT_OUT | KEY \p hull \p 0.10,0.00,-0.20,-0.40,0.50,0.00,0.90,0.20,-0.20 | two-warm-steps-take-hull-from-minus-0.30-to-plus-0.10
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | keyw | top | nosuch | 0.2 | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-concept-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | bias | nosuch | 0.1 | state=$T/st
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-material-is-refused
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=refused | the-refusal-is-shown-in-the-status-line
+RUN | /usr/bin/grep | -c | ^BIAS | $T/st/studio_bias.pdl
+EXPECT_OUT | 1 | the-refused-edit-left-the-file-with-its-one-bias-row
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | bias | top | 3 | state=$T/st
+RUN | /usr/bin/grep | ^BIAS | $T/st/studio_bias.pdl
+EXPECT_OUT | BIAS \p hull \p 2.00 | a-bias-is-clamped-to-2
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | bias | top | reset | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | keyw | top | warm | reset | state=$T/st
+RUN | /usr/bin/grep | -c | ^BIAS\p^KEY | $T/st/studio_bias.pdl
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | gate | hull | plate | steel | state=$T/st
+RUN | /usr/bin/grep | ^gate_l1 | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | gate_l1=1. hull 62% | after-resetting-both-edits-the-gate-is-back-to-the-shared-62

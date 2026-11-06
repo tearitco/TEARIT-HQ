@@ -198,19 +198,86 @@ static int render_preview(void) {
     unlink(png); return 0;
 }
 static const char *sel_text(char *b, size_t n) { if (!g_sel_on) snprintf(b, n, "selection: whole sheet"); else snprintf(b, n, "selection: %d,%d size %dx%d", g_sel[0], g_sel[1], g_sel[2], g_sel[3]); return b; }
+static void gate_vars(char *buf, size_t cap, int *n);
 static void write_ui(void) {
     char sel_label[80]; sel_text(sel_label, sizeof sel_label);
-    char p[2400], buf[8192]; int n = 0, i, k;
+    char p[2400], buf[10240]; int n = 0, i, k;
     n += snprintf(buf + n, sizeof buf - (size_t)n, "title=palette-studio\ntemplate_id=%s\ntemplate_label=%s\nn_templates=%d\n", T[cur].id, T[cur].label, nt);
     for (i = 0; i < nt; i++) n += snprintf(buf + n, sizeof buf - (size_t)n, "tp_%d_id=%s\ntp_%d_label=%s\ntp_%d_active=%s\n", i, T[i].id, i, T[i].label, i, i == cur ? "active" : "");
     n += snprintf(buf + n, sizeof buf - (size_t)n, "n_knobs=%d\n", T[cur].nk);
     for (k = 0; k < T[cur].nk; k++) { int pc = (int)lround(T[cur].v[k] * 100.0); n += snprintf(buf + n, sizeof buf - (size_t)n, "kb_%d_name=%s\nkb_%d_val=%s%d%%\n", k, T[cur].kn[k], k, pc > 0 ? "+" : "", pc); }
     n += snprintf(buf + n, sizeof buf - (size_t)n, "status=%s\ncanvas_raw=%s/studio_preview.raw\nleft_visible=%s\nknobs_state=%s\ntpl_short=%s\ncmp_state=%s\ngrid_state=%s\nview_state=%s\nvariant_val=%d\nsel_label=%s\n", g_status, g_state, g_left ? "1" : "", g_left ? "on" : "off", T[cur].id, g_cmp ? "on" : "off", g_grid ? "on" : "off", g_view ? "picker" : "sheet", g_variant, sel_label);
+    gate_vars(buf, sizeof buf, &n);
     snprintf(p, sizeof p, "%s/palettes-studio_ui.txt", g_state); write_atomic(p, buf, (size_t)n);
 }
+/* ---- Material tab (D35 M3 in the window): the attention gate readout and the EDITABLE weights. The shared file events/gen_material/material_concepts.pdl is never written;
+ * every edit goes to the user layer state/studio_bias.pdl (BIAS | material | b, KEY | material | 9 numbers), read by gate_op after the shared rows. Caps: 64 BIAS rows, 64 KEY rows, about 6 KB. ---- */
+#define UB_MAX 64
+static const char *CONC[9] = { "warm", "wet", "wear", "grain", "edge", "round", "metal", "big", "worn" };
+typedef struct { char m[40]; double b; char key[96]; int has_b, has_k; } Ub;
+static Ub UB[UB_MAX]; static int nUB;
+static void gpath(char *o, size_t n, const char *nm) { snprintf(o, n, "%s/%s", g_state, nm); }
+static int capture(char **av, char *out, size_t cap) {
+    int fd[2], st; pid_t pid; ssize_t n, got = 0;
+    if (pipe(fd)) return 2;
+    pid = fork(); if (pid < 0) return 2;
+    if (pid == 0) { int dn = open("/dev/null", O_WRONLY); dup2(fd[1], 1); if (dn >= 0) dup2(dn, 2); close(fd[0]); close(fd[1]); alarm(10); execv(av[0], av); _exit(127); }
+    close(fd[1]);
+    while ((n = read(fd[0], out + got, cap - 1 - (size_t)got)) > 0) { got += n; }
+    out[got] = 0; close(fd[0]); if (waitpid(pid, &st, 0) < 0) return 2;
+    return WIFEXITED(st) ? WEXITSTATUS(st) : 2;
+}
+static int ub_find(const char *m) { for (int i = 0; i < nUB; i++) if (!strcmp(UB[i].m, m)) return i; return -1; }
+static void ub_load(void) {
+    char p[2400], ln[256]; FILE *f; nUB = 0; gpath(p, sizeof p, "studio_bias.pdl"); f = fopen(p, "r"); if (!f) return;
+    while (fgets(ln, sizeof ln, f)) {
+        char m[40], v[96]; int i;
+        if (sscanf(ln, "BIAS | %39s | %95[^\n]", m, v) == 2) { if ((i = ub_find(m)) < 0 && nUB < UB_MAX) { i = nUB++; memset(&UB[i], 0, sizeof UB[i]); snprintf(UB[i].m, sizeof UB[i].m, "%s", m); } if (i >= 0) { UB[i].b = atof(v); UB[i].has_b = 1; } }
+        else if (sscanf(ln, "KEY | %39s | %95[^\n]", m, v) == 2) { if ((i = ub_find(m)) < 0 && nUB < UB_MAX) { i = nUB++; memset(&UB[i], 0, sizeof UB[i]); snprintf(UB[i].m, sizeof UB[i].m, "%s", m); } if (i >= 0) { snprintf(UB[i].key, sizeof UB[i].key, "%s", v); UB[i].has_k = 1; } }
+    }
+    fclose(f);
+}
+static int ub_save(const char *path) {
+    char buf[8192]; int n = 0;
+    n += snprintf(buf + n, sizeof buf - (size_t)n, "SECTION | KEY | VALUE\n------------------------------\n# studio_bias.pdl - the studio's EDITS to the material weights (user layer). BIAS | material | b (-2..2); KEY | material | warm,wet,wear,grain,edge,round,metal,big,worn (-1..1). Delete the file to go back to the shared defaults.\n");
+    for (int i = 0; i < nUB && n < (int)sizeof buf - 200; i++) { if (UB[i].has_b) n += snprintf(buf + n, sizeof buf - (size_t)n, "BIAS | %s | %.2f\n", UB[i].m, UB[i].b); if (UB[i].has_k) n += snprintf(buf + n, sizeof buf - (size_t)n, "KEY | %s | %s\n", UB[i].m, UB[i].key); }
+    return write_atomic(path, buf, (size_t)n);
+}
+/* run gate_op for the stored words (or the template's) with the given user layer; fills the three gate lines and the source line into studio_gate.txt */
+static int gate_refresh(const char *userpath, char *err, size_t en) {
+    char gp[2400], conc[2400], hl[2400], wt[2400], ap[2400], words[240] = "", out[4096], line[256], *av[40]; int n = 0, rc, ng = 0, i; size_t fl = 0; char *saved;
+    char gl[3][80] = { "", "", "" }, src[80] = "", top[40] = "";
+    gpath(gp, sizeof gp, "studio_gate.txt"); saved = slurp(gp, 2000, &fl);
+    if (saved) { const char *w = strstr(saved, "words="); if (w) { size_t k = 0; w += 6; while (w[k] && w[k] != '\n' && k < sizeof words - 1) { words[k] = w[k]; k++; } words[k] = 0; } free(saved); }
+    if (!words[0]) { char tmp[240]; size_t o = 0; snprintf(tmp, sizeof tmp, "%s %s", T[cur].id, T[cur].label); for (i = 0; tmp[i] && o + 2 < sizeof words; i++) words[o++] = (tmp[i] >= 'a' && tmp[i] <= 'z') || (tmp[i] >= 'A' && tmp[i] <= 'Z') ? tmp[i] : ' '; words[o] = 0; }
+    { char sg[240]; size_t o = 0; for (i = 0; words[i] && o + 2 < sizeof sg; i++) { int endw = words[i + 1] == 0x20 || words[i + 1] == 0; int cnt = 0; while (cnt < 4 && i - cnt >= 0 && words[i - cnt] != 0x20) cnt++; if (endw && words[i] == 0x73 && cnt > 3) continue; sg[o++] = words[i]; } sg[o] = 0; snprintf(words, sizeof words, "%s", sg); } /* plurals: the learned word table holds singular words, so roofs and walls are tried as roof and wall */
+    snprintf(conc, sizeof conc, "%s/@.apps/generator-hq/events/gen_material/material_concepts.pdl", g_house); snprintf(hl, sizeof hl, "%s/&.widgits/concept-bank/ops/+x/hidden_layer.+x", g_house);
+    snprintf(wt, sizeof wt, "%s/&.widgits/concept-bank/data/hidden/look_words.txt", g_house); snprintf(ap, sizeof ap, "%s/&.widgits/concept-bank/data/hidden/look_assoc.approved.txt", g_house);
+    { char bin[2400]; snprintf(bin, sizeof bin, "%s/@.apps/generator-hq/ops/+x/gate_op.+x", g_house); av[n++] = bin;
+      av[n++] = (char *)"gate"; av[n++] = conc; av[n++] = hl; av[n++] = wt; av[n++] = ap; av[n++] = (char *)userpath; av[n++] = (char *)"0.15";
+      { char *sv = NULL, wc[240]; snprintf(wc, sizeof wc, "%s", words); static char wv[24][32]; int nw = 0; for (char *t = strtok_r(wc, " ", &sv); t && nw < 24; t = strtok_r(NULL, " ", &sv)) { snprintf(wv[nw], sizeof wv[0], "%.30s", t); av[n++] = wv[nw++]; } }
+      av[n] = NULL; rc = capture(av, out, sizeof out); }
+    if (rc) { snprintf(err, en, "gate failed (exit %d)", rc); return rc; }
+    for (char *l = strtok(out, "\n"); l; l = strtok(NULL, "\n")) {
+        int rk; char m[40]; double sc, g;
+        if (sscanf(l, "GATE %d %39s score=%lf gate=%lf", &rk, m, &sc, &g) == 4 && rk >= 1 && rk <= 3) { snprintf(gl[rk - 1], sizeof gl[0], "%d. %s %d%%", rk, m, (int)lround(g * 100)); ng++; if (rk == 1) snprintf(top, sizeof top, "%s", m); }
+        else if (!strncmp(l, "QUERY source=", 13)) { char s2[16]; int kn = 0, wd = 0; if (sscanf(l, "QUERY source=%15s known=%d words=%d", s2, &kn, &wd) == 3) snprintf(src, sizeof src, "words: %s, %d of %d known", s2, kn, wd); }
+    }
+    snprintf(line, sizeof line, "words=%s\ntop=%s\nl1=%s\nl2=%s\nl3=%s\nsrc=%s\n", words, top, gl[0], gl[1], gl[2], src);
+    return write_atomic(gp, line, strlen(line));
+}
+static void gate_vars(char *buf, size_t cap, int *n) {
+    char gp[2400]; size_t fl = 0; char *s; const char *k[4] = { "l1=", "l2=", "l3=", "src=" }; const char *nm[4] = { "gate_l1", "gate_l2", "gate_l3", "gate_src" };
+    gpath(gp, sizeof gp, "studio_gate.txt"); s = slurp(gp, 2000, &fl);
+    for (int i = 0; i < 4; i++) { char v[100] = ""; const char *p = s ? strstr(s, k[i]) : NULL; if (p) { size_t j = 0; p += strlen(k[i]); while (p[j] && p[j] != '\n' && j < sizeof v - 1) { v[j] = p[j]; j++; } v[j] = 0; }
+        if (!v[0] && i == 0) { snprintf(v, sizeof v, "weights: Material > Show gate"); }
+        *n += snprintf(buf + *n, cap - (size_t)*n, "%s=%s\n", nm[i], v); }
+    if (s) free(s);
+}
+static int top_material(char *o, size_t n) { char gp[2400]; size_t fl = 0; char *s; const char *p; gpath(gp, sizeof gp, "studio_gate.txt"); s = slurp(gp, 2000, &fl); if (!s) return 0; p = strstr(s, "top="); o[0] = 0; if (p) { size_t j = 0; p += 4; while (p[j] && p[j] != '\n' && j < n - 1) { o[j] = p[j]; j++; } o[j] = 0; } free(s); return o[0] != 0; }
 int main(int argc, char **argv) {
     char d[2500]; int i, k, rc = 0;
-    if (argc < 2) { fprintf(stderr, "usage: init | pick <template> | nudge <knob> <delta> | reset | save | toggle left | compare | grid | view | roll [n] | undo | preset save|load N | select whole|top|bottom|left|right|rect c,r,w,h | savecrop\n"); return 2; }
+    if (argc < 2) { fprintf(stderr, "usage: init | pick <template> | nudge <knob> <delta> | reset | save | toggle left | compare | grid | view | roll [n] | undo | preset save|load N | select whole|top|bottom|left|right|rect c,r,w,h | savecrop | gate [words...|-] | bias <material|top> <delta|reset> | keyw <material|top> <concept> <delta|reset>\n"); return 2; }
     if (find_house() || read_templates()) { fprintf(stderr, "cannot find the house or the templates\n"); return 2; }
     for (i = 1; i < argc; i++) if (!strncmp(argv[i], "state=", 6)) snprintf(g_state, sizeof g_state, "%.2200s", argv[i] + 6); /* test and scratch use: every file goes to that folder, never the live window state */
     snprintf(d, sizeof d, "%s/studio_saves", g_state); mkdir(g_state, 0755); mkdir(d, 0755); snprintf(d, sizeof d, "%s/studio_presets", g_state); mkdir(d, 0755);
@@ -244,6 +311,44 @@ int main(int argc, char **argv) {
         snprintf(name, sizeof name, "slot%d", g_saves % SAVE_SLOTS); g_save_crop = 1; rc = studio_cmd("save", NULL, name, 0); g_save_crop = 0;
         if (rc) snprintf(g_status, sizeof g_status, "crop save failed (exit %d)", rc); else { snprintf(g_status, sizeof g_status, "saved crop studio_saves/%s (%d,%d size %dx%d)", name, g_sel[0], g_sel[1], g_sel[2], g_sel[3]); g_saves++; }
         save_session(); write_ui(); return rc;
+    }
+    else if (!strcmp(argv[1], "gate") || !strcmp(argv[1], "bias") || !strcmp(argv[1], "keyw")) {   /* Material tab: the gate readout and the editable user layer (D35 M3) */
+        char err[120] = "", ub[2400], tmp[2400], top[40]; int a, ok = 1; gpath(ub, sizeof ub, "studio_bias.pdl"); gpath(tmp, sizeof tmp, "studio_bias.pdl.new"); ub_load();
+        if (!strcmp(argv[1], "gate")) {
+            char words[200] = "", gp[2400]; for (a = 2; a < argc; a++) { if (argv[a][0] == '/' || !strncmp(argv[a], "state=", 6)) continue; { size_t u = strlen(words); snprintf(words + u, sizeof words - u, "%s%.40s", u ? " " : "", argv[a]); } }
+            gpath(gp, sizeof gp, "studio_gate.txt");
+            if (!strcmp(words, "-")) unlink(gp); else if (words[0]) { char w[260]; snprintf(w, sizeof w, "words=%s\n", words); write_atomic(gp, w, strlen(w)); }
+            if (gate_refresh(ub, err, sizeof err)) { snprintf(g_status, sizeof g_status, "%s", err); write_ui(); return 2; }
+            top_material(top, sizeof top); snprintf(g_status, sizeof g_status, "gate: top %s", top);
+        } else {
+            int mi; char mat[40] = "";
+            if (argc < 4) { fprintf(stderr, "usage: bias <material|top> <delta|reset> | keyw <material|top> <concept> <delta|reset>\n"); return 2; }
+            if (!strcmp(argv[2], "top")) { if (!top_material(mat, sizeof mat)) { char e2[120]; if (gate_refresh(ub, e2, sizeof e2) || !top_material(mat, sizeof mat)) { snprintf(g_status, sizeof g_status, "no gate yet"); write_ui(); return 2; } } }
+            else snprintf(mat, sizeof mat, "%.39s", argv[2]);
+            mi = ub_find(mat); if (mi < 0) { if (nUB >= UB_MAX) { snprintf(g_status, sizeof g_status, "too many edits (max %d materials)", UB_MAX); write_ui(); return 2; } mi = nUB++; memset(&UB[mi], 0, sizeof UB[mi]); snprintf(UB[mi].m, sizeof UB[mi].m, "%s", mat); }
+            if (!strcmp(argv[1], "bias")) {
+                if (!strcmp(argv[3], "reset")) UB[mi].has_b = 0; else { double v = (UB[mi].has_b ? UB[mi].b : 0) + atof(argv[3]); if (v > 2) v = 2; if (v < -2) v = -2; UB[mi].b = v; UB[mi].has_b = 1; }
+            } else {
+                if (!strcmp(argv[3], "reset") || (argc >= 5 && !strcmp(argv[4], "reset"))) UB[mi].has_k = 0; /* keyw <m> reset  or  keyw <m> <concept> reset: back to the shared key */
+                else {
+                    char kb[2400], out[512], *av[8], v9[9][16]; double kv[9] = { 0 }; int di = -1, i2;
+                    if (argc < 5) { fprintf(stderr, "usage: keyw <material|top> <concept> <delta|reset>\n"); return 2; }
+                    for (i2 = 0; i2 < 9; i2++) if (!strcmp(CONC[i2], argv[3])) di = i2;
+                    if (di < 0) { fprintf(stderr, "unknown concept %s\n", argv[3]); return 2; }
+                    snprintf(kb, sizeof kb, "%s/@.apps/generator-hq/ops/+x/gate_op.+x", g_house); { char conc[2400]; snprintf(conc, sizeof conc, "%s/@.apps/generator-hq/events/gen_material/material_concepts.pdl", g_house); av[0] = kb; av[1] = (char *)"key"; av[2] = conc; av[3] = ub; av[4] = mat; av[5] = NULL; if (capture(av, out, sizeof out)) { snprintf(g_status, sizeof g_status, "unknown material %s", mat); write_ui(); return 2; } }
+                    { const char *p = strstr(out, "KEYVEC "); char nm[40], csv[96]; if (!p || sscanf(p, "KEYVEC %39s %95s", nm, csv) != 2) { snprintf(g_status, sizeof g_status, "key read failed"); write_ui(); return 2; } { char *sv = NULL; int q = 0; for (char *t = strtok_r(csv, ",", &sv); t && q < 9; t = strtok_r(NULL, ",", &sv)) kv[q++] = atof(t); } }
+                    kv[di] += atof(argv[4]); if (kv[di] > 1) kv[di] = 1; if (kv[di] < -1) kv[di] = -1;
+                    for (i2 = 0; i2 < 9; i2++) snprintf(v9[i2], sizeof v9[0], "%.2f", kv[i2]);
+                    { char kk[160]; snprintf(kk, sizeof kk, "%s,%s,%s,%s,%s,%s,%s,%s,%s", v9[0], v9[1], v9[2], v9[3], v9[4], v9[5], v9[6], v9[7], v9[8]); snprintf(UB[mi].key, sizeof UB[mi].key, "%.95s", kk); UB[mi].has_k = 1; }
+                }
+            }
+            if (ub_save(tmp)) ok = 0;
+            else if (gate_refresh(tmp, err, sizeof err)) ok = 0;
+            if (!ok) { unlink(tmp); snprintf(g_status, sizeof g_status, "refused: %s", err[0] ? err : "could not save the edit"); write_ui(); return 2; }
+            rename(tmp, ub);
+            if (!strcmp(argv[1], "bias")) snprintf(g_status, sizeof g_status, "bias %s %s", mat, UB[mi].has_b ? "set" : "reset"); else snprintf(g_status, sizeof g_status, "key %s %s", mat, UB[mi].has_k ? "edited" : "reset");
+        }
+        write_ui(); return 0;
     }
     else if (!strcmp(argv[1], "view")) { g_view = !g_view; snprintf(g_status, sizeof g_status, g_view ? "picker view (one tile per kind, packed)" : "full sheet view"); }
     else if (!strcmp(argv[1], "grid")) { g_grid = !g_grid; snprintf(g_status, sizeof g_status, g_grid ? "gridlines on" : "gridlines off"); }

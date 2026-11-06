@@ -1,0 +1,19 @@
+# hidden_layer_look: hidden_layer with nine look dimensions (HL_KEYS), on 60 phrases reviewed by claude under the owner delegation of 2026-11-06 (D35). The 3-key behaviour is pinned by hidden_layer.pal and must not change.
+RESULTS | ../results/hidden_layer_look.txt
+ENV | LC_ALL | C
+ENV | HL_KEYS | warm,wet,wear,grain,edge,round,metal,big,worn
+
+CASE    | look
+SCRATCH |
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | apply | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.draft.txt | $HOUSE/&.widgits/concept-bank/data/hidden/look_assoc.review.txt | $T/approved.txt
+EXPECT_OUT | approved=60 adjusted=3 rejected=0 | sixty-phrases-all-reviewed-three-adjusted
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | train | $T/approved.txt | $T/words.txt
+EXPECT_OUT | words=133 | the-word-table-has-133-words
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | forward | $T/words.txt | $T/approved.txt | shiny | new | steel | hull | plate
+EXPECT_OUT | HIDDEN \p warm=-0.04 \p wet=0.01 \p wear=-0.24 \p grain=-0.24 \p edge=0.49 \p round=0.00 \p metal=0.69 \p big=0.11 \p worn=-0.24 \p source=words \p known=5 \p words=5 | steel-hull-plate-is-metal-and-fresh
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | forward | $T/words.txt | $T/approved.txt | old | weathered | roof
+EXPECT_OUT | source=words \p known=3 | an-old-weathered-roof-uses-three-known-words
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | forward | $T/words.txt | $T/approved.txt | zzz | qqq
+EXPECT_OUT | source=none \p known=0 \p words=2 | NEGATIVE-unknown-words-give-zeros-and-say-none
+RUN | $HOUSE/&.widgits/concept-bank/ops/+x/hidden_layer.+x | forward | $T/words.txt | $T/approved.txt | old | weathered | roof
+EXPECT_OUT | warm=0.21 \p wet=0.14 \p wear=0.56 \p grain=0.34 \p edge=0.28 \p round=0.08 \p metal=0.16 \p big=0.00 \p worn=0.52 | the-numbers-of-an-old-roof-are-pinned

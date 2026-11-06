@@ -10,6 +10,7 @@
       <tab id="tb-save" class="tab ps-tb" label="Save ▾" onclick="ACTIVATE" target_id="tb-save"/>
       <tab id="tb-sel" class="tab ps-tb" label="Select ▾" onclick="ACTIVATE" target_id="tb-sel"/>
       <tab id="tb-player" class="tab ps-tb" label="Player ▾" onclick="ACTIVATE" target_id="tb-player"/>
+      <tab id="tb-mat" class="tab ps-tb" label="Material ▾" onclick="ACTIVATE" target_id="tb-mat"/>
       <tab id="tb-view" class="tab ps-tb" label="View ▾" onclick="ACTIVATE" target_id="tb-view"/>
       <tab id="tb-knobs" class="tab ps-tb" label="Knobs ${knobs_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
       <tab id="tb-cmp" class="tab ps-tb" label="Orig ${cmp_state}" onclick="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' compare"/>
@@ -36,6 +37,16 @@
       <item id="pl-undo" class="ps-menu-row dropdown-child" target_id="tb-player" label="Undo" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' undo"/>
       <item id="pl-roll" class="ps-menu-row dropdown-child" target_id="tb-player" label="Roll variant" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' roll"/>
       <item id="pl-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-player" label="- cancel -" action="void"/>
+      <item id="ml-show" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Show gate" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' gate"/>
+      <item id="ml-bp" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Top material: bias +0.1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' bias top 0.1"/>
+      <item id="ml-bm" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Top material: bias -0.1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' bias top -0.1"/>
+      <item id="ml-wp" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Top material: warmer +0.1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' keyw top warm 0.1"/>
+      <item id="ml-wm" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Top material: cooler -0.1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' keyw top warm -0.1"/>
+      <item id="ml-ap" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Top material: more worn +0.1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' keyw top wear 0.1"/>
+      <item id="ml-am" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Top material: cleaner -0.1" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' keyw top wear -0.1"/>
+      <item id="ml-rb" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Reset top material's bias" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' bias top reset"/>
+      <item id="ml-rk" class="ps-menu-row dropdown-child" target_id="tb-mat" label="Reset top material's look" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' keyw top warm reset"/>
+      <item id="ml-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-mat" label="- cancel -" action="void"/>
       <item id="vw-knobs" class="ps-menu-row dropdown-child" target_id="tb-view" label="Knob panel show / hide" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
       <item id="vw-cancel" class="ps-menu-row dropdown-child quiet" target_id="tb-view" label="- cancel -" action="void"/>
     </sidebar>
@@ -44,6 +55,10 @@
       <row id="side-l" class="canvas-overlay-left ov-pin ov-scroll ov-chrome ps-pinned theme" show="${left_visible}">
         <text label="knobs - ${template_id}" class="ps-quiet ov-title theme-3"/>
         <text id="sel-label" label="${sel_label}" class="ps-quiet"/>
+        <text id="gt1" label="${gate_l1}" class="ps-quiet"/>
+        <text id="gt2" label="${gate_l2}" class="ps-quiet"/>
+        <text id="gt3" label="${gate_l3}" class="ps-quiet"/>
+        <text id="gts" label="${gate_src}" class="ps-quiet"/>
         <item id="side-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x' toggle left"/>
         <repeat count="${n_knobs}" bind="kb">
           <text id="kt${kb.#}" label="${kb.name}  ${kb.val}" class="ps-knob"/>
