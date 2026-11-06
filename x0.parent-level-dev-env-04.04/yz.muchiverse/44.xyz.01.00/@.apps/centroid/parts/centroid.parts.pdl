@@ -5,13 +5,19 @@ PART | centroid.room | 5 | 5 | wall
 PART | centroid.wall | 1 | 1 | wall
 PART | centroid.door | 2 | 1 | door
 PART | centroid.roof | 5 | 5 | roof
+PART | centroid.bridge | 2 | 3 | bridge
+PART | centroid.isle | 8 | 6 | taper
 NEED | centroid.island | stone | 1
 NEED | centroid.room | wood | 15
 NEED | centroid.room | stone | 15
 NEED | centroid.wall | stone | 1
 NEED | centroid.door | wood | 2
 NEED | centroid.roof | stone | 25
+NEED | centroid.bridge | wood | 6
+NEED | centroid.isle | stone | 1
 CONCEPT | centroid.island | centroid | centroid | tapered flying island; stone under the grass
 CONCEPT | centroid.room | centroid | centroid | grass room of wall columns; wood and stone
 CONCEPT | centroid.wall | centroid | centroid | one column, wall slot 36; stone
 CONCEPT | centroid.roof | centroid | centroid | one cap on the room, on the wall tops; stone
+CONCEPT | centroid.bridge | centroid | centroid | a span with sky under it; the islands do not touch
+CONCEPT | centroid.isle | centroid | centroid | the smaller island past the bridge; stone under the grass

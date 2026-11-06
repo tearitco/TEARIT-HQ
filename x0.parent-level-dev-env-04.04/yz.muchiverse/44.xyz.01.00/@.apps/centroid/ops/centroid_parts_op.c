@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define MAXD 48
-static int W = 32, H = 24, RW = 5, RH = 5;
+static int W = 32, H = 24, RW = 5, RH = 5, BW = 2, BH = 3, IW = 8, IH = 6;
 static int wall_slot = 36;
 static int leaf_n, sx[2], sy[2], ox[2], oy[2];
 static int read_pdl(const char *path) {
@@ -20,10 +20,14 @@ static int read_pdl(const char *path) {
         if (sscanf(ln, " PART | %63s | %d | %d | %31s", name, &a, &b, kind) == 4) {
             if (!strcmp(name, "centroid.island")) { W = a; H = b; }
             else if (!strcmp(name, "centroid.room")) { RW = a; RH = b; }
+            else if (!strcmp(name, "centroid.bridge")) { BW = a; BH = b; }
+            else if (!strcmp(name, "centroid.isle")) { IW = a; IH = b; }
         }
     }
     fclose(f);
     if (W < 3 || H < 3 || W > MAXD || H > MAXD || RW < 3 || RH < 3) return 0;
+    if (BW < 1 || BH < 1 || IW < 1 || IH < 1) return 0;
+    if (H + BH + IH > MAXD) return 0;
     return 1;
 }
 static void place_door(void) {
@@ -33,9 +37,10 @@ static void place_door(void) {
     sx[0] = x; sy[0] = y; ox[0] = x; oy[0] = y - 1;
     sx[1] = x + 1; sy[1] = y; ox[1] = x + 1; oy[1] = y - 1;
 }
-static int depth_at(int x, int y) {
-    int dx = x < (W - 1 - x) ? x : (W - 1 - x);
-    int dy = y < (H - 1 - y) ? y : (H - 1 - y);
+static int depth_in(int x, int y, int x0, int y0, int w, int h) {
+    int lx = x - x0, ly = y - y0;
+    int dx = lx < (w - 1 - lx) ? lx : (w - 1 - lx);
+    int dy = ly < (h - 1 - ly) ? ly : (h - 1 - ly);
     int edge = dx < dy ? dx : dy;
     int d = edge + 1;
     return d > 6 ? 6 : d;
@@ -69,29 +74,66 @@ static void write_door_file(const char *cells, int bit) {
     for (int i = 0; i < leaf_n; i++) fprintf(f, "leaf=%d,%d,%d,%d\n", sx[i], sy[i], ox[i], oy[i]);
     fclose(f);
 }
+/* kind: 0 air, 1 land (taper under it), 2 bridge (floor only, sky under it). */
+static int split_ok(int kind[MAXD][MAXD], int total, int ix, int iy) {
+    int seen[MAXD][MAXD];
+    int qx[MAXD * MAXD], qy[MAXD * MAXD], qh = 0, qt = 0;
+    memset(seen, 0, sizeof seen);
+    qx[qt] = ix; qy[qt] = iy; qt++; seen[iy][ix] = 1;
+    while (qh < qt) {
+        int x = qx[qh], y = qy[qh]; qh++;
+        if (y < H) return 0;                 /* the side island reached the main land with the bridge removed */
+        int d[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+        for (int k = 0; k < 4; k++) {
+            int nx = x + d[k][0], ny = y + d[k][1];
+            if (nx < 0 || ny < 0 || nx >= W || ny >= total || seen[ny][nx]) continue;
+            if (kind[ny][nx] != 1) continue;
+            seen[ny][nx] = 1; qx[qt] = nx; qy[qt] = ny; qt++;
+        }
+    }
+    return 1;
+}
 static int stamp(const char *cells, const char *pdl) {
     if (!read_pdl(pdl)) return 1;
     place_door();
     int x0 = 6, y0 = 6;
+    int total = H + BH + IH;
+    int bx = 6;                                          /* south of the main island, in front of selector x=7 */
+    int ix = bx - (IW - BW) / 2; if (ix < 0) ix = 0;
+    int iy = H + BH;
+    if (bx + BW > W || ix + IW > W || iy + IH != total) return 1;
+    static int F[MAXD][MAXD], Wv[MAXD][MAXD], Dp[MAXD][MAXD], kind[MAXD][MAXD];
+    for (int y = 0; y < total; y++) {
+        for (int x = 0; x < W; x++) {
+            F[y][x] = 0; Wv[y][x] = 0; Dp[y][x] = 0; kind[y][x] = 0;
+            if (y < H) {
+                int wall = 0;
+                int in = x >= x0 && x < x0 + RW && y >= y0 && y < y0 + RH;
+                int rim = in && (x == x0 || x == x0 + RW - 1 || y == y0 || y == y0 + RH - 1);
+                int opening = (x == sx[1] && y == sy[1]);
+                if (rim && !opening) wall = wall_slot;
+                F[y][x] = 1; Wv[y][x] = wall; Dp[y][x] = depth_in(x, y, 0, 0, W, H); kind[y][x] = 1;
+            } else if (y < H + BH && x >= bx && x < bx + BW) {
+                F[y][x] = 1; kind[y][x] = 2;          /* depth 0: the span has no body under it */
+            } else if (y >= iy && x >= ix && x < ix + IW) {
+                F[y][x] = 1; Dp[y][x] = depth_in(x, y, ix, iy, IW, IH); kind[y][x] = 1;
+            }
+        }
+    }
+    if (!split_ok(kind, total, ix, iy)) { fprintf(stderr, "bridge does not split the islands\n"); return 1; }
     FILE *o = fopen(cells, "w");
     if (!o) { perror(cells); return 1; }
-    fprintf(o, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=%d\ncells\n", W, H, wall_slot);
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
-            int wall = 0;
-            int in = x >= x0 && x < x0 + RW && y >= y0 && y < y0 + RH;
-            int rim = in && (x == x0 || x == x0 + RW - 1 || y == y0 || y == y0 + RH - 1);
-            /* One opening, the cell the door picture stands in. The other rim cells stay wall. */
-            int opening = (x == sx[1] && y == sy[1]);
-            if (rim && !opening) wall = wall_slot;
-            fprintf(o, "%s1,%d,%d", x ? " " : "", wall, depth_at(x, y));
-        }
+    fprintf(o, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=%d\ncells\n", W, total, wall_slot);
+    for (int y = 0; y < total; y++) {
+        for (int x = 0; x < W; x++) fprintf(o, "%s%d,%d,%d", x ? " " : "", F[y][x], Wv[y][x], Dp[y][x]);
         fputc('\n', o);
     }
     fclose(o);
     write_door_file(cells, 0);
     write_event(cells, sx[1], sy[1]);
-    printf("STAMP w=%d h=%d room=%dx%d door=%d,%d+%d,%d\n", W, H, RW, RH, sx[0], sy[0], sx[1], sy[1]);
+    printf("STAMP w=%d h=%d room=%dx%d door=%d,%d+%d,%d bridge=%dx%d isle=%dx%d\n",
+           W, H, RW, RH, sx[0], sy[0], sx[1], sy[1], BW, BH, IW, IH);
+    printf("SPLIT ok\n");
     return 0;
 }
 static int door_path(const char *cells, char *p, size_t n) {
