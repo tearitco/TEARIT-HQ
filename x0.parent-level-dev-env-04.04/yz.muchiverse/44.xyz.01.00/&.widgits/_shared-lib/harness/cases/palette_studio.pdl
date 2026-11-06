@@ -5,7 +5,7 @@ ENV | LC_ALL | C
 CASE    | studio
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | templates | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl
-EXPECT_OUT | TEMPLATES count=5 | five-templates-listed
+EXPECT_OUT | TEMPLATES count=8 | eight-templates-listed-5-objects-and-ground-plus-3-a5-floors
 EXPECT_OUT | TEMPLATE outside_b kind=objects | the-object-sheet-is-a-template
 EXPECT_OUT | TEMPLATE dungeon_a2 kind=ground | a-ground-sheet-is-a-template
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ob.png
@@ -336,3 +336,33 @@ RUN | /usr/bin/grep | scramble | $T/st/studio_saves/slot0.studio.pdl
 EXPECT_OUT | OPT \p scramble=0.5000 | the-record-keeps-the-scramble
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
 EXPECT_OUT | REPLAY ok | the-scrambled-record-replays-exactly
+
+# A5 floor sheets (cell mode, 384 x 768 = 8 x 16 cells of 48 px): every cell its own tile
+CASE    | a5floors
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a5 | $T/a5v1.png | variant=1
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/a5v1.png
+EXPECT_OUT | non_empty=127 unique=127 | variant-1-every-floor-cell-is-unique-the-original-has-124-of-127
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a5 | $T/a5v0.png | variant=0
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/a5v0.png
+EXPECT_OUT | unique=6 | variant-0-one-texture-per-recipe-6-unique
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_a5 | $T/a5s.png | variant=1 | scramble=0.5
+RUN | /usr/bin/cmp | -s | $T/a5v1.png | $T/a5s.png
+EXPECT_EXIT | 1 | NEGATIVE-scramble-changes-the-a5-pixels
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/tile_period_op.+x | $T/a5s.png | 0 | 48 | 24 | 24 | 24
+EXPECT_OUT | mismatches=0 | a-scrambled-floor-cell-still-repeats-every-24-px
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | inside_a5 | $T/in5.png | variant=1
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/in5.png
+EXPECT_OUT | non_empty=127 | inside-a5-renders-127-cells
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | dungeon_a5 | $T/du5.png | variant=1
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/sheet_dups_op.+x | $T/du5.png
+EXPECT_OUT | non_empty=127 | dungeon-a5-renders-127-cells
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_ground_op.+x | floormap | /nonexistent.png
+EXPECT_EXIT | 2 | NEGATIVE-floormap-refuses-a-missing-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | outside_a5 | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | the-a5-picker-keeps-the-canvas-size
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | view | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | the-a5-full-view-keeps-the-canvas-size

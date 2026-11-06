@@ -19,7 +19,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
 #define MAXR 64
-#define MAXB 256
+#define MAXB 1024
 #define RING_MAX 6
 typedef struct { char name[40], pattern[16]; double hue, sat, light, contrast; int scale; unsigned seed; } Recipe;
 typedef struct { char sheet[60], recipe[40]; int idx; } Block;
@@ -126,6 +126,35 @@ static void ramp5(const Recipe *r, double warm, double wet, unsigned char ramp[5
 static double curve(double w) { return w < 0 ? -pow(-w, 0.6) : pow(w, 0.6); }
 static const Recipe *find_recipe(const char *name) { int i; for (i = 0; i < nr; i++) if (!strcmp(R[i].name, name)) return &R[i]; return NULL; }
 static double clampd(double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; }
+/* the ramp step 0..4 of one pixel: texture (with the scramble displacement, wrapped inside the 24 px cell), grain, wet glints, wear speckle. One authority for the look of block mode and cell mode. */
+static int shade_step(const Recipe *r, int x, int y, double wet, double wear, double grain) {
+    int tx = x, ty = y, step; double v;
+    if (g_scramble > 0) {
+        int cx24 = ((x % 24) + 24) % 24, cy24 = ((y % 24) + 24) % 24, R = 1 + (int)(g_scramble * 5.0 + 0.5);
+        unsigned hh = hash32(r->seed ^ 0x5c4a77u ^ (unsigned)cx24 * 2246822519u ^ (unsigned)cy24 * 3266489917u);
+        if ((hh & 1023) < (unsigned)(g_scramble * 1023.0)) { tx = (cx24 + (int)((hh >> 10) % (unsigned)(2 * R + 1)) - R + 48) % 24; ty = (cy24 + (int)((hh >> 18) % (unsigned)(2 * R + 1)) - R + 48) % 24; }
+    }
+    v = texture(r, tx, ty);
+    if (v < 0) { step = 0; v = 0.1; } else {
+        double gr = ((hash32((r->seed + 91u) ^ (unsigned)(x % 24) * 7919u ^ (unsigned)(y % 24) * 104729u) & 255) / 255.0 - 0.5) * (0.12 + 1.2 * grain);
+        v = clampd(v + gr, 0, 0.999); step = (int)(v * 5);
+    }
+    if (wet > 0 && v > 0.93 - 0.1 * wet && (hash32(r->seed ^ (unsigned)(x % 24) * 31u ^ (unsigned)(y % 24) * 17u) & 3) == 0) step = 4;
+    if (wear > 0 && (hash32((r->seed + 5u) ^ (unsigned)(x % 24) * 13u ^ (unsigned)(y % 24) * 101u) % 1000) < (unsigned)(wear * 700.0)) step = step > 0 ? step - 2 : 0;
+    return step < 0 ? 0 : step;
+}
+/* paint one 48 x 48 floor cell (A5 style sheets, D34 step A5): every cell is its own tile, no autotile geometry and no edge ring; alpha from the original cell, colours generated */
+static int paint_cell(const unsigned char *src, int sw, int cx, int cy, unsigned char *dst, const Recipe *r, double warm, double wet, double wear, double grain) {
+    int x, y, painted = 0; unsigned char ramp[5][3];
+    ramp5(r, warm, wet, ramp);
+    for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) {
+        const unsigned char *s = src + ((size_t)(cy * 48 + y) * sw + cx * 48 + x) * 4; unsigned char *d = dst + ((size_t)(cy * 48 + y) * sw + cx * 48 + x) * 4; int step;
+        if (s[3] == 0) continue;
+        step = shade_step(r, x, y, wet, wear, grain);
+        d[0] = ramp[step][0]; d[1] = ramp[step][1]; d[2] = ramp[step][2]; d[3] = s[3]; painted++;
+    }
+    return painted;
+}
 /* paint one 96 x 144 block: alpha from the original block, colours generated */
 static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigned char *dst, int dw, int ox, int oy, const Recipe *r, double warm, double wet, double wear, double grain, double edge) {
     int x, y, ring = 2 + (int)(edge * 10.0), dy, dx, painted = 0, open_below = 0; unsigned char ramp[5][3];
@@ -134,7 +163,7 @@ static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigne
     ramp5(r, warm, wet, ramp);
     for (y = 0; y < 144; y++) for (x = 0; x < 96; x++) {
         const unsigned char *s = src + ((size_t)(by + y) * sw + bx + x) * 4; unsigned char *d = dst + ((size_t)(oy + y) * dw + ox + x) * 4;
-        int bottom = y >= 48, dist = 99; double v; int step; unsigned char c[3];
+        int bottom = y >= 48, dist = 99, step; unsigned char c[3];
         if (s[3] == 0) continue;
         for (dy = -RING_MAX; dy <= RING_MAX && dist > 1; dy++) for (dx = -RING_MAX; dx <= RING_MAX; dx++) {
             int yy = y + dy, xx = x + dx, dd, tr;
@@ -145,14 +174,7 @@ static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigne
             if (!tr) continue;
             dd = abs(dx) > abs(dy) ? abs(dx) : abs(dy); if (dd < dist) dist = dd;
         }
-        { int tx = x, ty = y; if (g_scramble > 0) { int cx24 = ((x % 24) + 24) % 24, cy24 = ((y % 24) + 24) % 24, R = 1 + (int)(g_scramble * 5.0 + 0.5); unsigned hh = hash32(r->seed ^ 0x5c4a77u ^ (unsigned)cx24 * 2246822519u ^ (unsigned)cy24 * 3266489917u); if ((hh & 1023) < (unsigned)(g_scramble * 1023.0)) { tx = (cx24 + (int)((hh >> 10) % (unsigned)(2 * R + 1)) - R + 48) % 24; ty = (cy24 + (int)((hh >> 18) % (unsigned)(2 * R + 1)) - R + 48) % 24; } } v = texture(r, tx, ty); }
-        if (v < 0) { step = 0; v = 0.1; } else {
-            double gr = ((hash32((r->seed + 91u) ^ (unsigned)(x % 24) * 7919u ^ (unsigned)(y % 24) * 104729u) & 255) / 255.0 - 0.5) * (0.12 + 1.2 * grain);
-            v = clampd(v + gr, 0, 0.999); step = (int)(v * 5);
-        }
-        if (wet > 0 && v > 0.93 - 0.1 * wet && (hash32(r->seed ^ (unsigned)(x % 24) * 31u ^ (unsigned)(y % 24) * 17u) & 3) == 0) step = 4;
-        if (wear > 0 && (hash32((r->seed + 5u) ^ (unsigned)(x % 24) * 13u ^ (unsigned)(y % 24) * 101u) % 1000) < (unsigned)(wear * 700.0)) step = step > 0 ? step - 2 : 0;
-        if (step < 0) step = 0;
+        step = shade_step(r, x, y, wet, wear, grain);
         memcpy(c, ramp[step], 3);
         if (dist <= ring) { /* edge ring: ink at the outermost step, then the dark ramp end */
             double t = dist == 1 ? 0.45 : dist == 2 ? 0.78 : 0.92; int k;
@@ -163,19 +185,39 @@ static int paint_block(const unsigned char *src, int sw, int bx, int by, unsigne
     }
     return painted;
 }
+/* floormap <A5 sheet.png>: print BLOCK rows (a starting point to paste into ground.pdl, then hand-edit) for every non-empty 48 px cell of an A5 floor sheet. The recipe is picked from the cell's mean colour (the D27 style rule): grey = stone, green = grass, orange/brown = dirt, blue = ice, red = lava, purple = violet. The data authority stays in ground.pdl. */
+static int floormap(const char *path) {
+    int w, h, c, x, y, cx, cy; unsigned char *px; char sname[100], *base, *dot;
+    px = stbi_load(path, &w, &h, &c, 4); if (!px) { fprintf(stderr, "cannot read %s\n", path); return 2; }
+    if (w != 384 || h != 768) { fprintf(stderr, "floormap wants an A5 sheet of 384 x 768\n"); stbi_image_free(px); return 2; }
+    base = strrchr(path, '/'); base = base ? base + 1 : (char *)path; snprintf(sname, sizeof sname, "%.90s", base); dot = strrchr(sname, '.'); if (dot) *dot = 0;
+    for (cy = 0; cy < 16; cy++) for (cx = 0; cx < 8; cx++) {
+        double sr = 0, sg = 0, sb = 0, mx, mn, hue = 0, sat, lig, d; int cnt = 0; const char *rec;
+        for (y = 0; y < 48; y++) for (x = 0; x < 48; x++) { const unsigned char *s = px + ((size_t)(cy * 48 + y) * w + cx * 48 + x) * 4; if (!s[3]) continue; sr += s[0]; sg += s[1]; sb += s[2]; cnt++; }
+        if (!cnt) continue;
+        sr /= cnt * 255.0; sg /= cnt * 255.0; sb /= cnt * 255.0; mx = fmax(sr, fmax(sg, sb)); mn = fmin(sr, fmin(sg, sb)); lig = (mx + mn) / 2; d = mx - mn;
+        sat = d < 1e-9 ? 0 : d / (1 - fabs(2 * lig - 1));
+        if (d > 1e-9) { if (mx == sr) hue = 60 * fmod((sg - sb) / d + 6, 6); else if (mx == sg) hue = 60 * ((sb - sr) / d + 2); else hue = 60 * ((sr - sg) / d + 4); }
+        if (sat < 0.14) rec = "stone"; else if (hue >= 70 && hue < 170) rec = "grass"; else if (hue >= 170 && hue < 250) rec = "ice"; else if (hue >= 250 && hue < 340) rec = "violet"; else if (hue >= 15 && hue < 70) rec = "dirt"; else rec = "lava";
+        printf("BLOCK | %s | %d | %s\n", sname, cy * 8 + cx, rec);
+    }
+    stbi_image_free(px); return 0;
+}
 static int ground(char **argv) {
-    int w = 0, h = 0, n = 0, i, blocks = 0, rc = 0, bpr; unsigned char *img, *out; char sname[100], *base, *dot;
+    int w = 0, h = 0, n = 0, i, blocks = 0, rc = 0, bpr, cells, uw, uh; unsigned char *img, *out; char sname[100], *base, *dot;
     if (read_rows(argv[2])) return 2;
     img = stbi_load(argv[3], &w, &h, &n, 4);
     if (!img) { fprintf(stderr, "cannot read PNG %s\n", argv[3]); return 2; }
-    if (w % 96 || h % 144) { fprintf(stderr, "sheet is not a multiple of 96 x 144\n"); stbi_image_free(img); return 2; }
+    cells = (w == 384 && h == 768); /* an A5 floor sheet (8 x 16 cells of 48 px): cell mode, BLOCK rows number cells 0..127 row-major, 8 across, crop/select units are cells */
+    uw = cells ? 48 : 96; uh = cells ? 48 : 144;
+    if (!cells && (w % 96 || h % 144)) { fprintf(stderr, "sheet is not a multiple of 96 x 144 (or an A5 384 x 768 floor sheet)\n"); stbi_image_free(img); return 2; }
     out = calloc((size_t)w * h, 4); if (!out) { stbi_image_free(img); return 2; }
     base = strrchr(argv[3], '/'); base = base ? base + 1 : argv[3]; snprintf(sname, sizeof sname, "%.90s", base); dot = strrchr(sname, '.'); if (dot) *dot = 0;
-    bpr = w / 96;
+    bpr = w / uw;
     for (i = 0; i < nb && !rc; i++) {
         double wt[5] = {0, 0, 0, 0, 0}; int bad = 0, k, bc, br, sel; const Recipe *r;
         if (strcmp(B[i].sheet, sname)) continue;
-        if (B[i].idx >= bpr * (h / 144)) { fprintf(stderr, "no block %d\n", B[i].idx); rc = 2; break; }
+        if (B[i].idx >= bpr * (h / uh)) { fprintf(stderr, "no block %d\n", B[i].idx); rc = 2; break; }
         r = find_recipe(B[i].recipe);
         bank_weight(r->name, "ground_warm", -1.0, &wt[0], &bad); bank_weight(r->name, "ground_wet", 0.0, &wt[1], &bad); bank_weight(r->name, "ground_wear", 0.0, &wt[2], &bad);
         bank_weight(r->name, "ground_grain", 0.0, &wt[3], &bad); bank_weight(r->name, "ground_edge", 0.0, &wt[4], &bad);
@@ -185,14 +227,14 @@ static int ground(char **argv) {
         if (g_knob_on && sel) for (k = 0; k < 5; k++) wt[k] += g_knob[k];
         wt[0] = clampd(wt[0], -1, 1); for (k = 1; k < 5; k++) wt[k] = clampd(wt[k], 0, 1);
         for (k = 0; k < 5; k++) wt[k] = curve(wt[k]);
-        { Recipe rr = *r; if (g_variant) rr.seed = hash32(r->seed ^ hash32((unsigned)B[i].idx * 2654435761u + g_variant * 40503u)); paint_block(img, w, bc * 96, br * 144, out, w, bc * 96, br * 144, &rr, wt[0], wt[1], wt[2], wt[3], wt[4]); }
+        { Recipe rr = *r; if (g_variant) rr.seed = hash32(r->seed ^ hash32((unsigned)B[i].idx * 2654435761u + g_variant * 40503u)); if (cells) paint_cell(img, w, bc, br, out, &rr, wt[0], wt[1], wt[2], wt[3]); else paint_block(img, w, bc * 96, br * 144, out, w, bc * 96, br * 144, &rr, wt[0], wt[1], wt[2], wt[3], wt[4]); }
         blocks++;
     }
     if (!rc && blocks == 0) { fprintf(stderr, "no BLOCK row for sheet %s\n", sname); rc = 2; }
     if (!rc && g_crop_on) {
-        int cw = g_crop[2] * 96, ch = g_crop[3] * 144, y; unsigned char *cr;
-        if (g_crop[0] < 0 || g_crop[1] < 0 || g_crop[2] < 1 || g_crop[3] < 1 || (g_crop[0] + g_crop[2]) * 96 > w || (g_crop[1] + g_crop[3]) * 144 > h) { fprintf(stderr, "crop outside the sheet\n"); rc = 2; }
-        else { cr = malloc((size_t)cw * ch * 4); if (!cr) rc = 2; else { for (y = 0; y < ch; y++) memcpy(cr + (size_t)y * cw * 4, out + ((size_t)(g_crop[1] * 144 + y) * w + g_crop[0] * 96) * 4, (size_t)cw * 4);
+        int cw = g_crop[2] * uw, ch = g_crop[3] * uh, y; unsigned char *cr;
+        if (g_crop[0] < 0 || g_crop[1] < 0 || g_crop[2] < 1 || g_crop[3] < 1 || (g_crop[0] + g_crop[2]) * uw > w || (g_crop[1] + g_crop[3]) * uh > h) { fprintf(stderr, "crop outside the sheet\n"); rc = 2; }
+        else { cr = malloc((size_t)cw * ch * 4); if (!cr) rc = 2; else { for (y = 0; y < ch; y++) memcpy(cr + (size_t)y * cw * 4, out + ((size_t)(g_crop[1] * uh + y) * w + g_crop[0] * uw) * 4, (size_t)cw * 4);
             if (!stbi_write_png(argv[4], cw, ch, 4, cr, cw * 4)) rc = 2; else printf("GROUND crop=%d,%d,%d,%d size=%dx%d blocks=%d\n", g_crop[0], g_crop[1], g_crop[2], g_crop[3], cw, ch, blocks); free(cr); } }
     } else if (!rc) { if (!stbi_write_png(argv[4], w, h, 4, out, w * 4)) rc = 2; else printf("GROUND size=%dx%d blocks=%d\n", w, h, blocks); }
     stbi_image_free(img); free(out); return rc;
@@ -209,7 +251,8 @@ int main(int argc, char **argv) {
         argc--;
     }
     if (argc == 3 && !strcmp(argv[1], "check")) { int rc = read_rows(argv[2]); if (!rc) printf("GROUNDCHECK recipes=%d blocks=%d\n", nr, nb); return rc; }
+    if (argc == 3 && !strcmp(argv[1], "floormap")) return floormap(argv[2]);
     if (argc == 5 && !strcmp(argv[1], "ground")) return ground(argv);
-    fprintf(stderr, "usage: ground <ground.pdl> <original-sheet.png> <out.png> [bank=<dir>] [knob=name:delta] [select=bc,br,bw,bh] [crop=bc,br,bw,bh] | check <ground.pdl>\n");
+    fprintf(stderr, "usage: ground <ground.pdl> <original-sheet.png> <out.png> [bank=<dir>] [knob=name:delta] [select=bc,br,bw,bh] [crop=bc,br,bw,bh] | check <ground.pdl> | floormap <A5 sheet.png>\n");
     return 2;
 }

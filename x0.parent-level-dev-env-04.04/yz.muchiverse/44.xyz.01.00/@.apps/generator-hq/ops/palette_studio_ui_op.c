@@ -119,7 +119,7 @@ static int studio_cmd(const char *verb, const char *outpng, const char *name, in
  * representatives are skipped, so the grid is packed. Scale 2x when 48 or fewer tiles, else 1x. Preview only: saved sheets are never touched. *step* = the grid step in px. */
 static int g_step = 48;
 static unsigned char *picker_compose(const unsigned char *src, int w, int h, int ground) {
-    unsigned char *o = calloc((size_t)PW * PH * 4, 1); int bc = ground ? 2 : 1, br = ground ? 3 : 1, kx = (w / 48) / bc, ky = (h / 48) / br, n = 0, s, per, i, x, y, a, b;
+    unsigned char *o = calloc((size_t)PW * PH * 4, 1); int a5 = (w == 384 && h == 768), bc = ground && !a5 ? 2 : 1, br = ground && !a5 ? 3 : 1, kx = (w / 48) / bc, ky = (h / 48) / br, n = 0, s, per, i, x, y, a, b;
     int *cx, *cy; if (!o) return NULL;
     cx = malloc(sizeof(int) * (size_t)(kx * ky + 1)); cy = malloc(sizeof(int) * (size_t)(kx * ky + 1)); if (!cx || !cy) { free(o); free(cx); free(cy); return NULL; }
     for (y = 0; y < ky; y++) for (x = 0; x < kx; x++) {
@@ -140,6 +140,7 @@ static int render_preview(void) {
     px = stbi_load(png, &w, &h, &c, 4); if (!px) { snprintf(g_status, sizeof g_status, "cannot read the preview"); return 2; }
     g_step = 48;
     if (g_view) { unsigned char *o = picker_compose(px, w, h, !objects); stbi_image_free(px); if (!o) { snprintf(g_status, sizeof g_status, "picker view failed"); return 2; } px = o; w = PW; h = PH; }
+    if (!g_view && w == 384 && h == 768) { unsigned char *o = calloc((size_t)PW * PH * 4, 1); int yy; if (!o) { stbi_image_free(px); return 2; } for (yy = 0; yy < PH; yy++) memcpy(o + (size_t)yy * PW * 4, px + (size_t)yy * w * 4, (size_t)w * 4); stbi_image_free(px); px = o; w = PW; h = PH; } /* A5 floor sheets are 384 x 768: the full-sheet view shows the top 576 px at the left of the canvas */
     if (w != PW || h != PH) { snprintf(g_status, sizeof g_status, "preview is %dx%d, expected %dx%d", w, h, PW, PH); stbi_image_free(px); return 2; }
     if (g_grid) { int x, y, k; for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (x % g_step == 0 || y % g_step == 0) { unsigned char *q = px + ((size_t)y * w + x) * 4; for (k = 0; k < 3; k++) q[k] = (unsigned char)(q[k] + (255 - q[k]) * 22 / 100); q[3] = 255; } } /* 22%% toward white on every 48 px tile edge */
     rc = write_atomic(raw, (const char *)px, (size_t)w * h * 4); stbi_image_free(px); if (rc) return rc;
