@@ -1,0 +1,2 @@
+# interim/sheets: recoloured whole sheets (not committed)
+Rebuilt in about 12 seconds, so it is not tracked (about 53 MB). `generator_tile_op.+x tone-run @.apps/generator-hq/events/gen_restyle/sheets.pdl <rmmv-www-img> <this folder>` and `sheet-png @.apps/generator-hq/events/gen_restyle/blocks.pdl <Sheet_A2.png> <this folder>/tilesets/<Sheet_A2>.png` for the four A2 sheets. Same layout and file names as the RPG Maker images, so they drop in. Interim, internal only; the licence reading is parked.

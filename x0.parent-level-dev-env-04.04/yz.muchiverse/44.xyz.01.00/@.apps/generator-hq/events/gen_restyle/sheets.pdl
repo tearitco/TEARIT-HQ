@@ -1,0 +1,106 @@
+# Whole-sheet recolour for everything that is not a person (decision D27, owner 2026-11-05: similar to RPG Maker but our brand).
+# GEN rows set the tone; SHEET | <path under the RPG Maker image root> | <outline 0 or 1> [| <lightness levels, overrides GEN levels>]. A pure per-pixel function: the same source colour gives the same output colour anywhere, so no seams.
+# NOT here on purpose: the A2 sheets (built from blocks.pdl with ramps by the sheet-png verb), and every person: characters, faces, sv_actors, sv_enemies, big monsters, vehicles (the cast track).
+GEN | hue | -10
+GEN | sat | 112
+GEN | levels | 6
+GEN | outline | 1
+SHEET | tilesets/Dungeon_A1.png | 1
+SHEET | tilesets/Dungeon_A4.png | 1
+SHEET | tilesets/Dungeon_A5.png | 1
+SHEET | tilesets/Dungeon_B.png | 1
+SHEET | tilesets/Dungeon_C.png | 1
+SHEET | tilesets/Inside_A1.png | 1
+SHEET | tilesets/Inside_A4.png | 1
+SHEET | tilesets/Inside_A5.png | 1
+SHEET | tilesets/Inside_B.png | 1
+SHEET | tilesets/Inside_C.png | 1
+SHEET | tilesets/Outside_A1.png | 1
+SHEET | tilesets/Outside_A3.png | 1
+SHEET | tilesets/Outside_A4.png | 1
+SHEET | tilesets/Outside_A5.png | 1
+SHEET | tilesets/Outside_B.png | 1
+SHEET | tilesets/Outside_C.png | 1
+SHEET | tilesets/SF_Inside_A4.png | 1
+SHEET | tilesets/SF_Inside_B.png | 1
+SHEET | tilesets/SF_Inside_C.png | 1
+SHEET | tilesets/SF_Outside_A3.png | 1
+SHEET | tilesets/SF_Outside_A4.png | 1
+SHEET | tilesets/SF_Outside_A5.png | 1
+SHEET | tilesets/SF_Outside_B.png | 1
+SHEET | tilesets/SF_Outside_C.png | 1
+SHEET | tilesets/World_A1.png | 1
+SHEET | tilesets/World_B.png | 1
+SHEET | tilesets/World_C.png | 1
+SHEET | battlebacks1/Castle2.png | 0 | 14
+SHEET | battlebacks1/Clouds.png | 0 | 14
+SHEET | battlebacks1/Cobblestones4.png | 0 | 14
+SHEET | battlebacks1/Desert.png | 0 | 14
+SHEET | battlebacks1/DirtField.png | 0 | 14
+SHEET | battlebacks1/Grassland.png | 0 | 14
+SHEET | battlebacks1/Lava1.png | 0 | 14
+SHEET | battlebacks1/Lava2.png | 0 | 14
+SHEET | battlebacks1/PoisonSwamp.png | 0 | 14
+SHEET | battlebacks1/Ship.png | 0 | 14
+SHEET | battlebacks1/Snowfield.png | 0 | 14
+SHEET | battlebacks1/Wasteland.png | 0 | 14
+SHEET | battlebacks1/Wood1.png | 0 | 14
+SHEET | battlebacks2/Bridge.png | 0 | 14
+SHEET | battlebacks2/Cliff.png | 0 | 14
+SHEET | battlebacks2/Clouds.png | 0 | 14
+SHEET | battlebacks2/Desert.png | 0 | 14
+SHEET | battlebacks2/Forest.png | 0 | 14
+SHEET | battlebacks2/Grassland.png | 0 | 14
+SHEET | battlebacks2/Lava.png | 0 | 14
+SHEET | battlebacks2/PoisonSwamp.png | 0 | 14
+SHEET | battlebacks2/Ship.png | 0 | 14
+SHEET | battlebacks2/Snowfield.png | 0 | 14
+SHEET | battlebacks2/Wasteland.png | 0 | 14
+SHEET | parallaxes/CloudySky1.png | 0 | 14
+SHEET | parallaxes/DarkSpace1.png | 0 | 14
+SHEET | parallaxes/DarkSpace2.png | 0 | 14
+SHEET | parallaxes/Mountains1.png | 0 | 14
+SHEET | parallaxes/Mountains2.png | 0 | 14
+SHEET | parallaxes/Ocean2.png | 0 | 14
+SHEET | parallaxes/SeaofClouds.png | 0 | 14
+SHEET | parallaxes/StarlitSky.png | 0 | 14
+SHEET | parallaxes/Sunset.png | 0 | 14
+SHEET | system/Balloon.png | 0
+SHEET | system/ButtonSet.png | 0
+SHEET | system/Damage.png | 0
+SHEET | system/GameOver.png | 0
+SHEET | system/IconSet.png | 0
+SHEET | system/Loading.png | 0
+SHEET | system/Shadow1.png | 0
+SHEET | system/Shadow2.png | 0
+SHEET | system/States.png | 0
+SHEET | system/Weapons1.png | 0
+SHEET | system/Weapons2.png | 0
+SHEET | system/Weapons3.png | 0
+SHEET | system/Window.png | 0
+SHEET | animations/Cure1.png | 0
+SHEET | animations/Fire1.png | 0
+SHEET | animations/Hit1.png | 0
+SHEET | animations/Recovery1.png | 0
+SHEET | animations/Recovery3.png | 0
+SHEET | animations/Recovery4.png | 0
+SHEET | animations/Revival1.png | 0
+SHEET | animations/Slash.png | 0
+SHEET | animations/StickPhoton.png | 0
+SHEET | animations/Stick.png | 0
+SHEET | animations/Thunder1.png | 0
+SHEET | titles1/Sword.png | 0 | 14
+SHEET | titles2/Floral.png | 0 | 14
+SHEET | characters/!Chest.png | 1
+SHEET | characters/!Crystal.png | 1
+SHEET | characters/!Door1.png | 1
+SHEET | characters/!Door2.png | 1
+SHEET | characters/!Flame.png | 1
+SHEET | characters/!Other1.png | 1
+SHEET | characters/!Other2.png | 1
+SHEET | characters/!SF_Door1.png | 1
+SHEET | characters/!SF_Door2.png | 1
+SHEET | characters/!Switch1.png | 1
+SHEET | characters/!Wires 1.png | 1
+SHEET | characters/Damage1.png | 1
+SHEET | characters/Damage3.png | 1

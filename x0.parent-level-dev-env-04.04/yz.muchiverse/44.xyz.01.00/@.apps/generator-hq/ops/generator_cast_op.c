@@ -4,7 +4,7 @@
  *   generator_cast_op.+x cast-check <cast.pdl>        parse only (exit 2 on a bad row)
  *
  * Cast file rows:
- *   CAST    | id | skin | hair_style | hair | garment | trim | body | mark
+ *   CAST    | id | skin | hair_style | hair | garment | trim | body | mark | kind (optional: humanoid quad blob winged)
  *             hair_style: short long mohawk none     body: 0 slim 1 normal 2 broad     mark: 1 = gold chain and wrist
  *   GENERIC | prefix | count | seed                  count characters named prefix_00.. from a fixed Tear-it palette, by hash (no rand)
  * Colours are #rrggbb.
@@ -28,7 +28,7 @@
 #define MAXCAST 256
 
 typedef struct { int r, g, b; } Col;
-typedef struct { char id[40]; Col skin, hair, garment, trim; int style, body, mark; } Who; /* style: 0 short 1 long 2 mohawk 3 none */
+typedef struct { char id[40]; Col skin, hair, garment, trim; int style, body, mark, kind; } Who; /* style: 0 short 1 long 2 mohawk 3 none; kind: 0 humanoid 1 quad 2 blob 3 winged */
 
 static Who g_who[MAXCAST];
 static int g_n;
@@ -74,6 +74,49 @@ static void rect(unsigned char *px, int x0, int y0, int x1, int y1, Col c) { int
 static int in_ell(int x, int y, int cx, int cy, int rx, int ry) { int dx = x - cx, dy = y - cy; return dx * dx * ry * ry + dy * dy * rx * rx <= rx * rx * ry * ry; }
 static void ell(unsigned char *px, int cx, int cy, int rx, int ry, Col c) { int x, y; for (y = cy - ry; y <= cy + ry; y++) for (x = cx - rx; x <= cx + rx; x++) if (in_ell(x, y, cx, cy, rx, ry)) put(px, x, y, c); }
 
+/* ---- creatures: pets and monsters (kind 1 quad, 2 blob, 3 winged), same 3x4 sheet layout and the same outline.
+ * Colours: skin = body, garment = belly and patches, hair = ears, mane, wings, tail, trim = eyes and glow. ---- */
+static void draw_creature(unsigned char *px, const Who *w, int dir, int step) {
+    Col body = w->skin, body_d = shade(w->skin, 72), belly = w->garment, ear = w->hair, glow = w->trim, eye = { 20, 20, 30 };
+    int cx = 24, x, y, side = (dir == 1), back = (dir == 3), lift_a = (step == 0) ? 3 : 0, lift_b = (step == 2) ? 3 : 0, wob = (step == 1) ? 0 : 1;
+    int sz = 8 + 2 * w->body; /* body 0 small, 1 normal, 2 large */
+    if (w->kind == 1) { /* quad: a four-legged pet */
+        if (side) {
+            ell(px, cx + 2, 30, sz + 3, 7, body); ell(px, cx + 2, 33, sz, 4, belly);
+            rect(px, cx - 7 - lift_a, 35, cx - 4 - lift_a, 43 - lift_a / 2, body_d); rect(px, cx - 1 + lift_b, 35, cx + 2 + lift_b, 43 - lift_b / 2, body);
+            rect(px, cx + 5 + lift_b, 35, cx + 8 + lift_b, 43 - lift_b / 2, body_d); rect(px, cx + 9 - lift_a, 35, cx + 12 - lift_a, 43 - lift_a / 2, body);
+            ell(px, cx - 9, 22, 7, 6, body); rect(px, cx - 14, 24, cx - 11, 26, belly); rect(px, cx - 9, 14, cx - 6, 18, ear);
+            rect(px, cx - 11, 21, cx - 10, 22, eye); put(px, cx - 11, 21, glow); rect(px, cx + sz + 4, 26 - wob, cx + sz + 8, 29 - wob, ear);
+        } else {
+            ell(px, cx, 33 + wob, sz, 8, body); ell(px, cx, 36 + wob, sz - 3, 4, belly);
+            rect(px, cx - 7, 38 - lift_a / 2, cx - 3, 43 - lift_a, body_d); rect(px, cx + 3, 38 - lift_b / 2, cx + 7, 43 - lift_b, body_d);
+            ell(px, cx, 20 + wob, 9, 8, body); rect(px, cx - 9, 9 + wob, cx - 6, 14 + wob, ear); rect(px, cx + 6, 9 + wob, cx + 9, 14 + wob, ear);
+            if (back) rect(px, cx - 1, 30, cx + 1, 40, ear);
+            else { rect(px, cx - 5, 19 + wob, cx - 4, 20 + wob, glow); rect(px, cx + 3, 19 + wob, cx + 4, 20 + wob, glow); rect(px, cx - 1, 24 + wob, cx, 25 + wob, eye); ell(px, cx, 25 + wob, 4, 2, belly); rect(px, cx - 1, 24 + wob, cx, 24 + wob, eye); }
+        }
+    } else if (w->kind == 2) { /* blob: a slime that squashes as it moves */
+        int rx = sz + 4 + (step == 1 ? -1 : 2), ry = sz + 1 + (step == 1 ? 2 : -1), cy = 42 - ry;
+        ell(px, cx, cy, rx, ry, body);
+        for (y = cy; y <= cy + ry; y++) for (x = cx - rx; x <= cx + rx; x++) if (in_ell(x, y, cx, cy, rx, ry) && y > cy + ry / 2) put(px, x, y, body_d);
+        if (!back) {
+            int ex = side ? -4 : 0;
+            rect(px, cx - 5 + ex, cy - 2, cx - 4 + ex, cy, eye); rect(px, cx - 5 + ex, cy - 2, cx - 5 + ex, cy - 2, glow);
+            if (!side) { rect(px, cx + 4, cy - 2, cx + 5, cy, eye); put(px, cx + 4, cy - 2, glow); }
+            rect(px, cx - 1 + ex, cy + 3, cx + 1 + ex, cy + 3, body_d);
+        }
+        rect(px, cx - 5, cy - ry + 2, cx - 3, cy - ry + 3, belly); rect(px, cx - 4, cy - ry + 4, cx - 4, cy - ry + 4, belly);
+    } else { /* winged: a bat or small dragon, wings beat across the three frames */
+        int wy = (step == 0) ? 20 : (step == 1 ? 26 : 32);
+        if (!side) { ell(px, cx - 13, wy, 9, 4, ear); ell(px, cx + 13, wy, 9, 4, ear); }
+        else ell(px, cx + 4, wy, 9, 4, ear);
+        ell(px, cx, 29, 6 + w->body, 8, body); ell(px, cx, 31, 4 + w->body, 5, belly);
+        ell(px, cx + (side ? -3 : 0), 18, 7, 6, body);
+        rect(px, cx - 6 + (side ? -3 : 0), 10, cx - 4 + (side ? -3 : 0), 13, ear); rect(px, cx + 4 + (side ? -3 : 0), 10, cx + 6 + (side ? -3 : 0), 13, ear);
+        if (!back) { rect(px, cx - 4 + (side ? -3 : 0), 17, cx - 3 + (side ? -3 : 0), 18, glow); if (!side) rect(px, cx + 3, 17, cx + 4, 18, glow); }
+        rect(px, cx - 3, 37, cx - 1, 41 - lift_a / 2, body_d); rect(px, cx + 1, 37, cx + 3, 41 - lift_b / 2, body_d);
+    }
+}
+
 /* dir: 0 down, 1 left, 2 (mirror of left), 3 up.  step: 0 left foot, 1 stand, 2 right foot */
 static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
     const Col ink = { 14, 16, 21 };
@@ -82,7 +125,8 @@ static void draw_frame(unsigned char *px, const Who *w, int dir, int step) {
     int cx = 24, bw = 6 + w->body, bob = (step == 1) ? 0 : -1, hy = 16 + bob, x, y, side = (dir == 1), back = (dir == 3);
     int lift_l = (step == 0) ? 3 : 0, lift_r = (step == 2) ? 3 : 0, sw_l = (step == 0) ? 1 : (step == 2 ? -1 : 0), sw_r = -sw_l;
     memset(px, 0, CW * CH * 4);
-    if (side) {
+    if (w->kind) draw_creature(px, w, dir, step);
+    else if (side) {
         /* legs: front and back, apart on a step */
         int fx = (step == 0) ? -2 : (step == 2 ? 2 : 0);
         rect(px, cx - 2 - fx, 36 + bob, cx + 2 - fx, 43, leg); rect(px, cx - 2 - fx, 42, cx + 2 - fx, 44, shoe);
@@ -197,9 +241,9 @@ static int read_cast(const char *path) {
         ln++;
         if (!strncmp(line, "CAST |", 6)) {
             Who *w;
-            char *id, *sk, *hs, *hc, *gc, *tc, *bd, *mk;
+            char *id, *sk, *hs, *hc, *gc, *tc, *bd, *mk, *kd;
             p = line + 6;
-            id = fld(&p); sk = fld(&p); hs = fld(&p); hc = fld(&p); gc = fld(&p); tc = fld(&p); bd = fld(&p); mk = fld(&p);
+            id = fld(&p); sk = fld(&p); hs = fld(&p); hc = fld(&p); gc = fld(&p); tc = fld(&p); bd = fld(&p); mk = fld(&p); kd = fld(&p);
             if (g_n >= MAXCAST || !id[0] || strlen(id) > 38) { fprintf(stderr, "line %d: bad id\n", ln); fclose(f); return 2; }
             w = &g_who[g_n];
             memset(w, 0, sizeof *w);
@@ -209,6 +253,8 @@ static int read_cast(const char *path) {
                 fprintf(stderr, "line %d: bad hair style or colour for %s\n", ln, id); fclose(f); return 2;
             }
             w->body = atoi(bd); w->mark = atoi(mk);
+            w->kind = (!kd[0] || !strcmp(kd, "humanoid")) ? 0 : !strcmp(kd, "quad") ? 1 : !strcmp(kd, "blob") ? 2 : !strcmp(kd, "winged") ? 3 : -1;
+            if (w->kind < 0) { fprintf(stderr, "line %d: kind must be humanoid, quad, blob or winged\n", ln); fclose(f); return 2; }
             if (w->body < 0 || w->body > 2) { fprintf(stderr, "line %d: body must be 0..2\n", ln); fclose(f); return 2; }
             g_n++;
         } else if (!strncmp(line, "GENERIC |", 9)) {
@@ -222,6 +268,15 @@ static int read_cast(const char *path) {
     fclose(f);
     if (g_n < 1) { fprintf(stderr, "cast has no rows\n"); return 2; }
     return 0;
+}
+/* A 144x144 face: the front standing frame's head and shoulders (x 8..40, y 0..36 of the cell), enlarged 4x with the same chunky pixels. */
+static void face_from_sheet(const unsigned char *sheet, unsigned char *face) {
+    int x, y, sx, sy;
+    memset(face, 0, 144 * 144 * 4);
+    for (y = 0; y < 36; y++) for (x = 0; x < 32; x++) {
+        const unsigned char *s = sheet + (y * SW + (CW + 8 + x)) * 4;
+        for (sy = 0; sy < 4; sy++) for (sx = 0; sx < 4; sx++) memcpy(face + ((y * 4 + sy) * 144 + (8 + x * 4 + sx)) * 4, s, 4);
+    }
 }
 static int cast_run(const char *outdir) {
     unsigned char *sheet = malloc(SW * SH * 4), *big = NULL;
@@ -239,10 +294,18 @@ static int cast_run(const char *outdir) {
         if (!stbi_write_png(path, SW, SH, 4, sheet, SW * 4)) { rc = 2; break; }
         snprintf(path, sizeof path, "%.800s/sprite.csv", dir);
         if (write_csv(path, sheet, SW, SH) != 0) { rc = 2; break; }
+        { static unsigned char face[144 * 144 * 4]; face_from_sheet(sheet, face); snprintf(path, sizeof path, "%.800s/face.png", dir); if (!stbi_write_png(path, 144, 144, 4, face, 144 * 4)) { rc = 2; break; } }
         printf("CAST %s %dx%d frames=12 opaque=%d\n", g_who[i].id, SW, SH, opaque);
     }
     /* RPG Maker layout: 4 x 2 characters of 144x192 per 576x384 sheet, so it drops into an existing map */
     big = calloc((size_t)576 * 384, 4);
+    { unsigned char *fs = calloc((size_t)576 * 288, 4);
+      if (!fs) { free(sheet); free(big); return 2; }
+      for (g = 0; g < groups && !rc; g++) { int j; char fp[900]; memset(fs, 0, (size_t)576 * 288 * 4);
+        for (j = 0; j < 8 && g * 8 + j < g_n; j++) { int y; static unsigned char fc[144 * 144 * 4]; memset(sheet, 0, SW * SH * 4); draw_sheet(sheet, &g_who[g * 8 + j]); face_from_sheet(sheet, fc);
+          for (y = 0; y < 144; y++) memcpy(fs + (((j / 4) * 144 + y) * 576 + (j % 4) * 144) * 4, fc + y * 144 * 4, 144 * 4); }
+        snprintf(fp, sizeof fp, "%.800s/FaceSheet_%02d.png", outdir, g); if (!stbi_write_png(fp, 576, 288, 4, fs, 576 * 4)) rc = 2; }
+      printf("FACES count=%d sheets=%d rc=%d\n", g_n, groups, rc); free(fs); }
     if (!big) { free(sheet); return 2; }
     for (g = 0; g < groups && !rc; g++) {
         int j;

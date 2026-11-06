@@ -39,3 +39,13 @@ Styles are data: `events/gen_restyle/tearit-*.pdl` (ramp, accent, outline, seed)
 
 ## 5. What is still manual
 Choosing a style per block (by eye, one ramp), opening the pictures, and the gate wait. Caps for `generator-hq/out/` and `#.NNEST_ASSETS/generator-hq/interim/` do not exist yet (AGENTS.md runtime-file rule): committed sizes today are about 4 MB of contact sheets plus the small cast PNGs; the cell folders are rebuilt, not committed.
+
+## 6. Update: the rest of the content tools (OBS, same day)
+| Need | Tool | Run |
+|---|---|---|
+| Recolour every non-person image from one map | `generator_tile_op.+x tone-run <sheets.pdl> <srcroot> <outroot>` | `events/gen_restyle/sheets.pdl` (99 sheets, `GEN` rows set hue, saturation, lightness levels, outline; a third field overrides levels per sheet). A pure per-pixel function, so no seams. Verifies each file in memory; one summary line; exit 1 on any failure; an all-black sheet is reported as `exempt_all_black`, not skipped silently. |
+| A drop-in A2 sheet (same layout) from the block map | `... sheet-png <blocks.pdl> <Sheet_A2.png> <out.png>` | ramps per block, block-wide brightness |
+| Check any recoloured picture | `... verify-png <original.png> <new.png>` | same size, alpha identical, something changed, not identical |
+| Pets, monsters and faces | `generator_cast_op.+x cast <cast.pdl> <outdir>` | `kind` field (quad, blob, winged); writes `face.png` (144x144) per character and `FaceSheet_NN.png` (576x288, 4 x 2) |
+Suites now five: `generator_tiles` 37, `generator_char` 12, `generator_restyle` 44, `generator_cast` 29, `generator_sheets` 17.
+**More mistakes today:** a tone that looked fine on paper (hue +18) turned wood olive-yellow: I tried a second tone on the same sheet and compared by eye before adopting it (hue -10, saturation 112, 6 levels); 6 lightness levels is too coarse for painted backgrounds, so they got a per-sheet override of 14; a test counted a comment line that mentioned the word it counted (`grep -c SHEET` gave 100 for 99 rows: anchor the pattern); and I made the same relative-path slip a third time (`cd ../..` one level short, exit 127 or files not written). **Use absolute paths.**

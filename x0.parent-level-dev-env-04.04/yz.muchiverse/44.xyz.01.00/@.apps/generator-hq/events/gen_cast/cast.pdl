@@ -6,3 +6,15 @@ CAST | asa | #8a5a3a | mohawk | #c0392b | #15161a | #ffd24a | 2 | 1
 CAST | ava | #e6bfa0 | long   | #5a3a24 | #15161a | #ffd24a | 1 | 1
 CAST | harold | #d6a47c | short | #2a2018 | #1e2a3a | #ffd24a | 1 | 0
 GENERIC | npc | 8 | 20261105
+# Pets and monsters (kind quad, blob, winged; body 0 small, 1 normal, 2 large). skin = body, garment = belly and patches, hair = ears, mane and wings, trim = eyes and glow.
+# PLACEHOLDERS: the real looks of Harold's pets and the terumon are NOT documented in the files I read; the colours and kinds below are guessed from the names. The owner edits these rows.
+CAST | blip    | #5fae5f | none | #3a7a3a | #bfe8a0 | #ffe066 | 0 | 0 | blob
+CAST | fang    | #8a8f99 | none | #4a4e57 | #d8dce6 | #ffd24a | 1 | 0 | quad
+CAST | gruk    | #7a6a3a | none | #4a3a1e | #b09a5a | #ff7a3a | 2 | 0 | quad
+CAST | draxa   | #b0352a | none | #6a1a14 | #f0b070 | #ffd24a | 1 | 0 | winged
+CAST | gargo   | #6a6e7a | none | #3e414c | #9a9eaa | #7ad0ff | 2 | 0 | winged
+CAST | bonz    | #e6e0cc | none | #b8b29a | #f4f0e0 | #ff5a4a | 1 | 0 | quad
+CAST | ember   | #e8742a | none | #ffb04a | #ffd890 | #fff0a0 | 1 | 0 | blob
+CAST | glacine | #6ab4e8 | none | #c8ecff | #e8f8ff | #ffffff | 1 | 0 | blob
+CAST | murmur  | #8a5ac0 | none | #5a3a8a | #c8a8f0 | #ffe066 | 1 | 0 | winged
+CAST | solvent | #7ac04a | none | #4a8a2a | #d8f0a0 | #ff7ad0 | 1 | 0 | blob

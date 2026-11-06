@@ -45,4 +45,34 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/empty.p
 EXPECT_EXIT | 2 | NEGATIVE-a-cast-with-no-rows-is-refused
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-check | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl
 EXPECT_EXIT | 0 | the-real-cast-file-parses
-EXPECT_OUT | CASTCHECK characters=11 | asa-ava-harold-and-eight-npcs
+EXPECT_OUT | CASTCHECK characters=21 | asa-ava-harold-eight-npcs-and-ten-pets
+
+# Pets and monsters (kind quad, blob, winged) and faces: same sheet layout, same mirror rule, our outline.
+CASE    | creatures
+SCRATCH |
+WRITE | k.pdl | CAST \p q \p #8a8f99 \p none \p #4a4e57 \p #d8dce6 \p #ffd24a \p 1 \p 0 \p quad\nCAST \p b \p #5fae5f \p none \p #3a7a3a \p #bfe8a0 \p #ffe066 \p 1 \p 0 \p blob\nCAST \p w \p #b0352a \p none \p #6a1a14 \p #f0b070 \p #ffd24a \p 1 \p 0 \p winged\nCAST \p h \p #8a5a3a \p short \p #2a2018 \p #1e2a3a \p #ffd24a \p 1 \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/k.pdl | $T/a
+EXPECT_EXIT | 0 | four-kinds-written
+EXPECT_OUT | FACES count=4 sheets=1 rc=0 | a-face-for-every-character
+EXPECT_FILE | a/q/face.png | face-png
+EXPECT_FILE | a/FaceSheet_00.png | face-sheet-4-by-2
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/q/sprite.csv
+EXPECT_EXIT | 0 | quad-has-a-body-in-all-12-frames
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/b/sprite.csv
+EXPECT_EXIT | 0 | blob-has-a-body-in-all-12-frames
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; f=int(y/48)*3+int(x/48); if($4>0)n[f]++} END{for(f=0;f<12;f++) if(n[f]<300) bad++; exit bad>0} | $T/a/w/sprite.csv
+EXPECT_EXIT | 0 | winged-has-a-body-in-all-12-frames
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; p[y*144+x]=$0} END{for(c=0;c<3;c++) for(y=0;y<48;y++) for(x=0;x<48;x++) if(p[(96+y)*144+c*48+x]!=p[(48+y)*144+c*48+(47-x)]) bad++; exit bad>0} | $T/a/q/sprite.csv
+EXPECT_EXIT | 0 | quad-right-is-the-mirror-of-left
+RUN | /usr/bin/awk | -F, | NR>4{i=NR-5; y=int(i/144); x=i%144; if(y<48&&x<48)a[y*48+x]=$0; if(y<48&&x>=96)b[y*48+(x-96)]=$0} END{for(k in a) if(a[k]!=b[k]) d++; exit d==0} | $T/a/w/sprite.csv
+EXPECT_EXIT | 0 | the-wings-beat-between-the-two-step-frames
+RUN | /usr/bin/cmp | -s | $T/a/q/sprite.csv | $T/a/w/sprite.csv
+EXPECT_EXIT | 1 | NEGATIVE-a-quad-is-not-a-winged-one
+RUN | /usr/bin/cmp | -s | $T/a/q/face.png | $T/a/h/face.png
+EXPECT_EXIT | 1 | NEGATIVE-two-faces-differ
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/k.pdl | $T/a2
+RUN | /usr/bin/cmp | -s | $T/a/q/face.png | $T/a2/q/face.png
+EXPECT_EXIT | 0 | same-row-same-face
+WRITE | badkind.pdl | CAST \p x \p #8a8f99 \p none \p #4a4e57 \p #d8dce6 \p #ffd24a \p 1 \p 0 \p dragon\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast | $T/badkind.pdl | $T/c
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused

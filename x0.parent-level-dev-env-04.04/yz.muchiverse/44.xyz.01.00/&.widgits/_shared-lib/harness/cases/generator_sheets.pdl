@@ -1,0 +1,49 @@
+# generator_sheets: recolour every non-person image (tone-run), build drop-in A2 sheets (sheet-png), and a verifier (verify-png). Owner 2026-11-05: similar style to RPG Maker, our brand.
+RESULTS | ../results/generator_sheets.txt
+ENV | LC_ALL | C
+
+CASE    | tone
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/sheets.pdl | full.pdl
+WRITE | two.pdl | GEN \p hue \p -10\nGEN \p sat \p 112\nGEN \p levels \p 6\nGEN \p outline \p 1\nSHEET \p tilesets/Outside_B.png \p 1\nSHEET \p system/Shadow1.png \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | tone-run | $T/two.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/o
+EXPECT_EXIT | 0 | two-sheets-recoloured
+EXPECT_OUT | TONE files=2 ok=2 failed=0 exempt_all_black=1 | the-all-black-shadow-sheet-is-named-exempt-not-hidden
+EXPECT_FILE | o/tilesets/Outside_B.png | recoloured-sheet-written
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $T/o/tilesets/Outside_B.png
+EXPECT_EXIT | 0 | alpha-identical-and-something-changed
+EXPECT_OUT | VERIFYPNG 768x768 alpha_changed=0 | the-verifier-names-the-numbers
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | tone-run | $T/two.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/o2
+RUN | /usr/bin/cmp | -s | $T/o/tilesets/Outside_B.png | $T/o2/tilesets/Outside_B.png
+EXPECT_EXIT | 0 | same-input-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png
+EXPECT_EXIT | 1 | NEGATIVE-an-untouched-copy-fails-verify
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_C.png
+EXPECT_EXIT | 1 | NEGATIVE-a-different-sheet-fails-verify
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $T/no-such.png
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-file-is-refused
+WRITE | gone.pdl | GEN \p hue \p -10\nSHEET \p tilesets/No_Such_Sheet.png \p 1\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | tone-run | $T/gone.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/o3
+EXPECT_EXIT | 1 | NEGATIVE-a-missing-source-sheet-is-a-failure-not-a-skip
+WRITE | none.pdl | GEN \p hue \p -10\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | tone-run | $T/none.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/o4
+EXPECT_EXIT | 3 | NEGATIVE-a-map-with-no-sheets-is-refused
+WRITE | flat.pdl | GEN \p hue \p 0\nGEN \p sat \p 100\nGEN \p levels \p 0\nGEN \p outline \p 0\nSHEET \p tilesets/Outside_B.png \p 0\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | tone-run | $T/flat.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/o5
+EXPECT_EXIT | 1 | NEGATIVE-a-tone-that-changes-nothing-is-caught
+RUN | /usr/bin/grep | -c | ^SHEET | $T/full.pdl
+EXPECT_OUT | 99 | the-real-map-lists-99-sheets
+CASE    | sheet-png
+SCRATCH |
+COPY | @.apps/generator-hq/events/gen_restyle/tearit-sand.pdl | tearit-sand.pdl
+WRITE | m.pdl | BLOCK \p Outside_A2 \p 1 \p tearit-sand\nBLOCK \p Outside_A2 \p 10 \p tearit-sand\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet-png | $T/m.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/out/Outside_A2.png
+EXPECT_EXIT | 0 | a2-drop-in-sheet-written
+EXPECT_OUT | SHEETPNG Outside_A2 768x576 blocks=2 | two-blocks-restyled-in-place
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/out/Outside_A2.png
+EXPECT_EXIT | 0 | same-layout-same-alpha-something-changed
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet-png | $T/m.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $T/out/b.png
+EXPECT_EXIT | 3 | NEGATIVE-a-sheet-with-no-map-rows-is-refused
+WRITE | far.pdl | BLOCK \p Outside_A2 \p 99 \p tearit-sand\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | sheet-png | $T/far.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | $T/out/c.png
+EXPECT_EXIT | 2 | NEGATIVE-a-block-outside-the-sheet-is-refused

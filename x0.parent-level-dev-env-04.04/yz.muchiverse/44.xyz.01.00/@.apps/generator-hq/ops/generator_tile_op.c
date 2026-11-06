@@ -411,6 +411,7 @@ static void proof_block(unsigned char *src) {
 /* Optional per-shape hook: the sheet verb restyles each shape in memory so unrestyled RPG Maker pixels are never written. */
 static int g_quiet; /* the sheet verb prints one summary line, not one line per shape */
 static unsigned char *g_cap; /* when set, restyle_px copies the restyled cell here (used for in-memory contact sheets) */
+static int g_nowrite; /* restyle_px: skip the per-cell csv and png (the caller wants only the pixels, in g_cap) */
 static int g_blk_lo, g_blk_hi = -1; /* sheet verb: brightness range of the WHOLE block, so shapes cut from one block map one source colour to one output colour (no seams between neighbours) */
 static void (*g_shape_cb)(int shape, const unsigned char *tile, void *ctx);
 static void *g_shape_ctx;
@@ -613,6 +614,7 @@ static int restyle_px(const RStyle *st, const char *outdir, const char *name, co
         { unsigned k = ((unsigned)s[0] << 16) | ((unsigned)s[1] << 8) | s[2], j; for (j = 0; j < (unsigned)cin && ci[j] != k; j++) ; if (j == (unsigned)cin) ci[cin++] = k; }
         { unsigned k = ((unsigned)d[0] << 16) | ((unsigned)d[1] << 8) | d[2], j; for (j = 0; j < (unsigned)cout && co[j] != k; j++) ; if (j == (unsigned)cout) co[cout++] = k; }
     }
+    if (!g_nowrite) {
     snprintf(dir, sizeof dir, "%s/%s", outdir, name);
     mkp(dir);
     snprintf(path, sizeof path, "%s/sprite.csv", dir);
@@ -625,6 +627,7 @@ static int restyle_px(const RStyle *st, const char *outdir, const char *name, co
         i = write_png(path, big, w * 4, h * 4);
         free(big);
         if (i != 0) { free(out); return 2; }
+    }
     }
     free(ci); free(co);
     if (!g_quiet) printf("RESTYLE %s %dx%d opaque=%d changed=%d outline=%d accent=%d colours_in=%d colours_out=%d\n", name, w, h, opaque, changed, outl, acc, cin, cout);
@@ -768,6 +771,168 @@ static int sheet_run(const char *mapf, const char *sheet, const char *outdir, co
     return rc;
 }
 
+/* ---- tone: recolour a whole PNG (everything that is not a person) and build drop-in A2 sheets ----
+ *   generator_tile_op.+x tone-run <sheets.pdl> <srcroot> <outroot>   recolour every SHEET row, verify each file in memory, one summary line
+ *   generator_tile_op.+x sheet-png <blocks.pdl> <sheet.png> <out.png>  an A2 sheet with every listed 96x144 block ramp-restyled in place (same layout: drop-in)
+ *   generator_tile_op.+x verify-png <original.png> <new.png>            same size, alpha identical, something changed, not identical
+ * Tone rows (in sheets.pdl):  GEN | hue | degrees   GEN | sat | percent   GEN | levels | lightness steps   GEN | outline | 0 or 1
+ *   SHEET | <path under srcroot> | <outline 0 or 1>
+ * Every pixel is a pure function of itself (hue shift, saturation scale, lightness posterised), so the same source colour gives the same
+ * output colour anywhere in the sheet: no seams. Alpha is never changed. An optional ink outline goes on opaque pixels next to a transparent one. */
+typedef struct { int hue, sat, levels, outline; } Tone;
+static void rgb2hsl(int r, int g, int b, double *h, double *s, double *l) {
+    double R = r / 255.0, G = g / 255.0, B = b / 255.0, mx = R > G ? (R > B ? R : B) : (G > B ? G : B), mn = R < G ? (R < B ? R : B) : (G < B ? G : B), d = mx - mn;
+    *l = (mx + mn) / 2; *s = 0; *h = 0;
+    if (d > 1e-9) {
+        *s = *l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+        if (mx == R) *h = (G - B) / d + (G < B ? 6 : 0); else if (mx == G) *h = (B - R) / d + 2; else *h = (R - G) / d + 4;
+        *h *= 60;
+    }
+}
+static double hue2rgb(double p, double q, double t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1.0 / 6) return p + (q - p) * 6 * t; if (t < 0.5) return q; if (t < 2.0 / 3) return p + (q - p) * (2.0 / 3 - t) * 6; return p; }
+static void hsl2rgb(double h, double s, double l, unsigned char *o) {
+    double r, g, b;
+    if (s <= 0) r = g = b = l;
+    else { double q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q, hh = h / 360; r = hue2rgb(p, q, hh + 1.0 / 3); g = hue2rgb(p, q, hh); b = hue2rgb(p, q, hh - 1.0 / 3); }
+    o[0] = (unsigned char)(r * 255 + 0.5); o[1] = (unsigned char)(g * 255 + 0.5); o[2] = (unsigned char)(b * 255 + 0.5);
+}
+static void tone_buf(const Tone *t, const unsigned char *src, unsigned char *out, int w, int h, int outline) {
+    int x, y;
+    memcpy(out, src, (size_t)w * h * 4);
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        const unsigned char *s = src + (y * w + x) * 4; unsigned char *d = out + (y * w + x) * 4;
+        double hh, ss, ll;
+        if (!s[3]) continue;
+        rgb2hsl(s[0], s[1], s[2], &hh, &ss, &ll);
+        hh = hh + t->hue; while (hh >= 360) hh -= 360; while (hh < 0) hh += 360;
+        ss = ss * t->sat / 100.0; if (ss > 1) ss = 1;
+        if (t->levels > 1) { ll = (int)(ll * t->levels + 0.5) / (double)t->levels; if (ll > 1) ll = 1; }
+        hsl2rgb(hh, ss, ll, d);
+    }
+    if (outline) for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        unsigned char *d = out + (y * w + x) * 4;
+        if (!src[(y * w + x) * 4 + 3]) continue;
+        if ((x > 0 && !src[(y * w + x - 1) * 4 + 3]) || (x < w - 1 && !src[(y * w + x + 1) * 4 + 3]) || (y > 0 && !src[((y - 1) * w + x) * 4 + 3]) || (y < h - 1 && !src[((y + 1) * w + x) * 4 + 3])) { d[0] = 14; d[1] = 16; d[2] = 21; }
+    }
+}
+/* returns 0 ok; counts alpha changes, changed pixels, and whether the output is identical */
+static int compare_px(const unsigned char *a, const unsigned char *b, int w, int h, int *alpha, int *changed) {
+    int i;
+    *alpha = 0; *changed = 0;
+    for (i = 0; i < w * h; i++) { if (a[i * 4 + 3] != b[i * 4 + 3]) (*alpha)++; if (a[i * 4 + 3] && memcmp(a + i * 4, b + i * 4, 3) != 0) (*changed)++; }
+    return 0;
+}
+static int verify_png(const char *a, const char *b) {
+    int w1, h1, n1, w2, h2, n2, alpha, changed, ident, rc = 0;
+    unsigned char *p = stbi_load(a, &w1, &h1, &n1, 4), *q = stbi_load(b, &w2, &h2, &n2, 4);
+    if (!p || !q) { fprintf(stderr, "cannot read a PNG\n"); if (p) stbi_image_free(p); if (q) stbi_image_free(q); return 2; }
+    if (w1 != w2 || h1 != h2) { printf("VERIFYPNG size_differs %dx%d vs %dx%d result=FAIL\n", w1, h1, w2, h2); rc = 1; }
+    else {
+        compare_px(p, q, w1, h1, &alpha, &changed);
+        ident = (memcmp(p, q, (size_t)w1 * h1 * 4) == 0);
+        rc = (alpha || ident || changed == 0) ? 1 : 0;
+        printf("VERIFYPNG %dx%d alpha_changed=%d changed_pixels=%d identical=%d result=%s\n", w1, h1, alpha, changed, ident, rc ? "FAIL" : "ok");
+    }
+    stbi_image_free(p); stbi_image_free(q);
+    return rc;
+}
+static int tone_run(const char *mapf, const char *srcroot, const char *outroot) {
+    FILE *f = fopen(mapf, "r");
+    char line[700];
+    Tone t = { 0, 100, 8, 1 };
+    int files = 0, ok = 0, bad = 0, exempt = 0;
+    long px = 0;
+    if (!f) { fprintf(stderr, "no sheets file\n"); return 3; }
+    while (fgets(line, sizeof line, f)) {
+        char *p, *k, *v;
+        if (!strncmp(line, "GEN |", 5)) {
+            p = line + 5; while (*p == ' ') p++;
+            k = p; p = strchr(p, '|'); if (!p) continue; *p = 0; v = p + 1; while (*v == ' ') v++;
+            { char *e = k + strlen(k); while (e > k && e[-1] == ' ') *--e = 0; }
+            if (!strcmp(k, "hue")) t.hue = atoi(v); else if (!strcmp(k, "sat")) t.sat = atoi(v); else if (!strcmp(k, "levels")) t.levels = atoi(v); else if (!strcmp(k, "outline")) t.outline = atoi(v);
+        } else if (!strncmp(line, "SHEET |", 7)) {
+            char *rel, *ol, in[1100], out[1100], *slash;
+            int w, h, n, ov, lv = 0, alpha, changed, ident;
+            Tone tt;
+            unsigned char *src, *dst;
+            p = line + 7; rel = p; p = strchr(p, '|'); ol = p ? p + 1 : (char *)"";
+            if (p) *p = 0;
+            while (*rel == ' ') rel++;
+            { char *e = rel + strlen(rel); while (e > rel && (e[-1] == ' ' || e[-1] == '\n')) *--e = 0; }
+            { char *q = strchr(ol, '|'); if (q) { lv = atoi(q + 1); *q = 0; } }
+            ov = atoi(ol); if (!*ol) ov = t.outline;
+            tt = t; if (lv > 0) tt.levels = lv;
+            snprintf(in, sizeof in, "%.500s/%.500s", srcroot, rel);
+            snprintf(out, sizeof out, "%.500s/%.500s", outroot, rel);
+            files++;
+            src = stbi_load(in, &w, &h, &n, 4);
+            if (!src) { fprintf(stderr, "cannot read %s\n", in); bad++; continue; }
+            dst = malloc((size_t)w * h * 4);
+            if (!dst) { stbi_image_free(src); bad++; continue; }
+            tone_buf(&tt, src, dst, w, h, ov);
+            slash = strrchr(out, '/'); if (slash) { *slash = 0; mkp(out); *slash = '/'; }
+            compare_px(src, dst, w, h, &alpha, &changed);
+            ident = (memcmp(src, dst, (size_t)w * h * 4) == 0);
+            { int op = 0, i; for (i = 0; i < w * h; i++) if (src[i * 4 + 3]) op++; px += op;
+              int allblack = 1; for (i = 0; i < w * h; i++) if (src[i * 4 + 3] && (src[i * 4] || src[i * 4 + 1] || src[i * 4 + 2])) { allblack = 0; break; }
+              if (!alpha && ident && allblack) { if (write_png(out, dst, w, h) != 0) bad++; else { ok++; exempt++; } }
+              else if (alpha || ident || (changed == 0 && op > 0)) { fprintf(stderr, "FAIL %s alpha=%d identical=%d changed=%d\n", rel, alpha, ident, changed); bad++; }
+              else if (write_png(out, dst, w, h) != 0) { fprintf(stderr, "cannot write %s\n", out); bad++; }
+              else ok++; }
+            stbi_image_free(src); free(dst);
+        }
+    }
+    fclose(f);
+    printf("TONE files=%d ok=%d failed=%d exempt_all_black=%d opaque_pixels=%ld hue=%d sat=%d levels=%d\n", files, ok, bad, exempt, px, t.hue, t.sat, t.levels);
+    return (files == 0) ? 3 : (bad ? 1 : 0);
+}
+/* A whole A2 sheet, every listed 96x144 block ramp-restyled in place: the same layout, so it drops into an existing tileset. */
+static int sheet_png(const char *mapf, const char *sheet, const char *outpng) {
+    FILE *f = fopen(mapf, "r");
+    char line[400], mapdir[500], sname[100], *base, *dot;
+    int w = 0, h = 0, n = 0, blocks = 0, rc = 0;
+    unsigned char *img, *out;
+    if (!f) { fprintf(stderr, "no map file\n"); return 3; }
+    img = stbi_load(sheet, &w, &h, &n, 4);
+    if (!img) { fprintf(stderr, "cannot read PNG %s\n", sheet); fclose(f); return 2; }
+    out = malloc((size_t)w * h * 4);
+    if (!out) { stbi_image_free(img); fclose(f); return 2; }
+    memcpy(out, img, (size_t)w * h * 4);
+    snprintf(mapdir, sizeof mapdir, "%s", mapf);
+    base = strrchr(mapdir, '/'); if (base) *base = 0; else snprintf(mapdir, sizeof mapdir, ".");
+    base = strrchr(sheet, '/'); base = base ? base + 1 : (char *)sheet;
+    snprintf(sname, sizeof sname, "%.90s", base);
+    dot = strrchr(sname, '.'); if (dot) *dot = 0;
+    while (fgets(line, sizeof line, f)) {
+        char *p, *fl[4]; int k = 0, idx, y, bx, by, lo = 1 << 20, hi = -1, i;
+        RStyle st; char stylef[900];
+        static unsigned char blk[96 * 144 * 4], cap[96 * 144 * 4];
+        if (strncmp(line, "BLOCK |", 7) != 0) continue;
+        p = strchr(line, '\n'); if (p) *p = 0;
+        p = line + 7;
+        while (k < 4 && p) { char *q = strchr(p, '|'); if (q) *q = 0; while (*p == ' ') p++; { char *e = p + strlen(p); while (e > p && e[-1] == ' ') *--e = 0; } fl[k++] = p; p = q ? q + 1 : NULL; }
+        if (k < 3 || strcmp(fl[0], sname) != 0) continue;
+        idx = atoi(fl[1]);
+        if (w % 96 || h % 144 || idx < 0 || idx >= (w / 96) * (h / 144)) { fprintf(stderr, "no block %d\n", idx); rc = 2; break; }
+        snprintf(stylef, sizeof stylef, "%s/%.60s.pdl", mapdir, fl[2]);
+        if (read_style(stylef, &st) != 0) { fprintf(stderr, "bad style file %s\n", stylef); rc = 3; break; }
+        bx = (idx % (w / 96)) * 96; by = (idx / (w / 96)) * 144;
+        for (y = 0; y < 144; y++) memcpy(blk + y * 96 * 4, img + ((by + y) * w + bx) * 4, 96 * 4);
+        for (i = 0; i < 96 * 144; i++) if (blk[i * 4 + 3]) { int l = (299 * blk[i * 4] + 587 * blk[i * 4 + 1] + 114 * blk[i * 4 + 2]) / 1000; if (l < lo) lo = l; if (l > hi) hi = l; }
+        memcpy(cap, blk, sizeof cap);
+        g_blk_lo = lo; g_blk_hi = hi; g_nowrite = 1; g_quiet = 1; g_cap = cap;
+        { int r = restyle_px(&st, ".", "x", blk, 96, 144); g_blk_hi = -1; g_nowrite = 0; g_quiet = 0; g_cap = NULL; if (r) { rc = r; break; } }
+        for (y = 0; y < 144; y++) memcpy(out + ((by + y) * w + bx) * 4, cap + y * 96 * 4, 96 * 4);
+        blocks++;
+    }
+    fclose(f);
+    if (!rc && blocks == 0) { fprintf(stderr, "map has no BLOCK row for sheet %s\n", sname); rc = 3; }
+    if (!rc) { char *s; char d[1000]; snprintf(d, sizeof d, "%s", outpng); s = strrchr(d, '/'); if (s) { *s = 0; mkp(d); } if (write_png(outpng, out, w, h) != 0) rc = 2; }
+    if (!rc) printf("SHEETPNG %s %dx%d blocks=%d\n", sname, w, h, blocks);
+    stbi_image_free(img); free(out);
+    return rc;
+}
+
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "shapes-check") == 0) return shapes(NULL);
     if (argc == 3 && strcmp(argv[1], "shapes") == 0) return shapes(argv[2]);
@@ -777,12 +942,15 @@ int main(int argc, char **argv) {
     if (argc == 5 && strcmp(argv[1], "sheet") == 0) return sheet_run(argv[2], argv[3], argv[4], NULL, 0);
     if (argc == 6 && strcmp(argv[1], "sheet") == 0) return sheet_run(argv[2], argv[3], argv[4], argv[5], 0);
     if (argc == 5 && strcmp(argv[1], "verify-sheet") == 0) return sheet_run(argv[2], argv[3], argv[4], NULL, 1);
+    if (argc == 5 && strcmp(argv[1], "tone-run") == 0) return tone_run(argv[2], argv[3], argv[4]);
+    if (argc == 5 && strcmp(argv[1], "sheet-png") == 0) return sheet_png(argv[2], argv[3], argv[4]);
+    if (argc == 4 && strcmp(argv[1], "verify-png") == 0) return verify_png(argv[2], argv[3]);
     if (argc >= 5 && strcmp(argv[1], "contact") == 0) return contact(argv[2], atoi(argv[3]), argc - 4, argv + 4);
     if (argc == 4 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], 4);
     if (argc == 5 && strcmp(argv[1], "fromcsv") == 0) return from_csv(argv[2], argv[3], atoi(argv[4]));
     if (argc == 4 && strcmp(argv[1], "run") == 0) return run_file(argv[2], argv[3]);
     if (argc == 3 && strcmp(argv[1], "catalog") == 0) return catalog(argv[2]);
     if (argc == 3 && strcmp(argv[1], "audit") == 0) return audit(argv[2]);
-    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> [<contactdir>] | verify-sheet <map.pdl> <sheet.png> <outdir> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
+    fprintf(stderr, "usage: run <gen.pdl> <outdir> | catalog <outdir> | audit <outdir> | fromcsv <sprite.csv> <png> [scale] | restyle <style.pdl> <outdir> <cell.csv>... | contact <out.png> <cols> <cell.csv>... | sheet <map.pdl> <sheet.png> <outdir> [<contactdir>] | verify-sheet <map.pdl> <sheet.png> <outdir> | tone-run <sheets.pdl> <srcroot> <outroot> | sheet-png <blocks.pdl> <sheet.png> <out.png> | verify-png <a.png> <b.png> | shapes-check [<sheet.png> <block>] | shapes <outdir> [<sheet.png> <block>] | <outdir>\n");
     return 2;
 }
