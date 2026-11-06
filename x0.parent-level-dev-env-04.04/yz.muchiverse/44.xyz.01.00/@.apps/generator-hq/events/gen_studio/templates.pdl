@@ -14,3 +14,9 @@ TEMPLATE | dungeon_a5 | ground  | Dungeon A5: floor tiles | warm,wet,wear,grain,
 TEMPLATE | icons_items | icons | Items: icon sheet (potions, swords, gems...) | warm,worn,round,big,metal,scramble | @.apps/generator-hq/events/gen_voxel/items.pdl | item | 8
 TEMPLATE | icons_buildings | icons | Buildings: icon sheet | warm,worn,round,big,metal,scramble | @.apps/generator-hq/events/gen_voxel/buildings.pdl | building | 4
 TEMPLATE | icons_props | icons | Props: icon sheet | warm,worn,round,big,metal,scramble | @.apps/generator-hq/events/gen_voxel/props.pdl | prop | 8
+TEMPLATE | cast_chars_00 | cast | Cast people sheet 00: characters | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | chars | 0
+TEMPLATE | cast_faces_00 | cast | Cast people sheet 00: faces | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | faces | 0
+TEMPLATE | cast_chars_01 | cast | Cast people sheet 01: characters | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | chars | 1
+TEMPLATE | cast_faces_01 | cast | Cast people sheet 01: faces | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | faces | 1
+TEMPLATE | cast_chars_02 | cast | Cast people sheet 02: characters | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | chars | 2
+TEMPLATE | cast_faces_02 | cast | Cast people sheet 02: faces | warm,worn | @.apps/generator-hq/events/gen_cast/cast.pdl | faces | 2

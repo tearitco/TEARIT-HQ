@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/stat.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../../&.widgits/_shared-lib/stb_image_write.h"
@@ -30,6 +31,8 @@
 typedef struct { int r, g, b; } Col;
 typedef struct { char id[40]; Col skin, hair, garment, trim; int style, body, mark, kind; } Who; /* style: 0 short 1 long 2 mohawk 3 none; kind: 0 humanoid 1 quad 2 blob 3 winged */
 
+static unsigned g_variant; /* variant=N: shifts the GENERIC seeds (a new crowd of npcs); 0 = unchanged */
+static double g_warm, g_worn; /* knob=warm:-1..1 (garments, hair, trim toward orange / blue), knob=worn:0..1 (darker, greyer); skin is never touched */
 static Who g_who[MAXCAST];
 static int g_n;
 
@@ -241,7 +244,7 @@ static int add_generic(const char *prefix, int count, unsigned seed) {
     if (count < 1 || count > 200) return -1;
     for (i = 0; i < count; i++) {
         Who *w;
-        unsigned h = mix(seed * 2654435761u + (unsigned)i * 40503u);
+        unsigned h = mix((seed + g_variant * 7919u) * 2654435761u + (unsigned)i * 40503u); /* variant=N (D34): N > 0 gives a fresh crowd, N = 0 the same bytes as before */
         if (g_n >= MAXCAST) return -1;
         w = &g_who[g_n++];
         memset(w, 0, sizeof *w);
@@ -392,10 +395,48 @@ static int slots_run(const char *slotf, const char *outroot) {
     return rc;
 }
 
+/* the studio knobs (D34): recolour garment, hair and trim of every character, never the skin. Response curve sign(w)*|w|^0.6 like the other generators, so a 10% press is visible. 0 and 0 change nothing. */
+static double kcurve(double w) { return w < 0 ? -pow(-w, 0.6) : pow(w, 0.6); }
+static int kclamp(double v) { return v < 0 ? 0 : v > 255 ? 255 : (int)(v + 0.5); }
+static void knob_col(Col *c, double warm, double worn) {
+    double r = c->r, g = c->g, b = c->b;
+    r *= 1.0 + 0.45 * warm; g *= 1.0 + 0.12 * warm; b *= 1.0 - 0.55 * warm;
+    if (worn > 0) { double l = (r * 3 + g * 6 + b) / 10.0; double k = 0.55 * worn; r = r * (1 - k) + (l * 0.9 + 14) * k; g = g * (1 - k) + (l * 0.85 + 12) * k; b = b * (1 - k) + (l * 0.75 + 8) * k; r *= 1 - 0.25 * worn; g *= 1 - 0.25 * worn; b *= 1 - 0.25 * worn; }
+    c->r = kclamp(r); c->g = kclamp(g); c->b = kclamp(b);
+}
+static void apply_knobs(void) {
+    int i; double w = kcurve(g_warm), o = kcurve(g_worn);
+    if (g_warm == 0 && g_worn == 0) return;
+    for (i = 0; i < g_n; i++) { knob_col(&g_who[i].garment, w, o); knob_col(&g_who[i].hair, w, o); knob_col(&g_who[i].trim, w, o); }
+}
+static int load_cast(const char *path) { int r = read_cast(path); if (!r) apply_knobs(); return r; }
+
+/* cast-sheet <cast.pdl> <chars|faces> <group> <out.png> [options]: ONE RPG Maker people sheet (8 characters of group*8..group*8+7), no per-character folders. Same bytes as CastSheet_NN / FaceSheet_NN of `cast` (the studio calls this: 3 s and 789 files per click would be far too heavy). */
+static int cast_one(int faces, int g, const char *out) {
+    int groups = (g_n + 7) / 8, j, y, W = 576, H = faces ? 288 : 384, rc = 0; unsigned char *sheet, *big;
+    if (g < 0 || g >= groups) { fprintf(stderr, "no group %d (the cast has %d)\n", g, groups); return 2; }
+    sheet = malloc(SW * SH * 4); big = calloc((size_t)W * H, 4); if (!sheet || !big) { free(sheet); free(big); return 2; }
+    for (j = 0; j < 8 && g * 8 + j < g_n; j++) {
+        memset(sheet, 0, SW * SH * 4); draw_sheet(sheet, &g_who[g * 8 + j]);
+        if (faces) { static unsigned char fc[144 * 144 * 4]; face_from_sheet(sheet, fc); for (y = 0; y < 144; y++) memcpy(big + (((j / 4) * 144 + y) * W + (j % 4) * 144) * 4, fc + y * 144 * 4, 144 * 4); }
+        else for (y = 0; y < SH; y++) memcpy(big + (((j / 4) * SH + y) * W + (j % 4) * SW) * 4, sheet + y * SW * 4, SW * 4);
+    }
+    if (!stbi_write_png(out, W, H, 4, big, W * 4)) rc = 2; else printf("CASTSHEET %s group=%d of %d size=%dx%d\n", faces ? "faces" : "chars", g, groups, W, H);
+    free(sheet); free(big); return rc;
+}
+
 int main(int argc, char **argv) {
-    if (argc == 3 && !strcmp(argv[1], "cast-check")) { int r = read_cast(argv[2]); if (!r) printf("CASTCHECK characters=%d\n", g_n); return r; }
-    if (argc == 4 && !strcmp(argv[1], "cast")) { int r = read_cast(argv[2]); return r ? r : cast_run(argv[3]); }
-    if (argc == 5 && !strcmp(argv[1], "slots")) { int r = read_cast(argv[2]); return r ? r : slots_run(argv[3], argv[4]); }
-    fprintf(stderr, "usage: cast <cast.pdl> <outdir> | cast-check <cast.pdl> | slots <cast.pdl> <slots.pdl> <outroot>\n");
+    while (argc > 3 && (!strncmp(argv[argc - 1], "variant=", 8) || !strncmp(argv[argc - 1], "knob=", 5) || !strncmp(argv[argc - 1], "bank=", 5))) { /* trailing options (D34): variant=N, knob=warm:v, knob=worn:v */
+        char *a = argv[argc - 1];
+        if (!strncmp(a, "bank=", 5)) { /* the studio always passes a concept bank: this generator has none */ }
+        else if (!strncmp(a, "variant=", 8)) { char *e; unsigned long v = strtoul(a + 8, &e, 10); if (e == a + 8 || *e || v > 1000000UL) { fprintf(stderr, "bad variant (0..1000000)\n"); return 2; } g_variant = (unsigned)v; }
+        else { char *cl = strchr(a + 5, ':'); double v = cl ? atof(cl + 1) : 0; if (!cl) { fprintf(stderr, "bad knob (use warm|worn:<value>)\n"); return 2; } *cl = 0; if (!strcmp(a + 5, "warm")) g_warm += v; else if (!strcmp(a + 5, "worn")) g_worn += v; else { fprintf(stderr, "bad knob %s (use warm or worn)\n", a + 5); return 2; } if (g_warm < -1) g_warm = -1; if (g_warm > 1) g_warm = 1; if (g_worn < 0) g_worn = 0; if (g_worn > 1) g_worn = 1; }
+        argc--;
+    }
+    if (argc == 3 && !strcmp(argv[1], "cast-check")) { int r = load_cast(argv[2]); if (!r) printf("CASTCHECK characters=%d\n", g_n); return r; }
+    if (argc == 6 && !strcmp(argv[1], "cast-sheet")) { int r; if (strcmp(argv[3], "chars") && strcmp(argv[3], "faces")) { fprintf(stderr, "cast-sheet wants chars or faces\n"); return 2; } r = load_cast(argv[2]); return r ? r : cast_one(!strcmp(argv[3], "faces"), atoi(argv[4]), argv[5]); }
+    if (argc == 4 && !strcmp(argv[1], "cast")) { int r = load_cast(argv[2]); return r ? r : cast_run(argv[3]); }
+    if (argc == 5 && !strcmp(argv[1], "slots")) { int r = load_cast(argv[2]); return r ? r : slots_run(argv[3], argv[4]); }
+    fprintf(stderr, "usage: cast <cast.pdl> <outdir> | cast-check <cast.pdl> | slots <cast.pdl> <slots.pdl> <outroot>  [variant=N] [knob=warm:v] [knob=worn:v]\n");
     return 2;
 }

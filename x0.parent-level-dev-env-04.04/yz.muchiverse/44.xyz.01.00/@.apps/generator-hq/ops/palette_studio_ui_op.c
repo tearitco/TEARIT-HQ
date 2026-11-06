@@ -101,7 +101,7 @@ static int run_argv(char **av) {
 /* knob options of the current template as "knob=name:delta" strings (only non-zero ones) */
 static int knob_opts(char store[][64], char **av, int n) {
     if (!g_knobs_on) return n; /* compare mode: render the original */
-    static char vbuf[32]; if (g_variant && !strcmp(T[cur].kind, "ground") && n < 30) { snprintf(vbuf, sizeof vbuf, "variant=%d", g_variant); av[n++] = vbuf; }
+    static char vbuf[32]; if (g_variant && (!strcmp(T[cur].kind, "ground") || !strcmp(T[cur].kind, "cast")) && n < 30) { snprintf(vbuf, sizeof vbuf, "variant=%d", g_variant); av[n++] = vbuf; }
     int k; for (k = 0; k < T[cur].nk; k++) if (fabs(T[cur].v[k]) > 1e-9 && n < 30) { if (!strcmp(T[cur].kn[k], "scramble")) snprintf(store[k], 64, "scramble=%.4f", T[cur].v[k]); else snprintf(store[k], 64, "knob=%s:%.4f", T[cur].kn[k], T[cur].v[k]); av[n++] = store[k]; /* scramble is an option of both generators, not a bank knob */ } return n;
 }
 static int studio_cmd(const char *verb, const char *outpng, const char *name, int crop_top) { /* palette_studio_op render|save ... */
@@ -139,8 +139,8 @@ static int render_preview(void) {
     g_knobs_on = !g_cmp; rc = studio_cmd("render", png, NULL, objects && !g_view); g_knobs_on = 1; if (rc) { snprintf(g_status, sizeof g_status, "render failed (exit %d)", rc); return rc; }
     px = stbi_load(png, &w, &h, &c, 4); if (!px) { snprintf(g_status, sizeof g_status, "cannot read the preview"); return 2; }
     g_step = 48;
-    if (g_view) { unsigned char *o = picker_compose(px, w, h, !strcmp(T[cur].kind, "ground")); stbi_image_free(px); if (!o) { snprintf(g_status, sizeof g_status, "picker view failed"); return 2; } px = o; w = PW; h = PH; }
-    if (!g_view && (w != PW || h != PH) && w <= 4 * PW && h <= 4 * PH) { unsigned char *o = calloc((size_t)PW * PH * 4, 1); int yy; if (!o) { stbi_image_free(px); return 2; } for (yy = 0; yy < PH && yy < h; yy++) memcpy(o + (size_t)yy * PW * 4, px + (size_t)yy * w * 4, (size_t)(w < PW ? w : PW) * 4); stbi_image_free(px); px = o; w = PW; h = PH; } /* A5 floor sheets are 384 x 768: the full-sheet view shows the top 576 px at the left of the canvas */
+    if (g_view && strcmp(T[cur].kind, "cast")) { unsigned char *o = picker_compose(px, w, h, !strcmp(T[cur].kind, "ground")); stbi_image_free(px); if (!o) { snprintf(g_status, sizeof g_status, "picker view failed"); return 2; } px = o; w = PW; h = PH; }
+    if ((!g_view || !strcmp(T[cur].kind, "cast")) && (w != PW || h != PH) && w <= 4 * PW && h <= 4 * PH) { unsigned char *o = calloc((size_t)PW * PH * 4, 1); int yy; if (!o) { stbi_image_free(px); return 2; } for (yy = 0; yy < PH && yy < h; yy++) memcpy(o + (size_t)yy * PW * 4, px + (size_t)yy * w * 4, (size_t)(w < PW ? w : PW) * 4); stbi_image_free(px); px = o; w = PW; h = PH; } /* A5 floor sheets are 384 x 768: the full-sheet view shows the top 576 px at the left of the canvas */
     if (w != PW || h != PH) { snprintf(g_status, sizeof g_status, "preview is %dx%d, expected %dx%d", w, h, PW, PH); stbi_image_free(px); return 2; }
     if (g_grid) { int x, y, k; for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (x % g_step == 0 || y % g_step == 0) { unsigned char *q = px + ((size_t)y * w + x) * 4; for (k = 0; k < 3; k++) q[k] = (unsigned char)(q[k] + (255 - q[k]) * 22 / 100); q[3] = 255; } } /* 22%% toward white on every 48 px tile edge */
     rc = write_atomic(raw, (const char *)px, (size_t)w * h * 4); stbi_image_free(px); if (rc) return rc;
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "init")) load_session();
     g_status[0] = 0;
     if (!strcmp(argv[1], "init")) { cur = 0; g_saves = 0; snprintf(g_status, sizeof g_status, "ready: pick a template, then press + or -"); }
-    else if (!strcmp(argv[1], "roll")) { int v = argc >= 3 && argv[2][0] >= 0x30 && argv[2][0] <= 0x39 ? atoi(argv[2]) : g_variant + 1; g_variant = v > 999999 ? 1 : v; g_cmp = 0; if (strcmp(T[cur].kind, "ground")) snprintf(g_status, sizeof g_status, "variant %d saved, but reseeding only changes ground sheets", g_variant); else snprintf(g_status, sizeof g_status, g_variant ? "variant %d (each block reseeded)" : "variant 0 (recipe look)", g_variant); }
+    else if (!strcmp(argv[1], "roll")) { int v = argc >= 3 && argv[2][0] >= 0x30 && argv[2][0] <= 0x39 ? atoi(argv[2]) : g_variant + 1; g_variant = v > 999999 ? 1 : v; g_cmp = 0; if (strcmp(T[cur].kind, "ground") && strcmp(T[cur].kind, "cast")) snprintf(g_status, sizeof g_status, "variant %d saved, but reseeding only changes ground sheets and cast crowds", g_variant); else snprintf(g_status, sizeof g_status, g_variant ? "variant %d (each block reseeded)" : "variant 0 (recipe look)", g_variant); }
     else if (!strcmp(argv[1], "view")) { g_view = !g_view; snprintf(g_status, sizeof g_status, g_view ? "picker view (one tile per kind, packed)" : "full sheet view"); }
     else if (!strcmp(argv[1], "grid")) { g_grid = !g_grid; snprintf(g_status, sizeof g_status, g_grid ? "gridlines on" : "gridlines off"); }
     else if (!strcmp(argv[1], "compare")) { g_cmp = !g_cmp; snprintf(g_status, sizeof g_status, g_cmp ? "showing the ORIGINAL (knobs off)" : "showing your TUNED sheet"); }

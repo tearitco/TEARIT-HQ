@@ -5,7 +5,7 @@ ENV | LC_ALL | C
 CASE    | studio
 SCRATCH |
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | templates | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl
-EXPECT_OUT | TEMPLATES count=11 | eleven-templates-listed-objects-ground-a5-floors-and-3-icon-sheets
+EXPECT_OUT | TEMPLATES count=17 | seventeen-templates-listed-plus-6-cast-sheets
 EXPECT_OUT | TEMPLATE outside_b kind=objects | the-object-sheet-is-a-template
 EXPECT_OUT | TEMPLATE dungeon_a2 kind=ground | a-ground-sheet-is-a-template
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | outside_b | $T/ob.png
@@ -391,3 +391,42 @@ RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
 EXPECT_OUT | 1769472 | the-icons-picker-keeps-the-canvas-size
 RUN | /usr/bin/cmp | -s | $T/st/studio_preview.raw | /dev/zero
 EXPECT_EXIT | 1 | NEGATIVE-the-icons-picker-is-not-blank
+
+# cast people sheets (characters and faces) as studio templates; variant reseeds the generic crowd, warm and worn recolour garments, hair and trim (never skin)
+CASE    | cast
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | cast_chars_00 | $T/c0.png | variant=0
+RUN | /usr/bin/sha256sum | $T/c0.png
+EXPECT_OUT | 7ab3e7217b335bfb | the-neutral-cast-sheet-00-is-byte-identical-to-the-approved-CastSheet_00
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | cast_faces_00 | $T/f0.png | variant=0
+RUN | /usr/bin/sha256sum | $T/f0.png
+EXPECT_OUT | 0e4efee086a57142 | the-neutral-faces-sheet-00-is-byte-identical-to-the-approved-FaceSheet_00
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | cast_chars_00 | $T/c1.png | variant=1
+RUN | /usr/bin/cmp | -s | $T/c0.png | $T/c1.png
+EXPECT_EXIT | 1 | NEGATIVE-variant-1-gives-a-different-crowd
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | cast_chars_00 | $T/c1b.png | variant=1
+RUN | /usr/bin/cmp | -s | $T/c1.png | $T/c1b.png
+EXPECT_EXIT | 0 | the-same-variant-renders-the-same-bytes
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | cast_chars_00 | $T/cw.png | variant=0 | knob=warm:0.4
+RUN | /usr/bin/cmp | -s | $T/c0.png | $T/cw.png
+EXPECT_EXIT | 1 | NEGATIVE-warm-recolours-the-cast
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_studio/templates.pdl | cast_chars_00 | $T/co.png | variant=0 | knob=worn:0.4
+RUN | /usr/bin/cmp | -s | $T/c0.png | $T/co.png
+EXPECT_EXIT | 1 | NEGATIVE-worn-recolours-the-cast
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-sheet | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | chars | 99 | $T/bad.png
+EXPECT_EXIT | 2 | NEGATIVE-a-group-the-cast-does-not-have-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-sheet | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | chars | 0 | $T/bad.png | knob=bogus:1
+EXPECT_EXIT | 2 | NEGATIVE-a-knob-the-cast-does-not-have-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-sheet | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | chars | 0 | $T/bad.png | variant=abc
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-variant-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_cast_op.+x | cast-sheet | $HOUSE/@.apps/generator-hq/events/gen_cast/cast.pdl | sprites | 0 | $T/bad.png
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-sheet-kind-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | init | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | pick | cast_chars_00 | state=$T/st
+RUN | /usr/bin/stat | -c | %s | $T/st/studio_preview.raw
+EXPECT_OUT | 1769472 | the-cast-preview-keeps-the-canvas-size
+RUN | /usr/bin/grep | ^status | $T/st/palettes-studio_ui.txt
+EXPECT_OUT | status=template cast_chars_00 | the-cast-template-renders-without-a-size-error
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_ui_op.+x | save | state=$T/st
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/palette_studio_op.+x | replay | $T/st/studio_saves/slot0.studio.pdl | $T/rep.png
+EXPECT_OUT | REPLAY ok | a-saved-cast-record-replays-exactly
