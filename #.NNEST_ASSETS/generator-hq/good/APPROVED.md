@@ -14,7 +14,8 @@
 | File | What it is |
 |---|---|
 | tilesets/Outside_B.png | objects, recoloured (tone: hue -10, saturation 112, 6 levels, ink outline) |
-| tilesets/Outside_A2.png, World_A2.png, Inside_A2.png, Dungeon_A2.png | the four A2 ground sheets, built by block with the ramps (`sheet-png` + `blocks.pdl`) |
+| tilesets/Outside_A2.png | **calm version (2026-11-05 late)**: grass blocks use `tearit-green-calm` (narrow ramp, no speckle) via `events/gen_restyle/blocks-calm.pdl`; the first version was far noisier than the original grass (seen in the test yard) |
+| tilesets/World_A2.png, Inside_A2.png, Dungeon_A2.png | the other A2 ground sheets, built by block with the ramps (`sheet-png` + `blocks.pdl`) |
 | battlebacks1/Grassland.png | a painted background (tone, 14 levels) |
 | characters/Actor1.png | Asa, Ava, Harold, Lucky, Astra, Gem, Loona, Kael |
 | characters/Evil.png | Nihilator, two clowns, Time Police, Carcazod, Planet X hound, Angler, shark-kin |

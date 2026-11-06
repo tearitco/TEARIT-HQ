@@ -19,3 +19,11 @@ EXPECT_EXIT | 2 | NEGATIVE-a-missing-root-is-an-error-not-a-fallback
 WRITE | nolevel.pdl | FILL \p tilesets/Outside_A2.png \p 0 \p 0\n
 RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | level | $T/nolevel.pdl | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/d.png
 EXPECT_EXIT | 2 | NEGATIVE-a-level-without-a-LEVEL-row-is-refused
+
+CASE    | raw-png
+SCRATCH |
+WRITE | f.raw | abcdefghijklmnop
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | raw-png | $T/f.raw | 2 | 2 | $T/f.png
+EXPECT_OUT | RAWPNG 2x2 | a-2x2-rgba-frame-becomes-a-png
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_level_op.+x | raw-png | $T/f.raw | 4 | 4 | $T/g.png
+EXPECT_EXIT | 2 | NEGATIVE-a-file-shorter-than-w-h-4-is-refused

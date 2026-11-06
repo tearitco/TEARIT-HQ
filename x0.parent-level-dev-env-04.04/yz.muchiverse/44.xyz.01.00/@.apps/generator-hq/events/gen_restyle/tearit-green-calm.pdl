@@ -1,0 +1,6 @@
+# Restyle style: a CALM green for big ground areas (finding 2026-11-05: the 5-step green read far noisier than the original smooth grass). Narrow ramp (small steps), no accent speckle, still an ink outline on cell edges only.
+GEN | ramp | #2f5a34,#3b6e3e,#468045,#4f8e4a,#5c9e52
+GEN | accent | #ffd24a
+GEN | accent_per256 | 0
+GEN | seed | 20261105
+GEN | outline | 1

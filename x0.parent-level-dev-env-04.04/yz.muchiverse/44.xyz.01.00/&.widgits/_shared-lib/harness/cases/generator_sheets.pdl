@@ -124,8 +124,16 @@ EXPECT_OUT | 898a21f67b0f77b58ea7f975def40b80bf3d363777be379964ec9cac0effaded | 
 RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Inside_A2.png
 EXPECT_OUT | 4b89bbfe0de69dbdc270b5e2d5141985337181fce65e85b0f8ec0804a96d6888 | pinned-tilesets-Inside_A2-png
 RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_A2.png
-EXPECT_OUT | a364a54a6709684483ef93ca164448fc75d8a5f31026b0fa061736bb0a5db8d4 | pinned-tilesets-Outside_A2-png
+EXPECT_OUT | 4b74127688639982abbcb8a455a14943d5dd9ceb77f3a0c805c78acb6c4860b9 | pinned-tilesets-Outside_A2-png
 RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
 EXPECT_OUT | a023ba9e60f85bfe386686c3129a53224d0bf4e8315eca0c3cd68c997f189cd5 | pinned-tilesets-Outside_B-png
 RUN | /usr/bin/sha256sum | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/World_A2.png
 EXPECT_OUT | b6c7b8151a4b4cf960f07626cadb1736bff8b4eb3ba54a1d015eea99e606a7fb | pinned-tilesets-World_A2-png
+
+# Seamless floors (found in the real rpg-pet room, 2026-11-05): A5 sheets repeat edge to edge, so they use 14 levels and no outline.
+CASE    | seamless-floors
+SCRATCH |
+RUN | /usr/bin/grep | -c | _A5.png ..0 ..14$ | $HOUSE/@.apps/generator-hq/events/gen_restyle/sheets.pdl
+EXPECT_OUT | 3 | the-three-a5-floor-sheets-use-14-levels-and-no-outline
+RUN | /usr/bin/grep | -c | Inside_A5.png ..1$ | $HOUSE/@.apps/generator-hq/events/gen_restyle/sheets.pdl
+EXPECT_OUT | 0 | NEGATIVE-no-a5-sheet-is-left-on-the-6-level-default-with-outline

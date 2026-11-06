@@ -1,6 +1,7 @@
 /* generator_level_op: draw a small test level from rows, reading every sheet from a ROOT folder. Draw it once with the original RPG Maker folder and once with good/ (and voxel output):
  * same layout, different art, so a replacement is judged in place. A sheet that does not exist under the root is an error (exit 2): a level never silently falls back to another folder.
- *   level <level.pdl> <root> <out.png> [<extraroot>]     a path starting with "x:" is read from <extraroot> instead of <root>
+ *   level <level.pdl> <root> <out.png> [<extraroot>]
+ *   raw-png <in.raw> <w> <h> <out.png>                  an RGBA frame (a game scene.raw) to PNG     a path starting with "x:" is read from <extraroot> instead of <root>
  * Rows: LEVEL | w | h (tiles of 48)   FILL | sheet | sx | sy   TILE | sheet | sx | sy | tx | ty   PIC | sheet | sx | sy | w | h | px | py (pixels)
  *       CHAR | sheet | index 0-7 | dir 0 down 1 left 2 right 3 up | frame 0-2 | tx | ty    (RPG Maker people sheet layout: 4 x 2 characters of 3 x 4 frames of 48) */
 #include <stdio.h>
@@ -38,6 +39,10 @@ static void blit(Img *s, int sx, int sy, int w, int h, int dx, int dy) {
 }
 int main(int argc, char **argv) {
     FILE *f; char line[700]; int rc = 0;
+    if (argc == 6 && !strcmp(argv[1], "raw-png")) { /* raw-png <in.raw> <w> <h> <out.png>: an RGBA frame such as a game scene.raw to PNG */
+        int w = atoi(argv[3]), h = atoi(argv[4]); size_t n = (size_t)w * h * 4; unsigned char *b = malloc(n); FILE *r = fopen(argv[2], "rb");
+        if (w < 1 || h < 1 || !b || !r || fread(b, 1, n, r) != n) { fprintf(stderr, "raw-png: cannot read %d x %d RGBA from %s\n", w, h, argv[2]); return 2; }
+        fclose(r); if (!stbi_write_png(argv[5], w, h, 4, b, w * 4)) return 2; printf("RAWPNG %dx%d\n", w, h); return 0; }
     if (argc < 5 || strcmp(argv[1], "level")) { fprintf(stderr, "usage: level <level.pdl> <root> <out.png> [<extraroot>]\n"); return 2; }
     snprintf(ROOT, sizeof ROOT, "%s", argv[3]); snprintf(XROOT, sizeof XROOT, "%s", argc > 5 ? argv[5] : argv[3]);
     f = fopen(argv[2], "r"); if (!f) { fprintf(stderr, "cannot open %s\n", argv[2]); return 2; }
