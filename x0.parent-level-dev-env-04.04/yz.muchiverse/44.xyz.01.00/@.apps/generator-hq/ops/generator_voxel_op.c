@@ -15,7 +15,7 @@
 #define MAXP 6000
 #define MAXO 6000
 #define MAXM 400
-typedef struct { char model[40], id[40]; int x, y, z, w, d, h; unsigned r, g, b; } Part;
+typedef struct { char model[40], id[40]; int x, y, z, w, d, h, kind; unsigned r, g, b; } Part; /* kind 0 box; 1 cylinder (x y centre, z base, w radius, h height); 2 ellipsoid (x y z centre, w d h radii) */
 typedef struct { char model[40], pose[40], part[40]; int dx, dy, dz; } Pose;
 typedef struct { char id[40], kind[16]; } Model;
 static Part P[MAXP]; static int np;
@@ -38,7 +38,7 @@ static int read_rows(const char *path) {
         if (!strcmp(k, "MODEL")) {
             if (nm >= MAXM) { fprintf(stderr, "too many models\n"); fclose(f); return 2; }
             snprintf(M[nm].id, sizeof M[nm].id, "%s", fld(&p)); snprintf(M[nm].kind, sizeof M[nm].kind, "%s", fld(&p));
-            if (!M[nm].id[0] || (strcmp(M[nm].kind, "char") && strcmp(M[nm].kind, "item") && strcmp(M[nm].kind, "building"))) { fprintf(stderr, "bad MODEL row: %s\n", line); fclose(f); return 2; }
+            if (!M[nm].id[0] || (strcmp(M[nm].kind, "char") && strcmp(M[nm].kind, "item") && strcmp(M[nm].kind, "building") && strcmp(M[nm].kind, "prop"))) { fprintf(stderr, "bad MODEL row: %s\n", line); fclose(f); return 2; }
             nm++;
         } else if (!strcmp(k, "PART")) {
             Part *q = &P[np]; char *c; int i, v[6];
@@ -48,6 +48,19 @@ static int read_rows(const char *path) {
             c = fld(&p); if (*c == '#') c++;
             for (i = 0; i < 6; i++) v[i] = hexv(c[i]);
             if (!q->model[0] || !q->id[0] || strlen(c) != 6 || v[0] < 0 || v[1] < 0 || v[2] < 0 || v[3] < 0 || v[4] < 0 || v[5] < 0 || q->w < 1 || q->d < 1 || q->h < 1 || q->x < 0 || q->y < 0 || q->z < 0 || q->x + q->w > N || q->y + q->d > N || q->z + q->h > N) { fprintf(stderr, "bad PART row: %s\n", line); fclose(f); return 2; }
+            q->r = v[0] * 16 + v[1]; q->g = v[2] * 16 + v[3]; q->b = v[4] * 16 + v[5]; np++;
+        } else if (!strcmp(k, "CYL") || !strcmp(k, "ELL")) {
+            Part *q = &P[np]; char *c; int i, v[6], ell = (k[0] == 'E');
+            if (np >= MAXP) { fprintf(stderr, "too many parts\n"); fclose(f); return 2; }
+            snprintf(q->model, sizeof q->model, "%s", fld(&p)); snprintf(q->id, sizeof q->id, "%s", fld(&p));
+            q->x = atoi(fld(&p)); q->y = atoi(fld(&p)); q->z = atoi(fld(&p));
+            if (ell) { q->w = atoi(fld(&p)); q->d = atoi(fld(&p)); q->h = atoi(fld(&p)); } else { q->w = atoi(fld(&p)); q->d = q->w; q->h = atoi(fld(&p)); }
+            q->kind = ell ? 2 : 1;
+            c = fld(&p); if (*c == '#') c++;
+            for (i = 0; i < 6; i++) v[i] = hexv(c[i]);
+            if (!q->model[0] || !q->id[0] || strlen(c) != 6 || v[0] < 0 || v[1] < 0 || v[2] < 0 || v[3] < 0 || v[4] < 0 || v[5] < 0 || q->w < 1 || q->d < 1 || q->h < 1
+                || q->x - q->w < 0 || q->x + q->w >= N || q->y - q->d < 0 || q->y + q->d >= N
+                || (ell ? (q->z - q->h < 0 || q->z + q->h >= N) : (q->z < 0 || q->z + q->h > N))) { fprintf(stderr, "bad %s row: %s\n", k, line); fclose(f); return 2; }
             q->r = v[0] * 16 + v[1]; q->g = v[2] * 16 + v[3]; q->b = v[4] * 16 + v[5]; np++;
         } else if (!strcmp(k, "POSE")) {
             Pose *q = &O[no];
@@ -79,6 +92,18 @@ static int build(const char *model, const char *pose, int *count) {
         int dx = 0, dy = 0, dz = 0;
         if (strcmp(P[i].model, model)) continue;
         for (j = 0; j < no; j++) if (!strcmp(O[j].model, model) && !strcmp(O[j].pose, pose) && !strcmp(O[j].part, P[i].id)) { dx += O[j].dx; dy += O[j].dy; dz += O[j].dz; }
+        if (P[i].kind) { /* round parts: a cylinder or an ellipsoid, voxelised by distance */
+            int cx = P[i].x + dx, cy = P[i].y + dy, cz = P[i].z + dz, X, Y, Z;
+            for (Z = 0; Z < N; Z++) for (Y = 0; Y < N; Y++) for (X = 0; X < N; X++) {
+                int in;
+                if (P[i].kind == 1) { int ddx = X - cx, ddy = Y - cy; in = Z >= cz && Z < cz + P[i].h && (ddx * ddx + ddy * ddy) * 2 <= (2 * P[i].w * P[i].w + P[i].w); }
+                else { double ax = (double)(X - cx) / P[i].w, ay = (double)(Y - cy) / P[i].d, az = (double)(Z - cz) / P[i].h; in = ax * ax + ay * ay + az * az <= 1.0; }
+                if (!in) continue;
+                if (!G[Z][Y][X]) (*count)++;
+                G[Z][Y][X] = 0xFF000000u | (P[i].r << 16) | (P[i].g << 8) | P[i].b;
+            }
+            continue;
+        }
         for (z = 0; z < P[i].h; z++) for (y = 0; y < P[i].d; y++) for (x = 0; x < P[i].w; x++) {
             int X = P[i].x + x + dx, Y = P[i].y + y + dy, Z = P[i].z + z + dz;
             if (X < 0 || Y < 0 || Z < 0 || X >= N || Y >= N || Z >= N) continue;
@@ -472,13 +497,53 @@ static int icons(const char *kind, int cols, const char *out) {
     if (!stbi_write_png(out, cols * 48, rows * 48, 4, o, cols * 48 * 4)) { free(o); return 2; }
     printf("VOXELICONS kind=%s models=%d size=%dx%d\n", kind, n, cols * 48, rows * 48); free(o); return 0;
 }
+/* ---- objsheet (D31): newly drawn things in the layout of an RPG Maker object sheet ----
+ *   objsheet <out.png> <cells.pdl> <recipes.pdl> [<recipes.pdl> ...]
+ *   cells.pdl:  SHEET | name | width px | height px      CELL | col | row | w tiles | h tiles | thing | model
+ * Each CELL renders the model (front view, idle) at 48 px; a thing that is w x h tiles is enlarged by max(w, h) (nearest) and cropped to its cell box, centred across, bottom aligned.
+ * Nothing is read from an RPG Maker file: the list and the positions are the only things taken from the original sheet. */
+static int objsheet(int argc, char **argv) {
+    FILE *f; char line[400]; int sw = 0, sh = 0, cells = 0, rc = 0, i;
+    unsigned char *sheet = NULL;
+    for (i = 4; i < argc; i++) { rc = read_rows(argv[i]); if (rc) return rc; }
+    rc = check_refs(); if (rc) return rc;
+    f = fopen(argv[3], "r"); if (!f) { fprintf(stderr, "cannot open %s\n", argv[3]); return 2; }
+    while (fgets(line, sizeof line, f) && !rc) {
+        char *p = line, *k;
+        if (line[0] == '#' || line[0] == '\n') continue;
+        k = fld(&p);
+        if (!strcmp(k, "SHEET")) {
+            fld(&p); sw = atoi(fld(&p)); sh = atoi(fld(&p));
+            if (sw < 48 || sh < 48 || sw > 4096 || sh > 4096 || sw % 48 || sh % 48) { fprintf(stderr, "bad SHEET size\n"); rc = 2; break; }
+            sheet = calloc((size_t)sw * sh, 4); if (!sheet) { rc = 2; break; }
+        } else if (!strcmp(k, "CELL")) {
+            static unsigned char st[192 * 48 * 4], big[96 * 96 * 4]; int col, row, w, h, n, c, x, y, S, ox, oy; char thing[60], model[60];
+            if (!sheet) { fprintf(stderr, "SHEET row must come first\n"); rc = 2; break; }
+            col = atoi(fld(&p)); row = atoi(fld(&p)); w = atoi(fld(&p)); h = atoi(fld(&p)); snprintf(thing, sizeof thing, "%s", fld(&p)); snprintf(model, sizeof model, "%s", fld(&p));
+            n = w > h ? w : h;
+            if (col < 0 || row < 0 || w < 1 || h < 1 || n > 2 || (col + w) * 48 > sw || (row + h) * 48 > sh || !has_model(model)) { fprintf(stderr, "bad CELL %s (model %s, position or size)\n", thing, model); rc = 2; break; }
+            memset(st, 0, sizeof st); if (render_row(st, 0, 192, model, "idle", &c)) { fprintf(stderr, "model %s has no voxels\n", model); rc = 2; break; }
+            S = 48 * n; memset(big, 0, sizeof big);
+            for (y = 0; y < S; y++) for (x = 0; x < S; x++) memcpy(big + ((size_t)y * S + x) * 4, st + (((size_t)(y / n)) * 192 + (x / n)) * 4, 4);
+            ox = (S - 48 * w) / 2; oy = S - 48 * h;
+            for (y = 0; y < 48 * h; y++) for (x = 0; x < 48 * w; x++) { const unsigned char *s = big + ((size_t)(oy + y) * S + ox + x) * 4; if (s[3]) memcpy(sheet + ((size_t)(row * 48 + y) * sw + col * 48 + x) * 4, s, 4); }
+            cells++;
+        }
+    }
+    fclose(f);
+    if (!rc && !sheet) { fprintf(stderr, "no SHEET row\n"); rc = 2; }
+    if (!rc && !stbi_write_png(argv[2], sw, sh, 4, sheet, sw * 4)) rc = 2;
+    if (!rc) printf("OBJSHEET size=%dx%d cells=%d\n", sw, sh, cells);
+    free(sheet); return rc;
+}
 int main(int argc, char **argv) {
     int rc;
     while (argc > 3 && (!strcmp(argv[argc - 1], "pixel") || !strcmp(argv[argc - 1], "face"))) { if (!strcmp(argv[argc - 1], "pixel")) g_pixel = 1; else g_face = 1; argc--; }
-    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: render | sheet | check | fromcast <cast.pdl> <out.pdl> <partsets.pdl> | fromchars <characters.pdl> <out.pdl> <partsets.pdl> | check-equip <partsets.pdl> <db data dir> | objsheet <out.png> <cells.pdl> <recipes.pdl>... | walksheet <recipes> <model> <out.png> | cast-sheets <recipes> <slots.pdl> <outroot> | icons <recipes> <kind> <cols> <out.png>\n"); return 2; }
     if (!strcmp(argv[1], "fromcast") && argc == 5) return fromcast(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fromchars") && argc == 5) return fromchars(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "check-equip") && argc == 4) return check_equip(argv[2], argv[3]);
+    if (!strcmp(argv[1], "objsheet") && argc >= 5) return objsheet(argc, argv);
     rc = read_rows(argv[2]); if (rc) return rc;
     rc = check_refs(); if (rc) return rc;
     if (!strcmp(argv[1], "check") && argc == 3) { printf("VOXELCHECK models=%d parts=%d poses=%d\n", nm, np, no); return 0; }

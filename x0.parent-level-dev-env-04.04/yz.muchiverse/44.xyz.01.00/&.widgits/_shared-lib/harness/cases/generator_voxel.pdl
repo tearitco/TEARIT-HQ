@@ -223,3 +223,43 @@ RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $T/cf.p
 EXPECT_OUT | opaque=2642 | the-bevel-takes-corner-pixels-off
 RUN | /usr/bin/cmp | -s | $T/p0.png | $T/p1.png
 EXPECT_EXIT | 1 | NEGATIVE-the-pixel-pass-changes-the-picture
+
+# D31: newly drawn things (round primitives CYL and ELL, props, objsheet in the layout of Outside_B). Acceptance rule: low correlation with the original AND a person read it.
+CASE    | new-art-outside-b
+SCRATCH |
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+EXPECT_OUT | VOXELCHECK models=25 parts=105 poses=0 | twenty-five-props
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | barrel | idle | $T/b.png
+EXPECT_OUT | voxels=2851 | the-barrel-is-a-pinned-cylinder-stack
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | render | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | pine | idle | $T/p.png
+EXPECT_OUT | voxels=1294 | the-pine-is-pinned
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | icons | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl | prop | 8 | $T/i.png
+EXPECT_OUT | VOXELICONS kind=prop models=25 size=384x192 | an-icon-sheet-of-props
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/s1.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+EXPECT_OUT | OBJSHEET size=768x768 cells=25 | the-catalog-places-25-things
+RUN | /usr/bin/sha256sum | $T/s1.png
+EXPECT_OUT | 06d2de73ce3f4f64e4ee4c5d42fdcd152ab37ea8992b811fd5067f46fd715b9e | the-sheet-is-pinned
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/s2.png | $HOUSE/@.apps/generator-hq/events/gen_objects/outside_b.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+RUN | /usr/bin/cmp | -s | $T/s1.png | $T/s2.png
+EXPECT_EXIT | 0 | same-recipes-same-sheet
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | verify-root | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img | $T/none
+EXPECT_EXIT | 3 | NEGATIVE-control-an-empty-root-is-refused
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $T/s1.png
+EXPECT_OUT | luminance_correlation=0.135 overlap_pct=4.6 | THE-GATE-the-new-sheet-is-a-different-drawing-not-a-repaint
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_tile_op.+x | compare-png | $HOUSE/../../../#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_B.png | $HOUSE/../../../#.NNEST_ASSETS/generator-hq/good/tilesets/Outside_B.png
+EXPECT_OUT | luminance_correlation=0.903 | CONTRAST-the-old-recolour-is-the-same-drawing
+WRITE | cb1.pdl | SHEET \p S \p 768 \p 768\nCELL \p 0 \p 0 \p 1 \p 1 \p ghost \p no_such_model\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/x1.png | $T/cb1.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-cell-with-an-unknown-model-is-refused
+WRITE | cb2.pdl | SHEET \p S \p 768 \p 768\nCELL \p 20 \p 0 \p 1 \p 1 \p barrel \p barrel\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/x2.png | $T/cb2.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-cell-outside-the-sheet-is-refused
+WRITE | cb3.pdl | CELL \p 0 \p 0 \p 1 \p 1 \p barrel \p barrel\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | objsheet | $T/x3.png | $T/cb3.pdl | $HOUSE/@.apps/generator-hq/events/gen_voxel/props.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-cell-before-the-SHEET-row-is-refused
+WRITE | rb1.pdl | MODEL \p m \p prop\nCYL \p m \p c \p 2 \p 12 \p 0 \p 5 \p 3 \p #ffffff\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/rb1.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-cylinder-that-leaves-the-grid-is-refused
+WRITE | rb2.pdl | MODEL \p m \p prop\nELL \p m \p e \p 12 \p 12 \p 6 \p 0 \p 3 \p 3 \p #ffffff\n
+RUN | $HOUSE/@.apps/generator-hq/ops/+x/generator_voxel_op.+x | check | $T/rb2.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-ellipsoid-with-radius-0-is-refused

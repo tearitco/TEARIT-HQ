@@ -984,7 +984,7 @@ static int compare_png(const char *pa, const char *pb) {
         both++; sa += la; sb += lb; saa += la * la; sbb += lb * lb; sab += la * lb;
     }
     if (both > 1) { double ma = sa / both, mb = sb / both, va = saa / both - ma * ma, vb = sbb / both - mb * mb, cv = sab / both - ma * mb; corr = (va > 1e-9 && vb > 1e-9) ? cv / sqrt(va * vb) : 0; }
-    printf("COMPARE %dx%d opaque=%ld changed_pct=%.1f mean_colour_shift=%.1f luminance_correlation=%.3f\n", w1, h1, opq, opq ? 100.0 * chg / opq : 0.0, opq ? sad / opq : 0.0, corr);
+    printf("COMPARE %dx%d opaque=%ld changed_pct=%.1f mean_colour_shift=%.1f luminance_correlation=%.3f overlap_pct=%.1f\n", w1, h1, opq, opq ? 100.0 * chg / opq : 0.0, opq ? sad / opq : 0.0, corr, opq ? 100.0 * both / opq : 0.0);
     return 0;
 }
 int main(int argc, char **argv) {

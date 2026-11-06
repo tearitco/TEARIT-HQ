@@ -1,0 +1,29 @@
+# Role catalog for Outside_B (D31): which THING sits in which cell of the RPG Maker sheet, so a sheet of our own drawings can sit in the same layout (games reference cells by sheet, col, row).
+# SHEET | name | width px | height px      CELL | col | row | w tiles | h tiles | thing | model (from gen_voxel/props.pdl)
+# Positions READ from the original sheet (2x zoom of the lower-left area, 2026-11-05); the pictures at those cells are NOT used. First slice: 25 of the sheet's things.
+SHEET | Outside_B | 768 | 768
+CELL | 1  | 9  | 1 | 1 | signpost      | signpost
+CELL | 2  | 9  | 1 | 1 | fence         | fence
+CELL | 3  | 9  | 1 | 1 | stone well    | stone_well
+CELL | 4  | 9  | 1 | 1 | stepping pebbles | pebbles
+CELL | 5  | 9  | 1 | 1 | barrel        | barrel
+CELL | 6  | 9  | 1 | 1 | grave cross   | grave_cross
+CELL | 7  | 9  | 1 | 1 | gravestone    | gravestone
+CELL | 0  | 10 | 1 | 1 | clay jar      | clay_jar
+CELL | 1  | 10 | 1 | 1 | bucket        | bucket
+CELL | 2  | 10 | 1 | 1 | bucket with water | bucket_water
+CELL | 3  | 10 | 1 | 1 | fire pit      | firepit
+CELL | 4  | 10 | 1 | 1 | fire pit lit  | firepit_lit
+CELL | 1  | 11 | 1 | 1 | grass tuft    | grass_tuft
+CELL | 4  | 11 | 1 | 1 | tree stump    | stump
+CELL | 5  | 11 | 1 | 2 | pine tree     | pine
+CELL | 7  | 11 | 1 | 1 | grey rock     | rock_grey
+CELL | 0  | 12 | 1 | 1 | white flowers | flowers_white
+CELL | 1  | 12 | 1 | 1 | pink flowers  | flowers_pink
+CELL | 2  | 12 | 1 | 1 | blue flowers  | flowers_blue
+CELL | 3  | 12 | 1 | 1 | orange flowers | flowers_orange
+CELL | 4  | 12 | 1 | 1 | fallen log    | log
+CELL | 6  | 12 | 1 | 1 | round bush    | bush_round
+CELL | 7  | 12 | 1 | 1 | brown rock    | rock_brown
+CELL | 1  | 13 | 1 | 1 | hole          | hole
+CELL | 2  | 13 | 1 | 1 | wood stack    | wood_stack
