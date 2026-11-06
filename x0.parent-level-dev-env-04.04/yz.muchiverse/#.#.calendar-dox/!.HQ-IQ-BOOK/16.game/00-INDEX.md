@@ -17,6 +17,7 @@ command runs on.
   and practice, DF wagon start, MCL bench/bed/creeper, gen_map, and
   the water/lava/rain/fire common events. Technical needs. Not built.
 - `GENERATOR-HQ-TILESET-REPLACEMENT-2026-11-05.md` — stop using RPG
+- `PALETTE-STUDIO-WINDOW-AND-USER-CONCEPTS-DESIGN-2026-11-05.md` — the studio window (generate tab), user concepts tied to bank masters, live weights, cli_io commands, caps, build order. Not built.
 - `HANDOFF-ASSETS-NEEDED-TO-RIVAL-LEVEL-CREATION-2026-11-05.md` — what `good/` still lacks (5 of 151 original files are new drawings), priority order, how, rules, open decisions.
 - `HANDOFF-GENERATOR-GROK-WORK-AND-INTERIM-ASSETS-2026-11-05.md` — next-agent handoff: what Grok built, what the generator really draws (proofs, not art), the RTP catalog as a checklist, and the restyle-first plan for usable assets (D27)
 - `GENERATOR-WORKFLOW-AND-CHECKS-2026-11-05.md` — how the generator work is done: the toolbox, the loop for a new sheet or character, the mistakes made and the checks to reuse (owner: document the process, make reusable tools and harnesses)

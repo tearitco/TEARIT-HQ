@@ -76,3 +76,6 @@ Spoke slots on each `prop_<name>.pdl`: 0 look_warm, 1 look_worn, 2 look_round, 3
 
 ## 17. Update: palette-studio front door (test drive it)
 `palette_studio_op templates <house>/@.apps/generator-hq/events/gen_studio/templates.pdl` lists the five templates. `render <templates> outside_a2 out.png knob=wet:0.8 select=0,0,4,1`, `save <templates> outside_b <dir> signs_worn crop knob=worn:0.7 crop=1,0,7,1` (writes the png and a `.studio.pdl` record), `replay <dir>/signs_worn.studio.pdl out.png` (REPLAY ok or mismatch). Suite `palette_studio.pal` 16/0. The window is not built yet.
+
+## 18. Update: palette-studio window design written (D34)
+`16.game/PALETTE-STUDIO-WINDOW-AND-USER-CONCEPTS-DESIGN-2026-11-05.md`: window as a generate tab in the palettes widget, user concepts tied to existing masters with weights, live preview, cli_io command line, caps, build order (step 1 = the `concept=` resolver in `palette_studio_op`). Four open questions for the owner are in section 5. Not built.
