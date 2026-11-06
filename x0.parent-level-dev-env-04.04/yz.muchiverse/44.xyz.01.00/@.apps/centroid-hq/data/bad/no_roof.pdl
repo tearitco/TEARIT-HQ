@@ -1,0 +1,6 @@
+CELL | 2 | 1 | 0 | floor
+CELL | 2 | 0 | 1 | door
+CELL | 2 | 0 | 2 | door
+CELL | 5 | 2 | 2 | bridge
+CELL | 8 | 2 | 0 | stone
+CELL | 9 | 2 | 0 | farm

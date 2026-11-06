@@ -28,7 +28,7 @@ The campus shape stays `CENTROID-VISUAL-BOOK-2026-11-06.md` (three floating isla
 
 The campus volume is data loaded at the start of the scratch house, not a thing the pets place during the test. One phase table, `play/phases/centroid_test.phases.pdl`. The missing rules, in order:
 
-1. **The prebuild.** One chunk file: the main island's court, one roof over one room, one swinging door, one bridge, one smaller island. Loading it twice gives the same columns. The pets' bags start empty of building stone.
+1. **The prebuild.** One chunk file: the main island's court, one roof over one room, one swinging door, one bridge, one smaller island. Loading it twice gives the same columns. The pets' bags start empty of building stone. **Step 1 is in the tree:** `@.apps/centroid-hq/data/court.pdl` (31 cells, two roof-over-floor columns, two door voxels, three bridge cells with air under them, one farm). `centroid_prebuild_op check` refuses a missing roof and a bridge with ground under it. Harness `centroid_test.pal`, run 2026-11-06: `VERDICT|PASS|passed=4|failed=0`. This case does not feed or sleep a pet.
 2. **Needs on.** Hunger and sleep start on for these pets only. A day tick with no food raises hunger. A night with no bed drops energy. Dying stays off.
 3. **Plant.** A farm cell is already on the smaller island. A seed from the pile, after a counted number of day ticks, gives food. That food is the only thing that lowers hunger.
 4. **Bed.** A bed is crafted from planks and placed in the room. Sleep on it restores energy. Sleep on the ground does not.

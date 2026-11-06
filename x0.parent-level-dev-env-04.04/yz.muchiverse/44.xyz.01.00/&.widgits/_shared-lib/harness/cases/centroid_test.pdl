@@ -1,0 +1,14 @@
+# centroid-test step 1: the campus is a file. Pets do not place it. Hunger and sleep are not in this case.
+RESULTS | ../results/centroid_test.txt
+ENV | LC_ALL | C
+
+CASE | prebuild
+SCRATCH |
+RUN | $HOUSE/@.apps/centroid-hq/ops/+x/centroid_prebuild_op.+x | check | $HOUSE/@.apps/centroid-hq/data/court.pdl
+EXPECT_OUT | PREBUILD cells=31 roof_over_room=2 doors=2 bridge=3 farm=1 islands=2 | court-matches-the-prebuild
+RUN | $HOUSE/@.apps/centroid-hq/ops/+x/centroid_prebuild_op.+x | check | $HOUSE/@.apps/centroid-hq/data/court.pdl
+EXPECT_OUT | PREBUILD cells=31 roof_over_room=2 doors=2 bridge=3 farm=1 islands=2 | second-load-is-the-same-line
+RUN | $HOUSE/@.apps/centroid-hq/ops/+x/centroid_prebuild_op.+x | check | $HOUSE/@.apps/centroid-hq/data/bad/no_roof.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-campus-without-a-roof-is-refused
+RUN | $HOUSE/@.apps/centroid-hq/ops/+x/centroid_prebuild_op.+x | check | $HOUSE/@.apps/centroid-hq/data/bad/bridge_filled.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-bridge-with-ground-under-it-is-refused
