@@ -1,0 +1,2 @@
+# interim/try: experiments (not committed except this file)
+One folder per idea: `try/<yyyy-mm-dd>-<idea>/` with a `NOTE.md` of three lines: the question, the command that rebuilt it, the verdict (keep / drop / promote to a tool). Keep the folder under 50 MB in total; delete a folder when its verdict is drop. Promote a kept idea to a verb and a harness case, then it leaves `try/`. Nothing here is approved art; `good/` is the only approved place.
