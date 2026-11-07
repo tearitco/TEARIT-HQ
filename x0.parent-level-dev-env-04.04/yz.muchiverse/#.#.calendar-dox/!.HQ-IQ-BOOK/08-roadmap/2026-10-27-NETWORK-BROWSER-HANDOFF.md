@@ -478,3 +478,56 @@ toolchain). Chosen shape:
   never the user's home.
 - The shared renderer and the manager were rebuilt; the live browser is
   running them.
+
+---
+
+## 2026-11-07 — Find reveal and scroll state repaired; browser chrome controls finished
+
+Branch `opencode`, commit
+`29a3b72c2e8ae2c62c3593cbe5db2e1df1a1e8ef`
+(`fix: preserve Find/scroll state while wiring browser chrome controls`).
+
+### What failed, measured rather than inferred
+
+The deep Find clause reported `match still off screen after find
+(y=-100000)` even though the ASCII mirror said `[FIND] query="NEEDLE"
+1 of 1` and the renderer repeatedly printed `FINDREVEAL ... scroll=43`.
+Marker logs put the change inside `layout_scroll_region()`:
+`scroll_in=43` became `scroll_after_setup=14` while `max=44`.
+
+The cause was the preliminary full-width total (`613`, `total=33`,
+`max=14`) clamping the entry scroll before the scrollbar's 8px gutter was
+reserved. At the final width (`605`), the fixture's filler paragraphs wrap
+to `total=62`, `max=44`. The final recomputation corrected the limit, but
+the already-clamped 14 was not restored, so the next layout parked the row.
+
+### Renderer changes
+
+- `scroll_region_total()` is reused so the scroll limit is computed at the
+  final, scrollbar-narrowed width; the caller's entry scroll is restored
+  after that final pass when it fits.
+- `g_find_reveal` is cleared with the departing tree and in the no-target
+  `kh_find_commit()` path, then reissued against the new tree.
+- Find reveal handling is ancestor-gated to its owning scroll region, and
+  the visibility answer is recomputed after the reveal's own scroll move.
+- `dump_frame_png()` checks for a just-landed browser publish before it
+  redraws, so the PNG and ASCII frame sidecar describe the same state.
+
+### Browser chrome
+
+- Network Browser template/CSS now include the Print item/action,
+  `user-resizable`, and the raw-X resize grip.
+- `tests/xsendevent.py` accepts explicit root coordinates for resize-drag
+  tests without changing the span press/move/release contract.
+
+### Verification
+
+- Fresh renderer build: `OK +x/khtpm_core_render.+x`.
+- Deterministic manual needle drive produced frame record `cx31 nav=37,
+  x=200, y=674, w=605`.
+- `sh tests/nb_find_test.sh`: **PASS** — down-reveal to `y=674`, band on
+  the revealed row, and scroll-back-up to `y=164`.
+- `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**.
+- The commit is scoped to renderer, browser CSS/template/manager, and
+  `tests/xsendevent.py`; generated browser bootstrap/state files were left
+  uncommitted.

@@ -1372,3 +1372,64 @@ UI bite, not this one. Ctrl+P is the universal print gesture; the
 request plumbing and the op are generic (any caller can write "print:").
 - PDF lands in downloads/ by design (same rule as downloads - app-owned,
   never user homes).
+
+### 9.22 2026-11-07 — Find down-reveal restored: preliminary width clamped the scroll away
+
+`nb_find_test.sh`'s deep-match clause was red again, and this time the
+product-side root cause was located rather than inferred from the failing
+assertion.
+
+**What the receipts showed**
+
+- On the `scroll-article.html` fixture the needle is at row 60. A correct
+  reveal should land with `scroll=43`, but the live receipts alternated:
+  `FINDREVEAL row=60 ... scroll=43`, then a later layout read `scroll=14`,
+  then the needle was parked at `y=-100000` again, while the per-PID ASCII
+  mirror still reported `NEEDLE ... 1 of 1`.
+- Marker logs inside `layout_scroll_region()` isolated the change to setup:
+  entry `scroll_in=43` became `scroll_after_setup=14`, with `max=44`.
+- Walking the setup statements showed the transition happened at the
+  **preliminary full-width clamp** (`width 613`, `total=33`, `max=14`).
+  After the scrollbar was reserved, the final narrower width (`605`)
+  recomputed the same 29 filler paragraphs as one line wider each, giving
+  `total=62` and `max=44` - but the entry scroll had already been clamped
+  down to 14 and was never restored.
+
+**The fixes in `khtpm_core_render.c`**
+
+1. Total/scroll-limit calculation now uses the final scrollbar-narrowed
+   width, and the caller's entry scroll is restored after that final
+   computation when the final range still permits it. This stops the
+   preliminary width from silently discarding a real scroll position.
+2. A pending Find reveal is cleared when the tree it points into is
+   discarded, and in the no-target branch of `kh_find_commit()`; the
+   end-of-reparse `kh_find_commit()` then reissues it against the new tree.
+3. The one-shot reveal is ancestor-gated to its owning scroll region, so a
+   sidebar/layout pass cannot consume a pending reveal belonging to the
+   content panel. Visibility is recomputed after the reveal's own scroll
+   adjustment.
+4. The dump path checks for a just-landed page publish before capturing so
+   its PNG and its ASCII sidecar use the same tree/scroll state.
+
+**Chrome wiring included in the same commit**
+
+Network Browser gained its guarded Print action, its raw-X resize grip /
+`user-resizable` class, and the final-width scroll repair; `xsendevent.py`
+accepts root coordinates so the resize drag delta can be driven honestly.
+Generated bootstrap/UI state was left out of the commit.
+
+**Verification**
+
+- `sh build_core_render.sh` — clean build (`OK +x/khtpm_core_render.+x`).
+- Deterministic manual needle drive produced the frame record:
+  `cx31 ... nav=37, x=200, y=674, w=605`, matching the per-PID ASCII
+  mirror's `[FIND] query="NEEDLE" 1 of 1`.
+- `sh tests/nb_find_test.sh` — **PASS**, including:
+  `needle y -100000 -> 674`, painted band `676..689` on row `674..704`, and
+  the opposite-direction match returning to `y=164`.
+- `sh tests/nb_all_tests.sh` — **ALL TESTS PASS** (the 40-section/31-suite
+  suite visible in the run output, including all previously registered gates).
+- Commit: `29a3b72c2e8ae2c62c3593cbe5db2e1df1a1e8ef`
+  (`fix: preserve Find/scroll state while wiring browser chrome controls`),
+  scoped to the renderer, browser CSS/template/manager, and `xsendevent.py`,
+  on `opencode`.
