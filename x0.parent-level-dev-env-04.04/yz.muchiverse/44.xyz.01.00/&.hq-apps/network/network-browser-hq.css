@@ -20,7 +20,8 @@ window.network-browser { width: 784px; height: 504px; background-color: #141414;
 .toolbar { background-color: #2a2a2a; color: #eeeeee; }
 .quiet { background-color: #333333; color: #ffffff; }
 /* Toolbar/tab labels are child items, not inherited font-size on the
- * surrounding <row>; keep them one line inside their fixed-width cells. */
+ * surrounding <row>; compact opts them into the shared generic clipped
+ * single-line label path instead of word wrap inside fixed-width cells. */
 .compact { font-size: 8px; }
 .nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
 .nb-input { background-color: #0e0e0e; color: #ffffff; border: 1px solid #444444; }

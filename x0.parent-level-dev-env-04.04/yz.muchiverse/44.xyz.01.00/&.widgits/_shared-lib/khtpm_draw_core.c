@@ -2633,7 +2633,12 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * still exactly one line for anything that doesn't need more -
          * this only activates for a box some other real code path
          * already decided needs to be taller. */
-        int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0;
+        /* A compact cell opts into the single-line clipped label path
+         * below instead of the multiline wrap path. It is a generic
+         * fixed-width chip contract: the label may shrink to an ellipsis,
+         * but it never occupies a second line inside another row. */
+        int is_multiline_box = !elem_has_class(e, "compact") &&
+            (e->h > (line_h * 3) / 2) && avail_w > 0;
         int find_lo = -1, find_hi = -1;
         if (kh_find_active()) kh_find_label_match(shown_label, &find_lo, &find_hi);
         /* INLINE SPANS (phase 2, step 1b/step 3, 2026-10-09) - when the
@@ -3181,7 +3186,12 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * this. */
             char clipped_buf[600];
             const char *draw_label = shown_label;
-            if (avail_w > 0 && extents.width > avail_w) {
+            /* In an extra-narrow compact chip the badge itself may already
+             * consume the cell. Paint no label past the element's own right
+             * edge rather than drawing it through the next chip. */
+            if (elem_has_class(e, "compact") && avail_w <= 0) {
+                draw_label = "";
+            } else if (avail_w > 0 && extents.width > avail_w) {
                 snprintf(clipped_buf, sizeof(clipped_buf), "%s", shown_label);
                 size_t len = strlen(clipped_buf);
                 static const char *ELLIPSIS = "...";
