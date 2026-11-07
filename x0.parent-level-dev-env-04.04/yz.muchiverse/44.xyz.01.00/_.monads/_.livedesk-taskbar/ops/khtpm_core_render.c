@@ -3496,6 +3496,12 @@ static int reparse_chtpm_if_changed(void) {
      * deliberately NOT cleared here: the user typed it, and a content
      * change should re-search rather than silently forget the ask. */
     g_find_hits = 0;
+    /* The hit list above is about to be invalidated by the parse below, and
+     * g_find_reveal is another pointer into that same departing tree.
+     * Clearing it here prevents a pool-reused address from accidentally
+     * aliasing an unrelated new element before the end-of-reparse
+     * kh_find_commit() reissues the reveal against the new tree. */
+    g_find_reveal = NULL;
     /* g_find_at is deliberately NOT cleared here, unlike the hits it
      * accompanies. This reset and the query keep above are one decision
      * split in two: the query survives because "a content change should
@@ -6268,13 +6274,9 @@ static void layout_scroll_sprite_flow(Elem *container, int start, int n, int x, 
     }
 }
 
-static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
-    *out_lo = 0; *out_hi = 0;
-    if (!container || h <= 0) return;
-    int visible_rows = h / ROW_H;
-    if (visible_rows < 1) visible_rows = 1;
+static int scroll_region_total(Elem *container, int w) {
     int total = 0;
-    int inner_w = w;
+    if (!container) return 0;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (elem_is_sprite_flow(c)) {
@@ -6284,8 +6286,6 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             continue;
         }
         if (elem_is_flex_row(c)) {
-            /* A flex row is one block in the scroll flow; its height is resolved
-             * by css_layout_pass. Start at 1 row, same as a normal row. */
             total += 1;
             continue;
         }
@@ -6295,6 +6295,26 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
+    return total;
+}
+
+static int kh_find_reveal_owned_by(Elem *container) {
+    /* Sidebar+panel pages produce two layout passes. A pending reveal must
+     * survive the first (non-owning) pass; only the pass whose subtree
+     * contains the target may scroll or clear the one-shot. */
+    for (Elem *p = g_find_reveal; p; p = p->parent)
+        if (p == container) return 1;
+    return 0;
+}
+
+static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
+    *out_lo = 0; *out_hi = 0;
+    if (!container || h <= 0) return;
+    int scroll_before_setup = *scroll;
+    int visible_rows = h / ROW_H;
+    if (visible_rows < 1) visible_rows = 1;
+    int total = scroll_region_total(container, w);
+    int inner_w = w;
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
     if (*scroll > max_scroll) *scroll = max_scroll;
     if (*scroll < 0) *scroll = 0;
@@ -6323,8 +6343,25 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     generic_sbar_register(x, y, w, h, scroll, total, visible_rows, max_scroll);
     if (max_scroll > 0 && w > GENERIC_SCROLLBAR_W + 8)
         inner_w = w - GENERIC_SCROLLBAR_W;
+    /* The scrollbar narrows the wrap width, and wrapping can legitimately
+     * add lines at that final width. Recompute the scroll limit there or
+     * row indices and the scrollbar disagree by whole rows. */
+    if (inner_w != w) {
+        total = scroll_region_total(container, inner_w);
+        generic_sbar_register(x, y, w, h, scroll, total, visible_rows, 0);
+        max_scroll = total > visible_rows ? total - visible_rows : 0;
+        if (*scroll > max_scroll) *scroll = max_scroll;
+        /* A preliminary full-width pass can undercount wrapped lines; the
+         * scrollbar's 8px then makes the same labels two lines. Re-adopt
+         * the caller's entry scroll only when the final width still has
+         * that much scroll, otherwise keep the correct final clamp. */
+        int want_scroll = scroll_before_setup < 0 ? 0 : scroll_before_setup;
+        if (want_scroll <= max_scroll) *scroll = want_scroll;
+        generic_sbar_register(x, y, w, h, scroll, total, visible_rows, max_scroll);
+    }
 
     int row = 0;
+    int owns_find_reveal = kh_find_reveal_owned_by(container);
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (elem_is_sprite_flow(c)) {
@@ -6368,12 +6405,18 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         if (strcmp(c->tag, "canvas") == 0) g_has_canvas = 1; /* live surface -> 30fps tick */
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
-        if (g_find_reveal == c && max_scroll > 0) {
+        if (owns_find_reveal && g_find_reveal == c && max_scroll > 0) {
             int top = *scroll, bot = *scroll + visible_rows;
+            kh_focus_debug_log("FINDREVEAL id=%s row=%d span=%d scroll=%d visible=%d max=%d total=%d h=%d ROW_H=%d w=%d inner=%d",
+                               c->id, row, span, *scroll, visible, max_scroll, total, h, ROW_H, w, inner_w);
             if (row < top) *scroll = row;                       /* above: put it at the top edge */
             else if (row + span > bot) *scroll = row + span - visible_rows;  /* below: last line visible */
             if (*scroll < 0) *scroll = 0;
             if (*scroll > max_scroll) *scroll = max_scroll;
+            /* The visibility answer must use the post-reveal scroll, not the
+             * stale one measured before testing membership. */
+            visible = (row + span > *scroll && row < *scroll + visible_rows);
+            kh_focus_debug_log("FINDREVEAL scroll=%d visible_after=%d", *scroll, visible);
             g_find_reveal = NULL;
         }
 
@@ -6416,8 +6459,14 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             c->x = x; c->y = -100000; c->w = w; c->h = span * ROW_H;
             c->nav_index = 0;
         }
+        if (g_find_query[0] && strstr(c->label, g_find_query)) {
+            kh_focus_debug_log("LAYOUT target id=%s row=%d span=%d scroll=%d x=%d y=%d w=%d h=%d",
+                               c->id, row, span, *scroll, c->x, c->y, c->w, c->h);
+        }
         row += span;
     }
+    if (owns_find_reveal && max_scroll == 0)
+        g_find_reveal = NULL;
 }
 
 /* Real, generic "fixed rows above (or around) a nested <scrolllist>"
@@ -10891,8 +10940,9 @@ static void kh_find_commit(void) {
      * actually navigable - pointing focus at an invisible slot would
      * move the visible caret somewhere unrelated. */
     Elem *t = (g_find_at <= cap) ? g_find_hits_list[g_find_at - 1] : NULL;
-    if (!t) { g_find_at = 0; return; }
+    if (!t) { g_find_at = 0; g_find_reveal = NULL; return; }
     if (t->nav_index >= 1 && t->nav_index <= g_n_nav) g_focus_nav = t->nav_index;
+    kh_focus_debug_log("FINDCOMMIT hits=%d at=%d target=%s", g_find_hits, g_find_at, t->id[0] ? t->id : t->label);
     g_find_reveal = t;
 }
 
@@ -12916,15 +12966,33 @@ static void redraw_body(void) {
         XDrawRectangle(dpy, buf, gc, 0, 0,
                        (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
     }
-    /* user drag-resize affordance: ⌟ in the bottom-right corner when the
-     * window opted in (class="user-resizable"). The KH_RESIZE_GRIP hot
-     * corner in the ButtonPress handler is anchored to the same spot. */
-    if (g_user_resizable && xftdraw_buf && font_ui) {
-        XftColor gcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#888888");
-        XftDrawStringUtf8(xftdraw_buf, &gcol, font_ui,
-                          g_win_w - 15, g_win_h - 5,
-                          (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
+    /* user drag-resize affordance: a ⌟ corner mark drawn with raw X
+     * primitives, not a font glyph - font_ui is Noto Sans CJK SC, which
+     * lacks U+231F, so the first attempt painted .notdef (a boxed X)
+     * that looked like a close button (found live 2026-11-05). Two
+     * filled bars form the corner: always renders, on every machine and
+     * every theme. The mark's shade is sampled from the pixels under it
+     * (the theme fg is black on this house's light theme - invisible on
+     * dark pages, which is why it samples instead of trusting the theme). */
+    if (g_user_resizable) {
+        int light_corner = 0;
+        XImage *samp = XGetImage(dpy, buf, g_win_w - 20, g_win_h - 18, 17, 15, AllPlanes, ZPixmap);
+        if (samp) {
+            unsigned long acc = 0; int n = 0;
+            for (int yy = 0; yy < samp->height; yy++) {
+                for (int xx = 0; xx < samp->width; xx++) {
+                    unsigned long p = XGetPixel(samp, xx, yy);
+                    acc += ((p >> 16 & 0xff) * 299 + (p >> 8 & 0xff) * 587 + (p & 0xff) * 114) / 1000;
+                    n++;
+                }
+            }
+            XDestroyImage(samp);
+            light_corner = (n && acc / n <= 110);
+        }
+        XSetForeground(dpy, gc, alloc_pixel(light_corner ? "#e8e8e8" : "#141414"));
+        int bx = g_win_w - 13, by = g_win_h - 4;   /* baseline of the corner */
+        XFillRectangle(dpy, buf, gc, bx, by - 2, g_win_w - 2 - bx, 2);   /* bottom stub */
+        XFillRectangle(dpy, buf, gc, g_win_w - 4, by - 12, 2, 12);       /* right stub */
     }
     /* FIND IN PAGE (2026-10-12): a small themed strip along the bottom
      * edge, drawn the same way as the confirm popup below - it is the
@@ -13023,6 +13091,14 @@ static void redraw(void) {
 static void redraw(void);
 static void dump_frame_png(void) {
     char png[PATH_BUF];
+    /* A queued browser publish can land between the last tick's rebuild
+     * check and this dump. Check once here too: if the new tree is real,
+     * layout it now (and let redraw() reuse that layout) so the PNG and
+     * its ASCII sidecar cannot disagree about the Find reveal. */
+    if (reparse_chtpm_if_changed()) {
+        assign_nav_and_layout();
+        g_layout_fresh = 1;
+    }
     redraw(); /* REAL FIX above - guarantees `win`'s real on-screen pixels reflect the state as of THIS tick's input, not the previous tick's */
     snprintf(png, sizeof(png), "/tmp/entity-menu-frame.png");
     char cmd[PATH_BUF * 2];

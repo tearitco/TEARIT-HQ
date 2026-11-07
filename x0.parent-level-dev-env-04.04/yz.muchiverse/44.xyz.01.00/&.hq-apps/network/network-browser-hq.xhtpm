@@ -13,7 +13,7 @@
      lay out 3 columns by 2 lines at the 168px tile pitch, and text
      rows before/after the run keep their own rows. No app-name
      checks live in the renderer. -->
-<window label="Network Browser" class="network-browser-pal database-window"
+<window label="Network Browser" class="network-browser-pal database-window user-resizable"
         vars="#.desktop/network-browser-hq_ui.txt">
   <module src="&.hq-apps/network/+x/network_browser_manager.+x" id="ui"/>
   <page name="main" class="nb-cols">
@@ -49,19 +49,20 @@
 
     <panel class="nb-body">
       <row class="toolbar">
-        <item id="nb-back"   class="quiet" label="Back"      action="${act_back}"/>
-        <item id="nb-fwd"    class="quiet" label="Forward"   action="${act_fwd}"/>
-        <item id="nb-stop"   class="quiet" label="Stop"      action="${act_stop}"/>
-        <item id="nb-reload" class="quiet" label="Reload"    action="${act_reload}"/>
-        <item id="nb-home"   class="quiet" label="Home"      action="${act_home}"/>
-        <item id="nb-bm"     class="quiet" label="Bookmark"  action="${act_bm}"/>
-        <item id="nb-close"  class="quiet" label="Close tab" action="${act_close}"/>
+        <item id="nb-back"   class="quiet compact" label="Back"      action="${act_back}"/>
+        <item id="nb-fwd"    class="quiet compact" label="Forward"   action="${act_fwd}"/>
+        <item id="nb-stop"   class="quiet compact" label="Stop"      action="${act_stop}"/>
+        <item id="nb-reload" class="quiet compact" label="Reload"    action="${act_reload}"/>
+        <item id="nb-home"   class="quiet compact" label="Home"      action="${act_home}"/>
+        <item id="nb-bm"     class="quiet compact" label="Bookmark"  action="${act_bm}"/>
+        <item id="nb-print"  class="quiet compact" label="Print"     action="${act_print}"/>
+        <item id="nb-close"  class="quiet compact" label="Close tab" action="${act_close}"/>
       </row>
       <row class="toolbar">
         <repeat count="${n_tabs}" bind="t">
-          <item id="tab${t.#}" class="quiet" label="${t.label}" action="${t.action}"/>
+          <item id="tab${t.#}" class="quiet compact" label="${t.label}" action="${t.action}"/>
         </repeat>
-        <item id="nb-newtab" class="quiet" label="New tab" action="${act_newtab}"/>
+        <item id="nb-newtab" class="quiet compact" label="New tab" action="${act_newtab}"/>
       </row>
       <!-- 2026-09-11, direct live report ("it doesn't let me backspace
            w/e data is in there") - content= (not label=) seeds the

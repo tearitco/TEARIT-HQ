@@ -5992,6 +5992,7 @@ static void write_ui_projection(void) {
     UI_PUT("act_reload='%s/ops/nb_write_reload.sh' 'reload'\n", g_package_dir);
     UI_PUT("act_home='%s/ops/nb_write_go.sh' 'go' 'https://example.com'\n", g_package_dir);
     UI_PUT("act_bm='%s/ops/nb_write_bookmark.sh' 'bookmark'\n", g_package_dir);
+    UI_PUT("act_print='%s/ops/nb_write_print.sh' 'print'\n", g_package_dir);
     UI_PUT("act_close='%s/ops/nb_write_closetab.sh' 'closetab'\n", g_package_dir);
     UI_PUT("act_newtab='%s/ops/nb_write_newtab.sh' 'newtab'\n", g_package_dir);
     UI_PUT("act_go='%s/ops/nb_write_go.sh' 'go' '%s'\n", g_package_dir, g_ui_output_path);
