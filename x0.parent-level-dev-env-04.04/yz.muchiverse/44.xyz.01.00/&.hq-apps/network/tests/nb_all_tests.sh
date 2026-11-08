@@ -34,6 +34,10 @@ echo "########## MutationObserver delivers real DOM mutation records (hermetic)"
 bash "$HERE/nb_mutation_observer_test.sh" || RC=1
 
 echo
+echo "########## IntersectionObserver initial entries use real geometry (hermetic)"
+bash "$HERE/nb_intersection_observer_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

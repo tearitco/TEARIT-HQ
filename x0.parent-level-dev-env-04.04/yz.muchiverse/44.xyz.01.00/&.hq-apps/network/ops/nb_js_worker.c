@@ -1642,8 +1642,138 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     *out_x = x; *out_y = y;
 }
 
+static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_DupValue(ctx, this_val);    /* this is the rect */
+}
+
+/* ---- IntersectionObserver: initial-entry slice (2026-11-08) ----
+ * The prior class was an existence stub. This delivers a real initial
+ * callback for every observed target using the worker's real box geometry
+ * (getBoundingClientRect/layout_xy). It intentionally does not yet claim
+ * later scroll delivery: the worker knows the LOAD viewport, not a live
+ * pane-scroll channel. */
+static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_intersection_observer_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue obj = class_noop(ctx, this_val, 0, argv);
+    if (!JS_IsObject(obj)) return obj;
+    if (argc > 0 && JS_IsFunction(ctx, argv[0]))
+        JS_SetPropertyStr(ctx, obj, "__nb_int_callback", JS_DupValue(ctx, argv[0]));
+    return obj;
+}
+static double nb_int_rect_field(JSContext *ctx, JSValueConst rect, const char *key) {
+    JSValue v = JS_GetPropertyStr(ctx, rect, key);
+    double d = 0;
+    JS_ToFloat64(ctx, &d, v);
+    JS_FreeValue(ctx, v);
+    return d;
+}
+static JSValue nb_intersection_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *target = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    JSValue cb = JS_GetPropertyStr(ctx, this_val, "__nb_int_callback");
+    if (!target || !JS_IsFunction(ctx, cb)) {
+        JS_FreeValue(ctx, cb);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: IntersectionObserver.observe requires a node and callback"));
+        return JS_Throw(ctx, e);
+    }
+    JSValue rect = nb_el_getBoundingClientRect(ctx, argv[0], 0, NULL);
+    double x = nb_int_rect_field(ctx, rect, "x"), y = nb_int_rect_field(ctx, rect, "y");
+    double w = nb_int_rect_field(ctx, rect, "width"), h = nb_int_rect_field(ctx, rect, "height");
+    double right = x + w, bottom = y + h;
+    double root_x = 0.0, root_y = 0.0, root_right = 0.0, root_bottom = 0.0;
+    int have_root = 0;
+    JSValue opts = (argc > 1 && JS_IsObject(argv[1])) ? argv[1] : JS_UNDEFINED;
+    if (JS_IsObject(opts)) {
+        JSValue rv = JS_GetPropertyStr(ctx, opts, "root");
+        if (JS_IsObject(rv)) {
+            NbNode *root_node = get_node(ctx, rv);
+            if (root_node) {
+                JSValue rrect = nb_el_getBoundingClientRect(ctx, rv, 0, NULL);
+                root_x = nb_int_rect_field(ctx, rrect, "x");
+                root_y = nb_int_rect_field(ctx, rrect, "y");
+                root_right = root_x + nb_int_rect_field(ctx, rrect, "width");
+                root_bottom = root_y + nb_int_rect_field(ctx, rrect, "height");
+                have_root = 1;
+                JS_FreeValue(ctx, rrect);
+            }
+        }
+        JS_FreeValue(ctx, rv);
+    }
+    if (!have_root) {
+        root_x = 0.0;
+        root_y = 0.0;
+        root_right = (g_viewport_px > 0.0) ? g_viewport_px : (double)NB_CONTENT_PX;
+        root_bottom = (g_viewport_h > 0.0) ? g_viewport_h : 600.0;
+    }
+    double ix = x > root_x ? x : root_x;
+    double iy = y > root_y ? y : root_y;
+    double iright = right < root_right ? right : root_right;
+    double ibottom = bottom < root_bottom ? bottom : root_bottom;
+    int intersecting = (iright > ix && ibottom > iy);
+    double ratio = 0.0;
+    if (intersecting && w > 0.0 && h > 0.0)
+        ratio = ((iright - ix) * (ibottom - iy)) / (w * h);
+    if (ratio < 0.0) ratio = 0.0;
+    if (ratio > 1.0) ratio = 1.0;
+    JSValue bounds = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, bounds, "x", JS_NewFloat64(ctx, root_x));
+    JS_SetPropertyStr(ctx, bounds, "y", JS_NewFloat64(ctx, root_y));
+    JS_SetPropertyStr(ctx, bounds, "width", JS_NewFloat64(ctx, root_right - root_x));
+    JS_SetPropertyStr(ctx, bounds, "height", JS_NewFloat64(ctx, root_bottom - root_y));
+    JS_SetPropertyStr(ctx, bounds, "top", JS_NewFloat64(ctx, root_y));
+    JS_SetPropertyStr(ctx, bounds, "left", JS_NewFloat64(ctx, root_x));
+    JS_SetPropertyStr(ctx, bounds, "right", JS_NewFloat64(ctx, root_right));
+    JS_SetPropertyStr(ctx, bounds, "bottom", JS_NewFloat64(ctx, root_bottom));
+    JS_SetPropertyStr(ctx, bounds, "toJSON", JS_NewCFunction(ctx, nb_rect_tojson, "toJSON", 0));
+    JSValue clipped = JS_NewObject(ctx);
+    double cw = intersecting ? (iright - ix) : 0.0;
+    double ch = intersecting ? (ibottom - iy) : 0.0;
+    JS_SetPropertyStr(ctx, clipped, "x", JS_NewFloat64(ctx, intersecting ? ix : 0.0));
+    JS_SetPropertyStr(ctx, clipped, "y", JS_NewFloat64(ctx, intersecting ? iy : 0.0));
+    JS_SetPropertyStr(ctx, clipped, "width", JS_NewFloat64(ctx, cw));
+    JS_SetPropertyStr(ctx, clipped, "height", JS_NewFloat64(ctx, ch));
+    JS_SetPropertyStr(ctx, clipped, "top", JS_NewFloat64(ctx, intersecting ? iy : 0.0));
+    JS_SetPropertyStr(ctx, clipped, "left", JS_NewFloat64(ctx, intersecting ? ix : 0.0));
+    JS_SetPropertyStr(ctx, clipped, "right", JS_NewFloat64(ctx, intersecting ? iright : 0.0));
+    JS_SetPropertyStr(ctx, clipped, "bottom", JS_NewFloat64(ctx, intersecting ? ibottom : 0.0));
+    JS_SetPropertyStr(ctx, clipped, "toJSON", JS_NewCFunction(ctx, nb_rect_tojson, "toJSON", 0));
+    JSValue entry = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, entry, "target", JS_DupValue(ctx, argv[0]));
+    JS_SetPropertyStr(ctx, entry, "boundingClientRect", JS_DupValue(ctx, rect));
+    JS_SetPropertyStr(ctx, entry, "intersectionRect", clipped);
+    JS_SetPropertyStr(ctx, entry, "rootBounds", bounds);
+    JS_SetPropertyStr(ctx, entry, "isIntersecting", JS_NewBool(ctx, intersecting));
+    JS_SetPropertyStr(ctx, entry, "intersectionRatio", JS_NewFloat64(ctx, ratio));
+    JS_SetPropertyStr(ctx, entry, "time", JS_NewInt32(ctx, 0));
+    JSValue entries = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, entries, 0, entry);
+    JS_FreeValue(ctx, rect);
+    JSValue av[2] = { JS_DupValue(ctx, entries), JS_DupValue(ctx, this_val) };
+    JSValue r = JS_Call(ctx, cb, this_val, 2, av);
+    if (JS_IsException(r)) {
+        JSValue e = JS_GetException(ctx);
+        JS_FreeValue(ctx, e);
+    }
+    JS_FreeValue(ctx, r);
+    /* Argument/entry references are deliberately reclaimed with the context.
+     * Dropping them here can trigger synchronous GC of the JS object graph
+     * while observe() is still inside its outer JS call and has been
+     * observed to hang. */
+    JS_FreeValue(ctx, cb);
+    return JS_UNDEFINED;
+}
+static JSValue nb_intersection_noop_unobserve(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+static JSValue nb_intersection_noop_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+static JSValue nb_intersection_take_records(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewArray(ctx);
 }
 
 static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -4952,14 +5082,14 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_mutation_disconnect, "disconnect", 0));
         JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_mutation_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "MutationObserver", f);
-        /* IntersectionObserver */
-        f = add_class(ctx, "IntersectionObserver", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 1));
-        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, class_noop, "unobserve", 1));
-        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
-        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
-        JS_FreeValue(ctx, p);
+        /* IntersectionObserver: initial-entry slice; ResizeObserver stays inert. */
+        f = JS_NewCFunction2(ctx, nb_intersection_observer_ctor, "IntersectionObserver", 1, JS_CFUNC_constructor, 0);
+        p = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, f, "prototype", p);
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, nb_intersection_observe, "observe", 1));
+        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, nb_intersection_noop_unobserve, "unobserve", 1));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_intersection_noop_disconnect, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_intersection_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "IntersectionObserver", f);
         /* ResizeObserver */
         f = add_class(ctx, "ResizeObserver", JS_UNDEFINED);
