@@ -14,6 +14,11 @@ VERB | bankrupt  | no | ui | as=pN | classic: the current player declares bankru
 VERB | jail_pay  | no | ui | as=pN | classic: pay the 50 fine to leave Jail, then roll normally
 VERB | jail_card | no | ui | as=pN | classic: use a Get Out of Jail card (cards arrive in M5; refused until then)
 VERB | jail_roll | no | ui | as=pN | classic: throw for doubles in Jail; doubles free you and you move that total (no extra roll); the third failed turn forces the 50 fine
+VERB | build     | no | ui | tile as=pN | classic: build one house (or the hotel) on a street of a colour you own whole, evenly, from the 32 house / 12 hotel supply
+VERB | sell      | no | ui | tile as=pN | classic: sell one building back for half its cost, evenly (also while in debt)
+VERB | mortgage  | no | ui | tile as=pN | classic: mortgage a tile with no buildings in its colour for half its price (also while in debt)
+VERB | unmortgage| no | ui | tile as=pN | classic: lift a mortgage for its value plus 10 percent, rounded up
+VERB | pay_debt  | no | ui | as=pN | classic: pay the debt once the cash covers it (after selling or mortgaging)
 VERB | help      | no | ui | verb | list the verbs (from this file) and, in a classic game, the phase and what is legal now
 VERB | roll      | no | ui | as=pN        | the current player rolls two dice (seeded, recorded), moves, and the landing resolves (Start bonus, levy, rent, or a tile for sale)
 VERB | buy       | no | ui | -            | buy the tile the current player stands on (refused when unaffordable or not for sale)
@@ -41,6 +46,11 @@ FLOW | bankrupt  | state/ledger.txt           | state/ledger.txt
 FLOW | jail_pay  | state/ledger.txt           | state/ledger.txt
 FLOW | jail_card | state/ledger.txt           | state/ledger.txt
 FLOW | jail_roll | state/ledger.txt           | state/ledger.txt
+FLOW | build     | state/ledger.txt           | state/ledger.txt
+FLOW | sell      | state/ledger.txt           | state/ledger.txt
+FLOW | mortgage  | state/ledger.txt           | state/ledger.txt
+FLOW | unmortgage| state/ledger.txt           | state/ledger.txt
+FLOW | pay_debt  | state/ledger.txt           | state/ledger.txt
 FLOW | help      | verbs.pdl,state/ledger.txt | -
 FLOW | roll      | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt

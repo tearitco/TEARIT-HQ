@@ -5,3 +5,5 @@ RULE | pass_go       | 200
 RULE | max_players   | 8
 RULE | seed          | 7
 RULE | safety_rounds | 400
+RULE | houses_total  | 32
+RULE | hotels_total  | 12

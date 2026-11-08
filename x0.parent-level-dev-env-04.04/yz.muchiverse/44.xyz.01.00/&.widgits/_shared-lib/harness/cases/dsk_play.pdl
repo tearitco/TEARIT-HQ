@@ -62,22 +62,22 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | join | B | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | join | C | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | start | 6
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | autoplay
-EXPECT_OUT | AUTOPLAY events=2647 rounds=400 over=1 stalemate=p2 | three-pets-play-to-the-400-round-safety-cap
+EXPECT_OUT | AUTOPLAY events=527 rounds=74 over=1 winner=p1 | three-pets-with-buildings-play-until-two-go-bankrupt
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | check
-EXPECT_OUT | CHECK ok schema=2 events=2647 sum=4500 | money-conserved-after-2647-rows
+EXPECT_OUT | CHECK ok schema=2 events=527 sum=4500 | money-conserved-after-527-rows-with-buildings-and-mortgages
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | replay
 EXPECT_EXIT | 0 | the-whole-game-replays
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | ledger_hash
-EXPECT_OUT | rows=2647 hash=826b6b6f46c4e8b2 | the-ledger-hash-is-pinned
+EXPECT_OUT | rows=527 hash=5a77fbf55d847de2 | the-ledger-hash-is-pinned
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | roll
 EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-over
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | autoplay
 EXPECT_OUT | over=1 | autoplay-on-a-finished-game-just-reports-it
-WRITE   | a.awk | BEGIN{FS="\p"}\nFILENAME==ARGV[1]{if($1~/^TILE/){i=$2+0;k=$4;gsub(/ /,"",k);kind[i]=k;r0[i]=$7+0}next}\n($4=="roll"\p\p$4=="jail_roll")&&$7~/rent-/{n++;split($5,d,",");dice=d[1]+d[2];if($7~/cardroll=/){cr=$7;sub(/^.*cardroll=/,"",cr);sub(/;.*$/,"",cr);split(cr,e,",");dice=e[1]+e[2];cardutil=1}else cardutil=0;t=$7;sub(/^.*to=/,"",t);sub(/;.*$/,"",t);t=t+0;a=$7;sub(/^.*rent-/,"",a);sub(/->.*$/,"",a);a=a+0;ok=0\nif(kind[t]=="street"){if(a==r0[t])ok=1;if(a==2*r0[t]){ok=1;dbl++}}\nif(kind[t]=="rail"){if(a==25)ok=1;if(a==50)ok=1;if(a==100)ok=1;if(a==200)ok=1;if($7~/card=/){if(a==400)ok=1;if(a==100\p\pa==200\p\pa==50)ok=1}}\nif(kind[t]=="util"){if(cardutil){if(a==10*dice)ok=1}else{if(a==4*dice)ok=1;if(a==10*dice)ok=1}}\nif(!ok)bad++}\nEND{print "rentrows=" n " doubled=" dbl+0 " bad=" bad+0}\n
+WRITE   | a.awk | BEGIN{FS="\p"}\nFILENAME==ARGV[1]{if($1~/^TILE/){i=$2+0;k=$4;gsub(/ /,"",k);kind[i]=k;for(j=0;j<6;j++)r[i,j]=$(7+j)+0}next}\n($4=="roll"\p\p$4=="jail_roll")&&$7~/rent-/{n++;split($5,d,",");dice=d[1]+d[2];if($7~/cardroll=/){cr=$7;sub(/^.*cardroll=/,"",cr);sub(/;.*$/,"",cr);split(cr,e,",");dice=e[1]+e[2];cardutil=1}else cardutil=0;t=$7;sub(/^.*to=/,"",t);sub(/;.*$/,"",t);t=t+0;a=$7;sub(/^.*rent-/,"",a);sub(/->.*$/,"",a);a=a+0;ok=0\nif(a==0){ok=1;zero++}\nif(kind[t]=="street"){for(j=0;j<6;j++)if(a==r[t,j])ok=1;if(a==2*r[t,0]){ok=1;dbl++}else{for(j=1;j<6;j++)if(a==r[t,j])bt++}}\nif(kind[t]=="rail"){if(a==25)ok=1;if(a==50)ok=1;if(a==100)ok=1;if(a==200)ok=1;if($7~/card=/){if(a==400)ok=1}}\nif(kind[t]=="util"){if(cardutil){if(a==10*dice)ok=1}else{if(a==4*dice)ok=1;if(a==10*dice)ok=1}}\nif(!ok)bad++}\nEND{print "rentrows=" n " doubled=" dbl+0 " built=" bt+0 " zero=" zero+0 " bad=" bad+0}\n
 RUN | /usr/bin/awk | -f | $T/a.awk | $T/app/rulesets/classic/board.pdl | $T/a/ledger.txt
-EXPECT_OUT | rentrows=620 doubled=152 bad=0 | every-rent-in-the-game-is-one-the-rent-function-allows
+EXPECT_OUT | rentrows=57 doubled=5 built=6 zero=4 bad=0 | every-rent-in-the-game-is-one-the-rent-function-allows
 RUN | /usr/bin/cp | $T/a/ledger.txt | $T/a/good.keep
-RUN | /usr/bin/sed | -i | 0,/rent-20->/s//rent-21->/ | $T/a/ledger.txt
+RUN | /usr/bin/sed | -i | 0,/rent-18->/s//rent-19->/ | $T/a/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/a/good.keep | $T/a/ledger.txt
 EXPECT_EXIT | 1 | the-tamper-really-changed-the-ledger-so-the-next-refusal-is-not-vacuous
 RUN | /usr/bin/awk | -f | $T/a.awk | $T/app/rulesets/classic/board.pdl | $T/a/ledger.txt
@@ -113,7 +113,7 @@ EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-the-game-is-over
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | bankrupt
 EXPECT_EXIT | 2 | NEGATIVE-bankrupt-after-over-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | ledger_hash
-EXPECT_OUT | rows=108 hash=cdee0bd974c2c178 | the-bankruptcy-game-hash
+EXPECT_OUT | rows=108 hash=fb3f8fc2b371acbc | the-bankruptcy-game-hash
 RUN | /usr/bin/cp | $T/b/ledger.txt | $T/b/good.keep
 RUN | /usr/bin/sed | -i | s/\pbankrupt\pp1\p/\pbankrupt\pbank\p/ | $T/b/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/b/good.keep | $T/b/ledger.txt

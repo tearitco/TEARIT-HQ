@@ -47,7 +47,7 @@ EXPECT_OUT_IS | 104 | luck-draws-in-the-game
 RUN | /usr/bin/grep | -c | card=fund | $T/m/ledger.txt
 EXPECT_OUT_IS | 96 | fund-draws-in-the-game
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
-EXPECT_OUT | rows=2643 hash=3c4ba9fafd5faf8b | the-card-game-hash-is-pinned
+EXPECT_OUT | rows=2643 hash=9fa744b44b3362d3 | the-card-game-hash-is-pinned
 
 CASE    | jailcard
 SCRATCH |
@@ -88,13 +88,13 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | join | A | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | join | B | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | start | 7
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | autoplay
-EXPECT_OUT | AUTOPLAY events=281 rounds=57 over=1 winner=p1 | a-loop-deck-game-ends-so-the-chain-of-card-moves-cannot-run-forever
+EXPECT_OUT | AUTOPLAY events=464 rounds=86 over=1 winner=p1 | a-loop-deck-game-ends-so-the-chain-of-card-moves-cannot-run-forever
 RUN | /usr/bin/grep | -c | nocard | $T/l/ledger.txt
-EXPECT_OUT_IS | 13 | the-third-card-landing-in-a-chain-draws-nothing-13-times
+EXPECT_OUT_IS | 26 | the-third-card-landing-in-a-chain-draws-nothing-26-times
 RUN | /usr/bin/grep | -cF | EVENT\p5\pp2\proll\p1,3\p33\pto=2;go+200;card=fund:9;to=36;card=luck:16;to=33;nocard | $T/l/ledger.txt
 EXPECT_OUT_IS | 1 | the-exact-chain-fund-then-luck-then-a-fund-tile-that-draws-nothing
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | check
-EXPECT_OUT | CHECK ok schema=2 events=281 sum=3000 | invariants-hold-through-chained-card-moves
+EXPECT_OUT | CHECK ok schema=2 events=464 sum=3000 | invariants-hold-through-chained-card-moves
 
 CASE    | cards_short
 SCRATCH |
