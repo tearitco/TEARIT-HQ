@@ -1,0 +1,4 @@
+# Book deskopoly. The editor resolves a book as @.apps/<book>/rooms.pdl (edit_last.sh) and its pages as desks in deskopoly-pchq/.../game.pdl (edit_open.sh).
+# One page, board: the 16-tile ring of board.pdl. The row shape is copied from @.apps/centroid/rooms.pdl (I did not read what each number means).
+# This file does not paint the page. The page's drawing (cells.txt, map.txt, atlas) is not made yet: pass 1 only makes the book resolvable.
+ROOM | board | board | 1 | 4 | over | 24 | 17 | 24 | interior

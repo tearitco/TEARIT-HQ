@@ -141,3 +141,19 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/brain_lint.+x | $T/v5.pdl
 EXPECT_OUT | brain_rows=1 fail=0 | without-a-phases-file-phase-names-are-not-checked
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/brain_lint.+x | $T/nofile.pdl
 EXPECT_EXIT | 2 | NEGATIVE-an-unreadable-file-is-a-usage-error
+
+# the game is a BOOK the editor can resolve, the same shape as @.apps/centroid (rooms.pdl + <book>-pchq/.../game.pdl); uses the existing edit_open.sh like centroid_book does. The page is not DRAWN yet.
+CASE    | book
+SCRATCH |
+COPY    | @.apps/rpg-edit-hq/ops/edit_open.sh | edit_open.sh
+MKDIR   | house/@.apps/deskopoly/deskopoly-pchq/pieces/system/maps/deskopoly
+COPY    | @.apps/deskopoly/deskopoly-pchq/pieces/system/maps/deskopoly/game.pdl | house/@.apps/deskopoly/deskopoly-pchq/pieces/system/maps/deskopoly/game.pdl
+RUN | sh | $T/edit_open.sh | $T/house | deskopoly | board
+EXPECT_EXIT | 0 | the-editor-resolves-deskopoly-board
+EXPECT_OUT | book=deskopoly page=board event=none pages=1 events=0 | open-says-one-page
+RUN | sh | $T/edit_open.sh | $T/house | deskopoly | nowhere
+EXPECT_EXIT | 2 | NEGATIVE-a-page-that-is-not-a-desk-is-refused
+RUN | sh | $T/edit_open.sh | $T/house | nobook | board
+EXPECT_EXIT | 2 | NEGATIVE-a-book-with-no-game-pdl-is-refused
+RUN | grep | -c | ^ROOM | $HOUSE/@.apps/deskopoly/rooms.pdl
+EXPECT_OUT_IS | 1 | rooms-pdl-lists-the-same-one-page-as-game-pdl
