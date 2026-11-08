@@ -199,6 +199,20 @@ Agent tools and board controls on one page: `02-architecture/AGENT-TOOLBOX-AND-C
 Lore and IP (what TSOTS means, the Soul Pen franchise, the Centroid): chapter `22.lore-ip/00-INDEX.md` in the HQ-IQ-BOOK (2026-11-05): read it before designing any level, character or quest; the source folders are outside the repo and have a newline in a name (see its index).
 
 
+## No ghost data: the ledger is the only authority for game state (REQUIRED, since 2026-11-07)
+
+Owner: "never do things that create ghost data by circumventing the ledger." A fact about a game or world lives in ONE place: an append-only ledger row written through a verb the game already knows.
+Everything else on disk is a **projection** (derived by a named verb, safe to delete, rewritten byte for byte), a **config** (an input, never written by the game) or a **preference** (a user's window choice that never changes an outcome).
+A file that carries a fact the ledger lacks is **ghost data**, a bug.
+
+- To change game state, append a row through a verb. Never write a state file to change behaviour, and never hand-edit a live state file (set a scenario up in a scratch house, or with a row that says who and why).
+- Never keep behaviour-deciding state only in memory (a counter, a cache): derive it from the ledger with a byte cursor. A driver change (who plays a seat) is a row.
+- Never read a projection back as input. Every game with state declares its state folder in `state.pdl` (`FILE | name | kind | writer | regenerate_with`, kind LEDGER, PROJECTION, CONFIG or PREFERENCE); an `audit` verb fails on any undeclared file.
+- A game with hard state ships four tests that can fail: replay reproduces it and a hand-edited ledger is refused; files beside the ledger change nothing; the audit finds a stray file; deleted projections regenerate identical bytes. Worked example: harness case `deskopoly` (`&.widgits/_shared-lib/harness/cases/deskopoly.pdl`, cases `replay`, `ghost`, `seats`).
+- Scratch-only `PUT` / `INIT` in a harness phase table stays allowed (say why in a `NOTE` row); it never runs in the live house.
+- Many existing games (the petslike family keeps pet positions in mutable `state/*.txt`, mcl-hq's bank digest hangs on an in-memory counter) predate this rule: new work follows it now, the retrofit plan is in the standard. Do not treat the old pattern as precedent.
+Standard, evidence and retrofit plan: HQ-IQ-BOOK `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`.
+
 ## Source of truth
 
 Full house conventions live in the HQ-IQ-BOOK:

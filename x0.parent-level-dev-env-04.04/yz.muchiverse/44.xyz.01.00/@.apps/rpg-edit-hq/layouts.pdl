@@ -1,8 +1,11 @@
 # layouts.pdl - the editor's own bars, declared as data (2026-11-07; owner decision 3: a book declares its bars in layouts.pdl; BOOK 08-roadmap/design-docs/PROPOSAL-PLAY-MODE-SEATS-AND-GAME-SIDEBARS-2026-11-07.md).
-# BAR | id | key | slot | modes | default | group | note        read by &.widgits/_shared-lib/ops/+x/ui_mode_op.+x (see its header for every column)
+# BAR     | id | key | slot | modes | default | group | note        read by &.widgits/_shared-lib/ops/+x/ui_mode_op.+x (see its header for every column; run it with --var APP=<this folder>)
+# SETTING | id | read_file | apply | edit_default | play_default | note   a value kept OUTSIDE sides.txt: remembered per mode and put back through the game's own verb
 # key = the state key the board template gates a row on, e.g. show="${side_pal}" in board/pchq-board.xhtpm; the keys live in board/state/sides.txt.
-# Today's three rows are declared as they are now (pets and palettes share the left slot through pal_side, so they are one exclusive group); the values below are the first-run defaults and equal the live sides.txt (side_left empty, side_pal 1, side_right 1).
-# JUDGEMENT CALL, change freely: chat is `edit` only, so Play shows the GAME's bars and not the editor's; put `edit,play` to keep it in Play.
-BAR | pets     | side_left  | left  | edit | off | left | the pets bar (shares the left slot with palettes)
-BAR | palettes | side_pal   | left  | edit | on  | left | the palettes bar
-BAR | chat     | side_right | right | edit | on  |      | the h-ai chat
+# Owner 2026-11-07: "play vs edit shows palettes vs entities". Palettes are an EDIT tool; the pets bar is the entity list, on in PLAY (and still available in edit, where it shares the left slot with palettes: one exclusive group, as pal_side does today).
+# Owner 2026-11-07: "play should open chat instead of h-ai chat, because it is game chat". The right bar is ONE row that shows the pet/game chat (chatmode edit), the API chat (hai) or the network chat; so the bar stays in both modes and the SETTING below sets which chat it shows: Play = the game chat, Edit = whatever the user last had.
+# The defaults apply only until a mode has been used: after that ui_mode_op remembers what the user left open in each mode (a preference file, never game state).
+BAR     | palettes | side_pal   | left  | edit      | on               | left | the palettes bar: an edit tool
+BAR     | pets     | side_left  | left  | edit,play | edit=off,play=on | left | the pets bar: the entities of the world (shares the left slot with palettes)
+BAR     | chat     | side_right | right | edit,play | on               |      | the chat bar: the game chat in Play, the user's last chat (h-ai, network or game) in Edit
+SETTING | chatmode | $APP/state/flag_chatmode.txt | $APP/ops/+x/rpg_edit_hq.+x chatmode %v | - | edit | what the chat bar shows: edit = the game (pet) chat, hai = the API chat, network = later; the verb is the Chat tab's own

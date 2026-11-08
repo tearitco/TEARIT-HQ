@@ -9,8 +9,9 @@ WRITE   | sides.txt | side_left=\nside_right=1\nside_pal=1\neditor_note=keep\n
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | show
 EXPECT_OUT_IS | UIMODE edit | a-window-with-no-ui_mode-key-is-in-edit
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
-EXPECT_OUT_IS | UIMODE edit->play on=seats off=pets,palettes,chat | play-shows-the-games-bar-and-hides-the-editors
-EXPECT_FILE | sides.txt | side_left=\nside_right=\nside_pal=\neditor_note=keep\nside_game_seats=1\nui_mode=play\nmode_edit=\nmode_play=1\n | the-keys-are-1-or-EMPTY-and-a-key-no-bar-declares-is-kept
+# 2026-11-07: the editor layouts.pdl now lists pets for edit AND play (owner: play shows entities, not palettes), so Play shows pets and the game bar and hides palettes and chat
+EXPECT_OUT_IS | UIMODE edit->play on=pets,seats off=palettes,chat | play-shows-the-pets-bar-and-the-games-bar-and-hides-palettes-and-chat
+EXPECT_FILE | sides.txt | side_left=1\nside_right=\nside_pal=\neditor_note=keep\nside_game_seats=1\nui_mode=play\nmode_edit=\nmode_play=1\n | the-keys-are-1-or-EMPTY-and-a-key-no-bar-declares-is-kept
 RUN | cp | $T/sides.txt | $T/sides.before
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
 RUN | cmp | $T/sides.txt | $T/sides.before
@@ -24,7 +25,7 @@ SCRATCH |
 WRITE   | sides.txt | side_left=\nside_right=1\nside_pal=\nui_mode=edit\nmode_edit=1\nmode_play=\neditor_note=keep\nside_game_seats=\n
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | edit
-EXPECT_OUT_IS | UIMODE play->edit on=chat off=pets,palettes,seats | back-in-edit-the-chat-returns-and-the-hidden-palettes-stay-hidden
+EXPECT_OUT_IS | UIMODE play->edit on=chat off=palettes,pets,seats | back-in-edit-the-chat-returns-and-the-hidden-palettes-stay-hidden
 EXPECT_FILE | sides.txt | side_left=\nside_right=1\nside_pal=\nui_mode=edit\nmode_edit=1\nmode_play=\neditor_note=keep\nside_game_seats=\n | the-round-trip-restores-the-file-byte-for-byte
 EXPECT_HAS | sides_mode_memory.pdl | MEM \p edit \p side_pal \p off | the-memory-file-holds-the-users-choice
 EXPECT_HAS | sides_mode_memory.pdl | user PREFERENCE | the-memory-file-says-it-is-a-preference-and-not-game-state
@@ -67,3 +68,69 @@ EXPECT_EXIT | 2 | NEGATIVE-a-missing-layouts-file-is-refused
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | play | edit
 EXPECT_EXIT | 2 | NEGATIVE-no-bars-is-a-usage-error
 EXPECT_FILE | sides.txt | ui_mode=edit\n | none-of-the-refusals-touched-sides-txt
+
+# a bar's default can differ by mode (palettes in edit, pets in play: the owner's "palettes versus entities"), and a bad per-mode default is refused
+CASE    | permode
+SCRATCH |
+WRITE   | bars.pdl | BAR | tools | k_tools | left | edit,play | edit=on,play=off |  | on in edit, off in play\nBAR | ents | k_ents | left | edit,play | edit=off,play=on |  | off in edit, on in play\n
+WRITE   | sides.txt | ui_mode=play\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --memory | $T/m.pdl | --bars | $T/bars.pdl | edit
+EXPECT_OUT_IS | UIMODE play->edit on=tools off=ents | first-time-in-edit-the-tools-are-on-and-the-entities-off
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --memory | $T/m.pdl | --bars | $T/bars.pdl | play
+EXPECT_OUT_IS | UIMODE edit->play on=ents off=tools | first-time-in-play-the-entities-are-on-and-the-tools-off
+WRITE   | bad.pdl | BAR | x | k_x | left | edit | edit=sometimes |  | bad\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $T/bad.pdl | play
+EXPECT_EXIT | 2 | NEGATIVE-a-per-mode-default-that-is-not-on-or-off-is-refused
+
+# SETTINGS (owner 2026-11-07: "play should open chat instead of h-ai chat, because it is game chat"): a value kept outside sides.txt (which chat the right bar shows) is remembered per mode and put back by the game's own verb.
+# The apply command here is a plain cp from a prepared file, so no live flag is touched: val_edit holds `edit`, val_hai holds `hai`, flag.txt is the "current chat mode".
+CASE    | settings
+SCRATCH |
+WRITE   | val_edit | edit\n
+WRITE   | val_hai | hai\n
+WRITE   | flag.txt | hai\n
+WRITE   | sides.txt | ui_mode=edit\nside_right=1\n
+WRITE   | bars.pdl | BAR | chat | side_right | right | edit,play | on |  | the right bar\nSETTING | chatmode | $D/flag.txt | /bin/cp $D/val_%v $D/flag.txt | - | edit | edit = the game (pet) chat, hai = the API chat\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --var | D=$T | --bars | $T/bars.pdl | --dry | play
+EXPECT_OUT | setting chatmode=edit (dry) | a-dry-run-says-what-it-would-set
+EXPECT_FILE | flag.txt | hai\n | and-changes-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --var | D=$T | --bars | $T/bars.pdl | play
+EXPECT_OUT | setting chatmode=edit | entering-play-sets-the-chat-to-the-game-chat
+EXPECT_FILE | flag.txt | edit\n | the-flag-is-now-edit-the-game-chat
+EXPECT_HAS | sides_mode_memory.pdl | MEMV \p edit \p chatmode \p hai | the-chat-the-user-had-in-edit-is-remembered
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --var | D=$T | --bars | $T/bars.pdl | edit
+EXPECT_OUT | setting chatmode=hai | back-in-edit-the-users-chat-comes-back
+EXPECT_FILE | flag.txt | hai\n | the-flag-is-hai-again
+# with no memory for a mode and a `-` default nothing is touched
+WRITE   | flag2.txt | edit\n
+WRITE   | sides2.txt | ui_mode=play\nside_right=1\n
+WRITE   | bars2.pdl | BAR | chat | side_right | right | edit,play | on |  | x\nSETTING | chatmode | $D/flag2.txt | /bin/cp $D/val_%v $D/flag2.txt | - | edit | x\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides2.txt | --memory | $T/mem2.pdl | --var | D=$T | --bars | $T/bars2.pdl | edit
+EXPECT_OUT_LACKS | setting | the-dash-default-leaves-the-setting-alone
+EXPECT_FILE | flag2.txt | edit\n | and-the-flag-is-untouched
+# a failing apply is not hidden: exit 1, and sides.txt is still switched
+WRITE   | sides3.txt | ui_mode=edit\nside_right=1\n
+WRITE   | bars3.pdl | BAR | chat | side_right | right | edit,play | on |  | x\nSETTING | chatmode | $D/flag.txt | /bin/false %v | - | edit | the apply fails\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides3.txt | --memory | $T/mem3.pdl | --var | D=$T | --bars | $T/bars3.pdl | play
+EXPECT_EXIT | 1 | NEGATIVE-a-failing-apply-exits-1
+EXPECT_OUT | FAILED | and-says-so
+EXPECT_HAS | sides3.txt | ui_mode=play | the-bars-were-still-switched
+# bad SETTING rows are refused
+WRITE   | s1.pdl | BAR | chat | k | right | edit | on |  | x\nSETTING | chatmode | $D/flag.txt\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --var | D=$T | --bars | $T/s1.pdl | play
+EXPECT_EXIT | 2 | NEGATIVE-a-setting-with-too-few-fields-is-refused
+WRITE   | s2.pdl | BAR | chat | k | right | edit | on |  | x\nSETTING | c | $D/f | /bin/true %v | two words | edit | x\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --var | D=$T | --bars | $T/s2.pdl | play
+EXPECT_EXIT | 2 | NEGATIVE-a-default-that-is-not-a-single-word-or-a-dash-is-refused
+WRITE   | s3.pdl | BAR | chat | k | right | edit | on |  | x\nSETTING | c | $D/f | /bin/true | - | - | x\nSETTING | c | $D/g | /bin/true | - | - | x\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --var | D=$T | --bars | $T/s3.pdl | play
+EXPECT_EXIT | 2 | NEGATIVE-a-setting-declared-twice-is-refused
+# a dry run writes NOTHING: not sides.txt, not the memory file
+CASE    | dry
+SCRATCH |
+WRITE   | sides.txt | ui_mode=edit\nside_right=1\n
+WRITE   | bars.pdl | BAR | chat | side_right | right | edit | on |  | x\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $T/bars.pdl | --dry | play
+EXPECT_OUT | UIMODE edit->play | the-dry-run-reports-the-switch
+EXPECT_FILE | sides.txt | ui_mode=edit\nside_right=1\n | and-sides-txt-is-untouched
+EXPECT_NOFILE | sides_mode_memory.pdl | and-no-memory-file-was-made
