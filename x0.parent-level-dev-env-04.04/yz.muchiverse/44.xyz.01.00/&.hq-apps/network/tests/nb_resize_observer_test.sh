@@ -25,7 +25,7 @@ printf '/*nbjs-script-boundary*/\nconsole.log("LOADOK");\n' > "$WORK/page.js"
 printf 'N|#document|||0||0|\nD\nN|html|||3|\n\n\n|4|html\nD\nN|head|||0||4|head\nD\nN|title|||0||5|title\nU\nN|body|||3|\n\n\n|4|body\nD\nN|p|t||6|tick 0|8|p id="t"\nN|p|||48|Timer fixture: this paragraph must never change.|1|p\nU\nU\nU\n' > "$WORK/dom.txt"
 
 cat > "$WORK/probe.js" <<'PROBE'
-(function(){   var pass=0,total=0;   function check(name,got,want){ total++; if(got===want){ pass++; console.log('RO_TESTOK '+name); } else { console.log('RO_TESTFAIL '+name+' got='+got+' want='+want); }   }   var events=[];   var el=document.querySelector('#t');   var obs=new ResizeObserver(function(entries,observer){       var e=entries[0];       events.push(entries.length+':'+e.contentRect.width+'x'+e.contentRect.height+':'+(e.target===el)+':'+(this===observer)+':'+e.borderBoxSize[0].inlineSize+'x'+e.borderBoxSize[0].blockSize);     });   obs.observe(el);   check('initial-box-entry', events[0]||'none', '1:800x30:true:true:800x30');   var obs2=new ResizeObserver(function(entries){       events.push('second:'+entries[0].contentRect.width+'x'+entries[0].contentRect.height);     });   obs2.observe(document.querySelector('#nb-auto-1'));   check('second-target-entry', events[1]||'none', 'second:800x30');   console.log('RO_TESTRESULT '+pass+'/'+total);   return 'RO_TESTDONE'; })();
+(function(){ var pass=0,total=0; function check(n,g,w){ total++; if(g===w){pass++; console.log('RO_TESTOK '+n);} else {console.log('RO_TESTFAIL '+n+' got='+g+' want='+w);} } var calls=0; var last='none'; var el=document.querySelector('#t'); var obs=new ResizeObserver(function(entries,observer){ calls++; var e=entries[0]; last=e.contentRect.width+'x'+e.contentRect.height+':'+e.borderBoxSize[0].inlineSize+'x'+e.borderBoxSize[0].blockSize+':'+(e.target===el)+':'+(this===observer); }); obs.observe(el); check('sync-pending', String(calls), '0'); queueMicrotask(function(){ check('initial-entry', String(calls)+':'+last, '1:800x30:800x30:true:true'); el.setAttribute('style','height:100px'); queueMicrotask(function(){ check('size-change', String(calls)+':'+last, '2:800x100:800x100:true:true'); obs.disconnect(); el.setAttribute('style','height:200px'); queueMicrotask(function(){ check('disconnect-suppresses', String(calls)+'@'+last, '2@800x100:800x100:true:true'); console.log('RO_TESTRESULT '+pass+'/'+total); }); }); }); return 'RO_TESTDONE'; })();
 PROBE
 
 python3 "$HERE/nb_probe.py" \
@@ -38,7 +38,7 @@ python3 "$HERE/nb_probe.py" \
 grep -q '^=>RO_TESTDONE' "$WORK/console.txt" \
     || { echo "FAIL: the probe never ran"; sed -n '1,30p' "$WORK/err.log"; exit 1; }
 
-grep -q '^LOG|RO_TESTRESULT 2/2' "$WORK/console.txt" \
+grep -q '^LOG|RO_TESTRESULT 4/4' "$WORK/console.txt" \
     || { echo "FAIL: not every ResizeObserver assertion held"; FAIL=1; }
 
 if grep -q '^LOG|RO_TESTFAIL' "$WORK/console.txt"; then
@@ -48,7 +48,7 @@ if grep -q '^LOG|RO_TESTFAIL' "$WORK/console.txt"; then
 fi
 
 if [ "$FAIL" -eq 0 ]; then
-    echo "nb_resize_observer_test.sh PASS (2/2)"
+    echo "nb_resize_observer_test.sh PASS (4/4)"
 else
     echo "nb_resize_observer_test.sh FAIL"
 fi
