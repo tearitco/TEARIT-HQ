@@ -26,7 +26,7 @@
 ## 1. 🎯 Verdict in five lines
 1. **Not misdesigned.** The reuse was designed on 2026-10-17 (`17.ai/HARNESS-AS-GAME-BRAIN.md`): same verbs, same bank file shape, same weight formula.
 2. **But the loop was never closed.** Its own section 4 says: no caller exists, promotion is undesigned, no planner reads the weights, and the harness only plays a *scratch* copy.
-3. **What I found today makes it concrete (OBS):** the pets' own bank in mcl-hq is **empty** (509 live decision rows, 0 non-empty weight files), and those rows are only `walk` (491) and `door` (18). **No pet has ever decided to mine, craft or place**, which are exactly the verbs the campus run (D38) needs.
+3. **What I found today makes it concrete (OBS):** the pets' own bank in mcl-hq is **empty** (509 live decision rows, 0 non-empty weight files), and those rows are only `walk` (491) and `door` (18). **No pet has ever decided to mine, craft or place, and today none can** (a pet only wanders, see G9), and those are exactly the verbs the campus run (D38) needs.
 4. **The proposal:** one action vocabulary per game as the single authority; **two numbers per action, not one** (`can` from the harness, `does` from live play); a small caller so a pet's plan is judged in scratch and then executed live with the same keys; the material gate named as the skin step.
 5. **Timing: early enough, not perfect.** No pet-build history exists to migrate and no caller exists to break, but one more naming scheme (Grok's centroid parts) and my own material gate landed without being mapped. Section 8.
 
@@ -83,6 +83,7 @@ You asked: do the harnesses use events, ops, blueprints; are they pal or still w
 | G6 | **The skin step has no reader.** The stamp places voxels without asking the material gate; no harness fails when the material name is wrong | READ Grok's `WEIGHTS-ATTENTION-HARNESSES-AND-EVENTS-2026-11-06.md` ("Not yet") |
 | G7 | **D45 to D47 count in bank 1 only.** Verb pages, phases and the campus phrases all rank through the harness bank. I found no mention of `decisions.txt` or `dec_op` in D45, D46, D47 or their two pages, so the live evidence (bank 2) has no place in them yet | READ D45 to D47, `GAME-MECHANICS-TRAINABLE-EVENTS-2026-11-06.md`, `SELF-CODING-HARNESS-PLANS-2026-11-06.md` |
 | G8 | **A stated rule to reconcile.** D47: "A higher weight does not auto-fire the page in the live house. A person, or a phase table a person shipped, chooses the attempt. Rank is a suggestion." Pets already choose on a weight for `walk` (`pick_pct`). The two have to be drawn apart (section 4.2, decision 5) | READ `GAME-MECHANICS-TRAINABLE-EVENTS-2026-11-06.md` and `dec_op.c` |
+| G9 | **Pets do not choose between actions today.** The shared core's `ai_step` (`petslike_core.c`, line 1022 on) does three things: keep or pick a **random** target, walk one BFS step toward it, greet a neighbour. mcl-hq's DEC rows are **labelled after the step** from before/after state (`mcl_hq.c` lines 338 to 344: moved and room changed = `door`, moved = `walk`, no target before and one now = `pick`), so `walk`, `door`, `dig` and `pick` are **labels, not choices**. The core is used by **nine games** (dsr-rpg, df-hq, cdda-hq, rpg-pet, civ-rpgce, rpg-edit-hq, tcg-rpgce, gta-hq, mcl-hq). An action-choosing layer for `mine craft place` is therefore **new pet behaviour in a shared core**, not a logging change; and no FSM or GOAP exists (`HARNESS-AS-GAME-BRAIN.md` §4.4) | READ `petslike_core.c`, `mcl_hq.c`, `verbs.pdl` of the nine games |
 
 ---
 
@@ -185,7 +186,7 @@ A high `does` or `can` ranks and chooses; it **never writes the concept bank**. 
 | **P0** | **Find why mcl-hq's bank is empty.** Run `dec_op bank` by hand on the 509 rows in a scratch copy; check the 200-row counter hypothesis | non-empty weights equal the hand count I took today from `decisions.txt` (OBS: walk 455 ok / 36 blocked, door 18 ok, so walk weight = 456/493 = 0.925 and door weight = 19/20 = 0.950); then fix the trigger |
 | **P1** | `BRAIN` rows in mcl-hq `verbs.pdl` + lint case (`verbgen check` must still pass) | a made-up phase and a made-up DEC action each fail |
 | **P2** | `dec_op rank` + policy rows | pinned output for fixed files; a failing harness phase drops the action below `can_min`; `can_min` change flips the pick |
-| **P3** | mcl-hq pet planner for `mine craft place` (new DEC keys), proposal in scratch, execute live | scratch run passes; live rows carry the same keys; a deliberately wrong proposal is refused and never touches the live ledger |
+| **P3 (LARGE: needs its own design page first, see G9)** | give mcl-hq pets an action-choosing layer for `mine craft place` (new behaviour, new DEC keys, in the shared core or an op the core calls), proposal in scratch, execute live | scratch run passes; live rows carry the same keys; a deliberately wrong proposal is refused and never touches the live ledger |
 | **P4** | gate event page + stamp reads the material | harness fails when the name is wrong (negative pinned) |
 | **P5** | `INIT snapshot` for "good now" | a wall on an occupied cell fails in scratch only with the snapshot |
 | **P6** | repeat for df-hq (`dig`) and cdda-hq (`strike`) | same lint and pins per game |
@@ -206,6 +207,7 @@ Each step is heavy-work-gated (`cpu_gate`, one at a time, niced) and reports its
 1. **D38 proposes a new phase table on `playthrough_op` and its text does not mention the decision ledger** (OBS: no mention; I do not know what its author read), **and I (Claude) wrote the material gate with its own user layer and `bias` rows without mapping it to the other two banks.** The first is a gap I found, the second is my own miss; I am naming both.
 2. **A third granularity landed** (Grok's centroid stamps, 29 checks in `centroid/parts.pal`). It is easy to map (4.1), harder with every added table.
 3. **G3 means the pets' loop has been silently open for weeks** (empty bank beside a full ledger). That is an existing bug, not a design flaw, but it shows nobody was reading the loop's output.
+4. **I sized P3 as if pets already choose.** They do not (G9): the "choice rule among actions" in 4.2 describes a layer that has to be built first, in a shared core nine games use. P0 to P2 stand on their own (they need no new pet behaviour); P3 onward is a larger project and I should have said so in the first draft.
 
 **It would have been too late if:** a pet run had already written ad-hoc action names; if the ledger had rotated into the archive (re-keying then means re-reading archives); if more phase tables had hardened names; or if pets already ran proposals in the `dev` lane (counts must never be mixed, by rule). None of those has happened.
 
@@ -236,7 +238,7 @@ There are **three different ways something gets done in the game**:
 | **A person** | you click Craft in the window; an event page runs | a weight may **rank** things for you; it never presses the button |
 | **A shipped phase table** | a harness or a playthrough a person wrote | a person or the table chooses; rank is a suggestion |
 | **A pet on its own** | `fenn` decides where to walk next | **not mentioned by D47**; today it is already automatic for one action: `walk`'s chance to pick a new target is `45 + (0.5 − weight) × 60`, between 15% and 85% |
-**The question:** extend that third row from `walk` to `mine`, `craft`, `place`?
+**The question:** extend that third row from `walk` to `mine`, `craft`, `place`? (Note G9: today a pet does not choose between actions at all, so this is about whether the layer that will be built may use the numbers automatically.)
 * **Yes (my recommendation).** It is the same mechanism already running, only for more actions, and it is what "pets build the campus DF-style, trying more than one attempt" (D38) needs: a pet that never chooses has nothing to learn from.
 * **What could go wrong:** a "rich get richer" loop. An action that rarely fails gets a high `does`, so it is picked more, so it collects more rewards. **Guards in the proposal:** the 15% to 85% floor and ceiling (a choice is never forced and never starved), the `can` filter (a failing harness run takes an action out), and the fact that a weight **cannot** fire a page, move the player, edit a bank row or promote anything.
 * **If you say no (suggestion-only everywhere):** the numbers are still computed and shown, but pets pick by a fixed order or a person's shipped table. Simpler and safer, but then pets cannot learn to build better, which is the point of D38.
