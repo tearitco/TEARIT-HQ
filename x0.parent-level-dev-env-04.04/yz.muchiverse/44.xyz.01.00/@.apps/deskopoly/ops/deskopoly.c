@@ -55,9 +55,15 @@ static int split(char *s, char **f, int max) {
     return n;
 }
 
+/* ruleset files (board.pdl, rules.pdl): a scratch/legacy app keeps them at its root and wins; otherwise they come from rulesets/mini/ (every schema-1 ledger, which starts with a `new` row, replays under mini; classic arrives in M2). */
+static void rs_path(char *p, size_t n, const char *file) {
+    struct stat sb; snprintf(p, n, "%s/%s", g_app, file); if (!stat(p, &sb)) return;
+    snprintf(p, n, "%s/rulesets/mini/%s", g_app, file);
+}
+
 static void load_app(void) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp;
-    snprintf(p, sizeof p, "%s/board.pdl", g_app); fp = fopen(p, "r"); if (!fp) bad("cannot read board.pdl");
+    rs_path(p, sizeof p, "board.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read board.pdl");
     nt = 0;
     while (fgets(ln, sizeof ln, fp)) {
         if (ln[0] == '#') continue; int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "TILE")) continue;
@@ -69,7 +75,7 @@ static void load_app(void) {
     }
     fclose(fp);
     if (nt < 4 || strcmp(T[0].kind, "go")) bad("board.pdl: need at least 4 tiles and tile 0 must be kind go");
-    snprintf(p, sizeof p, "%s/rules.pdl", g_app); fp = fopen(p, "r"); if (!fp) bad("cannot read rules.pdl");
+    rs_path(p, sizeof p, "rules.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read rules.pdl");
     npl = 0;
     while (fgets(ln, sizeof ln, fp)) {
         if (ln[0] == '#') continue; int n = split(ln, f, 10);

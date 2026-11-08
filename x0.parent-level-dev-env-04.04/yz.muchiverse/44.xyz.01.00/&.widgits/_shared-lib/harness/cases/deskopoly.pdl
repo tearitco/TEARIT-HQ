@@ -86,7 +86,7 @@ CASE    | harsh
 SCRATCH |
 MKDIR   | app
 MKDIR   | g
-COPY    | @.apps/deskopoly/board.pdl | app/board.pdl
+COPY    | @.apps/deskopoly/rulesets/mini/board.pdl | app/board.pdl
 COPY    | @.apps/deskopoly/verbs.pdl | app/verbs.pdl
 WRITE   | app/rules.pdl | RULE | start_cash | 150\nRULE | pass_go | 200\nRULE | rounds | 60\nRULE | seed | 7\nPLAYER | p1 | rex | bold | 0\nPLAYER | p2 | fenn | cautious | 300\nPLAYER | p3 | gus | coin | 50\nPLAYER | p4 | wren | cautious | 600\n
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | new | 2
@@ -196,14 +196,14 @@ EXPECT_OUT_IS | 518400 | the-raw-file-is-exactly-360-x-360-x-4-bytes
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | preview | $T/dbad | $T/x.raw
 EXPECT_EXIT | 2 | NEGATIVE-a-folder-with-no-page-is-refused
 # a board that is not a ring (5 tiles) and a page.pdl that names a tile outside the atlas are both refused
-COPY    | @.apps/deskopoly/rules.pdl | badapp/rules.pdl
+COPY    | @.apps/deskopoly/rulesets/mini/rules.pdl | badapp/rules.pdl
 COPY    | @.apps/deskopoly/verbs.pdl | badapp/verbs.pdl
 COPY    | @.apps/deskopoly/page.pdl | badapp/page.pdl
 WRITE   | badapp/board.pdl | TILE | 0 | Start | go | 0 | 0 | -1\nTILE | 1 | A | prop | 10 | 1 | 0\nTILE | 2 | B | prop | 10 | 1 | 0\nTILE | 3 | C | prop | 10 | 1 | 0\nTILE | 4 | D | rest | 0 | 0 | -1\n
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/badapp | $T/dbad | page | $T/dbad
 EXPECT_EXIT | 2 | NEGATIVE-a-board-that-is-not-a-ring-is-refused
 EXPECT_OUT | ring needs tiles | and-it-says-why
-COPY    | @.apps/deskopoly/board.pdl | badapp/board.pdl
+COPY    | @.apps/deskopoly/rulesets/mini/board.pdl | badapp/board.pdl
 WRITE   | badapp/page.pdl | HEADER | atlas_tiles | 43\nTILEMAP | go | 99\n
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/badapp | $T/dbad | page | $T/dbad
 EXPECT_EXIT | 2 | NEGATIVE-a-tile-outside-the-atlas-is-refused
@@ -270,7 +270,7 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/w | ledger_hash
 EXPECT_OUT_LACKS | 61ac51a395a63e0d | NEGATIVE-seed-8-does-not-give-the-seed-7-hash
 # a human who cannot pay: the buy is refused, logged as a blocked decision, and appends NOTHING to the game ledger
-COPY    | @.apps/deskopoly/board.pdl | app/board.pdl
+COPY    | @.apps/deskopoly/rulesets/mini/board.pdl | app/board.pdl
 COPY    | @.apps/deskopoly/verbs.pdl | app/verbs.pdl
 WRITE   | app/rules.pdl | RULE | start_cash | 20\nRULE | pass_go | 200\nRULE | rounds | 40\nRULE | seed | 7\nPLAYER | p1 | rex | bold | 0\nPLAYER | p2 | fenn | cautious | 300\nPLAYER | p3 | gus | coin | 50\nPLAYER | p4 | wren | cautious | 600\n
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/z | new | 7
@@ -338,8 +338,8 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T
 EXPECT_OUT_IS | AUDIT ok files=4 declared=4 | once-the-invented-files-are-removed-the-audit-is-clean-again
 # a bad state.pdl is refused: an unknown kind, and a projection whose regenerating verb does not exist
 MKDIR   | app
-COPY    | @.apps/deskopoly/board.pdl | app/board.pdl
-COPY    | @.apps/deskopoly/rules.pdl | app/rules.pdl
+COPY    | @.apps/deskopoly/rulesets/mini/board.pdl | app/board.pdl
+COPY    | @.apps/deskopoly/rulesets/mini/rules.pdl | app/rules.pdl
 COPY    | @.apps/deskopoly/verbs.pdl | app/verbs.pdl
 WRITE   | app/state.pdl | FILE | ledger.txt | LEDGER | x | -\nFILE | ui.txt | MAYBE | x | ui\n
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | audit
