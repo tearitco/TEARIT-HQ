@@ -44,8 +44,8 @@ EXPECT_LACKS | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.tx
 WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | start | 8000 | START-writes-the-opening-rows
 RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
 EXPECT_OUT_IS | 6 | lobby-plus-4-joins-plus-start-is-6-rows
-WAIT_HAS | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | People1 3 2 1 4 | 8000 | the-fourth-player-row-is-written
-EXPECT_FILE | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | 1 1 220 60 60 People1 0 2 1 1\n0 0 60 120 230 People1 1 2 1 2\n2 0 60 190 90 People1 2 2 1 3\n1 2 230 200 50 People1 3 2 1 4\n | four-RPG-Maker-characters-start-on-tile-0
+WAIT_HAS | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | People1 3 2 1 D | 8000 | the-fourth-player-row-is-written
+EXPECT_FILE | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | 1 1 220 60 60 People1 0 2 1 A\n0 0 60 120 230 People1 1 2 1 B\n2 0 60 190 90 People1 2 2 1 C\n1 2 230 200 50 People1 3 2 1 D\n | four-RPG-Maker-characters-start-on-tile-0
 WAIT_HAS | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/map.png | PNG | 8000 | the-2D-picture-is-a-real-PNG
 WAIT_HAS | edit/state/game_ui.txt | STOPPED | 4000 | the-bar-says-STOPPED-while-the-switch-is-0
 
@@ -96,6 +96,12 @@ RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game |
 EXPECT_OUT | events=4 | the-engines-own-projection-has-4-players
 RUN | /usr/bin/cmp | $T/ev_end.txt | $T/proj/events.txt
 EXPECT_EXIT | 0 | THE-WALK-ENDS-WHERE-THE-LEDGER-SAYS-byte-identical-to-the-engine-projection
+RUN | /usr/bin/grep | -cE | [0-9]$ | $T/ev_mid.txt
+EXPECT_OUT_IS | 0 | THE-3D-LOADER-CONTRACT-no-row-written-WHILE-WALKING-ends-in-a-number-the-engine-drops-such-a-row-so-3D-showed-no-players
+RUN | /usr/bin/grep | -cE | [0-9]$ | $T/ev_end.txt
+EXPECT_OUT_IS | 0 | and-none-at-the-end-of-the-walk
+RUN | /usr/bin/grep | -cE |  [A-D]$ | $T/ev_end.txt
+EXPECT_OUT_IS | 4 | and-all-4-rows-end-in-a-letter-so-the-checks-above-are-not-vacuous
 
 CASE    | play_and_stop
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly

@@ -889,7 +889,7 @@ static int v_page(int argc, char **argv) {
         static const int pr[8][3] = {{220, 60, 60}, {60, 120, 230}, {60, 190, 90}, {230, 200, 50}, {180, 80, 200}, {60, 200, 200}, {240, 140, 40}, {200, 200, 200}};
         static const int sx[4] = {1, 0, 2, 1}, sy[4] = {1, 0, 0, 2}; static char evb[2048]; evb[0] = 0; int cnt[64]; memset(cnt, 0, sizeof cnt);
         for (int pl = 0; pl < np_game && pl < 8; pl++) if (!out[pl] && pos[pl] >= 0 && pos[pl] < nt && pos[pl] < 64) { int bx, by; ring_xy(pos[pl], n, &bx, &by); int s = cnt[pos[pl]]++; if (s > 3) s = 3;
-            n_ev++; ap(evb, sizeof evb, "%d %d %d %d %d People1 %d 2 1 %d\n", bx * PG_block + sx[s], by * PG_block + sy[s], pr[pl][0], pr[pl][1], pr[pl][2], pl, pl + 1); }
+            n_ev++; ap(evb, sizeof evb, "%d %d %d %d %d People1 %d 2 1 %c\n", bx * PG_block + sx[s], by * PG_block + sy[s], pr[pl][0], pr[pl][1], pr[pl][2], pl, (char)(65 + pl)); }
         write_atomic(dd, "events.txt", evb);
     } else if (stat(q, &sb)) write_atomic(dd, "events.txt", "");
     snprintf(q, sizeof q, "%s/skin.txt", dd); if (stat(q, &sb)) write_atomic(dd, "skin.txt", "rmmv\n");

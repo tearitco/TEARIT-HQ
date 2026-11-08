@@ -124,7 +124,7 @@ static void write_events(void) {
         int dx = nx > bx ? 1 : nx < bx ? -1 : 0, dy = ny > by ? 1 : ny < by ? -1 : 0; int cx = bx * 3 + 1, cy = by * 3 + 1, dir = 2, pat = 1;
         if (w_cur[i] != w_tgt[i]) { cx += dx * w_sub[i]; cy += dy * w_sub[i]; dir = dx > 0 ? 6 : dx < 0 ? 4 : dy > 0 ? 2 : 8; pat = patt[w_step % 4]; }
         else { int s = share[t < 64 ? t : 0]++; if (s > 3) s = 3; cx += ox[s]; cy += oy[s]; }
-        snprintf(evb + strlen(evb), sizeof evb - strlen(evb), "%d %d %d %d %d People1 %d %d %d %d\n", cx, cy, pr[i][0], pr[i][1], pr[i][2], i, dir, pat, i + 1); }
+        snprintf(evb + strlen(evb), sizeof evb - strlen(evb), "%d %d %d %d %d People1 %d %d %d %c\n", cx, cy, pr[i][0], pr[i][1], pr[i][2], i, dir, pat, (char)(65 + i)); }   /* the 10th field (the glyph) MUST be a non-number: the 3D loader reads 9 or 15 fields and a digit parses as a float = 10 fields = the row is silently dropped (3D showed no players until 2026-11-08) */
     char tmp[P + 16]; snprintf(tmp, sizeof tmp, "%s/events.txt.tmp", DESKDIR); char fin[P + 16]; snprintf(fin, sizeof fin, "%s/events.txt", DESKDIR); mkdir(DESKDIR, 0755);
     FILE *f = fopen(tmp, "w"); if (!f) return; fputs(evb, f); fclose(f); rename(tmp, fin);
 }
@@ -246,7 +246,10 @@ int main(int argc, char **argv) {
         else if (!stat(ACT, &s) && s.st_size < cursor) cursor = 0;
         int run = running(); static int was_run = -1; if (run != was_run) { was_run = run; dirty = 1; }
         if (mode_play) { static long nw = 0; static int was = 0; long tw = now_ms(); if (tw >= nw) { if (w_resync) { walk_sync(); write_events(); } int m = walk_step(); if (m || was) write_events(); was = walking_now; nw = tw + W_MS[speed]; } }
-        if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8]; load_ui(); uget("over", ov, sizeof ov); if (ov[0] != '1') tick_once(); else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
+        if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8], ht[8], cn[24], yt[80]; load_ui(); uget("over", ov, sizeof ov); uget("human_turn", ht, sizeof ht); uget("current_name", cn, sizeof cn);
+            /* A HUMAN'S TURN COSTS NOTHING: while the game waits for a seat that is a person the driver does not poll the engine (measured 2026-11-08 in the real editor: 17 engine calls in 10 s, ledger frozen, before this; 0 after). ui.txt is rewritten after every verb and tick, so the moment the turn passes to the human the next loop sees human_turn=1. */
+            if (ov[0] != '1' && ht[0] == '1') { snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
+            else if (ov[0] != '1') tick_once(); else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         if (dirty) publish();
         usleep(80000);
