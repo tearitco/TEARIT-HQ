@@ -937,8 +937,30 @@ static int v_autoplay(void) {
     int best = -1; for (int i = 0; i < np_game; i++) if (!out[i] && (best < 0 || net(i) > net(best))) best = i;
     printf("AUTOPLAY events=%d rounds=%d over=1 winner=%s\n", nev, round_, best >= 0 ? PL[best].name : "none"); return 0;
 }
+/* ui for classic (schema 2): the window's feed, a PROJECTION of the replayed ledger (milestone M10-lite, 2026-11-08). Same convention as the mini ui: a show_* key is "1" when the control may be offered and EMPTY when not.
+ * Every show_* key comes from the replayed PHASE and the current seat's driver, so the window never guesses what is legal. Tiles are t<N>_*, players p<N>_*, the last ledger rows log_<k>. */
+static int v_ui2(void) {
+    int st, rc = need_game(&st); if (rc) return rc; static char b[16384]; b[0] = 0; int pl = (phase2 == PH_ORDER && order_next() >= 0) ? order_next() : cur, ht = !over && human[pl] && !out[pl] && phase2 >= PH_ORDER;
+    static const char *pn[7] = { "lobby", "order", "pre", "buy", "debt", "post", "over" };
+    ap(b, sizeof b, "game=deskopoly\nruleset=%s\nphase=%s\nn_players=%d\nn_tiles=%d\nround=%d\nover=%d\ncurrent=%s\ncurrent_name=%s\ncurrent_driver=%s\n", g_rs, pn[phase2], np_game, nt, round_, over, PL[pl].id, PL[pl].name, human[pl] ? "human" : "pet");
+    int inj = injail[pl];
+    ap(b, sizeof b, "human_turn=%s\nshow_roll=%s\nshow_jail=%s\nshow_buy=%s\nshow_skip=%s\nshow_pay_debt=%s\nshow_bankrupt=%s\nshow_end=%s\n", ht ? "1" : "",
+       ht && ((phase2 == PH_PRE && !inj) || phase2 == PH_ORDER) ? "1" : "", ht && phase2 == PH_PRE && inj ? "1" : "", ht && phase2 == PH_BUY && pending >= 0 && cash[pl] >= T[pending].price ? "1" : "", ht && phase2 == PH_BUY ? "1" : "",
+       ht && phase2 == PH_DEBT && cash[pl] >= debt_amt ? "1" : "", ht && phase2 == PH_DEBT ? "1" : "", ht && phase2 == PH_POST ? "1" : "");
+    ap(b, sizeof b, "pending_tile=%s\npending_price=%d\ndebt=%d\n", phase2 == PH_BUY && pending >= 0 ? T[pending].name : "", phase2 == PH_BUY && pending >= 0 ? T[pending].price : 0, phase2 == PH_DEBT ? debt_amt : 0);
+    for (int i = 0; i < np_game; i++) { int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == i) props++;
+        ap(b, sizeof b, "%s_name=%s\n%s_driver=%s\n%s_cash=%d\n%s_pos=%d\n%s_out=%d\n%s_jail=%s\n%s_props=%d\n%s_net=%d\n%s_turn=%s\n", PL[i].id, PL[i].name, PL[i].id, human[i] ? "human" : "pet", PL[i].id, cash[i], PL[i].id, pos[i], PL[i].id, out[i], PL[i].id, injail[i] ? "1" : "", PL[i].id, props, PL[i].id, net(i), PL[i].id, i == pl && !over ? "1" : ""); }
+    for (int k = 0; k < nt; k++) { char tok[24] = ""; for (int i = 0; i < np_game; i++) if (!out[i] && pos[i] == k) { char one[4]; snprintf(one, sizeof one, "%d", i + 1); if (tok[0]) strncat(tok, ",", sizeof tok - strlen(tok) - 1); strncat(tok, one, sizeof tok - strlen(tok) - 1); }
+        char bd[12] = ""; if (bld[k] == 5) snprintf(bd, sizeof bd, "hotel"); else if (bld[k] > 0) snprintf(bd, sizeof bd, "h%d", bld[k]);
+        ap(b, sizeof b, "t%d_name=%s\nt%d_kind=%s\nt%d_owner=%s\nt%d_bld=%s\nt%d_mort=%s\nt%d_tok=%s\n", k, T[k].name, k, T[k].kind, k, owner[k] >= 0 ? PL[owner[k]].id : "", k, bd, k, mort[k] ? "1" : "", k, tok); }
+    { char p[1100], ln[LINE], rows[8][96]; int nr = 0; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r");
+      if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && !strcmp(f[0], "EVENT")) { snprintf(rows[nr % 8], 96, "r%s %s %s %s", f[1], f[2], f[3], f[6]); nr++; } } fclose(fp); }
+      for (int i = 0; i < 8; i++) ap(b, sizeof b, "log_%d=%s\n", i, i < nr ? rows[(nr - 1 - i) % 8] : ""); }
+    write_atomic(g_state, "ui.txt", b); printf("UI %s/ui.txt phase=%s current=%s human_turn=%s\n", g_state, pn[phase2], PL[pl].id, ht ? "1" : "0"); return 0;
+}
 /* ui: the window's feed (key=value, atomic), a PROJECTION of the replayed ledger. A show_* key is "1" when the control may be offered and EMPTY when not (the house convention: a "0" string would count as visible). */
 static int v_ui(void) {
+    if (g_schema == 2) return v_ui2();
     int st, rc = need_game(&st); if (rc) return rc; static char b[8192]; b[0] = 0; int pl = cur, ht = !over && human[pl] && !out[pl];
     ap(b, sizeof b, "game=deskopoly\nn_players=%d\nround=%d\nover=%d\ncurrent=%s\ncurrent_name=%s\ncurrent_driver=%s\n", np_game, round_, over, PL[pl].id, PL[pl].name, human[pl] ? "human" : "pet");
     ap(b, sizeof b, "human_turn=%s\nshow_roll=%s\nshow_buy=%s\nshow_skip=%s\nshow_end=%s\n", ht ? "1" : "", ht && !rolled ? "1" : "", ht && pending >= 0 && cash[pl] >= T[pending].price ? "1" : "", ht && pending >= 0 ? "1" : "", ht && rolled && pending < 0 ? "1" : "");
@@ -1009,7 +1031,7 @@ int main(int argc, char **argv) {
     if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll") || !strcmp(v, "build") || !strcmp(v, "sell") || !strcmp(v, "mortgage") || !strcmp(v, "unmortgage") || !strcmp(v, "pay_debt"))) return v_act2(v, argc - 4, argv + 4);
     if (g_schema == 2 && !strcmp(v, "autoplay")) return v_autoplay2();
     if (g_schema == 2 && !strcmp(v, "tick")) return v_tick2();
-    if (g_schema == 2 && (!strcmp(v, "ui") || !strcmp(v, "mechanics"))) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }
+    if (g_schema == 2 && !strcmp(v, "mechanics")) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }
     if (!strcmp(v, "roll")) return v_roll();
     if (!strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn")) return act_simple(v);
     if (!strcmp(v, "autoplay")) return v_autoplay();

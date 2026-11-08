@@ -186,6 +186,30 @@ static int reap_timed(pid_t pid, int secs) { struct timespec t0, t1; clock_getti
     for (;;) { pid_t r = waitpid(pid, &st, WNOHANG); if (r == pid) return WIFEXITED(st) ? WEXITSTATUS(st) : -1; if (r < 0 && errno != EINTR) return -1;
         clock_gettime(CLOCK_MONOTONIC, &t1); if (t1.tv_sec - t0.tv_sec >= secs) { g_reap_to = 1; break; } usleep(5000); }
     kill(-pid, SIGKILL); kill(pid, SIGKILL); for (int i = 0; i < 200; i++) { if (waitpid(pid, &st, WNOHANG) == pid) break; usleep(5000); } return -1; }
+/* PLAY runs the OPEN BOOK's own game (2026-11-08, owner: a game runs from the editor's Play button; RPG Maker as the guide). The open book is state/last_book.txt (`book=<name>`); its folder
+ * @.apps/<name>/game.pdl may carry `GAME | driver | <program> <args>` ({house} {book} {editor} are replaced). The program is the game's loop: it locks itself (one instance), ticks only while the switch
+ * running=1 (so Stop is its pause), and publishes the game bar feed state/game_ui.txt. No game name and no rule is in this file: the hook is data. The child registers itself in the process registry
+ * (lifetime owner = this daemon) before it execs, and is detached with setsid; it ends when this daemon is gone (parent pid 1). Returns 1 when a driver was started or is already running, 0 when the book has none. */
+static int book_driver(void) {
+    char lb[PATH_MAX + 32], bk[200], book[96] = "", gp[PATH_MAX + 96], ln[1024], cmd[1024] = ""; snprintf(lb, sizeof lb, "%s/state/last_book.txt", APP); read_file(lb, bk, sizeof bk);
+    for (char *l = strtok(bk, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "book=", 5)) snprintf(book, sizeof book, "%s", l + 5);
+    if (!book[0]) return 0; for (const char *c = book; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-')) return 0;
+    char bdir[PATH_MAX + 96]; snprintf(bdir, sizeof bdir, "%s/@.apps/%s", HOUSE, book); snprintf(gp, sizeof gp, "%s/game.pdl", bdir); FILE *f = fopen(gp, "r"); if (!f) return 0;
+    while (fgets(ln, sizeof ln, f)) { char *p = ln; while (*p == ' ') p++; if (strncmp(p, "GAME", 4)) continue; char *a = strchr(p, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue; char key[32]; snprintf(key, sizeof key, "%.*s", (int)(b - a - 1), a + 1);
+        char *k = key; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && e[-1] == ' ') *--e = 0; if (strcmp(k, "driver")) continue; char *v = b + 1; while (*v == ' ') v++; e = v + strlen(v); while (e > v && (e[-1] == '\n' || e[-1] == ' ')) *--e = 0; snprintf(cmd, sizeof cmd, "%s", v); break; }
+    fclose(f); if (!cmd[0]) return 0;
+    char *av[16]; int n = 0; char exp[1024] = ""; for (const char *s = cmd; *s && strlen(exp) < sizeof exp - PATH_MAX - 8; ) { const char *r = NULL; const char *w = NULL;
+        if (!strncmp(s, "{house}", 7)) { r = HOUSE; s += 7; } else if (!strncmp(s, "{book}", 6)) { r = bdir; s += 6; } else if (!strncmp(s, "{editor}", 8)) { r = APP; s += 8; } if (r) { strncat(exp, r, sizeof exp - strlen(exp) - 1); continue; } (void)w; strncat(exp, s, 1); s++; }
+    for (char *t = strtok(exp, " "); t && n < 15; t = strtok(NULL, " ")) av[n++] = t; av[n] = NULL; if (n == 0 || access(av[0], X_OK)) return 0;
+    char reg[PATH_MAX + 64]; snprintf(reg, sizeof reg, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", HOUSE); char owner[16]; snprintf(owner, sizeof owner, "%d", (int)getpid());
+    { char wp[PATH_MAX + 96], wb[32]; snprintf(wp, sizeof wp, "%s/" PET_APP "-pchq/pieces/system/board_window.pid", APP); read_file(wp, wb, sizeof wb); long wpid = atol(wb); if (wpid > 1 && kill((pid_t)wpid, 0) == 0) snprintf(owner, sizeof owner, "%ld", wpid); }   /* the game belongs to the editor WINDOW: the Play verb itself is a one-shot process */
+    setenv("GAME_OWNER_PID", owner, 1);
+    pid_t pid = fork(); if (pid < 0) return 0;
+    if (pid == 0) { setsid(); int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); } signal(SIGPIPE, SIG_DFL);
+        pid_t r = fork(); if (r == 0) { char me[16]; snprintf(me, sizeof me, "%d", (int)getppid()); execl(reg, reg, HOUSE, "register", me, "owner", owner, "game", PET_APP, "book-driver", (char *)NULL); _exit(127); } if (r > 0) waitpid(r, NULL, 0);
+        execv(av[0], av); _exit(127); }
+    return 1;
+}
 static int sh_timed(const char *cmd, int secs) { pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { setpgid(0, 0); signal(SIGPIPE, SIG_DFL); execl("/bin/sh", "sh", "-c", cmd, (char *)NULL); _exit(127); } return reap_timed(pid, secs); }
 static int run_event_x(const char *name, const char *trig, const char *envs);
 static int run_event(const char *name, const char *trig) { return run_event_x(name, trig, ""); }
@@ -1578,7 +1602,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
     if (!strcmp(v, "mode")) v = "int";      /* the mode tab is the INT switch now */
     if (!strcmp(v, "mode")) { int to_rogue = argc >= 2 ? !strcmp(argv[1], "rogue") : !rogue_mode(); set_flag("timemode", to_rogue ? "rogue" : "live"); clock_sync();
         snprintf(msg, cap, to_rogue ? "rogue: with INT on, time moves only when you act" : "live: time keeps running, even with INT on"); return; }
-    if (!strcmp(v, "play")) { if (!(run_event("play", "ui") && run_on())) { set_flag("running", "1"); clock_paths(); clock_install(); clock_sync(); lc_run(1, "daemon-start", NULL); } snprintf(msg, cap, "STARTED: the pets live, the clock runs"); return; }
+    if (!strcmp(v, "play")) { if (!(run_event("play", "ui") && run_on())) { set_flag("running", "1"); clock_paths(); clock_install(); clock_sync(); lc_run(1, "daemon-start", NULL); } int bd = book_driver(); snprintf(msg, cap, bd ? "STARTED: the open book's game is running (Stop freezes it)" : "STARTED: the pets live, the clock runs"); return; }
     if (!strcmp(v, "stop")) { if (!(run_event("stop", "ui") && !run_on())) { set_flag("running", "0"); clock_sync(); } snprintf(msg, cap, "STOPPED: everything is frozen (building and chat still work). Play resumes"); return; }
     if (!strcmp(v, "save") || !strcmp(v, "load")) {      /* slot copies of the state files (pets, trainer, ledger, relations, chat, flags, clock time) */
         int slot = (argc >= 2 && argv[1][0] >= '0' && argv[1][0] <= '9' && !argv[1][1]) ? argv[1][0] - '0' : 1;      /* slots 1-9 are yours; slot 0 is the automatic copy New game makes of the game it replaces */ int saving = !strcmp(v, "save"); char sd[PATH_MAX]; snprintf(sd, sizeof sd, "%s/slots", ST); mkdir(sd, 0755); snprintf(sd, sizeof sd, "%s/slots/%d", ST, slot); mkdir(sd, 0755);
