@@ -1,0 +1,85 @@
+# 🎲🏠 NIGHT 61 — The Board That Remembered Every Roll 🏠🎲
+# ====================================================================
+# Title: "🎲🏠 NIGHT 61 — The Board That Remembered Every Roll 🏠🎲"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-08. The owner said "lets go classic". Claude wrote a build spec so a new AI could build classic Monopoly rules for the pets' board from scratch, and audited the sixteen-tile engine that exists. Twenty-five things are wrong with it, and the worst three would make a classic game silently wrong. Also: the ledger is the only authority, a dice roll is a pure function, and a trade is a conversation of ledger rows.
+# Long-form: everything called read was opened on 2026-11-07 or 08. Everything called a rule is from memory of the standard rules and is marked to be checked against the official sheet. Nothing here is built yet. The spec is a plan.
+# Companion documents: BOOK 08-roadmap/design-docs DESIGN-DESKOPOLY-CLASSIC-MONOPOLY-BUILD-SPEC-2026-11-08, XO 31.Nov nov-8 0.deskopoly-classic-build-spec, NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.
+
+**THE NARRATOR:** Tonight is about a board game that has already been played a hundred times, and a document written so that nobody has to guess how to build it again.
+
+**MAXINE:** We have Monopoly. The pets play it. I watched the video.
+
+**TOMO:** We have the beginning of it. Sixteen tiles, four colours, a flat rent. No jail. No cards. No houses. No auctions. A player who says no to a tile just leaves it lying there.
+
+**RAHWEH:** So when the owner said classic, they meant the real thing.
+
+**TOMO:** Yes. So I wrote the spec first. It is eighteen sections. The first thing in it is an audit of what exists, and I read all four hundred and twenty-five lines of the engine before I wrote a word.
+
+**MAXINE:** And?
+
+**TOMO:** Twenty-five findings. Three of them are the kind that make a classic game quietly wrong. First, when a player goes bankrupt to another player, the properties go back to the bank. In the real rules they go to the person who is owed.
+
+**RAHWEH:** That changes who wins.
+
+**TOMO:** It changes almost every long game. Second, there is no auction. Third, the list of who is playing lives in a config file, not in the ledger.
+
+**MAXINE:** Why is that third one a problem? It is just names.
+
+**TOMO:** Because of the rule the owner gave us on the seventh. A fact about a game lives in one place, the ledger. If you edit the config in the middle of a game, the names and styles change under old history. That is a ghost.
+
+**THE NARRATOR:** The ledger is an append-only file. Each row says who did what, and what happened. Replaying the rows rebuilds the whole game, and the engine refuses a ledger whose recorded results differ from the ones it recomputes.
+
+**RAHWEH:** And the dice?
+
+**TOMO:** A dice roll is a pure function of the seed and a counter. No hidden random state. In the new spec the counter ticks for every throw: the opening order, a normal roll, a roll in jail, and the extra roll a utility card forces. The row stores the dice, and replay checks them.
+
+**MAXINE:** So a cheater cannot write a lucky six into the file.
+
+**TOMO:** They can write it. The next command will refuse the whole ledger and name the line.
+
+**RAHWEH:** What about the rules themselves? Are the prices in the spec right?
+
+**TOMO:** This is the honest part. I wrote the classic numbers from memory. Forty tiles, fifteen hundred to start, two hundred for passing Go, thirty-two houses and twelve hotels. I marked every one to be checked against the official rule sheet, and the harness pins the data file, not my sentence. A document is not a source.
+
+**MAXINE:** And the names? Everyone knows those street names.
+
+**TOMO:** The names and the card wording belong to the publisher. The spec uses its own: Brown One, Sky Two, Line Three, Luck and Fund. The owner can rename any tile in one data file and no code changes. That is an open decision, and it is on the list.
+
+**THE NARRATOR:** Then the part the owner asked for by name: trading.
+
+**TOMO:** A trade is a conversation. You offer. The other player accepts, rejects, or counters. A counter is a new offer going back. It goes on until a deal, a rejection, or six rounds. Every step is a ledger row.
+
+**MAXINE:** In chat, you type it?
+
+**TOMO:** You type offer, a name, what you give, what you get. The same words as a menu would send. The chat parser is only a translator into the same verbs. There is no second way to write a row.
+
+**RAHWEH:** What stops someone offering what they do not have?
+
+**TOMO:** The engine checks twice. When the offer is made, and again when it is accepted. Between the two, the cash can be spent or the tile mortgaged. A stale offer is refused with a sentence, and nothing is appended.
+
+**MAXINE:** And auctions?
+
+**TOMO:** The moment you decline a tile, everyone bids, starting left of you, you last. Bids rise by a step. You cannot bid more than you hold. A pass is final. No timers, because a person may think as long as they like, and a pet answers on its next tick.
+
+**RAHWEH:** How do pets decide? Is the engine full of pet personalities?
+
+**TOMO:** That was finding twelve. The three styles are hard-coded in C. In the spec the engine knows no pet. A personality is a row of traits, the decision is a score, and the bank of past outcomes nudges it. Whether a pet learns is a setting per game. For this one it is fixed.
+
+**THE NARRATOR:** Fourteen test cases are planned, each with a negative that must fail on purpose. And the old sixteen-tile board stays as a ruleset called mini, so the one hundred and five existing checks keep passing, byte for byte.
+
+**MAXINE:** So nothing is built.
+
+**TOMO:** Nothing is built. I read, I wrote, I did not run a single new rule. The spec has fourteen milestones in order, each ending committed with its case passing.
+
+**RAHWEH:** What is the first one?
+
+**TOMO:** Build today's engine and run the old case. One hundred and five of one hundred and five. If that number moves, I changed something I did not mean to.
+
+**THE NARRATOR:** The lesson tonight is small. Before you build the new thing, write down exactly what is wrong with the old thing, and what must not change.
+
+**MAXINE:** And the rules?
+
+**TOMO:** Check them against the box.
