@@ -81,6 +81,12 @@ static void page_sync(int force) {
     long t = now_ms(); if (!force && t - last_page < 250) { page_pending = 1; return; }
     mkdir(DESKDIR, 0755); const char *a[4] = { "page", DESKDIR, ATLAS, "noevents" }; run_eng(NULL, 0, 4, a); make_map_png(); last_page = t; page_pending = 0;
 }
+/* BUILD THE PROJECTION, THEN POINT AT IT: the play desk is made fresh (the previous session's character rows are emptied first, the page and the 2D picture rewritten) and only then does the editor world switch to it.
+ * The old order switched first, so for about 100 ms the editor showed the LAST game's characters on the new board (seen in the dsk_driver case 2026-11-08: a stale row was still there when the world flipped). */
+static void play_desk_fresh(void) {
+    char ev[P + 16]; mkdir(DESKDIR, 0755); snprintf(ev, sizeof ev, "%s/events.txt", DESKDIR); FILE *f = fopen(ev, "w"); if (f) fclose(f);
+    ensure_frames(); page_sync(1); set_desk("play");
+}
 
 static char UI[20000];
 static int load_ui(void) { char p[P]; snprintf(p, sizeof p, "%s/ui.txt", GAME); FILE *f = fopen(p, "r"); if (!f) { UI[0] = 0; return 0; } size_t n = fread(UI, 1, sizeof UI - 1, f); UI[n] = 0; fclose(f); return 1; }
@@ -184,7 +190,7 @@ static void begin_game(void) {
     if (eng1("lobby", "classic", out, sizeof out)) { first_line(out); snprintf(msg, sizeof msg, "lobby refused: %s", out); return; }
     for (int i = 1; i <= nplayers; i++) { char nm[4] = { (char)('A' + i - 1), 0 }; const char *a[3] = { "join", nm, i == human_seat ? "human" : "pet" }; if (run_eng(out, sizeof out, 3, a)) { first_line(out); snprintf(msg, sizeof msg, "join refused: %s", out); return; } }
     if (eng1("start", sd, out, sizeof out)) { first_line(out); snprintf(msg, sizeof msg, "start refused: %s", out); return; }
-    mode_play = 1; set_desk("play"); ensure_frames(); page_sync(1); walk_reset(); snprintf(msg, sizeof msg, "game started: %d players, seed %d, %s", nplayers, seed, human_seat ? "you are a seat at the table" : "all pets");
+    mode_play = 1; play_desk_fresh(); walk_reset(); snprintf(msg, sizeof msg, "game started: %d players, seed %d, %s", nplayers, seed, human_seat ? "you are a seat at the table" : "all pets");
     if (human_seat) snprintf(msg, sizeof msg, "game started: %d players, seed %d, you are p%d", nplayers, seed, human_seat);
     eng1("ui", NULL, out, sizeof out);
 }
@@ -227,10 +233,12 @@ int main(int argc, char **argv) {
     snprintf(DESKDIR, sizeof DESKDIR, "%s/deskopoly-pchq/pieces/system/maps/deskopoly/play", BOOK); snprintf(ATLAS, sizeof ATLAS, "%s/deskopoly-pchq/pieces/system/maps/deskopoly/board/cells.rgba", BOOK);
     char d[P]; snprintf(d, sizeof d, "%s/state/games", EDIT); mkdir(d, 0755); mkdir(GDIR, 0755);
     { const char *ow = getenv("GAME_OWNER_PID"); OWNER = ow ? atol(ow) : 0; }
-    char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644); if (lf < 0 || flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "deskopoly_driver: already running\n"); return 0; }
+    char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644);
+    if (lf < 0) { fprintf(stderr, "deskopoly_driver: cannot open the lock file %s (does the editor's state folder exist?)\n", lk); return 1; }   /* a missing folder is NOT "already running" (found by the dsk_driver case 2026-11-08) */
+    if (flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "deskopoly_driver: already running\n"); return 0; }
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = on_term; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); sigaction(SIGHUP, &sa, NULL);
     if (access(ENG, X_OK)) { fprintf(stderr, "deskopoly_driver: the engine is missing: %s\n", ENG); return 1; }
-    { char out[200]; if (eng1("ui", NULL, out, sizeof out) == 0) { mode_play = 1; set_desk("play"); ensure_frames(); page_sync(1); walk_reset(); snprintf(msg, sizeof msg, "a game was in progress; it continues while the Player menu says playing"); } }   /* the mode comes from the LEDGER */
+    { char out[200]; if (eng1("ui", NULL, out, sizeof out) == 0) { mode_play = 1; play_desk_fresh(); walk_reset(); snprintf(msg, sizeof msg, "a game was in progress; it continues while the Player menu says playing"); } }   /* the mode comes from the LEDGER */
     struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; long next = now_ms(); publish();
     while (!stop_) {
         if (OWNER > 0 ? (kill((pid_t)OWNER, 0) != 0 && errno == ESRCH) : getppid() == 1) break;

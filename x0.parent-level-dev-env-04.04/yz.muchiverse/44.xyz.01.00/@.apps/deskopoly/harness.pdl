@@ -7,3 +7,4 @@ HARNESS | dsk_jail    | * | CASE | classic jail   | dsk_jail    | - | - | no | d
 HARNESS | dsk_cards   | * | CASE | classic cards  | dsk_cards   | - | - | no | the Luck and Fund decks: every effect kind, the kept Get Out card, chained card moves, loader refusals (milestone M5)
 HARNESS | dsk_build   | * | CASE | classic build  | dsk_build   | - | - | no | houses, hotels, the supply, mortgages, pay_debt, net worth, bankruptcy with mortgage interest (milestone M6)
 HARNESS | dsk_page    | * | CASE | classic page   | dsk_page    | - | - | no | the map the editor draws during Play: houses, hotels, mortgages and player rows from the ledger, one voxel high, marker cap, tamper refusal
+HARNESS | dsk_driver  | * | CASE | classic driver | dsk_driver  | - | - | no | the real Play driver: setup, START, pause, step, the walk, stop, owner exit, restart from the ledger (about 30 s)

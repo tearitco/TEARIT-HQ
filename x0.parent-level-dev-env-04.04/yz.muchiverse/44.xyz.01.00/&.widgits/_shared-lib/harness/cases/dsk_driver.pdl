@@ -1,0 +1,183 @@
+# dsk_driver: the REAL deskopoly_driver (what Play starts in the editor) in a scratch house, with a fake owner process (a sleeper) and a fake switches file standing in for the editor's Player menu.
+# Method: every value was OBSERVED on 2026-11-08 by running the driver by hand in /tmp first (4 players, seed 7, 6 ledger rows after START, p4 throws first and lands on tile 7).
+# RULES COVERED: single instance; setup is a PREFERENCE (no ledger until START); START writes lobby + joins + start (6 rows) and points the editor world at the generated play desk; PAUSE (switch running=0) freezes the
+#   ledger; Step is exactly one row; the player rows WALK cell by cell (a mid-walk snapshot differs from both the start and the end) and END where the engine's own projection says (byte-identical to `page`); a speed
+#   change never touches the ledger; Play (running=1) advances the game; Stop freezes it again; the owner dying ends the driver, clears the feed to exactly gm_on= and returns the world to board; a restart continues the game
+#   FROM THE LEDGER; New game archives it; usage and missing-engine failures.
+# VACUITY GUARDS: the game really advances while running (round=2 appears) before the freeze is measured; the mid-walk snapshot is shown to differ from the start and end rows.
+# NOT COVERED: human seat buttons (dsk_seat), the editor's real clicks (live run), CPU cost (measured separately).
+# TIMING: waits are WAIT_HAS with generous limits (10 ms polling), never a fixed sleep as a pass condition; the two fixed sleeps below only let a WRONG implementation show itself.
+RESULTS | ../results/dsk_driver.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR   | h/&.widgits/_shared-lib/ops/+x
+COPY    | &.widgits/_shared-lib/ops/+x/raw_to_png.+x | h/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+COPYDIR | @.apps/deskopoly | app | state
+MKDIR   | app/deskopoly-pchq/pieces/system/maps/deskopoly/play
+WRITE   | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | 9 9 1 1 1 People1 7 2 1 9\n
+MKDIR   | edit/state/world
+MKDIR   | edit/edit-pchq/pieces/world_01
+WRITE   | edit/state/world/switches.txt | running=0\n
+WRITE   | edit/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+SPAWN   | OWN | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN
+SPAWN   | DRV | $T/app/ops/+x/deskopoly_driver.+x | $T/h | $T/app | $T/edit
+WAIT_HAS | edit/state/game_ui.txt | gm_on=1 | 8000 | the-setup-screen-is-published-within-8-s
+EXPECT_ALIVE | $DRV | the-driver-stays-up-while-its-owner-lives
+EXPECT_HAS | $T/edit/state/game_ui.txt | Choose the players, then START | the-setup-says-what-to-do
+EXPECT_HAS | $T/edit/state/game_ui.txt | side_pal= | the-editors-palettes-bar-is-hidden-by-data
+RUN | $T/app/ops/+x/deskopoly_driver.+x | $T/h | $T/app | $T/edit
+EXPECT_EXIT | 0 | NEGATIVE-a-second-driver-for-the-same-editor-just-leaves
+EXPECT_OUT | already running | and-says-why
+EXPECT_NOFILE | $T/edit/state/games/deskopoly/game/ledger.txt | SETUP-IS-A-PREFERENCE-no-ledger-exists-before-START
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | players_up | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | 4 players, seed 7 | 4000 | players-plus-changes-the-setup-text
+EXPECT_NOFILE | $T/edit/state/games/deskopoly/game/ledger.txt | and-still-no-ledger-choosing-players-writes-no-game-state
+EXPECT_HAS | $T/edit/edit-pchq/pieces/world_01/state.txt | desk_id=board | and-the-world-is-still-on-the-authored-board-desk
+
+CASE    | start
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | start | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/edit-pchq/pieces/world_01/state.txt | desk_id=play | 8000 | the-world-flips-to-the-generated-play-desk
+EXPECT_LACKS | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | People1 7 | STALE-ROWS-NEVER-SHOW-the-previous-sessions-row-is-gone-at-the-instant-the-world-points-at-the-play-desk
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | start | 8000 | START-writes-the-opening-rows
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 6 | lobby-plus-4-joins-plus-start-is-6-rows
+WAIT_HAS | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | People1 3 2 1 4 | 8000 | the-fourth-player-row-is-written
+EXPECT_FILE | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | 1 1 220 60 60 People1 0 2 1 1\n0 0 60 120 230 People1 1 2 1 2\n2 0 60 190 90 People1 2 2 1 3\n1 2 230 200 50 People1 3 2 1 4\n | four-RPG-Maker-characters-start-on-tile-0
+WAIT_HAS | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/map.png | PNG | 8000 | the-2D-picture-is-a-real-PNG
+WAIT_HAS | edit/state/game_ui.txt | STOPPED | 4000 | the-bar-says-STOPPED-while-the-switch-is-0
+
+CASE    | paused
+SLEEP   | 1500
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 6 | PAUSE-FREEZES-the-ledger-stays-at-6-rows-with-the-switch-at-0
+RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | sum0
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | speed: slow | 4000 | the-speed-button-cycles
+RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | sum1
+EXPECT_EQ | $sum0 | $sum1 | SPEED-IS-A-PREFERENCE-the-ledger-bytes-are-unchanged
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | speed: normal | 4000 | and-cycles-back-to-normal
+
+CASE    | step
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pp1\porder\p | 8000 | the-first-step-is-p1s-opening-throw
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 7 | STEP-IS-ONE-ROW-the-first-step-adds-exactly-one-row-6-to-7
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pp3\porder\p | 8000 | the-third-step-is-p3s-throw
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 9 | and-two-more-steps-two-more-rows-9
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | bank\pfirst | 8000 | the-fourth-throw-settles-who-goes-first-p4
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 11 | FINDING-the-LAST-opening-throw-adds-TWO-rows-the-throw-and-bank-first-so-a-step-is-one-ENGINE-TICK-not-always-one-row
+RUN | /usr/bin/cp | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | $T/ev_pre.txt
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pp4\proll\p | 8000 | the-fifth-step-is-p4s-roll
+SLEEP   | 600
+RUN | /usr/bin/cp | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | $T/ev_mid.txt
+SLEEP   | 4500
+RUN | /usr/bin/cp | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | $T/ev_end.txt
+RUN | /usr/bin/cmp | -s | $T/ev_pre.txt | $T/ev_mid.txt
+EXPECT_EXIT | 1 | WALKS-NOT-TELEPORTS-mid-walk-differs-from-before-the-roll
+RUN | /usr/bin/cmp | -s | $T/ev_mid.txt | $T/ev_end.txt
+EXPECT_EXIT | 1 | and-mid-walk-differs-from-where-the-walk-ends
+RUN | /usr/bin/cmp | -s | $T/ev_pre.txt | $T/ev_end.txt
+EXPECT_EXIT | 1 | VACUITY-the-roll-really-moved-someone-start-and-end-differ
+MKDIR   | proj
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | page | $T/proj
+EXPECT_OUT | events=4 | the-engines-own-projection-has-4-players
+RUN | /usr/bin/cmp | $T/ev_end.txt | $T/proj/events.txt
+EXPECT_EXIT | 0 | THE-WALK-ENDS-WHERE-THE-LEDGER-SAYS-byte-identical-to-the-engine-projection
+
+CASE    | play_and_stop
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | speed: fast | 4000 | fast-speed-so-a-long-walk-ends-inside-the-waits-below
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_resume
+WRITE   | edit/state/world/switches.txt | running=1\n
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | round=2 | 40000 | PLAY-advances-the-game-round-2-appears-within-40-s
+WRITE   | edit/state/world/switches.txt | running=0\n
+SLEEP   | 2500
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_a1
+EXPECT_GE | $n_a1 | 14 | VACUITY-the-game-really-advanced-before-the-freeze-is-measured
+SLEEP   | 3000
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_a2
+EXPECT_EQ | $n_a1 | $n_a2 | STOP-FREEZES-the-row-count-is-identical-3-s-apart
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+SLEEP   | 800
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_a4
+EXPECT_GE | $n_a4 | $n_a1 | STEP-WHILE-STOPPED-the-game-moves-on-by-a-tick-never-backwards
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | step | $T/edit/state/games/deskopoly
+SLEEP   | 800
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_a5
+CALC    | n_a6 | $n_a5 | - | $n_a4
+EXPECT_GE | $n_a6 | 1 | and-another-step-adds-at-least-one-row
+EXPECT_LE | $n_a6 | 2 | and-at-most-two-a-tick-is-one-or-two-rows-never-a-burst
+SLEEP   | 4000
+MKDIR   | proj2
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | page | $T/proj2
+RUN | /usr/bin/cmp | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | $T/proj2/events.txt
+EXPECT_EXIT | 0 | after-a-whole-stretch-of-play-the-rows-still-equal-the-projection
+
+CASE    | owner_exit
+# the fake owner is a CHILD of this harness: a killed child stays a zombie (kill(pid,0) still succeeds) until it is reaped, and the driver would think its owner lives. EXPECT_DEAD reaps it (waitpid WNOHANG), exactly as the real editor window vanishing does.
+RUN | /usr/bin/kill | $OWN
+SLEEP   | 300
+EXPECT_DEAD | $OWN | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRV | THE-OWNER-DYING-ENDS-THE-DRIVER
+EXPECT_FILE | $T/edit/state/game_ui.txt | gm_on=\n | and-the-feed-is-cleared-to-exactly-gm_on-so-the-bars-disappear
+EXPECT_HAS | $T/edit/edit-pchq/pieces/world_01/state.txt | desk_id=board | and-the-world-is-back-on-the-authored-board-desk
+EXPECT_EXISTS | $T/edit/state/games/deskopoly/game/ledger.txt | and-the-game-is-still-in-its-ledger-nothing-was-lost
+
+CASE    | restart
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_before
+SPAWN   | OWN2 | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN2
+SPAWN   | DRV2 | $T/app/ops/+x/deskopoly_driver.+x | $T/h | $T/app | $T/edit
+WAIT_HAS | edit/state/game_ui.txt | a game was in progress | 8000 | A-RESTARTED-DRIVER-CONTINUES-THE-GAME-FROM-THE-LEDGER
+EXPECT_HAS | $T/edit/edit-pchq/pieces/world_01/state.txt | desk_id=play | and-points-the-world-at-the-play-desk-again
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+CAPTURE | n_after
+EXPECT_EQ | $n_before | $n_after | RESTART-ADDS-NO-ROWS-the-paused-game-continues-exactly-where-the-ledger-left-it
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | new_game | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | the last game is in archive | 8000 | NEW-GAME-archives-the-finished-game
+EXPECT_NOFILE | $T/edit/state/games/deskopoly/game/ledger.txt | and-the-live-ledger-folder-is-empty-for-the-next-game
+RUN | /usr/bin/ls | $T/edit/state/games/deskopoly/archive
+EXPECT_OUT | game- | and-the-old-game-sits-under-archive
+EXPECT_HAS | $T/edit/edit-pchq/pieces/world_01/state.txt | desk_id=board | and-the-world-returns-to-board-for-the-next-setup
+RUN | /usr/bin/kill | $OWN2
+SLEEP   | 300
+EXPECT_DEAD | $OWN2 | the-second-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRV2 | and-the-second-driver-also-ends-with-its-owner
+
+CASE    | failures
+# a FRESH editor folder per case: the single-instance lock is checked before the engine, so the used one would answer already-running
+MKDIR   | edit_x
+MKDIR   | edit_y/state
+RUN | $T/app/ops/+x/deskopoly_driver.+x
+EXPECT_EXIT | 2 | NEGATIVE-no-arguments-is-a-usage-error
+EXPECT_OUT | usage: deskopoly_driver | and-the-usage-is-printed
+RUN | $T/app/ops/+x/deskopoly_driver.+x | $T/h | $T/app | $T/edit_x
+EXPECT_EXIT | 1 | NEGATIVE-an-editor-folder-without-a-state-folder-fails-and-is-NOT-reported-as-already-running
+EXPECT_OUT | cannot open the lock file | and-says-what-is-wrong
+EXPECT_OUT_LACKS | already running | FOUND-2026-11-08-the-old-driver-said-already-running-here
+RUN | $T/app/ops/+x/deskopoly_driver.+x | $T/h | $T/no_such_book | $T/edit_y
+EXPECT_EXIT | 1 | NEGATIVE-a-book-without-the-engine-fails-at-once
+EXPECT_OUT | the engine is missing | and-names-the-missing-engine
+CLEAN   |
