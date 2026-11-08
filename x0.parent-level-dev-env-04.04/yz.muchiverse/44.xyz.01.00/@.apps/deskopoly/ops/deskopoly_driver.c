@@ -136,13 +136,26 @@ static int ne_, nl_; static char ENT_[400]; static void add_ent(const char *s) {
 static void add_chat(const char *s) { char b[300]; snprintf(b, sizeof b, "gml_%d_text=%s\n", nl_++, s[0] ? s : " "); catn(OUT_, OUTCAP_, b); }
 static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "gmb_%d_label=%s\ngmb_%d_act='%s' %s '%s'\n", nb_, label, nb_, CTL, cmd, GDIR); nb_++; catn(OUT_, OUTCAP_, b); }
 
+/* THE BOARD PICTURE ONLY CHANGES WHEN OWNERSHIP, BUILDINGS OR MORTGAGES DO (players are drawn from events.txt, not from the page). Rebuilding it per tick cost three engine launches (page replays the ledger, preview renders
+ * 792x792, raw_to_png compresses 2.5 MB) AND grew cells.marker, which makes the 3D engine reload the desk: measured 2026-11-08 at 6.1% of a core for the driver while a game ran (5.3% of it in those children).
+ * A byte cursor reads only the NEW ledger rows. FAIL-SAFE: only verbs known not to touch the picture are skipped; any other row (buy, build, mortgage, start, and verbs that do not exist yet: auctions, trades) rebuilds. */
+static long pg_cur = 0;
+static int page_needed(void) {
+    char p[P]; snprintf(p, sizeof p, "%s/ledger.txt", GAME); FILE *f = fopen(p, "r"); if (!f) { pg_cur = 0; return 1; }
+    fseek(f, 0, SEEK_END); long sz = ftell(f); int need = 0; if (sz < pg_cur) { pg_cur = 0; need = 1; }   /* a smaller ledger = a new game */
+    fseek(f, pg_cur, SEEK_SET); char ln[600];
+    static const char *quiet[] = { "roll", "order", "first", "end_turn", "skip", "jail_pay", "jail_roll", "jail_card", "lobby", "join", "seat", NULL };
+    while (fgets(ln, sizeof ln, f)) { char *q = ln; for (int k = 0; k < 3 && q; k++) { q = strchr(q, '|'); if (q) q++; } if (!q) { need = 1; continue; }
+        char *e = strchr(q, '|'); size_t vl = e ? (size_t)(e - q) : strcspn(q, "\r\n"); int isq = 0; for (int k = 0; quiet[k]; k++) if (strlen(quiet[k]) == vl && !strncmp(q, quiet[k], vl)) isq = 1; if (!isq) need = 1; }
+    pg_cur = ftell(f); fclose(f); return need;
+}
 static void publish(void) {
     static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = ne_ = nl_ = 0; ENT_[0] = 0; char t[256], k[48], b[600];
     int run = running(); int have = mode_play && load_ui(); int over = have ? uint_("over") : 0;
-    catn(o, sizeof o, "gm_on=1\ngm_title=DESKOPOLY classic\n");
+    catn(o, sizeof o, "gm_on=1\ngm_title=TEROPOLY classic\n");
     /* IN-GAME FEATURES REPLACE THE EDITOR TOOLS WHILE A GAME IS ON: this feed is the LAST vars file of the editor window, so these keys override the editor ones (data, no renderer change). The palettes bar is hidden,
      * the pets bar is shown with the game players as its party, and the h-ai chat gives way to the game chat. When the game ends the feed drops to gm_on= and the editor values show again. */
-    catn(o, sizeof o, "side_pal=\nside_left=1\nn_chat=0\nchat_is_hai=\nchat_is_edit=\nchat_is_net=\ngm_chat_title=DESKOPOLY table talk\nnick_line=Deskopoly players\nstat_line=pets play, you watch or take a seat\nstat_line2=Stop freezes, Play resumes\n");
+    catn(o, sizeof o, "side_pal=\nside_left=1\nn_chat=0\nchat_is_hai=\nchat_is_edit=\nchat_is_net=\ngm_chat_title=TEROPOLY table talk\nnick_line=Teropoly players\nstat_line=pets play, you watch or take a seat\nstat_line2=Stop freezes, Play resumes\n");
     if (have) catn(o, sizeof o, UI);
     snprintf(b, sizeof b, "%.90s", msg); add_text(b);   /* the renderer wraps long popup text itself; the old 30-char cut hid "choose the players, then START" and "(opening throw)" */
     if (!have) { catn(o, sizeof o, "n_party=0\n");
@@ -173,7 +186,7 @@ static void publish(void) {
     }
     if (ENT_[0]) { char eb[460]; snprintf(eb, sizeof eb, "gme_0_label=%s\n", ENT_); catn(o, sizeof o, eb); ne_ = 1; }
     snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=%d\ngm_nl=%d\n", nt_, nb_, ne_, nl_); catn(o, sizeof o, b);
-    if (have) page_sync(0);
+    if (have && page_needed()) page_sync(0);
     char tmp[P]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (!f) return; fputs(o, f); fclose(f); rename(tmp, FEED); dirty = 0;
 }
 
@@ -245,15 +258,16 @@ int main(int argc, char **argv) {
         if (OWNER > 0 ? (kill((pid_t)OWNER, 0) != 0 && errno == ESRCH) : getppid() == 1) break;
         if (!stat(ACT, &s) && s.st_size > cursor) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cursor, SEEK_SET); char ln[128]; while (fgets(ln, sizeof ln, f)) { first_line(ln); if (ln[0]) handle(ln); } cursor = ftell(f); fclose(f); } if (cursor > 65536 && truncate(ACT, 0) == 0) cursor = 0; }
         else if (!stat(ACT, &s) && s.st_size < cursor) cursor = 0;
-        int run = running(); static int was_run = -1; if (run != was_run) { was_run = run; dirty = 1; }
+        static int hwait = 0; int run = running(); static int was_run = -1; if (run != was_run) { was_run = run; dirty = 1; }
         if (mode_play) { static long nw = 0; static int was = 0; long tw = now_ms(); if (tw >= nw) { if (w_resync) { walk_sync(); write_events(); } int m = walk_step(); if (m || was) write_events(); was = walking_now; nw = tw + W_MS[speed]; } }
         if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8], ht[8], cn[24], yt[80]; load_ui(); uget("over", ov, sizeof ov); uget("human_turn", ht, sizeof ht); uget("current_name", cn, sizeof cn);
             /* A HUMAN'S TURN COSTS NOTHING: while the game waits for a seat that is a person the driver does not poll the engine (measured 2026-11-08 in the real editor: 17 engine calls in 10 s, ledger frozen, before this; 0 after). ui.txt is rewritten after every verb and tick, so the moment the turn passes to the human the next loop sees human_turn=1. */
-            if (ov[0] != '1' && ht[0] == '1') { snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
-            else if (ov[0] != '1') tick_once(); else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
+            if (ov[0] != '1' && ht[0] == '1') { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
+            else if (ov[0] != '1') { hwait = 0; tick_once(); } else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         if (dirty) publish();
-        usleep(80000);
+        /* ADAPTIVE POLL (owner 2026-11-08 "irregular sleep cycles"): 80 ms while the game is live (walking, ticking); 250 ms on the setup screen, while stopped, and while a human is thinking: nothing can happen but a button press. Measured with the context-switch counter: 12-14 wakeups/s before. */
+        usleep((mode_play && ((run && !hwait) || walking_now || w_resync || page_pending)) ? 80000 : 250000);   /* anything with a deadline (a walk, a resync, a deferred page) keeps the fast poll even while stopped */
     }
     set_desk("board");
     char tmp[P]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); { FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */

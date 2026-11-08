@@ -22,19 +22,22 @@ RUN | /bin/rm | -rf | $HOUSE/@.apps/deskopoly/shots
 RUN | /bin/mkdir | -p | $HOUSE/@.apps/deskopoly/shots
 
 CASE    | start-state
+# A killed session leaves the OLD feed (game_ui.txt) behind: waiting for it would pass on stale data and the commands below would go to a driver that is not running. So: delete the feed (a projection the driver regenerates), start/nudge the driver, wait for the FRESH feed, then command it. (A driver that just started ignores commands written before it started.)
+RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/state/game_ui.txt
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | key | esc
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | press | tb-player
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | tapid | pm-play
-WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/../../game_ui.txt | gm_on=1 | 20000 | the-driver-is-up-and-publishes-its-feed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_ctl.+x | setup_reset | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=1 | 30000 | the-driver-is-up-and-publishes-a-FRESH-feed-the-stale-one-was-deleted
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_ctl.+x | new_game | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_ctl.+x | setup_reset | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
-WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/../../game_ui.txt | players, then START | 10000 | the-setup-screen-is-showing
+WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/game_ui.txt | players, then START | 15000 | the-setup-screen-is-showing
 EXPECT_NOFILE | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | VACUITY-no-game-is-running-so-everything-below-starts-from-the-setup-screen
 
 CASE    | seat-setup
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | run | $HOUSE/@.apps/deskopoly/tests/dsk-seat-setup.pdl | $win
 EXPECT_EXIT | 0 | THE-SETUP-SCRIPT-PASSES-all-15-steps-by-real-taps
-EXPECT_OUT | ALL PASS: 15 pass, 0 fail | and-says-so
+EXPECT_OUT | ALL PASS: 17 pass, 0 fail | and-says-so
 RUN | /usr/bin/grep | -c | driver=human | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
 EXPECT_OUT_IS | 1 | EXACTLY-ONE-SEAT-IS-HUMAN-p1
 RUN | /usr/bin/grep | -c | \pp1\pjoin\p | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
@@ -42,14 +45,14 @@ EXPECT_OUT_IS | 1 | and-it-is-p1
 
 CASE    | views
 # the 3D view shows the extruded players (the default camera); key 0 toggles the RPG Maker 2D view (the whole board with every walking character). The overhead 3D camera is NOT automated: see nav.pdl (camera, unresolved).
-RUN | /usr/bin/sed | -n | s/^bv_session=//p | $ED/board/state/ui.txt
+RUN | /usr/bin/sed | -n | s/^bv_session=//p | $HOUSE/@.apps/rpg-edit-hq/board/state/ui.txt
 CAPTURE | sess
 SLEEP   | 3000
-RUN | $RDV | shot | $win | $HOUSE/@.apps/deskopoly/shots/00a-3d-extruded-players.png
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $HOUSE/@.apps/deskopoly/shots/00a-3d-extruded-players.png
 EXPECT_EXIT | 0 | the-3D-frame-is-saved
 RUN | $HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x | $sess | 0
 SLEEP   | 4000
-RUN | $RDV | shot | $win | $HOUSE/@.apps/deskopoly/shots/00b-2d-whole-board.png
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | shot | $win | $HOUSE/@.apps/deskopoly/shots/00b-2d-whole-board.png
 EXPECT_EXIT | 0 | the-2D-frame-is-saved
 RUN | /usr/bin/cmp | -s | $HOUSE/@.apps/deskopoly/shots/00a-3d-extruded-players.png | $HOUSE/@.apps/deskopoly/shots/00b-2d-whole-board.png
 EXPECT_EXIT | 1 | VACUITY-key-0-really-changed-the-picture-the-2D-and-3D-frames-differ

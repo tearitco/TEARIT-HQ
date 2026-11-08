@@ -2,7 +2,7 @@ SECTION      | KEY                | VALUE
 ----------------------------------------------------------------------
 GAME         | type               | board-game
 GAME         | icon               | 
-GAME         | label              | Deskopoly
+GAME         | label              | Teropoly
 GAME         | n_chunks           | 1
 GAME         | chunk_0_x          | 0
 GAME         | chunk_0_y          | 0

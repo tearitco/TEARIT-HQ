@@ -1,0 +1,42 @@
+# lc_clock_burn: the clock DAEMON's real-time fire budget (2026-11-08). Found by the CPU guard: the rpg clock runs at rate `sec` (1 game hour per real second), a 5-game-minute reminder falls due 12 times a second,
+# every fire is a full event run (~1.8 s of CPU) and the daemon sat at 364% of a core until the guard ended 30 house processes. A reminder may now fire at most once per LC_CLOCK_MIN_FIRE_GAP_MS of real time
+# (default 30 s) and a batch runs ONE event; the rest of the backlog collapses into `caught up N`. Scratch roots only; the event runner is /usr/bin/true so nothing heavy runs, we count LEDGER rows.
+# Negative test built in: the same daemon with the gap set to 0 (the old behaviour) must fire many times, so the guard below can fail.
+RESULTS | ../results/lc_clock_burn.txt
+ENV     | LC_CLOCK_NO_POPUP | 1
+ENV     | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
+CASE    | budgeted
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | rate | g1 | sec
+EXPECT_EXIT | 0 | the-clock-runs-at-rate-sec-1-game-hour-per-real-second
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | d | every:5min
+EXPECT_EXIT | 0 | a-5-game-minute-reminder-is-added
+ENV     | LC_CLOCK_MIN_FIRE_GAP_MS | 2000
+SPAWN | D | $T/lc.+x | $T | daemon
+SLEEP   | 9000
+RUN | $T/lc.+x | $T | sched-count | r1
+CAPTURE | rows_budget
+RUN | /usr/bin/kill | $D
+SLEEP   | 2000
+EXPECT_DEAD | $D | the-budgeted-daemon-stopped-by-pid
+EXPECT_GE | $rows_budget | 1 | VACUITY-the-reminder-did-fire-at-all
+EXPECT_LE | $rows_budget | 12 | THE-BUDGET-HOLDS-9-s-at-a-2-s-gap-is-at-most-5-batches-not-the-100-plus-rows-an-uncapped-daemon-writes
+CLEAN |
+CASE    | unbudgeted-negative
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | rate | g1 | sec
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | d | every:5min
+ENV     | LC_CLOCK_MIN_FIRE_GAP_MS | 0
+SPAWN | D2 | $T/lc.+x | $T | daemon
+SLEEP   | 9000
+RUN | $T/lc.+x | $T | sched-count | r1
+CAPTURE | rows_open
+RUN | /usr/bin/kill | $D2
+SLEEP   | 2000
+EXPECT_DEAD | $D2 | the-unbudgeted-daemon-stopped-by-pid
+EXPECT_GE | $rows_open | 40 | NEGATIVE-with-the-budget-off-the-same-9-s-writes-many-more-rows-so-the-limit-above-is-not-vacuous
+CLEAN |

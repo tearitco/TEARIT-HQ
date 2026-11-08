@@ -4,6 +4,7 @@
 RESULTS | ../results/lc_clock_restore.txt
 ENV     | LC_CLOCK_NO_POPUP | 1
 ENV     | LC_CLOCK_EVENT_RUNNER | /usr/bin/true
+ENV     | LC_CLOCK_MIN_FIRE_GAP_MS | 0   # this case tests restore semantics, not the daemon's real-time fire budget (see lc_clock_burn)
 CASE    | restore-stepped
 SCRATCH |
 COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x

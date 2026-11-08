@@ -53,6 +53,8 @@ CASE    | paused
 SLEEP   | 1500
 RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
 EXPECT_OUT_IS | 6 | PAUSE-FREEZES-the-ledger-stays-at-6-rows-with-the-switch-at-0
+RUN | /usr/bin/stat | -c | %s | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/cells.marker
+CAPTURE | m_a
 RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/game/ledger.txt
 CAPTURE | sum0
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
@@ -102,6 +104,9 @@ RUN | /usr/bin/grep | -cE | [0-9]$ | $T/ev_end.txt
 EXPECT_OUT_IS | 0 | and-none-at-the-end-of-the-walk
 RUN | /usr/bin/grep | -cE |  [A-D]$ | $T/ev_end.txt
 EXPECT_OUT_IS | 4 | and-all-4-rows-end-in-a-letter-so-the-checks-above-are-not-vacuous
+RUN | /usr/bin/stat | -c | %s | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/cells.marker
+CAPTURE | m_b
+EXPECT_EQ | $m_a | $m_b | COST-QUIET-ROWS-REBUILD-NOTHING-order-first-and-roll-leave-cells.marker-unchanged-so-no-page-preview-or-png-is-launched-and-the-3D-engine-does-not-reload-the-desk
 
 CASE    | play_and_stop
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
@@ -111,6 +116,10 @@ RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
 CAPTURE | n_resume
 WRITE   | edit/state/world/switches.txt | running=1\n
 WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | round=2 | 40000 | PLAY-advances-the-game-round-2-appears-within-40-s
+RUN | /usr/bin/stat | -c | %s | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/cells.marker
+CAPTURE | m_c
+CALC    | m_a1 | $m_a | + | 1
+EXPECT_GE | $m_c | $m_a1 | VACUITY-a-property-purchase-DOES-rebuild-the-picture-the-marker-grew-so-the-guard-above-can-fail
 WRITE   | edit/state/world/switches.txt | running=0\n
 SLEEP   | 2500
 RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt

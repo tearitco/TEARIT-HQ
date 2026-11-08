@@ -1,5 +1,5 @@
 # game.pdl - what the editor's PLAY does for this book (GAME-SETUP-PDL-DESIGN.md, extended 2026-11-08 with `driver`). Read by the shared core's `play` verb (petslike_core.c book_driver()).
 # GAME | driver | <program> <args...>   run on Play (detached, one instance: the program locks itself). {house} {book} {editor} are replaced by the house root, this book's folder and the editor's folder.
 # The driver is the game's loop: it ticks only while the editor's switch running=1 (Player > Play / Stop), and publishes the game bar feed state/game_ui.txt that the editor window draws. It decides no game rule.
-GAME   | title        | Deskopoly
+GAME   | title        | Teropoly
 GAME   | driver       | {book}/ops/+x/deskopoly_driver.+x {house} {book} {editor}

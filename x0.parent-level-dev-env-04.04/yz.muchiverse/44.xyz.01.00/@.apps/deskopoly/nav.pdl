@@ -27,7 +27,7 @@ NAV | id | say          | the table-talk input (right)              | not used b
 
 # ---- scripts (tests/) ----
 NAV | script | dsk-new-game   | tests/dsk-new-game.pdl   | popup New game -> setup screen
-NAV | script | dsk-seat-setup | tests/dsk-seat-setup.pdl | Play, speed fast, you play p1, START GAME (15 steps, 3 shots)
+NAV | script | dsk-seat-setup | tests/dsk-seat-setup.pdl | Play, speed fast, you play p1, START GAME (17 steps, 3 shots)
 NAV | script | dsk-seat-turns | tests/dsk-seat-turns.pdl | three rounds as p1 with Roll / Buy / End turn (24 steps, 4 shots); seed 7 is deterministic
 NAV | case   | live_dsk_seat   | harness/cases/live_dsk_seat.pdl | the whole chain in the real window (LIVE_OK=1); shots land in @.apps/deskopoly/shots/ (git-ignored, wiped at the start of each run)
 

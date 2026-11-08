@@ -105,7 +105,8 @@ static int find_elem_objects(long pid, const char *key, Elem1 *e) {
 static int press_elem(long pid, const char *key, int by_mouse, char *what, size_t cap) {
     const char *frame = "/tmp/entity-menu-frame.png.frame.txt"; Elem1 e;
     if (getenv("RELAY_DRIVE_NO_ESC")) {   /* GENTLE mode: read the window's own newest objects dump; no Esc, no 'p' key (a 'p' typed into an open dropdown filters its rows, so menus could never be seen) */
-        if (!find_elem_objects(pid, key, &e)) { snprintf(what, cap, "no clickable element %s in the newest objects dump of pid %ld", key, pid); return 0; }
+        /* The dump is rewritten a moment AFTER a frame changes (a menu that was just opened is not in it yet): poll up to 5 s (20 x 250 ms, ~0 CPU: a directory scan per try) before giving up. 2026-11-08: the first run after a rebuild failed at `tapid pm-play` right after `press tb-player` for exactly this reason, the next run passed. */
+        int tries = 0; while (!find_elem_objects(pid, key, &e)) { if (++tries >= 20) { snprintf(what, cap, "no clickable element %s in the newest objects dump of pid %ld (waited 5 s)", key, pid); return 0; } ms(250); }
     } else {
     if (!frame_dump(pid, frame)) { snprintf(what, cap, "no frame dump after key p (is a field armed, or is the window not responding?)"); return 0; }
     if (!find_elem(frame, key, &e)) { snprintf(what, cap, "no element %s in the frame", key); return 0; }

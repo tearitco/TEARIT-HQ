@@ -9,9 +9,11 @@ SECTION | KEY | VALUE
 STEP | key | esc
 STEP | press | tb-player
 STEP | tapid | pm-play
+STEP | sleep | 3000
 STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15
 STEP | shot | @.apps/deskopoly/shots/01-setup.png
 STEP | press | label:speed
+STEP | sleep | 800
 STEP | press | label:speed
 STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | speed: fast | 5
 STEP | press | label:you play
