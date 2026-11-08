@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | deskopoly
+META         | desk_id            | board
+META         | note               | deskopoly board page, drawn from board.pdl + the ledger by `deskopoly page`

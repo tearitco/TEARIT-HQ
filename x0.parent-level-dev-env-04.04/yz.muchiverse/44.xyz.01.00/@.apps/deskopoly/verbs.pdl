@@ -14,6 +14,8 @@ VERB | status    | no | ui | -            | read-only: the whole state, derived 
 VERB | replay    | no | ui | -            | read-only: replay the ledger and print its state hash (refuses a ledger that does not reproduce itself)
 VERB | check     | no | ui | -            | read-only: replay plus invariants (money conservation, ownership, positions)
 VERB | mechanics | no | ui | -            | read-only: the known mechanics and hard state as plain rows (a projection of these files, for an editor)
+VERB | page      | no | ui | desk_dir atlas | draw the board as an editor desk page (cells.txt, map.txt, ...) from board.pdl + page.pdl + the replayed ledger; owned tiles show their owner
+VERB | preview   | no | ui | desk_dir out.raw | a FLAT top-down picture of a desk (no depth, not the engine render), raw RGBA for raw_to_png
 FLOW | new       | rules.pdl,board.pdl        | state/ledger.txt
 FLOW | roll      | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt
@@ -24,6 +26,8 @@ FLOW | status    | state/ledger.txt           | -
 FLOW | replay    | state/ledger.txt           | -
 FLOW | check     | state/ledger.txt           | -
 FLOW | mechanics | verbs.pdl,rules.pdl,board.pdl,state/ledger.txt | state/mechanics.txt
+FLOW | page      | board.pdl,page.pdl,state/ledger.txt | <desk_dir>/cells.txt,map.txt,events.txt,skin.txt,extrusion.pdl,cells.rgba
+FLOW | preview   | <desk_dir>/cells.txt,cells.rgba | <out.raw>
 BRAIN | roll     | roll     | rules,autoplay,refusals | ok  |                 | every turn starts with a roll; nothing to choose
 BRAIN | buy      | buy      | autoplay,refusals       | ok  | blocked,refused | choose to buy the tile under you; blocked when the cash is not there
 BRAIN | skip     | skip     | autoplay                | ok  |                 | choose to leave the tile for the bank

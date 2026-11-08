@@ -272,6 +272,68 @@ static int v_mechanics(void) {
     return rc ? 1 : 0;
 }
 
+/* --- page: the board DRAWN as an editor desk (cells.txt) from board.pdl + page.pdl + the replayed ledger. A projection: it decides no rule. --- */
+static int HD_px = 24, HD_cols = 16, HD_tiles = 43, HD_rock = 36, PG_block = 3, PG_floor = 1, PG_go = 40, PG_tax = 36, PG_rest = 7;
+static int PG_group[8] = {32, 2, 37, 39, 32, 2, 37, 39}, PG_owner[MAXP] = {35, 38, 41, 33};
+static void load_page(void) {
+    char p[1100], ln[LINE]; char *f[8]; snprintf(p, sizeof p, "%s/page.pdl", g_app); FILE *fp = fopen(p, "r"); if (!fp) bad("cannot read page.pdl");
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 3) continue; int v = atoi(f[2]);
+        if (!strcmp(f[0], "HEADER")) { if (!strcmp(f[1], "tile_px")) HD_px = v; else if (!strcmp(f[1], "atlas_cols")) HD_cols = v; else if (!strcmp(f[1], "atlas_tiles")) HD_tiles = v; else if (!strcmp(f[1], "rock_slot")) HD_rock = v; }
+        else if (!strcmp(f[0], "PAGE") && !strcmp(f[1], "block")) PG_block = v;
+        else if (!strcmp(f[0], "TILEMAP")) { int g;
+            if (!strcmp(f[1], "floor")) PG_floor = v; else if (!strcmp(f[1], "go")) PG_go = v; else if (!strcmp(f[1], "tax")) PG_tax = v; else if (!strcmp(f[1], "rest")) PG_rest = v;
+            else if (sscanf(f[1], "group%d", &g) == 1 && g >= 0 && g < 8) PG_group[g] = v; else if (sscanf(f[1], "owner_p%d", &g) == 1 && g >= 1 && g <= MAXP) PG_owner[g - 1] = v; } }
+    fclose(fp);
+    if (HD_px < 1 || HD_cols < 1 || HD_tiles < 1 || PG_block < 1 || PG_block > 8) bad("page.pdl: bad header or block size");
+    int all[] = {PG_floor, PG_go, PG_tax, PG_rest}; for (int i = 0; i < 4; i++) if (all[i] < 0 || all[i] >= HD_tiles) bad("page.pdl: a tile index is outside the atlas");
+    for (int i = 0; i < 8; i++) if (PG_group[i] < 0 || PG_group[i] >= HD_tiles) bad("page.pdl: a group tile is outside the atlas");
+    for (int i = 0; i < MAXP; i++) if (PG_owner[i] < 0 || PG_owner[i] >= HD_tiles) bad("page.pdl: an owner tile is outside the atlas");
+}
+static void write_atomic(const char *dir, const char *name, const char *text) {
+    char tp[1200], fp2[1200]; snprintf(tp, sizeof tp, "%s/%s.tmp", dir, name); snprintf(fp2, sizeof fp2, "%s/%s", dir, name);
+    FILE *o = fopen(tp, "w"); if (!o) bad("cannot write into the desk folder"); fputs(text, o); fclose(o); if (rename(tp, fp2)) bad("cannot rename into the desk folder");
+}
+static void ring_xy(int idx, int n, int *bx, int *by) {
+    int s = n - 1; if (idx <= s) { *bx = idx; *by = 0; } else if (idx <= 2 * s) { *bx = s; *by = idx - s; } else if (idx <= 3 * s) { *bx = s - (idx - 2 * s); *by = s; } else { *bx = 0; *by = s - (idx - 3 * s); }
+}
+static int v_page(int argc, char **argv) {
+    if (argc < 1) bad("usage: page <desk_dir> [atlas.rgba]"); const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) bad("the desk folder does not exist (make it first)");
+    load_page(); if (nt % 4 || nt / 4 + 1 < 3) bad("the ring needs tiles = 4 x (side - 1) with side >= 3");
+    int st, rc = replay(&st); if (rc) return 1; int n = nt / 4 + 1, W = n * PG_block, H = W; if (W > 64) bad("page too large");
+    static int ct[64][64], cd[64][64]; for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) { ct[y][x] = PG_floor; cd[y][x] = 1; }
+    int owned = 0;
+    for (int i = 0; i < nt; i++) { int bx, by; ring_xy(i, n, &bx, &by); int tf = !strcmp(T[i].kind, "go") ? PG_go : !strcmp(T[i].kind, "tax") ? PG_tax : !strcmp(T[i].kind, "rest") ? PG_rest : PG_group[T[i].group & 7];
+        for (int y = 0; y < PG_block; y++) for (int x = 0; x < PG_block; x++) { ct[by * PG_block + y][bx * PG_block + x] = tf; cd[by * PG_block + y][bx * PG_block + x] = 2; }
+        if (st && owner[i] >= 0) { ct[by * PG_block + PG_block / 2][bx * PG_block + PG_block / 2] = PG_owner[owner[i]]; owned++; } }
+    static char buf[64 * 64 * 12 + 512]; buf[0] = 0;
+    ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles, HD_rock);
+    for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "%s%d,0,%d", x ? " " : "", ct[y][x], cd[y][x]); ap(buf, sizeof buf, "\n"); }
+    write_atomic(dd, "cells.txt", buf);
+    buf[0] = 0; for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "."); ap(buf, sizeof buf, "\n"); } write_atomic(dd, "map.txt", buf);
+    char q[1200]; snprintf(q, sizeof q, "%s/events.txt", dd); if (stat(q, &sb)) write_atomic(dd, "events.txt", "");
+    snprintf(q, sizeof q, "%s/skin.txt", dd); if (stat(q, &sb)) write_atomic(dd, "skin.txt", "rmmv\n");
+    snprintf(q, sizeof q, "%s/extrusion.pdl", dd); if (stat(q, &sb)) write_atomic(dd, "extrusion.pdl", "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | deskopoly\nMETA         | desk_id            | board\nMETA         | note               | deskopoly board page, drawn from board.pdl + the ledger by `deskopoly page`\n");
+    snprintf(q, sizeof q, "%s/cells.rgba", dd);
+    if (argc > 1 && stat(q, &sb)) { FILE *a = fopen(argv[1], "rb"); if (!a) bad("cannot read the atlas"); FILE *o = fopen(q, "wb"); if (!o) bad("cannot write the atlas"); char b[8192]; size_t k; while ((k = fread(b, 1, sizeof b, a)) > 0) fwrite(b, 1, k, o); fclose(a); fclose(o); }
+    printf("PAGE %s %dx%d tiles=%d owned=%d\n", dd, W, H, nt, owned); return 0;
+}
+/* preview: a FLAT top-down picture of a desk (cells.txt + cells.rgba), tile by tile, no depth, no engine. Raw RGBA, for raw_to_png. It is not the engine's render. */
+static int v_preview(int argc, char **argv) {
+    if (argc < 2) bad("usage: preview <desk_dir> <out.raw>"); char p[1200], ln[16384]; snprintf(p, sizeof p, "%s/cells.txt", argv[0]); FILE *fp = fopen(p, "r"); if (!fp) bad("no cells.txt (run page first)");
+    int W = 0, H = 0, px = 24, cols = 16; static int ct[64][64]; int y = -1;
+    while (fgets(ln, sizeof ln, fp)) { if (!strncmp(ln, "width=", 6)) W = atoi(ln + 6); else if (!strncmp(ln, "height=", 7)) H = atoi(ln + 7); else if (!strncmp(ln, "tile_px=", 8)) px = atoi(ln + 8); else if (!strncmp(ln, "atlas_cols=", 11)) cols = atoi(ln + 11);
+        else if (!strncmp(ln, "cells", 5)) y = 0; else if (y >= 0 && y < H && y < 64) { int x = 0; for (char *t = strtok(ln, " \n"); t && x < W && x < 64; t = strtok(NULL, " \n"), x++) ct[y][x] = atoi(t); y++; } }
+    fclose(fp); if (W < 1 || H < 1 || W > 64 || H > 64 || y != H) bad("cells.txt is not a complete page");
+    snprintf(p, sizeof p, "%s/cells.rgba", argv[0]); fp = fopen(p, "rb"); if (!fp) bad("no cells.rgba atlas"); fseek(fp, 0, SEEK_END); long asz = ftell(fp); rewind(fp);
+    unsigned char *at = malloc((size_t)asz); if (!at || fread(at, 1, (size_t)asz, fp) != (size_t)asz) bad("cannot read the atlas"); fclose(fp);
+    int aw = cols * px; if (asz % (aw * 4)) bad("atlas size does not match atlas_cols x tile_px"); int ah = (int)(asz / (aw * 4));
+    size_t ow = (size_t)W * px, oh = (size_t)H * px; unsigned char *o = calloc(ow * oh, 4); if (!o) bad("out of memory");
+    for (int cy = 0; cy < H; cy++) for (int cx = 0; cx < W; cx++) { int t = ct[cy][cx], sx = (t % cols) * px, sy = (t / cols) * px; if (sy + px > ah) bad("a tile index is outside the atlas");
+        for (int r = 0; r < px; r++) memcpy(o + (((size_t)cy * px + r) * ow + (size_t)cx * px) * 4, at + ((size_t)(sy + r) * aw + sx) * 4, (size_t)px * 4); }
+    FILE *w = fopen(argv[1], "wb"); if (!w) bad("cannot write the raw file"); fwrite(o, 4, ow * oh, w); fclose(w); free(at); free(o);
+    printf("PREVIEW %zux%zu\n", ow, oh); return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: deskopoly <app_dir> <state_dir> <verb> [args]\n"); return 2; }
     snprintf(g_app, sizeof g_app, "%s", argv[1]); snprintf(g_state, sizeof g_state, "%s", argv[2]); const char *v = argv[3];
@@ -285,5 +347,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "replay")) return v_replay();
     if (!strcmp(v, "check")) return v_check();
     if (!strcmp(v, "mechanics")) return v_mechanics();
+    if (!strcmp(v, "page")) return v_page(argc - 4, argv + 4);
+    if (!strcmp(v, "preview")) return v_preview(argc - 4, argv + 4);
     fprintf(stderr, "deskopoly: unknown verb %s\n", v); return 2;
 }

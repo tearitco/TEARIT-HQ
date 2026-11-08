@@ -157,3 +157,53 @@ RUN | sh | $T/edit_open.sh | $T/house | nobook | board
 EXPECT_EXIT | 2 | NEGATIVE-a-book-with-no-game-pdl-is-refused
 RUN | grep | -c | ^ROOM | $HOUSE/@.apps/deskopoly/rooms.pdl
 EXPECT_OUT_IS | 1 | rooms-pdl-lists-the-same-one-page-as-game-pdl
+
+# the board DRAWN as an editor page: a projection of board.pdl + page.pdl + the replayed ledger. Observed 2026-11-07: a 15x15 page (5x5 ring of 3x3 blocks); after the seed-7 game 12 tiles are owned, and the
+# centre cell of tile 1 (row 2 of the cells, column 5) holds p4's marker 33 (checked against `status`: rex 2, fenn 7, gus 1, wren 2 props, the same counts the picture shows).
+CASE    | page
+SCRATCH |
+MKDIR   | empty
+MKDIR   | g
+MKDIR   | d0
+MKDIR   | d7
+MKDIR   | badapp
+MKDIR   | dbad
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/empty | page | $T/d0 | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/test/cells.rgba
+EXPECT_OUT | 15x15 tiles=16 owned=0 | a-fresh-board-is-a-15x15-page-with-nothing-owned
+EXPECT_HAS | d0/cells.txt | width=15 | the-header-says-width-15
+EXPECT_HAS | d0/cells.txt | atlas_tiles=43 | the-header-comes-from-page-pdl
+RUN | awk | NR==9{print $5} | $T/d0/cells.txt
+EXPECT_OUT_IS | 32,0,2 | an-unowned-tile-keeps-its-group-floor-in-the-centre
+RUN | grep | -c | , | $T/d0/cells.txt
+EXPECT_OUT_IS | 15 | fifteen-cell-rows-plus-no-header-line-has-a-comma
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | new | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | autoplay
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d7 | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/test/cells.rgba
+EXPECT_OUT | 15x15 tiles=16 owned=12 | after-the-game-twelve-tiles-show-an-owner
+RUN | awk | NR==9{print $5} | $T/d7/cells.txt
+EXPECT_OUT_IS | 33,0,2 | the-hard-state-shows-on-the-page-tile-1-carries-p4s-marker
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d7
+RUN | cp | $T/d7/cells.txt | $T/d7/cells.again
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d7
+RUN | cmp | $T/d7/cells.txt | $T/d7/cells.again
+EXPECT_EXIT | 0 | drawing-the-page-twice-gives-the-same-file
+RUN | cmp | $T/d7/cells.txt | $T/d0/cells.txt
+EXPECT_EXIT | 1 | NEGATIVE-the-played-page-differs-from-the-fresh-one-so-the-compare-can-fail
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | preview | $T/d7 | $T/d7.raw
+EXPECT_OUT | PREVIEW 360x360 | the-flat-preview-is-15-cells-of-24-pixels
+RUN | stat | -c | %s | $T/d7.raw
+EXPECT_OUT_IS | 518400 | the-raw-file-is-exactly-360-x-360-x-4-bytes
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | preview | $T/dbad | $T/x.raw
+EXPECT_EXIT | 2 | NEGATIVE-a-folder-with-no-page-is-refused
+# a board that is not a ring (5 tiles) and a page.pdl that names a tile outside the atlas are both refused
+COPY    | @.apps/deskopoly/rules.pdl | badapp/rules.pdl
+COPY    | @.apps/deskopoly/verbs.pdl | badapp/verbs.pdl
+COPY    | @.apps/deskopoly/page.pdl | badapp/page.pdl
+WRITE   | badapp/board.pdl | TILE | 0 | Start | go | 0 | 0 | -1\nTILE | 1 | A | prop | 10 | 1 | 0\nTILE | 2 | B | prop | 10 | 1 | 0\nTILE | 3 | C | prop | 10 | 1 | 0\nTILE | 4 | D | rest | 0 | 0 | -1\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/badapp | $T/dbad | page | $T/dbad
+EXPECT_EXIT | 2 | NEGATIVE-a-board-that-is-not-a-ring-is-refused
+EXPECT_OUT | ring needs tiles | and-it-says-why
+COPY    | @.apps/deskopoly/board.pdl | badapp/board.pdl
+WRITE   | badapp/page.pdl | HEADER | atlas_tiles | 43\nTILEMAP | go | 99\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/badapp | $T/dbad | page | $T/dbad
+EXPECT_EXIT | 2 | NEGATIVE-a-tile-outside-the-atlas-is-refused

@@ -1,0 +1,24 @@
+# page.pdl - how the deskopoly board is DRAWN as an editor page (pass 1, 2026-11-07). Read by `deskopoly ... page <desk_dir>` and `preview`.
+# The page is a projection: board.pdl (which tile is where) + the replayed ledger (who owns what) -> cells.txt. Nothing here decides a rule.
+# HEADER  | key | value        copied into cells.txt (same keys as @.apps/centroid desks: tile_px, atlas_cols, atlas_tiles, rock_slot)
+# PAGE    | block | n          every board tile is an n x n block of cells; the tiles run clockwise round a ring (needs tiles = 4 x (side - 1))
+# TILEMAP | name | atlas index floor (outside the ring and the middle) | go | tax | rest | group0..group7 (a prop's floor by its group) | owner_p1..owner_p4 (marker in the centre cell of an owned block)
+# Atlas index = row x 16 + col in the 384x72 RPG Maker atlas (16 columns, 43 tiles), picked by looking at it: 1 grass, 2 planks, 7 sand, 32 dirt, 33 sword sign, 35 orange,
+# 36 rough stone, 37 dark boards, 38 blue tile, 39 parquet, 40 orange diamond, 41 white stone. These stand-ins are a first look, not art.
+HEADER  | tile_px     | 24
+HEADER  | atlas_cols  | 16
+HEADER  | atlas_tiles | 43
+HEADER  | rock_slot   | 36
+PAGE    | block       | 3
+TILEMAP | floor       | 1
+TILEMAP | go          | 40
+TILEMAP | tax         | 36
+TILEMAP | rest        | 7
+TILEMAP | group0      | 32
+TILEMAP | group1      | 2
+TILEMAP | group2      | 37
+TILEMAP | group3      | 39
+TILEMAP | owner_p1    | 35
+TILEMAP | owner_p2    | 38
+TILEMAP | owner_p3    | 41
+TILEMAP | owner_p4    | 33
