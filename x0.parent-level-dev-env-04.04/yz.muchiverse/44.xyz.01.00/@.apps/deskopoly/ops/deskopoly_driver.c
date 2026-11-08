@@ -50,6 +50,38 @@ static int run_eng(char *out, size_t cap, int na, const char **a) {
 static void first_line(char *s) { char *e = strpbrk(s, "\r\n"); if (e) *e = 0; }
 static int eng1(const char *v, const char *x, char *out, size_t cap) { const char *a[2] = { v, x }; return run_eng(out, cap, x ? 2 : 1, a); }
 
+/* THE MAP: the live game is drawn as its own generated desk "play" of the book (the engine's `page` verb: decorations, owner markers, tokens; it appends a byte to cells.marker, the house reload rule),
+ * never into the authored "board" desk. While a game is on, the editor world (state.txt desk_id) points at "play"; when the game is reset or this driver ends it points back at "board".
+ * Throttled to one page per 250 ms. */
+static char DESKDIR[P], ATLAS[P], WORLD[P]; static int page_pending = 0; static long last_page = 0;
+static void set_desk(const char *want) {
+    FILE *f = fopen(WORLD, "r"); if (!f) return; static char buf[4096]; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f); static char out[4400]; out[0] = 0; int saw = 0;
+    for (char *p = buf; *p; ) { char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
+        if (ll >= 8 && !strncmp(p, "desk_id=", 8)) { snprintf(out + strlen(out), sizeof out - strlen(out), "desk_id=%s\n", want); saw = 1; }
+        else if (ll < 600) snprintf(out + strlen(out), sizeof out - strlen(out), "%.*s\n", (int)ll, p);
+        if (!e) break; p = e + 1; }
+    if (!saw) return; char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", WORLD); FILE *w = fopen(tmp, "w"); if (!w) return; fputs(out, w); fclose(w); rename(tmp, WORLD);
+}
+/* 2D: the RPG Maker picture of the page (map.png beside map.txt, which the 2D renderer blits 1:1 and draws the events.txt characters over). Made from the page by the engine's `preview` verb and the house raw_to_png op. */
+static int run_prog(char *const av[]) { pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { alarm(10); int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); } execv(av[0], av); _exit(127); } int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1; }
+static void make_map_png(void) {
+    char raw[P + 16], png[P + 16], cp[P + 16], r2p[P + 96]; snprintf(raw, sizeof raw, "%s/map.raw", DESKDIR); snprintf(png, sizeof png, "%s/map.png", DESKDIR); snprintf(cp, sizeof cp, "%s/cells.txt", DESKDIR); snprintf(r2p, sizeof r2p, "%s/&.widgits/_shared-lib/ops/+x/raw_to_png.+x", HOUSE);
+    const char *b[3] = { "preview", DESKDIR, raw }; if (run_eng(NULL, 0, 3, b) != 0) return;
+    FILE *f = fopen(cp, "r"); if (!f) return; char ln[256]; int W = 0, H = 0, px = 24; for (int i = 0; i < 6 && fgets(ln, sizeof ln, f); i++) { if (!strncmp(ln, "width=", 6)) W = atoi(ln + 6); else if (!strncmp(ln, "height=", 7)) H = atoi(ln + 7); else if (!strncmp(ln, "tile_px=", 8)) px = atoi(ln + 8); } fclose(f);
+    if (W < 1 || H < 1) return; char sz[40]; snprintf(sz, sizeof sz, "%dx%d", W * px, H * px); char *av[] = { r2p, raw, png, (char *)"--size", sz, NULL }; run_prog(av); unlink(raw);
+}
+
+/* The 3D walk frames of the characters (People1 x 8 x 4 directions x 3 patterns) are made once per game start by deskopoly_frames: only the MISSING ones, never overwriting a frame another game made. */
+static void ensure_frames(void) {
+    char ex[P], sheet[P + 64], fr[P + 64], as[P]; snprintf(ex, sizeof ex, "%s/ops/+x/deskopoly_frames.+x", BOOK); snprintf(as, sizeof as, "%s/../../../#.NNEST_ASSETS/tsots-characters", HOUSE);
+    snprintf(sheet, sizeof sheet, "%s/People1.png", as); snprintf(fr, sizeof fr, "%s/frames", as); if (access(ex, X_OK) || access(sheet, R_OK) || access(fr, W_OK)) return;
+    char *av[] = { ex, sheet, (char *)"People1", fr, NULL }; run_prog(av);
+}
+static void page_sync(int force) {
+    long t = now_ms(); if (!force && t - last_page < 250) { page_pending = 1; return; }
+    mkdir(DESKDIR, 0755); const char *a[4] = { "page", DESKDIR, ATLAS, "noevents" }; run_eng(NULL, 0, 4, a); make_map_png(); last_page = t; page_pending = 0;
+}
+
 static char UI[20000];
 static int load_ui(void) { char p[P]; snprintf(p, sizeof p, "%s/ui.txt", GAME); FILE *f = fopen(p, "r"); if (!f) { UI[0] = 0; return 0; } size_t n = fread(UI, 1, sizeof UI - 1, f); UI[n] = 0; fclose(f); return 1; }
 static const char *uget(const char *k, char *dst, size_t cap) {
@@ -60,18 +92,54 @@ static const char *uget(const char *k, char *dst, size_t cap) {
 static int uint_(const char *k) { char t[64]; return atoi(uget(k, t, sizeof t)); }
 static void ring_xy(int idx, int n, int *bx, int *by) { int s = n - 1; if (idx <= s) { *bx = idx; *by = 0; } else if (idx <= 2 * s) { *bx = s; *by = idx - s; } else if (idx <= 3 * s) { *bx = s - (idx - 2 * s); *by = s; } else { *bx = 0; *by = s - (idx - 3 * s); } }
 
+/* WALKING (owner 2026-11-08: the players move around the board physically, in 2D RPG Maker and in 3D). The engine says WHERE each player is (p<i>_pos); this driver animates the walk: a character steps one map
+ * cell at a time along the ring (3 cells per tile) toward its tile, and writes the characters to the play desk's events.txt, which the 3D engine re-reads every frame and the 2D picture blits (an RPG Maker
+ * charset: People1, facing and walking pattern from the step). The next game move waits until everyone has arrived. A move that is not a forward walk of up to 12 tiles (a card, Go To Jail) is a jump. */
+static int w_cur[8], w_sub[8], w_tgt[8], w_known[8], w_out[8], w_n = 0, w_nt = 40, walking_now = 0, w_step = 0, w_resync = 1;
+static const int W_MS[3] = { 60, 130, 240 };
+static void walk_reset(void) { memset(w_known, 0, sizeof w_known); w_n = 0; walking_now = 0; w_resync = 1; }
+static void walk_sync(void) {
+    load_ui(); int np = uint_("n_players"); w_nt = uint_("n_tiles"); if (w_nt < 4) w_nt = 40; w_n = np > 8 ? 8 : np; char k[24];
+    for (int i = 0; i < w_n; i++) { snprintf(k, sizeof k, "p%d_pos", i + 1); int tg = uint_(k); snprintf(k, sizeof k, "p%d_out", i + 1); w_out[i] = uint_(k);
+        if (!w_known[i]) { w_known[i] = 1; w_cur[i] = tg; w_sub[i] = 0; }
+        else if (tg != w_tgt[i]) { int d = (tg - w_cur[i] + w_nt) % w_nt; if (d == 0 || d > 12) { w_cur[i] = tg; w_sub[i] = 0; } }
+        w_tgt[i] = tg; }
+    w_resync = 0;
+}
+static int walk_step(void) {
+    int moved = 0, any = 0;
+    for (int i = 0; i < w_n; i++) if (!w_out[i] && w_cur[i] != w_tgt[i]) { any = 1; moved = 1; if (++w_sub[i] >= 3) { w_cur[i] = (w_cur[i] + 1) % w_nt; w_sub[i] = 0; } if (w_cur[i] == w_tgt[i] && w_sub[i] == 0) any = any; }
+    int still = 0; for (int i = 0; i < w_n; i++) if (!w_out[i] && w_cur[i] != w_tgt[i]) still = 1; (void)any; walking_now = still; if (moved) w_step++; return moved;
+}
+static void write_events(void) {
+    static const int pr[8][3] = {{220, 60, 60}, {60, 120, 230}, {60, 190, 90}, {230, 200, 50}, {180, 80, 200}, {60, 200, 200}, {240, 140, 40}, {200, 200, 200}};
+    static const int ox[4] = {0, -1, 1, 0}, oy[4] = {0, -1, -1, 1}; static const int patt[4] = {0, 1, 2, 1}; static char evb[2048]; evb[0] = 0; int share[64]; memset(share, 0, sizeof share);
+    for (int i = 0; i < w_n; i++) if (!w_out[i]) { int bx, by, nx, ny, t = w_cur[i], nt2 = (t + 1) % w_nt; ring_xy(t, 11, &bx, &by); ring_xy(nt2, 11, &nx, &ny);
+        int dx = nx > bx ? 1 : nx < bx ? -1 : 0, dy = ny > by ? 1 : ny < by ? -1 : 0; int cx = bx * 3 + 1, cy = by * 3 + 1, dir = 2, pat = 1;
+        if (w_cur[i] != w_tgt[i]) { cx += dx * w_sub[i]; cy += dy * w_sub[i]; dir = dx > 0 ? 6 : dx < 0 ? 4 : dy > 0 ? 2 : 8; pat = patt[w_step % 4]; }
+        else { int s = share[t < 64 ? t : 0]++; if (s > 3) s = 3; cx += ox[s]; cy += oy[s]; }
+        snprintf(evb + strlen(evb), sizeof evb - strlen(evb), "%d %d %d %d %d People1 %d %d %d %d\n", cx, cy, pr[i][0], pr[i][1], pr[i][2], i, dir, pat, i + 1); }
+    char tmp[P + 16]; snprintf(tmp, sizeof tmp, "%s/events.txt.tmp", DESKDIR); char fin[P + 16]; snprintf(fin, sizeof fin, "%s/events.txt", DESKDIR); mkdir(DESKDIR, 0755);
+    FILE *f = fopen(tmp, "w"); if (!f) return; fputs(evb, f); fclose(f); rename(tmp, fin);
+}
+
 /* the feed: text rows + the buttons that are legal NOW. Every button's action string is complete (the editor's repeat just substitutes it). */
 static int nb_, nt_; static char *OUT_; static size_t OUTCAP_;
 static void add_text(const char *s) { char b[400]; snprintf(b, sizeof b, "gmt_%d_text=%s\n", nt_++, s[0] ? s : " "); catn(OUT_, OUTCAP_, b); }
+static int ne_, nl_; static char ENT_[400]; static void add_ent(const char *s) { if (ENT_[0]) strncat(ENT_, "   ", sizeof ENT_ - strlen(ENT_) - 1); strncat(ENT_, s, sizeof ENT_ - strlen(ENT_) - 1); }   /* all players are ONE wide footer item (separate items do not fit beside the footer buttons) */
+static void add_chat(const char *s) { char b[300]; snprintf(b, sizeof b, "gml_%d_text=%s\n", nl_++, s[0] ? s : " "); catn(OUT_, OUTCAP_, b); }
 static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "gmb_%d_label=%s\ngmb_%d_act='%s' %s '%s'\n", nb_, label, nb_, CTL, cmd, GDIR); nb_++; catn(OUT_, OUTCAP_, b); }
 
 static void publish(void) {
-    static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = 0; char t[256], k[48], b[600];
+    static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = ne_ = nl_ = 0; ENT_[0] = 0; char t[256], k[48], b[600];
     int run = running(); int have = mode_play && load_ui(); int over = have ? uint_("over") : 0;
     catn(o, sizeof o, "gm_on=1\ngm_title=DESKOPOLY classic\n");
+    /* IN-GAME FEATURES REPLACE THE EDITOR TOOLS WHILE A GAME IS ON: this feed is the LAST vars file of the editor window, so these keys override the editor ones (data, no renderer change). The palettes bar is hidden,
+     * the pets bar is shown with the game players as its party, and the h-ai chat gives way to the game chat. When the game ends the feed drops to gm_on= and the editor values show again. */
+    catn(o, sizeof o, "side_pal=\nside_left=1\nn_chat=0\nchat_is_hai=\nchat_is_edit=\nchat_is_net=\ngm_chat_title=DESKOPOLY table talk\nnick_line=Deskopoly players\nstat_line=pets play, you watch or take a seat\nstat_line2=Stop freezes, Play resumes\n");
     if (have) catn(o, sizeof o, UI);
     snprintf(b, sizeof b, "%.30s", msg); add_text(b);
-    if (!have) {
+    if (!have) { catn(o, sizeof o, "n_party=0\n");
         snprintf(b, sizeof b, "%d players, seed %d", nplayers, seed); add_text(b);
         add_btn("players -", "players_down"); add_btn("players +", "players_up");
         snprintf(b, sizeof b, "you play: %s", human_seat == 0 ? "none" : (snprintf(t, sizeof t, "p%d", human_seat), t)); add_btn(b, "human_next");
@@ -83,8 +151,9 @@ static void publish(void) {
         int np = uint_("n_players");
         for (int i = 1; i <= np; i++) { char nm[24], dv[12], ca[24], po[12], ou[8], ne[24], tu[8], jl[8]; snprintf(k, sizeof k, "p%d_name", i); uget(k, nm, sizeof nm); snprintf(k, sizeof k, "p%d_driver", i); uget(k, dv, sizeof dv); snprintf(k, sizeof k, "p%d_cash", i); uget(k, ca, sizeof ca);
             snprintf(k, sizeof k, "p%d_pos", i); uget(k, po, sizeof po); snprintf(k, sizeof k, "p%d_out", i); uget(k, ou, sizeof ou); snprintf(k, sizeof k, "p%d_net", i); uget(k, ne, sizeof ne); snprintf(k, sizeof k, "p%d_turn", i); uget(k, tu, sizeof tu); snprintf(k, sizeof k, "p%d_jail", i); uget(k, jl, sizeof jl);
-            snprintf(b, sizeof b, "%s p%d %.3s $%s%s%s", tu[0] ? ">" : " ", i, nm, ne, jl[0] ? " JAIL" : "", ou[0] == '1' ? " OUT" : ""); (void)dv; (void)ca; (void)po; add_text(b); }
-        for (int i = 0; i < 3; i++) { snprintf(k, sizeof k, "log_%d", i); char l[120]; uget(k, l, sizeof l); if (l[0]) { l[30] = 0; add_text(l); } }
+            snprintf(b, sizeof b, "%sp%d %s%s%s", tu[0] ? ">" : "", i, ne, jl[0] ? " J" : "", ou[0] == '1' ? " X" : ""); (void)dv; add_ent(b); { char pb[220]; snprintf(pb, sizeof pb, "party_%d_label=%sp%d %s $%s\nparty_%d_id=gm%d\nparty_%d_cls=%s\n", i - 1, tu[0] ? "> " : "", i, nm, ca, i - 1, i, i - 1, tu[0] ? "active" : ""); catn(OUT_, OUTCAP_, pb); } }
+        { char pb[40]; snprintf(pb, sizeof pb, "n_party=%d\n", np); catn(OUT_, OUTCAP_, pb); }
+        for (int i = 7; i >= 0; i--) { snprintf(k, sizeof k, "log_%d", i); char l[120]; uget(k, l, sizeof l); if (l[0]) add_chat(l); }
         char v[8];
         if (uget("show_roll", v, sizeof v)[0]) add_btn("Roll", "roll");
         if (uget("show_jail", v, sizeof v)[0]) { add_btn("Jail: roll for doubles", "jail_roll"); add_btn("Jail: pay 50", "jail_pay"); }
@@ -96,7 +165,9 @@ static void publish(void) {
         if (!run && !over) add_btn("Step one move", "step");
         snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(b, "speed_next"); add_btn("New game", "new_game");
     }
-    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\n", nt_, nb_); catn(o, sizeof o, b);
+    if (ENT_[0]) { char eb[460]; snprintf(eb, sizeof eb, "gme_0_label=%s\n", ENT_); catn(o, sizeof o, eb); ne_ = 1; }
+    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=%d\ngm_nl=%d\n", nt_, nb_, ne_, nl_); catn(o, sizeof o, b);
+    if (have) page_sync(0);
     char tmp[P]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (!f) return; fputs(o, f); fclose(f); rename(tmp, FEED); dirty = 0;
 }
 
@@ -113,12 +184,13 @@ static void begin_game(void) {
     if (eng1("lobby", "classic", out, sizeof out)) { first_line(out); snprintf(msg, sizeof msg, "lobby refused: %s", out); return; }
     for (int i = 1; i <= nplayers; i++) { char nm[4] = { (char)('A' + i - 1), 0 }; const char *a[3] = { "join", nm, i == human_seat ? "human" : "pet" }; if (run_eng(out, sizeof out, 3, a)) { first_line(out); snprintf(msg, sizeof msg, "join refused: %s", out); return; } }
     if (eng1("start", sd, out, sizeof out)) { first_line(out); snprintf(msg, sizeof msg, "start refused: %s", out); return; }
-    mode_play = 1; snprintf(msg, sizeof msg, "game started: %d players, seed %d, %s", nplayers, seed, human_seat ? "you are a seat at the table" : "all pets");
+    mode_play = 1; set_desk("play"); ensure_frames(); page_sync(1); walk_reset(); snprintf(msg, sizeof msg, "game started: %d players, seed %d, %s", nplayers, seed, human_seat ? "you are a seat at the table" : "all pets");
     if (human_seat) snprintf(msg, sizeof msg, "game started: %d players, seed %d, you are p%d", nplayers, seed, human_seat);
     eng1("ui", NULL, out, sizeof out);
 }
 static void tick_once(void) {
     char out[600]; int rc = eng1("tick", NULL, out, sizeof out); first_line(out); eng1("ui", NULL, NULL, 0);
+    w_resync = 1;
     if (rc != 0) snprintf(msg, sizeof msg, "stuck: %.150s", out); else snprintf(msg, sizeof msg, "%.190s", out);
     dirty = 1;
 }
@@ -126,6 +198,7 @@ static void human_verb(const char *engine_verb) {
     char out[400], as[24], cur[16], ph[16]; load_ui(); uget("current", cur, sizeof cur); uget("phase", ph, sizeof ph); snprintf(as, sizeof as, "as=%s", cur);
     if (!strcmp(ph, "order") && !strcmp(engine_verb, "roll")) engine_verb = "order";   /* the opening throw is its own verb; the Roll button covers both */
     const char *a[2] = { engine_verb, as }; int rc = run_eng(out, sizeof out, 2, a); first_line(out); eng1("ui", NULL, NULL, 0);
+    w_resync = 1;
     snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); dirty = 1;
 }
 static void handle(const char *c) {
@@ -136,7 +209,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "speed_next")) { speed = (speed + 1) % 3; }
     else if (!strcmp(c, "start")) { if (!mode_play) begin_game(); }
     else if (!strcmp(c, "step")) { if (mode_play && !running()) tick_once(); }
-    else if (!strcmp(c, "new_game")) { if (mode_play) { archive_game(); mode_play = 0; snprintf(msg, sizeof msg, "the last game is in archive/; choose the players, then START"); } }
+    else if (!strcmp(c, "new_game")) { if (mode_play) { archive_game(); mode_play = 0; set_desk("board"); walk_reset(); snprintf(msg, sizeof msg, "the last game is in archive/; choose the players, then START"); } }
     else if (!strcmp(c, "roll")) human_verb("roll"); else if (!strcmp(c, "buy")) human_verb("buy"); else if (!strcmp(c, "skip")) human_verb("skip"); else if (!strcmp(c, "end")) human_verb("end_turn");
     else if (!strcmp(c, "jail_pay")) human_verb("jail_pay"); else if (!strcmp(c, "jail_roll")) human_verb("jail_roll"); else if (!strcmp(c, "pay_debt")) human_verb("pay_debt"); else if (!strcmp(c, "bankrupt")) human_verb("bankrupt");
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
@@ -150,22 +223,27 @@ int main(int argc, char **argv) {
     snprintf(ENG, sizeof ENG, "%s/ops/+x/deskopoly.+x", BOOK); snprintf(CTL, sizeof CTL, "%s/ops/+x/deskopoly_ctl.+x", BOOK);
     snprintf(GDIR, sizeof GDIR, "%s/state/games/deskopoly", EDIT); snprintf(GAME, sizeof GAME, "%s/game", GDIR); snprintf(ARCH, sizeof ARCH, "%s/archive", GDIR);
     snprintf(FEED, sizeof FEED, "%s/state/game_ui.txt", EDIT); snprintf(ACT, sizeof ACT, "%s/action.txt", GDIR); snprintf(SW, sizeof SW, "%s/state/world/switches.txt", EDIT);
+    { char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb; snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); }
+    snprintf(DESKDIR, sizeof DESKDIR, "%s/deskopoly-pchq/pieces/system/maps/deskopoly/play", BOOK); snprintf(ATLAS, sizeof ATLAS, "%s/deskopoly-pchq/pieces/system/maps/deskopoly/board/cells.rgba", BOOK);
     char d[P]; snprintf(d, sizeof d, "%s/state/games", EDIT); mkdir(d, 0755); mkdir(GDIR, 0755);
     { const char *ow = getenv("GAME_OWNER_PID"); OWNER = ow ? atol(ow) : 0; }
     char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644); if (lf < 0 || flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "deskopoly_driver: already running\n"); return 0; }
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = on_term; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); sigaction(SIGHUP, &sa, NULL);
     if (access(ENG, X_OK)) { fprintf(stderr, "deskopoly_driver: the engine is missing: %s\n", ENG); return 1; }
-    { char out[200]; if (eng1("ui", NULL, out, sizeof out) == 0) { mode_play = 1; snprintf(msg, sizeof msg, "a game was in progress; it continues while the Player menu says playing"); } }   /* the mode comes from the LEDGER */
+    { char out[200]; if (eng1("ui", NULL, out, sizeof out) == 0) { mode_play = 1; set_desk("play"); ensure_frames(); page_sync(1); walk_reset(); snprintf(msg, sizeof msg, "a game was in progress; it continues while the Player menu says playing"); } }   /* the mode comes from the LEDGER */
     struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; long next = now_ms(); publish();
     while (!stop_) {
         if (OWNER > 0 ? (kill((pid_t)OWNER, 0) != 0 && errno == ESRCH) : getppid() == 1) break;
         if (!stat(ACT, &s) && s.st_size > cursor) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cursor, SEEK_SET); char ln[128]; while (fgets(ln, sizeof ln, f)) { first_line(ln); if (ln[0]) handle(ln); } cursor = ftell(f); fclose(f); } if (cursor > 65536 && truncate(ACT, 0) == 0) cursor = 0; }
         else if (!stat(ACT, &s) && s.st_size < cursor) cursor = 0;
         int run = running(); static int was_run = -1; if (run != was_run) { was_run = run; dirty = 1; }
-        if (mode_play && run) { long t = now_ms(); if (t >= next) { char ov[8]; load_ui(); uget("over", ov, sizeof ov); if (ov[0] != '1') tick_once(); else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
+        if (mode_play) { static long nw = 0; static int was = 0; long tw = now_ms(); if (tw >= nw) { if (w_resync) { walk_sync(); write_events(); } int m = walk_step(); if (m || was) write_events(); was = walking_now; nw = tw + W_MS[speed]; } }
+        if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8]; load_ui(); uget("over", ov, sizeof ov); if (ov[0] != '1') tick_once(); else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
+        if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         if (dirty) publish();
         usleep(80000);
     }
+    set_desk("board");
     char tmp[P]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); { FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */
     return 0;
 }

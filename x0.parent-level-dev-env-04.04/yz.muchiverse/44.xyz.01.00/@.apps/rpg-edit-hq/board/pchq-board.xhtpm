@@ -145,7 +145,9 @@
         <text label="h-ai (API)" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_hai}"/>
         <text label="network (read only)" class="hb-quiet ov-title theme-3 ov-line" show="${chat_is_net}"/>
         <item id="sr-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right hide"/>
+        <text label="${gm_chat_title}" class="hb-quiet ov-title theme-3 ov-line" show="${gm_chat_title}"/>
         <repeat count="${n_chat}" bind="chat"><text label="${chat.label}" class="rp-chat ov-line ov-scrolltext ${chat.cls}"/></repeat>
+        <repeat count="${gm_nl}" bind="gml"><text label="${gml.text}" class="rp-chat ov-line ov-scrolltext"/></repeat>
         <cli_io id="say" target_id="rp-say" rows="3" class="rp-say" label="&gt; " action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x'"/>
       </row>
       <row id="hotbar-ov" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${hb_visible}">
@@ -184,6 +186,7 @@
         <item id="eko${ent.#}" class="pchq-ft sprite-inline sprite-big hpb-ko" label="${ent.label} ${ent.hpb}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_ko}"/>
         <item id="enone${ent.#}" class="pchq-ft sprite-inline sprite-big" label="${ent.label}" sprite="${ent.sprite}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' selev '${ent.kind}' '${ent.label}' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.id}'" show="${ent.hp_none}"/>
       </repeat>
+      <repeat count="${gm_ne}" bind="gme"><item id="gme${gme.#}" class="pchq-ft" label="${gme.label}" action="void"/></repeat>
     </footer>
     <text label="No live board-viewer session - open the board with open_board.sh." class="quiet" show="${no_session}"/>
   </page>

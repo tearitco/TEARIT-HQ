@@ -1,6 +1,6 @@
 # classic page.pdl: how the 40-tile classic board is DRAWN as an editor page (milestone M11-lite, 2026-11-08). A projection: it decides no rule. Same grammar as the app-level page.pdl (the mini ruleset keeps that one).
 # 40 tiles = 4 x (side - 1) with side 11, block 3 -> a 33 x 33 page. Atlas indexes (from looking at the 43-tile atlas): 1 grass 2 planks 3 pond 5 sand 7 sand 12 castle 16 blue-roof house 17 blue tower 19..27 village 28 purple hall
-# 29 grey hall 32 dirt 33 sword sign 34 door 35 orange 36 rough stone 37 dark boards 38 blue tile 40 orange diamond 41 white stone. Stand-ins, not art. A building raises its block: height 2 + buildings (hotel = 7).
+# 29 grey hall 32 dirt 33 sword sign 34 door 35 orange 36 rough stone 37 dark boards 38 blue tile 40 orange diamond 41 white stone. Stand-ins, not art. Every block is one voxel high; buildings are decorations (house and hotel cells).
 HEADER  | tile_px     | 24
 HEADER  | atlas_cols  | 16
 HEADER  | atlas_tiles | 43
@@ -32,3 +32,15 @@ TILEMAP | owner_p5    | 23
 TILEMAP | owner_p6    | 25
 TILEMAP | owner_p7    | 27
 TILEMAP | owner_p8    | 30
+# decorations (2026-11-08): a house sits on an edge-middle cell of its tile block, a hotel on all four, a mortgaged tile's block floods (pond), each player has a token in a block corner. Stand-in tiles picked by eye from the atlas.
+TILEMAP | house      | 16
+TILEMAP | hotel      | 14
+TILEMAP | mort       | 3
+TILEMAP | token_p1   | 18
+TILEMAP | token_p2   | 20
+TILEMAP | token_p3   | 22
+TILEMAP | token_p4   | 24
+TILEMAP | token_p5   | 26
+TILEMAP | token_p6   | 23
+TILEMAP | token_p7   | 25
+TILEMAP | token_p8   | 27

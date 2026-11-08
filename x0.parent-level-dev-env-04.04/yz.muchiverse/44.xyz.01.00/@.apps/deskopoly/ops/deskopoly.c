@@ -838,19 +838,22 @@ static int v_mechanics(void) {
 static int HD_px = 24, HD_cols = 16, HD_tiles = 43, HD_rock = 36, PG_block = 3, PG_floor = 1, PG_go = 40, PG_tax = 36, PG_rest = 7;
 static int PG_chance = 20, PG_chest = 29, PG_jail = 34, PG_gotojail = 12;   /* classic tile kinds (rulesets/<name>/page.pdl) */
 static int PG_group[10] = {32, 2, 37, 39, 32, 2, 37, 39, 36, 41}, PG_owner[MAXP] = {35, 38, 41, 33, 12, 17, 19, 21};
+static int PG_house = 16, PG_hotel = 14, PG_mort = 3, PG_token[MAXP] = {18, 20, 22, 24, 26, 23, 25, 27};   /* decorations: a house on an edge-middle cell, a hotel on all four, a mortgaged block floods (pond), a token in a corner */
 static void load_page(void) {
     char p[1100], ln[LINE]; char *f[8]; if (g_schema == 2) snprintf(p, sizeof p, "%s/rulesets/%s/page.pdl", g_app, g_rs); else snprintf(p, sizeof p, "%s/page.pdl", g_app); FILE *fp = fopen(p, "r"); if (!fp) bad("cannot read page.pdl");
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 3) continue; int v = atoi(f[2]);
         if (!strcmp(f[0], "HEADER")) { if (!strcmp(f[1], "tile_px")) HD_px = v; else if (!strcmp(f[1], "atlas_cols")) HD_cols = v; else if (!strcmp(f[1], "atlas_tiles")) HD_tiles = v; else if (!strcmp(f[1], "rock_slot")) HD_rock = v; }
         else if (!strcmp(f[0], "PAGE") && !strcmp(f[1], "block")) PG_block = v;
         else if (!strcmp(f[0], "TILEMAP")) { int g;
-            if (!strcmp(f[1], "floor")) PG_floor = v; else if (!strcmp(f[1], "go")) PG_go = v; else if (!strcmp(f[1], "tax")) PG_tax = v; else if (!strcmp(f[1], "rest") || !strcmp(f[1], "free")) PG_rest = v; else if (!strcmp(f[1], "chance")) PG_chance = v; else if (!strcmp(f[1], "chest")) PG_chest = v; else if (!strcmp(f[1], "jail")) PG_jail = v; else if (!strcmp(f[1], "gotojail")) PG_gotojail = v;
+            if (!strcmp(f[1], "floor")) PG_floor = v; else if (!strcmp(f[1], "go")) PG_go = v; else if (!strcmp(f[1], "tax")) PG_tax = v; else if (!strcmp(f[1], "rest") || !strcmp(f[1], "free")) PG_rest = v; else if (!strcmp(f[1], "house")) PG_house = v; else if (!strcmp(f[1], "hotel")) PG_hotel = v; else if (!strcmp(f[1], "mort")) PG_mort = v; else if (sscanf(f[1], "token_p%d", &g) == 1 && g >= 1 && g <= MAXP) PG_token[g - 1] = v;
+            else if (!strcmp(f[1], "chance")) PG_chance = v; else if (!strcmp(f[1], "chest")) PG_chest = v; else if (!strcmp(f[1], "jail")) PG_jail = v; else if (!strcmp(f[1], "gotojail")) PG_gotojail = v;
             else if (sscanf(f[1], "group%d", &g) == 1 && g >= 0 && g < 10) PG_group[g] = v; else if (sscanf(f[1], "owner_p%d", &g) == 1 && g >= 1 && g <= MAXP) PG_owner[g - 1] = v; } }
     fclose(fp);
     if (HD_px < 1 || HD_cols < 1 || HD_tiles < 1 || PG_block < 1 || PG_block > 8) bad("page.pdl: bad header or block size");
-    int all[] = {PG_floor, PG_go, PG_tax, PG_rest, PG_chance, PG_chest, PG_jail, PG_gotojail}; for (int i = 0; i < 8; i++) if (all[i] < 0 || all[i] >= HD_tiles) bad("page.pdl: a tile index is outside the atlas");
+    int all[] = {PG_floor, PG_go, PG_tax, PG_rest, PG_chance, PG_chest, PG_jail, PG_gotojail, PG_house, PG_hotel, PG_mort}; for (int i = 0; i < 11; i++) if (all[i] < 0 || all[i] >= HD_tiles) bad("page.pdl: a tile index is outside the atlas");
     for (int i = 0; i < 10; i++) if (PG_group[i] < 0 || PG_group[i] >= HD_tiles) bad("page.pdl: a group tile is outside the atlas");
     for (int i = 0; i < MAXP; i++) if (PG_owner[i] < 0 || PG_owner[i] >= HD_tiles) bad("page.pdl: an owner tile is outside the atlas");
+    for (int i = 0; i < MAXP; i++) if (PG_token[i] < 0 || PG_token[i] >= HD_tiles) bad("page.pdl: a token tile is outside the atlas");
 }
 static void write_atomic(const char *dir, const char *name, const char *text) {
     char tp[1200], fp2[1200]; snprintf(tp, sizeof tp, "%s/%s.tmp", dir, name); snprintf(fp2, sizeof fp2, "%s/%s", dir, name);
@@ -868,15 +871,27 @@ static int v_page(int argc, char **argv) {
     for (int i = 0; i < nt; i++) { int bx, by; ring_xy(i, n, &bx, &by); int tf; const char *kd = T[i].kind;
         if (!strcmp(kd, "go")) tf = PG_go; else if (!strcmp(kd, "tax")) tf = PG_tax; else if (!strcmp(kd, "rest") || !strcmp(kd, "free")) tf = PG_rest; else if (!strcmp(kd, "chance")) tf = PG_chance; else if (!strcmp(kd, "chest")) tf = PG_chest;
         else if (!strcmp(kd, "jail")) tf = PG_jail; else if (!strcmp(kd, "gotojail")) tf = PG_gotojail; else tf = PG_group[g_schema == 2 ? (T[i].group < 10 ? T[i].group : 0) : (T[i].group & 7)];
-        int rise = g_schema == 2 ? 2 + bld[i] : 2;   /* buildings are HEIGHT: each house raises the block, a hotel (5) the most */
+        int rise = 2;   /* one voxel high like every other map (owner 2026-11-08: "why deviate?"): buildings are decorations on the cells, never extra height */
         for (int y = 0; y < PG_block; y++) for (int x = 0; x < PG_block; x++) { ct[by * PG_block + y][bx * PG_block + x] = tf; cd[by * PG_block + y][bx * PG_block + x] = rise; }
-        if (st && owner[i] >= 0) { ct[by * PG_block + PG_block / 2][bx * PG_block + PG_block / 2] = PG_owner[owner[i]]; owned++; } }
+        if (st && owner[i] >= 0) { ct[by * PG_block + PG_block / 2][bx * PG_block + PG_block / 2] = PG_owner[owner[i]]; owned++; }
+        if (st && g_schema == 2 && PG_block == 3) { int ox = bx * 3, oy = by * 3;
+            if (mort[i]) for (int y = 0; y < 3; y++) for (int x = 0; x < 3; x++) if (x != 1 || y != 1) ct[oy + y][ox + x] = PG_mort;                                                   /* a mortgaged tile floods */
+            static const int ex[4] = {1, 0, 2, 1}, ey[4] = {0, 1, 1, 2}; for (int k = 0; k < 4; k++) if (bld[i] == 5 || k < bld[i]) ct[oy + ey[k]][ox + ex[k]] = bld[i] == 5 ? PG_hotel : PG_house;   /* houses fill the edge-middles, a hotel takes all four */
+        } }
     static char buf[64 * 64 * 12 + 512]; buf[0] = 0;
     ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles, HD_rock);
     for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "%s%d,0,%d", x ? " " : "", ct[y][x], cd[y][x]); ap(buf, sizeof buf, "\n"); }
     write_atomic(dd, "cells.txt", buf);
+    { char mk[1200]; snprintf(mk, sizeof mk, "%s/cells.marker", dd); struct stat ms; FILE *mf = fopen(mk, (!stat(mk, &ms) && ms.st_size >= 4096) ? "w" : "a"); if (mf) { fputc('1', mf); fclose(mf); } }   /* the house marker rule: the engine reloads a desk when this file GROWS (never on mtime) */
     buf[0] = 0; for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "."); ap(buf, sizeof buf, "\n"); } write_atomic(dd, "map.txt", buf);
-    char q[1200]; snprintf(q, sizeof q, "%s/events.txt", dd); if (stat(q, &sb)) write_atomic(dd, "events.txt", "");
+    char q[1200]; snprintf(q, sizeof q, "%s/events.txt", dd);
+    if (g_schema == 2 && st && !(argc > 2 && !strcmp(argv[2], "noevents"))) {   /* (a caller that animates the walk writes events.txt itself and passes noevents) the players are RPG MAKER CHARACTERS on the map: one events.txt row each (x y r g b charset index dir pattern glyph), rewritten every page; the engine redraws it each frame and the 2D picture blits the same rows */
+        static const int pr[8][3] = {{220, 60, 60}, {60, 120, 230}, {60, 190, 90}, {230, 200, 50}, {180, 80, 200}, {60, 200, 200}, {240, 140, 40}, {200, 200, 200}};
+        static const int sx[4] = {1, 0, 2, 1}, sy[4] = {1, 0, 0, 2}; static char evb[2048]; evb[0] = 0; int cnt[64]; memset(cnt, 0, sizeof cnt);
+        for (int pl = 0; pl < np_game && pl < 8; pl++) if (!out[pl] && pos[pl] >= 0 && pos[pl] < nt && pos[pl] < 64) { int bx, by; ring_xy(pos[pl], n, &bx, &by); int s = cnt[pos[pl]]++; if (s > 3) s = 3;
+            ap(evb, sizeof evb, "%d %d %d %d %d People1 %d 2 1 %d\n", bx * PG_block + sx[s], by * PG_block + sy[s], pr[pl][0], pr[pl][1], pr[pl][2], pl, pl + 1); }
+        write_atomic(dd, "events.txt", evb);
+    } else if (stat(q, &sb)) write_atomic(dd, "events.txt", "");
     snprintf(q, sizeof q, "%s/skin.txt", dd); if (stat(q, &sb)) write_atomic(dd, "skin.txt", "rmmv\n");
     snprintf(q, sizeof q, "%s/extrusion.pdl", dd); if (stat(q, &sb)) write_atomic(dd, "extrusion.pdl", "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | deskopoly\nMETA         | desk_id            | board\nMETA         | note               | deskopoly board page, drawn from board.pdl + the ledger by `deskopoly page`\n");
     snprintf(q, sizeof q, "%s/cells.rgba", dd);
