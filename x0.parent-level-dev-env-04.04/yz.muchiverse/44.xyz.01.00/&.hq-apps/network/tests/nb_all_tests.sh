@@ -30,6 +30,10 @@ echo "########## element/Node methods: behaviour, not presence (hermetic)"
 bash "$HERE/nb_element_methods_test.sh" || RC=1
 
 echo
+echo "########## MutationObserver delivers real DOM mutation records (hermetic)"
+bash "$HERE/nb_mutation_observer_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

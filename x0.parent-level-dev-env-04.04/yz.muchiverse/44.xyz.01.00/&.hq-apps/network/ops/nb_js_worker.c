@@ -631,6 +631,8 @@ static void cookie_header_for_url(const char *url, char *out, size_t olen);
 static void cfg_line(FILE *f, const char *key, const char *val);
 static void resolve_doc_url(const char *rel, char *out, size_t olen);
 static int peval_budget(JSContext *ctx, const char *src, size_t src_n, char *errbuf, size_t errbuf_sz);
+static void nb_mutation_notify_childlist(JSContext *ctx, NbNode *target, NbNode *added, NbNode *removed, NbNode *prev, NbNode *next);
+static void nb_mutation_notify_attribute(JSContext *ctx, NbNode *target, const char *name, const char *old_value);
 static NbNode *get_this(JSContext *ctx, JSValueConst this_val);
 static char *attrs_set(const NbNode *n, const char *name, const char *val);
 
@@ -2212,11 +2214,15 @@ static JSValue nb_el_setAttribute(JSContext *ctx, JSValueConst this_val, int arg
     const char *val = (argc > 1 && JS_IsString(argv[1])) ? (vl = JS_ToCString(ctx, argv[1])) : NULL;
     if (!n || !name) { JS_FreeCString(ctx, nm); JS_FreeCString(ctx, vl); return JS_UNDEFINED; }
     if (!val) val = "";
+    const char *old0 = nb_attr_get(n, name);
+    char *old_value = old0 ? strdup(old0) : NULL;
     if (!strcasecmp(name, "id")) { free(n->id); n->id = strdup(val); }
     else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = strdup(val); }
     char *na = attrs_set(n, name, val);
     free(n->attrs);
     n->attrs = na;
+    nb_mutation_notify_attribute(ctx, n, name, old_value);
+    free(old_value);
     JS_FreeCString(ctx, nm); JS_FreeCString(ctx, vl);
     return JS_UNDEFINED;
 }
@@ -2282,11 +2288,15 @@ static JSValue nb_el_removeAttribute(JSContext *ctx, JSValueConst this_val, int 
     char *nm = NULL;
     const char *name = (argc > 0 && JS_IsString(argv[0])) ? (nm = JS_ToCString(ctx, argv[0])) : NULL;
     if (!n || !name || !attrs_has(n, name)) { JS_FreeCString(ctx, nm); return JS_UNDEFINED; }
+    const char *old0 = nb_attr_get(n, name);
+    char *old_value = old0 ? strdup(old0) : NULL;
     if (!strcasecmp(name, "id")) { free(n->id); n->id = NULL; }
     else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = NULL; }
     char *na = attrs_del(n, name);
     free(n->attrs);
     n->attrs = na;
+    nb_mutation_notify_attribute(ctx, n, name, old_value);
+    free(old_value);
     JS_FreeCString(ctx, nm);
     return JS_UNDEFINED;
 }
@@ -2420,6 +2430,7 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
     node_detach(ch);
     orphan_remove(ch);
     local_append(n, ch);
+    nb_mutation_notify_childlist(ctx, n, ch, NULL, NULL, NULL);
     
     /* If a script element with src is appended to head/body, fetch and execute it */
     if (ch && ch->tag && !strcmp(ch->tag, "script")) {
@@ -2535,8 +2546,14 @@ static JSValue nb_el_removeChild(JSContext *ctx, JSValueConst this_val, int argc
             JS_NewString(ctx, "NotFoundError: the node is not a child of this element"));
         return JS_Throw(ctx, e);
     }
+    NbNode *prev = NULL, *next = ch->next_sibling;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+        if (c == ch) break;
+        prev = c;
+    }
     node_detach(ch);
     orphan_add(ch);
+    nb_mutation_notify_childlist(ctx, n, NULL, ch, prev, next);
     return push_node(ctx, ch);
 }
 static JSValue nb_el_insertBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -2558,6 +2575,7 @@ static JSValue nb_el_insertBefore(JSContext *ctx, JSValueConst this_val, int arg
     node_detach(nn);
     orphan_remove(nn);
     local_insert_before(n, nn, rn);
+    nb_mutation_notify_childlist(ctx, n, nn, NULL, NULL, rn);
     return push_node(ctx, nn);
 }
 static JSValue nb_el_replaceChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -2576,12 +2594,18 @@ static JSValue nb_el_replaceChild(JSContext *ctx, JSValueConst this_val, int arg
             JS_NewString(ctx, "NotFoundError: the old child is not a child of this element"));
         return JS_Throw(ctx, e);
     }
+    NbNode *old_prev = NULL, *old_next = on->next_sibling;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+        if (c == on) break;
+        old_prev = c;
+    }
     node_detach(nn);                    /* newChild may live in this same list */
     orphan_remove(nn);
     NbNode *after = on->next_sibling;   /* correct after nn's detach relinks */
     node_detach(on);
     orphan_add(on);
     local_insert_before(n, nn, after);
+    nb_mutation_notify_childlist(ctx, n, nn, on, old_prev, old_next);
     return push_node(ctx, on);          /* DOM returns the replaced child */
 }
 /* rung-2 remainder: el.value for form fields — a get/set pair; the set
@@ -3943,6 +3967,258 @@ static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, J
 static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewObject(ctx);
 }
+/* ---- MutationObserver: child-list and attribute slice (2026-11-07) ----
+ * The previous MutationObserver was an inert existence stub: pages could
+ * feature-detect it, but dynamic DOM changes never reached callbacks. This
+ * is the smallest honest first slice: childList mutations, subtree
+ * matching, and set/removeAttribute records are delivered to the observer's
+ * callback as a one-record array. CharacterData is parsed for API
+ * compatibility but has no text-node mutation source in this DOM yet, so
+ * it intentionally remains a no-op rather than fabricating a record. */
+#define NB_MUT_MAX_OBSERVERS 32
+#define NB_MUT_MAX_TARGETS 64
+#define NB_MUT_MAX_ATTRS 32
+typedef struct {
+    NbNode *target;
+    int child_list, subtree, attributes, character_data;
+    int attr_count;
+    char attrs[NB_MUT_MAX_ATTRS][128];
+} NbMutTarget;
+typedef struct {
+    JSValue self;
+    JSValue callback;
+    NbMutTarget targets[NB_MUT_MAX_TARGETS];
+    int target_count;
+} NbMutObserver;
+static NbMutObserver g_mut_obs[NB_MUT_MAX_OBSERVERS];
+static int g_mut_obs_count = 0;
+
+static int nb_mut_option_bool(JSContext *ctx, JSValueConst opts, const char *key) {
+    if (!JS_IsObject(opts)) return 0;
+    JSValue v = JS_GetPropertyStr(ctx, opts, key);
+    int r = JS_ToBool(ctx, v);
+    JS_FreeValue(ctx, v);
+    return r;
+}
+static int nb_mut_find_observer(JSContext *ctx, JSValueConst self) {
+    for (int i = 0; i < g_mut_obs_count; i++)
+        if (JS_StrictEq(ctx, g_mut_obs[i].self, self)) return i;
+    return -1;
+}
+static int nb_mut_node_is_ancestor(NbNode *root, NbNode *node) {
+    for (NbNode *p = node; p; p = p->parent)
+        if (p == root) return 1;
+    return 0;
+}
+static JSValue nb_mut_node_value(JSContext *ctx, NbNode *n) {
+    return n ? push_node(ctx, n) : JS_NULL;
+}
+static JSValue nb_mut_records_for(JSContext *ctx, JSValue self) {
+    JSValue recs = JS_GetPropertyStr(ctx, self, "__nb_mut_records");
+    if (!JS_IsArray(ctx, recs)) {
+        JS_FreeValue(ctx, recs);
+        recs = JS_NewArray(ctx);
+        JS_SetPropertyStr(ctx, self, "__nb_mut_records", JS_DupValue(ctx, recs));
+    }
+    return recs;
+}
+static void nb_mut_flush(JSContext *ctx, NbMutObserver *o) {
+    JSValue recs = nb_mut_records_for(ctx, o->self);
+    JSValue lenv = JS_GetPropertyStr(ctx, recs, "length");
+    uint32_t n = 0;
+    JS_ToUint32(ctx, &n, lenv);
+    JS_FreeValue(ctx, lenv);
+    if (n == 0 || !JS_IsFunction(ctx, o->callback)) {
+        JS_FreeValue(ctx, recs);
+        return;
+    }
+    JSValue recarg = JS_DupValue(ctx, recs);
+    JSValue selfarg = JS_DupValue(ctx, o->self);
+    JSValue av[2] = { recarg, selfarg };
+    JSValue r = JS_Call(ctx, o->callback, o->self, 2, av);
+    if (JS_IsException(r)) {
+        JSValue e = JS_GetException(ctx);
+        JS_FreeValue(ctx, e);
+    }
+    JS_FreeValue(ctx, r);
+    JS_FreeValue(ctx, recarg);
+    JS_FreeValue(ctx, selfarg);
+    JS_FreeValue(ctx, recs);
+    JS_SetPropertyStr(ctx, o->self, "__nb_mut_records", JS_NewArray(ctx));
+}
+static void nb_mut_append_record(JSContext *ctx, NbMutObserver *o, JSValue rec) {
+    JSValue recs = nb_mut_records_for(ctx, o->self);
+    JSValue lenv = JS_GetPropertyStr(ctx, recs, "length");
+    uint32_t n = 0;
+    JS_ToUint32(ctx, &n, lenv);
+    JS_FreeValue(ctx, lenv);
+    JS_SetPropertyUint32(ctx, recs, n, rec);
+    JS_FreeValue(ctx, recs);
+    nb_mut_flush(ctx, o);
+}
+static JSValue nb_mut_record(JSContext *ctx, const char *type, NbNode *target,
+                             NbNode *added, NbNode *removed, NbNode *prev, NbNode *next,
+                             const char *attr, const char *old_value) {
+    JSValue rec = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, rec, "type", JS_NewString(ctx, type));
+    JS_SetPropertyStr(ctx, rec, "target", nb_mut_node_value(ctx, target));
+    JSValue added_arr = JS_NewArray(ctx);
+    if (added) JS_SetPropertyUint32(ctx, added_arr, 0, nb_mut_node_value(ctx, added));
+    JS_SetPropertyStr(ctx, rec, "addedNodes", added_arr);
+    JSValue removed_arr = JS_NewArray(ctx);
+    if (removed) JS_SetPropertyUint32(ctx, removed_arr, 0, nb_mut_node_value(ctx, removed));
+    JS_SetPropertyStr(ctx, rec, "removedNodes", removed_arr);
+    JS_SetPropertyStr(ctx, rec, "previousSibling", nb_mut_node_value(ctx, prev));
+    JS_SetPropertyStr(ctx, rec, "nextSibling", nb_mut_node_value(ctx, next));
+    JS_SetPropertyStr(ctx, rec, "attributeName", attr ? JS_NewString(ctx, attr) : JS_NULL);
+    JS_SetPropertyStr(ctx, rec, "oldValue", old_value ? JS_NewString(ctx, old_value) : JS_NULL);
+    return rec;
+}
+static void nb_mutation_notify_childlist(JSContext *ctx, NbNode *target, NbNode *added, NbNode *removed, NbNode *prev, NbNode *next) {
+    if (!ctx || !target) return;
+    NbNode *rprev = prev, *rnext = next;
+    if (added) {
+        if (!rprev && !rnext) {
+            for (NbNode *c = target->first_child; c; c = c->next_sibling) {
+                if (c == added) { rnext = c->next_sibling; break; }
+                rprev = c;
+            }
+        } else if (!rprev) {
+            for (NbNode *c = target->first_child; c; c = c->next_sibling) {
+                if (c == added) break;
+                rprev = c;
+            }
+        }
+    }
+    for (int oi = 0; oi < g_mut_obs_count; oi++) {
+        NbMutObserver *o = &g_mut_obs[oi];
+        if (JS_IsUndefined(o->self) || !JS_IsFunction(ctx, o->callback)) continue;
+        for (int ti = 0; ti < o->target_count; ti++) {
+            NbMutTarget *t = &o->targets[ti];
+            int direct = (t->target == target);
+            int nested = (t->subtree && t->child_list && nb_mut_node_is_ancestor(t->target, target));
+            if (t->child_list && (direct || nested)) {
+                nb_mut_append_record(ctx, o, nb_mut_record(ctx, "childList", target, added, removed, rprev, rnext, NULL, NULL));
+                break;
+            }
+        }
+    }
+}
+static void nb_mutation_notify_attribute(JSContext *ctx, NbNode *target, const char *name, const char *old_value) {
+    if (!ctx || !target || !name) return;
+    for (int oi = 0; oi < g_mut_obs_count; oi++) {
+        NbMutObserver *o = &g_mut_obs[oi];
+        if (JS_IsUndefined(o->self) || !JS_IsFunction(ctx, o->callback)) continue;
+        for (int ti = 0; ti < o->target_count; ti++) {
+            NbMutTarget *t = &o->targets[ti];
+            int direct = (t->target == target);
+            int nested = (t->subtree && t->attributes && nb_mut_node_is_ancestor(t->target, target));
+            if (!t->attributes || !(direct || nested)) continue;
+            int allowed = (t->attr_count == 0);
+            for (int ai = 0; !allowed && ai < t->attr_count; ai++)
+                allowed = !strcasecmp(t->attrs[ai], name);
+            if (allowed) {
+                nb_mut_append_record(ctx, o, nb_mut_record(ctx, "attributes", target, NULL, NULL, NULL, NULL, name, old_value));
+                break;
+            }
+        }
+    }
+}
+static JSValue nb_mutation_observer_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue obj = class_noop(ctx, this_val, 0, argv);
+    if (!JS_IsObject(obj)) return obj;
+    if (argc > 0 && JS_IsFunction(ctx, argv[0]))
+        JS_SetPropertyStr(ctx, obj, "__nb_mut_callback", JS_DupValue(ctx, argv[0]));
+    JS_SetPropertyStr(ctx, obj, "__nb_mut_records", JS_NewArray(ctx));
+    return obj;
+}
+static JSValue nb_mutation_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *target = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    JSValue cb = JS_GetPropertyStr(ctx, this_val, "__nb_mut_callback");
+    if (!target || !JS_IsFunction(ctx, cb)) {
+        JS_FreeValue(ctx, cb);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: MutationObserver.observe requires a node and callback"));
+        return JS_Throw(ctx, e);
+    }
+    JSValue opts = (argc > 1 && JS_IsObject(argv[1])) ? JS_DupValue(ctx, argv[1]) : JS_UNDEFINED;
+    int child_list = nb_mut_option_bool(ctx, opts, "childList");
+    int subtree = nb_mut_option_bool(ctx, opts, "subtree");
+    int attributes = nb_mut_option_bool(ctx, opts, "attributes");
+    int character_data = nb_mut_option_bool(ctx, opts, "characterData");
+    if (!child_list && !attributes && !character_data) {
+        JS_FreeValue(ctx, opts);
+        JS_FreeValue(ctx, cb);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: an observer must observe at least one of childList, attributes, or characterData"));
+        return JS_Throw(ctx, e);
+    }
+    int oi = nb_mut_find_observer(ctx, this_val);
+    if (oi < 0) {
+        if (g_mut_obs_count >= NB_MUT_MAX_OBSERVERS) {
+            JS_FreeValue(ctx, opts);
+            JS_FreeValue(ctx, cb);
+            return JS_UNDEFINED;
+        }
+        oi = g_mut_obs_count++;
+        memset(&g_mut_obs[oi], 0, sizeof(g_mut_obs[oi]));
+        g_mut_obs[oi].self = JS_DupValue(ctx, this_val);
+        g_mut_obs[oi].callback = JS_DupValue(ctx, cb);
+    }
+    JS_FreeValue(ctx, cb);
+    NbMutObserver *o = &g_mut_obs[oi];
+    if (o->target_count >= NB_MUT_MAX_TARGETS) { JS_FreeValue(ctx, opts); return JS_UNDEFINED; }
+    NbMutTarget *t = &o->targets[o->target_count++];
+    memset(t, 0, sizeof(*t));
+    t->target = target;
+    t->child_list = child_list;
+    t->subtree = subtree;
+    t->attributes = attributes;
+    t->character_data = character_data;
+    if (attributes && JS_IsObject(opts)) {
+        JSValue names = JS_GetPropertyStr(ctx, opts, "attributeFilter");
+        if (JS_IsArray(ctx, names)) {
+            JSValue lenv = JS_GetPropertyStr(ctx, names, "length");
+            uint32_t n = 0;
+            JS_ToUint32(ctx, &n, lenv);
+            JS_FreeValue(ctx, lenv);
+            if (n > NB_MUT_MAX_ATTRS) n = NB_MUT_MAX_ATTRS;
+            for (uint32_t i = 0; i < n; i++) {
+                JSValue v = JS_GetPropertyUint32(ctx, names, i);
+                if (JS_IsString(v)) {
+                    char *s = JS_ToCString(ctx, v);
+                    if (s) { snprintf(t->attrs[t->attr_count], sizeof(t->attrs[0]), "%s", s); t->attr_count++; }
+                    JS_FreeCString(ctx, s);
+                }
+                JS_FreeValue(ctx, v);
+            }
+        }
+        JS_FreeValue(ctx, names);
+    }
+    JS_FreeValue(ctx, opts);
+    return JS_UNDEFINED;
+}
+static JSValue nb_mutation_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    int oi = nb_mut_find_observer(ctx, this_val);
+    if (oi < 0) return JS_UNDEFINED;
+    JS_FreeValue(ctx, g_mut_obs[oi].self);
+    JS_FreeValue(ctx, g_mut_obs[oi].callback);
+    g_mut_obs[oi].self = g_mut_obs[oi].callback = JS_UNDEFINED;
+    memmove(&g_mut_obs[oi], &g_mut_obs[oi + 1], (size_t)(g_mut_obs_count - oi - 1) * sizeof(g_mut_obs[0]));
+    g_mut_obs_count--;
+    return JS_UNDEFINED;
+}
+static JSValue nb_mutation_take_records(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue old = JS_GetPropertyStr(ctx, this_val, "__nb_mut_records");
+    if (!JS_IsArray(ctx, old)) {
+        JS_FreeValue(ctx, old);
+        old = JS_NewArray(ctx);
+    }
+    JS_SetPropertyStr(ctx, this_val, "__nb_mut_records", JS_NewArray(ctx));
+    return old;
+}
 /* ---- FormData / Blob / FileReader: real instance state (2026-10-20) ----
  * Stub constructors alone were not enough: `new FormData()` worked but
  * `new FormData().append('a','b')` threw TypeError, and form-posting SPAs
@@ -4668,13 +4944,13 @@ static void install_dom_classes(JSContext *ctx) {
         /* FormData / Blob / FileReader carry real state, so they are built
          * explicitly rather than by the inert-stub loop above. */
         nb_install_formdata_blob(ctx, g);
-        /* MutationObserver / DOMParser are newable with instance methods */
-        JSValue f = add_class(ctx, "MutationObserver", JS_UNDEFINED);
-        JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 2));
-        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
-        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
-        JS_FreeValue(ctx, p);
+        /* MutationObserver: real child-list/attribute callback slice; DOMParser below stays inert. */
+        JSValue f = JS_NewCFunction2(ctx, nb_mutation_observer_ctor, "MutationObserver", 1, JS_CFUNC_constructor, 0);
+        JSValue p = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, f, "prototype", p);
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, nb_mutation_observe, "observe", 2));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_mutation_disconnect, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_mutation_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "MutationObserver", f);
         /* IntersectionObserver */
         f = add_class(ctx, "IntersectionObserver", JS_UNDEFINED);
@@ -7649,6 +7925,13 @@ static void free_held_callbacks(JSContext *ctx) {
             JS_FreeValue(ctx, g_onprop[i].cb);
             g_onprop[i].cb = JS_UNDEFINED;
         }
+    for (int i = 0; i < g_mut_obs_count; i++) {
+        if (!JS_IsUndefined(g_mut_obs[i].self)) JS_FreeValue(ctx, g_mut_obs[i].self);
+        if (!JS_IsUndefined(g_mut_obs[i].callback)) JS_FreeValue(ctx, g_mut_obs[i].callback);
+        g_mut_obs[i].self = g_mut_obs[i].callback = JS_UNDEFINED;
+        g_mut_obs[i].target_count = 0;
+    }
+    g_mut_obs_count = 0;
 }
 
 /* Run the callback held in `cb` with this=globalThis, 0 args.
