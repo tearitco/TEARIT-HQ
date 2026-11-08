@@ -28,6 +28,9 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <limits.h>
 #include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
@@ -457,6 +460,43 @@ static void read_pdl_kv(const char *path, const char *key, char *out, size_t out
         break;
     }
     fclose(f);
+}
+
+/* 2026-11-07 (decision D52): data-driven page hooks. A board package may carry <pkg>/page_hooks.pdl with rows `HOOK | page_change | <op, relative to the house, under an ops/+x/ folder> | <args>`;
+ * when the board's book or page changes, and once at the first sample, each row is run (args are whole tokens, NO shell; ${HOUSE} ${BOOK} ${PAGE} are replaced; `..` and absolute paths are refused;
+ * 5 s watchdog, output discarded). Why: the editor's Harness rows depend on the open book and page, and the labels are published HERE, so this is the one place that knows when they change; the
+ * projector stays generic (it names no app) and every board that wants a refresh declares it in data. */
+static void run_page_hooks(const char *house, const char *pkg, const char *book, const char *page) {
+    char path[PATH_MAX]; snprintf(path, sizeof path, "%s/page_hooks.pdl", pkg);
+    FILE *fp = fopen(path, "r"); if (!fp) return;
+    char ln[2048];
+    while (fgets(ln, sizeof ln, fp)) {
+        if (ln[0] == '#') continue;
+        char *f[5]; int n = 0; char *p = ln; f[n++] = p;
+        for (; *p && n < 5; p++) if (*p == '|') { *p = 0; f[n++] = p + 1; }
+        if (n < 4) continue;
+        for (int i = 0; i < n; i++) { while (*f[i] == ' ') f[i]++; char *e = f[i] + strlen(f[i]); while (e > f[i] && (e[-1] == ' ' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; }
+        if (strcmp(f[0], "HOOK") || strcmp(f[1], "page_change")) continue;
+        if (!f[2][0] || f[2][0] == '/' || strstr(f[2], "..") || !strstr(f[2], "/ops/+x/")) continue;
+        char exe[PATH_MAX]; snprintf(exe, sizeof exe, "%s/%s", house, f[2]); if (access(exe, X_OK) != 0) continue;
+        static char ex[10][PATH_MAX]; char *av[12]; int ac = 0; av[ac++] = exe;
+        char buf[2048]; snprintf(buf, sizeof buf, "%s", f[3]); char *sp;
+        for (char *t = strtok_r(buf, " ", &sp); t && ac < 10; t = strtok_r(NULL, " ", &sp)) {
+            char *o = ex[ac]; size_t on = 0;
+            for (const char *q = t; *q && on + 1 < PATH_MAX; ) {
+                const char *nm[] = { "${HOUSE}", "${BOOK}", "${PAGE}" }; const char *vl[] = { house, book, page }; int hit = 0;
+                for (int k = 0; k < 3; k++) { size_t l = strlen(nm[k]); if (!strncmp(q, nm[k], l)) { for (const char *v = vl[k]; *v && on + 1 < PATH_MAX; v++) o[on++] = *v; q += l; hit = 1; break; } }
+                if (!hit) o[on++] = *q++;
+            }
+            o[on] = 0; av[ac++] = o;
+        }
+        av[ac] = NULL;
+        pid_t c = fork(); if (c < 0) continue;
+        if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execv(exe, av); _exit(127); }
+        for (int i = 0; i < 100; i++) { int st; pid_t r = waitpid(c, &st, WNOHANG); if (r == c || r < 0) { c = 0; break; } usleep(50000); }
+        if (c > 0) { kill(c, SIGKILL); waitpid(c, NULL, 0); }
+    }
+    fclose(fp);
 }
 
 /* The xhtpm's package dir (argv[2]). A game board is @.apps/<game>/board, and its data is the sibling <game>-pchq. */
@@ -918,9 +958,12 @@ int main(int argc, char **argv) {
                 if (mf) { fputc('B', mf); fclose(mf); }
             }
             if (have && bv[0]) {
+                int changed = !held_init || strcmp(held_book, book_label) != 0 || strcmp(held_page, page_label) != 0;
                 snprintf(held_book, sizeof(held_book), "%s", book_label);
                 snprintf(held_page, sizeof(held_page), "%s", page_label);
                 held_init = 1;
+                /* the hooks get the book and page as ARGUMENTS (not by reading ui.txt, which this tick has not written yet) */
+                if (changed) run_page_hooks(house, pkg, strncmp(book_label, "book:", 5) == 0 ? book_label + 5 : book_label, strncmp(page_label, "page:", 5) == 0 ? page_label + 5 : page_label);
             }
         }
 

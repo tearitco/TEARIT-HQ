@@ -36,3 +36,13 @@ RUN | /usr/bin/grep | -qF | livedesk_build_prefixed_menu(house_root, menu, max, 
 EXPECT_EXIT | 1 | NEGATIVE-and-no-longer-reads-harness-rows-from-livedesk_taskbar-pdl
 RUN | /usr/bin/grep | -qF | cell-11-nonexistent-zz | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
 EXPECT_EXIT | 1 | NEGATIVE-a-string-that-is-not-there-is-not-found
+
+CASE    | cancel_and_name
+SCRATCH |
+# seen live 2026-11-07: the generic notes-<cell> row is inserted ONE SLOT ABOVE the trailing row of every cell menu, so a menu with no trailing cancel row got notes-hq above its last real row, and cell 11 had no name in the fallback table
+RUN | /usr/bin/grep | -qF | snprintf(menu[count].label, sizeof(menu[count].label), "cancel"); menu[count].command[0] = '\0'; | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-harness-list-ends-with-a-cancel-row
+RUN | /usr/bin/grep | -qF | case 11: nm = "harness"; | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | cell-11-has-its-own-name-so-the-notes-row-says-notes-harness
+RUN | /usr/bin/grep | -qF | case 11: nm = "plugins"; | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 1 | NEGATIVE-the-old-plugins-name-is-not-there

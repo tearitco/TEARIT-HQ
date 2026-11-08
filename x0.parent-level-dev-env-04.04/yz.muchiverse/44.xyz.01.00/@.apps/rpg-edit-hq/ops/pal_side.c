@@ -165,6 +165,35 @@ int main(int argc, char **argv) {
     const char *house = argv[1], *verb = argv[2], *arg = argc > 3 ? argv[3] : "";
     /* toparm <key> <index>: the top Pals / Palettes row. Same as picking that library from an empty nav, then arming that thumb. */
     int topix = -1;
+    if (!strcmp(verb, "harness")) {
+        /* 2026-11-07 (decision D52): rebuild ONLY the Harness rows of pal.txt for the open book and page, touching nothing else (no sidebar change, unlike `restore`). The board projector runs this through
+         * board/page_hooks.pdl when the book or page changes and at its first sample, so a freshly opened book no longer shows a stale list (it showed 6 rows instead of 13 until another verb ran). */
+        char palp[4300], ui[4200], bl[80] = "", pl[80] = "", hop[4300], hrows[4300];
+        snprintf(palp, sizeof palp, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
+        snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+        kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
+        char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
+        char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+        if (argc > 4 && argv[3][0] && argv[4][0]) { snprintf(bl, sizeof bl, "%s", argv[3]); snprintf(pl, sizeof pl, "%s", argv[4]); }   /* the projector passes the ids: ui.txt may not be written yet this tick */
+        snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
+        snprintf(hrows, sizeof hrows, "%s/@.apps/rpg-edit-hq/board/state/harness_rows.txt", house);
+        int nhr = 0;
+        if (access(hop, X_OK) == 0) {
+            pid_t c = fork();
+            if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(hop, hop, "list", house, bl[0] ? bl : "-", pl[0] ? pl : "-", hrows, (char *)NULL); _exit(127); }
+            if (c > 0) { int st; waitpid(c, &st, 0); }
+            FILE *hf = fopen(hrows, "r");
+            if (hf) { char ln[300]; while (nhr < 24 && fgets(ln, sizeof ln, hf)) { char *t = strchr(ln, '\t'); if (!t) continue; *t++ = 0; char *nl = strchr(t, '\n'); if (nl) *nl = 0;
+                            char kk[40], ll[40]; snprintf(kk, sizeof kk, "tbhar_%d_key", nhr); snprintf(ll, sizeof ll, "tbhar_%d_label", nhr); kv_set(palp, ll, ln); kv_set(palp, kk, t); nhr++; } fclose(hf); }
+        }
+        for (int i = nhr; i < 24; i++) {      /* blank the rows left over from the previous page, so a shorter list does not keep old entries */
+            char kk[40], ll[40], v[64] = ""; snprintf(kk, sizeof kk, "tbhar_%d_key", i); snprintf(ll, sizeof ll, "tbhar_%d_label", i);
+            kv_get(palp, kk, v, sizeof v); if (!v[0]) break; kv_set(palp, kk, ""); kv_set(palp, ll, "");
+        }
+        char ns[16]; snprintf(ns, sizeof ns, "%d", nhr); kv_set(palp, "n_tbhar", ns); kv_set(palp, "harness_pending", "");
+        printf("HARNESS-ROWS %d\n", nhr);
+        return 0;
+    }
     if (!strcmp(verb, "hpick") && arg[0]) {
         /* 2026-11-07 (decision D52): the rows, their kind (CASE or ACTION), their confirm and what they run come from DATA read by harness_menu_op (#.desktop/harness_menu.pdl and
          * @.apps/<book>/harness.pdl); this verb only runs the picked row. Before this, seven centroid rows were hard-coded here, `clear` did not bump cells.marker (the window did not redraw),

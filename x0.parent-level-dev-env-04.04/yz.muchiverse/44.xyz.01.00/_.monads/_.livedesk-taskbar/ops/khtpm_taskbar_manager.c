@@ -4080,6 +4080,9 @@ static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu,
         count++;
     }
     fclose(fp);
+    /* every header-cell menu ends with a cancel row: the generic notes-<cell> row is inserted ONE SLOT ABOVE the trailing row, so without this it landed above the last real harness row
+     * (seen live 2026-11-07). An empty command just closes the menu. Only when there is at least one row (an empty list keeps the "(empty)" fallback). */
+    if (count > 0 && count < max) { snprintf(menu[count].label, sizeof(menu[count].label), "cancel"); menu[count].command[0] = '\0'; count++; }
     return count;
 }
 
@@ -5260,7 +5263,7 @@ void ktb_hq_open(KtbState *s, int which) {
                 case 3: nm = "file"; break;    case 4: nm = "desk"; break;
                 case 5: nm = "menu"; break;    case 6: nm = "pals"; break;
                 case 7: nm = "palettes"; break; case 9: nm = "player"; break;
-                case 10: nm = "db"; break;
+                case 10: nm = "db"; break;     case 11: nm = "harness"; break;   /* 2026-11-07: the renamed cell 11 (was the inert plugins cell) */
                 case 14: nm = "network"; break; case 15: nm = "ai"; break;
                 case 16: nm = "clock"; break;  default: nm = "hq"; break;
             }

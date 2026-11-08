@@ -1,0 +1,4 @@
+# page_hooks.pdl - what to run when this board's book or page changes (and once when the projector starts). Read by piececraft-hq/ops/pchq_board_projector (decision D52, 2026-11-07).
+# HOOK | page_change | <op relative to the house, under an ops/+x/ folder> | <args>      args are whole tokens, no shell; ${HOUSE} ${BOOK} ${PAGE} are replaced; `..` and absolute paths are refused.
+# The editor's Harness rows depend on the open book and page, so `pal_side harness` rebuilds them (it touches nothing else, unlike `restore`).
+HOOK | page_change | @.apps/rpg-edit-hq/ops/+x/pal_side.+x | ${HOUSE} harness ${BOOK} ${PAGE}

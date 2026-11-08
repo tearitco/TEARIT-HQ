@@ -162,3 +162,30 @@ EXPECT_LACKS | rows.txt | [5 ok] | NEGATIVE-not-the-sum-of-both-runs
 WRITE | h/&.widgits/_shared-lib/harness/results/ok.txt | RUN\p1\p x\nPASS\pa\nRUN\p2\p x\nPASS\pa\nFAIL\pb\p why\n
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows.txt
 EXPECT_HAS | rows.txt | ok case [1 FAIL] | a-failure-in-the-last-run-shows-as-FAIL
+
+# the editor's refresh verb (`pal_side harness <book> <page>`): rebuilds ONLY the harness rows, for the ids it is given, blanks leftovers of a longer previous list, and touches no sidebar state
+CASE    | editor_refresh
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/@.apps/rpg-edit-hq/board/state | $T/h/@.apps/b/ops/+x | $T/h/&.widgits/_shared-lib/ops/+x | $T/h/&.widgits/_shared-lib/harness/cases
+COPY | &.widgits/_shared-lib/ops/+x/harness_menu_op.+x | h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+COPY | @.apps/centroid/ops/+x/centroid_clear_op.+x | h/@.apps/b/ops/+x/centroid_clear_op.+x
+COPY | @.apps/rpg-edit-hq/ops/+x/pal_side.+x | ps.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/book_b.pdl | h/@.apps/b/harness.pdl
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case\n
+WRITE | h/@.apps/rpg-edit-hq/board/state/ui.txt | book_label=book:other\npage_label=page:zz\n
+WRITE | h/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\nside_pal=\n
+WRITE | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_sel=old\n
+RUN | $T/ps.+x | $T/h | harness | b | p1
+EXPECT_OUT | HARNESS-ROWS 5 | page-p1-of-book-b-has-five-rows-the-ids-come-from-the-arguments-not-ui-txt
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=5 | n_tbhar-is-written
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_sel=old | and-an-unrelated-key-of-pal-txt-is-kept
+EXPECT_FILE | h/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\nside_pal=\n | NEGATIVE-no-sidebar-state-was-touched-restore-would-have-reset-it
+RUN | $T/ps.+x | $T/h | harness | b | p2
+EXPECT_OUT | HARNESS-ROWS 2 | page-p2-has-only-the-global-row-and-the-star-row
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=2 | n_tbhar-shrank
+EXPECT_LACKS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_2_label=clear | NEGATIVE-the-rows-of-the-longer-previous-list-are-blanked-not-kept
+RUN | $T/ps.+x | $T/h | harness | - | -
+EXPECT_OUT | HARNESS-ROWS 1 | with-no-book-only-the-global-row
+RUN | $T/ps.+x | $T/h | harness
+EXPECT_OUT | HARNESS-ROWS 1 | with-no-arguments-it-falls-back-to-ui-txt-which-names-no-book-b
