@@ -53,6 +53,18 @@ These four are **the same idea in four dialects**. Nobody wrote that down, which
 
 ---
 
+### 3e. 🔺 The Venn diagram: where harness, events and pets actually overlap (added after your correction: "not just to learn, also to act")
+You are right that learning alone is not the vision: **the same driver must also *act*.** Checked against `EVENT-VERB-PAGES-DESIGN.md` sections 1, 8 to 10 (READ) and the pet code (OBS):
+| Pair | Overlap today | Evidence |
+|---|---|---|
+| **Harness ↔ events** | **Yes, and it acts.** A harness phase table edits a verb page through the real events-hq manager (`BP edit`), then clicks the same button; the game's behaviour changes (game-dev-hq: the contract page runs `advance`; rpg-pvp-hq: the shop button scavenges), and `BP delete` falls back to the plain verb. RAN 2026-10-20, `passed=16 failed=0` and `PASS 4.6 s` | `EVENT-VERB-PAGES-DESIGN.md` §10 |
+| **Events ↔ verbs** | **Yes** for games with generated pages (verbgen from `verbs.pdl`; mcl-hq has `events/mine`, `craft`, `goto`, ...). Page runs `mcl_hq.+x 'mine'` | `@.apps/mcl-hq/events/mine/.../cmd_1.sh` |
+| **Pets ↔ harness** | **Learning only, and thin.** The harness judges phase tables in scratch; the pet never runs them. The pet's own step is C | D48 G1, G9 |
+| **Pets ↔ events** | **None for acting.** `ai_step` moves a pet directly; it does not call a verb or play a page. mcl-hq's `walk`/`door` DEC rows are labels written after the step. df-hq's dig job is C inside the step (`PET_SECTION` 36) | `petslike_core.c`, `mcl_hq.c`, `df_hq.c` |
+| **Player's arrow keys ↔ events** | **Bypass.** The design doc itself says "INT key bindings still bypass the pages" | `EVENT-VERB-PAGES-DESIGN.md` §10 |
+**So the diagram fails exactly where the pets and the keys are.** Harness, events and verbs form a working overlap (proven); pets sit outside it. My earlier line "one door is already the rule" (section 7) is true for verbs and pages, **not** for pet steps or arrow keys. D48 said a pet plan would be "executed live with the same keys", but never said the pet must **act through the verb and the page**, so the harness's proven edit-and-play path never reached it. That is the miss.
+**Consequence for the design (DOC):** the pet's step should become *choose a job, then fire the verb through the page* (the path `BP edit` already proves), with the DEC row written by that path instead of labelled afterwards. Then the same page is what a click fires, what a harness edits and plays, and what a pet fires, and an edit in blueprintz changes the pet's behaviour too. That is S3 and S4 below, and it should be stated as their acceptance test: **edit the page and the pet's behaviour changes**, the same proof V7 gave the button.
+
 ## 4. 🔍 How I read "the job queue is a master ledger like WSR_PREFERRED" (DOC, please correct me)
 * **A job is not a df-hq file; it is an intent row in the master ledger.** Anyone with a front door writes it: a person (`DESIGNATE`), a blueprint stamp, **the D40 manager distilling the master blueprint to employees**, a harness, an AI.
 * **Actors claim and execute through the same verbs** a person would click (the "one door" rule), and the **result is a game event** (a `DIG`, a `PLACE` row in the S1 ledger).
@@ -89,7 +101,7 @@ Using the standing design-choice test (one authority per fact; modular; scalable
 | **S0** | D48 P0: find why mcl-hq's bank is empty | non-empty weights equal the hand count (walk 456/493 = 0.925, door 19/20 = 0.950) |
 | **S1** | D48 P1: `BRAIN` rows and a lint | made-up phase, action and verb each fail |
 | **S2** | **Write the row-grammar decision** (decision 1) and a one-page mapping of the four dialects | a harness case that parses a df-hq `jobs.txt` row and its master-ledger equivalent to the same fields |
-| **S3** | Tier slot (`decision_mode`) for mcl-hq pets: tier 0 = today, tier 1 = weights | tier 0 reproduces today's walk behaviour byte for byte in a scratch run; tier 1 differs only when weights differ |
+| **S3** | Tier slot (`decision_mode`) for mcl-hq pets, and the pet **fires its chosen verb through the verb page** | tier 0 reproduces today's walk behaviour in a scratch run; **editing the page with `BP edit` changes what the pet does** (the V7 proof, applied to a pet) |
 | **S4** | `JOB` rows for mcl-hq `mine craft place`, claimed by tier | a deliberately wrong job is refused and never touches the live ledger |
 | **S5** | Manager op resolves intent rows | a removed bridge job leaves D40's side island unreachable (Grok's existing check) |
 | **S6** | `.behaviors` catalog for mcl-hq and a planner as tier 2 | the plan equals the hand-written phase table for the same goal |
@@ -100,7 +112,7 @@ S2 to S6 each need their own short design page before code; none starts without 
 ## 7. ✅ Was it all communicated? An honest check
 | Topic | In the docs | In my D48 proposal | Status now |
 |---|---|---|---|
-| One door: same driving path for person, harness, pet, AI | **Yes** (section 2) | partly ("no second play button", same verbs), **not stated as the principle** | stated here (P1) |
+| One door: same driving path for person, harness, pet, AI | **Yes** as a vision (section 2); **in code only for verbs and pages**, not pet steps or arrow keys (3e) | partly, **not stated as the principle, and it never required pets to act through verbs and pages** | stated here (P1, 3e) |
 | Master ledger as the job queue | **Yes** (TEST-GAMES §6) | **No**: I proposed a per-game `jobs.txt` generalisation | corrected (P2; D48 4.8 updated) |
 | WSR decision chassis (a state per entity, a decision slot, human and AI fill the same slot) | in code and comments, thin in docs | **No** | described (3a, P3) |
 | Behavior catalog with pre/post/cost | exists as data, unused | **No** (I said no GOAP exists, true, but missed the data) | described (3a, P4) |
