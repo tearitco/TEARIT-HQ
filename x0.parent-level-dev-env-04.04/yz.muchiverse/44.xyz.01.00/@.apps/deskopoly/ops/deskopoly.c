@@ -836,19 +836,20 @@ static int v_mechanics(void) {
 
 /* --- page: the board DRAWN as an editor desk (cells.txt) from board.pdl + page.pdl + the replayed ledger. A projection: it decides no rule. --- */
 static int HD_px = 24, HD_cols = 16, HD_tiles = 43, HD_rock = 36, PG_block = 3, PG_floor = 1, PG_go = 40, PG_tax = 36, PG_rest = 7;
-static int PG_group[8] = {32, 2, 37, 39, 32, 2, 37, 39}, PG_owner[MAXP] = {35, 38, 41, 33};
+static int PG_chance = 20, PG_chest = 29, PG_jail = 34, PG_gotojail = 12;   /* classic tile kinds (rulesets/<name>/page.pdl) */
+static int PG_group[10] = {32, 2, 37, 39, 32, 2, 37, 39, 36, 41}, PG_owner[MAXP] = {35, 38, 41, 33, 12, 17, 19, 21};
 static void load_page(void) {
-    char p[1100], ln[LINE]; char *f[8]; snprintf(p, sizeof p, "%s/page.pdl", g_app); FILE *fp = fopen(p, "r"); if (!fp) bad("cannot read page.pdl");
+    char p[1100], ln[LINE]; char *f[8]; if (g_schema == 2) snprintf(p, sizeof p, "%s/rulesets/%s/page.pdl", g_app, g_rs); else snprintf(p, sizeof p, "%s/page.pdl", g_app); FILE *fp = fopen(p, "r"); if (!fp) bad("cannot read page.pdl");
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 3) continue; int v = atoi(f[2]);
         if (!strcmp(f[0], "HEADER")) { if (!strcmp(f[1], "tile_px")) HD_px = v; else if (!strcmp(f[1], "atlas_cols")) HD_cols = v; else if (!strcmp(f[1], "atlas_tiles")) HD_tiles = v; else if (!strcmp(f[1], "rock_slot")) HD_rock = v; }
         else if (!strcmp(f[0], "PAGE") && !strcmp(f[1], "block")) PG_block = v;
         else if (!strcmp(f[0], "TILEMAP")) { int g;
-            if (!strcmp(f[1], "floor")) PG_floor = v; else if (!strcmp(f[1], "go")) PG_go = v; else if (!strcmp(f[1], "tax")) PG_tax = v; else if (!strcmp(f[1], "rest")) PG_rest = v;
-            else if (sscanf(f[1], "group%d", &g) == 1 && g >= 0 && g < 8) PG_group[g] = v; else if (sscanf(f[1], "owner_p%d", &g) == 1 && g >= 1 && g <= MAXP) PG_owner[g - 1] = v; } }
+            if (!strcmp(f[1], "floor")) PG_floor = v; else if (!strcmp(f[1], "go")) PG_go = v; else if (!strcmp(f[1], "tax")) PG_tax = v; else if (!strcmp(f[1], "rest") || !strcmp(f[1], "free")) PG_rest = v; else if (!strcmp(f[1], "chance")) PG_chance = v; else if (!strcmp(f[1], "chest")) PG_chest = v; else if (!strcmp(f[1], "jail")) PG_jail = v; else if (!strcmp(f[1], "gotojail")) PG_gotojail = v;
+            else if (sscanf(f[1], "group%d", &g) == 1 && g >= 0 && g < 10) PG_group[g] = v; else if (sscanf(f[1], "owner_p%d", &g) == 1 && g >= 1 && g <= MAXP) PG_owner[g - 1] = v; } }
     fclose(fp);
     if (HD_px < 1 || HD_cols < 1 || HD_tiles < 1 || PG_block < 1 || PG_block > 8) bad("page.pdl: bad header or block size");
-    int all[] = {PG_floor, PG_go, PG_tax, PG_rest}; for (int i = 0; i < 4; i++) if (all[i] < 0 || all[i] >= HD_tiles) bad("page.pdl: a tile index is outside the atlas");
-    for (int i = 0; i < 8; i++) if (PG_group[i] < 0 || PG_group[i] >= HD_tiles) bad("page.pdl: a group tile is outside the atlas");
+    int all[] = {PG_floor, PG_go, PG_tax, PG_rest, PG_chance, PG_chest, PG_jail, PG_gotojail}; for (int i = 0; i < 8; i++) if (all[i] < 0 || all[i] >= HD_tiles) bad("page.pdl: a tile index is outside the atlas");
+    for (int i = 0; i < 10; i++) if (PG_group[i] < 0 || PG_group[i] >= HD_tiles) bad("page.pdl: a group tile is outside the atlas");
     for (int i = 0; i < MAXP; i++) if (PG_owner[i] < 0 || PG_owner[i] >= HD_tiles) bad("page.pdl: an owner tile is outside the atlas");
 }
 static void write_atomic(const char *dir, const char *name, const char *text) {
@@ -864,8 +865,11 @@ static int v_page(int argc, char **argv) {
     int st, rc = replay(&st); if (rc) return 1; int n = nt / 4 + 1, W = n * PG_block, H = W; if (W > 64) bad("page too large");
     static int ct[64][64], cd[64][64]; for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) { ct[y][x] = PG_floor; cd[y][x] = 1; }
     int owned = 0;
-    for (int i = 0; i < nt; i++) { int bx, by; ring_xy(i, n, &bx, &by); int tf = !strcmp(T[i].kind, "go") ? PG_go : !strcmp(T[i].kind, "tax") ? PG_tax : !strcmp(T[i].kind, "rest") ? PG_rest : PG_group[T[i].group & 7];
-        for (int y = 0; y < PG_block; y++) for (int x = 0; x < PG_block; x++) { ct[by * PG_block + y][bx * PG_block + x] = tf; cd[by * PG_block + y][bx * PG_block + x] = 2; }
+    for (int i = 0; i < nt; i++) { int bx, by; ring_xy(i, n, &bx, &by); int tf; const char *kd = T[i].kind;
+        if (!strcmp(kd, "go")) tf = PG_go; else if (!strcmp(kd, "tax")) tf = PG_tax; else if (!strcmp(kd, "rest") || !strcmp(kd, "free")) tf = PG_rest; else if (!strcmp(kd, "chance")) tf = PG_chance; else if (!strcmp(kd, "chest")) tf = PG_chest;
+        else if (!strcmp(kd, "jail")) tf = PG_jail; else if (!strcmp(kd, "gotojail")) tf = PG_gotojail; else tf = PG_group[g_schema == 2 ? (T[i].group < 10 ? T[i].group : 0) : (T[i].group & 7)];
+        int rise = g_schema == 2 ? 2 + bld[i] : 2;   /* buildings are HEIGHT: each house raises the block, a hotel (5) the most */
+        for (int y = 0; y < PG_block; y++) for (int x = 0; x < PG_block; x++) { ct[by * PG_block + y][bx * PG_block + x] = tf; cd[by * PG_block + y][bx * PG_block + x] = rise; }
         if (st && owner[i] >= 0) { ct[by * PG_block + PG_block / 2][bx * PG_block + PG_block / 2] = PG_owner[owner[i]]; owned++; } }
     static char buf[64 * 64 * 12 + 512]; buf[0] = 0;
     ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles, HD_rock);
@@ -1005,7 +1009,7 @@ int main(int argc, char **argv) {
     if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll") || !strcmp(v, "build") || !strcmp(v, "sell") || !strcmp(v, "mortgage") || !strcmp(v, "unmortgage") || !strcmp(v, "pay_debt"))) return v_act2(v, argc - 4, argv + 4);
     if (g_schema == 2 && !strcmp(v, "autoplay")) return v_autoplay2();
     if (g_schema == 2 && !strcmp(v, "tick")) return v_tick2();
-    if (g_schema == 2 && (!strcmp(v, "ui") || !strcmp(v, "mechanics") || !strcmp(v, "page") || !strcmp(v, "preview"))) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }
+    if (g_schema == 2 && (!strcmp(v, "ui") || !strcmp(v, "mechanics"))) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }
     if (!strcmp(v, "roll")) return v_roll();
     if (!strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn")) return act_simple(v);
     if (!strcmp(v, "autoplay")) return v_autoplay();

@@ -1,0 +1,34 @@
+# classic page.pdl: how the 40-tile classic board is DRAWN as an editor page (milestone M11-lite, 2026-11-08). A projection: it decides no rule. Same grammar as the app-level page.pdl (the mini ruleset keeps that one).
+# 40 tiles = 4 x (side - 1) with side 11, block 3 -> a 33 x 33 page. Atlas indexes (from looking at the 43-tile atlas): 1 grass 2 planks 3 pond 5 sand 7 sand 12 castle 16 blue-roof house 17 blue tower 19..27 village 28 purple hall
+# 29 grey hall 32 dirt 33 sword sign 34 door 35 orange 36 rough stone 37 dark boards 38 blue tile 40 orange diamond 41 white stone. Stand-ins, not art. A building raises its block: height 2 + buildings (hotel = 7).
+HEADER  | tile_px     | 24
+HEADER  | atlas_cols  | 16
+HEADER  | atlas_tiles | 43
+HEADER  | rock_slot   | 36
+PAGE    | block       | 3
+TILEMAP | floor       | 2
+TILEMAP | go          | 33
+TILEMAP | jail        | 34
+TILEMAP | free        | 3
+TILEMAP | gotojail    | 13
+TILEMAP | chance      | 20
+TILEMAP | chest       | 29
+TILEMAP | tax         | 37
+TILEMAP | group0      | 32
+TILEMAP | group1      | 38
+TILEMAP | group2      | 28
+TILEMAP | group3      | 35
+TILEMAP | group4      | 40
+TILEMAP | group5      | 5
+TILEMAP | group6      | 1
+TILEMAP | group7      | 16
+TILEMAP | group8      | 36
+TILEMAP | group9      | 41
+TILEMAP | owner_p1    | 12
+TILEMAP | owner_p2    | 17
+TILEMAP | owner_p3    | 19
+TILEMAP | owner_p4    | 21
+TILEMAP | owner_p5    | 23
+TILEMAP | owner_p6    | 25
+TILEMAP | owner_p7    | 27
+TILEMAP | owner_p8    | 30
