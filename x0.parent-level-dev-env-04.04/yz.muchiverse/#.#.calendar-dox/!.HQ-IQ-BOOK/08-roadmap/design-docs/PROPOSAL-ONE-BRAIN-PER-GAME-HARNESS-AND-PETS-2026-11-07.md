@@ -5,6 +5,24 @@
 
 ---
 
+## 0. 📖 How to read this (plain words, in case a term is unfamiliar)
+| Word | What it means here |
+|---|---|
+| **harness** | a test that plays the game's own verbs in a throwaway copy and writes PASS or FAIL. Not the game itself |
+| **scratch / lane** | scratch = the throwaway copy under `/tmp/hc_*`; the lane (`dev` or `live`) says whose runs a count came from, so a developer's test runs never steer a pet |
+| **verb** | one thing the game can do (`mine`, `craft`, `walk`). A C function that appends one row to the game's ledger |
+| **event page** | a small file the UI runs when a button or tile fires; it just calls the verb (D47: "the page is what the UI fires") |
+| **op** | a small compiled C program run by fork/exec (no shell) that does one job |
+| **pal** | the house's tiny assembly runner; a harness `.pal` is three lines: run the case, print the verdict, halt |
+| **pdl** | plain-text data in `KEY | a | b` rows: case files, phase tables, banks, vocabularies |
+| **bank** | a `.pdl` entry with keywords and a **weight** `(reward+1)/(reward+punish+2)`: a counted success rate that starts at 0.5 when nothing has been seen |
+| **DEC row** | one line a pet writes each time it makes a choice: who, what it was doing, which action, what came of it |
+| **blueprint** | a plan the game is checked against (for the campus, the prebuilt volume file); the harness checks it, it is not made of it |
+
+**The proposal in one story:** a pet wants to put up a wall. Today it just does or does not, and nobody learns anything. Proposed: it first asks "does a plan like this work at all?" (a harness run in the throwaway copy), then does it for real, and what happens is written down in the same words the harness used, so next time both facts are known: *can it* and *did it work when I tried*.
+
+---
+
 ## 1. 🎯 Verdict in five lines
 1. **Not misdesigned.** The reuse was designed on 2026-10-17 (`17.ai/HARNESS-AS-GAME-BRAIN.md`): same verbs, same bank file shape, same weight formula.
 2. **But the loop was never closed.** Its own section 4 says: no caller exists, promotion is undesigned, no planner reads the weights, and the harness only plays a *scratch* copy.
@@ -12,6 +30,8 @@
 4. **The proposal:** one action vocabulary per game as the single authority; **two numbers per action, not one** (`can` from the harness, `does` from live play); a small caller so a pet's plan is judged in scratch and then executed live with the same keys; the material gate named as the skin step.
 5. **Timing: early enough, not perfect.** No pet-build history exists to migrate and no caller exists to break, but one more naming scheme (Grok's centroid parts) and my own material gate landed without being mapped. Section 8.
 
+
+**Decided by the owner on 2026-11-07:** two numbers (`can` and `does`, never merged) and `can_min` = 0.5. Still open, with the reasons written out in section 9: how often a pet may run a scratch proposal (3), what P0 and P1 are (4, explained; recommended first), and the D47 boundary (5).
 ---
 
 ## 2. 🧱 What exists today (three banks that look alike and are not connected)
@@ -24,6 +44,31 @@
 **Same shape, same Laplace formula** `(reward+1)/(reward+punish+2)` in banks 1 and 2 (READ `harness_bank_op.c`, `dec_op.c`), so one reader (`harness_bank_op find`) can already rank both. That is why the unification is cheap. The three differ in **what the count means**, and that difference is the whole design problem (section 4.2).
 
 **Lanes (READ `harness_bank_op.c`):** `dev` = developer runs, kept as the corpus an AI learns *how to develop* from; `live` = "runs made for the AI/game itself … the only lane a pet or game should read weights from". Default lane: `dev` for `update`, `live` for `find`. Every ordinary gate run (including all of mine and Grok's suites) is a dev run, so **the live lane is empty by construction** until an actor writes to it.
+
+---
+
+## 2b. 🧰 What the harnesses (and this proposal) are made of: events, ops, blueprints, pal, `.sh`
+You asked: do the harnesses use events, ops, blueprints; are they pal or still wrongly `.sh`; did the document say so? **It did not. Here is the answer, counted today (OBS).**
+| Question | Answer |
+|---|---|
+| **Made of pal?** | **Yes.** The harness folder tracks **185 `.pal`** runners; the ones I opened are three lines (`exec harness_case_op`, `exec harness_verdict_op`, `halt`) The README's first line is your 2026-10-07 direction: "harnesses are pal + events, not sh, not C one-offs" |
+| **Data?** | **232 `.pdl`** files: case files and phase tables (the attempts), banks, fixtures |
+| **Ops?** | **21 `.c` files, 15 of them ops in `ops/`**, do the work pal cannot: `harness_case_op`, `harness_verdict_op`, `playthrough_op`, `harness_bank_op`, audits. Children are started by fork/exec |
+| **Events?** | **Yes, two ways.** (1) The case runner has a `PLAY_PAGE` step that plays a real event page in the scratch house (`eat_page`, `mcl_touch_page`, `world_common` cases test pages). (2) The game verbs that a phase table calls are the same C verbs a page calls. But a phase table's `DO | mine | 15 | 4` row calls the **verb on the game binary directly**, not the page; the page is the UI path (D47). Checked in the code: READ `playthrough_op.c` lines 103 to 107 turn `DO | mine | 12 | 9` into `RUN | nice | -n | 15 | <the game binary> | mine | 12 | 9` |
+| **Blueprints?** | **Harnesses are not made from blueprints; they check them.** Examples: `blueprintz_*.phases.pdl`, `game_dev_hq_blueprint`, `rpg_pvp_hq_blueprint`, and the campus volume file that `centroid-test` loads and tests. A blueprint is the thing a harness expects to be true |
+| **Still `.sh`?** | **Almost none, and the four that exist are explainable (OBS, tracked files):** two are *test fixtures* that pretend to be a broken program (`fake_book_exit3.sh`, `fake_book_silent.sh`); one is *an event page's own script inside a fixture* (`cmd_1.sh`, the thing being tested); one is **`ops/build_harness_ops.sh`, a build script**, which is the house build convention (picked up by `compile-runner.sh`) and not a harness |
+| **One real wart found** | `harness_case_op.c` builds `prisc` and `event_page_op` for a `PLAY_PAGE` step with **`system("nice -n 15 gcc ...")`** (two places, lines 242 and 243). That is a **shell-out from C**, against the house "fork/exec, no shell" habit that `playthrough_op` states for itself. It is an existing wart, not something this proposal introduced. I list it as optional step **P7** (replace with fork/exec) and I am not claiming the harness is shell-free |
+
+**And this proposal itself (nothing new in a wrong shape):**
+| Piece | Made of |
+|---|---|
+| `BRAIN` vocabulary rows | `.pdl` rows in the existing `verbs.pdl` |
+| `rank` | a new **verb in the existing C op** `dec_op` (no new binary, no new `.sh`; its build line goes in the existing `build_dec_op.sh`) |
+| Lint, pins, refusals | **pal + `.pdl` case files** run by the existing runner, each with a negative that must fail |
+| Proposal phase tables | `.pdl` (data), written by the pet, git-ignored |
+| The pet's planning step | **C inside the game's existing `ai_step`** (as today), starting `playthrough_op` by fork/exec, registered in the process registry |
+| Event pages | **Only the UI path.** A pet does not go through a page; it calls the verb, exactly as `ai_step` does today. If you want pets to go through pages too, that is a different design and I would need to say so |
+| Blueprints | **Checked, not generating.** The campus blueprint stays data the harness tests; the manager-learns-the-blueprint idea (D40) is a later run and untouched |
 
 ---
 
@@ -82,6 +127,17 @@ BRAIN | place   | place | p3_place | ok          | refused,taken| new (the verb 
 * **Cost (OBS from the doc, not re-measured):** a run is about 1.5 s on a quiet machine and 17 s measured under load 13, mostly the `gcc -O0` of the game. So it is **per plan, not per tick**: at most one proposal per pet per game hour, one at a time through `cpu_gate`, and a **cache** (skip the scratch run when the table hash and the verb binary's content hash are unchanged and the last run passed; hashes, **never mtime**).
 * **Processes (house rule):** the planner is a short fork/exec child of the pet step, **registered** through `proc_reg_op`; it exits when done; no `setsid nohup`. Idle cost: zero.
 
+
+**Worked example (the numbers are illustrative, marked DOC; the file names and rows are the real formats):** pet `fenn` in mcl-hq wants a stone wall at 11,9.
+1. **Goal words:** the blueprint row says `stone wall`. `harness_bank_op find play/bank stone wall place` ranks phase tables; `p3_place` comes first.
+2. **Both numbers for `place`** (`dec_op rank`): `can` = weight of `p3_place` in the **live lane** = 0.50 (never run for a pet yet, so no evidence); `does` = 0.50 (no `place` rows yet). Both pass `can_min` 0.5.
+3. **Proposal:** fenn writes `play/proposed/fenn-1.phases.pdl` with rows `DO | mine | 15 | 4`, `DO | place | stone | 11 | 9`, and expectations `SAY | placed stone ...`. A phase with no expectation is refused.
+4. **Scratch run** (`playthrough_op run`, lane `live`): a throwaway house under `/tmp/hc_*`, the game compiled once, the rows played. Result PASS. The phase weight in the **live lane** becomes `(1+1)/(1+2) = 0.667`, so `can` rises.
+5. **Live execution:** fenn calls the same two verbs on the real game. Each appends a normal game-ledger row, and the pet appends `DEC|…|fenn|goal|mine|15,4|ok` and `DEC|…|fenn|goal|place|wall@11,9|ok`.
+6. **Digest** (`dec_op bank`) updates `dec_mcl-hq_place`: one reward, so `does` = `(1+1)/(1+2)` = 0.667.
+7. **Next time** both numbers are known. If the cell had been occupied, the live row would say `refused`, `does` would fall, and `can` would be unchanged (the scratch world was empty: that is exactly the "good now" gap in 4.5).
+The live game was touched only in step 5, by verbs it already knows; the harness never wrote to it.
+
 ### 4.5 "Good now": a read-only live snapshot for the scratch run (design only)
 A new `INIT snapshot=<n>` row copies the **last n KB of the live `events.txt`** (cap 256 KB) into the scratch house, read-only, so a proposal is judged against the real occupied cells. Without it, "can I place a wall at 11,9" is judged on an empty world. This closes G4 and is the biggest single piece of work; it can follow the rest.
 
@@ -133,6 +189,7 @@ A high `does` or `can` ranks and chooses; it **never writes the concept bank**. 
 | **P4** | gate event page + stamp reads the material | harness fails when the name is wrong (negative pinned) |
 | **P5** | `INIT snapshot` for "good now" | a wall on an occupied cell fails in scratch only with the snapshot |
 | **P6** | repeat for df-hq (`dig`) and cdda-hq (`strike`) | same lint and pins per game |
+| **P7** (optional) | replace the two `system("nice -n 15 gcc ...")` calls in `harness_case_op.c` (lines 242 and 243, the `PLAY_PAGE` step) with fork/exec | the `PLAY_PAGE` cases still pass (`eat_page` 17, `mcl_touch_page` 12, `world_common` 38 in the README) and `grep -c 'system(' ops/harness_case_op.c` prints 0; a deliberately broken compile path must make the case fail, not hang |
 Each step is heavy-work-gated (`cpu_gate`, one at a time, niced) and reports its idle and active cost with a browser open.
 
 ---
@@ -154,14 +211,36 @@ Each step is heavy-work-gated (`cpu_gate`, one at a time, niced) and reports its
 
 ---
 
-## 9. ❓ Decisions I need from you (none blocks P0 and P1)
-1. **Two numbers (`can` and `does`), or one merged weight?** I recommend two (4.2).
-2. **`can_min` default 0.5** (no evidence passes) or stricter (a pet may not try an action the harness has never passed)? I recommend 0.5 first.
-3. **How often may a pet run a scratch proposal?** I proposed one per pet per game hour, one at a time, with a cache. CPU on the weak machine is the limit.
-4. **Priority:** P0 and P1 first (small: find the empty bank, add the BRAIN rows), then P2, before any pet-build code. OK?
-5. **The D47 boundary (section 4.2):** may a pet choose its own *actions* by `can` and `does` automatically (as `walk` does today), with a weight never firing a page for a person? Or suggestion-only everywhere? I recommend automatic for a pet's own actions only.
+## 9. ❓ Your decisions, explained so you can answer
+**Decided by you (2026-11-07):** **1. two numbers**, `can` and `does`, never merged. **2. `can_min` = 0.5** (an action with no harness evidence is allowed; one failing run drops it below the line). Both are now written into D48.
 
----
+### 3. How often may a pet run a scratch proposal? (technical reason)
+A scratch proposal is **not cheap** and that is the whole question. What one run does (READ `playthrough_op.c`, `HARNESS-AS-GAME-BRAIN.md` §5): copies the game into a throwaway house, **compiles the game with `gcc -O0` (about 1 s of CPU)**, plays the rows, judges, writes ledger rows, deletes the house. Measured on 2026-10-17 (not re-measured today): **about 1.5 s on a quiet machine, up to 17 s at load average 13**.
+| Option | Cost | Verdict |
+|---|---|---|
+| per game tick (about 30 a second) | a compile per tick | impossible |
+| per decision (a pet moves every step) | a compile per step | impossible; also pointless, `walk` needs no proof |
+| **per plan** (when a pet starts a multi-step job such as "build a wall") | one run per job | **right unit** |
+| per plan, **cached** | a run only when the table text or the game binary content changed or the last run failed (hash, never mtime) | **recommended** |
+**Your rules already limit it:** the house "heavy work asks first" rule allows **one heavy job at a time** through `cpu_gate`, and `cpu_gate` answers exit 3 ("wait") when the machine is hot. So the real question is **what a pet does on a wait**: my proposal says it **keeps walking its existing plan, does not retry in a loop, and asks again after its current job ends**. A cap on top of that is optional: with five pets, "at most one new plan per game hour per pet" keeps the total at five runs per game hour. I need one thing from you: **how long is a game hour in real minutes** in the games you run (I did not look, and the number decides whether five runs an hour is nothing or a lot). My default if you do not mind: one plan per pet per game hour, one at a time, cached, never during a game launch.
+
+### 4. What are P0 and P1? (the first two steps, and why they are safe)
+* **P0, "find out why the pets' bank is empty."** Today mcl-hq has 509 recorded pet decisions and **no learned weights** (OBS). P0 copies that ledger to a scratch folder and runs the digest by hand. If it works, `walk` should come out at 0.925 and `door` at 0.950 (I computed both from the counts: 456/493 and 19/20). If it does, the maths is fine and the *trigger* is broken (my hypothesis: a counter that restarts with every process). Then I fix the trigger by a byte-count marker file, as the house rule prefers over counters. **Result you can see:** non-empty weight files, and a harness case that fails if they are empty again. **No pet behaves differently** except `walk`, whose chance to pick a new target starts to follow real numbers (the code for that already exists and is currently reading nothing).
+* **P1, "add the shared vocabulary."** About six `BRAIN` rows in mcl-hq's `verbs.pdl` and a harness case (pal + pdl) that fails if a phase, action or verb name is made up. **Result you can see:** `verbgen check .` still passes and the new case passes 3 negative tests. **No game code changes at all.**
+Both steps change nothing a player or pet does apart from the `walk` side effect above, which is why I want them first. I am **not** starting any pet-build code until you say so.
+
+### 5. The D47 boundary: may pets choose actions by weight on their own? (plain explanation)
+There are **three different ways something gets done in the game**:
+| Who decides | Example | What D47 says about weights |
+|---|---|---|
+| **A person** | you click Craft in the window; an event page runs | a weight may **rank** things for you; it never presses the button |
+| **A shipped phase table** | a harness or a playthrough a person wrote | a person or the table chooses; rank is a suggestion |
+| **A pet on its own** | `fenn` decides where to walk next | **not mentioned by D47**; today it is already automatic for one action: `walk`'s chance to pick a new target is `45 + (0.5 − weight) × 60`, between 15% and 85% |
+**The question:** extend that third row from `walk` to `mine`, `craft`, `place`?
+* **Yes (my recommendation).** It is the same mechanism already running, only for more actions, and it is what "pets build the campus DF-style, trying more than one attempt" (D38) needs: a pet that never chooses has nothing to learn from.
+* **What could go wrong:** a "rich get richer" loop. An action that rarely fails gets a high `does`, so it is picked more, so it collects more rewards. **Guards in the proposal:** the 15% to 85% floor and ceiling (a choice is never forced and never starved), the `can` filter (a failing harness run takes an action out), and the fact that a weight **cannot** fire a page, move the player, edit a bank row or promote anything.
+* **If you say no (suggestion-only everywhere):** the numbers are still computed and shown, but pets pick by a fixed order or a person's shipped table. Simpler and safer, but then pets cannot learn to build better, which is the point of D38.
+**What I need:** "automatic for a pet's own actions, never for pages or the player" (recommended), or "suggestion only". If you are unsure, say "recommended" and I will build only P0 and P1 first, which leaves this choice open.
 
 ## 10. 🔗 External references (for other AI agents)
 **Repo** (house root `x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00`; BOOK = `…/#.#.calendar-dox/!.HQ-IQ-BOOK`)
