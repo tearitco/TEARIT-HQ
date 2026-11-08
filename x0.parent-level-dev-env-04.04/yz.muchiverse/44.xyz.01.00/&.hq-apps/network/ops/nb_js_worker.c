@@ -1775,6 +1775,79 @@ static JSValue nb_intersection_take_records(JSContext *ctx, JSValueConst this_va
     (void)this_val; (void)argc; (void)argv;
     return JS_NewArray(ctx);
 }
+/* ---- ResizeObserver: initial-entry slice (2026-11-08) ----
+ * The previous class was an existence stub. This delivers a real initial
+ * callback from the worker's box geometry, mirroring the IntersectionObserver
+ * slice above. It intentionally does not yet claim later resize delivery:
+ * the worker knows the LOAD viewport size, not a live pane-resize channel. */
+static JSValue nb_resize_observer_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue obj = class_noop(ctx, this_val, 0, argv);
+    if (!JS_IsObject(obj)) return obj;
+    if (argc > 0 && JS_IsFunction(ctx, argv[0]))
+        JS_SetPropertyStr(ctx, obj, "__nb_resize_callback", JS_DupValue(ctx, argv[0]));
+    return obj;
+}
+static JSValue nb_resize_make_size(JSContext *ctx, double inline_size, double block_size) {
+    JSValue size = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, size, "inlineSize", JS_NewFloat64(ctx, inline_size));
+    JS_SetPropertyStr(ctx, size, "blockSize", JS_NewFloat64(ctx, block_size));
+    JSValue list = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, list, 0, size);
+    return list;
+}
+static JSValue nb_resize_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *target = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    JSValue cb = JS_GetPropertyStr(ctx, this_val, "__nb_resize_callback");
+    if (!target || !JS_IsFunction(ctx, cb)) {
+        JS_FreeValue(ctx, cb);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: ResizeObserver.observe requires a node and callback"));
+        return JS_Throw(ctx, e);
+    }
+    JSValue rect = nb_el_getBoundingClientRect(ctx, argv[0], 0, NULL);
+    double w = nb_int_rect_field(ctx, rect, "width"), h = nb_int_rect_field(ctx, rect, "height");
+    JSValue content = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, content, "x", JS_NewFloat64(ctx, nb_int_rect_field(ctx, rect, "x")));
+    JS_SetPropertyStr(ctx, content, "y", JS_NewFloat64(ctx, nb_int_rect_field(ctx, rect, "y")));
+    JS_SetPropertyStr(ctx, content, "width", JS_NewFloat64(ctx, w));
+    JS_SetPropertyStr(ctx, content, "height", JS_NewFloat64(ctx, h));
+    JS_SetPropertyStr(ctx, content, "top", JS_NewFloat64(ctx, nb_int_rect_field(ctx, rect, "top")));
+    JS_SetPropertyStr(ctx, content, "left", JS_NewFloat64(ctx, nb_int_rect_field(ctx, rect, "left")));
+    JS_SetPropertyStr(ctx, content, "right", JS_NewFloat64(ctx, nb_int_rect_field(ctx, rect, "right")));
+    JS_SetPropertyStr(ctx, content, "bottom", JS_NewFloat64(ctx, nb_int_rect_field(ctx, rect, "bottom")));
+    JS_SetPropertyStr(ctx, content, "toJSON", JS_NewCFunction(ctx, nb_rect_tojson, "toJSON", 0));
+    JSValue entry = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, entry, "target", JS_DupValue(ctx, argv[0]));
+    JS_SetPropertyStr(ctx, entry, "contentRect", content);
+    JS_SetPropertyStr(ctx, entry, "borderBoxSize", nb_resize_make_size(ctx, w, h));
+    JS_SetPropertyStr(ctx, entry, "contentBoxSize", nb_resize_make_size(ctx, w, h));
+    JSValue entries = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, entries, 0, entry);
+    JS_FreeValue(ctx, rect);
+    JSValue av[2] = { JS_DupValue(ctx, entries), JS_DupValue(ctx, this_val) };
+    JSValue r = JS_Call(ctx, cb, this_val, 2, av);
+    if (JS_IsException(r)) {
+        JSValue e = JS_GetException(ctx);
+        JS_FreeValue(ctx, e);
+    }
+    JS_FreeValue(ctx, r);
+    /* See the IntersectionObserver comment above: these refs are reclaimed
+     * with the context rather than dropped synchronously inside observe(). */
+    JS_FreeValue(ctx, cb);
+    return JS_UNDEFINED;
+}
+static JSValue nb_resize_noop_unobserve(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+static JSValue nb_resize_noop_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+static JSValue nb_resize_take_records(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewArray(ctx);
+}
 
 static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     /* Deliberately NOT guarded against a null/undefined `this`: a browser
@@ -5091,13 +5164,14 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_intersection_noop_disconnect, "disconnect", 0));
         JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_intersection_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "IntersectionObserver", f);
-        /* ResizeObserver */
-        f = add_class(ctx, "ResizeObserver", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 1));
-        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, class_noop, "unobserve", 1));
-        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
-        JS_FreeValue(ctx, p);
+        /* ResizeObserver: initial-entry slice; DOMParser stays inert. */
+        f = JS_NewCFunction2(ctx, nb_resize_observer_ctor, "ResizeObserver", 1, JS_CFUNC_constructor, 0);
+        p = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, f, "prototype", p);
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, nb_resize_observe, "observe", 1));
+        JS_SetPropertyStr(ctx, p, "unobserve", JS_NewCFunction(ctx, nb_resize_noop_unobserve, "unobserve", 1));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_resize_noop_disconnect, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_resize_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "ResizeObserver", f);
         f = add_class(ctx, "DOMParser", JS_UNDEFINED);
         p = JS_GetPropertyStr(ctx, f, "prototype");

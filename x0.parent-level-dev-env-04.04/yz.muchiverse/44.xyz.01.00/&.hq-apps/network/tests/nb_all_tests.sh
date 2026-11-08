@@ -38,6 +38,10 @@ echo "########## IntersectionObserver initial entries use real geometry (hermeti
 bash "$HERE/nb_intersection_observer_test.sh" || RC=1
 
 echo
+echo "########## ResizeObserver initial entries use real geometry (hermetic)"
+bash "$HERE/nb_resize_observer_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 
