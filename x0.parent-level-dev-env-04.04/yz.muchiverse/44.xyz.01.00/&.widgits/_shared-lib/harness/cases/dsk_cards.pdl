@@ -1,0 +1,157 @@
+# dsk_cards: deskopoly classic milestone M5 (spec 4.5 and 6.2): two decks of 16 from cards.pdl, seeded shuffle, every effect kind, the kept Get Out card, a card that moves you onto a card tile.
+# Rows were OBSERVED in the seed-7 classic 3-pet game (autoplayed inside the case) on 2026-11-08; exact rows are matched with grep -cF so a changed effect fails. LIMITS: repairs cost 0 until M6; a short collect_each payer is skipped; pay_each debts go to the first other player until M8.
+RESULTS | ../results/dsk_cards.txt
+ENV | LC_ALL | C
+
+CASE    | effects
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | m
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=2643 rounds=400 over=1 stalemate=p1 | the-game-with-cards-plays-to-the-end
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | check
+EXPECT_OUT | CHECK ok schema=2 events=2643 sum=4500 | every-card-is-in-exactly-one-place-and-money-is-conserved-after-2643-rows
+RUN | /usr/bin/grep | -cF | EVENT\p74\pp1\proll\p4,3\p33\pto=36;card=luck:9;to=33;card=fund:13;collect+25 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | move_back_3_from_Luck3_onto_Fund3_draws_a_fund_card_once
+RUN | /usr/bin/grep | -cF | EVENT\p40\pp2\proll\p5,6\p12\pto=7;go+200;card=luck:4;to=12;cardroll=6,5;rent-110->p1 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | nearest_util_owned_rolls_again_and_pays_10x
+RUN | /usr/bin/grep | -cF | EVENT\p42\pp1\proll\p5,3\p5\pto=36;card=luck:5;to=5;go+200;rent-50->p2 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | nearest_rail_wraps_past_start_pays_start_money_and_double_rent
+RUN | /usr/bin/grep | -cF | EVENT\p59\pp1\proll\p2,3\p25\pto=22;card=luck:6;to=25;own | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | nearest_rail_on_an_own_line_costs_nothing
+RUN | /usr/bin/grep | -cF | EVENT\p57\pp2\proll\p6,4\p7\pto=7;go+200;card=luck:15;eachpay-50 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | pay_every_other_player
+RUN | /usr/bin/grep | -cF | EVENT\p1\pp3\proll\p1,1\p17\pto=17;card=fund:9;each+10;doubles=1 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | collect_from_every_other_player
+RUN | /usr/bin/grep | -cF | EVENT\p50\pp3\proll\p2,2\p7\pto=7;card=luck:8;keep=luck;doubles=2 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | get_out_card_is_kept_and_the_double_is_still_counted
+RUN | /usr/bin/grep | -cF | EVENT\p5\pp1\proll\p6,1\p33\pto=33;card=fund:5;keep=fund | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | get_out_card_of_the_fund_deck_is_kept
+RUN | /usr/bin/grep | -cF | EVENT\p79\pp1\proll\p3,3\p10\pto=22;card=luck:10;jail | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | go_to_jail_card_from_luck_moves_the_token_to_jail_and_ends_the_turn
+RUN | /usr/bin/grep | -cF | EVENT\p8\pp3\proll\p1,5\p10\pto=2;go+200;card=fund:6;jail | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | go_to_jail_card_from_fund_passes_start_first
+RUN | /usr/bin/grep | -cF | EVENT\p79\pp3\proll\p3,1\p39\pto=7;card=luck:14;to=39;rent-50->p1 | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | a_card_move_onto_a_street_pays_rent_like_a_landing
+RUN | /usr/bin/grep | -cF | EVENT\p10\pp2\proll\p2,6\p5\pto=22;card=luck:13;to=5;go+200;for-sale | $T/m/ledger.txt
+EXPECT_OUT_IS | 1 | a_card_move_to_an_unowned_street_offers_it_for_sale
+RUN | /usr/bin/grep | -c | repairs-0 | $T/m/ledger.txt
+EXPECT_OUT_IS | 12 | repairs-cost-0-twelve-times-until-buildings-exist-M6-limit
+RUN | /usr/bin/grep | -c | card=luck | $T/m/ledger.txt
+EXPECT_OUT_IS | 104 | luck-draws-in-the-game
+RUN | /usr/bin/grep | -c | card=fund | $T/m/ledger.txt
+EXPECT_OUT_IS | 96 | fund-draws-in-the-game
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
+EXPECT_OUT | rows=2643 hash=3c4ba9fafd5faf8b | the-card-game-hash-is-pinned
+
+CASE    | jailcard
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | m
+MKDIR   | p
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p/ledger.txt
+RUN | /usr/bin/sed | -i | 413,$d | $T/p/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
+EXPECT_OUT | jail=1 cards=luck | the-player-in-jail-holds-the-luck-get-out-card
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | jail_card | fund
+EXPECT_EXIT | 2 | NEGATIVE-a-card-of-the-other-deck-is-refused
+EXPECT_OUT | you hold no Get Out card of that deck | NEGATIVE-says-why
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | jail_card
+EXPECT_OUT | p3 jail_card: card-returned | the-card-frees-the-player
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
+EXPECT_OUT | jail=0 cards=- | the-player-is-free-and-holds-no-card-any-more
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | jail_card
+EXPECT_EXIT | 2 | NEGATIVE-using-a-card-when-not-in-jail-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | check
+EXPECT_OUT | CHECK ok | the-returned-card-is-back-in-its-deck-so-the-deck-is-whole
+
+CASE    | stopat2
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+COPYDIR | @.apps/deskopoly/rulesets/classic | app/rulesets/loop
+RUN | /usr/bin/sed | -i | s/^CARD \p luck \p \([0-9]*\) *\p [a-z_]* *\p [0-9]* *\p [0-9]* *\p.*/CARD \p luck \p \1 \p move_back \p 3 \p 0 \p x/ | $T/app/rulesets/loop/cards.pdl
+RUN | /usr/bin/sed | -i | s/^CARD \p fund \p \([0-9]*\) *\p [a-z_]* *\p [0-9]* *\p [0-9]* *\p.*/CARD \p fund \p \1 \p move_to \p 36 \p 0 \p y/ | $T/app/rulesets/loop/cards.pdl
+MKDIR   | l
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | lobby | loop
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | autoplay
+EXPECT_OUT | AUTOPLAY events=281 rounds=57 over=1 winner=p1 | a-loop-deck-game-ends-so-the-chain-of-card-moves-cannot-run-forever
+RUN | /usr/bin/grep | -c | nocard | $T/l/ledger.txt
+EXPECT_OUT_IS | 13 | the-third-card-landing-in-a-chain-draws-nothing-13-times
+RUN | /usr/bin/grep | -cF | EVENT\p5\pp2\proll\p1,3\p33\pto=2;go+200;card=fund:9;to=36;card=luck:16;to=33;nocard | $T/l/ledger.txt
+EXPECT_OUT_IS | 1 | the-exact-chain-fund-then-luck-then-a-fund-tile-that-draws-nothing
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | check
+EXPECT_OUT | CHECK ok schema=2 events=281 sum=3000 | invariants-hold-through-chained-card-moves
+
+CASE    | cards_short
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | /usr/bin/sed | -i | /^CARD \p luck \p 16 /d | $T/app/rulesets/classic/cards.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-deck-of-15-is-refused
+EXPECT_OUT | each deck needs exactly 16 cards | NEGATIVE-a-deck-of-15-is-refused-says-why
+
+CASE    | cards_kind
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | /usr/bin/sed | -i | s/\p nearest_rail \p/\p teleport     \p/ | $T/app/rulesets/classic/cards.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused
+EXPECT_OUT | unknown card kind | NEGATIVE-an-unknown-kind-is-refused-says-why
+
+CASE    | cards_dup
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | /usr/bin/sed | -i | s/^CARD \p luck \p 2  \p/CARD \p luck \p 3  \p/ | $T/app/rulesets/classic/cards.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-duplicate-card-number-is-refused
+EXPECT_OUT | used twice in a deck | NEGATIVE-a-duplicate-card-number-is-refused-says-why
+
+CASE    | cards_far
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | /usr/bin/sed | -i | s/\p move_to      \p 24 \p/\p move_to      \p 99 \p/ | $T/app/rulesets/classic/cards.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-move-to-a-tile-off-the-board-is-refused
+EXPECT_OUT | not on the board | NEGATIVE-a-move-to-a-tile-off-the-board-is-refused-says-why
+
+CASE    | cards_deck
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | /usr/bin/sed | -i | s/^CARD \p fund \p 3  \p/CARD \p chest \p 3  \p/ | $T/app/rulesets/classic/cards.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-deck-name-is-refused
+EXPECT_OUT | a deck is luck or fund | NEGATIVE-an-unknown-deck-name-is-refused-says-why
+
+CASE    | hash
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | start | 7
+RUN | /usr/bin/sed | -i | s/\p luck \p 7  \p collect      \p 50/\p luck \p 7  \p collect      \p 60/ | $T/app/rulesets/classic/cards.pdl
+RUN | /usr/bin/cmp | -s | $HOUSE/@.apps/deskopoly/rulesets/classic/cards.pdl | $T/app/rulesets/classic/cards.pdl
+EXPECT_EXIT | 1 | the-edit-really-changed-the-cards-file
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | replay
+EXPECT_EXIT | 1 | NEGATIVE-changing-one-card-after-the-game-began-is-refused-because-cards-are-in-the-rules-hash
+EXPECT_OUT | the rules changed since the game began | NEGATIVE-the-refusal-names-the-rules-change

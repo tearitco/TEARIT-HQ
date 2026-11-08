@@ -1,0 +1,36 @@
+# classic cards: two decks of 16 (spec 4.5). The effect KINDS are the classic ones; the WORDING is the house's own (owner decision O1: reword freely, no code change).
+# CARD | deck | n | kind | a | b | text      deck: luck | fund     n: 1..16 (unique per deck)
+#   kind: move_to(a = tile idx; passing Start pays) | nearest_rail | nearest_util | move_back(a = steps) | go_jail | keep_card | collect(a) | pay(a) | collect_each(a) | pay_each(a) | repairs(a per house, b per hotel)
+#   RULES effects are from memory of the standard deck kinds: to be checked against the official sheet (spec 4.12).
+CARD | luck | 1  | move_to      | 0  | 0   | Advance to Start and collect
+CARD | luck | 2  | move_to      | 24 | 0   | Advance to Red3
+CARD | luck | 3  | move_to      | 11 | 0   | Advance to Pink1
+CARD | luck | 4  | nearest_util | 0  | 0   | Advance to the nearest utility
+CARD | luck | 5  | nearest_rail | 0  | 0   | Advance to the nearest line, pay double rent if owned
+CARD | luck | 6  | nearest_rail | 0  | 0   | Advance to the nearest line, pay double rent if owned
+CARD | luck | 7  | collect      | 50 | 0   | The bank pays you 50
+CARD | luck | 8  | keep_card    | 0  | 0   | Get out of Jail free (keep it)
+CARD | luck | 9  | move_back    | 3  | 0   | Go back three tiles
+CARD | luck | 10 | go_jail      | 0  | 0   | Go to Jail
+CARD | luck | 11 | repairs      | 25 | 100 | Repairs: 25 per house, 100 per hotel
+CARD | luck | 12 | pay          | 15 | 0   | Pay a 15 fine
+CARD | luck | 13 | move_to      | 5  | 0   | Take a trip to Line1
+CARD | luck | 14 | move_to      | 39 | 0   | Advance to Navy2
+CARD | luck | 15 | pay_each     | 50 | 0   | Pay every other player 50
+CARD | luck | 16 | collect      | 150| 0   | A loan matures: collect 150
+CARD | fund | 1  | move_to      | 0  | 0   | Advance to Start and collect
+CARD | fund | 2  | collect      | 200| 0   | Bank error in your favour: collect 200
+CARD | fund | 3  | pay          | 50 | 0   | Pay a 50 fee
+CARD | fund | 4  | collect      | 50 | 0   | Sell a share: collect 50
+CARD | fund | 5  | keep_card    | 0  | 0   | Get out of Jail free (keep it)
+CARD | fund | 6  | go_jail      | 0  | 0   | Go to Jail
+CARD | fund | 7  | collect      | 100| 0   | Holiday fund matures: collect 100
+CARD | fund | 8  | collect      | 20 | 0   | Refund: collect 20
+CARD | fund | 9  | collect_each | 10 | 0   | Your birthday: collect 10 from every other player
+CARD | fund | 10 | collect      | 100| 0   | Insurance matures: collect 100
+CARD | fund | 11 | pay          | 100| 0   | Pay 100 in hospital fees
+CARD | fund | 12 | pay          | 50 | 0   | Pay 50 in school fees
+CARD | fund | 13 | collect      | 25 | 0   | Collect a 25 consulting fee
+CARD | fund | 14 | repairs      | 40 | 115 | Street repairs: 40 per house, 115 per hotel
+CARD | fund | 15 | collect      | 10 | 0   | You win a contest: collect 10
+CARD | fund | 16 | collect      | 100| 0   | An inheritance: collect 100

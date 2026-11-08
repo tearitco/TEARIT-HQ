@@ -4,3 +4,4 @@
 HARNESS | dsk_classic | * | CASE | classic data   | dsk_classic | - | - | no | the classic board data, the lobby, the opening and the tamper tests (milestone M2)
 HARNESS | dsk_play    | * | CASE | classic play   | dsk_play    | - | - | no | roll, landing, rent, buy, bankruptcy to a player, over, stalemate (milestone M3)
 HARNESS | dsk_jail    | * | CASE | classic jail   | dsk_jail    | - | - | no | doubles, Go To Jail, the Jail turn (pay, roll for doubles, forced fine), debt rules (milestone M4)
+HARNESS | dsk_cards   | * | CASE | classic cards  | dsk_cards   | - | - | no | the Luck and Fund decks: every effect kind, the kept Get Out card, chained card moves, loader refusals (milestone M5)

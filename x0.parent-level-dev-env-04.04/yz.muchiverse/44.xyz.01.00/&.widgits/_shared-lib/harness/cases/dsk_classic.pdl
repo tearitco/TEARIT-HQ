@@ -31,7 +31,7 @@ RUN | /usr/bin/awk | -F\p | /^TILE/{g=$5;gsub(/ /,"",g);c[g]++}END{print c[0]c[1
 EXPECT_OUT_IS | 2333333242 | group-sizes-brown2-sky3-pink3-orange3-red3-yellow3-green3-navy2-rail4-util2
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s | lobby | classic
 EXPECT_EXIT | 0 | the-real-classic-data-loads
-EXPECT_OUT | rules=650f599fdb6f6fdf | the-rules-hash-of-the-shipped-ruleset
+EXPECT_OUT | rules=e4c89c771053a854 | the-rules-hash-of-the-shipped-ruleset-now-including-cards
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s0 | lobby | nosuchrules
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-ruleset-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s0 | lobby | ..\p..\petc

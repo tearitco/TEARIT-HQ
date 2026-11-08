@@ -14,9 +14,9 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
-EXPECT_OUT | AUTOPLAY events=1827 rounds=400 over=1 stalemate=p2 | the-base-game-with-doubles-and-jail-ends-at-the-safety-cap
+EXPECT_OUT | AUTOPLAY events=2643 rounds=400 over=1 stalemate=p1 | the-base-game-with-doubles-and-jail-ends-at-the-safety-cap
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | check
-EXPECT_OUT | CHECK ok schema=2 events=1827 sum=4500 | invariants-hold-over-the-whole-base-game-including-jail-and-doubles
+EXPECT_OUT | CHECK ok schema=2 events=2643 sum=4500 | invariants-hold-over-the-whole-base-game-including-jail-and-doubles
 RUN | /usr/bin/grep | -cF | roll\p2,2\p10\pto=30;jail | $T/m/ledger.txt
 EXPECT_OUT_IS | 2 | two-go-to-jail-landings-from-the-gotojail-tile-are-in-the-base-ledger
 
@@ -68,8 +68,8 @@ EXPECT_EXIT | 2 | NEGATIVE-paying-as-another-player-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | jail_pay
 EXPECT_OUT | p2 jail_pay: paid-50 | paying-the-fine-frees-the-player
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
-EXPECT_OUT | cash=878 pos=10 out=0 jail=0 | cash-went-from-928-to-878-and-jail-cleared
-EXPECT_OUT | bank=2100 | the-fine-went-to-the-bank
+EXPECT_OUT | cash=868 pos=10 out=0 jail=0 | cash-went-from-918-to-868-and-jail-cleared
+EXPECT_OUT | bank=2005 | the-fine-went-to-the-bank-1955-plus-50
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | jail_pay
 EXPECT_EXIT | 2 | NEGATIVE-paying-twice-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | roll
@@ -114,11 +114,11 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
 RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p/ledger.txt
-RUN | /usr/bin/sed | -i | 232,$d | $T/p/ledger.txt
+RUN | /usr/bin/sed | -i | 96,$d | $T/p/ledger.txt
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
 EXPECT_OUT | jail=3 | third-turn-in-jail
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | jail_roll
-EXPECT_OUT | p2 jail_roll: forced-fine-50;to=17;todo-chest | the-third-failure-forces-the-fine-and-moves-the-total
+EXPECT_OUT | p3 jail_roll: forced-fine-50;to=17;card=fund:1;to=0;go+200;start | the-third-failure-forces-the-fine-moves-the-total-then-a-card-moves-again-and-collects-start-money
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | check
 EXPECT_OUT | CHECK ok | invariants
 
@@ -134,15 +134,15 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
 RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p/ledger.txt
-RUN | /usr/bin/sed | -i | 468,$d | $T/p/ledger.txt
+RUN | /usr/bin/sed | -i | 2241,$d | $T/p/ledger.txt
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | roll
-EXPECT_OUT | p2 roll: jail3 | the-third-double-goes-to-jail-without-moving
+EXPECT_OUT | p1 roll: jail3 | the-third-double-goes-to-jail-without-moving
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
 EXPECT_OUT | pos=10 out=0 jail=1 | stands-on-jail
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | roll
 EXPECT_EXIT | 2 | NEGATIVE-no-further-roll-after-the-third-double
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | end_turn
-EXPECT_OUT | next=p1 | the-turn-ends
+EXPECT_OUT | next=p2 | the-turn-ends
 
 CASE    | doubles
 SCRATCH |
@@ -156,35 +156,41 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
 RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p/ledger.txt
-RUN | /usr/bin/sed | -i | 394,$d | $T/p/ledger.txt
+RUN | /usr/bin/sed | -i | 347,$d | $T/p/ledger.txt
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | roll
-EXPECT_OUT | p2 roll: to=10;visit;doubles=2 | the-second-double-is-counted
+EXPECT_OUT | p1 roll: to=15;rent-50->p3;doubles=2 | the-second-double-is-counted-and-rent-is-still-paid
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | end_turn
 EXPECT_EXIT | 2 | NEGATIVE-after-doubles-the-player-must-roll-again-not-end-the-turn
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
-EXPECT_OUT | phase=pre current=p2 round=70 pending=-1 debt=0 doubles=2 | owed-a-third-roll-with-doubles-2-recorded
+EXPECT_OUT | phase=pre current=p1 round=49 pending=-1 debt=0 doubles=2 | owed-a-third-roll-with-doubles-2-recorded
 
 CASE    | debt
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+COPYDIR | @.apps/deskopoly/rulesets/classic | app/rulesets/tiny
+RUN | /usr/bin/sed | -i | s/start_cash    \p 1500/start_cash    \p 70/ | $T/app/rulesets/tiny/rules.pdl
+RUN | /usr/bin/sed | -i | s/pass_go       \p 200/pass_go       \p 0/ | $T/app/rulesets/tiny/rules.pdl
+RUN | /usr/bin/sed | -i | s/\p LevyA    \p tax      \p -1 \p 200/\p LevyA    \p tax      \p -1 \p 1  / | $T/app/rulesets/tiny/board.pdl
+RUN | /usr/bin/sed | -i | s/\p LevyB    \p tax      \p -1 \p 100/\p LevyB    \p tax      \p -1 \p 1  / | $T/app/rulesets/tiny/board.pdl
 MKDIR   | m
 MKDIR   | p
-RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | tiny
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
-RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
-RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 25
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=108 rounds=16 over=1 winner=p1 | the-tiny-seed-25-game-ends-in-a-bankruptcy-after-a-card-debt
 RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p/ledger.txt
-RUN | /usr/bin/sed | -i | 181,$d | $T/p/ledger.txt
+RUN | /usr/bin/sed | -i | 107,$d | $T/p/ledger.txt
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | status
-EXPECT_OUT | phase=debt current=p3 | a-levy-bigger-than-the-cash-opens-a-debt
+EXPECT_OUT | phase=debt current=p2 round=15 pending=-1 debt=50 doubles=1 | a-pay-every-player-card-the-player-cannot-cover-opens-a-debt-to-the-first-other-player
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | roll
-EXPECT_EXIT | 2 | NEGATIVE-no-roll-while-in-debt
+EXPECT_EXIT | 2 | NEGATIVE-no-roll-while-in-debt-even-with-a-double-owed
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | end_turn
 EXPECT_EXIT | 2 | NEGATIVE-no-end-turn-while-in-debt
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | bankrupt
-EXPECT_OUT | out;cash=98;props=11;cards=0 | bankrupt-to-the-bank-hands-back-eleven-tiles
+EXPECT_OUT | out;cash=10;props=1;cards=0 | bankrupt-to-the-creditor-hands-over-cash-and-the-tile
+EXPECT_OUT | over: winner=p1 | and-the-game-ends-with-the-over-row
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p | bankrupt
 EXPECT_EXIT | 2 | NEGATIVE-bankrupt-twice-is-refused
 

@@ -21,7 +21,7 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll | as=p1
 EXPECT_EXIT | 2 | NEGATIVE-rolling-as-the-wrong-player-is-refused
 EXPECT_OUT | it is p2's turn, not p1's | NEGATIVE-the-refusal-names-whose-turn-it-is
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
-EXPECT_OUT | p2 roll: to=7;todo-chance | p2-lands-on-the-luck-tile-which-is-a-todo-until-M5
+EXPECT_OUT | p2 roll: to=7;card=luck:7;collect+50 | p2-draws-luck-7-and-collects-50
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
 EXPECT_EXIT | 2 | NEGATIVE-a-second-roll-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | buy
@@ -60,24 +60,24 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | lobby | clas
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | join | A | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | join | B | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | join | C | pet
-RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | start | 6
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | autoplay
-EXPECT_OUT | AUTOPLAY events=1827 rounds=400 over=1 stalemate=p2 | three-pets-play-to-the-400-round-safety-cap
+EXPECT_OUT | AUTOPLAY events=2647 rounds=400 over=1 stalemate=p2 | three-pets-play-to-the-400-round-safety-cap
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | check
-EXPECT_OUT | CHECK ok schema=2 events=1827 sum=4500 | money-conserved-after-1827-rows
+EXPECT_OUT | CHECK ok schema=2 events=2647 sum=4500 | money-conserved-after-2647-rows
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | replay
 EXPECT_EXIT | 0 | the-whole-game-replays
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | ledger_hash
-EXPECT_OUT | rows=1827 hash=3bcd3d42923b8d70 | the-ledger-hash-is-pinned
+EXPECT_OUT | rows=2647 hash=826b6b6f46c4e8b2 | the-ledger-hash-is-pinned
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | roll
 EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-over
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | autoplay
 EXPECT_OUT | over=1 | autoplay-on-a-finished-game-just-reports-it
-WRITE   | a.awk | BEGIN{FS="\p"}\nFILENAME==ARGV[1]{if($1~/^TILE/){i=$2+0;k=$4;gsub(/ /,"",k);kind[i]=k;r0[i]=$7+0}next}\n($4=="roll"\p\p$4=="jail_roll")&&$7~/rent-/{n++;split($5,d,",");dice=d[1]+d[2];t=$7;sub(/^.*to=/,"",t);sub(/;.*$/,"",t);t=t+0;a=$7;sub(/^.*rent-/,"",a);sub(/->.*$/,"",a);a=a+0;ok=0\nif(kind[t]=="street"){if(a==r0[t])ok=1;if(a==2*r0[t]){ok=1;dbl++}}\nif(kind[t]=="rail"){if(a==25)ok=1;if(a==50)ok=1;if(a==100)ok=1;if(a==200)ok=1}\nif(kind[t]=="util"){if(a==4*dice)ok=1;if(a==10*dice)ok=1}\nif(!ok)bad++}\nEND{print "rentrows=" n " doubled=" dbl+0 " bad=" bad+0}\n
+WRITE   | a.awk | BEGIN{FS="\p"}\nFILENAME==ARGV[1]{if($1~/^TILE/){i=$2+0;k=$4;gsub(/ /,"",k);kind[i]=k;r0[i]=$7+0}next}\n($4=="roll"\p\p$4=="jail_roll")&&$7~/rent-/{n++;split($5,d,",");dice=d[1]+d[2];if($7~/cardroll=/){cr=$7;sub(/^.*cardroll=/,"",cr);sub(/;.*$/,"",cr);split(cr,e,",");dice=e[1]+e[2];cardutil=1}else cardutil=0;t=$7;sub(/^.*to=/,"",t);sub(/;.*$/,"",t);t=t+0;a=$7;sub(/^.*rent-/,"",a);sub(/->.*$/,"",a);a=a+0;ok=0\nif(kind[t]=="street"){if(a==r0[t])ok=1;if(a==2*r0[t]){ok=1;dbl++}}\nif(kind[t]=="rail"){if(a==25)ok=1;if(a==50)ok=1;if(a==100)ok=1;if(a==200)ok=1;if($7~/card=/){if(a==400)ok=1;if(a==100\p\pa==200\p\pa==50)ok=1}}\nif(kind[t]=="util"){if(cardutil){if(a==10*dice)ok=1}else{if(a==4*dice)ok=1;if(a==10*dice)ok=1}}\nif(!ok)bad++}\nEND{print "rentrows=" n " doubled=" dbl+0 " bad=" bad+0}\n
 RUN | /usr/bin/awk | -f | $T/a.awk | $T/app/rulesets/classic/board.pdl | $T/a/ledger.txt
-EXPECT_OUT | rentrows=298 doubled=40 bad=0 | every-rent-in-the-game-is-one-the-rent-function-allows
+EXPECT_OUT | rentrows=620 doubled=152 bad=0 | every-rent-in-the-game-is-one-the-rent-function-allows
 RUN | /usr/bin/cp | $T/a/ledger.txt | $T/a/good.keep
-RUN | /usr/bin/sed | -i | 0,/rent-2->/s//rent-3->/ | $T/a/ledger.txt
+RUN | /usr/bin/sed | -i | 0,/rent-20->/s//rent-21->/ | $T/a/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/a/good.keep | $T/a/ledger.txt
 EXPECT_EXIT | 1 | the-tamper-really-changed-the-ledger-so-the-next-refusal-is-not-vacuous
 RUN | /usr/bin/awk | -f | $T/a.awk | $T/app/rulesets/classic/board.pdl | $T/a/ledger.txt
@@ -97,15 +97,14 @@ MKDIR   | b
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | lobby | tiny
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | join | A | pet
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | join | B | pet
-RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | start | 13
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | start | 25
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | autoplay
-EXPECT_OUT | AUTOPLAY events=119 rounds=17 over=1 winner=p2 | two-poor-pets-play-until-one-is-bankrupt
-RUN | /usr/bin/grep | -F | EVENT\p17\pp1\pbankrupt\pp2\p3\pout;cash=2;props=1;cards=0 | $T/b/ledger.txt
-EXPECT_EXIT | 0 | p1-goes-bankrupt-to-p2-not-to-the-bank
+EXPECT_OUT | AUTOPLAY events=108 rounds=16 over=1 winner=p1 | two-poor-pets-play-until-one-is-bankrupt
+RUN | /usr/bin/grep | -F | EVENT\p16\pp2\pbankrupt\pp1\p7\pout;cash=10;props=1;cards=0 | $T/b/ledger.txt
+EXPECT_EXIT | 0 | p2-goes-bankrupt-to-p1-not-to-the-bank
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | status
-EXPECT_OUT | TILE 1 Brown1 owner=p2 | the-bankrupt-players-first-tile-went-to-the-creditor
-EXPECT_OUT | TILE 3 Brown2 owner=p2 | and-the-second-one-too
-EXPECT_OUT_LACKS | owner=p1 | no-tile-stays-with-the-bankrupt-player
+EXPECT_OUT | TILE 3 Brown2 owner=p1 | the-bankrupt-players-tile-went-to-the-creditor
+EXPECT_OUT_LACKS | owner=p2 | no-tile-stays-with-the-bankrupt-player
 EXPECT_OUT | TOTAL sum=140 expect=140 | money-is-conserved-through-a-bankruptcy
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | check
 EXPECT_OUT | CHECK ok schema=2 | the-invariants-hold-at-the-end
@@ -114,15 +113,15 @@ EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-the-game-is-over
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | bankrupt
 EXPECT_EXIT | 2 | NEGATIVE-bankrupt-after-over-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | ledger_hash
-EXPECT_OUT | rows=119 hash=d71d34ffae678641 | the-bankruptcy-game-hash
+EXPECT_OUT | rows=108 hash=cdee0bd974c2c178 | the-bankruptcy-game-hash
 RUN | /usr/bin/cp | $T/b/ledger.txt | $T/b/good.keep
-RUN | /usr/bin/sed | -i | s/\pbankrupt\pp2\p/\pbankrupt\pbank\p/ | $T/b/ledger.txt
+RUN | /usr/bin/sed | -i | s/\pbankrupt\pp1\p/\pbankrupt\pbank\p/ | $T/b/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/b/good.keep | $T/b/ledger.txt
 EXPECT_EXIT | 1 | the-tamper-really-changed-the-ledger-so-the-next-refusal-is-not-vacuous
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | replay
 EXPECT_EXIT | 1 | NEGATIVE-changing-the-creditor-in-the-ledger-is-refused
 RUN | /usr/bin/cp | $T/b/good.keep | $T/b/ledger.txt
-RUN | /usr/bin/sed | -i | s/winner=p2/winner=p1/ | $T/b/ledger.txt
+RUN | /usr/bin/sed | -i | s/winner=p1/winner=p2/ | $T/b/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/b/good.keep | $T/b/ledger.txt
 EXPECT_EXIT | 1 | the-tamper-really-changed-the-ledger-so-the-next-refusal-is-not-vacuous
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | replay
@@ -134,7 +133,7 @@ EXPECT_EXIT | 1 | the-tamper-really-changed-the-ledger-so-the-next-refusal-is-no
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | check
 EXPECT_EXIT | 1 | NEGATIVE-a-lost-over-row-fails-the-check
 RUN | /usr/bin/cp | $T/b/good.keep | $T/b/ledger.txt
-RUN | /usr/bin/sed | -i | /p1\proll\p6,5\p3\pto=3;go+0;debt/d | $T/b/ledger.txt
+RUN | /usr/bin/sed | -i | /p2\proll\p4,4\p7\pto=7;go+0;card=luck:15;debt/d | $T/b/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/b/good.keep | $T/b/ledger.txt
 EXPECT_EXIT | 1 | the-tamper-really-changed-the-ledger-so-the-next-refusal-is-not-vacuous
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | replay

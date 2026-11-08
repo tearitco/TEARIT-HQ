@@ -37,7 +37,9 @@ typedef struct { char id[8], name[20], style[20]; int param; int token; } Pl;
 static char g_app[1024], g_state[1024];
 static char g_rs[32] = "mini";           /* the ruleset: "mini" = schema 1 (a `new` first row); anything else = schema 2 (a `lobby` first row names it) */
 static int g_schema = 1;
+static void load_cards(void);
 static int jail_idx = -1;                 /* the one jail tile of a classic board (set by the loader) */
+static int cq[2][16], cqn[2], cheld[2][17];   /* the card decks as queues of card numbers (top first); cheld[deck][n] = holder + 1: a kept Get Out card is out of the queue */
 static uint64_t g_rules_hash;             /* FNV-1a of the ruleset files (board, rules, cards): recorded in `lobby` and `start`, re-checked by every replay (spec 5.2, F7) */
 static Tile T[MAXT]; static int nt;
 static Pl PL[MAXP]; static int npl;
@@ -114,6 +116,7 @@ static void load_app(void) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp;
     if (strcmp(g_rs, "mini")) {   /* schema 2: a classic-format ruleset; the roster is NOT config (it comes from `join` rows, finding F6) */
         rs_path(p, sizeof p, "board.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read board.pdl for this ruleset"); load_classic_board(fp); fclose(fp);
+        load_cards();
         rs_path(p, sizeof p, "rules.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read rules.pdl for this ruleset");
         R_rounds = 400; R_maxp = 8;
         while (fgets(ln, sizeof ln, fp)) {
@@ -247,6 +250,8 @@ static int replay1(int *started) {
 
 /* ===== schema 2 (classic): lobby, join, leave, start, order, first (spec sections 5.2, 10.1). Rows after `first` (roll, buy, ...) arrive in M3+; replay refuses them as unknown verbs until then. ===== */
 enum { PH_LOBBY = 0, PH_ORDER = 1, PH_PRE = 2 };
+
+static void shuffle_decks(void);
 static int phase2, thrown[MAXP], tot[MAXP], elig[MAXP], first_w = -1;
 static char hex16[20];
 static const char *hx(uint64_t h) { snprintf(hex16, sizeof hex16, "%016llx", (unsigned long long)h); return hex16; }
@@ -282,7 +287,7 @@ static const char *do_leave(int pl, char *res, size_t cap) {
 static const char *do_start(long sd, char *res, size_t cap) {
     if (phase2 != PH_LOBBY) return "the game already started";
     if (npl < 2) return "a game needs at least 2 players";
-    seed = sd; phase2 = PH_ORDER; np_game = npl; for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = i < npl; }
+    seed = sd; phase2 = PH_ORDER; np_game = npl; shuffle_decks(); for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = i < npl; }
     snprintf(res, cap, "seed=%ld,players=%d,rules=%s", sd, npl, hx(g_rules_hash)); return NULL;
 }
 static int order_next(void) { for (int i = 0; i < npl; i++) if (elig[i] && !thrown[i]) return i; return -1; }
@@ -327,17 +332,84 @@ static int charge2(int pl, int amount, int cred, char *res, size_t cap, const ch
     if (cash[pl] >= amount) { cash[pl] -= amount; if (cred < 0) bankv += amount; else cash[cred] += amount; tk(res, cap, "%s-%d%s%s", paidtok, amount, cred >= 0 ? "->" : "", cred >= 0 ? PL[cred].id : ""); return 1; }
     debt_amt = amount; debt_cred = cred; phase2 = PH_DEBT; tk(res, cap, "debt=%d->%s", amount, cred >= 0 ? PL[cred].id : "bank"); return 0;
 }
-static void land2(int pl, int dice, char *res, size_t cap) {
+/* ===== M5 cards (spec 4.5, 6.2): two decks of 16 from cards.pdl, seeded shuffles at start, the effects, the kept Get Out card. LIMITS until M6/M8: repairs cost 0 (no buildings yet);
+ * a short payer in collect_each is skipped (`unpaid-<id>`); a pay_each the player cannot cover opens ONE debt to the first other player (the debt queue arrives in M8). ===== */
+typedef struct { int n, a, b; char kind[16], text[80]; } Card;
+static Card CD[2][16]; static int ncd[2];
+/* (cq, cqn, cheld are declared near the top: replay2 resets them) */ /* cq = the deck as a queue of card numbers, top first; cheld[deck][n] = holder + 1 (a kept Get Out card is out of the queue) */
+static const char *DK[2] = { "luck", "fund" };
+static int rent_mult = 1;
+static void land2(int pl, int dice, char *res, size_t cap, int depth);
+static void load_cards(void) {
+    char p[1100], ln[LINE]; char *f[10]; rs_path(p, sizeof p, "cards.pdl"); FILE *fp = fopen(p, "r"); if (!fp) bad("a classic ruleset needs cards.pdl");
+    static const char *kinds[] = { "move_to", "nearest_rail", "nearest_util", "move_back", "go_jail", "keep_card", "collect", "pay", "collect_each", "pay_each", "repairs" };
+    memset(CD, 0, sizeof CD); ncd[0] = ncd[1] = 0;
+    while (fgets(ln, sizeof ln, fp)) {
+        if (ln[0] == '#') continue; int n = split(ln, f, 10); if (n < 1 || strcmp(f[0], "CARD")) continue; if (n != 7) bad("cards.pdl: a CARD row has 7 fields (CARD | deck | n | kind | a | b | text)");
+        int d = !strcmp(f[1], "luck") ? 0 : !strcmp(f[1], "fund") ? 1 : -1; if (d < 0) bad("cards.pdl: a deck is luck or fund");
+        int nn = atoi(f[2]); if (nn < 1 || nn > 16) bad("cards.pdl: a card number is 1..16"); if (CD[d][nn - 1].n) bad("cards.pdl: a card number is used twice in a deck");
+        int ok = 0; for (size_t k = 0; k < sizeof kinds / sizeof *kinds; k++) if (!strcmp(f[3], kinds[k])) ok = 1; if (!ok) bad("cards.pdl: unknown card kind");
+        Card *c = &CD[d][nn - 1]; c->n = nn; c->a = atoi(f[4]); c->b = atoi(f[5]); snprintf(c->kind, sizeof c->kind, "%s", f[3]); snprintf(c->text, sizeof c->text, "%s", f[6]);
+        if (c->a < 0 || c->b < 0) bad("cards.pdl: amounts are not negative");
+        if (!strcmp(c->kind, "move_to") && c->a >= nt) bad("cards.pdl: move_to names a tile that is not on the board");
+        if (!strcmp(c->kind, "move_back") && (c->a < 1 || c->a >= nt)) bad("cards.pdl: move_back is 1..board size - 1 steps");
+        ncd[d]++;
+    }
+    fclose(fp); if (ncd[0] != 16 || ncd[1] != 16) bad("cards.pdl: each deck needs exactly 16 cards");
+}
+static void shuffle_decks(void) {   /* Fisher-Yates over mix(seed, deck, i): pure, so replay needs no stored order */
+    for (int d = 0; d < 2; d++) {
+        int a[16]; for (int i = 0; i < 16; i++) a[i] = i + 1;
+        for (int i = 15; i > 0; i--) { int j = (int)(mix((uint64_t)seed * 1000003ULL + (uint64_t)(d * 7919 + i)) % (uint64_t)(i + 1)); int t = a[i]; a[i] = a[j]; a[j] = t; }
+        for (int i = 0; i < 16; i++) cq[d][i] = a[i]; cqn[d] = 16; for (int n = 0; n < 17; n++) cheld[d][n] = 0;
+    }
+}
+static void card_move(int pl, int to, int wrap_pays, char *res, size_t cap) {
+    int old = pos[pl]; pos[pl] = to; tk(res, cap, "to=%d", to);
+    if (wrap_pays && to < old) { cash[pl] += R_go; bankv -= R_go; tk(res, cap, "go+%d", R_go); }
+}
+static int next_of_kind(int from, const char *kind) { int q = from; do { q = (q + 1) % nt; } while (strcmp(T[q].kind, kind)); return q; }
+static void draw_card(int pl, int d, char *res, size_t cap, int depth) {
+    int n = cq[d][0]; memmove(cq[d], cq[d] + 1, sizeof(int) * (size_t)(cqn[d] - 1)); cqn[d]--; Card *c = &CD[d][n - 1];
+    tk(res, cap, "card=%s:%d", DK[d], n);
+    if (!strcmp(c->kind, "keep_card")) { cheld[d][n] = pl + 1; tk(res, cap, "keep=%s", DK[d]); return; }
+    cq[d][cqn[d]++] = n;   /* every other card goes to the bottom */
+    const char *k = c->kind;
+    if (!strcmp(k, "move_to")) { card_move(pl, c->a, 1, res, cap); land2(pl, dice_last, res, cap, depth + 1); }
+    else if (!strcmp(k, "nearest_rail")) { card_move(pl, next_of_kind(pos[pl], "rail"), 1, res, cap); rent_mult = 2; land2(pl, dice_last, res, cap, depth + 1); rent_mult = 1; }
+    else if (!strcmp(k, "nearest_util")) {
+        card_move(pl, next_of_kind(pos[pl], "util"), 1, res, cap);
+        if (owner[pos[pl]] >= 0 && owner[pos[pl]] != pl) { int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); nrolls++; tk(res, cap, "cardroll=%d,%d", d1, d2); charge2(pl, 10 * (d1 + d2), owner[pos[pl]], res, cap, "rent"); }
+        else land2(pl, dice_last, res, cap, depth + 1);
+    }
+    else if (!strcmp(k, "move_back")) { card_move(pl, ((pos[pl] - c->a) % nt + nt) % nt, 0, res, cap); land2(pl, dice_last, res, cap, depth + 1); }
+    else if (!strcmp(k, "go_jail")) { send_to_jail(pl); tk(res, cap, "jail"); }
+    else if (!strcmp(k, "collect")) { cash[pl] += c->a; bankv -= c->a; tk(res, cap, "collect+%d", c->a); }
+    else if (!strcmp(k, "pay")) charge2(pl, c->a, -1, res, cap, "pay");
+    else if (!strcmp(k, "collect_each")) {
+        tk(res, cap, "each+%d", c->a);
+        for (int q = 0; q < np_game; q++) if (q != pl && !out[q]) { if (cash[q] >= c->a) { cash[q] -= c->a; cash[pl] += c->a; } else tk(res, cap, "unpaid-%s", PL[q].id); }
+    }
+    else if (!strcmp(k, "pay_each")) {
+        int others = 0, first = -1; for (int q = 0; q < np_game; q++) if (q != pl && !out[q]) { others++; if (first < 0) first = q; }
+        int total = c->a * others;
+        if (cash[pl] >= total) { for (int q = 0; q < np_game; q++) if (q != pl && !out[q]) { cash[pl] -= c->a; cash[q] += c->a; } tk(res, cap, "eachpay-%d", c->a); }
+        else { debt_amt = total; debt_cred = first; phase2 = PH_DEBT; tk(res, cap, "debt=%d->%s", total, PL[first].id); }
+    }
+    else if (!strcmp(k, "repairs")) { int amt = 0; /* M6: a per house + b per hotel */ tk(res, cap, "repairs-%d", amt); if (amt > 0) charge2(pl, amt, -1, res, cap, "repairs"); }
+}
+static void land2(int pl, int dice, char *res, size_t cap, int depth) {
     Tile *t = &T[pos[pl]]; const char *k = t->kind; pending = -1;
     if (!strcmp(k, "go")) tk(res, cap, "start");
     else if (!strcmp(k, "street") || !strcmp(k, "rail") || !strcmp(k, "util")) {
         if (owner[pos[pl]] < 0) { pending = pos[pl]; phase2 = PH_BUY; tk(res, cap, "for-sale"); }
         else if (owner[pos[pl]] == pl) tk(res, cap, "own");
-        else charge2(pl, rent_due(pos[pl], owner[pos[pl]], dice), owner[pos[pl]], res, cap, "rent");
+        else charge2(pl, rent_due(pos[pl], owner[pos[pl]], dice) * rent_mult, owner[pos[pl]], res, cap, "rent");
     } else if (!strcmp(k, "tax")) charge2(pl, t->price, -1, res, cap, "tax");
     else if (!strcmp(k, "free")) tk(res, cap, "free");
     else if (!strcmp(k, "jail")) tk(res, cap, "visit");
     else if (!strcmp(k, "gotojail")) { send_to_jail(pl); tk(res, cap, "jail"); }
+    else if (!strcmp(k, "chance") || !strcmp(k, "chest")) { if (depth >= 2) tk(res, cap, "nocard"); else draw_card(pl, !strcmp(k, "chance") ? 0 : 1, res, cap, depth); }   /* a card that moves you onto a card tile draws once more; a second card move never draws a third time */
     else tk(res, cap, "todo-%s", k);
 }
 static int best_net(void) { int best = -1; for (int i = 0; i < np_game; i++) if (!out[i] && (best < 0 || net(i) > net(best))) best = i; return best; }
@@ -352,7 +424,7 @@ static void advance_turn(void) { int old = cur, n = cur; do { n = (n + 1) % np_g
 static void move_and_land(int pl, int step, char *res, size_t cap) {
     int old = pos[pl]; pos[pl] = (old + step) % nt; dice_last = step; tk(res, cap, "to=%d", pos[pl]);
     if (old + step >= nt) { cash[pl] += R_go; bankv -= R_go; tk(res, cap, "go+%d", R_go); }
-    phase2 = PH_POST; land2(pl, step, res, cap);
+    phase2 = PH_POST; land2(pl, step, res, cap, 0);
 }
 /* one action by the current player. `target` is "d1,d2" for roll (already checked against the seeded dice by the caller), the creditor id or "bank" for bankrupt, else "-". */
 static const char *apply2(int pl, const char *verb, const char *target, char *res, size_t cap) {
@@ -369,7 +441,12 @@ static const char *apply2(int pl, const char *verb, const char *target, char *re
         if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail"; if (cash[pl] < JAIL_FINE) return "not enough cash for the fine";
         cash[pl] -= JAIL_FINE; bankv += JAIL_FINE; injail[pl] = 0; jfails[pl] = 0; snprintf(res, cap, "paid-%d", JAIL_FINE); return NULL;
     }
-    if (!strcmp(verb, "jail_card")) { if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail"; return "you hold no Get Out card (cards arrive in M5)"; }
+    if (!strcmp(verb, "jail_card")) {
+        if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail";
+        int d = !strcmp(target, "luck") ? 0 : !strcmp(target, "fund") ? 1 : -1; if (d < 0) return "name the deck of the card: luck or fund";
+        int n = 0; for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) n = k; if (!n) return "you hold no Get Out card of that deck";
+        cheld[d][n] = 0; cq[d][cqn[d]++] = n; injail[pl] = 0; jfails[pl] = 0; snprintf(res, cap, "card-returned"); return NULL;   /* the card goes to the bottom of its deck */
+    }
     if (!strcmp(verb, "jail_roll")) {
         if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail"; int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2) return "bad dice"; nrolls++;
         if (d1 == d2) { injail[pl] = 0; jfails[pl] = 0; tk(res, cap, "free"); move_and_land(pl, d1 + d2, res, cap); return NULL; }   /* doubles free you; no extra roll for them */
@@ -392,9 +469,10 @@ static const char *apply2(int pl, const char *verb, const char *target, char *re
     if (!strcmp(verb, "bankrupt")) {
         if (phase2 != PH_DEBT) return "you owe nothing you cannot pay";
         const char *want = debt_cred >= 0 ? PL[debt_cred].id : "bank"; if (strcmp(target, want)) return "the creditor does not match the debt";
-        int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == pl) { props++; owner[k] = debt_cred; }   /* to a player: all assets go to the creditor (finding F3); to the bank: back to the bank (the auction is M7/M8) */
+        int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == pl) { props++; owner[k] = debt_cred; }
+        int ncards = 0; for (int d = 0; d < 2; d++) for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) { ncards++; if (debt_cred >= 0) cheld[d][k] = debt_cred + 1; else { cheld[d][k] = 0; cq[d][cqn[d]++] = k; } }   /* to a player: all assets go to the creditor (finding F3); to the bank: back to the bank (the auction is M7/M8) */
         int c = cash[pl]; if (debt_cred >= 0) cash[debt_cred] += c; else bankv += c; cash[pl] = 0; out[pl] = 1; debt_amt = 0; debt_cred = -1;
-        snprintf(res, cap, "out;cash=%d;props=%d;cards=0", c, props); advance_turn(); return NULL;
+        snprintf(res, cap, "out;cash=%d;props=%d;cards=%d", c, props, ncards); advance_turn(); return NULL;
     }
     return "unknown verb";
 }
@@ -405,6 +483,7 @@ static const char *legal_now(void) {
 }
 static int replay2(int *started) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; npl = 0; np_game = 0; phase2 = PH_LOBBY; first_w = -1; over_due = 0; debt_amt = 0; debt_cred = -1; pending = -1; dice_last = 0; dcount = 0; owe_roll = 0; for (int i = 0; i < MAXP; i++) { injail[i] = 0; jfails[i] = 0; }
+    cqn[0] = cqn[1] = 0; memset(cheld, 0, sizeof cheld);
     for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = 0; }
     ledger_path(p, sizeof p); fp = fopen(p, "r"); if (!fp) return 0;
     int lineno = 0;
@@ -538,16 +617,20 @@ static int v_order(void) {
     if (first_w >= 0) { char fid[8]; snprintf(fid, sizeof fid, "%s", PL[first_w].id); apply_first(); event("bank", "first", "-", 0, fid); printf("first %s\n", fid); }
     return 0;
 }
+static int held_by(int pl, int d) { for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) return 1; return 0; }
 static void build_status2(char *b, size_t cap) {
     static const char *ph[7] = { "lobby", "order", "pre", "buy", "debt", "post", "over" };
     b[0] = 0; ap(b, cap, "GAME deskopoly schema=2 ruleset=%s seed=%ld players=%d events=%d\n", g_rs, seed, np_game, nev);
     ap(b, cap, "STATE phase=%s current=%s round=%d pending=%d debt=%d doubles=%d rules=%s bank=%d over=%d\n", ph[phase2], phase2 >= PH_PRE ? PL[cur].id : "-", round_, pending, debt_amt, dcount, hx(g_rules_hash), bankv, over);
     int sum = bankv;
-    for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d jail=%d\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i], injail[i] ? jfails[i] + 1 : 0); }
+    for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d jail=%d cards=%s%s%s\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i], injail[i] ? jfails[i] + 1 : 0, held_by(i, 0) ? "luck" : "", held_by(i, 0) && held_by(i, 1) ? "+" : "", held_by(i, 1) ? "fund" : (held_by(i, 0) ? "" : "-")); }
     for (int k = 0; k < nt; k++) if (owner[k] >= 0) ap(b, cap, "TILE %d %s owner=%s\n", k, T[k].name, PL[owner[k]].id);
     ap(b, cap, "TOTAL sum=%d expect=%d\n", sum, R_start * np_game);
 }
 
+static const char *g_deck_arg;   /* jail_card <luck|fund>: the deck named on the command line, if any */
+static const char *argc_deck(void) { return g_deck_arg; }
+static int holds_card(int pl) { for (int d = 0; d < 2; d++) for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) return 1; return 0; }
 /* --- M3 verbs for a classic game: roll buy skip end_turn bankrupt. `as=pN` (optional last argument) names who the caller thinks is acting; it is refused unless that player is the current one (finding F24). --- */
 static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
     int st, rc = need_game(&st); if (rc) return rc;
@@ -556,6 +639,7 @@ static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
     int pl = cur; if (as && strcmp(as, PL[pl].id)) { snprintf(msg, cap, "refused: it is %s's turn, not %s's", PL[pl].id, as); return 2; }
     char t[40] = "-", res[LINE]; if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); }
     else if (!strcmp(verb, "bankrupt") && phase2 == PH_DEBT) snprintf(t, sizeof t, "%s", debt_cred >= 0 ? PL[debt_cred].id : "bank");
+    else if (!strcmp(verb, "jail_card")) { const char *want = argc_deck(); if (want) snprintf(t, sizeof t, "%s", want); else for (int d = 0; d < 2; d++) for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) { snprintf(t, sizeof t, "%s", DK[d]); } }
     char id[8]; snprintf(id, sizeof id, "%s", PL[pl].id);
     const char *err = apply2(pl, verb, t, res, sizeof res); if (err) { snprintf(msg, cap, "refused: %s", err); return 2; }
     event(id, verb, t, pos[pl], res); snprintf(msg, cap, "%s %s: %s", id, verb, res);
@@ -563,6 +647,7 @@ static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
     return 0;
 }
 static int v_act2(const char *verb, int argc, char **argv) {
+    g_deck_arg = NULL; for (int i = 0; i < argc; i++) if (strncmp(argv[i], "as=", 3)) g_deck_arg = argv[i];
     const char *as = NULL; for (int i = 0; i < argc; i++) if (!strncmp(argv[i], "as=", 3)) as = argv[i] + 3;
     char msg[LINE * 2]; int rc = act2_do(verb, as, msg, sizeof msg); if (rc == 2) { fprintf(stderr, "deskopoly: %s\n", msg); return 2; } if (rc) return rc; puts(msg); return 0;
 }
@@ -572,7 +657,7 @@ static int tick2(char *msg, size_t cap) {
     if (phase2 == PH_ORDER) { int o = order_next(); if (o >= 0 && human[o]) { snprintf(msg, cap, "waiting %s %s human (opening throw)", PL[o].id, PL[o].name); return 1; } if (o < 0 || first_w >= 0) { snprintf(msg, cap, "stuck in the opening"); return -1; } int rc = v_order(); snprintf(msg, cap, "opening throw"); return rc == 0 ? 0 : -1; }
     if (phase2 < PH_PRE) { snprintf(msg, cap, "refused: the opening is not finished (%s)", legal_now()); return -1; }
     if (human[cur]) { snprintf(msg, cap, "waiting %s %s human", PL[cur].id, PL[cur].name); return 1; }
-    const char *v = phase2 == PH_PRE ? (injail[cur] ? "jail_roll" : "roll") : phase2 == PH_BUY ? (cash[cur] >= T[pending].price ? "buy" : "skip") : phase2 == PH_DEBT ? "bankrupt" : "end_turn";
+    const char *v = phase2 == PH_PRE ? (injail[cur] ? (holds_card(cur) ? "jail_card" : "jail_roll") : "roll") : phase2 == PH_BUY ? (cash[cur] >= T[pending].price ? "buy" : "skip") : phase2 == PH_DEBT ? "bankrupt" : "end_turn";
     int rc = act2_do(v, NULL, msg, cap); return rc == 0 ? 0 : -1;
 }
 static int v_tick2(void) { int st, rc = need_game(&st); if (rc) return rc; char m[LINE * 2]; int r = tick2(m, sizeof m); if (r < 0) { fprintf(stderr, "deskopoly: %s\n", m); return 1; } printf("TICK %s\n", m); return 0; }
@@ -610,8 +695,9 @@ static int check2(void) {
     for (int i = 0; i < np_game; i++) { if (injail[i] && (pos[i] != jail_idx || jfails[i] > 3)) { printf("FAIL I3/I10 jailed-player-off-the-jail-tile-or-bad-counter %s\n", PL[i].id); fails++; } if (!injail[i] && jfails[i]) { printf("FAIL I10 jail-counter-while-free %s\n", PL[i].id); fails++; } }
     if (dcount < 0 || dcount > 2 || (dcount && phase2 < PH_PRE)) { printf("FAIL I15 doubles=%d\n", dcount); fails++; }
     if (first_w >= 0) { printf("FAIL I17 the opening is decided but the `first` row is missing\n"); fails++; }
+    for (int d = 0; d < 2; d++) { int seen[17] = {0}, held = 0, bad = 0; for (int i = 0; i < cqn[d]; i++) { int n = cq[d][i]; if (n < 1 || n > 16 || seen[n]++ || cheld[d][n]) bad = 1; } for (int k = 1; k <= 16; k++) if (cheld[d][k]) { held++; if (seen[k]) bad = 1; } if (phase2 >= PH_ORDER && (bad || cqn[d] + held != 16)) { printf("FAIL I9 deck %s is not a whole deck (queue %d, held %d)\n", DK[d], cqn[d], held); fails++; } }
     if (over_due) { printf("FAIL I20 the game is over but the `over` row is missing\n"); fails++; }
-    { char p[1100], ln[LINE]; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && (!strcmp(f[3], "order") || !strcmp(f[3], "roll") || !strcmp(f[3], "jail_roll"))) orders++; } fclose(fp); } }
+    { char p[1100], ln[LINE]; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7) { if (!strcmp(f[3], "order") || !strcmp(f[3], "roll") || !strcmp(f[3], "jail_roll")) orders++; for (const char *cc = f[6]; (cc = strstr(cc, "cardroll=")); cc += 9) orders++; } } fclose(fp); } }
     if (orders != nrolls) { printf("FAIL I18 dice-index=%d but %d throws\n", nrolls, orders); fails++; }
     if (fails) return 1; printf("CHECK ok schema=2 events=%d sum=%d\n", nev, sum); return 0;
 }
