@@ -86,4 +86,23 @@ Rules for every step: scratch house under `/tmp`-style scratch, never the live h
 2. Do **S0b** (small, provable), then **S1**; ask before anything marked LARGE.
 3. Do not touch live `state/` files; verify by scratch copy; report only numbers you observed.
 
+
+## 10. 🚀 Pass 1 (started after the handoff above; written BEFORE the work, so you know what we started and why)
+**Your words (SAID, 2026-11-07):** "get as much foundational stuff done in pass 1, even for the monopoly game; I want to open it in rpg-edit so I can view its 'known mechanics' through our rpg-edit editor/player and see if we can use its hard state to improve our UX/UI functionality."
+**How I read it (DOC, correct me):**
+* **Known mechanics** = what the game *is*, as data you can list: its verbs (`verbs.pdl`), the `BRAIN` rows that name which verbs a pet may choose, the rule tables (board tiles, prices, rents, starting money), and the names of the state files each verb reads and writes.
+* **Hard state** = the files that *fully determine* the game at any moment (the append-only event ledger plus a few small state files), so that nothing hides in memory. If the whole game is hard state, **any window can show it** and a replay of the ledger reproduces it.
+* **UX goal:** rpg-edit (the editor/player) should be able to *show* a game's mechanics and state from those files alone, and we learn which panels, lists and menus we can generate from data instead of hand-building. Monopoly is a good probe: small rule set, many players, money, turns.
+**What rpg-edit-hq is today (READ, not run):** a petslike skin with its own rooms, party and 36 verbs (`verbs.pdl`, `rpg_edit.c`); the pivot doc `16.game/GAMES-AS-BOOKS-AND-THE-EDIT-PIVOT-2026-10-28.md` says it is **not yet an editor of other games**; its item E, "rpg-edit opens any book; export as a game", is **not done**. Games are meant to be **books** (`game.pdl` + one folder per page), checked by `book_check`.
+**Pass 1 scope (what I will try, each with a proof that can fail; anything not reached will be written as NOT DONE in section 11 below):**
+| # | Piece | Proof |
+|---|---|---|
+| 1 | **`deskopoly` game as data**: `game.pdl` (a book), `verbs.pdl` with `BRAIN` rows, `board.pdl` (tiles, prices, rents), `rules.pdl` (money, seed) | `book_check` on the folder; lint refuses a made-up verb in a `BRAIN` row |
+| 2 | **A small C rules op** (`roll move buy pay build trade end_turn`) over an append-only ledger, seeded dice, 2 to 4 players | same seed gives the same ledger; replay of the ledger reproduces state byte for byte |
+| 3 | **4 pets play a whole game headless in a scratch house** through a pal harness | game ends; money is conserved (sum of cash plus bank equals the start total); a deliberately illegal move is refused |
+| 4 | **A `mechanics` projection**: one verb that writes the known mechanics and hard-state map as a plain file (verbs, reads, writes, state keys, current values) | file equals the manifests; a mutated manifest changes it |
+| 5 | **S0b/S1 foundations** for the shared vocabulary: `BRAIN` row grammar and a lint, applied first to `deskopoly` (and mcl-hq only if the verb generator ignores unknown rows) | the lint fails on a made-up phase, action or verb |
+**Explicitly NOT in pass 1 (so nobody assumes):** opening the game inside the rpg-edit window (needs the pivot's item E, a renderer and window task of its own), 3D, the live house, any change to the shared pet core (`ai_step`), and any change to a live `state/` file. If the projection in piece 4 is enough for rpg-edit to read, section 11 says so; otherwise it says what is missing.
+**House rules I will follow:** scratch house only, compiles through `cpu_gate` niced one at a time, no Python, harness = pal + case + C, commits by explicit pathspec on branch `claude`, every number reported is one I observed.
+
 *Nothing was sent to an outside service. The lore stays local.* 💛
