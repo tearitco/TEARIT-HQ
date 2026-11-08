@@ -162,17 +162,6 @@ SECTION      | network_menu_5_label  | Exchange
 SECTION      | network_menu_5_cmd    | livedesk:open-network:exchange
 SECTION      | network_menu_6_label  | Auction
 SECTION      | network_menu_6_cmd    | livedesk:open-network:auction
-# harness cell (cell 11, 2026-11-07; was the inert "plugins" cell): each row runs ONE scratch-only harness case behind cpu_gate (livedesk:run-harness:<case name in &.widgits/_shared-lib/harness/cases>); the last verdict line lands in #.desktop/harness_last.txt. Live (LIVE_OK) and network cases are NOT listed on purpose. Add a case = two rows here, zero C.
-SECTION      | harness_menu_1_label  | deskopoly (rules, seats, ghost)
-SECTION      | harness_menu_1_cmd    | livedesk:run-harness:deskopoly
-SECTION      | harness_menu_2_label  | ui_mode (edit/play bars)
-SECTION      | harness_menu_2_cmd    | livedesk:run-harness:ui_mode
-SECTION      | harness_menu_3_label  | py_lint (no Python)
-SECTION      | harness_menu_3_cmd    | livedesk:run-harness:py_lint
-SECTION      | harness_menu_4_label  | spawn_lint (registered procs)
-SECTION      | harness_menu_4_cmd    | livedesk:run-harness:spawn_lint
-SECTION      | harness_menu_5_label  | dust_gen (generators)
-SECTION      | harness_menu_5_cmd    | livedesk:run-harness:dust_gen
 SECTION      | network_menu_7_label  | hq-ftp (LAN drop, not built)
 SECTION      | network_menu_7_cmd    | livedesk:open-network:hqftp
 SECTION      | network_menu_8_label  | court (mockup)

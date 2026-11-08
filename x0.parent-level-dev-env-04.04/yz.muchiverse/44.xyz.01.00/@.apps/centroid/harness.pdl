@@ -1,0 +1,11 @@
+# harness.pdl - the centroid book's harness rows (2026-11-07). They moved here from seven rows hard-coded in @.apps/rpg-edit-hq/ops/pal_side.c; read by harness_menu_op (grammar in its header).
+# HARNESS | id | page | kind | label | target | args | writes | confirm | note
+# page = test: they appear when the centroid-test page is open (before: when harness/centroid/test.pal existed). writes = page: the page's cells.marker is bumped so the window redraws (the old clear did not do that).
+# clear wipes the page back to a flat 16x16, so it asks first (confirm yes); the stamps only add parts, and clear undoes them, so they do not ask.
+HARNESS | floor  | test | ACTION | drop-down floor | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply floor  ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp the floor
+HARNESS | wall   | test | ACTION | wall            | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply wall   ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp the wall
+HARNESS | door   | test | ACTION | door            | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply door   ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp the door
+HARNESS | roof   | test | ACTION | roof            | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply roof   ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp the roof
+HARNESS | bridge | test | ACTION | bridge          | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply bridge ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp the bridge
+HARNESS | all    | test | ACTION | all             | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply all    ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp floor, wall, door, roof and bridge in that order
+HARNESS | clear  | test | ACTION | clear           | @.apps/centroid/ops/+x/centroid_clear_op.+x |                  ${CELLS}                                | page | yes | put the page back to a flat 16x16 and drop the door events

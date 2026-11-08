@@ -1,0 +1,5 @@
+# fixture: book b
+HARNESS | clr    | p1 | ACTION | clear page | @.apps/b/ops/+x/centroid_clear_op.+x | ${CELLS} | page | yes | asks first
+HARNESS | clrnow | p1 | ACTION | clear now  | @.apps/b/ops/+x/centroid_clear_op.+x | ${CELLS} | page | no  | does not ask
+HARNESS | inj    | p1 | ACTION | inject     | @.apps/b/ops/+x/centroid_clear_op.+x | ${CELLS} ; touch ${HOUSE}/pwned | page | no | no shell is involved
+HARNESS | anyp   | *  | ACTION | any page   | @.apps/b/ops/+x/centroid_clear_op.+x | ${CELLS} | page | no  | every page of the book

@@ -4061,7 +4061,27 @@ static int livedesk_build_prefixed_menu(const char *house_root, HQMenuItem *menu
 static int livedesk_build_network_menu(const char *house_root, HQMenuItem *menu, int max) { return livedesk_build_prefixed_menu(house_root, menu, max, "network"); }
 /* 2026-11-07 the "harness" cell (positional 11; it was the inert "plugins" cell, owner: "it could replace plugins, that's not used"): the harness cases to run, one
  * `harness_menu_N_label` / `_cmd` row each in livedesk_taskbar.pdl (cmd = livedesk:run-harness:<case>). */
-static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu, int max) { return livedesk_build_prefixed_menu(house_root, menu, max, "harness"); }
+/* Superseded the same day (decision D52): the rows are no longer livedesk_taskbar.pdl rows. harness_menu_op is the one authority for every harness list (this cell shows the GLOBAL rows of
+ * #.desktop/harness_menu.pdl; the editor's Harness tab shows the same rows plus the open book's), so this builder asks the op and reads the label<TAB>id lines it writes. */
+static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu, int max) {
+    char op[KTB_PATH_BUF], rows[KTB_PATH_BUF];
+    snprintf(op, sizeof(op), "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house_root);
+    snprintf(rows, sizeof(rows), "%s/#.desktop/harness_rows.txt", house_root);   /* PROJECTION: rewritten atomically by the op on every call, at most 48 rows */
+    if (access(op, X_OK) != 0) return 0;
+    pid_t c = fork();
+    if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(op, op, "list", house_root, "-", "-", rows, (char *)NULL); _exit(127); }
+    if (c > 0) { int st; waitpid(c, &st, 0); }
+    FILE *fp = fopen(rows, "r"); if (!fp) return 0;
+    int count = 0; char ln[300];
+    while (count < max && fgets(ln, sizeof(ln), fp)) {
+        char *tab = strchr(ln, '\t'); if (!tab) continue; *tab++ = '\0'; char *nl = strchr(tab, '\n'); if (nl) *nl = '\0';
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", ln);
+        snprintf(menu[count].command, sizeof(menu[count].command), "livedesk:run-harness:%s", tab);
+        count++;
+    }
+    fclose(fp);
+    return count;
+}
 
 /* Real HQ button's own menu ($.restart / X.quit / cancel), ported from
  * tp_taskbar.c's load_hq_config(): reads #.desktop/livedesk_taskbar.pdl's
@@ -5610,19 +5630,16 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
         ktb_hq_close(s);
     } else if (strncmp(m->command, "livedesk:run-harness:", 21) == 0) {
-        /* harness cell rows (2026-11-07): run ONE harness case, heavy work asks first (AGENTS.md): behind cpu_gate (one heavy job at a time, niced, waits up to 120 s for the machine
-         * to calm down), the verdict printed by the verdict op into #.desktop/harness_last.txt (ONE file, overwritten, never grows). The case name is checked to be [A-Za-z0-9_-]+ and
-         * the case file must exist, so the sh string below can never carry anything but a case name. Live cases (LIVE_OK) are not in the menu and skip anyway without it. */
-        const char *cs = m->command + 21; int ok = cs[0] != '\0' && strlen(cs) < 64;
-        for (const char *p = cs; ok && *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) ok = 0;
-        char hd[KTB_PATH_BUF], cf[KTB_PATH_BUF];
-        snprintf(hd, sizeof(hd), "%s/&.widgits/_shared-lib/harness", s->house_root);
-        snprintf(cf, sizeof(cf), "%s/cases/%s.pdl", hd, cs);
-        if (ok && access(cf, R_OK) == 0) {
-            char sh[KTB_PATH_BUF * 4];
-            snprintf(sh, sizeof(sh),
-                     KTB_SETSID "nohup sh -c 'cd \"%s\" && rm -f results/%s.txt && \"%s/&.widgits/_shared-lib/ops/+x/cpu_gate.+x\" \"%s\" run harness-%s --wait 120 -- ./ops/+x/harness_case_op.+x cases/%s.pdl >/dev/null 2>&1; ./ops/+x/harness_verdict_op.+x cases/%s.pdl 2>&1 | tail -1 > \"%s/#.desktop/harness_last.txt\"' >/dev/null 2>&1 &",
-                     hd, cs, s->house_root, s->house_root, cs, cs, cs, s->house_root);
+        /* harness cell rows (2026-11-07, decision D52): ONE row, picked by id, run by harness_menu_op, which is the single authority for what a row may run: a registered case behind cpu_gate (one heavy job
+         * at a time, niced, waits up to 120 s) or a registered op, never a shell string from data. Its verdict goes to #.desktop/harness_last.txt (one overwritten line). This side only checks the id is one word
+         * and starts the op through the registered-process funnel; a row that needs a confirm is refused here (exit 3: the taskbar has no way to ask, so global rows are declared confirm no). */
+        const char *id = m->command + 21; int ok = id[0] != '\0' && strlen(id) < 40;
+        for (const char *p = id; ok && *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) ok = 0;
+        char op[KTB_PATH_BUF];
+        snprintf(op, sizeof(op), "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", s->house_root);
+        if (ok && access(op, X_OK) == 0) {
+            char sh[KTB_PATH_BUF * 3];
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c '\"%s\" pick \"%s\" - - \"%s\"' >/dev/null 2>&1 &", op, s->house_root, id);
             int rc = ktb_system_recorded(s->house_root, sh);
             (void)rc;
         }

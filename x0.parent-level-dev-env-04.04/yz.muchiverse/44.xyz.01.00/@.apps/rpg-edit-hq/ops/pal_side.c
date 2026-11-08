@@ -166,48 +166,42 @@ int main(int argc, char **argv) {
     /* toparm <key> <index>: the top Pals / Palettes row. Same as picking that library from an empty nav, then arming that thumb. */
     int topix = -1;
     if (!strcmp(verb, "hpick") && arg[0]) {
+        /* 2026-11-07 (decision D52): the rows, their kind (CASE or ACTION), their confirm and what they run come from DATA read by harness_menu_op (#.desktop/harness_menu.pdl and
+         * @.apps/<book>/harness.pdl); this verb only runs the picked row. Before this, seven centroid rows were hard-coded here, `clear` did not bump cells.marker (the window did not redraw),
+         * and any other key ran /tmp/prisc (gone after a reboot, failing silently). A row that asks first (confirm yes) turns its own label into `CONFIRM <label>?` until it is picked again. */
         char palp[4300]; snprintf(palp, sizeof palp, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
-        kv_set(palp, "harness_sel", arg);
-        printf("HARNESS %s\n", arg);
-        /* clear wipes the open page. floor/wall/door/roof/bridge/all/centroid/test stamp that page. */
-        if (!strcmp(arg, "floor") || !strcmp(arg, "wall") || !strcmp(arg, "door") || !strcmp(arg, "roof") || !strcmp(arg, "bridge") || !strcmp(arg, "all") || !strcmp(arg, "centroid/test")) {
-            char ui[4200], bl[80] = "", pl[80] = "", cells[4300], op[4300], pdl[4300];
-            snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
-            kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
-            char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
-            char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
-            if (bl[0] && pl[0]) {
-                snprintf(cells, sizeof cells, "%s/@.apps/centroid/centroid-pchq/pieces/system/maps/%s/%s/cells.txt", house, bl, pl);
-                snprintf(op, sizeof op, "%s/@.apps/centroid/ops/+x/centroid_parts_op.+x", house);
-                snprintf(pdl, sizeof pdl, "%s/@.apps/centroid/parts/centroid.parts.pdl", house);
-                const char *part = (!strcmp(arg, "all") || !strcmp(arg, "centroid/test")) ? "all" : arg;
-                pid_t c = fork(); if (c == 0) { execl(op, op, "apply", part, cells, pdl, (char *)NULL); _exit(127); }
-                if (c > 0) { int st; waitpid(c, &st, 0); }
-                char mk[4300]; snprintf(mk, sizeof mk, "%s/@.apps/centroid/centroid-pchq/pieces/system/maps/%s/%s/cells.marker", house, bl, pl);
-                FILE *mf = fopen(mk, "a"); if (mf) { fputc('x', mf); fclose(mf); }
-            }
-            return 0;
+        char ui[4200], bl[80] = "", pl[80] = "", pend[64] = "", hop[4300];
+        snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
+        kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
+        char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
+        char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+        snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
+        kv_set(palp, "harness_sel", arg); kv_get(palp, "harness_pending", pend, sizeof pend);
+        int confirmed = pend[0] && !strcmp(pend, arg), ri = -1;
+        for (int i = 0; i < 24; i++) {        /* undo a stale CONFIRM label on every OTHER row, and find this row's index */
+            char kk[40], ll[40], v[64] = "", lab[160] = ""; snprintf(kk, sizeof kk, "tbhar_%d_key", i); snprintf(ll, sizeof ll, "tbhar_%d_label", i);
+            kv_get(palp, kk, v, sizeof v); if (!v[0]) break;
+            if (!strcmp(v, arg)) { ri = i; continue; }
+            kv_get(palp, ll, lab, sizeof lab);
+            if (!strncmp(lab, "CONFIRM ", 8)) { size_t n = strlen(lab); if (n > 9 && lab[n - 1] == '?') lab[n - 1] = 0; kv_set(palp, ll, lab + 8); }
         }
-        if (!strcmp(arg, "clear") || strstr(arg, "/clear")) {
-            char ui[4200], bl[80] = "", pl[80] = "", cells[4300];
-            snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
-            kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
-            char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
-            char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
-            if (bl[0] && pl[0]) {
-                snprintf(cells, sizeof cells, "%s/@.apps/centroid/centroid-pchq/pieces/system/maps/%s/%s/cells.txt", house, bl, pl);
-                char op[4300]; snprintf(op, sizeof op, "%s/@.apps/centroid/ops/+x/centroid_clear_op.+x", house);
-                pid_t c = fork(); if (c == 0) { execl(op, op, cells, (char *)NULL); _exit(127); }
-                if (c > 0) { int st; waitpid(c, &st, 0); }
-            }
-        } else {
-            char dir[4300], paln[4300], pr[4200];
-            snprintf(dir, sizeof dir, "%s/&.widgits/_shared-lib/harness", house);
-            snprintf(paln, sizeof paln, "%s.pal", arg);
-            snprintf(pr, sizeof pr, "/tmp/prisc");
+        int rc = -1;
+        if (access(hop, X_OK) == 0) {
             pid_t c = fork();
-            if (c == 0) { if (chdir(dir) != 0) _exit(127); execl(pr, pr, paln, (char *)NULL); _exit(127); }
-            if (c > 0) { int st; waitpid(c, &st, 0); }
+            if (c == 0) { if (confirmed) execl(hop, hop, "pick", house, bl[0] ? bl : "-", pl[0] ? pl : "-", arg, "--confirmed", (char *)NULL);
+                          else execl(hop, hop, "pick", house, bl[0] ? bl : "-", pl[0] ? pl : "-", arg, (char *)NULL); _exit(127); }
+            if (c > 0) { int st; waitpid(c, &st, 0); rc = WIFEXITED(st) ? WEXITSTATUS(st) : -1; }
+        }
+        char lk[40] = "", lab[160] = "";
+        if (ri >= 0) { snprintf(lk, sizeof lk, "tbhar_%d_label", ri); kv_get(palp, lk, lab, sizeof lab); }
+        if (rc == 3) {
+            kv_set(palp, "harness_pending", arg);
+            if (ri >= 0 && strncmp(lab, "CONFIRM ", 8)) { char nl[200]; snprintf(nl, sizeof nl, "CONFIRM %s?", lab); kv_set(palp, lk, nl); }
+            printf("CONFIRM %s\n", arg);
+        } else {
+            kv_set(palp, "harness_pending", "");
+            if (ri >= 0 && !strncmp(lab, "CONFIRM ", 8)) { size_t n = strlen(lab); if (n > 9 && lab[n - 1] == '?') lab[n - 1] = 0; kv_set(palp, lk, lab + 8); }
+            printf("HARNESS %s rc=%d\n", arg, rc);
         }
         return 0;
     }
@@ -333,22 +327,24 @@ int main(int argc, char **argv) {
             n++;
         }
         fprintf(o, "n_tbpal=%d\n", n);
-        /* Harness tab: only the open page. harness/<book>/<page>.pal. No file, no rows. */
+        /* Harness tab (2026-11-07, decision D52): the rows are DATA, listed by harness_menu_op (global #.desktop/harness_menu.pdl rows plus the open book's @.apps/<book>/harness.pdl rows for the open page,
+         * each CASE row carrying its last verdict). board/state/harness_rows.txt is a PROJECTION the op rewrites on every call (label TAB id per line, at most 48 rows, replaced atomically). */
         {
-            char ui[4200], bl[80] = "", pl[80] = "";
+            char ui[4200], bl[80] = "", pl[80] = "", hop[4300], hrows[4300];
             snprintf(ui, sizeof ui, "%s/@.apps/rpg-edit-hq/board/state/ui.txt", house);
             kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
             char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
             char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
-            char hp[4300]; snprintf(hp, sizeof hp, "%s/&.widgits/_shared-lib/harness/%s/%s.pal", house, bl, pl);
+            snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
+            snprintf(hrows, sizeof hrows, "%s/@.apps/rpg-edit-hq/board/state/harness_rows.txt", house);
             int nhr = 0;
-            if (bl[0] && pl[0] && access(hp, R_OK) == 0) {
-                static const char *lab[] = { "drop-down floor", "wall", "door", "roof", "bridge", "all", "clear" };
-                static const char *key[] = { "floor", "wall", "door", "roof", "bridge", "all", "clear" };
-                for (int i = 0; i < 7; i++) {
-                    fprintf(o, "tbhar_%d_label=%s\ntbhar_%d_key=%s\n", nhr, lab[i], nhr, key[i]);
-                    nhr++;
-                }
+            if (access(hop, X_OK) == 0) {
+                pid_t c = fork();
+                if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(hop, hop, "list", house, bl[0] ? bl : "-", pl[0] ? pl : "-", hrows, (char *)NULL); _exit(127); }
+                if (c > 0) { int st; waitpid(c, &st, 0); }
+                FILE *hf = fopen(hrows, "r");
+                if (hf) { char ln[300]; while (nhr < 24 && fgets(ln, sizeof ln, hf)) { char *t = strchr(ln, '\t'); if (!t) continue; *t++ = 0; char *nl = strchr(t, '\n'); if (nl) *nl = 0;
+                                fprintf(o, "tbhar_%d_label=%s\ntbhar_%d_key=%s\n", nhr, ln, nhr, t); nhr++; } fclose(hf); }
             }
             fprintf(o, "n_tbhar=%d\n", nhr);
         }

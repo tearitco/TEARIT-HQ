@@ -1,0 +1,9 @@
+# harness_menu.pdl - GLOBAL harness rows, shown by the top taskbar's "harness" cell (cell 11) and in every editor book (2026-11-07; read by &.widgits/_shared-lib/ops/+x/harness_menu_op.+x, grammar in its header).
+# HARNESS | id | page | kind | label | target | args | writes | confirm | note      (page is ignored in this file; a book's own rows live in @.apps/<book>/harness.pdl)
+# CASE target = a case name in &.widgits/_shared-lib/harness/cases; it runs behind cpu_gate and its verdict shows beside the label (read from the case's results file). Live (LIVE_OK) and network cases are NOT listed on purpose.
+HARNESS | deskopoly      | * | CASE | deskopoly (rules, seats, ghost) | deskopoly      | - | - | no | the Monopoly engine: replay, seats, tick, audit
+HARNESS | ui_mode        | * | CASE | ui_mode (edit/play bars)        | ui_mode        | - | - | no | the edit/play sidebar switch
+HARNESS | py_lint        | * | CASE | py_lint (no Python)             | py_lint        | - | - | no | the no-Python ratchet
+HARNESS | spawn_lint     | * | CASE | spawn_lint (registered procs)   | spawn_lint     | - | - | no | every started process is registered
+HARNESS | dust_gen       | * | CASE | dust_gen (generators)           | dust_gen       | - | - | no | rpg-dust region and area generators
+HARNESS | harness_menu   | * | CASE | harness_menu (this menu)        | harness_menu   | - | - | no | the rows, kinds, refusals and confirm of this very menu

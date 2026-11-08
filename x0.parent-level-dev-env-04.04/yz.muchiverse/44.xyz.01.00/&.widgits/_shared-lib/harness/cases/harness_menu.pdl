@@ -1,0 +1,164 @@
+# harness_menu: the one authority for "which harness can I run from here" (harness_menu_op, decision D51/D52, 2026-11-07): rows are DATA, a row names a registered case or op only (never a shell), CASE and ACTION kinds,
+# a confirm for destructive rows, the last verdict beside each case, and a book's rows appear only on the pages they name. Runs in a SCRATCH house under $T; the live house, the live pages and the live results are never touched.
+# NOTE the runner drops EXPECT_HAS rows without a SCRATCH dir and reads only 16 KB of a file, so each CASE has SCRATCH and big files go through RUN + EXPECT_EXIT.
+RESULTS | ../results/harness_menu.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/@.apps/b/ops/+x | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1 | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p2 | $T/h/&.widgits/_shared-lib/harness/cases | $T/h/&.widgits/_shared-lib/harness/results
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/book_b.pdl | h/@.apps/b/harness.pdl
+COPY | @.apps/centroid/ops/+x/centroid_clear_op.+x | h/@.apps/b/ops/+x/centroid_clear_op.+x
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case that exists\n
+WRITE | h/&.widgits/_shared-lib/harness/results/ok.txt | RUN\p1\p x\nPASS\pa\nPASS\pb\nPASS\pc\n
+WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-YET-CLEARED\n
+WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p2/cells.txt | NOT-YET-CLEARED-P2\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | b
+EXPECT_EXIT | 0 | the-good-rows-validate
+EXPECT_OUT | rows=5 bad=0 | five-rows-and-none-bad
+
+CASE    | list
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/@.apps/b/ops/+x | $T/h/&.widgits/_shared-lib/harness/cases | $T/h/&.widgits/_shared-lib/harness/results
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/book_b.pdl | h/@.apps/b/harness.pdl
+COPY | @.apps/centroid/ops/+x/centroid_clear_op.+x | h/@.apps/b/ops/+x/centroid_clear_op.+x
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case that exists\n
+WRITE | h/&.widgits/_shared-lib/harness/results/ok.txt | PASS\pa\nPASS\pb\nPASS\pc\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | b | p1 | $T/rows.txt
+EXPECT_EXIT | 0 | list-runs
+EXPECT_HAS | rows.txt | ok case [3 ok] | a-case-row-carries-its-last-verdict-from-the-results-file
+EXPECT_HAS | rows.txt | okcase | and-its-id
+EXPECT_HAS | rows.txt | clear page | the-books-own-rows-show-on-its-page
+EXPECT_HAS | rows.txt | clr | and-carry-their-id
+EXPECT_HAS | rows.txt | any page | and-a-star-row-shows-on-every-page
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | b | p2 | $T/rows2.txt
+EXPECT_LACKS | rows2.txt | clear page | NEGATIVE-a-page-row-does-not-show-on-another-page
+EXPECT_HAS | rows2.txt | any page | but-the-star-row-does
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows3.txt
+EXPECT_LACKS | rows3.txt | any page | NEGATIVE-with-no-book-open-only-the-global-rows-show
+EXPECT_HAS | rows3.txt | ok case | and-the-global-row-does
+RUN | /bin/rm | $T/h/&.widgits/_shared-lib/harness/results/ok.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows4.txt
+EXPECT_LACKS | rows4.txt | [ | NEGATIVE-no-results-file-means-no-verdict-suffix-not-a-zero
+
+CASE    | pick
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/@.apps/b/ops/+x | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1 | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p2 | $T/h/&.widgits/_shared-lib/harness/cases
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/book_b.pdl | h/@.apps/b/harness.pdl
+COPY | @.apps/centroid/ops/+x/centroid_clear_op.+x | h/@.apps/b/ops/+x/centroid_clear_op.+x
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case that exists\n
+WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-YET-CLEARED\n
+WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p2/cells.txt | NOT-YET-CLEARED-P2\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | p1 | clr
+EXPECT_EXIT | 3 | a-destructive-row-only-asks-the-first-time
+EXPECT_OUT | CONFIRM clr | and-says-which-row
+EXPECT_FILE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-YET-CLEARED\n | NEGATIVE-the-page-is-untouched-until-confirmed
+EXPECT_NOFILE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.marker | and-no-redraw-marker-was-bumped
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | p1 | clr | --confirmed
+EXPECT_EXIT | 0 | confirmed-it-runs
+EXPECT_OUT | HARNESS clr ok | and-reports-ok
+RUN | /usr/bin/head | -c | 8 | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt
+EXPECT_OUT | width=16 | the-page-was-really-cleared-by-the-op
+EXPECT_FILE | h/@.apps/b/b-pchq/pieces/system/maps/b/p2/cells.txt | NOT-YET-CLEARED-P2\n | NEGATIVE-another-page-is-untouched
+RUN | /usr/bin/stat | -c | %s | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.marker
+EXPECT_OUT_IS | 1 | the-redraw-marker-grew-by-exactly-one-byte-so-the-window-redraws
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | p2 | clrnow
+EXPECT_EXIT | 2 | NEGATIVE-a-p1-row-is-refused-on-page-p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | - | clrnow
+EXPECT_EXIT | 2 | NEGATIVE-an-action-with-no-open-page-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | p1 | nope
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-id-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | p1 | clrnow | --bogus
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-flag-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | b | p1 | inj
+EXPECT_NOFILE | h/pwned | NEGATIVE-a-semicolon-in-args-is-just-a-token-no-shell-ran
+
+CASE    | refusals
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/@.apps/b/ops/+x | $T/h/&.widgits/_shared-lib/harness/cases | $T/h/@.apps/bad
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+COPY | @.apps/centroid/ops/+x/centroid_clear_op.+x | h/@.apps/b/ops/+x/centroid_clear_op.+x
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case that exists\n
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_kind.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_outside.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-an-op-outside-the-house-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_dotdot.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-dot-dot-in-the-target-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_args.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-dot-dot-in-the-args-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_case.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-a-case-that-does-not-exist-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_dup.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-a-duplicate-id-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_confirm.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-a-confirm-that-is-not-yes-or-no-is-refused
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/bad_short.pdl | h/@.apps/bad/harness.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bad
+EXPECT_EXIT | 2 | NEGATIVE-a-row-with-too-few-fields-is-refused
+
+CASE    | live_files
+SCRATCH |
+# the REAL data files validate (a bad row there would silently hide a menu entry)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $HOUSE | centroid
+EXPECT_EXIT | 0 | the-real-global-and-centroid-rows-all-validate
+EXPECT_OUT | bad=0 | with-no-bad-row
+
+# the EDITOR side: the real pal_side (rpg-edit-hq) lists the rows through the op and runs a click through the op, in a scratch house that has the editor's state files
+CASE    | editor
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/@.apps/rpg-edit-hq/board/state | $T/h/@.apps/b/ops/+x | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1 | $T/h/&.widgits/_shared-lib/ops/+x | $T/h/&.widgits/_shared-lib/harness/cases
+COPY | &.widgits/_shared-lib/ops/+x/harness_menu_op.+x | h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+COPY | @.apps/centroid/ops/+x/centroid_clear_op.+x | h/@.apps/b/ops/+x/centroid_clear_op.+x
+COPY | @.apps/rpg-edit-hq/ops/+x/pal_side.+x | ps.+x
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/book_b.pdl | h/@.apps/b/harness.pdl
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case\n
+WRITE | h/@.apps/rpg-edit-hq/board/state/ui.txt | book_label=book:b\npage_label=page:p1\n
+WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-CLEARED\n
+RUN | $T/ps.+x | $T/h | none
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_1_label=clear page | the-editor-lists-the-rows-from-the-data-not-from-C
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=5 | five-rows-for-this-book-and-page
+RUN | $T/ps.+x | $T/h | hpick | clr
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_1_label=CONFIRM clear page? | the-first-click-turns-the-label-into-CONFIRM
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_pending=clr | and-remembers-the-pending-row
+EXPECT_FILE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-CLEARED\n | NEGATIVE-the-page-is-untouched-after-the-first-click
+RUN | $T/ps.+x | $T/h | hpick | anyp
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_1_label=clear page | picking-another-row-removes-the-stale-CONFIRM-label
+EXPECT_LACKS | h/@.apps/rpg-edit-hq/board/state/pal.txt | CONFIRM | NEGATIVE-no-CONFIRM-text-is-left-anywhere
+WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-CLEARED\n
+# the earlier anyp pick also bumped the marker, so start this measurement from none
+RUN | /bin/rm | -f | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.marker
+RUN | $T/ps.+x | $T/h | hpick | clr
+RUN | $T/ps.+x | $T/h | hpick | clr
+RUN | /usr/bin/head | -c | 8 | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt
+EXPECT_OUT | width=16 | the-second-click-clears-the-page
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_1_label=clear page | and-the-label-is-back
+RUN | /usr/bin/stat | -c | %s | $T/h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.marker
+EXPECT_OUT_IS | 1 | and-the-window-redraw-marker-was-bumped-the-old-clear-never-did-that
+RUN | $T/ps.+x | $T/h | hpick | nope
+EXPECT_OUT | rc=2 | NEGATIVE-an-unknown-row-is-refused-by-the-op-and-reported
+
+# the verdict beside a case counts only the LAST run: the results file is append-only, so two runs without a delete used to read as a doubled total (dust_gen showed 230 for 115 checks, spawn_lint 76 for 19)
+CASE    | last_run_only
+SCRATCH |
+RUN | /bin/mkdir | -p | $T/h/#.desktop | $T/h/&.widgits/_shared-lib/harness/cases | $T/h/&.widgits/_shared-lib/harness/results
+COPY | &.widgits/_shared-lib/harness/fixtures/harness_menu/global.pdl | h/#.desktop/harness_menu.pdl
+WRITE | h/&.widgits/_shared-lib/harness/cases/ok.pdl | # a case\n
+WRITE | h/&.widgits/_shared-lib/harness/results/ok.txt | RUN\p1\p x\nPASS\pa\nPASS\pb\nPASS\pc\nRUN\p2\p x\nPASS\pa\nPASS\pb\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows.txt
+EXPECT_HAS | rows.txt | ok case [2 ok] | two-runs-read-as-the-last-run-only
+EXPECT_LACKS | rows.txt | [5 ok] | NEGATIVE-not-the-sum-of-both-runs
+WRITE | h/&.widgits/_shared-lib/harness/results/ok.txt | RUN\p1\p x\nPASS\pa\nRUN\p2\p x\nPASS\pa\nFAIL\pb\p why\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows.txt
+EXPECT_HAS | rows.txt | ok case [1 FAIL] | a-failure-in-the-last-run-shows-as-FAIL
