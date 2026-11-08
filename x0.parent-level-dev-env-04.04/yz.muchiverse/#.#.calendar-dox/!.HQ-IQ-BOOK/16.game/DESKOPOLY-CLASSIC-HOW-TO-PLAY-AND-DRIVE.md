@@ -6,8 +6,9 @@
 |---|---|---|
 | M0/M1 mini ruleset (the old 16-tile game, schema 1) | done | case `deskopoly` 105 checks |
 | M2 classic data + lobby (`lobby join leave start order first`) | done | case `dsk_classic` 79 checks |
-| M3 roll, landing, Start money, tax, rent (street, rail, util), buy, skip, end_turn, bankruptcy (to a player or the bank), over (winner or stalemate) | done | case `dsk_play` 46 checks |
-| M4 doubles and jail · M5 cards · M6 buildings and mortgages · M7 auctions · M8 debt queue · M9 trading and chat · M10 pets/ui/tick for all phases · M11 board page | **PLAN** | until then those tiles resolve as `todo-<kind>` (nothing happens) and `skip` just declines |
+| M3 roll, landing, Start money, tax, rent (street, rail, util), buy, skip, end_turn, bankruptcy (to a player or the bank), over (winner or stalemate) | done | case `dsk_play` 49 checks |
+| M4 doubles (roll again, third double to Jail), Go To Jail, the Jail turn (`jail_pay`, `jail_roll`; `jail_card` waits for M5), forced fine on the third failed turn | done | case `dsk_jail` 47 checks |
+| M5 cards · M6 buildings and mortgages · M7 auctions · M8 debt queue · M9 trading and chat · M10 pets/ui/tick for all phases · M11 board page | **PLAN** | until then those tiles resolve as `todo-<kind>` (nothing happens) and `skip` just declines |
 
 ## 2. Run it by hand (no window needed)
 ```

@@ -37,6 +37,7 @@ typedef struct { char id[8], name[20], style[20]; int param; int token; } Pl;
 static char g_app[1024], g_state[1024];
 static char g_rs[32] = "mini";           /* the ruleset: "mini" = schema 1 (a `new` first row); anything else = schema 2 (a `lobby` first row names it) */
 static int g_schema = 1;
+static int jail_idx = -1;                 /* the one jail tile of a classic board (set by the loader) */
 static uint64_t g_rules_hash;             /* FNV-1a of the ruleset files (board, rules, cards): recorded in `lobby` and `start`, re-checked by every replay (spec 5.2, F7) */
 static Tile T[MAXT]; static int nt;
 static Pl PL[MAXP]; static int npl;
@@ -106,6 +107,7 @@ static void load_classic_board(FILE *fp) {
     if (strcmp(T[0].kind, "go")) bad("board.pdl: tile 0 must be kind go");
     int jails = 0; for (int i = 0; i < nt; i++) if (!strcmp(T[i].kind, "jail")) jails++;
     if (jails != 1) bad("board.pdl: a board needs exactly one jail tile");
+    for (int i = 0; i < nt; i++) if (!strcmp(T[i].kind, "jail")) jail_idx = i;
 }
 
 static void load_app(void) {
@@ -303,6 +305,8 @@ static void apply_first(void) { cur = first_w; first_w = -1; phase2 = PH_PRE; }
 enum { PH_BUY = 3, PH_DEBT = 4, PH_POST = 5, PH_OVER = 6 };
 static int net(int pl);
 static int debt_amt, debt_cred = -1, over_due, dice_last;
+static int injail[MAXP], jfails[MAXP], dcount, owe_roll;   /* M4: jail flag and failed-turn count per player, doubles thrown this turn, a roll owed after the landing is settled */
+static void send_to_jail(int pl) { pos[pl] = jail_idx; injail[pl] = 1; jfails[pl] = 0; dcount = 0; owe_roll = 0; }
 static char over_res[40];
 static void tk(char *res, size_t cap, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 static void tk(char *res, size_t cap, const char *fmt, ...) {
@@ -333,6 +337,7 @@ static void land2(int pl, int dice, char *res, size_t cap) {
     } else if (!strcmp(k, "tax")) charge2(pl, t->price, -1, res, cap, "tax");
     else if (!strcmp(k, "free")) tk(res, cap, "free");
     else if (!strcmp(k, "jail")) tk(res, cap, "visit");
+    else if (!strcmp(k, "gotojail")) { send_to_jail(pl); tk(res, cap, "jail"); }
     else tk(res, cap, "todo-%s", k);
 }
 static int best_net(void) { int best = -1; for (int i = 0; i < np_game; i++) if (!out[i] && (best < 0 || net(i) > net(best))) best = i; return best; }
@@ -341,21 +346,45 @@ static void check_over_due(void) {
     if (active_count() <= 1) { snprintf(over_res, sizeof over_res, "winner=%s", PL[best_net()].id); over_due = 1; }
     else if (round_ >= R_rounds) { snprintf(over_res, sizeof over_res, "stalemate=%s", PL[best_net()].id); over_due = 1; }
 }
-static void advance_turn(void) { int old = cur, n = cur; do { n = (n + 1) % np_game; } while (out[n] && n != old); if (n <= old) round_++; cur = n; phase2 = PH_PRE; dice_last = 0; check_over_due(); }
+static void advance_turn(void) { int old = cur, n = cur; do { n = (n + 1) % np_game; } while (out[n] && n != old); if (n <= old) round_++; cur = n; phase2 = PH_PRE; dice_last = 0; dcount = 0; owe_roll = 0; check_over_due(); }
+#define JAIL_FINE 50
+/* move pl by `step` (collecting Start money when it passes or lands on Start) and resolve the landing; leaves phase2 at POST unless the landing set BUY or DEBT */
+static void move_and_land(int pl, int step, char *res, size_t cap) {
+    int old = pos[pl]; pos[pl] = (old + step) % nt; dice_last = step; tk(res, cap, "to=%d", pos[pl]);
+    if (old + step >= nt) { cash[pl] += R_go; bankv -= R_go; tk(res, cap, "go+%d", R_go); }
+    phase2 = PH_POST; land2(pl, step, res, cap);
+}
 /* one action by the current player. `target` is "d1,d2" for roll (already checked against the seeded dice by the caller), the creditor id or "bank" for bankrupt, else "-". */
 static const char *apply2(int pl, const char *verb, const char *target, char *res, size_t cap) {
     res[0] = 0;
     if (!strcmp(verb, "roll")) {
-        if (phase2 != PH_PRE) return "you cannot roll now"; int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2) return "bad dice"; nrolls++;
-        int old = pos[pl], step = d1 + d2; pos[pl] = (old + step) % nt; dice_last = step; tk(res, cap, "to=%d", pos[pl]);
-        if (old + step >= nt) { cash[pl] += R_go; bankv -= R_go; tk(res, cap, "go+%d", R_go); }
-        phase2 = PH_POST; land2(pl, step, res, cap); return NULL;
+        if (phase2 != PH_PRE) return "you cannot roll now"; if (injail[pl]) return "you are in Jail: jail_pay, jail_card or jail_roll"; int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2) return "bad dice"; nrolls++;
+        int dbl = d1 == d2;
+        if (dbl && dcount == 2) { send_to_jail(pl); tk(res, cap, "jail3"); phase2 = PH_POST; return NULL; }   /* the third double in a row: straight to Jail without moving */
+        move_and_land(pl, d1 + d2, res, cap);
+        if (dbl && !injail[pl]) { dcount++; tk(res, cap, "doubles=%d", dcount); if (phase2 == PH_POST) phase2 = PH_PRE; else owe_roll = 1; }
+        return NULL;
+    }
+    if (!strcmp(verb, "jail_pay")) {
+        if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail"; if (cash[pl] < JAIL_FINE) return "not enough cash for the fine";
+        cash[pl] -= JAIL_FINE; bankv += JAIL_FINE; injail[pl] = 0; jfails[pl] = 0; snprintf(res, cap, "paid-%d", JAIL_FINE); return NULL;
+    }
+    if (!strcmp(verb, "jail_card")) { if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail"; return "you hold no Get Out card (cards arrive in M5)"; }
+    if (!strcmp(verb, "jail_roll")) {
+        if (phase2 != PH_PRE || !injail[pl]) return "you are not in Jail"; int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2) return "bad dice"; nrolls++;
+        if (d1 == d2) { injail[pl] = 0; jfails[pl] = 0; tk(res, cap, "free"); move_and_land(pl, d1 + d2, res, cap); return NULL; }   /* doubles free you; no extra roll for them */
+        jfails[pl]++;
+        if (jfails[pl] >= 3) {
+            if (cash[pl] < JAIL_FINE) { debt_amt = JAIL_FINE; debt_cred = -1; phase2 = PH_DEBT; tk(res, cap, "debt=%d->bank", JAIL_FINE); return NULL; }   /* LIMIT until M8: the forced move waits for the debt; only bankrupt can end it */
+            cash[pl] -= JAIL_FINE; bankv += JAIL_FINE; injail[pl] = 0; jfails[pl] = 0; tk(res, cap, "forced-fine-%d", JAIL_FINE); move_and_land(pl, d1 + d2, res, cap); return NULL;
+        }
+        tk(res, cap, "stay"); tk(res, cap, "fails=%d", jfails[pl]); phase2 = PH_POST; return NULL;
     }
     if (!strcmp(verb, "buy")) {
         if (phase2 != PH_BUY) return "nothing is for sale"; Tile *t = &T[pending]; if (cash[pl] < t->price) return "not enough cash";
-        cash[pl] -= t->price; bankv += t->price; owner[pending] = pl; snprintf(res, cap, "bought-%d", t->price); pending = -1; phase2 = PH_POST; return NULL;
+        cash[pl] -= t->price; bankv += t->price; owner[pending] = pl; snprintf(res, cap, "bought-%d", t->price); pending = -1; phase2 = owe_roll ? PH_PRE : PH_POST; owe_roll = 0; return NULL;
     }
-    if (!strcmp(verb, "skip")) { if (phase2 != PH_BUY) return "nothing is for sale"; snprintf(res, cap, "declined"); pending = -1; phase2 = PH_POST; return NULL; }
+    if (!strcmp(verb, "skip")) { if (phase2 != PH_BUY) return "nothing is for sale"; snprintf(res, cap, "declined"); pending = -1; phase2 = owe_roll ? PH_PRE : PH_POST; owe_roll = 0; return NULL; }
     if (!strcmp(verb, "end_turn")) {
         if (phase2 != PH_POST) return phase2 == PH_PRE ? "roll first" : phase2 == PH_BUY ? "buy or skip the tile first" : "settle the debt first";
         advance_turn(); snprintf(res, cap, "next=%s;round=%d", PL[cur].id, round_); return NULL;
@@ -371,11 +400,11 @@ static const char *apply2(int pl, const char *verb, const char *target, char *re
 }
 static const char *apply_over(char *res, size_t cap) { if (!over_due) return "the game is not over"; snprintf(res, cap, "%s", over_res); over_due = 0; over = 1; phase2 = PH_OVER; return NULL; }
 static const char *legal_now(void) {
-    static const char *t[7] = { "join leave start seat (lobby)", "order seat (opening throw)", "roll seat", "buy skip seat", "bankrupt seat", "end_turn seat", "read-only verbs only (the game is over)" };
+    static const char *t[7] = { "join leave start seat (lobby)", "order seat (opening throw)", "roll (or jail_pay jail_card jail_roll when in Jail) seat", "buy skip seat", "bankrupt seat", "end_turn seat", "read-only verbs only (the game is over)" };
     return t[phase2];
 }
 static int replay2(int *started) {
-    char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; npl = 0; np_game = 0; phase2 = PH_LOBBY; first_w = -1; over_due = 0; debt_amt = 0; debt_cred = -1; pending = -1; dice_last = 0;
+    char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; npl = 0; np_game = 0; phase2 = PH_LOBBY; first_w = -1; over_due = 0; debt_amt = 0; debt_cred = -1; pending = -1; dice_last = 0; dcount = 0; owe_roll = 0; for (int i = 0; i < MAXP; i++) { injail[i] = 0; jfails[i] = 0; }
     for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = 0; }
     ledger_path(p, sizeof p); fp = fopen(p, "r"); if (!fp) return 0;
     int lineno = 0;
@@ -409,9 +438,9 @@ static int replay2(int *started) {
         } else if (!strcmp(verb, "seat")) {
             int sp = pidx(target); if (sp < 0 || (strcmp(rec, "human") && strcmp(rec, "pet")) || human[sp] == !strcmp(rec, "human")) { fprintf(stderr, "ledger line %d: a bad seat row\n", lineno); fclose(fp); return 1; }
             human[sp] = !strcmp(rec, "human"); snprintf(res, sizeof res, "%s", rec);
-        } else if (!strcmp(verb, "roll") || !strcmp(verb, "buy") || !strcmp(verb, "skip") || !strcmp(verb, "end_turn") || !strcmp(verb, "bankrupt")) {
+        } else if (!strcmp(verb, "roll") || !strcmp(verb, "buy") || !strcmp(verb, "skip") || !strcmp(verb, "end_turn") || !strcmp(verb, "bankrupt") || !strcmp(verb, "jail_pay") || !strcmp(verb, "jail_card") || !strcmp(verb, "jail_roll")) {
             int pl = pidx(actor); if (pl < 0 || pl != cur || phase2 < PH_PRE || phase2 == PH_OVER) { fprintf(stderr, "ledger line %d: %s by %s is out of turn or outside play\n", lineno, verb, actor); fclose(fp); return 1; }
-            if (!strcmp(verb, "roll")) { int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2 || d1 != die(seed, nrolls, 0) || d2 != die(seed, nrolls, 1)) { fprintf(stderr, "ledger line %d: roll does not match the seeded dice\n", lineno); fclose(fp); return 1; } }
+            if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2 || d1 != die(seed, nrolls, 0) || d2 != die(seed, nrolls, 1)) { fprintf(stderr, "ledger line %d: roll does not match the seeded dice\n", lineno); fclose(fp); return 1; } }
             err = apply2(pl, verb, target, res, sizeof res);
         } else if (!strcmp(verb, "over")) { if (strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: only the bank ends the game\n", lineno); fclose(fp); return 1; } err = apply_over(res, sizeof res);
         } else { fprintf(stderr, "ledger line %d: unknown verb %s (this verb is not part of the ruleset yet)\n", lineno, verb); fclose(fp); return 1; }
@@ -512,9 +541,9 @@ static int v_order(void) {
 static void build_status2(char *b, size_t cap) {
     static const char *ph[7] = { "lobby", "order", "pre", "buy", "debt", "post", "over" };
     b[0] = 0; ap(b, cap, "GAME deskopoly schema=2 ruleset=%s seed=%ld players=%d events=%d\n", g_rs, seed, np_game, nev);
-    ap(b, cap, "STATE phase=%s current=%s round=%d pending=%d debt=%d rules=%s bank=%d over=%d\n", ph[phase2], phase2 >= PH_PRE ? PL[cur].id : "-", round_, pending, debt_amt, hx(g_rules_hash), bankv, over);
+    ap(b, cap, "STATE phase=%s current=%s round=%d pending=%d debt=%d doubles=%d rules=%s bank=%d over=%d\n", ph[phase2], phase2 >= PH_PRE ? PL[cur].id : "-", round_, pending, debt_amt, dcount, hx(g_rules_hash), bankv, over);
     int sum = bankv;
-    for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i]); }
+    for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d jail=%d\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i], injail[i] ? jfails[i] + 1 : 0); }
     for (int k = 0; k < nt; k++) if (owner[k] >= 0) ap(b, cap, "TILE %d %s owner=%s\n", k, T[k].name, PL[owner[k]].id);
     ap(b, cap, "TOTAL sum=%d expect=%d\n", sum, R_start * np_game);
 }
@@ -525,7 +554,7 @@ static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
     if (phase2 < PH_PRE || phase2 == PH_OVER) { snprintf(msg, cap, "refused: %s is not legal now (%s)", verb, legal_now()); return 2; }
     if (first_w >= 0 || over_due) { snprintf(msg, cap, "refused: a decided opening or ending is missing its row (run check)"); return 2; }
     int pl = cur; if (as && strcmp(as, PL[pl].id)) { snprintf(msg, cap, "refused: it is %s's turn, not %s's", PL[pl].id, as); return 2; }
-    char t[40] = "-", res[LINE]; if (!strcmp(verb, "roll")) { int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); }
+    char t[40] = "-", res[LINE]; if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); }
     else if (!strcmp(verb, "bankrupt") && phase2 == PH_DEBT) snprintf(t, sizeof t, "%s", debt_cred >= 0 ? PL[debt_cred].id : "bank");
     char id[8]; snprintf(id, sizeof id, "%s", PL[pl].id);
     const char *err = apply2(pl, verb, t, res, sizeof res); if (err) { snprintf(msg, cap, "refused: %s", err); return 2; }
@@ -543,7 +572,7 @@ static int tick2(char *msg, size_t cap) {
     if (phase2 == PH_ORDER) { int o = order_next(); if (o >= 0 && human[o]) { snprintf(msg, cap, "waiting %s %s human (opening throw)", PL[o].id, PL[o].name); return 1; } if (o < 0 || first_w >= 0) { snprintf(msg, cap, "stuck in the opening"); return -1; } int rc = v_order(); snprintf(msg, cap, "opening throw"); return rc == 0 ? 0 : -1; }
     if (phase2 < PH_PRE) { snprintf(msg, cap, "refused: the opening is not finished (%s)", legal_now()); return -1; }
     if (human[cur]) { snprintf(msg, cap, "waiting %s %s human", PL[cur].id, PL[cur].name); return 1; }
-    const char *v = phase2 == PH_PRE ? "roll" : phase2 == PH_BUY ? (cash[cur] >= T[pending].price ? "buy" : "skip") : phase2 == PH_DEBT ? "bankrupt" : "end_turn";
+    const char *v = phase2 == PH_PRE ? (injail[cur] ? "jail_roll" : "roll") : phase2 == PH_BUY ? (cash[cur] >= T[pending].price ? "buy" : "skip") : phase2 == PH_DEBT ? "bankrupt" : "end_turn";
     int rc = act2_do(v, NULL, msg, cap); return rc == 0 ? 0 : -1;
 }
 static int v_tick2(void) { int st, rc = need_game(&st); if (rc) return rc; char m[LINE * 2]; int r = tick2(m, sizeof m); if (r < 0) { fprintf(stderr, "deskopoly: %s\n", m); return 1; } printf("TICK %s\n", m); return 0; }
@@ -578,9 +607,11 @@ static int check2(void) {
     for (int i = 0; i < np_game; i++) if (out[i] && cash[i] != 0) { printf("FAIL I16 out-player-has-cash %s\n", PL[i].id); fails++; }
     if (phase2 == PH_DEBT && (debt_amt <= 0 || cash[cur] >= debt_amt)) { printf("FAIL I14 a debt that could be paid\n"); fails++; }
     if (phase2 >= PH_PRE && phase2 != PH_OVER && (cur < 0 || cur >= np_game || out[cur])) { printf("FAIL I13 no-current-player\n"); fails++; }
+    for (int i = 0; i < np_game; i++) { if (injail[i] && (pos[i] != jail_idx || jfails[i] > 3)) { printf("FAIL I3/I10 jailed-player-off-the-jail-tile-or-bad-counter %s\n", PL[i].id); fails++; } if (!injail[i] && jfails[i]) { printf("FAIL I10 jail-counter-while-free %s\n", PL[i].id); fails++; } }
+    if (dcount < 0 || dcount > 2 || (dcount && phase2 < PH_PRE)) { printf("FAIL I15 doubles=%d\n", dcount); fails++; }
     if (first_w >= 0) { printf("FAIL I17 the opening is decided but the `first` row is missing\n"); fails++; }
     if (over_due) { printf("FAIL I20 the game is over but the `over` row is missing\n"); fails++; }
-    { char p[1100], ln[LINE]; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && (!strcmp(f[3], "order") || !strcmp(f[3], "roll"))) orders++; } fclose(fp); } }
+    { char p[1100], ln[LINE]; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && (!strcmp(f[3], "order") || !strcmp(f[3], "roll") || !strcmp(f[3], "jail_roll"))) orders++; } fclose(fp); } }
     if (orders != nrolls) { printf("FAIL I18 dice-index=%d but %d throws\n", nrolls, orders); fails++; }
     if (fails) return 1; printf("CHECK ok schema=2 events=%d sum=%d\n", nev, sum); return 0;
 }
@@ -789,7 +820,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "start")) return v_start(argc - 4, argv + 4);
     if (!strcmp(v, "order")) return v_order();
     if (!strcmp(v, "help")) return v_help(argc - 4, argv + 4);
-    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt"))) return v_act2(v, argc - 4, argv + 4);
+    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll"))) return v_act2(v, argc - 4, argv + 4);
     if (g_schema == 2 && !strcmp(v, "autoplay")) return v_autoplay2();
     if (g_schema == 2 && !strcmp(v, "tick")) return v_tick2();
     if (g_schema == 2 && (!strcmp(v, "ui") || !strcmp(v, "mechanics") || !strcmp(v, "page") || !strcmp(v, "preview"))) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }
