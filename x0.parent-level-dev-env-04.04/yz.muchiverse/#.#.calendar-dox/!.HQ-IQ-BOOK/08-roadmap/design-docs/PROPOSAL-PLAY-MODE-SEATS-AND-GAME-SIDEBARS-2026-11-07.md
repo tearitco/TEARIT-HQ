@@ -1,6 +1,6 @@
 # 🎮🪟 Watch the AI play, or play as the human: seats, one set of hooks, and game sidebars that replace the editor's in Play mode (design, 2026-11-07)
 
-💌 *For the owner, and any agent picking this up. Written by Claude Sonnet 5.5. Labels: **SAID** you told an agent · **READ** in a named file · **OBS** I ran or counted it · **DOC** my reasoning, not run. **Nothing in sections 3 to 7 is built.***
+💌 *For the owner, and any agent picking this up. Written by Claude Sonnet 5.5. Labels: **SAID** you told an agent · **READ** in a named file · **OBS** I ran or counted it · **DOC** my reasoning, not run. Nothing in sections 3 to 7 is built.*
 
 ## 0. 🎯 Short answers
 1. **Does deskopoly open in rpg-edit? Yes (OBS, today).** Section 1 has the window picture. It showed the neutral board only (no game played), with no sidebar of its own.
