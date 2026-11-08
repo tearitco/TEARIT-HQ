@@ -4173,11 +4173,11 @@ static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, 
 /* ---- MutationObserver: child-list and attribute slice (2026-11-07) ----
  * The previous MutationObserver was an inert existence stub: pages could
  * feature-detect it, but dynamic DOM changes never reached callbacks. This
- * is the smallest honest first slice: childList mutations, subtree
+ * is the smallest honest slice: childList mutations, subtree
  * matching, and set/removeAttribute records are delivered to the observer's
- * callback as a one-record array. CharacterData is parsed for API
- * compatibility but has no text-node mutation source in this DOM yet, so
- * it intentionally remains a no-op rather than fabricating a record. */
+ * callback as a queued microtask, batched per task. CharacterData is parsed
+ * for API compatibility but has no text-node mutation source in this DOM
+ * yet, so it intentionally remains a no-op rather than fabricating a record. */
 #define NB_MUT_MAX_OBSERVERS 32
 #define NB_MUT_MAX_TARGETS 64
 #define NB_MUT_MAX_ATTRS 32
@@ -4192,6 +4192,7 @@ typedef struct {
     JSValue callback;
     NbMutTarget targets[NB_MUT_MAX_TARGETS];
     int target_count;
+    int scheduled; /* a microtask delivery job is already queued */
 } NbMutObserver;
 static NbMutObserver g_mut_obs[NB_MUT_MAX_OBSERVERS];
 static int g_mut_obs_count = 0;
@@ -4225,6 +4226,15 @@ static JSValue nb_mut_records_for(JSContext *ctx, JSValue self) {
     }
     return recs;
 }
+static void nb_mut_flush(JSContext *ctx, NbMutObserver *o);
+static JSValue nb_mut_flush_job(JSContext *ctx, int argc, JSValueConst *argv) {
+    if (argc < 1) return JS_UNDEFINED;
+    int oi = nb_mut_find_observer(ctx, argv[0]);
+    if (oi < 0) return JS_UNDEFINED; /* disconnected before delivery */
+    g_mut_obs[oi].scheduled = 0;
+    nb_mut_flush(ctx, &g_mut_obs[oi]);
+    return JS_UNDEFINED;
+}
 static void nb_mut_flush(JSContext *ctx, NbMutObserver *o) {
     JSValue recs = nb_mut_records_for(ctx, o->self);
     JSValue lenv = JS_GetPropertyStr(ctx, recs, "length");
@@ -4257,7 +4267,16 @@ static void nb_mut_append_record(JSContext *ctx, NbMutObserver *o, JSValue rec) 
     JS_FreeValue(ctx, lenv);
     JS_SetPropertyUint32(ctx, recs, n, rec);
     JS_FreeValue(ctx, recs);
-    nb_mut_flush(ctx, o);
+    /* Spec: delivery is a queued microtask, not synchronous. Batched:
+     * further mutations in the same task reuse the queued job. */
+    if (!o->scheduled) {
+        o->scheduled = 1;
+        JSValue jv[1] = { o->self };
+        if (JS_EnqueueJob(ctx, nb_mut_flush_job, 1, jv) < 0) {
+            o->scheduled = 0;
+            nb_mut_flush(ctx, o);
+        }
+    }
 }
 static JSValue nb_mut_record(JSContext *ctx, const char *type, NbNode *target,
                              NbNode *added, NbNode *removed, NbNode *prev, NbNode *next,
@@ -4404,6 +4423,8 @@ static JSValue nb_mutation_observe(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_mutation_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     int oi = nb_mut_find_observer(ctx, this_val);
+    /* Spec: disconnect empties the pending record queue. */
+    JS_SetPropertyStr(ctx, this_val, "__nb_mut_records", JS_NewArray(ctx));
     if (oi < 0) return JS_UNDEFINED;
     JS_FreeValue(ctx, g_mut_obs[oi].self);
     JS_FreeValue(ctx, g_mut_obs[oi].callback);
@@ -10232,6 +10253,9 @@ static void cmd_eval(const char *js) {
     const char *r = js_display_cstr(g_live_ctx, rv, disp, sizeof(disp));
     if (g_out) { fprintf(g_out, "=>%s\n", r ? r : ""); fflush(g_out); }
     JS_FreeValue(g_live_ctx, rv);
+    /* Microtasks (incl. MutationObserver delivery) drain before render,
+     * as in a browser task boundary. */
+    drain_jobs(g_live_ctx);
 
     /* re-emit post-eval RENDER rows so mutated DOM is reflected */
     SB rr = {0, 0, 0};
