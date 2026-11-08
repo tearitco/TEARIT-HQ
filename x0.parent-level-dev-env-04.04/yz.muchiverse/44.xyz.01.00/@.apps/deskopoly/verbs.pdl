@@ -5,6 +5,11 @@
 #   page: no for all of these in pass 1 (no event pages generated yet; S3 of the plan fires them through pages).
 GAME | deskopoly | deskopoly_verb | ops/+x/deskopoly.+x | ops/deskopoly.c
 VERB | new       | no | ui | seed players | start a game: writes the first ledger row (the seed is hard state)
+VERB | lobby     | no | ui | ruleset | schema 2: open a classic game (first ledger row: ruleset name, rules hash, max players); players are NOT config, they join
+VERB | join      | no | ui | name driver personality token | add a player in the lobby (next free id p1..p8, a free token 0..7); the roster is a ledger fact
+VERB | leave     | no | ui | player id | remove a player from the lobby (before start)
+VERB | start     | no | ui | seed | close the lobby (2..8 players) and record the seed and the rules hash
+VERB | order     | no | ui | - | the next player throws for the opening order; the highest total moves first (ties re-throw); the call appends `first` when decided
 VERB | roll      | no | ui | -            | the current player rolls two dice (seeded, recorded), moves, and the landing resolves (Start bonus, levy, rent, or a tile for sale)
 VERB | buy       | no | ui | -            | buy the tile the current player stands on (refused when unaffordable or not for sale)
 VERB | skip      | no | ui | -            | decline the tile for sale
@@ -22,6 +27,11 @@ VERB | ledger_hash | no | ui | skip_verb  | read-only digest of the ledger rows,
 VERB | page      | no | ui | desk_dir atlas | draw the board as an editor desk page (cells.txt, map.txt, ...) from board.pdl + page.pdl + the replayed ledger; owned tiles show their owner
 VERB | preview   | no | ui | desk_dir out.raw | a FLAT top-down picture of a desk (no depth, not the engine render), raw RGBA for raw_to_png
 FLOW | new       | rules.pdl,board.pdl        | state/ledger.txt
+FLOW | lobby     | rulesets/<name>/board.pdl,rules.pdl | state/ledger.txt
+FLOW | join      | state/ledger.txt           | state/ledger.txt
+FLOW | leave     | state/ledger.txt           | state/ledger.txt
+FLOW | start     | state/ledger.txt,rulesets/<name>/rules.pdl | state/ledger.txt
+FLOW | order     | state/ledger.txt           | state/ledger.txt
 FLOW | roll      | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | skip      | state/ledger.txt           | state/ledger.txt

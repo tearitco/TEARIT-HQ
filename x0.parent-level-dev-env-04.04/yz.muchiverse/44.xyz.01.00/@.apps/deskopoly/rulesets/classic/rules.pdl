@@ -1,0 +1,7 @@
+# classic rules (spec section 4 and 10.2): RULE rows only. There is NO roster here: players join through the ledger (finding F6).
+# RULES numbers are from memory of the standard edition and are to be verified against the official sheet (spec 4.12).
+RULE | start_cash    | 1500
+RULE | pass_go       | 200
+RULE | max_players   | 8
+RULE | seed          | 7
+RULE | safety_rounds | 400

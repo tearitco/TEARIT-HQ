@@ -1,0 +1,45 @@
+# classic board: 40 tiles clockwise from Start (spec DESIGN-DESKOPOLY-CLASSIC-MONOPOLY-BUILD-SPEC-2026-11-08 section 4.1). Names are the house's own neutral names (owner decision O1: rename freely here, no code change).
+# TILE | idx | id | kind | group | price | r0 | r1 | r2 | r3 | r4 | r5 | house_cost
+#   kind: go street chance chest tax rail util jail free gotojail     group: streets 0..7 (brown sky pink orange red yellow green navy), rail 8, util 9, others -1
+#   rents r0..r5 = base, 1 to 4 houses, hotel (streets only). Rail and util rent come from the rent function (4.3), not from this table; tax price = the amount paid.
+#   RULES numbers: written from memory of the standard edition; every one is to be checked against the official rule sheet (spec 4.12) before this ruleset ships.
+TILE | 0  | Start    | go       | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 1  | Brown1   | street   | 0  | 60  | 2  | 10  | 30  | 90   | 160  | 250  | 50
+TILE | 2  | Fund1    | chest    | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 3  | Brown2   | street   | 0  | 60  | 4  | 20  | 60  | 180  | 320  | 450  | 50
+TILE | 4  | LevyA    | tax      | -1 | 200 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 5  | Line1    | rail     | 8  | 200 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 6  | Sky1     | street   | 1  | 100 | 6  | 30  | 90  | 270  | 400  | 550  | 50
+TILE | 7  | Luck1    | chance   | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 8  | Sky2     | street   | 1  | 100 | 6  | 30  | 90  | 270  | 400  | 550  | 50
+TILE | 9  | Sky3     | street   | 1  | 120 | 8  | 40  | 100 | 300  | 450  | 600  | 50
+TILE | 10 | Jail     | jail     | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 11 | Pink1    | street   | 2  | 140 | 10 | 50  | 150 | 450  | 625  | 750  | 100
+TILE | 12 | Power    | util     | 9  | 150 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 13 | Pink2    | street   | 2  | 140 | 10 | 50  | 150 | 450  | 625  | 750  | 100
+TILE | 14 | Pink3    | street   | 2  | 160 | 12 | 60  | 180 | 500  | 700  | 900  | 100
+TILE | 15 | Line2    | rail     | 8  | 200 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 16 | Orange1  | street   | 3  | 180 | 14 | 70  | 200 | 550  | 750  | 950  | 100
+TILE | 17 | Fund2    | chest    | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 18 | Orange2  | street   | 3  | 180 | 14 | 70  | 200 | 550  | 750  | 950  | 100
+TILE | 19 | Orange3  | street   | 3  | 200 | 16 | 80  | 220 | 600  | 800  | 1000 | 100
+TILE | 20 | Free     | free     | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 21 | Red1     | street   | 4  | 220 | 18 | 90  | 250 | 700  | 875  | 1050 | 150
+TILE | 22 | Luck2    | chance   | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 23 | Red2     | street   | 4  | 220 | 18 | 90  | 250 | 700  | 875  | 1050 | 150
+TILE | 24 | Red3     | street   | 4  | 240 | 20 | 100 | 300 | 750  | 925  | 1100 | 150
+TILE | 25 | Line3    | rail     | 8  | 200 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 26 | Yellow1  | street   | 5  | 260 | 22 | 110 | 330 | 800  | 975  | 1150 | 150
+TILE | 27 | Yellow2  | street   | 5  | 260 | 22 | 110 | 330 | 800  | 975  | 1150 | 150
+TILE | 28 | Water    | util     | 9  | 150 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 29 | Yellow3  | street   | 5  | 280 | 24 | 120 | 360 | 850  | 1025 | 1200 | 150
+TILE | 30 | GoJail   | gotojail | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 31 | Green1   | street   | 6  | 300 | 26 | 130 | 390 | 900  | 1100 | 1275 | 200
+TILE | 32 | Green2   | street   | 6  | 300 | 26 | 130 | 390 | 900  | 1100 | 1275 | 200
+TILE | 33 | Fund3    | chest    | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 34 | Green3   | street   | 6  | 320 | 28 | 150 | 450 | 1000 | 1200 | 1400 | 200
+TILE | 35 | Line4    | rail     | 8  | 200 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 36 | Luck3    | chance   | -1 | 0   | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 37 | Navy1    | street   | 7  | 350 | 35 | 175 | 500 | 1100 | 1300 | 1500 | 200
+TILE | 38 | LevyB    | tax      | -1 | 100 | 0  | 0   | 0   | 0    | 0    | 0    | 0
+TILE | 39 | Navy2    | street   | 7  | 400 | 50 | 200 | 600 | 1400 | 1700 | 2000 | 200

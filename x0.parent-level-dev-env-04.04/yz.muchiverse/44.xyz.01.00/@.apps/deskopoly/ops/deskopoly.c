@@ -26,17 +26,21 @@
 #include <ctype.h>
 #include <dirent.h>
 
-#define MAXT 40
-#define MAXP 4
-#define LINE 512
+#define MAXT 64
+#define MAXP 8
+#define MAXP_MINI 4   /* the mini ruleset keeps its pass-1 limit; classic allows 2..8 */
+#define LINE 1024     /* one ledger row, at most 1023 bytes (spec 5.2); was 512 */
 
-typedef struct { char name[32], kind[8]; int price, rent, group; } Tile;
-typedef struct { char id[8], name[16], style[12]; int param; } Pl;
+typedef struct { char name[32], kind[12]; int price, rent, group; int r[6], house; } Tile;   /* r[] and house: classic streets only (rent by buildings, house cost) */
+typedef struct { char id[8], name[20], style[20]; int param; int token; } Pl;
 
 static char g_app[1024], g_state[1024];
+static char g_rs[32] = "mini";           /* the ruleset: "mini" = schema 1 (a `new` first row); anything else = schema 2 (a `lobby` first row names it) */
+static int g_schema = 1;
+static uint64_t g_rules_hash;             /* FNV-1a of the ruleset files (board, rules, cards): recorded in `lobby` and `start`, re-checked by every replay (spec 5.2, F7) */
 static Tile T[MAXT]; static int nt;
 static Pl PL[MAXP]; static int npl;
-static int R_start = 1500, R_go = 200, R_rounds = 40; static long R_seed = 7;
+static int R_start = 1500, R_go = 200, R_rounds = 40, R_maxp = MAXP_MINI; static long R_seed = 7;
 
 /* derived state (replay only) */
 static int cash[MAXP], pos[MAXP], out[MAXP], owner[MAXT], human[MAXP];
@@ -57,12 +61,72 @@ static int split(char *s, char **f, int max) {
 
 /* ruleset files (board.pdl, rules.pdl): a scratch/legacy app keeps them at its root and wins; otherwise they come from rulesets/mini/ (every schema-1 ledger, which starts with a `new` row, replays under mini; classic arrives in M2). */
 static void rs_path(char *p, size_t n, const char *file) {
-    struct stat sb; snprintf(p, n, "%s/%s", g_app, file); if (!stat(p, &sb)) return;
-    snprintf(p, n, "%s/rulesets/mini/%s", g_app, file);
+    struct stat sb;
+    if (!strcmp(g_rs, "mini")) { snprintf(p, n, "%s/%s", g_app, file); if (!stat(p, &sb)) return; }
+    snprintf(p, n, "%s/rulesets/%s/%s", g_app, g_rs, file);
+}
+/* a ruleset name is a folder name under rulesets/: lower-case letters, digits, '_' and '-' only (no slash, no "..") */
+static int rs_name_ok(const char *s) { size_t n = strlen(s); if (n < 1 || n > 24) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') || *s == '_' || *s == '-')) return 0; return 1; }
+static uint64_t fnv_feed(uint64_t h, const char *s, size_t n) { for (size_t i = 0; i < n; i++) { h ^= (unsigned char)s[i]; h *= 1099511628211ULL; } return h; }
+/* the rules hash: the bytes of board.pdl, rules.pdl and cards.pdl (when present), each preceded by its file name, so editing any number or name of the ruleset changes it */
+static uint64_t rules_hash(void) {
+    static const char *names[3] = { "board.pdl", "rules.pdl", "cards.pdl" }; uint64_t h = 1469598103934665603ULL;
+    for (int i = 0; i < 3; i++) {
+        char p[1100], b[8192]; rs_path(p, sizeof p, names[i]); FILE *fp = fopen(p, "rb"); if (!fp) { if (i == 2) continue; bad("cannot read a ruleset file for the rules hash"); }
+        h = fnv_feed(h, names[i], strlen(names[i])); size_t k; while ((k = fread(b, 1, sizeof b, fp)) > 0) h = fnv_feed(h, b, k); fclose(fp);
+    }
+    return h;
+}
+
+/* classic board.pdl: TILE | idx | id | kind | group | price | r0 | r1 | r2 | r3 | r4 | r5 | house_cost   (spec 4.1). Refuses everything the spec says the loader must refuse. */
+static void load_classic_board(FILE *fp) {
+    char ln[LINE]; char *f[16]; int hc[10]; for (int i = 0; i < 10; i++) hc[i] = -1;
+    static const char *kinds[] = { "go", "street", "chance", "chest", "tax", "rail", "util", "jail", "free", "gotojail" };
+    nt = 0;
+    while (fgets(ln, sizeof ln, fp)) {
+        if (ln[0] == '#') continue; int n = split(ln, f, 16); if (n < 1 || strcmp(f[0], "TILE")) continue;
+        if (n != 13) bad("board.pdl: a classic TILE row has 13 fields (TILE | idx | id | kind | group | price | r0..r5 | house_cost)");
+        if (nt >= MAXT || atoi(f[1]) != nt) bad("board.pdl: TILE indexes must run 0..n-1 in order");
+        if (strlen(f[2]) < 1 || strlen(f[2]) > 16) bad("board.pdl: a tile id is 1 to 16 characters");
+        int ok = 0; for (size_t k = 0; k < sizeof kinds / sizeof *kinds; k++) if (!strcmp(f[3], kinds[k])) ok = 1; if (!ok) bad("board.pdl: unknown tile kind");
+        Tile *t = &T[nt]; memset(t, 0, sizeof *t); snprintf(t->name, sizeof t->name, "%s", f[2]); snprintf(t->kind, sizeof t->kind, "%s", f[3]);
+        t->group = atoi(f[4]); t->price = atoi(f[5]); for (int i = 0; i < 6; i++) t->r[i] = atoi(f[6 + i]); t->house = atoi(f[12]); t->rent = t->r[0];
+        for (int i = 0; i < nt; i++) if (!strcmp(T[i].name, t->name)) bad("board.pdl: a tile id is used twice");
+        if (!strcmp(t->kind, "street")) {
+            if (t->price <= 0 || t->group < 0 || t->group > 7 || t->house <= 0) bad("board.pdl: a street needs a price, a group 0..7 and a house cost");
+            for (int i = 0; i < 6; i++) if (t->r[i] <= 0 || (i && t->r[i] <= t->r[i - 1])) bad("board.pdl: a street needs six rents, each above the one before");
+            if (hc[t->group] >= 0 && hc[t->group] != t->house) bad("board.pdl: one colour group has two house costs");
+            hc[t->group] = t->house;
+        } else if (!strcmp(t->kind, "rail") || !strcmp(t->kind, "util")) {
+            int want = !strcmp(t->kind, "rail") ? 8 : 9; if (t->price <= 0 || t->group != want) bad("board.pdl: a rail needs group 8 and a util group 9, each with a price");
+        } else if (!strcmp(t->kind, "tax")) { if (t->price <= 0) bad("board.pdl: a tax tile needs an amount"); }
+        nt++;
+    }
+    if (nt < 4 || nt > 64) bad("board.pdl: a board has 4 to 64 tiles");
+    if (strcmp(T[0].kind, "go")) bad("board.pdl: tile 0 must be kind go");
+    int jails = 0; for (int i = 0; i < nt; i++) if (!strcmp(T[i].kind, "jail")) jails++;
+    if (jails != 1) bad("board.pdl: a board needs exactly one jail tile");
 }
 
 static void load_app(void) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp;
+    if (strcmp(g_rs, "mini")) {   /* schema 2: a classic-format ruleset; the roster is NOT config (it comes from `join` rows, finding F6) */
+        rs_path(p, sizeof p, "board.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read board.pdl for this ruleset"); load_classic_board(fp); fclose(fp);
+        rs_path(p, sizeof p, "rules.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read rules.pdl for this ruleset");
+        R_rounds = 400; R_maxp = 8;
+        while (fgets(ln, sizeof ln, fp)) {
+            if (ln[0] == '#') continue; int n = split(ln, f, 10); if (n < 3) continue;
+            if (!strcmp(f[0], "PLAYER")) bad("rules.pdl: a classic ruleset has no PLAYER rows (players join)");
+            if (strcmp(f[0], "RULE")) continue;
+            if (!strcmp(f[1], "start_cash")) R_start = atoi(f[2]); else if (!strcmp(f[1], "pass_go")) R_go = atoi(f[2]);
+            else if (!strcmp(f[1], "safety_rounds")) R_rounds = atoi(f[2]); else if (!strcmp(f[1], "seed")) R_seed = atol(f[2]);
+            else if (!strcmp(f[1], "max_players")) R_maxp = atoi(f[2]);
+        }
+        fclose(fp);
+        if (R_start <= 0 || R_go < 0 || R_rounds <= 0) bad("rules.pdl: start_cash and safety_rounds must be positive");
+        if (R_maxp < 2 || R_maxp > MAXP) bad("rules.pdl: max_players is 2..8");
+        npl = 0; g_rules_hash = rules_hash(); return;
+    }
     rs_path(p, sizeof p, "board.pdl"); fp = fopen(p, "r"); if (!fp) bad("cannot read board.pdl");
     nt = 0;
     while (fgets(ln, sizeof ln, fp)) {
@@ -83,7 +147,7 @@ static void load_app(void) {
             if (!strcmp(f[1], "start_cash")) R_start = atoi(f[2]); else if (!strcmp(f[1], "pass_go")) R_go = atoi(f[2]);
             else if (!strcmp(f[1], "rounds")) R_rounds = atoi(f[2]); else if (!strcmp(f[1], "seed")) R_seed = atol(f[2]);
         } else if (n >= 5 && !strcmp(f[0], "PLAYER")) {
-            if (npl >= MAXP) bad("rules.pdl: at most 4 players in pass 1");
+            if (npl >= MAXP_MINI) bad("rules.pdl: at most 4 players in the mini ruleset");
             Pl *q = &PL[npl++]; snprintf(q->id, sizeof q->id, "%s", f[1]); snprintf(q->name, sizeof q->name, "%s", f[2]); snprintf(q->style, sizeof q->style, "%s", f[3]); q->param = atoi(f[4]);
             if (strcmp(q->style, "bold") && strcmp(q->style, "cautious") && strcmp(q->style, "coin")) bad("rules.pdl: unknown player style");
         }
@@ -118,7 +182,10 @@ static int pay(int pl, int amount, int creditor, int *bankrupt) {
 
 static void ap(char *res, size_t cap, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 #include <stdarg.h>
-static void ap(char *res, size_t cap, const char *fmt, ...) { size_t l = strlen(res); va_list a; va_start(a, fmt); vsnprintf(res + l, cap - l, fmt, a); va_end(a); }
+static void ap(char *res, size_t cap, const char *fmt, ...) {   /* LOUD on overflow (finding F11): a silently cut status could hide the very row that shows a problem */
+    size_t l = strlen(res); va_list a; va_start(a, fmt); int w = vsnprintf(res + l, cap - l, fmt, a); va_end(a);
+    if (w < 0 || (size_t)w >= cap - l) { fprintf(stderr, "deskopoly: output buffer overflow (%zu bytes): refusing to print a cut result\n", cap); exit(1); }
+}
 
 static void do_roll(int pl, int d1, int d2, char *res, size_t cap) {
     int old = pos[pl], step = d1 + d2, np = (old + step) % nt; res[0] = 0; pos[pl] = np; pending = -1;
@@ -150,7 +217,7 @@ static const char *do_end(char *res, size_t cap) {
 static void ledger_path(char *p, size_t cap) { snprintf(p, cap, "%s/ledger.txt", g_state); }
 
 /* replay the ledger into the derived state; returns 0 ok, 1 if a recorded result does not reproduce */
-static int replay(int *started) {
+static int replay1(int *started) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; ledger_path(p, sizeof p);
     fp = fopen(p, "r"); if (!fp) return 0;
     int lineno = 0;
@@ -175,6 +242,103 @@ static int replay(int *started) {
     }
     fclose(fp); return 0;
 }
+
+/* ===== schema 2 (classic): lobby, join, leave, start, order, first (spec sections 5.2, 10.1). Rows after `first` (roll, buy, ...) arrive in M3+; replay refuses them as unknown verbs until then. ===== */
+enum { PH_LOBBY = 0, PH_ORDER = 1, PH_PRE = 2 };
+static int phase2, thrown[MAXP], tot[MAXP], elig[MAXP], first_w = -1;
+static char hex16[20];
+static const char *hx(uint64_t h) { snprintf(hex16, sizeof hex16, "%016llx", (unsigned long long)h); return hex16; }
+
+static int name_ok(const char *s) { size_t n = strlen(s); if (n < 1 || n > 16) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || *s == ' ' || *s == '_' || *s == '-')) return 0; return 1; }
+static int pers_ok(const char *s) {
+    size_t n = strlen(s); if (n < 1 || n > 16) return 0; for (const char *c = s; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-')) return 0;
+    if (!strcmp(s, "-")) return 1;
+    char p[1100], ln[LINE]; char *f[10]; snprintf(p, sizeof p, "%s/personalities.pdl", g_app); FILE *fp = fopen(p, "r"); if (!fp) return 1;   /* no personalities file yet (M10): any well-formed id is accepted */
+    int ok = 0; while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int k = split(ln, f, 10); if (k >= 2 && !strcmp(f[0], "PERSONALITY") && !strcmp(f[1], s)) ok = 1; } fclose(fp); return ok;
+}
+static void next_id(char *id) { for (int k = 1; k <= 8; k++) { char c[8]; snprintf(c, sizeof c, "p%d", k); if (pidx(c) < 0) { snprintf(id, 8, "%s", c); return; } } id[0] = 0; }
+static int token_taken(int t) { for (int i = 0; i < npl; i++) if (PL[i].token == t) return 1; return 0; }
+
+/* join: adds the next free id; res is the recorded result. Returns an error sentence or NULL. */
+static const char *do_join(const char *name, const char *drv, const char *pers, int token, char *res, size_t cap) {
+    if (phase2 != PH_LOBBY) return "joining closes when the game starts";
+    if (npl >= R_maxp) return "the table is full";
+    if (!name_ok(name)) return "a name is 1 to 16 letters, digits, space, _ or -";
+    for (int i = 0; i < npl; i++) if (!strcmp(PL[i].name, name)) return "that name is already at the table";
+    if (strcmp(drv, "human") && strcmp(drv, "pet")) return "a driver is human or pet";
+    if (!pers_ok(pers)) return "unknown personality";
+    if (token < 0) { token = 0; while (token < 8 && token_taken(token)) token++; }
+    if (token > 7 || token_taken(token)) return "that token is taken (tokens are 0..7)";
+    Pl *q = &PL[npl]; memset(q, 0, sizeof *q); next_id(q->id); snprintf(q->name, sizeof q->name, "%s", name); snprintf(q->style, sizeof q->style, "%s", pers); q->token = token;
+    human[npl] = !strcmp(drv, "human"); npl++; np_game = npl;
+    snprintf(res, cap, "driver=%s,token=%d,personality=%s", drv, token, pers); return NULL;
+}
+static const char *do_leave(int pl, char *res, size_t cap) {
+    if (phase2 != PH_LOBBY) return "leaving closes when the game starts";
+    for (int i = pl; i + 1 < npl; i++) { PL[i] = PL[i + 1]; human[i] = human[i + 1]; } npl--; np_game = npl; snprintf(res, cap, "left"); return NULL;
+}
+static const char *do_start(long sd, char *res, size_t cap) {
+    if (phase2 != PH_LOBBY) return "the game already started";
+    if (npl < 2) return "a game needs at least 2 players";
+    seed = sd; phase2 = PH_ORDER; np_game = npl; for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = i < npl; }
+    snprintf(res, cap, "seed=%ld,players=%d,rules=%s", sd, npl, hx(g_rules_hash)); return NULL;
+}
+static int order_next(void) { for (int i = 0; i < npl; i++) if (elig[i] && !thrown[i]) return i; return -1; }
+/* one opening throw. When every eligible player has thrown: a unique highest total sets first_w; a tie keeps only the tied players eligible and clears their throws. */
+static const char *do_order(int pl, int d1, int d2, char *res, size_t cap) {
+    if (phase2 != PH_ORDER || first_w >= 0) return "no opening throw is due";
+    if (pl != order_next()) return "it is not that player's opening throw";
+    thrown[pl] = 1; tot[pl] = d1 + d2; nrolls++; snprintf(res, cap, "total=%d", d1 + d2);
+    if (order_next() < 0) {
+        int mx = 0, c = 0; for (int i = 0; i < npl; i++) if (elig[i] && tot[i] > mx) mx = tot[i];
+        for (int i = 0; i < npl; i++) if (elig[i] && tot[i] == mx) { c++; first_w = i; }
+        if (c > 1) { first_w = -1; for (int i = 0; i < npl; i++) { elig[i] = elig[i] && tot[i] == mx; thrown[i] = 0; } }
+    }
+    return NULL;
+}
+static void apply_first(void) { cur = first_w; first_w = -1; phase2 = PH_PRE; }
+
+static int replay2(int *started) {
+    char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; npl = 0; np_game = 0; phase2 = PH_LOBBY; first_w = -1;
+    for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = 0; }
+    ledger_path(p, sizeof p); fp = fopen(p, "r"); if (!fp) return 0;
+    int lineno = 0;
+    while (fgets(ln, sizeof ln, fp)) {
+        lineno++; char raw[LINE]; snprintf(raw, sizeof raw, "%s", ln); { char *e = raw + strlen(raw); while (e > raw && (e[-1] == 10 || e[-1] == 13)) *--e = 0; }
+        if (strlen(raw) >= LINE - 1) { fprintf(stderr, "ledger line %d: a row is longer than %d bytes\n", lineno, LINE - 2); fclose(fp); return 1; }
+        int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "EVENT")) { fprintf(stderr, "ledger line %d: not an EVENT row of 7 fields\n", lineno); fclose(fp); return 1; }
+        if (nlast < 5) snprintf(lastlog[nlast++], LINE, "%s", raw); else { for (int q = 1; q < 5; q++) memcpy(lastlog[q - 1], lastlog[q], LINE); snprintf(lastlog[4], LINE, "%s", raw); }
+        const char *actor = f[2], *verb = f[3], *target = f[4], *rec = f[6]; char res[LINE]; res[0] = 0; const char *err = NULL;
+        if (first_w >= 0 && strcmp(verb, "first")) { fprintf(stderr, "ledger line %d: the opening throws ended, `first` must follow\n", lineno); fclose(fp); return 1; }
+        if (!*started) {
+            char want[160]; snprintf(want, sizeof want, "ruleset=%s,schema=2,rules=%s,max=%d", g_rs, hx(g_rules_hash), R_maxp);
+            if (strcmp(verb, "lobby") || strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: a schema 2 ledger starts with `lobby`\n", lineno); fclose(fp); return 1; }
+            if (strcmp(rec, want)) { fprintf(stderr, "ledger line %d: the lobby row says \"%s\" but this ruleset gives \"%s\" (the rules changed since the game began)\n", lineno, rec, want); fclose(fp); return 1; }
+            *started = 1; nev++; continue;
+        }
+        if (!strcmp(verb, "join")) {
+            char drv[8] = "", pers[24] = ""; int tk = -1; if (sscanf(rec, "driver=%7[a-z],token=%d,personality=%23s", drv, &tk, pers) != 3) { fprintf(stderr, "ledger line %d: a bad join row\n", lineno); fclose(fp); return 1; }
+            err = do_join(target, drv, pers, tk, res, sizeof res); if (!err && strcmp(PL[npl - 1].id, actor)) err = "the joining id is not the next free id";
+        } else if (!strcmp(verb, "leave")) { int pl = pidx(actor); err = pl < 0 ? "no such player" : do_leave(pl, res, sizeof res); }
+        else if (!strcmp(verb, "start")) {
+            long sd; int pn; char hh[24]; if (strcmp(actor, "bank") || sscanf(rec, "seed=%ld,players=%d,rules=%23s", &sd, &pn, hh) != 3) { fprintf(stderr, "ledger line %d: a bad start row\n", lineno); fclose(fp); return 1; }
+            err = do_start(sd, res, sizeof res);
+        } else if (!strcmp(verb, "order")) {
+            int d1, d2, pl = pidx(actor); if (pl < 0 || sscanf(target, "%d,%d", &d1, &d2) != 2 || d1 != die(seed, nrolls, 0) || d2 != die(seed, nrolls, 1)) { fprintf(stderr, "ledger line %d: order does not match the seeded dice\n", lineno); fclose(fp); return 1; }
+            err = do_order(pl, d1, d2, res, sizeof res);
+        } else if (!strcmp(verb, "first")) {
+            if (first_w < 0 || strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: `first` without a decided opening\n", lineno); fclose(fp); return 1; }
+            snprintf(res, sizeof res, "%s", PL[first_w].id); apply_first();
+        } else if (!strcmp(verb, "seat")) {
+            int sp = pidx(target); if (sp < 0 || (strcmp(rec, "human") && strcmp(rec, "pet")) || human[sp] == !strcmp(rec, "human")) { fprintf(stderr, "ledger line %d: a bad seat row\n", lineno); fclose(fp); return 1; }
+            human[sp] = !strcmp(rec, "human"); snprintf(res, sizeof res, "%s", rec);
+        } else { fprintf(stderr, "ledger line %d: unknown verb %s (rows after the opening arrive in M3)\n", lineno, verb); fclose(fp); return 1; }
+        if (err || strcmp(res, rec)) { fprintf(stderr, "ledger line %d: recorded result \"%s\" but replay gives \"%s\"\n", lineno, rec, err ? err : res); fclose(fp); return 1; }
+        nev++;
+    }
+    fclose(fp); return 0;
+}
+static int replay(int *started) { return g_schema == 2 ? replay2(started) : replay1(started); }
 
 static void append_file(const char *name, const char *row) {
     char p[1100]; snprintf(p, sizeof p, "%s/%s", g_state, name);
@@ -228,10 +392,67 @@ static int v_new(int argc, char **argv) {
     long sd = argc > 0 ? atol(argv[0]) : R_seed; int pn = argc > 1 ? atoi(argv[1]) : npl; if (pn < 2 || pn > npl) bad("players must be 2..the PLAYER rows in rules.pdl");
     char res[64]; snprintf(res, sizeof res, "seed=%ld,players=%d", sd, pn); round_ = 0; event("bank", "new", "-", 0, res); printf("new game %s\n", res); return 0;
 }
-static int v_status(void) { int st, rc = need_game(&st); if (rc) return rc; char b[4096]; build_status(b, sizeof b); fputs(b, stdout); return 0; }
-static int v_replay(void) { int st, rc = need_game(&st); if (rc) return rc; char b[4096]; build_status(b, sizeof b); printf("REPLAY events=%d hash=%016llx\n", nev, (unsigned long long)fnv(b)); return 0; }
+/* --- schema 2 verbs. Each replays first, checks legality, appends, and a refusal appends nothing (exit 2). --- */
+static int need2(const char *verb) {
+    if (g_schema != 2) { fprintf(stderr, "deskopoly: refused: %s belongs to a schema 2 (classic) game; this state folder is empty or holds a schema 1 game (use `lobby <ruleset>` for a classic one)\n", verb); return 2; }
+    return 0;
+}
+static int v_lobby(int argc, char **argv) {
+    (void)argc; (void)argv; char p[1100]; ledger_path(p, sizeof p); struct stat sb; if (stat(p, &sb) == 0) bad("a ledger already exists here: a new game needs an empty state folder");
+    char res[160]; snprintf(res, sizeof res, "ruleset=%s,schema=2,rules=%s,max=%d", g_rs, hx(g_rules_hash), R_maxp); round_ = 0; event("bank", "lobby", "-", 0, res); printf("lobby %s\n", res); return 0;
+}
+static int v_join(int argc, char **argv) {
+    if (need2("join")) return 2; int st, rc = need_game(&st); if (rc) return rc;
+    if (argc < 2) bad("usage: join <name> <human|pet> [personality] [token]");
+    const char *pers = argc > 2 ? argv[2] : "-"; int tk = argc > 3 ? atoi(argv[3]) : -1; if (argc > 3 && (strlen(argv[3]) != 1 || argv[3][0] < '0' || argv[3][0] > '7')) bad("a token is 0..7");
+    char res[160]; const char *err = do_join(argv[0], argv[1], pers, tk, res, sizeof res); if (err) { fprintf(stderr, "deskopoly: refused: %s\n", err); return 2; }
+    event(PL[npl - 1].id, "join", argv[0], 0, res); printf("%s\n", PL[npl - 1].id); return 0;
+}
+static int v_leave(int argc, char **argv) {
+    if (need2("leave")) return 2; int st, rc = need_game(&st); if (rc) return rc; if (argc < 1) bad("usage: leave <player id>");
+    int pl = pidx(argv[0]); if (pl < 0) bad("no such player"); char res[32]; const char *err = do_leave(pl, res, sizeof res); if (err) { fprintf(stderr, "deskopoly: refused: %s\n", err); return 2; }
+    event(argv[0], "leave", "-", 0, res); printf("%s left\n", argv[0]); return 0;
+}
+static int v_start(int argc, char **argv) {
+    if (need2("start")) return 2; int st, rc = need_game(&st); if (rc) return rc;
+    long sd = argc > 0 ? atol(argv[0]) : R_seed; char res[160]; const char *err = do_start(sd, res, sizeof res); if (err) { fprintf(stderr, "deskopoly: refused: %s\n", err); return 2; }
+    event("bank", "start", "-", 0, res); printf("start %s\n", res); return 0;
+}
+static int v_order(void) {
+    if (need2("order")) return 2; int st, rc = need_game(&st); if (rc) return rc;
+    int pl = order_next(); if (phase2 != PH_ORDER || first_w >= 0 || pl < 0) { fprintf(stderr, "deskopoly: refused: no opening throw is due\n"); return 2; }
+    int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); char t[16], res[64]; snprintf(t, sizeof t, "%d,%d", d1, d2); char id[8]; snprintf(id, sizeof id, "%s", PL[pl].id);
+    const char *err = do_order(pl, d1, d2, res, sizeof res); if (err) { fprintf(stderr, "deskopoly: refused: %s\n", err); return 2; }
+    event(id, "order", t, 0, res); printf("%s threw %s %s\n", id, t, res);
+    if (first_w >= 0) { char fid[8]; snprintf(fid, sizeof fid, "%s", PL[first_w].id); apply_first(); event("bank", "first", "-", 0, fid); printf("first %s\n", fid); }
+    return 0;
+}
+static void build_status2(char *b, size_t cap) {
+    static const char *ph[3] = { "lobby", "order", "pre" };
+    b[0] = 0; ap(b, cap, "GAME deskopoly schema=2 ruleset=%s seed=%ld players=%d events=%d\n", g_rs, seed, np_game, nev);
+    ap(b, cap, "STATE phase=%s current=%s rules=%s bank=%d\n", ph[phase2], phase2 == PH_PRE ? PL[cur].id : "-", hx(g_rules_hash), bankv);
+    int sum = bankv;
+    for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i]); }
+    ap(b, cap, "TOTAL sum=%d expect=%d\n", sum, R_start * np_game);
+}
+
+static int v_status(void) { int st, rc = need_game(&st); if (rc) return rc; static char b[32768]; if (g_schema == 2) build_status2(b, sizeof b); else build_status(b, sizeof b); fputs(b, stdout); return 0; }
+static int v_replay(void) { int st, rc = need_game(&st); if (rc) return rc; static char b[32768]; if (g_schema == 2) build_status2(b, sizeof b); else build_status(b, sizeof b); printf("REPLAY events=%d hash=%016llx\n", nev, (unsigned long long)fnv(b)); return 0; }
+/* check for a schema 2 game (spec 5.6: the invariants that exist at this milestone: I1 money, I2 cash, I3 position, I4/I16 ownership of nothing yet, I13 one current player, I18 dice index) */
+static int check2(void) {
+    int fails = 0, sum = bankv, orders = 0;
+    for (int i = 0; i < np_game; i++) { sum += cash[i]; if (cash[i] < 0) { printf("FAIL I2 negative-cash %s\n", PL[i].id); fails++; } if (pos[i] < 0 || pos[i] >= nt) { printf("FAIL I3 position-range %s\n", PL[i].id); fails++; } if (out[i]) { printf("FAIL I16 out-too-early %s\n", PL[i].id); fails++; } }
+    if (sum != R_start * np_game) { printf("FAIL I1 money-not-conserved sum=%d expect=%d\n", sum, R_start * np_game); fails++; }
+    for (int k = 0; k < nt; k++) if (owner[k] >= 0) { printf("FAIL I4 owner-before-play tile=%d\n", k); fails++; }
+    if (phase2 == PH_PRE && (cur < 0 || cur >= np_game)) { printf("FAIL I13 no-current-player\n"); fails++; }
+    if (first_w >= 0) { printf("FAIL I17 the opening is decided but the `first` row is missing\n"); fails++; }
+    { char p[1100], ln[LINE]; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && !strcmp(f[3], "order")) orders++; } fclose(fp); } }
+    if (orders != nrolls) { printf("FAIL I18 dice-index=%d but %d throws\n", nrolls, orders); fails++; }
+    if (fails) return 1; printf("CHECK ok schema=2 events=%d sum=%d\n", nev, sum); return 0;
+}
 static int v_check(void) {
-    int st, rc = need_game(&st); if (rc) return rc; int sum = bankv; int fails = 0;
+    int st, rc = need_game(&st); if (rc) return rc; if (g_schema == 2) return check2();
+    int sum = bankv; int fails = 0;
     for (int i = 0; i < np_game; i++) { sum += cash[i]; if (cash[i] < 0) { printf("FAIL negative-cash %s\n", PL[i].id); fails++; } if (pos[i] < 0 || pos[i] >= nt) { printf("FAIL position-range %s\n", PL[i].id); fails++; } }
     if (sum != R_start * np_game) { printf("FAIL money-not-conserved sum=%d expect=%d\n", sum, R_start * np_game); fails++; }
     for (int k = 0; k < nt; k++) if (owner[k] >= 0 && (strcmp(T[k].kind, "prop") || out[owner[k]])) { printf("FAIL bad-owner tile=%d\n", k); fails++; }
@@ -407,12 +628,33 @@ static int v_audit(void) {
     printf("AUDIT ok files=%d declared=%d\n", present, nd); return 0;
 }
 
+/* which ruleset does this call run under? `lobby <ruleset>` names it; otherwise the first ledger row decides (a `lobby` row names it, anything else is schema 1 = mini). */
+static void pick_ruleset(const char *verb, int argc, char **argv) {
+    if (!strcmp(verb, "lobby")) {
+        const char *nm = argc > 0 ? argv[0] : "classic"; if (!rs_name_ok(nm)) bad("a ruleset name is lower-case letters, digits, _ and - (1..24)");
+        if (!strcmp(nm, "mini")) bad("mini is a schema 1 ruleset: start it with `new`");
+        snprintf(g_rs, sizeof g_rs, "%s", nm); g_schema = 2; return;
+    }
+    char p[1100], ln[LINE]; char *f[10]; snprintf(p, sizeof p, "%s/ledger.txt", g_state); FILE *fp = fopen(p, "r"); if (!fp) return;
+    if (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && !strcmp(f[0], "EVENT") && !strcmp(f[3], "lobby")) {
+        char nm[40] = ""; if (sscanf(f[6], "ruleset=%39[^,]", nm) != 1 || !rs_name_ok(nm) || !strcmp(nm, "mini")) { fclose(fp); bad("the lobby row names no usable ruleset"); }
+        snprintf(g_rs, sizeof g_rs, "%s", nm); g_schema = 2; } }
+    fclose(fp);
+}
+
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: deskopoly <app_dir> <state_dir> <verb> [args]\n"); return 2; }
     snprintf(g_app, sizeof g_app, "%s", argv[1]); snprintf(g_state, sizeof g_state, "%s", argv[2]); const char *v = argv[3];
+    pick_ruleset(v, argc - 4, argv + 4);
     load_app(); reset_state(); seed = R_seed;
     struct stat sb; if (stat(g_state, &sb) || !S_ISDIR(sb.st_mode)) bad("the state folder does not exist (make it first)");
-    if (!strcmp(v, "new")) return v_new(argc - 4, argv + 4);
+    if (!strcmp(v, "new")) { if (g_schema == 2) bad("this folder already holds a classic game"); return v_new(argc - 4, argv + 4); }
+    if (!strcmp(v, "lobby")) return v_lobby(argc - 4, argv + 4);
+    if (!strcmp(v, "join")) return v_join(argc - 4, argv + 4);
+    if (!strcmp(v, "leave")) return v_leave(argc - 4, argv + 4);
+    if (!strcmp(v, "start")) return v_start(argc - 4, argv + 4);
+    if (!strcmp(v, "order")) return v_order();
+    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "autoplay") || !strcmp(v, "tick") || !strcmp(v, "ui") || !strcmp(v, "mechanics") || !strcmp(v, "page") || !strcmp(v, "preview"))) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M3 to M11)\n", v); return 2; }
     if (!strcmp(v, "roll")) return v_roll();
     if (!strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn")) return act_simple(v);
     if (!strcmp(v, "autoplay")) return v_autoplay();

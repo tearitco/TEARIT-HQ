@@ -1,0 +1,230 @@
+# dsk_classic: deskopoly classic ruleset, milestone M2 (spec 08-roadmap/design-docs/DESIGN-DESKOPOLY-CLASSIC-MONOPOLY-BUILD-SPEC-2026-11-08.md sections 4.1, 5, 10.1, 12.2: cases dsk_data and dsk_setup).
+# Every pin was OBSERVED in a scratch run on 2026-11-08 before it was written (the data sums were computed from the data file with awk; the hash and the dice come from the engine). Scratch only.
+# The prices and rents are the spec's numbers from memory of the standard edition: this case pins THE DATA FILE to the spec; it does not prove the numbers match the official sheet (spec 4.12 is still to do).
+RESULTS | ../results/dsk_classic.txt
+ENV | LC_ALL | C
+
+CASE    | data
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | s
+MKDIR   | s0
+RUN | /usr/bin/grep | -c | ^TILE | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 40 | forty-tiles
+RUN | /usr/bin/grep | -cE | [\p] street +[\p] | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 22 | twenty-two-streets
+RUN | /usr/bin/grep | -cE | [\p] rail +[\p] | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 4 | four-rails
+RUN | /usr/bin/grep | -cE | [\p] util +[\p] | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 2 | two-utilities
+RUN | /usr/bin/grep | -cE | [\p] tax +[\p] | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 2 | two-taxes
+RUN | /usr/bin/grep | -cE | [\p] chance +[\p] | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 3 | three-luck-tiles
+RUN | /usr/bin/grep | -cE | [\p] chest +[\p] | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 3 | three-fund-tiles
+RUN | /usr/bin/awk | -F\p | /^TILE/{k=$4;gsub(/ /,"",k);p=$6+0;if(k=="street"\p\pk=="rail"\p\pk=="util")s+=p}END{print s} | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 5690 | the-sum-of-the-28-purchase-prices-computed-from-the-data
+RUN | /usr/bin/awk | -F\p | /^TILE/{k=$4;gsub(/ /,"",k);if(k=="street")r+=$7+$8+$9+$10+$11+$12}END{print r} | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 61916 | the-sum-of-all-street-rents-computed-from-the-data
+RUN | /usr/bin/awk | -F\p | /^TILE/{g=$5;gsub(/ /,"",g);c[g]++}END{print c[0]c[1]c[2]c[3]c[4]c[5]c[6]c[7]c[8]c[9]} | $T/app/rulesets/classic/board.pdl
+EXPECT_OUT_IS | 2333333242 | group-sizes-brown2-sky3-pink3-orange3-red3-yellow3-green3-navy2-rail4-util2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s | lobby | classic
+EXPECT_EXIT | 0 | the-real-classic-data-loads
+EXPECT_OUT | rules=650f599fdb6f6fdf | the-rules-hash-of-the-shipped-ruleset
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s0 | lobby | nosuchrules
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-ruleset-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s0 | lobby | ..\p..\petc
+EXPECT_EXIT | 2 | NEGATIVE-a-ruleset-name-cannot-climb-out-of-rulesets
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s0 | lobby | mini
+EXPECT_EXIT | 2 | NEGATIVE-mini-is-schema-1-and-cannot-open-a-lobby
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m1
+RUN | /usr/bin/sed | -i | s/^TILE \p 1  \p Brown1   \p street   \p 0  \p 60  \p 2  \p 10  \p 30  \p 90   \p 160  \p 250  \p 50/TILE \p 1 \p Brown1 \p street \p 0 \p 60 \p 2 \p 10 \p 30 \p 90 \p 160 \p 250/ | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m1 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-short-row-is-refused
+EXPECT_OUT | 13 fields | NEGATIVE-a-short-row-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m2
+RUN | /usr/bin/sed | -i | s/^TILE \p 2  \p/TILE \p 3  \p/ | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m2 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-an-out-of-order-index-is-refused
+EXPECT_OUT | indexes must run 0..n-1 | NEGATIVE-an-out-of-order-index-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m3
+RUN | /usr/bin/sed | -i | s/\p Brown1   \p street   \p/\p Brown1   \p castle   \p/ | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m3 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind-is-refused
+EXPECT_OUT | unknown tile kind | NEGATIVE-an-unknown-kind-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m4
+RUN | /usr/bin/sed | -i | s/\p 320  \p 450  \p 50$/\p 320  \p 450  \p 60/ | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m4 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-one-colour-with-two-house-costs-is-refused
+EXPECT_OUT | two house costs | NEGATIVE-one-colour-with-two-house-costs-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m5
+RUN | /usr/bin/sed | -i | s/\p Line1    \p rail     \p 8 /\p Line1    \p rail     \p 3 / | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m5 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-rail-in-a-colour-group-is-refused
+EXPECT_OUT | rail needs group 8 | NEGATIVE-a-rail-in-a-colour-group-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m6
+RUN | /usr/bin/sed | -i | s/\p Free     \p free /\p Free     \p jail / | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m6 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-two-jail-tiles-are-refused
+EXPECT_OUT | exactly one jail | NEGATIVE-two-jail-tiles-are-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m7
+RUN | /usr/bin/sed | -i | s/\p Brown2   \p/\p Brown1   \p/ | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m7 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-duplicate-tile-id-is-refused
+EXPECT_OUT | used twice | NEGATIVE-a-duplicate-tile-id-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m8
+RUN | /usr/bin/sed | -i | s/^TILE \p 0  \p Start    \p go      /TILE \p 0  \p Start    \p free    / | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m8 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-tile-0-not-go-is-refused
+EXPECT_OUT | tile 0 must be kind go | NEGATIVE-tile-0-not-go-is-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m9
+RUN | /usr/bin/sed | -i | s/\p 160  \p 250  \p 50$/\p 160  \p 150  \p 50/ | $T/app/rulesets/classic/board.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m9 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-rents-that-do-not-rise-are-refused
+EXPECT_OUT | each above the one before | NEGATIVE-rents-that-do-not-rise-are-refused-says-why
+COPY    | @.apps/deskopoly/rulesets/classic/board.pdl | app/rulesets/classic/board.pdl
+MKDIR   | m10
+APPEND  | app/rulesets/classic/rules.pdl | PLAYER | p1 | ann | bold | 0\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m10 | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-roster-in-a-classic-rules-file-is-refused
+EXPECT_OUT | has no PLAYER rows | NEGATIVE-the-roster-refusal-says-players-join
+
+CASE    | setup
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | g
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | status
+EXPECT_EXIT | 2 | NEGATIVE-status-with-no-game-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Ann | human
+EXPECT_EXIT | 2 | NEGATIVE-join-before-the-lobby-opens-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | lobby | classic
+EXPECT_EXIT | 2 | NEGATIVE-a-second-lobby-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Ann | human
+EXPECT_OUT_IS | p1 | the-first-player-is-p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Bo | pet
+EXPECT_OUT_IS | p2 | the-second-is-p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Cy | pet | greedy | 5
+EXPECT_OUT_IS | p3 | the-third-is-p3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Ann | pet
+EXPECT_EXIT | 2 | NEGATIVE-a-duplicate-name-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Di | pet | - | 5
+EXPECT_EXIT | 2 | NEGATIVE-a-taken-token-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Di | bot
+EXPECT_EXIT | 2 | NEGATIVE-a-driver-that-is-not-human-or-pet-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | a\pb | pet
+EXPECT_EXIT | 2 | NEGATIVE-a-name-with-a-bar-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | ABCDEFGHIJKLMNOPQ | pet
+EXPECT_EXIT | 2 | NEGATIVE-a-17-character-name-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Di | pet | Bad\pName
+EXPECT_EXIT | 2 | NEGATIVE-a-malformed-personality-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | leave | p2
+EXPECT_EXIT | 0 | a-player-may-leave-the-lobby
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | leave | p9
+EXPECT_EXIT | 2 | NEGATIVE-leaving-as-a-stranger-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Di | pet
+EXPECT_OUT_IS | p2 | the-lowest-free-id-is-reused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | seat | p1 | pet
+EXPECT_EXIT | 0 | a-seat-change-is-legal-in-the-lobby
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | seat | p1 | pet
+EXPECT_EXIT | 2 | NEGATIVE-seating-the-same-driver-again-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | order
+EXPECT_EXIT | 2 | NEGATIVE-no-opening-throw-before-start
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | roll
+EXPECT_EXIT | 2 | NEGATIVE-roll-is-not-built-for-classic-yet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | start | 7
+EXPECT_OUT | players=3 | start-closes-the-lobby-with-three-players
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | join | Ed | pet
+EXPECT_EXIT | 2 | NEGATIVE-joining-after-start-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | leave | p3
+EXPECT_EXIT | 2 | NEGATIVE-leaving-after-start-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | start | 7
+EXPECT_EXIT | 2 | NEGATIVE-starting-twice-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | order
+EXPECT_OUT | first | the-third-throw-decides-the-order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | order
+EXPECT_EXIT | 2 | NEGATIVE-no-throw-after-first
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | check
+EXPECT_OUT | CHECK ok schema=2 | the-invariants-hold-after-the-opening
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | audit
+EXPECT_OUT | AUDIT ok | the-state-folder-holds-only-declared-files
+
+CASE    | tie
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | t
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | start | 4
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | order
+EXPECT_OUT | p1 threw 4,3 total=7 | seed-4-first-throw
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | order
+EXPECT_OUT_LACKS | first | a-tie-decides-nothing
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | order
+EXPECT_OUT | p1 threw 2,1 total=3 | the-tied-players-throw-again-with-fresh-dice
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | order
+EXPECT_OUT | first p2 | the-higher-re-throw-moves-first
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t | ledger_hash
+EXPECT_OUT | rows=9 | nine-rows-in-the-tie-game
+
+CASE    | tamper
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | x
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | start | 4
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | replay
+EXPECT_EXIT | 0 | the-untouched-ledger-replays
+COPY    | @.apps/deskopoly/rulesets/classic/rules.pdl | app/rulesets/classic/rules.pdl
+RUN | /usr/bin/sed | -i | s/start_cash    \p 1500/start_cash    \p 1600/ | $T/app/rulesets/classic/rules.pdl
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | replay
+EXPECT_EXIT | 1 | NEGATIVE-editing-the-rules-after-the-game-began-is-refused
+EXPECT_OUT | the rules changed since the game began | NEGATIVE-the-refusal-names-the-rules-change
+COPY    | @.apps/deskopoly/rulesets/classic/rules.pdl | app/rulesets/classic/rules.pdl
+RUN | /usr/bin/cp | $T/x/ledger.txt | $T/x/good.keep
+RUN | /usr/bin/sed | -i | s/\porder\p4,3\p/\porder\p4,4\p/ | $T/x/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-lucky-die-written-into-the-ledger-is-refused
+EXPECT_OUT | does not match the seeded dice | NEGATIVE-the-dice-refusal-says-so
+RUN | /usr/bin/cp | $T/x/good.keep | $T/x/ledger.txt
+RUN | /usr/bin/sed | -i | s/total=7/total=8/ | $T/x/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-changed-result-is-refused
+RUN | /usr/bin/cp | $T/x/good.keep | $T/x/ledger.txt
+RUN | /usr/bin/sed | -i | 3d | $T/x/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-deleted-middle-row-is-refused
+RUN | /usr/bin/cp | $T/x/good.keep | $T/x/ledger.txt
+RUN | /usr/bin/sed | -i | 1d | $T/x/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | status
+EXPECT_EXIT | 1 | NEGATIVE-a-ledger-that-lost-its-lobby-row-is-not-a-classic-game
+RUN | /usr/bin/cp | $T/x/good.keep | $T/x/ledger.txt
+RUN | /usr/bin/sed | -i | $d | $T/x/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | check
+EXPECT_EXIT | 1 | NEGATIVE-a-lost-first-row-fails-the-check
+RUN | /usr/bin/cp | $T/x/good.keep | $T/x/ledger.txt
+WRITE   | x/stray.txt | the winner is p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-is-a-ghost
+EXPECT_OUT | GHOST stray.txt | NEGATIVE-the-ghost-is-named
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | check
+EXPECT_OUT | CHECK ok schema=2 | a-stray-file-changes-nothing
