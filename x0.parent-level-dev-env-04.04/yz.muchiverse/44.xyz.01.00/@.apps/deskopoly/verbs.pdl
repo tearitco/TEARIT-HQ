@@ -10,7 +10,9 @@ VERB | join      | no | ui | name driver personality token | add a player in the
 VERB | leave     | no | ui | player id | remove a player from the lobby (before start)
 VERB | start     | no | ui | seed | close the lobby (2..8 players) and record the seed and the rules hash
 VERB | order     | no | ui | - | the next player throws for the opening order; the highest total moves first (ties re-throw); the call appends `first` when decided
-VERB | roll      | no | ui | -            | the current player rolls two dice (seeded, recorded), moves, and the landing resolves (Start bonus, levy, rent, or a tile for sale)
+VERB | bankrupt  | no | ui | as=pN | classic: the current player declares bankruptcy while a debt cannot be paid; all assets go to the creditor (a player) or back to the bank
+VERB | help      | no | ui | verb | list the verbs (from this file) and, in a classic game, the phase and what is legal now
+VERB | roll      | no | ui | as=pN        | the current player rolls two dice (seeded, recorded), moves, and the landing resolves (Start bonus, levy, rent, or a tile for sale)
 VERB | buy       | no | ui | -            | buy the tile the current player stands on (refused when unaffordable or not for sale)
 VERB | skip      | no | ui | -            | decline the tile for sale
 VERB | end_turn  | no | ui | -            | finish the turn; the next active player is up
@@ -32,6 +34,8 @@ FLOW | join      | state/ledger.txt           | state/ledger.txt
 FLOW | leave     | state/ledger.txt           | state/ledger.txt
 FLOW | start     | state/ledger.txt,rulesets/<name>/rules.pdl | state/ledger.txt
 FLOW | order     | state/ledger.txt           | state/ledger.txt
+FLOW | bankrupt  | state/ledger.txt           | state/ledger.txt
+FLOW | help      | verbs.pdl,state/ledger.txt | -
 FLOW | roll      | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | skip      | state/ledger.txt           | state/ledger.txt

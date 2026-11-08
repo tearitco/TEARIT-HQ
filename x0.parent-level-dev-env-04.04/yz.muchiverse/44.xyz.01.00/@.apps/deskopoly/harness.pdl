@@ -1,0 +1,5 @@
+# harness.pdl - the deskopoly book's harness rows (2026-11-08), read by harness_menu_op: they show in the editor Harness tab when the deskopoly book is open (any page) and, with the global rows, in the top taskbar cell.
+# HARNESS | id | page | kind | label | target | args | writes | confirm | note      (grammar: &.widgits/_shared-lib/ops/harness_menu_op.c header). The global `deskopoly` row (the mini engine, 105 checks) is in #.desktop/harness_menu.pdl.
+# Each CASE runs behind cpu_gate and its verdict is shown beside the label, so the editor displays the real pass count of the real case file after every run.
+HARNESS | dsk_classic | * | CASE | classic data   | dsk_classic | - | - | no | the classic board data, the lobby, the opening and the tamper tests (milestone M2)
+HARNESS | dsk_play    | * | CASE | classic play   | dsk_play    | - | - | no | roll, landing, rent, buy, bankruptcy to a player, over, stalemate (milestone M3)
