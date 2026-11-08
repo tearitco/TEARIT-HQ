@@ -1,0 +1,13 @@
+# rules.pdl - deskopoly rules and players as data (pass 1, 2026-11-07).
+# RULE   | key | value        start_cash, pass_go (bank pays when a roll wraps past Start, landing on Start included), rounds (a game ends after this many rounds), seed (default for `new`)
+# PLAYER | id | name | style | param
+#   style: bold (always tries to buy; an unaffordable try is REFUSED and logged blocked, then it skips) | cautious (buys when cash after the price stays >= param) | coin (buys when a seeded coin < param percent)
+#   These four styles are tier 0 / 1 stand-ins for pets (D49 decision slot); a pet driver would write the same buy / skip rows.
+RULE | start_cash | 1500
+RULE | pass_go    | 200
+RULE | rounds     | 40
+RULE | seed       | 7
+PLAYER | p1 | rex  | bold     | 0
+PLAYER | p2 | fenn | cautious | 300
+PLAYER | p3 | gus  | coin     | 50
+PLAYER | p4 | wren | cautious | 600

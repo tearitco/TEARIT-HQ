@@ -1,0 +1,30 @@
+# verbs.pdl - the deskopoly manifest: the known mechanics as data (pass 1, 2026-11-07; BOOK 08-roadmap/design-docs/HANDOFF-NOV-7 section 10, D48 BRAIN rows, D49 one door).
+#   GAME / VERB rows keep the shape verbgen reads (events-hq ops/verbgen.c parses ONLY these two row types; I read its source, I did not run it on this file).
+#   FLOW  | verb | reads | writes          which hard-state files a verb touches (read by `deskopoly mechanics`, so a viewer can draw the data flow without reading C)
+#   BRAIN | dec_key | verb | phases | ok_outcomes | bad_outcomes | note     which verbs a pet may CHOOSE and which harness CASE names judge them (checked by brain_lint)
+#   page: no for all of these in pass 1 (no event pages generated yet; S3 of the plan fires them through pages).
+GAME | deskopoly | deskopoly_verb | ops/+x/deskopoly.+x | ops/deskopoly.c
+VERB | new       | no | ui | seed players | start a game: writes the first ledger row (the seed is hard state)
+VERB | roll      | no | ui | -            | the current player rolls two dice (seeded, recorded), moves, and the landing resolves (Start bonus, levy, rent, or a tile for sale)
+VERB | buy       | no | ui | -            | buy the tile the current player stands on (refused when unaffordable or not for sale)
+VERB | skip      | no | ui | -            | decline the tile for sale
+VERB | end_turn  | no | ui | -            | finish the turn; the next active player is up
+VERB | autoplay  | no | ui | -            | play the whole game with each player's style (pets stand-in); writes decision rows
+VERB | status    | no | ui | -            | read-only: the whole state, derived by replaying the ledger
+VERB | replay    | no | ui | -            | read-only: replay the ledger and print its state hash (refuses a ledger that does not reproduce itself)
+VERB | check     | no | ui | -            | read-only: replay plus invariants (money conservation, ownership, positions)
+VERB | mechanics | no | ui | -            | read-only: the known mechanics and hard state as plain rows (a projection of these files, for an editor)
+FLOW | new       | rules.pdl,board.pdl        | state/ledger.txt
+FLOW | roll      | state/ledger.txt,board.pdl | state/ledger.txt
+FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt
+FLOW | skip      | state/ledger.txt           | state/ledger.txt
+FLOW | end_turn  | state/ledger.txt           | state/ledger.txt
+FLOW | autoplay  | state/ledger.txt,rules.pdl | state/ledger.txt,state/decisions.txt
+FLOW | status    | state/ledger.txt           | -
+FLOW | replay    | state/ledger.txt           | -
+FLOW | check     | state/ledger.txt           | -
+FLOW | mechanics | verbs.pdl,rules.pdl,board.pdl,state/ledger.txt | state/mechanics.txt
+BRAIN | roll     | roll     | rules,autoplay,refusals | ok  |                 | every turn starts with a roll; nothing to choose
+BRAIN | buy      | buy      | autoplay,refusals       | ok  | blocked,refused | choose to buy the tile under you; blocked when the cash is not there
+BRAIN | skip     | skip     | autoplay                | ok  |                 | choose to leave the tile for the bank
+BRAIN | end_turn | end_turn | autoplay                | ok  |                 | hand the dice on
