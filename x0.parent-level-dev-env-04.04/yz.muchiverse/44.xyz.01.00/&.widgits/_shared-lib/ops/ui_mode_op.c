@@ -2,7 +2,9 @@
  * edit/play switch, bars are declared in layouts.pdl, slots stay flexible).
  *
 
- * Usage:  ui_mode_op <sides.txt> --bars <layouts.pdl> [--bars <layouts.pdl>]... [--memory <file>] [--var NAME=VALUE]... [--dry] <edit|play|show>
+ * Usage:  ui_mode_op <sides.txt> --bars <layouts.pdl> [--bars <layouts.pdl>]... [--memory <file>] [--var NAME=VALUE]... [--dry] [--no-settings] <edit|play|show>
+
+ *   --no-settings  switch the bars only: SETTING rows are validated but never read or applied (a test of the bars must not touch a live window's chat flag)
  *   --var     $NAME in a SETTING row is replaced by VALUE (for example HOUSE, APP);  --dry  report what a SETTING would apply and run nothing
  *   <sides.txt>   the window's key=value file (the board template loads it as a vars file; a bar row is shown with show="${key}": "1" = shown, EMPTY = hidden, the side_toggle convention)
  *   layouts.pdl   rows `BAR | id | key | slot | modes | default | group | note`
@@ -39,7 +41,7 @@ static char mem_mode[256][8], mem_key[256][48]; static int mem_on[256], nmem;
 typedef struct { char id[32], file[1024], apply[1024], def_edit[32], def_play[32]; } Setting;
 static Setting SG[16]; static int nsg;
 static char memv_mode[64][8], memv_id[64][32], memv_val[64][32]; static int nmemv;
-static char VARN[8][24], VARV[8][1024]; static int nvar; static int dry;
+static char VARN[8][24], VARV[8][1024]; static int nvar; static int dry; static int nosettings;
 
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 static int split(char *s, char **f, int max) { int n = 0; char *p = s; f[n++] = p; for (; *p; p++) if (*p == '|' && n < max) { *p = 0; f[n++] = p + 1; } for (int i = 0; i < n; i++) f[i] = trim(f[i]); return n; }
@@ -112,12 +114,14 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--bars") && i + 1 < argc && nbf < 16) barfiles[nbf++] = argv[++i];
         else if (!strcmp(argv[i], "--var") && i + 1 < argc && nvar < 8) { char *eq = strchr(argv[++i], '='); if (!eq || eq == argv[i] || (size_t)(eq - argv[i]) > 23) return die2("--var NAME=VALUE"); snprintf(VARN[nvar], 24, "%.*s", (int)(eq - argv[i]), argv[i]); snprintf(VARV[nvar], 1024, "%s", eq + 1); nvar++; }
         else if (!strcmp(argv[i], "--dry")) dry = 1;
+        else if (!strcmp(argv[i], "--no-settings")) nosettings = 1;
         else if (!strcmp(argv[i], "--memory") && i + 1 < argc) memfile = argv[++i];
         else if (!want && argv[i][0] != '-') want = argv[i];
         else return die2("bad argument");
     }
     if (!want || (strcmp(want, "edit") && strcmp(want, "play") && strcmp(want, "show"))) return die2("the mode is edit, play or show");
     for (int i = 0; i < nbf; i++) { int rc = load_bars(barfiles[i]); if (rc) return rc; }
+    if (nosettings) nsg = 0;   /* bars only: SETTING rows are read (so they are checked) but never captured or applied */
     if (nb == 0) return die2("no BAR rows: pass --bars <layouts.pdl>");
     if (!memfile) { char sd[4200]; snprintf(sd, sizeof sd, "%s", sides); char *sl = strrchr(sd, '/'); if (sl) *sl = 0; else strcpy(sd, "."); snprintf(defmem, sizeof defmem, "%s/sides_mode_memory.pdl", sd); memfile = defmem; }
     load_kv(sides); load_mem(memfile);

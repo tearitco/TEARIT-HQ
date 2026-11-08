@@ -1,0 +1,43 @@
+# taskbar_harness_menu: the top taskbar's "harness" cell (cell 11, 2026-11-07, replaced the inert "plugins" cell) is wired end to end by DATA: the strip label, one pair of rows per case in #.desktop/livedesk_taskbar.pdl,
+# NOTE: each case has SCRATCH because the runner silently DROPS an EXPECT_HAS/EXPECT_LACKS row when there is no scratch dir (harness_case_op.c line 283, found 2026-11-07: 6 checks printed nothing and the verdict said passed=8).
+# every listed case exists, and the manager has the cell-11 dispatch and the run verb. WIRING ONLY: the click itself needs the live taskbar relaunched (not done by this case); the run command was proved separately in scratch.
+RESULTS | ../results/taskbar_harness_menu.txt
+ENV | LC_ALL | C
+
+CASE    | strip
+SCRATCH |
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm | id="strip-cell-11" label="harness" | the-top-strip-cell-11-says-harness
+RUN | /usr/bin/grep | -c | label="plugins" | $HOUSE/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm
+EXPECT_EXIT | 1 | NEGATIVE-the-old-plugins-label-is-gone
+
+CASE    | rows
+SCRATCH |
+EXPECT_HAS | $HOUSE/#.desktop/livedesk_taskbar.pdl | harness_menu_1_cmd | the-first-menu-row-exists
+RUN | /usr/bin/grep | -c | ^SECTION .*| harness_menu_[0-9]*_cmd .*| livedesk:run-harness: | $HOUSE/#.desktop/livedesk_taskbar.pdl
+EXPECT_OUT | 5 | five-rows-each-name-the-run-verb
+RUN | /usr/bin/test | -f | $HOUSE/&.widgits/_shared-lib/harness/cases/deskopoly.pdl
+EXPECT_EXIT | 0 | deskopoly-case-exists
+RUN | /usr/bin/test | -f | $HOUSE/&.widgits/_shared-lib/harness/cases/ui_mode.pdl
+EXPECT_EXIT | 0 | ui_mode-case-exists
+RUN | /usr/bin/test | -f | $HOUSE/&.widgits/_shared-lib/harness/cases/py_lint.pdl
+EXPECT_EXIT | 0 | py_lint-case-exists
+RUN | /usr/bin/test | -f | $HOUSE/&.widgits/_shared-lib/harness/cases/spawn_lint.pdl
+EXPECT_EXIT | 0 | spawn_lint-case-exists
+RUN | /usr/bin/test | -f | $HOUSE/&.widgits/_shared-lib/harness/cases/dust_gen.pdl
+EXPECT_EXIT | 0 | dust_gen-case-exists
+RUN | /usr/bin/test | -f | $HOUSE/&.widgits/_shared-lib/harness/cases/no_such_case_zz.pdl
+EXPECT_EXIT | 1 | NEGATIVE-the-existence-check-can-fail
+
+CASE    | manager
+SCRATCH |
+# the manager source is thousands of lines and EXPECT_HAS reads only the first 16 KB, so these use grep -q and the exit code
+RUN | /usr/bin/grep | -qF | strcmp(cid, "harness") == 0 \p\p which == 11 | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | cell-11-opens-the-harness-menu
+RUN | /usr/bin/grep | -qF | "livedesk:run-harness:", 21 | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-run-verb-is-dispatched
+RUN | /usr/bin/grep | -qF | cpu_gate.+x\" \"%s\" run harness- | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | and-it-runs-behind-cpu_gate
+RUN | /usr/bin/grep | -qF | livedesk_build_prefixed_menu(house_root, menu, max, "harness") | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-harness-menu-uses-the-shared-builder-not-a-copy
+RUN | /usr/bin/grep | -qF | cell-11-nonexistent-zz | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 1 | NEGATIVE-a-string-that-is-not-there-is-not-found

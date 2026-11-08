@@ -54,7 +54,7 @@ static int g_ox = 0, g_oy = 0;
 
 static const char *k_fallback[N_CELLS] = {
     "HQ", "user", "file", "desks", "pals", "palettes", "edit",
-    "player", "db", "plugins", "toys", "store", "network", "h-ai", "time"
+    "player", "db", "harness", "toys", "store", "network", "h-ai", "time"
 };
 
 static void slog(const char *fmt, ...) {

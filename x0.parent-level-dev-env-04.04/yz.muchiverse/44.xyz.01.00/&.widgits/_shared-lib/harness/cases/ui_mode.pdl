@@ -6,25 +6,25 @@ ENV | LC_ALL | C
 CASE    | modes
 SCRATCH |
 WRITE   | sides.txt | side_left=\nside_right=1\nside_pal=1\neditor_note=keep\n
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | show
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --no-settings | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | show
 EXPECT_OUT_IS | UIMODE edit | a-window-with-no-ui_mode-key-is-in-edit
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
-# 2026-11-07: the editor layouts.pdl now lists pets for edit AND play (owner: play shows entities, not palettes), so Play shows pets and the game bar and hides palettes and chat
-EXPECT_OUT_IS | UIMODE edit->play on=pets,seats off=palettes,chat | play-shows-the-pets-bar-and-the-games-bar-and-hides-palettes-and-chat
-EXPECT_FILE | sides.txt | side_left=1\nside_right=\nside_pal=\neditor_note=keep\nside_game_seats=1\nui_mode=play\nmode_edit=\nmode_play=1\n | the-keys-are-1-or-EMPTY-and-a-key-no-bar-declares-is-kept
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --no-settings | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
+# 2026-11-07: the editor layouts.pdl lists pets for edit AND play and keeps the chat bar in both (owner: Play shows entities and the game chat, never palettes), so Play shows pets, chat and the game bar and hides palettes
+EXPECT_OUT_IS | UIMODE edit->play on=pets,chat,seats off=palettes | play-shows-the-pets-bar-the-chat-bar-and-the-games-bar-and-hides-palettes
+EXPECT_FILE | sides.txt | side_left=1\nside_right=1\nside_pal=\neditor_note=keep\nside_game_seats=1\nui_mode=play\nmode_edit=\nmode_play=1\n | the-keys-are-1-or-EMPTY-and-a-key-no-bar-declares-is-kept
 RUN | cp | $T/sides.txt | $T/sides.before
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --no-settings | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
 RUN | cmp | $T/sides.txt | $T/sides.before
 EXPECT_EXIT | 0 | switching-to-the-mode-you-are-in-changes-nothing
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | show
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --no-settings | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | show
 EXPECT_OUT_IS | UIMODE play | show-reports-the-mode-and-writes-nothing
 
 # the user hid the palettes in edit, went to play and came back: the editor is exactly as they left it (a round trip)
 CASE    | memory
 SCRATCH |
 WRITE   | sides.txt | side_left=\nside_right=1\nside_pal=\nui_mode=edit\nmode_edit=1\nmode_play=\neditor_note=keep\nside_game_seats=\n
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | edit
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --no-settings | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | play
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x | $T/sides.txt | --no-settings | --bars | $HOUSE/@.apps/rpg-edit-hq/layouts.pdl | --bars | $HOUSE/@.apps/deskopoly/layouts.pdl | edit
 EXPECT_OUT_IS | UIMODE play->edit on=chat off=palettes,pets,seats | back-in-edit-the-chat-returns-and-the-hidden-palettes-stay-hidden
 EXPECT_FILE | sides.txt | side_left=\nside_right=1\nside_pal=\nui_mode=edit\nmode_edit=1\nmode_play=\neditor_note=keep\nside_game_seats=\n | the-round-trip-restores-the-file-byte-for-byte
 EXPECT_HAS | sides_mode_memory.pdl | MEM \p edit \p side_pal \p off | the-memory-file-holds-the-users-choice

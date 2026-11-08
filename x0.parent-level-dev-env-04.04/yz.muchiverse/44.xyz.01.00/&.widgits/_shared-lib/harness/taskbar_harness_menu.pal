@@ -1,0 +1,4 @@
+# taskbar_harness_menu.pal - wiring of the top taskbar harness cell. See cases/taskbar_harness_menu.pdl
+exec ./ops/+x/harness_case_op.+x cases/taskbar_harness_menu.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/taskbar_harness_menu.pdl
+halt

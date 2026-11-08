@@ -4038,14 +4038,16 @@ static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cel
  * canonical row-writer is this dedicated-prefix PDL shape
  * (`network_menu_N_label`/`_cmd`), same as palettes, not a literal
  * `strip_btn_13_menu_N` guess. */
-static int livedesk_build_network_menu(const char *house_root, HQMenuItem *menu, int max) {
+/* 2026-11-07: ONE builder for every "<prefix>_menu_N_label / _cmd" dropdown (network, harness): the owner's rule is one authority per fact and zero C to add a row,
+ * so the second consumer (the harness cell) shares this instead of copying the loop. */
+static int livedesk_build_prefixed_menu(const char *house_root, HQMenuItem *menu, int max, const char *prefix) {
     char pdl[KTB_PATH_BUF];
     snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
     int count = 0;
     for (int i = 1; i <= max; i++) {
-        char lkey[40], ckey[40];
-        snprintf(lkey, sizeof(lkey), "network_menu_%d_label", i);
-        snprintf(ckey, sizeof(ckey), "network_menu_%d_cmd", i);
+        char lkey[64], ckey[64];
+        snprintf(lkey, sizeof(lkey), "%s_menu_%d_label", prefix, i);
+        snprintf(ckey, sizeof(ckey), "%s_menu_%d_cmd", prefix, i);
         char lab[64] = "", cmd[KTB_PATH_BUF] = "";
         read_key_value(pdl, lkey, lab, sizeof(lab));
         read_key_value(pdl, ckey, cmd, sizeof(cmd));
@@ -4056,6 +4058,10 @@ static int livedesk_build_network_menu(const char *house_root, HQMenuItem *menu,
     }
     return count;
 }
+static int livedesk_build_network_menu(const char *house_root, HQMenuItem *menu, int max) { return livedesk_build_prefixed_menu(house_root, menu, max, "network"); }
+/* 2026-11-07 the "harness" cell (positional 11; it was the inert "plugins" cell, owner: "it could replace plugins, that's not used"): the harness cases to run, one
+ * `harness_menu_N_label` / `_cmd` row each in livedesk_taskbar.pdl (cmd = livedesk:run-harness:<case>). */
+static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu, int max) { return livedesk_build_prefixed_menu(house_root, menu, max, "harness"); }
 
 /* Real HQ button's own menu ($.restart / X.quit / cancel), ported from
  * tp_taskbar.c's load_hq_config(): reads #.desktop/livedesk_taskbar.pdl's
@@ -5185,6 +5191,8 @@ void ktb_hq_open(KtbState *s, int which) {
         ktb_hq_close(s);
         return;
     }
+    /* harness - owner 2026-11-07: cell 11 (was the inert "plugins" cell) lists the harness cases to run (harness_menu_N_* rows in livedesk_taskbar.pdl). */
+    else if (strcmp(cid, "harness") == 0 || which == 11) n = livedesk_build_harness_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else { ktb_hq_close(s); return; } /* inert cell (8/11/13, no real id declared - "edit"/"plugins"/"store") or unknown - close any open popup, no-op otherwise, matching the legacy exactly. */
     if (n <= 0) {
         snprintf(s->hq_menu[0].label, sizeof(s->hq_menu[0].label), "(empty)");
@@ -5600,6 +5608,24 @@ void ktb_hq_activate(KtbState *s, int row) {
                  s->house_root, pcat, s->house_root);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
+        ktb_hq_close(s);
+    } else if (strncmp(m->command, "livedesk:run-harness:", 21) == 0) {
+        /* harness cell rows (2026-11-07): run ONE harness case, heavy work asks first (AGENTS.md): behind cpu_gate (one heavy job at a time, niced, waits up to 120 s for the machine
+         * to calm down), the verdict printed by the verdict op into #.desktop/harness_last.txt (ONE file, overwritten, never grows). The case name is checked to be [A-Za-z0-9_-]+ and
+         * the case file must exist, so the sh string below can never carry anything but a case name. Live cases (LIVE_OK) are not in the menu and skip anyway without it. */
+        const char *cs = m->command + 21; int ok = cs[0] != '\0' && strlen(cs) < 64;
+        for (const char *p = cs; ok && *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) ok = 0;
+        char hd[KTB_PATH_BUF], cf[KTB_PATH_BUF];
+        snprintf(hd, sizeof(hd), "%s/&.widgits/_shared-lib/harness", s->house_root);
+        snprintf(cf, sizeof(cf), "%s/cases/%s.pdl", hd, cs);
+        if (ok && access(cf, R_OK) == 0) {
+            char sh[KTB_PATH_BUF * 4];
+            snprintf(sh, sizeof(sh),
+                     KTB_SETSID "nohup sh -c 'cd \"%s\" && rm -f results/%s.txt && \"%s/&.widgits/_shared-lib/ops/+x/cpu_gate.+x\" \"%s\" run harness-%s --wait 120 -- ./ops/+x/harness_case_op.+x cases/%s.pdl >/dev/null 2>&1; ./ops/+x/harness_verdict_op.+x cases/%s.pdl 2>&1 | tail -1 > \"%s/#.desktop/harness_last.txt\"' >/dev/null 2>&1 &",
+                     hd, cs, s->house_root, s->house_root, cs, cs, cs, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
+        }
         ktb_hq_close(s);
     } else if (strncmp(m->command, "livedesk:open-network:", 22) == 0) {
         /* network cell rows ("13.network" dropdown). FULLY data-driven
