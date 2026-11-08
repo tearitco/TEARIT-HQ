@@ -6,3 +6,4 @@ HARNESS | dsk_play    | * | CASE | classic play   | dsk_play    | - | - | no | r
 HARNESS | dsk_jail    | * | CASE | classic jail   | dsk_jail    | - | - | no | doubles, Go To Jail, the Jail turn (pay, roll for doubles, forced fine), debt rules (milestone M4)
 HARNESS | dsk_cards   | * | CASE | classic cards  | dsk_cards   | - | - | no | the Luck and Fund decks: every effect kind, the kept Get Out card, chained card moves, loader refusals (milestone M5)
 HARNESS | dsk_build   | * | CASE | classic build  | dsk_build   | - | - | no | houses, hotels, the supply, mortgages, pay_debt, net worth, bankruptcy with mortgage interest (milestone M6)
+HARNESS | dsk_page    | * | CASE | classic page   | dsk_page    | - | - | no | the map the editor draws during Play: houses, hotels, mortgages and player rows from the ledger, one voxel high, marker cap, tamper refusal

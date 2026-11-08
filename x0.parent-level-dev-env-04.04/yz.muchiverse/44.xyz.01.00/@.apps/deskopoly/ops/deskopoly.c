@@ -867,7 +867,7 @@ static int v_page(int argc, char **argv) {
     load_page(); if (nt % 4 || nt / 4 + 1 < 3) bad("the ring needs tiles = 4 x (side - 1) with side >= 3");
     int st, rc = replay(&st); if (rc) return 1; int n = nt / 4 + 1, W = n * PG_block, H = W; if (W > 64) bad("page too large");
     static int ct[64][64], cd[64][64]; for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) { ct[y][x] = PG_floor; cd[y][x] = 1; }
-    int owned = 0;
+    int owned = 0, n_houses = 0, n_hotels = 0, n_mort = 0, n_ev = 0;   /* what THIS page drew, printed so a harness checks the picture without parsing the cells */
     for (int i = 0; i < nt; i++) { int bx, by; ring_xy(i, n, &bx, &by); int tf; const char *kd = T[i].kind;
         if (!strcmp(kd, "go")) tf = PG_go; else if (!strcmp(kd, "tax")) tf = PG_tax; else if (!strcmp(kd, "rest") || !strcmp(kd, "free")) tf = PG_rest; else if (!strcmp(kd, "chance")) tf = PG_chance; else if (!strcmp(kd, "chest")) tf = PG_chest;
         else if (!strcmp(kd, "jail")) tf = PG_jail; else if (!strcmp(kd, "gotojail")) tf = PG_gotojail; else tf = PG_group[g_schema == 2 ? (T[i].group < 10 ? T[i].group : 0) : (T[i].group & 7)];
@@ -875,8 +875,8 @@ static int v_page(int argc, char **argv) {
         for (int y = 0; y < PG_block; y++) for (int x = 0; x < PG_block; x++) { ct[by * PG_block + y][bx * PG_block + x] = tf; cd[by * PG_block + y][bx * PG_block + x] = rise; }
         if (st && owner[i] >= 0) { ct[by * PG_block + PG_block / 2][bx * PG_block + PG_block / 2] = PG_owner[owner[i]]; owned++; }
         if (st && g_schema == 2 && PG_block == 3) { int ox = bx * 3, oy = by * 3;
-            if (mort[i]) for (int y = 0; y < 3; y++) for (int x = 0; x < 3; x++) if (x != 1 || y != 1) ct[oy + y][ox + x] = PG_mort;                                                   /* a mortgaged tile floods */
-            static const int ex[4] = {1, 0, 2, 1}, ey[4] = {0, 1, 1, 2}; for (int k = 0; k < 4; k++) if (bld[i] == 5 || k < bld[i]) ct[oy + ey[k]][ox + ex[k]] = bld[i] == 5 ? PG_hotel : PG_house;   /* houses fill the edge-middles, a hotel takes all four */
+            if (mort[i]) n_mort++; if (mort[i]) for (int y = 0; y < 3; y++) for (int x = 0; x < 3; x++) if (x != 1 || y != 1) ct[oy + y][ox + x] = PG_mort;                                                   /* a mortgaged tile floods */
+            if (bld[i] == 5) n_hotels++; else n_houses += bld[i]; static const int ex[4] = {1, 0, 2, 1}, ey[4] = {0, 1, 1, 2}; for (int k = 0; k < 4; k++) if (bld[i] == 5 || k < bld[i]) ct[oy + ey[k]][ox + ex[k]] = bld[i] == 5 ? PG_hotel : PG_house;   /* houses fill the edge-middles, a hotel takes all four */
         } }
     static char buf[64 * 64 * 12 + 512]; buf[0] = 0;
     ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles, HD_rock);
@@ -889,14 +889,14 @@ static int v_page(int argc, char **argv) {
         static const int pr[8][3] = {{220, 60, 60}, {60, 120, 230}, {60, 190, 90}, {230, 200, 50}, {180, 80, 200}, {60, 200, 200}, {240, 140, 40}, {200, 200, 200}};
         static const int sx[4] = {1, 0, 2, 1}, sy[4] = {1, 0, 0, 2}; static char evb[2048]; evb[0] = 0; int cnt[64]; memset(cnt, 0, sizeof cnt);
         for (int pl = 0; pl < np_game && pl < 8; pl++) if (!out[pl] && pos[pl] >= 0 && pos[pl] < nt && pos[pl] < 64) { int bx, by; ring_xy(pos[pl], n, &bx, &by); int s = cnt[pos[pl]]++; if (s > 3) s = 3;
-            ap(evb, sizeof evb, "%d %d %d %d %d People1 %d 2 1 %d\n", bx * PG_block + sx[s], by * PG_block + sy[s], pr[pl][0], pr[pl][1], pr[pl][2], pl, pl + 1); }
+            n_ev++; ap(evb, sizeof evb, "%d %d %d %d %d People1 %d 2 1 %d\n", bx * PG_block + sx[s], by * PG_block + sy[s], pr[pl][0], pr[pl][1], pr[pl][2], pl, pl + 1); }
         write_atomic(dd, "events.txt", evb);
     } else if (stat(q, &sb)) write_atomic(dd, "events.txt", "");
     snprintf(q, sizeof q, "%s/skin.txt", dd); if (stat(q, &sb)) write_atomic(dd, "skin.txt", "rmmv\n");
     snprintf(q, sizeof q, "%s/extrusion.pdl", dd); if (stat(q, &sb)) write_atomic(dd, "extrusion.pdl", "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | deskopoly\nMETA         | desk_id            | board\nMETA         | note               | deskopoly board page, drawn from board.pdl + the ledger by `deskopoly page`\n");
     snprintf(q, sizeof q, "%s/cells.rgba", dd);
     if (argc > 1 && stat(q, &sb)) { FILE *a = fopen(argv[1], "rb"); if (!a) bad("cannot read the atlas"); FILE *o = fopen(q, "wb"); if (!o) bad("cannot write the atlas"); char b[8192]; size_t k; while ((k = fread(b, 1, sizeof b, a)) > 0) fwrite(b, 1, k, o); fclose(a); fclose(o); }
-    printf("PAGE %s %dx%d tiles=%d owned=%d\n", dd, W, H, nt, owned); return 0;
+    printf("PAGE %s %dx%d tiles=%d owned=%d houses=%d hotels=%d mortgaged=%d events=%d\n", dd, W, H, nt, owned, n_houses, n_hotels, n_mort, n_ev); return 0;
 }
 /* preview: a FLAT top-down picture of a desk (cells.txt + cells.rgba), tile by tile, no depth, no engine. Raw RGBA, for raw_to_png. It is not the engine's render. */
 static int v_preview(int argc, char **argv) {

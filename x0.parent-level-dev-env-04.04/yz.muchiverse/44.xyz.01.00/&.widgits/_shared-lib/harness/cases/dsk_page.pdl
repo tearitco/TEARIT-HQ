@@ -1,0 +1,158 @@
+# dsk_page: the deskopoly `page` verb (the map the editor draws while Play runs): what it DRAWS from the ledger, byte for byte, and what it refuses.
+# Method as dsk_build: one autoplayed 3-pet game (seed 6) is cut as a ledger PREFIX at the lines where a first house, a hotel and a first mortgage exist. Every value was OBSERVED on 2026-11-08,
+# and the three decoration counts were cross-checked against the cell picture by hand (+1 house cell, hotel = 4 cells replacing 4 house cells, a mortgage floods 8 cells; full game 9 x 8 = 72).
+# VACUITY GUARDS: the base case asserts ledger line 83 is the first build, 91 the first hotel, 362 the first mortgage; the picture really changes between prefixes (cmp differs); a tampered copy is
+# first shown to HAVE the edit (grep count 1) before it is shown to be refused. (The first run of this case caught a no-op tamper edit: that is what the guard is for.)
+# RULES COVERED: one voxel high (no cell deeper than 2), flat desk (no EXTRUDE row), cells.marker grows one byte per page and wraps at 4096 (a capped runtime file), page is idempotent, `noevents` leaves
+# events.txt to the caller that animates the walk, the atlas is copied once and never overwritten, a tampered ledger and a missing desk folder write nothing.
+# FINDING PINNED: with no ledger the page is the default ruleset's (mini, 15x15) bare board. When the default becomes classic, change that one row.
+# NOT COVERED: how the 3D engine draws these rows (see the live editor run), the walk animation (dsk_walk), the driver (dsk_driver).
+RESULTS | ../results/dsk_page.txt
+ENV | LC_ALL | C
+
+CASE    | base
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | m
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=527 rounds=74 over=1 winner=p1 | the-base-game-is-the-one-the-numbers-were-observed-on
+RUN | /usr/bin/sed | -n | 83p | $T/m/ledger.txt
+EXPECT_OUT | \pp1\pbuild\p1\p | VACUITY-ledger-line-83-is-the-first-house-build
+RUN | /usr/bin/sed | -n | 91p | $T/m/ledger.txt
+EXPECT_OUT | hotel | VACUITY-ledger-line-91-builds-the-first-hotel
+RUN | /usr/bin/sed | -n | 362p | $T/m/ledger.txt
+EXPECT_OUT | \pmortgage\p16\p | VACUITY-ledger-line-362-is-the-first-mortgage
+
+CASE    | prefix82
+MKDIR   | p82
+MKDIR   | d82
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p82/ledger.txt
+RUN | /usr/bin/sed | -i | 83,$d | $T/p82/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/d82
+EXPECT_OUT | 33x33 tiles=40 owned=13 houses=0 hotels=0 mortgaged=0 events=3 | the-page-draws-what-the-ledger-holds-at-line-82
+
+CASE    | prefix83
+MKDIR   | p83
+MKDIR   | d83
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p83/ledger.txt
+RUN | /usr/bin/sed | -i | 84,$d | $T/p83/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p83 | page | $T/d83
+EXPECT_OUT | 33x33 tiles=40 owned=13 houses=1 hotels=0 mortgaged=0 events=3 | the-page-draws-what-the-ledger-holds-at-line-83
+
+CASE    | prefix90
+MKDIR   | p90
+MKDIR   | d90
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p90/ledger.txt
+RUN | /usr/bin/sed | -i | 91,$d | $T/p90/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p90 | page | $T/d90
+EXPECT_OUT | 33x33 tiles=40 owned=13 houses=8 hotels=0 mortgaged=0 events=3 | the-page-draws-what-the-ledger-holds-at-line-90
+
+CASE    | prefix91
+MKDIR   | p91
+MKDIR   | d91
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p91/ledger.txt
+RUN | /usr/bin/sed | -i | 92,$d | $T/p91/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p91 | page | $T/d91
+EXPECT_OUT | 33x33 tiles=40 owned=13 houses=4 hotels=1 mortgaged=0 events=3 | the-page-draws-what-the-ledger-holds-at-line-91
+
+CASE    | prefix361
+MKDIR   | p361
+MKDIR   | d361
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p361/ledger.txt
+RUN | /usr/bin/sed | -i | 362,$d | $T/p361/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p361 | page | $T/d361
+EXPECT_OUT | 33x33 tiles=40 owned=27 houses=7 hotels=5 mortgaged=0 events=3 | the-page-draws-what-the-ledger-holds-at-line-361
+
+CASE    | prefix362
+MKDIR   | p362
+MKDIR   | d362
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p362/ledger.txt
+RUN | /usr/bin/sed | -i | 363,$d | $T/p362/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p362 | page | $T/d362
+EXPECT_OUT | 33x33 tiles=40 owned=27 houses=7 hotels=5 mortgaged=1 events=3 | the-page-draws-what-the-ledger-holds-at-line-362
+
+CASE    | prefix527
+MKDIR   | p527
+MKDIR   | d527
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p527/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p527 | page | $T/d527
+EXPECT_OUT | 33x33 tiles=40 owned=28 houses=0 hotels=8 mortgaged=9 events=1 | the-page-draws-what-the-ledger-holds-at-line-527
+
+CASE    | picture
+RUN | /usr/bin/cmp | -s | $T/d82/cells.txt | $T/d83/cells.txt
+EXPECT_EXIT | 1 | VACUITY-one-house-changes-the-picture-the-cells-differ
+RUN | /usr/bin/cmp | -s | $T/d82/events.txt | $T/d83/events.txt
+EXPECT_EXIT | 0 | and-a-build-moves-nobody-the-player-rows-are-identical
+RUN | /usr/bin/grep | -cE | ,0,[3-9] | $T/d527/cells.txt
+EXPECT_OUT_IS | 0 | ONE-VOXEL-HIGH-no-cell-of-the-busiest-page-is-deeper-than-2
+RUN | /usr/bin/grep | -c | ,0,2 | $T/d527/cells.txt
+EXPECT_OUT_IS | 33 | and-the-ring-really-has-depth-2-cells-in-all-33-rows-so-the-check-above-can-fail
+EXPECT_LACKS | $T/d527/extrusion.pdl | EXTRUDE | a-flat-desk-has-no-EXTRUDE-row-the-decorations-are-cells-not-height
+EXPECT_HAS | $T/d527/extrusion.pdl | desk_id | and-the-file-names-its-desk
+RUN | /usr/bin/ls | $T/d527
+EXPECT_OUT_IS | cells.marker\ncells.txt\nevents.txt\nextrusion.pdl\nmap.txt\nskin.txt | a-page-writes-exactly-these-six-files-and-no-others-no-ghost-data
+EXPECT_FILE | $T/d82/events.txt | 10 1 220 60 60 People1 0 2 1 1\n31 1 60 120 230 People1 1 2 1 2\n30 0 60 190 90 People1 2 2 1 3\n | three-players-three-RPG-Maker-character-rows-with-their-colours
+EXPECT_FILE | $T/d527/events.txt | 31 28 220 60 60 People1 0 2 1 1\n | a-player-who-is-out-has-no-row-only-the-winner-stands
+
+CASE    | idempotent
+RUN | /usr/bin/cp | $T/d82/cells.txt | $T/d82.cells.copy
+RUN | /usr/bin/rm | $T/d82/cells.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/d82
+RUN | /usr/bin/cmp | $T/d82/cells.txt | $T/d82.cells.copy
+EXPECT_EXIT | 0 | a-deleted-projection-regenerates-byte-for-byte-from-the-ledger
+
+CASE    | marker
+MKDIR   | mk
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/mk
+RUN | /usr/bin/stat | -c | %s | $T/mk/cells.marker
+EXPECT_OUT_IS | 1 | the-first-page-appends-one-byte-the-engine-reloads-on-growth
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/mk
+RUN | /usr/bin/stat | -c | %s | $T/mk/cells.marker
+EXPECT_OUT_IS | 2 | the-second-page-grows-it-again
+RUN | /usr/bin/truncate | -s | 4095 | $T/mk/cells.marker
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/mk
+RUN | /usr/bin/stat | -c | %s | $T/mk/cells.marker
+EXPECT_OUT_IS | 4096 | at-4095-it-still-grows-to-the-cap
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/mk
+RUN | /usr/bin/stat | -c | %s | $T/mk/cells.marker
+EXPECT_OUT_IS | 1 | NEGATIVE-at-the-cap-it-restarts-at-1-so-the-file-never-passes-4096
+
+CASE    | noevents
+MKDIR   | ne
+WRITE   | atlas.dummy | ATLAS
+WRITE   | ne/events.txt | KEEP\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/ne | $T/atlas.dummy | noevents
+EXPECT_OUT | events=0 | noevents-draws-no-player-rows
+EXPECT_FILE | $T/ne/events.txt | KEEP\n | and-leaves-events-txt-to-the-caller-that-animates-the-walk
+EXPECT_FILE | $T/ne/cells.rgba | ATLAS | the-atlas-is-copied-in-once
+WRITE   | atlas.other | OTHER
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/ne | $T/atlas.other | noevents
+EXPECT_FILE | $T/ne/cells.rgba | ATLAS | NEGATIVE-a-second-page-never-overwrites-the-atlas
+
+CASE    | refusals
+MKDIR   | tam
+MKDIR   | tamd
+RUN | /usr/bin/cp | $T/p82/ledger.txt | $T/tam/ledger.txt
+RUN | /usr/bin/sed | -i | 19s/\proll\p/\prolx\p/ | $T/tam/ledger.txt
+RUN | /usr/bin/grep | -c | \prolx\p | $T/tam/ledger.txt
+EXPECT_OUT_IS | 1 | VACUITY-the-tampered-copy-really-has-the-edit
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/tam | page | $T/tamd
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-ledger-is-refused
+EXPECT_OUT | unknown verb rolx | and-the-line-is-named
+EXPECT_NOFILE | $T/tamd/cells.txt | and-nothing-was-drawn
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p82 | page | $T/no_such_desk
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-desk-folder-is-refused
+EXPECT_OUT | the desk folder does not exist | and-it-says-to-make-it-first
+MKDIR   | empty
+MKDIR   | emptyd
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/empty | page | $T/emptyd
+EXPECT_EXIT | 0 | with-no-ledger-the-page-draws-a-bare-board-it-does-not-refuse
+EXPECT_OUT | 15x15 tiles=16 owned=0 houses=0 hotels=0 mortgaged=0 events=0 | FINDING-the-default-ruleset-is-still-mini-so-a-page-before-the-lobby-row-is-the-old-15x15-board
+EXPECT_NOFILE | $T/empty/ledger.txt | and-drawing-never-creates-a-ledger-the-ledger-is-written-only-by-verbs
+RUN | /usr/bin/stat | -c | %s | $T/emptyd/events.txt
+EXPECT_OUT_IS | 0 | and-a-bare-board-has-no-player-rows-events-txt-is-zero-bytes
