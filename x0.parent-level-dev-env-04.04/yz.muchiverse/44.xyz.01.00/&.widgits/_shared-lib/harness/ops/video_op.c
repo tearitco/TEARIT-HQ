@@ -37,12 +37,16 @@ static int wrap(const char *s, int width, char lines[][200], int max) {      /* 
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 static void mk(const char *d) { mkdir(d, 0755); }
 
+/* The slide footer's status word comes from the deck (`FOOTER | progress cut`), never from this program: until 2026-11-07 it was hard-coded as "proposed plan", which put that label on a progress video
+ * that reported built and tested work (seen in a frame of the nov-7 video). No FOOTER row = no status word. */
+static char g_foot[80] = "";
+
 /* one slide: drawtext rows (textfile per row, so no escaping of the content) over a dark background */
 static int slide(int title, const char *head, const char *sub, char bullets[][200], int nb, int n, int total, const char *tmp, const char *out) {
     char flt[8192] = ""; size_t fl = 0; int k = 0; char tf[P];
 #define DT(txt, font, size, col, x, y) do { snprintf(tf, sizeof tf, "%s/t%d.txt", tmp, k++); wfile(tf, txt); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawtext=fontfile=%s:textfile=%s:fontsize=%d:fontcolor=%s:x=%d:y=%d", font, tf, size, col, x, y); } while (0)
     fl += (size_t)snprintf(flt + fl, sizeof flt - fl, "drawbox=x=0:y=0:w=1280:h=10:color=0x5aa0ff:t=fill");
-    char foot[160]; snprintf(foot, sizeof foot, "LyfeDesk  -  proposed plan  -  %d / %d", n, total); DT(foot, FR, 18, "0x788296", 48, 680);
+    char foot[200]; if (g_foot[0]) snprintf(foot, sizeof foot, "LyfeDesk  -  %s  -  %d / %d", g_foot, n, total); else snprintf(foot, sizeof foot, "LyfeDesk  -  %d / %d", n, total); DT(foot, FR, 18, "0x788296", 48, 680);
     if (title) { char L[6][200]; int nl = wrap(head, 26, L, 6); for (int i = 0; i < nl; i++) DT(L[i], FB, 66, "0xebf0ff", 70, 210 + i * 78); nl = wrap(sub, 60, L, 4); for (int i = 0; i < nl; i++) DT(L[i], FR, 30, "0x96beff", 74, 450 + i * 40); }
     else { DT(head, FB, 46, "0xebf0ff", 60, 44); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=60:y=112:w=1160:h=3:color=0x3c5078:t=fill"); int y = 140;
         for (int b = 0; b < nb; b++) { char L[6][200]; int nl = wrap(bullets[b], 66, L, 6); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=66:y=%d:w=14:h=14:color=0x5aa0ff:t=fill", y + 14); for (int i = 0; i < nl; i++) { DT(L[i], FR, 31, "0xdce2f0", 104, y); y += 42; } y += 16; } }
@@ -52,7 +56,9 @@ static int slide(int title, const char *head, const char *sub, char bullets[][20
 static int cmd_deck(const char *deck, const char *outdir) {
     char snaps[P], mpath[P], ln[8192]; snprintf(snaps, sizeof snaps, "%s/snapshots", outdir); mk(outdir); mk(snaps); snprintf(mpath, sizeof mpath, "%s/manifest.txt", outdir);
     FILE *f = fopen(deck, "r"); if (!f) { fprintf(stderr, "video_op: cannot read %s\n", deck); return 1; }
-    static char rows[MAXR][8192]; int nr = 0; while (fgets(ln, sizeof ln, f) && nr < MAXR) { char *t = trim(ln); if (!*t || *t == '#') continue; snprintf(rows[nr++], sizeof rows[0], "%s", t); } fclose(f);
+    static char rows[MAXR][8192]; int nr = 0; while (fgets(ln, sizeof ln, f) && nr < MAXR) { char *t = trim(ln); if (!*t || *t == '#') continue;
+        if (!strncmp(t, "FOOTER", 6)) { char *bar = strchr(t, '|'); if (bar) snprintf(g_foot, sizeof g_foot, "%s", trim(bar + 1)); continue; }      /* FOOTER | text: not a slide */
+        snprintf(rows[nr++], sizeof rows[0], "%s", t); } fclose(f);
     FILE *m = fopen(mpath, "w"); if (!m) return 1; char tmp[P]; snprintf(tmp, sizeof tmp, "%s/.t", outdir); mk(tmp);
     for (int i = 0; i < nr; i++) { char *fld[4] = { 0 }, *p = rows[i]; int nf = 0; while (nf < 4) { fld[nf++] = p; char *b = strchr(p, '|'); if (!b || nf == 4) break; *b = 0; p = b + 1; }
         for (int k = 0; k < nf; k++) { fld[k] = trim(fld[k]); }
@@ -64,7 +70,8 @@ static int cmd_deck(const char *deck, const char *outdir) {
         if (slide(title, fld[1], title ? fld[2] : "", B, nb, i + 1, nr, tmp, out) != 0) { fprintf(stderr, "video_op: ffmpeg failed on slide %d\n", i + 1); fclose(m); return 1; }
         for (char *c = fld[3]; *c; c++) { if (*c == '|') *c = '/'; }
         fprintf(m, "%s | 6 | %s\n", fn, fld[3]); }
-    fclose(m); printf("slides=%d dir=%s\n", nr, outdir); return 0;
+    fclose(m); { char *rm[] = { "rm", "-rf", tmp, NULL }; run(rm, NULL); }      /* the working folder (text files for drawtext) is scratch: never leave it in the output (XO) */
+    printf("slides=%d dir=%s\n", nr, outdir); return 0;
 }
 static void b64(const char *s, char *o) { static const char T[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; size_t n = strlen(s), j = 0;
     for (size_t i = 0; i < n; i += 3) { unsigned v = (unsigned char)s[i] << 16 | (i + 1 < n ? (unsigned char)s[i + 1] << 8 : 0) | (i + 2 < n ? (unsigned char)s[i + 2] : 0); o[j++] = T[v >> 18 & 63]; o[j++] = T[v >> 12 & 63]; o[j++] = i + 1 < n ? T[v >> 6 & 63] : '='; o[j++] = i + 2 < n ? T[v & 63] : '='; } o[j] = 0; }
@@ -107,6 +114,7 @@ static int cmd_render(const char *outdir, int captions, int notts) {
     static char tot[24]; { double sum = 0; for (int i = 0; i < nr; i++) sum += hold[i]; snprintf(tot, sizeof tot, "%.2f", sum); }
     av[ac++] = "-t"; av[ac++] = tot; av[ac++] = "-r"; av[ac++] = "25";      /* the concat demuxer gives the repeated last file an unspecified length: cut at the exact sum of the holds */ av[ac++] = "-c:v"; av[ac++] = "libx264"; av[ac++] = "-pix_fmt"; av[ac++] = "yuv420p"; av[ac++] = out; av[ac] = NULL;      /* no -shortest: both streams are exactly the sum of the holds */
     if (run(av, NULL) != 0) { fprintf(stderr, "video_op: the final ffmpeg failed\n"); return 1; }
+    { char *rm[] = { "rm", "-rf", tmp, NULL }; run(rm, NULL); }      /* 9 frames and every narration wav were left in <outdir>/.t (8.9 MB in XO): scratch, removed once the video is written */
     printf("video=%s rows=%d narrated=%d\n", out, nr, na); return 0;
 }
 int main(int argc, char **argv) {

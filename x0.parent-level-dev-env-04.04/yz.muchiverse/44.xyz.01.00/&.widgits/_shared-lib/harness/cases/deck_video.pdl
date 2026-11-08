@@ -25,3 +25,12 @@ RUN | /usr/bin/ffprobe | -v | error | -show_entries | stream=codec_type | -of | 
 EXPECT_OUT | video | there-is-a-video-stream
 EXPECT_OUT | audio | and-an-audio-stream-not-a-silent-track
 CLEAN |
+
+CASE    | tidy
+# 2026-11-07: the op left its working folder (.t: every frame and narration wav, 8.9 MB) in the output folder, which is XO; and a hard-coded "proposed plan" footer sat on every deck, including progress cuts.
+RUN | /usr/bin/test | -d | $OUT/.t
+EXPECT_EXIT | 1 | NEGATIVE-the-working-folder-dot-t-is-not-left-in-the-output
+RUN | /usr/bin/test | -e | $OUT/snapshots/01_.png
+EXPECT_EXIT | 1 | NEGATIVE-the-existence-check-can-fail-an-unnamed-slide-does-not-exist
+RUN | /usr/bin/grep | -c | LyfeDesk  -  proposed plan | $HOUSE/&.widgits/_shared-lib/harness/ops/video_op.c
+EXPECT_OUT | 0 | the-program-no-longer-contains-a-hard-coded-status-word
