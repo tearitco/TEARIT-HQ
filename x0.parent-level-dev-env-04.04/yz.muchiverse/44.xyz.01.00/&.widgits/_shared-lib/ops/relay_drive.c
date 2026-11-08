@@ -11,7 +11,10 @@
  *        relay_drive <pid> run <cases.pdl> [winid]  run a case file; prints PASS/FAIL per step and a summary; exit 1 on any FAIL
  * Case rows (pipe separated, '#' comments):  STEP | key | <name> ; STEP | type | <text> ; STEP | click | x y ; STEP | tap | x y ; STEP | press | id or label:text ; STEP | tapid | id or label:text ; STEP | sleep | ms ;
  *   STEP | expect | <file> | contains|absent | <text> | <timeout_s> ; STEP | shot | <out.png>
- * Relative file paths in cases resolve against the house root. Keys use the house relay format KEY_PRESSED: <decimal>. Never truncates the relay file. */
+ * Relative file paths in cases resolve against the house root. Keys use the house relay format KEY_PRESSED: <decimal>. Never truncates the relay file.
+ * Env RELAY_DRIVE_NO_ESC=1 = GENTLE mode (added 2026-11-08, for the rpg-edit-hq editor): press sends no Esc and no 'p' key; it finds the element in the window's OWN newest objects dump
+ * (#.desktop/ascii_frames/<pid>.<seq>.objects.pdl, highest seq of that pid), clickable objects only (nav > 0). Why: Esc flipped In: ON to off and closed any open dropdown, and a 'p' typed into an open
+ * dropdown filters its rows, so a menu row (pm-play) could never be found. Leave In: first with ONE key esc step (with In: ON the editor sends digits to the game world). Default mode unchanged. */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +26,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <errno.h>
+#include <dirent.h>
 #define PL 4096
 static char g_house[PL];
 static void ms(int n) { usleep((useconds_t)n * 1000); }
@@ -67,7 +71,7 @@ static int split(char *s, char **f, int max) { int n = 0; f[n++] = s; for (char 
 typedef struct { int nav, x, y, w, h; char id[80], label[200]; } Elem1;
 static int frame_dump(long pid, const char *frame) {
     struct stat st; long long before = 0; if (!stat(frame, &st)) before = (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec;
-    send_key(pid, 27); ms(300); send_key(pid, 'p');
+    if (!getenv("RELAY_DRIVE_NO_ESC")) { send_key(pid, 27); ms(300); } send_key(pid, 'p');
     for (int t = 0; t < 40; t++) { ms(150); if (!stat(frame, &st)) { long long now = (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec; if (now > before) { ms(200); return 1; } } }
     return 0;
 }
@@ -79,13 +83,36 @@ static int find_elem(const char *frame, const char *key, Elem1 *e) {
         memset(e, 0, sizeof *e); snprintf(e->id, sizeof e->id, "%s", fld[1]); snprintf(e->label, sizeof e->label, "%s", fld[3]); e->nav = atoi(fld[6]); e->x = atoi(fld[8]); e->y = atoi(fld[9]); e->w = atoi(fld[10]); e->h = atoi(fld[11]); found = 1; }
     fclose(f); return found;
 }
+/* GENTLE lookup (env RELAY_DRIVE_NO_ESC=1): the newest <pid>.<seq>.objects.pdl in #.desktop/ascii_frames (the window rewrites one whenever its frame changes; the newest is the highest seq, read by OUR pid
+ * only). One line per object: OBJECT tag=T id=I class=C x= y= w= h= nav=N active=A label=L. Only objects with nav > 0 (clickable) match, so label:START finds the button, never the text that also says START. */
+static int objfield(const char *ln, const char *name, char *out, size_t cap) {
+    char pat[40]; snprintf(pat, sizeof pat, " %s=", name); const char *p = strstr(ln, pat); if (!p) return 0; p += strlen(pat);
+    if (!strcmp(name, "label")) { snprintf(out, cap, "%s", p); size_t n = strlen(out); while (n && (out[n - 1] == '\n' || out[n - 1] == '\r')) out[--n] = 0; return 1; }
+    size_t n = strcspn(p, " \n"); if (n >= cap) n = cap - 1; memcpy(out, p, n); out[n] = 0; return 1;
+}
+static int find_elem_objects(long pid, const char *key, Elem1 *e) {
+    char dir[PL], pre[40], best[PL]; best[0] = 0; long bseq = -1; snprintf(dir, sizeof dir, "%s/#.desktop/ascii_frames", g_house); snprintf(pre, sizeof pre, "%ld.", pid);
+    DIR *d = opendir(dir); if (!d) return 0; struct dirent *de; size_t pl = strlen(pre);
+    while ((de = readdir(d))) { if (strncmp(de->d_name, pre, pl)) continue; char *q; long seq = strtol(de->d_name + pl, &q, 10); if (q == de->d_name + pl || strcmp(q, ".objects.pdl")) continue; if (seq > bseq) { bseq = seq; snprintf(best, sizeof best, "%s/%s", dir, de->d_name); } }
+    closedir(d); if (bseq < 0) return 0;
+    FILE *f = fopen(best, "r"); if (!f) return 0; char ln[4096], id[80], lb[200], t[24]; int found = 0, bylabel = !strncmp(key, "label:", 6); const char *want = bylabel ? key + 6 : key;
+    while (!found && fgets(ln, sizeof ln, f)) { if (strncmp(ln, "OBJECT ", 7)) continue; if (!objfield(ln, "id", id, sizeof id) || !objfield(ln, "label", lb, sizeof lb) || !objfield(ln, "nav", t, sizeof t)) continue;
+        int nav = atoi(t); if (nav <= 0) continue; if (!(bylabel ? strstr(lb, want) != NULL : !strcmp(id, want))) continue;
+        memset(e, 0, sizeof *e); snprintf(e->id, sizeof e->id, "%s", id); snprintf(e->label, sizeof e->label, "%s", lb); e->nav = nav;
+        if (objfield(ln, "x", t, sizeof t)) e->x = atoi(t); if (objfield(ln, "y", t, sizeof t)) e->y = atoi(t); if (objfield(ln, "w", t, sizeof t)) e->w = atoi(t); if (objfield(ln, "h", t, sizeof t)) e->h = atoi(t); found = 1; }
+    fclose(f); return found;
+}
 static int press_elem(long pid, const char *key, int by_mouse, char *what, size_t cap) {
     const char *frame = "/tmp/entity-menu-frame.png.frame.txt"; Elem1 e;
+    if (getenv("RELAY_DRIVE_NO_ESC")) {   /* GENTLE mode: read the window's own newest objects dump; no Esc, no 'p' key (a 'p' typed into an open dropdown filters its rows, so menus could never be seen) */
+        if (!find_elem_objects(pid, key, &e)) { snprintf(what, cap, "no clickable element %s in the newest objects dump of pid %ld", key, pid); return 0; }
+    } else {
     if (!frame_dump(pid, frame)) { snprintf(what, cap, "no frame dump after key p (is a field armed, or is the window not responding?)"); return 0; }
     if (!find_elem(frame, key, &e)) { snprintf(what, cap, "no element %s in the frame", key); return 0; }
+    }
     if (by_mouse) { if (e.w <= 0 || e.h <= 0) { snprintf(what, cap, "element %s has no size", key); return 0; } int cx = e.x + e.w / 2, cy = e.y + e.h / 2; send_click(pid, cx, cy, 1); ms(350); send_click(pid, cx, cy, 1); ms(500); snprintf(what, cap, "tapid %s (%d,%d)", key, cx, cy); return 1; }
     if (e.nav <= 0) { snprintf(what, cap, "element %s is not numbered (off screen?)", key); return 0; }
-    char num[16]; snprintf(num, sizeof num, "%d", e.nav); send_key(pid, 27); ms(250); for (const char *c = num; *c; c++) { send_key(pid, (unsigned char)*c); ms(70); } ms(250); send_key(pid, 13); ms(500); snprintf(what, cap, "press %s (nav %d)", key, e.nav); return 1;
+    char num[16]; snprintf(num, sizeof num, "%d", e.nav); if (!getenv("RELAY_DRIVE_NO_ESC")) { send_key(pid, 27); ms(250); } for (const char *c = num; *c; c++) { send_key(pid, (unsigned char)*c); ms(70); } ms(250); send_key(pid, 13); ms(500); snprintf(what, cap, "press %s (nav %d)", key, e.nav); return 1;
 }
 static int run_cases(long pid, const char *cases, const char *win) {
     FILE *f = fopen(cases, "r"); if (!f) { perror(cases); return 2; } char ln[1024], *fd[8]; int no = 0, pass = 0, fail = 0;

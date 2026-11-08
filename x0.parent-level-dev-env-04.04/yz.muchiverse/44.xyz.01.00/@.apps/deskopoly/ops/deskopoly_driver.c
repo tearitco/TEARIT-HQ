@@ -144,7 +144,7 @@ static void publish(void) {
      * the pets bar is shown with the game players as its party, and the h-ai chat gives way to the game chat. When the game ends the feed drops to gm_on= and the editor values show again. */
     catn(o, sizeof o, "side_pal=\nside_left=1\nn_chat=0\nchat_is_hai=\nchat_is_edit=\nchat_is_net=\ngm_chat_title=DESKOPOLY table talk\nnick_line=Deskopoly players\nstat_line=pets play, you watch or take a seat\nstat_line2=Stop freezes, Play resumes\n");
     if (have) catn(o, sizeof o, UI);
-    snprintf(b, sizeof b, "%.30s", msg); add_text(b);
+    snprintf(b, sizeof b, "%.90s", msg); add_text(b);   /* the renderer wraps long popup text itself; the old 30-char cut hid "choose the players, then START" and "(opening throw)" */
     if (!have) { catn(o, sizeof o, "n_party=0\n");
         snprintf(b, sizeof b, "%d players, seed %d", nplayers, seed); add_text(b);
         add_btn("players -", "players_down"); add_btn("players +", "players_up");
@@ -213,6 +213,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "human_next")) { if (!mode_play) human_seat = (human_seat + 1) % (nplayers + 1); }
     else if (!strcmp(c, "seed_next")) { if (!mode_play) seed = seed * 31 % 9973 + 7; }
     else if (!strcmp(c, "speed_next")) { speed = (speed + 1) % 3; }
+    else if (!strcmp(c, "setup_reset")) { if (!mode_play) { nplayers = 3; human_seat = 0; seed = 7; speed = 1; snprintf(msg, sizeof msg, "Choose the players, then START"); } }   /* a defined starting point for a script: the setup choices PERSIST across New game (a convenience), so a repeatable run resets them first; preferences only, never the ledger */
     else if (!strcmp(c, "start")) { if (!mode_play) begin_game(); }
     else if (!strcmp(c, "step")) { if (mode_play && !running()) tick_once(); }
     else if (!strcmp(c, "new_game")) { if (mode_play) { archive_game(); mode_play = 0; set_desk("board"); walk_reset(); snprintf(msg, sizeof msg, "the last game is in archive/; choose the players, then START"); } }

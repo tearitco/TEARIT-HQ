@@ -1,0 +1,31 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-seat-turns.pdl - play three rounds as seat p1 with the popup buttons (Roll, Buy, End turn). Starts right after dsk-seat-setup.pdl. SEED 7, 3 players, p1 human: the dice are derived from the ledger,
+# so the same game happens every time: round 1 p1 lands on a Luck tile (End turn only), round 2 on Power (Buy 150), round 3 on Orange3 (Buy 200). If the engine's rules change this script fails loudly at the
+# Sync on the LEDGER (it cannot be overwritten); the feed text is replaced within a moment once the pets move at fast speed (a "you: p1 end_turn" wait failed on exactly that). Fails loudly at the
+# first missing button: that is intended (a presentation must not silently show a different game). Waits use the feed text and the ledger, never a fixed sleep.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-turns.pdl <x window id>
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | total=2 | 10
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | shot | @.apps/deskopoly/shots/04-round1-my-turn.png
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you: p1 roll | 10
+STEP | shot | @.apps/deskopoly/shots/05-round1-landed.png
+STEP | press | label:End turn
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you: p1 roll | 10
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Buy Power | 10
+STEP | shot | @.apps/deskopoly/shots/06-round2-buy-decision.png
+STEP | press | label:Buy Power
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | bought-150 | 10
+STEP | press | label:End turn
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Buy Orange3 | 10
+STEP | press | label:Buy Orange3
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | bought-200 | 10
+STEP | shot | @.apps/deskopoly/shots/07-round3-bought.png
+STEP | press | label:End turn
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | next=p2;round=3 | 10

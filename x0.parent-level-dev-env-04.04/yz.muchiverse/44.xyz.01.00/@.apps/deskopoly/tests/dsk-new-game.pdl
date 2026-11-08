@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-new-game.pdl - back to the SETUP screen from a running game: the popup's New game archives the finished game (archive/, the last 3 are kept) and the world returns to the board desk.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-new-game.pdl <x window id>   (In: must be off: see dsk-seat-setup.pdl, first row)
+# Needs a game on (the New game button exists only then). Elements are found by label in the window's own frame dump, never by pixel.
+STEP | press | label:New game
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15

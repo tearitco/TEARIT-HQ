@@ -1,0 +1,43 @@
+# nav.pdl - how an agent (or a presentation script) DRIVES Deskopoly inside the rpg-edit-hq editor, fast and without guessing (2026-11-08; every row was learned by driving the real window).
+# Format:  NAV | kind | name | value | note        (data only; the executable form is tests/*.pdl, run by `relay_drive <pid> run <script> <winid>`)
+# Source of truth for what is on screen: the window's OWN text dump, #.desktop/ascii_frames/<pid>.<seq>.objects.pdl (highest seq of OUR pid): one line per object with id, x y w h, nav, label.
+# Never keep a pixel or nav-number table: nav numbers shift (the popup's first button is nav 22 in setup, 27 in play, 37 with the Player menu open); ids and labels do not.
+
+# ---- the protocol (each row is a mistake that cost a run) ----
+NAV | protocol | leave-in      | key esc                          | with In: ON the editor sends keys to the game world, so typed nav digits do not navigate; ONE Esc leaves In (more are harmless)
+NAV | protocol | gentle        | RELAY_DRIVE_NO_ESC=1             | relay_drive's own Esc flips In: and closes an open dropdown, and its 'p' key is typed into an open dropdown's search; gentle mode reads the objects dump instead
+NAV | protocol | menu-rows     | tapid pm-*                       | Player-menu rows react to a mouse click, not to Enter (Enter closes the menu without firing the row)
+NAV | protocol | popup-buttons | press label:<text>               | the popup buttons (gmb0..) react to nav digits + Enter; label match is "first CLICKABLE element whose label contains the text" (gentle mode)
+NAV | protocol | tap-once      | verify in the ledger, then retry | a focused button activates on ONE tap; a blind double tap pressed Roll and then End turn (the list changes under your finger)
+NAV | protocol | sync          | the LEDGER, not the popup text   | at fast speed the pets overwrite the popup message within a moment; the ledger cannot be overwritten
+NAV | protocol | step-fields    | no bar inside a STEP field       | a STEP row splits on |, so expectations hold no bar (use next=p2;round=3, bought-150, total=2)
+NAV | protocol | start-state   | deskopoly_ctl new_game, setup_reset | setup choices (seat, speed) persist across New game; setup_reset gives 3 players, no seat, seed 7, normal speed
+NAV | protocol | restore       | press tb-in                      | the harness leaves In: off after the Esc; press tb-in once at the end to hand the editor back as found (default is ON)
+
+# ---- stable ids (resolve at run time from the dump) ----
+NAV | id | tb-in        | In: ON/off toggle                         | toolbar tab
+NAV | id | tb-player    | Player menu (opens the dropdown)          | toolbar tab, "Player: playing/stopped"
+NAV | id | pm-play      | Player > Play                             | starts the book's driver (deskopoly_driver); tapid
+NAV | id | pm-stop      | Player > Stop                             | freezes the game (the ledger stops growing); tapid
+NAV | id | pm-cancel    | Player > - cancel -                       | closes the menu
+NAV | id | gmb0..gmbN   | the game popup buttons, top to bottom     | setup: players -, players +, you play: <none|pN>, seed N (next), speed: <fast|normal|slow>, START GAME; play: Roll | Buy <tile> (<price>) + Skip | End turn, then speed: ..., New game
+NAV | id | pt0..ptN     | the players bar rows (left)               | "> p1 A $1190" = cash, current turn marked with >
+NAV | id | gme0         | the footer item, all players              | ">p1 1540  p2 1490" = NET WORTH (cash is in the left bar)
+NAV | id | say          | the table-talk input (right)              | not used by the game yet
+
+# ---- scripts (tests/) ----
+NAV | script | dsk-new-game   | tests/dsk-new-game.pdl   | popup New game -> setup screen
+NAV | script | dsk-seat-setup | tests/dsk-seat-setup.pdl | Play, speed fast, you play p1, START GAME (15 steps, 3 shots)
+NAV | script | dsk-seat-turns | tests/dsk-seat-turns.pdl | three rounds as p1 with Roll / Buy / End turn (24 steps, 4 shots); seed 7 is deterministic
+NAV | case   | live_dsk_seat   | harness/cases/live_dsk_seat.pdl | the whole chain in the real window (LIVE_OK=1); shots land in @.apps/deskopoly/shots/ (git-ignored, wiped at the start of each run)
+
+# ---- the overhead 3D camera (the whole 33x33 board with the extruded players) ----
+# pan values are RELATIVE to the session's cam_home (it changes on every relaunch: 8 8 0 0 in one session, 16 16 60 0 in the next). Rule validated in both: pan = desired view + cam_home, field by field.
+# For this board the desired view is x 8, y 8, z 9 at zoom level 12:  pan_x = 8 + home_x, pan_y = 8 + home_y, pan_z = 9 + home_z.
+NAV | camera | overhead      | board_ctl camset <editor app> camera_mode=3 cam_pitch=-89 cam_yaw=180 cam_pan_x=<8+hx> cam_pan_y=<8+hy> cam_pan_z=<9+hz> cam_z_level=12 | hx hy hz = fields 1 2 3 of <bv_session>/pieces/system/cam_home.txt
+NAV | camera | pitfall       | replaying a fixed key sequence (c w v) | worked in one session and showed only sky in the next, because cam_home differs
+NAV | camera | 2d-view      | bv_keys <bv_session> 0                 | toggles the RPG Maker 2D view (the whole board with the walking characters) and back
+
+# ---- facts the pictures depend on ----
+NAV | fact | events-glyph    | a LETTER, never a digit                | the 3D loader reads 9 or 15 fields per events.txt row and silently drops a 10-field row (a digit glyph parses as a float): this hid every player in 3D until 2026-11-08
+NAV | fact | idle-cost       | 0 engine calls while a human thinks    | measured: ui.txt rewrites in 10 s, stopped 0, running + waiting for a human 17 before the fix, 0 after

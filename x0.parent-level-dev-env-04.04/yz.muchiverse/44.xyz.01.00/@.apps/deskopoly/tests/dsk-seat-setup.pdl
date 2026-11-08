@@ -1,0 +1,23 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-seat-setup.pdl - from the editor on the deskopoly book to a STARTED game with YOU as seat p1 (3 players, seed 7, fast speed). Reusable for presentations: every shot lands in @.apps/deskopoly/shots/.
+# PROTOCOL (found 2026-11-08 by driving the real editor): with In: ON the editor sends keys to the game world, so nav digits do not navigate: ONE Esc leaves In (more are harmless). Then relay_drive must
+#   NOT send its own Esc (it closes an open dropdown before it can find a menu row, and flips In): run with env RELAY_DRIVE_NO_ESC=1. Press by LABEL or id from the frame dump, never by pixel.
+# Player-menu rows react to a mouse click, not to Enter (Enter closes the menu without firing the row): use tapid for pm-* rows, press for the popup buttons (found 2026-11-08).
+# Matching is "first element whose label CONTAINS the text", so use label:START GAME (the setup text also says START but is not clickable). STEP fields split on a bar, so expectations hold no bar.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-setup.pdl <x window id>
+STEP | key | esc
+STEP | press | tb-player
+STEP | tapid | pm-play
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15
+STEP | shot | @.apps/deskopoly/shots/01-setup.png
+STEP | press | label:speed
+STEP | press | label:speed
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | speed: fast | 5
+STEP | press | label:you play
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you play: p1 | 5
+STEP | shot | @.apps/deskopoly/shots/02-seat-p1-fast.png
+STEP | press | label:START GAME
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | driver=human | 20
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Roll | 20
+STEP | shot | @.apps/deskopoly/shots/03-started-waiting-for-me.png
