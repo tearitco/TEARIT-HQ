@@ -1,0 +1,4 @@
+# tuning.pdl - deskopoly timing as data (2026-11-07). TUNE | name | value | what it does | default
+# Nothing reads this file yet: the `tick` verb does ONE step and never waits. It is for the editor daemon hook (phase C of PROPOSAL-PLAY-MODE-SEATS-AND-GAME-SIDEBARS), which will call `tick` at most this often while the world is playing.
+# 1500 ms is the pets' own pace in the cdda-hq family (`TUNE | step_min_ms | 1500`, with `step_jitter_ms` 900 on top; read in cdda-hq/tuning.pdl). WSR_PAL-PREFERED has no game-tick interval to copy: its pal loops are input polls, and its economy moves per End Turn or per game day.
+TUNE | tick_ms | 1500 | the slowest a watched game may tick: one decision per this long, so a person can follow it and the machine stays quiet | 1500

@@ -1,0 +1,4 @@
+# layouts.pdl - deskopoly's bars, declared as data (2026-11-07). Same grammar as @.apps/rpg-edit-hq/layouts.pdl; read by ui_mode_op.
+# BAR | id | key | slot | modes | default | group | note
+# The Seats bar reads state/ui.txt (written by `deskopoly ui`) and offers Roll / Buy / Skip / End only when a show_* key there is 1. It is NOT drawn yet: no template row uses side_game_seats (stage 1, phase B2).
+BAR | seats | side_game_seats | right | play | on |  | who plays, whose turn, and the legal buttons for a human seat

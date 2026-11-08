@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <dirent.h>
 
 #define MAXT 40
 #define MAXP 4
@@ -38,7 +39,8 @@ static Pl PL[MAXP]; static int npl;
 static int R_start = 1500, R_go = 200, R_rounds = 40; static long R_seed = 7;
 
 /* derived state (replay only) */
-static int cash[MAXP], pos[MAXP], out[MAXP], owner[MAXT];
+static int cash[MAXP], pos[MAXP], out[MAXP], owner[MAXT], human[MAXP];
+static char lastlog[5][LINE]; static int nlast;
 static int bankv, cur, rolled, pending, round_, over, nrolls, nev, np_game;
 static long seed;
 
@@ -91,7 +93,7 @@ static int die(long sd, int idx, int k) { return (int)(mix((uint64_t)sd * 100000
 static int pidx(const char *id) { for (int i = 0; i < npl; i++) if (!strcmp(PL[i].id, id)) return i; return -1; }
 
 static void reset_state(void) {
-    for (int i = 0; i < MAXP; i++) { cash[i] = R_start; pos[i] = 0; out[i] = 0; }
+    for (int i = 0; i < MAXP; i++) { cash[i] = R_start; pos[i] = 0; out[i] = 0; human[i] = 0; } nlast = 0;
     for (int i = 0; i < MAXT; i++) owner[i] = -1;
     bankv = 0; cur = 0; rolled = 0; pending = -1; round_ = 0; over = 0; nrolls = 0; nev = 0; np_game = npl;
 }
@@ -147,10 +149,13 @@ static int replay(int *started) {
     fp = fopen(p, "r"); if (!fp) return 0;
     int lineno = 0;
     while (fgets(ln, sizeof ln, fp)) {
-        lineno++; int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "EVENT")) continue;
+        lineno++; char raw[LINE]; snprintf(raw, sizeof raw, "%s", ln); { char *e = raw + strlen(raw); while (e > raw && (e[-1] == 10 || e[-1] == 13)) *--e = 0; }
+        int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "EVENT")) continue;
+        if (nlast < 5) snprintf(lastlog[nlast++], LINE, "%s", raw); else { for (int q = 1; q < 5; q++) memcpy(lastlog[q - 1], lastlog[q], LINE); snprintf(lastlog[4], LINE, "%s", raw); }
         const char *actor = f[2], *verb = f[3], *target = f[4], *rec = f[6]; char res[LINE]; res[0] = 0; const char *err = NULL;
         if (!strcmp(verb, "new")) { long sd; int pn; if (sscanf(rec, "seed=%ld,players=%d", &sd, &pn) != 2 || pn < 2 || pn > npl) { fprintf(stderr, "ledger line %d: bad new row\n", lineno); fclose(fp); return 1; } seed = sd; reset_state(); np_game = pn; *started = 1; nev++; continue; }
         if (!*started) { fprintf(stderr, "ledger line %d: row before new\n", lineno); fclose(fp); return 1; }
+        if (!strcmp(verb, "seat")) { int sp = pidx(target); if (sp < 0 || sp >= np_game || over || (strcmp(rec, "human") && strcmp(rec, "pet")) || human[sp] == !strcmp(rec, "human")) { fprintf(stderr, "ledger line %d: a bad seat row\n", lineno); fclose(fp); return 1; } human[sp] = !strcmp(rec, "human"); nev++; continue; }
         int pl = pidx(actor); if (pl < 0 || pl != cur || over) { fprintf(stderr, "ledger line %d: %s by %s is out of turn or after the end\n", lineno, verb, actor); fclose(fp); return 1; }
         if (!strcmp(verb, "roll")) {
             int d1, d2; if (rolled || sscanf(target, "%d,%d", &d1, &d2) != 2 || d1 != die(seed, nrolls, 0) || d2 != die(seed, nrolls, 1)) { fprintf(stderr, "ledger line %d: roll does not match the seeded dice\n", lineno); fclose(fp); return 1; }
@@ -180,7 +185,7 @@ static void build_status(char *b, size_t cap) {
     ap(b, cap, "STATE round=%d current=%s rolled=%d pending=%d over=%d bank=%d\n", round_, PL[cur].id, rolled, pending, over, bankv);
     int sum = bankv;
     for (int i = 0; i < np_game; i++) { int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == i) props++; sum += cash[i];
-        ap(b, cap, "PLAYER %s %s style=%s cash=%d pos=%d out=%d props=%d net=%d\n", PL[i].id, PL[i].name, PL[i].style, cash[i], pos[i], out[i], props, net(i)); }
+        ap(b, cap, "PLAYER %s %s style=%s cash=%d pos=%d out=%d props=%d net=%d%s\n", PL[i].id, PL[i].name, PL[i].style, cash[i], pos[i], out[i], props, net(i), human[i] ? " driver=human" : ""); }
     for (int k = 0; k < nt; k++) if (owner[k] >= 0) ap(b, cap, "TILE %d %s owner=%s\n", k, T[k].name, PL[owner[k]].id);
     ap(b, cap, "TOTAL sum=%d expect=%d\n", sum, R_start * np_game);
 }
@@ -206,34 +211,17 @@ static int v_roll(void) {
 }
 static int act_simple(const char *verb) {
     int st, rc = need_game(&st); if (rc) return rc; if (over) bad("the game is over");
-    char res[LINE]; res[0] = 0; const char *err; int pl = cur;
+    char res[LINE]; res[0] = 0; const char *err; int pl = cur, tile = pending;
     if (!strcmp(verb, "buy")) err = do_buy(pl, res, sizeof res); else if (!strcmp(verb, "skip")) err = do_skip(res, sizeof res); else err = do_end(res, sizeof res);
-    if (err) { fprintf(stderr, "deskopoly: refused: %s\n", err); return 2; }
-    event(PL[pl].id, verb, "-", pos[pl], res); printf("%s %s: %s\n", PL[pl].id, verb, res); return 0;
+    if (err) { if (human[pl] && !strcmp(verb, "buy") && tile >= 0 && cash[pl] < T[tile].price) dec(pl, "buy", tile, "blocked"); fprintf(stderr, "deskopoly: refused: %s\n", err); return 2; }
+    event(PL[pl].id, verb, "-", pos[pl], res); if (human[pl] && (!strcmp(verb, "buy") || !strcmp(verb, "skip"))) dec(pl, verb, tile, "ok");
+    printf("%s %s: %s\n", PL[pl].id, verb, res); return 0;
 }
 static int v_new(int argc, char **argv) {
     char p[1100]; ledger_path(p, sizeof p); struct stat sb; if (stat(p, &sb) == 0) bad("a ledger already exists here: a new game needs an empty state folder");
     long sd = argc > 0 ? atol(argv[0]) : R_seed; int pn = argc > 1 ? atoi(argv[1]) : npl; if (pn < 2 || pn > npl) bad("players must be 2..the PLAYER rows in rules.pdl");
     char res[64]; snprintf(res, sizeof res, "seed=%ld,players=%d", sd, pn); round_ = 0; event("bank", "new", "-", 0, res); printf("new game %s\n", res); return 0;
 }
-static int v_autoplay(void) {
-    int st, rc = need_game(&st); if (rc) return rc;
-    for (long guard = 0; !over && guard < 200000; guard++) {
-        int pl = cur; if (!rolled) { char t[32], res[LINE]; int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); do_roll(pl, d1, d2, res, sizeof res); event(PL[pl].id, "roll", t, pos[pl], res); }
-        if (out[pl]) { /* a bankrupt roller has nothing pending; fall through to end_turn */ }
-        if (pending >= 0) {
-            int tile = pending, want = wants_buy(pl); char res[LINE]; res[0] = 0;
-            if (want) { const char *err = do_buy(pl, res, sizeof res); if (err) { dec(pl, "buy", tile, "blocked"); do_skip(res, sizeof res); event(PL[pl].id, "skip", "-", pos[pl], res); dec(pl, "skip", tile, "ok"); }
-                        else { event(PL[pl].id, "buy", "-", pos[pl], res); dec(pl, "buy", tile, "ok"); } }
-            else { do_skip(res, sizeof res); event(PL[pl].id, "skip", "-", pos[pl], res); dec(pl, "skip", tile, "ok"); }
-        }
-        { char res[LINE]; res[0] = 0; const char *err = do_end(res, sizeof res); if (err) { fprintf(stderr, "deskopoly: autoplay stuck: %s\n", err); return 1; } event(PL[pl].id, "end_turn", "-", pos[pl], res); }
-    }
-    if (!over) { fprintf(stderr, "deskopoly: autoplay guard hit before the game ended\n"); return 1; }
-    int best = -1; for (int i = 0; i < np_game; i++) if (!out[i] && (best < 0 || net(i) > net(best))) best = i;
-    printf("AUTOPLAY events=%d rounds=%d over=1 winner=%s\n", nev, round_, best >= 0 ? PL[best].name : "none"); return 0;
-}
-
 static int v_status(void) { int st, rc = need_game(&st); if (rc) return rc; char b[4096]; build_status(b, sizeof b); fputs(b, stdout); return 0; }
 static int v_replay(void) { int st, rc = need_game(&st); if (rc) return rc; char b[4096]; build_status(b, sizeof b); printf("REPLAY events=%d hash=%016llx\n", nev, (unsigned long long)fnv(b)); return 0; }
 static int v_check(void) {
@@ -264,7 +252,7 @@ static int v_mechanics(void) {
     int st = 0, rc = replay(&st); if (rc) { ap(out_, sizeof out_, "STATE|ledger|does-not-replay\n"); }
     else if (!st) ap(out_, sizeof out_, "STATE|game|not-started\n");
     else { ap(out_, sizeof out_, "STATE|seed|%ld\nSTATE|round|%d\nSTATE|current|%s\nSTATE|rolled|%d\nSTATE|pending|%d\nSTATE|over|%d\nSTATE|bank|%d\nSTATE|events|%d\n", seed, round_, PL[cur].id, rolled, pending, over, bankv, nev);
-        for (int i = 0; i < np_game; i++) ap(out_, sizeof out_, "STATE|%s.cash|%d\nSTATE|%s.pos|%d\nSTATE|%s.out|%d\n", PL[i].id, cash[i], PL[i].id, pos[i], PL[i].id, out[i]);
+        for (int i = 0; i < np_game; i++) ap(out_, sizeof out_, "STATE|%s.cash|%d\nSTATE|%s.pos|%d\nSTATE|%s.out|%d\nSTATE|%s.driver|%s\n", PL[i].id, cash[i], PL[i].id, pos[i], PL[i].id, out[i], PL[i].id, human[i] ? "human" : "pet");
         for (int k = 0; k < nt; k++) if (owner[k] >= 0) ap(out_, sizeof out_, "STATE|tile%d.owner|%s\n", k, PL[owner[k]].id); }
     fputs(out_, stdout);
     char tp[1100], fp2[1100]; snprintf(tp, sizeof tp, "%s/mechanics.txt.tmp", g_state); snprintf(fp2, sizeof fp2, "%s/mechanics.txt", g_state);
@@ -334,6 +322,85 @@ static int v_preview(int argc, char **argv) {
     printf("PREVIEW %zux%zu\n", ow, oh); return 0;
 }
 
+/* --- seats, tick, ui (A1/A2 of PROPOSAL-PLAY-MODE-SEATS-AND-GAME-SIDEBARS-2026-11-07): who drives a seat is HARD STATE (a `seat` row in the ledger), so a replay knows who was in charge of each move. --- */
+static int v_seat(int argc, char **argv) {
+    if (argc < 2) bad("usage: seat <player id> <human|pet>");
+    int st, rc = need_game(&st); if (rc) return rc; if (over) bad("the game is over");
+    int pl = pidx(argv[0]); if (pl < 0 || pl >= np_game) bad("no such player in this game");
+    if (strcmp(argv[1], "human") && strcmp(argv[1], "pet")) bad("a driver is human or pet");
+    if (human[pl] == !strcmp(argv[1], "human")) { fprintf(stderr, "deskopoly: refused: %s is already %s\n", argv[0], argv[1]); return 2; }
+    human[pl] = !strcmp(argv[1], "human"); event("bank", "seat", PL[pl].id, 0, argv[1]); printf("seat %s %s\n", PL[pl].id, argv[1]); return 0;
+}
+/* one step for the current seat. 0 = one event appended, 1 = waiting for a human, 2 = game over, -1 = stuck. A human seat never moves by itself: its verbs (roll, buy, skip, end_turn) are the same ones a pet's step performs. */
+static int tick_once(char *msg, size_t cap) {
+    if (over) { snprintf(msg, cap, "over"); return 2; }
+    int pl = cur; char res[LINE]; res[0] = 0;
+    if (human[pl]) { snprintf(msg, cap, "waiting %s %s human", PL[pl].id, PL[pl].name); return 1; }
+    if (!rolled) { char t[32]; int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); do_roll(pl, d1, d2, res, sizeof res); event(PL[pl].id, "roll", t, pos[pl], res); snprintf(msg, cap, "%s roll %s: %s", PL[pl].id, t, res); return 0; }
+    if (pending >= 0) {
+        int tile = pending, want = wants_buy(pl); const char *vb = "skip";
+        if (want) { const char *err = do_buy(pl, res, sizeof res); if (err) { dec(pl, "buy", tile, "blocked"); res[0] = 0; do_skip(res, sizeof res); event(PL[pl].id, "skip", "-", pos[pl], res); dec(pl, "skip", tile, "ok"); }
+                    else { event(PL[pl].id, "buy", "-", pos[pl], res); dec(pl, "buy", tile, "ok"); vb = "buy"; } }
+        else { do_skip(res, sizeof res); event(PL[pl].id, "skip", "-", pos[pl], res); dec(pl, "skip", tile, "ok"); }
+        snprintf(msg, cap, "%s %s: %s", PL[pl].id, vb, res); return 0;
+    }
+    const char *err = do_end(res, sizeof res); if (err) { snprintf(msg, cap, "stuck: %s", err); return -1; }
+    event(PL[pl].id, "end_turn", "-", pos[pl], res); snprintf(msg, cap, "%s end_turn: %s", PL[pl].id, res); return 0;
+}
+static int v_tick(void) {
+    int st, rc = need_game(&st); if (rc) return rc; char m[LINE]; int r = tick_once(m, sizeof m); printf("TICK %s\n", m); return r < 0 ? 1 : 0;
+}
+static int v_autoplay(void) {
+    int st, rc = need_game(&st); if (rc) return rc; char m[LINE]; int r = 0;
+    for (long guard = 0; guard < 200000; guard++) { r = tick_once(m, sizeof m); if (r != 0) break; }
+    if (r < 0) { fprintf(stderr, "deskopoly: autoplay %s\n", m); return 1; }
+    if (r == 1) { printf("AUTOPLAY waiting events=%d %s\n", nev, m); return 0; }
+    if (!over) { fprintf(stderr, "deskopoly: autoplay guard hit before the game ended\n"); return 1; }
+    int best = -1; for (int i = 0; i < np_game; i++) if (!out[i] && (best < 0 || net(i) > net(best))) best = i;
+    printf("AUTOPLAY events=%d rounds=%d over=1 winner=%s\n", nev, round_, best >= 0 ? PL[best].name : "none"); return 0;
+}
+/* ui: the window's feed (key=value, atomic), a PROJECTION of the replayed ledger. A show_* key is "1" when the control may be offered and EMPTY when not (the house convention: a "0" string would count as visible). */
+static int v_ui(void) {
+    int st, rc = need_game(&st); if (rc) return rc; static char b[8192]; b[0] = 0; int pl = cur, ht = !over && human[pl] && !out[pl];
+    ap(b, sizeof b, "game=deskopoly\nn_players=%d\nround=%d\nover=%d\ncurrent=%s\ncurrent_name=%s\ncurrent_driver=%s\n", np_game, round_, over, PL[pl].id, PL[pl].name, human[pl] ? "human" : "pet");
+    ap(b, sizeof b, "human_turn=%s\nshow_roll=%s\nshow_buy=%s\nshow_skip=%s\nshow_end=%s\n", ht ? "1" : "", ht && !rolled ? "1" : "", ht && pending >= 0 && cash[pl] >= T[pending].price ? "1" : "", ht && pending >= 0 ? "1" : "", ht && rolled && pending < 0 ? "1" : "");
+    ap(b, sizeof b, "pending_tile=%s\npending_price=%d\n", pending >= 0 ? T[pending].name : "", pending >= 0 ? T[pending].price : 0);
+    for (int i = 0; i < np_game; i++) { int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == i) props++;
+        ap(b, sizeof b, "%s_name=%s\n%s_driver=%s\n%s_cash=%d\n%s_pos=%d\n%s_out=%d\n%s_props=%d\n%s_turn=%s\n", PL[i].id, PL[i].name, PL[i].id, human[i] ? "human" : "pet", PL[i].id, cash[i], PL[i].id, pos[i], PL[i].id, out[i], PL[i].id, props, PL[i].id, i == pl && !over ? "1" : ""); }
+    for (int i = 0; i < 5; i++) ap(b, sizeof b, "log_%d=%s\n", i, i < nlast ? lastlog[nlast - 1 - i] : "");
+    write_atomic(g_state, "ui.txt", b); printf("UI %s/ui.txt current=%s human_turn=%s\n", g_state, PL[pl].id, ht ? "1" : "0"); return 0;
+}
+
+/* ledger_hash [skip_verb]: a read-only digest of the ledger rows (FNV-1a over each row and its newline), optionally leaving out every row whose verb is skip_verb (for example seat: a control change, not a game move).
+ * It lets a case say "these two games made the same moves" exactly, without capturing a whole ledger. */
+static int v_ledger_hash(int argc, char **argv) {
+    char p[1100], ln[LINE]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (!fp) bad("no ledger here"); const char *skip = argc > 0 ? argv[0] : NULL;
+    uint64_t h = 1469598103934665603ULL; long rows = 0;
+    while (fgets(ln, sizeof ln, fp)) { char raw[LINE]; snprintf(raw, sizeof raw, "%s", ln); char *f[10]; int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "EVENT")) continue; if (skip && !strcmp(f[3], skip)) continue;
+        for (const char *c = raw; *c; c++) { h ^= (unsigned char)*c; h *= 1099511628211ULL; } rows++; }
+    fclose(fp); printf("LEDGER rows=%ld hash=%016llx%s%s\n", rows, (unsigned long long)h, skip ? " without=" : "", skip ? skip : ""); return 0;
+}
+
+/* audit: the no-ghost-data check. state.pdl declares every file the state folder may hold; anything else is a GHOST (a file that could carry a fact the ledger does not have). Read-only. */
+static int v_audit(void) {
+    char p[1100], ln[LINE]; char *f[8]; FILE *fp; char dn[16][48], dk[16][12]; int nd = 0; char vn[48][24]; int nv = 0;
+    snprintf(p, sizeof p, "%s/verbs.pdl", g_app); fp = fopen(p, "r"); if (!fp) bad("cannot read verbs.pdl");
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n >= 2 && !strcmp(f[0], "VERB") && nv < 48) snprintf(vn[nv++], 24, "%s", f[1]); } fclose(fp);
+    snprintf(p, sizeof p, "%s/state.pdl", g_app); fp = fopen(p, "r"); if (!fp) bad("cannot read state.pdl");
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 5 || strcmp(f[0], "FILE")) continue; if (nd >= 16) bad("state.pdl: too many FILE rows");
+        if (strcmp(f[2], "LEDGER") && strcmp(f[2], "PROJECTION") && strcmp(f[2], "CONFIG") && strcmp(f[2], "PREFERENCE")) bad("state.pdl: a kind is LEDGER, PROJECTION, CONFIG or PREFERENCE");
+        if (!strcmp(f[2], "PROJECTION")) { int ok = 0; for (int i = 0; i < nv; i++) if (!strcmp(vn[i], f[4])) ok = 1; if (!ok) { fprintf(stderr, "deskopoly: state.pdl: projection %s names a regenerating verb (%s) that is not a VERB in verbs.pdl\n", f[1], f[4]); return 2; } }
+        for (int i = 0; i < nd; i++) if (!strcmp(dn[i], f[1])) bad("state.pdl: a file is declared twice");
+        snprintf(dn[nd], 48, "%s", f[1]); snprintf(dk[nd], 12, "%s", f[2]); nd++; }
+    fclose(fp);
+    DIR *d = opendir(g_state); if (!d) bad("the state folder does not exist"); struct dirent *e; int ghosts = 0, present = 0;
+    while ((e = readdir(d))) { if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue; int ok = 0; for (int i = 0; i < nd; i++) if (!strcmp(dn[i], e->d_name)) ok = 1;
+        if (ok) present++; else { printf("GHOST %s\n", e->d_name); ghosts++; } }
+    closedir(d);
+    if (ghosts) { printf("AUDIT ghosts=%d declared=%d\n", ghosts, nd); return 1; }
+    printf("AUDIT ok files=%d declared=%d\n", present, nd); return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: deskopoly <app_dir> <state_dir> <verb> [args]\n"); return 2; }
     snprintf(g_app, sizeof g_app, "%s", argv[1]); snprintf(g_state, sizeof g_state, "%s", argv[2]); const char *v = argv[3];
@@ -343,6 +410,11 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "roll")) return v_roll();
     if (!strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn")) return act_simple(v);
     if (!strcmp(v, "autoplay")) return v_autoplay();
+    if (!strcmp(v, "tick")) return v_tick();
+    if (!strcmp(v, "seat")) return v_seat(argc - 4, argv + 4);
+    if (!strcmp(v, "ui")) return v_ui();
+    if (!strcmp(v, "audit")) return v_audit();
+    if (!strcmp(v, "ledger_hash")) return v_ledger_hash(argc - 4, argv + 4);
     if (!strcmp(v, "status")) return v_status();
     if (!strcmp(v, "replay")) return v_replay();
     if (!strcmp(v, "check")) return v_check();

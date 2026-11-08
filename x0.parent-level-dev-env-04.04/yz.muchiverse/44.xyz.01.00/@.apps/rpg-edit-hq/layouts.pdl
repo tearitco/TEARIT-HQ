@@ -1,0 +1,8 @@
+# layouts.pdl - the editor's own bars, declared as data (2026-11-07; owner decision 3: a book declares its bars in layouts.pdl; BOOK 08-roadmap/design-docs/PROPOSAL-PLAY-MODE-SEATS-AND-GAME-SIDEBARS-2026-11-07.md).
+# BAR | id | key | slot | modes | default | group | note        read by &.widgits/_shared-lib/ops/+x/ui_mode_op.+x (see its header for every column)
+# key = the state key the board template gates a row on, e.g. show="${side_pal}" in board/pchq-board.xhtpm; the keys live in board/state/sides.txt.
+# Today's three rows are declared as they are now (pets and palettes share the left slot through pal_side, so they are one exclusive group); the values below are the first-run defaults and equal the live sides.txt (side_left empty, side_pal 1, side_right 1).
+# JUDGEMENT CALL, change freely: chat is `edit` only, so Play shows the GAME's bars and not the editor's; put `edit,play` to keep it in Play.
+BAR | pets     | side_left  | left  | edit | off | left | the pets bar (shares the left slot with palettes)
+BAR | palettes | side_pal   | left  | edit | on  | left | the palettes bar
+BAR | chat     | side_right | right | edit | on  |      | the h-ai chat

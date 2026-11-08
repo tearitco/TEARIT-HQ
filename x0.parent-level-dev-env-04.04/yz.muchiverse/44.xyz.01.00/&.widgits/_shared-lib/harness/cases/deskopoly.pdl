@@ -207,3 +207,144 @@ COPY    | @.apps/deskopoly/board.pdl | badapp/board.pdl
 WRITE   | badapp/page.pdl | HEADER | atlas_tiles | 43\nTILEMAP | go | 99\n
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/badapp | $T/dbad | page | $T/dbad
 EXPECT_EXIT | 2 | NEGATIVE-a-tile-outside-the-atlas-is-refused
+
+# SEATS (A1/A2 of PROPOSAL-PLAY-MODE-SEATS-AND-GAME-SIDEBARS): who drives a seat is a ledger row, `tick` does one step, a human seat makes it wait, and a human who issues the verbs a pet would issue makes the SAME game.
+# Observed 2026-11-07, seed 7: the all-pet game is 334 rows, hash 61ac51a395a63e0d; the human game is 336 rows (two seat rows), and 334 rows with the same hash once the seat rows are left out.
+CASE    | seats
+SCRATCH |
+MKDIR   | x
+MKDIR   | y
+MKDIR   | z
+MKDIR   | w
+MKDIR   | app
+MKDIR   | t
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/x | new | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/x | autoplay
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/x | ledger_hash
+EXPECT_OUT | LEDGER rows=334 hash=61ac51a395a63e0d | the-all-pet-game-is-334-rows-with-the-pinned-hash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | new | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | seat | p1 | human
+EXPECT_OUT | seat p1 human | a-seat-is-handed-to-a-human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | seat | p1 | human
+EXPECT_EXIT | 2 | NEGATIVE-handing-a-seat-to-who-already-has-it-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | seat | p9 | human
+EXPECT_EXIT | 2 | NEGATIVE-a-seat-that-does-not-exist-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | seat | p1 | robot
+EXPECT_EXIT | 2 | NEGATIVE-a-driver-that-is-neither-human-nor-pet-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | autoplay
+EXPECT_OUT | AUTOPLAY waiting events=2 waiting p1 rex human | autoplay-stops-when-a-human-is-up
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | tick
+EXPECT_OUT | TICK waiting p1 rex human | a-human-seat-makes-tick-wait
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | ui
+EXPECT_HAS | y/ui.txt | human_turn=1\nshow_roll=1\nshow_buy=\nshow_skip=\nshow_end=\n | before-the-roll-only-Roll-is-offered
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | end_turn
+EXPECT_EXIT | 2 | NEGATIVE-ending-before-the-roll-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | roll
+EXPECT_OUT | p1 rolled 1,1 -> tile 2: for-sale | the-human-rolls-the-seeded-dice
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | ui
+EXPECT_HAS | y/ui.txt | show_roll=\nshow_buy=1\nshow_skip=1\nshow_end=\n | with-a-tile-for-sale-Buy-and-Skip-are-offered
+EXPECT_HAS | y/ui.txt | pending_tile=Block 2\npending_price=60\n | the-feed-names-the-tile-and-its-price
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | end_turn
+EXPECT_EXIT | 2 | NEGATIVE-ending-with-a-tile-undecided-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | buy
+EXPECT_OUT | p1 buy: bought-60 | the-human-buys
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | ui
+EXPECT_HAS | y/ui.txt | show_roll=\nshow_buy=\nshow_skip=\nshow_end=1\n | after-the-decision-only-End-is-offered
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | end_turn
+EXPECT_OUT | p1 end_turn: next=p2 round=0 | the-human-ends-the-turn
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | seat | p1 | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | autoplay
+EXPECT_OUT | AUTOPLAY events=336 rounds=40 over=1 winner=fenn | handed-back-the-pets-finish-the-same-game
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | ledger_hash | seat
+EXPECT_OUT | LEDGER rows=334 hash=61ac51a395a63e0d without=seat | THE-SAME-MOVES-as-the-all-pet-game-once-the-seat-rows-are-left-out
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | ledger_hash
+EXPECT_OUT | LEDGER rows=336 hash=9baa915d6d0846a9 | NEGATIVE-with-the-seat-rows-the-hash-differs-so-the-comparison-can-fail
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | check
+EXPECT_OUT | CHECK ok events=336 sum=6000 | money-is-conserved-with-a-human-in-the-game
+EXPECT_HAS | y/decisions.txt | rex\pforsale\pbuy\p2\pok | the-humans-choice-is-a-decision-row-in-the-same-grammar-as-a-pets
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/y | seat | p2 | human
+EXPECT_EXIT | 2 | NEGATIVE-no-seat-changes-after-the-game-is-over
+# another seed makes another game, so the pinned hash is not a constant that every game gives
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/w | new | 8
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/w | autoplay
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/w | ledger_hash
+EXPECT_OUT_LACKS | 61ac51a395a63e0d | NEGATIVE-seed-8-does-not-give-the-seed-7-hash
+# a human who cannot pay: the buy is refused, logged as a blocked decision, and appends NOTHING to the game ledger
+COPY    | @.apps/deskopoly/board.pdl | app/board.pdl
+COPY    | @.apps/deskopoly/verbs.pdl | app/verbs.pdl
+WRITE   | app/rules.pdl | RULE | start_cash | 20\nRULE | pass_go | 200\nRULE | rounds | 40\nRULE | seed | 7\nPLAYER | p1 | rex | bold | 0\nPLAYER | p2 | fenn | cautious | 300\nPLAYER | p3 | gus | coin | 50\nPLAYER | p4 | wren | cautious | 600\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/z | new | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/z | seat | p1 | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/z | roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/z | buy
+EXPECT_EXIT | 2 | NEGATIVE-a-human-cannot-buy-what-the-cash-does-not-cover
+EXPECT_OUT | not enough cash | and-it-says-why
+EXPECT_HAS | z/decisions.txt | rex\pforsale\pbuy\p2\pblocked | the-attempt-is-a-blocked-decision-row
+EXPECT_LACKS | z/ledger.txt | \pbuy\p | the-refused-move-is-not-in-the-game-ledger
+# a ledger with a seat row for a player that does not exist is refused by replay
+WRITE   | t/ledger.txt | EVENT|0|bank|new|-|0|seed=7,players=4\nEVENT|0|bank|seat|p9|0|human\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/t | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-seat-row-for-a-player-that-does-not-exist-is-refused-on-replay
+EXPECT_OUT | a bad seat row | and-it-says-so
+
+# NO GHOST DATA (owner 2026-11-07; AGENTS.md "No ghost data"): the ledger is the only authority for game state; every other file is a projection that can be deleted and regenerated byte for byte.
+CASE    | ghost
+SCRATCH |
+MKDIR   | g
+MKDIR   | d
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | new | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | autoplay
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | ui
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | mechanics
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/test/cells.rgba
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | audit
+EXPECT_OUT_IS | AUDIT ok files=4 declared=4 | the-state-folder-holds-only-what-state-pdl-declares-two-ledgers-and-two-projections
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | replay
+CAPTURE | replay1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | ledger_hash
+CAPTURE | ledger1
+# files beside the ledger change nothing: the game has no second channel for state
+WRITE   | g/cash.txt | p1=999999\n
+WRITE   | g/state.txt | current=p4\nover=1\n
+WRITE   | g/pet_rex.txt | room=elsewhere\nx=0\ny=0\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | replay
+CAPTURE | replay2
+EXPECT_EQ | $replay1 | $replay2 | invented-state-files-change-nothing-the-ledger-alone-decides
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | audit
+EXPECT_EXIT | 1 | NEGATIVE-invented-state-files-are-GHOSTS-and-the-audit-fails
+EXPECT_OUT | GHOST cash.txt | and-it-names-the-cash-file
+EXPECT_OUT | GHOST pet_rex.txt | and-the-pet-file
+RUN | rm | -f | $T/g/cash.txt | $T/g/state.txt | $T/g/pet_rex.txt
+# every projection can be deleted and regenerated byte for byte
+RUN | sha256sum | $T/g/ui.txt | $T/g/mechanics.txt | $T/d/cells.txt | $T/d/map.txt
+CAPTURE | sums1
+RUN | rm | -f | $T/g/ui.txt | $T/g/mechanics.txt | $T/d/cells.txt | $T/d/map.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | ui
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | mechanics
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d
+RUN | sha256sum | $T/g/ui.txt | $T/g/mechanics.txt | $T/d/cells.txt | $T/d/map.txt
+CAPTURE | sums2
+EXPECT_EQ | $sums1 | $sums2 | deleted-projections-regenerate-identical-bytes
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | ledger_hash
+CAPTURE | ledger2
+EXPECT_EQ | $ledger1 | $ledger2 | regenerating-projections-never-touches-the-ledger
+# a projection that is wrong stays wrong only until the next regeneration: edit one, regenerate, it is back
+WRITE   | g/ui.txt | current=p4\nshow_roll=1\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | ui
+RUN | sha256sum | $T/g/ui.txt | $T/g/mechanics.txt | $T/d/cells.txt | $T/d/map.txt
+CAPTURE | sums3
+EXPECT_EQ | $sums1 | $sums3 | a-hand-edited-projection-is-overwritten-from-the-ledger
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | audit
+EXPECT_OUT_IS | AUDIT ok files=4 declared=4 | once-the-invented-files-are-removed-the-audit-is-clean-again
+# a bad state.pdl is refused: an unknown kind, and a projection whose regenerating verb does not exist
+MKDIR   | app
+COPY    | @.apps/deskopoly/board.pdl | app/board.pdl
+COPY    | @.apps/deskopoly/rules.pdl | app/rules.pdl
+COPY    | @.apps/deskopoly/verbs.pdl | app/verbs.pdl
+WRITE   | app/state.pdl | FILE | ledger.txt | LEDGER | x | -\nFILE | ui.txt | MAYBE | x | ui\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | audit
+EXPECT_EXIT | 2 | NEGATIVE-a-file-kind-that-is-not-ledger-projection-config-or-preference-is-refused
+WRITE   | app/state.pdl | FILE | ledger.txt | LEDGER | x | -\nFILE | ui.txt | PROJECTION | x | no_such_verb\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/g | audit
+EXPECT_EXIT | 2 | NEGATIVE-a-projection-nobody-can-regenerate-is-refused
+EXPECT_OUT | not a VERB | and-it-says-why

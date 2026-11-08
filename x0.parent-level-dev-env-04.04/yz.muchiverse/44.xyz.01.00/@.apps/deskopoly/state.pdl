@@ -1,0 +1,11 @@
+# state.pdl - every file the game may leave in its state folder, and what kind of fact it is (no ghost data, owner 2026-11-07; BOOK 02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md).
+# FILE | name | kind | writer | regenerate_with
+#   LEDGER      append-only rows; the only place a fact about the game may live
+#   PROJECTION  derived from a ledger by the verb named in regenerate_with (it must be a VERB in verbs.pdl); safe to delete, rewritten byte for byte
+#   CONFIG      an input the game reads and never writes (rules.pdl, board.pdl, page.pdl, tuning.pdl live beside the game, not in state/)
+#   PREFERENCE  a user's choice about the window (never read by the rules, never changes an outcome)
+# `deskopoly audit` fails on any file in state/ that is not declared here (a GHOST), and on a PROJECTION whose regenerating verb does not exist.
+FILE | ledger.txt    | LEDGER     | every verb that moves the game, and seat | -
+FILE | decisions.txt | LEDGER     | tick and autoplay (a pet's buy or skip), and a human's buy or skip: the decision ledger the bank digests | -
+FILE | ui.txt        | PROJECTION | deskopoly ui         | ui
+FILE | mechanics.txt | PROJECTION | deskopoly mechanics  | mechanics
