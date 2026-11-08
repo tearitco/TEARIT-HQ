@@ -42,6 +42,10 @@ echo "########## ResizeObserver initial entries use real geometry (hermetic)"
 bash "$HERE/nb_resize_observer_test.sh" || RC=1
 
 echo
+echo "########## Page-driven scroll + IntersectionObserver crossings (hermetic)"
+bash "$HERE/nb_scroll_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

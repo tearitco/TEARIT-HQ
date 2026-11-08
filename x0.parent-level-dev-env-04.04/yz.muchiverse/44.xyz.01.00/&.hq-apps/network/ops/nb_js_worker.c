@@ -1265,6 +1265,14 @@ static double g_viewport_px = NB_CONTENT_PX;
 static double g_viewport_h = 0.0;
 static int    g_gutter_state = -1;   /* -1 undecided this page, 0 none, 1 present */
 static int    g_measuring = 0;
+/* Page-driven scroll offset (2026-11-09). The renderer owns the native pane
+ * scroll and exposes no channel for it, so the worker tracks the offset the
+ * PAGE drives: window.scrollTo/scrollBy, element.scrollIntoView. Rects are
+ * viewport-relative (document y minus this offset), and changing the offset
+ * re-evaluates IntersectionObserver targets. A page script cannot scroll
+ * the native pane; its ISV and IO math see a consistent within-worker world. */
+static double g_scroll_x = 0.0;
+static double g_scroll_y = 0.0;
 
 static double nb_content_h(NbNode *n);
 /* 6.2/6.3 (2026-10-19): both are called from functions defined ABOVE their
@@ -2241,6 +2249,11 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
          * first content row. Uniform, so every relative offset below the
          * origin is untouched - see g_content_inset_top(). */
         y += g_content_inset_top();
+        /* Viewport-relative: the page-driven scroll offset moves the rect,
+         * so getBoundingClientRect (and the IntersectionObserver root
+         * comparison built on it) tracks page scroll. */
+        x -= g_scroll_x;
+        y -= g_scroll_y;
     }
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, x));
@@ -5361,8 +5374,89 @@ static JSValue nb_el_getClientRects(JSContext *ctx, JSValueConst this_val, int a
     JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, 1));
     return arr;
 }
+/* scrollIntoView: page-driven scroll (2026-11-09). The renderer owns the
+ * native pane scroll and exposes no channel for a page to drive it, so the
+ * offset is worker-local: window.scrollTo/scrollIntoView move g_scroll_y
+ * (viewport-relative rects), and IntersectionObserver re-evaluates. Native
+ * pane scroll is still not mirrored. */
+static double nb_js_num(JSContext *ctx, JSValueConst v, double dflt) {
+    double d = dflt;
+    if (JS_IsNumber(v)) JS_ToFloat64(ctx, &d, v);
+    else if (JS_IsString(v)) { char *s = JS_ToCString(ctx, v); if (s) { d = atof(s); JS_FreeCString(ctx, s); } }
+    return d;
+}
+static void nb_set_scroll(double x, double y) {
+    g_scroll_x = x < 0 ? 0 : x;
+    g_scroll_y = y < 0 ? 0 : y;
+}
+static JSValue nb_win_scroll_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewFloat64(ctx, magic ? g_scroll_y : g_scroll_x);
+}
+static JSValue nb_win_scrollTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    double x = g_scroll_x, y = g_scroll_y;
+    if (argc >= 1 && JS_IsObject(argv[0])) {
+        JSValue t = JS_GetPropertyStr(ctx, argv[0], "top");
+        JSValue l = JS_GetPropertyStr(ctx, argv[0], "left");
+        if (!JS_IsUndefined(t) && !JS_IsNull(t)) y = nb_js_num(ctx, t, y);
+        if (!JS_IsUndefined(l) && !JS_IsNull(l)) x = nb_js_num(ctx, l, x);
+        JS_FreeValue(ctx, t); JS_FreeValue(ctx, l);
+    } else {
+        if (argc > 0) x = nb_js_num(ctx, argv[0], x);
+        if (argc > 1) y = nb_js_num(ctx, argv[1], y);
+    }
+    nb_set_scroll(x, y);
+    nb_obs_recheck(ctx);
+    return JS_UNDEFINED;
+}
+static JSValue nb_win_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    double x = g_scroll_x, y = g_scroll_y;
+    if (argc >= 1 && JS_IsObject(argv[0])) {
+        JSValue t = JS_GetPropertyStr(ctx, argv[0], "top");
+        JSValue l = JS_GetPropertyStr(ctx, argv[0], "left");
+        if (!JS_IsUndefined(t) && !JS_IsNull(t)) y += nb_js_num(ctx, t, 0);
+        if (!JS_IsUndefined(l) && !JS_IsNull(l)) x += nb_js_num(ctx, l, 0);
+        JS_FreeValue(ctx, t); JS_FreeValue(ctx, l);
+    } else {
+        if (argc > 0) x += nb_js_num(ctx, argv[0], 0);
+        if (argc > 1) y += nb_js_num(ctx, argv[1], 0);
+    }
+    nb_set_scroll(x, y);
+    nb_obs_recheck(ctx);
+    return JS_UNDEFINED;
+}
 static JSValue nb_el_scrollIntoView(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    int align_top = 1; /* legacy boolean: true = block:start */
+    char block[16] = "start";
+    if (argc > 0 && JS_IsBool(argv[0])) {
+        align_top = JS_ToBool(ctx, argv[0]);
+        snprintf(block, sizeof(block), "%s", align_top ? "start" : "end");
+    } else if (argc > 0 && JS_IsObject(argv[0])) {
+        JSValue b = JS_GetPropertyStr(ctx, argv[0], "block");
+        if (JS_IsString(b)) {
+            char *s = JS_ToCString(ctx, b);
+            if (s) { snprintf(block, sizeof(block), "%s", s); JS_FreeCString(ctx, s); }
+        }
+        JS_FreeValue(ctx, b);
+    }
+    JSValue rectv = nb_el_getBoundingClientRect(ctx, this_val, 0, NULL);
+    double rh = nb_int_rect_field(ctx, rectv, "height");
+    double doc_y = nb_int_rect_field(ctx, rectv, "y") + g_scroll_y;
+    JS_FreeValue(ctx, rectv);
+    double vp = (g_viewport_h > 0.0) ? g_viewport_h : 600.0;
+    double y = g_scroll_y;
+    if (!strcmp(block, "center")) y = doc_y + rh / 2 - vp / 2;
+    else if (!strcmp(block, "end")) y = doc_y + rh - vp;
+    else if (!strcmp(block, "nearest")) {
+        if (doc_y < g_scroll_y) y = doc_y;
+        else if (doc_y + rh > g_scroll_y + vp) y = doc_y + rh - vp;
+    } else y = doc_y; /* start */
+    nb_set_scroll(g_scroll_x, y);
+    nb_obs_recheck(ctx);
     return JS_UNDEFINED;
 }
 
@@ -10018,6 +10112,20 @@ static void install_events_timers(JSContext *ctx) {
      * code] }" - a stringified function where a number belongs, which
      * silently corrupts every page that does arithmetic on it. */
     JS_SetPropertyStr(ctx, g, "innerWidth", JS_NewFloat64(ctx, g_viewport_px));
+    JS_SetPropertyStr(ctx, g, "innerHeight", JS_NewFloat64(ctx, g_viewport_h > 0.0 ? g_viewport_h : 600.0));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "scrollX");
+        JS_DefinePropertyGetSet(ctx, g, nm, JS_NewCFunctionMagic(ctx, nb_win_scroll_get, "get scrollX", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollY");
+        JS_DefinePropertyGetSet(ctx, g, nm, JS_NewCFunctionMagic(ctx, nb_win_scroll_get, "get scrollY", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    JS_SetPropertyStr(ctx, g, "scrollTo", JS_NewCFunction(ctx, nb_win_scrollTo, "scrollTo", 2));
+    JS_SetPropertyStr(ctx, g, "scrollBy", JS_NewCFunction(ctx, nb_win_scrollBy, "scrollBy", 2));
+    JS_SetPropertyStr(ctx, g, "scroll", JS_NewCFunction(ctx, nb_win_scrollTo, "scroll", 2));
     JS_SetPropertyStr(ctx, g, "nbFetchSync", JS_NewCFunction(ctx, nb_fetch_sync, "nbFetchSync", 4));
     JS_SetPropertyStr(ctx, g, "addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "removeEventListener", 2));
@@ -10329,6 +10437,7 @@ static void run_page(void) {
     g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
     g_next_id = 1; g_invocations = 0; g_raf_fires = 0;
     g_pending_err = 0; g_pending_errmsg[0] = 0;
+    g_scroll_x = 0; g_scroll_y = 0;
 
     /* rung-6 slice 2: only the daemon (manager) can act on navigation. */
     g_nav_kind[0] = 0; g_nav_url[0] = 0; g_nav_count = 1;
