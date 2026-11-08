@@ -227,3 +227,7 @@ Full house conventions live in the HQ-IQ-BOOK:
 Never report "fixed/done" without a fresh build + fresh run + real
 evidence (diff, screenshot, state file). A clean compile is not
 evidence.
+
+## Onboarding for the game and harness work: read the Teropoly handoff (REQUIRED, since 2026-11-08)
+
+Most new work is Teropoly (internal name `deskopoly`) played inside the rpg-edit-hq editor, driven by harnesses. Before touching the game, the editor's Play button, the clock daemon or any harness that drives a real window, read HQ-IQ-BOOK `16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`: the harness list with counts (`live_dsk_seat`, `dsk_driver`, `lc_clock_burn`, ...), how to drive the real window like a person (gentle `relay_drive`, `@.apps/deskopoly/nav.pdl`, STEP scripts in `tests/`), how to measure CPU with children and wakeups (CPU-OPTIMIZATION-PITFALLS 23-27), and the open owner decisions. The user-visible name is **Teropoly**; identifiers keep `deskopoly`.

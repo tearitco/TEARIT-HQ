@@ -10,3 +10,4 @@ mechanics — the general project shape, session isolation, digit-dispatch
 convention, marker discipline), and scattered terminology from
 `HOUSE_FAQ.md`. See `02-architecture/` for the deeper technical rules
 this orientation only introduces.
+- `../16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md` — **START HERE for the game work** (Teropoly = `deskopoly`, played inside the rpg-edit-hq editor): the harness list with counts, how to drive the real window like a person (gentle relay mode, nav-map, STEP scripts), the CPU incident of 2026-11-08 and how to measure, open owner decisions. Most new work goes through this.

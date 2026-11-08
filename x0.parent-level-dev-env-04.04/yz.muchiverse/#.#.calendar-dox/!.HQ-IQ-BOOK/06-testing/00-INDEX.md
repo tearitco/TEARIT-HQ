@@ -21,3 +21,4 @@
 state dumps second, PNG/xdotool only as last resort.** See
 `02-architecture/INPUT-RELAY-PIPELINE.md` for the relay files
 themselves.
+- `../16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md` — the live-window harnesses (`live_dsk_seat`, `dsk_driver`, `lc_clock_burn`), the protocol for driving a real khtpm window (gentle `relay_drive`, objects dump, tapid vs press), and how to measure CPU with children and wakeups. `@.apps/deskopoly/nav.pdl` is the machine-readable map.

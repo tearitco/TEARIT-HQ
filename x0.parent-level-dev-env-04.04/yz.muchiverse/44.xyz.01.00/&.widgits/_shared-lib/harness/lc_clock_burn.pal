@@ -1,0 +1,4 @@
+# lc_clock_burn.pal - pal harness over the real lc_clock daemon on a scratch root (see cases/lc_clock_burn.pdl). Read results/lc_clock_burn.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/lc_clock_burn.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/lc_clock_burn.pdl
+halt
