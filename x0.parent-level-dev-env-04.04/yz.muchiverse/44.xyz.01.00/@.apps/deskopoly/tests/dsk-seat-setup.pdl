@@ -6,11 +6,13 @@ SECTION | KEY | VALUE
 # Player-menu rows react to a mouse click, not to Enter (Enter closes the menu without firing the row): use tapid for pm-* rows, press for the popup buttons (found 2026-11-08).
 # Matching is "first element whose label CONTAINS the text", so use label:START GAME (the setup text also says START but is not clickable). STEP fields split on a bar, so expectations hold no bar.
 # Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-setup.pdl <x window id>
-STEP | key | esc
-STEP | press | tb-player
+STEP | in | off
+STEP | ensure | pm-play | tb-player
 STEP | tapid | pm-play
 STEP | sleep | 3000
 STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15
+STEP | see | label:TEROPOLY
+STEP | see | label:Choose the players
 STEP | shot | @.apps/deskopoly/shots/01-setup.png
 STEP | press | label:speed
 STEP | sleep | 800
@@ -22,4 +24,9 @@ STEP | shot | @.apps/deskopoly/shots/02-seat-p1-fast.png
 STEP | press | label:START GAME
 STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | driver=human | 20
 STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Roll | 20
+STEP | see | pt0
+STEP | see | pt1
+STEP | see | pt2
+STEP | see | gme0
+STEP | see | label:Roll
 STEP | shot | @.apps/deskopoly/shots/03-started-waiting-for-me.png

@@ -1,0 +1,5 @@
+# dsk-open-play.pdl - from ANY editor state to "Play pressed": In: off (digits go to the game world while it is on), the Player menu open ONLY if it is not already (a blind press on tb-player CLOSES an open menu, which made earlier runs fail at pm-play), then Play.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-open-play.pdl <x window id>
+STEP | in | off
+STEP | ensure | pm-play | tb-player
+STEP | tapid | pm-play

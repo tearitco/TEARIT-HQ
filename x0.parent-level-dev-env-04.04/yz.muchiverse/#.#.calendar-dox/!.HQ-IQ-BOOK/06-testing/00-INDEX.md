@@ -22,3 +22,4 @@ state dumps second, PNG/xdotool only as last resort.** See
 `02-architecture/INPUT-RELAY-PIPELINE.md` for the relay files
 themselves.
 - `../16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md` — the live-window harnesses (`live_dsk_seat`, `dsk_driver`, `lc_clock_burn`), the protocol for driving a real khtpm window (gentle `relay_drive`, objects dump, tapid vs press), and how to measure CPU with children and wakeups. `@.apps/deskopoly/nav.pdl` is the machine-readable map.
+- `WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md` — **read before testing or driving any project**: why a passing case can hide an empty screen (Teropoly 2026-11-08), the rules (assert the screen with `see`, open the PNG, no "flaky" without a cause, state-aware steps), and one entry per project of what a human must see in each state and which check proves it. Template at the end; add an entry per project.

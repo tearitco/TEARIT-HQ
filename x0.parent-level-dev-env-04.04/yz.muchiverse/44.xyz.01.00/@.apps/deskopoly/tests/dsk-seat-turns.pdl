@@ -29,3 +29,7 @@ STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | conta
 STEP | shot | @.apps/deskopoly/shots/07-round3-bought.png
 STEP | press | label:End turn
 STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | next=p2;round=3 | 10
+STEP | see | pt0
+STEP | see | pt2
+STEP | see | gme0
+STEP | see | label:THIS-TEXT-IS-NEVER-ON-SCREEN | absent

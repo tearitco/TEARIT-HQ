@@ -24,9 +24,7 @@ RUN | /bin/mkdir | -p | $HOUSE/@.apps/deskopoly/shots
 CASE    | start-state
 # A killed session leaves the OLD feed (game_ui.txt) behind: waiting for it would pass on stale data and the commands below would go to a driver that is not running. So: delete the feed (a projection the driver regenerates), start/nudge the driver, wait for the FRESH feed, then command it. (A driver that just started ignores commands written before it started.)
 RUN | /bin/rm | -f | $HOUSE/@.apps/rpg-edit-hq/state/game_ui.txt
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | key | esc
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | press | tb-player
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | tapid | pm-play
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | run | $HOUSE/@.apps/deskopoly/tests/dsk-open-play.pdl | $win
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_ctl.+x | setup_reset | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
 WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=1 | 30000 | the-driver-is-up-and-publishes-a-FRESH-feed-the-stale-one-was-deleted
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_ctl.+x | new_game | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
@@ -36,8 +34,8 @@ EXPECT_NOFILE | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt 
 
 CASE    | seat-setup
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | run | $HOUSE/@.apps/deskopoly/tests/dsk-seat-setup.pdl | $win
-EXPECT_EXIT | 0 | THE-SETUP-SCRIPT-PASSES-all-15-steps-by-real-taps
-EXPECT_OUT | ALL PASS: 17 pass, 0 fail | and-says-so
+EXPECT_EXIT | 0 | THE-SETUP-SCRIPT-PASSES-all-24-steps-by-real-taps
+EXPECT_OUT | ALL PASS: 24 pass, 0 fail | and-says-so
 RUN | /usr/bin/grep | -c | driver=human | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
 EXPECT_OUT_IS | 1 | EXACTLY-ONE-SEAT-IS-HUMAN-p1
 RUN | /usr/bin/grep | -c | \pp1\pjoin\p | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
@@ -61,8 +59,8 @@ SLEEP   | 3000
 
 CASE    | three-turns
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | run | $HOUSE/@.apps/deskopoly/tests/dsk-seat-turns.pdl | $win
-EXPECT_EXIT | 0 | THE-TURNS-SCRIPT-PASSES-all-24-steps-three-rounds-by-real-taps
-EXPECT_OUT | ALL PASS: 24 pass, 0 fail | and-says-so
+EXPECT_EXIT | 0 | THE-TURNS-SCRIPT-PASSES-all-28-steps-three-rounds-by-real-taps
+EXPECT_OUT | ALL PASS: 28 pass, 0 fail | and-says-so
 RUN | /usr/bin/grep | -cE | EVENT.[0-9]+.p1.(roll\pbuy\pend_turn). | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
 CAPTURE | p1rows
 EXPECT_GE | $p1rows | 8 | THE-HUMAN-ACTED-p1-has-at-least-8-roll-buy-end_turn-rows-in-the-ledger
@@ -82,6 +80,6 @@ CASE    | restore
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_ctl.+x | new_game | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
 WAIT_HAS | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/../../game_ui.txt | players, then START | 10000 | the-game-is-archived-and-the-editor-is-back-on-the-setup-screen
 EXPECT_NOFILE | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | and-no-live-ledger-is-left
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | press | tb-in
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/relay_drive.+x | $wpid | run | $HOUSE/@.apps/deskopoly/tests/dsk-in-on.pdl | $win
 RESTORE | live | the-play-mode-flag-and-the-sides-file-are-byte-identical-to-before
 CLEAN   |

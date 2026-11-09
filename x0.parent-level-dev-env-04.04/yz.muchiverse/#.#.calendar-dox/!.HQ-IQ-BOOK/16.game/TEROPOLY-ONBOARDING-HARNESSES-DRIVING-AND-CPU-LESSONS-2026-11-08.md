@@ -31,6 +31,8 @@ Rules that cost runs: (1) negative-test every new guard once (run the case again
 
 ## 3. Driving the real editor like a person (reusable scripts for agents and presentations)
 
+**What to look for, per project, is in `06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md`: read it with this section. A test that passes while the screen is empty is the failure mode of 2026-11-08.**
+
 Files: `@.apps/deskopoly/nav.pdl` (the map: protocol, stable ids, scripts, camera, facts) and `@.apps/deskopoly/tests/*.pdl` (STEP scripts run by `relay_drive <pid> run <script> <winid>`):
 `dsk-new-game` (popup New game -> setup), `dsk-seat-setup` (Play, speed fast, you play p1, START GAME; 17 steps), `dsk-seat-turns` (three rounds as p1; 24 steps; seed 7 is deterministic: a Luck tile, Buy Power 150, Buy Orange3 200).
 
@@ -50,7 +52,7 @@ The CPU guard ended 30 house processes at 12:12 (incident `#.hq-apps/proc-mon/st
 
 | Cause | Measured | Fix |
 |---|---|---|
-| clock daemon: the rpg clock runs at rate `sec` (1 game hour per real second); a 5-game-minute reminder falls due 12 times a second; each fire is a full event run (~1.8 s CPU, even for pages shipped OFF); `CATCHUP_CAP` bounds a poll, not work per second | 364% of a core, 130-160 wakeups/s; scratch daemon 104 ledger rows in 9 s | daemon-only real-time budget: at most one fire per reminder per `LC_CLOCK_MIN_FIRE_GAP_MS` (default 30 s), one event per batch, the rest collapses into `caught up N`; scratch 8 rows in 9 s; live below 0.5% and 3 wakeups/s |
+| clock daemon: the rpg clock runs at rate `sec` (1 game hour per real second); a 5-game-minute reminder falls due 12 times a second; each fire is a full event run (~1.8 s CPU, even for pages shipped OFF); `CATCHUP_CAP` bounds a poll, not work per second | 364% of a core, 130-160 wakeups/s; scratch daemon 104 ledger rows in 9 s | daemon-only real-time budget: at most one fire per reminder per `LC_CLOCK_MIN_FIRE_GAP_MS` (default 30 s), one event per batch, the rest collapses into `caught up N`; scratch 8 rows in 9 s; live with the clock RUNNING (In: off) mean 8% of a core, bursts to 30% every ~30 s (CORRECTED 17:4x: the first "below 0.5%" was measured while In: ON had the clock paused); paused 0% |
 | driver rebuilt the board picture every tick (3 engine launches + 2.5 MB PNG + cells.marker growth makes the 3D engine reload the desk) | 6.1% of a core while a game ran | `page_needed()`: byte cursor over NEW ledger rows, rebuild only for ownership/building/mortgage rows; unknown verbs rebuild (fail-safe) |
 | driver's fixed `usleep(80000)` | 12-14 wakeups/s even stopped | 250 ms unless the game is live or a walk/resync/page is pending (80 ms): stopped 12 -> 4/s |
 
@@ -72,7 +74,7 @@ Open CPU facts: the baseline house loops are still not free (OBS with only the e
 - **Blue dotted lines on the wooden floor at a low camera** (OBS: pale sky-coloured lines across the floor at grazing angle; they vanish with a higher camera). Looks like sky showing through voxel seams in the raymarch; engine-side, shared by every board; unconfirmed that this is what the owner saw (`blue bug artifact`). Needs an owner confirmation and a look at `&.widgits/board-viewer/ops/bv_gpu_raymarch.c`.
 - 3D event scale: players are a fixed 0.7 x 1.6 box (a tile is much wider). My recommendation: per-desk `event_scale` in `view.pdl`, default 1.0 (rebuilds the shared engine). Alternatives: 2x2 tile block, or leave. Owner decides.
 - Neutral tile/card names, day/night following ledger ROUNDS (replay-safe, my recommendation) versus the real clock, official-sheet verification, whether a missing ledger should default to classic instead of mini.
-- **A tab that says `Player: playing` may have no driver behind it** (OBS 2026-11-08 after the session reset: flag `mode=on`, no `deskopoly_driver`, no feed, so no side menus or pieces; Player > Play started it and showed the Setup screen, pieces appear after START GAME because the world stays on the authored `board` desk until then). Owner decision: start the driver at launch when the flag is on, or clear the flag. CPU-OPTIMIZATION-PITFALLS 27.
+- **A tab that says `Player: playing` may have no driver behind it** (OBS 2026-11-08 after the session reset: flag `mode=on`, no `deskopoly_driver`, no feed, so no side menus or pieces; Player > Play started it and showed the Setup screen, pieces appear after START GAME because the world stays on the authored `board` desk until then). RESOLVED 2026-11-08: the core now restarts a missing driver (watchdog in `petslike_core.c`, case `game_driver_watchdog`, 10 checks, red on the old binary); the live relaunch was not done by me (a broad process kill was declined), so confirm once after the next editor relaunch. CPU-OPTIMIZATION-PITFALLS 27.
 - UX polish: cash (left bar) vs net worth (footer) labels; the subtitle "pets play, you watch or take a seat" is stale while a human plays.
 - Later milestones: M7 auctions, M8 debt queue, M9 trading and chat, M10 personalities, M12 fuzz; the owner wants a narrated captioned YouTube video (XO folder `31.Nov/nov-8/10.youtube-deskopoly-plays-in-the-editor`, predates the glyph fix and human seat).
 

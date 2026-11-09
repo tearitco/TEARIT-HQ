@@ -1,0 +1,2 @@
+# dsk-in-on.pdl - hand the editor back with In: ON (its default). Idempotent: presses tb-in only when it says off.
+STEP | in | on

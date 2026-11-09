@@ -102,6 +102,16 @@ static int find_elem_objects(long pid, const char *key, Elem1 *e) {
         if (objfield(ln, "x", t, sizeof t)) e->x = atoi(t); if (objfield(ln, "y", t, sizeof t)) e->y = atoi(t); if (objfield(ln, "w", t, sizeof t)) e->w = atoi(t); if (objfield(ln, "h", t, sizeof t)) e->h = atoi(t); found = 1; }
     fclose(f); return found;
 }
+/* SEE (2026-11-08, owner: "how come u didn't catch no visible players / sidebars"): a STEP asserts what is ON SCREEN, from the window's own newest objects dump. Any object matches (clickable or not): `see pt0` (id), `see label:TEROPOLY` (label contains). `see <key> absent` passes only when it is NOT there. Polls up to 5 s (the dump trails the frame). A data check (ledger, feed) cannot see a screen that is not drawn. */
+static int see_objects(long pid, const char *key) {
+    char dir[PL], pre[40], best[PL]; best[0] = 0; long bseq = -1; snprintf(dir, sizeof dir, "%s/#.desktop/ascii_frames", g_house); snprintf(pre, sizeof pre, "%ld.", pid);
+    DIR *d = opendir(dir); if (!d) return 0; struct dirent *de; size_t pl = strlen(pre);
+    while ((de = readdir(d))) { if (strncmp(de->d_name, pre, pl)) continue; char *q; long seq = strtol(de->d_name + pl, &q, 10); if (q == de->d_name + pl || strcmp(q, ".objects.pdl")) continue; if (seq > bseq) { bseq = seq; snprintf(best, sizeof best, "%s/%s", dir, de->d_name); } }
+    closedir(d); if (bseq < 0) return 0;
+    FILE *f = fopen(best, "r"); if (!f) return 0; char ln[4096], id[80], lb[200]; int found = 0, bylabel = !strncmp(key, "label:", 6); const char *want = bylabel ? key + 6 : key;
+    while (!found && fgets(ln, sizeof ln, f)) { if (strncmp(ln, "OBJECT ", 7)) continue; if (!objfield(ln, "id", id, sizeof id)) id[0] = 0; if (!objfield(ln, "label", lb, sizeof lb)) lb[0] = 0; if (bylabel ? strstr(lb, want) != NULL : !strcmp(id, want)) found = 1; }
+    fclose(f); return found;
+}
 static int press_elem(long pid, const char *key, int by_mouse, char *what, size_t cap) {
     const char *frame = "/tmp/entity-menu-frame.png.frame.txt"; Elem1 e;
     if (getenv("RELAY_DRIVE_NO_ESC")) {   /* GENTLE mode: read the window's own newest objects dump; no Esc, no 'p' key (a 'p' typed into an open dropdown filters its rows, so menus could never be seen) */
@@ -124,6 +134,9 @@ static int run_cases(long pid, const char *cases, const char *win) {
         else if (!strcmp(verb, "tap")) { int x = 0, y = 0; if (sscanf(fd[2], "%d %d", &x, &y) != 2) ok = 0; else { send_click(pid, x, y, 1); ms(350); send_click(pid, x, y, 1); ms(500); } snprintf(what, sizeof what, "tap %s (focus click, then activate click)", fd[2]); }
         else if (!strcmp(verb, "press") || !strcmp(verb, "tapid")) { ok = press_elem(pid, fd[2], !strcmp(verb, "tapid"), what, sizeof what); }
         else if (!strcmp(verb, "sleep")) { ms(atoi(fd[2])); snprintf(what, sizeof what, "sleep %s", fd[2]); }
+        else if (!strcmp(verb, "ensure") && n >= 4) { /* make <target> clickable: press <opener> ONLY when the target is not on screen yet (a blind press on a toggle closes an open menu) */ Elem1 e; if (find_elem_objects(pid, fd[2], &e)) { ok = 1; snprintf(what, sizeof what, "ensure %s (already there)", fd[2]); } else { char w2[200]; ok = press_elem(pid, fd[3], 0, w2, sizeof w2) && find_elem_objects(pid, fd[2], &e); snprintf(what, sizeof what, "ensure %s by %s -> %s", fd[2], fd[3], ok ? "there" : "NOT there"); } }
+        else if (!strcmp(verb, "in") && n >= 3) { /* set the editor's In: toggle to on|off, pressing tb-in only when it is the other way round */ Elem1 e; int want_on = !strcmp(fd[2], "on"); ok = 0; if (find_elem_objects(pid, "tb-in", &e)) { int is_on = strstr(e.label, "ON") != NULL; if (is_on == want_on) ok = 1; else { char w2[200]; if (is_on) { send_key(pid, 27); ok = 1; } else ok = press_elem(pid, "tb-in", 0, w2, sizeof w2); ms(600);   /* In: ON swallows nav digits (they go to the game world): ONE Esc leaves it */ if (ok && find_elem_objects(pid, "tb-in", &e)) ok = (strstr(e.label, "ON") != NULL) == want_on; } } snprintf(what, sizeof what, "in %s -> %s", fd[2], ok ? "ok" : "FAILED"); }
+        else if (!strcmp(verb, "see") && n >= 3) { int absent = n >= 4 && !strcmp(fd[3], "absent"); int hit = 0; for (int t = 0; t < 20; t++) { hit = see_objects(pid, fd[2]); if (hit != absent) break; ms(250); } ok = (hit != absent); snprintf(what, sizeof what, "see %s%s -> %s", fd[2], absent ? " absent" : "", hit ? "on screen" : "NOT on screen"); }
         else if (!strcmp(verb, "shot")) { if (!win) ok = 0; else { char p[PL]; abspath(fd[2], p); ok = shot(win, p) == 0; } snprintf(what, sizeof what, "shot %s", fd[2]); }
         else if (!strcmp(verb, "expect") && n >= 5) { char p[PL]; abspath(fd[2], p); int to = n >= 6 ? atoi(fd[5]) : 5; int want = !strcmp(fd[3], "contains"); ok = 0;
             for (int t = 0; t <= to * 4; t++) { char *b = slurp(p); int has = b && strstr(b, fd[4]); free(b); if (has == want) { ok = 1; break; } ms(250); }

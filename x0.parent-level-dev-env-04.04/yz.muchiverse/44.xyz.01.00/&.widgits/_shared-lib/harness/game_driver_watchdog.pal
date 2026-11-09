@@ -1,0 +1,4 @@
+# game_driver_watchdog.pal - pal harness: the core restarts a missing game driver (scratch house, see cases/game_driver_watchdog.pdl). Read results/game_driver_watchdog.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/game_driver_watchdog.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/game_driver_watchdog.pdl
+halt

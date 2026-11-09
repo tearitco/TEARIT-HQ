@@ -1837,6 +1837,11 @@ static int daemon_main(void) {
     long last_load = now_ms(), last_follow = 0;
     while (!quit_flag) {
         usleep(100000); while (waitpid(-1, NULL, WNOHANG) > 0) {}      /* reap fire-and-forget children (run_quiet wait=0): no zombies pile up */
+        {   /* GAME DRIVER WATCHDOG (owner 2026-11-08 "make sure they never disappear again"). The sidebars, the players bar and the 3D players all come from the open book's driver (its feed state/game_ui.txt). A session reset, a relaunch or a crashed driver left the Player tab saying "playing" with NO driver behind it: no feed, no side menus, no pieces. So while the running switch is on and the open book HAS a `GAME | driver` row, a feed that does not say gm_on=1 for two checks in a row (5 s apart) starts the driver again (book_driver is a no-op for a book without a driver row and the driver locks itself, so a live one just refuses). At most one fork per 10 s, ~one small file read per 5 s. Stop (running=0) disables it. */
+            static long wd_at = 0; static int wd_miss = 0; long wt = now_ms();
+            if (wt - wd_at >= 5000) { wd_at = wt; char wf[PATH_MAX], wb[128]; snprintf(wf, sizeof wf, "%s/state/game_ui.txt", APP); read_file(wf, wb, sizeof wb);
+                if (run_on() && !strstr(wb, "gm_on=1")) { if (++wd_miss >= 2) { wd_miss = 0; (void)book_driver(); } } else wd_miss = 0; }
+        }
         int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); if (page_follow(msg, sizeof msg)) dirty = 1; } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
 #define PET_SECTION 67
 #include PET_SKIN
