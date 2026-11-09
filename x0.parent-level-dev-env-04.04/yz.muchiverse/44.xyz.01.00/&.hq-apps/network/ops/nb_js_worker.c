@@ -2772,14 +2772,15 @@ static JSValue nb_el_attributes(JSContext *ctx, JSValueConst this_val, int argc,
     return arr;
 }
 /* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
+static int attrs_has(const NbNode *n, const char *name);
 static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     char *owned = NULL;
     const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
     if (!n || !name) { JS_FreeCString(ctx, owned); return JS_FALSE; }
-    const char *v = nb_attr_get(n, name);
+    int has = attrs_has(n, name);
     JS_FreeCString(ctx, owned);
-    return JS_NewBool(ctx, v != NULL);
+    return JS_NewBool(ctx, has);
 }
 static char *attrs_set(const NbNode *n, const char *name, const char *val) {
     SB b = {0, 0, 0};
@@ -3009,6 +3010,169 @@ static JSValue nb_node_value_set(JSContext *ctx, JSValueConst this_val, int argc
     NbNode *n = get_this(ctx, this_val);
     if (!n || !n->text || n->tag) return JS_UNDEFINED;
     return nb_text_data_set(ctx, this_val, argc, argv);
+}
+/* ---- dataset (2026-11-09) ----
+ * dataset is a DOMStringMap view over an element's data-* attributes.
+ * Handlers are C traps on a Proxy so reads stay live and writes land in
+ * the attribute store (prop `userName` <-> attribute `data-user-name`). */
+static JSValue push_node(JSContext *ctx, NbNode *n);
+static JSValue push_node_or_null(JSContext *ctx, NbNode *n) { return n ? push_node(ctx, n) : JS_NULL; };
+static NbNode *nb_ds_node(JSContext *ctx, JSValueConst h) {
+    JSValue v = JS_GetPropertyStr(ctx, h, "__nb_ds_idx");
+    int32_t i = -1;
+    if (JS_ToInt32(ctx, &i, v) == 0 && i >= 0 && i < g_nodecount)
+        return g_nodeindex[i];
+    JS_FreeValue(ctx, v);
+    return NULL;
+}
+static int nb_ds_to_attr(const char *key, char *out, size_t olen) {
+    if (!key || !*key || olen < 8) return 0;
+    snprintf(out, olen, "data-");
+    size_t p = 5, q = 0;
+    for (; key[0] && p + 1 < olen; key++) {
+        if (key[0] == '-') { if (key[1] && p + 1 < olen) { out[p++] = '-'; out[p++] = 'a'; } continue; }
+        if (isupper((unsigned char)key[0])) {
+            if (p + 2 >= olen) return 0;
+            out[p++] = '-';
+            out[p++] = (char)tolower((unsigned char)key[0]);
+        } else out[p++] = key[0];
+        q++;
+    }
+    if (!q) return 0;
+    out[p] = 0;
+    return 1;
+}
+static JSValue nb_ds_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc;
+    NbNode *n = nb_ds_node(ctx, this_val);
+    if (!n || argc < 2) return JS_UNDEFINED;
+    char *k = NULL;
+    const char *key = JS_IsString(argv[1]) ? (k = JS_ToCString(ctx, argv[1])) : NULL;
+    if (!key) return JS_UNDEFINED;
+    if (!strcmp(key, "Symbol.toStringTag")) { JS_FreeCString(ctx, k); return JS_NewString(ctx, "DOMStringMap"); }
+    char kb[128];
+    int ok = nb_ds_to_attr(key, kb, sizeof(kb));
+    JS_FreeCString(ctx, k);
+    if (!ok) return JS_UNDEFINED;
+    if (!attrs_has(n, kb)) return JS_UNDEFINED;
+    const char *v = nb_attr_get(n, kb);
+    return JS_NewString(ctx, v ? v : "");
+}
+static JSValue nb_ds_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = nb_ds_node(ctx, this_val);
+    if (!n || argc < 3) return JS_UNDEFINED;
+    char *k = NULL, *vs = NULL;
+    const char *key = JS_IsString(argv[1]) ? (k = JS_ToCString(ctx, argv[1])) : NULL;
+    const char *val = JS_IsString(argv[2]) ? (vs = JS_ToCString(ctx, argv[2])) : NULL;
+    if (!key) return JS_UNDEFINED;
+    char kb[128];
+    int ok = nb_ds_to_attr(key, kb, sizeof(kb));
+    JS_FreeCString(ctx, k);
+    if (!ok) return JS_UNDEFINED;
+    char *kb2 = strdup(kb);
+    if (!vs) { JSValue tv = JS_ToString(ctx, argv[2]); if (JS_IsString(tv)) vs = JS_ToCString(ctx, tv); JS_FreeValue(ctx, tv); }
+    JS_FreeCString(ctx, NULL);
+    if (!vs) { free(kb2); return JS_UNDEFINED; }
+    { JSValue a[2] = { JS_NewString(ctx, kb2), JS_NewString(ctx, vs) };
+      JS_FreeValue(ctx, nb_el_setAttribute(ctx, push_node_or_null(ctx, n), 2, a)); }
+    JS_FreeCString(ctx, vs);
+    free(kb2);
+    return JS_NewBool(ctx, 1);
+}
+static JSValue nb_ds_del(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = nb_ds_node(ctx, this_val);
+    if (!n || argc < 2) return JS_UNDEFINED;
+    char *k = NULL;
+    const char *key = JS_IsString(argv[1]) ? (k = JS_ToCString(ctx, argv[1])) : NULL;
+    if (!key) return JS_UNDEFINED;
+    char kb[128];
+    int ok = nb_ds_to_attr(key, kb, sizeof(kb));
+    JS_FreeCString(ctx, k);
+    if (!ok) return JS_UNDEFINED;
+    { JSValue a[1] = { JS_NewString(ctx, kb) };
+      JS_FreeValue(ctx, nb_el_removeAttribute(ctx, push_node_or_null(ctx, n), 1, a)); }
+    return JS_NewBool(ctx, 1);
+}
+static JSValue nb_ds_own_keys(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = nb_ds_node(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (!n || !n->attrs) return arr;
+    /* reuse nb_el_attributes parse for names, convert data-* keys */
+    const char *p = n->attrs;
+    int idx = 0;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        if (kl > 5 && !strncasecmp(ks, "data-", 5)) {
+            /* convert data-x-y -> xY */
+            char camel[128]; size_t ci = 0; int first = 1;
+            for (size_t i = 5; i < kl && ci + 1 < sizeof(camel); i++) {
+                if (ks[i] == '-' && i + 1 < kl) { camel[ci++] = (char)toupper((unsigned char)ks[i + 1]); i++; continue; }
+                if (first) { camel[ci++] = ks[i]; first = 0; continue; }
+                camel[ci++] = ks[i];
+            }
+            camel[ci] = 0;
+            if (ci) JS_SetPropertyUint32(ctx, arr, (uint32_t)idx++, JS_NewString(ctx, camel));
+        }
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, idx));
+    return arr;
+}
+static JSValue nb_ds_desc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = nb_ds_node(ctx, this_val);
+    if (!n || argc < 2 || !JS_IsString(argv[1])) return JS_UNDEFINED;
+    char *k = JS_ToCString(ctx, argv[1]);
+    char kb[128];
+    int ok = nb_ds_to_attr(k, kb, sizeof(kb));
+    JS_FreeCString(ctx, k);
+    if (!ok) return JS_UNDEFINED;
+    const char *v = nb_attr_get(n, kb);
+    if (!v && !attrs_has(n, kb)) return JS_UNDEFINED;
+    JSValue d = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, d, "value", JS_NewString(ctx, v ? v : ""));
+    JS_SetPropertyStr(ctx, d, "writable", JS_NewBool(ctx, 1));
+    JS_SetPropertyStr(ctx, d, "enumerable", JS_NewBool(ctx, 1));
+    JS_SetPropertyStr(ctx, d, "configurable", JS_NewBool(ctx, 1));
+    return d;
+}
+static JSValue nb_ds_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = nb_ds_node(ctx, this_val);
+    if (!n || argc < 2 || !JS_IsString(argv[1])) return JS_FALSE;
+    char *k = JS_ToCString(ctx, argv[1]);
+    char kb[128];
+    int ok = nb_ds_to_attr(k, kb, sizeof(kb));
+    JS_FreeCString(ctx, k);
+    return ok && attrs_has(n, kb) ? JS_TRUE : JS_FALSE;
+}
+static JSValue nb_ds_make(JSContext *ctx, NbNode *n, int nidx) {
+    JSValue h = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, h, "__nb_ds_idx", JS_NewInt32(ctx, nidx));
+    JS_SetPropertyStr(ctx, h, "get", JS_NewCFunction(ctx, nb_ds_get, "get", 3));
+    JS_SetPropertyStr(ctx, h, "set", JS_NewCFunction(ctx, nb_ds_set, "set", 3));
+    JS_SetPropertyStr(ctx, h, "deleteProperty", JS_NewCFunction(ctx, nb_ds_del, "deleteProperty", 2));
+    JS_SetPropertyStr(ctx, h, "has", JS_NewCFunction(ctx, nb_ds_has, "has", 2));
+    JS_SetPropertyStr(ctx, h, "ownKeys", JS_NewCFunction(ctx, nb_ds_own_keys, "ownKeys", 1));
+    JS_SetPropertyStr(ctx, h, "getOwnPropertyDescriptor", JS_NewCFunction(ctx, nb_ds_desc, "getOwnPropertyDescriptor", 2));
+    JSValue target = JS_NewObject(ctx);
+    JSValue proxy_ctor = get_global_attr(ctx, "Proxy");
+    JSValue args[2] = { target, h };
+    JSValue px = JS_IsFunction(ctx, proxy_ctor) ? JS_CallConstructor(ctx, proxy_ctor, 2, args) : JS_UNDEFINED;
+    if (!JS_IsObject(px) || JS_IsException(px)) {
+        JS_FreeValue(ctx, px);
+        JS_FreeValue(ctx, proxy_ctor);
+        JS_FreeValue(ctx, h);
+        JS_FreeValue(ctx, target);
+        return JS_NewObject(ctx); /* degraded: no Proxy available */
+    }
+    JS_FreeValue(ctx, proxy_ctor);
+    JS_FreeValue(ctx, h);
+    JS_FreeValue(ctx, target);
+    return px;
 }
 static JSValue nb_el_innerHTML_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
@@ -3856,6 +4020,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_SetPropertyStr(ctx, cl, "contains", JS_NewCFunction(ctx, nb_cl_contains, "contains", 1));
         JS_SetPropertyStr(ctx, el, "classList", cl);
     }
+    /* dataset (DOMStringMap over data-* attributes) */
+    JS_SetPropertyStr(ctx, el, "dataset", nb_ds_make(ctx, n, nidx));
 
     /* cache wrapper in the identity map so later push_node calls return the
      * same object (map originally FIXED a self-storing bug: the old code
