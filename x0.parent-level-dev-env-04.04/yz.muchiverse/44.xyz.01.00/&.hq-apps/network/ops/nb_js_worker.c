@@ -4925,11 +4925,11 @@ static JSValue nb_po_take_records(JSContext *ctx, JSValueConst this_val, int arg
  * an empty object with no endpoints, and window.getSelection did not exist
  * at all. This is a scoped first slice: endpoints, boundary setters,
  * selectNode/selectNodeContents, collapse/cloneRange, cloneContents,
- * toString over the flattened text stream, and a Selection managing ranges
- * (addRange, removeAllRanges, collapse, getRangeAt, toString, anchor/focus).
- * Destructive extraction (extractContents/deleteContents) and geometric
- * rects are deliberately not claimed yet. Text order follows
- * node_text_content (an element's own text precedes its children). */
+ * deleteContents, extractContents, toString over the flattened text stream,
+ * and a Selection managing ranges (addRange, removeAllRanges, collapse,
+ * getRangeAt, toString, anchor/focus). Geometric rects are deliberately
+ * not claimed yet. Text order follows node_text_content (an element's own
+ * text precedes its children). */
 static long nb_txt_total(const NbNode *n) {
     if (!n) return 0;
     long len = n->text ? (long)strlen(n->text) : 0;
@@ -5281,6 +5281,105 @@ static JSValue nb_range_detach(JSContext *ctx, JSValueConst this_val, int argc, 
 static JSValue nb_range_to_string(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     return nb_range_get(ctx, this_val, 0, NULL, 6);
+}
+static void nb_trim_text(NbNode *n, long ls, long le) {
+    if (!n || !n->text) return;
+    long own_s = nb_linpos(n);
+    long own_e = own_s + (long)strlen(n->text);
+    long cs = ls > own_s ? ls : own_s;
+    long ce = le < own_e ? le : own_e;
+    if (ce <= cs) return;
+    size_t del = (size_t)(ce - cs);
+    size_t off = (size_t)(cs - own_s);
+    char *t = n->text;
+    size_t rest = strlen(t + off + del);
+    memmove(t + off, t + off + del, rest + 1);
+}
+static void nb_delete_from(JSContext *ctx, NbNode *parent, NbNode *child) {
+    NbNode *prev = NULL;
+    for (NbNode *c = parent->first_child; c && c != child; c = c->next_sibling) prev = c;
+    NbNode *next = child->next_sibling;
+    node_detach(child);
+    orphan_add(child);
+    nb_mutation_notify_childlist(ctx, parent, NULL, child, prev, next);
+}
+static void nb_prune_node(JSContext *ctx, NbNode *parent, long ls, long le);
+static void nb_prune_node(JSContext *ctx, NbNode *parent, long ls, long le) {
+    if (!parent) return;
+    /* snapshot children (spans computed live, reverse document order so
+     * deletions never shift not-yet-visited spans). */
+    int n = nb_child_count(parent);
+    if (n == 0) { nb_trim_text(parent, ls, le); return; }
+    NbNode **kids = malloc((size_t)n * sizeof(*kids));
+    if (!kids) return;
+    int ki = 0;
+    for (NbNode *c = parent->first_child; c; c = c->next_sibling) kids[ki++] = c;
+    for (int i = ki - 1; i >= 0; i--) {
+        NbNode *c = kids[i];
+        long low = nb_linpos(c);
+        long high = low + nb_txt_total(c);
+        if (high <= ls || low >= le) continue; /* disjoint */
+        if (low >= ls && high <= le) {
+            nb_delete_from(ctx, parent, c);
+        } else if (!c->tag || !c->tag[0]) {
+            nb_trim_text(c, ls, le);
+        } else {
+            nb_prune_node(ctx, c, ls, le);
+        }
+    }
+    free(kids);
+    /* own text trims last (it precedes children in text order). */
+    nb_trim_text(parent, ls, le);
+}
+static JSValue nb_range_clone_contents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_range_delete(JSContext *ctx, JSValueConst this_val, int want_extract) {
+    JSValue sc = JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+    JSValue so_v = JS_GetPropertyStr(ctx, this_val, "__nb_r_so");
+    JSValue ec = JS_GetPropertyStr(ctx, this_val, "__nb_r_ec");
+    JSValue eo_v = JS_GetPropertyStr(ctx, this_val, "__nb_r_eo");
+    NbNode *s = get_node(ctx, sc);
+    NbNode *e = get_node(ctx, ec);
+    int32_t so = 0, eo = 0;
+    JS_ToInt32(ctx, &so, so_v);
+    JS_ToInt32(ctx, &eo, eo_v);
+    JSValue frag = JS_NewString(ctx, "");
+    if (want_extract) frag = nb_range_clone_contents(ctx, this_val, 0, NULL);
+    if (s && e) {
+        long ls = nb_endpoint_lin(s, so);
+        long le = nb_endpoint_lin(e, eo);
+        if (le > ls) {
+            NbNode *ca = NULL;
+            for (NbNode *p = s; p && !ca; p = p->parent) {
+                for (NbNode *q = e; q; q = q->parent) {
+                    if (p == q) { ca = p; break; }
+                }
+            }
+            if (!ca) ca = nb_top_root(s);
+            if (!ca->tag || !ca->tag[0]) {
+                nb_trim_text(ca, ls, le);
+            } else {
+                nb_prune_node(ctx, ca, ls, le);
+            }
+        }
+    }
+    /* collapse the range to its start (endpoints may have moved). */
+    JSValue start_c = JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+    JSValue start_o = JS_GetPropertyStr(ctx, this_val, "__nb_r_so");
+    JS_SetPropertyStr(ctx, this_val, "__nb_r_ec", JS_DupValue(ctx, start_c));
+    JS_SetPropertyStr(ctx, this_val, "__nb_r_eo", JS_DupValue(ctx, start_o));
+    JS_FreeValue(ctx, start_c);
+    JS_FreeValue(ctx, start_o);
+    nb_range_fill(ctx, this_val);
+    JS_FreeValue(ctx, sc); JS_FreeValue(ctx, so_v); JS_FreeValue(ctx, ec); JS_FreeValue(ctx, eo_v);
+    return want_extract ? frag : JS_UNDEFINED;
+}
+static JSValue nb_range_delete_contents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_range_delete(ctx, this_val, 0);
+}
+static JSValue nb_range_extract_contents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_range_delete(ctx, this_val, 1);
 }
 static NbNode *nbi_clone(const NbNode *n, int deep);
 static void nb_clone_walk(NbNode *src, NbNode *dst, long ls, long le) {
@@ -6690,6 +6789,8 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "collapse", JS_NewCFunction(ctx, nb_range_collapse, "collapse", 1));
         JS_SetPropertyStr(ctx, p, "cloneRange", JS_NewCFunction(ctx, nb_range_clone, "cloneRange", 0));
         JS_SetPropertyStr(ctx, p, "cloneContents", JS_NewCFunction(ctx, nb_range_clone_contents, "cloneContents", 0));
+        JS_SetPropertyStr(ctx, p, "deleteContents", JS_NewCFunction(ctx, nb_range_delete_contents, "deleteContents", 0));
+        JS_SetPropertyStr(ctx, p, "extractContents", JS_NewCFunction(ctx, nb_range_extract_contents, "extractContents", 0));
         JS_SetPropertyStr(ctx, p, "detach", JS_NewCFunction(ctx, nb_range_detach, "detach", 0));
         JS_SetPropertyStr(ctx, p, "toString", JS_NewCFunction(ctx, nb_range_to_string, "toString", 0));
         JS_SetPropertyStr(ctx, g, "Range", f);
