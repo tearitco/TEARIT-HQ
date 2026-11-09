@@ -15,7 +15,11 @@
  *   <assets>: tiles by id (`Navy 2`, `navy2`, `Line1`; a unique PREFIX also works, `wat` = Water), by number (`#39`, `tile 39`, `prop:39`), a plain integer = cash
  *             (`100`, `$100`, `cash:100`), a card (`luck`, `fund`, `card:luck`), `nothing`. Filler words are ignored (and plus with the a an my your me you to of please cash
  *             coins money dollars card cards tile tiles property prop then also i); ANY OTHER word is refused as unknown (so `for` can never silently change the meaning).
- *   An ambiguous or unknown name is refused WITH the candidates and nothing is sent. Two money amounts, a tile twice or a side with nothing after its keyword are refused.
+ *   TILE NAMES AS WRITTEN ON THE BOARD (2026-11-09): the ruleset's page.pdl `LABEL | <tile id or kind> | <text>` rows (the text the board, the trade screen and the popups show) also name tiles: `Coil Plaza`, `golden ratio row`,
+ *   `Spiral Line IV`. Same rules as ids, words instead of one token: the longest exact label wins (`Golden Row` never swallows `Golden Ratio Row`), else a UNIQUE prefix (`Coil Pla`; the first words whole, the last one may be cut), a
+ *   label word that is also a filler or number word still reads as part of its label when the whole label is typed. Ids still win. Deck labels (kinds chance / chest: Luck, Lost & Found) are not tiles. No page.pdl or no LABEL rows = ids only,
+ *   exactly as before. The line sent to the engine is the same `prop:<n>` either way.
+ *   An ambiguous or unknown name is refused WITH the candidates (id, label, number) and nothing is sent. Two money amounts, a tile twice or a side with nothing after its keyword are refused.
  *   Only [a-z0-9 , + & . : # $ _ - ' ! ?] and one leading `/` are accepted; any other byte is refused by code, not echoed.
  * Exit: 0 ok | 2 refused or usage (engine's own code in mode b). No file is written, no runtime file exists. */
 #define _GNU_SOURCE
@@ -48,10 +52,49 @@ static int is_street(int t) { return !strcmp(TL[t].kind, "street"); }
 
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 
+/* LABELS (2026-11-09): the on-screen tile names, read from the page.pdl that sits beside the board.pdl in use (the engine's own rule: rulesets/<rs>/page.pdl, else <app>/page.pdl).
+ * `LABEL | <tile id or kind> | <text>`: a tile's own row beats its kind's row, the LAST row of a key wins, empty text = no label, a literal \n is a word break (the same reading as the engine's `page`).
+ * Each label is cut into the same lowercase tokens a typed line is. Tiles of the deck kinds (chance, chest) are left out: Luck / Lost & Found are decks, not tiles. */
+#define MAXLW 8
+typedef struct { char w[MAXLW][TOKLEN]; int n; char text[64]; } Lab;
+static Lab LAB[MAXT]; static int NLAB;
+typedef struct { char key[32], text[64]; } LabRow;
+static int label_tokens(const char *text, Lab *l) {
+    char s[64]; size_t j = 0; l->n = 0;
+    for (size_t i = 0; text[i] && j + 2 < sizeof s; i++) { if (text[i] == '\\' && text[i + 1] == 'n') { s[j++] = ' '; i++; } else s[j++] = text[i]; }
+    s[j] = 0; int cl = 0; char cur[TOKLEN];
+    for (size_t i = 0; i <= j; i++) {
+        unsigned char c = (unsigned char)s[i]; int tokc = (i < j) && (isalnum(c) || c == ':' || c == '#' || c == '$' || c == '_' || c == '-');
+        if (tokc) { if (cl < TOKLEN - 1) cur[cl++] = (char)tolower(c); }
+        else if (cl) { cur[cl] = 0; cl = 0; if (l->n >= MAXLW) { l->n = 0; return 0; } strcpy(l->w[l->n++], cur); }
+    }
+    return l->n;
+}
+static void load_labels(const char *dir) {
+    NLAB = 0; memset(LAB, 0, sizeof LAB);
+    char p[1100], ln[512]; snprintf(p, sizeof p, "%s/page.pdl", dir); FILE *fp = fopen(p, "r"); if (!fp) return;
+    static LabRow R[128]; int nr = 0;
+    while (fgets(ln, sizeof ln, fp)) {
+        if (ln[0] == '#') continue; char *f[8]; int n = 0; char *sv = NULL;
+        for (char *t = strtok_r(ln, "|", &sv); t && n < 8; t = strtok_r(NULL, "|", &sv)) f[n++] = trim(t);
+        if (n < 2 || strcmp(f[0], "LABEL") || nr >= 128) continue;
+        snprintf(R[nr].key, sizeof R[nr].key, "%s", f[1]); snprintf(R[nr].text, sizeof R[nr].text, "%s", n >= 3 ? f[2] : ""); nr++;
+    }
+    fclose(fp);
+    for (int t = 0; t < NT; t++) {
+        if (!TL[t].key[0] || !strcmp(TL[t].kind, "chance") || !strcmp(TL[t].kind, "chest")) continue;
+        const char *txt = NULL;
+        for (int j = nr - 1; j >= 0 && !txt; j--) if (!strcmp(R[j].key, TL[t].name)) txt = R[j].text;
+        for (int j = nr - 1; j >= 0 && !txt; j--) if (!strcmp(R[j].key, TL[t].kind)) txt = R[j].text;
+        if (!txt || !*txt) continue;
+        if (label_tokens(txt, &LAB[t])) { snprintf(LAB[t].text, sizeof LAB[t].text, "%s", txt); NLAB++; }
+    }
+}
+
 /* board.pdl: `TILE | idx | id | kind | group | price | ...` (the classic format). Names come from here, never from the code. */
 static int load_board(const char *app, const char *rs) {
-    char p[1100], ln[512]; snprintf(p, sizeof p, "%s/rulesets/%s/board.pdl", app, rs);
-    FILE *fp = fopen(p, "r"); if (!fp) { snprintf(p, sizeof p, "%s/board.pdl", app); fp = fopen(p, "r"); }
+    char p[1100], ln[512], dir[1100]; snprintf(dir, sizeof dir, "%s/rulesets/%s", app, rs); snprintf(p, sizeof p, "%s/board.pdl", dir);
+    FILE *fp = fopen(p, "r"); if (!fp) { snprintf(dir, sizeof dir, "%s", app); snprintf(p, sizeof p, "%s/board.pdl", app); fp = fopen(p, "r"); }
     if (!fp) return refuse("cannot read the board of ruleset %s", rs);
     NT = 0; memset(TL, 0, sizeof TL);
     while (fgets(ln, sizeof ln, fp)) {
@@ -65,6 +108,7 @@ static int load_board(const char *app, const char *rs) {
     }
     fclose(fp);
     if (NT < 2) return refuse("board.pdl holds no tiles (a classic board is needed for chat)");
+    load_labels(dir);
     return 0;
 }
 
@@ -95,20 +139,79 @@ static int noise(const char *w) {
     for (int i = 0; N[i]; i++) if (!strcmp(w, N[i])) return 1; return 0;
 }
 
-/* ---- name resolution: exact id, else a UNIQUE prefix among the tiles the verb may touch (kind 0 = any ownable, 1 = street) ---- */
+/* ---- name resolution: exact id, else the exact on-screen label (longest first), else a UNIQUE prefix among the tiles the verb may touch (kind 0 = any ownable, 1 = street) ---- */
 static int eligible(int t, int kind) { return t < NT && TL[t].key[0] && (kind == 1 ? is_street(t) : ownable(t)); }
-static int resolve(const char *w, int kind, int *out) {
+static void cand_str(const int *c, int n, char *b, size_t cap) {   /* `Orange3 (Coil Plaza) (19), ...`: the id, the label when the tile has one, the tile number */
+    b[0] = 0;
+    for (int i = 0; i < n && i < 12; i++) { size_t u = strlen(b);
+        if (LAB[c[i]].n) snprintf(b + u, cap - u, "%s%s (%s) (%d)", i ? ", " : "", TL[c[i]].name, LAB[c[i]].text, c[i]);
+        else snprintf(b + u, cap - u, "%s%s (%d)", i ? ", " : "", TL[c[i]].name, c[i]); }
+    if (n > 12) { size_t u = strlen(b); snprintf(b + u, cap - u, ", ..."); }
+}
+static int wrong_kind(int t, int kind) { return refuse("%s (tile %d) is a %s tile, not a %s", TL[t].name, t, TL[t].kind, kind == 1 ? "street (only streets take houses)" : "property"); }
+/* the candidates c[0..n) for what was typed (`typed`): one eligible = the answer; several = ambiguous, listed; none eligible = say what the nearest is. exact = the typed text was a whole name, not a prefix */
+static int pick(const int *c, int n, int kind, const char *typed, int exact, int *out) {
+    int el[MAXT], ne = 0, other = -1;
+    for (int i = 0; i < n; i++) { if (eligible(c[i], kind)) el[ne++] = c[i]; else if (other < 0) other = c[i]; }
+    if (ne == 1) { *out = el[0]; return 0; }
+    if (ne > 1) { char b[900]; cand_str(el, ne, b, sizeof b); return refuse("ambiguous name \"%s\": could be %s", typed, b); }
+    if (n == 1 && exact) return wrong_kind(other, kind);
+    return refuse("\"%s\" is %s, which is a %s tile, not a %s", typed, TL[other].name, TL[other].kind, kind == 1 ? "street" : "property");
+}
+static int unknown_name(const char *typed) {
+    if (NLAB) return refuse("unknown name \"%s\" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number)", typed);
+    return refuse("unknown name \"%s\" (tile ids like Navy2, Line1, Water; or a tile number)", typed);
+}
+static int resolve(const char *w, int kind, int *out) {   /* one token, ids only (prop:<id>, #<id>) */
     size_t wl = strlen(w);
-    for (int t = 0; t < NT; t++) if (TL[t].key[0] && !strcmp(TL[t].key, w)) {
-        if (!eligible(t, kind)) return refuse("%s (tile %d) is a %s tile, not a %s", TL[t].name, t, TL[t].kind, kind == 1 ? "street (only streets take houses)" : "property");
-        *out = t; return 0; }
-    int c[MAXT], n = 0, other = -1;
-    for (int t = 0; t < NT; t++) if (TL[t].key[0] && !strncmp(TL[t].key, w, wl)) { if (eligible(t, kind)) c[n++] = t; else if (other < 0) other = t; }
-    if (n == 1) { *out = c[0]; return 0; }
-    if (n > 1) { char b[400] = ""; for (int i = 0; i < n && i < 12; i++) { size_t u = strlen(b); snprintf(b + u, sizeof b - u, "%s%s (%d)", i ? ", " : "", TL[c[i]].name, c[i]); }
-        return refuse("ambiguous name \"%s\": could be %s%s", w, b, n > 12 ? ", ..." : ""); }
-    if (other >= 0) return refuse("\"%s\" is %s, which is a %s tile, not a %s", w, TL[other].name, TL[other].kind, kind == 1 ? "street" : "property");
-    return refuse("unknown name \"%s\" (tile ids like Navy2, Line1, Water; or a tile number)", w);
+    for (int t = 0; t < NT; t++) if (TL[t].key[0] && !strcmp(TL[t].key, w)) { if (!eligible(t, kind)) return wrong_kind(t, kind); *out = t; return 0; }
+    int c[MAXT], n = 0;
+    for (int t = 0; t < NT; t++) if (TL[t].key[0] && !strncmp(TL[t].key, w, wl)) c[n++] = t;
+    if (!n) return unknown_name(w);
+    return pick(c, n, kind, w, 0, out);
+}
+
+/* words typed at TK[i..i+k) against tile t's label: exact = the whole label; else every word but the last whole and the last a prefix of the label's word */
+static int lab_hit(int t, int i, int k, int exact) {
+    const Lab *l = &LAB[t]; if (!l->n || k > l->n || (exact && k != l->n)) return 0;
+    for (int j = 0; j < k - 1; j++) if (strcmp(TK[i + j], l->w[j])) return 0;
+    return exact ? !strcmp(TK[i + k - 1], l->w[k - 1]) : !strncmp(l->w[k - 1], TK[i + k - 1], strlen(TK[i + k - 1]));
+}
+static void typed_str(int i, int k, char *o, size_t cap) { o[0] = 0; for (int j = 0; j < k; j++) { size_t u = strlen(o); snprintf(o + u, cap - u, "%s%s", j ? " " : "", TK[i + j]); } }
+static int reserved_word(const char *w) { return noise(w) || !strcmp(w, "nothing") || !strcmp(w, "none") || !strcmp(w, "tile") || !strcmp(w, "luck") || !strcmp(w, "fund") || !strcmp(w, "give") || !strcmp(w, "get"); }
+/* the longest whole label typed at TK[i..b), at least minw words (a one-word label that is also a filler/number word stays a plain word). 1 = found (*out tile, *used words), 0 = none, -1 = refused */
+static int label_exact(int i, int b, int kind, int minw, int *out, int *used) {
+    int kmax = b - i < MAXLW ? b - i : MAXLW;
+    for (int k = kmax; k >= minw; k--) {
+        if (k == 1 && (reserved_word(TK[i]) || is_int(TK[i]) || TK[i][0] == '$' || TK[i][0] == '#')) break;
+        int c[MAXT], n = 0; for (int t = 0; t < NT; t++) if (lab_hit(t, i, k, 1)) c[n++] = t;
+        if (!n) continue;
+        char ty[200]; typed_str(i, k, ty, sizeof ty); *used = k; return pick(c, n, kind, ty, 1, out) ? -1 : 1;
+    }
+    return 0;
+}
+/* a tile name starting at TK[i] (a word, limit b): `Navy 2` = navy2 when that id exists; an exact id; an exact label; else a unique prefix of an id (one word) or of a label (words, the last one may be cut). *used = words consumed */
+static int name_at(int i, int b, int kind, int *out, int *used) {
+    const char *w = TK[i]; size_t wl = strlen(w); int t;
+    if (i + 1 < b && is_int(TK[i + 1])) {
+        char j[80]; snprintf(j, sizeof j, "%s%s", w, TK[i + 1]);
+        for (t = 0; t < NT; t++) if (TL[t].key[0] && !strcmp(TL[t].key, j)) break;
+        if (t < NT) { if (!eligible(t, kind)) return wrong_kind(t, kind); *out = t; *used = 2; return 0; }
+    }
+    for (t = 0; t < NT; t++) if (TL[t].key[0] && !strcmp(TL[t].key, w)) { if (!eligible(t, kind)) return wrong_kind(t, kind); *out = t; *used = 1; return 0; }
+    int r = label_exact(i, b, kind, 1, out, used); if (r) return r < 0 ? -1 : 0;
+    int kmax = b - i < MAXLW ? b - i : MAXLW;
+    for (int k = kmax; k >= 1; k--) {
+        int c[MAXT], n = 0;
+        for (t = 0; t < NT; t++) {
+            int hit = lab_hit(t, i, k, 0);
+            if (!hit && k == 1 && TL[t].key[0] && !strncmp(TL[t].key, w, wl)) hit = 1;
+            if (hit) c[n++] = t;
+        }
+        if (!n) continue;
+        char ty[200]; typed_str(i, k, ty, sizeof ty); *used = k; return pick(c, n, kind, ty, 0, out);
+    }
+    return unknown_name(w);
 }
 
 /* ---- one side of an offer ---- */
@@ -126,6 +229,7 @@ static int add_cash(Side *s, const char *digits) {
 static int parse_side(int a, int b, Side *s, const char *which) {
     for (int i = a; i < b; i++) {
         const char *w = TK[i];
+        if (reserved_word(w)) { int t, u, r = label_exact(i, b, 0, 2, &t, &u); if (r < 0) return -1; if (r) { if (add_tile(s, t)) return -1; i += u - 1; continue; } }   /* a whole label that starts with a filler word (`The Hub`) is a name */
         if (noise(w)) continue;
         if (!strcmp(w, "nothing") || !strcmp(w, "none") || !strcmp(w, "-")) { s->none = 1; continue; }
         if (!strncmp(w, "prop:", 5)) { int t; if (is_int(w + 5)) { t = atoi(w + 5); if (t >= NT || !eligible(t, 0)) return refuse("tile %s cannot be traded (not a property)", w + 5); }
@@ -139,14 +243,8 @@ static int parse_side(int a, int b, Side *s, const char *which) {
             int t = atoi(w + 1); if (t >= NT || !eligible(t, 0)) return refuse("tile %d cannot be traded (not a property)", t); if (add_tile(s, t)) return -1; continue; }
         if (!strcmp(w, "tile")) { if (i + 1 < b && is_int(TK[i + 1])) { int t = atoi(TK[i + 1]); if (t >= NT || !eligible(t, 0)) return refuse("tile %d cannot be traded (not a property)", t); if (add_tile(s, t)) return -1; i++; } continue; }
         if (is_int(w)) { if (add_cash(s, w)) return -1; continue; }
-        if (isalpha((unsigned char)w[0])) {
-            int t;
-            if (i + 1 < b && is_int(TK[i + 1])) {   /* `Navy 2` = navy2 when that id exists; otherwise the number after a name is cash */
-                char j[80]; snprintf(j, sizeof j, "%s%s", w, TK[i + 1]);
-                for (t = 0; t < NT; t++) if (TL[t].key[0] && !strcmp(TL[t].key, j)) break;
-                if (t < NT) { if (!ownable(t)) return refuse("%s (tile %d) is a %s tile, not a property", TL[t].name, t, TL[t].kind); if (add_tile(s, t)) return -1; i++; continue; }
-            }
-            if (resolve(w, 0, &t)) return -1; if (add_tile(s, t)) return -1; continue;
+        if (isalpha((unsigned char)w[0])) {   /* `Navy 2` = navy2 when that id exists (otherwise the number after a name is cash); an id; a label as written on the board; a unique prefix */
+            int t, u; if (name_at(i, b, 0, &t, &u)) return -1; if (add_tile(s, t)) return -1; i += u - 1; continue;
         }
         return refuse("cannot read \"%s\" in what you %s", w, which);
     }
@@ -221,6 +319,7 @@ static int parse_text(const char *text) {
         int kind = (!strcmp(v, "build") || !strcmp(v, "sell")) ? 1 : 0, t = -1, got = 0;
         for (int i = 1; i < NTK; i++) {
             const char *w = TK[i]; int one = -1;
+            if (reserved_word(w)) { int u, r = label_exact(i, NTK, kind, 2, &one, &u); if (r < 0) return -1; if (r) { i += u - 1; goto have_one; } }
             if (noise(w)) continue;
             if (w[0] == '#' || !strncmp(w, "prop:", 5) || is_int(w)) {
                 const char *d = w[0] == '#' ? w + 1 : !strncmp(w, "prop:", 5) ? w + 5 : w;
@@ -228,11 +327,9 @@ static int parse_text(const char *text) {
                 else if (resolve(d, kind, &one)) return -1;
             } else if (isalpha((unsigned char)w[0])) {
                 if (!strcmp(w, "tile")) continue;
-                int hit = -1;
-                if (i + 1 < NTK && is_int(TK[i + 1])) { char j[80]; snprintf(j, sizeof j, "%s%s", w, TK[i + 1]); for (int q = 0; q < NT; q++) if (TL[q].key[0] && !strcmp(TL[q].key, j)) hit = q; }
-                if (hit >= 0) { if (!eligible(hit, kind)) return refuse("%s (tile %d) is a %s tile, not a %s", TL[hit].name, hit, TL[hit].kind, kind ? "street (only streets take houses)" : "property"); one = hit; i++; }
-                else if (resolve(w, kind, &one)) return -1;
+                int u; if (name_at(i, NTK, kind, &one, &u)) return -1; i += u - 1;   /* id (`Red 2`, `red2`), label as written on the board, or a unique prefix */
             } else return refuse("cannot read \"%s\"", w);
+        have_one:
             if (got && one != t) return refuse("%s takes ONE tile (got %s and %s)", v, TL[t].name, TL[one].name);
             t = one; got = 1;
         }

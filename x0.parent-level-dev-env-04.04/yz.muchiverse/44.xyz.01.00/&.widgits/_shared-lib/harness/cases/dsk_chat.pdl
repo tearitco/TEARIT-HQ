@@ -97,20 +97,20 @@ EXPECT_OUT_IS | ok amend 7 give cash:5\nunderstood: amend offer 7: you give 5 ca
 # --- every REFUSAL says why, lists candidates when a name is ambiguous, and exits 2 ---
 CASE    | refusals
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Navy get Pink 1
-EXPECT_OUT_IS | refused: ambiguous name "navy": could be Navy1 (37), Navy2 (39) | AMBIGUOUS-Navy-lists-both-candidates
+EXPECT_OUT_IS | refused: ambiguous name "navy": could be Navy1 (Hub Row) (37), Navy2 (Hub Crown) (39) | AMBIGUOUS-Navy-lists-both-candidates
 EXPECT_EXIT | 2 | refusal-exits-2
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Pink
-EXPECT_OUT_IS | refused: ambiguous name "pink": could be Pink1 (11), Pink2 (13), Pink3 (14) | AMBIGUOUS-Pink-lists-three-candidates
+EXPECT_OUT_IS | refused: ambiguous name "pink": could be Pink1 (Helix Court) (11), Pink2 (Helix Row) (13), Pink3 (Helix Walk) (14) | AMBIGUOUS-Pink-lists-three-candidates
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Line
-EXPECT_OUT_IS | refused: ambiguous name "line": could be Line1 (5), Line2 (15), Line3 (25), Line4 (35) | AMBIGUOUS-Line-lists-the-four-rails
+EXPECT_OUT_IS | refused: ambiguous name "line": could be Line1 (Spiral Line I) (5), Line2 (Spiral Line II) (15), Line3 (Spiral Line III) (25), Line4 (Spiral Line IV) (35) | AMBIGUOUS-Line-lists-the-four-rails
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Red
-EXPECT_OUT_IS | refused: ambiguous name "red": could be Red1 (21), Red2 (23), Red3 (24) | AMBIGUOUS-in-a-tile-verb
+EXPECT_OUT_IS | refused: ambiguous name "red": could be Red1 (Vortex Way) (21), Red2 (Vortex Hall) (23), Red3 (Vortex Plaza) (24) | AMBIGUOUS-in-a-tile-verb
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Pink 4
-EXPECT_OUT_IS | refused: ambiguous name "pink": could be Pink1 (11), Pink2 (13), Pink3 (14) | no-Pink4-so-the-name-alone-is-tried-and-is-ambiguous
+EXPECT_OUT_IS | refused: ambiguous name "pink": could be Pink1 (Helix Court) (11), Pink2 (Helix Row) (13), Pink3 (Helix Walk) (14) | no-Pink4-so-the-name-alone-is-tried-and-is-ambiguous
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Zork
-EXPECT_OUT_IS | refused: unknown name "zork" (tile ids like Navy2, Line1, Water; or a tile number) | UNKNOWN-name
+EXPECT_OUT_IS | refused: unknown name "zork" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | UNKNOWN-name
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Navy 2 for Pink 1
-EXPECT_OUT_IS | refused: unknown name "for" (tile ids like Navy2, Line1, Water; or a tile number) | the-word-for-is-NOT-silently-ignored-it-would-have-moved-Pink1-to-the-wrong-side
+EXPECT_OUT_IS | refused: unknown name "for" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | the-word-for-is-NOT-silently-ignored-it-would-have-moved-Pink1-to-the-wrong-side
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Start
 EXPECT_OUT_IS | refused: Start (tile 0) is a go tile, not a property | a-tile-that-is-not-a-property
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Line 1
@@ -189,7 +189,7 @@ RUN | /usr/bin/cp | $T/s1/ledger.txt | $T/s1_before.txt
 RUN | /usr/bin/grep | -c | ^ | $T/s1/ledger.txt
 EXPECT_OUT | 300 | the-prefix-has-300-rows
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | offer p2 give Navy get Pink 1
-EXPECT_OUT | refused: ambiguous name "navy": could be Navy1 (37), Navy2 (39) | ambiguous-in-mode-b
+EXPECT_OUT | refused: ambiguous name "navy": could be Navy1 (Hub Row) (37), Navy2 (Hub Crown) (39) | ambiguous-in-mode-b
 EXPECT_EXIT | 2 | exit-2
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | offer p2 give Zork
 EXPECT_OUT | refused: unknown name "zork" | unknown-in-mode-b
@@ -370,3 +370,369 @@ RUN | /usr/bin/grep | -c | ^ | $T/e6/ledger.txt
 EXPECT_OUT | 95 | still-95
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/e6 | as=p2 | bid 10
 EXPECT_OUT | p2 bid: bid=10 | POSITIVE-CONTROL-a-legal-bid-by-the-right-seat-is-taken
+
+# =====================================================================================================================================================================================================
+# TILE NAMES AS WRITTEN ON THE BOARD (2026-11-09). The board, the trade screen and the popups show the page.pdl LABEL text (`Coil Plaza`), so a viewer types that, not the id (`Orange3`). The chat resolves a tile by id (unchanged)
+# AND by label: longest whole label first, else a unique prefix (first words whole, the last cut), case-insensitive, extra words as before; ambiguous / unknown refused WITH the candidates (id, label, number) and nothing sent.
+# The line sent to the engine is the same `prop:<n>` as for the id, so the ledger is the same bytes (proved at the end). Labels are read at parse time from the page.pdl beside the board.pdl in use: nothing is in the C.
+# PLACEHOLDER PINS: the 34 rows of `labels_real` pin the 2026-11-09 stand-in names; when the owner's lore names replace the page.pdl rows these expectations are renamed with them (the `labels_fixture` cases do not depend on them).
+# =====================================================================================================================================================================================================
+CASE    | labels_real
+RUN | /usr/bin/grep | -c | Coil Plaza | $T/app/rulesets/classic/page.pdl
+EXPECT_OUT | 1 | VACUITY-the-scratch-app-carries-the-placeholder-labels-the-rows-below-pin
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give 100 get Coil Plaza
+EXPECT_OUT_IS | ok offer p2 give cash:100 get prop:19\nunderstood: offer p2: you give 100 cash, you get Orange3 | THE-HEADLINE-offer-p2-give-100-get-Coil-Plaza-is-Orange3-tile-19
+EXPECT_EXIT | 0 | headline-exit-0
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give 100 get Orange3
+EXPECT_OUT_IS | ok offer p2 give cash:100 get prop:19\nunderstood: offer p2: you give 100 cash, you get Orange3 | the-id-form-gives-the-very-same-canonical-line
+# every LABEL row of the classic page.pdl (all 34 board tiles; the two deck rows, Luck and Lost & Found, are not tiles): `offer p2 give <label> get 100`. Number and kind come from board.pdl, not from the C.
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Start get 100
+EXPECT_OUT_IS | refused: Start (tile 0) is a go tile, not a property | LABEL-spiral-start-is-tile-0-Start-a-go-tile-not-tradable
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Helix Cell get 100
+EXPECT_OUT_IS | refused: Jail (tile 10) is a jail tile, not a property | LABEL-helix-cell-is-tile-10-Jail-a-jail-tile-not-tradable
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Quiet Spiral get 100
+EXPECT_OUT_IS | refused: Free (tile 20) is a free tile, not a property | LABEL-quiet-spiral-is-tile-20-Free-a-free-tile-not-tradable
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Helix Snare get 100
+EXPECT_OUT_IS | refused: GoJail (tile 30) is a gotojail tile, not a property | LABEL-helix-snare-is-tile-30-GoJail-a-gotojail-tile-not-tradable
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Seed Lane get 100
+EXPECT_OUT_IS | ok offer p2 give prop:1 get cash:100\nunderstood: offer p2: you give Brown1, you get 100 cash | LABEL-seed-lane-is-tile-1-Brown1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Sprout Lane get 100
+EXPECT_OUT_IS | ok offer p2 give prop:3 get cash:100\nunderstood: offer p2: you give Brown2, you get 100 cash | LABEL-sprout-lane-is-tile-3-Brown2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Phi Lane get 100
+EXPECT_OUT_IS | ok offer p2 give prop:6 get cash:100\nunderstood: offer p2: you give Sky1, you get 100 cash | LABEL-phi-lane-is-tile-6-Sky1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Phi Court get 100
+EXPECT_OUT_IS | ok offer p2 give prop:8 get cash:100\nunderstood: offer p2: you give Sky2, you get 100 cash | LABEL-phi-court-is-tile-8-Sky2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Phi Row get 100
+EXPECT_OUT_IS | ok offer p2 give prop:9 get cash:100\nunderstood: offer p2: you give Sky3, you get 100 cash | LABEL-phi-row-is-tile-9-Sky3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Helix Court get 100
+EXPECT_OUT_IS | ok offer p2 give prop:11 get cash:100\nunderstood: offer p2: you give Pink1, you get 100 cash | LABEL-helix-court-is-tile-11-Pink1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Helix Row get 100
+EXPECT_OUT_IS | ok offer p2 give prop:13 get cash:100\nunderstood: offer p2: you give Pink2, you get 100 cash | LABEL-helix-row-is-tile-13-Pink2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Helix Walk get 100
+EXPECT_OUT_IS | ok offer p2 give prop:14 get cash:100\nunderstood: offer p2: you give Pink3, you get 100 cash | LABEL-helix-walk-is-tile-14-Pink3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Street get 100
+EXPECT_OUT_IS | ok offer p2 give prop:16 get cash:100\nunderstood: offer p2: you give Orange1, you get 100 cash | LABEL-coil-street-is-tile-16-Orange1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Square get 100
+EXPECT_OUT_IS | ok offer p2 give prop:18 get cash:100\nunderstood: offer p2: you give Orange2, you get 100 cash | LABEL-coil-square-is-tile-18-Orange2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Plaza get 100
+EXPECT_OUT_IS | ok offer p2 give prop:19 get cash:100\nunderstood: offer p2: you give Orange3, you get 100 cash | LABEL-coil-plaza-is-tile-19-Orange3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Vortex Way get 100
+EXPECT_OUT_IS | ok offer p2 give prop:21 get cash:100\nunderstood: offer p2: you give Red1, you get 100 cash | LABEL-vortex-way-is-tile-21-Red1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Vortex Hall get 100
+EXPECT_OUT_IS | ok offer p2 give prop:23 get cash:100\nunderstood: offer p2: you give Red2, you get 100 cash | LABEL-vortex-hall-is-tile-23-Red2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Vortex Plaza get 100
+EXPECT_OUT_IS | ok offer p2 give prop:24 get cash:100\nunderstood: offer p2: you give Red3, you get 100 cash | LABEL-vortex-plaza-is-tile-24-Red3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Golden Row get 100
+EXPECT_OUT_IS | ok offer p2 give prop:26 get cash:100\nunderstood: offer p2: you give Yellow1, you get 100 cash | LABEL-golden-row-is-tile-26-Yellow1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Golden Ratio Row get 100
+EXPECT_OUT_IS | ok offer p2 give prop:27 get cash:100\nunderstood: offer p2: you give Yellow2, you get 100 cash | LABEL-golden-ratio-row-is-tile-27-Yellow2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Golden Ratio Way get 100
+EXPECT_OUT_IS | ok offer p2 give prop:29 get cash:100\nunderstood: offer p2: you give Yellow3, you get 100 cash | LABEL-golden-ratio-way-is-tile-29-Yellow3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Shell Row get 100
+EXPECT_OUT_IS | ok offer p2 give prop:31 get cash:100\nunderstood: offer p2: you give Green1, you get 100 cash | LABEL-shell-row-is-tile-31-Green1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Shell Hall get 100
+EXPECT_OUT_IS | ok offer p2 give prop:32 get cash:100\nunderstood: offer p2: you give Green2, you get 100 cash | LABEL-shell-hall-is-tile-32-Green2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Shell Bay get 100
+EXPECT_OUT_IS | ok offer p2 give prop:34 get cash:100\nunderstood: offer p2: you give Green3, you get 100 cash | LABEL-shell-bay-is-tile-34-Green3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Hub Row get 100
+EXPECT_OUT_IS | ok offer p2 give prop:37 get cash:100\nunderstood: offer p2: you give Navy1, you get 100 cash | LABEL-hub-row-is-tile-37-Navy1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Hub Crown get 100
+EXPECT_OUT_IS | ok offer p2 give prop:39 get cash:100\nunderstood: offer p2: you give Navy2, you get 100 cash | LABEL-hub-crown-is-tile-39-Navy2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Line I get 100
+EXPECT_OUT_IS | ok offer p2 give prop:5 get cash:100\nunderstood: offer p2: you give Line1, you get 100 cash | LABEL-spiral-line-i-is-tile-5-Line1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Line II get 100
+EXPECT_OUT_IS | ok offer p2 give prop:15 get cash:100\nunderstood: offer p2: you give Line2, you get 100 cash | LABEL-spiral-line-ii-is-tile-15-Line2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Line III get 100
+EXPECT_OUT_IS | ok offer p2 give prop:25 get cash:100\nunderstood: offer p2: you give Line3, you get 100 cash | LABEL-spiral-line-iii-is-tile-25-Line3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Line IV get 100
+EXPECT_OUT_IS | ok offer p2 give prop:35 get cash:100\nunderstood: offer p2: you give Line4, you get 100 cash | LABEL-spiral-line-iv-is-tile-35-Line4
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spin Works get 100
+EXPECT_OUT_IS | ok offer p2 give prop:12 get cash:100\nunderstood: offer p2: you give Power, you get 100 cash | LABEL-spin-works-is-tile-12-Power
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Whirl Works get 100
+EXPECT_OUT_IS | ok offer p2 give prop:28 get cash:100\nunderstood: offer p2: you give Water, you get 100 cash | LABEL-whirl-works-is-tile-28-Water
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Tithe get 100
+EXPECT_OUT_IS | refused: LevyA (tile 4) is a tax tile, not a property | LABEL-spiral-tithe-is-tile-4-LevyA-a-tax-tile-not-tradable
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Turn Toll get 100
+EXPECT_OUT_IS | refused: LevyB (tile 38) is a tax tile, not a property | LABEL-turn-toll-is-tile-38-LevyB-a-tax-tile-not-tradable
+# the two deck labels are not tile names
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Lost Found get 5
+EXPECT_OUT_IS | refused: unknown name "lost" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | DECK-LABEL-Lost-and-Found-is-not-a-tile
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Luck get 5
+EXPECT_OUT_IS | ok offer p2 give card:luck get cash:5\nunderstood: offer p2: you give luck card, you get 5 cash | DECK-LABEL-Luck-is-still-the-luck-card-not-a-tile
+# longest label first, case-insensitive, extra words, either side, tile verbs
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Golden Row get Golden Ratio Row
+EXPECT_OUT_IS | ok offer p2 give prop:26 get prop:27\nunderstood: offer p2: you give Yellow1, you get Yellow2 | LONGEST-FIRST-Golden-Row-is-Yellow1-and-Golden-Ratio-Row-is-Yellow2-neither-swallows-the-other
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give GOLDEN RATIO ROW and golden ratio way
+EXPECT_OUT_IS | ok offer p2 give prop:27+prop:29\nunderstood: offer p2: you give Yellow2 + Yellow3, you get nothing | CASE-INSENSITIVE-capitals-and-lower-case-multi-word-labels-with-and-between
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | OFFER P2 GIVE coil PLAZA, 100 GET spiral line iv
+EXPECT_OUT_IS | ok offer p2 give prop:19+cash:100 get prop:35\nunderstood: offer p2: you give Orange3 + 100 cash, you get Line4 | mixed-case-commas-a-roman-numeral-label-word
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer to p2 please give my Coil Plaza and 100 cash
+EXPECT_OUT_IS | ok offer p2 give prop:19+cash:100\nunderstood: offer p2: you give Orange3 + 100 cash, you get nothing | EXTRA-WORDS-to-please-my-and-cash-are-still-ignored-around-a-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Line I get Spiral Line II
+EXPECT_OUT_IS | ok offer p2 give prop:5 get prop:15\nunderstood: offer p2: you give Line1, you get Line2 | EXACT-beats-prefix-Spiral-Line-I-is-also-a-prefix-of-II-III-IV
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Plaza Coil Square get Hub Crown 50
+EXPECT_OUT_IS | ok offer p2 give prop:18+prop:19 get prop:39+cash:50\nunderstood: offer p2: you give Orange2 + Orange3, you get Navy2 + 50 cash | several-labels-one-after-another-and-a-number-after-a-label-is-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Navy 2 and Coil Plaza and wat and Whirl Works get 5
+EXPECT_OUT_IS | refused: Water is named twice | an-id-prefix-and-a-label-of-the-same-tile-are-the-same-tile
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Navy 2 and Coil Plaza and wat get 5
+EXPECT_OUT_IS | ok offer p2 give prop:19+prop:28+prop:39 get cash:5\nunderstood: offer p2: you give Orange3 + Water + Navy2, you get 5 cash | ids-id-prefixes-and-labels-mix-in-one-line
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Seed Lane
+EXPECT_OUT_IS | ok build 1\nunderstood: build Brown1 (tile 1) | TILE-VERB-build-by-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | sell vortex plaza
+EXPECT_OUT_IS | ok sell 24\nunderstood: sell Red3 (tile 24) | TILE-VERB-sell-by-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | mortgage Spin Works
+EXPECT_OUT_IS | ok mortgage 12\nunderstood: mortgage Power (tile 12) | TILE-VERB-mortgage-a-utility-by-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | unmortgage tile Whirl Works
+EXPECT_OUT_IS | ok unmortgage 28\nunderstood: unmortgage Water (tile 28) | TILE-VERB-the-word-tile-before-a-label-is-filler
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Spin Works
+EXPECT_OUT_IS | refused: Power (tile 12) is a util tile, not a street (only streets take houses) | TILE-VERB-build-on-a-utility-label-same-refusal-as-the-id
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Vortex Plaza Vortex Hall
+EXPECT_OUT_IS | refused: build takes ONE tile (got Red3 and Red2) | TILE-VERB-two-labels-for-one-verb
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Vortex Plaza Red 3
+EXPECT_OUT_IS | ok build 24\nunderstood: build Red3 (tile 24) | TILE-VERB-a-label-and-the-id-of-the-same-tile-are-one-tile
+# prefixes
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Pla get 5
+EXPECT_OUT_IS | ok offer p2 give prop:19 get cash:5\nunderstood: offer p2: you give Orange3, you get 5 cash | PREFIX-Coil-Pla-the-last-word-cut-is-unique
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Sprou get 5
+EXPECT_OUT_IS | ok offer p2 give prop:3 get cash:5\nunderstood: offer p2: you give Brown2, you get 5 cash | PREFIX-of-the-first-word-Sprou-is-Sprout-Lane
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Whi get 5
+EXPECT_OUT_IS | ok offer p2 give prop:28 get cash:5\nunderstood: offer p2: you give Water, you get 5 cash | PREFIX-Whi-is-Whirl-Works
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Golden Ratio get 5
+EXPECT_OUT_IS | refused: ambiguous name "golden ratio": could be Yellow2 (Golden Ratio Row) (27), Yellow3 (Golden Ratio Way) (29) | AMBIGUOUS-prefix-lists-id-label-and-number
+EXPECT_EXIT | 2 | ambiguous-exits-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil get 5
+EXPECT_OUT_IS | refused: ambiguous name "coil": could be Orange1 (Coil Street) (16), Orange2 (Coil Square) (18), Orange3 (Coil Plaza) (19) | AMBIGUOUS-one-word-lists-the-three-Coil-tiles
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Shell get 5
+EXPECT_OUT_IS | refused: ambiguous name "shell": could be Green1 (Shell Row) (31), Green2 (Shell Hall) (32), Green3 (Shell Bay) (34) | AMBIGUOUS-Shell
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Vortex
+EXPECT_OUT_IS | refused: ambiguous name "vortex": could be Red1 (Vortex Way) (21), Red2 (Vortex Hall) (23), Red3 (Vortex Plaza) (24) | AMBIGUOUS-in-a-tile-verb-lists-labels
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral Line get 5
+EXPECT_OUT_IS | refused: ambiguous name "spiral line": could be Line1 (Spiral Line I) (5), Line2 (Spiral Line II) (15), Line3 (Spiral Line III) (25), Line4 (Spiral Line IV) (35) | AMBIGUOUS-the-four-rail-labels-listed-with-ids
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Spiral get 5
+EXPECT_OUT_IS | refused: ambiguous name "spiral": could be Line1 (Spiral Line I) (5), Line2 (Spiral Line II) (15), Line3 (Spiral Line III) (25), Line4 (Spiral Line IV) (35) | AMBIGUOUS-a-word-shared-by-a-corner-rails-and-a-levy-lists-only-the-tiles-that-can-be-traded
+# unknown
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Plazaa get 5
+EXPECT_OUT_IS | refused: ambiguous name "coil": could be Orange1 (Coil Street) (16), Orange2 (Coil Square) (18), Orange3 (Coil Plaza) (19) | A-mistyped-last-word-after-a-shared-first-word-is-refused-with-the-candidates-never-guessed
+EXPECT_EXIT | 2 | exit-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Plaza get 5
+EXPECT_OUT_IS | refused: unknown name "plaza" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | UNKNOWN-the-LAST-word-of-a-label-alone-is-not-a-name
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Row get 5
+EXPECT_OUT_IS | refused: unknown name "row" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | UNKNOWN-row-is-in-six-labels-but-starts-none-of-them
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Works get 5
+EXPECT_OUT_IS | refused: unknown name "works" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | UNKNOWN-works
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Plaza for Hub Row
+EXPECT_OUT_IS | refused: unknown name "for" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | the-word-for-is-still-refused-after-a-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Coil Plaza; touch $T/pwned7
+EXPECT_OUT | refused: unsupported character (code 59) | HOSTILE-a-label-followed-by-a-semicolon-is-still-refused-by-code
+EXPECT_NOFILE | $T/pwned7 | and-no-file-was-made
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give Zork Plaza get 5
+EXPECT_OUT_IS | refused: unknown name "zork" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | UNKNOWN-label-nothing-like-any-label
+
+# --- TRAP LABELS, on a fixture page.pdl written here (so these checks do not depend on the stand-in names): labels that start with or contain filler / number / command words, that nest ("Gold" in "Golden Row" in
+# "Golden Ratio Row"), end in a digit, carry a literal \n, are redefined (the LAST row of a key wins), are emptied (empty text = no label), come from a KIND row, or equal another tile's id. ---
+CASE    | labels_fixture
+COPYDIR | @.apps/deskopoly | app2 | deskopoly-pchq,state,shots,tests
+WRITE   | app2/rulesets/classic/page.pdl | LABELS | on\nLABEL | chance | Luck\nLABEL | chest | Lost & Found\nLABEL | Start | Home Base\nLABEL | Brown1 | Cash Cow\nLABEL | Brown2 | The Hub\nLABEL | Sky1 | Row Row\nLABEL | Sky2 | Hall Pass\nLABEL | Sky3 | Lane Works\nLABEL | Pink1 | Tile Works\nLABEL | Pink2 | Fifty Five\nLABEL | Pink3 | Golden Row\nLABEL | Orange1 | Golden Ratio Row\nLABEL | Orange2 | Gold\nLABEL | Orange3 | Two\\nLines\nLABEL | Red1 | Old Pier\nLABEL | Red1 | New Pier\nLABEL | Red2 | \nLABEL | street | Avenue\nLABEL | Line1 | Train One\nLABEL | rail | Choo Choo\nLABEL | Power | Pipe\nLABEL | Water | Navy1\nLABEL | Yellow1 | Gold Rush\nLABEL | Navy1 | Hub Row\nLABEL | Navy2 | Tower 7\n
+RUN | /usr/bin/grep | -c | Brown1 \p Cash Cow | $T/app2/rulesets/classic/page.pdl
+EXPECT_OUT | 1 | VACUITY-the-fixture-page-was-written
+# labels that start with a filler word are names when the whole label is typed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Cash Cow get 100
+EXPECT_OUT_IS | ok offer p2 give prop:1 get cash:100\nunderstood: offer p2: you give Brown1, you get 100 cash | FILLER-WORD-FIRST-Cash-Cow-is-Brown1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give The Hub and 5 get cash cow
+EXPECT_OUT_IS | ok offer p2 give prop:3+cash:5 get prop:1\nunderstood: offer p2: you give Brown2 + 5 cash, you get Brown1 | FILLER-WORD-FIRST-The-Hub-is-Brown2-and-then-the-filler-cash-is-still-filler
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give 100 cash and Cash Cow
+EXPECT_OUT_IS | ok offer p2 give prop:1+cash:100\nunderstood: offer p2: you give Brown1 + 100 cash, you get nothing | POSITIVE-CONTROL-100-cash-is-still-100-dollars-beside-a-label-that-starts-with-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give cash
+EXPECT_OUT_IS | refused: "give" needs something after it: tiles, a number for cash, a luck/fund card, or "nothing" | a-lone-filler-word-is-still-filler-not-a-label-word
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give cash 100 get the
+EXPECT_OUT_IS | refused: "get" needs something after it: tiles, a number for cash, a luck/fund card, or "nothing" | a-lone-the-is-filler
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Tile Works get 5
+EXPECT_OUT_IS | ok offer p2 give prop:11 get cash:5\nunderstood: offer p2: you give Pink1, you get 5 cash | the-label-Tile-Works-beats-the-filler-word-tile
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give tile 11 and tile 13 get 5
+EXPECT_OUT_IS | ok offer p2 give prop:11+prop:13 get cash:5\nunderstood: offer p2: you give Pink1 + Pink2, you get 5 cash | POSITIVE-CONTROL-tile-N-still-means-tile-N
+# labels made of words that sound like numbers, directions or place words
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Row Row get Hall Pass
+EXPECT_OUT_IS | ok offer p2 give prop:6 get prop:8\nunderstood: offer p2: you give Sky1, you get Sky2 | ROW-ROW-and-HALL-PASS-are-names
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Lane Works and Fifty Five get 50
+EXPECT_OUT_IS | ok offer p2 give prop:9+prop:13 get cash:50\nunderstood: offer p2: you give Sky3 + Pink2, you get 50 cash | LANE-WORKS-and-FIFTY-FIVE-are-names-and-the-number-after-them-is-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Hall get 5
+EXPECT_OUT_IS | ok offer p2 give prop:8 get cash:5\nunderstood: offer p2: you give Sky2, you get 5 cash | the-FIRST-word-of-a-label-is-a-unique-prefix-Hall-is-Hall-Pass
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Pass get 5
+EXPECT_OUT_IS | refused: unknown name "pass" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | the-second-word-of-a-label-alone-is-not-a-name-even-when-it-is-a-command-word
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Works get 5
+EXPECT_OUT_IS | refused: unknown name "works" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | WORKS-alone-is-unknown-it-is-the-end-of-Lane-Works-and-Tile-Works
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Row get 5
+EXPECT_OUT_IS | ok offer p2 give prop:6 get cash:5\nunderstood: offer p2: you give Sky1, you get 5 cash | ROW-alone-is-Row-Row-by-its-first-word-while-WORKS-and-PASS-alone-(second-words)-are-unknown
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Tower 7 7
+EXPECT_OUT_IS | ok offer p2 give prop:39+cash:7\nunderstood: offer p2: you give Navy2 + 7 cash, you get nothing | a-label-ending-in-a-digit-Tower-7-and-then-a-number-is-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Tower get 5
+EXPECT_OUT_IS | ok offer p2 give prop:39 get cash:5\nunderstood: offer p2: you give Navy2, you get 5 cash | the-first-word-Tower-is-a-unique-prefix
+# nesting: Gold < Golden Row < Golden Ratio Row (longest whole label first, never a swallow)
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Gold get Golden Row
+EXPECT_OUT_IS | ok offer p2 give prop:18 get prop:14\nunderstood: offer p2: you give Orange2, you get Pink3 | NESTED-Gold-is-the-whole-label-of-Orange2-not-a-prefix-of-the-two-Golden-labels
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Golden Ratio Row get Golden Row
+EXPECT_OUT_IS | ok offer p2 give prop:16 get prop:14\nunderstood: offer p2: you give Orange1, you get Pink3 | NESTED-Golden-Ratio-Row-is-Orange1-and-Golden-Row-is-Pink3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Golden Row Golden Ratio Row Gold get 5
+EXPECT_OUT_IS | ok offer p2 give prop:14+prop:16+prop:18 get cash:5\nunderstood: offer p2: you give Pink3 + Orange1 + Orange2, you get 5 cash | NESTED-all-three-in-one-side-each-its-own-tile
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Gold Rush get 5
+EXPECT_OUT_IS | ok offer p2 give prop:26 get cash:5\nunderstood: offer p2: you give Yellow1, you get 5 cash | LONGEST-FIRST-Gold-Rush-is-Yellow1-and-does-not-become-Gold-plus-the-unknown-word-rush
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Gold Rush Gold get 5
+EXPECT_OUT_IS | ok offer p2 give prop:18+prop:26 get cash:5\nunderstood: offer p2: you give Orange2 + Yellow1, you get 5 cash | LONGEST-FIRST-Gold-Rush-then-Gold-two-tiles
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Golden get 5
+EXPECT_OUT_IS | refused: ambiguous name "golden": could be Pink3 (Golden Row) (14), Orange1 (Golden Ratio Row) (16) | NESTED-Golden-alone-is-the-two-longer-labels-and-lists-both
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Golden R get 5
+EXPECT_OUT_IS | refused: ambiguous name "golden r": could be Pink3 (Golden Row) (14), Orange1 (Golden Ratio Row) (16) | NESTED-Golden-R-is-a-prefix-of-both-second-words
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Golden Ra get 5
+EXPECT_OUT_IS | ok offer p2 give prop:16 get cash:5\nunderstood: offer p2: you give Orange1, you get 5 cash | NESTED-Golden-Ra-is-only-a-prefix-of-Ratio
+# a literal \n in the page.pdl text is a word break (the same reading the board's `page` gives it)
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Two Lines get 5
+EXPECT_OUT_IS | ok offer p2 give prop:19 get cash:5\nunderstood: offer p2: you give Orange3, you get 5 cash | BACKSLASH-N-in-the-label-is-a-space-Two-Lines-is-Orange3
+# the LAST row of a key wins; empty text = no label; a kind row names the tiles that have no row of their own, an own row beats it
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give New Pier get 5
+EXPECT_OUT_IS | ok offer p2 give prop:21 get cash:5\nunderstood: offer p2: you give Red1, you get 5 cash | LAST-ROW-WINS-the-second-Red1-row-New-Pier
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Old Pier get 5
+EXPECT_OUT_IS | refused: unknown name "old" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | LAST-ROW-WINS-the-replaced-name-Old-Pier-is-gone
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Avenue get 5
+EXPECT_OUT_IS | refused: ambiguous name "avenue": could be Red3 (Avenue) (24), Yellow2 (Avenue) (27), Yellow3 (Avenue) (29), Green1 (Avenue) (31), Green2 (Avenue) (32), Green3 (Avenue) (34) | KIND-ROW-street-Avenue-names-the-six-streets-without-a-row-of-their-own-and-NOT-Red2-(empty-row)-or-Red1-(own-row)
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Red 2 get 5
+EXPECT_OUT_IS | ok offer p2 give prop:23 get cash:5\nunderstood: offer p2: you give Red2, you get 5 cash | EMPTY-TEXT-row-no-label-but-the-id-Red-2-still-names-the-tile
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Train One get Choo
+EXPECT_OUT_IS | refused: ambiguous name "choo": could be Line2 (Choo Choo) (15), Line3 (Choo Choo) (25), Line4 (Choo Choo) (35) | OWN-ROW-beats-KIND-ROW-Line1-is-Train-One-so-Choo-Choo-lists-only-Line2-3-4
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Train One get 5
+EXPECT_OUT_IS | ok offer p2 give prop:5 get cash:5\nunderstood: offer p2: you give Line1, you get 5 cash | OWN-ROW-Train-One-is-Line1
+# an id beats a label that equals it (Water is labelled Navy1 here; Navy1 is also the id of tile 37)
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Navy1 get 5
+EXPECT_OUT_IS | ok offer p2 give prop:37 get cash:5\nunderstood: offer p2: you give Navy1, you get 5 cash | ID-WINS-Navy1-is-tile-37-though-Water-wears-that-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Water get 5
+EXPECT_OUT_IS | ok offer p2 give prop:28 get cash:5\nunderstood: offer p2: you give Water, you get 5 cash | and-Water-is-still-reachable-by-its-id
+# deck labels and non-property labels
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Home Base get 5
+EXPECT_OUT_IS | refused: Start (tile 0) is a go tile, not a property | a-label-of-a-corner-is-recognised-and-refused-like-its-id
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Lost get Found
+EXPECT_OUT_IS | refused: unknown name "lost" (tile ids like Navy2, Line1, Water; a tile name as written on the board; or a tile number) | DECK-label-Lost-and-Found-is-no-tile-in-the-fixture-either
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | offer p2 give Luck get 5
+EXPECT_OUT_IS | ok offer p2 give card:luck get cash:5\nunderstood: offer p2: you give luck card, you get 5 cash | DECK-label-Luck-is-the-luck-card
+# tile verbs with trap labels
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | mortgage Cash Cow
+EXPECT_OUT_IS | ok mortgage 1\nunderstood: mortgage Brown1 (tile 1) | VERB-mortgage-a-label-that-starts-with-the-filler-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | mortgage tile 5
+EXPECT_OUT_IS | ok mortgage 5\nunderstood: mortgage Line1 (tile 5) | VERB-POSITIVE-CONTROL-tile-5-is-tile-5
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | mortgage Tile Works
+EXPECT_OUT_IS | ok mortgage 11\nunderstood: mortgage Pink1 (tile 11) | VERB-mortgage-Tile-Works
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | build Tower 7
+EXPECT_OUT_IS | ok build 39\nunderstood: build Navy2 (tile 39) | VERB-build-Tower-7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | build Avenue
+EXPECT_OUT_IS | refused: ambiguous name "avenue": could be Red3 (Avenue) (24), Yellow2 (Avenue) (27), Yellow3 (Avenue) (29), Green1 (Avenue) (31), Green2 (Avenue) (32), Green3 (Avenue) (34) | VERB-build-Avenue-ambiguous
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | build Pipe
+EXPECT_OUT_IS | refused: Power (tile 12) is a util tile, not a street (only streets take houses) | VERB-build-a-utility-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app2 | sell Row Row Sky 1
+EXPECT_OUT_IS | ok sell 6\nunderstood: sell Sky1 (tile 6) | VERB-sell-label-and-id-of-the-same-tile
+
+# --- ids only, EXACTLY as before: no LABEL rows at all, an empty page.pdl, and no page.pdl at all (the old pins of `refusals`, in the old wording) ---
+CASE    | labels_absent
+COPYDIR | @.apps/deskopoly | app3 | deskopoly-pchq,state,shots,tests
+WRITE   | app3/rulesets/classic/page.pdl | LABELS | on\n# no LABEL rows\n
+COPYDIR | @.apps/deskopoly | app4 | deskopoly-pchq,state,shots,tests,page.pdl
+EXPECT_NOFILE | $T/app4/rulesets/classic/page.pdl | VACUITY-app4-has-no-page.pdl-at-all
+EXPECT_EXISTS | $T/app3/rulesets/classic/page.pdl | VACUITY-app3-has-a-page.pdl-with-no-LABEL-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app3 | offer p3 give Navy get Pink 1
+EXPECT_OUT_IS | refused: ambiguous name "navy": could be Navy1 (37), Navy2 (39) | NO-LABEL-ROWS-the-candidate-list-is-the-old-one-id-and-number
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app4 | offer p3 give Navy get Pink 1
+EXPECT_OUT_IS | refused: ambiguous name "navy": could be Navy1 (37), Navy2 (39) | NO-PAGE-PDL-the-same-old-list
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app3 | offer p3 give Zork
+EXPECT_OUT_IS | refused: unknown name "zork" (tile ids like Navy2, Line1, Water; or a tile number) | NO-LABEL-ROWS-the-old-unknown-name-wording
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app4 | offer p3 give Zork
+EXPECT_OUT_IS | refused: unknown name "zork" (tile ids like Navy2, Line1, Water; or a tile number) | NO-PAGE-PDL-the-old-unknown-name-wording
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app3 | offer p3 give Coil Plaza
+EXPECT_OUT_IS | refused: unknown name "coil" (tile ids like Navy2, Line1, Water; or a tile number) | NO-LABEL-ROWS-a-label-name-means-nothing-without-the-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app4 | offer p3 give Navy 2 and 100 get Pink 1
+EXPECT_OUT_IS | ok offer p3 give prop:39+cash:100 get prop:11\nunderstood: offer p3: you give Navy2 + 100 cash, you get Pink1 | NO-PAGE-PDL-ids-and-prefixes-work-as-before
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app3 | offer p2 give wat get Line1 25
+EXPECT_OUT_IS | ok offer p2 give prop:28 get prop:5+cash:25\nunderstood: offer p2: you give Water, you get Line1 + 25 cash | NO-LABEL-ROWS-the-unique-id-prefix-and-name-then-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app4 | build Red 2
+EXPECT_OUT_IS | ok build 23\nunderstood: build Red2 (tile 23) | NO-PAGE-PDL-a-tile-verb
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app4 | build Red
+EXPECT_OUT_IS | refused: ambiguous name "red": could be Red1 (21), Red2 (23), Red3 (24) | NO-PAGE-PDL-ambiguous-in-a-tile-verb-old-list
+
+# --- THE LEDGER IS THE SAME BYTES whether a tile is typed by id or by its on-screen label (prefix 300: p1 to act in PRE with 41 cash; p2 owns Power = `Spin Works`). Direct engine verbs (d7, ids) vs chat (c7, labels). ---
+CASE    | labels_equivalence
+MKDIR   | d7
+MKDIR   | c7
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d7/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/d7/ledger.txt
+RUN | /usr/bin/cp | $T/d7/ledger.txt | $T/c7/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d7 | offer | p2 | give | cash:20 | get | prop:12 | as=p1
+EXPECT_OUT | p1 offer: id=1;give=cash:20;get=prop:12;round=1 | DIRECT-offer-with-the-tile-number
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c7 | as=p1 | offer p2 give 20 get Spin Works
+EXPECT_OUT | ok offer p2 give cash:20 get prop:12 | CHAT-the-label-is-sent-as-the-tile-number-prop-12
+EXPECT_OUT | p1 offer: id=1;give=cash:20;get=prop:12;round=1 | CHAT-the-engine-answer-is-the-direct-answer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d7 | accept | 1 | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c7 | as=p2 | accept 1
+EXPECT_OUT | p2 accept: done;give=cash:20;get=prop:12;interest-0;interest-0 | CHAT-accept
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d7 | offer | p3 | give | prop:12 | get | cash:5 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c7 | as=p1 | offer p3 give spin works get 5
+EXPECT_OUT | ok offer p3 give prop:12 get cash:5 | CHAT-a-lower-case-label-after-the-earlier-trade-is-sent-as-the-id
+RUN | /usr/bin/cmp | $T/d7/ledger.txt | $T/c7/ledger.txt
+EXPECT_EXIT | 0 | LABEL-AND-ID-LEDGERS-ARE-BYTE-IDENTICAL-same-rows-for-offer-and-accept
+RUN | /usr/bin/grep | -c | ^ | $T/c7/ledger.txt
+EXPECT_OUT | 303 | VACUITY-the-chat-game-really-gained-the-rows-300-plus-offer-accept-and-the-last-offer
+RUN | /usr/bin/grep | -c | ^ | $T/m/ledger.txt
+EXPECT_OUT | 831 | and-the-source-ledger-was-not-touched
+# mortgage / unmortgage / build / sell by label on the other prefixes
+MKDIR   | d8
+MKDIR   | c8
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d8/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/d8/ledger.txt
+RUN | /usr/bin/cp | $T/d8/ledger.txt | $T/c8/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d8 | unmortgage | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c8 | as=p1 | unmortgage Seed Lane
+EXPECT_OUT | p1 unmortgage: lifted;pay=33 | CHAT-unmortgage-by-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d8 | mortgage | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c8 | as=p1 | MORTGAGE seed lane
+EXPECT_OUT | p1 mortgage: mortgaged;get=30 | CHAT-mortgage-by-label-in-capitals
+RUN | /usr/bin/cmp | $T/d8/ledger.txt | $T/c8/ledger.txt
+EXPECT_EXIT | 0 | mortgage-by-label-ledgers-byte-identical
+MKDIR   | d9
+MKDIR   | c9
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d9/ledger.txt
+RUN | /usr/bin/sed | -i | 83,$d | $T/d9/ledger.txt
+RUN | /usr/bin/cp | $T/d9/ledger.txt | $T/c9/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d9 | build | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c9 | as=p1 | build Seed Lane
+EXPECT_OUT | p1 build: houses=1;cost=50 | CHAT-build-by-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d9 | sell | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c9 | as=p1 | sell Seed Lane
+EXPECT_OUT | p1 sell: houses=0;get=25 | CHAT-sell-by-label
+RUN | /usr/bin/cmp | $T/d9/ledger.txt | $T/c9/ledger.txt
+EXPECT_EXIT | 0 | build-sell-by-label-ledgers-byte-identical
+# an offer the ENGINE refuses is refused identically: the headline line at prefix 300 (p1 has 41 cash)
+MKDIR   | d10
+MKDIR   | c10
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d10/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/d10/ledger.txt
+RUN | /usr/bin/cp | $T/d10/ledger.txt | $T/c10/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d10 | offer | p2 | give | cash:100 | get | prop:19 | as=p1
+EXPECT_OUT | refused: p1 does not have 100 cash | DIRECT-the-engine-says-p1-cannot-pay-100
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c10 | as=p1 | offer p2 give 100 get Coil Plaza
+EXPECT_OUT | ok offer p2 give cash:100 get prop:19 | CHAT-the-headline-line-is-sent-as-the-id-form
+EXPECT_OUT | refused: p1 does not have 100 cash | CHAT-the-engine-says-the-very-same-thing
+EXPECT_EXIT | 2 | exit-2
+RUN | /usr/bin/cmp | $T/d10/ledger.txt | $T/c10/ledger.txt
+EXPECT_EXIT | 0 | and-neither-ledger-changed
+# a refused or unknown LABEL appends NOTHING; a good one does (positive control)
+MKDIR   | s2
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s2/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s2/ledger.txt
+RUN | /usr/bin/cp | $T/s2/ledger.txt | $T/s2_before.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s2 | as=p1 | offer p2 give 20 get Zork Plaza
+EXPECT_OUT | refused: unknown name "zork" | UNKNOWN-label-in-mode-b
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s2 | as=p1 | offer p2 give 20 get Coil
+EXPECT_OUT | refused: ambiguous name "coil": could be Orange1 (Coil Street) (16), Orange2 (Coil Square) (18), Orange3 (Coil Plaza) (19) | AMBIGUOUS-label-in-mode-b-lists-id-label-number
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s2 | as=p1 | offer p2 give 20 get Helix Cell
+EXPECT_OUT | refused: Jail (tile 10) is a jail tile, not a property | corner-label-in-mode-b
+RUN | /usr/bin/cmp | $T/s2/ledger.txt | $T/s2_before.txt
+EXPECT_EXIT | 0 | THREE-REFUSED-LABELS-LEFT-THE-LEDGER-BYTE-IDENTICAL
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s2 | as=p1 | offer p2 give 20 get Spin Works
+EXPECT_OUT | p1 offer: id=1;give=cash:20;get=prop:12;round=1 | POSITIVE-CONTROL-a-good-label-appends-a-row
+RUN | /usr/bin/cmp | $T/s2/ledger.txt | $T/s2_before.txt
+EXPECT_EXIT | 1 | and-the-cmp-check-CAN-fail-the-ledger-now-differs
