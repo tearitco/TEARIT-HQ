@@ -26,4 +26,26 @@ EXPECT_FILE | at6.png | a-frame-at-6-s-INSIDE-THE-SECOND-HOLD-exists
 RUN | /usr/bin/ffmpeg | -nostdin | -y | -loglevel | error | -ss | 2 | -i | $T/out/video.mp4 | -frames:v | 1 | $T/at2.png
 RUN | /usr/bin/cmp | -s | $T/at2.png | $T/at6.png
 EXPECT_EXIT | 1 | and-it-is-the-SECOND-picture-not-the-first-held-on
+
+# footer (2026-11-09): a deck row `NUMBERS | off` takes the "n / total" page number out of the slide footer. A video that mixes deck slides with real screenshots read "2 / 3" on a slide that was number 20 of 21 (nov-9 first cut). Proof by pixels, no OCR:
+# slide 1 of a 2-slide deck and slide 1 of a 3-slide deck are byte-identical with `NUMBERS | off` and DIFFER without it (the control: the numbers really were drawn). The old program refuses the NUMBERS row (it reads it as a slide with too few fields, exit 1).
+CASE    | footer
+WRITE | dA.txt | TITLE \p One \p sub \p cap\nSLIDE \p Two \p a;b \p cap\n
+WRITE | dB.txt | TITLE \p One \p sub \p cap\nSLIDE \p Two \p a;b \p cap\nSLIDE \p Three \p c \p cap\n
+WRITE | nA.txt | NUMBERS \p off\nTITLE \p One \p sub \p cap\nSLIDE \p Two \p a;b \p cap\n
+WRITE | nB.txt | NUMBERS \p off\nTITLE \p One \p sub \p cap\nSLIDE \p Two \p a;b \p cap\nSLIDE \p Three \p c \p cap\n
+RUN | $T/video_op.+x | deck | $T/dA.txt | $T/oDA
+EXPECT_EXIT | 0 | numbered-deck-A-renders
+RUN | $T/video_op.+x | deck | $T/dB.txt | $T/oDB
+EXPECT_EXIT | 0 | numbered-deck-B-renders
+RUN | /usr/bin/cmp | -s | $T/oDA/snapshots/01_One.png | $T/oDB/snapshots/01_One.png
+EXPECT_EXIT | 1 | CONTROL-with-numbers-1-of-2-differs-from-1-of-3
+RUN | $T/video_op.+x | deck | $T/nA.txt | $T/oNA
+EXPECT_EXIT | 0 | NUMBERS-off-deck-A-is-accepted
+RUN | $T/video_op.+x | deck | $T/nB.txt | $T/oNB
+EXPECT_EXIT | 0 | NUMBERS-off-deck-B-is-accepted
+RUN | /usr/bin/cmp | -s | $T/oNA/snapshots/01_One.png | $T/oNB/snapshots/01_One.png
+EXPECT_EXIT | 0 | with-NUMBERS-off-slide-1-of-2-and-1-of-3-are-the-same-picture
+RUN | /usr/bin/cmp | -s | $T/oNA/snapshots/01_One.png | $T/oDA/snapshots/01_One.png
+EXPECT_EXIT | 1 | and-it-differs-from-the-numbered-one-the-number-is-gone
 CLEAN |

@@ -2,6 +2,7 @@ SECTION | KEY | VALUE
 ------------------------------
 # dsk-video-play.pdl - presentation video, part 3 (2026-11-09): the human turns of the recorded game, REASSEMBLED from the steps that were run one at a time on 2026-11-09 (each of the six blocks below ran and passed alone; this file was NOT run in one piece).
 # Starts right after dsk-video-start.pdl (seed 7, p1 human, fast). The dice come from the ledger, so the same seed gives the same game: the opening order roll (C moves first), round 1 Luck, round 2 Spin Works for 150 (bought), round 3 Coil Plaza for 200 (SKIPPED: auction,
+# 2026-11-09, second cut: this file WAS run in one piece on a new game (seed 7, p1 human, fast): 53 steps passed, so the "not run in one piece" warning above no longer applies to the same seed and rules.
 # B wins it at 200), then a trade (Spin Works for 30 cash, accepted by B). If the engine's rules change the `expect` rows fail loudly: re-record the game, do not edit the expectations. Pictures go to /tmp/claude-1000/vid/raw.
 # Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-play.pdl <x window id>
 # block 1: the opening order roll, round 1 (Luck)

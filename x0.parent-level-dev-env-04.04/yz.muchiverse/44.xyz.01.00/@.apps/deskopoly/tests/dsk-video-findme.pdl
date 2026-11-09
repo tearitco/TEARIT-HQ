@@ -1,0 +1,12 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-video-findme.pdl - presentation video, part 6 (2026-11-09): the REAL `Find me` button after the camera was left in a free mode. The caller first presses the engine key `1` (first person POV: `bv_keys <bv_session> 1`, the session is the `bv_session=` line of @.apps/rpg-edit-hq/board/state/ui.txt) and waits 3 s so the picture is the odd view.
+# Since 2026-11-09 an explicit Find me takes ANY free camera back to the follow camera and says `camera: following you again` (before: `free camera in use`, nothing moved). Pictures 50 (the odd view) and 51 (after the press).
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-findme.pdl <x window id>
+STEP | in | off
+STEP | see | label:Find me
+STEP | shot | /tmp/claude-1000/vid/raw/50-camera-lost.png
+STEP | press | label:Find me
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | following you again | 10
+STEP | sleep | 3000
+STEP | shot | /tmp/claude-1000/vid/raw/51-find-me.png

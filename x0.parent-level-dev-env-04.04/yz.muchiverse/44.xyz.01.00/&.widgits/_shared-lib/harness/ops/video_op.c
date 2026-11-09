@@ -40,13 +40,14 @@ static void mk(const char *d) { mkdir(d, 0755); }
 /* The slide footer's status word comes from the deck (`FOOTER | progress cut`), never from this program: until 2026-11-07 it was hard-coded as "proposed plan", which put that label on a progress video
  * that reported built and tested work (seen in a frame of the nov-7 video). No FOOTER row = no status word. */
 static char g_foot[80] = "";
+static int g_nonum = 0;      /* deck row `NUMBERS | off`: the footer carries no "n / total" (a video that mixes deck slides with real screenshots has its own order, so the deck numbers misled; 2026-11-09) */
 
 /* one slide: drawtext rows (textfile per row, so no escaping of the content) over a dark background */
 static int slide(int title, const char *head, const char *sub, char bullets[][200], int nb, int n, int total, const char *tmp, const char *out) {
     char flt[8192] = ""; size_t fl = 0; int k = 0; char tf[P];
 #define DT(txt, font, size, col, x, y) do { snprintf(tf, sizeof tf, "%s/t%d.txt", tmp, k++); wfile(tf, txt); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawtext=fontfile=%s:textfile=%s:fontsize=%d:fontcolor=%s:x=%d:y=%d", font, tf, size, col, x, y); } while (0)
     fl += (size_t)snprintf(flt + fl, sizeof flt - fl, "drawbox=x=0:y=0:w=1280:h=10:color=0x5aa0ff:t=fill");
-    char foot[200]; if (g_foot[0]) snprintf(foot, sizeof foot, "LyfeDesk  -  %s  -  %d / %d", g_foot, n, total); else snprintf(foot, sizeof foot, "LyfeDesk  -  %d / %d", n, total); DT(foot, FR, 18, "0x788296", 48, 680);
+    char foot[200]; if (g_nonum) { if (g_foot[0]) snprintf(foot, sizeof foot, "LyfeDesk  -  %s", g_foot); else snprintf(foot, sizeof foot, "LyfeDesk"); } else if (g_foot[0]) snprintf(foot, sizeof foot, "LyfeDesk  -  %s  -  %d / %d", g_foot, n, total); else snprintf(foot, sizeof foot, "LyfeDesk  -  %d / %d", n, total); DT(foot, FR, 18, "0x788296", 48, 680);
     if (title) { char L[6][200]; int nl = wrap(head, 26, L, 6); for (int i = 0; i < nl; i++) DT(L[i], FB, 66, "0xebf0ff", 70, 210 + i * 78); nl = wrap(sub, 60, L, 4); for (int i = 0; i < nl; i++) DT(L[i], FR, 30, "0x96beff", 74, 450 + i * 40); }
     else { DT(head, FB, 46, "0xebf0ff", 60, 44); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=60:y=112:w=1160:h=3:color=0x3c5078:t=fill"); int y = 140;
         for (int b = 0; b < nb; b++) { char L[6][200]; int nl = wrap(bullets[b], 66, L, 6); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=66:y=%d:w=14:h=14:color=0x5aa0ff:t=fill", y + 14); for (int i = 0; i < nl; i++) { DT(L[i], FR, 31, "0xdce2f0", 104, y); y += 42; } y += 16; } }
@@ -58,6 +59,7 @@ static int cmd_deck(const char *deck, const char *outdir) {
     FILE *f = fopen(deck, "r"); if (!f) { fprintf(stderr, "video_op: cannot read %s\n", deck); return 1; }
     static char rows[MAXR][8192]; int nr = 0; while (fgets(ln, sizeof ln, f) && nr < MAXR) { char *t = trim(ln); if (!*t || *t == '#') continue;
         if (!strncmp(t, "FOOTER", 6)) { char *bar = strchr(t, '|'); if (bar) snprintf(g_foot, sizeof g_foot, "%s", trim(bar + 1)); continue; }      /* FOOTER | text: not a slide */
+        if (!strncmp(t, "NUMBERS", 7)) { char *bar = strchr(t, '|'); g_nonum = bar && !strcmp(trim(bar + 1), "off"); continue; }      /* NUMBERS | off: no page numbers in the footer; not a slide */
         snprintf(rows[nr++], sizeof rows[0], "%s", t); } fclose(f);
     FILE *m = fopen(mpath, "w"); if (!m) return 1; char tmp[P]; snprintf(tmp, sizeof tmp, "%s/.t", outdir); mk(tmp);
     for (int i = 0; i < nr; i++) { char *fld[4] = { 0 }, *p = rows[i]; int nf = 0; while (nf < 4) { fld[nf++] = p; char *b = strchr(p, '|'); if (!b || nf == 4) break; *b = 0; p = b + 1; }
