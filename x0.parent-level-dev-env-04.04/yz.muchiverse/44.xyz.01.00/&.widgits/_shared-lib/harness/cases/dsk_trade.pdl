@@ -1,0 +1,399 @@
+# dsk_trade: deskopoly classic, milestone M9 TRADING (spec section 7 and the owner requirement 7.8, 2026-11-08: "a trading menu system that doesn't block gameplay but lets players offer some amount of trades per turn and to modify terms").
+# ENGINE slice (verbs offer / counter / amend / accept / reject / cancel, the bank's `expire`, the per-turn allowance, validity at offer AND at accept, the atomic swap with the 10% mortgage interest, replay, invariant I20, ui keys, the pets' answers).
+# NOT in this case (not built yet): the chat parser, the asset-picker popup, pets that PROPOSE trades.
+# Method as dsk_page: ONE autoplayed 3-pet game (seed 6, auctions on, 831 rows) is cut as a ledger PREFIX; every value below was OBSERVED on 2026-11-08. Prefix 300: p1 to act in PRE with 41 cash, tile 1 (Brown1) MORTGAGED, p2 holds a Get Out (fund) card and has 1048 cash.
+# Prefix 182: p1 is in DEBT (owes 100), tiles 1 and 3 carry houses. PETS-ONLY GAMES ARE UNCHANGED by trading (nobody offers): the base game replays to the same 831 rows and the same replay hash as before M9.
+RESULTS | ../results/dsk_trade.txt
+ENV | LC_ALL | C
+
+CASE    | base
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | m
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | the-pets-game-is-the-one-the-numbers-were-observed-on-831-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
+EXPECT_OUT | rows=831 hash=72442143905f2371 | trading-changed-nothing-for-a-game-where-nobody-offers-the-LEDGER-hash-is-the-one-pinned-before-M9
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | replay
+EXPECT_OUT | REPLAY events=831 hash=2583da5124cab176 | the-status-hash-moved-only-because-the-status-gained-one-TRADE-line-the-old-engine-gave-4d9e00f70777e15c
+RUN | /usr/bin/sed | -n | 292p | $T/m/ledger.txt
+EXPECT_OUT | \pp1\pmortgage\p1\p | VACUITY-ledger-line-292-mortgages-tile-1
+RUN | /usr/bin/sed | -n | 83p | $T/m/ledger.txt
+EXPECT_OUT | \pp1\pbuild\p1\p | VACUITY-ledger-line-83-builds-on-tile-1
+
+# --- every refusal of 7.2 on prefix 300 (p1 to act): each names the cause and appends NOTHING (the ledger stays at 300 rows) ---
+CASE    | refusals
+MKDIR   | s1
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s1/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s1/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | status
+EXPECT_OUT | phase=pre current=p1 | prefix-300-is-p1-to-act-in-PRE
+EXPECT_OUT | cash=41 pos= | p1-has-41-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p1 | give | cash:5
+EXPECT_OUT | name another player as the addressee | NEGATIVE-an-offer-to-yourself-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p9 | give | cash:5
+EXPECT_OUT | name another player as the addressee | NEGATIVE-an-offer-to-nobody-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | prop:5
+EXPECT_OUT | p1 does not own tile 5 | NEGATIVE-offering-a-tile-p1-does-not-own
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | get | prop:3
+EXPECT_OUT | p2 does not own tile 3 | NEGATIVE-asking-for-a-tile-the-addressee-does-not-own
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | cash:9999
+EXPECT_OUT | p1 does not have 9999 cash | NEGATIVE-offering-more-cash-than-p1-has
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | get | cash:99999
+EXPECT_OUT | p2 does not have 99999 cash | NEGATIVE-asking-more-cash-than-p2-has
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | - | get | -
+EXPECT_OUT | an offer needs something on at least one side | NEGATIVE-an-empty-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | card:luck
+EXPECT_OUT | p1 does not hold a luck card | NEGATIVE-offering-a-card-p1-does-not-hold
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | prop:3+prop:3
+EXPECT_OUT | a tile is named twice | NEGATIVE-a-tile-twice
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | cash:0
+EXPECT_OUT | cash must be a whole number from 1 up | NEGATIVE-cash-0
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | prop:99
+EXPECT_OUT | no such tile | NEGATIVE-tile-99
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | gold:5
+EXPECT_OUT | bad asset | NEGATIVE-an-unknown-asset-kind
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | cash:10 | as=p3
+EXPECT_OUT | only the current player (p1) may open an offer, not p3 | NEGATIVE-p3-cannot-open-an-offer-in-p1s-turn
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | accept
+EXPECT_OUT | there is no open offer to accept | NEGATIVE-accept-with-nothing-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | accept | 7
+EXPECT_OUT | no such open offer | NEGATIVE-accept-of-an-offer-that-never-existed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | reject | as=p2
+EXPECT_OUT | there is no open offer to reject | NEGATIVE-reject-with-nothing-open
+RUN | /usr/bin/grep | -c | ^ | $T/s1/ledger.txt
+EXPECT_OUT | 300 | VACUITY-sixteen-refusals-appended-no-row-the-ledger-is-still-300-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s1 | offer | p2 | give | cash:5
+EXPECT_OUT | p1 offer: id=1;give=cash:5;get=-;round=1 | POSITIVE-CONTROL-the-same-verb-with-a-legal-offer-IS-accepted
+
+# --- the swap is atomic; a MORTGAGED tile costs its receiver 10% of the mortgage value at once (30 -> 3) ---
+CASE    | mortgaged
+MKDIR   | s2
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s2/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s2/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s2 | offer | p2 | give | prop:1 | get | cash:30
+EXPECT_OUT | p1 offer: id=1;give=prop:1;get=cash:30;round=1 | p1-offers-its-mortgaged-Brown1-for-30
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s2 | accept | as=p2
+EXPECT_OUT | p2 accept: done;give=prop:1;get=cash:30;interest-0;interest-3 | the-receiver-p2-pays-3-interest-to-the-bank
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s2 | status
+EXPECT_OUT | TILE 1 Brown1 owner=p2 | the-tile-changed-hands
+EXPECT_OUT | cash=71 pos= | p1-got-30-cash-41-to-71
+EXPECT_OUT | cash=1015 pos= | p2-paid-30-and-3-interest-1048-to-1015
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s2 | check
+EXPECT_OUT | CHECK ok schema=2 events=302 sum=4500 | money-is-conserved-the-interest-went-to-the-bank
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s2 | replay
+RUN | /usr/bin/grep | -c | \paccept\p | $T/s2/ledger.txt
+EXPECT_OUT | 1 | one-accept-row
+CASE    | interest
+MKDIR   | s3
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s3/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s3/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s3 | offer | p2 | give | prop:1 | get | cash:1048
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s3 | accept
+EXPECT_OUT | p2 cannot pay the mortgage interest (3) after the swap | NEGATIVE-an-accept-the-receiver-cannot-afford-after-the-interest-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s3 | status
+EXPECT_OUT | TILE 1 Brown1 owner=p1 | and-nothing-moved
+EXPECT_OUT | OFFER id=1 from=p1 to=p2 | the-offer-stays-open-after-a-refused-accept
+
+# --- a Get Out of Jail Free card is an asset (card:fund) ---
+CASE    | card
+MKDIR   | s4
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s4/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s4/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s4 | offer | p2 | give | cash:40 | get | card:fund
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s4 | accept
+EXPECT_OUT | done;give=cash:40;get=card:fund;interest-0;interest-0 | p1-buys-the-fund-card-for-40
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s4 | status
+EXPECT_OUT | cash=1 pos= | p1-paid-40-41-to-1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s4 | check
+EXPECT_OUT | CHECK ok schema=2 events=302 sum=4500 | every-card-is-in-exactly-one-place-after-the-trade
+
+# --- accept re-validates: p1 offers 40 cash, then spends it (unmortgage costs 33): the accept is STALE and refused; an amend makes it valid again ---
+CASE    | stale
+MKDIR   | s5
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s5/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s5/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | offer | p2 | give | cash:40
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | unmortgage | 1
+EXPECT_OUT | lifted;pay=33 | p1-lifts-the-mortgage-41-to-8
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | accept
+EXPECT_OUT | stale offer: p1 does not have 40 cash | NEGATIVE-the-stale-offer-is-refused-at-accept
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | status
+EXPECT_OUT | OFFER id=1 from=p1 to=p2 | the-stale-offer-is-still-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | amend | 1 | give | cash:5 | get | -
+EXPECT_OUT | p1 amend: id=1;give=cash:5;get=-;round=1;amended | p1-amends-the-terms-round-does-not-advance
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | accept
+EXPECT_OUT | p2 accept: done;give=cash:5;get=-;interest-0;interest-0 | the-amended-offer-is-accepted
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s5 | amend | 1 | give | cash:5
+EXPECT_OUT | no such open offer | NEGATIVE-an-ended-offer-cannot-be-amended
+
+# --- NON-BLOCKING (7.8 rule 1): an open offer is never a phase. p1 offers, then rolls and ends the turn with it open; the SAME end_turn call appends the bank's expire row ---
+CASE    | nonblocking
+MKDIR   | s6
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s6/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s6/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | offer | p3 | give | cash:10
+EXPECT_OUT | p1 offer: id=1;give=cash:10;get=-;round=1 | p1-opens-an-offer-to-p3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | roll
+EXPECT_OUT | p1 roll: to=37;rent-35->p2 | p1-rolls-with-the-offer-open-nothing-blocks
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | status
+EXPECT_OUT | phase=post current=p1 | the-phase-is-the-normal-POST-not-an-offer-phase
+EXPECT_OUT | OFFER id=1 from=p1 to=p3 | the-offer-is-still-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | end_turn
+EXPECT_OUT | p1 end_turn: next=p2;round=20 | p1-ends-the-turn-with-the-offer-open
+EXPECT_OUT | expire: offer 1 | the-same-call-appended-the-expire-row
+RUN | /usr/bin/sed | -n | 304p | $T/s6/ledger.txt
+EXPECT_OUT | \pbank\pexpire\p1\p | row-304-is-the-bank-expire-row
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | status
+EXPECT_OUT | phase=pre current=p2 | p2-is-up
+EXPECT_OUT | open=0 | no-open-offer-is-left
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | check
+EXPECT_OUT | CHECK ok schema=2 events=304 sum=4500 | money-conserved-and-replay-reproduces-all-304-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s6 | accept | 1
+EXPECT_OUT | no such open offer | NEGATIVE-an-expired-offer-cannot-be-accepted
+
+# --- the ALLOWANCE (7.8 rule 2): 3 new offers per turn; a counter is not a new offer; a new turn resets it ---
+CASE    | allowance
+MKDIR   | s7
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s7/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s7/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | offer | p2 | give | cash:1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | offer | p2 | give | cash:2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | offer | p2 | give | cash:3
+EXPECT_OUT | p1 offer: id=3;give=cash:3;get=-;round=1 | the-third-offer-of-the-turn-is-allowed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | offer | p2 | give | cash:4
+EXPECT_OUT | blocked:offer-allowance (3 new offers per turn, all used) | NEGATIVE-the-4th-new-offer-is-refused-and-says-why
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | status
+EXPECT_OUT | TRADE per_turn=3 used_cur=3 open=0 max_rounds=6 | three-used-none-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | ui
+RUN | /usr/bin/grep | -E | ^(trade_left\poffers_open)= | $T/s7/ui.txt
+EXPECT_OUT | trade_left=0 | the-ui-feed-shows-0-offers-left
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | end_turn
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | tick
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | tick
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | tick
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | tick
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | status
+EXPECT_OUT | phase=pre current=p1 round=21 | four-pet-moves-later-it-is-p1-again
+EXPECT_OUT | used_cur=0 | a-new-turn-reset-the-allowance
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s7 | offer | p2 | give | cash:4
+EXPECT_OUT | p1 offer: id=4;give=cash:4;get=-;round=1 | the-4th-offer-overall-is-allowed-in-the-NEW-turn
+CASE    | counters-not-counted
+MKDIR   | s8
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s8/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s8/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | offer | p2 | give | cash:1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | counter | 1 | give | cash:2 | get | cash:3
+EXPECT_OUT | p2 counter: id=2;re=1;give=cash:2;get=cash:3;round=2 | p2-counters-round-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | counter | 2 | give | cash:4 | get | cash:5
+EXPECT_OUT | p1 counter: id=3;re=2;give=cash:4;get=cash:5;round=3 | p1-counters-back-round-3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | status
+EXPECT_OUT | TRADE per_turn=3 used_cur=1 open=1 | two-counters-did-not-count-only-the-one-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | offer | p2 | give | cash:1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | offer | p2 | give | cash:1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s8 | offer | p2 | give | cash:1
+EXPECT_OUT | blocked:offer-allowance | NEGATIVE-offers-2-and-3-and-the-refused-4th-the-counters-really-were-free
+
+# --- RULE keys are data: trade_max_rounds 2 caps a negotiation; trade_offers_per_turn 0 turns trading off ---
+CASE    | rounds
+COPYDIR | @.apps/deskopoly | app2 | ops,deskopoly-pchq,state
+APPEND  | app2/rulesets/classic/rules.pdl | RULE \p trade_max_rounds \p 2\n
+MKDIR   | h2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | buy
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | offer | p1 | give | cash:1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | counter | 1 | give | cash:2 | get | cash:3
+EXPECT_OUT | p1 counter: id=2;re=1;give=cash:2;get=cash:3;round=2 | round-2-is-allowed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | counter | 2 | give | cash:2 | get | cash:3
+EXPECT_OUT | the negotiation reached the round limit (2) | NEGATIVE-round-3-is-refused-at-trade_max_rounds-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app2 | $T/h2 | accept | 2
+EXPECT_OUT | p3 accept: done;give=cash:2;get=cash:3 | but-the-open-offer-can-still-be-accepted
+CASE    | off
+COPYDIR | @.apps/deskopoly | app3 | ops,deskopoly-pchq,state
+APPEND  | app3/rulesets/classic/rules.pdl | RULE \p trade_offers_per_turn \p 0\n
+MKDIR   | h3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | buy
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app3 | $T/h3 | offer | p1 | give | cash:1
+EXPECT_OUT | trading is off in this ruleset (trade_offers_per_turn 0) | NEGATIVE-with-the-allowance-0-no-offer-opens
+
+# --- the PETS answer an offer addressed to them (STOPGAP value rule, removal condition M10): accept a positive gain, reject a bad deal; pets-only games never offer ---
+CASE    | pets
+MKDIR   | s9
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s9/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s9/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s9 | offer | p2 | give | cash:41
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s9 | ui
+RUN | /usr/bin/grep | -E | ^pet_reply= | $T/s9/ui.txt
+EXPECT_OUT | pet_reply=1 | the-ui-feed-tells-the-driver-a-pet-has-to-answer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s9 | tick
+EXPECT_OUT | TICK p2 accept: done;give=cash:41;get=-;interest-0;interest-0 | p2-accepts-a-free-41
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s9 | check
+EXPECT_OUT | CHECK ok schema=2 events=302 sum=4500 | conserved-after-the-pet-accepted
+MKDIR   | s10
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s10/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s10/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s10 | offer | p3 | give | cash:10 | get | prop:16
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s10 | tick
+EXPECT_OUT | TICK p3 reject: rejected | p3-rejects-10-cash-for-Orange1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s10 | status
+EXPECT_OUT | TILE 16 Orange1 owner=p3 | and-keeps-the-tile
+
+# --- phases: an offer is refused in BUY and AUCTION, and an ACCEPT waits for an auction to finish (the offer stays open, play goes on) ---
+CASE    | phases
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | offer | p1 | give | cash:100
+EXPECT_OUT | p3 offer: id=1;give=cash:100;get=-;round=1 | p3-the-first-player-offers-p1-100
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_OUT | p3 roll: to=8;for-sale;doubles=1 | p3-rolls-with-the-offer-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_OUT | phase=buy current=p3 | the-phase-is-BUY
+EXPECT_OUT | OFFER id=1 from=p3 to=p1 | the-offer-did-not-block-the-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | offer | p2 | give | cash:5 | as=p3
+EXPECT_OUT | decide the purchase first (buy or skip), then offer | NEGATIVE-no-new-offer-in-BUY
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | skip
+EXPECT_OUT | p3 skip: declined;auction | p3-skips-the-tile-an-auction-opens
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | offer | p2 | give | cash:5 | as=p3
+EXPECT_OUT | an auction is open: bid or pass first, then offer | NEGATIVE-no-new-offer-in-AUCTION
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | accept | as=p1
+EXPECT_OUT | an auction is open: the swap waits until it ends (the offer stays open) | NEGATIVE-the-accept-waits-for-the-auction
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | ui
+RUN | /usr/bin/grep | -E | ^(show_offer\poffer_from\poffer_give)= | $T/h/ui.txt
+EXPECT_OUT | show_offer=1 | the-ui-shows-p1-the-offer-addressed-to-the-human-seat
+EXPECT_OUT | offer_from=p3 | from-p3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 10 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p3
+EXPECT_OUT | auction_end: sold-to=p1-10 | the-auction-ends-with-the-offer-still-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | accept | as=p1
+EXPECT_OUT | p1 accept: done;give=cash:100;get=-;interest-0;interest-0 | after-the-auction-the-same-offer-is-accepted
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | check
+EXPECT_OUT | CHECK ok schema=2 events=17 sum=4500 | money-conserved-through-offer-auction-and-swap
+
+# --- a DEBTOR may trade to raise cash (7.4), and tiles of a built-on colour cannot be offered (7.2) ---
+CASE    | debt
+MKDIR   | s11
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s11/ledger.txt
+RUN | /usr/bin/sed | -i | 183,$d | $T/s11/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s11 | status
+EXPECT_OUT | phase=debt current=p1 | prefix-182-p1-is-in-debt
+EXPECT_OUT | debt=100 | owing-100
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s11 | offer | p2 | give | prop:8 | get | cash:100
+EXPECT_OUT | p1 offer: id=1;give=prop:8;get=cash:100;round=1 | the-debtor-offers-Sky2-for-100
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s11 | accept
+EXPECT_OUT | p2 accept: done;give=prop:8;get=cash:100;interest-0;interest-0 | p2-accepts
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s11 | status
+EXPECT_OUT | phase=debt current=p1 | the-debt-is-still-owed-trading-does-not-pay-it
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s11 | pay_debt
+EXPECT_OUT | p1 pay_debt: paid-100->bank | and-the-cash-from-the-trade-pays-it
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s11 | check
+EXPECT_OUT | CHECK ok schema=2 events=185 sum=4500 | conserved
+CASE    | buildings
+MKDIR   | s12
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s12/ledger.txt
+RUN | /usr/bin/sed | -i | 183,$d | $T/s12/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s12 | offer | p2 | give | prop:3
+EXPECT_OUT | tile 3 (Brown2): sell the buildings of that colour first | NEGATIVE-Brown2-has-4-houses
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s12 | offer | p2 | give | prop:1
+EXPECT_OUT | tile 1 (Brown1): sell the buildings of that colour first | NEGATIVE-Brown1-has-3-houses
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s12 | offer | p2 | give | prop:8
+EXPECT_OUT | p1 offer: id=1 | POSITIVE-CONTROL-an-unbuilt-tile-of-the-same-owner-IS-allowed
+
+# --- TAMPERING: replay refuses every edit of a finished negotiation (each edit is proven to have changed the file) ---
+CASE    | tamper
+MKDIR   | t1
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/t1/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/t1/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t1 | offer | p2 | give | prop:1 | get | cash:30
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t1 | accept | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t1 | status
+EXPECT_EXIT | 0 | CONTROL-the-untouched-two-row-trade-replays
+MKDIR   | ta
+RUN | /usr/bin/cp | $T/t1/ledger.txt | $T/ta/ledger.txt
+MKDIR   | tb
+RUN | /usr/bin/cp | $T/t1/ledger.txt | $T/tb/ledger.txt
+MKDIR   | tc
+RUN | /usr/bin/cp | $T/t1/ledger.txt | $T/tc/ledger.txt
+MKDIR   | td
+RUN | /usr/bin/cp | $T/t1/ledger.txt | $T/td/ledger.txt
+RUN | /usr/bin/sed | -i | s/get=cash:30;round=1/get=cash:31;round=1/ | $T/ta/ledger.txt
+RUN | /usr/bin/grep | -c | cash:31 | $T/ta/ledger.txt
+EXPECT_OUT | 1 | VACUITY-the-offer-price-was-really-edited
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/ta | status
+EXPECT_EXIT | 1 | NEGATIVE-an-edited-offer-no-longer-matches-the-recorded-accept
+RUN | /usr/bin/sed | -i | s/interest-3/interest-9/ | $T/tb/ledger.txt
+RUN | /usr/bin/grep | -c | interest-9 | $T/tb/ledger.txt
+EXPECT_OUT | 1 | VACUITY-the-interest-was-really-edited
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/tb | status
+EXPECT_EXIT | 1 | NEGATIVE-a-forged-interest-is-refused
+RUN | /usr/bin/sed | -i | /\pp1\poffer\p/d | $T/tc/ledger.txt
+RUN | /usr/bin/grep | -c | \poffer\p | $T/tc/ledger.txt
+EXPECT_OUT | 0 | VACUITY-the-offer-row-is-gone
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/tc | status
+EXPECT_EXIT | 1 | NEGATIVE-an-accept-without-its-offer-is-refused
+RUN | /usr/bin/sed | -i | s/\pp2\paccept\p/\pp3\paccept\p/ | $T/td/ledger.txt
+RUN | /usr/bin/grep | -c | \pp3\paccept\p | $T/td/ledger.txt
+EXPECT_OUT | 1 | VACUITY-the-accepting-player-was-really-changed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/td | status
+EXPECT_EXIT | 1 | NEGATIVE-an-accept-by-someone-other-than-the-addressee-is-refused
+MKDIR   | t2
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/t2/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/t2/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t2 | offer | p2 | give | prop:1+prop:3 | get | -
+RUN | /usr/bin/grep | -c | prop:1+prop:3 | $T/t2/ledger.txt
+EXPECT_OUT | 1 | VACUITY-the-canonical-form-is-tiles-ascending
+RUN | /usr/bin/sed | -i | s/prop:1+prop:3/prop:3+prop:1/ | $T/t2/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t2 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-non-canonical-asset-list-is-refused-no-second-spelling-of-one-offer
+MKDIR   | t3
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/t3/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/t3/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t3 | offer | p3 | give | cash:10
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t3 | roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t3 | end_turn
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t3 | status
+EXPECT_EXIT | 0 | CONTROL-offer-roll-end_turn-expire-replays
+RUN | /usr/bin/sed | -i | /\pbank\pexpire\p/d | $T/t3/ledger.txt
+RUN | /usr/bin/grep | -c | expire | $T/t3/ledger.txt
+EXPECT_OUT | 0 | VACUITY-the-expire-row-is-gone
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t3 | check
+EXPECT_OUT | FAIL I20 an end_turn left an open offer without its expire row | NEGATIVE-check-finds-the-missing-expire-row
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/t3 | tick
+EXPECT_OUT | an end_turn left an open offer without its expire row | NEGATIVE-and-no-move-is-accepted-on-top-of-it
+CLEAN   |

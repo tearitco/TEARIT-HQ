@@ -120,7 +120,7 @@ EXPECT_OUT_LACKS | GAP\proll | a-described-verb-is-not-a-gap
 CASE    | lint
 SCRATCH |
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/brain_lint.+x | $HOUSE/@.apps/deskopoly/verbs.pdl | --phases | $HOUSE/&.widgits/_shared-lib/harness/cases/deskopoly.pdl
-EXPECT_OUT | brain_rows=6 fail=0 | the-real-manifest-passes-and-its-phases-are-cases-in-this-file (6 rows since M7 added bid and pass)
+EXPECT_OUT | brain_rows=8 fail=0 | the-real-manifest-passes-and-its-phases-are-cases-in-this-file (8 rows: M7 added bid and pass, M9 added accept and reject)
 WRITE   | v1.pdl | VERB | roll | no | ui | - | x\nBRAIN | k1 | rolls | rules | ok | | made-up verb\n
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/brain_lint.+x | $T/v1.pdl
 EXPECT_EXIT | 1 | NEGATIVE-a-made-up-verb-fails

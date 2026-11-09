@@ -201,7 +201,7 @@ EXPECT_OUT_IS | 6 | and-all-six-sold-pets-bid-the-minimum-raise-while-within-val
 RUN | /usr/bin/grep | -c | \pskip\p | $T/h/ledger.txt
 EXPECT_OUT_IS | 6 | every-skip-opened-an-auction-6-skips-6-auctions
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | replay
-EXPECT_OUT | REPLAY events=831 hash=4d9e00f70777e15c | the-replay-hash-is-pinned
+EXPECT_OUT | REPLAY events=831 hash=2583da5124cab176 | the-replay-hash-is-pinned (re-observed 2026-11-08: the status gained one TRADE line with M9, the ledger hash is unchanged; the old value was 4d9e00f70777e15c)
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | ledger_hash
 EXPECT_OUT | rows=831 hash=72442143905f2371 | the-ledger-hash-is-pinned
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll

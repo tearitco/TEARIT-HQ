@@ -144,7 +144,7 @@ static int page_needed(void) {
     char p[P]; snprintf(p, sizeof p, "%s/ledger.txt", GAME); FILE *f = fopen(p, "r"); if (!f) { pg_cur = 0; return 1; }
     fseek(f, 0, SEEK_END); long sz = ftell(f); int need = 0; if (sz < pg_cur) { pg_cur = 0; need = 1; }   /* a smaller ledger = a new game */
     fseek(f, pg_cur, SEEK_SET); char ln[600];
-    static const char *quiet[] = { "roll", "order", "first", "end_turn", "skip", "bid", "pass", "jail_pay", "jail_roll", "jail_card", "lobby", "join", "seat", NULL };   /* M7: a bid or a pass never changes the picture (a pets game makes ~115 bids: rebuilding the page for each was the 6% CPU burn again); the SALE does, as the non-quiet auction_end row (an unsold auction rebuilds once, harmlessly) */
+    static const char *quiet[] = { "roll", "order", "first", "end_turn", "skip", "bid", "pass", "offer", "counter", "amend", "reject", "cancel", "expire", "jail_pay", "jail_roll", "jail_card", "lobby", "join", "seat", NULL };   /* M7: a bid or a pass never changes the picture (a pets game makes ~115 bids: rebuilding the page for each was the 6% CPU burn again); the SALE does, as the non-quiet auction_end row; M9: offer/counter/amend/reject/cancel/expire never change the picture, but ACCEPT moves tiles and is NOT quiet (an unsold auction rebuilds once, harmlessly) */
     while (fgets(ln, sizeof ln, f)) { char *q = ln; for (int k = 0; k < 3 && q; k++) { q = strchr(q, '|'); if (q) q++; } if (!q) { need = 1; continue; }
         char *e = strchr(q, '|'); size_t vl = e ? (size_t)(e - q) : strcspn(q, "\r\n"); int isq = 0; for (int k = 0; quiet[k]; k++) if (strlen(quiet[k]) == vl && !strncmp(q, quiet[k], vl)) isq = 1; if (!isq) need = 1; }
     pg_cur = ftell(f); fclose(f); return need;

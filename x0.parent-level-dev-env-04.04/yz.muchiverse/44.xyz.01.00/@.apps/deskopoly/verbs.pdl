@@ -25,6 +25,12 @@ VERB | buy       | no | ui | -            | buy the tile the current player stan
 VERB | skip      | no | ui | -            | decline the tile for sale; in a classic game (auctions on, the default) the tile goes to AUCTION, left of you first, you last
 VERB | bid       | no | ui | amount as=pN | classic auction: bid at least the minimum, then the standing bid plus the step, at most your cash; only the bidder whose turn it is; the call that ends the auction also records the bank auction_end row
 VERB | pass      | no | ui | as=pN        | classic auction: drop out of this auction for good; when only the high bidder is left (or everyone passed) the auction ends: sold-to=<id>-<amount> or unsold
+VERB | offer     | no | ui | pN give A get B | open a trade offer to pN (current player; PRE, POST or your DEBT; never BUY or AUCTION): assets are prop:<tile>+cash:<n>+card:<luck|fund>; one open offer per proposer, trade_offers_per_turn new offers per turn (default 3, 0 = off); NEVER blocks play
+VERB | counter   | no | ui | id give A get B | the addressee answers with a NEW offer back (round + 1, at most trade_max_rounds); does not count against the allowance
+VERB | amend     | no | ui | id give A get B | the proposer changes the terms of its own open offer (round unchanged, no allowance used)
+VERB | accept    | no | ui | [id] as=pN | the addressee accepts: re-validated, then ONE atomic swap; the receiver of a mortgaged tile pays the bank 10% of its mortgage value; waits while an auction is open
+VERB | reject    | no | ui | [id] as=pN | the addressee refuses the offer
+VERB | cancel    | no | ui | [id] as=pN | the proposer withdraws its open offer
 VERB | end_turn  | no | ui | -            | finish the turn; the next active player is up
 VERB | autoplay  | no | ui | -            | play the whole game with each player's style (pets stand-in); writes decision rows
 VERB | status    | no | ui | -            | read-only: the whole state, derived by replaying the ledger
@@ -59,6 +65,12 @@ FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | skip      | state/ledger.txt           | state/ledger.txt
 FLOW | bid       | state/ledger.txt           | state/ledger.txt
 FLOW | pass      | state/ledger.txt           | state/ledger.txt
+FLOW | offer     | state/ledger.txt           | state/ledger.txt
+FLOW | counter   | state/ledger.txt           | state/ledger.txt
+FLOW | amend     | state/ledger.txt           | state/ledger.txt
+FLOW | accept    | state/ledger.txt           | state/ledger.txt
+FLOW | reject    | state/ledger.txt           | state/ledger.txt
+FLOW | cancel    | state/ledger.txt           | state/ledger.txt
 FLOW | end_turn  | state/ledger.txt           | state/ledger.txt
 FLOW | autoplay  | state/ledger.txt,rules.pdl | state/ledger.txt,state/decisions.txt
 FLOW | status    | state/ledger.txt           | -
@@ -77,4 +89,6 @@ BRAIN | buy      | buy      | autoplay,refusals       | ok  | blocked,refused | 
 BRAIN | skip     | skip     | autoplay                | ok  |                 | choose to leave the tile for the bank
 BRAIN | bid      | bid      | autoplay,refusals       | ok  | blocked,refused | bid the minimum raise while the price x style value and the cash allow (STOPGAP until M10); refused when below the minimum, below the standing bid plus the step, or above cash
 BRAIN | pass     | pass     | autoplay                | ok  |                 | leave the auction when the next bid is beyond value or cash
+BRAIN | accept   | accept   | autoplay,refusals       | ok  | blocked,refused | a pet accepts an offer addressed to it when the swap gains value (STOPGAP price x3-on-a-full-colour rule, M10 replaces it); refused when stale
+BRAIN | reject   | reject   | autoplay                | ok  |                 | a pet refuses an offer that loses value
 BRAIN | end_turn | end_turn | autoplay                | ok  |                 | hand the dice on

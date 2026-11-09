@@ -46,6 +46,7 @@ static Tile T[MAXT]; static int nt;
 static Pl PL[MAXP]; static int npl;
 static int R_houses = 32, R_hotels = 12;
 static int R_start = 1500, R_go = 200, R_rounds = 40, R_maxp = MAXP_MINI; static long R_seed = 7;
+static int R_tr_rounds = 6, R_tr_per_turn = 3;   /* M9: RULE trade_max_rounds (counters per negotiation) and trade_offers_per_turn (new offers per proposer per turn, 0 = trading off); defaults live here so existing rules hashes are unchanged */
 static int R_auc_min = 10, R_auc_step = 10, R_auctions = 1;   /* M7: the first bid is at least R_auc_min, later bids beat the standing bid by R_auc_step (RULE auction_min_bid / auction_min_step / auctions=on|off; "off" = the pre-M7 game, a declined tile just stays with the bank; defaults live here so a ruleset without the rows keeps its rules hash) */
 
 /* derived state (replay only) */
@@ -130,6 +131,7 @@ static void load_app(void) {
             else if (!strcmp(f[1], "safety_rounds")) R_rounds = atoi(f[2]); else if (!strcmp(f[1], "seed")) R_seed = atol(f[2]);
             else if (!strcmp(f[1], "max_players")) R_maxp = atoi(f[2]);
             else if (!strcmp(f[1], "auction_min_bid")) R_auc_min = atoi(f[2]); else if (!strcmp(f[1], "auction_min_step")) R_auc_step = atoi(f[2]);
+            else if (!strcmp(f[1], "trade_max_rounds")) R_tr_rounds = atoi(f[2]); else if (!strcmp(f[1], "trade_offers_per_turn")) R_tr_per_turn = atoi(f[2]);
             else if (!strcmp(f[1], "auctions")) R_auctions = !(!strcmp(f[2], "off") || !strcmp(f[2], "0"));
             else if (!strcmp(f[1], "houses_total")) R_houses = atoi(f[2]); else if (!strcmp(f[1], "hotels_total")) R_hotels = atoi(f[2]);
         }
@@ -137,6 +139,7 @@ static void load_app(void) {
         if (R_start <= 0 || R_go < 0 || R_rounds <= 0) bad("rules.pdl: start_cash and safety_rounds must be positive");
         if (R_maxp < 2 || R_maxp > MAXP) bad("rules.pdl: max_players is 2..8");
         if (R_auc_min < 1 || R_auc_step < 1) bad("rules.pdl: auction_min_bid and auction_min_step must be at least 1");
+        if (R_tr_rounds < 1 || R_tr_rounds > 20 || R_tr_per_turn < 0 || R_tr_per_turn > 20) bad("rules.pdl: trade_max_rounds must be 1..20 and trade_offers_per_turn 0..20");
         if (R_houses < 4 || R_houses > 200 || R_hotels < 1 || R_hotels > 60) bad("rules.pdl: houses_total is 4..200 and hotels_total 1..60");
         npl = 0; g_rules_hash = rules_hash(); return;
     }
@@ -447,7 +450,8 @@ static void check_over_due(void) {
     if (active_count() <= 1) { snprintf(over_res, sizeof over_res, "winner=%s", PL[best_net()].id); over_due = 1; }
     else if (round_ >= R_rounds) { snprintf(over_res, sizeof over_res, "stalemate=%s", PL[best_net()].id); over_due = 1; }
 }
-static void advance_turn(void) { int old = cur, n = cur; do { n = (n + 1) % np_game; } while (out[n] && n != old); if (n <= old) round_++; cur = n; phase2 = PH_PRE; dice_last = 0; dcount = 0; owe_roll = 0; check_over_due(); }
+static void tr_turn_start(int pl);   /* M9: a new turn resets that player's offer allowance (defined with the trading block) */
+static void advance_turn(void) { int old = cur, n = cur; do { n = (n + 1) % np_game; } while (out[n] && n != old); if (n <= old) round_++; cur = n; tr_turn_start(n); phase2 = PH_PRE; dice_last = 0; dcount = 0; owe_roll = 0; check_over_due(); }
 #define JAIL_FINE 50
 /* move pl by `step` (collecting Start money when it passes or lands on Start) and resolve the landing; leaves phase2 at POST unless the landing set BUY or DEBT */
 static void move_and_land(int pl, int step, char *res, size_t cap) {
@@ -481,6 +485,107 @@ static int can_sell(int pl, int t) {
 }
 static int can_mortgage(int pl, int t) { return owner[t] == pl && !mort[t] && !(!strcmp(T[t].kind, "street") && grp_any_bld(t)) && (!strcmp(T[t].kind, "street") || !strcmp(T[t].kind, "rail") || !strcmp(T[t].kind, "util")); }
 /* one action by the current player. `target` is "d1,d2" for roll (already checked against the seeded dice by the caller), the creditor id or "bank" for bankrupt, else "-". */
+/* ===== M9 trading (spec section 7 and the owner requirement 7.8, 2026-11-08). Offers are DERIVED from the ledger by replay: OF[] holds only OPEN negotiations.
+ * NON-BLOCKING: an open offer is never a phase; every turn verb stays legal for everyone while one is open (only `accept` waits while an AUCTION is open, because money and tiles
+ * would move under the bidders; the offer stays open). A per-turn allowance (RULE trade_offers_per_turn, default 3, 0 = trading off) limits NEW offers per proposer per turn; a
+ * counter or an amend does not count. Asset grammar: prop:<tile>+cash:<n>+card:<luck|fund>, written CANONICALLY (tiles ascending, then cash, then cards; "-" = nothing), so a hand-edited row is refused. ===== */
+#define MAXOFF 16
+#define MAXOFFTILES 8
+typedef struct { int k, from, to, round, re; char give[128], get[128]; } Off;
+static Off OF[MAXOFF]; static int noff, off_k;
+static int tr_used[MAXP];   /* new offers each player opened since their turn began (advance_turn resets it) */
+static int exp_who = -1;    /* set by end_turn: that player's open offers must now expire (the bank rows follow in the same call) */
+typedef struct { int tiles[MAXT], nt_, cash, card[2]; } Assets;
+static char g_tr_to[16], g_tr_give[128], g_tr_get[128]; static int g_tr_k;   /* what an act call names (replay passes its own arguments, never these) */
+static void tr_turn_start(int pl) { tr_used[pl] = 0; }
+static void tr_clear(void) { noff = 0; off_k = 0; exp_who = -1; for (int i = 0; i < MAXP; i++) tr_used[i] = 0; }
+static int off_live(const Off *o) { return !out[o->from] && !out[o->to]; }
+static int off_idx(int k) { for (int i = 0; i < noff; i++) if (OF[i].k == k && off_live(&OF[i])) return i; return -1; }
+static void off_del(int i) { for (int j = i + 1; j < noff; j++) OF[j - 1] = OF[j]; noff--; }
+static void off_purge(void) { for (int i = noff - 1; i >= 0; i--) if (!off_live(&OF[i])) off_del(i); }
+static int open_from(int pl) { for (int i = 0; i < noff; i++) if (OF[i].from == pl && off_live(&OF[i])) return i; return -1; }
+static int exp_due_k(void) { if (exp_who < 0) return 0; for (int i = 0; i < noff; i++) if (OF[i].from == exp_who && off_live(&OF[i])) return OF[i].k; exp_who = -1; return 0; }
+static const char *as_parse(const char *s, Assets *a) {
+    memset(a, 0, sizeof *a); if (!s || !*s || !strcmp(s, "-")) return NULL;
+    char b[128]; snprintf(b, sizeof b, "%s", s); char *sv = NULL;
+    for (char *t = strtok_r(b, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) {
+        if (!strncmp(t, "prop:", 5)) { char *e; long v = strtol(t + 5, &e, 10); if (*e || e == t + 5 || v < 0 || v >= nt) return "bad asset: no such tile (use prop:<tile number>)";
+            for (int i = 0; i < a->nt_; i++) if (a->tiles[i] == v) return "bad asset: a tile is named twice"; if (a->nt_ >= MAXOFFTILES) return "at most 8 tiles on one side of an offer"; a->tiles[a->nt_++] = (int)v; }
+        else if (!strncmp(t, "cash:", 5)) { char *e; long v = strtol(t + 5, &e, 10); if (*e || e == t + 5 || v < 1 || v > 100000) return "bad asset: cash must be a whole number from 1 up"; if (a->cash) return "bad asset: cash is named twice"; a->cash = (int)v; }
+        else if (!strncmp(t, "card:", 5)) { int d = !strcmp(t + 5, "luck") ? 0 : !strcmp(t + 5, "fund") ? 1 : -1; if (d < 0) return "bad asset: card:luck or card:fund"; if (a->card[d]) return "bad asset: a card is named twice"; a->card[d] = 1; }
+        else return "bad asset: use prop:<tile>, cash:<n> or card:<luck|fund>";
+    }
+    return NULL;
+}
+static void as_str(const Assets *a, char *o, size_t cap) {
+    int v[MAXOFFTILES]; memcpy(v, a->tiles, sizeof(int) * (size_t)a->nt_); for (int i = 1; i < a->nt_; i++) { int x = v[i], j = i - 1; while (j >= 0 && v[j] > x) { v[j + 1] = v[j]; j--; } v[j + 1] = x; }
+    o[0] = 0; for (int i = 0; i < a->nt_; i++) ap(o, cap, "%sprop:%d", o[0] ? "+" : "", v[i]); if (a->cash) ap(o, cap, "%scash:%d", o[0] ? "+" : "", a->cash);
+    for (int d = 0; d < 2; d++) if (a->card[d]) ap(o, cap, "%scard:%s", o[0] ? "+" : "", DK[d]); if (!o[0]) snprintf(o, cap, "-");
+}
+static const char *g_trerr_[1]; static char g_trerr[160];
+static const char *as_check(int pl, const Assets *a) {   /* can `pl` hand over exactly this, right now? */
+    for (int i = 0; i < a->nt_; i++) { int t = a->tiles[i];
+        if (owner[t] != pl) { snprintf(g_trerr, sizeof g_trerr, "%s does not own tile %d (%s)", PL[pl].id, t, T[t].name); return g_trerr; }
+        if (!strcmp(T[t].kind, "street") && grp_any_bld(t)) { snprintf(g_trerr, sizeof g_trerr, "tile %d (%s): sell the buildings of that colour first", t, T[t].name); return g_trerr; } }
+    if (a->cash > cash[pl]) { snprintf(g_trerr, sizeof g_trerr, "%s does not have %d cash", PL[pl].id, a->cash); return g_trerr; }
+    for (int d = 0; d < 2; d++) if (a->card[d]) { int has = 0; for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) has = 1; if (!has) { snprintf(g_trerr, sizeof g_trerr, "%s does not hold a %s card", PL[pl].id, DK[d]); return g_trerr; } }
+    return NULL;
+}
+/* parse + canonicalise + validate both sides of an offer from `from` to `to`; leaves the canonical strings in cg / ct */
+static const char *offer_terms(int from, int to, const char *give, const char *get, char *cg, char *ct) {
+    Assets g, w; const char *e = as_parse(give, &g); if (e) return e; e = as_parse(get, &w); if (e) return e;
+    if (!g.nt_ && !g.cash && !g.card[0] && !g.card[1] && !w.nt_ && !w.cash && !w.card[0] && !w.card[1]) return "an offer needs something on at least one side";
+    if ((e = as_check(from, &g))) return e; if ((e = as_check(to, &w))) return e;
+    as_str(&g, cg, 128); as_str(&w, ct, 128); return NULL;
+}
+static const char *apply_expire(int k, char *res, size_t cap) { int i = off_idx(k); if (i < 0 || OF[i].from != exp_who) return "no such open offer to expire"; off_del(i); snprintf(res, cap, "expired"); return NULL; }
+/* the six trade verbs. pl = the ACTOR (derived by the caller from the offer, or the current player for `offer`). target = the addressee id (offer) or the offer id. */
+static const char *apply_trade(int pl, const char *verb, const char *target, const char *give, const char *get, char *res, size_t cap) {
+    char cg[128], ct[128]; const char *e; off_purge();
+    if (!strcmp(verb, "offer")) {
+        if (R_tr_per_turn <= 0) return "trading is off in this ruleset (trade_offers_per_turn 0)";
+        if (pl != cur) return "only the current player may open an offer";
+        if (phase2 == PH_BUY) return "decide the purchase first (buy or skip), then offer"; if (phase2 == PH_AUC) return "an auction is open: bid or pass first, then offer";
+        if (phase2 != PH_PRE && phase2 != PH_POST && phase2 != PH_DEBT) return "not now";
+        int to = pidx(target); if (to < 0 || to == pl) return "name another player as the addressee (offer <pN> give ... get ...)"; if (out[to]) return "that player is out of the game";
+        if ((e = offer_terms(pl, to, give, get, cg, ct))) return e;
+        if (open_from(pl) >= 0) return "you already have an open offer: cancel or amend it first";
+        if (tr_used[pl] >= R_tr_per_turn) { snprintf(g_trerr, sizeof g_trerr, "blocked:offer-allowance (%d new offers per turn, all used)", R_tr_per_turn); return g_trerr; }
+        if (noff >= MAXOFF) return "too many open offers";
+        Off *o = &OF[noff++]; o->k = ++off_k; o->from = pl; o->to = to; o->round = 1; o->re = 0; snprintf(o->give, sizeof o->give, "%s", cg); snprintf(o->get, sizeof o->get, "%s", ct); tr_used[pl]++;
+        snprintf(res, cap, "id=%d;give=%s;get=%s;round=1", o->k, cg, ct); return NULL;
+    }
+    char *en; long kl = strtol(target, &en, 10); int i = (*en || en == target) ? -1 : off_idx((int)kl); if (i < 0) return "no such open offer (it ended, or never existed)";
+    Off *o = &OF[i];
+    if (!strcmp(verb, "reject")) { if (pl != o->to) return "only the addressee can reject"; off_del(i); snprintf(res, cap, "rejected"); return NULL; }
+    if (!strcmp(verb, "cancel")) { if (pl != o->from) return "only the proposer can cancel"; off_del(i); snprintf(res, cap, "cancelled"); return NULL; }
+    if (!strcmp(verb, "amend")) {
+        if (pl != o->from) return "only the proposer can amend an offer: the addressee answers with a counter";
+        if ((e = offer_terms(o->from, o->to, give, get, cg, ct))) return e;
+        snprintf(o->give, sizeof o->give, "%s", cg); snprintf(o->get, sizeof o->get, "%s", ct); snprintf(res, cap, "id=%d;give=%s;get=%s;round=%d;amended", o->k, cg, ct, o->round); return NULL;
+    }
+    if (!strcmp(verb, "counter")) {
+        if (pl != o->to) return "only the addressee can counter"; if (o->round >= R_tr_rounds) { snprintf(g_trerr, sizeof g_trerr, "the negotiation reached the round limit (%d): accept, reject, or open a new offer", R_tr_rounds); return g_trerr; }
+        if (open_from(pl) >= 0) return "you already have an open offer: cancel or amend it first";
+        if ((e = offer_terms(pl, o->from, give, get, cg, ct))) return e;
+        int to = o->from, rd = o->round + 1, re = o->k; off_del(i); Off *n = &OF[noff++]; n->k = ++off_k; n->from = pl; n->to = to; n->round = rd; n->re = re; snprintf(n->give, sizeof n->give, "%s", cg); snprintf(n->get, sizeof n->get, "%s", ct);
+        snprintf(res, cap, "id=%d;re=%d;give=%s;get=%s;round=%d", n->k, re, cg, ct, rd); return NULL;
+    }
+    if (!strcmp(verb, "accept")) {
+        if (pl != o->to) return "only the addressee can accept"; if (phase2 == PH_AUC) return "an auction is open: the swap waits until it ends (the offer stays open)";
+        int fr = o->from, to = o->to; Assets g, w; as_parse(o->give, &g); as_parse(o->get, &w);
+        if ((e = as_check(fr, &g)) || (e = as_check(to, &w))) { char why[160]; snprintf(why, sizeof why, "%s", e); snprintf(g_trerr, sizeof g_trerr, "stale offer: %.130s", why); return g_trerr; }   /* (copy first: e points INTO g_trerr) */
+        int ia = 0, ib = 0; for (int j = 0; j < w.nt_; j++) if (mort[w.tiles[j]]) ia += interest_of(w.tiles[j]); for (int j = 0; j < g.nt_; j++) if (mort[g.tiles[j]]) ib += interest_of(g.tiles[j]);   /* the RECEIVER of a mortgaged tile pays the bank 10% of its mortgage value at once */
+        int cf = cash[fr] - g.cash + w.cash - ia, ct2 = cash[to] - w.cash + g.cash - ib;
+        if (cf < 0) { snprintf(g_trerr, sizeof g_trerr, "%s cannot pay the mortgage interest (%d) after the swap: raise cash first", PL[fr].id, ia); return g_trerr; } if (ct2 < 0) { snprintf(g_trerr, sizeof g_trerr, "%s cannot pay the mortgage interest (%d) after the swap: raise cash first", PL[to].id, ib); return g_trerr; }
+        cash[fr] = cf; cash[to] = ct2; bankv += ia + ib;
+        for (int j = 0; j < g.nt_; j++) owner[g.tiles[j]] = to; for (int j = 0; j < w.nt_; j++) owner[w.tiles[j]] = fr;
+        for (int d = 0; d < 2; d++) { if (g.card[d]) for (int k = 1; k <= 16; k++) if (cheld[d][k] == fr + 1) { cheld[d][k] = to + 1; break; } if (w.card[d]) for (int k = 1; k <= 16; k++) if (cheld[d][k] == to + 1) { cheld[d][k] = fr + 1; break; } }
+        snprintf(res, cap, "done;give=%s;get=%s;interest-%d;interest-%d", o->give, o->get, ia, ib); off_del(i); return NULL;
+    }
+    return "unknown trade verb";
+}
+static int is_trade_verb(const char *v) { return !strcmp(v, "offer") || !strcmp(v, "counter") || !strcmp(v, "amend") || !strcmp(v, "accept") || !strcmp(v, "reject") || !strcmp(v, "cancel"); }
 static const char *apply2(int pl, const char *verb, const char *target, char *res, size_t cap) {
     res[0] = 0;
     if (!strcmp(verb, "roll")) {
@@ -581,7 +686,7 @@ static const char *legal_now(void) {
 }
 static int replay2(int *started) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; npl = 0; np_game = 0; phase2 = PH_LOBBY; first_w = -1; over_due = 0; debt_amt = 0; debt_cred = -1; pending = -1; dice_last = 0; dcount = 0; owe_roll = 0; jail_step = 0; memset(bld, 0, sizeof bld); memset(mort, 0, sizeof mort); for (int i = 0; i < MAXP; i++) { injail[i] = 0; jfails[i] = 0; }
-    cqn[0] = cqn[1] = 0; memset(cheld, 0, sizeof cheld); auc_clear(); skip_legacy = 0;   /* g_bid_amt is NOT reset here: the caller sets it before need_game replays */
+    cqn[0] = cqn[1] = 0; memset(cheld, 0, sizeof cheld); auc_clear(); tr_clear(); skip_legacy = 0;   /* g_bid_amt is NOT reset here: the caller sets it before need_game replays */
     for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = 0; }
     ledger_path(p, sizeof p); fp = fopen(p, "r"); if (!fp) return 0;
     int lineno = 0;
@@ -593,6 +698,7 @@ static int replay2(int *started) {
         const char *actor = f[2], *verb = f[3], *target = f[4], *rec = f[6]; char res[LINE]; res[0] = 0; const char *err = NULL;
         if (first_w >= 0 && strcmp(verb, "first")) { fprintf(stderr, "ledger line %d: the opening throws ended, `first` must follow\n", lineno); fclose(fp); return 1; }
         if (over_due && strcmp(verb, "over")) { fprintf(stderr, "ledger line %d: the game ended, `over` must follow\n", lineno); fclose(fp); return 1; }
+        if (exp_due_k() && !over_due && strcmp(verb, "expire")) { fprintf(stderr, "ledger line %d: end_turn left an open offer, `expire` must follow\n", lineno); fclose(fp); return 1; }
         if (auc_done && strcmp(verb, "auction_end")) { fprintf(stderr, "ledger line %d: the auction can end, `auction_end` must follow\n", lineno); fclose(fp); return 1; }
         if (!*started) {
             char want[160]; snprintf(want, sizeof want, "ruleset=%s,schema=2,rules=%s,max=%d", g_rs, hx(g_rules_hash), R_maxp);
@@ -619,11 +725,18 @@ static int replay2(int *started) {
         } else if (!strcmp(verb, "roll") || !strcmp(verb, "buy") || !strcmp(verb, "skip") || !strcmp(verb, "end_turn") || !strcmp(verb, "bankrupt") || !strcmp(verb, "build") || !strcmp(verb, "sell") || !strcmp(verb, "mortgage") || !strcmp(verb, "unmortgage") || !strcmp(verb, "pay_debt")|| !strcmp(verb, "jail_pay") || !strcmp(verb, "jail_card") || !strcmp(verb, "jail_roll")) {
             int pl = pidx(actor); if (pl < 0 || pl != cur || phase2 < PH_PRE || phase2 == PH_OVER) { fprintf(stderr, "ledger line %d: %s by %s is out of turn or outside play\n", lineno, verb, actor); fclose(fp); return 1; }
             if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2 || d1 != die(seed, nrolls, 0) || d2 != die(seed, nrolls, 1)) { fprintf(stderr, "ledger line %d: roll does not match the seeded dice\n", lineno); fclose(fp); return 1; } }
-            skip_legacy = !strcmp(verb, "skip") && !strcmp(rec, "declined"); err = apply2(pl, verb, target, res, sizeof res); skip_legacy = 0;
+            skip_legacy = !strcmp(verb, "skip") && !strcmp(rec, "declined"); err = apply2(pl, verb, target, res, sizeof res); skip_legacy = 0; if (!err && !strcmp(verb, "end_turn")) exp_who = pl;
         } else if (!strcmp(verb, "bid") || !strcmp(verb, "pass")) {
             int pl = pidx(actor); if (pl < 0 || phase2 != PH_AUC || pl != auc_next) { fprintf(stderr, "ledger line %d: %s by %s is out of order or outside an auction\n", lineno, verb, actor); fclose(fp); return 1; }
             g_bid_amt = 0; if (!strcmp(verb, "bid") && sscanf(rec, "bid=%d", &g_bid_amt) != 1) { fprintf(stderr, "ledger line %d: a bid row carries bid=<amount>\n", lineno); fclose(fp); return 1; }
             err = apply2(pl, verb, target, res, sizeof res);
+        } else if (is_trade_verb(verb)) {
+            int pl = pidx(actor); if (pl < 0 || phase2 < PH_PRE || phase2 == PH_OVER) { fprintf(stderr, "ledger line %d: %s by %s is outside play\n", lineno, verb, actor); fclose(fp); return 1; }
+            char gv[128] = "-", gt[128] = "-"; const char *a1 = strstr(rec, "give="), *a2 = strstr(rec, "get="); if (a1) { size_t l = strcspn(a1 + 5, ";"); if (l > 127) l = 127; memcpy(gv, a1 + 5, l); gv[l] = 0; } if (a2) { size_t l = strcspn(a2 + 4, ";"); if (l > 127) l = 127; memcpy(gt, a2 + 4, l); gt[l] = 0; }
+            err = apply_trade(pl, verb, target, gv, gt, res, sizeof res);
+        } else if (!strcmp(verb, "expire")) {
+            int ek = exp_due_k(); if (strcmp(actor, "bank") || !ek || atoi(target) != ek) { fprintf(stderr, "ledger line %d: `expire` without an offer that must expire (or not by the bank, or the wrong offer)\n", lineno); fclose(fp); return 1; }
+            err = apply_expire(ek, res, sizeof res);
         } else if (!strcmp(verb, "auction_end")) {
             if (strcmp(actor, "bank") || !auc_done || atoi(target) != auc_t) { fprintf(stderr, "ledger line %d: `auction_end` without an auction that can end (or not by the bank, or the wrong tile)\n", lineno); fclose(fp); return 1; }
             err = apply_auction_end(res, sizeof res);
@@ -729,6 +842,8 @@ static void build_status2(char *b, size_t cap) {
     b[0] = 0; ap(b, cap, "GAME deskopoly schema=2 ruleset=%s seed=%ld players=%d events=%d\n", g_rs, seed, np_game, nev);
     ap(b, cap, "STATE phase=%s current=%s round=%d pending=%d debt=%d doubles=%d rules=%s bank=%d over=%d\n", ph[phase2], phase2 >= PH_PRE ? PL[cur].id : "-", round_, pending, debt_amt, dcount, hx(g_rules_hash), bankv, over);
     if (phase2 == PH_AUC) ap(b, cap, "AUCTION tile=%d name=%s bid=%d high=%s next=%s min_next=%d passed=%d\n", auc_t, T[auc_t].name, auc_bid, auc_high >= 0 ? PL[auc_high].id : "-", auc_next >= 0 ? PL[auc_next].id : "-", auc_min_next(), (int)({ int c = 0; for (int i = 0; i < np_game; i++) if (auc_pass[i]) c++; c; }));
+    ap(b, cap, "TRADE per_turn=%d used_cur=%d open=%d max_rounds=%d\n", R_tr_per_turn, phase2 >= PH_PRE ? tr_used[cur] : 0, noff, R_tr_rounds);
+    for (int i = 0; i < noff; i++) if (off_live(&OF[i])) ap(b, cap, "OFFER id=%d from=%s to=%s round=%d re=%d give=%s get=%s\n", OF[i].k, PL[OF[i].from].id, PL[OF[i].to].id, OF[i].round, OF[i].re, OF[i].give, OF[i].get);
     int sum = bankv;
     for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d jail=%d cards=%s%s%s net=%d\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i], injail[i] ? jfails[i] + 1 : 0, held_by(i, 0) ? "luck" : "", held_by(i, 0) && held_by(i, 1) ? "+" : "", held_by(i, 1) ? "fund" : (held_by(i, 0) ? "" : "-"), net(i)); }
     for (int k = 0; k < nt; k++) if (owner[k] >= 0) ap(b, cap, "TILE %d %s owner=%s%s%s\n", k, T[k].name, PL[owner[k]].id, bld[k] ? (bld[k] == 5 ? " houses=hotel" : (const char *[]){ "", " houses=1", " houses=2", " houses=3", " houses=4" }[bld[k]]) : "", mort[k] ? " mort=1" : "");
@@ -762,11 +877,30 @@ static const char *pet_pick(char *tgt) {
     }
     return "end_turn";
 }
+/* one trade call -> one ledger row. The ACTOR is derived from the offer (the addressee answers, the proposer cancels or amends, the current player opens), so `as=pN` is only a check. */
+static int act2_trade(const char *verb, const char *as, char *msg, size_t cap) {
+    if (exp_due_k() && !over_due) { snprintf(msg, cap, "refused: an end_turn left an open offer without its expire row (run check)"); return 2; }   /* (a pet answering from tick2 comes through here too) */
+    int ai = as ? pidx(as) : -1; if (as && ai < 0) { snprintf(msg, cap, "refused: no such player %s", as); return 2; }
+    char t[40], res[LINE]; int pl;
+    if (!strcmp(verb, "offer")) { pl = cur; snprintf(t, sizeof t, "%s", g_tr_to); if (as && ai != pl) { snprintf(msg, cap, "refused: only the current player (%s) may open an offer, not %s", PL[pl].id, as); return 2; } }
+    else {
+        int to_acts = !strcmp(verb, "accept") || !strcmp(verb, "reject") || !strcmp(verb, "counter"), k = g_tr_k;
+        if (k <= 0) { int c = 0, cand = 0; for (int i = 0; i < noff; i++) if (off_live(&OF[i]) && (ai < 0 || (to_acts ? OF[i].to : OF[i].from) == ai)) { c++; cand = OF[i].k; }
+            if (c == 0) { snprintf(msg, cap, "refused: there is no open offer to %s", verb); return 2; } if (c > 1) { snprintf(msg, cap, "refused: %d offers are open: name one (%s <id>)", c, verb); return 2; } k = cand; }
+        int i = off_idx(k); if (i < 0) { snprintf(msg, cap, "refused: no such open offer (it ended, or never existed)"); return 2; }
+        pl = to_acts ? OF[i].to : OF[i].from; if (as && ai != pl) { snprintf(msg, cap, "refused: offer %d is for %s to %s, not %s", k, PL[pl].id, verb, as); return 2; }
+        snprintf(t, sizeof t, "%d", k);
+    }
+    const char *err = apply_trade(pl, verb, t, g_tr_give, g_tr_get, res, sizeof res); if (err) { snprintf(msg, cap, "refused: %s", err); return 2; }
+    event(PL[pl].id, verb, t, pos[pl], res); snprintf(msg, cap, "%s %s: %s", PL[pl].id, verb, res); return 0;
+}
 static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
     int keep_bid = g_bid_amt;   /* replay overwrites g_bid_amt while it walks past old bid rows: keep the caller's amount */
     int st, rc = need_game(&st); if (rc) return rc; g_bid_amt = keep_bid;
     if (phase2 < PH_PRE || phase2 == PH_OVER) { snprintf(msg, cap, "refused: %s is not legal now (%s)", verb, legal_now()); return 2; }
     if (first_w >= 0 || over_due) { snprintf(msg, cap, "refused: a decided opening or ending is missing its row (run check)"); return 2; }
+    if (exp_due_k() && !over_due) { snprintf(msg, cap, "refused: an end_turn left an open offer without its expire row (run check)"); return 2; }
+    if (is_trade_verb(verb)) return act2_trade(verb, as, msg, cap);   /* the actor of a trade verb is derived from the offer, not from whose turn it is */
     int pl = (phase2 == PH_AUC && (!strcmp(verb, "bid") || !strcmp(verb, "pass"))) ? auc_next : cur; if (as && strcmp(as, PL[pl].id)) { snprintf(msg, cap, "refused: it is %s's turn, not %s's", PL[pl].id, as); return 2; }
     char t[40] = "-", res[LINE]; if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); }
     else if (!strcmp(verb, "bankrupt") && phase2 == PH_DEBT) snprintf(t, sizeof t, "%s", debt_cred >= 0 ? PL[debt_cred].id : "bank");
@@ -777,10 +911,24 @@ static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
     const char *err = apply2(pl, verb, t, res, sizeof res); if (err) { snprintf(msg, cap, "refused: %s", err); return 2; }
     event(id, verb, t, pos[pl], res); snprintf(msg, cap, "%s %s: %s", id, verb, res);
     if (auc_done) { int tl = auc_t; char r3[LINE], ts[16]; apply_auction_end(r3, sizeof r3); snprintf(ts, sizeof ts, "%d", tl); event("bank", "auction_end", ts, 0, r3); size_t l3 = strlen(msg); snprintf(msg + l3, cap - l3, "\nauction_end: %s", r3); }   /* the SAME call that ended the auction appends its end row */
+    if (!strcmp(verb, "end_turn") && !over_due) { exp_who = pl; int ek; while ((ek = exp_due_k())) { char r4[LINE], ks[16]; apply_expire(ek, r4, sizeof r4); snprintf(ks, sizeof ks, "%d", ek); event("bank", "expire", ks, 0, r4); size_t l4 = strlen(msg); snprintf(msg + l4, cap - l4, "\nexpire: offer %d", ek); } }   /* the SAME call that ended the turn appends the expire rows of the ending player's open offers (spec 5.2.1) */
     if (over_due) { char r2[LINE]; apply_over(r2, sizeof r2); event("bank", "over", "-", 0, r2); char m2[LINE]; snprintf(m2, sizeof m2, "\nover: %s", r2); size_t l = strlen(msg); snprintf(msg + l, cap - l, "%s", m2); }
     return 0;
 }
+/* offer <pN> give <assets> get <assets> | counter|amend <id> give .. get .. | accept|reject|cancel [<id>]   (assets: prop:<tile id or number>+cash:<n>+card:<luck|fund>, or several tokens) */
+static int tr_args(const char *verb, int argc, char **argv) {
+    g_tr_to[0] = 0; g_tr_k = 0; snprintf(g_tr_give, sizeof g_tr_give, "-"); snprintf(g_tr_get, sizeof g_tr_get, "-"); int mode = 0; char *dst = NULL; char acc[2][128] = { "", "" };
+    for (int i = 0; i < argc; i++) { const char *a = argv[i]; if (!strncmp(a, "as=", 3)) continue; if (!strcmp(a, "give")) { mode = 1; continue; } if (!strcmp(a, "get")) { mode = 2; continue; }
+        if (mode == 0) { if (!strcmp(verb, "offer")) snprintf(g_tr_to, sizeof g_tr_to, "%s", a); else g_tr_k = atoi(a); continue; }
+        char tok[128]; snprintf(tok, sizeof tok, "%s", a); char *sv = NULL, nb[128]; nb[0] = 0;
+        for (char *p = strtok_r(tok, "+", &sv); p; p = strtok_r(NULL, "+", &sv)) {
+            if (!strncmp(p, "prop:", 5) && !(p[5] >= '0' && p[5] <= '9' && strspn(p + 5, "0123456789") == strlen(p + 5))) { int st0, rc0 = need_game(&st0); if (rc0) return rc0; int tt = resolve_tile(p + 5); if (tt < 0) { fprintf(stderr, "deskopoly: no such tile: %s\n", p + 5); return 2; } ap(nb, sizeof nb, "%sprop:%d", nb[0] ? "+" : "", tt); }
+            else ap(nb, sizeof nb, "%s%s", nb[0] ? "+" : "", p); }
+        char *ac = acc[mode - 1]; ap(ac, 128, "%s%s", ac[0] ? "+" : "", nb); (void)dst; }
+    if (acc[0][0]) snprintf(g_tr_give, sizeof g_tr_give, "%s", acc[0]); if (acc[1][0]) snprintf(g_tr_get, sizeof g_tr_get, "%s", acc[1]); return 0;
+}
 static int v_act2(const char *verb, int argc, char **argv) {
+    if (is_trade_verb(verb)) { int rc1 = tr_args(verb, argc, argv); if (rc1) return rc1; }
     g_deck_arg = NULL; for (int i = 0; i < argc; i++) if (strncmp(argv[i], "as=", 3)) g_deck_arg = argv[i];
     g_bid_amt = 0; if (!strcmp(verb, "bid") && g_deck_arg) g_bid_amt = atoi(g_deck_arg);   /* bid <amount> [as=pN] */
     g_target[0] = 0; if (is_tile_verb(verb) && g_deck_arg) { int st0, rc0 = need_game(&st0); if (rc0) return rc0; int tt = resolve_tile(g_deck_arg); if (tt < 0) { fprintf(stderr, "deskopoly: no such tile: %s\n", g_deck_arg); return 2; } snprintf(g_target, sizeof g_target, "%d", tt); }
@@ -788,10 +936,21 @@ static int v_act2(const char *verb, int argc, char **argv) {
     char msg[LINE * 2]; int rc = act2_do(verb, as, msg, sizeof msg); if (rc == 2) { fprintf(stderr, "deskopoly: %s\n", msg); return 2; } if (rc) return rc; puts(msg); return 0;
 }
 /* STOPGAP pet policy (removal condition: M10 replaces it with personalities.pdl + BRAIN rows): buy when affordable, otherwise skip; a debt is declared bankrupt; everything else is the next step. */
+/* STOPGAP pet answer to an offer (removal condition: M10 personalities): worth = tile price, TRIPLED when the holder owns the whole colour group; gain = what the pet receives minus what it gives up (cash 1:1, a Get Out card 50). Accept when the gain is positive (bold and coin accept a zero gain too). */
+static int pet_gain(const Off *o) {
+    Assets g, w; as_parse(o->give, &g); as_parse(o->get, &w); int to = o->to, ow[MAXT]; for (int k = 0; k < nt; k++) ow[k] = owner[k];
+    for (int j = 0; j < g.nt_; j++) ow[g.tiles[j]] = to; for (int j = 0; j < w.nt_; j++) ow[w.tiles[j]] = o->from; int gain = g.cash - w.cash;
+    for (int j = 0; j < g.nt_; j++) { int t = g.tiles[j], full = !strcmp(T[t].kind, "street"); if (full) for (int k = 0; k < nt; k++) if (!strcmp(T[k].kind, "street") && T[k].group == T[t].group && ow[k] != to) full = 0; gain += T[t].price * (full ? 3 : 1); }
+    for (int j = 0; j < w.nt_; j++) { int t = w.tiles[j], full = !strcmp(T[t].kind, "street"); if (full) for (int k = 0; k < nt; k++) if (!strcmp(T[k].kind, "street") && T[k].group == T[t].group && owner[k] != to) full = 0; gain -= T[t].price * (full ? 3 : 1); }
+    for (int d = 0; d < 2; d++) gain += 50 * (g.card[d] - w.card[d]); return gain;
+}
 static int tick2(char *msg, size_t cap) {
     if (phase2 == PH_OVER) { snprintf(msg, cap, "over"); return 2; }
     if (phase2 == PH_ORDER) { int o = order_next(); if (o >= 0 && human[o]) { snprintf(msg, cap, "waiting %s %s human (opening throw)", PL[o].id, PL[o].name); return 1; } if (o < 0 || first_w >= 0) { snprintf(msg, cap, "stuck in the opening"); return -1; } int rc = v_order(); snprintf(msg, cap, "opening throw"); return rc == 0 ? 0 : -1; }
     if (phase2 < PH_PRE) { snprintf(msg, cap, "refused: the opening is not finished (%s)", legal_now()); return -1; }
+    if (phase2 != PH_AUC) for (int i = 0; i < noff; i++) if (off_live(&OF[i]) && !human[OF[i].to]) {   /* a pet answers an open offer addressed to it (out of turn is fine), one answer per tick */
+        const Off *o = &OF[i]; int gn = pet_gain(o), ok = gn > 0 || (gn == 0 && strcmp(PL[o->to].style, "cautious")); g_tr_k = o->k; g_tr_give[0] = g_tr_get[0] = 0;
+        int rc3 = ok ? act2_trade("accept", NULL, msg, cap) : 2; if (rc3 != 0) rc3 = act2_trade("reject", NULL, msg, cap); return rc3 == 0 ? 0 : -1; }
     if (phase2 == PH_AUC) {   /* an auction: the bidder is auc_next, not cur */
         int b = auc_next; if (b < 0) { snprintf(msg, cap, "stuck in an auction"); return -1; }
         if (human[b]) { snprintf(msg, cap, "waiting %s %s human (auction)", PL[b].id, PL[b].name); return 1; }
@@ -834,6 +993,10 @@ static int check2(void) {
     for (int k = 0; k < nt; k++) if (owner[k] >= 0 && (strcmp(T[k].kind, "street") && strcmp(T[k].kind, "rail") && strcmp(T[k].kind, "util") || out[owner[k]])) { printf("FAIL I4 bad-owner tile=%d\n", k); fails++; }
     for (int i = 0; i < np_game; i++) if (out[i] && cash[i] != 0) { printf("FAIL I16 out-player-has-cash %s\n", PL[i].id); fails++; }
     if (phase2 == PH_DEBT && (debt_amt <= 0 || cash[cur] >= debt_amt)) { printf("FAIL I14 a debt that could be paid\n"); fails++; }
+    { int seen[MAXP] = {0}; for (int i = 0; i < noff; i++) { const Off *o = &OF[i]; if (!off_live(o)) continue; Assets ga, gb;
+        if (o->from == o->to || o->round < 1 || o->round > R_tr_rounds || o->k < 1 || o->k > off_k || as_parse(o->give, &ga) || as_parse(o->get, &gb) || seen[o->from]++) { printf("FAIL I20 a malformed open offer (id=%d)\n", o->k); fails++; } }
+      for (int i = 0; i < np_game; i++) if (tr_used[i] > R_tr_per_turn) { printf("FAIL I20 %s opened %d offers this turn, the allowance is %d\n", PL[i].id, tr_used[i], R_tr_per_turn); fails++; }
+      if (!over && exp_due_k()) { printf("FAIL I20 an end_turn left an open offer without its expire row\n"); fails++; } }
     if (phase2 == PH_AUC && auc_done) { printf("FAIL I19 the auction can end but its auction_end row is missing\n"); fails++; } else if (phase2 == PH_AUC) { if (auc_t < 0 || auc_t >= nt || owner[auc_t] != -1) { printf("FAIL I19 auction-tile-invalid\n"); fails++; } if (auc_next < 0 || auc_next >= np_game || !auc_live(auc_next)) { printf("FAIL I19 auction-bidder-invalid\n"); fails++; } if (auc_high >= 0 && cash[auc_high] < auc_bid) { printf("FAIL I19 the-high-bidder-cannot-pay\n"); fails++; } } else if (auc_t >= 0) { printf("FAIL I19 auction-state-left-open\n"); fails++; }
     if (phase2 >= PH_PRE && phase2 != PH_OVER && (cur < 0 || cur >= np_game || out[cur])) { printf("FAIL I13 no-current-player\n"); fails++; }
     for (int i = 0; i < np_game; i++) { if (injail[i] && (pos[i] != jail_idx || jfails[i] > 3)) { printf("FAIL I3/I10 jailed-player-off-the-jail-tile-or-bad-counter %s\n", PL[i].id); fails++; } if (!injail[i] && jfails[i]) { printf("FAIL I10 jail-counter-while-free %s\n", PL[i].id); fails++; } }
@@ -1018,6 +1181,8 @@ static int v_ui2(void) {
        ht && ((phase2 == PH_PRE && !inj) || phase2 == PH_ORDER) ? "1" : "", ht && phase2 == PH_PRE && inj ? "1" : "", ht && phase2 == PH_BUY && pending >= 0 && cash[pl] >= T[pending].price ? "1" : "", ht && phase2 == PH_BUY ? "1" : "",
        ht && phase2 == PH_DEBT && cash[pl] >= debt_amt ? "1" : "", ht && phase2 == PH_DEBT ? "1" : "", ht && phase2 == PH_POST ? "1" : "");
     ap(b, sizeof b, "pending_tile=%s\npending_price=%d\ndebt=%d\n", phase2 == PH_BUY && pending >= 0 ? T[pending].name : "", phase2 == PH_BUY && pending >= 0 ? T[pending].price : 0, phase2 == PH_DEBT ? debt_amt : 0);
+    { int ho = -1, anyo = -1, petr = 0; for (int i = 0; i < noff; i++) if (off_live(&OF[i])) { if (anyo < 0) anyo = i; if (human[OF[i].to] && ho < 0) ho = i; if (!human[OF[i].to]) petr = 1; } int oi = ho >= 0 ? ho : anyo;
+      ap(b, sizeof b, "trade_left=%d\noffers_open=%d\nshow_offer=%s\noffer_id=%d\noffer_from=%s\noffer_to=%s\noffer_round=%d\noffer_give=%s\noffer_get=%s\npet_reply=%s\n", phase2 >= PH_PRE && R_tr_per_turn > 0 ? (R_tr_per_turn - tr_used[cur] > 0 ? R_tr_per_turn - tr_used[cur] : 0) : 0, noff, ho >= 0 ? "1" : "", oi >= 0 ? OF[oi].k : 0, oi >= 0 ? PL[OF[oi].from].id : "", oi >= 0 ? PL[OF[oi].to].id : "", oi >= 0 ? OF[oi].round : 0, oi >= 0 ? OF[oi].give : "", oi >= 0 ? OF[oi].get : "", petr ? "1" : ""); }
     ap(b, sizeof b, "show_bid=%s\nshow_pass=%s\nauction_tile=%s\nauction_bid=%d\nauction_high=%s\nauction_min=%d\nauction_bidder=%s\n", ht && phase2 == PH_AUC && cash[pl] >= auc_min_next() ? "1" : "", ht && phase2 == PH_AUC ? "1" : "", phase2 == PH_AUC ? T[auc_t].name : "", phase2 == PH_AUC ? auc_bid : 0, phase2 == PH_AUC && auc_high >= 0 ? PL[auc_high].id : "", phase2 == PH_AUC ? auc_min_next() : 0, phase2 == PH_AUC && auc_next >= 0 ? PL[auc_next].id : "");
     for (int i = 0; i < np_game; i++) { int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == i) props++;
         ap(b, sizeof b, "%s_name=%s\n%s_driver=%s\n%s_cash=%d\n%s_pos=%d\n%s_out=%d\n%s_jail=%s\n%s_props=%d\n%s_net=%d\n%s_turn=%s\n", PL[i].id, PL[i].name, PL[i].id, human[i] ? "human" : "pet", PL[i].id, cash[i], PL[i].id, pos[i], PL[i].id, out[i], PL[i].id, injail[i] ? "1" : "", PL[i].id, props, PL[i].id, net(i), PL[i].id, i == pl && !over ? "1" : ""); }
@@ -1099,7 +1264,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "start")) return v_start(argc - 4, argv + 4);
     if (!strcmp(v, "order")) return v_order();
     if (!strcmp(v, "help")) return v_help(argc - 4, argv + 4);
-    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll") || !strcmp(v, "build") || !strcmp(v, "sell") || !strcmp(v, "mortgage") || !strcmp(v, "unmortgage") || !strcmp(v, "pay_debt") || !strcmp(v, "bid") || !strcmp(v, "pass"))) return v_act2(v, argc - 4, argv + 4);
+    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll") || !strcmp(v, "build") || !strcmp(v, "sell") || !strcmp(v, "mortgage") || !strcmp(v, "unmortgage") || !strcmp(v, "pay_debt") || !strcmp(v, "bid") || !strcmp(v, "pass") || is_trade_verb(v))) return v_act2(v, argc - 4, argv + 4);
     if (g_schema == 2 && !strcmp(v, "autoplay")) return v_autoplay2();
     if (g_schema == 2 && !strcmp(v, "tick")) return v_tick2();
     if (g_schema == 2 && !strcmp(v, "mechanics")) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }

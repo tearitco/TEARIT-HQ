@@ -1,0 +1,4 @@
+# dsk_trade.pal - pal harness for cases/dsk_trade.pdl (deskopoly classic M9 trading, engine slice). Read results/dsk_trade.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dsk_trade.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsk_trade.pdl
+halt
