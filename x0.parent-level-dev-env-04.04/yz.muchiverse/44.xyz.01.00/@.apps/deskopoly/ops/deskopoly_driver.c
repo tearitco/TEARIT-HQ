@@ -169,7 +169,8 @@ static void tr_parse(const char *as, unsigned long long *mask, int *cash, int *c
 }
 static int tr_owns(int pl, int t) { char k[24], v[16], idb[8]; snprintf(k, sizeof k, "t%d_owner", t); snprintf(idb, sizeof idb, "p%d", pl); return !strcmp(uget(k, v, sizeof v), idb); }
 static int tr_tradable(int t) { char k[24], v[8]; snprintf(k, sizeof k, "t%d_trade", t); return uget(k, v, sizeof v)[0] == '1'; }
-static void tr_tilename(int t, char *o, size_t cap) { char k[24], nm[40], mo[8]; snprintf(k, sizeof k, "t%d_name", t); uget(k, nm, sizeof nm); snprintf(k, sizeof k, "t%d_mort", t); uget(k, mo, sizeof mo); snprintf(o, cap, "%s%s", nm, mo[0] ? " (mortgaged)" : ""); }
+static void tr_tilename(int t, char *o, size_t cap) { char k[24], nm[40], mo[8]; snprintf(k, sizeof k, "t%d_label", t); uget(k, nm, sizeof nm); if (!nm[0]) { snprintf(k, sizeof k, "t%d_name", t); uget(k, nm, sizeof nm); }   /* the player-facing label (page.pdl LABEL rows), the id when the feed has none */
+    snprintf(k, sizeof k, "t%d_mort", t); uget(k, mo, sizeof mo); snprintf(o, cap, "%s%s", nm, mo[0] ? " (mortgaged)" : ""); }
 static void tr_assets(unsigned long long mask, int cash, int cards, char *o, size_t cap) { o[0] = 0; for (int t = 0; t < 64; t++) if (mask >> t & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%sprop:%d", o[0] ? "+" : "", t); } if (cash > 0) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scash:%d", o[0] ? "+" : "", cash); }
     for (int d = 0; d < 2; d++) if (cards >> d & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scard:%s", o[0] ? "+" : "", TR_DK[d]); } if (!o[0]) snprintf(o, cap, "-"); }
 static void tr_nice(const char *as, char *o, size_t cap) {   /* prop:8+cash:50 -> "Sky2 + $50" for the player's eyes */
@@ -332,9 +333,9 @@ static void publish(void) {
         if (tr_open_) tr_screen(); else {
         if (uget("show_roll", v, sizeof v)[0]) add_btn("Roll", "roll");
         if (uget("show_jail", v, sizeof v)[0]) { add_btn("Jail: roll for doubles", "jail_roll"); add_btn("Jail: pay 50", "jail_pay"); }
-        if (uget("show_buy", v, sizeof v)[0]) { char pt[40]; uget("pending_tile", pt, sizeof pt); snprintf(b, sizeof b, "Buy %s (%d)", pt, uint_("pending_price")); add_btn(b, "buy"); }
+        if (uget("show_buy", v, sizeof v)[0]) { char pt[40]; uget("pending_label", pt, sizeof pt); if (!pt[0]) uget("pending_tile", pt, sizeof pt); snprintf(b, sizeof b, "Buy %s (%d)", pt, uint_("pending_price")); add_btn(b, "buy"); }
         if (uget("show_skip", v, sizeof v)[0]) add_btn("Skip", "skip");
-        { char at[40]; uget("auction_tile", at, sizeof at); if (at[0]) { char ah[16], bd[16]; uget("auction_high", ah, sizeof ah); uget("auction_bidder", bd, sizeof bd);
+        { char at[40]; uget("auction_label", at, sizeof at); if (!at[0]) uget("auction_tile", at, sizeof at); if (at[0]) { char ah[16], bd[16]; uget("auction_high", ah, sizeof ah); uget("auction_bidder", bd, sizeof bd);
             snprintf(b, sizeof b, "AUCTION %s %d%s%s", at, uint_("auction_bid"), ah[0] ? " by " : "", ah); (void)bd; add_text(b); } }   /* one short line: a long one wrapped to three and the first button covered its end (seen in the live window 2026-11-08) */
         if (uget("show_bid", v, sizeof v)[0]) { int mn = uint_("auction_min"); char ck[24]; snprintf(ck, sizeof ck, "%s_cash", cur); snprintf(b, sizeof b, "Bid %d", mn); add_btn(b, "bid_min"); if (uint_(ck) >= mn + 50) { snprintf(b, sizeof b, "Bid %d", mn + 50); add_btn(b, "bid_up"); } }   /* the human picks the amount: the minimum raise or 50 above it (the engine refuses anything it does not allow) */
         if (uget("show_pass", v, sizeof v)[0]) add_btn("Pass", "pass");
