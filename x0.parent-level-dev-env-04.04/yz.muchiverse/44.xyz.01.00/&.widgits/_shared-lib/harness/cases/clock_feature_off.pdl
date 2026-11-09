@@ -1,0 +1,49 @@
+# clock_feature_off (2026-11-08): an AT row of time.pdl that ends with `needs=<file>` is installed as a reminder ONLY while <app>/<file> says `ENABLED | 1`.
+# Why: a reminder for a feature shipped OFF still ran a full event page (about 1 CPU-second) at every firing and did nothing; in a running Teropoly game that was the
+# lc_clock burst the guard ended at 23:02 (351% of a core). SCRATCH house with the real lc_clock + real editor op; nothing touches the live clock.
+# Negative controls: (1) the same time.pdl (fixtures/clock_time_no_needs.pdl = the shipped file minus the needs= column) WITHOUT the needs= column installs every row (so the skip is caused by the column, not by something else),
+# (2) flipping ENABLED to 1 installs the rows again WITHOUT a manual reinstall (the schedule signature folds the feature state).
+RESULTS | ../results/clock_feature_off.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | house/&.widgits/livedesk-clock/ops/+x
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+RUN | /bin/cp | $HOUSE/&.widgits/livedesk-clock/ops/+x/lc_clock.+x | $T/house/&.widgits/livedesk-clock/ops/+x/lc_clock.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/time.pdl | $T/house/@.apps/rpg-edit-hq/time.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/world_clock.pdl | $T/house/@.apps/rpg-edit-hq/world_clock.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/survivor_clock.pdl | $T/house/@.apps/rpg-edit-hq/survivor_clock.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+EXPECT_HAS | house/@.apps/rpg-edit-hq/time.pdl | needs=world_clock.pdl | the-shipped-time-pdl-tags-the-OFF-rows
+
+CASE    | off-features-are-not-installed
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_EXIT | 0 | the-clock-verb-ran
+EXPECT_FILE | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | the-schedule-was-installed-at-all-vacuity
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:phase_dawn | the-always-on-rows-are-there
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:day_tick | day_tick-is-there
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:world_fire | NEGATIVE-world_fire-is-OFF-so-no-reminder
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:world_flow | world_flow-skipped
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:world_rain | world_rain-skipped
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:needs_tick | needs_tick-skipped
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:pet_say | pet_say-skipped
+
+CASE    | turning-a-feature-on-installs-it-by-itself
+WRITE   | house/@.apps/rpg-edit-hq/world_clock.pdl | ENABLED \p 1\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_EXIT | 0 | the-clock-verb-ran-again
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:world_fire | world_fire-installed-after-ENABLED-1
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:world_flow | world_flow-installed
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:needs_tick | NEGATIVE-the-other-feature-stays-OFF
+
+CASE    | without-the-needs-column-everything-installs
+WRITE   | house/@.apps/rpg-edit-hq/world_clock.pdl | ENABLED \p 0\n
+COPY    | &.widgits/_shared-lib/harness/fixtures/clock_time_no_needs.pdl | house/@.apps/rpg-edit-hq/time.pdl
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/time.pdl | needs= | the-column-is-gone-in-this-copy
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:world_fire | POSITIVE-CONTROL-no-column-means-installed-even-with-the-feature-OFF
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:pet_say | pet_say-installed-without-the-column

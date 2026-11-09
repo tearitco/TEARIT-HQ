@@ -904,21 +904,30 @@ static void clock_ui(void) {          /* state/clock_ui.txt: its own tiny vars f
 /* HARDENING: an amount handed to lc_clock (advance / rate / the TURN row of time.pdl) is 1-4 digits + a unit word, or a bare word; lc_clock 'advance 2147483648999m' spun for 10+ s of CPU */
 static int lc_amount_ok(const char *s) { int d = 0, l = 0; while (s[d] >= '0' && s[d] <= '9') d++; if (d > 4) return 0; while (s[d + l] >= 'a' && s[d + l] <= 'z') l++; return s[d + l] == 0 && l >= 1 && l <= 8; }
 static void turn_str(char *out, size_t cap) { char p[PATH_MAX], line[300]; char *f[6]; snprintf(p, sizeof p, "%s/time.pdl", APP); snprintf(out, cap, "5m"); FILE *fp = fopen(p, "r"); if (!fp) return; while (fgets(line, sizeof line, fp)) if (split_bar(line, f, 6) >= 3 && !strcmp(f[0], "TURN")) if (lc_amount_ok(f[2])) snprintf(out, cap, "%s", f[2]); fclose(fp); }
+static int feature_off(const char *col);
 static void clock_install(void) {
     clock_paths(); if (!clock_ok()) return; char d[PATH_MAX]; snprintf(d, sizeof d, "%s/#.desktop", CROOT); mkdir(CROOT, 0755); mkdir(d, 0755); snprintf(d, sizeof d, "%s/#.desktop/clocks", CROOT); mkdir(d, 0755); snprintf(d, sizeof d, "%s/common_events", CROOT); mkdir(d, 0755);
     if (!fexists(CFILE)) { lc_run(0, "new", "rpg", "user", "" PET_APP " time", NULL); lc_run(0, "rate", "rpg", "sec", NULL); lc_run(0, "cmd", "rpg", "settime", "21600000", "--source", "rpg-install", NULL);
         lc_run(0, "cmd", "rpg", "pause", "--source", "rpg-install", NULL); lc_run(0, "step", "5", NULL); char p[PATH_MAX]; spath(p, "clock_day0.txt"); write_if_changed(p, "0\n", 2); }
     char tp[PATH_MAX], tb[8192], sp[PATH_MAX], sb[40]; snprintf(tp, sizeof tp, "%s/time.pdl", APP); int tn = read_file(tp, tb, sizeof tb); unsigned long sig = 5381; for (int i = 0; i < tn; i++) sig = sig * 33 + (unsigned char)tb[i];
+    { char cp[8192]; snprintf(cp, sizeof cp, "%s", tb); char *sv0 = NULL; for (char *l = strtok_r(cp, "\n", &sv0); l; l = strtok_r(NULL, "\n", &sv0)) { if (strncmp(l, "AT", 2) || !strstr(l, "needs=")) continue; sig = sig * 33 + (unsigned char)(feature_off(strstr(l, "needs=")) ? '0' : '1'); } }   /* flipping a feature file ENABLED reinstalls the schedule by itself */
     snprintf(sp, sizeof sp, "%s/.schedule_installed", CROOT); read_file(sp, sb, sizeof sb);
     char want[40]; snprintf(want, sizeof want, "%lu", sig);
     if (strncmp(sb, want, strlen(want)) != 0 || !sb[0]) {
         char q[PATH_MAX]; snprintf(q, sizeof q, "%s/#.desktop/clocks/reminders.pdl", CROOT); remove(q); snprintf(q, sizeof q, "%s/#.desktop/clocks/schedule_ledger.txt", CROOT); remove(q);
         long long now = clock_kv_ll("game_time_epoch_ms"); if (now < 0) now = 0; char *f[6];
-        for (char *l = strtok(tb, "\n"); l; l = strtok(NULL, "\n")) { char line[300]; snprintf(line, sizeof line, "%s", l); if (split_bar(line, f, 6) < 5 || strcmp(f[0], "AT")) continue;
+        for (char *l = strtok(tb, "\n"); l; l = strtok(NULL, "\n")) { char line[300]; snprintf(line, sizeof line, "%s", l); int nf = split_bar(line, f, 6); if (nf < 5 || strcmp(f[0], "AT")) continue; if (nf >= 6 && feature_off(f[5])) continue;   /* an OFF feature costs no reminder */
             char when[40], ev[64], note[120], rep[40]; snprintf(ev, sizeof ev, "common:%s", f[1]); snprintf(note, sizeof note, "%s", f[4]); snprintf(rep, sizeof rep, "%s", f[3]);
             if (strchr(f[2], ':')) { int hh = atoi(f[2]), mm = atoi(strchr(f[2], ':') + 1); long long base = now - now % 86400000, at = base + hh * 3600000LL + mm * 60000LL; if (at <= now) at += 86400000; snprintf(when, sizeof when, "%lld", at); } else snprintf(when, sizeof when, "%s", f[2]);
             lc_run(0, "reminder-add", "rpg", when, ev, note, rep, NULL); }
         write_if_changed(sp, want, strlen(want)); }
+}
+/* 2026-11-08 an `AT` row of time.pdl may end with `needs=<file>`: it is installed only while <app>/<file> says `ENABLED | 1`. Why: the opt-in features (world_clock.pdl, survivor_clock.pdl) are shipped OFF, and a reminder for an OFF feature still costs a full event-page run (about 1 CPU-second) at every firing while doing nothing; in a running game that was a burst every 12 s (measured 2026-11-08: lc_clock + children 0..44% of a core per 2 s, mean about 4%). */
+static int feature_off(const char *col) {
+    const char *nd = strstr(col, "needs="); if (!nd) return 0; char fn[64]; snprintf(fn, sizeof fn, "%.63s", nd + 6); fn[strcspn(fn, " |\t\r\n")] = 0; if (!fn[0] || strchr(fn, '/') || strstr(fn, "..")) return 1;
+    char p[PATH_MAX], b[2048]; snprintf(p, sizeof p, "%s/%s", APP, fn); int n = read_file(p, b, sizeof b - 1); if (n <= 0) return 1; b[n] = 0; char *sv = NULL;
+    for (char *l = strtok_r(b, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) { while (*l == ' ') l++; if (strncmp(l, "ENABLED", 7)) continue; char *bar = strchr(l, '|'); if (bar && atoi(bar + 1) == 1) return 0; }
+    return 1;
 }
 static void clock_pause(int pause) { if (!clock_ok() || !fexists(CFILE)) return; lc_run(0, "cmd", "rpg", pause ? "pause" : "resume", "--source", "rpg-int", NULL); }
 static int run_on(void) { return flag_on("running", 1); }
