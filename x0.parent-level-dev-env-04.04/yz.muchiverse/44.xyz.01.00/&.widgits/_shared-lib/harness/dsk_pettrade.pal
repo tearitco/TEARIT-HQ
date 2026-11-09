@@ -1,0 +1,4 @@
+# dsk_pettrade.pal - pal harness for cases/dsk_pettrade.pdl (deskopoly classic M9 pets propose trades). Read results/dsk_pettrade.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dsk_pettrade.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsk_pettrade.pdl
+halt

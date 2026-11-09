@@ -89,6 +89,7 @@ BRAIN | buy      | buy      | autoplay,refusals       | ok  | blocked,refused | 
 BRAIN | skip     | skip     | autoplay                | ok  |                 | choose to leave the tile for the bank
 BRAIN | bid      | bid      | autoplay,refusals       | ok  | blocked,refused | bid the minimum raise while the price x style value and the cash allow (STOPGAP until M10); refused when below the minimum, below the standing bid plus the step, or above cash
 BRAIN | pass     | pass     | autoplay                | ok  |                 | leave the auction when the next bid is beyond value or cash
+BRAIN | offer    | offer    | autoplay,refusals       | ok  | blocked,refused | a pet PROPOSES a trade when RULE pet_trades is on (default off): the colour it would complete or come within one tile of, offered 1.5 x the tile price rounded to 10, only if it keeps 200 cash, one proposal per turn (STOPGAP until M10; judged in harness case dsk_pettrade); blocked by the per-turn allowance
 BRAIN | accept   | accept   | autoplay,refusals       | ok  | blocked,refused | a pet accepts an offer addressed to it when the swap gains value (STOPGAP price x3-on-a-full-colour rule, M10 replaces it); refused when stale
 BRAIN | reject   | reject   | autoplay                | ok  |                 | a pet refuses an offer that loses value
 BRAIN | end_turn | end_turn | autoplay                | ok  |                 | hand the dice on

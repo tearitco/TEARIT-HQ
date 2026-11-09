@@ -46,6 +46,7 @@ static Tile T[MAXT]; static int nt;
 static Pl PL[MAXP]; static int npl;
 static int R_houses = 32, R_hotels = 12;
 static int R_start = 1500, R_go = 200, R_rounds = 40, R_maxp = MAXP_MINI; static long R_seed = 7;
+static int R_pet_trades = 0;   /* RULE pet_trades on|off (default OFF in code, so every existing rules hash and pinned pets-only game is unchanged): a pet may PROPOSE a trade (tick2, STOPGAP policy pet_propose) */
 static int R_tr_rounds = 6, R_tr_per_turn = 3;   /* M9: RULE trade_max_rounds (counters per negotiation) and trade_offers_per_turn (new offers per proposer per turn, 0 = trading off); defaults live here so existing rules hashes are unchanged */
 static int R_auc_min = 10, R_auc_step = 10, R_auctions = 1;   /* M7: the first bid is at least R_auc_min, later bids beat the standing bid by R_auc_step (RULE auction_min_bid / auction_min_step / auctions=on|off; "off" = the pre-M7 game, a declined tile just stays with the bank; defaults live here so a ruleset without the rows keeps its rules hash) */
 
@@ -132,6 +133,7 @@ static void load_app(void) {
             else if (!strcmp(f[1], "max_players")) R_maxp = atoi(f[2]);
             else if (!strcmp(f[1], "auction_min_bid")) R_auc_min = atoi(f[2]); else if (!strcmp(f[1], "auction_min_step")) R_auc_step = atoi(f[2]);
             else if (!strcmp(f[1], "trade_max_rounds")) R_tr_rounds = atoi(f[2]); else if (!strcmp(f[1], "trade_offers_per_turn")) R_tr_per_turn = atoi(f[2]);
+            else if (!strcmp(f[1], "pet_trades")) R_pet_trades = !strcmp(f[2], "on") || !strcmp(f[2], "1");
             else if (!strcmp(f[1], "auctions")) R_auctions = !(!strcmp(f[2], "off") || !strcmp(f[2], "0"));
             else if (!strcmp(f[1], "houses_total")) R_houses = atoi(f[2]); else if (!strcmp(f[1], "hotels_total")) R_hotels = atoi(f[2]);
         }
@@ -944,6 +946,21 @@ static int pet_gain(const Off *o) {
     for (int j = 0; j < w.nt_; j++) { int t = w.tiles[j], full = !strcmp(T[t].kind, "street"); if (full) for (int k = 0; k < nt; k++) if (!strcmp(T[k].kind, "street") && T[k].group == T[t].group && owner[k] != to) full = 0; gain -= T[t].price * (full ? 3 : 1); }
     for (int d = 0; d < 2; d++) gain += 50 * (g.card[d] - w.card[d]); return gain;
 }
+/* STOPGAP pet PROPOSAL policy (removal condition: M10 personalities.pdl + BRAIN rows), only when RULE pet_trades is on. The current pet, in PRE or POST, with no open offer and no offer yet this turn (tr_used is replayed from the ledger, so "one proposal per pet turn" is derived, never remembered):
+ * find a street whose colour group the pet would COMPLETE (one tile missing, score 2) or bring within one tile of complete (two missing, the pet already holds one, score 1), where the missing tile is held by another live player, unmortgaged, with no buildings in its colour; ask for the lowest-numbered best tile and give cash = 1.5 x price rounded to 10,
+ * only when the pet keeps at least 200 cash. No randomness: the same ledger gives the same proposal. Returns 1 when it wrote an offer row. */
+static int pet_propose(char *msg, size_t cap) {
+    if (!R_pet_trades || R_tr_per_turn <= 0 || over_due || first_w >= 0 || (phase2 != PH_PRE && phase2 != PH_POST) || human[cur]) return 0;
+    off_purge(); if (exp_due_k() || open_from(cur) >= 0 || tr_used[cur] > 0 || noff >= MAXOFF) return 0;
+    int best = -1, bs = 0;
+    for (int t = 0; t < nt; t++) { if (strcmp(T[t].kind, "street") || owner[t] < 0 || owner[t] == cur || out[owner[t]] || mort[t] || grp_any_bld(t)) continue;
+        int miss = 0, mine = 0; for (int k = 0; k < nt; k++) if (!strcmp(T[k].kind, "street") && T[k].group == T[t].group) { if (owner[k] == cur) mine++; else miss++; }
+        int sc = miss == 1 ? 2 : (miss == 2 && mine >= 1) ? 1 : 0; if (sc > bs) { bs = sc; best = t; } }
+    if (best < 0) return 0;
+    int amt = (T[best].price * 3 / 2 + 5) / 10 * 10; if (amt < 10 || cash[cur] - amt < 200) return 0;
+    snprintf(g_tr_to, sizeof g_tr_to, "%s", PL[owner[best]].id); snprintf(g_tr_give, sizeof g_tr_give, "cash:%d", amt); snprintf(g_tr_get, sizeof g_tr_get, "prop:%d", best);
+    return act2_trade("offer", NULL, msg, cap) == 0;
+}
 static int tick2(char *msg, size_t cap) {
     if (phase2 == PH_OVER) { snprintf(msg, cap, "over"); return 2; }
     if (phase2 == PH_ORDER) { int o = order_next(); if (o >= 0 && human[o]) { snprintf(msg, cap, "waiting %s %s human (opening throw)", PL[o].id, PL[o].name); return 1; } if (o < 0 || first_w >= 0) { snprintf(msg, cap, "stuck in the opening"); return -1; } int rc = v_order(); snprintf(msg, cap, "opening throw"); return rc == 0 ? 0 : -1; }
@@ -959,6 +976,7 @@ static int tick2(char *msg, size_t cap) {
         const char *vb = (need <= val && need <= cash[b]) ? "bid" : "pass"; g_bid_amt = need; int rc2 = act2_do(vb, NULL, msg, cap); return rc2 == 0 ? 0 : -1;
     }
     if (human[cur]) { snprintf(msg, cap, "waiting %s %s human", PL[cur].id, PL[cur].name); return 1; }
+    if (pet_propose(msg, cap)) return 0;
     const char *v = pet_pick(g_target);
     int rc = act2_do(v, NULL, msg, cap); return rc == 0 ? 0 : -1;
 }

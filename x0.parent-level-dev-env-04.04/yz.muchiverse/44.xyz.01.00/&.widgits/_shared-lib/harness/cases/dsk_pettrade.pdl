@@ -1,0 +1,132 @@
+# dsk_pettrade: deskopoly classic, milestone M9 slice PETS PROPOSE TRADES (spec section 7; 2026-11-08).
+# RULE pet_trades on|off (default OFF in code) gates a STOPGAP proposal policy (removal condition: M10 personalities): the current pet in PRE or POST, with no open offer and no offer yet this turn,
+# looks for a street whose colour it would complete (or bring within one tile of complete) held by another live player, unmortgaged, unbuilt, and offers cash = 1.5 x price rounded to 10, only if it keeps 200 cash. The rows are ordinary `offer` rows.
+# Every number below was OBSERVED on 2026-11-08 on the seed-6 3-pet game (rule off: 831 rows, LEDGER hash 72442143905f2371, winner p3; rule on: 840 rows, winner p2).
+RESULTS | ../results/dsk_pettrade.txt
+ENV | LC_ALL | C
+
+CASE    | off
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | m
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | rule-absent-the-seed-6-pets-game-is-the-one-pinned-before-pet-trades
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
+EXPECT_OUT | rows=831 hash=72442143905f2371 | rule-absent-the-LEDGER-hash-is-byte-identical-to-the-pre-pet_trades-engine
+RUN | /usr/bin/grep | -c | \poffer\p | $T/m/ledger.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-no-pet-ever-offers-when-pet_trades-is-absent
+COPYDIR | @.apps/deskopoly | appoff | ops,deskopoly-pchq,state
+APPEND  | appoff/rulesets/classic/rules.pdl | RULE \p pet_trades \p off\n
+MKDIR   | mo
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appoff | $T/mo | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appoff | $T/mo | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appoff | $T/mo | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appoff | $T/mo | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appoff | $T/mo | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appoff | $T/mo | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | RULE-pet_trades-off-written-out-plays-the-same-831-rows-and-winner
+RUN | /usr/bin/grep | -c | \poffer\p | $T/mo/ledger.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-no-pet-ever-offers-when-pet_trades-is-off
+RUN | /usr/bin/grep | -c | \poffer\p | $T/m/ledger.txt
+EXPECT_OUT_IS | 0 | rerun-of-the-count-after-the-off-game-still-reads-0
+
+CASE    | on
+COPYDIR | @.apps/deskopoly | appon | ops,deskopoly-pchq,state
+APPEND  | appon/rulesets/classic/rules.pdl | RULE \p pet_trades \p on\n
+MKDIR   | n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | autoplay
+EXPECT_OUT | AUTOPLAY events=840 rounds=78 over=1 winner=p2 | with-the-rule-on-the-3-pet-game-FINISHES
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | ledger_hash
+EXPECT_OUT | rows=840 hash=60c14d30db8116db | the-pinned-LEDGER-hash-of-the-pets-propose-game
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | replay
+EXPECT_OUT | REPLAY events=840 hash=1a5b8e87f0186cc0 | replay-reproduces-it-and-the-status-hash-is-pinned
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | check
+EXPECT_OUT | CHECK ok schema=2 events=840 sum=4500 | money-is-conserved-all-invariants-incl-I20-hold
+RUN | /usr/bin/grep | -c | \poffer\p | $T/n/ledger.txt
+EXPECT_OUT_IS | 3 | at-least-one-offer-here-exactly-3
+RUN | /usr/bin/grep | -c | \paccept\p | $T/n/ledger.txt
+EXPECT_OUT_IS | 3 | at-least-one-accept-here-exactly-3-the-pets-answered-every-proposal
+RUN | /usr/bin/grep | -o | -E | ^EVENT.[0-9]+.p[0-9].offer.p[0-9] | $T/n/ledger.txt
+EXPECT_OUT_IS | EVENT\p9\pp3\poffer\pp1\nEVENT\p14\pp2\poffer\pp3\nEVENT\p66\pp2\poffer\pp3 | the-3-proposals-in-3-different-player-turns-so-the-allowance-of-3-and-the-one-per-pet-turn-cap-were-never-near-exceeded
+RUN | /usr/bin/grep | -F | \poffer\p | $T/n/ledger.txt
+EXPECT_OUT | give=cash:300;get=prop:19 | proposal-1-is-1.5x-the-200-price-of-tile-19
+EXPECT_OUT | give=cash:450;get=prop:32 | proposal-2-is-1.5x-the-300-price-of-tile-32
+EXPECT_OUT | give=cash:600;get=prop:39 | proposal-3-is-1.5x-the-400-price-of-tile-39
+COPYDIR | @.apps/deskopoly | appon2 | ops,deskopoly-pchq,state
+APPEND  | appon2/rulesets/classic/rules.pdl | RULE \p pet_trades \p on\n
+MKDIR   | n2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | autoplay
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon2 | $T/n2 | ledger_hash
+CAPTURE | h2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/n | ledger_hash
+CAPTURE | h1
+EXPECT_EQ | $h1 | $h2 | deterministic-two-fresh-games-with-the-rule-on-give-the-same-ledger-hash
+EXPECT_NE | $h1 | rows=831 hash=72442143905f2371 | POSITIVE-CONTROL-the-rule-on-game-really-differs-from-the-rule-off-game
+
+# --- the 200-cash floor and the 1.5x price, read off the game at the ledger PREFIX just before each proposal ---
+CASE    | prefix
+MKDIR   | s128
+RUN | /usr/bin/cp | $T/n/ledger.txt | $T/s128/ledger.txt
+RUN | /usr/bin/sed | -i | 129,$d | $T/s128/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/s128 | status
+EXPECT_OUT | STATE phase=post current=p3 round=9 | prefix-128-p3-is-in-POST-about-to-act
+EXPECT_OUT | PLAYER p3 C driver=pet token=2 personality=- cash=544 | p3-holds-544-so-the-300-offer-leaves-244-which-is-at-least-200
+EXPECT_OUT | TRADE per_turn=3 used_cur=0 open=0 | nothing-open-yet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/s128 | tick
+EXPECT_OUT | TICK p3 offer: id=1;give=cash:300;get=prop:19;round=1 | the-tick-writes-the-proposal-row
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/s128 | status
+EXPECT_OUT | TRADE per_turn=3 used_cur=1 open=1 | the-offer-is-open-and-1-of-3-allowance-is-used
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/s128 | tick
+EXPECT_OUT | TICK p1 accept: done;give=cash:300;get=prop:19 | the-addressee-pet-answers-on-the-next-tick
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appon | $T/s128 | check
+EXPECT_OUT | CHECK ok schema=2 events=130 sum=4500 | conserved
+MKDIR   | s128b
+RUN | /usr/bin/cp | $T/n/ledger.txt | $T/s128b/ledger.txt
+RUN | /usr/bin/sed | -i | 129,$d | $T/s128b/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s128b | status
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/s128b | tick
+EXPECT_OUT | the rules changed since the game began | NEGATIVE-the-same-ledger-is-refused-under-the-rule-off-ruleset-so-the-rule-cannot-be-flipped-mid-game
+
+# --- the two rules compose: the proposal is gated by trade_offers_per_turn too (0 = trading off, so a pet cannot propose; 1 still lets one proposal per turn through). Ledger hashes differ from the plain games only because the rules hash is in the lobby row. ---
+CASE    | allowance
+COPYDIR | @.apps/deskopoly | appz0 | ops,deskopoly-pchq,state
+APPEND  | appz0/rulesets/classic/rules.pdl | RULE \p pet_trades \p on\nRULE \p trade_offers_per_turn \p 0\n
+MKDIR   | z0
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz0 | $T/z0 | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz0 | $T/z0 | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz0 | $T/z0 | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz0 | $T/z0 | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz0 | $T/z0 | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz0 | $T/z0 | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | pet_trades-on-with-the-allowance-0-plays-the-831-row-game
+RUN | /usr/bin/grep | -c | \poffer\p | $T/z0/ledger.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-the-allowance-0-stops-every-proposal-even-with-pet_trades-on
+COPYDIR | @.apps/deskopoly | appz1 | ops,deskopoly-pchq,state
+APPEND  | appz1/rulesets/classic/rules.pdl | RULE \p pet_trades \p on\nRULE \p trade_offers_per_turn \p 1\n
+MKDIR   | z1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | autoplay
+EXPECT_OUT | AUTOPLAY events=840 rounds=78 over=1 winner=p2 | allowance-1-is-enough-for-the-policy-same-840-rows-and-winner
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/appz1 | $T/z1 | check
+EXPECT_OUT | CHECK ok schema=2 events=840 sum=4500 | conserved-and-I20-holds-under-the-tight-allowance
+RUN | /usr/bin/grep | -c | \poffer\p | $T/z1/ledger.txt
+EXPECT_OUT_IS | 3 | the-same-3-proposals
