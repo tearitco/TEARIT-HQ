@@ -1,0 +1,4 @@
+# video_sync.pal - pal harness for cases/video_sync.pdl (video_op's picture track lasts the sum of the holds). Read results/video_sync.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/video_sync.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/video_sync.pdl
+halt

@@ -1,0 +1,29 @@
+# video_sync (2026-11-09): the PICTURE track of a video_op video lasts as long as its holds (and so as long as the narration). Found 2026-11-09 with a real two-frame narrated test: audio 9.68 s but only 143 video frames (5.72 s): the output option `-r 25` after the concat demuxer dropped the second picture's hold, so the picture ended in the middle of the narration. The old deck_video case only checked that a video stream and an audio stream EXIST, which a short video also satisfies.
+# NO network and no narration: two generated solid frames, 4 s each, rendered silent (--no-tts); the check is on the video stream alone (frame count, and a frame taken at 6 s, inside the second hold, must exist and differ from the one at 2 s).
+RESULTS | ../results/video_sync.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -w | -o | $T/video_op.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/video_op.c
+EXPECT_EXIT | 0 | video-op-compiles
+MKDIR | out/snapshots
+RUN | /usr/bin/ffmpeg | -nostdin | -loglevel | error | -f | lavfi | -i | color=c=red:s=640x360 | -frames:v | 1 | $T/out/snapshots/01_a.png
+EXPECT_EXIT | 0 | frame-one-made
+RUN | /usr/bin/ffmpeg | -nostdin | -loglevel | error | -f | lavfi | -i | color=c=blue:s=640x360 | -frames:v | 1 | $T/out/snapshots/02_b.png
+EXPECT_EXIT | 0 | frame-two-made
+WRITE | out/manifest.txt | 01_a.png \p 4 \p first\n02_b.png \p 4 \p second\n
+
+CASE    | render
+RUN | $T/video_op.+x | render | $T/out | --no-tts
+EXPECT_EXIT | 0 | video-is-rendered
+EXPECT_FILE | out/video.mp4 | the-video-exists
+RUN | /usr/bin/ffprobe | -v | error | -count_frames | -select_streams | v | -show_entries | stream=nb_read_frames | -of | csv=p=0 | $T/out/video.mp4
+CAPTURE | NFR
+EXPECT_GE | $NFR | 195 | THE-PICTURE-LASTS-THE-SUM-OF-THE-HOLDS-8-s-at-25-fps-is-200-frames-the-old-output-had-101
+RUN | /usr/bin/ffmpeg | -nostdin | -y | -loglevel | error | -ss | 6 | -i | $T/out/video.mp4 | -frames:v | 1 | $T/at6.png
+EXPECT_FILE | at6.png | a-frame-at-6-s-INSIDE-THE-SECOND-HOLD-exists
+RUN | /usr/bin/ffmpeg | -nostdin | -y | -loglevel | error | -ss | 2 | -i | $T/out/video.mp4 | -frames:v | 1 | $T/at2.png
+RUN | /usr/bin/cmp | -s | $T/at2.png | $T/at6.png
+EXPECT_EXIT | 1 | and-it-is-the-SECOND-picture-not-the-first-held-on
+CLEAN |
