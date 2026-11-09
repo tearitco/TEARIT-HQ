@@ -1,0 +1,4 @@
+# dsk_camera.pal - pal harness for cases/dsk_camera.pdl (Teropoly camera snap: Find me + the turn change, through the real driver). Read results/dsk_camera.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dsk_camera.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsk_camera.pdl
+halt

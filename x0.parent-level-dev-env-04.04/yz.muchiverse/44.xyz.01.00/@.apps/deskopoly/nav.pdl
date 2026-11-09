@@ -53,3 +53,13 @@ NAV | camera | 2d-view      | bv_keys <bv_session> 0                 | toggles t
 # ---- facts the pictures depend on ----
 NAV | fact | events-glyph    | a LETTER, never a digit                | the 3D loader reads 9 or 15 fields per events.txt row and silently drops a 10-field row (a digit glyph parses as a float): this hid every player in 3D until 2026-11-08
 NAV | fact | idle-cost       | 0 engine calls while a human thinks    | measured: ui.txt rewrites in 10 s, stopped 0, running + waiting for a human 17 before the fix, 0 after
+
+# ---- the camera follows the human player (2026-11-08, owner: "cam should snap to entity esp p1") ----
+# MECHANISM (proved with positive controls in the live editor): the default 3D camera (mode 2) sits behind the XELECTOR and the engine re-reads <editor>-pchq/pieces/xelector_01/state.txt pos_x/pos_y every frame it renders; a file write alone does NOT redraw: append one 126 to <bv_session>/pieces/apps/player_app/interact_relay.txt (bv_keys <session> '~').
+# Writing selector_x/selector_y in bv_state.txt moves nothing (the old trap); camset pan values are relative to cam_home and do not follow the figure. A fresh editor launch has the cursor possessing hero_01 (pinned to the hero): the snap lets go of it like key 9.
+NAV | camera | snap-on-turn    | deskopoly_driver, once per human turn (and once more 6 s after the first auto snap of a driver run, because a relaunch resets the cursor after the driver started) | only while the game runs; never during a pet's turn, never per tick
+NAV | camera | find-me        | popup button `Find me` (id gmbN, last button; label stable)                | deskopoly_ctl find_me <games dir> is the same line; the answer text `camera: here is your figure` (or why not) stays 4 s
+NAV | camera | aim            | cursor = figure cell + camera_lead (4) cells along the view direction     | aimed at the figure itself it hides behind the game popup (first live try); tuning.pdl rows camera_follow (0 = off, no button) and camera_lead
+NAV | camera | guards         | free camera (mode 3/4), a cursor possessing something other than hero_01, no board session | nothing moves; the popup says why when Find me is pressed
+NAV | script | dsk-find-me    | tests/dsk-find-me.pdl     | presses Find me on the human's turn; shots 40 (before) 41 (after). WARNING: `in off` (every relay_drive script) lets the clock daemon run: see CPU pitfalls 33
+NAV | case   | dsk_camera     | harness/cases/dsk_camera.pdl | 45 checks through the real driver with a fake board session and xelector (arithmetic, yaw, lead, guards each with a positive control, tuning off, turn change, pet turn does not move it); the PICTURE is judged in the live editor

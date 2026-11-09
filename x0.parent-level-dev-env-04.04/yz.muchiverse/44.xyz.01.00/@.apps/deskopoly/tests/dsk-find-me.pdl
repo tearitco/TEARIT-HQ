@@ -1,0 +1,13 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-find-me.pdl - the `Find me` popup button brings the 3D camera to p1's figure (owner 2026-11-08 "cam should snap to entity esp p1"). A game with a HUMAN seat is on and it is that seat's turn (dsk-seat-setup.pdl).
+# The script presses the button and looks at the screen; WHAT THE CAMERA SHOWS is judged by a person (or by the agent opening the PNGs): shots 40 (before, the caller moves the cursor away first) and 41 (after) in @.apps/deskopoly/shots/.
+# The caller can move the cursor (the camera follows it) away BEFORE this script by writing pos_x/pos_y of <editor>-pchq/pieces/xelector_01/state.txt and appending 126 to the board session's interact_relay.txt (bv_keys <session> '~'); the data check below proves the press moved it.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-find-me.pdl <x window id>
+STEP | in | off
+STEP | see | label:Find me
+STEP | shot | @.apps/deskopoly/shots/40-before-find-me.png
+STEP | press | label:Find me
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | camera: here is your figure | 10
+STEP | sleep | 2500
+STEP | shot | @.apps/deskopoly/shots/41-after-find-me.png

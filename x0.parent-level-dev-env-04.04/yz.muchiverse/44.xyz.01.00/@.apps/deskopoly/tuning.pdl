@@ -2,3 +2,9 @@
 # Nothing reads this file yet: the `tick` verb does ONE step and never waits. It is for the editor daemon hook (phase C of PROPOSAL-PLAY-MODE-SEATS-AND-GAME-SIDEBARS), which will call `tick` at most this often while the world is playing.
 # 1500 ms is the pets' own pace in the cdda-hq family (`TUNE | step_min_ms | 1500`, with `step_jitter_ms` 900 on top; read in cdda-hq/tuning.pdl). WSR_PAL-PREFERED has no game-tick interval to copy: its pal loops are input polls, and its economy moves per End Turn or per game day.
 TUNE | tick_ms | 1500 | the slowest a watched game may tick: one decision per this long, so a person can follow it and the machine stays quiet | 1500
+# ---- the camera (2026-11-08, owner: "cam should snap to entity esp p1"); read by deskopoly_driver at the moment of use, never per tick ----
+# camera_follow 1 = when it becomes a HUMAN seat's turn, and on the popup button `Find me`, the 3D camera is brought to that player's figure (the xelector is moved; the follow camera, mode 2, sits behind it). 0 = off: no snap and no `Find me` button.
+# It does nothing while the owner flies a free camera (mode 3/4) or the cursor possesses an entity. A game with no human seat never moves the camera.
+TUNE | camera_follow | 1 | bring the camera to the human player's figure on their turn, and offer `Find me` | 1
+# camera_lead: the cursor is aimed this many cells BEYOND the figure along the view direction, so the figure stands in the clear strip under the game popup (aimed at the figure itself it sits exactly behind the popup). 0..12.
+TUNE | camera_lead | 4 | cells beyond the figure the camera aims at | 4

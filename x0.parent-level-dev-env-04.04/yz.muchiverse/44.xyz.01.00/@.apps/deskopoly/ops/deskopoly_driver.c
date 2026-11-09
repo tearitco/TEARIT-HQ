@@ -236,6 +236,68 @@ static void tr_cmd(const char *c) {
         int rc = run_eng(out, sizeof out, 7, tr_mode ? a_old : a_new); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1;
         if (rc == 0) { int md = tr_mode; tr_open_ = 0; tr_clear(); snprintf(msg, sizeof msg, md == 1 ? "counter sent to %s" : md == 2 ? "offer amended (%s)" : "offer sent to %s", pn); } else snprintf(msg, sizeof msg, "refused: %.170s", out); }
 }
+/* ===== CAMERA SNAP (owner 2026-11-08: "cam should snap to entity esp p1"). When it becomes a HUMAN seat's turn, and on the popup button `Find me`, the 3D camera is brought to that player's figure. HOW (found with positive controls
+ * in the live editor 2026-11-08, PNGs in the commit message): the engine's default camera is mode 2 (third-person), which sits tp_distance BEHIND the xelector (the editor's cursor, <editor>-pchq/pieces/xelector_01/state.txt pos_x/pos_y)
+ * and looks along cam_yaw; the engine re-reads that file every frame it renders. So: write pos_x/pos_y there (the same two lines the engine's own arrow handler writes), mirror them into the session's bv_state.txt selector_x/y (the arrow
+ * handler reads THAT copy, so the next arrow press moves from the new cell), then append one redraw nudge (126) to the session's interact_relay.txt: WITHOUT the nudge the engine does not re-render (checked: a file write alone left the old picture).
+ * Writing the board's selector_x/y alone moves nothing (the 2026-11-08 trap). The xelector is aimed `camera_lead` cells BEYOND the figure along the view direction: aimed at the figure itself, the figure sits exactly at the middle of the
+ * picture, which is where the game popup stands (the first live try hid p1 behind it); 4 cells beyond puts it in the clear strip under the popup. It is a VIEW preference: no ledger row, no game fact. It runs only on a turn change or the button
+ * (never per tick). Nothing happens when: the owner's tuning row `TUNE | camera_follow | 0`; the camera is not mode 2 (the owner flies a free camera); the xelector possesses an entity OTHER than the editor's own hero_01 (the owner's choice; it is pinned to that entity; hero_01, the state of every fresh editor launch, is let go of like the engine's key 9 does); no board session. ===== */
+static char PCHQ[P];
+static int tune_int(const char *name, int dflt) {   /* TUNE | name | value | ... rows of <book>/tuning.pdl */
+    char p[P + 16]; snprintf(p, sizeof p, "%s/tuning.pdl", BOOK); FILE *f = fopen(p, "r"); if (!f) return dflt; char ln[400]; int v = dflt; size_t nl = strlen(name);
+    while (fgets(ln, sizeof ln, f)) { if (strncmp(ln, "TUNE", 4)) continue; char *a = strchr(ln, '|'); if (!a) continue; a++; while (*a == ' ') a++; if (strncmp(a, name, nl)) continue; char *b = a + nl; while (*b == ' ') b++; if (*b != '|') continue; v = atoi(b + 1); }
+    fclose(f); return v;
+}
+static int kv_get(const char *path, const char *key, char *out, size_t cap) {   /* first `key=value` line; 1 when found */
+    FILE *f = fopen(path, "r"); if (!f) return 0; char ln[1024]; size_t kl = strlen(key); int ok = 0;
+    while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, key, kl) && ln[kl] == '=') { first_line(ln); snprintf(out, cap, "%s", ln + kl + 1); ok = 1; break; }
+    fclose(f); return ok;
+}
+static int kv_puts(const char *path, const char *key, const char *val) {   /* replace the `key=` line (or append it), file rewritten whole through a temp + rename */
+    FILE *f = fopen(path, "r"); if (!f) return 0; static char buf[8192], nb[8300]; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f); nb[0] = 0; size_t kl = strlen(key); int done = 0;
+    for (char *p = buf; *p; ) { char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
+        if (ll > kl && !strncmp(p, key, kl) && p[kl] == '=' && !done) { snprintf(nb + strlen(nb), sizeof nb - strlen(nb), "%s=%s\n", key, val); done = 1; } else snprintf(nb + strlen(nb), sizeof nb - strlen(nb), "%.*s\n", (int)ll, p);
+        if (!e) break;
+        p = e + 1; }
+    if (!done) snprintf(nb + strlen(nb), sizeof nb - strlen(nb), "%s=%s\n", key, val);
+    char tmp[P + 16]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *w = fopen(tmp, "w"); if (!w) return 0; fputs(nb, w); fclose(w); return rename(tmp, path) == 0;
+}
+static int kv_put(const char *path, const char *key, int val) { char b[24]; snprintf(b, sizeof b, "%d", val); return kv_puts(path, key, b); }
+/* the map-cell of player i's figure (33x33 page, 3 cells per tile), the same arithmetic as write_events without the shared-tile spread: the tile centre plus the walking offset */
+static int fig_cell(int i, int *cx, int *cy) {
+    if (i < 0 || i >= w_n || !w_known[i] || w_out[i]) return 0;
+    int t = w_cur[i], bx, by, nx, ny;
+    ring_xy(t, 11, &bx, &by); ring_xy((t + 1) % w_nt, 11, &nx, &ny);
+    *cx = bx * 3 + 1; *cy = by * 3 + 1; if (w_cur[i] != w_tgt[i]) { *cx += (nx > bx ? 1 : nx < bx ? -1 : 0) * w_sub[i]; *cy += (ny > by ? 1 : ny < by ? -1 : 0) * w_sub[i]; } return 1;
+}
+/* Snap the camera to map cell (fx, fy); returns 0 when the camera was moved, else a negative reason with `why` filled (shown in the popup). */
+static int cam_snap(int fx, int fy, char *why, size_t wcap) {
+    char ui[P + 32], sess[P] = "", v[64]; snprintf(ui, sizeof ui, "%s/board/state/ui.txt", EDIT);
+    if (!kv_get(ui, "bv_session", sess, sizeof sess) || !sess[0]) { snprintf(why, wcap, "no 3D board session to aim"); return -1; }
+    char bs[P + 48], xs[P + 48], rl[P + 64]; snprintf(bs, sizeof bs, "%s/pieces/system/bv_state.txt", sess); snprintf(xs, sizeof xs, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(rl, sizeof rl, "%s/pieces/apps/player_app/interact_relay.txt", sess);
+    int mode = kv_get(bs, "camera_mode", v, sizeof v) ? atoi(v) : 2; if (mode != 2) { snprintf(why, wcap, "free camera in use: the follow camera (mode 2) snaps"); return -2; }
+    if (kv_get(xs, "possessed_id", v, sizeof v) && v[0] && strcmp(v, "none")) {
+        if (strcmp(v, "hero_01")) { snprintf(why, wcap, "the cursor is possessing %.30s", v); return -3; }
+        kv_puts(xs, "last_possessed_id", v); kv_puts(xs, "possessed_id", "none");   /* a fresh editor launch has the cursor possessing the editor's own hero: that pins the camera to the hero, so the snap lets go of it exactly as the engine's key 9 does (last_possessed_id is kept: key 9 jumps back). Any OTHER possession is the owner's choice and is left alone. */
+    }
+    int yaw = kv_get(bs, "cam_yaw", v, sizeof v) ? atoi(v) : 180; yaw = ((yaw % 360) + 360) % 360; int q = ((yaw + 45) / 90) % 4;   /* view direction (sin yaw, cos yaw) on the nearest axis */
+    static const int DX[4] = { 0, 1, 0, -1 }, DY[4] = { 1, 0, -1, 0 }; int lead = tune_int("camera_lead", 4); if (lead < 0) lead = 0; if (lead > 12) lead = 12;
+    int tx = fx + DX[q] * lead, ty = fy + DY[q] * lead;
+    if (!kv_put(xs, "pos_x", tx) || !kv_put(xs, "pos_y", ty)) { snprintf(why, wcap, "cannot move the cursor"); return -4; }
+    kv_put(bs, "selector_x", tx); kv_put(bs, "selector_y", ty);
+    FILE *r = fopen(rl, "a"); if (r) { fputs("126\n", r); fclose(r); }   /* the redraw nudge (bound to nothing) */
+    return 0;
+}
+/* the seat of the first HUMAN player (from the feed's p<i>_driver), 0 when there is none: a continued game has no `you play` preference, the ledger knows who is human */
+static int human_pid(void) { char k[24], v[16]; int n = uint_("n_players"); for (int i = 1; i <= n && i <= 8; i++) { snprintf(k, sizeof k, "p%d_driver", i); if (!strcmp(uget(k, v, sizeof v), "human")) return i; } return 0; }
+static long msg_keep = 0;   /* the answer to `Find me` stays in the popup this long (4 s): while a human waits the loop would put "your turn" back within half a second */
+static char snap_key[40] = "";   /* "<round>:<current>" of the last turn the camera was aimed for: one snap per turn, never per tick */
+static int snap_for(int pl, char *why, size_t wcap) { int cx, cy; why[0] = 0; if (pl < 1 || !fig_cell(pl - 1, &cx, &cy)) { snprintf(why, wcap, "your figure is not on the board"); return -5; } return cam_snap(cx, cy, why, wcap); }
+/* AUTO SNAP BOOKKEEPING. A snap that found no board session yet (-1) is retried on the next loops (at most 20, about 11 s) instead of being given up for the whole turn. The FIRST auto snap of a driver run is repeated once 6 s later: the editor relaunch
+ * (board launcher) rewrites the cursor to its home cell a moment after a driver that started with it (seen live 2026-11-08: the cursor was back at 8,8 and the camera never moved). */
+static int snap_tries = 0, snap_first_done = 0; static long snap_again = 0;
+
 static void publish(void) {
     static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = ne_ = nl_ = 0; ENT_[0] = 0; char t[256], k[48], b[600];
     int run = running(); int have = mode_play && load_ui(); int over = have ? uint_("over") : 0;
@@ -283,6 +345,7 @@ static void publish(void) {
             snprintf(b, sizeof b, "YOUR OFFER #%d to p%d", oid2, to2); add_text(b); snprintf(b, sizeof b, "you give: %s", gn); add_text(b); snprintf(b, sizeof b, "you want: %s", rn); add_text(b); add_btn("Amend offer...", "tr_amend"); add_btn("Cancel offer", "tr_cancel"); } }
         if (!run && !over) add_btn("Step one move", "step");
         snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(b, "speed_next"); add_btn("New game", "new_game");
+        if (!over && human_pid() && tune_int("camera_follow", 1)) add_btn("Find me", "find_me");   /* LAST, so no other button changes its index; only with a human seat and while the owner's tuning row camera_follow is on */
         }
     }
     if (!(tr_open_ && have)) catn(o, sizeof o, "tp_on=\ngame-ov_x=\ngame-ov_y=\n");   /* the trade screen is off: the popup is centred again */
@@ -305,7 +368,7 @@ static void begin_game(void) {
     if (eng1("lobby", "classic", out, sizeof out)) { first_line(out); snprintf(msg, sizeof msg, "lobby refused: %s", out); return; }
     for (int i = 1; i <= nplayers; i++) { char nm[4] = { (char)('A' + i - 1), 0 }; const char *a[3] = { "join", nm, i == human_seat ? "human" : "pet" }; if (run_eng(out, sizeof out, 3, a)) { first_line(out); snprintf(msg, sizeof msg, "join refused: %s", out); return; } }
     if (eng1("start", sd, out, sizeof out)) { first_line(out); snprintf(msg, sizeof msg, "start refused: %s", out); return; }
-    mode_play = 1; play_desk_fresh(); walk_reset(); snprintf(msg, sizeof msg, "game started: %d players, seed %d, %s", nplayers, seed, human_seat ? "you are a seat at the table" : "all pets");
+    snap_key[0] = 0; mode_play = 1; play_desk_fresh(); walk_reset(); snprintf(msg, sizeof msg, "game started: %d players, seed %d, %s", nplayers, seed, human_seat ? "you are a seat at the table" : "all pets");
     if (human_seat) snprintf(msg, sizeof msg, "game started: %d players, seed %d, you are p%d", nplayers, seed, human_seat);
     eng1("ui", NULL, out, sizeof out);
 }
@@ -337,6 +400,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "pass")) human_verb("pass"); else if (!strcmp(c, "bid_min") || !strcmp(c, "bid_up")) { load_ui(); char ab[16]; snprintf(ab, sizeof ab, "%d", uint_("auction_min") + (!strcmp(c, "bid_up") ? 50 : 0)); human_verb2("bid", ab); }   /* M7: the amount is read from the feed at CLICK time, so a stale label cannot bid a wrong number */
     else if (!strcmp(c, "jail_pay")) human_verb("jail_pay"); else if (!strcmp(c, "jail_roll")) human_verb("jail_roll"); else if (!strcmp(c, "pay_debt")) human_verb("pay_debt"); else if (!strcmp(c, "bankrupt")) human_verb("bankrupt");
     else if (!strncmp(c, "tr_", 3)) tr_cmd(c + 3);
+    else if (!strcmp(c, "find_me")) { if (mode_play && tune_int("camera_follow", 1)) { load_ui(); int hp = human_pid(); char why[120]; if (!hp) snprintf(msg, sizeof msg, "no human seat to find"); else { snap_for(hp, why, sizeof why); snprintf(msg, sizeof msg, "%s", why[0] ? why : "camera: here is your figure"); msg_keep = now_ms() + 4000; } } }
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
     dirty = 1;
 }
@@ -348,7 +412,7 @@ int main(int argc, char **argv) {
     snprintf(ENG, sizeof ENG, "%s/ops/+x/deskopoly.+x", BOOK); snprintf(CTL, sizeof CTL, "%s/ops/+x/deskopoly_ctl.+x", BOOK);
     snprintf(GDIR, sizeof GDIR, "%s/state/games/deskopoly", EDIT); snprintf(GAME, sizeof GAME, "%s/game", GDIR); snprintf(ARCH, sizeof ARCH, "%s/archive", GDIR);
     snprintf(FEED, sizeof FEED, "%s/state/game_ui.txt", EDIT); snprintf(ACT, sizeof ACT, "%s/action.txt", GDIR); snprintf(SW, sizeof SW, "%s/state/world/switches.txt", EDIT);
-    { char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb; snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); }
+    { char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb; snprintf(PCHQ, sizeof PCHQ, "%s/%s-pchq", EDIT, bn); snprintf(WORLD, sizeof WORLD, "%s/pieces/world_01/state.txt", PCHQ); }
     snprintf(DESKDIR, sizeof DESKDIR, "%s/deskopoly-pchq/pieces/system/maps/deskopoly/play", BOOK); snprintf(ATLAS, sizeof ATLAS, "%s/deskopoly-pchq/pieces/system/maps/deskopoly/board/cells.rgba", BOOK);
     char d[P]; snprintf(d, sizeof d, "%s/state/games", EDIT); mkdir(d, 0755); mkdir(GDIR, 0755);
     { const char *ow = getenv("GAME_OWNER_PID"); OWNER = ow ? atol(ow) : 0; }
@@ -367,7 +431,13 @@ int main(int argc, char **argv) {
         if (mode_play) { static long nw = 0; static int was = 0; long tw = now_ms(); if (tw >= nw) { if (w_resync) { walk_sync(); write_events(); } int m = walk_step(); if (m || was) write_events(); was = walking_now; nw = tw + W_MS[speed]; } }
         if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8], ht[8], cn[24], yt[80], pr[8]; load_ui(); uget("over", ov, sizeof ov); uget("human_turn", ht, sizeof ht); uget("current_name", cn, sizeof cn); uget("pet_reply", pr, sizeof pr);   /* pet_reply=1 only while an offer to a PET is open (M9): the pet answers even though a human is up; otherwise 0 calls */
             /* A HUMAN'S TURN COSTS NOTHING: while the game waits for a seat that is a person the driver does not poll the engine (measured 2026-11-08 in the real editor: 17 engine calls in 10 s, ledger frozen, before this; 0 after). ui.txt is rewritten after every verb and tick, so the moment the turn passes to the human the next loop sees human_turn=1. */
-            if (ov[0] != '1' && ht[0] == '1' && !pr[0]) { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
+            if (ov[0] != '1' && ht[0] == '1' && !pr[0]) { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (now_ms() >= msg_keep && strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; }
+                { char cu[16], key[40], why[120]; uget("current", cu, sizeof cu); snprintf(key, sizeof key, "%d:%s", uint_("round"), cu);   /* CAMERA SNAP: once per human turn (the tuning row is read only when the turn is new) */
+                  if (strcmp(key, snap_key)) {
+                      int on = tune_int("camera_follow", 1), rc = on ? snap_for(tr_pid_of(cu), why, sizeof why) : 0;
+                      if (rc == -1 && ++snap_tries < 20) { /* no board session yet: try again on the next loop, do not give up this turn */ }
+                      else { snprintf(snap_key, sizeof snap_key, "%s", key); snap_tries = 0; if (on && rc == 0 && !snap_first_done) { snap_first_done = 1; snap_again = now_ms() + 6000; } } }
+                  else if (snap_again && now_ms() >= snap_again) { snap_again = 0; if (tune_int("camera_follow", 1)) snap_for(tr_pid_of(cu), why, sizeof why); } } }
             else if (ov[0] != '1') { hwait = 0; tick_once(); } else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         /* DESK GUARD (owner 2026-11-08 "the entities seemed to disappear from the board"): the players live on the generated PLAY desk; the editor's board launcher writes the world's desk from its own page (page=board) a little AFTER a driver that started at launch (the core watchdog) has switched it, and the players vanished with a game running. While a game is in play the driver keeps asserting its desk (a 4 KB read per 2 s, a write only when it really differs). */
