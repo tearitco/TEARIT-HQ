@@ -63,7 +63,7 @@ In the founder's draft wording (`14.biz/ELEVATOR-PITCH.md`, DRAFT): a plain-text
 ### 3.4 Games (Teropoly first)
 | Next | Status | Source |
 |---|---|---|
-| M7 auctions (a declined purchase currently just skips), M8 debt queue, M9 trading and chat | `planned` (tiles resolve as `todo-<kind>` until then) | `16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md` section 1 |
+| M7 auctions (a declined purchase currently just skips), M8 debt queue, M9 trading and chat (owner requirement 2026-11-08: trading never blocks play, a per-turn offer allowance, editable terms: spec section 7.8) | `planned` (tiles resolve as `todo-<kind>` until then) | `16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md` section 1 |
 | M10 pet personalities (the pet policy is a stopgap) and the pets/ui/tick for every phase | `building` (pets and the editor UI run through `deskopoly_driver`; personalities not built) | same |
 | M12 fuzz and a narrated captioned video of the game played in the editor | `planned` | handoff section 6; XO `31.Nov/nov-8/10.youtube-deskopoly-plays-in-the-editor` (predates the glyph fix and human seat) |
 | Owner decisions that gate polish: 3D `event_scale`, day/night from ledger rounds, neutral tile and card names, setup screen showing the play desk | `OWNER` | handoff section 6 |

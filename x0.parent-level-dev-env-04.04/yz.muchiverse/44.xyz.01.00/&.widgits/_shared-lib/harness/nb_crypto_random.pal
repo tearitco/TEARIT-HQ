@@ -1,0 +1,4 @@
+# nb_crypto_random.pal - pal harness for cases/nb_crypto_random.pdl (hermetic page probe through nb_js_worker, no window). Read results/nb_crypto_random.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/nb_crypto_random.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/nb_crypto_random.pdl
+halt

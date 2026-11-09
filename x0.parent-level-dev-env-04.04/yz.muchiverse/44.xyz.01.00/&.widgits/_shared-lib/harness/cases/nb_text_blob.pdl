@@ -1,0 +1,16 @@
+# nb_text_blob (2026-11-08): port of tests/nb_text_blob_test.sh (shell) to pal + case data (the owner allows no new .sh; AGENTS.md). Drives ONE page through nb_js_worker with the nb_probe op, no window. The probe is a DATA file (&.widgits/_shared-lib/harness/fixtures/nb_probes/text_blob.js); a new probe is a new .js plus its expected lines.
+# ANCHORING: the console capture echoes the probe's own SOURCE, so every token is anchored to a line start with a leading newline (the echo begins with '>'); an unanchored token would match the echo and report a pass or a failure the run did not have.
+# NEEDS the real worker binary (ops/+x/nb_js_worker.+x). That binary needs wasm3 to build, which is not in the repo (audit 2026-11-08 P1-5): on a stale binary this case FAILS loudly, which is the truth.
+RESULTS | ../results/nb_text_blob.txt
+ENV     | LC_ALL | C
+CASE    | text-blob
+SCRATCH |
+COPY    | &.hq-apps/network/ops/+x/nb_probe.+x | np.+x
+INCLUDE | ../fixtures/nb_page.pdl
+COPY    | &.widgits/_shared-lib/harness/fixtures/nb_probes/text_blob.js | probe.js
+RUN | $T/np.+x | --worker | $HOUSE/&.hq-apps/network/ops/+x/nb_js_worker.+x | --page | $T/page.js | --dom | $T/dom.txt | --href | https://example.invalid/ | --title | text:fixture | --probe | $T/probe.js | --console | $T/console.txt | --load-timeout | 30 | --eval-timeout | 30
+EXPECT_EXIT | 0 | the-probe-completed-LOAD-and-EVAL
+EXPECT_HAS | console.txt | \n=>TXTDONE | the-probe-ran-to-its-end
+EXPECT_HAS | console.txt | \nLOG\pTXTRESULT  | a-result-line-exists
+EXPECT_LACKS | console.txt | \nLOG\pTXTFAIL | no-text-or-blob-assertion-failed
+CLEAN   |

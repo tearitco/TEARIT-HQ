@@ -1,0 +1,4 @@
+# nb_media.pal - pal harness for cases/nb_media.pdl (hermetic page probe through nb_js_worker, no window). Read results/nb_media.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/nb_media.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/nb_media.pdl
+halt

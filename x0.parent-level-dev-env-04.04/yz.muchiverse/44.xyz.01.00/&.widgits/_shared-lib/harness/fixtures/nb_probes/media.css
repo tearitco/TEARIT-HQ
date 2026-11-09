@@ -1,0 +1,4 @@
+.narrow, .wide { display: block; }
+@media (max-width: 767px) { .narrow { display: block; } .wide { display: none; } }
+@media (min-width: 768px) { .narrow { display: none; } .wide { display: block; } }
+

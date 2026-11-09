@@ -1,0 +1,4 @@
+# nb_page (2026-11-08): the trivial page every hermetic nb_probe case loads (nothing here depends on layout, so a failure can only mean the primitive under test is wrong). INCLUDE it right after SCRATCH and the COPY of the nb_probe op.
+# Writes $T/page.js and $T/dom.txt. Rows of a fixture run in place (see harness_include).
+WRITE   | page.js | /*nbjs-script-boundary*/\nvar __nb_fixture = 1;\n
+WRITE   | dom.txt | N\p#document\p\p\p0\p\p0\p\nD\nN\phtml\p\p\p0\p\p0\p\nU\n

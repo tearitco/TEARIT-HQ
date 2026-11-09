@@ -1,0 +1,4 @@
+# nb_text_blob.pal - pal harness for cases/nb_text_blob.pdl (hermetic page probe through nb_js_worker, no window). Read results/nb_text_blob.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/nb_text_blob.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/nb_text_blob.pdl
+halt

@@ -1,0 +1,4 @@
+# nb_atob.pal - pal harness for cases/nb_atob.pdl (hermetic page probe through nb_js_worker, no window). Read results/nb_atob.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/nb_atob.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/nb_atob.pdl
+halt

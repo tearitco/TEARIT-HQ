@@ -1,0 +1,1 @@
+(function(){var a=new Uint8Array(8);try{ crypto.getRandomValues(a); }catch(e){ return 'RANDRESULT THROW '+e.message; }var s=''; for(var i=0;i<8;i++){ s+=('0'+a[i].toString(16)).slice(-2); }var u; try{ u=crypto.randomUUID(); }catch(e){ u='THROW:'+e.message; }return 'RANDRESULT '+s+' '+u;})();

@@ -22,22 +22,11 @@ RC=0
 # immediately rather than after ten minutes of browser-dependent suite, and
 # they are the only coverage for the byte-level paths (atob, UTF-8, entropy)
 # where a bug is invisible to any ASCII-only test.
-echo "########## atob is a binary string and flushes a padded tail (hermetic)"
-bash "$HERE/nb_atob_test.sh" || RC=1
+# The five worker-primitive gates (atob, element methods, crypto entropy, text/blob, @media) are PAL CASES now (2026-11-08; no new .sh, AGENTS.md):
+#   &.widgits/_shared-lib/harness/{nb_atob,nb_element_methods,nb_crypto_random,nb_text_blob,nb_media}.pal  (run each from that folder: prisc+x <name>.pal)
+# Probes are data in harness/fixtures/nb_probes/*.js. They need ops/+x/nb_js_worker.+x built from CURRENT source (needs wasm3, see the audit doc P1-5).
+echo "########## worker primitives: see the pal cases listed in the comment above (not run from this shell runner)"
 
-echo
-echo "########## element/Node methods: behaviour, not presence (hermetic)"
-bash "$HERE/nb_element_methods_test.sh" || RC=1
-
-echo
-echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
-bash "$HERE/nb_crypto_random_test.sh" || RC=1
-
-echo
-echo "########## TextEncoder/TextDecoder + Blob readers (hermetic)"
-bash "$HERE/nb_text_blob_test.sh" || RC=1
-
-echo
 echo "########## G2.6 recognized-property list complete, drops total (hermetic)"
 bash "$HERE/nb_css_props_test.sh" || RC=1
 
