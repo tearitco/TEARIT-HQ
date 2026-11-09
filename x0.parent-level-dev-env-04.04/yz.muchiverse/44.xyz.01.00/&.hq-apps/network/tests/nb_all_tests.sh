@@ -74,6 +74,10 @@ echo "########## dataset is a live DOMStringMap (hermetic)"
 bash "$HERE/nb_dataset_test.sh" || RC=1
 
 echo
+echo "########## Record and token surfaces carry real types (hermetic)"
+bash "$HERE/nb_collection_records_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

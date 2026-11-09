@@ -2769,6 +2769,7 @@ static JSValue nb_el_attributes(JSContext *ctx, JSValueConst this_val, int argc,
         }
         while (*p && !isspace((unsigned char)*p)) p++;
     }
+    nb_list_proto(ctx, arr, "NamedNodeMap");
     return arr;
 }
 /* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
@@ -3708,6 +3709,21 @@ static JSValue nb_cl_contains(JSContext *ctx, JSValueConst this_val, int argc, J
     JS_FreeCString(ctx, tk);
     return JS_NewBool(ctx, r);
 }
+static JSValue nb_cl_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    int32_t idx = 0;
+    if (argc > 0) JS_ToInt32(ctx, &idx, argv[0]);
+    if (!n || !n->cls || idx < 0) return JS_NULL;
+    char copy[512]; size_t cl = strlen(n->cls); if (cl > 511) cl = 511;
+    memcpy(copy, n->cls, cl); copy[cl] = 0;
+    char *c = strtok(copy, " ");
+    while (c) {
+        if (!idx) { JSValue r = JS_NewString(ctx, c); return r; }
+        idx--;
+        c = strtok(NULL, " ");
+    }
+    return JS_NULL;
+}
 
 #define IDMAPNAME "__nb_idmap"    /* global object: node index -> JS wrapper (identity) */
 /* DOM class prototypes (2026-09-18): real bundles branch on
@@ -4018,6 +4034,14 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_SetPropertyStr(ctx, cl, "remove", JS_NewCFunction(ctx, nb_cl_remove, "remove", 1));
         JS_SetPropertyStr(ctx, cl, "toggle", JS_NewCFunction(ctx, nb_cl_toggle, "toggle", 1));
         JS_SetPropertyStr(ctx, cl, "contains", JS_NewCFunction(ctx, nb_cl_contains, "contains", 1));
+        JS_SetPropertyStr(ctx, cl, "item", JS_NewCFunction(ctx, nb_cl_item, "item", 1));
+        {
+            JSValue cls = get_global_attr(ctx, "DOMTokenList");
+            JSValue proto = JS_GetPropertyStr(ctx, cls, "prototype");
+            if (JS_IsObject(proto)) JS_SetPrototype(ctx, cl, proto);
+            JS_FreeValue(ctx, proto);
+            JS_FreeValue(ctx, cls);
+        }
         JS_SetPropertyStr(ctx, el, "classList", cl);
     }
     /* dataset (DOMStringMap over data-* attributes) */
@@ -5960,6 +5984,7 @@ static JSValue nb_mut_record(JSContext *ctx, const char *type, NbNode *target,
                              NbNode *added, NbNode *removed, NbNode *prev, NbNode *next,
                              const char *attr, const char *old_value) {
     JSValue rec = JS_NewObject(ctx);
+    nb_list_proto(ctx, rec, "MutationRecord");
     JS_SetPropertyStr(ctx, rec, "type", JS_NewString(ctx, type));
     JS_SetPropertyStr(ctx, rec, "target", nb_mut_node_value(ctx, target));
     JSValue added_arr = JS_NewArray(ctx);
@@ -7107,6 +7132,23 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_list_item, "item", 1));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "HTMLCollection", f);
+        f = add_class(ctx, "DOMTokenList", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
+        JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_cl_item, "item", 1));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "DOMTokenList", f);
+        f = add_class(ctx, "NamedNodeMap", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
+        JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_list_item, "item", 1));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "NamedNodeMap", f);
+        f = add_class(ctx, "MutationRecord", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "MutationRecord", f);
         JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
     }
 
