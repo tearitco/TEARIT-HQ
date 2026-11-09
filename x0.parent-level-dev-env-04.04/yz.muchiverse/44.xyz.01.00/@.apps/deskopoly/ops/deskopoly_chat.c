@@ -4,6 +4,7 @@
  *
  *   deskopoly_chat --parse <app dir> [ruleset=<name>] <text...>
  *       prints `ok <verb and args>` and `understood: <plain English>`, or `refused: <reason>`; appends nothing. Exit 0 / 2.
+ *   deskopoly_chat --hook <app dir> <game dir> <text...>      the editor chat box through the core's generic game.pdl `GAME | chat` hook (see HOOK MODE below): exit 3 = not a command; as= is the human seat
  *   deskopoly_chat <app dir> <game dir> [as=<pN>] <text...>
  *       parses (the ruleset is read from the game's lobby row); on ok prints the two lines above, then RUNS `<app>/ops/+x/deskopoly.+x <app> <game> <verb> args.. [as=pN]`
  *       with fork+execv (never a shell: a hostile line cannot reach one) and prints the engine's answer; the exit code is the engine's (0 done, 2 refused).
@@ -258,7 +259,57 @@ static int is_dir(const char *p) { struct stat sb; return !stat(p, &sb) && S_ISD
 
 static void join_args(int argc, char **argv, char *o, size_t cap) { o[0] = 0; for (int i = 0; i < argc; i++) { size_t u = strlen(o); snprintf(o + u, cap - u, "%s%s", i ? " " : "", argv[i]); } }
 
+/* ===== HOOK MODE (2026-11-08): the editor chat box, through the shared core's generic hook (game.pdl `GAME | chat | {book}/ops/+x/deskopoly_chat.+x --hook {book} {editor}/state/games/deskopoly/game`; the core appends the typed text as the last argument).
+ *   deskopoly_chat --hook <app dir> <game dir> <text...>
+ * EXIT 3 = "not a command" (the core hands the line to the pets as it always did): no human seat in this game (ui.txt has no p<i>_driver=human: nobody to command for), or the line is not a command (`hello`).
+ * Otherwise this is mode (b) with as=<the human seat>: the same parser and the same engine verbs, so a typed `offer p2 give Orange3 get 20` writes the very ledger row a popup button or a pet would. Exit 0 done, 2 refused (the engine's own answer is printed, never 3).
+ * A line that does not parse is a COMMAND ATTEMPT (shown as `refused: <why>`) only when it starts with `/` or with offer counter amend accept reject cancel bid mortgage unmortgage (so `pass the salt` or `end of the story` still reach the pets);
+ * a line that parses runs (a bare `end` or `roll` is the same verb as the popup button).
+ * After EVERY handled line (done or refused) the driver is told to republish: the line `refresh` is appended to <game dir>/../action.txt (the file deskopoly_ctl appends to) and the answer line is left in <game dir>/../chat_reply.txt (one line, overwritten; the driver
+ * shows it in the popup once and deletes the file); after a verb that was done the engine's `ui` is refreshed first. Nothing here writes the ledger. ===== */
+static int human_seat(const char *game, char *as, size_t cap) {
+    char p[1100], ln[512]; snprintf(p, sizeof p, "%s/ui.txt", game); FILE *f = fopen(p, "r"); if (!f) return 0; int found = 0;
+    while (!found && fgets(ln, sizeof ln, f)) { int n = 0; char drv[16] = ""; if (sscanf(ln, "p%d_driver=%15s", &n, drv) == 2 && n >= 1 && n <= 8 && !strcmp(drv, "human")) { snprintf(as, cap, "p%d", n); found = 1; } }
+    fclose(f); return found;
+}
+static int run_engine(const char *app, const char *game, const char *as, int ui_only, char *out, size_t cap) {   /* fork+execv, no shell; stdout+stderr collected; the engine's exit code (or 2) */
+    char eng[1200]; snprintf(eng, sizeof eng, "%s/ops/+x/deskopoly.+x", app); out[0] = 0; if (access(eng, X_OK)) { snprintf(out, cap, "the engine is not built (%s)", eng); return 2; }
+    char *av[16]; int n = 0; av[n++] = eng; av[n++] = (char *)app; av[n++] = (char *)game; char asarg[24];
+    if (ui_only) av[n++] = (char *)"ui"; else { av[n++] = CV; for (int i = 0; i < NCA; i++) av[n++] = CA[i]; if (as[0]) { snprintf(asarg, sizeof asarg, "as=%s", as); av[n++] = asarg; } } av[n] = NULL;
+    int pf[2]; if (pipe(pf)) return 2; pid_t pid = fork(); if (pid < 0) return 2;
+    if (pid == 0) { close(pf[0]); dup2(pf[1], 1); dup2(pf[1], 2); close(pf[1]); int nul = open("/dev/null", 0); if (nul >= 0) { dup2(nul, 0); close(nul); } alarm(8); execv(eng, av); _exit(127); }
+    close(pf[1]); size_t got = 0; ssize_t r; while (got + 1 < cap && (r = read(pf[0], out + got, cap - 1 - got)) > 0) got += (size_t)r; out[got] = 0; close(pf[0]);
+    int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : 2;
+}
+static int zero_arg_word(const char *w) { static const char *Z[] = { "pass", "end", "end_turn", "endturn", "roll", "buy", "skip", NULL }; for (int i = 0; Z[i]; i++) if (!strcasecmp(w, Z[i])) return 1; return 0; }
+static int trade_word(const char *w) { static const char *T[] = { "offer", "counter", "amend", "accept", "reject", "cancel", "bid", "mortgage", "unmortgage", NULL }; for (int i = 0; T[i]; i++) if (!strcasecmp(w, T[i])) return 1; return 0; }
+/* tell the driver: the one answer line for the popup (<game dir>/../chat_reply.txt, overwritten) and a `refresh` line in <game dir>/../action.txt (the file deskopoly_ctl appends to) so it republishes */
+static void notify_driver(const char *game, const char *reply) {
+    char par[1100]; snprintf(par, sizeof par, "%s", game); size_t gl = strlen(par); while (gl > 1 && par[gl - 1] == '/') par[--gl] = 0; char *sl = strrchr(par, '/'); if (!sl) return;
+    *sl = 0; char rp[1200], ap[1200]; snprintf(rp, sizeof rp, "%s/chat_reply.txt", par); snprintf(ap, sizeof ap, "%s/action.txt", par);
+    FILE *rf = fopen(rp, "w"); if (rf) { fprintf(rf, "%.300s\n", reply); fclose(rf); }
+    int fd = open(ap, O_WRONLY | O_CREAT | O_APPEND, 0644); if (fd >= 0) { if (write(fd, "refresh\n", 8) != 8) { /* the driver picks the change up on its next event */ } close(fd); }
+}
+static int hook_mode(int argc, char **argv) {
+    if (argc < 5) return 3;
+    const char *app = argv[2], *game = argv[3]; char text[1200]; join_args(argc - 4, argv + 4, text, sizeof text);
+    if (!is_dir(app) || !is_dir(game)) return 3;
+    char as[16] = ""; if (!human_seat(game, as, sizeof as)) return 3;
+    const char *w0 = text; while (*w0 == ' ' || *w0 == '/') w0++; char first[24]; size_t fl = strspn(w0, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"); if (fl >= sizeof first) fl = sizeof first - 1; memcpy(first, w0, fl); first[fl] = 0;
+    int slash = text[0] == '/', attempt = slash || trade_word(first);
+    if (!slash && zero_arg_word(first)) return 3;   /* `pass the salt`, `end of the story`, `roll with it`: the parser would take the first word and drop the rest, so a bare verb that takes no arguments is a command only with a leading `/` (the popup buttons do the same) */
+    char rs[40]; game_ruleset(game, rs, sizeof rs); char reply[400] = "", out[1500];
+    if (load_board(app, rs) || parse_text(text)) { if (!attempt) return 3; snprintf(reply, sizeof reply, "refused: %s", ERR); notify_driver(game, reply); printf("%s\n", reply); return 2; }
+    int rc = run_engine(app, game, as, 0, out, sizeof out); char und[700]; snprintf(und, sizeof und, "%s", UND);
+    char *last = out; for (char *l = strtok(out, "\n"); l; l = strtok(NULL, "\n")) if (*l) last = l;
+    const char *ans = last; if (!strncmp(ans, "deskopoly: ", 11)) ans += 11; if (rc && !strncmp(ans, "refused: ", 9)) ans += 9;   /* the engine prefixes its own name and `refused:` */
+    snprintf(reply, sizeof reply, "%s%s", rc ? "refused: " : "", ans[0] ? ans : (rc ? "the engine said no" : und));
+    if (!rc) { char sink[400]; run_engine(app, game, "", 1, sink, sizeof sink); }   /* ui.txt is the projection the driver reads: refreshed after a verb that was done */
+    notify_driver(game, reply); printf("understood: %s\n%s\n", und, reply); return rc ? 2 : 0;
+}
+
 int main(int argc, char **argv) {
+    if (argc >= 2 && !strcmp(argv[1], "--hook")) return hook_mode(argc, argv);
     if (argc >= 2 && !strcmp(argv[1], "--parse")) {
         if (argc < 3) { fprintf(stderr, "usage: deskopoly_chat --parse <app dir> [ruleset=<name>] <text...>\n"); return 2; }
         const char *app = argv[2]; int a = 3; char rs[40] = "classic";

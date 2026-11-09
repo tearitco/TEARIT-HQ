@@ -27,7 +27,7 @@ NAV | id | pm-cancel    | Player > - cancel -                       | closes the
 NAV | id | gmb0..gmbN   | the game popup buttons, top to bottom     | setup: players -, players +, you play: <none|pN>, seed N (next), speed: <fast|normal|slow>, START GAME; play: Roll | Buy <tile> (<price>) + Skip | End turn, then speed: ..., New game
 NAV | id | pt0..ptN     | the players bar rows (left)               | "> p1 A $1190" = cash, current turn marked with >
 NAV | id | gme0         | the footer item, all players              | ">p1 1540  p2 1490" = NET WORTH (cash is in the left bar)
-NAV | id | say          | the table-talk input (right)              | not used by the game yet
+NAV | id | say          | the table-talk input (right)              | TRADE COMMANDS (2026-11-08): with a game running the box is the game chat even when the chat tab says h-ai: `offer p2 give Orange3 get 20`, `counter 3 give .. get ..`, `accept`, `reject`, `cancel`, `bid 60`; `/pass` `/end` `/roll` with a slash; other lines reach the pets. Drive it with In: ON (no clock risk): relay_drive `tap 1195 396` (focuses the box), `type <text>`, `key enter` (found live 2026-11-08); the answer is in chat.txt as `game:` lines and in the popup as `chat: ...` for 6 s
 
 # ---- scripts (tests/) ----
 NAV | script | dsk-new-game   | tests/dsk-new-game.pdl   | popup New game -> setup screen
@@ -63,3 +63,4 @@ NAV | camera | aim            | cursor = figure cell + camera_lead (4) cells alo
 NAV | camera | guards         | free camera (mode 3/4), a cursor possessing something other than hero_01, no board session | nothing moves; the popup says why when Find me is pressed
 NAV | script | dsk-find-me    | tests/dsk-find-me.pdl     | presses Find me on the human's turn; shots 40 (before) 41 (after). WARNING: `in off` (every relay_drive script) lets the clock daemon run: see CPU pitfalls 33
 NAV | case   | dsk_camera     | harness/cases/dsk_camera.pdl | 45 checks through the real driver with a fake board session and xelector (arithmetic, yaw, lead, guards each with a positive control, tuning off, turn change, pet turn does not move it); the PICTURE is judged in the live editor
+NAV | case   | dsk_chathook   | harness/cases/dsk_chathook.pdl | 47 checks: the generic core hook (a real rpg_edit_hq.+x in a scratch house, the real engine, the 47-row fixture): typed offer writes the engine row as p1, refusals say why and write nothing, prose / no human seat / a book without the row / a missing program / a hung program (killed at 5 s) all behave as before, h-ai mode with a running game

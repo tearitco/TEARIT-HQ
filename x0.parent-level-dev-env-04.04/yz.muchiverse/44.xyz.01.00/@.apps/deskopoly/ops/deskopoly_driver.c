@@ -400,6 +400,8 @@ static void handle(const char *c) {
     else if (!strcmp(c, "pass")) human_verb("pass"); else if (!strcmp(c, "bid_min") || !strcmp(c, "bid_up")) { load_ui(); char ab[16]; snprintf(ab, sizeof ab, "%d", uint_("auction_min") + (!strcmp(c, "bid_up") ? 50 : 0)); human_verb2("bid", ab); }   /* M7: the amount is read from the feed at CLICK time, so a stale label cannot bid a wrong number */
     else if (!strcmp(c, "jail_pay")) human_verb("jail_pay"); else if (!strcmp(c, "jail_roll")) human_verb("jail_roll"); else if (!strcmp(c, "pay_debt")) human_verb("pay_debt"); else if (!strcmp(c, "bankrupt")) human_verb("bankrupt");
     else if (!strncmp(c, "tr_", 3)) tr_cmd(c + 3);
+    else if (!strcmp(c, "refresh")) { w_resync = 1; char rp[P]; snprintf(rp, sizeof rp, "%s/chat_reply.txt", GDIR); FILE *f = fopen(rp, "r");   /* the editor chat hook (deskopoly_chat --hook) wrote a verb to the ledger: republish; its one answer line is shown in the popup once (consumed) */
+        if (f) { char ln[300]; if (fgets(ln, sizeof ln, f)) { first_line(ln); if (ln[0]) { snprintf(msg, sizeof msg, "chat: %.180s", ln); msg_keep = now_ms() + 6000; } } fclose(f); unlink(rp); } }
     else if (!strcmp(c, "find_me")) { if (mode_play && tune_int("camera_follow", 1)) { load_ui(); int hp = human_pid(); char why[120]; if (!hp) snprintf(msg, sizeof msg, "no human seat to find"); else { snap_for(hp, why, sizeof why); snprintf(msg, sizeof msg, "%s", why[0] ? why : "camera: here is your figure"); msg_keep = now_ms() + 4000; } } }
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
     dirty = 1;

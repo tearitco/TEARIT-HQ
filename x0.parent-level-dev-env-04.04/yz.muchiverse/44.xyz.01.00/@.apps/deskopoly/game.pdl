@@ -3,3 +3,7 @@
 # The driver is the game's loop: it ticks only while the editor's switch running=1 (Player > Play / Stop), and publishes the game bar feed state/game_ui.txt that the editor window draws. It decides no game rule.
 GAME   | title        | Teropoly
 GAME   | driver       | {book}/ops/+x/deskopoly_driver.+x {house} {book} {editor}
+# GAME | chat | <program> <args...>   the editor's chat box offers every typed line that is not a core verb to this program FIRST (petslike_core.c game_chat_hook): the typed text is appended as the LAST argument, no shell, 5 s limit,
+# exit 3 = not a command (the pets answer as before), anything else = handled (its output lines are said into the chat as `game`). {house} {book} {editor} are replaced like the driver row.
+# Here: the typed `offer p2 give Orange3 get 20`, `counter 3 ...`, `accept`, `bid 60` become the engine's own verbs for the human seat (deskopoly_chat --hook; the ledger row is the same one a popup button writes).
+GAME   | chat         | {book}/ops/+x/deskopoly_chat.+x --hook {book} {editor}/state/games/deskopoly/game

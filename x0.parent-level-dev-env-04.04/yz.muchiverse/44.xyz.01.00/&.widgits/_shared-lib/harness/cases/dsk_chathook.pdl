@@ -1,0 +1,144 @@
+# dsk_chathook: the GENERIC game chat hook of the shared pets-like core (petslike_core.c game_chat_hook; game.pdl `GAME | chat | <program> <args>`) and Teropoly's side of it (deskopoly_chat --hook), in a SCRATCH house with the REAL editor op
+# (rpg_edit_hq.+x) and the REAL engine. The typed line goes in exactly as the editor's chat box sends it: `rpg_edit_hq.+x <pkg> <house> "<text>"`.
+# THE GAME: the 47-row engine-made ledger of dsk_tradeui (p1 = human in PRE of round 5 with tiles 12 Power, 19 Orange3, 26 Yellow1; p2 owns 21 Red1, 27 Yellow2), no driver running (`ui` is made by the engine CLI).
+# RULES COVERED: a typed `offer p2 give Orange3 get 20` writes the engine's own ledger row (as p1, the human seat) and says the answer into chat.txt as `game:`; the pets do NOT answer it; `hello` is exit 3 = not a command and reaches the pets as before;
+#   a refused command attempt (`offer p9 ...`, a tile p1 does not own) says why and writes no row; `pass the salt` / `end of the story` are not commands; a game with NO human seat (ui.txt) hands every line to the pets; a book WITHOUT a `GAME | chat` row runs no process and behaves as before;
+#   a missing hook program is exit 127 = not a command (chat still works); a hung program is killed after 5 s and the editor answers; --hook leaves the driver a `refresh` line and ONE answer line (chat_reply.txt).
+# NOT COVERED: the real window (live, PNGs in the commit message), and the other skins that text-include the core (syntax-checked, not run).
+RESULTS | ../results/dsk_chathook.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR   | house/&.widgits/_shared-lib/ops/+x
+MKDIR   | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR   | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR   | house/@.apps/rpg-edit-hq/state/games/deskopoly/game
+COPYDIR | @.apps/deskopoly | house/@.apps/deskopoly | state,shots
+COPY    | @.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+COPY    | @.apps/rpg-edit-hq/party.pdl | house/@.apps/rpg-edit-hq/party.pdl
+COPY    | @.apps/rpg-edit-hq/toy.pdl | house/@.apps/rpg-edit-hq/toy.pdl
+WRITE   | house/@.apps/rpg-edit-hq/state/last_book.txt | book=deskopoly\npage=board\n
+WRITE   | house/@.apps/rpg-edit-hq/state/active.txt | robot\n
+WRITE   | house/@.apps/rpg-edit-hq/state/pet_robot.txt | room=store\nx=1\ny=1\nsteps=5\n
+WRITE   | house/@.apps/rpg-edit-hq/state/pet_asa.txt | room=store\nx=2\ny=2\nsteps=5\n
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_tradeui_ledger.txt | house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+RUN | $T/house/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/house/@.apps/deskopoly | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game | ui
+EXPECT_EXIT | 0 | the-engine-made-ui-txt
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt | p1_driver=human | p1-is-the-human-seat
+EXPECT_HAS | $T/house/@.apps/deskopoly/game.pdl | GAME   \p chat | the-shipped-game-pdl-carries-the-chat-row
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 47 | the-fixture-has-47-rows
+
+CASE    | offer
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | offer p2 give Orange3 get 20
+EXPECT_EXIT | 0 | the-editor-verb-runs
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | \pp1\poffer\pp2\p | the-typed-offer-wrote-the-engines-offer-row-as-the-human-p1
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 48 | exactly-one-row-was-added
+
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: p1 offer: id=1;give=prop:19;get=cash:20;round=1 | the-engines-answer-is-said-into-the-chat-as-game
+EXPECT_LACKS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | Asa: | the-pets-did-NOT-answer-a-game-command
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/action.txt | refresh\n | the-driver-is-told-to-republish-with-a-refresh-line
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/chat_reply.txt | p1 offer: id=1 | and-the-answer-line-waits-for-the-driver-to-show-it-in-the-popup
+RUN | $T/house/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/house/@.apps/deskopoly | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game | ui
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt | show_offer= | and-the-ui-projection-is-fresh-p1-has-an-open-own-offer-not-one-to-answer
+
+CASE    | hello
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | hello there
+EXPECT_EXIT | 0 | the-verb-runs
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | Asa: hello robot! | CONTROL-a-line-that-is-not-a-command-reaches-the-pets-as-before-hook-exit-3
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 2 | and-the-hook-said-nothing-more-still-the-two-game-lines-of-the-offer
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 48 | and-no-ledger-row
+
+CASE    | prose
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | pass the salt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | end of the story
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | roll with it
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | robot: end of the story | the-lines-were-said-in-the-chat
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 2 | NEGATIVE-pass-the-salt-end-of-the-story-roll-with-it-are-prose-the-hook-said-nothing
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 48 | and-no-ledger-row
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | /pass
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: understood: pass in the auction | CONTROL-with-a-leading-slash-the-same-word-IS-a-command
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: refused: no auction is open | and-the-engines-refusal-is-said-without-its-double-prefix
+
+CASE    | refused
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p9 give Orange3 get 20
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: refused: name another player as the addressee | a-command-attempt-the-engine-refuses-says-why
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/chat_reply.txt | refused: name another player | a-REFUSAL-is-also-handed-to-the-driver-so-the-popup-can-show-why-chat_reply-txt
+RUN | /usr/bin/grep | -c | ^refresh | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/action.txt
+CAPTURE | NREF
+EXPECT_GE | $NREF | 2 | and-it-gets-a-refresh-line-too-the-offer-one-and-this-one
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p2 give Red1 get 10
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: refused: p1 does not own tile 21 (Red1) | a-tile-p1-does-not-own-is-refused-too
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p3 give Yellow1 get 10
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: refused: you already have an open offer | and-a-second-open-offer-is-refused
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 48 | NEGATIVE-refusals-wrote-no-ledger-row
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | cancel
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 49 | CONTROL-a-valid-typed-command-cancel-DOES-write-its-row
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | \pp1\pcancel\p | the-engines-cancel-row-as-p1
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 12 | the-game-lines-so-far-2-offer-2-slash-pass-2-2-2-refused-2-cancel
+
+CASE    | no_human_seat
+RUN | /usr/bin/sed | -i | s/^p1_driver=human/p1_driver=pet/ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt | p1_driver=pet | NOTE-scratch-only-the-ui-projection-is-edited-to-have-no-human-seat-never-read-back-by-the-rules
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p2 give Orange3 get 20
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | robot: offer p2 give Orange3 get 20 | the-line-was-said
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 49 | NEGATIVE-a-game-with-no-human-seat-takes-no-chat-commands
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 12 | and-the-hook-said-nothing
+
+CASE    | chatmode_hai
+RUN | /usr/bin/sed | -i | s/^p1_driver=pet/p1_driver=human/ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt
+WRITE   | house/@.apps/rpg-edit-hq/state/flag_chatmode.txt | hai\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p2 give Orange3 get 20
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 49 | NEGATIVE-the-chat-pane-is-in-h-ai-mode-and-NO-game-is-running-so-the-line-goes-to-the-h-ai-pane-not-to-the-game
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/hai_chat.txt | you: offer p2 give Orange3 get 20 | the-line-is-in-the-h-ai-pane
+WRITE   | house/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=1\ngm_title=TEROPOLY classic\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p2 give Orange3 get 20
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 50 | CONTROL-with-a-running-game-that-has-a-chat-row-the-same-line-in-the-same-h-ai-mode-is-a-game-command-the-pane-is-titled-table-talk
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 14 | and-its-answer-is-in-the-game-chat
+RUN | /usr/bin/grep | -c | ^you: | $T/house/@.apps/rpg-edit-hq/state/hai_chat.txt
+EXPECT_OUT_IS | 1 | and-the-h-ai-pane-did-not-get-it-again
+RUN | /usr/bin/sed | -i | s/^p1_driver=human/p1_driver=pet/ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt
+WRITE   | house/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p3 give Yellow1 get 10
+RUN | /usr/bin/grep | -c | ^you: | $T/house/@.apps/rpg-edit-hq/state/hai_chat.txt
+EXPECT_OUT_IS | 2 | and-with-the-game-over-gm_on-empty-h-ai-gets-its-lines-again
+WRITE   | house/@.apps/rpg-edit-hq/state/flag_chatmode.txt | edit\n
+
+CASE    | other_books
+MKDIR   | house/@.apps/plain
+WRITE   | house/@.apps/plain/game.pdl | GAME   \p title        \p Plain\n
+WRITE   | house/@.apps/rpg-edit-hq/state/last_book.txt | book=plain\n
+RUN | /usr/bin/sed | -i | s/^p1_driver=pet/p1_driver=human/ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ui.txt
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | offer p2 give Orange3 get 20
+RUN | /usr/bin/grep | -c | ^ | $T/house/@.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 50 | NEGATIVE-a-book-WITHOUT-a-chat-row-takes-no-game-commands-even-with-a-human-seat-in-reach-the-same-line-wrote-a-row-in-the-offer-case
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 14 | and-the-hook-said-nothing
+MKDIR   | house/@.apps/ghost
+WRITE   | house/@.apps/ghost/game.pdl | GAME   \p chat \p {book}/ops/+x/nothere.+x\n
+WRITE   | house/@.apps/rpg-edit-hq/state/last_book.txt | book=ghost\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | hello ghost
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | robot: hello ghost | a-chat-row-whose-program-is-missing-is-exit-127-so-chat-still-works
+RUN | /usr/bin/grep | -c | ^game: | $T/house/@.apps/rpg-edit-hq/state/chat.txt
+EXPECT_OUT_IS | 14 | and-no-game-line
+WRITE   | house/@.apps/ghost/game.pdl | GAME   \p chat \p /usr/bin/sleep\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | 30
+EXPECT_EXIT | 0 | a-hung-hook-program-sleep-30-is-killed-and-the-editor-verb-still-returns
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: no answer | and-the-chat-says-so
+WRITE   | house/@.apps/ghost/game.pdl | GAME   \p chat \p /usr/bin/echo some answer\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T | one two
+EXPECT_HAS | $T/house/@.apps/rpg-edit-hq/state/chat.txt | game: some answer one two | the-typed-text-is-appended-as-the-LAST-argument-and-the-stdout-line-is-said-as-game

@@ -1,0 +1,4 @@
+# dsk_chathook.pal - pal harness for cases/dsk_chathook.pdl (the generic game chat hook of the pets-like core + deskopoly_chat --hook). Read results/dsk_chathook.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dsk_chathook.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsk_chathook.pdl
+halt

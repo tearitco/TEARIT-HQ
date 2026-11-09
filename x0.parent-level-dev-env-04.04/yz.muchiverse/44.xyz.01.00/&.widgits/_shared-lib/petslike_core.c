@@ -49,6 +49,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/wait.h>
+#include <poll.h>
 #include <sys/file.h>
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -186,20 +187,28 @@ static int reap_timed(pid_t pid, int secs) { struct timespec t0, t1; clock_getti
     for (;;) { pid_t r = waitpid(pid, &st, WNOHANG); if (r == pid) return WIFEXITED(st) ? WEXITSTATUS(st) : -1; if (r < 0 && errno != EINTR) return -1;
         clock_gettime(CLOCK_MONOTONIC, &t1); if (t1.tv_sec - t0.tv_sec >= secs) { g_reap_to = 1; break; } usleep(5000); }
     kill(-pid, SIGKILL); kill(pid, SIGKILL); for (int i = 0; i < 200; i++) { if (waitpid(pid, &st, WNOHANG) == pid) break; usleep(5000); } return -1; }
+/* GAME ROWS (data, no game name in this file): the open book is state/last_book.txt (`book=<name>`); its @.apps/<name>/game.pdl carries rows `GAME | <key> | <program> <args...>`. game_row() finds the row for <key> and gives the book's folder;
+ * expand_game_cmd() replaces {house} {book} {editor} in the command. Used by book_driver() (key `driver`) and by game_chat_hook() (key `chat`). Returns 1 when the book has such a row. */
+static int game_row(const char *want, char *cmd, size_t ccap, char *bdir, size_t bcap) {
+    char lb[PATH_MAX + 32], bk[200], book[96] = "", gp[PATH_MAX + 96], ln[1024]; snprintf(lb, sizeof lb, "%s/state/last_book.txt", APP); read_file(lb, bk, sizeof bk); cmd[0] = 0;
+    for (char *l = strtok(bk, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "book=", 5)) snprintf(book, sizeof book, "%s", l + 5);
+    if (!book[0]) return 0; for (const char *c = book; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-')) return 0;
+    snprintf(bdir, bcap, "%s/@.apps/%s", HOUSE, book); snprintf(gp, sizeof gp, "%s/game.pdl", bdir); FILE *f = fopen(gp, "r"); if (!f) return 0;
+    while (fgets(ln, sizeof ln, f)) { char *p = ln; while (*p == ' ') p++; if (strncmp(p, "GAME", 4)) continue; char *a = strchr(p, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue; char key[32]; snprintf(key, sizeof key, "%.*s", (int)(b - a - 1), a + 1);
+        char *k = key; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && e[-1] == ' ') *--e = 0; if (strcmp(k, want)) continue; char *v = b + 1; while (*v == ' ') v++; e = v + strlen(v); while (e > v && (e[-1] == '\n' || e[-1] == ' ')) *--e = 0; snprintf(cmd, ccap, "%s", v); break; }
+    fclose(f); return cmd[0] != 0;
+}
+static void expand_game_cmd(const char *cmd, const char *bdir, char *exp, size_t cap) {
+    exp[0] = 0; for (const char *s = cmd; *s && strlen(exp) + 8 < cap; ) { const char *r = NULL;
+        if (!strncmp(s, "{house}", 7)) { r = HOUSE; s += 7; } else if (!strncmp(s, "{book}", 6)) { r = bdir; s += 6; } else if (!strncmp(s, "{editor}", 8)) { r = APP; s += 8; } if (r) { strncat(exp, r, cap - strlen(exp) - 1); continue; } strncat(exp, s, 1); s++; }
+}
 /* PLAY runs the OPEN BOOK's own game (2026-11-08, owner: a game runs from the editor's Play button; RPG Maker as the guide). The open book is state/last_book.txt (`book=<name>`); its folder
  * @.apps/<name>/game.pdl may carry `GAME | driver | <program> <args>` ({house} {book} {editor} are replaced). The program is the game's loop: it locks itself (one instance), ticks only while the switch
  * running=1 (so Stop is its pause), and publishes the game bar feed state/game_ui.txt. No game name and no rule is in this file: the hook is data. The child registers itself in the process registry
  * (lifetime owner = this daemon) before it execs, and is detached with setsid; it ends when this daemon is gone (parent pid 1). Returns 1 when a driver was started or is already running, 0 when the book has none. */
 static int book_driver(void) {
-    char lb[PATH_MAX + 32], bk[200], book[96] = "", gp[PATH_MAX + 96], ln[1024], cmd[1024] = ""; snprintf(lb, sizeof lb, "%s/state/last_book.txt", APP); read_file(lb, bk, sizeof bk);
-    for (char *l = strtok(bk, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "book=", 5)) snprintf(book, sizeof book, "%s", l + 5);
-    if (!book[0]) return 0; for (const char *c = book; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-')) return 0;
-    char bdir[PATH_MAX + 96]; snprintf(bdir, sizeof bdir, "%s/@.apps/%s", HOUSE, book); snprintf(gp, sizeof gp, "%s/game.pdl", bdir); FILE *f = fopen(gp, "r"); if (!f) return 0;
-    while (fgets(ln, sizeof ln, f)) { char *p = ln; while (*p == ' ') p++; if (strncmp(p, "GAME", 4)) continue; char *a = strchr(p, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue; char key[32]; snprintf(key, sizeof key, "%.*s", (int)(b - a - 1), a + 1);
-        char *k = key; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && e[-1] == ' ') *--e = 0; if (strcmp(k, "driver")) continue; char *v = b + 1; while (*v == ' ') v++; e = v + strlen(v); while (e > v && (e[-1] == '\n' || e[-1] == ' ')) *--e = 0; snprintf(cmd, sizeof cmd, "%s", v); break; }
-    fclose(f); if (!cmd[0]) return 0;
-    char *av[16]; int n = 0; char exp[1024] = ""; for (const char *s = cmd; *s && strlen(exp) < sizeof exp - PATH_MAX - 8; ) { const char *r = NULL; const char *w = NULL;
-        if (!strncmp(s, "{house}", 7)) { r = HOUSE; s += 7; } else if (!strncmp(s, "{book}", 6)) { r = bdir; s += 6; } else if (!strncmp(s, "{editor}", 8)) { r = APP; s += 8; } if (r) { strncat(exp, r, sizeof exp - strlen(exp) - 1); continue; } (void)w; strncat(exp, s, 1); s++; }
+    char cmd[1024] = "", bdir[PATH_MAX + 96], exp[1024]; if (!game_row("driver", cmd, sizeof cmd, bdir, sizeof bdir)) return 0;      /* the row parse and the {house} {book} {editor} replacement are shared with the chat hook */
+    char *av[16]; int n = 0; expand_game_cmd(cmd, bdir, exp, sizeof exp);
     for (char *t = strtok(exp, " "); t && n < 15; t = strtok(NULL, " ")) av[n++] = t; av[n] = NULL; if (n == 0 || access(av[0], X_OK)) return 0;
     char reg[PATH_MAX + 64]; snprintf(reg, sizeof reg, "%s/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x", HOUSE); char owner[16]; snprintf(owner, sizeof owner, "%d", (int)getpid());
     { char wp[PATH_MAX + 96], wb[32]; snprintf(wp, sizeof wp, "%s/" PET_APP "-pchq/pieces/system/board_window.pid", APP); read_file(wp, wb, sizeof wb); long wpid = atol(wb); if (wpid > 1 && kill((pid_t)wpid, 0) == 0) snprintf(owner, sizeof owner, "%ld", wpid); }   /* the game belongs to the editor WINDOW: the Play verb itself is a one-shot process */
@@ -1474,6 +1483,24 @@ static int page_follow(char *msg, size_t cap) {
 }
 static int hero_locked(void); static int lock_hero_set(int on);
 static int possess_at_xelector(char *msg, size_t cap);      /* defined with the other Enter-possession code below; the `possess` verb runs it once */
+/* GENERIC GAME CHAT HOOK (2026-11-08, so a typed line can be a GAME COMMAND, e.g. Teropoly `offer p2 give Orange3 get 20`). A book whose game.pdl has `GAME | chat | <program> <args...>` gets every typed chat line that is not a core verb (the text branch of verb())
+ * offered to that program FIRST: {house} {book} {editor} are replaced as for the driver row, the typed text is appended as ONE last argument, the program runs by fork+execv (no shell, so a hostile line reaches no shell), stdin /dev/null, its own process group,
+ * stdout and stderr are read for at most 5 s (a hung program is killed). EXIT 3 = "not a command": the line goes on to the pets exactly as before. Exit 127 (program missing) is the same. Any other exit = the program handled the line: up to 4 output lines are said into the
+ * chat as speaker `game` and the pets do NOT answer. The game's own rules live in the program and its ledger, never here. A book WITHOUT the row runs no process and behaves exactly as before. Returns 1 when the program handled the line. */
+static int game_chat_hook(const char *text, char *msg, size_t cap) {
+    char cmd[1024], bdir[PATH_MAX + 96], exp[1024]; if (!game_row("chat", cmd, sizeof cmd, bdir, sizeof bdir)) return 0;
+    expand_game_cmd(cmd, bdir, exp, sizeof exp); char *av[18]; int n = 0; for (char *t = strtok(exp, " "); t && n < 15; t = strtok(NULL, " ")) av[n++] = t; if (!n || access(av[0], X_OK)) return 0; av[n++] = (char *)text; av[n] = NULL;
+    int pf[2]; if (pipe(pf)) return 0; pid_t pid = fork(); if (pid < 0) { close(pf[0]); close(pf[1]); return 0; }
+    if (pid == 0) { setpgid(0, 0); signal(SIGPIPE, SIG_DFL); close(pf[0]); int nul = open("/dev/null", O_RDONLY); if (nul >= 0) { dup2(nul, 0); close(nul); } dup2(pf[1], 1); dup2(pf[1], 2); close(pf[1]); execv(av[0], av); _exit(127); }
+    close(pf[1]); char out[1200]; size_t got = 0; long t0 = now_ms();
+    for (;;) { long left = 5000 - (now_ms() - t0); if (left <= 0) break; struct pollfd pfd = { pf[0], POLLIN, 0 }; if (poll(&pfd, 1, (int)left) <= 0) break; ssize_t k = read(pf[0], out + got, sizeof out - 1 - got); if (k <= 0) break; got += (size_t)k; if (got >= sizeof out - 1) break; }
+    out[got] = 0; close(pf[0]); int rc = reap_timed(pid, 1);      /* the pipe is closed, so a program still writing gets SIGPIPE; one that hangs is killed after 1 more second */
+    if (rc == 3 || rc == 127) return 0;
+    for (size_t i = 0; i < got; i++) if ((unsigned char)out[i] < 32 && out[i] != '\n') out[i] = ' ';
+    int shown = 0; for (char *l = strtok(out, "\n"); l && shown < 4; l = strtok(NULL, "\n")) { while (*l == ' ') l++; if (!*l) continue; if (strlen(l) > 200) l[200] = 0; say("game", l); if (!shown) snprintf(msg, cap, "%s", l); shown++; }
+    if (!shown) { snprintf(msg, cap, rc == -1 ? "game: no answer (the chat program timed out)" : "game: done"); say("game", msg); }
+    return 1;
+}
 static void verb(int argc, char **argv, char *msg, size_t cap) {
     const char *v = argc ? argv[0] : "status"; long now = (long)time(NULL); char b[200]; msg[0] = 0; use_ent(active);
     if (!strcmp(v, "status")) return;
@@ -1640,6 +1667,7 @@ static void verb(int argc, char **argv, char *msg, size_t cap) {
         int sp = ctl_idx(), rep = active;      /* you speak AS the selected entity: Harold (sp<0) or the selected monster; a monster is answered by the nearest OTHER pet in its room */
         if (sp >= 0) { int best = -1, bd = 1 << 30; for (int j = 0; j < nparty; j++) if (j != sp && others[j].room == others[sp].room) { int d = abs(others[j].x - others[sp].x) + abs(others[j].y - others[sp].y); if (d < bd) { bd = d; best = j; } } rep = best; }
         g_speaker = sp < 0 ? hero.name : party[sp].name; say(g_speaker, text);
+        if (game_chat_hook(text, msg, cap)) { turn_taken = 1; return; }      /* a book with `GAME | chat | <program>` may take the line as a game command (exit 3 = not a command: the pets answer as always) */
         if (rep >= 0) { const char *rp = pet_reply(text); int on_screen = others[rep].room == vroom, done = 0;
             if (g_rk >= 0 && g_rk < 4) { char ev[64], tg[16], en[200]; snprintf(ev, sizeof ev, "reply_%s", party[rep].id); snprintf(tg, sizeof tg, "t%d%d", g_rk, g_ry ? 1 : 0); snprintf(en, sizeof en, "RPG_OTHER='%s' RPG_SAY=1 RPG_SPEAK=%d", g_speaker, on_screen); done = run_event_x(ev, tg, en); }      /* topic answers are event pages (events/reply_<pet>); free text and the house count stay C */
             if (!done) { say(party[rep].name, rp); if (on_screen) speak_reply(rep); } }
