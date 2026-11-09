@@ -1,0 +1,561 @@
+# Teario-Make/Play: a level editor and playable platformer levels, as data + events + a ledger (plan, 2026-11-09)
+
+Owner request, 2026-11-09: "a Mario-Maker-like game: a level editor plus playable levels ... the plan doc, ALL the mechanics as EVENTS, the UI, and how it can be similar to or even INSIDE of rpg-edit (a recursive game engine, I am not opposed to that) as well as its OWN open path under Toys: best of both worlds, and it proves recursion sanity." Owner update the same day (relayed by the lead): **Make (the level editor) and Play (the player) may be two separate x11-hq windows for the prototype, but they are meant to join into one window eventually.**
+
+Status: **PLAN ONLY. Nothing is built, no code was written, nothing was run for this document.** Labels: **FACT** (read in the repo on 2026-11-09, file named), **PROPOSAL** (my design), **OPEN** (owner decision, or something I did not verify). A number I did not measure is called an estimate. "Mario" must never ship: the user-visible name is Teario-Make/Play (working name); tiles, characters, names and sounds are our own (section 1.8).
+
+**How the lead read the request (stated plainly):** the lead read "similar to or even inside rpg-edit" as three placements, (a) inside rpg-edit as a game mode, (b) its own app under Toys, (c) both from one shared core; and the owner said recursion is welcome. Section 5 evaluates exactly those three, then the recursion, then the join path of the two windows.
+
+## 0. Summary and the honest status
+
+**What it is (PROPOSAL):** a side-view platformer whose LEVEL is a data file (`.pdl`), whose MECHANICS are event pages (run by a small in-process interpreter at a fixed 30 ticks a second), whose RUN is a ledger of inputs only (deterministic replay), and whose EDITOR is a second window (or mode) over the same core. A level may be PUBLISHED only after its author's recorded clear replays to a win in the engine ("verified clear"). One shared core, two shells (Make window, Play window), each its own Toys entry and each also reachable inside rpg-edit; the two windows are a labelled stopgap that merges into one (section 5.6).
+
+**The three findings that shape everything (all FACT, details in sections 0.2 and 2.3):**
+1. A house event page is NOT a cheap function call: every page run is a sh + bash + prisc process launch (`16.game/EVENT-VERB-PAGES-DESIGN.md` section 3.4: 5 runs per 24 s measured 4.5% of a core). A 30-per-second physics tick cannot be "one page per tick". The design therefore keeps pages as the AUTHORING form of every mechanic and runs them through an in-process interpreter for the fast ones (section 2.2). That interpreter is the one piece of NEW engine work, and the biggest risk.
+2. The window delivers keys to a game as `KEY_PRESSED: <decimal>` lines only (`khtpm_core_render.c` `kh_capture_key`; `relay_drive.c` header). I found no key-RELEASE line. A held key (run while pressed) is therefore UNVERIFIED; the design has a press-only "latch" input mode that the harness uses and a held mode that needs a spike (M0).
+3. `GAME | driver`, `GAME | chat`, `GAME | clock` exist (`petslike_core.c` lines 190 to 209, 939, 1505; `@.apps/deskopoly/game.pdl`); I searched `petslike_core.c` for a `GAME | export` handler and found none (the data-hq plan proposes that row; it is not built).
+
+### 0.1 Nothing is built; what exists that this reuses (FACT)
+
+| Piece | FACT (file) | Reused for |
+|---|---|---|
+| Book + Play button + driver | `@.apps/deskopoly/game.pdl`: `GAME | driver` (the game's loop, ticks only while the editor's `running=1`, publishes the feed `state/game_ui.txt`), `GAME | chat`, `GAME | clock | pause`; read by `petslike_core.c` `book_driver()`; a watchdog restarts a dead driver (line 1883) | the Play shell inside rpg-edit; the driver shape (`deskopoly_driver.c`) |
+| Engine as one process per verb, ledger = authority | `deskopoly.c`: replay, `status`, `ui`, `page`, `check`, hash `fnv` (FNV-1a 64, line 773); `state.pdl` declares every file as LEDGER / PROJECTION / CONFIG / PREFERENCE; `verbs.pdl`; `tuning.pdl`; `nav.pdl` | the whole shape of the Teario core |
+| Event pages and their trigger vocabulary | `events/<pkg>/event_pkg/pages/page_N/{condition.pdl,event.ir.pdl,event.pal,cmd_N.sh}`; `COND | trigger | <kind>`: counted in `@.apps/**/condition.pdl`: `on` 4915, `t` 432, `hi` 217, `re` 216, `ui` 198, `parallel` 76, `clock` 50, `event` 4, `action` 2 (I did not read the meaning of `on`, `t`, `hi`, `re`) | mechanics as pages (section 2) |
+| The command set a page can run | `#.ref/menu/event_commands.registry.pdl`: 170 `COMMAND` blocks (RPG-Maker-like: `show_text`, `control_switch`, `control_variable`, `change_hp`, `change_items`, `change_gold`, `control_timer`, `transfer_player`, `set_move_route`, `scroll_map`, `shake_screen`, `fadeout_screen`, `play_se`, `call_common_event`, `wait`, `loop`, `label`, `jump_to_label`, `if`, ...; clock: `set_clock_rate`, `pause_clock`, `advance_clock`; game: `roll_dice`, `random_roll`, `cash_transfer`, `row_append`, `start_game`, `stop_game`; world ops: `wo_kv`, `wo_drop`, `wo_place`, `wo_log`, `wo_when`, `wo_load`, `wo_calc`, `wo_kvline`, `wo_if`, `wo_each_actor`, `wo_event`, ...). Adding a SIMPLE command = one registry edit, no recompile (the file's own header) | slow mechanics (goal, message, door) call existing commands |
+| World-ops pages | `@.apps/rpg-space/events/{collision,death,respawn,destroyed,env_hit,col_hit,col_breach}`: `COND | trigger | parallel`; nodes `wo_load` (value from a file with min/max), `wo_calc`, `wo_each_actor event=col_hit`, `wo_kvline` (file key expr), `wo_if ... event=col_breach`; design in `16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md` (rules as pages + `collision.pdl` rows `COLL | typeA | typeB | block|overlap|ignore`; `blocks.pdl` rows with hardness and drops) | the shape of Teario's rule rows; collision responses as data |
+| Clock-fired common events | `@.apps/rpg-edit-hq/time.pdl`: `AT | event | when | repeat | what`; the clock daemon `lc_clock` fires pages; CPU pitfalls 23, 29, 32: poll about 300 ms, one reminder per poll, global minimum spacing 12 s between heavy runs | NOT usable for ticks (section 2.3); usable for nothing in Play |
+| Verb pages with fallback | `16.game/EVENT-VERB-PAGES-DESIGN.md`: `verbs.pdl` + `verbgen`, `fire`/`run`, page missing falls back to the raw verb; built for rpg-edit-hq (`@.apps/rpg-edit-hq/verbs.pdl` has `VERB | place | yes | ui | item x y`) | the Make window's tool clicks |
+| Editor feed and bars | `game_ui.txt` is loaded LAST so it overrides editor keys (onboarding doc section 1); `@.apps/deskopoly/layouts.pdl`: `BAR | id | key | slot | modes | default | group | note` (bars have a `modes` column) | bars per mode: the join path (section 5.6) |
+| Driving a real window | `relay_drive` (`KEY_PRESSED`, `tap`, `type`, `press`, `tapid`, `run <script>`), gentle mode, STEP `see` / `ensure` / `in` (`@.apps/deskopoly/nav.pdl`), STEP scripts in `@.apps/deskopoly/tests/` | harness for both shells (section 4.7) |
+| Toys menu | `khtpm_taskbar_manager.c` `toys_scan_one_root()`: a folder `<root>/<name>/toy.pdl` with `SECTION | title | ...` and `SECTION | launch | ...` becomes an entry `livedesk:open-toy:<root>/<name>/<launch>`; roots scanned: house root, `@.apps`, `&.widgits`, `&.hq-apps` (examples: `@.apps/layout-studio/toy.pdl`, `@.apps/chess/toy.pdl`) | the two Toys entries |
+| Hash | `&.widgits/_shared-lib/ops/hash_op.c`: `hash_op sha256 --file <path>` (OpenSSL); Teropoly pins state with FNV-1a 64 | level hash (sha256), state checkpoint (FNV) |
+| Editors of "a document of ordered parts" | `&.hq-apps/blueprintz` (book/pages/events editor), `@.apps/layout-studio` (validator `layout_check`, catalog), `&.hq-apps/chat-hai` (disk-persisted session list in a left sidebar) | level list sidebar, validator-as-op pattern |
+| Own tiles and characters | `&.hq-apps` / `@.apps/generator-hq` (generator ops: tiles, characters, cast), `16.game/TEAR-IT-TILES-100-2026-11-05.md` | art (section 1.8) |
+| Data studio plan | `08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md` (D58, plan only) | section 6 |
+
+### 0.2 What is NOT there (FACT or honest unknown)
+- No platformer, no side-view map type, no AABB (box) collision against tiles: the house collision is cell-by-cell `passable()` in `petslike_core.c` (design doc section 1) and the 3D engine has no walkable registry. Teario brings its own small physics op.
+- Page run cost and clock granularity (finding 1): the clock cannot tick faster than its poll and spacing rules.
+- Key release (finding 2). Auto-repeat of a held key is an X server setting; I did not look at it here.
+- The picture rate for a 2D view fed by rewriting `events.txt` is NOT measured (Teropoly walks characters that way, at its own 1500 ms tick pace, `deskopoly/tuning.pdl`). M0 measures it before any art is made.
+- Blueprintz editing: as of `EVENT-VERB-PAGES-DESIGN.md` (2026-10-20) the blueprintz WINDOW had no edit UI (B4); I did not re-check after that date.
+
+## 1. Game design
+
+### 1.1 The game in one paragraph (PROPOSAL)
+A side-view platformer. The hero runs, jumps (variable height: hold longer = higher), stomps enemies from above, hits blocks from below, collects coins, grows with a power-up, reaches the goal beacon. One screen to start (16 x 12 cells), scrolling levels second (up to 256 x 32 cells). A level has a start cell, a goal cell, a timer, and rules. Win = touch the goal; lose = lives 0 or time out.
+
+### 1.2 The level is a data file (PROPOSAL; same grammar as the other `.pdl` files: `SECTION | KEY | VALUE`, pipe-delimited rows, comments with `#`, unknown keys kept)
+```
+# level.pdl   (levels/<id>.pdl)
+META   | name     | First Steps
+META   | author   | <player uid or name>          # OPEN: who the author is (section 8)
+META   | version  | 3
+META   | parent   | <sha256 of the version this was edited from, or ->
+META   | size     | 32 x 12                       # width x height in cells; limits 16..256 x 12..32
+META   | theme    | meadow                        # art set name (own tiles)
+START  | 2 | 9                                     # x y of the hero's feet cell
+GOAL   | 30 | 9
+RULE   | gravity | 38      # physics knobs, Q4 fixed point per tick squared (section 1.6); a level may override the defaults
+RULE   | jump_v  | 380
+RULE   | run_max | 70
+RULE   | time    | 300     # seconds of level timer (counted in ticks, 30 per second)
+RULE   | lives   | 3
+ROW    | 11 | ................................   # one row of the tile grid per ROW line, top row is 0
+...
+PLACE  | enemy   | crawler | 14 | 9 | dir=-1
+PLACE  | item    | coin    | 8  | 7
+PLACE  | block   | gift    | 9  | 5 | holds=bloom
+PLACE  | door    | door    | 28 | 9 | to=<level name or sha256>     # nested level (section 5.4)
+CHECK  | cleared_by | <run id>  <sha256 of the run ledger>       # only on a published version
+```
+One character per tile in `ROW` lines (a legend in `tiles.pdl`), so a level is readable and diff-able by a person and by an AI. Entities are `PLACE` rows. The file is the whole level; its sha256 (`hash_op sha256 --file`) is its identity.
+
+### 1.3 Tile kinds (PROPOSAL; ids and names are our own; art is placeholder until the generator makes originals)
+| Char | Kind | Behaviour (as data in `tiles.pdl`) |
+|---|---|---|
+| `.` | air | passable |
+| `#` | ground | solid on all sides |
+| `=` | plank | solid from above only (one-way), pass through from below |
+| `B` | brick | solid; bumped from below it bumps; the grown hero breaks it |
+| `G` | gift block | solid; hit from below: releases its contents (coin, bloom, spark) once, then becomes `D` |
+| `D` | dud block | solid, empty |
+| `^` | spikes | solid; touching hurts |
+| `~` | water | slows, no fall damage; OPEN whether in v1 |
+| `H` | ladder/vine | climbable; OPEN whether in v1 |
+| `S` | spring | launches the hero up |
+| `T` | tube | solid; the entrance tube (down key) leads to a door target |
+| `L` | lantern | checkpoint (touch = respawn here) |
+| `F` | goal beacon | touch = clear |
+v1 minimum: `. # = B G D ^ L F` plus the door entity. The rest are extensions that add only a row in `tiles.pdl`.
+
+### 1.4 Entity kinds (PROPOSAL; own names; PLACEHOLDER = name and look to be replaced by the owner's lore names, see `22.lore-ip`)
+| Kind | Behaviour (a tiny FSM, data in `entities.pdl`) | Stompable |
+|---|---|---|
+| hero `tee` (PLACEHOLDER) | player states: idle, run, jump, fall, skid, hurt, dead, win; small / grown / spark (power states) | n/a |
+| `crawler` (PLACEHOLDER) | patrol: walk in `dir`; turn at a wall or at an edge (optional `edge_safe`); dies when stomped | yes |
+| `hopper` (PLACEHOLDER) | idle for N ticks, hop toward the hero, land | yes |
+| `spiketop` (PLACEHOLDER) | like crawler, hurts when stomped (teaches "do not stomp") | no |
+| `drifter` (PLACEHOLDER) | flies on a sine path (a table lookup, no float), stays out of tile collision | yes |
+| `shell` (PLACEHOLDER) | after a stomp becomes a sliding shell that hurts enemies; OPEN whether in v1 | n/a |
+| items: `coin`, `bloom` (grow), `spark` (shoot, OPEN), `heart`/`1up` (extra life) | collectables with a touch rule | n/a |
+| `door` | a touch + up key = enter another level (nested, section 5.4) | n/a |
+Enemies are FSMs written as event pages plus a state row (section 2). Every kind is a row of data; a new kind needs a row in `entities.pdl` and a page, not C.
+
+### 1.5 Sizes and scrolling (PROPOSAL, OPEN for the owner)
+- Cell: the 2D board's cell. The RPG Maker MV default is 48 px but I did not read the size the house 2D renderer uses for a side-view page: OPEN (M0). The physics works in cells, not pixels.
+- Grid: single-screen mode 16 x 12; scrolling levels up to 256 x 32 (8192 cells). A level file is under 40 KB at the maximum (estimate: 256 x 32 chars + rows).
+- Camera: follows the hero horizontally with a dead zone, clamps to the level; vertical follow only for tall levels. Camera is a projection of the run (computed from the replayed hero position); never stored.
+- 3D: the house rule "3D must have 2D parity" binds. The 2D side view is the product; a 3D view of a side-view level (a wall of voxels seen head on) comes free from the same page projection if the engine reads it, and is NOT a goal. OPEN: confirm the engine accepts a side-view page as a "floor" (it was built for top-down).
+
+### 1.6 Physics: integer fixed point, so a replay is exact (PROPOSAL)
+Positions are in 1/16 cell (Q4) as 32-bit integers. No floats anywhere in the step (a float result can differ between builds, which would break replay). One tick = 1/30 s. Per tick: read the input mask; horizontal speed accelerates toward `run_max` (or decelerates by `friction`); vertical speed adds `gravity`, clamped to `fall_max`; jump sets `vy = -jump_v` on a press while on the ground (coyote time `coyote` ticks after leaving a ledge, input buffer `buffer` ticks before landing: both are tuning knobs); releasing jump early cuts `vy` (variable height); then move X in sub-steps of at most 1/2 cell and resolve against tiles, then move Y the same way. Tile queries are array lookups. Defaults live in `tuning.pdl` (same shape as Teropoly's `TUNE | name | value | what it does | default`):
+
+```
+TUNE | tick_hz     | 30  | simulation ticks per second (fixed; the picture rate is separate) | 30
+TUNE | gravity     | 38  | Q4 units per tick squared | 38
+TUNE | jump_v      | 380 | Q4 units per tick, upward | 380
+TUNE | jump_cut    | 2   | divide vy by this when jump is released early | 2
+TUNE | run_max     | 70  | Q4 units per tick | 70
+TUNE | accel       | 6   | | 6
+TUNE | friction    | 8   | | 8
+TUNE | fall_max    | 90  | | 90
+TUNE | coyote      | 4   | ticks you may still jump after leaving a ledge | 4
+TUNE | buffer      | 5   | ticks a jump press is remembered before landing | 5
+TUNE | stomp_bounce| 300 | | 300
+TUNE | hurt_invuln | 60  | ticks of invulnerability after a hit | 60
+TUNE | max_depth   | 2   | nested contexts above the first (section 5.5); engine ceiling 4 | 2
+TUNE | max_run_ticks | 9000 | a run ends here (5 minutes) | 9000
+```
+The numbers above are STARTING GUESSES (OPEN: **feel needs a human**; the harness can prove the jump apex equals the knob, not that it feels good). Variants ("moon gravity", "fast", "floaty") are named presets in `tuning.pdl`; a level that wants one copies the values into its own `RULE` rows, so the level's hash covers its physics (section 3.4).
+
+### 1.7 Scoring and rules
+Score = coins x 100 + stomps x 200 + time left x 10 + clear bonus; counted by pages (section 2). Lives 3. Power states: small (one hit kills), grown (one hit shrinks to small, breaks bricks), spark (OPEN). Level timer counts down in ticks (not wall time, for determinism).
+
+### 1.8 Art, names, IP (house rules applied)
+- Own tiles and characters only; no copied art, no copied names or sounds. The generator (`@.apps/generator-hq`) makes the art; "new levels only, never replace existing art" (owner 2026-11-05): Teario art goes into its own sheets, never over an RPG Maker sheet.
+- "Draw from IP themes" (owner 2026-11-05): the cast and look may come from the Soul Pen / TSOTS lore (`22.lore-ip/00-INDEX.md`); until the owner names them every name above is a PLACEHOLDER with a removal condition: replaced by lore names before any picture is called final.
+- Trademark: the working name "Teario" rhymes with the product it imitates. I did not do a legal check. OPEN for the owner (section 8): keep as a working name, rename before release.
+
+## 2. ALL MECHANICS AS EVENTS
+
+### 2.1 The rule of this section
+A mechanic is one event page: a trigger, a condition, nodes. That is how the house authors rules (FACT, section 0.1). The honest problem is speed (finding 1), so the plan separates **authoring** from **execution**:
+- **Authoring form (the source of truth):** pages `@.apps/teario/events/tm_<name>/event_pkg/pages/page_1/{condition.pdl,event.ir.pdl}`, visible and editable in blueprintz like any other page; their node `type=` values for the fast loop are a NEW family `tp_*` (section 2.2). Slow, rare mechanics use the existing registry commands and real page runs.
+- **Execution form (a projection):** `teario compile` reads the pages and writes a compact rule table (a PROJECTION: safe to delete, regenerated byte for byte, declared in `state.pdl`). The in-process step reads only that table. Nothing is read back from the table as an authority.
+
+### 2.2 The new capability, minimal (PROPOSAL; this is the NEW engine work)
+| # | Capability | Why the existing vocabulary cannot do it | Size |
+|---|---|---|---|
+| N1 | `tp_*` node family + an in-process interpreter `teario_step` (C op): `tp_set` (write an entity or global field), `tp_calc` (integer + - * / min max clamp), `tp_if` (compare, then/else), `tp_spawn`, `tp_destroy`, `tp_emit` (queue a named event), `tp_log` (append to the run's derived-event stream), `tp_call` (hand a slow event to a real page run) | page nodes run one process each; `wo_*` nodes read and write files; no entity-pair or tile-contact vocabulary | one C file, a few hundred lines (estimate) |
+| N2 | NEW trigger kinds, evaluated in-process: `tick` (every sim tick), `touch` (entity overlaps entity, begin edge), `tilehit` (entity contacts a tile; side = top/bottom/left/right), `input` (an input-mask edge), `after` (N ticks later), `enter` (level load) | the vocabulary has `ui`, `parallel`, `clock`, `event`, `action` (counted above) and none is per-tick or contact | table + one dispatcher |
+| N3 | A fixed-tick driver (a `GAME | driver` program, like `deskopoly_driver`) that owns the loop, reads inputs, calls `teario_step`, appends input rows, publishes the picture and the feed | exists as a shape; the 30 Hz fixed step with catch-up cap is new | one C file, modeled on the existing driver |
+| N4 | Key release delivery to the game, or a press-only latch (section 4.6) | FACT: only `KEY_PRESSED` lines found | M0 spike; maybe none |
+| N5 | A `GAME | export` row in the core (the data-hq plan proposes it) | FACT: not found in `petslike_core.c` | small, shared with data-hq P0 |
+Everything else (level load, goal, game over, door, messages) is a SLOW event and uses real pages and the registry commands that exist.
+
+### 2.3 What the real vocabulary cannot do for a fast platformer today (FACT, then consequence)
+1. **Cost per page run:** a launch of sh + bash + prisc per fire (`EVENT-VERB-PAGES-DESIGN.md` section 3.4; the `death` page has `cmd_1.sh` ... `cmd_6.sh`, one script per node). 30 ticks per second x 5 mechanics = 150 launches per second: impossible. Consequence: N1.
+2. **Clock granularity:** `lc_clock` polls about every 300 ms, fires one reminder per poll, with a global minimum spacing (12 s) between heavy runs, because of three guard incidents (CPU pitfalls 23, 29, 32, 33). A fast tick through `time.pdl AT` rows is not possible. Consequence: no Teario mechanic is a clock row.
+3. **State in files:** the `wo_*` nodes read and write per-entity text files (`wo_load file=... key=...`, `wo_kvline`); per tick that is disk I/O and also an unrecorded mutable state (ghost-data hazard, `NO-GHOST-DATA...`). Consequence: state lives in the deterministic replay (section 3).
+4. **No contact or overlap trigger:** `wo_each_actor event=col_hit` exists for ships (a hit computed elsewhere); there is no per-pair AABB test in the vocabulary. Consequence: N2 `touch`, `tilehit`.
+5. **No fixed-point guarantee:** I did not check how `wo_calc` and `random_roll` compute (integer or float, seeded or not). Consequence: `tp_calc` is integer-only and the random source is a seeded integer generator in the run header (UNVERIFIED that no existing node can be reused).
+6. **Input granularity:** keys arrive as presses (finding 2); the relay `type` and `key` steps are paced for typing (`relay_drive.c`: 90 ms between mouse press and release), so a harness cannot hold a key for exactly 12 ticks by relay. Consequence: the harness plays a recorded input ledger through a control verb (section 4.7), and the relay proves only that keys reach the game.
+7. **Picture rate:** unmeasured (0.2). Consequence: M0 spike S2; the sim is decoupled from the picture (section 2.4).
+
+### 2.4 Tick rate and the CPU rule (PROPOSAL; estimates are NOT measurements)
+- **Sim 30 Hz, fixed.** The driver runs `teario_step` in-process. Estimated cost: the step touches at most the active entities (camera window plus one screen margin, a few dozen) and array lookups: well under 0.1 ms per tick (an estimate to be measured in M2 with a C op, per CPU pitfalls 26 and 30: children + wakeups, not `top`); budget: **step under 1 ms per tick, the whole Play driver under 15% of a core while playing, and 0% extra for the children** (the driver forks nothing per tick).
+- **Catch-up cap:** if the driver falls behind it runs at most 4 ticks per wake and drops the excess time (the game slows rather than burning more CPU); a run that dropped ticks is marked `slow` in its derived data (the ledger is unaffected, because ticks are counted, not timed).
+- **Picture decoupled:** publish only when something on screen changed (dirty flag, the `page_needed()` lesson in CPU pitfalls 24); picture rate is whatever M0 shows the engine can take, never more than the sim rate.
+- **Idle near zero:** paused, menu, or stopped: the driver sleeps 250 ms between polls (CPU pitfalls 25: a fixed short usleep is a timer forever) and the sim does not run; closed window: the driver exits with its owner (process registry, AGENTS.md); an off-screen entity is not stepped (active window only).
+- **The clock-hold row applies, for a different reason:** `GAME | clock | pause` (FACT, `petslike_core.c` line 939, `game_clock_hold()`; Teropoly ships it) pauses the editor's WORLD clock (day/night reminders) while the game is live. Teario's tick is not on that clock at all, but the world clock burned 4% of a core in Teropoly with In: off (CPU pitfalls 33), so Teario ships `GAME | clock | pause` too. A `time.pdl` is not needed.
+
+### 2.5 The mechanics table
+Columns: mechanic | trigger kind | condition | what the page does | state read / written | NEW engine work? "Fast" = runs in the 30 Hz loop through `tp_*`; "slow" = a real page run through the registry commands (a process launch, fine because rare). Page names are `events/tm_<name>`. Trigger kinds that exist in the house today are marked **(FACT)**; the others are **NEW** (the vocabulary lacks them).
+
+| Mechanic | Trigger | Condition | What the page does | State read / written | NEW work? |
+|---|---|---|---|---|---|
+| Spawn at start | `enter` NEW (level load) | run begins or respawn | place the hero at `START`, spawn every `PLACE` row, set lives, timer, score, power = small | reads the level; writes all entity fields (in memory, derived from the ledger) | N1, N2 |
+| Input move (hold vs tap) | `input` NEW | mask edge (left/right/jump/down/run) | set the hero's wanted direction; hold mode = direction while held; latch mode = a press sets, an opposite press or `down` stops | reads the mask from the ledger row for this tick; writes `hero.want_dx` | N2, N4 |
+| Jump | `input` NEW + `tick` NEW | jump press AND (on ground OR coyote > 0) | `vy = -jump_v`; mark airborne; a release before apex cuts `vy` | `hero.vy`, `hero.coyote`, `hero.buffer` | N1 |
+| Gravity / fall | `tick` NEW | every tick, entity has `gravity=1` and is not grounded | `vy = min(vy + gravity, fall_max)` | `vy` | N1 |
+| Ground collision | `tilehit` NEW (bottom) | the move enters a solid tile below | snap to the tile top, `vy = 0`, set grounded, run landing | `y`, `vy`, `grounded` | N2 |
+| Ceiling collision | `tilehit` NEW (top) | enters a solid tile above while rising | `vy = 0`; emit `block_hit` with the tile cell | `vy`; queue event | N2 |
+| Wall collision | `tilehit` NEW (left/right) | enters a solid tile sideways | stop X, `vx = 0`; enemies: turn around | `x`, `vx`, `dir` | N2 |
+| One-way plank | `tilehit` NEW | tile `=` and the entity moves down and its feet were above the plank last tick | treat as ground; otherwise ignore | `y`, `vy` | N2 |
+| Coin pickup | `touch` NEW (hero, item=coin) | overlap begins | destroy the coin; coins += 1; score += 100; every 100 coins one life; play `coin` sound (slow call: `play_se` is a registry command, throttled) | coins, score, lives | N2; `play_se` = tp_call (FACT command) |
+| Block hit | `tilehit` NEW (hero top vs block) | block kind `G` or `B` | `G`: if not dud, spawn contents above, become `D`, 8-tick bump animation; `B`: grown hero breaks it (destroy tile, spawn 4 fragments), small hero bumps (kills an enemy standing on it) | tile grid override (a derived overlay), items, score | N1, N2 |
+| Enemy patrol | `tick` NEW | enemy `ai=patrol` | move `dir * speed`; on wall or edge (if `edge_safe`) flip; hopper/drifter run their own small FSM state rows | enemy `x`, `dir`, `state`, `timer` | N1 |
+| Stomp | `touch` NEW (hero, enemy) | hero `vy > 0` AND hero feet above enemy's mid-height AND enemy stompable | destroy or flatten the enemy; hero `vy = -stomp_bounce`; score += 200 (chain bonus +1 per stomp before landing) | `vy`, score, enemy | N2 |
+| Hurt | `touch` NEW (hero, enemy/spikes) | overlap AND not (stomp rule) AND `invuln = 0` | if grown: shrink, `invuln = hurt_invuln`; if small: emit `death` | `power`, `invuln` | N2 |
+| Power-up grow / shrink | `touch` NEW (hero, item=bloom) | overlap | `power = grown` (hitbox taller, 1 more hit allowed); score += 1000; shrink is in Hurt | `power`, hitbox | N1 |
+| Death | event `death` (emitted; the `event` trigger exists, 4 pages **(FACT)**, I did not read its meaning, so treat as NEW `tp_emit`) | hero hp out, fell below the level bottom, or timer 0 | lives -= 1; hero state dead (8-tick animation, input ignored); then `respawn` or `game_over` | lives, state | N1 |
+| Respawn / checkpoint | `after` NEW (60 ticks after death) | lives > 0 | respawn at the last touched lantern `L` or `START`; timer keeps | `checkpoint`, entities reset from the level except collected coins | N2 |
+| Lantern touch | `touch` NEW (hero, tile L) | first touch | `checkpoint = cell` | `checkpoint` | N2 |
+| Level timer | `tick` NEW | every 30 ticks | `time -= 1`; at 0 emit `death(reason=time)`; under 100 emit `hurry` | `time` | N1 |
+| Goal / clear | `touch` NEW (hero, tile F) | overlap | freeze input, score += time x 10, emit `clear`; the SLOW page `tm_clear` then runs real commands: `show_text` ("Clear!"), `play_se`, `fadeout_screen`; the driver writes `END | win` | score, ledger END row | N2 + slow page (FACT commands) |
+| Level load / reset | slow page, `ui` **(FACT trigger)** | `Play`, `Restart`, `Next level` | driver reads the level, checks its hash, writes the run header row, runs `enter` | ledger header | none |
+| Camera follow | `tick` NEW (projection, not a game rule) | every tick | camera x = clamp(hero.x - screen/2 with dead zone); never written to the ledger | derived | N1 (or part of the driver) |
+| Score | `tp_calc` inside other pages | on the events above | arithmetic only; HUD reads the replay | score | N1 |
+| Pause | `ui` **(FACT trigger)**, a window button / key | pause pressed | the driver stops stepping and stops appending input rows; wakeups fall to 4 per second; resume continues the same tick count (pause is not a tick) | driver flag only, no ledger row (tick numbers do not advance) | none |
+| Game over | event `game_over` | lives = 0 | the SLOW page `tm_gameover` (`show_text`, `play_se`, `fadeout_screen`), END row `loss` | ledger END row | slow page |
+| Door into a nested level | `touch` NEW + `input` up, then a slow page | hero at a door, up pressed | push a context (section 5.4); `transfer_player` is the nearest existing command (FACT name, RPG-Maker meaning: map transfer; not read how it is implemented here) | parent ledger ENTER row | N2, section 5 |
+| Messages / hints | slow page, `show_text` **(FACT command)** | hero touches a sign | text box | none | none |
+
+The count of fast mechanics is 17; slow pages are 5 (`tm_clear`, `tm_gameover`, `tm_load`, `tm_door`, `tm_message`). A designer edits a mechanic by editing the page; `teario compile` rebuilds the rule table; the physics core (movement, tile collision resolution) is C and not a page, because it is the integrator every page depends on (the same split as Teropoly: rules in the engine, the verbs data-driven).
+
+### 2.6 Rough budget of the interpreter (PROPOSAL)
+Rule table size: 17 pages x about 8 nodes = about 140 nodes; per tick the dispatcher checks `tick`-triggered rules for each active entity (about 30 entities x 3 rules) plus contact events: a few hundred integer operations per tick (estimate, unmeasured). That is why the step can stay under 1 ms on the weak CPU.
+
+## 3. The ledger and replay
+
+### 3.1 The rule (FACT: `NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`)
+A fact lives in one ledger row; no behaviour-deciding state kept only in memory; a replay reproduces the state; a hand-edited ledger is refused. A platformer has a new problem: a row per tick would be 30 rows a second. The fact that decides everything is the PLAYER'S INPUT; the world is a deterministic function of (level, physics, seed, inputs).
+
+### 3.2 The run ledger: inputs only (PROPOSAL)
+```
+RUN   | v1 | level=<sha256> | rules=<sha256 of the physics + rule table> | engine=<n> | seed=<hex> | driver=human:<uid>|bot:<name> | depth=0 | parent=-
+IN    | <tick> | <mask hex>          # ONLY when the mask changes (edge-encoded); tick counts from 0 at the first sim tick
+IN    | 41 | 0x01
+IN    | 55 | 0x05
+CHK   | 300 | <fnv64 of the sim state>   # every 300 ticks (10 s): a check value, not a fact; replay must reproduce it
+ENTER | <tick> | child_level=<sha256> | child_run=<id>      # a door (section 5.4)
+RETURN| <tick> | child_run=<id> | child_end=<hash> | result=win|loss|abort
+END   | <tick> | result=win|loss|abort|timeout | score=<n> | state=<fnv64>
+```
+- `mask` bits: left, right, jump, down, run, up, action; the driver samples the keys once per tick.
+- **Tick numbers, not times:** replay needs no clock. The driver may run slower than 30 Hz; the ledger does not notice.
+- **Deterministic replay:** `teario replay <run>` re-runs the step from tick 0 with the rows and compares each `CHK` and the `END` state hash (FNV-1a 64 as Teropoly does, `deskopoly.c` line 773). A hand-edited row changes some check value and is REFUSED with the first diverging tick named. This is the same shape as Teropoly's `replay` (`REPLAY events=N hash=...`).
+- **Restart continues from the ledger:** after a crash the driver replays the open run to the last tick and resumes (as `dsk_driver` does for Teropoly). The in-memory sim is a cache of the replay, never an authority. Replay cost: a 5-minute run is 9000 ticks; at under 1 ms per tick that is under 9 s worst case (estimate; M3 measures it).
+- **No ghost data:** nothing else decides an outcome. The picture, HUD, camera, stats are projections.
+
+### 3.3 Row budget and caps (PROPOSAL; required by RUNTIME-FILE-GROWTH-STANDARD.md)
+- Rows per run: input edges only, a human produces roughly 2 to 6 changes a second at most; a 60 s run is about 100 to 300 rows (estimate, unobserved); about 14 bytes a row. A `max_run_ticks` of 9000 (5 min) caps one run at about 1800 rows (about 25 KB) in the worst case.
+- Per hour of continuous play (60 runs of one minute): about 6,000 to 18,000 rows, about 80 to 250 KB (estimate). State this figure in the commit that adds the writer (AGENTS.md).
+- Folder cap: `runs/<level hash8>/`: keep the last 30 runs per level; a verified-clear proof run is never trimmed (one per published version, about 1.5 KB); folder total 5 MB enforced by the driver on each run end, and a second guard row in `cpu_guard` `hygiene_sweep()` (to add before the driver ships, as the standard requires).
+- Edit journal and drafts: section 4.8. Published store: one file per version, 40 KB at most, count capped by an author limit (OPEN: 100 published levels per author).
+
+### 3.4 The hash pin
+`level` = sha256 of the exact level file (`hash_op`). `rules` = sha256 of the physics values the run used (the level's `RULE` rows over `tuning.pdl` defaults, plus the compiled rule table) and the engine number. A replay refuses a run whose pins do not match the current files (the Caveat in the NO-GHOST doc: editing a rule changes how history is read; here the pin makes that visible instead of silent). Because a level carries its own `RULE` rows, a published level's runs stay replayable forever as long as the engine number is compatible; an engine change that alters physics bumps `engine=` and old proofs are revalidated by the old engine build (OPEN: how long to keep it; simplest: a bumped engine invalidates old verified clears and the author must clear again).
+
+### 3.5 The Mario-Maker rule: PUBLISH only after a verified clear (PROPOSAL)
+1. The author plays their own level (Make's Play-test or Play window); the driver records the run ledger with `driver=human:<uid>`.
+2. `teario publish <level> <run>`: succeeds only if (a) the run's `level=` equals the sha256 of the level file as it is now, (b) `teario replay` reproduces the run and the END row says `win`, (c) the run is a single `level=` (no mid-run edit, section 5.6), (d) the run's `driver` matches the author's declared driver kind (a bot clear is recorded as `bot:` and counts only if the owner allows it; OPEN), (e) the static validator passes (section 4.9).
+3. Success writes `published/<hash8>.pdl` read-only (the level plus `CHECK | cleared_by | <run id> <hash>`), and appends `PUBLISH | <level hash> | <run hash> | <version> | <parent hash>` to the publish ledger.
+4. **Published levels are immutable by hash.** An edit of a published level starts a new draft with `META | parent | <old hash>`; publishing it needs its own verified clear and makes a new version. The old version stays playable and replayable.
+5. Negative controls the case must include: a hand-edited level after the clear is refused (hash differs); a run of a different level is refused; a loss is refused; a tampered ledger is refused; a run whose pins differ is refused.
+
+### 3.6 State table (PROPOSAL; the `state.pdl` shape: `FILE | name | kind | writer | regenerate_with`)
+```
+# @.apps/teario/state.pdl  (and per-user folders under the game's state dir)
+FILE | levels/<id>.pdl            | CONFIG     | the Make shell (an authored document; the engine reads, never writes)        | -
+FILE | published/<hash8>.pdl      | CONFIG     | teario publish (immutable, read-only copy)                                    | -
+FILE | published.ledger.txt       | LEDGER     | teario publish (PUBLISH rows: level hash, run hash, version, parent)          | -
+FILE | runs/<hash8>/run-<id>.txt  | LEDGER     | the Play driver (RUN / IN / CHK / ENTER / RETURN / END rows)                  | -
+FILE | edits/<id>.journal.txt     | PREFERENCE | the Make shell (undo/redo journal; never read by the rules; capped)           | -
+FILE | rules.compiled             | PROJECTION | teario compile                                                                | compile
+FILE | ui.txt                     | PROJECTION | teario ui (HUD / feed for the window)                                         | ui
+FILE | page.txt (+ cells.*, events.txt for the 2D view) | PROJECTION | teario page (level + replayed entities drawn as a desk) | page
+FILE | stats/*.csv                | PROJECTION | teario export (levels, runs, deaths, edits)                                   | export
+FILE | levels.index.txt           | PROJECTION | teario index (sidebar list: name, author, hash, status)                       | index
+```
+`teario audit` must fail on any undeclared file (a ghost) and on a PROJECTION whose regenerating verb does not exist, exactly as `deskopoly audit` does. The four tests that can fail (NO-GHOST doc section 4) are cases `tm_replay`, `tm_ghost`, `tm_audit`, `tm_regen` (section 7).
+
+## 4. The editor UI
+
+### 4.1 The Make window (PROPOSAL; ASCII mockups; the real layout is an `.xhtpm` with stable ids)
+```
++--------------------------------------------------------------------------------------------+
+| Teario-Make     [New] [Open] [Save]   [Undo] [Redo]   [Play-test] [Validate] [Publish] [Share]|
++-------------+------------------------------------------------------------+-----------------+
+| LEVELS      | tools: [pencil][eraser][fill][rect][select][move][eyedrop]  | PROPERTIES      |
+|  First Steps|        layers: [x]tiles [x]entities [ ]grid [ ]bot path     |  name: First..  |
+|  *Hill Run  |------------------------------------------------------------|  size: 32 x 12  |
+|  Tube Maze  |                                                            |  time: 300      |
+|  + new      |  ................................................          |  gravity: 38    |
+|             |  ................................................          |  jump: 380      |
+| DRAFT/PUBL. |  ....................G.B.G...........................F      |  start: 2,9     |
+|  v3 draft   |  ......................................^^.....=====.       |  goal: 30,9     |
+|  v2 PUBLISH |  ..tee..crawler.....#####.....hopper.......coin.coin.      |  lives: 3       |
+|             |  ################################.....##############       |  status: DRAFT  |
+| BROWSER     |  (canvas: cell size from the feed; scrolls with the bar)   |  beatable: ?    |
+|  (levels of |------------------------------------------------------------|  selected: G    |
+|  others)    | PALETTE tiles: [. air][# ground][= plank][B brick][G gift]  |  holds: bloom   |
+|             |   [D dud][^ spikes][L lantern][F beacon]                    |                 |
+|             | PALETTE entities: [tee start][crawler][hopper][coin][bloom] |                 |
+|             |   [door][sign]                                               |                 |
++-------------+------------------------------------------------------------+-----------------+
+| status: saved 14:02 | cell (9,5) = G | edits this session: 41 | validate: not run            |
++--------------------------------------------------------------------------------------------+
+```
+- Left sidebar: the level list loaded by scanning `levels/`, like chat-hai's history (FACT: `&.hq-apps/chat-hai`); a status per level (DRAFT / PUBLISHED vN / cleared-not-published); new files are noticed by a marker file's size growth, never a timer or mtime (house rule, memory `prefer-marker-files-not-mtime`).
+- Centre: the canvas. Pencil sets a tile or entity; drag draws a line; the rectangle/fill tools call ONE verb on release (not one per cell, so a drag is one page run, not 30). Right-click or the eraser clears. A selection can be moved or copied (OPEN for v1).
+- Right: properties of the level or of the selected cell/entity (`holds=bloom`, `dir=-1`, `to=<level>`); a `beatable` line fed by Validate.
+- Bottom: palettes (tiles, entities). Toolbar: Undo, Redo, Play-test, Validate, Publish (enabled only after a verified clear), Share/Import.
+
+### 4.2 The Play window (HUD and browser)
+```
++----------------------------------------------------------------+
+| Teario-Play    First Steps  v2 by <author>      [Pause][Restart]|
+| LIVES 3   COINS 12   SCORE 01200   TIME 271   POWER small      |
++----------------------------------------------------------------+
+|                                                                |
+|                          (the level, side view)                |
+|                                                                |
+|     tee ->          crawler                                    |
+|  ##############.....#########............###########           |
++----------------------------------------------------------------+
+| keys: arrows/A D move  space jump  shift run  down tube  P pause|
++----------------------------------------------------------------+
+```
+Level browser (a screen of the Play window, and the Make sidebar's BROWSER tab): list with name, author, version, clear rate and your best time (from the stats projection), filter by author; Enter plays; a published level shows its hash8. The browser lists only PUBLISHED levels for other users (section 8: sharing).
+
+### 4.3 Controls (PROPOSAL)
+Mouse in Make (click, drag on the canvas; click palette items and buttons); keyboard in Play: left/right (arrows or A/D), jump (space or up), run (shift), down (tube), up (door), P pause, R restart, Esc leaves/backs out one level (house rule: Esc backs out one level; the editor already releases possession first). In the editor, In: ON sends keys to the game world and In: off sends them to the UI: **Play inside rpg-edit needs In: ON** (the same as Teropoly's world keys; FACT, nav.pdl `in`), and In: ON also pauses the editor's world clock (FACT, nav.pdl).
+
+### 4.4 Make as events (PROPOSAL; ties to section 5.3 (i))
+Each tool is a verb in `verbs.pdl` with `page=yes` where the click is rare (new, open, save, publish, validate, play-test) and `page=no` for high-frequency strokes (a single `put` or `rect` verb call per mouse release). The click -> `fire` -> page -> verb path is the house mechanism built for rpg-edit-hq (`EVENT-VERB-PAGES-DESIGN.md`; the cost rule there: a page run is a process launch, fine for a click, never for a per-step verb).
+
+### 4.5 Undo and autosave: edit-row ledger versus file overwrite (evaluation, PROPOSAL)
+| Question | A. The level file is the authority; a capped journal gives undo | B. An append-only EDIT ledger is the authority; the level file is its projection |
+|---|---|---|
+| One authority per fact | the file | the ledger; but the ENGINE must then read the file (a projection) to play: "a projection read back as input", the thing the rule forbids, unless the engine replays the edit ledger itself every load |
+| Hand-editable by a person or an AI | yes (the whole point of `.pdl`) | only through verbs |
+| Crash safety / autosave | write the file atomically (temp + rename) on each action | each action is an append (cheap) |
+| Undo / redo | journal of inverse operations, capped (e.g. 500 rows), PREFERENCE class | free: replay up to row N |
+| Growth | file: 40 KB max; journal 500 rows | unbounded without compaction (snapshot rows and dropping history) |
+| Analytics for data-hq (`edits.csv`) | from the journal while it lasts | complete |
+| Collaboration / shared editing | no | yes |
+| Cost / risk | low | high (compaction, replay on every load) |
+**Recommendation (PROPOSAL):** A now. The level file is the one authority for what a level IS (and a verified clear pins it by hash, so nothing can drift); the journal `edits/<id>.journal.txt` (one row per operation, ring of 500 rows) is a PREFERENCE-class undo history that changes no outcome and feeds `edits.csv`. **Removal condition:** if two authors must edit one level, or edit history must be shared or audited, switch to B (the EDIT ledger becomes the authority and the engine replays it). This is labelled, not hidden.
+
+### 4.6 Input in Play: held keys versus presses (OPEN; M0 spike S1)
+FACT: the window gives a game `KEY_PRESSED: <n>` lines (renderer `kh_capture_key`, relay format). `KeyRelease` events reach the renderer's dispatcher (line 15936 reads their timestamp) but I found no release delivered to a game. Three modes, selected in `tuning.pdl` (`TUNE | input_mode | hold|latch`):
+- **hold:** real held keys, if M0 shows releases (or auto-repeat presses at a known rate that can be treated as "held while repeating, released when repeats stop for 2 ticks"): the human mode.
+- **latch:** a press of left/right sets the direction until the opposite key, down, or a stop key; jump is a tap. Playable by relay and by a harness; clumsy for a person.
+- **script:** the driver reads recorded masks from a control verb (`teario_ctl input <tick> <mask>`) for harnesses and bots.
+The ledger stores the sampled MASK per tick, so the three modes produce the same ledger shape.
+
+### 4.7 Relay-drive and harness testing (PROPOSAL; reuse FACT tools)
+- Both shells expose stable object ids in the window's OWN objects dump (FACT mechanism: `#.desktop/ascii_frames/<pid>.<seq>.objects.pdl`; `OBJECT tag= id= class= x= y= w= h= nav= active= label=`): for Make `tm-tool-pencil`, `tm-pal-ground`, `tm-pal-crawler`, `tm-canvas`, `tm-btn-undo`, `tm-btn-playtest`, `tm-btn-validate`, `tm-btn-publish`, `tm-level-<name>`; for Play `tp-hud-lives`, `tp-hud-coins`, `tp-hud-score`, `tp-hud-time`, `tp-btn-pause`. Ids, never nav numbers (nav.pdl: numbers shift).
+- STEP scripts in `@.apps/teario/tests/` (the Teropoly names are the model): `tm-open-make` (in off, ensure the Toys menu then the entry, `see tm-canvas`), `tm-paint-ground` (`tapid tm-pal-ground`, then `tap` three canvas cells, expectation: the LEVEL FILE has `#` at those cells and `see` shows the tile: sync on the file/ledger, not on the picture, nav.pdl protocol 4), `tm-playtest` (`tapid tm-btn-playtest`, `see tp-hud-lives`), `tm-play-keys` (`key right` x N, expectation: the run ledger gains `IN` rows and the hero x increased), `tm-publish-refused` (Publish before any clear: `see label:needs a verified clear`), `tm-publish-ok`.
+- The canvas is one object: clicks inside it are `tap x y` with the cell computed from the canvas rect in the dump and the cell size from the feed. UNVERIFIED that the canvas rect appears in the dump and that a map click reaches a verb (Teropoly's clicks are popup buttons); M0 spike S3 and S4. Fallback that needs neither: the same verbs the clicks run (`teario_ctl put x y tile`), driven by the harness, and ONE live case proving a real click reaches the verb (the Teropoly lesson: once a button's path is proven, drive the rest with the line the button runs; CPU pitfalls 33).
+- Real-time play is NOT driven by relay timing. The harness plays a recorded input ledger: `teario_ctl play-script <ledger>` feeds masks tick by tick, and the case asserts the replay hash. The live case asserts only that keys reach the hero (movement > 0 cells after pressing right) and what is ON SCREEN (`see` the HUD and a PNG the human opens).
+- Keep In: off only for the seconds a script needs; end every drive with `in on` (CPU pitfalls 33 landed the house in a guard kill).
+
+### 4.8 Autosave
+Save is an atomic temp + rename of `levels/<id>.pdl` on every committed action (stroke release, property change) and a final save on window close. Cost: a 40 KB write per action, only on action (no timer, no polling). The journal append is one line. Both under the runtime caps.
+
+### 4.9 Validation: a bot/BFS reachability check (PROPOSAL)
+`teario validate <level>` is a C op, deterministic, no network:
+1. **Static checks:** one START, one GOAL, both inside the grid and standing on legal cells; all `PLACE` ids known; door targets exist (names resolve; cycle check, section 5.4); size limits; entity count limit (e.g. 200).
+2. **Reachability:** a search over the discrete state (cell, vertical phase, facing) using the SAME `teario_step` physics: breadth-first search over input macro-actions (run N ticks left/right, jump with short/long hold, fall) from START; the goal is "reachable" if some sequence reaches the GOAL cell. The search is bounded (state cap, time cap, niced behind `cpu_gate`) and says `beatable=yes`, `beatable=no (proved: state space exhausted)` or `unknown (cap hit)`. It ignores enemies by default (a pessimistic variant treats enemies as walls); `beatable=yes` writes the macro path as an input ledger, which is a REAL RUN ledger that `replay` can verify. That gives the author a proposed clear, and gives data-hq a difficulty estimate (section 6). It does NOT replace the human verified clear: a level can be reachable and still unfair.
+3. The bot's input script is validated by the engine, never trusted (the same refusal rules as a tampered ledger).
+Negative controls: a level with a gap wider than the jump is `no`; the same level with the gap narrowed is `yes`; a changed `jump_v` flips the answer (proves the knobs are used).
+
+### 4.10 Share / import (OPEN, section 8)
+Share exports a published level as `.pdl` plus its proof run (about 2 KB): import verifies the level hash and replays the proof in the local engine before listing it. A shared level that fails replay is refused with the reason. The file is the same format; nothing about it depends on the sender.
+
+## 5. The recursion / placement question
+
+### 5.1 The shared core and the shells (PROPOSAL)
+```
+@.apps/teario/                 THE CORE (no toy.pdl, so it adds no Toys entry by itself)
+  level format + tiles.pdl, entities.pdl, tuning.pdl
+  ops/teario.c                 the engine: load, validate, compile, step, replay, publish, export, ui, page, audit  (one process per verb, ledger = authority)
+  ops/teario_step.c            the in-process interpreter + integrator (how the driver shares it is OPEN, see the paragraph below; never a header + link)
+  ops/teario_driver.c          the fixed-tick driver (GAME | driver), publishes the feed
+  events/tm_*                  the mechanic pages (authoring form)
+  verbs.pdl, state.pdl, layouts.pdl, nav.pdl, game.pdl, tests/
+@.apps/teario-make/toy.pdl     SHELL 1: title "Teario-Make", launch button.sh  (a window with the Make bars)
+@.apps/teario-play/toy.pdl     SHELL 2: title "Teario-Play", launch button.sh  (a window with the Play bars)
+```
+The shells contain layouts and a launch script and NO rules. FACT behind the folder layout: Toys entries are folders with a `toy.pdl` (`toys_scan_one_root`), so each shell is its own folder; the core is a folder without one. On the house sharing rule (memory `feedback-no-header-link-split`): the interpreter is shared by exactly two consumers (the `teario` verb process for validate/replay and the driver for live), and it is STATEFUL, so the house shape is op + fork + IPC. For a first cut the driver calls `teario step-batch` as a long-lived child it registered itself (one child, exits with the driver; process registry rule), OR the interpreter is one text-include used by both (pure functions, 2 consumers: the rule's "text-include" shape fits a pure step function with no state of its own). OPEN decision for the build: prefer the text-include of the PURE step function (state passed in), because the driver needs it in-process for speed. Label: the one place the plan leans on the include shape; the decision-log row at build time must answer it.
+
+### 5.2 The three placements, with the design-choice test
+(Which shell each uses is stated per placement, as the lead asked.)
+
+**(a) Inside rpg-edit as a game mode.** Book `@.apps/teario/` with `game.pdl` (`GAME | driver`, `GAME | chat`, `GAME | clock | pause`), the editor's Player > Play starts `teario_driver`; the editor's window shows the game through the feed `state/game_ui.txt` (bars via `layouts.pdl`). **Shell used: BOTH shells as modes of the editor window:** Make mode = Teario's bars and tile/entity palette in the editor's side bars with a Teario canvas click path; Play mode = the HUD bar and the game picture. The level is shown through the editor's own 2D view (a level projected as a desk by `teario page`, the way `deskopoly page` projects the board).
+- One authority per fact: yes, the same core. Modular: the editor's map tools, palette, camera, 2D renderer, chat, h-ai are reused. Scalable: every later game is a book. Long term: this is where the roadmap points (games run from the editor's Play button, owner 2026-11-08, memory `games-run-from-editor-play-button`). House shapes: `game.pdl` data, feed projection, harness cases with `see` steps.
+- Cost / risk: the editor is a big shared window; a click on the map canvas routing to a Teario verb is UNVERIFIED (Teropoly uses popup buttons); In: ON is needed for keys, and In: ON pauses the editor's world clock (fine here). The editor's own Place tool writes cells directly: Make-inside-the-editor must use Teario's palette and verbs, not the editor's Place, or the level would hold ghost data. Highest integration risk, highest payoff (recursion, sections 5.3 to 5.5).
+
+**(b) Its own app under Toys.** Two small windows, `teario-make` and `teario-play`, each a `toy.pdl` folder. **Shells used: Make window, Play window, as the owner's prototype (two windows).** One authority: the same core. Modular: independent of the editor's size and risk; a small window is easy to harness (stable ids, a small objects dump). Scalable: fine. Long term: the owner wants them joined: two windows is a temporary shape. House shape: Toys. Cost: little; risk: low; duplicates window chrome (layout, menus) which is a layout cost, not a rules cost (the shells hold no rules).
+
+**(c) BOTH from one shared level/engine core (RECOMMENDED).** The core is everything in 5.1 except the shells. The three shells are: the **Make** Toys window, the **Play** Toys window, and the **rpg-edit** book (which carries both as modes). What each shell adds: the Toys shells add only a window layout and a launcher; the rpg-edit shell adds the editor's palette/camera/chat/h-ai and recursion (editor inside a game inside the editor); the core adds level format, engine op, event pages, driver, caps, harness.
+- Deciding reason: the core is the authority for every fact (one level format, one ledger, one rule set); a shell that adds a rule is a bug (a lint: no verb or rule name appears in only one shell). Separate windows are cheap to build and test first (b); inside-rpg-edit (a) is the recursion proof and the long-term home; building the core once makes both a layout job.
+- **The two separate windows are a labelled stopgap. Removal condition: the merge milestone M12 (one window, mode switch, section 5.6) passing its harness; until then two Toys entries exist and each is also reachable as a mode inside rpg-edit.**
+- Answers in order: one authority per fact (the core); modular (shells hold layout only); scalable (the 10th shell pays nothing); long term (merge, then more games as books); house shapes (toy.pdl, game.pdl, feed projection, pdl data, ledger, harness that can fail, capped files); cost and risk of (c): the cost of keeping the core shell-neutral (a discipline plus a lint) is small against the cost of rewriting at the merge.
+
+### 5.3 What "a recursive game engine" concretely means here (PROPOSAL; FACT versus proposed for each)
+rpg-edit is already an editor for games (FACT: it hosts Teropoly through Player > Play). Teario is a game that is an editor. The recursion is four distinct things:
+
+**(i) Teario's level editor expressed as event pages running inside the same engine it edits.**
+- FACT today: rpg-edit-hq's own verbs are event pages the UI plays (`@.apps/rpg-edit-hq/events/{place,remove,buy,...}`; `EVENT-VERB-PAGES-DESIGN.md`); blueprintz can show those pages.
+- PROPOSED: the Make tools are verbs with pages (`tm_new`, `tm_put`, `tm_save`, `tm_playtest`, `tm_publish`, `tm_validate`) in the SAME page format; the Make session state (selected tool, cursor, selection) is a small ledger/feed like a game's; the Make shell is a "game" to the editor (a book with `game.pdl`). So the tool that edits Teario levels is itself a Teario-engine/editor-engine artefact: change what a tool does by editing a page, in blueprintz.
+- Safety: tool pages run at human speed only (clicks); strokes are one verb per release (the cost rule).
+
+**(ii) A Teario level that embeds another playable level (a "door" into a nested level, depth-limited).**
+- FACT today: nothing nests runs. The nearest existing mechanics are doors in rpg-edit (stepping on a door plays `events/door_*` with a `transfer_player` node, EVENT-VERB-PAGES section 1).
+- PROPOSED: `PLACE | door | ... | to=<level>`; the door touch pushes a CONTEXT (section 5.5): a child run with its OWN ledger, the parent frozen at its current tick. Return pops the context with a result (`win|loss|abort`) that the parent's `RETURN` row records; a win in the child can grant the parent something through a normal page (open a gate). The child level is also a complete level playable on its own.
+
+**(iii) The editor opened from inside a game (edit the level you are playing).**
+- FACT today: Teropoly in rpg-edit is a game inside an editor, not the reverse.
+- PROPOSED: from Play, an `Edit` button pushes an editor context over the current run (the run is paused and its ledger closed with `END | abort`, or kept open and frozen: OPEN decision; simplest: the run ends `abort`, the edit starts from the level file, the author may Play-test as depth +1). This is the in-place merge of section 5.6 in miniature.
+
+**(iv) The engine editing its own event pages (the h-ai / blueprintz direction).**
+- FACT: h-ai (`hai_op.c`) proposes whitelisted edits and applies nothing until `/apply`; blueprintz reads and edits pages (edit UI pending as of 2026-10-20); the `tm_*` mechanics are plain pages.
+- PROPOSED but LAST and optional: the designer (or h-ai) edits a mechanic page (for example the stomp rule) and Teario recompiles and replays old runs under the NEW rules to show what changed (replays under changed rules are REFUSED by pin, section 3.4, so this is a deliberate "re-simulate and compare" tool, not a silent change). No recursion beyond that: the engine never edits a page during a run.
+
+### 5.4 Nested levels: the contexts, the ledgers, the cycle check (PROPOSAL)
+- A **context** is a run (or an editor session) with its own ledger, its own sim state, its own seed derived as `sha256(parent seed + parent ledger row number)`. Only the TOP context ticks; the others are frozen (their ledgers closed or idle). Therefore CPU is one sim at a time, the process count is unchanged (contexts live inside the one driver; no fork per context), and the picture shows only the top.
+- The parent's ledger records only `ENTER | tick | child_level | child_run` and later `RETURN | tick | child_run | child_end | result`. The child ledger's header carries `parent=<parent run id>/<parent row number>/<fnv of the parent ledger so far>`. The outer ledger gains exactly those two rows from an inner run: a test can compare the outer ledger byte for byte except for them.
+- **No shared mutable state:** a child reads its level and tuning; it cannot write the parent's entities, score, coins, or lives; the only value that crosses is the `result` row (and, if the door says so, a fixed reward applied BY THE PARENT'S page from the RETURN row). A parent replay re-runs the child from its own ledger (recursively) to verify the `child_end` hash.
+- **Cycle check:** a draft references a level by NAME (editable). `validate` and load walk the door graph depth-first with a visited set and REFUSE with `cycle: A > B > A`. A PUBLISHED level references by sha256, and a hash includes the contents including its own door targets, so a published level cannot contain its own hash: published levels form a DAG by construction (this is the reason publish resolves names to hashes). Negative control: a draft pair A -> B -> A by name is refused at load; a self-door (`to=A` inside A) is refused.
+- **Depth:** see 5.5.
+
+### 5.5 Termination and safety rules (PROPOSAL)
+| Rule | Value and why |
+|---|---|
+| **Max nesting depth** | `max_depth = 2` (engine ceiling 4 in C; `tuning.pdl` can lower it, never raise it above the ceiling). Depth counts every context pushed above the first: depth 0 = the first run or editor, depth 1 = one context above it, depth 2 = two above it. A push to depth 3 is REFUSED. Why 2: it covers the two chains that matter, run -> door -> door (a level inside a level inside a level) and run -> editor -> play-test -> (door at depth 3 refused); it is the least number that proves recursion is not a one-off special case (depth 1 could be a hard-coded exception); each extra level adds one live ledger, one frozen sim and one more place for a focus fight, for no new proof. |
+| Own ledger per context | a child ledger linked by the parent's ENTER row and its own `parent=` header; never a shared file |
+| Cycle check | at load and at validate, by level name for drafts; published by hash = DAG |
+| CPU split | only the top context ticks, so the sum cannot exceed one sim; total driver budget unchanged (under 15% of a core playing); a parked context costs 0 |
+| Processes | one driver per window, registered in `#.desktop/proc_registry.pdl` through the funnel (AGENTS.md "every process the house starts is registered"), exits with its owner; contexts are memory inside it; no `setsid nohup` and no fork per context; the harness case `spawn_lint` stays green |
+| Windows | a nested run and an opened editor reuse the SAME window (the picture changes); no second window opens; this is the answer to "stack of windows" |
+| Time | a context also has `max_run_ticks`; a frozen parent does not age |
+| Parent unchanged | the parent state is a function of its ledger; an inner run cannot change it (test) |
+
+### 5.6 The join path: Make and Play become one window (owner update; PROPOSAL)
+**Goal:** one window with a mode switch; the two Toys entries become one (or aliases). The prototype ships as two windows because each is smaller to build, test and drive; the plan keeps the merge a LAYOUT change by making these true from day one:
+
+| Shared piece | Why it makes the merge a layout change |
+|---|---|
+| ONE core (level format, `teario` engine op, `tm_*` pages, driver, tuning, `state.pdl`) | neither shell has a private rule or verb; a lint fails if a verb or rule name is used by only one shell |
+| ONE feed schema `state/game_ui.txt` with a `mode=make|play` key and the union of the keys both shells use | a merged window reads the same keys; bars appear by `mode` |
+| Bars declared in `layouts.pdl` with the `modes` column (FACT: `BAR | id | key | slot | modes | default | group | note`; Teropoly uses `play`) | Make bars have `modes=make`, Play bars `modes=play`, shared bars (level name, status) both; the merged window shows the right set per mode, which is what `ui_mode_op` and `sides_mode_memory.pdl` already do (FACT, onboarding doc) |
+| Stable object ids (`tm-*`, `tp-*`) never reused with a different meaning | scripts and harnesses survive the merge |
+| The same control verbs (`teario_ctl`) for both | a button in either shell is the same line |
+| One canvas element and one cell/pixel mapping (published in the feed) | no coordinate logic lives in a shell |
+
+Milestones that join them (full list in section 7; the order matters):
+- **J1 Play-test in place (M10):** the Make window gets a Play pane/toggle: Play-test starts a depth-1 context (the editing session is the depth-0 context, frozen); no second window; Esc returns. Requires: the driver works headless of its own window (proved by the Toys Play window and the harness), the context stack (M9), and a Make-side canvas that can show the sim picture.
+- **J2 Edit while playing (part of M12):** pause the sim in Play, pick a tile, edit, resume. Rule: the edit changes the level hash, so the run is closed `END | abort | reason=edited` and the continuation is a NEW run; a mid-run `LEVEL | tick | newhash` row would make a run unverifiable, so it is not allowed. "Edit while playing" therefore means "pause, edit, restart from a nearby checkpoint tick" (OPEN: replay the old inputs up to the checkpoint on the new level; allowed only as a labelled practice run that can never be a verified clear).
+- **J3 One window (M12):** Make and Play share the window; mode switch Make/Play; the two `toy.pdl` entries are replaced by one (or one remains as an alias that launches with `mode=`). Removal of the stopgap. Condition for starting J3: J1 and J2 stable for a defined run of harness cases; the picture-in-window route verified (M0); Make and Play bars both declared with ids and modes; no shell-private verbs (the lint is green); window size fits both bar sets at the minimum resolution (OPEN, not measured).
+What must be true FIRST (preconditions): the context stack and the "driver without its own window" property (M9); the feed and layouts with `modes` (M5/M6); the canvas rect and click-to-cell path verified (M0 S3/S4); the harness `see`/`ensure`/`in` scripts for both shells; the lint.
+
+### 5.7 The recursion sanity test (a harness case that can fail; PROPOSAL; name `tm_recursion`)
+Pal + case `.pdl` + C ops, scratch house under `/tmp`, NO Python, no new `.sh`:
+1. Fixture levels `L0`, `L1`, `L2`, `L3` (each a door to the next, each with a trivially reachable goal) and `A`, `B` (a draft cycle by name), `S` (a self door).
+2. depth 0 (play `L0` alone): clears; ledger replays; END win.
+3. depth 1 (`L0` door into `L1`): the child runs, returns win; the PARENT ledger differs from the depth-0 baseline in exactly the ENTER and RETURN rows (assert by diff); the child ledger header names the parent row and hash; replay of the parent verifies the child.
+4. depth 2 (`L0` -> `L1` -> `L2`): passes the same assertions at both links.
+5. depth 3 (`L0` -> `L1` -> `L2` -> `L3`): the push is REFUSED with a named reason (`depth 3 exceeds max_depth 2`), the player stays in `L2` (no crash, no new ledger), and the `L2` ledger records nothing for the refused door.
+6. cycle: `A -> B -> A` is refused at LOAD with `cycle: A > B > A`; `S -> S` refused; a published pair resolves to hashes and cannot cycle (assert: hash of A differs when its door target changes).
+7. outer unchanged: run `L0` three times, with and without an inner run that the player loses; the outer ledger bytes minus ENTER/RETURN are equal each time.
+8. process hygiene: during the nested run `ps` shows exactly ONE driver child of the window, registered in `proc_registry.pdl`; after the window is closed, zero survivors (the CPU pitfalls 15 test: close the window and list what survives).
+9. CPU: a parked context costs 0 (sample the driver's ticks, children and wakeups in 3 s windows over 30 s per CPU pitfalls 26 and 28; write the producer's state (`running=1`?) next to the number).
+10. Negative controls (the assertion can fail): a build with `max_depth` raised to 3 must FAIL step 5; a build without the cycle check must FAIL step 6; a hand-edited ENTER row must be refused by replay.
+**Failure modes the case names:** stack of windows (a nested run opening a window: asserted none), focus fights (In: ON/off flips during a push: asserted In: state unchanged across push/pop), unbounded forks (process count), ghost state in the outer game (outer ledger diff and a file-audit that no state file changed), a stale feed after a pop (the feed says the parent's `level=` again), a leaked parked context after Esc (the stack depth returns to 0).
+
+## 6. Data for data-hq
+
+Level data and runs feed the data studio through the exporter shape the data-hq plan proposes (`GAME | export | <program>`, not yet in the core: N5). Every table is a PROJECTION made by `teario export` (replay-based, byte-identical on regeneration).
+
+| Table | Columns (PROPOSAL) | Made from |
+|---|---|---|
+| `levels.csv` | `hash, name, author, version, parent, status, width, height, n_enemies, n_coins, n_blocks, jump_v, gravity, published_ts, validate_result` | level files + publish ledger |
+| `runs.csv` | `run_id, level_hash, driver, ticks, result, score, coins, stomps, deaths, time_left, input_rows` | run ledgers by replay |
+| `deaths.csv` | `run_id, level_hash, tick, cell_x, cell_y, tile_under, cause (enemy, spikes, pit, time), enemy_kind` | replay (the derived-event stream `tp_log`; deaths are NOT ledger rows, they are computed) |
+| `edits.csv` | `level_id, seq, op (put, erase, rect, fill, move, undo), cell_x, cell_y, tile, ts` | the capped edit journal (only the last 500 per level while the journal is a ring) |
+| `difficulty.csv` | `level_hash, bot_result, bot_ticks, min_jumps, min_time, clear_rate, mean_deaths_per_clear` | validate + stats |
+
+**Questions the tables answer:** where do players die (deaths by cell and by tile; a heat map over the level, a data-hq panel: category x measure and a 2D density); the clear rate and time to clear per level; which tiles and entities are never used (tile histogram of levels vs placements); the difficulty curve over an author's levels; whether jump_v and gravity variants change the clear rate; which published levels are unbeatable by the bot yet cleared by a human (the interesting ones); how many edits before a first clear.
+
+**Difficulty estimate by bot (PROPOSAL):** the validation bot's minimum number of jumps, the narrowest margin of any jump (distance versus the knob's reach), and the search size give a repeatable pre-publish score; human clear rate replaces it as data comes in. Label: a heuristic, to be compared with real human clear rates before it is believed.
+
+**Training data for a level-playing AI trained off this machine (PROPOSAL, per data-hq section 7.5):** from runs, one row per input decision (tick, a window of the state around the hero (a small tile patch plus nearby entities, by replay), the action mask, the outcome label (cleared / died within N ticks)); human-seat runs enter training only on an explicit flag; jobs run on debil or the Mac, never here (AGENTS.md, memory `offload heavy/GPU to remote`); free models only. Replay makes the features exact (a feature equals the replayed state, the same test as data-hq P6). A second use: a level GENERATOR trained on published levels; nothing about it is designed here.
+
+Classes (data-hq): runs by a human are `private`, runs by bots and the harness `public`; the share/import of a level (section 4.10) is separate from run privacy (OPEN, section 8).
+
+## 7. Milestones, harness cases, what a human must SEE
+
+Effort ranking is relative (S small, M medium, L large, XL very large); estimates, not promises. Every milestone ends with a harness case that can fail, a PNG a person opens (owner priority: visible before/after plus the click path), a compendium entry, a decision-log observation, and a commit scoped to its paths.
+
+| M | What | Harness case (names proposed) | A human must SEE (PNG) | Live drive scripts | Effort |
+|---|---|---|---|---|---|
+| M0 | Spikes, no game: S1 held-key delivery (does a release or auto-repeat reach the game); S2 picture rate: a driver moves 20 dots at 30 Hz, measure fps and CPU with children and wakeups; S3 canvas rect in the objects dump; S4 a click on a map canvas reaches a verb; S5 side-view page accepted by the 2D view | `tm_spike_input`, `tm_spike_rate` (null result needs a positive control, CPU pitfalls 31) | 20 dots moving: two PNGs a known number of ticks apart | `tm-spike-keys`, `tm-spike-click` | S to M |
+| M1 | Level format, tiles.pdl, validator (static), hash, `teario` verbs `load`, `check` | `tm_level` (parse, bad rows refused, hash stable, size limits, unknown key kept) | the level drawn as a desk in the 2D view (`teario page`) | `tm-open-play` | S |
+| M2 | Physics integrator (fixed point), the 9 core behaviours, golden traces | `tm_physics` (jump apex equals the knob, fall, wall, ceiling, plank, spring; pinned trace hashes; replay equals live; step cost measured by a C op) | a stepped hero over a tile floor, 3 PNGs mid-jump | none | M |
+| M3 | Run ledger + replay + tamper refused + caps + hash pin | `tm_replay`, `tm_ghost`, `tm_audit`, `tm_regen` (the four NO-GHOST tests) | none beyond the replay summary | none | M |
+| M4 | `tp_*` interpreter, `tm_*` pages, `teario compile` projection; coin, block, enemy, stomp, hurt, power-up, goal, death/respawn | `tm_events` (one check per mechanic row of 2.5; mutants: a wrong rule fails; compiled table is a pure projection), `tm_cpu` (step under 1 ms, no forks) | a clear sequence in PNGs: coin counter up, block bumped, enemy stomped, goal | `tm-play-keys` | L |
+| M5 | Play shell: Toys entry, window, HUD, driver, feed, pause, idle cost | `tm_driver` (starts, pauses (ledger frozen), restarts from the ledger, exits with the owner, usage errors; COST guard: quiet frames rebuild nothing), `live_tm_play` | the Play window from the Toys menu with HUD and hero; PNG of the Toys menu entry | `tm-open-play`, `tm-play-keys`, `tm-pause` | L |
+| M6 | Make shell: palette, canvas, tools, save/open, undo journal, sidebar | `tm_make` (verbs: put, rect, erase, fill, undo/redo; file atomic; journal capped), `live_tm_make` (3 real clicks reach the file) | the Make window with a painted level; before/after PNG of one stroke | `tm-open-make`, `tm-paint-ground` | L |
+| M7 | Validator bot (BFS) + difficulty; publish with verified clear + immutability | `tm_bot` (gap wider than the jump = no; narrowed = yes; knob flips the answer), `tm_publish` (5 negative controls of 3.5) | the bot path drawn over the level; Publish refused PNG, Publish ok PNG | `tm-publish-refused`, `tm-publish-ok` | L |
+| M8 | Scrolling camera, long levels, active-window stepping | `tm_scroll` (camera clamp, entity activation window, cost flat with level size) | the same hero at x=3 and x=120 | `tm-run-long` | M |
+| M9 | Context stack + door + nested ledger (no UI beyond a door); `max_depth`, cycle check | `tm_recursion` (section 5.7) | the door, then the nested level, then back: three PNGs | `tm-door` | M to L |
+| M10 | Join step 1: Play-test in place (Make window gets a Play pane) | `tm_playtest_in_place` (one window, depth +1, Esc returns, parent unchanged), live | one PNG per mode in the SAME window | `tm-playtest` | M |
+| M11 | Inside rpg-edit (placement (a)): book `teario`, `game.pdl`, Player > Play, Make mode bars; click-to-verb on the editor canvas (or the fallback) | `tm_editor_game` (game.pdl rows, feed keys, watchdog, clock hold), `live_tm_editor` (the editor opens the level, Play runs, bars and HUD ON SCREEN) | rpg-edit with the Teario level, bars and HUD (the Teropoly lesson: assert what is on screen, open the PNG) | `tm-editor-open`, `tm-editor-play` | XL |
+| M12 | Join step 2 and 3: edit while playing (pause, edit, new run); one window; retire the two Toys entries (the stopgap's removal condition) | `tm_join` (modes, bars by mode, ids unchanged, no shell-private verbs lint, edit-while-playing closes the run as abort, never a verified clear) | one window, Make mode and Play mode, same ids | `tm-join` | L |
+| M13 | data-hq exporter (`GAME | export`), the four tables, difficulty | `tm_export` (rows equal replay, byte-identical regeneration, hand-edited table changes nothing) | none | M |
+| M14 | Training export + one offloaded bot job (debil/Mac) | `tm_train_features` | the bot clearing a level (video or PNG strip) | none | L |
+| M15 | Share/import with verified-proof replay on import | `tm_share` (tampered proof refused) | an imported level listed after replay | `tm-import` | M |
+Ordering note: M0 first (it can change the plan); M1 to M3 are the deterministic core and can be proven with no window at all; M4 to M6 give the two shells; M7 to M8 make it a product; M9 and M10 are the recursion and the first join step; M11 is the placement (a) integration; M12 completes the join.
+
+**Risks (honest):**
+- Physics feel needs a human; the harness cannot judge fun, only exactness. Budget tuning rounds with the owner.
+- Relay input speed and key release are UNVERIFIED (M0); the fallback (latch plus scripted ledger) keeps the project testable but a latch is not Mario-like to a person.
+- Picture rate in the 2D view is UNMEASURED; if it is under about 10 fps the product is a stepped or slow game, and the plan changes (lower tick, or a native canvas, which is a renderer matter).
+- The in-process interpreter (N1) is the one big new piece; if it grows beyond a few hundred lines the "mechanics as events" claim weakens. Guard: the compile projection and a size budget in the case.
+- Art and IP: names are placeholders; "Teario" resembles a trademarked name (legal check not done).
+- CPU on the weak CPU: a game at 30 Hz is the first house program that runs a fast loop for minutes; measure with children and wakeups, run next to a browser, state the idle and active cost in the commit (AGENTS.md), keep In: off for seconds only.
+- File growth: runs, journals, published store, picture files. Caps in 3.3, second guard in `cpu_guard` before the driver ships.
+- Scope creep: swimming, ladders, shells, bosses, multiplayer, 3D: all extensions via rows; none is in v1.
+- The shared renderer and the editor are high-collision files; the plan changes none of them (a launch branch in the taskbar manager is not even needed: Toys entries are `toy.pdl` folders).
+
+## 8. Open decisions for the owner
+
+1. **Name and wording:** keep "Teario-Make/Play" as a working name? It resembles a trademarked product; a rename before release is cheap now. User-visible names: Teario-Make, Teario-Play; identifiers `teario`, `tm_`, `tp_`.
+2. **Single screen first?** Proposal: yes (16 x 12 in M2 to M7), scrolling in M8.
+3. **Art style and own-character set:** pixel art by the generator; hero, five enemies, blocks and items in section 1 are PLACEHOLDERS; names from the lore (`22.lore-ip`) or new?
+4. **Held keys:** if M0 shows no key release, is a latch mode acceptable for people, or does the renderer need a small release-event channel (a shared-file change, owner approval)?
+5. **Share/import format and who sees what:** levels as `.pdl` + proof run; are published levels visible to all local users (public class) or per user (private class, `xyzfs/users` data stays out of code branches)? Runs by humans private by default?
+6. **Does a bot clear count as a verified clear?** Proposal: no for publishing (the Mario-Maker rule is a human clear), yes for the validator and difficulty.
+7. **Level author identity:** the user uid, a display name, or the pet? (Possession: "all characters playable" suggests any character may be the hero; the hero is a data row, not special.)
+8. **Is recursion depth 2 right?** A bigger number allows deeper level-in-level games at more focus and CPU risk.
+9. **Edit while playing:** only as a restart from a checkpoint (proposal), or a live edit that voids the run?
+10. **Scope of 3D:** parity is a house rule; accept a 2D-only v1 for a side-view game, with 3D as a later projection?
+11. **Is the interpreter allowed to be a text-include of a pure step function** (the house rule's "pure, 2+ consumers" shape), or must it be an op with IPC (slower)?
+12. **Where the join lands:** one window inside rpg-edit only, or also a standalone single window under Toys?
+
+## 9. External references (repo paths only; no outside URLs are given because I did not check any)
+
+House root `x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/`:
+- `@.apps/deskopoly/` (`game.pdl`, `tuning.pdl`, `state.pdl`, `verbs.pdl`, `nav.pdl`, `layouts.pdl`, `tests/*.pdl`, `ops/deskopoly.c`, `ops/deskopoly_driver.c`, `ops/deskopoly_ctl.c`), `@.apps/rpg-edit-hq/` (`time.pdl`, `verbs.pdl`, `toy.pdl`, `events/`, `ops/hai_op.c`, `ops/rpg_edit_hq.c`), `@.apps/rpg-space/events/{collision,death,respawn,...}`, `@.apps/layout-studio/`, `@.apps/generator-hq/`, `@.apps/chess/toy.pdl`.
+- `&.widgits/_shared-lib/petslike_core.c` (`book_driver` line 209, `game_clock_hold` line 939, `game_chat_hook` line 1505, watchdog line 1883), `&.widgits/_shared-lib/ops/relay_drive.c`, `&.widgits/_shared-lib/ops/hash_op.c`, `&.widgits/_shared-lib/harness/README.md`.
+- `#.ref/menu/event_commands.registry.pdl` (170 commands), `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c` (`toys_scan_one_root`, line 5040), `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (`kh_capture_key`, `hq_dispatch_xevent`), `&.hq-apps/blueprintz/`, `&.hq-apps/chat-hai/`, `&.hq-apps/sql-hq/`.
+BOOK (`#.#.calendar-dox/!.HQ-IQ-BOOK/`): `16.game/EVENT-VERB-PAGES-DESIGN.md`, `16.game/RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md`, `16.game/EARLY-SURVIVOR-AND-COMMON-EVENTS.md`, `16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`, `16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md`, `16.game/TEAR-IT-TILES-100-2026-11-05.md`, `22.lore-ip/00-INDEX.md`, `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`, `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` (D55 to D58; D60 proposed below), `03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md` (items 23 to 33), `03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md`, `06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md`, `08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md`.
+Class: `#.#.calendar-dox/1-1.HARNECIENT.SMOL/DAY_29_TEARIO_MAKE_PLAY.txt`.
+
+## 10. Ready-to-paste rows for the lead
+
+### D60 block (decision log, format of D55 to D58)
+```
+## D60 (2026-11-09, PLAN ONLY, nothing built): Teario-Make/Play, a level editor plus platformer levels, as ONE shared core with a Make shell and a Play shell (two Toys windows now, one window later), also reachable inside rpg-edit
+**Asked:** a Mario-Maker-like game (working name Teario-Make/Play; "Mario" must never ship, own tiles and characters): a level editor plus playable levels; all mechanics as events; the UI; similar to or even INSIDE rpg-edit (a recursive game engine is welcome) as well as its own open path under Toys. Owner update the same day: Make and Play may be two separate x11-hq windows for the prototype and are meant to join into one. Plan: `16.game/TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09.md`; class `DAY_29_TEARIO_MAKE_PLAY.txt`.
+**Choices (the five questions):** a level is a `.pdl` file, identified by its sha256 and immutable once published; the mechanics are event pages (the authoring form, editable in blueprintz) compiled to a projection that a small in-process interpreter runs at a fixed 30 ticks a second, because a house page run is a process launch (EVENT-VERB-PAGES section 3.4) and the clock cannot tick that fast; the run ledger holds INPUTS only (edge-encoded, tick numbers, level hash, seed, check values), so replay is exact and a hand-edited ledger is refused; a level may be published only after the author's recorded clear replays to a win ("verified clear"). Placement: (c) one shared core (level format, engine op, event pages, driver) with shells: the Make Toys window, the Play Toys window, and the rpg-edit book carrying both as modes. Recursion: nested levels through doors, an editor opened from a game, the editor's tools as event pages; each nested run has its OWN ledger linked by ENTER/RETURN rows, only the top context ticks, one driver per window, max depth 2 (ceiling 4), a draft cycle check by name (published levels are a DAG by hash). Undo: the level file is the authority and a capped edit journal gives undo (an EDIT-row ledger as authority is the labelled alternative).
+**Not chosen:** one page run per tick (150 launches a second); clock `AT` rows as ticks (poll 300 ms, spacing 12 s); a row per tick in the ledger; floats in the step (replay would drift between builds); the level editor inside rpg-edit only (the recursion proof and the Toys path both matter); two separate cores for Make and Play (the merge would be a rewrite); per-shell rules; shipping the name "Mario".
+**Stopgap with removal condition:** two separate windows (Make and Play) are a stopgap; removed when the merge milestone M12 (one window, mode switch, harness `tm_join`) passes.
+**OPEN:** held keys (no key-release line found in the window's input path; M0 spike), the picture rate of the 2D view for a 30 Hz sim, the canvas click to verb route in the editor, a side-view page in the 2D view, the name and trademark check, share/import and privacy class, whether a bot clear counts, the depth number, text-include versus op for the step function, `GAME | export` (not in the core).
+**OBS:** none yet (plan). M0 spikes first; each milestone ends with a harness case that can fail, a PNG opened and a scoped commit.
+```
+
+### Index line for `16.game/00-INDEX.md`
+```
+- Teario-Make/Play, a Mario-Maker-like level editor + platformer (PLAN, 2026-11-09, owner request; nothing built): level = `.pdl`, mechanics = event pages run in-process at 30 ticks a second, run = inputs-only ledger with exact replay, publish only after a verified clear; one shared core, a Make shell and a Play shell (two Toys windows now, one window later, also inside rpg-edit); nested levels with depth 2 and a recursion sanity test: `TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09.md` (decision D60), class `1-1.HARNECIENT.SMOL/DAY_29_TEARIO_MAKE_PLAY.txt`.
+```
+
+### ROADMAP row for section 3.4 Games
+```
+| **Teario-Make/Play** (working name; a side-view platformer level editor + playable levels): level = `.pdl`, mechanics = event pages (in-process interpreter, 30 ticks a second), inputs-only ledger with exact replay, publish only after a verified clear; one shared core with a Make shell and a Play shell (two Toys windows for the prototype, joining into one), also inside rpg-edit; recursion (nested levels, depth 2) with a sanity test; data-hq exporter; milestones M0 to M15 | `plan` | `16.game/TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09.md`, decision D60; owner request 2026-11-09 |
+```

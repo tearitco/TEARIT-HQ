@@ -1,0 +1,70 @@
+# 🧱🏃 DAY 29 — Teario-Make and Teario-Play: A Level Maker, a Game Inside a Game, and Why Recursion Needs a Limit 🏃🧱
+# ===================================================
+# Title: "🧱🏃 DAY 29 — Teario-Make and Teario-Play: A Level Maker, a Game Inside a Game, and Why Recursion Needs a Limit 🏃🧱"
+# Characters: TOMO, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+# Long-form: written 2026-11-09. This is a PLAN. Nothing of Teario is built and nothing was run. The house facts were read in the repo this week. Teario is a working name.
+# Companion documents: BOOK 16.game TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09, decision D60, NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07, and DAY 27.
+
+**THE NARRATOR:** The owner asked for a level maker: build a platformer level, and anyone can play it. It is not built. Today is the plan, and one idea we have never tried: a game that contains its own editor, and levels that contain other levels.
+
+**MAXINE:** Like the famous plumber game with a level maker. Can we copy it?
+
+**TOMO:** The idea, yes. Nothing else. Our own tiles, characters and sounds. Even the name Teario sounds too close to someone else's, so that is for the owner.
+
+**IQA:** What is a level maker, to the engine?
+
+**TOMO:** A level is data. One plain text file: a grid with one letter per tile, a list of things placed on it, the start, the goal, and rules like gravity and the time limit. And it has a fingerprint, a hash. Change one tile and the fingerprint changes.
+
+**MAXINE:** And jumping, stomping, coins?
+
+**TOMO:** Events. Each mechanic is an event page, like the pages for doors, death and respawn. A coin pickup is a page. A stomp is a page. A block that gives a power-up when you hit it from below is a page.
+
+**IQA:** Every page run starts three small programs. A platformer needs thirty updates a second.
+
+**TOMO:** Right. That is a hundred and fifty launches every second, and the clock cannot help, because it checks every three hundred milliseconds. So pages are how you write a mechanic, and a small new interpreter inside the game driver runs the fast ones in memory. Slow ones, like clearing a level, still use real pages. That interpreter is the biggest new piece and risk.
+
+**MAXINE:** And the ledger? We cannot write every frame.
+
+**TOMO:** We do not. The ledger holds only the inputs: which keys were down, and the tick number when that changed. A row per change, not per tick. Everything else follows from the level, the physics and a seed. Same inputs, same game. Whole numbers only, so builds cannot disagree. Edit a row by hand and the replay notices and refuses.
+
+**IQA:** That gives the maker rule: you cannot publish what you have not beaten.
+
+**TOMO:** The verified clear. You play your level and the run is recorded. To publish, the engine replays it, and it must end in a win on exactly this level. Change one tile afterwards and the fingerprint no longer matches. Published levels never change. Edit one and you make a new version that points to its parent, and it needs its own clear.
+
+**MAXINE:** Can a computer check it is beatable?
+
+**TOMO:** A bot searches moves with the same physics and writes any path it finds as a real run. But reachable is not fair, so it never replaces the human clear.
+
+**THE NARRATOR:** Now the owner's question. Where does it live? Inside the rpg editor, or on its own under Toys?
+
+**TOMO:** Both, from one core. The core is the level format, the engine, the event pages and the driver. Around it are shells, and a shell is only a window layout and a launcher, with no rules. The owner said that for the first version Make and Play may be two separate windows, meant to join into one. So two Toys windows, each also reachable in the editor, are a stopgap, with a written end date: the day one window with a mode switch passes its test.
+
+**MAXINE:** How do two windows become one without a rewrite?
+
+**TOMO:** By discipline from day one. Both use the same core, the same feed file, the same control commands and the same stable names for every button. The bars are declared with a mode, make or play, and the editor already shows bars by mode. Then small steps. First, play-test in place: press Play inside Make and the game runs in the same window. Second, edit while playing: pause, change a tile, restart. The edit changes the fingerprint, so that run is closed and can never be a verified clear. Third, one window.
+
+**IQA:** So what is a recursive game engine?
+
+**TOMO:** Four things. One, the editor's tools are event pages, running inside the engine they edit. Two, a door in one level leads into another level, a whole game on its own. Three, you open the editor from inside a game, to edit the level you are playing. Four, much later, the engine helps edit its own event pages, with the model proposing and the owner saying apply.
+
+**MAXINE:** That sounds like it could run away forever.
+
+**TOMO:** So it has rules. First, a depth limit of two. The first game is depth zero, a door into a level is depth one, a door inside that is depth two. A third door is refused, and the player stays where they are with a reason on screen. Two covers the chains that matter, a door in a door, and play, edit, play-test.
+
+**IQA:** And the rest?
+
+**TOMO:** Each nested run has its own ledger, linked to its parent by two rows, enter and return. The outer ledger changes in nothing else, and no mutable state is shared. Only the top level ticks, the others are frozen, so the cost is one game at a time. One registered driver per window, and no new window opens. And a cycle check: a draft level that leads back to itself by name is refused at load. Published levels point by fingerprint, and a fingerprint contains the contents, so a published level cannot contain itself.
+
+**MAXINE:** How do we know it works?
+
+**TOMO:** A test that can fail. Depth zero, one and two must pass. Depth three must be refused with a named reason. The cycle must be refused. The outer ledger must be identical, byte for byte, apart from the two link rows. A build with the limit raised must fail the test. Then we close the window and nothing may survive.
+
+**THE NARRATOR:** What the studio will show: every level, run and death goes to the data studio from DAY 27. Where players die, as a heat map. Clear rate and time to clear. Which tiles nobody uses. And the bot's difficulty estimate.
+
+**IQA:** Honest limits, please.
+
+**TOMO:** Nothing is built. The first milestone is spikes, to learn three things we do not know: whether a held key reaches the game, because we only found key presses and never releases; how fast the picture can update at thirty ticks; and whether a click on the canvas can reach a command. Whether a jump feels good needs a human; a test can prove the height, not the fun. Art and names are our own placeholders. And it is the first house program to run a fast loop for minutes on a weak machine, so we measure it with children and wakeups.
+
+**THE NARRATOR:** What exists: the editor, the Play button, the replay habit from Teropoly, the event pages, the Toys menu. What does not: the interpreter, the level format, both windows, and every test here. First come the spikes, because the answers may change the plan.
