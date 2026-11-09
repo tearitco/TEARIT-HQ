@@ -651,6 +651,7 @@ static void resolve_doc_url(const char *rel, char *out, size_t olen);
 static int peval_budget(JSContext *ctx, const char *src, size_t src_n, char *errbuf, size_t errbuf_sz);
 static void nb_mutation_notify_childlist(JSContext *ctx, NbNode *target, NbNode *added, NbNode *removed, NbNode *prev, NbNode *next);
 static void nb_mutation_notify_attribute(JSContext *ctx, NbNode *target, const char *name, const char *old_value);
+static void nb_mutation_notify_characterData(JSContext *ctx, NbNode *target, const char *old_value);
 static void nb_obs_recheck(JSContext *ctx);
 static NbNode *get_this(JSContext *ctx, JSValueConst this_val);
 static char *attrs_set(const NbNode *n, const char *name, const char *val);
@@ -2952,6 +2953,43 @@ static JSValue nb_el_textContent_set(JSContext *ctx, JSValueConst this_val, int 
      * child text node, so a childList record would invent nodes. */
     nb_obs_recheck(ctx);
     return JS_UNDEFINED;
+}
+/* CharacterData (Text/Comment) data+nodeValue (2026-11-09). Text nodes are
+ * the only mutation source for characterData; setting data replaces the
+ * text, notifies characterData observers with the old value, and
+ * re-evaluates geometry. nodeValue mirrors data on text nodes and is null
+ * elsewhere, as in a browser. */
+static JSValue nb_text_data_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewString(ctx, (n && n->text) ? n->text : "");
+}
+static JSValue nb_text_data_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    char *vl = NULL;
+    const char *v = "";
+    if (argc > 0 && JS_IsString(argv[0])) v = (vl = JS_ToCString(ctx, argv[0]));
+    else if (argc > 0 && !JS_IsNull(argv[0]) && !JS_IsUndefined(argv[0])) v = (vl = JS_ToCString(ctx, argv[0]));
+    char *old = strdup(n->text ? n->text : "");
+    free(n->text);
+    n->text = strdup(v ? v : "");
+    JS_FreeCString(ctx, vl);
+    nb_mutation_notify_characterData(ctx, n, old);
+    free(old);
+    nb_obs_recheck(ctx);
+    return JS_UNDEFINED;
+}
+static JSValue nb_node_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->text || n->tag) return JS_NULL;
+    return JS_NewString(ctx, n->text ? n->text : "");
+}
+static JSValue nb_node_value_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->text || n->tag) return JS_UNDEFINED;
+    return nb_text_data_set(ctx, this_val, argc, argv);
 }
 static JSValue nb_el_innerHTML_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
@@ -5631,9 +5669,8 @@ static JSValue nb_sel_get(JSContext *ctx, JSValueConst this_val, int argc, JSVal
  * feature-detect it, but dynamic DOM changes never reached callbacks. This
  * is the smallest honest slice: childList mutations, subtree
  * matching, and set/removeAttribute records are delivered to the observer's
- * callback as a queued microtask, batched per task. CharacterData is parsed
- * for API compatibility but has no text-node mutation source in this DOM
- * yet, so it intentionally remains a no-op rather than fabricating a record. */
+ * callback as a queued microtask, batched per task. CharacterData records
+ * arrive when a Text node's data changes (2026-11-09). */
 #define NB_MUT_MAX_OBSERVERS 32
 #define NB_MUT_MAX_TARGETS 64
 #define NB_MUT_MAX_ATTRS 32
@@ -5798,6 +5835,23 @@ static void nb_mutation_notify_attribute(JSContext *ctx, NbNode *target, const c
                 allowed = !strcasecmp(t->attrs[ai], name);
             if (allowed) {
                 nb_mut_append_record(ctx, o, nb_mut_record(ctx, "attributes", target, NULL, NULL, NULL, NULL, name, old_value));
+                break;
+            }
+        }
+    }
+    nb_obs_recheck(ctx);
+}
+static void nb_mutation_notify_characterData(JSContext *ctx, NbNode *target, const char *old_value) {
+    if (!ctx || !target) return;
+    for (int oi = 0; oi < g_mut_obs_count; oi++) {
+        NbMutObserver *o = &g_mut_obs[oi];
+        if (JS_IsUndefined(o->self) || !JS_IsFunction(ctx, o->callback)) continue;
+        for (int ti = 0; ti < o->target_count; ti++) {
+            NbMutTarget *t = &o->targets[ti];
+            int direct = (t->target == target);
+            int nested = (t->subtree && t->character_data && nb_mut_node_is_ancestor(t->target, target));
+            if (t->character_data && (direct || nested)) {
+                nb_mut_append_record(ctx, o, nb_mut_record(ctx, "characterData", target, NULL, NULL, NULL, NULL, NULL, old_value));
                 break;
             }
         }
@@ -6578,6 +6632,14 @@ static void install_dom_classes(JSContext *ctx) {
      * spec; put it there, not here. */
     JS_SetPropertyStr(ctx, Np, "cloneNode",      JS_NewCFunction(ctx, nb_el_cloneNode, "cloneNode", 1));
     JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "nodeValue");
+        JS_DefinePropertyGetSet(ctx, Np, nm,
+            JS_NewCFunction(ctx, nb_node_value_get, "get nodeValue", 0),
+            JS_NewCFunction(ctx, nb_node_value_set, "set nodeValue", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, Ep, "remove",         JS_NewCFunction(ctx, nb_el_remove_js, "remove", 0));
     JSValue Hp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Hp, Ep);
@@ -6588,6 +6650,14 @@ static void install_dom_classes(JSContext *ctx) {
     JSValue Tp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Tp, Np);
     JS_SetPropertyStr(ctx, Tf, "prototype", JS_DupValue(ctx, Tp));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "data");
+        JS_DefinePropertyGetSet(ctx, Tp, nm,
+            JS_NewCFunction(ctx, nb_text_data_get, "get data", 0),
+            JS_NewCFunction(ctx, nb_text_data_set, "set data", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JSValue Dp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Dp, Np);
     JS_SetPropertyStr(ctx, Df, "prototype", JS_DupValue(ctx, Dp));
