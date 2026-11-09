@@ -198,7 +198,10 @@ void main() {
          * step axis is wrong for the first cell - it's the board-bbox
          * entry face, not this voxel's). Matches the CPU DDA. */
         float ct; int cf;
-        if (slab(ro, rd, vec3(c), vec3(c) + 1.0, ct, cf) && ct < bestT) {
+        /* SEAM FIX (2026-11-08): the DDA has just stepped INTO this solid cell, so the ray hits it. The exact slab test can fail by a rounding error exactly on a cell edge or corner (a low camera over a flat floor, columns of different thickness); the old code then fell through to "!ghosted -> break" with NO hit and the pixel showed the SKY: a one-pixel dotted line in the exact sky colour (reproduced offline, bv_gpu_seam_test). Fall back to the DDA's own entry distance and face (stepping +axis enters a cell through its min face 2*ax, stepping -axis through its max face 2*ax+1). */
+        bool slab_ok = slab(ro, rd, vec3(c), vec3(c) + 1.0, ct, cf);
+        if (!slab_ok) { ct = tcur; cf = 2 * ax + ((st[ax] < 0) ? 1 : 0); }
+        if (ct < bestT) {
           float b0 = bestT, m0 = mshade; bool h0 = hit, s0 = self_lit; int f0 = face; vec3 c0 = col;
           bestT = ct; hit = true; self_lit = false; face = cf; mshade = -1.0;
           vec3 wp = ro + rd * ct;

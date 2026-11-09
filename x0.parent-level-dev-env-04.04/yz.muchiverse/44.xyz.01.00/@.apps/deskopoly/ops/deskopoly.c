@@ -871,7 +871,7 @@ static int v_page(int argc, char **argv) {
     for (int i = 0; i < nt; i++) { int bx, by; ring_xy(i, n, &bx, &by); int tf; const char *kd = T[i].kind;
         if (!strcmp(kd, "go")) tf = PG_go; else if (!strcmp(kd, "tax")) tf = PG_tax; else if (!strcmp(kd, "rest") || !strcmp(kd, "free")) tf = PG_rest; else if (!strcmp(kd, "chance")) tf = PG_chance; else if (!strcmp(kd, "chest")) tf = PG_chest;
         else if (!strcmp(kd, "jail")) tf = PG_jail; else if (!strcmp(kd, "gotojail")) tf = PG_gotojail; else tf = PG_group[g_schema == 2 ? (T[i].group < 10 ? T[i].group : 0) : (T[i].group & 7)];
-        int rise = 2;   /* one voxel high like every other map (owner 2026-11-08: "why deviate?"): buildings are decorations on the cells, never extra height */
+        int rise = 0;   /* NO per-cell depth: a flat floor is plain "floor,wall" cells like every other board (owner 2026-11-08: "why deviate?"). A third value gives columns of unequal thickness and the GPU raymarcher then leaks SKY at their boundaries at a low camera (dotted diagonal lines, reproduced offline by bv_gpu_seam_test: 0 seam px uniform, 114-264 with thick ring columns). Buildings are decorations on the cells, never extra height */
         for (int y = 0; y < PG_block; y++) for (int x = 0; x < PG_block; x++) { ct[by * PG_block + y][bx * PG_block + x] = tf; cd[by * PG_block + y][bx * PG_block + x] = rise; }
         if (st && owner[i] >= 0) { ct[by * PG_block + PG_block / 2][bx * PG_block + PG_block / 2] = PG_owner[owner[i]]; owned++; }
         if (st && g_schema == 2 && PG_block == 3) { int ox = bx * 3, oy = by * 3;
@@ -880,7 +880,7 @@ static int v_page(int argc, char **argv) {
         } }
     static char buf[64 * 64 * 12 + 512]; buf[0] = 0;
     ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles, HD_rock);
-    for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "%s%d,0,%d", x ? " " : "", ct[y][x], cd[y][x]); ap(buf, sizeof buf, "\n"); }
+    for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "%s%d,0", x ? " " : "", ct[y][x]); ap(buf, sizeof buf, "\n"); }
     write_atomic(dd, "cells.txt", buf);
     { char mk[1200]; snprintf(mk, sizeof mk, "%s/cells.marker", dd); struct stat ms; FILE *mf = fopen(mk, (!stat(mk, &ms) && ms.st_size >= 4096) ? "w" : "a"); if (mf) { fputc('1', mf); fclose(mf); } }   /* the house marker rule: the engine reloads a desk when this file GROWS (never on mtime) */
     buf[0] = 0; for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "."); ap(buf, sizeof buf, "\n"); } write_atomic(dd, "map.txt", buf);

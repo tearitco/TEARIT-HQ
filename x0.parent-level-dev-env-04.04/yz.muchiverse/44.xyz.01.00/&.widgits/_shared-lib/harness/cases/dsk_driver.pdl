@@ -42,6 +42,9 @@ RUN | $T/app/ops/+x/deskopoly_ctl.+x | start | $T/edit/state/games/deskopoly
 WAIT_HAS | edit/edit-pchq/pieces/world_01/state.txt | desk_id=play | 8000 | the-world-flips-to-the-generated-play-desk
 EXPECT_LACKS | $T/app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | People1 7 | STALE-ROWS-NEVER-SHOW-the-previous-sessions-row-is-gone-at-the-instant-the-world-points-at-the-play-desk
 WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | start | 8000 | START-writes-the-opening-rows
+WRITE   | edit/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+EXPECT_HAS | edit/edit-pchq/pieces/world_01/state.txt | desk_id=board | VACUITY-the-launcher-race-is-reproduced-the-editors-board-launcher-wrote-the-authored-board-desk-while-a-game-is-running
+WAIT_HAS | edit/edit-pchq/pieces/world_01/state.txt | desk_id=play | 8000 | THE-DESK-GUARD-puts-the-world-back-on-the-play-desk-within-8-s-the-players-live-there-without-it-they-vanish
 RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
 EXPECT_OUT_IS | 6 | lobby-plus-4-joins-plus-start-is-6-rows
 WAIT_HAS | app/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | People1 3 2 1 D | 8000 | the-fourth-player-row-is-written

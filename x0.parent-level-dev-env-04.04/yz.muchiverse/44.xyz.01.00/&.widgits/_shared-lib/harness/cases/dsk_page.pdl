@@ -88,10 +88,10 @@ RUN | /usr/bin/cmp | -s | $T/d82/cells.txt | $T/d83/cells.txt
 EXPECT_EXIT | 1 | VACUITY-one-house-changes-the-picture-the-cells-differ
 RUN | /usr/bin/cmp | -s | $T/d82/events.txt | $T/d83/events.txt
 EXPECT_EXIT | 0 | and-a-build-moves-nobody-the-player-rows-are-identical
-RUN | /usr/bin/grep | -cE | ,0,[3-9] | $T/d527/cells.txt
-EXPECT_OUT_IS | 0 | ONE-VOXEL-HIGH-no-cell-of-the-busiest-page-is-deeper-than-2
-RUN | /usr/bin/grep | -c | ,0,2 | $T/d527/cells.txt
-EXPECT_OUT_IS | 33 | and-the-ring-really-has-depth-2-cells-in-all-33-rows-so-the-check-above-can-fail
+RUN | /usr/bin/grep | -cE | ,0,[0-9] | $T/d527/cells.txt
+EXPECT_OUT_IS | 0 | A-PLAIN-FLOOR-no-cell-carries-a-third-value-per-cell-depth-gives-columns-of-unequal-thickness-and-the-GPU-raymarcher-leaks-sky-between-them-see-bv_gpu_seam
+RUN | /usr/bin/grep | -c | ,0 | $T/d527/cells.txt
+EXPECT_OUT_IS | 33 | VACUITY-the-page-really-has-33-rows-of-cells-so-the-check-above-can-fail
 EXPECT_LACKS | $T/d527/extrusion.pdl | EXTRUDE | a-flat-desk-has-no-EXTRUDE-row-the-decorations-are-cells-not-height
 EXPECT_HAS | $T/d527/extrusion.pdl | desk_id | and-the-file-names-its-desk
 RUN | /usr/bin/ls | $T/d527

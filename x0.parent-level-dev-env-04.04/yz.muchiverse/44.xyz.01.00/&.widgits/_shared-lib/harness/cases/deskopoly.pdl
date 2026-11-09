@@ -173,7 +173,7 @@ EXPECT_OUT | 15x15 tiles=16 owned=0 | a-fresh-board-is-a-15x15-page-with-nothing
 EXPECT_HAS | d0/cells.txt | width=15 | the-header-says-width-15
 EXPECT_HAS | d0/cells.txt | atlas_tiles=43 | the-header-comes-from-page-pdl
 RUN | awk | NR==9{print $5} | $T/d0/cells.txt
-EXPECT_OUT_IS | 32,0,2 | an-unowned-tile-keeps-its-group-floor-in-the-centre
+EXPECT_OUT_IS | 32,0 | an-unowned-tile-keeps-its-group-floor-in-the-centre
 RUN | grep | -c | , | $T/d0/cells.txt
 EXPECT_OUT_IS | 15 | fifteen-cell-rows-plus-no-header-line-has-a-comma
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | new | 7
@@ -181,7 +181,7 @@ RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d7 | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/test/cells.rgba
 EXPECT_OUT | 15x15 tiles=16 owned=12 | after-the-game-twelve-tiles-show-an-owner
 RUN | awk | NR==9{print $5} | $T/d7/cells.txt
-EXPECT_OUT_IS | 33,0,2 | the-hard-state-shows-on-the-page-tile-1-carries-p4s-marker
+EXPECT_OUT_IS | 33,0 | the-hard-state-shows-on-the-page-tile-1-carries-p4s-marker
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d7
 RUN | cp | $T/d7/cells.txt | $T/d7/cells.again
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $HOUSE/@.apps/deskopoly | $T/g | page | $T/d7

@@ -55,12 +55,12 @@ static int eng1(const char *v, const char *x, char *out, size_t cap) { const cha
  * Throttled to one page per 250 ms. */
 static char DESKDIR[P], ATLAS[P], WORLD[P]; static int page_pending = 0; static long last_page = 0;
 static void set_desk(const char *want) {
-    FILE *f = fopen(WORLD, "r"); if (!f) return; static char buf[4096]; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f); static char out[4400]; out[0] = 0; int saw = 0;
+    FILE *f = fopen(WORLD, "r"); if (!f) return; static char buf[4096]; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f); static char out[4400]; out[0] = 0; int saw = 0, same = 0;
     for (char *p = buf; *p; ) { char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
-        if (ll >= 8 && !strncmp(p, "desk_id=", 8)) { snprintf(out + strlen(out), sizeof out - strlen(out), "desk_id=%s\n", want); saw = 1; }
+        if (ll >= 8 && !strncmp(p, "desk_id=", 8)) { snprintf(out + strlen(out), sizeof out - strlen(out), "desk_id=%s\n", want); saw = 1; if (ll == 8 + strlen(want) && !strncmp(p + 8, want, strlen(want))) same = 1; }
         else if (ll < 600) snprintf(out + strlen(out), sizeof out - strlen(out), "%.*s\n", (int)ll, p);
         if (!e) break; p = e + 1; }
-    if (!saw) return; char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", WORLD); FILE *w = fopen(tmp, "w"); if (!w) return; fputs(out, w); fclose(w); rename(tmp, WORLD);
+    if (!saw || same) return; char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", WORLD); FILE *w = fopen(tmp, "w"); if (!w) return; fputs(out, w); fclose(w); rename(tmp, WORLD);
 }
 /* 2D: the RPG Maker picture of the page (map.png beside map.txt, which the 2D renderer blits 1:1 and draws the events.txt characters over). Made from the page by the engine's `preview` verb and the house raw_to_png op. */
 static int run_prog(char *const av[]) { pid_t pid = fork(); if (pid < 0) return -1; if (pid == 0) { alarm(10); int fd = open("/dev/null", O_RDWR); if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); } execv(av[0], av); _exit(127); } int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1; }
@@ -265,6 +265,8 @@ int main(int argc, char **argv) {
             if (ov[0] != '1' && ht[0] == '1') { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
             else if (ov[0] != '1') { hwait = 0; tick_once(); } else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
+        /* DESK GUARD (owner 2026-11-08 "the entities seemed to disappear from the board"): the players live on the generated PLAY desk; the editor's board launcher writes the world's desk from its own page (page=board) a little AFTER a driver that started at launch (the core watchdog) has switched it, and the players vanished with a game running. While a game is in play the driver keeps asserting its desk (a 4 KB read per 2 s, a write only when it really differs). */
+        { static long dg = 0; long td = now_ms(); if (mode_play && td - dg >= 2000) { dg = td; set_desk("play"); } }
         if (dirty) publish();
         /* ADAPTIVE POLL (owner 2026-11-08 "irregular sleep cycles"): 80 ms while the game is live (walking, ticking); 250 ms on the setup screen, while stopped, and while a human is thinking: nothing can happen but a button press. Measured with the context-switch counter: 12-14 wakeups/s before. */
         usleep((mode_play && ((run && !hwait) || walking_now || w_resync || page_pending)) ? 80000 : 250000);   /* anything with a deadline (a walk, a resync, a deferred page) keeps the fast poll even while stopped */

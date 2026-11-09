@@ -1,0 +1,31 @@
+# bv_gpu_seam (2026-11-08, owner: "i dont see those sky bleed-through micro artifacts on civ-rpgce and the petslike family ... investigate and fix"). OFFLINE, headless EGL/GLES, no window and no live engine.
+# CAUSE (reproduced): in the fragment shader's voxel walk a ray that has just stepped INTO a solid cell then ran the exact ray/box test; when that test failed by a rounding error (a ray on a cell edge or corner, a low camera over a flat floor, columns of
+# different thickness) the code fell through to "no hit, stop" and the pixel showed the SKY: a one-pixel dotted line in exactly the sky colour (135,180,220 measured in the live frame, floor rows on both sides). Teropoly showed it most because its page wrote a
+# per-cell depth (ring 3 voxels, interior 2); a uniform floor of the same size is clean. FIX: fall back to the walk's own entry distance and face (the ray cannot miss a cell it just entered), in ops/bv_raymarch.frag.
+# This case: (1) the CURRENT shader leaks no sky on the Teropoly-like floor at three low pitches and on a uniform floor; (2) NEGATIVE: the pre-fix shader (fixtures/bv_raymarch_pre_seam_fix.frag) DOES leak on that floor, so the detector can fail.
+# FAIR COMPARISON: the camera is 0.6 above the floor top in BOTH scenes. The detector counts sky pixels below the centre-column horizon; the far edge of a finite board seen from the sides is not a seam, so scenes are chosen where it does not apply (measured: pre-fix 264/138/114 px, fixed 0/0/0).
+# Needs a GL driver (exit 2 = no GL = the case fails loudly, never silently passes). Compiles the test from source (about 3 s).
+RESULTS | ../results/bv_gpu_seam.txt
+ENV     | LC_ALL | C
+CASE    | seams
+SCRATCH |
+COPY    | &.widgits/board-viewer/ops/bv_gpu_seam_test.c | seam.c
+COPY    | &.widgits/board-viewer/ops/bv_gpu_raymarch.c | bv_gpu_raymarch.c
+COPY    | &.widgits/board-viewer/ops/bv_gpu_raymarch.h | bv_gpu_raymarch.h
+RUN     | /usr/bin/gcc | -O2 | -I | $T | -o | $T/seam | $T/seam.c | $T/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
+EXPECT_EXIT | 0 | the-seam-test-compiles
+ENV     | BV_SHADER_FILE | $HOUSE/&.widgits/board-viewer/ops/bv_raymarch.frag
+RUN     | $T/seam | 33 | -0.02 | 3.6 | 1
+EXPECT_EXIT | 0 | FIXED-the-CURRENT-shader-leaks-no-sky-on-the-Teropoly-like-thick-ring-floor-at-pitch-minus-0.02
+RUN     | $T/seam | 33 | -0.04 | 3.6 | 1
+EXPECT_EXIT | 0 | and-at-pitch-minus-0.04
+RUN     | $T/seam | 33 | -0.06 | 3.6 | 1
+EXPECT_EXIT | 0 | and-at-pitch-minus-0.06
+RUN     | $T/seam | 33 | -0.02 | 1.6 | 0
+EXPECT_EXIT | 0 | and-on-a-UNIFORM-33x33-floor-eye-0.6-above-the-top
+ENV     | BV_SHADER_FILE | $HOUSE/&.widgits/_shared-lib/harness/fixtures/bv_raymarch_pre_seam_fix.frag
+RUN     | $T/seam | 33 | -0.02 | 3.6 | 1
+EXPECT_EXIT | 1 | NEGATIVE-the-PRE-FIX-shader-DOES-leak-sky-on-the-same-floor-exit-1-so-the-detector-can-fail
+RUN     | $T/seam | 33 | -0.04 | 3.6 | 1
+EXPECT_EXIT | 1 | and-at-pitch-minus-0.04
+CLEAN   |
