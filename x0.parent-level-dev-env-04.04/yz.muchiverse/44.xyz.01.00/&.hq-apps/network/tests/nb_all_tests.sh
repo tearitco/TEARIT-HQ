@@ -58,6 +58,10 @@ echo "########## PerformanceObserver delivers User Timing marks (hermetic)"
 bash "$HERE/nb_perf_observer_test.sh" || RC=1
 
 echo
+echo "########## Range and Selection select real content (hermetic)"
+bash "$HERE/nb_range_selection_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

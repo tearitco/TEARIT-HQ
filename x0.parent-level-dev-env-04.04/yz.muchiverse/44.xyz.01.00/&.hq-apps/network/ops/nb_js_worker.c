@@ -4653,6 +4653,8 @@ static JSValue nb_parsed_head(JSContext *ctx, JSValueConst this_val, int argc, J
     NbNode *el = doc ? find_tag_first(doc, "head") : NULL;
     return el ? push_node(ctx, el) : JS_NULL;
 }
+static JSValue nb_dom_createRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_win_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 /* ---- DOMParser: HTML/XML snippet parsing (2026-11-09) ----
  * The previous parseFromString was the inert nb_empty_object: it returned a
  * plain {} with no document surface, so every library parsing a snippet
@@ -4699,6 +4701,8 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
     JSValue doc = push_node(ctx, root);
     /* Scoped document surface for this parsed tree only. */
     JS_SetPropertyStr(ctx, doc, "getElementById", JS_NewCFunction(ctx, nb_parsed_getElementById, "getElementById", 1));
+    JS_SetPropertyStr(ctx, doc, "createRange", JS_NewCFunction(ctx, nb_dom_createRange, "createRange", 0));
+    JS_SetPropertyStr(ctx, doc, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
     {
         JSAtom nm = JS_NewAtom(ctx, "documentElement");
         JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_documentElement, "get documentElement", 0), JS_UNDEFINED,
@@ -4915,6 +4919,482 @@ static JSValue nb_po_take_records(JSContext *ctx, JSValueConst this_val, int arg
     }
     JS_SetPropertyStr(ctx, this_val, "__nb_po_records", JS_NewArray(ctx));
     return old;
+}
+/* ---- Selection and Range (2026-11-09) ----
+ * The previous Range/Selection were inert plain stubs: new Range() created
+ * an empty object with no endpoints, and window.getSelection did not exist
+ * at all. This is a scoped first slice: endpoints, boundary setters,
+ * selectNode/selectNodeContents, collapse/cloneRange, toString over the
+ * flattened text stream, and a Selection managing ranges (addRange,
+ * removeAllRanges, collapse, getRangeAt, toString, anchor/focus). Content
+ * extraction (extractContents/cloneContents/deleteContents) and geometric
+ * rects are deliberately not claimed yet. Text order follows
+ * node_text_content (an element's own text precedes its children). */
+static long nb_txt_total(const NbNode *n) {
+    if (!n) return 0;
+    long len = n->text ? (long)strlen(n->text) : 0;
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        len += nb_txt_total(c);
+    return len;
+}
+static long nb_linpos(const NbNode *n) {
+    if (!n || !n->parent) return 0;
+    long pos = nb_linpos(n->parent);
+    if (n->parent->text) pos += (long)strlen(n->parent->text);
+    for (const NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling)
+        pos += nb_txt_total(s);
+    return pos;
+}
+static const NbNode *nb_top_root(const NbNode *n) {
+    if (!n) return NULL;
+    while (n->parent) n = n->parent;
+    return n;
+}
+static int nb_child_count(const NbNode *n) {
+    int c = 0;
+    if (!n) return 0;
+    for (const NbNode *x = n->first_child; x; x = x->next_sibling) c++;
+    return c;
+}
+static long nb_endpoint_lin(const NbNode *container, long offset) {
+    if (!container) return 0;
+    if (!container->tag || !container->tag[0]) {
+        long base = nb_linpos(container);
+        long max = container->text ? (long)strlen(container->text) : 0;
+        if (offset < 0) offset = 0;
+        if (offset > max) offset = max;
+        return base + offset;
+    }
+    long base = nb_linpos(container);
+    if (offset <= 0) return base;
+    long pos = base + (container->text ? (long)strlen(container->text) : 0);
+    const NbNode *c = container->first_child;
+    for (long k = 0; k < offset && c; k++) { pos += nb_txt_total(c); c = c->next_sibling; }
+    return pos;
+}
+static void nb_flatten(const NbNode *n, SB *b) {
+    if (!n) return;
+    sb_put(b, n->text);
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        nb_flatten(c, b);
+}
+static JSValue nb_range_compute_text(JSContext *ctx, JSValue r) {
+    JSValue sc = JS_GetPropertyStr(ctx, r, "__nb_r_sc");
+    JSValue so_v = JS_GetPropertyStr(ctx, r, "__nb_r_so");
+    JSValue ec = JS_GetPropertyStr(ctx, r, "__nb_r_ec");
+    JSValue eo_v = JS_GetPropertyStr(ctx, r, "__nb_r_eo");
+    NbNode *s = get_node(ctx, sc);
+    NbNode *e = get_node(ctx, ec);
+    int32_t so = 0, eo = 0;
+    JS_ToInt32(ctx, &so, so_v);
+    JS_ToInt32(ctx, &eo, eo_v);
+    JSValue out = JS_NewString(ctx, "");
+    if (s && e) {
+        SB b = {0, 0, 0};
+        nb_flatten(nb_top_root(s), &b);
+        long ls = nb_endpoint_lin(s, so);
+        long le = nb_endpoint_lin(e, eo);
+        char *str = b.s ? b.s : "";
+        long total = (long)strlen(str);
+        if (ls < 0) ls = 0;
+        if (le < ls) le = ls;
+        if (ls > total) ls = total;
+        if (le > total) le = total;
+        JS_FreeValue(ctx, out);
+        out = JS_NewStringLen(ctx, str + ls, (size_t)(le - ls));
+        free(b.s);
+    }
+    JS_FreeValue(ctx, sc); JS_FreeValue(ctx, so_v);
+    JS_FreeValue(ctx, ec); JS_FreeValue(ctx, eo_v);
+    return out;
+}
+static void nb_range_fill(JSContext *ctx, JSValue r) {
+    JSValue t = nb_range_compute_text(ctx, r);
+    JS_SetPropertyStr(ctx, r, "__nb_r_text", JS_DupValue(ctx, t));
+    JS_FreeValue(ctx, t);
+}
+static int nb_validate_endpoint(JSContext *ctx, JSValue v, long *out) {
+    if (!JS_IsObject(v)) return 0;
+    NbNode *n = get_node(ctx, v);
+    if (!n) return 0;
+    long max = (!n->tag || !n->tag[0]) ? (n->text ? (long)strlen(n->text) : 0) : nb_child_count(n);
+    *out = max;
+    return 1;
+}
+static JSValue nb_range_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int is_start) {
+    (void)argc;
+    if (!JS_IsObject(argv[0])) {
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "TypeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "TypeError: setStart/setEnd requires a node"));
+        return JS_Throw(ctx, er);
+    }
+    int32_t off = 0;
+    JS_ToInt32(ctx, &off, argv[1]);
+    long max = 0;
+    if (!nb_validate_endpoint(ctx, argv[0], &max)) {
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "TypeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "TypeError: setStart/setEnd requires a node"));
+        return JS_Throw(ctx, er);
+    }
+    if (off < 0 || off > max) {
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "IndexSizeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "IndexSizeError: offset out of range"));
+        return JS_Throw(ctx, er);
+    }
+    if (is_start) {
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_sc", JS_DupValue(ctx, argv[0]));
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_so", JS_NewInt32(ctx, off));
+    } else {
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_ec", JS_DupValue(ctx, argv[0]));
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_eo", JS_NewInt32(ctx, off));
+    }
+    nb_range_fill(ctx, this_val);
+    return JS_UNDEFINED;
+}
+static JSValue nb_range_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue obj = class_noop(ctx, this_val, 0, argv);
+    if (!JS_IsObject(obj)) return obj;
+    JSValue doc = get_global_attr(ctx, "document");
+    JS_SetPropertyStr(ctx, obj, "__nb_r_sc", doc);
+    JS_SetPropertyStr(ctx, obj, "__nb_r_so", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, obj, "__nb_r_ec", JS_DupValue(ctx, doc));
+    JS_SetPropertyStr(ctx, obj, "__nb_r_eo", JS_NewInt32(ctx, 0));
+    JS_FreeValue(ctx, doc);
+    nb_range_fill(ctx, obj);
+    return obj;
+}
+static JSValue nb_dom_createRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue cls = JS_GetPropertyStr(ctx, g, "Range");
+    JSValue proto = JS_GetPropertyStr(ctx, cls, "prototype");
+    JSValue r = JS_IsObject(proto) ? JS_NewObjectProto(ctx, proto) : JS_NewObject(ctx);
+    JS_FreeValue(ctx, proto);
+    JS_FreeValue(ctx, cls);
+    JSValue doc = (JS_IsObject(this_val) && get_node(ctx, this_val) &&
+                    get_node(ctx, this_val)->tag && !strcmp(get_node(ctx, this_val)->tag, "#document"))
+                    ? JS_DupValue(ctx, this_val)
+                    : JS_GetPropertyStr(ctx, g, "document");
+    JS_FreeValue(ctx, g);
+    JS_SetPropertyStr(ctx, r, "__nb_r_sc", JS_DupValue(ctx, doc));
+    JS_SetPropertyStr(ctx, r, "__nb_r_so", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, r, "__nb_r_ec", JS_DupValue(ctx, doc));
+    JS_SetPropertyStr(ctx, r, "__nb_r_eo", JS_NewInt32(ctx, 0));
+    JS_FreeValue(ctx, doc);
+    nb_range_fill(ctx, r);
+    return r;
+}
+static JSValue nb_sel_ranges(JSContext *ctx, JSValueConst sel) {
+    JSValue a = JS_GetPropertyStr(ctx, sel, "__nb_sel_ranges");
+    if (!JS_IsArray(ctx, a)) {
+        JS_FreeValue(ctx, a);
+        a = JS_NewArray(ctx);
+        JS_SetPropertyStr(ctx, sel, "__nb_sel_ranges", JS_DupValue(ctx, a));
+    }
+    return a;
+}
+static JSValue nb_win_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue sel = JS_GetPropertyStr(ctx, g, "__nb_selection");
+    if (!JS_IsObject(sel)) {
+        JS_FreeValue(ctx, sel);
+        JSValue cls = JS_GetPropertyStr(ctx, g, "Selection");
+        JSValue p = JS_GetPropertyStr(ctx, cls, "prototype");
+        sel = JS_NewObjectProto(ctx, p);
+        JS_FreeValue(ctx, p);
+        JS_FreeValue(ctx, cls);
+        JS_SetPropertyStr(ctx, sel, "__nb_sel_ranges", JS_NewArray(ctx));
+        JS_SetPropertyStr(ctx, g, "__nb_selection", JS_DupValue(ctx, sel));
+    }
+    JS_FreeValue(ctx, g);
+    return sel;
+}
+static JSValue nb_range_prop_common(JSContext *ctx, JSValueConst this_val) {
+    JSValue sc = JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+    JSValue ec = JS_GetPropertyStr(ctx, this_val, "__nb_r_ec");
+    NbNode *s = get_node(ctx, sc);
+    NbNode *e = get_node(ctx, ec);
+    JS_FreeValue(ctx, sc); JS_FreeValue(ctx, ec);
+    if (!s || !e) return JS_NULL;
+    NbNode *anc = g_dom_root;
+    for (NbNode *p = s; p; p = p->parent) {
+        for (NbNode *q = e; q; q = q->parent) if (p == q) { anc = p; break; }
+    }
+    return anc ? push_node(ctx, anc) : JS_NULL;
+}
+static JSValue nb_range_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    (void)argc; (void)argv;
+    switch (magic) {
+    case 0: return JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+    case 1: return JS_GetPropertyStr(ctx, this_val, "__nb_r_so");
+    case 2: return JS_GetPropertyStr(ctx, this_val, "__nb_r_ec");
+    case 3: return JS_GetPropertyStr(ctx, this_val, "__nb_r_eo");
+    case 4: {
+        JSValue sc = JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+        JSValue ec = JS_GetPropertyStr(ctx, this_val, "__nb_r_ec");
+        JSValue so = JS_GetPropertyStr(ctx, this_val, "__nb_r_so");
+        JSValue eo = JS_GetPropertyStr(ctx, this_val, "__nb_r_eo");
+        int same = JS_IsObject(sc) && JS_IsObject(ec) && (JS_StrictEq(ctx, sc, ec) || get_node(ctx, sc) == get_node(ctx, ec));
+        int32_t a = 0, b = 0; JS_ToInt32(ctx, &a, so); JS_ToInt32(ctx, &b, eo);
+        same = same && (a == b);
+        JS_FreeValue(ctx, sc); JS_FreeValue(ctx, ec); JS_FreeValue(ctx, so); JS_FreeValue(ctx, eo);
+        return JS_NewBool(ctx, same);
+    }
+    case 5: return nb_range_prop_common(ctx, this_val);
+    default: {
+        JSValue cache = JS_GetPropertyStr(ctx, this_val, "__nb_r_text");
+        if (!JS_IsString(cache)) {
+            JS_FreeValue(ctx, cache);
+            nb_range_fill(ctx, this_val);
+            cache = JS_GetPropertyStr(ctx, this_val, "__nb_r_text");
+        }
+        if (!JS_IsString(cache)) { JS_FreeValue(ctx, cache); return JS_NewString(ctx, ""); }
+        JSValue out = cache;
+        return out;
+    }
+    }
+}
+static JSValue nb_range_set_m(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    return nb_range_set(ctx, this_val, argc, argv, magic ? 0 : 1);
+}
+static int nb_node_index(NbNode *n) {
+    if (!n || !n->parent) return -1;
+    int i = 0;
+    for (NbNode *s = n->parent->first_child; s && s != n; s = s->next_sibling) i++;
+    return i;
+}
+static JSValue nb_range_before_after(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int is_start, int after) {
+    (void)argc;
+    if (!JS_IsObject(argv[0])) return JS_UNDEFINED;
+    NbNode *n = get_node(ctx, argv[0]);
+    if (!n || !n->parent || !n->parent->tag) {
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "InvalidNodeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "InvalidNodeError: node has no parent"));
+        return JS_Throw(ctx, er);
+    }
+    int idx = nb_node_index(n);
+    int off = after ? idx + 1 : idx;
+    JSValue p = push_node(ctx, n->parent);
+    JSValue a[2] = { p, JS_NewInt32(ctx, off) };
+    JSValue r = nb_range_set(ctx, this_val, 2, a, is_start);
+    JS_FreeValue(ctx, p);
+    return r;
+}
+static JSValue nb_range_ba_m(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    int is_start = (magic == 0 || magic == 1);
+    int after = (magic == 1 || magic == 3);
+    return nb_range_before_after(ctx, this_val, argc, argv, is_start, after);
+}
+static JSValue nb_range_select_node(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc;
+    if (!JS_IsObject(argv[0])) return JS_UNDEFINED;
+    NbNode *n = get_node(ctx, argv[0]);
+    if (!n || !n->parent || !n->parent->tag) {
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "InvalidNodeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "InvalidNodeError: node has no parent"));
+        return JS_Throw(ctx, er);
+    }
+    int idx = nb_node_index(n);
+    JSValue p = push_node(ctx, n->parent);
+    JSValue a[2] = { p, JS_NewInt32(ctx, idx) };
+    JSValue r = nb_range_set(ctx, this_val, 2, a, 1);
+    JS_FreeValue(ctx, p);
+    if (!JS_IsException(r)) {
+        p = push_node(ctx, n->parent);
+        a[0] = p; a[1] = JS_NewInt32(ctx, idx + 1);
+        JSValue r2 = nb_range_set(ctx, this_val, 2, a, 0);
+        JS_FreeValue(ctx, r2);
+        JS_FreeValue(ctx, p);
+    }
+    return r;
+}
+static JSValue nb_range_select_contents(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc;
+    if (!JS_IsObject(argv[0])) return JS_UNDEFINED;
+    NbNode *n = get_node(ctx, argv[0]);
+    if (!n) return JS_UNDEFINED;
+    int cnt = nb_child_count(n);
+    JSValue a[2] = { JS_DupValue(ctx, argv[0]), JS_NewInt32(ctx, 0) };
+    JSValue r = nb_range_set(ctx, this_val, 2, a, 1);
+    if (!JS_IsException(r)) {
+        a[0] = JS_DupValue(ctx, argv[0]); a[1] = JS_NewInt32(ctx, cnt);
+        JSValue r2 = nb_range_set(ctx, this_val, 2, a, 0);
+        JS_FreeValue(ctx, r2);
+    }
+    return r;
+}
+static JSValue nb_range_collapse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int to_start = argc > 0 ? JS_ToBool(ctx, argv[0]) : 0;
+    if (to_start) {
+        JSValue sc = JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+        JSValue so = JS_GetPropertyStr(ctx, this_val, "__nb_r_so");
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_ec", sc);
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_eo", so);
+        JS_FreeValue(ctx, sc); JS_FreeValue(ctx, so);
+    } else {
+        JSValue ec = JS_GetPropertyStr(ctx, this_val, "__nb_r_ec");
+        JSValue eo = JS_GetPropertyStr(ctx, this_val, "__nb_r_eo");
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_sc", ec);
+        JS_SetPropertyStr(ctx, this_val, "__nb_r_so", eo);
+        JS_FreeValue(ctx, ec); JS_FreeValue(ctx, eo);
+    }
+    nb_range_fill(ctx, this_val);
+    return JS_UNDEFINED;
+}
+static JSValue nb_range_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue cls = JS_GetPropertyStr(ctx, g, "Range");
+    JSValue proto = JS_GetPropertyStr(ctx, cls, "prototype");
+    JSValue r = JS_IsObject(proto) ? JS_NewObjectProto(ctx, proto) : JS_NewObject(ctx);
+    JS_FreeValue(ctx, proto); JS_FreeValue(ctx, cls); JS_FreeValue(ctx, g);
+    JSValue sc = JS_GetPropertyStr(ctx, this_val, "__nb_r_sc");
+    JSValue so = JS_GetPropertyStr(ctx, this_val, "__nb_r_so");
+    JSValue ec = JS_GetPropertyStr(ctx, this_val, "__nb_r_ec");
+    JSValue eo = JS_GetPropertyStr(ctx, this_val, "__nb_r_eo");
+    JS_SetPropertyStr(ctx, r, "__nb_r_sc", JS_DupValue(ctx, sc));
+    JS_SetPropertyStr(ctx, r, "__nb_r_so", JS_DupValue(ctx, so));
+    JS_SetPropertyStr(ctx, r, "__nb_r_ec", JS_DupValue(ctx, ec));
+    JS_SetPropertyStr(ctx, r, "__nb_r_eo", JS_DupValue(ctx, eo));
+    nb_range_fill(ctx, r);
+    JS_FreeValue(ctx, sc); JS_FreeValue(ctx, so); JS_FreeValue(ctx, ec); JS_FreeValue(ctx, eo);
+    return r;
+}
+static JSValue nb_range_detach(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue doc = get_global_attr(ctx, "document");
+    JS_SetPropertyStr(ctx, this_val, "__nb_r_sc", JS_DupValue(ctx, doc));
+    JS_SetPropertyStr(ctx, this_val, "__nb_r_so", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, this_val, "__nb_r_ec", JS_DupValue(ctx, doc));
+    JS_SetPropertyStr(ctx, this_val, "__nb_r_eo", JS_NewInt32(ctx, 0));
+    JS_FreeValue(ctx, doc);
+    nb_range_fill(ctx, this_val);
+    return JS_UNDEFINED;
+}
+static JSValue nb_range_to_string(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_range_get(ctx, this_val, 0, NULL, 6);
+}
+static JSValue nb_sel_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return nb_win_getSelection(ctx, this_val, argc, argv);
+}
+static JSValue nb_sel_add_range(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1 || !JS_IsObject(argv[0])) {
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "TypeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "TypeError: addRange requires a range"));
+        return JS_Throw(ctx, er);
+    }
+    JSValue a = nb_sel_ranges(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    JS_SetPropertyUint32(ctx, a, n, JS_DupValue(ctx, argv[0]));
+    JS_FreeValue(ctx, a);
+    return JS_UNDEFINED;
+}
+static JSValue nb_sel_remove_range(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1 || !JS_IsObject(argv[0])) return JS_UNDEFINED;
+    JSValue a = nb_sel_ranges(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    JSValue kept = JS_NewArray(ctx);
+    uint32_t k = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        JSValue e = JS_GetPropertyUint32(ctx, a, i);
+        if (!JS_StrictEq(ctx, e, argv[0])) JS_SetPropertyUint32(ctx, kept, k++, e);
+        JS_FreeValue(ctx, e);
+    }
+    JS_FreeValue(ctx, a);
+    JS_SetPropertyStr(ctx, this_val, "__nb_sel_ranges", kept);
+    return JS_UNDEFINED;
+}
+static JSValue nb_sel_remove_all(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JS_SetPropertyStr(ctx, this_val, "__nb_sel_ranges", JS_NewArray(ctx));
+    return JS_UNDEFINED;
+}
+static JSValue nb_sel_collapse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return nb_sel_remove_all(ctx, this_val, argc, argv);
+}
+static JSValue nb_sel_get_range(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int32_t i = argc > 0 ? JS_ToInt64(ctx, (int64_t[]){0}, argv[0]) : -1;
+    (void)i;
+    JSValue a = nb_sel_ranges(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    if (argc > 0 && JS_IsNumber(argv[0])) {
+        int64_t idx = 0; JS_ToInt64(ctx, &idx, argv[0]);
+        if (idx < 0 || (uint64_t)idx >= n) {
+            JS_FreeValue(ctx, a);
+            JSValue er = JS_NewError(ctx);
+            JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "IndexSizeError"));
+            JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "IndexSizeError: range index out of bounds"));
+            return JS_Throw(ctx, er);
+        }
+        JSValue out = JS_GetPropertyUint32(ctx, a, (uint32_t)idx);
+        JS_FreeValue(ctx, a);
+        return out;
+    }
+    JS_FreeValue(ctx, a);
+    JSValue er = JS_NewError(ctx);
+    JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "TypeError"));
+    JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "TypeError: getRangeAt requires an index"));
+    return JS_Throw(ctx, er);
+}
+static JSValue nb_sel_to_string(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    JSValue a = nb_sel_ranges(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    SB b = {0, 0, 0};
+    for (uint32_t i = 0; i < n; i++) {
+        JSValue r = JS_GetPropertyUint32(ctx, a, i);
+        JSValue t = JS_GetPropertyStr(ctx, r, "__nb_r_text");
+        if (JS_IsString(t)) {
+            char *s = JS_ToCString(ctx, t);
+            if (s) sb_put(&b, s);
+            JS_FreeCString(ctx, s);
+        }
+        JS_FreeValue(ctx, t); JS_FreeValue(ctx, r);
+    }
+    JS_FreeValue(ctx, a);
+    JSValue out = JS_NewString(ctx, b.s ? b.s : "");
+    free(b.s);
+    return out;
+}
+static JSValue nb_sel_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    (void)argc; (void)argv;
+    JSValue a = nb_sel_ranges(ctx, this_val);
+    JSValue lenv = JS_GetPropertyStr(ctx, a, "length");
+    uint32_t n = 0; JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    if (magic == 4) { JS_FreeValue(ctx, a); return JS_NewUint32(ctx, n); }
+    if (n == 0) { JS_FreeValue(ctx, a); return magic == 5 ? JS_NewString(ctx, "") : JS_NULL; }
+    JSValue r = JS_GetPropertyUint32(ctx, a, 0);
+    JS_FreeValue(ctx, a);
+    if (magic == 2) { JSValue v = JS_GetPropertyStr(ctx, r, "__nb_r_sc"); JS_FreeValue(ctx, r); return v; }
+    if (magic == 3) { JSValue v = JS_GetPropertyStr(ctx, r, "__nb_r_so"); JS_FreeValue(ctx, r); return v; }
+    if (magic == 6) { JSValue v = JS_GetPropertyStr(ctx, r, "__nb_r_ec"); JS_FreeValue(ctx, r); return v; }
+    if (magic == 7) {
+        JSValue sc = JS_GetPropertyStr(ctx, r, "__nb_r_sc");
+        JSValue ec = JS_GetPropertyStr(ctx, r, "__nb_r_ec");
+        JSValue so = JS_GetPropertyStr(ctx, r, "__nb_r_so");
+        JSValue eo = JS_GetPropertyStr(ctx, r, "__nb_r_eo");
+        int same = JS_StrictEq(ctx, sc, ec);
+        int32_t x = 0, y = 0; JS_ToInt32(ctx, &x, so); JS_ToInt32(ctx, &y, eo);
+        same = same && (x == y);
+        JS_FreeValue(ctx, sc); JS_FreeValue(ctx, ec); JS_FreeValue(ctx, so); JS_FreeValue(ctx, eo); JS_FreeValue(ctx, r);
+        return JS_NewBool(ctx, same);
+    }
+    JSValue v = nb_sel_to_string(ctx, this_val, 0, NULL);
+    JS_FreeValue(ctx, r);
+    return v;
 }
 /* ---- MutationObserver: child-list and attribute slice (2026-11-07) ----
  * The previous MutationObserver was an inert existence stub: pages could
@@ -6037,6 +6517,79 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_po_disconnect, "disconnect", 0));
         JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_po_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "PerformanceObserver", f);
+        /* Range (2026-11-09): endpoints, boundary setters, select, collapse,
+           clone, toString. */
+        f = JS_NewCFunction2(ctx, nb_range_ctor, "Range", 0, JS_CFUNC_constructor, 0);
+        p = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, f, "prototype", p);
+        {
+            JSAtom nm = JS_NewAtom(ctx, "startContainer");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_range_get, "get startContainer", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "startOffset");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_range_get, "get startOffset", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "endContainer");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_range_get, "get endContainer", 0, JS_CFUNC_generic_magic, 2), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "endOffset");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_range_get, "get endOffset", 0, JS_CFUNC_generic_magic, 3), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "collapsed");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_range_get, "get collapsed", 0, JS_CFUNC_generic_magic, 4), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "commonAncestorContainer");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_range_get, "get commonAncestorContainer", 0, JS_CFUNC_generic_magic, 5), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        JS_SetPropertyStr(ctx, p, "setStart", JS_NewCFunctionMagic(ctx, nb_range_set_m, "setStart", 2, JS_CFUNC_generic_magic, 0));
+        JS_SetPropertyStr(ctx, p, "setEnd", JS_NewCFunctionMagic(ctx, nb_range_set_m, "setEnd", 2, JS_CFUNC_generic_magic, 1));
+        JS_SetPropertyStr(ctx, p, "setStartBefore", JS_NewCFunctionMagic(ctx, nb_range_ba_m, "setStartBefore", 1, JS_CFUNC_generic_magic, 0));
+        JS_SetPropertyStr(ctx, p, "setStartAfter", JS_NewCFunctionMagic(ctx, nb_range_ba_m, "setStartAfter", 1, JS_CFUNC_generic_magic, 1));
+        JS_SetPropertyStr(ctx, p, "setEndBefore", JS_NewCFunctionMagic(ctx, nb_range_ba_m, "setEndBefore", 1, JS_CFUNC_generic_magic, 2));
+        JS_SetPropertyStr(ctx, p, "setEndAfter", JS_NewCFunctionMagic(ctx, nb_range_ba_m, "setEndAfter", 1, JS_CFUNC_generic_magic, 3));
+        JS_SetPropertyStr(ctx, p, "selectNode", JS_NewCFunction(ctx, nb_range_select_node, "selectNode", 1));
+        JS_SetPropertyStr(ctx, p, "selectNodeContents", JS_NewCFunction(ctx, nb_range_select_contents, "selectNodeContents", 1));
+        JS_SetPropertyStr(ctx, p, "collapse", JS_NewCFunction(ctx, nb_range_collapse, "collapse", 1));
+        JS_SetPropertyStr(ctx, p, "cloneRange", JS_NewCFunction(ctx, nb_range_clone, "cloneRange", 0));
+        JS_SetPropertyStr(ctx, p, "detach", JS_NewCFunction(ctx, nb_range_detach, "detach", 0));
+        JS_SetPropertyStr(ctx, p, "toString", JS_NewCFunction(ctx, nb_range_to_string, "toString", 0));
+        JS_SetPropertyStr(ctx, g, "Range", f);
+        /* Selection (2026-11-09): range list with anchor/focus and toString. */
+        f = JS_NewCFunction2(ctx, nb_sel_ctor, "Selection", 0, JS_CFUNC_constructor, 0);
+        p = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, f, "prototype", p);
+        {
+            JSAtom nm = JS_NewAtom(ctx, "rangeCount");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_sel_get, "get rangeCount", 0, JS_CFUNC_generic_magic, 4), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "anchorNode");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_sel_get, "get anchorNode", 0, JS_CFUNC_generic_magic, 2), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "anchorOffset");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_sel_get, "get anchorOffset", 0, JS_CFUNC_generic_magic, 3), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "isCollapsed");
+            JS_DefinePropertyGetSet(ctx, p, nm, JS_NewCFunctionMagic(ctx, nb_sel_get, "get isCollapsed", 0, JS_CFUNC_generic_magic, 7), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        JS_SetPropertyStr(ctx, p, "addRange", JS_NewCFunction(ctx, nb_sel_add_range, "addRange", 1));
+        JS_SetPropertyStr(ctx, p, "removeRange", JS_NewCFunction(ctx, nb_sel_remove_range, "removeRange", 1));
+        JS_SetPropertyStr(ctx, p, "removeAllRanges", JS_NewCFunction(ctx, nb_sel_remove_all, "removeAllRanges", 0));
+        JS_SetPropertyStr(ctx, p, "collapse", JS_NewCFunction(ctx, nb_sel_collapse, "collapse", 2));
+        JS_SetPropertyStr(ctx, p, "getRangeAt", JS_NewCFunction(ctx, nb_sel_get_range, "getRangeAt", 1));
+        JS_SetPropertyStr(ctx, p, "toString", JS_NewCFunction(ctx, nb_sel_to_string, "toString", 0));
+        JS_SetPropertyStr(ctx, g, "Selection", f);
         /* DOMParser: real HTML/XML snippet parsing into a document wrapper. */
         f = add_class(ctx, "DOMParser", JS_UNDEFINED);
         p = JS_GetPropertyStr(ctx, f, "prototype");
@@ -8261,6 +8814,8 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "querySelector", JS_NewCFunction(ctx, nb_dom_querySelector, "querySelector", 1));
         JS_SetPropertyStr(ctx, doc, "querySelectorAll", JS_NewCFunction(ctx, nb_dom_querySelectorAll, "querySelectorAll", 1));
         JS_SetPropertyStr(ctx, doc, "createTreeWalker", JS_NewCFunction(ctx, nb_doc_createTreeWalker, "createTreeWalker", 1));
+        JS_SetPropertyStr(ctx, doc, "createRange", JS_NewCFunction(ctx, nb_dom_createRange, "createRange", 0));
+        JS_SetPropertyStr(ctx, doc, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
         {
             JSValue impl = JS_NewObject(ctx);
             JS_SetPropertyStr(ctx, impl, "createHTMLDocument", JS_NewCFunction(ctx, nb_impl_createHTMLDocument, "createHTMLDocument", 1));
@@ -10511,6 +11066,7 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "scrollTo", JS_NewCFunction(ctx, nb_win_scrollTo, "scrollTo", 2));
     JS_SetPropertyStr(ctx, g, "scrollBy", JS_NewCFunction(ctx, nb_win_scrollBy, "scrollBy", 2));
     JS_SetPropertyStr(ctx, g, "scroll", JS_NewCFunction(ctx, nb_win_scrollTo, "scroll", 2));
+    JS_SetPropertyStr(ctx, g, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
     JS_SetPropertyStr(ctx, g, "nbFetchSync", JS_NewCFunction(ctx, nb_fetch_sync, "nbFetchSync", 4));
     JS_SetPropertyStr(ctx, g, "addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "removeEventListener", 2));
