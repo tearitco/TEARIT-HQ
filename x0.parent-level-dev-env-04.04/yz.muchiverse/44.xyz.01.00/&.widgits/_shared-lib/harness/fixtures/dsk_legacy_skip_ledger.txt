@@ -1,0 +1,12 @@
+EVENT|0|bank|lobby|-|0|ruleset=classic,schema=2,rules=662402adec97dd60,max=8
+EVENT|0|p1|join|A|0|driver=human,token=0,personality=-
+EVENT|0|p2|join|B|0|driver=human,token=1,personality=-
+EVENT|0|p3|join|C|0|driver=human,token=2,personality=-
+EVENT|0|bank|start|-|0|seed=7,players=3,rules=662402adec97dd60
+EVENT|0|p1|order|1,1|0|total=2
+EVENT|0|p2|order|1,2|0|total=3
+EVENT|0|p3|order|2,5|0|total=7
+EVENT|0|bank|first|-|0|p3
+EVENT|0|p3|roll|4,4|8|to=8;for-sale;doubles=1
+EVENT|0|p3|skip|-|8|declined
+EVENT|0|p3|roll|3,4|15|to=15;for-sale

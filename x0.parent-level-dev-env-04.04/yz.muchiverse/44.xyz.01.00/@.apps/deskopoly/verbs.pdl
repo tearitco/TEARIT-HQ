@@ -22,7 +22,9 @@ VERB | pay_debt  | no | ui | as=pN | classic: pay the debt once the cash covers 
 VERB | help      | no | ui | verb | list the verbs (from this file) and, in a classic game, the phase and what is legal now
 VERB | roll      | no | ui | as=pN        | the current player rolls two dice (seeded, recorded), moves, and the landing resolves (Start bonus, levy, rent, or a tile for sale)
 VERB | buy       | no | ui | -            | buy the tile the current player stands on (refused when unaffordable or not for sale)
-VERB | skip      | no | ui | -            | decline the tile for sale
+VERB | skip      | no | ui | -            | decline the tile for sale; in a classic game (auctions on, the default) the tile goes to AUCTION, left of you first, you last
+VERB | bid       | no | ui | amount as=pN | classic auction: bid at least the minimum, then the standing bid plus the step, at most your cash; only the bidder whose turn it is; the call that ends the auction also records the bank auction_end row
+VERB | pass      | no | ui | as=pN        | classic auction: drop out of this auction for good; when only the high bidder is left (or everyone passed) the auction ends: sold-to=<id>-<amount> or unsold
 VERB | end_turn  | no | ui | -            | finish the turn; the next active player is up
 VERB | autoplay  | no | ui | -            | play the whole game with each player's style (pets stand-in); writes decision rows
 VERB | status    | no | ui | -            | read-only: the whole state, derived by replaying the ledger
@@ -55,6 +57,8 @@ FLOW | help      | verbs.pdl,state/ledger.txt | -
 FLOW | roll      | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | buy       | state/ledger.txt,board.pdl | state/ledger.txt
 FLOW | skip      | state/ledger.txt           | state/ledger.txt
+FLOW | bid       | state/ledger.txt           | state/ledger.txt
+FLOW | pass      | state/ledger.txt           | state/ledger.txt
 FLOW | end_turn  | state/ledger.txt           | state/ledger.txt
 FLOW | autoplay  | state/ledger.txt,rules.pdl | state/ledger.txt,state/decisions.txt
 FLOW | status    | state/ledger.txt           | -
@@ -71,4 +75,6 @@ FLOW | preview   | <desk_dir>/cells.txt,cells.rgba | <out.raw>
 BRAIN | roll     | roll     | rules,autoplay,refusals | ok  |                 | every turn starts with a roll; nothing to choose
 BRAIN | buy      | buy      | autoplay,refusals       | ok  | blocked,refused | choose to buy the tile under you; blocked when the cash is not there
 BRAIN | skip     | skip     | autoplay                | ok  |                 | choose to leave the tile for the bank
+BRAIN | bid      | bid      | autoplay,refusals       | ok  | blocked,refused | bid the minimum raise while the price x style value and the cash allow (STOPGAP until M10); refused when below the minimum, below the standing bid plus the step, or above cash
+BRAIN | pass     | pass     | autoplay                | ok  |                 | leave the auction when the next bid is beyond value or cash
 BRAIN | end_turn | end_turn | autoplay                | ok  |                 | hand the dice on

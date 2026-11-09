@@ -7,6 +7,8 @@ ENV | LC_ALL | C
 CASE    | human
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+# M7 (2026-11-08): this case tests the game WITHOUT auctions (RULE auctions=off in its scratch ruleset: a declined tile stays with the bank, exactly the pre-M7 game, so its pinned winners and rounds stay valid). Auctions are tested in dsk_auction. LEDGER-HASH PINS were re-observed 2026-11-08: the row counts and winners are UNCHANGED (527 / 108 / 2643 rows), the hash moved only because the lobby row carries the rules hash and the scratch ruleset gained the row RULE auctions off.
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | h
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | human
@@ -55,6 +57,7 @@ EXPECT_OUT | CHECK ok schema=2 | the-invariants-hold-mid-game
 CASE    | auto
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | a
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | lobby | classic
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | join | A | pet
@@ -68,7 +71,7 @@ EXPECT_OUT | CHECK ok schema=2 events=527 sum=4500 | money-conserved-after-527-r
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | replay
 EXPECT_EXIT | 0 | the-whole-game-replays
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | ledger_hash
-EXPECT_OUT | rows=527 hash=5a77fbf55d847de2 | the-ledger-hash-is-pinned
+EXPECT_OUT | rows=527 hash=863e56853aa2b65e | the-ledger-hash-is-pinned
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | roll
 EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-over
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/a | autoplay
@@ -88,7 +91,9 @@ EXPECT_EXIT | 1 | NEGATIVE-a-wrong-rent-written-into-the-ledger-is-refused-by-re
 CASE    | bankrupt
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 COPYDIR | @.apps/deskopoly/rulesets/classic | app/rulesets/tiny
+APPEND  | app/rulesets/tiny/rules.pdl | RULE \p auctions \p off\n
 RUN | /usr/bin/sed | -i | s/start_cash    \p 1500/start_cash    \p 70/ | $T/app/rulesets/tiny/rules.pdl
 RUN | /usr/bin/sed | -i | s/pass_go       \p 200/pass_go       \p 0/ | $T/app/rulesets/tiny/rules.pdl
 RUN | /usr/bin/sed | -i | s/\p LevyA    \p tax      \p -1 \p 200/\p LevyA    \p tax      \p -1 \p 1  / | $T/app/rulesets/tiny/board.pdl
@@ -113,7 +118,7 @@ EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-the-game-is-over
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | bankrupt
 EXPECT_EXIT | 2 | NEGATIVE-bankrupt-after-over-is-refused
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/b | ledger_hash
-EXPECT_OUT | rows=108 hash=fb3f8fc2b371acbc | the-bankruptcy-game-hash
+EXPECT_OUT | rows=108 hash=61b3e70b2b86d060 | the-bankruptcy-game-hash
 RUN | /usr/bin/cp | $T/b/ledger.txt | $T/b/good.keep
 RUN | /usr/bin/sed | -i | s/\pbankrupt\pp1\p/\pbankrupt\pbank\p/ | $T/b/ledger.txt
 RUN | /usr/bin/cmp | -s | $T/b/good.keep | $T/b/ledger.txt

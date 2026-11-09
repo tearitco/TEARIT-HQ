@@ -12,7 +12,7 @@ STEP | tapid | pm-play
 STEP | sleep | 3000
 STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15
 STEP | see | label:TEROPOLY
-STEP | see | label:Choose the players
+STEP | see | label:the players, then START
 STEP | shot | @.apps/deskopoly/shots/01-setup.png
 STEP | press | label:speed
 STEP | sleep | 800

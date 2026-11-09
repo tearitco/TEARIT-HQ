@@ -7,6 +7,8 @@ ENV | LC_ALL | C
 CASE    | base
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+# M7 (2026-11-08): this case tests the game WITHOUT auctions (RULE auctions=off in its scratch ruleset: a declined tile stays with the bank, exactly the pre-M7 game, so its pinned winners and rounds stay valid). Auctions are tested in dsk_auction.
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
@@ -23,6 +25,7 @@ EXPECT_OUT_IS | 2 | two-go-to-jail-landings-from-the-gotojail-tile-are-in-the-ba
 CASE    | gotojail
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -48,6 +51,7 @@ EXPECT_OUT | CHECK ok | invariants-hold-with-a-jailed-player
 CASE    | jailturn
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -80,6 +84,7 @@ EXPECT_OUT | CHECK ok | money-still-conserved
 CASE    | jailfree
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -105,6 +110,7 @@ EXPECT_OUT | CHECK ok | invariants
 CASE    | jailforced
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -125,6 +131,7 @@ EXPECT_OUT | CHECK ok | invariants
 CASE    | jail3
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -147,6 +154,7 @@ EXPECT_OUT | next=p2 | the-turn-ends
 CASE    | doubles
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -167,7 +175,9 @@ EXPECT_OUT | phase=pre current=p1 round=49 pending=-1 debt=0 doubles=2 | owed-a-
 CASE    | debt
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 COPYDIR | @.apps/deskopoly/rulesets/classic | app/rulesets/tiny
+APPEND  | app/rulesets/tiny/rules.pdl | RULE \p auctions \p off\n
 RUN | /usr/bin/sed | -i | s/start_cash    \p 1500/start_cash    \p 70/ | $T/app/rulesets/tiny/rules.pdl
 RUN | /usr/bin/sed | -i | s/pass_go       \p 200/pass_go       \p 0/ | $T/app/rulesets/tiny/rules.pdl
 RUN | /usr/bin/sed | -i | s/\p LevyA    \p tax      \p -1 \p 200/\p LevyA    \p tax      \p -1 \p 1  / | $T/app/rulesets/tiny/board.pdl
@@ -197,6 +207,7 @@ EXPECT_EXIT | 2 | NEGATIVE-bankrupt-twice-is-refused
 CASE    | nodebt
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -212,6 +223,7 @@ EXPECT_EXIT | 2 | NEGATIVE-you-cannot-declare-bankruptcy-with-no-debt
 CASE    | tamper
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet

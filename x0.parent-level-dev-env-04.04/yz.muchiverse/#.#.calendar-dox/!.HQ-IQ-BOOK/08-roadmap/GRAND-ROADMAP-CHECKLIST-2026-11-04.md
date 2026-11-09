@@ -163,6 +163,6 @@ Handoff: `../16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-
 - [x] M11 board page and 3D players in the editor; sky seams on the floor fixed. OBS: `dsk_page` 42, `bv_gpu_seam` 7 (offline GPU), live floor-only box 0 isolated sky px vs 333 before; desk guard `dsk_driver` 70.
 - [x] Playing from the editor's Play button, human seat, driver watchdog. OBS: `live_dsk_seat` 23 (real window), `game_driver_watchdog` 10; watchdog verified live (relaunch without Play brought the feed up).
 - [~] M10 pets/ui/tick: pets and UI run through the editor driver; personalities NOT built (the pet policy is a stopgap).
-- [ ] M7 auctions, M8 debt queue, M9 trading and chat, M12 fuzz. NONE.
+- [x] M7 auctions (2026-11-08: case `dsk_auction` 57 checks, live `tests/dsk-seat-auction.pdl` 28 steps, PNG opened; limit: bankruptcy tiles return to the bank unsold). [ ] M8 debt queue, M9 trading and chat (non-blocking, per-turn allowance, spec 7.8), M12 fuzz. NONE.
 - [~] CPU: the clock daemon was 364% then 119% of a core (guard incidents 2026-11-08). Fixed in two passes (per-reminder 120 s gap, then a 12 s global spacing between ANY two fires): live with the producer running mean 2%, max 9% per 10 s window over 180 s. Gap: only minutes of live evidence; each phase-page event run is still ~1.3 s of CPU.
 - [ ] OWNER decisions: 3D `event_scale`, day/night from ledger rounds, neutral tile and card names, setup screen showing the play desk, whether to lengthen the 120 s reminder gap or disable shipped-OFF reminders.

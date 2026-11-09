@@ -1,0 +1,225 @@
+# dsk_auction: deskopoly classic, milestone M7 AUCTIONS (spec section 8; owner 2026-11-08: "the video-game way, and do auctions"). A `skip` on a tile offered for purchase opens an auction: all active players may bid, the player left of the
+# decliner first, the decliner LAST, the standing high bidder is skipped (never bids against themselves), a bid is >= the minimum first then standing + step and <= the bidder's cash, a pass is final, no timers (a human may think),
+# the call that records the last bid or pass also appends the bank's `auction_end` row (sold-to=<id>-<amount> or unsold). Building, buying and ending the turn are refused meanwhile. The state is DERIVED from the ledger by replay.
+# BACKWARD COMPATIBILITY: a pre-M7 ledger (`skip` recorded as `declined`) replays WITHOUT an auction (fixtures/dsk_legacy_skip_ledger.txt, written by the pre-M7 binary).
+# Pins were OBSERVED in scratch runs on 2026-11-08 (seed 7: p3 first, lands on Sky2 = tile 8, price 100). The pet bidding policy is a labelled STOPGAP (bid the minimum raise while within value: bold 130%, cautious 85%, coin 100% of price); M10 replaces it.
+RESULTS | ../results/dsk_auction.txt
+ENV | LC_ALL | C
+
+CASE    | humans
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_OUT | p3 roll: to=8;for-sale;doubles=1 | seed-7-p3-throws-4-4-and-lands-on-the-unowned-Sky2-with-a-roll-still-owed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | skip
+EXPECT_OUT | p3 skip: declined;auction | a-skip-opens-an-auction-instead-of-just-declining
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_OUT | phase=auction current=p3 | the-phase-is-auction
+EXPECT_OUT | AUCTION tile=8 name=Sky2 bid=0 high=- next=p1 min_next=10 passed=0 | the-bidding-starts-LEFT-of-the-decliner-p1-with-the-minimum-10
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | buy
+EXPECT_EXIT | 2 | NEGATIVE-buy-is-refused-while-an-auction-is-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | end_turn
+EXPECT_OUT | the auction must finish first (bid or pass) | NEGATIVE-end_turn-is-refused-and-says-why
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | build | 1
+EXPECT_OUT | an auction is open: bid or pass first | NEGATIVE-building-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_EXIT | 2 | NEGATIVE-rolling-is-refused-during-an-auction
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 5 | as=p1
+EXPECT_OUT | the bid is below the minimum | NEGATIVE-a-bid-below-the-minimum-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 9999 | as=p1
+EXPECT_OUT | not enough cash for that bid | NEGATIVE-a-bid-above-the-bidders-cash-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 10 | as=p2
+EXPECT_OUT | it is p1's turn, not p2's | NEGATIVE-bidding-out-of-order-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p3
+EXPECT_OUT | it is p1's turn, not p3's | NEGATIVE-the-decliner-bids-LAST-not-first
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | as=p1
+EXPECT_OUT | bid needs an amount | NEGATIVE-a-bid-without-an-amount-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 10 | as=p1
+EXPECT_OUT | p1 bid: bid=10 | p1-opens-with-the-minimum-bid-10
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 15 | as=p2
+EXPECT_OUT | the bid must beat the standing bid by the step | NEGATIVE-a-raise-smaller-than-the-step-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 20 | as=p2
+EXPECT_OUT | p2 bid: bid=20 | p2-raises-to-20
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_OUT | AUCTION tile=8 name=Sky2 bid=20 high=p2 next=p3 min_next=30 passed=0 | p3-is-next-the-high-bidder-p2-is-skipped
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 30 | as=p3
+EXPECT_OUT | p3 bid: bid=30 | the-decliner-p3-bids-last-30
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p1
+EXPECT_OUT | p1 pass: pass | p1-drops-out-for-good
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p2
+EXPECT_OUT | auction_end: sold-to=p3-30 | the-SAME-call-that-records-the-last-pass-appends-the-auction_end-row
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_OUT | phase=pre current=p3 | after-the-auction-the-doubles-roll-owed-to-p3-is-still-owed
+EXPECT_OUT | TILE 8 Sky2 owner=p3 | the-tile-went-to-the-winner
+EXPECT_OUT | PLAYER p3 C driver=human token=2 personality=- cash=1470 | the-winner-paid-30-to-the-bank
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | check
+EXPECT_OUT | CHECK ok schema=2 events=17 sum=4500 | money-is-conserved-after-the-auction-17-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 40 | as=p3
+EXPECT_OUT | no auction is open | NEGATIVE-bidding-after-the-auction-ended-is-refused
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_EXIT | 0 | the-owed-roll-is-playable-after-the-auction
+CLEAN   |
+
+# --- tampering with a finished auction: replay refuses every edit (vacuity: the edit really changed the file) ---
+CASE    | tamper
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_OUT | p3 roll: to=8;for-sale;doubles=1 | seed-7-p3-throws-4-4-and-lands-on-the-unowned-Sky2-with-a-roll-still-owed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | skip
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 10 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p3
+EXPECT_OUT | auction_end: sold-to=p1-10 | the-auction-sold-to-p1-for-10
+RUN | /usr/bin/cp | $T/h/ledger.txt | $T/h/ledger.good
+RUN | /usr/bin/sed | -i | s/sold-to=p1-10/sold-to=p1-11/ | $T/h/ledger.txt
+RUN | /usr/bin/grep | -c | sold-to=p1-11 | $T/h/ledger.txt
+EXPECT_OUT | 1 | VACUITY-the-sale-price-was-really-edited
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_EXIT | 1 | NEGATIVE-an-edited-sale-price-is-refused-by-replay
+RUN | /usr/bin/cp | $T/h/ledger.good | $T/h/ledger.txt
+RUN | /usr/bin/sed | -i | s/bid=10/bid=12/ | $T/h/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_EXIT | 1 | NEGATIVE-an-edited-bid-is-refused-by-replay-because-the-recorded-result-no-longer-matches
+RUN | /usr/bin/cp | $T/h/ledger.good | $T/h/ledger.txt
+RUN | /usr/bin/sed | -i | s/\pp2\ppass\p/\pp3\ppass\p/ | $T/h/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_EXIT | 1 | NEGATIVE-a-pass-by-the-wrong-player-is-refused-by-replay-out-of-bidding-order
+RUN | /usr/bin/cp | $T/h/ledger.good | $T/h/ledger.txt
+RUN | /usr/bin/sed | -i | /\pbank\pauction_end\p/d | $T/h/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | check
+EXPECT_OUT | the auction can end but its auction_end row is missing | NEGATIVE-a-ledger-that-lost-its-auction_end-row-fails-check
+RUN | /usr/bin/cp | $T/h/ledger.good | $T/h/ledger.txt
+RUN | /usr/bin/sed | -i | /\pp2\ppass\p/d | $T/h/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_EXIT | 1 | NEGATIVE-an-auction_end-with-a-missing-pass-row-is-refused-the-auction-could-not-end-yet
+CLEAN   |
+
+# --- every player passes: the tile stays with the bank and may be offered again ---
+CASE    | unsold
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_OUT | p3 roll: to=8;for-sale;doubles=1 | seed-7-p3-throws-4-4-and-lands-on-the-unowned-Sky2-with-a-roll-still-owed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | skip
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | pass | as=p3
+EXPECT_OUT | auction_end: unsold | all-passed-without-a-bid-the-tile-is-unsold
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_OUT | phase=pre current=p3 | the-owed-roll-is-still-owed-after-an-unsold-auction
+EXPECT_OUT_LACKS | TILE 8 | the-unsold-tile-has-no-owner-it-stays-with-the-bank
+CLEAN   |
+
+# --- BACKWARD COMPATIBILITY: a ledger written before M7 (skip = declined, no auction) replays without one ---
+CASE    | legacy
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_legacy_skip_ledger.txt | h/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_EXIT | 0 | the-pre-M7-ledger-still-replays-under-the-new-engine
+EXPECT_OUT | phase=buy current=p3 round=0 pending=15 | the-legacy-skip-opened-NO-auction-p3-rolled-again-and-stands-on-tile-15
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | check
+EXPECT_OUT | CHECK ok schema=2 events=12 sum=4500 | the-legacy-ledger-passes-check
+CLEAN   |
+
+# --- the minimum bid and step are DATA: RULE auction_min_bid 50, auction_min_step 25 in a scratch ruleset ---
+CASE    | rules
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auction_min_bid \p 50\nRULE \p auction_min_step \p 25\n
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | human
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_OUT | p3 roll: to=8;for-sale;doubles=1 | the-same-opening-as-the-default-ruleset
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | skip
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 40 | as=p1
+EXPECT_OUT | the bid is below the minimum | NEGATIVE-40-is-below-the-scratch-ruleset-minimum-of-50
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 50 | as=p1
+EXPECT_OUT | p1 bid: bid=50 | 50-is-the-minimum
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 70 | as=p2
+EXPECT_OUT | the bid must beat the standing bid by the step | NEGATIVE-70-does-not-beat-50-by-the-step-of-25
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | bid | 75 | as=p2
+EXPECT_OUT | p2 bid: bid=75 | 75-beats-50-by-25
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | status
+EXPECT_OUT | min_next=100 | the-next-minimum-is-the-standing-bid-plus-the-step
+CLEAN   |
+
+# --- three PETS play a whole game with auctions on (the stopgap bidding policy). Control: the SAME seed with auctions off is the old game (527 rows, winner p1), so the auctions really changed it ---
+CASE    | pets
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | the-pets-game-with-auctions-ends-831-rows-94-rounds-winner-p3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | check
+EXPECT_OUT | CHECK ok schema=2 events=831 sum=4500 | money-is-conserved-after-6-auctions-and-115-bids
+RUN | /usr/bin/grep | -c | \pauction_end\p | $T/h/ledger.txt
+EXPECT_OUT_IS | 6 | six-auctions-ended
+RUN | /usr/bin/grep | -c | sold-to= | $T/h/ledger.txt
+EXPECT_OUT_IS | 6 | and-all-six-sold-pets-bid-the-minimum-raise-while-within-value
+RUN | /usr/bin/grep | -c | \pskip\p | $T/h/ledger.txt
+EXPECT_OUT_IS | 6 | every-skip-opened-an-auction-6-skips-6-auctions
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | replay
+EXPECT_OUT | REPLAY events=831 hash=4d9e00f70777e15c | the-replay-hash-is-pinned
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | ledger_hash
+EXPECT_OUT | rows=831 hash=72442143905f2371 | the-ledger-hash-is-pinned
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | roll
+EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-over
+CLEAN   |
+
+CASE    | pets-control-auctions-off
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
+MKDIR   | h
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/h | autoplay
+EXPECT_OUT | AUTOPLAY events=527 rounds=74 over=1 winner=p1 | CONTROL-with-auctions-off-the-same-seed-is-the-old-game-so-the-auctions-above-really-changed-it
+RUN | /usr/bin/grep | -c | declined\pauction | $T/h/ledger.txt
+EXPECT_OUT_IS | 0 | with-auctions-off-no-skip-opens-an-auction
+CLEAN   |

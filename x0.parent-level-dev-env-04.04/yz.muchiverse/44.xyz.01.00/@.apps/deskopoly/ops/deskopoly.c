@@ -46,6 +46,7 @@ static Tile T[MAXT]; static int nt;
 static Pl PL[MAXP]; static int npl;
 static int R_houses = 32, R_hotels = 12;
 static int R_start = 1500, R_go = 200, R_rounds = 40, R_maxp = MAXP_MINI; static long R_seed = 7;
+static int R_auc_min = 10, R_auc_step = 10, R_auctions = 1;   /* M7: the first bid is at least R_auc_min, later bids beat the standing bid by R_auc_step (RULE auction_min_bid / auction_min_step / auctions=on|off; "off" = the pre-M7 game, a declined tile just stays with the bank; defaults live here so a ruleset without the rows keeps its rules hash) */
 
 /* derived state (replay only) */
 static int cash[MAXP], pos[MAXP], out[MAXP], owner[MAXT], human[MAXP];
@@ -128,11 +129,14 @@ static void load_app(void) {
             if (!strcmp(f[1], "start_cash")) R_start = atoi(f[2]); else if (!strcmp(f[1], "pass_go")) R_go = atoi(f[2]);
             else if (!strcmp(f[1], "safety_rounds")) R_rounds = atoi(f[2]); else if (!strcmp(f[1], "seed")) R_seed = atol(f[2]);
             else if (!strcmp(f[1], "max_players")) R_maxp = atoi(f[2]);
+            else if (!strcmp(f[1], "auction_min_bid")) R_auc_min = atoi(f[2]); else if (!strcmp(f[1], "auction_min_step")) R_auc_step = atoi(f[2]);
+            else if (!strcmp(f[1], "auctions")) R_auctions = !(!strcmp(f[2], "off") || !strcmp(f[2], "0"));
             else if (!strcmp(f[1], "houses_total")) R_houses = atoi(f[2]); else if (!strcmp(f[1], "hotels_total")) R_hotels = atoi(f[2]);
         }
         fclose(fp);
         if (R_start <= 0 || R_go < 0 || R_rounds <= 0) bad("rules.pdl: start_cash and safety_rounds must be positive");
         if (R_maxp < 2 || R_maxp > MAXP) bad("rules.pdl: max_players is 2..8");
+        if (R_auc_min < 1 || R_auc_step < 1) bad("rules.pdl: auction_min_bid and auction_min_step must be at least 1");
         if (R_houses < 4 || R_houses > 200 || R_hotels < 1 || R_hotels > 60) bad("rules.pdl: houses_total is 4..200 and hotels_total 1..60");
         npl = 0; g_rules_hash = rules_hash(); return;
     }
@@ -311,10 +315,29 @@ static void apply_first(void) { cur = first_w; first_w = -1; phase2 = PH_PRE; }
 
 /* ===== M3: roll, land, Start money, tax, rent (street / rail / util), buy, skip, end_turn, simple bankruptcy, over. Doubles and jail are M4, cards M5, buildings/mortgages M6, auctions M7, the debt queue M8:
  * until then a tile of those kinds resolves as `todo-<kind>` (nothing happens) and `skip` just declines. ===== */
-enum { PH_BUY = 3, PH_DEBT = 4, PH_POST = 5, PH_OVER = 6 };
+enum { PH_BUY = 3, PH_DEBT = 4, PH_POST = 5, PH_OVER = 6, PH_AUC = 7 };
 static int net(int pl);
 static int debt_amt, debt_cred = -1, over_due, dice_last;
 static int injail[MAXP], jfails[MAXP], dcount, owe_roll;   /* M4: jail flag and failed-turn count per player, doubles thrown this turn, a roll owed after the landing is settled */
+/* ===== M7 AUCTIONS (spec section 8; the owner asked for "the video-game way", 2026-11-08). A `skip` on a tile offered for purchase opens an auction. State is DERIVED from the ledger by replay, never stored.
+ * auc_t = the tile, auc_bid = the standing bid (0 = none yet), auc_high = who holds it (-1 = nobody), auc_next = whose turn it is to bid or pass, auc_pass[] = who dropped out, auc_done = the auction can end
+ * (the SAME call that records the last bid or pass then appends the bank's `auction_end` row, exactly like `over`). Order: left of the decliner, clockwise, the decliner last; the standing high bidder is skipped (they
+ * never bid against themselves). A bid is >= R_auc_min first, then >= standing + R_auc_step, and <= the bidder's cash (so a won auction can always be paid; building, trading and buying are refused meanwhile). No timers:
+ * a human may think as long as they like, the engine never auto-passes a human. BACKWARD COMPATIBILITY: a ledger row `skip` whose result is `declined` (written before M7) replays WITHOUT an auction (skip_legacy);
+ * a new `skip` records `declined;auction`. LIMIT (until M8): the tiles of a player who goes bankrupt to the bank are not auctioned, they return to the bank unsold. ===== */
+static int auc_t = -1, auc_bid, auc_high = -1, auc_next = -1, auc_done, skip_legacy, g_bid_amt; static int auc_pass[MAXP];
+static int auc_live(int i) { return !out[i] && !auc_pass[i]; }
+static int auc_min_next(void) { return auc_bid > 0 ? auc_bid + R_auc_step : R_auc_min; }
+static int auc_next_after(int from) { for (int k = 1; k <= np_game; k++) { int i = (from + k) % np_game; if (auc_live(i) && i != auc_high) return i; } return -1; }
+static void auc_open(int tile, int decliner) { auc_t = tile; auc_bid = 0; auc_high = -1; auc_done = 0; for (int i = 0; i < MAXP; i++) auc_pass[i] = 0; phase2 = PH_AUC; auc_next = auc_next_after(decliner); }
+static void auc_after_action(int actor) { int others = 0, live = 0; for (int i = 0; i < np_game; i++) if (auc_live(i)) { live++; if (i != auc_high) others++; } if (auc_high >= 0 ? others == 0 : live == 0) auc_done = 1; else auc_next = auc_next_after(actor); }
+static void auc_clear(void) { auc_t = -1; auc_high = -1; auc_bid = 0; auc_done = 0; auc_next = -1; for (int i = 0; i < MAXP; i++) auc_pass[i] = 0; }
+/* the end of an auction (called by the same call that recorded the last bid or pass, and by replay when it meets the `auction_end` row) */
+static const char *apply_auction_end(char *res, size_t cap) {
+    if (!auc_done) return "the auction is not over";
+    if (auc_high >= 0) { cash[auc_high] -= auc_bid; bankv += auc_bid; owner[auc_t] = auc_high; snprintf(res, cap, "sold-to=%s-%d", PL[auc_high].id, auc_bid); } else snprintf(res, cap, "unsold");
+    auc_clear(); phase2 = owe_roll ? PH_PRE : PH_POST; owe_roll = 0; return NULL;
+}
 static void send_to_jail(int pl) { pos[pl] = jail_idx; injail[pl] = 1; jfails[pl] = 0; dcount = 0; owe_roll = 0; }
 static char over_res[40];
 static void tk(char *res, size_t cap, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
@@ -492,9 +515,20 @@ static const char *apply2(int pl, const char *verb, const char *target, char *re
         if (phase2 != PH_BUY) return "nothing is for sale"; Tile *t = &T[pending]; if (cash[pl] < t->price) return "not enough cash";
         cash[pl] -= t->price; bankv += t->price; owner[pending] = pl; snprintf(res, cap, "bought-%d", t->price); pending = -1; phase2 = owe_roll ? PH_PRE : PH_POST; owe_roll = 0; return NULL;
     }
-    if (!strcmp(verb, "skip")) { if (phase2 != PH_BUY) return "nothing is for sale"; snprintf(res, cap, "declined"); pending = -1; phase2 = owe_roll ? PH_PRE : PH_POST; owe_roll = 0; return NULL; }
+    if (!strcmp(verb, "skip")) {
+        if (phase2 != PH_BUY) return "nothing is for sale"; int tl = pending; pending = -1;
+        if (skip_legacy || !R_auctions) { snprintf(res, cap, "declined"); phase2 = owe_roll ? PH_PRE : PH_POST; owe_roll = 0; return NULL; }   /* a ledger written before M7: no auction */
+        snprintf(res, cap, "declined;auction"); auc_open(tl, pl); return NULL;   /* M7: the tile goes to auction, left of the decliner first, the decliner last */
+    }
+    if (!strcmp(verb, "bid") || !strcmp(verb, "pass")) {
+        if (phase2 != PH_AUC) return "no auction is open"; if (pl != auc_next) return "it is not your turn to bid";
+        char *e; long tl = strtol(target, &e, 10); if (*e || tl != auc_t) return "that is not the tile on auction";
+        if (!strcmp(verb, "pass")) { auc_pass[pl] = 1; snprintf(res, cap, "pass"); auc_after_action(pl); return NULL; }
+        int amt = g_bid_amt; if (amt < auc_min_next()) return auc_bid > 0 ? "the bid must beat the standing bid by the step" : "the bid is below the minimum"; if (amt > cash[pl]) return "not enough cash for that bid";
+        auc_bid = amt; auc_high = pl; snprintf(res, cap, "bid=%d", amt); auc_after_action(pl); return NULL;
+    }
     if (!strcmp(verb, "end_turn")) {
-        if (phase2 != PH_POST) return phase2 == PH_PRE ? "roll first" : phase2 == PH_BUY ? "buy or skip the tile first" : "settle the debt first";
+        if (phase2 != PH_POST) return phase2 == PH_PRE ? "roll first" : phase2 == PH_BUY ? "buy or skip the tile first" : phase2 == PH_AUC ? "the auction must finish first (bid or pass)" : "settle the debt first";
         advance_turn(); snprintf(res, cap, "next=%s;round=%d", PL[cur].id, round_); return NULL;
     }
     if (!strcmp(verb, "bankrupt")) {
@@ -509,7 +543,7 @@ static const char *apply2(int pl, const char *verb, const char *target, char *re
     }
     if (!strcmp(verb, "build") || !strcmp(verb, "sell") || !strcmp(verb, "mortgage") || !strcmp(verb, "unmortgage")) {
         int sells = !strcmp(verb, "sell") || !strcmp(verb, "mortgage");
-        if (phase2 != PH_PRE && phase2 != PH_POST && !(phase2 == PH_DEBT && sells)) return phase2 == PH_BUY ? "buy or skip the tile first" : "not now";
+        if (phase2 != PH_PRE && phase2 != PH_POST && !(phase2 == PH_DEBT && sells)) return phase2 == PH_BUY ? "buy or skip the tile first" : phase2 == PH_AUC ? "an auction is open: bid or pass first" : "not now";
         char *e; long tl = strtol(target, &e, 10); if (*e || tl < 0 || tl >= nt) return "bad tile"; int t = (int)tl; Tile *x = &T[t];
         if (owner[t] != pl) return "you do not own that tile";
         if (!strcmp(verb, "build")) {
@@ -542,12 +576,12 @@ static const char *apply2(int pl, const char *verb, const char *target, char *re
 }
 static const char *apply_over(char *res, size_t cap) { if (!over_due) return "the game is not over"; snprintf(res, cap, "%s", over_res); over_due = 0; over = 1; phase2 = PH_OVER; return NULL; }
 static const char *legal_now(void) {
-    static const char *t[7] = { "join leave start seat (lobby)", "order seat (opening throw)", "roll (or jail_pay jail_card jail_roll when in Jail) seat", "buy skip seat", "bankrupt seat", "end_turn seat", "read-only verbs only (the game is over)" };
+    static const char *t[8] = { "join leave start seat (lobby)", "order seat (opening throw)", "roll (or jail_pay jail_card jail_roll when in Jail) seat", "buy skip seat", "bankrupt seat", "end_turn seat", "read-only verbs only (the game is over)", "bid <amount> or pass by the bidder whose turn it is, seat (auction)" };
     return t[phase2];
 }
 static int replay2(int *started) {
     char p[1100], ln[LINE]; char *f[10]; FILE *fp; *started = 0; reset_state(); seed = R_seed; npl = 0; np_game = 0; phase2 = PH_LOBBY; first_w = -1; over_due = 0; debt_amt = 0; debt_cred = -1; pending = -1; dice_last = 0; dcount = 0; owe_roll = 0; jail_step = 0; memset(bld, 0, sizeof bld); memset(mort, 0, sizeof mort); for (int i = 0; i < MAXP; i++) { injail[i] = 0; jfails[i] = 0; }
-    cqn[0] = cqn[1] = 0; memset(cheld, 0, sizeof cheld);
+    cqn[0] = cqn[1] = 0; memset(cheld, 0, sizeof cheld); auc_clear(); skip_legacy = 0;   /* g_bid_amt is NOT reset here: the caller sets it before need_game replays */
     for (int i = 0; i < MAXP; i++) { thrown[i] = 0; tot[i] = 0; elig[i] = 0; }
     ledger_path(p, sizeof p); fp = fopen(p, "r"); if (!fp) return 0;
     int lineno = 0;
@@ -559,6 +593,7 @@ static int replay2(int *started) {
         const char *actor = f[2], *verb = f[3], *target = f[4], *rec = f[6]; char res[LINE]; res[0] = 0; const char *err = NULL;
         if (first_w >= 0 && strcmp(verb, "first")) { fprintf(stderr, "ledger line %d: the opening throws ended, `first` must follow\n", lineno); fclose(fp); return 1; }
         if (over_due && strcmp(verb, "over")) { fprintf(stderr, "ledger line %d: the game ended, `over` must follow\n", lineno); fclose(fp); return 1; }
+        if (auc_done && strcmp(verb, "auction_end")) { fprintf(stderr, "ledger line %d: the auction can end, `auction_end` must follow\n", lineno); fclose(fp); return 1; }
         if (!*started) {
             char want[160]; snprintf(want, sizeof want, "ruleset=%s,schema=2,rules=%s,max=%d", g_rs, hx(g_rules_hash), R_maxp);
             if (strcmp(verb, "lobby") || strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: a schema 2 ledger starts with `lobby`\n", lineno); fclose(fp); return 1; }
@@ -584,7 +619,14 @@ static int replay2(int *started) {
         } else if (!strcmp(verb, "roll") || !strcmp(verb, "buy") || !strcmp(verb, "skip") || !strcmp(verb, "end_turn") || !strcmp(verb, "bankrupt") || !strcmp(verb, "build") || !strcmp(verb, "sell") || !strcmp(verb, "mortgage") || !strcmp(verb, "unmortgage") || !strcmp(verb, "pay_debt")|| !strcmp(verb, "jail_pay") || !strcmp(verb, "jail_card") || !strcmp(verb, "jail_roll")) {
             int pl = pidx(actor); if (pl < 0 || pl != cur || phase2 < PH_PRE || phase2 == PH_OVER) { fprintf(stderr, "ledger line %d: %s by %s is out of turn or outside play\n", lineno, verb, actor); fclose(fp); return 1; }
             if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1, d2; if (sscanf(target, "%d,%d", &d1, &d2) != 2 || d1 != die(seed, nrolls, 0) || d2 != die(seed, nrolls, 1)) { fprintf(stderr, "ledger line %d: roll does not match the seeded dice\n", lineno); fclose(fp); return 1; } }
+            skip_legacy = !strcmp(verb, "skip") && !strcmp(rec, "declined"); err = apply2(pl, verb, target, res, sizeof res); skip_legacy = 0;
+        } else if (!strcmp(verb, "bid") || !strcmp(verb, "pass")) {
+            int pl = pidx(actor); if (pl < 0 || phase2 != PH_AUC || pl != auc_next) { fprintf(stderr, "ledger line %d: %s by %s is out of order or outside an auction\n", lineno, verb, actor); fclose(fp); return 1; }
+            g_bid_amt = 0; if (!strcmp(verb, "bid") && sscanf(rec, "bid=%d", &g_bid_amt) != 1) { fprintf(stderr, "ledger line %d: a bid row carries bid=<amount>\n", lineno); fclose(fp); return 1; }
             err = apply2(pl, verb, target, res, sizeof res);
+        } else if (!strcmp(verb, "auction_end")) {
+            if (strcmp(actor, "bank") || !auc_done || atoi(target) != auc_t) { fprintf(stderr, "ledger line %d: `auction_end` without an auction that can end (or not by the bank, or the wrong tile)\n", lineno); fclose(fp); return 1; }
+            err = apply_auction_end(res, sizeof res);
         } else if (!strcmp(verb, "over")) { if (strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: only the bank ends the game\n", lineno); fclose(fp); return 1; } err = apply_over(res, sizeof res);
         } else { fprintf(stderr, "ledger line %d: unknown verb %s (this verb is not part of the ruleset yet)\n", lineno, verb); fclose(fp); return 1; }
         if (err || strcmp(res, rec)) { fprintf(stderr, "ledger line %d: recorded result \"%s\" but replay gives \"%s\"\n", lineno, rec, err ? err : res); fclose(fp); return 1; }
@@ -683,9 +725,10 @@ static int v_order(void) {
 }
 static int held_by(int pl, int d) { for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) return 1; return 0; }
 static void build_status2(char *b, size_t cap) {
-    static const char *ph[7] = { "lobby", "order", "pre", "buy", "debt", "post", "over" };
+    static const char *ph[8] = { "lobby", "order", "pre", "buy", "debt", "post", "over", "auction" };
     b[0] = 0; ap(b, cap, "GAME deskopoly schema=2 ruleset=%s seed=%ld players=%d events=%d\n", g_rs, seed, np_game, nev);
     ap(b, cap, "STATE phase=%s current=%s round=%d pending=%d debt=%d doubles=%d rules=%s bank=%d over=%d\n", ph[phase2], phase2 >= PH_PRE ? PL[cur].id : "-", round_, pending, debt_amt, dcount, hx(g_rules_hash), bankv, over);
+    if (phase2 == PH_AUC) ap(b, cap, "AUCTION tile=%d name=%s bid=%d high=%s next=%s min_next=%d passed=%d\n", auc_t, T[auc_t].name, auc_bid, auc_high >= 0 ? PL[auc_high].id : "-", auc_next >= 0 ? PL[auc_next].id : "-", auc_min_next(), (int)({ int c = 0; for (int i = 0; i < np_game; i++) if (auc_pass[i]) c++; c; }));
     int sum = bankv;
     for (int i = 0; i < np_game; i++) { sum += cash[i]; ap(b, cap, "PLAYER %s %s driver=%s token=%d personality=%s cash=%d pos=%d out=%d jail=%d cards=%s%s%s net=%d\n", PL[i].id, PL[i].name, human[i] ? "human" : "pet", PL[i].token, PL[i].style, cash[i], pos[i], out[i], injail[i] ? jfails[i] + 1 : 0, held_by(i, 0) ? "luck" : "", held_by(i, 0) && held_by(i, 1) ? "+" : "", held_by(i, 1) ? "fund" : (held_by(i, 0) ? "" : "-"), net(i)); }
     for (int k = 0; k < nt; k++) if (owner[k] >= 0) ap(b, cap, "TILE %d %s owner=%s%s%s\n", k, T[k].name, PL[owner[k]].id, bld[k] ? (bld[k] == 5 ? " houses=hotel" : (const char *[]){ "", " houses=1", " houses=2", " houses=3", " houses=4" }[bld[k]]) : "", mort[k] ? " mort=1" : "");
@@ -720,22 +763,26 @@ static const char *pet_pick(char *tgt) {
     return "end_turn";
 }
 static int act2_do(const char *verb, const char *as, char *msg, size_t cap) {
-    int st, rc = need_game(&st); if (rc) return rc;
+    int keep_bid = g_bid_amt;   /* replay overwrites g_bid_amt while it walks past old bid rows: keep the caller's amount */
+    int st, rc = need_game(&st); if (rc) return rc; g_bid_amt = keep_bid;
     if (phase2 < PH_PRE || phase2 == PH_OVER) { snprintf(msg, cap, "refused: %s is not legal now (%s)", verb, legal_now()); return 2; }
     if (first_w >= 0 || over_due) { snprintf(msg, cap, "refused: a decided opening or ending is missing its row (run check)"); return 2; }
-    int pl = cur; if (as && strcmp(as, PL[pl].id)) { snprintf(msg, cap, "refused: it is %s's turn, not %s's", PL[pl].id, as); return 2; }
+    int pl = (phase2 == PH_AUC && (!strcmp(verb, "bid") || !strcmp(verb, "pass"))) ? auc_next : cur; if (as && strcmp(as, PL[pl].id)) { snprintf(msg, cap, "refused: it is %s's turn, not %s's", PL[pl].id, as); return 2; }
     char t[40] = "-", res[LINE]; if (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll")) { int d1 = die(seed, nrolls, 0), d2 = die(seed, nrolls, 1); snprintf(t, sizeof t, "%d,%d", d1, d2); }
     else if (!strcmp(verb, "bankrupt") && phase2 == PH_DEBT) snprintf(t, sizeof t, "%s", debt_cred >= 0 ? PL[debt_cred].id : "bank");
     else if (is_tile_verb(verb)) { if (!g_target[0]) { snprintf(msg, cap, "refused: %s needs a tile (an index or a tile id)", verb); return 2; } snprintf(t, sizeof t, "%s", g_target); }
     else if (!strcmp(verb, "jail_card")) { const char *want = argc_deck(); if (want) snprintf(t, sizeof t, "%s", want); else for (int d = 0; d < 2; d++) for (int k = 1; k <= 16; k++) if (cheld[d][k] == pl + 1) { snprintf(t, sizeof t, "%s", DK[d]); } }
+    if (phase2 == PH_AUC && (!strcmp(verb, "bid") || !strcmp(verb, "pass"))) snprintf(t, sizeof t, "%d", auc_t); if (!strcmp(verb, "bid") && g_bid_amt <= 0) { snprintf(msg, cap, "refused: bid needs an amount (bid <amount>)"); return 2; }
     char id[8]; snprintf(id, sizeof id, "%s", PL[pl].id);
     const char *err = apply2(pl, verb, t, res, sizeof res); if (err) { snprintf(msg, cap, "refused: %s", err); return 2; }
     event(id, verb, t, pos[pl], res); snprintf(msg, cap, "%s %s: %s", id, verb, res);
+    if (auc_done) { int tl = auc_t; char r3[LINE], ts[16]; apply_auction_end(r3, sizeof r3); snprintf(ts, sizeof ts, "%d", tl); event("bank", "auction_end", ts, 0, r3); size_t l3 = strlen(msg); snprintf(msg + l3, cap - l3, "\nauction_end: %s", r3); }   /* the SAME call that ended the auction appends its end row */
     if (over_due) { char r2[LINE]; apply_over(r2, sizeof r2); event("bank", "over", "-", 0, r2); char m2[LINE]; snprintf(m2, sizeof m2, "\nover: %s", r2); size_t l = strlen(msg); snprintf(msg + l, cap - l, "%s", m2); }
     return 0;
 }
 static int v_act2(const char *verb, int argc, char **argv) {
     g_deck_arg = NULL; for (int i = 0; i < argc; i++) if (strncmp(argv[i], "as=", 3)) g_deck_arg = argv[i];
+    g_bid_amt = 0; if (!strcmp(verb, "bid") && g_deck_arg) g_bid_amt = atoi(g_deck_arg);   /* bid <amount> [as=pN] */
     g_target[0] = 0; if (is_tile_verb(verb) && g_deck_arg) { int st0, rc0 = need_game(&st0); if (rc0) return rc0; int tt = resolve_tile(g_deck_arg); if (tt < 0) { fprintf(stderr, "deskopoly: no such tile: %s\n", g_deck_arg); return 2; } snprintf(g_target, sizeof g_target, "%d", tt); }
     const char *as = NULL; for (int i = 0; i < argc; i++) if (!strncmp(argv[i], "as=", 3)) as = argv[i] + 3;
     char msg[LINE * 2]; int rc = act2_do(verb, as, msg, sizeof msg); if (rc == 2) { fprintf(stderr, "deskopoly: %s\n", msg); return 2; } if (rc) return rc; puts(msg); return 0;
@@ -745,6 +792,13 @@ static int tick2(char *msg, size_t cap) {
     if (phase2 == PH_OVER) { snprintf(msg, cap, "over"); return 2; }
     if (phase2 == PH_ORDER) { int o = order_next(); if (o >= 0 && human[o]) { snprintf(msg, cap, "waiting %s %s human (opening throw)", PL[o].id, PL[o].name); return 1; } if (o < 0 || first_w >= 0) { snprintf(msg, cap, "stuck in the opening"); return -1; } int rc = v_order(); snprintf(msg, cap, "opening throw"); return rc == 0 ? 0 : -1; }
     if (phase2 < PH_PRE) { snprintf(msg, cap, "refused: the opening is not finished (%s)", legal_now()); return -1; }
+    if (phase2 == PH_AUC) {   /* an auction: the bidder is auc_next, not cur */
+        int b = auc_next; if (b < 0) { snprintf(msg, cap, "stuck in an auction"); return -1; }
+        if (human[b]) { snprintf(msg, cap, "waiting %s %s human (auction)", PL[b].id, PL[b].name); return 1; }
+        /* STOPGAP pet bidding (removal condition: M10 personalities): value = price x style (bold 130%, cautious 85%, coin 100%); bid the minimum raise while it is within value and cash, else pass. */
+        int pr = T[auc_t].price, val = !strcmp(PL[b].style, "bold") ? pr * 13 / 10 : !strcmp(PL[b].style, "cautious") ? pr * 85 / 100 : pr, need = auc_min_next();
+        const char *vb = (need <= val && need <= cash[b]) ? "bid" : "pass"; g_bid_amt = need; int rc2 = act2_do(vb, NULL, msg, cap); return rc2 == 0 ? 0 : -1;
+    }
     if (human[cur]) { snprintf(msg, cap, "waiting %s %s human", PL[cur].id, PL[cur].name); return 1; }
     const char *v = pet_pick(g_target);
     int rc = act2_do(v, NULL, msg, cap); return rc == 0 ? 0 : -1;
@@ -766,7 +820,7 @@ static int v_help(int argc, char **argv) {
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 6 || strcmp(f[0], "VERB")) continue;
         if (argc > 0 && strcmp(f[1], argv[0])) continue; printf("  %-12s %-34s %s\n", f[1], strcmp(f[4], "-") ? f[4] : "", f[5]); shown++; }
     fclose(fp); if (argc > 0 && !shown) { fprintf(stderr, "deskopoly: no such verb %s (run help)\n", argv[0]); return 2; }
-    if (g_schema == 2 && argc == 0) { int st; if (replay(&st) == 0 && st) printf("\nphase now: %s%s\nlegal now: %s\n", (const char *[]){ "lobby", "order", "pre", "buy", "debt", "post", "over" }[phase2], phase2 >= PH_PRE && phase2 != PH_OVER ? "" : "", legal_now()); }
+    if (g_schema == 2 && argc == 0) { int st; if (replay(&st) == 0 && st) printf("\nphase now: %s%s\nlegal now: %s\n", (const char *[]){ "lobby", "order", "pre", "buy", "debt", "post", "over", "auction" }[phase2], phase2 >= PH_PRE && phase2 != PH_OVER ? "" : "", legal_now()); }
     printf("\nHow to play and drive it: BOOK 16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md; every action may end with as=pN (refused unless pN is the player whose turn it is).\n"); return 0;
 }
 
@@ -780,6 +834,7 @@ static int check2(void) {
     for (int k = 0; k < nt; k++) if (owner[k] >= 0 && (strcmp(T[k].kind, "street") && strcmp(T[k].kind, "rail") && strcmp(T[k].kind, "util") || out[owner[k]])) { printf("FAIL I4 bad-owner tile=%d\n", k); fails++; }
     for (int i = 0; i < np_game; i++) if (out[i] && cash[i] != 0) { printf("FAIL I16 out-player-has-cash %s\n", PL[i].id); fails++; }
     if (phase2 == PH_DEBT && (debt_amt <= 0 || cash[cur] >= debt_amt)) { printf("FAIL I14 a debt that could be paid\n"); fails++; }
+    if (phase2 == PH_AUC && auc_done) { printf("FAIL I19 the auction can end but its auction_end row is missing\n"); fails++; } else if (phase2 == PH_AUC) { if (auc_t < 0 || auc_t >= nt || owner[auc_t] != -1) { printf("FAIL I19 auction-tile-invalid\n"); fails++; } if (auc_next < 0 || auc_next >= np_game || !auc_live(auc_next)) { printf("FAIL I19 auction-bidder-invalid\n"); fails++; } if (auc_high >= 0 && cash[auc_high] < auc_bid) { printf("FAIL I19 the-high-bidder-cannot-pay\n"); fails++; } } else if (auc_t >= 0) { printf("FAIL I19 auction-state-left-open\n"); fails++; }
     if (phase2 >= PH_PRE && phase2 != PH_OVER && (cur < 0 || cur >= np_game || out[cur])) { printf("FAIL I13 no-current-player\n"); fails++; }
     for (int i = 0; i < np_game; i++) { if (injail[i] && (pos[i] != jail_idx || jfails[i] > 3)) { printf("FAIL I3/I10 jailed-player-off-the-jail-tile-or-bad-counter %s\n", PL[i].id); fails++; } if (!injail[i] && jfails[i]) { printf("FAIL I10 jail-counter-while-free %s\n", PL[i].id); fails++; } }
     if (dcount < 0 || dcount > 2 || (dcount && phase2 < PH_PRE)) { printf("FAIL I15 doubles=%d\n", dcount); fails++; }
@@ -955,14 +1010,15 @@ static int v_autoplay(void) {
 /* ui for classic (schema 2): the window's feed, a PROJECTION of the replayed ledger (milestone M10-lite, 2026-11-08). Same convention as the mini ui: a show_* key is "1" when the control may be offered and EMPTY when not.
  * Every show_* key comes from the replayed PHASE and the current seat's driver, so the window never guesses what is legal. Tiles are t<N>_*, players p<N>_*, the last ledger rows log_<k>. */
 static int v_ui2(void) {
-    int st, rc = need_game(&st); if (rc) return rc; static char b[16384]; b[0] = 0; int pl = (phase2 == PH_ORDER && order_next() >= 0) ? order_next() : cur, ht = !over && human[pl] && !out[pl] && phase2 >= PH_ORDER;
-    static const char *pn[7] = { "lobby", "order", "pre", "buy", "debt", "post", "over" };
+    int st, rc = need_game(&st); if (rc) return rc; static char b[16384]; b[0] = 0; int pl = (phase2 == PH_ORDER && order_next() >= 0) ? order_next() : (phase2 == PH_AUC && auc_next >= 0) ? auc_next : cur, ht = !over && human[pl] && !out[pl] && phase2 >= PH_ORDER;
+    static const char *pn[8] = { "lobby", "order", "pre", "buy", "debt", "post", "over", "auction" };
     ap(b, sizeof b, "game=deskopoly\nruleset=%s\nphase=%s\nn_players=%d\nn_tiles=%d\nround=%d\nover=%d\ncurrent=%s\ncurrent_name=%s\ncurrent_driver=%s\n", g_rs, pn[phase2], np_game, nt, round_, over, PL[pl].id, PL[pl].name, human[pl] ? "human" : "pet");
     int inj = injail[pl];
     ap(b, sizeof b, "human_turn=%s\nshow_roll=%s\nshow_jail=%s\nshow_buy=%s\nshow_skip=%s\nshow_pay_debt=%s\nshow_bankrupt=%s\nshow_end=%s\n", ht ? "1" : "",
        ht && ((phase2 == PH_PRE && !inj) || phase2 == PH_ORDER) ? "1" : "", ht && phase2 == PH_PRE && inj ? "1" : "", ht && phase2 == PH_BUY && pending >= 0 && cash[pl] >= T[pending].price ? "1" : "", ht && phase2 == PH_BUY ? "1" : "",
        ht && phase2 == PH_DEBT && cash[pl] >= debt_amt ? "1" : "", ht && phase2 == PH_DEBT ? "1" : "", ht && phase2 == PH_POST ? "1" : "");
     ap(b, sizeof b, "pending_tile=%s\npending_price=%d\ndebt=%d\n", phase2 == PH_BUY && pending >= 0 ? T[pending].name : "", phase2 == PH_BUY && pending >= 0 ? T[pending].price : 0, phase2 == PH_DEBT ? debt_amt : 0);
+    ap(b, sizeof b, "show_bid=%s\nshow_pass=%s\nauction_tile=%s\nauction_bid=%d\nauction_high=%s\nauction_min=%d\nauction_bidder=%s\n", ht && phase2 == PH_AUC && cash[pl] >= auc_min_next() ? "1" : "", ht && phase2 == PH_AUC ? "1" : "", phase2 == PH_AUC ? T[auc_t].name : "", phase2 == PH_AUC ? auc_bid : 0, phase2 == PH_AUC && auc_high >= 0 ? PL[auc_high].id : "", phase2 == PH_AUC ? auc_min_next() : 0, phase2 == PH_AUC && auc_next >= 0 ? PL[auc_next].id : "");
     for (int i = 0; i < np_game; i++) { int props = 0; for (int k = 0; k < nt; k++) if (owner[k] == i) props++;
         ap(b, sizeof b, "%s_name=%s\n%s_driver=%s\n%s_cash=%d\n%s_pos=%d\n%s_out=%d\n%s_jail=%s\n%s_props=%d\n%s_net=%d\n%s_turn=%s\n", PL[i].id, PL[i].name, PL[i].id, human[i] ? "human" : "pet", PL[i].id, cash[i], PL[i].id, pos[i], PL[i].id, out[i], PL[i].id, injail[i] ? "1" : "", PL[i].id, props, PL[i].id, net(i), PL[i].id, i == pl && !over ? "1" : ""); }
     for (int k = 0; k < nt; k++) { char tok[24] = ""; for (int i = 0; i < np_game; i++) if (!out[i] && pos[i] == k) { char one[4]; snprintf(one, sizeof one, "%d", i + 1); if (tok[0]) strncat(tok, ",", sizeof tok - strlen(tok) - 1); strncat(tok, one, sizeof tok - strlen(tok) - 1); }
@@ -1043,7 +1099,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "start")) return v_start(argc - 4, argv + 4);
     if (!strcmp(v, "order")) return v_order();
     if (!strcmp(v, "help")) return v_help(argc - 4, argv + 4);
-    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll") || !strcmp(v, "build") || !strcmp(v, "sell") || !strcmp(v, "mortgage") || !strcmp(v, "unmortgage") || !strcmp(v, "pay_debt"))) return v_act2(v, argc - 4, argv + 4);
+    if (g_schema == 2 && (!strcmp(v, "roll") || !strcmp(v, "buy") || !strcmp(v, "skip") || !strcmp(v, "end_turn") || !strcmp(v, "bankrupt") || !strcmp(v, "jail_pay") || !strcmp(v, "jail_card") || !strcmp(v, "jail_roll") || !strcmp(v, "build") || !strcmp(v, "sell") || !strcmp(v, "mortgage") || !strcmp(v, "unmortgage") || !strcmp(v, "pay_debt") || !strcmp(v, "bid") || !strcmp(v, "pass"))) return v_act2(v, argc - 4, argv + 4);
     if (g_schema == 2 && !strcmp(v, "autoplay")) return v_autoplay2();
     if (g_schema == 2 && !strcmp(v, "tick")) return v_tick2();
     if (g_schema == 2 && !strcmp(v, "mechanics")) { fprintf(stderr, "deskopoly: refused: %s is not built for classic games yet (milestones M10 and M11)\n", v); return 2; }

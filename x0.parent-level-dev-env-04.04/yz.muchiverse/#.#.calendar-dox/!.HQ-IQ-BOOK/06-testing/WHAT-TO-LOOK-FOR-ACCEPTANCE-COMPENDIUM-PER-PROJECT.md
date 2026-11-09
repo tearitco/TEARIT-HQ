@@ -34,10 +34,11 @@ Screens and states, with **what you must see** and **how it is checked**. `see X
 | Stopped (Player > Stop) | `Player: stopped`; ledger frozen; walk finishes; sidebars STILL present | switch `running=0`, `see pt0` |
 | Driver missing (session reset, crash) | within ~10 s the core starts it again: feed back, bars back | case `game_driver_watchdog`; live: `ps` shows `deskopoly_driver`, `see pt0` |
 | Setup screen BEFORE START | the authored board desk: no players and an empty 2D view is EXPECTED (the world switches to the generated `play` desk at START) | known behaviour, not a bug |
+| Human seat, an auction is open (after Skip on a tile for sale) | popup text `AUCTION <tile> <standing bid> by pN`, buttons `Bid <min>`, `Bid <min+50>` (only when the cash allows), `Pass`; NO Roll/Buy/End turn; pets bid on their own; at the end table talk shows `auction_end sold-to=pN-amount`, the winner's cash in the bar drops by exactly the amount, `Bid`/`Pass` buttons are gone and `End turn` is back (found 2026-11-08: a three-line text made the first button cover its end, so the line is one short line) | `see label:AUCTION Power 20 by p3`, `see label:Bid 30`, `see label:Bid 60 absent`, `tests/dsk-seat-auction.pdl`, **png 07, 08, 09 opened** |
 | Low camera in 3D | wooden floor is solid: NO one-pixel sky-coloured (135,180,220) lines between the floor rows (fixed 2026-11-08: per-cell depth removed from the page, shader entry-face fallback). Look at the PNG AND count: `ffmpeg -i shot.png -vf crop=W:H:X:Y -f rawvideo -pix_fmt rgb24 f.rgb` then `img_sky_seams.+x f.rgb W H` on a FLOOR-ONLY box (a box with HUD text or the horizon counts those too) | `png`, `img_sky_seams` 0, offline case `bv_gpu_seam` |
 
 Cost line to quote with any change (measured with the producer running): clock daemon mean 2%, max 9% per 10 s window over 180 s since the 12 s global spacing (2026-11-08; before it 119% in a guard window), 0% paused; driver 4 wakeups/s stopped, 14 live; see the handoff section 4.
-Harnesses: `live_dsk_seat` (23), `dsk_driver` (68), `dsk_page` (42), `game_driver_watchdog` (10), `lc_clock_burn` (7); nav map `@.apps/deskopoly/nav.pdl`; scripts `tests/dsk-open-play.pdl`, `dsk-seat-setup.pdl`, `dsk-seat-turns.pdl`, `dsk-in-on.pdl`.
+Harnesses: `dsk_auction` (57), `live_dsk_seat` (23), `dsk_driver` (70), `dsk_page` (42), `game_driver_watchdog` (10), `lc_clock_burn` (7); nav map `@.apps/deskopoly/nav.pdl`; scripts `tests/dsk-open-play.pdl`, `dsk-seat-setup.pdl`, `dsk-seat-turns.pdl`, `dsk-in-on.pdl`.
 
 ## 3. Entry template (copy for the next project)
 

@@ -1,0 +1,34 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-seat-auction.pdl - M7 AUCTIONS in the real editor, as seat p1 (2026-11-08). Starts right after dsk-seat-setup.pdl (3 players, seed 7, fast, you = p1). SEED 7 is deterministic (found offline with the engine, then confirmed here): p1 throws the opening,
+# round 1 lands on a Luck tile (End turn only), round 2 lands on Power (Buy 150); this script presses SKIP instead of Buy, so Power goes to auction: p2 bids 10, p3 bids 20, then YOU are asked (Bid 30 / Bid 80 / Pass). You bid 30, the pets raise
+# (p2 40, p3 50), you are asked again (Bid 60 / Bid 110 / Pass) and PASS; the auction ends with the bank row auction_end and your turn goes on (End turn). Every `see` asserts the SCREEN (the window's own objects dump), not only the files.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-auction.pdl <x window id>
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | total=2 | 10
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you: p1 roll | 10
+STEP | press | label:End turn
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Buy Power | 10
+STEP | see | label:Skip
+STEP | press | label:Skip
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | declined;auction | 10
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | AUCTION Power | 60
+STEP | see | label:AUCTION Power 20 by p3
+STEP | see | label:Bid 30
+STEP | see | label:Bid 80
+STEP | see | label:Pass
+STEP | shot | @.apps/deskopoly/shots/07-auction-my-bid.png
+STEP | press | label:Bid 30
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | bid=50 | 60
+STEP | see | label:Bid 60
+STEP | see | label:Pass
+STEP | shot | @.apps/deskopoly/shots/08-auction-raised-against-me.png
+STEP | press | label:Pass
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | auction_end | 60
+STEP | see | label:End turn
+STEP | see | label:Bid 60 | absent
+STEP | shot | @.apps/deskopoly/shots/09-auction-over-turn-goes-on.png

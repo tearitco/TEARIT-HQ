@@ -6,6 +6,8 @@ ENV | LC_ALL | C
 CASE    | effects
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+# M7 (2026-11-08): this case tests the game WITHOUT auctions (RULE auctions=off in its scratch ruleset: a declined tile stays with the bank, exactly the pre-M7 game, so its pinned winners and rounds stay valid). Auctions are tested in dsk_auction. LEDGER-HASH PINS were re-observed 2026-11-08: the row counts and winners are UNCHANGED (527 / 108 / 2643 rows), the hash moved only because the lobby row carries the rules hash and the scratch ruleset gained the row RULE auctions off.
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
@@ -47,11 +49,12 @@ EXPECT_OUT_IS | 104 | luck-draws-in-the-game
 RUN | /usr/bin/grep | -c | card=fund | $T/m/ledger.txt
 EXPECT_OUT_IS | 96 | fund-draws-in-the-game
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
-EXPECT_OUT | rows=2643 hash=9fa744b44b3362d3 | the-card-game-hash-is-pinned
+EXPECT_OUT | rows=2643 hash=d83d5abad1ce1793 | the-card-game-hash-is-pinned
 
 CASE    | jailcard
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | m
 MKDIR   | p
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
@@ -79,7 +82,9 @@ EXPECT_OUT | CHECK ok | the-returned-card-is-back-in-its-deck-so-the-deck-is-who
 CASE    | stopat2
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 COPYDIR | @.apps/deskopoly/rulesets/classic | app/rulesets/loop
+APPEND  | app/rulesets/loop/rules.pdl | RULE \p auctions \p off\n
 RUN | /usr/bin/sed | -i | s/^CARD \p luck \p \([0-9]*\) *\p [a-z_]* *\p [0-9]* *\p [0-9]* *\p.*/CARD \p luck \p \1 \p move_back \p 3 \p 0 \p x/ | $T/app/rulesets/loop/cards.pdl
 RUN | /usr/bin/sed | -i | s/^CARD \p fund \p \([0-9]*\) *\p [a-z_]* *\p [0-9]* *\p [0-9]* *\p.*/CARD \p fund \p \1 \p move_to \p 36 \p 0 \p y/ | $T/app/rulesets/loop/cards.pdl
 MKDIR   | l
@@ -99,6 +104,7 @@ EXPECT_OUT | CHECK ok schema=2 events=464 sum=3000 | invariants-hold-through-cha
 CASE    | cards_short
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | x
 RUN | /usr/bin/sed | -i | /^CARD \p luck \p 16 /d | $T/app/rulesets/classic/cards.pdl
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
@@ -108,6 +114,7 @@ EXPECT_OUT | each deck needs exactly 16 cards | NEGATIVE-a-deck-of-15-is-refused
 CASE    | cards_kind
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | x
 RUN | /usr/bin/sed | -i | s/\p nearest_rail \p/\p teleport     \p/ | $T/app/rulesets/classic/cards.pdl
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
@@ -117,6 +124,7 @@ EXPECT_OUT | unknown card kind | NEGATIVE-an-unknown-kind-is-refused-says-why
 CASE    | cards_dup
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | x
 RUN | /usr/bin/sed | -i | s/^CARD \p luck \p 2  \p/CARD \p luck \p 3  \p/ | $T/app/rulesets/classic/cards.pdl
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
@@ -126,6 +134,7 @@ EXPECT_OUT | used twice in a deck | NEGATIVE-a-duplicate-card-number-is-refused-
 CASE    | cards_far
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | x
 RUN | /usr/bin/sed | -i | s/\p move_to      \p 24 \p/\p move_to      \p 99 \p/ | $T/app/rulesets/classic/cards.pdl
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
@@ -135,6 +144,7 @@ EXPECT_OUT | not on the board | NEGATIVE-a-move-to-a-tile-off-the-board-is-refus
 CASE    | cards_deck
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | x
 RUN | /usr/bin/sed | -i | s/^CARD \p fund \p 3  \p/CARD \p chest \p 3  \p/ | $T/app/rulesets/classic/cards.pdl
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
@@ -144,6 +154,7 @@ EXPECT_OUT | a deck is luck or fund | NEGATIVE-an-unknown-deck-name-is-refused-s
 CASE    | hash
 SCRATCH |
 COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
 MKDIR   | x
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | lobby | classic
 RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/x | join | A | pet

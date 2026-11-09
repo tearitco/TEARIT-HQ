@@ -144,7 +144,7 @@ static int page_needed(void) {
     char p[P]; snprintf(p, sizeof p, "%s/ledger.txt", GAME); FILE *f = fopen(p, "r"); if (!f) { pg_cur = 0; return 1; }
     fseek(f, 0, SEEK_END); long sz = ftell(f); int need = 0; if (sz < pg_cur) { pg_cur = 0; need = 1; }   /* a smaller ledger = a new game */
     fseek(f, pg_cur, SEEK_SET); char ln[600];
-    static const char *quiet[] = { "roll", "order", "first", "end_turn", "skip", "jail_pay", "jail_roll", "jail_card", "lobby", "join", "seat", NULL };
+    static const char *quiet[] = { "roll", "order", "first", "end_turn", "skip", "bid", "pass", "jail_pay", "jail_roll", "jail_card", "lobby", "join", "seat", NULL };   /* M7: a bid or a pass never changes the picture (a pets game makes ~115 bids: rebuilding the page for each was the 6% CPU burn again); the SALE does, as the non-quiet auction_end row (an unsold auction rebuilds once, harmlessly) */
     while (fgets(ln, sizeof ln, f)) { char *q = ln; for (int k = 0; k < 3 && q; k++) { q = strchr(q, '|'); if (q) q++; } if (!q) { need = 1; continue; }
         char *e = strchr(q, '|'); size_t vl = e ? (size_t)(e - q) : strcspn(q, "\r\n"); int isq = 0; for (int k = 0; quiet[k]; k++) if (strlen(quiet[k]) == vl && !strncmp(q, quiet[k], vl)) isq = 1; if (!isq) need = 1; }
     pg_cur = ftell(f); fclose(f); return need;
@@ -178,6 +178,10 @@ static void publish(void) {
         if (uget("show_jail", v, sizeof v)[0]) { add_btn("Jail: roll for doubles", "jail_roll"); add_btn("Jail: pay 50", "jail_pay"); }
         if (uget("show_buy", v, sizeof v)[0]) { char pt[40]; uget("pending_tile", pt, sizeof pt); snprintf(b, sizeof b, "Buy %s (%d)", pt, uint_("pending_price")); add_btn(b, "buy"); }
         if (uget("show_skip", v, sizeof v)[0]) add_btn("Skip", "skip");
+        { char at[40]; uget("auction_tile", at, sizeof at); if (at[0]) { char ah[16], bd[16]; uget("auction_high", ah, sizeof ah); uget("auction_bidder", bd, sizeof bd);
+            snprintf(b, sizeof b, "AUCTION %s %d%s%s", at, uint_("auction_bid"), ah[0] ? " by " : "", ah); (void)bd; add_text(b); } }   /* one short line: a long one wrapped to three and the first button covered its end (seen in the live window 2026-11-08) */
+        if (uget("show_bid", v, sizeof v)[0]) { int mn = uint_("auction_min"); char ck[24]; snprintf(ck, sizeof ck, "%s_cash", cur); snprintf(b, sizeof b, "Bid %d", mn); add_btn(b, "bid_min"); if (uint_(ck) >= mn + 50) { snprintf(b, sizeof b, "Bid %d", mn + 50); add_btn(b, "bid_up"); } }   /* the human picks the amount: the minimum raise or 50 above it (the engine refuses anything it does not allow) */
+        if (uget("show_pass", v, sizeof v)[0]) add_btn("Pass", "pass");
         if (uget("show_pay_debt", v, sizeof v)[0]) { snprintf(b, sizeof b, "Pay debt %d", uint_("debt")); add_btn(b, "pay_debt"); }
         if (uget("show_bankrupt", v, sizeof v)[0]) add_btn("Declare bankruptcy", "bankrupt");
         if (uget("show_end", v, sizeof v)[0]) add_btn("End turn", "end");
@@ -213,13 +217,14 @@ static void tick_once(void) {
     if (rc != 0) snprintf(msg, sizeof msg, "stuck: %.150s", out); else snprintf(msg, sizeof msg, "%.190s", out);
     dirty = 1;
 }
-static void human_verb(const char *engine_verb) {
+static void human_verb2(const char *engine_verb, const char *arg) {
     char out[400], as[24], cur[16], ph[16]; load_ui(); uget("current", cur, sizeof cur); uget("phase", ph, sizeof ph); snprintf(as, sizeof as, "as=%s", cur);
     if (!strcmp(ph, "order") && !strcmp(engine_verb, "roll")) engine_verb = "order";   /* the opening throw is its own verb; the Roll button covers both */
-    const char *a[2] = { engine_verb, as }; int rc = run_eng(out, sizeof out, 2, a); first_line(out); eng1("ui", NULL, NULL, 0);
+    const char *a[3] = { engine_verb, arg ? arg : as, arg ? as : NULL }; int rc = run_eng(out, sizeof out, arg ? 3 : 2, a); first_line(out); eng1("ui", NULL, NULL, 0);
     w_resync = 1;
     snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); dirty = 1;
 }
+static void human_verb(const char *engine_verb) { human_verb2(engine_verb, NULL); }
 static void handle(const char *c) {
     if (!strcmp(c, "players_up")) { if (!mode_play && nplayers < 6) nplayers++; if (human_seat > nplayers) human_seat = 0; }
     else if (!strcmp(c, "players_down")) { if (!mode_play && nplayers > 2) nplayers--; if (human_seat > nplayers) human_seat = 0; }
@@ -231,6 +236,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "step")) { if (mode_play && !running()) tick_once(); }
     else if (!strcmp(c, "new_game")) { if (mode_play) { archive_game(); mode_play = 0; set_desk("board"); walk_reset(); snprintf(msg, sizeof msg, "the last game is in archive/; choose the players, then START"); } }
     else if (!strcmp(c, "roll")) human_verb("roll"); else if (!strcmp(c, "buy")) human_verb("buy"); else if (!strcmp(c, "skip")) human_verb("skip"); else if (!strcmp(c, "end")) human_verb("end_turn");
+    else if (!strcmp(c, "pass")) human_verb("pass"); else if (!strcmp(c, "bid_min") || !strcmp(c, "bid_up")) { load_ui(); char ab[16]; snprintf(ab, sizeof ab, "%d", uint_("auction_min") + (!strcmp(c, "bid_up") ? 50 : 0)); human_verb2("bid", ab); }   /* M7: the amount is read from the feed at CLICK time, so a stale label cannot bid a wrong number */
     else if (!strcmp(c, "jail_pay")) human_verb("jail_pay"); else if (!strcmp(c, "jail_roll")) human_verb("jail_roll"); else if (!strcmp(c, "pay_debt")) human_verb("pay_debt"); else if (!strcmp(c, "bankrupt")) human_verb("bankrupt");
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
     dirty = 1;
