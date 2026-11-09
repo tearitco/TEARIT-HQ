@@ -1,0 +1,9 @@
+# class_voices.pdl - who speaks with which Kokoro voice in a DAY/NIGHT class narration (read by ops/class_audio_op.c; replaces the LOCAL_VOICES table inside CLASSES/convert_night_to_audio_remote.py, 2026-11-09).
+# Row: VOICE | CHARACTER | kokoro voice | lang | note        CHARACTER is the UPPERCASE name used in the class text (`**NAME:**` and the `# Characters:` header). There is NO default voice: a character without a row is a hard error.
+# Voice names must exist in ~/house-tts/voices-v1.0.bin on the narration machine (`class_audio_op voices` lists them; render refuses a class whose voice is missing there).
+# `lang` is kept as data (the older render_lines.py used it); the op narrates through one_line.py, which always phonemizes en-us, so en-gb rows are British voices with American phonemes until that changes.
+VOICE | MAXINE | bf_emma | en-gb | from LOCAL_VOICES (2026-10-14)
+VOICE | TOMO | af_heart | en-us | from LOCAL_VOICES (2026-10-14)
+VOICE | RAHWEH | am_michael | en-us | from LOCAL_VOICES (2026-10-14)
+VOICE | THE NARRATOR | bm_george | en-gb | from LOCAL_VOICES (2026-10-14)
+VOICE | IQA | af_nicole | en-us | 2026-11-09: the interviewer / questioner in DAY 13-27. Present on debil; a US female voice that is not TOMO's af_heart, not MAXINE's British bf_emma and not a male voice. af_nicole is the softer, lower and breathier of the American female voices, so the questioner is told apart by timbre. NOT yet judged by a person.

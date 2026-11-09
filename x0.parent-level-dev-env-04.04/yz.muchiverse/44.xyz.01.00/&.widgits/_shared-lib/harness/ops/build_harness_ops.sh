@@ -17,6 +17,8 @@ $CC -std=c11 -O2 -w -I "../../../../_.monads/_.livedesk-taskbar/ops" -I .. -I ..
 # img_op (PNG numbers for live window cases), video_op (slides + narrated video, needs ffmpeg at run time), py_lint (ratchet against new Python): self-contained, 2026-11-04
 $CC -std=gnu11 -Wall -Wextra -Wno-misleading-indentation -O2 -o +x/img_op.+x img_op.c -lm && echo "OK +x/img_op.+x"
 $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -O2 -o +x/video_op.+x video_op.c && echo "OK +x/video_op.+x"
+# class_audio_op (2026-11-09): narrate a DAY/NIGHT class text to one mp3 on the Kokoro machine over ssh, voices from voices/class_voices.pdl (no Python)
+$CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -Wno-misleading-indentation -O2 -o +x/class_audio_op.+x class_audio_op.c && echo "OK +x/class_audio_op.+x"
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/py_lint.+x py_lint.c && echo "OK +x/py_lint.+x"
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/blank_page_op.+x blank_page_op.c && echo "OK +x/blank_page_op.+x"
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/legend_page_op.+x legend_page_op.c && echo "OK +x/legend_page_op.+x"

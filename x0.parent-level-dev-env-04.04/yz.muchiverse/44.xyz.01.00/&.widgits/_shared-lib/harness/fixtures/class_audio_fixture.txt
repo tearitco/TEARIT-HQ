@@ -1,0 +1,15 @@
+# 🎲 FIXTURE CLASS - a small class text for cases/class_audio.pdl (2026-11-09). Not a lesson.
+# ===================================================
+# Title: "fixture"
+# Characters: TOMO, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+
+**THE NARRATOR:** 🎲📊 This is **bold** and `code` and a [link text](https://example.invalid/x) -- with emoji ✅ and an arrow → in it.
+
+**MAXINE:** The first sentence is short. The second sentence is also short! Is the third one a question?
+
+**IQA:** One speech that spans
+three physical lines
+and stays one speech.
+
+**TOMO:** This single sentence has no full stop for a very long time, so the chunker has to cut it at commas rather than at sentence ends, and it keeps going with more and more words, because a real class text sometimes has a paragraph written as one breathless sentence, with clause after clause, comma after comma, until the line is well past four hundred characters long, which is the limit that one narration call is allowed to carry, and then it finally stops.

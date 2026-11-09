@@ -1,0 +1,148 @@
+# class_audio (2026-11-09): ops/class_audio_op.c narrates a DAY/NIGHT class text with the voices read from voices/class_voices.pdl (no Python). Why: CLASSES/convert_night_to_audio_remote.py refused DAY 27 with
+# `no local voice for: ['IQA']` because its voice table lives inside the script. Here a character without a voice ROW is a hard error that names it, and adding a voice is adding a row.
+# OFFLINE (no network): parse of a fixture (character list, line and chunk counts, markdown and emoji stripped, the 400-character chunk limit, a multi-line speech kept whole, voice per character), the refusals
+# (unknown character, character missing in the header, speaker not in the header, no spoken lines, PRESENT_TTS_HOST unset / not allowed / output exists) each with a control that passes, and the `level` measurement
+# against a generated tone and generated silence. NETWORK (NEEDENV PRESENT_TTS_HOST, user@host of the Kokoro machine; unset = the last case SKIPs): a 3-line fixture is narrated there behind cpu_gate; the mp3 must
+# have an audio stream, last longer than the pauses alone and have a mean volume above -45 dB; a voice that does not exist on the machine is refused before any narration.
+RESULTS | ../results/class_audio.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -w | -o | $T/cao.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/class_audio_op.c
+EXPECT_EXIT | 0 | class-audio-op-compiles
+
+CASE    | parse
+RUN | $T/cao.+x | parse | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 0 | the-fixture-parses
+EXPECT_OUT | CHARACTERS\pTOMO,MAXINE,IQA,THE NARRATOR | the-character-list-is-the-header-list
+EXPECT_OUT | LINES\p4 | four-speeches
+EXPECT_OUT | CHUNKS\p5 | five-chunks-the-long-sentence-became-two
+EXPECT_OUT | LINE\p3\pIQA | the-third-speech-is-IQA
+EXPECT_OUT | af_nicole\pOne speech that spans three physical lines and stays one speech. | a-multi-line-speech-is-kept-together-and-IQA-has-her-voice
+EXPECT_OUT | bm_george\pThis is bold and code and a link text. with emoji and an arrow in it. | markdown-link-text-kept-emoji-arrow-and-the-double-hyphen-cleaned
+EXPECT_OUT | bf_emma\pThe first sentence is short. The second sentence is also short! Is the third one a question? | MAXINE-keeps-her-voice-and-short-sentences-stay-in-one-chunk
+EXPECT_OUT | af_heart\pThis single sentence has no full stop | TOMO-has-his-voice-on-the-cut-sentence
+# the cleaning checks only mean something when the input HAS the things (vacuity guard)
+EXPECT_HAS | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | 🎲 | CONTROL-the-fixture-has-emoji
+EXPECT_HAS | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | → | CONTROL-the-fixture-has-an-arrow
+EXPECT_HAS | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | **bold** | CONTROL-the-fixture-has-markdown-bold
+EXPECT_HAS | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | example.invalid | CONTROL-the-fixture-has-a-link-url
+EXPECT_OUT_LACKS | 🎲 | emoji-stripped
+EXPECT_OUT_LACKS | ✅ | second-emoji-stripped
+EXPECT_OUT_LACKS | → | arrow-stripped
+EXPECT_OUT_LACKS | ** | bold-marks-stripped
+EXPECT_OUT_LACKS | ` | backticks-stripped
+EXPECT_OUT_LACKS | example.invalid | link-url-stripped
+EXPECT_OUT_LACKS | -- | double-hyphen-gone
+RUN | $T/cao.+x | parse | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl | --print | maxchunk
+CAPTURE | MAXC
+EXPECT_LE | $MAXC | 400 | THE-LONGEST-CHUNK-IS-AT-MOST-400-characters
+EXPECT_GE | $MAXC | 300 | and-the-limit-was-really-exercised-the-cut-sentence-made-a-chunk-near-the-limit
+RUN | $T/cao.+x | parse | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl | --print | chars
+CAPTURE | ALLC
+EXPECT_GE | $ALLC | 600 | CONTROL-the-text-is-long-enough-that-a-single-chunk-would-break-the-limit
+# the real class that started this: DAY 27 has IQA and parses with the shipped voices
+RUN | $T/cao.+x | parse | $HOUSE/../#.#.calendar-dox/1-1.HARNECIENT.SMOL/DAY_27_THE_DATA_STUDIO.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl | --print | lines
+CAPTURE | D27
+EXPECT_EQ | $D27 | 30 | DAY-27-has-its-30-speeches
+RUN | $T/cao.+x | parse | $HOUSE/../#.#.calendar-dox/1-1.HARNECIENT.SMOL/DAY_27_THE_DATA_STUDIO.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl | --print | maxchunk
+CAPTURE | D27M
+EXPECT_LE | $D27M | 400 | DAY-27-chunks-are-all-at-most-400
+
+CASE    | refusals
+WRITE | v_noiqa.pdl | VOICE \p TOMO \p af_heart \p en-us \p x\nVOICE \p MAXINE \p bf_emma \p en-gb \p x\nVOICE \p THE NARRATOR \p bm_george \p en-gb \p x\n
+RUN | $T/cao.+x | parse | $HOUSE/&.widgits/_shared-lib/harness/fixtures/class_audio_fixture.txt | --voices | $T/v_noiqa.pdl
+EXPECT_EXIT | 3 | NEGATIVE-a-voice-table-without-IQA-refuses-the-fixture-this-is-the-DAY-27-failure
+EXPECT_OUT | no voice for character 'IQA' | and-it-names-IQA
+WRITE | v_withzed.pdl | VOICE \p TOMO \p af_heart \p en-us \p x\nVOICE \p ZED \p af_sky \p en-us \p x\n
+WRITE | zed.txt | # Characters: TOMO, ZED\n\n**TOMO:** Hello.\n\n**ZED:** Hi there.\n
+RUN | $T/cao.+x | parse | $T/zed.txt | --voices | $T/v_withzed.pdl
+EXPECT_EXIT | 0 | CONTROL-with-a-ZED-row-the-same-text-parses
+RUN | $T/cao.+x | parse | $T/zed.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 3 | NEGATIVE-an-unknown-character-ZED-is-refused
+EXPECT_OUT | 'ZED' | the-error-names-the-character
+EXPECT_OUT_LACKS | af_ | and-no-default-voice-is-ever-picked
+WRITE | silentzed.txt | # Characters: TOMO, ZED\n\n**TOMO:** Hello.\n
+RUN | $T/cao.+x | parse | $T/silentzed.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 3 | NEGATIVE-a-header-character-without-a-voice-is-refused-even-if-he-never-speaks
+WRITE | nohead.txt | # Characters: TOMO\n\n**TOMO:** Hello.\n\n**MAXINE:** Hi there.\n
+RUN | $T/cao.+x | parse | $T/nohead.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 3 | NEGATIVE-a-speaker-missing-from-the-header-is-refused
+EXPECT_OUT | not in the | and-the-message-says-so
+WRITE | nohead_ok.txt | # Characters: TOMO, MAXINE\n\n**TOMO:** Hello.\n\n**MAXINE:** Hi there.\n
+RUN | $T/cao.+x | parse | $T/nohead_ok.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 0 | CONTROL-the-same-text-with-MAXINE-in-the-header-parses
+WRITE | empty.txt | # Characters: TOMO\n\nJust a paragraph, nobody speaks.\n
+RUN | $T/cao.+x | parse | $T/empty.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 3 | NEGATIVE-a-text-with-no-spoken-line-is-refused
+RUN | $T/cao.+x | parse | $T/does-not-exist.txt | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 3 | NEGATIVE-an-unreadable-class-file-is-refused
+RUN | $T/cao.+x | parse | $T/zed.txt | --voices | $T/no-such-voices.pdl
+EXPECT_EXIT | 3 | NEGATIVE-an-unreadable-voices-file-is-refused
+
+CASE    | host
+RUN | /usr/bin/env | -u | PRESENT_TTS_HOST | $T/cao.+x | render | $T/zed.txt | $T/o.mp3 | --voices | $T/v_withzed.pdl
+EXPECT_EXIT | 1 | NEGATIVE-without-PRESENT_TTS_HOST-render-refuses
+EXPECT_OUT | PRESENT_TTS_HOST is not set | and-says-why
+RUN | /usr/bin/env | -u | PRESENT_TTS_HOST | $T/cao.+x | voices
+EXPECT_EXIT | 1 | NEGATIVE-voices-refuses-without-the-host-too
+RUN | /usr/bin/test | -e | $T/o.mp3
+EXPECT_EXIT | 1 | and-no-output-file-was-made
+RUN | /usr/bin/env | PRESENT_TTS_HOST=-oProxyCommand=x | $T/cao.+x | render | $T/zed.txt | $T/o.mp3 | --voices | $T/v_withzed.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-host-that-looks-like-an-ssh-option-is-refused
+EXPECT_OUT | not allowed | and-says-so
+WRITE | o.mp3 | already here
+RUN | /usr/bin/env | PRESENT_TTS_HOST=nobody@host.invalid | $T/cao.+x | render | $T/zed.txt | $T/o.mp3 | --voices | $T/v_withzed.pdl
+EXPECT_EXIT | 1 | NEGATIVE-an-existing-output-is-not-overwritten
+EXPECT_OUT | refusing to overwrite | and-says-so
+EXPECT_OUT_LACKS | PRESENT_TTS_HOST | CONTROL-the-host-check-passed-so-the-refusal-came-from-the-existing-file
+EXPECT_FILE | o.mp3 | already here | and-the-existing-file-is-untouched
+
+CASE    | level
+RUN | /usr/bin/ffmpeg | -nostdin | -loglevel | error | -y | -f | lavfi | -i | sine=f=440:d=3 | -b:a | 96k | $T/tone.mp3
+EXPECT_EXIT | 0 | tone-made
+RUN | /usr/bin/ffmpeg | -nostdin | -loglevel | error | -y | -f | lavfi | -i | anullsrc=r=24000:cl=mono | -t | 3 | -b:a | 96k | $T/silence.mp3
+EXPECT_EXIT | 0 | silence-made
+RUN | $T/cao.+x | level | $T/tone.mp3
+EXPECT_EXIT | 0 | level-measures-the-tone
+CAPTURE | TONE
+EXPECT_GE | $TONE | -45 | a-tone-is-above-minus-45-dB
+RUN | $T/cao.+x | level | $T/silence.mp3
+CAPTURE | SIL
+EXPECT_LE | $SIL | -60 | NEGATIVE-silence-measures-far-below-minus-45-so-the-volume-check-CAN-fail
+RUN | $T/cao.+x | level | $T/tone.mp3 | --windows | 3
+EXPECT_OUT | -2 | three-windows-three-lines
+RUN | $T/cao.+x | level | $T/does-not-exist.mp3
+EXPECT_EXIT | 1 | NEGATIVE-a-missing-file-is-an-error-not-a-number
+
+CASE    | net
+# NEEDENV: unset PRESENT_TTS_HOST = this last case SKIPs (verdict SKIP, not FAIL). Heavy parts run behind cpu_gate; the narration runs on that machine.
+NEEDENV | PRESENT_TTS_HOST
+WRITE | three.txt | # Characters: TOMO, IQA, THE NARRATOR\n\n**IQA:** Does it work?\n\n**TOMO:** Yes. The ledger is the only authority.\n\n**THE NARRATOR:** And that is the end.\n
+RUN | $T/cao.+x | voices
+EXPECT_EXIT | 0 | the-machine-lists-its-voices
+EXPECT_OUT | af_nicole | and-the-IQA-voice-af_nicole-is-there
+EXPECT_OUT | bm_george | and-the-narrator-voice-too
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | $HOUSE | run | class-audio-case | --wait | 600 | -- | $T/cao.+x | render | $T/three.txt | $T/three.mp3 | --voices | $HOUSE/&.widgits/_shared-lib/harness/voices/class_voices.pdl
+EXPECT_EXIT | 0 | three-lines-are-narrated
+EXPECT_OUT | lines=3 chunks=3 | three-speeches-three-chunks
+EXPECT_EXISTS | three.mp3 | the-mp3-exists
+EXPECT_NOFILE | three.mp3.part | and-no-half-written-part-file-is-left
+RUN | /usr/bin/ffprobe | -v | error | -show_entries | stream=codec_type | -of | csv=p=0 | $T/three.mp3
+EXPECT_OUT | audio | the-mp3-has-an-AUDIO-stream
+EXPECT_OUT_LACKS | video | and-no-video-stream
+RUN | /usr/bin/ffprobe | -v | error | -show_entries | format=duration | -of | csv=p=0 | $T/three.mp3
+CAPTURE | DUR
+EXPECT_GE | $DUR | 3 | the-mp3-lasts-3-s-or-more-the-three-pauses-alone-are-1.35-s-so-speech-is-in-it
+RUN | $T/cao.+x | level | $T/three.mp3
+EXPECT_EXIT | 0 | the-narration-is-measured
+CAPTURE | MEAN
+EXPECT_GE | $MEAN | -45 | THE-NARRATION-MEAN-VOLUME-IS-ABOVE-MINUS-45-dB-not-silence
+WRITE | v_bad.pdl | VOICE \p TOMO \p af_not_a_voice \p en-us \p x\nVOICE \p IQA \p af_nicole \p en-us \p x\nVOICE \p THE NARRATOR \p bm_george \p en-gb \p x\n
+RUN | $T/cao.+x | render | $T/three.txt | $T/bad.mp3 | --voices | $T/v_bad.pdl
+EXPECT_EXIT | 3 | NEGATIVE-a-voice-the-machine-does-not-have-is-refused-before-narrating
+EXPECT_OUT | does not exist on | and-says-which
+RUN | /usr/bin/test | -e | $T/bad.mp3
+EXPECT_EXIT | 1 | and-no-mp3-was-made
+CLEAN |

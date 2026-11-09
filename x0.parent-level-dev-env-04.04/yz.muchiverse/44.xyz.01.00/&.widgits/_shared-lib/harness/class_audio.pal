@@ -1,0 +1,4 @@
+# class_audio.pal - pal harness for cases/class_audio.pdl (class text -> narrated mp3 with the voices as data). Read results/class_audio.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/class_audio.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/class_audio.pdl
+halt
