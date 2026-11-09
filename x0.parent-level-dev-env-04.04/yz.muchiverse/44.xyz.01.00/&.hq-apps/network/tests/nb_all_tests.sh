@@ -46,6 +46,10 @@ echo "########## Page-driven scroll + IntersectionObserver crossings (hermetic)"
 bash "$HERE/nb_scroll_test.sh" || RC=1
 
 echo
+echo "########## DOMParser delivers parsed documents (hermetic)"
+bash "$HERE/nb_domparser_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

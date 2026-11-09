@@ -3527,8 +3527,9 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
          * BD(O)=_.qh(O)&&"nodeType" in O — elements without a nodeType
          * property fall through every Qkq branch and the render dies with
          * Error("Oc"). Browsers expose it on the prototype; our wrappers
-         * are plain objects so an own data property is the equivalent. */
-        JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, (n->tag && n->tag[0]) ? 1 : 3));
+         * are plain objects so an own data property is the equivalent.
+         * #document reports 9, like a browser. */
+        JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, (n->tag && !strcmp(n->tag, "#document")) ? 9 : ((n->tag && n->tag[0]) ? 1 : 3)));
         JS_SetPropertyStr(ctx, el, "nodeName", JS_NewString(ctx, label));
         if (n->tag && n->tag[0])
             JS_SetPropertyStr(ctx, el, "tagName", JS_NewString(ctx, label));
@@ -4556,8 +4557,98 @@ static JSValue nb_promise_resolved(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewArray(ctx);
 }
-static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    return JS_NewObject(ctx);
+static JSValue nb_parsed_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *id = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    NbNode *doc = get_this(ctx, this_val);
+    if (!id || !doc) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    NbNode *r = NULL;
+    for (const NbNode *c = doc->first_child; c && !r; c = c->next_sibling)
+        r = find_by_id(c, id);
+    JS_FreeCString(ctx, owned);
+    return r ? push_node(ctx, r) : JS_NULL;
+}
+static JSValue nb_parsed_documentElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *doc = get_this(ctx, this_val);
+    if (!doc) return JS_NULL;
+    for (const NbNode *c = doc->first_child; c; c = c->next_sibling)
+        if (c->tag && c->tag[0]) return push_node(ctx, (NbNode *)c);
+    return JS_NULL;
+}
+static JSValue nb_parsed_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *doc = get_this(ctx, this_val);
+    NbNode *el = doc ? find_tag_first(doc, "body") : NULL;
+    return el ? push_node(ctx, el) : JS_NULL;
+}
+static JSValue nb_parsed_head(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *doc = get_this(ctx, this_val);
+    NbNode *el = doc ? find_tag_first(doc, "head") : NULL;
+    return el ? push_node(ctx, el) : JS_NULL;
+}
+/* ---- DOMParser: HTML/XML snippet parsing (2026-11-09) ----
+ * The previous parseFromString was the inert nb_empty_object: it returned a
+ * plain {} with no document surface, so every library parsing a snippet
+ * crashed on the first query. This parses with the house HTML parser
+ * (nb_parse_html, a #document tree) and hands back a document wrapper.
+ * Scoped own properties are installed on the parsed wrapper — getElementById
+ * plus documentElement/body/head getters — because push_node gives it the
+ * Element prototype (element-scoped queries already work) but no Document
+ * members. Honest limits: one lenient HTML parser serves HTML, XHTML, XML
+ * and SVG mime types (no strict XML error detection); an unknown mime
+ * throws TypeError instead of pretending to parse it. Parsed trees live in
+ * g_orphans until page teardown. */
+static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    char *str = NULL;
+    const char *s = (argc > 0 && JS_IsString(argv[0])) ? (str = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!s) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: DOMParser.parseFromString requires a string"));
+        return JS_Throw(ctx, e);
+    }
+    char *mime = NULL;
+    const char *m = "text/html";
+    if (argc > 1 && JS_IsString(argv[1])) m = mime = JS_ToCString(ctx, argv[1]);
+    static const char *kOk[] = { "text/html", "application/xhtml+xml", "text/xml", "application/xml", "image/svg+xml", NULL };
+    int ok = 0;
+    for (int i = 0; kOk[i]; i++) if (!strcasecmp(m, kOk[i])) { ok = 1; break; }
+    if (!ok) {
+        JS_FreeCString(ctx, mime);
+        JS_FreeCString(ctx, str);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: DOMParser: unsupported MIME type"));
+        return JS_Throw(ctx, e);
+    }
+    JS_FreeCString(ctx, mime);
+    NbNode *root = nb_parse_html(s, strlen(s));
+    JS_FreeCString(ctx, str);
+    if (!root) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "DOMParser: parse failed"));
+        return JS_Throw(ctx, e);
+    }
+    orphan_add(root);
+    JSValue doc = push_node(ctx, root);
+    /* Scoped document surface for this parsed tree only. */
+    JS_SetPropertyStr(ctx, doc, "getElementById", JS_NewCFunction(ctx, nb_parsed_getElementById, "getElementById", 1));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "documentElement");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_documentElement, "get documentElement", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "body");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_body, "get body", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "head");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_head, "get head", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    return doc;
 }
 /* ---- MutationObserver: child-list and attribute slice (2026-11-07) ----
  * The previous MutationObserver was an inert existence stub: pages could
@@ -5640,7 +5731,7 @@ static void install_dom_classes(JSContext *ctx) {
         /* FormData / Blob / FileReader carry real state, so they are built
          * explicitly rather than by the inert-stub loop above. */
         nb_install_formdata_blob(ctx, g);
-        /* MutationObserver: real child-list/attribute callback slice; DOMParser below stays inert. */
+        /* MutationObserver: real child-list/attribute callback slice. */
         JSValue f = JS_NewCFunction2(ctx, nb_mutation_observer_ctor, "MutationObserver", 1, JS_CFUNC_constructor, 0);
         JSValue p = JS_NewObject(ctx);
         JS_SetPropertyStr(ctx, f, "prototype", p);
@@ -5666,9 +5757,10 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, nb_resize_disconnect, "disconnect", 0));
         JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_resize_take_records, "takeRecords", 0));
         JS_SetPropertyStr(ctx, g, "ResizeObserver", f);
+        /* DOMParser: real HTML/XML snippet parsing into a document wrapper. */
         f = add_class(ctx, "DOMParser", JS_UNDEFINED);
         p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
+        JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_domparser_parse, "parseFromString", 2));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "DOMParser", f);
         JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
