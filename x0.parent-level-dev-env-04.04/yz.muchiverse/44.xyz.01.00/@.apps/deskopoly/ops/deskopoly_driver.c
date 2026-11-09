@@ -133,7 +133,24 @@ static void write_events(void) {
 static int nb_, nt_; static char *OUT_; static size_t OUTCAP_;
 static void add_text(const char *s) { char b[400]; snprintf(b, sizeof b, "gmt_%d_text=%s\n", nt_++, s[0] ? s : " "); catn(OUT_, OUTCAP_, b); }
 static int ne_, nl_; static char ENT_[400]; static void add_ent(const char *s) { if (ENT_[0]) strncat(ENT_, "   ", sizeof ENT_ - strlen(ENT_) - 1); strncat(ENT_, s, sizeof ENT_ - strlen(ENT_) - 1); }   /* all players are ONE wide footer item (separate items do not fit beside the footer buttons) */
-static void add_chat(const char *s) { char b[300]; snprintf(b, sizeof b, "gml_%d_text=%s\n", nl_++, s[0] ? s : " "); catn(OUT_, OUTCAP_, b); }
+static void add_chat(const char *s, const char *cls) { char b[400]; snprintf(b, sizeof b, "gml_%d_text=%s\ngml_%d_cls=%s\n", nl_, s[0] ? s : " ", nl_, cls); nl_++; catn(OUT_, OUTCAP_, b); }
+/* THE TABLE TALK PANE (2026-11-09). A pane row is FIXED height (the shared renderer gives every `ov-scrolltext` row exactly one text row, 30 px, and draws a longer text over the next row: `C rolled 2: Lost & Found - Your birthday: collect $10 from every other ...`
+ * is three drawn lines in a one-line slot, seen in the presentation video). The renderer is shared and takes no per-project change, so the DATA carries the line breaks: every sentence is word-wrapped HERE to at most `talk_wrap` characters (the width the 190 px pane holds
+ * is about 26, the h-ai chat wraps at 25 the same way) and each LINE is its own row. Sentences stay apart by colour: gml_N_cls alternates between two shades per SENTENCE. Never more rows than the pane holds (`talk_rows`, default 16 of about 18): whole OLDEST sentences are dropped first, the newest is always whole. */
+#define TK_MAXS 8
+#define TK_LW 64
+/* wrap `s` at `w` chars on word boundaries (a word longer than w is cut at w, never inside a UTF-8 sequence); returns the number of lines written into ln[][TK_LW] (at most `max`) */
+static int talk_wrap(const char *s, int w, char ln[][TK_LW], int max) {
+    int n = 0; if (w < 8) w = 8; if (w > TK_LW - 2) w = TK_LW - 2;
+    while (*s == ' ') s++;
+    while (*s && n < max) {
+        size_t len = strlen(s), take = len;
+        if (len > (size_t)w) { take = (size_t)w; if (s[take] != ' ') { size_t sp = take; while (sp > 0 && s[sp] != ' ') sp--; if (sp > 0) take = sp; else while (take > 1 && ((unsigned char)s[take] & 0xC0) == 0x80) take--; } }
+        size_t e = take; while (e > 0 && s[e - 1] == ' ') e--;
+        snprintf(ln[n], TK_LW, "%.*s", (int)e, s); n++; s += take; while (*s == ' ') s++;
+    }
+    return n;
+}
 static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "gmb_%d_label=%s\ngmb_%d_act='%s' %s '%s'\n", nb_, label, nb_, CTL, cmd, GDIR); nb_++; catn(OUT_, OUTCAP_, b); }
 
 /* THE BOARD PICTURE ONLY CHANGES WHEN OWNERSHIP, BUILDINGS OR MORTGAGES DO (players are drawn from events.txt, not from the page). Rebuilding it per tick cost three engine launches (page replays the ledger, preview renders
@@ -274,15 +291,17 @@ static int fig_cell(int i, int *cx, int *cy) {
     *cx = bx * 3 + 1; *cy = by * 3 + 1; if (w_cur[i] != w_tgt[i]) { *cx += (nx > bx ? 1 : nx < bx ? -1 : 0) * w_sub[i]; *cy += (ny > by ? 1 : ny < by ? -1 : 0) * w_sub[i]; } return 1;
 }
 /* Snap the camera to map cell (fx, fy); returns 0 when the camera was moved, else a negative reason with `why` filled (shown in the popup). */
-static int cam_snap(int fx, int fy, char *why, size_t wcap) {
+static int cam_snap(int fx, int fy, char *why, size_t wcap, int force) {
     char ui[P + 32], sess[P] = "", v[64]; snprintf(ui, sizeof ui, "%s/board/state/ui.txt", EDIT);
     if (!kv_get(ui, "bv_session", sess, sizeof sess) || !sess[0]) { snprintf(why, wcap, "no 3D board session to aim"); return -1; }
     char bs[P + 48], xs[P + 48], rl[P + 64]; snprintf(bs, sizeof bs, "%s/pieces/system/bv_state.txt", sess); snprintf(xs, sizeof xs, "%s/pieces/xelector_01/state.txt", PCHQ); snprintf(rl, sizeof rl, "%s/pieces/apps/player_app/interact_relay.txt", sess);
-    int mode = kv_get(bs, "camera_mode", v, sizeof v) ? atoi(v) : 2; if (mode != 2) { snprintf(why, wcap, "free camera in use: the follow camera (mode 2) snaps"); return -2; }
+    int mode = kv_get(bs, "camera_mode", v, sizeof v) ? atoi(v) : 2; if (mode != 2 && !force) { snprintf(why, wcap, "free camera in use: the follow camera (mode 2) snaps"); return -2; }   /* the AUTOMATIC once-per-turn snap respects a free camera; an EXPLICIT `Find me` press (force) is a request from the user and takes the follow camera back (below). 2026-11-09: after a stray `1` key (the engine's POV key) the camera sat in mode 1 and the button answered only this refusal */
     if (kv_get(xs, "possessed_id", v, sizeof v) && v[0] && strcmp(v, "none")) {
         if (strcmp(v, "hero_01")) { snprintf(why, wcap, "the cursor is possessing %.30s", v); return -3; }
         kv_puts(xs, "last_possessed_id", v); kv_puts(xs, "possessed_id", "none");   /* a fresh editor launch has the cursor possessing the editor's own hero: that pins the camera to the hero, so the snap lets go of it exactly as the engine's key 9 does (last_possessed_id is kept: key 9 jumps back). Any OTHER possession is the owner's choice and is left alone. */
     }
+    int back = (mode != 2);   /* force only: the user asked, so the follow camera comes back exactly as the engine's key `2` does it (render_mode is left alone: a person in the 2D view stays there) */
+    if (back) { kv_put(bs, "camera_mode", 2); kv_put(bs, "cam_yaw", 180); kv_put(bs, "cam_pitch", 6); kv_put(bs, "cam_pan_x", 0); kv_put(bs, "cam_pan_z", 0); kv_put(bs, "cam_z_level", 0); }
     int yaw = kv_get(bs, "cam_yaw", v, sizeof v) ? atoi(v) : 180; yaw = ((yaw % 360) + 360) % 360; int q = ((yaw + 45) / 90) % 4;   /* view direction (sin yaw, cos yaw) on the nearest axis */
     static const int DX[4] = { 0, 1, 0, -1 }, DY[4] = { 1, 0, -1, 0 }; int lead = tune_int("camera_lead", 4); if (lead < 0) lead = 0; if (lead > 12) lead = 12;
     int tx = fx + DX[q] * lead, ty = fy + DY[q] * lead;
@@ -290,13 +309,14 @@ static int cam_snap(int fx, int fy, char *why, size_t wcap) {
     if (!kv_put(xs, "pos_x", tx) || !kv_put(xs, "pos_y", ty)) { snprintf(why, wcap, "cannot move the cursor"); return -4; }
     kv_put(bs, "selector_x", tx); kv_put(bs, "selector_y", ty);
     FILE *r = fopen(rl, "a"); if (r) { fputs("126\n", r); fclose(r); }   /* the redraw nudge (bound to nothing) */
+    if (back) snprintf(why, wcap, "camera: following you again");   /* success with a message: the caller shows `why` when it is not empty */
     return 0;
 }
 /* the seat of the first HUMAN player (from the feed's p<i>_driver), 0 when there is none: a continued game has no `you play` preference, the ledger knows who is human */
 static int human_pid(void) { char k[24], v[16]; int n = uint_("n_players"); for (int i = 1; i <= n && i <= 8; i++) { snprintf(k, sizeof k, "p%d_driver", i); if (!strcmp(uget(k, v, sizeof v), "human")) return i; } return 0; }
 static long msg_keep = 0;   /* the answer to `Find me` stays in the popup this long (4 s): while a human waits the loop would put "your turn" back within half a second */
 static char snap_key[40] = "";   /* "<round>:<current>" of the last turn the camera was aimed for: one snap per turn, never per tick */
-static int snap_for(int pl, char *why, size_t wcap) { int cx, cy; why[0] = 0; if (pl < 1 || !fig_cell(pl - 1, &cx, &cy)) { snprintf(why, wcap, "your figure is not on the board"); return -5; } return cam_snap(cx, cy, why, wcap); }
+static int snap_for(int pl, char *why, size_t wcap, int force) { int cx, cy; why[0] = 0; if (pl < 1 || !fig_cell(pl - 1, &cx, &cy)) { snprintf(why, wcap, "your figure is not on the board"); return -5; } return cam_snap(cx, cy, why, wcap, force); }
 /* AUTO SNAP BOOKKEEPING. A snap that found no board session yet (-1) is retried on the next loops (at most 20, about 11 s) instead of being given up for the whole turn. The FIRST auto snap of a driver run is repeated once 6 s later: the editor relaunch
  * (board launcher) rewrites the cursor to its home cell a moment after a driver that started with it (seen live 2026-11-08: the cursor was back at 8,8 and the camera never moved). */
 static int snap_tries = 0, snap_first_done = 0, snap_rep = 0; static long snap_again = 0, snap_t0 = 0;   /* 2026-11-09: snap_t0 = when the first try of this turn started (the retry window for "no board session yet" is 90 s of wall time, not 20 loops: a relaunch starts the driver BEFORE the engine session is announced, and after 11 s the snap gave up for good: figures drawn, camera elsewhere); snap_rep = repeats left after a successful FIRST snap */
@@ -325,7 +345,10 @@ static void publish(void) {
             snprintf(k, sizeof k, "p%d_pos", i); uget(k, po, sizeof po); snprintf(k, sizeof k, "p%d_out", i); uget(k, ou, sizeof ou); snprintf(k, sizeof k, "p%d_net", i); uget(k, ne, sizeof ne); snprintf(k, sizeof k, "p%d_turn", i); uget(k, tu, sizeof tu); snprintf(k, sizeof k, "p%d_jail", i); uget(k, jl, sizeof jl);
             snprintf(b, sizeof b, "%sp%d %s%s%s", tu[0] ? ">" : "", i, ne, jl[0] ? " J" : "", ou[0] == '1' ? " X" : ""); (void)dv; add_ent(b); { char pb[220]; snprintf(pb, sizeof pb, "party_%d_label=%sp%d %s $%s\nparty_%d_id=gm%d\nparty_%d_cls=%s\n", i - 1, tu[0] ? "> " : "", i, nm, ca, i - 1, i, i - 1, tu[0] ? "active" : ""); catn(OUT_, OUTCAP_, pb); } }
         { char pb[40]; snprintf(pb, sizeof pb, "n_party=%d\n", np); catn(OUT_, OUTCAP_, pb); }
-        for (int i = 7; i >= 0; i--) { char l[260]; snprintf(k, sizeof k, "logt_%d", i); uget(k, l, sizeof l); if (!l[0]) { snprintf(k, sizeof k, "log_%d", i); uget(k, l, sizeof l); } if (l[0]) add_chat(l); }   /* 2026-11-09 the table talk is the engine's SENTENCE (logt_, names + tile labels); an engine without it, or a row it left empty, shows the raw ledger text (log_) as before */
+        { static char sl[TK_MAXS][TK_LW * 8]; static char wl[TK_MAXS][10][TK_LW]; int ns = 0, wn[TK_MAXS], total = 0, wrapw = tune_int("talk_wrap", 24), cap = tune_int("talk_rows", 16); if (cap < 4) cap = 4; if (cap > 40) cap = 40;
+          for (int i = TK_MAXS - 1; i >= 0; i--) { char l[260]; snprintf(k, sizeof k, "logt_%d", i); uget(k, l, sizeof l); if (!l[0]) { snprintf(k, sizeof k, "log_%d", i); uget(k, l, sizeof l); } if (l[0]) { snprintf(sl[ns], sizeof sl[ns], "%s", l); wn[ns] = talk_wrap(sl[ns], wrapw, wl[ns], 10); total += wn[ns]; ns++; } }
+          int first = 0; while (first < ns - 1 && total > cap) total -= wn[first++];   /* whole OLDEST sentences go first; the newest stays whole */
+          for (int j = first; j < ns; j++) for (int r = 0; r < wn[j]; r++) add_chat(wl[j][r], (ns - 1 - j) % 2 ? "rp-chat-pett" : "rp-chat-humt"); }   /* alternate shade per sentence, counted from the newest so that the newest keeps its colour while older ones scroll out. 2026-11-09 the table talk is the engine's SENTENCE (logt_, names + tile labels); an engine without it, or a row it left empty, shows the raw ledger text (log_) as before */
         char v[8];
         /* the screen closes itself when it can no longer do its job: a NEW offer needs my turn; a COUNTER needs the offer to still be open and addressed to me (a counter may be made when it is not my turn); an AMENDMENT needs my offer still open */
         if (tr_open_) { int me3 = tr_me(), id3 = 0, w3 = 0, ok = !over;
@@ -406,7 +429,7 @@ static void handle(const char *c) {
     else if (!strncmp(c, "tr_", 3)) tr_cmd(c + 3);
     else if (!strcmp(c, "refresh")) { w_resync = 1; char rp[P]; snprintf(rp, sizeof rp, "%s/chat_reply.txt", GDIR); FILE *f = fopen(rp, "r");   /* the editor chat hook (deskopoly_chat --hook) wrote a verb to the ledger: republish; its one answer line is shown in the popup once (consumed) */
         if (f) { char ln[300]; if (fgets(ln, sizeof ln, f)) { first_line(ln); if (ln[0]) { snprintf(msg, sizeof msg, "chat: %.180s", ln); msg_keep = now_ms() + 6000; } } fclose(f); unlink(rp); } }
-    else if (!strcmp(c, "find_me")) { if (mode_play && tune_int("camera_follow", 1)) { load_ui(); int hp = human_pid(); char why[120]; if (!hp) snprintf(msg, sizeof msg, "no human seat to find"); else { snap_for(hp, why, sizeof why); snprintf(msg, sizeof msg, "%s", why[0] ? why : "camera: here is your figure"); msg_keep = now_ms() + 4000; } } }
+    else if (!strcmp(c, "find_me")) { if (mode_play && tune_int("camera_follow", 1)) { load_ui(); int hp = human_pid(); char why[120]; if (!hp) snprintf(msg, sizeof msg, "no human seat to find"); else { snap_for(hp, why, sizeof why, 1); snprintf(msg, sizeof msg, "%s", why[0] ? why : "camera: here is your figure"); msg_keep = now_ms() + 4000; } } }
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
     dirty = 1;
 }
@@ -440,10 +463,10 @@ int main(int argc, char **argv) {
             if (ov[0] != '1' && ht[0] == '1' && !pr[0]) { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (now_ms() >= msg_keep && strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; }
                 { char cu[16], key[40], why[120]; uget("current", cu, sizeof cu); snprintf(key, sizeof key, "%d:%s", uint_("round"), cu);   /* CAMERA SNAP: once per human turn (the tuning row is read only when the turn is new) */
                   if (strcmp(key, snap_key)) {
-                      int on = tune_int("camera_follow", 1), rc = on ? snap_for(tr_pid_of(cu), why, sizeof why) : 0;
+                      int on = tune_int("camera_follow", 1), rc = on ? snap_for(tr_pid_of(cu), why, sizeof why, 0) : 0;
                       if (rc == -1 && (snap_t0 ? now_ms() - snap_t0 < 90000 : (snap_t0 = now_ms()) > 0)) { /* no board session yet: try again on the next loop (up to 90 s), do not give up this turn */ }
                       else { snprintf(snap_key, sizeof snap_key, "%s", key); snap_tries = 0; snap_t0 = 0; if (on && rc == 0 && !snap_first_done) { snap_first_done = 1; snap_rep = 2; snap_again = now_ms() + 6000; } } }
-                  else if (snap_again && now_ms() >= snap_again) { snap_again = 0; if (tune_int("camera_follow", 1)) snap_for(tr_pid_of(cu), why, sizeof why); if (--snap_rep > 0) snap_again = now_ms() + 9000; } } }
+                  else if (snap_again && now_ms() >= snap_again) { snap_again = 0; if (tune_int("camera_follow", 1)) snap_for(tr_pid_of(cu), why, sizeof why, 0); if (--snap_rep > 0) snap_again = now_ms() + 9000; } } }
             else if (ov[0] != '1') { hwait = 0; tick_once(); } else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         /* DESK GUARD (owner 2026-11-08 "the entities seemed to disappear from the board"): the players live on the generated PLAY desk; the editor's board launcher writes the world's desk from its own page (page=board) a little AFTER a driver that started at launch (the core watchdog) has switched it, and the players vanished with a game running. While a game is in play the driver keeps asserting its desk (a 4 KB read per 2 s, a write only when it really differs). */

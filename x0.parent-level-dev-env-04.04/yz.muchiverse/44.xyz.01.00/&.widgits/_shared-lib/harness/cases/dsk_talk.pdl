@@ -10,7 +10,7 @@
 #   over, and every roll token) as a hand-written `--row` with its exact sentence. (3) THE PANE: `ui` publishes logt_0..7 (pinned exactly) and the REAL driver publishes them as the chat rows gml_*.
 # NEGATIVES: an unknown kind comes back as the old raw text (known=0, and a sweep with such a row reports raw=1); a wrong name fails (`A bought` is absent where B bought); a renamed tile label changes the sentence (labels are data); a changed card
 #   wording changes the sentence (card text is data); names come from the join rows (Ava Ben Cy); the grep for raw tokens is shown to match the raw ledger (it CAN fail).
-# NOT COVERED: how the window wraps the pane (open the PNG: about 24 characters per line), the mini ruleset (its own ui), the driver's fallback to log_ for an engine without logt_ (checked by hand against an engine built from git HEAD, see the compendium).
+# NOT COVERED: how the window draws the pane (since 2026-11-09 the DRIVER wraps each sentence into rows of at most 24 characters, case dsk_talkwrap; open the PNG), the mini ruleset (its own ui), the driver's fallback to log_ for an engine without logt_ (checked by hand against an engine built from git HEAD, see the compendium).
 RESULTS | ../results/dsk_talk.txt
 ENV | LC_ALL | C
 
@@ -368,14 +368,14 @@ ENV     | GAME_OWNER_PID | $OWN
 SPAWN   | DRV | $T/app_x/ops/+x/deskopoly_driver.+x | $T/h | $T/app_x | $T/edit
 WAIT_HAS | edit/state/game_ui.txt | a game was in progress | 8000 | the-driver-continues-the-game-from-the-ledger
 EXPECT_HAS | $T/edit/state/game_ui.txt | \ngm_chat_title=TEROPOLY table talk\n | the-pane-is-the-table-talk
-EXPECT_HAS | $T/edit/state/game_ui.txt | \ngml_0_text=B rolled 10: Helix Row (for sale)\ngml_1_text=B bought Helix Row for $140\ngml_2_text=C is up (round 5)\ngml_3_text=C rolled 5: Phi Row (for sale)\ngml_4_text=C bought Phi Row for $120\ngml_5_text=A is up (round 6)\ngml_6_text=A offered B: Golden Row for $900 (offer #5)\ngml_7_text=B rejected A's offer #5\n | THE-PANE-ROWS-are-the-8-sentences-oldest-first-newest-last
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngml_0_text=B rolled 10: Helix Row\ngml_0_cls=rp-chat-pett\ngml_1_text=(for sale)\ngml_1_cls=rp-chat-pett\ngml_2_text=B bought Helix Row for\ngml_2_cls=rp-chat-humt\ngml_3_text=$140\ngml_3_cls=rp-chat-humt\ngml_4_text=C is up (round 5)\ngml_4_cls=rp-chat-pett\ngml_5_text=C rolled 5: Phi Row (for\ngml_5_cls=rp-chat-humt\ngml_6_text=sale)\ngml_6_cls=rp-chat-humt\ngml_7_text=C bought Phi Row for\ngml_7_cls=rp-chat-pett\ngml_8_text=$120\ngml_8_cls=rp-chat-pett\ngml_9_text=A is up (round 6)\ngml_9_cls=rp-chat-humt\ngml_10_text=A offered B: Golden Row\ngml_10_cls=rp-chat-pett\ngml_11_text=for $900 (offer #5)\ngml_11_cls=rp-chat-pett\ngml_12_text=B rejected A's offer #5\ngml_12_cls=rp-chat-humt\n | THE-PANE-ROWS-are-the-8-sentences-WRAPPED-at-24-characters-one-row-per-line-oldest-first-newest-last-2026-11-09-(was-8-whole-sentences)
 RUN | /usr/bin/grep | ^gml_ | $T/edit/state/game_ui.txt
 EXPECT_OUT_LACKS | offer id= | no-raw-offer-text-in-the-pane-rows
 EXPECT_OUT_LACKS | bought- | and-no-bought--token
 EXPECT_OUT_LACKS | to=13 | and-no-to=-token
 EXPECT_OUT_LACKS | card= | and-no-card=-token
-RUN | /usr/bin/grep | -c | gml_ | $T/edit/state/game_ui.txt
-EXPECT_OUT_IS | 8 | exactly-8-pane-rows
+RUN | /usr/bin/grep | -c | -E | ^gml_[0-9]+_text= | $T/edit/state/game_ui.txt
+EXPECT_OUT_IS | 13 | exactly-13-pane-rows-the-8-sentences-wrapped-(see-dsk_talkwrap)
 EXPECT_HAS | $T/edit/state/games/deskopoly/game/ui.txt | log_0=r6 p2 reject rejected\n | CONTROL-the-engine-feed-still-carries-the-raw-log_-text-so-the-LACKS-above-can-fail-on-the-feed-if-the-driver-showed-it
 CASE    | driver_end
 RUN | /usr/bin/kill | $OWN

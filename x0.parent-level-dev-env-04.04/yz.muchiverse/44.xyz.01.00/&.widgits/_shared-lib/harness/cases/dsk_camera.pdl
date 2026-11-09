@@ -71,14 +71,31 @@ WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=31\n | 
 WRITE   | app/tuning.pdl | TUNE | camera_follow | 1 | x | 1\nTUNE | camera_lead | 4 | x | 4\n
 
 CASE    | free
-WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=3\n
+# 2026-11-09: an EXPLICIT `Find me` press is a request from the user: it takes the follow camera back (camera_mode=2, as the engine's key 2 does) and then snaps; before, it answered `free camera in use` and did nothing (found live: a stray `1` key had left camera_mode=1).
+# The AUTOMATIC once-per-turn snap still respects a free camera: see the cases auto_free_3 and auto_free_1 at the end.
+WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=3\ncam_yaw=90\ncam_pitch=-60\ncam_pan_z=21\ncam_pan_x=3\n
 WRITE   | edit/edit-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=none\n
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | find_me | $T/edit/state/games/deskopoly
-WAIT_HAS | edit/state/game_ui.txt | free camera in use | 6000 | the-press-was-handled-and-says-why-nothing-moved
-EXPECT_HAS | $T/edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=23\npos_y=6\n | NEGATIVE-a-free-camera-mode-3-is-never-overridden
-WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=2\n
+WAIT_HAS | edit/state/game_ui.txt | camera: following you again | 6000 | the-press-in-mode-3-says-the-camera-follows-you-again
+WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=27\n | 6000 | an-EXPLICIT-Find-me-in-free-camera-mode-3-snaps-(red-on-the-old-driver:-it-refused)
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncamera_mode=2\n | and-leaves-camera_mode-2-the-follow-camera
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncam_yaw=180\n | and-resets-the-view-like-the-engine-key-2-yaw
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncam_pitch=6\n | pitch
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncam_pan_z=0\n | and-the-leftover-free-pan-z-is-dropped
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncam_pan_x=0\n | and-pan-x
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \nselector_x=13\nselector_y=27\n | and-the-selector-mirror-follows
+WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=1\n
+WRITE   | edit/edit-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=none\n
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | find_me | $T/edit/state/games/deskopoly
-WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=27\n | 6000 | CONTROL-the-same-press-with-camera_mode-2-moves-the-cursor
+WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=27\n | 6000 | the-same-from-mode-1-the-case-seen-live-after-a-stray-1-key
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncamera_mode=2\n | camera_mode-1-is-back-to-2
+WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=2\ncam_yaw=90\n
+WRITE   | edit/edit-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=none\n
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | find_me | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=17\npos_y=31\n | 6000 | CONTROL-in-mode-2-the-press-aims-by-the-CURRENT-yaw-90-(east)-nothing-is-reset
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncam_yaw=90\n | CONTROL-a-camera-that-already-follows-keeps-its-yaw-no-reset-and-no-change-message
+EXPECT_HAS | $T/sess/pieces/system/bv_state.txt | \ncamera_mode=2\n | still-2
+WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncam_pan_z=21\ncam_pan_x=3\n
 
 CASE    | possess
 WRITE   | edit/edit-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=pet_01\n
@@ -141,3 +158,67 @@ WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | EVENT\p5\pp2\proll\p | 3
 EXPECT_LACKS | $T/edit/state/game_ui.txt | \ncurrent=p1\n | VACUITY-it-is-still-a-pets-turn-after-the-wait
 EXPECT_HAS | $T/edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=23\npos_y=6\n | NEGATIVE-a-PET-turn-does-not-move-the-camera
 WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=1\npos_y=18\n | 40000 | CONTROL-when-p1-is-up-again-the-camera-snaps-to-p1s-NEW-tile-33-cell-1-22-aimed-4-north
+
+CASE    | auto_free_3
+# the AUTOMATIC snap respects a free camera (mode 3): a RUNNING game, p1 (human) is up the moment the driver starts; the cursor must stay where the owner left it. (The positive control is turn_change above: the same start with camera_mode 2 snaps by itself.)
+# Then the EXPLICIT press from the same state DOES snap and leaves camera_mode=2.
+COPYDIR | @.apps/deskopoly | app3 | state,shots
+MKDIR   | app3/deskopoly-pchq/pieces/system/maps/deskopoly/play
+MKDIR   | edit3/state/world
+MKDIR   | edit3/edit3-pchq/pieces/world_01
+MKDIR   | edit3/edit3-pchq/pieces/xelector_01
+MKDIR   | edit3/board/state
+MKDIR   | edit3/state/games/deskopoly/game
+MKDIR   | sess3/pieces/system
+MKDIR   | sess3/pieces/apps/player_app
+WRITE   | edit3/state/world/switches.txt | running=1\n
+WRITE   | edit3/edit3-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+WRITE   | edit3/edit3-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=none\n
+WRITE   | edit3/board/state/ui.txt | bv_session=$T/sess3\n
+WRITE   | sess3/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=3\ncam_yaw=90\ncam_pan_z=21\ncam_pan_x=3\n
+WRITE   | sess3/pieces/apps/player_app/interact_relay.txt |
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_tradeui_ledger.txt | edit3/state/games/deskopoly/game/ledger.txt
+SPAWN   | DRV3 | $T/app3/ops/+x/deskopoly_driver.+x | $T/h | $T/app3 | $T/edit3
+WAIT_HAS | edit3/state/game_ui.txt | your turn, A | 8000 | the-running-game-waits-for-the-human-p1
+SLEEP   | 3000
+EXPECT_HAS | $T/edit3/edit3-pchq/pieces/xelector_01/state.txt | pos_x=23\npos_y=6\n | NEGATIVE-the-AUTO-snap-does-not-take-a-free-camera-(mode-3)-the-cursor-stays
+EXPECT_FILE | $T/sess3/pieces/apps/player_app/interact_relay.txt |  | and-nothing-was-nudged
+EXPECT_HAS | $T/sess3/pieces/system/bv_state.txt | \ncamera_mode=3\n | and-the-camera-mode-is-untouched-by-the-auto-path
+WAIT_HAS | app3/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | 13 31 220 60 60 People1 0 2 1 A | 8000 | p1s-figure-is-known-to-the-driver
+RUN | $T/app3/ops/+x/deskopoly_ctl.+x | find_me | $T/edit3/state/games/deskopoly
+WAIT_HAS | edit3/edit3-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=27\n | 6000 | the-EXPLICIT-press-snaps-from-the-same-state-(yaw-reset-to-180-by-the-mode-change-so-the-aim-is-13-27)
+EXPECT_HAS | $T/sess3/pieces/system/bv_state.txt | \ncamera_mode=2\n | and-leaves-the-follow-camera-camera_mode-2
+EXPECT_HAS | $T/sess3/pieces/system/bv_state.txt | \ncam_yaw=180\n | with-the-engine-key-2-view-yaw
+WAIT_HAS | edit3/state/game_ui.txt | camera: following you again | 3000 | and-the-popup-says-so
+
+CASE    | auto_free_1
+# the AUTOMATIC snap respects a free camera (mode 1): a RUNNING game, p1 (human) is up the moment the driver starts; the cursor must stay where the owner left it. (The positive control is turn_change above: the same start with camera_mode 2 snaps by itself.)
+# Then the EXPLICIT press from the same state DOES snap and leaves camera_mode=2.
+COPYDIR | @.apps/deskopoly | app1 | state,shots
+MKDIR   | app1/deskopoly-pchq/pieces/system/maps/deskopoly/play
+MKDIR   | edit1/state/world
+MKDIR   | edit1/edit1-pchq/pieces/world_01
+MKDIR   | edit1/edit1-pchq/pieces/xelector_01
+MKDIR   | edit1/board/state
+MKDIR   | edit1/state/games/deskopoly/game
+MKDIR   | sess1/pieces/system
+MKDIR   | sess1/pieces/apps/player_app
+WRITE   | edit1/state/world/switches.txt | running=1\n
+WRITE   | edit1/edit1-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+WRITE   | edit1/edit1-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=none\n
+WRITE   | edit1/board/state/ui.txt | bv_session=$T/sess1\n
+WRITE   | sess1/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncamera_mode=1\ncam_yaw=90\ncam_pan_z=21\ncam_pan_x=3\n
+WRITE   | sess1/pieces/apps/player_app/interact_relay.txt |
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_tradeui_ledger.txt | edit1/state/games/deskopoly/game/ledger.txt
+SPAWN   | DRV1 | $T/app1/ops/+x/deskopoly_driver.+x | $T/h | $T/app1 | $T/edit1
+WAIT_HAS | edit1/state/game_ui.txt | your turn, A | 8000 | the-running-game-waits-for-the-human-p1
+SLEEP   | 3000
+EXPECT_HAS | $T/edit1/edit1-pchq/pieces/xelector_01/state.txt | pos_x=23\npos_y=6\n | NEGATIVE-the-AUTO-snap-does-not-take-a-free-camera-(mode-1)-the-cursor-stays
+EXPECT_FILE | $T/sess1/pieces/apps/player_app/interact_relay.txt |  | and-nothing-was-nudged
+EXPECT_HAS | $T/sess1/pieces/system/bv_state.txt | \ncamera_mode=1\n | and-the-camera-mode-is-untouched-by-the-auto-path
+WAIT_HAS | app1/deskopoly-pchq/pieces/system/maps/deskopoly/play/events.txt | 13 31 220 60 60 People1 0 2 1 A | 8000 | p1s-figure-is-known-to-the-driver
+RUN | $T/app1/ops/+x/deskopoly_ctl.+x | find_me | $T/edit1/state/games/deskopoly
+WAIT_HAS | edit1/edit1-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=27\n | 6000 | the-EXPLICIT-press-snaps-from-the-same-state-(yaw-reset-to-180-by-the-mode-change-so-the-aim-is-13-27)
+EXPECT_HAS | $T/sess1/pieces/system/bv_state.txt | \ncamera_mode=2\n | and-leaves-the-follow-camera-camera_mode-2
+EXPECT_HAS | $T/sess1/pieces/system/bv_state.txt | \ncam_yaw=180\n | with-the-engine-key-2-view-yaw
+WAIT_HAS | edit1/state/game_ui.txt | camera: following you again | 3000 | and-the-popup-says-so

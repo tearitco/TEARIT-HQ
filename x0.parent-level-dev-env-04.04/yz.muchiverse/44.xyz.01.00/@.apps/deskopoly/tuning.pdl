@@ -8,3 +8,7 @@ TUNE | tick_ms | 1500 | the slowest a watched game may tick: one decision per th
 TUNE | camera_follow | 1 | bring the camera to the human player's figure on their turn, and offer `Find me` | 1
 # camera_lead: the cursor is aimed this many cells BEYOND the figure along the view direction, so the figure stands in the clear strip under the game popup (aimed at the figure itself it sits exactly behind the popup). 0..12.
 TUNE | camera_lead | 4 | cells beyond the figure the camera aims at | 4
+# ---- the table talk pane (2026-11-09); read by deskopoly_driver at every publish ----
+# A pane row is ONE fixed-height line (the shared renderer draws a longer text over the next row), so the driver word-wraps every sentence into rows of at most talk_wrap characters (the 190 px pane holds about 26) and never publishes more than talk_rows rows (whole oldest sentences are dropped first; the pane holds about 18).
+TUNE | talk_wrap | 24 | characters per table-talk row (8..62) | 24
+TUNE | talk_rows | 16 | most rows of table talk shown (4..40) | 16

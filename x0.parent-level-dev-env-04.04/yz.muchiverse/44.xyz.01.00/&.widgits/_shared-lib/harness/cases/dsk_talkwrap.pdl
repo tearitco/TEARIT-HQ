@@ -1,0 +1,103 @@
+# dsk_talkwrap: A WRAPPED TABLE-TALK SENTENCE MUST NOT BE DRAWN OVER THE NEXT ONE (2026-11-09; seen in the presentation video: `C rolled 2: Lost & Found - Your birthday: collect $10 from every other ...` printed over the next sentence).
+# CAUSE: every `ov-scrolltext` row of the editor's right pane has ONE fixed height (30 px, one drawn line); the old driver published one row per SENTENCE, so a sentence of 3 drawn lines overran its slot. The renderer is shared (no per-project change), so
+# the DATA now carries the breaks: the driver word-wraps every sentence to at most `talk_wrap` characters (tuning.pdl, default 24; the 190 px pane holds about 26) and publishes each LINE as its own row gml_<n>_text, with gml_<n>_cls alternating
+# between two shades per SENTENCE (the editor's xhtpm reads ${gml.cls}); never more than `talk_rows` rows (default 16; the pane holds about 18): whole OLDEST sentences are dropped first, the newest sentence is always whole.
+# Method: the REAL driver in two scratch houses on the 68-row live fixture (dsk_talk_ledger.txt) whose last 8 sentences are made long by renaming tile labels (labels are data: page.pdl LABEL rows, as dsk_talk proves).
+#   A (talk_rows 40): EVERY published row is at most 24 characters (grep count of rows of 25 or more = 0; positive control: the same grep on the engine's own logt_ sentences finds long ones, and a mutant tuning talk_wrap 60 makes the grep fire), the rows are
+#   pinned EXACTLY in order (so no word is cut or lost and sentence order is kept), the rows are the sentences' words in order (word-wise: each sentence's last word is a row's last word), every row has a cls, the cls changes at every sentence start.
+#   B (default talk_rows): at most 16 rows, the newest sentence is complete, the oldest sentences are the ones dropped (a dropped sentence is dropped whole: its first word is absent and so is its last).
+#   C (talk_wrap 60 and talk_rows 40, the mutant): the long rows come back - the check of A CAN fail.
+# RED AGAINST THE OLD DRIVER (one row per sentence, no cls): the rows of 25 or more are not 0, gml_0_cls is absent.
+# NOT COVERED: the pixels. Open the window PNG: no text over text (live check 2026-11-09 in the compendium Teropoly row `Table talk wraps`); the shade only shows after the editor was relaunched (the xhtpm is read at launch).
+RESULTS | ../results/dsk_talkwrap.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR   | h/&.widgits/_shared-lib/ops/+x
+COPY    | &.widgits/_shared-lib/ops/+x/raw_to_png.+x | h/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+COPYDIR | @.apps/deskopoly | app_a | state,shots
+COPYDIR | @.apps/deskopoly | app_b | state,shots
+COPYDIR | @.apps/deskopoly | app_c | state,shots
+# long labels: the last 8 sentences of the fixture quote Helix Row (Pink2), Phi Row (Sky3) and Golden Row (Yellow1)
+APPEND  | app_a/rulesets/classic/page.pdl | LABEL \p Pink2 \p Helix Row of the Seventeen Winding Spirals\nLABEL \p Sky3 \p Phi Row\nLABEL \p Yellow1 \p Golden Row of Amazingly Long Boulevard\n
+APPEND  | app_b/rulesets/classic/page.pdl | LABEL \p Pink2 \p Helix Row of the Seventeen Winding Spirals\nLABEL \p Sky3 \p Phi Row\nLABEL \p Yellow1 \p Golden Row of Amazingly Long Boulevard\n
+APPEND  | app_c/rulesets/classic/page.pdl | LABEL \p Pink2 \p Helix Row of the Seventeen Winding Spirals\nLABEL \p Sky3 \p Phi Row\nLABEL \p Yellow1 \p Golden Row of Amazingly Long Boulevard\n
+APPEND  | app_a/tuning.pdl | TUNE \p talk_rows \p 40 \p test \p 16\n
+APPEND  | app_c/tuning.pdl | TUNE \p talk_rows \p 40 \p test \p 16\nTUNE \p talk_wrap \p 60 \p MUTANT-the-old-width \p 24\n
+RUN | /usr/bin/grep | -c | -E | ^TUNE [\p] talk_wrap [\p] 24 | $T/app_a/tuning.pdl
+EXPECT_OUT_IS | 1 | VACUITY-the-default-wrap-row-is-in-the-copy-and-only-the-mutant-copy-has-the-60
+RUN | /usr/bin/grep | -c | TUNE.*talk_wrap.*60 | $T/app_c/tuning.pdl
+EXPECT_OUT_IS | 1 | and-the-mutant-copy-has-wrap-60
+MKDIR   | e_a/state/world
+MKDIR   | e_a/edit-pchq/pieces/world_01
+MKDIR   | e_a/state/games/deskopoly/game
+MKDIR   | e_b/state/world
+MKDIR   | e_b/edit-pchq/pieces/world_01
+MKDIR   | e_b/state/games/deskopoly/game
+MKDIR   | e_c/state/world
+MKDIR   | e_c/edit-pchq/pieces/world_01
+MKDIR   | e_c/state/games/deskopoly/game
+MKDIR   | app_a/deskopoly-pchq/pieces/system/maps/deskopoly/play
+MKDIR   | app_b/deskopoly-pchq/pieces/system/maps/deskopoly/play
+MKDIR   | app_c/deskopoly-pchq/pieces/system/maps/deskopoly/play
+WRITE   | e_a/state/world/switches.txt | running=0\n
+WRITE   | e_b/state/world/switches.txt | running=0\n
+WRITE   | e_c/state/world/switches.txt | running=0\n
+WRITE   | e_a/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+WRITE   | e_b/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+WRITE   | e_c/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_talk_ledger.txt | e_a/state/games/deskopoly/game/ledger.txt
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_talk_ledger.txt | e_b/state/games/deskopoly/game/ledger.txt
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_talk_ledger.txt | e_c/state/games/deskopoly/game/ledger.txt
+SPAWN   | OWN | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN
+SPAWN   | DRVA | $T/app_a/ops/+x/deskopoly_driver.+x | $T/h | $T/app_a | $T/e_a
+SPAWN   | DRVB | $T/app_b/ops/+x/deskopoly_driver.+x | $T/h | $T/app_b | $T/e_b
+SPAWN   | DRVC | $T/app_c/ops/+x/deskopoly_driver.+x | $T/h | $T/app_c | $T/e_c
+WAIT_HAS | e_a/state/game_ui.txt | gm_nl= | 8000 | driver-A-published
+WAIT_HAS | e_b/state/game_ui.txt | gm_nl= | 8000 | driver-B-published
+WAIT_HAS | e_c/state/game_ui.txt | gm_nl= | 8000 | driver-C-published
+
+CASE    | rowsA
+# A: wide cap (40): nothing dropped, nothing cut
+RUN | /usr/bin/grep | -c | -E | ^logt_[0-9]+=.{25,}$ | $T/e_a/state/games/deskopoly/game/ui.txt
+CAPTURE | longsent
+EXPECT_GE | $longsent | 4 | POSITIVE-CONTROL-the-engine-feed-has-long-sentences-so-a-width-check-on-the-pane-rows-has-something-to-catch
+RUN | /usr/bin/grep | -c | -E | ^gml_[0-9]+_text=.{25,}$ | $T/e_a/state/game_ui.txt
+EXPECT_OUT_IS | 0 | NO-PANE-ROW-IS-LONGER-THAN-24-CHARACTERS-so-no-row-is-drawn-over-the-next
+RUN | /usr/bin/grep | -c | -E | ^gml_[0-9]+_text=.{18,24}$ | $T/e_a/state/game_ui.txt
+CAPTURE | fullrows
+EXPECT_GE | $fullrows | 5 | CONTROL-the-pane-rows-are-nearly-full-lines-not-fragments-the-regex-matches-rows-of-18-to-24
+EXPECT_HAS | $T/e_a/state/game_ui.txt | \ngm_nl=17\n | SEVENTEEN-ROWS-for-8-sentences
+EXPECT_HAS | $T/e_a/state/game_ui.txt | \ngml_0_text=B rolled 10: Helix Row\ngml_0_cls=rp-chat-pett\ngml_1_text=of the Seventeen Winding\ngml_1_cls=rp-chat-pett\ngml_2_text=Spirals (for sale)\ngml_2_cls=rp-chat-pett\ngml_3_text=B bought Helix Row of\ngml_3_cls=rp-chat-humt\ngml_4_text=the Seventeen Winding\ngml_4_cls=rp-chat-humt\ngml_5_text=Spirals for $140\ngml_5_cls=rp-chat-humt\ngml_6_text=C is up (round 5)\ngml_6_cls=rp-chat-pett\ngml_7_text=C rolled 5: Phi Row (for\ngml_7_cls=rp-chat-humt\ngml_8_text=sale)\ngml_8_cls=rp-chat-humt\ngml_9_text=C bought Phi Row for\ngml_9_cls=rp-chat-pett\ngml_10_text=$120\ngml_10_cls=rp-chat-pett\ngml_11_text=A is up (round 6)\ngml_11_cls=rp-chat-humt\ngml_12_text=A offered B: Golden Row\ngml_12_cls=rp-chat-pett\ngml_13_text=of Amazingly Long\ngml_13_cls=rp-chat-pett\ngml_14_text=Boulevard for $900\ngml_14_cls=rp-chat-pett\ngml_15_text=(offer #5)\ngml_15_cls=rp-chat-pett\ngml_16_text=B rejected A's offer #5\ngml_16_cls=rp-chat-humt\n | EVERY-WORD-OF-EVERY-SENTENCE-IS-THERE-IN-ORDER-sentences-alternate-shade-newest-keeps-humt
+RUN | /usr/bin/grep | -c | -E | ^gml_[0-9]+_cls= | $T/e_a/state/game_ui.txt
+EXPECT_OUT_IS | 17 | every-row-has-a-shade
+
+CASE    | rowsB
+# B: the default cap (16 rows): the oldest WHOLE sentence goes, the newest stays whole
+RUN | /usr/bin/grep | -c | -E | ^gml_[0-9]+_text=.{25,}$ | $T/e_b/state/game_ui.txt
+EXPECT_OUT_IS | 0 | B-no-row-longer-than-24
+EXPECT_HAS | $T/e_b/state/game_ui.txt | \ngm_nl=14\n | FOURTEEN-ROWS-the-17-did-not-fit-16-so-the-3-rows-of-the-oldest-sentence-went
+EXPECT_HAS | $T/e_b/state/game_ui.txt | \ngml_0_text=B bought Helix Row of\ngml_0_cls=rp-chat-humt\n | the-first-row-is-the-start-of-the-second-oldest-sentence
+EXPECT_HAS | $T/e_b/state/game_ui.txt | \ngml_13_text=B rejected A's offer #5\ngml_13_cls=rp-chat-humt\n | and-the-last-row-is-the-newest-sentence-whole
+RUN | /usr/bin/grep | gml_ | $T/e_b/state/game_ui.txt
+EXPECT_OUT_LACKS | B rolled 10 | the-dropped-sentence-is-gone-whole-its-first-words
+EXPECT_OUT_LACKS | (for sale) | and-its-last-words
+EXPECT_OUT_LACKS | gml_14 | and-there-is-no-row-14
+
+CASE    | rowsC
+# C: the old width (mutant tuning talk_wrap 60): the long rows return, so the width check of A can fail
+RUN | /usr/bin/grep | -c | -E | ^gml_[0-9]+_text=.{25,}$ | $T/e_c/state/game_ui.txt
+CAPTURE | mutantlong
+EXPECT_GE | $mutantlong | 4 | MUTANT-RED-with-the-old-width-the-width-grep-finds-long-rows
+
+CASE    | driver_end
+RUN | /usr/bin/kill | $OWN
+SLEEP   | 300
+EXPECT_DEAD | $OWN | the-fake-owner-is-gone
+SLEEP   | 1500
+EXPECT_DEAD | $DRVA | driver-A-ends-with-its-owner
+EXPECT_DEAD | $DRVB | driver-B-ends-with-its-owner
+EXPECT_DEAD | $DRVC | driver-C-ends-with-its-owner
+CLEAN   |
