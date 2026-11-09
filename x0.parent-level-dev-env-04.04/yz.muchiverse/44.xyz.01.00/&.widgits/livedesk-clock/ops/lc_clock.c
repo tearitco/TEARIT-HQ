@@ -1245,7 +1245,7 @@ static const char *fire_reminder(const char *house, const Reminder *r, int show_
 
 /* REAL-TIME FIRE BUDGET (2026-11-08, found by the CPU guard: this daemon was 364% of a core, 130+ wakeups/s, and the guard ended 30 house processes). CATCHUP_CAP bounds one POLL, not the work per second:
  * the rpg clock runs at rate `sec` (1 game hour per real second), so a 5-game-minute reminder falls due 12 times a second, a poll is every 300 ms, and every fire is a full event run (~1.8 s of CPU) even for pages
- * that are shipped OFF. In the DAEMON only (the harness `step`/`poll` commands keep the old exact behaviour, g_min_gap_ms = 0) a reminder fires AT MOST ONCE per LC_CLOCK_MIN_FIRE_GAP_MS of real time (default 30 s)
+ * that are shipped OFF. In the DAEMON only (the harness `step`/`poll` commands keep the old exact behaviour, g_min_gap_ms = 0) a reminder fires AT MOST ONCE per LC_CLOCK_MIN_FIRE_GAP_MS of real time (default 120 s since 2026-11-08 17:5x, was 30 s)
  * and a batch runs ONE event; the rest of that backlog is collapsed into the usual `caught up N` row (the ledger cursor still moves, nothing is replayed later). Cost bound: reminders / 30 s event runs. */
 static long long g_min_gap_ms = 0;
 static void poll_reminders(const char *house) {
@@ -1305,6 +1305,7 @@ static void poll_reminders(const char *house) {
         }
         r->fired_ms = wall;
         changed = 1;
+        if (g_min_gap_ms > 0) break;   /* DAEMON: ONE reminder fires per poll, the rest wait for the next poll (300 ms): their event runs (~1.3 s CPU each for the phase pages) never overlap, measured 148% of a core when ten fired in the same poll */
     }
     if (changed) reminders_save(house, list, n);
 }
@@ -1442,7 +1443,7 @@ static int cmd_daemon(const char *house) {
     if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); }
     { const char *ow = getenv("LC_OWNER_PID"); long owp = ow ? atol(ow) : 0; if (owp <= 1) owp = owner_from_daemon_lock(house); reg_run("register", owp > 1 ? "owner" : "keep", owp > 1 ? owp : 0); }
 
-    { const char *gp = getenv("LC_CLOCK_MIN_FIRE_GAP_MS"); g_min_gap_ms = gp ? atoll(gp) : 30000; if (g_min_gap_ms < 0) g_min_gap_ms = 0; }   /* daemon only: see g_min_gap_ms; 0 = the old uncapped catch-up */
+    { const char *gp = getenv("LC_CLOCK_MIN_FIRE_GAP_MS"); g_min_gap_ms = gp ? atoll(gp) : 120000; if (g_min_gap_ms < 0) g_min_gap_ms = 0; }   /* daemon only: see g_min_gap_ms; 0 = the old uncapped catch-up */
     long long last = mono_ms_now();
     while (!g_exit) {
         long long now = mono_ms_now();
