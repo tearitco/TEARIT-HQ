@@ -1,0 +1,386 @@
+# dsk_talk: the TEROPOLY TABLE TALK reads as sentences (2026-11-09, owner: "make the table talk readable"). The right pane of the editor (title `TEROPOLY table talk`) used to print the raw ledger result text
+# (`r5 p2 roll to=13;for-sale`, `r5 p2 buy bought-140`, `r6 p1 offer id=5;give=prop:26;get=cash:900;round=1`, `card=luck:15`). Now ONE function of the engine (`talk_row` in @.apps/deskopoly/ops/deskopoly.c) turns a replayed ledger row into a
+# short sentence with the player NAMES (join rows) and the tile LABELS and deck names (page.pdl LABEL rows) and the card's own wording (cards.pdl): `B bought Phi Lane for $140`, `A offered B: Coil Plaza for $30 (offer #5)`.
+# It is published as the additive feed keys `logt_<k>` (next to the unchanged raw `log_<k>`); the driver shows `logt_` and falls back to `log_` for an empty one; the verb `talk [--out <file> | --row "<EVENT row>"]` prints the same sentences for a harness.
+# THE LEDGER IS NEVER CHANGED: the pinned ledger hash of the seed-6 game (72442143905f2371, case dsk_pettrade) is asserted again AFTER talk and ui have run.
+# Method: sentences are checked three ways. (1) SWEEPS: three whole games (the 831-row seed-6 pets game, the 840-row pet_trades game, the engine-made 47-row fixture of dsk_tradeui) and the 68-row fixture of the live game
+#   (amend, cancel, counter, reject) are turned into sentences with `talk --out`; the file must hold one line per ledger row, no row falls back to raw text (raw=0), no line contains a raw token (to= id= give= get= card= bought- ;)
+#   - and the same grep is run on the RAW ledger as the positive control - and for every verb the number of sentences of its shape equals the number of ledger rows of that verb (a counter computed by grep on both sides). (2) ONE ROW PER KIND:
+#   every row kind the engine writes (lobby join leave start order first seat roll jail_roll jail_pay jail_card buy skip bid pass auction_end end_turn bankrupt pay_debt build sell mortgage unmortgage offer counter amend accept reject cancel expire
+#   over, and every roll token) as a hand-written `--row` with its exact sentence. (3) THE PANE: `ui` publishes logt_0..7 (pinned exactly) and the REAL driver publishes them as the chat rows gml_*.
+# NEGATIVES: an unknown kind comes back as the old raw text (known=0, and a sweep with such a row reports raw=1); a wrong name fails (`A bought` is absent where B bought); a renamed tile label changes the sentence (labels are data); a changed card
+#   wording changes the sentence (card text is data); names come from the join rows (Ava Ben Cy); the grep for raw tokens is shown to match the raw ledger (it CAN fail).
+# NOT COVERED: how the window wraps the pane (open the PNG: about 24 characters per line), the mini ruleset (its own ui), the driver's fallback to log_ for an engine without logt_ (checked by hand against an engine built from git HEAD, see the compendium).
+RESULTS | ../results/dsk_talk.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | m
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | the-base-game-is-the-seed-6-pets-game-of-dsk_pettrade
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
+EXPECT_OUT | rows=831 hash=72442143905f2371 | the-ledger-hash-before-any-talk
+
+
+CASE    | sweep6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --out | $T/m.out
+EXPECT_OUT_IS | TALK rows=831 raw=0 | EVERY-ONE-OF-THE-831-ROWS-HAS-A-SENTENCE-and-none-fell-back-to-raw-text
+RUN | /usr/bin/grep | -c | ^ | $T/m.out
+EXPECT_OUT_IS | 831 | the-sentence-file-has-one-line-per-ledger-row
+RUN | /usr/bin/grep | -c | ^$ | $T/m.out
+EXPECT_OUT_IS | 0 | and-no-sentence-is-empty
+RUN | /usr/bin/grep | -c | -E | to=\pid=\pgive=\pget=\pcard=\pbought-\p; | $T/m.out
+EXPECT_OUT_IS | 0 | NO-SENTENCE-CONTAINS-A-RAW-TOKEN-to=-id=-give=-get=-card=-bought--or-a-semicolon
+RUN | /usr/bin/grep | -c | -E | to=\pbought-\pcard=\p; | $T/m/ledger.txt
+CAPTURE | rawleaks
+EXPECT_GE | $rawleaks | 600 | POSITIVE-CONTROL-the-same-grep-on-the-RAW-ledger-finds-the-tokens-in-hundreds-of-rows-so-the-zero-above-CAN-fail
+RUN | /usr/bin/head | -n | 13 | $T/m.out
+EXPECT_OUT | A rolled 8: Phi Court (for sale)\nA bought Phi Court for $100\nB is up (round 0)\nB rolled 8: Phi Court (rent $6 to A) | the-first-turns-read-as-sentences-with-the-NAMES-A-B-and-the-tile-LABEL-Phi-Court
+# the ledger is untouched by talk
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | ledger_hash
+EXPECT_OUT | rows=831 hash=72442143905f2371 | THE-LEDGER-IS-NEVER-CHANGED-same-hash-after-talk
+# for every verb: the number of ledger rows equals the number of sentences of its shape, counted by grep on both sides
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].buy. | $T/m/ledger.txt
+CAPTURE | l_buy
+RUN | /usr/bin/grep | -c | -E | ^[A-C] bought .* for [$][0-9]+$ | $T/m.out
+CAPTURE | s_buy
+EXPECT_EQ | $l_buy | $s_buy | buy-rows-equal-bought-sentences
+EXPECT_EQ | $l_buy | 22 | VACUITY-the-game-has-22-purchases
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].roll. | $T/m/ledger.txt
+CAPTURE | l_roll
+RUN | /usr/bin/grep | -c | -E | ^[A-C] rolled [0-9]+ | $T/m.out
+CAPTURE | s_roll
+EXPECT_EQ | $l_roll | $s_roll | roll-rows-equal-rolled-sentences
+EXPECT_EQ | $l_roll | 251 | VACUITY-251-rolls
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].jail_roll. | $T/m/ledger.txt
+CAPTURE | l_jr
+RUN | /usr/bin/grep | -c | -E | ^[A-C] threw [0-9]+ in Jail | $T/m.out
+CAPTURE | s_jr
+EXPECT_EQ | $l_jr | $s_jr | jail_roll-rows-equal-threw-in-Jail-sentences
+EXPECT_EQ | $l_jr | 29 | VACUITY-29-jail-throws
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].end_turn. | $T/m/ledger.txt
+CAPTURE | l_et
+RUN | /usr/bin/grep | -c | -E | ^[A-C] is up .round [0-9]+.$ | $T/m.out
+CAPTURE | s_et
+EXPECT_EQ | $l_et | $s_et | end_turn-rows-equal-is-up-sentences
+EXPECT_EQ | $l_et | 240 | VACUITY-240-turns
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].bid. | $T/m/ledger.txt
+CAPTURE | l_bid
+RUN | /usr/bin/grep | -c | -E | ^[A-C] bid [$][0-9]+ on | $T/m.out
+CAPTURE | s_bid
+EXPECT_EQ | $l_bid | $s_bid | bid-rows-equal-bid-sentences
+EXPECT_EQ | $l_bid | 115 | VACUITY-115-bids
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].pass. | $T/m/ledger.txt
+CAPTURE | l_pass
+RUN | /usr/bin/grep | -c | -E | ^[A-C] is out of the .* auction$ | $T/m.out
+CAPTURE | s_pass
+EXPECT_EQ | $l_pass | $s_pass | pass-rows-equal-out-of-the-auction-sentences
+EXPECT_EQ | $l_pass | 12 | VACUITY-12-passes
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].skip. | $T/m/ledger.txt
+CAPTURE | l_skip
+RUN | /usr/bin/grep | -c | -E | ^[A-C] declined | $T/m.out
+CAPTURE | s_skip
+EXPECT_EQ | $l_skip | $s_skip | skip-rows-equal-declined-sentences
+EXPECT_EQ | $l_skip | 6 | VACUITY-6-declined-tiles
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.bank.auction_end. | $T/m/ledger.txt
+CAPTURE | l_ae
+RUN | /usr/bin/grep | -c | -E | ^[A-Za-z0-9 ]+ (sold to [A-C] for [$][0-9]+\punsold)$ | $T/m.out
+CAPTURE | s_ae
+EXPECT_EQ | $l_ae | $s_ae | auction_end-rows-equal-sold-to-or-unsold-sentences
+EXPECT_EQ | $l_ae | 6 | VACUITY-6-auctions-ended
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].build. | $T/m/ledger.txt
+CAPTURE | l_bu
+RUN | /usr/bin/grep | -c | -E | ^[A-C] built (a hotel\phouse [1-4]) on .* for [$][0-9]+$ | $T/m.out
+CAPTURE | s_bu
+EXPECT_EQ | $l_bu | $s_bu | build-rows-equal-built-sentences
+EXPECT_EQ | $l_bu | 87 | VACUITY-87-buildings
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].(sell\pmortgage\punmortgage). | $T/m/ledger.txt
+CAPTURE | l_sm
+RUN | /usr/bin/grep | -c | -E | ^[A-C] (sold a building on\pmortgaged\plifted the mortgage on) | $T/m.out
+CAPTURE | s_sm
+EXPECT_EQ | $l_sm | $s_sm | sell-mortgage-unmortgage-rows-equal-their-sentences
+EXPECT_EQ | $l_sm | 38 | VACUITY-16-sales-15-mortgages-7-lifts
+RUN | /usr/bin/grep | -c | -E | ^EVENT.[0-9]+.p[0-9].(bankrupt\ppay_debt\pjail_card). | $T/m/ledger.txt
+CAPTURE | l_bp
+RUN | /usr/bin/grep | -c | -E | ^[A-C] (went bankrupt\ppaid the [$][0-9]+ debt to\pused a Get Out of Jail card) | $T/m.out
+CAPTURE | s_bp
+EXPECT_EQ | $l_bp | $s_bp | bankrupt-pay_debt-jail_card-rows-equal-their-sentences
+EXPECT_EQ | $l_bp | 15 | VACUITY-2-bankrupt-11-debts-2-cards
+RUN | /usr/bin/grep | -c | -E | ^Game over: C wins$ | $T/m.out
+EXPECT_OUT_IS | 1 | the-over-row-names-the-winner-C
+RUN | /usr/bin/grep | -c | -E | ^C rolled [0-9]+: Luck - | $T/m.out
+CAPTURE | luckC
+EXPECT_GE | $luckC | 1 | a-Luck-card-reads-with-its-own-wording-C
+RUN | /usr/bin/grep | -c | -E | -e | - (The bank pays you [$]50\pPay a [$]15 fine\pAdvance to Vortex Plaza\pGo to Jail\pTake a trip to Spiral Line I) | $T/m.out
+CAPTURE | cardwords
+EXPECT_GE | $cardwords | 6 | and-the-wording-comes-from-cards-pdl-with-tile-ids-shown-as-labels-and-bare-numbers-as-money
+
+CASE    | sweep_trades
+COPYDIR | @.apps/deskopoly | app_t | ops,deskopoly-pchq,state
+APPEND  | app_t/rulesets/classic/rules.pdl | RULE \p pet_trades \p on\n
+MKDIR   | n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | autoplay
+EXPECT_OUT | AUTOPLAY events=840 rounds=78 over=1 winner=p2 | the-pet_trades-game-of-dsk_pettrade-840-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | talk | --out | $T/n.out
+EXPECT_OUT_IS | TALK rows=840 raw=0 | all-840-rows-have-a-sentence
+RUN | /usr/bin/grep | -c | -E | to=\pid=\pgive=\pget=\pcard=\pbought-\p; | $T/n.out
+EXPECT_OUT_IS | 0 | no-raw-token-in-the-trade-game-either
+RUN | /usr/bin/grep | -E | offer | $T/n.out
+EXPECT_OUT_IS | C offered A: $300 for Coil Plaza (offer #1)\nA accepted C's offer: $300 for Coil Plaza\nB offered C: $450 for Shell Hall (offer #2)\nC accepted B's offer: $450 for Shell Hall\nB offered C: $600 for Hub Crown (offer #3)\nC accepted B's offer: $600 for Hub Crown | THE-3-PET-OFFERS-AND-THEIR-ANSWERS-read-with-names-labels-and-money-and-the-acceptor-names-the-PROPOSER-from-the-offer-table
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_t | $T/n | ledger_hash
+EXPECT_OUT | rows=840 hash=60c14d30db8116db | and-the-pinned-ledger-hash-of-dsk_pettrade-is-unchanged
+
+CASE    | sweep_fixtures
+MKDIR   | f
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_tradeui_ledger.txt | f/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/f | talk | --out | $T/f.out
+EXPECT_OUT_IS | TALK rows=47 raw=0 | the-47-row-dsk_tradeui-fixture-all-sentences
+RUN | /usr/bin/grep | -c | -E | to=\pid=\pgive=\pget=\pcard=\pbought-\p; | $T/f.out
+EXPECT_OUT_IS | 0 | and-no-raw-token
+RUN | /usr/bin/sed | -n | 9,16p | $T/f.out
+EXPECT_OUT_IS | C moves first\nC rolled 8: Phi Court (for sale, doubles)\nC bought Phi Court for $100\nC rolled 7: Spiral Line II (for sale)\nC bought Spiral Line II for $200\nA is up (round 1)\nA rolled 7: Luck - The bank pays you $50\nB is up (round 1) | rows-9-to-16-of-the-fixture-as-sentences
+MKDIR   | l
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_talk_ledger.txt | l/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | ledger_hash
+CAPTURE | hash_before
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | talk | --out | $T/l.out
+EXPECT_OUT_IS | TALK rows=68 raw=0 | the-68-row-live-game-fixture-all-sentences
+RUN | /usr/bin/grep | -c | -E | to=\pid=\pgive=\pget=\pcard=\pbought-\p; | $T/l.out
+EXPECT_OUT_IS | 0 | and-no-raw-token
+RUN | /usr/bin/sed | -n | 41,53p | $T/l.out
+EXPECT_OUT_IS | A offered B: Coil Plaza for $30 (offer #1)\nA amended offer #1: Coil Plaza for $20\nA cancelled offer #1\nA offered B: Coil Plaza for $30 (offer #2)\nA amended offer #2: Coil Plaza for $20\nA cancelled offer #2\nA rolled 7: Golden Row (for sale)\nA bought Golden Row for $260\nB is up (round 4)\nB offered A: $20 for Coil Plaza (offer #3)\nA countered B: Coil Plaza for $30 (offer #4)\nB accepted A's offer: Coil Plaza for $30\nB rolled 8: Spiral Line IV (rent $50 to C) | offer-amend-cancel-counter-accept-in-the-live-game-order-the-counter-names-B-from-the-offer-table
+RUN | /usr/bin/sed | -n | 67,68p | $T/l.out
+EXPECT_OUT_IS | A offered B: Golden Row for $900 (offer #5)\nB rejected A's offer #5 | the-two-last-rows-the-reject-names-A
+RUN | /usr/bin/grep | -c | -E | to=\pid=\pgive=\pget=\pcard=\pbought-\p; | $T/l/ledger.txt
+CAPTURE | rawl
+EXPECT_GE | $rawl | 30 | POSITIVE-CONTROL-the-raw-fixture-ledger-matches-the-same-grep-so-the-zero-above-CAN-fail
+
+CASE    | kinds
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p0\pbank\plobby\p-\p0\pruleset=classic,schema=2,rules=662402adec97dd60,max=8
+EXPECT_OUT_IS | T 0 Lobby open (classic rules)\nTALK known=1 | row-01-lobby
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p0\pp2\pjoin\pB\p0\pdriver=pet,token=1,personality=-
+EXPECT_OUT_IS | T 0 B joined (pet)\nTALK known=1 | row-02-join
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p0\pp3\pleave\p-\p0\pleft
+EXPECT_OUT_IS | T 0 C left the lobby\nTALK known=1 | row-03-leave
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p0\pbank\pstart\p-\p0\pseed=7,players=3,rules=662402adec97dd60
+EXPECT_OUT_IS | T 0 Game on: 3 players, seed 7\nTALK known=1 | row-04-start
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p0\pp3\porder\p2,5\p0\ptotal=7
+EXPECT_OUT_IS | T 0 C threw 7 for the opening order\nTALK known=1 | row-05-order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p0\pbank\pfirst\p-\p0\pp3
+EXPECT_OUT_IS | T 0 C moves first\nTALK known=1 | row-06-first
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p9\pbank\pseat\pp2\p0\phuman
+EXPECT_OUT_IS | T 0 B is now played by a human\nTALK known=1 | row-07-seat
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p9\pbank\pseat\pp2\p0\ppet
+EXPECT_OUT_IS | T 0 B is now played by a pet\nTALK known=1 | row-08-seat
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p4\pp3\proll\p6,3\p4\pto=4;go+200;tax-200
+EXPECT_OUT_IS | T 0 C rolled 9: Spiral Tithe (Start bonus +$200, tax $200)\nTALK known=1 | row-09-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p4,6\p13\pto=13;for-sale
+EXPECT_OUT_IS | T 0 B rolled 10: Helix Row (for sale)\nTALK known=1 | row-10-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp1\proll\p6,1\p33\pto=33;card=fund:5;keep=fund
+EXPECT_OUT_IS | T 0 A rolled 7: Lost & Found - Get out of Jail free (keep it) (keeps the card)\nTALK known=1 | row-11-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp1\proll\p6,1\p33\pto=7;card=luck:15;eachpay-50
+EXPECT_OUT_IS | T 0 A rolled 7: Luck - Pay every other player $50\nTALK known=1 | row-12-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp1\proll\p6,1\p33\pto=7;card=luck:2;to=24;rent-30->p3
+EXPECT_OUT_IS | T 0 A rolled 7: Luck - Advance to Vortex Plaza (rent $30 to C)\nTALK known=1 | row-13-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp1\proll\p1,2\p33\pto=7;card=luck:9;to=4;tax-200
+EXPECT_OUT_IS | T 0 A rolled 3: Luck - Go back three tiles (now at Spiral Tithe, tax $200)\nTALK known=1 | row-14-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=0;go+200;start;doubles=1
+EXPECT_OUT_IS | T 0 B rolled 2: Spiral Start (Start bonus +$200, on Start, doubles)\nTALK known=1 | row-15-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p3,3\p0\pjail3
+EXPECT_OUT_IS | T 0 B rolled 6 (3rd double: sent to Jail)\nTALK known=1 | row-16-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p4,6\p15\pto=15;rent-50->p3;doubles=2
+EXPECT_OUT_IS | T 0 B rolled 10: Spiral Line II (rent $50 to C, doubles)\nTALK known=1 | row-17-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=20;free
+EXPECT_OUT_IS | T 0 B rolled 2: Quiet Spiral (free stop)\nTALK known=1 | row-18-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=10;visit
+EXPECT_OUT_IS | T 0 B rolled 2: Helix Cell (just visiting)\nTALK known=1 | row-19-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=30;jail
+EXPECT_OUT_IS | T 0 B rolled 2: Helix Snare (sent to Jail)\nTALK known=1 | row-20-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=5;own
+EXPECT_OUT_IS | T 0 B rolled 2: Spiral Line I (own tile)\nTALK known=1 | row-21-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=12;debt=150->p1
+EXPECT_OUT_IS | T 0 B rolled 2: Spin Works (owes $150 to A)\nTALK known=1 | row-22-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\proll\p1,1\p0\pto=12;weird-token
+EXPECT_OUT_IS | T 0 B rolled 2: Spin Works (weird-token)\nTALK known=1 | row-23-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pjail_roll\p2,2\p30\pfree;to=8;for-sale
+EXPECT_OUT_IS | T 0 B threw 4 in Jail: Phi Court (doubles: out of Jail, for sale)\nTALK known=1 | row-24-jail_roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pjail_roll\p1,2\p10\pstay;fails=1
+EXPECT_OUT_IS | T 0 B threw 3 in Jail (stays in Jail, failed throw 1 of 3)\nTALK known=1 | row-25-jail_roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pjail_roll\p1,2\p10\pforced-fine-50;to=13;for-sale
+EXPECT_OUT_IS | T 0 B threw 3 in Jail: Helix Row (paid the $50 fine, for sale)\nTALK known=1 | row-26-jail_roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pjail_pay\p-\p10\ppaid-50
+EXPECT_OUT_IS | T 0 B paid $50 to leave Jail\nTALK known=1 | row-27-jail_pay
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pjail_card\pluck\p10\pcard-returned
+EXPECT_OUT_IS | T 0 B used a Get Out of Jail card (Luck)\nTALK known=1 | row-28-jail_card
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbuy\p-\p13\pbought-140
+EXPECT_OUT_IS | T 0 B bought Helix Row for $140\nTALK known=1 | row-29-buy
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pskip\p-\p13\pdeclined;auction
+EXPECT_OUT_IS | T 0 B declined Helix Row (to auction)\nTALK known=1 | row-30-skip
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pskip\p-\p13\pdeclined
+EXPECT_OUT_IS | T 0 B declined Helix Row\nTALK known=1 | row-31-skip
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbid\p13\p13\pbid=150
+EXPECT_OUT_IS | T 0 B bid $150 on Helix Row\nTALK known=1 | row-32-bid
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp3\ppass\p13\p13\ppass
+EXPECT_OUT_IS | T 0 C is out of the Helix Row auction\nTALK known=1 | row-33-pass
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pbank\pauction_end\p13\p0\psold-to=p2-150
+EXPECT_OUT_IS | T 0 Helix Row sold to B for $150\nTALK known=1 | row-34-auction_end
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pbank\pauction_end\p13\p0\punsold
+EXPECT_OUT_IS | T 0 Helix Row unsold\nTALK known=1 | row-35-auction_end
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pend_turn\p-\p13\pnext=p3;round=5
+EXPECT_OUT_IS | T 0 C is up (round 5)\nTALK known=1 | row-36-end_turn
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbankrupt\pp3\p13\pout;cash=12;props=3;cards=0
+EXPECT_OUT_IS | T 0 B went bankrupt: C gets $12 and 3 tiles\nTALK known=1 | row-37-bankrupt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbankrupt\pbank\p13\pout;cash=0;props=0;cards=0
+EXPECT_OUT_IS | T 0 B went bankrupt: the bank gets $0 and 0 tiles\nTALK known=1 | row-38-bankrupt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\ppay_debt\p-\p13\ppaid-150->p1
+EXPECT_OUT_IS | T 0 B paid the $150 debt to A\nTALK known=1 | row-39-pay_debt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\ppay_debt\p-\p13\ppaid-50->bank;left-jail;to=14;for-sale
+EXPECT_OUT_IS | T 0 B paid the $50 debt to the bank: Helix Walk (left Jail, for sale)\nTALK known=1 | row-40-pay_debt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbuild\p13\p13\phouses=2;cost=50
+EXPECT_OUT_IS | T 0 B built house 2 on Helix Row for $50\nTALK known=1 | row-41-build
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbuild\p13\p13\photel;cost=50
+EXPECT_OUT_IS | T 0 B built a hotel on Helix Row for $50\nTALK known=1 | row-42-build
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\psell\p13\p13\phouses=1;get=25
+EXPECT_OUT_IS | T 0 B sold a building on Helix Row for $25 (now 1 house)\nTALK known=1 | row-43-sell
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pmortgage\p13\p13\pmortgaged;get=75
+EXPECT_OUT_IS | T 0 B mortgaged Helix Row for $75\nTALK known=1 | row-44-mortgage
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\punmortgage\p13\p13\plifted;pay=83
+EXPECT_OUT_IS | T 0 B lifted the mortgage on Helix Row for $83\nTALK known=1 | row-45-unmortgage
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp1\poffer\pp2\p33\pid=5;give=prop:26;get=cash:900;round=1
+EXPECT_OUT_IS | T 0 A offered B: Golden Row for $900 (offer #5)\nTALK known=1 | row-46-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp1\poffer\pp2\p33\pid=6;give=prop:26+prop:13+cash:40+card:luck;get=-;round=1
+EXPECT_OUT_IS | T 0 A offered B: Golden Row + Helix Row + $40 + a Luck card for nothing (offer #6)\nTALK known=1 | row-47-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp2\pcounter\p5\p13\pid=7;re=5;give=cash:900;get=prop:26;round=2
+EXPECT_OUT_IS | T 0 B countered offer #5: $900 for Golden Row (offer #7)\nTALK known=1 | row-48-counter
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp1\pamend\p7\p13\pid=7;give=cash:1;get=prop:26;round=2;amended
+EXPECT_OUT_IS | T 0 A amended offer #7: $1 for Golden Row\nTALK known=1 | row-49-amend
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp2\paccept\p5\p13\pdone;give=prop:26;get=cash:900;interest-0;interest-0
+EXPECT_OUT_IS | T 0 B accepted offer #5: Golden Row for $900\nTALK known=1 | row-50-accept
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp2\paccept\p5\p13\pdone;give=prop:26;get=cash:900;interest-8;interest-0
+EXPECT_OUT_IS | T 0 B accepted offer #5: Golden Row for $900 (mortgage interest $8)\nTALK known=1 | row-51-accept
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp2\preject\p5\p13\prejected
+EXPECT_OUT_IS | T 0 B rejected offer #5\nTALK known=1 | row-52-reject
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pp1\pcancel\p5\p13\pcancelled
+EXPECT_OUT_IS | T 0 A cancelled offer #5\nTALK known=1 | row-53-cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p6\pbank\pexpire\p5\p0\pexpired
+EXPECT_OUT_IS | T 0 Offer #5 expired\nTALK known=1 | row-54-expire
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p7\pbank\pover\p-\p0\pwinner=p3
+EXPECT_OUT_IS | T 0 Game over: C wins\nTALK known=1 | row-55-over
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p7\pbank\pover\p-\p0\pstalemate=p2
+EXPECT_OUT_IS | T 0 Game over (round limit): B leads\nTALK known=1 | row-56-over
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p3\pp1\pdance\p-\p0\pwhatever
+EXPECT_OUT_IS | T 0 r3 p1 dance whatever\nTALK known=0 | NEGATIVE-an-unknown-row-kind-comes-back-as-the-OLD-raw-text-and-says-known=0
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | talk | --row | EVENT\p5\pp2\pbuy\p-\p13\pbought-140
+EXPECT_OUT_LACKS | A bought | NEGATIVE-a-WRONG-NAME-fails-p2-is-B-so-A-bought-is-absent
+EXPECT_OUT | B bought Helix Row for $140 | and-the-right-name-and-label-are-present
+RUN | /usr/bin/grep | -c | -E | to=\pid=\pgive=\pget=\pcard=\pbought-\p; | $T/m/ledger.txt
+EXPECT_OUT_IS | 795 | CONTROL-the-leak-pattern-matches-795-RAW-ledger-rows-of-this-game-so-the-zero-sweep-CAN-fail
+
+CASE    | data
+# names come from the join rows
+MKDIR   | nm
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | join | Ava | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | join | Ben | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | join | Cy | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | talk | --row | EVENT\p5\pp2\pbuy\p-\p13\pbought-140
+EXPECT_OUT | Ben bought Helix Row for $140 | player-names-are-the-join-names-Ben
+EXPECT_OUT_LACKS | B bought | NEGATIVE-and-not-the-ids-or-the-letters-of-the-other-game
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/nm | talk | --row | EVENT\p5\pp3\proll\p3,4\p9\pto=9;rent-30->p1
+EXPECT_OUT | Cy rolled 7: Phi Row (rent $30 to Ava) | and-in-the-creditor-of-a-rent-token
+# tile labels are data: page.pdl
+COPYDIR | @.apps/deskopoly | app_l | ops,deskopoly-pchq,state
+APPEND  | app_l/rulesets/classic/page.pdl | LABEL \p Pink2 \p Fortune Lane\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_l | $T/m | talk | --row | EVENT\p5\pp2\pbuy\p-\p13\pbought-140
+EXPECT_OUT | B bought Fortune Lane for $140 | A-RENAMED-LABEL-CHANGES-THE-SENTENCE-labels-are-data-not-C
+EXPECT_OUT_LACKS | Helix Row | and-the-old-label-is-gone
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_l | $T/m | talk | --row | EVENT\p5\pp2\proll\p4,6\p13\pto=13;for-sale
+EXPECT_OUT | B rolled 10: Fortune Lane (for sale) | and-the-roll-sentence-too
+# deck names are data
+COPYDIR | @.apps/deskopoly | app_d | ops,deskopoly-pchq,state
+APPEND  | app_d/rulesets/classic/page.pdl | LABEL \p chance \p Fortune\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_d | $T/m | talk | --row | EVENT\p5\pp1\proll\p6,1\p33\pto=7;card=luck:15;eachpay-50
+EXPECT_OUT | A rolled 7: Fortune - Pay every other player $50 | a-renamed-DECK-shows-on-the-landing-tile-label
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_d | $T/m | talk | --row | EVENT\p5\pp2\pjail_card\pluck\p10\pcard-returned
+EXPECT_OUT | B used a Get Out of Jail card (Fortune) | and-in-the-jail-card-sentence
+# card wording is data: cards.pdl
+COPYDIR | @.apps/deskopoly | app_c | ops,deskopoly-pchq,state
+RUN | /usr/bin/sed | -i | s/Pay every other player 50/Give each rival 50/ | $T/app_c/rulesets/classic/cards.pdl
+RUN | /usr/bin/grep | -c | Give each rival 50 | $T/app_c/rulesets/classic/cards.pdl
+EXPECT_OUT_IS | 1 | VACUITY-the-mutant-cards-pdl-really-has-the-new-wording
+MKDIR   | mc
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_c | $T/mc | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_c | $T/mc | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_c | $T/mc | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_c | $T/mc | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_c | $T/mc | talk | --row | EVENT\p5\pp1\proll\p6,1\p33\pto=7;card=luck:15;eachpay-50
+EXPECT_OUT | A rolled 7: Luck - Give each rival $50 | A-CHANGED-CARD-WORDING-CHANGES-THE-SENTENCE
+EXPECT_OUT_LACKS | Pay every other player | and-the-old-wording-is-gone
+
+CASE    | pane
+# the feed: ui publishes logt_0..7 (the newest first) next to the unchanged raw log_0..7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | ui
+EXPECT_OUT | phase=pre current=p1 human_turn=1 | ui-of-the-68-row-game-p1-is-to-act
+RUN | /usr/bin/grep | ^logt_ | $T/l/ui.txt
+EXPECT_OUT_IS | logt_0=B rejected A's offer #5\nlogt_1=A offered B: Golden Row for $900 (offer #5)\nlogt_2=A is up (round 6)\nlogt_3=C bought Phi Row for $120\nlogt_4=C rolled 5: Phi Row (for sale)\nlogt_5=C is up (round 5)\nlogt_6=B bought Helix Row for $140\nlogt_7=B rolled 10: Helix Row (for sale) | THE-EIGHT-PANE-ROWS-newest-first
+RUN | /usr/bin/grep | ^log_ | $T/l/ui.txt
+EXPECT_OUT_IS | log_0=r6 p2 reject rejected\nlog_1=r6 p1 offer id=5;give=prop:26;get=cash:900;round=1\nlog_2=r6 p3 end_turn next=p1;round=6\nlog_3=r5 p3 buy bought-120\nlog_4=r5 p3 roll to=9;for-sale\nlog_5=r5 p2 end_turn next=p3;round=5\nlog_6=r5 p2 buy bought-140\nlog_7=r5 p2 roll to=13;for-sale | THE-RAW-ROWS-ARE-UNCHANGED-additive-keys-only
+RUN | /usr/bin/grep | -c | -E | ^logt_.*(to=\pid=\pgive=\pget=\pcard=\pbought-\p;) | $T/l/ui.txt
+EXPECT_OUT_IS | 0 | no-raw-token-in-any-pane-row
+RUN | /usr/bin/grep | -c | -E | ^log_.*(to=\pid=\pgive=\pget=\pcard=\pbought-\p;) | $T/l/ui.txt
+CAPTURE | rawpane
+EXPECT_GE | $rawpane | 6 | POSITIVE-CONTROL-the-same-grep-on-the-raw-rows-matches-so-the-zero-above-CAN-fail
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | ledger_hash
+CAPTURE | hash_after
+EXPECT_EQ | $hash_before | $hash_after | the-ledger-hash-is-the-same-after-talk-and-ui
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | replay
+EXPECT_OUT | REPLAY events=68 | and-the-ledger-still-replays
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/l | audit
+EXPECT_EXIT | 0 | and-the-state-folder-passes-the-ghost-data-audit-no-new-file
+
+CASE    | driver
+# the REAL driver turns the engine's logt_ rows into the chat pane rows gml_* (title gm_chat_title)
+MKDIR   | h/&.widgits/_shared-lib/ops/+x
+COPY    | &.widgits/_shared-lib/ops/+x/raw_to_png.+x | h/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+COPYDIR | @.apps/deskopoly | app_x | state,shots
+MKDIR   | app_x/deskopoly-pchq/pieces/system/maps/deskopoly/play
+MKDIR   | edit/state/world
+MKDIR   | edit/edit-pchq/pieces/world_01
+MKDIR   | edit/state/games/deskopoly/game
+WRITE   | edit/state/world/switches.txt | running=0\n
+WRITE   | edit/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_talk_ledger.txt | edit/state/games/deskopoly/game/ledger.txt
+SPAWN   | OWN | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN
+SPAWN   | DRV | $T/app_x/ops/+x/deskopoly_driver.+x | $T/h | $T/app_x | $T/edit
+WAIT_HAS | edit/state/game_ui.txt | a game was in progress | 8000 | the-driver-continues-the-game-from-the-ledger
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngm_chat_title=TEROPOLY table talk\n | the-pane-is-the-table-talk
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngml_0_text=B rolled 10: Helix Row (for sale)\ngml_1_text=B bought Helix Row for $140\ngml_2_text=C is up (round 5)\ngml_3_text=C rolled 5: Phi Row (for sale)\ngml_4_text=C bought Phi Row for $120\ngml_5_text=A is up (round 6)\ngml_6_text=A offered B: Golden Row for $900 (offer #5)\ngml_7_text=B rejected A's offer #5\n | THE-PANE-ROWS-are-the-8-sentences-oldest-first-newest-last
+RUN | /usr/bin/grep | ^gml_ | $T/edit/state/game_ui.txt
+EXPECT_OUT_LACKS | offer id= | no-raw-offer-text-in-the-pane-rows
+EXPECT_OUT_LACKS | bought- | and-no-bought--token
+EXPECT_OUT_LACKS | to=13 | and-no-to=-token
+EXPECT_OUT_LACKS | card= | and-no-card=-token
+RUN | /usr/bin/grep | -c | gml_ | $T/edit/state/game_ui.txt
+EXPECT_OUT_IS | 8 | exactly-8-pane-rows
+EXPECT_HAS | $T/edit/state/games/deskopoly/game/ui.txt | log_0=r6 p2 reject rejected\n | CONTROL-the-engine-feed-still-carries-the-raw-log_-text-so-the-LACKS-above-can-fail-on-the-feed-if-the-driver-showed-it
+CASE    | driver_end
+RUN | /usr/bin/kill | $OWN
+SLEEP   | 300
+EXPECT_DEAD | $OWN | the-fake-owner-is-gone
+SLEEP   | 1500
+EXPECT_DEAD | $DRV | the-driver-ends-with-its-owner
+CLEAN   |

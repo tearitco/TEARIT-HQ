@@ -42,6 +42,7 @@ VERB | audit     | no | ui | -            | read-only no-ghost-data check: state
 VERB | tick      | no | ui | -            | ONE step for the current seat: a pet seat performs its next verb, a human seat makes tick wait
 VERB | ui        | no | ui | -            | write state/ui.txt: the window feed, a projection of the replayed ledger (show_* keys are 1 or EMPTY)
 VERB | ledger_hash | no | ui | skip_verb  | read-only digest of the ledger rows, optionally without one verb (for example seat), so two games can be compared exactly
+VERB | talk      | no | ui | [--out file \| --row "EVENT row"] | read-only: the ledger as short sentences with the player names, the page.pdl tile and deck labels and the cards.pdl wording (the table talk of the editor pane, published by `ui` as logt_<k>); one line per row; an unknown row kind comes back as the raw text
 VERB | page      | no | ui | desk_dir atlas | draw the board as an editor desk page (cells.txt, map.txt, ...) from board.pdl + page.pdl + the replayed ledger; owned tiles show their owner
 VERB | preview   | no | ui | desk_dir out.raw | a FLAT top-down picture of a desk (no depth, not the engine render), raw RGBA for raw_to_png
 FLOW | new       | rules.pdl,board.pdl        | state/ledger.txt
@@ -82,6 +83,7 @@ FLOW | audit     | state.pdl,verbs.pdl,state/ | -
 FLOW | tick      | state/ledger.txt,rules.pdl | state/ledger.txt,state/decisions.txt
 FLOW | ui        | state/ledger.txt           | state/ui.txt
 FLOW | ledger_hash | state/ledger.txt        | -
+FLOW | talk      | state/ledger.txt,rulesets/<name>/page.pdl,rulesets/<name>/cards.pdl | -
 FLOW | page      | board.pdl,page.pdl,state/ledger.txt | <desk_dir>/cells.txt,map.txt,events.txt,skin.txt,extrusion.pdl,cells.rgba
 FLOW | preview   | <desk_dir>/cells.txt,cells.rgba | <out.raw>
 BRAIN | roll     | roll     | rules,autoplay,refusals | ok  |                 | every turn starts with a roll; nothing to choose

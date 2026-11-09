@@ -1303,6 +1303,151 @@ static void deck_names(char *d0, char *d1, size_t cap) {
     while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 3 || strcmp(f[0], "LABEL") || !f[2][0]) continue; if (!strcmp(f[1], "chance")) snprintf(d0, cap, "%s", f[2]); else if (!strcmp(f[1], "chest")) snprintf(d1, cap, "%s", f[2]); }
     fclose(fp);
 }
+/* ===== TABLE TALK (2026-11-09, owner: "make the table talk readable"): ONE ledger row -> ONE short sentence with the player NAMES and the tile LABELS (page.pdl LABEL rows) and the card's own wording (cards.pdl text).
+ * A PROJECTION of the replayed ledger, produced here and nowhere else: `ui` publishes it as logt_<k> next to the raw log_<k>, the `talk` verb prints it for a harness, and the driver shows logt_ and falls back to the raw
+ * log_ text for an empty one. A row kind this function does not know comes back as the OLD raw text (`r5 p1 dance whatever`): nothing is ever hidden. The ledger is never changed; the words live in C only for the
+ * VERBS (roll, bought ...); every name is data (players from join rows, tiles and decks from page.pdl, cards from cards.pdl). The pass is stateful only for who-offered-what (an offer id -> proposer, addressee) and the join names. ===== */
+static void tt_cat(char *o, size_t cap, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+static void tt_cat(char *o, size_t cap, const char *fmt, ...) { size_t l = strlen(o); if (l + 1 >= cap) return; va_list a; va_start(a, fmt); vsnprintf(o + l, cap - l, fmt, a); va_end(a); }   /* a cut sentence is cut at a byte, never an overflow; the raw log_ rows stay in the feed */
+static char TT_NAME[MAXP + 1][20]; static struct { int k, from, to; } TT_OFF[64]; static int tt_noff;
+static void tt_reset(void) { memset(TT_NAME, 0, sizeof TT_NAME); tt_noff = 0; }
+static int tt_pnum(const char *id) { return (id[0] == 'p' && id[1] >= '1' && id[1] <= '9' && !id[2]) ? id[1] - '0' : 0; }
+static const char *tt_who(const char *id, char *o, size_t cap) {
+    int d = tt_pnum(id); if (d >= 1 && d <= MAXP && TT_NAME[d][0]) snprintf(o, cap, "%s", TT_NAME[d]);
+    else { int i = pidx(id); if (i >= 0) snprintf(o, cap, "%s", PL[i].name); else if (!strcmp(id, "bank")) snprintf(o, cap, "the bank"); else snprintf(o, cap, "%s", id); }
+    return o;
+}
+static void tt_tile(int k, char *o, size_t cap) {   /* the board label of tile k, a forced line break (literal \n) becomes a space */
+    if (k < 0 || k >= nt) { snprintf(o, cap, "tile %d", k); return; }
+    const char *s = label_for(k); if (!s[0]) s = T[k].name; size_t w = 0; for (; *s && w + 1 < cap; s++) { if (s[0] == '\\' && s[1] == 'n') { o[w++] = ' '; s++; } else o[w++] = *s; } o[w] = 0;
+}
+static void tt_tilestr(const char *s, char *o, size_t cap) { char *e; long v = strtol(s, &e, 10); if (*s && !*e) tt_tile((int)v, o, cap); else snprintf(o, cap, "%s", s); }   /* a tile column is an index; anything else is shown as written */
+static int tt_kv(const char *res, const char *key, char *o, size_t cap) {   /* the value of key= at the start of a token (tokens end at ; , or a space) */
+    size_t kl = strlen(key); o[0] = 0;
+    for (const char *p = res; *p; ) { if (!strncmp(p, key, kl) && p[kl] == '=') { size_t w = 0; for (const char *q = p + kl + 1; *q && *q != ';' && *q != ',' && *q != ' ' && w + 1 < cap; q++) o[w++] = *q; o[w] = 0; return 1; }
+        while (*p && *p != ';' && *p != ',' && *p != ' ') p++;
+        while (*p == ';' || *p == ',' || *p == ' ') p++; }
+    return 0;
+}
+static void tt_assets(const char *s, char *o, size_t cap) {   /* prop:26+cash:900+card:luck -> `Coil Plaza + $900 + a Luck card` */
+    o[0] = 0; if (!s || !*s || !strcmp(s, "-")) { snprintf(o, cap, "nothing"); return; }
+    char b[160], one[80], dn0[80], dn1[80]; snprintf(b, sizeof b, "%s", s); deck_names(dn0, dn1, sizeof dn0); char *sv = NULL;
+    for (char *t = strtok_r(b, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { if (o[0]) tt_cat(o, cap, " + ");
+        if (!strncmp(t, "prop:", 5)) { tt_tile(atoi(t + 5), one, sizeof one); tt_cat(o, cap, "%s", one); }
+        else if (!strncmp(t, "cash:", 5)) tt_cat(o, cap, "$%d", atoi(t + 5));
+        else if (!strncmp(t, "card:", 5)) tt_cat(o, cap, "a %s card", !strcmp(t + 5, "luck") ? dn0 : !strcmp(t + 5, "fund") ? dn1 : t + 5);
+        else tt_cat(o, cap, "%s", t); }
+}
+static int tt_card(const char *spec, char *o, size_t cap, int *is_move) {   /* luck:15 -> the card's own wording, tile ids replaced by their labels, bare numbers are money */
+    char dk[16]; int n = 0; *is_move = 0; o[0] = 0; if (sscanf(spec, "%15[a-z]:%d", dk, &n) != 2) return 0; int d = !strcmp(dk, "luck") ? 0 : !strcmp(dk, "fund") ? 1 : -1; if (d < 0 || n < 1 || n > 16 || !CD[d][n - 1].n) return 0;
+    const Card *c = &CD[d][n - 1]; *is_move = !strcmp(c->kind, "move_to"); char b[96]; snprintf(b, sizeof b, "%s", c->text);
+    for (char *w = b; *w; ) { while (*w == ' ') { tt_cat(o, cap, " "); w++; } if (!*w) break; char *e = w; while (*e && *e != ' ') e++; char sv2 = *e; *e = 0;
+        size_t L = strlen(w), pl_ = 0; while (L > 0 && strchr(",.:;", w[L - 1])) { L--; pl_++; } char tail[8]; memcpy(tail, w + L, pl_); tail[pl_] = 0; char core[64]; snprintf(core, sizeof core, "%.*s", (int)L, w);
+        int tk = -1; for (int k = 0; k < nt; k++) if (!strcmp(T[k].name, core)) tk = k; int dig = L > 0; for (size_t i = 0; i < L; i++) if (!isdigit((unsigned char)core[i])) dig = 0;
+        if (tk >= 0 && !isdigit((unsigned char)T[tk].name[strlen(T[tk].name) - 1]) && strcmp(T[tk].kind, "go")) tk = -1;
+        if (tk >= 0) { char tl[64]; tt_tile(tk, tl, sizeof tl); tt_cat(o, cap, "%s%s", tl, tail); } else if (dig) tt_cat(o, cap, "$%s%s", core, tail); else tt_cat(o, cap, "%s%s", core, tail);
+        *e = sv2; w = e; }
+    return 1;
+}
+static void tt_note(char *notes, size_t cap, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+static void tt_note(char *notes, size_t cap, const char *fmt, ...) { char t[200]; va_list a; va_start(a, fmt); vsnprintf(t, sizeof t, fmt, a); va_end(a); if (notes[0]) tt_cat(notes, cap, ", "); tt_cat(notes, cap, "%s", t); }
+/* the tokens that follow a move: where it landed (": Phi Lane"), a card drawn (" - wording"), and what happened (a list for the brackets). jail = the token list belongs to a jail_roll (`free` means doubles, not the free tile). */
+static void tt_land(const char *res, int jail, char *land, size_t lc, char *card, size_t cc, char *notes, size_t nc) {
+    char b[LINE], w[64], w2[64]; snprintf(b, sizeof b, "%s", res); char *sv = NULL; int tiles = 0, cardmove = 0, first = 1;
+    for (char *t = strtok_r(b, ";", &sv); t; t = strtok_r(NULL, ";", &sv), first = 0) {
+        if (!strncmp(t, "to=", 3)) { tt_tile(atoi(t + 3), w, sizeof w); if (!tiles++) tt_cat(land, lc, ": %s", w); else if (!cardmove) tt_note(notes, nc, "now at %s", w); }
+        else if (!strncmp(t, "go+", 3)) tt_note(notes, nc, "Start bonus +$%d", atoi(t + 3));
+        else if (!strncmp(t, "card=", 5)) { char ct[200]; int mv = 0; if (tt_card(t + 5, ct, sizeof ct, &mv)) { cardmove = mv; tt_cat(card, cc, " - %s", ct); } else tt_note(notes, nc, "card %s", t + 5); }
+        else if (!strncmp(t, "keep=", 5)) tt_note(notes, nc, "keeps the card");
+        else if (!strncmp(t, "cardroll=", 9)) { int a = 0, c2 = 0; sscanf(t + 9, "%d,%d", &a, &c2); tt_note(notes, nc, "threw %d", a + c2); }
+        else if (!strncmp(t, "collect+", 8)) { if (!card[0]) tt_note(notes, nc, "+$%d", atoi(t + 8)); }
+        else if (!strncmp(t, "each+", 5)) { if (!card[0]) tt_note(notes, nc, "+$%d from each player", atoi(t + 5)); }
+        else if (!strncmp(t, "eachpay-", 8)) { if (!card[0]) tt_note(notes, nc, "-$%d to each player", atoi(t + 8)); }
+        else if (!strncmp(t, "unpaid-", 7)) tt_note(notes, nc, "%s could not pay", tt_who(t + 7, w, sizeof w));
+        else if (!strncmp(t, "tax-", 4)) tt_note(notes, nc, "tax $%d", atoi(t + 4));
+        else if (!strncmp(t, "pay-", 4)) { if (!card[0]) tt_note(notes, nc, "paid $%d", atoi(t + 4)); }
+        else if (!strncmp(t, "repairs-", 8)) tt_note(notes, nc, "repairs $%d", atoi(t + 8));
+        else if (!strncmp(t, "rent-", 5)) { const char *ar = strstr(t, "->"); tt_note(notes, nc, "rent $%d%s%s", atoi(t + 5), ar ? " to " : "", ar ? tt_who(ar + 2, w, sizeof w) : ""); }
+        else if (!strncmp(t, "debt=", 5)) { const char *ar = strstr(t, "->"); tt_note(notes, nc, "owes $%d%s%s", atoi(t + 5), ar ? " to " : "", ar ? tt_who(ar + 2, w, sizeof w) : ""); }
+        else if (!strncmp(t, "doubles=", 8)) tt_note(notes, nc, "doubles");
+        else if (!strncmp(t, "fails=", 6)) tt_note(notes, nc, "failed throw %d of 3", atoi(t + 6));
+        else if (!strncmp(t, "forced-fine-", 12)) tt_note(notes, nc, "paid the $%d fine", atoi(t + 12));
+        else if (!strcmp(t, "free")) tt_note(notes, nc, jail && first ? "doubles: out of Jail" : "free stop");
+        else if (!strcmp(t, "stay")) tt_note(notes, nc, "stays in Jail");
+        else if (!strcmp(t, "left-jail")) tt_note(notes, nc, "left Jail");
+        else if (!strcmp(t, "for-sale")) tt_note(notes, nc, "for sale");
+        else if (!strcmp(t, "own")) tt_note(notes, nc, "own tile");
+        else if (!strcmp(t, "start")) tt_note(notes, nc, "on Start");
+        else if (!strcmp(t, "visit")) tt_note(notes, nc, "just visiting");
+        else if (!strcmp(t, "jail")) tt_note(notes, nc, "sent to Jail");
+        else if (!strcmp(t, "jail3")) tt_note(notes, nc, "3rd double: sent to Jail");
+        else if (!strcmp(t, "nocard")) tt_note(notes, nc, "no card");
+        else if (!strncmp(t, "paid-", 5)) { const char *ar = strstr(t, "->"); tt_note(notes, nc, "paid $%d%s%s", atoi(t + 5), ar ? " to " : "", ar ? tt_who(ar + 2, w2, sizeof w2) : ""); }
+        else tt_note(notes, nc, "%s", t);   /* a token this function does not know is shown as it is */
+    }
+}
+/* the sentence of one ledger row (fields as split(): f[0]=EVENT f[1]=round f[2]=actor f[3]=verb f[4]=target f[5]=at f[6]=result). Returns 1 when the row kind is known; 0 = `o` holds the raw text. */
+static int talk_row(char **f, int n, char *o, size_t cap) {
+    o[0] = 0; if (n < 7) { snprintf(o, cap, "%s", f[0]); return 0; }
+    const char *act = f[2], *vb = f[3], *tg = f[4], *res = f[6]; int at = atoi(f[5]); char A[24], B[24], X[64], Y[64], v[96], land[96] = "", card[220] = "", notes[260] = "", g1[160], g2[160]; tt_who(act, A, sizeof A);
+    if (!strcmp(vb, "lobby")) { tt_kv(res, "ruleset", v, sizeof v); tt_cat(o, cap, "Lobby open (%s rules)", v[0] ? v : "?"); }
+    else if (!strcmp(vb, "new")) { tt_kv(res, "seed", v, sizeof v); tt_cat(o, cap, "New game, seed %s", v); }
+    else if (!strcmp(vb, "join")) { int d = tt_pnum(act); if (d) snprintf(TT_NAME[d], sizeof TT_NAME[d], "%s", tg); tt_kv(res, "driver", v, sizeof v); tt_cat(o, cap, "%s joined (%s)", tg, v[0] ? v : "?"); }
+    else if (!strcmp(vb, "leave")) { tt_cat(o, cap, "%s left the lobby", A); int d = tt_pnum(act); if (d) TT_NAME[d][0] = 0; }
+    else if (!strcmp(vb, "start")) { tt_kv(res, "players", v, sizeof v); tt_kv(res, "seed", X, sizeof X); tt_cat(o, cap, "Game on: %s players, seed %s", v, X); }
+    else if (!strcmp(vb, "order")) { tt_kv(res, "total", v, sizeof v); tt_cat(o, cap, "%s threw %s for the opening order", A, v); }
+    else if (!strcmp(vb, "first")) tt_cat(o, cap, "%s moves first", tt_who(res, B, sizeof B));
+    else if (!strcmp(vb, "seat")) tt_cat(o, cap, "%s is now played by a %s", tt_who(tg, B, sizeof B), res);
+    else if (!strcmp(vb, "roll") || !strcmp(vb, "jail_roll")) { int d1 = 0, d2 = 0, ok = sscanf(tg, "%d,%d", &d1, &d2) == 2; int jr = vb[0] == 'j';
+        tt_land(res, jr, land, sizeof land, card, sizeof card, notes, sizeof notes);
+        if (ok) tt_cat(o, cap, "%s %s %d", A, jr ? "threw" : "rolled", d1 + d2); else tt_cat(o, cap, "%s %s", A, jr ? "threw" : "rolled"); if (jr) tt_cat(o, cap, " in Jail");
+        tt_cat(o, cap, "%s%s", land, card); if (notes[0]) tt_cat(o, cap, " (%s)", notes); }
+    else if (!strcmp(vb, "buy")) { tt_tile(at, X, sizeof X); const char *p = strstr(res, "bought-"); tt_cat(o, cap, "%s bought %s for $%d", A, X, p ? atoi(p + 7) : 0); }
+    else if (!strcmp(vb, "skip")) { tt_tile(at, X, sizeof X); tt_cat(o, cap, "%s declined %s%s", A, X, strstr(res, "auction") ? " (to auction)" : ""); }
+    else if (!strcmp(vb, "bid")) { tt_tilestr(tg, X, sizeof X); tt_kv(res, "bid", v, sizeof v); tt_cat(o, cap, "%s bid $%s on %s", A, v, X); }
+    else if (!strcmp(vb, "pass")) { tt_tilestr(tg, X, sizeof X); tt_cat(o, cap, "%s is out of the %s auction", A, X); }
+    else if (!strcmp(vb, "auction_end")) { tt_tilestr(tg, X, sizeof X); tt_kv(res, "sold-to", v, sizeof v);
+        if (v[0]) { char *dash = strrchr(v, '-'); int amt = dash ? atoi(dash + 1) : 0; if (dash) *dash = 0; tt_cat(o, cap, "%s sold to %s for $%d", X, tt_who(v, B, sizeof B), amt); } else tt_cat(o, cap, "%s unsold", X); }
+    else if (!strcmp(vb, "end_turn")) { tt_kv(res, "next", v, sizeof v); tt_kv(res, "round", X, sizeof X); tt_cat(o, cap, "%s is up (round %s)", tt_who(v, B, sizeof B), X); }
+    else if (!strcmp(vb, "jail_pay")) tt_cat(o, cap, "%s paid $%d to leave Jail", A, atoi(strchr(res, '-') ? strchr(res, '-') + 1 : "0"));
+    else if (!strcmp(vb, "jail_card")) { char d0[80], d1[80]; deck_names(d0, d1, sizeof d0); tt_cat(o, cap, "%s used a Get Out of Jail card (%s)", A, !strcmp(tg, "luck") ? d0 : !strcmp(tg, "fund") ? d1 : tg); }
+    else if (!strcmp(vb, "pay_debt")) { const char *p = strstr(res, "paid-"); const char *ar = p ? strstr(p, "->") : NULL; char who[24] = "", rest[LINE] = ""; if (ar) { size_t w = 0; for (const char *q = ar + 2; *q && *q != ';' && w < sizeof who - 1; q++) who[w++] = *q; who[w] = 0; }
+        const char *sc = strchr(res, ';'); if (sc) snprintf(rest, sizeof rest, "%s", sc + 1); tt_land(rest, 0, land, sizeof land, card, sizeof card, notes, sizeof notes);
+        tt_cat(o, cap, "%s paid the $%d debt to %s", A, p ? atoi(p + 5) : 0, who[0] ? tt_who(who, B, sizeof B) : "the bank"); tt_cat(o, cap, "%s%s", land, card); if (notes[0]) tt_cat(o, cap, " (%s)", notes); }
+    else if (!strcmp(vb, "bankrupt")) { tt_kv(res, "cash", v, sizeof v); tt_kv(res, "props", X, sizeof X); tt_cat(o, cap, "%s went bankrupt: %s gets $%s and %s tiles", A, tt_who(tg, B, sizeof B), v, X); }
+    else if (!strcmp(vb, "build")) { tt_tilestr(tg, X, sizeof X); tt_kv(res, "cost", v, sizeof v); tt_kv(res, "houses", Y, sizeof Y);
+        if (strstr(res, "hotel")) tt_cat(o, cap, "%s built a hotel on %s for $%s", A, X, v); else tt_cat(o, cap, "%s built house %s on %s for $%s", A, Y, X, v); }
+    else if (!strcmp(vb, "sell")) { tt_tilestr(tg, X, sizeof X); tt_kv(res, "get", v, sizeof v); tt_kv(res, "houses", Y, sizeof Y); tt_cat(o, cap, "%s sold a building on %s for $%s (now %s house%s)", A, X, v, Y, strcmp(Y, "1") ? "s" : ""); }
+    else if (!strcmp(vb, "mortgage")) { tt_tilestr(tg, X, sizeof X); tt_kv(res, "get", v, sizeof v); tt_cat(o, cap, "%s mortgaged %s for $%s", A, X, v); }
+    else if (!strcmp(vb, "unmortgage")) { tt_tilestr(tg, X, sizeof X); tt_kv(res, "pay", v, sizeof v); tt_cat(o, cap, "%s lifted the mortgage on %s for $%s", A, X, v); }
+    else if (!strcmp(vb, "offer") || !strcmp(vb, "counter") || !strcmp(vb, "amend")) {
+        char idb[16], reb[16]; tt_kv(res, "id", idb, sizeof idb); tt_kv(res, "re", reb, sizeof reb); tt_kv(res, "give", v, sizeof v); tt_assets(v, g1, sizeof g1); tt_kv(res, "get", v, sizeof v); tt_assets(v, g2, sizeof g2); int k = atoi(idb), from = 0, to = 0;
+        if (!strcmp(vb, "offer")) { from = tt_pnum(act); to = tt_pnum(tg); tt_cat(o, cap, "%s offered %s: %s for %s (offer #%s)", A, tt_who(tg, B, sizeof B), g1, g2, idb); }
+        else if (!strcmp(vb, "counter")) { int ok = 0; for (int i = 0; i < tt_noff; i++) if (TT_OFF[i].k == atoi(tg)) { from = tt_pnum(act); to = TT_OFF[i].from; ok = 1; }
+            if (ok) { snprintf(Y, sizeof Y, "p%d", to); tt_cat(o, cap, "%s countered %s: %s for %s (offer #%s)", A, tt_who(Y, B, sizeof B), g1, g2, idb); } else tt_cat(o, cap, "%s countered offer #%s: %s for %s (offer #%s)", A, tg, g1, g2, idb); }
+        else { tt_cat(o, cap, "%s amended offer #%s: %s for %s", A, idb, g1, g2); }
+        (void)reb; if (k > 0 && strcmp(vb, "amend") && tt_noff < 64 && from && to) { TT_OFF[tt_noff].k = k; TT_OFF[tt_noff].from = from; TT_OFF[tt_noff].to = to; tt_noff++; } }
+    else if (!strcmp(vb, "accept") || !strcmp(vb, "reject") || !strcmp(vb, "cancel") || !strcmp(vb, "expire")) { int k = atoi(tg), from = 0; for (int i = 0; i < tt_noff; i++) if (TT_OFF[i].k == k) from = TT_OFF[i].from;
+        if (from) snprintf(Y, sizeof Y, "p%d", from); else Y[0] = 0; const char *P = Y[0] ? tt_who(Y, B, sizeof B) : NULL;
+        if (!strcmp(vb, "accept")) { tt_kv(res, "give", v, sizeof v); tt_assets(v, g1, sizeof g1); tt_kv(res, "get", v, sizeof v); tt_assets(v, g2, sizeof g2);
+            if (P) tt_cat(o, cap, "%s accepted %s's offer: %s for %s", A, P, g1, g2); else tt_cat(o, cap, "%s accepted offer #%s: %s for %s", A, tg, g1, g2);
+            const char *ip = strstr(res, "interest-"); int ia = ip ? atoi(ip + 9) : 0, ib = 0; if (ip && strstr(ip + 9, "interest-")) ib = atoi(strstr(ip + 9, "interest-") + 9); if (ia || ib) tt_cat(o, cap, " (mortgage interest $%d)", ia + ib); }
+        else if (!strcmp(vb, "reject")) { if (P) tt_cat(o, cap, "%s rejected %s's offer #%s", A, P, tg); else tt_cat(o, cap, "%s rejected offer #%s", A, tg); }
+        else if (!strcmp(vb, "cancel")) tt_cat(o, cap, "%s cancelled offer #%s", A, tg);
+        else { if (P) tt_cat(o, cap, "%s's offer #%s expired", P, tg); else tt_cat(o, cap, "Offer #%s expired", tg); } }
+    else if (!strcmp(vb, "over")) { tt_kv(res, "winner", v, sizeof v); if (v[0]) tt_cat(o, cap, "Game over: %s wins", tt_who(v, B, sizeof B)); else { tt_kv(res, "stalemate", v, sizeof v); tt_cat(o, cap, "Game over (round limit): %s leads", tt_who(v, B, sizeof B)); } }
+    else { snprintf(o, cap, "r%s %s %s %s", f[1], f[2], f[3], f[6]); return 0; }
+    return 1;
+}
+/* talk [--row "<EVENT row>"]: read-only. One line per ledger row `T <n> <sentence>` and `TALK rows=<n> raw=<rows no sentence is known for>`; with --row the sentence of that ONE row, formatted with the replayed game's names (the harness uses it to prove an unknown kind comes back raw). */
+static int v_talk(int argc, char **argv) {
+    int st, rc = need_game(&st); if (rc) return rc; if (g_schema != 2) bad("talk is for classic games"); if (!nlb) load_page(); tt_reset(); char o[256], ln[LINE]; char *f[10];
+    if (argc >= 2 && !strcmp(argv[0], "--row")) { snprintf(ln, sizeof ln, "%s", argv[1]); int n = split(ln, f, 10); int k = talk_row(f, n, o, sizeof o); printf("T 0 %s\nTALK known=%d\n", o, k); return 0; }
+    FILE *of = NULL; if (argc >= 2 && !strcmp(argv[0], "--out")) { of = fopen(argv[1], "w"); if (!of) bad("talk --out: cannot write the file"); }   /* --out <file>: the sentences (one per row, no prefix) go to the file and only the summary is printed (a long game does not fit a harness's output buffer) */
+    char p[1100]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (!fp) bad("no ledger"); int rows = 0, raw = 0;
+    while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "EVENT")) continue; if (!talk_row(f, n, o, sizeof o)) raw++; ++rows; if (of) fprintf(of, "%s\n", o); else printf("T %d %s\n", rows, o); }
+    fclose(fp); if (of) fclose(of); printf("TALK rows=%d raw=%d\n", rows, raw); return 0;
+}
 static int v_ui2(void) {
     int st, rc = need_game(&st); if (rc) return rc; if (!nlb) load_page();   /* 2026-11-09: the display labels (page.pdl LABEL rows) for the t<k>_label / pending_label / auction_label keys; identifiers and every older key are unchanged */
     static char b[16384]; b[0] = 0; int pl = (phase2 == PH_ORDER && order_next() >= 0) ? order_next() : (phase2 == PH_AUC && auc_next >= 0) ? auc_next : cur, ht = !over && human[pl] && !out[pl] && phase2 >= PH_ORDER;
@@ -1322,9 +1467,10 @@ static int v_ui2(void) {
     for (int k = 0; k < nt; k++) { char tok[24] = ""; for (int i = 0; i < np_game; i++) if (!out[i] && pos[i] == k) { char one[4]; snprintf(one, sizeof one, "%d", i + 1); if (tok[0]) strncat(tok, ",", sizeof tok - strlen(tok) - 1); strncat(tok, one, sizeof tok - strlen(tok) - 1); }
         char bd[12] = ""; if (bld[k] == 5) snprintf(bd, sizeof bd, "hotel"); else if (bld[k] > 0) snprintf(bd, sizeof bd, "h%d", bld[k]);
         ap(b, sizeof b, "t%d_name=%s\nt%d_label=%s\nt%d_kind=%s\nt%d_owner=%s\nt%d_bld=%s\nt%d_mort=%s\nt%d_tok=%s\nt%d_trade=%s\n", k, T[k].name, k, label_for(k), k, T[k].kind, k, owner[k] >= 0 ? PL[owner[k]].id : "", k, bd, k, mort[k] ? "1" : "", k, tok, k, (owner[k] >= 0 && !out[owner[k]] && !(!strcmp(T[k].kind, "street") && grp_any_bld(k))) ? "1" : ""); }   /* M9: t<k>_trade = a tile that can be put in an offer right now (owned, and no building in its colour) */
-    { char p[1100], ln[LINE], rows[8][96]; int nr = 0; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r");
-      if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && !strcmp(f[0], "EVENT")) { snprintf(rows[nr % 8], 96, "r%s %s %s %s", f[1], f[2], f[3], f[6]); nr++; } } fclose(fp); }
-      for (int i = 0; i < 8; i++) ap(b, sizeof b, "log_%d=%s\n", i, i < nr ? rows[(nr - 1 - i) % 8] : ""); }
+    { char p[1100], ln[LINE], rows[8][96], say[8][200]; int nr = 0; char *f[10]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); tt_reset();
+      if (fp) { while (fgets(ln, sizeof ln, fp)) { int n = split(ln, f, 10); if (n >= 7 && !strcmp(f[0], "EVENT")) { snprintf(rows[nr % 8], 96, "r%s %s %s %s", f[1], f[2], f[3], f[6]); talk_row(f, n, say[nr % 8], sizeof say[0]); nr++; } } fclose(fp); }
+      for (int i = 0; i < 8; i++) ap(b, sizeof b, "log_%d=%s\n", i, i < nr ? rows[(nr - 1 - i) % 8] : "");   /* the raw ledger text, unchanged (older readers and the fallback) */
+      for (int i = 0; i < 8; i++) ap(b, sizeof b, "logt_%d=%s\n", i, i < nr ? say[(nr - 1 - i) % 8] : ""); }   /* 2026-11-09 the table talk: the same rows as a sentence with names and tile labels (talk_row); a kind it does not know is the raw text */
     write_atomic(g_state, "ui.txt", b); printf("UI %s/ui.txt phase=%s current=%s human_turn=%s\n", g_state, pn[phase2], PL[pl].id, ht ? "1" : "0"); return 0;
 }
 /* ui: the window's feed (key=value, atomic), a PROJECTION of the replayed ledger. A show_* key is "1" when the control may be offered and EMPTY when not (the house convention: a "0" string would count as visible). */
@@ -1409,6 +1555,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "ui")) return v_ui();
     if (!strcmp(v, "audit")) return v_audit();
     if (!strcmp(v, "ledger_hash")) return v_ledger_hash(argc - 4, argv + 4);
+    if (!strcmp(v, "talk")) return v_talk(argc - 4, argv + 4);
     if (!strcmp(v, "status")) return v_status();
     if (!strcmp(v, "replay")) return v_replay();
     if (!strcmp(v, "check")) return v_check();

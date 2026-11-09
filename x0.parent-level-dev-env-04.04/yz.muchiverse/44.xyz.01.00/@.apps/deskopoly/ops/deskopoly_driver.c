@@ -324,7 +324,7 @@ static void publish(void) {
             snprintf(k, sizeof k, "p%d_pos", i); uget(k, po, sizeof po); snprintf(k, sizeof k, "p%d_out", i); uget(k, ou, sizeof ou); snprintf(k, sizeof k, "p%d_net", i); uget(k, ne, sizeof ne); snprintf(k, sizeof k, "p%d_turn", i); uget(k, tu, sizeof tu); snprintf(k, sizeof k, "p%d_jail", i); uget(k, jl, sizeof jl);
             snprintf(b, sizeof b, "%sp%d %s%s%s", tu[0] ? ">" : "", i, ne, jl[0] ? " J" : "", ou[0] == '1' ? " X" : ""); (void)dv; add_ent(b); { char pb[220]; snprintf(pb, sizeof pb, "party_%d_label=%sp%d %s $%s\nparty_%d_id=gm%d\nparty_%d_cls=%s\n", i - 1, tu[0] ? "> " : "", i, nm, ca, i - 1, i, i - 1, tu[0] ? "active" : ""); catn(OUT_, OUTCAP_, pb); } }
         { char pb[40]; snprintf(pb, sizeof pb, "n_party=%d\n", np); catn(OUT_, OUTCAP_, pb); }
-        for (int i = 7; i >= 0; i--) { snprintf(k, sizeof k, "log_%d", i); char l[120]; uget(k, l, sizeof l); if (l[0]) add_chat(l); }
+        for (int i = 7; i >= 0; i--) { char l[260]; snprintf(k, sizeof k, "logt_%d", i); uget(k, l, sizeof l); if (!l[0]) { snprintf(k, sizeof k, "log_%d", i); uget(k, l, sizeof l); } if (l[0]) add_chat(l); }   /* 2026-11-09 the table talk is the engine's SENTENCE (logt_, names + tile labels); an engine without it, or a row it left empty, shows the raw ledger text (log_) as before */
         char v[8];
         /* the screen closes itself when it can no longer do its job: a NEW offer needs my turn; a COUNTER needs the offer to still be open and addressed to me (a counter may be made when it is not my turn); an AMENDMENT needs my offer still open */
         if (tr_open_) { int me3 = tr_me(), id3 = 0, w3 = 0, ok = !over;
