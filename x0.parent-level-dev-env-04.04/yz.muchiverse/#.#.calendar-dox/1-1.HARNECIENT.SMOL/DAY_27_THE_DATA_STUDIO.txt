@@ -1,0 +1,68 @@
+# 🎲📊 DAY 27 — The Data Studio: What Makes a Board Game Work for Many Players, and How We Will Read the Games 📊🎲
+# ===================================================
+# Title: "🎲📊 DAY 27 — The Data Studio: What Makes a Board Game Work for Many Players, and How We Will Read the Games 📊🎲"
+# Characters: TOMO, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+# Long-form: written 2026-11-09. The Teropoly facts were observed this week in real runs. The classic Monopoly rules are from memory of the standard rules and are not yet checked against the official sheet. The data studio, called data-hq, is a PLAN with eight phases. Nothing of it is built.
+# Companion documents: BOOK 08-roadmap/design-docs DATA-HQ-DATA-STUDIO-PLAN-2026-11-09, decision D58, 16.game DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE, NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.
+
+**THE NARRATOR:** Today is two lessons in one. First, what has to be true for a board game to work when several players share it. Second, the tool we want so that we can read the games that were played, instead of guessing.
+
+**MAXINE:** I keep playing Teropoly with the pets, and I still cannot tell if it is fair. Is the first seat better?
+
+**TOMO:** That is exactly the question the data studio is for. We cannot answer it yet, and I will say why. But first the machinery, because a question like that only has an answer if the game keeps a good record.
+
+**IQA:** Start with the basics. What is a game, to the engine?
+
+**TOMO:** A game is a ledger. An append-only file, one line per event: who acted, which verb, what happened. Roll, buy, skip, pay rent, offer a trade. Cash, who owns what, whose turn it is, none of that is stored. It is computed by replaying the ledger from the top.
+
+**MAXINE:** Even the dice?
+
+**TOMO:** The dice come from a seed, and the seed is the first thing in the ledger. Same ledger, same game, every time. We pinned one: a three-pet game, seed six, eight hundred and thirty-one rows, and its fingerprint starts with seven two four four. I ran it again this week and it matched. And if you hand-edit a row, the engine refuses to replay it.
+
+**IQA:** So the ledger is the only authority. What is on the screen?
+
+**TOMO:** A projection. The board, the table talk, the cash in the left bar, they are all derived from the ledger. We learned that the hard way. Tests once passed on files while the screen was empty. Now the rule is: assert what is on the screen, and open the picture.
+
+**MAXINE:** Fine. Now multiplayer. What changes when more than one person plays?
+
+**TOMO:** Four things. One, seats. A seat is a human or a pet, and the engine does not care which. A human seat waits for a button press, a pet seat just acts. Two, turn order and phases: a roll decides who goes first, and each turn moves through phases, before the roll, a buy decision, after, an auction, a debt, over. The engine only offers what is legal in the current phase.
+
+**IQA:** And the shared decisions?
+
+**TOMO:** That is three and four. Auctions: when a player skips a tile, everyone bids. By the standard rules, from memory, the player after the decliner goes first, the high bidder is skipped, the decliner goes last. Trading: offers do not block the game. Any player can offer, at most three new offers a turn by default, and the other side can accept, reject, counter, amend or cancel. At the end of the turn an open offer expires. And if the swap is no longer valid when it is accepted, it is refused.
+
+**MAXINE:** And the pets do all that too?
+
+**TOMO:** They answer offers and they bid, with a stopgap policy, fixed percentages of the price. They are not personalities yet. With a rule switched on, they also propose trades. In the pinned three-pet game with that rule on, three offers were made and three accepted, and the money was conserved. Honest limit: that is one game. It tells us the mechanism works, not that the pets trade well.
+
+**IQA:** What else makes it work for people?
+
+**TOMO:** Talk. The table talk now reads as sentences, with the names printed on the board tiles, and you can type a trade in the chat box by tile name. A line the engine cannot read is refused with a reason, and nothing is written.
+
+**MAXINE:** Okay. So now the data studio.
+
+**TOMO:** One window, under the db cell of the top toolbar, called data-hq. It is not only for games. It reads any table: a csv, a pdl table, a ledger. A game opts in by publishing an exporter, a small program that replays its ledger and writes tables, cash and net worth per player per round, every event, every trade, every auction.
+
+**IQA:** Like a spreadsheet, or a notebook?
+
+**TOMO:** Both, with limits. There is a dashboard that looks at the columns and picks the charts: a time column and a number gives a line per group, a category gives bars, one number gives a histogram, two numbers give a scatter. The layout adapts to the data, and the generated dashboard is itself a notebook you can edit. A notebook is cells: text, load a dataset, a SQL query, a chart, a statistic, an AI cell, an export.
+
+**MAXINE:** Why not just use Python?
+
+**TOMO:** House rule, no Python. So the notebook language is SQL, through the engine that sql-hq already has, plus declarative chart cells, plus a fixed set of statistics written in C: means, correlation, regression. It is less flexible than a Python notebook, and the first screen has to say so.
+
+**IQA:** And the AI part?
+
+**TOMO:** The same contract as the editor's h-ai. The model sees a small summary, never the raw rows of a private dataset, and it can only propose cells from a whitelist. Nothing is added until you say apply. Free models only, with a daily cap, and data from games with a human in them stays on the local model.
+
+**MAXINE:** So what would it tell us about the first seat?
+
+**TOMO:** Right now, nothing. We have three archived games and a few test games. Win rate by seat needs dozens. What the studio gives us is the instrument: win rate by seat, how long games run, rent earned by colour group, auction price against list price, how many offers get accepted, whether one pet policy beats another. Today every one of those is a question, not a finding.
+
+**IQA:** And training?
+
+**TOMO:** The same tables can export one row per decision, the situation, the action, and how it ended. Training runs on the other machines, not this one, and games with a human only count if the owner flags them.
+
+**THE NARRATOR:** What is built: the classic game, trading, auctions, chat commands, the readable table talk, and twenty-two test cases with fifteen hundred and sixty-three checks passing in the last fresh run. What is not built: the data studio. It is a plan with eight phases, and the first one is the table export, so that the next time someone asks if the first seat is fair, there is something to look at.
