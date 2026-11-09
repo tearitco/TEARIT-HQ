@@ -50,6 +50,10 @@ echo "########## DOMParser delivers parsed documents (hermetic)"
 bash "$HERE/nb_domparser_test.sh" || RC=1
 
 echo
+echo "########## XMLSerializer + outerHTML deliver real markup (hermetic)"
+bash "$HERE/nb_serializer_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

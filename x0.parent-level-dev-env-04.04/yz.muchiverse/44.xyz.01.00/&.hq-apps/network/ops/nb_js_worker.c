@@ -471,8 +471,26 @@ static void node_outer_html(const NbNode *n, SB *b) {
     if (!n) return;
     if (!n->tag || !n->tag[0]) { sb_put(b, n->text); return; }   /* #text node */
     sb_put(b, "<");
-    sb_put(b, n->attrs ? n->attrs : n->tag);
+    sb_put(b, n->tag);
+    /* Attributes: the blob is provenance-dependent. Parser/load keep the
+     * raw "<tag attrs>" text (tag prefix + single space between attrs).
+     * setAttribute rebuilds it normalized WITHOUT the tag prefix. Emit the
+     * suffix correctly for both. */
+    if (n->attrs && n->attrs[0]) {
+        const char *a = n->attrs;
+        size_t tl = strlen(n->tag);
+        if (!strcmp(a, n->tag)) {
+            /* bare element, attrs blob is just the tag name */
+        } else if (!strncmp(a, n->tag, tl) && (a[tl] == ' ' || a[tl] == '\t')) {
+            const char *p = a + tl;
+            while (*p == ' ' || *p == '\t') p++;
+            if (*p) { sb_put(b, " "); sb_put(b, p); }
+        } else {
+            sb_put(b, " "); sb_put(b, a);
+        }
+    }
     sb_put(b, ">");
+    sb_put(b, n->text);
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         node_outer_html(c, b);
     sb_put(b, "</");
@@ -4557,6 +4575,53 @@ static JSValue nb_promise_resolved(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_NewArray(ctx);
 }
+/* ---- XMLSerializer + outerHTML (2026-11-09) ----
+ * serializeToString was an inert plain stub: the method did not exist, so
+ * every call threw "not a function". This returns the house outer-HTML
+ * serializer (node_outer_html, the same one innerHTML reads) for elements
+ * and text nodes; a #document serializes its element children (the
+ * documentElement subtree). outerHTML is the same serializer as a read-only
+ * Element accessor. Honest limit: text and attribute values are emitted
+ * verbatim, exactly as innerHTML does — no additional escaping layer. */
+static void nb_ser_fill(const NbNode *n, SB *b) {
+    if (!n) return;
+    if (n->tag && !strcmp(n->tag, "#document")) {
+        for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+            if (c->tag && c->tag[0]) node_outer_html(c, b);
+    } else {
+        node_outer_html(n, b);
+    }
+}
+static JSValue nb_xmlserializer_serialize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    if (argc < 1 || !JS_IsObject(argv[0])) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: XMLSerializer.serializeToString requires a node"));
+        return JS_Throw(ctx, e);
+    }
+    NbNode *n = get_node(ctx, argv[0]);
+    if (!n) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: XMLSerializer.serializeToString requires a node"));
+        return JS_Throw(ctx, e);
+    }
+    SB b = {0, 0, 0};
+    /* node_outer_html takes a string buffer; sb_* helpers are in this TU. */
+    nb_ser_fill(n, &b);
+    JSValue r = JS_NewString(ctx, b.s ? b.s : "");
+    free(b.s);
+    return r;
+}
+static JSValue nb_el_outerHTML_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewString(ctx, "");
+    SB b = {0, 0, 0};
+    nb_ser_fill(n, &b);
+    JSValue r = JS_NewString(ctx, b.s ? b.s : "");
+    free(b.s);
+    return r;
+}
 static JSValue nb_parsed_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *owned = NULL;
     const char *id = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
@@ -5591,6 +5656,12 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, Ep, "replaceChildren", JS_NewCFunction(ctx, nb_el_replaceChildren_js, "replaceChildren", 0));
     JS_SetPropertyStr(ctx, Ep, "getClientRects", JS_NewCFunction(ctx, nb_el_getClientRects, "getClientRects", 0));
     JS_SetPropertyStr(ctx, Ep, "scrollIntoView", JS_NewCFunction(ctx, nb_el_scrollIntoView, "scrollIntoView", 0));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "outerHTML");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_outerHTML_get, "get outerHTML", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     /* Node-level methods live on Node.prototype: every element, text and
      * document node shares them. remove() is on Element (ChildNode) in the
      * spec; put it there, not here. */
@@ -5763,6 +5834,12 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_domparser_parse, "parseFromString", 2));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "DOMParser", f);
+        /* XMLSerializer: real outer-HTML serialization. */
+        f = add_class(ctx, "XMLSerializer", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "serializeToString", JS_NewCFunction(ctx, nb_xmlserializer_serialize, "serializeToString", 1));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "XMLSerializer", f);
         JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
     }
 
