@@ -1,4 +1,4 @@
-# Deskopoly classic: how to play it and how to drive it (state at milestone M3, 2026-11-08)
+# Deskopoly classic (shown to players as Teropoly): how to play it and how to drive it (milestones M0-M6 done, M11 board page done, M7-M10 and M12 open; status table corrected 2026-11-08)
 *Plain help for people and for the next AI. In-engine help: `deskopoly <app> <state> help` (all verbs, from `verbs.pdl`), `help <verb>`, and in a classic game it also prints the phase and what is legal right now. Full design: `08-roadmap/design-docs/DESIGN-DESKOPOLY-CLASSIC-MONOPOLY-BUILD-SPEC-2026-11-08.md`. Labels: **OBS** = I ran it; **PLAN** = in the spec, not built.*
 
 ## 1. What exists (OBS, 2026-11-08)
@@ -10,7 +10,10 @@
 | M4 doubles (roll again, third double to Jail), Go To Jail, the Jail turn (`jail_pay`, `jail_roll`; `jail_card` since M5), forced fine on the third failed turn | done | case `dsk_jail` 47 checks |
 | M5 the Luck and Fund cards (seeded shuffle, all 11 effect kinds, the kept Get Out card and `jail_card <luck|fund>`, a card move onto a card tile draws once more, then stops) | done | case `dsk_cards` 42 checks |
 | M6 buildings (even rule, 32 houses and 12 hotels as data in rules.pdl), mortgages (unmortgage costs +10 percent rounded up), `pay_debt`, net worth, bankruptcy that sells buildings and charges mortgage interest, repairs cards | done | case `dsk_build` 59 checks |
-| M7 auctions · M8 debt queue · M9 trading and chat · M10 pets/ui/tick for all phases · M11 board page | **PLAN** | until then those tiles resolve as `todo-<kind>` (nothing happens) and `skip` just declines |
+| M7 auctions · M8 debt queue · M9 trading and chat | **PLAN** | until then those tiles resolve as `todo-<kind>` (nothing happens) and `skip` just declines a purchase (no auction) |
+| M10 pets/ui/tick for all phases | **PARTLY** (corrected 2026-11-08; this row used to say PLAN) | pets play and the players bar, footer and popup run through `deskopoly_driver` inside the rpg-edit-hq editor; the pet policy is still a STOPGAP, personalities are not built |
+| M11 board page | **done** (corrected 2026-11-08) | `deskopoly page` writes the 33x33 board and the 3D players; case `dsk_page` 42; sky-seam fix and desk guard 2026-11-08 |
+| Where to start | | `16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`, then `06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md` |
 
 ## 2. Run it by hand (no window needed)
 ```

@@ -28,6 +28,7 @@ In the founder's draft wording (`14.biz/ELEVATOR-PITCH.md`, DRAFT): a plain-text
 | **Light on the machine** | Idle process starts of the 3D board fell from about 98 to about 19 per second (load average 14 to 1.6) after the loops were gated on file sizes; leaked loops and test daemons now end by themselves. | `RPG-SPACE-COLLISION-AND-DESTRUCTION-DESIGN.md` 7g; harness cases `loop_exit` (11 checks) and `harness_cleanup_*` | 2026-10-25/26 |
 | **Browser lane** | "JS apps actually run" (G1) and G2.1/G2.2 are closed at 100 percent and wired into the browser test run. | `08-roadmap/2026-10-14-G1-SPRINT-VERDICT.md`, `2026-10-17-G2-VERDICT-ADDENDUM.md` | 2026-10-17 |
 | **AI, the part that exists** | The scoring side: a scratch playthrough, a result ledger, and per-step weights are built; the decision ledger is built in three games; an approval room for outside agents is real. | `17.ai/HARNESS-AS-GAME-BRAIN.md` section 3, `17.ai/AI.md` | 2026-10-17/18 |
+| **A classic board game inside the editor** | Teropoly (internal name `deskopoly`): full classic Monopoly rules through M6 (rent, doubles and Jail, Luck and Fund cards, buildings, mortgages, bankruptcy), pets play it, a human can take a seat, played from the editor's Play button with a players bar, a footer and extruded 3D players on the board; ledger is the only authority (replay reproduces it, a hand-edited ledger is refused). | harness cases `deskopoly` 105, `dsk_classic` 79, `dsk_play` 48, `dsk_jail` 49, `dsk_cards` 42, `dsk_build` 59, `dsk_page` 42, `dsk_driver` 70, `live_dsk_seat` 23 (real window); handoff `16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md` | 2026-11-08 |
 
 ## 3. Where it is going, by track
 
@@ -58,6 +59,14 @@ In the founder's draft wording (`14.biz/ELEVATOR-PITCH.md`, DRAFT): a plain-text
 | Browser to fully Chrome-replaceable (owner directive 2026-10-20) | `building` | `08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md` |
 | Windows and macOS: macOS runs through XQuartz today, Windows is thin shims; the main gap is the shared renderer | `planned` | `08-roadmap/OPEN-ITEMS.md` item 2, `CROSS-PLATFORM-SEAM-AND-SHARED-INFRA.md` |
 | Cross-machine networking | `designing` (a plan; same-machine only today) | plan notes |
+
+### 3.4 Games (Teropoly first)
+| Next | Status | Source |
+|---|---|---|
+| M7 auctions (a declined purchase currently just skips), M8 debt queue, M9 trading and chat | `planned` (tiles resolve as `todo-<kind>` until then) | `16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md` section 1 |
+| M10 pet personalities (the pet policy is a stopgap) and the pets/ui/tick for every phase | `building` (pets and the editor UI run through `deskopoly_driver`; personalities not built) | same |
+| M12 fuzz and a narrated captioned video of the game played in the editor | `planned` | handoff section 6; XO `31.Nov/nov-8/10.youtube-deskopoly-plays-in-the-editor` (predates the glyph fix and human seat) |
+| Owner decisions that gate polish: 3D `event_scale`, day/night from ledger rounds, neutral tile and card names, setup screen showing the play desk | `OWNER` | handoff section 6 |
 
 ## 4. The three views
 

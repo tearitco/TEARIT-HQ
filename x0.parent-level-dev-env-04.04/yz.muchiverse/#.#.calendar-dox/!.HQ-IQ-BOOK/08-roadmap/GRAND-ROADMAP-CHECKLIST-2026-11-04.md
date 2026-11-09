@@ -154,3 +154,15 @@ Each row: in-house spec (path in this book) | external reference (the URL return
 | Harness and proof | `harness/README.md` (in the house), `../06-testing/HARNESS-AUTHORING-GUIDE.md`, `../06-testing/GAME-PLAYTHROUGH-HARNESSES.md`, `../10-user-docs/PRESENTATION-VIDEO-PIPELINE.md` | (house-specific) | A one-page "negative test" recipe (mutation run: change an expectation, the case must fail) so every new case carries one. |
 
 Missing-spec rule: when a row above says "still to write", write it BEFORE building the feature, and put the spec path in the checklist row.
+
+## M. Teropoly (`deskopoly`, played in the editor) - added 2026-11-08
+
+Handoff: `../16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`. Milestone table: `../16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md`.
+
+- [x] M0-M6: ruleset, lobby, roll/rent/buy/bankruptcy, doubles and Jail, Luck/Fund cards, buildings and mortgages. OBS 2026-11-08: harness cases `deskopoly` 105, `dsk_classic` 79, `dsk_play` 48, `dsk_jail` 49, `dsk_cards` 42, `dsk_build` 59.
+- [x] M11 board page and 3D players in the editor; sky seams on the floor fixed. OBS: `dsk_page` 42, `bv_gpu_seam` 7 (offline GPU), live floor-only box 0 isolated sky px vs 333 before; desk guard `dsk_driver` 70.
+- [x] Playing from the editor's Play button, human seat, driver watchdog. OBS: `live_dsk_seat` 23 (real window), `game_driver_watchdog` 10; watchdog verified live (relaunch without Play brought the feed up).
+- [~] M10 pets/ui/tick: pets and UI run through the editor driver; personalities NOT built (the pet policy is a stopgap).
+- [ ] M7 auctions, M8 debt queue, M9 trading and chat, M12 fuzz. NONE.
+- [~] CPU: the clock daemon was 364% then 119% of a core (guard incidents 2026-11-08). Fixed in two passes (per-reminder 120 s gap, then a 12 s global spacing between ANY two fires): live with the producer running mean 2%, max 9% per 10 s window over 180 s. Gap: only minutes of live evidence; each phase-page event run is still ~1.3 s of CPU.
+- [ ] OWNER decisions: 3D `event_scale`, day/night from ledger rounds, neutral tile and card names, setup screen showing the play desk, whether to lengthen the 120 s reminder gap or disable shipped-OFF reminders.

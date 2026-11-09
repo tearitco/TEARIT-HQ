@@ -44,6 +44,10 @@ Status words: `planned`, `designing`, `building`, `proven` (evidence recorded), 
 | G4 | Scripted gta playthrough | As C6 | planned |
 | G3a | **img-hai window** (text-to-image GUI for brixels; owner's request 2026-10-13): slices H1-H6 in `IMG-HAI-DESIGN.md` | H1: window screenshot + ui state listing the parts and existing drafts; H3: a Draft click makes a new image on debil with the window responsive | **built and relay-tested 2026-10-13** (H1-H5 done: palette, mixing canvas, words, Draft, Mac, batches, judging, tuning trials); owner review pending; menu entry not built. Docs: `&.hq-apps/img-hai/docs/` |
 
+## 2b. Teropoly (classic Monopoly in the editor; owner-driven, 2026-11-08)
+
+Milestones M0-M6 done with named harness cases, M11 (board page, 3D players) done, M10 partly (pets and UI run through the editor driver; personalities not built), M7 auctions / M8 debt queue / M9 trading and chat / M12 fuzz open. Table with proof columns: `DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md` section 1. Handoff, harnesses, driving and CPU lessons: `TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`. Next by value: M7 auctions (a declined purchase now just skips). Owner decisions that gate polish are in the handoff section 6.
+
 ## 3. Flight, scale and learning (needs the spine)
 
 | # | Milestone | Proof / KPI | Status |

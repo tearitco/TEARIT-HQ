@@ -31,3 +31,5 @@ not a handoff. A new agent starts here.
 
 Grok's personal reonboard stays `13.agent-coms/GROK/ONBOARD-GROK.md`.
 The old path `13.agent-coms/HOW2-DRIVE-DOC-FIX.md` is a pointer.
+
+- **What a human must SEE per project (2026-11-08):** `../06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md` is the per-project acceptance list. Read it with this chapter before any live test: a case that passes on ledgers and files while the screen is empty is a failed test. The Teropoly driving recipe (relay_drive gentle mode, `see`/`ensure`/`in` steps) is in `../16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md` section 3.

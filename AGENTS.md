@@ -3,6 +3,28 @@
 House rules for any coding agent working in this repo. Read before
 starting work.
 
+## START HERE: route by task (2026-11-08; read ONE row's documents before you touch anything)
+
+Below the table the rules are in the order they were learned, not the order you need them. The table is the order you need them. Paths are in the HQ-IQ-BOOK (`x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/`) unless they start with `44.xyz.01.00/`.
+
+| Your task | Read first (in this order) | Then know |
+|---|---|---|
+| **Anything** | this file's "Commit discipline", "Concurrent agents", "Never report a number you did not observe", "Verification"; `ROADMAP.md` (what exists, with evidence) | a `[x]` or "done" in a doc is a claim until a harness name or a dated OBS backs it |
+| **Teropoly / `deskopoly` / the editor's Play button** | `16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`, then `06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md`, then `16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md` (milestone table) | the game is data + ledger; the screen is a projection: assert what is ON SCREEN, open the PNG |
+| **Drive or test any live window** | `21.drive-doc-fix/00-INDEX.md`, `06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md`, `44.xyz.01.00/&.widgits/_shared-lib/harness/README.md`, `02-architecture/AGENT-TOOLBOX-AND-CONTROLS.md` | relay_drive gentle mode and the `see`/`ensure`/`in` steps; no xdotool first; a null result needs a positive control |
+| **Write a harness / test** | `44.xyz.01.00/&.widgits/_shared-lib/harness/README.md` | pal + case `.pdl` + C ops. NO Python, no new `.sh` |
+| **CPU, load, "it is slow", a guard kill** | `03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md` (32 items; 30-32 are the newest: measure with a C op, null needs a positive control, bursts not averages), `03-pitfalls/hq-cpu-safety.md` | measure children + wakeups; a CPU number needs the producer's state next to it; a guard kill is OUR finding; never loop `ffmpeg`/`awk` over pixels (use a C op) |
+| **Rendering, 3D engine, board camera, a visual artifact** | `03-pitfalls/HOUSE_CODE_PITFALLS.md` (last entry: sky seams), `02-architecture/CENTROID_GOLD_STD.md`, skill `rpg-space-board-driving` | when one board shows it and its siblings do not, diff what each WRITES first; reproduce offline (`bv_gpu_seam_test`) |
+| **khtpm renderer, windows, menus** | skill `khtpm-house-standards`, `02-architecture/CENTROID_GOLD_STD.md` | shared renderer: zero per-project C |
+| **Games / levels / characters / lore** | `22.lore-ip/00-INDEX.md`, skills `soul-pen-lore`, `tsots-game-map`, `16.game/00-INDEX.md` | the lore is unpublished IP; label SAID / READ / DOC |
+| **Git, branches, committing** | this file's commit sections, `01-orientation/BRANCH-STRATEGY.md`; commit with `44.xyz.01.00/&.widgits/_shared-lib/ops/+x/commit_scoped.+x` | explicit pathspec only; a file with someone else's uncommitted hunk is committed by index, not whole |
+| **A design choice (two ways to build it)** | `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` | answer the five questions, add a log row |
+| **Game state / saves / ledgers** | `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md` | the ledger is the only authority |
+
+**Docs known to lag the code (fix them when you touch them; date the fix):** `16.game/DESKOPOLY-CLASSIC-HOW-TO-PLAY-AND-DRIVE.md` milestone rows M10/M11 were written before the editor driver existed (corrected 2026-11-08); any doc that calls the floor "blue lines" unresolved (fixed 2026-11-08, `bv_gpu_seam`); any CPU figure for the clock daemon taken while In: ON was paused (pitfalls 28). **If you find a doc that contradicts the code, the code and a fresh run win; correct the doc in the same commit.**
+
+**End of session checklist:** commit only your paths (see below); put anything you learned that the next agent would otherwise re-learn into the ONE doc a row above points to (not a new file); add a row to that doc's index if you did add a file; if you changed what a human must SEE, update the compendium entry.
+
 ## Commit discipline (REQUIRED, unprompted)
 
 - Never end a work block with uncommitted code. Uncommitted work is

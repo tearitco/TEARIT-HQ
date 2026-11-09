@@ -36,7 +36,7 @@ Screens and states, with **what you must see** and **how it is checked**. `see X
 | Setup screen BEFORE START | the authored board desk: no players and an empty 2D view is EXPECTED (the world switches to the generated `play` desk at START) | known behaviour, not a bug |
 | Low camera in 3D | wooden floor is solid: NO one-pixel sky-coloured (135,180,220) lines between the floor rows (fixed 2026-11-08: per-cell depth removed from the page, shader entry-face fallback). Look at the PNG AND count: `ffmpeg -i shot.png -vf crop=W:H:X:Y -f rawvideo -pix_fmt rgb24 f.rgb` then `img_sky_seams.+x f.rgb W H` on a FLOOR-ONLY box (a box with HUD text or the horizon counts those too) | `png`, `img_sky_seams` 0, offline case `bv_gpu_seam` |
 
-Cost line to quote with any change (measured with the producer running): clock daemon mean 8% / burst 30% per 3 s while the game clock runs, 0% paused; driver 4 wakeups/s stopped, 14 live; see the handoff section 4.
+Cost line to quote with any change (measured with the producer running): clock daemon mean 2%, max 9% per 10 s window over 180 s since the 12 s global spacing (2026-11-08; before it 119% in a guard window), 0% paused; driver 4 wakeups/s stopped, 14 live; see the handoff section 4.
 Harnesses: `live_dsk_seat` (23), `dsk_driver` (68), `dsk_page` (42), `game_driver_watchdog` (10), `lc_clock_burn` (7); nav map `@.apps/deskopoly/nav.pdl`; scripts `tests/dsk-open-play.pdl`, `dsk-seat-setup.pdl`, `dsk-seat-turns.pdl`, `dsk-in-on.pdl`.
 
 ## 3. Entry template (copy for the next project)
