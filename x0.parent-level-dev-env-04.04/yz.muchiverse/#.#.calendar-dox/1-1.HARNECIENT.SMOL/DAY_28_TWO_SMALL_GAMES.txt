@@ -1,0 +1,82 @@
+# 🎲🐍 DAY 28 — Two Small Games: Luck With No Decisions, and a Snake That Never Waits 🐍🎲
+# ===================================================
+# Title: "🎲🐍 DAY 28 — Two Small Games: Luck With No Decisions, and a Snake That Never Waits 🐍🎲"
+# Characters: TOMO, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+# Long-form: written 2026-11-09. This is a PLAN. Nothing in it is built. The Chutes and Ladders board numbers are from memory and have not been checked against an official board. The Teropoly facts were read in the repository this week. The data studio, called data-hq, is itself only a plan.
+# Companion documents: BOOK 16.game CHUTES-LADDERS-AND-SNAKE-GAME-PLANS-2026-11-09, decision D59, 08-roadmap/design-docs DATA-HQ-DATA-STUDIO-PLAN-2026-11-09, NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07, and the class DAY 27.
+
+**THE NARRATOR:** Today we plan two small games on the same stack as Teropoly. One has no decisions at all. The other never waits for you. They stress the engine in opposite ways, and that is why we want both.
+
+**MAXINE:** I will be honest. Chutes and Ladders sounds like a toy. Why build a game where nobody chooses anything?
+
+**TOMO:** Because it is the cleanest test we could ask for. Think about what Teropoly has to prove: dice, turns, seats, a replay, a board you can see. Now remove every decision. What is left is only the machinery. If the machinery is wrong, there is nowhere to hide.
+
+**IQA:** And the machinery is the ledger again?
+
+**TOMO:** Yes. The game is a file of rows. A player spins, the row says who, what number, and where the token landed. The spinner is not random in the usual sense. It is a function of the seed and the spin count, the same trick the Teropoly dice use. So the same seed always gives the same game.
+
+**MAXINE:** Then what does a pet do in a game with no choices?
+
+**TOMO:** It presses the button for you. That is all a pet seat means here. And that gives us a lovely test. Play the same seed with three humans, then three pets, then a mix, and the positions must match row for row. If they do not, somebody found a way to influence the dice, and that is a bug.
+
+**IQA:** Where does the board come from?
+
+**TOMO:** From a data file you can edit. One hundred squares, a list of ladders, a list of chutes. I wrote the usual layout from memory, nine ladders and ten chutes, and I am telling you plainly, it is from memory. Before it ships, someone checks it against a real board. The rule about reaching the end is also data. You can require the exact number, or bounce back, or let any overshoot win.
+
+**MAXINE:** And it looks like a board?
+
+**TOMO:** Ten rows of ten, snaking back and forth, with the number of each square written into the floor picture, the same way the Teropoly names are. A tile with no label shows its own name, so the numbers come almost for free. The ladders and chutes start as little markers, and drawn lines come later.
+
+**THE NARRATOR:** Now the interesting part. This game is a Markov chain.
+
+**IQA:** Explain that without maths.
+
+**TOMO:** Where you will be after your next spin depends only on where you are now, not on how you got there. Square, spin, new square. With that, you can work out, exactly, how long the game takes. Not by playing it. By calculation. The average, the middle, the worst one game in a hundred. And with several players taking turns, you can even work out how much the first seat wins over the last.
+
+**MAXINE:** I have heard that a game takes about thirty-nine turns.
+
+**TOMO:** I have heard that too, and it is from memory, so I do not trust it. Our own calculator will print the real number for our own board and our own finishing rule. If they disagree, that is a finding about my memory, not a bug to hide.
+
+**IQA:** So what does the data studio do with it?
+
+**TOMO:** It puts theory next to reality. We play, or simulate, thousands of games. We ask: is the average length what the calculation says? Which chute is hit most? Is the first seat really ahead, and by how much? One warning. To see a difference of one percent between seats you need about nine thousand games. No person plays that many. A simulation does it in seconds, and that is why the calculation matters.
+
+**THE NARRATOR:** Now Snake.
+
+**MAXINE:** A snake runs around, eats, grows, crashes. Why is that hard for a ledger?
+
+**TOMO:** Because it never stops. If we wrote a row on every tick, at about seven ticks a second, that is twenty-four thousand rows an hour for one snake. Our rule says anything written while running needs a cap. That would blow through it in minutes.
+
+**IQA:** So what do we write?
+
+**TOMO:** Only the things that cannot be recomputed. The turns. When you press left, that is a row, with the tick number it takes effect on. Everything else is replay. Where the snake is on tick five hundred is not stored. It is calculated from the seed and the turns. The food is the same: where the next one appears comes from the seed and the count.
+
+**MAXINE:** But then someone could edit a turn and make a better game.
+
+**TOMO:** That is why we add two more kinds of row. When the snake eats or dies, a row records the result, and replay must reproduce it. And every sixty-four ticks, a checkpoint row stores a fingerprint of the whole state. Edit one turn and the next fingerprint no longer matches. The engine refuses the ledger. Honest limit: the last few seconds of a running game are not protected. This stops accidents, not a determined owner.
+
+**IQA:** What about pausing?
+
+**TOMO:** No row at all. Time in the ledger is a count of steps, not a clock on the wall. When the game is paused the count stands still. We only write a checkpoint at the moment you stop, so the exact tick is saved.
+
+**MAXINE:** And the machine? You told me it is weak, with a browser always open.
+
+**TOMO:** So the budget is strict. When the game is stopped, nothing should run at all. Not even a nap. While it runs, one wake-up per tick, no process started per tick, and fancy event pages only for rare moments like dying, because every page step starts a process. All of that is a hypothesis until we measure it, with children and wake-ups counted.
+
+**THE NARRATOR:** Which brings us to events.
+
+**IQA:** What events exist for a game like this?
+
+**TOMO:** Fewer than you would hope. The editor has Play and Stop events. The game file has rows for a driver, a chat hook, and a row that pauses the world clock while a game is live. The clock can fire named events, but its smallest unit is a minute of game time, so it cannot be a tick. There is a common-events manager, but it fires at most once a second. So the tick is the game's own loop.
+
+**MAXINE:** And death and collision? The space game already has pages for those.
+
+**TOMO:** It does, but they write state files, like a health file. In a ledger game, a state file that holds a fact is ghost data. So we reuse the idea and the names, and only for presentation, like a sound or a message, after the ledger row exists. And I could not find any way for a game to receive the arrow keys today. That is a small new hook, or we start with buttons.
+
+**IQA:** Last question. Training an AI to play snake.
+
+**TOMO:** The table of turns is the lesson book: what the snake saw, which way it turned, what happened next. The same rule file runs headless to make practice games. Training runs on the other machines, not this one, and the result comes back as a data file the game loads, like the Teropoly brain.
+
+**THE NARRATOR:** What is built today: nothing of these two games. What is designed: Chutes and Ladders first, because it is smaller and it teaches us to share the helpers, then Snake. What is unchecked: the board numbers, the thirty-nine, and every speed we quoted.
