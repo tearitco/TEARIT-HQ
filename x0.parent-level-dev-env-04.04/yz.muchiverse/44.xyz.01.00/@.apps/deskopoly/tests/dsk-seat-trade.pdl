@@ -1,0 +1,28 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-seat-trade.pdl - M9 TRADING in the real editor, as seat p1 (2026-11-08). Starts right after dsk-seat-turns.pdl (seed 7: p1 owns Power (tile 12) and Orange3 (tile 19), the pets play on until p1's next turn). The trade screen is FOUR panes,
+# [p1 holds] [you GIVE] [you GET] [p2 holds], plus the control popup under them. No drag and drop: pressing a tile in an inventory MOVES it into the neighbouring offer pane, pressing it there moves it back; cash goes in steps of 10 (owner 2026-11-08:
+# "use nav to click in or out"). p1 gives Orange3, asks 30 cash from p2; Send calls the canonical `offer` verb; the pet p2 ANSWERS while p1 is still up (the driver ticks only because pet_reply=1).
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-trade.pdl <x window id>
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | see | label:Trade...
+STEP | shot | @.apps/deskopoly/shots/10-trade-button.png
+STEP | press | label:Trade...
+STEP | see | label:you GIVE
+STEP | see | label:you GET
+STEP | see | label:holds
+STEP | see | label:Orange3
+STEP | see | label:Send offer
+STEP | shot | @.apps/deskopoly/shots/11-trade-empty-panes.png
+STEP | press | label:Orange3
+STEP | see | label:Orange3 (press: back)
+STEP | press | label:ask 10 more
+STEP | press | label:ask 10 more
+STEP | press | label:ask 10 more
+STEP | see | label:ask $30
+STEP | shot | @.apps/deskopoly/shots/12-trade-filled.png
+STEP | press | label:Send offer
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | give=prop:19;get=cash:30 | 10
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | done;give=prop:19;get=cash:30 | 20
+STEP | see | label:you GIVE | absent
+STEP | shot | @.apps/deskopoly/shots/13-offer-answered.png

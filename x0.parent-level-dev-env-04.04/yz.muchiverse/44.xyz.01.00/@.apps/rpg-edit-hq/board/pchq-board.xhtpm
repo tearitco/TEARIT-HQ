@@ -164,6 +164,23 @@
         <repeat count="${gm_nt}" bind="gmt"><text label="${gmt.text}" class="hb-quiet"/></repeat>
         <repeat count="${gm_nb}" bind="gmb"><item id="gmb${gmb.#}" class="rp-menu-row" label="${gmb.label}" action="${gmb.act}"/></repeat>
       </row>
+      <!-- 2026-11-08 the TRADE SCREEN (Teropoly M9): four panes left to right, [my tiles] [I give] [I get] [their tiles], placed by the vars tpa_x/tpa_y.. and filled by the game feed (tp_on, tp<id>_title, tp<id>_n, tp<id>_<i>_label/act). Generic: a game that publishes no tp_on never shows them. Pressing a tile item moves it across, so no drag and drop is needed (owner 2026-11-08: "use nav to click in or out"). -->
+      <row id="tpa" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${tp_on}">
+        <text label="${tpa_title}" class="hb-quiet ov-title theme-3"/>
+        <repeat count="${tpa_n}" bind="tpa"><item id="tpai${tpa.#}" class="rp-menu-row" label="${tpa.label}" action="${tpa.act}"/></repeat>
+      </row>
+      <row id="tpg" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${tp_on}">
+        <text label="${tpg_title}" class="hb-quiet ov-title theme-3"/>
+        <repeat count="${tpg_n}" bind="tpg"><item id="tpgi${tpg.#}" class="rp-menu-row" label="${tpg.label}" action="${tpg.act}"/></repeat>
+      </row>
+      <row id="tpr" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${tp_on}">
+        <text label="${tpr_title}" class="hb-quiet ov-title theme-3"/>
+        <repeat count="${tpr_n}" bind="tpr"><item id="tpri${tpr.#}" class="rp-menu-row" label="${tpr.label}" action="${tpr.act}"/></repeat>
+      </row>
+      <row id="tpb" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${tp_on}">
+        <text label="${tpb_title}" class="hb-quiet ov-title theme-3"/>
+        <repeat count="${tpb_n}" bind="tpb"><item id="tpbi${tpb.#}" class="rp-menu-row" label="${tpb.label}" action="${tpb.act}"/></repeat>
+      </row>
       <row id="lshop-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${lshop_ov}">
         <text label="${lshop_ov_title}" class="hb-quiet ov-title theme-3"/>
         <text label="${lshop_ov_text}" class="rp-big ov-wraptext"/>

@@ -149,6 +149,60 @@ static int page_needed(void) {
         char *e = strchr(q, '|'); size_t vl = e ? (size_t)(e - q) : strcspn(q, "\r\n"); int isq = 0; for (int k = 0; quiet[k]; k++) if (strlen(quiet[k]) == vl && !strncmp(q, quiet[k], vl)) isq = 1; if (!isq) need = 1; }
     pg_cur = ftell(f); fclose(f); return need;
 }
+/* ===== M9 TRADE SCREEN (owner 2026-11-08: "a menu to show both traders' inventory and 2 empty panes for dropping things in or out for proposing deals", "use nav to click in or out"). FOUR panes left to right: [my tiles] [I give] [I get] [their tiles],
+ * drawn by the editor layout's canvas-overlay-at rows tpa / tpg / tpr / tpb (positions and contents come from this feed, nothing is hard-wired per game). Pressing a tile in an inventory MOVES it into the neighbouring offer pane; pressing it there moves it back;
+ * cash goes in steps of 10. The DRAFT lives only in this process (a preference: it changes no outcome, a restart loses it); Send calls the canonical `offer` verb, so a pet or a harness sees the same row. ===== */
+#define TR_PAGE 4
+static int tr_open_ = 0, tr_partner = 0, tr_pg[2]; static unsigned long long tr_give_t, tr_get_t; static int tr_give_c, tr_get_c;
+static int tr_me(void) { return human_seat > 0 ? human_seat : 1; }
+static int tr_active(int i) { char k[24], v[8]; snprintf(k, sizeof k, "p%d_out", i); return i >= 1 && i <= uint_("n_players") && uget(k, v, sizeof v)[0] != '1'; }
+static void tr_clear(void) { tr_give_t = tr_get_t = 0; tr_give_c = tr_get_c = 0; tr_pg[0] = tr_pg[1] = 0; }
+static int tr_owns(int pl, int t) { char k[24], v[16], idb[8]; snprintf(k, sizeof k, "t%d_owner", t); snprintf(idb, sizeof idb, "p%d", pl); return !strcmp(uget(k, v, sizeof v), idb); }
+static int tr_tradable(int t) { char k[24], v[8]; snprintf(k, sizeof k, "t%d_trade", t); return uget(k, v, sizeof v)[0] == '1'; }
+static void tr_tilename(int t, char *o, size_t cap) { char k[24], nm[40], mo[8]; snprintf(k, sizeof k, "t%d_name", t); uget(k, nm, sizeof nm); snprintf(k, sizeof k, "t%d_mort", t); uget(k, mo, sizeof mo); snprintf(o, cap, "%s%s", nm, mo[0] ? " (mortgaged)" : ""); }
+static void tr_assets(unsigned long long mask, int cash, char *o, size_t cap) { o[0] = 0; for (int t = 0; t < 64; t++) if (mask >> t & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%sprop:%d", o[0] ? "+" : "", t); } if (cash > 0) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scash:%d", o[0] ? "+" : "", cash); } if (!o[0]) snprintf(o, cap, "-"); }
+static void tr_nice(const char *as, char *o, size_t cap) {   /* prop:8+cash:50 -> "Sky2 + $50" for the player's eyes */
+    char tmp[160]; snprintf(tmp, sizeof tmp, "%s", as); o[0] = 0; char *sv = NULL; for (char *t = strtok_r(tmp, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { char one[60]; if (!strncmp(t, "prop:", 5)) tr_tilename(atoi(t + 5), one, sizeof one); else if (!strncmp(t, "cash:", 5)) snprintf(one, sizeof one, "$%s", t + 5); else if (!strncmp(t, "card:", 5)) snprintf(one, sizeof one, "%s card", t + 5); else snprintf(one, sizeof one, "nothing"); size_t l = strlen(o); snprintf(o + l, cap - l, "%s%s", o[0] ? " + " : "", one); }
+    if (!o[0]) snprintf(o, cap, "nothing"); }
+static void tp_head(char id, int x, const char *title) { char b[200]; snprintf(b, sizeof b, "tp%c_x=%d\ntp%c_y=8\ntp%c_title=%s\n", id, x, id, id, title); catn(OUT_, OUTCAP_, b); }
+static void tp_item(char id, int *n, const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "tp%c_%d_label=%s\ntp%c_%d_act='%s' %s '%s'\n", id, *n, label, id, *n, CTL, cmd, GDIR); (*n)++; catn(OUT_, OUTCAP_, b); }
+static void tp_end(char id, int n) { char b[40]; snprintf(b, sizeof b, "tp%c_n=%d\n", id, n); catn(OUT_, OUTCAP_, b); }
+static void tr_inventory(char id, int x, int owner_pl, unsigned long long moved, const char *mvcmd, int pg_idx, const char *pgcmd) {
+    char title[80], nm[24], ca[24], k[24], cmd[24], lab[70]; snprintf(k, sizeof k, "p%d_name", owner_pl); uget(k, nm, sizeof nm); snprintf(k, sizeof k, "p%d_cash", owner_pl); uget(k, ca, sizeof ca); snprintf(title, sizeof title, "p%d %s $%s holds", owner_pl, nm, ca); tp_head(id, x, title);
+    int nt = uint_("n_tiles"), cnt = 0, n = 0; for (int t = 0; t < nt; t++) if (tr_owns(owner_pl, t) && tr_tradable(t) && !(moved >> t & 1)) cnt++;
+    int pages = (cnt + TR_PAGE - 1) / TR_PAGE; if (pages < 1) pages = 1; if (tr_pg[pg_idx] >= pages) tr_pg[pg_idx] = 0; int skip = tr_pg[pg_idx] * TR_PAGE, shown = 0, seen = 0;
+    for (int t = 0; t < nt; t++) if (tr_owns(owner_pl, t) && tr_tradable(t) && !(moved >> t & 1)) { if (seen++ < skip) continue; if (shown >= TR_PAGE) break; tr_tilename(t, lab, sizeof lab); snprintf(cmd, sizeof cmd, "%s%d", mvcmd, t); tp_item(id, &n, lab, cmd); shown++; }
+    if (!cnt) tp_item(id, &n, "(nothing to trade)", "void"); if (pages > 1) { snprintf(lab, sizeof lab, "more... (page %d of %d)", tr_pg[pg_idx] + 1, pages); tp_item(id, &n, lab, pgcmd); } tp_end(id, n);
+}
+static void tr_offerpane(char id, int x, const char *title, unsigned long long mask, int cash, const char *mvcmd, const char *up, const char *dn, const char *upf, const char *dnf) {
+    tp_head(id, x, title); int nt = uint_("n_tiles"), n = 0; char lab[80], cmd[24]; snprintf(lab, sizeof lab, upf, cash); tp_item(id, &n, lab, up); snprintf(lab, sizeof lab, dnf, cash); tp_item(id, &n, lab, dn);
+    for (int t = 0; t < nt; t++) if (mask >> t & 1) { char nm[60]; tr_tilename(t, nm, sizeof nm); snprintf(lab, sizeof lab, "%s (press: back)", nm); snprintf(cmd, sizeof cmd, "%s%d", mvcmd, t); tp_item(id, &n, lab, cmd); } tp_end(id, n);
+}
+static void tr_screen(void) {   /* the feed while the trade screen is open: four panes + a three-button control popup under them */
+    char b[300], v[8]; int me = tr_me(), pa = tr_partner; load_ui();
+    if (pa < 1 || pa == me || !tr_active(pa)) { pa = 0; for (int i = 1; i <= uint_("n_players"); i++) if (i != me && tr_active(i)) { pa = i; break; } tr_partner = pa; }
+    char tl[8]; uget("trade_left", tl, sizeof tl); char pn[24], k[24]; snprintf(k, sizeof k, "p%d_name", pa); uget(k, pn, sizeof pn);
+    catn(OUT_, OUTCAP_, "tp_on=1\ngame-ov_x=344\ngame-ov_y=270\n"); (void)v;
+    snprintf(b, sizeof b, "p%d offers p%d  (%s new offers left)", me, pa, tl); add_text(b);
+    snprintf(b, sizeof b, "Partner: p%d %s", pa, pn); add_btn("Send offer", "tr_send"); add_btn(b, "tr_partner"); add_btn("Back to game", "tr_close");
+    tr_inventory('a', 0, me, tr_give_t, "tr_g", 0, "tr_pa+"); tr_offerpane('g', 224, "you GIVE", tr_give_t, tr_give_c, "tr_g", "tr_gc+", "tr_gc-", "give $%d: add 10", "give $%d: take back 10"); tr_offerpane('r', 448, "you GET", tr_get_t, tr_get_c, "tr_r", "tr_rc+", "tr_rc-", "ask $%d: ask 10 more", "ask $%d: ask 10 less"); tr_inventory('b', 672, pa, tr_get_t, "tr_r", 1, "tr_pb+");
+}
+static int tr_bits(unsigned long long m) { int n = 0; while (m) { n += (int)(m & 1); m >>= 1; } return n; }
+static void tr_cmd(const char *c) {
+    if (!mode_play) return; load_ui(); int me = tr_me(); char out[400], k[24], v[24];
+    if (!strcmp(c, "open")) { tr_clear(); tr_partner = 0; tr_open_ = 1; snprintf(msg, sizeof msg, "trade: press a tile to move it in or out"); }
+    else if (!strcmp(c, "close")) { tr_open_ = 0; tr_clear(); }
+    else if (!strcmp(c, "partner")) { int n = uint_("n_players"), p = tr_partner ? tr_partner : me; for (int s = 1; s <= n; s++) { int q = (p - 1 + s) % n + 1; if (q != me && tr_active(q)) { tr_partner = q; break; } } tr_get_t = 0; tr_get_c = 0; tr_pg[1] = 0; }
+    else if ((c[0] == 'g' || c[0] == 'r') && c[1] >= '0' && c[1] <= '9') { int t = atoi(c + 1), give = c[0] == 'g'; unsigned long long *m = give ? &tr_give_t : &tr_get_t; int owner_pl = give ? me : tr_partner;
+        if (*m >> t & 1) *m &= ~(1ULL << t); else if (t >= 0 && t < 64 && tr_owns(owner_pl, t) && tr_tradable(t) && tr_bits(*m) < 8) *m |= 1ULL << t; }
+    else if (!strcmp(c, "gc+") || !strcmp(c, "gc-")) { snprintf(k, sizeof k, "p%d_cash", me); int mx = atoi(uget(k, v, sizeof v)); tr_give_c += c[2] == '+' ? 10 : -10; if (tr_give_c < 0) tr_give_c = 0; if (tr_give_c > mx) tr_give_c = mx; }
+    else if (!strcmp(c, "rc+") || !strcmp(c, "rc-")) { snprintf(k, sizeof k, "p%d_cash", tr_partner); int mx = atoi(uget(k, v, sizeof v)); tr_get_c += c[2] == '+' ? 10 : -10; if (tr_get_c < 0) tr_get_c = 0; if (tr_get_c > mx) tr_get_c = mx; }
+    else if (!strcmp(c, "pa+")) tr_pg[0]++; else if (!strcmp(c, "pb+")) tr_pg[1]++;
+    else if (!strcmp(c, "send")) { char gs[130], rs[130], pn[8], as[8]; tr_assets(tr_give_t, tr_give_c, gs, sizeof gs); tr_assets(tr_get_t, tr_get_c, rs, sizeof rs); snprintf(pn, sizeof pn, "p%d", tr_partner); snprintf(as, sizeof as, "as=p%d", me);
+        const char *a[7] = { "offer", pn, "give", gs, "get", rs, as }; int rc = run_eng(out, sizeof out, 7, a); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1;
+        if (rc == 0) { tr_open_ = 0; tr_clear(); snprintf(msg, sizeof msg, "offer sent to %s", pn); } else snprintf(msg, sizeof msg, "refused: %.170s", out); }
+    else if (!strcmp(c, "accept") || !strcmp(c, "reject")) { char id[16], to[16], as[24]; uget("offer_id", id, sizeof id); uget("offer_to", to, sizeof to); snprintf(as, sizeof as, "as=%s", to); const char *a[3] = { c, id, as }; int rc = run_eng(out, sizeof out, 3, a); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1; snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); }
+}
 static void publish(void) {
     static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = ne_ = nl_ = 0; ENT_[0] = 0; char t[256], k[48], b[600];
     int run = running(); int have = mode_play && load_ui(); int over = have ? uint_("over") : 0;
@@ -174,6 +228,8 @@ static void publish(void) {
         { char pb[40]; snprintf(pb, sizeof pb, "n_party=%d\n", np); catn(OUT_, OUTCAP_, pb); }
         for (int i = 7; i >= 0; i--) { snprintf(k, sizeof k, "log_%d", i); char l[120]; uget(k, l, sizeof l); if (l[0]) add_chat(l); }
         char v[8];
+        if (tr_open_ && (over || !uget("human_turn", v, sizeof v)[0])) tr_open_ = 0;   /* the screen closes itself when it is no longer my turn */
+        if (tr_open_) tr_screen(); else {
         if (uget("show_roll", v, sizeof v)[0]) add_btn("Roll", "roll");
         if (uget("show_jail", v, sizeof v)[0]) { add_btn("Jail: roll for doubles", "jail_roll"); add_btn("Jail: pay 50", "jail_pay"); }
         if (uget("show_buy", v, sizeof v)[0]) { char pt[40]; uget("pending_tile", pt, sizeof pt); snprintf(b, sizeof b, "Buy %s (%d)", pt, uint_("pending_price")); add_btn(b, "buy"); }
@@ -185,9 +241,13 @@ static void publish(void) {
         if (uget("show_pay_debt", v, sizeof v)[0]) { snprintf(b, sizeof b, "Pay debt %d", uint_("debt")); add_btn(b, "pay_debt"); }
         if (uget("show_bankrupt", v, sizeof v)[0]) add_btn("Declare bankruptcy", "bankrupt");
         if (uget("show_end", v, sizeof v)[0]) add_btn("End turn", "end");
+        { char tl[8]; uget("trade_left", tl, sizeof tl); if (uget("human_turn", v, sizeof v)[0] && atoi(tl) > 0 && (!strcmp(ph, "pre") || !strcmp(ph, "post") || !strcmp(ph, "debt"))) add_btn("Trade...", "tr_open"); }
+        if (uget("show_offer", v, sizeof v)[0]) { char of[16], og[130], ot[130], gn[200], rn[200]; uget("offer_from", of, sizeof of); uget("offer_give", og, sizeof og); uget("offer_get", ot, sizeof ot); tr_nice(og, gn, sizeof gn); tr_nice(ot, rn, sizeof rn); snprintf(b, sizeof b, "%s OFFERS: gives %s, wants %s", of, gn, rn); add_text(b); add_btn("Accept offer", "tr_accept"); add_btn("Reject offer", "tr_reject"); }
         if (!run && !over) add_btn("Step one move", "step");
         snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(b, "speed_next"); add_btn("New game", "new_game");
+        }
     }
+    if (!(tr_open_ && have)) catn(o, sizeof o, "tp_on=\ngame-ov_x=\ngame-ov_y=\n");   /* the trade screen is off: the popup is centred again */
     if (ENT_[0]) { char eb[460]; snprintf(eb, sizeof eb, "gme_0_label=%s\n", ENT_); catn(o, sizeof o, eb); ne_ = 1; }
     snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=%d\ngm_nl=%d\n", nt_, nb_, ne_, nl_); catn(o, sizeof o, b);
     if (have && page_needed()) page_sync(0);
@@ -238,6 +298,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "roll")) human_verb("roll"); else if (!strcmp(c, "buy")) human_verb("buy"); else if (!strcmp(c, "skip")) human_verb("skip"); else if (!strcmp(c, "end")) human_verb("end_turn");
     else if (!strcmp(c, "pass")) human_verb("pass"); else if (!strcmp(c, "bid_min") || !strcmp(c, "bid_up")) { load_ui(); char ab[16]; snprintf(ab, sizeof ab, "%d", uint_("auction_min") + (!strcmp(c, "bid_up") ? 50 : 0)); human_verb2("bid", ab); }   /* M7: the amount is read from the feed at CLICK time, so a stale label cannot bid a wrong number */
     else if (!strcmp(c, "jail_pay")) human_verb("jail_pay"); else if (!strcmp(c, "jail_roll")) human_verb("jail_roll"); else if (!strcmp(c, "pay_debt")) human_verb("pay_debt"); else if (!strcmp(c, "bankrupt")) human_verb("bankrupt");
+    else if (!strncmp(c, "tr_", 3)) tr_cmd(c + 3);
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
     dirty = 1;
 }
@@ -266,9 +327,9 @@ int main(int argc, char **argv) {
         else if (!stat(ACT, &s) && s.st_size < cursor) cursor = 0;
         static int hwait = 0; int run = running(); static int was_run = -1; if (run != was_run) { was_run = run; dirty = 1; }
         if (mode_play) { static long nw = 0; static int was = 0; long tw = now_ms(); if (tw >= nw) { if (w_resync) { walk_sync(); write_events(); } int m = walk_step(); if (m || was) write_events(); was = walking_now; nw = tw + W_MS[speed]; } }
-        if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8], ht[8], cn[24], yt[80]; load_ui(); uget("over", ov, sizeof ov); uget("human_turn", ht, sizeof ht); uget("current_name", cn, sizeof cn);
+        if (mode_play && run && !walking_now && !w_resync) { long t = now_ms(); if (t >= next) { char ov[8], ht[8], cn[24], yt[80], pr[8]; load_ui(); uget("over", ov, sizeof ov); uget("human_turn", ht, sizeof ht); uget("current_name", cn, sizeof cn); uget("pet_reply", pr, sizeof pr);   /* pet_reply=1 only while an offer to a PET is open (M9): the pet answers even though a human is up; otherwise 0 calls */
             /* A HUMAN'S TURN COSTS NOTHING: while the game waits for a seat that is a person the driver does not poll the engine (measured 2026-11-08 in the real editor: 17 engine calls in 10 s, ledger frozen, before this; 0 after). ui.txt is rewritten after every verb and tick, so the moment the turn passes to the human the next loop sees human_turn=1. */
-            if (ov[0] != '1' && ht[0] == '1') { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
+            if (ov[0] != '1' && ht[0] == '1' && !pr[0]) { hwait = 1; snprintf(yt, sizeof yt, "your turn, %s: use the buttons", cn); if (strcmp(msg, yt)) { snprintf(msg, sizeof msg, "%s", yt); dirty = 1; } }
             else if (ov[0] != '1') { hwait = 0; tick_once(); } else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         /* DESK GUARD (owner 2026-11-08 "the entities seemed to disappear from the board"): the players live on the generated PLAY desk; the editor's board launcher writes the world's desk from its own page (page=board) a little AFTER a driver that started at launch (the core watchdog) has switched it, and the players vanished with a game running. While a game is in play the driver keeps asserting its desk (a 4 KB read per 2 s, a write only when it really differs). */
