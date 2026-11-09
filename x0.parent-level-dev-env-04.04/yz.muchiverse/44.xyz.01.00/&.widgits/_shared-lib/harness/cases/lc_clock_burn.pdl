@@ -40,3 +40,52 @@ SLEEP   | 2000
 EXPECT_DEAD | $D2 | the-unbudgeted-daemon-stopped-by-pid
 EXPECT_GE | $rows_open | 40 | NEGATIVE-with-the-budget-off-the-same-9-s-writes-many-more-rows-so-the-limit-above-is-not-vacuous
 CLEAN |
+# GLOBAL SPACING (2026-11-08, second guard incident 19:07: lc_clock 119% of a core, six reminder files rewritten in 22 s). The per-reminder gap above limits ONE reminder; four reminders all due together still fired back to back, one per 300 ms poll.
+# LC_CLOCK_MIN_SPACING_MS (default 12 s) now allows NO two fires closer than the spacing, across ALL reminders. 2.5 s after the daemon starts with a 5 s spacing only the first reminder (r1) may have fired and the fourth (r4) must not;
+# with the spacing off the fourth fired too (the negative: the guard can fail).
+CASE    | spaced
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | rate | g1 | sec
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | a | every:5min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | b | every:5min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | c | every:5min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | d | every:5min
+ENV     | LC_CLOCK_MIN_FIRE_GAP_MS | 60000
+ENV     | LC_CLOCK_MIN_SPACING_MS | 5000
+SPAWN | D3 | $T/lc.+x | $T | daemon
+SLEEP   | 2500
+RUN | $T/lc.+x | $T | sched-count | r1
+CAPTURE | first_spaced
+RUN | $T/lc.+x | $T | sched-count | r4
+CAPTURE | fourth_spaced
+RUN | /usr/bin/kill | $D3
+SLEEP   | 1500
+EXPECT_DEAD | $D3 | the-daemon-stopped-by-pid
+EXPECT_GE | $first_spaced | 1 | VACUITY-the-first-reminder-fired-at-all
+EXPECT_LE | $fourth_spaced | 0 | THE-SPACING-HOLDS-the-fourth-reminder-has-NOT-fired-2.5-s-in-at-a-5-s-spacing-the-others-wait-for-their-slot
+CLEAN |
+CASE    | unspaced
+SCRATCH |
+COPY    | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | lc.+x
+RUN | $T/lc.+x | $T | new | g1
+RUN | $T/lc.+x | $T | rate | g1 | sec
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | a | every:5min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | b | every:5min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | c | every:5min
+RUN | $T/lc.+x | $T | reminder-add | g1 | 300000 |  | d | every:5min
+ENV     | LC_CLOCK_MIN_FIRE_GAP_MS | 60000
+ENV     | LC_CLOCK_MIN_SPACING_MS | 0
+SPAWN | D4 | $T/lc.+x | $T | daemon
+SLEEP   | 2500
+RUN | $T/lc.+x | $T | sched-count | r1
+CAPTURE | first_unspaced
+RUN | $T/lc.+x | $T | sched-count | r4
+CAPTURE | fourth_unspaced
+RUN | /usr/bin/kill | $D4
+SLEEP   | 1500
+EXPECT_DEAD | $D4 | the-daemon-stopped-by-pid
+EXPECT_GE | $first_unspaced | 1 | VACUITY-the-first-reminder-fired-at-all
+EXPECT_GE | $fourth_unspaced | 1 | NEGATIVE-with-the-spacing-off-the-fourth-reminder-fires-within-2.5-s-so-the-limit-above-is-not-vacuous
+CLEAN |

@@ -1248,11 +1248,16 @@ static const char *fire_reminder(const char *house, const Reminder *r, int show_
  * that are shipped OFF. In the DAEMON only (the harness `step`/`poll` commands keep the old exact behaviour, g_min_gap_ms = 0) a reminder fires AT MOST ONCE per LC_CLOCK_MIN_FIRE_GAP_MS of real time (default 120 s since 2026-11-08 17:5x, was 30 s)
  * and a batch runs ONE event; the rest of that backlog is collapsed into the usual `caught up N` row (the ledger cursor still moves, nothing is replayed later). Cost bound: reminders / 30 s event runs. */
 static long long g_min_gap_ms = 0;
+/* GLOBAL SPACING (2026-11-08, second guard incident at 19:07: lc_clock 119% of a core in the guard window, six reminder files rewritten in 22 s). The per-reminder gap above only limits how often ONE reminder fires; ten reminders all become due together and
+ * fire back to back, one per 300 ms poll, each a ~1.3 s event run: the average is low (about 3%) but every cycle ends in a burst, and the guard judges short windows. In the daemon NO two fires may be closer than LC_CLOCK_MIN_SPACING_MS (default 12 s,
+ * 0 = off): a burst becomes at most one event run per 12 s (about 11% of a core for that second-long run, never overlapping). Ten reminders at a 120 s gap still all fit in a cycle (10 x 12 s = 120 s). */
+static long long g_spacing_ms = 0, g_last_any_fire_ms = 0;
 static void poll_reminders(const char *house) {
     Reminder list[MAX_REMINDERS];
     int n = reminders_load(house, list, MAX_REMINDERS);
     int changed = 0;
     long long wall = wall_ms_now();
+    if (g_min_gap_ms > 0 && g_spacing_ms > 0 && g_last_any_fire_ms > 0 && wall - g_last_any_fire_ms < g_spacing_ms) return;   /* daemon: a fire happened less than the spacing ago; the cursor stays, nothing is lost */
     ledger_refresh(house);
     for (int i = 0; i < n; i++) {
         Reminder *r = &list[i];
@@ -1305,6 +1310,7 @@ static void poll_reminders(const char *house) {
         }
         r->fired_ms = wall;
         changed = 1;
+        if (g_min_gap_ms > 0) g_last_any_fire_ms = wall;
         if (g_min_gap_ms > 0) break;   /* DAEMON: ONE reminder fires per poll, the rest wait for the next poll (300 ms): their event runs (~1.3 s CPU each for the phase pages) never overlap, measured 148% of a core when ten fired in the same poll */
     }
     if (changed) reminders_save(house, list, n);
@@ -1444,6 +1450,7 @@ static int cmd_daemon(const char *house) {
     { const char *ow = getenv("LC_OWNER_PID"); long owp = ow ? atol(ow) : 0; if (owp <= 1) owp = owner_from_daemon_lock(house); reg_run("register", owp > 1 ? "owner" : "keep", owp > 1 ? owp : 0); }
 
     { const char *gp = getenv("LC_CLOCK_MIN_FIRE_GAP_MS"); g_min_gap_ms = gp ? atoll(gp) : 120000; if (g_min_gap_ms < 0) g_min_gap_ms = 0; }   /* daemon only: see g_min_gap_ms; 0 = the old uncapped catch-up */
+    { const char *sp = getenv("LC_CLOCK_MIN_SPACING_MS"); g_spacing_ms = sp ? atoll(sp) : 12000; if (g_spacing_ms < 0) g_spacing_ms = 0; }   /* daemon only: see g_spacing_ms; 0 = no global spacing */
     long long last = mono_ms_now();
     while (!g_exit) {
         long long now = mono_ms_now();
