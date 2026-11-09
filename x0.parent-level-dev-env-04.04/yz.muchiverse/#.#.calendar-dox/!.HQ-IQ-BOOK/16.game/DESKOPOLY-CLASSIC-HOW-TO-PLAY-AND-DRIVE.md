@@ -15,6 +15,7 @@
 | M8 debt queue | **PLAN** | until then those tiles resolve as `todo-<kind>` (nothing happens) |
 | M10 pets/ui/tick for all phases | **PARTLY** (corrected 2026-11-08; this row used to say PLAN) | pets play and the players bar, footer and popup run through `deskopoly_driver` inside the rpg-edit-hq editor; the pet policy is still a STOPGAP, personalities are not built |
 | M11 board page | **done** (corrected 2026-11-08) | `deskopoly page` writes the 33x33 board and the 3D players; case `dsk_page` 42; sky-seam fix and desk guard 2026-11-08 |
+| board names | **done 2026-11-09** | the names are written ON the floor by `deskopoly page <desk> <base atlas>`: `rulesets/classic/page.pdl` rows `LABELS | on|off`, `LABELCOLOR | text|outline | rrggbb`, `LABEL | <tile id or kind> | <text>` (`\n` = line break; long text wraps and drops to a smaller font, never clipped). Today they are generic spiral-themed PLACEHOLDERS (`Spiral Start`, `Phi Lane`, `Luck`, `Lost & Found` ...): the owner replaces the rows with the lore names, ids in `board.pdl` stay (1 to 16 characters, used by commands). Needs the base atlas argument (the driver passes it); `LABELS off` or no atlas = the old plain page byte for byte. Case `dsk_labels` (56) |
 | Where to start | | `16.game/TEROPOLY-ONBOARDING-HARNESSES-DRIVING-AND-CPU-LESSONS-2026-11-08.md`, then `06-testing/WHAT-TO-LOOK-FOR-ACCEPTANCE-COMPENDIUM-PER-PROJECT.md` |
 
 ## 2. Run it by hand (no window needed)

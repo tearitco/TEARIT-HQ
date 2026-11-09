@@ -44,3 +44,54 @@ TILEMAP | token_p5   | 26
 TILEMAP | token_p6   | 23
 TILEMAP | token_p7   | 25
 TILEMAP | token_p8   | 27
+# LABELS (2026-11-09): the names written ON the board. `deskopoly page` bakes each label into the floor texture (3D and 2D from one description, zero per-frame cost). Nothing in C names a tile or a place.
+#   LABELS     | on|off              off = the page is byte-identical to the unlabelled one (default on, and only with a real atlas argument)
+#   LABELCOLOR | text|outline | rrggbb   glyph colour and the 1 px outline round it (default ffffff / 000000)
+#   LABEL      | <tile id or kind> | <text>   display text; a tile's own row beats its kind's row; no row = the tile's own id; empty text = no label; a literal \n forces a line break. Long text wraps (up to 3 lines at
+#                                    the biggest font that fits, else smaller fonts, then more lines), so a rename is ONE edit here and no C change. Tile ids (board.pdl: 1 to 16 characters, typed in commands) are NOT touched.
+LABELS     | on
+LABELCOLOR | text    | ffffff
+LABELCOLOR | outline | 000000
+# --- PLACEHOLDERS (owner decision 2026-11-09: generic spiral-themed stand-ins until the real Centroid University lore names exist). REMOVAL CONDITION: the owner's lore names replace these rows. NOTHING else may depend on them:
+# --- no command, ledger row, test pin or chat parse reads a label; the ids in board.pdl stay (Orange3, Fund2 ...). Colour groups share a word so they stay recognisable.
+# Words of 6 letters or fewer get the biggest font (a longer word drops to the next smaller font tier, still readable); that is why these stand-ins use short words.
+# The two decks (the owner's own words): Luck and Lost & Found.
+LABEL | chance   | Luck
+LABEL | chest    | Lost & Found
+# corners
+LABEL | Start    | Spiral Start
+LABEL | Jail     | Helix Cell
+LABEL | Free     | Quiet Spiral
+LABEL | GoJail   | Helix Snare
+# brown, sky, pink, orange, red, yellow, green, navy
+LABEL | Brown1   | Seed Lane
+LABEL | Brown2   | Sprout Lane
+LABEL | Sky1     | Phi Lane
+LABEL | Sky2     | Phi Court
+LABEL | Sky3     | Phi Row
+LABEL | Pink1    | Helix Court
+LABEL | Pink2    | Helix Row
+LABEL | Pink3    | Helix Walk
+LABEL | Orange1  | Coil Street
+LABEL | Orange2  | Coil Square
+LABEL | Orange3  | Coil Plaza
+LABEL | Red1     | Vortex Way
+LABEL | Red2     | Vortex Hall
+LABEL | Red3     | Vortex Plaza
+LABEL | Yellow1  | Golden Row
+LABEL | Yellow2  | Golden Ratio Row
+LABEL | Yellow3  | Golden Ratio Way
+LABEL | Green1   | Shell Row
+LABEL | Green2   | Shell Hall
+LABEL | Green3   | Shell Bay
+LABEL | Navy1    | Hub Row
+LABEL | Navy2    | Hub Crown
+# rails, utilities, taxes
+LABEL | Line1    | Spiral Line I
+LABEL | Line2    | Spiral Line II
+LABEL | Line3    | Spiral Line III
+LABEL | Line4    | Spiral Line IV
+LABEL | Power    | Spin Works
+LABEL | Water    | Whirl Works
+LABEL | LevyA    | Spiral Tithe
+LABEL | LevyB    | Turn Toll

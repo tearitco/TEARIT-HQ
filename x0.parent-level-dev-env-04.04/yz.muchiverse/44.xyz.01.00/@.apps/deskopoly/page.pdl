@@ -22,3 +22,5 @@ TILEMAP | owner_p1    | 35
 TILEMAP | owner_p2    | 38
 TILEMAP | owner_p3    | 41
 TILEMAP | owner_p4    | 33
+# LABELS (2026-11-09): the mini ruleset keeps its plain pass-1 page (no names on the floor; its pinned cases read the cells byte for byte). The classic ruleset's page.pdl turns them on and holds the LABEL rows. REMOVAL CONDITION: when mini gets display names.
+LABELS     | off

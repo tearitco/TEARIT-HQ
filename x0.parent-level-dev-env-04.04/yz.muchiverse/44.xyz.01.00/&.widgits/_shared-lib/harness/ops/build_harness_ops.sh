@@ -20,3 +20,5 @@ $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -O2 -o +x/video_op.+x video_
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/py_lint.+x py_lint.c && echo "OK +x/py_lint.+x"
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/blank_page_op.+x blank_page_op.c && echo "OK +x/blank_page_op.+x"
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/legend_page_op.+x legend_page_op.c && echo "OK +x/legend_page_op.+x"
+# dsk_label_probe_op (2026-11-09): numbers out of a Teropoly play desk so case dsk_labels can check the board names (no Python)
+$CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/dsk_label_probe_op.+x dsk_label_probe_op.c && echo "OK +x/dsk_label_probe_op.+x"

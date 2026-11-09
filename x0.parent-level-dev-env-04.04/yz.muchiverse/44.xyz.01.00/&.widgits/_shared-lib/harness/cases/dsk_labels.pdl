@@ -1,0 +1,180 @@
+# dsk_labels: the names written ON the Teropoly board (2026-11-09, owner: "text labels on the board for names of things, for Luck, and for Lost & Found"). `deskopoly page <desk> <atlas>` bakes each tile's display label (page.pdl `LABEL |
+# <tile id or kind> | <text>`) into the floor texture: the cells that carry ink become NEW atlas tiles (the plain floor / owner marker with the glyphs over it), so the 3D view and the 2D picture show the same text at zero per-frame cost.
+# Method: one autoplayed 3-pet game (seed 6, auctions off as in dsk_page) cut as a ledger PREFIX at line 10 (before the first purchase) and 11 (p1 has just bought tile 8). The probe op `dsk_label_probe_op` composites the page itself
+# (cell -> atlas pixels) and counts pixels of two EXACT colours; this case sets odd label colours (ff00fe text, 01ff02 outline) that no texture contains. Every pinned number was OBSERVED on 2026-11-09.
+# RULES COVERED: LABELS off (and no atlas argument) = BYTE-IDENTICAL to the pre-labels page (cells.txt, cells.rgba and events.txt sha256 pinned from the binary built from git HEAD before this feature); labels on = atlas_tiles grows, every one of the
+# 40 tiles carries ink, a tile's inked cells point at DISTINCT new tiles, no ink outside a ring tile block, every glyph at least 1 px inside its block (nothing clipped), a long label stays inside (word wrap + smaller font + hard break + the
+# lines that fit), Luck tiles all look alike and differ from the Lost & Found tiles, a wrong label changes the picture, a rerun writes the atlas NOT again (same inode) and the marker contract is unchanged, a purchase rewrites the atlas and the
+# owner marker still shows under the glyphs, ids and ledger are untouched (the same ledger replays; labels are display text only).
+# NOT COVERED: how the engine draws the grown atlas (see the live PNG rows in the compendium), the legibility to a human (open the PNG).
+RESULTS | ../results/dsk_labels.txt
+ENV | LC_ALL | C
+
+CASE    | base
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+COPY    | @.apps/deskopoly/deskopoly-pchq/pieces/system/maps/deskopoly/board/cells.rgba | atlas.rgba
+APPEND  | app/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
+# odd colours, a long label (3 words, 27 letters), a word wider than any line, and a label of 14 forced lines (the last resort): all on tiles chosen for this case only
+APPEND  | app/rulesets/classic/page.pdl | LABELCOLOR \p text \p ff00fe\nLABELCOLOR \p outline \p 01ff02\nLABEL \p Orange3 \p The Celestial Cartographers\nLABEL \p Brown1 \p Supercalifragilisticexpialidocious\nLABEL \p Brown2 \p 1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n10\\n11\\n12\\n13\\n14\n
+RUN | /usr/bin/stat | -c | %s | $T/atlas.rgba
+EXPECT_OUT_IS | 110592 | VACUITY-the-base-atlas-is-the-384x72-RPG-Maker-atlas-43-tiles
+MKDIR   | m
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=527 rounds=74 over=1 winner=p1 | the-base-game-is-the-one-the-numbers-were-observed-on-same-as-dsk_page
+RUN | /usr/bin/sed | -n | 11p | $T/m/ledger.txt
+EXPECT_OUT | EVENT\p0\pp1\pbuy\p-\p8\pbought-100 | VACUITY-ledger-line-11-is-p1-buying-tile-8
+MKDIR   | p10
+MKDIR   | p11
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p10/ledger.txt
+RUN | /usr/bin/sed | -i | 11,$d | $T/p10/ledger.txt
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/p11/ledger.txt
+RUN | /usr/bin/sed | -i | 12,$d | $T/p11/ledger.txt
+
+CASE    | off
+MKDIR   | o11
+MKDIR   | x11
+MKDIR   | app_off
+COPYDIR | @.apps/deskopoly | app_off | ops,deskopoly-pchq,state
+APPEND  | app_off/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
+APPEND  | app_off/rulesets/classic/page.pdl | LABELS \p off\n
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_off | $T/p11 | page | $T/o11 | $T/atlas.rgba
+EXPECT_OUT | owned=1 houses=0 hotels=0 mortgaged=0 events=3 | the-page-of-line-11
+EXPECT_OUT_LACKS | LABELS | LABELS-off-prints-no-labels-line
+RUN | /usr/bin/sha256sum | $T/o11/cells.txt
+EXPECT_OUT | 98b7c14418427d7dfd205d69cfe041f524dc9b158dd143a7625df8f8015a7847 | BYTE-IDENTICAL-cells-txt-pinned-from-the-binary-built-from-git-HEAD-before-labels
+RUN | /usr/bin/sha256sum | $T/o11/cells.rgba
+EXPECT_OUT | 42c3ef0da1a9c0a1f9cf4a7cc562c33d3e546aade3e85ba1493919bc3d578ba7 | BYTE-IDENTICAL-atlas-it-is-the-copy-of-the-base-atlas
+RUN | /usr/bin/sha256sum | $T/o11/events.txt
+EXPECT_OUT | 658a25fe890d078bee1f63ddcba626de724368ef3fc9f7fdc83d4642da5da3ac | BYTE-IDENTICAL-events-txt
+RUN | /usr/bin/grep | -c | atlas_tiles=43 | $T/o11/cells.txt
+EXPECT_OUT_IS | 1 | the-header-still-says-43-tiles
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p11 | page | $T/x11
+EXPECT_OUT_LACKS | LABELS | no-atlas-argument-no-labels-even-with-LABELS-on
+RUN | /usr/bin/cmp | $T/x11/cells.txt | $T/o11/cells.txt
+EXPECT_EXIT | 0 | and-that-page-is-the-same-bytes-as-LABELS-off
+
+CASE    | on
+MKDIR   | d10
+MKDIR   | d11
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p10 | page | $T/d10 | $T/atlas.rgba
+EXPECT_OUT | owned=0 houses=0 hotels=0 mortgaged=0 events=3 | the-page-of-line-10-before-any-purchase
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p11 | page | $T/d11 | $T/atlas.rgba
+EXPECT_OUT | owned=1 houses=0 hotels=0 mortgaged=0 events=3 | the-page-of-line-11-p1-owns-one-tile
+EXPECT_OUT | LABELS new_tiles=314 atlas_tiles=357 atlas_written=1 | the-atlas-grew-and-was-written
+RUN | /usr/bin/stat | -c | %s | $T/d11/cells.rgba
+EXPECT_OUT_IS | 847872 | the-atlas-is-23-rows-of-24-px-x-384-x-4-bytes
+RUN | /usr/bin/grep | -c | atlas_tiles=357 | $T/d11/cells.txt
+EXPECT_OUT_IS | 1 | and-cells-txt-says-the-same-count-the-engine-sizes-the-atlas-from-it
+RUN | /usr/bin/cmp | $T/d11/cells.txt | $T/o11/cells.txt
+EXPECT_EXIT | 1 | VACUITY-labels-on-really-changes-the-page
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p11 | page | $T/d11 | $T/atlas.rgba
+EXPECT_OUT | atlas_written=0 | A-RERUN-WRITES-NO-ATLAS-the-bytes-did-not-change-so-the-engine-has-nothing-to-reload
+
+CASE    | ring
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | ring | $T/d11 | 11 | 3 | 24 | 43 | ff00fe | 01ff02
+EXPECT_OUT | SUM tiles=40 with_text=40 text_in_tiles=19873 text_outside=0 outline_in_tiles=23782 outline_outside=0 max_new_per_tile=9 min_new_per_tile=3 | EVERY-ONE-OF-THE-40-TILES-CARRIES-INK-and-no-ink-pixel-lies-outside-a-ring-tile-block
+EXPECT_OUT_LACKS | distinct=0 | the-inked-cells-of-every-tile-point-at-distinct-new-atlas-tiles
+EXPECT_OUT | distinct=1 | VACUITY-the-distinct-check-saw-tiles
+EXPECT_OUT_LACKS | margin=0\p | NOTHING-CLIPPED-no-glyph-touches-the-rim-of-its-block
+EXPECT_OUT_LACKS | margin=none | and-no-tile-is-without-text
+EXPECT_OUT_LACKS | text=0\p | no-tile-has-zero-glyph-pixels
+EXPECT_OUT | T 7 7 0 new=3 distinct=1 text=405 outline=364 margin=3 bbox=3,25,65,45 | Luck-is-one-line-in-the-biggest-font-3-cells-carry-it
+EXPECT_OUT | T 2 2 0 new=9 distinct=1 text=504 outline=636 margin=3 bbox=3,21,67,50 | Lost-and-Found-is-two-lines-in-the-second-font-9-cells-carry-it
+EXPECT_OUT | T 19 10 9 new=3 distinct=1 text=219 outline=425 margin=10 bbox=10,30,60,40 | THE-LONG-LABEL-The-Celestial-Cartographers-wraps-to-2-lines-in-the-smallest-font-and-stays-inside-the-block
+EXPECT_OUT | T 1 1 0 new=3 distinct=1 text=293 outline=570 margin=2 bbox=2,30,68,40 | a-single-word-of-34-letters-is-hard-broken-in-two-and-stays-inside
+EXPECT_OUT | T 3 3 0 new=3 distinct=1 text=119 outline=251 margin=3 bbox=32,3,38,67 | the-LAST-RESORT-14-forced-lines-draw-the-11-that-fit-and-never-pass-the-rim
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | ring | $T/d11 | 11 | 3 | 24 | 43 | ff00fe | 01ff02 | 3
+EXPECT_OUT | margin=-1 | CONTROL-asking-for-a-3-px-rim-finds-the-34-letter-word-2-px-from-the-edge-so-the-clipping-check-above-CAN-fail
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | ring | $T/o11 | 11 | 3 | 24 | 43 | ff00fe | 01ff02
+EXPECT_OUT | with_text=0 | CONTROL-the-LABELS-off-desk-has-no-ink-so-the-with_text-pin-CAN-fail
+
+CASE    | decks
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/d11 | 7 | 0 | 3 | 24
+CAPTURE | luck1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/d11 | 8 | 10 | 3 | 24
+CAPTURE | luck2
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/d11 | 0 | 4 | 3 | 24
+CAPTURE | luck3
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/d11 | 2 | 0 | 3 | 24
+CAPTURE | fund1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/d11 | 10 | 7 | 3 | 24
+CAPTURE | fund2
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/d11 | 0 | 7 | 3 | 24
+CAPTURE | fund3
+EXPECT_EQ | $luck1 | $luck2 | the-three-Luck-tiles-look-alike
+EXPECT_EQ | $luck1 | $luck3 | and-all-three
+EXPECT_EQ | $fund1 | $fund2 | the-three-Lost-and-Found-tiles-look-alike
+EXPECT_EQ | $fund1 | $fund3 | and-all-three-Lost-and-Found
+EXPECT_NE | $luck1 | $fund1 | NEGATIVE-Luck-and-Lost-and-Found-are-different-pictures
+# the wrong-label control: the same game with the Luck deck labelled Fortune
+MKDIR   | app_w
+COPYDIR | @.apps/deskopoly | app_w | ops,deskopoly-pchq,state
+APPEND  | app_w/rulesets/classic/rules.pdl | RULE \p auctions \p off\n
+APPEND  | app_w/rulesets/classic/page.pdl | LABELCOLOR \p text \p ff00fe\nLABELCOLOR \p outline \p 01ff02\nLABEL \p chance \p Fortune\n
+RUN | /usr/bin/grep | -c | Fortune | $T/app_w/rulesets/classic/page.pdl
+EXPECT_OUT_IS | 1 | VACUITY-the-mutant-page-pdl-really-has-the-wrong-label
+MKDIR   | dw
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app_w | $T/p11 | page | $T/dw | $T/atlas.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/dw | 7 | 0 | 3 | 24
+CAPTURE | luck1_wrong
+EXPECT_NE | $luck1 | $luck1_wrong | NEGATIVE-a-wrong-label-changes-the-Luck-tile-picture
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | area | $T/dw | 2 | 0 | 3 | 24
+CAPTURE | fund1_same
+EXPECT_EQ | $fund1 | $fund1_same | and-the-tile-nobody-touched-is-the-same-picture-so-the-hash-is-stable
+
+CASE    | owner
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | bg | $T/d11 | $T/atlas.rgba | 25 | 1 | 12 | 24 | ff00fe | 01ff02
+EXPECT_OUT | BG same=242 differ=0 ink=334 | OWNER-MARKER-STILL-SHOWS-tile-8-is-p1s-the-centre-cell-under-the-glyphs-is-atlas-tile-12-owner_p1-everywhere-the-glyphs-are-not
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | bg | $T/d11 | $T/atlas.rgba | 25 | 1 | 38 | 24 | ff00fe | 01ff02
+EXPECT_OUT | BG same=0 differ=242 | NEGATIVE-the-same-cell-is-NOT-the-plain-sky-group-floor-38
+MKDIR   | ow
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p10 | page | $T/d10 | $T/atlas.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/dsk_label_probe_op.+x | bg | $T/d10 | $T/atlas.rgba | 25 | 1 | 38 | 24 | ff00fe | 01ff02
+EXPECT_OUT | BG same=242 differ=0 ink=334 | CONTROL-before-the-purchase-the-same-cell-shows-the-sky-group-floor-38-so-the-owner-check-above-can-fail
+
+CASE    | rerun
+MKDIR   | rr
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p10 | page | $T/rr | $T/atlas.rgba
+EXPECT_OUT | atlas_written=1 | the-first-page-writes-the-atlas
+RUN | /usr/bin/stat | -c | %i | $T/rr/cells.rgba
+CAPTURE | ino1
+RUN | /usr/bin/stat | -c | %s | $T/rr/cells.marker
+EXPECT_OUT_IS | 1 | marker-1-byte
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p10 | page | $T/rr | $T/atlas.rgba
+EXPECT_OUT | atlas_written=0 | the-same-page-again-writes-no-atlas
+RUN | /usr/bin/stat | -c | %i | $T/rr/cells.rgba
+CAPTURE | ino2
+EXPECT_EQ | $ino1 | $ino2 | the-atlas-file-is-the-same-inode-it-was-not-replaced
+RUN | /usr/bin/stat | -c | %s | $T/rr/cells.marker
+EXPECT_OUT_IS | 2 | the-marker-contract-is-unchanged-it-still-grows-one-byte-per-page
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p11 | page | $T/rr | $T/atlas.rgba
+EXPECT_OUT | atlas_written=1 | A-PURCHASE-changes-the-picture-so-the-atlas-IS-rewritten
+RUN | /usr/bin/stat | -c | %i | $T/rr/cells.rgba
+CAPTURE | ino3
+EXPECT_NE | $ino1 | $ino3 | NEGATIVE-and-it-is-a-new-file-so-the-inode-check-above-can-fail
+RUN | /usr/bin/ls | $T/rr
+EXPECT_OUT_IS | cells.marker\ncells.rgba\ncells.txt\nevents.txt\nextrusion.pdl\nmap.txt\nskin.txt | the-labelled-desk-has-exactly-the-old-six-files-plus-the-atlas-no-tmp-leftovers
+
+CASE    | ids
+RUN | /usr/bin/grep | -c | Cartographers | $T/app/rulesets/classic/page.pdl
+EXPECT_OUT_IS | 1 | VACUITY-the-long-label-is-in-page-pdl
+RUN | /usr/bin/cmp | $T/app/rulesets/classic/board.pdl | $HOUSE/@.apps/deskopoly/rulesets/classic/board.pdl
+EXPECT_EXIT | 0 | the-tile-ids-in-board-pdl-are-the-untouched-ones-Orange3-stays-Orange3-a-label-is-display-text-only
+RUN | /usr/bin/grep | -c | Cartographers | $T/m/ledger.txt
+EXPECT_OUT_IS | 0 | and-no-label-text-ever-reaches-the-ledger
+
+CASE    | preview
+MKDIR   | pv
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p11 | preview | $T/d11 | $T/pv/labelled.raw
+EXPECT_OUT | PREVIEW 792x792 | the-flat-preview-reads-the-grown-atlas
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/p11 | preview | $T/o11 | $T/pv/plain.raw
+RUN | /usr/bin/cmp | -s | $T/pv/labelled.raw | $T/pv/plain.raw
+EXPECT_EXIT | 1 | the-labelled-picture-differs-from-the-plain-one
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x | $T/pv/labelled.raw | $T/pv/labelled.png | --size | 792x792
+EXPECT_OUT | wrote | the-PNG-is-written-OPEN-IT-the-glyphs-are-what-a-human-reads

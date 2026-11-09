@@ -161,7 +161,8 @@ static int tr_mode = 0, tr_oid = 0, tr_gk = 0, tr_rk = 0;
 static int tr_me(void) { return human_seat > 0 ? human_seat : 1; }
 static int tr_active(int i) { char k[24], v[8]; snprintf(k, sizeof k, "p%d_out", i); return i >= 1 && i <= uint_("n_players") && uget(k, v, sizeof v)[0] != '1'; }
 static void tr_clear(void) { tr_give_t = tr_get_t = 0; tr_give_c = tr_get_c = 0; tr_pg[0] = tr_pg[1] = 0; tr_mode = 0; tr_oid = 0; tr_gk = tr_rk = 0; }
-static const char *TR_DK[2] = { "luck", "fund" };
+static const char *TR_DK[2] = { "luck", "fund" };   /* the ENGINE words (commands, ledger): never shown to a player as they are */
+static const char *deck_disp(int d, char *o, size_t cap) { char k[16]; snprintf(k, sizeof k, "deck%d_name", d); uget(k, o, cap); if (!o[0]) snprintf(o, cap, "%s", TR_DK[d]); return o; }   /* what the player sees: the ui.txt deck names (page.pdl LABEL rows) */
 static void tr_parse(const char *as, unsigned long long *mask, int *cash, int *cards) {   /* "prop:8+cash:50+card:luck" (the engine's canonical form) -> the draft fields */
     char tmp[160]; snprintf(tmp, sizeof tmp, "%s", as); *mask = 0; *cash = 0; *cards = 0; char *sv = NULL;
     for (char *t = strtok_r(tmp, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { if (!strncmp(t, "prop:", 5)) { int n = atoi(t + 5); if (n >= 0 && n < 64) *mask |= 1ULL << n; } else if (!strncmp(t, "cash:", 5)) *cash = atoi(t + 5); else if (!strncmp(t, "card:", 5)) for (int d = 0; d < 2; d++) if (!strcmp(t + 5, TR_DK[d])) *cards |= 1 << d; }
@@ -172,7 +173,7 @@ static void tr_tilename(int t, char *o, size_t cap) { char k[24], nm[40], mo[8];
 static void tr_assets(unsigned long long mask, int cash, int cards, char *o, size_t cap) { o[0] = 0; for (int t = 0; t < 64; t++) if (mask >> t & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%sprop:%d", o[0] ? "+" : "", t); } if (cash > 0) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scash:%d", o[0] ? "+" : "", cash); }
     for (int d = 0; d < 2; d++) if (cards >> d & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scard:%s", o[0] ? "+" : "", TR_DK[d]); } if (!o[0]) snprintf(o, cap, "-"); }
 static void tr_nice(const char *as, char *o, size_t cap) {   /* prop:8+cash:50 -> "Sky2 + $50" for the player's eyes */
-    char tmp[160]; snprintf(tmp, sizeof tmp, "%s", as); o[0] = 0; char *sv = NULL; for (char *t = strtok_r(tmp, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { char one[60]; if (!strncmp(t, "prop:", 5)) tr_tilename(atoi(t + 5), one, sizeof one); else if (!strncmp(t, "cash:", 5)) snprintf(one, sizeof one, "$%s", t + 5); else if (!strncmp(t, "card:", 5)) snprintf(one, sizeof one, "%s card", t + 5); else snprintf(one, sizeof one, "nothing"); size_t l = strlen(o); snprintf(o + l, cap - l, "%s%s", o[0] ? " + " : "", one); }
+    char tmp[160]; snprintf(tmp, sizeof tmp, "%s", as); o[0] = 0; char *sv = NULL; for (char *t = strtok_r(tmp, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { char one[60]; if (!strncmp(t, "prop:", 5)) tr_tilename(atoi(t + 5), one, sizeof one); else if (!strncmp(t, "cash:", 5)) snprintf(one, sizeof one, "$%s", t + 5); else if (!strncmp(t, "card:", 5)) { char dn[80]; snprintf(one, sizeof one, "%s card", deck_disp(!strcmp(t + 5, "fund"), dn, sizeof dn)); } else snprintf(one, sizeof one, "nothing"); size_t l = strlen(o); snprintf(o + l, cap - l, "%s%s", o[0] ? " + " : "", one); }
     if (!o[0]) snprintf(o, cap, "nothing"); }
 static void tp_head(char id, int x, const char *title) { char b[200]; snprintf(b, sizeof b, "tp%c_x=%d\ntp%c_y=8\ntp%c_title=%s\n", id, x, id, id, title); catn(OUT_, OUTCAP_, b); }
 static void tp_item(char id, int *n, const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "tp%c_%d_label=%s\ntp%c_%d_act='%s' %s '%s'\n", id, *n, label, id, *n, CTL, cmd, GDIR); (*n)++; catn(OUT_, OUTCAP_, b); }
@@ -187,7 +188,7 @@ static void tr_inventory(char id, int x, int owner_pl, unsigned long long moved,
 static void tr_offerpane(char id, int x, const char *title, unsigned long long mask, int cash, int cards, const char *mvcmd, const char *up, const char *dn, const char *upf, const char *dnf) {
     tp_head(id, x, title); int nt = uint_("n_tiles"), n = 0; char lab[80], cmd[24]; snprintf(lab, sizeof lab, upf, cash); tp_item(id, &n, lab, up); snprintf(lab, sizeof lab, dnf, cash); tp_item(id, &n, lab, dn);
     for (int t = 0; t < nt; t++) if (mask >> t & 1) { char nm[60]; tr_tilename(t, nm, sizeof nm); snprintf(lab, sizeof lab, "%s (press: back)", nm); snprintf(cmd, sizeof cmd, "%s%d", mvcmd, t); tp_item(id, &n, lab, cmd); }
-    for (int d = 0; d < 2; d++) if (cards >> d & 1) { snprintf(lab, sizeof lab, "%s card (press: back)", TR_DK[d]); snprintf(cmd, sizeof cmd, "%sk%d", mvcmd, d); tp_item(id, &n, lab, cmd); } tp_end(id, n);
+    for (int d = 0; d < 2; d++) if (cards >> d & 1) { { char dn[80]; snprintf(lab, sizeof lab, "%s card (press: back)", deck_disp(d, dn, sizeof dn)); } snprintf(cmd, sizeof cmd, "%sk%d", mvcmd, d); tp_item(id, &n, lab, cmd); } tp_end(id, n);
 }
 static void tr_screen(void) {   /* the feed while the trade screen is open: four panes + a three-button control popup under them */
     char b[300], v[8]; int me = tr_me(), pa = tr_partner; load_ui();

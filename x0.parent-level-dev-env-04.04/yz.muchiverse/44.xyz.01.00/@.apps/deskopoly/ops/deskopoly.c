@@ -1075,9 +1075,84 @@ static int HD_px = 24, HD_cols = 16, HD_tiles = 43, HD_rock = 36, PG_block = 3, 
 static int PG_chance = 20, PG_chest = 29, PG_jail = 34, PG_gotojail = 12;   /* classic tile kinds (rulesets/<name>/page.pdl) */
 static int PG_group[10] = {32, 2, 37, 39, 32, 2, 37, 39, 36, 41}, PG_owner[MAXP] = {35, 38, 41, 33, 12, 17, 19, 21};
 static int PG_house = 16, PG_hotel = 14, PG_mort = 3, PG_token[MAXP] = {18, 20, 22, 24, 26, 23, 25, 27};   /* decorations: a house on an edge-middle cell, a hotel on all four, a mortgaged block floods (pond), a token in a corner */
+/* LABELS (2026-11-09, owner: "text labels on the board for names of things, for Luck, and for Lost & Found"): the board's names are BAKED INTO the floor texture by this projection, so ONE scene description gives
+ * labels in the 3D view and the 2D view at zero per-frame cost. Display text is DATA (page.pdl rows `LABEL | <tile id or kind> | <text>`, `LABELS | on|off`, `LABELCOLOR | text|outline | rrggbb`); a tile with no row shows its own id;
+ * NOTHING in this file names a tile or a place, and tile ids (commands, ledger, pinned hashes) are never read from a label. A label is laid out in the largest of 5 fixed font tiers that fits 3 lines (else any number of
+ * lines), words wrapped, hard-breaking a word only in the smallest tier; text sits >= 1 px inside its block (the 1 px outline fills the rim), so nothing is clipped. The tile's cells that carry ink become NEW atlas tiles
+ * (the plain floor / owner marker / house / pond of that cell with the glyphs drawn over it); cells with no ink keep their plain tile. With LABELS off, or no usable atlas argument, the output is byte-identical to before. */
+static int PG_labels = 1; static unsigned PG_lab_text = 0xffffff, PG_lab_out = 0x000000;
+static struct { char key[40], text[120]; } LB[64]; static int nlb;
+static const unsigned char F57[95][5] = {   /* ASCII 32..126, 5 columns, bit 0 = top row (the classic 5x7 font) */
+{0,0,0,0,0},{0,0,0x5F,0,0},{0,7,0,7,0},{0x14,0x7F,0x14,0x7F,0x14},{0x24,0x2A,0x7F,0x2A,0x12},{0x23,0x13,8,0x64,0x62},{0x36,0x49,0x56,0x20,0x50},{0,5,3,0,0},{0,0x1C,0x22,0x41,0},{0,0x41,0x22,0x1C,0},{0x2A,0x1C,0x7F,0x1C,0x2A},{8,8,0x3E,8,8},{0,0x50,0x30,0,0},{8,8,8,8,8},{0,0x60,0x60,0,0},{0x20,0x10,8,4,2},
+{0x3E,0x51,0x49,0x45,0x3E},{0,0x42,0x7F,0x40,0},{0x42,0x61,0x51,0x49,0x46},{0x21,0x41,0x45,0x4B,0x31},{0x18,0x14,0x12,0x7F,0x10},{0x27,0x45,0x45,0x45,0x39},{0x3C,0x4A,0x49,0x49,0x30},{1,0x71,9,5,3},{0x36,0x49,0x49,0x49,0x36},{6,0x49,0x49,0x29,0x1E},{0,0x36,0x36,0,0},{0,0x56,0x36,0,0},{8,0x14,0x22,0x41,0},{0x14,0x14,0x14,0x14,0x14},{0,0x41,0x22,0x14,8},{2,1,0x51,9,6},
+{0x32,0x49,0x79,0x41,0x3E},{0x7E,0x11,0x11,0x11,0x7E},{0x7F,0x49,0x49,0x49,0x36},{0x3E,0x41,0x41,0x41,0x22},{0x7F,0x41,0x41,0x22,0x1C},{0x7F,0x49,0x49,0x49,0x41},{0x7F,9,9,9,1},{0x3E,0x41,0x49,0x49,0x7A},{0x7F,8,8,8,0x7F},{0,0x41,0x7F,0x41,0},{0x20,0x40,0x41,0x3F,1},{0x7F,8,0x14,0x22,0x41},{0x7F,0x40,0x40,0x40,0x40},{0x7F,2,0x0C,2,0x7F},{0x7F,4,8,0x10,0x7F},{0x3E,0x41,0x41,0x41,0x3E},
+{0x7F,9,9,9,6},{0x3E,0x41,0x51,0x21,0x5E},{0x7F,9,0x19,0x29,0x46},{0x46,0x49,0x49,0x49,0x31},{1,1,0x7F,1,1},{0x3F,0x40,0x40,0x40,0x3F},{0x1F,0x20,0x40,0x20,0x1F},{0x3F,0x40,0x38,0x40,0x3F},{0x63,0x14,8,0x14,0x63},{7,8,0x70,8,7},{0x61,0x51,0x49,0x45,0x43},{0,0x7F,0x41,0x41,0},{2,4,8,0x10,0x20},{0,0x41,0x41,0x7F,0},{4,2,1,2,4},{0x40,0x40,0x40,0x40,0x40},
+{0,1,2,4,0},{0x20,0x54,0x54,0x54,0x78},{0x7F,0x48,0x44,0x44,0x38},{0x38,0x44,0x44,0x44,0x20},{0x38,0x44,0x44,0x48,0x7F},{0x38,0x54,0x54,0x54,0x18},{8,0x7E,9,1,2},{0x0C,0x52,0x52,0x52,0x3E},{0x7F,8,4,4,0x78},{0,0x44,0x7D,0x40,0},{0x20,0x40,0x44,0x3D,0},{0x7F,0x10,0x28,0x44,0},{0,0x41,0x7F,0x40,0},{0x7C,4,0x18,4,0x78},{0x7C,8,4,4,0x78},{0x38,0x44,0x44,0x44,0x38},
+{0x7C,0x14,0x14,0x14,8},{8,0x14,0x14,0x18,0x7C},{0x7C,8,4,4,8},{0x48,0x54,0x54,0x54,0x20},{4,0x3F,0x44,0x40,0x20},{0x3C,0x40,0x40,0x20,0x7C},{0x1C,0x20,0x40,0x20,0x1C},{0x3C,0x40,0x30,0x40,0x3C},{0x44,0x28,0x10,0x28,0x44},{0x0C,0x50,0x50,0x50,0x3C},{0x44,0x64,0x54,0x4C,0x44},{0,8,0x36,0x41,0},{0,0,0x7F,0,0},{0,0x41,0x36,8,0},{8,8,0x2A,0x1C,8} };
+static const struct { char c; unsigned char r[5]; } F35[] = {   /* the smallest tiers: 3x5, capitals and digits only (3 bits per row, bit 2 = left) */
+{'A',{2,5,7,5,5}},{'B',{6,5,6,5,6}},{'C',{3,4,4,4,3}},{'D',{6,5,5,5,6}},{'E',{7,4,6,4,7}},{'F',{7,4,6,4,4}},{'G',{3,4,5,5,3}},{'H',{5,5,7,5,5}},{'I',{7,2,2,2,7}},{'J',{1,1,1,5,2}},{'K',{5,5,6,5,5}},{'L',{4,4,4,4,7}},{'M',{5,7,7,5,5}},
+{'N',{6,5,5,5,5}},{'O',{2,5,5,5,2}},{'P',{6,5,6,4,4}},{'Q',{2,5,5,7,3}},{'R',{6,5,6,5,5}},{'S',{3,4,2,1,6}},{'T',{7,2,2,2,2}},{'U',{5,5,5,5,7}},{'V',{5,5,5,5,2}},{'W',{5,5,7,7,5}},{'X',{5,5,2,5,5}},{'Y',{5,5,2,2,2}},{'Z',{7,1,2,4,7}},
+{'0',{7,5,5,5,7}},{'1',{2,6,2,2,7}},{'2',{6,1,2,4,7}},{'3',{6,1,2,1,6}},{'4',{5,5,7,1,1}},{'5',{7,4,6,1,6}},{'6',{3,4,7,5,7}},{'7',{7,1,2,2,2}},{'8',{7,5,7,5,7}},{'9',{7,5,7,1,6}},
+{'&',{2,5,2,5,3}},{'-',{0,0,7,0,0}},{'.',{0,0,0,0,2}},{',',{0,0,0,2,4}},{'\'',{2,2,0,0,0}},{'!',{2,2,2,0,2}},{'?',{6,1,2,0,2}},{':',{0,2,0,2,0}},{'/',{1,1,2,4,4}},{'+',{0,2,7,2,0}},{'(',{1,2,2,2,1}},{')',{4,2,2,2,4}} };
+typedef struct { int f35, sc, gap, lgap; } Tier;
+static const Tier TIERS[] = { {0, 3, 2, 3}, {0, 2, 1, 2}, {1, 2, 2, 2}, {0, 1, 1, 1}, {1, 1, 1, 1} };   /* glyph heights 21, 14, 10, 7, 5 px: the largest that fits wins */
+#define NTIERS 5
+#define LAB_LINES 24
+#define LAB_CHARS 96
+static int tier_cw(const Tier *t) { return (t->f35 ? 3 : 5) * t->sc; }
+static int tier_ch(const Tier *t) { return (t->f35 ? 5 : 7) * t->sc; }
+/* word-wrap `text` for a tier into lines[]; returns the line count, or -1 when a word is wider than a line (unless `hard`, which breaks it) or the lines do not fit `avail` px high or `maxl` lines */
+static int label_wrap(const char *text, const Tier *t, int avail, int maxl, int hard, char lines[][LAB_CHARS]) {
+    int cw = tier_cw(t), maxc = (avail + t->gap) / (cw + t->gap), nl = 0, cur = 0; if (maxc < 1) return -1; lines[0][0] = 0;
+    char w[LAB_CHARS * 2]; const char *p = text;
+    while (*p) {
+        while (*p == ' ') p++; if (!*p) break;
+        if (p[0] == '\\' && p[1] == 'n') { p += 2; if (++nl >= LAB_LINES) return -1; lines[nl][0] = 0; cur = 0; continue; }
+        int wl = 0; while (*p && *p != ' ' && !(p[0] == '\\' && p[1] == 'n') && wl < LAB_CHARS * 2 - 1) w[wl++] = *p++; w[wl] = 0;
+        if (wl > maxc && !hard) return -1;
+        for (int off = 0; off < wl; ) {
+            int take = wl - off; if (take > maxc) take = maxc;
+            if (cur && cur + 1 + take > maxc) { if (++nl >= LAB_LINES) return -1; lines[nl][0] = 0; cur = 0; }
+            if (cur) { lines[nl][cur++] = ' '; } memcpy(lines[nl] + cur, w + off, (size_t)take); cur += take; lines[nl][cur] = 0; off += take;
+            if (off < wl) { if (++nl >= LAB_LINES) return -1; lines[nl][0] = 0; cur = 0; } } }
+    nl++; if (lines[nl - 1][0] == 0 && nl > 1) nl--;
+    if (nl > maxl) return -1; if (nl * tier_ch(t) + (nl - 1) * t->lgap > avail) return -1; return nl;
+}
+static void label_glyph(unsigned char *m, int A, int x, int y, char c, const Tier *t) {
+    int sc = t->sc;
+    if (t->f35) { if (c >= 'a' && c <= 'z') c = (char)(c - 32); const unsigned char *r = NULL; for (size_t k = 0; k < sizeof F35 / sizeof *F35; k++) if (F35[k].c == c) r = F35[k].r;
+        if (!r) { if (c == ' ') return; for (size_t k = 0; k < sizeof F35 / sizeof *F35; k++) if (F35[k].c == '?') r = F35[k].r; }
+        for (int ry = 0; ry < 5; ry++) for (int cx = 0; cx < 3; cx++) if (r[ry] & (4 >> cx)) for (int dy = 0; dy < sc; dy++) for (int dx = 0; dx < sc; dx++) { int px = x + cx * sc + dx, py = y + ry * sc + dy; if (px >= 0 && py >= 0 && px < A && py < A) m[py * A + px] = 2; } }
+    else { if (c < 32 || c > 126) c = '?'; const unsigned char *col = F57[c - 32];
+        for (int cx = 0; cx < 5; cx++) for (int ry = 0; ry < 7; ry++) if (col[cx] & (1 << ry)) for (int dy = 0; dy < sc; dy++) for (int dx = 0; dx < sc; dx++) { int px = x + cx * sc + dx, py = y + ry * sc + dy; if (px >= 0 && py >= 0 && px < A && py < A) m[py * A + px] = 2; } }
+}
+/* the label mask of one A x A block: 2 = glyph, 1 = outline (8-neighbours of a glyph pixel), 0 = nothing. Returns 1 if anything was drawn. */
+static int g_lab_trunc;   /* set when a label needed more lines than the smallest font allows and the lines that fit were drawn (the only case where text is dropped) */
+static int label_mask(const char *text, int A, unsigned char *m) {
+    static char lines[LAB_LINES][LAB_CHARS]; memset(m, 0, (size_t)A * A); int avail = A - 2, nl = -1, ti = NTIERS - 1, hard = 0;
+    for (int pass = 0; pass < 2 && nl < 0; pass++) for (int k = 0; k < NTIERS && nl < 0; k++) { nl = label_wrap(text, &TIERS[k], avail, pass ? LAB_LINES : 3, 0, lines); ti = k; }
+    if (nl < 0) { hard = 1; ti = NTIERS - 1; int maxl = (avail + TIERS[ti].lgap) / (tier_ch(&TIERS[ti]) + TIERS[ti].lgap); nl = label_wrap(text, &TIERS[ti], avail, maxl < LAB_LINES ? maxl : LAB_LINES, hard, lines);
+        if (nl < 0) { nl = maxl < LAB_LINES ? maxl : LAB_LINES; if (nl < 1) return 0; g_lab_trunc = 1; } }   /* last resort: too much text for any tier, the lines that fit are drawn (never past the rim) */
+    const Tier *t = &TIERS[ti]; int ch = tier_ch(t), total = nl * ch + (nl - 1) * t->lgap, y0 = (A - total) / 2, any = 0;
+    for (int l = 0; l < nl; l++) { int len = (int)strlen(lines[l]); if (!len) continue; int wd = len * (tier_cw(t) + t->gap) - t->gap, x0 = (A - wd) / 2;
+        for (int c = 0; c < len; c++) { label_glyph(m, A, x0 + c * (tier_cw(t) + t->gap), y0 + l * (ch + t->lgap), lines[l][c], t); any = 1; } }
+    if (!any) return 0;
+    static unsigned char o[96 * 96]; if (A > 96) return 1; memcpy(o, m, (size_t)A * A);
+    for (int y = 0; y < A; y++) for (int x = 0; x < A; x++) if (!m[y * A + x]) { for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) { int xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < A && yy < A && m[yy * A + xx] == 2) o[y * A + x] = 1; } }
+    memcpy(m, o, (size_t)A * A); return 1;
+}
+static const char *label_for(int i) {
+    for (int j = nlb - 1; j >= 0; j--) if (!strcmp(LB[j].key, T[i].name)) return LB[j].text;   /* a tile's own row beats its kind's row; the LAST row of a key wins */
+    for (int j = nlb - 1; j >= 0; j--) if (!strcmp(LB[j].key, T[i].kind)) return LB[j].text;
+    return T[i].name;
+}
 static void load_page(void) {
     char p[1100], ln[LINE]; char *f[8]; if (g_schema == 2) snprintf(p, sizeof p, "%s/rulesets/%s/page.pdl", g_app, g_rs); else snprintf(p, sizeof p, "%s/page.pdl", g_app); FILE *fp = fopen(p, "r"); if (!fp) bad("cannot read page.pdl");
-    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 3) continue; int v = atoi(f[2]);
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8);
+        if (n >= 2 && !strcmp(f[0], "LABELS")) { PG_labels = !(!strcmp(f[1], "off") || !strcmp(f[1], "0")); continue; }
+        if (n < 3) continue; int v = atoi(f[2]);
+        if (!strcmp(f[0], "LABEL")) { if (nlb < 64 && strlen(f[1]) < sizeof LB[0].key && strlen(f[2]) < sizeof LB[0].text) { snprintf(LB[nlb].key, sizeof LB[nlb].key, "%s", f[1]); snprintf(LB[nlb].text, sizeof LB[nlb].text, "%s", f[2]); nlb++; } else bad("page.pdl: too many LABEL rows or a label is too long"); continue; }
+        if (!strcmp(f[0], "LABELCOLOR")) { unsigned c = (unsigned)strtoul(f[2], NULL, 16) & 0xffffff; if (!strcmp(f[1], "text")) PG_lab_text = c; else if (!strcmp(f[1], "outline")) PG_lab_out = c; continue; }
         if (!strcmp(f[0], "HEADER")) { if (!strcmp(f[1], "tile_px")) HD_px = v; else if (!strcmp(f[1], "atlas_cols")) HD_cols = v; else if (!strcmp(f[1], "atlas_tiles")) HD_tiles = v; else if (!strcmp(f[1], "rock_slot")) HD_rock = v; }
         else if (!strcmp(f[0], "PAGE") && !strcmp(f[1], "block")) PG_block = v;
         else if (!strcmp(f[0], "TILEMAP")) { int g;
@@ -1098,6 +1173,35 @@ static void write_atomic(const char *dir, const char *name, const char *text) {
 static void ring_xy(int idx, int n, int *bx, int *by) {
     int s = n - 1; if (idx <= s) { *bx = idx; *by = 0; } else if (idx <= 2 * s) { *bx = s; *by = idx - s; } else if (idx <= 3 * s) { *bx = s - (idx - 2 * s); *by = s; } else { *bx = 0; *by = s - (idx - 3 * s); }
 }
+/* LABELS: draw every board tile's label over the cells of its block. `ct` holds the PLAIN tile of every cell (floor, owner marker, house, pond); each cell with ink gets a NEW atlas tile = that plain tile with the glyphs on it,
+ * appended after the HD_tiles base slots; `ct` is rewritten to point at them. *out / *outsz = the whole new atlas (base slots + new rows). Returns the number of new tiles; 0 (nothing touched) when the base atlas is not a
+ * usable atlas of HD_cols x HD_tiles (then the caller keeps the old copy-once behaviour) or no tile has any ink. */
+static int label_atlas(const char *base_path, int n, int (*ct)[64], unsigned char **out, size_t *outsz) {
+    FILE *a = fopen(base_path, "rb"); if (!a) return 0; fseek(a, 0, SEEK_END); long sz = ftell(a); rewind(a);
+    int aw = HD_cols * HD_px; size_t rowb = (size_t)aw * 4; if (sz <= 0 || (size_t)sz % rowb || (long)((size_t)sz / rowb / HD_px) * HD_cols < HD_tiles || (size_t)sz / rowb % HD_px) { fclose(a); return 0; }
+    unsigned char *base = malloc((size_t)sz); if (!base || fread(base, 1, (size_t)sz, a) != (size_t)sz) { fclose(a); free(base); return 0; } fclose(a);
+    int B = PG_block, A = B * HD_px; if (A > 96) { free(base); return 0; }
+    int cap = nt * B * B, nn = 0; unsigned char *tiles = calloc((size_t)cap * HD_px * HD_px, 4), *mask = malloc((size_t)A * A); int *dst = malloc((size_t)cap * 2 * sizeof(int));
+    if (!tiles || !mask || !dst) bad("out of memory");
+    for (int i = 0; i < nt; i++) { const char *tx = label_for(i); g_lab_trunc = 0; if (!tx[0] || !label_mask(tx, A, mask)) continue; if (g_lab_trunc) fprintf(stderr, "deskopoly: the label of tile %d is too long for any font: the lines that fit are drawn\n", i); int bx, by; ring_xy(i, n, &bx, &by);
+        for (int ky = 0; ky < B; ky++) for (int kx = 0; kx < B; kx++) { int ink = 0; for (int y = 0; y < HD_px && !ink; y++) for (int x = 0; x < HD_px; x++) if (mask[(ky * HD_px + y) * A + kx * HD_px + x]) { ink = 1; break; }
+            if (!ink) continue; int cy = by * B + ky, cx = bx * B + kx, t = ct[cy][cx]; unsigned char *d = tiles + (size_t)nn * HD_px * HD_px * 4;
+            for (int y = 0; y < HD_px; y++) for (int x = 0; x < HD_px; x++) { int mv = mask[(ky * HD_px + y) * A + kx * HD_px + x]; unsigned char *o = d + ((size_t)y * HD_px + x) * 4;
+                if (mv) { unsigned c = mv == 2 ? PG_lab_text : PG_lab_out; o[0] = (unsigned char)(c >> 16); o[1] = (unsigned char)(c >> 8); o[2] = (unsigned char)c; o[3] = 255; }
+                else memcpy(o, base + ((size_t)((t / HD_cols) * HD_px + y) * aw + (size_t)(t % HD_cols) * HD_px + x) * 4, 4); }
+            dst[nn * 2] = cy; dst[nn * 2 + 1] = cx; nn++; } }
+    if (!nn) { free(base); free(tiles); free(mask); free(dst); return 0; }
+    int total = HD_tiles + nn, rows = (total + HD_cols - 1) / HD_cols; unsigned char *at = calloc((size_t)rows * HD_px * rowb, 1); if (!at) bad("out of memory");
+    for (int s = 0; s < HD_tiles; s++) for (int y = 0; y < HD_px; y++) memcpy(at + ((size_t)((s / HD_cols) * HD_px + y) * aw + (size_t)(s % HD_cols) * HD_px) * 4, base + ((size_t)((s / HD_cols) * HD_px + y) * aw + (size_t)(s % HD_cols) * HD_px) * 4, (size_t)HD_px * 4);
+    for (int k = 0; k < nn; k++) { int s = HD_tiles + k; for (int y = 0; y < HD_px; y++) memcpy(at + ((size_t)((s / HD_cols) * HD_px + y) * aw + (size_t)(s % HD_cols) * HD_px) * 4, tiles + ((size_t)k * HD_px * HD_px + (size_t)y * HD_px) * 4, (size_t)HD_px * 4); ct[dst[k * 2]][dst[k * 2 + 1]] = s; }
+    free(base); free(tiles); free(mask); free(dst); *out = at; *outsz = (size_t)rows * HD_px * rowb; return nn;
+}
+/* write the atlas only when its bytes differ from the file that is there (labels are static: a rerun must not make the engine reload for nothing); tmp + rename, so a reader never sees half an atlas */
+static int write_atlas_if_changed(const char *dd, const unsigned char *at, size_t sz) {
+    char p[1200], tp[1200]; snprintf(p, sizeof p, "%s/cells.rgba", dd); snprintf(tp, sizeof tp, "%s/cells.rgba.tmp", dd); struct stat s;
+    if (!stat(p, &s) && (size_t)s.st_size == sz) { FILE *f = fopen(p, "rb"); if (f) { unsigned char *old = malloc(sz); int same = old && fread(old, 1, sz, f) == sz && !memcmp(old, at, sz); fclose(f); free(old); if (same) return 0; } }
+    FILE *o = fopen(tp, "wb"); if (!o) bad("cannot write the atlas"); if (fwrite(at, 1, sz, o) != sz) bad("cannot write the atlas"); fclose(o); if (rename(tp, p)) bad("cannot rename the atlas"); return 1;
+}
 static int v_page(int argc, char **argv) {
     if (argc < 1) bad("usage: page <desk_dir> [atlas.rgba]"); const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) bad("the desk folder does not exist (make it first)");
     load_page(); if (nt % 4 || nt / 4 + 1 < 3) bad("the ring needs tiles = 4 x (side - 1) with side >= 3");
@@ -1114,8 +1218,9 @@ static int v_page(int argc, char **argv) {
             if (mort[i]) n_mort++; if (mort[i]) for (int y = 0; y < 3; y++) for (int x = 0; x < 3; x++) if (x != 1 || y != 1) ct[oy + y][ox + x] = PG_mort;                                                   /* a mortgaged tile floods */
             if (bld[i] == 5) n_hotels++; else n_houses += bld[i]; static const int ex[4] = {1, 0, 2, 1}, ey[4] = {0, 1, 1, 2}; for (int k = 0; k < 4; k++) if (bld[i] == 5 || k < bld[i]) ct[oy + ey[k]][ox + ex[k]] = bld[i] == 5 ? PG_hotel : PG_house;   /* houses fill the edge-middles, a hotel takes all four */
         } }
+    int lab_n = 0, lab_wrote = 0; if (PG_labels && argc > 1) { unsigned char *lat = NULL; size_t lsz = 0; lab_n = label_atlas(argv[1], n, ct, &lat, &lsz); if (lab_n) { lab_wrote = write_atlas_if_changed(dd, lat, lsz); free(lat); } }   /* the atlas lands BEFORE cells.txt and the marker, so a reload never sees indexes past the file */
     static char buf[64 * 64 * 12 + 512]; buf[0] = 0;
-    ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles, HD_rock);
+    ap(buf, sizeof buf, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles + lab_n, HD_rock);
     for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) ap(buf, sizeof buf, "%s%d,0", x ? " " : "", ct[y][x]); ap(buf, sizeof buf, "\n"); }
     write_atomic(dd, "cells.txt", buf);
     { char mk[1200]; snprintf(mk, sizeof mk, "%s/cells.marker", dd); struct stat ms; FILE *mf = fopen(mk, (!stat(mk, &ms) && ms.st_size >= 4096) ? "w" : "a"); if (mf) { fputc('1', mf); fclose(mf); } }   /* the house marker rule: the engine reloads a desk when this file GROWS (never on mtime) */
@@ -1132,7 +1237,9 @@ static int v_page(int argc, char **argv) {
     snprintf(q, sizeof q, "%s/extrusion.pdl", dd); if (stat(q, &sb)) write_atomic(dd, "extrusion.pdl", "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | deskopoly\nMETA         | desk_id            | board\nMETA         | note               | deskopoly board page, drawn from board.pdl + the ledger by `deskopoly page`\n");
     snprintf(q, sizeof q, "%s/cells.rgba", dd);
     if (argc > 1 && stat(q, &sb)) { FILE *a = fopen(argv[1], "rb"); if (!a) bad("cannot read the atlas"); FILE *o = fopen(q, "wb"); if (!o) bad("cannot write the atlas"); char b[8192]; size_t k; while ((k = fread(b, 1, sizeof b, a)) > 0) fwrite(b, 1, k, o); fclose(a); fclose(o); }
-    printf("PAGE %s %dx%d tiles=%d owned=%d houses=%d hotels=%d mortgaged=%d events=%d\n", dd, W, H, nt, owned, n_houses, n_hotels, n_mort, n_ev); return 0;
+    printf("PAGE %s %dx%d tiles=%d owned=%d houses=%d hotels=%d mortgaged=%d events=%d\n", dd, W, H, nt, owned, n_houses, n_hotels, n_mort, n_ev);
+    if (lab_n) printf("LABELS new_tiles=%d atlas_tiles=%d atlas_written=%d\n", lab_n, HD_tiles + lab_n, lab_wrote);
+    return 0;
 }
 /* preview: a FLAT top-down picture of a desk (cells.txt + cells.rgba), tile by tile, no depth, no engine. Raw RGBA, for raw_to_png. It is not the engine's render. */
 static int v_preview(int argc, char **argv) {
@@ -1190,10 +1297,17 @@ static int v_autoplay(void) {
 }
 /* ui for classic (schema 2): the window's feed, a PROJECTION of the replayed ledger (milestone M10-lite, 2026-11-08). Same convention as the mini ui: a show_* key is "1" when the control may be offered and EMPTY when not.
  * Every show_* key comes from the replayed PHASE and the current seat's driver, so the window never guesses what is legal. Tiles are t<N>_*, players p<N>_*, the last ledger rows log_<k>. */
+/* the player-facing names of the two card decks (deck 0 = the `chance` kind, deck 1 = the `chest` kind): the LABEL rows of the ruleset's page.pdl, the ONE place the board and the screens get display text from. With no row the old identifiers (luck, fund) are shown. Display only: the ledger and the commands keep `luck` / `fund`. */
+static void deck_names(char *d0, char *d1, size_t cap) {
+    snprintf(d0, cap, "luck"); snprintf(d1, cap, "fund"); char p[1100], ln[LINE]; char *f[8]; snprintf(p, sizeof p, "%s/rulesets/%s/page.pdl", g_app, g_rs); FILE *fp = fopen(p, "r"); if (!fp) return;
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split(ln, f, 8); if (n < 3 || strcmp(f[0], "LABEL") || !f[2][0]) continue; if (!strcmp(f[1], "chance")) snprintf(d0, cap, "%s", f[2]); else if (!strcmp(f[1], "chest")) snprintf(d1, cap, "%s", f[2]); }
+    fclose(fp);
+}
 static int v_ui2(void) {
     int st, rc = need_game(&st); if (rc) return rc; static char b[16384]; b[0] = 0; int pl = (phase2 == PH_ORDER && order_next() >= 0) ? order_next() : (phase2 == PH_AUC && auc_next >= 0) ? auc_next : cur, ht = !over && human[pl] && !out[pl] && phase2 >= PH_ORDER;
     static const char *pn[8] = { "lobby", "order", "pre", "buy", "debt", "post", "over", "auction" };
     ap(b, sizeof b, "game=deskopoly\nruleset=%s\nphase=%s\nn_players=%d\nn_tiles=%d\nround=%d\nover=%d\ncurrent=%s\ncurrent_name=%s\ncurrent_driver=%s\n", g_rs, pn[phase2], np_game, nt, round_, over, PL[pl].id, PL[pl].name, human[pl] ? "human" : "pet");
+    { char dn0[80], dn1[80]; deck_names(dn0, dn1, sizeof dn0); ap(b, sizeof b, "deck0_name=%s\ndeck1_name=%s\n", dn0, dn1); }   /* display names of the two decks (page.pdl LABEL rows); the screens show these, never the identifiers luck / fund */
     int inj = injail[pl];
     ap(b, sizeof b, "human_turn=%s\nshow_roll=%s\nshow_jail=%s\nshow_buy=%s\nshow_skip=%s\nshow_pay_debt=%s\nshow_bankrupt=%s\nshow_end=%s\n", ht ? "1" : "",
        ht && ((phase2 == PH_PRE && !inj) || phase2 == PH_ORDER) ? "1" : "", ht && phase2 == PH_PRE && inj ? "1" : "", ht && phase2 == PH_BUY && pending >= 0 && cash[pl] >= T[pending].price ? "1" : "", ht && phase2 == PH_BUY ? "1" : "",

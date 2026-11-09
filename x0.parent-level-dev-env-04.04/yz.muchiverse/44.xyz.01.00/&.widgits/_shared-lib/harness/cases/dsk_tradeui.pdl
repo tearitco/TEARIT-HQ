@@ -18,6 +18,8 @@ SCRATCH |
 MKDIR   | h/&.widgits/_shared-lib/ops/+x
 COPY    | &.widgits/_shared-lib/ops/+x/raw_to_png.+x | h/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
 COPYDIR | @.apps/deskopoly | app | state,shots
+# 2026-11-09: the screens show the DECK DISPLAY NAME from page.pdl (LABEL chest), not the engine word `fund`; pinned here so a rename of the real label does not break this case
+APPEND  | app/rulesets/classic/page.pdl | LABEL \p chest \p Lost & Found\n
 MKDIR   | app/deskopoly-pchq/pieces/system/maps/deskopoly/play
 MKDIR   | edit/state/world
 MKDIR   | edit/edit-pchq/pieces/world_01
@@ -235,9 +237,9 @@ RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game |
 EXPECT_OUT | id=2;give=prop:12+card:fund;get=cash:5;round=1 | p1-opens-offer-2-from-the-CLI-giving-Power-and-the-fund-card
 RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | ui
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_close | $T/edit/state/games/deskopoly
-WAIT_HAS | edit/state/game_ui.txt | you give: Power + fund card\n | 6000 | the-popup-shows-the-card
+WAIT_HAS | edit/state/game_ui.txt | you give: Power + Lost & Found card\n | 6000 | the-popup-shows-the-card
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_amend | $T/edit/state/games/deskopoly
-WAIT_HAS | edit/state/game_ui.txt | \ntpg_3_label=fund card (press: back)\n | 6000 | the-card-is-a-row-of-the-GIVE-pane
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_3_label=Lost & Found card (press: back)\n | 6000 | the-card-is-a-row-of-the-GIVE-pane
 EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_2_label=Power (press: back)\n | next-to-Power
 EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_0_label=ask $5: ask 10 more\n | and-ask-5
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gk1 | $T/edit/state/games/deskopoly
