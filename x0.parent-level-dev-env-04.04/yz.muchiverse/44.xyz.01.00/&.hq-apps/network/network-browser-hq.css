@@ -3,16 +3,15 @@
    Window width/height are CSS; other geometry stays in C layout.
    Colors/borders only besides window size.
 
-   784x504 is the verified size for a 1360x768 desktop. It reproduces
-   exactly what the renderer used to hardcode for user-resizable windows,
-   kh_auto_px(1120) x kh_auto_px(720), where
-   kh_auto_px(v) = (v * 70 + 50) / 100  ->  784 and 504. Declaring it here
-   is the supported way to keep it: khtpm_core_render.c prefers a
-   window's own CSS width/height as its INITIAL size and only falls back
-   to default_win_w/h in #.desktop/hq_ui.pdl when CSS declares none, so
-   this is data, not a compiled constant, and per-app like events-hq.css's
-   own 620px. The previous 960px x 640px here was stale - on this screen
-   that is far wider and taller than the window anyone wants. */
+   784x504 is the size the owner wants this window at (1360x768-era
+   choice, kept deliberately). At this width the nine toolbar slots are
+   ~43px each against a ~44px nav badge, so every label is painted over
+   by the next chip - the 2026-11-05 "toolbar labels are clipped"
+   report. Rather than override that size choice, the window now carries
+   class="user-resizable" (network-browser-hq.xhtpm): a ⌟ grip in the
+   bottom-right corner drags the window bigger, and the size is saved
+   to .hq_manager/win_size.txt and restored on every relaunch (clamped
+   to the screen). Drag it once to whatever size you want; it sticks. */
 window { width: 784px; height: 504px; }
 window.network-browser { width: 784px; height: 504px; background-color: #141414; color: #dddddd; }
 .network-browser { width: 784px; height: 504px; background-color: #141414; color: #dddddd; }
@@ -20,6 +19,9 @@ window.network-browser { width: 784px; height: 504px; background-color: #141414;
 .fullscreen-btn { background-color: #2a2a2a; color: #cccccc; }
 .toolbar { background-color: #2a2a2a; color: #eeeeee; }
 .quiet { background-color: #333333; color: #ffffff; }
+/* Toolbar/tab labels are child items, not inherited font-size on the
+ * surrounding <row>; keep them one line inside their fixed-width cells. */
+.compact { font-size: 8px; }
 .nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
 .nb-input { background-color: #0e0e0e; color: #ffffff; border: 1px solid #444444; }
 .nb-button { background-color: #2a4a2a; color: #ffffff; }

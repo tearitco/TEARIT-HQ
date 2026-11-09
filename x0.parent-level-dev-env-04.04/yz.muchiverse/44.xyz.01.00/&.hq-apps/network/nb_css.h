@@ -9,26 +9,25 @@
 extern "C" {
 #endif
 
-/* nb_css.c — rung 7 slice 1: a browser-flavoured *subset* of CSS for the
- * NB-JS worker. Parses stylesheet/`<style>` text into a flat rule list and
- * resolves a tiny computed-style surface per element:
- *   display, visibility, opacity, width, height (px/number only)
- * plus the layout-intent queries that hide/measure real widgets:
- *   display:none / visibility:hidden (self or any ancestor) => hidden.
+/* nb_css.c — a browser-flavoured *subset* of CSS for the NB-JS worker.
+ * Parses stylesheet/`<style>` text into a flat rule list and resolves a
+ * deliberately small computed-style surface per element. The COMPLETE
+ * property list, the contract around it, and the maintenance rule for
+ * adding one live in nb_css.c, directly above the prop_id table - read
+ * that comment before touching anything here; it is the module's law.
  *
- * Deliberately NOT a full CSS engine. Selector matching covers element
- * (#id), explicit class (.cls), tag name, `*`, descendant combinator
- * (space) and comma lists; attribute selectors and pseudo-classes are
- * tolerated (stripped) rather than evaluated. @media/@supports/@keyframes
- * blocks and @import/@charset (head-only) are skipped wholesale (the
- * engine has no viewport, so a media query can never fire). Cascade:
- * source order with the standard id/class/type specificity triple —
- * matching declarations override only when the new rule is more specific
- * or appears later; !important bumps a rule above non-important ones.
- * Inline `style="..."` (passed separately) always wins. There is no
- * inheritance of any property. Units: px and bare numbers; %/em/rem are
- * ignored. Sizes resolve to 0 when absent. This module has zero JS/engine
- * deps so the headless suite can link it directly.
+ * Selector matching covers element, #id, .cls, `*`, descendant
+ * combinator (space) and comma lists; attribute selectors and pseudo-
+ * classes are tolerated (stripped) rather than evaluated. @media rules
+ * are real since 2026-11-04 (nb_css_parse_vp(); viewport_px <= 0 skips
+ * every block, exactly as before). Cascade: source order with the
+ * standard id/class/type specificity triple - matching declarations
+ * override only when the new rule is more specific or appears later;
+ * !important bumps a rule above non-important ones. Inline
+ * `style="..."` (passed separately) always wins. There is no inheritance
+ * of any property. Units: px and bare numbers; %/em/rem are ignored.
+ * This module has zero JS/engine deps so the headless suite can link it
+ * directly (tests/nb_css_props_test.sh does).
  */
 
 typedef struct NbCssRule {
@@ -51,6 +50,12 @@ typedef struct {
 typedef struct NbCss {
     NbCssRule *r;
     size_t nr, cap;
+    /* The viewport this sheet is being evaluated for, in CSS px, set by
+     * nb_css_parse_vp(). 0 means "no viewport known", and then @media blocks
+     * are SKIPPED exactly as they were before 2026-11-04 - a media query
+     * cannot fire without a width, and a wrong guess would change layout.
+     * Only nb_css_parse_vp() ever sets it; nb_css_parse() leaves it 0. */
+    int viewport_px;
     /* @font-face rules (2026-10-22). Up to 8 fonts. */
     int font_face_count;
     struct {
@@ -114,6 +119,18 @@ typedef struct NbCssStyle {
 /* Parse CSS text into a fresh NbCss (never NULL; rules may be 0). Free with
  * nb_css_free. `text` need not be NUL-terminated (len given). */
 NbCss *nb_css_parse(const char *text, size_t len);
+
+/* Same, but evaluated for a viewport of `viewport_px` CSS px, so @media
+ * blocks whose query matches become real rules (G2.5, 2026-11-04). The
+ * supported prelude grammar is deliberately only what real pages write:
+ *   [only|all|screen] [and] (min-width: N) [and] (max-width: N) [and] (width: N)
+ * with N in px, em or rem (1em = 16px) and top-level commas as OR. A prelude
+ * naming anything else (print, orientation, prefers-*, a `not`) does NOT
+ * match: a rule that never fires is a missing nicety, while a rule that fires
+ * wrongly changes layout. Nested @media is evaluated recursively, in source
+ * order, so the sheet's cascade order is preserved. viewport_px <= 0 behaves
+ * exactly like nb_css_parse() - every @media block is skipped. */
+NbCss *nb_css_parse_vp(const char *text, size_t len, int viewport_px);
 
 /* Resolve the computed style for `el`. `inline_style` is the element's
  * `style` attribute value (may be NULL/empty) and — matching browsers —

@@ -97,7 +97,27 @@ else
 fi
 
 # ---- 3. the count agrees with the frame, computed independently
-expect=$(awk -F'|' '{l=tolower($4); if (index(l,"the")>0 && $7+0>0) c++} END{print c+0}' "$FRAME")
+#
+# NO nav_index filter here, and that absence is the fix (2026-11-04).
+#
+# find counts every ROW whose label contains the query, whatever the row is:
+# kh_find_walk() (khtpm_draw_core.c) matches item/text/cli_io/text_area/bar and
+# recurses through every container, deliberately with no notion of
+# "chrome vs content" - the shared renderer stays project-agnostic and must
+# never learn a project's own structure (CENTROID_GOLD_STD.md rule 7). So a
+# console/projection row is a row find is RIGHT to match.
+#
+# nav_index is a red herring for this count in two directions at once: parked
+# off-screen rows are nav=0 and the DEEP case below REQUIRES find to match
+# them, and a console row is nav=0 too.
+#
+# What this used to be, and why it went red: `$7+0>0` counted only navigable
+# rows. That agreed while the window's console was empty. Once ANY console row
+# containing the query existed - a logged snippet containing "then" matches a
+# search for "the" - the mirror said 3, the filtered frame said 2, and the
+# suite reported a code failure that was not one. The count must be computed
+# the same way the feature computes it, or it is measuring the fixture.
+expect=$(awk -F'|' '{l=tolower($4); if (index(l,"the")>0) c++} END{print c+0}' "$FRAME")
 if [ "$expect" = "$hits" ]; then
     echo "PASS: match count agrees with the frame ($expect rows)"
 else
@@ -105,12 +125,30 @@ else
 fi
 
 # ---- 4. Enter steps and wraps
+#         Stepped against the REAL hit count, not a hardcoded 2. The count
+#         depends on the window's rows (see step 3), so pinning it asserted
+#         the environment rather than the behaviour.
 printf '13\n' >> "$RELAY"; sleep 1.5; dump
 at=$(findline | sed -n 's/.*" \([0-9]*\) of.*/\1/p')
 if [ "$at" = "2" ]; then echo "PASS: Enter advances to match 2"; else fail "Enter did not advance (at=$at)"; fi
+# walk on to the LAST match, so the wrap assertion is reached from the end
+i=2
+while [ "${hits:-0}" -gt 2 ] && [ "$i" -lt "$hits" ]; do
+    printf '13\n' >> "$RELAY"; sleep 1.0
+    i=$((i+1))
+done
+if [ "${hits:-0}" -gt 2 ]; then
+    dump
+    at=$(findline | sed -n 's/.*" \([0-9]*\) of.*/\1/p')
+    if [ "$at" = "$hits" ]; then
+        echo "PASS: Enter steps to the last match ($at of $hits)"
+    else
+        fail "Enter stepping wrong (at=$at, want $hits)"
+    fi
+fi
 printf '13\n' >> "$RELAY"; sleep 1.5; dump
 at=$(findline | sed -n 's/.*" \([0-9]*\) of.*/\1/p')
-if [ "$at" = "1" ]; then echo "PASS: Enter wraps back to match 1"; else fail "no wrap (at=$at)"; fi
+if [ "$at" = "1" ]; then echo "PASS: Enter wraps back to match 1"; else fail "no wrap (at=$at of ${hits:-?})"; fi
 
 # ---- 5. the band is painted, and it MOVES with the match.
 #         'the' sits past the first visual line of its row; 'Enough'

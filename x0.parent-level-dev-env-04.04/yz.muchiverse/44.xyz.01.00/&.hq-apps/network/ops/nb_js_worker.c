@@ -21,8 +21,57 @@
  */
 #include "nb_host.h"
 #include <execinfo.h>   /* NB_CRASH_BT: fatal-signal backtrace into the worker log */
+#include <time.h>
+#include <sys/random.h>  /* getrandom(2) for nb_rand_bytes (crypto entropy) */
+#include <errno.h>       /* EINTR in nb_rand_bytes' getrandom loop */
 #include "../nb_css.h"
 #include "../nb_dom.h"
+
+/* R4 minimal shims */
+static unsigned char _nbbd(char c){ if(c>='A'&&c<='Z')return c-'A'; if(c>='a'&&c<='z')return c-'a'+26; if(c>='0'&&c<='9')return c-'0'+52; if(c=='+')return 62; if(c=='/')return 63; if(c=='=')return 64; return 255; }
+/* OS entropy for the crypto surfaces (2026-11-02).
+ *
+ * WHY: getRandomValues used rand()&0xFF and NOTHING calls srand(), so glibc
+ * seeded from 1 and every worker process produced the SAME bytes. Measured on
+ * three separate processes: all returned 67c6697351ff4aec, and the same
+ * randomUUID. That is a real correctness bug in a CSPRNG-shaped API, and a
+ * loud bot signal - a browser whose "random" values repeat every session.
+ *
+ * Read the kernel CSPRNG via getrandom(2). rand() survives only as the
+ * fallback for the case where the kernel call fails: degraded, but explicitly
+ * so, rather than silently deterministic. (getrandom rather than
+ * open("/dev/urandom") because this translation unit already has a `read`
+ * symbol that collides with <unistd.h>'s.) */
+static void nb_rand_bytes(unsigned char *out, size_t n){
+    size_t got = 0;
+    while (got < n) {
+        ssize_t r = getrandom(out + got, n - got, 0);
+        if (r <= 0) { if (r < 0 && errno == EINTR) continue; break; }
+        got += (size_t)r;
+    }
+    if (got == n) return;
+    for (size_t i = 0; i < n; i++) out[i] = (unsigned char)(rand() & 0xFF);
+}
+/* crypto.randomUUID (2026-11-02): a v4 UUID from the same OS entropy.
+ * getRandomValues already draws from. Lives here, not in the prelude, because
+ * install_events_timers builds `crypto` AFTER the prelude is evaluated - a
+ * prelude guard on getRandomValues never fires. Format per spec: version
+ * nibble 4 in byte 6, variant bits 10 in byte 8. */
+static JSValue _nb_uuid(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; (void)argc; (void)argv; unsigned char b[16]; nb_rand_bytes(b,16); b[6]=(unsigned char)((b[6]&0x0F)|0x40); b[8]=(unsigned char)((b[8]&0x3F)|0x80); char s[40]; snprintf(s,sizeof(s),"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]); return JS_NewString(ctx,s); }
+static JSValue _nb_atob(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'atob'"); const char *str=JS_ToCString(ctx,argv[0]); if(!str)return JS_EXCEPTION; size_t n=strlen(str); unsigned char *out=malloc((n/4+2)*3); if(!out){JS_FreeCString(ctx,str);return JS_EXCEPTION;} size_t o=0,i=0,ti=0; unsigned char t[4]; while(i<n){ char c=str[i++]; if(c==' '||c=='\n'||c=='\r'||c=='\t'||c=='\f'||c=='\v')continue; if(c=='=')break; unsigned char v=_nbbd(c); if(v==255)continue; t[ti++]=v; if(ti==4){ out[o++]=(t[0]<<2)|(t[1]>>4); out[o++]=((t[1]&0xF)<<4)|(t[2]>>2); out[o++]=((t[2]&0x3)<<6)|t[3]; ti=0; }} /* Flush the final partial group. Without this a padded tail was silently DROPPED: 'yhbPEA==' carries three bytes plus one, and only the three were emitted, so every padded base64 string came back short by its last byte. Verified 2026-11-02: Cloudflare's orchestrate decoder read its integer strings one character short and BigInt() then failed. */ if(ti==2){ out[o++]=(t[0]<<2)|(t[1]>>4); } else if(ti==3){ out[o++]=(t[0]<<2)|(t[1]>>4); out[o++]=((t[1]&0xF)<<4)|(t[2]>>2); } JS_FreeCString(ctx,str); /* atob yields a BINARY string: one char per byte, code 0..255. JS_NewStringLen decodes its buffer as UTF-8, so passing the raw bytes turned every byte >= 0x80 into U+FFFD (0xCA -> U+FFFD) and left every charCodeAt() consumer reading garbage. Verified 2026-11-02 against Cloudflare's orchestrate decoder, whose base64+XOR integer strings arrived as "\uff0ax\uff0a0\uff0a3..." and made BigInt() throw "invalid bigint literal". Re-encode each byte as a 2-byte UTF-8 sequence (0xC0|b>>6, 0x80|b&0x3F) when b >= 0x80 so the decode round-trips to exactly b. */ { unsigned char *u8=malloc(o*2+1); if(!u8){ free(out); return JS_ThrowOutOfMemory(ctx); } size_t u=0; for(size_t k=0;k<o;k++){ unsigned char b=out[k]; if(b<0x80){ u8[u++]=b; } else { u8[u++]=(unsigned char)(0xC0|(b>>6)); u8[u++]=(unsigned char)(0x80|(b&0x3F)); } } JSValue r=JS_NewStringLen(ctx,(const char*)u8,u); free(u8); free(out); return r; } }
+/* btoa: base64 of a BINARY string.
+ *
+ * KNOWN LIMITATION (verified 2026-11-02, NOT fixed - it is not the blocker):
+ * this converts its input with JS_ToCString, i.e. as UTF-8, so a code unit
+ * >= 0x80 is encoded as the bytes of its UTF-8 form instead of its own low
+ * byte. btoa(String.fromCharCode(0xCA)) returns 'w4o=' (the encoding of
+ * C3 8A) where a browser returns 'yg=='. ASCII input is unaffected, which is
+ * why the ASCII-only rung6 test never caught it. Fixing it needs the string's
+ * CODE UNITS rather than its UTF-8 bytes: a separate change. atob() below is
+ * the same family of bug and IS fixed (see tests/nb_atob_test.sh). */
+static JSValue _nb_btoa(JSContext *ctx, JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'btoa'"); const char *str=JS_ToCString(ctx,argv[0]); if(!str)return JS_EXCEPTION; const char tbl[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; size_t len=strlen(str); size_t olen=((len+2)/3)*4; char *out=malloc(olen+1); if(!out){JS_FreeCString(ctx,str);return JS_EXCEPTION;} size_t i=0,j=0; const unsigned char *p=(const unsigned char*)str; while(i+2<len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)|((p[i+1]>>4)&0xF)]; out[j++]=tbl[((p[i+1]&0xF)<<2)|((p[i+2]>>6)&0x3)]; out[j++]=tbl[p[i+2]&0x3F]; i+=3; } if(i+1==len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)]; out[j++]='='; out[j++]='='; }else if(i<len){ out[j++]=tbl[(p[i]>>2)&0x3F]; out[j++]=tbl[((p[i]&0x3)<<4)|((p[i+1]>>4)&0xF)]; out[j++]=tbl[((p[i+1]&0xF)<<2)]; out[j++]='='; } out[j]=0; JS_FreeCString(ctx,str); JSValue r=JS_NewStringLen(ctx,out,j); free(out); return r; }
+static JSValue _nb_perfnow(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val;(void)argc;(void)argv; struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts); return JS_NewFloat64(ctx, ts.tv_sec*1000.0 + ts.tv_nsec/1000000.0); }
+static JSValue _nb_grv(JSContext *ctx,JSValueConst this_val,int argc,JSValueConst *argv){ (void)this_val; if(argc<1)return JS_ThrowTypeError(ctx,"Failed to execute 'getRandomValues'"); JSValue arr=argv[0]; JSValue lval = JS_GetPropertyStr(ctx, arr, "length"); int64_t lenv = 0; JS_ToInt64(ctx, &lenv, lval); JS_FreeValue(ctx, lval); uint32_t len = (uint32_t)lenv; if(len==0||len>65536)return JS_ThrowTypeError(ctx,"Invalid typed array length"); { unsigned char *buf=malloc(len?len:1); if(!buf)return JS_ThrowOutOfMemory(ctx); nb_rand_bytes(buf,len); for(uint32_t i=0;i<len;i++){ JS_SetPropertyUint32(ctx,arr,i,JS_NewInt32(ctx,buf[i])); } free(buf); } return JS_DupValue(ctx,arr); }
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../js/stb_image.h"
@@ -1596,6 +1645,13 @@ static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, J
 }
 
 static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    /* Deliberately NOT guarded against a null/undefined `this`: a browser
+     * throws "cannot read property 'getBoundingClientRect' of null" in
+     * exactly that case, that error is what the CALLER wrote (it did not
+     * check its own lookup), and swallowing it into a zeroed rect would hide
+     * a page bug while looking like a fix. Removing this guard on 2026-11-02:
+     * it was added earlier the same day against that error message, which
+     * turned out to be correct browser behaviour rather than a gap here. */
     NbNode *n = get_this(ctx, this_val);
     double w = 0, h = 0, x = 0, y = 0;
     if (n && !layout_hidden_anc(n)) {
@@ -3997,6 +4053,40 @@ static JSValue nb_blob_bytes(JSContext *ctx, JSValueConst this_val) {
     if (JS_IsUndefined(b)) { JS_FreeValue(ctx, b); b = JS_NewString(ctx, ""); }
     return b;
 }
+/* Resolve `val` into a real Promise via the global Promise, taking ownership
+ * of val. Blob.text()/arrayBuffer() are promise-returning in the spec, and a
+ * page that awaits a plain value would silently see undefined. Falls back to
+ * handing back the raw value if Promise is somehow absent. */
+static JSValue nb_promise_resolve(JSContext *ctx, JSValue val) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue P = JS_GetPropertyStr(ctx, g, "Promise");
+    JS_FreeValue(ctx, g);
+    if (!JS_IsFunction(ctx, P)) { JS_FreeValue(ctx, P); return val; }
+    JSAtom a = JS_NewAtom(ctx, "resolve");
+    JSValue r = JS_Invoke(ctx, P, a, 1, (JSValueConst *)&val);
+    JS_FreeAtom(ctx, a);
+    JS_FreeValue(ctx, P);
+    JS_FreeValue(ctx, val);
+    return r;
+}
+/* Blob.text() / Blob.arrayBuffer() (2026-11-02): the worker models a blob's
+ * bytes as the string in __nb_bytes (see nb_blob_from_parts), so text() hands
+ * that string over and arrayBuffer() is its UTF-8 bytes - not an empty or
+ * fabricated buffer, which is what a page reading bytes would mis-handle.
+ * Installed PER INSTANCE, like slice: the constructor returns a plain object,
+ * so nothing on Blob.prototype is reachable from an instance. */
+static JSValue nb_blob_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return nb_promise_resolve(ctx, nb_blob_bytes(ctx, this_val));
+}
+static JSValue nb_blob_arraybuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue b = nb_blob_bytes(ctx, this_val);
+    size_t n = 0;
+    const char *s = JS_ToCStringLen(ctx, &n, b);
+    JSValue ab = JS_NewArrayBufferCopy(ctx, (const uint8_t *)(s ? s : ""), s ? n : 0);
+    if (s) JS_FreeCString(ctx, s);
+    JS_FreeValue(ctx, b);
+    return nb_promise_resolve(ctx, ab);
+}
 static JSValue nb_blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue b = nb_blob_bytes(ctx, this_val);
     size_t n = 0; const char *s = JS_ToCStringLen(ctx, &n, b);
@@ -4010,6 +4100,9 @@ static JSValue nb_blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JS
     JS_SetPropertyStr(ctx, out, "__nb_bytes", JS_NewStringLen(ctx, s + a, (size_t)(z - a)));
     JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)(z - a)));
     JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    /* A slice is itself a Blob, so it needs the same reader set. */
+    JS_SetPropertyStr(ctx, out, "text", JS_NewCFunction(ctx, nb_blob_text, "text", 0));
+    JS_SetPropertyStr(ctx, out, "arrayBuffer", JS_NewCFunction(ctx, nb_blob_arraybuffer, "arrayBuffer", 0));
     if (argc > 1) {
         JSValue t = JS_GetPropertyStr(ctx, this_val, "type");
         if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
@@ -4049,6 +4142,8 @@ static JSValue nb_blob_from_parts(JSContext *ctx, JSValueConst this_val, int arg
         JS_SetPropertyStr(ctx, out, "size", JS_NewInt64(ctx, (int64_t)n));
     }
     JS_SetPropertyStr(ctx, out, "slice", JS_NewCFunction(ctx, nb_blob_slice, "slice", 2));
+    JS_SetPropertyStr(ctx, out, "text", JS_NewCFunction(ctx, nb_blob_text, "text", 0));
+    JS_SetPropertyStr(ctx, out, "arrayBuffer", JS_NewCFunction(ctx, nb_blob_arraybuffer, "arrayBuffer", 0));
     if (argc > 1) {
         JSValue t = JS_GetPropertyStr(ctx, argv[1], "type");
         if (!JS_IsUndefined(t)) JS_SetPropertyStr(ctx, out, "type", t);
@@ -4126,6 +4221,273 @@ static void add_global_class(JSContext *ctx, JSValueConst g, const char *name, J
     if (present) return;
     JS_SetPropertyStr(ctx, g, name, add_class(ctx, name, parent));
 }
+/* ==================== Element/Node methods (2026-11-02) ====================
+ *
+ * WHY: a probe of the shipped engine (tests/probe_fingerprint.js, group
+ * elementMethods.missing) found prepend, append, before, after, replaceWith,
+ * remove, matches, closest, cloneNode, isEqualNode, getClientRects,
+ * scrollIntoView, replaceChildren, element.querySelector/querySelectorAll and
+ * element.getElementsBy* all absent. glassdoor.com's own page script throws
+ * "TypeError: not a function" at `t.prepend(e)` - i.e. exactly here - and
+ * these are bread-and-butter methods on any real page, not anything
+ * site-specific, which is why they are worth building once properly.
+ *
+ * WHERE: installed on Element.prototype / Node.prototype in
+ * install_dom_classes, so every element gets them - including ones created
+ * later by createElement - which is how a browser exposes them. The natives
+ * resolve `this` through get_node(), so it does not matter that the wrapper
+ * also carries many of its older methods as own properties.
+ *
+ * WHAT IS DELIBERATELY NOT SPEC: these take Nodes and strings (a string
+ * becomes a Text node). A DocumentFragment inserts as ONE node rather than
+ * being expanded into its children, because the worker has no fragment node
+ * type; inserting a node into itself or into its own descendant is skipped
+ * rather than raising HierarchyRequestError. Both are noted where they
+ * matter; neither is something an observed page depends on. */
+
+#define NBI_APPEND  0
+#define NBI_PREPEND 1
+#define NBI_BEFORE  2
+#define NBI_AFTER   3
+
+/* Resolve argument v into a node ready to be linked in, or NULL. Also
+ * performs the two housekeeping steps every insertion needs: detach from any
+ * current parent (insertion MOVES a node, it does not copy it) and drop it
+ * from the orphan list, whose next_sibling field would otherwise be
+ * clobbered by the link. `into` is the subtree the node is being inserted
+ * into, used to refuse self/ancestor insertion. */
+static NbNode *nbi_arg(JSContext *ctx, JSValueConst v, NbNode *into) {
+    NbNode *n = NULL;
+    if (JS_IsString(v)) {
+        const char *s = JS_ToCString(ctx, v);
+        if (!s) return NULL;
+        n = calloc(1, sizeof(*n));
+        if (n) { n->text = strdup(s); orphan_add(n); }
+        JS_FreeCString(ctx, s);
+        if (!n) return NULL;
+    } else if (JS_IsObject(v)) {
+        n = get_node(ctx, v);
+        if (!n) return NULL;
+    } else {
+        return NULL;
+    }
+    for (NbNode *p = into; p; p = p->parent) if (p == n) return NULL;   /* would make a cycle */
+    node_detach(n);
+    orphan_remove(n);
+    return n;
+}
+
+/* The four variadic inserts. Order is the part that is easy to get wrong, so
+ * each is stated and tested explicitly:
+ *   append(a,b)  -> ..., a, b
+ *   prepend(a,b) -> a, b, ...
+ *   before(a,b)  -> a, b, ref
+ *   after(a,b)   -> ref, a, b
+ * All four walk the arguments FORWARD against an anchor captured before the
+ * loop (the pre-existing first child, the receiver, or the receiver's
+ * original next sibling). Reversing the walk instead would be the bug. */
+static void nbi_do(JSContext *ctx, int argc, JSValueConst *argv, NbNode *self, int mode) {
+    if (!self) return;
+    NbNode *anchor = NULL;
+    if (mode == NBI_APPEND || mode == NBI_PREPEND) {
+        anchor = self->first_child;              /* NULL when empty -> append */
+    } else {
+        if (!self->parent) return;               /* detached: nothing to sit beside */
+        anchor = (mode == NBI_BEFORE) ? self : self->next_sibling;
+    }
+    NbNode *into = (mode == NBI_APPEND || mode == NBI_PREPEND) ? self : self->parent;
+    for (int i = 0; i < argc; i++) {
+        NbNode *n = nbi_arg(ctx, argv[i], into);
+        if (!n) continue;
+        local_insert_before(into, n, mode == NBI_APPEND ? NULL : anchor);
+    }
+}
+
+static JSValue nb_el_append_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_APPEND);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_prepend_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_PREPEND);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_before_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_BEFORE);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_after_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    nbi_do(ctx, argc, argv, get_this(ctx, this_val), NBI_AFTER);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_replaceWith_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    nbi_do(ctx, argc, argv, self, NBI_BEFORE);   /* before(ref) then unlink ref */
+    if (self) { node_detach(self); orphan_add(self); }
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_remove_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    /* orphan_add as well as detach: a detached node is no longer reachable
+     * from g_dom_root, so without it teardown would never free it. A later
+     * re-insertion takes it back off the list. */
+    if (self) { node_detach(self); orphan_add(self); }
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_replaceChildren_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    if (!self) return JS_UNDEFINED;
+    clear_children(self);
+    nbi_do(ctx, argc, argv, self, NBI_APPEND);
+    return JS_UNDEFINED;
+}
+
+/* el.matches(sel) / el.closest(sel). matches() tests the element ITSELF -
+ * that is the whole difference from querySelector, which is scoped BELOW its
+ * receiver. closest() walks self-then-ancestors, which is what makes it
+ * usable on an event target. */
+static JSValue nb_el_matches(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    int r = (n && sel) ? match_any_selector(n, sel) : 0;
+    JS_FreeCString(ctx, owned);
+    return JS_NewBool(ctx, r);
+}
+static JSValue nb_el_closest(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    NbNode *hit = NULL;
+    if (n && sel)
+        for (NbNode *p = n; p; p = p->parent)
+            if (match_any_selector(p, sel)) { hit = p; break; }
+    JS_FreeCString(ctx, owned);
+    return hit ? push_node(ctx, hit) : JS_NULL;
+}
+static JSValue nb_el_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    NbNode *hit = NULL;
+    /* descendants only: query_first() tests the node it is given, so start at
+     * the children rather than at n, or an element would match itself. */
+    if (n && sel)
+        for (NbNode *c = n->first_child; c && !hit; c = c->next_sibling)
+            hit = query_first(c, sel);
+    JS_FreeCString(ctx, owned);
+    return hit ? push_node(ctx, hit) : JS_NULL;
+}
+static JSValue nb_el_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && sel) {
+        int i = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling)
+            qsa_into(ctx, c, sel, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_el_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling)
+            collect_tag_into(ctx, c, tag, arr, &i);   /* descendants only, as above */
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_el_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && tok && *tok) {
+        int i = 0;
+        for (NbNode *c = n->first_child; c; c = c->next_sibling)
+            collect_cls_into(ctx, c, tok, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+
+/* Deep/shallow copy. A shallow copy keeps tag/id/class/attrs/text but no
+ * children, which is what cloneNode(false) means. The copy is orphan-listed
+ * so teardown reclaims it if the page never inserts it. */
+static NbNode *nbi_clone(const NbNode *n, int deep) {
+    if (!n) return NULL;
+    NbNode *c = calloc(1, sizeof(*c));
+    if (!c) return NULL;
+    if (n->tag)   c->tag   = strdup(n->tag);
+    if (n->id)    c->id    = strdup(n->id);
+    if (n->cls)   c->cls   = strdup(n->cls);
+    if (n->attrs) c->attrs = strdup(n->attrs);
+    if (n->text)  c->text  = strdup(n->text);
+    orphan_add(c);
+    if (deep) {
+        for (const NbNode *k = n->first_child; k; k = k->next_sibling) {
+            NbNode *kc = nbi_clone(k, 1);
+            if (!kc) break;
+            orphan_remove(kc);        /* it is inside the copy now, not loose */
+            local_append(c, kc);
+        }
+    }
+    return c;
+}
+static JSValue nb_el_cloneNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NULL;
+    int deep = (argc > 0) ? JS_ToBool(ctx, argv[0]) : 0;
+    NbNode *c = nbi_clone(n, deep);
+    return c ? push_node(ctx, c) : JS_NULL;
+}
+static int nbi_streq(const char *a, const char *b) {
+    if (!a) a = "";
+    if (!b) b = "";
+    return strcmp(a, b) == 0;
+}
+static int nbi_equal(const NbNode *a, const NbNode *b) {
+    if (a == b) return 1;
+    if (!a || !b) return 0;
+    if (!nbi_streq(a->tag, b->tag) || !nbi_streq(a->id, b->id) ||
+        !nbi_streq(a->cls, b->cls) || !nbi_streq(a->text, b->text) ||
+        !nbi_streq(a->attrs, b->attrs)) return 0;
+    const NbNode *x = a->first_child, *y = b->first_child;
+    while (x && y) { if (!nbi_equal(x, y)) return 0; x = x->next_sibling; y = y->next_sibling; }
+    return x == y;   /* both NULL, or different child counts */
+}
+static JSValue nb_el_isEqualNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *a = get_this(ctx, this_val);
+    NbNode *b = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    return JS_NewBool(ctx, nbi_equal(a, b));
+}
+
+/* The box tree already models one rect per element, so getClientRects()
+ * answers with that single-box list rather than an empty one - a page that
+ * counts boxes would otherwise conclude the element is invisible.
+ * scrollIntoView is a no-op: the renderer owns scrolling and exposes no
+ * channel for a page to drive it, and returning quietly is what keeps a
+ * page's call from throwing. */
+static JSValue nb_el_getClientRects(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue arr = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, arr, 0, nb_el_getBoundingClientRect(ctx, this_val, 0, NULL));
+    JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, 1));
+    return arr;
+}
+static JSValue nb_el_scrollIntoView(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+
 static void install_dom_classes(JSContext *ctx) {
     JSValue ETf = JS_NewCFunction2(ctx, class_noop, "EventTarget", 1, JS_CFUNC_constructor, 0);
     JSValue Nf = JS_NewCFunction2(ctx, class_noop, "Node", 1, JS_CFUNC_constructor, 0);
@@ -4148,6 +4510,30 @@ static void install_dom_classes(JSContext *ctx) {
      * the customElements section. Native path so kevlar can stamp after
      * upgrade. */
     JS_SetPropertyStr(ctx, Ep, "attachShadow", JS_NewCFunction(ctx, nb_el_attachShadow, "attachShadow", 1));
+    /* Element methods (2026-11-02). Installed on Element.prototype rather
+     * than per wrapper so elements made later by createElement get them too,
+     * which is how a browser behaves. See the block above for what these do
+     * and what is deliberately not-to-spec. */
+    JS_SetPropertyStr(ctx, Ep, "matches",        JS_NewCFunction(ctx, nb_el_matches, "matches", 1));
+    JS_SetPropertyStr(ctx, Ep, "closest",        JS_NewCFunction(ctx, nb_el_closest, "closest", 1));
+    JS_SetPropertyStr(ctx, Ep, "querySelector",  JS_NewCFunction(ctx, nb_el_querySelector, "querySelector", 1));
+    JS_SetPropertyStr(ctx, Ep, "querySelectorAll", JS_NewCFunction(ctx, nb_el_querySelectorAll, "querySelectorAll", 1));
+    JS_SetPropertyStr(ctx, Ep, "getElementsByTagName",   JS_NewCFunction(ctx, nb_el_getElementsByTagName, "getElementsByTagName", 1));
+    JS_SetPropertyStr(ctx, Ep, "getElementsByClassName", JS_NewCFunction(ctx, nb_el_getElementsByClassName, "getElementsByClassName", 1));
+    JS_SetPropertyStr(ctx, Ep, "prepend",        JS_NewCFunction(ctx, nb_el_prepend_js, "prepend", 0));
+    JS_SetPropertyStr(ctx, Ep, "append",         JS_NewCFunction(ctx, nb_el_append_js, "append", 0));
+    JS_SetPropertyStr(ctx, Ep, "before",         JS_NewCFunction(ctx, nb_el_before_js, "before", 0));
+    JS_SetPropertyStr(ctx, Ep, "after",          JS_NewCFunction(ctx, nb_el_after_js, "after", 0));
+    JS_SetPropertyStr(ctx, Ep, "replaceWith",    JS_NewCFunction(ctx, nb_el_replaceWith_js, "replaceWith", 0));
+    JS_SetPropertyStr(ctx, Ep, "replaceChildren", JS_NewCFunction(ctx, nb_el_replaceChildren_js, "replaceChildren", 0));
+    JS_SetPropertyStr(ctx, Ep, "getClientRects", JS_NewCFunction(ctx, nb_el_getClientRects, "getClientRects", 0));
+    JS_SetPropertyStr(ctx, Ep, "scrollIntoView", JS_NewCFunction(ctx, nb_el_scrollIntoView, "scrollIntoView", 0));
+    /* Node-level methods live on Node.prototype: every element, text and
+     * document node shares them. remove() is on Element (ChildNode) in the
+     * spec; put it there, not here. */
+    JS_SetPropertyStr(ctx, Np, "cloneNode",      JS_NewCFunction(ctx, nb_el_cloneNode, "cloneNode", 1));
+    JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
+    JS_SetPropertyStr(ctx, Ep, "remove",         JS_NewCFunction(ctx, nb_el_remove_js, "remove", 0));
     JSValue Hp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Hp, Ep);
     JS_SetPropertyStr(ctx, Hf, "prototype", JS_DupValue(ctx, Hp));
@@ -6570,6 +6956,7 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "visibilityState", JS_NewString(ctx, "visible"));
         JS_SetPropertyStr(ctx, doc, "hidden", JS_NewBool(ctx, 0));
         JS_SetPropertyStr(ctx, doc, "readyState", JS_NewString(ctx, "complete"));
+        JS_SetPropertyStr(ctx, doc, "currentScript", JS_NULL);
         JS_SetPropertyStr(ctx, doc, "createEvent",
                           JS_NewCFunction(ctx, nb_dom_createEvent, "createEvent", 1));
         JS_SetPropertyStr(ctx, doc, "addEventListener",
@@ -8737,6 +9124,10 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "__shady_native_addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "__shady_native_addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "__shady_native_removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "__shady_native_removeEventListener", 2));
     JS_SetPropertyStr(ctx, g, "__shady_native_dispatchEvent",       JS_NewCFunction(ctx, nb_win_dispatchEvent, "__shady_native_dispatchEvent", 1));
+    JS_SetPropertyStr(ctx,g,"atob",JS_NewCFunction(ctx,_nb_atob,"atob",1));
+    JS_SetPropertyStr(ctx,g,"btoa",JS_NewCFunction(ctx,_nb_btoa,"btoa",1));
+    { JSValue p=JS_NewObject(ctx); JS_SetPropertyStr(ctx,p,"now",JS_NewCFunction(ctx,_nb_perfnow,"now",0)); JS_SetPropertyStr(ctx,g,"performance",p); }
+    { JSValue c=JS_NewObject(ctx); JS_SetPropertyStr(ctx,c,"getRandomValues",JS_NewCFunction(ctx,_nb_grv,"getRandomValues",1)); JS_SetPropertyStr(ctx,c,"randomUUID",JS_NewCFunction(ctx,_nb_uuid,"randomUUID",0)); JS_SetPropertyStr(ctx,g,"crypto",c); }
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
@@ -9098,7 +9489,15 @@ static void run_page(void) {
     if (g_style_css[0]) {
         char *sc = NULL; size_t sn = 0;
         if (read_file(g_style_css, &sc, &sn)) {
-            g_css = nb_css_parse(sc, sn);
+            /* G2.5 (2026-11-04): parse WITH the viewport the page was laid
+             * out in, so an @media block whose query matches becomes real
+             * rules. g_viewport_px is set by the LOAD handler (field 6, the
+             * pane's content width) before run_page() is called, and it is
+             * the same value window.innerWidth reports - one viewport, one
+             * number, so a page's own JS and its CSS cannot disagree about
+             * how wide it is. viewport 0 (unmeasured) keeps the old
+             * skip-every-@media behaviour. */
+            g_css = nb_css_parse_vp(sc, sn, (int)g_viewport_px);
             free(sc);
         }
     }

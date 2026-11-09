@@ -3484,6 +3484,45 @@ static int reparse_chtpm_if_changed(void) {
     unsigned long long saved_tree_digest = 0;
     if (saved_run_anchor > 0)
         saved_tree_digest = kh_tree_digest(g_window);
+    /* INLINE SPANS (2026-11-03) - the same content-identity guard that the
+     * ROW-RUN anchor above already carries, applied to the span cursor and
+     * anchor. The unconditional clear below was the same failure mode: a
+     * reparse landing between an extend (Shift+Right) and the next step
+     * wiped the selection that was visibly painted a moment earlier, so the
+     * band vanished and the next Ctrl+C copied the whole label. The span
+     * state is identity by (nav, id) + segment index, which survives a
+     * rebuilt tree whose CONTENT is unchanged - decide on content here,
+     * not on nav inside a reparse. */
+    int saved_seg_nav = g_seg_nav;
+    int saved_seg_idx = g_seg_idx;
+    int saved_seg_anchor = g_seg_anchor;
+    char saved_seg_id[sizeof(g_seg_id)] = "";
+    snprintf(saved_seg_id, sizeof(saved_seg_id), "%s", g_seg_id);
+    unsigned long long saved_seg_digest = 0;
+    if (saved_seg_idx >= 0)
+        saved_seg_digest = kh_tree_digest(g_window);
+    /* INLINE SPANS step 11 (2026-11-04) - the same guard, for the armed
+     * press. A rebuild orphans a press because its row may be gone, but
+     * a content-identical rebuild keeps the same rows at the same
+     * geometry (kh_tree_digest covers tag, id, label, segments, cells
+     * and full child structure), so the armed press can - and must -
+     * survive it: deleting it unconditionally meant the paired release,
+     * whenever a rebuild landed in the press..release window, found
+     * nothing to resolve and the click was silently swallowed. Measured
+     * on nb_span_drag_test.sh's T6 (press at T, release 8s later; every
+     * event triggers a full rebuild; the pair NEVER dispatched - not
+     * once in any run where the rebuild landed inside the window). */
+    int saved_pend_active = g_span_pend.active;
+    int saved_pend_button = g_span_pend.button;
+    int saved_pend_px = g_span_pend.px, saved_pend_py = g_span_pend.py;
+    int saved_pend_nav = g_span_pend.nav, saved_pend_idx = g_span_pend.idx;
+    int saved_pend_dragged = g_span_pend.dragged;
+    int saved_pend_two_step = g_span_pend.two_step_ok;
+    char saved_pend_id[sizeof(g_span_pend.id)] = "";
+    snprintf(saved_pend_id, sizeof(saved_pend_id), "%s", g_span_pend.id);
+    unsigned long long saved_pend_digest = 0;
+    if (saved_pend_active)
+        saved_pend_digest = kh_tree_digest(g_window);
     /* INLINE SPANS step 5: the segment cursor names a (nav, run-index,
      * element-id) triple in the tree being discarded - after this
      * rebuild those numbers may address a different row, or nothing.
@@ -3508,7 +3547,23 @@ static int reparse_chtpm_if_changed(void) {
      * state that survives a rebuild. */
     g_seg_dot_armed = 0;
     /* INLINE SPANS step 8: hover names the same per-window triple - a
-     * rebuild invalidates it identically. */
+     * rebuild invalidates it identically.
+     *
+     * (2026-11-04) ...but only if the content actually changed. Same
+     * content-identity guard as the span cursor/anchor above, for the same
+     * measured reason: nb_hover_test.sh was flaky (3 of 4 runs passed, and
+     * the failing row moved between runs), and this unconditional clear is
+     * the only thing between a pointer move and the assertion that could
+     * take the hover away. A rebuild landing after the motion but before the
+     * frame is read leaves the row un-whitened - which reads as "hover is
+     * broken" when it is only the repaint that was interrupted. */
+    int saved_hover_nav = g_hover_nav;
+    int saved_hover_idx = g_hover_idx;
+    char saved_hover_id[sizeof(g_hover_id)] = "";
+    snprintf(saved_hover_id, sizeof(saved_hover_id), "%s", g_hover_id);
+    unsigned long long saved_hover_digest = 0;
+    if (saved_hover_idx >= 0)
+        saved_hover_digest = kh_tree_digest(g_window);
     g_hover_nav = 0;
     g_hover_idx = -1;
     g_hover_id[0] = '\0';
@@ -3519,6 +3574,12 @@ static int reparse_chtpm_if_changed(void) {
      * deliberately NOT cleared here: the user typed it, and a content
      * change should re-search rather than silently forget the ask. */
     g_find_hits = 0;
+    /* The hit list above is about to be invalidated by the parse below, and
+     * g_find_reveal is another pointer into that same departing tree.
+     * Clearing it here prevents a pool-reused address from accidentally
+     * aliasing an unrelated new element before the end-of-reparse
+     * kh_find_commit() reissues the reveal against the new tree. */
+    g_find_reveal = NULL;
     /* g_find_at is deliberately NOT cleared here, unlike the hits it
      * accompanies. This reset and the query keep above are one decision
      * split in two: the query survives because "a content change should
@@ -3538,7 +3599,9 @@ static int reparse_chtpm_if_changed(void) {
      * call's comment for why it must be before the caller's layout. */
     /* INLINE SPANS step 11: a rebuild also orphans any armed span
      * press (its row may be gone) - the paired release must find
-     * nothing to resolve. */
+     * nothing to resolve. Honest unless the tree is byte-identical to
+     * the one being discarded; restored at this function's end when
+     * kh_tree_digest matches (see the SPANPRESS kept receipt). */
     g_span_pend.active = 0;
     g_n_elems = 0;
     /* REAL FIX 2026-10-08 (self-correction) - the truncation counters were
@@ -3731,6 +3794,69 @@ static int reparse_chtpm_if_changed(void) {
         } else {
             kh_focus_debug_log("ANCHOR content changed (digest %016llx -> %016llx), anchor stays dead",
                                saved_tree_digest, now_digest);
+        }
+    }
+    /* INLINE SPANS (2026-11-03) - restore the span cursor/anchor only if the
+     * tree just installed says exactly what the discarded one said. Same
+     * reasoning as the row-run guard above, same shape: an unchanged digest
+     * means the nav indices assign_nav_and_layout() re-derives immediately
+     * after this function returns name the same rows, so saved (nav, id)
+     * still names the same row and the segment index still names the same
+     * link within it. A rebuild that changed anything leaves the cursor and
+     * anchor dead, which is honest: the links they named may be gone, or
+     * may have moved. */
+    if (saved_seg_idx >= 0) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_seg_digest) {
+            g_seg_nav = saved_seg_nav;
+            g_seg_idx = saved_seg_idx;
+            snprintf(g_seg_id, sizeof(g_seg_id), "%s", saved_seg_id);
+            g_seg_anchor = saved_seg_anchor;
+            kh_focus_debug_log("SPAN kept nav=%d idx=%d anchor=%d (content identical, digest %016llx)",
+                               g_seg_nav, g_seg_idx, g_seg_anchor, now_digest);
+        } else {
+            kh_focus_debug_log("SPAN content changed (digest %016llx -> %016llx), span state stays dead",
+                               saved_seg_digest, now_digest);
+        }
+    }
+    /* INLINE SPANS step 8 hover (2026-11-04) - the same guard, for the same
+     * measured flake: restore the hover identity iff the tree says exactly
+     * what the discarded one said. */
+    if (saved_hover_idx >= 0) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_hover_digest) {
+            g_hover_nav = saved_hover_nav;
+            g_hover_idx = saved_hover_idx;
+            snprintf(g_hover_id, sizeof(g_hover_id), "%s", saved_hover_id);
+            kh_focus_debug_log("HOVER kept nav=%d idx=%d (content identical, digest %016llx)",
+                               g_hover_nav, g_hover_idx, now_digest);
+        } else {
+            kh_focus_debug_log("HOVER content changed (digest %016llx -> %016llx), hover stays dead",
+                               saved_hover_digest, now_digest);
+        }
+    }
+    /* INLINE SPANS step 11 (2026-11-04) - the same guard, for the armed
+     * press. If the tree is byte-identical to the discarded one, the
+     * row the press hit still exists at the same geometry and the nav
+     * re-derives identically, so re-arming is exact - the release pairs
+     * exactly as it would if no rebuild had landed. A tree that changed
+     * anything leaves the press orphaned, which is honest: its row may
+     * be gone, may have moved, or may carry a different action. */
+    if (saved_pend_active) {
+        unsigned long long now_digest = kh_tree_digest(g_window);
+        if (now_digest == saved_pend_digest) {
+            g_span_pend.active = 1;
+            g_span_pend.button = saved_pend_button;
+            g_span_pend.px = saved_pend_px; g_span_pend.py = saved_pend_py;
+            g_span_pend.nav = saved_pend_nav; g_span_pend.idx = saved_pend_idx;
+            g_span_pend.dragged = saved_pend_dragged;
+            g_span_pend.two_step_ok = saved_pend_two_step;
+            snprintf(g_span_pend.id, sizeof(g_span_pend.id), "%s", saved_pend_id);
+            kh_focus_debug_log("SPANPRESS kept nav=%d idx=%d (content identical, digest %016llx)",
+                               saved_pend_nav, saved_pend_idx, now_digest);
+        } else {
+            kh_focus_debug_log("SPANPRESS content changed (digest %016llx -> %016llx), armed press stays dead",
+                               saved_pend_digest, now_digest);
         }
     }
     return 1;
@@ -4059,7 +4185,14 @@ static XftDraw *xftdraw_buf;
 static Colormap cmap;
 static XftFont *font_ui;
 static int g_win_x = 300, g_win_y = 300;
-static int g_win_w = 260, g_win_h = 200;
+/* g_win_w/g_win_h are NOT static: khtpm_render_core.c's css_layout_pass()
+ * reads them via `extern int g_win_w, g_win_h` (three sites: position:fixed,
+ * position:absolute top/left clamping, and its flex/grid budget caps). This
+ * file's own "static int g_win_w" predates that shared-lib requirement
+ * (a7b6084a5 2026-10-21), leaving HEAD to not compile: the running binary is
+ * from 2026-10-20, i.e. two days stale. Lifting the linkage is the only
+ * change that completes that commit, and changes no behaviour. */
+int g_win_w = 260, g_win_h = 200;
 /* Last on-screen position we actually asked the server for via XMoveWindow.
  * The redraw() corrective-move block (2026-09-03) must only touch the server
  * when our INTENDED position (g_win_x/g_win_y) has genuinely changed since we
@@ -6285,13 +6418,9 @@ static void layout_scroll_sprite_flow(Elem *container, int start, int n, int x, 
     }
 }
 
-static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
-    *out_lo = 0; *out_hi = 0;
-    if (!container || h <= 0) return;
-    int visible_rows = h / ROW_H;
-    if (visible_rows < 1) visible_rows = 1;
+static int scroll_region_total(Elem *container, int w) {
     int total = 0;
-    int inner_w = w;
+    if (!container) return 0;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (elem_is_sprite_flow(c)) {
@@ -6301,8 +6430,6 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             continue;
         }
         if (elem_is_flex_row(c)) {
-            /* A flex row is one block in the scroll flow; its height is resolved
-             * by css_layout_pass. Start at 1 row, same as a normal row. */
             total += 1;
             continue;
         }
@@ -6312,6 +6439,26 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
+    return total;
+}
+
+static int kh_find_reveal_owned_by(Elem *container) {
+    /* Sidebar+panel pages produce two layout passes. A pending reveal must
+     * survive the first (non-owning) pass; only the pass whose subtree
+     * contains the target may scroll or clear the one-shot. */
+    for (Elem *p = g_find_reveal; p; p = p->parent)
+        if (p == container) return 1;
+    return 0;
+}
+
+static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
+    *out_lo = 0; *out_hi = 0;
+    if (!container || h <= 0) return;
+    int scroll_before_setup = *scroll;
+    int visible_rows = h / ROW_H;
+    if (visible_rows < 1) visible_rows = 1;
+    int total = scroll_region_total(container, w);
+    int inner_w = w;
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
     if (*scroll > max_scroll) *scroll = max_scroll;
     if (*scroll < 0) *scroll = 0;
@@ -6340,8 +6487,25 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     generic_sbar_register(x, y, w, h, scroll, total, visible_rows, max_scroll);
     if (max_scroll > 0 && w > GENERIC_SCROLLBAR_W + 8)
         inner_w = w - GENERIC_SCROLLBAR_W;
+    /* The scrollbar narrows the wrap width, and wrapping can legitimately
+     * add lines at that final width. Recompute the scroll limit there or
+     * row indices and the scrollbar disagree by whole rows. */
+    if (inner_w != w) {
+        total = scroll_region_total(container, inner_w);
+        generic_sbar_register(x, y, w, h, scroll, total, visible_rows, 0);
+        max_scroll = total > visible_rows ? total - visible_rows : 0;
+        if (*scroll > max_scroll) *scroll = max_scroll;
+        /* A preliminary full-width pass can undercount wrapped lines; the
+         * scrollbar's 8px then makes the same labels two lines. Re-adopt
+         * the caller's entry scroll only when the final width still has
+         * that much scroll, otherwise keep the correct final clamp. */
+        int want_scroll = scroll_before_setup < 0 ? 0 : scroll_before_setup;
+        if (want_scroll <= max_scroll) *scroll = want_scroll;
+        generic_sbar_register(x, y, w, h, scroll, total, visible_rows, max_scroll);
+    }
 
     int row = 0;
+    int owns_find_reveal = kh_find_reveal_owned_by(container);
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (elem_is_sprite_flow(c)) {
@@ -6385,12 +6549,18 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         if (strcmp(c->tag, "canvas") == 0) g_has_canvas = 1; /* live surface -> 30fps tick */
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
-        if (g_find_reveal == c && max_scroll > 0) {
+        if (owns_find_reveal && g_find_reveal == c && max_scroll > 0) {
             int top = *scroll, bot = *scroll + visible_rows;
+            kh_focus_debug_log("FINDREVEAL id=%s row=%d span=%d scroll=%d visible=%d max=%d total=%d h=%d ROW_H=%d w=%d inner=%d",
+                               c->id, row, span, *scroll, visible, max_scroll, total, h, ROW_H, w, inner_w);
             if (row < top) *scroll = row;                       /* above: put it at the top edge */
             else if (row + span > bot) *scroll = row + span - visible_rows;  /* below: last line visible */
             if (*scroll < 0) *scroll = 0;
             if (*scroll > max_scroll) *scroll = max_scroll;
+            /* The visibility answer must use the post-reveal scroll, not the
+             * stale one measured before testing membership. */
+            visible = (row + span > *scroll && row < *scroll + visible_rows);
+            kh_focus_debug_log("FINDREVEAL scroll=%d visible_after=%d", *scroll, visible);
             g_find_reveal = NULL;
         }
 
@@ -6433,8 +6603,14 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
             c->x = x; c->y = -100000; c->w = w; c->h = span * ROW_H;
             c->nav_index = 0;
         }
+        if (g_find_query[0] && strstr(c->label, g_find_query)) {
+            kh_focus_debug_log("LAYOUT target id=%s row=%d span=%d scroll=%d x=%d y=%d w=%d h=%d",
+                               c->id, row, span, *scroll, c->x, c->y, c->w, c->h);
+        }
         row += span;
     }
+    if (owns_find_reveal && max_scroll == 0)
+        g_find_reveal = NULL;
 }
 
 /* Real, generic "fixed rows above (or around) a nested <scrolllist>"
@@ -10933,8 +11109,9 @@ static void kh_find_commit(void) {
      * actually navigable - pointing focus at an invisible slot would
      * move the visible caret somewhere unrelated. */
     Elem *t = (g_find_at <= cap) ? g_find_hits_list[g_find_at - 1] : NULL;
-    if (!t) { g_find_at = 0; return; }
+    if (!t) { g_find_at = 0; g_find_reveal = NULL; return; }
     if (t->nav_index >= 1 && t->nav_index <= g_n_nav) g_focus_nav = t->nav_index;
+    kh_focus_debug_log("FINDCOMMIT hits=%d at=%d target=%s", g_find_hits, g_find_at, t->id[0] ? t->id : t->label);
     g_find_reveal = t;
 }
 
@@ -12978,15 +13155,33 @@ static void redraw_body(void) {
         XDrawRectangle(dpy, buf, gc, 0, 0,
                        (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
     }
-    /* user drag-resize affordance: ⌟ in the bottom-right corner when the
-     * window opted in (class="user-resizable"). The KH_RESIZE_GRIP hot
-     * corner in the ButtonPress handler is anchored to the same spot. */
-    if (g_user_resizable && xftdraw_buf && font_ui) {
-        XftColor gcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#888888");
-        XftDrawStringUtf8(xftdraw_buf, &gcol, font_ui,
-                          g_win_w - 15, g_win_h - 5,
-                          (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
+    /* user drag-resize affordance: a ⌟ corner mark drawn with raw X
+     * primitives, not a font glyph - font_ui is Noto Sans CJK SC, which
+     * lacks U+231F, so the first attempt painted .notdef (a boxed X)
+     * that looked like a close button (found live 2026-11-05). Two
+     * filled bars form the corner: always renders, on every machine and
+     * every theme. The mark's shade is sampled from the pixels under it
+     * (the theme fg is black on this house's light theme - invisible on
+     * dark pages, which is why it samples instead of trusting the theme). */
+    if (g_user_resizable) {
+        int light_corner = 0;
+        XImage *samp = XGetImage(dpy, buf, g_win_w - 20, g_win_h - 18, 17, 15, AllPlanes, ZPixmap);
+        if (samp) {
+            unsigned long acc = 0; int n = 0;
+            for (int yy = 0; yy < samp->height; yy++) {
+                for (int xx = 0; xx < samp->width; xx++) {
+                    unsigned long p = XGetPixel(samp, xx, yy);
+                    acc += ((p >> 16 & 0xff) * 299 + (p >> 8 & 0xff) * 587 + (p & 0xff) * 114) / 1000;
+                    n++;
+                }
+            }
+            XDestroyImage(samp);
+            light_corner = (n && acc / n <= 110);
+        }
+        XSetForeground(dpy, gc, alloc_pixel(light_corner ? "#e8e8e8" : "#141414"));
+        int bx = g_win_w - 13, by = g_win_h - 4;   /* baseline of the corner */
+        XFillRectangle(dpy, buf, gc, bx, by - 2, g_win_w - 2 - bx, 2);   /* bottom stub */
+        XFillRectangle(dpy, buf, gc, g_win_w - 4, by - 12, 2, 12);       /* right stub */
     }
     /* FIND IN PAGE (2026-10-12): a small themed strip along the bottom
      * edge, drawn the same way as the confirm popup below - it is the
@@ -13079,6 +13274,14 @@ static void redraw(void) {
 static void redraw(void);
 static void dump_frame_png(void) {
     char png[PATH_BUF];
+    /* A queued browser publish can land between the last tick's rebuild
+     * check and this dump. Check once here too: if the new tree is real,
+     * layout it now (and let redraw() reuse that layout) so the PNG and
+     * its ASCII sidecar cannot disagree about the Find reveal. */
+    if (reparse_chtpm_if_changed()) {
+        assign_nav_and_layout();
+        g_layout_fresh = 1;
+    }
     redraw(); /* REAL FIX above - guarantees `win`'s real on-screen pixels reflect the state as of THIS tick's input, not the previous tick's */
     snprintf(png, sizeof(png), "/tmp/entity-menu-frame.png");
     char cmd[PATH_BUF * 2];
@@ -13474,6 +13677,20 @@ static void handle_key(KeySym ks, char ch) {
          * itself use, so the window stays fully drivable while armed. */
     }
     if (ch == 6) { kh_find_begin(); return; }   /* Ctrl+F: arm find (no field armed here) */
+    /* Ctrl+P: ask the network-browser manager to print this page to a
+     * PDF (<pkg>/downloads/). The renderer has no PDF machinery and the
+     * manager owns the page rows, so the key is just a one-line request
+     * into the manager's own request file (the same channel the chrome
+     * action scripts use) - Ctrl+P does nothing in any other app, and
+     * nothing at all when the file isn't writable. Gated to the browser
+     * template so other apps keep Ctrl+P for themselves. */
+    if (ch == 16 && g_chtpm_path[0] && strstr(g_chtpm_path, "network-browser")) {
+        char req[PATH_BUF];
+        snprintf(req, sizeof(req), "%s/#.desktop/network_browser_request.txt", g_house_root);
+        FILE *rf = fopen(req, "w");
+        if (rf) { fputs("print:\n", rf); fclose(rf); }
+        return;
+    }
     /* REAL, NEW 2026-10-07 (direct ask: copy article text out of the
      * browser) - Ctrl+C with NO armed field copies the focused row's
      * own label (content rows, links, buttons, tabs - anything
@@ -14237,6 +14454,9 @@ static void dispatch_relay_code(int code) {
      * suite proves it). 6 joins 3/22/24 for that reason alone; the real
      * keyboard always delivered it via XLookupString. */
     else if (code == 6) handle_key(0, (char)code);
+    /* 2026-11-04 (print) - Ctrl+P, same shape as Ctrl+C/Ctrl+X/Ctrl+V:
+     * the print key arrives as plain control code 16. */
+    else if (code == 16) handle_key(0, (char)code);
     /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
      * - Shift+arrow / Shift+Home / Shift+End for text selection, which
      * the relay had no way to express (Shift is a modifier, not a
@@ -14539,7 +14759,9 @@ static int poll_agent_history_impl(void) {
                      * every relay test and agent keeps working. */
                     int pnav = 0, pidx = -1;
                     char pid[64] = "";
-                    if (span_press_hit(mx, my, &pnav, &pidx, pid, sizeof(pid))) {
+                    int _hit = span_press_hit(mx, my, &pnav, &pidx, pid, sizeof(pid));
+                    kh_focus_debug_log("SPANARM hit=%d px=%d py=%d nav=%d idx=%d prefocus=%d", _hit, mx, my, pnav, pidx, g_focus_nav);
+                    if (_hit) {
                         Elem *row = (pnav >= 1 && pnav <= g_n_nav) ? g_nav[pnav - 1] : NULL;
                         g_span_pend.active = 1;
                         g_span_pend.button = 1;
@@ -14552,6 +14774,7 @@ static int poll_agent_history_impl(void) {
                             (g_window && elem_has_class(g_window, "single-click")) ||
                             (row && g_focus_nav == row->nav_index)) ? 1 : 0;
                         g_span_pend.dragged = 0;
+                        kh_focus_debug_log("SPANARM armed nav=%d idx=%d two_step_ok=%d focusA=%d id=%s", pnav, pidx, g_span_pend.two_step_ok, g_focus_nav, pid);
                         snprintf(g_span_pend.id, sizeof(g_span_pend.id), "%s", pid);
                         if (row) g_focus_nav = row->nav_index;
                         g_seg_nav = pnav; g_seg_idx = pidx; g_seg_anchor = pidx;
@@ -14559,6 +14782,7 @@ static int poll_agent_history_impl(void) {
                         redraw();
                         n++;
                     } else {
+                        kh_focus_debug_log("SPANARM miss px=%d py=%d -> popup_handle_click", mx, my);
                         popup_handle_click(mx, my);
                         n++;
                     }
@@ -14588,10 +14812,12 @@ static int poll_agent_history_impl(void) {
                     if (g_span_pend.active && g_span_pend.button == 1) {
                         int rnav = 0, ridx = -1, was_drag, was_ok;
                         char rid[64] = "";
-                        int same = span_press_hit(mx, my, &rnav, &ridx, rid, sizeof(rid)) &&
+                        int phit = span_press_hit(mx, my, &rnav, &ridx, rid, sizeof(rid));
+                        int same = phit &&
                                    rnav == g_span_pend.nav && ridx == g_span_pend.idx &&
                                    strcmp(rid, g_span_pend.id) == 0 &&
                                    g_focus_nav == g_span_pend.nav;
+                        kh_focus_debug_log("SPANPAIR phit=%d rnav=%d ridx=%d rid=%s deq: pn=%d pi=%d pid=%s same=%d focus=%d", phit, rnav, ridx, rid, g_span_pend.nav, g_span_pend.idx, g_span_pend.id, same, g_focus_nav);
                         was_drag = g_span_pend.dragged;
                         was_ok = g_span_pend.two_step_ok;
                         g_span_pend.active = 0;

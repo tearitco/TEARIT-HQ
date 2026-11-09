@@ -957,3 +957,479 @@ own negative control for the gutter was a dead statement (fixed in 9.13).
 **Also updated:** x86-64 build path fixed for `http_server.c` in the tomom project; `button.sh` RENDERER path corrected.
 
 **Docs:** See `xo/HANDOFF_DOCS_SUMMARY.md` and `xo-cal/oct-29-2026/` for full relay testing report.
+
+
+---
+
+## 9.16 2026-11-04 — G2.5 (@media) CLOSED, and two defects found but NOT fixed
+
+### G2.5 closed: `@media` fires against the viewport
+
+`nb_css.c` skipped every `@media` block wholesale, on the stated ground that
+"the engine has no viewport, so a media query can never fire" (`nb_css.h`).
+The worker DOES have one: LOAD carries the pane's content width, and
+`window.innerWidth` is exported from that same number.
+
+- `nb_css_parse_vp(text, len, viewport_px)` evaluates `@media` against it;
+  `nb_css_parse()` keeps the old behaviour through the SAME code path
+  (viewport 0 = unknown = skip), so the two cannot drift.
+- Grammar supported: `[only|all|screen]` with `(min-width: N)` /
+  `(max-width: N)` / `(width: N)`, N in px/em/rem, top-level commas as OR.
+  Everything else (print, orientation, prefers-*, `not`) does NOT match —
+  chosen deliberately: skipping is a missing nicety, firing wrongly moves a
+  page's layout.
+- Matching bodies parse recursively into the same list, in source order, so
+  the cascade order survives; nested `@media` works for free.
+
+Gate `tests/nb_media_test.sh` (hermetic, registered in `nb_all_tests.sh`):
+4 widths straddling the boundary (700/767/768/900), TWO channels each — the
+computed display AND the element's rect, because `display:none` must
+collapse it to 0x0 and that is the consequence a page observes. A
+property-only assertion is a self-report. Negative-tested.
+
+### Found, measured, NOT fixed (each wants its own bite + evidence)
+
+1. **Selector-list specificity is SUMMED, not MAXed.** `.a, .b {}` scores two
+   classes, so it outranks a single-class rule inside an `@media` block and
+   the override never applies. Measured, same stylesheet either way:
+
+       comma-list base      vp=700  wide.display='block'   <- override defeated
+       separate base rules  vp=700  wide.display='none'    <- correct
+
+   CSS takes the MAX over the list. This is pre-existing; fixing it moves the
+   cascade for every page, so it needs its own evidence run. The new gate
+   avoids the trap and says so in its header.
+
+2. **Projected rows do not skip `display:none` for page-created elements.**
+   Both branches appear in the worker's RENDER rows at both widths, so the
+   computed style and the painted rows disagree for JS-created nodes.
+   Measured while building the fixture above; not touched.
+
+### Also this session: two flake classes closed at the renderer
+
+`reparse_chtpm_if_changed()` cleared per-window state UNCONDITIONALLY on every
+rebuild. For the row-run anchor that was already fixed (2026-10-19, with a
+`kh_tree_digest` content-identity guard); the same defect was still live for
+the inline-span cursor/anchor and for hover:
+
+- span selection: `nb_span_select_test.sh` ~6/10 -> **10/10**; receipts show
+  `SPAN kept nav=2 idx=1 anchor=0 (content identical, digest …)`.
+- hover: `nb_hover_test.sh` 3/4 -> **8/8**; receipts show
+  `HOVER kept nav=1 idx=0 (content identical, digest …)`.
+
+Both use the same shape as the 2026-10-19 fix, which is the pattern to copy
+for any future per-window state that must survive a rebuild.
+
+### Standing KPIs at the end of 2026-11-04
+
+`nb_all_tests.sh` -> **ALL TESTS PASS**, 35 sections, 30 suites, 0 failures.
+
+A pre-existing build break was also found and fixed to get there: commit
+`a7b6084a5` added `extern int g_win_w, g_win_h` reads in
+`khtpm_render_core.c` without lifting the matching `static` in
+`khtpm_core_render.c`, so HEAD had not compiled since 2026-10-21 and the
+running renderer was two days stale — which is exactly what hides this class
+of bug.
+
+
+### 9.16a CORRECTION (same day, 2026-11-04) — the specificity claim in 9.16 was wrong
+
+9.16 recorded, as an open deviation, that "selector-list specificity is
+SUMMED, not MAXed". **That was wrong.** `specificity()` already took the MAX
+per comma segment; the header comment in `nb_css.h` said "summed" and I
+believed the comment instead of reading the loop.
+
+Chasing the real cause of a `.narrow, .wide {}` base rule defeating both
+`@media` branches turned up two different, both-real defects (fixed in
+`f06d16b42`):
+
+1. **The last rule was silently DROPPED** when a stylesheet's final character
+   is `}`. `skip_block()` returned `end` for both "unterminated" and "closing
+   brace is the last character"; the rule loop reads `close == end` as
+   unterminated and breaks. Measured: `.aa{...} .xx{...}` (no trailing
+   whitespace) -> 1 rule; with a trailing newline -> 2 rules; a single-rule
+   sheet ending in `}` -> **0 rules**. Most stylesheets end with a newline,
+   which is why this stayed invisible.
+
+2. **`n_type` counted alphabetic characters**, so a class NAME contributed its
+   own length: `.narrow` scored n_type=6 and `.wide` scored 4. Equally
+   specific class rules were therefore ordered by name LENGTH, so a later
+   override lost to a longer name. Measured, element carrying both classes:
+   `.aa{block} .xx{none}` -> block (later rule lost);
+   `.aaaaaa{block} .xx{none}` -> '' (longer name won).
+
+A type selector is now counted only where one can begin, so `.cls` is
+(0,1,0) and `p.cls` is (0,1,1). Ties resolve by source order, as CSS says.
+
+`tests/nb_media_test.sh` keeps the realistic comma-list base rule so both
+defects fail the suite if they return, and its header carries the
+measurements. Full standing suite after both fixes: **ALL TESTS PASS**, 35
+sections, 30 suites — which is the evidence that mattered, since a cascade
+change can move every page's layout and nothing else in the suite would have
+noticed.
+
+Lesson, and it is the same one as 9.16's other correction: **read the
+implementation, not the comment.** The comment was stale/wrong in exactly the
+way that sent this investigation down the wrong path first.
+
+
+### 9.17 2026-11-04 — G1.4 was ALREADY green; the real gap was three unregistered suites
+
+I picked `G1.4` as "the last untouched G1 KPI". **Wrong** - it has its own suite,
+`tests/nb_focus_safety_test.sh`, it is registered in `nb_all_tests.sh`, and it
+passes, including the assertion that matters:
+
+    after typing: addr=hello
+    PASS: the address bar is armed and holds the typed text
+    PASS: the projection really was reparsed under the armed field
+    PASS: the typed text survived 8 unsolicited republishes
+      after typing one more char: addr=helloX     <- cursor still at the end
+
+The lesson is the same one this session keeps charging for, one step earlier in
+the process: **check what is already covered before choosing work.** I read the
+KPI table (which lists the goal) but not the runner (which lists the coverage),
+so I proposed a KPI that was already closed.
+
+### The gap that was actually there: suites that exist but are not run
+
+`comm` of the suite files against `nb_all_tests.sh`:
+
+    nb_flex_test.sh        G2.3 display:flex      NOT registered
+    nb_grid_test.sh        G2.4 grid              NOT registered
+    nb_wasm_test.sh        WebAssembly            NOT registered
+    nb_interact_test.sh                          deliberately outside (K3 says so)
+
+So **K1 did not cover flex, grid or wasm.** The ledger said G2.3/G2.4 were green
+while the standing gate could not see either: a flex or grid regression would
+have passed `ALL TESTS PASS` silently. Registered in `51584cec2` - flex and grid
+beside G2.2 (they need the live browser), wasm in the hermetic group (it needs
+only python3). Suite is now 38 sections, and each new section prints its PASS in
+the runner.
+
+### Known flake, recorded so nobody re-investigates it
+
+`nb_span_drag_test.sh` is the one non-deterministic suite. Measured 2026-11-04:
+
+| sample | result |
+|---|---|
+| 6 isolated runs | 4 pass / 2 fail - failures at **T6** ("late release did nothing") and **T1** ("expected LINK1, log empty") |
+| T2 specifically, all 6 isolated runs | `T2: drag copy is exact` - passed every time |
+| whole-suite runs | 38-section run 1 = red (T2, `clipboard was [ONE then TWO]`); 38-section run 2 = ALL TESTS PASS |
+
+A failure that lands on a DIFFERENT step each run, in a suite whose input is
+synthetic `XSendEvent` press/motion/release, is dropped input rather than state
+- and it predates this session (then: 3/4, and 0,1,1 across builds). It is NOT a
+product regression, and the suite's red should be read as "the synthetic input
+driver dropped an event", not as "span drag is broken".
+
+If someone wants it green, the target is `tests/xsendevent.py`'s delivery
+guarantee (a retry/ack around each synthetic motion, or driving the relay the
+way the keyboard suites do instead of XSendEvent), not the renderer.
+
+### Where the KPIs actually stand at 2026-11-04
+
+`nb_all_tests.sh`: **ALL TESTS PASS, 38 sections, 31 suites** with flex, grid and
+wasm now included. G1.1-G1.6, G2.1-G2.5, G3.1-G3.6 all have registered suites
+except `nb_interact_test.sh` (K3, by design).
+
+### 9.18 2026-11-04 (evening) — span_drag: the input was never dropped; the timing instrument was
+
+The 9.17 note said nb_span_drag_test's red meant "synthetic XSendEvent dropped an
+event" and that the fix target is `tests/xsendevent.py`'s delivery guarantee. Both
+were wrong, and the correction is recorded here so nobody re-investigates from
+those premises again.
+
+**What was actually wrong, measured in three stages**
+
+1. **Fixed sleeps.** Every dispatch assertion did `sleep 1; grep 'CLICKED LINK1'`
+   (or a line count against a stale baseline) against a fixture whose action.sh
+   is a CHILD the renderer spawns. Under load the child lands after the sleep -
+   the failing T6 message literally printed `log: CLICKED LINK1;`, i.e. the line
+   HAD landed, just after the window closed. Failure messages are evidence; they
+   were not being read.
+2. **Stale grep.** The first fix (a `wait_log` that grepped for the marker) made it
+   worse (0/8): every check matched the STALE lines from T1/T3 already in
+   click.log and returned instantly, so every subsequent count assertion failed.
+   Counts only ever increase, so the honest receipt is "more lines than the
+   baseline", never pattern presence. Delivered as `wait_count`.
+3. **Fire-and-forget bursts.** Events were sent with no acknowledgment that the
+   renderer processed them. `xe()` now waits for the renderer's OWN capture line
+   in the relay (every real press/release is appended synchronously inside the
+   dispatcher, and the relay queue is FIFO, so the receipt also proves any queued
+   MotionNotify ahead of it was processed). Absence assertions use `settle`.
+
+After those fixes, **T1-T5 are deterministic green** (7/7 consecutive batches),
+and no batch ever produced a T1/T3/T5/T2-clipboard failure again.
+
+**What remains, and why it is not delivery**
+
+T6 fails in ~2 of 6 runs, always identically: press captured, release captured,
+`press alone dispatched nothing` passes, and the pair then **never** dispatches
+(waited 180s; the replay lab reproducing the full T1-T6 sequence 8+ times never
+reproduced it). Hard evidence that delivery is complete: the relay files from the
+failing runs contain every press and release verbatim, and the fixture's
+`human_input/<pid>.txt` logs all five real presses with nav=1.
+
+The failing runs all show the same signature in `kh_focus_debug.log`: **every
+dispatch triggers a full content rebuild** (`ANCHOR cleared by content rebuild`
++ `SPAN kept ... (content identical, digest ...)`), and T6's press/release pair
+brackets exactly one such rebuild (14:34:49.486 and 14:34:59.602 in the failing
+run). The deferred span pair is evaluated against whatever the rebuild leaves
+behind and intermittently declines to dispatch - deterministically silent
+afterwards, never merely "slow".
+
+**This is a renderer-side race** (the release's span pair vs the post-dispatch
+content rebuild), in the fixture's every-event-rebuild cycle. It cannot be
+closed from the test without touching the renderer's most-loaded path; closing
+it means either the release-side pair is evaluated against post-rebuild state,
+or the fixture stops rebuilding per click - a renderer task with its own
+verification loop, not a test tweak. The test now waits honestly and reports the
+failure; it cannot make the race impossible.
+
+**Corrections to 9.17**
+
+- ~~"synthetic XSendEvent dropped an event"~~ - wrong. Events were always
+  delivered; the instrument was reading stale data and fixed windows.
+- ~~"fix target is tests/xsendevent.py's delivery guarantee"~~ - implemented
+  exactly that class of fix (relay capture receipt in `xe()` + count-based
+  waits); T6 still fails. Delivery was never the binding constraint.
+- The suite's red should now be read as: **one span pair sometimes loses to the
+  rebuild cycle inside the renderer** - not as a product span-drag defect, and
+  not as dropped input. T1/T2/T3/T4/T5 are honest green.
+
+**Lessons**
+
+1. Read the failure's own payload first. "log: CLICKED LINK1;" was the whole
+   diagnosis; three theories were built on top of it before it was read.
+2. Never assert on a marker inside an ever-growing file; assert on a delta.
+3. A test that fires a burst of input into an event-driven app must either
+   serialize on the app's own receipts or be expected to race with everything
+   the app does between events - here, a full content rebuild per click.
+
+Current status of the flake: **T6 only, ~1 in 3 runs, renderer-side race, known
+and documented; the rest of the suite is deterministic.**
+
+### 9.19 2026-11-04 (night) — span_drag root cause FIXED in the renderer (T6 was one rebuild away)
+
+9.18 said the residual was "a renderer-side race - closing it needs the
+release-side pair evaluated against post-rebuild state (or the fixture stops
+rebuilding per click)." That is now done, and the fixture needed no change.
+
+**Mechanism, measured (not inferred)**
+
+The fixture renders every event with a FULL content rebuild; the debug log
+shows one after virtually every event (`ANCHOR cleared by content rebuild` +
+`SPAN kept ... (content identical, digest cba5db244267da69)`). The reparse
+path (since INLINE SPANS step 11) cleared `g_span_pend.active`
+UNCONDITIONALLY at the top of every rebuild - "a rebuild also orphans any
+armed span press (its row may be gone); the paired release must find nothing
+to resolve."
+
+T6 sends press, waits 8 seconds (the absence assertion), then releases. The
+rebuild fires ~0.7s after the arm every single time (T6's armed press is the
+only pair with an 8-second window), so the press was ALWAYS orphaned before
+the release was parsed - deterministically silent: no SPANPAIR line, no
+dispatch, never. T1/T3 (release ~0.5s after arm) raced the same rebuild and
+usually won; the failing steps moved between T1/T3/T6 across runs because the
+loss depends on which rebuild lands inside the press..release window.
+
+**The fix**
+
+Mirror the house's three existing content-identity guards (ROW-RUN anchor
+2026-10-19, span cursor/anchor 2026-11-03, hover 2026-11-04 - all built on
+`kh_tree_digest`): save `g_span_pend` before the rebuild; re-arm it afterwards
+iff the tree is byte-identical. Identical digest => identical tree order =>
+identical nav re-derivation (assign_nav_and_layout indexes from tree order),
+so the restored press resolves exactly as if no rebuild had landed. A tree
+that changed anything leaves the press orphaned, which is honest (its row may
+be gone, may have moved, or may carry a different action).
+
+**Verification**
+
+- 8/8 consecutive runs of nb_span_drag_test.sh green (previously ~1 in 3 red,
+  failing at a random step; the full suite had failed on T1 in one run and T6
+  in two others).
+- Receipts confirm the mechanism: SPANPRESS kept ... content identical after
+  each rebuild; SPANPAIR phit=1 ... same=1 at the release; dispatch happens.
+- **nb_all_tests.sh: ALL TESTS PASS, 38 sections, 31 suites (exit 0).**
+
+Notes: diagnostic breadcrumbs (SPANARM/SPANPAIR receipts) stay in the
+renderer - same class and volume as the existing ANCHOR/SPAN receipts. The
+running renderers are unchanged until restart. The digest guard is untouched;
+no new untested mechanism was added - the failing leg itself reproduced
+reliably and now logs the keep/dead outcome on every rebuild.
+
+### 9.20 2026-11-04 (night) — G2.6 closed: the recognized-property list is real, documented, and gated
+
+G2.6's definition of done: the recognized-property list in nb_css.c
+covers the G2.1-G2.5 set, the list is documented in-source, no silent
+drops. Reality before this session: the list was an undocumented table,
+the header still described the pre-2026-11-04 engine
+("only display/visibility/opacity/width/height; @media can never
+fire"), and three enum entries (src, font-weight, font-style) were
+recognized by prop_id but consumed by NOTHING - a declaration with
+those keywords was accepted and silently discarded, the textbook
+silent drop G2.6 exists to prevent.
+
+**What was done**
+
+1. The contract is now written in-source, directly above prop_id:
+   the complete list grouped by how each property is consumed (layout /
+   getComputedStyle-only / parsed-but-unread mirrors / @font-face-only /
+   not-recognized-at-all with the reasons), the hard rule that every
+   property the projection reads MUST resolve here, and the three-step
+   rule for adding one (NbCssStyle + apply_decl + the worker, plus the
+   gate below).
+2. The dead entries were REMOVED (nothing else referenced them;
+   @font-face parses src/font-weight/font-style through its own block,
+   which is where they are legal). A declaration of those keywords now
+   drops like any other unlisted property - loudly unambiguous, never
+   half-applied.
+3. nb_css.h's stale module comment rewritten to match the engine that
+   actually exists (pointing at the documented list instead of
+   duplicating a stale enumeration).
+
+**Two genuine product bugs the gate caught before it ever passed**
+
+- parse_font_face_block computed font-style (italic/oblique) into a
+  local, then stored font_style = 0 UNCONDITIONALLY - the compiler
+  warned "variable 'style' set but not used". Italic @font-face faces
+  can never match. Fixed: font_faces[idx].font_style = style.
+- display:none cleared has_display_flex but left display_flex stale
+  (2 from display:grid), violating the typed-pair invariant the code
+  itself documents ("never disagree"). Fixed: display_flex = 0 too.
+
+**The gate**
+
+tests/nb_css_props_test.sh (registered in nb_all_tests.sh): links
+nb_css.c + nb_dom.c directly (zero JS/engine deps, no window, no net),
+45 checks, one per recognized property + the drop-silently contract +
+@media both branches + inline-style-beats-sheet + @font-face. Negative
+tested: reintroducing the font-style bug reproduces exactly one FAIL;
+restoring it is green. PASS: 45/45.
+
+**Verification**
+
+- nb_css_props_test.sh: 45/45 PASS (and the deliberate negative test).
+- nb_all_tests.sh: **ALL TESTS PASS, 39 sections (was 38), 31 suites,
+  exit 0** - with the worker rebuilt on the fixed nb_css.c.
+
+**Flake observation (not fixed, recorded)**
+
+nb_focus_safety_test.sh (G1.4) failed once in the full-suite re-run at
+2026-11-04 ("the next keystroke went nowhere"); 4/4 isolated passes and
+PASS on the immediate re-run. Same timing-sensitive synthetic-input
+class as the span_drag family; no focus-path code changed by this work.
+If it recurs, instrument the arm/release receipts the way span_drag was
+bisected.
+
+### 9.21 2026-11-04 (night) — G3.4 closed: Ctrl+P prints the projected page to a PDF
+
+The last unbuilt KPI. "A page prints its projected rows to a file/PDF via
+the house print path" — no house print path existed, no printer is
+configured, and the system carries groff/ps2pdf but no HTML-to-PDF
+toolchain. Chosen implementation:
+
+- **Manager invokes the op; the op does the work.** ops/nb_print_page.sh
+  reads the projection (network_browser_page.state.txt), emits PostScript
+  itself (state -> PS -> ps2pdf; letter size; 0.75in margins; TITLE heading,
+  HEAD as bold subheads, TEXT word-wrapped to the margin, LIST indented
+  dashes, Helvetica), and writes the PDF into the app's own downloads/ dir
+  (same location and same naming discipline as downloads: sanitized TITLE,
+  collision-unique, app-owned, never user homes). On any failure it exits 1
+  with "ERROR: <why>" and produces no file - never a fake print.
+- **Pane reports the outcome like a download**: TITLE|Printed +
+  PRINT|<name>|<bytes>|<path> on success (new row kind handled in the
+  projector, mirrors DL|), TITLE|Print failed + TEXT|<why> on failure;
+  publish_status("printed"|"error: print failed").
+- **Triggers**: the manager's own request channel ("print:" line, same
+  truncate-one-line contract as go:) - written by ops/nb_write_print.sh
+  (chrome-action contract, mirrors nb_write_go.sh) or by Ctrl+P (ch==16),
+  added to the shared renderer, gated to the network-browser template -
+  other apps keep Ctrl+P. Relay code 16 added for agent parity (mirrors
+  Ctrl+C/F).
+- **Ghostscript escapes are hand-rolled**: parens/backslashes in page
+  content are escaped in the PS prologue - the failure mode that eats a
+  PostScript page.
+
+**Verified**
+
+- Live browser: PRINTED Mini_article.pdf (2775 bytes, 1 page, valid
+  PDF 1.4, correct title metadata), pane shows the Printed row,
+  page.state.txt carries PRINT|<name>|<bytes>|<path>.
+- New hermetic gate tests/nb_print_test.sh (registered; 40 sections):
+  --out produces valid %PDF- with correct page count; default mode names
+  the file from the sanitized TITLE into the scratch house's downloads/;
+  hostile page (parens/backslashes/UTF-8) yields a valid PDF; missing
+  state file -> rc 1 and NO file; PATH without ps2pdf -> rc 1 with a
+  clear ERROR; nb_write_print.sh writes exactly "print:".
+- nb_all_tests.sh: **ALL TESTS PASS, 40 sections (was 39), 31 suites,
+  exit 0.**
+
+**Scope note**: no "Print" button was added to the browser chrome -
+that is a design decision (where it sits, icon, label) and belongs to a
+UI bite, not this one. Ctrl+P is the universal print gesture; the
+request plumbing and the op are generic (any caller can write "print:").
+- PDF lands in downloads/ by design (same rule as downloads - app-owned,
+  never user homes).
+
+### 9.22 2026-11-07 — Find down-reveal restored: preliminary width clamped the scroll away
+
+`nb_find_test.sh`'s deep-match clause was red again, and this time the
+product-side root cause was located rather than inferred from the failing
+assertion.
+
+**What the receipts showed**
+
+- On the `scroll-article.html` fixture the needle is at row 60. A correct
+  reveal should land with `scroll=43`, but the live receipts alternated:
+  `FINDREVEAL row=60 ... scroll=43`, then a later layout read `scroll=14`,
+  then the needle was parked at `y=-100000` again, while the per-PID ASCII
+  mirror still reported `NEEDLE ... 1 of 1`.
+- Marker logs inside `layout_scroll_region()` isolated the change to setup:
+  entry `scroll_in=43` became `scroll_after_setup=14`, with `max=44`.
+- Walking the setup statements showed the transition happened at the
+  **preliminary full-width clamp** (`width 613`, `total=33`, `max=14`).
+  After the scrollbar was reserved, the final narrower width (`605`)
+  recomputed the same 29 filler paragraphs as one line wider each, giving
+  `total=62` and `max=44` - but the entry scroll had already been clamped
+  down to 14 and was never restored.
+
+**The fixes in `khtpm_core_render.c`**
+
+1. Total/scroll-limit calculation now uses the final scrollbar-narrowed
+   width, and the caller's entry scroll is restored after that final
+   computation when the final range still permits it. This stops the
+   preliminary width from silently discarding a real scroll position.
+2. A pending Find reveal is cleared when the tree it points into is
+   discarded, and in the no-target branch of `kh_find_commit()`; the
+   end-of-reparse `kh_find_commit()` then reissues it against the new tree.
+3. The one-shot reveal is ancestor-gated to its owning scroll region, so a
+   sidebar/layout pass cannot consume a pending reveal belonging to the
+   content panel. Visibility is recomputed after the reveal's own scroll
+   adjustment.
+4. The dump path checks for a just-landed page publish before capturing so
+   its PNG and its ASCII sidecar use the same tree/scroll state.
+
+**Chrome wiring included in the same commit**
+
+Network Browser gained its guarded Print action, its raw-X resize grip /
+`user-resizable` class, and the final-width scroll repair; `xsendevent.py`
+accepts root coordinates so the resize drag delta can be driven honestly.
+Generated bootstrap/UI state was left out of the commit.
+
+**Verification**
+
+- `sh build_core_render.sh` — clean build (`OK +x/khtpm_core_render.+x`).
+- Deterministic manual needle drive produced the frame record:
+  `cx31 ... nav=37, x=200, y=674, w=605`, matching the per-PID ASCII
+  mirror's `[FIND] query="NEEDLE" 1 of 1`.
+- `sh tests/nb_find_test.sh` — **PASS**, including:
+  `needle y -100000 -> 674`, painted band `676..689` on row `674..704`, and
+  the opposite-direction match returning to `y=164`.
+- `sh tests/nb_all_tests.sh` — **ALL TESTS PASS** (the 40-section/31-suite
+  suite visible in the run output, including all previously registered gates).
+- Commit: `29a3b72c2e8ae2c62c3593cbe5db2e1df1a1e8ef`
+  (`fix: preserve Find/scroll state while wiring browser chrome controls`),
+  scoped to the renderer, browser CSS/template/manager, and `xsendevent.py`,
+  on `opencode`.

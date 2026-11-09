@@ -36,6 +36,15 @@ static void strip_comments(char *s) {
 
 /* Consume a balanced { ... } block whose `{` is at p; returns the position
  * just past the matching `}` (or end if unterminated). Quotes respected. */
+/* Find the matching '}' for a block whose '{' was just consumed.
+ *
+ * Returns NULL when the block is UNTERMINATED. It used to return `end` for
+ * that, which is indistinguishable from the legitimate case where the closing
+ * brace is the very last character of the stylesheet - and the rule loop
+ * treats "close == end" as unterminated and breaks. Measured: a sheet whose
+ * final character is '}' silently loses its LAST rule (a one-rule sheet parses
+ * to ZERO rules). Only "ran off the end without closing" may mean unterminated.
+ */
 static const char *skip_block(const char *p, const char *end) {
     int depth = 1;
     while (p < end) {
@@ -57,7 +66,7 @@ static const char *skip_block(const char *p, const char *end) {
         }
         p++;
     }
-    return end;
+    return NULL;   /* ran off the end: genuinely unterminated */
 }
 
 static int is_token_char(char c) {
@@ -173,6 +182,22 @@ static int match_part(const NbNode *el, const char *part, size_t len) {
 typedef struct { int n_id, n_cls, n_type; } SelInfo;
 
 /* Specificity: max (id, class, type) triple across the comma parts. */
+/* Specificity triple, MAXed over the comma list (CSS takes the max over a
+ * selector list, not the sum).
+ *
+ * The TYPE counter used to count every alphabetic character in the selector,
+ * so a class NAME contributed its own length: `.narrow` scored n_type=6 and
+ * `.wide` scored 4. Two equally-specific class rules then compared by name
+ * LENGTH, and the longer name won wherever it sat in the sheet - so a later,
+ * equally-specific override (an @media branch, most visibly) silently lost.
+ * Measured before this fix, element carrying both classes:
+ *     ".aa { display: block; } .xx { display: none; }"  -> block   (later rule lost)
+ *     ".aaaaaa { display: block; } .xx { display: none; }" -> ``   (longer name won)
+ *
+ * A type selector is now counted only where one can legally begin: the first
+ * identifier of a compound (start of a selector, or after a combinator), and
+ * not after '.', '#', ':' or '*'. So `.cls` scores (0,1,0) and `p.cls` (0,1,1),
+ * which is what CSS says. */
 static void specificity(const char *sel, size_t len, SelInfo *out) {
     out->n_id = out->n_cls = out->n_type = 0;
     size_t i = 0;
@@ -180,10 +205,18 @@ static void specificity(const char *sel, size_t len, SelInfo *out) {
         size_t j = i;
         while (j < len && sel[j] != ',') j++;
         SelInfo p = {0, 0, 0};
+        int type_start = 1;              /* a tag name may begin here */
         for (size_t k = i; k < j; k++) {
-            if (sel[k] == '#') p.n_id++;
-            else if (sel[k] == '.' || sel[k] == '[') p.n_cls++;
-            else if (is_token_char(sel[k]) && isalpha((unsigned char)sel[k])) p.n_type++;
+            char c = sel[k];
+            if (c == '#') { p.n_id++; type_start = 0; }
+            else if (c == '.' || c == '[') { p.n_cls++; type_start = 0; }
+            else if (c == ':' || c == '*') { type_start = 0; }  /* pseudo/element: not a type */
+            else if (is_ws(c) || c == '>' || c == '+' || c == '~') type_start = 1;
+            else if (isalpha((unsigned char)c)) {
+                if (type_start) { p.n_type++; type_start = 0; }  /* first char only */
+            } else {
+                type_start = 0;
+            }
         }
         if (p.n_id > out->n_id) out->n_id = p.n_id;
         if (p.n_cls > out->n_cls) out->n_cls = p.n_cls;
@@ -192,16 +225,113 @@ static void specificity(const char *sel, size_t len, SelInfo *out) {
     }
 }
 
-NbCss *nb_css_parse(const char *text, size_t len) {
-    NbCss *css = (NbCss *)calloc(1, sizeof(NbCss));
-    if (!css) return NULL;
-    if (!text || len == 0) return css;
+/* ---- @media prelude evaluation (G2.5, 2026-11-04) ----
+ *
+ * WHY THIS EXISTS: nb_css_parse() used to skip every @media block wholesale,
+ * on the stated ground that "the engine has no viewport, so a media query can
+ * never fire" (nb_css.h). The worker does have one - LOAD carries the pane's
+ * content width and window.innerWidth is exported from the same value - so a
+ * page whose layout switches at a breakpoint could never switch here.
+ *
+ * The grammar below is deliberately the subset real pages write, and anything
+ * outside it makes the query NOT match. That direction is chosen on purpose:
+ * a block we skip is a missing nicety, while a block that fires wrongly
+ * changes the layout of a page that expected the other branch. */
 
-    char *s = strndup_local(text, len);
-    if (!s) return css;
-    strip_comments(s);
+/* Length value in CSS px: "767px", "48em", "768" (bare = px). -1 = not
+ * understood, which the caller turns into "no match". */
+static int media_px(const char *p, size_t n) {
+    while (n && is_ws(*p)) { p++; n--; }
+    while (n && is_ws(p[n - 1])) n--;
+    if (!n || n >= 32) return -1;
+    char buf[32];
+    memcpy(buf, p, n);
+    buf[n] = 0;
+    char *end = NULL;
+    long v = strtol(buf, &end, 10);
+    if (end == buf) return -1;
+    while (*end && is_ws(*end)) end++;
+    if (*end == 0) return (int)v;                       /* bare number: px */
+    if (strcasecmp(end, "px") == 0) return (int)v;
+    if (strcasecmp(end, "em") == 0 || strcasecmp(end, "rem") == 0)
+        return (int)(v * 16);                           /* 16px root, as everywhere else here */
+    return -1;
+}
 
-    size_t slen = strlen(s);
+/* One comma-separated query, no top-level commas in `q`. */
+static int media_query_matches(const char *q, size_t qlen, int vp) {
+    const char *p = q, *end = q + qlen;
+    int saw_any = 0;
+    while (p < end) {
+        while (p < end && is_ws(*p)) p++;
+        if (p >= end) break;
+        if (*p == '(') {
+            const char *cl = p + 1;
+            while (cl < end && *cl != ')') cl++;
+            if (cl >= end) return 0;                    /* unterminated */
+            const char *colon = p + 1;
+            while (colon < cl && *colon != ':') colon++;
+            if (colon >= cl) return 0;                  /* no value: not understood */
+            const char *fn = p + 1;
+            size_t fnl = (size_t)(colon - fn);
+            while (fnl && is_ws(*fn)) { fn++; fnl--; }
+            while (fnl && is_ws(fn[fnl - 1])) fnl--;
+            int val = media_px(colon + 1, (size_t)(cl - colon - 1));
+            if (val < 0) return 0;
+            saw_any = 1;
+            if (fnl == 9 && strncasecmp(fn, "min-width", 9) == 0) {
+                if (!(vp >= val)) return 0;
+            } else if (fnl == 9 && strncasecmp(fn, "max-width", 9) == 0) {
+                if (!(vp <= val)) return 0;
+            } else if (fnl == 5 && strncasecmp(fn, "width", 5) == 0) {
+                if (vp != val) return 0;
+            } else {
+                return 0;                               /* a feature we cannot answer */
+            }
+            p = cl + 1;
+        } else {
+            const char *w = p;
+            while (p < end && !is_ws(*p) && *p != '(' && *p != ',') p++;
+            size_t wl = (size_t)(p - w);
+            if (wl == 3 && strncasecmp(w, "and", 3) == 0) continue;
+            if (wl == 4 && strncasecmp(w, "only", 4) == 0) continue;   /* legacy no-op */
+            if (wl == 3 && strncasecmp(w, "all", 3) == 0) { saw_any = 1; continue; }
+            if (wl == 6 && strncasecmp(w, "screen", 6) == 0) { saw_any = 1; continue; }
+            /* print / speech / anything else - and `not`, which we cannot
+             * honestly evaluate. */
+            return 0;
+        }
+    }
+    /* A prelude that named nothing we understand cannot fire. */
+    return saw_any;
+}
+
+/* The whole prelude: top-level commas are OR. Commas inside parens do not
+ * split (no supported condition contains one, but the scan stays honest). */
+static int media_prelude_matches(const char *pre, size_t plen, int vp) {
+    const char *p = pre, *end = pre + plen;
+    const char *part = p;
+    int depth = 0;
+    for (; p < end; p++) {
+        /* Track paren depth so a comma INSIDE a condition cannot split, and
+         * -- the mistake this loop was written wrong with first -- never fall
+         * through to the split for a paren: splitting on '(' turned
+         * "(max-width: 767px)" into " " and "max-width: 767px", neither of
+         * which is a query, so every @media block silently declined to match.
+         * A matcher that can only say NO looks exactly like a viewport that
+         * is never set. */
+        if (*p == '(') { depth++; continue; }
+        if (*p == ')') { if (depth > 0) depth--; continue; }
+        if (*p != ',' || depth > 0) continue;
+        if (media_query_matches(part, (size_t)(p - part), vp)) return 1;
+        part = p + 1;
+    }
+    return media_query_matches(part, (size_t)(end - part), vp);
+}
+
+/* The parse loop, factored out so a MATCHING @media body can be parsed into
+ * the same NbCss recursively (and in place, preserving source order). */
+static void css_parse_text(NbCss *css, const char *s, size_t slen) {
     size_t i = 0;
     while (i < slen) {
         const char *head = s + i;
@@ -220,6 +350,7 @@ NbCss *nb_css_parse(const char *text, size_t len) {
             if (strncasecmp(at_name, "font-face", 9) == 0) {
                 /* @font-face rule: parse descriptors */
                 const char *after = skip_block(lb + 1, s + slen);
+                if (!after) after = s + slen;
                 size_t block_len = (size_t)(after - lb - 2); /* exclude { } */
                 if (block_len > 0) {
                     char *block = malloc(block_len + 1);
@@ -233,14 +364,46 @@ NbCss *nb_css_parse(const char *text, size_t len) {
                 i = (size_t)(after - s);
                 continue;
             }
-            /* @media/@keyframes/@import/@supports: skip body */
+            if (strncasecmp(at_name, "media", 5) == 0) {
+                /* @media prelude (min-width: N) ... { rules }. Evaluate the
+                 * query against the viewport this sheet was parsed for; on a
+                 * match parse the body as nested CSS so its rules land in
+                 * this same list, in source order. viewport_px == 0 means no
+                 * viewport is known: skip, exactly as before. */
+                const char *after = skip_block(lb + 1, s + slen);
+                if (!after) after = s + slen;
+                if (css->viewport_px > 0) {
+                    const char *pre = at_name + 5;
+                    size_t plen = (size_t)(lb - pre);
+                    if (media_prelude_matches(pre, plen, css->viewport_px)) {
+                        size_t blen = (size_t)(after - lb - 2);
+                        if (blen > 0) {
+                            char *body = malloc(blen + 1);
+                            if (body) {
+                                memcpy(body, lb + 1, blen);
+                                body[blen] = 0;
+                                css_parse_text(css, body, blen);
+                                free(body);
+                            }
+                        }
+                    }
+                }
+                i = (size_t)(after - s);
+                continue;
+            }
+            /* @keyframes/@supports: skip body */
             const char *after = skip_block(lb + 1, s + slen);
+            if (!after) after = s + slen;
             i = (size_t)(after - s);
             continue;
         }
         const char *in = lb + 1;
         const char *close = skip_block(in, s + slen);
-        if (close == s + slen) break;              /* unterminated: stop */
+        /* NULL, not `close == end`: a block whose closing brace is the last
+         * character of the sheet ends AT end, which is a complete rule, not
+         * an unterminated one. Conflating them silently dropped the final
+         * rule of any stylesheet that does not end with whitespace. */
+        if (!close) break;                         /* unterminated: stop */
         size_t hl = (size_t)(lb - hstart);         /* selector length */
         size_t dl = (size_t)(close - in - 1);      /* decl block length */
         if (hl == 0 || dl == 0) {
@@ -265,9 +428,34 @@ NbCss *nb_css_parse(const char *text, size_t len) {
         css->nr++;
         i = (size_t)(close - s);
     }
+}
+
+/* nb_css_parse() and nb_css_parse_vp() differ ONLY in the viewport the sheet
+ * is evaluated for; everything else (comment stripping, the loop, @font-face)
+ * is shared so the two can never drift. */
+static NbCss *nb_css_parse_common(const char *text, size_t len, int viewport_px) {
+    NbCss *css = (NbCss *)calloc(1, sizeof(NbCss));
+    if (!css) return NULL;
+    css->viewport_px = (viewport_px > 0) ? viewport_px : 0;
+    if (!text || len == 0) return css;
+
+    char *s = strndup_local(text, len);
+    if (!s) return css;
+    strip_comments(s);
+
+    css_parse_text(css, s, strlen(s));
     free(s);
     return css;
 }
+
+NbCss *nb_css_parse(const char *text, size_t len) {
+    return nb_css_parse_common(text, len, 0);
+}
+
+NbCss *nb_css_parse_vp(const char *text, size_t len, int viewport_px) {
+    return nb_css_parse_common(text, len, viewport_px);
+}
+
 
 /* Parse @font-face descriptor block and store in css->font_faces */
 static void parse_font_face_block(const char *block, NbCss *css) {
@@ -324,19 +512,95 @@ static void parse_font_face_block(const char *block, NbCss *css) {
         strncpy(css->font_faces[idx].font_family, family, 63);
         strncpy(css->font_faces[idx].src, src, 255);
         css->font_faces[idx].font_weight = weight ? weight : 400;
-        css->font_faces[idx].font_style = 0;
+        css->font_faces[idx].font_style = style;
         css->font_face_count++;
     }
 }
 
 /* ----------------------- cascade ----------------------- */
 
+/* ======================================================================
+ * THE RECOGNIZED PROPERTY LIST - and the contract around it.
+ *
+ * This module is deliberately NOT a full CSS engine. The table below is
+ * the COMPLETE set of properties the engine resolves; anything NOT
+ * listed is silently dropped, by design. The failing shape to avoid is
+ * a rule that is half-applied, and this module refuses to become that.
+ *
+ * THE RULE (do not break it): every property the page projection reads
+ * for layout MUST be resolved here - otherwise a real page changes
+ * behaviour the moment one is missing, with no error anywhere. The set
+ * below is the one G2.1-G2.5 are built on. Adding a property means
+ * touching ALL THREE together:
+ *   1. NbCssStyle (nb_css.h) - the resolved-style fields, and
+ *   2. apply_decl() below - how the declaration maps onto them, and
+ *   3. ops/nb_js_worker.c - ONLY if the projection should act on it.
+ * Then extend tests/nb_css_props_test.sh, which asserts every property
+ * below end-to-end through nb_css_resolve().
+ *
+ * RESOLVED AND CONSUMED BY THE LAYOUT / PROJECTION
+ *   display               - none/hidden/flex/grid/block/... ; flex =>
+ *                          display_flex=1, grid => display_flex=2
+ *   visibility            - hidden (self or any ancestor => hidden walk)
+ *   opacity               - stored as the normalized string
+ *   width, height         - px and bare numbers only
+ *   padding, padding-top, padding-bottom
+ *                         - shorthand parses its FIRST component only
+ *   margin, margin-top, margin-bottom
+ *                         - shorthand parses its FIRST component only
+ *   position              - absolute | fixed (others => 0=static/relative)
+ *   top, left             - px, signed
+ *   flex-direction        - row | column (CSS default is row)
+ *   flex-grow             - number weight for remaining main-axis space
+ *   grid-template-columns - tracks in px or fr (repeat(N,1fr) expands)
+ *
+ * RESOLVED FOR getComputedStyle ONLY (never feeds layout)
+ *   font-family           - @font-face resolution + computed style
+ *
+ * PARSED BUT UNREAD BY THE CURRENT LAYOUT (mirrors khtpm_css_parser.h
+ * exactly; carried so the two engines cannot drift apart in shape -
+ * CENTROID_GOLD_STD §1a. No consumer yet, do not document as behaviour)
+ *   z-index
+ *
+ * NOT RECOGNIZED AT ALL (silently dropped, deliberately - add one only
+ * with the layout-side change that gives it meaning, never "for
+ * completeness"):
+ *   padding-left, padding-right, margin-left, margin-right
+ *                         - the engine's box model is VERTICAL only
+ *   gap, justify-content, align-items, align-self,
+ *   flex-wrap, flex-basis, flex-shrink, order
+ *                         - no flex alignment/wrapping axis exists yet
+ *   box-sizing, border*, background*, color
+ *   font-size, line-height, text-align, letter-spacing,
+ *   src, font-weight, font-style
+ *                         - these three are @font-face-only (parsed by
+ *                         parse_font_face_block()); as declarations they
+ *                         carry no computed meaning and are dropped like
+ *                         any other unlisted property, on purpose - no
+ *                         half-applied rules.
+ *   max/min-width, max/min-height, overflow
+ *
+ * @font-face: font-family, src, font-weight, font-style (up to 8 faces;
+ * not declarations - parsed by their own block, not the table above).
+ *
+ * @media prelude grammar (not a property): only | all | screen,
+ * optional 'and' clauses, (min-width|max-width|width: N) with
+ * N in px/em/rem (1em = 16px), top-level commas act as OR. Anything
+ * else (print, orientation, prefers-*, 'not') does NOT match - a rule
+ * that never fires is a missing nicety, a rule that fires wrongly
+ * changes layout. Nested @media evaluates recursively in source order.
+ * A sheet parsed with viewport_px <= 0 skips every @media block.
+ *
+ * Tests: tests/nb_css_props_test.sh links this file directly and asserts
+ * every property above lands in NbCssStyle with the expected value; the
+ * G2.x suites (flex/grid/geometry/@media) gate the layout consequences.
+ * ====================================================================== */
 enum { PD_DISPLAY = 0, PD_VIS, PD_OP, PD_W, PD_H,
        PD_PAD_TOP, PD_PAD_BOTTOM, PD_MAR_TOP, PD_MAR_BOTTOM,
        PD_FLEX_DIR, PD_FLEX_GROW,
        PD_GRID_TEMPLATE_COLUMNS,
        PD_POSITION, PD_TOP, PD_LEFT, PD_Z_INDEX,
-       PD_FONT_FAMILY, PD_SRC, PD_FONT_WEIGHT, PD_FONT_STYLE,
+       PD_FONT_FAMILY,
        PD_COUNT };
 
 static int prop_id(const char *key) {
@@ -359,9 +623,13 @@ static int prop_id(const char *key) {
     if (strcmp(key, "left") == 0) return PD_LEFT;
     if (strcmp(key, "z-index") == 0) return PD_Z_INDEX;
     if (strcmp(key, "font-family") == 0) return PD_FONT_FAMILY;
-    if (strcmp(key, "src") == 0) return PD_SRC;
-    if (strcmp(key, "font-weight") == 0) return PD_FONT_WEIGHT;
-    if (strcmp(key, "font-style") == 0) return PD_FONT_STYLE;
+    /* NB: @font-face's src/font-weight/font-style are NOT handled here.
+     * They carry no computed meaning in the declaration table (nothing
+     * consumed them), so they are deliberately NOT recognized - a page
+     * writing 'font-weight: 700' inside a normal rule gets nothing,
+     * exactly like any other property not listed here. @font-face is
+     * parsed by parse_font_face_block() instead, which reads src,
+     * font-weight and font-style directly. */
     return -1;
 }
 
@@ -410,6 +678,7 @@ static void apply_decl(int pid, const char *val, size_t vlen, int important,
             if (score >= scores[pid]) {
                 snprintf(out->display, sizeof(out->display), "none");
                 out->has_display_flex = 0;   /* 6.2: none is not flex */
+                out->display_flex = 0;       /* keep the typed pair consistent */
                 scores[pid] = score;
             }
         } else if (score >= scores[pid]) {

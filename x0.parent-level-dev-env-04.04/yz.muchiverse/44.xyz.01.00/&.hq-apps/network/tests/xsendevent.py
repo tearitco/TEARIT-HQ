@@ -5,8 +5,12 @@
 # handler path (ButtonPress branch -> history pairing -> poll, motion
 # branch, release branch) with stdlib-only ctypes - no xdotool/XTest.
 # Motion carries state=Button1Mask, exactly what a held-button motion
-# carries. x_root/y_root are zero (unused by the span paths).
-# Usage: xsendevent.py <win_hex> press|release|move <x> <y> [button]
+# carries. x_root/y_root are zero by default, which is correct for the
+# span paths - but the bottom-right resize-drag computes its delta from
+# the ROOT coords, so a resize test must pass them explicitly:
+#   press|release <x> <y> [button] [x_root y_root]
+#   move          <x> <y>          [x_root y_root]
+# Usage: xsendevent.py <win_hex> press|release|move <x> <y> [button] [x_root y_root]
 #        xsendevent.py <win_hex> key <keysym_or_char> [modifier]
 #
 # KEYS (added 2026-10-14 for G1.4 focus safety): the dispatcher reads keys
@@ -46,12 +50,15 @@ W = int(sys.argv[1], 16)
 TYPES = {'press': (4, 4), 'release': (5, 8), 'move': (6, 64)}
 
 
-def ev(t, x, y, state, button):
+def ev(t, x, y, state, button, xr=0, yr=0):
     b = bytearray(192)
     struct.pack_into('i', b, 0, t)
     struct.pack_into('Q', b, 32, W)
+    struct.pack_into('i', b, 56, 0)          # time (unused, but keep it zeroed)
     struct.pack_into('i', b, 64, x)
     struct.pack_into('i', b, 68, y)
+    struct.pack_into('i', b, 72, xr)         # x_root
+    struct.pack_into('i', b, 76, yr)         # y_root
     struct.pack_into('I', b, 80, state)
     struct.pack_into('I', b, 84, button)
     struct.pack_into('i', b, 88, 1)
@@ -99,10 +106,17 @@ if op == 'key':
 
 x, y = int(sys.argv[3]), int(sys.argv[4])
 t, mask = TYPES[op]
+xr = yr = 0
 if op == 'move':
-    x11.XSendEvent(d, W, False, mask, ev(t, x, y, 256, 0))
+    if len(sys.argv) >= 7:
+        xr, yr = int(sys.argv[5]), int(sys.argv[6])
+    x11.XSendEvent(d, W, False, mask, ev(t, x, y, 256, 0, xr, yr))
 else:
     btn = int(sys.argv[5]) if len(sys.argv) > 5 else 1
-    x11.XSendEvent(d, W, False, mask, ev(t, x, y, 0, btn))
+    if not 1 <= btn <= 5:
+        sys.exit("button must be 1-5, got %d - root coords need a button first: press x y 1 x_root y_root" % btn)
+    if len(sys.argv) >= 8:
+        xr, yr = int(sys.argv[6]), int(sys.argv[7])
+    x11.XSendEvent(d, W, False, mask, ev(t, x, y, 0, btn, xr, yr))
 x11.XFlush(d)
 print('sent %s %d,%d' % (op, x, y))
