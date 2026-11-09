@@ -10,7 +10,7 @@
  * `seat`/`join` row. PAUSE IS NOT OURS: the editor's switch running (state/world/switches.txt, Player > Play / Stop) is the one authority; this driver ticks only while running=1.
  * Cost: idle = a stat() and an 80 ms nap per loop; the engine is asked for a move only while a game is on, running and not over. Files: game_ui.txt (rewritten), games/deskopoly/action.txt (capped at 64 KiB),
  * games/archive (the last 3 finished games). Ends when the editor is gone (parent pid 1) or on SIGTERM.
- * Commands: players_up players_down human_next seed_next speed_next start step new_game roll buy skip end jail_pay jail_roll pay_debt bankrupt. */
+ * Commands: players_up players_down human_next seed_next speed_next start step new_game roll buy skip end jail_pay jail_roll pay_debt bankrupt pass bid_min bid_up; the TRADE screen: tr_open tr_close tr_counter tr_amend tr_cancel tr_accept tr_reject tr_partner tr_send tr_g<tile> tr_r<tile> tr_gk<0|1> tr_rk<0|1> tr_gc+ tr_gc- tr_rc+ tr_rc- tr_pa+ tr_pb+ (modes new / counter / amend, see the M9 block). */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -154,13 +154,23 @@ static int page_needed(void) {
  * cash goes in steps of 10. The DRAFT lives only in this process (a preference: it changes no outcome, a restart loses it); Send calls the canonical `offer` verb, so a pet or a harness sees the same row. ===== */
 #define TR_PAGE 4
 static int tr_open_ = 0, tr_partner = 0, tr_pg[2]; static unsigned long long tr_give_t, tr_get_t; static int tr_give_c, tr_get_c;
+/* ONE draft model, three modes (2026-11-08): 0 NEW offer (`offer`), 1 COUNTER to an offer addressed to me (`counter <id>`: the draft starts as the SWAPPED terms, the partner is the proposer and cannot be changed),
+ * 2 AMEND my own open offer (`amend <id>`: the draft starts as my terms, the partner is the addressee). tr_oid = the offer id of modes 1 and 2. tr_gk / tr_rk = Get Out card bits (bit 0 luck, bit 1 fund) carried over from a
+ * prefilled offer so a counter does not silently drop a card; a card can only be taken OUT of the draft here. The draft is a PREFERENCE (this process only); the ledger gets a row only when Send is pressed. */
+static int tr_mode = 0, tr_oid = 0, tr_gk = 0, tr_rk = 0;
 static int tr_me(void) { return human_seat > 0 ? human_seat : 1; }
 static int tr_active(int i) { char k[24], v[8]; snprintf(k, sizeof k, "p%d_out", i); return i >= 1 && i <= uint_("n_players") && uget(k, v, sizeof v)[0] != '1'; }
-static void tr_clear(void) { tr_give_t = tr_get_t = 0; tr_give_c = tr_get_c = 0; tr_pg[0] = tr_pg[1] = 0; }
+static void tr_clear(void) { tr_give_t = tr_get_t = 0; tr_give_c = tr_get_c = 0; tr_pg[0] = tr_pg[1] = 0; tr_mode = 0; tr_oid = 0; tr_gk = tr_rk = 0; }
+static const char *TR_DK[2] = { "luck", "fund" };
+static void tr_parse(const char *as, unsigned long long *mask, int *cash, int *cards) {   /* "prop:8+cash:50+card:luck" (the engine's canonical form) -> the draft fields */
+    char tmp[160]; snprintf(tmp, sizeof tmp, "%s", as); *mask = 0; *cash = 0; *cards = 0; char *sv = NULL;
+    for (char *t = strtok_r(tmp, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { if (!strncmp(t, "prop:", 5)) { int n = atoi(t + 5); if (n >= 0 && n < 64) *mask |= 1ULL << n; } else if (!strncmp(t, "cash:", 5)) *cash = atoi(t + 5); else if (!strncmp(t, "card:", 5)) for (int d = 0; d < 2; d++) if (!strcmp(t + 5, TR_DK[d])) *cards |= 1 << d; }
+}
 static int tr_owns(int pl, int t) { char k[24], v[16], idb[8]; snprintf(k, sizeof k, "t%d_owner", t); snprintf(idb, sizeof idb, "p%d", pl); return !strcmp(uget(k, v, sizeof v), idb); }
 static int tr_tradable(int t) { char k[24], v[8]; snprintf(k, sizeof k, "t%d_trade", t); return uget(k, v, sizeof v)[0] == '1'; }
 static void tr_tilename(int t, char *o, size_t cap) { char k[24], nm[40], mo[8]; snprintf(k, sizeof k, "t%d_name", t); uget(k, nm, sizeof nm); snprintf(k, sizeof k, "t%d_mort", t); uget(k, mo, sizeof mo); snprintf(o, cap, "%s%s", nm, mo[0] ? " (mortgaged)" : ""); }
-static void tr_assets(unsigned long long mask, int cash, char *o, size_t cap) { o[0] = 0; for (int t = 0; t < 64; t++) if (mask >> t & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%sprop:%d", o[0] ? "+" : "", t); } if (cash > 0) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scash:%d", o[0] ? "+" : "", cash); } if (!o[0]) snprintf(o, cap, "-"); }
+static void tr_assets(unsigned long long mask, int cash, int cards, char *o, size_t cap) { o[0] = 0; for (int t = 0; t < 64; t++) if (mask >> t & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%sprop:%d", o[0] ? "+" : "", t); } if (cash > 0) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scash:%d", o[0] ? "+" : "", cash); }
+    for (int d = 0; d < 2; d++) if (cards >> d & 1) { size_t l = strlen(o); snprintf(o + l, cap - l, "%scard:%s", o[0] ? "+" : "", TR_DK[d]); } if (!o[0]) snprintf(o, cap, "-"); }
 static void tr_nice(const char *as, char *o, size_t cap) {   /* prop:8+cash:50 -> "Sky2 + $50" for the player's eyes */
     char tmp[160]; snprintf(tmp, sizeof tmp, "%s", as); o[0] = 0; char *sv = NULL; for (char *t = strtok_r(tmp, "+", &sv); t; t = strtok_r(NULL, "+", &sv)) { char one[60]; if (!strncmp(t, "prop:", 5)) tr_tilename(atoi(t + 5), one, sizeof one); else if (!strncmp(t, "cash:", 5)) snprintf(one, sizeof one, "$%s", t + 5); else if (!strncmp(t, "card:", 5)) snprintf(one, sizeof one, "%s card", t + 5); else snprintf(one, sizeof one, "nothing"); size_t l = strlen(o); snprintf(o + l, cap - l, "%s%s", o[0] ? " + " : "", one); }
     if (!o[0]) snprintf(o, cap, "nothing"); }
@@ -174,34 +184,57 @@ static void tr_inventory(char id, int x, int owner_pl, unsigned long long moved,
     for (int t = 0; t < nt; t++) if (tr_owns(owner_pl, t) && tr_tradable(t) && !(moved >> t & 1)) { if (seen++ < skip) continue; if (shown >= TR_PAGE) break; tr_tilename(t, lab, sizeof lab); snprintf(cmd, sizeof cmd, "%s%d", mvcmd, t); tp_item(id, &n, lab, cmd); shown++; }
     if (!cnt) tp_item(id, &n, "(nothing to trade)", "void"); if (pages > 1) { snprintf(lab, sizeof lab, "more... (page %d of %d)", tr_pg[pg_idx] + 1, pages); tp_item(id, &n, lab, pgcmd); } tp_end(id, n);
 }
-static void tr_offerpane(char id, int x, const char *title, unsigned long long mask, int cash, const char *mvcmd, const char *up, const char *dn, const char *upf, const char *dnf) {
+static void tr_offerpane(char id, int x, const char *title, unsigned long long mask, int cash, int cards, const char *mvcmd, const char *up, const char *dn, const char *upf, const char *dnf) {
     tp_head(id, x, title); int nt = uint_("n_tiles"), n = 0; char lab[80], cmd[24]; snprintf(lab, sizeof lab, upf, cash); tp_item(id, &n, lab, up); snprintf(lab, sizeof lab, dnf, cash); tp_item(id, &n, lab, dn);
-    for (int t = 0; t < nt; t++) if (mask >> t & 1) { char nm[60]; tr_tilename(t, nm, sizeof nm); snprintf(lab, sizeof lab, "%s (press: back)", nm); snprintf(cmd, sizeof cmd, "%s%d", mvcmd, t); tp_item(id, &n, lab, cmd); } tp_end(id, n);
+    for (int t = 0; t < nt; t++) if (mask >> t & 1) { char nm[60]; tr_tilename(t, nm, sizeof nm); snprintf(lab, sizeof lab, "%s (press: back)", nm); snprintf(cmd, sizeof cmd, "%s%d", mvcmd, t); tp_item(id, &n, lab, cmd); }
+    for (int d = 0; d < 2; d++) if (cards >> d & 1) { snprintf(lab, sizeof lab, "%s card (press: back)", TR_DK[d]); snprintf(cmd, sizeof cmd, "%sk%d", mvcmd, d); tp_item(id, &n, lab, cmd); } tp_end(id, n);
 }
 static void tr_screen(void) {   /* the feed while the trade screen is open: four panes + a three-button control popup under them */
     char b[300], v[8]; int me = tr_me(), pa = tr_partner; load_ui();
     if (pa < 1 || pa == me || !tr_active(pa)) { pa = 0; for (int i = 1; i <= uint_("n_players"); i++) if (i != me && tr_active(i)) { pa = i; break; } tr_partner = pa; }
     char tl[8]; uget("trade_left", tl, sizeof tl); char pn[24], k[24]; snprintf(k, sizeof k, "p%d_name", pa); uget(k, pn, sizeof pn);
     catn(OUT_, OUTCAP_, "tp_on=1\ngame-ov_x=344\ngame-ov_y=270\n"); (void)v;
-    snprintf(b, sizeof b, "p%d offers p%d  (%s new offers left)", me, pa, tl); add_text(b);
-    snprintf(b, sizeof b, "Partner: p%d %s", pa, pn); add_btn("Send offer", "tr_send"); add_btn(b, "tr_partner"); add_btn("Back to game", "tr_close");
-    tr_inventory('a', 0, me, tr_give_t, "tr_g", 0, "tr_pa+"); tr_offerpane('g', 224, "you GIVE", tr_give_t, tr_give_c, "tr_g", "tr_gc+", "tr_gc-", "give $%d: add 10", "give $%d: take back 10"); tr_offerpane('r', 448, "you GET", tr_get_t, tr_get_c, "tr_r", "tr_rc+", "tr_rc-", "ask $%d: ask 10 more", "ask $%d: ask 10 less"); tr_inventory('b', 672, pa, tr_get_t, "tr_r", 1, "tr_pb+");
+    if (tr_mode == 1) snprintf(b, sizeof b, "COUNTER to p%d's offer #%d", pa, tr_oid);
+    else if (tr_mode == 2) snprintf(b, sizeof b, "AMEND your offer #%d to p%d", tr_oid, pa);
+    else snprintf(b, sizeof b, "p%d offers p%d  (%s new offers left)", me, pa, tl);
+    add_text(b);
+    snprintf(b, sizeof b, "Partner: p%d %s", pa, pn);
+    add_btn(tr_mode == 1 ? "Send counter" : tr_mode == 2 ? "Send amendment" : "Send offer", "tr_send");
+    if (tr_mode == 0) add_btn(b, "tr_partner"); else add_text(b);   /* the partner of a counter / amendment is fixed by the offer */
+    add_btn("Back to game", "tr_close");
+    tr_inventory('a', 0, me, tr_give_t, "tr_g", 0, "tr_pa+"); tr_offerpane('g', 224, "you GIVE", tr_give_t, tr_give_c, tr_gk, "tr_g", "tr_gc+", "tr_gc-", "give $%d: add 10", "give $%d: take back 10"); tr_offerpane('r', 448, "you GET", tr_get_t, tr_get_c, tr_rk, "tr_r", "tr_rc+", "tr_rc-", "ask $%d: ask 10 more", "ask $%d: ask 10 less"); tr_inventory('b', 672, pa, tr_get_t, "tr_r", 1, "tr_pb+");
 }
 static int tr_bits(unsigned long long m) { int n = 0; while (m) { n += (int)(m & 1); m >>= 1; } return n; }
+static int tr_pid_of(const char *id) { return (id[0] == 'p' && id[1] >= '1' && id[1] <= '9' && !id[2]) ? id[1] - '0' : 0; }   /* "p3" -> 3 (0 when it is not a player id) */
+/* the open offer addressed to ME (the ui's show_offer) / my OWN open offer (offer_from = me and show_offer empty); fills the id; returns 1 when it exists */
+static int tr_incoming(int me, int *oid, int *from) { char v[8], to[16], fr[16], id[16]; if (!uget("show_offer", v, sizeof v)[0]) return 0; uget("offer_to", to, sizeof to); if (tr_pid_of(to) != me) return 0; uget("offer_from", fr, sizeof fr); uget("offer_id", id, sizeof id); *oid = atoi(id); *from = tr_pid_of(fr); return *oid > 0 && *from > 0; }
+static int tr_own(int me, int *oid, int *to) { char v[8], to_[16], fr[16], id[16]; if (uget("show_offer", v, sizeof v)[0]) return 0; uget("offer_from", fr, sizeof fr); if (tr_pid_of(fr) != me) return 0; uget("offer_to", to_, sizeof to_); uget("offer_id", id, sizeof id); *oid = atoi(id); *to = tr_pid_of(to_); return *oid > 0 && *to > 0; }
 static void tr_cmd(const char *c) {
-    if (!mode_play) return; load_ui(); int me = tr_me(); char out[400], k[24], v[24];
+    if (!mode_play) return; load_ui(); int me = tr_me(); char out[400], k[24], v[24]; int oid = 0, who = 0;
     if (!strcmp(c, "open")) { tr_clear(); tr_partner = 0; tr_open_ = 1; snprintf(msg, sizeof msg, "trade: press a tile to move it in or out"); }
+    else if (!strcmp(c, "counter")) { if (!tr_incoming(me, &oid, &who)) snprintf(msg, sizeof msg, "no offer for you to counter");
+        else { char og[130], ot[130]; uget("offer_give", og, sizeof og); uget("offer_get", ot, sizeof ot); tr_clear(); tr_mode = 1; tr_oid = oid; tr_partner = who;
+            tr_parse(ot, &tr_give_t, &tr_give_c, &tr_gk); tr_parse(og, &tr_get_t, &tr_get_c, &tr_rk);   /* what they ask becomes my GIVE, what they give becomes my GET */
+            tr_open_ = 1; snprintf(msg, sizeof msg, "counter: change the terms, then Send counter"); } }
+    else if (!strcmp(c, "amend")) { if (!tr_own(me, &oid, &who)) snprintf(msg, sizeof msg, "you have no open offer to amend");
+        else { char og[130], ot[130]; uget("offer_give", og, sizeof og); uget("offer_get", ot, sizeof ot); tr_clear(); tr_mode = 2; tr_oid = oid; tr_partner = who;
+            tr_parse(og, &tr_give_t, &tr_give_c, &tr_gk); tr_parse(ot, &tr_get_t, &tr_get_c, &tr_rk); tr_open_ = 1; snprintf(msg, sizeof msg, "amend: change the terms, then Send amendment"); } }
+    else if (!strcmp(c, "cancel")) { if (!tr_own(me, &oid, &who)) snprintf(msg, sizeof msg, "you have no open offer to cancel");
+        else { char id[16], as[24]; snprintf(id, sizeof id, "%d", oid); snprintf(as, sizeof as, "as=p%d", me); const char *a[3] = { "cancel", id, as }; int rc = run_eng(out, sizeof out, 3, a); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1; tr_open_ = 0; tr_clear(); snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); } }
+    else if (!strcmp(c, "accept") || !strcmp(c, "reject")) { char id[16], to[16], as[24]; uget("offer_id", id, sizeof id); uget("offer_to", to, sizeof to); snprintf(as, sizeof as, "as=%s", to); const char *a[3] = { c, id, as }; int rc = run_eng(out, sizeof out, 3, a); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1; snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); }
     else if (!strcmp(c, "close")) { tr_open_ = 0; tr_clear(); }
-    else if (!strcmp(c, "partner")) { int n = uint_("n_players"), p = tr_partner ? tr_partner : me; for (int s = 1; s <= n; s++) { int q = (p - 1 + s) % n + 1; if (q != me && tr_active(q)) { tr_partner = q; break; } } tr_get_t = 0; tr_get_c = 0; tr_pg[1] = 0; }
-    else if ((c[0] == 'g' || c[0] == 'r') && c[1] >= '0' && c[1] <= '9') { int t = atoi(c + 1), give = c[0] == 'g'; unsigned long long *m = give ? &tr_give_t : &tr_get_t; int owner_pl = give ? me : tr_partner;
-        if (*m >> t & 1) *m &= ~(1ULL << t); else if (t >= 0 && t < 64 && tr_owns(owner_pl, t) && tr_tradable(t) && tr_bits(*m) < 8) *m |= 1ULL << t; }
+    else if (!tr_open_) { /* every other trade command edits the DRAFT: with the screen closed there is no draft to edit (a stale or hostile line changes nothing) */ }
+    else if (!strcmp(c, "partner")) { if (tr_mode == 0) { int n = uint_("n_players"), p = tr_partner ? tr_partner : me; for (int s = 1; s <= n; s++) { int q = (p - 1 + s) % n + 1; if (q != me && tr_active(q)) { tr_partner = q; break; } } tr_get_t = 0; tr_get_c = 0; tr_rk = 0; tr_pg[1] = 0; } }
+    else if ((c[0] == 'g' || c[0] == 'r') && c[1] == 'k' && (c[2] == '0' || c[2] == '1') && !c[3]) { if (c[0] == 'g') tr_gk &= ~(1 << (c[2] - '0')); else tr_rk &= ~(1 << (c[2] - '0')); }   /* a carried-over card can only be taken back out */
+    else if ((c[0] == 'g' || c[0] == 'r') && c[1] >= '0' && c[1] <= '9') { long tl = strtol(c + 1, NULL, 10); int give = c[0] == 'g'; unsigned long long *m = give ? &tr_give_t : &tr_get_t; int owner_pl = give ? me : tr_partner;
+        if (tl < 0 || tl > 63) { /* not a tile: ignored (a shift by 64 or more is undefined in C) */ } else { int t = (int)tl; if (*m >> t & 1) *m &= ~(1ULL << t); else if (tr_owns(owner_pl, t) && tr_tradable(t) && tr_bits(*m) < 8) *m |= 1ULL << t; } }
     else if (!strcmp(c, "gc+") || !strcmp(c, "gc-")) { snprintf(k, sizeof k, "p%d_cash", me); int mx = atoi(uget(k, v, sizeof v)); tr_give_c += c[2] == '+' ? 10 : -10; if (tr_give_c < 0) tr_give_c = 0; if (tr_give_c > mx) tr_give_c = mx; }
     else if (!strcmp(c, "rc+") || !strcmp(c, "rc-")) { snprintf(k, sizeof k, "p%d_cash", tr_partner); int mx = atoi(uget(k, v, sizeof v)); tr_get_c += c[2] == '+' ? 10 : -10; if (tr_get_c < 0) tr_get_c = 0; if (tr_get_c > mx) tr_get_c = mx; }
     else if (!strcmp(c, "pa+")) tr_pg[0]++; else if (!strcmp(c, "pb+")) tr_pg[1]++;
-    else if (!strcmp(c, "send")) { char gs[130], rs[130], pn[8], as[8]; tr_assets(tr_give_t, tr_give_c, gs, sizeof gs); tr_assets(tr_get_t, tr_get_c, rs, sizeof rs); snprintf(pn, sizeof pn, "p%d", tr_partner); snprintf(as, sizeof as, "as=p%d", me);
-        const char *a[7] = { "offer", pn, "give", gs, "get", rs, as }; int rc = run_eng(out, sizeof out, 7, a); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1;
-        if (rc == 0) { tr_open_ = 0; tr_clear(); snprintf(msg, sizeof msg, "offer sent to %s", pn); } else snprintf(msg, sizeof msg, "refused: %.170s", out); }
-    else if (!strcmp(c, "accept") || !strcmp(c, "reject")) { char id[16], to[16], as[24]; uget("offer_id", id, sizeof id); uget("offer_to", to, sizeof to); snprintf(as, sizeof as, "as=%s", to); const char *a[3] = { c, id, as }; int rc = run_eng(out, sizeof out, 3, a); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1; snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); }
+    else if (!strcmp(c, "send")) { char gs[130], rs[130], pn[8], as[8], ids[16]; tr_assets(tr_give_t, tr_give_c, tr_gk, gs, sizeof gs); tr_assets(tr_get_t, tr_get_c, tr_rk, rs, sizeof rs); snprintf(pn, sizeof pn, "p%d", tr_partner); snprintf(as, sizeof as, "as=p%d", me); snprintf(ids, sizeof ids, "%d", tr_oid);
+        const char *a_new[7] = { "offer", pn, "give", gs, "get", rs, as }; const char *a_old[7] = { tr_mode == 1 ? "counter" : "amend", ids, "give", gs, "get", rs, as };   /* counter <id> / amend <id>: the engine checks the id, the actor and the terms */
+        int rc = run_eng(out, sizeof out, 7, tr_mode ? a_old : a_new); first_line(out); eng1("ui", NULL, NULL, 0); w_resync = 1;
+        if (rc == 0) { int md = tr_mode; tr_open_ = 0; tr_clear(); snprintf(msg, sizeof msg, md == 1 ? "counter sent to %s" : md == 2 ? "offer amended (%s)" : "offer sent to %s", pn); } else snprintf(msg, sizeof msg, "refused: %.170s", out); }
 }
 static void publish(void) {
     static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = ne_ = nl_ = 0; ENT_[0] = 0; char t[256], k[48], b[600];
@@ -228,7 +261,10 @@ static void publish(void) {
         { char pb[40]; snprintf(pb, sizeof pb, "n_party=%d\n", np); catn(OUT_, OUTCAP_, pb); }
         for (int i = 7; i >= 0; i--) { snprintf(k, sizeof k, "log_%d", i); char l[120]; uget(k, l, sizeof l); if (l[0]) add_chat(l); }
         char v[8];
-        if (tr_open_ && (over || !uget("human_turn", v, sizeof v)[0])) tr_open_ = 0;   /* the screen closes itself when it is no longer my turn */
+        /* the screen closes itself when it can no longer do its job: a NEW offer needs my turn; a COUNTER needs the offer to still be open and addressed to me (a counter may be made when it is not my turn); an AMENDMENT needs my offer still open */
+        if (tr_open_) { int me3 = tr_me(), id3 = 0, w3 = 0, ok = !over;
+            if (tr_mode == 0) ok = ok && uget("human_turn", v, sizeof v)[0]; else if (tr_mode == 1) ok = ok && tr_incoming(me3, &id3, &w3) && id3 == tr_oid; else ok = ok && tr_own(me3, &id3, &w3) && id3 == tr_oid;
+            if (!ok) { tr_open_ = 0; tr_clear(); } }
         if (tr_open_) tr_screen(); else {
         if (uget("show_roll", v, sizeof v)[0]) add_btn("Roll", "roll");
         if (uget("show_jail", v, sizeof v)[0]) { add_btn("Jail: roll for doubles", "jail_roll"); add_btn("Jail: pay 50", "jail_pay"); }
@@ -242,7 +278,9 @@ static void publish(void) {
         if (uget("show_bankrupt", v, sizeof v)[0]) add_btn("Declare bankruptcy", "bankrupt");
         if (uget("show_end", v, sizeof v)[0]) add_btn("End turn", "end");
         { char tl[8]; uget("trade_left", tl, sizeof tl); if (uget("human_turn", v, sizeof v)[0] && atoi(tl) > 0 && (!strcmp(ph, "pre") || !strcmp(ph, "post") || !strcmp(ph, "debt"))) add_btn("Trade...", "tr_open"); }
-        if (uget("show_offer", v, sizeof v)[0]) { char of[16], og[130], ot[130], gn[200], rn[200]; uget("offer_from", of, sizeof of); uget("offer_give", og, sizeof og); uget("offer_get", ot, sizeof ot); tr_nice(og, gn, sizeof gn); tr_nice(ot, rn, sizeof rn); snprintf(b, sizeof b, "%s OFFERS: gives %s, wants %s", of, gn, rn); add_text(b); add_btn("Accept offer", "tr_accept"); add_btn("Reject offer", "tr_reject"); }
+        if (uget("show_offer", v, sizeof v)[0]) { char of[16], og[130], ot[130], gn[200], rn[200]; uget("offer_from", of, sizeof of); uget("offer_give", og, sizeof og); uget("offer_get", ot, sizeof ot); tr_nice(og, gn, sizeof gn); tr_nice(ot, rn, sizeof rn); snprintf(b, sizeof b, "%s OFFERS you:", of); add_text(b); snprintf(b, sizeof b, "they give: %s", gn); add_text(b); snprintf(b, sizeof b, "they want: %s", rn); add_text(b);   /* three SHORT lines: the popup does not measure wrapped text, a two-line one was covered by the first button (seen live 2026-11-08) */ add_btn("Accept offer", "tr_accept"); add_btn("Reject offer", "tr_reject"); add_btn("Counter...", "tr_counter"); }
+        else { int me2 = tr_me(), oid2 = 0, to2 = 0; if (tr_own(me2, &oid2, &to2)) { char og[130], ot[130], gn[200], rn[200]; uget("offer_give", og, sizeof og); uget("offer_get", ot, sizeof ot); tr_nice(og, gn, sizeof gn); tr_nice(ot, rn, sizeof rn);   /* MY open offer: amend it or take it back (the engine only lets the proposer do either) */
+            snprintf(b, sizeof b, "YOUR OFFER #%d to p%d", oid2, to2); add_text(b); snprintf(b, sizeof b, "you give: %s", gn); add_text(b); snprintf(b, sizeof b, "you want: %s", rn); add_text(b); add_btn("Amend offer...", "tr_amend"); add_btn("Cancel offer", "tr_cancel"); } }
         if (!run && !over) add_btn("Step one move", "step");
         snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(b, "speed_next"); add_btn("New game", "new_game");
         }

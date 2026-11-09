@@ -1,0 +1,373 @@
+# dsk_tradeui: the TRADE SCREEN of Teropoly (deskopoly M9) driven through the REAL deskopoly_driver, in a scratch house, ONLY by deskopoly_ctl command lines (what each button of the popup and of the four panes runs).
+# What the screen publishes is the feed state/game_ui.txt (tp_on, tpa/tpg/tpr/tpb panes, the popup text and buttons, game-ov_y); what the game KNOWS is the ledger: every check below reads one of the two.
+# THE GAME: tests/../fixtures/dsk_tradeui_ledger.txt = 47 rows of an engine-made 3-player game (seed 7; A = human p1, B and C pets), cut where p1 is to act in PRE of round 5 with 930 cash and tiles 12 Power, 19 Orange3,
+#   26 Yellow1; p2 owns 21 Red1 and 27 Yellow2 (960 cash); p3 owns 8, 15, 24, 31, 35 (530 cash). It is the engine's own output (rebuilt with lobby/join/start/order/tick/roll/buy/end_turn), replayed by the driver at start, never edited.
+#   p1's first roll (ctl `roll`) lands on 33 and KEEPS a Get Out (fund) card, which the card checks use. The switch running stays 0 for the whole case, so no pet ever acts: every ledger row below is the human's or a CLI call that says who.
+# RULES COVERED: panes (titles, item order, counts, the paging of a long inventory), moving a tile in and out, cash +-10 and its clamps, partner cycling clears GET, Send builds `offer`; MODES: new / counter (swapped terms, partner fixed,
+#   stays open when it is not my turn) / amend (my terms, partner fixed) / cancel; a carried-over card can be taken back out; the screen closes itself (turn passes; the offer under a counter vanishes).
+# A pet-made offer to the human cannot be produced by the pets yet (pet proposals are another agent's work): the offers addressed to p1 are made by the engine CLI `offer p1 ... as=p2` while p2 is the current player, the same verb a pet will use.
+# NEGATIVES (each is paired with a positive control that proves the same keys CAN change): a tile p1 does not own, a tile the partner does not own, cash above what is held and below zero, Send with an empty draft, a partner change in counter/amend,
+#   draft commands with the screen closed, hostile ctl strings, an out-of-range tile number; the screen closing itself.
+# FENCE: a command that must change NOTHING is followed by one that visibly changes something; the driver handles action lines in order and publishes once per pass, so seeing the fence proves the earlier line was handled.
+# NOT COVERED: the real window's drawing (tests/dsk-seat-counter.pdl looks at the PNGs), pets answering offers (dsk_trade covers the engine side), the CPU cost.
+RESULTS | ../results/dsk_tradeui.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR   | h/&.widgits/_shared-lib/ops/+x
+COPY    | &.widgits/_shared-lib/ops/+x/raw_to_png.+x | h/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+COPYDIR | @.apps/deskopoly | app | state,shots
+MKDIR   | app/deskopoly-pchq/pieces/system/maps/deskopoly/play
+MKDIR   | edit/state/world
+MKDIR   | edit/edit-pchq/pieces/world_01
+MKDIR   | edit/state/games/deskopoly/game
+WRITE   | edit/state/world/switches.txt | running=0\n
+WRITE   | edit/edit-pchq/pieces/world_01/state.txt | map_id=deskopoly\ndesk_id=board\n
+COPY    | &.widgits/_shared-lib/harness/fixtures/dsk_tradeui_ledger.txt | edit/state/games/deskopoly/game/ledger.txt
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | replay
+EXPECT_OUT | REPLAY events=47 | the-fixture-is-a-valid-engine-ledger-47-rows
+SPAWN   | OWN | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN
+SPAWN   | DRV | $T/app/ops/+x/deskopoly_driver.+x | $T/h | $T/app | $T/edit
+WAIT_HAS | edit/state/game_ui.txt | a game was in progress | 8000 | the-driver-continues-the-game-from-the-ledger
+EXPECT_HAS | $T/edit/state/game_ui.txt | \nphase=pre\n | p1-is-to-act-in-PRE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \nhuman_turn=1\n | and-it-is-a-human-turn
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntp_on=\n | NO-TRADE-SCREEN-before-it-is-opened
+EXPECT_LACKS | $T/edit/state/game_ui.txt | tpa_title | and-no-pane-keys-at-all
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | roll | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | to=33;card=fund:5;keep=fund | 8000 | p1-rolls-to-33-and-keeps-a-Get-Out-fund-card
+WAIT_HAS | edit/state/game_ui.txt | gmb_1_label=Trade... | 8000 | the-Trade-button-is-in-the-popup-after-the-roll-POST-phase
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 48 | 47-plus-the-roll
+
+CASE    | panes
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_open | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=1\n | 6000 | tr_open-turns-the-screen-on
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngame-ov_y=270\n | the-popup-moves-under-the-panes
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_title=p1 A $930 holds\n | pane-A-is-my-inventory-with-my-cash
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_n=3\ntpg_x= | pane-A-has-3-items
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_0_label=Power\n | A0-Power
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_1_label=Orange3\n | A1-Orange3
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_2_label=Yellow1\n | A2-Yellow1
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_title=you GIVE\n | pane-G
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=2\ntpr_x= | G-starts-with-just-the-two-cash-rows
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_title=you GET\n | pane-R
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_n=2\ntpb_x= | R-starts-with-just-the-two-cash-rows
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_title=p2 B $960 holds\n | pane-B-is-the-first-other-player
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_0_label=Red1\ntpb_0_act= | B0-Red1
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_1_label=Yellow2\n | B1-Yellow2
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmt_2_text=p1 offers p2  (3 new offers left)\n | the-popup-says-who-offers-whom-and-the-allowance
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmb_0_label=Send offer\n | NEW-mode-button
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmb_1_label=Partner: p2 B\n | and-the-partner-button
+# --- a tile moves in and out ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_2_label=Orange3 (press: back)\n | 6000 | pressing-Orange3-in-my-inventory-moves-it-into-GIVE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_n=2\n | and-out-of-my-inventory
+EXPECT_LACKS | $T/edit/state/game_ui.txt | tpa_2_label | pane-A-has-no-third-item-any-more
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpa_n=3\n | 6000 | pressing-it-in-GIVE-moves-it-back
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=2\ntpr_x= | and-GIVE-is-empty-again
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpa_n=2\n | 6000 | Orange3-in-GIVE-again
+# --- NEGATIVE: a tile I do not own cannot go into GIVE (Red1 belongs to p2); paired with the control below ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g21 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc+ | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $10: add 10\n | 6000 | FENCE-the-cash-press-after-the-tile-press-was-handled
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=3\ntpr_x= | NEGATIVE-GIVE-holds-only-Orange3-and-the-two-cash-rows
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Red1 (press: back) | NEGATIVE-Red1-did-not-enter-GIVE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_n=2\n | and-still-sits-in-the-partners-pane
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_r21 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpr_2_label=Red1 (press: back)\n | 6000 | CONTROL-the-same-tile-DOES-move-into-GET-where-the-partner-owns-it
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_n=1\n | and-leaves-the-partners-pane
+# --- NEGATIVE: my own tile cannot go into GET (Power is mine, not p2s) ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_r12 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_rc+ | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpr_0_label=ask $10: ask 10 more\n | 6000 | FENCE-the-ask-press
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_n=3\ntpb_x= | NEGATIVE-GET-holds-only-Red1-and-the-two-cash-rows
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Power (press: back) | NEGATIVE-Power-did-not-enter-GET
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g12 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_2_label=Power (press: back)\n | 6000 | CONTROL-Power-DOES-go-into-GIVE
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g12 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_n=3\ntpr_x= | 6000 | and-comes-back-out
+# --- NEGATIVE: hostile / out-of-range tile numbers and unknown trade commands change nothing and the driver lives ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g64 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g99999999999999999999 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g-1 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gk7 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_zz | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc+ | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $20: add 10\n | 6000 | FENCE-after-five-nonsense-lines
+EXPECT_ALIVE | $DRV | NEGATIVE-the-driver-survived-a-tile-number-of-64-and-of-20-digits
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=3\ntpr_x= | and-GIVE-is-unchanged-Orange3-plus-cash-rows
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_n=2\n | and-so-is-my-inventory
+# --- cash clamps: up to what is HELD, down to zero ---
+ENV | DESKOPOLY_CTL_REPEAT | 100
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc+ | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $930: add 10\n | 6000 | GIVE-cash-stops-at-the-930-p1-holds-100-presses-of-10-would-be-1020
+ENV | DESKOPOLY_CTL_REPEAT | 100
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc- | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $0: add 10\n | 6000 | and-stops-at-0-not-below
+ENV | DESKOPOLY_CTL_REPEAT | 100
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_rc+ | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+WAIT_HAS | edit/state/game_ui.txt | \ntpr_0_label=ask $960: ask 10 more\n | 6000 | GET-cash-stops-at-the-960-p2-holds
+ENV | DESKOPOLY_CTL_REPEAT | 100
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_rc- | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+WAIT_HAS | edit/state/game_ui.txt | \ntpr_0_label=ask $0: ask 10 more\n | 6000 | and-stops-at-0
+# --- the partner cycle (p2 -> p3 -> p2), the paging of a long inventory, GET is cleared by a new partner ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_partner | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpb_title=p3 C $530 holds\n | 6000 | the-partner-button-cycles-to-p3
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_n=2\ntpb_x= | and-the-ask-side-was-emptied-Red1-is-not-asked-from-p3
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_4_label=more... (page 1 of 2)\n | p3-has-5-tradable-tiles-4-per-page
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_n=5\n | so-the-pane-has-4-tiles-plus-the-more-row
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmb_1_label=Partner: p3 C\n | and-the-button-names-p3
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_pb+ | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpb_0_label=Line4\n | 6000 | page-2-starts-with-the-fifth-tile
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_1_label=more... (page 2 of 2)\n | and-says-page-2-of-2
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_partner | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpb_title=p2 B $960 holds\n | 6000 | cycling-again-returns-to-p2
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_0_label=Red1\n | and-the-page-is-reset-to-the-first
+# --- NEGATIVE: Send with an EMPTY draft is refused by the engine; the screen stays open; the ledger has no new row ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_n=2\ntpr_x= | 6000 | the-draft-is-now-empty-Orange3-went-back
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_send | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | refused: an offer needs something on at least one side | 6000 | NEGATIVE-an-empty-offer-is-refused-and-the-popup-says-why
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntp_on=1\n | and-the-screen-STAYS-open
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 48 | and-no-row-was-appended
+# --- Back to game throws the draft away ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpa_n=2\n | 6000 | a-draft-with-Orange3
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_close | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | Back-to-game-turns-the-screen-off
+EXPECT_LACKS | $T/edit/state/game_ui.txt | tpa_title | and-removes-every-pane-key
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_open | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=1\n | 6000 | reopen
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=2\ntpr_x= | THE-DRAFT-WAS-DROPPED-GIVE-is-empty-again-and-Orange3-is-back-in-my-inventory
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_n=3\n | with-all-three-tiles
+
+CASE    | send_new
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 2
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc+ | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_r21 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpr_2_label=Red1 (press: back)\n | 6000 | the-draft-is-Orange3-plus-20-for-Red1
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $20: add 10\n | 6000 | with-20-cash
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_send | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \poffer\pp2\p33\pid=1;give=prop:19+cash:20;get=prop:21;round=1 | 6000 | SEND-calls-the-engine-offer-verb-with-the-draft-as-canonical-terms
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 49 | exactly-one-row-was-added
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | and-the-screen-closes
+EXPECT_HAS | $T/edit/state/game_ui.txt | YOUR OFFER #1 to p2\n | the-popup-shows-MY-open-offer
+EXPECT_HAS | $T/edit/state/game_ui.txt | you give: Orange3 + $20\n | with-what-I-give
+EXPECT_HAS | $T/edit/state/game_ui.txt | you want: Red1\n | and-what-I-want
+EXPECT_HAS | $T/edit/state/game_ui.txt | Amend offer... | with-an-Amend-button
+EXPECT_HAS | $T/edit/state/game_ui.txt | Cancel offer | and-a-Cancel-button
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Accept offer | NEGATIVE-my-own-offer-has-no-Accept-or-Counter-button
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Counter... | and-no-Counter
+
+CASE    | amend
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_amend | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ngmt_2_text=AMEND your offer #1 to p2\n | 6000 | AMEND-mode-says-so-in-the-popup
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmb_0_label=Send amendment\n | with-its-own-send-button
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Send offer | and-not-the-new-offer-one
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_2_label=Orange3 (press: back)\n | the-draft-is-MY-terms-Orange3-in-GIVE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_0_label=give $20: add 10\n | and-20-cash
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_2_label=Red1 (press: back)\n | and-Red1-in-GET
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_n=2\n | the-inventories-lack-the-tiles-in-the-draft
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_n=1\n | and-p2s-pane-lacks-Red1
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmt_3_text=Partner: p2 B\n | the-partner-is-a-line-of-text-fixed-by-the-offer
+EXPECT_LACKS | $T/edit/state/game_ui.txt | gmb_1_label=Partner | NEGATIVE-there-is-no-Partner-BUTTON-in-amend-mode
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_partner | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc- | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $10: add 10\n | 6000 | FENCE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_title=p2 B $960 holds\n | NEGATIVE-a-partner-press-changed-nothing-still-p2
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g26 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_3_label=Yellow1 (press: back)\n | 6000 | Yellow1-added-to-the-amendment
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_send | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pamend\p1\p33\pid=1;give=prop:19+prop:26+cash:10;get=prop:21;round=1;amended | 6000 | SEND-in-amend-mode-calls-amend-with-the-offer-id
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 50 | one-row
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | the-screen-closes
+WAIT_HAS | edit/state/game_ui.txt | you give: Orange3 + Yellow1 + $10\n | 6000 | and-the-popup-shows-the-amended-terms
+# --- cancel ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_cancel | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pcancel\p1\p33\pcancelled | 6000 | CANCEL-calls-the-engine-cancel-verb
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 51 | one-row
+WAIT_HAS | edit/state/game_ui.txt | you: p1 cancel: cancelled | 6000 | the-popup-says-so
+EXPECT_LACKS | $T/edit/state/game_ui.txt | YOUR OFFER | and-my-offer-line-is-gone
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Amend offer... | and-so-are-its-buttons
+# --- NEGATIVE: with no offer open there is nothing to amend, cancel or counter; nothing opens, nothing is appended ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_amend | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | you have no open offer to amend | 6000 | NEGATIVE-amend-without-an-offer
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_cancel | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | you have no open offer to cancel | 6000 | NEGATIVE-cancel-without-an-offer
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_counter | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | no offer for you to counter | 6000 | NEGATIVE-counter-without-an-offer
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntp_on=\n | and-the-screen-did-not-open
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 51 | and-the-ledger-is-unchanged
+# --- draft commands with the screen CLOSED change nothing (a stale button line cannot send an offer) ---
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g19 | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 3
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc+ | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_send | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | speed: slow | 6000 | FENCE
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 51 | NEGATIVE-tr_send-with-the-screen-closed-appended-nothing
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_open | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=1\n | 6000 | CONTROL-opening-the-screen
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=2\ntpr_x= | the-closed-screen-draft-commands-left-no-draft-behind
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_close | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | closed-again
+
+CASE    | card
+# a Get Out card is part of an offer: it rides along in a prefilled draft and can only be taken back out
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | offer | p2 | give | card:fund+prop:12 | get | cash:5 | as=p1
+EXPECT_OUT | id=2;give=prop:12+card:fund;get=cash:5;round=1 | p1-opens-offer-2-from-the-CLI-giving-Power-and-the-fund-card
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | ui
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_close | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | you give: Power + fund card\n | 6000 | the-popup-shows-the-card
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_amend | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_3_label=fund card (press: back)\n | 6000 | the-card-is-a-row-of-the-GIVE-pane
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_2_label=Power (press: back)\n | next-to-Power
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_0_label=ask $5: ask 10 more\n | and-ask-5
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gk1 | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_n=3\n | 6000 | pressing-the-card-takes-it-out
+EXPECT_LACKS | $T/edit/state/game_ui.txt | fund card (press: back) | and-the-pane-no-longer-shows-it
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gk0 | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_gc+ | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpg_0_label=give $10: add 10\n | 6000 | FENCE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=3\n | NEGATIVE-the-luck-card-press-added-nothing-a-card-can-only-be-taken-out
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_send | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pamend\p2\p33\pid=2;give=prop:12+cash:10;get=cash:5;round=1;amended | 6000 | the-amendment-has-no-card-any-more
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_cancel | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pcancel\p2\p33\pcancelled | 6000 | cancel-offer-2
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 54 | 51-plus-offer-amend-cancel
+
+CASE    | closes_itself
+# a NEW offer needs my turn: when the turn passes, the screen goes away by itself
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_open | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=1\n | 6000 | the-screen-is-open-on-my-turn
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | end | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pend_turn\p-\p33\pnext=p2;round=5 | 6000 | p1-ends-the-turn-with-the-screen-open
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | THE-SCREEN-CLOSED-ITSELF-it-is-not-my-turn
+EXPECT_LACKS | $T/edit/state/game_ui.txt | tpa_title | and-no-pane-key-is-left
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ncurrent=p2\n | because-p2-is-the-current-player
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_open | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | speed: fast | 6000 | FENCE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntp_on=\n | NEGATIVE-a-NEW-offer-screen-cannot-be-opened-on-p2s-turn
+
+CASE    | counter
+# the pets cannot make offers to the human yet: p2 (current, PRE) offers through the engine CLI exactly as a pet will
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | offer | p1 | give | prop:21+cash:20 | get | prop:19 | as=p2
+EXPECT_OUT | id=3;give=prop:21+cash:20;get=prop:19;round=1 | p2-offers-p1-Red1-plus-20-for-Orange3
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | ui
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_close | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | they give: Red1 + $20\n | 6000 | the-popup-shows-the-incoming-offer-in-words
+EXPECT_HAS | $T/edit/state/game_ui.txt | Accept offer | with-Accept
+EXPECT_HAS | $T/edit/state/game_ui.txt | Reject offer | Reject
+EXPECT_HAS | $T/edit/state/game_ui.txt | Counter... | and-the-new-Counter-button
+EXPECT_LACKS | $T/edit/state/game_ui.txt | Trade... | and-no-Trade-button-it-is-not-my-turn
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_counter | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ngmt_2_text=COUNTER to p2's offer #3\n | 6000 | COUNTER-mode-says-so
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntp_on=1\n | THE-SCREEN-IS-OPEN-although-it-is-p2s-turn
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ncurrent=p2\n | which-it-is
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ngmb_0_label=Send counter\n | its-send-button
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_2_label=Orange3 (press: back)\n | SWAPPED-what-they-ask-Orange3-is-in-my-GIVE
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpg_n=3\ntpr_x= | and-nothing-else-there
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_0_label=ask $20: ask 10 more\n | what-they-give-is-my-GET-20-cash
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpr_2_label=Red1 (press: back)\n | and-Red1
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_title=p2 B $960 holds\n | the-partner-is-the-proposer-p2
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpa_n=2\n | the-tiles-in-the-draft-left-the-inventories
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_n=1\n | p2s-pane-lacks-Red1
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_partner | $T/edit/state/games/deskopoly
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_rc+ | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntpr_0_label=ask $30: ask 10 more\n | 6000 | FENCE-ask-30
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntpb_title=p2 B $960 holds\n | NEGATIVE-a-partner-press-in-counter-mode-changed-nothing
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_send | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/games/deskopoly/game/ledger.txt | \pcounter\p3\p33\pid=4;re=3;give=prop:19;get=prop:21+cash:30;round=2 | 6000 | SEND-in-counter-mode-calls-counter-with-the-offer-id-and-the-new-terms
+RUN | /usr/bin/grep | -c | ^ | $T/edit/state/games/deskopoly/game/ledger.txt
+EXPECT_OUT_IS | 57 | 54-plus-end_turn-plus-offer-3-plus-counter
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | the-screen-closes
+WAIT_HAS | edit/state/game_ui.txt | you want: Red1 + $30\n | 6000 | the-counter-is-now-MY-open-offer
+EXPECT_LACKS | $T/edit/state/game_ui.txt | p2 OFFERS | and-their-original-offer-is-gone
+# --- the offer under an open counter screen vanishes: the screen closes itself ---
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | offer | p1 | give | cash:10 | get | - | as=p2
+EXPECT_OUT | id=5;give=cash:10;get=-;round=1 | p2-offers-p1-10-cash-offer-5
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | ui
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | they give: $10\n | 6000 | the-new-incoming-offer-is-shown
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_counter | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ngmt_2_text=COUNTER to p2's offer #5\n | 6000 | the-counter-screen-is-open-for-offer-5
+EXPECT_HAS | $T/edit/state/game_ui.txt | \ntp_on=1\n | open
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | cancel | 5 | as=p2
+EXPECT_OUT | cancelled | p2-takes-offer-5-back
+RUN | $T/app/ops/+x/deskopoly.+x | $T/app | $T/edit/state/games/deskopoly/game | ui
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/state/game_ui.txt | \ntp_on=\n | 6000 | THE-COUNTER-SCREEN-CLOSED-ITSELF-its-offer-no-longer-exists
+EXPECT_LACKS | $T/edit/state/game_ui.txt | tpa_title | and-no-pane-key-is-left
+EXPECT_HAS | $T/edit/state/game_ui.txt | YOUR OFFER #4 to p2 | and-my-own-offer-4-is-still-shown-in-the-popup
+
+CASE    | ctl_hostile
+# deskopoly_ctl is the only door from a button to the action file: it takes lower-case letters, digits, _ + - and nothing else
+RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/action.txt
+CAPTURE | act0
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g1;rm | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-a-semicolon-is-refused
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | TR_OPEN | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-upper-case-is-refused
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr g1 | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-a-space-is-refused
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | ../../x | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-a-path-is-refused
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g1\ntr_send | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-a-second-line-smuggled-in-with-a-newline-is-refused
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-an-empty-command-is-refused
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | tr_g1111111111111111111111111111111111111111111 | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 2 | NEGATIVE-a-41-character-command-is-refused
+ENV | DESKOPOLY_CTL_REPEAT | 0
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+EXPECT_EXIT | 2 | NEGATIVE-a-repeat-count-of-0-is-refused
+ENV | DESKOPOLY_CTL_REPEAT | 201
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+EXPECT_EXIT | 2 | NEGATIVE-a-repeat-count-of-201-is-refused
+ENV | DESKOPOLY_CTL_REPEAT | 5x
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+ENV | DESKOPOLY_CTL_REPEAT | 
+EXPECT_EXIT | 2 | NEGATIVE-a-repeat-count-with-trailing-text-is-refused
+RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/action.txt
+CAPTURE | act1
+EXPECT_EQ | $act0 | $act1 | NONE-of-the-ten-refused-calls-wrote-a-byte-to-the-action-file
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly
+EXPECT_EXIT | 0 | CONTROL-a-valid-command-is-accepted
+RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/action.txt
+CAPTURE | act2
+EXPECT_NE | $act1 | $act2 | and-it-DOES-change-the-action-file-so-the-equality-above-could-have-failed
+
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | speed_next | $T/edit/state/games/deskopoly | 412 | 87
+EXPECT_EXIT | 0 | THE-WINDOW-PROTOCOL-the-renderer-appends-the-click-position-as-2-extra-arguments-to-every-button-action-and-they-must-be-ignored-not-refused-FOUND-LIVE-2026-11-08-when-a-positional-count-made-every-popup-button-dead
+RUN | /usr/bin/cksum | $T/edit/state/games/deskopoly/action.txt
+CAPTURE | act3
+EXPECT_NE | $act2 | $act3 | and-that-call-DID-append-its-line
+CASE    | owner_exit
+RUN | /usr/bin/kill | $OWN
+SLEEP   | 300
+EXPECT_DEAD | $OWN | the-fake-owner-is-gone
+SLEEP   | 1500
+EXPECT_DEAD | $DRV | the-driver-ends-with-its-owner
+EXPECT_EXISTS | $T/edit/state/games/deskopoly/game/ledger.txt | and-the-game-is-still-in-its-ledger
+CLEAN   |

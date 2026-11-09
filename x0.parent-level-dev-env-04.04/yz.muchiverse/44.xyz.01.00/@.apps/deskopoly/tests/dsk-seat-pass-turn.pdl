@@ -1,0 +1,9 @@
+# dsk-seat-pass-turn.pdl - p1 rolls, buys what is for sale and ends the turn, so that the turn passes to the pet p2 (seed 7, round 4: p1 lands on Yellow1, 260). In a STOPPED game (tests/dsk-stop.pdl) nothing ticks afterwards:
+# p2 stays the current player in PRE, which is where a harness can make p2 offer p1 something through the engine CLI (see tests/dsk-seat-counter.pdl).
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-pass-turn.pdl <x window id>
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Buy Yellow1 | 10
+STEP | press | label:Buy Yellow1
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | bought-260 | 10
+STEP | press | label:End turn
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | next=p2 | 10

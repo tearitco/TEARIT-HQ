@@ -1,0 +1,4 @@
+# dsk_tradeui.pal - pal harness for cases/dsk_tradeui.pdl (Teropoly trade SCREEN: the real driver, new / counter / amend / cancel). Read results/dsk_tradeui.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dsk_tradeui.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsk_tradeui.pdl
+halt

@@ -1,0 +1,27 @@
+# dsk-seat-counter.pdl - COUNTER an offer that is addressed to me, in the real editor (2026-11-08). Start: a STOPPED game where p2 is the current player in PRE and has made an open offer to p1. The pets cannot propose yet, so the
+# offer comes from the engine CLI, the verb a pet will use:  deskopoly.+x <book> <game dir> offer p1 give cash:20 get prop:19 as=p2  (then `ui` and one nudge, see the README row of dsk_tradeui). The popup then shows
+# "p2 OFFERS: gives $20, wants Orange3" with Accept offer / Reject offer / Counter... (and NO Trade... button: it is not my turn).
+# Counter opens the trade screen with the SWAPPED terms (what they ask, Orange3, is my GIVE; what they give, $20, is my GET; the partner is p2 and fixed), mode text "COUNTER to p2's offer #<id>"; the screen stays open although it is
+# p2's turn; Send counter calls `counter <id>`; the original offer is gone and the counter is MY open offer.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-counter.pdl <x window id>
+STEP | see | label:p2 OFFERS
+STEP | see | label:Accept offer
+STEP | see | label:Reject offer
+STEP | see | label:Counter...
+STEP | see | label:Trade... | absent
+STEP | shot | @.apps/deskopoly/shots/30-offer-to-me.png
+STEP | press | label:Counter...
+STEP | see | label:COUNTER to p2
+STEP | see | label:Send counter
+STEP | see | label:Orange3 (press: back)
+STEP | see | label:ask $20
+STEP | shot | @.apps/deskopoly/shots/31-counter-prefilled-swapped.png
+STEP | press | label:ask 10 more
+STEP | see | label:ask $30
+STEP | shot | @.apps/deskopoly/shots/32-counter-changed.png
+STEP | press | label:Send counter
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | give=prop:19;get=cash:30;round=2 | 10
+STEP | see | label:COUNTER to p2 | absent
+STEP | see | label:p2 OFFERS | absent
+STEP | see | label:YOUR OFFER
+STEP | shot | @.apps/deskopoly/shots/33-counter-sent.png

@@ -1,0 +1,8 @@
+# dsk-stop.pdl - Player > Stop in the real editor: the game clock freezes (switch running=0), so no pet answers an offer or takes a turn until Play is pressed again (dsk-open-play.pdl). Needed to look at an OPEN offer: with the game
+# running the pet answers within a moment and the popup never shows "YOUR OFFER". Same protocol as dsk-open-play.pdl (In: off, open the menu only when it is closed, tapid for menu rows).
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-stop.pdl <x window id>
+STEP | in | off
+STEP | ensure | pm-stop | tb-player
+STEP | tapid | pm-stop
+STEP | sleep | 800
+STEP | expect | @.apps/rpg-edit-hq/state/world/switches.txt | contains | running=0 | 10

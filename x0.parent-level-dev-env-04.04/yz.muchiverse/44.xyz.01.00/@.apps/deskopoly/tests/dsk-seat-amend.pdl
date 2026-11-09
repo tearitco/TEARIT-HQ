@@ -1,0 +1,40 @@
+# dsk-seat-amend.pdl - AMEND and CANCEL my own open offer on the trade screen, in the real editor (2026-11-08). Start: p1's turn (PRE or POST) in a STOPPED game (tests/dsk-stop.pdl) where p1 owns Orange3 and p2 has 30+ cash
+# (seed 7 after dsk-seat-turns.pdl). The pet cannot answer while the game is stopped, so the offer STAYS OPEN and the popup shows it: "YOUR OFFER #<id> to p2: ..." with `Amend offer...` and `Cancel offer`.
+# Amend opens the SAME trade screen with the draft prefilled with MY terms (mode text "AMEND your offer #<id> to p2", button `Send amendment`, the partner is fixed text); Send calls the engine verb `amend <id>`; Cancel calls `cancel <id>`.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-seat-amend.pdl <x window id>
+STEP | see | label:Trade...
+STEP | press | label:Trade...
+STEP | see | label:Send offer
+STEP | press | label:Orange3
+STEP | see | label:Orange3 (press: back)
+STEP | press | label:ask 10 more
+STEP | press | label:ask 10 more
+STEP | press | label:ask 10 more
+STEP | see | label:ask $30
+STEP | press | label:Send offer
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | give=prop:19;get=cash:30;round=1 | 10
+STEP | see | label:YOUR OFFER
+STEP | see | label:Amend offer...
+STEP | see | label:Cancel offer
+STEP | see | label:Accept offer | absent
+STEP | shot | @.apps/deskopoly/shots/20-my-open-offer.png
+STEP | press | label:Amend offer...
+STEP | see | label:AMEND your offer
+STEP | see | label:Send amendment
+STEP | see | label:Send offer | absent
+STEP | see | label:Orange3 (press: back)
+STEP | see | label:ask $30
+STEP | shot | @.apps/deskopoly/shots/21-amend-prefilled.png
+STEP | press | label:ask 10 less
+STEP | see | label:ask $20
+STEP | shot | @.apps/deskopoly/shots/22-amend-changed.png
+STEP | press | label:Send amendment
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | give=prop:19;get=cash:20;round=1;amended | 10
+STEP | see | label:AMEND your offer | absent
+STEP | see | label:YOUR OFFER
+STEP | shot | @.apps/deskopoly/shots/23-amended-offer.png
+STEP | press | label:Cancel offer
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | cancelled | 10
+STEP | see | label:YOUR OFFER | absent
+STEP | see | label:Amend offer... | absent
+STEP | shot | @.apps/deskopoly/shots/24-offer-cancelled.png
