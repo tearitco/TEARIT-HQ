@@ -1,0 +1,10 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-video-new.pdl - presentation video, part 1 (2026-11-09): from the running game to the SETUP screen of a NEW game by pressing the popup's New game button (the real verb: it archives the finished game). Shot 00 is the game being left.
+# Then the caller runs `deskopoly_ctl setup_reset <games dir>` (3 players, no seat, seed 7, normal speed) and tests/dsk-video-start.pdl.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-new.pdl <x window id>
+STEP | in | off
+STEP | see | label:New game
+STEP | shot | /tmp/claude-1000/vid/raw/00-old-game.png
+STEP | press | label:New game
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15

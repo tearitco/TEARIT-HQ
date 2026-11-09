@@ -1,0 +1,14 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-video-typed.pdl - presentation video, part 4 (2026-11-09): a trade TYPED in the table-talk box (the window's chat input, found live 2026-11-08 at window x 1195 y 396) while it is p1's turn; In: ON for the typing (no clock risk, see nav.pdl `say`).
+# The tile is named by its ENGINE ID (Orange3): the parser knows ids and numbers, not the display labels (found 2026-11-09). Pictures: 30 typed line in the box, 31 the answer. Then a line the engine must refuse (`offer p9 ...`): 32.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-typed.pdl <x window id>
+STEP | in | on
+STEP | tap | 1195 396
+STEP | type | offer p2 give 100 get Orange3
+STEP | sleep | 500
+STEP | shot | /tmp/claude-1000/vid/raw/30-typed-offer.png
+STEP | key | enter
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | give=cash:100;get=prop:19 | 10
+STEP | sleep | 2500
+STEP | shot | /tmp/claude-1000/vid/raw/31-typed-answer.png

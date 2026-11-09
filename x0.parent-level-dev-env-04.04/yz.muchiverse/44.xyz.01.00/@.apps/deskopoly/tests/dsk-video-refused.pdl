@@ -1,0 +1,10 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-video-refused.pdl - presentation video, part 5 (2026-11-09): after dsk-video-typed.pdl, a typed line the engine refuses (`offer p9 ...`, no such player): the popup says why for 6 s and NO ledger row is written (the caller compares the row count before and after). Picture 32.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-refused.pdl <x window id>
+STEP | tap | 1195 396
+STEP | type | offer p9 give 100 get Orange3
+STEP | key | enter
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | refused | 6
+STEP | sleep | 800
+STEP | shot | /tmp/claude-1000/vid/raw/32-typed-refused.png

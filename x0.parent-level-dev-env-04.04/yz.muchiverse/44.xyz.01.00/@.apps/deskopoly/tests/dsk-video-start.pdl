@@ -1,0 +1,23 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-video-start.pdl - presentation video, part 2 (2026-11-09): on the SETUP screen (after dsk-video-new.pdl and setup_reset) choose speed fast, you play p1, press START GAME; pictures of each step go to /tmp/claude-1000/vid/raw (the video folder is made from OPENED pictures only).
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-start.pdl <x window id>
+STEP | see | label:TEROPOLY
+STEP | see | label:the players, then START
+STEP | shot | /tmp/claude-1000/vid/raw/01-setup.png
+STEP | press | label:speed
+STEP | sleep | 800
+STEP | press | label:speed
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | speed: fast | 5
+STEP | press | label:you play
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you play: p1 | 5
+STEP | shot | /tmp/claude-1000/vid/raw/02-seat-p1-fast.png
+STEP | press | label:START GAME
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | driver=human | 20
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Roll | 20
+STEP | see | pt0
+STEP | see | pt2
+STEP | see | gme0
+STEP | see | label:Roll
+STEP | sleep | 2500
+STEP | shot | /tmp/claude-1000/vid/raw/03-started.png

@@ -1,0 +1,65 @@
+SECTION | KEY | VALUE
+------------------------------
+# dsk-video-play.pdl - presentation video, part 3 (2026-11-09): the human turns of the recorded game, REASSEMBLED from the steps that were run one at a time on 2026-11-09 (each of the six blocks below ran and passed alone; this file was NOT run in one piece).
+# Starts right after dsk-video-start.pdl (seed 7, p1 human, fast). The dice come from the ledger, so the same seed gives the same game: the opening order roll (C moves first), round 1 Luck, round 2 Spin Works for 150 (bought), round 3 Coil Plaza for 200 (SKIPPED: auction,
+# B wins it at 200), then a trade (Spin Works for 30 cash, accepted by B). If the engine's rules change the `expect` rows fail loudly: re-record the game, do not edit the expectations. Pictures go to /tmp/claude-1000/vid/raw.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/deskopoly/tests/dsk-video-play.pdl <x window id>
+# block 1: the opening order roll, round 1 (Luck)
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | total=2 | 10
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you: p1 roll | 10
+STEP | press | label:End turn
+# block 2: round 2, the pets have played; roll, Buy Spin Works (150)
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | sleep | 1500
+STEP | shot | /tmp/claude-1000/vid/raw/13-pets-played.png
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you: p1 roll | 10
+STEP | sleep | 1500
+STEP | shot | /tmp/claude-1000/vid/raw/14-landed.png
+STEP | press | label:Buy Spin Works
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | bought-150 | 10
+STEP | sleep | 1500
+STEP | shot | /tmp/claude-1000/vid/raw/15-bought.png
+STEP | press | label:End turn
+# block 3: round 3, roll, Skip Coil Plaza: an auction opens
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | your turn, A | 120
+STEP | press | label:Roll
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | you: p1 roll | 10
+STEP | press | label:Skip
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | declined;auction | 10
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | AUCTION Coil Plaza | 60
+STEP | sleep | 1200
+STEP | shot | /tmp/claude-1000/vid/raw/17-auction.png
+# block 4: Bid 30, the pets raise
+STEP | press | label:Bid 30
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | bid=50 | 60
+STEP | see | label:Pass
+STEP | sleep | 1200
+STEP | shot | /tmp/claude-1000/vid/raw/18-auction-raised.png
+# block 5: Pass, the auction ends
+STEP | press | label:Pass
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | auction_end | 60
+STEP | see | label:End turn
+STEP | sleep | 1200
+STEP | shot | /tmp/claude-1000/vid/raw/19-auction-over.png
+# block 6: the Trade screen, Spin Works for 30 cash, Send offer; B accepts
+STEP | press | label:Trade...
+STEP | see | label:you GIVE
+STEP | see | label:Spin Works
+STEP | sleep | 1200
+STEP | shot | /tmp/claude-1000/vid/raw/20-trade-empty.png
+STEP | press | label:Spin Works
+STEP | see | label:Spin Works (press: back)
+STEP | press | label:ask 10 more
+STEP | press | label:ask 10 more
+STEP | press | label:ask 10 more
+STEP | see | label:ask $30
+STEP | sleep | 1200
+STEP | shot | /tmp/claude-1000/vid/raw/21-trade-filled.png
+STEP | press | label:Send offer
+STEP | expect | @.apps/rpg-edit-hq/state/games/deskopoly/game/ledger.txt | contains | give=prop:12;get=cash:30 | 10
+STEP | sleep | 3500
+STEP | shot | /tmp/claude-1000/vid/raw/22-offer-answered.png
