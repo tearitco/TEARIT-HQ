@@ -54,6 +54,10 @@ echo "########## XMLSerializer + outerHTML deliver real markup (hermetic)"
 bash "$HERE/nb_serializer_test.sh" || RC=1
 
 echo
+echo "########## PerformanceObserver delivers User Timing marks (hermetic)"
+bash "$HERE/nb_perf_observer_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

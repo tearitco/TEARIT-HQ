@@ -189,6 +189,9 @@ static JSValue nb_perf_now(JSContext *ctx, JSValueConst this_val,
 static char g_perf_mark_name[NB_PERF_MARKS_MAX][64];
 static double g_perf_mark_t[NB_PERF_MARKS_MAX];
 static int g_perf_mark_n = 0;
+/* PerformanceObserver hook: the worker registers a callback fired after a
+ * mark is appended. NULL in TUs that do not implement observers (CLI). */
+static void (*g_perf_mark_hook)(JSContext *ctx) = NULL;
 static JSValue nb_perf_mark(JSContext *ctx, JSValueConst this_val,
                             int argc, JSValueConst *argv) {
     (void)this_val;
@@ -200,6 +203,7 @@ static JSValue nb_perf_mark(JSContext *ctx, JSValueConst this_val,
                  "%s", name ? name : "");
         g_perf_mark_t[g_perf_mark_n] = t;
         g_perf_mark_n++;
+        if (g_perf_mark_hook) g_perf_mark_hook(ctx);
     }
     if (name) JS_FreeCString(ctx, name);
     JSValue o = JS_NewObject(ctx);
