@@ -1875,9 +1875,12 @@ static int daemon_main(void) {
     while (!quit_flag) {
         usleep(100000); while (waitpid(-1, NULL, WNOHANG) > 0) {}      /* reap fire-and-forget children (run_quiet wait=0): no zombies pile up */
         {   /* GAME DRIVER WATCHDOG (owner 2026-11-08 "make sure they never disappear again"). The sidebars, the players bar and the 3D players all come from the open book's driver (its feed state/game_ui.txt). A session reset, a relaunch or a crashed driver left the Player tab saying "playing" with NO driver behind it: no feed, no side menus, no pieces. So while the running switch is on and the open book HAS a `GAME | driver` row, a feed that does not say gm_on=1 for two checks in a row (5 s apart) starts the driver again (book_driver is a no-op for a book without a driver row and the driver locks itself, so a live one just refuses). At most one fork per 10 s, ~one small file read per 5 s. Stop (running=0) disables it. */
-            static long wd_at = 0; static int wd_miss = 0; long wt = now_ms();
-            if (wt - wd_at >= 5000) { wd_at = wt; char wf[PATH_MAX], wb[128]; snprintf(wf, sizeof wf, "%s/state/game_ui.txt", APP); read_file(wf, wb, sizeof wb);
-                if (run_on() && !strstr(wb, "gm_on=1")) { if (++wd_miss >= 2) { wd_miss = 0; (void)book_driver(); } } else wd_miss = 0; }
+            /* 2026-11-09 (owner: "3D entities should be there immediately"; after a reboot the feed file still said gm_on=1, written by the DEAD driver, so this guard waited forever: no driver, desk stuck on the empty authored board, stale bars). Two fixes: (1) the FIRST check after this process starts calls book_driver() at once (a live driver refuses by its own flock, so it costs one fork); (2) the feed carries gm_pid=<driver pid>: a pid that no longer exists is a definite miss and restarts the driver without waiting for a second check. */
+            static long wd_at = 0; static int wd_miss = 0, wd_first = 1; long wt = now_ms();
+            if (wt - wd_at >= 5000) { wd_at = wt; char wf[PATH_MAX], wb[160]; snprintf(wf, sizeof wf, "%s/state/game_ui.txt", APP); read_file(wf, wb, sizeof wb);
+                int dead = 0, pid_live = 0; { const char *gp = strstr(wb, "gm_pid="); if (gp) { long gpid = atol(gp + 7); if (gpid > 0) { if (kill((pid_t)gpid, 0) != 0 && errno == ESRCH) dead = 1; else pid_live = 1; } } }
+                if (run_on() && wd_first) { wd_first = 0; wd_miss = 0; if (!(pid_live && strstr(wb, "gm_on=1"))) (void)book_driver(); }   /* first look after this process started: only a feed with a LIVE driver pid is trusted */
+                else if (run_on() && (dead || !strstr(wb, "gm_on=1"))) { if (dead || ++wd_miss >= 2) { wd_miss = 0; (void)book_driver(); } } else wd_miss = 0; }
         }
         int dirty = 0, codes[64], n; msg[0] = 0; { long lt = now_ms(); if (lt - last_load >= tune("reload_ms", 2000)) { last_load = lt; load_tune(); load_data(); if (page_follow(msg, sizeof msg)) dirty = 1; } }      /* catalog / party / rooms / door pages are static: re-parsing them every 100 ms was most of the daemon's own CPU */
 #define PET_SECTION 67

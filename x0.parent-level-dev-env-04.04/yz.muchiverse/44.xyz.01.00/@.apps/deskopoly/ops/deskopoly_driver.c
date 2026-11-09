@@ -296,12 +296,13 @@ static char snap_key[40] = "";   /* "<round>:<current>" of the last turn the cam
 static int snap_for(int pl, char *why, size_t wcap) { int cx, cy; why[0] = 0; if (pl < 1 || !fig_cell(pl - 1, &cx, &cy)) { snprintf(why, wcap, "your figure is not on the board"); return -5; } return cam_snap(cx, cy, why, wcap); }
 /* AUTO SNAP BOOKKEEPING. A snap that found no board session yet (-1) is retried on the next loops (at most 20, about 11 s) instead of being given up for the whole turn. The FIRST auto snap of a driver run is repeated once 6 s later: the editor relaunch
  * (board launcher) rewrites the cursor to its home cell a moment after a driver that started with it (seen live 2026-11-08: the cursor was back at 8,8 and the camera never moved). */
-static int snap_tries = 0, snap_first_done = 0; static long snap_again = 0;
+static int snap_tries = 0, snap_first_done = 0, snap_rep = 0; static long snap_again = 0, snap_t0 = 0;   /* 2026-11-09: snap_t0 = when the first try of this turn started (the retry window for "no board session yet" is 90 s of wall time, not 20 loops: a relaunch starts the driver BEFORE the engine session is announced, and after 11 s the snap gave up for good: figures drawn, camera elsewhere); snap_rep = repeats left after a successful FIRST snap */
 
 static void publish(void) {
     static char o[40000]; o[0] = 0; OUT_ = o; OUTCAP_ = sizeof o; nb_ = nt_ = ne_ = nl_ = 0; ENT_[0] = 0; char t[256], k[48], b[600];
     int run = running(); int have = mode_play && load_ui(); int over = have ? uint_("over") : 0;
-    catn(o, sizeof o, "gm_on=1\ngm_title=TEROPOLY classic\n");
+    catn(o, sizeof o, "gm_on=1\n"); { char gp[40]; snprintf(gp, sizeof gp, "gm_pid=%ld\n", (long)getpid()); catn(o, sizeof o, gp); }   /* 2026-11-09 the editor's driver watchdog checks this pid: a dead driver leaves gm_on=1 behind (crash), and a feed that still claims "on" fooled it for 45 minutes after a reboot */
+    catn(o, sizeof o, "gm_title=TEROPOLY classic\n");
     /* IN-GAME FEATURES REPLACE THE EDITOR TOOLS WHILE A GAME IS ON: this feed is the LAST vars file of the editor window, so these keys override the editor ones (data, no renderer change). The palettes bar is hidden,
      * the pets bar is shown with the game players as its party, and the h-ai chat gives way to the game chat. When the game ends the feed drops to gm_on= and the editor values show again. */
     catn(o, sizeof o, "side_pal=\nside_left=1\nn_chat=0\nchat_is_hai=\nchat_is_edit=\nchat_is_net=\ngm_chat_title=TEROPOLY table talk\nnick_line=Teropoly players\nstat_line=pets play, you watch or take a seat\nstat_line2=Stop freezes, Play resumes\n");
@@ -437,9 +438,9 @@ int main(int argc, char **argv) {
                 { char cu[16], key[40], why[120]; uget("current", cu, sizeof cu); snprintf(key, sizeof key, "%d:%s", uint_("round"), cu);   /* CAMERA SNAP: once per human turn (the tuning row is read only when the turn is new) */
                   if (strcmp(key, snap_key)) {
                       int on = tune_int("camera_follow", 1), rc = on ? snap_for(tr_pid_of(cu), why, sizeof why) : 0;
-                      if (rc == -1 && ++snap_tries < 20) { /* no board session yet: try again on the next loop, do not give up this turn */ }
-                      else { snprintf(snap_key, sizeof snap_key, "%s", key); snap_tries = 0; if (on && rc == 0 && !snap_first_done) { snap_first_done = 1; snap_again = now_ms() + 6000; } } }
-                  else if (snap_again && now_ms() >= snap_again) { snap_again = 0; if (tune_int("camera_follow", 1)) snap_for(tr_pid_of(cu), why, sizeof why); } } }
+                      if (rc == -1 && (snap_t0 ? now_ms() - snap_t0 < 90000 : (snap_t0 = now_ms()) > 0)) { /* no board session yet: try again on the next loop (up to 90 s), do not give up this turn */ }
+                      else { snprintf(snap_key, sizeof snap_key, "%s", key); snap_tries = 0; snap_t0 = 0; if (on && rc == 0 && !snap_first_done) { snap_first_done = 1; snap_rep = 2; snap_again = now_ms() + 6000; } } }
+                  else if (snap_again && now_ms() >= snap_again) { snap_again = 0; if (tune_int("camera_follow", 1)) snap_for(tr_pid_of(cu), why, sizeof why); if (--snap_rep > 0) snap_again = now_ms() + 9000; } } }
             else if (ov[0] != '1') { hwait = 0; tick_once(); } else if (strcmp(msg, "the game is over")) { snprintf(msg, sizeof msg, "the game is over"); dirty = 1; } next = t + INTERVAL_MS[speed]; } }
         if (page_pending && now_ms() - last_page >= 250) page_sync(1);
         /* DESK GUARD (owner 2026-11-08 "the entities seemed to disappear from the board"): the players live on the generated PLAY desk; the editor's board launcher writes the world's desk from its own page (page=board) a little AFTER a driver that started at launch (the core watchdog) has switched it, and the players vanished with a game running. While a game is in play the driver keeps asserting its desk (a 4 KB read per 2 s, a write only when it really differs). */
