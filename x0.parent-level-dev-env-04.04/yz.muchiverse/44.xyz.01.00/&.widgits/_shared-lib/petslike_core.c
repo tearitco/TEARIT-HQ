@@ -936,7 +936,13 @@ static int run_on(void) { return flag_on("running", 1); }
  * 2026-10-11: INT is the one switch: on = rogue (time moves only when you act, the other pets step with you), off = live (the clock runs, pets walk on their timers). The "mode" verb / tab now just toggles INT. */
 static int rogue_mode(void) { return flag_on("int", 0); }      /* owner 2026-10-11: INT on = roguelike (turn based), INT off = auto / live; the old separate timemode flag is gone (with it set to live, INT on let every pet roam free) */
 static int turn_mode(void) { return flag_on("int", 0) && rogue_mode(); }
-static void clock_sync(void) { clock_paths(); clock_pause(!run_on() || turn_mode()); }
+/* GAME CLOCK HOLD (2026-11-09, data: the book's game.pdl row `GAME | clock | pause`; `run` or no row = the old behaviour). While such a book has a LIVE game (its driver feed state/game_ui.txt says gm_on=1) the world clock is paused. Why: a turn-based game does not need the world's day/night clock, and with In: OFF the clock ran fast (about 3 game days in 2 real minutes) and fired the five daily reminders in rotation, a 35-43% burst of a core every 12 s (measured 2026-11-08/09 with In off and Teropoly running; mean about 4%). Re-evaluated at most every 5 s (two small file reads); the loop below notices the change and calls clock_sync, so the clock resumes by itself when the game ends. Extension point: more values (a slower rate) can be added next to `pause` with no change to the books that do not use it. */
+static int game_clock_hold(void) {
+    static long at = 0; static int held = 0; long t = now_ms(); if (at && t - at < 5000) return held; at = t; held = 0;
+    char cmd[256], bd[PATH_MAX]; if (!game_row("clock", cmd, sizeof cmd, bd, sizeof bd) || strcmp(cmd, "pause")) return 0;
+    char wf[PATH_MAX], wb[160]; snprintf(wf, sizeof wf, "%s/state/game_ui.txt", APP); read_file(wf, wb, sizeof wb); held = strstr(wb, "gm_on=1") != NULL; return held;
+}
+static void clock_sync(void) { clock_paths(); clock_pause(!run_on() || turn_mode() || game_clock_hold()); }
 static void clock_start(void) { clock_paths(); if (!clock_ok()) return; clock_install(); long long ms = clock_kv_ll("game_time_epoch_ms"); if (ms >= 0) write_phase(ms); clock_sync(); lc_run(1, "daemon-start", NULL); clock_ui(); }
 static void clock_stop(void) { clock_paths(); if (!clock_ok() || !fexists(CFILE)) return; lc_run(0, "cmd", "rpg", "pause", "--source", "rpg-stop", NULL); usleep(1000000); lc_run(0, "daemon-stop", NULL); }
 /* Is this game's resident clock daemon running? (lc_clock <root> daemon ...). The daemon fires due reminders ONCE, with its event runner; a verb that skips time must not fire them a second time, and when there is no daemon
@@ -1897,7 +1903,7 @@ static int daemon_main(void) {
 #define PET_SECTION 68
 #include PET_SKIN
 #undef PET_SECTION
-        { int r = run_on() + 2 * rogue_mode(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
+        { int r = run_on() + 2 * rogue_mode() + 4 * game_clock_hold(); if (r != was_run) { was_run = r; clock_sync(); dirty = 1; } }
         if (in) for (int i = 0; i < n; i++) { int c = codes[i], dx = 0, dy = 0;
 #define PET_SECTION 76
 #include PET_SKIN

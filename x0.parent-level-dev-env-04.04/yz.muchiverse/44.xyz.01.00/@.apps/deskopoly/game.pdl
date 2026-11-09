@@ -7,3 +7,5 @@ GAME   | driver       | {book}/ops/+x/deskopoly_driver.+x {house} {book} {editor
 # exit 3 = not a command (the pets answer as before), anything else = handled (its output lines are said into the chat as `game`). {house} {book} {editor} are replaced like the driver row.
 # Here: the typed `offer p2 give Orange3 get 20`, `counter 3 ...`, `accept`, `bid 60` become the engine's own verbs for the human seat (deskopoly_chat --hook; the ledger row is the same one a popup button writes).
 GAME   | chat         | {book}/ops/+x/deskopoly_chat.+x --hook {book} {editor}/state/games/deskopoly/game
+# GAME | clock | pause|run   (2026-11-09) pause = the editor's world clock (day/night, daily reminders) is paused while this game is live (the feed says gm_on=1) and resumes by itself when it ends; run, or no row = the world clock is left alone. Why pause: Teropoly is turn based on the ledger and the clock burned about 4% of a core (35-43% bursts) with In: OFF. Flip to run here, no rebuild.
+GAME   | clock        | pause

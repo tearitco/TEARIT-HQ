@@ -1,0 +1,56 @@
+# game_clock_hold (2026-11-09): a book whose game.pdl says `GAME | clock | pause` has the editor's WORLD clock paused while its game is live (the driver feed says gm_on=1) and resumed when the game ends; a book without the row is untouched.
+# Why: with In: OFF the world clock ran fast and fired the five daily reminders in rotation (a 35-43% burst of a core every 12 s while Teropoly ran, 2026-11-08/09). The truth is read from the PRODUCER (lc_clock's own state file, line `running=`), not from a label.
+# VACUITY: lc_clock installs PAUSED, so `running=0` alone proves nothing: each scenario first waits for the clock to reach running=1 (it CAN run), then the hold must pause it, then the end of the game must resume it.
+# SCRATCH house with the real lc_clock and the real editor op (the RPG Maker sheets are a read-only symlink: without them the core exits at start). The daemon is stopped by its own verb at the end of each scenario.
+RESULTS | ../results/game_clock_hold.txt
+ENV     | LC_ALL | C
+CASE    | no-row-means-the-clock-is-left-alone
+SCRATCH |
+MKDIR   | house/&.widgits/_shared-lib/ops/+x
+MKDIR   | house/&.widgits/livedesk-clock/ops/+x
+RUN     | /bin/ln | -s | $HOUSE/../../../#.NNEST_ASSETS | $T/house/#.NNEST_ASSETS
+RUN     | /bin/cp | $HOUSE/&.widgits/livedesk-clock/ops/+x/lc_clock.+x | $T/house/&.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPYDIR | @.apps/rpg-edit-hq | house/@.apps/rpg-edit-hq | state
+MKDIR   | house/@.apps/rpg-edit-hq/state/world
+MKDIR   | house/@.apps/fakegame
+WRITE   | house/@.apps/fakegame/game.pdl | GAME | title | Fake\n
+WRITE   | house/@.apps/rpg-edit-hq/state/last_book.txt | book=fakegame\n
+WRITE   | house/@.apps/rpg-edit-hq/state/world/switches.txt | running=1\n
+WRITE   | house/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=1\ngm_pid=1\n
+SPAWN   | CORE | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house | $T/house/@.apps/rpg-edit-hq
+WAIT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/rpg.pdl | running=1 | 30000 | A-BOOK-WITHOUT-THE-ROW-HAS-ITS-CLOCK-RUNNING-even-though-a-game-feed-says-gm_on-1
+SLEEP   | 8000
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/rpg.pdl | running=1 | and-it-stays-running-no-hold-without-the-row
+EXPECT_ALIVE | $CORE | VACUITY-the-core-daemon-was-alive-the-whole-time
+RUN     | /usr/bin/kill | $CORE
+RUN     | $T/house/&.widgits/livedesk-clock/ops/+x/lc_clock.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root | daemon-stop
+SLEEP   | 1500
+EXPECT_DEAD | $CORE | the-core-daemon-stopped-by-pid
+CLEAN   |
+CASE    | the-row-pauses-while-the-game-is-live-and-resumes-after
+SCRATCH |
+MKDIR   | house/&.widgits/_shared-lib/ops/+x
+MKDIR   | house/&.widgits/livedesk-clock/ops/+x
+RUN     | /bin/ln | -s | $HOUSE/../../../#.NNEST_ASSETS | $T/house/#.NNEST_ASSETS
+RUN     | /bin/cp | $HOUSE/&.widgits/livedesk-clock/ops/+x/lc_clock.+x | $T/house/&.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPYDIR | @.apps/rpg-edit-hq | house/@.apps/rpg-edit-hq | state
+MKDIR   | house/@.apps/rpg-edit-hq/state/world
+MKDIR   | house/@.apps/fakegame
+WRITE   | house/@.apps/fakegame/game.pdl | GAME | title | Fake\nGAME | clock | pause\n
+WRITE   | house/@.apps/rpg-edit-hq/state/last_book.txt | book=fakegame\n
+WRITE   | house/@.apps/rpg-edit-hq/state/world/switches.txt | running=1\n
+WRITE   | house/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=\n
+SPAWN   | CORE2 | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house | $T/house/@.apps/rpg-edit-hq
+WAIT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/rpg.pdl | running=1 | 30000 | CONTROL-with-the-row-but-NO-live-game-the-clock-runs-so-it-CAN-run
+WRITE   | house/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=1\ngm_pid=1\n
+WAIT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/rpg.pdl | running=0 | 20000 | THE-HOLD-a-live-game-pauses-the-world-clock-within-one-5-s-check
+SLEEP   | 12000
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/rpg.pdl | running=0 | and-it-STAYS-paused-while-the-game-is-live
+WRITE   | house/@.apps/rpg-edit-hq/state/game_ui.txt | gm_on=\n
+WAIT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/rpg.pdl | running=1 | 20000 | THE-GAME-ENDED-the-clock-resumes-by-itself
+EXPECT_ALIVE | $CORE2 | VACUITY-the-core-daemon-was-alive-the-whole-time
+RUN     | /usr/bin/kill | $CORE2
+RUN     | $T/house/&.widgits/livedesk-clock/ops/+x/lc_clock.+x | $T/house/@.apps/rpg-edit-hq/state/clock_root | daemon-stop
+SLEEP   | 1500
+EXPECT_DEAD | $CORE2 | the-core-daemon-stopped-by-pid
+CLEAN   |
