@@ -9,7 +9,7 @@ Written by Claude (Sonnet 5.5). Owner instruction: "check for current wallet con
 | piece / pet wallet id | `hash_op wallet <uid>` = `e` + first 24 hex of SHA-256("wallet" 0x00 uid). uid is 8 to 64 hex | `_shared-lib/ops/hash_op.c`, `piece_mint.c`, `16.game/PIECE-IDENTITY-AND-MASTER-PAL-LIST-DESIGN-2026-10-28.md` |
 | old rule `e` + first 24 hex of the uid | **superseded**; still used only for the label `wallet_line=` in `petslike_core.c` (`ent_wallet`) | `pet-trainer/CHAIN-ECONOMY-DESIGN.md` (edited today) |
 | user / house wallet | `wallet_id` + password, **unsalted SHA-256** `password_hash`, file `041.pal-chain/wallets/<id>/wallet.txt` | `chain_create_wallet.c` |
-| signing | Ed25519 through OpenSSL EVP, planned (`sig_op`); one key per account | `GAMES-AS-PACKAGES-AND-STORE-DESIGN.md` |
+| signing | Ed25519 through OpenSSL EVP, BUILT (`sig_op`; corrected 2026-11-08: harness cases `chain_signed` 30, `ev_chain_signed` 55, `chain_escrow_signed` 45 pass); one key per account | `GAMES-AS-PACKAGES-AND-STORE-DESIGN.md` |
 
 ## 2. Wallet hashes on the public origin (RAN) - CALL: stop tracking them
 

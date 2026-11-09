@@ -72,3 +72,4 @@ Files-Compliance/Nav-Input/Assets sections), `44.xyz.01.00/
 !.HOUSE_STDS.md` §A.7/§B.
 - `EVENT-ARCHITECTURE-ONBOARDING-2026-11-05.md` — START HERE for events: the four layers (clock, event pages, ledgers, projection), one traced path, where a new thing goes, and the traps hit so far; routes to the detailed docs
 - `DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` — **ask this before building anything with two possible shapes** (owner 2026-11-05): the six-question test (one authority per fact, modular, scalable, long term, house shapes, cost/risk) and the decision log; D1 = how a chosen pet shows as possessed.
+- `CODEBASE-AUDIT-MODULARITY-AI-CHAIN-2026-11-08.md` — **read for the real state of the AI / social / chain pipeline** (designed vs built vs tested), ranked red flags with evidence (new Python, wallet hashes, no AI callers, shell-per-event-step, copy-paste duplicates, untested ops, uncapped runtime files) and the backup-size analysis for `rezip-house.sh`.

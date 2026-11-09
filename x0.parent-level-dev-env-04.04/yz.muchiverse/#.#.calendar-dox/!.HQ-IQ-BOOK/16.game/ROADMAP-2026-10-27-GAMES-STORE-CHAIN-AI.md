@@ -11,7 +11,7 @@ One page over the four docs written today (all in this folder): `HANDOFF-2026-10
 | Store | MOCK: `store-hq` window opens from taskbar cell 13 (tested). Catalog has 12 rows, nothing installable. |
 | Events for chain/store | DONE (tested by hand): `ev_chain`, `ev_store`, 9 registry commands. Free `get` only; test chains only; unsigned. |
 | Courts / REP / disputes | MOCK: `court-hq` under Network (tested). DESIGN: dispute ledger, REP, jail/bail, my-lawyer reuse. |
-| Social / p2p / user-owned data | DESIGN only. No upload exists; hq-ftp is a placeholder; `palnet_peer` is same-machine. |
+| Social / p2p / user-owned data | DESIGN only. No upload exists; hq-ftp is a placeholder; `palnet_peer` listens on 127.0.0.1 by default and accepts other machines when `PALNET_BIND` names a LAN address or 0.0.0.0 (corrected 2026-11-08; proven by harness case `irc_two_machine` 19); no upload exists. |
 | Safety rules decided | data-only for outside creators; agent proposes + owner confirms; opt-in insights; no bias in courts; 7-day window; small-amount rule-resolve; all numbers in `.pdl` per chain/game. |
 
 ## 1. Short term (next days): make the foundations real, small and testable

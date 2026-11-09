@@ -18,6 +18,7 @@ Below the table the rules are in the order they were learned, not the order you 
 | **khtpm renderer, windows, menus** | skill `khtpm-house-standards`, `02-architecture/CENTROID_GOLD_STD.md` | shared renderer: zero per-project C |
 | **Games / levels / characters / lore** | `22.lore-ip/00-INDEX.md`, skills `soul-pen-lore`, `tsots-game-map`, `16.game/00-INDEX.md` | the lore is unpublished IP; label SAID / READ / DOC |
 | **Git, branches, committing** | this file's commit sections, `01-orientation/BRANCH-STRATEGY.md`; commit with `44.xyz.01.00/&.widgits/_shared-lib/ops/+x/commit_scoped.+x` | explicit pathspec only; a file with someone else's uncommitted hunk is committed by index, not whole |
+| **Audit, modularity, the AI / social / chain pipeline, "what is the real state of X"** | `02-architecture/CODEBASE-AUDIT-MODULARITY-AI-CHAIN-2026-11-08.md` (designed vs built vs tested per layer, ranked red flags, backup size), then `17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md` | the AI layer has designs and no callers; chain and social are built and tested; fix a red flag by its row, do not write another design doc |
 | **A design choice (two ways to build it)** | `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` | answer the five questions, add a log row |
 | **Game state / saves / ledgers** | `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md` | the ledger is the only authority |
 
