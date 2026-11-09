@@ -1,0 +1,4 @@
+# book_label.pal - pal harness for cases/book_label.pdl (the toolbar book label shows the GAME title). Read results/book_label.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/book_label.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/book_label.pdl
+halt

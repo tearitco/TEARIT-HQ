@@ -609,7 +609,19 @@ static int find_board_session(const char *house, const char *host_id, char *out,
     return found;
 }
 
+/* 2026-11-08 the book label shows the book's DISPLAY name: the `GAME | title | <name>` row of <house>/@.apps/<id>/game.pdl (Teropoly), else the folder id (which stays the identifier everywhere else). A pure data lookup, no per-game code; an id with a slash or `..` is never opened. */
+static void book_display(const char *house, const char *id, char *out, size_t cap) {
+    snprintf(out, cap, "%s", id); if (!id[0] || strchr(id, '/') || strstr(id, "..")) return;
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/@.apps/%s/game.pdl", house, id); FILE *f = fopen(p, "r"); if (!f) return; char ln[512];
+    while (fgets(ln, sizeof ln, f)) {
+        char *c = ln; while (*c == ' ') c++; if (strncmp(c, "GAME", 4)) continue; char *a = strchr(c, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue;
+        char key[32]; snprintf(key, sizeof key, "%.*s", (int)(b - a - 1), a + 1); char *k = key; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && e[-1] == ' ') *--e = 0; if (strcmp(k, "title")) continue;
+        char *v = b + 1; while (*v == ' ') v++; e = v + strlen(v); while (e > v && (e[-1] == '\n' || e[-1] == '\r' || e[-1] == ' ')) *--e = 0; if (v[0]) snprintf(out, cap, "%s", v); break;
+    }
+    fclose(f);
+}
 int main(int argc, char **argv) {
+    if (argc == 4 && !strcmp(argv[1], "--book-label")) { char d[80]; book_display(argv[2], argv[3], d, sizeof d); printf("book:%s\n", d); return 0; }   /* test mode: the label a book would get (see harness case book_label) */
     /* 2026-10-02, real live catch (board window went BLACK): the board
      * template spawns us as
      *   <module src=".../pchq_board_projector.+x" args="piececraft-hq"/>
@@ -919,7 +931,7 @@ int main(int argc, char **argv) {
                 fclose(lf);
             }
         }
-        snprintf(book_label, sizeof(book_label), "book:%s", proj_id);
+        { char bd[80]; book_display(house, proj_id, bd, sizeof bd); snprintf(book_label, sizeof(book_label), "book:%s", bd); }
         snprintf(page_label, sizeof(page_label), "page:%s", own_page);
         /* Player > Synch writes this from the same session.pdl the
          * taskbar reads. While it exists, both bars show one book and page. */
@@ -936,7 +948,7 @@ int main(int argc, char **argv) {
              * book and page Synch wrote. A later desk switch does
              * not move them until the next Synch. */
             if (strcmp(ob_src, "board") != 0 && ob_book[0] && ob_page[0]) {
-                snprintf(book_label, sizeof(book_label), "book:%s", ob_book);
+                { char bd[80]; book_display(house, ob_book, bd, sizeof bd); snprintf(book_label, sizeof(book_label), "book:%s", bd); }
                 snprintf(page_label, sizeof(page_label), "page:%s", ob_page);
             }
         }

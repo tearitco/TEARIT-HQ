@@ -1,0 +1,36 @@
+# book_label: the toolbar tab "book:<name>" shows a book's DISPLAY name (owner 2026-11-08: "why didn't we change book name to teropoly?"; AGENTS.md: anything a user sees says Teropoly, identifiers keep deskopoly).
+# The label is made by pchq_board_projector (shared by every board). Rule: the `GAME | title | <name>` row of @.apps/<id>/game.pdl, else the folder id. The folder id stays the identifier everywhere else (last_pchq_book_page.txt, paths).
+# Method: the projector's `--book-label <house> <id>` test mode against a SCRATCH house (and the real one for the two books that matter). The old binary has no such mode (and would start as a daemon), so there is no old-binary run here.
+RESULTS | ../results/book_label.txt
+ENV | LC_ALL | C
+
+CASE    | scratch
+SCRATCH |
+MKDIR   | @.apps/titled
+WRITE   | @.apps/titled/game.pdl | GAME   \p driver  \p x {house}\nGAME   \p title   \p Zed Game\n
+MKDIR   | @.apps/plain
+WRITE   | @.apps/plain/game.pdl | GAME   \p driver  \p x {house}\n
+MKDIR   | @.apps/empty
+WRITE   | @.apps/empty/game.pdl | GAME   \p title   \p \n
+MKDIR   | @.apps/nofile
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $T | titled
+EXPECT_OUT | book:Zed Game | a-book-with-a-GAME-title-row-shows-the-title
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $T | plain
+EXPECT_OUT | book:plain | NEGATIVE-a-game.pdl-without-a-title-row-keeps-the-folder-id
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $T | empty
+EXPECT_OUT | book:empty | NEGATIVE-an-EMPTY-title-keeps-the-folder-id
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $T | nofile
+EXPECT_OUT | book:nofile | NEGATIVE-no-game.pdl-keeps-the-folder-id
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $T | ../titled
+EXPECT_OUT | book:../titled | NEGATIVE-an-id-with-dotdot-is-never-opened-so-the-title-is-not-reached
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $T | titled/x
+EXPECT_OUT | book:titled/x | NEGATIVE-an-id-with-a-slash-is-never-opened
+CLEAN   |
+
+CASE    | real
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $HOUSE | deskopoly
+EXPECT_OUT | book:Teropoly | the-real-deskopoly-book-shows-Teropoly
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $HOUSE | piececraft-hq
+EXPECT_OUT | book:piececraft-hq | and-a-book-without-a-title-is-unchanged
+RUN | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | --book-label | $HOUSE | rpg-space
+EXPECT_OUT | book:rpg-space | rpg-space-is-unchanged
