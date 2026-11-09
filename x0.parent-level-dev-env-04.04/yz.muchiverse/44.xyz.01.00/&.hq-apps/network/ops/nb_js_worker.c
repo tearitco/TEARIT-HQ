@@ -2318,6 +2318,22 @@ static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc,
 
 static JSValue get_global_attr(JSContext *ctx, const char *name);
 
+static JSValue nb_list_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int32_t idx = 0;
+    if (argc > 0) JS_ToInt32(ctx, &idx, argv[0]);
+    if (idx < 0) return JS_NULL;
+    JSValue v = JS_GetPropertyUint32(ctx, this_val, (uint32_t)idx);
+    if (JS_IsUndefined(v)) { JS_FreeValue(ctx, v); return JS_NULL; }
+    return v;
+}
+static void nb_list_proto(JSContext *ctx, JSValue arr, const char *class_name) {
+    JSValue cls = get_global_attr(ctx, class_name);
+    JSValue proto = JS_GetPropertyStr(ctx, cls, "prototype");
+    if (JS_IsObject(proto)) JS_SetPrototype(ctx, arr, proto);
+    JS_FreeValue(ctx, proto);
+    JS_FreeValue(ctx, cls);
+}
+
 static JSValue nb_doc_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_doc_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_doc_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -2354,6 +2370,7 @@ static JSValue nb_dom_getElementsByTagName(JSContext *ctx, JSValueConst this_val
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "HTMLCollection");
     return arr;
 }
 static void qsa_into(JSContext *ctx, NbNode *n, const char *sel, JSValue arr, int *i) {
@@ -2386,6 +2403,7 @@ static JSValue nb_dom_querySelectorAll(JSContext *ctx, JSValueConst this_val, in
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "NodeList");
     return arr;
 }
 
@@ -2663,6 +2681,7 @@ static JSValue nb_dom_getElementsByClassName(JSContext *ctx, JSValueConst this_v
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "HTMLCollection");
     return arr;
 }
 static JSValue nb_dom_head(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -6401,6 +6420,7 @@ static JSValue nb_el_querySelectorAll(JSContext *ctx, JSValueConst this_val, int
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "NodeList");
     return arr;
 }
 static JSValue nb_el_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -6415,6 +6435,7 @@ static JSValue nb_el_getElementsByTagName(JSContext *ctx, JSValueConst this_val,
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "HTMLCollection");
     return arr;
 }
 static JSValue nb_el_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -6429,6 +6450,7 @@ static JSValue nb_el_getElementsByClassName(JSContext *ctx, JSValueConst this_va
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "HTMLCollection");
     return arr;
 }
 
@@ -6905,6 +6927,20 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "serializeToString", JS_NewCFunction(ctx, nb_xmlserializer_serialize, "serializeToString", 1));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "XMLSerializer", f);
+        /* List classes (2026-11-09): NodeList/HTMLCollection prototypes
+           carry item(); query results are arrays with these prototypes set. */
+        f = add_class(ctx, "NodeList", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
+        JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_list_item, "item", 1));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "NodeList", f);
+        f = add_class(ctx, "HTMLCollection", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
+        JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_list_item, "item", 1));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "HTMLCollection", f);
         JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
     }
 
@@ -9675,6 +9711,7 @@ static JSValue nb_frag_querySelectorAll(JSContext *ctx, JSValueConst this_val, i
         JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
     JS_FreeCString(ctx, owned);
+    nb_list_proto(ctx, arr, "NodeList");
     return arr;
 }
 static JSValue nb_frag_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {

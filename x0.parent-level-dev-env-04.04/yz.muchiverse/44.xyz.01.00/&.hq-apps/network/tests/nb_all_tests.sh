@@ -66,6 +66,10 @@ echo "########## Text data edits deliver characterData records (hermetic)"
 bash "$HERE/nb_character_data_test.sh" || RC=1
 
 echo
+echo "########## NodeList and HTMLCollection query surfaces (hermetic)"
+bash "$HERE/nb_nodelist_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 
