@@ -27,11 +27,11 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PKG="$(cd "$HERE/.." && pwd)"
 WORKER="$PKG/ops/+x/nb_js_worker.+x"
+PROBE="$PKG/ops/+x/nb_probe.+x"   # C op, replaces the old nb_probe.py (no Python, AGENTS.md)
 FAIL=0
 
-command -v python3 >/dev/null || { echo "FAIL: python3 missing"; exit 1; }
 [ -x "$WORKER" ] || { echo "FAIL: worker binary missing at $WORKER"; exit 1; }
-[ -f "$HERE/nb_probe.py" ] || { echo "FAIL: harness missing at $HERE/nb_probe.py"; exit 1; }
+[ -x "$PROBE" ] || { echo "FAIL: probe missing at $PROBE (sh build.sh builds it)"; exit 1; }
 
 WORK="$(mktemp -d /tmp/nb_atob.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -45,7 +45,7 @@ cat > "$WORK/probe.js" <<'PROBE'
 (function(){   var pass=0,total=0;   function codes(s){var a=[];for(var i=0;i<s.length;i++)a.push(s.charCodeAt(i).toString(16));return a.join(',');}   function check(name,got,want){     total++;     if(got===want){ pass++; console.log('ATOB_TESTOK '+name); }     else { console.log('ATOB_TESTFAIL '+name+' got=['+got+'] want=['+want+']'); }   }   check('atob-binary-bytes', codes(atob('yhXN')), 'ca,15,cd');   check('atob-padded-tail-2', String(atob('yhbPEA==').length), '4');   check('atob-padded-tail-1', String(atob('yhXN').length), '3');   function a0(m){ var C=atob(m),W=8443,x='',L=0,r=[];     while(L<C.length){ W=(W<<8|W>>>8)&65535; var N=C.charCodeAt(L++)^W>>>8;       if(N===255){ W=(W<<8|W>>>8)&65535; N=C.charCodeAt(L++)^W>>>8; W=(W<<8|W>>>8)&65535; N|=(C.charCodeAt(L++)^W>>>8)<<8; }       r.push(N); if(r.length===128){ x+=String.fromCharCode.apply(String,r); r=[]; } }     x+=String.fromCharCode.apply(String,r); return x; }   check('cf-decoder-small',  a0('yhXN'),     '156');   check('cf-decoder-medium', a0('yhbPEA=='), '1640');   check('cf-decoder-bigint', a0('y1jLEJ4ZnxOfQ5oRyBLDQc8ZmkTIFMsTnhSZQZ9EmhPMQc1ByhPNEctCzRDDQs4QwhnDE8JFyhDMFJ4XyRCdFZoTyELJRZlEw0PJRp1EyhKYEMJCnhDLEc5BzxbIFZpBwkTJEMkSnxidF8lGwhCeRMoRzRHLQ8gXzxKZEJlBnkbOQsxEmhfIRMxFzBmaRp0WmESZRJ5BmRfJFMISmEXLQcMVw0XPQ8pGz0PJF5oRz0WZQpkUmEXIQp5BmEafQcIYyUaeF88UzROeF81GzRXPQZpCy0POGcxEzkXME80YzUWaEc8ZyxLIRcNGzRCaRc0TzRWaE8sQzhWdRclDzkWZEp5CnUI='),  '0x00e9d3dca1328a49ad3403e4badda37a6a13610b608b5099839e1074e720f5a33b2ebd8c2ffd12c09be0015a4635aa9d2022d8f72f90ed11610c3742b0baef5b7da73d7e79aff6cdbdeab72492ce0a858e4c1f4c27a14ebbb4ce3beacfda982fe74463e76f654aab0c597d5e73686ea149023e8f60ae6365a30055fe2c5eb2ebfb');   console.log('ATOB_TESTRESULT '+pass+'/'+total);   return 'ATOB_TESTDONE'; })();
 PROBE
 
-python3 "$HERE/nb_probe.py" \
+"$PROBE" \
     --worker "$WORKER" --page "$WORK/page.js" --dom "$WORK/dom.txt" \
     --href https://example.invalid/ --title atob:fixture \
     --probe "$WORK/probe.js" --console "$WORK/console.txt" \

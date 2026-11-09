@@ -17,7 +17,7 @@ HR="$(cd "$HERE/../../.." && pwd)"
 RC=0
 
 # Hermetic worker gates first (2026-11-02): no window, no renderer, no
-# network - each drives the worker directly through tests/nb_probe.py. They
+# network - each drives the worker directly through ops/+x/nb_probe.+x (C, built by build.sh). They
 # run before anything that needs a live browser so a broken engine is obvious
 # immediately rather than after ten minutes of browser-dependent suite, and
 # they are the only coverage for the byte-level paths (atob, UTF-8, entropy)

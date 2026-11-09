@@ -1,0 +1,21 @@
+# nb_probe (2026-11-08): the C op that replaced tests/nb_probe.py (the owner allows no Python; AGENTS.md). It drives ONE page through nb_js_worker over the framed RPC (six digits, newline, payload) with no window.
+# Checked here: (1) a dead worker path is a RESULT (exit 1), not a hang or a crash; (2) a worker that never answers STATUS times out at the deadline (exit 1) and leaves no process behind;
+# (3) POSITIVE against the real worker binary: LOAD + EVAL answer STATUS (exit 0) and the probe's OUTPUT line reaches the console capture. The anchor is the computed text "PROBE_A hi 2,4,6", which the probe's own
+# source never contains (the console also echoes the source: an unanchored token would match the echo, see nb_atob_test.sh). Equivalence with the Python it replaced was checked field by field (status, frames, console, fetches, errors) on the same inputs.
+# NOTE: the worker binary needs wasm3 to be built, which is NOT in this repo (audit 2026-11-08 P1-5); case (3) fails loudly when the worker binary is absent, never silently passes.
+RESULTS | ../results/nb_probe.txt
+ENV     | LC_ALL | C
+CASE    | probe
+SCRATCH |
+COPY    | &.hq-apps/network/ops/+x/nb_probe.+x | np.+x
+WRITE   | page.js | /*nbjs-script-boundary*/\nvar __x = 1;\n
+WRITE   | dom.txt | N\p#document\p\p\p0\p\p0\p\nD\nN\phtml\p\p\p0\p\p0\p\nU\n
+WRITE   | probe.js | (function(){ console.log("PROBE_A " + atob("aGk=") + " " + [1,2,3].map(function(x){return x*2}).join(",")); return 1; })()\n
+RUN | $T/np.+x | --worker | /nonexistent/worker | --page | $T/page.js | --dom | $T/dom.txt | --probe | $T/probe.js | --console | $T/c1.txt | --load-timeout | 3 | --eval-timeout | 3
+EXPECT_EXIT | 1 | a-dead-worker-path-is-a-result-exit-1-not-a-hang
+RUN | $T/np.+x | --worker | /bin/cat | --page | $T/page.js | --dom | $T/dom.txt | --probe | $T/probe.js | --console | $T/c2.txt | --load-timeout | 2 | --eval-timeout | 2
+EXPECT_EXIT | 1 | a-worker-that-never-answers-STATUS-times-out-exit-1
+RUN | $T/np.+x | --worker | $HOUSE/&.hq-apps/network/ops/+x/nb_js_worker.+x | --page | $T/page.js | --dom | $T/dom.txt | --href | https://example.invalid/ | --probe | $T/probe.js | --console | $T/c3.txt | --load-timeout | 30 | --eval-timeout | 30
+EXPECT_EXIT | 0 | POSITIVE-the-real-worker-answers-STATUS-for-LOAD-and-EVAL
+EXPECT_HAS | c3.txt | PROBE_A hi 2,4,6 | the-probe-OUTPUT-line-reached-the-console-capture
+CLEAN   |

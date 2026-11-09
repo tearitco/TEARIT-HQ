@@ -26,9 +26,9 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PKG="$(cd "$HERE/.." && pwd)"
 WORKER="$PKG/ops/+x/nb_js_worker.+x"
+PROBE="$PKG/ops/+x/nb_probe.+x"   # C op, replaces the old nb_probe.py (no Python, AGENTS.md)
 FAIL=0
 
-command -v python3 >/dev/null || { echo "FAIL: python3 missing"; exit 1; }
 [ -x "$WORKER" ] || { echo "FAIL: worker binary missing at $WORKER"; exit 1; }
 
 WORK="$(mktemp -d /tmp/nb_rng.XXXXXX)"
@@ -41,7 +41,7 @@ cat > "$WORK/probe.js" <<'PROBE'
 PROBE
 
 run_once() {
-    python3 "$HERE/nb_probe.py" \
+    "$PROBE" \
         --worker "$WORKER" --page "$WORK/page.js" --dom "$WORK/dom.txt" \
         --href https://example.invalid/ --title rng:fixture \
         --probe "$WORK/probe.js" --console "$WORK/console.$1.txt" \

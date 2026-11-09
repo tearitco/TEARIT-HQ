@@ -45,12 +45,12 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PKG="$(cd "$HERE/.." && pwd)"
 WORKER="$PKG/ops/+x/nb_js_worker.+x"
+PROBE="$PKG/ops/+x/nb_probe.+x"   # C op, replaces the old nb_probe.py (no Python, AGENTS.md)
 FAIL=0
 fail() { echo "FAIL: $*"; FAIL=1; }
 
-command -v python3 >/dev/null || { echo "FAIL: python3 missing"; exit 1; }
 [ -x "$WORKER" ] || { echo "FAIL: worker binary missing at $WORKER"; exit 1; }
-[ -f "$HERE/nb_probe.py" ] || { echo "FAIL: harness missing at $HERE/nb_probe.py"; exit 1; }
+[ -x "$PROBE" ] || { echo "FAIL: probe missing at $PROBE (sh build.sh builds it)"; exit 1; }
 
 WORK="$(mktemp -d /tmp/nb_media.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -73,7 +73,7 @@ PROBE
 # at <width> <visible-branch> <hidden-branch>
 at() {
     _w="$1"; _vis="$2"; _hid="$3"
-    python3 "$HERE/nb_probe.py" \
+    "$PROBE" \
         --worker "$WORKER" --page "$WORK/page.js" --dom "$WORK/dom.txt" \
         --css "$WORK/style.css" --width "$_w" \
         --href https://example.invalid/ --title media:fixture \
