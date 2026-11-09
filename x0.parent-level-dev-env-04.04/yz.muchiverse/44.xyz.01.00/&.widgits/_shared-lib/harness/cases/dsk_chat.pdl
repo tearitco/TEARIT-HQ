@@ -1,0 +1,372 @@
+# dsk_chat: deskopoly classic, the CHAT FRONT DOOR (spec DESIGN-DESKOPOLY-CLASSIC-MONOPOLY-BUILD-SPEC-2026-11-08 section 7.6): `ops/+x/deskopoly_chat.+x`, text in, the engine's SAME canonical verb out.
+# Two modes. `--parse <app> <text>` prints `ok <verb args>` + `understood: <english>` or `refused: <reason>` and touches no file. `<app> <game> as=pN <text>` parses and, on ok, runs the ENGINE by fork+execv (no shell) and prints the engine's answer.
+# Method as dsk_trade: ONE autoplayed 3-pet game (seed 6, 831 rows) is cut as a ledger PREFIX; every value below was OBSERVED on 2026-11-08. Prefix 300: p1 to act in PRE with 41 cash, tile 1 (Brown1) mortgaged, p2 holds a Get Out (fund) card and 1048 cash.
+# Prefix 95: an AUCTION on tile 24 (Red3) is open and p2 bids first. Prefix 82: p1 may build on tile 1 (Brown1).
+# The proof that there is no second path that appends rows: every game driven THROUGH CHAT is compared byte for byte (cmp) with the SAME game driven by the direct verbs, and a control shows cmp does fail on two different games.
+RESULTS | ../results/dsk_chat.txt
+ENV | LC_ALL | C
+
+CASE    | base
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | deskopoly-pchq,state,shots,tests
+MKDIR   | m
+EXPECT_EXISTS | $T/app/ops/+x/deskopoly_chat.+x | the-chat-op-is-built-and-present-beside-the-engine
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | lobby | classic
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | A | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | B | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | join | C | pet
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | start | 6
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/m | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | the-game-the-prefixes-are-cut-from-is-the-one-observed-831-rows
+RUN | /usr/bin/sed | -n | 96p | $T/m/ledger.txt
+EXPECT_OUT | \pp2\pbid\p24\p | VACUITY-ledger-line-96-is-p2s-first-bid-in-the-auction-of-tile-24
+RUN | /usr/bin/sed | -n | 83p | $T/m/ledger.txt
+EXPECT_OUT | \pp1\pbuild\p1\p | VACUITY-ledger-line-83-builds-on-tile-1
+
+# --- THE TABLE of spec 7.6, one row per line: the exact canonical verb and the English the chat shows before sending ---
+CASE    | table
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Navy 2 and 100 get Pink 1
+EXPECT_OUT_IS | ok offer p3 give prop:39+cash:100 get prop:11\nunderstood: offer p3: you give Navy2 + 100 cash, you get Pink1 | spec-row-1-names-and-money
+EXPECT_EXIT | 0 | row-1-exit-0
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give 200 get Line 1
+EXPECT_OUT_IS | ok offer p3 give cash:200 get prop:5\nunderstood: offer p3: you give 200 cash, you get Line1 | spec-row-2-a-rail
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | counter 4 give 150 get Pink 1
+EXPECT_OUT_IS | ok counter 4 give cash:150 get prop:11\nunderstood: counter offer 4: you give 150 cash, you get Pink1 | spec-row-3-counter
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | amend 4 give 120 get Pink 1
+EXPECT_OUT_IS | ok amend 4 give cash:120 get prop:11\nunderstood: amend offer 4: you give 120 cash, you get Pink1 | amend-the-sibling-of-counter
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | accept
+EXPECT_OUT_IS | ok accept\nunderstood: accept the open offer addressed to you | spec-row-4-accept-without-an-id
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | accept 4
+EXPECT_OUT_IS | ok accept 4\nunderstood: accept offer 4 | spec-row-4-accept-with-an-id
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | reject
+EXPECT_OUT_IS | ok reject\nunderstood: reject the open offer addressed to you | spec-row-5-reject
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | cancel
+EXPECT_OUT_IS | ok cancel\nunderstood: cancel the open offer you made | spec-row-5-cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | cancel 2
+EXPECT_OUT_IS | ok cancel 2\nunderstood: cancel offer 2 | cancel-with-an-id
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | bid 120
+EXPECT_OUT_IS | ok bid 120\nunderstood: bid 120 in the auction | spec-row-6-bid-the-engine-takes-the-amount-only-AS-BUILT-M7
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | pass
+EXPECT_OUT_IS | ok pass\nunderstood: pass in the auction | spec-row-6-pass
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Red 2
+EXPECT_OUT_IS | ok build 23\nunderstood: build Red2 (tile 23) | spec-row-7-build-Red-2-is-tile-23
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | sell Red 2
+EXPECT_OUT_IS | ok sell 23\nunderstood: sell Red2 (tile 23) | spec-row-7-sell
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | mortgage Line 3
+EXPECT_OUT_IS | ok mortgage 25\nunderstood: mortgage Line3 (tile 25) | spec-row-7-mortgage-Line-3-is-tile-25
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | unmortgage Line 3
+EXPECT_OUT_IS | ok unmortgage 25\nunderstood: unmortgage Line3 (tile 25) | spec-row-7-unmortgage
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll
+EXPECT_OUT_IS | ok roll\nunderstood: roll the dice | spec-row-8-roll
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | buy
+EXPECT_OUT_IS | ok buy\nunderstood: buy the tile you landed on | spec-row-8-buy
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | skip
+EXPECT_OUT_IS | ok skip\nunderstood: decline the tile (it goes to auction) | spec-row-8-skip
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | end
+EXPECT_OUT_IS | ok end_turn\nunderstood: end your turn | spec-row-8-end-is-end_turn
+
+# --- how names and words are read (each a pinned canonical line) ---
+CASE    | words
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | OFFER P3 GIVE NAVY 2 AND 100 GET PINK 1
+EXPECT_OUT_IS | ok offer p3 give prop:39+cash:100 get prop:11\nunderstood: offer p3: you give Navy2 + 100 cash, you get Pink1 | CASE-INSENSITIVE-the-same-line-in-capitals
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer to p3 please give my Navy 2 and 100 cash get Pink 1
+EXPECT_OUT_IS | ok offer p3 give prop:39+cash:100 get prop:11\nunderstood: offer p3: you give Navy2 + 100 cash, you get Pink1 | EXTRA-WORDS-ignored-to-please-my-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give prop:39+cash:100 get prop:11
+EXPECT_OUT_IS | ok offer p3 give prop:39+cash:100 get prop:11\nunderstood: offer p3: you give Navy2 + 100 cash, you get Pink1 | the-canonical-form-typed-by-hand-reads-back-to-itself
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give wat get Line1 25
+EXPECT_OUT_IS | ok offer p2 give prop:28 get prop:5+cash:25\nunderstood: offer p2: you give Water, you get Line1 + 25 cash | A-UNIQUE-PREFIX-wat-is-Water-tile-28-and-a-name-then-a-number-without-a-space-gap-is-a-tile-then-cash
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 give 25 Navy2 Line1 get luck card and fund
+EXPECT_OUT_IS | ok offer p2 give prop:5+prop:39+cash:25 get card:luck+card:fund\nunderstood: offer p2: you give Line1 + Navy2 + 25 cash, you get luck card + fund card | tiles-sorted-ascending-then-cash-then-cards-whatever-the-typed-order
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p2 get luck card and fund card
+EXPECT_OUT_IS | ok offer p2 get card:luck+card:fund\nunderstood: offer p2: you give nothing, you get luck card + fund card | cards-luck-then-fund
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give tile 39 and #11 get $50
+EXPECT_OUT_IS | ok offer p3 give prop:11+prop:39 get cash:50\nunderstood: offer p3: you give Pink1 + Navy2, you get 50 cash | tile-numbers-tile-39-and-hash-11-and-a-dollar-amount
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give nothing get 50
+EXPECT_OUT_IS | ok offer p3 get cash:50\nunderstood: offer p3: you give nothing, you get 50 cash | the-word-nothing-leaves-that-side-out
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | /roll
+EXPECT_OUT_IS | ok roll\nunderstood: roll the dice | a-leading-slash-is-allowed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | end turn
+EXPECT_OUT_IS | ok end_turn\nunderstood: end your turn | end-turn-two-words
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | mortgage tile 25
+EXPECT_OUT_IS | ok mortgage 25\nunderstood: mortgage Line3 (tile 25) | mortgage-by-number
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Navy1
+EXPECT_OUT_IS | ok build 37\nunderstood: build Navy1 (tile 37) | name-without-a-space
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | amend 7 give 5
+EXPECT_OUT_IS | ok amend 7 give cash:5\nunderstood: amend offer 7: you give 5 cash, you get nothing | amend-with-one-side
+
+# --- every REFUSAL says why, lists candidates when a name is ambiguous, and exits 2 ---
+CASE    | refusals
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Navy get Pink 1
+EXPECT_OUT_IS | refused: ambiguous name "navy": could be Navy1 (37), Navy2 (39) | AMBIGUOUS-Navy-lists-both-candidates
+EXPECT_EXIT | 2 | refusal-exits-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Pink
+EXPECT_OUT_IS | refused: ambiguous name "pink": could be Pink1 (11), Pink2 (13), Pink3 (14) | AMBIGUOUS-Pink-lists-three-candidates
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Line
+EXPECT_OUT_IS | refused: ambiguous name "line": could be Line1 (5), Line2 (15), Line3 (25), Line4 (35) | AMBIGUOUS-Line-lists-the-four-rails
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Red
+EXPECT_OUT_IS | refused: ambiguous name "red": could be Red1 (21), Red2 (23), Red3 (24) | AMBIGUOUS-in-a-tile-verb
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Pink 4
+EXPECT_OUT_IS | refused: ambiguous name "pink": could be Pink1 (11), Pink2 (13), Pink3 (14) | no-Pink4-so-the-name-alone-is-tried-and-is-ambiguous
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Zork
+EXPECT_OUT_IS | refused: unknown name "zork" (tile ids like Navy2, Line1, Water; or a tile number) | UNKNOWN-name
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Navy 2 for Pink 1
+EXPECT_OUT_IS | refused: unknown name "for" (tile ids like Navy2, Line1, Water; or a tile number) | the-word-for-is-NOT-silently-ignored-it-would-have-moved-Pink1-to-the-wrong-side
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Start
+EXPECT_OUT_IS | refused: Start (tile 0) is a go tile, not a property | a-tile-that-is-not-a-property
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Line 1
+EXPECT_OUT_IS | refused: Line1 (tile 5) is a rail tile, not a street (only streets take houses) | build-on-a-rail
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | build Red 2 Red 3
+EXPECT_OUT_IS | refused: build takes ONE tile (got Red2 and Red3) | two-tiles-for-one-verb
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give 100 and 50
+EXPECT_OUT_IS | refused: two money amounts on one side (100 and 50): give one number | two-money-amounts
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give Navy 2 Navy2
+EXPECT_OUT_IS | refused: Navy2 is named twice | a-tile-twice
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give 0
+EXPECT_OUT_IS | refused: cash must be a whole number from 1 up (got "0") | cash-zero
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give
+EXPECT_OUT_IS | refused: "give" needs something after it: tiles, a number for cash, a luck/fund card, or "nothing" | a-keyword-with-nothing-after-it
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3
+EXPECT_OUT_IS | refused: an offer needs something on at least one side | an-offer-with-no-sides
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer give 5
+EXPECT_OUT_IS | refused: offer needs a player: offer p3 give ... get ... | no-addressee
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | counter give 5
+EXPECT_OUT_IS | refused: counter needs the number of the offer: counter 4 give ... get ... | counter-without-an-id
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give 5 give 6
+EXPECT_OUT_IS | refused: "give" appears twice | give-twice
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | bid
+EXPECT_OUT_IS | refused: bid needs an amount: bid 120 | bid-without-an-amount
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | bid 0
+EXPECT_OUT_IS | refused: bid needs an amount: bid 120 | bid-zero
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | sell
+EXPECT_OUT_IS | refused: sell needs a tile: sell Red 2 | a-tile-verb-without-a-tile
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | dance
+EXPECT_OUT_IS | refused: unknown command "dance" (offer, counter, amend, accept, reject, cancel, bid, pass, build, sell, mortgage, unmortgage, roll, buy, skip, end) | an-unknown-command
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app |
+EXPECT_OUT_IS | refused: empty: type a command (offer, accept, bid 120, build Red 2, roll ...) | EMPTY-text
+EXPECT_EXIT | 2 | empty-exits-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | \t  \t
+EXPECT_OUT_IS | refused: empty: type a command (offer, accept, bid 120, build Red 2, roll ...) | only-blanks
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a 
+EXPECT_OUT_IS | refused: too many words (at most 64) | too-many-words
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll
+EXPECT_OUT_IS | refused: too long: at most 300 characters | over-300-characters
+# POSITIVE CONTROL for the two length checks: 60 words, 300 characters or fewer, parses
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll roll
+EXPECT_OUT_IS | ok roll\nunderstood: roll the dice | POSITIVE-CONTROL-60-words-under-300-characters-parses
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | ruleset=nope | offer p3 give 5
+EXPECT_OUT_IS | refused: cannot read the board of ruleset nope | a-ruleset-with-no-board
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | ruleset=classic | offer p3 give 5
+EXPECT_OUT_IS | ok offer p3 give cash:5\nunderstood: offer p3: you give 5 cash, you get nothing | POSITIVE-CONTROL-the-same-with-a-real-ruleset
+
+# --- HOSTILE input: shell characters are refused by the parser, and even a character that got through would meet fork+execv, never a shell. A control shows the file check CAN fire. ---
+CASE    | hostile
+RUN | /bin/sh | -c | echo shell-ran > $T/ctl_made
+EXPECT_EXISTS | $T/ctl_made | POSITIVE-CONTROL-the-same-kind-of-text-given-to-a-shell-DOES-make-the-file
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | offer p3 give 5; touch $T/pwned1
+EXPECT_OUT_IS | refused: unsupported character (code 59) at position 16 | semicolon-59
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll `touch $T/pwned2`
+EXPECT_OUT | refused: unsupported character (code 96) | backtick-96
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll $(touch $T/pwned3)
+EXPECT_OUT | refused: unsupported character (code 40) | dollar-paren-40
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll \p touch $T/pwned4
+EXPECT_OUT | refused: unsupported character (code 124) | pipe-124
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll > $T/pwned5
+EXPECT_OUT | refused: unsupported character (code 62) | redirect-62
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | --parse | $T/app | roll "x" \\ ../..
+EXPECT_OUT | refused: unsupported character (code 34) | double-quote-34
+EXPECT_NOFILE | $T/pwned1 | no-file-from-the-semicolon
+EXPECT_NOFILE | $T/pwned2 | no-file-from-the-backtick
+EXPECT_NOFILE | $T/pwned3 | no-file-from-dollar-paren
+EXPECT_NOFILE | $T/pwned4 | no-file-from-the-pipe
+EXPECT_NOFILE | $T/pwned5 | no-file-from-the-redirect
+
+# --- a REFUSED text appends NOTHING: prefix 300, every refused text runs in mode (b) with as=p1, the ledger is byte identical ---
+CASE    | nothing_appended
+MKDIR   | s1
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/s1/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/s1/ledger.txt
+RUN | /usr/bin/cp | $T/s1/ledger.txt | $T/s1_before.txt
+RUN | /usr/bin/grep | -c | ^ | $T/s1/ledger.txt
+EXPECT_OUT | 300 | the-prefix-has-300-rows
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | offer p2 give Navy get Pink 1
+EXPECT_OUT | refused: ambiguous name "navy": could be Navy1 (37), Navy2 (39) | ambiguous-in-mode-b
+EXPECT_EXIT | 2 | exit-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | offer p2 give Zork
+EXPECT_OUT | refused: unknown name "zork" | unknown-in-mode-b
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 |
+EXPECT_OUT | refused: empty | empty-in-mode-b
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | roll; touch $T/pwned6
+EXPECT_OUT | refused: unsupported character (code 59) | hostile-in-mode-b
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=zz | roll
+EXPECT_OUT | refused: as= must name a player like p1 | a-bad-as
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/nowhere | as=p1 | roll
+EXPECT_OUT | refused: the app folder and the game folder must both exist | a-missing-game-folder
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | offer p2 give 9999
+EXPECT_OUT | p1 does not have 9999 cash | an-ENGINE-refusal-comes-through-the-chat-op-unchanged
+EXPECT_EXIT | 2 | engine-refusal-exit-2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p3 | offer p2 give 5
+EXPECT_OUT | only the current player (p1) may open an offer, not p3 | the-as-seat-reaches-the-engine-p3-may-not-open-an-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p2 | accept
+EXPECT_OUT | there is no open offer to accept | accept-with-nothing-open-is-the-engines-sentence
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | build Line 1
+EXPECT_OUT | refused: Line1 (tile 5) is a rail tile | tile-verb-refused-by-the-parser
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | mortgage Orange 1
+EXPECT_OUT | you do not own that tile | tile-verb-refused-by-the-engine-p1-does-not-own-Orange1-tile-16
+RUN | /usr/bin/cmp | $T/s1_before.txt | $T/s1/ledger.txt
+EXPECT_EXIT | 0 | THE-LEDGER-IS-BYTE-IDENTICAL-after-every-refused-call
+RUN | /usr/bin/grep | -c | ^ | $T/s1/ledger.txt
+EXPECT_OUT | 300 | still-300-rows
+EXPECT_NOFILE | $T/pwned6 | no-file-from-the-hostile-call-in-mode-b
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/s1 | as=p1 | offer p2 give 5
+EXPECT_OUT | p1 offer: id=1;give=cash:5;get=-;round=1 | POSITIVE-CONTROL-a-good-text-IS-sent-and-the-engine-answers
+RUN | /usr/bin/grep | -c | ^ | $T/s1/ledger.txt
+EXPECT_OUT | 301 | the-good-text-appended-exactly-one-row
+RUN | /usr/bin/cmp | $T/s1_before.txt | $T/s1/ledger.txt
+EXPECT_EXIT | 1 | and-the-cmp-check-CAN-fail-the-ledger-now-differs
+
+# --- END TO END, trading: the SAME 8-step negotiation by the direct verbs (d1) and typed in chat (c1) gives BYTE-IDENTICAL ledgers ---
+CASE    | trade_equivalence
+MKDIR   | d1
+MKDIR   | c1
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d1/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/d1/ledger.txt
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/c1/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/c1/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | offer | p2 | give | cash:40 | get | card:fund | as=p1
+EXPECT_OUT | p1 offer: id=1;give=cash:40;get=card:fund;round=1 | DIRECT-1-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p1 | offer p2 give 40 get fund card
+EXPECT_OUT | ok offer p2 give cash:40 get card:fund | CHAT-1-parsed
+EXPECT_OUT | p1 offer: id=1;give=cash:40;get=card:fund;round=1 | CHAT-1-the-engine-answer-is-the-direct-answer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | counter | 1 | give | card:fund | get | cash:20 | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p2 | counter 1 give fund card get 20
+EXPECT_OUT | p2 counter: id=2;re=1;give=card:fund;get=cash:20;round=2 | CHAT-2-counter
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | reject | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p1 | reject
+EXPECT_OUT | p1 reject: rejected | CHAT-3-reject-the-one-open-offer-addressed-to-me
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | offer | p2 | give | cash:5 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p1 | offer p2 give 5
+EXPECT_OUT | p1 offer: id=3;give=cash:5;get=-;round=1 | CHAT-4-a-second-offer
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | amend | 3 | give | cash:6 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p1 | amend 3 give 6
+EXPECT_OUT | p1 amend: id=3;give=cash:6;get=-;round=1;amended | CHAT-5-amend
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | cancel | 3 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p1 | cancel 3
+EXPECT_OUT | p1 cancel: cancelled | CHAT-6-cancel
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | offer | p2 | give | prop:1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p1 | offer p2 give Brown 1
+EXPECT_OUT | p1 offer: id=4;give=prop:1;get=-;round=1 | CHAT-7-the-mortgaged-Brown1-by-name
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d1 | accept | 4 | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c1 | as=p2 | accept 4
+EXPECT_OUT | p2 accept: done;give=prop:1;get=-;interest-0;interest-3 | CHAT-8-accept-with-the-mortgage-interest-3
+RUN | /usr/bin/cmp | $T/d1/ledger.txt | $T/c1/ledger.txt
+EXPECT_EXIT | 0 | THE-TWO-LEDGERS-ARE-BYTE-IDENTICAL-chat-wrote-the-same-eight-rows-as-the-direct-verbs
+RUN | /usr/bin/grep | -c | ^ | $T/c1/ledger.txt
+EXPECT_OUT | 308 | eight-rows-were-appended-to-the-300
+RUN | /usr/bin/sed | -n | 308p | $T/c1/ledger.txt
+EXPECT_OUT | \pp2\paccept\p4\p | VACUITY-the-last-row-is-p2s-accept-of-offer-4
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/c1 | status
+EXPECT_OUT | TILE 1 Brown1 owner=p2 mort=1 | the-tile-changed-hands-and-stays-mortgaged
+EXPECT_OUT | TRADE per_turn=3 used_cur=3 open=0 | three-offers-used-the-counter-not-counted-none-open
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/c1 | check
+EXPECT_OUT | CHECK ok | the-engine-check-passes
+# negative control: a DIFFERENT negotiation gives a different ledger, so the cmp above could have failed
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/d1 | as=p1 | roll
+RUN | /usr/bin/cmp | -s | $T/d1/ledger.txt | $T/c1/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-CONTROL-one-extra-row-in-one-game-and-cmp-says-they-differ
+
+# --- END TO END, the turn and tile verbs: chat and the direct verbs give BYTE-IDENTICAL ledgers. Prefix 300: roll + end, unmortgage + mortgage; prefix 10: buy; prefix 94: skip, then the auction with bid / pass; prefix 82: build + sell ---
+CASE    | verb_equivalence
+MKDIR   | d2
+MKDIR   | c2
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d2/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/d2/ledger.txt
+RUN | /usr/bin/cp | $T/d2/ledger.txt | $T/c2/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d2 | roll | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c2 | as=p1 | Roll
+EXPECT_OUT | p1 roll: to=37;rent-35->p2 | CHAT-roll-the-seeded-dice-give-the-same-throw
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d2 | end_turn | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c2 | as=p1 | end turn
+EXPECT_OUT | p1 end_turn: next=p2;round=20 | CHAT-end-is-end_turn
+RUN | /usr/bin/cmp | $T/d2/ledger.txt | $T/c2/ledger.txt
+EXPECT_EXIT | 0 | roll-and-end-ledgers-byte-identical
+RUN | /usr/bin/grep | -c | ^ | $T/c2/ledger.txt
+EXPECT_OUT | 302 | two-rows-appended
+# mortgage / unmortgage on the same prefix
+MKDIR   | d3
+MKDIR   | c3
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d3/ledger.txt
+RUN | /usr/bin/sed | -i | 301,$d | $T/d3/ledger.txt
+RUN | /usr/bin/cp | $T/d3/ledger.txt | $T/c3/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d3 | unmortgage | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c3 | as=p1 | unmortgage Brown 1
+EXPECT_OUT | p1 unmortgage: lifted;pay=33 | CHAT-unmortgage-Brown-1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d3 | mortgage | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c3 | as=p1 | mortgage Brown 1
+EXPECT_OUT | p1 mortgage: mortgaged;get=30 | CHAT-mortgage-Brown-1
+RUN | /usr/bin/cmp | $T/d3/ledger.txt | $T/c3/ledger.txt
+EXPECT_EXIT | 0 | mortgage-ledgers-byte-identical
+# build / sell at prefix 82
+MKDIR   | d4
+MKDIR   | c4
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d4/ledger.txt
+RUN | /usr/bin/sed | -i | 83,$d | $T/d4/ledger.txt
+RUN | /usr/bin/cp | $T/d4/ledger.txt | $T/c4/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d4 | build | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c4 | as=p1 | build Brown 1
+EXPECT_OUT | p1 build: houses=1;cost=50 | CHAT-build-Brown-1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d4 | sell | 1 | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c4 | as=p1 | sell Brown 1
+EXPECT_OUT | p1 sell: houses=0;get=25 | CHAT-sell-Brown-1
+RUN | /usr/bin/cmp | $T/d4/ledger.txt | $T/c4/ledger.txt
+EXPECT_EXIT | 0 | build-sell-ledgers-byte-identical
+# buy at prefix 10
+MKDIR   | d5
+MKDIR   | c5
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d5/ledger.txt
+RUN | /usr/bin/sed | -i | 11,$d | $T/d5/ledger.txt
+RUN | /usr/bin/cp | $T/d5/ledger.txt | $T/c5/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d5 | buy | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c5 | as=p1 | buy
+EXPECT_OUT | p1 buy: bought-100 | CHAT-buy
+RUN | /usr/bin/cmp | $T/d5/ledger.txt | $T/c5/ledger.txt
+EXPECT_EXIT | 0 | buy-ledgers-byte-identical
+# skip then the auction: bid, bid, pass, pass (prefix 94: p1 stands on tile 24 in the BUY phase)
+MKDIR   | d6
+MKDIR   | c6
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/d6/ledger.txt
+RUN | /usr/bin/sed | -i | 95,$d | $T/d6/ledger.txt
+RUN | /usr/bin/cp | $T/d6/ledger.txt | $T/c6/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d6 | skip | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c6 | as=p1 | skip
+EXPECT_OUT | p1 skip: declined;auction | CHAT-skip-opens-the-auction
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d6 | bid | 10 | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c6 | as=p2 | bid 10
+EXPECT_OUT | p2 bid: bid=10 | CHAT-bid-10
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d6 | bid | 20 | as=p3
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c6 | as=p3 | bid 20
+EXPECT_OUT | p3 bid: bid=20 | CHAT-bid-20
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d6 | pass | as=p1
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c6 | as=p1 | pass
+EXPECT_OUT | p1 pass: pass | CHAT-pass
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x | $T/app | $T/d6 | pass | as=p2
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/c6 | as=p2 | PASS
+EXPECT_OUT | auction_end: sold-to=p3-20 | CHAT-the-last-pass-ends-the-auction-the-bank-row-is-the-engines
+RUN | /usr/bin/cmp | $T/d6/ledger.txt | $T/c6/ledger.txt
+EXPECT_EXIT | 0 | auction-ledgers-byte-identical
+RUN | /usr/bin/sed | -n | 100p | $T/c6/ledger.txt
+EXPECT_OUT | \pbank\pauction_end\p24\p | VACUITY-the-auction-really-ended-in-the-chat-game
+# a wrong player: p3 types a bid on p2s turn -> the ENGINE refuses, nothing appended (auction replay at prefix 95)
+MKDIR   | e6
+RUN | /usr/bin/cp | $T/m/ledger.txt | $T/e6/ledger.txt
+RUN | /usr/bin/sed | -i | 96,$d | $T/e6/ledger.txt
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/e6 | as=p3 | bid 10
+EXPECT_OUT | it is p2's turn, not p3's | a-bid-out-of-turn-is-the-engines-refusal-through-chat
+EXPECT_EXIT | 2 | exit-2
+RUN | /usr/bin/grep | -c | ^ | $T/e6/ledger.txt
+EXPECT_OUT | 95 | and-nothing-was-appended
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/e6 | as=p2 | bid 5
+EXPECT_OUT | the bid is below the minimum | a-bid-below-the-minimum-is-refused-by-the-engine
+RUN | /usr/bin/grep | -c | ^ | $T/e6/ledger.txt
+EXPECT_OUT | 95 | still-95
+RUN | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly_chat.+x | $T/app | $T/e6 | as=p2 | bid 10
+EXPECT_OUT | p2 bid: bid=10 | POSITIVE-CONTROL-a-legal-bid-by-the-right-seat-is-taken

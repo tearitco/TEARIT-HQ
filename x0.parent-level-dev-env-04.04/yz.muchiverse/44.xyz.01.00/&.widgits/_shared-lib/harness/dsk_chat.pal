@@ -1,0 +1,4 @@
+# dsk_chat.pal - pal harness for cases/dsk_chat.pdl (deskopoly classic chat front door, spec 7.6). Read results/dsk_chat.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/dsk_chat.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/dsk_chat.pdl
+halt
