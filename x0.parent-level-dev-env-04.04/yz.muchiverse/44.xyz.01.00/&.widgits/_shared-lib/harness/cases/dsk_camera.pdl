@@ -54,6 +54,14 @@ WRITE   | edit/edit-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npo
 RUN | $T/app/ops/+x/deskopoly_ctl.+x | find_me | $T/edit/state/games/deskopoly
 WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=17\npos_y=31\n | 6000 | yaw-90-looks-east-so-the-cursor-is-aimed-4-cells-east-of-the-figure
 
+CASE    | edge
+# 2026-11-09: a figure on the top row (25,1) was aimed at y=-3: the view was empty sky. The aim cell is clamped to the 33x33 page (0..32). Here: yaw 0 looks SOUTH, the figure stands at row 31, 31+4=35 is off the page.
+WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\ncam_yaw=0\n
+WRITE   | edit/edit-pchq/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=23\npos_y=6\npos_z=17\npossessed_id=none\n
+RUN | $T/app/ops/+x/deskopoly_ctl.+x | find_me | $T/edit/state/games/deskopoly
+WAIT_HAS | edit/edit-pchq/pieces/xelector_01/state.txt | pos_x=13\npos_y=32\n | 6000 | THE-AIM-IS-CLAMPED-TO-THE-PAGE-row-31-plus-4-would-be-35-the-last-row-is-32
+EXPECT_LACKS | $T/edit/edit-pchq/pieces/xelector_01/state.txt | pos_y=35 | and-the-off-page-cell-was-never-written
+
 CASE    | lead0
 WRITE   | app/tuning.pdl | TUNE | camera_follow | 1 | x | 1\nTUNE | camera_lead | 0 | x | 4\n
 WRITE   | sess/pieces/system/bv_state.txt | focused_project_id=x\nselector_x=23\nselector_y=6\n

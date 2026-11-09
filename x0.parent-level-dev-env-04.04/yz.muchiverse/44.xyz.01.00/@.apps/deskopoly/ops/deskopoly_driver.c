@@ -286,6 +286,7 @@ static int cam_snap(int fx, int fy, char *why, size_t wcap) {
     int yaw = kv_get(bs, "cam_yaw", v, sizeof v) ? atoi(v) : 180; yaw = ((yaw % 360) + 360) % 360; int q = ((yaw + 45) / 90) % 4;   /* view direction (sin yaw, cos yaw) on the nearest axis */
     static const int DX[4] = { 0, 1, 0, -1 }, DY[4] = { 1, 0, -1, 0 }; int lead = tune_int("camera_lead", 4); if (lead < 0) lead = 0; if (lead > 12) lead = 12;
     int tx = fx + DX[q] * lead, ty = fy + DY[q] * lead;
+    if (tx < 0) tx = 0; if (ty < 0) ty = 0; if (tx > 32) tx = 32; if (ty > 32) ty = 32;   /* 2026-11-09: the page is 33x33; a figure on the top row (25,1) was aimed at y=-3 and the view was empty sky. Clamped, the cursor stays on the board (case dsk_camera, scenario edge) */
     if (!kv_put(xs, "pos_x", tx) || !kv_put(xs, "pos_y", ty)) { snprintf(why, wcap, "cannot move the cursor"); return -4; }
     kv_put(bs, "selector_x", tx); kv_put(bs, "selector_y", ty);
     FILE *r = fopen(rl, "a"); if (r) { fputs("126\n", r); fclose(r); }   /* the redraw nudge (bound to nothing) */
