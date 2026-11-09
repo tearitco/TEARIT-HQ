@@ -78,6 +78,10 @@ echo "########## Record and token surfaces carry real types (hermetic)"
 bash "$HERE/nb_collection_records_test.sh" || RC=1
 
 echo
+echo "########## Live document collections and localName (hermetic)"
+bash "$HERE/nb_document_collections_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 

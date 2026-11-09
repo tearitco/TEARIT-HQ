@@ -2644,6 +2644,39 @@ static JSValue nb_dom_documentElement(JSContext *ctx, JSValueConst this_val, int
     if (el) return push_node(ctx, el);
     return JS_NULL;
 }
+static JSValue nb_doc_tagged(JSContext *ctx, JSValueConst this_val, const char *tag) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n) while (n->parent) n = n->parent;
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+            collect_tag_into(ctx, (NbNode *)c, tag, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    nb_list_proto(ctx, arr, "HTMLCollection");
+    return arr;
+}
+static JSValue nb_doc_scripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_doc_tagged(ctx, this_val, "script");
+}
+static JSValue nb_doc_images(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_doc_tagged(ctx, this_val, "img");
+}
+static JSValue nb_doc_links(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_doc_tagged(ctx, this_val, "link");
+}
+static JSValue nb_doc_forms(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_doc_tagged(ctx, this_val, "form");
+}
+static JSValue nb_doc_linksA(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    return nb_doc_tagged(ctx, this_val, "a");
+}
 static JSValue nb_dom_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *el = g_dom_root ? find_tag_first(g_dom_root, "body") : NULL;
     if (el) return push_node(ctx, el);
@@ -4951,6 +4984,28 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
     JS_SetPropertyStr(ctx, doc, "createRange", JS_NewCFunction(ctx, nb_dom_createRange, "createRange", 0));
     JS_SetPropertyStr(ctx, doc, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
     {
+        JSAtom nm = JS_NewAtom(ctx, "scripts");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_scripts, "get scripts", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "images");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_images, "get images", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "links");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_links, "get links", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "forms");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_forms, "get forms", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "anchors");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_linksA, "get anchors", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    {
         JSAtom nm = JS_NewAtom(ctx, "documentElement");
         JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_documentElement, "get documentElement", 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
@@ -6567,6 +6622,11 @@ static JSValue nb_el_replaceChildren_js(JSContext *ctx, JSValueConst this_val, i
  * that is the whole difference from querySelector, which is scoped BELOW its
  * receiver. closest() walks self-then-ancestors, which is what makes it
  * usable on an event target. */
+static JSValue nb_el_localName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewString(ctx, (n && n->tag) ? n->tag : "");
+}
 static JSValue nb_el_matches(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     char *owned = NULL;
@@ -6821,6 +6881,12 @@ static void install_dom_classes(JSContext *ctx) {
      * which is how a browser behaves. See the block above for what these do
      * and what is deliberately not-to-spec. */
     JS_SetPropertyStr(ctx, Ep, "matches",        JS_NewCFunction(ctx, nb_el_matches, "matches", 1));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "localName");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_localName, "get localName", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, Ep, "closest",        JS_NewCFunction(ctx, nb_el_closest, "closest", 1));
     JS_SetPropertyStr(ctx, Ep, "querySelector",  JS_NewCFunction(ctx, nb_el_querySelector, "querySelector", 1));
     JS_SetPropertyStr(ctx, Ep, "querySelectorAll", JS_NewCFunction(ctx, nb_el_querySelectorAll, "querySelectorAll", 1));
@@ -9378,6 +9444,26 @@ static void install_dom(JSContext *ctx) {
         {
             JSAtom nm = JS_NewAtom(ctx, "documentElement");
             JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_dom_documentElement, "get documentElement", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "scripts");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_scripts, "get scripts", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "images");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_images, "get images", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "links");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_links, "get links", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "forms");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_forms, "get forms", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "anchors");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_linksA, "get anchors", 0), JS_UNDEFINED,
                 JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
         }
