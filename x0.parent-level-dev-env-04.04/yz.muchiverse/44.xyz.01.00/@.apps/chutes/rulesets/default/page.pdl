@@ -1,0 +1,34 @@
+# page.pdl - how the Chutes and Ladders board is DRAWN as an editor page (2026-11-09). Read by `game_core <app> <state> page <desk_dir> <atlas>` (and by the driver when a game starts). A projection: it decides no rule, the ledger never reads it,
+# and it is NOT part of the rules hash (editing it never refuses a ledger). The squares, the jumps and the geometry come from board.pdl (TRACK, JUMP, BOARD cols/rows/path); this file only says how they LOOK.
+# HEADER     | key | value         tile_px, atlas_cols, atlas_tiles, rock_slot (same keys as the Teropoly page: the 384x72 RPG Maker atlas, 16 columns, 43 tiles)
+# PAGE       | block | n           every square is an n x n block of cells (3: the page is 30 x 30 cells, 30 x 33 with the start strip; the cap is 64 x 64)
+# PAGE       | start | strip|none  strip = one row of blocks under the board for square 0, where the tokens wait before their first roll
+# TILEMAP    | name | atlas index  floor_a floor_b (the checker: neighbours along the path always differ), start, ladder_from ladder_to chute_from chute_to (the two ends of every jump)
+# LABELS     | on|off              off = no numbers on the floor (the plain page)
+# LABELCOLOR | text|outline | rrggbb   glyph colour and the 1 px outline round it
+# LABEL      | <square number> | text   an explicit label for one square (0 = the start strip; empty text = no label); beats everything below
+# JUMPTEXT   | ladder_from|ladder_to|chute_from|chute_to | text   the label of a jump end; {n} = this square, {to} / {from} = the other end of the jump; a literal \n is a line break. The default is {n}.
+# TOKEN      | pN | rrggbb        the figure colour of player N (default: Teropoly's table)
+# Atlas index = row x 16 + col in the atlas, picked by looking at it (stand-ins, not art): 1 grass, 7 dirt, 8 sand, 35 orange, 38 blue tile, 39 parquet, 40 orange diamond, 41 white stone. Every block is one voxel high.
+# Ladders are the cool colours (blue foot, wood top), chutes the warm ones (orange head, red-diamond tail); the arrow in the label says where the jump goes: ^31 climbs to 31, v6 slides to 6, <9 arrives from 9.
+HEADER     | tile_px     | 24
+HEADER     | atlas_cols  | 16
+HEADER     | atlas_tiles | 43
+HEADER     | rock_slot   | 36
+PAGE       | block       | 3
+PAGE       | start       | strip
+TILEMAP    | floor_a     | 1
+TILEMAP    | floor_b     | 8
+TILEMAP    | start       | 32
+TILEMAP    | ladder_from | 38
+TILEMAP    | ladder_to   | 39
+TILEMAP    | chute_from  | 35
+TILEMAP    | chute_to    | 40
+LABELS     | on
+LABELCOLOR | text        | ffffff
+LABELCOLOR | outline     | 000000
+JUMPTEXT   | ladder_from | {n}\n^{to}
+JUMPTEXT   | ladder_to   | {n}\n<{from}
+JUMPTEXT   | chute_from  | {n}\nv{to}
+JUMPTEXT   | chute_to    | {n}\n<{from}
+LABEL      | 0           | START

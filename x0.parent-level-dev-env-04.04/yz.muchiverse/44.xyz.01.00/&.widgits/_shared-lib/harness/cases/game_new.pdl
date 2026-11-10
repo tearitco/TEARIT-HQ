@@ -100,7 +100,7 @@ EXPECT_NE | $t0 | $t1 | vacuity-the-hash-DOES-change-when-a-folder-is-added
 CASE    | dry-run
 RUN | $T/bin/game_new_op.+x | $T/h | new | dry-x | --title | Dry X | --kind | ledger | --dry-run
 EXPECT_EXIT | 0 | dry-run-succeeds
-EXPECT_OUT | DRY-RUN: dry-x (ledger) would write 21 files | it-lists-the-21-files
+EXPECT_OUT | DRY-RUN: dry-x (ledger) would write 23 files | it-lists-the-23-files-(21-+-page.pdl-+-.gitignore,-2026-11-09)
 EXPECT_OUT | would create | and-names-them
 EXPECT_OUT | /dry-x/game.pdl | including-game.pdl
 RUN | $T/bin/game_new_op.+x | $T/h | new | dry-x | --title | Dry X | --kind | ledger | --dry-run
@@ -146,7 +146,7 @@ CASE    | key-acceptance-ledger
 RUN | $T/bin/game_new_op.+x | $T/h | new | demo-race | --title | Demo Race | --kind | ledger | --players | 3 | --seed | 7
 EXPECT_EXIT | 0 | THE-KEY-ACCEPTANCE-demo-race-is-generated
 EXPECT_OUT | created demo-race (ledger) | and-says-what
-EXPECT_OUT | 21 files | 21-files
+EXPECT_OUT | 23 files | 23-files-(21-+-the-ledger-kind-now-ships-rulesets/default/page.pdl-and-.gitignore)
 EXPECT_OUT | NOTE the new book appears in the editor's Books dropdown | and-says-how-the-book-gets-onto-Play
 EXPECT_OUT | README row | and-hands-over-the-README-row
 EXPECT_EXISTS | $T/h/@.apps/demo-race/game.pdl | game.pdl
@@ -182,12 +182,40 @@ EXPECT_OUT_IS | AUTOPLAY events=30 rounds=9 over=1 winner=A | A-FULL-GAME-PLAYS-
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | replay
 EXPECT_OUT_IS | REPLAY events=30 hash=c69a00ab222f3bf2 | REPLAY-REPRODUCES-the-pinned-state-hash
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | ledger_hash
-EXPECT_OUT_IS | LEDGER events=30 hash=e974d60c99abbe34 | and-the-pinned-LEDGER-hash
+EXPECT_OUT_IS | LEDGER events=30 hash=29d31727af4b2690 | and-the-pinned-LEDGER-hash-(MOVED-2026-11-09-from-e974d60c99abbe34:-the-ledger-template-board.pdl-gained-3-BOARD-rows,-so-the-rules-hash-in-the-start-row-changed;-the-state-hash-above-did-not-move)
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | check
 EXPECT_OUT_IS | CHECK ok events=30 | check-passes
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | help
 EXPECT_OUT | roll | help-comes-from-verbs.pdl
 EXPECT_OUT | autoplay | and-lists-the-verbs
+# WHY THE THREE LEDGER PINS MOVED (2026-11-09, explained BEFORE re-pinning; cause shown in a scratch run, not assumed): the ledger template's board.pdl gained three BOARD rows (cols/rows/path, the geometry the new board page needs). The first ledger row records the hash of board.pdl + rules.pdl,
+# so every ledger made under the new template differs in that ONE field, and so does the digest of the rows. The STATE hash (c69a00ab222f3bf2 for the 30-row game, d856979efae2ae51 for the 2-pet game) is the same under the old and the new board.pdl: no rule moved. Old board.pdl (git HEAD) gave e974d60c99abbe34 / 8718994e93e00b5a.
+# The two rows below prove the cause and that protection still works: with the BOARD rows removed the SAME game replays to the OLD digest, and the ledger made under the new board.pdl is REFUSED once board.pdl is edited.
+RUN | cp | $T/h/@.apps/demo-race/rulesets/default/board.pdl | $T/board_new_keep.pdl
+RUN | sed | -i | /BOARD/d | $T/h/@.apps/demo-race/rulesets/default/board.pdl
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-ledger-made-under-the-new-board.pdl-is-REFUSED-when-board.pdl-is-edited-(its-BOARD-comment-and-rows-removed)
+EXPECT_OUT | the rules say | with-the-rules-hash-reason
+MKDIR   | g_old
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | join | C
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | autoplay
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | ledger_hash
+EXPECT_OUT_IS | LEDGER events=30 hash=e974d60c99abbe34 | CAUSE-PROVEN:-without-the-BOARD-rows-the-same-game-has-the-OLD-pinned-digest-(HEAD-636d61338)
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g_old | replay
+EXPECT_OUT_IS | REPLAY events=30 hash=c69a00ab222f3bf2 | and-the-same-STATE-hash-(no-rule-moved)
+RUN | cp | $T/board_new_keep.pdl | $T/h/@.apps/demo-race/rulesets/default/board.pdl
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | replay
+EXPECT_OUT_IS | REPLAY events=30 hash=c69a00ab222f3bf2 | CONTROL:-board.pdl-restored,-the-new-ledger-replays-again-(the-refusal-above-was-the-edit)
+# THE PAGE FOR A FRESH GAME (2026-11-09): the generated ledger game has a page.pdl and a BOARD geometry, so `page` works on it with no edit (30 squares = 10 x 3 blocks of 3 cells + the start strip = 30 x 12 cells)
+MKDIR   | pg_desk
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | page | $T/pg_desk | $T/h/@.apps/demo-race/demo-race-pchq/pieces/system/maps/demo-race/board/cells.rgba
+EXPECT_EXIT | 0 | A-FRESH-ledger-game-has-a-board-page
+EXPECT_OUT | 30x12 squares=30 ladders=0 chutes=0 labels=31 events=3 | 30-squares-in-a-30x12-page-(10-x-3-blocks-+-the-start-strip),-31-labels,-3-figures-(the-3-players-at-the-finish-area-after-the-autoplayed-game)
+EXPECT_HAS | $T/h/@.apps/demo-race/.gitignore | demo-race-pchq/pieces/system/maps/demo-race/play/ | the-generated-.gitignore-keeps-the-play-desk-out-of-git
 MKDIR   | c
 RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
 RUN | sed | -i | 9s/\proll\p4\p/\proll\p3\p/ | $T/c/ledger.txt
@@ -521,8 +549,8 @@ EXPECT_HAS | $T/xo1/game.csv | ,ledger,default, | and-one-row-for-a-ledger-game
 EXPECT_EXISTS | $T/xo1/events.csv | events.csv
 EXPECT_EXISTS | $T/xo1/moves.csv | moves.csv-for-a-ledger-game
 EXPECT_EXISTS | $T/xo1/schema.pdl | schema.pdl
-EXPECT_EQ | $lh | LEDGER events=24 hash=8718994e93e00b5a | the-ledger_hash-of-the-2-pet-seed-7-game-is-pinned-(observed)
-EXPECT_HAS | $T/xo1/game.csv | 8718994e93e00b5a | and-game_id-in-game.csv-is-that-same-digest
+EXPECT_EQ | $lh | LEDGER events=24 hash=41a81baa61a57e86 | the-ledger_hash-of-the-2-pet-seed-7-game-is-pinned-(observed;-MOVED-2026-11-09-from-8718994e93e00b5a-for-the-same-reason-as-the-30-row-game:-the-template-board.pdl-rules-hash)
+EXPECT_HAS | $T/xo1/game.csv | 41a81baa61a57e86 | and-game_id-in-game.csv-is-that-same-digest
 SUMTREE | s1 | xg
 EXPECT_EQ | $s0 | $s1 | the-export-is-read-only-on-the-state-folder
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/xo2

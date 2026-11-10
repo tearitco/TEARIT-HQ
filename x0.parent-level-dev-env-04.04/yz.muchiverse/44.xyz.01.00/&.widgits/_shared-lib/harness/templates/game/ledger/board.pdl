@@ -5,3 +5,7 @@
 TRACK | length | 30
 # JUMP | 4  | 14 | ladder
 # JUMP | 17 | 6  | chute
+# BOARD | cols | rows | path       the geometry the board PAGE draws (rulesets/default/page.pdl): cols x rows must equal the track length; path serpentine (row 1 left to right, row 2 right to left, ...) or rows.
+BOARD | cols | 10
+BOARD | rows | 3
+BOARD | path | serpentine

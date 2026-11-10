@@ -522,26 +522,306 @@ EXPECT_OUT | public | and-calls-it-public-(pets-only)
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | show | $T/c_x1/game.csv | --cols | winner,rounds | --head | 1
 EXPECT_OUT | p2 | and-shows-the-winner-column
 
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# THE BOARD PAGE (2026-11-09, decision D67): the generic `page` / `preview` / `squarecell` / `labelmask` / `fontsum` verbs of game_core and rulesets/default/page.pdl. Everything is built from SOURCE into $T/pb (so the case tests the source, not an old binary),
+# on a scratch COPY of the app. The page is read back by page_probe_op (its own serpentine arithmetic and its own page.pdl / board.pdl reader; it calls only `labelmask` of the engine for the text pixels) and the baker is compared with deskopoly.c's own by label_drift_op.
+# Pixel colours of the labels are changed to magenta / cyan in the scratch copy so no atlas pixel can be mistaken for ink. NOT covered here: the look of the picture (open the PNGs of the commit message) and the live editor window.
+CASE    | cs_page_build
+MKDIR   | pb
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -o | $T/pb/gc.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | game_core-with-the-page-verbs-compiles-from-source
+EXPECT_OUT_LACKS | warning | and-without-a-warning
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_PAGE_FLIP | -o | $T/pb/gc_flip.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-mutant-with-the-serpentine-direction-swapped-compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/pb/probe.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/page_probe_op.c
+EXPECT_EXIT | 0 | page_probe_op-compiles-from-source
+EXPECT_OUT_LACKS | warning | and-without-a-warning
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/pb/drift.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/label_drift_op.c
+EXPECT_EXIT | 0 | label_drift_op-(it-includes-deskopoly.c-itself)-compiles
+COPYDIR | @.apps/chutes | pg/chutes
+RUN | sed | -i | s/ffffff/ff00ff/ | $T/pg/chutes/rulesets/default/page.pdl
+RUN | sed | -i | s/000000/00ffff/ | $T/pg/chutes/rulesets/default/page.pdl
+EXPECT_HAS | pg/chutes/rulesets/default/page.pdl | LABELCOLOR \p text        \p ff00ff | the-scratch-copy-has-the-magenta-text-colour
+MKDIR   | pgs
+MKDIR   | d1
+MKDIR   | d2
+MKDIR   | d3
+MKDIR   | d4
+
+CASE    | cs_page_squares
+# where a square is: worked out BY HAND from the rule "square 1 bottom-left, row 1 runs left to right, row 2 right to left, ..." (block = column from the left, row from the TOP of the 10 x 10 board)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 1
+EXPECT_OUT | SQUARE 1 block=0,9 | 1-is-bottom-left
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 10
+EXPECT_OUT | SQUARE 10 block=9,9 | 10-is-bottom-RIGHT
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 11
+EXPECT_OUT | SQUARE 11 block=9,8 | 11-is-directly-ABOVE-10
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 20
+EXPECT_OUT | SQUARE 20 block=0,8 | 20-is-at-the-LEFT-end-of-row-2
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 21
+EXPECT_OUT | SQUARE 21 block=0,7 | 21-is-above-20
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 45
+EXPECT_OUT | SQUARE 45 block=4,5 | row-5-runs-left-to-right
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 50
+EXPECT_OUT | SQUARE 50 block=9,5 | 50-ends-row-5-on-the-right
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 55
+EXPECT_OUT | SQUARE 55 block=5,4 | row-6-runs-right-to-left
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 91
+EXPECT_OUT | SQUARE 91 block=9,0 | 91-is-top-right
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 100
+EXPECT_OUT | SQUARE 100 block=0,0 | 100-is-top-LEFT
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 101
+EXPECT_EXIT | 2 | NEGATIVE-square-101-is-not-on-a-100-square-track
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | squarecell | 0
+EXPECT_EXIT | 2 | NEGATIVE-square-0-is-the-start-strip-not-a-board-square
+RUN | $T/pb/gc_flip.+x | $T/pg/chutes | $T/pgs | squarecell | 11
+EXPECT_OUT | SQUARE 11 block=0,8 | MUTANT-with-the-direction-swapped-puts-11-at-the-LEFT-(so-the-pins-above-can-fail)
+RUN | $T/pb/gc_flip.+x | $T/pg/chutes | $T/pgs | squarecell | 1
+EXPECT_OUT | SQUARE 1 block=9,9 | and-1-at-the-bottom-RIGHT
+COPYDIR | @.apps/chutes | pg/rows
+RUN | sed | -i | s/path   \p serpentine/path   \p rows/ | $T/pg/rows/rulesets/default/board.pdl
+RUN | $T/pb/gc.+x | $T/pg/rows | $T/pgs | squarecell | 11
+EXPECT_OUT | SQUARE 11 block=0,8 | a-plain-`rows`-board-starts-every-row-at-the-left-(11-above-1)
+RUN | $T/pb/gc.+x | $T/pg/rows | $T/pgs | squarecell | 100
+EXPECT_OUT | SQUARE 100 block=9,0 | and-100-is-top-RIGHT-there
+RUN | sed | -i | s/rows   \p 10/rows   \p 9/ | $T/pg/rows/rulesets/default/board.pdl
+RUN | $T/pb/gc.+x | $T/pg/rows | $T/pgs | squarecell | 1
+EXPECT_EXIT | 2 | NEGATIVE-cols-x-rows-9x10-not-equal-to-the-track-length-is-refused
+EXPECT_OUT | must equal the TRACK length | with-the-reason
+
+CASE    | cs_page_make
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_EXIT | 0 | page-writes-a-desk
+EXPECT_OUT | 30x33 squares=100 ladders=9 chutes=10 labels=101 events=0 | a-30x33-page-(10-blocks-of-3-+-the-start-strip)-100-squares-9-ladders-10-chutes-100-numbers-+-START
+EXPECT_OUT | LABELS new_tiles=499 atlas_tiles=542 atlas_written=1 | the-names-are-baked-into-499-new-atlas-tiles
+EXPECT_EXISTS | d1/cells.txt | cells.txt
+EXPECT_EXISTS | d1/cells.rgba | cells.rgba
+EXPECT_EXISTS | d1/map.txt | map.txt
+EXPECT_EXISTS | d1/events.txt | events.txt
+EXPECT_EXISTS | d1/cells.marker | cells.marker
+EXPECT_HAS | d1/cells.txt | width=30 | width-30-cells
+EXPECT_HAS | d1/cells.txt | height=33 | height-33-cells
+EXPECT_HAS | d1/cells.txt | atlas_tiles=542 | the-atlas-count-includes-the-baked-tiles
+RUN | stat | -c | %s | $T/d1/cells.rgba
+EXPECT_OUT_IS | 1253376 | the-atlas-is-the-43-base-tiles-+-499-baked-ones-(542-tiles-of-24x24x4-bytes-in-16-columns)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_OUT | atlas_written=0 | a-rerun-does-not-rewrite-an-unchanged-atlas-(the-engine-would-reload-for-nothing)
+RUN | stat | -c | %s | $T/d1/cells.marker
+EXPECT_OUT_IS | 2 | but-the-marker-grew-by-one-byte-per-page-(the-house-reload-rule)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d3 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+RUN | cmp | $T/d1/cells.txt | $T/d3/cells.txt
+EXPECT_EXIT | 0 | DETERMINISTIC-two-pages-have-the-same-cells.txt
+RUN | cmp | $T/d1/cells.rgba | $T/d3/cells.rgba
+EXPECT_EXIT | 0 | and-the-same-atlas-bytes
+RUN | $T/pb/gc_flip.+x | $T/pg/chutes | $T/pgs | page | $T/d2 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+RUN | cmp | $T/d1/cells.txt | $T/d2/cells.txt
+EXPECT_EXIT | 1 | NEGATIVE-the-direction-mutant-makes-a-DIFFERENT-page-(cmp-can-fail)
+
+CASE    | cs_page_probe
+RUN | $T/pb/probe.+x | all | $T/pb/gc.+x | $T/pg/chutes | $T/d1 | ff00ff | $T/pgs
+EXPECT_OUT | ALL checked=100 same=100 bad=0 | EVERY-ONE-OF-THE-100-BLOCKS-SHOWS-THE-TEXT-THE-DATA-ASKS-FOR-at-the-serpentine-place-(numbers-and-the-^to-<from-lines-of-the-jump-ends)
+RUN | $T/pb/probe.+x | all | $T/pb/gc.+x | $T/pg/chutes | $T/d2 | ff00ff | $T/pgs
+EXPECT_OUT | ALL checked=100 same=0 bad=100 | MUTANT-the-swapped-direction-page-fails-all-100-(the-probe-can-fail-and-does)
+RUN | $T/pb/probe.+x | ends | $T/pg/chutes | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba | ff00ff | 00ffff
+EXPECT_OUT | ENDS checked=100 ok=100 bad=0 | all-100-blocks-are-drawn-on-the-atlas-tile-the-page.pdl-names-(19-jump-ends-in-four-colours,-the-plain-squares-as-a-checker)
+EXPECT_OUT | wrong_tile_control=strong | and-the-same-test-against-the-WRONG-tile-fails-hard-(it-can-fail)
+EXPECT_OUT | distinct=yes | the-four-jump-tiles-are-four-different-pictures-(ladders-and-chutes-are-distinguishable)
+RUN | $T/pb/probe.+x | ends | $T/pg/chutes | $T/d2 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba | ff00ff | 00ffff
+EXPECT_OUT | ENDS checked=100 ok=50 bad=50 | MUTANT-the-swapped-page-has-HALF-its-tiles-in-the-wrong-places-(the-colours-are-checked-per-square-too:-the-checker-and-the-jump-ends-of-the-reversed-rows)
+
+CASE    | cs_page_data
+# page.pdl is DATA: a bad row, a bad index, a missing file are refused with the reason and write nothing; LABELS off is the plain page
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d4
+EXPECT_EXIT | 0 | no-atlas-argument-(a-caller-that-wants-a-page-without-names)
+EXPECT_OUT_LACKS | LABELS | writes-no-LABELS-line
+EXPECT_HAS | d4/cells.txt | atlas_tiles=43 | and-the-atlas-count-stays-43
+EXPECT_NOFILE | d4/cells.rgba | and-copies-no-atlas
+COPYDIR | @.apps/chutes | pg/off
+RUN | sed | -i | s/^LABELS     \p on/LABELS     \p off/ | $T/pg/off/rulesets/default/page.pdl
+MKDIR   | d5
+RUN | $T/pb/gc.+x | $T/pg/off | $T/pgs | page | $T/d5 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_EXIT | 0 | LABELS-off-is-still-a-page
+EXPECT_OUT_LACKS | LABELS new_tiles | with-no-baked-tiles
+RUN | $T/pb/probe.+x | all | $T/pb/gc.+x | $T/pg/chutes | $T/d5 | ff00ff | $T/pgs
+EXPECT_OUT | ALL checked=100 same=0 bad=100 | and-NO-number-is-on-the-floor-(the-probe-sees-the-difference)
+COPYDIR | @.apps/chutes | pg/bad
+RUN | cp | -r | $T/pg/bad | $T/pg/bad0
+APPEND  | pg/bad/rulesets/default/page.pdl | BOGUS \p x \p y\n
+MKDIR   | d6
+RUN | $T/pb/gc.+x | $T/pg/bad | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-row-is-refused
+EXPECT_OUT | page.pdl line 35: unknown or malformed row BOGUS | with-its-line-number-and-name
+EXPECT_NOFILE | d6/cells.txt | and-nothing-is-written
+RUN | cp | $T/pg/bad0/rulesets/default/page.pdl | $T/pg/bad/rulesets/default/page.pdl
+APPEND  | pg/bad/rulesets/default/page.pdl | TILEMAP \p floor_a \p 99\n
+RUN | $T/pb/gc.+x | $T/pg/bad | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-a-tile-index-outside-the-43-tile-atlas-is-refused
+EXPECT_OUT | TILEMAP floor_a is outside the atlas | with-the-reason
+RUN | cp | $T/pg/bad0/rulesets/default/page.pdl | $T/pg/bad/rulesets/default/page.pdl
+APPEND  | pg/bad/rulesets/default/page.pdl | LABEL \p 101 \p x\n
+RUN | $T/pb/gc.+x | $T/pg/bad | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-a-LABEL-for-a-square-that-does-not-exist-is-refused
+RUN | cp | $T/pg/bad0/rulesets/default/page.pdl | $T/pg/bad/rulesets/default/page.pdl
+APPEND  | pg/bad/rulesets/default/page.pdl | PAGE \p block \p 30\n
+RUN | $T/pb/gc.+x | $T/pg/bad | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-a-block-size-of-30-is-refused
+RUN | cp | $T/pg/bad0/rulesets/default/page.pdl | $T/pg/bad/rulesets/default/page.pdl
+RUN | sed | -i | s/^PAGE       \p block       \p 3/PAGE       \p block       \p 7/ | $T/pg/bad/rulesets/default/page.pdl
+RUN | $T/pb/gc.+x | $T/pg/bad | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-a-page-wider-than-64-cells-(10-blocks-of-7-=-70)-is-refused
+EXPECT_OUT | at most 64 x 64 | with-the-reason
+RUN | rm | $T/pg/bad/rulesets/default/page.pdl
+RUN | $T/pb/gc.+x | $T/pg/bad | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-a-game-with-no-page.pdl-has-no-page
+EXPECT_OUT | cannot read | with-the-reason
+RUN | $T/pb/gc.+x | $HOUSE/@.apps/snake | $T/pgs | page | $T/d6
+EXPECT_EXIT | 2 | NEGATIVE-a-realtime-game-has-no-track-page
+EXPECT_OUT | only a ledger track game | with-the-reason
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/no_such_desk
+EXPECT_EXIT | 2 | NEGATIVE-a-desk-folder-that-does-not-exist-is-refused
+EXPECT_NOFILE | d6/cells.txt | nothing-was-written-by-any-refusal
+
+CASE    | cs_page_tokens
+# the figures: events.txt rows from the REPLAYED ledger (one row per player), positions worked out by hand from the serpentine rule; the page is a projection (the ledger hash does not change, the audit stays clean, `noevents` leaves events.txt alone)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | new | 7
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | join | A
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | join | B
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | join | C
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | join | D
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | start
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | ledger_hash
+CAPTURE | pl_h0
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_OUT | events=4 | four-players-four-figure-rows
+EXPECT_HAS | d1/events.txt | 4 31 220 60 60 People1 0 2 1 A | A-waits-in-the-start-strip-(block-1-of-the-row-under-the-board,-red)
+EXPECT_HAS | d1/events.txt | 7 31 60 120 230 People1 1 2 1 B | B-in-block-2-(blue)
+EXPECT_HAS | d1/events.txt | 10 31 60 190 90 People1 2 2 1 C | C-in-block-3-(green)
+EXPECT_HAS | d1/events.txt | 13 31 230 200 50 People1 3 2 1 D | D-in-block-4-(yellow)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | ledger_hash
+EXPECT_OUT_IS | $pl_h0 | THE-PAGE-IS-A-PROJECTION-the-ledger-hash-is-unchanged
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | audit
+EXPECT_OUT | AUDIT ok | and-the-state-folder-audit-is-clean
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | status
+EXPECT_OUT | PLAYER p1 name=A driver=pet pos=38 | seed-7:-A-rolled-1-onto-the-ladder-foot-1-and-climbed-to-38
+EXPECT_OUT | PLAYER p3 name=C driver=pet pos=2 | C-rolled-2
+EXPECT_OUT | PLAYER p4 name=D driver=pet pos=14 | D-rolled-4-and-climbed-4-to-14
+WRITE   | d1/events.txt | SENTINEL\n
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba | noevents
+EXPECT_HAS | d1/events.txt | SENTINEL | noevents-leaves-events.txt-alone-(the-driver-writes-it-itself)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_HAS | d1/events.txt | 6 18 220 60 60 People1 0 2 1 A | A-on-38-(row-4-from-the-bottom-runs-right-to-left:-block-2,6),-top-left-cell-of-the-block
+EXPECT_HAS | d1/events.txt | 8 18 60 120 230 People1 1 2 1 B | B-ALSO-on-38:-the-second-figure-takes-the-top-right-cell
+EXPECT_HAS | d1/events.txt | 3 27 60 190 90 People1 2 2 1 C | C-on-square-2-(block-1,9)
+EXPECT_HAS | d1/events.txt | 18 24 230 200 50 People1 3 2 1 D | D-on-14-(block-6,8)
+RUN | $T/pb/gc_flip.+x | $T/pg/chutes | $T/pgs | page | $T/d2 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_LACKS | d2/events.txt | 6 18 220 60 60 People1 0 2 1 A | MUTANT-the-swapped-direction-puts-A-somewhere-else
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | tick
+EXPECT_HAS | pgs/ledger.txt | EVENT\p4\pp2\proll\p4\p11\pto=49;jump=49-11 | row-20:-B-rolled-4-from-45-onto-the-chute-head-49-and-slid-to-11
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | page | $T/d1 | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/board/cells.rgba
+EXPECT_HAS | d1/events.txt | 27 24 60 120 230 People1 1 2 1 B | B-on-11-(row-2-runs-right-to-left:-block-9,8)-after-the-slide
+EXPECT_HAS | d1/events.txt | 29 24 60 190 90 People1 2 2 1 C | and-C-(also-on-11)-takes-the-second-cell
+EXPECT_LACKS | d1/events.txt | 12 15 60 120 230 People1 1 2 1 B | and-B-is-no-longer-where-the-chute-head-was
+CASE    | cs_page_drift
+# THE DRIFT CHECK (decision D67): game_core.c carries a COPY of deskopoly.c's label baker. label_drift_op #includes deskopoly.c and prints the same lines for the same inputs; any change to either side that changes a table or a mask shows here.
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | fontsum
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | fontsum
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | THE-5x7-AND-3x5-FONT-TABLES-AND-THE-FIVE-TIERS-ARE-BYTE-IDENTICAL-to-deskopoly.c's
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | 100
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 72 | 100
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | the-mask-of-100-equals-Teropoly's
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | 7
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 72 | 7
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | the-mask-of-7-(one-big-glyph)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | Lost & Found
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 72 | Lost & Found
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | the-mask-of-a-wrapped-two-word-name
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | Golden Ratio Way
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 72 | Golden Ratio Way
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | the-mask-of-a-three-word-name-(a-smaller-font-tier)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | A name that is far too long to fit in three lines of any big font so the smallest tier wraps it
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 72 | A name that is far too long to fit in three lines of any big font so the smallest tier wraps it
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | the-mask-of-a-long-text-(the-3x5-tiers-and-the-last-resort-paths)
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 48 | ^38
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 48 | ^38
+CAPTURE | f_dsk
+EXPECT_EQ | $f_gc | $f_dsk | the-mask-of-a-jump-label-on-a-2-cell-block
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | 100
+EXPECT_OUT | glyph=432 outline=350 | PIN:-"100"-in-a-72-px-block-is-432-glyph-pixels-and-350-outline-pixels-(both-sides-agree-above,-this-pins-the-number)
+RUN | cp | $HOUSE/&.widgits/_shared-lib/ops/game_core.c | $T/pb/gc_font.c
+RUN | sed | -i | s/{0,0,0x5F,0,0}/{0,0,0x5E,0,0}/ | $T/pb/gc_font.c
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -o | $T/pb/gc_font.+x | $T/pb/gc_font.c
+EXPECT_EXIT | 0 | the-copy-with-ONE-font-byte-changed-compiles
+RUN | $T/pb/gc_font.+x | $T/pg/chutes | $T/pgs | fontsum
+CAPTURE | f_gc
+EXPECT_NE | $f_gc | $f_dsk | MUTANT-one-changed-font-byte-is-DETECTED-by-the-checksum
+RUN | $T/pb/gc_font.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | !
+CAPTURE | f_gc
+RUN | $T/pb/drift.+x | labelmask | 72 | !
+CAPTURE | f_dsk
+EXPECT_NE | $f_gc | $f_dsk | and-by-the-mask-of-the-glyph-it-changed
+
 CASE    | cs_driver
 # the REAL driver (what the editor's Play starts) in a SCRATCH editor (a fake owner, a fake switches.txt): the live editor is never touched. A human seat p1, three pets.
 MKDIR   | c_edit/state/world
+MKDIR   | c_edit/c_edit-pchq/pieces/world_01
+WRITE   | c_edit/c_edit-pchq/pieces/world_01/state.txt | name=World 01\nmap_id=chutes\ndesk_id=board\n
 WRITE   | c_edit/state/world/switches.txt | running=0\n
 SPAWN   | OWNC | /usr/bin/sleep | 600
 ENV     | GAME_OWNER_PID | $OWNC
-SPAWN   | DRVC | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $HOUSE | $HOUSE/@.apps/chutes | $T/c_edit
+SPAWN   | DRVC | $T/pb/gc.+x | driver | $HOUSE | $T/pg/chutes | $T/c_edit
 WAIT_HAS | c_edit/state/game_ui.txt | gm_title=Chutes and Ladders | 8000 | the-feed-is-published-with-the-game's-title
 WAIT_HAS | c_edit/state/game_ui.txt | 4 players | 4000 | the-setup-screen-starts-with-a-full-table-(--players-4)
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | human_next | $T/c_edit/state/games/chutes
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/c_edit/state/games/chutes
+RUN | $T/pb/gc.+x | ctl | human_next | $T/c_edit/state/games/chutes
+RUN | $T/pb/gc.+x | ctl | start | $T/c_edit/state/games/chutes
 WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | bank\pstart | 8000 | START-writes-the-start-row
+WAIT_HAS | c_edit/c_edit-pchq/pieces/world_01/state.txt | desk_id=play | 8000 | THE-EDITOR-WORLD-IS-POINTED-AT-THE-GENERATED-play-DESK-when-the-game-starts
+EXPECT_HAS | c_edit/c_edit-pchq/pieces/world_01/state.txt | map_id=chutes | and-the-rest-of-the-world-file-is-kept
+EXPECT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/cells.txt | height=33 | the-play-desk-has-the-30x33-page
+EXPECT_EXISTS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/map.png | and-the-2D-picture-map.png-(made-by-raw_to-png)
+EXPECT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 4 31 220 60 60 People1 0 2 1 A | the-four-figures-wait-in-the-start-strip-(A-first)
+RUN | grep | -c | ^ | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt
+EXPECT_OUT_IS | 4 | exactly-four-figure-rows
+RUN | stat | -c | %s | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/cells.marker
+EXPECT_OUT_IS | 1 | the-page-was-made-ONCE-(the-marker-has-one-byte)
 WRITE   | c_edit/state/world/switches.txt | running=1\n
 WAIT_HAS | c_edit/state/game_ui.txt | gmb_0_label=Roll | 8000 | AT-THE-HUMAN'S-TURN-THE-ROLL-BUTTON-IS-OFFERED
 SLEEP   | 1500
 RUN | grep | -c | -F | \proll\p | $T/c_edit/state/games/chutes/game/ledger.txt
 EXPECT_OUT_IS | 0 | and-the-clock-WAITS-for-the-human:-no-roll-row-without-the-press
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | roll | $T/c_edit/state/games/chutes
+RUN | $T/pb/gc.+x | ctl | roll | $T/c_edit/state/games/chutes
 WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | p1\proll\p | 8000 | THE-PRESS-IS-A-ROLL-ROW-BY-p1
 WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | p4\proll\p | 8000 | then-the-three-pets-roll-on-their-own-clock
+WAIT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 6 18 220 60 60 People1 0 2 1 A | 8000 | AFTER-THE-HUMAN'S-ROLL-A'S-FIGURE-STANDS-ON-SQUARE-38-(seed-7:-1-then-the-ladder)-in-the-play-desk's-events.txt
+EXPECT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 18 24 230 200 50 People1 3 2 1 D | and-the-pets'-figures-moved-too-(D-on-14)
+EXPECT_LACKS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 4 31 220 60 60 People1 0 2 1 A | and-A-is-no-longer-in-the-start-strip
+RUN | stat | -c | %s | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/cells.marker
+EXPECT_OUT_IS | 1 | FIVE-MOVES-LATER-the-page-was-NOT-rebuilt-(marker-still-1-byte:-the-figures-are-events-rows,-no-process-and-no-page-per-move)
 WAIT_HAS | c_edit/state/game_ui.txt | rolled | 8000 | THE-FEED-CARRIES-A-TABLE-TALK-SENTENCE
 WRITE   | c_edit/state/world/switches.txt | running=0\n
 SLEEP   | 700
@@ -550,14 +830,19 @@ CAPTURE | v1
 SLEEP   | 1500
 RUN | grep | -c | ^ | $T/c_edit/state/games/chutes/game/ledger.txt
 EXPECT_OUT_IS | $v1 | PAUSE-WRITES-NOTHING-the-ledger-does-not-grow-with-running=0
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_edit/state/games/chutes/game | replay
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/c_edit/state/games/chutes/game | replay
 EXPECT_OUT | REPLAY events= | THE-LIVE-LEDGER-WRITTEN-BY-THE-DRIVER-REPLAYS
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_edit/state/games/chutes/game | audit
+RUN | $T/pb/gc.+x | $T/pg/chutes | $T/c_edit/state/games/chutes/game | audit
 EXPECT_OUT | AUDIT ok | and-the-audit-is-clean
+RUN | $T/pb/gc.+x | ctl | new_game | $T/c_edit/state/games/chutes
+WAIT_HAS | c_edit/c_edit-pchq/pieces/world_01/state.txt | desk_id=board | 8000 | NEW-GAME-points-the-editor-world-back-at-the-authored-board-desk
+RUN | $T/pb/gc.+x | ctl | start | $T/c_edit/state/games/chutes
+WAIT_HAS | c_edit/c_edit-pchq/pieces/world_01/state.txt | desk_id=play | 8000 | and-START-points-it-at-the-play-desk-again
 RUN | /usr/bin/kill | $OWNC
 SLEEP   | 300
 EXPECT_DEAD | $OWNC | the-fake-owner-is-gone-and-reaped
 SLEEP   | 1500
 EXPECT_DEAD | $DRVC | the-driver-ends-with-its-owner
+WAIT_HAS | c_edit/c_edit-pchq/pieces/world_01/state.txt | desk_id=board | 3000 | AND-THE-WORLD-IS-BACK-AT-THE-BOARD-DESK-when-the-driver-ends
 ENV     | GAME_OWNER_PID |
 CLEAN   |

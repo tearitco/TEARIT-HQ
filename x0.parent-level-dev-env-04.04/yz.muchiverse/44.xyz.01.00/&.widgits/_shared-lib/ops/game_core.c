@@ -618,6 +618,222 @@ static int cmd_check(void) {   /* replay already ran (load); the invariants */
     fprintf(OUT, "CHECK ok events=%d\n", S.nrows); return 0;
 }
 static int need_args(int argc, int n, const char *usage) { if (argc < n) { fprintf(ERRF, "usage: %s\n", usage); return 1; } return 0; }
+/* ---------- the PAGE (2026-11-09, BOOK 16.game/GAME-FOUNDATION-GENERATOR-HOW-TO-AGENT-GUIDE section 11b): the board of a LEDGER TRACK game DRAWN as an editor desk, from DATA. ----------
+ * Verbs: `page <desk_dir> [atlas.rgba] [noevents]` writes the desk (cells.txt, cells.marker, map.txt, events.txt, skin.txt, extrusion.pdl, cells.rgba), `preview <desk_dir> <out.raw>` a flat top-down picture of it, `squarecell <n>` where a square is,
+ * `labelmask <A> <text>` the label baker's mask. A projection: it decides no rule and the ledger never reads it. The page is made by the same pipeline as Teropoly's board (deskopoly.c `page` + `label_atlas`: the names are BAKED into the floor texture, so
+ * the 3D view and the 2D view come from one description at zero per-frame cost); the font, the five font tiers and the wrap/mask code below are a COPY of deskopoly.c lines (decision D67: deskopoly.c is not edited, it is pinned by its own cases;
+ * a text-include would have made two consumers share code that only one of them may change). THE DRIFT CHECK is the case `chutes` / cs_page_drift: the table lines are found as whole lines in deskopoly.c and the mask of fixed labels equals the mask
+ * deskopoly.c's own label_mask makes (an op that #includes deskopoly.c). Geometry: board.pdl `BOARD | cols | rows | path (serpentine|rows)` (cols x rows must equal TRACK length); everything else is rulesets/<name>/page.pdl (grammar in that file).
+ * Square 1 is bottom-left; a serpentine board runs row 1 left to right, row 2 right to left, ...; `PAGE | start | strip` adds one row of blocks under the board for square 0 (tokens wait there). */
+#define PGMAX 64
+#define NLB 128
+static int HD_px = 24, HD_cols = 16, HD_tiles = 43, HD_rock = 36, PG_block = 3, PG_start = 0, PG_labels = 1, PG_serp = 1;
+static unsigned PG_lab_text = 0xffffff, PG_lab_out = 0x000000;
+static struct { char key[40], text[120]; } LB[NLB]; static int nlb;
+static const unsigned char F57[95][5] = {   /* ASCII 32..126, 5 columns, bit 0 = top row (the classic 5x7 font) */
+{0,0,0,0,0},{0,0,0x5F,0,0},{0,7,0,7,0},{0x14,0x7F,0x14,0x7F,0x14},{0x24,0x2A,0x7F,0x2A,0x12},{0x23,0x13,8,0x64,0x62},{0x36,0x49,0x56,0x20,0x50},{0,5,3,0,0},{0,0x1C,0x22,0x41,0},{0,0x41,0x22,0x1C,0},{0x2A,0x1C,0x7F,0x1C,0x2A},{8,8,0x3E,8,8},{0,0x50,0x30,0,0},{8,8,8,8,8},{0,0x60,0x60,0,0},{0x20,0x10,8,4,2},
+{0x3E,0x51,0x49,0x45,0x3E},{0,0x42,0x7F,0x40,0},{0x42,0x61,0x51,0x49,0x46},{0x21,0x41,0x45,0x4B,0x31},{0x18,0x14,0x12,0x7F,0x10},{0x27,0x45,0x45,0x45,0x39},{0x3C,0x4A,0x49,0x49,0x30},{1,0x71,9,5,3},{0x36,0x49,0x49,0x49,0x36},{6,0x49,0x49,0x29,0x1E},{0,0x36,0x36,0,0},{0,0x56,0x36,0,0},{8,0x14,0x22,0x41,0},{0x14,0x14,0x14,0x14,0x14},{0,0x41,0x22,0x14,8},{2,1,0x51,9,6},
+{0x32,0x49,0x79,0x41,0x3E},{0x7E,0x11,0x11,0x11,0x7E},{0x7F,0x49,0x49,0x49,0x36},{0x3E,0x41,0x41,0x41,0x22},{0x7F,0x41,0x41,0x22,0x1C},{0x7F,0x49,0x49,0x49,0x41},{0x7F,9,9,9,1},{0x3E,0x41,0x49,0x49,0x7A},{0x7F,8,8,8,0x7F},{0,0x41,0x7F,0x41,0},{0x20,0x40,0x41,0x3F,1},{0x7F,8,0x14,0x22,0x41},{0x7F,0x40,0x40,0x40,0x40},{0x7F,2,0x0C,2,0x7F},{0x7F,4,8,0x10,0x7F},{0x3E,0x41,0x41,0x41,0x3E},
+{0x7F,9,9,9,6},{0x3E,0x41,0x51,0x21,0x5E},{0x7F,9,0x19,0x29,0x46},{0x46,0x49,0x49,0x49,0x31},{1,1,0x7F,1,1},{0x3F,0x40,0x40,0x40,0x3F},{0x1F,0x20,0x40,0x20,0x1F},{0x3F,0x40,0x38,0x40,0x3F},{0x63,0x14,8,0x14,0x63},{7,8,0x70,8,7},{0x61,0x51,0x49,0x45,0x43},{0,0x7F,0x41,0x41,0},{2,4,8,0x10,0x20},{0,0x41,0x41,0x7F,0},{4,2,1,2,4},{0x40,0x40,0x40,0x40,0x40},
+{0,1,2,4,0},{0x20,0x54,0x54,0x54,0x78},{0x7F,0x48,0x44,0x44,0x38},{0x38,0x44,0x44,0x44,0x20},{0x38,0x44,0x44,0x48,0x7F},{0x38,0x54,0x54,0x54,0x18},{8,0x7E,9,1,2},{0x0C,0x52,0x52,0x52,0x3E},{0x7F,8,4,4,0x78},{0,0x44,0x7D,0x40,0},{0x20,0x40,0x44,0x3D,0},{0x7F,0x10,0x28,0x44,0},{0,0x41,0x7F,0x40,0},{0x7C,4,0x18,4,0x78},{0x7C,8,4,4,0x78},{0x38,0x44,0x44,0x44,0x38},
+{0x7C,0x14,0x14,0x14,8},{8,0x14,0x14,0x18,0x7C},{0x7C,8,4,4,8},{0x48,0x54,0x54,0x54,0x20},{4,0x3F,0x44,0x40,0x20},{0x3C,0x40,0x40,0x20,0x7C},{0x1C,0x20,0x40,0x20,0x1C},{0x3C,0x40,0x30,0x40,0x3C},{0x44,0x28,0x10,0x28,0x44},{0x0C,0x50,0x50,0x50,0x3C},{0x44,0x64,0x54,0x4C,0x44},{0,8,0x36,0x41,0},{0,0,0x7F,0,0},{0,0x41,0x36,8,0},{8,8,0x2A,0x1C,8} };
+static const struct { char c; unsigned char r[5]; } F35[] = {   /* the smallest tiers: 3x5, capitals and digits only (3 bits per row, bit 2 = left) */
+{'A',{2,5,7,5,5}},{'B',{6,5,6,5,6}},{'C',{3,4,4,4,3}},{'D',{6,5,5,5,6}},{'E',{7,4,6,4,7}},{'F',{7,4,6,4,4}},{'G',{3,4,5,5,3}},{'H',{5,5,7,5,5}},{'I',{7,2,2,2,7}},{'J',{1,1,1,5,2}},{'K',{5,5,6,5,5}},{'L',{4,4,4,4,7}},{'M',{5,7,7,5,5}},
+{'N',{6,5,5,5,5}},{'O',{2,5,5,5,2}},{'P',{6,5,6,4,4}},{'Q',{2,5,5,7,3}},{'R',{6,5,6,5,5}},{'S',{3,4,2,1,6}},{'T',{7,2,2,2,2}},{'U',{5,5,5,5,7}},{'V',{5,5,5,5,2}},{'W',{5,5,7,7,5}},{'X',{5,5,2,5,5}},{'Y',{5,5,2,2,2}},{'Z',{7,1,2,4,7}},
+{'0',{7,5,5,5,7}},{'1',{2,6,2,2,7}},{'2',{6,1,2,4,7}},{'3',{6,1,2,1,6}},{'4',{5,5,7,1,1}},{'5',{7,4,6,1,6}},{'6',{3,4,7,5,7}},{'7',{7,1,2,2,2}},{'8',{7,5,7,5,7}},{'9',{7,5,7,1,6}},
+{'&',{2,5,2,5,3}},{'-',{0,0,7,0,0}},{'.',{0,0,0,0,2}},{',',{0,0,0,2,4}},{'\'',{2,2,0,0,0}},{'!',{2,2,2,0,2}},{'?',{6,1,2,0,2}},{':',{0,2,0,2,0}},{'/',{1,1,2,4,4}},{'+',{0,2,7,2,0}},{'(',{1,2,2,2,1}},{')',{4,2,2,2,4}} };
+typedef struct { int f35, sc, gap, lgap; } Tier;
+static const Tier TIERS[] = { {0, 3, 2, 3}, {0, 2, 1, 2}, {1, 2, 2, 2}, {0, 1, 1, 1}, {1, 1, 1, 1} };   /* glyph heights 21, 14, 10, 7, 5 px: the largest that fits wins */
+#define NTIERS 5
+#define LAB_LINES 24
+#define LAB_CHARS 96
+static int tier_cw(const Tier *t) { return (t->f35 ? 3 : 5) * t->sc; }
+static int tier_ch(const Tier *t) { return (t->f35 ? 5 : 7) * t->sc; }
+/* word-wrap `text` for a tier into lines[]; returns the line count, or -1 when a word is wider than a line (unless `hard`, which breaks it) or the lines do not fit `avail` px high or `maxl` lines */
+static int label_wrap(const char *text, const Tier *t, int avail, int maxl, int hard, char lines[][LAB_CHARS]) {
+    int cw = tier_cw(t), maxc = (avail + t->gap) / (cw + t->gap), nl = 0, cur = 0; if (maxc < 1) return -1; lines[0][0] = 0;
+    char w[LAB_CHARS * 2]; const char *p = text;
+    while (*p) {
+        while (*p == ' ') p++; if (!*p) break;
+        if (p[0] == '\\' && p[1] == 'n') { p += 2; if (++nl >= LAB_LINES) return -1; lines[nl][0] = 0; cur = 0; continue; }
+        int wl = 0; while (*p && *p != ' ' && !(p[0] == '\\' && p[1] == 'n') && wl < LAB_CHARS * 2 - 1) w[wl++] = *p++; w[wl] = 0;
+        if (wl > maxc && !hard) return -1;
+        for (int off = 0; off < wl; ) {
+            int take = wl - off; if (take > maxc) take = maxc;
+            if (cur && cur + 1 + take > maxc) { if (++nl >= LAB_LINES) return -1; lines[nl][0] = 0; cur = 0; }
+            if (cur) { lines[nl][cur++] = ' '; } memcpy(lines[nl] + cur, w + off, (size_t)take); cur += take; lines[nl][cur] = 0; off += take;
+            if (off < wl) { if (++nl >= LAB_LINES) return -1; lines[nl][0] = 0; cur = 0; } } }
+    nl++; if (lines[nl - 1][0] == 0 && nl > 1) nl--;
+    if (nl > maxl) return -1; if (nl * tier_ch(t) + (nl - 1) * t->lgap > avail) return -1; return nl;
+}
+static void label_glyph(unsigned char *m, int A, int x, int y, char c, const Tier *t) {
+    int sc = t->sc;
+    if (t->f35) { if (c >= 'a' && c <= 'z') c = (char)(c - 32); const unsigned char *r = NULL; for (size_t k = 0; k < sizeof F35 / sizeof *F35; k++) if (F35[k].c == c) r = F35[k].r;
+        if (!r) { if (c == ' ') return; for (size_t k = 0; k < sizeof F35 / sizeof *F35; k++) if (F35[k].c == '?') r = F35[k].r; }
+        for (int ry = 0; ry < 5; ry++) for (int cx = 0; cx < 3; cx++) if (r[ry] & (4 >> cx)) for (int dy = 0; dy < sc; dy++) for (int dx = 0; dx < sc; dx++) { int px = x + cx * sc + dx, py = y + ry * sc + dy; if (px >= 0 && py >= 0 && px < A && py < A) m[py * A + px] = 2; } }
+    else { if (c < 32 || c > 126) c = '?'; const unsigned char *col = F57[c - 32];
+        for (int cx = 0; cx < 5; cx++) for (int ry = 0; ry < 7; ry++) if (col[cx] & (1 << ry)) for (int dy = 0; dy < sc; dy++) for (int dx = 0; dx < sc; dx++) { int px = x + cx * sc + dx, py = y + ry * sc + dy; if (px >= 0 && py >= 0 && px < A && py < A) m[py * A + px] = 2; } }
+}
+/* the label mask of one A x A block: 2 = glyph, 1 = outline (8-neighbours of a glyph pixel), 0 = nothing. Returns 1 if anything was drawn. */
+static int g_lab_trunc;   /* set when a label needed more lines than the smallest font allows and the lines that fit were drawn (the only case where text is dropped) */
+static int label_mask(const char *text, int A, unsigned char *m) {
+    static char lines[LAB_LINES][LAB_CHARS]; memset(m, 0, (size_t)A * A); int avail = A - 2, nl = -1, ti = NTIERS - 1, hard = 0;
+    for (int pass = 0; pass < 2 && nl < 0; pass++) for (int k = 0; k < NTIERS && nl < 0; k++) { nl = label_wrap(text, &TIERS[k], avail, pass ? LAB_LINES : 3, 0, lines); ti = k; }
+    if (nl < 0) { hard = 1; ti = NTIERS - 1; int maxl = (avail + TIERS[ti].lgap) / (tier_ch(&TIERS[ti]) + TIERS[ti].lgap); nl = label_wrap(text, &TIERS[ti], avail, maxl < LAB_LINES ? maxl : LAB_LINES, hard, lines);
+        if (nl < 0) { nl = maxl < LAB_LINES ? maxl : LAB_LINES; if (nl < 1) return 0; g_lab_trunc = 1; } }   /* last resort: too much text for any tier, the lines that fit are drawn (never past the rim) */
+    const Tier *t = &TIERS[ti]; int ch = tier_ch(t), total = nl * ch + (nl - 1) * t->lgap, y0 = (A - total) / 2, any = 0;
+    for (int l = 0; l < nl; l++) { int len = (int)strlen(lines[l]); if (!len) continue; int wd = len * (tier_cw(t) + t->gap) - t->gap, x0 = (A - wd) / 2;
+        for (int c = 0; c < len; c++) { label_glyph(m, A, x0 + c * (tier_cw(t) + t->gap), y0 + l * (ch + t->lgap), lines[l][c], t); any = 1; } }
+    if (!any) return 0;
+    static unsigned char o[96 * 96]; if (A > 96) return 1; memcpy(o, m, (size_t)A * A);
+    for (int y = 0; y < A; y++) for (int x = 0; x < A; x++) if (!m[y * A + x]) { for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) { int xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < A && yy < A && m[yy * A + xx] == 2) o[y * A + x] = 1; } }
+    memcpy(m, o, (size_t)A * A); return 1;
+}
+enum { TM_A, TM_B, TM_START, TM_LF, TM_LT, TM_CF, TM_CT, TM_N };
+static const char *TM_NAME[TM_N] = { "floor_a", "floor_b", "start", "ladder_from", "ladder_to", "chute_from", "chute_to" };
+static int PG_tm[TM_N] = { 1, 2, 7, 35, 38, 36, 37 };   /* atlas indexes of the stand-in tiles (defaults; page.pdl TILEMAP rows replace them) */
+static char PG_jt[4][120];                               /* JUMPTEXT ladder_from ladder_to chute_from chute_to: the label of a jump's two ends; {n} {to} {from} are replaced */
+static unsigned PG_tok[MAXPL] = { 0xdc3c3c, 0x3c78e6, 0x3cbe5a, 0xe6c832, 0xb450c8, 0x3cc8c8, 0xf08c28, 0xc8c8c8 };   /* token colours (Teropoly's table); TOKEN | pN | rrggbb */
+
+static int pg_num(const char *s, long lo, long hi, long *v) { char *e; if (!s[0]) return 0; long x = strtol(s, &e, 10); if (*e || x < lo || x > hi) return 0; *v = x; return 1; }
+static int pg_hex(const char *s, unsigned *v) { char *e; if (strlen(s) != 6) return 0; unsigned long x = strtoul(s, &e, 16); if (*e) return 0; *v = (unsigned)x; return 1; }
+/* the geometry: board.pdl BOARD rows (COLS and ROWS were read by load_config; the path is read here, the file is not hashed again) */
+static int pg_geometry(void) {
+    if (KIND != K_LEDGER || MODE != M_TRACK) return bad("page: only a ledger track game has a board page");
+    char p[P], ln[1024], *fl[10]; PG_serp = 0; snprintf(p, sizeof p, "%s/rulesets/%s/board.pdl", APP, RS); FILE *f = fopen(p, "r"); if (!f) return bad("missing %s", p);
+    while (fgets(ln, sizeof ln, f)) { if (ln[0] == '#') continue; int n = split_row(ln, fl, 10); if (n >= 3 && !strcmp(fl[0], "BOARD") && !strcmp(fl[1], "path")) { if (!strcmp(fl[2], "serpentine")) PG_serp = 1; else if (!strcmp(fl[2], "rows")) PG_serp = 0; else { fclose(f); return bad("board.pdl: BOARD path is serpentine or rows"); } } }
+    fclose(f); if (COLS < 1 || ROWS < 1 || COLS * ROWS != LENGTH) return bad("page: BOARD cols x rows (%d x %d) must equal the TRACK length %d", COLS, ROWS, LENGTH);
+    return 0;
+}
+/* square n (1..LENGTH) -> its block (bx from the left, by from the TOP); row r counts from the bottom; a serpentine board reverses every odd row */
+static void sq_cell(int n, int *bx, int *by) {
+    int i = n - 1, r = i / COLS, c = i % COLS, flip = PG_serp && (r & 1);
+#ifdef GC_MUT_PAGE_FLIP
+    flip = !flip;   /* mutant for the harness: the serpentine direction swapped (never installed) */
+#endif
+    if (flip) c = COLS - 1 - c; *bx = c; *by = ROWS - 1 - r;
+}
+static int load_page(void) {
+    HD_px = 24; HD_cols = 16; HD_tiles = 43; HD_rock = 36; PG_block = 3; PG_start = 0; PG_labels = 1; PG_lab_text = 0xffffff; PG_lab_out = 0; nlb = 0;
+    static const int tm0[TM_N] = { 1, 2, 7, 35, 38, 36, 37 }; memcpy(PG_tm, tm0, sizeof PG_tm); for (int i = 0; i < 4; i++) snprintf(PG_jt[i], sizeof PG_jt[i], "{n}");
+    if (pg_geometry()) return 1;
+    char p[P], ln[1024], *f[6]; snprintf(p, sizeof p, "%s/rulesets/%s/page.pdl", APP, RS); FILE *fp = fopen(p, "r"); if (!fp) return bad("cannot read %s", p);
+    int lineno = 0;
+    while (fgets(ln, sizeof ln, fp)) { lineno++; if (ln[0] == '#' || !trim(ln)[0]) continue; int n = split_row(ln, f, 6); long v; unsigned c;
+        if (!strcmp(f[0], "HEADER") && n == 3) { if (!pg_num(f[2], 1, 4096, &v)) { fclose(fp); return bad("page.pdl line %d: HEADER %s needs a number", lineno, f[1]); }
+            if (!strcmp(f[1], "tile_px")) { if (v > 96) { fclose(fp); return bad("page.pdl line %d: tile_px is 1 to 96", lineno); } HD_px = (int)v; } else if (!strcmp(f[1], "atlas_cols")) HD_cols = (int)v; else if (!strcmp(f[1], "atlas_tiles")) HD_tiles = (int)v; else if (!strcmp(f[1], "rock_slot")) HD_rock = (int)v;
+            else { fclose(fp); return bad("page.pdl line %d: unknown HEADER key %s", lineno, f[1]); } }
+        else if (!strcmp(f[0], "PAGE") && n == 3 && !strcmp(f[1], "block")) { if (!pg_num(f[2], 1, 8, &v)) { fclose(fp); return bad("page.pdl line %d: PAGE block is 1 to 8", lineno); } PG_block = (int)v; }
+        else if (!strcmp(f[0], "PAGE") && n == 3 && !strcmp(f[1], "start")) { if (!strcmp(f[2], "strip")) PG_start = 1; else if (!strcmp(f[2], "none")) PG_start = 0; else { fclose(fp); return bad("page.pdl line %d: PAGE start is strip or none", lineno); } }
+        else if (!strcmp(f[0], "LABELS") && n == 2) { if (!strcmp(f[1], "on")) PG_labels = 1; else if (!strcmp(f[1], "off")) PG_labels = 0; else { fclose(fp); return bad("page.pdl line %d: LABELS is on or off", lineno); } }
+        else if (!strcmp(f[0], "LABELCOLOR") && n == 3) { if (!pg_hex(f[2], &c)) { fclose(fp); return bad("page.pdl line %d: LABELCOLOR needs 6 hex digits", lineno); } if (!strcmp(f[1], "text")) PG_lab_text = c; else if (!strcmp(f[1], "outline")) PG_lab_out = c; else { fclose(fp); return bad("page.pdl line %d: LABELCOLOR is text or outline", lineno); } }
+        else if (!strcmp(f[0], "TILEMAP") && n == 3) { int k = -1; for (int i = 0; i < TM_N; i++) if (!strcmp(f[1], TM_NAME[i])) k = i;
+            if (k < 0) { fclose(fp); return bad("page.pdl line %d: unknown TILEMAP name %s", lineno, f[1]); } if (!pg_num(f[2], 0, 4095, &v)) { fclose(fp); return bad("page.pdl line %d: TILEMAP needs an atlas index", lineno); } PG_tm[k] = (int)v; }
+        else if (!strcmp(f[0], "LABEL") && n == 3) { if (!pg_num(f[1], 0, LENGTH, &v)) { fclose(fp); return bad("page.pdl line %d: LABEL key must be a square number 0 to %d", lineno, LENGTH); }
+            if (nlb >= NLB || strlen(f[2]) >= sizeof LB[0].text) { fclose(fp); return bad("page.pdl line %d: too many LABEL rows or a label is too long", lineno); } snprintf(LB[nlb].key, sizeof LB[nlb].key, "%s", f[1]); snprintf(LB[nlb].text, sizeof LB[nlb].text, "%s", f[2]); nlb++; }
+        else if (!strcmp(f[0], "JUMPTEXT") && n == 3) { int k = -1; static const char *jn[4] = { "ladder_from", "ladder_to", "chute_from", "chute_to" }; for (int i = 0; i < 4; i++) if (!strcmp(f[1], jn[i])) k = i;
+            if (k < 0 || strlen(f[2]) >= sizeof PG_jt[0]) { fclose(fp); return bad("page.pdl line %d: JUMPTEXT is ladder_from, ladder_to, chute_from or chute_to, and short", lineno); } snprintf(PG_jt[k], sizeof PG_jt[k], "%s", f[2]); }
+        else if (!strcmp(f[0], "TOKEN") && n == 3) { long pl; if (f[1][0] != 'p' || !pg_num(f[1] + 1, 1, MAXPL, &pl) || !pg_hex(f[2], &c)) { fclose(fp); return bad("page.pdl line %d: TOKEN | pN | rrggbb", lineno); } PG_tok[pl - 1] = c; }
+        else { fclose(fp); return bad("page.pdl line %d: unknown or malformed row %s", lineno, f[0]); } }
+    fclose(fp);
+    if (HD_cols < 1 || HD_tiles < 1) return bad("page.pdl: bad atlas header");
+    for (int i = 0; i < TM_N; i++) if (PG_tm[i] >= HD_tiles) return bad("page.pdl: TILEMAP %s is outside the atlas (%d tiles)", TM_NAME[i], HD_tiles);
+    if (COLS * PG_block > PGMAX || (ROWS + PG_start) * PG_block > PGMAX) return bad("page.pdl: the page would be %d x %d cells (at most %d x %d)", COLS * PG_block, (ROWS + PG_start) * PG_block, PGMAX, PGMAX);
+    return 0;
+}
+/* the display text of square n: an explicit LABEL row (the LAST row of a key wins; empty text = no label), else the JUMPTEXT of the jump end it is (a square that is both a start and an end is a start), else the number. {n} {to} {from} are replaced. */
+static void pg_text(int n, char *o, size_t cap) {
+    for (int j = nlb - 1; j >= 0; j--) if (atoi(LB[j].key) == n) { snprintf(o, cap, "%s", LB[j].text); return; }
+    if (n == 0) { snprintf(o, cap, "START"); return; }
+    int cls = -1, from = 0, to = 0; for (int i = 0; i < NJ; i++) if (JF[i] == n) { cls = JT[i] > JF[i] ? 0 : 2; from = JF[i]; to = JT[i]; break; }
+    if (cls < 0) for (int i = 0; i < NJ; i++) if (JT[i] == n) { cls = JT[i] > JF[i] ? 1 : 3; from = JF[i]; to = JT[i]; break; }
+    const char *t = cls < 0 ? "{n}" : PG_jt[cls]; size_t w = 0; o[0] = 0;
+    for (; *t && w + 12 < cap; ) { if (!strncmp(t, "{n}", 3)) { w += (size_t)snprintf(o + w, cap - w, "%d", n); t += 3; } else if (!strncmp(t, "{to}", 4)) { w += (size_t)snprintf(o + w, cap - w, "%d", to); t += 4; } else if (!strncmp(t, "{from}", 6)) { w += (size_t)snprintf(o + w, cap - w, "%d", from); t += 6; } else o[w++] = *t++; }
+    o[w] = 0;
+}
+typedef struct { int bx, by; char text[160]; } PgLab;
+/* LABELS: draw every item's label over the cells of its block (deskopoly.c label_atlas with the items as data instead of the ring). `ct` holds the PLAIN tile of every cell; each cell with ink gets a NEW atlas tile (that plain tile with the glyphs over it),
+ * appended after the HD_tiles base slots, and `ct` points at it. Returns the number of new tiles; 0 when the base atlas is not a usable atlas of HD_cols x HD_tiles or no item has ink; -1 on a memory failure. */
+static int pg_label_atlas(const char *base_path, int nit, const PgLab *it, int (*ct)[PGMAX], unsigned char **out, size_t *outsz) {
+    FILE *a = fopen(base_path, "rb"); if (!a) return 0; fseek(a, 0, SEEK_END); long sz = ftell(a); rewind(a);
+    int aw = HD_cols * HD_px; size_t rowb = (size_t)aw * 4; if (sz <= 0 || (size_t)sz % rowb || (long)((size_t)sz / rowb / HD_px) * HD_cols < HD_tiles || (size_t)sz / rowb % HD_px) { fclose(a); return 0; }
+    unsigned char *base = malloc((size_t)sz); if (!base || fread(base, 1, (size_t)sz, a) != (size_t)sz) { fclose(a); free(base); return 0; } fclose(a);
+    int B = PG_block, A = B * HD_px; if (A > 96) { free(base); return 0; }
+    int cap = nit * B * B, nn = 0; unsigned char *tiles = calloc((size_t)cap * HD_px * HD_px, 4), *mask = malloc((size_t)A * A); int *dst = malloc((size_t)cap * 2 * sizeof(int));
+    if (!tiles || !mask || !dst) { free(base); free(tiles); free(mask); free(dst); return -1; }
+    for (int i = 0; i < nit; i++) { const char *tx = it[i].text; g_lab_trunc = 0; if (!tx[0] || !label_mask(tx, A, mask)) continue; if (g_lab_trunc) fprintf(ERRF, "game_core: the label of item %d is too long for any font: the lines that fit are drawn\n", i);
+        for (int ky = 0; ky < B; ky++) for (int kx = 0; kx < B; kx++) { int ink = 0; for (int y = 0; y < HD_px && !ink; y++) for (int x = 0; x < HD_px; x++) if (mask[(ky * HD_px + y) * A + kx * HD_px + x]) { ink = 1; break; }
+            if (!ink) continue; int cy = it[i].by * B + ky, cx = it[i].bx * B + kx, t = ct[cy][cx]; unsigned char *d = tiles + (size_t)nn * HD_px * HD_px * 4;
+            for (int y = 0; y < HD_px; y++) for (int x = 0; x < HD_px; x++) { int mv = mask[(ky * HD_px + y) * A + kx * HD_px + x]; unsigned char *o = d + ((size_t)y * HD_px + x) * 4;
+                if (mv) { unsigned c = mv == 2 ? PG_lab_text : PG_lab_out; o[0] = (unsigned char)(c >> 16); o[1] = (unsigned char)(c >> 8); o[2] = (unsigned char)c; o[3] = 255; }
+                else memcpy(o, base + ((size_t)((t / HD_cols) * HD_px + y) * aw + (size_t)(t % HD_cols) * HD_px + x) * 4, 4); }
+            dst[nn * 2] = cy; dst[nn * 2 + 1] = cx; nn++; } }
+    if (!nn) { free(base); free(tiles); free(mask); free(dst); return 0; }
+    int total = HD_tiles + nn, rows = (total + HD_cols - 1) / HD_cols; unsigned char *at = calloc((size_t)rows * HD_px * rowb, 1); if (!at) { free(base); free(tiles); free(mask); free(dst); return -1; }
+    for (int s = 0; s < HD_tiles; s++) for (int y = 0; y < HD_px; y++) memcpy(at + ((size_t)((s / HD_cols) * HD_px + y) * aw + (size_t)(s % HD_cols) * HD_px) * 4, base + ((size_t)((s / HD_cols) * HD_px + y) * aw + (size_t)(s % HD_cols) * HD_px) * 4, (size_t)HD_px * 4);
+    for (int k = 0; k < nn; k++) { int s = HD_tiles + k; for (int y = 0; y < HD_px; y++) memcpy(at + ((size_t)((s / HD_cols) * HD_px + y) * aw + (size_t)(s % HD_cols) * HD_px) * 4, tiles + ((size_t)k * HD_px * HD_px + (size_t)y * HD_px) * 4, (size_t)HD_px * 4); ct[dst[k * 2]][dst[k * 2 + 1]] = s; }
+    free(base); free(tiles); free(mask); free(dst); *out = at; *outsz = (size_t)rows * HD_px * rowb; return nn;
+}
+/* write the atlas only when its bytes differ from the file that is there (labels are static: a rerun must not make the engine reload for nothing); tmp + rename, so a reader never sees half an atlas */
+static int pg_write_atlas(const char *dd, const unsigned char *at, size_t sz) {
+    char p[P], tp[P + 16]; snprintf(p, sizeof p, "%s/cells.rgba", dd); snprintf(tp, sizeof tp, "%s.tmp", p); struct stat s;
+    if (!stat(p, &s) && (size_t)s.st_size == sz) { FILE *f = fopen(p, "rb"); if (f) { unsigned char *old = malloc(sz); int same = old && fread(old, 1, sz, f) == sz && !memcmp(old, at, sz); fclose(f); free(old); if (same) return 0; } }
+    FILE *o = fopen(tp, "wb"); if (!o) return -1; if (fwrite(at, 1, sz, o) != sz) { fclose(o); return -1; } fclose(o); if (rename(tp, p)) return -1; return 1;
+}
+/* the token rows (events.txt: x y r g b charset index dir pattern glyph; the glyph MUST be a letter, a digit parses as a float and the 3D loader drops the row, deskopoly_driver.c): one per player,
+ * on the top row of its square's block (up to 4 on a square), a player on square 0 stands in the start strip. Returns the number of rows. */
+static int pg_events(char *buf, size_t cap) {
+    static int cnt[1024]; memset(cnt, 0, sizeof cnt); buf[0] = 0; int ne = 0, B = PG_block; if (S.phase == PH_NONE) return 0;
+    for (int pl = 0; pl < S.np && pl < MAXPL; pl++) { int sq = S.pos[pl], cx, cy; if (sq < 0 || sq > LENGTH) continue;
+        if (sq == 0) { if (!PG_start) continue; cx = ((pl + 1) % COLS) * B + B / 2; cy = ROWS * B + B / 2; }   /* the start strip: block 0 holds the word START, the tokens stand in blocks 1.. */
+        else { int bx, by, s = cnt[sq]++; if (s > 3) s = 3; sq_cell(sq, &bx, &by); cx = bx * B + (s == 0 ? 0 : s == 1 ? B - 1 : B / 2); cy = by * B + (s == 3 ? B / 2 : 0); }   /* the TOP row of the block: a figure is two cells tall (feet on the cell), so it stands over the empty margin above the number, not over its digits */
+        char row[96]; snprintf(row, sizeof row, "%d %d %u %u %u People1 %d 2 1 %c\n", cx, cy, (PG_tok[pl] >> 16) & 255, (PG_tok[pl] >> 8) & 255, PG_tok[pl] & 255, pl, (char)(65 + pl)); if (strlen(buf) + strlen(row) + 1 < cap) { strcat(buf, row); ne++; } }
+    return ne;
+}
+static int cmd_page(int argc, char **argv) {
+    if (argc < 1) { fprintf(ERRF, "usage: page <desk_dir> [atlas.rgba] [noevents]\n"); return 2; } const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) { fprintf(ERRF, "page: the desk folder does not exist (make it first)\n"); return 2; }
+    if (load_page()) { fprintf(ERRF, "%s\n", MSG); return 2; }
+    int B = PG_block, W = COLS * B, H = (ROWS + PG_start) * B; static int ct[PGMAX][PGMAX]; for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) ct[y][x] = PG_tm[TM_A];
+    static PgLab it[1100]; int nit = 0, nl = 0, nc = 0;
+    for (int n = 1; n <= LENGTH; n++) { int bx, by, tf; sq_cell(n, &bx, &by); int r = (n - 1) / COLS; tf = ((bx + r) & 1) ? PG_tm[TM_B] : PG_tm[TM_A];
+        for (int i = 0; i < NJ; i++) { if (JT[i] == n) tf = JT[i] > JF[i] ? PG_tm[TM_LT] : PG_tm[TM_CT]; }
+        for (int i = 0; i < NJ; i++) { if (JF[i] == n) tf = JT[i] > JF[i] ? PG_tm[TM_LF] : PG_tm[TM_CF]; }
+        for (int y = 0; y < B; y++) for (int x = 0; x < B; x++) ct[by * B + y][bx * B + x] = tf;
+        it[nit].bx = bx; it[nit].by = by; pg_text(n, it[nit].text, sizeof it[nit].text); nit++; }
+    for (int i = 0; i < NJ; i++) { if (JT[i] > JF[i]) nl++; else nc++; }
+    if (PG_start) { for (int x = 0; x < COLS * B; x++) for (int y = 0; y < B; y++) ct[ROWS * B + y][x] = PG_tm[TM_START]; it[nit].bx = 0; it[nit].by = ROWS; pg_text(0, it[nit].text, sizeof it[nit].text); nit++; }
+    int lab_n = 0, lab_wrote = 0; if (PG_labels && argc > 1) { unsigned char *lat = NULL; size_t lsz = 0; lab_n = pg_label_atlas(argv[1], nit, it, ct, &lat, &lsz); if (lab_n < 0) { fprintf(ERRF, "page: out of memory\n"); return 2; } if (lab_n) { lab_wrote = pg_write_atlas(dd, lat, lsz); free(lat); if (lab_wrote < 0) { fprintf(ERRF, "page: cannot write the atlas\n"); return 2; } } }   /* the atlas lands BEFORE cells.txt and the marker, so a reload never sees indexes past the file */
+    static char buf[PGMAX * PGMAX * 12 + 512]; size_t w = 0; w += (size_t)snprintf(buf + w, sizeof buf - w, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", W, H, HD_px, HD_cols, HD_tiles + lab_n, HD_rock);
+    for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) w += (size_t)snprintf(buf + w, sizeof buf - w, "%s%d,0", x ? " " : "", ct[y][x]); w += (size_t)snprintf(buf + w, sizeof buf - w, "\n"); }
+    char q[P + 32]; snprintf(q, sizeof q, "%s/cells.txt", dd); if (write_atomic(q, buf)) { fprintf(ERRF, "page: cannot write cells.txt\n"); return 2; }
+    { char mk[P + 32]; snprintf(mk, sizeof mk, "%s/cells.marker", dd); struct stat ms; FILE *mf = fopen(mk, (!stat(mk, &ms) && ms.st_size >= 4096) ? "w" : "a"); if (mf) { fputc('1', mf); fclose(mf); } }   /* the house marker rule: the engine reloads a desk when this file GROWS (never on mtime) */
+    w = 0; for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) buf[w++] = '.'; buf[w++] = '\n'; } buf[w] = 0; snprintf(q, sizeof q, "%s/map.txt", dd); write_atomic(q, buf);
+    int ne = 0; snprintf(q, sizeof q, "%s/events.txt", dd);
+    if (!(argc > 2 && !strcmp(argv[2], "noevents"))) { ne = pg_events(buf, sizeof buf); write_atomic(q, buf); } else if (stat(q, &sb)) write_atomic(q, "");
+    snprintf(q, sizeof q, "%s/skin.txt", dd); if (stat(q, &sb)) write_atomic(q, "rmmv\n");
+    snprintf(q, sizeof q, "%s/extrusion.pdl", dd); if (stat(q, &sb)) write_atomic(q, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | game_core\nMETA         | desk_id            | play\nMETA         | note               | board page drawn from board.pdl + page.pdl by `game_core page`\n");
+    snprintf(q, sizeof q, "%s/cells.rgba", dd);
+    if (argc > 1 && stat(q, &sb)) { FILE *a = fopen(argv[1], "rb"); if (!a) { fprintf(ERRF, "page: cannot read the atlas\n"); return 2; } FILE *o = fopen(q, "wb"); if (!o) { fclose(a); fprintf(ERRF, "page: cannot write the atlas\n"); return 2; } char b[8192]; size_t k; while ((k = fread(b, 1, sizeof b, a)) > 0) fwrite(b, 1, k, o); fclose(a); fclose(o); }
+    fprintf(OUT, "PAGE %s %dx%d squares=%d ladders=%d chutes=%d labels=%d events=%d\n", dd, W, H, LENGTH, nl, nc, nit, ne);
+    if (lab_n) fprintf(OUT, "LABELS new_tiles=%d atlas_tiles=%d atlas_written=%d\n", lab_n, HD_tiles + lab_n, lab_wrote);
+    return 0;
+}
+/* preview: a FLAT top-down picture of a desk (cells.txt + cells.rgba), tile by tile, no depth, no engine (deskopoly.c v_preview). Raw RGBA, for raw_to_png. It is not the engine's render. */
+static int cmd_preview(int argc, char **argv) {
+    if (argc < 2) { fprintf(ERRF, "usage: preview <desk_dir> <out.raw>\n"); return 2; } char p[P], ln[16384]; snprintf(p, sizeof p, "%s/cells.txt", argv[0]); FILE *fp = fopen(p, "r"); if (!fp) { fprintf(ERRF, "preview: no cells.txt (run page first)\n"); return 2; }
+    int W = 0, H = 0, px = 24, cols = 16; static int ct[PGMAX][PGMAX]; int y = -1;
+    while (fgets(ln, sizeof ln, fp)) { if (!strncmp(ln, "width=", 6)) W = atoi(ln + 6); else if (!strncmp(ln, "height=", 7)) H = atoi(ln + 7); else if (!strncmp(ln, "tile_px=", 8)) px = atoi(ln + 8); else if (!strncmp(ln, "atlas_cols=", 11)) cols = atoi(ln + 11);
+        else if (!strncmp(ln, "cells", 5)) y = 0; else if (y >= 0 && y < H && y < PGMAX) { int x = 0; for (char *t = strtok(ln, " \n"); t && x < W && x < PGMAX; t = strtok(NULL, " \n"), x++) ct[y][x] = atoi(t); y++; } }
+    fclose(fp); if (W < 1 || H < 1 || W > PGMAX || H > PGMAX || y != H || px < 1 || cols < 1) { fprintf(ERRF, "preview: cells.txt is not a complete page\n"); return 2; }
+    snprintf(p, sizeof p, "%s/cells.rgba", argv[0]); fp = fopen(p, "rb"); if (!fp) { fprintf(ERRF, "preview: no cells.rgba atlas\n"); return 2; } fseek(fp, 0, SEEK_END); long asz = ftell(fp); rewind(fp);
+    unsigned char *at = malloc((size_t)asz); if (!at || fread(at, 1, (size_t)asz, fp) != (size_t)asz) { fclose(fp); free(at); fprintf(ERRF, "preview: cannot read the atlas\n"); return 2; } fclose(fp);
+    int aw = cols * px; if (asz % (aw * 4)) { free(at); fprintf(ERRF, "preview: atlas size does not match atlas_cols x tile_px\n"); return 2; } int ah = (int)(asz / (aw * 4));
+    size_t ow = (size_t)W * px, oh = (size_t)H * px; unsigned char *o = calloc(ow * oh, 4); if (!o) { free(at); fprintf(ERRF, "preview: out of memory\n"); return 2; }
+    for (int cy = 0; cy < H; cy++) for (int cx = 0; cx < W; cx++) { int t = ct[cy][cx], sx = (t % cols) * px, sy = (t / cols) * px; if (sy + px > ah) { free(at); free(o); fprintf(ERRF, "preview: a tile index is outside the atlas\n"); return 2; }
+        for (int r = 0; r < px; r++) memcpy(o + (((size_t)cy * px + r) * ow + (size_t)cx * px) * 4, at + ((size_t)(sy + r) * aw + sx) * 4, (size_t)px * 4); }
+    FILE *w = fopen(argv[1], "wb"); if (!w) { free(at); free(o); fprintf(ERRF, "preview: cannot write the raw file\n"); return 2; } fwrite(o, 4, ow * oh, w); fclose(w); free(at); free(o);
+    fprintf(OUT, "PREVIEW %zux%zu\n", ow, oh); return 0;
+}
 /* args: the words after the verb. `as=pN` anywhere sets the actor. Returns the exit code. */
 static int engine_verb(int argc, char **argv) {
     const char *verb = argv[0]; char as[32] = ""; char *av[16]; int ac = 0;
@@ -626,6 +842,17 @@ static int engine_verb(int argc, char **argv) {
     if (!strcmp(verb, "tuning")) {   /* read-only: the pace the driver would use (tuning.pdl tick_ms, 33 to 2000); a bad value is refused with the reason, exit 2. Needs no ledger. */
         if (ac) { fprintf(ERRF, "usage: tuning\n"); return 2; } if (load_tuning()) { fprintf(ERRF, "%s\n", MSG); return 2; }
         fprintf(OUT, "TUNING tick_ms=%ld source=%s fast=%ld normal=%ld slow=%ld steps_per_second=%.1f\n", pace_ms(1), TICK_MS ? "tuning.pdl" : "default", pace_ms(0), pace_ms(1), pace_ms(2), 1000.0 / (double)pace_ms(1)); return 0; }
+    if (!strcmp(verb, "labelmask")) {   /* labelmask <A> <text...> [--art]: the label baker's mask of one A x A block (read-only, needs no ledger; the drift check compares it with deskopoly.c's own label_mask) */
+        int art = 0; char tx[200] = ""; long A = 0; int have = 0; for (int i = 0; i < ac; i++) { if (!strcmp(av[i], "--art")) { art = 1; continue; } if (!have) { char *e; A = strtol(av[i], &e, 10); if (*e || A < 8 || A > 96) { fprintf(ERRF, "usage: labelmask <A 8..96> <text...> [--art]\n"); return 2; } have = 1; continue; } if (tx[0]) strncat(tx, " ", sizeof tx - strlen(tx) - 1); strncat(tx, av[i], sizeof tx - strlen(tx) - 1); }
+        if (!have) { fprintf(ERRF, "usage: labelmask <A 8..96> <text...> [--art]\n"); return 2; }
+        static unsigned char m[96 * 96]; g_lab_trunc = 0; int ink = label_mask(tx, (int)A, m); int ng = 0, no = 0; uint64_t h = FNV0; for (int i = 0; i < A * A; i++) { if (m[i] == 2) ng++; else if (m[i] == 1) no++; h = fnv(h, &m[i], 1); } char hs[20]; hx(h, hs);
+        fprintf(OUT, "LABELMASK A=%ld ink=%d glyph=%d outline=%d fnv=%s\n", A, ink, ng, no, hs); if (art) for (int y = 0; y < A; y++) { for (int x = 0; x < A; x++) fputc(m[y * A + x] == 2 ? '#' : m[y * A + x] == 1 ? '+' : '.', OUT); fputc('\n', OUT); } return 0; }
+    if (!strcmp(verb, "fontsum")) {   /* fontsum: the checksums of the baker's tables; the drift check compares them with the same line from an op that #includes deskopoly.c */
+        uint64_t a = FNV0, b = FNV0, c = FNV0; a = fnv(a, F57, sizeof F57); for (size_t k = 0; k < sizeof F35 / sizeof *F35; k++) { b = fnv(b, &F35[k].c, 1); b = fnv(b, F35[k].r, 5); } for (int k = 0; k < NTIERS; k++) { c = fnv(c, &TIERS[k].f35, sizeof(int)); c = fnv(c, &TIERS[k].sc, sizeof(int)); c = fnv(c, &TIERS[k].gap, sizeof(int)); c = fnv(c, &TIERS[k].lgap, sizeof(int)); }
+        fprintf(OUT, "FONTSUM f57=%016llx f35=%016llx tiers=%016llx\n", (unsigned long long)a, (unsigned long long)b, (unsigned long long)c); return 0; }
+    if (!strcmp(verb, "squarecell")) {   /* squarecell <n>: where square n is on the page (block from the left, from the top); read-only, needs no ledger */
+        long n; if (ac != 1 || !pg_num(av[0], 1, 100000, &n)) { fprintf(ERRF, "usage: squarecell <n>\n"); return 2; } if (pg_geometry()) { fprintf(ERRF, "%s\n", MSG); return 2; } if (n > LENGTH) { fprintf(ERRF, "squarecell: the track has %d squares\n", LENGTH); return 2; }
+        int bx, by; sq_cell((int)n, &bx, &by); fprintf(OUT, "SQUARE %ld block=%d,%d\n", n, bx, by); return 0; }
     TALK_PRINT = !strcmp(verb, "talk") && KIND == K_LEDGER; ROWHOOK = (!strcmp(verb, "export") && ac == 1) ? export_hook : NULL;   /* these two verbs observe the replay itself */
     if (load()) { fprintf(ERRF, "%s\n", MSG); return 1; }
 
@@ -665,6 +892,8 @@ static int engine_verb(int argc, char **argv) {
     if (KIND == K_EDITOR && !strcmp(verb, "publish")) { if (live(-1, as, "publish", "", NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "published doc=%s rows=%d\n", S.pubhash, S.ndoc); return 0; }
     if (!strcmp(verb, "export") && ac == 1) return cmd_export(av[0]);
     if (!strcmp(verb, "export")) { if (KIND != K_EDITOR) { fprintf(ERRF, "export: only an editor game has a document (give an out folder to write the data tables: export <out_dir>)\n"); return 2; } if (write_doc()) { fprintf(ERRF, "export: cannot write doc.txt\n"); return 2; } fprintf(OUT, "wrote doc.txt (%d rows)\n", S.ndoc); return 0; }
+    if (!strcmp(verb, "page")) return cmd_page(ac, av);
+    if (!strcmp(verb, "preview")) return cmd_preview(ac, av);
     if (!strcmp(verb, "status")) return cmd_status();
     if (!strcmp(verb, "check")) return cmd_check();
     if (!strcmp(verb, "replay")) { char hs[20]; hx(state_hash(), hs); fprintf(OUT, "REPLAY events=%d hash=%s\n", S.nrows, hs); return 0; }
@@ -725,12 +954,35 @@ static int verb_here(int argc, char **argv, char *out, size_t cap) {
 static int sync_state(void);
 static int reload(void) { if (load()) { snprintf(dmsg, sizeof dmsg, "ledger refused: %.180s", MSG); return 1; } return 0; }
 static int sync_state(void) { struct stat ls; if (S.phase != PH_NONE && !stat(LEDGER, &ls) && ls.st_size == KNOWN_SIZE) return 0; return reload(); }   /* reload only when the file is not what this process last wrote: a button press must not rewind the ticks since the last ckpt */
+/* THE BOARD PAGE OF THE LIVE GAME (2026-11-09; a ledger track game with a rulesets/<name>/page.pdl). The live game is drawn as its own generated desk "play" of the book (never into the authored "board" desk): `page` + `preview` run in-process
+ * (no process), the 2D picture map.png is made by the house op raw_to_png (ONE short-lived child per game start, 10 s watchdog), and the editor world (pieces/world_01/state.txt desk_id) points at "play" while a game is on and back at "board" when the game is
+ * reset or the driver ends. The page is STATIC (numbers, ladders, chutes): it is made once per game start; the tokens are events.txt rows rewritten only when a position changes (a few hundred bytes, no fork). */
+static char DESKDIR[P], ATLAS[P], WORLD[P]; static int page_on; static uint64_t page_sig;
+static void set_desk(const char *want) {
+    FILE *f = fopen(WORLD, "r"); if (!f) return; static char buf[4096]; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f); static char out[4400]; out[0] = 0; int saw = 0, same = 0;
+    for (char *p = buf; *p; ) { char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
+        if (ll >= 8 && !strncmp(p, "desk_id=", 8)) { snprintf(out + strlen(out), sizeof out - strlen(out), "desk_id=%s\n", want); saw = 1; if (ll == 8 + strlen(want) && !strncmp(p + 8, want, strlen(want))) same = 1; }
+        else if (ll < 600) snprintf(out + strlen(out), sizeof out - strlen(out), "%.*s\n", (int)ll, p);
+        if (!e) break; p = e + 1; }
+    if (!saw || same) return; char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", WORLD); FILE *w = fopen(tmp, "w"); if (!w) return; fputs(out, w); fclose(w); rename(tmp, WORLD);
+}
+static void page_events(void) { static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
+static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); return fnv(h, S.pos, sizeof S.pos); }
+static void page_make(void) {
+    if (!page_on) return; mkdir_p(DESKDIR); char p[P + 16], out[300]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); FILE *f = fopen(p, "w"); if (f) fclose(f);   /* the last game's figures are emptied before the new page is drawn */
+    { char ex[P], sheet[P], fr[P]; snprintf(ex, sizeof ex, "%s/@.apps/deskopoly/ops/+x/deskopoly_frames.+x", HOUSE); snprintf(sheet, sizeof sheet, "%s/../../../#.NNEST_ASSETS/tsots-characters/People1.png", HOUSE); snprintf(fr, sizeof fr, "%s/../../../#.NNEST_ASSETS/tsots-characters/frames", HOUSE);
+      if (!access(ex, X_OK) && !access(sheet, R_OK) && !access(fr, W_OK)) { char *av[] = { ex, sheet, (char *)"People1", fr, NULL }; run_capture(av, out, sizeof out); } }   /* the 3D walk frames of People1: only the MISSING ones are made, never overwriting (deskopoly_frames, as the Teropoly driver does) */
+    char *a[] = { (char *)"page", DESKDIR, ATLAS, (char *)"noevents" }; if (verb_here(4, a, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "page refused: %.180s", out); return; }
+    char raw[P + 16], png[P + 16], r2p[P + 96], sz[40]; snprintf(raw, sizeof raw, "%s/map.raw", DESKDIR); snprintf(png, sizeof png, "%s/map.png", DESKDIR); snprintf(r2p, sizeof r2p, "%s/&.widgits/_shared-lib/ops/+x/raw_to_png.+x", HOUSE);
+    char *b[] = { (char *)"preview", DESKDIR, raw }; if (!verb_here(3, b, out, sizeof out)) { snprintf(sz, sizeof sz, "%dx%d", COLS * PG_block * HD_px, (ROWS + PG_start) * PG_block * HD_px); char *c[] = { r2p, raw, png, (char *)"--size", sz, NULL }; run_capture(c, out, sizeof out); unlink(raw); }   /* 2D: the picture beside map.txt, which the 2D renderer blits 1:1 and draws the events.txt figures over */
+    set_desk("play"); page_events(); page_sig = pos_sig();
+}
 static void begin_game(void) {
     char out[300], sd[16]; archive_game(); mkdir_p(SD); snprintf(sd, sizeof sd, "%ld", seed_pref); char *n1[] = { (char *)"new", sd };
     if (verb_here(2, n1, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "new refused: %.180s", out); return; }
     for (int i = 1; i <= nplayers; i++) { char nm[4] = { (char)('A' + i - 1), 0 }; char *j[] = { (char *)"join", nm, (char *)(i == human_seat ? "human" : "pet") }; if (verb_here(3, j, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "join refused: %.180s", out); return; } }
     char *st[] = { (char *)"start" }; if (verb_here(1, st, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "start refused: %.180s", out); return; }
-    mode_play = 1; reload(); write_ui(); snprintf(dmsg, sizeof dmsg, "game started: %d players, seed %ld%s", nplayers, seed_pref, human_seat ? ", you are a seat at the table" : ", all pets");
+    mode_play = 1; reload(); write_ui(); page_make(); snprintf(dmsg, sizeof dmsg, "game started: %d players, seed %ld%s", nplayers, seed_pref, human_seat ? ", you are a seat at the table" : ", all pets");
 }
 static void human_live(const char *verb, const char *target, const char *arg2, const char *actor) {
     if (sync_state()) return; if (live(-1, actor, verb, target, arg2, NULL)) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); if (!(MODE == M_SNAKE && !strcmp(verb, "turn"))) reload(); }   /* a refused turn changed nothing: reloading would rewind the ticks since the last row */ else snprintf(dmsg, sizeof dmsg, "you: %s %s", verb, target ? target : ""); write_ui(); if (KIND == K_EDITOR) write_doc();
@@ -745,7 +997,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "setup_reset")) { if (!mode_play) { nplayers = (int)R_maxp; human_seat = 0; seed_pref = R_seed; speed = 1; snprintf(dmsg, sizeof dmsg, "Choose the players, then START"); } }
     else if (!strcmp(c, "start")) { if (!mode_play && KIND != K_EDITOR) begin_game(); }
     else if (!strcmp(c, "step")) { if (mode_play && !running() && KIND != K_EDITOR) { if (!sync_state()) { int did; if (do_tick(&did)) snprintf(dmsg, sizeof dmsg, "stuck: %.180s", MSG); else snprintf(dmsg, sizeof dmsg, "stepped"); write_ui(); } } }
-    else if (!strcmp(c, "new_game")) { if (mode_play && KIND != K_EDITOR) { archive_game(); mode_play = 0; memset(&S, 0, sizeof S); S.winner = -1; snprintf(dmsg, sizeof dmsg, "the last game is in archive/; choose the players, then START"); } }
+    else if (!strcmp(c, "new_game")) { if (mode_play && KIND != K_EDITOR) { archive_game(); mode_play = 0; memset(&S, 0, sizeof S); S.winner = -1; if (page_on) set_desk("board"); snprintf(dmsg, sizeof dmsg, "the last game is in archive/; choose the players, then START"); } }
     else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!sync_state()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
     else if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "up") || !strcmp(c, "down"))) { if (!S.human[0]) snprintf(dmsg, sizeof dmsg, "no human seat"); else if (!sync_state()) { char dc[2] = { (char)(c[0] - 'a' + 'A'), 0 }; human_live("turn", dc, NULL, "p1"); } }
     else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay"))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
@@ -792,12 +1044,16 @@ static int driver_main(int argc, char **argv) {
     OUT = stdout; ERRF = stderr; if (load_config()) { fprintf(stderr, "game_core driver: %s\n", MSG); return 1; } seed_pref = R_seed; nplayers = (int)R_maxp;   /* the setup screen starts with the table full: --players N at generation time */
     { char d[P]; snprintf(d, sizeof d, "%s/state/games", EDIT); mkdir(d, 0755); mkdir(GDIR, 0755); }
     { const char *ow = getenv("GAME_OWNER_PID"); OWNER = ow ? atol(ow) : 0; }
+    if (KIND == K_LEDGER && MODE == M_TRACK) { char pp[P]; snprintf(pp, sizeof pp, "%s/rulesets/%s/page.pdl", APP, RS);   /* a game with a page.pdl is drawn; one without keeps the authored empty board (nothing below runs) */
+        if (!access(pp, R_OK)) { if (load_page()) snprintf(dmsg, sizeof dmsg, "page.pdl refused: %.180s", MSG); else {
+            char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
+            snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); snprintf(DESKDIR, sizeof DESKDIR, "%s/%s-pchq/pieces/system/maps/%s/play", BOOK, NAME, NAME); snprintf(ATLAS, sizeof ATLAS, "%s/%s-pchq/pieces/system/maps/%s/board/cells.rgba", BOOK, NAME, NAME); page_on = 1; } } }
     char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644);
     if (lf < 0) { fprintf(stderr, "game_core driver: cannot open the lock file %s (does the editor's state folder exist?)\n", lk); return 1; }
     if (flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "game_core driver: already running\n"); return 0; }
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = on_term; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); sigaction(SIGHUP, &sa, NULL);
     FILE *devnull = fopen("/dev/null", "w"); OUT = devnull ? devnull : stdout; ERRF = OUT;
-    if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; snprintf(dmsg, sizeof dmsg, "a game was in progress; it continues while the Player menu says playing"); }
+    if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; page_make(); snprintf(dmsg, sizeof dmsg, "a game was in progress; it continues while the Player menu says playing"); }
     if (KIND == K_EDITOR) { mode_play = 1; if (S.phase == PH_NONE) { char o2[200]; char *n1[] = { (char *)"new" }; if (verb_here(1, n1, o2, sizeof o2)) snprintf(dmsg, sizeof dmsg, "new refused: %.180s", o2); else { reload(); write_doc(); snprintf(dmsg, sizeof dmsg, "an empty document: add start and goal, then publish"); } } }
     struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; char relay[P]; snprintf(relay, sizeof relay, "%s/state/interact_relay.txt", EDIT); long kcur = stat(relay, &s) ? 0 : (long)s.st_size;   /* the driver tails the editor's key file with its OWN cursor, starting at the end: keys pressed before it started are never replayed */
     if (load_tuning()) { snprintf(dmsg, sizeof dmsg, "%.150s (the default pace is used)", MSG); TICK_MS = 0; }   /* a refused tick_ms is shown in the feed, not hidden: the game still runs at the kind's default */
@@ -833,11 +1089,13 @@ static int driver_main(int argc, char **argv) {
             if (was_live) { was_live = 0; stats_seg_end(now_us() - seg_us, pace_us, stats_path); }
             if (mode_play && run && KIND == K_LEDGER && S.phase == PH_PLAY && S.human[S.cur]) { char yt[120]; snprintf(yt, sizeof yt, "your turn, %s: press Roll", S.name[S.cur]); if (strcmp(dmsg, yt)) { snprintf(dmsg, sizeof dmsg, "%s", yt); dirty = 1; } }
         }
+        if (page_on && mode_play) { uint64_t sg = pos_sig(); if (sg != page_sig) { page_sig = sg; page_events(); } static long dg = 0; long td = now_ms(); if (td - dg >= 2000) { dg = td; set_desk("play"); } }   /* the figures follow the ledger; the desk guard re-points the world after a board relaunch (as the Teropoly driver) */
         { long tp = now_us(); if (dirty && tp - last_pub >= 200000) { publish(); last_pub = tp; } }   /* the feed is rewritten at most 5 times a second, whatever the step pace */
         { long tn = now_us(), wake = tn + (live ? HK_MS : IDLE_MS) * 1000L; if (live && next_us < wake) wake = next_us; if (dirty && last_pub + 200000 < wake) wake = last_pub + 200000;
           if (wake > tn) { struct pollfd pf = { ino, POLLIN, 0 }; struct timespec to = { (wake - tn) / 1000000L, ((wake - tn) % 1000000L) * 1000L }; ppoll(&pf, ino >= 0 ? 1 : 0, &to, NULL);
               if (ino >= 0) { char ib[512]; while (read(ino, ib, sizeof ib) > 0) { } } } }
     }
+    if (page_on) set_desk("board");   /* the world goes back to the authored board when the driver ends */
     if (was_live) stats_seg_end(now_us() - seg_us, pace_ms(speed) * 1000L, stats_path);
     { char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */
     return 0;

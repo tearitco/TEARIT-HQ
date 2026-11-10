@@ -1,0 +1,26 @@
+# page.pdl - how the {{Title}} board is DRAWN as an editor page (made by game_new_op; the shared engine game_core's `page` verb and the driver read it). A projection: it decides no rule, the ledger never reads it, and it is NOT part of the rules hash.
+# The squares, the jumps and the geometry come from board.pdl (TRACK, JUMP, BOARD cols/rows/path); this file only says how they LOOK. Reference with every row explained: @.apps/chutes/rulesets/default/page.pdl.
+# HEADER | key | value (the 384x72 RPG Maker atlas: tile_px 24, atlas_cols 16, atlas_tiles 43, rock_slot 36)   PAGE | block | n (cells per square, the page is cols x n by rows x n, at most 64 x 64)   PAGE | start | strip|none
+# TILEMAP | floor_a floor_b start ladder_from ladder_to chute_from chute_to | atlas index   LABELS | on|off   LABELCOLOR | text|outline | rrggbb   LABEL | <square> | text   JUMPTEXT | ladder_from|ladder_to|chute_from|chute_to | text with {n} {to} {from}
+# Atlas index = row x 16 + col, picked by looking at it (stand-ins, not art): 1 grass, 7 dirt, 8 sand, 35 orange, 38 blue tile, 39 parquet, 40 orange diamond, 41 white stone.
+HEADER     | tile_px     | 24
+HEADER     | atlas_cols  | 16
+HEADER     | atlas_tiles | 43
+HEADER     | rock_slot   | 36
+PAGE       | block       | 3
+PAGE       | start       | strip
+TILEMAP    | floor_a     | 1
+TILEMAP    | floor_b     | 8
+TILEMAP    | start       | 32
+TILEMAP    | ladder_from | 38
+TILEMAP    | ladder_to   | 39
+TILEMAP    | chute_from  | 35
+TILEMAP    | chute_to    | 40
+LABELS     | on
+LABELCOLOR | text        | ffffff
+LABELCOLOR | outline     | 000000
+JUMPTEXT   | ladder_from | {n}\n^{to}
+JUMPTEXT   | ladder_to   | {n}\n<{from}
+JUMPTEXT   | chute_from  | {n}\nv{to}
+JUMPTEXT   | chute_to    | {n}\n<{from}
+LABEL      | 0           | START
