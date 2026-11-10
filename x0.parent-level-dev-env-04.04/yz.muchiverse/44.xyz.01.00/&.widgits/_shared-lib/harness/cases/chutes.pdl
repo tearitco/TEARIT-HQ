@@ -521,4 +521,43 @@ EXPECT_OUT | ledgerdir | data_op-list-FINDS-the-chutes-game-folder-(a-ledger-dir
 EXPECT_OUT | public | and-calls-it-public-(pets-only)
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | show | $T/c_x1/game.csv | --cols | winner,rounds | --head | 1
 EXPECT_OUT | p2 | and-shows-the-winner-column
+
+CASE    | cs_driver
+# the REAL driver (what the editor's Play starts) in a SCRATCH editor (a fake owner, a fake switches.txt): the live editor is never touched. A human seat p1, three pets.
+MKDIR   | c_edit/state/world
+WRITE   | c_edit/state/world/switches.txt | running=0\n
+SPAWN   | OWNC | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWNC
+SPAWN   | DRVC | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $HOUSE | $HOUSE/@.apps/chutes | $T/c_edit
+WAIT_HAS | c_edit/state/game_ui.txt | gm_title=Chutes and Ladders | 8000 | the-feed-is-published-with-the-game's-title
+WAIT_HAS | c_edit/state/game_ui.txt | 4 players | 4000 | the-setup-screen-starts-with-a-full-table-(--players-4)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | human_next | $T/c_edit/state/games/chutes
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/c_edit/state/games/chutes
+WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | bank\pstart | 8000 | START-writes-the-start-row
+WRITE   | c_edit/state/world/switches.txt | running=1\n
+WAIT_HAS | c_edit/state/game_ui.txt | gmb_0_label=Roll | 8000 | AT-THE-HUMAN'S-TURN-THE-ROLL-BUTTON-IS-OFFERED
+SLEEP   | 1500
+RUN | grep | -c | -F | \proll\p | $T/c_edit/state/games/chutes/game/ledger.txt
+EXPECT_OUT_IS | 0 | and-the-clock-WAITS-for-the-human:-no-roll-row-without-the-press
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | roll | $T/c_edit/state/games/chutes
+WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | p1\proll\p | 8000 | THE-PRESS-IS-A-ROLL-ROW-BY-p1
+WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | p4\proll\p | 8000 | then-the-three-pets-roll-on-their-own-clock
+WAIT_HAS | c_edit/state/game_ui.txt | rolled | 8000 | THE-FEED-CARRIES-A-TABLE-TALK-SENTENCE
+WRITE   | c_edit/state/world/switches.txt | running=0\n
+SLEEP   | 700
+RUN | grep | -c | ^ | $T/c_edit/state/games/chutes/game/ledger.txt
+CAPTURE | v1
+SLEEP   | 1500
+RUN | grep | -c | ^ | $T/c_edit/state/games/chutes/game/ledger.txt
+EXPECT_OUT_IS | $v1 | PAUSE-WRITES-NOTHING-the-ledger-does-not-grow-with-running=0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_edit/state/games/chutes/game | replay
+EXPECT_OUT | REPLAY events= | THE-LIVE-LEDGER-WRITTEN-BY-THE-DRIVER-REPLAYS
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_edit/state/games/chutes/game | audit
+EXPECT_OUT | AUDIT ok | and-the-audit-is-clean
+RUN | /usr/bin/kill | $OWNC
+SLEEP   | 300
+EXPECT_DEAD | $OWNC | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRVC | the-driver-ends-with-its-owner
+ENV     | GAME_OWNER_PID |
 CLEAN   |
