@@ -82,6 +82,10 @@ echo "########## Live document collections and localName (hermetic)"
 bash "$HERE/nb_document_collections_test.sh" || RC=1
 
 echo
+echo "########## matchMedia evaluates the real viewport (hermetic)"
+bash "$HERE/nb_match_media_test.sh" || RC=1
+
+echo
 echo "########## crypto.getRandomValues is real entropy across processes (hermetic)"
 bash "$HERE/nb_crypto_random_test.sh" || RC=1
 
