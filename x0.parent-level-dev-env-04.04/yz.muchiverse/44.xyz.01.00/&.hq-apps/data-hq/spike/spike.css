@@ -1,0 +1,7 @@
+/* spike.css - khtpm_css_parser.c subset (bare tag / .class / #id only). One page, sidebar + panel (the canvas fills the panel). */
+window { width: 1100ui; height: 520ui; background-color: #14161c; font-family: DejaVu Sans; font-size: 12px; }
+.sp-side  { width: 260px; background-color: #0d0f14; border: 1px solid #262a33; border-color: #262a33; }
+.sp-hdr   { color: #cfd3de; font-size: 12px; padding: 8px 8px 4px 8px; }
+.sp-note  { color: #7c8399; font-size: 10px; padding: 2px 8px; }
+.sp-thumb { height: 190px; padding: 4px; }
+.sp-panel { background-color: #000000; border: 1px solid #333846; border-color: #333846; }

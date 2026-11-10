@@ -1,0 +1,16 @@
+<!-- data-hq/spike/spike.xhtpm - the P1 PICTURE-IN-WINDOW SPIKE (2026-11-09), a FIXTURE prototype, not the studio window (that is P2).
+     Question it answers: can a toy-style window on the shared khtpm_core_render.+x show a chart picture with ZERO renderer C?
+     Route A (canvas): <canvas sprite="${canvas_raw}"/> blits a RAW RGBA file (+ <base>.receipt.txt frame_w/frame_h) that chart_op writes (an out name ending in .raw).
+     Route B (item sprite): an <item sprite="${png_path}"/> draws a .png through stbi_load, unscaled, centred and clipped to the item box.
+     Vars come from spike_ui.txt (canvas_raw=, png_path=), which in P2 a small manager would publish. No module here: nothing to start, nothing to register but the renderer. -->
+<window label="Data Studio picture spike" class="sp-window database-window" vars="spike_ui.txt">
+  <page name="main">
+    <sidebar id="sidebar" class="sp-side">
+      <text id="t1" label="picture spike" class="sp-hdr"/>
+      <text id="t2" label="canvas = chart.raw" class="sp-note"/>
+      <text id="t3" label="below: item sprite = png" class="sp-note"/>
+      <item id="thumb" class="sp-thumb" label=" " sprite="${png_path}"/>
+    </sidebar>
+    <panel id="content" class="sp-panel"><canvas id="screen" sprite="${canvas_raw}"/></panel>
+  </page>
+</window>

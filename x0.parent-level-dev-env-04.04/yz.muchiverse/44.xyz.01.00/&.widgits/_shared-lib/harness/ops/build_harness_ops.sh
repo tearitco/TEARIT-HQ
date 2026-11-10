@@ -27,6 +27,8 @@ $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/dsk_label_probe_op.+x dsk_label_p
 # data_op (2026-11-09, data-hq P0): the dataset layer (list, sniff, check, show, stats, pick, provider, index); source and binary live in &.hq-apps/data-hq/ops, no Python
 DH="../../../../&.hq-apps/data-hq/ops"; mkdir -p "$DH/+x"
 $CC -std=gnu11 -Wall -Wextra -Wno-misleading-indentation -Wno-format-truncation -Wno-stringop-truncation -O2 -o "$DH/+x/data_op.+x.tmp" "$DH/data_op.c" -lm && mv "$DH/+x/data_op.+x.tmp" "$DH/+x/data_op.+x" && echo "OK $DH/+x/data_op.+x"
+# chart_op (2026-11-09, data-hq P1): the chart rasteriser (line, bar, histogram, scatter -> PNG or RGBA raw); text-includes data_op.c (-DDATA_OP_AS_LIB inside the file) and font57.inc, links stb_image only for its `pixel` read-back verb; `data_op autodash` runs it, so build it with data_op
+$CC -std=gnu11 -Wall -Wextra -Wno-unused-function -Wno-misleading-indentation -Wno-format-truncation -Wno-stringop-truncation -O2 -o "$DH/+x/chart_op.+x.tmp" "$DH/chart_op.c" -lm && mv "$DH/+x/chart_op.+x.tmp" "$DH/+x/chart_op.+x" && echo "OK $DH/+x/chart_op.+x"
 # game_core + game_new_op (2026-11-09): the GAME FOUNDATION GENERATOR (BOOK 16.game/GAME-FOUNDATION-GENERATOR-HOW-TO-AGENT-GUIDE-2026-11-09.md). game_core is the ONE shared engine + driver + button op of every generated game
 # (source _shared-lib/ops/game_core.c, binary beside the other shared ops; built to .tmp then renamed because a running driver may be executing the old file); game_new_op makes the games from harness/templates/game.
 mkdir -p ../../ops/+x

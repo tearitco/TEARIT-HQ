@@ -1,0 +1,419 @@
+# data_hq_p1: data-hq PHASE P1, the chart rasteriser and the panel chooser (BOOK 08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md sections 4, 5, 8; ops &.hq-apps/data-hq/ops/chart_op.c and the `autodash` verb of data_op.c).
+# Every number below was OBSERVED in a scratch run on 2026-11-09 first. Where a pixel is claimed, the case asks the PNG (read back with stb_image, a decoder the writer does not share) and, for the data-to-pixel mapping, works the position out ITSELF with CALC from the
+# LAYOUT row and the data value (not from chart_op's POINT row). Scratch only; the owner's games are not touched. A check that cannot fail is not a check: each family has a negative control (a probe at a place that must differ, a mutated copy, a refused input).
+RESULTS | ../results/data_hq_p1.txt
+ENV | LC_ALL | C
+RUN | echo | $HOUSE/&.hq-apps/data-hq/ops/+x/chart_op.+x
+CAPTURE | C
+RUN | echo | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x
+CAPTURE | DOP
+RUN | echo | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x
+CAPTURE | ENG
+RUN | echo | $HOUSE/&.hq-apps/data-hq/fixtures
+CAPTURE | FX
+RUN | echo | $HOUSE/&.hq-apps/data-hq/ops/font57.inc
+CAPTURE | FONT
+
+CASE    | font
+# the embedded font is the board-label table of deskopoly.c, byte for byte (7 lines, each found as a whole line there); a changed byte is caught
+RUN | grep | -c | . | $FONT
+EXPECT_OUT_IS | 7 | font-file-is-the-7-table-lines
+RUN | grep | -c | -F | -x | -f | $FONT | $HOUSE/@.apps/deskopoly/ops/deskopoly.c
+EXPECT_OUT_IS | 7 | all-7-lines-are-in-deskopoly-c-unchanged
+SCRATCH |
+MKDIR   | m
+COPY    | &.hq-apps/data-hq/ops/font57.inc | m/font57.inc
+RUN | sed | -i | s/0x5F/0x5E/ | $T/m/font57.inc
+RUN | grep | -c | -F | -x | -f | $T/m/font57.inc | $HOUSE/@.apps/deskopoly/ops/deskopoly.c
+EXPECT_OUT_IS | 6 | NEGATIVE-mutant-one-glyph-byte-changed-is-caught-6-of-7
+CLEAN   |
+
+CASE    | line
+SCRATCH |
+WRITE   | l.pdl | CHART | l1 | Two points | line | x | y | - | - | -\n
+WRITE   | l3.csv | x,y\n0,0\n7,7\n10,10\n
+RUN | $C | $T/l.pdl | $T/l3.csv | $T/l3.png | --id | l1
+EXPECT_EXIT | 0 | line-chart-renders
+EXPECT_OUT | CHART ok id=l1 type=line rows=3 points=3 groups=1 size=800x480 | summary-line
+EXPECT_OUT | LAYOUT \p 64 \p 52 \p 782 \p 418 \p 0 \p 10 \p 0 \p 10 | layout-plot-box-and-axis-ranges-0-10
+EXPECT_OUT_LACKS | LEGEND | one-series-has-no-legend
+# the mapping worked out HERE: x=7 -> 64 + 0.7*(782-64) ; y=7 -> 418 - 0.7*(418-52)
+CALC    | w | 782 | - | 64
+CALC    | dx | $w | * | 0.7
+CALC    | fx | 64 | + | $dx
+EXPECT_EQ | $fx | 566.6 | the-hand-worked-x-of-data-value-7-is-566.6-so-pixel-567
+CALC    | h | 418 | - | 52
+CALC    | dy | $h | * | 0.7
+CALC    | fy | 418 | - | $dy
+EXPECT_EQ | $fy | 161.8 | the-hand-worked-y-of-data-value-7-is-161.8-so-pixel-162
+RUN | $C | pixel | $T/l3.png | 567 | 162
+EXPECT_OUT_IS | PIXEL 567 162 0072b2 | the-data-point-7-7-is-drawn-in-the-series-colour-at-the-hand-worked-pixel
+RUN | $C | pixel | $T/l3.png | 64 | 418
+EXPECT_OUT_IS | PIXEL 64 418 0072b2 | data-point-0-0-is-at-the-axis-corner
+RUN | $C | pixel | $T/l3.png | 782 | 52
+EXPECT_OUT_IS | PIXEL 782 52 0072b2 | data-point-10-10-is-at-the-opposite-corner
+RUN | $C | pixel | $T/l3.png | 200 | 418
+EXPECT_OUT_IS | PIXEL 200 418 555555 | the-x-axis-line-is-drawn
+RUN | $C | pixel | $T/l3.png | 64 | 200
+EXPECT_OUT_IS | PIXEL 64 200 555555 | the-y-axis-line-is-drawn
+RUN | $C | pixel | $T/l3.png | 300 | 125
+EXPECT_OUT_IS | PIXEL 300 125 e2e2e2 | the-grid-line-at-y-8-is-drawn
+RUN | $C | pixel | $T/l3.png | 300 | 100
+EXPECT_OUT_IS | PIXEL 300 100 ffffff | the-ground-is-white-away-from-marks
+RUN | $C | pixel | $T/l3.png | 573 | 162
+EXPECT_OUT_IS | PIXEL 573 162 ffffff | NEGATIVE-a-pixel-beside-the-marker-is-not-the-series-colour
+# control: a chart whose line is flat (0,0 to 10,0) has no mark at 567,162 (the probe can fail)
+WRITE   | l2.csv | x,y\n0,0\n10,0\n
+RUN | $C | $T/l.pdl | $T/l2.csv | $T/l2.png | --id | l1
+RUN | $C | pixel | $T/l2.png | 567 | 162
+EXPECT_OUT | PIXEL 567 162 | probe-runs-on-the-two-point-chart
+EXPECT_OUT_LACKS | 0072b2 | NEGATIVE-without-the-7-7-point-that-pixel-is-not-the-series-colour
+RUN | $C | size | $T/l3.png
+EXPECT_OUT_IS | SIZE 800 480 | png-size-is-800x480
+RUN | file | $T/l3.png
+EXPECT_OUT | PNG image data, 800 x 480, 8-bit/color RGB, non-interlaced | file-says-it-is-a-valid-png
+RUN | ffmpeg | -v | error | -i | $T/l3.png | -f | null | -
+EXPECT_EXIT | 0 | ffmpeg-decodes-it-with-no-error-crc-and-adler-are-right
+RUN | $C | $T/l.pdl | $T/l3.csv | $T/l3_small.png | --id | l1 | --size | 320x200
+EXPECT_OUT | size=320x200 | size-option
+RUN | $C | size | $T/l3_small.png
+EXPECT_OUT_IS | SIZE 320 200 | small-png-is-320x200
+# x as dates (the independent date command gives the day number of 2026-11-01), several measures of a wide table as series, equal x merged by an agg
+RUN | date | -u | -d | 2026-11-01 | +%s
+CAPTURE | EPOCH
+CALC    | day | $EPOCH | / | 86400
+EXPECT_EQ | $day | 20758 | independent-day-number-of-2026-11-01
+RUN | $C | $FX/weather.tsv | $FX/weather.tsv | $T/x.png
+EXPECT_EXIT | 2 | NEGATIVE-a-spec-file-with-no-CHART-row-is-refused
+WRITE   | w.pdl | CHART | wd | Temp | line | date | temp_c | city | - | -\n
+RUN | $C | $T/w.pdl | $FX/weather.tsv | $T/wd.png | --id | wd
+EXPECT_OUT | LAYOUT \p 64 \p 52 \p 682 \p 418 \p 20758 \p 20760 \p 0 \p 20 | date-axis-spans-day-20758-to-20760
+EXPECT_OUT | LEGEND \p 0 \p Oslo \p | legend-lists-the-groups-in-first-seen-order
+EXPECT_OUT | LEGEND \p 1 \p Rome \p | legend-has-rome-second
+WRITE   | wide.csv | x,a,b\n0,1,5\n1,2,4\n2,3,3\n
+WRITE   | wide.pdl | CHART | w1 | Wide | line | x | a+b | - | - | -\n
+RUN | $C | $T/wide.pdl | $T/wide.csv | $T/wide.png | --id | w1
+EXPECT_OUT | points=6 groups=2 | a-y-list-makes-one-series-per-column
+EXPECT_OUT | LEGEND \p 0 \p a \p 748 \p 59 \p 0072b2 | wide-legend-a-is-blue
+EXPECT_OUT | LEGEND \p 1 \p b \p 748 \p 81 \p e69f00 | wide-legend-b-is-orange
+RUN | $C | pixel | $T/wide.png | 748 | 81
+EXPECT_OUT_IS | PIXEL 748 81 e69f00 | the-legend-swatch-of-b-is-orange-in-the-picture
+RUN | $C | pixel | $T/wide.png | 52 | 52
+EXPECT_OUT_IS | PIXEL 52 52 e69f00 | b-at-x-0-is-5-the-top-left-of-the-plot
+RUN | $C | pixel | $T/wide.png | 52 | 345
+EXPECT_OUT_IS | PIXEL 52 345 0072b2 | a-at-x-0-is-1
+WRITE   | dup.csv | x,y\n0,2\n0,4\n1,6\n1,8\n
+WRITE   | dup.pdl | CHART | d1 | Dup | line | x | y | - | - | mean\n
+RUN | $C | $T/dup.pdl | $T/dup.csv | $T/dup.png | --id | d1
+EXPECT_OUT | points=2 | equal-x-values-merge-to-2-points
+EXPECT_OUT | POINT \p 0 \p 0 \p 0 \p 3 \p | mean-of-2-and-4-is-3
+EXPECT_OUT | POINT \p 1 \p 0 \p 1 \p 7 \p | mean-of-6-and-8-is-7
+CLEAN   |
+
+CASE    | bar
+SCRATCH |
+WRITE   | b.pdl | CHART | b1 | Bars | bar | name | v | - | - | -\nCHART | b2 | Bars unsorted | bar | name | v | - | - | nosort\nCHART | b3 | Counts | bar | name | - | - | - | count\n
+WRITE   | bar.csv | name,v\nA,10\nB,30\nC,20\n
+RUN | $C | $T/b.pdl | $T/bar.csv | $T/b1.png | --id | b1
+EXPECT_OUT | LAYOUT \p 52 \p 52 \p 782 \p 418 \p 0 \p 30 \p 0 \p 1 | bar-layout-value-axis-0-30
+EXPECT_OUT | CHART ok id=b1 type=bar rows=3 points=3 groups=1 | bar-summary
+# sorted: B (30) on top, C (20), A (10). Axis x of value v = 52 + v/30*730 (hand worked): 30 -> 782, 20 -> 538.7, 10 -> 295.3
+CALC    | x20 | 20 | * | 730
+CALC    | x20b | $x20 | / | 30
+CALC    | x20c | 52 | + | $x20b
+EXPECT_EQ | $x20c | 538.6667 | hand-worked-x-of-value-20
+RUN | $C | pixel | $T/b1.png | 780 | 112
+EXPECT_OUT_IS | PIXEL 780 112 0072b2 | the-biggest-bar-B-reaches-the-end-of-the-axis-in-the-top-row
+RUN | $C | pixel | $T/b1.png | 537 | 234
+EXPECT_OUT_IS | PIXEL 537 234 0072b2 | C-20-covers-x-537-in-the-middle-row
+RUN | $C | pixel | $T/b1.png | 545 | 234
+EXPECT_OUT_IS | PIXEL 545 234 ffffff | NEGATIVE-C-ends-at-539-so-545-is-ground
+RUN | $C | pixel | $T/b1.png | 293 | 356
+EXPECT_OUT_IS | PIXEL 293 356 0072b2 | A-10-covers-x-293-in-the-bottom-row
+RUN | $C | pixel | $T/b1.png | 300 | 356
+EXPECT_OUT_IS | PIXEL 300 356 ffffff | NEGATIVE-A-ends-at-295-so-300-is-ground
+RUN | $C | pixel | $T/b1.png | 400 | 356
+EXPECT_OUT_IS | PIXEL 400 356 ffffff | the-bottom-row-is-the-short-bar-so-sorted-biggest-first
+# nosort keeps the file order: A first, so the top row is the SHORT bar
+RUN | $C | $T/b.pdl | $T/bar.csv | $T/b2.png | --id | b2
+RUN | $C | pixel | $T/b2.png | 400 | 112
+EXPECT_OUT_IS | PIXEL 400 112 ffffff | nosort-the-top-row-is-A-10-so-x-400-is-ground
+RUN | $C | pixel | $T/b2.png | 293 | 112
+EXPECT_OUT_IS | PIXEL 293 112 0072b2 | nosort-the-top-row-is-A
+# no y column: count the rows of each category (3 categories, 1 row each: 3 bars of length 1)
+RUN | $C | $T/b.pdl | $T/bar.csv | $T/b3.png | --id | b3
+EXPECT_OUT | POINT \p 0 \p 0 \p A \p 1 \p | count-of-A-is-1
+# top-N and other: 9 categories, top=3, the rest summed into one grey bar
+WRITE   | top.csv | k,v\nc1,1\nc2,2\nc3,3\nc4,4\nc5,5\nc6,6\nc7,70\nc8,80\nc9,90\n
+WRITE   | top.pdl | CHART | t1 | Top | bar | k | v | - | - | top=3\n
+RUN | $C | $T/top.pdl | $T/top.csv | $T/t1.png | --id | t1
+EXPECT_OUT | points=4 | three-kept-plus-one-other-bar
+EXPECT_OUT | POINT \p 0 \p 0 \p c9 \p 90 \p | the-biggest-is-c9
+EXPECT_OUT | POINT \p 3 \p 0 \p other (6) \p 21 \p 222 \p 370 \p 8a8a8a | the-other-bar-sums-1-to-6-and-is-grey
+RUN | $C | pixel | $T/t1.png | 222 | 370
+EXPECT_OUT_IS | PIXEL 222 370 8a8a8a | the-other-bar-is-grey-in-the-picture
+RUN | $C | pixel | $T/t1.png | 400 | 279
+EXPECT_OUT_IS | PIXEL 400 279 0072b2 | the-third-kept-bar-c7-70-reaches-x-400
+# a group = clusters, one colour per group, with a legend
+WRITE   | gb.csv | k,v,g\nx,5,a\nx,7,b\ny,9,a\ny,3,b\n
+WRITE   | gb.pdl | CHART | g1 | Grouped | bar | k | v | g | - | sum\n
+RUN | $C | $T/gb.pdl | $T/gb.csv | $T/g1.png | --id | g1
+EXPECT_OUT | groups=2 | grouped-bars-2-groups
+EXPECT_OUT | LEGEND \p 1 \p b \p | grouped-bars-legend-has-b
+CLEAN   |
+
+CASE    | hist-scatter
+SCRATCH |
+WRITE   | hist.csv | v\n1\n2\n2\n3\n3\n3\n4\n4\n4\n4\n
+WRITE   | h.pdl | CHART | h1 | Hist | hist | v | - | - | - | bins=4\n
+RUN | $C | $T/h.pdl | $T/hist.csv | $T/h1.png | --id | h1
+EXPECT_OUT | LAYOUT \p 52 \p 52 \p 782 \p 418 \p 1 \p 5 \p 0 \p 4 | histogram-4-bins-1-to-5-counts-0-to-4
+# counts 1 2 3 4: a bar of count c is c/4 of the plot height, so the picture tells the counts apart
+RUN | $C | pixel | $T/h1.png | 143 | 372
+EXPECT_OUT_IS | PIXEL 143 372 0072b2 | bin-of-1-count-1-is-drawn
+RUN | $C | pixel | $T/h1.png | 143 | 320
+EXPECT_OUT_IS | PIXEL 143 320 ffffff | NEGATIVE-the-count-1-bar-stops-below-y-320
+RUN | $C | pixel | $T/h1.png | 326 | 320
+EXPECT_OUT_IS | PIXEL 326 320 0072b2 | the-count-2-bar-is-taller-than-the-count-1-bar
+RUN | $C | pixel | $T/h1.png | 691 | 60
+EXPECT_OUT_IS | PIXEL 691 60 0072b2 | the-count-4-bar-reaches-the-top
+RUN | $C | pixel | $T/h1.png | 143 | 60
+EXPECT_OUT_IS | PIXEL 143 60 ffffff | NEGATIVE-the-count-1-bar-does-not
+# the integer 4 has a bin of its own (a closed last bin would have merged it into 3's: counts 1 2 7)
+RUN | $C | $T/h.pdl | $T/hist.csv | $T/h1b.png | --id | h1
+EXPECT_OUT | POINT \p 3 \p 0 \p 4 \p 4 \p | the-value-4-is-its-own-bin-with-count-4
+WRITE   | sc.csv | x,y,g\n1,1,a\n2,4,a\n3,2,b\n4,3,b\n
+WRITE   | s.pdl | CHART | s1 | Scatter | scatter | x | y | g | - | -\n
+RUN | $C | $T/s.pdl | $T/sc.csv | $T/s1.png | --id | s1
+EXPECT_OUT | LAYOUT \p 52 \p 52 \p 718 \p 418 \p 1 \p 4 \p 0 \p 4 | scatter-layout-with-a-legend-column
+EXPECT_OUT | LEGEND \p 0 \p a \p 748 \p 81 \p 0072b2 | scatter-legend-a
+EXPECT_OUT | LEGEND \p 1 \p b \p 748 \p 103 \p e69f00 | scatter-legend-b
+# hand worked: x=2 -> 52 + (2-1)/3*666 = 274; y=4 -> 52 (the top); x=3 -> 496; y=2 -> 418 - 0.5*366 = 235; x=4,y=3 -> (718, 144)
+CALC    | sx | 666 | / | 3
+CALC    | sx2 | $sx | * | 2
+CALC    | sx3 | 52 | + | $sx2
+EXPECT_EQ | $sx3 | 496 | hand-worked-x-of-x-3
+RUN | $C | pixel | $T/s1.png | 274 | 52
+EXPECT_OUT_IS | PIXEL 274 52 0072b2 | group-a-point-2-4-is-blue-at-the-top
+RUN | $C | pixel | $T/s1.png | 496 | 235
+EXPECT_OUT_IS | PIXEL 496 235 e69f00 | group-b-point-3-2-is-orange-where-worked-out
+RUN | $C | pixel | $T/s1.png | 718 | 144
+EXPECT_OUT_IS | PIXEL 718 144 e69f00 | group-b-point-4-3-is-orange
+RUN | $C | pixel | $T/s1.png | 748 | 81
+EXPECT_OUT_IS | PIXEL 748 81 0072b2 | the-legend-swatch-of-a-is-blue-in-the-picture
+# colour is not the only cue: a circle (group a) has no corner, a square (group b) does
+RUN | $C | pixel | $T/s1.png | 278 | 56
+EXPECT_OUT_IS | PIXEL 278 56 ffffff | NEGATIVE-the-circle-marker-has-no-corner-pixel
+RUN | $C | pixel | $T/s1.png | 500 | 239
+EXPECT_OUT_IS | PIXEL 500 239 e69f00 | the-square-marker-has-its-corner-pixel
+CLEAN   |
+
+CASE    | empty-and-refused
+SCRATCH |
+WRITE   | e.pdl | CHART | e1 | Nothing here | bar | name | v | - | v>99999 | -\nCHART | e2 | Header only | line | x | y | - | - | -\nCHART | e3 | Blanks | line | x | y | - | - | -\n
+WRITE   | bar.csv | name,v\nA,10\nB,30\nC,20\n
+RUN | $C | $T/e.pdl | $T/bar.csv | $T/e1.png | --id | e1
+EXPECT_EXIT | 0 | empty-selection-is-a-tile-not-an-error
+EXPECT_OUT | CHART nodata id=e1 reason=no rows match the filter | nodata-line-and-reason
+RUN | $C | size | $T/e1.png
+EXPECT_OUT_IS | SIZE 800 480 | the-tile-has-the-chart-size
+RUN | $C | pixel | $T/e1.png | 700 | 300
+EXPECT_OUT_IS | PIXEL 700 300 f2f2f2 | the-tile-ground-is-light-grey
+RUN | $C | pixel | $T/e1.png | 0 | 0
+EXPECT_OUT_IS | PIXEL 0 0 e2e2e2 | the-tile-has-a-border
+RUN | $C | $T/e.pdl | $T/bar.csv | $T/e1ok.png | --id | e1
+WRITE   | b1.pdl | CHART | b1 | Bars | bar | name | v | - | - | -\n
+RUN | $C | $T/b1.pdl | $T/bar.csv | $T/bok.png | --id | b1
+RUN | $C | pixel | $T/bok.png | 700 | 300
+EXPECT_OUT_IS | PIXEL 700 300 ffffff | CONTROL-a-real-chart-has-a-white-ground-at-the-same-pixel-so-the-tile-probe-can-fail
+WRITE   | hd.csv | x,y\n
+RUN | $C | $T/e.pdl | $T/hd.csv | $T/e2.png | --id | e2
+EXPECT_OUT | CHART nodata id=e2 reason=the table has no rows | a-header-only-table-is-a-tile
+WRITE   | bl.csv | x,y\n1,\n2,\n
+RUN | $C | $T/e.pdl | $T/bl.csv | $T/e3.png | --id | e3
+EXPECT_OUT | CHART nodata id=e3 reason=no numeric values to draw | all-blank-y-is-a-tile
+# refused, nothing written
+WRITE   | r.pdl | CHART | r1 | Pie | pie | name | v | - | - | -\nCHART | r2 | NoCol | bar | nope | v | - | - | -\nCHART | r3 | Agg | bar | name | v | - | - | avg\nCHART | r4 | Filter | bar | name | v | - | zzz=1 | -\nCHART | r5 | TextX | line | name | v | - | - | -\nCHART | r6 | too | few | fields\nCHART | r7 | TextY | scatter | v | name | - | - | -\nCHART | r8 | Both | line | v | v+v | v | - | -\nCHART | r9 | NoY | line | v | - | - | - | -\n
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r1.png | --id | r1
+EXPECT_EXIT | 2 | NEGATIVE-unknown-chart-type-refused
+EXPECT_NOFILE | $T/r1.png | nothing-written-for-the-unknown-type
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r2.png | --id | r2
+EXPECT_EXIT | 2 | NEGATIVE-unknown-x-column-refused
+EXPECT_NOFILE | $T/r2.png | nothing-written-for-the-unknown-column
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r3.png | --id | r3
+EXPECT_EXIT | 2 | NEGATIVE-unknown-agg-token-refused
+EXPECT_OUT | unknown agg token | the-refusal-names-the-token
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r4.png | --id | r4
+EXPECT_EXIT | 2 | NEGATIVE-filter-on-a-missing-column-refused
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r5.png | --id | r5
+EXPECT_EXIT | 2 | NEGATIVE-a-line-chart-with-a-text-x-refused
+EXPECT_NOFILE | $T/r5.png | nothing-written-for-a-text-x
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r6.png | --id | r6
+EXPECT_EXIT | 2 | NEGATIVE-a-chart-row-with-5-fields-refused
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r7.png | --id | r7
+EXPECT_EXIT | 2 | NEGATIVE-a-scatter-with-a-text-y-refused
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r8.png | --id | r8
+EXPECT_EXIT | 2 | NEGATIVE-a-y-list-with-a-group-refused
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r9.png | --id | r9
+EXPECT_EXIT | 2 | NEGATIVE-a-line-chart-with-no-y-refused
+RUN | $C | $T/r.pdl | $T/bar.csv | $T/r0.png | --id | nosuchid
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-chart-id-refused
+RUN | $C | $T/b1.pdl | $T/bar.csv | $T/small.png | --id | b1 | --size | 100x100
+EXPECT_EXIT | 2 | NEGATIVE-a-size-below-160-refused
+EXPECT_NOFILE | $T/small.png | nothing-written-for-a-bad-size
+RUN | $C | $T/b1.pdl | $T/nodata.csv | $T/nd.png | --id | b1
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-data-file-refused
+RUN | $C | pixel | $T/bok.png | 9999 | 1
+EXPECT_EXIT | 2 | NEGATIVE-a-pixel-outside-the-image-refused
+RUN | $C | pixel | $T/bar.csv | 1 | 1
+EXPECT_EXIT | 2 | NEGATIVE-pixel-of-a-non-png-refused
+CLEAN   |
+
+CASE    | determinism-and-raw
+SCRATCH |
+WRITE   | l.pdl | CHART | l1 | Two points | line | x | y | - | - | -\n
+WRITE   | l2.csv | x,y\n0,0\n10,10\n
+WRITE   | l3.csv | x,y\n0,0\n7,7\n10,10\n
+RUN | $C | $T/l.pdl | $T/l2.csv | $T/a.png | --id | l1
+RUN | $C | $T/l.pdl | $T/l2.csv | $T/b.png | --id | l1
+RUN | cmp | $T/a.png | $T/b.png
+EXPECT_EXIT | 0 | same-input-same-bytes
+RUN | $C | $T/l.pdl | $T/l3.csv | $T/c.png | --id | l1
+RUN | cmp | -s | $T/a.png | $T/c.png
+EXPECT_EXIT | 1 | NEGATIVE-different-data-different-bytes-so-cmp-can-fail
+RUN | stat | -c | %s | $T/a.png
+EXPECT_OUT_IS | 1152633 | the-png-is-the-stored-size-800x480x3-plus-rows-plus-headers
+RUN | $C | $T/l.pdl | $T/l2.csv | $T/a.raw | --id | l1 | --size | 320x200
+EXPECT_OUT | LAYOUT \p 64 \p 52 \p 302 \p 138 \p 0 \p 10 \p 0 \p 10 | the-small-chart-layout
+RUN | stat | -c | %s | $T/a.raw
+EXPECT_OUT_IS | 256000 | raw-is-W-x-H-x-4-bytes
+EXPECT_FILE | $T/a.receipt.txt | frame_w=320\nframe_h=200\n | the-receipt-names-the-frame-size-for-the-renderer-canvas
+RUN | $C | $T/l.pdl | $T/l2.csv | $T/a2.raw | --id | l1 | --size | 320x200
+RUN | cmp | $T/a.raw | $T/a2.raw
+EXPECT_EXIT | 0 | raw-is-deterministic
+# the raw carries the SAME pixels as the png: the origin marker (64,138) is blue, byte offset (138*320+64)*4 = 176896, and the corner (302,52) at 67768; a white pixel at (10,10) = 12840
+RUN | od | -An | -tx1 | -j | 176896 | -N | 4 | $T/a.raw
+EXPECT_OUT | 00 72 b2 ff | raw-origin-pixel-is-the-series-colour-with-alpha-255
+RUN | od | -An | -tx1 | -j | 67768 | -N | 4 | $T/a.raw
+EXPECT_OUT | 00 72 b2 ff | raw-corner-pixel-is-the-series-colour
+RUN | od | -An | -tx1 | -j | 12840 | -N | 4 | $T/a.raw
+EXPECT_OUT | ff ff ff ff | raw-ground-pixel-is-white
+RUN | $C | $T/l.pdl | $T/l2.csv | $T/p.png | --id | l1 | --size | 320x200
+RUN | $C | pixel | $T/p.png | 64 | 138
+EXPECT_OUT_IS | PIXEL 64 138 0072b2 | the-png-of-the-same-chart-has-the-same-origin-pixel
+CLEAN   |
+
+CASE    | autodash-fixtures
+SCRATCH |
+# six fixtures (the Chutes / Snake / Teario shapes and two generic tables) choose the expected chart types; the schema beside each file is the source of the roles
+RUN | $DOP | autodash | $FX/snake_runs.csv | $T/d1
+EXPECT_EXIT | 0 | snake-autodash-ok
+EXPECT_OUT | panels=3 \p grid=2x2 \p roles=schema | snake-has-3-panels-in-a-2x2-grid
+EXPECT_OUT | roles=schema | snake-roles-come-from-the-schema
+EXPECT_OUT | PANEL \p snake_runs_line_score \p line \p x=tick \p y=score \p group=- \p agg=- \p ok | snake-tick-x-score-is-a-line-with-no-group-the-direction-is-a-state
+EXPECT_OUT | PANEL \p snake_runs_bar_score \p bar \p x=direction \p y=score \p group=- \p agg=mean \p ok | snake-direction-x-score-is-bars-of-means
+EXPECT_OUT | PANEL \p snake_runs_hist_score \p hist \p x=score | snake-score-has-a-histogram
+EXPECT_OUT_LACKS | scatter | snake-has-one-measure-so-no-scatter
+EXPECT_EXISTS | $T/d1/snake_runs_line_score.png | the-line-panel-png-exists
+EXPECT_EXISTS | $T/d1/dash.pdl | dash-pdl-written
+EXPECT_HAS | $T/d1/dash.pdl | CHART \p snake_runs_line_score \p score by tick \p line \p tick \p score \p - \p - \p - | dash-pdl-has-the-chart-row-the-renderer-reads
+EXPECT_HAS | $T/d1/dash.pdl | DASH \p | dash-pdl-has-the-dash-row
+RUN | $C | size | $T/d1/snake_runs_hist_score.png
+EXPECT_OUT_IS | SIZE 640 400 | panel-png-has-the-cell-size
+RUN | $C | $T/d1/dash.pdl | $FX/snake_runs.csv | $T/again.png | --id | snake_runs_line_score
+EXPECT_EXIT | 0 | dash-pdl-is-itself-a-chart-op-spec
+RUN | $DOP | autodash | $FX/teario_runs.csv | $T/d2
+EXPECT_OUT | panels=4 | teario-has-4-panels
+EXPECT_OUT | PANEL \p teario_runs_bar_ticks \p bar \p x=driver \p y=ticks \p group=- \p agg=mean \p ok | teario-driver-x-ticks-bars
+EXPECT_OUT | PANEL \p teario_runs_hist_score \p hist | teario-score-histogram
+EXPECT_OUT | PANEL \p teario_runs_scatter_score \p scatter \p x=ticks \p y=score \p group=driver \p agg=- \p ok | teario-two-measures-are-a-scatter-coloured-by-driver
+EXPECT_OUT_LACKS | \p line \p | teario-has-no-time-column-so-no-line
+RUN | $DOP | autodash | $FX/weather.tsv | $T/d3
+EXPECT_OUT | PANEL \p weather_line_temp_c \p line \p x=date \p y=temp_c \p group=city \p agg=mean \p ok | weather-dates-are-time-the-city-repeats-so-it-is-the-series-key
+EXPECT_OUT | PANEL \p weather_bar_temp_c \p bar \p x=city | weather-city-bars
+RUN | $DOP | autodash | $FX/chutes_games.csv | $T/d4
+EXPECT_OUT | PANEL \p chutes_games_bar_spins \p bar \p x=winner_driver \p y=spins \p group=- \p agg=mean | chutes-games-spins-by-winner-driver
+EXPECT_OUT_LACKS | \p line \p | chutes-games-has-no-time-column
+RUN | $DOP | autodash | $FX/chutes_markov.csv | $T/d5
+EXPECT_OUT | PANEL \p chutes_markov_bar_p_to_4 \p bar \p x=square \p y=p_to_4 \p group=- \p agg=sum,nosort | chutes-markov-an-id-with-few-rows-gets-bars
+RUN | $DOP | autodash | $FX/scores.pdl | $T/d6
+EXPECT_OUT | PANEL \p scores_bar_SCORE \p bar \p x=NAME \p y=SCORE | a-pdl-table-gets-bars
+EXPECT_OUT | panels=1 | and-only-one-panel
+# the sniffer alone (no schema beside the file) makes the same choice for the snake shape
+COPY    | &.hq-apps/data-hq/fixtures/snake_runs.csv | alone/snake_runs.csv
+RUN | $DOP | autodash | $T/alone/snake_runs.csv | $T/d7
+EXPECT_OUT | roles=sniffed | no-schema-roles-are-sniffed-and-the-dash-row-says-so
+EXPECT_OUT | PANEL \p snake_runs_line_score \p line | the-sniffed-roles-choose-the-same-line
+# determinism: the same dataset twice gives the same dash.pdl and the same PNG bytes
+RUN | $DOP | autodash | $FX/snake_runs.csv | $T/d1b
+RUN | cmp | $T/d1/dash.pdl | $T/d1b/dash.pdl
+EXPECT_EXIT | 0 | same-dash-pdl-twice
+RUN | cmp | $T/d1/snake_runs_line_score.png | $T/d1b/snake_runs_line_score.png
+EXPECT_EXIT | 0 | same-panel-png-twice
+CLEAN   |
+
+CASE    | autodash-mutants-and-refusals
+SCRATCH |
+MKDIR   | m
+# MUTANT 1: the schema says tick is a measure (not time): the line chart must disappear and a scatter (two measures) appear
+COPY    | &.hq-apps/data-hq/fixtures/snake_runs.schema.pdl | m/snake_runs.schema.pdl
+RUN | sed | -i | s/COL \p tick \p time/COL \p tick \p measure/ | $T/m/snake_runs.schema.pdl
+RUN | grep | -c | COL \p tick \p measure | $T/m/snake_runs.schema.pdl
+EXPECT_OUT_IS | 1 | mutant-1-the-corruption-really-landed
+RUN | $DOP | autodash | $FX/snake_runs.csv | $T/dm1 | --schema | $T/m/snake_runs.schema.pdl
+EXPECT_EXIT | 0 | mutant-1-still-renders-a-dashboard
+EXPECT_OUT_LACKS | \p line \p | NEGATIVE-mutant-1-a-wrong-time-role-removes-the-line-chart
+EXPECT_OUT | PANEL \p snake_runs_scatter_score \p scatter | NEGATIVE-mutant-1-two-measures-now-give-a-scatter
+# MUTANT 2: the city column is text: no series key, no bar chart
+COPY    | &.hq-apps/data-hq/fixtures/weather.schema.pdl | m/weather.schema.pdl
+RUN | sed | -i | s/COL \p city \p category/COL \p city \p text/ | $T/m/weather.schema.pdl
+RUN | grep | -c | COL \p city \p text | $T/m/weather.schema.pdl
+EXPECT_OUT_IS | 1 | mutant-2-the-corruption-really-landed
+RUN | $DOP | autodash | $FX/weather.tsv | $T/dm2 | --schema | $T/m/weather.schema.pdl
+EXPECT_OUT | PANEL \p weather_line_temp_c \p line \p x=date \p y=temp_c \p group=- | NEGATIVE-mutant-2-no-group-any-more
+EXPECT_OUT_LACKS | weather_bar | NEGATIVE-mutant-2-no-bar-chart-any-more
+# refusals
+RUN | $DOP | autodash | $T/nothing.csv | $T/dx
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-dataset-refused
+RUN | $DOP | autodash | $FX/snake_runs.csv | $T/dy | --max | 0
+EXPECT_EXIT | 2 | NEGATIVE-max-0-refused
+RUN | $DOP | autodash | $FX/snake_runs.csv | $T/dz | --chart-op | $T/no_such_op
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-chart-op-refused
+RUN | $DOP | autodash | $FX/snake_runs.csv | $T/dm | --max | 2
+EXPECT_OUT | panels=2 | max-2-keeps-the-first-2-panels
+CLEAN   |
+
+CASE    | autodash-teropoly
+# the real export of the pinned seed-6 game (831 ledger rows): a whole exporter folder becomes a dashboard
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $ENG | $T/app | $T/h | lobby | classic
+RUN | $ENG | $T/app | $T/h | join | A | pet
+RUN | $ENG | $T/app | $T/h | join | B | pet
+RUN | $ENG | $T/app | $T/h | join | C | pet
+RUN | $ENG | $T/app | $T/h | start | 6
+RUN | $ENG | $T/app | $T/h | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | the-pinned-game
+RUN | $ENG | $T/app | $T/h | export | $T/o
+EXPECT_EXIT | 0 | export-ok
+RUN | $DOP | autodash | $T/o | $T/dash
+EXPECT_EXIT | 0 | the-exporter-folder-makes-a-dashboard
+EXPECT_OUT | SKIP \p game.csv \p fewer than 2 rows | the-one-row-game-table-is-skipped-not-charted
+EXPECT_OUT | tables=6 \p panels=12 \p grid=3x4 \p roles=schema | 6-tables-12-panels-roles-from-the-exporter-schema
+EXPECT_OUT | PANEL \p rounds_line_net_worth \p line \p x=round \p y=net_worth \p group=player \p agg=mean \p ok | net-worth-by-round-is-a-line-per-player
+EXPECT_OUT | PANEL \p tiles_bar_rent_paid \p bar \p x=id \p y=rent_paid \p group=- \p agg=sum,top=10 \p ok | rent-by-tile-is-top-10-bars-with-other
+EXPECT_OUT | PANEL \p rounds_bar_cash \p bar \p x=player \p y=cash \p group=- \p agg=mean | cash-is-a-balance-so-the-bar-is-a-mean-not-a-sum
+EXPECT_OUT_LACKS | RENDER FAILED | every-panel-rendered
+EXPECT_EXISTS | $T/dash/rounds_line_net_worth.png | the-net-worth-png-exists
+RUN | $C | $T/dash/dash.pdl | $T/o/rounds.csv | $T/nw.png | --id | rounds_line_net_worth
+EXPECT_OUT | groups=3 | three-players-three-lines
+EXPECT_OUT | LEGEND \p 2 \p p3 \p | the-legend-lists-p3
+# the chart ties to the engine: the last net_worth of p3 (the winner) per the table is the top of its line; the axis must reach it (nice max >= value)
+RUN | $DOP | pick | $T/o/rounds.csv | net_worth | --where | round=94 | --where | player=p3
+CAPTURE | NW
+EXPECT_LE | $NW | 15000 | the-winner-net-worth-is-within-the-line-chart-axis-ceiling
+EXPECT_GE | $NW | 10000 | and-it-is-a-real-end-of-game-number-not-a-start-cash
+RUN | $C | $T/dash/dash.pdl | $T/o/rounds.csv | $T/nw2.png | --id | rounds_line_net_worth
+EXPECT_OUT | \p 0 \p 100 \p 0 \p 15000 | the-chart-axis-runs-round-0-to-100-the-nice-end-after-94-and-net-worth-0-to-15000
+CLEAN   |

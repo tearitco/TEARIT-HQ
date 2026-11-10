@@ -11,6 +11,7 @@
  *   pick <file> <outcol> --where col=val ...              the one value of outcol in the one matching row (exit 1 unless exactly one row matches)
  *   provider <app_dir> <state_dir> <out_dir> [--house d]   run the app's `GAME | export | <program> <args>` row from <app_dir>/game.pdl ({house} {book} {state} {out}); exit 3 = the app has no export row
  *   index <out_dir...> [--out index.csv]                  one row per game from each exporter out dir's game.csv, sorted by id (a projection: delete it and rebuild)
+ *   autodash <table file or exporter folder> <out dir> [--schema s.pdl] [--max N] [--size WxH] [--chart-op path]   (P1) pick panels from the column roles (time x measure = line per group, category x measure = bars with top-N + other, a measure = histogram, two measures = scatter), write <out>/dash.pdl (DASH row, CHART rows = chart_op specs, PANEL rows = grid cells) and render every panel with chart_op.+x (next to this binary): AUTODASH and PANEL rows
  * Formats: csv/tsv (RFC 4180 quotes), `.pdl` pipe tables (header line + a dashed line), pipe ledgers (`EVENT|round|actor|verb|target|at|result`, no header), a folder holding ledger.txt.
  * Caps (refused with the reason, exit 2): file 8 MiB, 200000 rows, 64 columns; list: 2000 datasets, depth 8; provider: 60 s, 64 KiB of output.
  * Class (DATA, not code): a datasets.pdl registry row `DATASET | id | path | kind | class | provider | note` wins (longest path prefix; paths relative to the house root); else a path under xyzfs/users is private; else a ledger folder
@@ -27,6 +28,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <signal.h>
 #include <dirent.h>
 #include <poll.h>
@@ -435,8 +437,88 @@ static int cmd_index(int argc, char **argv) {
     free(rows); return 0;
 }
 
+#ifndef DATA_OP_AS_LIB   /* chart_op.c text-includes this file for the loader and the schema reader (pure code, 2 consumers) */
+/* ---------------------------------------------------------------- autodash (phase P1: the panel chooser; plan section 4) */
+#define MAXPANELS 16
+typedef struct { char id[96], title[160], type[16], x[48], y[48], group[48], agg[64], table[PATH_MAX]; } Panel;
+static int add_panel(Panel *P, int *np, int cap, const char *stem, const char *table, const char *type, const char *x, const char *y, const char *group, const char *agg, const char *title) {
+    if (*np >= cap) return 0; Panel *p = &P[(*np)++]; memset(p, 0, sizeof *p);
+    char suf[48]; snprintf(suf, sizeof suf, "%s", y[0] ? y : x); for (char *c = suf; *c; c++) if (!isalnum((unsigned char)*c)) *c = '_';
+    snprintf(p->id, sizeof p->id, "%s_%s_%s", stem, type, suf); snprintf(p->type, sizeof p->type, "%s", type); snprintf(p->x, sizeof p->x, "%s", x); snprintf(p->y, sizeof p->y, "%s", y); snprintf(p->group, sizeof p->group, "%s", group); snprintf(p->agg, sizeof p->agg, "%s", agg); snprintf(p->title, sizeof p->title, "%s", title); snprintf(p->table, sizeof p->table, "%s", table);
+    for (int i = 0; i < *np - 1; i++) if (!strcmp(P[i].id, p->id)) { (*np)--; return 0; } return 1;
+}
+/* the rules, in order (each a data row of the plan, section 4): time x measure = line (one line per group); category x measure = bars (top-N + other); one measure = histogram; two measures = scatter.
+ * Roles come from a schema.pdl beside the data (`<dir>/schema.pdl` or `<dir>/<stem>.schema.pdl`) or --schema; with none the sniffer's guess is used and the DASH row says so. */
+static int dash_table(const char *path, const char *schemaopt, int cap, Panel *P, int np, int *from_schema) {
+    Tab t; char err[300]; if (load_table(path, &t, err, sizeof err)) die(2, "%s", err);
+    if (t.nrows < 2 || !t.header) { printf("SKIP | %s | %s\n", base_of(path), t.nrows < 2 ? "fewer than 2 rows" : "no header row"); tab_free(&t); return np; }
+    Schema s; s.n = 0; int have = 0; char cand[PATH_MAX + 64], dir[PATH_MAX], stem[64]; snprintf(dir, sizeof dir, "%s", path); { char *sl = strrchr(dir, '/'); if (sl) *sl = 0; else snprintf(dir, sizeof dir, "."); }
+    snprintf(stem, sizeof stem, "%s", base_of(path)); { char *dot = strrchr(stem, '.'); if (dot) *dot = 0; }
+    if (schemaopt) { if (!load_schema(schemaopt, base_of(path), &s, err, sizeof err) && s.n) have = 1; else die(2, "--schema %s: %s", schemaopt, s.n ? err : "no COL rows for this table"); }
+    if (!have) { snprintf(cand, sizeof cand, "%s/schema.pdl", dir); if (!load_schema(cand, base_of(path), &s, err, sizeof err) && s.n) have = 1; }
+    if (!have) { snprintf(cand, sizeof cand, "%s/%s.schema.pdl", dir, stem); if (!load_schema(cand, base_of(path), &s, err, sizeof err) && s.n) have = 1; }
+    char role[MAX_COLS][12], unit[MAX_COLS][24]; ColInfo ci[MAX_COLS];
+    for (int c = 0; c < t.ncols; c++) { analyze(&t, c, &ci[c]); char hint[160]; role_of(t.name[c], &ci[c], role[c], sizeof role[c], unit[c], sizeof unit[c], hint, sizeof hint);
+        if (have) for (int k = 0; k < s.n; k++) if (!strcmp(s.c[k].name, t.name[c])) { snprintf(role[c], sizeof role[c], "%s", s.c[k].role); snprintf(unit[c], sizeof unit[c], "%s", s.c[k].unit); } }
+    if (have) *from_schema = 1;
+    for (char *c = stem; *c; c++) if (!isalnum((unsigned char)*c)) *c = '_';
+    int tc = -1, M[MAX_COLS], nm = 0, Cg[MAX_COLS], ncg = 0, Id[MAX_COLS], nid = 0;
+    for (int c = 0; c < t.ncols; c++) { int nv = ci[c].n - ci[c].nempty;
+        if (!strcmp(role[c], "time") && tc < 0 && ci[c].distinct >= 2) tc = c;
+        else if (!strcmp(role[c], "measure") && ci[c].numeric && ci[c].distinct >= 2) M[nm++] = c;
+        else if (!strcmp(role[c], "category") && ci[c].distinct >= 2 && nv >= 2) Cg[ncg++] = c;
+        else if (!strcmp(role[c], "id") && ci[c].distinct >= 2) Id[nid++] = c; }
+    for (int i = 1; i < nm; i++) { int v = M[i], j = i - 1; while (j >= 0 && ci[M[j]].distinct < ci[v].distinct) { M[j + 1] = M[j]; j--; } M[j + 1] = v; }   /* the measure with the most distinct values first (stable): a column of two values (a player count) is a poor headline measure */
+    int grp = -1;   /* a series key: a category of 2..8 values, and only on a time axis whose values repeat (long format); a state that merely changes along the way (a snake's direction) is not a series */
+    if (tc >= 0 && ci[tc].distinct < t.nrows) for (int i = 0; i < ncg; i++) if (ci[Cg[i]].distinct <= 8) { grp = Cg[i]; break; }
+    int sgrp = -1; for (int i = 0; i < ncg; i++) if (ci[Cg[i]].distinct <= 8) { sgrp = Cg[i]; break; }   /* scatter colour */
+    int used_y[MAX_COLS] = {0}; char ttl[160];
+    if (tc >= 0) for (int i = 0; i < nm && i < 2; i++) { snprintf(ttl, sizeof ttl, "%s by %s%s%s", t.name[M[i]], t.name[tc], grp >= 0 ? " per " : "", grp >= 0 ? t.name[grp] : ""); add_panel(P, &np, cap, stem, path, "line", t.name[tc], t.name[M[i]], grp >= 0 ? t.name[grp] : "", ci[tc].distinct < t.nrows ? "mean" : "", ttl); used_y[M[i]] = 1; }
+    int ncat = 0; for (int i = 0; i < ncg && ncat < 2; i++) { if (nm > 0) { const char *mn = t.name[M[0]]; const char *ag = (!strcmp(unit[M[0]], "count") || strcasestr(mn, "rent") || strcasestr(mn, "paid") || strcasestr(mn, "income") || strcasestr(mn, "earned") || strcasestr(mn, "spent") || strcasestr(mn, "fee")) ? "sum" : "mean";   /* a flow adds up, a balance (cash, a score level) does not */ char a2[64]; snprintf(a2, sizeof a2, "%s%s", ag, ci[Cg[i]].distinct > 12 ? ",top=10" : ""); snprintf(ttl, sizeof ttl, "%s %s by %s", ag, t.name[M[0]], t.name[Cg[i]]); ncat += add_panel(P, &np, cap, stem, path, "bar", t.name[Cg[i]], t.name[M[0]], "", a2, ttl); }
+        else { snprintf(ttl, sizeof ttl, "rows per %s", t.name[Cg[i]]); ncat += add_panel(P, &np, cap, stem, path, "bar", t.name[Cg[i]], "", "", ci[Cg[i]].distinct > 12 ? "count,top=10" : "count", ttl); } }
+    if (ncat == 0 && nid > 0 && nm > 0 && t.nrows <= 24) { snprintf(ttl, sizeof ttl, "%s by %s", t.name[M[0]], t.name[Id[0]]); add_panel(P, &np, cap, stem, path, "bar", t.name[Id[0]], t.name[M[0]], "", "sum,nosort", ttl); }
+    if (t.nrows >= 5) for (int i = 0; i < nm && i < 2; i++) { snprintf(ttl, sizeof ttl, "Distribution of %s", t.name[M[i]]); add_panel(P, &np, cap, stem, path, "hist", t.name[M[i]], "", "", "", ttl); }
+    if (t.nrows >= 5 && nm >= 2) { snprintf(ttl, sizeof ttl, "%s vs %s%s%s", t.name[M[1]], t.name[M[0]], sgrp >= 0 ? " by " : "", sgrp >= 0 ? t.name[sgrp] : ""); add_panel(P, &np, cap, stem, path, "scatter", t.name[M[0]], t.name[M[1]], sgrp >= 0 ? t.name[sgrp] : "", "", ttl); }
+    (void)used_y; tab_free(&t); return np;
+}
+static int run_chart(const char *chart_op, const char *spec, const char *table, const char *png, const char *id, const char *size, char *out, size_t cap) {
+    int pf[2]; if (pipe(pf)) die(2, "pipe"); pid_t pid = fork(); if (pid < 0) die(2, "fork");
+    if (pid == 0) { dup2(pf[1], 1); dup2(pf[1], 2); close(pf[0]); close(pf[1]); execl(chart_op, chart_op, spec, table, png, "--id", id, "--size", size, (char *)NULL); _exit(127); }
+    close(pf[1]); size_t n = 0; for (;;) { ssize_t k = read(pf[0], out + n, cap - 1 - n); if (k <= 0) break; n += (size_t)k; if (n >= cap - 1) break; } out[n] = 0; close(pf[0]);
+    int st = 0; waitpid(pid, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+static int cmp_names(const void *a, const void *b) { return strcmp(*(char *const *)a, *(char *const *)b); }
+static int cmd_autodash(int argc, char **argv) {
+    const char *pos[2] = {0}, *schemaopt = NULL, *size = "640x400", *chart_op = NULL; int np_ = 0, cap = 6, capset = 0;
+    for (int i = 0; i < argc; i++) { if (!strcmp(argv[i], "--schema") && i + 1 < argc) schemaopt = argv[++i]; else if (!strcmp(argv[i], "--size") && i + 1 < argc) size = argv[++i]; else if (!strcmp(argv[i], "--max") && i + 1 < argc) { cap = atoi(argv[++i]); capset = 1; } else if (!strcmp(argv[i], "--chart-op") && i + 1 < argc) chart_op = argv[++i]; else if (np_ < 2) pos[np_++] = argv[i]; else die(2, "autodash: unexpected %s", argv[i]); }
+    if (np_ != 2) die(2, "usage: data_op autodash <table file | exporter folder> <out dir> [--schema s.pdl] [--max N (1..%d, default 6; 12 for a folder)] [--size WxH] [--chart-op path]", MAXPANELS);
+    struct stat sb; if (stat(pos[0], &sb)) die(2, "autodash: %s does not exist", pos[0]);
+    if (cap < 1 || cap > MAXPANELS) die(2, "autodash: --max must be 1..%d", MAXPANELS);
+    char cop[PATH_MAX]; if (chart_op) snprintf(cop, sizeof cop, "%s", chart_op); else { ssize_t n = readlink("/proc/self/exe", cop, sizeof cop - 1); if (n <= 0) die(2, "autodash: cannot find chart_op.+x (use --chart-op)"); cop[n] = 0; char *sl = strrchr(cop, '/'); if (sl) *sl = 0; strncat(cop, "/chart_op.+x", sizeof cop - strlen(cop) - 1); }
+    if (access(cop, X_OK)) die(2, "autodash: %s is not executable (build it first)", cop);
+    static Panel P[MAXPANELS]; int np = 0, from_schema = 0, ntab = 0;
+    if (S_ISDIR(sb.st_mode)) {
+        if (!capset) cap = 12; char *names[256]; int nn = 0; DIR *d = opendir(pos[0]); if (!d) die(2, "autodash: cannot open %s", pos[0]); struct dirent *e;
+        while ((e = readdir(d)) && nn < 256) { if (e->d_name[0] == '.' || (!has_suffix(e->d_name, ".csv") && !has_suffix(e->d_name, ".tsv"))) continue; names[nn++] = strdup(e->d_name); } closedir(d);
+        qsort(names, (size_t)nn, sizeof(char *), cmp_names);
+        for (int i = 0; i < nn; i++) { char f[PATH_MAX + 300]; snprintf(f, sizeof f, "%s/%s", pos[0], names[i]); int before = np; np = dash_table(f, schemaopt, np + 3 < cap ? np + 3 : cap, P, np, &from_schema); ntab++; (void)before; free(names[i]); }
+    } else { np = dash_table(pos[0], schemaopt, cap, P, 0, &from_schema); ntab = 1; }
+    if (mkdir(pos[1], 0775) && errno != EEXIST) die(2, "autodash: cannot create %s", pos[1]);
+    int cols = np <= 1 ? 1 : np <= 4 ? 2 : 3, rows = (np + cols - 1) / (cols ? cols : 1); if (np == 0) rows = 0;
+    char dp[PATH_MAX + 16], tmp[PATH_MAX + 32]; snprintf(dp, sizeof dp, "%s/dash.pdl", pos[1]); snprintf(tmp, sizeof tmp, "%s.tmp", dp); FILE *f = fopen(tmp, "w"); if (!f) die(2, "autodash: cannot write %s", dp);
+    fprintf(f, "# dash.pdl: made by `data_op autodash` from %s (a projection: delete it and run the verb again, the bytes come back). It is also a chart_op spec file: `chart_op dash.pdl <table> <png> --id <panel id>`.\n", pos[0]);
+    fprintf(f, "DASH | %s | panels=%d | grid=%dx%d | cell=%s | roles=%s\n", pos[0], np, cols, rows, size, from_schema ? "schema" : "sniffed");
+    for (int i = 0; i < np; i++) fprintf(f, "CHART | %s | %s | %s | %s | %s | %s | - | %s\n", P[i].id, P[i].title, P[i].type, P[i].x, P[i].y[0] ? P[i].y : "-", P[i].group[0] ? P[i].group : "-", P[i].agg[0] ? P[i].agg : "-");
+    for (int i = 0; i < np; i++) fprintf(f, "PANEL | %s | col=%d | row=%d | %s.png | %s\n", P[i].id, i % cols, i / cols, P[i].id, P[i].table);
+    if (fclose(f) || rename(tmp, dp)) die(2, "autodash: cannot write %s", dp);
+    printf("AUTODASH | %s | tables=%d | panels=%d | grid=%dx%d | roles=%s | dash=%s\n", pos[0], ntab, np, cols, rows, from_schema ? "schema" : "sniffed", dp);
+    int bad = 0; for (int i = 0; i < np; i++) { char png[PATH_MAX + 128], out[8192]; snprintf(png, sizeof png, "%s/%s.png", pos[1], P[i].id); int rc = run_chart(cop, dp, P[i].table, png, P[i].id, size, out, sizeof out);
+        printf("PANEL | %s | %s | x=%s | y=%s | group=%s | agg=%s | %s\n", P[i].id, P[i].type, P[i].x, P[i].y[0] ? P[i].y : "-", P[i].group[0] ? P[i].group : "-", P[i].agg[0] ? P[i].agg : "-", rc != 0 ? "RENDER FAILED" : strstr(out, "CHART nodata") ? "nodata" : "ok"); if (rc != 0) { bad++; fputs(out, stderr); } }
+    return bad ? 1 : 0;
+}
+
 int main(int argc, char **argv) {
-    if (argc < 2) { fputs("usage: data_op list|sniff|check|show|stats|pick|provider|index ...   (see the header of ops/data_op.c)\n", stderr); return 2; }
+    if (argc < 2) { fputs("usage: data_op list|sniff|check|show|stats|pick|provider|index|autodash ...   (see the header of ops/data_op.c)\n", stderr); return 2; }
     const char *v = argv[1];
     if (!strcmp(v, "list")) return cmd_list(argc - 2, argv + 2);
     if (!strcmp(v, "sniff")) return cmd_sniff(argc - 2, argv + 2);
@@ -446,5 +528,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "stats")) return cmd_stats(argc - 2, argv + 2);
     if (!strcmp(v, "provider")) return cmd_provider(argc - 2, argv + 2);
     if (!strcmp(v, "index")) return cmd_index(argc - 2, argv + 2);
+    if (!strcmp(v, "autodash")) return cmd_autodash(argc - 2, argv + 2);
     fprintf(stderr, "data_op: unknown verb %s\n", v); return 2;
 }
+#endif

@@ -9,6 +9,7 @@
  *   track_theory_op sim <board.pdl> <rules.pdl> <seed0> <count> <players> <name> [--finish X]   plays <count> games with the ENGINE'S dice (splitmix64 die(seed, roll_index)) for seeds seed0.. and prints ONE number:
  *                                                            name: mean_rounds mean_rolls sd_rounds share_seat1.. (e.g. share_seat2) shortest_rounds longest_rounds
  *   track_theory_op game <board.pdl> <rules.pdl> <seed> <players>   one game, printed exactly as game_core prints `autoplay`: `AUTOPLAY events=E rounds=R over=1 winner=A` (names A, B, C, D joined in order)
+ *   track_theory_op dist <board.pdl> <rules.pdl> <seed0> <count> [--finish X]   CSV `turns,theory,observed` (ONE player): the exact P(T = t) beside the share of <count> engine-dice games that took t turns (data-hq P1 chart "theory vs observed")
  *
  * MODEL (the engine's roll(), game_core.c): from square s a roll d (uniform 1..F, F = 6 in the engine) goes to s+d; past the end: reach = win, exact_stay = stay on s, bounce = walk the surplus back from the end;
  * then, if the landing square is below the end and is the foot of a jump, move to its top; reaching the end wins. n players take turns in join order; seat k wins at its t-th turn exactly when every earlier seat has not finished
@@ -115,6 +116,12 @@ static int simulate(long seed0, long count, int n, const char *name) {
     else if (!strcmp(name, "shortest_rounds")) printf("%ld\n", lo); else if (!strcmp(name, "longest_rounds")) printf("%ld\n", hi); else { fprintf(stderr, "unknown sim metric %s\n", name); return 2; }
     return 0;
 }
+/* dist: P(T = t) for ONE player by the exact chain (theory) next to the share of <count> engine-dice games that took t turns (observed): the two columns of a data-hq "theory vs observed" chart (2026-11-09) */
+static int dist_cmd(long seed0, long count) {
+    one_player(); long *obs = calloc((size_t)TN + 2, sizeof(long)); long hi = 0;
+    for (long i = 0; i < count; i++) { long rolls, rounds; int w; play(seed0 + i, 1, &rolls, &rounds, &w); if (w < 0) { fprintf(stderr, "a game did not end\n"); free(obs); return 2; } if (rounds > TN) { fprintf(stderr, "a game took %ld turns, past the theory tail\n", rounds); free(obs); return 2; } obs[rounds]++; if (rounds > hi) hi = rounds; }
+    long top = hi + 2 < TN ? hi + 2 : TN; printf("turns,theory,observed\n"); for (long t = 1; t <= top; t++) printf("%ld,%.6f,%.6f\n", t, f_[t], (double)obs[t] / count); free(obs); return 0;
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: track_theory_op sanity|metric|table|sim|game ...   (see the header of ops/track_theory_op.c)\n"); return 2; }
     const char *cmd = argv[1]; if (read_board(argv[2])) return 2;
@@ -127,6 +134,7 @@ int main(int argc, char **argv) {
     if (!strcmp(cmd, "metric")) { if (np < 1) { fprintf(stderr, "metric needs a name\n"); return 2; } return metric(pos[0], n, seat, over); }
     if (!strcmp(cmd, "table")) return table();
     if (!strcmp(cmd, "sim")) { if (np < 4) { fprintf(stderr, "sim <seed0> <count> <players> <name>\n"); return 2; } FACES = 6; return simulate(atol(pos[0]), atol(pos[1]), atoi(pos[2]), pos[3]); }
+    if (!strcmp(cmd, "dist")) { if (np < 2) { fprintf(stderr, "dist <seed0> <count>\n"); return 2; } FACES = 6; return dist_cmd(atol(pos[0]), atol(pos[1])); }
     if (!strcmp(cmd, "game")) { if (np < 2) { fprintf(stderr, "game <seed> <players>\n"); return 2; } int pl = atoi(pos[1]); long rolls, rounds; int w; play(atol(pos[0]), pl, &rolls, &rounds, &w); if (w < 0) return 2; printf("AUTOPLAY events=%ld rounds=%ld over=1 winner=%c\n", rolls + 1 + pl + 1, rounds, 'A' + w); return 0; }
     fprintf(stderr, "unknown command %s\n", cmd); return 2;
 }
