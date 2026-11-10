@@ -6,7 +6,9 @@
 - **centroid-live** is the same job list on page `live`, walked in stages until the whole island is built. The crew is df-style pets programmed to run those jobs. A motive pet or a trained policy is optional and is not how the island gets finished. The skin toggle from 2026-11-06 stays a display switch. It does not decide a column.
 - **Whole island.** One sitting may prove only the chapel. The finish line is every island and every `BUILD` row. About 30,000 columns may be too heavy to draw at once. The runner still walks the plan in stages. Scale stays the blueprint's `SCALE` row.
 
-The checker is `bp_op` (`@.apps/centroid-hq/ops/bp_op.c`): `check`, `list`, `gen`, `verify`, `break`. `JOB | place | x | y | z | material` is the crew list. df-hq's `place` verb is still `item x y` with no z, so the pets do not consume this list yet.
+The checker is `bp_op` (`@.apps/centroid-hq/ops/bp_op.c`): `check`, `list`, `gen`, `verify`, `break`. `JOB | place | x | y | z | material` is the crew list. df-hq's `place` verb is still `item x y` with no z.
+
+**FSM lane, started 2026-11-10.** `crew_op` (`@.apps/centroid-hq/ops/crew_op.c`) is the first autonomous builder. One pet reads only those JOB rows. Each tick is the df dig loop's shape: idle, then CLAIM, then PLACE. A place that is not in the job list is refused. There is no walk yet, and the live df tick still only digs `DESIGNATE` rows in `jobs.txt` (2D, cap 64). The next wiring is that tick consuming this ledger, not a second planner.
 
 Status of the 2026-11-06 stock-take below: **plan, except the court file and its 5-check harness.** SAID = the owner. OBS = files opened for that stock-take.
 
