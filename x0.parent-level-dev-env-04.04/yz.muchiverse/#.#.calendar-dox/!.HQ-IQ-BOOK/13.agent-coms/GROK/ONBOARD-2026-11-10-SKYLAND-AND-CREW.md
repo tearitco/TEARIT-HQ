@@ -89,7 +89,8 @@ The projection is the authority for what may be placed. The ledger is the author
 - The other 11 `BUILD` rows are not generated. `gen <id>` is the same verb. Run it per building. Do not invent a second generator.
 - Island undersides (the taper under each ellipse) are not cells yet.
 - df-hq's live tick still only digs `DESIGNATE` rows in `jobs.txt`. That file is 2D and caps at 64 jobs. `place` in `verbs.pdl` is `item x y` with no z. The pets on the board do not read `crew_op`'s ledger yet. Wiring that tick to this ledger is the next code change.
-- The harness case exists. Current line, commit `ab810b647`: `VERDICT|PASS|passed=42|failed=0`. An older note that says `passed=37`, or that no verdict exists, is the earlier run. Do not quote it.
+- The harness case exists. Current line: `VERDICT|PASS|passed=48|failed=0`. Older notes that say 37, 42, or that no verdict exists are earlier runs. Do not quote them.
+- The life row is one grammar, `EVENT|round|actor|verb|target|at|result`. `CLAIM`, `PLACE`, and `CALL` are refused. A table act is `handed-off`. The trade stays in Teropoly's ledger. `DESIGNATE` is still only the dig projection.
 - Chutes was not opened. Snake was not shown in the editor. No nested X server was started. Human play of the games is still undone.
 - `SCALE | cell_blocks | 4` is recorded and not applied. `gen` emits one plan cell, not a 4 by 4 block stamp. Say so if you change it.
 - About 30,000 columns for the whole land at that scale may be too heavy to draw at once. Walk the plan in stages. Do not load the volume into the owner's live board.

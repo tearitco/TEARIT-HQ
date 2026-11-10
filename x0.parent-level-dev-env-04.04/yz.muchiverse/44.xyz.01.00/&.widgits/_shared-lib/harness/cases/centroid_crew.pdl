@@ -40,10 +40,18 @@ RUN | ./crew_op | mineplan | chapel.pdl | jobs.txt
 EXPECT_EXIT | 0 | mineplan-ok
 EXPECT_OUT | MINEPLAN wrote=9 | floor-stones-for-the-dig-loop
 EXPECT_HAS | jobs.txt | DESIGNATE\p0\pchapel\p36\p32 | first-floor-cell-is-a-dig-mark
-WRITE | bad.txt | PLACE \p p1 \p 1 \p 1 \p 99 \p stone
+WRITE | bad.txt | EVENT\p0\pp1\pplace\pstone\p1,1,99\pok
 RUN | ./crew_op | audit | chapel.pdl | bad.txt
 EXPECT_EXIT | 2 | bad-place-refused
 EXPECT_OUT | place is not a job | bad-place-says-why
+RUN | ./bp_op | count | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl
+EXPECT_EXIT | 0 | land-count
+EXPECT_OUT | LAND columns=1940 volume=25566 buildings=1859 | land-numbers
+EXPECT_HAS | ledger.txt | EVENT\p1\pp1\pplace\pstone\p36,32,0\pok | first-life-row
+WRITE | old.txt | PLACE \p p1 \p 36 \p 32 \p 0 \p stone
+RUN | ./crew_op | audit | chapel.pdl | old.txt
+EXPECT_EXIT | 2 | old-dialect-refused
+EXPECT_OUT | not a life row | old-dialect-says-why
 
 CASE | routes
 SCRATCH |
@@ -67,7 +75,8 @@ EXPECT_OUT | table verb cannot be owned by the crew | table-owned-by-crew-says-w
 WRITE | talk.pdl | JOB \p talk \p 0 \p 0 \p 0 \p p2
 RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | talk.pdl | calls.txt
 EXPECT_EXIT | 0 | talk-is-a-call
-EXPECT_OUT | CALL deskopoly talk p2 | talk-names-the-owner
+EXPECT_OUT | LIFE talk handed-off | talk-names-the-owner
+EXPECT_HAS | calls.txt | EVENT\p0\pp1\ptalk\pp2\p-\phanded-off | talk-is-one-grammar
 WRITE | farm.pdl | JOB \p farm \p 0 \p 0 \p 0 \p bed
 RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | farm.pdl | farm.txt
 EXPECT_EXIT | 2 | farm-refused

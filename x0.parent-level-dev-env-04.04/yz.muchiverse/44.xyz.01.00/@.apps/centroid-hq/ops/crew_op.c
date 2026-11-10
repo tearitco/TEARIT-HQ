@@ -49,7 +49,9 @@ static int find_job(int x, int y, int z, const char *mat) {
     return -1;
 }
 
-/* Replay the ledger. A PLACE that is not a job fails. */
+/* Replay the life ledger. One grammar, the S1 event row:
+ * EVENT|round|actor|verb|target|at|result
+ * A world place uses target=material and at=x,y,z. Anything else is not a life row. */
 static int replay(const char *path, int *open_claim, char *cfsm, size_t cfsm_n) {
     FILE *f = fopen(path, "r");
     *open_claim = -1; snprintf(cfsm, cfsm_n, "idle");
@@ -57,18 +59,22 @@ static int replay(const char *path, int *open_claim, char *cfsm, size_t cfsm_n) 
     char line[240]; int ln = 0;
     while (fgets(line, sizeof line, f)) {
         ln++;
-        int x, y, z; char mat[16], pet[16], st[16];
-        if (sscanf(line, "FSM | %*d | %15s | %15s", pet, st) == 2) snprintf(cfsm, cfsm_n, "%s", st);
-        else if (sscanf(line, "CLAIM | %15s | %d | %d | %d | %15s", pet, &x, &y, &z, mat) == 5) {
-            int k = find_job(x, y, z, mat);
+        if (line[0] == '#' || line[0] == '\n') continue;
+        if (!strncmp(line, "CLAIM ", 6) || !strncmp(line, "PLACE ", 6) || !strncmp(line, "CALL ", 5) || !strncmp(line, "FSM ", 4)) {
+            fprintf(stderr, "line %d: not a life row\n", ln); fclose(f); return 2;
+        }
+        int round, x, y, z; char actor[16], verb[16], mat[16], result[16];
+        if (sscanf(line, "EVENT|%d|%15[^|]|%15[^|]|%15[^|]|%d,%d,%d|%15s", &round, actor, verb, mat, &x, &y, &z, result) != 8) continue;
+        (void)round; (void)actor;
+        int k = find_job(x, y, z, mat);
+        if (!strcmp(verb, "claim")) {
             if (k < 0) { fprintf(stderr, "line %d: claim is not a job\n", ln); fclose(f); return 2; }
             if (jobs[k].done) { fprintf(stderr, "line %d: claim after the cell was placed\n", ln); fclose(f); return 2; }
-            *open_claim = k;
-        } else if (sscanf(line, "PLACE | %15s | %d | %d | %d | %15s", pet, &x, &y, &z, mat) == 5) {
-            int k = find_job(x, y, z, mat);
+            *open_claim = k; snprintf(cfsm, cfsm_n, "claim");
+        } else if (!strcmp(verb, "place")) {
             if (k < 0) { fprintf(stderr, "line %d: place is not a job\n", ln); fclose(f); return 2; }
             if (*open_claim != k) { fprintf(stderr, "line %d: place without that claim\n", ln); fclose(f); return 2; }
-            jobs[k].done = 1; *open_claim = -1;
+            jobs[k].done = 1; *open_claim = -1; snprintf(cfsm, cfsm_n, "place");
         }
     }
     fclose(f);
@@ -84,14 +90,12 @@ static int step(const char *jobs_path, const char *ledger) {
     int rc = load_jobs(jobs_path); if (rc) return rc;
     int claim = -1; char fsm[16]; int tick = 0;
     rc = replay(ledger, &claim, fsm, sizeof fsm); if (rc) return rc;
-    FILE *f = fopen(ledger, "r"); if (f) { char b[80]; while (fgets(b, sizeof b, f)) if (!strncmp(b, "FSM |", 5)) tick++; fclose(f); }
+    FILE *f = fopen(ledger, "r"); if (f) { char b[80]; while (fgets(b, sizeof b, f)) if (!strncmp(b, "EVENT|", 6)) tick++; fclose(f); }
     int left = 0; for (int i = 0; i < nj; i++) if (!jobs[i].done) left++;
     char line[160];
     if (claim >= 0) {
         Job *j = &jobs[claim];
-        snprintf(line, sizeof line, "PLACE | p1 | %d | %d | %d | %s", j->x, j->y, j->z, j->mat);
-        if (append(ledger, line)) return 2;
-        snprintf(line, sizeof line, "FSM | %d | p1 | place", tick);
+        snprintf(line, sizeof line, "EVENT|%d|p1|place|%s|%d,%d,%d|ok", tick, j->mat, j->x, j->y, j->z);
         if (append(ledger, line)) return 2;
         printf("CREW fsm=place cell=%d,%d,%d %s left=%d\n", j->x, j->y, j->z, j->mat, left - 1);
         return 0;
@@ -99,9 +103,7 @@ static int step(const char *jobs_path, const char *ledger) {
     int next = -1; for (int i = 0; i < nj; i++) if (!jobs[i].done) { next = i; break; }
     if (next < 0) { printf("CREW fsm=idle placed=%d left=0\n", nj); return 0; }
     Job *j = &jobs[next];
-    snprintf(line, sizeof line, "CLAIM | p1 | %d | %d | %d | %s", j->x, j->y, j->z, j->mat);
-    if (append(ledger, line)) return 2;
-    snprintf(line, sizeof line, "FSM | %d | p1 | claim", tick);
+    snprintf(line, sizeof line, "EVENT|%d|p1|claim|%s|%d,%d,%d|ok", tick, j->mat, j->x, j->y, j->z);
     if (append(ledger, line)) return 2;
     printf("CREW fsm=claim cell=%d,%d,%d %s left=%d\n", j->x, j->y, j->z, j->mat, left);
     return 0;
@@ -189,10 +191,18 @@ static int cmd_call(const char *routes_path, const char *jobs_path, const char *
     if (!r) { fprintf(stderr, "no route for %s\n", life); return 2; }
     if (!strcmp(r->app, "OPEN")) { fprintf(stderr, "%s has no owner yet\n", life); return 2; }
     if (!strcmp(life, "place")) { fprintf(stderr, "place stays on crew_op run\n"); return 2; }
+    if (!strcmp(r->kind, "table")) {
+        /* The trade stays in the table's own ledger. This row only records the handoff. */
+        char out[160];
+        snprintf(out, sizeof out, "EVENT|0|p1|%s|%s|-|handed-off", r->verb, rest);
+        if (append(ledger, out)) return 2;
+        printf("LIFE %s handed-off\n", r->verb);
+        return 0;
+    }
     char out[160];
-    snprintf(out, sizeof out, "CALL | %s | %s | %s", r->app, r->verb, rest);
+    snprintf(out, sizeof out, "EVENT|0|p1|%s|%s|-|ok", r->verb, rest);
     if (append(ledger, out)) return 2;
-    printf("CALL %s %s %s\n", r->app, r->verb, rest);
+    printf("LIFE %s %s\n", r->kind, r->verb);
     return 0;
 }
 

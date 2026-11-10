@@ -230,6 +230,24 @@ int main(int argc, char **argv) {
         return 0;
     }
     if (rc) { fprintf(stderr, "%s\n", msg); return rc; }
+    if (!strcmp(cmd, "count") && argc == 3) {
+        int columns = 0, volume = 0, bcells = 0;
+        for (int y = 0; y < gridh; y++) for (int x = 0; x < gridw; x++) {
+            int host = -1;
+            for (int k = 0; k < ni; k++) if (on_ell(&is[k], x + 0.5, y + 0.5)) { host = k; break; }
+            if (host < 0) continue;
+            columns++;
+            volume += (int)is[host].depth;
+        }
+        Cell cells[MAXC];
+        for (int i = 0; i < nb; i++) {
+            int n = 0;
+            if (gen_build(bd[i].id, cells, &n)) { fprintf(stderr, "%s\n", msg); return 2; }
+            bcells += n;
+        }
+        printf("LAND columns=%d volume=%d buildings=%d scale_not_applied=%d\n", columns, volume, bcells, scale);
+        return 0;
+    }
     if (!strcmp(cmd, "list")) {
         for (int i = 0; i < nb; i++) printf("BUILD %s %d %d %dx%d base=%d wall=%d\n", bd[i].id, bd[i].x, bd[i].y, bd[i].w, bd[i].d, bd[i].base, bd[i].wall);
         printf("RUNNER one gen for every BUILD above\n");
