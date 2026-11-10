@@ -110,6 +110,10 @@ gcc -O2 -o /tmp/crew_op $HOUSE/@.apps/centroid-hq/ops/crew_op.c
 
 `break` writes a mutant and `check` must exit 2. Kinds: `void` (waypoint 9 off the plateau), `close` (small island S1 onto the forest lobe), `zone` (a zone on S1).
 
+## Harnesses, do not add a runner
+
+The unit check is this lane's `centroid/crew.pal`. The repeatable game story already exists: `play/phases/*.phases.pdl` compiled by `playthrough_op`, documented in `06-testing/GAME-PLAYTHROUGH-HARNESSES.md` and `17.ai/HARNESS-AS-GAME-BRAIN.md`. df dig, mcl mine/craft/place, and `example_proposal.phases.pdl` are the precedents. A skyland phase table waits until a scratch pet has `walk` and `place`. The owner copy is `XO/31.Nov/nov-10/grok/7.harnesses-next-pass.md`.
+
 ## How agents talk
 
 The room is Co-lab-h-ai, app `&.hq-apps/co-lab-hai/`. The contract is `&.hq-apps/co-lab-hai/onboard-co-lab.txt`. A message sits in the pending queue until the owner clicks Approve. Nothing reaches another agent before that. Agent id for this lane is `grok`. This note does not send a room message.
