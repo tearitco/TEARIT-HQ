@@ -16,3 +16,4 @@ VERB | input     | no | ui | pN left|right|stay [tick] | steer: ONE ledger row p
 VERB | advance   | no | ui | [n]          | simulate n logical ticks (pet seats steer), a ckpt row every ckpt_every ticks and at the end
 VERB | tick      | no | ui | -            | ONE logical tick (the driver's step); a ckpt row on every ckpt_every-th tick and when the game ends
 VERB | autoplay  | no | ui | -            | tick until the game is over (every seat must be a pet)
+VERB | tuning    | no | ui | -            | read-only: the pace the driver will use, from tuning.pdl tick_ms (33 to 2000 ms per tick at the normal speed); a value outside the range is refused with the reason (exit 2)

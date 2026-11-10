@@ -165,4 +165,29 @@ RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | index | $T/tp_x2
 EXPECT_OUT | winner,p1,human,1,4fb62ecadb9ca27f | and-data_op-index-reads-it-(human-so-private)
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | list | $T/tp_g1
 EXPECT_OUT | private | a-run-with-a-human-seat-is-listed-PRIVATE-(fail-closed)
+
+CASE    | tp_tick_ms
+# the shared real-time foundation (BOOK 16.game/REALTIME-SPIKES-HELD-KEYS-TICK-RATE-PICTURE-RATE-2026-11-09.md): Teario-Play reads tuning.pdl `tick_ms` like every realtime game (33 = 30 ticks a second is the floor the platformer plan asks for); it is a pace, not a rule, so the run's hash does not depend on it.
+EXPECT_HAS | $HOUSE/@.apps/teario-play/tuning.pdl | TUNE \p tick_ms \p 100 | teario-play-ships-100-ms-(10-a-second)-until-physics-needs-30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_gt | tuning
+EXPECT_OUT | TUNING tick_ms=100 source=tuning.pdl fast=40 normal=100 slow=250 | parsed
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play33
+WRITE   | tp/play33/tuning.pdl | TUNE \p tick_ms \p 33 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play33 | $T/tp_gt | tuning
+EXPECT_OUT | TUNING tick_ms=33 source=tuning.pdl fast=33 normal=33 | 33-ms-is-accepted-and-fast-never-goes-under-33
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play5
+WRITE   | tp/play5/tuning.pdl | TUNE \p tick_ms \p 5 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play5 | $T/tp_gt | tuning
+EXPECT_EXIT | 2 | NEGATIVE-5-ms-is-refused
+EXPECT_OUT | from 33 (30 steps a second) to 2000, got '5' | with-the-range-and-the-value
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play0
+WRITE   | tp/play0/tuning.pdl | TUNE \p tick_ms \p 0 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play0 | $T/tp_gt | tuning
+EXPECT_EXIT | 2 | NEGATIVE-0-is-refused
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play5000
+WRITE   | tp/play5000/tuning.pdl | TUNE \p tick_ms \p 5000 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play5000 | $T/tp_gt | tuning
+EXPECT_EXIT | 2 | NEGATIVE-5000-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play33 | $T/tp_g1 | replay
+EXPECT_OUT_IS | REPLAY events=5 hash=4fb62ecadb9ca27f | THE-PINNED-RUN-REPLAYS-TO-THE-SAME-HASH-UNDER-tick_ms-33-(the-pace-is-not-in-the-rules-hash)
 CLEAN   |

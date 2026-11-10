@@ -4,7 +4,6 @@
 FILE | _common/game.pdl            | game.pdl                                   | 0644 | name,Title,kind | text
 FILE | _common/layouts.pdl         | layouts.pdl                                | 0644 | Title           | text
 FILE | _common/rooms.pdl           | rooms.pdl                                  | 0644 | name            | text
-FILE | _common/tuning.pdl          | tuning.pdl                                 | 0644 | Title           | text
 FILE | _common/nav.pdl             | nav.pdl                                    | 0644 | Title,name,kind | text
 FILE | _common/harness.pdl         | harness.pdl                                | 0644 | name,kind       | text
 FILE | _common/play-script.pdl     | tests/{{name}}-play.pdl                    | 0644 | name,Title      | text

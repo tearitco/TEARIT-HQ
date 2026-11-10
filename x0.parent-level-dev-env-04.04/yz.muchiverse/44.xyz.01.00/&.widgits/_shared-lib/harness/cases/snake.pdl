@@ -1,6 +1,6 @@
 # snake (Snake): ONE snake on a grid, realtime kind on the shared engine game_core, MODE snake (plan CHUTES-LADDERS-AND-SNAKE-GAME-PLANS-2026-11-09 part B; milestones S0, S1 and S6a below).
-# What is BUILT: the deterministic step function as generic code driven by data (head, trail, seeded food, wall solid|wrap, self collision, growth), the inputs-only ledger (turn rows with logical ticks; eat / die / over CONSEQUENCE rows the ticks make and replay must
-# remake; ckpt rows every ckpt_every ticks and at the end), the arrow-key tail (codes 1000 to 1003 from the editor's interact_relay.txt read with the driver's OWN byte cursor, no core change). What is NOT built: a 30 ticks a second loop, multi-snake, the page and figures.
+# What is BUILT (2026-11-09 realtime spikes: tuning.pdl tick_ms 33..2000, the in-process tick loop, cases snk_tick_*): the deterministic step function as generic code driven by data (head, trail, seeded food, wall solid|wrap, self collision, growth), the inputs-only ledger (turn rows with logical ticks; eat / die / over CONSEQUENCE rows the ticks make and replay must
+# remake; ckpt rows every ckpt_every ticks and at the end), the arrow-key tail (codes 1000 to 1003 from the editor's interact_relay.txt read with the driver's OWN byte cursor, no core change). What is NOT built: multi-snake, the page and figures.
 # Every number pinned below was OBSERVED in a scratch run on 2026-11-09 before it was written; the small-board scenarios are also SOLVED BY HAND in the labels. Scratch only: nothing here touches a live folder or the live editor.
 # Method note: the case copies the app and edits ITS DATA (board size, wall rule, start length): the engine is the same shared binary in every scenario.
 RESULTS | ../results/snake.txt
@@ -359,6 +359,241 @@ EXPECT_DEAD | $OWNS | the-fake-owner-is-gone-and-reaped
 SLEEP   | 1500
 EXPECT_DEAD | $DRVS | the-snake-driver-ends-with-its-owner
 ENV     | GAME_OWNER_PID |
+
+CASE    | snk_tick_ms
+# tuning.pdl `TUNE | tick_ms | N` (2026-11-09, BOOK 16.game/REALTIME-SPIKES-HELD-KEYS-TICK-RATE-PICTURE-RATE-2026-11-09.md): milliseconds per logical tick at the normal speed, 33 (30 a second) to 2000; anything else is REFUSED with the reason.
+# It is DATA about the window's pace, not a rule: it is not in the rules hash and never in the ledger, so a game replays to the same bytes at 33 ms and at 2000 ms.
+EXPECT_HAS | $HOUSE/@.apps/snake/tuning.pdl | TUNE \p tick_ms \p 100 | the-snake-ships-100-ms-per-tick-(10-ticks-a-second)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_tg | tuning
+EXPECT_EXIT | 0 | the-shipped-tuning-is-accepted
+EXPECT_OUT | TUNING tick_ms=100 source=tuning.pdl fast=40 normal=100 slow=250 steps_per_second=10.0 | tick_ms-100-is-parsed-and-the-fast-and-slow-buttons-scale-it-40:100:250
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tm33
+WRITE   | s_tm33/tuning.pdl | TUNE \p tick_ms \p 33 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm33 | $T/s_tg | tuning
+EXPECT_OUT | TUNING tick_ms=33 source=tuning.pdl fast=33 normal=33 slow=82 steps_per_second=30.3 | 33-ms-is-30-ticks-a-second-and-FAST-is-floored-at-33-(never-faster)
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tm2000
+WRITE   | s_tm2000/tuning.pdl | TUNE \p tick_ms \p 2000 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_tg | tuning
+EXPECT_OUT | TUNING tick_ms=2000 source=tuning.pdl | 2000-ms-is-the-slowest-accepted
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmnone
+RUN | rm | $T/s_tmnone/tuning.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmnone | $T/s_tg | tuning
+EXPECT_OUT | TUNING tick_ms=100 source=default | no-tuning-file-means-the-kind's-default-(realtime-100)
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmb0
+WRITE   | s_tmb0/tuning.pdl | TUNE \p tick_ms \p 0 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmb0 | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-tick_ms-0-is-refused
+EXPECT_OUT | tick_ms must be a whole number of milliseconds from 33 (30 steps a second) to 2000, got '0' | and-the-reason-names-the-range-and-the-value
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmb5
+WRITE   | s_tmb5/tuning.pdl | TUNE \p tick_ms \p 5 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmb5 | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-tick_ms-5-(200-a-second)-is-refused
+EXPECT_OUT | got '5' | with-its-reason
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmb5000
+WRITE   | s_tmb5000/tuning.pdl | TUNE \p tick_ms \p 5000 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmb5000 | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-tick_ms-5000-is-refused
+EXPECT_OUT | got '5000' | with-its-reason
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmb32
+WRITE   | s_tmb32/tuning.pdl | TUNE \p tick_ms \p 32 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmb32 | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-the-boundary-32-is-refused-(33-above-is-accepted)
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmb2001
+WRITE   | s_tmb2001/tuning.pdl | TUNE \p tick_ms \p 2001 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmb2001 | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-the-boundary-2001-is-refused-(2000-above-is-accepted)
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmbx
+WRITE   | s_tmbx/tuning.pdl | TUNE \p tick_ms \p 33.5 \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmbx | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-a-fraction-is-refused
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmby
+WRITE   | s_tmby/tuning.pdl | TUNE \p tick_ms \p fast \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmby | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-a-word-is-refused
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_tmbz
+WRITE   | s_tmbz/tuning.pdl | TUNE \p tick_ms \p  \p x \p 100\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmbz | $T/s_tg | tuning
+EXPECT_EXIT | 2 | NEGATIVE-an-empty-value-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_tg | tuning | extra
+EXPECT_EXIT | 2 | NEGATIVE-an-argument-is-a-usage-error
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/s_tg | tuning
+EXPECT_OUT | TUNING tick_ms=100 source=tuning.pdl | teario-play-ships-the-same-100-ms-(the-generator-template-for-the-realtime-kind)
+# determinism: the same game at 33 ms and at 2000 ms is the same ledger bytes (the pace is not a rule), and a ledger made under one replays under the other
+MKDIR   | s_gm33
+MKDIR   | s_gm2000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm33 | $T/s_gm33 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm33 | $T/s_gm33 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm33 | $T/s_gm33 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm33 | $T/s_gm33 | autoplay
+EXPECT_OUT | AUTOPLAY events=97 ticks=336 over=1 | the-33-ms-copy-plays-the-same-336-ticks-and-97-rows-as-the-pinned-fixture
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_gm2000 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_gm2000 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_gm2000 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_gm2000 | autoplay
+EXPECT_OUT | AUTOPLAY events=97 ticks=336 over=1 | and-the-2000-ms-copy-too
+RUN | cmp | $T/s_gm33/ledger.txt | $T/s_gm2000/ledger.txt
+EXPECT_EXIT | 0 | THE-LEDGER-BYTES-ARE-IDENTICAL-AT-33-MS-AND-AT-2000-MS
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_gm33 | replay
+EXPECT_OUT | REPLAY events=97 hash= | a-ledger-made-under-tick_ms-33-replays-under-2000
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm33 | $T/s_gm33 | replay
+CAPTURE | h_33
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tm2000 | $T/s_gm2000 | replay
+CAPTURE | h_2000
+EXPECT_EQ | $h_33 | $h_2000 | the-final-state-hashes-are-equal
+RUN | cp | -r | $T/s_tm33 | $T/s_tmrule
+RUN | sed | -i | s/score_food   \p 10/score_food   \p 11/ | $T/s_tmrule/rulesets/default/rules.pdl
+MKDIR   | s_gmrule
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmrule | $T/s_gmrule | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmrule | $T/s_gmrule | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmrule | $T/s_gmrule | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_tmrule | $T/s_gmrule | autoplay
+RUN | cmp | $T/s_gm33/ledger.txt | $T/s_gmrule/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-CONTROL-the-comparison-can-fail-(one-RULE-changed-score_food-11-gives-other-ledger-bytes)
+
+CASE    | snk_tick_live
+# the REAL driver at 33 ms (30 ticks a second) in a scratch editor (no window): paused = no ticks, running = ticks, a pet game plays to its end, the live ledger is byte for byte the headless autoplay ledger, no child process, a 500 ms stall drops time (counted) and never bursts.
+# GAME_TICK_STATS is the driver's measuring switch (off in play): it writes ticks, expected ticks, achieved rate, lateness and interval percentiles when a live stretch ends.
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_lv
+WRITE   | s_lv/tuning.pdl | TUNE \p tick_ms \p 33 \p x \p 100\n
+MKDIR   | s_ed/state/world
+WRITE   | s_ed/state/world/switches.txt | running=0\n
+SPAWN   | OWNL | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWNL
+ENV     | GAME_TICK_STATS | $T/s_lv_stats.txt
+SPAWN   | DRVL | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $HOUSE | $T/s_lv | $T/s_ed
+ENV     | GAME_TICK_STATS |
+ENV     | GAME_OWNER_PID |
+WAIT_HAS | s_ed/state/game_ui.txt | gm_on=1 | 8000 | the-driver-published-its-setup-screen
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/s_ed/state/games/s_lv
+WAIT_HAS | s_ed/state/games/s_lv/game/ledger.txt | bank\pstart | 8000 | a-pet-game-is-started
+SLEEP   | 1500
+RUN | grep | -c | . | $T/s_ed/state/games/s_lv/game/ledger.txt
+EXPECT_OUT_IS | 3 | PAUSED-(running=0)-for-1.5-s-at-33-ms:-only-the-3-setup-rows,-NO-tick
+WRITE   | s_ed/state/world/switches.txt | running=1\n
+SLEEP   | 1500
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_lv | $T/s_ed/state/games/s_lv/game | status
+EXPECT_OUT | SNAKE len= | vacuity-the-game-is-in-progress-(the-pet-is-playing)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/proc_cost_op.+x | $DRVL | 4
+EXPECT_OUT | children_seen=0 | NO-PROCESS-IS-STARTED-PER-TICK-(no-child-of-the-driver-seen-in-4-s-at-30-Hz)
+EXPECT_OUT | child_cpu_pct=0.00 | and-no-child-ran-(waited-for-children-cost-nothing)
+EXPECT_OUT | threads=1 | one-thread
+SPAWN   | FORKER | /bin/sh | -c | while true; do /bin/true; sleep 0.05; done
+SLEEP   | 300
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/proc_cost_op.+x | $FORKER | 1 | 20
+EXPECT_OUT_LACKS | children_seen=0 | POSITIVE-CONTROL-the-same-op-DOES-see-the-children-of-a-process-that-forks
+RUN | /usr/bin/kill | $FORKER
+WAIT_HAS | s_ed/state/games/s_lv/game/ledger.txt | bank\pover | 20000 | the-pet-snake-plays-to-its-end-at-30-ticks-a-second
+SLEEP   | 600
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_lv | $T/s_ed/state/games/s_lv/game | check
+EXPECT_OUT | CHECK ok | the-live-ledger-checks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_lv | $T/s_ed/state/games/s_lv/game | replay
+CAPTURE | h_live
+EXPECT_OUT | REPLAY events=97 hash= | the-live-30-Hz-game-has-the-97-rows-of-the-headless-game
+EXPECT_EQ | $h_live | $h_33 | THE-REPLAY-HASH-OF-THE-LIVE-30-HZ-LEDGER-EQUALS-THE-HEADLESS-AUTOPLAY-HASH
+RUN | cmp | $T/s_ed/state/games/s_lv/game/ledger.txt | $T/s_gm33/ledger.txt
+EXPECT_EXIT | 0 | and-the-ledger-files-are-byte-for-byte-identical-(live-33-ms-vs-autoplay)
+EXPECT_HAS | s_lv_stats.txt | pace_ms=33 | the-driver-ran-at-the-tuned-33-ms
+RUN | sed | -n | s/^STATS ticks=\([0-9]*\) .*/\1/p | $T/s_lv_stats.txt
+EXPECT_OUT_IS | 336 | exactly-336-ticks-were-stepped-(logical-ticks-do-not-depend-on-the-machine)
+RUN | sed | -n | s/^STATS .* rate_hz=\([0-9.]*\) .*/\1/p | $T/s_lv_stats.txt
+CAPTURE | rate_live
+EXPECT_GE | $rate_live | 25 | THE-ACHIEVED-RATE-IS-AT-LEAST-25-A-SECOND-(33-ms-asks-for-30.3;-the-exact-figure-is-in-the-doc,-not-here)
+EXPECT_LE | $rate_live | 31 | and-never-faster-than-asked-(a-catch-up-burst-would-show-here)
+RUN | sed | -n | s/^STATS .* dropped=\([0-9]*\) .*/\1/p | $T/s_lv_stats.txt
+CAPTURE | dropped_live
+EXPECT_LE | $dropped_live | 3 | a-quiet-machine-drops-next-to-nothing-(the-exact-count-is-in-the-doc)
+RUN | /usr/bin/kill | $OWNL
+SLEEP   | 300
+EXPECT_DEAD | $OWNL | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRVL | the-30-Hz-driver-ends-with-its-owner
+
+CASE    | snk_tick_pause_stall
+# pause, resume and a stall at 33 ms: the ledger grows only while running=1 (ckpt every 2 ticks makes every 66 ms visible as a row), a SIGSTOP of 500 ms is a late wake: at most 4 steps catch up, the rest of the lateness is dropped and counted.
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_lp
+WRITE   | s_lp/tuning.pdl | TUNE \p tick_ms \p 33 \p x \p 100\n
+RUN | sed | -i | s/ckpt_every   \p 64/ckpt_every   \p 2/ | $T/s_lp/rulesets/default/rules.pdl
+MKDIR   | s_edp/state/world
+WRITE   | s_edp/state/world/switches.txt | running=0\n
+SPAWN   | OWNP | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWNP
+ENV     | GAME_TICK_STATS | $T/s_lp_stats.txt
+SPAWN   | DRVP | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $HOUSE | $T/s_lp | $T/s_edp
+ENV     | GAME_TICK_STATS |
+ENV     | GAME_OWNER_PID |
+WAIT_HAS | s_edp/state/game_ui.txt | gm_on=1 | 8000 | the-driver-is-up
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/s_edp/state/games/s_lp
+WAIT_HAS | s_edp/state/games/s_lp/game/ledger.txt | bank\pstart | 8000 | started-paused
+WRITE   | s_edp/state/world/switches.txt | running=1\n
+WAIT_HAS | s_edp/state/games/s_lp/game/ledger.txt | bank\pckpt | 5000 | running:-ckpt-rows-appear
+RUN | grep | -c | . | $T/s_edp/state/games/s_lp/game/ledger.txt
+CAPTURE | rows_a
+SLEEP   | 500
+RUN | grep | -c | . | $T/s_edp/state/games/s_lp/game/ledger.txt
+CAPTURE | rows_b
+CALC    | need_b | $rows_a | + | 4
+EXPECT_GE | $rows_b | $need_b | POSITIVE-CONTROL-running-for-500-ms-adds-ckpt-rows-(the-pause-check-below-could-fail)
+WRITE   | s_edp/state/world/switches.txt | running=0\n
+SLEEP   | 400
+RUN | grep | -c | . | $T/s_edp/state/games/s_lp/game/ledger.txt
+CAPTURE | rows_c
+SLEEP   | 1500
+RUN | grep | -c | . | $T/s_edp/state/games/s_lp/game/ledger.txt
+CAPTURE | rows_d
+EXPECT_EQ | $rows_c | $rows_d | PAUSED-(running=0)-for-1.5-s-at-33-ms:-the-ledger-does-not-grow,-no-tick-ran
+WRITE   | s_edp/state/world/switches.txt | running=1\n
+SLEEP   | 600
+RUN | grep | -c | . | $T/s_edp/state/games/s_lp/game/ledger.txt
+CAPTURE | rows_e
+CALC    | need_e | $rows_d | + | 4
+EXPECT_GE | $rows_e | $need_e | and-RESUMING-runs-ticks-again
+RUN | /usr/bin/kill | -STOP | $DRVP
+SLEEP   | 500
+RUN | /usr/bin/kill | -CONT | $DRVP
+SLEEP   | 300
+WRITE   | s_edp/state/world/switches.txt | running=0\n
+SLEEP   | 700
+RUN | sed | -n | s/^STATS .* dropped=\([0-9]*\) .*/\1/p | $T/s_lp_stats.txt
+CAPTURE | dropped_p
+EXPECT_GE | $dropped_p | 1 | A-500-MS-STALL-DROPS-TIME-(counted)-the-game-slows-instead-of-bursting
+RUN | sed | -n | s/^STATS .* catchup_ticks=\([0-9]*\) .*/\1/p | $T/s_lp_stats.txt
+CAPTURE | catch_p
+EXPECT_GE | $catch_p | 1 | and-some-steps-caught-up-first-(at-most-4-per-wake)
+EXPECT_LE | $catch_p | 12 | but-never-a-burst-of-the-whole-stall-(500-ms-is-15-steps)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_lp | $T/s_edp/state/games/s_lp/game | check
+EXPECT_OUT | CHECK ok | the-ledger-still-checks-after-pause,-resume-and-a-stall
+RUN | /usr/bin/kill | $OWNP
+SLEEP   | 300
+EXPECT_DEAD | $OWNP | owner-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRVP | driver-ended-with-its-owner
+
+CASE    | snk_tick_bad_in_driver
+# a bad tuning.pdl in the REAL driver: the reason is in the feed (visible to the player), the game still runs at the kind's default 100 ms; the same app with 33 runs at 33 (positive control above)
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_lb
+WRITE   | s_lb/tuning.pdl | TUNE \p tick_ms \p 5 \p x \p 100\n
+MKDIR   | s_edb/state/world
+WRITE   | s_edb/state/world/switches.txt | running=0\n
+SPAWN   | OWNB | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWNB
+ENV     | GAME_TICK_STATS | $T/s_lb_stats.txt
+SPAWN   | DRVB | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $HOUSE | $T/s_lb | $T/s_edb
+ENV     | GAME_TICK_STATS |
+ENV     | GAME_OWNER_PID |
+WAIT_HAS | s_edb/state/game_ui.txt | tick_ms must be a whole number of milliseconds from 33 | 8000 | THE-REFUSAL-AND-ITS-REASON-ARE-IN-THE-FEED
+EXPECT_HAS | s_edb/state/game_ui.txt | the default pace is used | and-the-feed-says-what-happens-instead
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/s_edb/state/games/s_lb
+WAIT_HAS | s_edb/state/games/s_lb/game/ledger.txt | bank\pstart | 8000 | the-game-starts-anyway
+WRITE   | s_edb/state/world/switches.txt | running=1\n
+SLEEP   | 1500
+WRITE   | s_edb/state/world/switches.txt | running=0\n
+SLEEP   | 700
+EXPECT_HAS | s_lb_stats.txt | pace_ms=100 | the-pace-was-the-default-100-not-5
+RUN | /usr/bin/kill | $OWNB
+SLEEP   | 300
+EXPECT_DEAD | $OWNB | owner-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRVB | driver-ended-with-its-owner
 
 CASE    | snk_export
 MKDIR   | s_x1

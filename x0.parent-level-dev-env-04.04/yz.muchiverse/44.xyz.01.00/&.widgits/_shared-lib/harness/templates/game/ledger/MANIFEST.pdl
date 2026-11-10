@@ -7,3 +7,4 @@ FILE | ledger/board.pdl  | rulesets/default/board.pdl        | 0644 | Title     
 FILE | ledger/rules.pdl  | rulesets/default/rules.pdl        | 0644 | Title,players,seed | text
 FILE | ledger/drive-script.pdl | tests/{{name}}-drive.pdl     | 0644 | name,Title         | text
 FILE | ledger/case.pdl   | harness/cases/{{name}}.pdl        | 0644 | name,Title,seed    | text
+FILE | _common/tuning.pdl          | tuning.pdl                         | 0644 | Title              | text

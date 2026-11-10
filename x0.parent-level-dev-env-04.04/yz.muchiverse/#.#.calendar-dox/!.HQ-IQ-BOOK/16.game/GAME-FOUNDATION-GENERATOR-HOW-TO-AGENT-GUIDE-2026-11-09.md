@@ -104,7 +104,7 @@ Template per kind: `templates/game/<kind>/MANIFEST.pdl` (`KIND`, `INCLUDE`, `FIL
 | Books dropdown / Play / popup in the live editor | **NOT VERIFIED** |
 | generated STEP scripts `tests/*-play.pdl`, `*-drive.pdl` | UNTESTED LIVE |
 | `build_harness_ops.sh` builds `game_core` into `_shared-lib/ops/+x/` | BUILT (a harness script building a shared op is a stopgap; removal condition: a proper `_shared-lib/ops/build_game_core.sh` when new `.sh` files are allowed again) |
-| Chutes and Ladders, Snake, Teario-Make, Teario-Play on top of it | **BUILT as foundations (2026-11-09, D63)**: cases `chutes` 175, `snake` 117, `teario_make` 64, `teario_play` 57; finish rules, talk, export, `MODE snake`, `MODE walk`, the level document and `publish_needs_clear` are generic engine options now; NOT built: the Chutes page (serpentine numbers need a generic `page` verb and the label baker extracted from `deskopoly.c`), figures, physics, a 30 ticks a second loop; see section 11b |
+| Chutes and Ladders, Snake, Teario-Make, Teario-Play on top of it | **BUILT as foundations (2026-11-09, D63)**: cases `chutes` 175, `snake` 117, `teario_make` 64, `teario_play` 57; finish rules, talk, export, `MODE snake`, `MODE walk`, the level document and `publish_needs_clear` are generic engine options now; NOT built: the Chutes page (serpentine numbers need a generic `page` verb and the label baker extracted from `deskopoly.c`), figures, physics; the 30 ticks a second loop IS built since 2026-11-09 (`tuning.pdl` `tick_ms`, `REALTIME-SPIKES-...-2026-11-09.md`); see section 11b |
 
 ## 11b. Lessons from the first four real games (Chutes, Snake, Teario-Make, Teario-Play; 2026-11-09, decision D63)
 

@@ -7,3 +7,4 @@ FILE | editor/board.pdl  | rulesets/default/board.pdl        | 0644 | Title     
 FILE | editor/rules.pdl  | rulesets/default/rules.pdl        | 0644 | Title | text
 FILE | editor/drive-script.pdl | tests/{{name}}-drive.pdl     | 0644 | name,Title         | text
 FILE | editor/case.pdl   | harness/cases/{{name}}.pdl        | 0644 | name,Title         | text
+FILE | _common/tuning.pdl          | tuning.pdl                         | 0644 | Title              | text

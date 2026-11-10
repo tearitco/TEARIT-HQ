@@ -7,3 +7,4 @@ FILE | realtime/board.pdl  | rulesets/default/board.pdl        | 0644 | Title   
 FILE | realtime/rules.pdl  | rulesets/default/rules.pdl        | 0644 | Title,players,seed | text
 FILE | realtime/drive-script.pdl | tests/{{name}}-drive.pdl     | 0644 | name,Title         | text
 FILE | realtime/case.pdl   | harness/cases/{{name}}.pdl        | 0644 | name,Title,seed    | text
+FILE | realtime/tuning.pdl         | tuning.pdl                         | 0644 | Title              | text

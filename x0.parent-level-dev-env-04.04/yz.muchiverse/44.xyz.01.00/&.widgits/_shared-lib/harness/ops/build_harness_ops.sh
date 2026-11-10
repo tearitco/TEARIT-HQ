@@ -36,3 +36,5 @@ $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -Wno-misleading-indentation 
 $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -Wno-misleading-indentation -O2 -o +x/game_new_op.+x game_new_op.c && echo "OK +x/game_new_op.+x"
 # track_theory_op (2026-11-09): the EXACT theory of a track race (Markov chain: expected turns, game length by player count, seat win shares, per-square table) and the engine's dice replayed, for the Chutes cases; read-only, no process, no files
 $CC -std=gnu11 -Wall -Wextra -O2 -o +x/track_theory_op.+x track_theory_op.c -lm && echo "OK +x/track_theory_op.+x"
+# proc_cost_op (2026-11-09): what one process costs, measured with children and wakeups (CPU-OPTIMIZATION-PITFALLS 26); used by the realtime spikes (BOOK 16.game/REALTIME-SPIKES-HELD-KEYS-TICK-RATE-PICTURE-RATE-2026-11-09.md)
+$CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/proc_cost_op.+x proc_cost_op.c && echo "OK +x/proc_cost_op.+x"

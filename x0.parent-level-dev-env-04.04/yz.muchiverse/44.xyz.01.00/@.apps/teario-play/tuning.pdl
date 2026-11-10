@@ -1,3 +1,5 @@
 # tuning.pdl - Teario-Play timing as data. TUNE | name | value | what it does | default
-# Nothing reads this file yet (the shared driver paces itself from the speed button: fast / normal / slow). It is where a per-game pace goes when the driver learns to read it.
-TUNE | tick_ms | 550 | the normal pace of one decision (ledger) or ten logical ticks (realtime) | 550
+# tick_ms is read by the shared driver (game_core): milliseconds per LOGICAL TICK at the "normal" speed button. 100 = 10 ticks a second, 33 = 30 ticks a second (the floor); the fast / slow buttons scale it (40:100:250) but never go under 33. Anything outside 33 to 2000 is REFUSED
+# (verb `tuning` says why; the driver shows the reason in the feed and uses the default 100). It is a preference of the window, not a rule: not in the rules hash, never in the ledger, so a replay and its final hash are the same at any value.
+# At 30 ticks a second `max_ticks` 20000 is about 11 minutes of play: raise it in rules.pdl if the game needs longer (that is a rule, it changes the rules hash).
+TUNE | tick_ms | 100 | milliseconds per logical tick at the normal speed (33 to 2000) | 100

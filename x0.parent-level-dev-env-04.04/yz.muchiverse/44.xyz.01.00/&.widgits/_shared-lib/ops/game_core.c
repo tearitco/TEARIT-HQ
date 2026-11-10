@@ -42,6 +42,7 @@
 #include <sys/file.h>
 #include <sys/wait.h>
 #include <poll.h>
+#include <sys/inotify.h>
 
 #define P 4096
 #define CORE_VERSION 1
@@ -549,6 +550,24 @@ static int keys_apply(const int *codes, int n, int *refused, int *ignored) {
     for (int i = 0; i < n; i++) { char d = key_dir(codes[i]); if (!d) { (*ignored)++; continue; } char dc[2] = { d, 0 }; if (live(-1, "p1", "turn", dc, NULL, NULL)) (*refused)++; else applied++; }
     return applied;
 }
+/* ---------- pace: tuning.pdl `TUNE | tick_ms | N` (2026-11-09, BOOK 16.game/REALTIME-SPIKES-HELD-KEYS-TICK-RATE-PICTURE-RATE-2026-11-09.md) ----------
+ * tick_ms = milliseconds per step (a roll for a ledger game, a logical tick for a realtime game) at the "normal" speed button. It is a CONFIG/PREFERENCE of the window: it is NOT in the rules hash and never in the ledger
+ * (ticks are logical, so replay and the final hash are the same at 33 ms and at 2000 ms). The fast / slow buttons scale it by the kind's own ratios (120:550:1400 ledger, 40:100:250 realtime) and the result is never under 33 ms (30 ticks a second).
+ * Absent row = the kind's default (550 ledger, 100 realtime). A row outside 33..2000, or not a whole number, is REFUSED (verb tuning exit 2, the driver does not start). */
+#define TICK_MIN 33
+#define TICK_MAX 2000
+static long TICK_MS;   /* 0 = the kind's default */
+static const int PACE_LEDGER[3] = { 120, 550, 1400 }, PACE_RT[3] = { 40, 100, 250 };
+static int load_tuning(void) {
+    char p[P], ln[512], *fl[8]; TICK_MS = 0; snprintf(p, sizeof p, "%s/tuning.pdl", APP); FILE *f = fopen(p, "r"); if (!f) return 0;
+    while (fgets(ln, sizeof ln, f)) { if (ln[0] == '#') continue; int n = split_row(ln, fl, 8); if (n < 3 || strcmp(fl[0], "TUNE") || strcmp(fl[1], "tick_ms")) continue;
+        char *e; long v = strtol(fl[2], &e, 10); if (!fl[2][0] || *e || v < TICK_MIN || v > TICK_MAX) { fclose(f); return bad("tuning.pdl: tick_ms must be a whole number of milliseconds from %d (30 steps a second) to %d, got '%.20s'", TICK_MIN, TICK_MAX, fl[2]); }
+        TICK_MS = v; }
+    fclose(f); return 0;
+}
+static long pace_ms(int sp) { const int *t = KIND == K_REALTIME ? PACE_RT : PACE_LEDGER; long base = TICK_MS ? TICK_MS : t[1]; long v = base * t[sp] / t[1]; return v < TICK_MIN ? TICK_MIN : v; }
+static long now_us(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000000L + t.tv_nsec / 1000L; }
+
 /* ---------- the verbs ---------- */
 static const char *pet_dir(int i) { int d = die(S.seed, S.tick * 16 + i, 5); return d <= 3 || d == 6 ? "right" : d == 4 ? "stay" : "left"; }
 /* the pet's steering for a snake (a ledger fact as soon as it is written as a turn row): never into the neck, never into a wall or its own body if it can help it, and toward the food; ties by the seeded die */
@@ -604,6 +623,9 @@ static int engine_verb(int argc, char **argv) {
     const char *verb = argv[0]; char as[32] = ""; char *av[16]; int ac = 0;
     for (int i = 1; i < argc && ac < 15; i++) { if (!strncmp(argv[i], "as=", 3)) snprintf(as, sizeof as, "%s", argv[i] + 3); else av[ac++] = argv[i]; }
     if (!strcmp(verb, "help")) { char vp[P], ln[1024], *fl[8]; snprintf(vp, sizeof vp, "%s/verbs.pdl", APP); FILE *f = fopen(vp, "r"); if (!f) { fprintf(ERRF, "no verbs.pdl\n"); return 2; } while (fgets(ln, sizeof ln, f)) { if (ln[0] == '#') continue; int n = split_row(ln, fl, 8); if (n >= 6 && !strcmp(fl[0], "VERB")) fprintf(OUT, "%-10s %s  [%s]\n", fl[1], fl[5], fl[4]); } fclose(f); return 0; }
+    if (!strcmp(verb, "tuning")) {   /* read-only: the pace the driver would use (tuning.pdl tick_ms, 33 to 2000); a bad value is refused with the reason, exit 2. Needs no ledger. */
+        if (ac) { fprintf(ERRF, "usage: tuning\n"); return 2; } if (load_tuning()) { fprintf(ERRF, "%s\n", MSG); return 2; }
+        fprintf(OUT, "TUNING tick_ms=%ld source=%s fast=%ld normal=%ld slow=%ld steps_per_second=%.1f\n", pace_ms(1), TICK_MS ? "tuning.pdl" : "default", pace_ms(0), pace_ms(1), pace_ms(2), 1000.0 / (double)pace_ms(1)); return 0; }
     TALK_PRINT = !strcmp(verb, "talk") && KIND == K_LEDGER; ROWHOOK = (!strcmp(verb, "export") && ac == 1) ? export_hook : NULL;   /* these two verbs observe the replay itself */
     if (load()) { fprintf(ERRF, "%s\n", MSG); return 1; }
 
@@ -664,9 +686,28 @@ static int ctl_main(int argc, char **argv) {
 /* ---------- the driver ---------- */
 static char HOUSE[P], BOOK[P], EDIT[P], GDIR[P], FEED[P], ACT[P], ARCH[P], SW[P], NAME[64], SELF[P];
 static long OWNER; static int mode_play, nplayers = 3, human_seat, speed = 1, dirty = 1; static long seed_pref = 7; static char dmsg[240] = "Choose the players, then START";
-static const int INTERVAL_MS[3] = { 120, 550, 1400 }, RT_MS[3] = { 40, 100, 250 }; static const char *SPEED_NAME[3] = { "fast", "normal", "slow" };
+static const char *SPEED_NAME[3] = { "fast", "normal", "slow" };
 static volatile sig_atomic_t stop_;
 static void on_term(int s) { (void)s; stop_ = 1; }
+#define CATCH_RT 4      /* a realtime driver that fell behind runs at most this many steps per wake, then drops the rest of the lateness (the game slows; the ledger is unaffected, ticks are counted, not timed) */
+#define HK_MS 250       /* while live: housekeeping (owner, buttons, ledger size, feed) at least this often even if a step is further away */
+#define IDLE_MS 500     /* not live: one wake per this long (2 a second) unless a button press arrives sooner */
+/* step statistics, kept only when GAME_TICK_STATS=<file> is set (measuring): late = actual start minus the scheduled deadline, interval = time since the previous step of the same live stretch */
+static struct { long loops, dropped, ticks, catch_ticks, expected, live_us, n, cap, publishes; long *late, *intv; } ST;
+static void stats_note(long late_us, long intv_us, int step_in_pass) {
+    ST.ticks++; if (step_in_pass > 0) ST.catch_ticks++; if (!ST.late) { ST.cap = 1L << 17; ST.late = calloc((size_t)ST.cap, sizeof(long)); ST.intv = calloc((size_t)ST.cap, sizeof(long)); if (!ST.late || !ST.intv) { ST.cap = 0; return; } }
+    if (ST.n < ST.cap) { ST.late[ST.n] = late_us; ST.intv[ST.n] = intv_us; ST.n++; }
+}
+static int cmp_long(const void *a, const void *b) { long x = *(const long *)a, y = *(const long *)b; return x < y ? -1 : x > y; }
+static long pct(const long *v, long n, int p) { return n ? v[(n - 1) * p / 100] : 0; }
+static void stats_seg_end(long live_us, long pace_us, const char *path) {   /* a live stretch ended (pause, stop, over, exit): count the steps it should have had and, when measuring, rewrite the summary file */
+    ST.expected += pace_us > 0 ? live_us / pace_us : 0; ST.live_us += live_us; if (!path || !ST.n) return;
+    long *a = malloc((size_t)ST.n * sizeof(long)), *b = malloc((size_t)ST.n * sizeof(long)); if (!a || !b) { free(a); free(b); return; } long nb = 0; for (long i = 0; i < ST.n; i++) { a[i] = ST.late[i]; if (ST.intv[i] > 0) b[nb++] = ST.intv[i]; }
+    qsort(a, (size_t)ST.n, sizeof(long), cmp_long); qsort(b, (size_t)nb, sizeof(long), cmp_long);
+    char o[1000]; int n = snprintf(o, sizeof o, "STATS ticks=%ld expected=%ld live_ms=%ld pace_ms=%ld rate_hz=%.3f loops=%ld dropped=%ld catchup_ticks=%ld recorded=%ld feed_writes=%ld\nLATE_US p50=%ld p90=%ld p99=%ld max=%ld\nINTERVAL_US p50=%ld p90=%ld p99=%ld min=%ld max=%ld\n",
+        ST.ticks, ST.expected, ST.live_us / 1000, pace_us / 1000, ST.live_us > 0 ? (double)ST.ticks * 1e6 / (double)ST.live_us : 0.0, ST.loops, ST.dropped, ST.catch_ticks, ST.n, ST.publishes, pct(a, ST.n, 50), pct(a, ST.n, 90), pct(a, ST.n, 99), a[ST.n - 1],
+        pct(b, nb, 50), pct(b, nb, 90), pct(b, nb, 99), nb ? b[0] : 0, nb ? b[nb - 1] : 0); (void)n; write_atomic(path, o); free(a); free(b);
+}
 static int running(void) { FILE *f = fopen(SW, "r"); if (!f) return 0; char ln[80]; int r = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "running=", 8)) r = atoi(ln + 8); fclose(f); return r; }
 static void rm_tree(const char *d) { DIR *dr = opendir(d); if (!dr) return; struct dirent *e; while ((e = readdir(dr))) { if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue; char p[P]; snprintf(p, sizeof p, "%s/%s", d, e->d_name); struct stat s; if (!lstat(p, &s) && S_ISDIR(s.st_mode)) rm_tree(p); else unlink(p); } closedir(dr); rmdir(d); }
 static int cmp_str(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
@@ -738,7 +779,7 @@ static void publish(void) {
         else if (!over && KIND == K_REALTIME) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Stay", "stay"); add_btn(o, C, &nb, "Right", "right"); } }
         if (!over && !run) add_btn(o, C, &nb, "Step", "step"); snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(o, C, &nb, b, "speed_next"); if (over) add_btn(o, C, &nb, "New game", "new_game");
     }
-    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, nb); strncat(o, b, C - strlen(o) - 1); write_atomic(FEED, o); dirty = 0;
+    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, nb); strncat(o, b, C - strlen(o) - 1); write_atomic(FEED, o); dirty = 0; ST.publishes++;
 }
 static int driver_main(int argc, char **argv) {
     if (argc < 5) { fprintf(stderr, "usage: game_core driver <house_root> <book_app_dir> <editor_app_dir>\n"); return 2; }
@@ -758,24 +799,46 @@ static int driver_main(int argc, char **argv) {
     FILE *devnull = fopen("/dev/null", "w"); OUT = devnull ? devnull : stdout; ERRF = OUT;
     if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; snprintf(dmsg, sizeof dmsg, "a game was in progress; it continues while the Player menu says playing"); }
     if (KIND == K_EDITOR) { mode_play = 1; if (S.phase == PH_NONE) { char o2[200]; char *n1[] = { (char *)"new" }; if (verb_here(1, n1, o2, sizeof o2)) snprintf(dmsg, sizeof dmsg, "new refused: %.180s", o2); else { reload(); write_doc(); snprintf(dmsg, sizeof dmsg, "an empty document: add start and goal, then publish"); } } }
-    struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; long next = now_ms(); char relay[P]; snprintf(relay, sizeof relay, "%s/state/interact_relay.txt", EDIT); long kcur = stat(relay, &s) ? 0 : (long)s.st_size;   /* the driver tails the editor's key file with its OWN cursor, starting at the end: keys pressed before it started are never replayed */
+    struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; char relay[P]; snprintf(relay, sizeof relay, "%s/state/interact_relay.txt", EDIT); long kcur = stat(relay, &s) ? 0 : (long)s.st_size;   /* the driver tails the editor's key file with its OWN cursor, starting at the end: keys pressed before it started are never replayed */
+    if (load_tuning()) { snprintf(dmsg, sizeof dmsg, "%.150s (the default pace is used)", MSG); TICK_MS = 0; }   /* a refused tick_ms is shown in the feed, not hidden: the game still runs at the kind's default */
     publish();
+    /* THE TICK LOOP (2026-11-09). Everything is in this process: no fork, no shell, one monotonic deadline per step (next_us += pace, so jitter never accumulates into drift), the sleep is a ppoll() that ends at the next deadline OR when the
+     * game folder changes (a button press is seen at once). Live = a game in play, the editor's running=1, not waiting for a human roll: it wakes once per step (at most every HK_MS for housekeeping). Not live (setup, paused, stopped, over, a human thinking, an
+     * editor game): it blocks IDLE_MS in ppoll, so a paused game costs 2 wakeups a second and no tick. A step that is late is run late; at most CATCH steps run per wake and the rest of the lateness is dropped (the game slows, it never bursts), counted in `dropped`. */
+    int ino = inotify_init1(IN_NONBLOCK | IN_CLOEXEC); if (ino >= 0 && inotify_add_watch(ino, GDIR, IN_MODIFY | IN_CLOSE_WRITE | IN_CREATE | IN_MOVED_TO) < 0) { close(ino); ino = -1; }
+    const char *stats_path = getenv("GAME_TICK_STATS");   /* measuring only: when set, the per-step lateness and interval are kept in memory and summarised in this file at pause and at exit; nothing is written otherwise */
+    long next_us = 0, last_tick_us = 0, seg_us = 0, last_pub = 0; int was_live = 0, stuck = 0;
     while (!stop_) {
         if (OWNER > 0 ? (kill((pid_t)OWNER, 0) != 0 && errno == ESRCH) : getppid() == 1) break;
-        if (!stat(ACT, &s) && s.st_size > cursor) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cursor, SEEK_SET); char ln[128]; while (fgets(ln, sizeof ln, f)) { char *e = strpbrk(ln, "\r\n"); if (e) *e = 0; if (ln[0]) handle(ln); } cursor = ftell(f); fclose(f); } if (cursor > 65536 && truncate(ACT, 0) == 0) cursor = 0; }
+        ST.loops++;
+        if (!stat(ACT, &s) && s.st_size > cursor) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cursor, SEEK_SET); char ln[128]; while (fgets(ln, sizeof ln, f)) { char *e = strpbrk(ln, "\r\n"); if (e) *e = 0; if (ln[0]) { handle(ln); stuck = 0; } } cursor = ftell(f); fclose(f); } if (cursor > 65536 && truncate(ACT, 0) == 0) cursor = 0; }
         else if (!stat(ACT, &s) && s.st_size < cursor) cursor = 0;
         static int was_run = -1; int run = running(); int run0 = run; if (run != was_run) { was_run = run; dirty = 1; }
         if (KIND == K_REALTIME && MODE == M_SNAKE) { int kc[32]; int kn = keys_poll(relay, &kcur, kc, 32);   /* arrows 1000-1003 steer a human snake while the game runs; while stopped the cursor still advances, so keys pressed during a pause are dropped, not queued */
             if (kn > 0 && mode_play && run0 && S.phase == PH_PLAY && S.human[0] && !sync_state()) { int rf, ig; int ap = keys_apply(kc, kn, &rf, &ig); if (ap) { snprintf(dmsg, sizeof dmsg, "arrow keys: %d turn(s)", ap); dirty = 1; } } }
-        struct stat ls; if (mode_play && !stat(LEDGER, &ls) && ls.st_size != KNOWN_SIZE) { reload(); dirty = 1; }   /* somebody else (the CLI) wrote the ledger */
-        if (mode_play && run && KIND != K_EDITOR && S.phase == PH_PLAY) { long t = now_ms(); if (t >= next) { int did = 0;
-                if (KIND == K_LEDGER && S.human[S.cur]) { char yt[120]; snprintf(yt, sizeof yt, "your turn, %s: press Roll", S.name[S.cur]); if (strcmp(dmsg, yt)) { snprintf(dmsg, sizeof dmsg, "%s", yt); dirty = 1; } }
-                else { if (do_tick(&did)) { snprintf(dmsg, sizeof dmsg, "stuck: %.180s", MSG); reload(); } else if (did && (KIND == K_LEDGER || S.tick % R_ckpt == 0)) { write_ui(); } dirty = 1; }
+        struct stat ls; if (mode_play && !stat(LEDGER, &ls) && ls.st_size != KNOWN_SIZE) { reload(); dirty = 1; stuck = 0; }   /* somebody else (the CLI) wrote the ledger */
+        int live = mode_play && run && KIND != K_EDITOR && S.phase == PH_PLAY && !stuck && !(KIND == K_LEDGER && S.human[S.cur]);
+        long t = now_us(), pace_us = pace_ms(speed) * 1000L;
+        if (live) {
+            if (!was_live) { was_live = 1; seg_us = t; next_us = t + pace_us; last_tick_us = 0; }
+            int steps = 0, cap = KIND == K_REALTIME ? CATCH_RT : 1;
+            while (t >= next_us && steps < cap && S.phase == PH_PLAY && !stuck) { int did = 0;
+                if (stats_path) stats_note(t - next_us, last_tick_us ? t - last_tick_us : 0, steps);
+                last_tick_us = t;
+                if (do_tick(&did)) { snprintf(dmsg, sizeof dmsg, "stuck: %.180s", MSG); reload(); stuck = 1; } else if (did && (KIND == K_LEDGER || S.tick % R_ckpt == 0)) { write_ui(); } dirty = 1;
                 if (S.phase == PH_OVER) { write_ui(); snprintf(dmsg, sizeof dmsg, "the game is over, winner %s", S.winner >= 0 ? S.name[S.winner] : "-"); dirty = 1; }
-                next = t + (KIND == K_REALTIME ? RT_MS[speed] : INTERVAL_MS[speed]); } }
-        { static long last_pub = 0; long tp = now_ms(); if (dirty && tp - last_pub >= 200) { publish(); last_pub = tp; } }   /* the feed is rewritten at most 5 times a second, whatever the tick pace */
-        usleep((mode_play && run && S.phase == PH_PLAY && KIND != K_EDITOR && !(KIND == K_LEDGER && S.human[S.cur])) ? (KIND == K_REALTIME ? 40000 : 80000) : 250000);   /* live: tick pace; setup, stopped, over, a human thinking, an editor: 250 ms */
+                next_us += pace_us; steps++; t = now_us(); }
+            if (t >= next_us) { if (S.phase == PH_PLAY && !stuck) ST.dropped++; next_us = t + pace_us; }
+        } else {
+            if (was_live) { was_live = 0; stats_seg_end(now_us() - seg_us, pace_us, stats_path); }
+            if (mode_play && run && KIND == K_LEDGER && S.phase == PH_PLAY && S.human[S.cur]) { char yt[120]; snprintf(yt, sizeof yt, "your turn, %s: press Roll", S.name[S.cur]); if (strcmp(dmsg, yt)) { snprintf(dmsg, sizeof dmsg, "%s", yt); dirty = 1; } }
+        }
+        { long tp = now_us(); if (dirty && tp - last_pub >= 200000) { publish(); last_pub = tp; } }   /* the feed is rewritten at most 5 times a second, whatever the step pace */
+        { long tn = now_us(), wake = tn + (live ? HK_MS : IDLE_MS) * 1000L; if (live && next_us < wake) wake = next_us; if (dirty && last_pub + 200000 < wake) wake = last_pub + 200000;
+          if (wake > tn) { struct pollfd pf = { ino, POLLIN, 0 }; struct timespec to = { (wake - tn) / 1000000L, ((wake - tn) % 1000000L) * 1000L }; ppoll(&pf, ino >= 0 ? 1 : 0, &to, NULL);
+              if (ino >= 0) { char ib[512]; while (read(ino, ib, sizeof ib) > 0) { } } } }
     }
+    if (was_live) stats_seg_end(now_us() - seg_us, pace_ms(speed) * 1000L, stats_path);
     { char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */
     return 0;
 }

@@ -18,3 +18,4 @@ VERB | tick      | no | ui | -            | ONE logical tick (the driver's step)
 VERB | autoplay  | no | ui | -            | tick until the game is over (every seat must be a pet)
 VERB | verify_clear | no | ui | -          | read-only: replay the run ledger; if it ends at the goal print `CLEAR level=<hex>;run=<hex>;ticks=<n>` (the proof Make records), else exit 1
 VERB | export    | no | ui | out_dir     | read-only: game.csv, events.csv, schema.pdl for the data studio into out_dir
+VERB | tuning    | no | ui | -            | read-only: the pace the driver will use, from tuning.pdl tick_ms (33 to 2000 ms per tick at the normal speed); a value outside the range is refused with the reason (exit 2)
