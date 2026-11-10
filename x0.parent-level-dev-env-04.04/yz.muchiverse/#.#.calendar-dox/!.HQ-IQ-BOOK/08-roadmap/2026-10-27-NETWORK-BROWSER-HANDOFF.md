@@ -531,3 +531,26 @@ the already-clamped 14 was not restored, so the next layout parked the row.
 - The commit is scoped to renderer, browser CSS/template/manager, and
   `tests/xsendevent.py`; generated browser bootstrap/state files were left
   uncommitted.
+
+### 2026-11-09 — matchMedia (commit `9ad82621f`)
+
+`matchMedia` had been a constant-false prelude stub since rung 6. It is now
+a native evaluator over the LOAD viewport (`g_viewport_px` /
+`g_viewport_h`, the values `innerWidth` / `innerHeight` already report).
+
+- Real queries: width/height (`min-`/`max-`), level-4 range form, aspect
+  ratio, resolution, orientation, color-scheme/reduced-motion/contrast,
+  hover/pointer, display-mode, scripting, color/monochrome, comma OR,
+  `and`, and leading `not`. Unknown features stay false.
+- `MediaQueryList` carries `media`, live-on-read `matches`,
+  `add/removeListener`, `add/removeEventListener("change")`,
+  `dispatchEvent`, and `onchange`.
+- Honest limit: no change **delivery** — the worker has no pane-resize
+  channel, so listeners register and dispatch but are not fired by a
+  viewport change that never reaches the worker.
+- The prelude's `matchMedia` line was deleted (it runs after the C install
+  and would shadow the native with the old false stub).
+- Gate `tests/nb_match_media_test.sh` **PASS (21/21)**, negative-tested by
+  forcing `matches` false (11 failures), then restored.
+- Full suite **ALL TESTS PASS**; live browser PID `3875779`.
+

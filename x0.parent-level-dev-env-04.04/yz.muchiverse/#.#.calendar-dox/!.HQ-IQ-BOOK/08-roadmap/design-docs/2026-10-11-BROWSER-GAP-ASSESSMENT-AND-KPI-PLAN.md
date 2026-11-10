@@ -1433,3 +1433,72 @@ Generated bootstrap/UI state was left out of the commit.
   (`fix: preserve Find/scroll state while wiring browser chrome controls`),
   scoped to the renderer, browser CSS/template/manager, and `xsendevent.py`,
   on `opencode`.
+
+### 9.23 2026-11-09 — matchMedia was a constant-false stub; now a real viewport evaluator
+
+The rung-6 prelude had always installed
+
+```js
+Object.defineProperty(window,'matchMedia',{value:function(q){
+  return {matches:false, media:String(q||''), ...};
+}});
+```
+
+so **every** media query answered "no". A 784px window claimed not to be
+wider than 600px, and the mobile branch in real bundles
+(`matchMedia("(pointer:coarse)").matches`) was silently unreachable. The
+stub was not merely incomplete: it was a false statement about the window,
+which is exactly the kind of inert surface the house rules reject.
+
+**The slice**
+
+- A native evaluator in `ops/nb_js_worker.c` over the same
+  `g_viewport_px` / `g_viewport_h` that `innerWidth` / `innerHeight` report
+  (LOAD fields 6 and 7), so `matchMedia` and `innerWidth` can never disagree.
+- Supported honestly: media types (`all`/`screen`; `print` and unknown types
+  false), `width`/`height`/`device-*` with `min-`/`max-`, the level-4 range
+  form `(width >= 600px)`, aspect ratio, resolution, orientation,
+  `prefers-color-scheme`, `prefers-reduced-motion`, `prefers-contrast`,
+  `forced-colors`, `hover`/`any-hover`, `pointer`/`any-pointer`,
+  `display-mode`, `scripting`, `update`, `color-gamut`, `color`/`monochrome`/
+  `color-index`, `grid`, `scan`, and `overflow-block`/`overflow-inline`.
+- Comma is OR, `and` is AND, leading `not` negates the whole query, `only`
+  is accepted and ignored.
+- Unknown features answer false rather than guessing. That is deliberate:
+  this worker will not claim a renderer capability it does not have.
+- `MediaQueryList` is a real object: `media`, `matches` (recomputed on every
+  read), `addListener`/`removeListener`, `addEventListener`/
+  `removeEventListener("change")`, `dispatchEvent`, and `onchange`.
+- The prelude's `matchMedia` line is **deleted** and replaced by a comment;
+  it runs after the C install and would otherwise shadow the native with the
+  old stub.
+
+**Scope, stated honestly**
+
+- `.matches` is live on read, so polling code is correct.
+- Change **delivery** is not implemented: there is no pane-resize channel
+  into the worker (LOAD carries one viewport, then the worker lives in it
+  until the next navigation), so a listener waiting for a change waits
+  forever. The listener surface is real and dispatchable; it is not wired to
+  a viewport event that does not exist. This is recorded here rather than
+  implied away.
+- `prefers-color-scheme: light` is true because there is no OS preference
+  channel to consult and light is the defensible default; the evaluator does
+  not pretend to know the user's dark-mode setting.
+
+**Verification**
+
+- New gate `tests/nb_match_media_test.sh` at a pinned 800x600 viewport:
+  **PASS (21/21)** — width boundary, exact width/height, range form,
+  landscape/portrait, light scheme, `screen` vs `print`, comma OR, negation,
+  unknown-feature false, `media` echo, resolution, pointer, and
+  add/remove/dispatch/onchange.
+- Negative test: forcing `matches` to constant false failed 11 assertions
+  (`min-width-true`, `width-exact`, `comma-or`, ...); restored and green
+  again.
+- `sh tests/nb_all_tests.sh`: **ALL TESTS PASS** (PASS=30 FAIL=0).
+- Live browser relaunched (PID `3875779`) on a fresh build.
+- Commit `9ad82621f` (`feat: evaluate matchMedia against the real viewport`),
+  scoped to `ops/nb_js_worker.c`, `ops/nb_host.h`, the new gate, and the
+  runner, on `opencode`.
+
