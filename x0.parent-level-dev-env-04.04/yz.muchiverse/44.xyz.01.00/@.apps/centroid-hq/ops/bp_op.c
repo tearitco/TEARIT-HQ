@@ -167,9 +167,13 @@ static int gen_under(const char *id, Cell *c, int *n) {
         Island slice = *g; slice.rx = g->rx * f; slice.ry = g->ry * f;
         int x0 = (int)floor(g->cx - g->rx) - 1, x1 = (int)ceil(g->cx + g->rx) + 1;
         int y0 = (int)floor(g->cy - g->ry) - 1, y1 = (int)ceil(g->cy + g->ry) + 1;
+        int before = *n;
         for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) {
             if (!on_ell(&slice, x + 0.5, y + 0.5)) continue;
             if (add_cell(c, n, x, y, z, "earth")) { snprintf(msg, sizeof msg, "too many underside cells"); return 2; }
+        }
+        if (*n == before && add_cell(c, n, (int)floor(g->cx), (int)floor(g->cy), z, "earth")) {
+            snprintf(msg, sizeof msg, "too many underside cells"); return 2;
         }
     }
     if (!*n) { snprintf(msg, sizeof msg, "underside of %s is empty", id); return 2; }

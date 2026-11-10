@@ -81,7 +81,8 @@ The life row is `EVENT|round|actor|verb|target|at|result`. `CLAIM`, `PLACE`, `CA
 - The other 11 `BUILD` rows are not generated. `gen <id>` is the same verb. Run it per building. Do not invent a second generator.
 - Island undersides (the taper under each ellipse) are not cells yet.
 - df-hq's live tick still only digs `DESIGNATE` rows in `jobs.txt`. That file is 2D and caps at 64 jobs. `place` in `verbs.pdl` is `item x y` with no z. The pets on the board do not read `crew_op`'s ledger yet. Wiring that tick to this ledger is the next code change.
-- The harness case exists. Current line: `VERDICT|PASS|passed=81|failed=0`. Older notes that say 37, 42, 48, 59, or 70 are earlier runs. Do not quote them. The fountain is 12 jobs. `under:S6` is 11 earth cells, point at 52,1,20.
+- The harness case exists. Current line: `VERDICT|PASS|passed=91|failed=0`. Older notes that say 81 or less are earlier runs. Do not quote them. Fountain is 12 jobs. `under:S6` is 11 earth cells. `under:S3` is 38 earth cells, point at 3,27,-11. An empty taper layer still gets the center cell, so the point stays connected.
+- When you talk to Claude: the harnesses are event driven. A phase is an event. A life row is an event. A picture is a dump of an event. Do not add a runner.
 - The life row is one grammar, `EVENT|round|actor|verb|target|at|result`. `CLAIM`, `PLACE`, and `CALL` are refused. A table act is `handed-off`. The trade stays in Teropoly's ledger. `DESIGNATE` is still only the dig projection.
 - Chutes was not opened. Snake was not shown in the editor. No nested X server was started. Human play of the games is still undone.
 - `SCALE | cell_blocks | 4` is recorded and not applied. `gen` emits one plan cell, not a 4 by 4 block stamp. Say so if you change it.
@@ -104,7 +105,7 @@ gcc -O2 -o /tmp/crew_op $HOUSE/@.apps/centroid-hq/ops/crew_op.c
 
 ## Harnesses, do not add a runner
 
-The unit check is this lane's `centroid/crew.pal` (`passed=81`). The playthrough is `play_centroid_crew.pal`. Observed 2026-11-10: `VERDICT|PASS|passed=11|failed=0`. Setup copies `lc_clock.+x` and db-hq `system.pdl` / `actors.pdl` from the house. This sparse worktree does not contain them; the run used links to the main checkout's copies, and those links are not committed. Do not add a second runner. The owner pictures are `XO/31.Nov/nov-10/grok/8.pet-step1.png` (yellow beside red) and `8.pet-step2.png` (yellow on the stone).
+The unit check is this lane's `centroid/crew.pal` (`passed=91`). The playthrough is `play_centroid_crew.pal`. Observed 2026-11-10: `VERDICT|PASS|passed=11|failed=0`. Setup copies `lc_clock.+x` and db-hq `system.pdl` / `actors.pdl` from the house. This sparse worktree does not contain them; the run used links to the main checkout's copies, and those links are not committed. Do not add a second runner. The owner pictures are `XO/31.Nov/nov-10/grok/8.pet-step1.png` (yellow beside red) and `8.pet-step2.png` (yellow on the stone).
 
 ## How agents talk
 
@@ -114,9 +115,9 @@ Older questions for Claude stay in `QUESTIONS-FOR-CLAUDE.md`. Add a new question
 
 ## Next code, in order
 
-1. The unit case is done (`passed=81`). The one-stone playthrough ran (`passed=11`). Fountain and the S6 underside are slices inside the same case.
+1. The unit case is done (`passed=91`). The one-stone playthrough ran (`passed=11`). Fountain, S6, and S3 are slices inside the same case.
 2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working. A pet on a board is still not done. The yellow square in `XO/31.Nov/nov-10/grok/8.pet-walk.png` is the scratch picture, not that board.
-3. The fountain (`gen fountain`, 12 jobs) and the S6 underside (`gen under:S6`, 11 earth cells) are done. The other islands' undersides are the same id prefix. The big lobes are not generated yet. `mech_new_op` is still not a file.
+3. Fountain, `under:S6`, and `under:S3` are done on the same verbs. The big lobes are not generated. `mech_new_op` is still not a file.
 4. Only after two slices have used that loop, shape `mech_new_op` from it.
 
 Do not start a trained policy, a vehicle, or TSC in this lane.

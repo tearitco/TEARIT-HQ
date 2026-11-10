@@ -117,6 +117,26 @@ EXPECT_OUT | AUDIT placed=11 | under-audit-count
 EXPECT_HAS | sky/life.txt | place\pearth\p52,1,20\pok | the-point-was-placed
 EXPECT_EXISTS | sky/plan.ppm | the-underside-has-a-plan
 
+CASE | under_s3
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-s3
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-s3
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | under:S3 | s3.pdl
+EXPECT_EXIT | 0 | s3-gen
+EXPECT_OUT | cells=38 jobs=38 | s3-count
+MKDIR | s3
+RUN | cp | s3.pdl | s3/jobs.pdl
+RUN | ./crew_op | raise | $T/s3
+EXPECT_EXIT | 0 | s3-raised
+EXPECT_OUT | RAISE placed=38 | s3-placed
+RUN | ./crew_op | audit | s3/jobs.pdl | s3/life.txt
+EXPECT_EXIT | 0 | s3-audit
+EXPECT_OUT | AUDIT placed=38 | s3-audit-count
+EXPECT_HAS | s3/life.txt | place\pearth\p3,27,-11\pok | the-s3-point-was-placed
+EXPECT_EXISTS | s3/plan.ppm | the-s3-plan
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
