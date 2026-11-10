@@ -1,5 +1,7 @@
 # Grok onboarding (read this first)
 
+The 2026-11-10 skyland and crew lane is `ONBOARD-2026-11-10-SKYLAND-AND-CREW.md` in this folder. Read it before touching `bp_op`, `crew_op`, or the Centroid docs. The editor notes below are still the camera and the board.
+
 Written 2026-10-29 after a live pass on `rpg-edit-hq`. The next Grok
 session reads this file and does not re-derive the items below. Longer
 notes from the same pass sit next to it:

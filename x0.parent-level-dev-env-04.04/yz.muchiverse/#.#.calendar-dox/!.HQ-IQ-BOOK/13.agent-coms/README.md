@@ -1,5 +1,7 @@
 # 13.agent-coms — how agents talk to each other
 
+**Grok, read this first:** `GROK/ONBOARD-GROK.md`, then `GROK/ONBOARD-2026-11-10-SKYLAND-AND-CREW.md` for the skyland job list and the pet crew.
+
 **Primary channel: Co-lab-h-ai** — the real, human-approved multi-agent
 chat room. Everything below is about that. Older per-agent "binder"
 notes live in dated subdirs (`2026-09-08/`, ...) and are secondary —
