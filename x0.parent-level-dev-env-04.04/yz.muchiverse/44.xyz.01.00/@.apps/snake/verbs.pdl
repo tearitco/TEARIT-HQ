@@ -1,0 +1,20 @@
+# verbs.pdl - the snake manifest: the known verbs as data (read by the engine's `help` and by `audit`, which checks that every PROJECTION in state.pdl names a verb listed here).
+#   VERB | name | page | ui | args | what it does          (the grammar of @.apps/deskopoly/verbs.pdl)
+VERB | new       | no | ui | [seed]       | open the game: the first ledger row records the seed, the ruleset name, the rules hash and the kind
+VERB | status    | no | ui | -            | read-only: the whole state, derived by replaying the ledger
+VERB | replay    | no | ui | -            | read-only: replay the ledger and print its state hash (refuses a ledger that does not reproduce itself)
+VERB | check     | no | ui | -            | read-only: replay plus invariants
+VERB | ckpt      | no | ui | -            | pin: append a row holding the state hash; every later replay must reproduce it
+VERB | ledger_hash | no | ui | [skip_verb] | read-only digest of the ledger rows, optionally without one verb
+VERB | audit     | no | ui | -            | read-only no-ghost-data check: the state folder holds only the files state.pdl declares
+VERB | ui        | no | ui | -            | write ui.txt: the window feed, a projection of the replayed ledger
+VERB | help      | no | ui | -            | list the verbs (from this file)
+VERB | join      | no | ui | name [human|pet] | add a player in the lobby (next free id p1..); the roster is a ledger fact
+VERB | start     | no | ui | -            | close the lobby (min_players to max_players: one snake here)
+VERB | seat      | no | ui | pN human|pet | change who drives a seat (a ledger row, legal at any time)
+VERB | turn      | no | ui | pN L,R,U,D,1000-1003 [tick] | steer: ONE ledger row per INPUT, round = the logical tick it applies to (a reversal into the neck is refused and appends nothing; arrow codes 1000-1003 are accepted); ticks themselves are never rows
+VERB | advance   | no | ui | [n]          | simulate n logical ticks (pet seats steer), a ckpt row every ckpt_every ticks and at the end
+VERB | tick      | no | ui | -            | ONE logical tick (the driver's step); a ckpt row on every ckpt_every-th tick and when the game ends
+VERB | autoplay  | no | ui | -            | tick until the game is over (every seat must be a pet)
+VERB | keys      | no | ui | relay_file byte_offset | steer p1 by the arrow codes (1000 left 1001 right 1002 up 1003 down) written to a key file AFTER the byte offset: what the driver does with state/interact_relay.txt with its own cursor
+VERB | export    | no | ui | out_dir     | read-only: game.csv, events.csv, schema.pdl for the data studio into out_dir (never into the state folder)

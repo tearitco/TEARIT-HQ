@@ -1,0 +1,377 @@
+# snake (Snake): ONE snake on a grid, realtime kind on the shared engine game_core, MODE snake (plan CHUTES-LADDERS-AND-SNAKE-GAME-PLANS-2026-11-09 part B; milestones S0, S1 and S6a below).
+# What is BUILT: the deterministic step function as generic code driven by data (head, trail, seeded food, wall solid|wrap, self collision, growth), the inputs-only ledger (turn rows with logical ticks; eat / die / over CONSEQUENCE rows the ticks make and replay must
+# remake; ckpt rows every ckpt_every ticks and at the end), the arrow-key tail (codes 1000 to 1003 from the editor's interact_relay.txt read with the driver's OWN byte cursor, no core change). What is NOT built: a 30 ticks a second loop, multi-snake, the page and figures.
+# Every number pinned below was OBSERVED in a scratch run on 2026-11-09 before it was written; the small-board scenarios are also SOLVED BY HAND in the labels. Scratch only: nothing here touches a live folder or the live editor.
+# Method note: the case copies the app and edits ITS DATA (board size, wall rule, start length): the engine is the same shared binary in every scenario.
+RESULTS | ../results/snake.txt
+ENV | LC_ALL | C
+
+CASE    | snk_data
+SCRATCH |
+EXPECT_HAS | $HOUSE/@.apps/snake/rulesets/default/board.pdl | MODE  \p snake | the-step-function-is-chosen-by-DATA
+EXPECT_HAS | $HOUSE/@.apps/snake/rulesets/default/board.pdl | BOARD \p cols \p 16 | grid-size-is-data-(16)
+EXPECT_HAS | $HOUSE/@.apps/snake/rulesets/default/rules.pdl | walls        \p solid | the-wall-rule-is-data
+EXPECT_HAS | $HOUSE/@.apps/snake/rulesets/default/rules.pdl | ckpt_every   \p 64 | checkpoint-every-64-ticks-(the-plan)
+EXPECT_HAS | $HOUSE/@.apps/snake/game.pdl | GAME   \p export | and-the-data-studio-exporter-row-is-there
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_a8
+RUN | sed | -i | s/cols \p 16/cols \p 8/ | $T/s_a8/rulesets/default/board.pdl
+RUN | sed | -i | s/rows \p 12/rows \p 6/ | $T/s_a8/rulesets/default/board.pdl
+RUN | cmp | $HOUSE/@.apps/snake/rulesets/default/board.pdl | $T/s_a8/rulesets/default/board.pdl
+EXPECT_EXIT | 1 | vacuity-the-8-by-6-copy-really-differs
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_bad1
+RUN | sed | -i | s/cols \p 16/cols \p 4/ | $T/s_bad1/rulesets/default/board.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_bad1 | $T/s_g0 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-a-4-column-grid-is-refused
+EXPECT_OUT | BOARD cols and rows are 6 to 32 | and-says-why
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_bad2
+RUN | sed | -i | s/MODE  \p snake/MODE  \p worm/ | $T/s_bad2/rulesets/default/board.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_bad2 | $T/s_g0 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-MODE-is-refused
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_bad3
+RUN | sed | -i | s/walls        \p solid/walls        \p sticky/ | $T/s_bad3/rulesets/default/rules.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_bad3 | $T/s_g0 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-wall-rule-is-refused
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_bad4
+RUN | sed | -i | s/max_players  \p 1/max_players  \p 2/ | $T/s_bad4/rulesets/default/rules.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_bad4 | $T/s_g0 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-two-snakes-are-refused-(multi-snake-is-plan-milestone-S2-not-built)
+EXPECT_OUT | exactly one snake | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_g0 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_g0 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_g0 | join | B
+EXPECT_EXIT | 2 | NEGATIVE-a-second-seat-is-refused-at-the-table
+EXPECT_OUT | table is full (1 players) | and-it-says-1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_g0 | input | p1 | left
+EXPECT_EXIT | 2 | NEGATIVE-the-stub-verb-input-does-not-exist-in-snake-mode-(turn-does)
+
+CASE    | snk_core
+# A. hand-solved: an 8 x 6 board, seed 7, a snake of 3 heading right from (4,3); the first food is at (0,2), nowhere near. Head x = 5, 6, 7 after ticks 1-3; tick 4 would be x = 8: a wall. die at tick 4 from cell 7,3, score 0.
+MKDIR   | s_gA
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | start
+EXPECT_OUT | game started: 1 players | one-snake
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | status
+EXPECT_OUT | SNAKE len=3 grow=0 dir=R score=0 head=4,3 food=0,2 foods=1 | at-the-start-the-head-is-in-the-middle-heading-right-and-the-first-food-is-at-0,2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | advance | 3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | status
+EXPECT_OUT | head=7,3 | HAND-SOLVED-after-3-ticks-the-head-is-at-x=7
+EXPECT_OUT | over=0 | still-alive
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | advance | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | status
+EXPECT_OUT | over=1 | HAND-SOLVED-tick-4-hits-the-wall-and-the-game-is-over
+EXPECT_HAS | $T/s_gA/ledger.txt | EVENT\p4\pbank\pdie\pp1\p7,3\pcause=wall | the-die-row-is-a-CONSEQUENCE-row-made-by-the-tick
+EXPECT_HAS | $T/s_gA/ledger.txt | EVENT\p4\pbank\pover\p-\p7,3\pwinner=none;ticks=4;score=0;hash=fc21dab834f0c4e3 | and-so-is-over-with-the-final-state-hash
+RUN | grep | -c | -F | \pturn\p | $T/s_gA/ledger.txt
+EXPECT_OUT_IS | 0 | vacuity-no-turn-row-was-needed-to-go-straight-(no-row-per-tick:-4-ticks-and-the-ledger-has-6-rows)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gA | advance | 1
+EXPECT_EXIT | 2 | NEGATIVE-nothing-moves-after-the-game-is-over
+# B. hand-solved: seed 3 puts the first food at (6,3), straight ahead: tick 2 eats it. len 3 + 1, score 10, the tail stays put one tick (grow=1), tick 3 shows len 4, tick 4 the wall.
+MKDIR   | s_gB
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | new | 3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | status
+EXPECT_OUT | food=6,3 | the-first-food-for-seed-3-is-at-6,3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | advance | 2
+EXPECT_HAS | $T/s_gB/ledger.txt | EVENT\p2\pbank\peat\pp1\p6,3\plen=4;score=10;food=6,3;next=4,1 | HAND-SOLVED-tick-2-eats-the-food-at-6,3-and-the-NEXT-food-is-named-in-the-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | status
+EXPECT_OUT | SNAKE len=3 grow=1 dir=R score=10 head=6,3 food=4,1 foods=2 | the-snake-grows-over-the-NEXT-tick-(grow=1-pending)-and-the-second-food-is-at-4,1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | advance | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | status
+EXPECT_OUT | SNAKE len=4 grow=0 dir=R score=10 head=7,3 | one-tick-later-the-length-is-4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | advance | 5
+EXPECT_HAS | $T/s_gB/ledger.txt | EVENT\p4\pbank\pdie\pp1\p7,3\pcause=wall | tick-4-the-wall
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | check
+EXPECT_OUT | CHECK ok events=9 | the-invariants-hold
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | replay
+EXPECT_OUT_IS | REPLAY events=9 hash=419c9956ddfafbcd | snk_replay-the-fixed-input-script-gives-the-fixed-score-10-and-the-pinned-state-hash
+# C. hand-solved self collision: a snake of 5 on the default 16 x 12 board heading right from (8,6): U at tick 0, L at tick 1, D at tick 2. Cells: (8,5) (7,5) then (7,6), which the body still covers: die cause=self at tick 3 from 7,5.
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_a16
+RUN | sed | -i | s/start_len    \p 3/start_len    \p 5/ | $T/s_a16/rulesets/default/rules.pdl
+MKDIR   | s_gC
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | turn | p1 | U
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | advance | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | turn | p1 | L
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | advance | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | turn | p1 | D
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | advance | 1
+EXPECT_HAS | $T/s_gC/ledger.txt | EVENT\p3\pbank\pdie\pp1\p7,5\pcause=self | HAND-SOLVED-the-snake-bites-itself-at-tick-3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gC | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-ledger-under-the-8x6-board-is-refused-(the-grid-is-in-the-rules-hash)
+# the same three turns with a snake of 3 do NOT bite (the tail has left): the control that says the length is what decided it
+MKDIR   | s_gC3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | turn | p1 | U
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | advance | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | turn | p1 | L
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | advance | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | turn | p1 | D
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gC3 | advance | 1
+RUN | grep | -c | -F | \pdie\p | $T/s_gC3/ledger.txt
+EXPECT_OUT_IS | 0 | a-snake-of-3-making-the-same-turns-is-alive
+# D. wrap: the same 4 ticks on the 8 x 6 torus: x = 5 6 7 0, no death
+RUN | cp | -r | $T/s_a8 | $T/s_aw
+RUN | sed | -i | s/walls        \p solid/walls        \p wrap/ | $T/s_aw/rulesets/default/rules.pdl
+RUN | cmp | $T/s_a8/rulesets/default/rules.pdl | $T/s_aw/rulesets/default/rules.pdl
+EXPECT_EXIT | 1 | vacuity-the-wrap-copy-really-differs
+MKDIR   | s_gD
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_aw | $T/s_gD | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_aw | $T/s_gD | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_aw | $T/s_gD | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_aw | $T/s_gD | advance | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_aw | $T/s_gD | status
+EXPECT_OUT | head=0,3 | HAND-SOLVED-on-a-torus-tick-4-wraps-to-x=0-and-lives
+EXPECT_OUT | over=0 | alive
+# E. refusals append NOTHING
+MKDIR   | s_gE
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | ledger_hash
+CAPTURE | s1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | turn | p1 | L
+EXPECT_EXIT | 2 | NEGATIVE-a-reversal-into-the-neck-is-refused
+EXPECT_OUT | reversal into the neck | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | turn | p1 | R
+EXPECT_EXIT | 2 | NEGATIVE-turning-to-the-way-it-already-heads-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | turn | p1 | X
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-direction
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | turn | p2 | U
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-player
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | ledger_hash
+EXPECT_OUT_IS | $s1 | the-four-refusals-appended-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | turn | p1 | U
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | turn | p1 | D
+EXPECT_EXIT | 2 | NEGATIVE-a-second-turn-in-the-same-tick-is-refused-(it-would-be-a-reversal-through-the-neck)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | ledger_hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gE | ledger_hash
+CAPTURE | s2
+EXPECT_NE | $s1 | $s2 | vacuity-the-accepted-turn-U-DID-change-the-ledger
+
+CASE    | snk_hand_edit
+# every edit below is made on a COPY of a good ledger, proved to differ (cmp exits 1), and must be refused (exit 1) at a row that is named
+RUN | cp | $T/s_gB/ledger.txt | $T/s_gB/keep.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_gB | replay
+EXPECT_EXIT | 0 | the-good-ledger-replays
+MKDIR   | s_h1
+RUN | cp | $T/s_gB/ledger.txt | $T/s_h1/ledger.txt
+RUN | sed | -i | s/score=10;food=6,3/score=20;food=6,3/ | $T/s_h1/ledger.txt
+RUN | cmp | $T/s_gB/ledger.txt | $T/s_h1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-score-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_h1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-an-eat-row-with-a-forged-score-is-refused
+EXPECT_OUT | ledger line 4: | the-refusal-names-the-row
+MKDIR   | s_h2
+RUN | cp | $T/s_gB/ledger.txt | $T/s_h2/ledger.txt
+RUN | sed | -i | /\peat\p/d | $T/s_h2/ledger.txt
+RUN | cmp | $T/s_gB/ledger.txt | $T/s_h2/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-eat-row-is-really-gone
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_h2 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-DELETED-eat-row-is-refused-(the-tick-made-it-and-no-row-recorded-it)
+EXPECT_OUT | that no row recorded | and-says-so
+MKDIR   | s_h3
+RUN | cp | $T/s_gB/ledger.txt | $T/s_h3/ledger.txt
+APPEND  | s_h3/ledger.txt | EVENT|4|bank|eat|p1|7,3|len=5;score=20;food=1,1;next=2,2\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_h3 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-FORGED-eat-row-after-the-end-is-refused
+MKDIR   | s_h4
+RUN | cp | $T/s_gB/ledger.txt | $T/s_h4/ledger.txt
+RUN | sed | -i | s/cause=wall/cause=self/ | $T/s_h4/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_h4 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-die-row-with-the-wrong-cause-is-refused
+MKDIR   | s_h5
+RUN | cp | $T/s_gB/ledger.txt | $T/s_h5/ledger.txt
+RUN | sed | -i | s/hash=57bd5f02415e9471/hash=57bd5f02415e9470/ | $T/s_h5/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_h5 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-ckpt-row-with-one-digit-of-the-state-hash-changed-is-refused
+# an edited INPUT row: the ledger of scenario C (U, L, D) with the L turned into an R
+MKDIR   | s_h6
+RUN | cp | $T/s_gC/ledger.txt | $T/s_h6/ledger.txt
+RUN | sed | -i | s/\pturn\pL\p/\pturn\pR\p/ | $T/s_h6/ledger.txt
+RUN | cmp | $T/s_gC/ledger.txt | $T/s_h6/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-turn-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_h6 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-INPUT-(turn-L-became-turn-R)-is-refused-at-the-next-row-that-does-not-fit
+MKDIR   | s_h7
+RUN | cp | $T/s_gC/ledger.txt | $T/s_h7/ledger.txt
+RUN | sed | -i | s/\pp1\pturn\pD\p/\pp1\pturn\pU\p/ | $T/s_h7/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_h7 | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-last-turn-edited-D-to-U-is-refused-too-(the-die-row-no-longer-fits)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_gC | replay
+EXPECT_EXIT | 0 | and-the-untouched-ledger-still-replays
+# a turn row written by hand with the numeric key code instead of the letter is not what the engine would have written
+MKDIR   | s_h8
+RUN | cp | $T/s_gC/ledger.txt | $T/s_h8/ledger.txt
+RUN | sed | -i | s/\pturn\pL\p/\pturn\p1000\p/ | $T/s_h8/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a16 | $T/s_h8 | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-ledger-stores-L-never-1000-so-a-hand-written-1000-is-refused
+# the engine with replay verification OFF (a MUTANT) accepts the forged score: so the refusals above have teeth
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_NO_VERIFY | -o | $T/s_mut.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-mutant-engine-compiles
+RUN | $T/s_mut.+x | $T/s_a8 | $T/s_h1 | replay
+EXPECT_EXIT | 0 | MUTANT-with-verification-off-ACCEPTS-the-forged-score
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a8 | $T/s_h1 | replay
+EXPECT_EXIT | 1 | and-the-real-engine-refuses-the-very-same-file
+
+CASE    | snk_pets_and_rows
+MKDIR   | s_gP
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | join | S
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=97 ticks=336 over=1 winner=- | a-pet-snake-eats-28-times-in-336-ticks-and-bites-itself
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | replay
+EXPECT_OUT_IS | REPLAY events=97 hash=56593694f522fb3a | replay-reproduces-the-pinned-hash-(the-lead's-plan-asks-for-a-pinned-fixture)
+RUN | grep | -c | -F | \peat\p | $T/s_gP/ledger.txt
+EXPECT_OUT_IS | 28 | 28-eat-rows
+RUN | grep | -c | -F | \pturn\p | $T/s_gP/ledger.txt
+EXPECT_OUT_IS | 58 | 58-turn-rows-(the-pet's-steering-is-recorded)
+RUN | grep | -c | -F | \pckpt\p | $T/s_gP/ledger.txt
+EXPECT_OUT_IS | 6 | 6-ckpt-rows-at-ticks-64-128-192-256-320-and-the-end-(every-64)
+EXPECT_HAS | $T/s_gP/ledger.txt | EVENT\p64\pbank\pckpt\p-\p64\phash=246aee0d6e2e19dd | the-first-ckpt-is-at-tick-64
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | status
+EXPECT_OUT | SNAKE len=31 grow=0 dir=R score=280 head=3,6 | the-final-score-is-280-and-the-length-31
+CALC    | rows_per_tick | 97 | / | 336
+EXPECT_LE | $rows_per_tick | 0.3 | NO-ROW-PER-TICK-97-rows-for-336-ticks-(0.29)-the-inputs-only-ledger-is-small
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | ui
+EXPECT_HAS | $T/s_gP/ui.txt | snake_len=31 | the-feed-has-the-length
+EXPECT_HAS | $T/s_gP/ui.txt | score=280 | the-score
+EXPECT_HAS | $T/s_gP/ui.txt | cells= | and-the-cells
+RUN | cp | $T/s_gP/ui.txt | $T/s_gP/ui.keep
+RUN | rm | $T/s_gP/ui.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | ui
+RUN | cmp | $T/s_gP/ui.txt | $T/s_gP/ui.keep
+EXPECT_EXIT | 0 | snk_ghost-a-deleted-feed-regenerates-byte-for-byte
+RUN | rm | $T/s_gP/ui.keep
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | audit
+EXPECT_OUT | AUDIT ok files=2 | the-audit-is-clean
+WRITE   | s_gP/stray.txt | nobody declared me
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_gP | replay
+EXPECT_OUT_IS | REPLAY events=97 hash=56593694f522fb3a | and-changes-nothing-about-the-game
+RUN | rm | $T/s_gP/stray.txt
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_a2
+RUN | sed | -i | s/ckpt_every   \p 64/ckpt_every   \p 65/ | $T/s_a2/rulesets/default/rules.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_a2 | $T/s_gP | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-ledger-under-ckpt_every-65-is-refused-(rules-hash)
+
+CASE    | snk_keys_tail
+# the arrow keys arrive as 1000 left / 1001 right / 1002 up / 1003 down in the editor's state/interact_relay.txt (petslike_core.c header line 34). The verb `keys <file> <offset>` is what the driver does with ITS OWN byte cursor.
+WRITE   | s_relay.txt | 1002 100\n
+MKDIR   | s_k1
+MKDIR   | s_k2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k2 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k2 | join | S | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k2 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k2 | keys | $T/s_relay.txt | 0
+EXPECT_OUT_IS | KEYS read=1 applied=1 refused=0 ignored=0 offset=9 tick=0 | POSITIVE-CONTROL-from-byte-0-the-up-arrow-(1002)-in-the-file-IS-read-and-applied
+EXPECT_HAS | $T/s_k2/ledger.txt | EVENT\p0\pp1\pturn\pU\p8,6\papplies=0 | as-a-turn-U-row-stamped-with-the-current-tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_relay.txt | 9
+EXPECT_OUT_IS | KEYS read=0 applied=0 refused=0 ignored=0 offset=9 tick=0 | NEGATIVE-the-same-line-BEFORE-the-cursor-(byte-9)-is-ignored
+RUN | grep | -c | -F | \pturn\p | $T/s_k1/ledger.txt
+EXPECT_OUT_IS | 0 | and-no-turn-row-was-written
+APPEND  | s_relay.txt | 1003 200\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_relay.txt | 9
+EXPECT_OUT_IS | KEYS read=1 applied=1 refused=0 ignored=0 offset=18 tick=0 | a-line-written-AFTER-the-cursor-(down-1003)-is-applied
+EXPECT_HAS | $T/s_k1/ledger.txt | EVENT\p0\pp1\pturn\pD\p8,6\papplies=0 | as-turn-D
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | advance | 3
+APPEND  | s_relay.txt | 1002 300\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_relay.txt | 18
+EXPECT_OUT_IS | KEYS read=1 applied=0 refused=1 ignored=0 offset=27 tick=3 | NEGATIVE-up-while-heading-down-is-a-reversal-into-the-neck-and-is-refused
+APPEND  | s_relay.txt | 13 400\n1000 500\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_relay.txt | 27
+EXPECT_OUT_IS | KEYS read=2 applied=1 refused=0 ignored=1 offset=43 tick=3 | a-key-that-is-not-an-arrow-(13)-is-ignored-and-left-(1000)-turns-at-tick-3
+EXPECT_HAS | $T/s_k1/ledger.txt | EVENT\p3\pp1\pturn\pL\p8,9\papplies=3 | THE-HEAD-TURNS-AT-THE-RIGHT-TICK-(3)-from-the-cell-8,9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | advance | 1
+APPEND  | s_relay.txt | KEY_PRESSED: 1002\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_relay.txt | 43
+EXPECT_OUT_IS | KEYS read=1 applied=1 refused=0 ignored=0 offset=61 tick=4 | the-keyboard-history-format-(KEY_PRESSED:-n)-is-read-too
+WRITE   | s_relay.txt | 1003 1\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_relay.txt | 100
+EXPECT_OUT | read=1 | a-file-SHORTER-than-the-cursor-(truncated)-is-read-again-from-byte-0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | check
+EXPECT_OUT | CHECK ok | the-ledger-written-through-the-key-tail-checks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | replay
+EXPECT_OUT | REPLAY events= | and-replays
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k1 | keys | $T/s_nofile.txt | 0
+EXPECT_OUT | read=0 | a-missing-key-file-is-not-an-error
+MKDIR   | s_k3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k3 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k3 | join | S
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k3 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k3 | turn | p1 | 1003
+EXPECT_OUT | p1 turns 1003 at tick 0 | the-turn-verb-takes-the-key-code-space-1000-1003
+EXPECT_HAS | $T/s_k3/ledger.txt | p1\pturn\pD\p8,6 | and-writes-the-letter-D-in-the-ledger
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k3 | turn | p1 | 1002
+EXPECT_EXIT | 2 | NEGATIVE-a-second-turn-in-the-same-tick-by-code
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/snake | $T/s_k3 | turn | p1 | 777
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-code
+
+CASE    | snk_keys_tail_real_driver
+# the REAL driver (what the editor's Play starts) in a scratch editor: it tails state/interact_relay.txt with its OWN cursor, which starts at the END of the file when the driver starts
+RUN | cp | -r | $HOUSE/@.apps/snake | $T/s_adrv
+RUN | sed | -i | s/walls        \p solid/walls        \p wrap/ | $T/s_adrv/rulesets/default/rules.pdl
+RUN | sed | -i | s/ckpt_every   \p 64/ckpt_every   \p 4/ | $T/s_adrv/rulesets/default/rules.pdl
+RUN | sed | -i | s/cols \p 16/cols \p 8/ | $T/s_adrv/rulesets/default/board.pdl
+RUN | sed | -i | s/rows \p 12/rows \p 6/ | $T/s_adrv/rulesets/default/board.pdl
+MKDIR   | s_edit/state/world
+WRITE   | s_edit/state/world/switches.txt | running=0\n
+WRITE   | s_edit/state/interact_relay.txt | 1003 50\n
+SPAWN   | OWNS | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWNS
+SPAWN   | DRVS | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $HOUSE | $T/s_adrv | $T/s_edit
+WAIT_HAS | s_edit/state/game_ui.txt | gm_on=1 | 8000 | the-snake-setup-is-published
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | human_next | $T/s_edit/state/games/s_adrv
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/s_edit/state/games/s_adrv
+WAIT_HAS | s_edit/state/games/s_adrv/game/ledger.txt | bank\pstart | 8000 | the-game-starts-with-one-human-snake
+WAIT_HAS | s_edit/state/game_ui.txt | gmb_0_label=Left | 4000 | the-four-steering-buttons-are-offered
+APPEND  | s_edit/state/interact_relay.txt | 1003 100\n
+SLEEP   | 700
+RUN | grep | -c | -F | \pturn\p | $T/s_edit/state/games/s_adrv/game/ledger.txt
+EXPECT_OUT_IS | 0 | PAUSED-(running=0)-a-down-arrow-is-DROPPED-and-the-STALE-down-arrow-before-the-driver-started-was-never-read
+WRITE   | s_edit/state/world/switches.txt | running=1\n
+WAIT_HAS | s_edit/state/games/s_adrv/game/ledger.txt | bank\pckpt\p | 8000 | the-ticks-run-and-a-ckpt-row-pins-the-state
+APPEND  | s_edit/state/interact_relay.txt | 1002 200\n
+WAIT_HAS | s_edit/state/games/s_adrv/game/ledger.txt | p1\pturn\pU\p | 8000 | AN-ARROW-KEY-LINE-APPENDED-TO-interact_relay.txt-TURNS-THE-HEAD-(up-1002-becomes-a-turn-U-row)
+WRITE   | s_edit/state/world/switches.txt | running=0\n
+SLEEP   | 700
+RUN | grep | -c | -F | \pturn\pD\p | $T/s_edit/state/games/s_adrv/game/ledger.txt
+EXPECT_OUT_IS | 0 | and-the-dropped-and-stale-down-arrows-never-became-rows
+RUN | grep | -c | -F | \pturn\p | $T/s_edit/state/games/s_adrv/game/ledger.txt
+EXPECT_OUT_IS | 1 | exactly-one-turn-row-(the-live-up-arrow)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_adrv | $T/s_edit/state/games/s_adrv/game | replay
+EXPECT_OUT | REPLAY events= | THE-LIVE-LEDGER-WRITTEN-BY-THE-DRIVER-REPLAYS
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/s_adrv | $T/s_edit/state/games/s_adrv/game | check
+EXPECT_OUT | CHECK ok | and-checks
+RUN | /usr/bin/kill | $OWNS
+SLEEP   | 300
+EXPECT_DEAD | $OWNS | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRVS | the-snake-driver-ends-with-its-owner
+ENV     | GAME_OWNER_PID |
+
+CASE    | snk_export
+MKDIR   | s_x1
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/snake | $T/s_gP | $T/s_x1
+EXPECT_EXIT | 0 | the-data-studio-runs-the-snake-exporter
+EXPECT_OUT | files=3 | three-files-(game.csv-events.csv-schema.pdl)
+EXPECT_HAS | $T/s_x1/game.csv | game_id,kind,ruleset,rules_hash,seed,players | game.csv-header
+EXPECT_HAS | $T/s_x1/game.csv | ,realtime,default, | kind-realtime
+EXPECT_HAS | $T/s_x1/game.csv | ,7,1,0,0,97,336,over,nobody,,,56593694f522fb3a,snake,336,280 | seed-7-one-snake-97-rows-336-ticks-nobody-won-the-state-hash-mode-snake-score-280
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/s_x1/game.csv | $T/s_x1/schema.pdl
+EXPECT_EXIT | 0 | the-schema-passes-the-studios-check
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/s_x1/events.csv | $T/s_x1/schema.pdl
+EXPECT_EXIT | 0 | for-events.csv-too
+RUN | grep | -c | . | $T/s_x1/events.csv
+EXPECT_OUT_IS | 98 | events.csv-is-a-header-and-97-rows
+CLEAN   |

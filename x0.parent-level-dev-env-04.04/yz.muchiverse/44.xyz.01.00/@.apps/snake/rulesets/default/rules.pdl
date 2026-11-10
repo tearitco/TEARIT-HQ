@@ -1,0 +1,17 @@
+# rules.pdl - Snake: rule numbers as DATA (RULE | key | value). Changing a value after a game began makes that game's ledger refuse (the rules hash is in its first row).
+# min_players, max_players  exactly 1 snake in this foundation (multi-snake, head-on and food ties are plan milestone S2, not built)
+# walls         solid = a wall ends the run (die cause=wall); wrap = the board is a torus
+# start_len     segments at the start       grow  segments gained per food (the tail stays put for that many ticks)       score_food  points per food
+# ckpt_every    a `ckpt` row (the state hash) every this many logical ticks and when the game ends (the plan: 64); replay refuses a ledger whose hash differs
+# max_ticks     autoplay and the driver stop here        max_rows  hard cap on ledger rows (the engine refuses to append past it)
+# Ledger shape (inputs only, NO row per tick): turn (an input, round = the tick it applies to), eat / die / over (CONSEQUENCE rows the ticks made; replay must make the same ones), ckpt, seat.
+RULE | min_players  | 1
+RULE | max_players  | 1
+RULE | default_seed | 7
+RULE | walls        | solid
+RULE | start_len    | 3
+RULE | grow         | 1
+RULE | score_food   | 10
+RULE | ckpt_every   | 64
+RULE | max_ticks    | 20000
+RULE | max_rows     | 20000
