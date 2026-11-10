@@ -892,6 +892,19 @@ static int engine_verb(int argc, char **argv) {
     if (KIND == K_EDITOR && !strcmp(verb, "publish")) { if (live(-1, as, "publish", "", NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "published doc=%s rows=%d\n", S.pubhash, S.ndoc); return 0; }
     if (!strcmp(verb, "export") && ac == 1) return cmd_export(av[0]);
     if (!strcmp(verb, "export")) { if (KIND != K_EDITOR) { fprintf(ERRF, "export: only an editor game has a document (give an out folder to write the data tables: export <out_dir>)\n"); return 2; } if (write_doc()) { fprintf(ERRF, "export: cannot write doc.txt\n"); return 2; } fprintf(OUT, "wrote doc.txt (%d rows)\n", S.ndoc); return 0; }
+    if (!strcmp(verb, "gridpng")) {   /* snake picture: a projection of the replayed grid. Not a rule. */
+        if (ac != 1) { fprintf(ERRF, "usage: gridpng <out.ppm>\n"); return 2; }
+        if (MODE != M_SNAKE) { fprintf(ERRF, "gridpng: only MODE snake has a grid picture\n"); return 2; }
+        if (S.phase == PH_LOBBY || S.np < 1) { fprintf(ERRF, "gridpng: start the game first\n"); return 2; }
+        const int sc = 8; int w = COLS * sc, h = ROWS * sc; FILE *fp = fopen(av[0], "wb"); if (!fp) { fprintf(ERRF, "gridpng: cannot write\n"); return 2; }
+        fprintf(fp, "P6\n%d %d\n255\n", w, h);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            int cx = x / sc, cy = y / sc; unsigned char rgb[3] = { 18, 24, 28 };
+            if (cx == S.sfood_x && cy == S.sfood_y) { rgb[0] = 220; rgb[1] = 48; rgb[2] = 48; }
+            else if (on_body(cx, cy, S.slen)) { int head = (cx == S.bx[0] && cy == S.by[0]); rgb[0] = head ? 80 : 30; rgb[1] = head ? 220 : 140; rgb[2] = 60; }
+            if (fwrite(rgb, 1, 3, fp) != 3) { fclose(fp); fprintf(ERRF, "gridpng: short write\n"); return 2; }
+        }
+        fclose(fp); fprintf(OUT, "GRID cols=%d rows=%d len=%d food=%d,%d file=%s\n", COLS, ROWS, S.slen, S.sfood_x, S.sfood_y, av[0]); return 0; }
     if (!strcmp(verb, "page")) return cmd_page(ac, av);
     if (!strcmp(verb, "preview")) return cmd_preview(ac, av);
     if (!strcmp(verb, "status")) return cmd_status();
