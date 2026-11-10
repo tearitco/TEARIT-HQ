@@ -1,0 +1,472 @@
+# game_new: the GAME FOUNDATION GENERATOR (2026-11-09; owner: "harnesses for simple stuff like making new GAME FOUNDATIONS where we could just put in args"). ops/game_new_op.c + the ONE shared engine/driver/button op
+# _shared-lib/ops/game_core.c + harness/templates/game/<kind>/. BOOK 16.game/GAME-FOUNDATION-GENERATOR-HOW-TO-AGENT-GUIDE-2026-11-09.md.
+# Method: both programs are COMPILED FROM SOURCE into a scratch folder first (so the case tests the source, not an old binary), a scratch house `h` gets a copy of the templates and the freshly built engine, and everything happens there.
+# Every number pinned below was OBSERVED in a scratch run on 2026-11-09 before it was written here (seed 7, 3 players: 30 rows, 9 rounds, winner A). Nothing here touches a live folder or the live editor.
+# RULES COVERED: list; new for each kind; every refusal (existing target, name clash with @.apps, bad name, bad title, unknown kind, bad players/seed, unknown flag, a template with an undeclared / misspelt / unclosed placeholder,
+#   a declared placeholder the file does not use) writes NOTHING (SUMTREE); --dry-run writes nothing; --into skips the harness files; THE KEY ACCEPTANCE (demo-race, ledger, 3 players, seed 7): a full scripted game to a winner, replay
+#   reproduces the ledger hash, hand-edited / deleted / forged rows refused, a stray file fails the audit, deleted projections regenerate identically, the generated case passes (42) and `check` passes; the same for realtime (33) and
+#   editor (28); the REAL driver (Play) for each kind in a scratch editor; the lints on the generated tree. MUTANTS: the engine built with GC_MUT_NO_VERIFY / GC_MUT_NO_GHOST makes `check` and the generated case FAIL.
+# NOT COVERED: the live editor window (Books dropdown, Play, popup rendering): UNTESTED, see the guide's status table.
+RESULTS | ../results/game_new.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+MKDIR   | bin
+MKDIR   | mut
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -o | $T/bin/game_new_op.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/game_new_op.c
+EXPECT_EXIT | 0 | game_new_op-compiles-from-source
+EXPECT_OUT_LACKS | warning | and-without-a-warning
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -o | $T/bin/game_core.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | game_core-compiles-from-source
+EXPECT_OUT_LACKS | warning | and-without-a-warning
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_NO_VERIFY | -o | $T/mut/verify.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-mutant-with-replay-verification-off-compiles
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_NO_GHOST | -o | $T/mut/ghost.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-mutant-with-the-ghost-audit-off-compiles
+MKDIR   | h/&.widgits/_shared-lib/ops/+x
+MKDIR   | h/&.widgits/_shared-lib/harness/cases
+MKDIR   | h/&.widgits/_shared-lib/harness/results
+MKDIR   | h/@.apps/rpg-edit-hq/ops
+COPYDIR | &.widgits/_shared-lib/harness/templates | h/&.widgits/_shared-lib/harness/templates
+COPY    | @.apps/rpg-edit-hq/ops/edit_open.sh | h/@.apps/rpg-edit-hq/ops/edit_open.sh
+RUN | cp | $T/bin/game_core.+x | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x
+EXPECT_EXIT | 0 | the-scratch-house-has-the-freshly-built-engine
+
+CASE    | list
+RUN | $T/bin/game_new_op.+x | $T/h | list
+EXPECT_EXIT | 0 | list-works
+EXPECT_OUT | kind ledger: | list-names-ledger
+EXPECT_OUT | kind realtime: | list-names-realtime
+EXPECT_OUT | kind editor: | list-names-editor
+EXPECT_OUT_LACKS | _common | the-shared-folder-is-not-a-kind
+RUN | $T/bin/game_new_op.+x | $T/h
+EXPECT_EXIT | 2 | NEGATIVE-no-command-is-usage
+RUN | $T/bin/game_new_op.+x | relative/house | list
+EXPECT_EXIT | 2 | NEGATIVE-a-relative-house-is-refused
+
+CASE    | refusals-write-nothing
+SUMTREE | t0 | h/@.apps
+SUMTREE | s0 | h/&.widgits/_shared-lib/harness/cases
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo X | --kind | chess
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-kind
+EXPECT_OUT | unknown kind | and-it-says-so
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo X
+EXPECT_EXIT | 2 | NEGATIVE-the-kind-is-required
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-the-title-is-required
+RUN | $T/bin/game_new_op.+x | $T/h | new | Demo | --title | Demo | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-an-upper-case-name
+EXPECT_OUT | bad name | and-it-says-so
+RUN | $T/bin/game_new_op.+x | $T/h | new | a | --title | Demo | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-one-character-name
+RUN | $T/bin/game_new_op.+x | $T/h | new | abcdefghijklmnopqrstuvwxy | --title | Demo | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-25-character-name
+RUN | $T/bin/game_new_op.+x | $T/h | new | -bad | --title | Demo | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-name-starting-with-a-hyphen
+RUN | $T/bin/game_new_op.+x | $T/h | new | bad.name | --title | Demo | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-dot-in-the-name
+RUN | $T/bin/game_new_op.+x | $T/h | new | ../escape | --title | Demo | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-path-in-the-name
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo \p X | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-bar-in-the-title
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo {{name}} | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-brace-in-the-title
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo | --kind | ledger | --players | 5
+EXPECT_EXIT | 2 | NEGATIVE-5-players
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo | --kind | ledger | --players | 1
+EXPECT_EXIT | 2 | NEGATIVE-1-player
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo | --kind | ledger | --players | abc
+EXPECT_EXIT | 2 | NEGATIVE-players-is-not-a-number
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo | --kind | ledger | --seed | -1
+EXPECT_EXIT | 2 | NEGATIVE-a-negative-seed
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo | --kind | ledger | --colour | red
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-flag
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-x | --title | Demo | --kind | ledger | --into | relative/dir
+EXPECT_EXIT | 2 | NEGATIVE-a-relative-into
+MKDIR   | h/@.apps/taken
+WRITE   | h/@.apps/taken/x.txt | x\n
+SUMTREE | t1 | h/@.apps
+RUN | $T/bin/game_new_op.+x | $T/h | new | taken | --title | Taken | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-name-that-is-already-an-apps-folder
+EXPECT_OUT | already exists in @.apps | and-it-says-so
+RUN | rm | -r | $T/h/@.apps/taken
+SUMTREE | t2 | h/@.apps
+EXPECT_EQ | $t0 | $t2 | NOTHING-WAS-WRITTEN-by-any-of-the-18-refusals-the-apps-tree-hash-is-unchanged
+SUMTREE | s1 | h/&.widgits/_shared-lib/harness/cases
+EXPECT_EQ | $s0 | $s1 | and-no-harness-case-file-either
+EXPECT_NE | $t0 | $t1 | vacuity-the-hash-DOES-change-when-a-folder-is-added
+
+CASE    | dry-run
+RUN | $T/bin/game_new_op.+x | $T/h | new | dry-x | --title | Dry X | --kind | ledger | --dry-run
+EXPECT_EXIT | 0 | dry-run-succeeds
+EXPECT_OUT | DRY-RUN: dry-x (ledger) would write 21 files | it-lists-the-21-files
+EXPECT_OUT | would create | and-names-them
+EXPECT_OUT | /dry-x/game.pdl | including-game.pdl
+RUN | $T/bin/game_new_op.+x | $T/h | new | dry-x | --title | Dry X | --kind | ledger | --dry-run
+EXPECT_OUT | /harness/cases/dry-x.pdl | and-the-harness-case
+EXPECT_NOFILE | $T/h/@.apps/dry-x | NOTHING-WAS-WRITTEN-no-app-folder
+SUMTREE | t3 | h/@.apps
+EXPECT_EQ | $t0 | $t3 | and-the-apps-tree-hash-is-unchanged
+
+CASE    | bad-templates-are-refused
+MKDIR   | h2/&.widgits/_shared-lib/harness
+RUN | cp | -r | $T/h/&.widgits/_shared-lib/harness/templates | $T/h2/&.widgits/_shared-lib/harness/templates
+MKDIR   | h2/@.apps
+SUMTREE | u0 | h2/@.apps
+RUN | sed | -i | s/{{name}}/{{nmae}}/ | $T/h2/&.widgits/_shared-lib/harness/templates/game/ledger/verbs.pdl
+RUN | $T/bin/game_new_op.+x | $T/h2 | new | tpl-a | --title | Tpl A | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-misspelt-placeholder-is-refused
+EXPECT_OUT | unknown placeholder {{nmae}} | and-it-is-named
+RUN | cp | $T/h/&.widgits/_shared-lib/harness/templates/game/ledger/verbs.pdl | $T/h2/&.widgits/_shared-lib/harness/templates/game/ledger/verbs.pdl
+RUN | sed | -i | s/{{Title}}/{{Title}/ | $T/h2/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl
+RUN | $T/bin/game_new_op.+x | $T/h2 | new | tpl-a | --title | Tpl A | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-an-unclosed-placeholder-is-refused
+EXPECT_OUT | unclosed placeholder | and-it-is-named
+RUN | cp | $T/h/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl | $T/h2/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl
+RUN | sed | -i | s/{{Title}}/{{Title}} {{seed}}/ | $T/h2/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl
+RUN | $T/bin/game_new_op.+x | $T/h2 | new | tpl-a | --title | Tpl A | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-placeholder-the-MANIFEST-row-does-not-declare-is-refused
+EXPECT_OUT | declares [Title] | and-the-contract-is-named
+RUN | cp | $T/h/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl | $T/h2/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl
+RUN | sed | -i | s/{{Title}}/the title/ | $T/h2/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl
+RUN | $T/bin/game_new_op.+x | $T/h2 | new | tpl-a | --title | Tpl A | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-declared-placeholder-the-file-does-not-use-is-refused
+RUN | cp | $T/h/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl | $T/h2/&.widgits/_shared-lib/harness/templates/game/_common/layouts.pdl
+RUN | rm | $T/h2/&.widgits/_shared-lib/harness/templates/game/ledger/rules.pdl
+RUN | $T/bin/game_new_op.+x | $T/h2 | new | tpl-a | --title | Tpl A | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-a-template-file-that-is-missing-is-refused
+SUMTREE | u1 | h2/@.apps
+EXPECT_EQ | $u0 | $u1 | NOTHING-WAS-WRITTEN-by-the-5-bad-templates
+RUN | cp | $T/h/&.widgits/_shared-lib/harness/templates/game/ledger/rules.pdl | $T/h2/&.widgits/_shared-lib/harness/templates/game/ledger/rules.pdl
+RUN | $T/bin/game_new_op.+x | $T/h2 | new | tpl-a | --title | Tpl A | --kind | ledger
+EXPECT_EXIT | 0 | CONTROL-the-restored-templates-generate-fine-so-each-refusal-above-was-the-defect
+
+CASE    | key-acceptance-ledger
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-race | --title | Demo Race | --kind | ledger | --players | 3 | --seed | 7
+EXPECT_EXIT | 0 | THE-KEY-ACCEPTANCE-demo-race-is-generated
+EXPECT_OUT | created demo-race (ledger) | and-says-what
+EXPECT_OUT | 21 files | 21-files
+EXPECT_OUT | NOTE the new book appears in the editor's Books dropdown | and-says-how-the-book-gets-onto-Play
+EXPECT_OUT | README row | and-hands-over-the-README-row
+EXPECT_EXISTS | $T/h/@.apps/demo-race/game.pdl | game.pdl
+EXPECT_EXISTS | $T/h/@.apps/demo-race/state.pdl | state.pdl
+EXPECT_EXISTS | $T/h/@.apps/demo-race/rulesets/default/board.pdl | the-empty-ruleset-folder-with-a-board.pdl
+EXPECT_EXISTS | $T/h/@.apps/demo-race/demo-race-pchq/pieces/system/maps/demo-race/game.pdl | the-pchq-book-package
+EXPECT_EXISTS | $T/h/@.apps/demo-race/demo-race-pchq/pieces/system/maps/demo-race/board/cells.rgba | and-its-atlas
+EXPECT_EXISTS | $T/h/@.apps/demo-race/tests/demo-race-drive.pdl | the-drive-script
+EXPECT_EXISTS | $T/h/&.widgits/_shared-lib/harness/cases/demo-race.pdl | the-harness-case
+EXPECT_EXISTS | $T/h/&.widgits/_shared-lib/harness/demo-race.pal | and-the-pal
+EXPECT_HAS | $T/h/@.apps/demo-race/game.pdl | GAME   \p title       \p Demo Race | the-title-reaches-game.pdl
+EXPECT_HAS | $T/h/@.apps/demo-race/game.pdl | game_core.+x driver {house} {book} {editor} | the-driver-row-is-the-shared-binary-with-the-editor-tokens
+EXPECT_HAS | $T/h/@.apps/demo-race/rulesets/default/rules.pdl | max_players  \p 3 | --players-reaches-the-rules
+EXPECT_HAS | $T/h/@.apps/demo-race/rulesets/default/rules.pdl | default_seed \p 7 | --seed-reaches-the-rules
+RUN | grep | -rIl | [{][{] | $T/h/@.apps/demo-race | $T/h/&.widgits/_shared-lib/harness/cases/demo-race.pdl
+EXPECT_EXIT | 1 | no-placeholder-is-left-anywhere-in-the-output
+RUN | find | $T/h/@.apps/demo-race | -name | *.c
+EXPECT_OUT_IS |  | THE-GENERATED-APP-HAS-NO-C-of-its-own
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-race | --title | Demo Race | --kind | ledger
+EXPECT_EXIT | 2 | NEGATIVE-the-same-name-again-is-refused
+EXPECT_OUT | already exists | and-says-why
+MKDIR   | g
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | join | C
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | join | D
+EXPECT_EXIT | 2 | NEGATIVE-a-4th-seat-at-a-3-player-table
+EXPECT_OUT | table is full (3 players) | and-it-says-3
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=30 rounds=9 over=1 winner=A | A-FULL-GAME-PLAYS-TO-A-WINNER-30-rows-9-rounds-winner-A-seed-7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | replay
+EXPECT_OUT_IS | REPLAY events=30 hash=c69a00ab222f3bf2 | REPLAY-REPRODUCES-the-pinned-state-hash
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | ledger_hash
+EXPECT_OUT_IS | LEDGER events=30 hash=e974d60c99abbe34 | and-the-pinned-LEDGER-hash
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | check
+EXPECT_OUT_IS | CHECK ok events=30 | check-passes
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | help
+EXPECT_OUT | roll | help-comes-from-verbs.pdl
+EXPECT_OUT | autoplay | and-lists-the-verbs
+MKDIR   | c
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 9s/\proll\p4\p/\proll\p3\p/ | $T/c/ledger.txt
+RUN | cmp | $T/g/ledger.txt | $T/c/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-hand-edit-changed-the-file
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-A-HAND-EDITED-ROW-IS-REFUSED
+EXPECT_OUT_IS | ledger line 9: target is 3, the rules say 4 | and-names-row-9
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/c | roll
+EXPECT_EXIT | 1 | NEGATIVE-any-verb-on-a-tampered-ledger-is-refused-too
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 8d | $T/c/ledger.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/c | check
+EXPECT_EXIT | 1 | NEGATIVE-a-deleted-row-is-refused
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | s/\pnew\p7\p/\pnew\p8\p/ | $T/c/ledger.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-changed-seed-is-refused
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | s/kind=ledger/kind=ledgex/ | $T/c/ledger.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-row-1-that-names-another-kind-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | ui
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | audit
+EXPECT_OUT_IS | AUDIT ok files=2 declared=2 | the-audit-passes
+RUN | cp | $T/g/ui.txt | $T/g/ui.keep
+RUN | rm | $T/g/ui.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | ui
+RUN | cmp | $T/g/ui.txt | $T/g/ui.keep
+EXPECT_EXIT | 0 | DELETED-PROJECTIONS-REGENERATE-IDENTICALLY
+RUN | rm | $T/g/ui.keep
+WRITE   | g/stray.txt | nobody declared me
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | audit
+EXPECT_EXIT | 1 | NEGATIVE-AN-UNDECLARED-STRAY-FILE-FAILS-THE-AUDIT
+EXPECT_OUT | ghost file stray.txt | and-is-named
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/g | replay
+EXPECT_OUT_IS | REPLAY events=30 hash=c69a00ab222f3bf2 | the-stray-file-changes-nothing-about-the-game
+RUN | rm | $T/g/stray.txt
+
+CASE    | generated-case-and-check
+MKDIR   | h/&.widgits/_shared-lib/harness/results
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | $T/h/&.widgits/_shared-lib/harness/cases/demo-race.pdl | $T/h
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | $T/h/&.widgits/_shared-lib/harness/cases/demo-race.pdl
+EXPECT_OUT | VERDICT\pPASS\ppassed=42\pfailed=0 | THE-GENERATED-LEDGER-CASE-PASSES-42-of-42
+RUN | $T/bin/game_new_op.+x | $T/h | check | demo-race
+EXPECT_EXIT | 0 | check-passes
+EXPECT_OUT | checks=11 pass=11 fail=0 | all-11-checks
+EXPECT_OUT | PASS openable | THE-EDITORS-OWN-edit_open.sh-OPENS-demo-race:board
+EXPECT_OUT | PASS tamper | check-proves-a-tampered-ledger-is-refused
+EXPECT_OUT | PASS audit | and-a-stray-file-fails
+RUN | $T/bin/game_new_op.+x | $T/h | check | nosuchgame
+EXPECT_EXIT | 2 | NEGATIVE-check-of-a-missing-app
+RUN | $T/bin/game_new_op.+x | $T/h | new | broken-a | --title | Broken A | --kind | editor
+RUN | rm | $T/h/@.apps/broken-a/rulesets/default/rules.pdl
+RUN | $T/bin/game_new_op.+x | $T/h | check | broken-a
+EXPECT_EXIT | 1 | NEGATIVE-check-fails-on-an-app-with-a-missing-file
+EXPECT_OUT | FAIL files missing rulesets/default/rules.pdl | and-names-it
+RUN | $T/bin/game_new_op.+x | $T/h | new | broken-b | --title | Broken B | --kind | ledger
+RUN | sed | -i | s/GAME   \p driver  /GAME   \p drivex  / | $T/h/@.apps/broken-b/game.pdl
+RUN | $T/bin/game_new_op.+x | $T/h | check | broken-b
+EXPECT_EXIT | 1 | NEGATIVE-check-fails-when-game.pdl-has-no-driver-row
+RUN | sed | -i | s/pm-play/pm-plax/ | $T/h/@.apps/demo-race/tests/demo-race-play.pdl
+RUN | $T/bin/game_new_op.+x | $T/h | check | demo-race
+EXPECT_EXIT | 0 | CONTROL-check-does-not-care-about-the-step-scripts-it-cannot-run
+
+CASE    | mutants-are-caught
+MKDIR   | m1/&.widgits/_shared-lib/ops/+x
+MKDIR   | m1/&.widgits/_shared-lib/harness/cases
+MKDIR   | m1/&.widgits/_shared-lib/harness/results
+MKDIR   | m1/@.apps
+COPYDIR | &.widgits/_shared-lib/harness/templates | m1/&.widgits/_shared-lib/harness/templates
+RUN | cp | $T/mut/verify.+x | $T/m1/&.widgits/_shared-lib/ops/+x/game_core.+x
+RUN | $T/bin/game_new_op.+x | $T/m1 | new | mut-a | --title | Mut A | --kind | ledger
+RUN | $T/bin/game_new_op.+x | $T/m1 | check | mut-a
+EXPECT_EXIT | 1 | NEGATIVE-check-FAILS-against-an-engine-that-trusts-the-recorded-row
+EXPECT_OUT | FAIL tamper | because-the-tamper-was-not-refused
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | $T/m1/&.widgits/_shared-lib/harness/cases/mut-a.pdl | $T/m1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | $T/m1/&.widgits/_shared-lib/harness/cases/mut-a.pdl
+EXPECT_OUT | VERDICT\pFAIL | and-the-generated-case-is-RED-too
+MKDIR   | m2/&.widgits/_shared-lib/ops/+x
+MKDIR   | m2/@.apps
+COPYDIR | &.widgits/_shared-lib/harness/templates | m2/&.widgits/_shared-lib/harness/templates
+RUN | cp | $T/mut/ghost.+x | $T/m2/&.widgits/_shared-lib/ops/+x/game_core.+x
+RUN | $T/bin/game_new_op.+x | $T/m2 | new | mut-b | --title | Mut B | --kind | editor
+RUN | $T/bin/game_new_op.+x | $T/m2 | check | mut-b
+EXPECT_EXIT | 1 | NEGATIVE-check-FAILS-against-an-engine-whose-audit-ignores-ghosts
+EXPECT_OUT | FAIL audit | because-the-stray-file-passed
+MKDIR   | m3/&.widgits/_shared-lib/ops/+x
+MKDIR   | m3/@.apps
+COPYDIR | &.widgits/_shared-lib/harness/templates | m3/&.widgits/_shared-lib/harness/templates
+RUN | $T/bin/game_new_op.+x | $T/m3 | new | mut-c | --title | Mut C | --kind | ledger
+RUN | $T/bin/game_new_op.+x | $T/m3 | check | mut-c
+EXPECT_EXIT | 1 | NEGATIVE-check-FAILS-when-the-shared-engine-is-not-built
+EXPECT_OUT | FAIL driver | and-names-the-driver-row
+
+CASE    | realtime-and-editor
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-rt | --title | Demo RT | --kind | realtime | --players | 3 | --seed | 7
+EXPECT_EXIT | 0 | realtime-is-generated
+MKDIR   | rt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | join | C
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=37 ticks=58 over=1 winner=A | A-REAL-TIME-GAME-PLAYS-TO-A-WINNER-37-rows-58-ticks-winner-A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/rt | replay
+EXPECT_OUT_IS | REPLAY events=37 hash=4c1b7ddfde31a166 | the-inputs-only-ledger-replays-to-the-pinned-hash
+RUN | grep | -c | -F | \pckpt\p | $T/rt/ledger.txt
+EXPECT_OUT_IS | 6 | 6-ckpt-rows-5-at-multiples-of-10-and-one-when-the-game-ends
+RUN | grep | -c | -F | \pinput\p | $T/rt/ledger.txt
+EXPECT_OUT_IS | 26 | and-26-input-rows-the-ticks-between-them-are-implied-by-the-step-function
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | $T/h/&.widgits/_shared-lib/harness/cases/demo-rt.pdl | $T/h
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | $T/h/&.widgits/_shared-lib/harness/cases/demo-rt.pdl
+EXPECT_OUT | VERDICT\pPASS\ppassed=33\pfailed=0 | THE-GENERATED-REALTIME-CASE-PASSES-33-of-33
+RUN | $T/bin/game_new_op.+x | $T/h | check | demo-rt
+EXPECT_EXIT | 0 | realtime-check-passes
+RUN | $T/bin/game_new_op.+x | $T/h | new | demo-doc | --title | Demo Doc | --kind | editor
+EXPECT_EXIT | 0 | editor-is-generated
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | $T/h/&.widgits/_shared-lib/harness/cases/demo-doc.pdl | $T/h
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | $T/h/&.widgits/_shared-lib/harness/cases/demo-doc.pdl
+EXPECT_OUT | VERDICT\pPASS\ppassed=28\pfailed=0 | THE-GENERATED-EDITOR-CASE-PASSES-28-of-28
+RUN | $T/bin/game_new_op.+x | $T/h | check | demo-doc
+EXPECT_EXIT | 0 | editor-check-passes
+RUN | $T/bin/game_new_op.+x | $T/h | new | into-x | --title | Into X | --kind | ledger | --into | $T/out
+EXPECT_EXIT | 0 | --into-generates-under-the-given-folder
+EXPECT_EXISTS | $T/out/into-x/game.pdl | the-app-is-in-the-given-folder
+EXPECT_NOFILE | $T/h/&.widgits/_shared-lib/harness/cases/into-x.pdl | and-the-harness-case-was-NOT-written-it-names-HOUSE/@.apps/into-x
+RUN | $T/bin/game_new_op.+x | $T/h | new | into-x | --title | Into X | --kind | ledger | --into | $T/out
+EXPECT_EXIT | 2 | NEGATIVE-into-an-existing-target
+
+CASE    | the-real-driver-ledger
+MKDIR   | edit/state/world
+WRITE   | edit/state/world/switches.txt | running=0\n
+SPAWN   | OWN | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN
+SPAWN   | DRV | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h | $T/h/@.apps/demo-race | $T/edit
+WAIT_HAS | edit/state/game_ui.txt | gm_on=1 | 8000 | the-setup-screen-is-published-within-8-s
+EXPECT_ALIVE | $DRV | the-driver-stays-up-while-its-owner-lives
+EXPECT_HAS | $T/edit/state/game_ui.txt | gm_title=Demo Race | the-feed-carries-the-title
+EXPECT_HAS | $T/edit/state/game_ui.txt | Choose the players, then START | the-setup-says-what-to-do
+EXPECT_HAS | $T/edit/state/game_ui.txt | 3 players, seed 7 | the-table-starts-full-from---players
+EXPECT_HAS | $T/edit/state/game_ui.txt | gmb_5_label=START GAME | and-offers-START
+EXPECT_HAS | $T/edit/state/game_ui.txt | gm_pid= | and-the-pid-the-editors-watchdog-checks
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h | $T/h/@.apps/demo-race | $T/edit
+EXPECT_EXIT | 0 | NEGATIVE-a-second-driver-for-the-same-editor-just-leaves
+EXPECT_OUT | already running | and-says-why
+EXPECT_NOFILE | $T/edit/state/games/demo-race/game/ledger.txt | SETUP-IS-A-PREFERENCE-no-ledger-exists-before-START
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | players_down | $T/edit/state/games/demo-race | 10 | 20
+WAIT_HAS | edit/state/game_ui.txt | 2 players, seed 7 | 4000 | players-minus-changes-the-setup-text-extra-arguments-are-ignored-like-the-renderers-click-position
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | speed_next | $T/edit/state/games/demo-race
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | speed_next | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/game_ui.txt | speed: fast | 4000 | speed-is-a-preference-fast
+EXPECT_NOFILE | $T/edit/state/games/demo-race/game/ledger.txt | and-still-no-ledger
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/games/demo-race/game/ledger.txt | bank\pstart | 8000 | START-writes-the-opening-rows
+RUN | grep | -c | ^ | $T/edit/state/games/demo-race/game/ledger.txt
+EXPECT_OUT_IS | 4 | new-plus-2-joins-plus-start-is-4-rows
+WAIT_HAS | edit/state/game_ui.txt | STOPPED | 4000 | the-bar-says-STOPPED-while-the-switch-is-0
+SLEEP   | 1500
+RUN | grep | -c | ^ | $T/edit/state/games/demo-race/game/ledger.txt
+EXPECT_OUT_IS | 4 | PAUSE-FREEZES-the-ledger-stays-at-4-rows-with-the-switch-at-0
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | step | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/games/demo-race/game/ledger.txt | p1\proll | 4000 | STEP-is-one-roll
+SLEEP   | 700
+RUN | grep | -c | ^ | $T/edit/state/games/demo-race/game/ledger.txt
+EXPECT_OUT_IS | 5 | and-exactly-one-row
+WRITE   | edit/state/world/switches.txt | running=1\n
+WAIT_HAS | edit/state/game_ui.txt | the game is over | 20000 | PLAY-runs-the-game-to-the-end-within-20-s
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/edit/state/games/demo-race/game | check
+EXPECT_OUT | CHECK ok | THE-LEDGER-THE-REAL-DRIVER-WROTE-REPLAYS
+EXPECT_HAS | $T/edit/state/games/demo-race/game/ledger.txt | ;win | and-has-a-winning-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/edit/state/games/demo-race/game | audit
+EXPECT_OUT | AUDIT ok files=2 | and-the-state-folder-passes-the-audit-ledger-and-ui-only
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | new_game | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/game_ui.txt | the last game is in archive | 4000 | NEW-GAME-archives-it
+EXPECT_EXISTS | $T/edit/state/games/demo-race/archive | the-archive-folder-exists
+EXPECT_NOFILE | $T/edit/state/games/demo-race/game/ledger.txt | and-the-ledger-is-gone
+WRITE   | edit/state/world/switches.txt | running=0\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | human_next | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/game_ui.txt | you play: p1 | 4000 | a-human-seat-is-chosen-in-the-setup
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/games/demo-race/game/ledger.txt | driver=human | 8000 | the-human-seat-is-a-ledger-fact
+WRITE   | edit/state/world/switches.txt | running=1\n
+WAIT_HAS | edit/state/game_ui.txt | your turn, A | 8000 | the-popup-waits-for-the-human
+EXPECT_HAS | $T/edit/state/game_ui.txt | gmb_0_label=Roll | and-offers-Roll
+SLEEP   | 1200
+RUN | grep | -c | ^ | $T/edit/state/games/demo-race/game/ledger.txt
+EXPECT_OUT_IS | 4 | A-HUMAN'S-TURN-COSTS-NOTHING-no-row-is-written-while-the-game-waits
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | roll | $T/edit/state/games/demo-race
+WAIT_HAS | edit/state/games/demo-race/game/ledger.txt | p2\proll | 8000 | after-Roll-the-pet-seat-plays-by-itself
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/edit/state/games/demo-race/game | check
+EXPECT_OUT | CHECK ok | and-the-ledger-with-a-human-seat-replays
+RUN | /usr/bin/kill | $OWN
+SLEEP   | 300
+EXPECT_DEAD | $OWN | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRV | THE-OWNER-DYING-ENDS-THE-DRIVER
+EXPECT_FILE | $T/edit/state/game_ui.txt | gm_on=\n | and-the-feed-is-cleared-to-exactly-gm_on=
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h
+EXPECT_EXIT | 2 | NEGATIVE-driver-usage
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h | $T/h/@.apps/demo-race | $T/nowhere
+EXPECT_EXIT | 1 | NEGATIVE-an-editor-folder-that-does-not-exist
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h | $T/h/@.apps/nosuchbook | $T/edit
+EXPECT_EXIT | 1 | NEGATIVE-a-book-without-game.pdl
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | bad command | $T/edit/state/games/demo-race
+EXPECT_EXIT | 2 | NEGATIVE-ctl-refuses-a-command-with-a-space
+CASE    | the-real-driver-realtime-and-editor
+MKDIR   | edit2/state/world
+MKDIR   | edit3/state/world
+WRITE   | edit2/state/world/switches.txt | running=0\n
+WRITE   | edit3/state/world/switches.txt | running=1\n
+SPAWN   | OWN2 | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN2
+SPAWN   | DRV2 | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h | $T/h/@.apps/demo-rt | $T/edit2
+WAIT_HAS | edit2/state/game_ui.txt | gm_on=1 | 8000 | the-realtime-setup-is-published
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | human_next | $T/edit2/state/games/demo-rt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | start | $T/edit2/state/games/demo-rt
+WAIT_HAS | edit2/state/games/demo-rt/game/ledger.txt | bank\pstart | 8000 | realtime-START
+WAIT_HAS | edit2/state/game_ui.txt | gmb_0_label=Left | 4000 | the-steering-buttons-are-offered-to-the-human
+WRITE   | edit2/state/world/switches.txt | running=1\n
+WAIT_HAS | edit2/state/games/demo-rt/game/ledger.txt | bank\pckpt\p | 8000 | LOGICAL-TICKS-run-and-a-ckpt-row-pins-the-state
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | right | $T/edit2/state/games/demo-rt
+WAIT_HAS | edit2/state/games/demo-rt/game/ledger.txt | p1\pinput\pright | 8000 | a-button-press-is-an-INPUT-row
+WRITE   | edit2/state/world/switches.txt | running=0\n
+SLEEP   | 700
+RUN | grep | -c | ^ | $T/edit2/state/games/demo-rt/game/ledger.txt
+CAPTURE | n1
+SLEEP   | 1200
+RUN | grep | -c | ^ | $T/edit2/state/games/demo-rt/game/ledger.txt
+EXPECT_OUT_IS | $n1 | PAUSE-WRITES-NO-ROW-the-ledger-does-not-grow-with-the-switch-at-0
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-rt | $T/edit2/state/games/demo-rt/game | replay
+EXPECT_OUT | REPLAY events= | THE-LIVE-INPUTS-ONLY-LEDGER-REPLAYS-after-the-real-driver-wrote-it
+RUN | /usr/bin/kill | $OWN2
+SLEEP   | 300
+EXPECT_DEAD | $OWN2 | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRV2 | the-realtime-driver-ends-with-its-owner
+SPAWN   | OWN3 | /usr/bin/sleep | 600
+ENV     | GAME_OWNER_PID | $OWN3
+SPAWN   | DRV3 | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/h | $T/h/@.apps/demo-doc | $T/edit3
+WAIT_HAS | edit3/state/games/demo-doc/game/ledger.txt | bank\pnew | 8000 | the-editor-kind-opens-its-document-by-itself
+WAIT_HAS | edit3/state/game_ui.txt | gmb_0_label=add start | 4000 | the-bar-offers-the-edit-buttons
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | add_start | $T/edit3/state/games/demo-doc
+WAIT_HAS | edit3/state/games/demo-doc/game/ledger.txt | author\padd\pstart | 8000 | an-EDIT-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | publish | $T/edit3/state/games/demo-doc
+WAIT_HAS | edit3/state/game_ui.txt | publish refused | 8000 | THE-PUBLISH-RULE-refuses-a-document-without-a-goal
+EXPECT_LACKS | $T/edit3/state/games/demo-doc/game/ledger.txt | \ppublish\p | and-writes-no-publish-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | add_goal | $T/edit3/state/games/demo-doc
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | publish | $T/edit3/state/games/demo-doc
+WAIT_HAS | edit3/state/game_ui.txt | , published, | 8000 | and-publishes-once-start-and-goal-exist
+EXPECT_HAS | $T/edit3/state/games/demo-doc/game/doc.txt | ROW\pgoal\p | the-doc.txt-projection-is-written
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-doc | $T/edit3/state/games/demo-doc/game | audit
+EXPECT_OUT | AUDIT ok files=3 | the-editor-state-folder-passes-the-audit
+RUN | /usr/bin/kill | $OWN3
+SLEEP   | 300
+EXPECT_DEAD | $OWN3 | the-fake-owner-is-gone-and-reaped
+SLEEP   | 1500
+EXPECT_DEAD | $DRV3 | the-editor-driver-ends-with-its-owner
+CLEAN   |
+
+CASE    | lints-on-the-generated-tree
+SCRATCH |
+MKDIR   | l/&.widgits/_shared-lib/ops
+COPY    | &.widgits/_shared-lib/ops/game_core.c | l/&.widgits/_shared-lib/ops/game_core.c
+COPYDIR | &.widgits/_shared-lib/harness/templates | l/&.widgits/_shared-lib/harness/templates
+WRITE   | baseline.txt | # empty baseline: any hit is new\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/cpu_lint.+x | $T/l | $T/baseline.txt
+EXPECT_EXIT | 0 | cpu_lint-finds-NOTHING-in-game_core.c
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/spawn_lint.+x | $T/l | $T/baseline.txt
+EXPECT_EXIT | 0 | spawn_lint-finds-NOTHING-in-game_core.c
+WRITE   | l/&.widgits/_shared-lib/ops/bad_loop.c | #include <unistd.h>\nint main(void) { for (;;) { usleep(1000); } }\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/cpu_lint.+x | $T/l | $T/baseline.txt
+EXPECT_EXIT | 3 | NEGATIVE-cpu_lint-DOES-flag-a-1-ms-poll-so-the-clean-run-above-meant-something
+WRITE   | l/&.widgits/_shared-lib/ops/bad_loop.c | #include <unistd.h>\nint main(void) { setsid(); return 0; }\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/spawn_lint.+x | $T/l | $T/baseline.txt
+EXPECT_EXIT | 3 | NEGATIVE-spawn_lint-DOES-flag-a-bare-setsid
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/game_new_op.+x | $T/l | list
+EXPECT_EXIT | 0 | list-works-on-the-copy
+RUN | find | $T/l | -name | *.py
+EXPECT_OUT_IS |  | NO-PYTHON-anywhere-in-the-engine-or-the-templates
+CLEAN   |

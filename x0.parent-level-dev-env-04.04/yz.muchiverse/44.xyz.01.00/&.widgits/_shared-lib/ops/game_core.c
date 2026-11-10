@@ -367,7 +367,9 @@ static int verb_here(int argc, char **argv, char *out, size_t cap) {
     int rc = engine_verb(argc, argv); fflush(o); fflush(e); OUT = so; ERRF = se; fclose(o); fclose(e);
     snprintf(out, cap, "%s", (ob && ob[0]) ? ob : (eb ? eb : "")); char *nl = strpbrk(out, "\r\n"); if (nl) *nl = 0; free(ob); free(eb); return rc;
 }
+static int sync_state(void);
 static int reload(void) { if (load()) { snprintf(dmsg, sizeof dmsg, "ledger refused: %.180s", MSG); return 1; } return 0; }
+static int sync_state(void) { struct stat ls; if (S.phase != PH_NONE && !stat(LEDGER, &ls) && ls.st_size == KNOWN_SIZE) return 0; return reload(); }   /* reload only when the file is not what this process last wrote: a button press must not rewind the ticks since the last ckpt */
 static void begin_game(void) {
     char out[300], sd[16]; archive_game(); mkdir_p(SD); snprintf(sd, sizeof sd, "%ld", seed_pref); char *n1[] = { (char *)"new", sd };
     if (verb_here(2, n1, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "new refused: %.180s", out); return; }
@@ -376,7 +378,7 @@ static void begin_game(void) {
     mode_play = 1; reload(); write_ui(); snprintf(dmsg, sizeof dmsg, "game started: %d players, seed %ld%s", nplayers, seed_pref, human_seat ? ", you are a seat at the table" : ", all pets");
 }
 static void human_live(const char *verb, const char *target, const char *arg2, const char *actor) {
-    if (reload()) return; if (live(-1, actor, verb, target, arg2, NULL)) snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); else snprintf(dmsg, sizeof dmsg, "you: %s %s", verb, target ? target : ""); write_ui(); if (KIND == K_EDITOR) write_doc();
+    if (sync_state()) return; if (live(-1, actor, verb, target, arg2, NULL)) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "you: %s %s", verb, target ? target : ""); write_ui(); if (KIND == K_EDITOR) write_doc();
 }
 static void handle(const char *c) {
     char out[300];
@@ -385,15 +387,15 @@ static void handle(const char *c) {
     else if (!strcmp(c, "human_next")) { if (!mode_play) human_seat = (human_seat + 1) % (nplayers + 1); }
     else if (!strcmp(c, "seed_next")) { if (!mode_play) seed_pref = seed_pref * 31 % 9973 + 7; }
     else if (!strcmp(c, "speed_next")) speed = (speed + 1) % 3;
-    else if (!strcmp(c, "setup_reset")) { if (!mode_play) { nplayers = 3; human_seat = 0; seed_pref = R_seed; speed = 1; snprintf(dmsg, sizeof dmsg, "Choose the players, then START"); } }
+    else if (!strcmp(c, "setup_reset")) { if (!mode_play) { nplayers = (int)R_maxp; human_seat = 0; seed_pref = R_seed; speed = 1; snprintf(dmsg, sizeof dmsg, "Choose the players, then START"); } }
     else if (!strcmp(c, "start")) { if (!mode_play && KIND != K_EDITOR) begin_game(); }
-    else if (!strcmp(c, "step")) { if (mode_play && !running() && KIND != K_EDITOR) { if (!reload()) { int did; if (do_tick(&did)) snprintf(dmsg, sizeof dmsg, "stuck: %.180s", MSG); else snprintf(dmsg, sizeof dmsg, "stepped"); write_ui(); } } }
+    else if (!strcmp(c, "step")) { if (mode_play && !running() && KIND != K_EDITOR) { if (!sync_state()) { int did; if (do_tick(&did)) snprintf(dmsg, sizeof dmsg, "stuck: %.180s", MSG); else snprintf(dmsg, sizeof dmsg, "stepped"); write_ui(); } } }
     else if (!strcmp(c, "new_game")) { if (mode_play && KIND != K_EDITOR) { archive_game(); mode_play = 0; memset(&S, 0, sizeof S); S.winner = -1; snprintf(dmsg, sizeof dmsg, "the last game is in archive/; choose the players, then START"); } }
-    else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!reload()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
-    else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay"))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!reload()) human_live("input", c, NULL, a); } }
-    else if (KIND == K_EDITOR && !strncmp(c, "add_", 4)) { char id[32]; snprintf(id, sizeof id, "%s", c + 4); if (!reload()) { int ix = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) ix = 1; if (!strcmp(id, "item")) { snprintf(id, sizeof id, "item%d", S.ndoc + 1); ix = 0; } char tx[80]; snprintf(tx, sizeof tx, "%s (added from the bar)", id); human_live(ix ? "set" : "add", id, tx, "author"); } }
-    else if (KIND == K_EDITOR && !strcmp(c, "remove_last")) { if (!reload()) { if (S.ndoc) { char id[32]; snprintf(id, sizeof id, "%s", S.did[S.ndoc - 1]); human_live("del", id, NULL, "author"); } else snprintf(dmsg, sizeof dmsg, "the document is empty"); } }
-    else if (KIND == K_EDITOR && !strcmp(c, "publish")) { if (!reload()) human_live("publish", "", NULL, "author"); }
+    else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!sync_state()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
+    else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay"))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
+    else if (KIND == K_EDITOR && !strncmp(c, "add_", 4)) { char id[32]; snprintf(id, sizeof id, "%s", c + 4); if (!sync_state()) { int ix = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) ix = 1; if (!strcmp(id, "item")) { snprintf(id, sizeof id, "item%d", S.ndoc + 1); ix = 0; } char tx[80]; snprintf(tx, sizeof tx, "%s (added from the bar)", id); human_live(ix ? "set" : "add", id, tx, "author"); } }
+    else if (KIND == K_EDITOR && !strcmp(c, "remove_last")) { if (!sync_state()) { if (S.ndoc) { char id[32]; snprintf(id, sizeof id, "%s", S.did[S.ndoc - 1]); human_live("del", id, NULL, "author"); } else snprintf(dmsg, sizeof dmsg, "the document is empty"); } }
+    else if (KIND == K_EDITOR && !strcmp(c, "publish")) { if (!sync_state()) human_live("publish", "", NULL, "author"); }
     else if (!strcmp(c, "refresh")) { reload(); }
     else snprintf(dmsg, sizeof dmsg, "unknown command %.40s", c);
     (void)out; dirty = 1;
@@ -429,7 +431,7 @@ static int driver_main(int argc, char **argv) {
     snprintf(APP, sizeof APP, "%s", BOOK); { ssize_t k = readlink("/proc/self/exe", SELF, sizeof SELF - 1); if (k > 0) SELF[k] = 0; else snprintf(SELF, sizeof SELF, "%s", argv[0]); }
     snprintf(GDIR, sizeof GDIR, "%s/state/games/%s", EDIT, NAME); snprintf(SD, sizeof SD, "%s/game", GDIR); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", SD); snprintf(ARCH, sizeof ARCH, "%s/archive", GDIR);
     snprintf(FEED, sizeof FEED, "%s/state/game_ui.txt", EDIT); snprintf(ACT, sizeof ACT, "%s/action.txt", GDIR); snprintf(SW, sizeof SW, "%s/state/world/switches.txt", EDIT);
-    OUT = stdout; ERRF = stderr; if (load_config()) { fprintf(stderr, "game_core driver: %s\n", MSG); return 1; } seed_pref = R_seed; if (nplayers > R_maxp) nplayers = (int)R_maxp;
+    OUT = stdout; ERRF = stderr; if (load_config()) { fprintf(stderr, "game_core driver: %s\n", MSG); return 1; } seed_pref = R_seed; nplayers = (int)R_maxp;   /* the setup screen starts with the table full: --players N at generation time */
     { char d[P]; snprintf(d, sizeof d, "%s/state/games", EDIT); mkdir(d, 0755); mkdir(GDIR, 0755); }
     { const char *ow = getenv("GAME_OWNER_PID"); OWNER = ow ? atol(ow) : 0; }
     char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644);

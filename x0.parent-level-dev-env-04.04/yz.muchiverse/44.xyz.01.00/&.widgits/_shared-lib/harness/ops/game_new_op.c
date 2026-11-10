@@ -187,7 +187,7 @@ static int cmd_check(int argc, char **argv) {
         if (ok) { res(1, "engine", "a scripted %s game ran: new ... %s ... check replay audit all exit 0 (%.60s)", kind, ed ? "add publish export" : "join start autoplay", last_replay);
             char *av[] = { core, app, sd, (char *)"replay", NULL }; run(av, out, sizeof out); res(!strcmp(out, last_replay), "replay", "a second replay prints the same state hash");
             snprintf(p, sizeof p, "%s/stray.txt", sd); FILE *f = fopen(p, "w"); if (f) { fputs("x\n", f); fclose(f); } char *av2[] = { core, app, sd, (char *)"audit", NULL }; int rc = run(av2, out, sizeof out); res(rc == 1 && strstr(out, "stray.txt"), "audit", "a stray file fails the audit and is named (control: it passed before)"); unlink(p);
-            snprintf(p, sizeof p, "%s/ledger.txt", sd); size_t n; char *lb = slurp(p, &n); const char *from = ed ? "the start" : "|new|7|", *to = ed ? "the stort" : "|new|8|"; char *q = lb ? strstr(lb, from) : NULL;
+            snprintf(p, sizeof p, "%s/ledger.txt", sd); size_t n; char *lb = slurp(p, &n); const char *from = ed ? "the start" : "players=2,", *to = ed ? "the stort" : "players=9,"; char *q = lb ? strstr(lb, from) : NULL;
             res(q != NULL, "tamper-setup", "the tamper target `%s` is in the ledger (vacuity)", from); if (q) { memcpy(q, to, strlen(to)); FILE *w = fopen(p, "w"); if (w) { fwrite(lb, 1, n, w); fclose(w); } } free(lb);
             char *av3[] = { core, app, sd, (char *)"replay", NULL }; rc = run(av3, out, sizeof out); res(rc == 1 && strstr(out, "ledger line"), "tamper", "a hand-edited ledger is refused (exit %d, %.70s)", rc, out); }
         char *rmv[] = { (char *)"/bin/rm", (char *)"-rf", tmpl, NULL }; run(rmv, out, sizeof out); }
