@@ -137,6 +137,26 @@ EXPECT_OUT | AUDIT placed=38 | s3-audit-count
 EXPECT_HAS | s3/life.txt | place\pearth\p3,27,-11\pok | the-s3-point-was-placed
 EXPECT_EXISTS | s3/plan.ppm | the-s3-plan
 
+CASE | bridge
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-bridge
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-bridge
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | bridge | bridge.pdl
+EXPECT_EXIT | 0 | bridge-gen
+EXPECT_OUT | cells=16 jobs=16 | bridge-count
+MKDIR | span
+RUN | cp | bridge.pdl | span/jobs.pdl
+RUN | ./crew_op | raise | $T/span
+EXPECT_EXIT | 0 | bridge-raised
+EXPECT_OUT | RAISE placed=16 | bridge-placed
+RUN | ./crew_op | audit | span/jobs.pdl | span/life.txt
+EXPECT_EXIT | 0 | bridge-audit
+EXPECT_OUT | AUDIT placed=16 | bridge-audit-count
+EXPECT_HAS | span/life.txt | place\proof\p46,18,11\pok | the-last-roof-was-placed
+EXPECT_EXISTS | span/plan.ppm | the-bridge-has-a-plan
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
