@@ -7,7 +7,7 @@ Owner request, 2026-11-10: instructions for each working game on how to play it 
 | Game | Human playable? | How it is shown | Status |
 |---|---|---|---|
 | **Teropoly** (classic Monopoly, internal `deskopoly`) | **Yes** (the only one with the full human path) | 3D/2D board in the rpg-edit window, popup buttons, players bar, table talk | READ + RAN (scripted drives); never played by a human |
-| **Chutes and Ladders** (`@.apps/chutes`) | **Barely**: the human gets a Roll button; there is **no board picture yet** (the numbered page is being built) | popup + table talk sentences only | RAN in a scratch editor; UNTESTED live |
+| **Chutes and Ladders** (`@.apps/chutes`) | **Yes, in principle**: a Roll button for the human seat and a numbered 10 x 10 serpentine board (2D and 3D renderers) with figures on the squares | board picture, popup, table talk | RAN in a scratch editor with the real renderers (2026-11-10, screenshots opened); UNTESTED in your live editor and by a person |
 | **Snake** (`@.apps/snake`) | **No**: the rules and the 30 Hz loop exist, but no board picture, no figures, one snake only | a harness could steer it with arrow keys; a window shows nothing useful | RAN by harness only |
 | **Teario-Make / Teario-Play** (level editor and platformer) | **No**: only the shared level file and the publish rule exist; no physics, no UI | none | RAN by harness only |
 | **Data Studio** (`data-hq`, not a game) | **Yes** as a viewer, after a taskbar rebuild and desktop relaunch | window under the `db` menu | RAN in a scratch X server |
@@ -72,13 +72,13 @@ Your results: ______________________________
 
 ## 3. Chutes and Ladders (foundation; no board picture yet)
 
-**What exists (READ the plan Status block, RAN in a scratch editor):** the full rules engine (a 100-square board as DATA with 9 ladders and 10 chutes **from memory, not checked against an official board**, exact-finish rule, a seeded spinner), table-talk sentences (`B rolled 2 and climbed the ladder from 80 to 100 and wins`), 2 to 4 players, pets that spin by themselves, and a **Roll** button for the human seat. **The numbered 10 by 10 board picture, tokens and the camera are NOT built yet** (the page work is in progress); you will see the popup and the table talk, not a board.
+**What exists (READ the plan Status block, RAN in a scratch editor):** the full rules engine (a 100-square board as DATA with 9 ladders and 10 chutes **from memory, not checked against an official board**, exact-finish rule, a seeded spinner), table-talk sentences (`B rolled 2 and climbed the ladder from 80 to 100 and wins`), 2 to 4 players, pets that spin by themselves, and a **Roll** button for the human seat. **The numbered board is built (2026-11-10):** 100 squares in serpentine order (1 bottom-left, 10 bottom-right, 11 above 10, 100 top-left), ladders drawn blue with `^` and the target, chutes orange with `v` and the target, the other ends marked with the source, and each player as a figure on their square (4 players share the same square when they land together). **Not built:** the follow camera, a walking animation (a ladder or chute teleports the figure), drawn ladder/chute lines (the ends are only coloured and labelled); the overhead 3D camera view showed sky in the scratch run.
 
-**To try it (UNTESTED live):** relaunch the board so the `chutes` book appears, choose it, Player > Play, pick a seat, press **Roll** on your turn. The game ends at square 100 (with exact finish by default: overshoot stays where you are).
+**To try it (UNTESTED live):** relaunch the board so the `chutes` book appears, choose it in Books, Player > Play, set **you play: p1**, press **START GAME**, then press **Roll** on your turn. The game ends at square 100 (with exact finish by default: overshoot stays where you are).
 
 **Save/load:** same as Teropoly: its ledger is the save; no Load menu row. The Data Studio can list its games.
 
-**What to look for:** [ ] the popup offers Roll only on your turn; [ ] the sentence in the table talk matches the roll; [ ] a ladder moves you up and a chute down as the sentence says; [ ] the game ends with a winner sentence. Your results: ______________________________
+**What to look for:** [ ] the board shows 1 at the bottom-left and 100 at the top-left with the numbers readable; [ ] your figure moves to the square the table talk names; [ ] the popup offers Roll only on your turn; [ ] the sentence in the table talk matches the roll; [ ] a ladder moves you up and a chute down as the sentence says; [ ] the game ends with a winner sentence. Your results: ______________________________
 
 ## 4. Snake and Teario (not playable by a human yet)
 
