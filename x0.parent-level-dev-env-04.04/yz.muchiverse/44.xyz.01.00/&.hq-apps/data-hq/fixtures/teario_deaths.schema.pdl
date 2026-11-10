@@ -1,0 +1,5 @@
+# FIXTURE schema (not game data): shape of a Teario deaths-by-tile summary (TEARIO plan section 6, the heat-map question).
+TABLE | teario_deaths.csv | deaths per level and tile under the hero
+COL | level_hash | id |  | hash of the level file
+COL | tile | category |  | tile or cause under the hero
+COL | count | measure | deaths | how many deaths

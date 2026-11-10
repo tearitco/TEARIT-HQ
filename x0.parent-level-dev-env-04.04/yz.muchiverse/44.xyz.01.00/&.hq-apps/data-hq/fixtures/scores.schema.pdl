@@ -1,0 +1,5 @@
+# FIXTURE schema (not game data): a pdl pipe table with a dashed header line.
+TABLE | scores.pdl | one row per name
+COL | NAME | category |  | who
+COL | SCORE | measure |  | points
+COL | NOTE | category |  | free word

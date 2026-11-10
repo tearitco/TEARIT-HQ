@@ -1,0 +1,6 @@
+# FIXTURE pdl pipe table (a header line, then a dashed line)
+NAME | SCORE | NOTE
+----------------------
+ann | 12 | first
+bob | 9 | second
+cy | 15 | third

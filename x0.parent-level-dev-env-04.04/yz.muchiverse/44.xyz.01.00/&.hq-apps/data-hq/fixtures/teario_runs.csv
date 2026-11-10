@@ -1,0 +1,6 @@
+run_id,level_hash,driver,ticks,result,score,coins,stomps,deaths,time_left,input_rows
+r0001,a1b2c3d4,human,1850,clear,2400,12,3,0,212,64
+r0002,a1b2c3d4,bot,1790,clear,2300,10,2,0,215,58
+r0003,a1b2c3d4,human,640,died,300,2,0,1,0,21
+r0004,e5f6a7b8,human,2210,clear,3100,18,5,2,150,93
+r0005,e5f6a7b8,bot,900,died,800,6,1,1,0,33

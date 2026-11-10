@@ -1,0 +1,8 @@
+# FIXTURE schema (hand written, not game data): a 5-square Chutes board solved by hand (spinner 1 or 2 with p 1/2, a chute from 3 to 1, finish at 4 or more): E0=6 E1=6 E2=4. Shape of the future `chutes export` theory table (CHUTES plan section 10).
+TABLE | chutes_markov.csv | one row per resting square: the next-square probabilities and the expected spins to finish
+COL | square | id |  | square index; square 3 is absent because a token never rests on a chute foot
+COL | p_to_0 | measure | p | probability of resting on square 0 after one spin
+COL | p_to_1 | measure | p | probability of resting on square 1 after one spin (square 3 sends the token here)
+COL | p_to_2 | measure | p | probability of resting on square 2 after one spin
+COL | p_to_4 | measure | p | probability of finishing (square 4) after one spin
+COL | expected_turns | measure | spins | expected spins to finish from this square

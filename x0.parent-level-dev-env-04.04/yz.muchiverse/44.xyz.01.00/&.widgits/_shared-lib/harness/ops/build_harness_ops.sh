@@ -24,3 +24,6 @@ $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/blank_page_op.+x blank_page_op.c 
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/legend_page_op.+x legend_page_op.c && echo "OK +x/legend_page_op.+x"
 # dsk_label_probe_op (2026-11-09): numbers out of a Teropoly play desk so case dsk_labels can check the board names (no Python)
 $CC -std=gnu11 -Wall -Wextra -Werror -O2 -o +x/dsk_label_probe_op.+x dsk_label_probe_op.c && echo "OK +x/dsk_label_probe_op.+x"
+# data_op (2026-11-09, data-hq P0): the dataset layer (list, sniff, check, show, stats, pick, provider, index); source and binary live in &.hq-apps/data-hq/ops, no Python
+DH="../../../../&.hq-apps/data-hq/ops"; mkdir -p "$DH/+x"
+$CC -std=gnu11 -Wall -Wextra -Wno-misleading-indentation -Wno-format-truncation -Wno-stringop-truncation -O2 -o "$DH/+x/data_op.+x.tmp" "$DH/data_op.c" -lm && mv "$DH/+x/data_op.+x.tmp" "$DH/+x/data_op.+x" && echo "OK $DH/+x/data_op.+x"

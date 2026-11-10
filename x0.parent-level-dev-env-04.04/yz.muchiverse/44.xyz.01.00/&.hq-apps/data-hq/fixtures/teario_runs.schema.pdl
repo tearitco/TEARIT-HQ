@@ -1,0 +1,13 @@
+# FIXTURE schema (not game data): shape of Teario `runs.csv` (TEARIO plan section 6), a subset of its columns.
+TABLE | teario_runs.csv | one row per run
+COL | run_id | id |  | run id
+COL | level_hash | id |  | hash of the level file the run played
+COL | driver | category |  | human or bot
+COL | ticks | measure | ticks | run length
+COL | result | category |  | clear or died
+COL | score | measure | points | score
+COL | coins | measure | coins | coins
+COL | stomps | measure | count | enemies stomped
+COL | deaths | measure | count | deaths in the run
+COL | time_left | measure | ticks | clock left at the end
+COL | input_rows | measure | rows | input rows in the run ledger

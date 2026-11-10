@@ -1,0 +1,5 @@
+game,seed,players,ruleset,finish,spins,rounds,winner_seat,winner_driver,class
+1,1,2,classic,exact,41,21,1,pet,simulated
+2,2,2,classic,exact,37,19,2,pet,simulated
+3,3,3,classic,exact,52,18,3,pet,simulated
+4,4,3,classic,exact,45,15,1,human,played

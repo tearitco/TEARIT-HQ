@@ -1,0 +1,6 @@
+# FIXTURE schema (not game data): a plain tab separated table that is not a game, to prove the studio is generic.
+TABLE | weather.tsv | one row per city and day
+COL | date | time |  | ISO date
+COL | city | category |  | city
+COL | temp_c | measure | C | mean temperature
+COL | rain_mm | measure | mm | rain

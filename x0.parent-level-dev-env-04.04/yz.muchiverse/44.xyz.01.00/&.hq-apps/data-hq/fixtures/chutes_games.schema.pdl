@@ -1,0 +1,12 @@
+# FIXTURE schema (not game data): shape of the future Chutes `games` table (CHUTES plan section 10). winner_seat is numeric, so a sniff calls it a measure; a real schema.pdl would say category.
+TABLE | chutes_games.csv | one row per game
+COL | game | id |  | game number
+COL | seed | id |  | spinner seed
+COL | players | measure | players | seats
+COL | ruleset | category |  | ruleset name
+COL | finish | category |  | finish rule (exact or overshoot)
+COL | spins | measure | spins | spins in the game
+COL | rounds | measure | rounds | rounds in the game
+COL | winner_seat | measure |  | seat of the winner (numeric label)
+COL | winner_driver | category |  | human or pet
+COL | class | category |  | played or simulated

@@ -1,0 +1,5 @@
+# FIXTURE schema (not game data): shape of Snake input rows (SNAKE plan: inputs only, logical ticks, never a row per tick).
+TABLE | snake_runs.csv | one row per direction change
+COL | tick | time | tick | logical tick of the input
+COL | direction | category |  | U D L R
+COL | score | measure | points | score after the input
