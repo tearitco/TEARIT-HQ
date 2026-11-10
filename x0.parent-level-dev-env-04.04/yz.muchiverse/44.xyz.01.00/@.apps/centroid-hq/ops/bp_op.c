@@ -5,13 +5,14 @@
  *
  *   bp_op check  <blueprint.pdl>
  *   bp_op list   <blueprint.pdl>
- *   bp_op gen    <blueprint.pdl> <build-id> <out.pdl>
- *   bp_op verify <blueprint.pdl> <build-id> <out.pdl>
+ *   bp_op gen    <blueprint.pdl> <build-id|under:ISLAND> <out.pdl>
+ *   bp_op verify <blueprint.pdl> <build-id|under:ISLAND> <out.pdl>
  *   bp_op break  <blueprint.pdl> <void|close|zone> <out.pdl>
  *
- * gen writes the building mass only (floor, walls, door, roof) at plan-cell
- * resolution. Island undersides are later slices of this same gen, not a
- * second planner. df-hq `place` today is `item x y` with no z. JOB rows
+ * gen writes one slice. A BUILD id is the mass (floor, walls, door, roof).
+ * under:<island> is the taper below that island's top, in the same z
+ * unit, shrinking to a point over `depth` layers. Scale is not applied.
+ * Neither slice is a second planner. df-hq `place` today is `item x y` with no z. JOB rows
  * carry z so the crew has one column to match. They are not yet fed to
  * df-hq.
  *
@@ -147,6 +148,34 @@ static int add_cell(Cell *c, int *n, int x, int y, int z, const char *job) {
     return 0;
 }
 
+/* The underside only. Layer k is a smaller ellipse; the last layer is the point. */
+static int gen_under(const char *id, Cell *c, int *n) {
+    Island *g = find_i(id);
+    if (!g) { snprintf(msg, sizeof msg, "no island %s", id); return 2; }
+    int depth = (int)g->depth; int top = (int)g->top;
+    if (depth < 1) { snprintf(msg, sizeof msg, "island %s has no underside", id); return 2; }
+    *n = 0;
+    for (int k = 1; k <= depth; k++) {
+        int z = top - k;
+        double f = 1.0 - (double)k / (double)depth;
+        if (f <= 0.0) {
+            if (add_cell(c, n, (int)floor(g->cx), (int)floor(g->cy), z, "earth")) {
+                snprintf(msg, sizeof msg, "too many underside cells"); return 2;
+            }
+            continue;
+        }
+        Island slice = *g; slice.rx = g->rx * f; slice.ry = g->ry * f;
+        int x0 = (int)floor(g->cx - g->rx) - 1, x1 = (int)ceil(g->cx + g->rx) + 1;
+        int y0 = (int)floor(g->cy - g->ry) - 1, y1 = (int)ceil(g->cy + g->ry) + 1;
+        for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) {
+            if (!on_ell(&slice, x + 0.5, y + 0.5)) continue;
+            if (add_cell(c, n, x, y, z, "earth")) { snprintf(msg, sizeof msg, "too many underside cells"); return 2; }
+        }
+    }
+    if (!*n) { snprintf(msg, sizeof msg, "underside of %s is empty", id); return 2; }
+    return 0;
+}
+
 static int gen_build(const char *id, Cell *c, int *n) {
     Build *b = NULL; for (int i = 0; i < nb; i++) if (!strcmp(bd[i].id, id)) b = &bd[i];
     if (!b) { snprintf(msg, sizeof msg, "no building %s", id); return 2; }
@@ -163,6 +192,11 @@ static int gen_build(const char *id, Cell *c, int *n) {
         if (add_cell(c, n, x, y, b->base + b->wall, "roof")) return 2;
     }
     return 0;
+}
+
+static int gen_slice(const char *id, Cell *c, int *n) {
+    if (!strncmp(id, "under:", 6)) return gen_under(id + 6, c, n);
+    return gen_build(id, c, n);
 }
 
 static int cmp_cell(const void *a, const void *b) {
@@ -255,7 +289,7 @@ int main(int argc, char **argv) {
     }
     if ((!strcmp(cmd, "gen") || !strcmp(cmd, "verify")) && argc == 5) {
         Cell cells[MAXC]; int n = 0;
-        if (gen_build(argv[3], cells, &n)) { fprintf(stderr, "%s\n", msg); return 2; }
+        if (gen_slice(argv[3], cells, &n)) { fprintf(stderr, "%s\n", msg); return 2; }
         if (!strcmp(cmd, "gen")) {
             if (write_proj(argv[4], argv[3], cells, n)) return 2;
             printf("PROJ build=%s cells=%d jobs=%d\n", argv[3], n, n);

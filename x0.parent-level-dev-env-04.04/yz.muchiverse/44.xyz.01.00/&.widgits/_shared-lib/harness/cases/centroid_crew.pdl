@@ -95,6 +95,28 @@ EXPECT_OUT | AUDIT placed=12 | fountain-audit-count
 EXPECT_HAS | fount/life.txt | place\pdoor\p42,41,1\pok | the-door-was-placed
 EXPECT_EXISTS | fount/plan.ppm | the-fountain-has-a-plan
 
+CASE | under
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-under
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-under
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | under:S6 | under.pdl
+EXPECT_EXIT | 0 | under-gen
+EXPECT_OUT | cells=11 jobs=11 | under-count
+RUN | ./bp_op | verify | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | under:S6 | under.pdl
+EXPECT_EXIT | 0 | under-verify
+MKDIR | sky
+RUN | cp | under.pdl | sky/jobs.pdl
+RUN | ./crew_op | raise | $T/sky
+EXPECT_EXIT | 0 | under-raised
+EXPECT_OUT | RAISE placed=11 | under-placed
+RUN | ./crew_op | audit | sky/jobs.pdl | sky/life.txt
+EXPECT_EXIT | 0 | under-audit
+EXPECT_OUT | AUDIT placed=11 | under-audit-count
+EXPECT_HAS | sky/life.txt | place\pearth\p52,1,20\pok | the-point-was-placed
+EXPECT_EXISTS | sky/plan.ppm | the-underside-has-a-plan
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c

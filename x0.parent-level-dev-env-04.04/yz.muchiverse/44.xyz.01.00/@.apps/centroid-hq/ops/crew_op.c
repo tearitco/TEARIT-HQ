@@ -252,6 +252,7 @@ static void write_plan(const char *path, int px, int py) {
             if (!jobs[i].done) { rgb[0] = 210; rgb[1] = 60; rgb[2] = 50; }
             else if (!strcmp(jobs[i].mat, "door")) { rgb[0] = 140; rgb[1] = 90; rgb[2] = 40; }
             else if (!strcmp(jobs[i].mat, "roof")) { rgb[0] = 70; rgb[1] = 140; rgb[2] = 80; }
+            else if (!strcmp(jobs[i].mat, "earth")) { rgb[0] = 120; rgb[1] = 85; rgb[2] = 50; }
             else { rgb[0] = 170; rgb[1] = 170; rgb[2] = 160; }
         }
         if (cx == px && cy == py) {
