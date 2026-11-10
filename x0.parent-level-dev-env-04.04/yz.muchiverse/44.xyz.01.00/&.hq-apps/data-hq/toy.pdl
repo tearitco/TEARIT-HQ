@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SECTION      | title              | Data Studio
+SECTION      | launch             | open_data_hq.sh

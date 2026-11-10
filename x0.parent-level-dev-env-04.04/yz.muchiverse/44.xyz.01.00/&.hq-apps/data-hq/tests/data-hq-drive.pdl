@@ -1,0 +1,29 @@
+# data-hq-drive.pdl - drive the Data Studio window like a person (relay_drive STEP format; BOOK 06-testing compendium entry "Data Studio"). P2, 2026-11-09.
+# RUN ONLY against a SCRATCH house (the click path is the real one: every press runs `data_hq_manager.+x act ...` and rewrites state/data_hq_ui.txt of THAT house). Never against the owner's live window.
+# Run: DISPLAY=<nested X> <house>/&.widgits/_shared-lib/ops/+x/relay_drive.+x <renderer pid> run <house>/&.hq-apps/data-hq/tests/data-hq-drive.pdl <x window id>
+# Needs two Teropoly games in the archive named below (the editor's real ones, listed read only) or change the two names. What a human must SEE: the PNG of each shot (a line chart with a legend in dashboard mode, aligned rows in table mode, [x] ticks on two PRIVATE rows).
+STEP | see | label:SESSIONS
+STEP | see | label:refresh
+STEP | press | label:Dashboard
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | mode=dashboard | 10
+STEP | press | label:clear
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | no dataset selected | 10
+STEP | press | label:Teropoly/game-1794231414
+STEP | press | label:Teropoly/game-1794241107
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | 2 selected | 10
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | panel 1/24 | 10
+STEP | sleep | 1500
+STEP | shot | &.hq-apps/data-hq/tests/shots/01-dashboard-two-games.png
+STEP | press | label:next
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | panel 2/24 | 10
+STEP | press | label:Table
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | mode=table | 10
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | rows 1- | 10
+STEP | press | label:rows down
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | rows 17- | 10
+STEP | sleep | 1500
+STEP | shot | &.hq-apps/data-hq/tests/shots/02-table-page-2.png
+STEP | press | label:Dashboard
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | mode=dashboard | 10
+STEP | press | label:clear
+STEP | expect | &.hq-apps/data-hq/state/data_hq_ui.txt | contains | no dataset selected | 10

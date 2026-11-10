@@ -1,0 +1,43 @@
+<!-- data-hq.xhtpm - the DATA STUDIO window (data-hq phase P2, 2026-11-09; shown to the user as "Data Studio"). BOOK 08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md section 4.
+     Shared khtpm_core_render.+x, ZERO renderer C: only the generic tags (tabbar/tab, sidebar + scrolllist + repeat, panel with a canvas and text rows, footer) and the vars file.
+     One <module>: ops/+x/data_hq_manager.+x publishes state/data_hq_ui.txt (vars=), blocks on inotify when idle (a new game appears in the sidebar), and every click runs the SAME binary as `act <verb>`
+     (one short process; the renderer appends the package dir and the house root). The chart is a picture: <canvas sprite="${canvas_raw}"/> blits state/out/view.raw (the spike, plan section 13), shown only
+     in dashboard mode (show=); table mode and messages are the text rows. The canvas fills the whole panel box, so the panel title lives in the footer status row.
+     RULES: no angle brackets inside comments. -->
+<window label="${head}" class="ds-win database-window" vars="state/data_hq_ui.txt">
+  <module src="&.hq-apps/data-hq/ops/+x/data_hq_manager.+x"/>
+  <page name="main">
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="m-dash" class="tab ds-tab" label="${lbl_dash}" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act mode dashboard"/>
+      <tab id="m-table" class="tab ds-tab" label="${lbl_table}" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act mode table"/>
+      <tab id="m-prev" class="tab ds-tab" label="&lt; prev" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act prev"/>
+      <tab id="m-next" class="tab ds-tab" label="next &gt;" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act next"/>
+      <tab id="m-pgup" class="tab ds-tab" label="rows up" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act pgup"/>
+      <tab id="m-pgdn" class="tab ds-tab" label="rows down" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act pgdn"/>
+      <tab id="m-coll" class="tab ds-tab" label="cols &lt;" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act coll"/>
+      <tab id="m-colr" class="tab ds-tab" label="cols &gt;" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act colr"/>
+      <tab id="m-clear" class="tab ds-tab" label="clear" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act clear"/>
+      <tab id="m-refresh" class="tab ds-tab" label="refresh" onclick="'${PKG}/ops/+x/data_hq_manager.+x' act refresh"/>
+    </tabbar>
+    <sidebar id="sidebar" class="ds-side">
+      <text id="sh" label="SESSIONS" class="ds-hdr"/>
+      <text id="sn" label="read only: the Studio never writes a game" class="ds-note"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_ds}" bind="d">
+          <item id="d${d.#}" class="ds-row ${d.cls}" label="${d.label}" action="'${PKG}/ops/+x/data_hq_manager.+x' act ${d.act}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="content" class="ds-panel">
+      <canvas id="screen" class="ds-canvas" sprite="${canvas_raw}" show="${show_dash}"/>
+      <text id="title" class="ds-title" label="${title}" show="${show_text}"/>
+      <repeat count="${n_rows}" bind="r">
+        <text id="r${r.#}" class="ds-trow ${r.cls}" label="${r.text}" show="${show_text}"/>
+      </repeat>
+    </panel>
+    <footer id="statusbar" class="ds-footer">
+      <text id="st" class="ds-status" label="${status}"/>
+      <text id="nt" class="ds-note" label="${notice}"/>
+    </footer>
+  </page>
+</window>

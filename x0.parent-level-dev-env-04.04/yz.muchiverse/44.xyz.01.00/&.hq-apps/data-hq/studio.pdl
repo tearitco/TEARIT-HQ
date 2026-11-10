@@ -1,0 +1,25 @@
+# studio.pdl - the Data Studio window's DATA (data-hq phase P2, 2026-11-09), read by ops/data_hq_manager.c. Edit it to add a place datasets live: no code changes.
+#   GROUP | id | header         a sidebar section (shown in this order)
+#   ROOT  | group | path | provider | name   where datasets are looked for (`data_op list` walks it; paths are relative to the house root, a root that does not exist is skipped).
+#             provider = the app folder whose game.pdl has `GAME | export | ...` (it turns a game's ledger into tables), or -. name = what the sidebar calls a dataset that IS the root folder, else the prefix of its name (name/folder).
+#   SET   | key | value        canvas_w/canvas_h (the chart's pixel size = the window's canvas box, see the README), table_rows, table_cols (columns per page), max_selected,
+#                              max_sidebar (rows listed), cache_dirs and cache_kb (the cap of state/out: the oldest unselected dataset folders go first)
+# The Studio only READS these places. Public or private is decided by datasets.pdl and the data itself (a human seat = PRIVATE; unknown = PRIVATE).
+GROUP | live     | LIVE: the editor's game now (read only)
+GROUP | archive  | ARCHIVE: finished or abandoned games
+GROUP | games    | OTHER GAMES
+GROUP | fixtures | FIXTURES (made by hand, not game data)
+ROOT  | live     | @.apps/rpg-edit-hq/state/games/deskopoly/game                | @.apps/deskopoly | Teropoly live game
+ROOT  | archive  | @.apps/rpg-edit-hq/state/games/deskopoly/archive             | @.apps/deskopoly | Teropoly
+ROOT  | games    | @.apps/rpg-edit-hq/state/games/chutes                        | @.apps/chutes    | Chutes and Ladders
+ROOT  | games    | @.apps/rpg-edit-hq/state/games/snake                         | @.apps/snake     | Snake
+ROOT  | games    | @.apps/rpg-edit-hq/state/games/teario                        | @.apps/teario    | Teario
+ROOT  | fixtures | &.hq-apps/data-hq/fixtures                                   | -                | fixtures
+SET   | canvas_w      | 738
+SET   | canvas_h      | 472
+SET   | table_rows    | 16
+SET   | table_cols    | 7
+SET   | max_selected  | 4
+SET   | max_sidebar   | 200
+SET   | cache_dirs    | 24
+SET   | cache_kb      | 16384

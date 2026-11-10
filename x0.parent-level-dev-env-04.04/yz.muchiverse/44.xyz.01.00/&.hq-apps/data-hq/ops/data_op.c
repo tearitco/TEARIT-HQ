@@ -11,7 +11,7 @@
  *   pick <file> <outcol> --where col=val ...              the one value of outcol in the one matching row (exit 1 unless exactly one row matches)
  *   provider <app_dir> <state_dir> <out_dir> [--house d]   run the app's `GAME | export | <program> <args>` row from <app_dir>/game.pdl ({house} {book} {state} {out}); exit 3 = the app has no export row
  *   index <out_dir...> [--out index.csv]                  one row per game from each exporter out dir's game.csv, sorted by id (a projection: delete it and rebuild)
- *   autodash <table file or exporter folder> <out dir> [--schema s.pdl] [--max N] [--size WxH] [--chart-op path]   (P1) pick panels from the column roles (time x measure = line per group, category x measure = bars with top-N + other, a measure = histogram, two measures = scatter), write <out>/dash.pdl (DASH row, CHART rows = chart_op specs, PANEL rows = grid cells) and render every panel with chart_op.+x (next to this binary): AUTODASH and PANEL rows
+ *   autodash <table file or exporter folder> <out dir> [--schema s.pdl] [--max N] [--size WxH] [--chart-op path] [--no-render]   (P1) pick panels from the column roles (time x measure = line per group, category x measure = bars with top-N + other, a measure = histogram, two measures = scatter), write <out>/dash.pdl (DASH row, CHART rows = chart_op specs, PANEL rows = grid cells) and render every panel with chart_op.+x (next to this binary; --no-render writes dash.pdl only, the studio window renders one panel at a time at its own canvas size): AUTODASH and PANEL rows
  * Formats: csv/tsv (RFC 4180 quotes), `.pdl` pipe tables (header line + a dashed line), pipe ledgers (`EVENT|round|actor|verb|target|at|result`, no header), a folder holding ledger.txt.
  * Caps (refused with the reason, exit 2): file 8 MiB, 200000 rows, 64 columns; list: 2000 datasets, depth 8; provider: 60 s, 64 KiB of output.
  * Class (DATA, not code): a datasets.pdl registry row `DATASET | id | path | kind | class | provider | note` wins (longest path prefix; paths relative to the house root); else a path under xyzfs/users is private; else a ledger folder
@@ -489,8 +489,8 @@ static int run_chart(const char *chart_op, const char *spec, const char *table, 
 }
 static int cmp_names(const void *a, const void *b) { return strcmp(*(char *const *)a, *(char *const *)b); }
 static int cmd_autodash(int argc, char **argv) {
-    const char *pos[2] = {0}, *schemaopt = NULL, *size = "640x400", *chart_op = NULL; int np_ = 0, cap = 6, capset = 0;
-    for (int i = 0; i < argc; i++) { if (!strcmp(argv[i], "--schema") && i + 1 < argc) schemaopt = argv[++i]; else if (!strcmp(argv[i], "--size") && i + 1 < argc) size = argv[++i]; else if (!strcmp(argv[i], "--max") && i + 1 < argc) { cap = atoi(argv[++i]); capset = 1; } else if (!strcmp(argv[i], "--chart-op") && i + 1 < argc) chart_op = argv[++i]; else if (np_ < 2) pos[np_++] = argv[i]; else die(2, "autodash: unexpected %s", argv[i]); }
+    const char *pos[2] = {0}, *schemaopt = NULL, *size = "640x400", *chart_op = NULL; int np_ = 0, cap = 6, capset = 0, norender = 0;
+    for (int i = 0; i < argc; i++) { if (!strcmp(argv[i], "--schema") && i + 1 < argc) schemaopt = argv[++i]; else if (!strcmp(argv[i], "--size") && i + 1 < argc) size = argv[++i]; else if (!strcmp(argv[i], "--max") && i + 1 < argc) { cap = atoi(argv[++i]); capset = 1; } else if (!strcmp(argv[i], "--chart-op") && i + 1 < argc) chart_op = argv[++i]; else if (!strcmp(argv[i], "--no-render")) norender = 1; else if (np_ < 2) pos[np_++] = argv[i]; else die(2, "autodash: unexpected %s", argv[i]); }
     if (np_ != 2) die(2, "usage: data_op autodash <table file | exporter folder> <out dir> [--schema s.pdl] [--max N (1..%d, default 6; 12 for a folder)] [--size WxH] [--chart-op path]", MAXPANELS);
     struct stat sb; if (stat(pos[0], &sb)) die(2, "autodash: %s does not exist", pos[0]);
     if (cap < 1 || cap > MAXPANELS) die(2, "autodash: --max must be 1..%d", MAXPANELS);
@@ -512,7 +512,8 @@ static int cmd_autodash(int argc, char **argv) {
     for (int i = 0; i < np; i++) fprintf(f, "PANEL | %s | col=%d | row=%d | %s.png | %s\n", P[i].id, i % cols, i / cols, P[i].id, P[i].table);
     if (fclose(f) || rename(tmp, dp)) die(2, "autodash: cannot write %s", dp);
     printf("AUTODASH | %s | tables=%d | panels=%d | grid=%dx%d | roles=%s | dash=%s\n", pos[0], ntab, np, cols, rows, from_schema ? "schema" : "sniffed", dp);
-    int bad = 0; for (int i = 0; i < np; i++) { char png[PATH_MAX + 128], out[8192]; snprintf(png, sizeof png, "%s/%s.png", pos[1], P[i].id); int rc = run_chart(cop, dp, P[i].table, png, P[i].id, size, out, sizeof out);
+    int bad = 0; if (norender) { for (int i = 0; i < np; i++) printf("PANEL | %s | %s | x=%s | y=%s | group=%s | agg=%s | not rendered\n", P[i].id, P[i].type, P[i].x, P[i].y[0] ? P[i].y : "-", P[i].group[0] ? P[i].group : "-", P[i].agg[0] ? P[i].agg : "-"); return 0; }
+    for (int i = 0; i < np; i++) { char png[PATH_MAX + 128], out[8192]; snprintf(png, sizeof png, "%s/%s.png", pos[1], P[i].id); int rc = run_chart(cop, dp, P[i].table, png, P[i].id, size, out, sizeof out);
         printf("PANEL | %s | %s | x=%s | y=%s | group=%s | agg=%s | %s\n", P[i].id, P[i].type, P[i].x, P[i].y[0] ? P[i].y : "-", P[i].group[0] ? P[i].group : "-", P[i].agg[0] ? P[i].agg : "-", rc != 0 ? "RENDER FAILED" : strstr(out, "CHART nodata") ? "nodata" : "ok"); if (rc != 0) { bad++; fputs(out, stderr); } }
     return bad ? 1 : 0;
 }

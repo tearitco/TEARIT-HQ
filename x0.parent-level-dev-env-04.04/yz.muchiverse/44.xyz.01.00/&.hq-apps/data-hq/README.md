@@ -1,6 +1,6 @@
-# data-hq (Data Studio): phases P0 (dataset layer) and P1 (charts, panel chooser, picture spike)
+# data-hq (Data Studio): phases P0 (dataset layer), P1 (charts, panel chooser, picture spike) and P2 (the window)
 
-Plan: BOOK `08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md` (D58, D61, D64). **Status 2026-11-09: P0 built (harness case `data_hq_p0`, 148 checks) and P1 built (case `data_hq_p1`: `chart_op`, `data_op autodash`, the picture spike); there is NO studio window yet** (P2 window and db menu row, P3 notebooks and the rest are plan only; `spike/` is a fixture prototype that shows ONE chart).
+Plan: BOOK `08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md` (D58, D61, D64). **Status 2026-11-09: P2 built (the WINDOW "Data Studio", harness case `data_hq_p2`, 87 checks; section "The window (P2)" below); P0 built (harness case `data_hq_p0`, 148 checks) and P1 built (case `data_hq_p1`: `chart_op`, `data_op autodash`, the picture spike); the window is a scratch-house proof, the live desktop needs a taskbar rebuild and relaunch** (P3 notebooks and the rest are plan only; `spike/` is a fixture prototype that shows ONE chart).
 The studio only READS game data. Every table it makes is a projection: delete it and make it again, the bytes come back.
 
 ## What exists
@@ -85,3 +85,20 @@ Run it yourself (scratch, never the live house): copy `spike/spike.xhtpm` + `spi
 3. PNG size: a stored-block PNG is W x H x 3 bytes (1.15 MB at 800x480, 0.77 MB at 640x400), so a 12-panel dashboard is 9 MB. Capped by `--max` and the 8 MiB file cap of the reader; the `state/out` cache of P2 must carry its own cap (RUNTIME-FILE-GROWTH-STANDARD row to be added with it). A fixed-Huffman encoder would cut it about 20x; not needed yet.
 4. The lowercase `p`, `g`, `q`, `y` of the 5x7 board font have no descenders (they look like small capitals: "Per player"). It is the board's font, kept so labels match the game; a real fix is a font table of the studio's own.
 5. Not built (plan section 5 lists them): stacked bars, heat map, summary tiles, a log axis, tooltips (a picture has none: P2 may overlay text rows).
+
+## The window (P2, 2026-11-09; decision D66)
+
+Open it: db menu (toolbar cell 10) row `data-hq`, or Toys -> `Data Studio` (the live desktop shows the menu row only after the taskbar is rebuilt and the desktop relaunched), or by hand in a scratch house: `sh open_data_hq.sh <house>` (the same launcher shape as `eden-viewer-hq/open_eden_viewer_hq.sh`, but started through the registry funnel `kh_spawn.sh`, no bare `setsid nohup`).
+
+| File | What |
+|---|---|
+| `data-hq.xhtpm`, `data-hq.css` | the window: generic renderer tags only (tabbar, sidebar + scrolllist, panel with a `<canvas sprite="${canvas_raw}">` shown in dashboard mode and text rows shown otherwise, footer). Raw px sizes: the chart is a picture the size of the canvas box |
+| `ops/data_hq_manager.c` -> `ops/+x/data_hq_manager.+x` | the backend. `<house> <pkg>` = the window's `<module>` (builds the vars file, blocks in `poll()` on inotify, ends when its owner does); `act <verb> [arg] <pkg> <house>` = one short process per click; `--once <house> <pkg>` = build once (the harness hook). Verbs: `toggle <key>`, `mode dashboard\|table`, `next`, `prev`, `pgdn`, `pgup`, `colr`, `coll`, `refresh`, `clear`, `noop` |
+| `studio.pdl` | DATA: `GROUP` (sidebar sections), `ROOT | group | path | provider | name` (where datasets live, relative to the house root; missing roots are skipped, so Chutes, Snake and Teario appear when their state folders do), `SET` (canvas size, table rows and columns, max selected, sidebar rows, cache caps) |
+| `toy.pdl`, `open_data_hq.sh` | the Toys row and the launcher |
+| `tests/data-hq-drive.pdl` | the relay_drive STEP script (real clicks, `see` and `expect` steps, two screenshots); scratch house only |
+| `state/` (gitignored) | `data_hq_ui.txt` (the vars file), `scan.txt`, `view.txt` (the window preference: selection, mode, panel, page), `out/<key>/` cache (capped), `out/view.raw` |
+
+Rules it keeps: it only READS game data (the exporter writes inside `state/out`; the game folders hash the same before and after, case); charts are made only when the selection, the mode or the panel changes; PRIVATE rows are labelled and warned about; a refused registry row lists nothing and says so; idle = a blocked `poll` (0.0 wakeups measured), the renderer's canvas tick (about 0.8 percent of a core, 43.8 wakeups a second with a chart shown) is the only idle cost.
+**Limits, said plainly:** no column-press sort (table mode pages rows in file order); two selected datasets are shown as two panels side by side, not overlaid in one chart; `canvas_w`/`canvas_h` in `studio.pdl` must equal the css canvas box (738x472 for the 1100 px window with a 350 px sidebar) or the picture is cover-scaled; a live game is re-exported on the next click or Refresh, not on its own; no notebooks, SQL, AI or trends yet (P3 to P5). Findings: plan section 14.
+Build: one line in `&.widgits/_shared-lib/harness/ops/build_harness_ops.sh`. Test: `cd &.widgits/_shared-lib/harness; /tmp/prisc data_hq_p2.pal` (after `cpu_gate`), verdict in `results/data_hq_p2.txt.verdict.txt`.
