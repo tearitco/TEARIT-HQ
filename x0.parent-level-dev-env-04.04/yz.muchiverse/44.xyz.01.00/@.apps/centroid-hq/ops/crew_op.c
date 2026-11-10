@@ -108,7 +108,7 @@ static int step(const char *jobs_path, const char *ledger) {
 }
 
 #define MAXR 16
-typedef struct { char life[16], app[24], verb[16], check[24]; } Route;
+typedef struct { char life[16], kind[12], app[24], verb[16], check[24]; } Route;
 static Route routes[MAXR];
 static int nr;
 
@@ -117,11 +117,12 @@ static int load_routes(const char *path) {
     if (!f) { fprintf(stderr, "cannot read %s\n", path); return 2; }
     nr = 0;
     while (fgets(line, sizeof line, f)) {
-        char life[16], app[24], verb[16], check[24];
-        if (sscanf(line, "ROUTE | %15s | %23s | %15s | %23s", life, app, verb, check) != 4) continue;
+        char life[16], kind[12], app[24], verb[16], check[24];
+        if (sscanf(line, "ROUTE | %15s | %11s | %23s | %15s | %23s", life, kind, app, verb, check) != 5) continue;
         if (nr >= MAXR) { fclose(f); fprintf(stderr, "too many routes\n"); return 2; }
-        snprintf(routes[nr].life, 16, "%s", life); snprintf(routes[nr].app, 24, "%s", app);
-        snprintf(routes[nr].verb, 16, "%s", verb); snprintf(routes[nr].check, 24, "%s", check); nr++;
+        snprintf(routes[nr].life, 16, "%s", life); snprintf(routes[nr].kind, 12, "%s", kind);
+        snprintf(routes[nr].app, 24, "%s", app); snprintf(routes[nr].verb, 16, "%s", verb);
+        snprintf(routes[nr].check, 24, "%s", check); nr++;
     }
     fclose(f);
     if (!nr) { fprintf(stderr, "no ROUTE rows\n"); return 2; }
@@ -147,6 +148,19 @@ static int file_has_verb(const char *path, const char *verb) {
 static int cmd_bind(const char *routes_path, const char *house) {
     int rc = load_routes(routes_path); if (rc) return rc;
     for (int i = 0; i < nr; i++) {
+        if (strcmp(routes[i].kind, "world") && strcmp(routes[i].kind, "table")) {
+            fprintf(stderr, "BIND %s kind is world or table\n", routes[i].life); return 2;
+        }
+        if (!strcmp(routes[i].kind, "table") && (!strcmp(routes[i].app, "crew") || !strcmp(routes[i].app, "df-hq") || !strcmp(routes[i].app, "OPEN"))) {
+            fprintf(stderr, "table verb cannot be owned by the crew\n"); return 2;
+        }
+        if (!strcmp(routes[i].kind, "world") && !strcmp(routes[i].app, "deskopoly")) {
+            fprintf(stderr, "world verb cannot be owned by the table\n"); return 2;
+        }
+        if (!strcmp(routes[i].app, "OPEN") && strcmp(routes[i].kind, "world")) {
+            fprintf(stderr, "OPEN is only for a world verb\n"); return 2;
+        }
+        printf("KIND %s=%s\n", routes[i].life, routes[i].kind);
         if (!strcmp(routes[i].app, "OPEN")) { printf("BIND %s=OPEN\n", routes[i].life); continue; }
         if (!strcmp(routes[i].check, "-")) { printf("BIND %s=%s %s\n", routes[i].life, routes[i].app, routes[i].verb); continue; }
         char path[512];

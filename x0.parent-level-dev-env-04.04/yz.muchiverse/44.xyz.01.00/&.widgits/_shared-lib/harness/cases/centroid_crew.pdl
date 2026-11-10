@@ -57,6 +57,13 @@ EXPECT_OUT | BIND buy=deskopoly buy | buy-stays-teropoly
 EXPECT_OUT | BIND build=deskopoly build | houses-stay-teropoly
 EXPECT_OUT | BIND mine=df-hq dig | mine-stays-the-dig-tick
 EXPECT_OUT | BIND farm=OPEN | farm-is-not-invented
+EXPECT_OUT | BIND haul=OPEN | haul-is-not-invented
+EXPECT_OUT | KIND build=table | build-is-the-table
+EXPECT_OUT | KIND place=world | place-is-the-world
+WRITE | bad-route.pdl | ROUTE \p build \p table \p crew \p place \p -
+RUN | ./crew_op | bind | bad-route.pdl | $HOUSE
+EXPECT_EXIT | 2 | table-owned-by-crew-refused
+EXPECT_OUT | table verb cannot be owned by the crew | table-owned-by-crew-says-why
 WRITE | talk.pdl | JOB \p talk \p 0 \p 0 \p 0 \p p2
 RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | talk.pdl | calls.txt
 EXPECT_EXIT | 0 | talk-is-a-call

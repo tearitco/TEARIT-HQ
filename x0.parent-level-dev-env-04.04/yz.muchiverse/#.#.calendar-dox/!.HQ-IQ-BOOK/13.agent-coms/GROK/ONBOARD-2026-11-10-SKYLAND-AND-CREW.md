@@ -1,5 +1,7 @@
 # Onboard: skyland blueprint, the crew, and where this lane stops (2026-11-10)
 
+**Decision D69.** One pet life, two kinds of verb. `world` is the skyland (mine, place, and open haul and farm). `table` is Teropoly (talk, offer, buy, build, and build is a house on a street). The rows are `data/crew.verbs.pdl`. `bind` refuses a table verb owned by the crew and a world verb owned by deskopoly. Add a life as a row. Do not add a C branch, and do not exec Teropoly to lay a stone. The owner copy is `XO/31.Nov/nov-10/grok/4.the-choice.md`.
+
 Read this after `ONBOARD-GROK.md` and `HANDOFF-2026-11-10-DF-MINECRAFT-EVENTS-META-HARNESSES-AND-CENTROID.md`. Those two still hold the editor, the camera, and the older task list. This file is the lane that started the same day. Labels: **RAN** means a command in this note was run again on 2026-11-10 before the note was written. **READ** means the file was opened. **NOT DONE** means do not tell the owner it exists.
 
 ## Where the code is

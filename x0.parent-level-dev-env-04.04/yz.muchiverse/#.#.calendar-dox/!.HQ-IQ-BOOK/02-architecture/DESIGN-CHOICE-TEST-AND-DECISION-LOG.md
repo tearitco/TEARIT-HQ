@@ -402,3 +402,11 @@ The owner will have harness proofs shown to potential customers as YouTube video
 **The five questions.** One authority: Teropoly's ledger stays the trade. df's `jobs.txt` stays the dig. The route file does not copy either rule. Modular: A puts Centroid and Monopoly into the fortress tick, which is the shared pet loop. B is one data file plus `crew_op bind` and `call`. Scalable: the 10th life-verb is another `ROUTE` row. A verb with no owner is `OPEN` and `call` refuses it (farm, until a real plant verb exists). Long term: D48 (one vocabulary) and D49 (one door). The route table is that vocabulary. House shapes: `.pdl` data, a harness that fails when `offer` is missing from `deskopoly/verbs.pdl`. Cost: the pets are not in the window yet. Removal condition for any later in-tick code: it may only read this table, not grow a second `offer`.
 
 **Not chosen:** a second trade engine, a fake plant, editing `df_hq.c` so the dig loop also speaks.
+
+## D69 (2026-11-10, CHOSEN): one pet life, two kinds of verb
+
+**The choice.** A Centroid pet has one life and two kinds of act. `world` is the skyland: dig, haul, place, and later plant. Those are columns with height. `table` is Teropoly: talk, offer, buy, and build, and build means a house on a street. The route file `crew.verbs.pdl` carries the kind on every row. `bind` refuses a table verb owned by the crew or by df-hq, and a world verb owned by deskopoly. A new life is a new row. It is not a new C branch. Farm and haul stay `OPEN` until a real verb exists.
+
+**Why this one.** Putting both acts in one verb makes a chapel stone look like a Monopoly house. Keeping the games in two brains makes the pet two people. The kind column is the small shared piece. The rule stays in the game that already owns it.
+
+**Not chosen:** exec of Teropoly as the way the island is built. Teaching `df_hq.c` to trade. Inventing a plant verb inside the crew.

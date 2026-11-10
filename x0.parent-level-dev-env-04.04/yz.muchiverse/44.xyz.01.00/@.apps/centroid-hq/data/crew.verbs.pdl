@@ -1,10 +1,14 @@
-# Which life-verb a Centroid pet may take, and who already owns the rule.
-# crew_op does not implement these. mine becomes a DESIGNATE row for df-hq's existing dig tick.
-# talk, offer, buy and build stay deskopoly. farm is OPEN until a real plant verb exists.
-ROUTE | mine | df-hq | dig | verbs.pdl
-ROUTE | place | crew | place | -
-ROUTE | talk | deskopoly | talk | verbs.pdl
-ROUTE | offer | deskopoly | offer | verbs.pdl
-ROUTE | buy | deskopoly | buy | verbs.pdl
-ROUTE | build | deskopoly | build | verbs.pdl
-ROUTE | farm | OPEN | plant | -
+# One pet life, two kinds of verb (D69, 2026-11-10).
+# world = the skyland: dig, haul, place, and later plant. Columns with height.
+# table = Teropoly: talk, offer, buy, build (a house on a street). Not a chapel stone.
+# A table row must not name app crew or df-hq. A world row must not name deskopoly.
+# OPEN means the verb is not invented here. Add a row. Do not add a C branch.
+# ROUTE | life | kind | app | verb | check
+ROUTE | mine | world | df-hq | dig | verbs.pdl
+ROUTE | place | world | crew | place | -
+ROUTE | haul | world | OPEN | haul | -
+ROUTE | farm | world | OPEN | plant | -
+ROUTE | talk | table | deskopoly | talk | verbs.pdl
+ROUTE | offer | table | deskopoly | offer | verbs.pdl
+ROUTE | buy | table | deskopoly | buy | verbs.pdl
+ROUTE | build | table | deskopoly | build | verbs.pdl
