@@ -104,7 +104,7 @@ gcc -O2 -o /tmp/crew_op $HOUSE/@.apps/centroid-hq/ops/crew_op.c
 
 ## Harnesses, do not add a runner
 
-The unit check is this lane's `centroid/crew.pal`. The phase table is `play/phases/centroid_crew.phases.pdl` (compiled by `playthrough_op` to `cases/play_centroid_crew.pdl`, 3 phases). The playthrough itself was not run: setup copies `lc_clock.+x` and db-hq `system.pdl` / `actors.pdl`, and this sparse worktree does not have them. Do not add a second runner. The owner copy is `XO/31.Nov/nov-10/grok/7.harnesses-next-pass.md`.
+The unit check is this lane's `centroid/crew.pal` (`passed=59`). The playthrough is `play_centroid_crew.pal`. Observed 2026-11-10: `VERDICT|PASS|passed=11|failed=0`. Setup copies `lc_clock.+x` and db-hq `system.pdl` / `actors.pdl` from the house. This sparse worktree does not contain them; the run used links to the main checkout's copies, and those links are not committed. Do not add a second runner. The owner pictures are `XO/31.Nov/nov-10/grok/8.pet-step1.png` (yellow beside red) and `8.pet-step2.png` (yellow on the stone).
 
 ## How agents talk
 
@@ -114,7 +114,7 @@ Older questions for Claude stay in `QUESTIONS-FOR-CLAUDE.md`. Add a new question
 
 ## Next code, in order
 
-1. The unit case is done (`passed=59`). The phase table compiles. Running that playthrough needs the clock binary and the db-hq actor files in the same tree as `crew_op.c`.
+1. The unit case is done (`passed=59`). The playthrough ran (`passed=11`). The pictures agree with the ledger: one step left of the stone, then on it.
 2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working. A pet on a board is still not done. The yellow square in `XO/31.Nov/nov-10/grok/8.pet-walk.png` is the scratch picture, not that board.
 3. `gen` the next `BUILD` id with the same verb. Then an island underside as another slice.
 4. Only after two slices have used that loop, shape `mech_new_op` from it.

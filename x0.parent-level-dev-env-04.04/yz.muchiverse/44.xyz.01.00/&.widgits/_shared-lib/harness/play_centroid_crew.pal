@@ -1,0 +1,7 @@
+# play_centroid_crew.pal - one scratch pet walks to one stone. Phase table play/phases/centroid_crew.phases.pdl.
+# Setup copies lc_clock.+x and db-hq system.pdl and actors.pdl. A sparse tree must have those files first.
+exec ./ops/+x/playthrough_op.+x compile play/phases/centroid_crew.phases.pdl cases
+exec ./ops/+x/harness_case_op.+x cases/play_centroid_crew.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/play_centroid_crew.pdl
+exec ./ops/+x/playthrough_op.+x ledger play/phases/centroid_crew.phases.pdl cases
+halt
