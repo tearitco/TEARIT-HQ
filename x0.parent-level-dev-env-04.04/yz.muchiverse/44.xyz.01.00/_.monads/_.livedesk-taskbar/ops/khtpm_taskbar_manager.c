@@ -5930,6 +5930,24 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-data-hq") == 0) {
+        /* db cell's "data-hq" row - the Data Studio (charts and tables of the games' data, read only). Same launch shape as sql-hq just above
+         * (single-quoted sh -c makes the &.hq-apps path safe); open_data_hq.sh starts the shared renderer through the spawn funnel.
+         * BOOK 08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md. */
+#ifdef _WIN32
+        char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
+        snprintf(bin, sizeof(bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/data-hq/data-hq.xhtpm", s->house_root);
+        const char *aa[2] = { s->house_root, chtpm };
+        win_spawn_n(bin, aa, 2);
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/data-hq/open_data_hq.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-piececraft-hq") == 0) {
         /* THE standard x11-hq launch for piececraft-hq's board window
          * (PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md). open_pchq_board.sh is

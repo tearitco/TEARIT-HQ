@@ -116,7 +116,10 @@ SECTION      | db_menu_2_cmd         | livedesk:open-db-hq-pal
 SECTION      | db_menu_3_label       | sql-hq
 SECTION      | db_menu_3_cmd         | livedesk:open-sql-hq
 # blueprintz is under the player menu now (it is the debugger), not here.
-SECTION      | db_menu_4_label       | Cancel
+# data-hq (Data Studio, 2026-11-09): charts and tables of the games' data, read only. BOOK 08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md
+SECTION      | db_menu_4_label       | data-hq
+SECTION      | db_menu_4_cmd         | livedesk:open-data-hq
+SECTION      | db_menu_5_label       | Cancel
 
 SECTION      | palettes_menu_1_label  | canvas-craft
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet
