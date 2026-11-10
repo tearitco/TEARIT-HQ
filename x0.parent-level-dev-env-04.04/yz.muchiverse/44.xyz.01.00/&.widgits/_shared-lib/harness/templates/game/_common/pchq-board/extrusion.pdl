@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | {{name}}
+META         | desk_id            | board
+META         | note               | {{name}} board desk, made by game_new_op; draw it in the editor

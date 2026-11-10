@@ -1,0 +1,9 @@
+# MANIFEST.pdl (ledger) - the files of a generated ledger game (plus everything in _common/MANIFEST.pdl). Grammar: ops/game_new_op.c header.
+KIND | ledger | a turn based game on a seeded track (the stub rule: first to the end wins, JUMP rows make chutes and ladders)
+INCLUDE | _common/MANIFEST.pdl
+FILE | ledger/state.pdl  | state.pdl                         | 0644 | -                  | text
+FILE | ledger/verbs.pdl  | verbs.pdl                         | 0644 | name               | text
+FILE | ledger/board.pdl  | rulesets/default/board.pdl        | 0644 | Title              | text
+FILE | ledger/rules.pdl  | rulesets/default/rules.pdl        | 0644 | Title,players,seed | text
+FILE | ledger/drive-script.pdl | tests/{{name}}-drive.pdl     | 0644 | name,Title         | text
+FILE | ledger/case.pdl   | harness/cases/{{name}}.pdl        | 0644 | name,Title,seed    | text

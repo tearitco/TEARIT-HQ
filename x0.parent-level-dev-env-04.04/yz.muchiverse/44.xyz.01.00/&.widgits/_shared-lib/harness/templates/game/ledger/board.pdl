@@ -1,0 +1,7 @@
+# board.pdl - {{Title}}: the track, as DATA (the stub rule of the shared engine game_core: first to the end of the track wins). The first ledger row records the hash of this file and rules.pdl:
+# editing either after a game began makes every verb refuse that ledger (start a new game).
+# TRACK | length | N           squares 1..N; everybody starts on 0; reaching N or more wins
+# JUMP  | from | to | label     landing on `from` moves you to `to` (a ladder goes up, a chute goes down; one jump per landing, no chains). Chutes and Ladders is exactly these rows.
+TRACK | length | 30
+# JUMP | 4  | 14 | ladder
+# JUMP | 17 | 6  | chute

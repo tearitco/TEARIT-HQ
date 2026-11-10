@@ -1,0 +1,9 @@
+# rules.pdl - {{Title}}: rule numbers as DATA (RULE | key | value). Changing a value after a game began makes that game's ledger refuse (the rules hash is in its first row).
+# max_players  seats at the table (2 to 8)          default_seed  the seed `new` uses when none is given
+# ckpt_every   a `ckpt` row (the state hash) every this many logical ticks; replay refuses a ledger whose hash differs
+# max_ticks    autoplay gives up after this many ticks      max_rows  hard cap on ledger rows (the engine refuses to append past it)
+RULE | max_players  | {{players}}
+RULE | default_seed | {{seed}}
+RULE | ckpt_every   | 10
+RULE | max_ticks    | 4000
+RULE | max_rows     | 5000

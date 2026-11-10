@@ -1,0 +1,9 @@
+# MANIFEST.pdl (realtime) - the files of a generated realtime game (plus everything in _common/MANIFEST.pdl). Grammar: ops/game_new_op.c header.
+KIND | realtime | a real time game: an inputs-only ledger with logical ticks and ckpt state-hash rows (the step function is a stub)
+INCLUDE | _common/MANIFEST.pdl
+FILE | realtime/state.pdl  | state.pdl                         | 0644 | -                  | text
+FILE | realtime/verbs.pdl  | verbs.pdl                         | 0644 | name               | text
+FILE | realtime/board.pdl  | rulesets/default/board.pdl        | 0644 | Title              | text
+FILE | realtime/rules.pdl  | rulesets/default/rules.pdl        | 0644 | Title,players,seed | text
+FILE | realtime/drive-script.pdl | tests/{{name}}-drive.pdl     | 0644 | name,Title         | text
+FILE | realtime/case.pdl   | harness/cases/{{name}}.pdl        | 0644 | name,Title,seed    | text

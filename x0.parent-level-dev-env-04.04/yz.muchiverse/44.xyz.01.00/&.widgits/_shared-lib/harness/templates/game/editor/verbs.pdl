@@ -1,0 +1,16 @@
+# verbs.pdl - the {{name}} manifest: the known verbs as data (read by the engine's `help` and by `audit`, which checks that every PROJECTION in state.pdl names a verb listed here).
+#   VERB | name | page | ui | args | what it does          (the grammar of @.apps/deskopoly/verbs.pdl)
+VERB | new       | no | ui | [seed]       | open the game: the first ledger row records the seed, the ruleset name, the rules hash and the kind
+VERB | status    | no | ui | -            | read-only: the whole state, derived by replaying the ledger
+VERB | replay    | no | ui | -            | read-only: replay the ledger and print its state hash (refuses a ledger that does not reproduce itself)
+VERB | check     | no | ui | -            | read-only: replay plus invariants
+VERB | ckpt      | no | ui | -            | pin: append a row holding the state hash; every later replay must reproduce it
+VERB | ledger_hash | no | ui | [skip_verb] | read-only digest of the ledger rows, optionally without one verb
+VERB | audit     | no | ui | -            | read-only no-ghost-data check: the state folder holds only the files state.pdl declares
+VERB | ui        | no | ui | -            | write ui.txt: the window feed, a projection of the replayed ledger
+VERB | help      | no | ui | -            | list the verbs (from this file)
+VERB | add       | no | ui | id text...   | EDIT row: add a row to the document (id: 1 to 24 letters, digits, - _)
+VERB | set       | no | ui | id text...   | EDIT row: change the text of a row
+VERB | del       | no | ui | id           | EDIT row: remove a row
+VERB | publish   | no | ui | -            | the publish rule (stub): rules.pdl REQUIRE rows name the ids the document must have; the row records the document hash
+VERB | export    | no | ui | -            | write doc.txt, the document as ROW|id|text lines, a projection of the ledger

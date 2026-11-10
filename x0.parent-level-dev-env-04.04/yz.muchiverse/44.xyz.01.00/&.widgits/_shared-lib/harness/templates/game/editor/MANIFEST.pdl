@@ -1,0 +1,9 @@
+# MANIFEST.pdl (editor) - the files of a generated editor game (plus everything in _common/MANIFEST.pdl). Grammar: ops/game_new_op.c header.
+KIND | editor | a data document maker: EDIT rows in a ledger, a publish rule stub (the shell of a level maker)
+INCLUDE | _common/MANIFEST.pdl
+FILE | editor/state.pdl  | state.pdl                         | 0644 | -                  | text
+FILE | editor/verbs.pdl  | verbs.pdl                         | 0644 | name               | text
+FILE | editor/board.pdl  | rulesets/default/board.pdl        | 0644 | Title              | text
+FILE | editor/rules.pdl  | rulesets/default/rules.pdl        | 0644 | Title | text
+FILE | editor/drive-script.pdl | tests/{{name}}-drive.pdl     | 0644 | name,Title         | text
+FILE | editor/case.pdl   | harness/cases/{{name}}.pdl        | 0644 | name,Title         | text

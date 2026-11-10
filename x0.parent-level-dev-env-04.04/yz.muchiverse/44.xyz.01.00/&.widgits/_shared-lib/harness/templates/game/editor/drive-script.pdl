@@ -1,0 +1,14 @@
+# {{name}}-drive.pdl - from ANY editor state to a published {{Title}} document: add start, add goal, publish. UNTESTED LIVE when generated: run it once with the real window, fix the labels, then delete this line.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/{{name}}/tests/{{name}}-drive.pdl <x window id>
+# The rule: publish is refused until the document has the rows start and goal (rulesets/default/rules.pdl REQUIRE). STEP fields split on a bar, so an expectation holds no bar.
+STEP | in | off
+STEP | ensure | pm-play | tb-player
+STEP | tapid | pm-play
+STEP | sleep | 3000
+STEP | see | label:add start
+STEP | press | label:publish
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | refused | 10
+STEP | press | label:add start
+STEP | press | label:add goal
+STEP | press | label:publish
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | published | 10

@@ -1,0 +1,6 @@
+# rules.pdl - {{Title}}: rule numbers as DATA (RULE | key | value). Changing a value after a game began makes that game's ledger refuse (the rules hash is in its first row).
+# max_players  seats at the table (2 to 8; the setup screen starts at this number)       default_seed  the seed `new` uses when none is given and the setup screen starts with
+# max_rows     hard cap on ledger rows (the engine refuses to append past it)
+RULE | max_players  | {{players}}
+RULE | default_seed | {{seed}}
+RULE | max_rows     | 5000

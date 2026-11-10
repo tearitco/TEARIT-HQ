@@ -1,0 +1,19 @@
+# MANIFEST.pdl (_common) - the files every kind of generated game gets. Included by <kind>/MANIFEST.pdl. Read by game_new_op (header of ops/game_new_op.c has the grammar).
+# FILE | src (under templates/game) | dest (under the app folder; harness/... = under _shared-lib/) | octal mode | placeholders the file uses (comma list, or -) | text|bin
+# The placeholder column is a CONTRACT: game_new_op refuses a file that uses a placeholder not listed here, or lists one it does not use. Known: name Title kind seed players.
+FILE | _common/game.pdl            | game.pdl                                   | 0644 | name,Title,kind | text
+FILE | _common/layouts.pdl         | layouts.pdl                                | 0644 | Title           | text
+FILE | _common/rooms.pdl           | rooms.pdl                                  | 0644 | name            | text
+FILE | _common/tuning.pdl          | tuning.pdl                                 | 0644 | Title           | text
+FILE | _common/nav.pdl             | nav.pdl                                    | 0644 | Title,name,kind | text
+FILE | _common/harness.pdl         | harness.pdl                                | 0644 | name,kind       | text
+FILE | _common/play-script.pdl     | tests/{{name}}-play.pdl                    | 0644 | name,Title      | text
+FILE | _common/pchq-game.pdl       | {{name}}-pchq/pieces/system/maps/{{name}}/game.pdl | 0644 | Title   | text
+FILE | _common/pchq-board/map.txt      | {{name}}-pchq/pieces/system/maps/{{name}}/board/map.txt      | 0644 | - | bin
+FILE | _common/pchq-board/cells.txt    | {{name}}-pchq/pieces/system/maps/{{name}}/board/cells.txt    | 0644 | - | bin
+FILE | _common/pchq-board/cells.rgba   | {{name}}-pchq/pieces/system/maps/{{name}}/board/cells.rgba   | 0644 | - | bin
+FILE | _common/pchq-board/skin.txt     | {{name}}-pchq/pieces/system/maps/{{name}}/board/skin.txt     | 0644 | - | bin
+FILE | _common/pchq-board/events.txt   | {{name}}-pchq/pieces/system/maps/{{name}}/board/events.txt   | 0644 | - | bin
+FILE | _common/pchq-board/extrusion.pdl | {{name}}-pchq/pieces/system/maps/{{name}}/board/extrusion.pdl | 0644 | name | text
+FILE | _common/pal.pal             | harness/{{name}}.pal                       | 0644 | name            | text
+NOTE | the new book appears in the editor's Books dropdown after the editor board is relaunched (open_board.sh links every @.apps/*/*-pchq/pieces/system/maps/*/game.pdl); Player > Play then starts the driver named by game.pdl

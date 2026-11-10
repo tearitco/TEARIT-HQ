@@ -1,0 +1,12 @@
+# game.pdl - what the editor's PLAY does for this book. Made by game_new_op (template _common/game.pdl); the shared core's `play` verb reads it (petslike_core.c book_driver()).
+# GAME | driver | <program> <args...>   run on Play (detached, one instance: the program locks itself). {house} {book} {editor} are replaced by the house root, this book's folder and the editor's folder.
+# The driver is the game's loop: it ticks only while the editor's switch running=1 (Player > Play / Stop), and publishes the game bar feed state/game_ui.txt that the editor window draws. It decides no game rule:
+# every rule is in the shared engine (game_core, data in rulesets/default/) and the ledger is the only authority.
+# GAME | kind   ledger | realtime | editor   (the first ledger row records it; a replay refuses a ledger of another kind)
+# GAME | clock  pause | run   pause = the editor's world clock is paused while this game is live (feed gm_on=1) and resumes by itself when it ends.
+GAME   | name        | {{name}}
+GAME   | title       | {{Title}}
+GAME   | kind        | {{kind}}
+GAME   | ruleset     | default
+GAME   | driver      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x driver {house} {book} {editor}
+GAME   | clock       | pause

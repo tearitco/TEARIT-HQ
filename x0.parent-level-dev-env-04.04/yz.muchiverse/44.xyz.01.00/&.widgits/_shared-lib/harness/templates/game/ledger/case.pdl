@@ -1,0 +1,160 @@
+# {{name}} ({{Title}}): the generated TURN BASED game on the shared engine game_core (made by game_new_op from harness/templates/game/ledger/case.pdl; edit freely, it is yours now).
+# Every number below is relative (no pinned hash), so it holds for any seed; pin your own hash once your rules are real. Scratch only: nothing here touches a live folder.
+# Run: cd &.widgits/_shared-lib/harness; ./ops/+x/harness_case_op.+x cases/{{name}}.pdl; ./ops/+x/harness_verdict_op.+x cases/{{name}}.pdl
+RESULTS | ../results/{{name}}.txt
+ENV | LC_ALL | C
+
+CASE    | play
+SCRATCH |
+MKDIR   | g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | new | {{seed}}
+EXPECT_OUT | new game seed={{seed}} kind=ledger | a-game-opens-and-records-its-seed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | new | {{seed}}
+EXPECT_EXIT | 2 | NEGATIVE-a-second-new-in-the-same-folder-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | roll
+EXPECT_EXIT | 2 | NEGATIVE-nothing-rolls-before-the-game-starts
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | join | B | human
+EXPECT_OUT | p2 joined as B | the-second-seat-is-p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | join | A
+EXPECT_EXIT | 2 | NEGATIVE-a-taken-name-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | start
+EXPECT_OUT | game started: 2 players | the-lobby-closes
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | roll | as=p2
+EXPECT_EXIT | 2 | NEGATIVE-it-is-p1s-turn-so-p2-may-not-roll
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | ledger_hash
+CAPTURE | h_before
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | roll | as=p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | ledger_hash
+CAPTURE | h_after
+EXPECT_EQ | $h_before | $h_after | a-refused-roll-appends-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | roll | as=p1
+EXPECT_OUT | p1 rolled | the-current-player-rolls
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | ledger_hash
+CAPTURE | h_rolled
+EXPECT_NE | $h_before | $h_rolled | vacuity-a-real-roll-DOES-change-the-ledger-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | tick
+EXPECT_OUT | waiting for a human seat | tick-waits-for-the-human-seat-p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | ledger_hash
+EXPECT_OUT_IS | $h_rolled | a-waiting-tick-writes-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | autoplay
+EXPECT_EXIT | 2 | NEGATIVE-autoplay-is-refused-while-a-seat-is-human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | seat | p2 | pet
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/g | tick
+EXPECT_OUT | ticked | a-pet-seat-ticks-after-the-seat-row
+CLEAN   |
+
+CASE    | whole-game
+SCRATCH |
+MKDIR   | a
+MKDIR   | b
+MKDIR   | e
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | new | {{seed}}
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | autoplay
+EXPECT_OUT | over=1 | a-whole-game-plays-to-a-winner
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | check
+EXPECT_OUT | CHECK ok | the-invariants-hold-at-the-end
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | roll
+EXPECT_EXIT | 2 | NEGATIVE-nothing-is-played-after-the-game-is-over
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | replay
+CAPTURE | r1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | ledger_hash
+CAPTURE | l1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | replay
+EXPECT_OUT_IS | $r1 | replaying-twice-prints-the-same-state-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | ledger_hash
+EXPECT_OUT_IS | $l1 | replay-does-not-change-the-ledger-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/b | new | {{seed}}
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/b | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/b | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/b | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/b | autoplay
+RUN | cmp | $T/a/ledger.txt | $T/b/ledger.txt
+EXPECT_EXIT | 0 | the-same-seed-gives-the-identical-ledger
+CALC    | s2 | {{seed}} | + | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/e | new | $s2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/e | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/e | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/e | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/e | autoplay
+RUN | cmp | $T/a/ledger.txt | $T/e/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-another-seed-gives-another-ledger-so-the-compare-can-fail
+
+CASE    | tamper
+MKDIR   | c
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 0,/\proll\p/s//\proll\p9/ | $T/c/ledger.txt
+RUN | cmp | $T/a/ledger.txt | $T/c/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-roll-is-refused-by-replay
+EXPECT_OUT | ledger line | the-refusal-names-the-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/c | roll
+EXPECT_EXIT | 1 | NEGATIVE-a-verb-on-a-tampered-ledger-is-refused-too
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 8d | $T/c/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/c | check
+EXPECT_EXIT | 1 | NEGATIVE-a-deleted-row-is-refused
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | s/\pnew\p{{seed}}\p/\pnew\p99999\p/ | $T/c/ledger.txt
+RUN | cmp | $T/a/ledger.txt | $T/c/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-seed-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-changed-seed-is-refused
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+APPEND  | c/ledger.txt | EVENT|9|p1|roll|1|1|to=1\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-forged-row-appended-after-the-end-is-refused
+
+CASE    | no-ghost-data
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | ui
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | audit
+EXPECT_OUT | AUDIT ok files=2 | the-audit-passes-with-only-declared-files
+RUN | cp | $T/a/ui.txt | $T/a/ui.keep
+RUN | rm | $T/a/ui.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | ui
+RUN | cmp | $T/a/ui.txt | $T/a/ui.keep
+EXPECT_EXIT | 0 | a-deleted-projection-regenerates-byte-for-byte
+RUN | rm | $T/a/ui.keep
+WRITE   | a/stray.txt | a file nobody declared
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+EXPECT_OUT | ghost file stray.txt | the-audit-names-the-ghost
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/a | replay
+EXPECT_OUT_IS | $r1 | a-stray-file-changes-nothing-about-the-game-state
+RUN | rm | $T/a/stray.txt
+
+CASE    | rules-are-data
+COPYDIR | @.apps/{{name}} | app2 | +x
+RUN | sed | -i | s/^\(TRACK \p length \p \)30/\131/ | $T/app2/rulesets/default/board.pdl
+RUN | cmp | $HOUSE/@.apps/{{name}}/rulesets/default/board.pdl | $T/app2/rulesets/default/board.pdl
+EXPECT_EXIT | 1 | vacuity-the-board-file-copy-really-differs
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app2 | $T/a | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-rules-file-edited-after-the-game-began-refuses-its-ledger
+EXPECT_OUT | ledger line 1: | the-refusal-is-at-row-1-where-the-rules-hash-is-recorded
+COPYDIR | @.apps/{{name}} | app3 | +x
+RUN | sed | -i | s/^\(RULE \p max_players *\p *\)[0-9]*/\12/ | $T/app3/rulesets/default/rules.pdl
+MKDIR   | f
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | new | {{seed}}
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | join | C
+EXPECT_EXIT | 2 | NEGATIVE-the-table-is-full-at-max_players-from-rules.pdl
+EXPECT_OUT | table is full | the-refusal-says-so
+COPYDIR | @.apps/{{name}} | app4 | +x
+APPEND  | app4/rulesets/default/board.pdl | JUMP | 1 | 11 | t\nJUMP | 2 | 12 | t\nJUMP | 3 | 13 | t\nJUMP | 4 | 14 | t\nJUMP | 5 | 15 | t\nJUMP | 6 | 16 | t\n
+MKDIR   | j
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | new | {{seed}}
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | roll
+EXPECT_OUT | jump= | a-JUMP-row-moves-a-player-whatever-the-seed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | check
+EXPECT_OUT | CHECK ok | a-game-with-jumps-still-replays
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/{{name}} | $T/j | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-ledger-under-the-stock-board-is-refused
+CLEAN   |

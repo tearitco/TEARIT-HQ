@@ -1,0 +1,14 @@
+# {{name}}-drive.pdl - from ANY editor state to a STARTED {{Title}} real time game with YOU as seat p1, then steer right. UNTESTED LIVE when generated: run it once with the real window, fix the labels, then delete this line.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/{{name}}/tests/{{name}}-drive.pdl <x window id>
+# Pause = Player > Stop: the driver stops asking for ticks and writes no row. STEP fields split on a bar, so an expectation holds no bar.
+STEP | in | off
+STEP | ensure | pm-play | tb-player
+STEP | tapid | pm-play
+STEP | sleep | 3000
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | players, then START | 15
+STEP | press | label:you play
+STEP | press | label:START GAME
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | tick | 20
+STEP | see | label:Right
+STEP | press | label:Right
+STEP | expect | @.apps/rpg-edit-hq/state/games/{{name}}/game/ledger.txt | contains | EVENT | 10
