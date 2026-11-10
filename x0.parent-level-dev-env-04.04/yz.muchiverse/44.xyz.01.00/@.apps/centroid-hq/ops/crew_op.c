@@ -227,6 +227,42 @@ static int read_pos(const char *path, int *x, int *y) {
     fclose(f); return 0;
 }
 
+/* Top-down plan of every job, one row of cells per z. Open cells are red.
+ * Placed stone is gray, a door is brown, a roof is green. The pet is yellow.
+ * The frame is the job box, so a building at 41,40 still fits. */
+static void write_plan(const char *path, int px, int py) {
+    if (!nj) return;
+    int x0 = jobs[0].x, x1 = jobs[0].x, y0 = jobs[0].y, y1 = jobs[0].y, z0 = jobs[0].z, z1 = jobs[0].z;
+    for (int i = 1; i < nj; i++) {
+        if (jobs[i].x < x0) x0 = jobs[i].x; if (jobs[i].x > x1) x1 = jobs[i].x;
+        if (jobs[i].y < y0) y0 = jobs[i].y; if (jobs[i].y > y1) y1 = jobs[i].y;
+        if (jobs[i].z < z0) z0 = jobs[i].z; if (jobs[i].z > z1) z1 = jobs[i].z;
+    }
+    const int sc = 8;
+    int gw = x1 - x0 + 1, gh = y1 - y0 + 1, gz = z1 - z0 + 1;
+    FILE *f = fopen(path, "wb"); if (!f) return;
+    fprintf(f, "P6\n%d %d\n255\n", gw * sc, gz * gh * sc);
+    for (int pyx = 0; pyx < gz * gh * sc; pyx++) for (int pxx = 0; pxx < gw * sc; pxx++) {
+        int cx = x0 + pxx / sc;
+        int band = pyx / (gh * sc);          /* 0 is the highest z */
+        int cy = y0 + (pyx % (gh * sc)) / sc;
+        int z = z1 - band;
+        unsigned char rgb[3] = { 20, 24, 28 };
+        for (int i = 0; i < nj; i++) if (jobs[i].x == cx && jobs[i].y == cy && jobs[i].z == z) {
+            if (!jobs[i].done) { rgb[0] = 210; rgb[1] = 60; rgb[2] = 50; }
+            else if (!strcmp(jobs[i].mat, "door")) { rgb[0] = 140; rgb[1] = 90; rgb[2] = 40; }
+            else if (!strcmp(jobs[i].mat, "roof")) { rgb[0] = 70; rgb[1] = 140; rgb[2] = 80; }
+            else { rgb[0] = 170; rgb[1] = 170; rgb[2] = 160; }
+        }
+        if (cx == px && cy == py) {
+            int lx = pxx % sc, ly = (pyx % (gh * sc)) % sc;
+            if (lx < 2 || ly < 2 || lx >= sc - 2 || ly >= sc - 2) { rgb[0] = 230; rgb[1] = 230; rgb[2] = 80; }
+        }
+        fwrite(rgb, 1, 3, f);
+    }
+    fclose(f);
+}
+
 static void write_ppm(const char *path, int px, int py, int jx, int jy) {
     FILE *f = fopen(path, "wb"); if (!f) return;
     const int sc = 8, n = 8; fprintf(f, "P6\n%d %d\n255\n", n * sc, n * sc);
@@ -277,8 +313,37 @@ static int cmd_move(const char *which, int argc, char **argv) {
     return 0;
 }
 
+/* Walk and place every open job. Same steps as walk and place, one building. */
+static int cmd_raise(int argc, char **argv) {
+    for (int n = 0; n < 20000; n++) {
+        char dir[512], jpath[560], life[560], pos[560], plan[560];
+        if (state_dir(argc, argv, dir, sizeof dir)) return 2;
+        snprintf(jpath, sizeof jpath, "%s/jobs.pdl", dir);
+        snprintf(life, sizeof life, "%s/life.txt", dir);
+        snprintf(pos, sizeof pos, "%s/pet.txt", dir);
+        snprintf(plan, sizeof plan, "%s/plan.ppm", dir);
+        int rc = load_jobs(jpath); if (rc) return rc;
+        int claim = -1; char fsm[16];
+        rc = replay(life, &claim, fsm, sizeof fsm); if (rc) return rc;
+        int px, py; if (read_pos(pos, &px, &py)) return 2;
+        int next = -1; for (int i = 0; i < nj; i++) if (!jobs[i].done) { next = i; break; }
+        if (next < 0) {
+            write_plan(plan, px, py);
+            printf("RAISE placed=%d\n", nj);
+            return 0;
+        }
+        Job *j = &jobs[next];
+        if (abs(px - j->x) + abs(py - j->y) > 1) {
+            if (cmd_move("walk", argc, argv)) return 2;
+        } else if (cmd_move("place", argc, argv)) return 2;
+    }
+    fprintf(stderr, "raise did not finish\n");
+    return 2;
+}
+
 int main(int argc, char **argv) {
     if (argc >= 2 && (!strcmp(argv[1], "walk") || !strcmp(argv[1], "place"))) return cmd_move(argv[1], argc, argv);
+    if (argc >= 2 && !strcmp(argv[1], "raise")) return cmd_raise(argc, argv);
     if (argc == 4 && !strcmp(argv[1], "bind")) return cmd_bind(argv[2], argv[3]);
     if (argc == 5 && !strcmp(argv[1], "call")) return cmd_call(argv[2], argv[3], argv[4]);
     if (argc != 4) { fprintf(stderr, "usage: crew_op step|run|audit|mineplan <jobs> <out> | bind <routes> <house> | call <routes> <jobs> <ledger>\n"); return 2; }

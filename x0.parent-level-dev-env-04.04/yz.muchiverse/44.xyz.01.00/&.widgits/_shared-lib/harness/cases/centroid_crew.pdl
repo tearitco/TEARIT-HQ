@@ -74,6 +74,27 @@ EXPECT_OUT | PLACE 2,0,0 stone | laid
 EXPECT_HAS | pet/life.txt | EVENT\p3\pp1\pplace\pstone\p2,0,0\pok | place-is-a-life-row
 EXPECT_EXISTS | pet/pet.ppm | the-pet-has-a-picture
 
+CASE | fountain
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-fountain
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-fountain
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | fountain | fountain.pdl
+EXPECT_EXIT | 0 | fountain-gen
+EXPECT_OUT | cells=12 jobs=12 | fountain-count
+MKDIR | fount
+RUN | cp | fountain.pdl | fount/jobs.pdl
+EXPECT_EXIT | 0 | jobs-copied
+RUN | ./crew_op | raise | $T/fount
+EXPECT_EXIT | 0 | fountain-raised
+EXPECT_OUT | RAISE placed=12 | fountain-placed
+RUN | ./crew_op | audit | fount/jobs.pdl | fount/life.txt
+EXPECT_EXIT | 0 | fountain-audit
+EXPECT_OUT | AUDIT placed=12 | fountain-audit-count
+EXPECT_HAS | fount/life.txt | place\pdoor\p42,41,1\pok | the-door-was-placed
+EXPECT_EXISTS | fount/plan.ppm | the-fountain-has-a-plan
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
