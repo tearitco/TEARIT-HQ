@@ -1,0 +1,106 @@
+# skyland.blueprint.pdl - the MASTER PLAN of the Centroid skyland (2026-11-10). One row per fact; rows are `TAG | field | field | ...`.
+# SOURCE: the owner's target picture /home/no/Downloads/goal-centroid-skyland.jpeg (a Dynmap screenshot of someone else's Minecraft build; the picture is NOT stored in this repo).
+# This file is OUR abstraction: masses, positions, zones, a route. It is not a block-by-block copy and it uses our own names.
+# ACCURACY: every coordinate was ESTIMATED by claude from ONE oblique picture (looking from the south-west, perspective foreshortening, no depth). Expect +-3 cells. Nothing here was measured.
+# FRAME: x grows east (image right), y grows south (toward the viewer), z grows up in BLOCKS; origin = north-west corner of the grid. One plan cell is cell_blocks x cell_blocks blocks.
+# The three big islands overlap on purpose: the lobes are joined, the shoulder is the stepped ramp, the plateau is higher with a cliff above the village lobe.
+# ISLAND  | id | kind | cx | cy | rx | ry | top_z | depth | role      (an ellipse in plan; the underside tapers to a point `depth` blocks below top_z)
+# ZONE    | id | island | kind | shape | a | b | c | d | note       (shape ell: cx cy rx ry; shape rect: x0 y0 x1 y1)
+# WATER   | id | kind | points x:y;x:y;... | width | z | note        (kinds river, pond, fall (over a cliff onto a lower island), voidfall (off an edge into the void))
+# BUILD   | id | kind | x0 | y0 | w | d | base_z | wall_h | roof | note   (a footprint box; w along x, d along y)
+# WAYPOINT| id | name | x | y | z | island | note                   (0 is the start, 15 is the goal: the tour of the picture)
+# ROUTE   | from | to | kind | note                                 (kinds forest-path, path, stairs-up, stairs-down, bridge, plaza)
+
+META | name | skyland master plan (working name: Centroid skyland)
+META | status | PLAN. Estimated from one picture. Checked 2026-11-10 by an ad-hoc awk script (see the doc); a proper C op and harness case are the proposal.
+META | doc | #.#.calendar-dox/!.HQ-IQ-BOOK/16.game/CENTROID-SKYLAND-BLUEPRINT-2026-11-10.md
+SCALE | cell_blocks | 4
+GRID | 72 | 52
+VOID | z | -80 | below the lowest island nothing exists; waterfalls fall into it
+
+# ---- the three big islands + the link (all coordinates in plan cells)
+ISLAND | A | main | 22 | 35 | 17 | 10.5 | 0 | 14 | forest lobe (west, low): where the tour starts
+ISLAND | B | main | 48 | 39 | 18 | 8.5 | 0 | 12 | village lobe (south-east, low): farms, fountain plaza, the goal chapel
+ISLAND | P | main | 48 | 16.5 | 18 | 12.5 | 10 | 16 | plateau (north-east, high): the cathedral library, the pale grove, the river
+ISLAND | L | link | 28 | 23 | 6 | 6 | 5 | 6 | shoulder: the stepped, cliffy ramp from the forest up to the plateau
+ISLAND | L2 | link | 60 | 29.5 | 3.5 | 4 | 5 | 6 | east shoulder: the stepped ramp from the plateau down to the village lobe (the picture shows a path descending here)
+
+# ---- the small empty sky islands (NOT in the picture: owner request 2026-11-10). Bare grass and stone; nothing on them.
+ISLAND | S1 | small | 10 | 12 | 5 | 3.5 | 6 | 7 | empty
+ISLAND | S2 | small | 20 | 5 | 3 | 2.5 | 14 | 5 | empty
+ISLAND | S3 | small | 3 | 27 | 2.5 | 3 | -5 | 6 | empty
+ISLAND | S4 | small | 69 | 33 | 2.5 | 3 | 3 | 6 | empty
+ISLAND | S5 | small | 69 | 10 | 2.5 | 2.5 | 18 | 5 | empty
+ISLAND | S6 | small | 52 | 1.5 | 3 | 1.2 | 24 | 4 | empty
+ISLAND | S7 | small | 36 | 50 | 3.5 | 1.8 | -8 | 6 | empty
+
+# ---- the land (zones: what the ground is)
+ZONE | forestA | A | conifer-forest | ell | 22 | 35 | 16 | 9.5 | dense spruce/fir, ferns, boulders (the picture's dark green forest)
+ZONE | clearingA | A | clearing | ell | 24 | 37 | 4 | 2.5 | open ground near waypoint 2-3 (fallen log, camp)
+ZONE | startpond | A | pond-bank | ell | 9 | 40 | 3.5 | 2.5 | the pond and little hut at the start
+ZONE | cliffwood | L | dark-oak-cliff | ell | 28 | 23 | 6 | 6 | bare rock, a gnarled dead tree, stair cut (waypoint 6)
+ZONE | grove | P | pale-grove | ell | 48 | 16 | 17 | 11 | grey-white blossom trees around the cathedral and along the river
+ZONE | lawn | P | lawn | rect | 45 | 17 | 61 | 23 | the open lawn in front of the cathedral (waypoints 9 to 12)
+ZONE | fieldsB | B | wheat-fields | rect | 45 | 32 | 56 | 38 | the golden fields behind the village (rows of wheat)
+ZONE | fieldsB2 | B | wheat-fields | rect | 34 | 41 | 39 | 44 | the small field south-west of the plaza
+ZONE | plaza | B | stone-plaza | ell | 42 | 41 | 4 | 3 | the fountain plaza (waypoints 13 to 14)
+ZONE | villageB | B | village | rect | 40 | 36 | 54 | 44 | timber-framed houses with green roofs around the plaza and the fields
+ZONE | meadowB | B | flower-meadow | ell | 56 | 38 | 6 | 4 | the east end of the village lobe, flowers (the picture's right-hand view)
+
+# ---- water
+WATER | pondA | pond | 9:40 | 3 | 0 | the start pond (stream source)
+WATER | streamA | river | 9:40;13:38;18:38;22:41;25:44;27:45 | 1.5 | 0 | from the start pond east along the forest, then out over the south edge
+WATER | voidfall1 | voidfall | 27:45 | 1.5 | 0 | the long thin fall from the south edge of the forest lobe into the void (the picture's left vertical stream)
+WATER | riverP | river | 36:11;38:14;40:17;44:18;48:21;53:23;58:24;61:25 | 3 | 10 | the river of the plateau: from the north-west grove, under the bridge, past the cathedral lawn, to the east
+WATER | branchP | river | 48:21;48:28 | 2 | 10 | the branch that goes over the plateau's south cliff
+WATER | cliffall | fall | 48:28 | 2 | 10 | the cliff waterfall: falls 10 blocks from the plateau onto the village lobe, into a pool
+WATER | poolB | pond | 48:31 | 3 | 0 | the pool at the foot of the cliff waterfall
+WATER | voidfall2 | voidfall | 62:43 | 1.5 | 0 | the long thin fall from the south-east edge of the village lobe into the void (the picture's right vertical stream)
+
+# ---- buildings (masses only; interiors and details are later layers)
+BUILD | cathedral | library-cathedral | 46 | 8 | 14 | 8 | 10 | 16 | steep-hip | THE landmark: pale stone, long nave east-west, a central tower and six smaller spires with green copper roofs, buttresses, a front door facing south. The library interior (reading rooms, shelves, a sofa corner) is inside.
+BUILD | cathedral_spire_main | spire | 52 | 11 | 3 | 3 | 26 | 14 | cone | the tallest spire, over the crossing (top at about +50 blocks above the plateau; OPEN: a clock face could go here)
+BUILD | cathedral_spires | spire-ring | 46 | 8 | 14 | 8 | 26 | 8 | cone | six smaller spires: four at the corners, two over the transept ends (positions to be fixed in the detail layer)
+BUILD | chapel | chapel | 36 | 32 | 3 | 3 | 0 | 8 | steep-hip | the small green-spired chapel next to the goal (waypoint 15)
+BUILD | east_stair | stairs | 59 | 27 | 2 | 5 | 0 | 10 | ramp | the long stair on the east shoulder, from the plateau (10) to the village lobe (0), waypoints 12 to 13
+BUILD | bridge | footbridge | 43 | 17 | 4 | 2 | 10 | 1 | flat | the small stone/timber bridge over the plateau river, between waypoints 8 and 9
+BUILD | fountain | fountain | 41 | 40 | 2 | 2 | 0 | 2 | open | the plaza fountain
+BUILD | stage | open-stage | 29 | 28 | 4 | 3 | 0 | 2 | flat | the wooden stage/pavilion at the forest edge near waypoints 4 and 5 (a red-roofed house stands behind it)
+BUILD | hut | log-hut | 8 | 37 | 3 | 3 | 0 | 4 | gable | the little hut by the start pond
+BUILD | houses_B1 | house-row | 46 | 36 | 8 | 4 | 0 | 5 | gable | a row of timber-framed houses east of the plaza (count and exact places are for the detail layer)
+BUILD | houses_B2 | house-row | 36 | 36 | 4 | 4 | 0 | 5 | gable | houses west of the plaza
+BUILD | mill | farm-barn | 46 | 38 | 4 | 3 | 0 | 5 | gable | a barn between the fields and the plaza (OPEN: the picture shows several roofs here; one is chosen as the barn)
+
+# ---- the tour of the picture: start, 1 to 14, goal (15). Coordinates are the picture's red dots, converted; z from the island top.
+WAYPOINT | 0 | start | 9 | 40 | 0 | A | beside the start pond and hut
+WAYPOINT | 1 | wp01 | 12 | 37 | 0 | A | along the stream
+WAYPOINT | 2 | wp02 | 22 | 33 | 0 | A | forest, a fallen log
+WAYPOINT | 3 | wp03 | 24 | 31 | 0 | A | forest
+WAYPOINT | 4 | wp04 | 30 | 29 | 0 | A | the wooden stage at the forest edge
+WAYPOINT | 5 | wp05 | 32 | 27 | 0 | A | the forest edge, a view toward the spired chapel
+WAYPOINT | 6 | wp06 | 28 | 21 | 5 | L | the cliff and the gnarled tree: the stair up
+WAYPOINT | 7 | wp07 | 32 | 17 | 10 | P | the plateau's west edge
+WAYPOINT | 8 | wp08 | 39 | 17 | 10 | P | by the river, before the bridge
+WAYPOINT | 9 | wp09 | 48 | 14 | 10 | P | the cathedral's south-west corner
+WAYPOINT | 10 | wp10 | 53 | 11 | 10 | P | the library inside the cathedral (the picture's inset shows the reading room)
+WAYPOINT | 11 | wp11 | 57 | 14 | 10 | P | the cathedral's south-east corner
+WAYPOINT | 12 | wp12 | 60 | 17 | 10 | P | the plateau's east edge, the way down
+WAYPOINT | 13 | wp13 | 54 | 40 | 0 | B | the village's east end
+WAYPOINT | 14 | wp14 | 45 | 42 | 0 | B | the fountain plaza
+WAYPOINT | 15 | goal | 37 | 33 | 0 | B | the goal: the chapel
+
+ROUTE | 0 | 1 | forest-path | the stream path
+ROUTE | 1 | 2 | forest-path |
+ROUTE | 2 | 3 | forest-path |
+ROUTE | 3 | 4 | forest-path |
+ROUTE | 4 | 5 | forest-path |
+ROUTE | 5 | 6 | stairs-up | 0 to 5 blocks onto the shoulder
+ROUTE | 6 | 7 | stairs-up | 5 to 10 blocks onto the plateau
+ROUTE | 7 | 8 | path |
+ROUTE | 8 | 9 | bridge | across the plateau river
+ROUTE | 9 | 10 | path | into the cathedral
+ROUTE | 10 | 11 | path |
+ROUTE | 11 | 12 | path |
+ROUTE | 12 | 13 | stairs-down | 10 to 0 blocks by the east stair on the east shoulder (x 59-61, y 27-32), then across the village lobe
+ROUTE | 13 | 14 | plaza |
+ROUTE | 14 | 15 | plaza | to the chapel
