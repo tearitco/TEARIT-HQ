@@ -32,3 +32,5 @@ $CC -std=gnu11 -Wall -Wextra -Wno-misleading-indentation -Wno-format-truncation 
 mkdir -p ../../ops/+x
 $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -Wno-misleading-indentation -O2 -o ../../ops/+x/game_core.+x.tmp ../../ops/game_core.c && mv ../../ops/+x/game_core.+x.tmp ../../ops/+x/game_core.+x && echo "OK ../../ops/+x/game_core.+x"
 $CC -std=gnu11 -Wall -Wextra -Wno-format-truncation -Wno-misleading-indentation -O2 -o +x/game_new_op.+x game_new_op.c && echo "OK +x/game_new_op.+x"
+# track_theory_op (2026-11-09): the EXACT theory of a track race (Markov chain: expected turns, game length by player count, seat win shares, per-square table) and the engine's dice replayed, for the Chutes cases; read-only, no process, no files
+$CC -std=gnu11 -Wall -Wextra -O2 -o +x/track_theory_op.+x track_theory_op.c -lm && echo "OK +x/track_theory_op.+x"

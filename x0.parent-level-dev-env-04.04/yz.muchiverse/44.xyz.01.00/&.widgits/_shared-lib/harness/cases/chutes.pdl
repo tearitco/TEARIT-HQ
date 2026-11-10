@@ -1,0 +1,524 @@
+# chutes (Chutes and Ladders): the generated TURN BASED game on the shared engine game_core (made by game_new_op; the first 42 checks are the generator's own, edited only where the 100-square board changed a number), then the checks that make it THIS game:
+# data sanity of the jump table, the three finish rules, three scripted games checked against an INDEPENDENT implementation of the dice, the exact Markov theory against the engine's own dice, table talk, the feed, seats, the exporter and the data studio.
+# Every pinned number below was OBSERVED in a scratch run on 2026-11-09 before it was written here. Scratch only: nothing here touches a live folder. The jump table is FROM MEMORY and unchecked against an official board: this case pins OUR data, not the official board.
+RESULTS | ../results/chutes.txt
+ENV | LC_ALL | C
+
+CASE    | play
+SCRATCH |
+MKDIR   | g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | new | 7
+EXPECT_OUT | new game seed=7 kind=ledger | a-game-opens-and-records-its-seed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-a-second-new-in-the-same-folder-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | roll
+EXPECT_EXIT | 2 | NEGATIVE-nothing-rolls-before-the-game-starts
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | join | B | human
+EXPECT_OUT | p2 joined as B | the-second-seat-is-p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | join | A
+EXPECT_EXIT | 2 | NEGATIVE-a-taken-name-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | start
+EXPECT_OUT | game started: 2 players | the-lobby-closes
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | roll | as=p2
+EXPECT_EXIT | 2 | NEGATIVE-it-is-p1s-turn-so-p2-may-not-roll
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | ledger_hash
+CAPTURE | h_before
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | roll | as=p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | ledger_hash
+CAPTURE | h_after
+EXPECT_EQ | $h_before | $h_after | a-refused-roll-appends-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | roll | as=p1
+EXPECT_OUT | p1 rolled | the-current-player-rolls
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | ledger_hash
+CAPTURE | h_rolled
+EXPECT_NE | $h_before | $h_rolled | vacuity-a-real-roll-DOES-change-the-ledger-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | tick
+EXPECT_OUT | waiting for a human seat | tick-waits-for-the-human-seat-p2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | ledger_hash
+EXPECT_OUT_IS | $h_rolled | a-waiting-tick-writes-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | autoplay
+EXPECT_EXIT | 2 | NEGATIVE-autoplay-is-refused-while-a-seat-is-human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | seat | p2 | pet
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/g | tick
+EXPECT_OUT | ticked | a-pet-seat-ticks-after-the-seat-row
+CLEAN   |
+
+CASE    | whole-game
+SCRATCH |
+MKDIR   | a
+MKDIR   | b
+MKDIR   | e
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | autoplay
+EXPECT_OUT | over=1 | a-whole-game-plays-to-a-winner
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | check
+EXPECT_OUT | CHECK ok | the-invariants-hold-at-the-end
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | roll
+EXPECT_EXIT | 2 | NEGATIVE-nothing-is-played-after-the-game-is-over
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | replay
+CAPTURE | r1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | ledger_hash
+CAPTURE | l1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | replay
+EXPECT_OUT_IS | $r1 | replaying-twice-prints-the-same-state-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | ledger_hash
+EXPECT_OUT_IS | $l1 | replay-does-not-change-the-ledger-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/b | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/b | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/b | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/b | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/b | autoplay
+RUN | cmp | $T/a/ledger.txt | $T/b/ledger.txt
+EXPECT_EXIT | 0 | the-same-seed-gives-the-identical-ledger
+CALC    | s2 | 7 | + | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/e | new | $s2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/e | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/e | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/e | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/e | autoplay
+RUN | cmp | $T/a/ledger.txt | $T/e/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-another-seed-gives-another-ledger-so-the-compare-can-fail
+
+CASE    | tamper
+MKDIR   | c
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 0,/\proll\p/s//\proll\p9/ | $T/c/ledger.txt
+RUN | cmp | $T/a/ledger.txt | $T/c/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-roll-is-refused-by-replay
+EXPECT_OUT | ledger line | the-refusal-names-the-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c | roll
+EXPECT_EXIT | 1 | NEGATIVE-a-verb-on-a-tampered-ledger-is-refused-too
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 8d | $T/c/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c | check
+EXPECT_EXIT | 1 | NEGATIVE-a-deleted-row-is-refused
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | s/\pnew\p7\p/\pnew\p99999\p/ | $T/c/ledger.txt
+RUN | cmp | $T/a/ledger.txt | $T/c/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-seed-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-changed-seed-is-refused
+RUN | cp | $T/a/ledger.txt | $T/c/ledger.txt
+APPEND  | c/ledger.txt | EVENT|9|p1|roll|1|1|to=1\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-forged-row-appended-after-the-end-is-refused
+
+CASE    | no-ghost-data
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | ui
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | audit
+EXPECT_OUT | AUDIT ok files=2 | the-audit-passes-with-only-declared-files
+RUN | cp | $T/a/ui.txt | $T/a/ui.keep
+RUN | rm | $T/a/ui.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | ui
+RUN | cmp | $T/a/ui.txt | $T/a/ui.keep
+EXPECT_EXIT | 0 | a-deleted-projection-regenerates-byte-for-byte
+RUN | rm | $T/a/ui.keep
+WRITE   | a/stray.txt | a file nobody declared
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+EXPECT_OUT | ghost file stray.txt | the-audit-names-the-ghost
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/a | replay
+EXPECT_OUT_IS | $r1 | a-stray-file-changes-nothing-about-the-game-state
+RUN | rm | $T/a/stray.txt
+
+CASE    | rules-are-data
+COPYDIR | @.apps/chutes | app2 | +x
+RUN | sed | -i | s/^\(TRACK \p length \p \)100/\1101/ | $T/app2/rulesets/default/board.pdl
+RUN | cmp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/app2/rulesets/default/board.pdl
+EXPECT_EXIT | 1 | vacuity-the-board-file-copy-really-differs
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app2 | $T/a | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-rules-file-edited-after-the-game-began-refuses-its-ledger
+EXPECT_OUT | ledger line 1: | the-refusal-is-at-row-1-where-the-rules-hash-is-recorded
+COPYDIR | @.apps/chutes | app3 | +x
+RUN | sed | -i | s/^\(RULE \p max_players *\p *\)[0-9]*/\12/ | $T/app3/rulesets/default/rules.pdl
+MKDIR   | f
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app3 | $T/f | join | C
+EXPECT_EXIT | 2 | NEGATIVE-the-table-is-full-at-max_players-from-rules.pdl
+EXPECT_OUT | table is full | the-refusal-says-so
+COPYDIR | @.apps/chutes | app4 | +x
+APPEND  | app4/rulesets/default/board.pdl | JUMP | 1 | 11 | t\nJUMP | 2 | 12 | t\nJUMP | 3 | 13 | t\nJUMP | 4 | 14 | t\nJUMP | 5 | 15 | t\nJUMP | 6 | 16 | t\n
+MKDIR   | j
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | roll
+EXPECT_OUT | jump= | a-JUMP-row-moves-a-player-whatever-the-seed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app4 | $T/j | check
+EXPECT_OUT | CHECK ok | a-game-with-jumps-still-replays
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/j | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-ledger-under-the-stock-board-is-refused
+
+# ======================================================================================================================================================================
+# THE CHUTES AND LADDERS CHECKS (plan CHUTES-LADDERS-AND-SNAKE-GAME-PLANS-2026-11-09 sections 4-11: cs_data cs_finish cs_play cs_seats cs_theory cs_talk cs_export)
+# GC = the shared engine, TT = track_theory_op (the exact theory and an independent copy of the dice), A = the app. All three paths are written out because the case op only expands $T and $HOUSE.
+# ======================================================================================================================================================================
+
+CASE    | cs_data
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $HOUSE/@.apps/chutes/rulesets/default/board.pdl
+EXPECT_EXIT | 0 | the-shipped-jump-table-passes-the-sanity-check
+EXPECT_OUT_IS | SANITY ok jumps=19 ladders=9 chutes=10 | 19-jumps-9-ladders-10-chutes-(OUR-data-from-memory)-every-jump-lands-inside-1..100-no-chain-no-loop
+EXPECT_HAS | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | TRACK \p length \p 100 | 100-squares
+EXPECT_HAS | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | FROM MEMORY OF THE COMMON US BOARD | the-file-says-in-capitals-that-the-table-is-from-memory
+EXPECT_HAS | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | NOT BEEN CHECKED AGAINST AN OFFICIAL BOARD | and-that-it-is-unchecked
+EXPECT_HAS | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | BOARD \p path   \p serpentine | the-page-geometry-is-data-too
+RUN | cp | -r | $HOUSE/@.apps/chutes | $T/c_bad
+RUN | sed | -i | s/^\(JUMP \p 1  \p \)38 /\1101/ | $T/c_bad/rulesets/default/board.pdl
+RUN | cmp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_bad/rulesets/default/board.pdl
+EXPECT_EXIT | 1 | vacuity-the-bad-board-copy-really-differs
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $T/c_bad/rulesets/default/board.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-ladder-landing-on-101-fails-the-sanity-check
+EXPECT_OUT | lands outside 1..100 | and-says-why
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bad | $T/c_bad_g | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-the-engine-refuses-the-same-board-too
+EXPECT_OUT | outside the track | at-the-config
+RUN | cp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_b2.pdl
+APPEND  | c_b2.pdl | JUMP | 38 | 50 | ladder | X1\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $T/c_b2.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-jump-starting-where-the-ladder-1-38-ends-is-a-chain
+EXPECT_OUT | chain | and-says-chain
+RUN | cp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_b3.pdl
+APPEND  | c_b3.pdl | JUMP | 4 | 20 | ladder | X2\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $T/c_b3.pdl
+EXPECT_EXIT | 1 | NEGATIVE-two-jumps-from-square-4
+EXPECT_OUT | foot of two jumps | and-says-so
+RUN | cp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_b4.pdl
+APPEND  | c_b4.pdl | JUMP | 12 | 12 | ladder | X3\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $T/c_b4.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-jump-to-itself
+RUN | cp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_b5.pdl
+APPEND  | c_b5.pdl | JUMP | 30 | 25 | ladder | X4\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $T/c_b5.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-ladder-that-goes-down
+RUN | cp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_b6.pdl
+APPEND  | c_b6.pdl | JUMP | 70 | 100 | ladder | X5\nJUMP | 100 | 3 | chute | X6\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $T/c_b6.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-jump-FROM-square-100-(and-a-chain-into-it)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sanity | $HOUSE/@.apps/chutes/rulesets/default/board.pdl
+EXPECT_EXIT | 0 | and-the-real-board-still-passes-after-all-those-copies-were-refused
+
+CASE    | cs_finish
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_turns | --finish | reach
+CAPTURE | v1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_turns | --finish | exact_stay
+CAPTURE | v2
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_turns | --finish | bounce
+CAPTURE | v3
+EXPECT_EQ | $v1 | 35.834938 | theory-reach-35.8349-turns-for-one-player-(OBSERVED)
+EXPECT_EQ | $v2 | 39.225122 | theory-exact_stay-39.2251-turns-(the-memory-figure-was-about-39)
+EXPECT_EQ | $v3 | 43.324597 | theory-bounce-43.3246-turns
+EXPECT_GE | $v2 | $v1 | exact-finish-games-are-longer-than-reach
+EXPECT_GE | $v3 | $v2 | and-bounce-longer-still
+CALC    | v4 | $v2 | - | $v1
+EXPECT_GE | $v4 | 3 | vacuity-the-finish-rule-is-worth-over-3-turns-so-the-comparison-above-is-not-noise
+MKDIR   | c_fs
+MKDIR   | c_fr
+MKDIR   | c_fb
+RUN | cp | -r | $HOUSE/@.apps/chutes | $T/c_fra
+RUN | cp | -r | $HOUSE/@.apps/chutes | $T/c_fba
+APPEND  | c_fra/rulesets/default/rules.pdl | RULE | finish | reach\n
+APPEND  | c_fba/rulesets/default/rules.pdl | RULE | finish | bounce\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_fs | new | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fra | $T/c_fr | new | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fba | $T/c_fb | new | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_fs | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_fs | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fra | $T/c_fr | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fra | $T/c_fr | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fba | $T/c_fb | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fba | $T/c_fb | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_fs | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fra | $T/c_fr | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fba | $T/c_fb | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_fs | autoplay
+CAPTURE | v5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fra | $T/c_fr | autoplay
+CAPTURE | v6
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fba | $T/c_fb | autoplay
+CAPTURE | v7
+EXPECT_NE | $v5 | $v6 | the-same-seed-gives-a-DIFFERENT-game-under-reach-than-under-exact_stay
+EXPECT_NE | $v5 | $v7 | and-under-bounce
+RUN | grep | -c | -E | to=(10[1-9]\p1[1-9][0-9]) | $T/c_fs/ledger.txt
+EXPECT_OUT_IS | 0 | exact_stay-no-roll-ever-ends-past-square-100
+RUN | grep | -c | -F | ;stay | $T/c_fs/ledger.txt
+CAPTURE | v8
+EXPECT_GE | $v8 | 1 | vacuity-the-exact_stay-game-DID-have-at-least-one-stay-row
+RUN | grep | -c | -F | ;bounce | $T/c_fb/ledger.txt
+CAPTURE | v9
+EXPECT_GE | $v9 | 1 | vacuity-the-bounce-game-DID-bounce
+RUN | grep | -c | -E | ;stay\p;bounce | $T/c_fr/ledger.txt
+EXPECT_OUT_IS | 0 | reach-writes-neither
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_fra | $T/c_fs | replay
+EXPECT_EXIT | 1 | NEGATIVE-an-exact_stay-ledger-replayed-under-reach-is-refused-(the-rules-hash)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_fs | check
+EXPECT_OUT | CHECK ok | and-under-its-own-rules-it-checks
+
+CASE    | cs_play
+MKDIR   | c_p1
+MKDIR   | c_p2
+MKDIR   | c_p3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | join | C
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | join | D
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=80 rounds=19 over=1 winner=B | SCRIPTED-GAME-1-seed-7-4-players-B-wins-in-round-19-after-74-rolls
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | game | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 7 | 4
+EXPECT_OUT_IS | AUTOPLAY events=80 rounds=19 over=1 winner=B | an-INDEPENDENT-implementation-of-the-dice-and-the-rules-plays-the-same-game
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | replay
+EXPECT_OUT_IS | REPLAY events=80 hash=32932c72095471a5 | replay-reproduces-the-pinned-state-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | check
+EXPECT_OUT | CHECK ok events=80 | the-invariants-hold
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p2 | new | 11
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p2 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p2 | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p2 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p2 | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=73 rounds=35 over=1 winner=A | SCRIPTED-GAME-2-seed-11-2-players-A-wins-in-round-35
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | game | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 11 | 2
+EXPECT_OUT_IS | AUTOPLAY events=73 rounds=35 over=1 winner=A | the-independent-copy-agrees-on-game-2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p3 | new | 21
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p3 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p3 | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p3 | join | C
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p3 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p3 | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=30 rounds=9 over=1 winner=A | SCRIPTED-GAME-3-seed-21-3-players-A-wins-in-round-9-(a-short-lucky-game)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | game | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 21 | 3
+EXPECT_OUT_IS | AUTOPLAY events=30 rounds=9 over=1 winner=A | the-independent-copy-agrees-on-game-3
+RUN | grep | -c | -F | ;win | $T/c_p1/ledger.txt
+EXPECT_OUT_IS | 1 | exactly-one-winning-row-in-game-1
+RUN | grep | -c | -F | ;jump= | $T/c_p1/ledger.txt
+CAPTURE | v1
+EXPECT_GE | $v1 | 1 | vacuity-game-1-DID-use-a-jump
+RUN | sed | -i | 0,/to=1;jump=1-38/s//to=1;jump=1-39/ | $T/c_p1/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-ladder-row-edited-so-it-climbs-to-39-is-refused
+RUN | sed | -i | 0,/to=1;jump=1-39/s//to=1;jump=1-38/ | $T/c_p1/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | replay
+EXPECT_OUT_IS | REPLAY events=80 hash=32932c72095471a5 | and-restoring-it-restores-the-game-(the-edit-was-the-whole-difference)
+
+CASE    | cs_mutant
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_NO_VERIFY | -o | $T/c_mut.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-engine-with-replay-verification-off-compiles
+RUN | sed | -i | 0,/to=1;jump=1-38/s//to=1;jump=1-39/ | $T/c_p1/ledger.txt
+RUN | $T/c_mut.+x | $HOUSE/@.apps/chutes | $T/c_p1 | replay
+EXPECT_EXIT | 0 | MUTANT-with-verification-off-ACCEPTS-the-edited-ladder
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | replay
+EXPECT_EXIT | 1 | and-the-real-engine-refuses-it-so-the-NEGATIVE-checks-above-have-teeth
+RUN | sed | -i | 0,/to=1;jump=1-39/s//to=1;jump=1-38/ | $T/c_p1/ledger.txt
+
+CASE    | cs_theory
+# 1. the op against a board solved BY HAND: 4 squares, a spinner of 1 or 2 (probability 1/2 each), a chute 3 -> 1, finish at 4 or more. E2 = 1 + E1/2 ; E1 = 1 + E2/2 + E1/2 -> E1 = 2 + E2 ; so E2 = 4, E1 = 6, E0 = 1 + (E1 + E2)/2 = 6. The same numbers are in the data-hq fixture chutes_markov.csv.
+WRITE   | c_tiny_board.pdl | TRACK | length | 4\nJUMP | 3 | 1 | chute\n
+WRITE   | c_tiny_rules.pdl | RULE | finish | reach\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | table | $T/c_tiny_board.pdl | $T/c_tiny_rules.pdl | --faces | 2
+EXPECT_OUT | 0,6.000000 | HAND-SOLVED-E0-is-6
+EXPECT_OUT | 1,6.000000 | HAND-SOLVED-E1-is-6
+EXPECT_OUT | 2,4.000000 | HAND-SOLVED-E2-is-4
+EXPECT_OUT_LACKS | 3, | and-square-3-(a-chute-foot-nobody-rests-on)-has-no-row
+EXPECT_HAS | $HOUSE/&.hq-apps/data-hq/fixtures/chutes_markov.csv | 0,0,0.5,0.5,0,6 | the-data-studio-fixture-says-the-same-E0
+EXPECT_HAS | $HOUSE/&.hq-apps/data-hq/fixtures/chutes_markov.csv | 2,0,0.5,0,0.5,4 | and-E2
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $T/c_tiny_board.pdl | $T/c_tiny_rules.pdl | mean_turns | --faces | 2
+EXPECT_OUT_IS | 6.000000 | the-distribution-route-(sum-t-f(t))-agrees-with-the-linear-solve-route-on-the-tiny-board
+WRITE   | c_tiny_board2.pdl | TRACK | length | 4\nJUMP | 3 | 1 | chute\nJUMP | 2 | 4 | ladder\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $T/c_tiny_board2.pdl | $T/c_tiny_rules.pdl | mean_turns | --faces | 2
+EXPECT_EXIT | 0 | MUTANT-a-ladder-2-4-added
+EXPECT_OUT_IS | 2.000000 | and-the-hand-solved-answer-moves-to-2-(E1-=-1-+-E1/2-so-E1-=-2,-E0-=-1-+-E1/2-=-2)-so-a-wrong-board-is-detected
+# 2. the exact numbers for OUR board (OBSERVED): one player
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_turns
+EXPECT_OUT_IS | 39.225122 | exact-mean-turns-to-finish-for-one-player-exact_stay-39.2251
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | median_turns
+EXPECT_OUT_IS | 32.000000 | median-32
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | p90_turns
+EXPECT_OUT_IS | 72.000000 | p90-72
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | tail
+EXPECT_OUT | e-1 | the-mass-cut-off-is-below-1e-13-(1e-14-order)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | total_win_prob | --players | 4
+EXPECT_OUT_IS | 1.000000 | the-seat-win-probabilities-of-4-players-sum-to-1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_rounds | --players | 1
+EXPECT_OUT_IS | 39.225122 | and-one-player-game-length-in-rounds-is-the-one-player-mean-(a-consistency-check-between-two-formulas)
+# 3. the engine's OWN dice, 20000 games for each seat count, against the theory (fixed seed range 1000.., deterministic, cannot flake): |sim - theory| <= 4 standard errors
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_rounds | --players | 4
+CAPTURE | v1
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sim | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 1000 | 20000 | 4 | mean_rounds
+CAPTURE | v2
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sim | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 1000 | 20000 | 4 | sd_rounds
+CAPTURE | v3
+CALC    | v4 | $v3 | / | 141.42
+CALC    | v5 | $v4 | * | 4
+CALC    | v6 | $v2 | - | $v1
+CALC    | v7 | $v1 | - | $v2
+EXPECT_LE | $v6 | $v5 | 4-players-the-simulated-mean-game-length-is-not-above-the-theory-by-more-than-4-SE
+EXPECT_LE | $v7 | $v5 | and-not-below-it
+EXPECT_EQ | $v1 | 19.266975 | theory-19.2670-rounds-for-4-players-(OBSERVED;-the-sim-gave-19.2513)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_rounds | --players | 2
+CAPTURE | v8
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sim | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 1000 | 20000 | 2 | mean_rounds
+CAPTURE | v9
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sim | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 1000 | 20000 | 2 | sd_rounds
+CAPTURE | v10
+CALC    | v11 | $v10 | / | 35.355
+CALC    | v12 | $v9 | - | $v8
+CALC    | v13 | $v8 | - | $v9
+EXPECT_LE | $v12 | $v11 | 2-players-sim-not-above-theory-by-more-than-4-SE
+EXPECT_LE | $v13 | $v11 | and-not-below
+EXPECT_GE | $v8 | $v1 | fewer-players-longer-games-(26.33-vs-19.27-rounds)
+# seat shares: the first seat has an edge
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | p_win_seat | --players | 4 | --seat | 1
+CAPTURE | v8
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | p_win_seat | --players | 4 | --seat | 4
+CAPTURE | v9
+EXPECT_GE | $v8 | $v9 | seat-1-wins-more-than-seat-4-(first-mover-advantage;-0.2601-vs-0.2401)
+CALC    | v10 | $v8 | - | $v9
+EXPECT_GE | $v10 | 0.015 | vacuity-the-advantage-is-over-1.5-points-so-it-is-a-real-effect-in-the-theory
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sim | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 1000 | 20000 | 4 | share_seat1
+CAPTURE | v11
+CALC    | v12 | $v11 | - | $v8
+CALC    | v13 | $v8 | - | $v11
+EXPECT_LE | $v12 | 0.0125 | simulated-seat-1-share-within-4-SE-of-the-theory
+EXPECT_LE | $v13 | 0.0125 | both-ways
+# 4. a MUTANT board (the chute 98 -> 78 removed): the theory moves, the engine's dice on the SAME mutant board follow the NEW theory, and the OLD theory no longer fits
+RUN | cp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_mut_board.pdl
+RUN | sed | -i | /^JUMP \p 98 /d | $T/c_mut_board.pdl
+RUN | cmp | $HOUSE/@.apps/chutes/rulesets/default/board.pdl | $T/c_mut_board.pdl
+EXPECT_EXIT | 1 | vacuity-the-mutant-board-differs
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | metric | $T/c_mut_board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | mean_rounds | --players | 4
+CAPTURE | v8
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/track_theory_op.+x | sim | $T/c_mut_board.pdl | $HOUSE/@.apps/chutes/rulesets/default/rules.pdl | 1000 | 20000 | 4 | mean_rounds
+CAPTURE | v9
+CALC    | v10 | $v9 | - | $v8
+CALC    | v11 | $v8 | - | $v9
+EXPECT_LE | $v10 | $v5 | the-sim-on-the-mutant-board-matches-the-mutant-theory
+EXPECT_LE | $v11 | $v5 | both-ways
+CALC    | v12 | $v1 | - | $v9
+EXPECT_GE | $v12 | $v5 | MUTANT-FAILS-the-sim-on-the-mutant-board-is-further-than-4-SE-from-the-ORIGINAL-theory-(0.73-rounds-away)
+
+CASE    | cs_talk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_p1 | talk
+EXPECT_OUT | 1: A rolled 1 and climbed the ladder from 1 to 38 | a-ladder-sentence-(the-lead's-example-form:-rolled-N-and-climbed-the-ladder-from-X-to-Y)
+EXPECT_OUT | 12: D rolled 1 and slid down the chute from 16 to 6 | a-chute-sentence
+EXPECT_OUT | 5: A rolled 3: square 38 to 41 | a-plain-move
+EXPECT_OUT | 74: B rolled 2 and climbed the ladder from 80 to 100 and wins after 74 rolls | the-winning-sentence-(a-ladder-to-100)
+EXPECT_OUT | TALK sentences=74 | one-sentence-per-roll
+MKDIR   | c_t5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_t5 | new | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_t5 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_t5 | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_t5 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_t5 | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=111 rounds=54 over=1 winner=A | seed-5-2-players-exact_stay
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_t5 | talk
+EXPECT_OUT | 105: A rolled 6 but needs exactly 4: stays on 96 | the-exact_stay-sentence
+EXPECT_HAS | $T/c_t5/ledger.txt | EVENT\p53\pp1\proll\p6\p96\pto=96;stay | and-its-ledger-row
+RUN | cp | -r | $HOUSE/@.apps/chutes | $T/c_bapp
+APPEND  | c_bapp/rulesets/default/rules.pdl | RULE | finish | bounce\n
+MKDIR   | c_t5b
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | new | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=112 rounds=54 over=1 winner=B | seed-5-under-bounce
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | talk
+EXPECT_OUT | 105: A rolled 6 on 96: bounces back to 98 and slid down the chute from 98 to 78 | the-bounce-then-chute-sentence
+EXPECT_HAS | $T/c_t5b/ledger.txt | EVENT\p53\pp1\proll\p6\p78\pto=98;bounce;jump=98-78 | and-its-ledger-row
+
+CASE    | cs_ui
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | ui
+EXPECT_EXIT | 0 | the-feed-is-written
+EXPECT_HAS | $T/c_t5b/ui.txt | finish=bounce | the-feed-names-the-finish-rule
+EXPECT_HAS | $T/c_t5b/ui.txt | last_who=p2 | the-last-roller
+EXPECT_HAS | $T/c_t5b/ui.txt | last_roll=4 | the-last-roll
+EXPECT_HAS | $T/c_t5b/ui.txt | last_to=100 | and-where-it-ended
+EXPECT_HAS | $T/c_t5b/ui.txt | talk_n=5 | five-talk-lines
+EXPECT_HAS | $T/c_t5b/ui.txt | talk_3=A rolled 6 on 96: bounces back to 98 and slid down the chute from 98 to 78 | newest-first-the-4th-newest-is-the-bounce-and-chute
+EXPECT_HAS | $T/c_t5b/ui.txt | winner_name=B | the-winner
+RUN | cp | $T/c_t5b/ui.txt | $T/c_t5b/ui.keep
+RUN | rm | $T/c_t5b/ui.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | ui
+RUN | cmp | $T/c_t5b/ui.txt | $T/c_t5b/ui.keep
+EXPECT_EXIT | 0 | a-deleted-feed-regenerates-byte-for-byte
+RUN | rm | $T/c_t5b/ui.keep
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | audit
+EXPECT_OUT | AUDIT ok files=2 | and-the-audit-is-clean
+WRITE   | c_t5b/stray.txt | nobody declared me
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/c_bapp | $T/c_t5b | replay
+EXPECT_OUT | REPLAY events=112 | and-changes-nothing-about-the-game
+RUN | rm | $T/c_t5b/stray.txt
+
+CASE    | cs_seats
+MKDIR   | c_s1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | join | A
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | join | B
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | join | C
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | join | D
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | seat | p1 | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+EXPECT_OUT | waiting for a human seat | a-human-seat-makes-tick-wait
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | roll | as=p2
+EXPECT_EXIT | 2 | NEGATIVE-p2-may-not-roll-on-p1's-turn
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | roll | as=p1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | roll | as=p1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | roll | as=p1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | tick
+RUN | grep | -F | \proll\p | $T/c_s1/ledger.txt
+CAPTURE | v14
+RUN | sed | -n | 7,18p | $T/c_p1/ledger.txt
+CAPTURE | v15
+EXPECT_EQ | $v14 | $v15 | WHO-PRESSES-ROLL-NEVER-CHANGES-A-GAME-the-12-roll-rows-of-a-human-at-p1-equal-the-all-pet-game-row-for-row
+RUN | grep | -c | -F | \pseat\p | $T/c_s1/ledger.txt
+EXPECT_OUT_IS | 1 | vacuity-the-seated-game-DID-have-a-seat-row-(the-ledgers-differ-only-there)
+RUN | sed | -n | 8,19p | $T/c_p1/ledger.txt
+CAPTURE | v16
+EXPECT_NE | $v14 | $v16 | NEGATIVE-the-comparison-can-fail-(rows-shifted-by-one-differ)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/chutes | $T/c_s1 | roll | as=p3
+EXPECT_EXIT | 2 | NEGATIVE-and-it-is-p1's-turn-again
+
+CASE    | cs_export
+MKDIR   | c_x1
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/chutes | $T/c_p1 | $T/c_x1
+EXPECT_EXIT | 0 | THE-DATA-STUDIO-RUNS-THE-GAMES-EXPORTER-through-its-GAME-export-row
+EXPECT_OUT | PROVIDER ok rc=0 | provider-ok
+EXPECT_OUT | files=4 | four-files
+EXPECT_HAS | $T/c_x1/game.csv | 32932c72095471a5 | game.csv-carries-the-state-hash-of-the-pinned-game
+EXPECT_HAS | $T/c_x1/game.csv | ,ledger,default, | kind-ledger
+EXPECT_HAS | $T/c_x1/game.csv | ,7,4,0,0,80,19,over,winner,p2,pet,32932c72095471a5,100,exact_stay,19,74 | seed-7-4-players-80-rows-19-rounds-winner-p2-100-squares-19-jumps-74-rolls
+EXPECT_HAS | $T/c_x1/moves.csv | 74,19,p2,B,pet,2,78,80,100,ladder,1 | the-last-roll-in-moves.csv-(ladder-80-to-100-wins)
+RUN | grep | -c | . | $T/c_x1/moves.csv
+EXPECT_OUT_IS | 75 | moves.csv-has-a-header-and-74-roll-rows
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/c_x1/game.csv | $T/c_x1/schema.pdl
+EXPECT_EXIT | 0 | the-exporter's-own-schema-passes-the-studio's-check-for-game.csv
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/c_x1/moves.csv | $T/c_x1/schema.pdl
+EXPECT_EXIT | 0 | and-for-moves.csv
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | index | $T/c_x1
+EXPECT_OUT | winner,p2,pet,0,32932c72095471a5 | data_op-index-reads-the-game-(winner-p2-pets-only-so-human_ever-0)
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | list | $T/c_p1
+EXPECT_OUT | ledgerdir | data_op-list-FINDS-the-chutes-game-folder-(a-ledger-dir)
+EXPECT_OUT | public | and-calls-it-public-(pets-only)
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | show | $T/c_x1/game.csv | --cols | winner,rounds | --head | 1
+EXPECT_OUT | p2 | and-shows-the-winner-column
+CLEAN   |

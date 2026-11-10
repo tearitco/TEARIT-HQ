@@ -10,3 +10,5 @@ GAME   | kind        | {{kind}}
 GAME   | ruleset     | default
 GAME   | driver      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x driver {house} {book} {editor}
 GAME   | clock       | pause
+# GAME | export  (data-hq P0, 2026-11-09): the program the data studio runs to turn this game's state folder into tables (game.csv with a game_id column, events.csv, schema.pdl; a ledger game also moves.csv). {house} {book} {state} {out} are replaced. The editor's Play ignores this row.
+GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}

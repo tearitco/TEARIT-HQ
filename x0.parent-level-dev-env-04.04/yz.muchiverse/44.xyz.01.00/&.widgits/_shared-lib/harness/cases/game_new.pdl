@@ -447,6 +447,105 @@ SLEEP   | 300
 EXPECT_DEAD | $OWN3 | the-fake-owner-is-gone-and-reaped
 SLEEP   | 1500
 EXPECT_DEAD | $DRV3 | the-editor-driver-ends-with-its-owner
+
+# ---- added 2026-11-09 (Chutes / Snake / Teario foundations): the generic engine options those games needed, each with its own case row here. The games' own cases: cases/chutes.pdl, snake.pdl, teario_make.pdl, teario_play.pdl.
+# Pinned numbers were OBSERVED in a scratch run first (11-square track, 2 players, seed 7; the die sequence is 1 1 2 4 3 4 4 1 2 3 5 1 ...).
+CASE    | finish-rules-and-talk
+RUN | cp | -r | $T/h/@.apps/demo-race | $T/fr
+RUN | cp | -r | $T/h/@.apps/demo-race | $T/fs
+RUN | cp | -r | $T/h/@.apps/demo-race | $T/fb
+RUN | sed | -i | s/^\(TRACK \p length \p \)30/\111/ | $T/fr/rulesets/default/board.pdl
+RUN | sed | -i | s/^\(TRACK \p length \p \)30/\111/ | $T/fs/rulesets/default/board.pdl
+RUN | sed | -i | s/^\(TRACK \p length \p \)30/\111/ | $T/fb/rulesets/default/board.pdl
+APPEND  | fs/rulesets/default/rules.pdl | RULE | finish | exact_stay\n
+APPEND  | fb/rulesets/default/rules.pdl | RULE | finish | bounce\n
+MKDIR   | gr
+MKDIR   | gs
+MKDIR   | gb
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fr | $T/gr | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fr | $T/gr | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fr | $T/gr | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fr | $T/gr | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fr | $T/gr | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=13 rounds=5 over=1 winner=A | reach-A-passes-the-end-and-wins-in-round-5-the-original-rule
+RUN | grep | -c | -F | ;stay | $T/gr/ledger.txt
+EXPECT_OUT_IS | 0 | vacuity-reach-writes-no-stay-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=16 rounds=6 over=1 winner=B | exact_stay-the-same-seed-needs-an-exact-roll-so-B-wins-in-round-6
+EXPECT_HAS | $T/gs/ledger.txt | EVENT\p5\pp1\proll\p2\p10\pto=10;stay | an-overshoot-leaves-A-on-10
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | talk
+EXPECT_OUT | A rolled 5 but needs exactly 1: stays on 10 | the-talk-sentence-for-a-stay
+EXPECT_OUT | B rolled 1: square 10 to 11 and wins after 12 rolls | and-for-the-exact-win
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fr | $T/gs | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-ledger-under-the-reach-rule-is-refused-the-finish-rule-is-in-the-rules-hash
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fb | $T/gb | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fb | $T/gb | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fb | $T/gb | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fb | $T/gb | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fb | $T/gb | autoplay
+EXPECT_OUT_IS | AUTOPLAY events=33 rounds=15 over=1 winner=A | bounce-a-long-game
+EXPECT_HAS | $T/gb/ledger.txt | EVENT\p5\pp1\proll\p2\p10\pto=10;bounce | an-overshoot-of-1-walks-back-from-11-to-10
+EXPECT_HAS | $T/gb/ledger.txt | EVENT\p5\pp2\proll\p3\p9\pto=9;bounce | and-an-overshoot-of-2-from-10-lands-on-9
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fb | $T/gb | talk
+EXPECT_OUT | B rolled 3 on 10: bounces back to 9 | the-talk-sentence-for-a-bounce
+RUN | cp | $T/gs/ledger.txt | $T/gs/keep.txt
+RUN | sed | -i | s/to=10;stay/to=10/ | $T/gs/ledger.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-stay-row-with-its-stay-edited-out-is-refused
+RUN | cp | $T/gs/keep.txt | $T/gs/ledger.txt
+RUN | rm | $T/gs/keep.txt
+APPEND  | fs/rulesets/default/rules.pdl | RULE | finish | sideways\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/fs | $T/gs | replay
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-finish-rule-is-refused
+EXPECT_OUT | finish is reach, exact_stay or bounce | and-says-the-three
+
+CASE    | export-tables
+MKDIR   | xg
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | new | 7
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | join | A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | join | B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | start
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | autoplay
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | ledger_hash
+CAPTURE | lh
+SUMTREE | s0 | xg
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/xo1
+EXPECT_EXIT | 0 | export-with-an-out-folder-writes-the-tables
+EXPECT_OUT | EXPORT ok | and-says-so
+EXPECT_HAS | $T/xo1/game.csv | game_id,kind,ruleset,rules_hash,seed,players | game.csv-has-the-header-data_op-index-needs
+EXPECT_HAS | $T/xo1/game.csv | ,ledger,default, | and-one-row-for-a-ledger-game
+EXPECT_EXISTS | $T/xo1/events.csv | events.csv
+EXPECT_EXISTS | $T/xo1/moves.csv | moves.csv-for-a-ledger-game
+EXPECT_EXISTS | $T/xo1/schema.pdl | schema.pdl
+EXPECT_EQ | $lh | LEDGER events=24 hash=8718994e93e00b5a | the-ledger_hash-of-the-2-pet-seed-7-game-is-pinned-(observed)
+EXPECT_HAS | $T/xo1/game.csv | 8718994e93e00b5a | and-game_id-in-game.csv-is-that-same-digest
+SUMTREE | s1 | xg
+EXPECT_EQ | $s0 | $s1 | the-export-is-read-only-on-the-state-folder
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/xo2
+SUMTREE | o1s | xo1
+SUMTREE | o2s | xo2
+EXPECT_EQ | $o1s | $o2s | the-same-ledger-gives-the-same-bytes-twice
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/xg/sub
+EXPECT_EXIT | 2 | NEGATIVE-an-out-folder-inside-the-state-folder-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/g
+EXPECT_EXIT | 2 | NEGATIVE-the-state-folder-itself-is-refused
+MKDIR   | xgg
+RUN | cp | $T/xg/ledger.txt | $T/xgg/ledger.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/xgg
+EXPECT_EXIT | 2 | NEGATIVE-an-out-folder-that-holds-a-ledger.txt-is-refused
+RUN | sed | -i | 0,/\proll\p/s//\proll\p9/ | $T/xg/ledger.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xg | export | $T/xo3
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-ledger-is-refused-by-the-export-too
+EXPECT_NOFILE | $T/xo3/game.csv | and-nothing-is-written
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-race | $T/xgg | export
+EXPECT_EXIT | 2 | NEGATIVE-export-without-an-out-folder-is-still-only-for-an-editor-game
+
+CASE    | generated-game-pdl-has-the-export-row
+EXPECT_HAS | $T/h/@.apps/demo-race/game.pdl | GAME   \p export      \p {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out} | the-generated-app-opts-in-to-the-data-studio
 CLEAN   |
 
 CASE    | lints-on-the-generated-tree

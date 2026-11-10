@@ -1,0 +1,12 @@
+# rules.pdl - Chutes and Ladders: rule numbers as DATA (RULE | key | value). Changing a value after a game began makes that game's ledger refuse (the rules hash is in its first row).
+# max_players  seats at the table (2 to 4 here; the setup screen starts at this number)  default_seed  the seed `new` uses when none is given
+# max_rows     hard cap on ledger rows (the engine refuses to append past it; a 4-player game is about 150 to 300 rows)
+# finish       the end of the track (generic engine option, not Chutes code):
+#                exact_stay  you must land on 100 exactly; a roll that would pass it leaves you where you are (the common edition, from memory: UNCHECKED)
+#                bounce      you go to 100 and walk the surplus back (from 97 a 6 ends on 97)
+#                reach       any roll that reaches or passes 100 wins (the shortest games; the stub rule of the generator)
+# The die is the house die: 1..6 from the seeded ledger (die(seed, roll_index)), so who presses Roll never changes a game.
+RULE | max_players  | 4
+RULE | default_seed | 7
+RULE | max_rows     | 5000
+RULE | finish       | exact_stay

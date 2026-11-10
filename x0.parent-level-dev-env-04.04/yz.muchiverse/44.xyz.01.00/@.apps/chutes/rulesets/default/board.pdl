@@ -1,0 +1,39 @@
+# board.pdl - Chutes and Ladders: the track as DATA for the shared engine game_core (ledger kind). The first ledger row records the hash of this file and rules.pdl:
+# editing either after a game began makes every verb refuse that ledger (start a new game).
+#
+# ############################################################################################################################################
+# THE JUMP TABLE BELOW IS FROM MEMORY OF THE COMMON US BOARD (2026-11-09). IT HAS NOT BEEN CHECKED AGAINST AN OFFICIAL BOARD OR RULE SHEET.
+# Check every row before this ruleset is called "the classic one". (The name "Chutes and Ladders" is a trademark; the public game is "Snakes and Ladders": the owner picks the shipped title.)
+# ############################################################################################################################################
+#
+# TRACK | length | N                squares 1..N; everybody starts on 0 (off the board); the finish rule is rules.pdl RULE finish
+# JUMP  | from | to | kind | id      landing on `from` moves you to `to` (kind ladder goes up, chute goes down; the engine only looks at the first two fields). No chains: no jump may start where another ends (case chutes checks it).
+# BOARD | cols | rows | path        the geometry the PAGE will draw (10 x 10, serpentine: row 1 runs left to right 1..10, row 2 right to left 11..20, ... so 100 is the top LEFT). The engine ignores these rows; the page needs a `page` verb (not built).
+# TALK  | up|down | words           the words of the table-talk sentence ("B rolled 4 and climbed the ladder from 28 to 84")
+TRACK | length | 100
+BOARD | cols   | 10
+BOARD | rows   | 10
+BOARD | path   | serpentine
+TALK  | up     | climbed the ladder
+TALK  | down   | slid down the chute
+# ladders (9)
+JUMP | 1  | 38  | ladder | L1
+JUMP | 4  | 14  | ladder | L2
+JUMP | 9  | 31  | ladder | L3
+JUMP | 21 | 42  | ladder | L4
+JUMP | 28 | 84  | ladder | L5
+JUMP | 36 | 44  | ladder | L6
+JUMP | 51 | 67  | ladder | L7
+JUMP | 71 | 91  | ladder | L8
+JUMP | 80 | 100 | ladder | L9
+# chutes (10)
+JUMP | 16 | 6   | chute  | C1
+JUMP | 47 | 26  | chute  | C2
+JUMP | 49 | 11  | chute  | C3
+JUMP | 56 | 53  | chute  | C4
+JUMP | 62 | 19  | chute  | C5
+JUMP | 64 | 60  | chute  | C6
+JUMP | 87 | 24  | chute  | C7
+JUMP | 93 | 73  | chute  | C8
+JUMP | 95 | 75  | chute  | C9
+JUMP | 98 | 78  | chute  | C10
