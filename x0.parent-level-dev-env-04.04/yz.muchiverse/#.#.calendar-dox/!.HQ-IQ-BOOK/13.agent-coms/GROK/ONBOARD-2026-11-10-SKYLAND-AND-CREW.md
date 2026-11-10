@@ -72,24 +72,16 @@ Snake, from an earlier run the same day, not re-run for this note: `GRID cols=16
 
 ## How the crew ticks
 
-Copied from df-hq's dig loop in `@.apps/df-hq/ops/df_hq.c` (`job_pick`, then `CLAIM`, then the work). Here the work is `PLACE`, and the cell has a z. There is no walk, so the next job is the next row in the file.
+`step` and `run` still follow df-hq's dig loop shape (claim, then place) with no walk. `walk` and `place` are the scratch pet: one step toward the next open JOB, and place only when Manhattan distance is 0 or 1. The next job is still file order. A place that is not a job is refused.
 
-Ledger rows the crew appends:
-
-```
-CLAIM | p1 | x | y | z | material
-PLACE | p1 | x | y | z | material
-FSM | tick | p1 | claim|place
-```
-
-The projection is the authority for what may be placed. The ledger is the authority for what the pet did. Regenerating the projection and replaying the ledger must agree. A hand-added place fails.
+The life row is `EVENT|round|actor|verb|target|at|result`. `CLAIM`, `PLACE`, `CALL`, and `FSM` are refused. A walk from 0,0 toward a stone at 2,0,0 writes `EVENT|0|p1|walk|stone|1,0,0|ok`, then `EVENT|1|p1|walk|stone|2,0,0|ok`, then claim, then place. The picture is `state/pet.ppm` (job red, pet yellow). It is not a board window.
 
 ## What is not done (do not skip this)
 
 - The other 11 `BUILD` rows are not generated. `gen <id>` is the same verb. Run it per building. Do not invent a second generator.
 - Island undersides (the taper under each ellipse) are not cells yet.
 - df-hq's live tick still only digs `DESIGNATE` rows in `jobs.txt`. That file is 2D and caps at 64 jobs. `place` in `verbs.pdl` is `item x y` with no z. The pets on the board do not read `crew_op`'s ledger yet. Wiring that tick to this ledger is the next code change.
-- The harness case exists. Current line: `VERDICT|PASS|passed=48|failed=0`. Older notes that say 37, 42, or that no verdict exists are earlier runs. Do not quote them.
+- The harness case exists. Current line: `VERDICT|PASS|passed=59|failed=0`. Older notes that say 37, 42, or 48 are earlier runs. Do not quote them.
 - The life row is one grammar, `EVENT|round|actor|verb|target|at|result`. `CLAIM`, `PLACE`, and `CALL` are refused. A table act is `handed-off`. The trade stays in Teropoly's ledger. `DESIGNATE` is still only the dig projection.
 - Chutes was not opened. Snake was not shown in the editor. No nested X server was started. Human play of the games is still undone.
 - `SCALE | cell_blocks | 4` is recorded and not applied. `gen` emits one plan cell, not a 4 by 4 block stamp. Say so if you change it.
@@ -112,7 +104,7 @@ gcc -O2 -o /tmp/crew_op $HOUSE/@.apps/centroid-hq/ops/crew_op.c
 
 ## Harnesses, do not add a runner
 
-The unit check is this lane's `centroid/crew.pal`. The repeatable game story already exists: `play/phases/*.phases.pdl` compiled by `playthrough_op`, documented in `06-testing/GAME-PLAYTHROUGH-HARNESSES.md` and `17.ai/HARNESS-AS-GAME-BRAIN.md`. df dig, mcl mine/craft/place, and `example_proposal.phases.pdl` are the precedents. A skyland phase table waits until a scratch pet has `walk` and `place`. The owner copy is `XO/31.Nov/nov-10/grok/7.harnesses-next-pass.md`.
+The unit check is this lane's `centroid/crew.pal`. The phase table is `play/phases/centroid_crew.phases.pdl` (compiled by `playthrough_op` to `cases/play_centroid_crew.pdl`, 3 phases). The playthrough itself was not run: setup copies `lc_clock.+x` and db-hq `system.pdl` / `actors.pdl`, and this sparse worktree does not have them. Do not add a second runner. The owner copy is `XO/31.Nov/nov-10/grok/7.harnesses-next-pass.md`.
 
 ## How agents talk
 
@@ -122,8 +114,8 @@ Older questions for Claude stay in `QUESTIONS-FOR-CLAUDE.md`. Add a new question
 
 ## Next code, in order
 
-1. The harness case is done (`passed=42`). Do not rebuild it to "get a verdict."
-2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working. A pet on a board is still not done.
+1. The unit case is done (`passed=59`). The phase table compiles. Running that playthrough needs the clock binary and the db-hq actor files in the same tree as `crew_op.c`.
+2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working. A pet on a board is still not done. The yellow square in `XO/31.Nov/nov-10/grok/8.pet-walk.png` is the scratch picture, not that board.
 3. `gen` the next `BUILD` id with the same verb. Then an island underside as another slice.
 4. Only after two slices have used that loop, shape `mech_new_op` from it.
 

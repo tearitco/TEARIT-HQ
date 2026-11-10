@@ -1,0 +1,22 @@
+# A scratch pet walks to one stone and places it. Not the live fortress.
+# The runner is playthrough_op. This table is the story. The unit case centroid_crew also runs these verbs.
+# GAME compiles ops/crew_op.c. DO walk and DO place take no arguments: the binary uses its own state/ folder.
+GAME | centroid-hq | crew_op
+
+PHASE | step_closer | the pet takes one step toward the stone
+PUT | state/jobs.pdl | JOB \p place \p 2 \p 0 \p 0 \p stone
+DO | walk
+SAY | WALK 1,0 goal=2,0 | first-step
+EXIT | 0 | walked
+
+PHASE | step_onto | the pet steps onto the cell
+DO | walk
+SAY | WALK 2,0 goal=2,0 | on-the-cell
+EXIT | 0 | walked-on
+
+PHASE | lay_stone | place is legal only from here
+DO | place
+SAY | PLACE 2,0,0 stone | laid
+EXIT | 0 | placed
+HAS | state/life.txt | EVENT\p1\pp1\pwalk\pstone\p2,0,0\pok | the-walk-is-a-life-row
+HAS | state/life.txt | EVENT\p3\pp1\pplace\pstone\p2,0,0\pok | the-place-is-a-life-row

@@ -2,7 +2,8 @@
  * It reads JOB rows from a bp_op projection and nothing else.
  * One pet. States, in order, copied from df-hq's dig loop
  * (pick, CLAIM, then do the work): idle, claim, place.
- * There is no map walk yet, so "nearest" is file order.
+ * `walk` and `place` move one scratch pet on the job list (file order).
+ * `step` and `run` still claim and place with no walk.
  * A place that is not in the job list is refused.
  *
  *   crew_op step  <jobs.pdl> <ledger>
@@ -22,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define MAXJ 8000
 typedef struct { int x, y, z; char mat[16]; int done; } Job;
@@ -206,7 +208,77 @@ static int cmd_call(const char *routes_path, const char *jobs_path, const char *
     return 0;
 }
 
+static int state_dir(int argc, char **argv, char *dir, size_t n) {
+    if (argc >= 3) { snprintf(dir, n, "%s", argv[2]); return 0; }
+    char exe[512]; ssize_t k = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (k < 0) return 2;
+    exe[k] = 0;
+    /* .../centroid-hq/ops/+x/crew_op.+x -> .../centroid-hq/state */
+    char *s = strrchr(exe, '/'); if (!s) return 2; *s = 0;
+    s = strrchr(exe, '/'); if (!s) return 2; *s = 0;
+    s = strrchr(exe, '/'); if (!s) return 2; *s = 0;
+    snprintf(dir, n, "%s/state", exe);
+    return 0;
+}
+
+static int read_pos(const char *path, int *x, int *y) {
+    *x = *y = 0; FILE *f = fopen(path, "r"); if (!f) return 0;
+    if (fscanf(f, "%d %d", x, y) != 2) { fclose(f); return 2; }
+    fclose(f); return 0;
+}
+
+static void write_ppm(const char *path, int px, int py, int jx, int jy) {
+    FILE *f = fopen(path, "wb"); if (!f) return;
+    const int sc = 8, n = 8; fprintf(f, "P6\n%d %d\n255\n", n * sc, n * sc);
+    for (int y = 0; y < n * sc; y++) for (int x = 0; x < n * sc; x++) {
+        int cx = x / sc, cy = y / sc; unsigned char rgb[3] = { 20, 24, 28 };
+        if (cx == jx && cy == jy) { rgb[0] = 210; rgb[1] = 60; rgb[2] = 50; }
+        if (cx == px && cy == py) { rgb[0] = 230; rgb[1] = 230; rgb[2] = 80; }
+        fwrite(rgb, 1, 3, f);
+    }
+    fclose(f);
+}
+
+/* One step toward the next open job, then place only from beside it or on it. */
+static int cmd_move(const char *which, int argc, char **argv) {
+    char dir[512], jpath[560], life[560], pos[560], ppm[560];
+    if (state_dir(argc, argv, dir, sizeof dir)) return 2;
+    snprintf(jpath, sizeof jpath, "%s/jobs.pdl", dir);
+    snprintf(life, sizeof life, "%s/life.txt", dir);
+    snprintf(pos, sizeof pos, "%s/pet.txt", dir);
+    snprintf(ppm, sizeof ppm, "%s/pet.ppm", dir);
+    int rc = load_jobs(jpath); if (rc) return rc;
+    int claim = -1; char fsm[16];
+    rc = replay(life, &claim, fsm, sizeof fsm); if (rc) return rc;
+    int px, py; if (read_pos(pos, &px, &py)) return 2;
+    int next = -1; for (int i = 0; i < nj; i++) if (!jobs[i].done) { next = i; break; }
+    if (next < 0) { printf("PET idle placed=%d\n", nj); return 0; }
+    Job *j = &jobs[next];
+    if (!strcmp(which, "walk")) {
+        if (px < j->x) px++; else if (px > j->x) px--;
+        else if (py < j->y) py++; else if (py > j->y) py--;
+        FILE *pf = fopen(pos, "w"); if (!pf) return 2; fprintf(pf, "%d %d\n", px, py); fclose(pf);
+        int tick = 0; FILE *lf = fopen(life, "r"); if (lf) { char b[80]; while (fgets(b, sizeof b, lf)) if (!strncmp(b, "EVENT|", 6)) tick++; fclose(lf); }
+        char line[160]; snprintf(line, sizeof line, "EVENT|%d|p1|walk|%s|%d,%d,%d|ok", tick, j->mat, px, py, j->z);
+        if (append(life, line)) return 2;
+        write_ppm(ppm, px, py, j->x, j->y);
+        printf("WALK %d,%d goal=%d,%d\n", px, py, j->x, j->y);
+        return 0;
+    }
+    if (abs(px - j->x) + abs(py - j->y) > 1) { fprintf(stderr, "not beside the cell\n"); return 2; }
+    int tick = 0; FILE *lf = fopen(life, "r"); if (lf) { char b[80]; while (fgets(b, sizeof b, lf)) if (!strncmp(b, "EVENT|", 6)) tick++; fclose(lf); }
+    char line[160];
+    snprintf(line, sizeof line, "EVENT|%d|p1|claim|%s|%d,%d,%d|ok", tick, j->mat, j->x, j->y, j->z);
+    if (append(life, line)) return 2;
+    snprintf(line, sizeof line, "EVENT|%d|p1|place|%s|%d,%d,%d|ok", tick + 1, j->mat, j->x, j->y, j->z);
+    if (append(life, line)) return 2;
+    write_ppm(ppm, px, py, j->x, j->y);
+    printf("PLACE %d,%d,%d %s\n", j->x, j->y, j->z, j->mat);
+    return 0;
+}
+
 int main(int argc, char **argv) {
+    if (argc >= 2 && (!strcmp(argv[1], "walk") || !strcmp(argv[1], "place"))) return cmd_move(argv[1], argc, argv);
     if (argc == 4 && !strcmp(argv[1], "bind")) return cmd_bind(argv[2], argv[3]);
     if (argc == 5 && !strcmp(argv[1], "call")) return cmd_call(argv[2], argv[3], argv[4]);
     if (argc != 4) { fprintf(stderr, "usage: crew_op step|run|audit|mineplan <jobs> <out> | bind <routes> <house> | call <routes> <jobs> <ledger>\n"); return 2; }

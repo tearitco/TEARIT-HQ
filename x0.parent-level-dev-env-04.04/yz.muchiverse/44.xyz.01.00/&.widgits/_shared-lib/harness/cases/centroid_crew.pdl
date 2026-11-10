@@ -53,6 +53,27 @@ RUN | ./crew_op | audit | chapel.pdl | old.txt
 EXPECT_EXIT | 2 | old-dialect-refused
 EXPECT_OUT | not a life row | old-dialect-says-why
 
+CASE | pet
+SCRATCH |
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-pet
+MKDIR | pet
+WRITE | pet/jobs.pdl | JOB \p place \p 2 \p 0 \p 0 \p stone
+RUN | ./crew_op | place | $T/pet
+EXPECT_EXIT | 2 | place-before-walk-refused
+EXPECT_OUT | not beside the cell | place-says-why
+RUN | ./crew_op | walk | $T/pet
+EXPECT_EXIT | 0 | walk-1
+EXPECT_OUT | WALK 1,0 goal=2,0 | stepped
+RUN | ./crew_op | walk | $T/pet
+EXPECT_EXIT | 0 | walk-2
+EXPECT_OUT | WALK 2,0 goal=2,0 | on-the-cell
+RUN | ./crew_op | place | $T/pet
+EXPECT_EXIT | 0 | placed
+EXPECT_OUT | PLACE 2,0,0 stone | laid
+EXPECT_HAS | pet/life.txt | EVENT\p3\pp1\pplace\pstone\p2,0,0\pok | place-is-a-life-row
+EXPECT_EXISTS | pet/pet.ppm | the-pet-has-a-picture
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
