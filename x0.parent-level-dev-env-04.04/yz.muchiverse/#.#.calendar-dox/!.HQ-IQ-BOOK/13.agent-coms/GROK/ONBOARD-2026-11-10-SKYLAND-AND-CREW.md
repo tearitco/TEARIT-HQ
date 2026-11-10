@@ -89,8 +89,8 @@ The projection is the authority for what may be placed. The ledger is the author
 - The other 11 `BUILD` rows are not generated. `gen <id>` is the same verb. Run it per building. Do not invent a second generator.
 - Island undersides (the taper under each ellipse) are not cells yet.
 - df-hq's live tick still only digs `DESIGNATE` rows in `jobs.txt`. That file is 2D and caps at 64 jobs. `place` in `verbs.pdl` is `item x y` with no z. The pets on the board do not read `crew_op`'s ledger yet. Wiring that tick to this ledger is the next code change.
-- No harness `VERDICT` line. The runs above were the ops directly. A case file is still missing.
-- Chutes was not opened. Snake was not shown in the editor. No nested X server was started for this note.
+- The harness case exists. Current line, commit `ab810b647`: `VERDICT|PASS|passed=42|failed=0`. An older note that says `passed=37`, or that no verdict exists, is the earlier run. Do not quote it.
+- Chutes was not opened. Snake was not shown in the editor. No nested X server was started. Human play of the games is still undone.
 - `SCALE | cell_blocks | 4` is recorded and not applied. `gen` emits one plan cell, not a 4 by 4 block stamp. Say so if you change it.
 - About 30,000 columns for the whole land at that scale may be too heavy to draw at once. Walk the plan in stages. Do not load the volume into the owner's live board.
 
@@ -117,8 +117,8 @@ Older questions for Claude stay in `QUESTIONS-FOR-CLAUDE.md`. Add a new question
 
 ## Next code, in order
 
-1. A harness case that runs `check`, the three `break`s, `gen chapel`, `crew_op run`, `audit`, and the bad place. The verdict file's `VERDICT|PASS|...` line is the done line.
-2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working.
+1. The harness case is done (`passed=42`). Do not rebuild it to "get a verdict."
+2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working. A pet on a board is still not done.
 3. `gen` the next `BUILD` id with the same verb. Then an island underside as another slice.
 4. Only after two slices have used that loop, shape `mech_new_op` from it.
 
