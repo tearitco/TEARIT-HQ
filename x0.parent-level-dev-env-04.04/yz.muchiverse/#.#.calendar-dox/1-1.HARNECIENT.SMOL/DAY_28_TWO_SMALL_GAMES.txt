@@ -73,7 +73,7 @@
 
 **MAXINE:** And death and collision? The space game already has pages for those.
 
-**TOMO:** It does, but they write state files, like a health file. In a ledger game, a state file that holds a fact is ghost data. So we reuse the idea and the names, and only for presentation, like a sound or a message, after the ledger row exists. And I could not find any way for a game to receive the arrow keys today. That is a small new hook, or we start with buttons.
+**TOMO:** It does, but they write state files, like a health file. In a ledger game, a state file that holds a fact is ghost data. So we reuse the idea and the names, and only for presentation, like a sound or a message, after the ledger row exists. The arrow keys are easy to get: they already arrive as codes in the same key file the core reads, and a game can read that file too. What is missing is only a way to stop the core from also walking a pet on the same keys, and that can wait.
 
 **IQA:** Last question. Training an AI to play snake.
 
