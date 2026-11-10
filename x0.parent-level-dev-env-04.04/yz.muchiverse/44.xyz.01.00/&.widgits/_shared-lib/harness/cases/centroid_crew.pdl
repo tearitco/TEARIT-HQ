@@ -1,0 +1,46 @@
+# centroid crew: the blueprint checker, the chapel projection, the pet FSM, and the dig-loop rows.
+# Teropoly talk/trade/buy/build are not reimplemented here.
+RESULTS | ../results/centroid_crew.txt
+ENV | LC_ALL | C
+
+CASE | crew
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew
+RUN | ./bp_op | check | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl
+EXPECT_EXIT | 0 | check-ok
+EXPECT_OUT | islands=12 buildings=12 waypoints=16 | check-counts
+RUN | ./bp_op | break | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | void | void.pdl
+EXPECT_EXIT | 0 | break-void-writes
+RUN | ./bp_op | check | void.pdl
+EXPECT_EXIT | 2 | void-refused
+EXPECT_OUT | waypoint 9 outside island P | void-says-why
+RUN | ./bp_op | break | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | close | close.pdl
+RUN | ./bp_op | check | close.pdl
+EXPECT_EXIT | 2 | close-refused
+EXPECT_OUT | small island S1 too close to A | close-says-why
+RUN | ./bp_op | break | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | zone | zone.pdl
+RUN | ./bp_op | check | zone.pdl
+EXPECT_EXIT | 2 | zone-refused
+EXPECT_OUT | zone mutant sits on small island S1 | zone-says-why
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | chapel | chapel.pdl
+EXPECT_EXIT | 0 | gen-ok
+EXPECT_OUT | cells=73 jobs=73 | chapel-count
+RUN | ./bp_op | verify | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | chapel | chapel.pdl
+EXPECT_EXIT | 0 | verify-same
+RUN | ./crew_op | run | chapel.pdl | ledger.txt
+EXPECT_EXIT | 0 | crew-run
+EXPECT_OUT | CREW done placed=73 | crew-finished
+RUN | ./crew_op | audit | chapel.pdl | ledger.txt
+EXPECT_EXIT | 0 | audit-ok
+EXPECT_OUT | AUDIT placed=73 | audit-count
+RUN | ./crew_op | mineplan | chapel.pdl | jobs.txt
+EXPECT_EXIT | 0 | mineplan-ok
+EXPECT_OUT | MINEPLAN wrote=9 | floor-stones-for-the-dig-loop
+EXPECT_HAS | jobs.txt | DESIGNATE\p0\pchapel\p36\p32 | first-floor-cell-is-a-dig-mark
+WRITE | bad.txt | PLACE \p p1 \p 1 \p 1 \p 99 \p stone
+RUN | ./crew_op | audit | chapel.pdl | bad.txt
+EXPECT_EXIT | 2 | bad-place-refused
+EXPECT_OUT | place is not a job | bad-place-says-why

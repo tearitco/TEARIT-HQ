@@ -8,7 +8,7 @@
 
 The checker is `bp_op` (`@.apps/centroid-hq/ops/bp_op.c`): `check`, `list`, `gen`, `verify`, `break`. `JOB | place | x | y | z | material` is the crew list. df-hq's `place` verb is still `item x y` with no z.
 
-**FSM lane, started 2026-11-10.** `crew_op` (`@.apps/centroid-hq/ops/crew_op.c`) is the first autonomous builder. One pet reads only those JOB rows. Each tick is the df dig loop's shape: idle, then CLAIM, then PLACE. A place that is not in the job list is refused. There is no walk yet, and the live df tick still only digs `DESIGNATE` rows in `jobs.txt` (2D, cap 64). The next wiring is that tick consuming this ledger, not a second planner.
+**FSM lane, started 2026-11-10.** `crew_op` (`@.apps/centroid-hq/ops/crew_op.c`) is the first autonomous builder. One pet reads only those JOB rows. Each tick is the df dig loop's shape: idle, then CLAIM, then PLACE. A place that is not in the job list is refused. `mineplan` writes `DESIGNATE` rows for the stone floor (the chapel writes 9) so the existing df dig loop can mine them. It does not start a pet, and the live tick was not edited. Talking, trading, buying and house-building stay Teropoly's verbs in `@.apps/deskopoly/verbs.pdl` (`talk`, `offer`, `accept`, `buy`, `build`). This lane does not grow a second copy. Farming is a later plant row. Harness `centroid/crew.pal`, case `cases/centroid_crew.pdl`: `VERDICT|PASS|passed=23|failed=0` on 2026-11-10.
 
 Status of the 2026-11-06 stock-take below: **plan, except the court file and its 5-check harness.** SAID = the owner. OBS = files opened for that stock-take.
 

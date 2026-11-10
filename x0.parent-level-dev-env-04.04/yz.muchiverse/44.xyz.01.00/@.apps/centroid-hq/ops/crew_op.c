@@ -10,8 +10,14 @@
  *   crew_op audit <jobs.pdl> <ledger>
  *
  * df-hq's live tick still only digs DESIGNATE rows in jobs.txt
- * (2D, cap 64). This ledger is the z-aware list that tick should
- * grow into. It does not write jobs.txt.
+ * (2D, cap 64). `mineplan` writes those rows for the stone cells at
+ * the lowest z, at most 64, so the existing dig loop can mine them.
+ * It does not start a pet.
+ *
+ * Talking, trading, buying and building houses stay Teropoly's verbs
+ * (`talk`, `offer`, `accept`, `buy`, `build` in deskopoly/verbs.pdl).
+ * This op does not grow a second copy of them. Farming is the plant
+ * job once a row says so. Mining is `mineplan` into the dig loop.
  */
 #include <stdio.h>
 #include <string.h>
@@ -102,7 +108,7 @@ static int step(const char *jobs_path, const char *ledger) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 4) { fprintf(stderr, "usage: crew_op step|run|audit <jobs.pdl> <ledger>\n"); return 2; }
+    if (argc != 4) { fprintf(stderr, "usage: crew_op step|run|audit|mineplan <jobs.pdl> <ledger-or-jobs.txt>\n"); return 2; }
     if (!strcmp(argv[1], "step")) return step(argv[2], argv[3]);
     if (!strcmp(argv[1], "run")) {
         for (int n = 0; n < MAXJ * 2 + 2; n++) {
@@ -114,6 +120,20 @@ int main(int argc, char **argv) {
             if (!left && claim < 0) { printf("CREW done placed=%d\n", nj); return 0; }
         }
         fprintf(stderr, "run did not finish\n"); return 2;
+    }
+    if (!strcmp(argv[1], "mineplan")) {
+        int rc = load_jobs(argv[2]); if (rc) return rc;
+        int z0 = jobs[0].z; for (int i = 1; i < nj; i++) if (jobs[i].z < z0) z0 = jobs[i].z;
+        FILE *o = fopen(argv[3], "w"); if (!o) return 2;
+        int wrote = 0;
+        for (int i = 0; i < nj && wrote < 64; i++) {
+            if (jobs[i].z != z0 || strcmp(jobs[i].mat, "stone")) continue;
+            fprintf(o, "DESIGNATE|0|chapel|%d|%d\n", jobs[i].x, jobs[i].y);
+            wrote++;
+        }
+        fclose(o);
+        printf("MINEPLAN wrote=%d cap=64 z=%d\n", wrote, z0);
+        return wrote ? 0 : 2;
     }
     if (!strcmp(argv[1], "audit")) {
         int claim = -1; char fsm[16];
