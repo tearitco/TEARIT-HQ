@@ -401,7 +401,7 @@ static int cmd_provider(int argc, char **argv) {
         if (pr > 0) { ssize_t k = read(pf[0], ob + on, PROV_OUT - on); if (k > 0) on += (size_t)k; else if (k == 0) { waitpid(pid, &status, 0); done = 1; continue; } if (on >= PROV_OUT) { killed = 2; kill(-pid, SIGKILL); waitpid(pid, &status, 0); break; } }
         clock_gettime(CLOCK_MONOTONIC, &t1); if (t1.tv_sec - t0.tv_sec >= PROV_SECS) { killed = 1; kill(-pid, SIGKILL); waitpid(pid, &status, 0); break; }
     }
-    close(pf[0]); ob[on] = 0; fputs(ob, stdout); if (on && ob[on - 1] != '\n') putchar('\n');
+    close(pf[0]); ob[on] = 0; { size_t shown = on > 4000 ? 4000 : on; fwrite(ob, 1, shown, stdout); if (shown && ob[shown - 1] != 10) putchar(10); if (on > shown) printf("[... %zu more bytes of exporter output not shown]\n", on - shown); }
     if (killed) { printf("PROVIDER failed: %s\n", killed == 1 ? "killed after the 60 s limit" : "killed: more than 64 KiB of output"); return 1; }
     int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1; int files = 0; DIR *d = opendir(out); if (d) { struct dirent *e; while ((e = readdir(d))) if (e->d_name[0] != '.') files++; closedir(d); }
     printf("PROVIDER %s rc=%d out=%s files=%d\n", rc == 0 ? "ok" : "failed", rc, out, files); return rc == 0 ? 0 : 1;
