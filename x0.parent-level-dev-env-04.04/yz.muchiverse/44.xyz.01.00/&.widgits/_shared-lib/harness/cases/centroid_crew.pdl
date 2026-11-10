@@ -44,3 +44,31 @@ WRITE | bad.txt | PLACE \p p1 \p 1 \p 1 \p 99 \p stone
 RUN | ./crew_op | audit | chapel.pdl | bad.txt
 EXPECT_EXIT | 2 | bad-place-refused
 EXPECT_OUT | place is not a job | bad-place-says-why
+
+CASE | routes
+SCRATCH |
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-routes
+RUN | ./crew_op | bind | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | $HOUSE
+EXPECT_EXIT | 0 | bind-real-verbs
+EXPECT_OUT | BIND talk=deskopoly talk | talk-stays-teropoly
+EXPECT_OUT | BIND offer=deskopoly offer | trade-stays-teropoly
+EXPECT_OUT | BIND buy=deskopoly buy | buy-stays-teropoly
+EXPECT_OUT | BIND build=deskopoly build | houses-stay-teropoly
+EXPECT_OUT | BIND mine=df-hq dig | mine-stays-the-dig-tick
+EXPECT_OUT | BIND farm=OPEN | farm-is-not-invented
+WRITE | talk.pdl | JOB \p talk \p 0 \p 0 \p 0 \p p2
+RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | talk.pdl | calls.txt
+EXPECT_EXIT | 0 | talk-is-a-call
+EXPECT_OUT | CALL deskopoly talk p2 | talk-names-the-owner
+WRITE | farm.pdl | JOB \p farm \p 0 \p 0 \p 0 \p bed
+RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | farm.pdl | farm.txt
+EXPECT_EXIT | 2 | farm-refused
+EXPECT_OUT | farm has no owner yet | farm-says-why
+MKDIR | fake/@.apps/deskopoly
+MKDIR | fake/@.apps/df-hq
+WRITE | fake/@.apps/df-hq/verbs.pdl | VERB \p dig \p yes \p ui \p x y \p dig
+WRITE | fake/@.apps/deskopoly/verbs.pdl | VERB \p talk \p no \p ui \p - \p sentences
+RUN | ./crew_op | bind | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | $T/fake
+EXPECT_EXIT | 2 | missing-offer-refused
+EXPECT_OUT | BIND offer missing VERB offer | missing-offer-says-why

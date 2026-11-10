@@ -107,8 +107,85 @@ static int step(const char *jobs_path, const char *ledger) {
     return 0;
 }
 
+#define MAXR 16
+typedef struct { char life[16], app[24], verb[16], check[24]; } Route;
+static Route routes[MAXR];
+static int nr;
+
+static int load_routes(const char *path) {
+    FILE *f = fopen(path, "r"); char line[240];
+    if (!f) { fprintf(stderr, "cannot read %s\n", path); return 2; }
+    nr = 0;
+    while (fgets(line, sizeof line, f)) {
+        char life[16], app[24], verb[16], check[24];
+        if (sscanf(line, "ROUTE | %15s | %23s | %15s | %23s", life, app, verb, check) != 4) continue;
+        if (nr >= MAXR) { fclose(f); fprintf(stderr, "too many routes\n"); return 2; }
+        snprintf(routes[nr].life, 16, "%s", life); snprintf(routes[nr].app, 24, "%s", app);
+        snprintf(routes[nr].verb, 16, "%s", verb); snprintf(routes[nr].check, 24, "%s", check); nr++;
+    }
+    fclose(f);
+    if (!nr) { fprintf(stderr, "no ROUTE rows\n"); return 2; }
+    return 0;
+}
+
+static Route *find_route(const char *life) {
+    for (int i = 0; i < nr; i++) if (!strcmp(routes[i].life, life)) return &routes[i];
+    return NULL;
+}
+
+static int file_has_verb(const char *path, const char *verb) {
+    FILE *f = fopen(path, "r"); char line[240], needle[40];
+    if (!f) return 0;
+    snprintf(needle, sizeof needle, "VERB | %s", verb);
+    int ok = 0;
+    while (fgets(line, sizeof line, f)) if (strstr(line, needle)) { ok = 1; break; }
+    fclose(f);
+    return ok;
+}
+
+/* bind: the route table must name a verb the owner file already has. OPEN stays open. */
+static int cmd_bind(const char *routes_path, const char *house) {
+    int rc = load_routes(routes_path); if (rc) return rc;
+    for (int i = 0; i < nr; i++) {
+        if (!strcmp(routes[i].app, "OPEN")) { printf("BIND %s=OPEN\n", routes[i].life); continue; }
+        if (!strcmp(routes[i].check, "-")) { printf("BIND %s=%s %s\n", routes[i].life, routes[i].app, routes[i].verb); continue; }
+        char path[512];
+        snprintf(path, sizeof path, "%s/@.apps/%s/%s", house, routes[i].app, routes[i].check);
+        if (!file_has_verb(path, routes[i].verb)) {
+            fprintf(stderr, "BIND %s missing VERB %s in %s\n", routes[i].life, routes[i].verb, path);
+            return 2;
+        }
+        printf("BIND %s=%s %s\n", routes[i].life, routes[i].app, routes[i].verb);
+    }
+    return 0;
+}
+
+/* One social or physical job that is not a voxel place. The rule stays in the owner app. */
+static int cmd_call(const char *routes_path, const char *jobs_path, const char *ledger) {
+    int rc = load_routes(routes_path); if (rc) return rc;
+    FILE *f = fopen(jobs_path, "r"); char line[240];
+    if (!f) { fprintf(stderr, "cannot read jobs\n"); return 2; }
+    char life[16] = "", rest[64] = ""; int got = 0;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "JOB | %15s | %*d | %*d | %*d | %63s", life, rest) == 2) { got = 1; break; }
+    }
+    fclose(f);
+    if (!got) { fprintf(stderr, "no JOB row\n"); return 2; }
+    Route *r = find_route(life);
+    if (!r) { fprintf(stderr, "no route for %s\n", life); return 2; }
+    if (!strcmp(r->app, "OPEN")) { fprintf(stderr, "%s has no owner yet\n", life); return 2; }
+    if (!strcmp(life, "place")) { fprintf(stderr, "place stays on crew_op run\n"); return 2; }
+    char out[160];
+    snprintf(out, sizeof out, "CALL | %s | %s | %s", r->app, r->verb, rest);
+    if (append(ledger, out)) return 2;
+    printf("CALL %s %s %s\n", r->app, r->verb, rest);
+    return 0;
+}
+
 int main(int argc, char **argv) {
-    if (argc != 4) { fprintf(stderr, "usage: crew_op step|run|audit|mineplan <jobs.pdl> <ledger-or-jobs.txt>\n"); return 2; }
+    if (argc == 4 && !strcmp(argv[1], "bind")) return cmd_bind(argv[2], argv[3]);
+    if (argc == 5 && !strcmp(argv[1], "call")) return cmd_call(argv[2], argv[3], argv[4]);
+    if (argc != 4) { fprintf(stderr, "usage: crew_op step|run|audit|mineplan <jobs> <out> | bind <routes> <house> | call <routes> <jobs> <ledger>\n"); return 2; }
     if (!strcmp(argv[1], "step")) return step(argv[2], argv[3]);
     if (!strcmp(argv[1], "run")) {
         for (int n = 0; n < MAXJ * 2 + 2; n++) {

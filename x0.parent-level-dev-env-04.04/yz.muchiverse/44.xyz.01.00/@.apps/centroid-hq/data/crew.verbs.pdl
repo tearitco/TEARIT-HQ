@@ -1,0 +1,10 @@
+# Which life-verb a Centroid pet may take, and who already owns the rule.
+# crew_op does not implement these. mine becomes a DESIGNATE row for df-hq's existing dig tick.
+# talk, offer, buy and build stay deskopoly. farm is OPEN until a real plant verb exists.
+ROUTE | mine | df-hq | dig | verbs.pdl
+ROUTE | place | crew | place | -
+ROUTE | talk | deskopoly | talk | verbs.pdl
+ROUTE | offer | deskopoly | offer | verbs.pdl
+ROUTE | buy | deskopoly | buy | verbs.pdl
+ROUTE | build | deskopoly | build | verbs.pdl
+ROUTE | farm | OPEN | plant | -
