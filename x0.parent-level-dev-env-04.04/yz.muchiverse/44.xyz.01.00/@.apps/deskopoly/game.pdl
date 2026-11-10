@@ -9,3 +9,7 @@ GAME   | driver       | {book}/ops/+x/deskopoly_driver.+x {house} {book} {editor
 GAME   | chat         | {book}/ops/+x/deskopoly_chat.+x --hook {book} {editor}/state/games/deskopoly/game
 # GAME | clock | pause|run   (2026-11-09) pause = the editor's world clock (day/night, daily reminders) is paused while this game is live (the feed says gm_on=1) and resumes by itself when it ends; run, or no row = the world clock is left alone. Why pause: Teropoly is turn based on the ledger and the clock burned about 4% of a core (35-43% bursts) with In: OFF. Flip to run here, no rebuild.
 GAME   | clock        | pause
+# GAME | export | <program> <args...>   (2026-11-09, data-hq P0; optional, no other reader needs it: the editor's Play only asks game_row() for title, driver, chat and clock, so an unknown row is ignored) the data studio runs it to turn this
+# game's ledger into CSV tables. {house} {book} are replaced like the driver row, plus {state} = the game's state folder (holds ledger.txt) and {out} = the folder the tables go to. Args are split on single spaces (no quoting);
+# the program must be read-only on {state}, exit 0 on success, 1 if the ledger does not reproduce itself, and write only inside {out}. Run by `data_op provider` (&.hq-apps/data-hq), 60 s limit, output capped.
+GAME   | export       | {book}/ops/+x/deskopoly.+x {book} {state} export {out}

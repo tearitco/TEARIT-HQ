@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <limits.h>
 
 #define MAXT 64
 #define MAXP 8
@@ -55,6 +56,7 @@ static int cash[MAXP], pos[MAXP], out[MAXP], owner[MAXT], human[MAXP];
 static char lastlog[5][LINE]; static int nlast;
 static int bankv, cur, rolled, pending, round_, over, nrolls, nev, np_game;
 static long seed;
+static void (*g_rhook)(int lineno, char **f);   /* `export` only (data-hq P0): a read-only observer called after replay2 applied each ledger row; NULL in every other verb, so no other verb changes */
 
 static void say(const char *m) { fprintf(stderr, "deskopoly: %s\n", m); }
 static void bad(const char *m) { say(m); exit(2); }
@@ -706,7 +708,7 @@ static int replay2(int *started) {
             char want[160]; snprintf(want, sizeof want, "ruleset=%s,schema=2,rules=%s,max=%d", g_rs, hx(g_rules_hash), R_maxp);
             if (strcmp(verb, "lobby") || strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: a schema 2 ledger starts with `lobby`\n", lineno); fclose(fp); return 1; }
             if (strcmp(rec, want)) { fprintf(stderr, "ledger line %d: the lobby row says \"%s\" but this ruleset gives \"%s\" (the rules changed since the game began)\n", lineno, rec, want); fclose(fp); return 1; }
-            *started = 1; nev++; continue;
+            *started = 1; nev++; if (g_rhook) g_rhook(lineno, f); continue;
         }
         if (!strcmp(verb, "join")) {
             char drv[8] = "", pers[24] = ""; int tk = -1; if (sscanf(rec, "driver=%7[a-z],token=%d,personality=%23s", drv, &tk, pers) != 3) { fprintf(stderr, "ledger line %d: a bad join row\n", lineno); fclose(fp); return 1; }
@@ -745,7 +747,7 @@ static int replay2(int *started) {
         } else if (!strcmp(verb, "over")) { if (strcmp(actor, "bank")) { fprintf(stderr, "ledger line %d: only the bank ends the game\n", lineno); fclose(fp); return 1; } err = apply_over(res, sizeof res);
         } else { fprintf(stderr, "ledger line %d: unknown verb %s (this verb is not part of the ruleset yet)\n", lineno, verb); fclose(fp); return 1; }
         if (err || strcmp(res, rec)) { fprintf(stderr, "ledger line %d: recorded result \"%s\" but replay gives \"%s\"\n", lineno, rec, err ? err : res); fclose(fp); return 1; }
-        nev++;
+        nev++; if (g_rhook) g_rhook(lineno, f);
     }
     fclose(fp); return 0;
 }
@@ -1488,12 +1490,16 @@ static int v_ui(void) {
 
 /* ledger_hash [skip_verb]: a read-only digest of the ledger rows (FNV-1a over each row and its newline), optionally leaving out every row whose verb is skip_verb (for example seat: a control change, not a game move).
  * It lets a case say "these two games made the same moves" exactly, without capturing a whole ledger. */
-static int v_ledger_hash(int argc, char **argv) {
-    char p[1100], ln[LINE]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (!fp) bad("no ledger here"); const char *skip = argc > 0 ? argv[0] : NULL;
-    uint64_t h = 1469598103934665603ULL; long rows = 0;
+static uint64_t ledger_fnv(const char *skip, long *rows) {   /* shared by `ledger_hash` and `export` (one definition of "the ledger hash") */
+    char p[1100], ln[LINE]; ledger_path(p, sizeof p); FILE *fp = fopen(p, "r"); if (!fp) bad("no ledger here");
+    uint64_t h = 1469598103934665603ULL; *rows = 0;
     while (fgets(ln, sizeof ln, fp)) { char raw[LINE]; snprintf(raw, sizeof raw, "%s", ln); char *f[10]; int n = split(ln, f, 10); if (n < 7 || strcmp(f[0], "EVENT")) continue; if (skip && !strcmp(f[3], skip)) continue;
-        for (const char *c = raw; *c; c++) { h ^= (unsigned char)*c; h *= 1099511628211ULL; } rows++; }
-    fclose(fp); printf("LEDGER rows=%ld hash=%016llx%s%s\n", rows, (unsigned long long)h, skip ? " without=" : "", skip ? skip : ""); return 0;
+        for (const char *c = raw; *c; c++) { h ^= (unsigned char)*c; h *= 1099511628211ULL; } (*rows)++; }
+    fclose(fp); return h;
+}
+static int v_ledger_hash(int argc, char **argv) {
+    const char *skip = argc > 0 ? argv[0] : NULL; long rows; uint64_t h = ledger_fnv(skip, &rows);
+    printf("LEDGER rows=%ld hash=%016llx%s%s\n", rows, (unsigned long long)h, skip ? " without=" : "", skip ? skip : ""); return 0;
 }
 
 /* audit: the no-ghost-data check. state.pdl declares every file the state folder may hold; anything else is a GHOST (a file that could carry a fact the ledger does not have). Read-only. */
@@ -1514,6 +1520,232 @@ static int v_audit(void) {
     closedir(d);
     if (ghosts) { printf("AUDIT ghosts=%d declared=%d\n", ghosts, nd); return 1; }
     printf("AUDIT ok files=%d declared=%d\n", present, nd); return 0;
+}
+
+/* ===== export (2026-11-09, data-hq P0; BOOK 08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md): `deskopoly <app> <state> export <out_dir>` REPLAYS the ledger (the engine's own replay + the `check` invariants: a ledger that
+ * does not reproduce itself is refused, exit 1, nothing written) and writes deterministic CSV PROJECTIONS: game.csv (one row), rounds.csv (player x round), events.csv (one row per ledger row), tiles.csv, trades.csv, auctions.csv and schema.pdl.
+ * Read-only on the game: it never writes the state folder (an out_dir that is, or holds a ledger.txt of, the state folder is refused). Same ledger = same bytes (no time, no pid). Caps: ledger <= 4 MiB and 20000 rows, tables <= 8 MiB in all,
+ * <= 2000 offers, <= 1000 auctions; over a cap = refused with the reason, nothing written. Only fields the engine really has are columns; what it lacks is listed as ABSENT rows in schema.pdl. A round r row is the state after the last ledger row
+ * whose post-apply round counter was r (the `end_turn` row that starts round r+1 is not in it); the last round is the final state, equal to `status`. ===== */
+#define X_MAX_LEDGER_BYTES (4L * 1024 * 1024)
+#define X_MAX_ROWS 20000
+#define X_MAX_OUT (8L * 1024 * 1024)
+#define X_MAX_TR 2000
+#define X_MAX_AU 1000
+typedef struct { const char *tab, *col, *role, *unit, *hint; } XCol;
+static const XCol XC[] = {   /* the one source of the headers, the schema.pdl rows and the cell count of every row */
+    {"game.csv", "game_id", "id", "", "FNV-1a of the ledger rows, the same digest as the ledger_hash verb (16 hex)"},
+    {"game.csv", "ruleset", "category", "", "ruleset folder the lobby row names"},
+    {"game.csv", "rules_hash", "id", "", "FNV-1a of board, rules and cards files, recorded in the lobby row"},
+    {"game.csv", "seed", "id", "", "dice and deck seed from the start row"},
+    {"game.csv", "players", "measure", "players", "seats at the table"},
+    {"game.csv", "humans_now", "measure", "players", "seats driven by a human at the end"},
+    {"game.csv", "human_ever", "measure", "players", "seats that were human at any time (join driver=human or a seat row); 0 = pets only"},
+    {"game.csv", "start_cash", "measure", "$", "cash each player started with"},
+    {"game.csv", "tiles", "measure", "tiles", "board size"},
+    {"game.csv", "ledger_rows", "measure", "rows", "ledger rows replayed"},
+    {"game.csv", "rounds", "measure", "rounds", "the engine round counter at the end"},
+    {"game.csv", "status", "category", "", "over or open"},
+    {"game.csv", "outcome", "category", "", "winner, stalemate (safety cap, won on net worth) or open"},
+    {"game.csv", "winner", "category", "", "player id from the over row, blank while open"},
+    {"game.csv", "winner_driver", "category", "", "human or pet (the final seat state)"},
+    {"game.csv", "first_player", "category", "", "who moved first (the first row)"},
+    {"game.csv", "auctions", "measure", "count", "auctions opened by a declined purchase"},
+    {"game.csv", "bids", "measure", "count", "bid rows"},
+    {"game.csv", "offers", "measure", "count", "offer and counter rows"},
+    {"game.csv", "trades_done", "measure", "count", "accepted offers"},
+    {"game.csv", "bankruptcies", "measure", "count", "bankrupt rows"},
+    {"game.csv", "state_hash", "id", "", "FNV-1a of the engine status text (the replay verb hash)"},
+    {"rounds.csv", "round", "time", "round", "engine round counter (state after the last row of that round)"},
+    {"rounds.csv", "player", "category", "", "player id p1..p8"},
+    {"rounds.csv", "name", "category", "", "player name"},
+    {"rounds.csv", "driver", "category", "", "human or pet at that moment"},
+    {"rounds.csv", "cash", "measure", "$", "cash in hand"},
+    {"rounds.csv", "net_worth", "measure", "$", "the engine net(): cash + price (half if mortgaged) + building cost"},
+    {"rounds.csv", "props", "measure", "tiles", "tiles owned"},
+    {"rounds.csv", "houses", "measure", "houses", "houses on owned streets (a hotel is not counted here)"},
+    {"rounds.csv", "hotels", "measure", "hotels", "hotels on owned streets"},
+    {"rounds.csv", "mortgaged", "measure", "tiles", "owned tiles that are mortgaged"},
+    {"rounds.csv", "position", "measure", "tile", "tile index of the token"},
+    {"rounds.csv", "in_jail", "measure", "0/1", "1 while in Jail"},
+    {"rounds.csv", "bankrupt", "measure", "0/1", "1 once out of the game"},
+    {"rounds.csv", "cards", "measure", "cards", "Get Out of Jail cards held"},
+    {"events.csv", "seq", "time", "row", "1-based ledger row number"},
+    {"events.csv", "round", "time", "round", "the ledger round field, verbatim"},
+    {"events.csv", "actor", "category", "", "player id or bank"},
+    {"events.csv", "verb", "category", "", "ledger verb"},
+    {"events.csv", "target", "text", "", "ledger target field (dice d1,d2 for a roll)"},
+    {"events.csv", "at", "category", "tile", "ledger at field (tile index)"},
+    {"events.csv", "result", "text", "", "the recorded, replay-checked result"},
+    {"events.csv", "card", "category", "", "deck:number when the result drew a card, else blank"},
+    {"events.csv", "actor_cash", "measure", "$", "the actor cash after the row, blank for the bank"},
+    {"events.csv", "actor_pos", "measure", "tile", "the actor position after the row, blank for the bank"},
+    {"tiles.csv", "tile", "id", "", "tile index"},
+    {"tiles.csv", "id", "category", "", "tile id from board.pdl"},
+    {"tiles.csv", "kind", "category", "", "go street chance chest tax rail util jail free gotojail"},
+    {"tiles.csv", "group", "category", "", "colour group 0..7, rails 8, utilities 9"},
+    {"tiles.csv", "price", "measure", "$", "list price (a tax tile: the amount)"},
+    {"tiles.csv", "house_cost", "measure", "$", "building cost of a street"},
+    {"tiles.csv", "owner", "category", "", "final owner id, bank when ownable and unowned, blank when not ownable"},
+    {"tiles.csv", "buildings", "measure", "0..5", "final buildings (5 = hotel)"},
+    {"tiles.csv", "mortgaged", "measure", "0/1", "final mortgage flag"},
+    {"tiles.csv", "lands", "measure", "count", "times a token ended a roll or jail_roll on this tile"},
+    {"tiles.csv", "rent_paid", "measure", "$", "rent paid at once on landing here (debts settled later are not in it)"},
+    {"tiles.csv", "bought_price", "measure", "$", "price of the first purchase (buy or auction), blank if never bought"},
+    {"tiles.csv", "bought_by", "category", "", "player of that purchase"},
+    {"tiles.csv", "bought_round", "time", "round", "round of that purchase"},
+    {"tiles.csv", "via", "category", "", "buy or auction"},
+    {"trades.csv", "offer_id", "id", "", "offer id from the ledger"},
+    {"trades.csv", "re", "id", "", "the offer this one counters, blank for a first offer"},
+    {"trades.csv", "depth", "measure", "round", "negotiation round (1 = first offer)"},
+    {"trades.csv", "from", "category", "", "proposer"},
+    {"trades.csv", "to", "category", "", "addressee"},
+    {"trades.csv", "give", "text", "", "assets the proposer hands over (canonical grammar prop:T+cash:N+card:D)"},
+    {"trades.csv", "get", "text", "", "assets the proposer asks for"},
+    {"trades.csv", "opened_seq", "time", "row", "ledger row that opened it"},
+    {"trades.csv", "opened_round", "time", "round", "round when opened"},
+    {"trades.csv", "amended", "measure", "count", "amend rows on it"},
+    {"trades.csv", "outcome", "category", "", "done rejected cancelled expired countered open or void (purged by a bankruptcy)"},
+    {"trades.csv", "closed_by", "category", "", "who closed it"},
+    {"trades.csv", "closed_seq", "time", "row", "ledger row that closed it"},
+    {"trades.csv", "closed_round", "time", "round", "round when closed"},
+    {"auctions.csv", "auction", "id", "", "1.. in ledger order"},
+    {"auctions.csv", "tile", "category", "tile", "tile index"},
+    {"auctions.csv", "tile_id", "category", "", "tile id"},
+    {"auctions.csv", "list_price", "measure", "$", "the tile list price"},
+    {"auctions.csv", "opened_seq", "time", "row", "ledger row of the declining skip"},
+    {"auctions.csv", "round", "time", "round", "round when opened"},
+    {"auctions.csv", "decliner", "category", "", "who declined to buy"},
+    {"auctions.csv", "bids", "measure", "count", "bid rows"},
+    {"auctions.csv", "passes", "measure", "count", "pass rows"},
+    {"auctions.csv", "high_bid", "measure", "$", "the standing or final bid, 0 if none"},
+    {"auctions.csv", "winner", "category", "", "buyer, blank if unsold or open"},
+    {"auctions.csv", "result", "category", "", "sold unsold or open"},
+};
+typedef struct { const char *tab; char *p; size_t n, cap; int rows; } XBuf;
+static long x_total;
+static void xb_put(XBuf *b, const char *s, size_t k) {
+    if (x_total + (long)k > X_MAX_OUT) { fprintf(stderr, "deskopoly: export refused: the tables would pass %ld bytes\n", X_MAX_OUT); exit(2); }
+    if (b->n + k + 1 > b->cap) { size_t nc = b->cap ? b->cap : 4096; while (nc < b->n + k + 1) nc *= 2; char *q = realloc(b->p, nc); if (!q) bad("export: out of memory"); b->p = q; b->cap = nc; }
+    memcpy(b->p + b->n, s, k); b->n += k; b->p[b->n] = 0; x_total += (long)k;
+}
+static void xb_str(XBuf *b, const char *s) { xb_put(b, s, strlen(s)); }
+static void xb_cell(XBuf *b, const char *s) {   /* RFC 4180: quote a cell that holds a comma, a quote or a line break */
+    if (!strpbrk(s, ",\"\r\n")) { xb_put(b, s, strlen(s)); return; }
+    xb_put(b, "\"", 1); for (const char *c = s; *c; c++) { if (*c == '"') xb_put(b, "\"\"", 2); else xb_put(b, c, 1); } xb_put(b, "\"", 1);
+}
+static void xb_head(XBuf *b, const char *tab) { b->tab = tab; int first = 1; for (size_t i = 0; i < sizeof XC / sizeof *XC; i++) if (!strcmp(XC[i].tab, tab)) { if (!first) xb_put(b, ",", 1); xb_cell(b, XC[i].col); first = 0; } xb_put(b, "\n", 1); }
+static const char *XI(long v) { static char r[48][24]; static int k; k = (k + 1) % 48; snprintf(r[k], 24, "%ld", v); return r[k]; }
+static void xb_row(XBuf *b, int n, ...) {
+    int want = 0; for (size_t i = 0; i < sizeof XC / sizeof *XC; i++) if (!strcmp(XC[i].tab, b->tab)) want++;
+    if (n != want) { fprintf(stderr, "deskopoly: export: internal error: a %s row has %d cells, the schema has %d\n", b->tab, n, want); exit(1); }
+    va_list a; va_start(a, n); for (int i = 0; i < n; i++) { if (i) xb_put(b, ",", 1); xb_cell(b, va_arg(a, const char *)); } va_end(a); xb_put(b, "\n", 1); b->rows++;
+}
+typedef struct { int round, n; struct { int cash, net, props, houses, hotels, mort, pos, jail, out, human, cards; char id[8], name[32]; } p[MAXP]; } XSnap;
+typedef struct { int k, re, depth, amended, oseq, oround, cseq, cround; char from[8], to[8], give[128], get[128], outcome[12], by[8]; } XTr;
+typedef struct { int tile, list, oseq, round, bids, passes, price; char decliner[8], winner[8], result[8]; } XAu;
+static XBuf xev, xrd; static XSnap x_prev; static int x_have_prev, xseq, x_human_ever, x_bk, x_bids, x_offers, x_done, x_aucs;
+static XTr xtr[X_MAX_TR]; static int nxtr; static XAu xau[X_MAX_AU]; static int nxau;
+static int x_lands[MAXT], x_rent[MAXT], x_bprice[MAXT], x_bround[MAXT]; static char x_bby[MAXT][8], x_via[MAXT][8], x_first[8], x_over[48];
+static void x_snap(XSnap *s) {
+    s->round = round_; s->n = np_game;
+    for (int i = 0; i < np_game && i < MAXP; i++) {
+        int pr = 0, ho = 0, hh = 0, mo = 0; for (int k = 0; k < nt; k++) if (owner[k] == i) { pr++; if (bld[k] == 5) hh++; else ho += bld[k]; if (mort[k]) mo++; }
+        s->p[i].cash = cash[i]; s->p[i].net = net(i); s->p[i].props = pr; s->p[i].houses = ho; s->p[i].hotels = hh; s->p[i].mort = mo; s->p[i].pos = pos[i]; s->p[i].jail = injail[i] ? 1 : 0; s->p[i].out = out[i]; s->p[i].human = human[i]; s->p[i].cards = held_by(i, 0) + held_by(i, 1);
+        snprintf(s->p[i].id, sizeof s->p[i].id, "%s", PL[i].id); snprintf(s->p[i].name, sizeof s->p[i].name, "%s", PL[i].name);
+    }
+}
+static void x_emit(const XSnap *s) {
+    for (int i = 0; i < s->n; i++) xb_row(&xrd, 14, XI(s->round), s->p[i].id, s->p[i].name, s->p[i].human ? "human" : "pet", XI(s->p[i].cash), XI(s->p[i].net), XI(s->p[i].props), XI(s->p[i].houses), XI(s->p[i].hotels), XI(s->p[i].mort), XI(s->p[i].pos), XI(s->p[i].jail), XI(s->p[i].out), XI(s->p[i].cards));
+}
+static XTr *x_find_tr(int k) { for (int i = nxtr - 1; i >= 0; i--) if (xtr[i].k == k && !xtr[i].outcome[0]) return &xtr[i]; return NULL; }
+static void x_hook(int lineno, char **f) {   /* called after each row replay2 applied: the globals are the state AFTER the row */
+    (void)lineno; xseq++;
+    if (xseq > X_MAX_ROWS) { fprintf(stderr, "deskopoly: export refused: the ledger has more than %d rows\n", X_MAX_ROWS); exit(2); }
+    const char *actor = f[2], *verb = f[3], *target = f[4], *res = f[6]; int pl = pidx(actor); if (pl >= np_game) pl = -1; char v[160];
+    char card[24]; tt_kv(res, "card", card, sizeof card);
+    xb_row(&xev, 10, XI(xseq), f[1], actor, verb, target, f[5], res, card, pl >= 0 ? XI(cash[pl]) : "", pl >= 0 ? XI(pos[pl]) : "");
+    if (!strcmp(verb, "join") && strstr(res, "driver=human")) x_human_ever++;
+    if (!strcmp(verb, "seat") && !strcmp(res, "human")) x_human_ever++;
+    if (!strcmp(verb, "first")) snprintf(x_first, sizeof x_first, "%s", res);
+    if (!strcmp(verb, "over")) snprintf(x_over, sizeof x_over, "%s", res);
+    if (!strcmp(verb, "bankrupt")) x_bk++;
+    if (pl >= 0 && (!strcmp(verb, "roll") || !strcmp(verb, "jail_roll"))) { int t = pos[pl]; x_lands[t]++; const char *r = strstr(res, "rent-"); if (r && (r == res || r[-1] == ';')) x_rent[t] += atoi(r + 5); }
+    if (pl >= 0 && !strcmp(verb, "buy") && !strncmp(res, "bought-", 7)) { int t = pos[pl]; if (!x_via[t][0]) { x_bprice[t] = atoi(res + 7); snprintf(x_bby[t], 8, "%s", PL[pl].id); x_bround[t] = round_; snprintf(x_via[t], 8, "buy"); } }
+    if (pl >= 0 && !strcmp(verb, "skip") && strstr(res, ";auction") && auc_t >= 0) {
+        if (nxau >= X_MAX_AU) { fprintf(stderr, "deskopoly: export refused: more than %d auctions\n", X_MAX_AU); exit(2); }
+        XAu *a = &xau[nxau++]; memset(a, 0, sizeof *a); a->tile = auc_t; a->list = T[auc_t].price; a->oseq = xseq; a->round = round_; snprintf(a->decliner, 8, "%s", PL[pl].id); x_aucs++;
+    }
+    if ((!strcmp(verb, "bid") || !strcmp(verb, "pass")) && nxau && !xau[nxau - 1].result[0]) { XAu *a = &xau[nxau - 1]; if (!strcmp(verb, "pass")) a->passes++; else { a->bids++; x_bids++; a->price = atoi(strstr(res, "bid=") ? strstr(res, "bid=") + 4 : "0"); } }
+    if (!strcmp(verb, "auction_end") && nxau) {
+        XAu *a = &xau[nxau - 1]; int t = atoi(target);
+        if (!strncmp(res, "sold-to=", 8)) { char who[8]; const char *d = strrchr(res, '-'); size_t w = d ? (size_t)(d - (res + 8)) : 0; if (w >= sizeof who) w = sizeof who - 1; memcpy(who, res + 8, w); who[w] = 0; snprintf(a->winner, 8, "%s", who); a->price = d ? atoi(d + 1) : 0; snprintf(a->result, 8, "sold");
+            if (t >= 0 && t < nt && !x_via[t][0]) { x_bprice[t] = a->price; snprintf(x_bby[t], 8, "%s", who); x_bround[t] = round_; snprintf(x_via[t], 8, "auction"); } }
+        else snprintf(a->result, 8, "unsold");
+    }
+    if (!strcmp(verb, "offer") || !strcmp(verb, "counter")) {
+        if (nxtr >= X_MAX_TR) { fprintf(stderr, "deskopoly: export refused: more than %d offers\n", X_MAX_TR); exit(2); }
+        XTr *o = &xtr[nxtr++]; memset(o, 0, sizeof *o); x_offers++;
+        tt_kv(res, "id", v, sizeof v); o->k = atoi(v); tt_kv(res, "re", v, sizeof v); o->re = atoi(v); tt_kv(res, "round", v, sizeof v); o->depth = atoi(v);
+        tt_kv(res, "give", o->give, sizeof o->give); tt_kv(res, "get", o->get, sizeof o->get); snprintf(o->from, 8, "%s", actor);
+        if (!strcmp(verb, "offer")) snprintf(o->to, 8, "%s", target); else { XTr *p = x_find_tr(o->re); if (p) { snprintf(o->to, 8, "%s", p->from); snprintf(p->outcome, sizeof p->outcome, "countered"); snprintf(p->by, 8, "%s", actor); p->cseq = xseq; p->cround = round_; } }
+        o->oseq = xseq; o->oround = round_;
+    } else if (!strcmp(verb, "amend") || !strcmp(verb, "accept") || !strcmp(verb, "reject") || !strcmp(verb, "cancel") || !strcmp(verb, "expire")) {
+        XTr *o = x_find_tr(atoi(target));
+        if (o) {
+            if (!strcmp(verb, "amend")) { o->amended++; tt_kv(res, "give", o->give, sizeof o->give); tt_kv(res, "get", o->get, sizeof o->get); }
+            else { snprintf(o->outcome, sizeof o->outcome, "%s", !strcmp(verb, "accept") ? "done" : !strcmp(verb, "reject") ? "rejected" : !strcmp(verb, "cancel") ? "cancelled" : "expired"); snprintf(o->by, 8, "%s", actor); o->cseq = xseq; o->cround = round_; if (!strcmp(verb, "accept")) x_done++; }
+        }
+    }
+    XSnap cur; memset(&cur, 0, sizeof cur); x_snap(&cur);
+    if (x_have_prev && cur.round != x_prev.round) x_emit(&x_prev);
+    x_prev = cur; x_have_prev = 1;
+}
+static void x_mkdirs(const char *d) {
+    char t[1200]; snprintf(t, sizeof t, "%s", d); for (char *p = t + 1; *p; p++) if (*p == '/') { *p = 0; mkdir(t, 0755); *p = '/'; }
+    struct stat sb; mkdir(t, 0755); if (stat(t, &sb) || !S_ISDIR(sb.st_mode)) bad("export: cannot create the output folder");
+}
+static int v_export(int argc, char **argv) {
+    if (argc < 1) bad("usage: deskopoly <app> <state> export <out_dir>");
+    if (g_schema != 2) { fprintf(stderr, "deskopoly: export refused: this state folder holds no classic (schema 2) ledger\n"); return 2; }
+    const char *od = argv[0]; char ra[PATH_MAX], rb[PATH_MAX], lp[1200]; struct stat sb;
+    ledger_path(lp, sizeof lp); if (stat(lp, &sb)) bad("export: no ledger here");
+    if (sb.st_size > X_MAX_LEDGER_BYTES) { fprintf(stderr, "deskopoly: export refused: the ledger is %ld bytes, the cap is %ld\n", (long)sb.st_size, X_MAX_LEDGER_BYTES); return 2; }
+    if (!realpath(g_state, ra)) bad("export: cannot resolve the state folder");
+    if (!stat(od, &sb) && S_ISDIR(sb.st_mode) && realpath(od, rb)) { char q[PATH_MAX + 16]; snprintf(q, sizeof q, "%s/ledger.txt", rb); if (!strcmp(ra, rb) || !stat(q, &sb)) { fprintf(stderr, "deskopoly: export refused: the output folder is a game folder (it holds a ledger.txt); the export never writes beside a ledger\n"); return 2; } }
+    long lrows; uint64_t lh = ledger_fnv(NULL, &lrows);
+    xb_head(&xev, "events.csv"); xb_head(&xrd, "rounds.csv"); g_rhook = x_hook;
+    int st, rc = need_game(&st); g_rhook = NULL; if (rc) return rc;   /* the engine's own replay: a ledger that does not reproduce itself stops here (exit 1), before any file is written */
+    if (check2()) { fprintf(stderr, "deskopoly: export refused: the replayed state fails the invariants above\n"); return 1; }
+    if (x_have_prev) x_emit(&x_prev);
+    static char sb2[32768]; build_status2(sb2, sizeof sb2); uint64_t sh = fnv(sb2);
+    XBuf gm = {0}, tl = {0}, tr = {0}, au = {0}, sc = {0};
+    xb_head(&gm, "game.csv"); xb_head(&tl, "tiles.csv"); xb_head(&tr, "trades.csv"); xb_head(&au, "auctions.csv");
+    int humans = 0; for (int i = 0; i < np_game; i++) humans += human[i] ? 1 : 0;
+    const char *outc = !strncmp(x_over, "winner=", 7) ? "winner" : !strncmp(x_over, "stalemate=", 10) ? "stalemate" : "open"; const char *wn = strchr(x_over, '='); wn = (wn && strcmp(outc, "open")) ? wn + 1 : ""; int wi = pidx(wn);
+    char gid[20], rh[20], shx[20]; snprintf(gid, sizeof gid, "%016llx", (unsigned long long)lh); snprintf(rh, sizeof rh, "%016llx", (unsigned long long)g_rules_hash); snprintf(shx, sizeof shx, "%016llx", (unsigned long long)sh);
+    xb_row(&gm, 22, gid, g_rs, rh, XI(seed), XI(np_game), XI(humans), XI(x_human_ever), XI(R_start), XI(nt), XI(lrows), XI(round_), over ? "over" : "open", outc, wn, wi >= 0 ? (human[wi] ? "human" : "pet") : "", x_first, XI(x_aucs), XI(x_bids), XI(x_offers), XI(x_done), XI(x_bk), shx);
+    for (int k = 0; k < nt; k++) {
+        int own = !strcmp(T[k].kind, "street") || !strcmp(T[k].kind, "rail") || !strcmp(T[k].kind, "util");
+        xb_row(&tl, 15, XI(k), T[k].name, T[k].kind, XI(T[k].group), XI(T[k].price), XI(T[k].house), owner[k] >= 0 ? PL[owner[k]].id : (own ? "bank" : ""), XI(bld[k]), XI(mort[k]), XI(x_lands[k]), XI(x_rent[k]), x_via[k][0] ? XI(x_bprice[k]) : "", x_bby[k], x_via[k][0] ? XI(x_bround[k]) : "", x_via[k]);
+    }
+    for (int i = 0; i < nxtr; i++) {
+        XTr *o = &xtr[i]; if (!o->outcome[0]) snprintf(o->outcome, sizeof o->outcome, "%s", off_idx(o->k) >= 0 ? "open" : "void");
+        int cl = strcmp(o->outcome, "open") && strcmp(o->outcome, "void");
+        xb_row(&tr, 14, XI(o->k), o->re ? XI(o->re) : "", XI(o->depth), o->from, o->to, o->give, o->get, XI(o->oseq), XI(o->oround), XI(o->amended), o->outcome, cl ? o->by : "", cl ? XI(o->cseq) : "", cl ? XI(o->cround) : "");
+    }
+    for (int i = 0; i < nxau; i++) {
+        XAu *a = &xau[i]; if (!a->result[0]) snprintf(a->result, 8, "open");
+        xb_row(&au, 12, XI(i + 1), XI(a->tile), T[a->tile].name, XI(a->list), XI(a->oseq), XI(a->round), a->decliner, XI(a->bids), XI(a->passes), XI(a->price), a->winner, a->result);
+    }
+    xb_str(&sc, "# schema.pdl - written by `deskopoly export` (data-hq P0): the columns of the tables beside it. A projection of the ledger: delete it and export again, the bytes come back.\n# TABLE | file | what   then   COL | name | role | unit | hint   (roles: time category measure id text)   ABSENT | name | why: wanted by the data-hq plan, NOT in this engine, so there is no column.\n");
+    { const char *tabs[6] = { "game.csv", "rounds.csv", "events.csv", "tiles.csv", "trades.csv", "auctions.csv" }, *what[6] = { "one row per game", "one row per player per round", "one row per ledger row", "one row per board tile", "one row per trade offer", "one row per auction" };
+      for (int t = 0; t < 6; t++) { char ln[400]; snprintf(ln, sizeof ln, "TABLE | %s | %s\n", tabs[t], what[t]); xb_put(&sc, ln, strlen(ln));
+          for (size_t i = 0; i < sizeof XC / sizeof *XC; i++) if (!strcmp(XC[i].tab, tabs[t])) { snprintf(ln, sizeof ln, "COL | %s | %s | %s | %s\n", XC[i].col, XC[i].role, XC[i].unit, XC[i].hint); xb_put(&sc, ln, strlen(ln)); } } }
+    xb_str(&sc, "ABSENT | wall_time | the ledger rows carry no time stamp: durations and moves per minute cannot be computed\nABSENT | rent_income_per_round | the engine keeps no income account; rent paid is in events.result and tiles.rent_paid\nABSENT | pet_policy | which decision policy drove a pet seat is not recorded (the join rows say personality=-)\n");
+    x_mkdirs(od);
+    write_atomic(od, "game.csv", gm.p); write_atomic(od, "rounds.csv", xrd.p); write_atomic(od, "events.csv", xev.p); write_atomic(od, "tiles.csv", tl.p); write_atomic(od, "trades.csv", tr.p); write_atomic(od, "auctions.csv", au.p); write_atomic(od, "schema.pdl", sc.p);
+    printf("EXPORT out=%s rows=%ld rounds=%d players=%d offers=%d auctions=%d bytes=%ld hash=%s\n", od, lrows, round_, np_game, nxtr, nxau, x_total, gid); return 0;
 }
 
 /* which ruleset does this call run under? `lobby <ruleset>` names it; otherwise the first ledger row decides (a `lobby` row names it, anything else is schema 1 = mini). */
@@ -1556,6 +1788,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "audit")) return v_audit();
     if (!strcmp(v, "ledger_hash")) return v_ledger_hash(argc - 4, argv + 4);
     if (!strcmp(v, "talk")) return v_talk(argc - 4, argv + 4);
+    if (!strcmp(v, "export")) return v_export(argc - 4, argv + 4);
     if (!strcmp(v, "status")) return v_status();
     if (!strcmp(v, "replay")) return v_replay();
     if (!strcmp(v, "check")) return v_check();

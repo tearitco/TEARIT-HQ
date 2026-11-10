@@ -1,0 +1,515 @@
+# data_hq_p0: data-hq PHASE P0, the dataset layer (BOOK 08-roadmap/design-docs/DATA-HQ-DATA-STUDIO-PLAN-2026-11-09.md section 8; ops &.hq-apps/data-hq/ops/data_op.c and the `export` verb of @.apps/deskopoly/ops/deskopoly.c).
+# Every number below was OBSERVED in a scratch run on 2026-11-09 (or worked by hand where the label says so) before it was written here. Scratch only: the live editor state is only READ (case `live-archive`), never written.
+# Mutants: a check that cannot fail is not a check, so each family has a corrupted copy (a role rule changed by one byte, a wrong delimiter, an off-by-one round, a tampered ledger, a cut events table) that must be caught.
+RESULTS | ../results/data_hq_p0.txt
+ENV | LC_ALL | C
+RUN | echo | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x
+CAPTURE | DOP
+RUN | echo | $HOUSE/@.apps/deskopoly/ops/+x/deskopoly.+x
+CAPTURE | ENG
+RUN | echo | $HOUSE/&.hq-apps/data-hq/fixtures
+CAPTURE | FX
+RUN | echo | $HOUSE/@.apps/deskopoly
+CAPTURE | APP
+
+CASE    | sniff
+SCRATCH |
+MKDIR   | m
+# the 7 fixtures: sniffed roles equal the schema written by hand (the chutes/snake/teario shapes exist before the games do)
+RUN | $DOP | sniff | $FX/chutes_markov.csv | --against | $FX/chutes_markov.schema.pdl
+EXPECT_OUT | ROLES ok table=chutes_markov.csv cols=6 | chutes-markov-roles
+RUN | $DOP | sniff | $FX/chutes_games.csv | --against | $FX/chutes_games.schema.pdl
+EXPECT_OUT | ROLES ok table=chutes_games.csv cols=10 | chutes-games-roles
+RUN | $DOP | sniff | $FX/snake_runs.csv | --against | $FX/snake_runs.schema.pdl
+EXPECT_OUT | ROLES ok table=snake_runs.csv cols=3 | snake-runs-roles
+RUN | $DOP | sniff | $FX/teario_runs.csv | --against | $FX/teario_runs.schema.pdl
+EXPECT_OUT | ROLES ok table=teario_runs.csv cols=11 | teario-runs-roles
+RUN | $DOP | sniff | $FX/teario_deaths.csv | --against | $FX/teario_deaths.schema.pdl
+EXPECT_OUT | ROLES ok table=teario_deaths.csv cols=3 | teario-deaths-roles
+RUN | $DOP | sniff | $FX/weather.tsv | --against | $FX/weather.schema.pdl
+EXPECT_OUT | ROLES ok table=weather.tsv cols=4 | a-tab-separated-non-game-table-roles
+RUN | $DOP | sniff | $FX/scores.pdl | --against | $FX/scores.schema.pdl
+EXPECT_OUT | ROLES ok table=scores.pdl cols=3 | a-pdl-pipe-table-roles
+# the roles themselves (not only agreement with a file): the tick column is time by name, run_id is an id, a seed is an id, count is a measure
+RUN | $DOP | sniff | $FX/snake_runs.csv
+EXPECT_OUT | COL \p tick \p time | tick-is-time
+EXPECT_OUT | COL \p direction \p category | direction-is-a-category
+EXPECT_OUT | COL \p score \p measure | score-is-a-measure
+RUN | $DOP | sniff | $FX/chutes_games.csv
+EXPECT_OUT | COL \p seed \p id | a-seed-is-an-id
+RUN | $DOP | sniff | $FX/weather.tsv
+EXPECT_OUT | COL \p date \p time | ISO-dates-are-time
+# MUTANT 1: one byte of a role changed in a copy of the expected schema (id -> ie): the comparison must see it
+COPY    | &.hq-apps/data-hq/fixtures/chutes_markov.schema.pdl | m/chutes_markov.schema.pdl
+RUN | sed | -i | s/COL \p square \p id/COL \p square \p ie/ | $T/m/chutes_markov.schema.pdl
+RUN | grep | -c | \p square \p ie | $T/m/chutes_markov.schema.pdl
+EXPECT_OUT_IS | 1 | mutant-1-the-corruption-really-landed
+RUN | $DOP | sniff | $FX/chutes_markov.csv | --against | $T/m/chutes_markov.schema.pdl
+EXPECT_EXIT | 1 | NEGATIVE-mutant-1-a-one-byte-corrupted-role-is-caught
+EXPECT_OUT | DIFF square: sniffed id, schema says ie | NEGATIVE-mutant-1-the-message-names-column-and-both-roles
+# MUTANT 2: the same weather table with commas instead of tabs under the .tsv name (a wrong delimiter): one column, not four
+COPY    | &.hq-apps/data-hq/fixtures/weather.tsv | m/weather.tsv
+RUN | sed | -i | s/\t/,/g | $T/m/weather.tsv
+RUN | grep | -c | , | $T/m/weather.tsv
+EXPECT_OUT_IS | 5 | mutant-2-the-delimiter-really-changed-in-all-5-lines
+RUN | $DOP | sniff | $T/m/weather.tsv | --against | $FX/weather.schema.pdl
+EXPECT_EXIT | 1 | NEGATIVE-mutant-2-a-wrong-delimiter-is-caught
+EXPECT_OUT | DIFF columns: sniffed 1, schema 4 | NEGATIVE-mutant-2-one-column-instead-of-four
+# check: the table matches its schema; a non-number in a measure column and a swapped header are caught
+RUN | $DOP | check | $FX/snake_runs.csv | $FX/snake_runs.schema.pdl
+EXPECT_OUT | CHECK ok table=snake_runs.csv cols=3 rows=10 | check-ok-on-the-fixture
+COPY    | &.hq-apps/data-hq/fixtures/snake_runs.csv | m/snake_runs.csv
+RUN | sed | -i | s/^12,D,10/12,D,xx/ | $T/m/snake_runs.csv
+RUN | $DOP | check | $T/m/snake_runs.csv | $FX/snake_runs.schema.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-text-cell-in-a-measure-column-is-caught
+EXPECT_OUT | FAIL score row 4: "xx" is not a number | NEGATIVE-the-message-names-column-row-and-value
+RUN | sed | -i | 1s/.*/score,direction,tick/ | $T/m/snake_runs.csv
+RUN | $DOP | check | $T/m/snake_runs.csv | $FX/snake_runs.schema.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-swapped-header-is-caught
+EXPECT_OUT | FAIL column 1 is score, the schema says tick | NEGATIVE-the-message-names-the-column
+CLEAN   |
+
+CASE    | show-stats
+# hand-worked: snake_runs score = 0 0 10 10 10 20 20 30 30 40 -> n 10, sum 170, mean 17, median (10+20)/2 = 15, q25 = 10, q75 = 20 + 0.75*10 = 27.5, p05 = 0, p95 = 30 + 0.55*10 = 35.5, 5 distinct (linear-interpolated quantiles)
+RUN | $DOP | stats | $FX/snake_runs.csv | score
+EXPECT_OUT_IS | STAT \p score \p n=10 \p min=0 \p p05=0 \p q25=10 \p median=15 \p q75=27.5 \p p95=35.5 \p max=40 \p mean=17 \p distinct=5 | stats-equal-the-hand-worked-numbers
+CAPTURE | S1
+EXPECT_NE | $S1 | STAT \p score \p n=10 \p min=0 \p p05=0 \p q25=10 \p median=14 \p q75=27.5 \p p95=35.5 \p max=40 \p mean=17 \p distinct=5 | NEGATIVE-a-median-off-by-one-is-not-equal-so-the-line-above-can-fail
+# the Chutes board solved by hand (spinner 1 or 2, chute 3 -> 1, finish at 4 or more): expected spins from squares 0 1 2 4 = 6 6 4 0 -> mean 4, median (4+6)/2 = 5
+RUN | $DOP | stats | $FX/chutes_markov.csv | expected_turns
+EXPECT_OUT_IS | STAT \p expected_turns \p n=4 \p min=0 \p p05=0.6 \p q25=3 \p median=5 \p q75=6 \p p95=6 \p max=6 \p mean=4 \p distinct=3 | the-hand-solved-chutes-board-statistics
+RUN | $DOP | pick | $FX/chutes_markov.csv | expected_turns | --where | square=0
+EXPECT_OUT_IS | 6 | hand-solved-E0-is-6
+RUN | $DOP | pick | $FX/chutes_markov.csv | expected_turns | --where | square=2
+EXPECT_OUT_IS | 4 | hand-solved-E2-is-4
+RUN | $DOP | pick | $FX/chutes_markov.csv | expected_turns | --where | square>=3
+EXPECT_OUT_IS | 0 | the-finish-square-has-0-expected-spins
+RUN | $DOP | pick | $FX/chutes_markov.csv | expected_turns | --where | square>5
+EXPECT_EXIT | 1 | NEGATIVE-pick-with-no-matching-row-fails
+RUN | $DOP | pick | $FX/chutes_markov.csv | expected_turns | --where | p_to_0=0
+EXPECT_EXIT | 1 | NEGATIVE-pick-with-four-matching-rows-fails
+RUN | $DOP | stats | $FX/teario_deaths.csv | count
+EXPECT_OUT_IS | STAT \p count \p n=5 \p min=3 \p p05=3.2 \p q25=4 \p median=7 \p q75=9 \p p95=11.4 \p max=12 \p mean=7 \p distinct=5 | teario-deaths-by-tile-statistics
+RUN | $DOP | pick | $FX/teario_deaths.csv | count | --where | level_hash=a1b2c3d4 | --where | tile=pit
+EXPECT_OUT_IS | 7 | two-where-clauses-and-together
+RUN | $DOP | show | $FX/teario_runs.csv | --where | driver=bot | --cols | run_id,result
+EXPECT_OUT_IS | run_id \p result\nr0002 \p clear\nr0005 \p died | show-filters-rows-and-picks-columns
+RUN | $DOP | show | $FX/teario_runs.csv | --where | ticks>1000 | --cols | run_id
+EXPECT_OUT_IS | run_id\nr0001\nr0002\nr0004 | a-numeric-greater-than
+RUN | $DOP | show | $FX/teario_runs.csv | --where | ticks>1000 | --where | driver!=bot | --cols | run_id
+EXPECT_OUT_IS | run_id\nr0001\nr0004 | a-not-equal-and-and
+RUN | $DOP | show | $FX/snake_runs.csv | --head | 2 | --schema | $FX/snake_runs.schema.pdl
+EXPECT_OUT | # roles: tick=time direction=category score=measure | show-with-a-schema-prints-the-roles
+EXPECT_OUT | # 8 more rows (of 10 matching) | show-says-how-many-rows-the-head-cut
+RUN | $DOP | show | $FX/snake_runs.csv | --where | nosuch=1
+EXPECT_EXIT | 2 | NEGATIVE-a-where-on-a-missing-column-is-refused
+CLEAN   |
+
+CASE    | caps
+SCRATCH |
+MKDIR   | big
+RUN | truncate | -s | 9M | $T/big/huge.csv
+RUN | $DOP | sniff | $T/big/huge.csv
+EXPECT_EXIT | 2 | NEGATIVE-an-oversize-file-is-refused
+EXPECT_OUT | refused | the-refusal-says-so
+RUN | $DOP | list | $T/big
+EXPECT_OUT | REFUSED \p $T/big/huge.csv \p oversize | list-names-the-oversize-file-and-why
+RUN | $DOP | stats | $T/big/huge.csv
+EXPECT_EXIT | 2 | NEGATIVE-stats-refuses-it-too
+CLEAN   |
+
+CASE    | export
+# the pinned 3-pet game of dsk_auction (seed 6, auctions on): 831 ledger rows, ledger hash 72442143905f2371, REPLAY hash 2583da5124cab176, winner p3, 94 rounds. The numbers below are checked against the ENGINE (status, replay, ledger_hash), not against arithmetic of ours.
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $ENG | $T/app | $T/h | lobby | classic
+RUN | $ENG | $T/app | $T/h | join | A | pet
+RUN | $ENG | $T/app | $T/h | join | B | pet
+RUN | $ENG | $T/app | $T/h | join | C | pet
+RUN | $ENG | $T/app | $T/h | start | 6
+RUN | $ENG | $T/app | $T/h | autoplay
+EXPECT_OUT | AUTOPLAY events=831 rounds=94 over=1 winner=p3 | the-pinned-pets-game-is-the-831-row-one
+SUMTREE | A | h
+RUN | $ENG | $T/app | $T/h | export | $T/o1
+EXPECT_EXIT | 0 | export-succeeds
+EXPECT_OUT | EXPORT out=$T/o1 rows=831 rounds=94 players=3 offers=0 auctions=6 | the-summary-line
+SUMTREE | B | h
+EXPECT_EQ | $A | $B | the-export-wrote-nothing-into-the-game-folder
+RUN | find | $T/o1 | -type | f | -printf | x
+EXPECT_OUT_IS | xxxxxxx | exactly-seven-files-and-no-tmp-leftover
+# --- the engine's own numbers appear in the tables ---
+RUN | $ENG | $T/app | $T/h | ledger_hash
+EXPECT_OUT | LEDGER rows=831 hash=72442143905f2371 | the-pinned-ledger-hash
+RUN | $DOP | pick | $T/o1/game.csv | game_id | --where | ledger_rows=831
+EXPECT_OUT_IS | 72442143905f2371 | game-id-is-the-engine-ledger-hash
+RUN | $ENG | $T/app | $T/h | replay
+EXPECT_OUT | REPLAY events=831 hash=2583da5124cab176 | the-pinned-replay-hash
+RUN | $DOP | pick | $T/o1/game.csv | state_hash | --where | ledger_rows=831
+EXPECT_OUT_IS | 2583da5124cab176 | state-hash-is-the-engine-replay-hash
+RUN | $DOP | pick | $T/o1/game.csv | winner | --where | ledger_rows=831
+EXPECT_OUT_IS | p3 | winner-p3
+RUN | $DOP | pick | $T/o1/game.csv | rounds | --where | ledger_rows=831
+EXPECT_OUT_IS | 94 | rounds-94
+RUN | $DOP | pick | $T/o1/game.csv | human_ever | --where | ledger_rows=831
+EXPECT_OUT_IS | 0 | a-pets-only-game-has-human_ever-0
+RUN | $DOP | pick | $T/o1/game.csv | auctions | --where | ledger_rows=831
+EXPECT_OUT_IS | 6 | six-auctions
+# --- row counts: events.csv has one row per ledger row ---
+RUN | grep | -c | . | $T/h/ledger.txt
+CAPTURE | L
+RUN | grep | -c | . | $T/o1/events.csv
+CAPTURE | E
+CALC    | E | $E | - | 1
+EXPECT_EQ | $E | $L | events-csv-rows-equal-ledger-rows
+EXPECT_EQ | $L | 831 | and-that-is-the-pinned-831
+CALC    | X | $E | - | 1
+EXPECT_NE | $X | $L | NEGATIVE-an-events-table-cut-by-one-row-would-not-equal-the-ledger-rows
+# --- every table matches the exporter's own schema.pdl ---
+RUN | $DOP | check | $T/o1/game.csv | $T/o1/schema.pdl
+EXPECT_OUT | CHECK ok table=game.csv cols=22 rows=1 | game-csv-matches-its-schema
+RUN | $DOP | check | $T/o1/rounds.csv | $T/o1/schema.pdl
+EXPECT_OUT | CHECK ok table=rounds.csv cols=14 | rounds-csv-matches-its-schema
+RUN | $DOP | check | $T/o1/events.csv | $T/o1/schema.pdl
+EXPECT_OUT | CHECK ok table=events.csv cols=10 rows=831 | events-csv-matches-its-schema
+RUN | $DOP | check | $T/o1/tiles.csv | $T/o1/schema.pdl
+EXPECT_OUT | CHECK ok table=tiles.csv cols=15 rows=40 | tiles-csv-matches-its-schema
+RUN | $DOP | check | $T/o1/trades.csv | $T/o1/schema.pdl
+EXPECT_OUT | CHECK ok table=trades.csv cols=14 rows=0 | trades-csv-has-no-offers-in-this-game
+RUN | $DOP | check | $T/o1/auctions.csv | $T/o1/schema.pdl
+EXPECT_OUT | CHECK ok table=auctions.csv cols=12 rows=6 | auctions-csv-matches-its-schema
+RUN | $DOP | sniff | $T/o1/rounds.csv | --against | $T/o1/schema.pdl
+EXPECT_EXIT | 0 | the-sniffer-agrees-with-the-exporter-on-all-14-rounds-roles
+# MUTANT (wrong delimiter): the first line of rounds.csv with semicolons
+MKDIR   | m
+RUN | cp | $T/o1/rounds.csv | $T/m/rounds.csv
+RUN | sed | -i | 1s/,/;/g | $T/m/rounds.csv
+RUN | $DOP | check | $T/m/rounds.csv | $T/o1/schema.pdl
+EXPECT_EXIT | 1 | NEGATIVE-a-wrong-delimiter-in-the-header-is-caught-by-check
+# --- rounds.csv ties to the engine's own `status` at the final round ---
+RUN | $ENG | $T/app | $T/h | status
+CAPTURE | ST
+WRITE   | status.txt | $ST
+RUN | grep | -oP | STATE .*round=\K[0-9]+ | $T/status.txt
+CAPTURE | FINAL
+EXPECT_EQ | $FINAL | 94 | the-engine-status-says-round-94
+RUN | grep | -oP | PLAYER p1 .*cash=\K-?[0-9]+ | $T/status.txt
+CAPTURE | EC1
+RUN | grep | -oP | PLAYER p2 .*cash=\K-?[0-9]+ | $T/status.txt
+CAPTURE | EC2
+RUN | grep | -oP | PLAYER p3 .*cash=\K-?[0-9]+ | $T/status.txt
+CAPTURE | EC3
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p1 | --where | round=$FINAL
+CAPTURE | X
+EXPECT_EQ | $X | $EC1 | p1-final-cash-equals-the-engine-status
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p2 | --where | round=$FINAL
+CAPTURE | X
+EXPECT_EQ | $X | $EC2 | p2-final-cash-equals-the-engine-status
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p3 | --where | round=$FINAL
+CAPTURE | X
+EXPECT_EQ | $X | $EC3 | p3-final-cash-equals-the-engine-status
+RUN | grep | -oP | PLAYER p3 .*net=\K-?[0-9]+ | $T/status.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | net_worth | --where | player=p3 | --where | round=$FINAL
+EXPECT_OUT_IS | $Q | p3-final-net-worth-equals-the-engine-status
+RUN | grep | -oP | PLAYER p2 .*pos=\K[0-9]+ | $T/status.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | position | --where | player=p2 | --where | round=$FINAL
+EXPECT_OUT_IS | $Q | p2-final-position-equals-the-engine-status
+RUN | grep | -c | owner=p1 | $T/status.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | props | --where | player=p1 | --where | round=$FINAL
+EXPECT_OUT_IS | $Q | p1-final-property-count-equals-the-status-TILE-lines
+# the same tie at a MIDDLE round with the engine as the oracle: cut a copy of the ledger after the last row whose round field is 40 and ask the engine for its status there (rounds.csv round 40 must equal it)
+RUN | $DOP | show | $T/o1/events.csv | --where | round=40 | --cols | seq | --head | 1000
+CAPTURE | SQ
+WRITE   | seqs40.txt | $SQ
+RUN | tail | -n | 1 | $T/seqs40.txt
+CAPTURE | N
+CALC    | M | $N | + | 1
+MKDIR   | p40
+RUN | cp | $T/h/ledger.txt | $T/p40/ledger.txt
+RUN | sed | -i | $M,$d | $T/p40/ledger.txt
+RUN | grep | -c | . | $T/p40/ledger.txt
+EXPECT_OUT_IS | $N | the-cut-ledger-has-N-rows
+RUN | $ENG | $T/app | $T/p40 | status
+CAPTURE | S40
+WRITE   | st40.txt | $S40
+RUN | grep | -oP | STATE .*round=\K[0-9]+ | $T/st40.txt
+EXPECT_OUT_IS | 40 | the-engine-says-the-cut-ledger-is-in-round-40
+RUN | grep | -oP | PLAYER p1 .*cash=\K-?[0-9]+ | $T/st40.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p1 | --where | round=40
+EXPECT_OUT_IS | $Q | p1-cash-at-round-40-equals-the-engine-status-of-the-cut-ledger
+RUN | grep | -oP | PLAYER p2 .*cash=\K-?[0-9]+ | $T/st40.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p2 | --where | round=40
+EXPECT_OUT_IS | $Q | p2-cash-at-round-40-equals-the-engine-status-of-the-cut-ledger
+RUN | grep | -oP | PLAYER p3 .*net=\K-?[0-9]+ | $T/st40.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | net_worth | --where | player=p3 | --where | round=40
+EXPECT_OUT_IS | $Q | p3-net-worth-at-round-40-equals-the-engine-status-of-the-cut-ledger
+RUN | grep | -oP | PLAYER p3 .*pos=\K[0-9]+ | $T/st40.txt
+CAPTURE | Q
+RUN | $DOP | pick | $T/o1/rounds.csv | position | --where | player=p3 | --where | round=40
+EXPECT_OUT_IS | $Q | p3-position-at-round-40-equals-the-engine-status-of-the-cut-ledger
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p1 | --where | round=39
+CAPTURE | Q
+EXPECT_NE | $Q | $EC1 | vacuity-p1-cash-at-round-39-differs-from-the-final-so-the-round-column-is-real
+# vacuity: the money really moved (p1 does not still hold the start cash), so the ties above are not 1500 = 1500
+EXPECT_NE | $EC1 | 1500 | p1-cash-moved-from-the-start-cash
+# MUTANT (off-by-one round): the same picks one round earlier must NOT equal the engine at the final round
+CALC    | PREV | $FINAL | - | 1
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p1 | --where | round=$PREV
+CAPTURE | YC1
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p2 | --where | round=$PREV
+CAPTURE | YC2
+RUN | $DOP | pick | $T/o1/rounds.csv | cash | --where | player=p3 | --where | round=$PREV
+CAPTURE | YC3
+EXPECT_NE | $YC1,$YC2,$YC3 | $EC1,$EC2,$EC3 | NEGATIVE-mutant-an-off-by-one-round-does-not-tie-to-the-engine
+# MUTANT (a cash cell +1 in a copy of rounds.csv): the tie must break
+RUN | cp | $T/o1/rounds.csv | $T/m/rounds2.csv
+RUN | sed | -i | s/^94,p1,A,pet,\([0-9]*\),/94,p1,A,pet,9\1,/ | $T/m/rounds2.csv
+RUN | grep | -c | ^94,p1,A,pet,9 | $T/m/rounds2.csv
+EXPECT_OUT_IS | 1 | mutant-the-cash-cell-really-changed
+RUN | $DOP | pick | $T/m/rounds2.csv | cash | --where | player=p1 | --where | round=$FINAL
+CAPTURE | X
+EXPECT_NE | $X | $EC1 | NEGATIVE-mutant-a-changed-cash-cell-no-longer-ties-to-the-engine
+CLEAN   |
+
+CASE    | regenerate
+# identical bytes on regeneration, after deleting the output, with a stray CSV beside the ledger, and refusal of tampering
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $ENG | $T/app | $T/h | lobby | classic
+RUN | $ENG | $T/app | $T/h | join | A | pet
+RUN | $ENG | $T/app | $T/h | join | B | pet
+RUN | $ENG | $T/app | $T/h | join | C | pet
+RUN | $ENG | $T/app | $T/h | start | 6
+RUN | $ENG | $T/app | $T/h | autoplay
+RUN | $ENG | $T/app | $T/h | export | $T/o1
+RUN | $ENG | $T/app | $T/h | export | $T/o2
+RUN | diff | -r | $T/o1 | $T/o2
+EXPECT_EXIT | 0 | two-exports-are-byte-identical
+SUMTREE | A | o1
+RUN | rm | -rf | $T/o1
+EXPECT_NOFILE | o1/game.csv | the-output-folder-is-gone
+RUN | $ENG | $T/app | $T/h | export | $T/o1
+SUMTREE | B | o1
+EXPECT_EQ | $A | $B | delete-and-regenerate-gives-identical-bytes
+RUN | sed | -i | 1000s/,/;/ | $T/o2/events.csv
+RUN | sed | -i | 5s/$/x/ | $T/o2/rounds.csv
+SUMTREE | B | o2
+EXPECT_NE | $A | $B | NEGATIVE-the-tree-hash-sees-a-one-cell-edit-so-the-equality-above-can-fail
+# a stray CSV beside the ledger changes nothing (the tables come from the ledger only)
+WRITE   | h/rounds.csv | round,player,cash\n0,p1,999999\n
+WRITE   | h/game.csv | game_id\nstray\n
+WRITE   | h/events.csv | seq\n1\n
+SUMTREE | A | h
+RUN | $ENG | $T/app | $T/h | export | $T/o3
+EXPECT_EXIT | 0 | export-with-stray-csv-files-beside-the-ledger-succeeds
+SUMTREE | B | h
+EXPECT_EQ | $A | $B | the-game-folder-with-its-strays-is-untouched
+RUN | diff | -r | $T/o1 | $T/o3
+EXPECT_EXIT | 0 | stray-csv-files-change-nothing
+RUN | grep | -c | 999999 | $T/o3/rounds.csv
+EXPECT_OUT_IS | 0 | and-the-stray-value-is-not-in-the-tables
+# the export never writes beside a ledger
+RUN | $ENG | $T/app | $T/h | export | $T/h
+EXPECT_EXIT | 2 | NEGATIVE-an-out-folder-that-is-the-game-folder-is-refused
+EXPECT_OUT | never writes beside a ledger | the-refusal-says-why
+SUMTREE | B | h
+EXPECT_EQ | $A | $B | and-nothing-was-written
+# a hand-edited ledger copy is refused: no tables
+MKDIR   | t
+RUN | cp | $T/h/ledger.txt | $T/t/ledger.txt
+RUN | sed | -i | s/rent-\([0-9]*\)/rent-9\1/ | $T/t/ledger.txt
+RUN | cmp | -s | $T/h/ledger.txt | $T/t/ledger.txt
+EXPECT_EXIT | 1 | mutant-the-tamper-really-changed-the-ledger
+RUN | $ENG | $T/app | $T/t | export | $T/o4
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-rent-is-refused-by-the-engine-replay
+EXPECT_OUT | recorded result | the-engine-says-which-result-does-not-reproduce
+EXPECT_NOFILE | o4/game.csv | and-no-tables-were-written
+# the ledger cap: a valid ledger padded past 4 MiB is refused with the reason
+MKDIR   | u
+RUN | cp | $T/h/ledger.txt | $T/u/ledger.txt
+RUN | truncate | -s | 5M | $T/u/ledger.txt
+RUN | $ENG | $T/app | $T/u | export | $T/o5
+EXPECT_EXIT | 2 | NEGATIVE-an-oversize-ledger-is-refused
+EXPECT_OUT | the cap is 4194304 | the-refusal-names-the-cap
+EXPECT_NOFILE | o5/game.csv | and-no-tables-were-written-for-it
+# a mini (schema 1) game is refused with the reason
+MKDIR   | mini
+RUN | $ENG | $T/app | $T/mini | new | 7
+RUN | $ENG | $T/app | $T/mini | export | $T/o6
+EXPECT_EXIT | 2 | NEGATIVE-a-mini-ledger-is-refused
+EXPECT_OUT | no classic | the-reason-is-the-schema
+CLEAN   |
+
+CASE    | provider
+# `data_op provider` runs the app's `GAME | export` row (the real @.apps/deskopoly/game.pdl, the real engine; state and out are scratch folders)
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | h
+RUN | $ENG | $T/app | $T/h | lobby | classic
+RUN | $ENG | $T/app | $T/h | join | A | pet
+RUN | $ENG | $T/app | $T/h | join | B | pet
+RUN | $ENG | $T/app | $T/h | start | 9
+RUN | $ENG | $T/app | $T/h | autoplay
+RUN | $ENG | $T/app | $T/h | export | $T/direct
+RUN | $DOP | provider | $APP | $T/h | $T/prov
+EXPECT_EXIT | 0 | the-provider-ran-the-export-row
+EXPECT_OUT | PROVIDER ok rc=0 | the-provider-reports-success
+EXPECT_OUT | files=7 | and-seven-files-appeared
+RUN | diff | -r | $T/direct | $T/prov
+EXPECT_EXIT | 0 | provider-output-equals-a-direct-export
+RUN | grep | -c | GAME \p export | $APP/game.pdl
+EXPECT_OUT_IS | 1 | the-game-pdl-carries-exactly-one-export-row
+# an app with no export row: exit 3; a failing exporter: exit 1; a chatty one is killed; an unknown placeholder and an overlapping out folder are refused
+MKDIR   | plain
+WRITE   | plain/game.pdl | GAME   \p title        \p Plain\n
+RUN | $DOP | provider | $T/plain | $T/h | $T/p1
+EXPECT_EXIT | 3 | an-app-without-an-export-row-exits-3
+EXPECT_OUT | has no `GAME \p export` row | and-says-so
+MKDIR   | bad
+WRITE   | bad/game.pdl | GAME   \p export \p /usr/bin/false\n
+RUN | $DOP | provider | $T/bad | $T/h | $T/p2
+EXPECT_EXIT | 1 | NEGATIVE-an-exporter-that-fails-fails-the-provider
+EXPECT_OUT | PROVIDER failed rc=1 | and-the-rc-is-reported
+MKDIR   | chat
+WRITE   | chat/game.pdl | GAME   \p export \p /usr/bin/yes\n
+RUN | $DOP | provider | $T/chat | $T/h | $T/p3
+EXPECT_EXIT | 1 | NEGATIVE-an-exporter-with-endless-output-is-killed
+EXPECT_OUT | more than 64 KiB of output | and-the-cap-is-named
+MKDIR   | ph
+WRITE   | ph/game.pdl | GAME   \p export \p {book}/x {nothere}\n
+RUN | $DOP | provider | $T/ph | $T/h | $T/p4
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-placeholder-is-refused
+RUN | $DOP | provider | $APP | $T/h | $T/h/inside
+EXPECT_EXIT | 2 | NEGATIVE-an-out-folder-inside-the-game-folder-is-refused
+EXPECT_NOFILE | h/inside/game.csv | and-nothing-was-written-there
+# the ledger tamper reaches the provider as a failure
+MKDIR   | t
+RUN | cp | $T/h/ledger.txt | $T/t/ledger.txt
+RUN | sed | -i | s/rent-\([0-9]*\)/rent-9\1/ | $T/t/ledger.txt
+RUN | $DOP | provider | $APP | $T/t | $T/p5
+EXPECT_EXIT | 1 | NEGATIVE-a-tampered-ledger-fails-through-the-provider
+EXPECT_NOFILE | p5/game.csv | and-no-tables
+CLEAN   |
+
+CASE    | index
+# the cross-game index: one row per game, sorted by id, duplicates collapsed, regenerable
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | a
+MKDIR   | b
+RUN | $ENG | $T/app | $T/a | lobby | classic
+RUN | $ENG | $T/app | $T/a | join | A | pet
+RUN | $ENG | $T/app | $T/a | join | B | pet
+RUN | $ENG | $T/app | $T/a | join | C | pet
+RUN | $ENG | $T/app | $T/a | start | 6
+RUN | $ENG | $T/app | $T/a | autoplay
+RUN | $ENG | $T/app | $T/b | lobby | classic
+RUN | $ENG | $T/app | $T/b | join | A | pet
+RUN | $ENG | $T/app | $T/b | join | B | pet
+RUN | $ENG | $T/app | $T/b | start | 9
+RUN | $ENG | $T/app | $T/b | autoplay
+RUN | $ENG | $T/app | $T/a | export | $T/oa
+RUN | $ENG | $T/app | $T/b | export | $T/ob
+RUN | $ENG | $T/app | $T/a | export | $T/oa-again
+MKDIR   | nope
+RUN | $DOP | index | $T/oa | $T/ob | $T/oa-again | $T/nope | --out | $T/index.csv
+EXPECT_OUT | INDEX wrote | the-index-is-written
+EXPECT_OUT | games=2 skipped=1 duplicates=1 | two-games-one-skipped-folder-one-duplicate
+RUN | $DOP | pick | $T/index.csv | rows | --where | seed=6
+EXPECT_OUT_IS | 831 | the-seed-6-game-has-831-rows
+RUN | $DOP | pick | $T/index.csv | winner | --where | seed=6
+EXPECT_OUT_IS | p3 | and-winner-p3
+RUN | $DOP | pick | $T/index.csv | hash | --where | seed=6
+EXPECT_OUT_IS | 2583da5124cab176 | and-the-engine-replay-hash
+RUN | $DOP | pick | $T/index.csv | id | --where | seed=6
+EXPECT_OUT_IS | 72442143905f2371 | and-the-ledger-hash-as-id
+RUN | $DOP | pick | $T/index.csv | players | --where | seed=9
+EXPECT_OUT_IS | 2 | the-seed-9-game-has-2-players
+RUN | $DOP | stats | $T/index.csv | rows
+EXPECT_OUT | n=2 | the-index-has-two-rows
+RUN | $DOP | index | $T/ob | $T/oa | --out | $T/index2.csv
+RUN | cmp | $T/index.csv | $T/index2.csv
+EXPECT_EXIT | 0 | the-folder-order-does-not-change-the-bytes
+SUMTREE | A | index.csv
+RUN | rm | -rf | $T/index.csv
+RUN | $DOP | index | $T/oa | $T/ob | --out | $T/index.csv
+SUMTREE | B | index.csv
+EXPECT_EQ | $A | $B | delete-and-rebuild-gives-identical-bytes
+RUN | sed | -i | s/,p3,/,p2,/ | $T/index2.csv
+RUN | cmp | $T/index.csv | $T/index2.csv
+EXPECT_EXIT | 1 | NEGATIVE-mutant-a-changed-winner-makes-the-compare-fail
+CLEAN   |
+
+CASE    | class
+# public / private is DATA: a registry row, else the ledger's own human seat, else fail closed. Scratch tree; the registry is a scratch file.
+SCRATCH |
+COPYDIR | @.apps/deskopoly | app | ops,deskopoly-pchq,state
+MKDIR   | tree/pets
+MKDIR   | tree/human
+MKDIR   | tree/ruled
+MKDIR   | tree/xyzfs/users/u1
+RUN | $ENG | $T/app | $T/tree/pets | lobby | classic
+RUN | $ENG | $T/app | $T/tree/pets | join | A | pet
+RUN | $ENG | $T/app | $T/tree/pets | join | B | pet
+RUN | $ENG | $T/app | $T/tree/pets | start | 5
+RUN | $ENG | $T/app | $T/tree/pets | autoplay
+RUN | cp | $HOUSE/&.widgits/_shared-lib/harness/fixtures/dsk_talk_ledger.txt | $T/tree/human/ledger.txt
+RUN | cp | $T/tree/pets/ledger.txt | $T/tree/ruled/ledger.txt
+WRITE   | tree/plain.csv | a,b\n1,2\n3,4\n
+WRITE   | tree/xyzfs/users/u1/mine.csv | a,b\n1,2\n3,4\n
+WRITE   | reg.pdl | DATASET \p ruled \p tree/ruled \p ledgerdir \p private \p - \p the owner said so\n
+RUN | $ENG | $T/app | $T/tree/pets | export | $T/tree/pets-out
+RUN | $ENG | $T/app | $T/tree/human | export | $T/tree/human-out
+RUN | $DOP | list | $T/tree | --registry | $T/reg.pdl | --house | $T
+EXPECT_OUT | tree/pets \p ledgerdir \p | the-pets-ledger-folder-is-listed
+EXPECT_OUT | \p private \p registry:ruled | a-registry-row-wins
+EXPECT_OUT | tree/plain.csv \p csv \p 2 \p 2 \p 12 \p private \p default-private | a-csv-with-no-reason-is-private-fail-closed
+EXPECT_OUT | tree/xyzfs/users/u1/mine.csv \p csv \p 2 \p 2 \p 12 \p private \p users-path | desk-data-is-private
+EXPECT_OUT | tree/human \p ledgerdir \p 68 \p 7 \p 2886 \p private \p ledger-human | a-ledger-with-a-human-seat-is-private
+EXPECT_OUT | tree/pets \p ledgerdir \p | the-pets-folder-row
+RUN | $DOP | list | $T/tree/pets
+EXPECT_OUT | \p public \p ledger-pets | a-pets-only-ledger-is-public
+RUN | $DOP | list | $T/tree/pets-out
+EXPECT_OUT | game.csv \p csv \p 1 \p 22 | the-exported-game-csv-is-found
+EXPECT_OUT | \p public \p game.csv-pets | an-export-of-a-pets-game-is-public
+RUN | $DOP | list | $T/tree/human-out
+EXPECT_OUT | \p private \p game.csv-human | an-export-of-a-human-game-is-private
+EXPECT_OUT_LACKS | \p public \p | NEGATIVE-no-table-of-the-human-game-is-public
+# MUTANT: a human seat edited out of a pets copy still classifies by what the file says (the label is data, not a guess): a pets ledger with one join row turned human
+MKDIR   | tree/flip
+RUN | cp | $T/tree/pets/ledger.txt | $T/tree/flip/ledger.txt
+RUN | sed | -i | s/driver=pet,token=1/driver=human,token=1/ | $T/tree/flip/ledger.txt
+RUN | $DOP | list | $T/tree/flip
+EXPECT_OUT | \p private \p ledger-human | mutant-one-flipped-seat-flips-the-class
+CLEAN   |
+
+CASE    | live-archive
+# READ ONLY on the owner's real editor state: the archived Teropoly games. The list must find exactly the folders that hold a ledger.txt (counted by find, not hard-coded) and must classify them private (a human sat at p1). Nothing is written there.
+SCRATCH |
+RUN | $DOP | list | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly
+CAPTURE | LST
+WRITE   | live_list.txt | $LST
+RUN | grep | -c | ledgerdir | $T/live_list.txt
+CAPTURE | NLIST
+RUN | find | $HOUSE/@.apps/rpg-edit-hq/state/games/deskopoly | -name | ledger.txt | -printf | x\n
+CAPTURE | FOUNDX
+WRITE   | live_find.txt | $FOUNDX
+RUN | grep | -c | x | $T/live_find.txt
+CAPTURE | NFIND
+EXPECT_EQ | $NLIST | $NFIND | the-list-finds-every-ledger-folder-find-finds
+EXPECT_GE | $NLIST | 1 | the-archive-exists-on-this-desk-so-the-equality-above-is-not-0-equals-0
+RUN | grep | -c | private | $T/live_list.txt
+EXPECT_OUT_IS | $NLIST | every-archived-game-is-private-because-a-human-sat-at-p1
+RUN | $DOP | list | $FX
+CAPTURE | LFX
+WRITE   | fx_list.txt | $LFX
+RUN | grep | -c | \p public \p registry:fixtures | $T/fx_list.txt
+EXPECT_OUT_IS | 7 | the-seven-fixtures-are-listed-and-public-by-the-registry
+CLEAN   |
