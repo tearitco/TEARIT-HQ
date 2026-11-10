@@ -12,7 +12,7 @@ From claude (Sonnet 5.5) at the owner's request, 2026-11-10. This is a SECOND ha
 
 ## 1. Where the previous handoff stands (READ)
 
-Your first-task list from 2026-11-05 (zoo recon, a real True Swords Clash run, a CJK render proof, an Elo harness, a zoo generator) has **no report in the repo that I found**; nothing here changes it. `13.agent-coms/GROK/QUESTIONS-FOR-CLAUDE.md` has **one question I never answered** (D22: should signed receipts for verified training rows live in the pal-chain subchain, or in a plain signed ledger file first?). **My recommendation (DOC, the owner decides):** a plain signed append-only ledger file first (one authority, replayable, no chain dependency; the chain can anchor its hash later), the same shape as the game ledgers below.
+**CORRECTION (2026-11-10, after the owner pasted a question list and I checked the history):** an earlier version of this file said Grok had delivered nothing from its 2026-11-05 list. That was an overbroad absence claim. READ in `git log`: commit `5dc39f56d` (2026-11-05, owner: "merge its commit") brought in **grok's six commits**: the generator-hq tile and character ops (`generator_tile_op.c`, `generator_char_op.c`), events `gen_*`, harness cases `generator_tiles` and `generator_char` (Grok reported 37 and 12 passes; claude did not re-run them then), decisions D24/D25 and the **002.zoo recon**. What I did NOT find (searched: `git log` messages, `13.agent-coms/GROK/`, `16.game/`): any report of the other tasks on your 2026-11-05 list (a real True Swords Clash run, the CJK render proof, the Elo harness, the zoo generator first catalog). That is "not found", not "not done": say which of them you did, with the commit, and which you did not. Nothing in this file changes that list. `13.agent-coms/GROK/QUESTIONS-FOR-CLAUDE.md` has **one question I never answered** (D22: should signed receipts for verified training rows live in the pal-chain subchain, or in a plain signed ledger file first?). **My recommendation (DOC, the owner decides):** a plain signed append-only ledger file first (one authority, replayable, no chain dependency; the chain can anchor its hash later), the same shape as the game ledgers below.
 
 ## 2. What exists now that did not on 2026-11-05 (READ unless marked)
 
@@ -109,3 +109,38 @@ Do **not** start vehicles, glyph learning, stairs-and-courts expansions or a new
 ## 8. External references
 
 Repo (house root `x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/`): `@.apps/df-hq/`, `@.apps/mcl-hq/`, `@.apps/centroid/`, `@.apps/centroid-hq/data/court.pdl`, `&.widgits/concept-bank/`, `&.widgits/_shared-lib/harness/ops/game_new_op.c`, `&.widgits/_shared-lib/harness/play/phases/`, `&.widgits/_shared-lib/ops/+x/commit_scoped.+x`, `cpu_gate.+x`. BOOK (`x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/`): `16.game/CENTROID-TEST-AND-LIVE-2026-11-06.md`, `16.game/CENTROID-VISUAL-BOOK-2026-11-06.md`, `16.game/CENTROID-UNIVERSITY-VISION-AND-GAPS-2026-11-05.md`, `16.game/RULES-df-hq.md`, `16.game/RULES-mcl-hq.md`, `16.game/GROK-HANDOFF-MINECRAFT-MODES-AND-CIVILIZATIONS-REPORT.md`, `16.game/HANDOFF-2026-10-28-MCL-BOOK-TO-GROK.md`, `16.game/GAME-FOUNDATION-GENERATOR-HOW-TO-AGENT-GUIDE-2026-11-09.md`, `16.game/HOW-TO-PLAY-THE-GAMES-AS-A-HUMAN-2026-11-10.md`, `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md`, `03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md`, `13.agent-coms/GROK/ONBOARD-GROK.md`.
+
+## 9. The questions the owner will ask you first (answer each with evidence in the same reply)
+
+The owner asked a reviewer what to ask you, and the answer is below (full list with my notes: XO `31.Nov/nov-10/5.questions-to-ask-grok.md`). Prepare the answers before you build anything. One question at a time; each answer carries a command, a file path or a PNG, and a label **READ**, **RAN** or **SAID** (a vague answer gets "which label?"). A "done" without the `VERDICT` line from the case's results file is not accepted.
+
+**Before you touch anything**
+1. Restate in your own words what you may never do: which branch, which paths, which tools, whose window.
+2. Which files named in this handoff did you open, and which not? Label each READ or NOT READ.
+3. What is the exact order of your first three tasks, and what stops you after each?
+
+**Unfinished business**
+4. What happened to your 2026-11-05 task list (the True Swords Clash run, the Elo check, the zoo generator, the CJK render proof)? See the correction in section 1: say what you did, with the commit.
+5. Did you tackle D22 (signed receipts)? What is your recommendation and why?
+
+**Playable games (3A)**
+6. For Chutes, which rung are you on, and what commit proves the previous rung?
+7. Show the PNG for rung 1 and describe every element in it.
+8. Does the editor's Save (slot 1) include the game's own ledger folder? Test it and write the result into the how-to doc.
+9. What would have to be true for this screenshot to be a lie? (the negative control behind every claim)
+
+**Centroid tower**
+10. Which two Centroid documents disagree, and exactly what changes in the reconciled one?
+11. What is the tower blueprint file's cell count, and what happens when one block is missing (it must fail loudly)?
+
+**The AI side**
+12. For the pets that build the tower by motive: what is the decision row, where is its weight stored, and who reviews a promotion? (Honest note: the promotion rule is an unimplemented design: `&.widgits/concept-bank/AUTO-PROMOTION-RULE.md` says no promotion-ledger scoring exists. Say "undesigned" where it is; do not invent numbers.)
+13. If you propose a trained policy: where does it train (off this machine: debil or the Mac), on what replay data, and what counts as improvement (paired seeds, never a claim of learning without evidence)?
+
+**The generators**
+14. Name the two real examples you will build `mech_new_op` from.
+
+**Three more from claude**
+15. When a search finds nothing, what do you write? ("I did not find X; I searched Y" and the file that would settle it; never "there is no way".)
+16. How will you test without touching the owner's live editor? (a scratch house, a nested X server, `cpu_gate`)
+17. Before you edit a shared file (decision log, index, the how-to doc), what do you check, and what is the next free decision id and how do you know?
