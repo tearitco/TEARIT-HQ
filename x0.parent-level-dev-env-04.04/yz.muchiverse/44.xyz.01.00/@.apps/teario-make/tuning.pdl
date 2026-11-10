@@ -1,0 +1,3 @@
+# tuning.pdl - Teario-Make timing as data. TUNE | name | value | what it does | default
+# Nothing reads this file yet (the shared driver paces itself from the speed button: fast / normal / slow). It is where a per-game pace goes when the driver learns to read it.
+TUNE | tick_ms | 550 | the normal pace of one decision (ledger) or ten logical ticks (realtime) | 550

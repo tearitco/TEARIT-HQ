@@ -1,0 +1,5 @@
+# board.pdl - Teario-Make: the document is a LEVEL (rules.pdl doc_format level). Its rows are ROW | id | text with these ids:
+#   name   the level's name          start   `x y` the hero's start cell      goal   `x y` the goal cell
+#   r00 .. r31   one row of tiles per id, top row r00; every row has the same width (4 to 64), tiles from ../teario/tiles.pdl ('.' empty, '#' ground)
+# The EDIT rows (add / set / del) in the ledger build the document; `export` writes level.pdl = the SAME text Teario-Play reads (one shared format, ../teario/levels/first-steps.pdl is the fixture).
+DOC | row | id | text

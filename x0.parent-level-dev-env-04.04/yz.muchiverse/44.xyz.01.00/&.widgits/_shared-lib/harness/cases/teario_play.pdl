@@ -1,0 +1,168 @@
+# teario_play (Teario-Play): the PLAY shell of the Teario foundation (plan TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09 sections 3, 5 and milestone M3 in miniature): a realtime-kind game on the shared engine game_core, MODE walk.
+# It reads the shared level format (@.apps/teario/levels/first-steps.pdl, 20 x 12 tiles), hashes the level text into the first ledger row, keeps an INPUTS-ONLY run ledger, and `verify_clear` prints the proof Teario-Make records.
+# NO PHYSICS: the hero steps along the START row (left, right, stay), a solid tile stops it, the GOAL column wins. Every number was OBSERVED in a scratch run on 2026-11-09 and the walking scenarios are hand-solved in the labels. Scratch only.
+RESULTS | ../results/teario_play.txt
+ENV | LC_ALL | C
+
+CASE    | tp_level
+SCRATCH |
+COPYDIR | @.apps/teario | tp/teario
+COPYDIR | @.apps/teario-play | tp/teario-play
+EXPECT_EXISTS | $T/tp/teario/levels/first-steps.pdl | the-shared-level-fixture-is-where-the-play-app-looks-(../teario/levels)
+EXPECT_HAS | $T/tp/teario-play/rulesets/default/board.pdl | LEVEL \p file  \p ../teario/levels/first-steps.pdl | the-play-app-names-the-shared-level-file
+RUN | grep | -c | ^ROW | $T/tp/teario/levels/first-steps.pdl
+EXPECT_OUT_IS | 12 | 12-tile-rows
+RUN | grep | -c | ^ROW.*[.#]\{20\}$ | $T/tp/teario/levels/first-steps.pdl
+EXPECT_OUT_IS | 12 | every-row-is-exactly-20-tiles-from-the-legend
+EXPECT_HAS | $T/tp/teario/levels/first-steps.pdl | META  \p size \p 20 x 12 | 20-x-12
+EXPECT_HAS | $T/tp/teario/levels/first-steps.pdl | START \p 2 \p 10 | a-start
+EXPECT_HAS | $T/tp/teario/levels/first-steps.pdl | GOAL  \p 17 \p 10 | and-a-goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $HOUSE/@.apps/teario/levels/first-steps.pdl
+EXPECT_OUT_IS | 97c779e1762ef3e4ad8141245cd4300adb7aa9bc6543f48c8ebf7272f2226234 | THE-SHA256-IDENTITY-OF-THE-FIXTURE-LEVEL
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/tp/teario/levels/first-steps.pdl
+EXPECT_OUT_IS | 97c779e1762ef3e4ad8141245cd4300adb7aa9bc6543f48c8ebf7272f2226234 | and-a-copy-has-the-same-identity
+# a level with a bad row is refused when a game is made from it (the engine validates the level it reads)
+RUN | cp | -r | $T/tp/teario | $T/tp/teario_bad
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play_bad
+RUN | sed | -i | s#\.\./teario/#../teario_bad/# | $T/tp/play_bad/rulesets/default/board.pdl
+RUN | sed | -i | s/^\(ROW   \p 5 \p \)\./\1/ | $T/tp/teario_bad/levels/first-steps.pdl
+RUN | cmp | $T/tp/teario/levels/first-steps.pdl | $T/tp/teario_bad/levels/first-steps.pdl
+EXPECT_EXIT | 1 | vacuity-the-bad-level-differs-(row-5-has-19-tiles)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_bad | $T/tp_gbad | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-a-level-with-a-short-row-is-refused
+EXPECT_OUT | level: row 5 has 19 tiles | and-says-which-row
+RUN | cp | -r | $T/tp/teario | $T/tp/teario_bad2
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play_bad2
+RUN | sed | -i | s#\.\./teario/#../teario_bad2/# | $T/tp/play_bad2/rulesets/default/board.pdl
+RUN | sed | -i | s/^START \p 2 \p 10/START \p 2 \p 11/ | $T/tp/teario_bad2/levels/first-steps.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_bad2 | $T/tp_gbad2 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-a-start-INSIDE-the-ground-is-refused
+EXPECT_OUT | START is inside a solid tile | and-says-so
+RUN | cp | -r | $T/tp/teario | $T/tp/teario_bad3
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play_bad3
+RUN | sed | -i | s#\.\./teario/#../teario_bad3/# | $T/tp/play_bad3/rulesets/default/board.pdl
+APPEND  | tp/teario_bad3/levels/first-steps.pdl | START | 3 | 10\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_bad3 | $T/tp_gbad3 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-two-START-rows-are-refused
+EXPECT_OUT | exactly one START and one GOAL | and-says-so
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play_bad4
+RUN | sed | -i | s#\.\./teario/levels/first-steps.pdl#../teario/levels/nothing.pdl# | $T/tp/play_bad4/rulesets/default/board.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_bad4 | $T/tp_gbad4 | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-level-file-is-refused
+
+CASE    | tp_run
+# hand-solved: the hero starts at x=2 on the START row and the goal column is 17: 15 steps to the right, so the run is over at tick 15 (a ckpt row pins the end)
+MKDIR   | tp_g1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-an-unplayed-run-is-NOT-a-clear
+EXPECT_OUT | NOT CLEAR | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | advance | 30
+EXPECT_OUT | tick 15 | HAND-SOLVED-the-run-ends-at-tick-15-(the-30-requested-ticks-stop-at-the-goal)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | status
+EXPECT_OUT | PLAYER p1 name=H driver=human pos=17 | the-hero-stands-on-the-goal-column
+EXPECT_OUT | over=1 winner=H | and-won
+RUN | grep | -c | ^EVENT | $T/tp_g1/ledger.txt
+EXPECT_OUT_IS | 5 | INPUTS-ONLY-5-rows-for-a-15-tick-run:-new-join-start-input-ckpt
+EXPECT_HAS | $T/tp_g1/ledger.txt | mode=walk | the-first-row-records-the-mode
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | verify_clear
+EXPECT_EXIT | 0 | a-won-run-IS-a-verified-clear
+EXPECT_OUT_IS | CLEAR level=c33747c5fc30580b;run=6167fd95d30e929b;ticks=15 | with-the-level-hash-the-run-hash-and-the-ticks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | replay
+EXPECT_OUT_IS | REPLAY events=5 hash=4fb62ecadb9ca27f | replay-reproduces-the-pinned-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | check
+EXPECT_OUT | CHECK ok | the-invariants-hold
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | input | p1 | left
+EXPECT_EXIT | 2 | NEGATIVE-no-input-after-the-run-is-over
+# blocked by a solid tile: a copy of the level with a wall at column 4 of the START row: the hero stops at x=3 and never clears
+RUN | cp | -r | $T/tp/teario | $T/tp/teario_wall
+RUN | cp | -r | $T/tp/teario-play | $T/tp/play_wall
+RUN | sed | -i | s#\.\./teario/#../teario_wall/# | $T/tp/play_wall/rulesets/default/board.pdl
+RUN | sed | -i | s/^\(ROW   \p 10 \p \)\.\.\.\.\./\1....#/ | $T/tp/teario_wall/levels/first-steps.pdl
+RUN | cmp | $T/tp/teario/levels/first-steps.pdl | $T/tp/teario_wall/levels/first-steps.pdl
+EXPECT_EXIT | 1 | vacuity-the-wall-level-differs
+MKDIR   | tp_g2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | advance | 40
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | status
+EXPECT_OUT | pos=3 | HAND-SOLVED-the-wall-at-column-4-stops-the-hero-at-x=3
+EXPECT_OUT | over=0 | and-the-run-is-not-won
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g2 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-a-run-that-never-reaches-the-goal-is-no-clear-even-after-40-ticks
+# the left edge
+MKDIR   | tp_g3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g3 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g3 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g3 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g3 | input | p1 | left
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g3 | advance | 6
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g3 | status
+EXPECT_OUT | pos=0 | HAND-SOLVED-the-hero-stops-at-the-left-edge-x=0
+# the level is part of the rules hash: the run of the plain level replayed against the wall level is refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-run-replayed-under-an-EDITED-LEVEL-is-refused-(the-level-text-is-in-the-rules-hash)
+EXPECT_OUT | ledger line 1: | at-row-1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/play_wall | $T/tp_g1 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-and-so-it-cannot-be-used-as-a-clear-for-the-wall-level
+
+CASE    | tp_tamper
+MKDIR   | tp_h1
+RUN | cp | $T/tp_g1/ledger.txt | $T/tp_h1/ledger.txt
+RUN | sed | -i | s/\pinput\pright\p/\pinput\pleft\p/ | $T/tp_h1/ledger.txt
+RUN | cmp | $T/tp_g1/ledger.txt | $T/tp_h1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-input-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_h1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-an-INPUT-edited-from-right-to-left-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_h1 | verify_clear
+EXPECT_EXIT | 1 | and-gives-no-clear-(the-forged-run-proves-nothing)
+MKDIR   | tp_h2
+RUN | cp | $T/tp_g1/ledger.txt | $T/tp_h2/ledger.txt
+RUN | sed | -i | s/\pckpt\p-\p15\phash=4fb62ecadb9ca27f;over/\pckpt\p-\p15\phash=4fb62ecadb9ca27e;over/ | $T/tp_h2/ledger.txt
+RUN | cmp | $T/tp_g1/ledger.txt | $T/tp_h2/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-end-hash-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_h2 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-an-edited-end-hash-gives-no-clear
+MKDIR   | tp_h3
+RUN | cp | $T/tp_g1/ledger.txt | $T/tp_h3/ledger.txt
+RUN | sed | -i | /\pinput\p/d | $T/tp_h3/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_h3 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-a-run-with-its-input-deleted-gives-no-clear
+MKDIR   | tp_h4
+RUN | cp | $T/tp_g1/ledger.txt | $T/tp_h4/ledger.txt
+APPEND  | tp_h4/ledger.txt | EVENT|20|p1|input|left|2|ok\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_h4 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-a-forged-input-appended-after-the-win-gives-no-clear
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | verify_clear
+EXPECT_EXIT | 0 | and-the-untouched-run-is-still-a-clear
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_NO_VERIFY | -o | $T/tp_mut.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-mutant-engine-compiles
+RUN | $T/tp_mut.+x | $T/tp/teario-play | $T/tp_h2 | verify_clear
+EXPECT_EXIT | 0 | MUTANT-with-verification-off-ACCEPTS-the-forged-end-hash-as-a-clear
+
+CASE    | tp_ghost_and_export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | ui
+EXPECT_HAS | $T/tp_g1/ui.txt | level=First Steps | the-feed-names-the-level
+EXPECT_HAS | $T/tp_g1/ui.txt | goal=17,10 | and-the-goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | audit
+EXPECT_OUT | AUDIT ok files=2 | the-audit-is-clean
+WRITE   | tp_g1/stray.txt | nobody declared me
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+RUN | rm | $T/tp_g1/stray.txt
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/teario-play | $T/tp_g1 | $T/tp_x2
+EXPECT_EXIT | 0 | the-data-studio-runs-the-Teario-Play-exporter-on-a-run-played-under-a-COPY-of-the-app-(same-files-same-rules-hash)
+EXPECT_OUT | files=3 | three-files
+EXPECT_HAS | $T/tp_x2/game.csv | 6167fd95d30e929b,realtime,default,aa6c5f8864acb31a,7,1,1,1,5,15,over,winner,p1,human,4fb62ecadb9ca27f,walk,15, | game.csv:-the-run-is-a-win-by-a-human-in-15-ticks-5-rows-mode-walk
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/tp_x2/game.csv | $T/tp_x2/schema.pdl
+EXPECT_EXIT | 0 | the-schema-passes-the-studios-check
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | index | $T/tp_x2
+EXPECT_OUT | winner,p1,human,1,4fb62ecadb9ca27f | and-data_op-index-reads-it-(human-so-private)
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | list | $T/tp_g1
+EXPECT_OUT | private | a-run-with-a-human-seat-is-listed-PRIVATE-(fail-closed)
+CLEAN   |

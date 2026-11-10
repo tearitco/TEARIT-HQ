@@ -1,0 +1,216 @@
+# teario_make (Teario-Make): the MAKE shell of the Teario foundation (plan TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09 sections 1.2, 3.5 and 5.1): an editor-kind game on the shared engine game_core with doc_format level.
+# The level is a DOCUMENT of rows (name start goal r00..r11) built by EDIT rows (add / set / del) in a ledger; `export` writes level.pdl = the SAME text Teario-Play reads, byte for byte (sha256 compared to the shared fixture);
+# `publish` is REFUSED without a verified clear: a `clear` row made by replaying a Teario-Play run ledger (verify_clear) whose LEVEL HASH is that of THIS version of the level. No physics, no UI beyond the generated bars.
+# Every number was OBSERVED in a scratch run on 2026-11-09. Scratch only: nothing here touches a live folder.
+RESULTS | ../results/teario_make.txt
+ENV | LC_ALL | C
+
+CASE    | tm_level
+SCRATCH |
+COPYDIR | @.apps/teario | tm/teario
+COPYDIR | @.apps/teario-play | tm/teario-play
+COPYDIR | @.apps/teario-make | tm/teario-make
+MKDIR   | tm_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | new | 7
+EXPECT_OUT | new game seed=7 kind=editor | the-document-opens
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | export
+EXPECT_NOFILE | $T/tm_g/level.pdl | an-EMPTY-document-has-no-level-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/teario-play | $T/tm_g
+EXPECT_EXIT | 2 | NEGATIVE-clear-needs-a-Play-run-(this-folder-is-not-one)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-publish-of-an-empty-document-is-refused-(no-name-start-goal)
+EXPECT_OUT | has no row name | and-says-which-row-is-missing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | name | First Steps
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | start | 2 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | goal | 17 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r00 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r01 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r02 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r03 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r04 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r05 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r06 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r07 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r08 | ......####..........
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r09 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r10 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r11 | ##########..########
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | status
+EXPECT_OUT | doc_rows=15 | the-document-has-15-rows-(name-start-goal-and-12-tile-rows)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | export
+EXPECT_OUT | wrote doc.txt (15 rows) | the-document-exports
+EXPECT_EXISTS | $T/tm_g/level.pdl | and-a-level-file-is-a-projection-of-it
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/tm_g/level.pdl
+CAPTURE | q1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/tm/teario/levels/first-steps.pdl
+CAPTURE | q2
+EXPECT_EQ | $q1 | $q2 | ONE-LEVEL-FORMAT-the-level-Make-exports-from-its-ledger-has-the-SAME-sha256-as-the-hand-written-fixture-Play-reads
+EXPECT_EQ | $q1 | 97c779e1762ef3e4ad8141245cd4300adb7aa9bc6543f48c8ebf7272f2226234 | and-it-is-the-pinned-identity
+RUN | cmp | $T/tm_g/level.pdl | $T/tm/teario/levels/first-steps.pdl
+EXPECT_EXIT | 0 | byte-for-byte
+RUN | cp | $T/tm_g/level.pdl | $T/tm_g/level.keep
+RUN | rm | $T/tm_g/level.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | export
+RUN | cmp | $T/tm_g/level.pdl | $T/tm_g/level.keep
+EXPECT_EXIT | 0 | a-deleted-level-file-regenerates-byte-for-byte-(it-is-a-PROJECTION)
+RUN | rm | $T/tm_g/level.keep
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | ui
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | audit
+EXPECT_OUT | AUDIT ok files=4 declared=4 | the-audit-passes-with-ledger-ui-doc-and-level
+WRITE   | tm_g/stray.txt | nobody declared me
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+RUN | rm | $T/tm_g/stray.txt
+
+CASE    | tm_bad_levels
+MKDIR   | tm_b1
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_b1/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b1 | set | r05 | ...................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b1 | export
+EXPECT_NOFILE | $T/tm_b1/level.pdl | NEGATIVE-a-row-of-19-tiles-gives-NO-level-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b1 | clear | $T/tm/teario-play | $T/tm_b1
+EXPECT_EXIT | 2 | and-no-clear
+MKDIR   | tm_b2
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_b2/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b2 | del | r04
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b2 | export
+EXPECT_NOFILE | $T/tm_b2/level.pdl | NEGATIVE-a-MISSING-tile-row-(r04)-gives-no-level-file
+MKDIR   | tm_b3
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_b3/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b3 | set | start | 2 11
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b3 | export
+EXPECT_NOFILE | $T/tm_b3/level.pdl | NEGATIVE-a-START-inside-the-ground-gives-no-level-file
+MKDIR   | tm_b4
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_b4/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b4 | set | goal | 25 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b4 | export
+EXPECT_NOFILE | $T/tm_b4/level.pdl | NEGATIVE-a-GOAL-outside-the-level-gives-no-level-file
+MKDIR   | tm_b5
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_b5/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b5 | add | r12 | ...................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b5 | export
+EXPECT_NOFILE | $T/tm_b5/level.pdl | NEGATIVE-an-extra-row-of-another-width-breaks-the-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b5 | del | r12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_b5 | export
+EXPECT_EXISTS | $T/tm_b5/level.pdl | and-removing-it-restores-the-level-(the-edit-rows-are-the-whole-difference)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r13 | a\pb
+EXPECT_EXIT | 2 | NEGATIVE-a-bar-in-a-row-text-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | add | r00 | ....................
+EXPECT_EXIT | 2 | NEGATIVE-an-existing-id-needs-set-not-add
+
+CASE    | tm_publish_needs_a_verified_clear
+# the Play runs: a WIN of the fixture level (15 ticks), an UNFINISHED run, and a win of ANOTHER level (start moved to column 3, 14 ticks)
+MKDIR   | tm_pw
+MKDIR   | tm_po
+MKDIR   | tm_pl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_pw | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_pw | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_pw | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_pw | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_pw | advance | 30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_po | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_po | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_po | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_po | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_po | advance | 5
+RUN | cp | -r | $T/tm/teario | $T/tm/teario_other
+RUN | cp | -r | $T/tm/teario-play | $T/tm/play_other
+RUN | sed | -i | s#\.\./teario/#../teario_other/# | $T/tm/play_other/rulesets/default/board.pdl
+RUN | sed | -i | s/^START \p 2 \p 10/START \p 3 \p 10/ | $T/tm/teario_other/levels/first-steps.pdl
+RUN | cmp | $T/tm/teario/levels/first-steps.pdl | $T/tm/teario_other/levels/first-steps.pdl
+EXPECT_EXIT | 1 | vacuity-the-other-level-differs
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/play_other | $T/tm_pl | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/play_other | $T/tm_pl | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/play_other | $T/tm_pl | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/play_other | $T/tm_pl | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/play_other | $T/tm_pl | advance | 30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/play_other | $T/tm_pl | verify_clear
+EXPECT_OUT | ticks=14 | the-other-level-is-won-in-14-ticks-(a-clear-of-ANOTHER-level)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-play | $T/tm_pw | verify_clear
+EXPECT_OUT | CLEAR level=c33747c5fc30580b | the-fixture-level-hash-is-c33747c5fc30580b
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-PUBLISH-IS-REFUSED-WITHOUT-A-VERIFIED-CLEAR-REPLAY-ROW
+EXPECT_OUT | no verified clear | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/teario-play | $T/tm_po
+EXPECT_EXIT | 2 | NEGATIVE-an-UNFINISHED-run-is-not-a-clear
+EXPECT_OUT | not at the goal yet | and-says-why
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/play_other | $T/tm_pl
+EXPECT_EXIT | 2 | NEGATIVE-a-clear-of-ANOTHER-level-is-refused
+EXPECT_OUT | the proof is for another level | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/teario-play | $T/tm_nothing
+EXPECT_EXIT | 2 | NEGATIVE-a-clear-from-a-folder-with-no-run
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-still-no-publish-after-the-three-refused-clears
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | ledger_hash
+CAPTURE | q3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/teario-play | $T/tm_pw
+EXPECT_EXIT | 0 | the-clear-of-THIS-level-is-recorded
+EXPECT_OUT_IS | clear recorded: level=c33747c5fc30580b;run=6167fd95d30e929b;ticks=15 | with-level-run-and-ticks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | ledger_hash
+CAPTURE | q4
+EXPECT_NE | $q3 | $q4 | vacuity-the-clear-DID-append-a-row-(the-refusals-before-appended-nothing)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | publish
+EXPECT_EXIT | 0 | PUBLISH-IS-ACCEPTED-AFTER-THE-VERIFIED-CLEAR
+EXPECT_OUT | published doc=090de069773bcc19 rows=15 | with-the-doc-hash
+RUN | grep | -c | -F | \pclear\p | $T/tm_g/ledger.txt
+EXPECT_OUT_IS | 1 | exactly-one-clear-row
+EXPECT_HAS | $T/tm_g/ledger.txt | EVENT\p17\pauthor\ppublish\p-\p15\pdoc=090de069773bcc19;level=c33747c5fc30580b;clear=6167fd95d30e929b | the-publish-row-records-the-doc-hash-the-LEVEL-hash-and-the-clear-run-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | check
+EXPECT_OUT | CHECK ok | checks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | replay
+CAPTURE | q5
+# editing the level AFTER the clear: the clear no longer proves it
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | set | start | 3 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-a-level-edited-AFTER-its-clear-cannot-be-published
+EXPECT_OUT | another version of the level | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/teario-play | $T/tm_pw
+EXPECT_EXIT | 2 | NEGATIVE-the-OLD-run-is-no-proof-for-the-edited-level-(its-level-hash-differs)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/play_other | $T/tm_pl
+EXPECT_EXIT | 0 | but-a-run-won-on-the-EDITED-level-IS-(the-other-level-is-exactly-the-edited-one)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | publish
+EXPECT_EXIT | 0 | and-then-the-edited-level-publishes
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | check
+EXPECT_OUT | CHECK ok | still-checks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | replay
+EXPECT_EXIT | 0 | and-replays
+
+CASE    | tm_tamper
+MKDIR   | tm_h1
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_h1/ledger.txt
+RUN | sed | -i | /\pclear\p/d | $T/tm_h1/ledger.txt
+RUN | cmp | $T/tm_g/ledger.txt | $T/tm_h1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-clear-rows-are-really-gone
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_h1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-A-LEDGER-WITH-ITS-CLEAR-ROWS-DELETED-BUT-A-PUBLISH-ROW-LEFT-IS-REFUSED
+EXPECT_OUT | no verified clear | by-the-publish-rule-itself-at-replay
+MKDIR   | tm_h2
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_h2/ledger.txt
+RUN | sed | -i | s/level=c33747c5fc30580b;run=6167fd95d30e929b/level=c33747c5fc30580a;run=6167fd95d30e929b/ | $T/tm_h2/ledger.txt
+RUN | cmp | $T/tm_g/ledger.txt | $T/tm_h2/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-level-hash-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_h2 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-clear-row-with-a-forged-level-hash-is-refused
+MKDIR   | tm_h3
+RUN | cp | $T/tm_g/ledger.txt | $T/tm_h3/ledger.txt
+RUN | sed | -i | s/\pstart\p2\p2 10$/\pstart\p2\p9 10/ | $T/tm_h3/ledger.txt
+RUN | cmp | $T/tm_g/ledger.txt | $T/tm_h3/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-start-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_h3 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-level-row-changes-the-level-hash-so-the-publish-row-no-longer-fits-and-is-refused
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -DGC_MUT_NO_VERIFY | -o | $T/tm_mut.+x | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | the-mutant-engine-compiles
+RUN | $T/tm_mut.+x | $T/tm/teario-make | $T/tm_h2 | replay
+EXPECT_EXIT | 1 | the-mutant-STILL-refuses-the-forged-clear-(the-publish-rule-is-checked-in-apply-not-in-the-row-compare)
+RUN | $T/tm_mut.+x | $T/tm/teario-make | $T/tm_h3 | replay
+EXPECT_EXIT | 1 | and-the-hand-edited-level-(the-gate-is-the-engine-rule-not-just-the-row-compare)
+
+CASE    | tm_export
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/teario-make | $T/tm_g | $T/tm_x1
+EXPECT_EXIT | 0 | the-data-studio-runs-the-Teario-Make-exporter
+EXPECT_OUT | files=3 | three-files
+EXPECT_HAS | $T/tm_x1/game.csv | ,editor,default, | kind-editor
+EXPECT_HAS | $T/tm_x1/game.csv | ,published,published, | status-and-outcome-published
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/tm_x1/game.csv | $T/tm_x1/schema.pdl
+EXPECT_EXIT | 0 | the-schema-passes-the-studios-check
+CLEAN   |

@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | teario-play
+META         | desk_id            | board
+META         | note               | teario-play board desk, made by game_new_op; draw it in the editor

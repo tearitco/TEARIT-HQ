@@ -1,0 +1,3 @@
+# Book teario-play. The editor resolves a book as @.apps/<book>/rooms.pdl (edit_last.sh) and its pages as desks in teario-play-pchq/.../game.pdl (edit_open.sh).
+# One page, board. The row shape is copied from @.apps/deskopoly/rooms.pdl.
+ROOM | board | board | 1 | 4 | over | 24 | 17 | 24 | interior

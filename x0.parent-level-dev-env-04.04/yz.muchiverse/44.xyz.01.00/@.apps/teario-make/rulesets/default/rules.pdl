@@ -1,0 +1,12 @@
+# rules.pdl - Teario-Make: the publish rule and caps, as DATA.
+# REQUIRE | id            the document must contain a row with this id before `publish` is accepted
+# doc_format level        the document is a Teario level: `export` also writes level.pdl, and the level is checked (one START, one GOAL, equal row widths, start and goal not inside a solid tile)
+# publish_needs_clear 1   the Mario-Maker rule: `publish` is REFUSED unless the last `clear` row proves THIS version of the level (same level hash) was won in a Play run: `clear <play app> <play state>` replays that run
+# max_doc_rows            most rows in the document (name, start, goal and up to 32 tile rows need 35)       max_rows  hard cap on ledger rows
+REQUIRE | name
+REQUIRE | start
+REQUIRE | goal
+RULE | doc_format          | level
+RULE | publish_needs_clear | 1
+RULE | max_doc_rows        | 40
+RULE | max_rows            | 5000

@@ -1,0 +1,7 @@
+# board.pdl - Teario-Play: MODE walk (game_core realtime kind). The level is read from the SHARED Teario folder; its text is part of the rules hash, so editing the level after a run began refuses that run's ledger.
+# LEVEL | file | <path relative to this app>   the level file (format: ../teario/levels/first-steps.pdl; the same bytes Teario-Make exports)
+# LEVEL | solid | <tile characters>              the tiles the hero cannot enter (the legend is ../teario/tiles.pdl)
+# NO PHYSICS YET: each tick the hero moves one column along the START row by its input (left, right, stay); a solid tile stops it; reaching the GOAL column wins.
+MODE  | walk
+LEVEL | file  | ../teario/levels/first-steps.pdl
+LEVEL | solid | #

@@ -1,0 +1,5 @@
+# tiles.pdl - the tile legend of Teario levels (PLAN 1.3, own names; ART IS NOT MADE YET). One character per tile in a level's ROW lines.
+# TILE | char | name | solid (1 = the hero cannot enter it)
+# Foundation: two kinds only. The plan's coins, blocks, spikes and doors come with the physics (no physics yet: the hero only walks along the START row).
+TILE | . | empty  | 0
+TILE | # | ground | 1
