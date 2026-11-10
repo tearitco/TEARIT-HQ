@@ -6,7 +6,7 @@
  *                                                           publishes the feed <editor>/state/game_ui.txt, takes button presses from <games_dir>/action.txt, ends when the editor is gone.
  *   game_core ctl <command> <games_dir> [ignored...]       what a game-bar button runs: appends ONE line to <games_dir>/action.txt (extra arguments are ignored on purpose: the renderer appends two).
  *
- * WHY ONE SHARED BINARY (decision D61): the per-game C is zero. A game made by the generator is DATA (game.pdl, rulesets/default/board.pdl + rules.pdl, state.pdl, verbs.pdl) and this binary. A fix here reaches every
+ * WHY ONE SHARED BINARY (decision D62): the per-game C is zero. A game made by the generator is DATA (game.pdl, rulesets/default/board.pdl + rules.pdl, state.pdl, verbs.pdl) and this binary. A fix here reaches every
  * game; the cases `game_new` (and every generated `<game>` case) are the regression gate. A game that needs real rules of its own copies the idea of this file into its own app (as deskopoly did), it does not edit this one.
  *
  * THREE KINDS (game.pdl `GAME | kind | ledger|realtime|editor`, recorded in the first ledger row and re-checked by every replay):

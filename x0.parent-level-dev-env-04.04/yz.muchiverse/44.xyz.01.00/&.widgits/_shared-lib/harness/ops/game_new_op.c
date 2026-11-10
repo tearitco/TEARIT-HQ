@@ -5,7 +5,7 @@
  *
  * WHAT IT DOES: copies the template files named by harness/templates/game/<kind>/MANIFEST.pdl (and _common/MANIFEST.pdl, which every kind includes) into <house>/@.apps/<name>/ and, for the
  * harness files, into <house>/&.widgits/_shared-lib/harness/, replacing {{name}} {{Title}} {{kind}} {{seed}} {{players}}. It never writes a C string per game: templates are DATA. The app it makes has NO C of its own:
- * its engine, driver and button op are the one shared binary `_shared-lib/ops/+x/game_core.+x` (decision D61). It refuses: an existing target, a bad name (2 to 24 characters of a-z 0-9 - _, starting with a letter or digit,
+ * its engine, driver and button op are the one shared binary `_shared-lib/ops/+x/game_core.+x` (decision D62). It refuses: an existing target, a bad name (2 to 24 characters of a-z 0-9 - _, starting with a letter or digit,
  * and not an existing @.apps folder), an unknown kind, a bad title / players / seed, a template that uses a placeholder its MANIFEST row does not declare (or declares one it does not use), and any `{{` left in the output.
  * Nothing is written unless every file is built in memory and no target exists. A failure part-way removes what was written. --dry-run lists the files and writes nothing. --into <dir> puts the app in <dir>/<name>
  * (the harness case and pal are then NOT written: they name $HOUSE/@.apps/<name>).
