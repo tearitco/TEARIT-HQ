@@ -1,6 +1,8 @@
 # Centroid skyland: the master-plan blueprint made from the owner's goal picture (2026-11-10)
 
-Owner request, 2026-11-10: make a blueprint of the skyland in the picture `goal-centroid-skyland.jpeg`, "which should also include the land (and surrounding empty small sky islands as well, not in image)". Status: **a DATA PLAN, checked by an ad-hoc script; no engine, no voxels, no harness case yet.** Labels: **OBS** (I looked at the picture or ran something), **DOC** (my reading or reasoning), **OPEN** (owner decision or unknown).
+Owner request, 2026-11-10: make a blueprint of the skyland in the picture `goal-centroid-skyland.jpeg`, "which should also include the land (and surrounding empty small sky islands as well, not in image)". Status as of 2026-11-10: **a DATA PLAN**. As of 2026-11-11 the 72 by 52 grid is on the editor as page `small` (the island that was `live`), with a copy left on page `live` for the castle. The factory is `bp_op` and `crew_op` (`passed=146` on the ledgers). The on-screen buildings are not the palace yet. Labels: **OBS** (I looked at the picture or ran something), **DOC** (my reading or reasoning), **OPEN** (owner decision or unknown).
+
+**2026-11-11, modules.** A building is a count of five modules (`wall`, `window`, `door`, `roof`, `tower`) in `centroid.parts.pdl`, placed by the same `bp_op`. Slot 35 is the flat orange slab and is not a module. Slots 12–15 are the castle drawings and are roof and tower caps only. Decision D71. The note is `16.game/CENTROID-TEST-AND-LIVE-2026-11-06.md`, section "Castle scale".
 
 Data file: `44.xyz.01.00/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl` (106 lines, rows `ISLAND`, `ZONE`, `WATER`, `BUILD`, `WAYPOINT`, `ROUTE`, plus `SCALE`, `GRID`).
 

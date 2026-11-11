@@ -418,3 +418,11 @@ The owner will have harness proofs shown to potential customers as YouTube video
 **Why this one.** A factory per `BUILD` id is the copy the loop was meant to end. The missing piece was the page, which was still a hand-drawn `map.txt`.
 
 **Not chosen:** a second planner. Hand-editing `live/map.txt` as the plan. Replacing `plan.ppm`.
+
+## D71 (2026-11-11, CHOSEN, modules not yet in the parts file): a building is a count of reusable modules
+
+**The choice.** Five modules, named once in `centroid.parts.pdl`: `wall` (atlas slot 36 or 41), `window` (38), `door` (34, two cells), `roof` (slots 12–15, top cells only), `tower` (a taller `wall` with a `roof` cap). A `BUILD` row says how many and on which face. `bp_op` stays the one stamper (D70). Page `small` keeps the 72 by 52 island and the 5 by 5 house. Page `live` is the copy where the castle is built. The full palace waits for `SCALE | cell_blocks | 4` on `live` only.
+
+**Why this one.** One authority for a wall, a window, a door, a roof, and a tower. The 10th building is another count, not another program. The RPG Maker sheet on the page is the skin. Slot 35 is a flat orange fill and is not a module.
+
+**Not chosen:** a generator per castle, hotel, or office. Stamping slot 35 on every footprint. Applying scale 4 to page `small` so the shed looks bigger. Repeating slots 12–15 on every wall cell (each of those tiles is already a whole little castle).

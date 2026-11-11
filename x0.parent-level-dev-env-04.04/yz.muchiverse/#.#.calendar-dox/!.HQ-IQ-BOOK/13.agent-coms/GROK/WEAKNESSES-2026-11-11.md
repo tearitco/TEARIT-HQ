@@ -37,4 +37,6 @@ Read this after `ONBOARD-GROK.md` and before you touch centroid. It is the list 
 
 Pitfall writeup, same facts: `03-pitfalls/HOUSE_CODE_PITFALLS.md` section 28.
 
-The owner's 2026-11-11 view of `page:live` is the lobes. The finish line is not more lobes. One building uses RPG Maker tiles, the same `cells.txt` in 3D and in 2D, a door you can walk through, and a stair that changes depth by one. The steps are in `16.game/CENTROID-TEST-AND-LIVE-2026-11-06.md` under "Finish line, owner 2026-11-11". Do not move the camera they set. The look ray in that shot hit `49,44,0`.
+The owner's 2026-11-11 view of the island is the lobes plus one 5 by 5 house (roof, door, windows) and several flat orange slabs. That page is now `small`. Page `live` is a copy, and the castle is built there from five modules (D71): `wall`, `window`, `door`, `roof`, `tower`. Slot 35 is the orange slab. Slots 12–15 are the castle drawings and are caps only. The steps and the tile list are in `16.game/CENTROID-TEST-AND-LIVE-2026-11-06.md` under "Castle scale". Do not move the camera they set. Do not restamp `small`. Do not apply scale 4 to `small`. The palace with wings waits for scale 4 on `live`.
+
+The harness menu lists the confirmed-proof cases plus `run all`, and every toolbar dropdown including Harness has a cancel row. `run all` has not been clicked. It would run the generator proofs and the crew. Key `126` opens that menu. Do not send it to wake a frame.

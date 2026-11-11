@@ -1,6 +1,6 @@
 # Centroid, the first look (2026-11-06)
 
-Status: **design only. Nothing here is built.** Labels: SAID = the owner on 2026-11-06; READ = lore skill and the 2026-11-05 University gap doc; OBS = files opened for this note; DOC = the recommendation.
+Status on 2026-11-06: **design only.** As of 2026-11-11 the editor book `centroid` has three pages: `test`, `small` (the 72 by 52 island and the 5 by 5 house), and `live` (the copy where the castle goes). The look in the 2026-11-11 palace picture is the target scale. The skin is the RPG Maker sheet already on the page, used as five modules (D71). Labels: SAID = the owner on 2026-11-06; READ = lore skill and the 2026-11-05 University gap doc; OBS = files opened for this note; DOC = the recommendation.
 
 The owner asked for the Centroid design, and said the important part is the visual. The first reading of that (one flat editor page, two sheet bindings, a key) is **withdrawn** the same day. The owner corrected it with a picture: one big open campus, several stories, towers, a water court, a grand stair, roofs you can stand on. It is built from **voxels**, so the picture stresses the engine. The RPG Maker sheets and the studio sheets are two skins of that same volume, still swapped by one view field, after the volume exists.
 
