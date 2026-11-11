@@ -1356,6 +1356,36 @@ static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, in
     int ox = focusx - vcols / 2; int oy = focusy - vrows / 2;
     if (fw > vcols) { if (ox < 0) ox = 0; if (ox > fw - vcols) ox = fw - vcols; } else ox = -(vcols - fw) / 2;
     if (fh > vrows) { if (oy < 0) oy = 0; if (oy > fh - vrows) oy = fh - vrows; } else oy = -(vrows - fh) / 2;
+    /* w/a/s/d write pieces/display/view_2d_cam.txt (bv_menu_input). The map.png path reads it. This atlas path was ignoring it, so those keys changed a file and the picture never moved. */
+    {
+        char cpath[PATH_BUF]; snprintf(cpath, sizeof(cpath), "%s/pieces/display/view_2d_cam.txt", project_root);
+        float camx = (float)ox, camy = (float)oy, lx = camx, ly = camy; int had = 0, fsx = -99999, fsy = -99999;
+        FILE *cf = host_fopen(cpath, "r");
+        if (cf) {
+            char l[96]; float fx = 0, fy = 0, vw = 0, vh = 0; int got = 0;
+            while (fgets(l, sizeof(l), cf)) {
+                if (!strncmp(l, "x=", 2)) { fx = (float)atof(l + 2); got |= 1; }
+                else if (!strncmp(l, "y=", 2)) { fy = (float)atof(l + 2); got |= 2; }
+                else if (!strncmp(l, "vw=", 3)) { vw = (float)atof(l + 3); got |= 4; }
+                else if (!strncmp(l, "vh=", 3)) { vh = (float)atof(l + 3); got |= 8; }
+                else if (!strncmp(l, "sx=", 3)) { fsx = atoi(l + 3); got |= 16; }
+                else if (!strncmp(l, "sy=", 3)) { fsy = atoi(l + 3); got |= 32; }
+            }
+            fclose(cf);
+            if (got == 63 && fabsf(vw - (float)vcols) < 0.01f && fabsf(vh - (float)vrows) < 0.01f) { camx = fx; camy = fy; had = 1; }
+        }
+        if (focusx >= 0 && focusy >= 0 && focusx < fw && focusy < fh && (!had || focusx != fsx || focusy != fsy)) {
+            if ((float)focusx < camx) camx = (float)focusx; else if ((float)focusx + 1.0f > camx + (float)vcols) camx = (float)focusx + 1.0f - (float)vcols;
+            if ((float)focusy < camy) camy = (float)focusy; else if ((float)focusy + 1.0f > camy + (float)vrows) camy = (float)focusy + 1.0f - (float)vrows;
+        }
+        if (fw <= vcols) camx = (float)ox; else { if (camx < 0) camx = 0; if (camx > (float)(fw - vcols)) camx = (float)(fw - vcols); }
+        if (fh <= vrows) camy = (float)oy; else { if (camy < 0) camy = 0; if (camy > (float)(fh - vrows)) camy = (float)(fh - vrows); }
+        ox = (int)floorf(camx + 0.5f); oy = (int)floorf(camy + 0.5f);
+        if (!had || fabsf(camx - lx) > 0.0005f || fabsf(camy - ly) > 0.0005f || focusx != fsx || focusy != fsy) {
+            char cb[200]; int cn = snprintf(cb, sizeof(cb), "x=%.3f\ny=%.3f\nvw=%.3f\nvh=%.3f\nsx=%d\nsy=%d\n", camx, camy, (float)vcols, (float)vrows, focusx, focusy);
+            if (cn > 0) write_atomic(cpath, cb, (size_t)cn);
+        }
+    }
     for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
         int cx = ox + x / draw, cy = oy + y / draw;
         unsigned char *d = px + ((size_t)y * W + x) * 4;
