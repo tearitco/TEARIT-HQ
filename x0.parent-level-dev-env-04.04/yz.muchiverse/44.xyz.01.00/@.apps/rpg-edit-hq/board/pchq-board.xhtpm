@@ -42,12 +42,13 @@
       <repeat count="${n_tbhar}" bind="tbhar">
         <item id="hz${tbhar.#}" class="pchq-menu-row dropdown-child" target_id="tb-harness" label="${tbhar.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' hpick ${tbhar.key}"/>
       </repeat>
+      <item id="hz-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-harness" label="- cancel -" action="void"/>
       <repeat count="${n_file_opts}" bind="f">
         <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
       </repeat>
       <item id="bk-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
-      <repeat count="${n_room}" bind="room">
-        <item id="rm${room.#}" class="pchq-menu-row dropdown-child " target_id="tb-page" label="${room.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' fire goto ${room.id}"/>
+      <repeat count="${n_desk_opts}" bind="d">
+        <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-page" label="${d.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
       </repeat>
       <item id="tp-page-0" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
       <item id="tp-page-1" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
