@@ -332,6 +332,7 @@ static void publish(void) {
     if (have) catn(o, sizeof o, UI);
     snprintf(b, sizeof b, "%.90s", msg); add_text(b);   /* the renderer wraps long popup text itself; the old 30-char cut hid "choose the players, then START" and "(opening throw)" */
     if (!have) { catn(o, sizeof o, "n_party=0\n");
+        add_btn("Close", "close");
         snprintf(b, sizeof b, "%d players, seed %d", nplayers, seed); add_text(b);
         add_btn("players -", "players_down"); add_btn("players +", "players_up");
         snprintf(b, sizeof b, "you play: %s", human_seat == 0 ? "none" : (snprintf(t, sizeof t, "p%d", human_seat), t)); add_btn(b, "human_next");
@@ -372,7 +373,8 @@ static void publish(void) {
             snprintf(b, sizeof b, "YOUR OFFER #%d to p%d", oid2, to2); add_text(b); snprintf(b, sizeof b, "you give: %s", gn); add_text(b); snprintf(b, sizeof b, "you want: %s", rn); add_text(b); add_btn("Amend offer...", "tr_amend"); add_btn("Cancel offer", "tr_cancel"); } }
         if (!run && !over) add_btn("Step one move", "step");
         snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(b, "speed_next"); add_btn("New game", "new_game");
-        if (!over && human_pid() && tune_int("camera_follow", 1)) add_btn("Find me", "find_me");   /* LAST, so no other button changes its index; only with a human seat and while the owner's tuning row camera_follow is on */
+        add_btn("Close", "close");
+        if (!over && human_pid() && tune_int("camera_follow", 1)) add_btn("Find me", "find_me");   /* stays after Close; only with a human seat and while camera_follow is on */
         }
     }
     if (!(tr_open_ && have)) catn(o, sizeof o, "tp_on=\ngame-ov_x=\ngame-ov_y=\n");   /* the trade screen is off: the popup is centred again */
@@ -413,6 +415,7 @@ static void human_verb2(const char *engine_verb, const char *arg) {
     snprintf(msg, sizeof msg, "%s%.170s", rc ? "refused: " : "you: ", out); dirty = 1;
 }
 static void human_verb(const char *engine_verb) { human_verb2(engine_verb, NULL); }
+static volatile sig_atomic_t stop_ = 0;
 static void handle(const char *c) {
     if (!strcmp(c, "players_up")) { if (!mode_play && nplayers < 6) nplayers++; if (human_seat > nplayers) human_seat = 0; }
     else if (!strcmp(c, "players_down")) { if (!mode_play && nplayers > 2) nplayers--; if (human_seat > nplayers) human_seat = 0; }
@@ -423,6 +426,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "start")) { if (!mode_play) begin_game(); }
     else if (!strcmp(c, "step")) { if (mode_play && !running()) tick_once(); }
     else if (!strcmp(c, "new_game")) { if (mode_play) { archive_game(); mode_play = 0; set_desk("board"); walk_reset(); snprintf(msg, sizeof msg, "the last game is in archive/; choose the players, then START"); } }
+    else if (!strcmp(c, "close")) { FILE *sf = fopen(SW, "w"); if (sf) { fputs("running=0\nint=1\n", sf); fclose(sf); } stop_ = 1; }
     else if (!strcmp(c, "roll")) human_verb("roll"); else if (!strcmp(c, "buy")) human_verb("buy"); else if (!strcmp(c, "skip")) human_verb("skip"); else if (!strcmp(c, "end")) human_verb("end_turn");
     else if (!strcmp(c, "pass")) human_verb("pass"); else if (!strcmp(c, "bid_min") || !strcmp(c, "bid_up")) { load_ui(); char ab[16]; snprintf(ab, sizeof ab, "%d", uint_("auction_min") + (!strcmp(c, "bid_up") ? 50 : 0)); human_verb2("bid", ab); }   /* M7: the amount is read from the feed at CLICK time, so a stale label cannot bid a wrong number */
     else if (!strcmp(c, "jail_pay")) human_verb("jail_pay"); else if (!strcmp(c, "jail_roll")) human_verb("jail_roll"); else if (!strcmp(c, "pay_debt")) human_verb("pay_debt"); else if (!strcmp(c, "bankrupt")) human_verb("bankrupt");
@@ -433,7 +437,7 @@ static void handle(const char *c) {
     else snprintf(msg, sizeof msg, "unknown command %.40s", c);
     dirty = 1;
 }
-static volatile sig_atomic_t stop_ = 0; static void on_term(int s) { (void)s; stop_ = 1; }
+static void on_term(int s) { (void)s; stop_ = 1; }
 
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: deskopoly_driver <house_root> <book_app_dir> <editor_app_dir>\n"); return 2; }
@@ -475,7 +479,7 @@ int main(int argc, char **argv) {
         /* ADAPTIVE POLL (owner 2026-11-08 "irregular sleep cycles"): 80 ms while the game is live (walking, ticking); 250 ms on the setup screen, while stopped, and while a human is thinking: nothing can happen but a button press. Measured with the context-switch counter: 12-14 wakeups/s before. */
         usleep((mode_play && ((run && !hwait) || walking_now || w_resync || page_pending)) ? 80000 : 250000);   /* anything with a deadline (a walk, a resync, a deferred page) keeps the fast poll even while stopped */
     }
-    set_desk("board");
+    { char map[64] = ""; FILE *mf = fopen(WORLD, "r"); if (mf) { char ln[128]; while (fgets(ln, sizeof ln, mf)) if (!strncmp(ln, "map_id=", 7)) { snprintf(map, sizeof map, "%s", ln + 7); char *e = strpbrk(map, "\r\n"); if (e) *e = 0; } fclose(mf); } set_desk(!strcmp(map, "centroid") ? "test" : "board"); }
     char tmp[P]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); { FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */
     return 0;
 }
