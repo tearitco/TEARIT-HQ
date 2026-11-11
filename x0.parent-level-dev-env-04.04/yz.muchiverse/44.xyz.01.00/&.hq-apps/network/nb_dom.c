@@ -106,6 +106,7 @@ typedef struct {
     int depth;
     long count;
     int err;
+    int text_nodes;   /* 1: character data becomes child text nodes */
 } Parser;
 
 static NbNode *node_new(Parser *ps, const char *tag) {
@@ -235,7 +236,22 @@ static void parser_add_text(Parser *ps) {
     /* Keep decoded text verbatim (entities only, no whitespace folding):
      * extra/separator whitespace is a display concern, not data. Folding
      * here would irrecoverably join words across element boundaries. */
-    if (ps->depth>0) {
+    if (ps->text_nodes) {
+        /* Browser-shaped tree: the run becomes its own #text child so
+         * childNodes / firstChild / *Sibling / Range see it. Text between
+         * top-level tags belongs to the parse root (that is the fragment
+         * innerHTML/insertAdjacentHTML hand back); depth is 0 after the
+         * last close, so it cannot use the stack. The element's own text
+         * field stays empty on this path. */
+        if (d > 0 && ps->count < DOM_MAX_NODES) {
+            NbNode *t = xmalloc(sizeof(*t));
+            memset(t, 0, sizeof(*t));
+            t->text = dec;      /* transfer: freed below only on the folded path */
+            ps->count++;
+            append_child(ps->depth>0 ? ps->stack[ps->depth-1] : ps->root, t);
+            dec = NULL;
+        }
+    } else if (ps->depth>0) {
         NbNode *cur=ps->stack[ps->depth-1];
         size_t oldn=cur->text?strlen(cur->text):0;
         char *dst=xmalloc(oldn+d+1);
@@ -249,10 +265,11 @@ static void parser_add_text(Parser *ps) {
     ps->p=lt;
 }
 
-NbNode *nb_parse_html(const char *html, size_t len) {
+static NbNode *parse_html_impl(const char *html, size_t len, int text_nodes) {
     Parser ps;
     memset(&ps, 0, sizeof(ps));
     ps.p=html; ps.end=html+len;
+    ps.text_nodes=text_nodes;
     ps.root=xmalloc(sizeof(NbNode)); memset(ps.root,0,sizeof(*ps.root));
     ps.root->tag=str_dup("#document");
     while (ps.p<ps.end && !ps.err) {
@@ -260,6 +277,19 @@ NbNode *nb_parse_html(const char *html, size_t len) {
         else parser_add_text(&ps);
     }
     return ps.root;
+}
+
+NbNode *nb_parse_html(const char *html, size_t len) {
+    return parse_html_impl(html, len, 0);
+}
+
+/* Browser-shaped variant: character data between tags becomes real #text
+ * children instead of being folded into the element's own text field. Used
+ * by the script-facing parsing surfaces (innerHTML, insertAdjacentHTML,
+ * DOMParser); the fetch.dom extraction path keeps the folded form because
+ * the wire format and row projector were built around it. */
+NbNode *nb_parse_html_nodes(const char *html, size_t len) {
+    return parse_html_impl(html, len, 1);
 }
 
 static long serialize_rec(FILE *out, const NbNode *n, long *cnt) {

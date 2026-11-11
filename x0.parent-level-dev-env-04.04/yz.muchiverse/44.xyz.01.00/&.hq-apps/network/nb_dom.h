@@ -36,6 +36,7 @@ typedef struct NbNode {
 /* Parse a whole HTML document. Returns a root NbNode* (a synthetic
  * <#document> node) or NULL on failure. Caller frees with nb_node_free. */
 NbNode *nb_parse_html(const char *html, size_t len);
+NbNode *nb_parse_html_nodes(const char *html, size_t len);
 
 /* Serialize a tree to `out` in pre-order with the plan §3 wire format:
  *   N|<tag>|<id>|<cls>|<textlen>|<text>|<attrlen>|<attrs>\n   a node

@@ -883,7 +883,7 @@ static void rw_sel(SB *b, const NbNode *n) {
     rw_row(b, "SEL", sel);
 }
 
-static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
+static void dom_walk_render(const NbNode *n, int *titled, SB *b, int no_text) {
     if (!n) return;
     const char *tg = n->tag;
     /* REAL, NEW 2026-10-07 (live scroll-through: Wikipedia's own footer
@@ -964,13 +964,19 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     /* the fetch.dom wire form carries an element's direct text inline on
      * the element node, so surface n->text itself (skip captions above and
      * whitespace-only runs, matching the static extractor) */
-    if (!caption_used && n->text && n->text[0] && strspn(n->text, " \t\r\n") < strlen(n->text)) {
+    if (!no_text && !caption_used && n->text && n->text[0] && strspn(n->text, " \t\r\n") < strlen(n->text)) {
         size_t L = strlen(n->text);
         char *copy = malloc(L + 1);
-        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy, n); free(copy); }
+        /* #text nodes have no selector of their own; a click on their row
+         * belongs to the element that owns them, as events would bubble. */
+        const NbNode *seln = (n->tag && n->tag[0]) ? n : (n->parent ? n->parent : n);
+        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy, seln); free(copy); }
     }
+    /* A caption row (TITLE/LINK/IMG) already carries this element's whole
+     * textContent, so a #text child must not be emitted a second time as a
+     * TEXT row. Only TEXT is silenced; nested elements still render. */
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
-        dom_walk_render(c, titled, b);
+        dom_walk_render(c, titled, b, no_text || caption_used);
 }
 /* REAL, NEW 2026-10-07 (maximal-scope directive: canvas fast) - software
  * rasterizer backing every canvas 2D context. Before this, every draw op
@@ -1015,7 +1021,7 @@ static void dom_render_rows(SB *b) {
         rw_row(b, "TITLE", g_title);
     }
     int titled = 1;                 /* <title> already handled above */
-    dom_walk_render(g_dom_root, &titled, b);
+    dom_walk_render(g_dom_root, &titled, b, 0);
     /* Canvas display publish (2026-10-07): dirty backing stores become
      * PNGs + 5-field IMG rows; the manager's own MEDIA->sprite pipeline
      * (IMG without nb_sprites_ → sprite) tiles them with zero new
@@ -3673,9 +3679,13 @@ static JSValue nb_el_innerHTML_set(JSContext *ctx, JSValueConst this_val, int ar
     }
     char *vl = NULL;
     const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
-    NbNode *frag = nb_parse_html(v, strlen(v));
+    NbNode *frag = nb_parse_html_nodes(v, strlen(v));
     NbNode *child = frag ? frag->first_child : NULL;
     clear_children(n);
+    /* innerHTML replaces ALL content. A LOAD-tree element keeps its direct
+     * text in n->text (the folded model), so clearing children alone left the
+     * old page text behind and the assignment appeared to append. */
+    free(n->text); n->text = NULL;
     if (child) {
         frag->first_child = frag->last_child = NULL;
         NbNode *cur = child;
@@ -3752,7 +3762,7 @@ static void nb_ia_attach(JSContext *ctx, NbNode *parent, NbNode *ref, NbNode *no
     nb_mutation_notify_childlist(ctx, parent, node, NULL, NULL, ref);
 }
 static void nb_ia_insert_html(JSContext *ctx, NbNode *parent, NbNode *ref, const char *html) {
-    NbNode *frag = nb_parse_html(html, strlen(html));
+    NbNode *frag = nb_parse_html_nodes(html, strlen(html));
     if (!frag) return;
     NbNode *cur = frag->first_child;
     frag->first_child = frag->last_child = NULL;
@@ -5647,7 +5657,7 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
         return JS_Throw(ctx, e);
     }
     JS_FreeCString(ctx, mime);
-    NbNode *root = nb_parse_html(s, strlen(s));
+    NbNode *root = nb_parse_html_nodes(s, strlen(s));
     JS_FreeCString(ctx, str);
     if (!root) {
         JSValue e = JS_NewError(ctx);
@@ -7291,6 +7301,9 @@ static JSValue nb_el_replaceChildren_js(JSContext *ctx, JSValueConst this_val, i
     NbNode *self = get_this(ctx, this_val);
     if (!self) return JS_UNDEFINED;
     clear_children(self);
+    /* Replace ALL children, including the folded direct text a LOAD-tree
+     * element carries in n->text. */
+    free(self->text); self->text = NULL;
     nbi_do(ctx, argc, argv, self, NBI_APPEND);
     return JS_UNDEFINED;
 }

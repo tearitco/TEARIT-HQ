@@ -591,3 +591,21 @@ is a DOM-model change with renderer impact and remains open.
 Gate `tests/nb_sibling_nav_test.sh` **PASS (27/27)**, negative-tested with
 two deliberate inversions (8 failures), then restored. Full suite
 **ALL TESTS PASS**.
+### 2026-11-11 — parsed text is a real node; RENDER emits it once
+
+`nb_parse_html_nodes` (new, in `nb_dom.c`) makes character data a child
+`#text` node. `DOMParser`, the `innerHTML` setter, and `insertAdjacentHTML`
+use it; the manager's fetch.dom extraction keeps the folded form so the live
+page wire path and row projector are untouched. `innerHTML =` and
+`replaceChildren()` now also drop the folded own text a LOAD element carries
+(pre-existing bug: old page text survived replacement). RENDER emits a TEXT
+row for a text child under its owning element's SEL and suppresses descendant
+TEXT under a caption row, so a parsed link renders once.
+
+Gate `tests/nb_parse_text_nodes_test.sh` **PASS (29/29 + rows)**; two negative
+tests (fold the parser again: 21 failures; remove caption suppression:
+duplicate `TEXT|hi` row), restored and green. Full suite **ALL TESTS PASS**.
+`nb_probe.py` has optional `--drain-ms` to catch a RENDER that trails STATUS.
+
+Open: parsed-document `doc.title` still undefined; `textContent =` still
+folded (childNodes 0); `innerHTML` does not escape `&`/`<`.

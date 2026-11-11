@@ -90,6 +90,10 @@ echo "########## Sibling/child navigation accessors read the live tree (hermetic
 bash "$HERE/nb_sibling_nav_test.sh" || RC=1
 
 echo
+echo "########## Parsed text is a real #text node + renders once (hermetic)"
+bash "$HERE/nb_parse_text_nodes_test.sh" || RC=1
+
+echo
 echo "########## matchMedia evaluates the real viewport (hermetic)"
 bash "$HERE/nb_match_media_test.sh" || RC=1
 

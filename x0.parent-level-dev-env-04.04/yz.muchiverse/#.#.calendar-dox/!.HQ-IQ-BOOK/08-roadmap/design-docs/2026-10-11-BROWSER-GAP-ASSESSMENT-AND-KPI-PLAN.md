@@ -1602,3 +1602,65 @@ left as a named open item rather than half-fixed inside a getter slice.
   `fragment-prev-sibling`); restored and green again.
 - `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**, new gate registered in the
   hermetic group.
+
+### 9.26 2026-11-11 — parsed character data is a real #text node
+
+The 9.25 gate found this: `nb_parse_html` folded every text run into the
+current element's own `text` field. `parseFromString('<div>x<i></i>y</div>')`
+reported one child, `innerHTML` lost the text, and sibling/child traversal,
+Range and cloneNode could not see it. It was true for every script-facing
+parse surface.
+
+**The slice**
+
+- `nb_dom.c` parses through one implementation with a `text_nodes` flag.
+  `nb_parse_html_nodes` (new export) makes each non-empty run a real child
+  `#text` node; text between top-level tags belongs to the parse root, which
+  is the fragment `innerHTML`/`insertAdjacentHTML` return. `nb_parse_html`
+  is unchanged and still folds.
+- Only the script-facing surfaces use the new form: `DOMParser.parseFromString`,
+  the `innerHTML` setter, and `insertAdjacentHTML`. The manager's fetch.dom
+  extraction keeps the folded form on purpose — the wire format and the row
+  projector were built around element-owned text, and changing the live page
+  path in the same slice would be a different, much larger change.
+- Two pre-existing replacement bugs surfaced by real rows:
+  `innerHTML = ...` and `replaceChildren()` cleared children but left the
+  element's folded own text, so a LOAD element appeared to keep its old page
+  text. Both now drop it; `textContent` setter already did.
+- RENDER: a `#text` child contributes a TEXT row whose SEL names its owning
+  element (events bubble to it), not a synthetic id on a node no selector can
+  match. A caption row (TITLE/LINK/IMG) already carries the element's whole
+  `textContent`, so descendant TEXT is suppressed underneath it — otherwise a
+  parsed `<a>` rendered `LINK|href text` and then `TEXT|text` a second time.
+- Entities decode inside a text node (`a &amp; b` -> `a & b`), and
+  `innerHTML` round-trips the mixed content (`x<i>MID</i>y`).
+
+**Verification**
+
+- New gate `tests/nb_parse_text_nodes_test.sh`: **PASS (29/29 + rows)**.
+  Covers child count/nodeType, first/last value, innerHTML round-trip,
+  textContent, sibling text on both sides, entity decoding, element queries
+  still element-only, Range over parsed text, deep clone of a mixed tree,
+  `innerHTML`/`insertAdjacentHTML` shapes, folded-text removal, and real
+  post-EVAL RENDER rows: `LINK|/x hi`, `SEL|#t` + `TEXT| tail`, no duplicate
+  `TEXT|hi`, no stale `TEXT|tick 0`.
+- `nb_probe.py` gained an optional `--drain-ms` window because the post-JS
+  RENDER can trail the EVAL STATUS frame; default behaviour is unchanged.
+- Negative A (make `nb_parse_html_nodes` fold again): **21 assertion
+  failures** plus the row assertions (missing `SEL|#t`/`TEXT| tail`).
+- Negative B (parser correct, caption suppression removed): every DOM
+  assertion passed and the row check failed with exactly
+  `duplicate TEXT|hi from the captioned link`.
+- Restored and green again; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**
+  with the new gate registered.
+
+**Open, found here and not papered over**
+
+- A parsed document's `doc.title` is `undefined`: the live document's title
+  accessor reads the global `g_title`, and parsed document wrappers never got
+  a title member. Independent of text nodes.
+- `textContent = 'x'` still stores folded own text rather than creating one
+  Text child, so `childNodes.length` is 0 where a browser says 1.
+  `textContent` reads correctly either way.
+- Text serialization does not escape `&`/`<` in `innerHTML` output (already
+  true for folded text; not introduced here).

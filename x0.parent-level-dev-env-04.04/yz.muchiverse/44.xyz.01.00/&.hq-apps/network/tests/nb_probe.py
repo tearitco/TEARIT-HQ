@@ -144,6 +144,9 @@ def main():
     ap.add_argument("--budget", type=int, default=120, help="NB_EVAL_BUDGET seconds")
     ap.add_argument("--load-timeout", type=float, default=180.0)
     ap.add_argument("--eval-timeout", type=float, default=120.0)
+    ap.add_argument("--drain-ms", type=int, default=0,
+                    help="after EVAL/LOAD STATUS, keep reading frames this long "
+                         "(a post-JS RENDER can trail the STATUS frame)")
     ap.add_argument("--console", required=True, help="console capture path to point NBW_CONSOLE at")
     args = ap.parse_args()
 
@@ -190,6 +193,26 @@ def main():
         st2 = pump(fd, rfile, fetch_log, args.eval_timeout, frames)
         if st2 is None:
             errors.append("no STATUS from EVAL within %.0fs" % args.eval_timeout)
+
+    if not errors and args.drain_ms > 0:
+        # Some frames (notably the post-JS RENDER) are produced by the worker
+        # around the STATUS reply, so a harness that stops reading at STATUS
+        # can miss them. Bounded drain: read whatever arrives in the window
+        # and service FETCH as the normal pumps do.
+        deadline = time.time() + args.drain_ms / 1000.0
+        while True:
+            left = deadline - time.time()
+            if left <= 0:
+                break
+            fr = read_frame(rfile, left)
+            if fr is None:
+                continue
+            if fr.startswith("FETCH\n"):
+                serve_fetch(fd, fr, fetch_log)
+            elif fr.startswith("LIVE|"):
+                continue
+            else:
+                frames.append(fr)
 
     try:
         wsend(fd, "QUIT")
