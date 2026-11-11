@@ -5,6 +5,8 @@
  * Writes cells.txt, map.txt beside it, and land.seed.pdl beside it (the seed that made the page).
  * Biomes, height from the seed, crude roads on the waypoints, a flat frame around each BUILD.
  * The same seed writes the same bytes. A page wider than 512 is refused.
+ * Terrain is the first atlas row: 1 grass, 2 dirt path, 3 water, 4 sand, 5 pale sand.
+ * Slot 33 is a sword-on-wood shop tile. It is not grass. A floor of 33 repeats that sword on every cell.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -117,16 +119,16 @@ int main(int argc, char **argv) {
                                            : (px >= zones[z].a && px < zones[z].c && py >= zones[z].b && py < zones[z].d);
                     if (hit) { k = zones[z].kind; break; }
                 }
-                fl = (k == K_FIELD) ? 42 : (k == K_PALE) ? 41 : (k == K_STONE || k == K_CLIFF) ? 36 : (k == K_DIRT) ? 32 : 33;
+                fl = (k == K_FIELD) ? 4 : (k == K_PALE) ? 5 : (k == K_STONE) ? 2 : (k == K_CLIFF) ? 2 : (k == K_DIRT) ? 3 : 1;
                 int base = 6 + isls[on].top / 4; if (base > 12) base = 12;
                 unsigned s = seed ^ (unsigned)(x * 131u + y * 17u);
                 dp = base + (int)(lcg(&s) % 3u);
-                for (int i = 0; i + 1 < nw; i++) if (near_seg(px, py, wps[i].x, wps[i].y, wps[i + 1].x, wps[i + 1].y)) { fl = 36; dp = base; roads++; break; }
+                for (int i = 0; i + 1 < nw; i++) if (near_seg(px, py, wps[i].x, wps[i].y, wps[i + 1].x, wps[i + 1].y)) { fl = 2; dp = base; roads++; break; }
                 for (int i = 0; i < nb; i++) {
                     double x1 = blds[i].x0 + blds[i].w, y1 = blds[i].y0 + blds[i].d;
                     if (px < blds[i].x0 || px >= x1 || py < blds[i].y0 || py >= y1) continue;
                     int edge = (px < blds[i].x0 + 1 || px >= x1 - 1 || py >= y1 - 1 || py < blds[i].y0 + 1);
-                    fl = 41; wl = edge ? 36 : 0; dp = base; frames++; break;
+                    fl = 2; wl = edge ? 36 : 0; dp = base; frames++; break;
                 }
                 g = 'W'; land++;
             }
