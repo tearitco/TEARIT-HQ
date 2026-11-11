@@ -3691,6 +3691,139 @@ static JSValue nb_el_innerHTML_set(JSContext *ctx, JSValueConst this_val, int ar
     JS_FreeCString(ctx, vl);
     return JS_UNDEFINED;
 }
+/* ---- insertAdjacentHTML / Text / Element (2026-11-09) ----
+ * Real DOM insertion at the four spec positions, built on the same parser
+ * and tree helpers that innerHTML/appendChild already use. Positions are
+ * ASCII case-insensitive; anything else is a SyntaxError. beforebegin and
+ * afterend on a node with no parent are a no-op, exactly as in a browser
+ * (#document is the top; there is no place beside it).
+ *
+ * ChildList MutationObserver records are emitted for each inserted node.
+ * A parsed fragment contributes one record per node (the C record model
+ * carries one addedNode); a browser would batch them into one record. Both
+ * describe the same real insertions, which is what an observer reacts to.
+ *
+ * insertAdjacentElement moves an existing node and returns it, or null when
+ * the insertion is a no-op. Script-execution on insertion is not claimed
+ * here: appendChild's dynamic <script> path is separate and this slice does
+ * not duplicate it. */
+enum { NB_IA_BEFORE_BEGIN = 0, NB_IA_AFTER_BEGIN = 1, NB_IA_BEFORE_END = 2, NB_IA_AFTER_END = 3 };
+static int nb_ia_parse_pos(JSContext *ctx, JSValueConst v) {
+    const char *s = JS_ToCString(ctx, v);   /* stringify like the DOM does */
+    if (!s) return -2;                      /* exception already pending */
+    int r = -1;
+    if (!strcasecmp(s, "beforebegin")) r = NB_IA_BEFORE_BEGIN;
+    else if (!strcasecmp(s, "afterbegin")) r = NB_IA_AFTER_BEGIN;
+    else if (!strcasecmp(s, "beforeend")) r = NB_IA_BEFORE_END;
+    else if (!strcasecmp(s, "afterend")) r = NB_IA_AFTER_END;
+    JS_FreeCString(ctx, s);
+    return r;
+}
+static JSValue nb_ia_syntax_error(JSContext *ctx) {
+    JSValue e = JS_NewError(ctx);
+    if (!JS_IsException(e)) {
+        JS_SetPropertyStr(ctx, e, "name", JS_NewString(ctx, "SyntaxError"));
+        JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "SyntaxError: the position is not beforebegin, afterbegin, beforeend, or afterend"));
+    }
+    return JS_Throw(ctx, e);
+}
+/* Resolve the insertion parent/reference for a position. Returns 0 for the
+ * no-op case (beforebegin/afterend with no parent). */
+static int nb_ia_place(NbNode *n, int pos, NbNode **parent, NbNode **ref) {
+    *parent = NULL;
+    *ref = NULL;
+    if (!n) return 0;
+    if (pos == NB_IA_BEFORE_BEGIN || pos == NB_IA_AFTER_END) {
+        if (!n->parent) return 0;
+        *parent = n->parent;
+        *ref = (pos == NB_IA_BEFORE_BEGIN) ? n : n->next_sibling;
+        return 1;
+    }
+    *parent = n;
+    *ref = (pos == NB_IA_AFTER_BEGIN) ? n->first_child : NULL;
+    return 1;
+}
+static void nb_ia_attach(JSContext *ctx, NbNode *parent, NbNode *ref, NbNode *node) {
+    if (!parent || !node || node == parent || node == ref) return;   /* avoid self-cycle */
+    node_detach(node);
+    orphan_remove(node);
+    local_insert_before(parent, node, ref);
+    nb_mutation_notify_childlist(ctx, parent, node, NULL, NULL, ref);
+}
+static void nb_ia_insert_html(JSContext *ctx, NbNode *parent, NbNode *ref, const char *html) {
+    NbNode *frag = nb_parse_html(html, strlen(html));
+    if (!frag) return;
+    NbNode *cur = frag->first_child;
+    frag->first_child = frag->last_child = NULL;
+    while (cur) {
+        NbNode *nx = cur->next_sibling;
+        cur->next_sibling = NULL;
+        cur->parent = NULL;
+        nb_ia_attach(ctx, parent, ref, cur);
+        cur = nx;
+    }
+    nb_node_free(frag);
+}
+static JSValue nb_el_insertAdjacentHTML(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    int pos = (argc > 0) ? nb_ia_parse_pos(ctx, argv[0]) : -1;
+    if (pos == -2) return JS_EXCEPTION;
+    if (pos < 0) return nb_ia_syntax_error(ctx);
+    if (!n) return JS_UNDEFINED;
+    if (n->tag && !strcmp(n->tag, "template") &&
+        (pos == NB_IA_AFTER_BEGIN || pos == NB_IA_BEFORE_END)) {
+        NbNode *frag = nb_template_content_frag(ctx, this_val, n);
+        if (frag) n = frag;
+    }
+    NbNode *parent = NULL, *ref = NULL;
+    if (!nb_ia_place(n, pos, &parent, &ref)) return JS_UNDEFINED;
+    char *html = (argc > 1) ? JS_ToCString(ctx, argv[1]) : NULL;
+    if (!html) return JS_EXCEPTION;
+    nb_ia_insert_html(ctx, parent, ref, html);
+    JS_FreeCString(ctx, html);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_insertAdjacentText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    int pos = (argc > 0) ? nb_ia_parse_pos(ctx, argv[0]) : -1;
+    if (pos == -2) return JS_EXCEPTION;
+    if (pos < 0) return nb_ia_syntax_error(ctx);
+    if (!n) return JS_UNDEFINED;
+    NbNode *parent = NULL, *ref = NULL;
+    if (!nb_ia_place(n, pos, &parent, &ref)) return JS_UNDEFINED;
+    char *text = (argc > 1) ? JS_ToCString(ctx, argv[1]) : NULL;
+    if (!text) return JS_EXCEPTION;
+    NbNode *t = calloc(1, sizeof(*t));
+    if (t) {
+        t->text = strdup(text);
+        orphan_add(t);
+        nb_ia_attach(ctx, parent, ref, t);
+    }
+    JS_FreeCString(ctx, text);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_insertAdjacentElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    int pos = (argc > 0) ? nb_ia_parse_pos(ctx, argv[0]) : -1;
+    if (pos == -2) return JS_EXCEPTION;
+    if (pos < 0) return nb_ia_syntax_error(ctx);
+    NbNode *node = (argc > 1 && JS_IsObject(argv[1])) ? get_node(ctx, argv[1]) : NULL;
+    if (!n || !node) return JS_NULL;
+    /* An element cannot be inserted into its own descendant. */
+    for (NbNode *a = n; a; a = a->parent)
+        if (a == node) {
+            JSValue e = JS_NewError(ctx);
+            if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+                JS_NewString(ctx, "HierarchyRequestError: the new element is an ancestor of the target"));
+            return JS_Throw(ctx, e);
+        }
+    NbNode *parent = NULL, *ref = NULL;
+    if (!nb_ia_place(n, pos, &parent, &ref)) return JS_NULL;
+    if (node == n) return JS_NULL;
+    nb_ia_attach(ctx, parent, ref, node);
+    return push_node(ctx, node);
+}
 static JSValue nb_el_children(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     JSValue arr = JS_NewArray(ctx);
@@ -4279,6 +4412,9 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
     JS_SetPropertyStr(ctx, el, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));
     JS_SetPropertyStr(ctx, el, "replaceChild", JS_NewCFunction(ctx, nb_el_replaceChild, "replaceChild", 2));
+    JS_SetPropertyStr(ctx, el, "insertAdjacentHTML", JS_NewCFunction(ctx, nb_el_insertAdjacentHTML, "insertAdjacentHTML", 2));
+    JS_SetPropertyStr(ctx, el, "insertAdjacentText", JS_NewCFunction(ctx, nb_el_insertAdjacentText, "insertAdjacentText", 2));
+    JS_SetPropertyStr(ctx, el, "insertAdjacentElement", JS_NewCFunction(ctx, nb_el_insertAdjacentElement, "insertAdjacentElement", 2));
     JS_SetPropertyStr(ctx, el, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, el, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
@@ -7348,6 +7484,9 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, Ep, "replaceChildren", JS_NewCFunction(ctx, nb_el_replaceChildren_js, "replaceChildren", 0));
     JS_SetPropertyStr(ctx, Ep, "getClientRects", JS_NewCFunction(ctx, nb_el_getClientRects, "getClientRects", 0));
     JS_SetPropertyStr(ctx, Ep, "scrollIntoView", JS_NewCFunction(ctx, nb_el_scrollIntoView, "scrollIntoView", 0));
+    JS_SetPropertyStr(ctx, Ep, "insertAdjacentHTML", JS_NewCFunction(ctx, nb_el_insertAdjacentHTML, "insertAdjacentHTML", 2));
+    JS_SetPropertyStr(ctx, Ep, "insertAdjacentText", JS_NewCFunction(ctx, nb_el_insertAdjacentText, "insertAdjacentText", 2));
+    JS_SetPropertyStr(ctx, Ep, "insertAdjacentElement", JS_NewCFunction(ctx, nb_el_insertAdjacentElement, "insertAdjacentElement", 2));
     {
         JSAtom nm = JS_NewAtom(ctx, "outerHTML");
         JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_outerHTML_get, "get outerHTML", 0), JS_UNDEFINED,

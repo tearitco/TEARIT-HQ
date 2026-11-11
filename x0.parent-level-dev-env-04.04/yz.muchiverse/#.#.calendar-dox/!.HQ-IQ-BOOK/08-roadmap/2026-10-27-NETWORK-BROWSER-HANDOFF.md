@@ -554,3 +554,22 @@ a native evaluator over the LOAD viewport (`g_viewport_px` /
   forcing `matches` false (11 failures), then restored.
 - Full suite **ALL TESTS PASS**; live browser PID `3875779`.
 
+### 2026-11-10 — insertAdjacentHTML/Text/Element
+
+The three methods were absent entirely. They are now real, built on the same
+parser and tree/orphan helpers as `innerHTML`/`appendChild`:
+
+- all four positions (`beforebegin`, `afterbegin`, `beforeend`, `afterend`),
+  ASCII case-insensitive;
+- `insertAdjacentText` creates a text node; `insertAdjacentElement` moves and
+  returns the element, `null` on the no-op cases;
+- no parent means no-op for `beforebegin`/`afterend`; unknown position throws
+  `SyntaxError`; ancestor-into-descendant throws `HierarchyRequestError`;
+- installed per wrapper and on `Element.prototype`;
+- childList MutationObserver records fire for every inserted node (a parsed
+  fragment yields one record per node rather than one batched record);
+- script execution on element insertion is deliberately not claimed.
+
+Gate `tests/nb_insert_adjacent_test.sh` **PASS (20/20)**, negative-tested by
+forcing `beforebegin` to append (2 failures), then restored. Full suite
+**ALL TESTS PASS**.

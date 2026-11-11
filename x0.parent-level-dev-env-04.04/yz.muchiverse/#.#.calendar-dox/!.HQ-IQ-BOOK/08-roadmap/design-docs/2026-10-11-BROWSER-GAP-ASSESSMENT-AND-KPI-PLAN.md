@@ -1502,3 +1502,51 @@ which is exactly the kind of inert surface the house rules reject.
   scoped to `ops/nb_js_worker.c`, `ops/nb_host.h`, the new gate, and the
   runner, on `opencode`.
 
+
+### 9.24 2026-11-10 — insertAdjacentHTML/Text/Element were absent; now real DOM insertion
+
+`element.insertAdjacentHTML`, `insertAdjacentText`, and
+`insertAdjacentElement` did not exist on any element, on the live or parsed
+document, or on `Element.prototype`. Real pages reach for them wherever they
+want one snippet without replacing the host's children, so the absence was a
+hard stop rather than a graceful degradation.
+
+**The slice** (`ops/nb_js_worker.c`)
+
+- All three methods at the four spec positions: `beforebegin`, `afterbegin`,
+  `beforeend`, `afterend`. Position matching is ASCII case-insensitive.
+- Insertion uses the same `nb_parse_html` and tree helpers that
+  `innerHTML`/`appendChild` already use, and the same orphan/detach path, so
+  a node never appears in two places.
+- `insertAdjacentHTML` parses a fragment and inserts each resulting node in
+  source order. `insertAdjacentText` creates a real text node.
+  `insertAdjacentElement` moves an existing node, returns it, and returns
+  `null` for the no-op cases.
+- `beforebegin`/`afterend` on a node with no parent is a no-op (its parent is
+  `#document`, which has no siblings), exactly as a browser does.
+- An unknown position throws `SyntaxError`. Inserting an ancestor into its
+  own descendant throws `HierarchyRequestError` instead of corrupting the
+  tree.
+- Installed per element wrapper and on `Element.prototype`, so elements made
+  by `createElement`/`DOMParser` and feature detection both see them.
+- ChildList MutationObserver records are emitted for every inserted node. A
+  parsed fragment therefore yields one record per node, where a browser
+  batches them into one record with multiple `addedNodes`; both describe the
+  same real insertions.
+- Not claimed: script execution on `insertAdjacentElement` (the separate
+  dynamic `<script>` path in `appendChild` is not duplicated here).
+
+**Verification**
+
+- New gate `tests/nb_insert_adjacent_test.sh`: **PASS (20/20)** — all four
+  positions in one tree, uppercase position, text nodes at both ends, element
+  move + return value + second move, invalid position for HTML and text,
+  detached no-op, detached element returns `null`, ancestor guard, prototype
+  presence, and two childList records whose target/added node are correct.
+- Negative test: forcing `beforebegin` to append failed `body-order` and
+  `elem-moved`; restored and green again.
+- `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**, with the new gate running
+  in the hermetic group.
+- Built from the same source as the run; no browser relaunch was needed
+  because the slice only adds element methods (the resident worker gates are
+  hermetic and spawn their own fresh worker).

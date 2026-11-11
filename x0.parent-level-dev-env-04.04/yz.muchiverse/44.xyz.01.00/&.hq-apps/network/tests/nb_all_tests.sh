@@ -82,6 +82,10 @@ echo "########## Live document collections and localName (hermetic)"
 bash "$HERE/nb_document_collections_test.sh" || RC=1
 
 echo
+echo "########## insertAdjacentHTML/Text/Element insert real nodes (hermetic)"
+bash "$HERE/nb_insert_adjacent_test.sh" || RC=1
+
+echo
 echo "########## matchMedia evaluates the real viewport (hermetic)"
 bash "$HERE/nb_match_media_test.sh" || RC=1
 
