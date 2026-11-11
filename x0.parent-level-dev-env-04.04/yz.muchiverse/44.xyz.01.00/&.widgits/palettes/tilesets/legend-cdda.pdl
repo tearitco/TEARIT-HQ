@@ -1,0 +1,46 @@
+# CDDA legend. UltimateCataclysm tileset. 2026-11-11.
+# Root: #.NNEST_ASSETS/cdda-tilesets/gfx/UltimateCataclysm
+# Chooser: palettes category cdda. A DIR is a pngs_* size folder. A TILESET is a category under pngs_normal_32x32.
+# The chooser publishes at most 512 sprite.csv cells per category. This file names the folders, not every png.
+#
+# SIZE | folder
+SIZE | pngs_centered_64x64
+SIZE | pngs_filler_32x32
+SIZE | pngs_fillergiant_96x96
+SIZE | pngs_fillerhoder_32x32
+SIZE | pngs_filler_tall_32x64
+SIZE | pngs_giant_96x96
+SIZE | pngs_huge_64x96
+SIZE | pngs_human_body_32x36
+SIZE | pngs_human_body_plus_32x36
+SIZE | pngs_human_body_plus_32x48
+SIZE | pngs_incomplete_32x32
+SIZE | pngs_incomplete_body_plus_32x48
+SIZE | pngs_incomplete_giant_96x96
+SIZE | pngs_incomplete_large_64x64
+SIZE | pngs_incomplete_small_20x20
+SIZE | pngs_incomplete_tall_32x64
+SIZE | pngs_large_64x64
+SIZE | pngs_large_ridden_64x64
+SIZE | pngs_normal_32x32
+SIZE | pngs_small_20x20
+SIZE | pngs_tall_32x64
+#
+# CATEGORY | under pngs_normal_32x32
+CATEGORY | appliances
+CATEGORY | fields
+CATEGORY | furniture
+CATEGORY | items
+CATEGORY | layers
+CATEGORY | mods
+CATEGORY | monsters
+CATEGORY | other
+CATEGORY | overlay
+CATEGORY | overmap
+CATEGORY | terrain
+CATEGORY | traps
+CATEGORY | vehicle
+#
+# TILE | role | path
+TILE | snow | pngs_normal_32x32/mods/aftershock/terrain/t_snow/
+# That folder holds the t_snow autotile pngs (center, corners, ends, connections).

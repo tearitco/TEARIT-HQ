@@ -1,5 +1,6 @@
 # Atlas legend for the Centroid page sheet (cells.rgba).
 # Written 2026-11-11. No legend file was in &.widgits/palettes before this.
+# Pack legends: legend-rmmv.pdl, legend-mineclonia.pdl, legend-df.pdl, legend-cdda.pdl, legend-doom.pdl.
 # The sheet is 384x72, 24px tiles, 16 columns, 43 tiles. Slot = row * 16 + column.
 # Floor slot paints the top face. Rock slot paints the cliff sides.
 # A name here is what the eye shows on that slot. A SOURCE row is where a replacement tile comes from.

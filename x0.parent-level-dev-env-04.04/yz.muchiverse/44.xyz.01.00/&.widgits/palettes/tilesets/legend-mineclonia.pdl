@@ -1,0 +1,25 @@
+# Mineclonia legend. 2026-11-11.
+# Root: #.NNEST_ASSETS/mineclonia/mods
+# Chooser: palettes category piececraft. A DIR is a mod group. A TILESET is one mod folder.
+# Counts are mod folders in each group, observed by listing the directory.
+#
+# GROUP | mods
+GROUP | COMPAT | 9
+GROUP | CORE | 18
+GROUP | ENTITIES | 14
+GROUP | ENVIRONMENT | 7
+GROUP | HELP | 7
+GROUP | HUD | 18
+GROUP | ITEMS | 105
+GROUP | MAPGEN | 14
+GROUP | MISC | 6
+GROUP | PLAYER | 14
+#
+# A texture is <group>/<mod>/textures/<name>.png. This file does not name all of those pngs.
+# Snow pngs under the tree: 24 files whose names contain snow.
+#
+# TILE | role | file
+TILE | snow-top | ITEMS/mcl_core/textures/default_snow.png
+TILE | snow-side | ITEMS/mcl_core/textures/mcl_core_grass_side_snowed.png
+TILE | powder-snow | ITEMS/mcl_powder_snow/textures/powder_snow.png
+# The Centroid page atlas paints RTP snow, not default_snow.png. See legend.pdl.

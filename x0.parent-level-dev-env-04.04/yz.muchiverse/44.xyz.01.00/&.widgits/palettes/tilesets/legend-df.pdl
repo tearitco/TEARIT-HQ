@@ -1,0 +1,13 @@
+# Dwarf Fortress legend. 2026-11-11.
+# Root: #.NNEST_ASSETS/df-tilesets
+# Chooser: palettes category df. publish_df slices one CP437 sheet into at most 256 cells.
+# Cell n is CP437 code n. The chooser label is "<pack> n", not a creature name.
+# df-hq draws Spacefox by that code and does not use the sliced sprite.csv cells.
+#
+# PACK | sheet | tile px | sheet px | cells on the sheet
+PACK | Spacefox | Spacefox/data/art/Spacefox_16x16.png | 16 | 256x256 | 256
+PACK | Phoebus | Phoebus/data/art/Phoebus_16x16.png | 16 | 256x256 | 256
+PACK | GemSet | GemSet/data/art/gemset_map.png | 24 | 384x384 | 256
+PACK | CLA | CLA/data/art/CLA.png | 18 | 288x288 | 256
+PACK | Mayday | Mayday/data/art/mayday.png | 16 | 256x256 | 256
+# Default pack is Spacefox. The publisher stops at 256, which is the whole sheet for these five.

@@ -1,0 +1,56 @@
+# RPG Maker MV legend. RTP sheets on disk, 2026-11-11.
+# Root: #.NNEST_ASSETS/rmmv-www-img
+# Chooser: palettes category rmmv. Options file rmmv_options.txt.
+# Active set when this was written: tileset SF_Outside, tab b.
+# A tileset png is a sheet. The page atlas is a different 43-tile sheet. See legend.pdl.
+#
+# FOLDER | name | file count
+FOLDER | animations | 11
+FOLDER | battlebacks1 | 13
+FOLDER | battlebacks2 | 11
+FOLDER | characters | 26
+FOLDER | faces | 10
+FOLDER | parallaxes | 9
+FOLDER | sv_actors | 3
+FOLDER | sv_enemies | 22
+FOLDER | system | 13
+FOLDER | tilesets | 31
+FOLDER | titles1 | 1
+FOLDER | titles2 | 1
+#
+# SHEET | file | role
+SHEET | Outside_A1.png | water and autotiles
+SHEET | Outside_A2.png | ground. Snow cell is x=0 y=480, 48px.
+SHEET | Outside_A3.png | roofs
+SHEET | Outside_A4.png | walls
+SHEET | Outside_A5.png | ground details
+SHEET | Outside_B.png | objects
+SHEET | Outside_C.png | objects
+SHEET | Inside_A1.png | inside floors
+SHEET | Inside_A2.png | inside floors
+SHEET | Inside_A4.png | inside walls
+SHEET | Inside_A5.png | inside details
+SHEET | Inside_B.png | inside objects
+SHEET | Inside_C.png | inside objects
+SHEET | Dungeon_A1.png | dungeon floors
+SHEET | Dungeon_A2.png | dungeon floors
+SHEET | Dungeon_A4.png | dungeon walls
+SHEET | Dungeon_A5.png | dungeon details
+SHEET | Dungeon_B.png | dungeon objects
+SHEET | Dungeon_C.png | dungeon objects
+SHEET | SF_Outside_A3.png | SF roofs
+SHEET | SF_Outside_A4.png | SF walls
+SHEET | SF_Outside_A5.png | SF details
+SHEET | SF_Outside_B.png | SF objects
+SHEET | SF_Outside_C.png | SF objects
+SHEET | SF_Inside_A4.png | SF inside walls
+SHEET | SF_Inside_B.png | SF inside objects
+SHEET | SF_Inside_C.png | SF inside objects
+SHEET | World_A1.png | world water
+SHEET | World_A2.png | world ground. Bottom band is snow fields and snow mountains.
+SHEET | World_B.png | world objects
+SHEET | World_C.png | world objects
+#
+# TILE | role | file | x | y | w | h
+TILE | snow-ground | Outside_A2.png | 0 | 480 | 48 | 48
+# This file names every tileset png in the RTP folder. It does not name every character or face file.
