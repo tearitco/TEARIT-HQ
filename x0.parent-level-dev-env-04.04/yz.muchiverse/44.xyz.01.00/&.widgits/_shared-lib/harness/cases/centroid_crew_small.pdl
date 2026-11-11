@@ -1,0 +1,273 @@
+# centroid crew: the blueprint checker, the chapel projection, the pet FSM, and the dig-loop rows.
+# Teropoly talk/trade/buy/build are not reimplemented here.
+RESULTS | ../results/centroid_crew.txt
+ENV | LC_ALL | C
+
+CASE | crew
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew
+RUN | ./bp_op | check | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl
+EXPECT_EXIT | 0 | check-ok
+EXPECT_OUT | islands=12 buildings=12 waypoints=16 | check-counts
+RUN | ./bp_op | break | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | void | void.pdl
+EXPECT_EXIT | 0 | break-void-writes
+RUN | ./bp_op | check | void.pdl
+EXPECT_EXIT | 2 | void-refused
+EXPECT_OUT | waypoint 9 outside island P | void-says-why
+RUN | ./bp_op | break | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | close | close.pdl
+RUN | ./bp_op | check | close.pdl
+EXPECT_EXIT | 2 | close-refused
+EXPECT_OUT | small island S1 too close to A | close-says-why
+RUN | ./bp_op | break | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | zone | zone.pdl
+RUN | ./bp_op | check | zone.pdl
+EXPECT_EXIT | 2 | zone-refused
+EXPECT_OUT | zone mutant sits on small island S1 | zone-says-why
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | chapel | chapel.pdl
+EXPECT_EXIT | 0 | gen-ok
+EXPECT_OUT | cells=73 jobs=73 | chapel-count
+RUN | ./bp_op | verify | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | chapel | chapel.pdl
+EXPECT_EXIT | 0 | verify-same
+RUN | ./crew_op | run | chapel.pdl | ledger.txt
+EXPECT_EXIT | 0 | crew-run
+EXPECT_OUT | CREW done placed=73 | crew-finished
+RUN | ./crew_op | audit | chapel.pdl | ledger.txt
+EXPECT_EXIT | 0 | audit-ok
+EXPECT_OUT | AUDIT placed=73 | audit-count
+RUN | ./crew_op | mineplan | chapel.pdl | jobs.txt
+EXPECT_EXIT | 0 | mineplan-ok
+EXPECT_OUT | MINEPLAN wrote=9 | floor-stones-for-the-dig-loop
+EXPECT_HAS | jobs.txt | DESIGNATE\p0\pchapel\p36\p32 | first-floor-cell-is-a-dig-mark
+WRITE | bad.txt | EVENT\p0\pp1\pplace\pstone\p1,1,99\pok
+RUN | ./crew_op | audit | chapel.pdl | bad.txt
+EXPECT_EXIT | 2 | bad-place-refused
+EXPECT_OUT | place is not a job | bad-place-says-why
+RUN | ./bp_op | count | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl
+EXPECT_EXIT | 0 | land-count
+EXPECT_OUT | LAND columns=1940 volume=25566 buildings=1859 | land-numbers
+EXPECT_HAS | ledger.txt | EVENT\p1\pp1\pplace\pstone\p36,32,0\pok | first-life-row
+WRITE | old.txt | PLACE \p p1 \p 36 \p 32 \p 0 \p stone
+RUN | ./crew_op | audit | chapel.pdl | old.txt
+EXPECT_EXIT | 2 | old-dialect-refused
+EXPECT_OUT | not a life row | old-dialect-says-why
+
+CASE | pet
+SCRATCH |
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-pet
+MKDIR | pet
+WRITE | pet/jobs.pdl | JOB \p place \p 2 \p 0 \p 0 \p stone
+RUN | ./crew_op | place | $T/pet
+EXPECT_EXIT | 2 | place-before-walk-refused
+EXPECT_OUT | not beside the cell | place-says-why
+RUN | ./crew_op | walk | $T/pet
+EXPECT_EXIT | 0 | walk-1
+EXPECT_OUT | WALK 1,0 goal=2,0 | stepped
+RUN | ./crew_op | walk | $T/pet
+EXPECT_EXIT | 0 | walk-2
+EXPECT_OUT | WALK 2,0 goal=2,0 | on-the-cell
+RUN | ./crew_op | place | $T/pet
+EXPECT_EXIT | 0 | placed
+EXPECT_OUT | PLACE 2,0,0 stone | laid
+EXPECT_HAS | pet/life.txt | EVENT\p3\pp1\pplace\pstone\p2,0,0\pok | place-is-a-life-row
+EXPECT_EXISTS | pet/pet.ppm | the-pet-has-a-picture
+
+CASE | fountain
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-fountain
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-fountain
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | fountain | fountain.pdl
+EXPECT_EXIT | 0 | fountain-gen
+EXPECT_OUT | cells=12 jobs=12 | fountain-count
+MKDIR | fount
+RUN | cp | fountain.pdl | fount/jobs.pdl
+EXPECT_EXIT | 0 | jobs-copied
+RUN | ./crew_op | raise | $T/fount
+EXPECT_EXIT | 0 | fountain-raised
+EXPECT_OUT | RAISE placed=12 | fountain-placed
+RUN | ./crew_op | audit | fount/jobs.pdl | fount/life.txt
+EXPECT_EXIT | 0 | fountain-audit
+EXPECT_OUT | AUDIT placed=12 | fountain-audit-count
+EXPECT_HAS | fount/life.txt | place\pdoor\p42,41,1\pok | the-door-was-placed
+EXPECT_EXISTS | fount/plan.ppm | the-fountain-has-a-plan
+
+CASE | under
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-under
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-under
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | under:S6 | under.pdl
+EXPECT_EXIT | 0 | under-gen
+EXPECT_OUT | cells=11 jobs=11 | under-count
+RUN | ./bp_op | verify | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | under:S6 | under.pdl
+EXPECT_EXIT | 0 | under-verify
+MKDIR | sky
+RUN | cp | under.pdl | sky/jobs.pdl
+RUN | ./crew_op | raise | $T/sky
+EXPECT_EXIT | 0 | under-raised
+EXPECT_OUT | RAISE placed=11 | under-placed
+RUN | ./crew_op | audit | sky/jobs.pdl | sky/life.txt
+EXPECT_EXIT | 0 | under-audit
+EXPECT_OUT | AUDIT placed=11 | under-audit-count
+EXPECT_HAS | sky/life.txt | place\pearth\p52,1,20\pok | the-point-was-placed
+EXPECT_EXISTS | sky/plan.ppm | the-underside-has-a-plan
+
+CASE | under_s3
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-s3
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-s3
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | under:S3 | s3.pdl
+EXPECT_EXIT | 0 | s3-gen
+EXPECT_OUT | cells=38 jobs=38 | s3-count
+MKDIR | s3
+RUN | cp | s3.pdl | s3/jobs.pdl
+RUN | ./crew_op | raise | $T/s3
+EXPECT_EXIT | 0 | s3-raised
+EXPECT_OUT | RAISE placed=38 | s3-placed
+RUN | ./crew_op | audit | s3/jobs.pdl | s3/life.txt
+EXPECT_EXIT | 0 | s3-audit
+EXPECT_OUT | AUDIT placed=38 | s3-audit-count
+EXPECT_HAS | s3/life.txt | place\pearth\p3,27,-11\pok | the-s3-point-was-placed
+EXPECT_EXISTS | s3/plan.ppm | the-s3-plan
+
+CASE | bridge
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-bridge
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-bridge
+RUN | ./bp_op | gen | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | bridge | bridge.pdl
+EXPECT_EXIT | 0 | bridge-gen
+EXPECT_OUT | cells=16 jobs=16 | bridge-count
+MKDIR | span
+RUN | cp | bridge.pdl | span/jobs.pdl
+RUN | ./crew_op | raise | $T/span
+EXPECT_EXIT | 0 | bridge-raised
+EXPECT_OUT | RAISE placed=16 | bridge-placed
+RUN | ./crew_op | audit | span/jobs.pdl | span/life.txt
+EXPECT_EXIT | 0 | bridge-audit
+EXPECT_OUT | AUDIT placed=16 | bridge-audit-count
+EXPECT_HAS | span/life.txt | place\proof\p46,18,11\pok | the-last-roof-was-placed
+EXPECT_EXISTS | span/plan.ppm | the-bridge-has-a-plan
+
+CASE | mech
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-mech
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-mech
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | bridge | $T/st | $T/page
+EXPECT_EXIT | 0 | mech-ran
+EXPECT_OUT | MECH slice=bridge jobs=16 cells=8 | mech-bridge
+EXPECT_HAS | page/projection.txt | PROJECTION \p bridge \p world 43,17 | the-page-names-the-world
+EXPECT_HAS | st/life.txt | place\proof\p46,18,11\pok | the-factory-placed-the-roof
+
+CASE | stage
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-stage
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-stage
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech-stage
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | stage | $T/st | $T/page
+EXPECT_EXIT | 0 | stage-ran
+EXPECT_OUT | MECH slice=stage jobs=32 cells=12 | stage-count
+EXPECT_HAS | page/projection.txt | PROJECTION \p stage \p world 29,28 | the-stage-names-the-world
+EXPECT_HAS | st/life.txt | place\proof\p32,30,2\pok | the-factory-placed-the-stage-roof
+
+CASE | hut
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-hut
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-hut
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech-hut
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | hut | $T/st | $T/page
+EXPECT_EXIT | 0 | hut-ran
+EXPECT_OUT | MECH slice=hut jobs=41 cells=9 | hut-count
+EXPECT_HAS | page/projection.txt | PROJECTION \p hut \p world 8,37 | the-hut-names-the-world
+EXPECT_HAS | st/life.txt | place\proof\p10,39,4\pok | the-factory-placed-the-hut-roof
+
+CASE | roster
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-roster
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-roster
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech-roster
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | mill | $T/mill | $T/mill-page
+EXPECT_EXIT | 0 | mill-ran
+EXPECT_OUT | MECH slice=mill jobs=62 cells=12 | mill-count
+EXPECT_HAS | mill/life.txt | place\proof\p49,40,5\pok | the-mill-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | houses_B2 | $T/b2 | $T/b2-page
+EXPECT_EXIT | 0 | b2-ran
+EXPECT_OUT | MECH slice=houses_B2 jobs=76 cells=16 | b2-count
+EXPECT_HAS | b2/life.txt | place\proof\p39,39,5\pok | the-b2-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | houses_B1 | $T/b1 | $T/b1-page
+EXPECT_EXIT | 0 | b1-ran
+EXPECT_OUT | MECH slice=houses_B1 jobs=132 cells=32 | b1-count
+EXPECT_HAS | b1-page/projection.txt | place\proof\p53,39,5\pok | the-b1-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | east_stair | $T/stair | $T/stair-page
+EXPECT_EXIT | 0 | stair-ran
+EXPECT_OUT | MECH slice=east_stair jobs=110 cells=10 | stair-count
+EXPECT_HAS | stair/life.txt | place\proof\p60,31,10\pok | the-stair-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | cathedral | $T/cath | $T/cath-page
+EXPECT_EXIT | 0 | cath-ran
+EXPECT_OUT | MECH slice=cathedral jobs=752 cells=112 | cath-count
+EXPECT_HAS | cath-page/projection.txt | place\proof\p59,15,26\pok | the-cathedral-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | cathedral_spire_main | $T/spire | $T/spire-page
+EXPECT_EXIT | 0 | spire-ran
+EXPECT_OUT | MECH slice=cathedral_spire_main jobs=121 cells=9 | spire-count
+EXPECT_HAS | spire/life.txt | place\proof\p54,13,40\pok | the-spire-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | cathedral_spires | $T/spires | $T/spires-page
+EXPECT_EXIT | 0 | spires-ran
+EXPECT_OUT | MECH slice=cathedral_spires jobs=432 cells=112 | spires-count
+EXPECT_HAS | spires-page/projection.txt | place\proof\p59,15,34\pok | the-spires-roof
+
+CASE | routes
+SCRATCH |
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-routes
+RUN | ./crew_op | bind | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | $HOUSE
+EXPECT_EXIT | 0 | bind-real-verbs
+EXPECT_OUT | BIND talk=deskopoly talk | talk-stays-teropoly
+EXPECT_OUT | BIND offer=deskopoly offer | trade-stays-teropoly
+EXPECT_OUT | BIND buy=deskopoly buy | buy-stays-teropoly
+EXPECT_OUT | BIND build=deskopoly build | houses-stay-teropoly
+EXPECT_OUT | BIND mine=df-hq dig | mine-stays-the-dig-tick
+EXPECT_OUT | BIND farm=OPEN | farm-is-not-invented
+EXPECT_OUT | BIND haul=OPEN | haul-is-not-invented
+EXPECT_OUT | KIND build=table | build-is-the-table
+EXPECT_OUT | KIND place=world | place-is-the-world
+WRITE | bad-route.pdl | ROUTE \p build \p table \p crew \p place \p -
+RUN | ./crew_op | bind | bad-route.pdl | $HOUSE
+EXPECT_EXIT | 2 | table-owned-by-crew-refused
+EXPECT_OUT | table verb cannot be owned by the crew | table-owned-by-crew-says-why
+WRITE | talk.pdl | JOB \p talk \p 0 \p 0 \p 0 \p p2
+RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | talk.pdl | calls.txt
+EXPECT_EXIT | 0 | talk-is-a-call
+EXPECT_OUT | LIFE talk handed-off | talk-names-the-owner
+EXPECT_HAS | calls.txt | EVENT\p0\pp1\ptalk\pp2\p-\phanded-off | talk-is-one-grammar
+WRITE | farm.pdl | JOB \p farm \p 0 \p 0 \p 0 \p bed
+RUN | ./crew_op | call | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | farm.pdl | farm.txt
+EXPECT_EXIT | 2 | farm-refused
+EXPECT_OUT | farm has no owner yet | farm-says-why
+MKDIR | fake/@.apps/deskopoly
+MKDIR | fake/@.apps/df-hq
+WRITE | fake/@.apps/df-hq/verbs.pdl | VERB \p dig \p yes \p ui \p x y \p dig
+WRITE | fake/@.apps/deskopoly/verbs.pdl | VERB \p talk \p no \p ui \p - \p sentences
+RUN | ./crew_op | bind | $HOUSE/@.apps/centroid-hq/data/crew.verbs.pdl | $T/fake
+EXPECT_EXIT | 2 | missing-offer-refused
+EXPECT_OUT | BIND offer missing VERB offer | missing-offer-says-why

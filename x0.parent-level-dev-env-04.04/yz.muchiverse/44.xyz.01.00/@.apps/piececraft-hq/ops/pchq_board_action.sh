@@ -278,6 +278,23 @@ case "$VERB" in
         printf 'CONFIRM_SET_DESK:%s\n' "$NEW" >> "$PCHQ/pieces/system/widget_cmds/inbox.txt"
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
+    copypage)
+        # "copy page": the same folder copy as newpage, without blanking the cells, the map, or the events.
+        # The open page stays put. The copy is a new desk id page_N, listed in game.pdl.
+        PCHQ="$(real_pchq)"
+        WS="$PCHQ/pieces/world_01/state.txt"
+        MAPID="$(sed -n 's/^map_id=//p' "$WS" | head -n1)"; CUR="$(sed -n 's/^desk_id=//p' "$WS" | head -n1)"
+        BOOK="$PCHQ/pieces/system/maps/$MAPID"
+        [ -n "$MAPID" ] && [ -f "$BOOK/game.pdl" ] || exit 0
+        [ -d "$BOOK/$CUR" ] || exit 0
+        N=2; while [ -e "$BOOK/page_$N" ]; do N=$((N + 1)); done
+        NEW="page_$N"
+        cp -a "$BOOK/$CUR" "$BOOK/$NEW" || exit 1
+        COUNT="$(sed -n 's/^GAME *| *n_desks *| *//p' "$BOOK/game.pdl" | head -n1)"; COUNT=$((COUNT + 1))
+        sed -i "s/^\(GAME *| *n_desks *| *\).*/\1$COUNT/" "$BOOK/game.pdl"
+        printf 'GAME         | desk_%s_id          | %s\nGAME         | desk_%s_label       | %s\n' "$COUNT" "$NEW" "$COUNT" "$NEW" >> "$BOOK/game.pdl"
+        printf 'open=\n' > "$PKG_STATE/menu.txt"
+        ;;
     newbook)
         # "+ new book": an EMPTY book (map) with one empty page "start", then switch to it (the same inbox command the File menu uses).
         PCHQ="$(real_pchq)"

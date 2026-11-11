@@ -9,3 +9,8 @@ HARNESS | roof   | test | ACTION | roof            | @.apps/centroid/ops/+x/cent
 HARNESS | bridge | test | ACTION | bridge          | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply bridge ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp the bridge
 HARNESS | all    | test | ACTION | all             | @.apps/centroid/ops/+x/centroid_parts_op.+x | apply all    ${CELLS} ${APP}/parts/centroid.parts.pdl | page | no  | stamp floor, wall, door, roof and bridge in that order
 HARNESS | clear  | test | ACTION | clear           | @.apps/centroid/ops/+x/centroid_clear_op.+x |                  ${CELLS}                                | page | yes | put the page back to a flat 16x16 and drop the door events
+# small keeps the cases that matched the 72x52 island. live points at the cases we are allowed to change.
+HARNESS | small_enter | small | CASE | enter saved | enter_house_small | - | - | no | the enter proof saved with the small island
+HARNESS | small_crew  | small | CASE | crew saved  | centroid_crew_small | - | - | no | the crew proof saved with the small island
+HARNESS | live_enter  | live  | CASE | enter house | enter_house       | - | - | no | the enter proof live may change
+HARNESS | live_crew   | live  | CASE | crew        | centroid_crew     | - | - | no | the crew proof live may change

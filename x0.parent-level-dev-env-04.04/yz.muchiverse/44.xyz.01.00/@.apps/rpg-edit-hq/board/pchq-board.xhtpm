@@ -50,6 +50,7 @@
       <repeat count="${n_desk_opts}" bind="d">
         <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-page" label="${d.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
       </repeat>
+      <item id="pg-copy" class="pchq-menu-row dropdown-child" target_id="tb-page" label="copy page" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'copypage'"/>
       <item id="tp-page-0" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_0_label}" action="${page_post_0_act}" show="${page_post_0_label}"/>
       <item id="tp-page-1" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_1_label}" action="${page_post_1_act}" show="${page_post_1_label}"/>
       <item id="tp-page-2" class="pchq-menu-row dropdown-child" target_id="tb-page" label="${page_post_2_label}" action="${page_post_2_act}" show="${page_post_2_label}"/>
