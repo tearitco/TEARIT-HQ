@@ -480,8 +480,19 @@ static int range_key(int key, const char *froot) {
         bump_screen_changed(project_root);
         return 1;
     }
-    /* z/x stay the placer's z-down/up keys when no ref is being typed */
-    if (key > 0 && key < 128 && isalnum(key) && !(!buf[0] && (key == 'z' || key == 'x'))) {
+    /* z/x/c/v and w/a/s/d are movement, not a cell ref. Capturing them
+     * (and then capturing z/x too, once the buffer held a letter) made
+     * mode 0 arrows work and the map keys and the z keys do nothing. */
+    {
+        int move = (key == 'w' || key == 'a' || key == 's' || key == 'd' || key == 'W' || key == 'A' || key == 'S' || key == 'D'
+                    || key == 'z' || key == 'x' || key == 'c' || key == 'v');
+        int ref_started = buf[0] && strpbrk(buf, "0123456789");
+        if (move && !ref_started) {
+            if (buf[0]) { buf[0] = '\0'; SAVE_BUF(); }
+            return 0;
+        }
+    }
+    if (key > 0 && key < 128 && isalnum(key)) {
         if (gj_buf_append(buf, sizeof(buf), (char)key)) { SAVE_BUF(); bump_screen_changed(project_root); }
         return 1;
     }
@@ -1154,11 +1165,14 @@ static int handle_one_key(int key) {
      * (civ-txt/tactics-txt) silently no-ops the position write (fopen
      * fails, write_kv returns) but still updates board-viewer's own
      * local current_z, so this is harmless there too. */
-    if (focused_project_root[0] && (key == key_z_down || key == key_z_up)) {
+    /* Mode 0 has no separate camera height: c/v move the same z as z/x.
+     * In 3D, c/v stay the camera-height keys further down. */
+    if (focused_project_root[0] && (key == key_z_down || key == key_z_up ||
+        (read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0 && (key == key_cam_down || key == key_cam_up)))) {
         char xelector_state_path[PATH_BUF];
         snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
         int xz = read_kv_int(xelector_state_path, "pos_z", 0);
-        xz += (key == key_z_up) ? 1 : -1;
+        xz += (key == key_z_up || key == key_cam_up) ? 1 : -1;
         char view_pdl_z[PATH_BUF], mani_z[PATH_BUF];      /* a map with hung (negative z) levels lets the xelector go down into them: its view.pdl sets xelector_z_min, in levels relative to the floor (board_manifest floor_z) */
         snprintf(view_pdl_z, sizeof(view_pdl_z), "%s/pieces/system/view.pdl", focused_project_root);
         snprintf(mani_z, sizeof(mani_z), "%s/pieces/system/board_manifest.txt", focused_project_root);

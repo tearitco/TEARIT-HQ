@@ -1238,6 +1238,35 @@ static void p2d_minimap(unsigned char *px, int W, int H, int cols, int rows, con
 }
 
 /* A desk with no map.png (centroid live) still has cells.txt. Mode 0's letter grid is not that page, so the corner map is the page: the whole land, scaled, same fit as the 3D map and as rpg-space with minimap_follow 0. */
+/* 5x7 glyphs for the line under the 2D minimap. Bits are row-major, 5 wide. */
+static const unsigned char p2d_font[][7] = {
+    {0x0E,0x11,0x13,0x15,0x19,0x11,0x0E}, {0x04,0x0C,0x04,0x04,0x04,0x04,0x0E},
+    {0x0E,0x11,0x01,0x02,0x04,0x08,0x1F}, {0x1F,0x02,0x04,0x02,0x01,0x11,0x0E},
+    {0x02,0x06,0x0A,0x12,0x1F,0x02,0x02}, {0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E},
+    {0x06,0x08,0x10,0x1E,0x11,0x11,0x0E}, {0x1F,0x01,0x02,0x04,0x08,0x08,0x08},
+    {0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E}, {0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C},
+    {0x1F,0x01,0x02,0x04,0x08,0x10,0x1F}, {0x00,0x00,0x04,0x00,0x04,0x00,0x00},
+    {0x00,0x00,0x00,0x1F,0x00,0x00,0x00}, {0x11,0x11,0x0A,0x04,0x04,0x04,0x04},
+    {0x0E,0x11,0x11,0x11,0x1F,0x11,0x11}, {0x0E,0x11,0x10,0x10,0x10,0x11,0x0E},
+};
+static int p2d_font_i(char ch) {
+    if (ch >= '0' && ch <= '9') return ch - '0';
+    if (ch == 'z') return 10; if (ch == ':') return 11; if (ch == '-') return 12;
+    if (ch == 'v') return 13; if (ch == 'a') return 14; if (ch == 'c') return 15;
+    return -1;
+}
+static void p2d_hud_line(unsigned char *px, int W, int H, int x, int y, const char *s) {
+    for (int i = 0; s[i]; i++) {
+        int g = p2d_font_i(s[i]); if (g < 0) { x += 4; continue; }
+        for (int row = 0; row < 7; row++) for (int col = 0; col < 5; col++) {
+            if (!(p2d_font[g][row] & (0x10 >> col))) continue;
+            int sx = x + col, sy = y + row; if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
+            unsigned char *p = px + ((size_t)sy * W + sx) * 4; p[0] = 255; p[1] = 230; p[2] = 80; p[3] = 255;
+        }
+        x += 6;
+    }
+}
+
 static void p2d_cells_minimap(unsigned char *px, int W, int H, int view_x, int view_y, int view_cols, int view_rows, int selx, int sely) {
     char mm[16]; if (view_pdl_get("view_2d_minimap", mm, sizeof(mm)) && atoi(mm) == 0) return;
     char dd[PATH_BUF], path[PATH_BUF]; if (!desk_dir(dd, sizeof(dd))) return;
@@ -1805,6 +1834,14 @@ int main(void) {
     }
     }
     if ((map_ok == 2 || !map_ok) && !side_mode) p2d_cells_minimap(px, W, H, ox, oy, cols, rows, sel_x, sel_y);
+    if (!side_mode) {
+        /* Same number the 3D HUD prints: levels above the floor when the manifest has one. */
+        char mani[PATH_BUF]; snprintf(mani, sizeof(mani), "%s/pieces/system/board_manifest.txt", focused_root[0] ? focused_root : fpr);
+        int fz = read_kv_int(mani, "floor_z", -1);
+        int shown = (fz >= 0) ? cur_z - fz : cur_z;
+        char lab[48]; snprintf(lab, sizeof(lab), "z:%d", shown);
+        p2d_hud_line(px, W, H, W - 8 - (int)strlen(lab) * 6, 8 + 144 + 6, lab);
+    }
 
     /* --- xelector: 2px inset border, bright accent ---
      * side_mode: honestly skipped for v1 - the xelector has no real
