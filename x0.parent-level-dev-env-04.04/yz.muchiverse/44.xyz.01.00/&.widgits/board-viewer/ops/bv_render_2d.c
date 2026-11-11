@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <setjmp.h>
 #include <png.h>
+#include "bv_minimap_fit.h"   /* same corner-map fit as the 3D view: a page wider than the corner scales down */
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
@@ -1219,8 +1220,12 @@ static void p2d_scene(int cols, int rows, float *x0, float *y0, float *x1, float
 static void p2d_minimap(unsigned char *px, int W, int H, int cols, int rows, const unsigned char *map_px, int map_w, int map_h, int map_tile, float vx0, float vy0, float vx1, float vy1, int selx, int sely) {
     float sx0, sy0, sx1, sy1; p2d_scene(cols, rows, &sx0, &sy0, &sx1, &sy1);
     if (vx0 <= sx0 + 0.01f && vy0 <= sy0 + 0.01f && vx1 >= sx1 - 0.01f && vy1 >= sy1 - 0.01f) return;      /* the whole scene is on screen: no minimap */
-    float sw = sx1 - sx0, sh = sy1 - sy0; int mw, mh; float sc = 200.0f / sw; if (150.0f / sh < sc) sc = 150.0f / sh; if (sc > 8.0f) sc = 8.0f; if (sc < 1.0f) sc = 1.0f; mw = (int)(sw * sc); mh = (int)(sh * sc);
-    if (mw + 12 > W || mh + 12 > H) return; int ox = W - mw - 8, oy = 8;
+    /* rpg-space keeps the whole land in the corner (minimap_follow 0, one max side). A floor of 1 px per cell made a 504-wide page ask for 504 px and then this function returned. */
+    float sw = sx1 - sx0, sh = sy1 - sy0; if (sw < 1.0f) sw = 1.0f; if (sh < 1.0f) sh = 1.0f;
+    int max_px = 200; if (W > 24 && W - 16 < max_px) max_px = W - 16; if (H > 24 && H - 16 < max_px) max_px = H - 16; if (max_px < 8) return;
+    int cells_w = (int)ceilf(sw), cells_h = (int)ceilf(sh), mw, mh, cellpx = 0;
+    bv_minimap_box(cells_w, cells_h, 8, max_px, &mw, &mh, &cellpx); float sc = (float)mw / sw;
+    int ox = W - mw - 8, oy = 8;
     for (int y = -2; y < mh + 2; y++) for (int x = -2; x < mw + 2; x++) { unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4; int edge = x < 0 || y < 0 || x >= mw || y >= mh; d[0] = edge ? 200 : 10; d[1] = edge ? 200 : 10; d[2] = edge ? 205 : 16; d[3] = 255; }
     for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) { float wx = sx0 + (x + 0.5f) / sc, wy = sy0 + (y + 0.5f) / sc; unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4;
         if (wx >= 0 && wy >= 0 && wx < cols && wy < rows && map_px && map_tile > 0) { int mx = (int)(wx * map_tile), my = (int)(wy * map_tile); if (mx < map_w && my < map_h) { const unsigned char *s = map_px + ((size_t)my * map_w + mx) * 4; if (s[3]) { d[0] = s[0] / 2 + 20; d[1] = s[1] / 2 + 20; d[2] = s[2] / 2 + 20; } } }
@@ -1229,7 +1234,72 @@ static void p2d_minimap(unsigned char *px, int W, int H, int cols, int rows, con
     int rx0 = ox + (int)((vx0 - sx0) * sc), ry0 = oy + (int)((vy0 - sy0) * sc), rx1 = ox + (int)((vx1 - sx0) * sc), ry1 = oy + (int)((vy1 - sy0) * sc);
     for (int x = rx0; x <= rx1; x++) for (int e = 0; e < 2; e++) { int y = e ? ry1 : ry0; if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 70; d[1] = 255; d[2] = 255; d[3] = 255; } }
     for (int y = ry0; y <= ry1; y++) for (int e = 0; e < 2; e++) { int x = e ? rx1 : rx0; if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 70; d[1] = 255; d[2] = 255; d[3] = 255; } }
-    if (selx >= 0 && sely >= 0) { int dx = ox + (int)((selx + 0.5f - sx0) * sc), dy = oy + (int)((sely + 0.5f - sy0) * sc); for (int y = dy - 1; y <= dy + 1; y++) for (int x = dx - 1; x <= dx + 1; x++) if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 240; d[1] = 40; d[2] = 40; d[3] = 255; } }
+    if (selx >= 0 && sely >= 0) { int dx0, dy0; bv_minimap_dot((double)selx + 0.5, (double)sx0, cells_w, mw, cellpx, &dx0); bv_minimap_dot((double)sely + 0.5, (double)sy0, cells_h, mh, cellpx, &dy0); int dx = ox + dx0, dy = oy + dy0; for (int y = dy - 1; y <= dy + 1; y++) for (int x = dx - 1; x <= dx + 1; x++) if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 240; d[1] = 40; d[2] = 40; d[3] = 255; } }
+}
+
+/* A desk with no map.png (centroid live) still has cells.txt. Mode 0's letter grid is not that page, so the corner map is the page: the whole land, scaled, same fit as the 3D map and as rpg-space with minimap_follow 0. */
+static void p2d_cells_minimap(unsigned char *px, int W, int H, int view_x, int view_y, int view_cols, int view_rows, int selx, int sely) {
+    char mm[16]; if (view_pdl_get("view_2d_minimap", mm, sizeof(mm)) && atoi(mm) == 0) return;
+    char dd[PATH_BUF], path[PATH_BUF]; if (!desk_dir(dd, sizeof(dd))) return;
+    snprintf(path, sizeof(path), "%s/cells.txt", dd);
+    struct stat sb; if (stat(path, &sb) != 0) return;
+    static unsigned char *floor; static int fw, fh; static time_t mt; static off_t sz;
+    if (!floor || mt != sb.st_mtime || sz != sb.st_size) {
+        FILE *f = host_fopen(path, "r"); if (!f) return;
+        char *line = malloc(256 * 1024); if (!line) { fclose(f); return; }
+        int w = 0, h = 0, in = 0, row = 0; unsigned char *nf = NULL;
+        while (fgets(line, 256 * 1024, f)) {
+            if (!in) {
+                if (!strncmp(line, "width=", 6)) w = atoi(line + 6);
+                else if (!strncmp(line, "height=", 7)) h = atoi(line + 7);
+                else if (!strncmp(line, "cells", 5)) {
+                    if (w < 1 || h < 1 || w > 8192 || h > 8192) break;
+                    nf = calloc((size_t)w * (size_t)h, 1); if (!nf) break; in = 1;
+                }
+                continue;
+            }
+            if (row >= h) break;
+            const char *q = line; int col = 0;
+            while (col < w && *q && *q != '\n') {
+                int F = 0, Wl = 0; if (sscanf(q, "%d,%d", &F, &Wl) < 1) break;
+                nf[(size_t)row * w + col] = (Wl > 0) ? 255 : (unsigned char)(F < 0 ? 0 : F > 254 ? 254 : F);
+                col++;
+                const char *sp = strchr(q, ' '); if (!sp) break; q = sp + 1;
+            }
+            row++;
+        }
+        free(line); fclose(f);
+        if (!nf || row < 1) { free(nf); return; }
+        free(floor); floor = nf; fw = w; fh = h; mt = sb.st_mtime; sz = sb.st_size;
+    }
+    if (view_cols >= fw && view_rows >= fh) return;
+    int max_px = 200; if (W > 24 && W - 16 < max_px) max_px = W - 16; if (H > 24 && H - 16 < max_px) max_px = H - 16; if (max_px < 8) return;
+    int mw, mh, cellpx = 0; bv_minimap_box(fw, fh, 8, max_px, &mw, &mh, &cellpx);
+    int ox = W - mw - 8, oy = 8;
+    for (int y = -2; y < mh + 2; y++) for (int x = -2; x < mw + 2; x++) {
+        int sx = ox + x, sy = oy + y; if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
+        unsigned char *d = px + ((size_t)sy * W + sx) * 4; int edge = x < 0 || y < 0 || x >= mw || y >= mh;
+        d[0] = edge ? 200 : 10; d[1] = edge ? 200 : 10; d[2] = edge ? 205 : 16; d[3] = 255;
+    }
+    for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) {
+        int cx = cellpx > 0 ? x / cellpx : (int)((double)x * fw / mw);
+        int cy = cellpx > 0 ? y / cellpx : (int)((double)y * fh / mh);
+        if (cx < 0) cx = 0; if (cy < 0) cy = 0; if (cx >= fw) cx = fw - 1; if (cy >= fh) cy = fh - 1;
+        unsigned char v = floor[(size_t)cy * fw + cx];
+        unsigned char r = 90, g = 150, b = 210;
+        if (v == 255) { r = 150; g = 100; b = 60; }
+        else if (v == 6) { r = 230; g = 236; b = 245; }
+        else if (v == 2) { r = 168; g = 140; b = 84; }
+        else if (v > 0) { r = 70; g = 160; b = 55; }
+        unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4; d[0] = r; d[1] = g; d[2] = b; d[3] = 255;
+    }
+    int rx0, ry0, rx1, ry1;
+    bv_minimap_dot(view_x, 0, fw, mw, cellpx, &rx0); bv_minimap_dot(view_y, 0, fh, mh, cellpx, &ry0);
+    bv_minimap_dot(view_x + view_cols, 0, fw, mw, cellpx, &rx1); bv_minimap_dot(view_y + view_rows, 0, fh, mh, cellpx, &ry1);
+    for (int x = ox + rx0; x <= ox + rx1; x++) for (int e = 0; e < 2; e++) { int y = oy + (e ? ry1 : ry0); if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 70; d[1] = 255; d[2] = 255; } }
+    for (int y = oy + ry0; y <= oy + ry1; y++) for (int e = 0; e < 2; e++) { int x = ox + (e ? rx1 : rx0); if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 70; d[1] = 255; d[2] = 255; } }
+    if (selx >= 0 && sely >= 0) { int dx, dy; bv_minimap_dot((double)selx + 0.5, 0, fw, mw, cellpx, &dx); bv_minimap_dot((double)sely + 0.5, 0, fh, mh, cellpx, &dy); dx += ox; dy += oy;
+        for (int y = dy - 2; y <= dy + 2; y++) for (int x = dx - 2; x <= dx + 2; x++) if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 240; d[1] = 220; d[2] = 40; } }
 }
 
 /* draw every piece over the footprint: screen = ax * world + bx (per axis), clipped to the frame */
@@ -1634,6 +1704,7 @@ int main(void) {
         for (int x = 0; x < W; x++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
     }
     }
+    if (!map_ok && !side_mode) p2d_cells_minimap(px, W, H, ox, oy, cols, rows, sel_x, sel_y);
 
     /* --- xelector: 2px inset border, bright accent ---
      * side_mode: honestly skipped for v1 - the xelector has no real

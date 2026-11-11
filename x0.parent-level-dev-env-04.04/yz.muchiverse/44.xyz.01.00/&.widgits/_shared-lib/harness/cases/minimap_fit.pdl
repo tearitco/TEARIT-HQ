@@ -23,4 +23,13 @@ RUN | /usr/bin/grep | -q | -F | bv_minimap_box | bv_render_3d.c
 EXPECT_EXIT | 0 | the-renderer-calls-the-fit
 RUN | /usr/bin/grep | -q | -F | g_mk.w <= MAX_BOARD_DIM | bv_render_3d.c
 EXPECT_EXIT | 1 | NEGATIVE-the-256-gate-is-gone
+RUN | $T/minimap_fit_op | box | 504 | 364 | 8 | 200
+EXPECT_OUT | box 200 144 0 | mode-0-corner-is-200-px-not-one-pixel-per-cell
+COPY | &.widgits/board-viewer/ops/bv_render_2d.c | bv_render_2d.c
+RUN | /usr/bin/grep | -q | -F | bv_minimap_box | bv_render_2d.c
+EXPECT_EXIT | 0 | mode-0-uses-the-same-fit
+RUN | /usr/bin/grep | -q | -F | if (sc < 1.0f) sc = 1.0f | bv_render_2d.c
+EXPECT_EXIT | 1 | NEGATIVE-mode-0-no-longer-floors-at-one-pixel-per-cell
+RUN | /usr/bin/grep | -q | -F | p2d_cells_minimap | bv_render_2d.c
+EXPECT_EXIT | 0 | mode-0-without-map-png-still-draws-the-page
 CLEAN |
