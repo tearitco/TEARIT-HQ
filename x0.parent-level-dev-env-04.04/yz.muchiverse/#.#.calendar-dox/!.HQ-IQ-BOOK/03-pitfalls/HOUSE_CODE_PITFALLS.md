@@ -1284,3 +1284,11 @@ A manager that spawns a decoder (`ffmpeg ... pipe:1`) and reads its output from 
 **Real cause:** the atlas is 16 columns of 24 px. The first row is terrain (slot 1 grass, 2 dirt path, 3 water, 4 sand). The bottom row, slots 32 and up, is objects. Slot 33 is a sword on a shop counter. `land_op` used 33 as "grass", 32 as dirt, 36 as a road, 41 and 42 as other biomes. The top face of a cell is the floor slot, so every grass cell showed the sword. The cliff face stayed the rock slot, which is why the sides looked like dirt while the top did not.
 
 **Real fix:** terrain floors come from the first row only. Grass 1, roads and building pads 2, pond 3, fields 4, pale ground 5. The frame around a building is still wall slot 36, which is the cliff, and only on the outline. Regenerated `live` from seed 11, scale 7. A count of floor slots after that run: 1 = 49524, 2 = 22000, 3 = 655, 4 = 2404, 5 = 21931, and slot 33 = 0. Do not pick a floor slot from the bottom row because a crop of it looks green.
+
+## 30. The minimap is a 256 board on a page that is bigger (2026-11-11)
+
+**Symptom:** the corner map does not match the camera. The yellow eye sits on the right edge, and the island in the corner is not the island in the view. HUD `pos` can still say 8,8.
+
+**Real cause:** the painted minimap copied cells into `g_mm_r[MAX_BOARD_DIM][MAX_BOARD_DIM]` and skipped the copy when either side was over 256. Page `live` is 504 by 364, so the corner fell back to the glyph board, also cut at 256. The eye was then clamped to that board. One pixel per cell of a 504 page is also bigger than `minimap_max_px` (160), and the old draw returned without painting when the result was wider than the window.
+
+**Real fix:** `bv_minimap_box` scales a page that does not fit. The eye uses the same fraction of the full page and is clamped only when it is actually outside. A 16 desk still uses 8 px per cell (128 px). A 504 by 364 page at max 160 is 160 by 115, and cell 400 is pixel 126, not the right edge. Harness `minimap_fit`. The letter grid stays 256. The camera is not moved.

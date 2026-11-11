@@ -2377,11 +2377,9 @@ static int bv_hud_fps(void) {
 static char (*g_mm_board3d)[MAX_BOARD_DIM][MAX_BOARD_DIM] = NULL;
 static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
 static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
-/* Maker pages draw the cells file, not the glyph board. The corner map follows those cells: grass, wall, and air (the gap under a bridge). */
+/* Maker pages draw the cells file, not the glyph board. The corner map reads those cells directly, including a page wider than MAX_BOARD_DIM. */
 static int g_mm_maker = 0;
-static unsigned char g_mm_r[MAX_BOARD_DIM][MAX_BOARD_DIM];
-static unsigned char g_mm_g[MAX_BOARD_DIM][MAX_BOARD_DIM];
-static unsigned char g_mm_b[MAX_BOARD_DIM][MAX_BOARD_DIM];
+#include "bv_minimap_fit.h"
 /* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
 static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
@@ -2629,10 +2627,8 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         if (cx0 < wx0) cx0 = wx0; if (cx0 > wx0 + ww - vw) cx0 = wx0 + ww - vw; if (cy0 < wy0) cy0 = wy0; if (cy0 > wy0 + wh - vh) cy0 = wy0 + wh - vh;
         wx0 = cx0; wy0 = cy0; ww = vw; wh = vh;
     }
-    int cellpx = px_per_col;
-    while (cellpx > 1 && (ww * cellpx > max_px || wh * cellpx > max_px)) cellpx--;
-
-    int mm_w = ww * cellpx, mm_h = wh * cellpx;
+    int cellpx = 0, mm_w = 0, mm_h = 0;
+    bv_minimap_box(ww, wh, px_per_col, max_px, &mm_w, &mm_h, &cellpx);
     if (mm_w <= 0 || mm_h <= 0 || mm_w > g_fw || mm_h > g_fh) return;
 
     int mm_y = top_anchor ? (pad + text_block_h) : (g_fh - pad - mm_h - text_block_h);
@@ -2662,21 +2658,34 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     bv_fill_rect(mm_x - 2, mm_y - 2, mm_x - 1, mm_y + mm_h + 2, 150, 150, 160);
     bv_fill_rect(mm_x + mm_w + 1, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
 
-    for (int row = 0; row < wh; row++) {
-        for (int col = 0; col < ww; col++) {
-            int bx = wx0 + col, by = wy0 + row;
-            if (bx < 0 || by < 0 || bx >= g_mm_board_w || by >= g_mm_board_h) { bv_fill_rect(mm_x + col * cellpx, mm_y + row * cellpx, mm_x + (col + 1) * cellpx, mm_y + (row + 1) * cellpx, 12, 12, 24); continue; }      /* outside the desk: the map's open space */
-            int lvl = g_mm_maker ? 0 : g_mm_col_top[by][bx];
+    /* One sample per output pixel when the page is bigger than the inset. A cell loop at 1px would be the whole 504 page and then get dropped. */
+    int samples_x = cellpx > 0 ? ww : mm_w, samples_y = cellpx > 0 ? wh : mm_h;
+    for (int row = 0; row < samples_y; row++) {
+        for (int col = 0; col < samples_x; col++) {
+            int bx, by, x0, y0, x1, y1;
+            if (cellpx > 0) {
+                bx = wx0 + col; by = wy0 + row;
+                x0 = mm_x + col * cellpx; y0 = mm_y + row * cellpx; x1 = x0 + cellpx; y1 = y0 + cellpx;
+            } else {
+                bx = wx0 + (int)((double)col * (double)ww / (double)mm_w);
+                by = wy0 + (int)((double)row * (double)wh / (double)mm_h);
+                x0 = mm_x + col; y0 = mm_y + row; x1 = x0 + 1; y1 = y0 + 1;
+            }
             unsigned char r, g, b;
-            if (g_mm_maker) { r = g_mm_r[by][bx]; g = g_mm_g[by][bx]; b = g_mm_b[by][bx]; }
-            else if (lvl < 0) { r = 18; g = 18; b = 22; } /* empty column - near-black */
+            if (bx < 0 || by < 0 || bx >= g_mm_board_w || by >= g_mm_board_h) { r = 12; g = 12; b = 24; }
+            else if (g_mm_maker && g_mk.cells && bx < g_mk.w && by < g_mk.h) {
+                unsigned short fl = g_mk.cells[((size_t)by * (size_t)g_mk.w + (size_t)bx) * 2];
+                unsigned short wl = g_mk.cells[((size_t)by * (size_t)g_mk.w + (size_t)bx) * 2 + 1];
+                if (!fl && !wl) { r = 90; g = 150; b = 210; }
+                else if (wl) { r = 150; g = 100; b = 60; }
+                else { r = 70; g = 160; b = 55; }
+            } else if (!g_mm_col_top || g_mm_col_top[by][bx] < 0 || !g_mm_board3d) { r = 18; g = 18; b = 22; }
             else {
-                char glyph = g_mm_board3d[lvl][by][bx];
+                char glyph = g_mm_board3d[g_mm_col_top[by][bx]][by][bx];
                 const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
                 if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
             }
-            int cx = mm_x + col * cellpx, cy = mm_y + row * cellpx;
-            bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, r, g, b);
+            bv_fill_rect(x0, y0, x1, y1, r, g, b);
         }
     }
 
@@ -2699,7 +2708,8 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
         else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
         else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
-        int cx = mm_x + (e->x - wx0) * cellpx + inset, cy = mm_y + (e->y - wy0) * cellpx + inset;
+        int exi = 0, eyi = 0; bv_minimap_dot((double)e->x, (double)wx0, ww, mm_w, cellpx, &exi); bv_minimap_dot((double)e->y, (double)wy0, wh, mm_h, cellpx, &eyi);
+        int cx = mm_x + exi + (cellpx > 0 ? inset : 0), cy = mm_y + eyi + (cellpx > 0 ? inset : 0);
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
     }
 
@@ -2708,20 +2718,25 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * full cell so it's easy to find even off the player. */
     if (g_xelector_present && g_xelector_x >= wx0 && g_xelector_x < wx0 + ww &&
         g_xelector_y >= wy0 && g_xelector_y < wy0 + wh) {
-        int cx = mm_x + (g_xelector_x - wx0) * cellpx, cy = mm_y + (g_xelector_y - wy0) * cellpx;
-        bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
+        int cx0 = 0, cy0 = 0; bv_minimap_dot((double)g_xelector_x, (double)wx0, ww, mm_w, cellpx, &cx0); bv_minimap_dot((double)g_xelector_y, (double)wy0, wh, mm_h, cellpx, &cy0);
+        int cx = mm_x + cx0, cy = mm_y + cy0, cw = cellpx > 0 ? cellpx : 3;
+        bv_fill_rect(cx, cy, cx + cw, cy + cw, 80, 220, 255);
     }
 
     /* the desk's own edge when the map is bigger than it, and the voxel pieces (asteroids, other ships) as boxes in their average colour, lightened so they read on the dark space */
     if (ww != g_mm_board_w || wh != g_mm_board_h || wx0 != 0 || wy0 != 0) {
-        int ex0 = (0 - wx0) * cellpx, ey0 = (0 - wy0) * cellpx, ex1 = (g_mm_board_w - wx0) * cellpx - 1, ey1 = (g_mm_board_h - wy0) * cellpx - 1;
+        int ex0 = 0, ey0 = 0, ex1 = 0, ey1 = 0;
+        bv_minimap_dot(0, (double)wx0, ww, mm_w, cellpx, &ex0); bv_minimap_dot(0, (double)wy0, wh, mm_h, cellpx, &ey0);
+        bv_minimap_dot((double)g_mm_board_w, (double)wx0, ww, mm_w, cellpx, &ex1); bv_minimap_dot((double)g_mm_board_h, (double)wy0, wh, mm_h, cellpx, &ey1);
         for (int t = ex0; t <= ex1; t++) { if (t >= 0 && t < mm_w) { if (ey0 >= 0 && ey0 < mm_h) bv_fill_rect(mm_x + t, mm_y + ey0, mm_x + t + 1, mm_y + ey0 + 1, 70, 70, 90); if (ey1 >= 0 && ey1 < mm_h) bv_fill_rect(mm_x + t, mm_y + ey1, mm_x + t + 1, mm_y + ey1 + 1, 70, 70, 90); } }
         for (int t = ey0; t <= ey1; t++) { if (t >= 0 && t < mm_h) { if (ex0 >= 0 && ex0 < mm_w) bv_fill_rect(mm_x + ex0, mm_y + t, mm_x + ex0 + 1, mm_y + t + 1, 70, 70, 90); if (ex1 >= 0 && ex1 < mm_w) bv_fill_rect(mm_x + ex1, mm_y + t, mm_x + ex1 + 1, mm_y + t + 1, 70, 70, 90); } }
     }
     for (int vk = 0; vk < g_veh_cnt; vk++) {
         VehPiece *V = &g_veh[vk]; long sr = 0, sg = 0, sb = 0; for (int q = 0; q < V->n; q++) { sr += V->vox[q].r; sg += V->vox[q].g; sb += V->vox[q].b; } if (V->n <= 0) continue;
         int rr = (int)(sr / V->n) + 40, gg = (int)(sg / V->n) + 40, bb = (int)(sb / V->n) + 40; if (rr > 255) rr = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
-        int bx0 = (int)floor((V->x - wx0) * cellpx), by0 = (int)floor((V->y - wy0) * cellpx), bx1 = (int)ceil((V->x + V->sx - wx0) * cellpx), by1 = (int)ceil((V->y + V->sy - wy0) * cellpx);
+        int bx0 = 0, by0 = 0, bx1 = 0, by1 = 0;
+        bv_minimap_dot(V->x, (double)wx0, ww, mm_w, cellpx, &bx0); bv_minimap_dot(V->y, (double)wy0, wh, mm_h, cellpx, &by0);
+        bv_minimap_dot(V->x + V->sx, (double)wx0, ww, mm_w, cellpx, &bx1); bv_minimap_dot(V->y + V->sy, (double)wy0, wh, mm_h, cellpx, &by1);
         if (bx1 <= 0 || by1 <= 0 || bx0 >= mm_w || by0 >= mm_h) continue; if (bx0 < 0) bx0 = 0; if (by0 < 0) by0 = 0; if (bx1 > mm_w) bx1 = mm_w; if (by1 > mm_h) by1 = mm_h; if (bx1 - bx0 < 2) bx1 = bx0 + 2; if (by1 - by0 < 2) by1 = by0 + 2;
         bv_fill_rect(mm_x + bx0, mm_y + by0, mm_x + bx1, mm_y + by1, (unsigned char)rr, (unsigned char)gg, (unsigned char)bb);
     }
@@ -2729,8 +2744,9 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     /* CAMERA: a bright yellow dot (dark outline) at the eye, clamped onto the minimap when the camera is outside the desk, and two yellow rays at +-half the field of view along the ground direction it faces,
      * clipped to the minimap. Drawn under the hero cell so "you" stays visible. */
     if (g_mm_cam_ok) {
-        double ex = (g_mm_cam_x - wx0) * cellpx, ez = (g_mm_cam_z - wy0) * cellpx; int outside = 0;
-        if (ex < 0) { ex = 0; outside = 1; } if (ex > mm_w - 1) { ex = mm_w - 1; outside = 1; } if (ez < 0) { ez = 0; outside = 1; } if (ez > mm_h - 1) { ez = mm_h - 1; outside = 1; }
+        int exi = 0, ezi = 0;
+        int outside = bv_minimap_dot(g_mm_cam_x, (double)wx0, ww, mm_w, cellpx, &exi) | bv_minimap_dot(g_mm_cam_z, (double)wy0, wh, mm_h, cellpx, &ezi);
+        double ex = (double)exi, ez = (double)ezi;
         double half = g_fov_deg * M_PI_LOCAL / 360.0, len = (mm_w > mm_h ? mm_w : mm_h) * 0.55;
         for (int side = -1; side <= 1; side += 2) {
             double a = side * half, ca = cos(a), sa = sin(a), rx = g_mm_cam_dx * ca - g_mm_cam_dz * sa, rz = g_mm_cam_dx * sa + g_mm_cam_dz * ca;
@@ -2746,8 +2762,9 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
     int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
     if (mark_x >= wx0 && mark_x < wx0 + ww && mark_y >= wy0 && mark_y < wy0 + wh) {
-        int cx = mm_x + (mark_x - wx0) * cellpx, cy = mm_y + (mark_y - wy0) * cellpx;
-        bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
+        int hx = 0, hy = 0; bv_minimap_dot((double)mark_x, (double)wx0, ww, mm_w, cellpx, &hx); bv_minimap_dot((double)mark_y, (double)wy0, wh, mm_h, cellpx, &hy);
+        int cx = mm_x + hx, cy = mm_y + hy, cw = cellpx > 0 ? cellpx : 3;
+        bv_fill_rect(cx, cy, cx + cw, cy + cw, 255, 70, 70);
     }
 }
 
@@ -5146,15 +5163,9 @@ static int render_one_frame(void) {
     g_mm_board3d = board3d; g_mm_col_top = col_top;
     g_mm_board_w = board_w; g_mm_board_h = board_h;
     g_mm_maker = 0;
-    if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= MAX_BOARD_DIM && g_mk.h <= MAX_BOARD_DIM && g_mk.cells) {
+    /* The letter grid stays at MAX_BOARD_DIM. A painted page is allowed up to the same 512 the cells loader already accepts, and the corner map scales it. */
+    if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= 512 && g_mk.h <= 512 && g_mk.cells) {
         g_mm_maker = 1; g_mm_board_w = g_mk.w; g_mm_board_h = g_mk.h;
-        for (int my = 0; my < g_mk.h; my++) for (int mx = 0; mx < g_mk.w; mx++) {
-            unsigned short fl = g_mk.cells[((size_t)my * g_mk.w + mx) * 2];
-            unsigned short wl = g_mk.cells[((size_t)my * g_mk.w + mx) * 2 + 1];
-            if (!fl && !wl) { g_mm_r[my][mx] = 90; g_mm_g[my][mx] = 150; g_mm_b[my][mx] = 210; }          /* air, the gap around the bridge */
-            else if (wl) { g_mm_r[my][mx] = 150; g_mm_g[my][mx] = 100; g_mm_b[my][mx] = 60; }
-            else { g_mm_r[my][mx] = 70; g_mm_g[my][mx] = 160; g_mm_b[my][mx] = 55; }
-        }
     }
     { double fl = sqrt(cam.forward.x * cam.forward.x + cam.forward.z * cam.forward.z), dx = cam.forward.x, dz = cam.forward.z;
       if (fl < 0.25) { dx = cam.up.x; dz = cam.up.z; fl = sqrt(dx * dx + dz * dz); }      /* looking straight down: the screen-up direction is the way it faces */

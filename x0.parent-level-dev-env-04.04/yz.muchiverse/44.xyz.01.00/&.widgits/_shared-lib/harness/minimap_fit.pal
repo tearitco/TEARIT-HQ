@@ -1,0 +1,4 @@
+# minimap_fit.pal — a page bigger than 256 still fits, and the eye stays on the page
+exec ./ops/+x/harness_case_op.+x cases/minimap_fit.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/minimap_fit.pdl
+halt

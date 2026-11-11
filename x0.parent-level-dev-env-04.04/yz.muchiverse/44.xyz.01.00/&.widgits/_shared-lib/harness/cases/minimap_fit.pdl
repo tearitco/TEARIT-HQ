@@ -1,0 +1,26 @@
+# A 504-wide page must not be drawn as a 256 board, and a camera at cell 400 must not sit on the right edge.
+RESULTS | ../results/minimap_fit.txt
+ENV | LC_ALL | C
+CASE | fit
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/minimap_fit_op | $HOUSE/&.widgits/board-viewer/ops/minimap_fit_op.c
+EXPECT_EXIT | 0 | the-fit-compiles
+RUN | $T/minimap_fit_op | box | 16 | 16 | 8 | 160
+EXPECT_EXIT | 0 | a-small-desk-still-uses-cells
+EXPECT_OUT | box 128 128 8 | a-16-desk-is-128-px
+RUN | $T/minimap_fit_op | box | 504 | 364 | 8 | 160
+EXPECT_EXIT | 0 | the-live-page-fits
+EXPECT_OUT | box 160 115 0 | the-504-page-is-160-px-not-504-and-not-256
+RUN | $T/minimap_fit_op | dot | 400 | 0 | 504 | 160 | 0
+EXPECT_EXIT | 0 | the-eye-on-the-page
+EXPECT_OUT | dot 126 0 | cell-400-is-inside-not-the-right-edge
+RUN | $T/minimap_fit_op | dot | 8 | 0 | 504 | 160 | 0
+EXPECT_OUT | dot 2 0 | cell-8-stays-near-the-left
+RUN | $T/minimap_fit_op | dot | 600 | 0 | 504 | 160 | 0
+EXPECT_OUT | dot 159 1 | NEGATIVE-only-an-eye-past-the-page-is-clamped
+COPY | &.widgits/board-viewer/ops/bv_render_3d.c | bv_render_3d.c
+RUN | /usr/bin/grep | -q | -F | bv_minimap_box | bv_render_3d.c
+EXPECT_EXIT | 0 | the-renderer-calls-the-fit
+RUN | /usr/bin/grep | -q | -F | g_mk.w <= MAX_BOARD_DIM | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-256-gate-is-gone
+CLEAN |
