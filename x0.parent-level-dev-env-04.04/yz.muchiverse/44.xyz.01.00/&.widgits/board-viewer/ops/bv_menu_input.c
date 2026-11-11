@@ -1207,8 +1207,31 @@ static int handle_one_key(int key) {
         snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
         int selector_x = read_kv_int(xelector_state_path, "pos_x", read_kv_int(state_path, "selector_x", 0));
         int selector_y = read_kv_int(xelector_state_path, "pos_y", read_kv_int(state_path, "selector_y", 0));
-        selector_x = clamp_int(selector_x + dx, 0, MAX_BOARD_DIM - 1);
-        selector_y = clamp_int(selector_y + dy, 0, MAX_BOARD_DIM - 1);
+        /* The letter grid stops at MAX_BOARD_DIM. A cells.txt page can be wider (centroid live is 504). Stopping at 255 parks the 2D cursor in the middle of that minimap. */
+        int lim_x = MAX_BOARD_DIM - 1, lim_y = MAX_BOARD_DIM - 1;
+        {
+            char wst[PATH_BUF], desk[64] = "", map_id[64] = "", cp[PATH_BUF];
+            snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", focused_project_root);
+            read_kv_str(wst, "desk_id", desk, sizeof(desk));
+            read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+            if (desk[0] && map_id[0] && !strchr(desk, '/') && !strchr(map_id, '/')) {
+                snprintf(cp, sizeof(cp), "%s/pieces/system/maps/%s/%s/cells.txt", focused_project_root, map_id, desk);
+                FILE *cf = fopen(cp, "r");
+                if (cf) {
+                    char ln[80]; int cw = 0, ch = 0;
+                    while (fgets(ln, sizeof(ln), cf)) {
+                        if (!strncmp(ln, "width=", 6)) cw = atoi(ln + 6);
+                        else if (!strncmp(ln, "height=", 7)) ch = atoi(ln + 7);
+                        else if (!strncmp(ln, "cells", 5)) break;
+                    }
+                    fclose(cf);
+                    if (cw > 0 && cw <= 8192) lim_x = cw - 1;
+                    if (ch > 0 && ch <= 8192) lim_y = ch - 1;
+                }
+            }
+        }
+        selector_x = clamp_int(selector_x + dx, 0, lim_x);
+        selector_y = clamp_int(selector_y + dy, 0, lim_y);
         write_kv_int(state_path, "selector_x", selector_x);
         write_kv_int(state_path, "selector_y", selector_y);
         write_kv_int(xelector_state_path, "pos_x", selector_x);

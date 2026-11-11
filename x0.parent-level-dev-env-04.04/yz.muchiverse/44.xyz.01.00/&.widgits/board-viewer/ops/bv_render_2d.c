@@ -1346,8 +1346,9 @@ static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, in
     if (zoom < 0 || (zoom == 0 && fw * tpx <= W && fh * tpx <= H)) { draw = W / fw; int dh = H / fh; if (dh < draw) draw = dh; if (draw < 1) draw = 1; }
     else if (zoom > 0) { static const int zp[5] = {125, 150, 200, 300, 400}; if (zoom > 5) zoom = 5; draw = tpx * zp[zoom - 1] / 100; if (draw < 1) draw = 1; }
     int vcols = W / draw, vrows = H / draw; if (vcols < 1) vcols = 1; if (vrows < 1) vrows = 1;
+    /* Follow the cursor even over an empty cell. Recentering on the land whenever the cell was slot 0 froze the view on the island middle while the cursor walked right across water. */
     int focusx = selx, focusy = sely;
-    if (focusx < 0 || focusy < 0 || focusx >= fw || focusy >= fh || slot[(size_t)focusy * fw + focusx] == 0) {
+    if (focusx < 0 || focusy < 0 || focusx >= fw || focusy >= fh) {
         int x0 = fw, y0 = fh, x1 = -1, y1 = -1;
         for (int y = 0; y < fh; y++) for (int x = 0; x < fw; x++) if (slot[(size_t)y * fw + x]) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
         if (x1 >= 0) { focusx = (x0 + x1) / 2; focusy = (y0 + y1) / 2; }
