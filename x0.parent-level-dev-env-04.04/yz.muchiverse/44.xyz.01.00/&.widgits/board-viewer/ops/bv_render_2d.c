@@ -1302,6 +1302,74 @@ static void p2d_cells_minimap(unsigned char *px, int W, int H, int view_x, int v
         for (int y = dy - 2; y <= dy + 2; y++) for (int x = dx - 2; x <= dx + 2; x++) if (x >= ox && x < ox + mw && y >= oy && y < oy + mh) { unsigned char *d = px + ((size_t)y * W + x) * 4; d[0] = 240; d[1] = 220; d[2] = 40; } }
 }
 
+/* Mode 0 for a desk that has cells.txt + cells.rgba but no map.png (centroid). rpg-space and Teropoly blit that atlas as the 2D picture (preview + map.png). This is the same picture, sampled straight from the atlas, so a 504-wide page does not need a 12k-pixel PNG. view_2d_style "color" is the flat grid; '\' sets that. "tiles" and an empty style are this picture. */
+static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, int zoom, int selx, int sely, int *oox, int *ooy, int *ocell, int *ocols, int *orows) {
+    if (style && (strcmp(style, "color") == 0 || strcmp(style, "ascii") == 0 || strcmp(style, "emoji") == 0 || strcmp(style, "scene") == 0)) return 0;
+    char dd[PATH_BUF], path[PATH_BUF]; if (!desk_dir(dd, sizeof(dd))) return 0;
+    snprintf(path, sizeof(path), "%s/cells.txt", dd);
+    struct stat sb; if (stat(path, &sb) != 0) return 0;
+    static unsigned short *slot; static int fw, fh, tpx, acols; static unsigned char *atlas; static int aw, ah; static time_t mt; static off_t sz;
+    if (!slot || mt != sb.st_mtime || sz != sb.st_size) {
+        FILE *f = host_fopen(path, "r"); if (!f) return 0;
+        char *line = malloc(256 * 1024); if (!line) { fclose(f); return 0; }
+        int w = 0, h = 0, pxn = 24, cols = 16, in = 0, row = 0; unsigned short *ns = NULL;
+        while (fgets(line, 256 * 1024, f)) {
+            if (!in) {
+                if (!strncmp(line, "width=", 6)) w = atoi(line + 6);
+                else if (!strncmp(line, "height=", 7)) h = atoi(line + 7);
+                else if (!strncmp(line, "tile_px=", 8)) pxn = atoi(line + 8);
+                else if (!strncmp(line, "atlas_cols=", 11)) cols = atoi(line + 11);
+                else if (!strncmp(line, "cells", 5)) {
+                    if (w < 1 || h < 1 || w > 8192 || h > 8192 || pxn < 1 || cols < 1) break;
+                    ns = calloc((size_t)w * (size_t)h, sizeof(unsigned short)); if (!ns) break; in = 1;
+                }
+                continue;
+            }
+            if (row >= h) break;
+            const char *q = line; int col = 0;
+            while (col < w && *q && *q != '\n') { ns[(size_t)row * w + col] = (unsigned short)atoi(q); col++; const char *sp = strchr(q, ' '); if (!sp) break; q = sp + 1; }
+            row++;
+        }
+        free(line); fclose(f);
+        if (!ns || row < 1) { free(ns); return 0; }
+        char ap[PATH_BUF]; snprintf(ap, sizeof(ap), "%s/cells.rgba", dd);
+        FILE *af = host_fopen(ap, "rb"); if (!af) { free(ns); return 0; }
+        fseek(af, 0, SEEK_END); long asz = ftell(af); rewind(af);
+        int aaw = cols * pxn; if (asz < aaw * 4 || asz % (aaw * 4)) { fclose(af); free(ns); return 0; }
+        unsigned char *na = malloc((size_t)asz); if (!na || fread(na, 1, (size_t)asz, af) != (size_t)asz) { fclose(af); free(na); free(ns); return 0; }
+        fclose(af);
+        free(slot); free(atlas); slot = ns; atlas = na; fw = w; fh = h; tpx = pxn; acols = cols; aw = aaw; ah = (int)(asz / (aaw * 4)); mt = sb.st_mtime; sz = sb.st_size;
+    }
+    if (!slot || !atlas) return 0;
+    /* A page that fits at the atlas size is shown whole. A page wider than the window keeps the tiles at tile_px (the size rpg-space and Teropoly draw), and scrolls. Zoom -1 fits the page. Zoom 0 is that default. */
+    int draw = tpx;
+    if (zoom < 0 || (zoom == 0 && fw * tpx <= W && fh * tpx <= H)) { draw = W / fw; int dh = H / fh; if (dh < draw) draw = dh; if (draw < 1) draw = 1; }
+    else if (zoom > 0) { static const int zp[5] = {125, 150, 200, 300, 400}; if (zoom > 5) zoom = 5; draw = tpx * zp[zoom - 1] / 100; if (draw < 1) draw = 1; }
+    int vcols = W / draw, vrows = H / draw; if (vcols < 1) vcols = 1; if (vrows < 1) vrows = 1;
+    int focusx = selx, focusy = sely;
+    if (focusx < 0 || focusy < 0 || focusx >= fw || focusy >= fh || slot[(size_t)focusy * fw + focusx] == 0) {
+        int x0 = fw, y0 = fh, x1 = -1, y1 = -1;
+        for (int y = 0; y < fh; y++) for (int x = 0; x < fw; x++) if (slot[(size_t)y * fw + x]) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+        if (x1 >= 0) { focusx = (x0 + x1) / 2; focusy = (y0 + y1) / 2; }
+    }
+    int ox = focusx - vcols / 2; int oy = focusy - vrows / 2;
+    if (fw > vcols) { if (ox < 0) ox = 0; if (ox > fw - vcols) ox = fw - vcols; } else ox = -(vcols - fw) / 2;
+    if (fh > vrows) { if (oy < 0) oy = 0; if (oy > fh - vrows) oy = fh - vrows; } else oy = -(vrows - fh) / 2;
+    for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+        int cx = ox + x / draw, cy = oy + y / draw;
+        unsigned char *d = px + ((size_t)y * W + x) * 4;
+        if (cx < 0 || cy < 0 || cx >= fw || cy >= fh) { d[0] = 90; d[1] = 150; d[2] = 210; d[3] = 255; continue; }
+        int t = slot[(size_t)cy * fw + cx]; int sx = (t % acols) * tpx, sy = (t / acols) * tpx;
+        int u = (x % draw) * tpx / draw, v = (y % draw) * tpx / draw;
+        if (sy + v >= ah || sx + u >= aw) { d[0] = 90; d[1] = 150; d[2] = 210; d[3] = 255; continue; }
+        const unsigned char *s = atlas + ((size_t)(sy + v) * aw + (sx + u)) * 4;
+        if (s[3] == 0 || t == 0) { d[0] = 90; d[1] = 150; d[2] = 210; d[3] = 255; }
+        else { d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255; }
+    }
+    *oox = ox; *ooy = oy; *ocell = draw; *ocols = vcols; *orows = vrows;
+    return 1;
+}
+
 /* draw every piece over the footprint: screen = ax * world + bx (per axis), clipped to the frame */
 static void p2d_draw(unsigned char *px, int W, int H, float axx, float bxx, float ayy, float byy) {
     for (int k = 0; k < g_np2d; k++) { P2D *P = &g_p2d[k];
@@ -1606,6 +1674,7 @@ int main(void) {
     int want_ascii = (strcmp(style, "ascii") == 0);
 
     /* --- ground tiles (skipped when the desk picture was blitted) --- */
+    if (!map_ok && !side_mode && p2d_atlas_main(px, W, H, style, read_kv_int(st, "view_2d_zoom", 0), sel_x, sel_y, &ox, &oy, &cell, &cols, &rows)) map_ok = 2;
     if (!map_ok)
     for (int scy = 0; scy < rows; scy++) {
         for (int scx = 0; scx < cols; scx++) {
@@ -1688,7 +1757,7 @@ int main(void) {
         }
     }
 
-    if (!map_ok && !side_mode && !(g_own_ascii && want_ascii)) p2d_draw(px, W, H, (float)cell, -(float)ox * cell, (float)cell, -(float)oy * cell);      /* glyph/tile path: the same pieces */
+    if ((map_ok == 2 || !map_ok) && !side_mode && !(g_own_ascii && want_ascii)) p2d_draw(px, W, H, (float)cell, -(float)ox * cell, (float)cell, -(float)oy * cell);      /* glyph/tile path: the same pieces */
     if (want_ascii && !side_mode) draw_map_event_glyphs(px, W, ox, oy, cols, rows, cell);
 
     /* --- the manual matrix grid (viewport-relative cell boundaries).
@@ -1704,7 +1773,7 @@ int main(void) {
         for (int x = 0; x < W; x++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
     }
     }
-    if (!map_ok && !side_mode) p2d_cells_minimap(px, W, H, ox, oy, cols, rows, sel_x, sel_y);
+    if ((map_ok == 2 || !map_ok) && !side_mode) p2d_cells_minimap(px, W, H, ox, oy, cols, rows, sel_x, sel_y);
 
     /* --- xelector: 2px inset border, bright accent ---
      * side_mode: honestly skipped for v1 - the xelector has no real

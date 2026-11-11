@@ -32,4 +32,9 @@ RUN | /usr/bin/grep | -q | -F | if (sc < 1.0f) sc = 1.0f | bv_render_2d.c
 EXPECT_EXIT | 1 | NEGATIVE-mode-0-no-longer-floors-at-one-pixel-per-cell
 RUN | /usr/bin/grep | -q | -F | p2d_cells_minimap | bv_render_2d.c
 EXPECT_EXIT | 0 | mode-0-without-map-png-still-draws-the-page
+RUN | /usr/bin/grep | -q | -F | p2d_atlas_main | bv_render_2d.c
+EXPECT_EXIT | 0 | mode-0-blits-the-rpg-maker-atlas
+COPY | &.widgits/board-viewer/ops/bv_menu_input.c | bv_menu_input.c
+RUN | /usr/bin/grep | -q | -F | view_2d_style | bv_menu_input.c
+EXPECT_EXIT | 0 | backslash-in-2d-still-reaches-the-style-switch
 CLEAN |

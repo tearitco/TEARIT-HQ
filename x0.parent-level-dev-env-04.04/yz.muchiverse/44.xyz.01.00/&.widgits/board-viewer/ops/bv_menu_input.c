@@ -912,6 +912,13 @@ static int handle_one_key(int key) {
                 if (!strncmp(l, "map_id=", 7)) snprintf(mid, sizeof(mid), "%s", l + 7);
                 else if (!strncmp(l, "desk_id=", 8)) snprintf(did, sizeof(did), "%s", l + 8);
             }
+            if (!strcmp(mid, "centroid") && did[0] && read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root)) == 0) {
+                /* '\' in 2D is the same switch the other books use: the RPG Maker tile picture, or the flat colour grid. The 3D atlas swap stays on this key while the view is 3D. */
+                char cur[16] = ""; read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
+                write_kv(state_path, "view_2d_style", strcmp(cur, "color") == 0 ? "tiles" : "color");
+                bump_screen_changed(project_root);
+                return 0;
+            }
             if (!strcmp(mid, "centroid") && did[0]) {
                 char dir[PATH_BUF], skinp[PATH_BUF], cur[16] = "rmmv", next[16], src[PATH_BUF], dst[PATH_BUF], mark[PATH_BUF];
                 snprintf(dir, sizeof(dir), "%s/pieces/system/maps/centroid/%s", focused_project_root, did);
