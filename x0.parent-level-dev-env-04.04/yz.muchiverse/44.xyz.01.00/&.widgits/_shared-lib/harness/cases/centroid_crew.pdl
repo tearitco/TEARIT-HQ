@@ -185,6 +185,20 @@ EXPECT_OUT | MECH slice=stage jobs=32 cells=12 | stage-count
 EXPECT_HAS | page/projection.txt | PROJECTION \p stage \p world 29,28 | the-stage-names-the-world
 EXPECT_HAS | st/life.txt | place\proof\p32,30,2\pok | the-factory-placed-the-stage-roof
 
+CASE | hut
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-hut
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-hut
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech-hut
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | hut | $T/st | $T/page
+EXPECT_EXIT | 0 | hut-ran
+EXPECT_OUT | MECH slice=hut jobs=41 cells=9 | hut-count
+EXPECT_HAS | page/projection.txt | PROJECTION \p hut \p world 8,37 | the-hut-names-the-world
+EXPECT_HAS | st/life.txt | place\proof\p10,39,4\pok | the-factory-placed-the-hut-roof
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
