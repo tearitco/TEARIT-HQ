@@ -3,6 +3,7 @@
 # House ratchets (py_lint, spawn_lint) and other games stay out of this dropdown. A book's own rows still come from @.apps/<book>/harness.pdl.
 # HARNESS | id | page | kind | label | target | args | writes | confirm | note
 # Cancel is not a row: every harness dropdown draws "- cancel -" with action void, same as the other toolbar menus.
+HARNESS | proof_all         | * | CASE | run all      | proof_all         | - | - | no | make, test, silent proof video, doc, continue
 HARNESS | generator_tiles   | * | CASE | gen tiles    | generator_tiles   | - | - | no | tile sheet proof from the 2026-11-05 handoff
 HARNESS | generator_char    | * | CASE | gen char     | generator_char    | - | - | no | character sheet proof from the 2026-11-05 handoff
 HARNESS | generator_restyle | * | CASE | gen restyle  | generator_restyle | - | - | no | restyle proof from the 2026-11-05 handoff

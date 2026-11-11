@@ -1,0 +1,16 @@
+# proof_all: the Harness menu "run all" row. Make, test every other CASE in the menu, silent proof video, doc, continue.
+# Output: /home/no/Desktop/github/work/XO/31.Nov/nov-11/grok/0.proof-all/ (doc + video.mp4). Does not touch the live page.
+RESULTS | ../results/proof_all.txt
+ENV | LC_ALL | C
+
+CASE | run
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/proof_all_op | $HOUSE/&.widgits/_shared-lib/harness/ops/proof_all_op.c
+EXPECT_EXIT | 0 | the-op-compiles
+RUN | /bin/mkdir | -p | /home/no/Desktop/github/work/XO/31.Nov/nov-11/grok/0.proof-all
+EXPECT_EXIT | 0 | the-presentation-folder-exists
+RUN | $T/proof_all_op | run | $HOUSE | $HOUSE/#.desktop/harness_menu.pdl | /home/no/Desktop/github/work/XO/31.Nov/nov-11/grok/0.proof-all
+EXPECT_EXIT | 0 | every-confirmed-proof-case-passed
+EXPECT_OUT | STAGE\pcontinue | continue-is-the-last-stage
+EXPECT_OUT | CONTINUE | and-it-says-continue
+CLEAN |

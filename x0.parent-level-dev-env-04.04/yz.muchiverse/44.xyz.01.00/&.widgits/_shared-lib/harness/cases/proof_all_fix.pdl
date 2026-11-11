@@ -1,0 +1,44 @@
+# proof_all_fix: the run-all op on a one-case menu. The menu row proof_all is the live list. This case never runs that list.
+RESULTS | ../results/proof_all_fix.txt
+ENV | LC_ALL | C
+
+CASE | stages
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/proof_all_op | $HOUSE/&.widgits/_shared-lib/harness/ops/proof_all_op.c
+EXPECT_EXIT | 0 | the-op-compiles
+RUN | /bin/mkdir | -p | $T/h/&.widgits/_shared-lib/harness/cases | $T/h/&.widgits/_shared-lib/harness/ops/+x | $T/h/&.widgits/_shared-lib/harness/results
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | h/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | h/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/video_op.+x | h/&.widgits/_shared-lib/harness/ops/+x/video_op.+x
+WRITE | h/&.widgits/_shared-lib/harness/cases/tiny_ok.pdl | # one check\nRESULTS\p../results/tiny_ok.txt\nENV\pLC_ALL\pC\n\nCASE\pok\nSCRATCH\nRUN\p/bin/echo\pstages-ran\nEXPECT_EXIT\p0\pecho-ok\n
+WRITE | menu.pdl | HARNESS\ptiny_ok\p*\pCASE\ptiny\ptiny_ok\p-\p-\pno\px\n
+RUN | $T/proof_all_op | run | $T/h | $T/menu.pdl | $T/out
+EXPECT_EXIT | 0 | a-passing-case-continues
+EXPECT_OUT | STAGE\pmake | make-ran
+EXPECT_OUT | STAGE\ptest | test-ran
+EXPECT_OUT | STAGE\ppresent | present-ran
+EXPECT_OUT | STAGE\pdoc | doc-ran
+EXPECT_OUT | STAGE\pcontinue | continue-ran
+EXPECT_OUT | CONTINUE | the-last-stage-says-continue
+EXPECT_OUT | VERDICT\pPASS | the-tiny-case-passed
+RUN | /usr/bin/test | -s | $T/out/0.proof-all.md
+EXPECT_EXIT | 0 | the-doc-was-written
+RUN | /usr/bin/test | -s | $T/out/video.mp4
+EXPECT_EXIT | 0 | the-silent-proof-video-was-written
+
+CASE | fail
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/proof_all_op | $HOUSE/&.widgits/_shared-lib/harness/ops/proof_all_op.c
+EXPECT_EXIT | 0 | gcc-again
+RUN | /bin/mkdir | -p | $T/h/&.widgits/_shared-lib/harness/cases | $T/h/&.widgits/_shared-lib/harness/ops/+x | $T/h/&.widgits/_shared-lib/harness/results
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | h/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | h/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/video_op.+x | h/&.widgits/_shared-lib/harness/ops/+x/video_op.+x
+WRITE | h/&.widgits/_shared-lib/harness/cases/tiny_bad.pdl | # must fail\nRESULTS\p../results/tiny_bad.txt\nENV\pLC_ALL\pC\n\nCASE\pbad\nSCRATCH\nRUN\p/bin/false\nEXPECT_EXIT\p0\pfalse-is-not-ok\n
+WRITE | menu.pdl | HARNESS\ptiny_bad\p*\pCASE\pbad\ptiny_bad\p-\p-\pno\px\n
+RUN | $T/proof_all_op | run | $T/h | $T/menu.pdl | $T/out
+EXPECT_EXIT | 1 | NEGATIVE-a-failing-case-is-a-failed-run-all
+EXPECT_OUT | CONTINUE | the-doc-and-the-video-still-finish
+RUN | /usr/bin/test | -s | $T/out/0.proof-all.md
+EXPECT_EXIT | 0 | the-doc-is-written-even-when-a-test-fails
+CLEAN |

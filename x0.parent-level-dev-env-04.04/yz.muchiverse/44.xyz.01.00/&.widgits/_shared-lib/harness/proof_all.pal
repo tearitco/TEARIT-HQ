@@ -1,0 +1,4 @@
+# proof_all.pal - menu row: make, test, present, doc, continue.
+exec ./ops/+x/harness_case_op.+x cases/proof_all.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/proof_all.pdl
+halt
