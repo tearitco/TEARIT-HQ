@@ -1,0 +1,3 @@
+# A road kit. One file, any project. The land generator draws it. A creator ships this file.
+# ROAD | id | floor_slot | width_in_plan_cells
+ROAD | path | 2 | 3

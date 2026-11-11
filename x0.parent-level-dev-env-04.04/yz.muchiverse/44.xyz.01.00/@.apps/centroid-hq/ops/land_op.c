@@ -47,7 +47,7 @@ static int near_seg(double x, double y, double x0, double y0, double x1, double 
     double dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy, t = 0;
     if (l2 > 1e-6) { t = ((x - x0) * dx + (y - y0) * dy) / l2; if (t < 0) t = 0; if (t > 1) t = 1; }
     double px = x0 + t * dx - x, py = y0 + t * dy - y;
-    return px * px + py * py <= 0.4 * 0.4;
+    return px * px + py * py <= 1.6 * 1.6;
 }
 static unsigned lcg(unsigned *s) { *s = *s * 1664525u + 1013904223u; return *s; }
 
@@ -103,6 +103,14 @@ int main(int argc, char **argv) {
     FILE *cf = fopen(argv[3], "w"); FILE *mf = fopen(map, "w"); FILE *sf = fopen(saved, "w");
     if (!cf || !mf || !sf) { fprintf(stderr, "land_op: cannot write\n"); return 1; }
     fprintf(sf, "SEED | land | %u\nSCALE | land | %d\n", seed, scale);
+    char extr[1024]; snprintf(extr, sizeof extr, "%s", argv[3]);
+    sl = strrchr(extr, '/'); if (!sl) sl = extr; else sl++;
+    snprintf(sl, sizeof extr - (sl - extr), "extrusion.pdl");
+    FILE *ef = fopen(extr, "w");
+    if (!ef) { fprintf(stderr, "land_op: no extrusion\n"); return 1; }
+    /* Depth hangs under a flat top, so it does not make a hill. EXTRUDE on the glyph raises the top. a low, b mid, c high. */
+    fprintf(ef, "EXTRUDE | a | 1\nEXTRUDE | b | 4\nEXTRUDE | c | 8\n");
+    fclose(ef);
     fprintf(cf, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", W, H);
     int land = 0, frames = 0, roads = 0;
     for (int y = 0; y < H; y++) {
@@ -120,17 +128,21 @@ int main(int argc, char **argv) {
                     if (hit) { k = zones[z].kind; break; }
                 }
                 fl = (k == K_FIELD) ? 4 : (k == K_PALE) ? 5 : (k == K_STONE) ? 2 : (k == K_CLIFF) ? 2 : (k == K_DIRT) ? 3 : 1;
-                int base = 6 + isls[on].top / 4; if (base > 12) base = 12;
-                unsigned s = seed ^ (unsigned)(x * 131u + y * 17u);
-                dp = base + (int)(lcg(&s) % 3u);
-                for (int i = 0; i + 1 < nw; i++) if (near_seg(px, py, wps[i].x, wps[i].y, wps[i + 1].x, wps[i + 1].y)) { fl = 2; dp = base; roads++; break; }
+                int base = 6; if (base > 12) base = 12;
+                dp = base;
+                int high = (py < isls[on].cy) + (isls[on].top >= 8);
+                int road = 0, pad = 0;
+                for (int i = 0; i + 1 < nw; i++) if (near_seg(px, py, wps[i].x, wps[i].y, wps[i + 1].x, wps[i + 1].y)) { fl = 2; road = 1; roads++; break; }
                 for (int i = 0; i < nb; i++) {
                     double x1 = blds[i].x0 + blds[i].w, y1 = blds[i].y0 + blds[i].d;
                     if (px < blds[i].x0 || px >= x1 || py < blds[i].y0 || py >= y1) continue;
                     int edge = (px < blds[i].x0 + 1 || px >= x1 - 1 || py >= y1 - 1 || py < blds[i].y0 + 1);
-                    fl = 2; wl = edge ? 36 : 0; dp = base; frames++; break;
+                    fl = 2; wl = edge ? 36 : 0; pad = 1; frames++; break;
                 }
-                g = 'W'; land++;
+                if (!road && !pad && high >= 2) fl = 6;
+                if (!road && !pad && fl == 1 && ((x / scale + y / scale + (int)seed) % 8) == 0 && (x % scale) == 0) wl = 20;
+                g = pad || road || high == 0 ? 'a' : (high == 1 ? 'b' : 'c');
+                land++;
             }
             fprintf(cf, "%s%d,%d,%d", x ? " " : "", fl, wl, dp);
             if (ml < (int)sizeof mline - 1) mline[ml++] = g;

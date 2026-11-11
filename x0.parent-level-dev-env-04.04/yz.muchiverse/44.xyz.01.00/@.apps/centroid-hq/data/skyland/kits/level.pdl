@@ -1,0 +1,6 @@
+# A level kit. Cell depth hangs under a flat top, so it does not make a hill.
+# EXTRUDE on the glyph raises the top. a is the road and the building pad, so they stay flat.
+# LEVEL | glyph | extrude
+LEVEL | a | 1
+LEVEL | b | 4
+LEVEL | c | 8

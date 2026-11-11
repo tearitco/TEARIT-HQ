@@ -1,0 +1,3 @@
+# A snow kit. This atlas has no snow tile. Slot 6 is the pale stand-in. A creator swaps the slot when their sheet has snow.
+# SNOW | id | floor_slot | on | high_band
+SNOW | pale-cap | 6 | high

@@ -1,0 +1,3 @@
+# A tree kit. The slot is one tile from the sheet, placed on grass, not on a road or a building pad.
+# TREE | id | wall_slot | every_n_plan_cells
+TREE | oak | 20 | 8

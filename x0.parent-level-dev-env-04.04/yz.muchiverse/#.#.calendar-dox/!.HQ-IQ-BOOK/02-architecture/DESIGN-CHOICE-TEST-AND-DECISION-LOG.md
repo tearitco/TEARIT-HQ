@@ -434,3 +434,13 @@ The owner will have harness proofs shown to potential customers as YouTube video
 **Why this one.** The 10th size is another number in the pdl, not another case file and not another program. Page `small` is not an argument of this row.
 
 **Not chosen:** a static harness per size. Baking 288 by 208 into the generator. Letting a CASE row pretend to take arguments. The menu does not forward `args` for a CASE.
+
+## D73 (2026-11-11, CHOSEN): biomes, roads, snow, levels, and trees are kits a creator can ship
+
+**The choice.** Each of those is its own `.pdl` under `data/skyland/kits/`: `biome.pdl`, `road.pdl`, `snow.pdl`, `level.pdl`, `tree.pdl`. A kit names slots and sizes. It does not name a project. The same file can drop into another game. The land generator is the one reader. A harness for a kit fails when the page is missing that kit's mark (no road cells, no raised glyph, no tree slot).
+
+**Why this one.** The business goal is that a creator sells a kit, not a fork of the generator. The 10th project is another copy of the pdl. One authority per fact: the slot lives in the kit, the page is the projection.
+
+**What the eye sees, and what it does not.** Cell depth hangs under a flat top, so a bigger depth is not a hill. Levels are `EXTRUDE` on the glyph (`a` 1, `b` 4, `c` 8). Roads and building pads stay on `a`, so they stay flat. This atlas has no snow tile. The snow kit's slot 6 is the pale stand-in until a creator's sheet has snow. Slot 33 stays banned. It is a shop tile.
+
+**Not chosen:** a C file per biome. A snow painting hardcoded for centroid only. Treating depth as height.

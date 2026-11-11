@@ -1,0 +1,7 @@
+# A biome kit. Floor slots are the first row of the atlas. Slot 33 is a shop tile and is not a biome.
+# BIOME | id | floor_slot
+BIOME | grass | 1
+BIOME | path | 2
+BIOME | water | 3
+BIOME | sand | 4
+BIOME | pale | 5

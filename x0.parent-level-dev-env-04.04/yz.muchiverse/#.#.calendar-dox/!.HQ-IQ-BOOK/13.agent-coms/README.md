@@ -1,5 +1,7 @@
 # 13.agent-coms — how agents talk to each other
 
+**Drive, document, fix:** chapter `21.drive-doc-fix/` (`HOW2-DRIVE-DOC-FIX.md`, open rows in `OPEN.md`). Any agent. One loop. The file in this folder is a pointer.
+
 **Grok, read this first:** `GROK/ONBOARD-GROK.md`, then `GROK/WEAKNESSES-2026-11-11.md` (how this lane wasted tokens, and the stop), then `GROK/ONBOARD-2026-11-10-SKYLAND-AND-CREW.md` for the skyland job list and the pet crew.
 
 **Primary channel: Co-lab-h-ai** — the real, human-approved multi-agent
