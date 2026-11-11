@@ -1664,3 +1664,79 @@ parse surface.
   `textContent` reads correctly either way.
 - Text serialization does not escape `&`/`<` in `innerHTML` output (already
   true for folded text; not introduced here).
+
+### 9.27 2026-11-11 — the viewport scroll surface reads the real box model
+
+The worker had `window.scrollTo`, `scrollY`/`scrollX` and `scrollIntoView`,
+but the properties pages read back were missing or CSS-only:
+`window.pageXOffset`/`pageYOffset` did not exist, `document.scrollingElement`
+did not exist, `documentElement.clientHeight`/`clientWidth` returned an
+unstyled `<html>` box (0), and `scrollTop`/`scrollLeft`/`scrollHeight`/
+`scrollWidth` were absent on every element. Infinite scroll, lazy loading and
+sticky headers therefore compared against `undefined` or 0.
+
+**The slice**
+
+- `window.pageXOffset`/`pageYOffset` are live aliases of the same
+  `g_scroll_x`/`g_scroll_y` the worker already moved.
+- `document.scrollingElement` is the root element on the live document and
+  on parsed documents.
+- Root client box is the viewport: `documentElement.clientHeight` is
+  `g_viewport_h`; `clientWidth` is `g_col_px`, the same content column the
+  layout uses (so it narrows when the document overflows and the gutter
+  exists). Non-root `client*` stays the CSS-declared box.
+- `documentElement.scrollHeight` is the document height
+  `nb_doc_root_h` already computes for the scrollbar decision, raised to
+  `clientHeight` as CSSOM requires. An element's `scrollHeight` is
+  `nb_content_h`, likewise raised. `display:none` reports 0.
+- `documentElement.scrollTop`/`scrollLeft` read and write the viewport
+  offset and re-run observer geometry through `nb_obs_recheck`, so
+  `getBoundingClientRect` and IntersectionObserver see the move. Other
+  elements get per-node worker-local offsets, clamped at zero, exactly the
+  way `window.scrollTo` is worker-local: the renderer exposes no channel to
+  scroll an inner pane.
+- `<body>` is deliberately NOT the scrolling element. In this
+  standards-mode document `body.scrollHeight` is its own content height and
+  `body.scrollTop` is a per-node value, so the legacy body alias cannot
+  hijack the viewport. Code that insists on the body alias needs
+  `documentElement` or `window`.
+- Widths report the client box for both root and elements. This renderer
+  wraps content rather than scrolling it sideways, so no horizontal extent
+  is claimed; `scrollWidth == clientWidth` here is the renderer's truth,
+  not a measurement that was skipped.
+- Found while gating: `css_hidden` short-circuited on `g_css == NULL`, so a
+  page with no stylesheet did not count inline `display:none`. It now calls
+  `nb_css_hidden` unconditionally (`nb_css_resolve` is NULL-safe), which
+  also corrects `offsetWidth`/`offsetHeight`/`getBoundingClientRect` for
+  that case.
+
+**Verification**
+
+- New gate `tests/nb_scroll_metrics_test.sh`: **PASS (39/39)**. Starts at
+  0/0, then `scrollTo(0,120)` moves `scrollY`, `pageYOffset`,
+  `documentElement.scrollTop` and the observed rect by exactly 120;
+  `documentElement.scrollTop = 45` writes through; `body.scrollTop = 7`
+  stays on the body and does not move the viewport; negative offsets clamp;
+  the options form moves both axes; an inner `<div style=height:100px>`
+  reports `clientHeight 100`, `scrollHeight 100` and independent
+  `scrollTop`/`scrollLeft`; `display:none` reports 0; growing the document
+  from one paragraph to 26 raises `documentElement.scrollHeight` from 600
+  (the client minimum) to 780; both prototypes carry the surface.
+- Negative A (force the root-scroller test false): **11 failures** —
+  `root-client-*`, `short-doc-scroll-height`, `scrollto-root-top`,
+  `set-root-top`, `body-top-does-not-scroll`, `negative-clamps`,
+  `options-root-left`, `grown-client-height`.
+- Negative B (restore the `g_css` short-circuit): exactly
+  `hidden-scroll-height got=30 want=0`, and nothing else.
+- Restored and green again; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**
+  with the new gate registered.
+
+**Open, kept honest**
+
+- Non-root scroll offsets are not clamped to `scrollHeight - clientHeight`
+  because the engine has no per-element overflow model; they clamp at zero
+  only. A page that over-scrolls reads back the value it set.
+- `scrollWidth` does not model deep horizontal overflow (see above).
+- `body.clientHeight` remains the CSS-declared box (0 for an unstyled body),
+  the same pre-existing limitation as every other auto-height element.
+- `pageXOffset`/`pageYOffset` are getters only, matching `scrollY`/`scrollX`.

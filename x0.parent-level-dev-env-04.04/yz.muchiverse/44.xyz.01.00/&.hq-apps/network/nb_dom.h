@@ -31,6 +31,12 @@ typedef struct NbNode {
     struct NbNode *first_child;
     struct NbNode *next_sibling;
     struct NbNode *last_child;
+    /* Worker-local element scroll offsets (scrollLeft/scrollTop). The renderer
+     * owns the native pane scroll, so these record what the page set and read
+     * back, exactly like window.scrollTo's g_scroll_x/g_scroll_y. Kept on the
+     * node (not a side table) so a freed node cannot pass its value to a new
+     * node allocated at the same address. Never serialized; load zeroes it. */
+    double scroll_x, scroll_y;
 } NbNode;
 
 /* Parse a whole HTML document. Returns a root NbNode* (a synthetic

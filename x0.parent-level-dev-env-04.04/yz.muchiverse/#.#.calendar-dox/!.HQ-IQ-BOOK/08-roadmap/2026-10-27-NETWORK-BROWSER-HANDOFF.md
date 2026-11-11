@@ -609,3 +609,25 @@ duplicate `TEXT|hi` row), restored and green. Full suite **ALL TESTS PASS**.
 
 Open: parsed-document `doc.title` still undefined; `textContent =` still
 folded (childNodes 0); `innerHTML` does not escape `&`/`<`.
+### 2026-11-11 — viewport scroll metrics
+
+`pageXOffset`/`pageYOffset`, `document.scrollingElement`,
+`documentElement.scrollTop`/`scrollLeft`/`scrollHeight`/`scrollWidth`, root
+`clientHeight`/`clientWidth` (now the viewport, not the unstyled `<html>`
+box), and element-level `scroll*` are live. Root heights use the same
+`nb_doc_root_h`/`nb_content_h` box model the scrollbar gutter uses; root
+offsets are the existing `g_scroll_*` and re-run observer geometry.
+Non-root offsets are per-node worker-local values, like `window.scrollTo`.
+`<body>` is an ordinary element here, not the scroller.
+
+Found and fixed alongside: `css_hidden` ignored inline `display:none` on a
+page with no stylesheet (`g_css == NULL`), which also affected
+`offsetWidth`/`offsetHeight`/`getBoundingClientRect` in that case.
+
+Gate `tests/nb_scroll_metrics_test.sh` **PASS (39/39)**; negative A (root
+scroller forced false) 11 failures, negative B (`g_css` short-circuit
+restored) exactly the hidden-height assertion. Full suite **ALL TESTS PASS**.
+
+Open: non-root offsets are not clamped to a max (no per-element overflow
+model); `scrollWidth` stays the client box because the renderer wraps
+instead of scrolling horizontally.

@@ -1110,7 +1110,10 @@ static JSValue nb_css_getprop(JSContext *ctx, JSValueConst this_val, int argc, J
 static int css_hidden(const NbNode *n);
 
 static int css_hidden(const NbNode *n) {
-    return g_css && nb_css_hidden(g_css, n);
+    /* nb_css_resolve tolerates a NULL rule cache (a page with no stylesheet),
+     * and inline display:none still has to count there: without this, the
+     * probe's no-CSS fixtures reported a hidden box at its content size. */
+    return nb_css_hidden(g_css, n);
 }
 static JSValue nb_css_getprop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 
@@ -1196,11 +1199,18 @@ static JSValue nb_el_style_get(JSContext *ctx, JSValueConst this_val, int argc, 
     return o;
 }
 
-/* offsetWidth/offsetHeight/clientWidth/clientHeight — magic 0=width,1=height.
+/* offsetWidth/offsetHeight/clientWidth/clientHeight — magic 0/1 for the
+ * offset pair, 2/3 for the client pair (client dims special-case the root
+ * scrolling element, whose client box is the viewport, not a CSS width).
  * Hidden elements measure 0 (browser display:none semantics); visible
  * elements report the modeled CSS px size, else 0 (no layout engine). */
+static double nb_client_dim(NbNode *n, int which);
+static JSValue nb_el_scroll_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
+static JSValue nb_el_scroll_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
+static JSValue nb_el_scroll_dim(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 static JSValue nb_el_offdim(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
     NbNode *n = get_this(ctx, this_val);
+    if (magic >= 2) return JS_NewFloat64(ctx, nb_client_dim(n, magic & 1));
     int which = magic;
     double v = 0;
     if (n && !css_hidden(n)) {
@@ -4685,16 +4695,38 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "clientWidth");
         JS_DefinePropertyGetSet(ctx, el, nm,
-            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get clientWidth", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
+            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get clientWidth", 0, JS_CFUNC_generic_magic, 2), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "clientHeight");
         JS_DefinePropertyGetSet(ctx, el, nm,
-            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get clientHeight", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get clientHeight", 0, JS_CFUNC_generic_magic, 3), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "offsetParent");
         JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_offset_parent, "get offsetParent", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollTop");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_get, "get scrollTop", 0, JS_CFUNC_generic_magic, 1),
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_set, "set scrollTop", 1, JS_CFUNC_generic_magic, 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollLeft");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_get, "get scrollLeft", 0, JS_CFUNC_generic_magic, 0),
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_set, "set scrollLeft", 1, JS_CFUNC_generic_magic, 0),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollHeight");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_dim, "get scrollHeight", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollWidth");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_dim, "get scrollWidth", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
     }
@@ -5695,6 +5727,10 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
     {
         JSAtom nm = JS_NewAtom(ctx, "documentElement");
         JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_documentElement, "get documentElement", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollingElement");
+        JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_parsed_documentElement, "get scrollingElement", 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "body");
@@ -7511,6 +7547,78 @@ static JSValue nb_win_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, 
     nb_obs_recheck(ctx);
     return JS_UNDEFINED;
 }
+/* ---- scroll metrics (2026-11-11) ----
+ * window.scrollTo already moves g_scroll_x/g_scroll_y (worker-local; the
+ * renderer owns the native pane scroll). This exposes the DOM surface pages
+ * actually read: pageXOffset/pageYOffset, scrollingElement, and
+ * scrollTop/scrollLeft/scrollHeight/scrollWidth.
+ *
+ * Heights come from the SAME box model the layout and scrollbar gutter
+ * already use: documentElement.scrollHeight is the document height from
+ * nb_doc_root_h, an element's scrollHeight is nb_content_h, and each is
+ * raised to clientHeight as CSSOM requires. Widths report the client box:
+ * this renderer wraps content instead of scrolling it sideways, so no
+ * horizontal extent is claimed.
+ *
+ * Non-root scroll offsets are worker-local per-node values, like the window
+ * offset. The renderer exposes no channel to scroll an inner pane, so the
+ * value is what the page set and can read back; it is stored on the node so
+ * a freed node cannot hand its value to a new node at the same address.
+ * They are clamped at zero and not at the maximum: the maximum would need a
+ * per-element overflow model this engine does not have. */
+static int nb_live_root_scroller(NbNode *n) {
+    if (!n || !n->tag || !g_dom_root) return 0;
+    NbNode *html = find_tag_first(g_dom_root, "html");
+    return html && n == html;
+}
+static double nb_client_dim(NbNode *n, int which) {
+    if (!n) return 0.0;
+    if (nb_live_root_scroller(n)) {
+        if (which) return g_viewport_h > 0.0 ? g_viewport_h : 600.0;
+        return g_col_px(n);
+    }
+    if (css_hidden(n)) return 0.0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    return which ? st.height : st.width;
+}
+static JSValue nb_el_scroll_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->tag) return JS_NewFloat64(ctx, 0.0);
+    if (nb_live_root_scroller(n)) return JS_NewFloat64(ctx, magic ? g_scroll_y : g_scroll_x);
+    return JS_NewFloat64(ctx, magic ? n->scroll_y : n->scroll_x);
+}
+static JSValue nb_el_scroll_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->tag) return JS_UNDEFINED;
+    double v = nb_js_num(ctx, argc > 0 ? argv[0] : JS_UNDEFINED, 0.0);
+    if (!(v > 0.0)) v = 0.0;   /* negatives and NaN clamp to the top/left */
+    if (nb_live_root_scroller(n)) {
+        if (magic) nb_set_scroll(g_scroll_x, v);
+        else nb_set_scroll(v, g_scroll_y);
+        nb_obs_recheck(ctx);   /* viewport-relative rects just moved */
+    } else if (magic) {
+        n->scroll_y = v;
+    } else {
+        n->scroll_x = v;
+    }
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_scroll_dim(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->tag) return JS_NewFloat64(ctx, 0.0);
+    /* display:none has no box in a browser, so no scroll extent either. */
+    if (layout_hidden_anc(n)) return JS_NewFloat64(ctx, 0.0);
+    if (!magic) return JS_NewFloat64(ctx, nb_client_dim(n, 0));
+    double client = nb_client_dim(n, 1);
+    double content;
+    NbNode *html = g_dom_root ? find_tag_first(g_dom_root, "html") : NULL;
+    if (html && n == html) content = nb_doc_root_h(n);
+    else content = nb_content_h(n);
+    return JS_NewFloat64(ctx, content > client ? content : client);
+}
 static JSValue nb_el_scrollIntoView(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_UNDEFINED;
@@ -7613,6 +7721,30 @@ static void install_dom_classes(JSContext *ctx) {
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "childElementCount");
         JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_childElementCount, "get childElementCount", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    {
+        JSAtom nm = JS_NewAtom(ctx, "scrollTop");
+        JS_DefinePropertyGetSet(ctx, Ep, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_get, "get scrollTop", 0, JS_CFUNC_generic_magic, 1),
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_set, "set scrollTop", 1, JS_CFUNC_generic_magic, 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollLeft");
+        JS_DefinePropertyGetSet(ctx, Ep, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_get, "get scrollLeft", 0, JS_CFUNC_generic_magic, 0),
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_set, "set scrollLeft", 1, JS_CFUNC_generic_magic, 0),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollHeight");
+        JS_DefinePropertyGetSet(ctx, Ep, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_dim, "get scrollHeight", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "scrollWidth");
+        JS_DefinePropertyGetSet(ctx, Ep, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_scroll_dim, "get scrollWidth", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
     }
@@ -10180,6 +10312,11 @@ static void install_dom(JSContext *ctx) {
             JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_dom_documentElement, "get documentElement", 0), JS_UNDEFINED,
                 JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
+            /* Standards-mode scrolling element is the root element. */
+            nm = JS_NewAtom(ctx, "scrollingElement");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_dom_documentElement, "get scrollingElement", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
             nm = JS_NewAtom(ctx, "scripts");
             JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_doc_scripts, "get scripts", 0), JS_UNDEFINED,
                 JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
@@ -12433,6 +12570,15 @@ static void install_events_timers(JSContext *ctx) {
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "scrollY");
         JS_DefinePropertyGetSet(ctx, g, nm, JS_NewCFunctionMagic(ctx, nb_win_scroll_get, "get scrollY", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        /* Legacy aliases: pageYOffset is what most lazy loaders still read. */
+        nm = JS_NewAtom(ctx, "pageXOffset");
+        JS_DefinePropertyGetSet(ctx, g, nm, JS_NewCFunctionMagic(ctx, nb_win_scroll_get, "get pageXOffset", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "pageYOffset");
+        JS_DefinePropertyGetSet(ctx, g, nm, JS_NewCFunctionMagic(ctx, nb_win_scroll_get, "get pageYOffset", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
     }
