@@ -100,3 +100,17 @@ A video is a picture of the run, not a reading of the verdict line. centroid-tes
 ## Not in either run yet
 
 The second bridge's twin island details beyond the one prebuilt bridge, the tower, shops, and the school, unless they are in the loaded chunk. The manager and the employees. Labor skills. Death. A generator that draws the campus. The manager waits on a passing centroid-test.
+
+## Castle scale and the RPG Maker sheet (2026-11-11)
+
+The owner showed a palace: many floors, towers above the roof, pale stone, dark roofs, colored windows, a grand door. The 5 by 5 orange house on page `small` is one bay and one floor. It is not that building. Page `small` keeps that island. The castle is built on `live`.
+
+The atlas on the page was opened (`cells.rgba`, 384 by 72, 16 columns, 24 px, 43 tiles). It is the RPG Maker outside sheet.
+
+- Slot 35 is a flat orange fill. A wall of it is the solid orange slab. It is not used for the castle.
+- Slots 12 through 15, the last four tiles of the first row, are the castle drawings: gray stone, red roofs, a dark gate. Each one is a whole small castle, so repeating one of them on every cell stamps a tiny castle on every face. They are the tower caps and the roof cells, not the wall fill.
+- The tiles that do repeat as a wall or a floor are on the bottom row: 34 the wooden door, 36 the cobble, 38 the blue window panes, 41 the white plaster, 37 the planks, 39 the wood floor, 40 the red carpet.
+
+A castle from this sheet is those tiles across many cells. Walls are cobble or white plaster. Window cells are slot 38. The entrance is slot 34. Tower and roof cells are slots 12 through 15, so the red roofs sit on top. The reference picture's stained glass, columns, and lamps are not on this sheet. The color we can match is gray stone, white trim, red roofs, blue windows, and a wood door.
+
+One floor of that building is about four cells tall, and one window bay is about two cells wide. A first castle that reads as a castle is about 20 cells wide, 12 deep, and two floors, with two towers one floor taller. That fills most of the south lobe on the 72 by 52 page. The full palace in the picture, with wings, is wider than that lobe. It waits for the blueprint scale of 4, which turns the page into 288 by 208. `small` is not scaled and not restamped.
