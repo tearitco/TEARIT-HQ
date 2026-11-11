@@ -55,7 +55,9 @@ After centroid-test passes, a second table may hand a manager the blueprint (the
 
 The same verbs, on the board, with one extra field: `VIEW | rmmv` or `VIEW | studio`. The key writes that field. It is not the existing `view` verb (2D / 3D / glyph). Both can be on at once: a 3D picture of the generated skin, or a 2D picture of the RPG Maker skin.
 
-Until a studio sheet exists for stone, wood, plant, bed, and door, that face stays on the RPG Maker sheet and the corner says so. The live run is not started until centroid-test passes. The live window goes through `cpu_gate`. The test never opens it.
+Until a studio sheet exists for stone, wood, plant, bed, and door, that face stays on the RPG Maker sheet and the corner says so. The live run is not started until centroid-test passes. The live window goes through `cpu_gate`.
+
+**2026-11-10, owner correction.** Page `test` can and should open the editor for the final proof: `dump_frame_png_op` of the edit window from different points of view, with `book:centroid` and `page:test` readable. Page `live` is the same blueprint and the same harness job list, being built on `page:live`. The scratch `plan.ppm` stays the picture that can be drawn again. A video-player clip of that plan is not either page. The sentence above that said the test never opens the window is withdrawn.
 
 ## Menus the live run shows
 
