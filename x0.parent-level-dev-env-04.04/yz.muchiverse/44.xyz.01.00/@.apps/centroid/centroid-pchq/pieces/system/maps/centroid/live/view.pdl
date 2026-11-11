@@ -1,0 +1,4 @@
+# Page fog for the 504-wide island. House fog is 18..48, which turns the rest of this page into sky.
+# The CPU walk still stops at 96 steps. The GPU walks to view_fog_end.
+view_fog_start=48
+view_fog_end=160

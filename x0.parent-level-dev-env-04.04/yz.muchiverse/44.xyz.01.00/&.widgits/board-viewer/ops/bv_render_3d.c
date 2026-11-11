@@ -2778,7 +2778,7 @@ static unsigned long long bv_fnv1a64(const unsigned char *p, size_t n) {
  * whole, origin 0. Camera yaw, pitch, and the stored eye are not
  * written. The GPU copy of the eye moves with the window. */
 #define BV_VIEW_CHUNK 16
-#define BV_VIEW_DIM   (BV_VIEW_CHUNK * 16)      /* 256 = MAX_BOARD_DIM: a map up to that size is drawn whole (was 8 chunks / 128), so wide floating-island forms are not cut */
+#define BV_VIEW_DIM   512      /* a page up to 512 on a side is drawn whole. 256 cut the 504-wide centroid live page down to a corner window. */
 static int g_view_ox, g_view_oy, g_view_w, g_view_h;
 
 static int bv_snap_chunk(int v) {
@@ -3755,9 +3755,22 @@ static int render_one_frame(void) {
         fog_end   = (double)read_kv_int(hqp, "view_fog_end", 0);
         if (fog_start < 0) fog_start = 0;
     }
-    {   /* a map may set its own fog (view.pdl view_fog_start / view_fog_end) so a wide floating-island form is not faded to sky at 48 cells */
-        char vq[PATH_BUF]; snprintf(vq, sizeof(vq), "%s/pieces/system/view.pdl", focused_project_root);
-        int fe = read_kv_int(vq, "view_fog_end", -1), fs = read_kv_int(vq, "view_fog_start", -1);
+    {   /* a page view.pdl wins, then the project view.pdl. House fog stays 18..48. */
+        char vq[PATH_BUF], mapid[64], deskid[64];
+        mapid[0] = 0; deskid[0] = 0;
+        read_kv_str(world_state_path_sky, "map_id", mapid, sizeof(mapid));
+        read_kv_str(world_state_path_sky, "desk_id", deskid, sizeof(deskid));
+        int fe = -1, fs = -1;
+        if (mapid[0] && deskid[0]) {
+            snprintf(vq, sizeof(vq), "%s/pieces/system/maps/%s/%s/view.pdl", focused_project_root, mapid, deskid);
+            fe = read_kv_int(vq, "view_fog_end", -1);
+            fs = read_kv_int(vq, "view_fog_start", -1);
+        }
+        if (fe < 0) {
+            snprintf(vq, sizeof(vq), "%s/pieces/system/view.pdl", focused_project_root);
+            fe = read_kv_int(vq, "view_fog_end", -1);
+            fs = read_kv_int(vq, "view_fog_start", -1);
+        }
         if (fe >= 0) { fog_end = (double)fe; if (fs >= 0) fog_start = (double)fs; }
     }
     { unsigned char *fp = FB(g_fw / 2, g_fh / 2); fog_sky[0] = fp[0]; fog_sky[1] = fp[1]; fog_sky[2] = fp[2]; }   /* sky just filled, before any hit */
