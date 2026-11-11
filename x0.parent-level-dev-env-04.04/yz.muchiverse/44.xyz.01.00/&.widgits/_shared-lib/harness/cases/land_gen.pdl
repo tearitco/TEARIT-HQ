@@ -24,3 +24,24 @@ EXPECT_EXIT | 1 | NEGATIVE-a-different-seed-is-not-the-same-page
 RUN | $T/land_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | $T/big.pdl | $T/a/cells.txt
 EXPECT_EXIT | 2 | NEGATIVE-a-page-past-512-is-refused
 CLEAN |
+
+CASE | kit
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/land_op | $HOUSE/@.apps/centroid-hq/ops/land_op.c | -lm
+EXPECT_EXIT | 0 | the-generator-compiles
+RUN | /bin/mkdir | -p | $T/kits | $T/out
+COPY | @.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | bp.pdl
+COPY | @.apps/centroid-hq/data/skyland/kits/biome.pdl | kits/biome.pdl
+COPY | @.apps/centroid-hq/data/skyland/kits/road.pdl | kits/road.pdl
+COPY | @.apps/centroid-hq/data/skyland/kits/level.pdl | kits/level.pdl
+COPY | @.apps/centroid-hq/data/skyland/kits/tree.pdl | kits/tree.pdl
+WRITE | s2.pdl | SEED\pland\p2\nSCALE\pland\p2\n
+WRITE | kits/snow.pdl | SNOW\pground\p9\phigh\n
+RUN | $T/land_op | $T/bp.pdl | $T/s2.pdl | $T/out/cells.txt
+EXPECT_EXIT | 0 | a-snow-slot-from-the-kit-writes
+RUN | /usr/bin/grep | -q | -F | 9,0,6 | $T/out/cells.txt
+EXPECT_EXIT | 0 | the-page-contains-the-kit-slot
+WRITE | kits/snow.pdl | SNOW\pground\p33\phigh\n
+RUN | $T/land_op | $T/bp.pdl | $T/s2.pdl | $T/out/cells.txt
+EXPECT_EXIT | 2 | NEGATIVE-slot-33-is-refused
+CLEAN |

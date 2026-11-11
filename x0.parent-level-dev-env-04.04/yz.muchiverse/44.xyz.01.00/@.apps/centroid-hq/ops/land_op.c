@@ -5,8 +5,9 @@
  * Writes cells.txt, map.txt beside it, and land.seed.pdl beside it (the seed that made the page).
  * Biomes, height from the seed, crude roads on the waypoints, a flat frame around each BUILD.
  * The same seed writes the same bytes. A page wider than 512 is refused.
- * Terrain is the first atlas row: 1 grass, 2 dirt path, 3 water, 4 sand, 5 pale sand.
- * Slot 33 is a sword-on-wood shop tile. It is not grass. A floor of 33 repeats that sword on every cell.
+ * Terrain defaults are the first atlas row: 1 grass, 2 dirt path, 3 water, 4 sand, 5 pale sand.
+ * Those numbers are read from kits/ next to the blueprint (biome, road, snow, tree, level). A missing kit keeps the default.
+ * Slot 33 is a sword-on-wood shop tile. It is not grass. A kit that names 33 is refused.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,13 +44,70 @@ static int inside_ell(double x, double y, double cx, double cy, double rx, doubl
     if (rx < 0.1 || ry < 0.1) return 0;
     double dx = (x - cx) / rx, dy = (y - cy) / ry; return dx * dx + dy * dy <= 1.0;
 }
+/* Kits live next to the blueprint, in kits/. Missing files keep these defaults, which match the shipped kits. Slot 33 is refused. */
+static int slot_grass = 1, slot_path = 2, slot_water = 3, slot_sand = 4, slot_pale = 5, slot_snow = 6;
+static int tree_slot = 20, tree_every = 8, road_slot = 2;
+static double road_r2 = 1.6 * 1.6;
+static int lvl_a = 1, lvl_b = 4, lvl_c = 8;
+static int kit_bad = 0;
 static int near_seg(double x, double y, double x0, double y0, double x1, double y1) {
     double dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy, t = 0;
     if (l2 > 1e-6) { t = ((x - x0) * dx + (y - y0) * dy) / l2; if (t < 0) t = 0; if (t > 1) t = 1; }
     double px = x0 + t * dx - x, py = y0 + t * dy - y;
-    return px * px + py * py <= 1.6 * 1.6;
+    return px * px + py * py <= road_r2;
 }
 static unsigned lcg(unsigned *s) { *s = *s * 1664525u + 1013904223u; return *s; }
+
+static int slot_ok(int s) { if (s == 33) { kit_bad = 1; return 0; } return s > 0 && s < 256; }
+
+static void load_one_kit(const char *path) {
+    FILE *f = fopen(path, "r"); if (!f) return;
+    char ln[512];
+    while (fgets(ln, sizeof ln, f)) {
+        if (ln[0] == '#') continue;
+        char *fs[8]; int nf = 0; char *p = ln; fs[nf++] = p;
+        for (; *p && nf < 8; p++) if (*p == '|') { *p = 0; fs[nf++] = p + 1; }
+        if (nf < 3) continue;
+        char *tag = trim(fs[0]);
+        if (!strcmp(tag, "BIOME") && nf >= 3) {
+            int s = atoi(trim(fs[2])); if (!slot_ok(s)) continue;
+            char *id = trim(fs[1]);
+            if (!strcmp(id, "grass")) slot_grass = s;
+            else if (!strcmp(id, "path")) slot_path = s;
+            else if (!strcmp(id, "water")) slot_water = s;
+            else if (!strcmp(id, "sand")) slot_sand = s;
+            else if (!strcmp(id, "pale")) slot_pale = s;
+        } else if (!strcmp(tag, "ROAD") && nf >= 4) {
+            int s = atoi(trim(fs[2])); int w = atoi(trim(fs[3]));
+            if (slot_ok(s)) road_slot = s;
+            if (w < 1) w = 1; if (w > 16) w = 16;
+            double r = w * 1.6 / 3.0; road_r2 = r * r;
+        } else if (!strcmp(tag, "SNOW") && nf >= 3) {
+            int s = atoi(trim(fs[2])); if (slot_ok(s)) slot_snow = s;
+        } else if (!strcmp(tag, "TREE") && nf >= 4) {
+            int s = atoi(trim(fs[2])); int n = atoi(trim(fs[3]));
+            if (slot_ok(s)) tree_slot = s;
+            if (n >= 1 && n <= 64) tree_every = n;
+        } else if (!strcmp(tag, "LEVEL") && nf >= 3) {
+            int h = atoi(trim(fs[2])); if (h < 1) h = 1; if (h > 16) h = 16;
+            char *g = trim(fs[1]);
+            if (!strcmp(g, "a")) lvl_a = h; else if (!strcmp(g, "b")) lvl_b = h; else if (!strcmp(g, "c")) lvl_c = h;
+        }
+    }
+    fclose(f);
+}
+
+static int load_kits(const char *bp) {
+    char path[1024];
+    snprintf(path, sizeof path, "%s", bp);
+    char *sl = strrchr(path, '/'); if (!sl) return 0;
+    const char *names[] = { "biome.pdl", "road.pdl", "snow.pdl", "tree.pdl", "level.pdl" };
+    for (int i = 0; i < 5; i++) {
+        snprintf(sl + 1, sizeof path - (sl + 1 - path), "kits/%s", names[i]);
+        load_one_kit(path);
+    }
+    return kit_bad ? 0 : 1;
+}
 
 static int load_bp(const char *path) {
     FILE *bp = fopen(path, "r"); if (!bp) return 0;
@@ -92,6 +150,7 @@ int main(int argc, char **argv) {
     if (!load_seed(argv[2], &scale, &seed)) { fprintf(stderr, "land_op: seed.pdl needs SEED and SCALE\n"); return 2; }
     if (scale < 1 || GW * scale > 512 || GH * scale > 512) { fprintf(stderr, "land_op: scale makes a page past 512\n"); return 2; }
     if (!load_bp(argv[1])) { fprintf(stderr, "land_op: blueprint had no islands or buildings\n"); return 1; }
+    if (!load_kits(argv[1])) { fprintf(stderr, "land_op: a kit names slot 33\n"); return 2; }
     int W = GW * scale, H = GH * scale;
     char map[1024], saved[1024];
     snprintf(map, sizeof map, "%s", argv[3]);
@@ -109,7 +168,7 @@ int main(int argc, char **argv) {
     FILE *ef = fopen(extr, "w");
     if (!ef) { fprintf(stderr, "land_op: no extrusion\n"); return 1; }
     /* Depth hangs under a flat top, so it does not make a hill. EXTRUDE on the glyph raises the top. a low, b mid, c high. */
-    fprintf(ef, "EXTRUDE | a | 1\nEXTRUDE | b | 4\nEXTRUDE | c | 8\n");
+    fprintf(ef, "EXTRUDE | a | %d\nEXTRUDE | b | %d\nEXTRUDE | c | %d\n", lvl_a, lvl_b, lvl_c);
     fclose(ef);
     fprintf(cf, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", W, H);
     int land = 0, frames = 0, roads = 0;
@@ -127,20 +186,20 @@ int main(int argc, char **argv) {
                                            : (px >= zones[z].a && px < zones[z].c && py >= zones[z].b && py < zones[z].d);
                     if (hit) { k = zones[z].kind; break; }
                 }
-                fl = (k == K_FIELD) ? 4 : (k == K_PALE) ? 5 : (k == K_STONE) ? 2 : (k == K_CLIFF) ? 2 : (k == K_DIRT) ? 3 : 1;
+                fl = (k == K_FIELD) ? slot_sand : (k == K_PALE) ? slot_pale : (k == K_STONE) ? slot_path : (k == K_CLIFF) ? slot_path : (k == K_DIRT) ? slot_water : slot_grass;
                 int base = 6; if (base > 12) base = 12;
                 dp = base;
                 int high = (py < isls[on].cy) + (isls[on].top >= 8);
                 int road = 0, pad = 0;
-                for (int i = 0; i + 1 < nw; i++) if (near_seg(px, py, wps[i].x, wps[i].y, wps[i + 1].x, wps[i + 1].y)) { fl = 2; road = 1; roads++; break; }
+                for (int i = 0; i + 1 < nw; i++) if (near_seg(px, py, wps[i].x, wps[i].y, wps[i + 1].x, wps[i + 1].y)) { fl = road_slot; road = 1; roads++; break; }
                 for (int i = 0; i < nb; i++) {
                     double x1 = blds[i].x0 + blds[i].w, y1 = blds[i].y0 + blds[i].d;
                     if (px < blds[i].x0 || px >= x1 || py < blds[i].y0 || py >= y1) continue;
                     int edge = (px < blds[i].x0 + 1 || px >= x1 - 1 || py >= y1 - 1 || py < blds[i].y0 + 1);
-                    fl = 2; wl = edge ? 36 : 0; pad = 1; frames++; break;
+                    fl = road_slot; wl = edge ? 36 : 0; pad = 1; frames++; break;
                 }
-                if (!road && !pad && high >= 2) fl = 6;
-                if (!road && !pad && fl == 1 && ((x / scale + y / scale + (int)seed) % 8) == 0 && (x % scale) == 0) wl = 20;
+                if (!road && !pad && high >= 2) fl = slot_snow;
+                if (!road && !pad && fl == slot_grass && ((x / scale + y / scale + (int)seed) % tree_every) == 0 && (x % scale) == 0) wl = tree_slot;
                 g = pad || road || high == 0 ? 'a' : (high == 1 ? 'b' : 'c');
                 land++;
             }

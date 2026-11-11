@@ -1,0 +1,7 @@
+# Seat spoke for the centroid dwarf kiln. Weights live here. dwarves.pdl only names this file.
+NODE | seat_kiln
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=look_worn | WEIGHT=0.60
+SLOT | 1 | POINTS_TO=look_warm | WEIGHT=0.40
+GRADE | 0

@@ -2,11 +2,12 @@
 # Names are new. They are not the Soul Pen cast and not the editor pets Vale, Nia, Sol, Kit, Bram, Wynn.
 # A row is a seat. The first verb is the one that seat runs. Building and farming stay the verbs the house already has:
 # crew_op CLAIM/PLACE for a JOB row, and a plant row when farming is turned on. This file does not place them on the page.
-# DWARF | id | job | first verb
-DWARF | pick | mine | claim
-DWARF | quarry | haul | haul
-DWARF | malt | farm | plant
-DWARF | kiln | build | place
-DWARF | loom | cook | cook
-DWARF | wick | smith | craft
-DWARF | helm | guard | watch
+# The spoke named here is the Concept Bank file. Weights live there, not on this row.
+# DWARF | id | job | first verb | spoke
+DWARF | pick | mine | claim | seat_pick
+DWARF | quarry | haul | haul | seat_quarry
+DWARF | malt | farm | plant | seat_malt
+DWARF | kiln | build | place | seat_kiln
+DWARF | loom | cook | cook | seat_loom
+DWARF | wick | smith | craft | seat_wick
+DWARF | helm | guard | watch | seat_helm

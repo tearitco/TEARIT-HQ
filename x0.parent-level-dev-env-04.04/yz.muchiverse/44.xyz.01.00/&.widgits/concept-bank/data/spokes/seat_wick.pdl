@@ -1,0 +1,7 @@
+# Seat spoke for the centroid dwarf wick. Weights live here. dwarves.pdl only names this file.
+NODE | seat_wick
+KIND | spoke
+N_SLOTS | 8
+SLOT | 0 | POINTS_TO=look_worn | WEIGHT=0.70
+SLOT | 1 | POINTS_TO=look_warm | WEIGHT=0.50
+GRADE | 0

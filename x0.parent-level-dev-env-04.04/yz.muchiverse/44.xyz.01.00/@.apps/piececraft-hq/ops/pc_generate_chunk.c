@@ -628,11 +628,28 @@ int main(int argc, char **argv) {
      * pc_clock_daemon.c's update_celestial_body() then placed the sun
      * below the horizon from the very first frame. +43200s = same date
      * at 12:00:00 UTC (noon), so a new world's sun starts up and lit. */
-    write_kv_int(world_state_path, "game_time_epoch_sec", 1767268800L);
-    write_kv_int(world_state_path, "game_time_epoch_ms", 1767268800000L); /* real ms-precision canonical clock, see pc_clock_daemon.c's own header comment */
-    write_kv_int(world_state_path, "autotick_enabled", 0);
-    write_kv(world_state_path, "autotick_speed", "min");
-    write_kv_int(world_state_path, "autotick_last_real_ms", 0);
+    /* A desk switch used to force noon and autotick off, so a clock the player had started died on every page change. A world that already has the keys keeps them. A new world still starts at noon, paused. */
+    long keep_epoch = 1767268800L;
+    long keep_tick = 0;
+    int have_clock = 0;
+    {
+        FILE *prev = host_fopen(world_state_path, "r");
+        if (prev) {
+            char pl[256];
+            while (fgets(pl, sizeof pl, prev)) {
+                if (!strncmp(pl, "game_time_epoch_sec=", 21)) { keep_epoch = atol(pl + 21); have_clock = 1; }
+                if (!strncmp(pl, "autotick_enabled=", 17)) { keep_tick = atol(pl + 17); have_clock = 1; }
+            }
+            fclose(prev);
+        }
+    }
+    write_kv_int(world_state_path, "game_time_epoch_sec", have_clock ? keep_epoch : 1767268800L);
+    write_kv_int(world_state_path, "game_time_epoch_ms", (have_clock ? keep_epoch : 1767268800L) * 1000L);
+    write_kv_int(world_state_path, "autotick_enabled", have_clock ? keep_tick : 0);
+    if (!have_clock) {
+        write_kv(world_state_path, "autotick_speed", "min");
+        write_kv_int(world_state_path, "autotick_last_real_ms", 0);
+    }
 
     /* REAL, NEW 2026-09-14 (EVENT-TRIGGER-LAYER-PLAN.md §3/§4) - the
      * MOVE handler in pc_menu_input.c reads this back to know which

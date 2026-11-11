@@ -1,0 +1,4 @@
+# land_gen.pal - the land generator reads seed and kits. See cases/land_gen.pdl
+exec ./ops/+x/harness_case_op.+x cases/land_gen.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/land_gen.pdl
+halt
