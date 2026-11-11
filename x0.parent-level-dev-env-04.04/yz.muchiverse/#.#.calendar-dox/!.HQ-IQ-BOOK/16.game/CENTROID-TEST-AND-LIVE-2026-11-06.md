@@ -8,7 +8,35 @@
 
 The checker is `bp_op` (`@.apps/centroid-hq/ops/bp_op.c`): `check`, `list`, `gen`, `verify`, `break`. `JOB | place | x | y | z | material` is the crew list. df-hq's `place` verb is still `item x y` with no z.
 
-**FSM lane, started 2026-11-10.** `crew_op` (`@.apps/centroid-hq/ops/crew_op.c`) is the first autonomous builder. One pet reads only those JOB rows. Each tick is the df dig loop's shape: idle, then CLAIM, then PLACE. A place that is not in the job list is refused. `mineplan` writes `DESIGNATE` rows for the stone floor (the chapel writes 9) so the existing df dig loop can mine them. It does not start a pet, and the live tick was not edited. Talking, trading, buying and house-building stay Teropoly's verbs in `@.apps/deskopoly/verbs.pdl` (`talk`, `offer`, `accept`, `buy`, `build`). This lane does not grow a second copy. Farming is a later plant row. Harness `centroid/crew.pal`, case `cases/centroid_crew.pdl`: `VERDICT|PASS|passed=146|failed=0` on 2026-11-10. Every `BUILD` id raises through one factory: chapel, fountain, bridge, stage, hut, mill (62), houses_B2 (76), houses_B1 (132), east_stair (110), cathedral (752), cathedral_spire_main (121), cathedral_spires (432). `under:S6` and `under:S3` are the two undersides that were generated. Scale 4 is not applied. Until 2026-11-11 the editor desk was 16 by 16 and each slice was parked at page 8,6, so one dump could not show the island. That night `page:live` was rewritten to `GRID` 72 by 52 (1940 land cells, 216 wall cells) and `page:test` was cropped from 33 rows to 24 so the minimap is one island. Dumps: `XO/31.Nov/nov-10/grok/28.live-land.png` and `27.test-one-minimap.png`. The lobes on that page are blueprint ellipses, not a crew earth walk. Status: `XO/31.Nov/nov-10/grok/12.where-we-are.md`. The deck is `XO/!.PRESENTATIONS/0.skyland-two-slices/`, silent, three frames. The phase table is `play/phases/centroid_crew.phases.pdl`, pal `play_centroid_crew.pal`. Ran 2026-11-10: `VERDICT|PASS|passed=11|failed=0`. Step one shows the pet (yellow) one cell left of the stone (red). Step two stands on it. Pictures: `XO/31.Nov/nov-10/grok/8.pet-step1.png` and `8.pet-step2.png`. The life row is `EVENT|round|actor|verb|target|at|result`. Older `CLAIM` / `PLACE` / `CALL` rows are refused. A table act is handed off. The trade stays in Teropoly. `bp_op count` on the blueprint printed `LAND columns=1940 volume=25566 buildings=1859 scale_not_applied=4`. Decision D69: every route row has a kind, `world` or `table`. Talk, offer, buy and build are table and name deskopoly. Mine and place are world. Haul and farm are world and OPEN. A table verb owned by the crew is refused. A `CALL` row points at the owner. It does not play the trade.
+**FSM lane, started 2026-11-10.** `crew_op` (`@.apps/centroid-hq/ops/crew_op.c`) is the first autonomous builder. One pet reads only those JOB rows. Each tick is the df dig loop's shape: idle, then CLAIM, then PLACE. A place that is not in the job list is refused. `mineplan` writes `DESIGNATE` rows for the stone floor (the chapel writes 9) so the existing df dig loop can mine them. It does not start a pet, and the live tick was not edited. Talking, trading, buying and house-building stay Teropoly's verbs in `@.apps/deskopoly/verbs.pdl` (`talk`, `offer`, `accept`, `buy`, `build`). This lane does not grow a second copy. Farming is a later plant row. Harness `centroid/crew.pal`, case `cases/centroid_crew.pdl`: `VERDICT|PASS|passed=146|failed=0` on 2026-11-10. Every `BUILD` id raises through one factory: chapel, fountain, bridge, stage, hut, mill (62), houses_B2 (76), houses_B1 (132), east_stair (110), cathedral (752), cathedral_spire_main (121), cathedral_spires (432). `under:S6` and `under:S3` are the two undersides that were generated. Scale 4 is not applied. Until 2026-11-11 the editor desk was 16 by 16 and each slice was parked at page 8,6, so one dump could not show the island. That night `page:live` was rewritten to `GRID` 72 by 52 (1940 land cells, 216 wall cells) and `page:test` was cropped from 33 rows to 24 so the minimap is one island. Dumps: `XO/31.Nov/nov-10/grok/28.live-land.png` and `27.test-one-minimap.png`. The lobes on that page are blueprint ellipses, not a crew earth walk.
+
+**Finish line, owner 2026-11-11, looking at `page:live`.** The grass lobes and dirt edges are progress. They are not the buildings. By the end a building uses RPG Maker tiles, reads in the 3D view and in the 2D top-down of the same `cells.txt`, and can be walked into. Stairs work. A walker is one entity. The owner's camera in that shot stays where they put it (`pos 8,8,1` on the HUD, the look ray hit `49,44,0`). Do not move it back.
+
+The sheet is one authority. `cells.txt` is `floor,wall,depth`. Floor slot and wall slot are atlas tiles (page `test` already paints wall slot 36). The 2D top-down and the 3D maker both read that file. A second picture of the building is a bug.
+
+```
+enter(actor, door):
+  door is door.txt: bit 0 shut, bit 1 open. leaf rows are the two cells of the opening.
+  shut: those cells block. open: they are floor.
+  open is one bit for 2D and 3D. it does not write a room id and it does not change the page.
+  Islands DOOR rows teleport. centroid doors do not.
+  drive: walk the hero onto the open leaf. the hero cell is inside. dump the 3D frame and the 2D sheet.
+
+stair(actor, next):
+  a stair is a run of cells whose depth changes by 1 each step.
+  if next.depth == here.depth: walk.
+  if next.depth == here.depth + 1 and next is on the stair run: walk, entity z = next.depth.
+  if the drop or the rise is more than 1: refuse.
+  the same rule paints the 2D sheet: the higher cell is the next tile, not a new page.
+
+walk(actor, next):
+  one fact, one ledger row: EVENT|round|actor|walk|ground|x,y,z|ok
+  refuse when the cell has a wall slot and the door on that cell is shut.
+  refuse when the cell is sky (0,0,0).
+  the entity position is that row. a side file that remembers the cell is ghost data.
+```
+
+First proof is one building on `page:live`, the hut or the chapel, with its door and a stair of one floor. The drive is a harness that can fail, then a dump. The other footprints stay ellipses until that one building passes. Status: `XO/31.Nov/nov-10/grok/12.where-we-are.md`. The deck is `XO/!.PRESENTATIONS/0.skyland-two-slices/`, silent, three frames. The phase table is `play/phases/centroid_crew.phases.pdl`, pal `play_centroid_crew.pal`. Ran 2026-11-10: `VERDICT|PASS|passed=11|failed=0`. Step one shows the pet (yellow) one cell left of the stone (red). Step two stands on it. Pictures: `XO/31.Nov/nov-10/grok/8.pet-step1.png` and `8.pet-step2.png`. The life row is `EVENT|round|actor|verb|target|at|result`. Older `CLAIM` / `PLACE` / `CALL` rows are refused. A table act is handed off. The trade stays in Teropoly. `bp_op count` on the blueprint printed `LAND columns=1940 volume=25566 buildings=1859 scale_not_applied=4`. Decision D69: every route row has a kind, `world` or `table`. Talk, offer, buy and build are table and name deskopoly. Mine and place are world. Haul and farm are world and OPEN. A table verb owned by the crew is refused. A `CALL` row points at the owner. It does not play the trade.
 
 Status of the 2026-11-06 stock-take below: **plan, except the court file and its 5-check harness.** SAID = the owner. OBS = files opened for that stock-take.
 

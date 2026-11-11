@@ -36,3 +36,5 @@ Read this after `ONBOARD-GROK.md` and before you touch centroid. It is the list 
 - Older dumps `24` and `25` are the rejected green band and the brown strip. Do not cite them as the look.
 
 Pitfall writeup, same facts: `03-pitfalls/HOUSE_CODE_PITFALLS.md` section 28.
+
+The owner's 2026-11-11 view of `page:live` is the lobes. The finish line is not more lobes. One building uses RPG Maker tiles, the same `cells.txt` in 3D and in 2D, a door you can walk through, and a stair that changes depth by one. The steps are in `16.game/CENTROID-TEST-AND-LIVE-2026-11-06.md` under "Finish line, owner 2026-11-11". Do not move the camera they set. The look ray in that shot hit `49,44,0`.
