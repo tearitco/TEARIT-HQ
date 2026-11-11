@@ -573,3 +573,21 @@ parser and tree/orphan helpers as `innerHTML`/`appendChild`:
 Gate `tests/nb_insert_adjacent_test.sh` **PASS (20/20)**, negative-tested by
 forcing `beforebegin` to append (2 failures), then restored. Full suite
 **ALL TESTS PASS**.
+### 2026-11-11 — structural navigation getters
+
+`lastChild` was installed nowhere on elements, `previousSibling` existed only
+on TreeWalker, and `parentElement`, the element child/sibling accessors, and
+`childElementCount` were absent. All are now live-tree getters on element
+wrappers, the correct prototypes, and the fragment wrapper. Text nodes take
+part in `*Sibling` and are skipped by `*ElementSibling`; `parentElement` is
+null for `<html>`; `childElementCount` agrees with `children`.
+
+Known separate limitation surfaced by the new gate: `nb_parse_html`
+(`DOMParser` + `innerHTML`) stores character data on the element's own text
+field instead of creating child text nodes. The gate builds its mixed tree
+with `createTextNode`, so the getters are verified; fixing parsed text nodes
+is a DOM-model change with renderer impact and remains open.
+
+Gate `tests/nb_sibling_nav_test.sh` **PASS (27/27)**, negative-tested with
+two deliberate inversions (8 failures), then restored. Full suite
+**ALL TESTS PASS**.

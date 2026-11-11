@@ -3865,6 +3865,67 @@ static JSValue nb_el_nextSibling(JSContext *ctx, JSValueConst this_val, int argc
     if (n && n->next_sibling) return push_node(ctx, n->next_sibling);
     return JS_NULL;
 }
+/* Structural navigation (2026-11-11): lastChild existed but was never
+ * installed on elements; previousSibling, parentElement, and the element-only
+ * sibling/child accessors were absent entirely. All of these read the live C
+ * tree on every access, so a mutation shows up on the next read with no cache
+ * to invalidate. Text nodes participate in the *Sibling properties and are
+ * skipped by the *ElementSibling ones, as in a browser; a text node's
+ * parentElement is still the element that owns it. */
+static int nb_is_element_node(const NbNode *n) {
+    return n && n->tag && n->tag[0] && n->tag[0] != '#';
+}
+static JSValue nb_el_lastChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n && n->last_child) return push_node(ctx, n->last_child);
+    return JS_NULL;
+}
+static JSValue nb_el_previousSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->parent) return JS_NULL;
+    NbNode *prev = NULL;
+    for (const NbNode *c = n->parent->first_child; c && c != n; c = c->next_sibling) prev = (NbNode *)c;
+    return prev ? push_node(ctx, prev) : JS_NULL;
+}
+static JSValue nb_el_parentElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *p = n ? n->parent : NULL;
+    return nb_is_element_node(p) ? push_node(ctx, p) : JS_NULL;
+}
+static JSValue nb_el_firstElementChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n) for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        if (nb_is_element_node(c)) return push_node(ctx, (NbNode *)c);
+    return JS_NULL;
+}
+static JSValue nb_el_lastElementChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *last = NULL;
+    if (n) for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        if (nb_is_element_node(c)) last = (NbNode *)c;
+    return last ? push_node(ctx, last) : JS_NULL;
+}
+static JSValue nb_el_nextElementSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n) for (const NbNode *c = n->next_sibling; c; c = c->next_sibling)
+        if (nb_is_element_node(c)) return push_node(ctx, (NbNode *)c);
+    return JS_NULL;
+}
+static JSValue nb_el_previousElementSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->parent) return JS_NULL;
+    NbNode *prev = NULL;
+    for (const NbNode *c = n->parent->first_child; c && c != n; c = c->next_sibling)
+        if (nb_is_element_node(c)) prev = (NbNode *)c;
+    return prev ? push_node(ctx, prev) : JS_NULL;
+}
+static JSValue nb_el_childElementCount(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    int count = 0;
+    if (n) for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        if (nb_is_element_node(c)) count++;
+    return JS_NewInt32(ctx, count);
+}
 static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     NbNode *ch = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
@@ -4529,6 +4590,38 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "nextSibling");
         JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_nextSibling, "nextSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "lastChild");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_lastChild, "lastChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "previousSibling");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_previousSibling, "previousSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "parentElement");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_parentElement, "parentElement", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "firstElementChild");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_firstElementChild, "firstElementChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "lastElementChild");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_lastElementChild, "lastElementChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "nextElementSibling");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_nextElementSibling, "nextElementSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "previousElementSibling");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_previousElementSibling, "previousElementSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "childElementCount");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_childElementCount, "childElementCount", 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
     }
@@ -7484,6 +7577,32 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, Ep, "replaceChildren", JS_NewCFunction(ctx, nb_el_replaceChildren_js, "replaceChildren", 0));
     JS_SetPropertyStr(ctx, Ep, "getClientRects", JS_NewCFunction(ctx, nb_el_getClientRects, "getClientRects", 0));
     JS_SetPropertyStr(ctx, Ep, "scrollIntoView", JS_NewCFunction(ctx, nb_el_scrollIntoView, "scrollIntoView", 0));
+    /* Structural navigation (2026-11-11). Node-level accessors land on
+     * Node.prototype, element-only ones on Element.prototype, matching where
+     * a browser exposes them and what `in` probes expect. */
+    {
+        JSAtom nm;
+        nm = JS_NewAtom(ctx, "firstElementChild");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_firstElementChild, "get firstElementChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "lastElementChild");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_lastElementChild, "get lastElementChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "nextElementSibling");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_nextElementSibling, "get nextElementSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "previousElementSibling");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_previousElementSibling, "get previousElementSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "childElementCount");
+        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_childElementCount, "get childElementCount", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentHTML", JS_NewCFunction(ctx, nb_el_insertAdjacentHTML, "insertAdjacentHTML", 2));
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentText", JS_NewCFunction(ctx, nb_el_insertAdjacentText, "insertAdjacentText", 2));
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentElement", JS_NewCFunction(ctx, nb_el_insertAdjacentElement, "insertAdjacentElement", 2));
@@ -7497,6 +7616,21 @@ static void install_dom_classes(JSContext *ctx) {
      * document node shares them. remove() is on Element (ChildNode) in the
      * spec; put it there, not here. */
     JS_SetPropertyStr(ctx, Np, "cloneNode",      JS_NewCFunction(ctx, nb_el_cloneNode, "cloneNode", 1));
+    {
+        JSAtom nm;
+        nm = JS_NewAtom(ctx, "lastChild");
+        JS_DefinePropertyGetSet(ctx, Np, nm, JS_NewCFunction(ctx, nb_el_lastChild, "get lastChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "previousSibling");
+        JS_DefinePropertyGetSet(ctx, Np, nm, JS_NewCFunction(ctx, nb_el_previousSibling, "get previousSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "parentElement");
+        JS_DefinePropertyGetSet(ctx, Np, nm, JS_NewCFunction(ctx, nb_el_parentElement, "get parentElement", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
     {
         JSAtom nm = JS_NewAtom(ctx, "nodeValue");
@@ -10562,11 +10696,6 @@ static JSValue ce_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSVal
  * innerHTML/children/firstChild/... all read the C node behind the NODEKEY)
  * plus root-scoped query natives that walk the fragment's OWN subtree (the
  * document natives are hard-wired to g_dom_root). */
-static JSValue nb_el_lastChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    if (n && n->last_child) return push_node(ctx, n->last_child);
-    return JS_NULL;
-}
 static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     return JS_NewBool(ctx, n && n->first_child != NULL);
@@ -10694,6 +10823,13 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
         FRAG_GET("lastChild", nb_el_lastChild);
         FRAG_GET("parentNode", nb_el_parentNode);
         FRAG_GET("nextSibling", nb_el_nextSibling);
+        FRAG_GET("previousSibling", nb_el_previousSibling);
+        FRAG_GET("parentElement", nb_el_parentElement);
+        FRAG_GET("firstElementChild", nb_el_firstElementChild);
+        FRAG_GET("lastElementChild", nb_el_lastElementChild);
+        FRAG_GET("nextElementSibling", nb_el_nextElementSibling);
+        FRAG_GET("previousElementSibling", nb_el_previousElementSibling);
+        FRAG_GET("childElementCount", nb_el_childElementCount);
 #undef FRAG_GET
     }
     {

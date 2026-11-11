@@ -1550,3 +1550,55 @@ hard stop rather than a graceful degradation.
 - Built from the same source as the run; no browser relaunch was needed
   because the slice only adds element methods (the resident worker gates are
   hermetic and spawn their own fresh worker).
+
+### 9.25 2026-11-11 — sibling/child navigation accessors were missing or uninstalled
+
+Writing the 9.24 gate exposed the gap: `lastChild` had a C function but was
+never installed on elements, `previousSibling` did not exist outside the
+TreeWalker wrapper, and `parentElement`, `firstElementChild`,
+`lastElementChild`, `nextElementSibling`, `previousElementSibling`, and
+`childElementCount` were absent entirely. Reads returned `undefined`, which
+breaks traversal code without an exception to point at.
+
+**The slice** (`ops/nb_js_worker.c`)
+
+- `lastChild` and `previousSibling` now read from the live C tree; the
+  previous sibling is found by walking the parent's child chain, so text
+  nodes participate exactly as in a browser.
+- `parentElement` returns the parent only when it is an element; the parent
+  of `<html>` is `#document`, so it answers `null`.
+- `firstElementChild`/`lastElementChild`/`nextElementSibling`/
+  `previousElementSibling` skip text nodes; `childElementCount` counts only
+  elements and agrees with the existing `children` collection.
+- Every getter reads current state on each access, so a later append,
+  insert, or removal is visible immediately with no cache.
+- Installed per element wrapper, on `Node.prototype` (`lastChild`,
+  `previousSibling`, `parentElement`), on `Element.prototype` (the
+  element-only five), and on the fragment/ShadowRoot wrapper.
+
+**A separate limitation this gate found, not fixed here**
+
+`nb_parse_html` (used by `DOMParser` and the `innerHTML` setter) still folds
+character data into the current element's own `text` field instead of
+creating child text nodes. `parseFromString('<div>x<i></i>y</div>')` reports
+`childNodes.length` of 1 and `innerHTML` of `<i></i>`; the text survives in
+the element's `textContent`, not as nodes. This gate therefore builds its
+mixed tree with `createTextNode`/`insertBefore`/`appendChild`, which is the
+same shape script-generated DOM has, and the getters are verified against
+that. Parsed text nodes are a DOM-model change with renderer impact and are
+left as a named open item rather than half-fixed inside a getter slice.
+
+**Verification**
+
+- New gate `tests/nb_sibling_nav_test.sh`: **PASS (27/27)** — text vs element
+  siblings in both directions, first/last child across mixed content,
+  detached nulls, live append of element then text, fragment accessors,
+  parentElement of a text node and of `<html>`, `childElementCount` vs
+  `children.length`, and prototype presence on the correct interfaces.
+- Negative test: making `previousSibling` read forward and making
+  `childElementCount` count text produced **8 failures**
+  (`prev-sibling-text`, `text-has-prev`, `count-a`, `count-agrees-children`,
+  `live-append-element`, `live-append-text`, `fragment-count`,
+  `fragment-prev-sibling`); restored and green again.
+- `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**, new gate registered in the
+  hermetic group.
