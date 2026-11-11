@@ -1332,42 +1332,69 @@ static void p2d_cells_minimap(unsigned char *px, int W, int H, int view_x, int v
 }
 
 /* Mode 0 for a desk that has cells.txt + cells.rgba but no map.png (centroid). rpg-space and Teropoly blit that atlas as the 2D picture (preview + map.png). This is the same picture, sampled straight from the atlas, so a 504-wide page does not need a 12k-pixel PNG. view_2d_style "color" is the flat grid; '\' sets that. "tiles" and an empty style are this picture. */
-static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, int zoom, int selx, int sely, int *oox, int *ooy, int *ocell, int *ocols, int *orows) {
+static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, int zoom, int selx, int sely, int cur_z, int floor_z, int *oox, int *ooy, int *ocell, int *ocols, int *orows) {
     if (style && (strcmp(style, "color") == 0 || strcmp(style, "ascii") == 0 || strcmp(style, "emoji") == 0 || strcmp(style, "scene") == 0)) return 0;
     char dd[PATH_BUF], path[PATH_BUF]; if (!desk_dir(dd, sizeof(dd))) return 0;
     snprintf(path, sizeof(path), "%s/cells.txt", dd);
     struct stat sb; if (stat(path, &sb) != 0) return 0;
-    static unsigned short *slot; static int fw, fh, tpx, acols; static unsigned char *atlas; static int aw, ah; static time_t mt; static off_t sz;
+    static unsigned short *slot, *wallv; static unsigned char *dep, *gly; static int fw, fh, tpx, acols, rock, ea, eb, ec;
+    static unsigned char *atlas; static int aw, ah; static time_t mt; static off_t sz;
     if (!slot || mt != sb.st_mtime || sz != sb.st_size) {
         FILE *f = host_fopen(path, "r"); if (!f) return 0;
         char *line = malloc(256 * 1024); if (!line) { fclose(f); return 0; }
-        int w = 0, h = 0, pxn = 24, cols = 16, in = 0, row = 0; unsigned short *ns = NULL;
+        int w = 0, h = 0, pxn = 24, cols = 16, rslot = 36, in = 0, row = 0; unsigned short *ns = NULL, *nw = NULL; unsigned char *nd = NULL;
         while (fgets(line, 256 * 1024, f)) {
             if (!in) {
                 if (!strncmp(line, "width=", 6)) w = atoi(line + 6);
                 else if (!strncmp(line, "height=", 7)) h = atoi(line + 7);
                 else if (!strncmp(line, "tile_px=", 8)) pxn = atoi(line + 8);
                 else if (!strncmp(line, "atlas_cols=", 11)) cols = atoi(line + 11);
+                else if (!strncmp(line, "rock_slot=", 10)) rslot = atoi(line + 10);
                 else if (!strncmp(line, "cells", 5)) {
                     if (w < 1 || h < 1 || w > 8192 || h > 8192 || pxn < 1 || cols < 1) break;
-                    ns = calloc((size_t)w * (size_t)h, sizeof(unsigned short)); if (!ns) break; in = 1;
+                    ns = calloc((size_t)w * (size_t)h, sizeof(unsigned short));
+                    nw = calloc((size_t)w * (size_t)h, sizeof(unsigned short));
+                    nd = calloc((size_t)w * (size_t)h, 1);
+                    if (!ns || !nw || !nd) break; in = 1;
                 }
                 continue;
             }
             if (row >= h) break;
             const char *q = line; int col = 0;
-            while (col < w && *q && *q != '\n') { ns[(size_t)row * w + col] = (unsigned short)atoi(q); col++; const char *sp = strchr(q, ' '); if (!sp) break; q = sp + 1; }
+            while (col < w && *q && *q != '\n') {
+                int F = 0, Wl = 0, Dp = 0; sscanf(q, "%d,%d,%d", &F, &Wl, &Dp);
+                ns[(size_t)row * w + col] = (unsigned short)(F < 0 ? 0 : F);
+                nw[(size_t)row * w + col] = (unsigned short)(Wl < 0 ? 0 : Wl);
+                nd[(size_t)row * w + col] = (unsigned char)(Dp < 0 ? 0 : Dp > 255 ? 255 : Dp);
+                col++; const char *sp = strchr(q, ' '); if (!sp) break; q = sp + 1;
+            }
             row++;
         }
         free(line); fclose(f);
-        if (!ns || row < 1) { free(ns); return 0; }
+        if (!ns || row < 1) { free(ns); free(nw); free(nd); return 0; }
         char ap[PATH_BUF]; snprintf(ap, sizeof(ap), "%s/cells.rgba", dd);
         FILE *af = host_fopen(ap, "rb"); if (!af) { free(ns); return 0; }
         fseek(af, 0, SEEK_END); long asz = ftell(af); rewind(af);
-        int aaw = cols * pxn; if (asz < aaw * 4 || asz % (aaw * 4)) { fclose(af); free(ns); return 0; }
-        unsigned char *na = malloc((size_t)asz); if (!na || fread(na, 1, (size_t)asz, af) != (size_t)asz) { fclose(af); free(na); free(ns); return 0; }
+        int aaw = cols * pxn; if (asz < aaw * 4 || asz % (aaw * 4)) { fclose(af); free(ns); free(nw); free(nd); return 0; }
+        unsigned char *na = malloc((size_t)asz); if (!na || fread(na, 1, (size_t)asz, af) != (size_t)asz) { fclose(af); free(na); free(ns); free(nw); free(nd); return 0; }
         fclose(af);
-        free(slot); free(atlas); slot = ns; atlas = na; fw = w; fh = h; tpx = pxn; acols = cols; aw = aaw; ah = (int)(asz / (aaw * 4)); mt = sb.st_mtime; sz = sb.st_size;
+        unsigned char *ng = calloc((size_t)w * (size_t)h, 1);
+        int na_ = 1, nb_ = 4, nc_ = 8;
+        if (ng) {
+            char mp[PATH_BUF], ep[PATH_BUF]; snprintf(mp, sizeof(mp), "%s/map.txt", dd); snprintf(ep, sizeof(ep), "%s/extrusion.pdl", dd);
+            FILE *mf = host_fopen(mp, "r");
+            if (mf) {
+                char *ml = malloc(256 * 1024);
+                int mr = 0;
+                if (ml) while (mr < h && fgets(ml, 256 * 1024, mf)) { int n = (int)strcspn(ml, "\r\n"); for (int c = 0; c < w && c < n; c++) ng[(size_t)mr * w + c] = (unsigned char)ml[c]; mr++; }
+                free(ml); fclose(mf);
+            }
+            FILE *ef = host_fopen(ep, "r");
+            if (ef) { char el[80]; while (fgets(el, sizeof el, ef)) { int v = 0; char g = 0; if (sscanf(el, "EXTRUDE | %c | %d", &g, &v) == 2) { if (g == 'a') na_ = v; else if (g == 'b') nb_ = v; else if (g == 'c') nc_ = v; } } fclose(ef); }
+        }
+        free(slot); free(wallv); free(dep); free(gly); free(atlas);
+        slot = ns; wallv = nw; dep = nd; gly = ng; atlas = na; rock = rslot; ea = na_; eb = nb_; ec = nc_;
+        fw = w; fh = h; tpx = pxn; acols = cols; aw = aaw; ah = (int)(asz / (aaw * 4)); mt = sb.st_mtime; sz = sb.st_size;
     }
     if (!slot || !atlas) return 0;
     /* A page that fits at the atlas size is shown whole. A page wider than the window keeps the tiles at tile_px (the size rpg-space and Teropoly draw), and scrolls. Zoom -1 fits the page. Zoom 0 is that default. */
@@ -1419,7 +1446,18 @@ static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, in
         int cx = ox + x / draw, cy = oy + y / draw;
         unsigned char *d = px + ((size_t)y * W + x) * 4;
         if (cx < 0 || cy < 0 || cx >= fw || cy >= fh) { d[0] = 90; d[1] = 150; d[2] = 210; d[3] = 255; continue; }
-        int t = slot[(size_t)cy * fw + cx]; int sx = (t % acols) * tpx, sy = (t / acols) * tpx;
+        /* rpg-edit's 2D view shows one z file per level. This page stores every level in one cells.txt: the glyph's EXTRUDE is the top, and the third number is the rock under it. */
+        size_t ci = (size_t)cy * fw + cx;
+        int t = slot[ci];
+        if (floor_z >= 0 && gly && gly[ci] && gly[ci] != ' ') {
+            int eh = gly[ci] == 'c' ? ec : gly[ci] == 'b' ? eb : ea;
+            int top = floor_z + eh;
+            if (cur_z > top) t = 0;
+            else if (cur_z == top) t = wallv && wallv[ci] ? wallv[ci] : slot[ci];
+            else if (dep && cur_z >= top - (int)dep[ci]) t = rock;
+            else t = 0;
+        }
+        int sx = (t % acols) * tpx, sy = (t / acols) * tpx;
         int u = (x % draw) * tpx / draw, v = (y % draw) * tpx / draw;
         if (sy + v >= ah || sx + u >= aw) { d[0] = 90; d[1] = 150; d[2] = 210; d[3] = 255; continue; }
         const unsigned char *s = atlas + ((size_t)(sy + v) * aw + (sx + u)) * 4;
@@ -1734,7 +1772,9 @@ int main(void) {
     int want_ascii = (strcmp(style, "ascii") == 0);
 
     /* --- ground tiles (skipped when the desk picture was blitted) --- */
-    if (!map_ok && !side_mode && p2d_atlas_main(px, W, H, style, read_kv_int(st, "view_2d_zoom", 0), sel_x, sel_y, &ox, &oy, &cell, &cols, &rows)) map_ok = 2;
+    int floor_z = -1;
+    { char mani[PATH_BUF]; snprintf(mani, sizeof(mani), "%s/pieces/system/board_manifest.txt", focused_root[0] ? focused_root : fpr); floor_z = read_kv_int(mani, "floor_z", -1); }
+    if (!map_ok && !side_mode && p2d_atlas_main(px, W, H, style, read_kv_int(st, "view_2d_zoom", 0), sel_x, sel_y, cur_z, floor_z, &ox, &oy, &cell, &cols, &rows)) map_ok = 2;
     if (!map_ok)
     for (int scy = 0; scy < rows; scy++) {
         for (int scx = 0; scx < cols; scx++) {
