@@ -1,3 +1,5 @@
-# A snow kit. This atlas has no snow tile. Slot 6 is the pale stand-in. A creator swaps the slot when their sheet has snow.
+# A snow kit. Floor slot 6. The tile is RTP Outside_A2.png at x=0 y=480, 48px, scaled into the page atlas.
+# See &.widgits/palettes/tilesets/legend.pdl. Mineclonia default_snow.png is the same role, not the painted tile.
 # SNOW | id | floor_slot | on | high_band
-SNOW | pale-cap | 6 | high
+SNOW | ground | 6 | high
+SOURCE | rmmv | Outside_A2.png | 0 | 480 | 48 | 48

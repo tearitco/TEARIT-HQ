@@ -1,0 +1,39 @@
+# Atlas legend for the Centroid page sheet (cells.rgba).
+# Written 2026-11-11. No legend file was in &.widgits/palettes before this.
+# The sheet is 384x72, 24px tiles, 16 columns, 43 tiles. Slot = row * 16 + column.
+# Floor slot paints the top face. Rock slot paints the cliff sides.
+# A name here is what the eye shows on that slot. A SOURCE row is where a replacement tile comes from.
+#
+# SLOT | n | name | use
+SLOT | 0 | empty-black | unused
+SLOT | 1 | grass | biome floor
+SLOT | 2 | dirt-path | biome floor, roads, building pads
+SLOT | 3 | water | biome floor
+SLOT | 4 | sand | biome floor
+SLOT | 5 | pale-sand | biome floor
+SLOT | 6 | snow | high-band floor. Pixels are the RTP snow tile below, not the old pale cap.
+SLOT | 12 | castle-roofs | roof cap only
+SLOT | 13 | castle-wall | roof cap only
+SLOT | 14 | castle-gate | roof cap only
+SLOT | 15 | castle-corner | roof cap only
+SLOT | 20 | town-houses | tree kit wall slot. The picture is a town, not a tree.
+SLOT | 32 | dirt-object | object row. Not a biome.
+SLOT | 33 | shop-sword | object row. Never a floor. Repeats a sword on every cell.
+SLOT | 34 | wood-door | door module
+SLOT | 35 | flat-orange | unused. Do not paint walls or floors with it.
+SLOT | 36 | cliff-cobble | rock sides and building-frame walls
+SLOT | 37 | planks | object
+SLOT | 38 | blue-windows | window module
+SLOT | 39 | wood-floor | object
+SLOT | 40 | red-carpet | object
+SLOT | 41 | white-plaster | wall module
+SLOT | 42 | tan | object
+#
+# SOURCE | role | pack | file | x | y | w | h
+# Outside_A2.png is 768x576. The crop is one 48px cell of the snow autotile, scaled to 24 for slot 6.
+SOURCE | snow | rmmv | #.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A2.png | 0 | 480 | 48 | 48
+# Mineclonia snow is allowed as the same role. It is a 16px speckled cap, not the tile painted into slot 6.
+SOURCE | snow-alt | mineclonia | #.NNEST_ASSETS/mineclonia/mods/ITEMS/mcl_core/textures/default_snow.png | 0 | 0 | 16 | 16
+SOURCE | snow-side | mineclonia | #.NNEST_ASSETS/mineclonia/mods/ITEMS/mcl_core/textures/mcl_core_grass_side_snowed.png | 0 | 0 | 16 | 16
+# World_A2.png bottom band is snow fields and snow mountains. It is the world-map sheet, not the page atlas.
+SOURCE | snow-world | rmmv | #.NNEST_ASSETS/rmmv-www-img/tilesets/World_A2.png | 0 | 0 | 768 | 576

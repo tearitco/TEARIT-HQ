@@ -441,6 +441,6 @@ The owner will have harness proofs shown to potential customers as YouTube video
 
 **Why this one.** The business goal is that a creator sells a kit, not a fork of the generator. The 10th project is another copy of the pdl. One authority per fact: the slot lives in the kit, the page is the projection.
 
-**What the eye sees, and what it does not.** Cell depth hangs under a flat top, so a bigger depth is not a hill. Levels are `EXTRUDE` on the glyph (`a` 1, `b` 4, `c` 8). Roads and building pads stay on `a`, so they stay flat. This atlas has no snow tile. The snow kit's slot 6 is the pale stand-in until a creator's sheet has snow. Slot 33 stays banned. It is a shop tile.
+**What the eye sees, and what it does not.** Cell depth hangs under a flat top, so a bigger depth is not a hill. Levels are `EXTRUDE` on the glyph (`a` 1, `b` 4, `c` 8). Roads and building pads stay on `a`, so they stay flat. Snow is RTP Outside_A2.png at 0,480, in slot 6. The slot legend is `&.widgits/palettes/tilesets/legend.pdl`. There was no legend file in palettes before 2026-11-11. Slot 33 stays banned. It is a shop tile.
 
 **Not chosen:** a C file per biome. A snow painting hardcoded for centroid only. Treating depth as height.
