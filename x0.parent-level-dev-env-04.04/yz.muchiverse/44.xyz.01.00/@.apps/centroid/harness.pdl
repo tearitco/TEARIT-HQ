@@ -14,3 +14,4 @@ HARNESS | small_enter | small | CASE | enter saved | enter_house_small | - | - |
 HARNESS | small_crew  | small | CASE | crew saved  | centroid_crew_small | - | - | no | the crew proof saved with the small island
 HARNESS | live_enter  | live  | CASE | enter house | enter_house       | - | - | no | the enter proof live may change
 HARNESS | live_crew   | live  | CASE | crew        | centroid_crew     | - | - | no | the crew proof live may change
+HARNESS | live_land   | live  | ACTION | land        | @.apps/centroid-hq/ops/+x/land_op.+x | ${HOUSE}/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl ${HOUSE}/@.apps/centroid-hq/data/skyland/land.seed.pdl ${CELLS} | page | no | blank the open page from land.seed.pdl (SEED and SCALE)

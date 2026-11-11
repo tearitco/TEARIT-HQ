@@ -1,0 +1,26 @@
+# land_gen: size and seed live in a pdl. Two seeds differ. The same seed matches. A scale past the page cap is refused.
+RESULTS | ../results/land_gen.txt
+ENV | LC_ALL | C
+
+CASE | seeds
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/land_op | $HOUSE/@.apps/centroid-hq/ops/land_op.c | -lm
+EXPECT_EXIT | 0 | the-generator-compiles
+WRITE | s2.pdl | SEED\pland\p2\nSCALE\pland\p2\n
+WRITE | s3.pdl | SEED\pland\p3\nSCALE\pland\p2\n
+WRITE | big.pdl | SEED\pland\p1\nSCALE\pland\p9\n
+RUN | /bin/mkdir | -p | $T/a | $T/b | $T/c
+RUN | $T/land_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | $T/s2.pdl | $T/a/cells.txt
+EXPECT_EXIT | 0 | seed-2-writes-a-page
+EXPECT_OUT | LAND seed=2 scale=2 144x104 | the-seed-and-the-size-come-from-the-pdl
+RUN | $T/land_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | $T/s2.pdl | $T/b/cells.txt
+EXPECT_EXIT | 0 | the-same-seed-again
+RUN | /usr/bin/cmp | $T/a/cells.txt | $T/b/cells.txt
+EXPECT_EXIT | 0 | the-same-seed-writes-the-same-bytes
+RUN | $T/land_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | $T/s3.pdl | $T/c/cells.txt
+EXPECT_EXIT | 0 | a-different-seed
+RUN | /usr/bin/cmp | $T/a/cells.txt | $T/c/cells.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-different-seed-is-not-the-same-page
+RUN | $T/land_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | $T/big.pdl | $T/a/cells.txt
+EXPECT_EXIT | 2 | NEGATIVE-a-page-past-512-is-refused
+CLEAN |

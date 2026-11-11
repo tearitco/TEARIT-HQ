@@ -1,0 +1,4 @@
+# land.seed.pdl — the size and the seed for the live page. The generator reads this and writes a copy beside the page.
+# Change SCALE or SEED and run the page harness row "land". The same seed writes the same page.
+SEED | land | 11
+SCALE | land | 7

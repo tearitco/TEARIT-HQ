@@ -4,6 +4,8 @@ Owner request, 2026-11-10: make a blueprint of the skyland in the picture `goal-
 
 **2026-11-11, modules.** A building is a count of five modules (`wall`, `window`, `door`, `roof`, `tower`) in `centroid.parts.pdl`, placed by the same `bp_op`. Slot 35 is the flat orange slab and is not a module. Slots 12–15 are the castle drawings and are roof and tower caps only. Decision D71. The note is `16.game/CENTROID-TEST-AND-LIVE-2026-11-06.md`, section "Castle scale".
 
+**2026-11-11, land.** The page is not drawn by hand. `land_op` reads this blueprint and `land.seed.pdl` (`SEED`, `SCALE`) and writes a blank page: biomes, height, a road, and a flat frame around every `BUILD`. Decision D72. The `live` harness row is `land`.
+
 Data file: `44.xyz.01.00/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl` (106 lines, rows `ISLAND`, `ZONE`, `WATER`, `BUILD`, `WAYPOINT`, `ROUTE`, plus `SCALE`, `GRID`).
 
 ## 1. What the picture is (OBS) and what I did with it

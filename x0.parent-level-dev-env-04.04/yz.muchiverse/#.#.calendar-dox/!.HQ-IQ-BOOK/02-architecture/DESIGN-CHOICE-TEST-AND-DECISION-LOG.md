@@ -426,3 +426,11 @@ The owner will have harness proofs shown to potential customers as YouTube video
 **Why this one.** One authority for a wall, a window, a door, a roof, and a tower. The 10th building is another count, not another program. The RPG Maker sheet on the page is the skin. Slot 35 is a flat orange fill and is not a module.
 
 **Not chosen:** a generator per castle, hotel, or office. Stamping slot 35 on every footprint. Applying scale 4 to page `small` so the shed looks bigger. Repeating slots 12–15 on every wall cell (each of those tiles is already a whole little castle).
+
+## D72 (2026-11-11, BUILT): land size and seed are a pdl, and the page harness runs that generator
+
+**The choice.** `land_op` starts from a blank page. `land.seed.pdl` holds `SEED | land | n` and `SCALE | land | n`. The same seed writes the same bytes. The page gets biomes, height, a cobble road along the waypoints, and a flat cobble frame around each `BUILD`, with the inside of the frame left empty. The `live` harness row `land` is an ACTION. Its `args` are the blueprint, the seed file, and `${CELLS}`. A CASE row cannot take a size. An ACTION row can.
+
+**Why this one.** The 10th size is another number in the pdl, not another case file and not another program. Page `small` is not an argument of this row.
+
+**Not chosen:** a static harness per size. Baking 288 by 208 into the generator. Letting a CASE row pretend to take arguments. The menu does not forward `args` for a CASE.
