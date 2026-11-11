@@ -223,7 +223,8 @@ void main() {
                Walls keep the old split (floor on y=0, wall art above). */
             uint slot = (c.y <= u_zoff) ? sl.x : sl.y;
             if (c.y < u_zoff && u_rock > 0 && cf != 3) slot = uint(u_rock);
-            if (sl.x != 0u && sl.y != 0u && sl.x != sl.y) slot = (cf == 3) ? sl.x : sl.y;
+            /* Side tile only above the floor. Below it the column is the hung earth, and the rock slot stands. A house wall was painting that column orange (seen 2026-11-11 under the live roof). */
+            if (c.y > u_zoff && sl.x != 0u && sl.y != 0u && sl.x != sl.y) slot = (cf == 3) ? sl.x : sl.y;
             if (u_under != 0 && c.y < u_zoff - 1) { uint us = texelFetch(u_cells, ivec2(c.x, c.z + int(u_wext.z)), 0).r; if (us != 0u) slot = us; }
             ivec2 ap = ivec2(int(slot) % u_mk.x, int(slot) / u_mk.x) * u_mk.y + ivec2(clamp(uv, 0.0, 0.999) * float(u_mk.y));
             vec4 at = texelFetch(u_atlas, ap, 0);
