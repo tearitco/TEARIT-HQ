@@ -410,3 +410,11 @@ The owner will have harness proofs shown to potential customers as YouTube video
 **Why this one.** Putting both acts in one verb makes a chapel stone look like a Monopoly house. Keeping the games in two brains makes the pet two people. The kind column is the small shared piece. The rule stays in the game that already owns it.
 
 **Not chosen:** exec of Teropoly as the way the island is built. Teaching `df_hq.c` to trade. Inventing a plant verb inside the crew.
+
+## D70 (2026-11-10, BUILT): one factory loop, `mech_new_op`, not a generator per building
+
+**The choice.** The blueprint row is the roster. `mech_new_op` runs the `bp_op gen` and `crew_op raise` that already exist, then writes the editor page as a projection: grass is `.`, a placed cell is `W`, and `projection.txt` records the world origin. The life ledger stays the authority. The page can be deleted and written again.
+
+**Why this one.** A factory per `BUILD` id is the copy the loop was meant to end. The missing piece was the page, which was still a hand-drawn `map.txt`.
+
+**Not chosen:** a second planner. Hand-editing `live/map.txt` as the plan. Replacing `plan.ppm`.

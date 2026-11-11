@@ -157,6 +157,20 @@ EXPECT_OUT | AUDIT placed=16 | bridge-audit-count
 EXPECT_HAS | span/life.txt | place\proof\p46,18,11\pok | the-last-roof-was-placed
 EXPECT_EXISTS | span/plan.ppm | the-bridge-has-a-plan
 
+CASE | mech
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-mech
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-mech
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | bridge | $T/st | $T/page
+EXPECT_EXIT | 0 | mech-ran
+EXPECT_OUT | MECH slice=bridge jobs=16 cells=8 | mech-bridge
+EXPECT_HAS | page/projection.txt | PROJECTION \p bridge \p world 43,17 | the-page-names-the-world
+EXPECT_HAS | st/life.txt | place\proof\p46,18,11\pok | the-factory-placed-the-roof
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
