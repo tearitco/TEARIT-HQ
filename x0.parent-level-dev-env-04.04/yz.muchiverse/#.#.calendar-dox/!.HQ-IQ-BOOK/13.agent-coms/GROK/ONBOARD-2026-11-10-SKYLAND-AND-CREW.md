@@ -2,7 +2,7 @@
 
 **Decision D69.** One pet life, two kinds of verb. `world` is the skyland (mine, place, and open haul and farm). `table` is Teropoly (talk, offer, buy, build, and build is a house on a street). The rows are `data/crew.verbs.pdl`. `bind` refuses a table verb owned by the crew and a world verb owned by deskopoly. Add a life as a row. Do not add a C branch, and do not exec Teropoly to lay a stone. The owner copy is `XO/31.Nov/nov-10/grok/4.the-choice.md`.
 
-Read this after `ONBOARD-GROK.md` and `HANDOFF-2026-11-10-DF-MINECRAFT-EVENTS-META-HARNESSES-AND-CENTROID.md`. Those two still hold the editor, the camera, and the older task list. This file is the lane that started the same day. Labels: **RAN** means a command in this note was run again on 2026-11-10 before the note was written. **READ** means the file was opened. **NOT DONE** means do not tell the owner it exists.
+Read `WEAKNESSES-2026-11-11.md` in this folder before you spend a turn. It is the short path to the two islands the owner already saw. Then read `ONBOARD-GROK.md` and `HANDOFF-2026-11-10-DF-MINECRAFT-EVENTS-META-HARNESSES-AND-CENTROID.md`. Those two still hold the editor, the camera, and the older task list. This file is the lane that started the same day. Labels: **RAN** means a command in this note was run again on 2026-11-10 before the note was written. **READ** means the file was opened. **NOT DONE** means do not tell the owner it exists.
 
 ## Where the code is
 
@@ -78,7 +78,7 @@ The life row is `EVENT|round|actor|verb|target|at|result`. `CLAIM`, `PLACE`, `CA
 
 ## What is not done (do not skip this)
 
-- The other 11 `BUILD` rows are not generated. `gen <id>` is the same verb. Run it per building. Do not invent a second generator.
+- The other 11 `BUILD` rows were not generated when this list was written. They are generated now: the roster case is `passed=146`. Do not generate them again. Do not invent a second generator. Lobes A, B, P, L, and L2 are on `page:live` as ellipses (2026-11-11), not as a crew earth walk. See `WEAKNESSES-2026-11-11.md`.
 - Island undersides (the taper under each ellipse) are not cells yet.
 - df-hq's live tick still only digs `DESIGNATE` rows in `jobs.txt`. That file is 2D and caps at 64 jobs. `place` in `verbs.pdl` is `item x y` with no z. The pets on the board do not read `crew_op`'s ledger yet. Wiring that tick to this ledger is the next code change.
 - The harness case exists. Current line: `VERDICT|PASS|passed=146|failed=0` (2026-11-10, includes the `roster` case). Older notes that say 122 or less are earlier runs. Every `BUILD` id raises through `mech_new_op`. Do not quote them. Fountain 12. Bridge 16 (stone at z=10, roof at z=11, no door). `under:S6` 11. `under:S3` 38, point at 3,27,-11. `mech_new_op` runs that same gen and raise, then writes the editor page as a projection. Bridge proof: `MECH slice=bridge jobs=16 cells=8 world=43,17 page=8,6 clipped=0`.
@@ -119,6 +119,6 @@ Older questions for Claude stay in `QUESTIONS-FOR-CLAUDE.md`. Add a new question
 1. The unit case is done (`passed=146`). The one-stone playthrough ran (`passed=11`). Fountain, bridge, S6, and S3 are slices inside the same case. `mech_new_op` is the factory for the next id.
 2. Point df-hq's pet tick at this ledger: claim, walk, place, and refuse a cell that is not a job. Keep the 2D dig designations working. A pet on a board is still not done. The yellow square in `XO/31.Nov/nov-10/grok/8.pet-walk.png` is the scratch picture, not that board.
 3. Every `BUILD` id raises through `mech_new_op` (`@.apps/centroid-hq/ops/mech_new_op.c`): blueprint row, `bp_op gen`, `crew_op raise`, then `map.txt` and `projection.txt`. The walk log goes to `raise.log` so a long slice is not cut off by the harness pipe. `under:S6` and `under:S3` are done. The big lobes and scale 4 are not generated. The status note is `XO/31.Nov/nov-10/grok/24.roster.md`.
-4. The live editor dump is `XO/31.Nov/nov-10/grok/19.editor-centroid-live-bridge.png`. Toolbar reads `book:centroid` and `page:live`. The 3D pane is still the grass sheet and the same green outline. The bridge `W` cells are on the page file. They are not columns on that picture.
+4. As of 2026-11-11 the live page is the 72 by 52 plan, not the 16 by 16 sheet this item used to describe. The dump is `XO/31.Nov/nov-10/grok/28.live-land.png`. Test is one minimap: `27.test-one-minimap.png`. The older grass-sheet dump `19.editor-centroid-live-bridge.png` is history.
 
 Do not start a trained policy, a vehicle, or TSC in this lane.

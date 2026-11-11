@@ -55,6 +55,7 @@ forever — ~10 % of a core, per stack, indefinitely. Two of them survived
 - `HOUSE_CODE_PITFALLS.md` #25 — a wait that does not sleep pegs the
   CPU. No new `sleep`/`usleep` that the loop can skip. No second
   render daemon. The shared wait is `house_wait.h` (`house_wait_us`).
+- `HOUSE_CODE_PITFALLS.md` #28 — centroid test drew two maps because `cells.txt` had a second island under the first; live was 16 by 16 so every building parked at page 8,6. The plan grid is 72 by 52. Read `13.agent-coms/GROK/WEAKNESSES-2026-11-11.md` before another skyland pass.
 - `HOUSE_CODE_PITFALLS.md` #26 — a 256-wide board made every pixel
   walk the whole page. Profile with
   `sh &.widgits/board-viewer/ops/bv_cost_before_run.sh` before
