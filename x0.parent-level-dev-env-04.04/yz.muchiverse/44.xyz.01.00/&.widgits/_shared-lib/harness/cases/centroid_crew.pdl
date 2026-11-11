@@ -199,6 +199,43 @@ EXPECT_OUT | MECH slice=hut jobs=41 cells=9 | hut-count
 EXPECT_HAS | page/projection.txt | PROJECTION \p hut \p world 8,37 | the-hut-names-the-world
 EXPECT_HAS | st/life.txt | place\proof\p10,39,4\pok | the-factory-placed-the-hut-roof
 
+CASE | roster
+SCRATCH |
+RUN | gcc | -O2 | -o | bp_op | $HOUSE/@.apps/centroid-hq/ops/bp_op.c | -lm
+EXPECT_EXIT | 0 | gcc-bp-roster
+RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c
+EXPECT_EXIT | 0 | gcc-crew-roster
+RUN | gcc | -O2 | -o | mech_new_op | $HOUSE/@.apps/centroid-hq/ops/mech_new_op.c
+EXPECT_EXIT | 0 | gcc-mech-roster
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | mill | $T/mill | $T/mill-page
+EXPECT_EXIT | 0 | mill-ran
+EXPECT_OUT | MECH slice=mill jobs=62 cells=12 | mill-count
+EXPECT_HAS | mill/life.txt | place\proof\p49,40,5\pok | the-mill-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | houses_B2 | $T/b2 | $T/b2-page
+EXPECT_EXIT | 0 | b2-ran
+EXPECT_OUT | MECH slice=houses_B2 jobs=76 cells=16 | b2-count
+EXPECT_HAS | b2/life.txt | place\proof\p39,39,5\pok | the-b2-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | houses_B1 | $T/b1 | $T/b1-page
+EXPECT_EXIT | 0 | b1-ran
+EXPECT_OUT | MECH slice=houses_B1 jobs=132 cells=32 | b1-count
+EXPECT_HAS | b1-page/projection.txt | place\proof\p53,39,5\pok | the-b1-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | east_stair | $T/stair | $T/stair-page
+EXPECT_EXIT | 0 | stair-ran
+EXPECT_OUT | MECH slice=east_stair jobs=110 cells=10 | stair-count
+EXPECT_HAS | stair/life.txt | place\proof\p60,31,10\pok | the-stair-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | cathedral | $T/cath | $T/cath-page
+EXPECT_EXIT | 0 | cath-ran
+EXPECT_OUT | MECH slice=cathedral jobs=752 cells=112 | cath-count
+EXPECT_HAS | cath-page/projection.txt | place\proof\p59,15,26\pok | the-cathedral-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | cathedral_spire_main | $T/spire | $T/spire-page
+EXPECT_EXIT | 0 | spire-ran
+EXPECT_OUT | MECH slice=cathedral_spire_main jobs=121 cells=9 | spire-count
+EXPECT_HAS | spire/life.txt | place\proof\p54,13,40\pok | the-spire-roof
+RUN | ./mech_new_op | $HOUSE/@.apps/centroid-hq/data/skyland/skyland.blueprint.pdl | cathedral_spires | $T/spires | $T/spires-page
+EXPECT_EXIT | 0 | spires-ran
+EXPECT_OUT | MECH slice=cathedral_spires jobs=432 cells=112 | spires-count
+EXPECT_HAS | spires-page/projection.txt | place\proof\p59,15,34\pok | the-spires-roof
+
 CASE | routes
 SCRATCH |
 RUN | gcc | -O2 | -o | crew_op | $HOUSE/@.apps/centroid-hq/ops/crew_op.c

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -19,10 +20,16 @@
 #define OX 8
 #define OY 6
 
-static int run(char *const av[]) {
+/* The walk log is one line per step. The harness keeps a small pipe, so a
+ * long slice dies with SIGPIPE before it prints MECH. The log goes to a file. */
+static int run_log(char *const av[], const char *log) {
     pid_t p = fork();
     if (p < 0) return -1;
-    if (p == 0) { execv(av[0], av); _exit(127); }
+    if (p == 0) {
+        int fd = open(log, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        execv(av[0], av); _exit(127);
+    }
     int st = 0;
     if (waitpid(p, &st, 0) < 0) return -1;
     return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
@@ -49,11 +56,13 @@ int main(int argc, char **argv) {
     snprintf(jobs, sizeof jobs, "%s/jobs.pdl", argv[3]);
     snprintf(life, sizeof life, "%s/life.txt", argv[3]);
     unlink(life);
+    char logp[560];
+    snprintf(logp, sizeof logp, "%s/raise.log", argv[3]);
     char *gargv[] = { bp, "gen", argv[1], argv[2], jobs, NULL };
-    int rc = run(gargv);
+    int rc = run_log(gargv, logp);
     if (rc != 0) { fprintf(stderr, "gen failed (%d)\n", rc); return 2; }
     char *rargv[] = { crew, "raise", argv[3], NULL };
-    rc = run(rargv);
+    rc = run_log(rargv, logp);
     if (rc != 0) { fprintf(stderr, "raise failed (%d)\n", rc); return 2; }
 
     int xy[400][2], nxy = 0, minx = 0, miny = 0, jobs_n = 0, have = 0;
@@ -96,6 +105,16 @@ int main(int argc, char **argv) {
     fprintf(pf, "PROJECTION | %s | world %d,%d | page %d,%d | jobs %d | cells %d | clipped %d\n",
             argv[2], minx, miny, OX, OY, jobs_n, nxy, clipped);
     fprintf(pf, "kind | PROJECTION | regenerate_with | mech_new_op\n");
+    FILE *lf = fopen(life, "r");
+    char last[200]; last[0] = 0;
+    if (lf) {
+        char row[200];
+        while (fgets(row, sizeof row, lf)) {
+            if (!strncmp(row, "EVENT|", 6)) snprintf(last, sizeof last, "%s", row);
+        }
+        fclose(lf);
+    }
+    if (last[0]) fprintf(pf, "%s", last);
     fclose(pf);
     printf("MECH slice=%s jobs=%d cells=%d world=%d,%d page=%d,%d clipped=%d\n",
            argv[2], jobs_n, nxy, minx, miny, OX, OY, clipped);
