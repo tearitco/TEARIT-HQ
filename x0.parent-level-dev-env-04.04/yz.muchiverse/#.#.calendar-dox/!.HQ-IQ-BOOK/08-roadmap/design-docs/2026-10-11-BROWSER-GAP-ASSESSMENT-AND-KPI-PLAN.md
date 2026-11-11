@@ -1740,3 +1740,60 @@ sticky headers therefore compared against `undefined` or 0.
 - `body.clientHeight` remains the CSS-declared box (0 for an unstyled body),
   the same pre-existing limitation as every other auto-height element.
 - `pageXOffset`/`pageYOffset` are getters only, matching `scrollY`/`scrollX`.
+
+### 9.28 2026-11-11 — textContent assignment authors a real Text node
+
+9.26 made parsed character data a real `#text` child, but the script-facing
+setter still wrote one C string onto the element (`n->text`). So
+`el.textContent = 'x'` left `childNodes.length` at 0, `firstChild` at null,
+`cloneNode` with nothing to copy, `Range` unable to address the text, and a
+childList MutationObserver silent — for the single most common text update a
+page performs.
+
+**The slice**
+
+- An element (or fragment) setter now clears its children and, when the
+  value is not the empty string, appends exactly one real Text node. Only
+  `null` maps to `""`; `undefined` becomes `"undefined"`, `0` becomes
+  `"0"`, per DOMString conversion. Markup in the value stays literal text —
+  this is `textContent`, not `innerHTML`.
+- A Text node's own `textContent` replaces its `data` and adds no child;
+  `Document` is a no-op, as in a browser.
+- The old folded `n->text` is freed and cleared, so a LOAD element's page
+  text cannot survive the assignment (the same class of stale-text bug
+  innerHTML=/replaceChildren() had).
+- The added Text node raises one real childList record (`addedNodes` holds a
+  nodeType-3 node). Removed children are not reported: one record carries a
+  single removed node and a consumer could retain it after its C node is
+  gone. The added record is true on its own; the omission is documented.
+- RENDER already emits a TEXT row for a text child under its owner's SEL
+  (9.26), so the authored text renders once with no extra work.
+
+**Verification**
+
+- New gate `tests/nb_text_content_test.sh`: **PASS (28/28 + rows)**.
+  Covers the folded starting state, one-child shape, nodeType/data/owner,
+  old text dropped, element-children replacement, `''`/`null`/`undefined`/`0`,
+  literal markup, Text-node self-assignment, clone, a Range inside the new
+  node, the childList record, and post-EVAL rows `SEL|#t` + exactly one
+  `TEXT|observed` with no stale `TEXT|tick 0`.
+- Negative A (folded setter restored): the gate fails at the structural
+  assertions — `p.firstChild` is null, so the probe aborts before the rest.
+- Negative B (always author a node, even for `""`): exactly
+  `empty-string got=1: want=0:` and `null-is-empty got=1: want=0:`.
+- Negative C (drop the childList record): 5 failures, all in the observer
+  block.
+- Restored and green again; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS**
+  with the new gate registered.
+
+**Open, found here**
+
+- `document.createDocumentFragment()` does not exist at all (only
+  `template.content` and shadow roots make fragments). Found while probing
+  fragment assignment; not added in this slice.
+- Fragment wrappers have no `textContent` accessor, so the C setter works on
+  the node but script cannot reach it through `template.content` /
+  shadow root. Needs the wrapper pair.
+- `document.textContent` still concatenates the document instead of
+  returning null (pre-existing getter behaviour, untouched).
+- `innerHTML` serialization still does not escape `&`/`<` (pre-existing).

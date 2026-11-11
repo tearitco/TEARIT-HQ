@@ -631,3 +631,22 @@ restored) exactly the hidden-height assertion. Full suite **ALL TESTS PASS**.
 Open: non-root offsets are not clamped to a max (no per-element overflow
 model); `scrollWidth` stays the client box because the renderer wraps
 instead of scrolling horizontally.
+### 2026-11-11 — textContent authors a real Text node
+
+`el.textContent = s` now replaces all children with exactly one real Text
+node (`''`/`null` add none) instead of storing a folded C string. That makes
+`childNodes`, `firstChild`, `cloneNode`, `Range` and childList
+MutationObserver agree with a browser for the most common text update.
+Text-node self-assignment replaces `data`; `Document` is a no-op; non-string
+values convert like a DOMString (`undefined` -> `"undefined"`, `0` -> `"0"`).
+The old folded text is freed, so a LOAD element cannot keep stale page text.
+One childList record reports the added Text node; removed children are not
+reported (single-removedNode record + lifetime safety).
+
+Gate `tests/nb_text_content_test.sh` **PASS (28/28 + rows)**; negatives:
+folded setter (structural abort), empty-string node (2 failures), missing
+childList record (5 failures). Full suite **ALL TESTS PASS**.
+
+Open, found here: `document.createDocumentFragment` does not exist; fragment
+wrappers lack `textContent`; `document.textContent` getter still concatenates;
+`innerHTML` still does not escape `&`/`<`.
