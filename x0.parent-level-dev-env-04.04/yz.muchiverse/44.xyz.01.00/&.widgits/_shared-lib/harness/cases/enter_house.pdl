@@ -1,0 +1,22 @@
+# One house, one door, one stair. A shut door refuses. An open door and a rise of 1 land.
+RESULTS | ../results/enter_house.txt
+ENV | LC_ALL | C
+
+CASE | enter
+SCRATCH |
+WRITE | sheet.txt | width=10\nheight=10\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6 1,0,6\n
+RUN | gcc | -O2 | -o | enter_op | $HOUSE/@.apps/centroid-hq/ops/enter_op.c
+EXPECT_EXIT | 0 | gcc-enter
+RUN | ./enter_op | stamp | sheet.txt | 2 | 2
+EXPECT_EXIT | 0 | stamp-ok
+EXPECT_OUT | STAMP x0=2 y0=2 door=4,6 stair=4,4 | stamp-says
+RUN | ./enter_op | walk | sheet.txt | door.txt | shut.txt | 4 | 7 | 6 | shut | N
+EXPECT_EXIT | 2 | shut-refused
+EXPECT_HAS | shut.txt | walk\pground\p4,6,6\pshut
+RUN | ./enter_op | walk | sheet.txt | door.txt | open.txt | 4 | 7 | 6 | open | N | N | N
+EXPECT_EXIT | 0 | open-enters
+EXPECT_OUT | WALK x=4 y=4 z=7 steps=3 | stood-on-stair
+EXPECT_HAS | open.txt | walk\pground\p4,4,7\pok
+RUN | ./enter_op | walk | sheet.txt | door.txt | wall.txt | 3 | 7 | 6 | open | N
+EXPECT_EXIT | 2 | wall-refused
+EXPECT_HAS | wall.txt | walk\pground\p3,6,6\pwall

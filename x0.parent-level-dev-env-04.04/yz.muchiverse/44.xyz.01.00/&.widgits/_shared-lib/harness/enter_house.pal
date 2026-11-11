@@ -1,0 +1,4 @@
+# enter_house.pal - one door and one stair. The case is the drive.
+exec ./ops/+x/harness_case_op.+x cases/enter_house.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/enter_house.pdl
+halt
