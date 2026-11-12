@@ -650,6 +650,7 @@ static void cfg_line(FILE *f, const char *key, const char *val);
 static void resolve_doc_url(const char *rel, char *out, size_t olen);
 static int peval_budget(JSContext *ctx, const char *src, size_t src_n, char *errbuf, size_t errbuf_sz);
 static void nb_mutation_notify_childlist(JSContext *ctx, NbNode *target, NbNode *added, NbNode *removed, NbNode *prev, NbNode *next);
+static JSValue nb_dom_createDocumentFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static void nb_mutation_notify_attribute(JSContext *ctx, NbNode *target, const char *name, const char *old_value);
 static void nb_mutation_notify_characterData(JSContext *ctx, NbNode *target, const char *old_value);
 static void nb_obs_recheck(JSContext *ctx);
@@ -3979,6 +3980,40 @@ static JSValue nb_el_childElementCount(JSContext *ctx, JSValueConst this_val, in
         if (nb_is_element_node(c)) count++;
     return JS_NewInt32(ctx, count);
 }
+/* ---- DocumentFragment insertion (2026-11-11) ----
+ * A fragment is not a node a tree can hold: inserting one MOVES its children
+ * into the target, in order, and leaves the fragment empty (DOM insertion
+ * steps). `ctx` NULL keeps the call record-free for the ParentNode helpers
+ * (append/prepend/before/after/replaceChildren), which have never emitted
+ * childList records; appendChild/insertBefore/replaceChild pass ctx and get
+ * one record per moved child. The emptied fragment stays on the orphan list
+ * so a wrapper still pointing at it remains valid and teardown frees it. */
+static int nb_is_doc_fragment_node(const NbNode *n) {
+    return n && n->tag && !strcmp(n->tag, "#document-fragment");
+}
+static int nb_node_is_ancestor(const NbNode *anc, const NbNode *n) {
+    for (const NbNode *p = n; p; p = p->parent)
+        if (p == anc) return 1;
+    return 0;
+}
+static void nb_insert_fragment_children(JSContext *ctx, NbNode *parent, NbNode *frag, NbNode *ref) {
+    NbNode *c = frag->first_child;
+    frag->first_child = NULL;
+    frag->last_child = NULL;
+    while (c) {
+        NbNode *nx = c->next_sibling;
+        c->parent = NULL;
+        c->next_sibling = NULL;
+        local_insert_before(parent, c, ref);
+        if (ctx) nb_mutation_notify_childlist(ctx, parent, c, NULL, NULL, ref);
+        c = nx;
+    }
+}
+static JSValue nb_throw_hierarchy(JSContext *ctx, const char *msg) {
+    JSValue e = JS_NewError(ctx);
+    if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, msg));
+    return JS_Throw(ctx, e);
+}
 static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     NbNode *ch = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
@@ -3987,6 +4022,14 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
         if (frag) n = frag;
     }
     if (!n || !ch || ch == n) return JS_NULL;
+    if (nb_is_doc_fragment_node(ch)) {
+        if (nb_node_is_ancestor(ch, n))
+            return nb_throw_hierarchy(ctx, "HierarchyRequestError: the fragment contains this node");
+        orphan_remove(ch);
+        nb_insert_fragment_children(ctx, n, ch, NULL);
+        orphan_add(ch);
+        return JS_DupValue(ctx, argv[0]);   /* spec returns the fragment */
+    }
     node_detach(ch);
     orphan_remove(ch);
     local_append(n, ch);
@@ -4132,6 +4175,14 @@ static JSValue nb_el_insertBefore(JSContext *ctx, JSValueConst this_val, int arg
             JS_NewString(ctx, "NotFoundError: the reference node is not a child of this element"));
         return JS_Throw(ctx, e);
     }
+    if (nb_is_doc_fragment_node(nn)) {
+        if (nb_node_is_ancestor(nn, n))
+            return nb_throw_hierarchy(ctx, "HierarchyRequestError: the fragment contains this node");
+        orphan_remove(nn);
+        nb_insert_fragment_children(ctx, n, nn, rn);
+        orphan_add(nn);
+        return JS_DupValue(ctx, argv[0]);   /* spec returns the fragment */
+    }
     node_detach(nn);
     orphan_remove(nn);
     local_insert_before(n, nn, rn);
@@ -4153,6 +4204,20 @@ static JSValue nb_el_replaceChild(JSContext *ctx, JSValueConst this_val, int arg
         if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
             JS_NewString(ctx, "NotFoundError: the old child is not a child of this element"));
         return JS_Throw(ctx, e);
+    }
+    if (nb_is_doc_fragment_node(nn)) {
+        if (nb_node_is_ancestor(nn, n))
+            return nb_throw_hierarchy(ctx, "HierarchyRequestError: the fragment contains this node");
+        NbNode *on_prev = NULL, *on_next = on->next_sibling;
+        for (NbNode *c = n->first_child; c && c != on; c = c->next_sibling)
+            on_prev = c;
+        orphan_remove(nn);
+        nb_insert_fragment_children(ctx, n, nn, on);
+        orphan_add(nn);
+        node_detach(on);
+        orphan_add(on);
+        nb_mutation_notify_childlist(ctx, n, NULL, on, on_prev, on_next);
+        return push_node(ctx, on);
     }
     NbNode *old_prev = NULL, *old_next = on->next_sibling;
     for (NbNode *c = n->first_child; c; c = c->next_sibling) {
@@ -4487,6 +4552,10 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         return ex;
     }
     JS_FreeValue(ctx, ex);
+    if (nb_is_doc_fragment_node(n)) {
+        JS_FreeValue(ctx, map);
+        return make_fragment_wrapper(ctx, n, "#document-fragment");
+    }
     JSValue el = JS_NewObject(ctx);
     /* DOM class prototype (install_dom_classes) so `el instanceof Element`
      * and Element.prototype.* resolve like a browser; falls back to a plain
@@ -4512,7 +4581,10 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
          * Error("Oc"). Browsers expose it on the prototype; our wrappers
          * are plain objects so an own data property is the equivalent.
          * #document reports 9, like a browser. */
-        JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, (n->tag && !strcmp(n->tag, "#document")) ? 9 : ((n->tag && n->tag[0]) ? 1 : 3)));
+        int nt = (n->tag && !strcmp(n->tag, "#document")) ? 9
+               : ((n->tag && !strcmp(n->tag, "#document-fragment")) ? 11
+               : ((n->tag && n->tag[0]) ? 1 : 3));
+        JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, nt));
         JS_SetPropertyStr(ctx, el, "nodeName", JS_NewString(ctx, label));
         if (n->tag && n->tag[0])
             JS_SetPropertyStr(ctx, el, "tagName", JS_NewString(ctx, label));
@@ -7332,6 +7404,11 @@ static void nbi_do(JSContext *ctx, int argc, JSValueConst *argv, NbNode *self, i
     for (int i = 0; i < argc; i++) {
         NbNode *n = nbi_arg(ctx, argv[i], into);
         if (!n) continue;
+        if (nb_is_doc_fragment_node(n)) {
+            nb_insert_fragment_children(NULL, into, n, mode == NBI_APPEND ? NULL : anchor);
+            orphan_add(n);
+            continue;
+        }
         local_insert_before(into, n, mode == NBI_APPEND ? NULL : anchor);
     }
 }
@@ -10339,6 +10416,8 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
         JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
         JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
+        JS_SetPropertyStr(ctx, doc, "createDocumentFragment", JS_NewCFunction(ctx, nb_dom_createDocumentFragment, "createDocumentFragment", 0));
+        JS_SetPropertyStr(ctx, g, "DocumentFragment", JS_NewCFunction2(ctx, nb_dom_createDocumentFragment, "DocumentFragment", 0, JS_CFUNC_constructor, 0));
         JS_SetPropertyStr(ctx, doc, "getElementsByClassName", JS_NewCFunction(ctx, nb_dom_getElementsByClassName, "getElementsByClassName", 1));
         {
             JSAtom nm = JS_NewAtom(ctx, "documentElement");
@@ -10994,6 +11073,7 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
     JS_SetPropertyStr(ctx, w, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, w, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
     JS_SetPropertyStr(ctx, w, "hasChildNodes", JS_NewCFunction(ctx, nb_el_hasChildNodes, "hasChildNodes", 0));
+    JS_SetPropertyStr(ctx, w, "contains", JS_NewCFunction(ctx, nb_el_contains, "contains", 1));
     JS_SetPropertyStr(ctx, w, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
     {
         JSAtom nm;
@@ -11016,6 +11096,17 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
 #undef FRAG_GET
     }
     {
+        JSAtom nm = JS_NewAtom(ctx, "textContent");
+        JS_DefinePropertyGetSet(ctx, w, nm,
+            JS_NewCFunction(ctx, nb_el_textContent_get, "get textContent", 0),
+            JS_NewCFunction(ctx, nb_el_textContent_set, "set textContent", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    JS_SetPropertyStr(ctx, w, "append", JS_NewCFunction(ctx, nb_el_append_js, "append", 0));
+    JS_SetPropertyStr(ctx, w, "prepend", JS_NewCFunction(ctx, nb_el_prepend_js, "prepend", 0));
+    JS_SetPropertyStr(ctx, w, "replaceChildren", JS_NewCFunction(ctx, nb_el_replaceChildren_js, "replaceChildren", 0));
+    {
         JSAtom nm = JS_NewAtom(ctx, "innerHTML");
         JS_DefinePropertyGetSet(ctx, w, nm,
             JS_NewCFunction(ctx, nb_el_innerHTML_get, "get innerHTML", 0),
@@ -11023,7 +11114,34 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
             JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
     }
+    /* Identity: one C fragment must yield one JS object, so a child's
+     * parentNode IS the fragment the page holds. */
+    {
+        JSValue g = JS_GetGlobalObject(ctx);
+        JSValue map = JS_GetPropertyStr(ctx, g, IDMAPNAME);
+        if (!JS_IsObject(map)) {
+            JS_FreeValue(ctx, map);
+            map = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, g, IDMAPNAME, JS_DupValue(ctx, map));
+        }
+        JS_FreeValue(ctx, g);
+        JS_SetPropertyUint32(ctx, map, (uint32_t)nidx, JS_DupValue(ctx, w));
+        JS_FreeValue(ctx, map);
+    }
     return w;
+}
+
+/* document.createDocumentFragment() / new DocumentFragment(): a detached
+ * #document-fragment kept on the orphan list, wrapped with the element
+ * insert/query natives. Appending it MOVES its children into the target and
+ * leaves it empty (see nb_insert_fragment_children). */
+static JSValue nb_dom_createDocumentFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    NbNode *frag = calloc(1, sizeof(*frag));
+    if (!frag) return JS_ThrowOutOfMemory(ctx);
+    frag->tag = strdup("#document-fragment");
+    orphan_add(frag);
+    return make_fragment_wrapper(ctx, frag, "#document-fragment");
 }
 
 /* <template>.innerHTML / appendChild land in template.content, which is a

@@ -1797,3 +1797,68 @@ page performs.
 - `document.textContent` still concatenates the document instead of
   returning null (pre-existing getter behaviour, untouched).
 - `innerHTML` serialization still does not escape `&`/`<` (pre-existing).
+
+### 9.29 2026-11-11 — DocumentFragment is a real, movable node
+
+`document.createDocumentFragment()` did not exist: only `<template>.content`
+and shadow roots produced fragments. The shared insert paths also had no
+fragment step, so the most common templating move — build a fragment, fill
+it, append it once — could not run at all. A fragment that did reach
+`appendChild` would have been stored as a child node the DOM tree can never
+hold.
+
+**The slice**
+
+- `document.createDocumentFragment()` and the `DocumentFragment` global
+  constructor return a detached `#document-fragment` node (nodeType 11),
+  kept on the orphan list so teardown still frees it.
+- The fragment wrapper now carries `textContent` (get/set), `append`,
+  `prepend`, `replaceChildren` and `contains` in addition to the existing
+  insert/query/child getters.
+- Inserting a fragment **moves its children** into the target in order and
+  leaves the fragment empty: `appendChild`, `insertBefore`, `replaceChild`,
+  and the ParentNode helpers (`append`/`prepend`/`replaceChildren`) all
+  expand it. `appendChild`/`insertBefore` return the fragment (the spec
+  value); `replaceChild` returns the replaced child.
+- A fragment is never inserted as a node, so the renderer and tree walkers
+  cannot meet nodeType 11 in the tree.
+- `push_node` now returns the real cached fragment wrapper for a fragment
+  node (and reports nodeType 11 on the generic path), so a child's
+  `parentNode` **is** the fragment the page holds and
+  `parentNode.nodeType === 11` is finally true — the canonical fragment
+  check.
+- `appendChild`/`insertBefore`/`replaceChild` emit one childList record per
+  moved child. The ParentNode helpers stay record-free, matching their
+  existing behaviour for ordinary nodes.
+
+**Verification**
+
+- New gate `tests/nb_document_fragment_test.sh`: **PASS (47/47 + rows)**.
+  Covers the factory/constructor, fresh shape, fragment-scoped
+  `getElementById` vs the live document, `textContent` get/set,
+  `appendChild`/`insertBefore`/`replaceChild` expansion and ordering,
+  empty-fragment no-op, all three ParentNode helpers, parent identity +
+  `contains`, one observer record per moved child, clone shape/identity, and
+  a post-EVAL frame with `TEXT|rtext`/`TEXT|visone`/`TEXT|vistwo` emitted
+  exactly once and no fragment node row.
+- Negative A (drop the `appendChild` fragment branch): 14 failures
+  (`move-host-count got=1`, `move-fragment-empty got=2`, order becomes
+  `#document-fragment,...`, observer sees one record).
+- Negative B (drop the fragment `textContent` accessor): 4 failures.
+- Negative C (drop fragment expansion from the ParentNode helper): 6
+  failures across append/prepend/replaceChildren.
+- Negative D (drop wrapper identity caching): exactly
+  `parent-identity got=false want=true`.
+- Restored and green; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS** with
+  the new gate registered.
+
+**Honest limits**
+
+- Scripts moved inside a fragment are not executed (the fragment branch
+  returns before the direct-child script fetch/execute path). Direct
+  `appendChild(script)` still executes as before.
+- `#shadow-root` is not treated as a movable fragment; only
+  `#document-fragment`.
+- Parsed documents (`DOMParser`) still have no `createDocumentFragment`
+  factory, and no `createElement`/`createTextNode` either.
+- `DocumentFragment` has no `ownerDocument`/`isConnected` surface yet.

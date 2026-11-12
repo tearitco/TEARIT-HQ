@@ -98,6 +98,10 @@ echo "########## textContent assignment authors a real Text node (hermetic)"
 bash "$HERE/nb_text_content_test.sh" || RC=1
 
 echo
+echo "########## DocumentFragment is a real movable node (hermetic)"
+bash "$HERE/nb_document_fragment_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

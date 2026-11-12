@@ -650,3 +650,23 @@ childList record (5 failures). Full suite **ALL TESTS PASS**.
 Open, found here: `document.createDocumentFragment` does not exist; fragment
 wrappers lack `textContent`; `document.textContent` getter still concatenates;
 `innerHTML` still does not escape `&`/`<`.
+### 2026-11-11 — DocumentFragment is real and movable
+
+`document.createDocumentFragment()` + the `DocumentFragment` constructor now
+exist. The fragment wrapper gained `textContent` (get/set), `append`,
+`prepend`, `replaceChildren` and `contains`. Inserting a fragment moves its
+children into the target in order and empties it — `appendChild`,
+`insertBefore`, `replaceChild` and the ParentNode helpers all expand it —
+and no fragment node ever enters the tree. `push_node` returns the cached
+fragment wrapper and reports nodeType 11, so `child.parentNode` is the
+fragment the page holds (`parentNode.nodeType === 11` works). One childList
+record per moved child from the three tree mutators.
+
+Gate `tests/nb_document_fragment_test.sh` **PASS (47/47 + rows)**;
+negatives: no appendChild expansion (14 failures), no fragment textContent
+(4), no ParentNode expansion (6), no identity caching (1). Full suite
+**ALL TESTS PASS**.
+
+Open: fragment-moved `<script>` does not execute; shadow roots are not
+movable fragments; parsed documents have no fragment factory; no
+`ownerDocument`/`isConnected` on fragments.
