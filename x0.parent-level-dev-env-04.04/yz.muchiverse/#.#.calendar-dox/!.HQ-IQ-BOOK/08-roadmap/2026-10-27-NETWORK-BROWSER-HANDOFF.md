@@ -705,3 +705,19 @@ escaping raw-text bodies (2). Full suite **ALL TESTS PASS**.
 
 Open: attribute blobs are not re-escaped; fragment-parsed scripts in
 `outerHTML=` do not execute; `</script >` closed form not captured.
+### 2026-11-11 — attribute values are markup-safe; entities decode as UTF-8
+
+`setAttribute`/`dataset`/`id`/`className` now store values escaped for HTML
+attribute mode (`&`, `"`, NBSP; `<`/`>` literal), so a quote can no longer
+truncate the blob and a literal `&amp;` survives as `&amp;amp;`. Parser
+blobs are still emitted as authored (no double escaping). `id=` and
+`className=` now sync the attribute blob, so outerHTML/innerHTML reflect
+them. `decode_entities` emits real UTF-8: `&nbsp;` -> U+00A0, `&mdash;` ->
+U+2014, `&copy;` -> U+00A9, numeric references UTF-8 (invalid -> U+FFFD).
+
+Gate `tests/nb_attrs_serialize_test.sh` **PASS (34/34 + rows)**. Negatives:
+raw storage (12 failures), old decoder (8), no id/class sync (4), no quote
+escape (5). Full suite **ALL TESTS PASS**.
+
+Open: parser-sourced attrs are not canonicalised; named-entity table still
+small; attribute names not validated; numeric out-of-range clamps to U+FFFD.

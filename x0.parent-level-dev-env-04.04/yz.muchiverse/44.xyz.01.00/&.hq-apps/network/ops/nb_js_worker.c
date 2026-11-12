@@ -512,6 +512,22 @@ static void sb_put_escaped(SB *b, const char *s, int xml) {
         }
     }
 }
+/* Attribute values are stored in the blob as valid markup: setAttribute
+ * escapes on write and parser/load blobs already came from markup, so the
+ * serializer can emit the blob verbatim. A raw '"' would terminate the
+ * quoted value and a raw '&' could start an entity. Per the HTML spec,
+ * attribute mode escapes '&', '"' and U+00A0 but leaves '<'/'>' literal. */
+static void sb_put_attr_escaped(SB *b, const char *s) {
+    if (!s) return;
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+        if (p[0] == 0xC2 && p[1] == 0xA0) { sb_put(b, "&nbsp;"); p++; continue; }
+        switch (*p) {
+        case '&': sb_put(b, "&amp;"); break;
+        case '"': sb_put(b, "&quot;"); break;
+        default: { char one[2] = { (char)*p, 0 }; sb_put(b, one); }
+        }
+    }
+}
 static void node_outer_html_m(const NbNode *n, SB *b, int xml) {
     if (!n) return;
     if (!n->tag || !n->tag[0]) {   /* #text node */
@@ -3372,7 +3388,7 @@ static char *attrs_set(const NbNode *n, const char *name, const char *val) {
             found = 1;
             if (!first) sb_put(&b, " ");
             sb_put(&b, name); sb_put(&b, "=\"");
-            sb_put(&b, val ? val : "");
+            sb_put_attr_escaped(&b, val ? val : "");
             sb_put(&b, "\"");
         } else {
             const char *after = hasv ? p : savep;
@@ -3388,7 +3404,7 @@ static char *attrs_set(const NbNode *n, const char *name, const char *val) {
     if (!found) {
         if (!first) sb_put(&b, " ");
         sb_put(&b, name); sb_put(&b, "=\"");
-        sb_put(&b, val ? val : "");
+        sb_put_attr_escaped(&b, val ? val : "");
         sb_put(&b, "\"");
     }
     return b.s ? b.s : strdup("");
@@ -3494,7 +3510,13 @@ static JSValue nb_el_id_set(JSContext *ctx, JSValueConst this_val, int argc, JSV
     NbNode *n = get_this(ctx, this_val);
     char *vl = NULL;
     const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
-    if (n) { free(n->id); n->id = strdup(v); }
+    if (n) {
+        free(n->id); n->id = strdup(v);
+        /* The attribute blob is what innerHTML/outerHTML serialize, so the
+         * property must move it too - not just the selector field. */
+        char *na = attrs_set(n, "id", v);
+        free(n->attrs); n->attrs = na;
+    }
     JS_FreeCString(ctx, vl);
     return JS_UNDEFINED;
 }
@@ -3506,7 +3528,11 @@ static JSValue nb_el_className_set(JSContext *ctx, JSValueConst this_val, int ar
     NbNode *n = get_this(ctx, this_val);
     char *vl = NULL;
     const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
-    if (n) { free(n->cls); n->cls = strdup(v); }
+    if (n) {
+        free(n->cls); n->cls = strdup(v);
+        char *na = attrs_set(n, "class", v);
+        free(n->attrs); n->attrs = na;
+    }
     JS_FreeCString(ctx, vl);
     return JS_UNDEFINED;
 }

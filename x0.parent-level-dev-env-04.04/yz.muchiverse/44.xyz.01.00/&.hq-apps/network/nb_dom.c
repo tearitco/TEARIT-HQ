@@ -24,6 +24,30 @@ static char *str_dup(const char *s) {
 }
 
 /* ---- html entity decode: returns decoded length, writes to out (>= n+1) ---- */
+/* Emit one code point as UTF-8. Invalid code points (NUL, surrogates,
+ * out-of-range) become U+FFFD, matching the HTML input stream rules. An
+ * entity is always at least three source bytes, so the output is never
+ * longer than the input; callers' buffers stay safe. */
+static size_t utf8_put(long cp, char *out) {
+    if (cp == 0 || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) cp = 0xFFFD;
+    if (cp < 0x80) { out[0] = (char)cp; return 1; }
+    if (cp < 0x800) {
+        out[0] = (char)(0xC0 | (cp >> 6));
+        out[1] = (char)(0x80 | (cp & 0x3F));
+        return 2;
+    }
+    if (cp < 0x10000) {
+        out[0] = (char)(0xE0 | (cp >> 12));
+        out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        out[2] = (char)(0x80 | (cp & 0x3F));
+        return 3;
+    }
+    out[0] = (char)(0xF0 | (cp >> 18));
+    out[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+    out[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    out[3] = (char)(0x80 | (cp & 0x3F));
+    return 4;
+}
 static size_t decode_entities(const char *p, size_t n, char *out) {
     size_t o = 0, i = 0;
     while (i < n) {
@@ -32,40 +56,48 @@ static size_t decode_entities(const char *p, size_t n, char *out) {
             if (semi) {
                 size_t body = (size_t)(semi - (p + i) - 1);
                 size_t off = (size_t)((semi - p) + 1);
+                long cp = -1;
                 if (body >= 2 && p[i + 1] == '#') {
-                    long cp = -1;
                     const char *dig = p + i + 2;
                     if (body >= 2 && (dig[0] == 'x' || dig[0] == 'X')) {
                         const char *d = dig + 1; long v = 0;
-                        while (d < semi && isxdigit((unsigned char)*d)) { v = v * 16 + (isdigit((unsigned char)*d) ? *d-'0' : (tolower((unsigned char)*d)-'a'+10)); d++; }
+                        while (d < semi && isxdigit((unsigned char)*d)) {
+                            v = v * 16 + (isdigit((unsigned char)*d) ? *d-'0' : (tolower((unsigned char)*d)-'a'+10));
+                            if (v > 0x10FFFF) v = 0x110000;   /* keep the clamp */
+                            d++;
+                        }
                         if (d == semi) cp = v;
                     } else {
                         const char *d = dig; long v = 0;
-                        while (d < semi && isdigit((unsigned char)*d)) { v = v*10 + (*d-'0'); d++; }
+                        while (d < semi && isdigit((unsigned char)*d)) {
+                            v = v*10 + (*d-'0');
+                            if (v > 0x10FFFF) v = 0x110000;
+                            d++;
+                        }
                         if (d == semi) cp = v;
                     }
-                    if (cp >= 0x20 && cp < 0x100) { out[o++] = (char)cp; i = off; continue; }
-                    if (cp > 0) { out[o++] = '\xEF'; i = off; continue; }
                 } else if (body >= 2) {
                     char name[16];
                     size_t bl = body < sizeof(name)-1 ? body : sizeof(name)-1;
                     memcpy(name, p + i + 1, bl); name[bl] = 0;
-                    char ch = 0;
-                    if      (!strcasecmp(name,"amp"))   ch = '&';
-                    else if (!strcasecmp(name,"lt"))    ch = '<';
-                    else if (!strcasecmp(name,"gt"))    ch = '>';
-                    else if (!strcasecmp(name,"quot"))  ch = '"';
-                    else if (!strcasecmp(name,"apos"))  ch = '\'';
-                    else if (!strcasecmp(name,"nbsp"))  ch = ' ';
-                    else if (!strcasecmp(name,"copy"))  ch = 0xA9;
-                    else if (!strcasecmp(name,"reg"))   ch = 0xAE;
-                    else if (!strcasecmp(name,"times")) ch = 0xD7;
-                    else if (!strcasecmp(name,"divide"))ch = 0xF7;
-                    else if (!strcasecmp(name,"mdash")) ch = 0x97;
-                    else if (!strcasecmp(name,"ndash")) ch = 0x96;
-                    else if (!strcasecmp(name,"hellip"))ch = 0x85;
-                    if (ch) { out[o++] = ch; i = off; continue; }
+                    /* Named references decode to code points, not to bytes:
+                     * &nbsp; is U+00A0 (2 UTF-8 bytes), not a plain space,
+                     * and &mdash; is U+2014 (3 bytes), not 0x97. */
+                    if      (!strcasecmp(name,"amp"))   cp = 0x26;
+                    else if (!strcasecmp(name,"lt"))    cp = 0x3C;
+                    else if (!strcasecmp(name,"gt"))    cp = 0x3E;
+                    else if (!strcasecmp(name,"quot"))  cp = 0x22;
+                    else if (!strcasecmp(name,"apos"))  cp = 0x27;
+                    else if (!strcasecmp(name,"nbsp"))  cp = 0xA0;
+                    else if (!strcasecmp(name,"copy"))  cp = 0xA9;
+                    else if (!strcasecmp(name,"reg"))   cp = 0xAE;
+                    else if (!strcasecmp(name,"times")) cp = 0xD7;
+                    else if (!strcasecmp(name,"divide"))cp = 0xF7;
+                    else if (!strcasecmp(name,"mdash")) cp = 0x2014;
+                    else if (!strcasecmp(name,"ndash")) cp = 0x2013;
+                    else if (!strcasecmp(name,"hellip"))cp = 0x2026;
                 }
+                if (cp >= 0) { o += utf8_put(cp, out + o); i = off; continue; }
             }
         }
         out[o++] = p[i];

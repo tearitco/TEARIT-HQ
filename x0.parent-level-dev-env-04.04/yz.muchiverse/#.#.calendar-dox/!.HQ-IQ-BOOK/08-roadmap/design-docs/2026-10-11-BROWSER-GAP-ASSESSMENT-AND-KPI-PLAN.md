@@ -1996,3 +1996,75 @@ libraries use it to replace a node in place.
   it.
 - The parser recognises only the plain `</tag>` closing form; `</script >`
   remains uncaptured (pre-existing).
+
+### 9.32 2026-11-11 — attribute values are markup-safe; entities are UTF-8
+
+9.31 left one documented hole. InnerHTML/outerHTML emit the attribute blob
+verbatim (correct, because parser blobs are already source markup), but
+`setAttribute` stored its value raw. A value containing `"` terminated the
+quoted attribute and broke the blob itself; a value containing `&` could
+start an entity on the next parse; `getAttribute` then disagreed with the
+serialized markup. On top of that, `decode_entities` mapped `&nbsp;` to a
+plain space and `&mdash;`/`&copy;` to single Latin-1 bytes, so the
+serializer's own `&nbsp;` escape did not round-trip and named entities
+produced invalid UTF-8.
+
+**The slice**
+
+- `attrs_set` (the single attribute-blob writer, used by `setAttribute`,
+  `dataset`, `img.src`, auto ids and now the `id`/`className` properties)
+  escapes values in HTML attribute mode: `&` -> `&amp;`, `"` -> `&quot;`,
+  U+00A0 -> `&nbsp;`. `<` and `>` stay literal, per spec. The blob is
+  therefore always valid markup, so the serializer keeps emitting it
+  verbatim and parser-sourced attributes are never double-escaped.
+- `el.id = ...` and `el.className = ...` now update the attribute blob as
+  well as the selector field, so `innerHTML`/`outerHTML` show the new value
+  (`el.id=''` serializes `id=""`, like a browser).
+- `decode_entities` now decodes named references to their real code points
+  and emits UTF-8 through a shared encoder: `&nbsp;` is U+00A0 (two bytes),
+  `&mdash;` U+2014, `&ndash;` U+2013, `&hellip;` U+2026, `&copy;` U+00A9,
+  `&reg;`, `&times;`, `&divide;` correct; numeric references are UTF-8
+  encoded with NUL/surrogates/out-of-range mapped to U+FFFD (HTML input
+  stream rules). An entity is at least three source bytes and emits at most
+  four, so existing `n*4`/1200-byte caller buffers remain safe.
+- Everything is byte-for-byte stable across
+  `outerHTML -> innerHTML -> outerHTML` and `getAttribute` returns the
+  original string before and after the round-trip.
+
+**Verification**
+
+- New gate `tests/nb_attrs_serialize_test.sh`: **PASS (34/34 + rows)**.
+  Covers escaping of `&`/`"`/NBSP and literal `<`/`>`, literal `&amp;`
+  surviving as `&amp;amp;`, all five values round-tripping through a
+  reparse, neighbour preservation and `removeAttribute`, `dataset`,
+  `id`/`className` serialization and empty-string values, parser-sourced
+  attributes keeping their source escapes with decoded getters, numeric
+  references, and `&nbsp;`/`&mdash;`/`&copy;`/numeric decoding to the exact
+  code points (`97,160,98,32,8212,32,169,32,8212,32,65`) with a stable
+  serialize/reparse loop. The RENDER frame shows `TEXT|A & B` once under
+  `#t`, with no entity text.
+- Negative A (store values raw again): **12 failures**, including
+  `set-quote-get got=say` (blob truncated), `set-literal-get got=&` and
+  every unescaped outer check.
+- Negative B (previous decoder): **8 failures** — NBSP decodes to space
+  (32, not 160), numeric `&#8212;` becomes U+FFFD, and text codes read
+  `97,32,98,32,65533,...`.
+- Negative C (no id/className blob sync): exactly the four serialization
+  checks fail, including `empty-id-class got=<b></b>`.
+- Negative D (escape `&`/NBSP but not `"`): **5 failures**, all quote
+  related.
+- Restored and green; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS** with the
+  gate registered.
+
+**Honest limits**
+
+- Parser-sourced attribute blobs are still emitted as authored, not
+  canonicalised: a raw `&` in the fetched source stays raw (a browser would
+  write `&amp;`), and single quotes/valueless attributes keep their source
+  form. `setAttribute` values are canonical.
+- Named references outside the small table (`&euro;`, `&middot;`, ...) stay
+  literal; the table is the pre-existing house subset.
+- Attribute names are not validated, so `setAttribute('a b', ...)` can still
+  create a malformed blob.
+- Numeric references still accept values above U+10FFFF but clamp them to
+  U+FFFD rather than implementing the full HTML replacement table.
