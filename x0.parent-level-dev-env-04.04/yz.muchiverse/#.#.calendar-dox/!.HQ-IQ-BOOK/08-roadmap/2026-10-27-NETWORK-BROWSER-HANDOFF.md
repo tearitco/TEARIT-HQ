@@ -670,3 +670,20 @@ negatives: no appendChild expansion (14 failures), no fragment textContent
 Open: fragment-moved `<script>` does not execute; shadow roots are not
 movable fragments; parsed documents have no fragment factory; no
 `ownerDocument`/`isConnected` on fragments.
+### 2026-11-11 — raw-text/RCDATA content is preserved
+
+`script`, `style`, `noscript`, `title` and `textarea` now keep their source
+text instead of being skipped. Folded parses (`nb_parse_html`, fetch.dom)
+store it on the element; tree parses (`innerHTML`, `insertAdjacentHTML`,
+`DOMParser`) author a real `#text` child. `title`/`textarea` decode entities;
+the rest stay raw. The renderer prunes the three data tags so captured code
+never renders as prose.
+
+Gate `tests/nb_raw_text_test.sh` **PASS (15/15 folded C harness + 17/17
+probe + rows)**. Negatives: old skip 7 folded failures; no renderer prune
+leaks the script body; no title decode fails exactly the two title checks.
+Full suite **ALL TESTS PASS**.
+
+Open: `xmp`/`iframe`/`noembed`/`noframes`/`plaintext` not captured;
+`</script >` closing form; comments still skipped; fetch.dom grows with
+inline JS/CSS.

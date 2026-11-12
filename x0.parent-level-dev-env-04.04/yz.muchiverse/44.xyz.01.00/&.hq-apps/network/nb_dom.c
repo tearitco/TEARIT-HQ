@@ -88,15 +88,17 @@ static int is_void(const char *tag) {
         if (!strcmp(tag, VOID_TAGS[i])) return 1;
     return 0;
 }
-/* Raw-text elements: keep the ELEMENT (its id/src/href attributes are part
- * of the DOM and real scripts query them) but never parse its contents as
- * markup. `<head>` is deliberately NOT skipped: its children
+/* Raw-text/RCDATA elements: keep the ELEMENT (its id/src/href attributes are
+ * part of the DOM and real scripts query them) AND its source text, but never
+ * parse that text as markup. textarea/title are RCDATA (entities decode);
+ * script/style/noscript are raw text. `<head>` is deliberately NOT skipped: its children
  * (<script id="base-js" src=…>, <link href=…>) must be reachable through
  * getElementById — the closure module loader resolves the bundle URL from
  * exactly that script element (window._F_jsUrl is unset in our fixtures). */
 static int is_rawtext(const char *tag) {
     return !strcmp(tag,"script") || !strcmp(tag,"style")
-        || !strcmp(tag,"title") || !strcmp(tag,"noscript");
+        || !strcmp(tag,"title") || !strcmp(tag,"noscript")
+        || !strcmp(tag,"textarea");
 }
 
 typedef struct {
@@ -108,6 +110,9 @@ typedef struct {
     int err;
     int text_nodes;   /* 1: character data becomes child text nodes */
 } Parser;
+
+static void parser_add_raw_text(Parser *ps, NbNode *n, const char *tag,
+                                const char *s, size_t len);
 
 static NbNode *node_new(Parser *ps, const char *tag) {
     if (ps->count >= DOM_MAX_NODES) { ps->err = 1; return NULL; }
@@ -132,20 +137,22 @@ static int stack_pop_to(Parser *ps, const char *tag) {
 }
 
 /* skip to "</tag>", return pointer just past it */
-static const char *skip_to_close(Parser *ps, const char *tag) {
+static const char *skip_to_close(Parser *ps, const char *tag, const char **content_end) {
     size_t tl = strlen(tag);
     const char *scan = ps->p;
     while (scan < ps->end) {
         const char *lx = scan;
         while (lx < ps->end && *lx != '<') lx++;
-        if (lx >= ps->end) return ps->end;
+        if (lx >= ps->end) break;
         /* match "</" then tag then ">" */
         if ((size_t)(ps->end - lx) >= tl + 3 && lx[1] == '/'
             && strncasecmp(lx + 2, tag, tl) == 0 && lx[tl + 2] == '>') {
+            if (content_end) *content_end = lx;
             return lx + tl + 3;
         }
         scan = lx + 1;
     }
+    if (content_end) *content_end = ps->end;
     return ps->end;
 }
 
@@ -216,7 +223,13 @@ static void parse_open(Parser *ps) {
     if (rn) n->attrs = str_dup_n(raw, rn);
     NbNode *parent = ps->depth>0 ? ps->stack[ps->depth-1] : ps->root;
     append_child(parent, n);
-    if (is_rawtext(tag)) { ps->p = skip_to_close(ps, tag); return; }
+    if (is_rawtext(tag)) {
+        const char *content = ps->p;
+        const char *cend = ps->end;
+        ps->p = skip_to_close(ps, tag, &cend);
+        parser_add_raw_text(ps, n, tag, content, (size_t)(cend - content));
+        return;
+    }
     if (!is_void(tag)) {
         if (ps->depth < (int)(sizeof(ps->stack)/sizeof(ps->stack[0]))-1)
             ps->stack[ps->depth++] = n;
@@ -263,6 +276,43 @@ static void parser_add_text(Parser *ps) {
     }
     free(buf); free(dec);
     ps->p=lt;
+}
+
+/* Raw-text/RCDATA elements keep their source text instead of parsing it as
+ * markup. The content is stored the same way ordinary character data is -
+ * folded into n->text for the fetch path, a real #text child for the
+ * script-facing path - so textContent, childNodes, clone and the wire
+ * serializer all agree. title/textarea are RCDATA (entities decode);
+ * script/style/noscript are raw text (they do not). */
+static void parser_add_raw_text(Parser *ps, NbNode *n, const char *tag,
+                                const char *s, size_t len) {
+    if (!n || len == 0) return;
+    char *txt = xmalloc(len + 1);
+    memcpy(txt, s, len);
+    txt[len] = 0;
+    if (!strcasecmp(tag, "title") || !strcasecmp(tag, "textarea")) {
+        char *dec = xmalloc(len * 4 + 1);
+        decode_entities(txt, len, dec);
+        free(txt);
+        txt = dec;
+    }
+    if (ps->text_nodes) {
+        if (ps->count >= DOM_MAX_NODES) { free(txt); return; }
+        NbNode *t = xmalloc(sizeof(*t));
+        memset(t, 0, sizeof(*t));
+        t->text = txt;
+        ps->count++;
+        append_child(n, t);
+    } else {
+        size_t oldn = n->text ? strlen(n->text) : 0;
+        size_t add = strlen(txt);
+        char *dst = xmalloc(oldn + add + 1);
+        if (oldn) memcpy(dst, n->text, oldn);
+        memcpy(dst + oldn, txt, add + 1);
+        free(n->text);
+        free(txt);
+        n->text = dst;
+    }
 }
 
 static NbNode *parse_html_impl(const char *html, size_t len, int text_nodes) {

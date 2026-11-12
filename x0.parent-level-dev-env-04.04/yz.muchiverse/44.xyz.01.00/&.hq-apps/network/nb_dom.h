@@ -14,9 +14,10 @@ extern "C" {
  * the (future) worker reads that file and rebuilds the tree in its own
  * heap for lazy QuickJS accessors. This file has zero JS/engine deps.
  *
- * Intentionally NOT a full HTML5 parser: skips script/style/title/
- * noscript/comments, handles void elements + a few common real-page
- * auto-close cases, and otherwise requires well-formed-ish nesting. If a
+ * Intentionally NOT a full HTML5 parser: keeps the ELEMENT and its source
+ * TEXT for script/style/title/noscript/textarea (raw-text/RCDATA bodies are
+ * data, never markup), skips comments, handles void elements + a few common
+ * real-page auto-close cases, and otherwise requires well-formed-ish nesting. If a
  * page's markup defeats the parser, it degrades gracefully (text-only,
  * no crash) — the manager falls back to its existing linear extractor.
  */

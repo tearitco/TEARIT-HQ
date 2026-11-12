@@ -1862,3 +1862,67 @@ hold.
 - Parsed documents (`DOMParser`) still have no `createDocumentFragment`
   factory, and no `createElement`/`createTextNode` either.
 - `DocumentFragment` has no `ownerDocument`/`isConnected` surface yet.
+
+### 9.30 2026-11-11 — raw-text elements keep their content
+
+The parser kept the raw-text ELEMENT but threw its body away: `parse_open`
+advanced past the closing tag and stored nothing. `getElementById` still
+found a `<script>`, so the gap was invisible until a page read it — which is
+exactly what every modern framework does. `document.getElementById(
+'__NEXT_DATA__').textContent` was empty, `<script type="application/json">`
+data islands were empty, `<style>` rules were unreachable from a page, and
+`innerHTML`/`DOMParser` inherited the same hole. `<title>` text only existed
+in the manager's separate regex extraction, and `<textarea>` content was
+parsed as markup.
+
+**The slice**
+
+- `parse_open` now captures the source text between the open and closing tag
+  instead of skipping it, on **both** parse paths:
+  - folded (`nb_parse_html`, the manager's fetch.dom input): stored on the
+    element's own `text` field, exactly like folded prose;
+  - tree (`nb_parse_html_nodes`, used by `innerHTML`, `insertAdjacentHTML`,
+    `DOMParser`): authored as one real `#text` child (nodeType 3).
+- `title` and `textarea` are RCDATA: character references decode
+  (`A &amp; B` -> `A & B`). `script`/`style`/`noscript` are raw text:
+  `&amp;` and `<` stay literal and never become markup.
+- `textarea` joined the raw-text set (it was previously parsed as HTML).
+- The renderer now prunes `script`, `style` and `noscript` subtrees at the
+  top of `dom_walk_render`, so captured data can never become a visible
+  TEXT row now that fetch.dom carries it.
+- The wire serializer needed no change: it already length-prefixes text, and
+  the round-trip test proves the data island survives fetch.dom.
+
+**Verification**
+
+- New gate `tests/nb_raw_text_test.sh`: **PASS (15/15 folded + 17/17 probe
+  + rows)**. It compiles a C harness against `nb_dom.c` for the folded path
+  and drives the real worker for the tree path:
+  - folded: script/style text exact; title entities decoded; noscript raw
+    with no `<p>` child; textarea RCDATA with no `<b>` child; serialize ->
+    `nb_dom_load` round-trip keeps the script text.
+  - tree: LOAD `script#sc` textContent, `body.textContent` includes it,
+    `innerHTML` gives one Text child (nodeType 3) and serializes the script
+    body raw; style; title decode; textarea RCDATA; noscript raw; DOMParser
+    script/style text.
+  - rows: visible `TEXT|tick 0` and a `TITLE|` row are present; no script,
+    style or noscript body leaks into RENDER.
+- Negative A (restore the old skip): **7 folded checks fail**, including
+  `folded-script-text got=[(null)]`.
+- Negative B (remove the renderer prune): rows leak
+  `TEXT|if (a < b && c > d) { go(); }` under `SEL|#sc`.
+- Negative C (don't decode title): exactly `folded-title-entities` and
+  `ih-title-entities` fail.
+- Restored and green; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS** with the
+  new gate registered.
+
+**Honest limits**
+
+- The closing-tag scan is still the simple `</tag>` form: `</script >` with
+  whitespace is not recognised (pre-existing).
+- A literal `</script>` inside a JS string ends the element early — the HTML
+  parser does the same, so this matches browsers.
+- `xmp`, `iframe`, `noembed`, `noframes` and `plaintext` are not captured yet
+  (not in `is_rawtext`).
+- Comments are still skipped, and captured script/style text makes fetch.dom
+  larger by the size of a page's inline JS/CSS.

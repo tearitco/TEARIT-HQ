@@ -887,6 +887,11 @@ static void rw_sel(SB *b, const NbNode *n) {
 static void dom_walk_render(const NbNode *n, int *titled, SB *b, int no_text) {
     if (!n) return;
     const char *tg = n->tag;
+    /* Raw-text/RCDATA bodies are data, not visible prose: script/style/
+     * noscript text now survives parsing (JSON data islands, style rules)
+     * and must never become a TEXT row. A <title> is handled below. */
+    if (tg && (!strcasecmp(tg, "script") || !strcasecmp(tg, "style") || !strcasecmp(tg, "noscript")))
+        return;
     /* REAL, NEW 2026-10-07 (live scroll-through: Wikipedia's own footer
      * farm rendered as article content) - prune chrome SUBTREES here,
      * structurally: nav/footer/aside landmarks + ARIA sectioning roles.

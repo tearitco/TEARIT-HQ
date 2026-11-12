@@ -102,6 +102,10 @@ echo "########## DocumentFragment is a real movable node (hermetic)"
 bash "$HERE/nb_document_fragment_test.sh" || RC=1
 
 echo
+echo "########## raw-text elements keep their content (folded + tree)"
+bash "$HERE/nb_raw_text_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 
