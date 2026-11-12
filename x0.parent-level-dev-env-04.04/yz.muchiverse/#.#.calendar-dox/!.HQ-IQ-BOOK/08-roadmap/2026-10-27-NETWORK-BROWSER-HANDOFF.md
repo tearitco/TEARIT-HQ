@@ -687,3 +687,21 @@ Full suite **ALL TESTS PASS**.
 Open: `xmp`/`iframe`/`noembed`/`noframes`/`plaintext` not captured;
 `</script >` closing form; comments still skipped; fetch.dom grows with
 inline JS/CSS.
+### 2026-11-11 — real HTML serialization + writable outerHTML
+
+`innerHTML`/`outerHTML` now escape text (`&`, `<`, `>`, U+00A0), leave
+raw-text element bodies (`script`/`style`/...) literal and give void
+elements no end tag, so `el.innerHTML = el.innerHTML` is stable and `<br>`
+no longer doubles. `XMLSerializer` uses the same walker in XML mode (no
+`&nbsp;`, end tags kept). `outerHTML=` parses in the parent context and
+replaces the node in order, detaches/orphans the old node, supports
+`null`/text/multi-node values, throws `NoModificationAllowedError` without a
+parent element, and emits one childList record per moved node plus one for
+the removal.
+
+Gate `tests/nb_html_serialize_test.sh` **PASS (36/36 + rows)**. Negatives:
+no escaping (8 failures), void end tags (5), read-only outerHTML (13),
+escaping raw-text bodies (2). Full suite **ALL TESTS PASS**.
+
+Open: attribute blobs are not re-escaped; fragment-parsed scripts in
+`outerHTML=` do not execute; `</script >` closed form not captured.

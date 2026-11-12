@@ -467,9 +467,58 @@ static void node_text_content(const NbNode *n, SB *b) {
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         node_text_content(c, b);
 }
-static void node_outer_html(const NbNode *n, SB *b) {
+/* HTML fragment serialization (innerHTML / outerHTML / XMLSerializer).
+ * The old emitter wrote text verbatim, which is wrong for the three things
+ * a page actually does with innerHTML:
+ *   - ESCAPE text: '&' -> &amp;, '<' -> &lt;, '>' -> &gt;, U+00A0 -> &nbsp;.
+ *     Verbatim text re-parses as markup or as an entity, so a round-trip
+ *     (`el.innerHTML = el.innerHTML`) silently changed the tree.
+ *   - Raw-text elements (script/style/xmp/iframe/noembed/noframes/
+ *     plaintext/noscript) keep their data literally: the parser never
+ *     treated it as markup, so escaping it would corrupt JS/CSS.
+ *   - VOID elements have no end tag. Emitting `</br>` makes a round-trip
+ *     add a second break, because the HTML parser reads `</br>` as `<br>`.
+ * XML mode escapes the same three bytes but not U+00A0 (XML has no &nbsp;
+ * entity) and keeps closing tags for void elements (XML is not HTML).
+ * Attribute blobs are still emitted as stored: parser/load blobs are
+ * already source markup, and setAttribute values are not re-escaped yet. */
+static int nb_ser_void_tag(const char *t) {
+    static const char *const V[] = {
+        "area","base","br","col","embed","hr","img","input","link",
+        "meta","param","source","track","wbr", NULL
+    };
+    for (int i = 0; t && V[i]; i++)
+        if (!strcasecmp(t, V[i])) return 1;
+    return 0;
+}
+static int nb_ser_raw_tag(const char *t) {
+    static const char *const R[] = {
+        "script","style","xmp","iframe","noembed","noframes","plaintext",
+        "noscript", NULL
+    };
+    for (int i = 0; t && R[i]; i++)
+        if (!strcasecmp(t, R[i])) return 1;
+    return 0;
+}
+static void sb_put_escaped(SB *b, const char *s, int xml) {
+    if (!s) return;
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+        if (!xml && p[0] == 0xC2 && p[1] == 0xA0) { sb_put(b, "&nbsp;"); p++; continue; }
+        switch (*p) {
+        case '&': sb_put(b, "&amp;"); break;
+        case '<': sb_put(b, "&lt;"); break;
+        case '>': sb_put(b, "&gt;"); break;
+        default: { char one[2] = { (char)*p, 0 }; sb_put(b, one); }
+        }
+    }
+}
+static void node_outer_html_m(const NbNode *n, SB *b, int xml) {
     if (!n) return;
-    if (!n->tag || !n->tag[0]) { sb_put(b, n->text); return; }   /* #text node */
+    if (!n->tag || !n->tag[0]) {   /* #text node */
+        if (!xml && n->parent && nb_ser_raw_tag(n->parent->tag)) sb_put(b, n->text);
+        else sb_put_escaped(b, n->text, xml);
+        return;
+    }
     sb_put(b, "<");
     sb_put(b, n->tag);
     /* Attributes: the blob is provenance-dependent. Parser/load keep the
@@ -490,13 +539,19 @@ static void node_outer_html(const NbNode *n, SB *b) {
         }
     }
     sb_put(b, ">");
-    sb_put(b, n->text);
+    if (n->text) {
+        if (!xml && nb_ser_raw_tag(n->tag)) sb_put(b, n->text);
+        else sb_put_escaped(b, n->text, xml);
+    }
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
-        node_outer_html(c, b);
-    sb_put(b, "</");
-    sb_put(b, n->tag);
-    sb_put(b, ">");
+        node_outer_html_m(c, b, xml);
+    if (xml || !nb_ser_void_tag(n->tag)) {
+        sb_put(b, "</");
+        sb_put(b, n->tag);
+        sb_put(b, ">");
+    }
 }
+static void node_outer_html(const NbNode *n, SB *b) { node_outer_html_m(n, b, 0); }
 
 /* ---- selector engine (subset: tag, #id, .class, tag.class, descendants) ---- */
 static int has_class(const NbNode *n, const char *tok) {
@@ -5689,16 +5744,16 @@ static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, J
  * every call threw "not a function". This returns the house outer-HTML
  * serializer (node_outer_html, the same one innerHTML reads) for elements
  * and text nodes; a #document serializes its element children (the
- * documentElement subtree). outerHTML is the same serializer as a read-only
- * Element accessor. Honest limit: text and attribute values are emitted
- * verbatim, exactly as innerHTML does — no additional escaping layer. */
-static void nb_ser_fill(const NbNode *n, SB *b) {
+ * documentElement subtree). outerHTML is the same serializer as a writable
+ * Element accessor. XMLSerializer passes xml=1: XML has no &nbsp; entity and
+ * no void-element elision. */
+static void nb_ser_fill(const NbNode *n, SB *b, int xml) {
     if (!n) return;
     if (n->tag && !strcmp(n->tag, "#document")) {
         for (const NbNode *c = n->first_child; c; c = c->next_sibling)
-            if (c->tag && c->tag[0]) node_outer_html(c, b);
+            if (c->tag && c->tag[0]) node_outer_html_m(c, b, xml);
     } else {
-        node_outer_html(n, b);
+        node_outer_html_m(n, b, xml);
     }
 }
 static JSValue nb_xmlserializer_serialize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -5716,7 +5771,7 @@ static JSValue nb_xmlserializer_serialize(JSContext *ctx, JSValueConst this_val,
     }
     SB b = {0, 0, 0};
     /* node_outer_html takes a string buffer; sb_* helpers are in this TU. */
-    nb_ser_fill(n, &b);
+    nb_ser_fill(n, &b, 1);
     JSValue r = JS_NewString(ctx, b.s ? b.s : "");
     free(b.s);
     return r;
@@ -5726,10 +5781,53 @@ static JSValue nb_el_outerHTML_get(JSContext *ctx, JSValueConst this_val, int ar
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_NewString(ctx, "");
     SB b = {0, 0, 0};
-    nb_ser_fill(n, &b);
+    nb_ser_fill(n, &b, 0);
     JSValue r = JS_NewString(ctx, b.s ? b.s : "");
     free(b.s);
     return r;
+}
+/* outerHTML = value: parse in the parent's context and REPLACE this node
+ * with the parsed nodes, in order. Spec throws NoModificationAllowedError
+ * when there is no parent or the parent is a Document (an element cannot
+ * replace the document element from inside the document). One childList
+ * record per moved node, then one for the removed node - the same
+ * per-node record model the tree mutators use. */
+static JSValue nb_el_outerHTML_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    NbNode *parent = n->parent;
+    if (!parent || (parent->tag && !strcmp(parent->tag, "#document"))) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "NoModificationAllowedError: outerHTML needs a parent element"));
+        return JS_Throw(ctx, e);
+    }
+    char *vl = NULL;
+    const char *v = "";
+    if (argc > 0 && !JS_IsNull(argv[0])) {
+        v = vl = JS_ToCString(ctx, argv[0]);
+        if (!v) return JS_EXCEPTION;
+    }
+    NbNode *ref = n->next_sibling;
+    NbNode *prev = NULL;
+    for (NbNode *c = parent->first_child; c && c != n; c = c->next_sibling) prev = c;
+    NbNode *frag = nb_parse_html_nodes(v, strlen(v));
+    NbNode *c = frag ? frag->first_child : NULL;
+    if (frag) { frag->first_child = frag->last_child = NULL; }
+    while (c) {
+        NbNode *nx = c->next_sibling;
+        c->next_sibling = NULL;
+        c->parent = NULL;
+        local_insert_before(parent, c, ref);
+        nb_mutation_notify_childlist(ctx, parent, c, NULL, NULL, ref);
+        c = nx;
+    }
+    node_detach(n);
+    orphan_add(n);
+    nb_mutation_notify_childlist(ctx, parent, NULL, n, prev, ref);
+    if (frag) nb_node_free(frag);
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
 static JSValue nb_parsed_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *owned = NULL;
@@ -7868,8 +7966,10 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentElement", JS_NewCFunction(ctx, nb_el_insertAdjacentElement, "insertAdjacentElement", 2));
     {
         JSAtom nm = JS_NewAtom(ctx, "outerHTML");
-        JS_DefinePropertyGetSet(ctx, Ep, nm, JS_NewCFunction(ctx, nb_el_outerHTML_get, "get outerHTML", 0), JS_UNDEFINED,
-            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_DefinePropertyGetSet(ctx, Ep, nm,
+            JS_NewCFunction(ctx, nb_el_outerHTML_get, "get outerHTML", 0),
+            JS_NewCFunction(ctx, nb_el_outerHTML_set, "set outerHTML", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
     }
     /* Node-level methods live on Node.prototype: every element, text and

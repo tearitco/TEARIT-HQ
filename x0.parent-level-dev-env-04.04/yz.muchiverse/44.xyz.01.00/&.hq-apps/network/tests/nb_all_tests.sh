@@ -106,6 +106,10 @@ echo "########## raw-text elements keep their content (folded + tree)"
 bash "$HERE/nb_raw_text_test.sh" || RC=1
 
 echo
+echo "########## HTML serialization escapes and outerHTML writes (hermetic)"
+bash "$HERE/nb_html_serialize_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

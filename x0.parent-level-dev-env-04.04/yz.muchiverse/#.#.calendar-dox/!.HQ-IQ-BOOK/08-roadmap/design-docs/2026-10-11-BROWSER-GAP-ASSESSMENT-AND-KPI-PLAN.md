@@ -1926,3 +1926,73 @@ parsed as markup.
   (not in `is_rawtext`).
 - Comments are still skipped, and captured script/style text makes fetch.dom
   larger by the size of a page's inline JS/CSS.
+
+### 9.31 2026-11-11 — innerHTML is HTML serialization; outerHTML can write
+
+The serializer behind `innerHTML`, `outerHTML` and `XMLSerializer` emitted
+text verbatim. A browser escapes it, and pages depend on that: the canonical
+`el.innerHTML = el.innerHTML` (template extraction, sanitizers, editors)
+re-parsed raw user text as markup. Void elements also gained end tags, and
+`</br>` re-parses as `<br>`, so a round-trip silently added a line break.
+`outerHTML` was a getter only — `el.outerHTML = ...` did nothing, while
+libraries use it to replace a node in place.
+
+**The slice**
+
+- Text in HTML mode escapes `&` -> `&amp;`, `<` -> `&lt;`, `>` -> `&gt;`
+  and U+00A0 -> `&nbsp;` (both the element's folded text and `#text`
+  children).
+- Raw-text elements (`script`, `style`, `xmp`, `iframe`, `noembed`,
+  `noframes`, `plaintext`, `noscript`) keep their data literally, matching
+  the parser. `title` and `textarea` are RCDATA, so their text IS escaped
+  (and round-trips through the parser's entity decode).
+- Void elements (`area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`,
+  `link`, `meta`, `param`, `source`, `track`, `wbr`) no longer get an end
+  tag. `<br><img src="/x"><input type="text">` round-trips byte-for-byte.
+- `XMLSerializer` runs the same walker in XML mode: it escapes `&`/`<`/`>`
+  but not U+00A0 (XML has no `&nbsp;` entity) and keeps end tags for void
+  elements (`<br></br>`, well-formed XML).
+- `outerHTML` is now writable: the value is parsed in the parent's context
+  and replaces the element with the parsed nodes, in order. The replaced
+  node is detached and orphaned (its wrapper stays valid); assigning `null`
+  removes it; assigning text inserts an escaped-on-read text node. A node
+  with no parent, or whose parent is the `#document`, throws
+  `NoModificationAllowedError`.
+- Replacement emits one childList record per moved node and then one for the
+  removed node, matching the per-node record model of the tree mutators.
+
+**Verification**
+
+- New gate `tests/nb_html_serialize_test.sh`: **PASS (36/36 + rows)**.
+  Covers escaped text + NBSP, parse/serialize/parse stability, raw
+  script/style, escaped title/textarea, all three void cases and a stable
+  `<br>` round-trip, `outerHTML` getter, single/multi/text/null replacement
+  and ordering, detached/documentElement errors, the `+,+,-` record shape
+  with the removed node identity, XML escaping/no-`&nbsp;`/void end tag, and
+  a post-JS RENDER with `TEXT|newvis` exactly once under `SEL|#newvis` and
+  no stale `#t`.
+- Negative A (no escaping): **8 failures** (`esc-text`, `esc-nbsp`,
+  `roundtrip-html`, `roundtrip-stable`, both RCDATA checks, `oh-text-escaped`,
+  `xml-amp`).
+- Negative B (always close void elements): **5 failures** (`void-br`,
+  `void-img`, `void-input`, `void-markup`, `void-roundtrip-markup`).
+- Negative C (read-only outerHTML): **13 failures** across the setter, error
+  and record checks.
+- Negative D (escape raw-text bodies too): exactly `raw-script` and
+  `raw-style` fail.
+- Restored and green; `sh tests/nb_all_tests.sh`: **ALL TESTS PASS** with the
+  gate registered.
+
+**Honest limits**
+
+- Attribute blobs are emitted as stored, not re-escaped. Parser/load blobs
+  are source markup, so they are already correct; a value set with
+  `setAttribute('title', 'a & b')` appears raw (valid here), but a value that
+  contains `"` or entity-like text can round-trip differently from a
+  browser. Attribute escaping is its own slice.
+- `outerHTML` nodes parsed from a fragment do not execute `<script>` (same
+  limitation as fragment insertion).
+- `outerHTML` remains an Element accessor; Text/Comment wrappers do not get
+  it.
+- The parser recognises only the plain `</tag>` closing form; `</script >`
+  remains uncaptured (pre-existing).
