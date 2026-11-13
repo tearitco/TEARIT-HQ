@@ -911,3 +911,18 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — Node.isSameNode
+
+Added `Node.isSameNode(other)` (Node prototype) returning identity for the same
+underlying node and `false` for null/undefined/non-node/missing args. Exposed
+`isSameNode`/`isEqualNode` on DocumentFragment wrappers.
+
+Gate `tests/nb_issamenode_test.sh` **PASS (15/15)**. Negative:
+`element.isSameNode(element.cloneNode(true))` -> `NEG false`.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

@@ -154,6 +154,10 @@ echo "########## cloneNode deep/default semantics (element/text/comment/fragment
 bash "$HERE/nb_clone_deep_test.sh" || RC=1
 
 echo
+echo "########## Node.isSameNode identity semantics"
+bash "$HERE/nb_issamenode_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 

@@ -2566,3 +2566,37 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 - Only `-->` and `--!>` premature-close sequences are escaped; other HTML
   comment data restrictions (start/end/`<!--` constraints) are not fully
   normalized. In-memory `nodeValue`/`data` remain as authored.
+
+
+### 9.45 2026-11-13 — Node.isSameNode identity semantics
+
+**What changed**
+
+- `ops/nb_js_worker.c`: added `Node.isSameNode(other)` on the Node prototype
+  (identity compare against the same underlying `NbNode`; returns `false` for
+  `null`/`undefined`/non-node/absent args). Also exposed `isSameNode` and
+  `isEqualNode` on `DocumentFragment` wrappers for parity with other node
+  wrappers.
+
+**Verification**
+
+- New gate `tests/nb_issamenode_test.sh`: **PASS (15/15)**. Covers same
+  element wrapper, same-id lookups, different elements/clones, null/undefined/
+  non-object/no-arg, text/comment identity vs clones, document fragment
+  identity vs shallow/deep clones, and parsed document identity.
+- Negative probe: `element.isSameNode(element.cloneNode(true))` is **false**
+  (`LOG|NEG false`).
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- `isSameNode` follows underlying node identity in this DOM model; wrapper
+  identity is already cached for same live nodes (`getElementById` returns
+  `===` wrappers), but the method compares node backing rather than JS object
+  identity for future non-cached cases.

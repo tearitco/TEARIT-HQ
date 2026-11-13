@@ -8056,6 +8056,13 @@ static JSValue nb_el_isEqualNode(JSContext *ctx, JSValueConst this_val, int argc
     NbNode *b = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
     return JS_NewBool(ctx, nbi_equal(a, b));
 }
+static JSValue nb_el_isSameNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *a = get_this(ctx, this_val);
+    if (!a) return JS_FALSE;
+    if (argc < 1 || !JS_IsObject(argv[0])) return JS_FALSE;
+    NbNode *b = get_node(ctx, argv[0]);
+    return JS_NewBool(ctx, b != NULL && a == b);
+}
 
 /* The box tree already models one rect per element, so getClientRects()
  * answers with that single-box list rather than an empty one - a page that
@@ -8421,6 +8428,7 @@ static void install_dom_classes(JSContext *ctx) {
         JS_FreeAtom(ctx, nm);
     }
     JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
+    JS_SetPropertyStr(ctx, Np, "isSameNode",     JS_NewCFunction(ctx, nb_el_isSameNode, "isSameNode", 1));
     {
         JSAtom nm = JS_NewAtom(ctx, "ownerDocument");
         JS_DefinePropertyGetSet(ctx, Np, nm,
@@ -11619,6 +11627,8 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
     JS_SetPropertyStr(ctx, w, "getElementsByTagName", JS_NewCFunction(ctx, nb_frag_getElementsByTagName, "getElementsByTagName", 1));
     JS_SetPropertyStr(ctx, w, "getElementsByClassName", JS_NewCFunction(ctx, nb_frag_getElementsByClassName, "getElementsByClassName", 1));
     JS_SetPropertyStr(ctx, w, "cloneNode", JS_NewCFunction(ctx, nb_frag_clone, "cloneNode", 1));
+    JS_SetPropertyStr(ctx, w, "isEqualNode", JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
+    JS_SetPropertyStr(ctx, w, "isSameNode", JS_NewCFunction(ctx, nb_el_isSameNode, "isSameNode", 1));
     JS_SetPropertyStr(ctx, w, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, w, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, w, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
