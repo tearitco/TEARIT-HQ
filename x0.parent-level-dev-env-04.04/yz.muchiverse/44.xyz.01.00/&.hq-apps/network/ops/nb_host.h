@@ -24,10 +24,13 @@
 #include <ctype.h>
 #include <time.h>
 #include <openssl/evp.h>
+#include <strings.h>
 #include <openssl/rand.h>
 #include <wasm3.h>
 #include <m3_env.h>
 #include <m3_core.h>
+
+#include "../nb_dom.h"
 #include <m3_api_libc.h>
 #include "../js/quickjs.h"
 
@@ -40,7 +43,8 @@
     static int  g_cli_log;      /* CLI mode: bare console lines, no prefix */\
     static char g_nav_kind[16]; /* rung-6 slice 2: pending NAV request the  */\
     static char g_nav_url[4096];/*  page asked for; emitted as a NAV frame  */\
-    static int  g_nav_count;    /*  (BACK/FORWARD step count) by the worker  */
+    static int  g_nav_count;    /*  (BACK/FORWARD step count) by the worker  */\
+    static NbNode *g_dom_root;  /* current page DOM (#document), or NULL */
 #endif
 
 #define LINE_CAP 2048
@@ -126,23 +130,132 @@ static JSValue native_write(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+/* ---- live document.title (2026-11-12) ----
+ * The host used to mirror document.title in g_title only. dom_render_rows
+ * prefers the <title> element's text over g_title, so a JS
+ * `document.title = "x"` updated g_title but left the element (and the
+ * rendered TITLE row) unchanged, and the getter could disagree with the DOM.
+ * Keep g_title in sync for the no-DOM fallback, but read/write the <title>
+ * element when the live DOM exists. Local copies of the worker's small tree
+ * helpers (NbNode layout is public in nb_dom.h). */
+typedef struct { char *s; size_t len, cap; } NbHostSB;
+static void nbhsb_put(NbHostSB *b, const char *x) {
+    if (!x || !x[0]) return;
+    size_t n = strlen(x);
+    if (b->len + n + 1 > b->cap) {
+        size_t nc = b->cap ? b->cap * 2 : 64;
+        while (nc < b->len + n + 1) nc *= 2;
+        char *nb = (char *)realloc(b->s, nc);
+        if (!nb) return;
+        b->s = nb; b->cap = nc;
+    }
+    memcpy(b->s + b->len, x, n);
+    b->len += n;
+    b->s[b->len] = 0;
+}
+static void nbhsb_node_text(const NbNode *n, NbHostSB *b) {
+    if (!n) return;
+    nbhsb_put(b, n->text);
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        nbhsb_node_text(c, b);
+}
+static NbNode *nbh_find_tag(NbNode *n, const char *tag) {
+    if (!n || !tag) return NULL;
+    if (n->tag && !strcasecmp(n->tag, tag)) return n;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling) {
+        NbNode *r = nbh_find_tag(c, tag);
+        if (r) return r;
+    }
+    return NULL;
+}
+static void nbh_clear_children(NbNode *n) {
+    if (!n) return;
+    NbNode *c = n->first_child;
+    while (c) {
+        NbNode *nx = c->next_sibling;
+        nb_node_free(c);
+        c = nx;
+    }
+    n->first_child = n->last_child = NULL;
+}
+static void nbh_append(NbNode *p, NbNode *ch) {
+    ch->parent = p;
+    ch->next_sibling = NULL;
+    if (p->last_child) p->last_child->next_sibling = ch;
+    else p->first_child = ch;
+    p->last_child = ch;
+}
+static void nbh_insert_before(NbNode *p, NbNode *ch, NbNode *ref) {
+    if (!ref) { nbh_append(p, ch); return; }
+    ch->parent = p;
+    ch->next_sibling = ref;
+    NbNode *prev = NULL;
+    for (NbNode *c = p->first_child; c; c = c->next_sibling) {
+        if (c == ref) break;
+        prev = c;
+    }
+    if (prev) prev->next_sibling = ch;
+    else p->first_child = ch;
+}
+
 static JSValue native_get_title(JSContext *ctx, JSValueConst this_val,
                                 int argc, JSValueConst *argv) {
     (void)this_val; (void)argc; (void)argv;
+    NbNode *te = g_dom_root ? nbh_find_tag(g_dom_root, "title") : NULL;
+    if (te) {
+        NbHostSB b = {0, 0, 0};
+        nbhsb_node_text(te, &b);
+        JSValue r = JS_NewString(ctx, b.s ? b.s : "");
+        free(b.s);
+        return r;
+    }
     return JS_NewString(ctx, g_title);
 }
 
 static JSValue native_set_title(JSContext *ctx, JSValueConst this_val,
                                 int argc, JSValueConst *argv) {
     (void)this_val;
-    const char *s = NULL;
+    const char *s = "";
+    char *owned = NULL;
     if (argc > 0) {
-        s = JS_ToCString(ctx, argv[0]);
-        if (!s) { JSValue ex = JS_GetException(ctx); JS_FreeValue(ctx, ex); }
+        owned = JS_ToCString(ctx, argv[0]);
+        if (!owned) return JS_EXCEPTION;
+        s = owned;
     }
-    snprintf(g_title, sizeof(g_title), "%s", s ? s : "");
-    if (s) JS_FreeCString(ctx, s);
+    snprintf(g_title, sizeof(g_title), "%s", s);
     g_title_set = 1;
+    if (g_dom_root) {
+        NbNode *te = nbh_find_tag(g_dom_root, "title");
+        if (te) {
+            nbh_clear_children(te);
+            free(te->text);
+            te->text = strdup(s);
+        } else {
+            NbNode *head = nbh_find_tag(g_dom_root, "head");
+            NbNode *parent = head;
+            if (!head) {
+                NbNode *root = NULL;
+                for (NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+                    if (c->tag && c->tag[0]) { root = c; break; }
+                if (root && !strcasecmp(root->tag, "html")) {
+                    head = (NbNode *)calloc(1, sizeof(*head));
+                    if (head) {
+                        head->tag = strdup("head");
+                        nbh_insert_before(root, head, root->first_child);
+                        parent = head;
+                    }
+                }
+                if (!parent) parent = g_dom_root;
+            }
+            te = (NbNode *)calloc(1, sizeof(*te));
+            if (te) {
+                te->tag = strdup("title");
+                te->text = strdup(s);
+                nbh_append(parent, te);
+            }
+        }
+    }
+    if (owned) JS_FreeCString(ctx, owned);
     return JS_UNDEFINED;
 }
 

@@ -741,3 +741,17 @@ correct Document `textContent`). Full suite **ALL TESTS PASS**.
 Open: parsed docs still miss `implementation`/URL/contentType/doctype/comment/
 importNode; `ownerDocument` not tracked; live `document.title` setter does not
 sync the `<title>` DOM node.
+### 2026-11-12 — live document.title syncs with the <title> element
+
+`document.title` getter now reads the live `<title>` element's text when
+present (falling back to `g_title`), and the setter updates the element
+(creating `<title>` under `<head>` when missing, synthesizing `<head>` only
+under `<html>`). RENDER, getter and DOM agree. Implemented in the host
+natives with local NbNode helpers; `g_dom_root` moved into host global state.
+
+Gate `tests/nb_live_title_test.sh` **PASS (13/13 + 6/6 + rows)**. Negatives:
+getter ignores element (1), setter skips DOM (12 across cases), setter
+no-create (6). Full suite **ALL TESTS PASS**.
+
+Open: first `<title>` only (no dedupe); multiple head/title edge cases follow
+browser parsing, not forced normalization.

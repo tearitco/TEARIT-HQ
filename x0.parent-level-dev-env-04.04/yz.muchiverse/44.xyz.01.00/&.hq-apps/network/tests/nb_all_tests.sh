@@ -118,6 +118,10 @@ echo "########## DOMParser document surface (hermetic)"
 bash "$HERE/nb_parsed_doc_test.sh" || RC=1
 
 echo
+echo "########## live document.title sync (hermetic)"
+bash "$HERE/nb_live_title_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

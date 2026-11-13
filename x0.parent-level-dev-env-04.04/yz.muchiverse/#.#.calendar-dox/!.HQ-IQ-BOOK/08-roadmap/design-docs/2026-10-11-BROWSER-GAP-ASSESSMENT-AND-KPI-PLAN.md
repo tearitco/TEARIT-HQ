@@ -2139,3 +2139,51 @@ returning `null` as the Document spec requires.
   on house nodes).
 - Live `document.title` remains the host `g_title` accessor; setting it does
   not rewrite the `<title>` element node in the live DOM.
+
+### 9.34 2026-11-12 — live document.title syncs with the <title> element
+
+The host mirrored `document.title` in `g_title` only. `dom_render_rows`
+prefers the `<title>` element's text over `g_title`, so a JS
+`document.title = "x"` updated `g_title` but left the element (and the
+rendered `TITLE` row) unchanged, and the getter could disagree with the DOM.
+
+**The slice**
+
+- `native_get_title` (host) returns the `<title>` element's text content when
+  one exists in `g_dom_root`, else `g_title`.
+- `native_set_title` keeps `g_title`/`g_title_set` in sync for the no-DOM
+  fallback and, when `g_dom_root` exists, updates the `<title>` element's
+  text (clearing children so folded and tree shapes agree). If no `<title>`
+  element exists, it creates one under `<head>`; `<head>` is synthesized only
+  under an `<html>` root, otherwise the title is attached to the document
+  root.
+- `nb_dom.h` is now included by `nb_host.h` and `g_dom_root` lives in the
+  host global state so the host natives can reach the live DOM. Small local
+  tree helpers (`nbh_find_tag`, `nbhsb_node_text`, `nbh_clear_children`,
+  append/insert-before) implement the DOM writes with the public `NbNode`
+  layout and `nb_node_free`.
+
+**Verification**
+
+- New gate `tests/nb_live_title_test.sh`: **PASS (13/13 + 6/6 + rows)**.
+  Case 1: getter reads element text "Orig" (not the LOAD `g_title`), setter
+  updates getter, the `<title>` element and the RENDER `TITLE` row (including
+  empty string), and after removing the title element the setter recreates it
+  under `<head>` so the final RENDER shows `TITLE|Created` once with the body
+  unchanged. Case 2: a page with no `<title>` element starts empty, and the
+  setter creates `<title>` under `<head>` and renders `TITLE|Made`.
+- Negative A (getter ignores the element): `get-initial got=live:fixture
+  want=Orig`.
+- Negative B (setter does not update the DOM): **9 failures** in case 1 and
+  **3** in case 2, including `el-after-set got=Orig want=Changed` and missing
+  rendered title.
+- Negative C (setter does not create a missing title): **3 failures** in each
+  case (`created-exists`/`made-exists` false).
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- The live `document.title` setter replaces content in the first `<title>`
+  element it finds; it does not deduplicate multiple `<title>` elements.
+- The getter returns the element's concatenated text content; the LOAD
+  `--title` argument is authoritative only when no `<title>` element exists.
