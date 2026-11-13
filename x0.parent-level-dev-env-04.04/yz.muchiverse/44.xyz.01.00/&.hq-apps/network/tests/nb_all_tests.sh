@@ -130,6 +130,10 @@ echo "########## xmp/iframe/noembed/noframes/plaintext raw-text (hermetic)"
 bash "$HERE/nb_rawtext_elements_test.sh" || RC=1
 
 echo
+echo "########## live and parsed document metadata (hermetic)"
+bash "$HERE/nb_doc_metadata_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

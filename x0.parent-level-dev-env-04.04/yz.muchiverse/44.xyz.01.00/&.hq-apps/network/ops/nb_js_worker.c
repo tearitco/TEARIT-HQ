@@ -6001,6 +6001,27 @@ static void nb_install_doc_factories(JSContext *ctx, JSValue doc) {
     JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
     JS_SetPropertyStr(ctx, doc, "createDocumentFragment", JS_NewCFunction(ctx, nb_dom_createDocumentFragment, "createDocumentFragment", 0));
 }
+static JSValue nb_make_implementation(JSContext *ctx) {
+    JSValue impl = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, impl, "createHTMLDocument", JS_NewCFunction(ctx, nb_impl_createHTMLDocument, "createHTMLDocument", 1));
+    JS_SetPropertyStr(ctx, impl, "createDocument", JS_NewCFunction(ctx, nb_impl_createDocument, "createDocument", 3));
+    JS_SetPropertyStr(ctx, impl, "createDocumentType", JS_NewCFunction(ctx, nb_impl_createDocumentType, "createDocumentType", 3));
+    JS_SetPropertyStr(ctx, impl, "hasFeature", JS_NewCFunction(ctx, nb_impl_hasFeature, "hasFeature", 2));
+    return impl;
+}
+static void nb_install_doc_metadata(JSContext *ctx, JSValue doc, const char *contentType, const char *url) {
+    const char *ct = contentType ? contentType : "text/html";
+    const char *u = (url && url[0]) ? url : "about:blank";
+    JS_SetPropertyStr(ctx, doc, "contentType", JS_NewString(ctx, ct));
+    JS_SetPropertyStr(ctx, doc, "URL", JS_NewString(ctx, u));
+    JS_SetPropertyStr(ctx, doc, "documentURI", JS_NewString(ctx, u));
+    JS_SetPropertyStr(ctx, doc, "compatMode", JS_NewString(ctx, "CSS1Compat"));
+    JS_SetPropertyStr(ctx, doc, "characterSet", JS_NewString(ctx, "UTF-8"));
+    JS_SetPropertyStr(ctx, doc, "charset", JS_NewString(ctx, "UTF-8"));
+    JS_SetPropertyStr(ctx, doc, "inputEncoding", JS_NewString(ctx, "UTF-8"));
+    JS_SetPropertyStr(ctx, doc, "doctype", JS_NULL);
+    JS_SetPropertyStr(ctx, doc, "implementation", nb_make_implementation(ctx));
+}
 static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)this_val;
     char *str = NULL;
@@ -6023,6 +6044,8 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
         if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "TypeError: DOMParser: unsupported MIME type"));
         return JS_Throw(ctx, e);
     }
+    char ctype[64];
+    snprintf(ctype, sizeof(ctype), "%s", m);
     JS_FreeCString(ctx, mime);
     NbNode *root = nb_parse_html_nodes(s, strlen(s));
     JS_FreeCString(ctx, str);
@@ -6035,6 +6058,7 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
     JSValue doc = push_node(ctx, root);
     /* Scoped document surface for this parsed tree only. */
     nb_install_doc_factories(ctx, doc);
+    nb_install_doc_metadata(ctx, doc, ctype, "about:blank");
     {
         JSAtom nm = JS_NewAtom(ctx, "title");
         JS_DefinePropertyGetSet(ctx, doc, nm,
@@ -10649,15 +10673,8 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "createTreeWalker", JS_NewCFunction(ctx, nb_doc_createTreeWalker, "createTreeWalker", 1));
         JS_SetPropertyStr(ctx, doc, "createRange", JS_NewCFunction(ctx, nb_dom_createRange, "createRange", 0));
         JS_SetPropertyStr(ctx, doc, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
-        {
-            JSValue impl = JS_NewObject(ctx);
-            JS_SetPropertyStr(ctx, impl, "createHTMLDocument", JS_NewCFunction(ctx, nb_impl_createHTMLDocument, "createHTMLDocument", 1));
-            JS_SetPropertyStr(ctx, impl, "createDocument", JS_NewCFunction(ctx, nb_impl_createDocument, "createDocument", 3));
-            JS_SetPropertyStr(ctx, impl, "createDocumentType", JS_NewCFunction(ctx, nb_impl_createDocumentType, "createDocumentType", 3));
-            JS_SetPropertyStr(ctx, impl, "hasFeature", JS_NewCFunction(ctx, nb_impl_hasFeature, "hasFeature", 2));
-            JS_SetPropertyStr(ctx, doc, "implementation", impl);
-        }
         nb_install_doc_factories(ctx, doc);
+        nb_install_doc_metadata(ctx, doc, "text/html", g_href);
         JS_SetPropertyStr(ctx, g, "DocumentFragment", JS_NewCFunction2(ctx, nb_dom_createDocumentFragment, "DocumentFragment", 0, JS_CFUNC_constructor, 0));
         {
             JSAtom nm = JS_NewAtom(ctx, "textContent");

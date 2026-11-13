@@ -2264,3 +2264,40 @@ In HTML they are raw-text elements: content is data until the matching end tag
   close it.
 - `noscript` remains in script-enabled/raw-text form (content captured as
   data, not as rendered fallback markup).
+
+### 9.37 2026-11-13 — cheap document metadata on live and parsed documents
+
+Live and `DOMParser` documents lacked basic Document properties, so libraries
+probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
+`doctype`, or `implementation` saw `undefined`.
+
+**The slice**
+
+- `nb_install_doc_metadata` sets `contentType`, `URL`, `documentURI`,
+  `compatMode` (`"CSS1Compat"`), `characterSet`/`charset`/`inputEncoding`
+  (`"UTF-8"`), `doctype` (`null`), and an `implementation` object
+  (`createHTMLDocument`, `createDocument`, `createDocumentType`,
+  `hasFeature`) on a document wrapper.
+- `DOMParser.parseFromString` installs metadata with the validated MIME type
+  and the inert URL `about:blank`. The live document installs metadata with
+  `text/html` and `g_href` (page URL), replacing the previous ad-hoc
+  implementation-only setup.
+
+**Verification**
+
+- New gate `tests/nb_doc_metadata_test.sh`: **PASS (26/26)**. Parsed
+  `text/html` and `application/xml` documents report correct
+  `contentType`/`URL`/`documentURI`/`compatMode`/`doctype`/encoding fields and
+  a working `implementation`; the live document reports `text/html`, the page
+  href, `CSS1Compat`, `null` doctype, `UTF-8`, and a working implementation.
+- Negative (no metadata installed): probe fails to complete
+  (`TypeError` on missing `implementation`), so the gate fails.
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- `doctype` is always `null` (the parser does not build DocumentType nodes).
+- Parsed document `URL`/`documentURI` is always `about:blank`; `compatMode`
+  is always `CSS1Compat` regardless of parse mode.
+- `implementation` methods reuse the existing minimal document/doctype
+  constructors; they are not a full DOMImplementation surface.

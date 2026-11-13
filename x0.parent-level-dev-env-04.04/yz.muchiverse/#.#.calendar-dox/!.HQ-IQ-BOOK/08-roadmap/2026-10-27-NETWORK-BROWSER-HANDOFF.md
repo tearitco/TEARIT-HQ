@@ -779,3 +779,15 @@ Gate `tests/nb_rawtext_elements_test.sh` **PASS (32/32 + rows)**. Negative
 
 Open: `xmp` not rendered visibly (DOM-correct but not preformatted display);
 `plaintext` uncloseable; `noscript` remains script-enabled/raw-text form.
+### 2026-11-13 — cheap document metadata on live and parsed documents
+
+Live and parsed documents now expose `contentType`, `URL`/`documentURI`,
+`compatMode` (`CSS1Compat`), `characterSet`/`charset`/`inputEncoding`
+(`UTF-8`), `doctype` (`null`), and `implementation`. Parsed docs use the
+requested MIME type and `about:blank`; live doc uses `text/html` and `g_href`.
+
+Gate `tests/nb_doc_metadata_test.sh` **PASS (26/26)**. Negative (no metadata):
+probe aborts on missing implementation. Full suite **ALL TESTS PASS**.
+
+Open: `doctype` always null; parsed URL always `about:blank`; compatMode
+fixed to standards mode; implementation surface minimal.
