@@ -896,3 +896,18 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — comment serialization safety
+
+HTML comment serialization now escapes premature-close sequences in comment
+data (`-->` -> `--&gt;`, `--!>` -> `--!&gt;`) so serialized comments don't
+terminate early/leak text on reparse.
+
+Gate `tests/nb_comment_serialize_test.sh` **PASS (9/9)**. Negative: comment
+`a--b-->c` reparses as 1 child with empty element textContent.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

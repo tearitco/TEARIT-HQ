@@ -599,6 +599,24 @@ static void sb_put_attrs_canonical(SB *b, const NbNode *n) {
         while (*p && !isspace((unsigned char)*p)) p++;
     }
 }
+static void sb_put_comment_data_safe(SB *b, const char *s) {
+    if (!s) return;
+    for (size_t i = 0; s[i]; i++) {
+        /* Prevent premature comment end: "-->" or "--!>" */
+        if (s[i] == '-' && s[i+1] == '-' && s[i+2] == '>' ) {
+            sb_put(b, "--&gt;");
+            i += 2;
+            continue;
+        }
+        if (s[i] == '-' && s[i+1] == '-' && s[i+2] == '!' && s[i+3] == '>') {
+            sb_put(b, "--!&gt;");
+            i += 3;
+            continue;
+        }
+        char one[2] = { s[i], 0 };
+        sb_put(b, one);
+    }
+}
 static void node_outer_html_m(const NbNode *n, SB *b, int xml) {
     if (!n) return;
     if (!n->tag || !n->tag[0]) {   /* #text node */
@@ -608,7 +626,7 @@ static void node_outer_html_m(const NbNode *n, SB *b, int xml) {
     }
     if (!strcmp(n->tag, "#comment")) {
         sb_put(b, "<!--");
-        sb_put(b, n->text ? n->text : "");
+        sb_put_comment_data_safe(b, n->text ? n->text : "");
         sb_put(b, "-->");
         return;
     }

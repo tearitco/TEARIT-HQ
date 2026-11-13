@@ -158,6 +158,10 @@ echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 
 echo
+echo "########## comment serialization safety (-->, --!> escaped)"
+bash "$HERE/nb_comment_serialize_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

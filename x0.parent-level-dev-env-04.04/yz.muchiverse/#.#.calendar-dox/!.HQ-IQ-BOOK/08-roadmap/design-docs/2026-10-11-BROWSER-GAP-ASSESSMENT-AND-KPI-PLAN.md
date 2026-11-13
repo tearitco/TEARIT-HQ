@@ -2393,9 +2393,10 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 - Comments are preserved only in node-mode parsing (`nb_parse_html_nodes` /
   DOMParser/innerHTML); the folded `nb_parse_html` fetch/extraction path still
   skips comments.
-- Comment data is not escaped/sanitized for `--` sequences in serializer
-  output (emitted as stored), and malformed comment endings are not
-  normalized.
+- Comment HTML serialization now escapes premature-close sequences
+  `-->`/`--!>` (as `--&gt;`/`--!&gt;`) to avoid breaking out of comments;
+  other malformed comment forms (e.g. start/end/`<!--` constraints) are not
+  fully normalized.
 - No `createComment`-specific wire-format/parser guarantees beyond node-mode
   tree parsing and in-memory DOM operations.
 
@@ -2534,3 +2535,34 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 - `cloneNode` copies tree/attribute/text data per existing clone helpers; event
   listeners and non-tree JS-expando state are not cloned (consistent with prior
   behavior).
+
+
+### 9.44 2026-11-13 — comment serialization safety for premature-close sequences
+
+**What changed**
+
+- `ops/nb_js_worker.c`: HTML comment serialization now escapes premature-close
+  sequences in comment data: `-->` -> `--&gt;` and `--!>` -> `--!&gt;`. This
+  prevents serialized comment content from terminating the comment early and
+  leaking trailing text/markup on reparse.
+
+**Verification**
+
+- New gate `tests/nb_comment_serialize_test.sh`: **PASS (9/9)**. Covers
+  `-->` and `--!>` in comment data (escaped in `innerHTML`, reparses as a
+  single comment child with no leaked text) and plain comments unchanged.
+- Negative probe: comment containing `a--b-->c` reparses as 1 child with empty
+  element `textContent` (no leaked `c-->` text).
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- Only `-->` and `--!>` premature-close sequences are escaped; other HTML
+  comment data restrictions (start/end/`<!--` constraints) are not fully
+  normalized. In-memory `nodeValue`/`data` remain as authored.
