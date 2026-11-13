@@ -2464,3 +2464,40 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 
 - Attribute getter/setter semantics otherwise unchanged; this slice only fixes
   present-empty value reporting for `getAttribute`.
+
+
+### 9.42 2026-11-13 — element attribute helpers (getAttributeNames/hasAttributes/toggleAttribute)
+
+**What changed**
+
+- `ops/nb_js_worker.c`: implemented `Element.getAttributeNames()`,
+  `Element.hasAttributes()`, and `Element.toggleAttribute(name, force)`
+  on element wrappers. Names are enumerated from the attribute blob with the
+  same parser-form/normalized handling as existing attribute iteration (tag
+  token excluded, names lowercased). `toggleAttribute` adds/removes via the
+  existing attribute set/remove paths and supports the optional `force`
+  argument; added attributes use an empty string value.
+
+**Verification**
+
+- New gate `tests/nb_attr_api_test.sh`: **PASS (24/24)**. Covers empty and
+  populated elements, parser-sourced attributes (including bare
+  `disabled`), `getAttributeNames` content/exclusion of tag token,
+  `hasAttributes`, and `toggleAttribute` add/remove/force semantics
+  (including present-empty value).
+- Negative probe: parsed `span` tag name not returned by
+  `getAttributeNames`; `toggleAttribute('x', false)` on absent attribute does
+  not create it (`LOG|NEG tag=false created=false`).
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without a final summary (environment stall pattern). Post-span_select live
+  tests were run individually and all passed RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- Attribute name casing follows existing lowercased iteration behavior.
+- `NamedNodeMap` remains the lightweight array-like object already exposed by
+  `element.attributes` (not a fully live spec NamedNodeMap interface).

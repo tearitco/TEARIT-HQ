@@ -3431,6 +3431,95 @@ static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int arg
     JS_FreeCString(ctx, owned);
     return JS_NewBool(ctx, has);
 }
+static JSValue nb_el_hasAttributes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || !n->attrs) return JS_FALSE;
+    const char *p = n->attrs;
+    int idx = 0;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        int had_eq = (*p == '=');
+        if (*p == '=') {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p == '"' || *p == '\'') { qc = *p; p++; }
+            while (*p && !(qc ? (*p == qc) : (isspace((unsigned char)*p) || *p == '>'))) p++;
+            if (qc && *p) p++;
+        }
+        if (kl > 0 && (had_eq || idx > 0)) return JS_TRUE;
+        idx++;
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    return JS_FALSE;
+}
+static JSValue nb_el_getAttributeNames(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (!n || !n->attrs) return arr;
+    const char *p = n->attrs;
+    int idx = 0, out = 0;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        int had_eq = (*p == '=');
+        if (*p == '=') {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p == '"' || *p == '\'') { qc = *p; p++; }
+            while (*p && !(qc ? (*p == qc) : (isspace((unsigned char)*p) || *p == '>'))) p++;
+            if (qc && *p) p++;
+        }
+        if (kl > 0 && (had_eq || idx > 0)) {
+            char kbuf[128]; size_t kc = kl < 127 ? kl : 127; memcpy(kbuf, ks, kc); kbuf[kc] = 0;
+            for (size_t i = 0; i < kc; i++) kbuf[i] = (char)tolower((unsigned char)kbuf[i]);
+            JS_SetPropertyUint32(ctx, arr, (uint32_t)out++, JS_NewString(ctx, kbuf));
+        }
+        idx++;
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    return arr;
+}
+static JSValue nb_el_setAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_removeAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_toggleAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *nm = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (nm = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !name) { JS_FreeCString(ctx, nm); return JS_FALSE; }
+    int present = attrs_has(n, name);
+    int force_present = 0;
+    int has_force = (argc > 1);
+    if (has_force) force_present = JS_ToBool(ctx, argv[1]);
+    int should_set = has_force ? force_present : !present;
+    if (should_set) {
+        if (!present) {
+            JSValue a[2]; a[0] = JS_DupValue(ctx, argv[0]); a[1] = JS_NewString(ctx, "");
+            JS_FreeValue(ctx, nb_el_setAttribute(ctx, this_val, 2, a));
+            JS_FreeValue(ctx, a[0]); JS_FreeValue(ctx, a[1]);
+        }
+    } else {
+        if (present) {
+            JSValue a[1]; a[0] = JS_DupValue(ctx, argv[0]);
+            JS_FreeValue(ctx, nb_el_removeAttribute(ctx, this_val, 1, a));
+            JS_FreeValue(ctx, a[0]);
+        }
+    }
+    int now_present = should_set ? 1 : 0;
+    if (has_force && force_present && present) now_present = 1;
+    JS_FreeCString(ctx, nm);
+    return JS_NewBool(ctx, now_present);
+}
 static char *attrs_set(const NbNode *n, const char *name, const char *val) {
     SB b = {0, 0, 0};
     const char *p = n->attrs ? n->attrs : "";
@@ -4766,6 +4855,9 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "setAttribute", JS_NewCFunction(ctx, nb_el_setAttribute, "setAttribute", 2));
     JS_SetPropertyStr(ctx, el, "removeAttribute", JS_NewCFunction(ctx, nb_el_removeAttribute, "removeAttribute", 1));
     JS_SetPropertyStr(ctx, el, "hasAttribute", JS_NewCFunction(ctx, nb_el_hasAttribute, "hasAttribute", 1));
+    JS_SetPropertyStr(ctx, el, "hasAttributes", JS_NewCFunction(ctx, nb_el_hasAttributes, "hasAttributes", 0));
+    JS_SetPropertyStr(ctx, el, "getAttributeNames", JS_NewCFunction(ctx, nb_el_getAttributeNames, "getAttributeNames", 0));
+    JS_SetPropertyStr(ctx, el, "toggleAttribute", JS_NewCFunction(ctx, nb_el_toggleAttribute, "toggleAttribute", 2));
     JS_SetPropertyStr(ctx, el, "appendChild", JS_NewCFunction(ctx, nb_el_appendChild, "appendChild", 1));
     JS_SetPropertyStr(ctx, el, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
     JS_SetPropertyStr(ctx, el, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));

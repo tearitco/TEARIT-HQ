@@ -864,3 +864,20 @@ Full-suite note: monolithic `nb_all_tests.sh` reruns stalled after
 live tests run individually (`nb_raf`, `nb_geometry`, `nb_gbcr`, `nb_gutter`,
 `nb_flex`, `nb_grid`, `nb_reach`) all RC=0/PASS, `nb_bar` tail run
 inconclusive/no marker.
+
+
+### 2026-11-13 — element attribute helpers
+
+Implemented `getAttributeNames()`, `hasAttributes()`, and
+`toggleAttribute(name, force)` on elements (attribute-blob iteration consistent
+with existing parsing/normalization; `toggleAttribute` uses set/remove paths,
+optional force supported).
+
+Gate `tests/nb_attr_api_test.sh` **PASS (24/24)**. Negative:
+`getAttributeNames` excludes parser tag token, `toggleAttribute(x,false)` on
+absent attr does not create (`NEG tag=false created=false`).
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.
