@@ -970,3 +970,18 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — Node.normalize
+
+Implemented `Node.normalize()` (Node prototype and fragment wrappers):
+recursively merges adjacent Text nodes, removes empty Text nodes, and does not
+merge across comment boundaries.
+
+Gate `tests/nb_normalize_test.sh` **PASS (13/13)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive. Mutations are not emitted as observer
+records.

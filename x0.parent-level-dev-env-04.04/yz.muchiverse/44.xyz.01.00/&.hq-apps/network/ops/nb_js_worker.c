@@ -3407,6 +3407,7 @@ static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int arg
 /* ---- element natives (this = element object) ---- */
 static int attrs_has(const NbNode *n, const char *name);
 static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_normalize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static const NbNode *nb_top_root(const NbNode *n);
 static JSValue nb_global_document(JSContext *ctx);
 static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -8473,6 +8474,7 @@ static void install_dom_classes(JSContext *ctx) {
      * spec; put it there, not here. */
     JS_SetPropertyStr(ctx, Np, "cloneNode",      JS_NewCFunction(ctx, nb_el_cloneNode, "cloneNode", 1));
     JS_SetPropertyStr(ctx, Np, "hasChildNodes",  JS_NewCFunction(ctx, nb_el_hasChildNodes, "hasChildNodes", 0));
+    JS_SetPropertyStr(ctx, Np, "normalize",      JS_NewCFunction(ctx, nb_el_normalize, "normalize", 0));
     {
         JSAtom nm;
         nm = JS_NewAtom(ctx, "lastChild");
@@ -11579,6 +11581,52 @@ static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int ar
     NbNode *n = get_this(ctx, this_val);
     return JS_NewBool(ctx, n && n->first_child != NULL);
 }
+static int nb_is_text_data_node(const NbNode *n) {
+    return n && (!n->tag || !n->tag[0]);
+}
+static void nb_normalize_node(NbNode *n) {
+    if (!n) return;
+    NbNode *c = n->first_child;
+    while (c) {
+        NbNode *next = c->next_sibling;
+        if (nb_is_text_data_node(c)) {
+            /* Merge adjacent text nodes into c, remove empty/merged ones. */
+            if (!c->text || c->text[0] == '\0') {
+                NbNode *nx = next;
+                node_detach(c);
+                orphan_add(c);
+                c = nx;
+                continue;
+            }
+            while (next && nb_is_text_data_node(next)) {
+                NbNode *after = next->next_sibling;
+                const char *t2 = next->text ? next->text : "";
+                size_t l1 = strlen(c->text);
+                size_t l2 = strlen(t2);
+                char *merged = (char *)malloc(l1 + l2 + 1);
+                if (merged) {
+                    memcpy(merged, c->text, l1);
+                    memcpy(merged + l1, t2, l2 + 1);
+                    free(c->text);
+                    c->text = merged;
+                }
+                node_detach(next);
+                orphan_add(next);
+                next = after;
+            }
+            c = next;
+        } else {
+            nb_normalize_node(c);
+            c = next;
+        }
+    }
+}
+static JSValue nb_el_normalize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (n) nb_normalize_node(n);
+    return JS_UNDEFINED;
+}
 static JSValue nb_frag_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     char *owned = NULL;
@@ -11710,6 +11758,7 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
     JS_SetPropertyStr(ctx, w, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, w, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
     JS_SetPropertyStr(ctx, w, "hasChildNodes", JS_NewCFunction(ctx, nb_el_hasChildNodes, "hasChildNodes", 0));
+    JS_SetPropertyStr(ctx, w, "normalize", JS_NewCFunction(ctx, nb_el_normalize, "normalize", 0));
     JS_SetPropertyStr(ctx, w, "contains", JS_NewCFunction(ctx, nb_el_contains, "contains", 1));
     JS_SetPropertyStr(ctx, w, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
     {

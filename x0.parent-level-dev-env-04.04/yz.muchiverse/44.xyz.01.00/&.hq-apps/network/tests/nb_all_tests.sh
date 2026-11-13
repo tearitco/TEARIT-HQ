@@ -166,6 +166,10 @@ echo "########## Node.isConnected and Node.getRootNode"
 bash "$HERE/nb_node_root_connected_test.sh" || RC=1
 
 echo
+echo "########## Node.normalize merges adjacent text nodes recursively"
+bash "$HERE/nb_normalize_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 
