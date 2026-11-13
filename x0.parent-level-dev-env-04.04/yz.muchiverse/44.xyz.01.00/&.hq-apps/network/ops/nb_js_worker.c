@@ -3406,6 +3406,7 @@ static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int arg
 
 /* ---- element natives (this = element object) ---- */
 static int attrs_has(const NbNode *n, const char *name);
+static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     char *owned = NULL;
@@ -8439,6 +8440,7 @@ static void install_dom_classes(JSContext *ctx) {
      * document node shares them. remove() is on Element (ChildNode) in the
      * spec; put it there, not here. */
     JS_SetPropertyStr(ctx, Np, "cloneNode",      JS_NewCFunction(ctx, nb_el_cloneNode, "cloneNode", 1));
+    JS_SetPropertyStr(ctx, Np, "hasChildNodes",  JS_NewCFunction(ctx, nb_el_hasChildNodes, "hasChildNodes", 0));
     {
         JSAtom nm;
         nm = JS_NewAtom(ctx, "lastChild");

@@ -2635,3 +2635,32 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   well-formedness; in-memory comment `nodeValue`/`data` remain as authored.
 - HTML comment serialization still does not fully normalize all
   spec-restricted/quirky start-end forms beyond premature-close `-->`/`--!>`.
+
+
+### 9.47 2026-11-13 — Node.hasChildNodes
+
+**What changed**
+
+- `ops/nb_js_worker.c`: exposed `Node.hasChildNodes()` on the Node prototype
+  (returns whether the node has any child nodes). Implementation already
+  existed for fragment wrappers; this makes it available to element, text,
+  comment, and document wrappers using the Node prototype.
+
+**Verification**
+
+- New gate `tests/nb_haschildnodes_test.sh`: **PASS (12/12)**. Covers empty
+  vs populated elements, text-content clearing/replacement, live empty element,
+  document fragments, text/comment nodes (no children), and parsed document
+  trees.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- No change to child tree semantics; `hasChildNodes` reports current
+  `first_child` presence only.

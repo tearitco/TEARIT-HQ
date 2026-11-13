@@ -943,3 +943,16 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — Node.hasChildNodes
+
+Exposed `Node.hasChildNodes()` on Node prototype (implementation already used
+by DocumentFragment wrappers), returning whether `firstChild` exists.
+
+Gate `tests/nb_haschildnodes_test.sh` **PASS (12/12)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

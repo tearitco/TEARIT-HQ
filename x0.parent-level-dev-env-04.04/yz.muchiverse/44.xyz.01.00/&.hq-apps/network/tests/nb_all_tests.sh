@@ -158,6 +158,10 @@ echo "########## Node.isSameNode identity semantics"
 bash "$HERE/nb_issamenode_test.sh" || RC=1
 
 echo
+echo "########## Node.hasChildNodes reflects child presence"
+bash "$HERE/nb_haschildnodes_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 
