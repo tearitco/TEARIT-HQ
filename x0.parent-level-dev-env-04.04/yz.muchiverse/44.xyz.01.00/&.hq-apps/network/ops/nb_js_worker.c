@@ -3538,6 +3538,9 @@ static JSValue nb_el_className_set(JSContext *ctx, JSValueConst this_val, int ar
 }
 static JSValue nb_el_textContent_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
+    /* Node.textContent: for a Document this is null, not the concatenated
+     * text of the tree. DocumentFragment (nodeType 11) still concatenates. */
+    if (n && n->tag && !strcmp(n->tag, "#document")) return JS_NULL;
     SB b = {0, 0, 0};
     node_text_content(n, &b);
     JSValue r = JS_NewString(ctx, b.s ? b.s : "");
@@ -5900,6 +5903,102 @@ static JSValue nb_win_getSelection(JSContext *ctx, JSValueConst this_val, int ar
  * and SVG mime types (no strict XML error detection); an unknown mime
  * throws TypeError instead of pretending to parse it. Parsed trees live in
  * g_orphans until page teardown. */
+/* ---- parsed-document surface (2026-11-11) ----
+ * parseFromString returns a push_node() wrapper: it carries the Element
+ * prototype (element-scoped queries work) but had no Document members. The
+ * host installs document.title on the live global only, so a parsed
+ * document's title read undefined and createElement/createTextNode/
+ * createDocumentFragment were missing entirely.
+ *
+ * title reads the first <title> in the tree; on this parse path RCDATA is a
+ * real #text child, so node_text_content sees it. The setter replaces that
+ * element's content and, when the document has no title, creates one under
+ * <head> (synthesizing <head> as the root element's first child when it is
+ * absent, the way the HTML parser would). Parsed trees live in g_orphans;
+ * mutation records are emitted the same way the textContent setter emits
+ * them (the added node is reported, removed children are not). */
+static JSValue nb_doc_title_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *doc = get_this(ctx, this_val);
+    NbNode *te = doc ? find_tag_first(doc, "title") : NULL;
+    if (!te) return JS_NewString(ctx, "");
+    SB b = {0, 0, 0};
+    node_text_content(te, &b);
+    JSValue r = JS_NewString(ctx, b.s ? b.s : "");
+    free(b.s);
+    return r;
+}
+static JSValue nb_doc_title_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *doc = get_this(ctx, this_val);
+    if (!doc) return JS_UNDEFINED;
+    char *vl = NULL;
+    /* Not LegacyNullToEmptyString: a Document title converts like any
+     * DOMString, so null -> "null" and undefined -> "undefined". */
+    const char *v = (argc > 0) ? (vl = JS_ToCString(ctx, argv[0])) : "";
+    if (!v) return JS_EXCEPTION;
+    NbNode *te = find_tag_first(doc, "title");
+    if (!te) {
+        NbNode *head = find_tag_first(doc, "head");
+        NbNode *parent = head;
+        if (!head) {
+            NbNode *root = NULL;
+            for (const NbNode *c = doc->first_child; c; c = c->next_sibling)
+                if (c->tag && c->tag[0]) { root = (NbNode *)c; break; }
+            if (root && !strcasecmp(root->tag, "html")) {
+                head = calloc(1, sizeof(*head));
+                if (!head) { JS_FreeCString(ctx, vl); return JS_UNDEFINED; }
+                head->tag = strdup("head");
+                NbNode *next = root->first_child;
+                local_insert_before(root, head, next);
+                nb_mutation_notify_childlist(ctx, root, head, NULL, NULL, next);
+                parent = head;
+            } else {
+                /* Fragment-like parse ("<div>x</div>"): there is no html
+                 * root to hold a head. Attach the title to the document
+                 * itself; synthesizing head inside the div would corrupt the
+                 * parsed fragment's content. */
+                parent = doc;
+            }
+        }
+        te = calloc(1, sizeof(*te));
+        if (!te) { JS_FreeCString(ctx, vl); return JS_UNDEFINED; }
+        te->tag = strdup("title");
+        local_append(parent, te);
+        nb_mutation_notify_childlist(ctx, parent, te, NULL, NULL, NULL);
+    }
+    /* Replace the title's text on both parse shapes: the folded fetch path
+     * keeps it on ->text, the tree path as a #text child. */
+    clear_children(te);
+    free(te->text);
+    te->text = NULL;
+    NbNode *tn = NULL;
+    if (v[0]) {
+        tn = calloc(1, sizeof(*tn));
+        if (tn) { tn->text = strdup(v); local_append(te, tn); }
+    }
+    if (tn) nb_mutation_notify_childlist(ctx, te, tn, NULL, NULL, NULL);
+    else nb_obs_recheck(ctx);
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
+}
+/* The live global `document` is a host-created plain object with no NODEKEY,
+ * so the shared Node getter cannot see it (it reported undefined). Spec:
+ * Document.textContent is null and assigning it is a no-op. */
+static JSValue nb_live_doc_textContent_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_NULL;
+}
+static JSValue nb_live_doc_textContent_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+/* Shared by the live document and every parsed document wrapper. */
+static void nb_install_doc_factories(JSContext *ctx, JSValue doc) {
+    JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
+    JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
+    JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
+    JS_SetPropertyStr(ctx, doc, "createDocumentFragment", JS_NewCFunction(ctx, nb_dom_createDocumentFragment, "createDocumentFragment", 0));
+}
 static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)this_val;
     char *str = NULL;
@@ -5933,6 +6032,15 @@ static JSValue nb_domparser_parse(JSContext *ctx, JSValueConst this_val, int arg
     orphan_add(root);
     JSValue doc = push_node(ctx, root);
     /* Scoped document surface for this parsed tree only. */
+    nb_install_doc_factories(ctx, doc);
+    {
+        JSAtom nm = JS_NewAtom(ctx, "title");
+        JS_DefinePropertyGetSet(ctx, doc, nm,
+            JS_NewCFunction(ctx, nb_doc_title_get, "get title", 0),
+            JS_NewCFunction(ctx, nb_doc_title_set, "set title", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, doc, "getElementById", JS_NewCFunction(ctx, nb_parsed_getElementById, "getElementById", 1));
     JS_SetPropertyStr(ctx, doc, "createRange", JS_NewCFunction(ctx, nb_dom_createRange, "createRange", 0));
     JS_SetPropertyStr(ctx, doc, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
@@ -6710,11 +6818,14 @@ static JSValue nb_range_clone_contents(JSContext *ctx, JSValueConst this_val, in
     int32_t so = 0, eo = 0;
     JS_ToInt32(ctx, &so, so_v);
     JS_ToInt32(ctx, &eo, eo_v);
-    NbNode *frag = nb_parse_html("", 0);
+    /* Range contents live in a detached DocumentFragment, not a Document,
+     * so Document-only semantics (e.g. textContent === null) do not apply. */
+    NbNode *frag = calloc(1, sizeof(*frag));
     if (!frag) {
         JS_FreeValue(ctx, sc); JS_FreeValue(ctx, so_v); JS_FreeValue(ctx, ec); JS_FreeValue(ctx, eo_v);
         return JS_NULL;
     }
+    frag->tag = strdup("#document-fragment");
     orphan_add(frag);
     if (s && e) {
         long ls = nb_endpoint_lin(s, so);
@@ -10544,11 +10655,16 @@ static void install_dom(JSContext *ctx) {
             JS_SetPropertyStr(ctx, impl, "hasFeature", JS_NewCFunction(ctx, nb_impl_hasFeature, "hasFeature", 2));
             JS_SetPropertyStr(ctx, doc, "implementation", impl);
         }
-        JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
-        JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
-        JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
-        JS_SetPropertyStr(ctx, doc, "createDocumentFragment", JS_NewCFunction(ctx, nb_dom_createDocumentFragment, "createDocumentFragment", 0));
+        nb_install_doc_factories(ctx, doc);
         JS_SetPropertyStr(ctx, g, "DocumentFragment", JS_NewCFunction2(ctx, nb_dom_createDocumentFragment, "DocumentFragment", 0, JS_CFUNC_constructor, 0));
+        {
+            JSAtom nm = JS_NewAtom(ctx, "textContent");
+            JS_DefinePropertyGetSet(ctx, doc, nm,
+                JS_NewCFunction(ctx, nb_live_doc_textContent_get, "get textContent", 0),
+                JS_NewCFunction(ctx, nb_live_doc_textContent_set, "set textContent", 1),
+                JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
         JS_SetPropertyStr(ctx, doc, "getElementsByClassName", JS_NewCFunction(ctx, nb_dom_getElementsByClassName, "getElementsByClassName", 1));
         {
             JSAtom nm = JS_NewAtom(ctx, "documentElement");

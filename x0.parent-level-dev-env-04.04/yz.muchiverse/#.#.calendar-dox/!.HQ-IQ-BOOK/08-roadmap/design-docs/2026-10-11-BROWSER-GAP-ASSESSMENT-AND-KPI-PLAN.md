@@ -2068,3 +2068,74 @@ produced invalid UTF-8.
   create a malformed blob.
 - Numeric references still accept values above U+10FFFF but clamp them to
   U+FFFD rather than implementing the full HTML replacement table.
+
+### 9.33 2026-11-12 — parsed DOMParser documents have a Document surface
+
+`DOMParser.parseFromString` returned a `push_node()` wrapper: element-scoped
+queries worked, but the wrapper had no Document members. The host installs
+`document.title` on the live global only, so a parsed document's title read
+`undefined`, and `createElement`/`createElementNS`/`createTextNode`/
+`createDocumentFragment` were missing entirely. `document.textContent` also
+read `undefined` on the live host object and, for parsed documents, fell
+through to the element getter and concatenated the whole tree instead of
+returning `null` as the Document spec requires.
+
+**The slice**
+
+- `document.textContent` is now `null` for Document nodes: the element/Node
+  getter returns `JS_NULL` for `#document` wrappers, and the live host
+  `document` (a plain object with no `NODEKEY`) gets an own accessor that
+  reads `null` and treats assignment as a no-op.
+- Parsed document wrappers install `title` as a getter/setter: the getter
+  returns the first `<title>` element's text content (`&nbsp;` decodes to
+  U+00A0 on the parse path), the setter replaces that element's content. If
+  no `<title>` exists, the setter creates one under `<head>`; `<head>` is
+  synthesized only under an `<html>` root element (prepended so it stays
+  first). For a fragment-like parse (`<div>x</div>`) with no `<html>` root,
+  the `<title>` is attached to the document root instead of being inserted
+  inside the fragment root, so the fragment content is left intact.
+- `createElement`, `createElementNS`, `createTextNode`, and
+  `createDocumentFragment` are installed on parsed document wrappers and on
+  the live document through a shared factory helper. Nodes created by a
+  parsed document append into that parsed tree, serialize through
+  `innerHTML`/`outerHTML`, and remain detached from the live rendered page.
+- `textContent` on a `Text` node still replaces its data (the setter's
+  `!n->tag` character-data branch runs before the Document no-op).
+
+**Verification**
+
+- New gate `tests/nb_parsed_doc_test.sh`: **PASS (37/37 + rows)**. Covers
+  live and parsed `document.textContent === null` and assignment no-op,
+  parsed `nodeType`/`documentElement`/`body`, `doc.title` reading RCDATA
+  entities, all four factories (plus `createElementNS`), created element and
+  text node types, appending created nodes/text/fragments into the parsed
+  body with exact `innerHTML`, `getElementById` over nodes created by the
+  parsed document, title replacement and clearing, `<head>` synthesis only
+  under `<html>`, fragment-like root preservation, and a document consisting
+  only of `<title>`. The post-JS RENDER frame keeps the live `TEXT|tick 0`
+  and `TITLE|Attrs` rows and contains no parsed-document text.
+- Negative A (no Document `textContent` null case): `parsed-tc-null got=false`.
+- Negative B (title setter does not replace old content): **5 failures**
+  including `title-set got=P TNew & Title`.
+- Negative C (no live `document.textContent` accessor): **2 failures**,
+  `live-tc-null` and `live-tc-set-noop`.
+- Negative D (synthesize `<head>` under any root): `frag-root-intact`
+  `got=<head><title>Frag</title></head>x want=x`.
+- Correct `Document.textContent === null` exposed that `Range`
+  `cloneContents`/`extractContents` returned a `#document` root instead of a
+  `DocumentFragment`; they now return a real fragment, and
+  `nb_range_selection_test.sh` is green again.
+- Restored and green; full suite **ALL TESTS PASS** with the gate
+  registered.
+
+**Honest limits**
+
+- `doc.title` setter replaces content but does not remove an extra existing
+  `<title>` element beyond the first it finds.
+- Parsed documents still lack several Document members (`implementation`,
+  `documentURI`/`URL`, `contentType`, `compatMode`, `doctype`,
+  `createComment`, `createAttribute`, `importNode`, `adoptNode`).
+- `createElement`/`createTextNode` do not set `ownerDocument` (not tracked
+  on house nodes).
+- Live `document.title` remains the host `g_title` accessor; setting it does
+  not rewrite the `<title>` element node in the live DOM.

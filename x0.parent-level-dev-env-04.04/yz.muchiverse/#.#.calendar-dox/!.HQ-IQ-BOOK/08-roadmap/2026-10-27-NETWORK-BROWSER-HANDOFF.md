@@ -721,3 +721,23 @@ escape (5). Full suite **ALL TESTS PASS**.
 
 Open: parser-sourced attrs are not canonicalised; named-entity table still
 small; attribute names not validated; numeric out-of-range clamps to U+FFFD.
+### 2026-11-12 — DOMParser documents get a real Document surface
+
+`DOMParser.parseFromString` wrappers now have `title` (reads first `<title>`,
+decodes RCDATA entities; setter replaces content, creates `<title>` under
+`<head>` when missing, synthesizes `<head>` only under `<html>` and never
+inside a fragment root) and the node factories `createElement`,
+`createElementNS`, `createTextNode`, `createDocumentFragment`. Nodes they
+create append/serialize in the parsed tree and do not leak into the live
+RENDER. `document.textContent` is `null` for Document nodes (parsed wrapper
+and live host document) and assignment is a no-op.
+
+Gate `tests/nb_parsed_doc_test.sh` **PASS (37/37 + rows)**. Negatives:
+Document concat (1), title no-replace (5), no live textContent accessor (2),
+head synthesized into fragment root (1). Also fixed Range
+`cloneContents`/`extractContents` to return a `DocumentFragment` (exposed by
+correct Document `textContent`). Full suite **ALL TESTS PASS**.
+
+Open: parsed docs still miss `implementation`/URL/contentType/doctype/comment/
+importNode; `ownerDocument` not tracked; live `document.title` setter does not
+sync the `<title>` DOM node.

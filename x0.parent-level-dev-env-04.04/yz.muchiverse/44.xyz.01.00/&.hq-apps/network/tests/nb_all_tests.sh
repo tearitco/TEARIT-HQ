@@ -114,6 +114,10 @@ echo "########## attribute values are markup-safe + entities decode (hermetic)"
 bash "$HERE/nb_attrs_serialize_test.sh" || RC=1
 
 echo
+echo "########## DOMParser document surface (hermetic)"
+bash "$HERE/nb_parsed_doc_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 
