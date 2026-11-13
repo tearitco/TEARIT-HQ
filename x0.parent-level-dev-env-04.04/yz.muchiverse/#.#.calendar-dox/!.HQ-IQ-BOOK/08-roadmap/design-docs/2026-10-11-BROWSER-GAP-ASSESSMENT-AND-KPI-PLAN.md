@@ -2600,3 +2600,38 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   identity is already cached for same live nodes (`getElementById` returns
   `===` wrappers), but the method compares node backing rather than JS object
   identity for future non-cached cases.
+
+
+### 9.46 2026-11-13 — XMLSerializer comment well-formedness
+
+**What changed**
+
+- `ops/nb_js_worker.c`: comment serialization is now mode-aware. HTML
+  serialization keeps existing behavior (escapes premature-close `-->`/`--!>`
+  sequences, preserves readable `--` where safe). `XMLSerializer` (XML mode)
+  emits well-formed comment data by breaking `--` sequences and ensuring the
+  comment does not end with `-`.
+
+**Verification**
+
+- New gate `tests/nb_xml_comment_serialize_test.sh`: **PASS (9/9)**. Covers
+  XMLSerializer output for comments containing `--`, ending with `-`, and
+  containing premature-close sequences; plain comments unchanged; HTML
+  `innerHTML` keeps readable `--`.
+- Existing gates re-run: `tests/nb_comment_serialize_test.sh` **PASS (9/9)**,
+  `tests/nb_serializer_test.sh` **PASS (6/6)**, `tests/nb_html_serialize_test.sh`
+  **PASS (36/36 + rows)**, `tests/nb_comment_node_test.sh` **PASS (20/20)**.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- XML comment fix is a serializer transformation (inserted spacing) to satisfy
+  well-formedness; in-memory comment `nodeValue`/`data` remain as authored.
+- HTML comment serialization still does not fully normalize all
+  spec-restricted/quirky start-end forms beyond premature-close `-->`/`--!>`.

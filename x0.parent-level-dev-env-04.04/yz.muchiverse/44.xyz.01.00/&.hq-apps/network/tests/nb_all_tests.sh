@@ -166,6 +166,10 @@ echo "########## comment serialization safety (-->, --!> escaped)"
 bash "$HERE/nb_comment_serialize_test.sh" || RC=1
 
 echo
+echo "########## XML comment serialization well-formedness (XMLSerializer)"
+bash "$HERE/nb_xml_comment_serialize_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

@@ -926,3 +926,20 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — XMLSerializer comment well-formedness
+
+Made comment serialization mode-aware: HTML keeps prior behavior (escape
+premature-close `-->`/`--!>`, preserve safe readable `--`), while XMLSerializer
+breaks `--` sequences and avoids trailing `-` in comment data for well-formed
+XML output.
+
+Gate `tests/nb_xml_comment_serialize_test.sh` **PASS (9/9)**. Existing gates:
+`nb_comment_serialize_test.sh` **9/9**, `nb_serializer_test.sh` **6/6**,
+`nb_html_serialize_test.sh` **36/36 + rows**, `nb_comment_node_test.sh` **20/20**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.
