@@ -2428,6 +2428,39 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 
 - Canonicalization applies to parser-form blobs; normalized blobs are trusted
   as stored. Attribute ordering/spacing may normalize for parser-form output.
-- `getAttribute` in this implementation still returns `null` for present-empty
-  attributes while `hasAttribute` is `true` (pre-existing behavior, not
-  changed here).
+- Present-empty `getAttribute` semantics were pre-existing at this slice and
+  corrected in 9.41 (now returns `""` when present, `null` only when absent).
+
+
+### 9.41 2026-11-13 — present-empty getAttribute semantics
+
+**What changed**
+
+- `ops/nb_js_worker.c`: `element.getAttribute(name)` now returns `null` only
+  when the attribute is absent; for present attributes (including empty-valued
+  attributes such as `data-empty=""`) it returns the attribute value string
+  (possibly `""`), matching DOM semantics. Presence is checked via
+  `attrs_has`/attribute lookup rather than treating empty decoded values as
+  absent.
+
+**Verification**
+
+- Updated `tests/nb_attr_canonical_test.sh`: **PASS (20/20)** with
+  `getAttribute('data-empty') === ""` and `hasAttribute('data-empty') === true`.
+- `tests/nb_attrs_serialize_test.sh`: **PASS (34/34 + rows)** (absent-after-
+  remove still `null`).
+- Negative probe (fresh worker): `hasAttribute(missing)=false`,
+  `getAttribute(missing)=null`, `getAttribute(a)=""` for `a=""`.
+- Full-suite evidence: targeted/negative gates above passed on a fresh build;
+  `tests/nb_all_tests.sh` monolithic reruns in this session stalled after
+  `nb_span_select_test` without a final summary line, so the post-span_select
+  live tests (`nb_raf_test.sh`, `nb_geometry_test.sh`, `nb_gbcr_test.sh`,
+  `nb_gutter_test.sh`, `nb_flex_test.sh`, `nb_grid_test.sh`,
+  `nb_reach_test.sh`) were run individually and all passed (RC=0/PASS);
+  `nb_bar_test.sh` produced no completion marker in that tail run (environment
+  stall).
+
+**Honest limits**
+
+- Attribute getter/setter semantics otherwise unchanged; this slice only fixes
+  present-empty value reporting for `getAttribute`.

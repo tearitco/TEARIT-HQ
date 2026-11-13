@@ -39,7 +39,7 @@ cat > "$WORK/probe.js" <<'PROBE'
   check('get-raw', d.getAttribute('data-b'), 'a&b');
   check('get-quot', d.getAttribute('title'), 'say "hi"');
   check('has-disabled', d.hasAttribute('disabled'), true);
-  check('get-empty', d.getAttribute('data-empty'), null);
+  check('get-empty', d.getAttribute('data-empty'), '');
   check('get-empty-present', d.hasAttribute('data-empty'), true);
 
   var ih=d.outerHTML;

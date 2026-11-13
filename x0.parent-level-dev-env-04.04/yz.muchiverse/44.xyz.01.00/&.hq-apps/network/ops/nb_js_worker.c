@@ -3360,15 +3360,16 @@ static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int arg
 }
 
 /* ---- element natives (this = element object) ---- */
+static int attrs_has(const NbNode *n, const char *name);
 static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     char *owned = NULL;
     const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
     if (!n || !name) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    if (!attrs_has(n, name)) { JS_FreeCString(ctx, owned); return JS_NULL; }
     const char *v = nb_attr_get(n, name);
     JS_FreeCString(ctx, owned);
-    if (v && v[0]) return JS_NewString(ctx, v);
-    return JS_NULL;
+    return JS_NewString(ctx, v ? v : "");
 }
 /* element.attributes (2026-09-21): kevlar's web-component wrapper render
  * starts with `_.C2(this.attributes)` in both setUpProps and render. Without

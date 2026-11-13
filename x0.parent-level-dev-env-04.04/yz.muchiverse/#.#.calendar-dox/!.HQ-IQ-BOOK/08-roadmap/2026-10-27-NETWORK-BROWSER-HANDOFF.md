@@ -847,3 +847,20 @@ PASS**.
 Open: parser-form attr order/spacing may normalize; pre-existing
 `getAttribute` returns `null` for present-empty attrs (hasAttribute true)
 unchanged.
+
+
+### 2026-11-13 — present-empty getAttribute semantics
+
+`element.getAttribute` now returns `""` for present-empty attributes (e.g.
+`data-empty=""`) and `null` only when absent, via presence check instead of
+empty-value-as-missing.
+
+Updated `tests/nb_attr_canonical_test.sh` **PASS (20/20)** (empty attr now
+`""`, hasAttribute true). `nb_attrs_serialize_test.sh` **PASS (34/34 + rows)**.
+Negative: missing -> `null`, present-empty -> `""`.
+
+Full-suite note: monolithic `nb_all_tests.sh` reruns stalled after
+`nb_span_select_test` without final summary in this session; post-span_select
+live tests run individually (`nb_raf`, `nb_geometry`, `nb_gbcr`, `nb_gutter`,
+`nb_flex`, `nb_grid`, `nb_reach`) all RC=0/PASS, `nb_bar` tail run
+inconclusive/no marker.
