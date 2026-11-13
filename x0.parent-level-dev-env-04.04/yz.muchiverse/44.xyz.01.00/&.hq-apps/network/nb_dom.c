@@ -202,7 +202,21 @@ static const char *skip_to_close(Parser *ps, const char *tag, const char **conte
 static void parse_open(Parser *ps) {
     const char *p = ps->p + 1;
     if (p < ps->end && p[0]=='!' && p+2 < ps->end && p[1]=='-' && p[2]=='-') {
-        const char *close = strstr(p, "-->");
+        const char *open_end = p + 3;
+        const char *close = strstr(open_end, "-->");
+        const char *cend = close ? close : ps->end;
+        if (ps->text_nodes && ps->count < DOM_MAX_NODES) {
+            NbNode *cmt = xmalloc(sizeof(*cmt));
+            memset(cmt, 0, sizeof(*cmt));
+            cmt->tag = str_dup("#comment");
+            size_t clen = (size_t)(cend - open_end);
+            cmt->text = xmalloc(clen + 1);
+            memcpy(cmt->text, open_end, clen);
+            cmt->text[clen] = 0;
+            ps->count++;
+            NbNode *parent = ps->depth>0 ? ps->stack[ps->depth-1] : ps->root;
+            append_child(parent, cmt);
+        }
         ps->p = close ? close + 3 : ps->end;
         return;
     }

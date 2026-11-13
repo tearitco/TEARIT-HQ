@@ -819,3 +819,17 @@ node not source-owned. Full suite **ALL TESTS PASS**.
 Open: no automatic cross-document insertion guard/throw on append (adopt/import
 APIs now available); `importNode` deep defaults false per current signature
 handling.
+
+### 2026-11-13 — comment nodes (createComment, parse/preserve, serialize)
+
+Added `document.createComment` and comment-node support: `nodeType 8`,
+`#comment`, `nodeValue`/`data`/`textContent` get/set, correct owner, insertable,
+serialized as `<!--...-->`, excluded from rendered text/element `textContent`.
+Node-mode parser (`DOMParser`/`innerHTML`) now preserves HTML comments.
+
+Gate `tests/nb_comment_node_test.sh` **PASS (20/20)**. Negative:
+`textContent==='abc'` false / `==='ac'` true for `a<!--b-->c`. Full suite **ALL
+TESTS PASS**.
+
+Open: folded extraction parser still skips comments; comment `--` content not
+sanitized in serializer.

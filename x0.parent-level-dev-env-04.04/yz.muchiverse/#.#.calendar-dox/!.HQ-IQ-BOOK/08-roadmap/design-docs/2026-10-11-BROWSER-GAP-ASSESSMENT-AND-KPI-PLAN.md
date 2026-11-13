@@ -2359,3 +2359,42 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   cross-document import, adopt detached/attached, subtree ownership, fragment
   import, NotSupportedError). Negative probe confirms imported node is not
   owned by source document. Full suite **ALL TESTS PASS**.
+
+### 9.39 2026-11-13 — comment nodes (createComment, parse/preserve, serialize)
+
+**What changed**
+
+- `ops/nb_js_worker.c`: added `document.createComment(data)` on live and
+  parsed documents. Comment wrappers report `nodeType` 8, `nodeName`
+  `#comment`, `nodeValue`/`data`/`textContent` as comment data (settable),
+  correct `ownerDocument`, and can be inserted/removed like character data.
+- Comment nodes serialize in HTML as `<!--data-->` (innerHTML/outerHTML/XML
+  serializer path) and are skipped by the renderer walk and excluded from
+  element `textContent` concatenation. `node_text_content`/`push_node`/
+  `nodeValue`/`data`/`textContent` paths treat `#comment` as character data.
+- `nb_dom.c`: the node-mode parser (`nb_parse_html_nodes`, used by
+  `DOMParser`/`innerHTML`) now preserves `<!-- -->` as `#comment` nodes with
+  their content; the folded extraction parser still skips comments.
+
+**Verification**
+
+- New gate `tests/nb_comment_node_test.sh`: **PASS (20/20)**. Covers
+  `createComment`, nodeType/name/value/textContent get/set, append/owner,
+  innerHTML serialization, comments excluded from `textContent`, parsed
+  comments preserved (`innerHTML`/`textContent`/child type), and
+  clone/import of comment nodes. Render leak check: no harness errors and no
+  comment content leaked into render frames.
+- Negative probe: `div.innerHTML='a<!--b-->c'` yields `textContent==='abc'`
+  **false** and `textContent==='ac'` **true** (comment excluded).
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- Comments are preserved only in node-mode parsing (`nb_parse_html_nodes` /
+  DOMParser/innerHTML); the folded `nb_parse_html` fetch/extraction path still
+  skips comments.
+- Comment data is not escaped/sanitized for `--` sequences in serializer
+  output (emitted as stored), and malformed comment endings are not
+  normalized.
+- No `createComment`-specific wire-format/parser guarantees beyond node-mode
+  tree parsing and in-memory DOM operations.

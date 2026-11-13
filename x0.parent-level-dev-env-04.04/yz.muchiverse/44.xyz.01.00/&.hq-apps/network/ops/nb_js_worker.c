@@ -462,9 +462,15 @@ static void orphan_remove(NbNode *n) {
 /* ---- text / html serialization ---- */
 static void node_text_content(const NbNode *n, SB *b) {
     if (!n) return;
+    if (n->tag && !strcmp(n->tag, "#comment")) {
+        sb_put(b, n->text);
+        return;
+    }
     sb_put(b, n->text);
-    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+        if (c->tag && !strcmp(c->tag, "#comment")) continue;
         node_text_content(c, b);
+    }
 }
 /* HTML fragment serialization (innerHTML / outerHTML / XMLSerializer).
  * The old emitter wrote text verbatim, which is wrong for the three things
@@ -532,6 +538,12 @@ static void node_outer_html_m(const NbNode *n, SB *b, int xml) {
     if (!n->tag || !n->tag[0]) {   /* #text node */
         if (!xml && n->parent && nb_ser_raw_tag(n->parent->tag)) sb_put(b, n->text);
         else sb_put_escaped(b, n->text, xml);
+        return;
+    }
+    if (!strcmp(n->tag, "#comment")) {
+        sb_put(b, "<!--");
+        sb_put(b, n->text ? n->text : "");
+        sb_put(b, "-->");
         return;
     }
     sb_put(b, "<");
@@ -957,6 +969,7 @@ static void rw_sel(SB *b, const NbNode *n) {
 static void dom_walk_render(const NbNode *n, int *titled, SB *b, int no_text) {
     if (!n) return;
     const char *tg = n->tag;
+    if (tg && !strcmp(tg, "#comment")) return;
     /* Raw-text/RCDATA bodies are data, not visible prose: script/style/
      * noscript/xmp/iframe/noembed/noframes/plaintext text now survives parsing
      * (JSON data islands, style rules, embedded markup strings) and must never
@@ -3549,8 +3562,11 @@ static JSValue nb_el_className_set(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_el_textContent_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     /* Node.textContent: for a Document this is null, not the concatenated
-     * text of the tree. DocumentFragment (nodeType 11) still concatenates. */
+     * text of the tree. DocumentFragment (nodeType 11) still concatenates.
+     * Comment nodes return their data. */
     if (n && n->tag && !strcmp(n->tag, "#document")) return JS_NULL;
+    if (n && n->tag && !strcmp(n->tag, "#comment"))
+        return JS_NewString(ctx, n->text ? n->text : "");
     SB b = {0, 0, 0};
     node_text_content(n, &b);
     JSValue r = JS_NewString(ctx, b.s ? b.s : "");
@@ -3566,7 +3582,7 @@ static JSValue nb_el_textContent_set(JSContext *ctx, JSValueConst this_val, int 
      * Only null is special-cased to "": undefined converts like any other
      * DOMString ("undefined"), as in a browser. */
     if (n->tag && !strcmp(n->tag, "#document")) return JS_UNDEFINED;
-    if (!n->tag || !n->tag[0]) {   /* a character-data node replaces its data */
+    if (!n->tag || !n->tag[0] || (n->tag && !strcmp(n->tag, "#comment"))) {   /* character-data node replaces its data */
         char *vl = NULL;
         const char *v = "";
         if (argc > 0 && !JS_IsNull(argv[0])) {
@@ -3634,13 +3650,17 @@ static JSValue nb_text_data_set(JSContext *ctx, JSValueConst this_val, int argc,
 static JSValue nb_node_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     NbNode *n = get_this(ctx, this_val);
-    if (!n || !n->text || n->tag) return JS_NULL;
-    return JS_NewString(ctx, n->text ? n->text : "");
+    if (!n) return JS_NULL;
+    if (!n->tag || !n->tag[0] || (n->tag && !strcmp(n->tag, "#comment")))
+        return JS_NewString(ctx, n->text ? n->text : "");
+    return JS_NULL;
 }
 static JSValue nb_node_value_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
-    if (!n || !n->text || n->tag) return JS_UNDEFINED;
-    return nb_text_data_set(ctx, this_val, argc, argv);
+    if (!n) return JS_UNDEFINED;
+    if (!n->tag || !n->tag[0] || (n->tag && !strcmp(n->tag, "#comment")))
+        return nb_text_data_set(ctx, this_val, argc, argv);
+    return JS_UNDEFINED;
 }
 /* ---- dataset (2026-11-09) ----
  * dataset is a DOMStringMap view over an element's data-* attributes.
@@ -4655,6 +4675,7 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_FreeValue(ctx, map);
         return make_fragment_wrapper(ctx, n, "#document-fragment");
     }
+    int is_comment = (n->tag && !strcmp(n->tag, "#comment"));
     JSValue el = JS_NewObject(ctx);
     /* DOM class prototype (install_dom_classes) so `el instanceof Element`
      * and Element.prototype.* resolve like a browser; falls back to a plain
@@ -4664,7 +4685,7 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JSValue holder = JS_GetPropertyStr(ctx, g2, PROTONAME);
         JS_FreeValue(ctx, g2);
         if (JS_IsObject(holder)) {
-            int which = (n->tag && n->tag[0]) ? PROTO_EL : PROTO_TEXT;
+            int which = (n->tag && n->tag[0] && !is_comment) ? PROTO_EL : PROTO_TEXT;
             JSValue p = JS_GetPropertyUint32(ctx, holder, (uint32_t)which);
             if (JS_IsObject(p)) JS_SetPrototype(ctx, el, p);
             JS_FreeValue(ctx, p);
@@ -4682,10 +4703,11 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
          * #document reports 9, like a browser. */
         int nt = (n->tag && !strcmp(n->tag, "#document")) ? 9
                : ((n->tag && !strcmp(n->tag, "#document-fragment")) ? 11
-               : ((n->tag && n->tag[0]) ? 1 : 3));
+               : (is_comment ? 8
+               : ((n->tag && n->tag[0]) ? 1 : 3)));
         JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, nt));
         JS_SetPropertyStr(ctx, el, "nodeName", JS_NewString(ctx, label));
-        if (n->tag && n->tag[0])
+        if (n->tag && n->tag[0] && !is_comment)
             JS_SetPropertyStr(ctx, el, "tagName", JS_NewString(ctx, label));
     }
 
@@ -6006,11 +6028,13 @@ static JSValue nb_live_doc_textContent_set(JSContext *ctx, JSValueConst this_val
 
 static JSValue nb_doc_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_doc_adoptNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_dom_createComment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 
 static void nb_install_doc_factories(JSContext *ctx, JSValue doc) {
     JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
     JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
     JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
+    JS_SetPropertyStr(ctx, doc, "createComment", JS_NewCFunction(ctx, nb_dom_createComment, "createComment", 1));
     JS_SetPropertyStr(ctx, doc, "createDocumentFragment", JS_NewCFunction(ctx, nb_dom_createDocumentFragment, "createDocumentFragment", 0));
     JS_SetPropertyStr(ctx, doc, "importNode", JS_NewCFunction(ctx, nb_doc_importNode, "importNode", 2));
     JS_SetPropertyStr(ctx, doc, "adoptNode", JS_NewCFunction(ctx, nb_doc_adoptNode, "adoptNode", 1));
@@ -11497,6 +11521,25 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
  * #document-fragment kept on the orphan list, wrapped with the element
  * insert/query natives. Appending it MOVES its children into the target and
  * leaves it empty (see nb_insert_fragment_children). */
+
+static JSValue nb_dom_createComment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *v = "";
+    if (argc > 0 && !JS_IsNull(argv[0]) && !JS_IsUndefined(argv[0]))
+        v = (owned = JS_ToCString(ctx, argv[0]));
+    if (argc > 0 && !owned && !JS_IsNull(argv[0]) && !JS_IsUndefined(argv[0]))
+        return JS_EXCEPTION;
+    NbNode *n = calloc(1, sizeof(*n));
+    if (!n) { JS_FreeCString(ctx, owned); return JS_ThrowOutOfMemory(ctx); }
+    n->tag = strdup("#comment");
+    n->text = strdup(v ? v : "");
+    orphan_add(n);
+    JS_FreeCString(ctx, owned);
+    JSValue w = push_node(ctx, n);
+    nb_set_owner_if_doc(ctx, w, this_val);
+    return w;
+}
+
 static void nb_set_owner_prop(JSContext *ctx, JSValue wrapper, JSValueConst owner_doc) {
     if (JS_IsObject(wrapper) && JS_IsObject(owner_doc))
         JS_SetPropertyStr(ctx, wrapper, "__nb_owner", JS_DupValue(ctx, owner_doc));
