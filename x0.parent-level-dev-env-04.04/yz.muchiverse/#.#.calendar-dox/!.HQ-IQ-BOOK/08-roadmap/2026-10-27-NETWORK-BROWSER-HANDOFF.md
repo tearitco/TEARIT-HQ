@@ -985,3 +985,17 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive. Mutations are not emitted as observer
 records.
+
+
+### 2026-11-13 — CharacterData ChildNode methods
+
+Added `remove`, `before`, `after`, `replaceWith` to Text/Comment wrappers in
+`push_node` so CharacterData nodes support ChildNode operations (elements
+already had them).
+
+Gate `tests/nb_characterdata_childnode_test.sh` **PASS (13/13)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

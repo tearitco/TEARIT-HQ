@@ -170,6 +170,10 @@ echo "########## Node.normalize merges adjacent text nodes recursively"
 bash "$HERE/nb_normalize_test.sh" || RC=1
 
 echo
+echo "########## CharacterData ChildNode methods (text/comment remove/before/after/replaceWith)"
+bash "$HERE/nb_characterdata_childnode_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 

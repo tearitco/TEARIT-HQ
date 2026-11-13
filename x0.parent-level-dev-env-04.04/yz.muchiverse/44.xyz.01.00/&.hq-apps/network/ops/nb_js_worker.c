@@ -3408,6 +3408,10 @@ static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int arg
 static int attrs_has(const NbNode *n, const char *name);
 static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_normalize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_remove_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_before_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_after_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_replaceWith_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static const NbNode *nb_top_root(const NbNode *n);
 static JSValue nb_global_document(JSContext *ctx);
 static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -4921,6 +4925,15 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
     JS_SetPropertyStr(ctx, el, "focus", JS_NewCFunction(ctx, nb_el_focus, "focus", 0));
     JS_SetPropertyStr(ctx, el, "blur", JS_NewCFunction(ctx, nb_el_blur, "blur", 0));
+    /* CharacterData (Text/Comment) ChildNode methods. Element wrappers
+     * inherit these from Element.prototype; text/comment wrappers need
+     * them here because push_node does not install Element.prototype. */
+    if (!n->tag || !n->tag[0] || is_comment) {
+        JS_SetPropertyStr(ctx, el, "remove",      JS_NewCFunction(ctx, nb_el_remove_js, "remove", 0));
+        JS_SetPropertyStr(ctx, el, "before",      JS_NewCFunction(ctx, nb_el_before_js, "before", 0));
+        JS_SetPropertyStr(ctx, el, "after",       JS_NewCFunction(ctx, nb_el_after_js, "after", 0));
+        JS_SetPropertyStr(ctx, el, "replaceWith", JS_NewCFunction(ctx, nb_el_replaceWith_js, "replaceWith", 0));
+    }
     /* resource/URL attributes real bundles read directly off the element.
      * Browsers expose src/href as STRINGS even when the attribute is absent
      * (an inline <script>.src is ""), and youtube's global error reporter
