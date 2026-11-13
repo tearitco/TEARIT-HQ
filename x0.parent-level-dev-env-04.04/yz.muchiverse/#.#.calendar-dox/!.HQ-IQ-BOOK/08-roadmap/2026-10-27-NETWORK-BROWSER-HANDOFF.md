@@ -956,3 +956,17 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — Node.isConnected and getRootNode
+
+Added `Node.isConnected` and `Node.getRootNode()` (Node prototype and fragment
+wrappers). Connected when root is a `#document` (live or parsed DOMParser doc);
+`getRootNode()` returns live/parsed document wrapper or top detached root.
+
+Gate `tests/nb_node_root_connected_test.sh` **PASS (16/16)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

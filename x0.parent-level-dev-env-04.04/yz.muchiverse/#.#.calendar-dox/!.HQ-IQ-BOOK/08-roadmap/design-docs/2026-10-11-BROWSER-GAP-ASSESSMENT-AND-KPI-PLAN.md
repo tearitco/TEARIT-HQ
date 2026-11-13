@@ -2664,3 +2664,34 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 
 - No change to child tree semantics; `hasChildNodes` reports current
   `first_child` presence only.
+
+
+### 9.48 2026-11-13 — Node.isConnected and Node.getRootNode
+
+**What changed**
+
+- `ops/nb_js_worker.c`: added `Node.isConnected` getter and `Node.getRootNode()`
+  on the Node prototype (and DocumentFragment wrappers). `isConnected` is true
+  when the node's root is a `#document` (live or parsed). `getRootNode()`
+  returns the live global document for nodes in the live tree, the parsed
+  document wrapper for parsed-document trees, or the topmost root node
+  (element/fragment/etc.) for detached subtrees.
+
+**Verification**
+
+- New gate `tests/nb_node_root_connected_test.sh`: **PASS (16/16)**. Covers
+  live document/element connectedness and root, detached create/append/remove
+  transitions, document-fragment disconnected roots for fragment children,
+  and parsed-DOMParser document connectedness/root identity.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- `getRootNode(options)` ignores options (e.g. `composed`); shadow-root
+  composed-root semantics not modeled.

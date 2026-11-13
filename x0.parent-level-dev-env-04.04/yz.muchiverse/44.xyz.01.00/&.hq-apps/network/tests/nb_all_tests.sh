@@ -162,6 +162,10 @@ echo "########## Node.hasChildNodes reflects child presence"
 bash "$HERE/nb_haschildnodes_test.sh" || RC=1
 
 echo
+echo "########## Node.isConnected and Node.getRootNode"
+bash "$HERE/nb_node_root_connected_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 

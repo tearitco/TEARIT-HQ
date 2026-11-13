@@ -3407,6 +3407,8 @@ static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int arg
 /* ---- element natives (this = element object) ---- */
 static int attrs_has(const NbNode *n, const char *name);
 static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static const NbNode *nb_top_root(const NbNode *n);
+static JSValue nb_global_document(JSContext *ctx);
 static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     char *owned = NULL;
@@ -8270,6 +8272,36 @@ static JSValue nb_global_document(JSContext *ctx) {
     JS_FreeValue(ctx, g);
     return doc; /* caller frees */
 }
+static JSValue nb_node_getRootNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) {
+        JSValue gdoc = nb_global_document(ctx);
+        int is_live = JS_IsObject(gdoc) && JS_VALUE_GET_PTR(gdoc) == JS_VALUE_GET_PTR(this_val);
+        if (is_live) return gdoc; /* live document root is itself */
+        JS_FreeValue(ctx, gdoc);
+        return JS_UNDEFINED;
+    }
+    NbNode *root = (NbNode *)nb_top_root(n);
+    if (!root) return JS_UNDEFINED;
+    if (root->tag && !strcmp(root->tag, "#document")) {
+        if (root == g_dom_root) return nb_global_document(ctx);
+        return push_node(ctx, root);
+    }
+    return push_node(ctx, root);
+}
+static JSValue nb_node_isConnected(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) {
+        JSValue gdoc = nb_global_document(ctx);
+        int is_live = JS_IsObject(gdoc) && JS_VALUE_GET_PTR(gdoc) == JS_VALUE_GET_PTR(this_val);
+        JS_FreeValue(ctx, gdoc);
+        return JS_NewBool(ctx, is_live);
+    }
+    NbNode *root = (NbNode *)nb_top_root(n);
+    return JS_NewBool(ctx, root && root->tag && !strcmp(root->tag, "#document"));
+}
 static JSValue nb_node_ownerDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     NbNode *n = get_this(ctx, this_val);
@@ -8458,6 +8490,14 @@ static void install_dom_classes(JSContext *ctx) {
     }
     JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
     JS_SetPropertyStr(ctx, Np, "isSameNode",     JS_NewCFunction(ctx, nb_el_isSameNode, "isSameNode", 1));
+    JS_SetPropertyStr(ctx, Np, "getRootNode",    JS_NewCFunction(ctx, nb_node_getRootNode, "getRootNode", 0));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "isConnected");
+        JS_DefinePropertyGetSet(ctx, Np, nm,
+            JS_NewCFunction(ctx, nb_node_isConnected, "get isConnected", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     {
         JSAtom nm = JS_NewAtom(ctx, "ownerDocument");
         JS_DefinePropertyGetSet(ctx, Np, nm,
@@ -11658,6 +11698,14 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
     JS_SetPropertyStr(ctx, w, "cloneNode", JS_NewCFunction(ctx, nb_frag_clone, "cloneNode", 1));
     JS_SetPropertyStr(ctx, w, "isEqualNode", JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
     JS_SetPropertyStr(ctx, w, "isSameNode", JS_NewCFunction(ctx, nb_el_isSameNode, "isSameNode", 1));
+    JS_SetPropertyStr(ctx, w, "getRootNode", JS_NewCFunction(ctx, nb_node_getRootNode, "getRootNode", 0));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "isConnected");
+        JS_DefinePropertyGetSet(ctx, w, nm,
+            JS_NewCFunction(ctx, nb_node_isConnected, "get isConnected", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, w, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, w, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, w, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
