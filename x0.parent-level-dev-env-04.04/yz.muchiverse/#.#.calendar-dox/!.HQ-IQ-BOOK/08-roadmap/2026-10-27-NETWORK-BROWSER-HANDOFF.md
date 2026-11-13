@@ -833,3 +833,17 @@ TESTS PASS**.
 
 Open: folded extraction parser still skips comments; comment `--` content not
 sanitized in serializer.
+
+### 2026-11-13 — parser attribute canonicalization
+
+HTML serializer now canonicalizes parser/load attribute blobs (decode+re-escape)
+so raw `&`/entity forms serialize safely; normalized `setAttribute` blobs remain
+as stored (no double-escape). Exposed `nb_decode_entities` for shared decoding.
+
+Gate `tests/nb_attr_canonical_test.sh` **PASS (20/20)**. Negative: raw
+`data-b="a&b"` no longer emitted unsafely (`NEG false`). Full suite **ALL TESTS
+PASS**.
+
+Open: parser-form attr order/spacing may normalize; pre-existing
+`getAttribute` returns `null` for present-empty attrs (hasAttribute true)
+unchanged.

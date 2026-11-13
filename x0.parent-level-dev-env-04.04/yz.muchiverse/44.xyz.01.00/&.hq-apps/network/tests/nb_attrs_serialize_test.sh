@@ -18,8 +18,8 @@
 #   - neighbouring attributes survive updates and removeAttribute;
 #   - id/className properties update the serialized attribute, not just the
 #     selector field;
-#   - parser-sourced attributes keep their source escapes (no double
-#     escaping) and decode for getAttribute;
+#   - parser-sourced attributes are canonicalized on serialization
+#     (entities decoded then re-escaped safely) and decode for getAttribute;
 #   - &nbsp;, &mdash;, &copy; and numeric references decode to their real
 #     code points on both parse paths and survive a serialize/reparse loop;
 #   - the decoded '&' reaches a visible RENDER row.
@@ -117,7 +117,7 @@ cat > "$WORK/probe.js" <<'PROBE'
   var pn=document.createElement('div');
   pn.innerHTML='<i title="a &#65; &#160; b">x</i>';
   check('parse-numeric-get', pn.firstChild.getAttribute('title'), 'a A \u00a0 b');
-  check('parse-numeric-outer', pn.outerHTML, '<div><i title="a &#65; &#160; b">x</i></div>');
+  check('parse-numeric-outer', pn.outerHTML, '<div><i title="a A &nbsp; b">x</i></div>');
 
   /* --- entities decode to real code points (UTF-8) ------------------ */
   var tx=document.createElement('div');

@@ -2398,3 +2398,36 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   normalized.
 - No `createComment`-specific wire-format/parser guarantees beyond node-mode
   tree parsing and in-memory DOM operations.
+
+### 9.40 2026-11-13 — parser attribute canonicalization in HTML serialization
+
+**What changed**
+
+- `ops/nb_js_worker.c`: HTML serializer now canonicalizes parser/load
+  attribute blobs (`n->attrs` in tag-prefix/raw form) by parsing attributes and
+  re-emitting them with decoded-then-escaped values (`name="..."`, bare attrs
+  preserved when valueless). Raw `&` and source entity forms are serialized
+  safely without changing attribute semantics.
+- Normalized blobs produced by `setAttribute`/`attrs_set` remain emitted as
+  stored (already escaped), avoiding double-escaping.
+- `nb_dom.c`/`nb_dom.h`: exposed `nb_decode_entities` for shared entity
+  decoding used by canonicalization.
+
+**Verification**
+
+- New gate `tests/nb_attr_canonical_test.sh`: **PASS (20/20)**. Parser-sourced
+  attributes with `&amp;`, raw `&`, quoted values, bare attributes, and empty
+  values serialize safely/canonically while preserving `getAttribute`/presence
+  semantics; `setAttribute`-written values remain correctly escaped with no
+  double-escaping.
+- Negative probe: parsed `data-b="a&b"` no longer serializes with a raw
+  `a&b"` sequence (`LOG|NEG false`).
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- Canonicalization applies to parser-form blobs; normalized blobs are trusted
+  as stored. Attribute ordering/spacing may normalize for parser-form output.
+- `getAttribute` in this implementation still returns `null` for present-empty
+  attributes while `hasAttribute` is `true` (pre-existing behavior, not
+  changed here).

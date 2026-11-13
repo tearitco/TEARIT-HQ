@@ -48,7 +48,7 @@ static size_t utf8_put(long cp, char *out) {
     out[3] = (char)(0x80 | (cp & 0x3F));
     return 4;
 }
-static size_t decode_entities(const char *p, size_t n, char *out) {
+size_t nb_decode_entities(const char *p, size_t n, char *out) {
     size_t o = 0, i = 0;
     while (i < n) {
         if (p[i] == '&' && i + 1 < n) {
@@ -263,7 +263,7 @@ static void parse_open(Parser *ps) {
                 if (qc && aw<gt) aw++;
                 char key[64]; size_t kc=kl<63?kl:63; memcpy(key,ks,kc); key[kc]=0; my_tolower(key);
                 char val[1200]; size_t vc=vl<1199?vl:1199; memcpy(val,vs,vc); val[vc]=0;
-                char decv[1200]; decode_entities(val, strlen(val), decv);
+                char decv[1200]; nb_decode_entities(val, strlen(val), decv);
                 if (!strcmp(key,"id")) { size_t d=strlen(decv)<255?strlen(decv):255; memcpy(idbuf,decv,d); idbuf[d]=0; }
                 else if (!strcmp(key,"class")) { size_t d=strlen(decv)<1023?strlen(decv):1023; memcpy(clsbuf,decv,d); clsbuf[d]=0; }
             }
@@ -302,7 +302,7 @@ static void parser_add_text(Parser *ps) {
     char *buf = xmalloc(n+1);
     memcpy(buf, ps->p, n); buf[n]=0;
     char *dec = xmalloc(n*4+1);
-    size_t d = decode_entities(buf, n, dec);
+    size_t d = nb_decode_entities(buf, n, dec);
     /* Keep decoded text verbatim (entities only, no whitespace folding):
      * extra/separator whitespace is a display concern, not data. Folding
      * here would irrecoverably join words across element boundaries. */
@@ -350,7 +350,7 @@ static void parser_add_raw_text(Parser *ps, NbNode *n, const char *tag,
     txt[len] = 0;
     if (!strcasecmp(tag, "title") || !strcasecmp(tag, "textarea")) {
         char *dec = xmalloc(len * 4 + 1);
-        decode_entities(txt, len, dec);
+        nb_decode_entities(txt, len, dec);
         free(txt);
         txt = dec;
     }
@@ -561,7 +561,7 @@ const char *nb_attr_get(const NbNode *n, const char *name) {
             if (kl==nlen && !strncasecmp(ks,name,nlen)) {
                 static char dec[1200];
                 char vbuf[1200]; size_t vc=vl<1199?vl:1199; memcpy(vbuf,vs,vc); vbuf[vc]=0;
-                decode_entities(vbuf, strlen(vbuf), dec);
+                nb_decode_entities(vbuf, strlen(vbuf), dec);
                 return dec;
             }
         }

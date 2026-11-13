@@ -59,6 +59,9 @@ long nb_serialize(FILE *out, const NbNode *root);
  * Caller frees with nb_node_free. */
 NbNode *nb_dom_load(FILE *in);
 
+/* Decode HTML entities in [p,p+n) into out (caller provides buffer, typically >= 4*n+1). */
+size_t nb_decode_entities(const char *p, size_t n, char *out);
+
 /* Value (decoded) of a single named attribute, or "" if absent. */
 const char *nb_attr_get(const NbNode *n, const char *name);
 
