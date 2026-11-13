@@ -881,3 +881,18 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — cloneNode deep/default semantics
+
+Fixed `DocumentFragment.cloneNode(deep)` to honor `deep` (default false):
+shallow returns empty fragment, deep clones children. Element/text/comment
+defaults unchanged.
+
+Gate `tests/nb_clone_deep_test.sh` **PASS (18/18)**. Negative:
+`fragment.cloneNode(false).childNodes.length===1` -> `NEG false`.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

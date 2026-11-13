@@ -150,6 +150,10 @@ echo "########## element attribute helpers (getAttributeNames/hasAttributes/togg
 bash "$HERE/nb_attr_api_test.sh" || RC=1
 
 echo
+echo "########## cloneNode deep/default semantics (element/text/comment/fragment)"
+bash "$HERE/nb_clone_deep_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 

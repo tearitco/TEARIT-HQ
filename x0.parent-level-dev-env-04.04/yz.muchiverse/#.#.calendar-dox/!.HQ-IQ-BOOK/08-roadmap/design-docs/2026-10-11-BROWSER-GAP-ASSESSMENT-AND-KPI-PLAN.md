@@ -2501,3 +2501,36 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 - Attribute name casing follows existing lowercased iteration behavior.
 - `NamedNodeMap` remains the lightweight array-like object already exposed by
   `element.attributes` (not a fully live spec NamedNodeMap interface).
+
+
+### 9.43 2026-11-13 — cloneNode deep/default semantics (DocumentFragment fix)
+
+**What changed**
+
+- `ops/nb_js_worker.c`: `DocumentFragment.cloneNode(deep)` now honors the
+  `deep` argument (default `false`). Shallow clone returns an empty fragment;
+  deep clone copies child subtrees. Previously fragment cloning ignored `deep`
+  and always deep-cloned children.
+- Element/text/comment `cloneNode` default/deep behavior remains as before and
+  is now covered explicitly by the gate.
+
+**Verification**
+
+- New gate `tests/nb_clone_deep_test.sh`: **PASS (18/18)**. Covers element,
+  text, and comment cloning plus `DocumentFragment` default/false/true and
+  nested deep-copy semantics.
+- Negative probe: `DocumentFragment.cloneNode(false).childNodes.length===1`
+  is **false** for a fragment with one child (`LOG|NEG false`).
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- `cloneNode` copies tree/attribute/text data per existing clone helpers; event
+  listeners and non-tree JS-expando state are not cloned (consistent with prior
+  behavior).
