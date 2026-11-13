@@ -134,6 +134,10 @@ echo "########## live and parsed document metadata (hermetic)"
 bash "$HERE/nb_doc_metadata_test.sh" || RC=1
 
 echo
+echo "########## ownerDocument propagation (live + parsed docs, factories)"
+bash "$HERE/nb_owner_document_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

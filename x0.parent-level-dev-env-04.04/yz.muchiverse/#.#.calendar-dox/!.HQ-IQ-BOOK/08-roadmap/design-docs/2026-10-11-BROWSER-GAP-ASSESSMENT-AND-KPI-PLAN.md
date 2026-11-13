@@ -2301,3 +2301,44 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   is always `CSS1Compat` regardless of parse mode.
 - `implementation` methods reuse the existing minimal document/doctype
   constructors; they are not a full DOMImplementation surface.
+
+### 9.38 2026-11-13 — ownerDocument propagation (live + parsed documents)
+
+**What changed**
+
+- `nb_node_ownerDocument` getter in `ops/nb_js_worker.c`: Document nodes
+  (including the live global `document`) return `null`. For in-tree nodes the
+  getter walks to the top root: `g_dom_root` maps to the live global
+  `document`, a parsed `#document` root maps to its parsed document wrapper.
+  Detached nodes report the creating document recorded at creation time
+  (`__nb_owner`); fallback is the live global document.
+- `Node.prototype` exposes `ownerDocument`; `make_fragment_wrapper` installs
+  the getter on plain fragment wrappers.
+- `createElement`/`createElementNS`/`createTextNode`/`createDocumentFragment`
+  record the creator document as owner when invoked on a recognized document
+  (live global document, parsed `#document` wrapper, or a contentType-bearing
+  document-like object).
+- Live host `document` explicitly sets `ownerDocument = null`.
+
+**Verification**
+
+- New gate `tests/nb_owner_document_test.sh`: **PASS (18/18)**. Live document
+  is `null`; live-tree elements and nodes created by live factories report the
+  live document. Parsed `DOMParser` documents are `null`; elements in parsed
+  trees and nodes created by parsed factories/fragments report the parsed
+  document; different parsed documents have distinct ownership.
+- Negative probe (`document.ownerDocument === document`) returns `false`
+  (correctly `null`), so the `null`-for-document contract is observable.
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- No `importNode`/`adoptNode` API yet. In-tree ownership follows the current
+  tree root (a parsed-created node inserted into the live tree will report the
+  live document as owner), which is not a substitute for explicit adopt/import
+  semantics or cross-document insertion errors.
+- Parsed document trees from `nb_dom_load`/wrappers are identified by a
+  `#document` top root; nodes without a recorded creating document and without
+  a document root fall back to the live global document.
+- `DocumentFragment` wrappers are not `Node.prototype` instances; the getter
+  is installed directly on them.

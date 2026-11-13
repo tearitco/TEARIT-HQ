@@ -3125,6 +3125,8 @@ static JSValue nb_doc_createTreeWalker(JSContext *ctx, JSValueConst this_val, in
     return w;
 }
 
+static void nb_set_owner_if_doc(JSContext *ctx, JSValue wrapper, JSValueConst creator);
+
 static JSValue nb_dom_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *owned = NULL;
     const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : "";
@@ -3134,7 +3136,9 @@ static JSValue nb_dom_createElement(JSContext *ctx, JSValueConst this_val, int a
     for (char *t = n->tag; *t; t++) *t = (char)((*t >= 'A' && *t <= 'Z') ? *t + 32 : *t);
     orphan_add(n);
     JS_FreeCString(ctx, owned);
-    return push_node(ctx, n);
+    JSValue w = push_node(ctx, n);
+    nb_set_owner_if_doc(ctx, w, this_val);
+    return w;
 }
 static JSValue nb_dom_createElementNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     /* Our element tree is flat (no namespace tracking), so a namespace +
@@ -3150,7 +3154,9 @@ static JSValue nb_dom_createElementNS(JSContext *ctx, JSValueConst this_val, int
     for (char *t = n->tag; *t; t++) *t = (char)((*t >= 'A' && *t <= 'Z') ? *t + 32 : *t);
     orphan_add(n);
     JS_FreeCString(ctx, owned);
-    return push_node(ctx, n);
+    JSValue w = push_node(ctx, n);
+    nb_set_owner_if_doc(ctx, w, this_val);
+    return w;
 }
 /* document.implementation (row-31): webcomponents-lite.js does
  * `document.implementation.createHTMLDocument("inert")` at init and uses
@@ -3236,7 +3242,9 @@ static JSValue nb_dom_createTextNode(JSContext *ctx, JSValueConst this_val, int 
     n->text = strdup(v);
     orphan_add(n);
     JS_FreeCString(ctx, owned);
-    return push_node(ctx, n);
+    JSValue w = push_node(ctx, n);
+    nb_set_owner_if_doc(ctx, w, this_val);
+    return w;
 }
 static void collect_cls_into(JSContext *ctx, NbNode *n, const char *tok, JSValue arr, int *i) {
     if (!n) return;
@@ -8028,6 +8036,65 @@ static JSValue nb_el_scrollIntoView(JSContext *ctx, JSValueConst this_val, int a
     return JS_UNDEFINED;
 }
 
+#define NB_OWNER_PROP "__nb_owner"
+
+static JSValue nb_global_document(JSContext *ctx) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue doc = JS_GetPropertyStr(ctx, g, "document");
+    JS_FreeValue(ctx, g);
+    return doc; /* caller frees */
+}
+static JSValue nb_node_ownerDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    /* Document nodes have null ownerDocument. The live global document is
+     * a host plain object with no NODEKEY, so get_this() returns NULL for
+     * it; detect it explicitly. */
+    if (!n) {
+        JSValue gdoc = nb_global_document(ctx);
+        int is_live = JS_IsObject(gdoc) && JS_VALUE_GET_PTR(gdoc) == JS_VALUE_GET_PTR(this_val);
+        JS_FreeValue(ctx, gdoc);
+        return is_live ? JS_NULL : JS_UNDEFINED;
+    }
+    if (n->tag && !strcmp(n->tag, "#document")) return JS_NULL;
+
+    NbNode *root = nb_top_root(n);
+    if (root && root->tag && !strcmp(root->tag, "#document")) {
+        if (root == g_dom_root) return nb_global_document(ctx);
+        return push_node(ctx, root); /* parsed document wrapper */
+    }
+
+    /* Detached node (element/text root, or fragment subtree): honor the
+     * creating document recorded at creation time. */
+    JSValue owner = JS_GetPropertyStr(ctx, this_val, NB_OWNER_PROP);
+    if (JS_IsObject(owner)) return owner;
+    JS_FreeValue(ctx, owner);
+
+    /* Fallback: live global document is the safest default. */
+    return nb_global_document(ctx);
+}
+static void nb_set_owner_if_doc(JSContext *ctx, JSValue wrapper, JSValueConst creator) {
+    if (!JS_IsObject(wrapper) || !JS_IsObject(creator)) return;
+    JSValue gdoc = nb_global_document(ctx);
+    int is_live = JS_IsObject(gdoc) && JS_VALUE_GET_PTR(gdoc) == JS_VALUE_GET_PTR(creator);
+    JS_FreeValue(ctx, gdoc);
+    if (is_live) {
+        JS_SetPropertyStr(ctx, wrapper, NB_OWNER_PROP, JS_DupValue(ctx, creator));
+        return;
+    }
+    NbNode *cn = get_this(ctx, creator);
+    if (cn && cn->tag && !strcmp(cn->tag, "#document")) {
+        JS_SetPropertyStr(ctx, wrapper, NB_OWNER_PROP, JS_DupValue(ctx, creator));
+        return;
+    }
+    JSValue ct = JS_GetPropertyStr(ctx, creator, "contentType");
+    int looks_doc = JS_IsString(ct);
+    JS_FreeValue(ctx, ct);
+    if (looks_doc) {
+        JS_SetPropertyStr(ctx, wrapper, NB_OWNER_PROP, JS_DupValue(ctx, creator));
+    }
+}
+
 static void install_dom_classes(JSContext *ctx) {
     JSValue ETf = JS_NewCFunction2(ctx, class_noop, "EventTarget", 1, JS_CFUNC_constructor, 0);
     JSValue Nf = JS_NewCFunction2(ctx, class_noop, "Node", 1, JS_CFUNC_constructor, 0);
@@ -8155,6 +8222,13 @@ static void install_dom_classes(JSContext *ctx) {
         JS_FreeAtom(ctx, nm);
     }
     JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "ownerDocument");
+        JS_DefinePropertyGetSet(ctx, Np, nm,
+            JS_NewCFunction(ctx, nb_node_ownerDocument, "get ownerDocument", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     {
         JSAtom nm = JS_NewAtom(ctx, "nodeValue");
         JS_DefinePropertyGetSet(ctx, Np, nm,
@@ -10675,6 +10749,7 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "getSelection", JS_NewCFunction(ctx, nb_win_getSelection, "getSelection", 0));
         nb_install_doc_factories(ctx, doc);
         nb_install_doc_metadata(ctx, doc, "text/html", g_href);
+        JS_SetPropertyStr(ctx, doc, "ownerDocument", JS_NULL);
         JS_SetPropertyStr(ctx, g, "DocumentFragment", JS_NewCFunction2(ctx, nb_dom_createDocumentFragment, "DocumentFragment", 0, JS_CFUNC_constructor, 0));
         {
             JSAtom nm = JS_NewAtom(ctx, "textContent");
@@ -11325,6 +11400,13 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
     JS_SetPropertyStr(ctx, w, NODEKEY, JS_NewInt32(ctx, nidx));
     JS_SetPropertyStr(ctx, w, "nodeType", JS_NewInt32(ctx, 11));
     JS_SetPropertyStr(ctx, w, "nodeName", JS_NewString(ctx, nodeName));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "ownerDocument");
+        JS_DefinePropertyGetSet(ctx, w, nm,
+            JS_NewCFunction(ctx, nb_node_ownerDocument, "get ownerDocument", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JS_SetPropertyStr(ctx, w, "appendChild", JS_NewCFunction(ctx, nb_el_appendChild, "appendChild", 1));
     JS_SetPropertyStr(ctx, w, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
     JS_SetPropertyStr(ctx, w, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));
@@ -11402,12 +11484,14 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
  * insert/query natives. Appending it MOVES its children into the target and
  * leaves it empty (see nb_insert_fragment_children). */
 static JSValue nb_dom_createDocumentFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    (void)this_val; (void)argc; (void)argv;
+    (void)argc; (void)argv;
     NbNode *frag = calloc(1, sizeof(*frag));
     if (!frag) return JS_ThrowOutOfMemory(ctx);
     frag->tag = strdup("#document-fragment");
     orphan_add(frag);
-    return make_fragment_wrapper(ctx, frag, "#document-fragment");
+    JSValue w = make_fragment_wrapper(ctx, frag, "#document-fragment");
+    nb_set_owner_if_doc(ctx, w, this_val);
+    return w;
 }
 
 /* <template>.innerHTML / appendChild land in template.content, which is a

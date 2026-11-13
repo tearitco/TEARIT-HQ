@@ -791,3 +791,19 @@ probe aborts on missing implementation. Full suite **ALL TESTS PASS**.
 
 Open: `doctype` always null; parsed URL always `about:blank`; compatMode
 fixed to standards mode; implementation surface minimal.
+
+### 2026-11-13 — ownerDocument propagation (live + parsed)
+
+Document and node wrappers now expose `ownerDocument`: documents return `null`;
+live-tree nodes and live-factory creations report the live `document`; parsed
+`DOMParser` trees and parsed-factory creations report the parsed document;
+detached creations keep the creating document recorded at creation time.
+Fragment wrappers get the getter directly.
+
+Gate `tests/nb_owner_document_test.sh` **PASS (18/18)**. Negative
+(`document.ownerDocument === document`) returns `false`. Full suite **ALL
+TESTS PASS**.
+
+Open: no `importNode`/`adoptNode`; in-tree ownership follows root walk (not an
+adopt/import API or cross-document insertion guard); unowned detached fall back
+to live document.
