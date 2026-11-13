@@ -138,6 +138,10 @@ echo "########## ownerDocument propagation (live + parsed docs, factories)"
 bash "$HERE/nb_owner_document_test.sh" || RC=1
 
 echo
+echo "########## importNode/adoptNode (owner retarget, detach, clone)"
+bash "$HERE/nb_import_adopt_test.sh" || RC=1
+
+echo
 echo "########## Viewport scroll metrics read the real box model (hermetic)"
 bash "$HERE/nb_scroll_metrics_test.sh" || RC=1
 

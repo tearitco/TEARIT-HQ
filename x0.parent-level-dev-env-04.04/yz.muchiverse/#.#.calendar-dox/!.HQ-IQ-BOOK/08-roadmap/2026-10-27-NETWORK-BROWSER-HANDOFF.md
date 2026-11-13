@@ -807,3 +807,15 @@ TESTS PASS**.
 Open: no `importNode`/`adoptNode`; in-tree ownership follows root walk (not an
 adopt/import API or cross-document insertion guard); unowned detached fall back
 to live document.
+
+**2026-11-13 — importNode/adoptNode blocker fix (on 9.38)**
+
+Implemented `document.importNode`/`adoptNode` (live + parsed): import clones
+into target doc with target ownership; adopt detaches and retargets owner;
+detached-subtree owner now propagates from root wrapper to descendants.
+`tests/nb_import_adopt_test.sh` **PASS (22/22)**; negative confirms imported
+node not source-owned. Full suite **ALL TESTS PASS**.
+
+Open: no automatic cross-document insertion guard/throw on append (adopt/import
+APIs now available); `importNode` deep defaults false per current signature
+handling.

@@ -6003,11 +6003,17 @@ static JSValue nb_live_doc_textContent_set(JSContext *ctx, JSValueConst this_val
     return JS_UNDEFINED;
 }
 /* Shared by the live document and every parsed document wrapper. */
+
+static JSValue nb_doc_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_doc_adoptNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
 static void nb_install_doc_factories(JSContext *ctx, JSValue doc) {
     JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
     JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
     JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
     JS_SetPropertyStr(ctx, doc, "createDocumentFragment", JS_NewCFunction(ctx, nb_dom_createDocumentFragment, "createDocumentFragment", 0));
+    JS_SetPropertyStr(ctx, doc, "importNode", JS_NewCFunction(ctx, nb_doc_importNode, "importNode", 2));
+    JS_SetPropertyStr(ctx, doc, "adoptNode", JS_NewCFunction(ctx, nb_doc_adoptNode, "adoptNode", 1));
 }
 static JSValue nb_make_implementation(JSContext *ctx) {
     JSValue impl = JS_NewObject(ctx);
@@ -8064,11 +8070,19 @@ static JSValue nb_node_ownerDocument(JSContext *ctx, JSValueConst this_val, int 
         return push_node(ctx, root); /* parsed document wrapper */
     }
 
-    /* Detached node (element/text root, or fragment subtree): honor the
-     * creating document recorded at creation time. */
+    /* Detached subtree: honor owner recorded on this wrapper or on the
+     * detached root wrapper (so imported/adopted clones propagate owner
+     * through their subtree without per-node stamping). */
     JSValue owner = JS_GetPropertyStr(ctx, this_val, NB_OWNER_PROP);
     if (JS_IsObject(owner)) return owner;
     JS_FreeValue(ctx, owner);
+    if (root && root != n) {
+        JSValue rw = push_node(ctx, root);
+        owner = JS_GetPropertyStr(ctx, rw, NB_OWNER_PROP);
+        JS_FreeValue(ctx, rw);
+        if (JS_IsObject(owner)) return owner;
+        JS_FreeValue(ctx, owner);
+    }
 
     /* Fallback: live global document is the safest default. */
     return nb_global_document(ctx);
@@ -11483,6 +11497,50 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
  * #document-fragment kept on the orphan list, wrapped with the element
  * insert/query natives. Appending it MOVES its children into the target and
  * leaves it empty (see nb_insert_fragment_children). */
+static void nb_set_owner_prop(JSContext *ctx, JSValue wrapper, JSValueConst owner_doc) {
+    if (JS_IsObject(wrapper) && JS_IsObject(owner_doc))
+        JS_SetPropertyStr(ctx, wrapper, "__nb_owner", JS_DupValue(ctx, owner_doc));
+}
+static JSValue nb_doc_throw_dom(JSContext *ctx, const char *name, const char *msg) {
+    JSValue e = JS_NewError(ctx);
+    if (!JS_IsException(e)) {
+        JS_SetPropertyStr(ctx, e, "name", JS_NewString(ctx, name));
+        JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, msg));
+    }
+    return JS_Throw(ctx, e);
+}
+static JSValue nb_doc_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1 || !JS_IsObject(argv[0]))
+        return nb_doc_throw_dom(ctx, "TypeError", "importNode requires a node");
+    NbNode *n = get_node(ctx, argv[0]);
+    if (!n) return nb_doc_throw_dom(ctx, "NotFoundError", "importNode: unknown node");
+    if (n->tag && !strcmp(n->tag, "#document"))
+        return nb_doc_throw_dom(ctx, "NotSupportedError", "importNode: cannot import a document");
+    int deep = 0;
+    if (argc > 1) deep = JS_ToBool(ctx, argv[1]);
+    NbNode *c = nbi_clone(n, deep);
+    if (!c) return JS_ThrowOutOfMemory(ctx);
+    JSValue w;
+    if (nb_is_doc_fragment_node(c))
+        w = make_fragment_wrapper(ctx, c, "#document-fragment");
+    else
+        w = push_node(ctx, c);
+    nb_set_owner_prop(ctx, w, this_val);
+    return w;
+}
+static JSValue nb_doc_adoptNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1 || !JS_IsObject(argv[0]))
+        return nb_doc_throw_dom(ctx, "TypeError", "adoptNode requires a node");
+    NbNode *n = get_node(ctx, argv[0]);
+    if (!n) return nb_doc_throw_dom(ctx, "NotFoundError", "adoptNode: unknown node");
+    if (n->tag && !strcmp(n->tag, "#document"))
+        return nb_doc_throw_dom(ctx, "NotSupportedError", "adoptNode: cannot adopt a document");
+    if (n->parent) node_detach(n);
+    nb_set_owner_prop(ctx, argv[0], this_val);
+    return JS_DupValue(ctx, argv[0]);
+}
+
+
 static JSValue nb_dom_createDocumentFragment(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     NbNode *frag = calloc(1, sizeof(*frag));

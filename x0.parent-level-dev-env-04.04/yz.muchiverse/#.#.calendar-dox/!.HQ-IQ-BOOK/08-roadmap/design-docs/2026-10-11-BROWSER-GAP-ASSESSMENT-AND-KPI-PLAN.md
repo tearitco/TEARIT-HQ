@@ -2342,3 +2342,20 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   a document root fall back to the live global document.
 - `DocumentFragment` wrappers are not `Node.prototype` instances; the getter
   is installed directly on them.
+
+**9.38 follow-up (import/adopt blocker fix, 2026-11-13)**
+
+- `ops/nb_js_worker.c`: implemented `Document.importNode(node, deep)` and
+  `Document.adoptNode(node)` on live and parsed documents. `importNode` clones
+  (shallow/deep, including fragments) into the target document and records
+  target ownership on the clone root; `adoptNode` detaches an attached node and
+  retargets its owner to the target document (detached-subtree root owner
+  propagates to descendants). Both throw `NotSupportedError` for document
+  nodes.
+- `nb_node_ownerDocument` now also inherits detached-subtree owner from the
+  detached root wrapper, so imported/adopted subtree descendants report the
+  correct owner without per-node wrapper stamping.
+- Gate `tests/nb_import_adopt_test.sh`: **PASS (22/22)** (shallow/deep import,
+  cross-document import, adopt detached/attached, subtree ownership, fragment
+  import, NotSupportedError). Negative probe confirms imported node is not
+  owned by source document. Full suite **ALL TESTS PASS**.
