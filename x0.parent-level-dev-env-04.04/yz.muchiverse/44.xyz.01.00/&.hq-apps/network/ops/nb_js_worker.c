@@ -326,7 +326,6 @@ static void split_lines(char *fields[8]) {
  * accessors (plan §7 step 3, roadmap §2 minimum API). The JS side only
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
-static NbNode *g_dom_root = NULL;  /* current page's DOM tree (#document) */
 
 /* Viewport width the page's box tree is computed against (G2.2). Defined
  * next to NB_CONTENT_PX further down, forward-declared here because
@@ -959,9 +958,12 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b, int no_text) {
     if (!n) return;
     const char *tg = n->tag;
     /* Raw-text/RCDATA bodies are data, not visible prose: script/style/
-     * noscript text now survives parsing (JSON data islands, style rules)
-     * and must never become a TEXT row. A <title> is handled below. */
-    if (tg && (!strcasecmp(tg, "script") || !strcasecmp(tg, "style") || !strcasecmp(tg, "noscript")))
+     * noscript/xmp/iframe/noembed/noframes/plaintext text now survives parsing
+     * (JSON data islands, style rules, embedded markup strings) and must never
+     * become a TEXT row. A <title> is handled below. */
+    if (tg && (!strcasecmp(tg, "script") || !strcasecmp(tg, "style") || !strcasecmp(tg, "noscript")
+            || !strcasecmp(tg, "xmp") || !strcasecmp(tg, "iframe") || !strcasecmp(tg, "noembed")
+            || !strcasecmp(tg, "noframes") || !strcasecmp(tg, "plaintext")))
         return;
     /* REAL, NEW 2026-10-07 (live scroll-through: Wikipedia's own footer
      * farm rendered as article content) - prune chrome SUBTREES here,

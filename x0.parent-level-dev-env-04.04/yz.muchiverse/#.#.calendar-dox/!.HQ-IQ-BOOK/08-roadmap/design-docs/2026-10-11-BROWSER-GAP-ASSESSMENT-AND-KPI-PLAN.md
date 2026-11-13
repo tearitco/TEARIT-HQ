@@ -2223,3 +2223,44 @@ kept scanning to EOF and the element swallowed following markup as data.
   behavior).
 - `xmp`, `iframe`, `noembed`, `noframes`, `plaintext` are still not treated
   as raw-text elements by the parser.
+
+### 9.36 2026-11-13 — xmp/iframe/noembed/noframes/plaintext parsed as raw text
+
+`xmp`, `iframe`, `noembed`, `noframes`, and `plaintext` were parsed as normal
+elements, so markup inside them became child elements and entities decoded.
+In HTML they are raw-text elements: content is data until the matching end tag
+(`plaintext` has no end tag and consumes the rest).
+
+**The slice**
+
+- `is_rawtext` in `nb_dom.c` now includes `xmp`, `iframe`, `noembed`,
+  `noframes`, `plaintext`; `parser_add_raw_text` stores their bodies as raw
+  text (no entity decoding), on both parse paths. `skip_to_close` already
+  handles permissive end-tag whitespace (9.35); `plaintext` consumes to EOF.
+- Serializer `nb_ser_raw_tag` already listed these tags, so `innerHTML`
+  round-trips their literal content. The renderer prunes these subtrees (like
+  script/style/noscript) so raw embedded markup never becomes visible `TEXT`
+  rows.
+
+**Verification**
+
+- New gate `tests/nb_rawtext_elements_test.sh`: **PASS (32/32 + rows)**.
+  For `xmp`/`iframe`/`noembed`/`noframes`: markup stays literal
+  (`<b>&amp;</b>` not parsed), no entity decoding, one text child, closing tag
+  preserved, following sibling intact; permissive close (`</XMP >`) works;
+  `plaintext` consumes the rest of the fragment; `innerHTML` reparse is
+  stable. RENDER (folded wire form) leaks none of the raw bodies and keeps
+  `TEXT|tick 0`.
+- Negative (elements not treated as raw text): **13 failures** in the JS
+  assertions (markup parsed/entities decoded/structure differs) while render
+  remained non-leaking for that fixture.
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- `xmp` content is no longer rendered as visible text (pruned with other
+  raw-text containers); DOM `textContent`/serialization are correct.
+- `plaintext` always consumes to end-of-input on parse; there is no way to
+  close it.
+- `noscript` remains in script-enabled/raw-text form (content captured as
+  data, not as rendered fallback markup).

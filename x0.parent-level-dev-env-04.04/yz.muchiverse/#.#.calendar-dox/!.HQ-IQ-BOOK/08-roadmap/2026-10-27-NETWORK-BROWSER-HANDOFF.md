@@ -767,3 +767,15 @@ Gate `tests/nb_rawtext_close_test.sh` **PASS (12/12)**. Negative (immediate
 
 Open: junk in end tags not accepted; `xmp`/`iframe`/`noembed`/`noframes`/
 `plaintext` not parsed as raw-text.
+### 2026-11-13 — xmp/iframe/noembed/noframes/plaintext raw-text capture
+
+`is_rawtext` now includes `xmp`, `iframe`, `noembed`, `noframes`, `plaintext`.
+Their bodies are captured as literal raw text (no markup parsing, no entity
+decoding) on both parse paths; `plaintext` consumes to EOF. Serializer
+round-trips; renderer prunes them from visible TEXT rows.
+
+Gate `tests/nb_rawtext_elements_test.sh` **PASS (32/32 + rows)**. Negative
+(normal parsing): 13 assertion failures. Full suite **ALL TESTS PASS**.
+
+Open: `xmp` not rendered visibly (DOM-correct but not preformatted display);
+`plaintext` uncloseable; `noscript` remains script-enabled/raw-text form.

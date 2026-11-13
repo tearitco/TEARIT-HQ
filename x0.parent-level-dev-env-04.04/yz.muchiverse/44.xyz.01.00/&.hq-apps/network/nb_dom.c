@@ -123,14 +123,17 @@ static int is_void(const char *tag) {
 /* Raw-text/RCDATA elements: keep the ELEMENT (its id/src/href attributes are
  * part of the DOM and real scripts query them) AND its source text, but never
  * parse that text as markup. textarea/title are RCDATA (entities decode);
- * script/style/noscript are raw text. `<head>` is deliberately NOT skipped: its children
+ * script/style/noscript/xmp/iframe/noembed/noframes/plaintext are raw text.
+ * `<head>` is deliberately NOT skipped: its children
  * (<script id="base-js" src=…>, <link href=…>) must be reachable through
  * getElementById — the closure module loader resolves the bundle URL from
  * exactly that script element (window._F_jsUrl is unset in our fixtures). */
 static int is_rawtext(const char *tag) {
     return !strcmp(tag,"script") || !strcmp(tag,"style")
         || !strcmp(tag,"title") || !strcmp(tag,"noscript")
-        || !strcmp(tag,"textarea");
+        || !strcmp(tag,"textarea") || !strcmp(tag,"xmp")
+        || !strcmp(tag,"iframe") || !strcmp(tag,"noembed")
+        || !strcmp(tag,"noframes") || !strcmp(tag,"plaintext");
 }
 
 typedef struct {
@@ -323,7 +326,8 @@ static void parser_add_text(Parser *ps) {
  * folded into n->text for the fetch path, a real #text child for the
  * script-facing path - so textContent, childNodes, clone and the wire
  * serializer all agree. title/textarea are RCDATA (entities decode);
- * script/style/noscript are raw text (they do not). */
+ * script/style/noscript/xmp/iframe/noembed/noframes/plaintext are raw text
+ * (they do not). */
 static void parser_add_raw_text(Parser *ps, NbNode *n, const char *tag,
                                 const char *s, size_t len) {
     if (!n || len == 0) return;
