@@ -755,3 +755,15 @@ no-create (6). Full suite **ALL TESTS PASS**.
 
 Open: first `<title>` only (no dedupe); multiple head/title edge cases follow
 browser parsing, not forced normalization.
+### 2026-11-13 — permissive raw-text/RCDATA end tags
+
+`skip_to_close` now accepts HTML whitespace before `>` in raw-text/RCDATA
+end tags (`</script >`, `</style\t>`, `</TITLE >`, newline forms), so closing
+no longer swallows following content. RCDATA entities still decode; trailing
+text becomes a sibling.
+
+Gate `tests/nb_rawtext_close_test.sh` **PASS (12/12)**. Negative (immediate
+`>` required): 10 failures. Full suite **ALL TESTS PASS**.
+
+Open: junk in end tags not accepted; `xmp`/`iframe`/`noembed`/`noframes`/
+`plaintext` not parsed as raw-text.

@@ -170,17 +170,25 @@ static int stack_pop_to(Parser *ps, const char *tag) {
 
 /* skip to "</tag>", return pointer just past it */
 static const char *skip_to_close(Parser *ps, const char *tag, const char **content_end) {
+    /* Raw-text/RCDATA end tags allow HTML whitespace before '>' (e.g.
+     * </script >, </style\t>), case-insensitively. Anything else inside the
+     * body is data, so we only stop on a matching close. */
     size_t tl = strlen(tag);
     const char *scan = ps->p;
     while (scan < ps->end) {
         const char *lx = scan;
         while (lx < ps->end && *lx != '<') lx++;
         if (lx >= ps->end) break;
-        /* match "</" then tag then ">" */
+        /* match "</" then tag then optional whitespace then ">" */
         if ((size_t)(ps->end - lx) >= tl + 3 && lx[1] == '/'
-            && strncasecmp(lx + 2, tag, tl) == 0 && lx[tl + 2] == '>') {
-            if (content_end) *content_end = lx;
-            return lx + tl + 3;
+            && strncasecmp(lx + 2, tag, tl) == 0) {
+            const char *q = lx + tl + 2;
+            while (q < ps->end && (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r' || *q == '\f'))
+                q++;
+            if (q < ps->end && *q == '>') {
+                if (content_end) *content_end = lx;
+                return q + 1;
+            }
         }
         scan = lx + 1;
     }

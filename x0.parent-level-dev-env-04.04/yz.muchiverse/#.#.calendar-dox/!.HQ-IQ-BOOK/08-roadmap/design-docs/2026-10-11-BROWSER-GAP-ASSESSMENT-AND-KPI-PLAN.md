@@ -2187,3 +2187,39 @@ rendered `TITLE` row) unchanged, and the getter could disagree with the DOM.
   element it finds; it does not deduplicate multiple `<title>` elements.
 - The getter returns the element's concatenated text content; the LOAD
   `--title` argument is authoritative only when no `<title>` element exists.
+
+### 9.35 2026-11-13 — permissive raw-text/RCDATA end tags
+
+Raw-text and RCDATA elements (`script`, `style`, `noscript`, `title`,
+`textarea`) were closed only when the end tag had an immediate `>` after the
+tag name. HTML allows whitespace (space, tab, LF, FF, CR) before `>`, so
+`</script >`, `</style\t>` and `</TITLE >` were not recognized: the parser
+kept scanning to EOF and the element swallowed following markup as data.
+
+**The slice**
+
+- `skip_to_close` in `nb_dom.c` now accepts optional HTML whitespace between
+  the end-tag name and `>` (case-insensitive tag name unchanged). Content
+  boundaries and the returned parse position account for the consumed
+  whitespace. Applies to both parse paths (folded fetch parse and the
+  tree/innerHTML parse) because both share `skip_to_close`.
+
+**Verification**
+
+- New gate `tests/nb_rawtext_close_test.sh`: **PASS (12/12)**. Covers
+  `<script>` closed by space, tab and newline (including upper-case close
+  tag name), `<style>` space close, RCDATA `<title>` with entity decoding
+  (`Hi &amp; bye` -> `Hi & bye`) and a preserved sibling, and `<textarea>`
+  keeping literal content (`<b>&amp;</b>` -> `<b>&</b>` as RCDATA-decoded
+  text) with a following sibling.
+- Negative (require immediate `>`): **10 failures** (every whitespace-close
+  case fails; the element consumes the trailing sibling/content).
+- Restored and green; full suite **ALL TESTS PASS** with the gate registered.
+
+**Honest limits**
+
+- Only the standard HTML whitespace set is accepted before `>`; attributes or
+  other junk in an end tag are still not recognized (matching the prior
+  behavior).
+- `xmp`, `iframe`, `noembed`, `noframes`, `plaintext` are still not treated
+  as raw-text elements by the parser.
