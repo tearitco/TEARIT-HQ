@@ -1874,9 +1874,8 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
 }
 
 static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    return JS_DupValue(ctx, this_val);    /* this is the rect */
-}
+/* DOMRect.toJSON helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_rect_tojson.c"
 
 /* ---- IntersectionObserver (2026-11-08, extended 2026-11-09) ----
  * Real initial entries from the worker's box geometry, delivered as a
