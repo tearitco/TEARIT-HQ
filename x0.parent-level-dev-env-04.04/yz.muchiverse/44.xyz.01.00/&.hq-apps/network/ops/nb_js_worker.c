@@ -2254,14 +2254,8 @@ static JSValue nb_text_data_set(JSContext *ctx, JSValueConst this_val, int argc,
 static JSValue push_node(JSContext *ctx, NbNode *n);
 /* push_node_or_null helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_push_node_or_null.c"
-static NbNode *nb_ds_node(JSContext *ctx, JSValueConst h) {
-    JSValue v = JS_GetPropertyStr(ctx, h, "__nb_ds_idx");
-    int32_t i = -1;
-    if (JS_ToInt32(ctx, &i, v) == 0 && i >= 0 && i < g_nodecount)
-        return g_nodeindex[i];
-    JS_FreeValue(ctx, v);
-    return NULL;
-}
+/* dataset node lookup helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_dataset_node.c"
 static int nb_ds_to_attr(const char *key, char *out, size_t olen) {
     if (!key || !*key || olen < 8) return 0;
     snprintf(out, olen, "data-");
