@@ -2038,16 +2038,8 @@ static JSValue nb_el_after_js(JSContext *ctx, JSValueConst this_val, int argc, J
 static JSValue nb_el_replaceWith_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static const NbNode *nb_top_root(const NbNode *n);
 static JSValue nb_global_document(JSContext *ctx);
-static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    char *owned = NULL;
-    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
-    if (!n || !name) { JS_FreeCString(ctx, owned); return JS_NULL; }
-    if (!attrs_has(n, name)) { JS_FreeCString(ctx, owned); return JS_NULL; }
-    const char *v = nb_attr_get(n, name);
-    JS_FreeCString(ctx, owned);
-    return JS_NewString(ctx, v ? v : "");
-}
+/* getAttribute helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_get_attribute.c"
 /* element.attributes (2026-09-21): kevlar's web-component wrapper render
  * starts with `_.C2(this.attributes)` in both setUpProps and render. Without
  * this property el.attributes is undefined, _.l(undefined) fails as
