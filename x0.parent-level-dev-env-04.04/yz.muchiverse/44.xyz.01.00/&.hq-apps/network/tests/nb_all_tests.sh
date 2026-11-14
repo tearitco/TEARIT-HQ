@@ -182,6 +182,10 @@ echo "########## Text.wholeText and Text.splitText"
 bash "$HERE/nb_text_whole_split_test.sh" || RC=1
 
 echo
+echo "########## NodeList/HTMLCollection forEach, iterator, item"
+bash "$HERE/nb_collection_iter_test.sh" || RC=1
+
+echo
 echo "########## Node.compareDocumentPosition and DOCUMENT_POSITION_* constants"
 bash "$HERE/nb_compare_document_position_test.sh" || RC=1
 

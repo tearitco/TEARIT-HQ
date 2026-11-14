@@ -2850,3 +2850,31 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   sibling-based and covers standard text-node adjacency.
 - No Text-only prototype separation; comment wrappers share Tp (methods are
   guarded/meaningful primarily for text nodes).
+
+
+### 9.54 2026-11-13 — NodeList/HTMLCollection iteration compat
+
+**What changed**
+
+- `ops/nb_js_worker.c`: `NodeList.prototype` and `HTMLCollection.prototype`
+  now expose `forEach` and `@@iterator` (delegated to `Array.prototype`
+  equivalents) in addition to `item()`, improving DOM collection compat for
+  `querySelectorAll`/`getElementsByTagName` results.
+
+**Verification**
+
+- New gate `tests/nb_collection_iter_test.sh`: **PASS (15/15)**. Covers
+  NodeList and HTMLCollection `item`, `forEach`, `Array.from`, and
+  `for..of` iteration with correct element order/ids.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- Collections remain array-backed wrappers with DOM prototypes set; live
+  collection semantics are unchanged/limited by existing implementation.
