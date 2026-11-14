@@ -3936,6 +3936,101 @@ static JSValue nb_cdata_deleteData(JSContext *ctx, JSValueConst this_val, int ar
     JS_FreeValue(ctx, argv3[0]); JS_FreeValue(ctx, argv3[1]); JS_FreeValue(ctx, argv3[2]);
     return r;
 }
+static int nb_is_text_node(const NbNode *n) {
+    return n && (!n->tag || n->tag[0] == '\0');
+}
+static JSValue nb_text_wholeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewString(ctx, "");
+    if (!nb_is_text_node(n)) return JS_NewString(ctx, n->text ? n->text : "");
+    NbNode *left = n;
+    if (n->parent) {
+        /* find leftmost of contiguous text run containing n */
+        NbNode *run_start = NULL;
+        for (NbNode *c = n->parent->first_child; c; c = c->next_sibling) {
+            if (nb_is_text_node(c)) {
+                if (!run_start) run_start = c;
+                if (c == n) { left = run_start; break; }
+            } else {
+                run_start = NULL;
+            }
+        }
+    }
+    size_t total = 0;
+    for (NbNode *p = left; p; p = p->next_sibling) {
+        if (!nb_is_text_node(p)) break;
+        total += p->text ? strlen(p->text) : 0;
+    }
+    char *buf = (char *)malloc(total + 1);
+    if (!buf) return JS_ThrowOutOfMemory(ctx);
+    size_t off = 0;
+    for (NbNode *p = left; p; p = p->next_sibling) {
+        if (!nb_is_text_node(p)) break;
+        if (p->text) {
+            size_t l = strlen(p->text);
+            memcpy(buf + off, p->text, l);
+            off += l;
+        }
+    }
+    buf[off] = '\0';
+    JSValue r = JS_NewString(ctx, buf);
+    free(buf);
+    return r;
+}
+static JSValue nb_text_splitText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (!nb_is_text_node(n)) return JS_UNDEFINED;
+    int32_t off = 0;
+    if (argc > 0) JS_ToInt32(ctx, &off, argv[0]);
+    JSValue s = JS_NewString(ctx, n->text ? n->text : "");
+    JSValue lv = JS_GetPropertyStr(ctx, s, "length");
+    int32_t len = 0;
+    JS_ToInt32(ctx, &len, lv);
+    JS_FreeValue(ctx, lv);
+    if (off < 0 || off > len) {
+        JS_FreeValue(ctx, s);
+        JSValue er = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, er, "name", JS_NewString(ctx, "IndexSizeError"));
+        JS_SetPropertyStr(ctx, er, "message", JS_NewString(ctx, "IndexSizeError: offset out of range"));
+        return JS_Throw(ctx, er);
+    }
+    JSAtom aslice = JS_NewAtom(ctx, "slice");
+    JSValue a1[2] = { JS_NewInt32(ctx, 0), JS_NewInt32(ctx, off) };
+    JSValue left = JS_Invoke(ctx, s, aslice, 2, a1);
+    JS_FreeValue(ctx, a1[0]); JS_FreeValue(ctx, a1[1]);
+    JSValue a2[1] = { JS_NewInt32(ctx, off) };
+    JSValue right = JS_Invoke(ctx, s, aslice, 1, a2);
+    JS_FreeValue(ctx, a2[0]);
+    JS_FreeAtom(ctx, aslice);
+    JS_FreeValue(ctx, s);
+    if (JS_IsException(left) || JS_IsException(right)) {
+        JS_FreeValue(ctx, left); JS_FreeValue(ctx, right);
+        return JS_EXCEPTION;
+    }
+    JSValue argvL[1] = { left };
+    JSValue rs = nb_text_data_set(ctx, this_val, 1, argvL);
+    JS_FreeValue(ctx, rs);
+    JS_FreeValue(ctx, left);
+
+    char *rstr = JS_ToCString(ctx, right);
+    JS_FreeValue(ctx, right);
+    NbNode *nn = calloc(1, sizeof(*nn));
+    if (!nn) { JS_FreeCString(ctx, rstr); return JS_ThrowOutOfMemory(ctx); }
+    nn->text = strdup(rstr ? rstr : "");
+    JS_FreeCString(ctx, rstr);
+    orphan_add(nn);
+    JSValue w = push_node(ctx, nn);
+
+    if (n->parent) {
+        NbNode *ref = n->next_sibling;
+        local_insert_before(n->parent, nn, ref);
+        orphan_remove(nn);
+        nb_mutation_notify_childlist(ctx, n->parent, nn, NULL, n, ref);
+    }
+    return w;
+}
 static JSValue nb_node_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     NbNode *n = get_this(ctx, this_val);
@@ -8749,6 +8844,14 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, Tp, "insertData",    JS_NewCFunction(ctx, nb_cdata_insertData, "insertData", 2));
     JS_SetPropertyStr(ctx, Tp, "deleteData",    JS_NewCFunction(ctx, nb_cdata_deleteData, "deleteData", 2));
     JS_SetPropertyStr(ctx, Tp, "replaceData",   JS_NewCFunction(ctx, nb_cdata_replaceData, "replaceData", 3));
+    JS_SetPropertyStr(ctx, Tp, "splitText",     JS_NewCFunction(ctx, nb_text_splitText, "splitText", 1));
+    {
+        JSAtom nm = JS_NewAtom(ctx, "wholeText");
+        JS_DefinePropertyGetSet(ctx, Tp, nm,
+            JS_NewCFunction(ctx, nb_text_wholeText, "get wholeText", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
     JSValue Dp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Dp, Np);
     JS_SetPropertyStr(ctx, Df, "prototype", JS_DupValue(ctx, Dp));

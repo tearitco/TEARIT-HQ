@@ -1030,3 +1030,19 @@ reach; bar tail run inconclusive.
 
 Limits: no strict DOM bounds exceptions; `Text.splitText`/`wholeText` still
 missing.
+
+
+### 2026-11-13 — Text.wholeText and Text.splitText
+
+Added `Text.wholeText` and `Text.splitText(offset)` on Text.prototype.
+`wholeText` returns data of contiguous adjacent text nodes. `splitText`
+splits at offset (JS/UTF-16 semantics), mutates current node, inserts/returns
+new text sibling when parented, and throws `IndexSizeError` for out-of-range
+offsets.
+
+Gate `tests/nb_text_whole_split_test.sh` **PASS (23/23)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

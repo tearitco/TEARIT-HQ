@@ -2815,3 +2815,38 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
   QuickJS string operations; strict DOM `IndexSizeError` bounds checking is
   not implemented.
 - `Text.splitText` and `Text.wholeText` not implemented.
+
+
+### 9.53 2026-11-13 — Text.wholeText and Text.splitText
+
+**What changed**
+
+- `ops/nb_js_worker.c`: added `Text.wholeText` getter and `Text.splitText(offset)`
+  on `Text.prototype` (shared text/comment prototype; behavior applies to text
+  nodes). `wholeText` concatenates contiguous adjacent text-node data.
+  `splitText` splits at UTF-16 offset via JS string semantics, updates current
+  node data (characterData path), creates/inserts a new text node after the
+  current node when parented, and returns it. Out-of-range offsets throw
+  `IndexSizeError`.
+
+**Verification**
+
+- New gate `tests/nb_text_whole_split_test.sh`: **PASS (23/23)**. Covers
+  `wholeText` for single/contiguous text runs, `splitText` return/sibling/
+  parent/previousSibling/data coherence, insertion of another text node inside
+  a contiguous run, detached split, split at 0/end, and negative/out-of-range
+  `IndexSizeError`.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- Offset/length use JS UTF-16 string semantics; contiguous-run detection is
+  sibling-based and covers standard text-node adjacency.
+- No Text-only prototype separation; comment wrappers share Tp (methods are
+  guarded/meaningful primarily for text nodes).
