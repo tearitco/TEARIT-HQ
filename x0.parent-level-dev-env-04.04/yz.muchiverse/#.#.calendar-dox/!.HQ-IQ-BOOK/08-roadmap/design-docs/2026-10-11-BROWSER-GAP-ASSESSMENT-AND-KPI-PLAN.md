@@ -2783,3 +2783,35 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 - Disconnected-node preceding/following ordering is deterministic but
   implementation-specific (root pointer comparison), as allowed by spec.
 - Attribute nodes are not modeled.
+
+
+### 9.52 2026-11-13 — CharacterData length and data mutation methods
+
+**What changed**
+
+- `ops/nb_js_worker.c`: added CharacterData `length` getter and
+  `substringData`, `appendData`, `insertData`, `deleteData`, `replaceData`
+  on `Text.prototype` (shared by Text/Comment wrappers in this engine).
+  Mutating methods update stored data via existing CharacterData data-set
+  path.
+
+**Verification**
+
+- New gate `tests/nb_characterdata_test.sh`: **PASS (16/16)**. Covers
+  `length`, `substringData`, `appendData`, `insertData`, `deleteData`,
+  `replaceData` on Text and Comment nodes, including `data`/`nodeValue`/
+  `textContent` coherence after mutation.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- Offset/count handling uses JS string semantics (UTF-16 code units) via
+  QuickJS string operations; strict DOM `IndexSizeError` bounds checking is
+  not implemented.
+- `Text.splitText` and `Text.wholeText` not implemented.

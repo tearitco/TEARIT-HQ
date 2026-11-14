@@ -1014,3 +1014,19 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — CharacterData length and data methods
+
+Added CharacterData `length`, `substringData`, `appendData`, `insertData`,
+`deleteData`, `replaceData` on Text.prototype (shared by Text/Comment wrappers).
+
+Gate `tests/nb_characterdata_test.sh` **PASS (16/16)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.
+
+Limits: no strict DOM bounds exceptions; `Text.splitText`/`wholeText` still
+missing.
