@@ -2252,7 +2252,8 @@ static JSValue nb_text_data_set(JSContext *ctx, JSValueConst this_val, int argc,
  * Handlers are C traps on a Proxy so reads stay live and writes land in
  * the attribute store (prop `userName` <-> attribute `data-user-name`). */
 static JSValue push_node(JSContext *ctx, NbNode *n);
-static JSValue push_node_or_null(JSContext *ctx, NbNode *n) { return n ? push_node(ctx, n) : JS_NULL; };
+/* push_node_or_null helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_push_node_or_null.c"
 static NbNode *nb_ds_node(JSContext *ctx, JSValueConst h) {
     JSValue v = JS_GetPropertyStr(ctx, h, "__nb_ds_idx");
     int32_t i = -1;
