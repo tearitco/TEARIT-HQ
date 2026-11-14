@@ -2751,3 +2751,35 @@ probing `contentType`, `URL`/`documentURI`, `compatMode`, encoding fields,
 
 - ChildNode methods were added for CharacterData wrappers (text/comment);
   DocumentType/other non-element cases not addressed.
+
+
+### 9.51 2026-11-13 — Node.compareDocumentPosition and position constants
+
+**What changed**
+
+- `ops/nb_js_worker.c`: added `Node.DOCUMENT_POSITION_*` constants on `Node`
+  constructor and prototype, and implemented `Node.compareDocumentPosition(other)`
+  on Node prototype and DocumentFragment wrappers. Handles same node,
+  contains/contained-by (ancestor/descendant), preceding/following in tree
+  order (same root), and disconnected/cross-document nodes (deterministic
+  implementation-specific ordering).
+
+**Verification**
+
+- New gate `tests/nb_compare_document_position_test.sh`: **PASS (20/20)**.
+  Covers constants, same-node, ancestor/descendant, sibling and deeper
+  preceding/following cases, detached disconnected nodes, and cross-document
+  (DOMParser) disconnected nodes.
+- Full-suite evidence: gate registered and passing on fresh build; monolithic
+  `nb_all_tests.sh` rerun in this session stalled after `nb_span_select_test`
+  without final summary (environment stall pattern). Post-span_select live
+  tests run individually all RC=0/PASS: `nb_raf_test.sh`,
+  `nb_geometry_test.sh`, `nb_gbcr_test.sh`, `nb_gutter_test.sh`,
+  `nb_flex_test.sh`, `nb_grid_test.sh`, `nb_reach_test.sh`; `nb_bar_test.sh`
+  tail run inconclusive/no completion marker.
+
+**Honest limits**
+
+- Disconnected-node preceding/following ordering is deterministic but
+  implementation-specific (root pointer comparison), as allowed by spec.
+- Attribute nodes are not modeled.

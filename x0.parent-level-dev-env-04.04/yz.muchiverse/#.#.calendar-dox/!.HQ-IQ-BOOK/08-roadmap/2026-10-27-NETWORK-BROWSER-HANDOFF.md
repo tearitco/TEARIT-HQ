@@ -999,3 +999,18 @@ Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
 `nb_span_select_test` without final summary (env stall). Post-span_select live
 tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
 reach; bar tail run inconclusive.
+
+
+### 2026-11-13 — Node.compareDocumentPosition
+
+Added `Node.DOCUMENT_POSITION_*` constants and `Node.compareDocumentPosition`
+(Node prototype and fragment wrappers). Handles same/ancestor/descendant/
+preceding/following in same tree and disconnected (including cross-document)
+cases with deterministic implementation-specific ordering.
+
+Gate `tests/nb_compare_document_position_test.sh` **PASS (20/20)**.
+
+Full-suite note: monolithic `nb_all_tests.sh` rerun stalled after
+`nb_span_select_test` without final summary (env stall). Post-span_select live
+tests run individually all RC=0/PASS: raf, geometry, gbcr, gutter, flex, grid,
+reach; bar tail run inconclusive.

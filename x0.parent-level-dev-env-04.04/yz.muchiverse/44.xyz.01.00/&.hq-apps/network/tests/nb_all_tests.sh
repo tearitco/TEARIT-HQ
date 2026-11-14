@@ -174,6 +174,10 @@ echo "########## CharacterData ChildNode methods (text/comment remove/before/aft
 bash "$HERE/nb_characterdata_childnode_test.sh" || RC=1
 
 echo
+echo "########## Node.compareDocumentPosition and DOCUMENT_POSITION_* constants"
+bash "$HERE/nb_compare_document_position_test.sh" || RC=1
+
+echo
 echo "########## comment nodes (createComment, parse/preserve, serialize)"
 bash "$HERE/nb_comment_node_test.sh" || RC=1
 
