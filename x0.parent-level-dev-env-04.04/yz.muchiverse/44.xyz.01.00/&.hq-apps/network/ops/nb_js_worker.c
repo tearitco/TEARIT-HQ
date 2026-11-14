@@ -2091,15 +2091,8 @@ static JSValue nb_el_attributes(JSContext *ctx, JSValueConst this_val, int argc,
 }
 /* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
 static int attrs_has(const NbNode *n, const char *name);
-static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    char *owned = NULL;
-    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
-    if (!n || !name) { JS_FreeCString(ctx, owned); return JS_FALSE; }
-    int has = attrs_has(n, name);
-    JS_FreeCString(ctx, owned);
-    return JS_NewBool(ctx, has);
-}
+/* hasAttribute helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_has_attribute.c"
 /* hasAttributes/getAttributeNames helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_attr_names.c"
 static JSValue nb_el_setAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
