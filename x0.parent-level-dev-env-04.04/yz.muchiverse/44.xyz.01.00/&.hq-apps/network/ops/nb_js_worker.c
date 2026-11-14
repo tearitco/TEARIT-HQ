@@ -2307,21 +2307,8 @@ static JSValue nb_text_data_set(JSContext *ctx, JSValueConst this_val, int argc,
 }
 /* CharacterData/Text helpers extracted for modularity (Phase 1 pilot, single-TU include). */
 #include "nb_worker_text.c"
-static JSValue nb_node_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    (void)argc; (void)argv;
-    NbNode *n = get_this(ctx, this_val);
-    if (!n) return JS_NULL;
-    if (!n->tag || !n->tag[0] || (n->tag && !strcmp(n->tag, "#comment")))
-        return JS_NewString(ctx, n->text ? n->text : "");
-    return JS_NULL;
-}
-static JSValue nb_node_value_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    if (!n) return JS_UNDEFINED;
-    if (!n->tag || !n->tag[0] || (n->tag && !strcmp(n->tag, "#comment")))
-        return nb_text_data_set(ctx, this_val, argc, argv);
-    return JS_UNDEFINED;
-}
+/* nodeValue helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_node_value.c"
 /* ---- dataset (2026-11-09) ----
  * dataset is a DOMStringMap view over an element's data-* attributes.
  * Handlers are C traps on a Proxy so reads stay live and writes land in
