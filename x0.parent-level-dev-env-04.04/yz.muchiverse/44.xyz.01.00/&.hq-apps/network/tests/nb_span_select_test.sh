@@ -129,14 +129,14 @@ clip_raw() { python3 "$HERE/xclipget.py" 2>/dev/null; }
 # BEFORE send 3 - taking the mark afterwards would ask clip() to wait for a
 # second copy that never comes, which is a hang dressed as a fix.
 mark_copy() {
-    CLIP_MARK=$(grep -cE '^[0-9:.]+ COPY ' "$WORK/kh_focus_debug.log" 2>/dev/null || echo 0)
+    CLIP_MARK=$(grep -cE '^[0-9:.]+ COPY ' "$WORK/kh_focus_debug.log" 2>/dev/null || printf '0')
     CLIP_MARK=${CLIP_MARK:-0}
 }
 clip() {
     _want=${CLIP_MARK:-0}
     for _ in $(seq 1 40); do
-        _have=$(grep -cE '^[0-9:.]+ COPY ' "$WORK/kh_focus_debug.log" 2>/dev/null || echo 0)
-        [ "$_have" -gt "$_want" ] && break
+        _have=$(grep -cE '^[0-9:.]+ COPY ' "$WORK/kh_focus_debug.log" 2>/dev/null || printf '0')
+        [ "${_have:-0}" -gt "${_want:-0}" ] 2>/dev/null && break
         sleep 0.25
     done
     C="$(clip_raw)" && { printf '%s' "$C"; return 0; }
