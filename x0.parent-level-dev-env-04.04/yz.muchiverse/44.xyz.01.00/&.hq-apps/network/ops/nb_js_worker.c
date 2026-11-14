@@ -12911,21 +12911,8 @@ static JSValue nb_doc_dispatchEvent(JSContext *ctx, JSValueConst this_val, int a
  * `document.contains ? document.contains.bind(document)
  *  : document.documentElement.contains.bind(...)` and Polymer/Closure
  * ask it during upgrades. Ancestry walk over the C tree. */
-static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *self = get_this(ctx, this_val);
-    NbNode *other = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
-    if (!self || !other) return JS_NewBool(ctx, 0);
-    for (NbNode *n = other; n; n = n->parent)
-        if (n == self) return JS_NewBool(ctx, 1);
-    return JS_NewBool(ctx, 0);
-}
-static JSValue nb_doc_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *other = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
-    if (!other || !g_dom_root) return JS_NewBool(ctx, 0);
-    for (NbNode *n = other; n; n = n->parent)
-        if (n == g_dom_root) return JS_NewBool(ctx, 1);
-    return JS_NewBool(ctx, 0);
-}
+/* Node/Document.contains helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_node_contains.c"
 static JSValue nb_win_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue ev = argc > 0 ? argv[0] : JS_UNDEFINED;
     JSValue bv = JS_GetPropertyStr(ctx, ev, "bubbles");
