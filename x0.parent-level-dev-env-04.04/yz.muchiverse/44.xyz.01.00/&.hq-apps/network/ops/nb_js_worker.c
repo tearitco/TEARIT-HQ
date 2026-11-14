@@ -12840,14 +12840,8 @@ static __attribute__((used)) JSValue nb_image_ctor(JSContext *ctx, JSValueConst 
  * ask it during upgrades. Ancestry walk over the C tree. */
 /* Node/Document.contains helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_node_contains.c"
-static JSValue nb_win_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    JSValue ev = argc > 0 ? argv[0] : JS_UNDEFINED;
-    JSValue bv = JS_GetPropertyStr(ctx, ev, "bubbles");
-    int bubbles = JS_ToBool(ctx, bv);
-    if (bubbles < 0) bubbles = 0;
-    JS_FreeValue(ctx, bv);
-    return JS_NewBool(ctx, dispatch_event(ctx, EVT_WIN, NULL, ev, bubbles));
-}
+/* window.dispatchEvent helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_win_dispatch.c"
 /* Element click/change helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_click.c"
 /* element.focus()/blur() (2026-09-21): typed-input path needs the search
