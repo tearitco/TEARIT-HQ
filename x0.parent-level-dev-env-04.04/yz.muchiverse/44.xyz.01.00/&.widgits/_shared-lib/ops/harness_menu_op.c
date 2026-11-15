@@ -159,13 +159,16 @@ int main(int argc, char **argv) {
             for (int i = 0; i < np; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s %s\tplug:%s\n", plug_enabled(book, pn[i]) ? "[x]" : "[ ]", pn[i], pn[i]); } }
         if (nc) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- tests --\t-\n");
             for (int i = 0; i < nr; i++) if (listed(i, page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
+        /* NEW GROUP (2026-11-14, owner: "add it just to visually show our work, b4 we continue"): the maker is spec step 5 and is NOT BUILT. These rows only SHOW where it will be, say so in their labels, and a pick changes nothing (id new:plug or new:harnz prints NEW-NOT-BUILT). Shown for any named book. Remove the words "not built yet" when the maker lands. */
+        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- new (not built yet) --\t-\n+ new plug : optional, on/off\tnew:plug\n+ new harnz : one-shot page tool\tnew:harnz\n"); }
         if (write_atomic(argv[5], out)) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }
     if (!strcmp(verb, "pick") && argc >= 6) {
         const char *book = strcmp(argv[3], "-") ? argv[3] : "", *page = strcmp(argv[4], "-") ? argv[4] : "", *id = argv[5]; int confirmed = argc >= 7 && !strcmp(argv[6], "--confirmed");
         if (argc >= 7 && !confirmed) return 2;
-        if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }      /* a group heading: picking it does nothing */
+        if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }
+        if (!strcmp(id, "new:plug") || !strcmp(id, "new:harnz")) { printf("NEW-NOT-BUILT %s\n", id + 4); return 0; }      /* the maker is not built: a pick shows the row and changes nothing */      /* a group heading: picking it does nothing */
         if (!strncmp(id, "plug:", 5)) {      /* a plug row: flip its ENABLED row (D74); the book must be open */
             const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }
             static char pn2[MAXPLUG][48]; int np2 = plug_names(book, pn2, MAXPLUG), found = 0; for (int i = 0; i < np2; i++) if (!strcmp(pn2[i], pname)) found = 1;

@@ -112,6 +112,20 @@ RUN | $T/ps.+x | $T/h | hpick | plug:nonesuch
 EXPECT_OUT | HARNESS plug:nonesuch rc=2 | NEGATIVE-a-missing-plug-is-refused
 EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [ ] alpha | and-the-labels-are-unchanged
 
+CASE    | the-new-group-shows-where-the-maker-will-be
+# 2026-11-14 owner: show the maker's rows visually before step 5 exists. A named book lists `+ new plug` and `+ new harnz` under a heading that says NOT BUILT YET; no book lists none; a pick writes nothing.
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | empty | start | $T/rows4.txt
+EXPECT_HAS | rows4.txt | -- new (not built yet) -- | the-empty-book-shows-the-new-group-and-says-it-is-not-built
+EXPECT_HAS | rows4.txt | + new plug | and-a-new-plug-row
+EXPECT_HAS | rows4.txt | + new harnz | and-a-new-harnz-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows5.txt
+EXPECT_LACKS | rows5.txt | + new plug | NEGATIVE-with-no-book-there-is-nothing-to-make-a-plug-in
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | empty | start | new:plug
+EXPECT_EXIT | 0 | a-pick-of-new-plug-exits-0
+EXPECT_OUT | NEW-NOT-BUILT | a-pick-says-not-built
+RUN | /usr/bin/test | -e | $T/h/@.apps/empty/plugs
+EXPECT_EXIT | 1 | NEGATIVE-and-writes-no-plug-folder-or-file
 CASE    | cleanup
 CLEAN |
+
 
