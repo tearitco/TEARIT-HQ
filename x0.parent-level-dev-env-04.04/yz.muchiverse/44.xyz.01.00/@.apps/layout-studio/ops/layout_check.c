@@ -168,7 +168,9 @@ static int check_file(const char *path) {
             if (dup) { char msg[160], fix[160]; snprintf(msg, sizeof msg, "duplicate id \"%s\"", id); snprintf(fix, sizeof fix, "ids must be unique in the window; rename one (e.g. %s-2)", id); report(1, tl, msg, fix); }
             else if (g_nids < MAXIDS) snprintf(g_ids[g_nids++], 96, "%s", id);
         }
-        if (td && td->interactive) {
+        /* 2026-11-15: a toolbar BAND (class bar-top or bar-bottom, the plus phone shell) is a full-width strip with no nav number: no label or action is required (renderer: khtpm_core_render.c kh_bar_top/kh_bar_bottom) */
+        const char *kcls = aget(a, na, "class"); int is_band = kcls && (strstr(kcls, "bar-top") || strstr(kcls, "bar-bottom"));
+        if (td && td->interactive && !is_band) {
             int has_sprite = aget(a, na, "sprite") != NULL;
             if (strcmp(tag, "cli_io") && strcmp(tag, "text_area") && (!label || !*label) && !has_sprite) {
                 char msg[160]; snprintf(msg, sizeof msg, "<%s> has no label", tag); report(1, tl, msg, "add label=\"...\" - every interactive element needs visible text (it also gets a nav number)");

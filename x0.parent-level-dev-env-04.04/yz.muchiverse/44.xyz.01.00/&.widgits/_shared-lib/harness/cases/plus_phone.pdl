@@ -99,3 +99,9 @@ RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 4
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | list | $T/h
 EXPECT_OUT | PHONES 0 | every-phone-is-closed-and-no-folder-is-left
 CLEAN |
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/&.hq-apps/plus-phone/plus-phone.xhtpm
+EXPECT_OUT | 0 error(s) | the-portrait-layout-passes-the-house-validator-toolbar-bands-need-no-label
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm
+EXPECT_OUT | 0 error(s) | the-landscape-layout-passes-too
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/@.apps/layout-studio/samples/shop-menu.broken.xhtpm
+EXPECT_EXIT | 1 | NEGATIVE-the-band-exemption-did-not-weaken-the-check-a-broken-layout-is-still-refused
