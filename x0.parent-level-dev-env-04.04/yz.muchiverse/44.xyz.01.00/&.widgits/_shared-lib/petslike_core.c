@@ -56,6 +56,7 @@
 #include "stb_image.h"
 #include "petslike_toolbar.c"      /* the header menus as data: <app>/toolbar.pdl */
 #include "pet_sky.c"      /* day phase + parallax sky files (shared with rpg-edit-hq) */
+#include "plug_ref.c"      /* @plug:<plug>:<key> references in event arguments (D74/D75) */
 #include "pet_footer.c"   /* the footer picture sprite.csv (shared with rpg-edit-hq) */
 #include "pet_nudge.c"    /* wake an idle board engine (shared with rpg-edit-hq) */
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -2041,6 +2042,8 @@ int main(int argc, char **argv) {
       if (!ASSETS[0] || !HOUSE[0]) { fprintf(stderr, "" PET_OP ": no #.NNEST_ASSETS / &.widgits above %s\n", APP); return 1; } }
     cfg_load(); snprintf(g_sibling, sizeof g_sibling, "/@.apps/%s/", cfg("sibling", "rpg-pet"));      /* per-game constants from toy.pdl, before anything reads them */
     snprintf(PET_PLUG_PATH, sizeof PET_PLUG_PATH, "%s/plugs/day-night.plug.pdl", APP);      /* the day-night plug (pet_sky.c); a book without the file keeps the old defaults */
+    { static char refbuf[32][240]; char pd[PATH_MAX]; snprintf(pd, sizeof pd, "%s/plugs", APP);      /* event pages may name a plug parameter instead of a literal: @plug:<plug>:<key> (plug_ref.c). Resolved here, when the verb RUNS; a refusal stops it */
+      for (int i = 0; i < vargc && i < 32; i++) { int rc = plug_ref(pd, vargv[i], refbuf[i], sizeof refbuf[i]); if (rc < 0) { fprintf(stderr, "" PET_OP ": refused: %s\n", refbuf[i]); return 3; } if (rc > 0) vargv[i] = refbuf[i]; } }
     if (mode == 2) return event_main(argv[1]);
     if (mode == 1) return daemon_main();
     if (mode == 0 && vargc >= 1 && !strcmp(vargv[0], "fire")) {      /* the window's entry for page=yes verbs: play the page, else fall through to the verb */

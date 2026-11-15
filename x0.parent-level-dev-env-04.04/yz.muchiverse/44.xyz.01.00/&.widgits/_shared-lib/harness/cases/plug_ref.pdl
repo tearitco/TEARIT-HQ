@@ -1,0 +1,154 @@
+# plug_ref (2026-11-14, decision D74/D75, step 1): an event page node argument may be a PLUG REFERENCE `@plug:<plug>:<key>`, resolved when the command RUNS.
+# Three layers: (1) the pure resolver plug_ref.c through a probe op (types, bounds, off, missing, bad names); (2) the REAL events-hq op mr_world.+x doing Tint Screen with references, in a scratch app
+# (an edit of the plug changes the next run with NO recompile; a refusal stops the command and leaves the old state); (3) the REAL editor core running a verb with a reference (the lamps verb);
+# plus the four shipped phase pages: they carry references, and no literal tone is left. Negative controls: every refusal case, a plug that is OFF, and a literal argument that still works unchanged.
+RESULTS | ../results/plug_ref.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -Wall | -o | $T/probe | $HOUSE/&.widgits/_shared-lib/harness/ops/plug_ref_probe_op.c
+EXPECT_EXIT | 0 | the-probe-compiles-from-the-real-plug_ref.c
+MKDIR | plugs
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/plugs/day-night.plug.pdl
+
+CASE    | the-resolver
+RUN | $T/probe | $T/plugs | @plug:day-night:tint_dusk
+EXPECT_OUT | OK\p30,-10,-40,10 | a-tone-resolves
+RUN | $T/probe | $T/plugs | @plug:day-night:tint_frames
+EXPECT_OUT | OK\p60 | an-int-resolves
+RUN | $T/probe | $T/plugs | @plug:day-night:lamps_at_dusk
+EXPECT_OUT | OK\pon | a-word-resolves
+RUN | $T/probe | $T/plugs | @plug:day-night:greeting_voice
+EXPECT_OUT | OK\pGood morning, everyone. | a-text-resolves
+RUN | $T/probe | $T/plugs | Good morning
+EXPECT_OUT | LIT\pGood morning | CONTROL-a-literal-is-used-as-it-is
+RUN | $T/probe | $T/plugs | 25,5,-30,0
+EXPECT_OUT | LIT\p25,5,-30,0 | CONTROL-an-old-literal-tone-is-unchanged
+
+CASE    | NEGATIVE-refusals
+RUN | $T/probe | $T/plugs | @plug:day-night:nope
+EXPECT_EXIT | 3 | a-missing-parameter-is-refused
+EXPECT_OUT | REFUSED\pplug day-night has no parameter nope | with-the-reason
+RUN | $T/probe | $T/plugs | @plug:nonesuch:x
+EXPECT_EXIT | 3 | a-missing-plug-is-refused
+EXPECT_OUT | REFUSED\pplug nonesuch is not installed | with-the-reason
+RUN | $T/probe | $T/plugs | @plug:day-night
+EXPECT_EXIT | 3 | no-key-is-refused
+RUN | $T/probe | $T/plugs | @plug:..:x
+EXPECT_EXIT | 3 | a-dotdot-plug-name-is-refused
+RUN | $T/probe | $T/plugs | @plug:day-night:a/b
+EXPECT_EXIT | 3 | a-slash-in-the-key-is-refused
+WRITE   | plugs/big.plug.pdl | ENABLED \p 1\nPARAM \p tint_frames \p 9999 \p int \p 1 \p 600 \p x\nPARAM \p low \p 0 \p int \p 1 \p 600 \p x\nPARAM \p tone5 \p 1,2,3,4,5 \p tone \p \p \p x\nPARAM \p tone999 \p 1,2,3,999 \p tone \p \p \p x\nPARAM \p tone3 \p 1,2,3 \p tone \p \p \p x\nPARAM \p bad_word \p a b \p word \p \p \p x\nPARAM \p dollar \p cost $5 \p text \p \p \p x\nPARAM \p odd \p 1 \p wizard \p \p \p x\nPARAM \p ok \p 7 \p int \p 1 \p 9 \p x\n
+RUN | $T/probe | $T/plugs | @plug:big:tint_frames
+EXPECT_OUT | REFUSED\pbig.tint_frames is 9999, above the maximum 600 | above-the-maximum
+RUN | $T/probe | $T/plugs | @plug:big:low
+EXPECT_OUT | big.low is 0, below the minimum 1 | below-the-minimum
+RUN | $T/probe | $T/plugs | @plug:big:tone5
+EXPECT_EXIT | 3 | a-five-number-tone-is-refused
+RUN | $T/probe | $T/plugs | @plug:big:tone999
+EXPECT_EXIT | 3 | a-tone-number-over-255-is-refused
+RUN | $T/probe | $T/plugs | @plug:big:tone3
+EXPECT_EXIT | 3 | a-three-number-tone-is-refused
+RUN | $T/probe | $T/plugs | @plug:big:bad_word
+EXPECT_EXIT | 3 | a-word-with-a-space-is-refused
+RUN | $T/probe | $T/plugs | @plug:big:dollar
+EXPECT_EXIT | 3 | text-with-a-dollar-sign-is-refused
+RUN | $T/probe | $T/plugs | @plug:big:odd
+EXPECT_EXIT | 3 | an-unknown-type-is-refused
+RUN | $T/probe | $T/plugs | @plug:big:ok
+EXPECT_OUT | OK\p7 | CONTROL-a-value-inside-its-bounds-resolves-from-the-same-file
+WRITE   | plugs/off.plug.pdl | ENABLED \p 0\nPARAM \p k \p 1 \p int \p 1 \p 9 \p x\n
+RUN | $T/probe | $T/plugs | @plug:off:k
+EXPECT_EXIT | 3 | a-plug-that-is-off-resolves-nothing
+EXPECT_OUT | is off | with-the-reason
+
+CASE    | the-real-tint-screen-op
+MKDIR | app/events/phase_dusk
+MKDIR | app/plugs
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/app/plugs/day-night.plug.pdl
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/mr_world.+x | $T/app/events/phase_dusk | tint | @plug:day-night:tint_dusk | @plug:day-night:tint_frames
+EXPECT_EXIT | 0 | the-tint-command-ran-with-references
+EXPECT_HAS | app/events/phase_dusk/screen_state.pdl | value=30,-10,-40,10 | the-tone-came-from-the-plug
+EXPECT_HAS | app/events/phase_dusk/screen_state.pdl | frames=60 | the-frames-came-from-the-plug
+WRITE   | app/plugs/day-night.plug.pdl | ENABLED \p 1\nPARAM \p tint_dusk \p 1,2,3,4 \p tone \p \p \p x\nPARAM \p tint_frames \p 12 \p int \p 1 \p 600 \p x\n
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/mr_world.+x | $T/app/events/phase_dusk | tint | @plug:day-night:tint_dusk | @plug:day-night:tint_frames
+EXPECT_HAS | app/events/phase_dusk/screen_state.pdl | value=1,2,3,4 | an-edit-of-the-plug-changes-the-next-run-with-no-recompile
+EXPECT_HAS | app/events/phase_dusk/screen_state.pdl | frames=12 | and-the-frames
+WRITE   | app/plugs/day-night.plug.pdl | ENABLED \p 0\nPARAM \p tint_dusk \p 9,9,9,9 \p tone \p \p \p x\nPARAM \p tint_frames \p 12 \p int \p 1 \p 600 \p x\n
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/mr_world.+x | $T/app/events/phase_dusk | tint | @plug:day-night:tint_dusk | @plug:day-night:tint_frames
+EXPECT_EXIT | 3 | NEGATIVE-the-plug-is-off-so-the-command-is-refused
+EXPECT_HAS | app/events/phase_dusk/screen_state.pdl | value=1,2,3,4 | and-the-old-state-is-untouched
+EXPECT_LACKS | app/events/phase_dusk/screen_state.pdl | 9,9,9,9 | no-stale-or-new-value-was-written
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/mr_world.+x | $T/app/events/phase_dusk | tint | 25,5,-30,0 | 60
+EXPECT_EXIT | 0 | CONTROL-a-literal-tint-still-runs-even-while-the-plug-is-off
+EXPECT_HAS | app/events/phase_dusk/screen_state.pdl | value=25,5,-30,0 | the-literal-went-through-unchanged
+
+CASE    | the-real-core-verb
+MKDIR | house/&.widgits/livedesk-clock/ops/+x
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+MKDIR | house/@.apps/rpg-edit-hq/plugs
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/house/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | lamps @plug:day-night:lamps_at_dusk
+EXPECT_FILE | house/@.apps/rpg-edit-hq/state/lamps_on.txt | the-lamps-verb-ran-vacuity
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/lamps_on.txt | 1 | dusk-lamps-are-on-from-the-plug-word-on
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | lamps @plug:day-night:lamps_at_dawn
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/lamps_on.txt | 0 | CONTROL-dawn-lamps-are-off-from-the-plug-word-off
+WRITE   | house/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | ENABLED \p 0\nPARAM \p lamps_at_dusk \p on \p word \p \p \p x\n
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | lamps @plug:day-night:lamps_at_dusk
+EXPECT_EXIT | 3 | NEGATIVE-the-plug-is-off-so-the-verb-is-refused
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/lamps_on.txt | 0 | and-the-lamps-state-did-not-change
+
+CASE    | the-four-shipped-pages-carry-references
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_dawn/event_pkg/pages/page_1/event.ir.pdl | tint=@plug:day-night:tint_dawn | dawn-tint-is-a-reference
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_day/event_pkg/pages/page_1/event.ir.pdl | tint=@plug:day-night:tint_day | day-tint-is-a-reference
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_dusk/event_pkg/pages/page_1/event.ir.pdl | tint=@plug:day-night:tint_dusk | dusk-tint-is-a-reference
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_night/event_pkg/pages/page_1/event.ir.pdl | tint=@plug:day-night:tint_night | night-tint-is-a-reference
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_dawn/event_pkg/pages/page_1/event.ir.pdl | chat=@plug:day-night:greeting_chat | the-greeting-is-a-reference
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_dusk/event_pkg/pages/page_1/event.ir.pdl | arg=@plug:day-night:lamps_at_dusk | the-lamps-toggle-is-a-reference
+EXPECT_LACKS | $HOUSE/@.apps/rpg-edit-hq/events/phase_dawn/event_pkg/pages/page_1/event.ir.pdl | 25,5,-30,0 | NEGATIVE-no-literal-tone-is-left-in-the-page
+EXPECT_LACKS | $HOUSE/@.apps/rpg-edit-hq/events/phase_night/event_pkg/pages/page_1/event.ir.pdl | -70,-60 | NEGATIVE-night-has-no-literal-either
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/events/phase_dusk/event_pkg/pages/page_1/cmd_2.sh | tint '@plug:day-night:tint_dusk' '@plug:day-night:tint_frames' | the-compiled-wrapper-agrees-with-the-IR
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | \p 30,-10,-40,10 | the-shipped-plug-holds-the-old-values
+
+CASE    | the-real-dusk-page-in-a-scratch-house
+MKDIR | h2/xyzfs
+MKDIR | h2/101.mutaclsym.T/system
+MKDIR | h2/&.widgits/events-hq/ops/+x
+MKDIR | h2/@.apps/rpg-edit-hq/ops/+x
+MKDIR | h2/@.apps/rpg-edit-hq/state/world
+MKDIR | h2/@.apps/rpg-edit-hq/events
+MKDIR | h2/@.apps/rpg-edit-hq/plugs
+MKDIR | h2/#.NNEST_ASSETS/rmmv-www-img
+RUN | /bin/sh | -c | /bin/cp $HOUSE/101.mutaclsym*19.00/system/prisc+x $T/h2/101.mutaclsym.T/system/prisc+x
+EXPECT_EXIT | 0 | the-house-prisc-is-copied
+RUN | /bin/cp | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h2/&.widgits/events-hq/ops/play_event.sh
+RUN | /bin/cp | $HOUSE/&.widgits/events-hq/ops/+x/mr_world.+x | $T/h2/&.widgits/events-hq/ops/+x/mr_world.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/h2/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/h2/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl
+RUN | /bin/cp | -r | $HOUSE/@.apps/rpg-edit-hq/events/phase_dusk | $T/h2/@.apps/rpg-edit-hq/events/phase_dusk
+ENV | MUCHI_TARGET_ENT | $T/h2/@.apps/rpg-edit-hq/state/world
+RUN | /bin/bash | $T/h2/&.widgits/events-hq/ops/play_event.sh | $T/h2/@.apps/rpg-edit-hq/events/phase_dusk | $T/h2 | clock
+EXPECT_EXIT | 0 | the-shipped-dusk-page-runs
+SLEEP | 4000
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/world/screen_state.pdl | value=30,-10,-40,10 | the-page-set-the-tint-the-plug-holds
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/world/screen_state.pdl | frames=60 | and-the-frames
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/lamps_on.txt | 1 | and-turned-the-lamps-on-from-the-plug-word
+WRITE   | h2/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | ENABLED \p 1\nPARAM \p tint_dusk \p 1,2,3,4 \p tone \p \p \p x\nPARAM \p tint_frames \p 33 \p int \p 1 \p 600 \p x\nPARAM \p lamps_at_dusk \p off \p word \p \p \p x\n
+RUN | /bin/bash | $T/h2/&.widgits/events-hq/ops/play_event.sh | $T/h2/@.apps/rpg-edit-hq/events/phase_dusk | $T/h2 | clock
+SLEEP | 4000
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/world/screen_state.pdl | value=1,2,3,4 | the-SAME-page-follows-an-edit-of-the-plug-with-no-recompile
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/world/screen_state.pdl | frames=33 | frames-too
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/lamps_on.txt | 0 | and-the-lamps-word
+WRITE   | h2/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | ENABLED \p 0\nPARAM \p tint_dusk \p 9,9,9,9 \p tone \p \p \p x\nPARAM \p tint_frames \p 5 \p int \p 1 \p 600 \p x\nPARAM \p lamps_at_dusk \p on \p word \p \p \p x\n
+RUN | /bin/bash | $T/h2/&.widgits/events-hq/ops/play_event.sh | $T/h2/@.apps/rpg-edit-hq/events/phase_dusk | $T/h2 | clock
+SLEEP | 4000
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/world/screen_state.pdl | value=1,2,3,4 | NEGATIVE-the-plug-is-off-so-the-tint-did-not-change
+EXPECT_LACKS | h2/@.apps/rpg-edit-hq/state/world/screen_state.pdl | 9,9,9,9 | and-no-value-of-the-off-plug-was-written
+EXPECT_HAS | h2/@.apps/rpg-edit-hq/state/lamps_on.txt | 0 | NEGATIVE-and-the-lamps-stayed-as-they-were
+
+CASE    | cleanup
+CLEAN |

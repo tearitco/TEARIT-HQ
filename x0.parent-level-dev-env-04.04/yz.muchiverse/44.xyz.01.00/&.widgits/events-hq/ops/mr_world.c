@@ -5,6 +5,7 @@
  * Usage: mr_world.+x <entity_dir> <mode> <k1> [k2] [k3]
  */
 #include "mr_clock_common.h"
+#include "../../_shared-lib/plug_ref.c"      /* @plug:<plug>:<key> references in event arguments (D74/D75) */
 
 int main(int argc, char **argv) {
     if (argc < 4) {
@@ -13,9 +14,12 @@ int main(int argc, char **argv) {
     }
     const char *ent = argv[1];
     const char *mode = argv[2];
+    char r1[240], r2[240], r3[240];      /* a plug reference in an argument is resolved when the command RUNS; a refusal stops the command loudly (exit 3), it never runs with a stale value */
     const char *a1 = argv[3];
     const char *a2 = (argc > 4) ? argv[4] : "";
     const char *a3 = (argc > 5) ? argv[5] : "";
+    { char pd[MR_PATH_BUF]; snprintf(pd, sizeof pd, "%s/../../plugs", ent); const char **ap[3] = { &a1, &a2, &a3 }; char *rb[3] = { r1, r2, r3 };
+      for (int i = 0; i < 3; i++) { int rc = plug_ref(pd, *ap[i], rb[i], 240); if (rc < 0) { fprintf(stderr, "mr_world: refused: %s\n", rb[i]); return 3; } if (rc > 0) *ap[i] = rb[i]; } }
 
     char root[MR_PATH_BUF];
     mr_state_root(ent, root, sizeof(root));

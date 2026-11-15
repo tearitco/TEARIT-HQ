@@ -15,3 +15,14 @@ PHASE | dawn  | 6  | 256,215,185 | 256,240,225 | Sunset
 PHASE | day   | 8  | 256,256,256 | 256,256,256 | CloudySky1
 PHASE | dusk  | 17 | 256,200,160 | 256,235,215 | Sunset
 PHASE | night | 19 | 110,120,190 | 200,205,235 | StarlitSky
+# PARAM | key | value | type | min | max | help      the values the four phase event pages read (events/phase_*): a node argument @plug:day-night:<key> is resolved when the page RUNS (plug_ref.c).
+#   type: tone = Tint Screen r,g,b,gray (each -255..255), int (min and max bound it), word, text. A value outside its type or bounds REFUSES the command (it never runs with a stale value).
+PARAM | tint_dawn      | 25,5,-30,0      | tone | |   | the Tint Screen tone the dawn page sets
+PARAM | tint_day       | 0,0,0,0         | tone | |   | the Tint Screen tone the day page sets (0,0,0,0 = no tint)
+PARAM | tint_dusk      | 30,-10,-40,10   | tone | |   | the Tint Screen tone the dusk page sets
+PARAM | tint_night     | -70,-60,-10,40  | tone | |   | the Tint Screen tone the night page sets
+PARAM | tint_frames    | 60              | int  | 1 | 600 | how many frames each tint takes to fade in
+PARAM | greeting_chat  | Good morning    | text | |   | what the pet says in the chat at dawn
+PARAM | greeting_voice | Good morning, everyone. | text | | | what the pet says aloud at dawn
+PARAM | lamps_at_dawn  | off             | word | |   | lamps on or off when the dawn page runs
+PARAM | lamps_at_dusk  | on              | word | |   | lamps on or off when the dusk page runs

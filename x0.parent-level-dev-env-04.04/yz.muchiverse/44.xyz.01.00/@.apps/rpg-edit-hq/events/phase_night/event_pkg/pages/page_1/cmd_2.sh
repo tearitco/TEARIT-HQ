@@ -3,4 +3,4 @@ cd "$(dirname "$0")/../../.." || exit 1
 ENT="${MUCHI_TARGET_ENT:-$PWD}"
 D="$ENT"
 while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
-exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" tint '-70,-60,-10,40' '60'
+exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" tint '@plug:day-night:tint_night' '@plug:day-night:tint_frames'
