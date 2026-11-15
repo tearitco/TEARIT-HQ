@@ -3549,11 +3549,11 @@ static int render_one_frame(void) {
      * file, and only the change survives the subtract. Yaw and pitch
      * are not touched. The file itself is not rewritten. */
     {
-        static int floor_cam_desk = -1;
+        static char floor_cam_key[4352] = "";   /* the desk FOLDER, not g_mk.id: a reload of the same desk (the backslash skin swap appends to cells.marker) bumps the id and used to re-baseline the camera, snapping it home */
         static int floor_cam_z = 0, floor_pan_x = 0, floor_pan_y = 0, floor_pan_z = 0;
         if (maker_ground) {
-            if (floor_cam_desk != g_mk.id) {
-                floor_cam_desk = g_mk.id;
+            if (strcmp(floor_cam_key, g_mk.key) != 0) {
+                snprintf(floor_cam_key, sizeof floor_cam_key, "%s", g_mk.key);
                 floor_cam_z = cam_z_level;
                 floor_pan_x = cam_pan_x;
                 floor_pan_y = cam_pan_y;
