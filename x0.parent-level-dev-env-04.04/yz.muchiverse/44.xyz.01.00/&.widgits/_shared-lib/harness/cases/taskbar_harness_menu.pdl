@@ -67,3 +67,15 @@ RUN | /usr/bin/grep | -qF | livedesk_current_session_name(house_root, b, sizeof(
 EXPECT_EXIT | 0 | the-book-is-the-one-the-bar-shows-not-the-editors
 RUN | /usr/bin/grep | -c | board_window.pid | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
 EXPECT_OUT | 0 | NEGATIVE-the-editor-board-state-is-no-longer-read
+
+CASE    | cancel-row-with-zero-rows-and-restart-chime
+SCRATCH |
+# 2026-11-14 owner: (1) a book with nothing listed had NO cancel row (the manager added it only when count > 0), so no notes row either; (2) a restart from the HQ dropdown played no music: the relaunch row started the player with `run` (no chime), only `boot` plays it.
+RUN | /usr/bin/grep | -qF | if (count < max) { snprintf(menu[count].label, sizeof(menu[count].label), "cancel"); | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | cancel-is-added-even-with-zero-rows
+RUN | /usr/bin/grep | -cF | if (count > 0 && count < max) | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_OUT | 0 | NEGATIVE-the-old-only-when-rows-exist-condition-is-gone
+RUN | /usr/bin/grep | -qF | start_player.sh' boot | $HOUSE/$.crypts/close_on_restart.pdl
+EXPECT_EXIT | 0 | the-restart-relaunch-of-the-sound-player-uses-boot-so-it-chimes
+RUN | /usr/bin/grep | -qF | start_player.sh' run | $HOUSE/$.crypts/close_on_restart.pdl
+EXPECT_EXIT | 1 | NEGATIVE-the-silent-run-mode-is-not-used-for-the-restart-relaunch

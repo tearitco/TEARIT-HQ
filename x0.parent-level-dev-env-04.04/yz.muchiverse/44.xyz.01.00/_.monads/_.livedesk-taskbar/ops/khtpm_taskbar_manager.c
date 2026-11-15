@@ -4093,8 +4093,9 @@ static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu,
     }
     fclose(fp);
     /* every header-cell menu ends with a cancel row: the generic notes-<cell> row is inserted ONE SLOT ABOVE the trailing row, so without this it landed above the last real harness row
-     * (seen live 2026-11-07). An empty command just closes the menu. Only when there is at least one row (an empty list keeps the "(empty)" fallback). */
-    if (count > 0 && count < max) { snprintf(menu[count].label, sizeof(menu[count].label), "cancel"); menu[count].command[0] = '\0'; count++; }
+     * (seen live 2026-11-07). An empty command just closes the menu. Since 2026-11-14 also with zero rows. */
+    /* 2026-11-14: cancel is added ALSO with zero rows (a book with no tools of its own lists nothing; it still needs cancel and the notes row above it) */
+    if (count < max) { snprintf(menu[count].label, sizeof(menu[count].label), "cancel"); menu[count].command[0] = '\0'; count++; }
     return count;
 }
 
