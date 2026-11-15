@@ -16,6 +16,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #define P 4096
 #define MAXSIB 32
 typedef struct { int x, y, w, h; } Rect;
@@ -25,6 +26,9 @@ static int num(const char *file, const char *key, int def, int lo, int hi) { cha
 static int alive(const char *f) { FILE *fp = fopen(f, "r"); if (!fp) return 0; char b[32] = ""; if (fgets(b, sizeof b, fp)) {} fclose(fp); long pid = atol(b); if (pid <= 0) return 0; return kill((pid_t)pid, 0) == 0 || errno == EPERM; }
 static int overlap(Rect a, Rect b, int gap) { return a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap; }
 static void wr(const char *path, const char *text) { char t[P + 8]; snprintf(t, sizeof t, "%s.tmp", path); FILE *w = fopen(t, "w"); if (!w) return; fputs(text, w); fclose(w); rename(t, path); }
+/* 2026-11-15 (owner: phones must not open over the left GNOME dock): the desktop publishes its usable area (_NET_WORKAREA = x y w h, the dock and panel already subtracted); used only when --screen-w is NOT given, so a harness stays deterministic */
+static int work_area(int *x, int *y, int *w) { Display *d = XOpenDisplay(NULL); if (!d) return 0; Atom a = XInternAtom(d, "_NET_WORKAREA", True); Atom t; int f; unsigned long n = 0, rem = 0; unsigned char *p = NULL; int ok = 0;
+    if (a != None && XGetWindowProperty(d, DefaultRootWindow(d), a, 0, 4, False, XA_CARDINAL, &t, &f, &n, &rem, &p) == Success && p && n >= 4 && f == 32) { long *v = (long *)p; if (v[2] > 400) { *x = (int)v[0]; *y = (int)v[1]; *w = (int)v[2]; ok = 1; } } if (p) XFree(p); XCloseDisplay(d); return ok; }
 static int screen_w(void) { Display *d = XOpenDisplay(NULL); if (!d) return 1920; int w = DisplayWidth(d, DefaultScreen(d)); XCloseDisplay(d); return w > 400 ? w : 1920; }
 
 int main(int argc, char **argv) {
@@ -33,7 +37,7 @@ int main(int argc, char **argv) {
     if (w < 50 || h < 50 || w > 20000 || h > 20000) { fprintf(stderr, "window_place_op: bad size\n"); return 2; }
     char pdl[P]; snprintf(pdl, sizeof pdl, "%s/placement.pdl", app); if (access(pdl, R_OK)) { printf("PLACE-REFUSED no placement.pdl in %s (the app has not opted in)\n", app); return 1; }
     char group[64]; if (!kv(pdl, "GROUP", group, sizeof group) || !group[0] || strchr(group, '/') || strstr(group, "..")) snprintf(group, sizeof group, "instances");
-    int mx = num(pdl, "MARGIN_X", 20, 0, 2000), ty = num(pdl, "TOP_Y", 110, 0, 2000), gap = num(pdl, "GAP", 12, 0, 500); if (sw <= 0) sw = screen_w();
+    int mx = num(pdl, "MARGIN_X", 20, 0, 2000), ty = num(pdl, "TOP_Y", 110, 0, 2000), gap = num(pdl, "GAP", 12, 0, 500); if (sw <= 0) { int wx, wy, ww; if (work_area(&wx, &wy, &ww)) { if (mx < wx + 10) mx = wx + 10; if (ty < wy + 8) ty = wy + 8; sw = wx + ww; } else sw = screen_w(); }
     static Rect sib[MAXSIB]; int n = 0; char gd[P]; snprintf(gd, sizeof gd, "%s/%s", app, group); DIR *dp = opendir(gd);
     if (dp) { struct dirent *e; while ((e = readdir(dp)) && n < MAXSIB) { if (e->d_name[0] == '.') continue; char in[P], f[P]; snprintf(in, sizeof in, "%s/%s", gd, e->d_name);
             char a[P], b[P]; if (realpath(in, a) && realpath(inst, b) && !strcmp(a, b)) continue;      /* not itself */
