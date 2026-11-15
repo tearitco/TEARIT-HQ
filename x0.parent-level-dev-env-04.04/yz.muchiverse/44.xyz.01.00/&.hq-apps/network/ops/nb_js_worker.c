@@ -2341,22 +2341,8 @@ static JSValue nb_el_innerHTML_set(JSContext *ctx, JSValueConst this_val, int ar
 #include "nb_worker_insert_adjacent_element.c"
 /* children/childNodes getters extracted (Phase 1, single-TU include). */
 #include "nb_worker_children_nodes.c"
-static JSValue nb_el_parentNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    NbNode *p = n ? n->parent : NULL;
-    if (p) return push_node(ctx, p);
-    return JS_NULL;
-}
-static JSValue nb_el_firstChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    if (n && n->first_child) return push_node(ctx, n->first_child);
-    return JS_NULL;
-}
-static JSValue nb_el_nextSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = get_this(ctx, this_val);
-    if (n && n->next_sibling) return push_node(ctx, n->next_sibling);
-    return JS_NULL;
-}
+/* parentNode/firstChild/nextSibling getters extracted (Phase 1, single-TU include). */
+#include "nb_worker_node_relations_basic.c"
 /* Structural navigation (2026-11-11): lastChild existed but was never
  * installed on elements; previousSibling, parentElement, and the element-only
  * sibling/child accessors were absent entirely. All of these read the live C
