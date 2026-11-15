@@ -132,6 +132,61 @@ static void expand(const char *in, const char *book, const char *page, char *out
     out[o] = 0;
 }
 
+/* PLUGZ WINDOWS (2026-11-14, D76): the three windows (plugs, harnz, tests) read their rows and details through these verbs, so the parsing and the listing rules stay HERE (one authority).
+ *   harness_menu_op rows     <house> <book|-> <page|-> <plugs|harnz|tests> <out>        lines `label<TAB>id<TAB>state` (plug: on/off, test: last verdict like `37 ok`, harnz: -)
+ *   harness_menu_op describe <house> <book|-> <page|-> <plugs|harnz|tests> <id> <out>   key=value lines: title, status, control (toggle|click|run), confirm, n_info, info_<n>
+ * The same hiding rules as `list` apply (a book with nothing of its own lists no global tests; an own row that repeats a global one is hidden). */
+static int kind_ok(const char *k) { return !strcmp(k, "plugs") || !strcmp(k, "harnz") || !strcmp(k, "tests"); }
+static void one_line(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '\t') *s = ' '; }
+static int plugz_rows(const char *book, const char *page, const char *kind, const char *outf) {
+    int named = book[0] && strcmp(book, "-") && word_ok(book); if (!named) book = ""; load_all(book);
+    int nown = 0; for (int i = 0; i < nr; i++) if (!R[i].global) nown++;
+    static char pn[MAXPLUG][48]; int np = named ? plug_names(book, pn, MAXPLUG) : 0; g_hide_global = named && !nown && !np;
+    static char out[MAXR * 200 + MAXPLUG * 100 + 400]; out[0] = 0; size_t l;
+    if (!strcmp(kind, "plugs")) { for (int i = 0; i < np; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\tplug:%s\t%s\n", pn[i], pn[i], plug_enabled(book, pn[i]) ? "on" : "off"); } }
+    else for (int i = 0; i < nr; i++) { int is_case = !strcmp(R[i].kind, "CASE"); if (!listed(i, page) || is_case != !strcmp(kind, "tests")) continue;
+        char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); const char *s = sfx[0] == ' ' ? sfx + 2 : sfx; char st[24]; snprintf(st, sizeof st, "%s", s[0] ? s : "-"); char *rb = strchr(st, ']'); if (rb) *rb = 0;
+        l = strlen(out); snprintf(out + l, sizeof out - l, "%s\t%s\t%s\n", R[i].label, R[i].id, st); }
+    return write_atomic(outf, out);
+}
+static int plugz_describe(const char *book, const char *page, const char *kind, const char *id, const char *outf) {
+    int named = book[0] && strcmp(book, "-") && word_ok(book); if (!named) book = ""; static char out[8192]; out[0] = 0; size_t l; int ni = 0; char info[16][240];
+    #define PUT(...) do { l = strlen(out); snprintf(out + l, sizeof out - l, __VA_ARGS__); } while (0)
+    #define INFO(...) do { if (ni < 16) { snprintf(info[ni], sizeof info[ni], __VA_ARGS__); one_line(info[ni]); ni++; } } while (0)
+    if (!strcmp(kind, "plugs")) {
+        const char *pname = !strncmp(id, "plug:", 5) ? id + 5 : id; if (!named || !word_ok(pname)) { PUT("title=\nstatus=\ncontrol=none\nconfirm=no\nn_info=0\n"); return write_atomic(outf, out); }
+        char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, pname); FILE *fp = fopen(f, "r");
+        PUT("title=%s\nstatus=%s\ncontrol=toggle\nconfirm=no\n", pname, plug_enabled(book, pname) ? "on" : "off");
+        INFO("file @.apps/%s/plugs/%s.plug.pdl", book, pname);
+        if (fp) { char ln[600]; while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!strncmp(p, "PARAM", 5)) { char *fl[7]; int n = 0; for (char *t = strtok(p, "|"); t && n < 7; t = strtok(NULL, "|")) fl[n++] = trim(t); if (n >= 4) INFO("%s = %s  (%s)", fl[1], fl[2], fl[3]); }
+                else if (!strncmp(p, "PHASE", 5)) { char *fl[7]; int n = 0; for (char *t = strtok(p, "|"); t && n < 7; t = strtok(NULL, "|")) fl[n++] = trim(t); if (n >= 3) INFO("phase %s from hour %s", fl[1], fl[2]); } } fclose(fp); }
+    } else {
+        load_all(book); Row *r = NULL; for (int i = 0; i < nr; i++) if (!strcmp(R[i].id, id) && visible(&R[i], page)) r = &R[i];
+        int want_case = !strcmp(kind, "tests"); if (!r || ((!strcmp(r->kind, "CASE")) != (want_case != 0))) { PUT("title=\nstatus=\ncontrol=none\nconfirm=no\nn_info=0\n"); return write_atomic(outf, out); }
+        char sfx[24]; verdict_suffix(r, sfx, sizeof sfx); PUT("title=%s\nstatus=%s\ncontrol=%s\nconfirm=%s\n", r->label, sfx[0] ? sfx + 1 : "-", want_case ? "run" : "click", r->confirm);
+        if (want_case) { INFO("case %s", r->target); INFO("runs behind cpu_gate, one at a time"); } else { INFO("runs %s", r->target); if (strcmp(r->args, "-")) INFO("args %s", r->args); INFO("writes %s", r->writes); }
+        INFO("row from %s line %d", r->src, r->line);
+    }
+    PUT("n_info=%d\n", ni); for (int i = 0; i < ni; i++) PUT("info_%d=%s\n", i, info[i]);
+    return write_atomic(outf, out);
+}
+/* OPEN (D76): `pick open:<kind>` starts the window for that kind. ONE layout (&.hq-apps/plugz-hq/plugz-hq.xhtpm) serves all three kinds through the renderer's generic instance-dir hook (argv[3] = <app>/instances/<kind>,
+ * ${ARG3}); the instance's .hq_manager/ holds kind.txt, book.txt, page.txt (what to show), marker.txt (append-only wake-up, never rewritten) and window.pid. Started through the spawn funnel (registered). One window per kind:
+ * a second pick only refreshes book and page and wakes the window. Prints WINDOW-OPENED <kind> <pid> | WINDOW-REFRESHED <kind> <pid> | WINDOW-MISSING <what>. */
+static int plugz_open(const char *kind, const char *book, const char *page) {
+    char app[P], inst[P], hq[P], f[P]; snprintf(app, sizeof app, "%s/&.hq-apps/plugz-hq", HOUSE); snprintf(inst, sizeof inst, "%s/instances/%s", app, kind); snprintf(hq, sizeof hq, "%s/.hq_manager", inst);
+    char x[P], exe[P], funnel[P]; snprintf(x, sizeof x, "%s/plugz-hq.xhtpm", app); snprintf(exe, sizeof exe, "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", HOUSE); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
+    if (access(x, R_OK)) { printf("WINDOW-MISSING layout\n"); return 1; } if (access(exe, X_OK)) { printf("WINDOW-MISSING renderer\n"); return 1; } if (access(funnel, R_OK)) { printf("WINDOW-MISSING spawn-funnel\n"); return 1; }
+    char d1[P]; snprintf(d1, sizeof d1, "%s/instances", app); mkdir(d1, 0755); mkdir(inst, 0755); mkdir(hq, 0755);
+    snprintf(f, sizeof f, "%s/kind.txt", hq); write_atomic(f, kind); snprintf(f, sizeof f, "%s/book.txt", hq); write_atomic(f, book[0] ? book : "-"); snprintf(f, sizeof f, "%s/page.txt", hq); write_atomic(f, page[0] ? page : "-");
+    snprintf(f, sizeof f, "%s/marker.txt", hq); { FILE *mf = fopen(f, "a"); if (mf) { fputc('x', mf); fclose(mf); } struct stat sb; if (!stat(f, &sb) && sb.st_size > 4096) unlink(f); }      /* capped: a marker over 4 KB is restarted */
+    char pf[P]; snprintf(pf, sizeof pf, "%s/window.pid", inst); char pb[32] = ""; FILE *pp = fopen(pf, "r"); if (pp) { if (fgets(pb, sizeof pb, pp)) { } fclose(pp); } long pid = atol(pb);
+    if (pid > 1 && !kill((pid_t)pid, 0)) { char cl[P]; snprintf(cl, sizeof cl, "/proc/%ld/cmdline", pid); FILE *cp = fopen(cl, "r"); char c[512] = ""; if (cp) { size_t n = fread(c, 1, sizeof c - 1, cp); c[n] = 0; fclose(cp); } if (strstr(c, "khtpm_core_render")) { printf("WINDOW-REFRESHED %s %ld\n", kind, pid); return 0; } }
+    setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "plugz-hq", 1); char nm[64]; snprintf(nm, sizeof nm, "plugz-%s", kind); char tmp[P]; snprintf(tmp, sizeof tmp, "%s/spawn.out", inst);
+    char *av[] = { "sh", funnel, HOUSE, "0", nm, "--", exe, HOUSE, x, inst, NULL }; run_child(av, HOUSE, tmp, 20);
+    FILE *tp = fopen(tmp, "r"); char out[64] = ""; if (tp) { if (fgets(out, sizeof out, tp)) { } fclose(tp); } unlink(tmp); long np = atol(out); if (np <= 1) { printf("WINDOW-MISSING spawn-failed\n"); return 1; }
+    char num[32]; snprintf(num, sizeof num, "%ld\n", np); write_atomic(pf, num); printf("WINDOW-OPENED %s %ld\n", kind, np); return 0;
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: harness_menu_op list|pick|check <house> ...\n"); return 2; }
     const char *verb = argv[1]; snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
@@ -143,9 +198,11 @@ int main(int argc, char **argv) {
                 if (!named) bad(f, 0, "a plug file needs a row PLUG | name | <the file name>"); if (!has_en) bad(f, 0, "a plug file needs an ENABLED | 1 or 0 row"); } }
         printf("HARNESS-CHECK rows=%d bad=%d\n", nr, nbad); return nbad ? 2 : 0;
     }
-    /* LAUNCHER (2026-11-14, owner): the LyfeDesk top-bar Tools dropdown is only three launchers into three windows (plugs, harnz, tests: tests are their own kind, owner agreed); the bar adds notes and cancel. The windows are NOT BUILT: the labels say so and a pick (open:plugs, open:harnz, open:tests) prints WINDOW-NOT-BUILT and changes nothing. Remove the words "not built yet" per window when it lands. The book and page arguments are accepted for the windows to come. */
+    if (!strcmp(verb, "rows") && argc >= 7) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_rows(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6]) ? 2 : 0; }
+    if (!strcmp(verb, "describe") && argc >= 8) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_describe(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6], argv[7]) ? 2 : 0; }
+    /* LAUNCHER (2026-11-14, owner): the LyfeDesk top-bar Tools dropdown is only three launchers into three windows (plugs, harnz, tests: tests are their own kind, owner agreed); the bar adds notes and cancel. A pick (open:plugs, open:harnz, open:tests) opens that window (plugz_open below, D76); the windows are built. The book and page arguments are accepted for the windows to come. */
     if (!strcmp(verb, "launcher") && argc >= 6) {
-        if (write_atomic(argv[5], "plugs (not built yet)\topen:plugs\nharnz (not built yet)\topen:harnz\ntests (not built yet)\topen:tests\n")) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
+        if (write_atomic(argv[5], "plugs\topen:plugs\nharnz\topen:harnz\ntests\topen:tests\n")) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }
     if (!strcmp(verb, "list") && argc >= 6) {
@@ -173,7 +230,7 @@ int main(int argc, char **argv) {
         const char *book = strcmp(argv[3], "-") ? argv[3] : "", *page = strcmp(argv[4], "-") ? argv[4] : "", *id = argv[5]; int confirmed = argc >= 7 && !strcmp(argv[6], "--confirmed");
         if (argc >= 7 && !confirmed) return 2;
         if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }
-        if (!strncmp(id, "open:", 5)) { printf("WINDOW-NOT-BUILT %s\n", id + 5); return 0; }      /* the three windows are not built: a pick changes nothing */
+        if (!strncmp(id, "open:", 5)) { if (!kind_ok(id + 5)) { fprintf(stderr, "harness_menu_op: no window %s\n", id + 5); return 2; } return plugz_open(id + 5, book, page); }      /* D76: open the window for that kind */
         if (!strcmp(id, "new:plug") || !strcmp(id, "new:harnz")) { printf("NEW-NOT-BUILT %s\n", id + 4); return 0; }      /* the maker is not built: a pick shows the row and changes nothing */      /* a group heading: picking it does nothing */
         if (!strncmp(id, "plug:", 5)) {      /* a plug row: flip its ENABLED row (D74); the book must be open */
             const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }

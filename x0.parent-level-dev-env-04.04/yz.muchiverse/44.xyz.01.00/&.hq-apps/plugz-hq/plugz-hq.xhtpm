@@ -1,0 +1,36 @@
+<!-- plugz-hq.xhtpm - ONE window layout for the three kinds (plugs, harnz, tests), D76 (2026-11-14, owner: "they will use basically the same screen").
+     It is static: all content is ${vars} from <instance>/.hq_manager/ui.txt, written by ops/plugz_projector.c. The renderer's generic instance-dir hook does the rest:
+     it is launched as   khtpm_core_render <house> <this file> <instance dir>   so ${ARG3} = <app>/instances/<kind> and that dir's .hq_manager/ui.txt is loaded automatically
+     (the same hook events-hq uses). The kind (plugs | harnz | tests), the book and the page live in files of the instance; nothing here knows which kind it is except the
+     show= flags the projector writes (show_control, control_label, show_confirm).
+     LEFT sidebar: the list (a plug has [x]/[ ], a test its last verdict). RIGHT panel: the selected row's detail, the one control button (plug = toggle, harnz = click, test = run),
+     the LINKS block (what it fires / what fires it: read-only until spec step 4b, TRIGGER rows, exists).
+     All writes go through ops/plugz_act.c (select, control, confirm); it calls harness_menu_op, the one authority for the rows. -->
+<window label="${window_title}" class="plugz-hq database-window">
+  <module id="projector" src="&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${list_title}" class="block-title"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <item id="row${row.#}" class="${row.cls}" label="${row.text}" action="'${PKG}/ops/+x/plugz_act.+x' 'select' '${row.idx}' '${ARG3}'"/>
+        </repeat>
+        <text label="${empty_text}" class="quiet" show="${no_rows}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${detail_title}" class="block-title"/>
+      <text label="${detail_status}" class="quiet"/>
+      <item id="control" class="btn" label="${control_label}" show="${show_control}" action="'${PKG}/ops/+x/plugz_act.+x' 'control' '-' '${ARG3}'"/>
+      <item id="confirm" class="btn danger" label="${confirm_label}" show="${show_confirm}" action="'${PKG}/ops/+x/plugz_act.+x' 'confirm' '-' '${ARG3}'"/>
+      <text label="${last_result}" class="quiet"/>
+      <repeat count="${n_info}" bind="inf">
+        <text label="${inf.text}"/>
+      </repeat>
+      <text label="links" class="block-title"/>
+      <text label="fires: ${links_fires}" class="quiet"/>
+      <text label="fired by: ${links_firedby}" class="quiet"/>
+      <text label="${links_note}" class="quiet"/>
+    </panel>
+  </page>
+</window>

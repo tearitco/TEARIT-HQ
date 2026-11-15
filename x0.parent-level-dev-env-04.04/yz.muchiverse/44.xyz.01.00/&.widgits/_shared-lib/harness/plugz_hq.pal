@@ -1,0 +1,4 @@
+# plugz_hq.pal - the plugz-hq window's ops (projector, action op) with the real harness_menu_op in a scratch house. See cases/plugz_hq.pdl
+exec ./ops/+x/harness_case_op.+x cases/plugz_hq.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/plugz_hq.pdl
+halt

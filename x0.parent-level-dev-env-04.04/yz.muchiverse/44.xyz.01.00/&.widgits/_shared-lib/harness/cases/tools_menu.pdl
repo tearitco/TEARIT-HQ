@@ -129,13 +129,14 @@ CASE    | the-bar-launcher-is-three-rows
 # 2026-11-14 owner: the top-bar Tools dropdown is three launchers (plugs, harnz, tests = three kinds, three windows); the bar adds notes and cancel. The windows are not built: labels say so, a pick changes nothing.
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | launcher | $T/h | bk | start | $T/rows6.txt
 EXPECT_EXIT | 0 | the-launcher-writes
-EXPECT_HAS | rows6.txt | plugs (not built yet)\topen:plugs | a-plugs-row
-EXPECT_HAS | rows6.txt | harnz (not built yet)\topen:harnz | a-harnz-row
-EXPECT_HAS | rows6.txt | tests (not built yet)\topen:tests | and-a-tests-row-tests-are-their-own-kind
+EXPECT_HAS | rows6.txt | plugs\topen:plugs | a-plugs-row
+EXPECT_HAS | rows6.txt | harnz\topen:harnz | a-harnz-row
+EXPECT_HAS | rows6.txt | tests\topen:tests | and-a-tests-row-tests-are-their-own-kind
+EXPECT_LACKS | rows6.txt | not built yet | NEGATIVE-the-windows-exist-now-so-the-rows-no-longer-say-not-built
 EXPECT_LACKS | rows6.txt | day-night | NEGATIVE-no-plug-rows-in-the-launcher-they-live-in-the-plugs-window
 EXPECT_LACKS | rows6.txt | the proof | NEGATIVE-no-test-rows-in-the-launcher-they-live-in-the-tests-window
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | open:plugs
-EXPECT_OUT | WINDOW-NOT-BUILT plugs | a-pick-says-the-window-is-not-built
+EXPECT_OUT | WINDOW-MISSING layout | in-a-scratch-house-with-no-window-files-the-pick-says-what-is-missing-and-starts-nothing
 RUN | /usr/bin/grep | -c | ENABLED \p 0 | $T/h/@.apps/bk/plugs/beta.plug.pdl
 EXPECT_OUT | 1 | NEGATIVE-and-a-pick-flips-no-plug
 

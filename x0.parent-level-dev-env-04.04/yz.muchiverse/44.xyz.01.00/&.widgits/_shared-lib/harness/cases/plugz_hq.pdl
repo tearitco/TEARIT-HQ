@@ -1,0 +1,118 @@
+# plugz_hq (2026-11-14, decision D76): the window ops of plugz-hq: ONE layout, three kinds (plugs, harnz, tests). SCRATCH house, the REAL harness_menu_op, plugz_projector and plugz_act (and the spawn funnel for the worker).
+# The screen itself is a projection: ui.txt is what the template shows, so the checks read ui.txt (what is ON the window), and the files the act op changes (the plug's ENABLED row, pending.txt, last.txt).
+# Negative controls: a selection that is not digits is refused and changes nothing; an instance path that is not a plugz-hq instance is refused; a harnz that asks first does NOT run until confirmed; a nothing-selected
+# control runs nothing; a book with no tools of its own shows no tests. NOT covered here: the real renderer drawing the template (a live check) and a real click.
+RESULTS | ../results/plugz_hq.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.widgits/_shared-lib/harness/cases
+MKDIR | h/&.hq-apps/plugz-hq/ops/+x
+MKDIR | h/#.desktop
+MKDIR | h/@.apps/bk/ops/+x
+MKDIR | h/@.apps/bk/plugs
+MKDIR | h/@.apps/bk/state
+MKDIR | h/@.apps/empty
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/kh_spawn.sh | $T/h/&.widgits/_shared-lib/kh_spawn.sh
+RUN | /bin/cp | /bin/true | $T/h/@.apps/bk/ops/+x/noop
+WRITE   | h/&.widgits/_shared-lib/harness/cases/c1.pdl | CASE \p x\n
+WRITE   | h/#.desktop/harness_menu.pdl | HARNESS \p c1 \p * \p CASE \p the proof \p c1 \p - \p - \p no \p a test\n
+WRITE   | h/@.apps/bk/harness.pdl | HARNESS \p go \p * \p ACTION \p do it \p @.apps/bk/ops/+x/noop \p - \p - \p no \p a page tool\nHARNESS \p danger \p * \p ACTION \p wipe it \p @.apps/bk/ops/+x/noop \p - \p - \p yes \p asks first\n
+WRITE   | h/@.apps/bk/plugs/alpha.plug.pdl | PLUG \p name \p alpha\nENABLED \p 1\nPARAM \p speed \p 5 \p int \p 1 \p 9 \p how fast\n
+WRITE   | h/@.apps/bk/plugs/beta.plug.pdl | PLUG \p name \p beta\nENABLED \p 0\n
+MKDIR | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager
+MKDIR | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager
+MKDIR | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager
+MKDIR | h/&.hq-apps/plugz-hq/instances/none/.hq_manager
+WRITE   | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/kind.txt | plugs\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/book.txt | bk\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/page.txt | start\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/kind.txt | harnz\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/book.txt | bk\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/page.txt | start\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager/kind.txt | tests\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager/book.txt | bk\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager/page.txt | start\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/kind.txt | tests\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/book.txt | empty\n
+WRITE   | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/page.txt | start\n
+
+CASE    | plugs-window-shows-the-plugs
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_EXIT | 0 | the-projector-runs-once-and-exits
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | rows_count=2 | two-plugs-listed
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_0_text=[x] alpha | an-on-plug-is-marked-x
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_1_text=[ ] beta | an-off-plug-is-marked-empty
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_0_cls=data-item active | the-first-row-is-selected-by-default
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | detail_title=alpha | the-detail-is-the-selected-plug
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | control_label=  turn OFF  | an-on-plug-offers-turn-off
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | inf_1_text=speed = 5  (int) | the-typed-parameter-is-shown
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | links_note=triggers are not built yet | the-links-block-is-honest-that-triggers-are-not-built
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | the proof | NEGATIVE-no-test-rows-in-the-plugs-window
+
+CASE    | select-and-toggle
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 1 | $T/h/&.hq-apps/plugz-hq/instances/plugs | x | y
+EXPECT_EXIT | 0 | select-runs
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 1x | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_EXIT | 2 | NEGATIVE-a-selection-that-is-not-digits-is-refused
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/sel.txt | 1 | and-the-selection-is-unchanged-by-the-refusal
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | detail_title=beta | the-detail-follows-the-selection
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_1_cls=data-item active | the-second-row-is-the-active-one
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_0_cls=data-item\n | and-the-first-row-is-not
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | control_label=  turn ON  | an-off-plug-offers-turn-on
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_EXIT | 0 | the-control-button-runs
+EXPECT_HAS | h/@.apps/bk/plugs/beta.plug.pdl | ENABLED \p 1 | the-plug-file-was-switched-on
+EXPECT_HAS | h/@.apps/bk/state/plug_log.txt | TOGGLE | and-the-switch-is-logged-by-the-one-authority
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/last.txt | PLUG beta on | the-result-line-says-what-happened
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_1_text=[x] beta | the-window-now-shows-it-on
+EXPECT_HAS | h/@.apps/bk/plugs/alpha.plug.pdl | ENABLED \p 1 | NEGATIVE-the-other-plug-was-not-touched
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 0 | /tmp/not-an-instance
+EXPECT_EXIT | 2 | NEGATIVE-a-path-that-is-not-a-plugz-instance-is-refused
+
+CASE    | harnz-window-asks-first
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | row_0_text=do it | the-harnz-are-the-action-rows
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | row_1_text=wipe it | and-the-asking-one
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | alpha | NEGATIVE-no-plugs-in-the-harnz-window
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | the proof | NEGATIVE-no-tests-in-the-harnz-window
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | control_label=  click: run  | a-harnz-has-a-click-control
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 1 | $T/h/&.hq-apps/plugz-hq/instances/harnz
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/harnz
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/pending.txt | danger | the-row-that-asks-first-is-pending
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/last.txt | asks first | and-says-so
+RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/worker.out
+EXPECT_EXIT | 1 | NEGATIVE-nothing-ran-before-the-confirm
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | show_confirm=1 | the-confirm-button-shows
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | confirm | - | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_EXIT | 0 | confirm-starts-the-worker
+WAIT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/last.txt | (exit 0)  HARNESS danger ok | 8000 | the-worker-ran-the-row-and-wrote-its-result
+RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/pending.txt
+EXPECT_EXIT | 1 | NEGATIVE-the-pending-mark-is-gone-after-the-confirm
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | confirm | - | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_EXIT | 1 | NEGATIVE-a-confirm-with-nothing-pending-runs-nothing
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/last.txt | nothing is waiting | and-says-so
+
+CASE    | tests-window-and-the-empty-book
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/tests
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager/ui.txt | row_0_text=the proof | the-tests-window-lists-the-case
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager/ui.txt | control_label=  run this test  | a-test-has-a-run-control
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/tests/.hq_manager/ui.txt | do it | NEGATIVE-no-harnz-in-the-tests-window
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/none
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/ui.txt | no_rows=1 | a-book-with-no-tools-shows-no-tests
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/ui.txt | show_control=0 | and-no-control-button
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps/plugz-hq/instances/none
+EXPECT_EXIT | 1 | NEGATIVE-a-control-with-nothing-selected-runs-nothing
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/last.txt | nothing is selected | and-says-so
+
+CASE    | cleanup
+CLEAN |
