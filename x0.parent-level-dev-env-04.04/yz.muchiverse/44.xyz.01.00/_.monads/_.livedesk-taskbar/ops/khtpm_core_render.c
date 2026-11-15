@@ -9729,17 +9729,26 @@ static void assign_nav_and_layout(void) {
                 g_win_x = scr_w - 16 - want;
                 if (g_win_x < 0) { g_win_x = 0; want = scr_w - 16; }
             }
+            /* 2026-11-15 (plus phone, owner: a phone-shaped window): an explicit pixel width in the window's own CSS wins over the 5/8-screen default; a window without one is unchanged. Generic, no app names. */
+            CssStyle kws; memset(&kws, 0, sizeof kws); if (g_window) css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL, g_window->classes, g_window->n_classes, 0, &kws);
+            if (g_window && kws.has_width && !kws.width_is_pct && kws.width >= 200) want = kws.width;
             g_win_w = want;
             if (g_window) g_window->w = g_win_w;
         }
         /* scrollbar region right edge kept a comfortable 20px inside the
          * window so the track + thumb never crowd the frame/screen edge */
         int sbar_right = g_win_w - 20;
+        /* 2026-11-15 (plus phone, owner: "the app tiles can be larger"): a swatch whose OWN css asks for a pixel size above the default (width/height on .swatch) sets the tile size of the whole grid; no such rule = the old 34px tiles, so every palette picker is unchanged. */
+        int kh_tw = SWATCH, kh_th = SWATCH;
+        for (i = 0; i < page->n_children; i++) { Elem *it0 = page->children[i]; if (strcmp(it0->tag, "item") != 0) continue; int sw0 = 0, c0; for (c0 = 0; c0 < it0->n_classes; c0++) if (strcmp(it0->classes[c0], "swatch") == 0) sw0 = 1; if (!sw0) continue;
+            CssStyle s0; memset(&s0, 0, sizeof s0); css_compute_style(&g_sheet, it0->tag, it0->id, it0->classes, it0->n_classes, 0, &s0);
+            if (s0.has_width && !s0.width_is_pct && s0.width > SWATCH) kh_tw = s0.width; if (s0.has_height && !s0.height_is_pct && s0.height > SWATCH) kh_th = s0.height; break; }
+        pitch = kh_tw + SWATCH_GAP;
         int cols = (sbar_right - x0 - GENERIC_SCROLLBAR_W - 4) / pitch;
         if (cols < 1) cols = 1;
         int grid_w = cols * pitch;
-        int tile_w = SWATCH, tile_h = SWATCH;
-        int pitch_x = pitch, pitch_y = pitch;
+        int tile_w = kh_tw, tile_h = kh_th;
+        int pitch_x = pitch, pitch_y = kh_th + SWATCH_GAP;
         int n_sw = 0;
         int chrome_x = g_win_w - 8;   /* right-to-left cursor for chrome buttons */
         int found_close = 0;
@@ -9780,7 +9789,7 @@ static void assign_nav_and_layout(void) {
                  * sprite, label is icon+name+size same as list mode.
                  * Blanking those made a field of empty (often yellow)
                  * 34px tiles. Keep the label when there is no sprite. */
-                if (item->sprite[0])
+                if (item->sprite[0] && !(item->style.has_width && !item->style.width_is_pct && item->style.width > SWATCH))      /* a tile that asked for a bigger size keeps its name (2026-11-15) */
                     item->label[0] = '\0';
                 if (n_sw < MAX_CHILDREN) sw_items[n_sw] = item;
                 n_sw++;
@@ -9942,6 +9951,9 @@ static void assign_nav_and_layout(void) {
         }
         #undef KH_IS_FOOTER_CHIP
         g_win_h = max_y + 8;
+        /* same rule for height: an explicit pixel height in the window's CSS is a MINIMUM (a phone is taller than its few tiles) */
+        { CssStyle khs; memset(&khs, 0, sizeof khs); if (g_window) css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL, g_window->classes, g_window->n_classes, 0, &khs);
+          if (g_window && khs.has_height && !khs.height_is_pct && khs.height > g_win_h) g_win_h = khs.height; }
         } else {
         /* A page carrying a <canvas> is a live-framebuffer window (the
          * piececraft-hq board). It gets a horizontal toolbar row, top-

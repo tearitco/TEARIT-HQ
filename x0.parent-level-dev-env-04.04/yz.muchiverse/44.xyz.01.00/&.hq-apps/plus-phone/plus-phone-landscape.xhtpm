@@ -1,0 +1,17 @@
+<!-- plus-phone-landscape.xhtpm - the plus phone window (first slice 2026-11-15; design: BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md).
+     Built on the house's SWATCH-GRID path, the same shape as the palette picker (&.widgits/palettes/palettes-rmmv.xhtpm): class="palettes-pal database-window", no sidebar and no side panel (owner 2026-11-15),
+     every app is a SQUARE <item class="swatch"> tile. The window title and the _ ! X buttons are the house chrome (not redrawn); the one extra chrome button is @ (flip portrait <-> landscape),
+     declared in the template like the picker's close button. Static: every value is a ${var} from <instance>/.hq_manager/ui.txt written by ops/phone_projector.c (renderer instance-dir hook, ${ARG3}).
+     Every button runs ONE verb of ops/phone_op.c. The two layout files differ only in the window size (css); @ relaunches the window with the other one. -->
+<window label="${phone_title}" class="palettes-pal phone-landscape">
+  <module id="projector" src="&.hq-apps/plus-phone/ops/+x/phone_projector.+x"/>
+  <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <item id="flip" class="chrome-btn" label="@" action="'${PKG}/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
+    <repeat count="${n_apps}" bind="app">
+      <item id="app${app.#}" class="swatch" sprite="${app.icon}" label="${app.label}" action="'${PKG}/ops/+x/phone_op.+x' 'open' '${ARG3}' '${app.id}'"/>
+    </repeat>
+    <text label="no apps installed" class="quiet" show="${no_apps}"/>
+    <text label="${last_result}" class="quiet" show="${show_last}"/>
+  </page>
+</window>

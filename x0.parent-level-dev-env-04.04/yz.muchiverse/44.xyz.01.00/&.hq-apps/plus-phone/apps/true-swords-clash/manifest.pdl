@@ -1,0 +1,8 @@
+# manifest.pdl - a PHONE APP is data (design: BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md section 12). The shell reads this; the game itself lives in @.apps/TSC_ELO.
+APP | id | true-swords-clash
+TITLE | True Swords Clash
+ICON | icon
+ORDER | 1
+ORIENT | portrait
+PLATFORM | 1
+# ENTRY is not wired yet (build step 5): until then the home tile shows a message and starts nothing.

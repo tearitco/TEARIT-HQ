@@ -1,0 +1,7 @@
+# manifest.pdl - settings, a SHOW-ONLY phone app (owner 2026-11-15: "just for show"). Tapping it starts nothing yet; the platform has no settings to show until the contract grows.
+APP | id | settings
+TITLE | settings
+ICON | icon
+ORDER | 9
+ORIENT | portrait
+PLATFORM | 1

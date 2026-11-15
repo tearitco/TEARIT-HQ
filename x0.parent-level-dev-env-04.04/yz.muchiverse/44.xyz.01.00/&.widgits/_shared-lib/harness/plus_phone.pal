@@ -1,0 +1,4 @@
+# plus_phone.pal - the plus phone lifecycle (first slice 2026-11-15). See cases/plus_phone.pdl
+exec ./ops/+x/harness_case_op.+x cases/plus_phone.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/plus_phone.pdl
+halt

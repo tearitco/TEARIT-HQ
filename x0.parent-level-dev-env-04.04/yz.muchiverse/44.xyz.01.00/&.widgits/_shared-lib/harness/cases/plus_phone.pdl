@@ -1,0 +1,84 @@
+# plus_phone (2026-11-15): the lifecycle of the plus phone (design: BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md). SCRATCH house, the REAL phone_op, phone_projector and spawn funnel; the window is a STUB renderer (a script that sleeps, named
+# khtpm_core_render.+x and given the same arguments), so this proves the lifecycle, ports, cap, flip and close, NOT what the window looks like (that was checked by opening a real phone and reading the PNG, 2026-11-15). The ports are real
+# (a bind test from 41000), so a busy 41000 makes this case fail loudly. Every refusal has a passing control.
+RESULTS | ../results/plus_phone.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/_.monads/_.livedesk-taskbar/ops/+x
+MKDIR | h/#.desktop
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone.xhtpm | $T/h/&.hq-apps/plus-phone/plus-phone.xhtpm
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm | $T/h/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm
+RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/apps | $T/h/&.hq-apps/plus-phone/apps
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/kh_spawn.sh | $T/h/&.widgits/_shared-lib/kh_spawn.sh
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x
+WRITE   | h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | #!/bin/sh\necho "$2" >> "$3/launch.log"\nsleep 600\n
+RUN | /bin/chmod | +x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+
+CASE    | new-phones-get-different-ports
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_EXIT | 0 | a-phone-starts
+EXPECT_OUT | PHONE-OPENED 1 port=41000 | it-is-number-1-on-the-first-free-port
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/phone.txt | ORIENT \p portrait | it-starts-upright
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_OUT | PHONE-OPENED 2 port=41001 | the-second-phone-gets-a-DIFFERENT-port
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | list | $T/h
+EXPECT_OUT | 1 41000 portrait running | phone-1-is-running
+EXPECT_OUT | 2 41001 portrait running | and-phone-2
+
+CASE    | the-projection-lists-the-apps-in-manifest-order
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | the-projector-runs-once
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | phone_title=+1 :41000 | the-title-has-the-phone-number-and-port
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_apps=2 | two-apps
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_0_label=True Swords Clash | true-swords-clash-is-first
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_1_label=settings | settings-is-second-the-ORDER-rows-decide-not-the-folder-order
+
+CASE    | the-cap
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_OUT | PHONE-OPENED 4 | CONTROL-the-fourth-phone-opens
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_EXIT | 1 | NEGATIVE-the-fifth-is-refused
+EXPECT_OUT | PHONE-REFUSED at most 4 phones are open | with-the-reason
+RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plus-phone/instances/5
+EXPECT_EXIT | 1 | and-nothing-was-left-behind-for-it
+
+CASE    | flip
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | flip | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | flip-works
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/phone.txt | ORIENT \p landscape | the-orientation-is-written
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/phone.txt | PORT \p 41000 | and-the-port-did-not-change
+WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/launch.log | plus-phone-landscape.xhtpm | 5000 | the-window-was-relaunched-with-the-landscape-layout
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/2/launch.log | landscape | NEGATIVE-phone-2-was-never-flipped-so-it-never-got-the-landscape-layout
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/launch.log | nonesuch | NEGATIVE-and-the-log-has-no-layout-that-does-not-exist
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | flip | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/phone.txt | ORIENT \p portrait | flipping-twice-returns-to-portrait
+
+CASE    | close
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 2
+EXPECT_OUT | PHONE-CLOSED 2 | a-phone-closes
+RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plus-phone/instances/2
+EXPECT_EXIT | 1 | and-its-folder-is-gone
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 2
+EXPECT_EXIT | 1 | NEGATIVE-closing-it-again-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 1x
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-number-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | list | $T/h
+EXPECT_OUT | 1 41000 | CONTROL-closing-2-left-phone-1-alone
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_OUT | PHONE-OPENED 2 | a-freed-number-is-reused
+
+CASE    | cleanup
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 1
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 2
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 3
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | close | $T/h | 4
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | list | $T/h
+EXPECT_OUT | PHONES 0 | every-phone-is-closed-and-no-folder-is-left
+CLEAN |
