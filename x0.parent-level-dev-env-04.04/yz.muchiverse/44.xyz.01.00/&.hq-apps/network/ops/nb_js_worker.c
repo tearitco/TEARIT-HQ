@@ -2268,15 +2268,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 #include "nb_worker_dataset_own_keys.c"
 /* dataset getOwnPropertyDescriptor trap helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_dataset_desc.c"
-static JSValue nb_ds_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = nb_ds_node(ctx, this_val);
-    if (!n || argc < 2 || !JS_IsString(argv[1])) return JS_FALSE;
-    char *k = JS_ToCString(ctx, argv[1]);
-    char kb[128];
-    int ok = nb_ds_to_attr(k, kb, sizeof(kb));
-    JS_FreeCString(ctx, k);
-    return ok && attrs_has(n, kb) ? JS_TRUE : JS_FALSE;
-}
+/* dataset has trap helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_dataset_has.c"
 static JSValue nb_ds_make(JSContext *ctx, NbNode *n, int nidx) {
     JSValue h = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, h, "__nb_ds_idx", JS_NewInt32(ctx, nidx));
