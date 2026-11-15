@@ -1,0 +1,4 @@
+# app_package.pal - app packages: app_check + phone_op install/uninstall (2026-11-15). See cases/app_package.pdl
+exec ./ops/+x/harness_case_op.+x cases/app_package.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/app_package.pdl
+halt

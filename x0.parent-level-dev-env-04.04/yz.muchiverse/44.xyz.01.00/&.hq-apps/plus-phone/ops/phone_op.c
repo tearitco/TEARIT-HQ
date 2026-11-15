@@ -111,13 +111,32 @@ static int v_flip(const char *inst) { char o[16]; kv(inst, "ORIENT", o, sizeof o
     snprintf(txt, sizeof txt, "# phone.txt - CONFIG of one plus phone, written by phone_op. No game state lives here.\nPHONE | %s\nPORT | %s\nORIENT | %s\nSTARTED | %s\n", num, port, !strcmp(o, "portrait") ? "landscape" : "portrait", st); snprintf(f, sizeof f, "%s/phone.txt", inst); wr(f, txt); bump(inst); spawn_self("relaunch", inst); return 0; }
 static int v_relaunch(const char *inst) { usleep(300000); kill_window(inst); long pid = launch(inst); return pid ? 0 : 1; }
 static int v_open(const char *inst, const char *app) { for (const char *c = app; *c; c++) if (!(isalnum((unsigned char)*c) || *c == '-' || *c == '_')) return 2; char f[P], txt[200]; snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst);
-    snprintf(txt, sizeof txt, "%s: not wired yet (build step 5). Nothing was started.\n", app); wr(f, txt); bump(inst); return 0; }
-static int v_home(const char *inst) { char f[P]; snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst); unlink(f); bump(inst); return 0; }
+    /* an INSTALLED app opens its screen: screen.txt names it, the projector hides the grid and shows the app (a package with no screens is a BLANK app, shown as blank). settings is show-only. */
+    char mf[P], sf[P]; const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (h && strcmp(app, "settings")) { snprintf(mf, sizeof mf, "%.*s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", (int)(h - inst), inst, app); if (!access(mf, R_OK)) { snprintf(sf, sizeof sf, "%s/.hq_manager/screen.txt", inst); wr(sf, app); unlink(f); bump(inst); return 0; } }
+    snprintf(txt, sizeof txt, "%s: nothing to show yet. Nothing was started.\n", app); wr(f, txt); bump(inst); return 0; }
+/* INSTALL / UNINSTALL (2026-11-15, design section 24.4): an app reaches the phone only as a checked package folder. `install <house> <package_dir>`: app_check first (refused = nothing copied, its lines are printed), then the folder
+ * replaces apps/<id>/ (copied beside it first and renamed, so a failed copy never leaves half an app); every open phone is told to republish. `uninstall <house> <id>`: removes apps/<id>/ (the system app settings is refused). */
+static int is_word(const char *s) { if (!*s) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || *s == '-' || *s == '_')) return 0; return 1; }
+static void bump_all(void) { char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/plus-phone/instances", HOUSE); DIR *dp = opendir(d); if (!dp) return; struct dirent *e; while ((e = readdir(dp))) { if (e->d_name[0] == '.') continue; char inst[P]; snprintf(inst, sizeof inst, "%s/%s", d, e->d_name); bump(inst); } closedir(dp); }
+static int v_install(const char *pkg) {
+    char chk[P], tmp[P], tmp2[P]; snprintf(chk, sizeof chk, "%s/&.hq-apps/plus-phone/ops/+x/app_check.+x", HOUSE); if (access(chk, X_OK)) { printf("INSTALL-REFUSED app_check is not built\n"); return 1; }
+    snprintf(tmp, sizeof tmp, "%s/&.hq-apps/plus-phone/install.chk", HOUSE); { char *av[] = { chk, (char *)pkg, HOUSE, NULL }; int rc = run_out(av, tmp); FILE *f = fopen(tmp, "r"); char ln[400]; while (f && fgets(ln, sizeof ln, f)) fputs(ln, stdout); if (f) fclose(f); unlink(tmp); if (rc != 0) { printf("INSTALL-REFUSED the package did not pass app_check; nothing was copied\n"); return 1; } }
+    char id[64]; { char *p = strdup(pkg); size_t l = strlen(p); while (l > 1 && p[l - 1] == '/') p[--l] = 0; char *b = strrchr(p, '/'); snprintf(id, sizeof id, "%s", b ? b + 1 : p); free(p); } if (!is_word(id)) { printf("INSTALL-REFUSED bad id\n"); return 1; }
+    char apps[P], dst[P], stage[P]; snprintf(apps, sizeof apps, "%s/&.hq-apps/plus-phone/apps", HOUSE); snprintf(dst, sizeof dst, "%s/%s", apps, id); snprintf(stage, sizeof stage, "%s/.stage-%s", apps, id); snprintf(tmp2, sizeof tmp2, "%s/&.hq-apps/plus-phone/install.out", HOUSE);
+    { char *rm[] = { "/bin/rm", "-rf", stage, NULL }; run_out(rm, tmp2); } { char *cp[] = { "/bin/cp", "-R", (char *)pkg, stage, NULL }; if (run_out(cp, tmp2) != 0) { printf("INSTALL-FAILED the copy failed; nothing changed\n"); unlink(tmp2); return 1; } }
+    { char *rm[] = { "/bin/rm", "-rf", dst, NULL }; run_out(rm, tmp2); } if (rename(stage, dst)) { printf("INSTALL-FAILED could not move the staged copy into place\n"); unlink(tmp2); return 1; } unlink(tmp2); bump_all(); printf("INSTALLED %s\n", id); return 0;
+}
+static int v_uninstall(const char *id) {
+    if (!is_word(id)) { printf("UNINSTALL-REFUSED bad id\n"); return 1; } if (!strcmp(id, "settings")) { printf("UNINSTALL-REFUSED settings is a system app\n"); return 1; }
+    char dst[P], tmp[P]; snprintf(dst, sizeof dst, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, id); if (access(dst, F_OK)) { printf("UNINSTALL-REFUSED %s is not installed\n", id); return 1; }
+    snprintf(tmp, sizeof tmp, "%s/&.hq-apps/plus-phone/uninstall.out", HOUSE); char *rm[] = { "/bin/rm", "-rf", dst, NULL }; run_out(rm, tmp); unlink(tmp); bump_all(); printf("UNINSTALLED %s\n", id); return 0;
+}
+static int v_home(const char *inst) { char f[P]; snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst); unlink(f); snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); unlink(f); bump(inst); return 0; }
 
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: phone_op new|list <house> | close <house> <n> | flip|relaunch|home|closeself <instance> | open <instance> <app>\n"); return 2; }
     const char *v = argv[1];
-    if (!strcmp(v, "new") || !strcmp(v, "list") || !strcmp(v, "close") || !strcmp(v, "prefs")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); if (!strcmp(v, "prefs")) return argc >= 4 ? v_prefs(argv[3], argc >= 5 ? argv[4] : NULL) : 2; if (!strcmp(v, "new")) return v_new(); if (!strcmp(v, "list")) return v_list(); if (argc < 4) return 2; return v_close(argv[3]); }
+    if (!strcmp(v, "new") || !strcmp(v, "list") || !strcmp(v, "close") || !strcmp(v, "prefs") || !strcmp(v, "install") || !strcmp(v, "uninstall")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); if (!strcmp(v, "install")) return argc >= 4 ? v_install(argv[3]) : 2; if (!strcmp(v, "uninstall")) return argc >= 4 ? v_uninstall(argv[3]) : 2; if (!strcmp(v, "prefs")) return argc >= 4 ? v_prefs(argv[3], argc >= 5 ? argv[4] : NULL) : 2; if (!strcmp(v, "new")) return v_new(); if (!strcmp(v, "list")) return v_list(); if (argc < 4) return 2; return v_close(argv[3]); }
     if (!house_of(argv[2])) { fprintf(stderr, "phone_op: not a plus-phone instance: %s\n", argv[2]); return 2; }
     if (!strcmp(v, "flip")) return v_flip(argv[2]); if (!strcmp(v, "relaunch")) return v_relaunch(argv[2]); if (!strcmp(v, "home")) return v_home(argv[2]);
     if (!strcmp(v, "open") && argc >= 4) return v_open(argv[2], argv[3]);

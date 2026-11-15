@@ -9,8 +9,9 @@
     <item id="bar-top" class="bar-top" label=""/>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <item id="flip" class="chrome-btn" label="@" action="'${PKG}/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
+    <item id="back" class="chrome-btn" label="<" show="${app_open}" action="'${PKG}/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
     <repeat count="${n_apps}" bind="app">
-      <item id="app${app.#}" class="swatch" sprite="${app.icon}" label="${app.label}" action="'${PKG}/ops/+x/phone_op.+x' 'open' '${ARG3}' '${app.id}'"/>
+      <item id="app${app.#}" class="swatch" show="${app.show}" sprite="${app.icon}" label="${app.label}" action="'${PKG}/ops/+x/phone_op.+x' 'open' '${ARG3}' '${app.id}'"/>
     </repeat>
     <text label="no apps installed" class="quiet" show="${no_apps}"/>
     <text label="${last_result}" class="quiet" show="${show_last}"/>

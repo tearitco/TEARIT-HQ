@@ -73,6 +73,17 @@ EXPECT_EXIT | 1 | NEGATIVE-a-size-that-is-not-small-medium-large-is-refused
 EXPECT_OUT | PREFS-REFUSED icon_max must be | with-the-reason
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | prefs | $T/h | icon_max
 EXPECT_OUT | icon_max small | and-the-refused-value-changed-nothing
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+EXPECT_EXIT | 0 | opening-an-installed-app-works
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/screen.txt | true-swords-clash | the-phone-records-which-app-screen-is-open
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | x | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_open=1 | the-projection-says-an-app-is-open
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_1_show=1 | the-open-app-keeps-its-tile-as-the-header
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_0_show=0 | NEGATIVE-the-other-tiles-are-hidden
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | home | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/screen.txt | home-closes-the-app-screen
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | settings
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/screen.txt | NEGATIVE-settings-is-show-only-it-opens-no-screen
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | prefs | $T/h | nonesuch | small
 EXPECT_EXIT | 1 | NEGATIVE-an-unknown-setting-is-refused
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | prefs | $T/h | icon_max | large

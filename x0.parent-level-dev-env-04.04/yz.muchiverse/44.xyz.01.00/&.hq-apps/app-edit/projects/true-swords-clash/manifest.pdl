@@ -1,0 +1,8 @@
+# manifest.pdl - the True Swords Clash app PACKAGE, authored in app-edit (design: BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md sections 24-25).
+# Owner 2026-11-15: TSC is a BLANK space on the device until the real one is built in the editor and exported. No SCREEN rows = a blank app, which is valid.
+APP | id | true-swords-clash
+TITLE | True Swords Clash
+ICON | icon
+ORDER | 1
+ORIENT | portrait
+PLATFORM | 1

@@ -1,0 +1,76 @@
+# app_package (2026-11-15): an app reaches the plus phone only as a CHECKED package folder (design: BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md section 24.4). SCRATCH house; the REAL app_check, phone_op and layout_check.
+# Proves: a blank package is valid; every rule has a failing control (wrong folder name, unknown key, newer platform, screen outside the package, a screen that fails layout_check); install refuses a bad package and copies NOTHING;
+# install puts a good one in apps/<id>; uninstall removes it; the system app settings and a missing app are refused.
+RESULTS | ../results/app_package.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/apps/settings/icon
+MKDIR | h/@.apps/layout-studio/ops/+x
+MKDIR | pk/good-app/icon
+MKDIR | pk/good-app/screens
+MKDIR | pk/blank-app/icon
+MKDIR | pk/other-name/icon
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
+RUN | /bin/cp | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $T/h/@.apps/layout-studio/ops/+x/layout_check.+x
+WRITE | h/&.hq-apps/plus-phone/apps/settings/manifest.pdl | APP \p id \p settings\nTITLE \p settings\nICON \p icon\nPIN \p first\nPLATFORM \p 1\n
+WRITE | h/&.hq-apps/plus-phone/apps/settings/icon/sprite.csv | # resolution=1\nr,g,b,a\n1,1,1,255\n
+WRITE | pk/blank-app/icon/sprite.csv | # resolution=1\nr,g,b,a\n1,1,1,255\n
+WRITE | pk/blank-app/manifest.pdl | APP \p id \p blank-app\nTITLE \p Blank\nICON \p icon\nORDER \p 5\nORIENT \p portrait\nPLATFORM \p 1\n
+WRITE | pk/good-app/icon/sprite.csv | # resolution=1\nr,g,b,a\n1,1,1,255\n
+WRITE | pk/good-app/manifest.pdl | APP \p id \p good-app\nTITLE \p Good\nICON \p icon\nPLATFORM \p 1\nSCREEN \p home \p screens/home.xhtpm\n
+WRITE | pk/good-app/screens/home.xhtpm | <window label="g" class="database-window">\n<page name="main">\n<panel id="p"><item id="x" label="ok" action="sh x"/></panel>\n</page>\n</window>\n
+WRITE | pk/other-name/icon/sprite.csv | # resolution=1\nr,g,b,a\n1,1,1,255\n
+WRITE | pk/other-name/manifest.pdl | APP \p id \p different\nTITLE \p X\nICON \p icon\nPLATFORM \p 1\n
+
+CASE    | check
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/pk/blank-app | $T/h
+EXPECT_EXIT | 0 | a-package-with-no-screens-is-a-valid-BLANK-app
+EXPECT_OUT | a blank app | and-it-says-so
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/pk/good-app | $T/h
+EXPECT_EXIT | 0 | a-package-with-a-screen-that-passes-layout_check-is-valid
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/pk/other-name | $T/h
+EXPECT_EXIT | 1 | NEGATIVE-the-folder-name-must-equal-the-app-id
+EXPECT_OUT | the folder is named other-name | with-the-reason
+WRITE | pk/good-app/manifest.pdl | APP \p id \p good-app\nTITLE \p Good\nICON \p icon\nPLATFORM \p 2\nSCREEN \p home \p ../home.xhtpm\nBOGUS \p x\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/pk/good-app | $T/h
+EXPECT_EXIT | 1 | NEGATIVE-newer-platform-a-path-outside-the-package-and-an-unknown-key-are-all-refused
+EXPECT_OUT | PLATFORM 2 is newer | the-platform-problem-is-named
+EXPECT_OUT | must stay inside the package | the-path-problem-is-named
+EXPECT_OUT | unknown or incomplete row | the-typo-guard-fires
+WRITE | pk/good-app/manifest.pdl | APP \p id \p good-app\nTITLE \p Good\nICON \p icon\nPLATFORM \p 1\nSCREEN \p home \p screens/home.xhtpm\n
+WRITE | pk/good-app/screens/home.xhtpm | <window label="g" class="database-window">\n<page name="main">\n<panel id="p"><item id="x" class="plain"/></panel>\n</page>\n</window>\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/pk/good-app | $T/h
+EXPECT_EXIT | 1 | NEGATIVE-a-screen-that-fails-layout_check-fails-the-package
+EXPECT_OUT | fails layout_check | with-the-reason
+WRITE | pk/good-app/screens/home.xhtpm | <window label="g" class="database-window">\n<page name="main">\n<panel id="p"><item id="x" label="ok" action="sh x"/></panel>\n</page>\n</window>\n
+
+CASE    | install
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | install | $T/h | $T/pk/other-name
+EXPECT_EXIT | 1 | NEGATIVE-install-refuses-a-package-that-fails-the-check
+EXPECT_OUT | nothing was copied | and-says-so
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/other-name/manifest.pdl | and-nothing-landed-in-apps
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | install | $T/h | $T/pk/blank-app
+EXPECT_EXIT | 0 | a-good-package-installs
+EXPECT_OUT | INSTALLED blank-app | named
+EXPECT_FILE | h/&.hq-apps/plus-phone/apps/blank-app/manifest.pdl | the-manifest-is-in-apps
+EXPECT_FILE | h/&.hq-apps/plus-phone/apps/blank-app/icon/sprite.csv | with-its-icon
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | install | $T/h | $T/pk/good-app
+EXPECT_OUT | INSTALLED good-app | a-second-package-with-a-screen-installs
+EXPECT_FILE | h/&.hq-apps/plus-phone/apps/good-app/screens/home.xhtpm | and-its-screen-came-along
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | install | $T/h | $T/pk/blank-app
+EXPECT_EXIT | 0 | installing-again-replaces-it-an-update
+
+CASE    | uninstall
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | uninstall | $T/h | blank-app
+EXPECT_EXIT | 0 | uninstall-removes-the-app
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/blank-app/manifest.pdl | it-is-gone
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | uninstall | $T/h | blank-app
+EXPECT_EXIT | 1 | NEGATIVE-uninstalling-an-app-that-is-not-installed-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | uninstall | $T/h | settings
+EXPECT_EXIT | 1 | NEGATIVE-the-system-app-settings-cannot-be-uninstalled
+EXPECT_FILE | h/&.hq-apps/plus-phone/apps/settings/manifest.pdl | and-it-is-still-there
+CLEAN |
