@@ -87,3 +87,13 @@ The reviewer approved the split, the judge, the default-parity check, config-ver
 8. Live toggle or restart-only for a plug that changes game outcomes?
 9. Who may install a plug from outside: only through `/apply` by the owner?
 10. Tiebreak "when unsure, make it a plug": confirm?
+
+## 12. Owner answers to the review questions (2026-11-14, SAID) and how they become design
+| Q | Owner said | Design (DOC, mine; the owner has not reviewed this wording) |
+|---|---|---|
+| 7 Triggers | "triggers is fine" | In scope. A harnz or a test row may carry a `TRIGGER` (click, a clock reminder, a ledger row, a commit, a nightly run). Every automated run writes a verdict row; the existing clock `AT` rows are the schedule mechanism. Built after the Tools dropdown (section 8 gets step 4b) |
+| 8 Live or restart | "hybrid?" | Yes. A plug declares `AFFECTS | view` or `AFFECTS | outcome`. A **view** plug (day/night's tint and sky) toggles live, as it does today. An **outcome** plug changes only at a safe boundary (the next session or game) through a logged ledger row, and its parameter hash goes into the first ledger row so a replay refuses a mismatch (the Deskopoly pattern). Day/night must declare which it is: its tint and sky are view; its phase reaches pet chat rules, so it is `outcome` until that link is cut. Not built |
+| 9 Outside plugs | "safety but also dev abilities" | Two tiers. **Local dev plugs** (made in this house, by the owner or an agent, through the maker or by hand) are validated by the plug check and must declare the verbs they use (`USES` rows), but need no `/apply`. **Outside plugs** (imported, shared, pasted) are always proposed and the owner types `/apply` (old file kept as `.hai.bak`). A plug that tries an undeclared verb is refused in both tiers. Not built |
+| 10 Tiebreak | "u judge" | **Adopted: when unsure, make it a plug** (promoting a plug to an event later is easy; the reverse breaks games). One exception, stated so it is not abused: anything that guards ledger integrity (appending rows, replay checks, the rules hash itself) is engine, never a plug |
+
+Resulting build order (section 8, revised): 1 event pages read plug parameters (finishes day/night); 2 Tools dropdown groups; 3 generic plug header (`PARAM` with types, `AFFECTS`, `USES`, `VERSION`, `REQUIRES`, `CONFLICTS`) and the multi-plug loader with the collision and trust checks; 4 harnz kind `EVENT`; 4b `TRIGGER` and verdict rows; 5 the maker.
