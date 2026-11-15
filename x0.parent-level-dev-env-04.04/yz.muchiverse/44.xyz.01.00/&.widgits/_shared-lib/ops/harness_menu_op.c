@@ -143,6 +143,11 @@ int main(int argc, char **argv) {
                 if (!named) bad(f, 0, "a plug file needs a row PLUG | name | <the file name>"); if (!has_en) bad(f, 0, "a plug file needs an ENABLED | 1 or 0 row"); } }
         printf("HARNESS-CHECK rows=%d bad=%d\n", nr, nbad); return nbad ? 2 : 0;
     }
+    /* LAUNCHER (2026-11-14, owner): the LyfeDesk top-bar Tools dropdown is only three launchers into three windows (plugs, harnz, tests: tests are their own kind, owner agreed); the bar adds notes and cancel. The windows are NOT BUILT: the labels say so and a pick (open:plugs, open:harnz, open:tests) prints WINDOW-NOT-BUILT and changes nothing. Remove the words "not built yet" per window when it lands. The book and page arguments are accepted for the windows to come. */
+    if (!strcmp(verb, "launcher") && argc >= 6) {
+        if (write_atomic(argv[5], "plugs (not built yet)\topen:plugs\nharnz (not built yet)\topen:harnz\ntests (not built yet)\topen:tests\n")) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
+        return 0;
+    }
     if (!strcmp(verb, "list") && argc >= 6) {
         const char *book = argv[3], *page = strcmp(argv[4], "-") ? argv[4] : ""; load_all(book);
         int named = book[0] && strcmp(book, "-") && word_ok(book), nown = 0; for (int i = 0; i < nr; i++) if (!R[i].global) nown++;
@@ -168,6 +173,7 @@ int main(int argc, char **argv) {
         const char *book = strcmp(argv[3], "-") ? argv[3] : "", *page = strcmp(argv[4], "-") ? argv[4] : "", *id = argv[5]; int confirmed = argc >= 7 && !strcmp(argv[6], "--confirmed");
         if (argc >= 7 && !confirmed) return 2;
         if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }
+        if (!strncmp(id, "open:", 5)) { printf("WINDOW-NOT-BUILT %s\n", id + 5); return 0; }      /* the three windows are not built: a pick changes nothing */
         if (!strcmp(id, "new:plug") || !strcmp(id, "new:harnz")) { printf("NEW-NOT-BUILT %s\n", id + 4); return 0; }      /* the maker is not built: a pick shows the row and changes nothing */      /* a group heading: picking it does nothing */
         if (!strncmp(id, "plug:", 5)) {      /* a plug row: flip its ENABLED row (D74); the book must be open */
             const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }

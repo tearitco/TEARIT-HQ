@@ -4081,7 +4081,7 @@ static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu,
     if (access(op, X_OK) != 0) return 0;
     char ob[80], op2[80]; ktb_open_book_page(house_root, ob, sizeof ob, op2, sizeof op2);
     pid_t c = fork();
-    if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(op, op, "list", house_root, ob[0] ? ob : "-", op2[0] ? op2 : "-", rows, (char *)NULL); _exit(127); }
+    if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(op, op, "launcher", house_root, ob[0] ? ob : "-", op2[0] ? op2 : "-", rows, (char *)NULL); _exit(127); }
     if (c > 0) { int st; waitpid(c, &st, 0); }
     FILE *fp = fopen(rows, "r"); if (!fp) return 0;
     int count = 0; char ln[300];

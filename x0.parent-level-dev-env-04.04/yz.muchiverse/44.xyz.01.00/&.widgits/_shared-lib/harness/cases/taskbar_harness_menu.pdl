@@ -79,3 +79,11 @@ RUN | /usr/bin/grep | -qF | start_player.sh' boot | $HOUSE/$.crypts/close_on_res
 EXPECT_EXIT | 0 | the-restart-relaunch-of-the-sound-player-uses-boot-so-it-chimes
 RUN | /usr/bin/grep | -qF | start_player.sh' run | $HOUSE/$.crypts/close_on_restart.pdl
 EXPECT_EXIT | 1 | NEGATIVE-the-silent-run-mode-is-not-used-for-the-restart-relaunch
+
+CASE    | the-bar-dropdown-is-the-launcher
+SCRATCH |
+# 2026-11-14 owner: the top-bar Tools dropdown asks the op for the LAUNCHER (plugs, harnz, tests), not the full list.
+RUN | /usr/bin/grep | -qF | execl(op, op, "launcher", house_root, | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-bar-asks-for-the-launcher
+RUN | /usr/bin/grep | -cF | execl(op, op, "list", house_root | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_OUT | 0 | NEGATIVE-the-bar-no-longer-asks-for-the-full-list
