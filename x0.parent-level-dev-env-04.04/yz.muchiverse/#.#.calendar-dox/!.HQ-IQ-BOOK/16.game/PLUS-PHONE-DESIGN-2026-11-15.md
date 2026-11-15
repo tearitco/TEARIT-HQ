@@ -48,3 +48,114 @@ Labels: SAID (owner told an agent), READ (I opened the file), DOC (my reasoning,
 3. Cap on simultaneous phones (proposal 4) and whether closing the bar's `+` window closes all phones.
 4. Does a phone keep its state when closed (a saved phone you can reopen) or is each press a throwaway? (Proposal: throwaway by default, a named phone keeps its folder.)
 5. Should the first slice stop at step 3 (empty phone you can open twice) so you can look at it before any game work?
+
+---
+# DEEP DIVE (added 2026-11-15, owner: "intense documentation ... before i approve"). Everything below is DOC (my design) unless marked SAID or READ. Nothing is built.
+
+## 8. The picture: what a human sees
+```
+ TOP BAR   [HQ][user][file][desks][menu][pals][palettes][edit][player][db][tools][toys][store][network][h-ai][ + ][clock]
+                                                                                                            ^ new cell, nav-numbered like the rest; the key "+" does the same
+
+ PORTRAIT (base size, to confirm: 360 x 780)             LANDSCAPE after "@" (780 x 360)
+ +-------------------------------+                       +-----------------------------------------------------------+
+ | (o)   plus phone 1  :41731  @ |  <- chrome            | (o)   plus phone 1  :41731                              @ |
+ +-------------------------------+                       +-----------------------------------------------------------+
+ |                               |                       |                                                           |
+ |  [11 TSC ]  [12 .. ]  [13 ..] |  <- square icons,     |  [11 TSC ]  [12 .. ]  [13 .. ]  [14 .. ]  [15 .. ]       |
+ |  True       (empty)   (empty) |     nav numbers       |  True       (empty)   (empty)   (empty)   (empty)         |
+ |  Swords                       |                       |  Swords                                                   |
+ |  Clash                        |                       |  Clash                                                    |
+ |  [14 .. ]  [15 .. ]  [16 ..]  |                       |                                                           |
+ |                               |                       +-----------------------------------------------------------+
+ |                               |                       | [ home ]                                                  |
+ +-------------------------------+                       +-----------------------------------------------------------+
+ | [ home ]   [ back ]   [ kbd ] |  <- bottom row
+ +-------------------------------+
+ KEYBOARD (portrait, shown only when a field asks for text; every key is a nav item)
+ | q  w  e  r  t  y  u  i  o  p |   | a s d f g h j k l |   | shift z x c v b n m del |   | 123 | space | enter |
+```
+Two phones side by side = two windows, two ports, two ledgers. That is the whole point.
+
+## 9. File layout (one authority per file)
+```
+&.hq-apps/plus-phone/                    the phone PLATFORM (the shell). Static, tracked.
+  plus-phone.xhtpm  plus-phone.css       ONE layout, portrait and landscape as two classes of the same panels
+  ops/phone_op.c                         the ONE writer: new | list | close | orient | apps | status
+  ops/phone_projector.c                  the <module>: writes <instance>/.hq_manager/ui.txt only on change
+  ops/phone_act.c                        the action op the layout's buttons run (select, open app, home, back, key, flip)
+  ops/build_phone.sh                     one-line build (house convention)
+  apps/                                  PHONE APPS = data. One folder each:
+    true-swords-clash/manifest.pdl       id, title, icon, entry, orientation hint, min platform version
+    true-swords-clash/icon.*             square icon
+  instances/<n>/                         ONE phone (runtime, gitignored, capped)
+    phone.txt                            id, port, orientation, running_app, started, owner pid   (CONFIG + PREFERENCE, never game state)
+    state/<app>/                         the phone's own app state; the app's LEDGER lives here (no-ghost-data rule)
+    .hq_manager/ui.txt marker.txt ...    projection and wake-up marker (projections: safe to delete, regenerate)
+&.widgits/_shared-lib/harness/cases/plus_phone.pdl   the case that can fail (section 13)
+```
+`phone.txt` rows (draft): `PHONE | id | <n>`, `PORT | <number>`, `ORIENT | portrait|landscape`, `APP | <id or ->`, `OWNER | <pid>`, `STARTED | <epoch>`. A file that carries a fact the ledger lacks is ghost data: nothing about a GAME may live here; only what the phone itself is.
+
+## 10. Lifecycle (state machine)
+```
+ (none) --"+"--> STARTING --window up, port bound--> HOME --open app--> APP_RUNNING
+                    |                                  ^  |               |
+                    | failure (no free port,           |  +--"@"--> HOME/APP (orientation toggles, state unchanged)
+                    | window cap reached)              +--home----------+
+                    v                                  |
+                  REFUSED (one line, nothing left)     +--close / owner exits--> STOPPING --> (none)  [children ended by pid, instance folder removed unless the phone is named]
+```
+Rules: STARTING is atomic (folder + port + registry rows, or nothing: a half-made phone is removed). STOPPING ends only this phone's registered pids (never `pkill -f`; the memory note about self-matching patterns applies). A phone whose owner (the bar) is gone exits by itself (lifetime `owner`).
+
+## 11. Ports, peers and the PvP test
+- READ: `palnet_peer` scans for a free port and binds `127.0.0.1` by default (`PALNET_BIND`); its seeds are `host:port` entries. The phone op reuses that scan logic (a small shared piece, text-included once if two consumers need it, per the house include rule), picks a free port inside a reserved range (proposal 41000 to 41999), writes `PORT` to `phone.txt`, and starts the app with that port.
+- Peering for a test: phone A and phone B each get the OTHER's `127.0.0.1:<port>` as a seed. The phone op writes the seeds for all running phones on every `new`/`close` (one writer, regenerated, so a closed phone disappears from the seed lists).
+- LAN later: change the bind (a setting), not the design. Cross-machine networking is a separate, not-started plan (memory: `palnet_peer` was 127.0.0.1-only); this design does not depend on it.
+- What this tests: rated PvP (TSC_ELO), the ledger replay per player, and a disconnect (close one phone mid-game: the other must show it, case in section 13).
+
+## 12. Interfaces
+**Platform contract (v1, small on purpose).** An app may rely on exactly: (1) `manifest.pdl`; (2) its own state folder; (3) `PORT` and peer seeds; (4) a text request (the shell shows the keyboard and returns the typed line); (5) an orientation hint and its size; (6) home and back actions; (7) the house ledger rules. Anything outside this is not promised, so the native app only has to implement these seven items.
+`manifest.pdl` (draft): `APP | id | true-swords-clash`, `TITLE | True Swords Clash`, `ICON | icon.png`, `ENTRY | <house-relative executable under ops/+x>`, `ORIENT | portrait|landscape|any`, `PLATFORM | 1`.
+**Projection keys** the layout reads from `ui.txt` (draft): `phone_title`, `port_label`, `orient`, `n_apps`, `app_<i>_label/_icon/_idx`, `app_open`, `kbd_on`, `kbd_target`, `last_result`. The layout contains no logic, the same rule as plugz-hq.
+**Actions** (every button maps to one `phone_act` verb): `open <app>`, `home`, `back`, `flip`, `key <ch>`, `submit`, `close`.
+
+## 13. How we will prove it (each step: a case that can fail, a PNG a human opens)
+| Step | Case assertion | Negative / control | Picture |
+|---|---|---|---|
+| phone_op new | folder, `phone.txt`, a free port, registry rows | two news give two DIFFERENT ports; a full port range or the cap gives REFUSED and leaves nothing | none |
+| close | no registered pid left, folder gone | a named phone keeps its folder; closing the wrong id changes nothing | none |
+| window | `ui.txt` has the title, port and one app tile | an empty apps list shows "no apps", not a blank | portrait PNG |
+| `@` | `orient` flips, window size swaps, apps list unchanged | flipping twice returns to the start | portrait AND landscape PNG |
+| `+` key and cell | the same `phone_op new` runs from the bar relay | `+` typed inside an armed text field types a plus and opens no phone | PNG with two phones |
+| keyboard | typed line equals the keys pressed | a key with no field armed does nothing | PNG with keyboard up |
+| TSC on a phone | two phones finish one rated game, both ledgers replay equal | kill one phone mid-game: the other shows the disconnect; a hand-edited ledger is refused | PNG of each phone |
+| idle cost | CPU of 1, 2, 4 phones idle, with the producer's state written beside the number (CPU pitfalls 30 to 32: measure children and wakeups, a null needs a control) | the cap refuses the 5th | none |
+Acceptance entry goes into the compendium when built: a case that passes while the screen is empty is a failed test.
+
+## 14. Cost and risk
+- **CPU:** the plugz windows measured about 0.7 percent per renderer (its own 30 fps tick) and about 0 percent per idle projector. A phone is one of each plus the app. Four phones idle is expected near 3 percent of a core: a guess until measured; the cap (proposal 4) and the CPU gate apply, and a guard kill would be OUR finding.
+- **Runtime files:** each phone writes `phone.txt` (a few lines), `ui.txt` (a few KB) and the app's ledger; every writer needs a cap row in `RUNTIME-FILE-GROWTH-STANDARD.md` before it ships, and `hygiene_sweep` learns the instances folder.
+- **Risks:** (1) `+` already means something in some text fields: check the key path first. (2) Window size and Wayland: the khtpm windows are X11 under XWayland (READ today), so resize by `@` must use the renderer's own window path; unverified. (3) Two renderers with the same instance hook must not share a folder (the plugz stale-state bug: reset on open). (4) Port reuse after a crash: free by scan, never assume. (5) Scope creep toward a real emulator: the contract stays seven items.
+- **Rollback:** the phone is additive: a new folder, one bar cell and one op. Removing the cell removes the feature.
+
+## 15. Alternatives considered (design-choice test, in full)
+| Option | Verdict |
+|---|---|
+| One window per phone, process-and-folder isolation (chosen) | matches house shapes; lets two peers run on one machine; the contract is the native port |
+| Real VM or container per phone | heavy and slow to start on the owner's weak CPU for no PvP gain; rejected |
+| One shared phone window with tabs | cannot test two ports at once; rejected |
+| Each app draws its own phone chrome | breaks the native port and duplicates chrome; rejected |
+| Reuse the editor's Play button as the phone | the owner said games run from the editor Play (2026-11-08) but this is a different product surface (a platform with many apps); keep separate, share the instance-dir pattern |
+
+## 16. Native C phone app (the later product, DOC)
+The x11-hq phone is the emulator; the native app implements the same seven contract items. Mapping: window and chrome = native view; `ui.txt` projection = native view model; `phone_act` verbs = native intents; the instance folder = the app sandbox; the port = the app's socket; `manifest.pdl` = the app list. Shared logic that is pure (rating math, ledger replay) stays in text-included C so both builds use one copy. Nothing in the x11 shell may use a feature the native app cannot (no per-app renderer branches, no shell scripts in the contract).
+
+## 17. Glossary and FAQ
+**Plus phone** the product name for the phone shell; **phone** one instance; **phone app** data the shell can open; **contract** the seven items; **platform** the house (LyfeDesk) that hosts phones.
+- *Does the phone replace the bar?* No: the bar's `+` only starts phones.
+- *Can an app in a phone see another phone?* Only through the port, like two machines.
+- *Can the other x11-hq apps run in a phone?* Not yet (owner SAID keep it clean); later as phone apps with a manifest.
+- *Is True Swords Clash rewritten?* No: step 5 only adds a manifest and a portrait layout around the existing TSC_ELO screens (still to be read).
+
+## 18. External references (for other AI agents)
+Repo (branch `claude`): this file; `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` D82; window pattern `02-architecture/X11-HQ-APP-DESIGN-WISDOMS.md` section 12b and the working example `44.xyz.01.00/&.hq-apps/plugz-hq/`; bar cells `44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm`; peers `044.pal-chat-irc.../ops/palnet_peer.c`; the game `44.xyz.01.00/@.apps/TSC_ELO/` (`prog-report-pvp.md`, `QUICK_STANDARDS.md`); CPU rules `03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md`; lore and IP `22.lore-ip/` (TSOTS definition). Skills: `tsots-game-map`, `lyfedesk-taskbar-driving`, `khtpm-house-standards`.
