@@ -2480,25 +2480,8 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
 #include "nb_worker_option_selected.c"
 /* option value/index helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_option_value_index.c"
-/* HTML default selection: the first option carrying `selected`, else the
- * first option at all. */
-static NbNode *sel_selected(JSContext *ctx, NbNode *sel) {
-    NbNode *first = NULL;
-    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
-        if (!node_is_tag(c, "option")) continue;
-        if (!first) first = c;
-        if (opt_selected(ctx, c)) return c;
-    }
-    return first;
-}
-static void sel_select_index(JSContext *ctx, NbNode *sel, int want) {
-    int i = 0;
-    for (NbNode *c = sel->first_child; c; c = c->next_sibling) {
-        if (!node_is_tag(c, "option")) continue;
-        opt_set_selected(ctx, c, i == want);
-        i++;
-    }
-}
+/* select selection helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_select_selection.c"
 /* select.options (2026-10-05): a live array of the <option> children, plus
  * select.length and option.index to round out the collection. Pages iterate
  * options directly ("for (var i=0;i<sel.options.length;i++)"), so without
