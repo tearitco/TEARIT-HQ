@@ -18,6 +18,8 @@ RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/time.pdl | $T/house/@.apps/rpg-edit-hq
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/world_clock.pdl | $T/house/@.apps/rpg-edit-hq/world_clock.pdl
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/survivor_clock.pdl | $T/house/@.apps/rpg-edit-hq/survivor_clock.pdl
 RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+MKDIR | house/@.apps/rpg-edit-hq/plugs
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/house/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl
 EXPECT_HAS | house/@.apps/rpg-edit-hq/time.pdl | needs=world_clock.pdl | the-shipped-time-pdl-tags-the-OFF-rows
 
 CASE    | off-features-are-not-installed

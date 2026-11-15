@@ -5,10 +5,7 @@ SECTION | KEY | VALUE
 # Each AT row becomes a reminder; when it fires the clock daemon runs ops/+x/rpg_edit_hq.+x <pkg> <root> (event runner mode) with the event name.
 # AT | event | when | repeat | what it does          when = HH:MM of the game day (or +N<m|h|d>);  repeat = every:<n><min|hour|day|week>
 # Edit here, then Menu > Time > Reinstall schedule (or delete state/clock_root).
-AT | phase_dawn  | 06:00 | every:1day | sunrise: the room turns warm (writes state/daylight.txt phase=dawn)
-AT | phase_day   | 08:00 | every:1day | full day
-AT | phase_dusk  | 17:00 | every:1day | sunset: orange
-AT | phase_night | 19:00 | every:1day | night: the room goes dark blue
+# The phase reminders (dawn, day, dusk, night) come from plugs/day-night.plug.pdl (decision D75), not from this file: the hour lives in ONE place.
 AT | day_tick    | 00:00 | every:1day | a new day (a DAY row in state/events.txt)
 AT | world_flow  | +5m    | every:5min  | water/lava flow one step (world_clock.pdl; shipped OFF). Needs Menu > Time > reinstall schedule | needs=world_clock.pdl
 AT | world_rain  | +10m   | every:10min | one rain tick, only while state/rain.txt says on (world_clock.pdl; shipped OFF) | needs=world_clock.pdl

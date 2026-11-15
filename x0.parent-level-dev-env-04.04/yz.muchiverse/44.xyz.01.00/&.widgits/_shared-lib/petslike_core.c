@@ -711,7 +711,7 @@ static void render(void) {
             if (gy) { r += (l - r) * gy / 255; g += (l - g) * gy / 255; b += (l - b) * gy / 255; } r += tr_; g += tg_; b += tb_;
             q[0] = (unsigned char)(r < 0 ? 0 : r > 255 ? 255 : r); q[1] = (unsigned char)(g < 0 ? 0 : g > 255 ? 255 : g); q[2] = (unsigned char)(b < 0 ? 0 : b > 255 ? 255 : b); } }
       else { int mr = 256, mg = 256, mb = 256, od = rm->outdoor;      /* phase tint (clock events write daylight.txt): strong outside, only a mild dimming indoors */
-      if (!strcmp(phase, "night")) { if (od) { mr = 110; mg = 120; mb = 190; } else { mr = 200; mg = 205; mb = 235; } } else if (!strcmp(phase, "dusk")) { if (od) { mr = 256; mg = 200; mb = 160; } else { mr = 256; mg = 235; mb = 215; } } else if (!strcmp(phase, "dawn")) { if (od) { mr = 256; mg = 215; mb = 185; } else { mr = 256; mg = 240; mb = 225; } }
+      pet_phase_tint(phase, od, &mr, &mg, &mb);      /* the day-night plug (pet_sky.c): hours and multipliers live in <app>/plugs/day-night.plug.pdl; defaults equal the old hard-coded values */
       if (mr != 256 || mg != 256 || mb != 256) for (int y = OY + ((od && !rm->over) ? 2 * T : 0); y < OY + ROWS * T; y++) for (int x = OX; x < OX + COLS * T; x++) { unsigned char *q = fr + ((size_t)y * FW + x) * 4; q[0] = (unsigned char)(q[0] * mr / 256); q[1] = (unsigned char)(q[1] * mg / 256); q[2] = (unsigned char)(q[2] * mb / 256); } } }
 }
 
@@ -911,6 +911,7 @@ static void clock_install(void) {
         lc_run(0, "cmd", "rpg", "pause", "--source", "rpg-install", NULL); lc_run(0, "step", "5", NULL); char p[PATH_MAX]; spath(p, "clock_day0.txt"); write_if_changed(p, "0\n", 2); }
     char tp[PATH_MAX], tb[8192], sp[PATH_MAX], sb[40]; snprintf(tp, sizeof tp, "%s/time.pdl", APP); int tn = read_file(tp, tb, sizeof tb); unsigned long sig = 5381; for (int i = 0; i < tn; i++) sig = sig * 33 + (unsigned char)tb[i];
     { char cp[8192]; snprintf(cp, sizeof cp, "%s", tb); char *sv0 = NULL; for (char *l = strtok_r(cp, "\n", &sv0); l; l = strtok_r(NULL, "\n", &sv0)) { if (strncmp(l, "AT", 2) || !strstr(l, "needs=")) continue; sig = sig * 33 + (unsigned char)(feature_off(strstr(l, "needs=")) ? '0' : '1'); } }   /* flipping a feature file ENABLED reinstalls the schedule by itself */
+    if (fexists(PET_PLUG_PATH)) { char pb[4096]; int pn = read_file(PET_PLUG_PATH, pb, sizeof pb); for (int i = 0; i < pn; i++) sig = sig * 33 + (unsigned char)pb[i]; }      /* the day-night plug: changing its hours or its ENABLED row reinstalls the schedule by itself */
     snprintf(sp, sizeof sp, "%s/.schedule_installed", CROOT); read_file(sp, sb, sizeof sb);
     char want[40]; snprintf(want, sizeof want, "%lu", sig);
     if (strncmp(sb, want, strlen(want)) != 0 || !sb[0]) {
@@ -920,6 +921,11 @@ static void clock_install(void) {
             char when[40], ev[64], note[120], rep[40]; snprintf(ev, sizeof ev, "common:%s", f[1]); snprintf(note, sizeof note, "%s", f[4]); snprintf(rep, sizeof rep, "%s", f[3]);
             if (strchr(f[2], ':')) { int hh = atoi(f[2]), mm = atoi(strchr(f[2], ':') + 1); long long base = now - now % 86400000, at = base + hh * 3600000LL + mm * 60000LL; if (at <= now) at += 86400000; snprintf(when, sizeof when, "%lld", at); } else snprintf(when, sizeof when, "%s", f[2]);
             lc_run(0, "reminder-add", "rpg", when, ev, note, rep, NULL); }
+        if (fexists(PET_PLUG_PATH)) for (int i = 0; ; i++) {      /* the day-night plug: one reminder per phase at its from_hour (the hour lives only in the plug); none while ENABLED is 0 */
+            const char *pn; int pf; if (!pet_plug_phase(i, &pn, &pf)) break;
+            char when[40], ev[64], note[120]; snprintf(ev, sizeof ev, "common:phase_%s", pn); snprintf(note, sizeof note, "day-night plug: %s from %02d:00", pn, pf);
+            long long base = now - now % 86400000, at = base + pf * 3600000LL; if (at <= now) at += 86400000; snprintf(when, sizeof when, "%lld", at);
+            lc_run(0, "reminder-add", "rpg", when, ev, note, "every:1day", NULL); }
         write_if_changed(sp, want, strlen(want)); }
 }
 /* 2026-11-08 an `AT` row of time.pdl may end with `needs=<file>`: it is installed only while <app>/<file> says `ENABLED | 1`. Why: the opt-in features (world_clock.pdl, survivor_clock.pdl) are shipped OFF, and a reminder for an OFF feature still costs a full event-page run (about 1 CPU-second) at every firing while doing nothing; in a running game that was a burst every 12 s (measured 2026-11-08: lc_clock + children 0..44% of a core per 2 s, mean about 4%). */
@@ -2034,6 +2040,7 @@ int main(int argc, char **argv) {
       for (int up = 0; up < 8; up++) { char *s = strrchr(d, '/'); if (!s) break; *s = 0; char p[PATH_MAX]; snprintf(p, sizeof p, "%s/&.widgits", d); if (!HOUSE[0] && is_dir(p)) snprintf(HOUSE, sizeof HOUSE, "%s", d); snprintf(ASSETS, sizeof ASSETS, "%s/#.NNEST_ASSETS/rmmv-www-img", d); if (is_dir(ASSETS)) break; ASSETS[0] = 0; }
       if (!ASSETS[0] || !HOUSE[0]) { fprintf(stderr, "" PET_OP ": no #.NNEST_ASSETS / &.widgits above %s\n", APP); return 1; } }
     cfg_load(); snprintf(g_sibling, sizeof g_sibling, "/@.apps/%s/", cfg("sibling", "rpg-pet"));      /* per-game constants from toy.pdl, before anything reads them */
+    snprintf(PET_PLUG_PATH, sizeof PET_PLUG_PATH, "%s/plugs/day-night.plug.pdl", APP);      /* the day-night plug (pet_sky.c); a book without the file keeps the old defaults */
     if (mode == 2) return event_main(argv[1]);
     if (mode == 1) return daemon_main();
     if (mode == 0 && vargc >= 1 && !strcmp(vargv[0], "fire")) {      /* the window's entry for page=yes verbs: play the page, else fall through to the verb */

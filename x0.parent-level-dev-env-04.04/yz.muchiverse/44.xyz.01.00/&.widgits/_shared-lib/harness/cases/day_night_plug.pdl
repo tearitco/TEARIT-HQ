@@ -1,0 +1,104 @@
+# day_night_plug (2026-11-14, decision D74/D75): the day/night cycle is a PLUG, one visible file <app>/plugs/day-night.plug.pdl (ENABLED + PHASE rows). Two halves:
+#  1. the pure functions in pet_sky.c (phase of an hour, tint multipliers, sky sheet) through a probe op that #includes the real file; the legacy hard-coded rule is the reference.
+#  2. the clock installer of the shared core in a SCRATCH house (real lc_clock + real editor op): one reminder per phase at the plug's from_hour, none while ENABLED is 0, none without the file.
+# Negative controls: a changed hour and a changed tint BREAK parity (the check can fail); ENABLED 0 differs from ENABLED 1; a missing plug installs nothing (the plug is the only source of the phase reminders).
+RESULTS | ../results/day_night_plug.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -Wall | -o | $T/probe | $HOUSE/&.widgits/_shared-lib/harness/ops/pet_sky_probe_op.c
+EXPECT_EXIT | 0 | the-probe-compiles-from-the-real-pet_sky.c
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/plug.pdl
+EXPECT_HAS | plug.pdl | ENABLED \p 1 | the-shipped-plug-is-on
+
+CASE    | parity-with-the-old-hard-coded-values
+RUN | $T/probe | parity | $T/plug.pdl
+EXPECT_EXIT | 0 | the-shipped-plug-equals-the-legacy-rule
+EXPECT_OUT | PARITY\pok\p24 | all-24-hours-phase-sky-and-both-tints
+RUN | $T/probe | parity | -
+EXPECT_EXIT | 0 | no-plug-file-means-the-same-defaults
+EXPECT_OUT | PARITY\pok\p24 | defaults-equal-legacy
+RUN | $T/probe | show | $T/plug.pdl | 5
+EXPECT_OUT | hour=5 phase=night sky=StarlitSky out=110,120,190 in=200,205,235 | hour-5-wraps-to-night
+RUN | $T/probe | show | $T/plug.pdl | 17
+EXPECT_OUT | hour=17 phase=dusk sky=Sunset out=256,200,160 in=256,235,215 | hour-17-is-dusk
+
+CASE    | NEGATIVE-parity-can-fail
+WRITE   | bad_hour.pdl | ENABLED \p 1\nPHASE \p dawn \p 6 \p 256,215,185 \p 256,240,225 \p Sunset\nPHASE \p day \p 8 \p 256,256,256 \p 256,256,256 \p CloudySky1\nPHASE \p dusk \p 15 \p 256,200,160 \p 256,235,215 \p Sunset\nPHASE \p night \p 19 \p 110,120,190 \p 200,205,235 \p StarlitSky\n
+RUN | $T/probe | parity | $T/bad_hour.pdl
+EXPECT_EXIT | 1 | a-moved-dusk-hour-breaks-parity
+EXPECT_OUT | PARITY\pDIFF\p15 | and-it-names-the-first-hour-that-differs
+WRITE   | bad_tint.pdl | ENABLED \p 1\nPHASE \p dawn \p 6 \p 256,215,185 \p 256,240,225 \p Sunset\nPHASE \p day \p 8 \p 256,256,256 \p 256,256,256 \p CloudySky1\nPHASE \p dusk \p 17 \p 1,2,3 \p 256,235,215 \p Sunset\nPHASE \p night \p 19 \p 110,120,190 \p 200,205,235 \p StarlitSky\n
+RUN | $T/probe | parity | $T/bad_tint.pdl
+EXPECT_EXIT | 1 | a-changed-tint-breaks-parity
+EXPECT_OUT | PARITY\pDIFF\p17\ptint | at-hour-17-in-the-tint
+
+CASE    | parameters-change-the-cycle
+RUN | $T/probe | show | $T/bad_hour.pdl | 16
+EXPECT_OUT | hour=16 phase=dusk | dusk-now-starts-at-15
+RUN | $T/probe | show | $T/plug.pdl | 16
+EXPECT_OUT | hour=16 phase=day | CONTROL-the-shipped-plug-still-says-day-at-16
+WRITE   | late.pdl | ENABLED \p 1\nPHASE \p day \p 7 \p 256,256,256 \p 256,256,256 \p CloudySky1\nPHASE \p night \p 22 \p 10,20,30 \p 40,50,60 \p StarlitSky\n
+RUN | $T/probe | show | $T/late.pdl | 23
+EXPECT_OUT | hour=23 phase=night sky=StarlitSky out=10,20,30 in=40,50,60 | two-phases-night-from-22
+RUN | $T/probe | show | $T/late.pdl | 3
+EXPECT_OUT | hour=3 phase=night | before-the-first-from-hour-wraps-to-the-last-phase
+RUN | $T/probe | phases | $T/late.pdl
+EXPECT_OUT | PHASE\pnight\p22 | the-plug-declares-its-own-phases
+
+CASE    | the-switch-and-bad-rows
+WRITE   | off.pdl | ENABLED \p 0\nPHASE \p night \p 19 \p 110,120,190 \p 200,205,235 \p StarlitSky\n
+RUN | $T/probe | show | $T/off.pdl | 22
+EXPECT_OUT | hour=22 phase=day sky=CloudySky1 out=256,256,256 in=256,256,256 | OFF-means-always-day-no-tint-day-sky
+RUN | /bin/sh | -c | $T/probe phases $T/off.pdl \p /usr/bin/wc -l
+EXPECT_OUT | 0 | OFF-declares-no-phases-so-no-reminders
+RUN | /bin/sh | -c | $T/probe phases $T/plug.pdl \p /usr/bin/wc -l
+EXPECT_OUT | 4 | CONTROL-ON-declares-four
+WRITE   | junk.pdl | ENABLED \p 1\nPHASE \p bad \p 99 \p 1,2,3 \p 4,5,6 \p X\nPHASE \p worse \p 5 \p 1,2 \p 4,5,6 \p X\nPHASE \p evil \p 5 \p 1,2,3 \p 4,5,6 \p ../x\nrandom text\n
+RUN | $T/probe | parity | $T/junk.pdl
+EXPECT_EXIT | 0 | only-invalid-rows-keep-the-defaults
+EXPECT_OUT | PARITY\pok\p24 | and-do-not-crash
+
+CASE    | schedule-in-a-scratch-house
+MKDIR | house/&.widgits/livedesk-clock/ops/+x
+MKDIR | house/#.NNEST_ASSETS/rmmv-www-img
+MKDIR | house/@.apps/rpg-edit-hq/ops/+x
+MKDIR | house/@.apps/rpg-edit-hq/state
+MKDIR | house/@.apps/rpg-edit-hq/plugs
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x
+RUN | /bin/cp | $HOUSE/&.widgits/livedesk-clock/ops/+x/lc_clock.+x | $T/house/&.widgits/livedesk-clock/ops/+x/lc_clock.+x
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/time.pdl | $T/house/@.apps/rpg-edit-hq/time.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/world_clock.pdl | $T/house/@.apps/rpg-edit-hq/world_clock.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/survivor_clock.pdl | $T/house/@.apps/rpg-edit-hq/survivor_clock.pdl
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/net_say.pdl | $T/house/@.apps/rpg-edit-hq/net_say.pdl
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/time.pdl | AT \p phase_ | time-pdl-no-longer-carries-the-phase-rows-the-hour-lives-in-the-plug
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_EXIT | 0 | the-clock-verb-ran-with-NO-plug-file
+EXPECT_FILE | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | the-schedule-was-installed-at-all-vacuity
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:day_tick | day_tick-is-still-engine-and-installed
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:phase_ | NEGATIVE-no-plug-file-no-phase-reminders
+
+CASE    | plug-on-installs-one-reminder-per-phase-at-its-hour
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl | $T/house/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_EXIT | 0 | reinstalled-by-itself-because-the-signature-folds-the-plug
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | at=61200000\p | dusk-at-17-00-is-17-times-3600000
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | event=common:phase_dusk\pnote=day-night plug: dusk from 17:00 | the-note-names-the-hour
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | event=common:phase_night\pnote=day-night plug: night from 19:00 | night-is-there
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | event=common:phase_dawn\pnote=day-night plug: dawn from 06:00 | dawn-is-there-the-next-day-because-06-00-is-now
+
+CASE    | an-edited-hour-reinstalls-without-a-manual-step
+RUN | /bin/cp | $T/bad_hour.pdl | $T/house/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | at=54000000\p | dusk-now-at-15-00
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | at=61200000\p | NEGATIVE-the-old-17-00-time-is-gone
+
+CASE    | off-installs-no-phase-reminders
+RUN | /bin/cp | $T/off.pdl | $T/house/@.apps/rpg-edit-hq/plugs/day-night.plug.pdl
+RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house/@.apps/rpg-edit-hq | $T/house | clock rate sec
+EXPECT_LACKS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:phase_ | NEGATIVE-ENABLED-0-no-phase-reminders
+EXPECT_HAS | house/@.apps/rpg-edit-hq/state/clock_root/#.desktop/clocks/reminders.pdl | common:day_tick | CONTROL-the-engine-clock-rows-stay
+
+CASE    | cleanup
+CLEAN |

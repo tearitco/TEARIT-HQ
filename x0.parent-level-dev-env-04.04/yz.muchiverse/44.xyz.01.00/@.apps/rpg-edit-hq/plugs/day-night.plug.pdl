@@ -1,0 +1,17 @@
+SECTION | KEY | VALUE
+----------------------------------------
+# day-night.plug.pdl - the day/night cycle as a PLUG (2026-11-14, decision D74/D75). A game does not need a day and a night, so it is a plug: this one visible file is the switch and the parameters.
+# RPG Maker has no event for a day/night cycle (only Tint Screen and variables), so the cycle is not engine. The world CLOCK (game time passes) stays engine; this plug is the cycle on top of it.
+# ENABLED | 1/0        the switch. 0 = the phase is always `day`, no tint, no phase reminders, the sky stays the day picture.
+# PHASE | name | from_hour | outdoor r,g,b | indoor r,g,b | sky      A phase lasts from its from_hour until the next phase's from_hour (the last one wraps past midnight).
+#                       colours are channel multipliers out of 256 (256 = unchanged; lower = darker). sky = the RPG Maker parallax picture name (parallaxes/<sky>.png).
+#                       The engine also installs one clock reminder per phase at from_hour:00 (common:phase_<name>), so the event pages phase_dawn, phase_day, phase_dusk, phase_night run then.
+#                       Those pages (events/phase_*) stay ENGINE events: tint_screen is RPG Maker's own command. Hours and multipliers live ONLY here.
+# Edit here, then Menu > Time > Reinstall schedule. Defaults below equal what was hard-coded before 2026-11-14 (parity is a harness case: day_night_plug).
+PLUG | name | day-night
+PLUG | version | 1
+ENABLED | 1
+PHASE | dawn  | 6  | 256,215,185 | 256,240,225 | Sunset
+PHASE | day   | 8  | 256,256,256 | 256,256,256 | CloudySky1
+PHASE | dusk  | 17 | 256,200,160 | 256,235,215 | Sunset
+PHASE | night | 19 | 110,120,190 | 200,205,235 | StarlitSky
