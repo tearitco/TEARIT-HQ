@@ -1,0 +1,31 @@
+<!-- app-edit.xhtpm - the app editor (v1, 2026-11-15; design: BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md sections 24-25). The IDE half of the phone platform: it lists the app PACKAGES under projects/, checks them (app_check), EXPORTS one onto the phone
+     (phone_op install) and opens a phone to see it. Same shape as plugz-hq: a static layout, every value a ${var} from <instance>/.hq_manager/ui.txt written by ops/app_edit_op.c (module mode), instance dir = renderer argv[3] (${ARG3}).
+     LEFT: the projects. RIGHT: the selected project, three buttons (check, export to phone, open a phone), the last result and the details (the checker's own lines, so a problem shows its fix). Every write is a verb of ops/app_edit_op.c. -->
+<window label="${window_title}" class="app-edit database-window">
+  <module id="projector" src="&.hq-apps/app-edit/ops/+x/app_edit_op.+x"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="projects" class="block-title"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <item id="row${row.#}" class="${row.cls}" label="${row.text}" action="'${PKG}/ops/+x/app_edit_op.+x' 'select' '${row.idx}' '${ARG3}'"/>
+        </repeat>
+        <text label="${empty_text}" class="quiet" show="${no_rows}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${detail_title}" class="block-title"/>
+      <text label="${detail_status}" class="quiet"/>
+      <item id="check" class="btn" label="  check this app  " action="'${PKG}/ops/+x/app_edit_op.+x' 'check' '-' '${ARG3}'"/>
+      <item id="export" class="btn" label="  export to the phone  " action="'${PKG}/ops/+x/app_edit_op.+x' 'export' '-' '${ARG3}'"/>
+      <item id="phone" class="btn" label="  open a phone  " action="'${PKG}/ops/+x/app_edit_op.+x' 'phone' '-' '${ARG3}'"/>
+      <text label="${last_result}" class="quiet"/>
+      <text label="details" class="block-title"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_info}" bind="inf">
+          <text label="${inf.text}"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

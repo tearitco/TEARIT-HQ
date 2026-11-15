@@ -1,0 +1,50 @@
+# app_edit (2026-11-15): app-edit v1 = list the app packages under projects/, check them, export one onto the phone. SCRATCH house; the REAL app_edit_op, app_check, phone_op and layout_check; the window itself is NOT started
+# here (seen by opening it and reading the PNG, and by a real click on "export to the phone"). Proves: the projection lists both projects and marks the selected one; a good project reads package OK and not on the phone;
+# a bad project reads has problems and its fix lines are shown; export installs the good one (the projection then says installed) and REFUSES the bad one, copying nothing.
+RESULTS | ../results/app_edit.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.hq-apps/app-edit/instances/main/.hq_manager
+MKDIR | h/&.hq-apps/app-edit/projects/aa-good/icon
+MKDIR | h/&.hq-apps/app-edit/projects/bb-bad/icon
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/apps
+MKDIR | h/@.apps/layout-studio/ops/+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/ops/+x/app_edit_op.+x | $T/h/&.hq-apps/app-edit/app_edit_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
+RUN | /bin/cp | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $T/h/@.apps/layout-studio/ops/+x/layout_check.+x
+WRITE | h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | # resolution=1\nr,g,b,a\n1,1,1,255\n
+WRITE | h/&.hq-apps/app-edit/projects/aa-good/manifest.pdl | APP \p id \p aa-good\nTITLE \p Good one\nICON \p icon\nPLATFORM \p 1\n
+WRITE | h/&.hq-apps/app-edit/projects/bb-bad/icon/sprite.csv | # resolution=1\nr,g,b,a\n1,1,1,255\n
+WRITE | h/&.hq-apps/app-edit/projects/bb-bad/manifest.pdl | APP \p id \p wrong\nTITLE \p Bad one\nICON \p icon\nPLATFORM \p 9\n
+
+CASE    | projection
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | $T/h | x | --once | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_EXIT | 0 | one-projection
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | rows_count=2 | both-projects-are-listed
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | row_0_text=Good one | first-by-name
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | row_0_cls=data-item active | the-first-is-selected-by-default
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | package OK  \p  not on the phone yet | the-good-package-is-ok-and-not-installed
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | select | 1 | $T/h/&.hq-apps/app-edit/instances/main
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | $T/h | x | --once | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | row_1_cls=data-item active | selecting-moves-the-highlight
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | package has problems | NEGATIVE-the-bad-package-reads-has-problems
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | PLATFORM 9 is newer | and-the-checker-line-with-its-reason-is-shown
+
+CASE    | export
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | export | - | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/last.txt | INSTALL-REFUSED | NEGATIVE-exporting-the-bad-project-is-refused
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/wrong/manifest.pdl | and-nothing-was-copied
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/bb-bad/manifest.pdl | under-either-name
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | select | 0 | $T/h/&.hq-apps/app-edit/instances/main
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | export | - | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/last.txt | INSTALLED aa-good | exporting-the-good-project-installs-it
+EXPECT_FILE | h/&.hq-apps/plus-phone/apps/aa-good/manifest.pdl | it-is-in-the-phone-apps
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | $T/h | x | --once | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/ui.txt | installed on the phone | the-projection-now-says-so
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | check | - | /tmp/not-an-instance
+EXPECT_EXIT | 2 | NEGATIVE-a-verb-on-a-path-that-is-not-an-app-edit-instance-is-refused
+CLEAN |

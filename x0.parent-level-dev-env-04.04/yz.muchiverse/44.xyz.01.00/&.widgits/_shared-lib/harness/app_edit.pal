@@ -1,0 +1,4 @@
+# app_edit.pal - app-edit v1: projection and verbs (2026-11-15). See cases/app_edit.pdl
+exec ./ops/+x/harness_case_op.+x cases/app_edit.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/app_edit.pdl
+halt
