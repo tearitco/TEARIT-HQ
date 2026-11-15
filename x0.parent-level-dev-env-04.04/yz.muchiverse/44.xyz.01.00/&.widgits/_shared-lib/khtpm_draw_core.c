@@ -975,7 +975,7 @@ static int kh_elem_badge_label_x(Elem *e) {
                         strcmp(e->id, g_default_active_tab_id) == 0) ||
                        (g_interact_relay_on && e->relay[0]) ||
                        elem_has_class(e, "nav-selected");      /* a row the app marks as the selected one (the cast bar's selected character): "^" like the armed In: tab */
-        elem_cursor_prefix(e, e->nav_index > 0 ? g_focus_nav : -1, is_scope, prefix, sizeof(prefix));
+        elem_cursor_prefix(e, e->nav_index > 0 ? g_focus_nav : ((g_focus_zero && g_focus_nav == 0) ? 0 : -1), is_scope, prefix, sizeof(prefix));
         char nav_badge[16];
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
         static char badge_cached_spec2[48] = "";
@@ -2227,7 +2227,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * and AI control of the window need the visible brackets. class=quiet
      * may still color the fill; it does not hide the badge. */
     if (e->nav_index > 0 || elem_has_class(e, "nav-zero")) {      /* nav-zero: the "0." badge (2026-11-15) */
-        int focused = (e->nav_index > 0 && e->nav_index == g_focus_nav);
+        int focused = (e->nav_index > 0 ? e->nav_index == g_focus_nav : (g_focus_zero && g_focus_nav == 0));
         char prefix[8];
         /* REAL, NEW 2026-08-31 - a real, generic ARMED cli_io field
          * reuses this SAME existing "[^]" active-scope visual (direct
@@ -2272,7 +2272,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         * declaration comment in khtpm_core_render.c). */
                        (g_interact_relay_on && e->relay[0]) ||
                        elem_has_class(e, "nav-selected");
-        elem_cursor_prefix(e, e->nav_index > 0 ? g_focus_nav : -1, is_scope, prefix, sizeof(prefix));
+        elem_cursor_prefix(e, e->nav_index > 0 ? g_focus_nav : ((g_focus_zero && g_focus_nav == 0) ? 0 : -1), is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index + g_nav_display_base);
         (void)focused;
         /* REAL FIX 2026-08-25 (live perf report: "nav is really slow" with
@@ -3321,7 +3321,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * unreachable) swatch-picker window-class flag, so it never fired
      * for the real live taskbar-settings-pal.xhtpm window. */
     if ((e->nav_index > 0 || elem_has_class(e, "nav-zero")) && nav_badge_font) {      /* nav-zero (2026-11-15) */
-        int focused = (e->nav_index > 0 && e->nav_index == g_focus_nav);
+        int focused = (e->nav_index > 0 ? e->nav_index == g_focus_nav : (g_focus_zero && g_focus_nav == 0));
         /* REAL FIX 2026-09-05, direct live report ("[the text_area
          * nav badge] is in middle of page and not top") - the badge y
          * is vertically CENTERED in the element, which reads fine for a

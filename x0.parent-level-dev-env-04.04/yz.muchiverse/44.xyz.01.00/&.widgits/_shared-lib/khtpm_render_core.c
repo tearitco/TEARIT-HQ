@@ -504,6 +504,7 @@ int elem_flatten(Elem *root, ElemFlatEntry *out, int cap) {
  * is_active_scope is the LayDoc [^] active-index branch. */
 void elem_cursor_prefix(const Elem *e, int focus_nav, int is_active_scope, char *out, size_t outsz) {
     if (!out || outsz == 0) return;
+    if (e && e->nav_index == 0 && focus_nav == 0) { for (int zi = 0; zi < e->n_classes; zi++) if (strcmp(e->classes[zi], "nav-zero") == 0) { snprintf(out, outsz, "[>]"); return; } }      /* the bar's nav-zero cell, focused by typing 0 (2026-11-15) */
     if (!e || e->nav_index <= 0) { snprintf(out, outsz, "[ ]"); return; }
     if (is_active_scope) { snprintf(out, outsz, "[^]"); return; }
     if (e->nav_index == focus_nav) { snprintf(out, outsz, "[>]"); return; }

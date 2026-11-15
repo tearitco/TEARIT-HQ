@@ -4269,6 +4269,8 @@ static int g_headless = 0;
 static struct timespec g_map_time;
 #define PHANTOM_CLICK_GUARD_MS 150
 static int g_focus_nav = 1;
+static int g_focus_zero = 0;      /* 2026-11-15: the bar's nav-zero cell is focused (typed 0): only meaningful while g_focus_nav == 0, so any nav move ends it; Enter then runs the cell */
+static int g_zero_seen = -1;      /* the manager cursor first seen after the zero focus was set; a different value later means the user moved on (terminal-relay keys only reach the manager) */
 static int g_n_nav = 0;
 static Elem *g_nav[MAX_ELEMS];
 /* REAL, NEW 2026-09-14 (generic `<bar>` click-to-seek) - the raw
@@ -7927,7 +7929,7 @@ static int layout_sidebar_panel(Elem *page) {
     }
 
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
-    if (g_focus_nav < 1) g_focus_nav = 1;
+    if (g_focus_nav < 1 && !g_focus_zero) g_focus_nav = 1;
     return 1;
 }
 /* ============ end generic sidebar+panel scroll ============ */
@@ -9647,7 +9649,7 @@ static void assign_nav_and_layout(void) {
             g_win_x = hx; g_win_y = hy; g_win_w = hw; g_win_h = hh;
             if (g_window) { g_window->w = hw; g_window->h = hh; }
         }
-        if (g_focus_nav < 1 || g_focus_nav > g_n_nav)
+        if ((g_focus_nav < 1 && !g_focus_zero) || g_focus_nav > g_n_nav)      /* zero focus (the bar's nav-zero cell) is allowed to sit at 0 */
             g_focus_nav = g_n_nav > 0 ? 1 : 0;
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
@@ -9695,7 +9697,7 @@ static void assign_nav_and_layout(void) {
          * never took (all 15 tabs stayed navigable after activating one). */
         kh_apply_scope_confine();
         if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
-        if (g_focus_nav < 1) g_focus_nav = 1;
+        if (g_focus_nav < 1 && !g_focus_zero) g_focus_nav = 1;
         publish_pane_geometry();   /* every exit path - see the trap note below */
         return;
     }
@@ -10240,7 +10242,7 @@ static void assign_nav_and_layout(void) {
     kh_scan_interact_relay();
     kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
-    if (g_focus_nav < 1) g_focus_nav = 1;
+    if (g_focus_nav < 1 && !g_focus_zero) g_focus_nav = 1;
     publish_pane_geometry();
 }
 
@@ -12170,6 +12172,11 @@ static void dock_poll_strip_state(void) {
     int nv_mgr = 0;
     if (sfc >= 0) nv_mgr = sfc + 1;
     else if (sfc == -1) nv_mgr = g_dock_header_nav_hi + 1 + tfi;
+    if (g_focus_zero && g_focus_nav == 0 && nv_mgr >= 1) {      /* zero focus: ignore the manager's cursor until it MOVES (then the user went elsewhere) */
+        if (g_zero_seen < 0) { g_zero_seen = nv_mgr; nv_mgr = 0; }
+        else if (nv_mgr == g_zero_seen) nv_mgr = 0;
+        else g_focus_zero = 0;
+    }
     if (nv_mgr >= 1 && nv_mgr <= g_n_nav) {
         /* DROPDOWN CLICK JUMP (2026-10-13, grok's note livedesk-dropdown-jump.txt): the manager only stores a header cell
          * or a bottom-tab index, never a dropdown row. While a menu is open and focus is already on one of its rows, a
@@ -13770,6 +13777,12 @@ static void handle_key(KeySym ks, char ch) {
      * pending multi-digit nav jump (tpmos digit_accum "reset on
      * non-digit keys"). */
     if (!(ch >= '0' && ch <= '9')) g_nav_digit_accum = 0;
+    if ((ks == XK_Return || ks == XK_KP_Enter) && g_focus_zero && g_focus_nav == 0 && g_window) {      /* Enter on the focused nav-zero cell runs it */
+        Elem *zq = kh_find_nav_zero(g_window); g_focus_zero = 0; g_focus_nav = 1;
+        if (zq && zq->onclick[0]) dispatch(zq->onclick);
+        if (!g_quit) redraw();
+        return;
+    }
     if (ks == XK_Return || ks == XK_KP_Enter) {
         /* INLINE SPANS step 5: Enter on a segment cursor dispatches that
          * span's own action instead of the row's. A stale cursor (reparse
@@ -14027,7 +14040,7 @@ static void handle_key(KeySym ks, char ch) {
             }
         }
         /* a typed 0 (nothing typed before it) runs the one nav-zero cell of the window, if any (the bar's plus-phone cell) */
-        if (d == 0 && g_nav_digit_accum == 0 && g_window) { Elem *z = kh_find_nav_zero(g_window); if (z && z->onclick[0]) { dispatch(z->onclick); return; } }
+        if (d == 0 && g_nav_digit_accum == 0 && g_window) { Elem *z = kh_find_nav_zero(g_window); if (z && z->onclick[0]) { g_focus_zero = 1; g_zero_seen = -1; g_focus_nav = 0; redraw(); return; } }      /* 0 MOVES focus to the cell and waits for Enter (owner: hybrid, + and = open at once) */
         /* multi-digit accumulate: "15" jumps to 15, not 5 (tpmos
          * chtpm_parser.c.bak digit_accum). Take accum*10+d when it's a
          * real nav index; else restart the accumulator with just d. */
