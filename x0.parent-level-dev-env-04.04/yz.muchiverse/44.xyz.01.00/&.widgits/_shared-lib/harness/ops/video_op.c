@@ -2,7 +2,7 @@
 /* video_op - slides and narrated videos WITHOUT Python (owner 2026-11-04: no Python; replaces presentation/make_deck.py, remote_tts.py and the PIL part of make_presentation_video.py).
  *   video_op deck   <deck.txt> <outdir>              1280x720 PNG slides -> <outdir>/snapshots/NN_*.png and <outdir>/manifest.txt
  *   video_op render <outdir> [--captions] [--no-tts]  <outdir>/manifest.txt -> <outdir>/video.mp4 (one frame per row, held while its narration plays)
- * Deck file (fields split by '|', bullets by ';', '#' = comment):  TITLE | title | subtitle | narration      SLIDE | heading | bullet ; bullet ; ... | narration
+ * Deck file (fields split by "|", bullets by ";", "#" = comment):  TITLE | title | subtitle | narration      SLIDE | heading | bullet ; bullet ; ... | narration      SHOT | picture.png | | narration  (a real 1280x720 picture as one frame)
  * Manifest (one row per snapshot, playback order):  file | seconds | caption      (the caption is the narration text; with --captions it is also drawn on the frame, for window shots)
  * Pictures and video are made by ffmpeg (drawtext, concat, apad) and the audio length by ffprobe: external programs run with fork/exec, no shell. Narration: the wav of each caption comes from the Kokoro
  * service on another machine over ssh (the machine is named by PRESENT_TTS_HOST, user@host: never hardcoded here; heavy work goes off the desktop). Kokoro is Python on THAT machine: an outside service, not our code.
@@ -67,6 +67,12 @@ static int cmd_deck(const char *deck, const char *outdir) {
         if (nf < 4) { fprintf(stderr, "video_op: row %d needs 4 fields\n", i + 1); fclose(m); return 1; }
         char name[96]; int w = 0; for (const char *c = fld[1]; *c && w < 30; c++) name[w++] = (*c >= '0' && *c <= '9') || (*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') ? *c : '_'; name[w] = 0;
         char fn[160], out[P]; snprintf(fn, sizeof fn, "%02d_%s.png", i + 1, name); snprintf(out, sizeof out, "%s/%s", snaps, fn);
+        if (!strcmp(fld[0], "SHOT")) {      /* SHOT | <png path, 1280x720> | | narration: a real picture (a window dump) as one frame, copied into snapshots/ (2026-11-14); the file must exist and be a regular file */
+            struct stat sb; if (stat(fld[1], &sb) != 0 || !S_ISREG(sb.st_mode)) { fprintf(stderr, "video_op: row %d: SHOT file %s does not exist\n", i + 1, fld[1]); fclose(m); return 1; }
+            snprintf(fn, sizeof fn, "%02d_shot.png", i + 1); snprintf(out, sizeof out, "%s/%s", snaps, fn); char *cpv[] = { "cp", "-f", fld[1], out, NULL };
+            if (run(cpv, NULL) != 0) { fprintf(stderr, "video_op: row %d: could not copy %s\n", i + 1, fld[1]); fclose(m); return 1; }
+            for (char *c = fld[3]; *c; c++) { if (*c == '|') *c = '/'; }
+            fprintf(m, "%s | 6 | %s\n", fn, fld[3]); continue; }
         static char B[8][200]; int nb = 0; int title = !strcmp(fld[0], "TITLE");
         if (!title) { char tmpb[4096]; snprintf(tmpb, sizeof tmpb, "%s", fld[2]); for (char *t = strtok(tmpb, ";"); t && nb < 8; t = strtok(NULL, ";")) { t = trim(t); if (*t) snprintf(B[nb++], 200, "%s", t); } }
         if (slide(title, fld[1], title ? fld[2] : "", B, nb, i + 1, nr, tmp, out) != 0) { fprintf(stderr, "video_op: ffmpeg failed on slide %d\n", i + 1); fclose(m); return 1; }
