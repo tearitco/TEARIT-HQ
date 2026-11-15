@@ -31,7 +31,7 @@
 
 #define MAXR 48
 #define P 4096
-typedef struct { char id[40], page[48], kind[8], label[80], target[P], args[P], writes[8], confirm[8], src[P]; int line; } Row;
+typedef struct { char id[40], page[48], kind[8], label[80], target[P], args[P], writes[8], confirm[8], src[P]; int line, global; } Row;
 static Row R[MAXR]; static int nr, nbad;
 static char HOUSE[P];
 
@@ -54,7 +54,7 @@ static void load(const char *path, int global) {
         if (n < 1 || strcmp(f[0], "HARNESS")) continue;
         if (n < 10) { bad(path, lineno, "a HARNESS row needs id | page | kind | label | target | args | writes | confirm | note"); continue; }
         if (nr >= MAXR) { bad(path, lineno, "too many rows"); continue; }
-        Row *r = &R[nr]; memset(r, 0, sizeof *r); r->line = lineno; snprintf(r->src, sizeof r->src, "%s", path);
+        Row *r = &R[nr]; memset(r, 0, sizeof *r); r->line = lineno; r->global = global; snprintf(r->src, sizeof r->src, "%s", path);
         snprintf(r->id, sizeof r->id, "%s", f[1]); snprintf(r->page, sizeof r->page, "%s", global ? "*" : f[2]); snprintf(r->kind, sizeof r->kind, "%s", f[3]);
         snprintf(r->label, sizeof r->label, "%s", f[4]); snprintf(r->target, sizeof r->target, "%s", f[5]); snprintf(r->args, sizeof r->args, "%s", f[6]);
         snprintf(r->writes, sizeof r->writes, "%s", f[7]); snprintf(r->confirm, sizeof r->confirm, "%s", f[8]);
@@ -76,6 +76,10 @@ static void load_all(const char *book) {
     if (book && book[0] && strcmp(book, "-") && word_ok(book)) { snprintf(p, sizeof p, "%s/@.apps/%s/harness.pdl", HOUSE, book); load(p, 0); }
 }
 static int visible(const Row *r, const char *page) { return !strcmp(r->page, "*") || (page && !strcmp(r->page, page)); }
+/* LIST ONLY (2026-11-14, owner): a row is LISTED when it is visible AND (a) it is not a global row of a book that has no tools of its own (a page with no harnesses or plugs shows no tests, only the generic notes rows the bar adds) and (b) it is not an own row that repeats a global one (same kind and target: `crew` and `enter house` showed twice). pick does not use this. */
+static int g_hide_global;
+static int listed(int i, const char *page) { if (!visible(&R[i], page)) return 0; if (R[i].global) return !g_hide_global;
+    for (int k = 0; k < nr; k++) if (R[k].global && !strcmp(R[k].kind, R[i].kind) && !strcmp(R[k].target, R[i].target)) return 0; return 1; }
 
 static void verdict_suffix(const Row *r, char *out, size_t cap) {      /* ` [15 ok]` / ` [2 FAIL]` from the case's results file, and nothing when the file does not exist */
     out[0] = 0; if (strcmp(r->kind, "CASE")) return;
@@ -141,17 +145,20 @@ int main(int argc, char **argv) {
     }
     if (!strcmp(verb, "list") && argc >= 6) {
         const char *book = argv[3], *page = strcmp(argv[4], "-") ? argv[4] : ""; load_all(book);
+        int named = book[0] && strcmp(book, "-") && word_ok(book), nown = 0; for (int i = 0; i < nr; i++) if (!R[i].global) nown++;
         static char out[MAXR * 200 + MAXPLUG * 100 + 400]; out[0] = 0; size_t l;
         /* THREE GROUPS (D74, 2026-11-14), one list for the editor's Tools tab and the LyfeDesk Tools cell: what this page can DO (ACTION rows), the book's PLUGS (on/off), and the TESTS (CASE rows, agents).
          * A group with no rows is left out. A heading is a line with the id `-`: picking it does nothing. */
         int na = 0, nc = 0; for (int i = 0; i < nr; i++) if (visible(&R[i], page)) { if (!strcmp(R[i].kind, "CASE")) nc++; else na++; }
         static char pn[MAXPLUG][48]; int np = (book[0] && strcmp(book, "-") && word_ok(book)) ? plug_names(book, pn, MAXPLUG) : 0;
+        g_hide_global = named && !nown && !np;      /* a named book with nothing of its own: no global tests */
+        na = nc = 0; for (int i = 0; i < nr; i++) if (listed(i, page)) { if (!strcmp(R[i].kind, "CASE")) nc++; else na++; }
         if (na) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- this page --\t-\n");
-            for (int i = 0; i < nr; i++) if (visible(&R[i], page) && strcmp(R[i].kind, "CASE")) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\t%s\n", R[i].label, R[i].id); } }
+            for (int i = 0; i < nr; i++) if (listed(i, page) && strcmp(R[i].kind, "CASE")) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\t%s\n", R[i].label, R[i].id); } }
         if (np) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- plugs --\t-\n");
             for (int i = 0; i < np; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s %s\tplug:%s\n", plug_enabled(book, pn[i]) ? "[x]" : "[ ]", pn[i], pn[i]); } }
         if (nc) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- tests --\t-\n");
-            for (int i = 0; i < nr; i++) if (visible(&R[i], page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
+            for (int i = 0; i < nr; i++) if (listed(i, page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
         if (write_atomic(argv[5], out)) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }

@@ -17,7 +17,7 @@ RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | $T/h/&.
 RUN | /bin/cp | /bin/true | $T/h/@.apps/bk/ops/+x/noop
 WRITE   | h/&.widgits/_shared-lib/harness/cases/c1.pdl | CASE \p x\n
 WRITE   | h/#.desktop/harness_menu.pdl | HARNESS \p c1 \p * \p CASE \p the proof \p c1 \p - \p - \p no \p a test\n
-WRITE   | h/@.apps/bk/harness.pdl | HARNESS \p go \p * \p ACTION \p do it \p @.apps/bk/ops/+x/noop \p - \p - \p no \p a page tool\n
+WRITE   | h/@.apps/bk/harness.pdl | HARNESS \p go \p * \p ACTION \p do it \p @.apps/bk/ops/+x/noop \p - \p - \p no \p a page tool\nHARNESS \p again \p * \p CASE \p the proof again \p c1 \p - \p - \p no \p repeats the global test\n
 WRITE   | h/@.apps/bk/plugs/alpha.plug.pdl | PLUG \p name \p alpha\nENABLED \p 1\n
 WRITE   | h/@.apps/bk/plugs/beta.plug.pdl | PLUG \p name \p beta\nENABLED \p 0\n
 WRITE   | h/@.apps/bk/plugs/gamma.plug.pdl | PLUG \p name \p gamma\nno switch here\n
@@ -44,9 +44,13 @@ RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | empty
 EXPECT_EXIT | 0 | the-empty-book-lists
 EXPECT_LACKS | rows2.txt | -- plugs -- | NEGATIVE-no-plugs-no-plugs-heading
 EXPECT_LACKS | rows2.txt | -- this page -- | NEGATIVE-no-page-tools-no-heading
-EXPECT_HAS | rows2.txt | -- tests -- | CONTROL-the-global-test-row-is-still-there
+EXPECT_LACKS | rows2.txt | -- tests -- | 2026-11-14 owner: a book with no tools of its own lists NO global tests (an office page with nothing shows only the generic notes rows)
+EXPECT_LACKS | rows2.txt | the proof | NEGATIVE-the-global-test-row-is-not-listed-for-an-empty-book
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows3.txt
 EXPECT_LACKS | rows3.txt | -- plugs -- | NEGATIVE-no-open-book-no-plugs
+EXPECT_HAS | rows3.txt | the proof | CONTROL-with-no-book-the-global-test-row-is-listed-so-the-empty-book-check-can-fail
+EXPECT_HAS | rows.txt | the proof | CONTROL-a-book-with-tools-still-lists-the-global-test-row
+EXPECT_LACKS | rows.txt | the proof again | NEGATIVE-an-own-row-that-repeats-a-global-test-is-hidden-so-it-is-listed-once
 
 CASE    | picking-a-plug-flips-it-and-logs-one-row
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | plug:alpha
@@ -110,3 +114,4 @@ EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [ ] alpha | and-the-labe
 
 CASE    | cleanup
 CLEAN |
+

@@ -188,4 +188,4 @@ EXPECT_LACKS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_2_label=clear | 
 RUN | $T/ps.+x | $T/h | harness | - | -
 EXPECT_OUT | HARNESS-ROWS 2 | with-no-book-only-the-global-row-and-its-tests-heading
 RUN | $T/ps.+x | $T/h | harness
-EXPECT_OUT | HARNESS-ROWS 2 | with-no-arguments-it-falls-back-to-ui-txt-which-names-no-book-b
+EXPECT_OUT | HARNESS-ROWS 0 | with-no-arguments-it-falls-back-to-ui-txt-which-names-the-book-other-that-has-no-tools-so-it-lists-nothing-2026-11-14-owner
