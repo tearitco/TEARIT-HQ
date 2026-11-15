@@ -1,0 +1,44 @@
+# office_tools (2026-11-14): the LOCAL EXAMPLE tools of the pre-design book (@.apps/pre-design: plugs/office-example.plug.pdl, harness.pdl, ops/office_stamp): the real files are valid (harness_menu_op check), and the real stamp op
+# in a SCRATCH app dir: it stamps while the example plug is ON (limit and label come from the plug), is refused with the plug OFF (nothing written), refuses a page that is not a plain word, and keeps its cap.
+# This case is also the example TEST of the office page (the harness.pdl row `office_check`).
+RESULTS | ../results/office_tools.txt
+ENV | LC_ALL | C
+
+CASE    | the-real-files-are-valid
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $HOUSE | pre-design
+EXPECT_EXIT | 0 | the-book-tools-check-passes
+EXPECT_OUT | bad=0 | with-no-bad-row
+RUN | /usr/bin/test | -x | $HOUSE/@.apps/pre-design/ops/+x/office_stamp.+x
+EXPECT_EXIT | 0 | the-example-harnz-op-is-built
+
+CASE    | the-stamp-op-and-the-plug
+SCRATCH |
+MKDIR | app/plugs
+RUN | /bin/cp | $HOUSE/@.apps/pre-design/ops/+x/office_stamp.+x | $T/stamp
+WRITE   | app/plugs/office-example.plug.pdl | PLUG \p name \p office-example\nENABLED \p 1\nPARAM \p stamp_limit \p 5 \p int \p 5 \p 200 \p x\nPARAM \p stamp_label \p desk \p word \p \p \p x\n
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+EXPECT_EXIT | 0 | with-the-plug-on-it-stamps
+EXPECT_HAS | app/state/office_stamps.txt | desk  page office | the-line-has-the-plugs-label-and-the-page
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+RUN | /usr/bin/grep | -c | page office | $T/app/state/office_stamps.txt
+EXPECT_OUT | 5 | seven-stamps-keep-only-the-limit-the-plug-says-five
+WRITE   | app/plugs/office-example.plug.pdl | PLUG \p name \p office-example\nENABLED \p 0\nPARAM \p stamp_limit \p 5 \p int \p 5 \p 200 \p x\nPARAM \p stamp_label \p desk \p word \p \p \p x\n
+RUN | $T/stamp | $T/app | office | @plug:office-example:stamp_limit | @plug:office-example:stamp_label
+EXPECT_EXIT | 3 | NEGATIVE-with-the-plug-off-the-harnz-is-refused
+EXPECT_OUT | is off | and-says-why
+RUN | /usr/bin/grep | -c | page office | $T/app/state/office_stamps.txt
+EXPECT_OUT | 5 | and-nothing-was-written
+RUN | $T/stamp | $T/app | bad page | 5 | desk
+EXPECT_EXIT | 2 | NEGATIVE-a-page-that-is-not-a-plain-word-is-refused
+RUN | $T/stamp | $T/app | office | 5000 | desk
+EXPECT_EXIT | 0 | a-literal-limit-works-and-is-clamped-to-200-lines-at-most
+RUN | /usr/bin/test | -e | $T/app/state/office_stamps.txt.tmp
+EXPECT_EXIT | 1 | NEGATIVE-no-temp-file-is-left-behind
+
+CASE    | cleanup
+CLEAN |

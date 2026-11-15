@@ -5,7 +5,8 @@
  *
  * Data (pipe rows, '#' comments):  HARNESS | id | page | kind | label | target | args | writes | confirm | note
  *   files: <house>/#.desktop/harness_menu.pdl   (global rows: shown everywhere, the page column is ignored)
- *          <house>/@.apps/<book>/harness.pdl     (a book's rows: shown when that book is open; page = `*` (every page) or one page id)
+  *          <house>/@.apps/<book>/harness.pdl     (a book's rows: shown when that book is open; page = `*` (every page) or one page id)
+ *                                         a book may also say `GLOBAL | no` (one row, anywhere in its file): the global rows are then NOT listed for that book (2026-11-14: the office page does not want the centroid generators); with no GLOBAL row they are listed as before
  *   id       a word, unique across both files          kind     CASE = run one harness case (&.widgits/_shared-lib/harness/cases/<target>.pdl) and keep its verdict
  *                                                                ACTION = run one compiled op on the open page
  *   target   CASE: the case name, the file must exist.  ACTION: a path relative to the house of an executable under an ops/+x/ folder (no `..`, nothing outside the house)
@@ -33,6 +34,7 @@
 #define P 4096
 typedef struct { char id[40], page[48], kind[8], label[80], target[P], args[P], writes[8], confirm[8], src[P]; int line, global; } Row;
 static Row R[MAXR]; static int nr, nbad;
+static int g_book_no_global;      /* a book's harness.pdl may say `GLOBAL | no`: the global rows (#.desktop/harness_menu.pdl) are not listed for that book (D76 addendum, 2026-11-14) */
 static char HOUSE[P];
 
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
@@ -51,6 +53,7 @@ static void load(const char *path, int global) {
         lineno++; if (ln[0] == '#') continue; char *f[12]; int n = 0; char *p = ln; f[n++] = p;
         for (; *p && n < 12; p++) if (*p == '|') { *p = 0; f[n++] = p + 1; }
         for (int i = 0; i < n; i++) f[i] = trim(f[i]);
+        if (!global && n >= 2 && !strcmp(f[0], "GLOBAL")) { if (!strcmp(f[1], "no")) g_book_no_global = 1; continue; }
         if (n < 1 || strcmp(f[0], "HARNESS")) continue;
         if (n < 10) { bad(path, lineno, "a HARNESS row needs id | page | kind | label | target | args | writes | confirm | note"); continue; }
         if (nr >= MAXR) { bad(path, lineno, "too many rows"); continue; }
@@ -72,6 +75,7 @@ static void load(const char *path, int global) {
     fclose(fp);
 }
 static void load_all(const char *book) {
+    g_book_no_global = 0;
     char p[P]; snprintf(p, sizeof p, "%s/#.desktop/harness_menu.pdl", HOUSE); load(p, 1);
     if (book && book[0] && strcmp(book, "-") && word_ok(book)) { snprintf(p, sizeof p, "%s/@.apps/%s/harness.pdl", HOUSE, book); load(p, 0); }
 }
@@ -141,7 +145,7 @@ static void one_line(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || 
 static int plugz_rows(const char *book, const char *page, const char *kind, const char *outf) {
     int named = book[0] && strcmp(book, "-") && word_ok(book); if (!named) book = ""; load_all(book);
     int nown = 0; for (int i = 0; i < nr; i++) if (!R[i].global) nown++;
-    static char pn[MAXPLUG][48]; int np = named ? plug_names(book, pn, MAXPLUG) : 0; g_hide_global = named && !nown && !np;
+    static char pn[MAXPLUG][48]; int np = named ? plug_names(book, pn, MAXPLUG) : 0; g_hide_global = named && ((!nown && !np) || g_book_no_global);
     static char out[MAXR * 200 + MAXPLUG * 100 + 400]; out[0] = 0; size_t l;
     if (!strcmp(kind, "plugs")) { for (int i = 0; i < np; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\tplug:%s\t%s\n", pn[i], pn[i], plug_enabled(book, pn[i]) ? "on" : "off"); } }
     else for (int i = 0; i < nr; i++) { int is_case = !strcmp(R[i].kind, "CASE"); if (!listed(i, page) || is_case != !strcmp(kind, "tests")) continue;
@@ -191,6 +195,15 @@ static int plugz_open(const char *kind, const char *book, const char *page) {
     FILE *tp = fopen(tmp, "r"); char out[64] = ""; if (tp) { if (fgets(out, sizeof out, tp)) { } fclose(tp); } unlink(tmp); long np = atol(out); if (np <= 1) { printf("WINDOW-MISSING spawn-failed\n"); return 1; }
     char num[32]; snprintf(num, sizeof num, "%ld\n", np); write_atomic(pf, num); printf("WINDOW-OPENED %s %ld\n", kind, np); return 0;
 }
+/* DIR (2026-11-14, owner: "add dir to tools option, in edit also, so a human can easily open the tools dir for that book"): `pick open:dir` opens the book's own folder (<house>/@.apps/<book>/, where harness.pdl and plugs/ live)
+ * in the system file manager, the way the HQ menu's own `dir` row does (xdg-open). Needs an open book; a book with no folder yet prints DIR-MISSING <book> and opens nothing (the folder is never created here). */
+static int open_dir(const char *book) {
+    if (!book[0] || !word_ok(book)) { printf("DIR-MISSING no open book\n"); return 1; }
+    char d[P]; snprintf(d, sizeof d, "%s/@.apps/%s", HOUSE, book); struct stat sb; if (stat(d, &sb) || !S_ISDIR(sb.st_mode)) { printf("DIR-MISSING %s\n", book); return 1; }
+    const char *opener = getenv("HARNESS_MENU_OPENER"); if (!opener || !opener[0]) opener = "/usr/bin/xdg-open";      /* the env var is a TEST HOOK (a case swaps in a harmless program so no file manager opens) */
+    if (access(opener, X_OK)) { printf("DIR-MISSING opener\n"); return 1; }
+    char *av[] = { (char *)opener, d, NULL }; run_child(av, HOUSE, "/dev/null", 10); printf("DIR-OPENED %s\n", d); return 0;
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: harness_menu_op list|pick|check <house> ...\n"); return 2; }
     const char *verb = argv[1]; snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
@@ -206,7 +219,7 @@ int main(int argc, char **argv) {
     if (!strcmp(verb, "describe") && argc >= 8) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_describe(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6], argv[7]) ? 2 : 0; }
     /* LAUNCHER (2026-11-14, owner): the LyfeDesk top-bar Tools dropdown is only three launchers into three windows (plugs, harnz, tests: tests are their own kind, owner agreed); the bar adds notes and cancel. A pick (open:plugs, open:harnz, open:tests) opens that window (plugz_open below, D76); the windows are built. The book and page arguments are accepted for the windows to come. */
     if (!strcmp(verb, "launcher") && argc >= 6) {
-        if (write_atomic(argv[5], "plugs\topen:plugs\nharnz\topen:harnz\ntests\topen:tests\n")) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
+        if (write_atomic(argv[5], "plugs\topen:plugs\nharnz\topen:harnz\ntests\topen:tests\ndir\topen:dir\n")) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }
     if (!strcmp(verb, "list") && argc >= 6) {
@@ -217,7 +230,7 @@ int main(int argc, char **argv) {
          * A group with no rows is left out. A heading is a line with the id `-`: picking it does nothing. */
         int na = 0, nc = 0; for (int i = 0; i < nr; i++) if (visible(&R[i], page)) { if (!strcmp(R[i].kind, "CASE")) nc++; else na++; }
         static char pn[MAXPLUG][48]; int np = (book[0] && strcmp(book, "-") && word_ok(book)) ? plug_names(book, pn, MAXPLUG) : 0;
-        g_hide_global = named && !nown && !np;      /* a named book with nothing of its own: no global tests */
+        g_hide_global = named && ((!nown && !np) || g_book_no_global);      /* a named book with nothing of its own: no global tests */
         na = nc = 0; for (int i = 0; i < nr; i++) if (listed(i, page)) { if (!strcmp(R[i].kind, "CASE")) nc++; else na++; }
         if (na) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- this page --\t-\n");
             for (int i = 0; i < nr; i++) if (listed(i, page) && strcmp(R[i].kind, "CASE")) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\t%s\n", R[i].label, R[i].id); } }
@@ -226,6 +239,7 @@ int main(int argc, char **argv) {
         if (nc) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- tests --\t-\n");
             for (int i = 0; i < nr; i++) if (listed(i, page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
         /* NEW GROUP (2026-11-14, owner: "add it just to visually show our work, b4 we continue"): the maker is spec step 5 and is NOT BUILT. These rows only SHOW where it will be, say so in their labels, and a pick changes nothing (id new:plug or new:harnz prints NEW-NOT-BUILT). Shown for any named book. Remove the words "not built yet" when the maker lands. */
+        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- folder --\t-\ndir\topen:dir\n"); }      /* open the book's tools folder (D76 addendum, 2026-11-14) */
         if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- new (not built yet) --\t-\n+ new plug (on/off)\tnew:plug\n+ new harnz (one-shot)\tnew:harnz\n"); }
         if (write_atomic(argv[5], out)) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
@@ -234,7 +248,7 @@ int main(int argc, char **argv) {
         const char *book = strcmp(argv[3], "-") ? argv[3] : "", *page = strcmp(argv[4], "-") ? argv[4] : "", *id = argv[5]; int confirmed = argc >= 7 && !strcmp(argv[6], "--confirmed");
         if (argc >= 7 && !confirmed) return 2;
         if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }
-        if (!strncmp(id, "open:", 5)) { if (!kind_ok(id + 5)) { fprintf(stderr, "harness_menu_op: no window %s\n", id + 5); return 2; } return plugz_open(id + 5, book, page); }      /* D76: open the window for that kind */
+        if (!strncmp(id, "open:", 5)) { if (!strcmp(id + 5, "dir")) { return open_dir(book); } if (!kind_ok(id + 5)) { fprintf(stderr, "harness_menu_op: no window %s\n", id + 5); return 2; } return plugz_open(id + 5, book, page); }      /* D76: open the window for that kind */
         if (!strcmp(id, "new:plug") || !strcmp(id, "new:harnz")) { printf("NEW-NOT-BUILT %s\n", id + 4); return 0; }      /* the maker is not built: a pick shows the row and changes nothing */      /* a group heading: picking it does nothing */
         if (!strncmp(id, "plug:", 5)) {      /* a plug row: flip its ENABLED row (D74); the book must be open */
             const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }

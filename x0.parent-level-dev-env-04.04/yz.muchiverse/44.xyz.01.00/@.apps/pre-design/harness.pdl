@@ -1,0 +1,8 @@
+# harness.pdl - the pre-design book's own tools (2026-11-14): LOCAL EXAMPLES for the office page, one harnz and one test. The plug is plugs/office-example.plug.pdl.
+# GLOBAL | no  : do not list the global tests (#.desktop/harness_menu.pdl: the centroid generators, enter house, crew ...) for this book; they are not about the office. Remove the row to list them again.
+GLOBAL | no
+# HARNESS | id | page | kind | label | target | args | writes | confirm | note      (grammar: the header of &.widgits/_shared-lib/ops/harness_menu_op.c; page = * for every page, or one page id)
+# harnz (ACTION): runs one compiled op on the open page. This one appends a line to state/office_stamps.txt; its limit and label come from the example plug, so it only runs while the plug is ON.
+HARNESS | stamp | office | ACTION | stamp this page | @.apps/pre-design/ops/+x/office_stamp.+x | ${APP} ${PAGE} @plug:office-example:stamp_limit @plug:office-example:stamp_label | - | no | example harnz: appends a line to state/office_stamps.txt (the plug sets the limit and the label)
+# test (CASE): a harness case for agents; the last verdict shows beside it. This one checks this book's tools and the stamp op in a scratch copy.
+HARNESS | office_check | office | CASE | check office tools | office_tools | - | - | no | example test: the tools of this book are valid and the stamp op keeps its cap

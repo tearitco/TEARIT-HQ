@@ -3,6 +3,7 @@
 # Negative controls: a heading does nothing, a missing plug, a bad plug name, no open book, and a plug file with no ENABLED row are all refused with the files unchanged; a group with no rows is left out.
 RESULTS | ../results/tools_menu.txt
 ENV | LC_ALL | C
+ENV | HARNESS_MENU_OPENER | /usr/bin/true
 
 CASE    | setup
 SCRATCH |
@@ -139,6 +140,43 @@ RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | 
 EXPECT_OUT | WINDOW-MISSING layout | in-a-scratch-house-with-no-window-files-the-pick-says-what-is-missing-and-starts-nothing
 RUN | /usr/bin/grep | -c | ENABLED \p 0 | $T/h/@.apps/bk/plugs/beta.plug.pdl
 EXPECT_OUT | 1 | NEGATIVE-and-a-pick-flips-no-plug
+
+CASE    | the-dir-row-opens-the-books-tools-folder
+# 2026-11-14 owner: a `dir` row so a human can open the book's tools folder (the editor tab and the LyfeDesk bar). The opener is swapped for /usr/bin/true by HARNESS_MENU_OPENER so no file manager opens.
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | bk | start | $T/rows7.txt
+EXPECT_HAS | rows7.txt | -- folder -- | a-folder-group
+EXPECT_HAS | rows7.txt | dir\topen:dir | with-a-dir-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows8.txt
+EXPECT_LACKS | rows8.txt | open:dir | NEGATIVE-with-no-book-there-is-no-folder-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | launcher | $T/h | bk | start | $T/rows9.txt
+EXPECT_HAS | rows9.txt | dir\topen:dir | the-bar-launcher-has-dir-too
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | open:dir
+EXPECT_EXIT | 0 | picking-dir-opens-the-book-folder
+EXPECT_OUT | DIR-OPENED | and-says-which
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | nobook | start | open:dir
+EXPECT_EXIT | 1 | NEGATIVE-a-book-with-no-folder-opens-nothing
+EXPECT_OUT | DIR-MISSING nobook | and-says-so
+RUN | /usr/bin/test | -e | $T/h/@.apps/nobook
+EXPECT_EXIT | 1 | NEGATIVE-and-the-folder-is-not-created-by-the-pick
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | - | - | open:dir
+EXPECT_EXIT | 1 | NEGATIVE-with-no-open-book-nothing-opens
+
+CASE    | a-book-can-opt-out-of-the-global-tests
+# 2026-11-14 owner ("book shows enter house?"): the office page has its own tools and must not list the centroid generators and proofs. A book's harness.pdl may say `GLOBAL | no`; with no such row the global rows are listed as before (book bk is the control).
+MKDIR | h/@.apps/nog
+WRITE   | h/@.apps/nog/harness.pdl | GLOBAL \p no\nHARNESS \p go2 \p * \p ACTION \p do it too \p @.apps/bk/ops/+x/noop \p - \p - \p no \p a page tool\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | nog | start | $T/rows10.txt
+EXPECT_HAS | rows10.txt | do it too | the-books-own-tool-is-listed
+EXPECT_LACKS | rows10.txt | the proof | NEGATIVE-the-global-test-is-not-listed-for-a-book-that-says-GLOBAL-no
+EXPECT_LACKS | rows10.txt | -- tests -- | and-so-there-is-no-tests-heading
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | bk | start | $T/rows11.txt
+EXPECT_HAS | rows11.txt | the proof | CONTROL-a-book-without-the-row-still-lists-the-global-test
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | rows | $T/h | nog | start | tests | $T/rows12.txt
+EXPECT_EXIT | 0 | the-tests-window-rows-verb-runs
+RUN | /usr/bin/grep | -c | the proof | $T/rows12.txt
+EXPECT_OUT | 0 | NEGATIVE-the-tests-window-lists-no-global-test-for-it-either
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | nog
+EXPECT_EXIT | 0 | the-GLOBAL-row-is-not-a-bad-row
 
 CASE    | cleanup
 CLEAN |

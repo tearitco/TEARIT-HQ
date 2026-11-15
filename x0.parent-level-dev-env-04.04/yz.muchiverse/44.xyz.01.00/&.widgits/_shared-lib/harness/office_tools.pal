@@ -1,0 +1,4 @@
+# office_tools.pal - the pre-design office example tools (a plug, a harnz, a test). See cases/office_tools.pdl
+exec ./ops/+x/harness_case_op.+x cases/office_tools.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/office_tools.pdl
+halt
