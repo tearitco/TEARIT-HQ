@@ -84,6 +84,8 @@ EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | row_1_tex
 EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | alpha | NEGATIVE-no-plugs-in-the-harnz-window
 EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | the proof | NEGATIVE-no-tests-in-the-harnz-window
 EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | control_label=  click: run  | a-harnz-has-a-click-control
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | row from @.apps/bk/harness.pdl line 1 | the-source-row-is-shown-relative-to-the-house
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | /h/@.apps/bk/harness.pdl | NEGATIVE-no-absolute-scratch-path-leaks-into-the-window
 RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 1 | $T/h/&.hq-apps/plugz-hq/instances/harnz
 RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/harnz
 RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps/plugz-hq/instances/harnz

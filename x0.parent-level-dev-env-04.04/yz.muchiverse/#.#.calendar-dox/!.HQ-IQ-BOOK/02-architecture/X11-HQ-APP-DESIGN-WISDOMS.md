@@ -200,3 +200,23 @@ auto-last; `target_id` scoping; scroll regions number only visible
 rows), the CSS-subset reality (explicit px widths or it renders 0),
 and a fully worked DAW example with annotated nav numbers. Written for
 Grok, useful for any conversion.
+
+## 12b. One layout, several windows: the instance-dir hook (plugz-hq, 2026-11-14)
+Use this when several windows are the SAME screen over different data (plugz-hq: plugs, harnz and tests). Do not copy the `.xhtpm` per kind and do not add a per-kind branch to `khtpm_core_render.c`.
+Worked example: `&.hq-apps/plugz-hq/` (read it, it is small). Read events-hq first for the same pattern at larger scale (`&.widgits/events-hq/events-hq.xhtpm` + `ops/evhq_projector.c`).
+
+1. **The hook.** `khtpm_core_render <house> <xhtpm> <instance_dir>`: argv[3], if it is an existing directory, is the instance. `${ARG3}` = that dir, `<instance>/.hq_manager/ui.txt` is added to the template's vars automatically (no `vars=` needed), and every `<module>` gets `KHTPM_ARG3=<instance>` in its environment. One instance dir per window kind (`instances/<kind>/`, gitignored runtime state).
+2. **Three small files, no logic in the template.** (a) the static `.xhtpm`; (b) a C **projector** `<module>` that reads the instance's state files and writes `ui.txt` ONLY when it changed; (c) a C **action op** that every `action=` runs (`'${PKG}/ops/+x/x_act.+x' 'verb' 'arg' '${ARG3}'`) and that is the only writer. The rules about the DATA (what rows exist, how to toggle or run) stay in ONE existing op that other consumers also call (here `harness_menu_op rows|describe|pick`): the projector formats, it does not decide.
+3. **Wake-up by marker, not by timer alone.** Every writer appends one byte to `<instance>/.hq_manager/marker.txt` (cap it, 4 KB, restart it); the projector polls the marker's SIZE every 400 ms (two stats) and republishes on growth, plus a slow full refresh (5 s) so a change made elsewhere (the editor) shows up. Idle cost: two stats per 400 ms.
+4. **Long actions never block the window.** An action that can take minutes starts a detached, registered worker through the spawn funnel (`kh_spawn.sh <house> 0 <name> -- <worker command>`; the funnel prints the pid) and returns at once; the worker writes the result line to a file and bumps the marker. The window shows "running ..." and then the result.
+5. **Opening the window from an op.** `fork`+`execv` through the funnel with the instance dir as the last argument; keep a `window.pid` in the instance and, when that pid is alive and is a `khtpm_core_render`, only refresh the instance files and bump the marker (one window per kind).
+6. **Make the projector testable.** Give it a `--once <instance>` mode (publish once, exit) so a harness case can run the REAL projector and the REAL action op in a scratch house and assert on `ui.txt`, which is what the window shows. Then open the real window once and look at the PNG.
+
+Traps hit while building it (each cost a failed run):
+- `execv` needs an absolute path: `execv("sh", ...)` silently fails (the funnel never ran, "spawn-failed"). Use `/bin/sh`.
+- A rebuilt op is not an installed op: I compiled the new verbs to a scratch binary and the case ran the old `+x/` one. Build with the app's own `build_*.sh` into `+x/`, and check the verb answers from THAT path.
+- Compare kinds explicitly: an inverted `!strcmp(...) != !flag` check rejected exactly the rows it should accept and the detail panel came up empty (the list was fine). Test the detail path for EVERY kind.
+- `show=` flags are `1`/`0`; a selected list row is `class="data-item active"` (the CSS rule `.data-item.active` is in the sibling css); `<repeat bind="row">` needs keys `row_<n>_text`, and an index you need in an action (`row_<n>_idx`) must be written by the projector.
+- The renderer reparses an edited `.xhtpm` live (about 5 s), so layout changes show without a relaunch; a `<scrolllist>` that starts at the end needs `class="from-top"`; a long line wraps in a narrow sidebar.
+- Windows opened by two instances of one layout open at the SAME screen position (stacked); there is no per-instance position yet.
+- Action strings get `'<package_dir>' '<house_root>'` appended by the renderer: derive the house from the instance path, do not depend on those arguments.

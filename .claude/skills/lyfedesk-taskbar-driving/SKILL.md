@@ -33,3 +33,10 @@ Type the CANCEL row's nav number then Enter through the bar's relay (`KEY_PRESSE
 ## 6. Evidence rules
 A window that exists is not a window that is open: check its Map State.
 Open the PNG and say what it shows; a dropdown that exists in a window list is not proof of its rows. Write the manager build time next to any claim about what the bar does. A source-text check (`taskbar_harness_menu` case) proves wiring, not behaviour: say so.
+
+## 7. The plugs / harnz / tests windows (plugz-hq, built 2026-11-14)
+- The bar's Tools dropdown is a launcher: `plugs`, `harnz`, `tests`, notes, cancel. A pick runs `harness_menu_op pick <house> <book> <page> open:<kind>` (the bar passes the book and page it shows) which starts `&.hq-apps/plugz-hq/plugz-hq.xhtpm` with the instance dir `instances/<kind>` as argv[3] (the renderer's generic hook). To open one without the bar: run that op yourself; it prints `WINDOW-OPENED <kind> <pid>` or `WINDOW-REFRESHED` or `WINDOW-MISSING <what>`.
+- Drive it with the window's own relay (`#.desktop/entity_menu_history/<pid>.txt`, the pid in the instance's `window.pid`): move the pointer onto the control button, then `MOUSE_EVENT: 1 <x> <y> 1` and `0`. The window is a plain 784x504 at +80+96; find it by size (no X name); all three kinds open at the SAME spot, so look at the newest window id.
+- What each shows is in the instance's `.hq_manager/ui.txt` (read that first, it is what the window displays); the last result is `last.txt`. A plug click flips the real `ENABLED` row and appends a `TOGGLE` row to the book's `state/plug_log.txt`: restore the plug and tell the owner about the log rows.
+- Close a window by its exact pid (`kill <pid>`); its projector module ends with it (check no `plugz_projector` is left).
+- Read `X11-HQ-APP-DESIGN-WISDOMS.md` section 12b before changing it; the design is `PLUGS-AND-HARNZ-SPEC-2026-11-14.md` section 14.

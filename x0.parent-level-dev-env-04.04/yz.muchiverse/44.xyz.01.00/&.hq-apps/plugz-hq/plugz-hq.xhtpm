@@ -24,13 +24,14 @@
       <item id="control" class="btn" label="${control_label}" show="${show_control}" action="'${PKG}/ops/+x/plugz_act.+x' 'control' '-' '${ARG3}'"/>
       <item id="confirm" class="btn danger" label="${confirm_label}" show="${show_confirm}" action="'${PKG}/ops/+x/plugz_act.+x' 'confirm' '-' '${ARG3}'"/>
       <text label="${last_result}" class="quiet"/>
-      <repeat count="${n_info}" bind="inf">
-        <text label="${inf.text}"/>
-      </repeat>
-      <text label="links" class="block-title"/>
-      <text label="fires: ${links_fires}" class="quiet"/>
-      <text label="fired by: ${links_firedby}" class="quiet"/>
+      <text label="links  -  fires: ${links_fires}   fired by: ${links_firedby}" class="block-title"/>
       <text label="${links_note}" class="quiet"/>
+      <text label="details" class="block-title"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_info}" bind="inf">
+          <text label="${inf.text}"/>
+        </repeat>
+      </scrolllist>
     </panel>
   </page>
 </window>

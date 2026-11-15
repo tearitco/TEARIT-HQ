@@ -165,7 +165,7 @@ static int plugz_describe(const char *book, const char *page, const char *kind, 
         int want_case = !strcmp(kind, "tests"); if (!r || ((!strcmp(r->kind, "CASE")) != (want_case != 0))) { PUT("title=\nstatus=\ncontrol=none\nconfirm=no\nn_info=0\n"); return write_atomic(outf, out); }
         char sfx[24]; verdict_suffix(r, sfx, sizeof sfx); PUT("title=%s\nstatus=%s\ncontrol=%s\nconfirm=%s\n", r->label, sfx[0] ? sfx + 1 : "-", want_case ? "run" : "click", r->confirm);
         if (want_case) { INFO("case %s", r->target); INFO("runs behind cpu_gate, one at a time"); } else { INFO("runs %s", r->target); if (strcmp(r->args, "-")) INFO("args %s", r->args); INFO("writes %s", r->writes); }
-        INFO("row from %s line %d", r->src, r->line);
+        { size_t hl = strlen(HOUSE); INFO("row from %s line %d", (!strncmp(r->src, HOUSE, hl) && r->src[hl] == '/') ? r->src + hl + 1 : r->src, r->line); }
     }
     PUT("n_info=%d\n", ni); for (int i = 0; i < ni; i++) PUT("info_%d=%s\n", i, info[i]);
     return write_atomic(outf, out);
@@ -183,7 +183,7 @@ static int plugz_open(const char *kind, const char *book, const char *page) {
     char pf[P]; snprintf(pf, sizeof pf, "%s/window.pid", inst); char pb[32] = ""; FILE *pp = fopen(pf, "r"); if (pp) { if (fgets(pb, sizeof pb, pp)) { } fclose(pp); } long pid = atol(pb);
     if (pid > 1 && !kill((pid_t)pid, 0)) { char cl[P]; snprintf(cl, sizeof cl, "/proc/%ld/cmdline", pid); FILE *cp = fopen(cl, "r"); char c[512] = ""; if (cp) { size_t n = fread(c, 1, sizeof c - 1, cp); c[n] = 0; fclose(cp); } if (strstr(c, "khtpm_core_render")) { printf("WINDOW-REFRESHED %s %ld\n", kind, pid); return 0; } }
     setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "plugz-hq", 1); char nm[64]; snprintf(nm, sizeof nm, "plugz-%s", kind); char tmp[P]; snprintf(tmp, sizeof tmp, "%s/spawn.out", inst);
-    char *av[] = { "sh", funnel, HOUSE, "0", nm, "--", exe, HOUSE, x, inst, NULL }; run_child(av, HOUSE, tmp, 20);
+    char *av[] = { "/bin/sh", funnel, HOUSE, "0", nm, "--", exe, HOUSE, x, inst, NULL }; run_child(av, HOUSE, tmp, 20);
     FILE *tp = fopen(tmp, "r"); char out[64] = ""; if (tp) { if (fgets(out, sizeof out, tp)) { } fclose(tp); } unlink(tmp); long np = atol(out); if (np <= 1) { printf("WINDOW-MISSING spawn-failed\n"); return 1; }
     char num[32]; snprintf(num, sizeof num, "%ld\n", np); write_atomic(pf, num); printf("WINDOW-OPENED %s %ld\n", kind, np); return 0;
 }
