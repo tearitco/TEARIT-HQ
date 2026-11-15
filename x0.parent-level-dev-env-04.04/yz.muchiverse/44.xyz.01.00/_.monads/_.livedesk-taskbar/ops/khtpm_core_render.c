@@ -13958,6 +13958,8 @@ static void handle_key(KeySym ks, char ch) {
         g_seg_dot_armed = 1;
         return;
     }
+    /* "+" (or "=", the same key without Shift) runs the bar's nav-zero cell, like typing 0 (owner 2026-11-15); only a window that HAS such a cell reacts, so no other window's keys change */
+    if ((ch == '+' || ch == '=') && g_window && !g_dock_drop_lo) { Elem *zp = kh_find_nav_zero(g_window); if (zp && zp->onclick[0]) { dispatch(zp->onclick); return; } }
     if (ch >= '0' && ch <= '9') {
         int d = ch - '0';
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {
