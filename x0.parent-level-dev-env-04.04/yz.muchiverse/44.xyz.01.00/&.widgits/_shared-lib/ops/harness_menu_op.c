@@ -26,6 +26,8 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <dirent.h>
+#include <time.h>
 
 #define MAXR 48
 #define P 4096
@@ -84,6 +86,32 @@ static void verdict_suffix(const Row *r, char *out, size_t cap) {      /* ` [15 
 }
 static int write_atomic(const char *path, const char *text) { char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *f = fopen(tmp, "w"); if (!f) return 1; fputs(text, f); if (fclose(f)) return 1; return rename(tmp, path) ? 1 : 0; }
 
+/* PLUGS (D74, 2026-11-14): the open book's own <app>/plugs/<name>.plug.pdl files are listed in the same dropdown as plug rows (`[x] name` on, `[ ] name` off, id `plug:<name>`); picking one flips its
+ * `ENABLED | 1/0` row and appends one row to <app>/state/plug_log.txt (TOGGLE | epoch | plug | from | to; capped at 32 KB, then the oldest half is dropped). Only the toggle lives here: what a plug DOES is its own file. */
+#define MAXPLUG 16
+static int plug_names(const char *book, char names[][48], int max) {
+    char d[P]; snprintf(d, sizeof d, "%s/@.apps/%s/plugs", HOUSE, book); DIR *dp = opendir(d); if (!dp) return 0; int n = 0; struct dirent *e;
+    while ((e = readdir(dp)) && n < max) { size_t l = strlen(e->d_name); if (l > 10 && !strcmp(e->d_name + l - 9, ".plug.pdl") && l - 9 < 48) { char nm[48]; snprintf(nm, sizeof nm, "%.*s", (int)(l - 9), e->d_name); if (word_ok(nm)) snprintf(names[n++], 48, "%s", nm); } }
+    closedir(dp); for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) if (strcmp(names[i], names[j]) > 0) { char t[48]; snprintf(t, 48, "%s", names[i]); snprintf(names[i], 48, "%s", names[j]); snprintf(names[j], 48, "%s", t); }
+    return n;
+}
+static int plug_enabled(const char *book, const char *name) {      /* 1 on, 0 off or no ENABLED row */
+    char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, name); FILE *fp = fopen(f, "r"); if (!fp) return 0; char ln[600]; int on = 0;
+    while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!strncmp(p, "ENABLED", 7)) { char *bar = strchr(p, '|'); if (bar) on = atoi(bar + 1) == 1; } } fclose(fp); return on;
+}
+static int plug_toggle(const char *book, const char *name) {      /* 0 ok, 1 failed (no file, or no ENABLED row to flip) */
+    char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, name); FILE *fp = fopen(f, "r"); if (!fp) return 1;
+    static char buf[60000], out[60500]; size_t n = fread(buf, 1, sizeof buf - 1, fp); buf[n] = 0; fclose(fp); size_t o = 0; int hit = 0, from = 0;
+    for (char *l = buf; *l; ) { char *nl = strchr(l, '\n'); size_t ll = nl ? (size_t)(nl - l) : strlen(l); char line[700]; snprintf(line, sizeof line, "%.*s", (int)(ll < 699 ? ll : 699), l);
+        char *q = line; while (*q == ' ') q++;
+        if (!hit && !strncmp(q, "ENABLED", 7) && strchr(q, '|')) { from = atoi(strchr(q, '|') + 1) == 1; o += (size_t)snprintf(out + o, sizeof out - o, "ENABLED | %d\n", from ? 0 : 1); hit = 1; }
+        else { o += (size_t)snprintf(out + o, sizeof out - o, "%.*s\n", (int)ll, l); }
+        if (!nl) { break; } l = nl + 1; }
+    if (!hit) { return 1; } if (write_atomic(f, out)) { return 1; }
+    char lg[P]; snprintf(lg, sizeof lg, "%s/@.apps/%s/state/plug_log.txt", HOUSE, book); FILE *lf = fopen(lg, "a");
+    if (lf) { fprintf(lf, "TOGGLE | %ld | %s | %d | %d\n", (long)time(NULL), name, from, from ? 0 : 1); fclose(lf); struct stat st; if (stat(lg, &st) == 0 && st.st_size > 32768) { FILE *rf = fopen(lg, "r"); if (rf) { static char kb[40000]; size_t kn = fread(kb, 1, sizeof kb - 1, rf); fclose(rf); kb[kn] = 0; char *mid = strchr(kb + kn / 2, '\n'); if (mid) write_atomic(lg, mid + 1); } } }
+    return 0;
+}
 static int run_child(char *const argv[], const char *cwd, const char *outfile, int cap_s) {
     pid_t pid = fork(); if (pid < 0) return -1;
     if (pid == 0) { if (cwd && chdir(cwd)) _exit(126); int fd = open(outfile ? outfile : "/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) { dup2(fd, 1); dup2(open("/dev/null", O_WRONLY), 2); } execv(argv[0], argv); _exit(127); }
@@ -105,18 +133,38 @@ int main(int argc, char **argv) {
     const char *verb = argv[1]; snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
     if (!strcmp(verb, "check")) {
         load_all(NULL); for (int i = 3; i < argc; i++) { char p[P]; snprintf(p, sizeof p, "%s/@.apps/%s/harness.pdl", HOUSE, argv[i]); if (word_ok(argv[i])) load(p, 0); }
+        for (int i = 3; i < argc; i++) if (word_ok(argv[i])) { static char pc[MAXPLUG][48]; int n2 = plug_names(argv[i], pc, MAXPLUG);      /* a plug file must say PLUG | name | <its file name> and have an ENABLED row */
+            for (int k = 0; k < n2; k++) { char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, argv[i], pc[k]); FILE *fp = fopen(f, "r"); int named = 0, has_en = 0; char ln[600];
+                if (fp) { while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!strncmp(p, "ENABLED", 7) && strchr(p, '|')) has_en = 1; if (!strncmp(p, "PLUG", 4)) { char *f1 = strchr(p, '|'); if (f1) { f1++; char *f2 = strchr(f1, '|'); if (f2) { *f2 = 0; if (!strcmp(trim(f1), "name")) { char *v = trim(f2 + 1); char *f3 = strchr(v, '|'); if (f3) *f3 = 0; if (!strcmp(trim(v), pc[k])) named = 1; } } } } } fclose(fp); }
+                if (!named) bad(f, 0, "a plug file needs a row PLUG | name | <the file name>"); if (!has_en) bad(f, 0, "a plug file needs an ENABLED | 1 or 0 row"); } }
         printf("HARNESS-CHECK rows=%d bad=%d\n", nr, nbad); return nbad ? 2 : 0;
     }
     if (!strcmp(verb, "list") && argc >= 6) {
         const char *book = argv[3], *page = strcmp(argv[4], "-") ? argv[4] : ""; load_all(book);
-        static char out[MAXR * 200]; out[0] = 0;
-        for (int i = 0; i < nr; i++) if (visible(&R[i], page)) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); size_t l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); }
+        static char out[MAXR * 200 + MAXPLUG * 100 + 400]; out[0] = 0; size_t l;
+        /* THREE GROUPS (D74, 2026-11-14), one list for the editor's Tools tab and the LyfeDesk Tools cell: what this page can DO (ACTION rows), the book's PLUGS (on/off), and the TESTS (CASE rows, agents).
+         * A group with no rows is left out. A heading is a line with the id `-`: picking it does nothing. */
+        int na = 0, nc = 0; for (int i = 0; i < nr; i++) if (visible(&R[i], page)) { if (!strcmp(R[i].kind, "CASE")) nc++; else na++; }
+        static char pn[MAXPLUG][48]; int np = (book[0] && strcmp(book, "-") && word_ok(book)) ? plug_names(book, pn, MAXPLUG) : 0;
+        if (na) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- this page --\t-\n");
+            for (int i = 0; i < nr; i++) if (visible(&R[i], page) && strcmp(R[i].kind, "CASE")) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\t%s\n", R[i].label, R[i].id); } }
+        if (np) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- plugs --\t-\n");
+            for (int i = 0; i < np; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s %s\tplug:%s\n", plug_enabled(book, pn[i]) ? "[x]" : "[ ]", pn[i], pn[i]); } }
+        if (nc) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- tests --\t-\n");
+            for (int i = 0; i < nr; i++) if (visible(&R[i], page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
         if (write_atomic(argv[5], out)) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }
     if (!strcmp(verb, "pick") && argc >= 6) {
         const char *book = strcmp(argv[3], "-") ? argv[3] : "", *page = strcmp(argv[4], "-") ? argv[4] : "", *id = argv[5]; int confirmed = argc >= 7 && !strcmp(argv[6], "--confirmed");
         if (argc >= 7 && !confirmed) return 2;
+        if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }      /* a group heading: picking it does nothing */
+        if (!strncmp(id, "plug:", 5)) {      /* a plug row: flip its ENABLED row (D74); the book must be open */
+            const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }
+            static char pn2[MAXPLUG][48]; int np2 = plug_names(book, pn2, MAXPLUG), found = 0; for (int i = 0; i < np2; i++) if (!strcmp(pn2[i], pname)) found = 1;
+            if (!found) { fprintf(stderr, "harness_menu_op: no plug %s in book %s\n", pname, book); return 2; }
+            if (plug_toggle(book, pname)) { fprintf(stderr, "harness_menu_op: plug %s has no ENABLED row to flip\n", pname); return 1; }
+            printf("PLUG %s %s\n", pname, plug_enabled(book, pname) ? "on" : "off"); return 0; }
         load_all(book);
         Row *r = NULL; for (int i = 0; i < nr; i++) if (!strcmp(R[i].id, id) && visible(&R[i], page)) r = &R[i];
         if (!r) { fprintf(stderr, "harness_menu_op: no row %s here\n", id); return 2; }

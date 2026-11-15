@@ -128,7 +128,7 @@ WRITE | h/@.apps/rpg-edit-hq/board/state/ui.txt | book_label=book:b\npage_label=
 WRITE | h/@.apps/b/b-pchq/pieces/system/maps/b/p1/cells.txt | NOT-CLEARED\n
 RUN | $T/ps.+x | $T/h | none
 EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_1_label=clear page | the-editor-lists-the-rows-from-the-data-not-from-C
-EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=5 | five-rows-for-this-book-and-page
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=7 | five-rows-plus-two-group-headings-for-this-book-and-page
 RUN | $T/ps.+x | $T/h | hpick | clr
 EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_1_label=CONFIRM clear page? | the-first-click-turns-the-label-into-CONFIRM
 EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_pending=clr | and-remembers-the-pending-row
@@ -177,15 +177,15 @@ WRITE | h/@.apps/rpg-edit-hq/board/state/ui.txt | book_label=book:other\npage_la
 WRITE | h/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\nside_pal=\n
 WRITE | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_sel=old\n
 RUN | $T/ps.+x | $T/h | harness | b | p1
-EXPECT_OUT | HARNESS-ROWS 5 | page-p1-of-book-b-has-five-rows-the-ids-come-from-the-arguments-not-ui-txt
-EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=5 | n_tbhar-is-written
+EXPECT_OUT | HARNESS-ROWS 7 | page-p1-of-book-b-has-five-rows-and-two-group-headings-the-ids-come-from-the-arguments-not-ui-txt
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=7 | n_tbhar-is-written
 EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_sel=old | and-an-unrelated-key-of-pal-txt-is-kept
 EXPECT_FILE | h/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\nside_pal=\n | NEGATIVE-no-sidebar-state-was-touched-restore-would-have-reset-it
 RUN | $T/ps.+x | $T/h | harness | b | p2
-EXPECT_OUT | HARNESS-ROWS 2 | page-p2-has-only-the-global-row-and-the-star-row
-EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=2 | n_tbhar-shrank
+EXPECT_OUT | HARNESS-ROWS 4 | page-p2-has-two-rows-and-two-group-headings
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | n_tbhar=4 | n_tbhar-shrank
 EXPECT_LACKS | h/@.apps/rpg-edit-hq/board/state/pal.txt | tbhar_2_label=clear | NEGATIVE-the-rows-of-the-longer-previous-list-are-blanked-not-kept
 RUN | $T/ps.+x | $T/h | harness | - | -
-EXPECT_OUT | HARNESS-ROWS 1 | with-no-book-only-the-global-row
+EXPECT_OUT | HARNESS-ROWS 2 | with-no-book-only-the-global-row-and-its-tests-heading
 RUN | $T/ps.+x | $T/h | harness
-EXPECT_OUT | HARNESS-ROWS 1 | with-no-arguments-it-falls-back-to-ui-txt-which-names-no-book-b
+EXPECT_OUT | HARNESS-ROWS 2 | with-no-arguments-it-falls-back-to-ui-txt-which-names-no-book-b

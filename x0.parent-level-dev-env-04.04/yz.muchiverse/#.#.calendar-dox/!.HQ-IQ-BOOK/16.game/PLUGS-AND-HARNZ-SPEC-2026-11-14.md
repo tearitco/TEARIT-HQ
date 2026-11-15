@@ -97,3 +97,13 @@ The reviewer approved the split, the judge, the default-parity check, config-ver
 | 10 Tiebreak | "u judge" | **Adopted: when unsure, make it a plug** (promoting a plug to an event later is easy; the reverse breaks games). One exception, stated so it is not abused: anything that guards ledger integrity (appending rows, replay checks, the rules hash itself) is engine, never a plug |
 
 Resulting build order (section 8, revised): 1 event pages read plug parameters (finishes day/night); 2 Tools dropdown groups; 3 generic plug header (`PARAM` with types, `AFFECTS`, `USES`, `VERSION`, `REQUIRES`, `CONFLICTS`) and the multi-plug loader with the collision and trust checks; 4 harnz kind `EVENT`; 4b `TRIGGER` and verdict rows; 5 the maker.
+
+## 13. Build status (2026-11-14, after the owner said "do it")
+| Step | Status | Evidence (RAN) |
+|---|---|---|
+| 1 Event pages read plug parameters; the four `phase_*` pages converted | **BUILT** | case `plug_ref` 60/0; a mutation (the OFF check removed) failed it; the real `phase_dusk` page follows an edit of the plug, in a scratch house. Commit `573f56a85` |
+| 2 Tools dropdown groups with on/off marks | **BUILT** (editor tab); the LyfeDesk cell mirrors the layout but shows only the global group | case `tools_menu` 45/0; a mutation (the toggle does not flip) failed it; `harness_menu` updated to 60/0 (heading rows counted). READ: the taskbar builder passes no book or page, so it lists no plugs; the page filter is `visible()` in `harness_menu_op.c` and works |
+| 3 Generic plug header (`PARAM` types and bounds, `AFFECTS`, `USES`, `VERSION`, `REQUIRES`, `CONFLICTS`), multi-plug loader, collision and trust checks | NOT BUILT (typed `PARAM` rows and the plug name check exist; the rest does not) | the day-night file is the only plug |
+| 4 Harnz kind `EVENT`; 4b `TRIGGER` and verdict rows | NOT BUILT | |
+| 5 The maker | NOT BUILT | |
+Known limits of step 2: a toggle is live for every plug (the hybrid view/outcome rule is designed, not built); plug rows appear only when a book with a `plugs/` folder is open (day-night lives in `@.apps/rpg-edit-hq`); the toggle writes `ENABLED` through the op and logs `TOGGLE | epoch | plug | from | to` in `<app>/state/plug_log.txt` (capped at 32 KB); `[x]` and `[ ]` are plain text because the dropdown draws labels only.

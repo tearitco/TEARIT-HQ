@@ -1,0 +1,112 @@
+# tools_menu (2026-11-14, decision D74, spec step 2): the Tools list (the editor tab and the LyfeDesk cell share harness_menu_op) is three groups: what this page can DO (ACTION rows), the book's PLUGS with
+# an on/off mark, and the TESTS (CASE rows). Picking a plug flips its ENABLED row and logs one row. SCRATCH house with the real op; nothing touches the live plugs.
+# Negative controls: a heading does nothing, a missing plug, a bad plug name, no open book, and a plug file with no ENABLED row are all refused with the files unchanged; a group with no rows is left out.
+RESULTS | ../results/tools_menu.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.widgits/_shared-lib/harness/cases
+MKDIR | h/#.desktop
+MKDIR | h/@.apps/bk/ops/+x
+MKDIR | h/@.apps/bk/plugs
+MKDIR | h/@.apps/bk/state
+MKDIR | h/@.apps/empty
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+RUN | /bin/cp | /bin/true | $T/h/@.apps/bk/ops/+x/noop
+WRITE   | h/&.widgits/_shared-lib/harness/cases/c1.pdl | CASE \p x\n
+WRITE   | h/#.desktop/harness_menu.pdl | HARNESS \p c1 \p * \p CASE \p the proof \p c1 \p - \p - \p no \p a test\n
+WRITE   | h/@.apps/bk/harness.pdl | HARNESS \p go \p * \p ACTION \p do it \p @.apps/bk/ops/+x/noop \p - \p - \p no \p a page tool\n
+WRITE   | h/@.apps/bk/plugs/alpha.plug.pdl | PLUG \p name \p alpha\nENABLED \p 1\n
+WRITE   | h/@.apps/bk/plugs/beta.plug.pdl | PLUG \p name \p beta\nENABLED \p 0\n
+WRITE   | h/@.apps/bk/plugs/gamma.plug.pdl | PLUG \p name \p gamma\nno switch here\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | bk | start | $T/rows.txt
+EXPECT_EXIT | 0 | the-list-is-written
+
+CASE    | three-groups-in-order
+RUN | /usr/bin/grep | -n | ^-- this page -- | $T/rows.txt
+EXPECT_OUT | 1:-- this page -- | the-first-group-is-this-page
+RUN | /usr/bin/grep | -n | ^-- plugs -- | $T/rows.txt
+EXPECT_OUT | 3:-- plugs -- | the-second-group-is-plugs-after-the-heading-and-one-page-row
+RUN | /usr/bin/grep | -n | ^-- tests -- | $T/rows.txt
+EXPECT_OUT | 7:-- tests -- | the-third-group-is-tests-last-after-three-plug-rows
+EXPECT_HAS | rows.txt | do it | the-page-tool-row-is-listed
+EXPECT_HAS | rows.txt | go | with-its-id
+EXPECT_HAS | rows.txt | [x] alpha | an-on-plug-is-marked-x
+EXPECT_HAS | rows.txt | plug:alpha | with-its-plug-id
+EXPECT_HAS | rows.txt | [ ] beta | an-off-plug-is-marked-empty
+EXPECT_HAS | rows.txt | the proof | the-test-row-is-in-the-tests-group
+EXPECT_LACKS | rows.txt | plug:../ | NEGATIVE-no-bad-names-are-listed
+
+CASE    | a-group-with-no-rows-is-left-out
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | empty | start | $T/rows2.txt
+EXPECT_EXIT | 0 | the-empty-book-lists
+EXPECT_LACKS | rows2.txt | -- plugs -- | NEGATIVE-no-plugs-no-plugs-heading
+EXPECT_LACKS | rows2.txt | -- this page -- | NEGATIVE-no-page-tools-no-heading
+EXPECT_HAS | rows2.txt | -- tests -- | CONTROL-the-global-test-row-is-still-there
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows3.txt
+EXPECT_LACKS | rows3.txt | -- plugs -- | NEGATIVE-no-open-book-no-plugs
+
+CASE    | picking-a-plug-flips-it-and-logs-one-row
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | plug:alpha
+EXPECT_EXIT | 0 | the-toggle-ran
+EXPECT_OUT | PLUG alpha off | and-reports-the-new-state
+EXPECT_HAS | h/@.apps/bk/plugs/alpha.plug.pdl | ENABLED \p 0 | the-ENABLED-row-is-0-now
+EXPECT_HAS | h/@.apps/bk/plugs/alpha.plug.pdl | PLUG \p name \p alpha | the-rest-of-the-file-is-kept
+EXPECT_HAS | h/@.apps/bk/state/plug_log.txt | \p alpha \p 1 \p 0 | one-log-row-from-1-to-0
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | bk | start | $T/rows4.txt
+EXPECT_HAS | rows4.txt | [ ] alpha | the-list-now-shows-it-off
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | plug:alpha
+EXPECT_OUT | PLUG alpha on | and-back-on
+EXPECT_HAS | h/@.apps/bk/plugs/alpha.plug.pdl | ENABLED \p 1 | round-trip
+RUN | /usr/bin/grep | -c | alpha | $T/h/@.apps/bk/state/plug_log.txt
+EXPECT_OUT | 2 | two-toggles-two-log-rows
+
+CASE    | NEGATIVE-refusals-leave-everything-unchanged
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | -
+EXPECT_EXIT | 0 | a-heading-pick-is-harmless
+EXPECT_OUT | HEADING | and-says-so
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | plug:nonesuch
+EXPECT_EXIT | 2 | a-missing-plug-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | plug:..
+EXPECT_EXIT | 2 | a-dotdot-plug-name-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | - | - | plug:alpha
+EXPECT_EXIT | 2 | no-open-book-no-toggle
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | plug:gamma
+EXPECT_EXIT | 1 | a-plug-file-with-no-ENABLED-row-cannot-be-flipped
+EXPECT_HAS | h/@.apps/bk/plugs/gamma.plug.pdl | no switch here | and-is-not-rewritten
+EXPECT_HAS | h/@.apps/bk/plugs/alpha.plug.pdl | ENABLED \p 1 | alpha-is-still-on
+RUN | /usr/bin/grep | -c | TOGGLE | $T/h/@.apps/bk/state/plug_log.txt
+EXPECT_OUT | 2 | and-no-refusal-wrote-a-log-row
+
+CASE    | the-plug-check
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bk
+EXPECT_EXIT | 2 | gamma-has-no-ENABLED-row-so-the-check-fails
+WRITE   | h/@.apps/bk/plugs/gamma.plug.pdl | PLUG \p name \p gamma\nENABLED \p 0\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bk
+EXPECT_EXIT | 0 | CONTROL-with-the-row-the-check-passes
+WRITE   | h/@.apps/bk/plugs/gamma.plug.pdl | PLUG \p name \p other\nENABLED \p 0\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | bk
+EXPECT_EXIT | 2 | a-plug-whose-name-row-differs-from-its-file-name-fails
+
+CASE    | the-editor-tab-redraws-after-a-toggle
+MKDIR | h/@.apps/rpg-edit-hq/board/state
+RUN | /bin/cp | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/ps.+x
+WRITE   | h/@.apps/rpg-edit-hq/board/state/ui.txt | book_label=book:bk\npage_label=page:start\n
+WRITE   | h/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\nside_pal=\n
+WRITE   | h/@.apps/rpg-edit-hq/board/state/pal.txt | harness_sel=old\n
+RUN | $T/ps.+x | $T/h | harness | bk | start
+EXPECT_OUT | HARNESS-ROWS | the-rows-were-built
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [x] alpha | the-tab-shows-alpha-on
+RUN | $T/ps.+x | $T/h | hpick | plug:alpha
+EXPECT_OUT | HARNESS plug:alpha rc=0 | the-click-ran-the-toggle
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [ ] alpha | the-tab-label-is-redrawn-as-off-with-no-other-step
+EXPECT_LACKS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [x] alpha | NEGATIVE-the-stale-on-label-is-gone
+EXPECT_HAS | h/@.apps/bk/plugs/alpha.plug.pdl | ENABLED \p 0 | and-the-plug-file-agrees
+RUN | $T/ps.+x | $T/h | hpick | plug:nonesuch
+EXPECT_OUT | HARNESS plug:nonesuch rc=2 | NEGATIVE-a-missing-plug-is-refused
+EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [ ] alpha | and-the-labels-are-unchanged
+
+CASE    | cleanup
+CLEAN |

@@ -221,6 +221,9 @@ int main(int argc, char **argv) {
                           else execl(hop, hop, "pick", house, bl[0] ? bl : "-", pl[0] ? pl : "-", arg, (char *)NULL); _exit(127); }
             if (c > 0) { int st; waitpid(c, &st, 0); rc = WIFEXITED(st) ? WEXITSTATUS(st) : -1; }
         }
+        if (rc == 0 && !strncmp(arg, "plug:", 5)) {      /* a plug toggle changes its [x] / [ ] label: rebuild the rows now (the same verb the projector runs on a page change), so the tab shows the new state */
+            pid_t c2 = fork(); if (c2 == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl("/proc/self/exe", "pal_side", house, "harness", (char *)NULL); _exit(127); }
+            if (c2 > 0) waitpid(c2, NULL, 0); }
         char lk[40] = "", lab[160] = "";
         if (ri >= 0) { snprintf(lk, sizeof lk, "tbhar_%d_label", ri); kv_get(palp, lk, lab, sizeof lab); }
         if (rc == 3) {
