@@ -116,5 +116,18 @@ RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps
 EXPECT_EXIT | 1 | NEGATIVE-a-control-with-nothing-selected-runs-nothing
 EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/last.txt | nothing is selected | and-says-so
 
+CASE    | opening-for-another-book-starts-clean
+# 2026-11-14 (seen live): a result line from another book showed in an empty book's window because the instance folder is reused. The scratch house has no renderer, so `open:` reports WINDOW-MISSING but must still write the instance files right.
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | open:plugs
+EXPECT_OUT | WINDOW-MISSING layout | no-window-files-in-the-scratch-house
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/last.txt | PLUG beta on | NEGATIVE-the-same-book-and-page-keeps-its-result
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/sel.txt | 1 | and-its-selection
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | empty | start | open:plugs
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/book.txt | empty | the-instance-now-names-the-new-book
+RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/last.txt
+EXPECT_EXIT | 1 | the-old-result-line-is-gone-for-the-new-book
+RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/sel.txt
+EXPECT_EXIT | 1 | and-the-old-selection
+
 CASE    | cleanup
 CLEAN |
