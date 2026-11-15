@@ -112,6 +112,13 @@ Known invisible failure modes: (1) the running taskbar manager keeps the OLD bin
 Cost line (measured 2026-11-14, 20 s, three windows open and IDLE, no action running, load average about 4 from other work): each projector 0 to 0.04 percent of a core, no child process; each renderer about 0.7 percent (the renderer's own 30 fps tick, not this app). Active: a toggle is one short fork; a test run is a registered worker behind `cpu_gate`.
 Harnesses and scripts: `plugz_hq` (64), `plug_header` (26), `plug_ref` (66), `tools_menu` (82), `harness_menu` (60), `taskbar_harness_menu` (30), `office_tools` (12); ops `harness_menu_op`, `plugz_projector`, `plugz_act`, `office_stamp`; build lines `build_harness_menu_op.sh`, `build_plugz.sh`, `build_office_stamp.sh`.
 
+### Addendum 2026-11-14 (later): loader, triggers, maker, editor launchers (D78 to D81) - scratch cases only, NOT seen live
+| State | You must see | Check |
+| Tools list in the EDITOR | a `-- windows --` group first (`plugs`, `harnz`, `tests`), then the old groups unchanged | `tools_menu` 86, `harness_menu` 60; needs an editor relaunch to see |
+| Click `+ new plug` | a new row `[ ] new-plug-1` appears in the plugs list, OFF; the file `plugs/new-plug-1.plug.pdl` exists; a second click makes `new-plug-2` | `plug_maker` 29 |
+| Switching a plug ON that conflicts with an ON plug | the click does nothing and the result line says `REFUSED plug <name>: ...` | `plug_loader` 28 |
+| A book with `triggers.pdl` | the plugs/harnz window Links panel lists `fires: toggle:p1:on -> harnz:a1` and `fired by: ...`; after a click the book's `state/trigger_log.txt` has a `FIRE` row per fire | `plug_triggers` 41 |
+Known invisible failure modes: a trigger that asks for confirmation is silently refused (a `refused:` row in `trigger_log.txt`, nothing on screen); a loop is refused at run time but only `harness_menu_op check` shows it before; the editor and the open windows keep their OLD binary until relaunched. No timer source exists, so triggers fire only from a click or a finished row. The maker's undo path is untested.
 ## 4. Entries still to write (from what the memory and skills already record; fill them in when you next touch the project)
 
 - **rpg-space board** (skill `rpg-space-board-driving`): prove control before any claim (session folder exists, `bv_session` non-empty, one real key changes `trainer.txt`, a window dump differs from the previous: a stale engine session gives identical dumps for minutes). Known invisible failures: engine daemon dead with the window still showing its last frame; hidden window (`IsUnMapped`) makes every key fail.

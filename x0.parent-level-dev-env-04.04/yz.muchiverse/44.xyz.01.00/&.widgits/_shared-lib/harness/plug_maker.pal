@@ -1,0 +1,4 @@
+# plug_maker.pal - the maker verb (spec step 5, D80). See cases/plug_maker.pdl
+exec ./ops/+x/harness_case_op.+x cases/plug_maker.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/plug_maker.pdl
+halt

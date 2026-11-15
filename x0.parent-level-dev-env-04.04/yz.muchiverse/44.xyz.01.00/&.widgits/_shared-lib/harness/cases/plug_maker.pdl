@@ -1,0 +1,76 @@
+# plug_maker (2026-11-14, D80): `harness_menu_op make <house> <book> plug <name>` and `... harnz <name> <target> [args]`: one data-only op writes a starter plug (OFF) or one HARNESS row; nothing is overwritten; a harnz must name a real executable
+# under ops/+x; names and args are plain; the result passes `check` and shows in the lists. NOT covered: the undo path (a made file that breaks the book check) - no valid input reaches it today. SCRATCH house, the REAL op.
+RESULTS | ../results/plug_maker.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/#.desktop
+MKDIR | h/@.apps/m1/ops/+x
+MKDIR | h/@.apps/m2
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+WRITE   | h/@.apps/m1/ops/+x/tool.+x | #!/bin/sh\necho hi\n
+RUN | /bin/chmod | +x | $T/h/@.apps/m1/ops/+x/tool.+x
+
+CASE    | make-a-plug
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | plug | glow
+EXPECT_EXIT | 0 | a-plug-is-made
+EXPECT_OUT | MADE plug glow | and-says-so
+EXPECT_HAS | h/@.apps/m1/plugs/glow.plug.pdl | ENABLED \p 0 | it-starts-off
+EXPECT_HAS | h/@.apps/m1/plugs/glow.plug.pdl | AFFECTS \p view | with-a-declared-effect
+EXPECT_HAS | h/@.apps/m1/plugs/glow.plug.pdl | PARAM \p example \p 5 \p int \p 1 \p 100 | and-one-typed-example-parameter
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | m1
+EXPECT_OUT | bad=0 | the-made-plug-passes-the-check
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | load | $T/h | m1
+EXPECT_OUT | LOAD active=0 problems=0 | and-an-off-plug-is-not-active
+RUN | /bin/cp | $T/h/@.apps/m1/plugs/glow.plug.pdl | $T/glow.keep
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | plug | glow
+EXPECT_EXIT | 1 | NEGATIVE-the-same-name-again-is-refused
+EXPECT_OUT | MAKE-REFUSED plug glow already exists | with-the-reason
+RUN | /usr/bin/cmp | $T/glow.keep | $T/h/@.apps/m1/plugs/glow.plug.pdl
+EXPECT_EXIT | 0 | and-the-file-is-byte-identical-nothing-overwritten
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | plug | bad/name
+EXPECT_EXIT | 2 | NEGATIVE-a-name-with-a-slash-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | nosuchbook | plug | x
+EXPECT_EXIT | 1 | NEGATIVE-a-book-with-no-folder-is-refused
+RUN | /usr/bin/test | -e | $T/h/@.apps/nosuchbook
+EXPECT_EXIT | 1 | and-no-folder-was-created-for-it
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | m1 | start | plug:glow
+EXPECT_OUT | PLUG glow on | the-made-plug-switches-on-in-the-normal-way
+
+CASE    | make-a-harnz
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | harnz | hello | @.apps/m1/ops/+x/tool.+x | ${APP}/state/out.txt
+EXPECT_EXIT | 0 | a-harnz-row-is-made
+EXPECT_HAS | h/@.apps/m1/harness.pdl | HARNESS \p hello \p * \p ACTION \p hello \p @.apps/m1/ops/+x/tool.+x \p ${APP}/state/out.txt \p - \p no | with-the-row-in-the-house-format
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | m1
+EXPECT_OUT | bad=0 | the-made-row-passes-the-check
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | m1 | start | $T/rows.txt
+EXPECT_HAS | rows.txt | hello | and-it-is-listed
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | m1 | start | hello
+EXPECT_OUT | HARNESS hello ok | and-it-runs-through-a-normal-click
+RUN | /bin/cp | $T/h/@.apps/m1/harness.pdl | $T/hp.keep
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | harnz | hello | @.apps/m1/ops/+x/tool.+x
+EXPECT_EXIT | 1 | NEGATIVE-the-same-id-again-is-refused
+RUN | /usr/bin/cmp | $T/hp.keep | $T/h/@.apps/m1/harness.pdl
+EXPECT_EXIT | 0 | and-harness-pdl-is-byte-identical
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | harnz | ghost | @.apps/m1/ops/+x/nothing.+x
+EXPECT_OUT | MAKE-REFUSED target @.apps/m1/ops/+x/nothing.+x is not an executable | NEGATIVE-a-target-that-does-not-exist-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | harnz | ghost | /bin/ls
+EXPECT_OUT | MAKE-REFUSED target /bin/ls | NEGATIVE-a-target-outside-the-house-ops-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | harnz | ghost | @.apps/m1/ops/+x/tool.+x | ../../etc
+EXPECT_OUT | MAKE-REFUSED the target and args may not contain .. | NEGATIVE-dot-dot-in-args-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m1 | harnz | ghost | @.apps/m1/ops/+x/tool.+x | a\pb
+EXPECT_OUT | MAKE-REFUSED an argument may not contain | NEGATIVE-a-pipe-in-an-arg-would-forge-a-row-so-it-is-refused
+RUN | /usr/bin/cmp | $T/hp.keep | $T/h/@.apps/m1/harness.pdl
+EXPECT_EXIT | 0 | and-after-all-those-refusals-harness-pdl-is-unchanged
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | make | $T/h | m2 | harnz | first | @.apps/m1/ops/+x/tool.+x
+EXPECT_OUT | MADE harnz first | CONTROL-a-book-with-no-harness-pdl-gets-one
+EXPECT_HAS | h/@.apps/m2/harness.pdl | HARNESS \p first | with-the-row
+
+CASE    | the-plus-new-rows
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | m2 | start | new:harnz
+EXPECT_OUT | NEW-HARNZ needs a target | a-new-harnz-pick-says-what-it-needs-and-changes-nothing
+
+CASE    | cleanup
+CLEAN |

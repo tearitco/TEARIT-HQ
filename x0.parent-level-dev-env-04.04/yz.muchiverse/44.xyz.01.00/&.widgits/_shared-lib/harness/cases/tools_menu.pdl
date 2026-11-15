@@ -26,12 +26,13 @@ RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | bk | 
 EXPECT_EXIT | 0 | the-list-is-written
 
 CASE    | three-groups-in-order
+EXPECT_HAS | rows.txt | -- windows -- | the-windows-group-is-first-and-the-editor-gets-the-same-launchers-as-the-bar (D81)
 RUN | /usr/bin/grep | -n | ^-- this page -- | $T/rows.txt
-EXPECT_OUT | 1:-- this page -- | the-first-group-is-this-page
+EXPECT_OUT | 5:-- this page -- | the-first-group-is-this-page-after-the-four-window-rows (D81)
 RUN | /usr/bin/grep | -n | ^-- plugs -- | $T/rows.txt
-EXPECT_OUT | 3:-- plugs -- | the-second-group-is-plugs-after-the-heading-and-one-page-row
+EXPECT_OUT | 7:-- plugs -- | the-second-group-is-plugs-after-the-heading-and-one-page-row
 RUN | /usr/bin/grep | -n | ^-- tests -- | $T/rows.txt
-EXPECT_OUT | 7:-- tests -- | the-third-group-is-tests-last-after-three-plug-rows
+EXPECT_OUT | 11:-- tests -- | the-third-group-is-tests-last-after-three-plug-rows
 EXPECT_HAS | rows.txt | do it | the-page-tool-row-is-listed
 EXPECT_HAS | rows.txt | go | with-its-id
 EXPECT_HAS | rows.txt | [x] alpha | an-on-plug-is-marked-x
@@ -116,16 +117,21 @@ EXPECT_HAS | h/@.apps/rpg-edit-hq/board/state/pal.txt | [ ] alpha | and-the-labe
 CASE    | the-new-group-shows-where-the-maker-will-be
 # 2026-11-14 owner: show the maker's rows visually before step 5 exists. A named book lists `+ new plug` and `+ new harnz` under a heading that says NOT BUILT YET; no book lists none; a pick writes nothing.
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | empty | start | $T/rows4.txt
-EXPECT_HAS | rows4.txt | -- new (not built yet) -- | the-empty-book-shows-the-new-group-and-says-it-is-not-built
+EXPECT_HAS | rows4.txt | -- new -- | the-empty-book-shows-the-new-group-the-maker-exists-now (D80)
 EXPECT_HAS | rows4.txt | + new plug | and-a-new-plug-row
 EXPECT_HAS | rows4.txt | + new harnz | and-a-new-harnz-row
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $T/h | - | - | $T/rows5.txt
 EXPECT_LACKS | rows5.txt | + new plug | NEGATIVE-with-no-book-there-is-nothing-to-make-a-plug-in
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | empty | start | new:plug
 EXPECT_EXIT | 0 | a-pick-of-new-plug-exits-0
-EXPECT_OUT | NEW-NOT-BUILT | a-pick-says-not-built
-RUN | /usr/bin/test | -e | $T/h/@.apps/empty/plugs
-EXPECT_EXIT | 1 | NEGATIVE-and-writes-no-plug-folder-or-file
+EXPECT_OUT | MADE plug new-plug-1 | a-pick-makes-the-first-starter-plug
+RUN | /usr/bin/test | -e | $T/h/@.apps/empty/plugs/new-plug-1.plug.pdl
+EXPECT_EXIT | 0 | and-the-file-exists-it-starts-off
+EXPECT_HAS | h/@.apps/empty/plugs/new-plug-1.plug.pdl | ENABLED \p 0 | CONTROL-the-made-plug-is-off-until-a-person-switches-it-on
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | empty | start | new:plug
+EXPECT_OUT | MADE plug new-plug-2 | a-second-pick-takes-the-next-free-name-nothing-overwritten
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | - | - | new:plug
+EXPECT_OUT | MAKE-REFUSED open a book first | NEGATIVE-with-no-book-open-nothing-is-made
 CASE    | the-bar-launcher-is-three-rows
 # 2026-11-14 owner: the top-bar Tools dropdown is three launchers (plugs, harnz, tests = three kinds, three windows); the bar adds notes and cancel. The windows are not built: labels say so, a pick changes nothing.
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | launcher | $T/h | bk | start | $T/rows6.txt

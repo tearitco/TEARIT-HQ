@@ -433,6 +433,47 @@ static void trig_links(const char *book, int is_plug, const char *name, char *fi
         if (tgt) { size_t l = strlen(by); snprintf(by + l, bc - l, "%s%s (%s)", by[0] ? "; " : "", T_[i].on, T_[i].id); } }
     if (!fires[0]) snprintf(fires, fc, "(none)"); if (!by[0]) snprintf(by, bc, "(none)");
 }
+/* THE MAKER (spec step 5, D80, 2026-11-14): ONE shared op writes new plug files and harnz rows, data only (the game_new_op pattern: no per-plug C). A person (the `+ new` rows), a window and an AI all call this verb, so a made file is
+ * checked by the same code as a hand-written one. Rules: the book folder must exist; a name is a plain word of at most 40 characters; NOTHING is overwritten (an existing plug file or row id is refused); a harnz must name a real executable under ops/+x
+ * (the same test the loader uses) and its args may not contain "..". After writing, the book is checked; if the check finds a problem that was not there before, the new file is removed again (a plug) or the harness.pdl is put back (a harnz).
+ *   make <house> <book> plug <name>                         writes @.apps/<book>/plugs/<name>.plug.pdl: version 1, ENABLED 0 (off until a person switches it on), AFFECTS view, one example PARAM
+ *   make <house> <book> harnz <name> <target> [args...]     appends   HARNESS | <name> | * | ACTION | <name> | <target> | <args or -> | - | no | made by the maker
+ * Limit (spec 6): a made plug composes parameters and commands; a new engine rule still needs C. */
+static int make_problems(const char *book) {      /* the number of problems in the book's plug files, harness rows and triggers (a fresh count, nothing printed) */
+    int saved = dup(1); int nul = open("/dev/null", O_WRONLY); if (nul >= 0) { dup2(nul, 1); close(nul); } int n = 0;
+    static char pn[MAXPLUG][48]; static char pm[24][200]; int np = plug_names(book, pn, MAXPLUG); for (int i = 0; i < np; i++) { PlugInfo pi; n += plug_scan(book, pn[i], &pi, pm, 24); }
+    n += trig_scan(book, pm, 24); PlugLoad L; plug_load(book, &L); n += L.nprob;
+    fflush(stdout); if (saved >= 0) { dup2(saved, 1); close(saved); } return n;
+}
+static int make_verb(const char *book, const char *kind, const char *name, char **rest, int nrest) {
+    if (!word_ok(book) || !word_ok(name) || strlen(name) > 40) { fprintf(stderr, "harness_menu_op: make needs a plain book and a plain name (at most 40 characters)\n"); return 2; }
+    char app[P]; snprintf(app, sizeof app, "%s/@.apps/%s", HOUSE, book); struct stat sb; if (stat(app, &sb) || !S_ISDIR(sb.st_mode)) { printf("MAKE-REFUSED no book folder @.apps/%s\n", book); return 1; }
+    int before = make_problems(book);
+    if (!strcmp(kind, "plug")) {
+        char d[P], f[P]; snprintf(d, sizeof d, "%s/plugs", app); snprintf(f, sizeof f, "%s/%s.plug.pdl", d, name);
+        if (!access(f, F_OK)) { printf("MAKE-REFUSED plug %s already exists (nothing was overwritten)\n", name); return 1; }
+        mkdir(d, 0755); char txt[1500]; snprintf(txt, sizeof txt,
+            "# %s.plug.pdl - made by `harness_menu_op make` (D80). A PLUG: optional, with parameters and an on/off switch. It starts OFF; the Tools > plugs window switches it on.\n# Header rows: PLUG | version | N, ENABLED | 1 or 0, AFFECTS | view or outcome (own line, no trailing comment), REQUIRES | other plug, CONFLICTS | other plug, USES | verb.\n# PARAM | key | value | type | min | max | help   (type int, tone, word or text; an event page reads it as @plug:%s:<key>)\n# COMMAND | name | event or verb | args   (a named thing this plug can do; two ON plugs may not share a name)\nPLUG | name | %s\nPLUG | version | 1\nENABLED | 0\nAFFECTS | view\nPARAM | example | 5 | int | 1 | 100 | an example number, replace it\n", name, name, name);
+        if (write_atomic(f, txt)) { printf("MAKE-FAILED could not write the plug file\n"); return 1; }
+        if (make_problems(book) > before) { unlink(f); printf("MAKE-UNDONE plug %s: the book check found a problem it did not have before\n", name); return 1; }
+        printf("MADE plug %s plugs/%s.plug.pdl (off; switch it on in the plugs window)\n", name, name); return 0;
+    }
+    if (!strcmp(kind, "harnz")) {
+        if (nrest < 1) { fprintf(stderr, "harness_menu_op: make harnz <name> <target under ops/+x> [args...]\n"); return 2; }
+        const char *target = rest[0]; if (!under_ops(target)) { printf("MAKE-REFUSED target %s is not an executable under an ops/+x folder of the house\n", target); return 1; }
+        char args[600] = ""; for (int i = 1; i < nrest; i++) { if (strchr(rest[i], '|') || strchr(rest[i], '\n')) { printf("MAKE-REFUSED an argument may not contain | or a newline\n"); return 1; } size_t l = strlen(args); snprintf(args + l, sizeof args - l, "%s%s", i > 1 ? " " : "", rest[i]); }
+        if (strstr(args, "..") || strchr(target, '|')) { printf("MAKE-REFUSED the target and args may not contain .. or |\n"); return 1; }
+        char f[P]; snprintf(f, sizeof f, "%s/harness.pdl", app); load_all(book); for (int i = 0; i < nr; i++) if (!strcmp(R[i].id, name)) { printf("MAKE-REFUSED a row %s already exists (nothing was overwritten)\n", name); return 1; }
+        static char old[60000]; size_t on = 0; FILE *fp = fopen(f, "r"); if (fp) { on = fread(old, 1, sizeof old - 1, fp); fclose(fp); } old[on] = 0;
+        static char nw[61000]; snprintf(nw, sizeof nw, "%s%sHARNESS | %s | * | ACTION | %s | %s | %s | - | no | made by the maker (D80)\n", old, on && old[on - 1] != '\n' ? "\n" : "", name, name, target, args[0] ? args : "-");
+        if (write_atomic(f, nw)) { printf("MAKE-FAILED could not write harness.pdl\n"); return 1; }
+        load_all(book); int seen = 0; for (int i = 0; i < nr; i++) if (!strcmp(R[i].id, name)) seen = 1;
+        if (!seen || make_problems(book) > before) { if (on) write_atomic(f, old); else unlink(f); printf("MAKE-UNDONE harnz %s: the row does not pass the check, harness.pdl is as it was\n", name); return 1; }
+        printf("MADE harnz %s -> %s (a button on every page of %s)\n", name, target, book); return 0;
+    }
+    fprintf(stderr, "harness_menu_op: make plug|harnz\n"); return 2;
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: harness_menu_op list|pick|check <house> ...\n"); return 2; }
     const char *verb = argv[1]; snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
@@ -443,6 +484,7 @@ int main(int argc, char **argv) {
             { char tf[P]; snprintf(tf, sizeof tf, "%s/@.apps/%s/triggers.pdl", HOUSE, argv[i]); trig_verify(argv[i], tf); } }      /* the book's triggers (D79): syntax, ids, and no loop */
         printf("HARNESS-CHECK rows=%d bad=%d\n", nr, nbad); return nbad ? 2 : 0;
     }
+    if (!strcmp(verb, "make") && argc >= 6) { return make_verb(argv[3], argv[4], argv[5], argv + 6, argc - 6); }      /* D80: the maker */
     if (!strcmp(verb, "load") && argc >= 4) { return plug_load_verb(argv[3]); }      /* D78: the plug loader */
     if (!strcmp(verb, "rows") && argc >= 7) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_rows(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6]) ? 2 : 0; }
     if (!strcmp(verb, "describe") && argc >= 8) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_describe(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6], argv[7]) ? 2 : 0; }
@@ -461,6 +503,7 @@ int main(int argc, char **argv) {
         static char pn[MAXPLUG][48]; int np = (book[0] && strcmp(book, "-") && word_ok(book)) ? plug_names(book, pn, MAXPLUG) : 0;
         g_hide_global = named && ((!nown && !np) || g_book_no_global);      /* a named book with nothing of its own: no global tests */
         na = nc = 0; for (int i = 0; i < nr; i++) if (listed(i, page)) { if (!strcmp(R[i].kind, "CASE")) nc++; else na++; }
+        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- windows --\t-\nplugs\topen:plugs\nharnz\topen:harnz\ntests\topen:tests\n"); }      /* D81: the editor tab gets the same three window launchers the bar has, above its full list (the one-click rows stay) */
         if (na) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- this page --\t-\n");
             for (int i = 0; i < nr; i++) if (listed(i, page) && strcmp(R[i].kind, "CASE")) { l = strlen(out); snprintf(out + l, sizeof out - l, "%s\t%s\n", R[i].label, R[i].id); } }
         if (np) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- plugs --\t-\n");
@@ -469,7 +512,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < nr; i++) if (listed(i, page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
         /* NEW GROUP (2026-11-14, owner: "add it just to visually show our work, b4 we continue"): the maker is spec step 5 and is NOT BUILT. These rows only SHOW where it will be, say so in their labels, and a pick changes nothing (id new:plug or new:harnz prints NEW-NOT-BUILT). Shown for any named book. Remove the words "not built yet" when the maker lands. */
         if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- folder --\t-\ndir\topen:dir\n"); }      /* open the book's tools folder (D76 addendum, 2026-11-14) */
-        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- new (not built yet) --\t-\n+ new plug (on/off)\tnew:plug\n+ new harnz (one-shot)\tnew:harnz\n"); }
+        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- new --\t-\n+ new plug (starter, off)\tnew:plug\n+ new harnz (needs a target)\tnew:harnz\n"); }
         if (write_atomic(argv[5], out)) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }
@@ -478,7 +521,10 @@ int main(int argc, char **argv) {
         if (argc >= 7 && !confirmed) return 2;
         if (!strcmp(id, "-")) { printf("HEADING\n"); return 0; }
         if (!strncmp(id, "open:", 5)) { if (!strcmp(id + 5, "dir")) { return open_dir(book); } if (!kind_ok(id + 5)) { fprintf(stderr, "harness_menu_op: no window %s\n", id + 5); return 2; } return plugz_open(id + 5, book, page); }      /* D76: open the window for that kind */
-        if (!strcmp(id, "new:plug") || !strcmp(id, "new:harnz")) { printf("NEW-NOT-BUILT %s\n", id + 4); return 0; }      /* the maker is not built: a pick shows the row and changes nothing */      /* a group heading: picking it does nothing */
+        if (!strcmp(id, "new:plug")) {      /* D80: a click on `+ new plug` makes a starter plug with the next free name new-plug-N in the open book */
+            if (!book[0] || !word_ok(book)) { printf("MAKE-REFUSED open a book first\n"); return 1; } char nm[40]; for (int k = 1; k < 100; k++) { char pf[P]; snprintf(nm, sizeof nm, "new-plug-%d", k); snprintf(pf, sizeof pf, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, nm); if (access(pf, F_OK)) break; }
+            return make_verb(book, "plug", nm, NULL, 0); }
+        if (!strcmp(id, "new:harnz")) { printf("NEW-HARNZ needs a target: harness_menu_op make <house> <book> harnz <name> <target under ops/+x> [args]\n"); return 0; }
         if (!strncmp(id, "plug:", 5)) {      /* a plug row: flip its ENABLED row (D74); the book must be open */
             const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }
             static char pn2[MAXPLUG][48]; int np2 = plug_names(book, pn2, MAXPLUG), found = 0; for (int i = 0; i < np2; i++) if (!strcmp(pn2[i], pname)) found = 1;
