@@ -2476,28 +2476,8 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
 #include "nb_worker_is_form_field.c"
 /* select/option selection primitives extracted (Phase 1, single-TU include). */
 #include "nb_worker_select_primitives.c"
-/* Explicit script-set state wins; with none set, fall back to the markup.
- * Returning "unset" and "false" as the same thing is fine here: a select
- * whose options all carry `selected` cannot express the difference in
- * markup either. */
-static int opt_selected(JSContext *ctx, NbNode *opt) {
-    JSValue w = push_node(ctx, opt);
-    JSValue v = JS_GetPropertyStr(ctx, w, SELKEY);
-    int r;
-    if (JS_IsUndefined(v) || JS_IsNull(v)) {
-        r = nb_attr_has(opt, "selected") ? 1 : 0;
-    } else {
-        r = JS_ToBool(ctx, v);
-    }
-    JS_FreeValue(ctx, v);
-    JS_FreeValue(ctx, w);
-    return r;
-}
-static void opt_set_selected(JSContext *ctx, NbNode *opt, int on) {
-    JSValue w = push_node(ctx, opt);
-    JS_SetPropertyStr(ctx, w, SELKEY, JS_NewBool(ctx, on));
-    JS_FreeValue(ctx, w);
-}
+/* option selected state helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_option_selected.c"
 /* HTML: an option's value is its `value` attribute, else its text. */
 static void option_value(const NbNode *opt, char *out, size_t cap) {
     out[0] = 0;
