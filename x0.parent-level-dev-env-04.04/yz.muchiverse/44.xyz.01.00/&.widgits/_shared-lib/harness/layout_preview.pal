@@ -1,0 +1,4 @@
+# layout_preview.pal - layout_op preview (2026-11-15). See cases/layout_preview.pdl
+exec ./ops/+x/harness_case_op.+x cases/layout_preview.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/layout_preview.pdl
+halt

@@ -1,0 +1,22 @@
+# layout_preview (2026-11-15): `layout_op preview <house> <layout> <out.png> [--inst dir]` = layout_check, then the REAL renderer in a real window, a PNG, the window closed by its pid.
+# Needs a display (it opens a window for about 5 s). Layouts and the PNG live under $T; the op is the real one. Controls: a layout with an error is refused BEFORE any window is launched and no PNG is written.
+RESULTS | ../results/layout_preview.txt
+ENV | LC_ALL | C
+
+CASE    | preview
+SCRATCH |
+COPY | @.apps/layout-studio/templates/menu.xhtpm | good.xhtpm
+WRITE | bad.xhtpm | <window label="t" class="database-window">\n<page name="main">\n<panel id="p"><item id="x" class="plain"/></panel>\n</page>\n</window>\n
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_op.+x | preview | $HOUSE | $T/good.xhtpm | $T/good.png
+EXPECT_EXIT | 0 | a-good-layout-previews
+EXPECT_OUT | PREVIEW-OK | and-says-so
+EXPECT_FILE | good.png | the-picture-was-written
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_op.+x | preview | $HOUSE | $T/bad.xhtpm | $T/bad.png
+EXPECT_EXIT | 1 | NEGATIVE-a-layout-with-an-error-is-refused
+EXPECT_OUT | layout_check found errors | with-the-reason
+EXPECT_NOFILE | bad.png | and-no-picture-is-written-so-no-window-was-launched
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_op.+x | preview | $HOUSE | $T/missing.xhtpm | $T/m.png
+EXPECT_EXIT | 1 | NEGATIVE-a-missing-layout-file-is-refused
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_op.+x | nonsense
+EXPECT_EXIT | 2 | usage-error-exit-2
+CLEAN |
