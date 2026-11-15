@@ -7,7 +7,7 @@ ENV | LC_ALL | C
 
 CASE    | strip
 SCRATCH |
-EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm | id="strip-cell-11" label="harness" | the-top-strip-cell-11-says-harness
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm | id="strip-cell-11" label="tools" | the-top-strip-cell-11-says-tools-the-id-stays-harness
 RUN | /usr/bin/grep | -c | label="plugins" | $HOUSE/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm
 EXPECT_EXIT | 1 | NEGATIVE-the-old-plugins-label-is-gone
 
