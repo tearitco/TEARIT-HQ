@@ -63,5 +63,7 @@ RUN | /usr/bin/grep | -cF | "list", house_root, "-", "-", rows | $HOUSE/_.monads
 EXPECT_OUT | 0 | NEGATIVE-the-old-call-with-no-book-and-no-page-is-gone
 RUN | /usr/bin/grep | -cF | pick \"%s\" - - | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
 EXPECT_OUT | 0 | NEGATIVE-the-old-pick-with-no-book-and-no-page-is-gone
-RUN | /usr/bin/grep | -qF | Removal condition: when LyfeDesk has one generic | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
-EXPECT_EXIT | 0 | the-stopgap-states-its-removal-condition
+RUN | /usr/bin/grep | -qF | livedesk_current_session_name(house_root, b, sizeof(b)) | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-book-is-the-one-the-bar-shows-not-the-editors
+RUN | /usr/bin/grep | -c | board_window.pid | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_OUT | 0 | NEGATIVE-the-editor-board-state-is-no-longer-read
