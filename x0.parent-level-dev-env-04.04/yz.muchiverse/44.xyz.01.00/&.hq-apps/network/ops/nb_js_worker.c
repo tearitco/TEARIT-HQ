@@ -3516,19 +3516,8 @@ static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSVal
     }
     return JS_UNDEFINED;
 }
-/* whenDefined must return a thenable, so hand back a resolved Promise. */
-static JSValue nb_promise_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    JSValue funcs[2];
-    JSValue p = JS_NewPromiseCapability(ctx, funcs);
-    if (JS_IsException(p)) return p;
-    JS_Call(ctx, funcs[0], JS_UNDEFINED, 1, argv ? argv : &this_val);
-    JS_FreeValue(ctx, funcs[0]);
-    JS_FreeValue(ctx, funcs[1]);
-    return p;
-}
-static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    return JS_NewArray(ctx);
-}
+/* promise-resolved and empty-array helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_promise_empty.c"
 /* ---- XMLSerializer + outerHTML (2026-11-09) ----
  * serializeToString was an inert plain stub: the method did not exist, so
  * every call threw "not a function". This returns the house outer-HTML
