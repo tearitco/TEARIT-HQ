@@ -2258,22 +2258,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 #include "nb_worker_dataset_node.c"
 /* dataset key-to-attribute helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_dataset_attr.c"
-static JSValue nb_ds_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    (void)argc;
-    NbNode *n = nb_ds_node(ctx, this_val);
-    if (!n || argc < 2) return JS_UNDEFINED;
-    char *k = NULL;
-    const char *key = JS_IsString(argv[1]) ? (k = JS_ToCString(ctx, argv[1])) : NULL;
-    if (!key) return JS_UNDEFINED;
-    if (!strcmp(key, "Symbol.toStringTag")) { JS_FreeCString(ctx, k); return JS_NewString(ctx, "DOMStringMap"); }
-    char kb[128];
-    int ok = nb_ds_to_attr(key, kb, sizeof(kb));
-    JS_FreeCString(ctx, k);
-    if (!ok) return JS_UNDEFINED;
-    if (!attrs_has(n, kb)) return JS_UNDEFINED;
-    const char *v = nb_attr_get(n, kb);
-    return JS_NewString(ctx, v ? v : "");
-}
+/* dataset get trap helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_dataset_get.c"
 static JSValue nb_ds_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = nb_ds_node(ctx, this_val);
     if (!n || argc < 3) return JS_UNDEFINED;
