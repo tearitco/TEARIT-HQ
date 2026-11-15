@@ -58,10 +58,10 @@ static void publish(void) {
         clean(txt[n]); n++; }
     if (fp) fclose(fp);
     int sel = atoi(sel_s); if (sel < 0 || sel >= n) sel = 0;
-    char dt[200] = "", ds[200] = "", dc[24] = "", dconf[8] = "no"; int ni = 0; static char info[24][240];
+    char dt[200] = "", ds[200] = "", dc[24] = "", dconf[8] = "no", lfi[500] = "(none)", lby[500] = "(none)"; int ni = 0; static char info[24][240];
     if (n > 0) { char *a2[] = { op, "describe", HOUSE, book, page, kind, ids[sel], descf, NULL }; runop(a2, nul1);
         fp = fopen(descf, "r"); while (fp && fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; char *eq = strchr(ln, '='); if (!eq) continue; *eq++ = 0;
-            if (!strcmp(ln, "title")) snprintf(dt, sizeof dt, "%s", eq); else if (!strcmp(ln, "status")) snprintf(ds, sizeof ds, "%s", eq); else if (!strcmp(ln, "control")) snprintf(dc, sizeof dc, "%s", eq); else if (!strcmp(ln, "confirm")) snprintf(dconf, sizeof dconf, "%s", eq);
+            if (!strcmp(ln, "title")) snprintf(dt, sizeof dt, "%s", eq); else if (!strcmp(ln, "status")) snprintf(ds, sizeof ds, "%s", eq); else if (!strcmp(ln, "control")) snprintf(dc, sizeof dc, "%s", eq); else if (!strcmp(ln, "confirm")) snprintf(dconf, sizeof dconf, "%s", eq); else if (!strcmp(ln, "fires")) snprintf(lfi, sizeof lfi, "%s", eq); else if (!strcmp(ln, "firedby")) snprintf(lby, sizeof lby, "%s", eq);
             else if (!strncmp(ln, "info_", 5)) { int k = atoi(ln + 5); if (k >= 0 && k < 24) { snprintf(info[k], sizeof info[k], "%s", eq); if (k + 1 > ni) ni = k + 1; } } }
         if (fp) fclose(fp); }
     char ui[sizeof last_ui]; ui[0] = 0; (void)dconf;
@@ -82,8 +82,8 @@ static void publish(void) {
     put(ui, sizeof ui, "confirm_label=  confirm: really run %s  \n", dt);
     clean(last); put(ui, sizeof ui, "last_result=%s\n", last[0] ? last : "");
     put(ui, sizeof ui, "n_info=%d\n", ni); for (int i = 0; i < ni; i++) put(ui, sizeof ui, "inf_%d_text=%s\n", i, info[i]);
-    /* LINKS: read-only for now. The triggers (a plug fires a harnz and the reverse) are spec step 4b: TRIGGER rows, a loop guard, a depth cap. Nothing is faked here. */
-    put(ui, sizeof ui, "links_fires=(none)\nlinks_firedby=(none)\nlinks_note=triggers are not built yet (spec step 4b)\n");
+    /* LINKS (D79): read from the book's triggers.pdl by harness_menu_op describe (fires = what this item starts, firedby = what starts it). Edit the file to change them; the window only shows them. */
+    clean(lfi); clean(lby); put(ui, sizeof ui, "links_fires=%s\nlinks_firedby=%s\nlinks_note=from triggers.pdl of this book (a trigger never confirms, loops are refused)\n", lfi, lby);
     if (strcmp(ui, last_ui)) { char f[P], t[P]; snprintf(f, sizeof f, "%s/ui.txt", HQ); snprintf(t, sizeof t, "%s/ui.txt.tmp", HQ); FILE *w = fopen(t, "w"); if (w) { fputs(ui, w); fclose(w); rename(t, f); } snprintf(last_ui, sizeof last_ui, "%s", ui); }
 }
 

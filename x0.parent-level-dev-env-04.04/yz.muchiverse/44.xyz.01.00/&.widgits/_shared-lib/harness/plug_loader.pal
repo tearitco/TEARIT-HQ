@@ -1,0 +1,4 @@
+# plug_loader.pal - the plug loader (spec step 3, D78). See cases/plug_loader.pdl
+exec ./ops/+x/harness_case_op.+x cases/plug_loader.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/plug_loader.pdl
+halt

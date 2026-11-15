@@ -52,7 +52,7 @@ EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | row_0_cls
 EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | detail_title=alpha | the-detail-is-the-selected-plug
 EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | control_label=  turn OFF  | an-on-plug-offers-turn-off
 EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | inf_1_text=speed = 5  (int) | the-typed-parameter-is-shown
-EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | links_note=triggers are not built yet | the-links-block-is-honest-that-triggers-are-not-built
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | links_note=from triggers.pdl of this book | the-links-block-says-where-its-data-comes-from (D79)
 EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | the proof | NEGATIVE-no-test-rows-in-the-plugs-window
 
 CASE    | select-and-toggle

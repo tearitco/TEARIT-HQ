@@ -1,0 +1,123 @@
+# plug_triggers (2026-11-14, D79): <app>/triggers.pdl rows `TRIGGER | id | on | run | note`. A plug switch or a finished harnz/test fires what hangs on it, through the SAME code a click runs; every fire and refusal is one row of
+# <app>/state/trigger_log.txt. Guards under test, each with a CONTROL: a loop is refused, a chain deeper than 4 is refused, a row that asks for confirmation is never confirmed by a trigger, a plug switched on by a trigger meets the loader refusal,
+# a failed row fires `failed:` and not `done:`, a bad row or unknown id is reported by `check`, no triggers.pdl changes nothing. SCRATCH house, the REAL op.
+RESULTS | ../results/plug_triggers.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/#.desktop
+MKDIR | h/@.apps/t1/ops/+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+WRITE   | h/@.apps/t1/ops/+x/ok.+x | #!/bin/sh\necho ran-ok >> "$1"\n
+WRITE   | h/@.apps/t1/ops/+x/bad.+x | #!/bin/sh\nexit 1\n
+RUN | /bin/chmod | +x | $T/h/@.apps/t1/ops/+x/ok.+x | $T/h/@.apps/t1/ops/+x/bad.+x
+MKDIR | h/@.apps/t1/plugs
+MKDIR | h/@.apps/t1/state
+WRITE   | h/@.apps/t1/plugs/p1.plug.pdl | PLUG \p name \p p1\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/plugs/p2.plug.pdl | PLUG \p name \p p2\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/harness.pdl | GLOBAL \p no\nHARNESS \p a1 \p * \p ACTION \p first \p @.apps/t1/ops/+x/ok.+x \p ${APP}/state/a1.txt \p - \p no \p x\nHARNESS \p a2 \p * \p ACTION \p second \p @.apps/t1/ops/+x/ok.+x \p ${APP}/state/a2.txt \p - \p no \p x\nHARNESS \p bd \p * \p ACTION \p fails \p @.apps/t1/ops/+x/bad.+x \p - \p - \p no \p x\nHARNESS \p cf \p * \p ACTION \p asks \p @.apps/t1/ops/+x/ok.+x \p ${APP}/state/cf.txt \p - \p yes \p x\n
+
+CASE    | a-plug-switch-fires-a-harnz
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p t_a \p toggle:p1:on \p harnz:a1 \p when p1 goes on, run a1\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | plug:p1
+EXPECT_EXIT | 0 | the-switch-itself-works
+EXPECT_OUT | TRIGGER t_a ok | and-the-trigger-fired
+EXPECT_HAS | h/@.apps/t1/state/a1.txt | ran-ok | the-harnz-really-ran
+EXPECT_HAS | h/@.apps/t1/state/trigger_log.txt | FIRE \p | one-ledger-row-per-fire
+EXPECT_HAS | h/@.apps/t1/state/trigger_log.txt | t_a \p toggle:p1:on \p harnz:a1 \p 1 \p ok | with-id-source-target-depth-and-result
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | plug:p1
+EXPECT_OUT | PLUG p1 off | CONTROL-switching-off-fires-nothing-the-trigger-is-on-the-on-edge
+EXPECT_LACKS | h/@.apps/t1/state/trigger_log.txt | FIRE \p 0 | and-the-log-is-unchanged
+RUN | /bin/rm | -f | $T/h/@.apps/t1/triggers.pdl
+RUN | /bin/rm | -f | $T/h/@.apps/t1/state/a1.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | plug:p1
+EXPECT_OUT | PLUG p1 on | CONTROL-no-triggers-file-the-switch-still-works
+RUN | /usr/bin/test | -e | $T/h/@.apps/t1/state/a1.txt
+EXPECT_EXIT | 1 | NEGATIVE-and-nothing-ran
+
+CASE    | a-harnz-fires-a-plug-and-a-chain-runs
+WRITE   | h/@.apps/t1/plugs/p1.plug.pdl | PLUG \p name \p p1\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p c1 \p done:a1 \p plug:p2:on \p a1 done, p2 on\nTRIGGER \p c2 \p toggle:p2:on \p harnz:a2 \p p2 on, run a2\n
+RUN | /bin/rm | -f | $T/h/@.apps/t1/state/a1.txt | $T/h/@.apps/t1/state/a2.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | a1
+EXPECT_OUT | TRIGGER c1 ok | the-first-link
+EXPECT_OUT | TRIGGER c2 ok | the-second-link
+EXPECT_HAS | h/@.apps/t1/plugs/p2.plug.pdl | ENABLED \p 1 | p2-is-on
+EXPECT_HAS | h/@.apps/t1/state/a2.txt | ran-ok | and-a2-ran-at-depth-two
+EXPECT_HAS | h/@.apps/t1/state/trigger_log.txt | c2 \p toggle:p2:on \p harnz:a2 \p 2 \p ok | depth-two-is-recorded
+
+CASE    | a-loop-is-refused
+WRITE   | h/@.apps/t1/plugs/p2.plug.pdl | PLUG \p name \p p2\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p l1 \p done:a1 \p harnz:a2 \p a\nTRIGGER \p l2 \p done:a2 \p harnz:a1 \p back\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | t1
+EXPECT_OUT | the triggers form a loop | NEGATIVE-check-sees-the-loop-before-anything-runs
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | a1
+EXPECT_OUT | TRIGGER l1 ok | the-first-fire-runs
+EXPECT_OUT | TRIGGER l2 refused: loop | NEGATIVE-the-return-to-a1-is-refused-at-run-time
+EXPECT_HAS | h/@.apps/t1/state/trigger_log.txt | refused: loop | and-the-refusal-is-a-row
+
+CASE    | the-guards-that-need-no-loop
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p g1 \p done:a1 \p harnz:cf \p asks first\nTRIGGER \p g2 \p done:a1 \p harnz:bd \p fails\nTRIGGER \p g3 \p failed:bd \p harnz:a2 \p after a failure\nTRIGGER \p g4 \p done:bd \p harnz:a2 \p NEVER\n
+RUN | /bin/rm | -f | $T/h/@.apps/t1/state/cf.txt | $T/h/@.apps/t1/state/a2.txt
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | a1
+EXPECT_OUT | TRIGGER g1 refused: that row asks for confirmation | NEGATIVE-a-trigger-never-confirms
+EXPECT_OUT | TRIGGER g2 failed | a-failing-row-is-reported-failed
+EXPECT_OUT | TRIGGER g3 ok | and-failed-colon-fires
+RUN | /usr/bin/test | -e | $T/h/@.apps/t1/state/cf.txt
+EXPECT_EXIT | 1 | and-the-confirm-row-did-not-run
+EXPECT_LACKS | h/@.apps/t1/state/trigger_log.txt | g4 | NEGATIVE-done-colon-does-not-fire-after-a-failure
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | cf
+EXPECT_EXIT | 3 | CONTROL-a-human-click-on-the-same-row-still-asks
+
+CASE    | a-trigger-meets-the-loader
+WRITE   | h/@.apps/t1/plugs/p1.plug.pdl | PLUG \p name \p p1\nENABLED \p 0\nCONFLICTS \p p2\n
+WRITE   | h/@.apps/t1/plugs/p2.plug.pdl | PLUG \p name \p p2\nENABLED \p 1\n
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p m1 \p done:a1 \p plug:p1:on \p try p1\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | a1
+EXPECT_OUT | TRIGGER m1 refused: | NEGATIVE-p1-conflicts-with-the-on-p2-so-the-trigger-is-refused
+EXPECT_HAS | h/@.apps/t1/plugs/p1.plug.pdl | ENABLED \p 0 | and-p1-stays-off
+
+CASE    | check-reports-bad-rows
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p b1 \p nonsense \p harnz:a1 \p x\nTRIGGER \p b2 \p done:a1 \p harnz:nosuch \p x\nTRIGGER \p b3 \p done:a1 \p test:a2 \p wrong kind\nTRIGGER \p b4 \p toggle:ghost:on \p harnz:a1 \p x\nTRIGGER \p b4 \p done:a1 \p harnz:a2 \p dup\nTRIGGER \p b5 \p done:a1\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | t1
+EXPECT_OUT | on nonsense: want toggle | a-bad-source
+EXPECT_OUT | no harnz or test row nosuch | an-unknown-row
+EXPECT_OUT | a2 is a harnz, not a test | the-wrong-kind
+EXPECT_OUT | no plug ghost in this book | an-unknown-plug
+EXPECT_OUT | trigger id b4 is declared twice | a-duplicate-id
+EXPECT_OUT | a TRIGGER row needs id | a-short-row
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p ok1 \p done:a1 \p harnz:a2 \p fine\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | t1
+EXPECT_OUT | bad=0 | CONTROL-a-good-file-checks-clean
+
+CASE    | the-depth-cap
+RUN | /bin/rm | -f | $T/h/@.apps/t1/state/a1.txt
+WRITE   | h/@.apps/t1/plugs/p1.plug.pdl | PLUG \p name \p p1\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/plugs/p2.plug.pdl | PLUG \p name \p p2\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/plugs/p3.plug.pdl | PLUG \p name \p p3\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/plugs/p4.plug.pdl | PLUG \p name \p p4\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/plugs/p5.plug.pdl | PLUG \p name \p p5\nENABLED \p 0\n
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p d1 \p toggle:p1:on \p plug:p2:on \p x\nTRIGGER \p d2 \p toggle:p2:on \p plug:p3:on \p x\nTRIGGER \p d3 \p toggle:p3:on \p plug:p4:on \p x\nTRIGGER \p d4 \p toggle:p4:on \p plug:p5:on \p x\nTRIGGER \p d5 \p toggle:p5:on \p harnz:a1 \p x\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | t1 | start | plug:p1
+EXPECT_OUT | TRIGGER d4 ok | CONTROL-the-fourth-link-is-allowed
+EXPECT_HAS | h/@.apps/t1/plugs/p5.plug.pdl | ENABLED \p 1 | p5-went-on-at-depth-four
+EXPECT_OUT | TRIGGER d5 refused: the chain is deeper than 4 | NEGATIVE-a-fifth-link-is-refused
+RUN | /usr/bin/test | -e | $T/h/@.apps/t1/state/a1.txt
+EXPECT_EXIT | 1 | and-the-harnz-at-the-end-of-the-chain-never-ran
+
+CASE    | the-window-shows-the-links
+WRITE   | h/@.apps/t1/triggers.pdl | TRIGGER \p w1 \p toggle:p1:on \p harnz:a1 \p x\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | describe | $T/h | t1 | start | plugs | plug:p1 | $T/d.txt
+EXPECT_HAS | d.txt | fires=toggle:p1:on -> harnz:a1 | a-plug-lists-what-it-fires
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | describe | $T/h | t1 | start | harnz | a1 | $T/d2.txt
+EXPECT_HAS | d2.txt | firedby=toggle:p1:on (w1) | a-harnz-lists-what-fires-it
+EXPECT_HAS | d2.txt | fires=(none) | and-nothing-it-fires
+
+CASE    | the-real-books-check-clean
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $HOUSE | rpg-edit-hq | pre-design
+EXPECT_OUT | bad=0 | CONTROL-the-shipped-books-have-no-bad-rows
+
+CASE    | cleanup
+CLEAN |

@@ -76,7 +76,7 @@ static void load(const char *path, int global) {
     fclose(fp);
 }
 static void load_all(const char *book) {
-    g_book_no_global = 0;
+    g_book_no_global = 0; nr = 0;      /* idempotent: a trigger calls this again inside a run, and appending twice made every id "declared twice" (found 2026-11-14) */
     char p[P]; snprintf(p, sizeof p, "%s/#.desktop/harness_menu.pdl", HOUSE); load(p, 1);
     if (book && book[0] && strcmp(book, "-") && word_ok(book)) { snprintf(p, sizeof p, "%s/@.apps/%s/harness.pdl", HOUSE, book); load(p, 0); }
 }
@@ -104,7 +104,9 @@ static int plug_names(const char *book, char names[][48], int max) {
     closedir(dp); for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) if (strcmp(names[i], names[j]) > 0) { char t[48]; snprintf(t, 48, "%s", names[i]); snprintf(names[i], 48, "%s", names[j]); snprintf(names[j], 48, "%s", t); }
     return n;
 }
-static int plug_enabled(const char *book, const char *name) {      /* 1 on, 0 off or no ENABLED row */
+static const char *g_sim_name; static int g_sim_val = -1;      /* the loader's what-if: treat this plug as ON or OFF without touching the file */
+static int plug_enabled(const char *book, const char *name) {
+    if (g_sim_name && !strcmp(name, g_sim_name)) { return g_sim_val; }      /* 1 on, 0 off or no ENABLED row */
     char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, name); FILE *fp = fopen(f, "r"); if (!fp) return 0; char ln[600]; int on = 0;
     while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!strncmp(p, "ENABLED", 7)) { char *bar = strchr(p, '|'); if (bar) on = atoi(bar + 1) == 1; } } fclose(fp); return on;
 }
@@ -142,7 +144,7 @@ static void expand(const char *in, const char *book, const char *page, char *out
  *   REQUIRES | <plug>   CONFLICTS | <plug>   USES | <verb>      and typed rows  PARAM | key | value | type | min | max | help  (value, type and bounds are checked by the SAME rules the engine uses, plug_ref_value_ok).
  * Cross-plug rules inside one book: a REQUIRES must name an installed plug (and it must be ON while this one is ON); a CONFLICTS must not be ON while this one is ON; a plug may not require or conflict with itself.
  * USES is validated as a word only: refusing an undeclared verb needs the engine (spec step 4, not built). Returns the number of problems written to msgs (at most maxm). */
-typedef struct { int has_name, has_enabled, enabled, version, nreq, ncon, nuses, nparams; char affects[16]; char req[8][48], con[8][48], uses[12][48]; } PlugInfo;
+typedef struct { int has_name, has_enabled, enabled, version, nreq, ncon, nuses, nparams, ncmd, nphase; char affects[16]; char req[8][48], con[8][48], uses[12][48], cmd[12][48]; int phase_hour[12]; } PlugInfo;
 static int plug_scan(const char *book, const char *name, PlugInfo *pi, char msgs[][200], int maxm) {
     memset(pi, 0, sizeof *pi); int nm = 0;
 #define PMSG(...) do { if (nm < maxm) { snprintf(msgs[nm], 200, __VA_ARGS__); } nm++; } while (0)
@@ -162,6 +164,11 @@ static int plug_scan(const char *book, const char *name, PlugInfo *pi, char msgs
                 int found = 0; for (int i = 0; i < np; i++) if (!strcmp(pn[i], fl[1])) found = 1;
                 if (is_req && !found) PMSG("REQUIRES %s: no plug %s in this book", fl[1], fl[1]); }
             else if (pi->nuses < 12) snprintf(pi->uses[pi->nuses++], 48, "%s", fl[1]);
+        } else if (!strcmp(fl[0], "COMMAND")) {      /* COMMAND | name | event or verb | args: a named thing the plug can do (the loader checks the names do not collide across plugs) */
+            if (nf < 3 || !plug_ref_word(fl[1], 0) || strlen(fl[1]) > 40 || !word_ok(fl[2])) { PMSG("COMMAND needs name | event or verb (plain names)"); continue; }
+            int dc = 0; for (int i = 0; i < pi->ncmd; i++) if (!strcmp(pi->cmd[i], fl[1])) dc = 1; if (dc) { PMSG("COMMAND %s: declared twice", fl[1]); continue; } if (pi->ncmd < 12) snprintf(pi->cmd[pi->ncmd++], 48, "%s", fl[1]);
+        } else if (!strcmp(fl[0], "PHASE")) {      /* PHASE | name | from_hour | ...: a plug that installs a clock reminder at from_hour (day-night) */
+            if (nf >= 3 && pi->nphase < 12) { char *e2; long h = strtol(fl[2], &e2, 10); if (*fl[2] && !*e2 && h >= 0 && h <= 23) pi->phase_hour[pi->nphase++] = (int)h; }
         } else if (!strcmp(fl[0], "PARAM")) {
             pi->nparams++; if (nf < 4) { PMSG("PARAM needs key | value | type"); continue; }
             if (!plug_ref_word(fl[1], 0) || strlen(fl[1]) > 40) { PMSG("PARAM %s: the key must be letters, digits and _", fl[1]); continue; }
@@ -170,6 +177,7 @@ static int plug_scan(const char *book, const char *name, PlugInfo *pi, char msgs
         } }
     fclose(fp);
     if (!pi->has_name) { int mism = 0; for (int i = 0; i < nm && i < maxm; i++) if (!strncmp(msgs[i], "PLUG name is", 12)) mism = 1; if (!mism) PMSG("a plug file needs a row PLUG | name | <the file name>"); }
+    if (g_sim_name && !strcmp(name, g_sim_name)) { pi->enabled = g_sim_val; }
     if (!pi->has_enabled) PMSG("a plug file needs an ENABLED | 1 or 0 row");
     if (pi->enabled) { for (int i = 0; i < pi->nreq; i++) { int found = 0; for (int k = 0; k < np; k++) if (!strcmp(pn[k], pi->req[i])) found = 1; if (found && !plug_enabled(book, pi->req[i])) PMSG("is ON but REQUIRES %s which is OFF", pi->req[i]); }
         for (int i = 0; i < pi->ncon; i++) if (plug_enabled(book, pi->con[i])) PMSG("is ON and CONFLICTS with %s which is also ON", pi->con[i]); }
@@ -177,10 +185,43 @@ static int plug_scan(const char *book, const char *name, PlugInfo *pi, char msgs
     return nm > maxm ? maxm : nm;
 }
 
+/* PLUG LOADER (spec step 3, the other half, D78, 2026-11-14): which plugs are ON, in what order they load, and what collides. `harness_menu_op load <house> <book>` writes the PROJECTION <app>/state/plugs_active.txt
+ * (ORDER rows, then PROBLEM rows; safe to delete, regenerate with this verb; nothing reads it as authority) and exits 2 when there is a problem. Rules, all data: a plug that is ON and has a header problem is reported (the same scan as `check`);
+ * the ON plugs are ordered so a plug comes after every ON plug it REQUIRES (a cycle is reported); two ON plugs may not declare the same COMMAND name, and may not install a clock reminder (PHASE from_hour) at the same hour.
+ * A `pick plug:<name>` that would switch a plug ON is REFUSED when loading with it ON gives a problem that names it (nothing is changed, no log row): the loader runs on the would-be state through g_sim_name/g_sim_val.
+ * Switching OFF is always allowed (a plug that REQUIRES it is then reported, not blocked). Page-based commands on high-frequency triggers are refused by the trigger check (D79); no such trigger source exists yet. */
+typedef struct { int n, nprob; char order[MAXPLUG][48]; int ver[MAXPLUG]; char aff[MAXPLUG][16]; char prob[24][200]; } PlugLoad;
+static void plug_load(const char *book, PlugLoad *L) {
+    memset(L, 0, sizeof *L); static char pn[MAXPLUG][48]; int np = plug_names(book, pn, MAXPLUG); static PlugInfo A[MAXPLUG]; static char an[MAXPLUG][48]; int na = 0; static char pm[24][200];
+#define LPROB(...) do { if (L->nprob < 24) { snprintf(L->prob[L->nprob], 200, __VA_ARGS__); } L->nprob++; } while (0)
+    for (int i = 0; i < np; i++) { PlugInfo pi; int nm = plug_scan(book, pn[i], &pi, pm, 24); if (!(pi.has_enabled && pi.enabled)) continue; for (int m = 0; m < nm; m++) LPROB("plug %s: %s", pn[i], pm[m]); if (na < MAXPLUG) { A[na] = pi; snprintf(an[na++], 48, "%s", pn[i]); } }
+    int placed[MAXPLUG] = { 0 }, nplaced = 0, progress = 1;
+    while (progress && nplaced < na) { progress = 0; for (int i = 0; i < na; i++) { if (placed[i]) continue; int ok = 1;
+            for (int r = 0; r < A[i].nreq; r++) for (int j = 0; j < na; j++) if (!strcmp(an[j], A[i].req[r]) && !placed[j]) ok = 0;
+            if (ok) { placed[i] = 1; nplaced++; progress = 1; snprintf(L->order[L->n], 48, "%s", an[i]); L->ver[L->n] = A[i].version; snprintf(L->aff[L->n], 16, "%s", A[i].affects[0] ? A[i].affects : "-"); L->n++; } } }
+    if (nplaced < na) { char t[200] = ""; for (int i = 0; i < na; i++) if (!placed[i]) { size_t l = strlen(t); snprintf(t + l, sizeof t - l, "%s%s", t[0] ? ", " : "", an[i]); } LPROB("CYCLE: plugs that require each other cannot load: %s", t); }
+    for (int i = 0; i < na; i++) for (int j = i + 1; j < na; j++) {
+        for (int a = 0; a < A[i].ncmd; a++) for (int b = 0; b < A[j].ncmd; b++) if (!strcmp(A[i].cmd[a], A[j].cmd[b])) LPROB("COLLISION: COMMAND %s is declared by both %s and %s", A[i].cmd[a], an[i], an[j]);
+        for (int a = 0; a < A[i].nphase; a++) for (int b = 0; b < A[j].nphase; b++) if (A[i].phase_hour[a] == A[j].phase_hour[b]) LPROB("COLLISION: %s and %s both install a clock reminder at hour %d", an[i], an[j], A[i].phase_hour[a]); }
+#undef LPROB
+}
+static int plug_load_verb(const char *book) {
+    if (!word_ok(book)) { fprintf(stderr, "harness_menu_op: load needs a plain book name\n"); return 2; }
+    PlugLoad L; plug_load(book, &L); static char out[8192]; out[0] = 0; size_t l;
+    l = strlen(out); snprintf(out + l, sizeof out - l, "# plugs_active.txt - a PROJECTION written by `harness_menu_op load` (D78): the ON plugs of this book in load order, then any problems. Regenerate it with that verb; never edit it; nothing reads it as authority.\n");
+    for (int i = 0; i < L.n; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "ORDER | %d | %s | %d | %s\n", i + 1, L.order[i], L.ver[i], L.aff[i]); }
+    for (int i = 0; i < L.nprob && i < 24; i++) { l = strlen(out); snprintf(out + l, sizeof out - l, "PROBLEM | %s\n", L.prob[i]); }
+    char d[P], f[P]; snprintf(d, sizeof d, "%s/@.apps/%s", HOUSE, book); struct stat sb; if (!stat(d, &sb) && S_ISDIR(sb.st_mode)) { snprintf(d, sizeof d, "%s/@.apps/%s/state", HOUSE, book); mkdir(d, 0755); snprintf(f, sizeof f, "%s/plugs_active.txt", d); write_atomic(f, out); }
+    printf("LOAD active=%d problems=%d\n", L.n, L.nprob); for (int i = 0; i < L.nprob && i < 24; i++) printf("%s\n", L.prob[i]); return L.nprob ? 2 : 0;
+}
+
+static void trig_links(const char *book, int is_plug, const char *name, char *fires, size_t fc, char *by, size_t bc);      /* defined with the triggers, below */
+static int nt_;      /* the trigger count; defined with the trigger table below */
 /* PLUGZ WINDOWS (2026-11-14, D76): the three windows (plugs, harnz, tests) read their rows and details through these verbs, so the parsing and the listing rules stay HERE (one authority).
  *   harness_menu_op rows     <house> <book|-> <page|-> <plugs|harnz|tests> <out>        lines `label<TAB>id<TAB>state` (plug: on/off, test: last verdict like `37 ok`, harnz: -)
  *   harness_menu_op describe <house> <book|-> <page|-> <plugs|harnz|tests> <id> <out>   key=value lines: title, status, control (toggle|click|run), confirm, n_info, info_<n>
  * The same hiding rules as `list` apply (a book with nothing of its own lists no global tests; an own row that repeats a global one is hidden). */
+static void clean_line(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r') *s = ' '; }
 static int kind_ok(const char *k) { return !strcmp(k, "plugs") || !strcmp(k, "harnz") || !strcmp(k, "tests"); }
 static void one_line(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '\t') *s = ' '; }
 static int plugz_rows(const char *book, const char *page, const char *kind, const char *outf) {
@@ -218,6 +259,7 @@ static int plugz_describe(const char *book, const char *page, const char *kind, 
         if (want_case) { INFO("case %s", r->target); INFO("runs behind cpu_gate, one at a time"); } else { INFO("runs %s", r->target); if (strcmp(r->args, "-")) INFO("args %s", r->args); INFO("writes %s", r->writes); }
         { size_t hl = strlen(HOUSE); INFO("row from %s line %d", (!strncmp(r->src, HOUSE, hl) && r->src[hl] == '/') ? r->src + hl + 1 : r->src, r->line); }
     }
+    { char fi[500], by[500]; const char *nm_ = !strcmp(kind, "plugs") ? (!strncmp(id, "plug:", 5) ? id + 5 : id) : id; trig_links(named ? book : "", !strcmp(kind, "plugs"), nm_, fi, sizeof fi, by, sizeof by); clean_line(fi); clean_line(by); PUT("fires=%s\nfiredby=%s\nn_trig=%d\n", fi, by, nt_); }
     PUT("n_info=%d\n", ni); for (int i = 0; i < ni; i++) PUT("info_%d=%s\n", i, info[i]);
     return write_atomic(outf, out);
 }
@@ -251,15 +293,157 @@ static int open_dir(const char *book) {
     if (access(opener, X_OK)) { printf("DIR-MISSING opener\n"); return 1; }
     char *av[] = { (char *)opener, d, NULL }; run_child(av, HOUSE, "/dev/null", 10); printf("DIR-OPENED %s\n", d); return 0;
 }
+/* TRIGGERS (spec step 4b, D79, 2026-11-14): a plug and a harnz can fire each other. Config, one file per book: <app>/triggers.pdl, rows   TRIGGER | id | on | run | note
+ *   on   toggle:<plug>:on | toggle:<plug>:off   a plug was switched          done:<id> | failed:<id>   a harnz or test row finished (ok / not ok)
+ *   run  harnz:<id>   an ACTION row    test:<id>   a CASE row    plug:<plug>:on | plug:<plug>:off   switch a plug
+ * Guards (all enforced at run time, and the first two also by `check`): a target already in the chain of this fire is REFUSED (a loop); the depth is capped at 4; at most 12 fires per run; a row that asks for confirmation is never
+ * confirmed by a trigger (refused); a plug switched ON through a trigger goes through the same loader refusal as a click. Every fire and every refusal is ONE row of <app>/state/trigger_log.txt (capped, 32 KB):
+ *   FIRE | epoch | trigger id | on | run | depth | ok | failed | refused: <why>        (that row is the verdict row of an automated run; a test's own verdict is still in its results file)
+ * No triggers.pdl = nothing changes for the book. Only click-like sources exist (no timer, no per-tick source), so a page-based command can never run at high frequency; a clock source would need the spec's refusal rule first. */
+#define MAXTRIG 32
+#define TRIG_DEPTH 4
+#define TRIG_FIRES 12
+typedef struct { char id[48], on[96], run[96], note[120]; int line; } Trig;
+static Trig T_[MAXTRIG]; static int nt_; static int g_fires;
+static int trig_split(const char *s, char out[3][48]) { int n = 0; const char *p = s; while (n < 3) { const char *c = strchr(p, ':'); size_t l = c ? (size_t)(c - p) : strlen(p); if (l >= 48) return 0; memcpy(out[n], p, l); out[n][l] = 0; n++; if (!c) break; p = c + 1; } return n; }
+static int trig_on_ok(const char *on, char *why, size_t wc) {
+    char x[3][48]; int n = trig_split(on, x);
+    if (n == 3 && !strcmp(x[0], "toggle") && word_ok(x[1]) && (!strcmp(x[2], "on") || !strcmp(x[2], "off"))) return 1;
+    if (n == 2 && (!strcmp(x[0], "done") || !strcmp(x[0], "failed")) && word_ok(x[1])) return 1;
+    snprintf(why, wc, "on %s: want toggle:<plug>:on|off, done:<id> or failed:<id>", on); return 0;
+}
+static int trig_run_ok(const char *run, char *why, size_t wc) {
+    char x[3][48]; int n = trig_split(run, x);
+    if (n == 2 && (!strcmp(x[0], "harnz") || !strcmp(x[0], "test")) && word_ok(x[1])) return 1;
+    if (n == 3 && !strcmp(x[0], "plug") && word_ok(x[1]) && (!strcmp(x[2], "on") || !strcmp(x[2], "off"))) return 1;
+    snprintf(why, wc, "run %s: want harnz:<id>, test:<id> or plug:<plug>:on|off", run); return 0;
+}
+/* read <app>/triggers.pdl: the valid rows go to T_ (what fires at run time), every problem goes to msgs (what `check` prints); runs with maxm = 0 at run time */
+static int trig_scan(const char *book, char msgs[][200], int maxm) {
+    nt_ = 0; int nm = 0;
+#define TMSG(...) do { if (nm < maxm) { snprintf(msgs[nm], 200, __VA_ARGS__); } nm++; } while (0)
+    char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/triggers.pdl", HOUSE, book); FILE *fp = fopen(f, "r"); if (!fp) return 0; char ln[700]; int lineno = 0;
+    while (fgets(ln, sizeof ln, fp)) { lineno++; char *p = trim(ln); if (!*p || *p == '#') continue; char *fl[6]; int nf = plug_ref_split(p, fl, 5); if (strcmp(fl[0], "TRIGGER")) continue;
+        char why[200]; if (nf < 4) { TMSG("line %d: a TRIGGER row needs id | on | run | note", lineno); continue; }
+        if (!word_ok(fl[1]) || strlen(fl[1]) > 40) { TMSG("line %d: the trigger id must be a plain word", lineno); continue; }
+        if (!trig_on_ok(fl[2], why, sizeof why)) { TMSG("line %d: %s", lineno, why); continue; } if (!trig_run_ok(fl[3], why, sizeof why)) { TMSG("line %d: %s", lineno, why); continue; }
+        int dup = 0; for (int i = 0; i < nt_; i++) if (!strcmp(T_[i].id, fl[1])) dup = 1; if (dup) { TMSG("line %d: trigger id %s is declared twice", lineno, fl[1]); continue; }
+        if (nt_ >= MAXTRIG) { TMSG("line %d: too many triggers (at most %d)", lineno, MAXTRIG); continue; }
+        Trig *t = &T_[nt_++]; snprintf(t->id, sizeof t->id, "%s", fl[1]); snprintf(t->on, sizeof t->on, "%s", fl[2]); snprintf(t->run, sizeof t->run, "%s", fl[3]); snprintf(t->note, sizeof t->note, "%s", nf > 4 ? fl[4] : ""); t->line = lineno; }
+    fclose(fp);
+#undef TMSG
+    return nm > maxm ? maxm : nm;
+}
+/* the events a `run` produces when it is carried out: a row gives done and failed, a plug switch gives its toggle */
+static int trig_produces(const char *run, char ev[2][100]) { char x[3][48]; int n = trig_split(run, x); if (n == 2) { snprintf(ev[0], 100, "done:%s", x[1]); snprintf(ev[1], 100, "failed:%s", x[1]); return 2; } if (n == 3) { snprintf(ev[0], 100, "toggle:%s:%s", x[1], x[2]); return 1; } return 0; }
+static int trig_dfs(const char *e, char path[][100], int depth, char *loop, size_t lc) {
+    for (int i = 0; i < nt_; i++) if (!strcmp(T_[i].on, e)) { char ev[2][100]; int ne = trig_produces(T_[i].run, ev);
+        for (int k = 0; k < ne; k++) { for (int d = 0; d < depth; d++) if (!strcmp(path[d], ev[k])) { snprintf(loop, lc, "%s", ev[k]); return 1; } if (depth >= 12) continue; snprintf(path[depth], 100, "%s", ev[k]); if (trig_dfs(ev[k], path, depth + 1, loop, lc)) return 1; } }
+    return 0;
+}
+/* `check` for one book: the file's own problems, then every id must exist (a plug, a row of the right kind), then no loop among the triggers (the static twin of the runtime chain guard) */
+static void trig_verify(const char *book, const char *src) {
+    static char pm[24][200]; int nm = trig_scan(book, pm, 24); for (int i = 0; i < nm; i++) bad(src, 0, pm[i]);
+    static char pn[MAXPLUG][48]; int np = plug_names(book, pn, MAXPLUG);
+    for (int i = 0; i < nt_; i++) { char x[3][48]; char msg[200]; const char *two[2] = { T_[i].on, T_[i].run };
+        for (int w = 0; w < 2; w++) { int n = trig_split(two[w], x); const char *kind = x[0]; if (n < 2) continue; int is_plug = !strcmp(kind, "toggle") || !strcmp(kind, "plug");
+            if (is_plug) { int found = 0; for (int k = 0; k < np; k++) if (!strcmp(pn[k], x[1])) found = 1; if (!found) { snprintf(msg, sizeof msg, "trigger %s: no plug %s in this book", T_[i].id, x[1]); bad(src, T_[i].line, msg); } }
+            else { Row *r = NULL; for (int k = 0; k < nr; k++) if (!strcmp(R[k].id, x[1])) r = &R[k]; if (!r) { snprintf(msg, sizeof msg, "trigger %s: no harnz or test row %s", T_[i].id, x[1]); bad(src, T_[i].line, msg); }
+                else if (w == 1 && !strcmp(kind, "harnz") && !strcmp(r->kind, "CASE")) { snprintf(msg, sizeof msg, "trigger %s: %s is a test, not a harnz (use test:%s)", T_[i].id, x[1], x[1]); bad(src, T_[i].line, msg); }
+                else if (w == 1 && !strcmp(kind, "test") && strcmp(r->kind, "CASE")) { snprintf(msg, sizeof msg, "trigger %s: %s is a harnz, not a test (use harnz:%s)", T_[i].id, x[1], x[1]); bad(src, T_[i].line, msg); } } } }
+    static char path[12][100]; char loop[100] = "";
+    for (int i = 0; i < nt_ && !loop[0]; i++) { snprintf(path[0], 100, "%s", T_[i].on); trig_dfs(T_[i].on, path, 1, loop, sizeof loop); }
+    if (loop[0]) { char msg[200]; snprintf(msg, sizeof msg, "the triggers form a loop through %s (a chain that returns to itself is refused at run time)", loop); bad(src, 0, msg); }
+}
+static void trig_log(const char *book, const char *tid, const char *on, const char *run, int depth, const char *result) {
+    char d[P], f[P]; snprintf(d, sizeof d, "%s/@.apps/%s/state", HOUSE, book); mkdir(d, 0755); snprintf(f, sizeof f, "%s/trigger_log.txt", d); FILE *lf = fopen(f, "a"); if (!lf) return;
+    fprintf(lf, "FIRE | %ld | %s | %s | %s | %d | %s\n", (long)time(NULL), tid, on, run, depth, result); fclose(lf);
+    struct stat st; if (!stat(f, &st) && st.st_size > 32768) { FILE *rf = fopen(f, "r"); if (rf) { static char kb[40000]; size_t kn = fread(kb, 1, sizeof kb - 1, rf); fclose(rf); kb[kn] = 0; char *half = kb + kn / 2; char *nl = strchr(half, '\n'); if (nl) write_atomic(f, nl + 1); } }      /* capped: the older half is dropped */
+}
+static int chain_has(const char *chain, const char *tid) { size_t l = strlen(tid); for (const char *p = chain; (p = strstr(p, tid)); p += l) { int start = (p == chain || p[-1] == '>'); int end = (p[l] == 0 || p[l] == '>'); if (start && end) return 1; } return 0; }
+/* switch a plug on or off, for a click and for a trigger alike: 0 done (or already so), 1 refused with the loader's reason in why, 2 failed (no such plug, no ENABLED row). *changed = 1 when the file was flipped */
+static int plug_switch(const char *book, const char *pname, int want_on, char *why, size_t wc, int *changed) {
+    *changed = 0; why[0] = 0; static char pn2[MAXPLUG][48]; int np2 = plug_names(book, pn2, MAXPLUG), found = 0; for (int i = 0; i < np2; i++) if (!strcmp(pn2[i], pname)) found = 1;
+    if (!found) { snprintf(why, wc, "no plug %s in book %s", pname, book); return 2; }
+    if ((plug_enabled(book, pname) != 0) == (want_on != 0)) return 0;
+    if (want_on) { g_sim_name = pname; g_sim_val = 1; PlugLoad LL; plug_load(book, &LL); g_sim_name = NULL; g_sim_val = -1;      /* switching ON: refuse when the loader finds a problem that names this plug (D78); nothing is changed */
+        for (int i = 0; i < LL.nprob && i < 24; i++) if (strstr(LL.prob[i], pname)) { snprintf(why, wc, "%s", LL.prob[i]); return 1; } }
+    if (plug_toggle(book, pname)) { snprintf(why, wc, "plug %s has no ENABLED row to flip", pname); return 2; }
+    *changed = 1; return 0;
+}
+static int run_row(const char *book, const char *page, const char *id, int confirmed, int depth, const char *chain);
+static void fire_triggers(const char *book, const char *page, const char *event, int depth, const char *chain);
+/* a harnz or test row finished: fire what hangs on `done:<id>` or `failed:<id>` */
+static void fire_after(const char *book, const char *page, const char *rid, int rc, int depth, const char *chain) {
+    if (!book[0] || !word_ok(book) || rc > 1) return; char ev[120], tid[80], nc[400]; snprintf(ev, sizeof ev, "%s:%s", rc == 0 ? "done" : "failed", rid); snprintf(tid, sizeof tid, "row:%s", rid);
+    if (chain_has(chain, tid)) snprintf(nc, sizeof nc, "%s", chain); else snprintf(nc, sizeof nc, "%s%s%s", chain, chain[0] ? ">" : "", tid);
+    fire_triggers(book, page, ev, depth, nc);
+}
+static void fire_triggers(const char *book, const char *page, const char *event, int depth, const char *chain) {
+    if (!book[0] || !word_ok(book)) return; trig_scan(book, NULL, 0); static Trig m[TRIG_DEPTH + 2][MAXTRIG]; int lvl = depth < TRIG_DEPTH + 1 ? depth : TRIG_DEPTH + 1; int nm = 0;      /* copied: a nested fire reloads T_ */
+    for (int i = 0; i < nt_; i++) if (!strcmp(T_[i].on, event)) m[lvl][nm++] = T_[i];
+    for (int i = 0; i < nm; i++) { Trig t = m[lvl][i]; char x[3][48]; int n = trig_split(t.run, x); char tid[100], nc[500], result[260] = "";
+        if (n == 3) snprintf(tid, sizeof tid, "plug:%s", x[1]); else snprintf(tid, sizeof tid, "row:%s", x[1]);
+        if (chain_has(chain, tid)) snprintf(result, sizeof result, "refused: loop (%s is already in the chain %s)", tid, chain);
+        else if (depth + 1 > TRIG_DEPTH) snprintf(result, sizeof result, "refused: the chain is deeper than %d", TRIG_DEPTH);
+        else if (++g_fires > TRIG_FIRES) snprintf(result, sizeof result, "refused: more than %d fires in one run", TRIG_FIRES);
+        else { snprintf(nc, sizeof nc, "%s%s%s", chain, chain[0] ? ">" : "", tid);
+            if (n == 3) { char why[200]; int ch = 0; int rc = plug_switch(book, x[1], !strcmp(x[2], "on"), why, sizeof why, &ch);
+                if (rc == 0) { snprintf(result, sizeof result, "ok"); } else if (rc == 1) snprintf(result, sizeof result, "refused: %s", why); else snprintf(result, sizeof result, "failed: %s", why);
+                trig_log(book, t.id, t.on, t.run, depth + 1, result); printf("TRIGGER %s %s\n", t.id, result);
+                if (rc == 0 && ch) { char ev[120]; snprintf(ev, sizeof ev, "toggle:%s:%s", x[1], x[2]); fire_triggers(book, page, ev, depth + 1, nc); } continue; }
+            load_all(book); Row *r = NULL; for (int k = 0; k < nr; k++) if (!strcmp(R[k].id, x[1]) && visible(&R[k], page)) r = &R[k];
+            if (!r) snprintf(result, sizeof result, "refused: no row %s here", x[1]);
+            else if ((!strcmp(r->kind, "CASE")) != (!strcmp(x[0], "test"))) snprintf(result, sizeof result, "refused: %s is a %s", x[1], !strcmp(r->kind, "CASE") ? "test" : "harnz");
+            else { int rc = run_row(book, page, x[1], 0, depth + 1, nc); snprintf(result, sizeof result, "%s", rc == 0 ? "ok" : rc == 1 ? "failed" : rc == 3 ? "refused: that row asks for confirmation and a trigger never confirms" : "refused: it could not run here"); } }
+        trig_log(book, t.id, t.on, t.run, depth + 1, result); printf("TRIGGER %s %s\n", t.id, result); }
+}
+/* the row a click runs, moved out of `pick` unchanged so a trigger runs the very same code: 0 ran ok, 1 ran and failed, 2 refused, 3 needs confirm */
+static int run_row(const char *book, const char *page, const char *id, int confirmed, int depth, const char *chain) {
+    load_all(book);
+    Row *r = NULL; for (int i = 0; i < nr; i++) if (!strcmp(R[i].id, id) && visible(&R[i], page)) r = &R[i];
+    if (!r) { fprintf(stderr, "harness_menu_op: no row %s here\n", id); return 2; }
+    if (!strcmp(r->confirm, "yes") && !confirmed) { printf("CONFIRM %s\n", r->id); return 3; }
+    if (!strcmp(r->kind, "CASE")) {
+        char hd[P], gate[P], cf[P], last[P], rf[P]; snprintf(hd, sizeof hd, "%s/&.widgits/_shared-lib/harness", HOUSE); snprintf(gate, sizeof gate, "%s/&.widgits/_shared-lib/ops/+x/cpu_gate.+x", HOUSE);
+        snprintf(cf, sizeof cf, "cases/%s.pdl", r->target); snprintf(last, sizeof last, "%s/#.desktop/harness_last.txt", HOUSE); snprintf(rf, sizeof rf, "%s/results/%s.txt", hd, r->target); unlink(rf);
+        char lab[64]; snprintf(lab, sizeof lab, "harness-%s", r->target);
+        char *a1[] = { gate, HOUSE, "run", lab, "--wait", "120", "--", "./ops/+x/harness_case_op.+x", cf, NULL }; run_child(a1, hd, NULL, 900);
+        char vp[P], tmp[P]; snprintf(vp, sizeof vp, "%s/ops/+x/harness_verdict_op.+x", hd); snprintf(tmp, sizeof tmp, "%s.tmp", last);
+        char *a2[] = { vp, cf, NULL }; run_child(a2, hd, tmp, 30);
+        /* keep only the verdict line (the last), so the file is one line and never grows */
+        FILE *fp = fopen(tmp, "r"); char ln[1024], keep[1024] = ""; if (fp) { while (fgets(ln, sizeof ln, fp)) snprintf(keep, sizeof keep, "%s", ln); fclose(fp); } unlink(tmp);
+        write_atomic(last, keep); printf("%s", keep[0] ? keep : "VERDICT|NONE\n"); { int crc = strstr(keep, "VERDICT|PASS") ? 0 : 1; char rid[48]; snprintf(rid, sizeof rid, "%s", r->id); fire_after(book, page, rid, crc, depth, chain); return crc; }
+    }
+    /* ACTION */
+    int needs_page = strstr(r->args, "${CELLS}") || strstr(r->args, "${PAGE}") || strstr(r->args, "${BOOK}") || strstr(r->args, "${APP}") || !strcmp(r->writes, "page");
+    if (needs_page && (!book[0] || !page[0])) { fprintf(stderr, "harness_menu_op: %s needs an open page\n", r->id); return 2; }
+    char ex[P * 2]; expand(r->args, book, page, ex, sizeof ex); char exe[P]; snprintf(exe, sizeof exe, "%s/%s", HOUSE, r->target);
+    char *av[24]; int ac = 0; av[ac++] = exe; char *sp; for (char *t = strtok_r(ex, " ", &sp); t && ac < 22; t = strtok_r(NULL, " ", &sp)) av[ac++] = t; av[ac] = NULL;
+    int rc = run_child(av, HOUSE, NULL, 60);
+    if (!strcmp(r->writes, "page")) { char mk[P]; snprintf(mk, sizeof mk, "%s/@.apps/%s/%s-pchq/pieces/system/maps/%s/%s/cells.marker", HOUSE, book, book, book, page); FILE *mf = fopen(mk, "a"); if (mf) { fputc('x', mf); fclose(mf); } }
+    printf("HARNESS %s %s rc=%d\n", r->id, rc == 0 ? "ok" : "failed", rc); { int arc = rc == 0 ? 0 : 1; char rid[48]; snprintf(rid, sizeof rid, "%s", r->id); fire_after(book, page, rid, arc, depth, chain); return arc; }
+}
+/* LINKS of one plug or row for the window: `fires` = the triggers whose source is this item (item -> what it runs), `firedby` = the triggers that run this item (when). (none) when empty. */
+static void trig_links(const char *book, int is_plug, const char *name, char *fires, size_t fc, char *by, size_t bc) {
+    fires[0] = 0; by[0] = 0; if (!book[0] || !word_ok(book)) { snprintf(fires, fc, "(none)"); snprintf(by, bc, "(none)"); return; } trig_scan(book, NULL, 0);
+    for (int i = 0; i < nt_; i++) { char x[3][48]; int n = trig_split(T_[i].on, x); int src = n >= 2 && !strcmp(x[1], name) && (is_plug ? !strcmp(x[0], "toggle") : (!strcmp(x[0], "done") || !strcmp(x[0], "failed")));
+        if (src) { size_t l = strlen(fires); snprintf(fires + l, fc - l, "%s%s -> %s", fires[0] ? "; " : "", T_[i].on, T_[i].run); }
+        n = trig_split(T_[i].run, x); int tgt = n >= 2 && !strcmp(x[1], name) && (is_plug ? !strcmp(x[0], "plug") : (!strcmp(x[0], "harnz") || !strcmp(x[0], "test")));
+        if (tgt) { size_t l = strlen(by); snprintf(by + l, bc - l, "%s%s (%s)", by[0] ? "; " : "", T_[i].on, T_[i].id); } }
+    if (!fires[0]) snprintf(fires, fc, "(none)"); if (!by[0]) snprintf(by, bc, "(none)");
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: harness_menu_op list|pick|check <house> ...\n"); return 2; }
     const char *verb = argv[1]; snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
     if (!strcmp(verb, "check")) {
         load_all(NULL); for (int i = 3; i < argc; i++) { char p[P]; snprintf(p, sizeof p, "%s/@.apps/%s/harness.pdl", HOUSE, argv[i]); if (word_ok(argv[i])) load(p, 0); }
         for (int i = 3; i < argc; i++) if (word_ok(argv[i])) { static char pc[MAXPLUG][48]; int n2 = plug_names(argv[i], pc, MAXPLUG);      /* every plug file: the header and the typed rows (plug_scan, spec step 3) */
-            for (int k = 0; k < n2; k++) { char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, argv[i], pc[k]); static char pm[24][200]; PlugInfo pi; int nmsg = plug_scan(argv[i], pc[k], &pi, pm, 24); for (int m = 0; m < nmsg; m++) bad(f, 0, pm[m]); } }
+            for (int k = 0; k < n2; k++) { char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, argv[i], pc[k]); static char pm[24][200]; PlugInfo pi; int nmsg = plug_scan(argv[i], pc[k], &pi, pm, 24); for (int m = 0; m < nmsg; m++) bad(f, 0, pm[m]); }
+            { char tf[P]; snprintf(tf, sizeof tf, "%s/@.apps/%s/triggers.pdl", HOUSE, argv[i]); trig_verify(argv[i], tf); } }      /* the book's triggers (D79): syntax, ids, and no loop */
         printf("HARNESS-CHECK rows=%d bad=%d\n", nr, nbad); return nbad ? 2 : 0;
     }
+    if (!strcmp(verb, "load") && argc >= 4) { return plug_load_verb(argv[3]); }      /* D78: the plug loader */
     if (!strcmp(verb, "rows") && argc >= 7) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_rows(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6]) ? 2 : 0; }
     if (!strcmp(verb, "describe") && argc >= 8) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_describe(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6], argv[7]) ? 2 : 0; }
     /* LAUNCHER (2026-11-14, owner): the LyfeDesk top-bar Tools dropdown is only three launchers into three windows (plugs, harnz, tests: tests are their own kind, owner agreed); the bar adds notes and cancel. A pick (open:plugs, open:harnz, open:tests) opens that window (plugz_open below, D76); the windows are built. The book and page arguments are accepted for the windows to come. */
@@ -299,31 +483,11 @@ int main(int argc, char **argv) {
             const char *pname = id + 5; if (!book[0] || !word_ok(book) || !word_ok(pname)) { fprintf(stderr, "harness_menu_op: a plug needs an open book and a plain name\n"); return 2; }
             static char pn2[MAXPLUG][48]; int np2 = plug_names(book, pn2, MAXPLUG), found = 0; for (int i = 0; i < np2; i++) if (!strcmp(pn2[i], pname)) found = 1;
             if (!found) { fprintf(stderr, "harness_menu_op: no plug %s in book %s\n", pname, book); return 2; }
-            if (plug_toggle(book, pname)) { fprintf(stderr, "harness_menu_op: plug %s has no ENABLED row to flip\n", pname); return 1; }
-            printf("PLUG %s %s\n", pname, plug_enabled(book, pname) ? "on" : "off"); return 0; }
-        load_all(book);
-        Row *r = NULL; for (int i = 0; i < nr; i++) if (!strcmp(R[i].id, id) && visible(&R[i], page)) r = &R[i];
-        if (!r) { fprintf(stderr, "harness_menu_op: no row %s here\n", id); return 2; }
-        if (!strcmp(r->confirm, "yes") && !confirmed) { printf("CONFIRM %s\n", r->id); return 3; }
-        if (!strcmp(r->kind, "CASE")) {
-            char hd[P], gate[P], cf[P], last[P], rf[P]; snprintf(hd, sizeof hd, "%s/&.widgits/_shared-lib/harness", HOUSE); snprintf(gate, sizeof gate, "%s/&.widgits/_shared-lib/ops/+x/cpu_gate.+x", HOUSE);
-            snprintf(cf, sizeof cf, "cases/%s.pdl", r->target); snprintf(last, sizeof last, "%s/#.desktop/harness_last.txt", HOUSE); snprintf(rf, sizeof rf, "%s/results/%s.txt", hd, r->target); unlink(rf);
-            char lab[64]; snprintf(lab, sizeof lab, "harness-%s", r->target);
-            char *a1[] = { gate, HOUSE, "run", lab, "--wait", "120", "--", "./ops/+x/harness_case_op.+x", cf, NULL }; run_child(a1, hd, NULL, 900);
-            char vp[P], tmp[P]; snprintf(vp, sizeof vp, "%s/ops/+x/harness_verdict_op.+x", hd); snprintf(tmp, sizeof tmp, "%s.tmp", last);
-            char *a2[] = { vp, cf, NULL }; run_child(a2, hd, tmp, 30);
-            /* keep only the verdict line (the last), so the file is one line and never grows */
-            FILE *fp = fopen(tmp, "r"); char ln[1024], keep[1024] = ""; if (fp) { while (fgets(ln, sizeof ln, fp)) snprintf(keep, sizeof keep, "%s", ln); fclose(fp); } unlink(tmp);
-            write_atomic(last, keep); printf("%s", keep[0] ? keep : "VERDICT|NONE\n"); return strstr(keep, "VERDICT|PASS") ? 0 : 1;
-        }
-        /* ACTION */
-        int needs_page = strstr(r->args, "${CELLS}") || strstr(r->args, "${PAGE}") || strstr(r->args, "${BOOK}") || strstr(r->args, "${APP}") || !strcmp(r->writes, "page");
-        if (needs_page && (!book[0] || !page[0])) { fprintf(stderr, "harness_menu_op: %s needs an open page\n", r->id); return 2; }
-        char ex[P * 2]; expand(r->args, book, page, ex, sizeof ex); char exe[P]; snprintf(exe, sizeof exe, "%s/%s", HOUSE, r->target);
-        char *av[24]; int ac = 0; av[ac++] = exe; char *sp; for (char *t = strtok_r(ex, " ", &sp); t && ac < 22; t = strtok_r(NULL, " ", &sp)) av[ac++] = t; av[ac] = NULL;
-        int rc = run_child(av, HOUSE, NULL, 60);
-        if (!strcmp(r->writes, "page")) { char mk[P]; snprintf(mk, sizeof mk, "%s/@.apps/%s/%s-pchq/pieces/system/maps/%s/%s/cells.marker", HOUSE, book, book, book, page); FILE *mf = fopen(mk, "a"); if (mf) { fputc('x', mf); fclose(mf); } }
-        printf("HARNESS %s %s rc=%d\n", r->id, rc == 0 ? "ok" : "failed", rc); return rc == 0 ? 0 : 1;
+            char why[200]; int chg = 0; int want_on = !plug_enabled(book, pname); int src = plug_switch(book, pname, want_on, why, sizeof why, &chg);
+            if (src == 1) { printf("REFUSED plug %s: %s\n", pname, why); return 1; } if (src == 2) { fprintf(stderr, "harness_menu_op: %s\n", why); return 1; }
+            printf("PLUG %s %s\n", pname, plug_enabled(book, pname) ? "on" : "off");
+            { char ev[120], ch0[80]; snprintf(ev, sizeof ev, "toggle:%s:%s", pname, want_on ? "on" : "off"); snprintf(ch0, sizeof ch0, "plug:%s", pname); fire_triggers(book, page, ev, 0, ch0); } return 0; }
+        return run_row(book, page, id, confirmed, 0, "");      /* the same code a trigger runs (D79) */
     }
     fprintf(stderr, "usage: harness_menu_op list <house> <book|-> <page|-> <outfile> | pick <house> <book|-> <page|-> <id> [--confirmed] | check <house> [book...]\n"); return 2;
 }

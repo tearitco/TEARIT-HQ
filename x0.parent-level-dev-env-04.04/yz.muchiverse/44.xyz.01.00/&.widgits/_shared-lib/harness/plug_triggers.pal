@@ -1,0 +1,4 @@
+# plug_triggers.pal - triggers between plugs and harnz (spec step 4b, D79). See cases/plug_triggers.pdl
+exec ./ops/+x/harness_case_op.+x cases/plug_triggers.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/plug_triggers.pdl
+halt
