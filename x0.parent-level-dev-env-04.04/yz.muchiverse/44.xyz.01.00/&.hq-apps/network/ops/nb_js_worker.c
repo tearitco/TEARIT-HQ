@@ -2331,20 +2331,8 @@ static JSValue nb_el_innerHTML_set(JSContext *ctx, JSValueConst this_val, int ar
 #include "nb_worker_insert_adjacent_parse.c"
 /* insertAdjacent placement/attach helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_insert_adjacent_place.c"
-static void nb_ia_insert_html(JSContext *ctx, NbNode *parent, NbNode *ref, const char *html) {
-    NbNode *frag = nb_parse_html_nodes(html, strlen(html));
-    if (!frag) return;
-    NbNode *cur = frag->first_child;
-    frag->first_child = frag->last_child = NULL;
-    while (cur) {
-        NbNode *nx = cur->next_sibling;
-        cur->next_sibling = NULL;
-        cur->parent = NULL;
-        nb_ia_attach(ctx, parent, ref, cur);
-        cur = nx;
-    }
-    nb_node_free(frag);
-}
+/* insertAdjacent HTML insertion helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_insert_adjacent_html_helper.c"
 static JSValue nb_el_insertAdjacentHTML(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     int pos = (argc > 0) ? nb_ia_parse_pos(ctx, argv[0]) : -1;
