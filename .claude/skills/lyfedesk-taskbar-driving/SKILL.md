@@ -1,6 +1,6 @@
 ---
 name: lyfedesk-taskbar-driving
-description: How to find, click, photograph and rebuild the LyfeDesk top bar (book:page, tools, menu cells and their dropdowns) and the editor's Tools tab like a person would, and the traps that cost time (stale manager, loading splash, wrong book source, dropdown that will not close). Use BEFORE changing or testing a top-bar cell, a header dropdown, or the Tools list.
+description: How to find, click, photograph and rebuild the LyfeDesk top bar (book:page, tools, menu cells and their dropdowns) and the editor's Tools tab like a person would, and the traps that cost time (stale manager, loading splash, wrong book source, a closed dropdown still existing as an unmapped window). Use BEFORE changing or testing a top-bar cell, a header dropdown, or the Tools list.
 ---
 
 # Driving the LyfeDesk top bar (first written 2026-11-14; items marked UNSOLVED are not solved)
@@ -27,8 +27,9 @@ Relay file `#.desktop/entity_menu_history/<pid>.txt`, append only: move the poin
 - Build: `cpu_gate <house> run <label> --wait 120 -- env LIVEDESK_NO_SPLASH=1 sh -c 'cd _.monads/_.livedesk-taskbar/ops && sh build_khtpm_strip.sh'`. WITHOUT `LIVEDESK_NO_SPLASH=1` the script starts the "loading LyfeDesk" strip (`livedesk_splash.+x --boot`, pid in `#.desktop/livedesk_boot_splash.pid`) and nothing dismisses it when you only compile. If it is stuck, check `+x/.build_failed.txt` and `#.desktop/boot_build_failed.txt` do not exist (a failed build must stay visible), then kill that one pid.
 - Never wrap `button.sh reset` in cpu_gate; relaunching changes the owner's screen: ask first.
 
-## 5. Closing a dropdown (UNSOLVED, 2026-11-14)
-Esc via the bar's relay, a second click on the same cell, and typing the cancel row's nav number plus Enter (31, then 13) did NOT close the dropdown for me. The owner said the cancel index closes it, so the digits probably need the menu window's own relay or a different focus; I did not find which. Leave a dropdown open only after telling the owner, and ask them to close it (click `cancel`).
+## 5. Closing a dropdown (corrected 2026-11-14)
+Type the CANCEL row's nav number then Enter through the bar's relay (`KEY_PRESSED: 51`, `KEY_PRESSED: 49`, then `KEY_PRESSED: 13` for row 31; read the number off the photo). That closed it. I first reported it as NOT closed because I counted windows of the dropdown's size: a closed dropdown stays as an UNMAPPED window of the same geometry. Check `xwininfo -id <win> | grep "Map State"` (IsViewable = open, IsUnMapped = closed), never the existence of the window. Esc and a second click on the cell did not close it.
 
 ## 6. Evidence rules
+A window that exists is not a window that is open: check its Map State.
 Open the PNG and say what it shows; a dropdown that exists in a window list is not proof of its rows. Write the manager build time next to any claim about what the bar does. A source-text check (`taskbar_harness_menu` case) proves wiring, not behaviour: say so.
