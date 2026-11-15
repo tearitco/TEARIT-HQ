@@ -2256,23 +2256,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 #include "nb_worker_push_node_or_null.c"
 /* dataset node lookup helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_dataset_node.c"
-static int nb_ds_to_attr(const char *key, char *out, size_t olen) {
-    if (!key || !*key || olen < 8) return 0;
-    snprintf(out, olen, "data-");
-    size_t p = 5, q = 0;
-    for (; key[0] && p + 1 < olen; key++) {
-        if (key[0] == '-') { if (key[1] && p + 1 < olen) { out[p++] = '-'; out[p++] = 'a'; } continue; }
-        if (isupper((unsigned char)key[0])) {
-            if (p + 2 >= olen) return 0;
-            out[p++] = '-';
-            out[p++] = (char)tolower((unsigned char)key[0]);
-        } else out[p++] = key[0];
-        q++;
-    }
-    if (!q) return 0;
-    out[p] = 0;
-    return 1;
-}
+/* dataset key-to-attribute helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_dataset_attr.c"
 static JSValue nb_ds_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc;
     NbNode *n = nb_ds_node(ctx, this_val);
