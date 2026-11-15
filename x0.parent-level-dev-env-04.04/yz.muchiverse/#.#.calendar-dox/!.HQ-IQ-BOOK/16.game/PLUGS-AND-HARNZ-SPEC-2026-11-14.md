@@ -1,4 +1,4 @@
-# Plugs and harnz: the spec for owner review (2026-11-14, DRAFT, nothing here is approved)
+# Plugs, harnz and tests: the spec and its build record (2026-11-14; the owner said "ok, do it" to the build order and decided D74 to D76; sections marked DESIGN are still not built)
 
 Status words: **BUILT** (code exists and a case passed, RAN 2026-11-14), **DESIGN** (my proposal, not built), **OPEN** (owner decides). Labels: SAID (owner told an agent), READ (I opened the file), DOC (my reasoning). Decision-log entries: D74 (names, rule, maker), D75 (the first plug, day/night).
 

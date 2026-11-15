@@ -59,6 +59,7 @@ In the founder's draft wording (`14.biz/ELEVATOR-PITCH.md`, DRAFT): a plain-text
 | Browser to fully Chrome-replaceable (owner directive 2026-10-20) | `building` | `08-roadmap/2026-10-20-CHROME-REPLACEMENT-SIZING.md` |
 | Windows and macOS: macOS runs through XQuartz today, Windows is thin shims; the main gap is the shared renderer | `planned` | `08-roadmap/OPEN-ITEMS.md` item 2, `CROSS-PLATFORM-SEAM-AND-SHARED-INFRA.md` |
 | Cross-machine networking | `designing` (a plan; same-machine only today) | plan notes |
+| Plugs, harnz and tests: three kinds, three windows opened from the top-bar Tools cell (plug on/off, harnz click, test run), plug header and typed rows validated, local examples on the office page | `proven` in scratch and on the live desktop through relays (cases `plugz_hq` 64, `plug_header` 26, `plug_ref` 66, `office_tools` 12; no human click yet); `building`: triggers (a plug fires a harnz and back), the multi-plug loader, the maker | `16.game/PLUGS-AND-HARNZ-SPEC-2026-11-14.md` sections 14 to 16, D76 and D77 |
 
 ### 3.4 Games (Teropoly first)
 | Next | Status | Source |
