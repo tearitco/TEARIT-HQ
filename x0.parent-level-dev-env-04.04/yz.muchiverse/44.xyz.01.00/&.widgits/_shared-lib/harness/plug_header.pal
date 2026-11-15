@@ -1,0 +1,4 @@
+# plug_header.pal - the plug header and typed-row checks of harness_menu_op check (spec step 3). See cases/plug_header.pdl
+exec ./ops/+x/harness_case_op.+x cases/plug_header.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/plug_header.pdl
+halt

@@ -20,6 +20,29 @@
 static int plug_ref_word(const char *s, int dash) { if (!*s) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || *s == '_' || (dash && *s == '-'))) return 0; return 1; }
 static char *plug_ref_trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 static int plug_ref_int(const char *s, long *v) { char *e; if (!*s) return 0; *v = strtol(s, &e, 10); return *e == 0; }
+/* split a row on `|` KEEPING empty fields (strtok collapses them: `PARAM | k | 5 | int |  | 200 | help` would have read 200 as the MIN, found 2026-11-14), each field trimmed; returns the field count */
+static int plug_ref_split(char *p, char **fl, int max) { int n = 0; while (n < max) { char *bar = (n == max - 1) ? NULL : strchr(p, '|'); if (bar) *bar = 0; fl[n++] = plug_ref_trim(p); if (!bar) break; p = bar + 1; } return n; }
+
+/* the VALUE rules of one PARAM row, shared by the engine path (plug_ref below) and by the plug check in harness_menu_op (ONE authority, 2026-11-14): 0 = the value passes its type and bounds, -1 = refused with the reason in out.
+ * An int row whose min is above its max is refused too (a bound nobody can meet). */
+static int plug_ref_value_ok(const char *plug, const char *key, const char *type, const char *value, const char *mn, const char *mx, char *out, size_t cap) {
+    if (!strcmp(type, "int")) {
+        long v, lo = 0, hi = 0; if (!plug_ref_int(value, &v)) { snprintf(out, cap, "%s.%s is not an integer", plug, key); return -1; }
+        int has_lo = mn[0] && plug_ref_int(mn, &lo), has_hi = mx[0] && plug_ref_int(mx, &hi);
+        if (has_lo && has_hi && lo > hi) { snprintf(out, cap, "%s.%s has a minimum %ld above its maximum %ld", plug, key, lo, hi); return -1; }
+        if (has_lo && v < lo) { snprintf(out, cap, "%s.%s is %ld, below the minimum %ld", plug, key, v, lo); return -1; }
+        if (has_hi && v > hi) { snprintf(out, cap, "%s.%s is %ld, above the maximum %ld", plug, key, v, hi); return -1; }
+    } else if (!strcmp(type, "tone")) {
+        char tmp[200]; snprintf(tmp, sizeof tmp, "%s", value); int n = 0; for (char *t = strtok(tmp, ","); t; t = strtok(NULL, ",")) { long v; char *tt = plug_ref_trim(t); if (!plug_ref_int(tt, &v) || v < -255 || v > 255) { snprintf(out, cap, "%s.%s: each tone number must be an integer from -255 to 255", plug, key); return -1; } n++; }
+        if (n != 4) { snprintf(out, cap, "%s.%s: a tone is four numbers r,g,b,gray", plug, key); return -1; }
+    } else if (!strcmp(type, "word")) {
+        if (!plug_ref_word(value, 1)) { snprintf(out, cap, "%s.%s is not a plain word", plug, key); return -1; }
+    } else if (!strcmp(type, "text")) {
+        if (!value[0] || strlen(value) > 160) { snprintf(out, cap, "%s.%s is empty or longer than 160", plug, key); return -1; }
+        for (const char *c = value; *c; c++) if (*c == '\'' || *c == '`' || *c == '$' || *c == '\\' || (unsigned char)*c < 32) { snprintf(out, cap, "%s.%s has a character that is not allowed in text", plug, key); return -1; }
+    } else { snprintf(out, cap, "%s.%s has the unknown type %s", plug, key, type); return -1; }
+    return 0;
+}
 
 static int plug_ref(const char *plugdir, const char *arg, char *out, size_t cap) {
     if (strncmp(arg, "@plug:", 6)) { return 0; }
@@ -34,26 +57,14 @@ static int plug_ref(const char *plugdir, const char *arg, char *out, size_t cap)
         char *p = plug_ref_trim(ln);
         if (!strncmp(p, "ENABLED", 7)) { char *bar = strchr(p, '|'); if (bar) on = atoi(bar + 1) == 1; continue; }
         if (strncmp(p, "PARAM", 5) || found) { continue; }
-        char *fl[7]; int nf = 0; for (char *t = strtok(p, "|"); t && nf < 7; t = strtok(NULL, "|")) { fl[nf++] = plug_ref_trim(t); }
+        char *fl[7]; int nf = plug_ref_split(p, fl, 7);
         if (nf < 4 || strcmp(fl[1], key)) { continue; }
         found = 1; snprintf(value, sizeof value, "%s", fl[2]); snprintf(type, sizeof type, "%s", fl[3]); if (nf > 4) { snprintf(mn, sizeof mn, "%s", fl[4]); } if (nf > 5) { snprintf(mx, sizeof mx, "%s", fl[5]); }
     }
     fclose(f);
     if (!on) { snprintf(out, cap, "plug %s is off (ENABLED is not 1)", plug); return -1; }
     if (!found) { snprintf(out, cap, "plug %s has no parameter %s", plug, key); return -1; }
-    if (!strcmp(type, "int")) {
-        long v, lo = 0, hi = 0; if (!plug_ref_int(value, &v)) { snprintf(out, cap, "%s.%s is not an integer", plug, key); return -1; }
-        if (mn[0] && plug_ref_int(mn, &lo) && v < lo) { snprintf(out, cap, "%s.%s is %ld, below the minimum %ld", plug, key, v, lo); return -1; }
-        if (mx[0] && plug_ref_int(mx, &hi) && v > hi) { snprintf(out, cap, "%s.%s is %ld, above the maximum %ld", plug, key, v, hi); return -1; }
-    } else if (!strcmp(type, "tone")) {
-        char tmp[200]; snprintf(tmp, sizeof tmp, "%s", value); int n = 0; for (char *t = strtok(tmp, ","); t; t = strtok(NULL, ",")) { long v; char *tt = plug_ref_trim(t); if (!plug_ref_int(tt, &v) || v < -255 || v > 255) { snprintf(out, cap, "%s.%s: each tone number must be an integer from -255 to 255", plug, key); return -1; } n++; }
-        if (n != 4) { snprintf(out, cap, "%s.%s: a tone is four numbers r,g,b,gray", plug, key); return -1; }
-    } else if (!strcmp(type, "word")) {
-        if (!plug_ref_word(value, 1)) { snprintf(out, cap, "%s.%s is not a plain word", plug, key); return -1; }
-    } else if (!strcmp(type, "text")) {
-        if (!value[0] || strlen(value) > 160) { snprintf(out, cap, "%s.%s is empty or longer than 160", plug, key); return -1; }
-        for (const char *c = value; *c; c++) if (*c == '\'' || *c == '`' || *c == '$' || *c == '\\' || (unsigned char)*c < 32) { snprintf(out, cap, "%s.%s has a character that is not allowed in text", plug, key); return -1; }
-    } else { snprintf(out, cap, "%s.%s has the unknown type %s", plug, key, type); return -1; }
+    if (plug_ref_value_ok(plug, key, type, value, mn, mx, out, cap)) { return -1; }
     snprintf(out, cap, "%s", value); return 1;
 }
 #endif

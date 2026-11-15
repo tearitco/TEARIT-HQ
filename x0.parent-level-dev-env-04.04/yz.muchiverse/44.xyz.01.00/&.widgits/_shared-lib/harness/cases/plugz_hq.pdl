@@ -116,6 +116,7 @@ RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps
 EXPECT_EXIT | 1 | NEGATIVE-a-control-with-nothing-selected-runs-nothing
 EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/none/.hq_manager/last.txt | nothing is selected | and-says-so
 
+
 CASE    | opening-for-another-book-starts-clean
 # 2026-11-14 (seen live): a result line from another book showed in an empty book's window because the instance folder is reused. The scratch house has no renderer, so `open:` reports WINDOW-MISSING but must still write the instance files right.
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | pick | $T/h | bk | start | open:plugs
@@ -128,6 +129,32 @@ RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/l
 EXPECT_EXIT | 1 | the-old-result-line-is-gone-for-the-new-book
 RUN | /usr/bin/test | -e | $T/h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/sel.txt
 EXPECT_EXIT | 1 | and-the-old-selection
+
+CASE    | the-plugs-window-shows-the-header-and-problems
+# 2026-11-14 (spec step 3): the detail of a plug shows its version, AFFECTS, REQUIRES, CONFLICTS, USES and any PROBLEM the check finds, first in the list so a long parameter list never cuts them off.
+WRITE   | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/book.txt | bk\n
+WRITE   | h/@.apps/bk/plugs/gamma.plug.pdl | PLUG \p name \p gamma\nPLUG \p version \p 2\nENABLED \p 1\nAFFECTS \p outcome\nREQUIRES \p ghost\nUSES \p tint_screen\n
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 2 | $T/h/&.hq-apps/plugz-hq/instances/plugs
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | detail_title=gamma | the-gamma-plug-is-selected
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | version 2   affects outcome | the-version-and-affects-are-shown
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | requires ghost | the-requires-row-is-shown
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | uses tint_screen | and-the-declared-verbs
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | PROBLEM: REQUIRES ghost: no plug ghost in this book | and-the-problem-the-check-finds
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 0 | $T/h/&.hq-apps/plugz-hq/instances/plugs
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/plugs
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | detail_title=alpha | the-valid-plug-is-selected-again
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/plugs/.hq_manager/ui.txt | PROBLEM | NEGATIVE-a-valid-plug-shows-no-problem
+
+CASE    | a-stale-selection-falls-back-to-the-first-row
+# 2026-11-14 (found live): the list shrank (the office book hid the global tests) while sel.txt still said 8. The window showed row 0 selected, but the control said "nothing is selected" because the action op did not clamp the way the projector does.
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | select | 9 | $T/h/&.hq-apps/plugz-hq/instances/harnz
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_projector.+x | $T/h | $T/h/&.hq-apps/plugz-hq | --once | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/ui.txt | row_0_cls=data-item active | the-window-shows-the-first-row-selected
+RUN | $T/h/&.hq-apps/plugz-hq/ops/+x/plugz_act.+x | control | - | $T/h/&.hq-apps/plugz-hq/instances/harnz
+EXPECT_EXIT | 0 | the-control-acts-on-that-row
+WAIT_HAS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/last.txt | go  (exit 0) | 8000 | the-worker-ran-the-first-row-the-one-the-window-shows
+EXPECT_LACKS | h/&.hq-apps/plugz-hq/instances/harnz/.hq_manager/last.txt | nothing is selected | NEGATIVE-it-did-not-say-nothing-is-selected
 
 CASE    | cleanup
 CLEAN |

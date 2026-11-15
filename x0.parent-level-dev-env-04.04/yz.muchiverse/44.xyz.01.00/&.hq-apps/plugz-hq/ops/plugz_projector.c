@@ -58,11 +58,11 @@ static void publish(void) {
         clean(txt[n]); n++; }
     if (fp) fclose(fp);
     int sel = atoi(sel_s); if (sel < 0 || sel >= n) sel = 0;
-    char dt[200] = "", ds[200] = "", dc[24] = "", dconf[8] = "no"; int ni = 0; static char info[16][240];
+    char dt[200] = "", ds[200] = "", dc[24] = "", dconf[8] = "no"; int ni = 0; static char info[24][240];
     if (n > 0) { char *a2[] = { op, "describe", HOUSE, book, page, kind, ids[sel], descf, NULL }; runop(a2, nul1);
         fp = fopen(descf, "r"); while (fp && fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; char *eq = strchr(ln, '='); if (!eq) continue; *eq++ = 0;
             if (!strcmp(ln, "title")) snprintf(dt, sizeof dt, "%s", eq); else if (!strcmp(ln, "status")) snprintf(ds, sizeof ds, "%s", eq); else if (!strcmp(ln, "control")) snprintf(dc, sizeof dc, "%s", eq); else if (!strcmp(ln, "confirm")) snprintf(dconf, sizeof dconf, "%s", eq);
-            else if (!strncmp(ln, "info_", 5)) { int k = atoi(ln + 5); if (k >= 0 && k < 16) { snprintf(info[k], sizeof info[k], "%s", eq); if (k + 1 > ni) ni = k + 1; } } }
+            else if (!strncmp(ln, "info_", 5)) { int k = atoi(ln + 5); if (k >= 0 && k < 24) { snprintf(info[k], sizeof info[k], "%s", eq); if (k + 1 > ni) ni = k + 1; } } }
         if (fp) fclose(fp); }
     char ui[sizeof last_ui]; ui[0] = 0; (void)dconf;
     const char *what = !strcmp(kind, "plugs") ? "plugs" : !strcmp(kind, "harnz") ? "harnz" : "tests";

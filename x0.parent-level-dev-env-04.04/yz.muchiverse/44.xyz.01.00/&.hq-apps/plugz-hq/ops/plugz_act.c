@@ -32,8 +32,10 @@ static int run_wait(char *const av[], const char *outf) {      /* fork+exec, wai
 }
 static int selected_id(char *id, size_t cap) {      /* the id of the selected row, from the rows.txt the projector wrote */
     char sel_s[16]; rd1("sel.txt", sel_s, sizeof sel_s); int sel = atoi(sel_s); char f[P]; snprintf(f, sizeof f, "%s/rows.txt", HQ); FILE *fp = fopen(f, "r"); if (!fp) return 0;
-    char ln[512]; int i = 0, ok = 0; while (fgets(ln, sizeof ln, fp)) { if (i++ != sel) continue; char *t1 = strchr(ln, '\t'); if (!t1) break; t1++; char *t2 = strchr(t1, '\t'); if (t2) *t2 = 0; t1[strcspn(t1, "\r\n")] = 0; snprintf(id, cap, "%s", t1); ok = 1; break; }
-    fclose(fp); return ok;
+    /* the SAME rule as the projector: a selection past the end of the list (the list shrank) means the first row, so the button the window shows acts on the row the window shows selected */
+    char ln[512], first[512] = ""; int i = 0, ok = 0; while (fgets(ln, sizeof ln, fp)) { if (!first[0]) snprintf(first, sizeof first, "%s", ln); if (i++ != sel) continue; snprintf(first, sizeof first, "%s", ln); break; }
+    fclose(fp); if (first[0]) { char *t1 = strchr(first, '\t'); if (t1) { t1++; char *t2 = strchr(t1, '\t'); if (t2) *t2 = 0; t1[strcspn(t1, "\r\n")] = 0; snprintf(id, cap, "%s", t1); ok = 1; } }
+    return ok;
 }
 static void stamp(char *out, size_t cap) { time_t t = time(NULL); struct tm tm; localtime_r(&t, &tm); strftime(out, cap, "%H:%M:%S", &tm); }
 static int id_ok(const char *s) { if (!*s || strlen(s) > 90) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || *s == '_' || *s == '-' || *s == ':')) return 0; return 1; }
@@ -59,6 +61,7 @@ int main(int argc, char **argv) {
         int conf = argc >= 5 && !strcmp(argv[4], "--confirmed"); char outf[P]; snprintf(outf, sizeof outf, "%s/worker.out", HQ);
         char *av[10]; int k = 0; av[k++] = op; av[k++] = "pick"; av[k++] = HOUSE; av[k++] = book; av[k++] = page; av[k++] = (char *)arg; if (conf) av[k++] = "--confirmed"; av[k] = NULL; int rc = run_wait(av, outf);
         char line[400] = ""; FILE *fp = fopen(outf, "r"); char ln[512]; while (fp && fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) snprintf(line, sizeof line, "%s", ln); } if (fp) fclose(fp); unlink(outf);
+        { char *cs = strstr(line, "|cases="); if (cs) { *cs = 0; } }      /* a case verdict line ends with the absolute path of the case file: not shown (the row already carries the counts) */
         char ts[16], res[480]; stamp(ts, sizeof ts); snprintf(res, sizeof res, "%s  %s  (exit %d)  %s", ts, arg, rc, line); wr("last.txt", res); bump(); return rc == 0 ? 0 : 1;
     }
     char id[96]; if (!strcmp(verb, "confirm")) { rd1("pending.txt", id, sizeof id); char pf[P]; snprintf(pf, sizeof pf, "%s/pending.txt", HQ); unlink(pf); if (!id_ok(id)) { wr("last.txt", "nothing is waiting for a confirm"); bump(); return 1; }

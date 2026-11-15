@@ -7,5 +7,6 @@ SECTION | KEY | VALUE
 PLUG | name | office-example
 PLUG | version | 1
 ENABLED | 1
+AFFECTS | view
 PARAM | stamp_limit | 20     | int  | 5 | 200 | how many stamp lines the harnz keeps in state/office_stamps.txt (older ones are dropped)
 PARAM | stamp_label | office | word |   |     | the word written in front of each stamp line

@@ -11,6 +11,8 @@ SECTION | KEY | VALUE
 PLUG | name | day-night
 PLUG | version | 1
 ENABLED | 1
+# AFFECTS: a view plug toggles live (the tint and the sky); an outcome plug would change only at a safe boundary (spec section 12).
+AFFECTS | view
 PHASE | dawn  | 6  | 256,215,185 | 256,240,225 | Sunset
 PHASE | day   | 8  | 256,256,256 | 256,256,256 | CloudySky1
 PHASE | dusk  | 17 | 256,200,160 | 256,235,215 | Sunset

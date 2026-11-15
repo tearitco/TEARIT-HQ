@@ -63,6 +63,19 @@ RUN | $T/probe | $T/plugs | @plug:off:k
 EXPECT_EXIT | 3 | a-plug-that-is-off-resolves-nothing
 EXPECT_OUT | is off | with-the-reason
 
+# 2026-11-14: a BLANK min with a max set. The old splitter (strtok) collapsed the empty field, so `PARAM | capped | 150 | int |  | 200 | x` made 200 the MINIMUM (150 was refused as below it) and an over-the-max value slipped through.
+WRITE   | plugs/blank.plug.pdl | ENABLED \p 1\nPARAM \p capped \p 150 \p int \p \p 200 \p x\nPARAM \p over \p 250 \p int \p \p 200 \p x\nPARAM \p backwards \p 5 \p int \p 9 \p 3 \p x\nPARAM \p helpbar \p 7 \p int \p 1 \p 9 \p help with a bar \p inside\n
+RUN | $T/probe | $T/plugs | @plug:blank:capped
+EXPECT_OUT | OK\p150 | CONTROL-a-blank-min-with-a-max-set-resolves-a-value-under-the-max
+RUN | $T/probe | $T/plugs | @plug:blank:over
+EXPECT_EXIT | 3 | NEGATIVE-a-blank-min-does-not-let-a-value-over-the-max-through
+EXPECT_OUT | blank.over is 250, above the maximum 200 | with-the-reason
+RUN | $T/probe | $T/plugs | @plug:blank:backwards
+EXPECT_EXIT | 3 | NEGATIVE-a-minimum-above-the-maximum-is-refused
+EXPECT_OUT | has a minimum 9 above its maximum 3 | with-the-reason
+RUN | $T/probe | $T/plugs | @plug:blank:helpbar
+EXPECT_OUT | OK\p7 | CONTROL-a-help-text-with-a-bar-in-it-does-not-shift-the-fields
+
 CASE    | the-real-tint-screen-op
 MKDIR | app/events/phase_dusk
 MKDIR | app/plugs

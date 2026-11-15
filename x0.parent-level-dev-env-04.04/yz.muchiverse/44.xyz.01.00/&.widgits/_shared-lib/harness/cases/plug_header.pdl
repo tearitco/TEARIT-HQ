@@ -1,0 +1,91 @@
+# plug_header (2026-11-14, spec step 3): `harness_menu_op check <house> <book>` validates a plug file's HEADER (PLUG name and version, ENABLED, AFFECTS view|outcome, REQUIRES, CONFLICTS, USES) and its typed PARAM rows with the SAME value
+# rules the engine uses (plug_ref_value_ok), plus the cross-plug rules of one book (a REQUIRES must be installed and ON while this plug is ON, a CONFLICTS must not be ON). SCRATCH house, the REAL op; one book per rule so a message
+# belongs to exactly one cause; each rule has a passing CONTROL (so a check that always fails, or never fails, is caught). NOT covered: refusing a verb a plug did not declare in USES (needs the engine, spec step 4).
+RESULTS | ../results/plug_header.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/#.desktop
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x
+MKDIR | h/@.apps/good/plugs
+WRITE   | h/@.apps/good/plugs/good.plug.pdl | PLUG \p name \p good\nPLUG \p version \p 3\nENABLED \p 1\nAFFECTS \p view\nUSES \p tint_screen\nUSES \p show_text\nPARAM \p speed \p 5 \p int \p 1 \p 9 \p how fast\nPARAM \p cap \p 150 \p int \p \p 200 \p blank min\nPARAM \p tint \p 1,2,3,4 \p tone \p \p \p x\nPARAM \p mood \p calm \p word \p \p \p x\nPARAM \p hello \p Good morning \p text \p \p \p x\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | good
+EXPECT_EXIT | 0 | CONTROL-a-plug-with-every-header-row-and-every-param-type-passes
+EXPECT_OUT | bad=0 | with-no-bad-row
+
+CASE    | header-rows
+MKDIR | h/@.apps/b1/plugs
+WRITE   | h/@.apps/b1/plugs/a.plug.pdl | PLUG \p name \p a\nPLUG \p version \p 0\nENABLED \p 1\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | b1
+EXPECT_EXIT | 2 | NEGATIVE-version-0-is-refused
+EXPECT_OUT | PLUG version must be a whole number | with-the-reason
+MKDIR | h/@.apps/b2/plugs
+WRITE   | h/@.apps/b2/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nAFFECTS \p sometimes\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | b2
+EXPECT_EXIT | 2 | NEGATIVE-AFFECTS-must-be-view-or-outcome
+EXPECT_OUT | AFFECTS must be view or outcome | with-the-reason
+MKDIR | h/@.apps/b3/plugs
+WRITE   | h/@.apps/b3/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nAFFECTS \p view\nAFFECTS \p outcome\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | b3
+EXPECT_OUT | more than one AFFECTS row | NEGATIVE-two-AFFECTS-rows-are-refused
+MKDIR | h/@.apps/b4/plugs
+WRITE   | h/@.apps/b4/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 2\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | b4
+EXPECT_OUT | ENABLED must be 0 or 1 | NEGATIVE-ENABLED-2-is-refused
+MKDIR | h/@.apps/b5/plugs
+WRITE   | h/@.apps/b5/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nUSES \p bad verb!\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | b5
+EXPECT_OUT | not a plain name | NEGATIVE-a-USES-that-is-not-a-plain-name-is-refused
+
+CASE    | requires-and-conflicts
+MKDIR | h/@.apps/r1/plugs
+WRITE   | h/@.apps/r1/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nREQUIRES \p ghost\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | r1
+EXPECT_OUT | REQUIRES ghost: no plug ghost in this book | NEGATIVE-a-REQUIRES-of-a-plug-that-is-not-installed-is-refused
+MKDIR | h/@.apps/r2/plugs
+WRITE   | h/@.apps/r2/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nREQUIRES \p a\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | r2
+EXPECT_OUT | a plug cannot require itself | NEGATIVE-a-plug-cannot-require-itself
+MKDIR | h/@.apps/r3/plugs
+WRITE   | h/@.apps/r3/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nREQUIRES \p b\n
+WRITE   | h/@.apps/r3/plugs/b.plug.pdl | PLUG \p name \p b\nENABLED \p 0\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | r3
+EXPECT_OUT | is ON but REQUIRES b which is OFF | NEGATIVE-a-plug-that-is-on-needs-the-plug-it-requires-to-be-on
+WRITE   | h/@.apps/r3/plugs/b.plug.pdl | PLUG \p name \p b\nENABLED \p 1\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | r3
+EXPECT_EXIT | 0 | CONTROL-with-the-required-plug-on-it-passes
+WRITE   | h/@.apps/r3/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 0\nREQUIRES \p b\n
+WRITE   | h/@.apps/r3/plugs/b.plug.pdl | PLUG \p name \p b\nENABLED \p 0\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | r3
+EXPECT_EXIT | 0 | CONTROL-a-plug-that-is-off-may-require-an-off-plug
+MKDIR | h/@.apps/c1/plugs
+WRITE   | h/@.apps/c1/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nCONFLICTS \p b\n
+WRITE   | h/@.apps/c1/plugs/b.plug.pdl | PLUG \p name \p b\nENABLED \p 1\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | c1
+EXPECT_OUT | is ON and CONFLICTS with b which is also ON | NEGATIVE-two-conflicting-plugs-that-are-both-on-are-refused
+WRITE   | h/@.apps/c1/plugs/b.plug.pdl | PLUG \p name \p b\nENABLED \p 0\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | c1
+EXPECT_EXIT | 0 | CONTROL-with-the-other-one-off-it-passes
+
+CASE    | typed-param-rows
+MKDIR | h/@.apps/p1/plugs
+WRITE   | h/@.apps/p1/plugs/a.plug.pdl | PLUG \p name \p a\nENABLED \p 1\nPARAM \p k \p abc \p int \p 1 \p 9 \p x\nPARAM \p k2 \p 5 \p int \p 9 \p 3 \p x\nPARAM \p k3 \p 5 \p blob \p \p \p x\nPARAM \p k \p 1 \p int \p \p \p x\nPARAM \p bad-key \p 1 \p int \p \p \p x\nPARAM \p k4 \p 1,2,3 \p tone \p \p \p x\nPARAM \p k5 \p onlytwo\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $T/h | p1
+EXPECT_EXIT | 2 | NEGATIVE-bad-param-rows-fail
+EXPECT_OUT | PARAM a.k is not an integer | an-int-that-is-not-a-number
+EXPECT_OUT | has a minimum 9 above its maximum 3 | a-minimum-above-the-maximum
+EXPECT_OUT | has the unknown type blob | an-unknown-type
+EXPECT_OUT | PARAM k: declared twice | a-key-declared-twice
+EXPECT_OUT | PARAM bad-key: the key must be | a-key-that-is-not-a-plain-word
+EXPECT_OUT | a tone is four numbers | a-tone-with-three-numbers
+EXPECT_OUT | PARAM needs key \p value \p type | a-row-with-too-few-fields
+
+CASE    | the-real-plugs-of-the-house-pass
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | check | $HOUSE | rpg-edit-hq | pre-design
+EXPECT_EXIT | 0 | CONTROL-the-shipped-day-night-and-office-example-plugs-pass-the-stricter-check
+EXPECT_OUT | bad=0 | with-no-bad-row
+
+CASE    | cleanup
+CLEAN |

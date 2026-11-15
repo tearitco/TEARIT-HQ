@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <time.h>
+#include "../plug_ref.c"      /* the engine's plug rules (value types and bounds, row splitting): the plug check uses the SAME code */
 
 #define MAXR 48
 #define P 4096
@@ -39,7 +40,7 @@ static char HOUSE[P];
 
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 static int word_ok(const char *s) { if (!*s) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || *s == '_' || *s == '-')) return 0; return 1; }
-static void bad(const char *src, int line, const char *why) { nbad++; fprintf(stderr, "harness_menu_op: %s line %d: %s\n", src, line, why); }
+static void bad(const char *src, int line, const char *why) { nbad++; printf("harness_menu_op: %s line %d: %s\n", src, line, why); }      /* stdout since 2026-11-14: one line per bad row, readable by a human and by a case */
 
 static int under_ops(const char *rel) {          /* relative, no .., an executable regular file under an ops/+x/ folder inside the house */
     if (!rel[0] || rel[0] == '/' || strstr(rel, "..") || !strstr(rel, "/ops/+x/")) return 0;
@@ -99,7 +100,7 @@ static int write_atomic(const char *path, const char *text) { char tmp[P + 8]; s
 #define MAXPLUG 16
 static int plug_names(const char *book, char names[][48], int max) {
     char d[P]; snprintf(d, sizeof d, "%s/@.apps/%s/plugs", HOUSE, book); DIR *dp = opendir(d); if (!dp) return 0; int n = 0; struct dirent *e;
-    while ((e = readdir(dp)) && n < max) { size_t l = strlen(e->d_name); if (l > 10 && !strcmp(e->d_name + l - 9, ".plug.pdl") && l - 9 < 48) { char nm[48]; snprintf(nm, sizeof nm, "%.*s", (int)(l - 9), e->d_name); if (word_ok(nm)) snprintf(names[n++], 48, "%s", nm); } }
+    while ((e = readdir(dp)) && n < max) { size_t l = strlen(e->d_name); if (l > 9 && !strcmp(e->d_name + l - 9, ".plug.pdl") && l - 9 < 48) { char nm[48]; snprintf(nm, sizeof nm, "%.*s", (int)(l - 9), e->d_name); if (word_ok(nm)) snprintf(names[n++], 48, "%s", nm); } }
     closedir(dp); for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) if (strcmp(names[i], names[j]) > 0) { char t[48]; snprintf(t, 48, "%s", names[i]); snprintf(names[i], 48, "%s", names[j]); snprintf(names[j], 48, "%s", t); }
     return n;
 }
@@ -136,6 +137,46 @@ static void expand(const char *in, const char *book, const char *page, char *out
     out[o] = 0;
 }
 
+/* PLUG HEADER (spec step 3, 2026-11-14): ONE scanner for a plug file, used by `check` (every problem is a bad row) and by the plugs window (`describe` shows the header and the problems).
+ * Header rows (all optional except name and ENABLED):  PLUG | name | <file name>   PLUG | version | <whole number >= 1>   ENABLED | 0 or 1   AFFECTS | view or outcome (at most one)
+ *   REQUIRES | <plug>   CONFLICTS | <plug>   USES | <verb>      and typed rows  PARAM | key | value | type | min | max | help  (value, type and bounds are checked by the SAME rules the engine uses, plug_ref_value_ok).
+ * Cross-plug rules inside one book: a REQUIRES must name an installed plug (and it must be ON while this one is ON); a CONFLICTS must not be ON while this one is ON; a plug may not require or conflict with itself.
+ * USES is validated as a word only: refusing an undeclared verb needs the engine (spec step 4, not built). Returns the number of problems written to msgs (at most maxm). */
+typedef struct { int has_name, has_enabled, enabled, version, nreq, ncon, nuses, nparams; char affects[16]; char req[8][48], con[8][48], uses[12][48]; } PlugInfo;
+static int plug_scan(const char *book, const char *name, PlugInfo *pi, char msgs[][200], int maxm) {
+    memset(pi, 0, sizeof *pi); int nm = 0;
+#define PMSG(...) do { if (nm < maxm) { snprintf(msgs[nm], 200, __VA_ARGS__); } nm++; } while (0)
+    char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, name); FILE *fp = fopen(f, "r"); if (!fp) { PMSG("the plug file is missing"); return nm > maxm ? maxm : nm; }
+    static char pn[MAXPLUG][48]; int np = plug_names(book, pn, MAXPLUG); char keys[40][48]; int nk = 0, n_aff = 0; char ln[700];
+    while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!*p || *p == '#' || *p == '-') continue; char *fl[7]; int nf = plug_ref_split(p, fl, 7); if (nf < 2) continue;
+        if (!strcmp(fl[0], "PLUG")) {
+            if (!strcmp(fl[1], "name") && nf >= 3) { if (!strcmp(fl[2], name)) pi->has_name = 1; else PMSG("PLUG name is %s but the file is %s.plug.pdl", fl[2], name); }
+            else if (!strcmp(fl[1], "version") && nf >= 3) { char *e; long v = strtol(fl[2], &e, 10); if (!*fl[2] || *e || v < 1 || v > 9999) PMSG("PLUG version must be a whole number from 1 to 9999"); else pi->version = (int)v; }
+        } else if (!strcmp(fl[0], "ENABLED")) { pi->has_enabled = 1; if (!strcmp(fl[1], "1")) pi->enabled = 1; else if (strcmp(fl[1], "0")) PMSG("ENABLED must be 0 or 1"); }
+        else if (!strcmp(fl[0], "AFFECTS")) { if (strcmp(fl[1], "view") && strcmp(fl[1], "outcome")) PMSG("AFFECTS must be view or outcome"); else snprintf(pi->affects, sizeof pi->affects, "%s", fl[1]); if (++n_aff == 2) PMSG("more than one AFFECTS row"); }
+        else if (!strcmp(fl[0], "REQUIRES") || !strcmp(fl[0], "CONFLICTS") || !strcmp(fl[0], "USES")) {
+            int is_req = !strcmp(fl[0], "REQUIRES"), is_con = !strcmp(fl[0], "CONFLICTS"); if (!word_ok(fl[1]) || strlen(fl[1]) > 40) { PMSG("%s %s: not a plain name", fl[0], fl[1]); continue; }
+            if (is_req || is_con) { if (!strcmp(fl[1], name)) { PMSG("%s %s: a plug cannot %s itself", fl[0], fl[1], is_req ? "require" : "conflict with"); continue; }
+                if (is_req && pi->nreq < 8) { snprintf(pi->req[pi->nreq++], 48, "%s", fl[1]); }
+                if (is_con && pi->ncon < 8) { snprintf(pi->con[pi->ncon++], 48, "%s", fl[1]); }
+                int found = 0; for (int i = 0; i < np; i++) if (!strcmp(pn[i], fl[1])) found = 1;
+                if (is_req && !found) PMSG("REQUIRES %s: no plug %s in this book", fl[1], fl[1]); }
+            else if (pi->nuses < 12) snprintf(pi->uses[pi->nuses++], 48, "%s", fl[1]);
+        } else if (!strcmp(fl[0], "PARAM")) {
+            pi->nparams++; if (nf < 4) { PMSG("PARAM needs key | value | type"); continue; }
+            if (!plug_ref_word(fl[1], 0) || strlen(fl[1]) > 40) { PMSG("PARAM %s: the key must be letters, digits and _", fl[1]); continue; }
+            int dup = 0; for (int i = 0; i < nk; i++) if (!strcmp(keys[i], fl[1])) dup = 1; if (dup) { PMSG("PARAM %s: declared twice", fl[1]); continue; } if (nk < 40) snprintf(keys[nk++], 48, "%s", fl[1]);
+            char why[200]; if (plug_ref_value_ok(name, fl[1], fl[3], fl[2], nf > 4 ? fl[4] : "", nf > 5 ? fl[5] : "", why, sizeof why)) PMSG("PARAM %s", why);
+        } }
+    fclose(fp);
+    if (!pi->has_name) { int mism = 0; for (int i = 0; i < nm && i < maxm; i++) if (!strncmp(msgs[i], "PLUG name is", 12)) mism = 1; if (!mism) PMSG("a plug file needs a row PLUG | name | <the file name>"); }
+    if (!pi->has_enabled) PMSG("a plug file needs an ENABLED | 1 or 0 row");
+    if (pi->enabled) { for (int i = 0; i < pi->nreq; i++) { int found = 0; for (int k = 0; k < np; k++) if (!strcmp(pn[k], pi->req[i])) found = 1; if (found && !plug_enabled(book, pi->req[i])) PMSG("is ON but REQUIRES %s which is OFF", pi->req[i]); }
+        for (int i = 0; i < pi->ncon; i++) if (plug_enabled(book, pi->con[i])) PMSG("is ON and CONFLICTS with %s which is also ON", pi->con[i]); }
+#undef PMSG
+    return nm > maxm ? maxm : nm;
+}
+
 /* PLUGZ WINDOWS (2026-11-14, D76): the three windows (plugs, harnz, tests) read their rows and details through these verbs, so the parsing and the listing rules stay HERE (one authority).
  *   harness_menu_op rows     <house> <book|-> <page|-> <plugs|harnz|tests> <out>        lines `label<TAB>id<TAB>state` (plug: on/off, test: last verdict like `37 ok`, harnz: -)
  *   harness_menu_op describe <house> <book|-> <page|-> <plugs|harnz|tests> <id> <out>   key=value lines: title, status, control (toggle|click|run), confirm, n_info, info_<n>
@@ -154,14 +195,20 @@ static int plugz_rows(const char *book, const char *page, const char *kind, cons
     return write_atomic(outf, out);
 }
 static int plugz_describe(const char *book, const char *page, const char *kind, const char *id, const char *outf) {
-    int named = book[0] && strcmp(book, "-") && word_ok(book); if (!named) book = ""; static char out[8192]; out[0] = 0; size_t l; int ni = 0; char info[16][240];
+    int named = book[0] && strcmp(book, "-") && word_ok(book); if (!named) book = ""; static char out[8192]; out[0] = 0; size_t l; int ni = 0; char info[24][240];
     #define PUT(...) do { l = strlen(out); snprintf(out + l, sizeof out - l, __VA_ARGS__); } while (0)
-    #define INFO(...) do { if (ni < 16) { snprintf(info[ni], sizeof info[ni], __VA_ARGS__); one_line(info[ni]); ni++; } } while (0)
+    #define INFO(...) do { if (ni < 24) { snprintf(info[ni], sizeof info[ni], __VA_ARGS__); one_line(info[ni]); ni++; } } while (0)
     if (!strcmp(kind, "plugs")) {
         const char *pname = !strncmp(id, "plug:", 5) ? id + 5 : id; if (!named || !word_ok(pname)) { PUT("title=\nstatus=\ncontrol=none\nconfirm=no\nn_info=0\n"); return write_atomic(outf, out); }
         char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, book, pname); FILE *fp = fopen(f, "r");
         PUT("title=%s\nstatus=%s\ncontrol=toggle\nconfirm=no\n", pname, plug_enabled(book, pname) ? "on" : "off");
         INFO("file @.apps/%s/plugs/%s.plug.pdl", book, pname);
+        { static char pm[24][200]; PlugInfo pi; int nmsg = plug_scan(book, pname, &pi, pm, 24);      /* the header (spec step 3) and any problems, first, so they are never cut off */
+          if (pi.version || pi.affects[0]) INFO("version %d   affects %s", pi.version, pi.affects[0] ? pi.affects : "(not declared)");
+          if (pi.nreq) { char t[200] = ""; for (int i = 0; i < pi.nreq; i++) { size_t l2 = strlen(t); snprintf(t + l2, sizeof t - l2, "%s%s", i ? ", " : "", pi.req[i]); } INFO("requires %s", t); }
+          if (pi.ncon) { char t[200] = ""; for (int i = 0; i < pi.ncon; i++) { size_t l2 = strlen(t); snprintf(t + l2, sizeof t - l2, "%s%s", i ? ", " : "", pi.con[i]); } INFO("conflicts with %s", t); }
+          if (pi.nuses) { char t[200] = ""; for (int i = 0; i < pi.nuses; i++) { size_t l2 = strlen(t); snprintf(t + l2, sizeof t - l2, "%s%s", i ? ", " : "", pi.uses[i]); } INFO("uses %s", t); }
+          for (int m = 0; m < nmsg && m < 4; m++) INFO("PROBLEM: %s", pm[m]); }
         if (fp) { char ln[600]; while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!strncmp(p, "PARAM", 5)) { char *fl[7]; int n = 0; for (char *t = strtok(p, "|"); t && n < 7; t = strtok(NULL, "|")) fl[n++] = trim(t); if (n >= 4) INFO("%s = %s  (%s)", fl[1], fl[2], fl[3]); }
                 else if (!strncmp(p, "PHASE", 5)) { char *fl[7]; int n = 0; for (char *t = strtok(p, "|"); t && n < 7; t = strtok(NULL, "|")) fl[n++] = trim(t); if (n >= 3) INFO("phase %s from hour %s", fl[1], fl[2]); } } fclose(fp); }
     } else {
@@ -209,10 +256,8 @@ int main(int argc, char **argv) {
     const char *verb = argv[1]; snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]);
     if (!strcmp(verb, "check")) {
         load_all(NULL); for (int i = 3; i < argc; i++) { char p[P]; snprintf(p, sizeof p, "%s/@.apps/%s/harness.pdl", HOUSE, argv[i]); if (word_ok(argv[i])) load(p, 0); }
-        for (int i = 3; i < argc; i++) if (word_ok(argv[i])) { static char pc[MAXPLUG][48]; int n2 = plug_names(argv[i], pc, MAXPLUG);      /* a plug file must say PLUG | name | <its file name> and have an ENABLED row */
-            for (int k = 0; k < n2; k++) { char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, argv[i], pc[k]); FILE *fp = fopen(f, "r"); int named = 0, has_en = 0; char ln[600];
-                if (fp) { while (fgets(ln, sizeof ln, fp)) { char *p = trim(ln); if (!strncmp(p, "ENABLED", 7) && strchr(p, '|')) has_en = 1; if (!strncmp(p, "PLUG", 4)) { char *f1 = strchr(p, '|'); if (f1) { f1++; char *f2 = strchr(f1, '|'); if (f2) { *f2 = 0; if (!strcmp(trim(f1), "name")) { char *v = trim(f2 + 1); char *f3 = strchr(v, '|'); if (f3) *f3 = 0; if (!strcmp(trim(v), pc[k])) named = 1; } } } } } fclose(fp); }
-                if (!named) bad(f, 0, "a plug file needs a row PLUG | name | <the file name>"); if (!has_en) bad(f, 0, "a plug file needs an ENABLED | 1 or 0 row"); } }
+        for (int i = 3; i < argc; i++) if (word_ok(argv[i])) { static char pc[MAXPLUG][48]; int n2 = plug_names(argv[i], pc, MAXPLUG);      /* every plug file: the header and the typed rows (plug_scan, spec step 3) */
+            for (int k = 0; k < n2; k++) { char f[P]; snprintf(f, sizeof f, "%s/@.apps/%s/plugs/%s.plug.pdl", HOUSE, argv[i], pc[k]); static char pm[24][200]; PlugInfo pi; int nmsg = plug_scan(argv[i], pc[k], &pi, pm, 24); for (int m = 0; m < nmsg; m++) bad(f, 0, pm[m]); } }
         printf("HARNESS-CHECK rows=%d bad=%d\n", nr, nbad); return nbad ? 2 : 0;
     }
     if (!strcmp(verb, "rows") && argc >= 7) { if (!kind_ok(argv[5])) { fprintf(stderr, "harness_menu_op: kind must be plugs, harnz or tests\n"); return 2; } return plugz_rows(argv[3], strcmp(argv[4], "-") ? argv[4] : "", argv[5], argv[6]) ? 2 : 0; }
