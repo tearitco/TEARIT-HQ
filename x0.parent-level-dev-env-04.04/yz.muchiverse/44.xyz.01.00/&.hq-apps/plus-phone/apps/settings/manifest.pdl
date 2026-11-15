@@ -2,6 +2,6 @@
 APP | id | settings
 TITLE | settings
 ICON | icon
-ORDER | 9
+PIN | first
 ORIENT | portrait
 PLATFORM | 1

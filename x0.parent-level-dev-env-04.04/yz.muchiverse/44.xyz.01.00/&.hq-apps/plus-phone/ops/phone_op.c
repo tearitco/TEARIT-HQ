@@ -43,13 +43,35 @@ static int run_out(char *const av[], const char *outf) { pid_t c = fork(); if (c
 static int port_free(int port) { int s = socket(AF_INET, SOCK_STREAM, 0); if (s < 0) return 0; struct sockaddr_in a; memset(&a, 0, sizeof a); a.sin_family = AF_INET; a.sin_port = htons((unsigned short)port); a.sin_addr.s_addr = htonl(INADDR_LOOPBACK); int ok = bind(s, (struct sockaddr *)&a, sizeof a) == 0; close(s); return ok; }
 static int used_port(int port) { char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/plus-phone/instances", HOUSE); DIR *dp = opendir(d); if (!dp) return 0; struct dirent *e; int hit = 0; while ((e = readdir(dp))) { if (e->d_name[0] == '.') continue; char in[P], v[16]; snprintf(in, sizeof in, "%s/%s", d, e->d_name); if (kv(in, "PORT", v, sizeof v) && atoi(v) == port) hit = 1; } closedir(dp); return hit; }
 
+/* ICON SIZE (2026-11-15, owner: "icons make themselves as big as they can, snap up in size; just give 3 options small, md, large"): three tile sizes, and a phone uses the LARGEST of them (up to the user's cap,
+ * phone_prefs.pdl ICON_MAX | small|medium|large, default large) that still leaves at least 2 columns in its window. Portrait 364 wide -> medium (2 columns); landscape 704 wide -> large (3 columns).
+ * The shared layout is a TEMPLATE: each launch writes a per-instance copy of the layout and css with the chosen size filled in (and ${PKG} made absolute) and starts THAT (Android resource generation / Gradle idea,
+ * BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md section 22.3). The columns formula mirrors the renderer's swatch grid: (window width - 50) / (tile + 8). */
+static const int ICON_PX[3] = { 96, 120, 160 };
+static const char *ICON_NAME[3] = { "small", "medium", "large" };
+static int icon_cap(void) {      /* NOT kv(): that helper reads <dir>/phone.txt (found 2026-11-15: the cap was ignored until the case read the setting back) */
+    char f[P], ln[200]; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", HOUSE); FILE *fp = fopen(f, "r"); if (!fp) return 2;
+    while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "ICON_MAX | ", 11)) continue; ln[strcspn(ln, "\r\n")] = 0; for (int i = 0; i < 3; i++) if (!strcmp(ln + 11, ICON_NAME[i])) { fclose(fp); return i; } }
+    fclose(fp); return 2;
+}
+static int pick_icon(int win_w) { for (int i = icon_cap(); i >= 0; i--) if ((win_w - 50) / (ICON_PX[i] + 8) >= 2) return i; return 0; }
+static int slurp(const char *f, char *buf, size_t cap) { FILE *fp = fopen(f, "r"); if (!fp) return 0; size_t n = fread(buf, 1, cap - 1, fp); fclose(fp); buf[n] = 0; return 1; }
+static void replace_all(char *buf, size_t cap, const char *from, const char *to) { char *out = malloc(cap); if (!out) return; size_t o = 0, fl = strlen(from), tl = strlen(to); for (char *p = buf; *p && o + tl + 2 < cap; ) { if (!strncmp(p, from, fl)) { memcpy(out + o, to, tl); o += tl; p += fl; } else out[o++] = *p++; } out[o] = 0; snprintf(buf, cap, "%s", out); free(out); }
+/* writes <inst>/<lay> and <inst>/<same stem>.css from the templates; returns 1 on success and the icon index in *ic */
+static int generate_layout(const char *inst, const char *lay, int win_w, int *ic) {
+    char app[P], src[P], dst[P]; static char xb[16384], cb[8192]; snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); *ic = pick_icon(win_w);
+    snprintf(src, sizeof src, "%s/%s", app, lay); if (!slurp(src, xb, sizeof xb)) return 0; replace_all(xb, sizeof xb, "${PKG}", app);
+    char stem[96]; snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
+    snprintf(src, sizeof src, "%s/%s.css", app, stem); if (!slurp(src, cb, sizeof cb)) return 0; char to[64]; snprintf(to, sizeof to, "width: %dpx; height: %dpx;", ICON_PX[*ic], ICON_PX[*ic]); replace_all(cb, sizeof cb, "width: 120px; height: 120px;", to);
+    snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); { char it[64]; snprintf(it, sizeof it, "%s %d\n", ICON_NAME[*ic], ICON_PX[*ic]); snprintf(dst, sizeof dst, "%s/icon_size.txt", inst); wr(dst, it); } return 1;
+}
 /* start (or restart) the window of an instance with the layout for its orientation; prints nothing, returns the pid or 0 */
 static long launch(const char *inst) {
     char orient[16]; kv(inst, "ORIENT", orient, sizeof orient);
     { char op[P], app[P], tmp[P], ws[16], hs[16]; int land = !strcmp(orient, "landscape"); snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/window_place_op.+x", HOUSE); snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); snprintf(tmp, sizeof tmp, "%s/place.out", inst);
       snprintf(ws, sizeof ws, "%d", land ? 704 : 364); snprintf(hs, sizeof hs, "%d", land ? 364 : 704);      /* window sizes with frame; the shared op picks a free slot beside the other phones (placement.pdl opt-in) */
       if (!access(op, X_OK)) { char *av[] = { op, "place", app, (char *)inst, ws, hs, NULL }; run_out(av, tmp); unlink(tmp); } } const char *lay = !strcmp(orient, "landscape") ? "plus-phone-landscape.xhtpm" : "plus-phone.xhtpm";
-    char x[P], exe[P], funnel[P], tmp[P], nm[48], n[16]; snprintf(x, sizeof x, "%s/&.hq-apps/plus-phone/%s", HOUSE, lay); snprintf(exe, sizeof exe, "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", HOUSE); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
+    char x[P], exe[P], funnel[P], tmp[P], nm[48], n[16]; int ic = 0; if (!generate_layout(inst, lay, !strcmp(orient, "landscape") ? 704 : 364, &ic)) return 0; snprintf(x, sizeof x, "%s/%s", inst, lay);      /* the per-instance layout: tile size filled in */ snprintf(exe, sizeof exe, "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", HOUSE); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
     if (access(x, R_OK) || access(exe, X_OK) || access(funnel, R_OK)) return 0;
     kv(inst, "PHONE", n, sizeof n); snprintf(nm, sizeof nm, "plus-phone-%s", n); snprintf(tmp, sizeof tmp, "%s/spawn.out", inst); setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "plus-phone", 1);
     char *av[] = { "/bin/sh", funnel, HOUSE, "0", nm, "--", exe, HOUSE, x, (char *)inst, NULL }; run_out(av, tmp);
@@ -71,6 +93,13 @@ static int v_new(void) {
     long pid = launch(in); if (!pid) { printf("PHONE-FAILED could not start the window (layout, renderer or spawn funnel missing)\n"); return 1; }
     printf("PHONE-OPENED %d port=%d pid=%ld\n", num, port, pid); return 0;
 }
+static int v_prefs(const char *key, const char *val) {      /* phone_prefs.pdl is a PREFERENCE file (no game state): only ICON_MAX so far, validated, written atomically */
+    if (strcmp(key, "icon_max")) { printf("PREFS-REFUSED unknown setting %s (known: icon_max)\n", key); return 1; }
+    char f[P]; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", HOUSE);
+    if (!val) { printf("icon_max %s\n", ICON_NAME[icon_cap()]); return 0; }
+    int ok = 0; for (int i = 0; i < 3; i++) if (!strcmp(val, ICON_NAME[i])) ok = 1; if (!ok) { printf("PREFS-REFUSED icon_max must be small, medium or large (got %s); nothing changed\n", val); return 1; }
+    char txt[200]; snprintf(txt, sizeof txt, "# phone_prefs.pdl - a PREFERENCE of the plus phone (never read as game input). Written by `phone_op prefs`.\nICON_MAX | %s\n", val); wr(f, txt); printf("PREFS-SET icon_max %s\n", val); return 0;
+}
 static int v_list(void) { char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/plus-phone/instances", HOUSE); DIR *dp = opendir(d); if (!dp) { printf("PHONES 0\n"); return 0; } struct dirent *e; int n = 0;
     while ((e = readdir(dp))) { if (e->d_name[0] == '.') continue; char in[P], po[16] = "", or_[16] = ""; snprintf(in, sizeof in, "%s/%s", d, e->d_name); kv(in, "PORT", po, sizeof po); kv(in, "ORIENT", or_, sizeof or_); printf("%s %s %s %s\n", e->d_name, po, or_, is_window(pid_of(in)) ? "running" : "stopped"); n++; } closedir(dp); printf("PHONES %d\n", n); return 0; }
 static void rmtree(const char *p) { struct stat sb; if (lstat(p, &sb)) return; if (S_ISDIR(sb.st_mode)) { DIR *dp = opendir(p); if (dp) { struct dirent *e; while ((e = readdir(dp))) { if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue; char c[P]; snprintf(c, sizeof c, "%s/%s", p, e->d_name); rmtree(c); } closedir(dp); } rmdir(p); } else unlink(p); }
@@ -88,7 +117,7 @@ static int v_home(const char *inst) { char f[P]; snprintf(f, sizeof f, "%s/.hq_m
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: phone_op new|list <house> | close <house> <n> | flip|relaunch|home|closeself <instance> | open <instance> <app>\n"); return 2; }
     const char *v = argv[1];
-    if (!strcmp(v, "new") || !strcmp(v, "list") || !strcmp(v, "close")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); if (!strcmp(v, "new")) return v_new(); if (!strcmp(v, "list")) return v_list(); if (argc < 4) return 2; return v_close(argv[3]); }
+    if (!strcmp(v, "new") || !strcmp(v, "list") || !strcmp(v, "close") || !strcmp(v, "prefs")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); if (!strcmp(v, "prefs")) return argc >= 4 ? v_prefs(argv[3], argc >= 5 ? argv[4] : NULL) : 2; if (!strcmp(v, "new")) return v_new(); if (!strcmp(v, "list")) return v_list(); if (argc < 4) return 2; return v_close(argv[3]); }
     if (!house_of(argv[2])) { fprintf(stderr, "phone_op: not a plus-phone instance: %s\n", argv[2]); return 2; }
     if (!strcmp(v, "flip")) return v_flip(argv[2]); if (!strcmp(v, "relaunch")) return v_relaunch(argv[2]); if (!strcmp(v, "home")) return v_home(argv[2]);
     if (!strcmp(v, "open") && argc >= 4) return v_open(argv[2], argv[3]);

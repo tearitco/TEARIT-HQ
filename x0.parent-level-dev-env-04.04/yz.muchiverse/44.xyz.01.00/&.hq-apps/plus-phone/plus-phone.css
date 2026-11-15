@@ -4,3 +4,5 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .quiet { color: #8a8a8a; }
 .swatch { width: 120px; height: 120px; background-color: #1f3a5a; color: #ffffff; border: 1px solid #2f5f8f; border-width: 1; }
 .swatch.active { background-color: #2f5f8f; }
+/* the phone's own top and bottom toolbars (2026-11-15, owner: every phone gets both, empty at first): full-width bands, no nav number */
+.bar-top, .bar-bottom { height: 28px; background-color: #1c1c1c; border: 1px solid #333333; border-width: 1; }

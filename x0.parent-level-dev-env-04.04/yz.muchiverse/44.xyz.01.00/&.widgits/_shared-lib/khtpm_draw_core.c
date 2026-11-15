@@ -2335,7 +2335,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int label_reserve = has_under_label ? 18 : 0;
             int box_w = e->w - 2 * pad_s, box_h = e->h - 2 * pad_s - label_reserve;
             int px = box_w < box_h ? box_w : box_h;
-            if (px > HQ_SPRITE_PX_MAX) px = HQ_SPRITE_PX_MAX;
+            /* 2026-11-15 (plus phone: "icons make themselves as big as they can"): a swatch tile whose own css asked for a size above the default may draw its art up to 256px; every other tile keeps the 64px cap */
+            { int pxcap = (elem_has_class(e, "swatch") && e->style.has_width && e->style.width > 34) ? 256 : HQ_SPRITE_PX_MAX; if (px > pxcap) px = pxcap; }
             if (px > 0) {
                 /* REAL FIX 2026-09-03 - sprite alpha is flattened onto
                  * bg_pixel at blit time (this window's visual has no

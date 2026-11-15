@@ -9763,6 +9763,7 @@ static void assign_nav_and_layout(void) {
         int chrome_x = g_win_w - 8;   /* right-to-left cursor for chrome buttons */
         int found_close = 0;
         Elem *sw_items[MAX_CHILDREN];
+        Elem *kh_bar_top = NULL, *kh_bar_bottom = NULL;      /* 2026-11-15: class bar-top / bar-bottom = a full-width toolbar band (no nav number), see below */
         for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
             int is_sw = 0, is_close = 0, c;
@@ -9774,6 +9775,8 @@ static void assign_nav_and_layout(void) {
             }
             if (strcmp(item->id, "close") == 0) is_close = 1;
             if (is_close) found_close = 1;
+            { int bt = 0, bb = 0; for (c = 0; c < item->n_classes; c++) { if (strcmp(item->classes[c], "bar-top") == 0) bt = 1; if (strcmp(item->classes[c], "bar-bottom") == 0) bb = 1; }
+              if (bt || bb) { css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style); item->nav_index = 0; if (bt) kh_bar_top = item; else kh_bar_bottom = item; continue; } }      /* a toolbar band: not a nav item */
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
@@ -9851,6 +9854,7 @@ static void assign_nav_and_layout(void) {
         /* pass 2a: sheet (A/B/C) + tileset choosers, above the grid,
          * each family on its own row */
         int chips_top = CHROME_H + 6;
+        if (kh_bar_top) { int bh = (kh_bar_top->style.has_height && !kh_bar_top->style.height_is_pct) ? kh_bar_top->style.height : 28; kh_bar_top->x = 1; kh_bar_top->y = CHROME_H; kh_bar_top->w = g_win_w - 2; kh_bar_top->h = bh; chips_top = CHROME_H + bh + 6; }      /* snapped flush under the title strip (owner 2026-11-15) */      /* the phone's own top toolbar, empty at first */
         {
             int crumb_h = 0;
             for (i = 0; i < page->n_children; i++) {
@@ -9873,6 +9877,7 @@ static void assign_nav_and_layout(void) {
                         strcmp(item->classes[c], "chrome-btn") == 0) is_close = 1;
                 }
                 if (strcmp(item->id, "close") == 0) is_close = 1;
+                if (item == kh_bar_top || item == kh_bar_bottom) continue;      /* toolbar bands are placed separately */
                 if (is_sw || is_close || KH_IS_FOOTER_CHIP(item)) continue;
                 const char *fam = item->n_classes ? item->classes[0] : "";
                 /* room for draw_elem's "[ ]NN. " nav badge (~46px) PLUS
@@ -9960,10 +9965,12 @@ static void assign_nav_and_layout(void) {
             if (cx > x0 || cy > foot0) max_y = cy + ROW_H;
         }
         #undef KH_IS_FOOTER_CHIP
+        if (kh_bar_bottom) { int bbh = (kh_bar_bottom->style.has_height && !kh_bar_bottom->style.height_is_pct) ? kh_bar_bottom->style.height : 28; max_y += bbh + 6; }      /* room for the bottom toolbar */
         g_win_h = max_y + 8;
         /* same rule for height: an explicit pixel height in the window's CSS is a MINIMUM (a phone is taller than its few tiles) */
         { CssStyle khs; memset(&khs, 0, sizeof khs); if (g_window) css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL, g_window->classes, g_window->n_classes, 0, &khs);
           if (g_window && khs.has_height && !khs.height_is_pct && khs.height > g_win_h) g_win_h = khs.height; }
+        if (kh_bar_bottom) { int bbh = (kh_bar_bottom->style.has_height && !kh_bar_bottom->style.height_is_pct) ? kh_bar_bottom->style.height : 28; kh_bar_bottom->x = 1; kh_bar_bottom->y = g_win_h - bbh - 1; kh_bar_bottom->w = g_win_w - 2; kh_bar_bottom->h = bbh; }      /* pinned to the bottom edge */
         } else {
         /* A page carrying a <canvas> is a live-framebuffer window (the
          * piececraft-hq board). It gets a horizontal toolbar row, top-

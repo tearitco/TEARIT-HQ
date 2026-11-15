@@ -6,6 +6,7 @@
 <window label="${phone_title}" class="palettes-pal phone-portrait">
   <module id="projector" src="&.hq-apps/plus-phone/ops/+x/phone_projector.+x"/>
   <page name="main">
+    <item id="bar-top" class="bar-top" label=""/>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <item id="flip" class="chrome-btn" label="@" action="'${PKG}/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
     <repeat count="${n_apps}" bind="app">
@@ -13,5 +14,6 @@
     </repeat>
     <text label="no apps installed" class="quiet" show="${no_apps}"/>
     <text label="${last_result}" class="quiet" show="${show_last}"/>
+    <item id="bar-bottom" class="bar-bottom" label=""/>
   </page>
 </window>
