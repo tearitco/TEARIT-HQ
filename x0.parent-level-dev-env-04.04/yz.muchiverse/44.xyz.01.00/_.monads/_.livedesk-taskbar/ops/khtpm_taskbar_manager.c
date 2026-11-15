@@ -4063,13 +4063,26 @@ static int livedesk_build_network_menu(const char *house_root, HQMenuItem *menu,
  * `harness_menu_N_label` / `_cmd` row each in livedesk_taskbar.pdl (cmd = livedesk:run-harness:<case>). */
 /* Superseded the same day (decision D52): the rows are no longer livedesk_taskbar.pdl rows. harness_menu_op is the one authority for every harness list (this cell shows the GLOBAL rows of
  * #.desktop/harness_menu.pdl; the editor's Harness tab shows the same rows plus the open book's), so this builder asks the op and reads the label<TAB>id lines it writes. */
+/* The Tools cell mirrors the editor's Tools tab (D74, 2026-11-14), and that list depends on the OPEN BOOK and PAGE. STOPGAP, owner-visible: it reads the rpg-edit-hq board's world state (map_id, desk_id) and only
+ * while that board's window process is alive. Removal condition: when LyfeDesk has one generic "open book and page" marker, read that instead. Names must be plain words, else both come back empty (global rows only). */
+static void ktb_open_book_page(const char *house_root, char *book, size_t bn, char *page, size_t pn) {
+    book[0] = 0; page[0] = 0; char pf[KTB_PATH_BUF], buf[64] = ""; snprintf(pf, sizeof(pf), "%s/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/board_window.pid", house_root);
+    FILE *f = fopen(pf, "r"); if (!f) return; if (fgets(buf, sizeof(buf), f)) { } fclose(f); long pid = atol(buf); if (pid <= 1 || kill((pid_t)pid, 0) != 0) return;
+    snprintf(pf, sizeof(pf), "%s/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/world_01/state.txt", house_root); f = fopen(pf, "r"); if (!f) return; char ln[200];
+    while (fgets(ln, sizeof(ln), f)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "map_id=", 7)) snprintf(book, bn, "%s", ln + 7); else if (!strncmp(ln, "desk_id=", 8)) snprintf(page, pn, "%s", ln + 8); }
+    fclose(f);
+    for (const char *p = book; *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) { book[0] = 0; page[0] = 0; return; }
+    for (const char *p = page; *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) { book[0] = 0; page[0] = 0; return; }
+    if (!book[0]) page[0] = 0;
+}
 static int livedesk_build_harness_menu(const char *house_root, HQMenuItem *menu, int max) {
     char op[KTB_PATH_BUF], rows[KTB_PATH_BUF];
     snprintf(op, sizeof(op), "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house_root);
     snprintf(rows, sizeof(rows), "%s/#.desktop/harness_rows.txt", house_root);   /* PROJECTION: rewritten atomically by the op on every call, at most 48 rows */
     if (access(op, X_OK) != 0) return 0;
+    char ob[80], op2[80]; ktb_open_book_page(house_root, ob, sizeof ob, op2, sizeof op2);
     pid_t c = fork();
-    if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(op, op, "list", house_root, "-", "-", rows, (char *)NULL); _exit(127); }
+    if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(op, op, "list", house_root, ob[0] ? ob : "-", op2[0] ? op2 : "-", rows, (char *)NULL); _exit(127); }
     if (c > 0) { int st; waitpid(c, &st, 0); }
     FILE *fp = fopen(rows, "r"); if (!fp) return 0;
     int count = 0; char ln[300];
@@ -5637,12 +5650,13 @@ void ktb_hq_activate(KtbState *s, int row) {
          * at a time, niced, waits up to 120 s) or a registered op, never a shell string from data. Its verdict goes to #.desktop/harness_last.txt (one overwritten line). This side only checks the id is one word
          * and starts the op through the registered-process funnel; a row that needs a confirm is refused here (exit 3: the taskbar has no way to ask, so global rows are declared confirm no). */
         const char *id = m->command + 21; int ok = id[0] != '\0' && strlen(id) < 40;
-        for (const char *p = id; ok && *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) ok = 0;
+        for (const char *p = id; ok && *p; p++) if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-' || *p == ':')) ok = 0;      /* `plug:<name>` (a plug toggle) carries one colon */
         char op[KTB_PATH_BUF];
         snprintf(op, sizeof(op), "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", s->house_root);
         if (ok && access(op, X_OK) == 0) {
             char sh[KTB_PATH_BUF * 3];
-            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c '\"%s\" pick \"%s\" - - \"%s\"' >/dev/null 2>&1 &", op, s->house_root, id);
+            char pb[80], pp[80]; ktb_open_book_page(s->house_root, pb, sizeof pb, pp, sizeof pp);      /* the same open book and page the list was built for */
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c '\"%s\" pick \"%s\" %s %s \"%s\"' >/dev/null 2>&1 &", op, s->house_root, pb[0] ? pb : "-", pp[0] ? pp : "-", id);
             int rc = ktb_system_recorded(s->house_root, sh);
             (void)rc;
         }

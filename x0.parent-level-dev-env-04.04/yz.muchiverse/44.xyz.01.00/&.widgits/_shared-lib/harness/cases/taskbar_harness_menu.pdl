@@ -16,10 +16,11 @@ SCRATCH |
 RUN | /usr/bin/grep | -c | harness_menu_ | $HOUSE/#.desktop/livedesk_taskbar.pdl
 EXPECT_EXIT | 1 | NEGATIVE-the-old-harness-rows-are-gone-from-livedesk_taskbar-so-there-is-one-list-not-two
 RUN | /usr/bin/grep | -c | ^HARNESS | $HOUSE/#.desktop/harness_menu.pdl
-EXPECT_OUT | 6 | the-global-file-has-the-six-rows
+EXPECT_OUT | 8 | the-global-file-has-the-eight-rows-since-2026-11-11
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x | list | $HOUSE | - | - | $T/rows.txt
 EXPECT_EXIT | 0 | the-op-lists-the-real-global-rows
-EXPECT_HAS | rows.txt | deskopoly | and-deskopoly-is-one-of-them
+EXPECT_HAS | rows.txt | run all | and-the-run-all-row-is-one-of-them
+EXPECT_LACKS | rows.txt | deskopoly | NEGATIVE-other-games-stay-out-of-the-global-list-by-design-2026-11-11
 
 CASE    | manager
 SCRATCH |
@@ -46,3 +47,21 @@ RUN | /usr/bin/grep | -qF | case 11: nm = "harness"; | $HOUSE/_.monads/_.livedes
 EXPECT_EXIT | 0 | cell-11-has-its-own-name-so-the-notes-row-says-notes-harness
 RUN | /usr/bin/grep | -qF | case 11: nm = "plugins"; | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
 EXPECT_EXIT | 1 | NEGATIVE-the-old-plugins-name-is-not-there
+
+CASE    | tools-cell-mirrors-the-editor-tab
+SCRATCH |
+# 2026-11-14 (D74): the top Tools cell lists for the OPEN BOOK AND PAGE like the editor tab (plug rows and page tools show), and its pick path passes them and accepts a plug id. WIRING ONLY (a click needs the relaunched desktop).
+RUN | /usr/bin/grep | -qF | ktb_open_book_page(house_root, ob | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-list-is-built-for-the-open-book-and-page
+RUN | /usr/bin/grep | -qF | ob[0] ? ob : "-", op2[0] ? op2 : "-", rows | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | and-passes-them-to-the-list-op
+RUN | /usr/bin/grep | -qF | ktb_open_book_page(s->house_root, pb | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-pick-passes-the-same-book-and-page
+RUN | /usr/bin/grep | -qF | *p == ':' | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-pick-accepts-a-plug-id-with-its-colon
+RUN | /usr/bin/grep | -cF | "list", house_root, "-", "-", rows | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_OUT | 0 | NEGATIVE-the-old-call-with-no-book-and-no-page-is-gone
+RUN | /usr/bin/grep | -cF | pick \"%s\" - - | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_OUT | 0 | NEGATIVE-the-old-pick-with-no-book-and-no-page-is-gone
+RUN | /usr/bin/grep | -qF | Removal condition: when LyfeDesk has one generic | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+EXPECT_EXIT | 0 | the-stopgap-states-its-removal-condition
