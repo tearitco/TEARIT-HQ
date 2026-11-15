@@ -2472,15 +2472,8 @@ static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc
 #include "nb_worker_insert_before.c"
 /* Node.replaceChild extracted (Phase 1, single-TU include). */
 #include "nb_worker_replace_child.c"
-/* rung-2 remainder: el.value for form fields — a get/set pair; the set
- * string is held on the wrapper (identity-cached per node) under a hidden
- * \xff key, and an unsets element falls back to its `value` attribute. */
-static int is_form_field(const char *tag) {
-    if (!tag) return 0;
-    return !strcmp(tag, "input") || !strcmp(tag, "textarea")
-        || !strcmp(tag, "select") || !strcmp(tag, "button")
-        || !strcmp(tag, "option");
-}
+/* form-field tag helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_is_form_field.c"
 /* ---- <select> / <option> (2026-10-05) ----------------------------------
  * A select's .value is the SELECTED OPTION's value, not the select's own
  * `value` attribute. Real pages almost never put one on the <select>
