@@ -1,0 +1,4 @@
+# window_place.pal - the shared window-placement op (2026-11-15). See cases/window_place.pdl
+exec ./ops/+x/harness_case_op.+x cases/window_place.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/window_place.pdl
+halt

@@ -1,0 +1,58 @@
+# window_place (2026-11-15): `window_place_op place <app_dir> <instance> <w> <h> [--screen-w N]`: the ONE service that gives a window a free slot beside the live windows of the same app (flex-wrap), for any app that opts in with a
+# placement.pdl. SCRATCH folders only; the REAL op; the screen width is passed so the result does not depend on the monitor. A live sibling is one whose window.pid names a live process (pid 1 here: always alive);
+# a dead one (a pid that cannot exist) must not hold its slot. Every refusal has a passing control.
+RESULTS | ../results/window_place.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | app/instances/a
+MKDIR | app/instances/b
+MKDIR | app/instances/c
+MKDIR | noopt/instances/a
+WRITE   | app/placement.pdl | GROUP \p instances\nMARGIN_X \p 20\nTOP_Y \p 110\nGAP \p 12\n
+
+CASE    | the-first-window-takes-the-margin
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/a | 364 | 704 | --screen-w | 2496
+EXPECT_EXIT | 0 | a-window-is-placed
+EXPECT_OUT | PLACED 20 110 | at-the-margin-and-top-with-nothing-else-open
+EXPECT_HAS | app/instances/a/window_pos.txt | 20 110 | the-position-file-is-written
+EXPECT_HAS | app/instances/a/window_size.txt | 364 704 | and-the-size-file-so-later-windows-can-avoid-it
+
+CASE    | the-second-goes-beside-it
+WRITE   | app/instances/a/window.pid | 1\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/b | 364 | 704 | --screen-w | 2496
+EXPECT_OUT | PLACED 396 110 | to-the-right-of-the-live-one-plus-the-gap
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/a | 364 | 704 | --screen-w | 2496
+EXPECT_OUT | PLACED 20 110 | CONTROL-a-window-never-avoids-itself-so-re-placing-a-gives-the-margin-again
+
+CASE    | a-dead-window-holds-no-slot
+WRITE   | app/instances/a/window.pid | 2999999\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/b | 364 | 704 | --screen-w | 2496
+EXPECT_OUT | PLACED 20 110 | NEGATIVE-the-sibling-pid-does-not-exist-so-its-slot-is-free-again
+WRITE   | app/instances/a/window.pid | 1\n
+
+CASE    | wrap-like-flex
+WRITE   | app/instances/b/window.pid | 1\n
+WRITE   | app/instances/b/window_pos.txt | 396 110\n
+WRITE   | app/instances/b/window_size.txt | 364 704\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/c | 364 | 704 | --screen-w | 2496
+EXPECT_OUT | PLACED 772 110 | CONTROL-a-wide-screen-keeps-them-in-one-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/c | 364 | 704 | --screen-w | 800
+EXPECT_OUT | PLACED 20 826 | a-narrow-screen-wraps-to-a-new-row-below-the-lowest-one
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/c | 704 | 364 | --screen-w | 2496
+EXPECT_OUT | PLACED 772 110 | a-landscape-sized-window-is-placed-by-its-own-size-after-the-two-live-ones
+
+CASE    | opt-in-and-refusals
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/noopt | $T/noopt/instances/a | 364 | 704 | --screen-w | 2496
+EXPECT_EXIT | 1 | NEGATIVE-an-app-with-no-placement-pdl-has-not-opted-in-and-is-refused
+EXPECT_OUT | PLACE-REFUSED no placement.pdl | with-the-reason
+RUN | /usr/bin/test | -e | $T/noopt/instances/a/window_pos.txt
+EXPECT_EXIT | 1 | and-nothing-was-written
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app | $T/app/instances/c | 10 | 704
+EXPECT_EXIT | 2 | NEGATIVE-an-absurd-size-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/window_place_op.+x | place | $T/app
+EXPECT_EXIT | 2 | NEGATIVE-too-few-arguments-is-a-usage-error
+
+CASE    | cleanup
+CLEAN |

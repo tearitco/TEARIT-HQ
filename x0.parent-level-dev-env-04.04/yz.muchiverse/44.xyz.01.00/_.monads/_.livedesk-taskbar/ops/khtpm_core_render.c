@@ -4185,6 +4185,7 @@ static XftDraw *xftdraw_buf;
 static Colormap cmap;
 static XftFont *font_ui;
 static int g_win_x = 300, g_win_y = 300;
+static int g_inst_pos_set = 0;      /* 1 once <instance>/window_pos.txt placed this window: the layouts that hard-set a default x must leave it alone */
 /* g_win_w/g_win_h are NOT static: khtpm_render_core.c's css_layout_pass()
  * reads them via `extern int g_win_w, g_win_h` (three sites: position:fixed,
  * position:absolute top/left clamping, and its flex/grid budget caps). This
@@ -9686,7 +9687,7 @@ static void assign_nav_and_layout(void) {
          * IS the real detection. g_default_has_sidebar_panel latching
          * true is the correct "first time" signal already used one
          * line below for a different real fix, same real idea reused. */
-        if (!g_default_has_sidebar_panel) { g_win_x = 80; g_win_y = g_win_top_y; }
+        if (!g_default_has_sidebar_panel && !g_inst_pos_set) { g_win_x = 80; g_win_y = g_win_top_y; }
         g_default_has_sidebar_panel = 1;
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
@@ -13249,7 +13250,16 @@ static void redraw_body(void) {
  * tiles were left for later (sprite_cache.c), schedule one more paint through the same g_frame_dirty flag every other repaint request
  * uses, so the grid fills in over a few frames instead of freezing the window for one long paint. g_frame_dirty is cleared by the loop
  * BEFORE it calls redraw(), so setting it here survives to the next pass. */
+/* 2026-11-15 (plus phone, owner: phones must not open on top of each other): a window opened with an instance dir may be PLACED by <instance>/window_pos.txt ("x y", first line). Read when the file's size changes (one stat per redraw otherwise); the position-apply step below moves the window when g_win_x/g_win_y change. A window without that file is unchanged. */
+static void kh_instance_window_pos(void) {
+    static long seen = -2; if (!g_arg3_dir[0]) return;
+    char f[PATH_BUF]; snprintf(f, sizeof f, "%s/window_pos.txt", g_arg3_dir); struct stat sb; long sz = stat(f, &sb) ? -1 : (long)sb.st_size;
+    if (sz == seen) return; seen = sz; if (sz <= 0) return;
+    FILE *fp = fopen(f, "r"); if (!fp) return; int x = -1, y = -1; int ok = fscanf(fp, "%d %d", &x, &y) == 2; fclose(fp);
+    if (ok && x >= 0 && y >= 0 && x < 20000 && y < 20000) { g_win_x = x; g_win_y = y; g_inst_pos_set = 1; }
+}
 static void redraw(void) {
+    kh_instance_window_pos();
     static int trace = -1;                 /* KH_REDRAW_TRACE=1: one cost line per paint (where the time went), next to the [REDRAW n] line */
     if (trace < 0) trace = getenv("KH_REDRAW_TRACE") != NULL;
     double t0 = trace ? hqs_now_ms() : 0, l0 = g_hqs_load_ms, b0 = g_hqs_blit_ms;

@@ -1,0 +1,5 @@
+# placement.pdl - plugz-hq opts in to the shared window-placement service: the plugs, harnz and tests windows open side by side instead of stacked at the same spot.
+GROUP | instances
+MARGIN_X | 20
+TOP_Y | 110
+GAP | 12

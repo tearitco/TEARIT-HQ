@@ -1,0 +1,5 @@
+# placement.pdl - this app opts in to the shared window-placement service (BOOK 16.game/PLUS-PHONE-DESIGN-2026-11-15.md section 21): its windows open in a free slot beside the others, wrapping like flex. Rows are optional.
+GROUP | instances
+MARGIN_X | 20
+TOP_Y | 110
+GAP | 12

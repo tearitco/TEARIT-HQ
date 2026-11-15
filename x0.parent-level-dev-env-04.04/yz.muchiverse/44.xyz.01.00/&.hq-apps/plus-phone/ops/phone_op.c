@@ -45,7 +45,10 @@ static int used_port(int port) { char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/
 
 /* start (or restart) the window of an instance with the layout for its orientation; prints nothing, returns the pid or 0 */
 static long launch(const char *inst) {
-    char orient[16]; kv(inst, "ORIENT", orient, sizeof orient); const char *lay = !strcmp(orient, "landscape") ? "plus-phone-landscape.xhtpm" : "plus-phone.xhtpm";
+    char orient[16]; kv(inst, "ORIENT", orient, sizeof orient);
+    { char op[P], app[P], tmp[P], ws[16], hs[16]; int land = !strcmp(orient, "landscape"); snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/window_place_op.+x", HOUSE); snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); snprintf(tmp, sizeof tmp, "%s/place.out", inst);
+      snprintf(ws, sizeof ws, "%d", land ? 704 : 364); snprintf(hs, sizeof hs, "%d", land ? 364 : 704);      /* window sizes with frame; the shared op picks a free slot beside the other phones (placement.pdl opt-in) */
+      if (!access(op, X_OK)) { char *av[] = { op, "place", app, (char *)inst, ws, hs, NULL }; run_out(av, tmp); unlink(tmp); } } const char *lay = !strcmp(orient, "landscape") ? "plus-phone-landscape.xhtpm" : "plus-phone.xhtpm";
     char x[P], exe[P], funnel[P], tmp[P], nm[48], n[16]; snprintf(x, sizeof x, "%s/&.hq-apps/plus-phone/%s", HOUSE, lay); snprintf(exe, sizeof exe, "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", HOUSE); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
     if (access(x, R_OK) || access(exe, X_OK) || access(funnel, R_OK)) return 0;
     kv(inst, "PHONE", n, sizeof n); snprintf(nm, sizeof nm, "plus-phone-%s", n); snprintf(tmp, sizeof tmp, "%s/spawn.out", inst); setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "plus-phone", 1);
