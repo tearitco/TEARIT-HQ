@@ -2262,20 +2262,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 #include "nb_worker_dataset_get.c"
 /* dataset set trap helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_dataset_set.c"
-static JSValue nb_ds_del(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    NbNode *n = nb_ds_node(ctx, this_val);
-    if (!n || argc < 2) return JS_UNDEFINED;
-    char *k = NULL;
-    const char *key = JS_IsString(argv[1]) ? (k = JS_ToCString(ctx, argv[1])) : NULL;
-    if (!key) return JS_UNDEFINED;
-    char kb[128];
-    int ok = nb_ds_to_attr(key, kb, sizeof(kb));
-    JS_FreeCString(ctx, k);
-    if (!ok) return JS_UNDEFINED;
-    { JSValue a[1] = { JS_NewString(ctx, kb) };
-      JS_FreeValue(ctx, nb_el_removeAttribute(ctx, push_node_or_null(ctx, n), 1, a)); }
-    return JS_NewBool(ctx, 1);
-}
+/* dataset delete trap helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_dataset_del.c"
 static JSValue nb_ds_own_keys(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     NbNode *n = nb_ds_node(ctx, this_val);
