@@ -4436,8 +4436,11 @@ static void dock_relay_focus_code(int code) {
     FILE *hf = fopen(hist, "a");
     if (hf) { fprintf(hf, "%d\n", code); fclose(hf); }
 }
+static void dispatch(const char *action);      /* defined further down */
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
+    /* a nav-zero cell (the bar's plus-phone cell, 2026-11-15) has no focus index to fire from: a click runs its own action and stops */
+    if (elem_has_class(hit, "nav-zero") && hit->onclick[0]) { dispatch(hit->onclick); return 0; }
     if (window_is_dock() && strncmp(hit->onclick, "DDSCROLL:", 9) == 0) {
         /* the long dropdown's ^ / v: scroll on the first click. They are not rows the strip manager knows, so the generic
          * "first click = focus + relay focus code 6000+n" step made the manager reset focus to row 1 (owner: "jumping
@@ -8214,8 +8217,12 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
         t->h = DOCK_BAR_H;
         css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
         if (g_dock_font_px > 0) { t->style.has_font_size = 1; t->style.font_size = g_dock_font_px; }
+        /* class="nav-zero" (2026-11-15, owner: the plus-phone cell is "0", before 1): drawn with a "0." badge, typed 0 runs it, but it stays OUT of the 1..N sequence so no other cell's number moves. */
+        if (elem_has_class(t, "nav-zero")) { t->nav_index = 0; }
+        else {
         t->nav_index = ++g_n_nav;
         g_nav[g_n_nav - 1] = t;
+        }
         col_x += cw + DOCK_CELL_GAP;
         used = col_x - x;
         if (used > max_w) used = max_w;
@@ -10349,6 +10356,7 @@ static long kh_win_spawn_shell_action(const char *action) {
  * real shell command run with package_dir/house_root as args, same
  * "%s '%s' '%s'" shape). */
 static void apply_theme(const char *bg_hex, const char *fg_hex);
+static Elem *kh_find_nav_zero(Elem *e) { if (!e) return NULL; if (strcmp(e->tag, "item") == 0 && elem_has_class(e, "nav-zero")) return e; for (int i = 0; i < e->n_children; i++) { Elem *r = kh_find_nav_zero(e->children[i]); if (r) return r; } return NULL; }
 static void dispatch(const char *action) {
     /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
      * 03.md §2.2) - HQ window taskbar entry click, handled LOCALLY in the
@@ -14016,6 +14024,8 @@ static void handle_key(KeySym ks, char ch) {
                 }
             }
         }
+        /* a typed 0 (nothing typed before it) runs the one nav-zero cell of the window, if any (the bar's plus-phone cell) */
+        if (d == 0 && g_nav_digit_accum == 0 && g_window) { Elem *z = kh_find_nav_zero(g_window); if (z && z->onclick[0]) { dispatch(z->onclick); return; } }
         /* multi-digit accumulate: "15" jumps to 15, not 5 (tpmos
          * chtpm_parser.c.bak digit_accum). Take accum*10+d when it's a
          * real nav index; else restart the accumulator with just d. */
@@ -15742,6 +15752,8 @@ static void popup_handle_click(int px, int py) {
         if (g_dock_click_peer) { i0 = g_dock_header_nav_hi; i1 = g_n_nav; }
         else { i0 = 0; i1 = g_dock_header_nav_hi; }
     }
+    /* the nav-zero cell (the bar's plus-phone cell) is not in g_nav, so the scan below can never hit it: test it first (not while a dropdown is open) */
+    if (window_is_dock() && !g_dock_drop_lo && g_window) { Elem *z0 = kh_find_nav_zero(g_window); if (z0 && z0->w > 0 && px >= z0->x && px < z0->x + z0->w && py >= z0->y && py < z0->y + z0->h) { click_focus_then_activate(z0); redraw(); return; } }
     int nscan = i1 - i0;
     if (prefer_dd) nscan = (dd1 - dd0) + (i1 - i0);
     for (int k = 0; k < nscan; k++) {

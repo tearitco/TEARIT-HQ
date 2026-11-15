@@ -3,6 +3,7 @@
 <window class="dock-header" vars="#.desktop/strip_ui.txt">
 <page id="main">
 <row class="toolbar">
+<item id="plus-phone" label="+" class="dock-cell nav-zero" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'new' '${HOUSE}'"/>
 <item id="strip-cell-1" label="HQ" class="dock-cell" onclick="ACTIVATE"/>
 <item id="strip-cell-2" label="${username}" sprite="${avatar_dir}" class="dock-cell" onclick="ACTIVATE"/>
 <item id="strip-cell-3" label="${file_label}" class="dock-cell" onclick="ACTIVATE"/>
