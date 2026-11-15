@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
         if (nc) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- tests --\t-\n");
             for (int i = 0; i < nr; i++) if (listed(i, page) && !strcmp(R[i].kind, "CASE")) { char sfx[24]; verdict_suffix(&R[i], sfx, sizeof sfx); l = strlen(out); snprintf(out + l, sizeof out - l, "%s%s\t%s\n", R[i].label, sfx, R[i].id); } }
         /* NEW GROUP (2026-11-14, owner: "add it just to visually show our work, b4 we continue"): the maker is spec step 5 and is NOT BUILT. These rows only SHOW where it will be, say so in their labels, and a pick changes nothing (id new:plug or new:harnz prints NEW-NOT-BUILT). Shown for any named book. Remove the words "not built yet" when the maker lands. */
-        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- new (not built yet) --\t-\n+ new plug : optional, on/off\tnew:plug\n+ new harnz : one-shot page tool\tnew:harnz\n"); }
+        if (named) { l = strlen(out); snprintf(out + l, sizeof out - l, "-- new (not built yet) --\t-\n+ new plug (on/off)\tnew:plug\n+ new harnz (one-shot)\tnew:harnz\n"); }
         if (write_atomic(argv[5], out)) { fprintf(stderr, "harness_menu_op: cannot write %s\n", argv[5]); return 2; }
         return 0;
     }
