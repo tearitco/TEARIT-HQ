@@ -444,3 +444,11 @@ The owner will have harness proofs shown to potential customers as YouTube video
 **What the eye sees, and what it does not.** Cell depth hangs under a flat top, so a bigger depth is not a hill. Levels are `EXTRUDE` on the glyph (`a` 1, `b` 4, `c` 8). Roads and building pads stay on `a`, so they stay flat. Snow is RTP Outside_A2.png at 0,480, in slot 6. The slot legend is `&.widgits/palettes/tilesets/legend.pdl`. There was no legend file in palettes before 2026-11-11. Slot 33 stays banned. It is a shop tile.
 
 **Not chosen:** a C file per biome. A snow painting hardcoded for centroid only. Treating depth as height.
+
+## D74 (2026-11-14, OPEN, owner decides): what the editor's "harness" list is called, and whether page scripts and project plugins are two lists
+
+**The choice.** The top-bar cell that was the inert "plugins" cell became "harness" (2026-11-07). The owner is not sure the name fits, because "harness" already means the test harness (pal + cases), and the rows are meant to work like RPG Maker plugins but run from a click and act on a page. Leaning (SAID 2026-11-14): one Tools button with two lists, `harnz` (scripts of this page: change the map or entities) and `plugs` (the project's global plugins).
+
+**Recommendation (DOC).** One row format with a scope column (it already exists: `page` is `*` or a page), two filtered views, not two systems. Keep tests (`CASE`) apart from creator actions (`ACTION`). Change only the user-visible label; internal ids and files keep `harness` until a deliberate rename (the LyfeDesk rename policy).
+
+**Not decided.** The names, whether tests stay in a separate agent-facing list, whether a plug is callable from a harnz script, and whether a plug loads at project start with parameters. Not verified: the dropdown filter by open page. Full text and questions: `16.game/GROK-WORK-INVENTORY-AND-HARNESS-PLUG-NAMING-2026-11-14.md` section 4.
