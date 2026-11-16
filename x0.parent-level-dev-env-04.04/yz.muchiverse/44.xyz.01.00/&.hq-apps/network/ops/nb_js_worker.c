@@ -3662,18 +3662,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_range.c"
         /* Selection global install extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_selection.c"
-        /* DOMParser: real HTML/XML snippet parsing into a document wrapper. */
-        f = add_class(ctx, "DOMParser", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_domparser_parse, "parseFromString", 2));
-        JS_FreeValue(ctx, p);
-        JS_SetPropertyStr(ctx, g, "DOMParser", f);
-        /* XMLSerializer: real outer-HTML serialization. */
-        f = add_class(ctx, "XMLSerializer", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "serializeToString", JS_NewCFunction(ctx, nb_xmlserializer_serialize, "serializeToString", 1));
-        JS_FreeValue(ctx, p);
-        JS_SetPropertyStr(ctx, g, "XMLSerializer", f);
+        /* DOMParser/XMLSerializer global installs extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_parser_serializer.c"
         /* List classes (2026-11-09): NodeList/HTMLCollection prototypes
            carry item(); query results are arrays with these prototypes set.
            2026-11-13: add forEach and @@iterator (Array-like collection compat). */
