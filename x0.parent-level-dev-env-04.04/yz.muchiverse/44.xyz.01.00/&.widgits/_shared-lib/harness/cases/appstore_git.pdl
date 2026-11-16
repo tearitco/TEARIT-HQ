@@ -135,3 +135,22 @@ EXPECT_OUT | verified=1 | the-row-shipped-with-the-install-is-used-when-the-user
 RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p main\n' "$1" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo
 RUN | $T/store_op.+x | sync | $T/h
 EXPECT_OUT | full 40-hex | the-users-own-row-wins-over-the-shipped-default-(its-bad-pin-is-refused-not-replaced)
+
+CASE    | the-update-notice-reports-and-never-applies
+RUN | /bin/rm | -f | $T/h/&.hq-apps/plus-phone/store_sources.default.pdl
+RUN | /bin/sh | -c | git -C "$1" rev-parse HEAD > "$0" | $T/c2.txt | $T/repo
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p %s\n' "$1" "$(cat "$2")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo | $T/c2.txt
+RUN | $T/store_op.+x | latest | $T/h
+EXPECT_OUT | UPTODATE | CONTROL-when-the-pin-is-the-repo-head-it-is-up-to-date
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p %s\n' "$1" "$(cat "$2")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo | $T/c1.txt
+RUN | $T/store_op.+x | latest | $T/h
+EXPECT_OUT | NEWER | the-pin-is-older-than-the-repo-head-so-a-newer-commit-is-reported
+RUN | $T/store_op.+x | ui_check | - | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | the-screen-verb-runs
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | a newer approved commit exists | the-screen-says-a-newer-commit-exists
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | Not applied | and-that-it-is-not-applied
+EXPECT_HAS | h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo | the-pin-row-is-unchanged-by-the-check-(NEGATIVE-it-never-moves-the-pin)
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p /nonexistent/nowhere \p %s\n' "$(cat "$1")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/c1.txt
+RUN | $T/store_op.+x | ui_check | - | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-an-unreachable-source-is-an-error-not-up-to-date
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | could not check | and-says-so
