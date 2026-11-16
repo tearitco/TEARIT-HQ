@@ -1,0 +1,8 @@
+# manifest.pdl - the App Store, a base phone app (owner 2026-11-16: base apps are settings and appstore). Design: BOOK 16.game/PLUS-PHONE-APP-STORE-AND-APPROVED-REPO-DESIGN-2026-11-16.md
+APP | id | appstore
+TITLE | App Store
+ICON | icon
+PIN | first
+ORIENT | portrait
+PLATFORM | 1
+SCREEN | home | screens/store.xhtpm

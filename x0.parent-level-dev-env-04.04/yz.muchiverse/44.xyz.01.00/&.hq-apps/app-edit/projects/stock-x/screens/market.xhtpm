@@ -1,0 +1,19 @@
+<!-- market.xhtpm - stock+x first screen (2026-11-16): the paper account, all from <instance>/stockx/ledger.txt through stockx_op. -->
+<window label="${window_title}" class="stockx database-window phone-portrait managed">
+  <module id="projector" src="&.hq-apps/plus-phone/apps/stock-x/ops/+x/stockx_op.+x"/>
+  <page name="main">
+    ${PHONE_BARS}
+    ${APP_CHROME}
+    <text label="${line_cash}" class="hp-line"/>
+    <text label="${line_total}" class="hp-line"/>
+    <text label="${status}" class="quiet"/>
+    <scrolllist>
+      <item id="new" class="btn" label="  open a paper account ($1,000.00)  " show="${show_new}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_new' '-' '${ARG3}'"/>
+      <item id="cr" class="btn" label="  add $1,000.00 of paper credit  " show="${show_acct}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_credit' '-' '${ARG3}'"/>
+      <repeat count="${n_pos}" bind="pos">
+        <text label="${pos.text}" class="verse"/>
+      </repeat>
+    </scrolllist>
+    ${PHONE_FOOTER}
+  </page>
+</window>

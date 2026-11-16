@@ -1,0 +1,8 @@
+# manifest.pdl - stock+x, the TSOTS paper-broker phone app (design: BOOK 16.game/STOCK-X-DESIGN-2026-11-15.md). First screen: the account from the ledger. Not built yet: quotes on screen, buy/sell buttons, chart.
+APP | id | stock-x
+TITLE | stock+x
+ICON | icon
+ORDER | 2
+ORIENT | portrait
+PLATFORM | 1
+SCREEN | home | screens/market.xhtpm

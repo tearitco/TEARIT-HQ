@@ -1,0 +1,15 @@
+<!-- store.xhtpm - the App Store screen (2026-11-16): one row per catalog entry, a button to install or remove it. Every button runs ONE verb of store_op, which calls phone_op install / uninstall. -->
+<window label="${window_title}" class="appstore database-window phone-portrait managed">
+  <module id="projector" src="&.hq-apps/plus-phone/apps/appstore/ops/+x/store_op.+x"/>
+  <page name="main">
+    ${PHONE_BARS}
+    ${APP_CHROME}
+    <text label="${status}" class="quiet"/>
+    <scrolllist>
+      <repeat count="${n_apps}" bind="app">
+        <item id="a${app.#}" class="${app.cls}" label="${app.label}" action="'${PKG}/../ops/+x/store_op.+x' '${app.verb}' '${app.id}' '${ARG3}'"/>
+      </repeat>
+    </scrolllist>
+    ${PHONE_FOOTER}
+  </page>
+</window>

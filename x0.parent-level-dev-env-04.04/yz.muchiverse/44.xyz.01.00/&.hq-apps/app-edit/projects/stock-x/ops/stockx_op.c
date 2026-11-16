@@ -53,7 +53,29 @@ static int quote(const char *bus, const char *sym, long long now, long maxage, l
     char f[P], ln[300], key[64]; snprintf(f, sizeof f, "%s/latest.txt", bus); snprintf(key, sizeof key, "%s|", sym); FILE *fp = fopen(f, "r"); int ok = 0;
     while (fp && fgets(ln, sizeof ln, fp)) if (!strncmp(ln, key, strlen(key))) { long long p = 0, q = 0, ts = 0, fa = 0; char cc[16]; if (sscanf(ln + strlen(key), "%lld|%lld|%lld|%15[^|]|%lld", &p, &q, &ts, cc, &fa) >= 5 && p > 0) { if (maxage > 0 && (now - fa > maxage || now < fa)) ok = -1; else { *price = p; *prev = q; ok = 1; } } }
     if (fp) fclose(fp); return ok > 0; }
+/* ---- the phone app (2026-11-16): module = projector of <inst>/.hq_manager/ui.txt; ui_ verbs append ledger rows through the same op. The account lives at <inst>/stockx/ledger.txt (the ledger is the only state). ---- */
+static char HQD[P], ACCT[P];
+static void ui_set(const char *inst) { snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); snprintf(ACCT, sizeof ACCT, "%s/stockx", inst); mkdir(ACCT, 0755); snprintf(DIR_, sizeof DIR_, "%s", ACCT); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", ACCT); }
+static void bumpq(void) { char f[P]; snprintf(f, sizeof f, "%s/marker.txt", HQD); struct stat sb; if (!stat(f, &sb) && sb.st_size > 4096) unlink(f); FILE *m = fopen(f, "a"); if (m) { fputc('x', m); fclose(m); } }
+static long msizeq(void) { char f[P]; struct stat sb; snprintf(f, sizeof f, "%s/marker.txt", HQD); return stat(f, &sb) ? 0 : (long)sb.st_size; }
+static void money(long long c, char *o, size_t cap) { snprintf(o, cap, "%s$%lld.%02lld", c < 0 ? "-" : "", (c < 0 ? -c : c) / 100, (c < 0 ? -c : c) % 100); }
+static void publish(void) {
+    static char UI[8192]; int n = 0; int have = !access(LEDGER, F_OK); int rc = have ? replay(1) : 0; char m[40], t[40]; money(CASH, m, sizeof m);
+    n += snprintf(UI + n, sizeof UI - n, "window_title=stock+x\n"); if (!have) n += snprintf(UI + n, sizeof UI - n, "line_cash=No paper account yet.\nline_total=\nstatus=Paper money only: nothing real is traded.\nshow_new=1\nshow_acct=0\nn_pos=0\n");
+    else if (rc) n += snprintf(UI + n, sizeof UI - n, "line_cash=This ledger does not replay (it was edited).\nline_total=\nstatus=Nothing is shown from it.\nshow_new=0\nshow_acct=0\nn_pos=0\n");
+    else { int np = 0; char pl[2048] = ""; for (int i = 0; i < NP; i++) if (POS[i].q > 0) { char sy[40]; snprintf(sy, sizeof sy, "%s", POS[i].sym); char *at = strchr(sy, '@'); if (at) *at = 0; size_t l = strlen(pl); snprintf(pl + l, sizeof pl - l, "pos_%d_text=%s   %lld.%06lld shares\n", np, sy, POS[i].q / 1000000, POS[i].q % 1000000); np++; }
+        money(CASH, t, sizeof t); n += snprintf(UI + n, sizeof UI - n, "line_cash=Cash   %s\nline_total=Paper account, %d ledger rows\nstatus=Quotes and trading come next.\nshow_new=0\nshow_acct=1\nn_pos=%d\n%s", t, rows(), np, pl); }
+    char uf[P], tf[P], old[8192] = ""; snprintf(uf, sizeof uf, "%s/ui.txt", HQD); FILE *fp = fopen(uf, "r"); if (fp) { size_t r = fread(old, 1, sizeof old - 1, fp); old[r] = 0; fclose(fp); }
+    if (strcmp(old, UI)) { snprintf(tf, sizeof tf, "%s/ui.txt.tmp", HQD); fp = fopen(tf, "w"); if (fp) { fputs(UI, fp); fclose(fp); rename(tf, uf); } } }
+static int module_main(const char *inst, int once) { ui_set(inst); if (once) { publish(); return 0; } long seen = -1; time_t last = 0; for (;;) { long m = msizeq(); time_t now = time(NULL); if (m != seen || now - last >= 5) { publish(); seen = m; last = now; } if (getppid() == 1) return 0; usleep(400000); } }
+static int ui_verb(const char *v, const char *inst) {
+    ui_set(inst); char res[200], row[300]; long long c; int rc = 0;
+    if (!strcmp(v, "ui_new")) { if (!access(LEDGER, F_OK)) return 1; CASH = 0; NP = 0; if (exec_row("START", NULL, 100000, 0, &c, res, sizeof res)) return 2; snprintf(row, sizeof row, "1|START|100000|%s", res); rc = append(row); }
+    else if (!strcmp(v, "ui_credit")) { if (replay(1)) return 3; if (exec_row("CREDIT", NULL, 100000, 0, &c, res, sizeof res)) return 1; snprintf(row, sizeof row, "%d|CREDIT|100000|%s", rows() + 1, res); rc = append(row); }
+    else return 2; bumpq(); return rc; }
 int main(int argc, char **argv) {
+    { const char *ki = getenv("KHTPM_ARG3"); if (argc >= 3 && argv[1][0] == '/') { if (argc >= 5 && !strcmp(argv[3], "--once")) return module_main(argv[4], 1); if (!ki || !ki[0]) { fprintf(stderr, "stockx_op: no KHTPM_ARG3\n"); return 2; } return module_main(ki, 0); } }
+    if (argc >= 4 && !strncmp(argv[1], "ui_", 3)) return ui_verb(argv[1], argv[3]);
     if (argc < 3) { fprintf(stderr, "usage: stockx_op <dir> new|credit|buy|sell|state|replay ...\n"); return 2; } snprintf(DIR_, sizeof DIR_, "%s", argv[1]); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", DIR_); const char *v = argv[2]; const char *bus = NULL, *src = "yahoo"; long long now = time(NULL);
     for (int i = 3; i + 1 < argc; i++) { if (!strcmp(argv[i], "--bus")) bus = argv[i + 1]; else if (!strcmp(argv[i], "--source")) src = argv[i + 1]; else if (!strcmp(argv[i], "--now")) now = atoll(argv[i + 1]); }
     if (!strcmp(v, "new")) { if (!access(LEDGER, F_OK)) { fprintf(stderr, "stockx_op: a ledger already exists\n"); return 1; } long long cash = argc >= 4 && isdigit((unsigned char)argv[3][0]) ? atoll(argv[3]) : 100000; mkdir(DIR_, 0755); char res[100], row[200]; long long c = 0; CASH = 0; NP = 0; if (exec_row("START", NULL, cash, 0, &c, res, sizeof res)) return 2;
