@@ -12,3 +12,4 @@ window { font-family: DejaVu Serif; font-size: 11px; }
 .phone-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; }
 .phone-ft { width: 150px; border: 1px solid #444444; }
 .dd-row { border: 1px solid #444444; background-color: #1a1a1a; }
+.dd-row { width: 200px; }

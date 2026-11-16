@@ -4,6 +4,7 @@
   <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-hq" class="tab" label="HQ v" onclick="ACTIVATE" target_id="tb-hq"/>
       <tab id="tb-book" class="tab" label="${book_label} : ${page_label} v" onclick="ACTIVATE" target_id="tb-book"/>
       <tab id="tb-rot" class="tab" label="@ rotate" onclick="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' flip '${ARG3}'"/>
     </tabbar>
@@ -11,6 +12,10 @@
     <item id="back" class="chrome-btn" label="<" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
     <item id="flip" class="chrome-btn" label="@" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
     <sidebar id="sidebar" class="sidebar">
+      <item id="hq-restart" class="dd-row dropdown-child" target_id="tb-hq" label="restart phone" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' relaunch '${ARG3}'"/>
+      <item id="hq-quit" class="dd-row dropdown-child" target_id="tb-hq" label="quit phone" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' closeself '${ARG3}'"/>
+      <item id="hq-rot" class="dd-row dropdown-child" target_id="tb-hq" label="rotate" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+      <item id="hq-home" class="dd-row dropdown-child" target_id="tb-hq" label="app picker" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' home '${ARG3}'"/>
       <repeat count="${n_pages}" bind="pg">
         <item id="pg${pg.#}" class="dd-row dropdown-child" target_id="tb-book" label="${pg.label}" action="${pg.act}"/>
       </repeat>

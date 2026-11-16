@@ -6720,6 +6720,7 @@ static void layout_toolbar_row(Elem *row, int x, int y, int w) {
     }
 }
 
+static void layout_dropdown_overlays(Elem *container, int x, int w);
 static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
     int composer_rows = 0;
     Elem *scrolllist = NULL;
@@ -6950,6 +6951,22 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
      * the active scope): positioned off-screen, same -100000 sentinel
      * this file's own hidden-element convention already uses
      * everywhere else - real, not just invisible-but-still-clickable. */
+    layout_dropdown_overlays(container, x, w);      /* the pass that used to sit here, now shared with flat pages */
+    if (scrolllist) {
+        int list_h = (y + h) - y_cursor - composer_h;
+        scrolllist->x = x; scrolllist->y = y_cursor; scrolllist->w = w; scrolllist->h = list_h > 0 ? list_h : 0;
+        css_compute_style(&g_sheet, scrolllist->tag, scrolllist->id, scrolllist->classes, scrolllist->n_classes, 0, &scrolllist->style);
+        layout_scroll_region(scrolllist, x, y_cursor, w, list_h, scroll, out_lo, out_hi);
+    } else if (out_lo && out_hi) {
+        /* No nested scrolllist - container has no scrollable region of
+         * its own (e.g. sidebar with no sessions yet, or a page that
+         * only ever needed fixed rows). [0,0] matches layout_scroll_
+         * region()'s own "nothing to scroll" convention. */
+        *out_lo = 0; *out_hi = 0;
+    }
+}
+/* 2026-11-15: the generic dropdown-child overlay pass, lifted out of layout_fixed_rows_and_scrolllist() unchanged so a FLAT page (no sidebar/panel: the phone portrait screens) can open dropdowns too. Needs only the container whose direct children carry the rows, its x and w. See the comment where it is called. */
+static void layout_dropdown_overlays(Elem *container, int x, int w) {
     {
         char last_target[64] = "";
         int stack_n = 0;
@@ -7018,18 +7035,6 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                                       grp_n - dd_plan.pin, dd_vis, dd_plan.max_sc);
             stack_n++;
         }
-    }
-    if (scrolllist) {
-        int list_h = (y + h) - y_cursor - composer_h;
-        scrolllist->x = x; scrolllist->y = y_cursor; scrolllist->w = w; scrolllist->h = list_h > 0 ? list_h : 0;
-        css_compute_style(&g_sheet, scrolllist->tag, scrolllist->id, scrolllist->classes, scrolllist->n_classes, 0, &scrolllist->style);
-        layout_scroll_region(scrolllist, x, y_cursor, w, list_h, scroll, out_lo, out_hi);
-    } else if (out_lo && out_hi) {
-        /* No nested scrolllist - container has no scrollable region of
-         * its own (e.g. sidebar with no sessions yet, or a page that
-         * only ever needed fixed rows). [0,0] matches layout_scroll_
-         * region()'s own "nothing to scroll" convention. */
-        *out_lo = 0; *out_hi = 0;
     }
 }
 
@@ -10043,6 +10048,7 @@ static void assign_nav_and_layout(void) {
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
             if (item == kh_fbt || item == kh_fbb) continue;      /* pinned bands, placed above */
+            if (elem_has_class(item, "dropdown-child")) continue;      /* dropdown rows are placed by the shared overlay pass after the loop */
             /* REAL FIX 2026-09-15, direct live report ("we dont need a
              * sidbar at all" - file-explorer's own list needed real
              * scrolling, which this flat-page path never had at all
@@ -10227,6 +10233,7 @@ static void assign_nav_and_layout(void) {
             y += item_h;
         }
         if (row_x) y += row_h + 4;
+        layout_dropdown_overlays(page, 0, g_win_w);      /* 2026-11-15: a flat page opens dropdowns too (same pass as the sidebar+panel path) */
         /* Same real "every window MUST have a way out" fallback the
          * swatch-grid path already has (~line 6026, "make sure x11-hq
          * windows all have a default x button") - a flat page that
