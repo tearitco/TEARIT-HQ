@@ -1,0 +1,4 @@
+# appstore_dep.pal - app dependencies in the App Store (2026-11-16). See cases/appstore_dep.pdl
+exec ./ops/+x/harness_case_op.+x cases/appstore_dep.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/appstore_dep.pdl
+halt

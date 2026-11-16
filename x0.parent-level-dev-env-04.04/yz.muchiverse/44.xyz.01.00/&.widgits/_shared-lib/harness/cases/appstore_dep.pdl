@@ -1,0 +1,103 @@
+# appstore_dep (2026-11-16): dependencies (owner: "verses is separate but will install dep if needed", design section 8 of the App Store doc). A LOCAL git repo, the real git/store_op/phone_op/app_check, no network.
+# Proves: app_check accepts DEP rows and refuses a bad one; the store installs a missing dep from the verified catalog BEFORE the app (deps/<id>/ with version.txt, never a tile) and records it in the install ledger; an app whose dep is not in the
+# catalog, or whose catalog version is too low, or whose dep was refused at sync, is NOT installed (reason on screen); a dep installed at a high enough version satisfies the app without the catalog; a dep whose files changed after the check is refused;
+# removing an app keeps the dep. Controls: every refusal has the passing install next to it (same app family, only the dep differs).
+RESULTS | ../results/appstore_dep.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/apps/settings
+MKDIR | h/&.hq-apps/plus-phone/instances/1/.hq_manager
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
+RUN | /usr/bin/gcc | -w | -O2 | -o | $T/store_op.+x | $HOUSE/&.hq-apps/app-edit/projects/appstore/ops/store_op.c
+EXPECT_EXIT | 0 | the-store-op-compiles
+WRITE   | h/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | #!/bin/sh\nshift; shift; shift; shift; shift; shift\nexec "$@"\n
+RUN | /bin/chmod | +x | $T/h/&.widgits/_shared-lib/ops/+x/cpu_gate.+x
+WRITE   | h/&.hq-apps/plus-phone/apps/settings/manifest.pdl | APP | id | settings\nTITLE | settings\nPLATFORM | 1\n
+RUN | /usr/bin/git | init | -q | $T/repo
+MKDIR | repo/dep-app/icon
+WRITE   | repo/dep-app/manifest.pdl | APP | id | dep-app\nTITLE | Dep App\nICON | icon\nPLATFORM | 1\nDEP | data-pack | 1\n
+WRITE   | repo/dep-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+MKDIR | repo/need-app/icon
+WRITE   | repo/need-app/manifest.pdl | APP | id | need-app\nTITLE | Need App\nICON | icon\nPLATFORM | 1\nDEP | missing-pack | 1\n
+WRITE   | repo/need-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+MKDIR | repo/ver-app/icon
+WRITE   | repo/ver-app/manifest.pdl | APP | id | ver-app\nTITLE | Ver App\nICON | icon\nPLATFORM | 1\nDEP | data-pack | 5\n
+WRITE   | repo/ver-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+MKDIR | repo/elf-dep-app/icon
+WRITE   | repo/elf-dep-app/manifest.pdl | APP | id | elf-dep-app\nTITLE | Elf Dep App\nICON | icon\nPLATFORM | 1\nDEP | bad-pack | 1\n
+WRITE   | repo/elf-dep-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+MKDIR | repo/data-pack
+MKDIR | repo/bad-pack
+WRITE   | repo/data-pack/data.txt | hello\n
+WRITE   | repo/bad-pack/data.txt | x\n
+RUN | /bin/cp | /bin/true | $T/repo/bad-pack/blob
+WRITE   | repo/catalog.pdl | ENTRY | dep-app | KIND | phone-app | VERSION | 1 | SHA256 | 34d1d70e2e36471cdf41245ae514d41f4cbac93053dcfb387eb504b63511c87c\nENTRY | need-app | KIND | phone-app | VERSION | 1 | SHA256 | bde4b959596c2475c1039e7fc9512acdf98dba5561ecf104f669bea5ffd9a2a0\nENTRY | ver-app | KIND | phone-app | VERSION | 1 | SHA256 | 12e46b39db180e3c970f8624ed6da20245a4df955f67d7f0a96c616ee02d0c4f\nENTRY | elf-dep-app | KIND | phone-app | VERSION | 1 | SHA256 | 45d6ae92cde5839930b6119ae98faced2197c2ee323b55ce62843247c8893373\nENTRY | data-pack | KIND | phone-dep | VERSION | 1 | SHA256 | 3ad85a97377152df7872bb7baa91dd0e5d21847a5bf74fe85b8da29beaa1098f\nENTRY | bad-pack | KIND | phone-dep | VERSION | 1 | SHA256 | 0000000000000000000000000000000000000000000000000000000000000000\n
+RUN | /usr/bin/git | -C | $T/repo | add | -A
+RUN | /usr/bin/git | -C | $T/repo | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | approved
+EXPECT_EXIT | 0 | the-fixture-repo-has-its-commit
+RUN | /bin/sh | -c | git -C "$1" rev-parse HEAD > "$0" | $T/c1.txt | $T/repo
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p %s\n' "$1" "$(cat "$2")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo | $T/c1.txt
+
+CASE    | app_check-and-the-sync
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/repo/dep-app | $T/h
+EXPECT_OUT | CHECK-OK dep-app | CONTROL-a-package-with-a-DEP-row-passes-app_check
+WRITE   | bad/baddep/manifest.pdl | APP | id | baddep\nTITLE | Bad Dep\nICON | icon\nPLATFORM | 1\nDEP | ../x | one\n
+MKDIR | bad/baddep/icon
+WRITE   | bad/baddep/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/bad/baddep | $T/h
+EXPECT_EXIT | 1 | NEGATIVE-a-DEP-row-with-a-path-id-and-a-non-number-version-is-refused
+EXPECT_OUT | a DEP row needs | and-says-what-a-DEP-row-needs
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | verified=5 refused=1 | five-verified-one-refused-(the-dep-with-a-binary)
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | OKDEP\pdata-pack\p1\p3ad85a97377152df7872bb7baa91dd0e5d21847a5bf74fe85b8da29beaa1098f | the-dep-is-verified-as-a-DEP
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\pbad-pack\pa compiled binary | NEGATIVE-a-dep-with-a-binary-is-refused-like-an-app
+RUN | $T/store_op.+x | catalog | $T/h
+EXPECT_OUT | dep-app\pDep App | the-apps-are-offered
+EXPECT_OUT_LACKS | data-pack | NEGATIVE-a-dep-is-never-offered-as-an-app-tile
+
+CASE    | refusals-install-nothing
+RUN | $T/store_op.+x | ui_install | need-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-dep-that-is-not-in-the-catalog-refuses-the-app
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | needs missing-pack (version 1), which is not in the approved catalog | the-screen-names-the-missing-dep
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/need-app | the-app-was-not-installed
+RUN | $T/store_op.+x | ui_install | ver-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-catalog-version-below-the-minimum-refuses-the-app
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | needs data-pack version 5, the catalog has 1 | with-both-versions-in-the-message
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/deps/data-pack | and-no-dep-was-installed-for-a-refused-app
+RUN | $T/store_op.+x | ui_install | elf-dep-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-dep-that-was-refused-at-sync-cannot-satisfy-an-app
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/elf-dep-app | nothing-landed
+
+CASE    | install-brings-the-dep-first
+RUN | $T/store_op.+x | ui_install | dep-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | CONTROL-the-app-whose-dep-is-in-the-catalog-installs
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/dep-app/manifest.pdl | the-app-is-in-apps
+EXPECT_FILE | h/&.hq-apps/plus-phone/deps/data-pack/data.txt | the-dep-files-are-in-deps
+EXPECT_HAS | h/&.hq-apps/plus-phone/deps/data-pack/version.txt | 1 | with-its-version
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/data-pack | the-dep-is-not-an-app-(no-tile)
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/install.ledger | INSTALL\pdata-pack\p1\p | the-dep-has-an-install-ledger-row
+RUN | $T/store_op.+x | ui_remove | dep-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | the-app-is-removed
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/dep-app | its-folder-is-gone
+EXPECT_FILE | h/&.hq-apps/plus-phone/deps/data-pack/data.txt | NEGATIVE-removing-the-app-does-not-remove-the-dep
+
+CASE    | an-installed-dep-satisfies-without-the-catalog
+WRITE   | h/&.hq-apps/plus-phone/deps/data-pack/version.txt | 9\n
+RUN | $T/store_op.+x | ui_install | ver-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | CONTROL-the-app-needing-version-5-installs-when-version-9-is-already-there
+
+CASE    | a-changed-dep-is-refused
+RUN | /bin/rm | -rf | $T/h/&.hq-apps/plus-phone/deps/data-pack
+RUN | /bin/sh | -c | echo tampered >> "$0" | $T/h/&.hq-apps/plus-phone/store_cache/repo/data-pack/data.txt
+RUN | $T/store_op.+x | ui_install | dep-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-dep-changed-after-the-check-refuses-the-app
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | the files of data-pack changed since they were verified | with-the-reason
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/deps/data-pack | and-the-dep-was-not-installed
+RUN | $T/store_op.+x | sync | $T/h
+RUN | $T/store_op.+x | ui_install | dep-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | CONTROL-after-a-fresh-sync-the-same-install-works

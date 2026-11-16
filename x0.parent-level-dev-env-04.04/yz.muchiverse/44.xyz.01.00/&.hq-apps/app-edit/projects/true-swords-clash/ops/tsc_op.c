@@ -26,7 +26,7 @@ typedef struct { char *text; int chap; int ok; } Verse;
 static Verse *V; static int NV;
 static int load_verses(void) {
     char path[P]; const char *e = getenv("TSC_VERSES");
-    if (e && *e) snprintf(path, sizeof path, "%s", e); else { char self[P]; ssize_t n = readlink("/proc/self/exe", self, sizeof self - 1); if (n <= 0) return 0; self[n] = 0; char *s = strrchr(self, '/'); if (s) *s = 0; s = strrchr(self, '/'); if (s) *s = 0; s = strrchr(self, '/'); if (s) *s = 0; snprintf(path, sizeof path, "%s/verses.txt", self); }
+    if (e && *e) snprintf(path, sizeof path, "%s", e); else { char self[P]; ssize_t n = readlink("/proc/self/exe", self, sizeof self - 1); if (n <= 0) return 0; self[n] = 0; char *s = strrchr(self, '/'); if (s) *s = 0; s = strrchr(self, '/'); if (s) *s = 0; s = strrchr(self, '/'); if (s) *s = 0; snprintf(path, sizeof path, "%s/verses.txt", self); { char dp[P]; snprintf(dp, sizeof dp, "%s/../../deps/bible-verses/verses.txt", self); if (!access(dp, R_OK)) snprintf(path, sizeof path, "%s", dp); } /* the Bible text is a store DEPENDENCY (apps/<id> -> ../../deps/bible-verses), preferred over a copy inside the package (owner 2026-11-16) */ }
     FILE *f = fopen(path, "r"); if (!f) { fprintf(stderr, "tsc_op: no verses file %s\n", path); return 0; }
     static char ln[8192]; int cap = 0; int prev_key = -1, chap = 0; char prev_book[8] = ""; int prev_chap = -1;
     while (fgets(ln, sizeof ln, f)) {

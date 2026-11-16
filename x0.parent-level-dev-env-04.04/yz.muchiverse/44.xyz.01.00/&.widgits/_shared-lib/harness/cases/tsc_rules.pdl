@@ -155,3 +155,21 @@ RUN | $T/p/ops/+x/tsc_op.+x | ui_new | computer | $T/i2
 EXPECT_HAS | i2/tsc/ledger.txt | \p984\p984 | the-next-match-starts-from-the-new-rating
 RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/i2
 EXPECT_HAS | i2/.hq_manager/ui.txt | line_last2= | the-screen-has-the-second-result-line
+
+CASE    | verses-come-from-the-store-dependency
+# the Bible text is a store DEPENDENCY (owner 2026-11-16): apps/<id>/ops/+x/tsc_op.+x reads ../../deps/bible-verses/verses.txt when it exists, so the package needs no copy of the file
+MKDIR | d/apps/tsc/ops/+x
+MKDIR | d/deps/bible-verses
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/ops/+x/tsc_op.+x | $T/d/apps/tsc/ops/+x/tsc_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/verses.txt | $T/d/deps/bible-verses/verses.txt
+RUN | $T/d/apps/tsc/ops/+x/tsc_op.+x | new | $T/d/m1 | --seed | 5
+EXPECT_EXIT | 0 | a-package-with-no-verses-file-works-from-the-dependency-folder
+RUN | $T/d/apps/tsc/ops/+x/tsc_op.+x | deal | $T/d/m1 | 3
+EXPECT_EXIT | 0 | and-deals-verses-from-it
+MKDIR | e/apps/tsc/ops/+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/ops/+x/tsc_op.+x | $T/e/apps/tsc/ops/+x/tsc_op.+x
+RUN | $T/e/apps/tsc/ops/+x/tsc_op.+x | new | $T/e/m1 | --seed | 5
+EXPECT_EXIT | 2 | NEGATIVE-with-no-dependency-and-no-copy-in-the-package-there-is-no-verses-file
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/verses.txt | $T/e/apps/tsc/verses.txt
+RUN | $T/e/apps/tsc/ops/+x/tsc_op.+x | new | $T/e/m2 | --seed | 5
+EXPECT_EXIT | 0 | CONTROL-the-same-layout-with-the-file-inside-the-package-still-works-(an-old-install-keeps-running)

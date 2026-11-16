@@ -37,8 +37,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(fl[0], "PIN") && nf >= 2) snprintf(pin, sizeof pin, "%s", fl[1]);
         else if (!strcmp(fl[0], "ORIENT") && nf >= 2) snprintf(orient, sizeof orient, "%s", fl[1]);
         else if (!strcmp(fl[0], "PLATFORM") && nf >= 2) snprintf(plat, sizeof plat, "%s", fl[1]);
+        else if (!strcmp(fl[0], "DEP") && nf >= 3) { if (!word_ok(fl[1]) || !int_ok(fl[2])) { char m[200]; snprintf(m, sizeof m, "%s: a DEP row needs a dependency id (letters, digits, - or _) and a whole minimum version", where); bad(m, "write DEP | <dep id> | <minimum version>"); } }
         else if (!strcmp(fl[0], "SCREEN") && nf >= 3) { if (n_screen < 16) snprintf(screens[n_screen++], 400, "%s|%s", fl[1], fl[2]); }
-        else { char m[200]; snprintf(m, sizeof m, "%s: unknown or incomplete row \"%s\"", where, fl[0]); bad(m, "known keys: APP | id | x, TITLE, ICON, ORDER, PIN, ORIENT, PLATFORM, SCREEN | name | path"); } }
+        else { char m[200]; snprintf(m, sizeof m, "%s: unknown or incomplete row \"%s\"", where, fl[0]); bad(m, "known keys: APP | id | x, TITLE, ICON, ORDER, PIN, ORIENT, PLATFORM, SCREEN | name | path, DEP | id | min version"); } }
     fclose(f);
     if (!id[0]) bad("no APP | id | <id> row", "add APP | id | <id>"); else if (!word_ok(id)) bad("the app id has a character that is not a letter, digit, - or _", "rename the id"); else if (strcmp(id, folder)) { char m[200]; snprintf(m, sizeof m, "the folder is named %s but the app id is %s", folder, id); bad(m, "name the package folder after its id"); }
     if (!title[0] || strlen(title) > 24) bad("TITLE must be 1 to 24 characters", "shorten or add TITLE | <name>");
