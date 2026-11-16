@@ -4444,8 +4444,8 @@ static void dock_relay_focus_code(int code) {
 static void dispatch(const char *action);      /* defined further down */
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
-    /* a nav-zero cell (the bar's plus-phone cell, 2026-11-15) has no focus index to fire from: a click runs its own action and stops */
-    if (elem_has_class(hit, "nav-zero") && hit->onclick[0]) { dispatch(hit->onclick); return 0; }
+    /* a nav-zero cell (the bar's plus-phone cell) follows the STANDARD two-step (owner 2026-11-16: it fired at once and did not move nav): the first click moves focus to it (like typing 0), a click while it is focused runs it */
+    if (elem_has_class(hit, "nav-zero") && hit->onclick[0]) { if (g_focus_zero && g_focus_nav == 0) { g_focus_zero = 0; g_focus_nav = 1; dispatch(hit->onclick); return 0; } g_focus_zero = 1; g_zero_seen = -1; g_focus_nav = 0; return 1; }
     if (window_is_dock() && strncmp(hit->onclick, "DDSCROLL:", 9) == 0) {
         /* the long dropdown's ^ / v: scroll on the first click. They are not rows the strip manager knows, so the generic
          * "first click = focus + relay focus code 6000+n" step made the manager reset focus to row 1 (owner: "jumping
@@ -14030,8 +14030,8 @@ static void handle_key(KeySym ks, char ch) {
         g_seg_dot_armed = 1;
         return;
     }
-    /* "+" (or "=", the same key without Shift) runs the bar's nav-zero cell, like typing 0 (owner 2026-11-15); only a window that HAS such a cell reacts, so no other window's keys change */
-    if ((ch == '+' || ch == '=') && g_window && !g_dock_drop_lo) { Elem *zp = kh_find_nav_zero(g_window); if (zp && zp->onclick[0]) { dispatch(zp->onclick); return; } }
+    /* "+" (or "=", the same key without Shift) MOVES focus to the bar's nav-zero cell, exactly like typing 0, and waits for Enter (owner 2026-11-16: standard, nothing fires on its own); only a window that HAS such a cell reacts */
+    if ((ch == '+' || ch == '=') && g_window && !g_dock_drop_lo) { Elem *zp = kh_find_nav_zero(g_window); if (zp && zp->onclick[0]) { g_focus_zero = 1; g_zero_seen = -1; g_focus_nav = 0; redraw(); return; } }
     if (ch >= '0' && ch <= '9') {
         int d = ch - '0';
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {
