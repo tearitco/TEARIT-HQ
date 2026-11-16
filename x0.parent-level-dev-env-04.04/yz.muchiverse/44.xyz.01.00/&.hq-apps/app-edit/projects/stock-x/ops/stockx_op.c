@@ -74,7 +74,7 @@ static int ui_verb(const char *v, const char *inst) {
     else if (!strcmp(v, "ui_credit")) { if (replay(1)) return 3; if (exec_row("CREDIT", NULL, 100000, 0, &c, res, sizeof res)) return 1; snprintf(row, sizeof row, "%d|CREDIT|100000|%s", rows() + 1, res); rc = append(row); }
     else return 2; bumpq(); return rc; }
 int main(int argc, char **argv) {
-    { const char *ki = getenv("KHTPM_ARG3"); if (argc >= 3 && argv[1][0] == '/') { if (argc >= 5 && !strcmp(argv[3], "--once")) return module_main(argv[4], 1); if (!ki || !ki[0]) { fprintf(stderr, "stockx_op: no KHTPM_ARG3\n"); return 2; } return module_main(ki, 0); } }
+    { const char *ki = getenv("KHTPM_ARG3"); if (argc >= 3 && argv[1][0] == '/' && argv[2][0] == '/') { /* module launch: <house> <package dir>; the CLI is <dir> <verb>, so a verb never starts with a slash */ if (argc >= 5 && !strcmp(argv[3], "--once")) return module_main(argv[4], 1); if (!ki || !ki[0]) { fprintf(stderr, "stockx_op: no KHTPM_ARG3\n"); return 2; } return module_main(ki, 0); } }
     if (argc >= 4 && !strncmp(argv[1], "ui_", 3)) return ui_verb(argv[1], argv[3]);
     if (argc < 3) { fprintf(stderr, "usage: stockx_op <dir> new|credit|buy|sell|state|replay ...\n"); return 2; } snprintf(DIR_, sizeof DIR_, "%s", argv[1]); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", DIR_); const char *v = argv[2]; const char *bus = NULL, *src = "yahoo"; long long now = time(NULL);
     for (int i = 3; i + 1 < argc; i++) { if (!strcmp(argv[i], "--bus")) bus = argv[i + 1]; else if (!strcmp(argv[i], "--source")) src = argv[i + 1]; else if (!strcmp(argv[i], "--now")) now = atoll(argv[i + 1]); }
