@@ -1,0 +1,84 @@
+# phone_layers (2026-11-16): PLUS-PHONE-LAYOUT-SPEC (BOOK 16.game). SCRATCH house, the REAL phone_op and phone_projector, the window is a STUB renderer that appends every launch to <instance>/launch.log, so a launch COUNT proves "one window":
+# opening an app, minimizing, restoring and closing must NOT launch again (control: flip DOES). Proves the layout files the phone writes (phone module, phone bars injected once, no tokens left, a names-only bottom bar, the minimized cell dimmed),
+# NOT what the window looks like (that was checked on a real phone with PNGs, 2026-11-16). Every check that says something is absent has a control that sees it present.
+RESULTS | ../results/phone_layers.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/_.monads/_.livedesk-taskbar/ops/+x
+MKDIR | h/#.desktop
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone.xhtpm | $T/h/&.hq-apps/plus-phone/plus-phone.xhtpm
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm | $T/h/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone.css | $T/h/&.hq-apps/plus-phone/plus-phone.css
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.css | $T/h/&.hq-apps/plus-phone/plus-phone-landscape.css
+RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/apps | $T/h/&.hq-apps/plus-phone/apps
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/kh_spawn.sh | $T/h/&.widgits/_shared-lib/kh_spawn.sh
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x
+WRITE   | h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | #!/bin/sh\necho "$2" >> "$3/launch.log"\nsleep 600\n
+RUN | /bin/chmod | +x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_OUT | PHONE-OPENED 1 | phone-1-is-open
+RUN | /bin/cp | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | $T/picker0.xhtpm
+SLEEP | 2
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | one-launch-so-far
+
+CASE    | the-picker-template-has-the-bars-block-once
+EXPECT_HAS | picker0.xhtpm | PHONE-BARS-BEGIN | the-bars-block-is-marked-in-the-phone-template
+EXPECT_HAS | picker0.xhtpm | show="${app_open}" | CONTROL-the-picker-keeps-the-app_open-guards-(the-next-case-must-not-have-them)
+EXPECT_HAS | picker0.xhtpm | phone_projector.+x | the-window-module-is-the-phone-projector
+
+CASE    | open-an-app-in-the-same-window
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+EXPECT_EXIT | 0 | open-works
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | phone_projector.+x | the-module-line-is-the-phone-projector-NOT-the-apps-own
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | tsc_op.+x" | NEGATIVE-the-apps-own-module-is-not-in-the-window-layout-(the-phone-projector-runs-it-as-its-child)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="tb-hq" | the-phone-top-bar-is-injected
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ${PHONE_BARS} | no-bars-token-left
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ${PHONE_FOOTER} | no-footer-token-left
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | show="${app_open}" | the-app_open-guards-are-dropped-inside-an-app
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | the-apps-body-is-there
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | the-bottom-bar-names-the-open-app
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-app1" | CONTROL-the-footer-cell-id-check-can-see-a-cell-(the-open-apps-own)
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-rot" | NEGATIVE-the-bottom-bar-has-no-rotate-cell
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-leave" | NEGATIVE-and-no-leave-cell
+SLEEP | 2
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | STILL-ONE-LAUNCH-the-window-was-not-relaunched
+
+CASE    | minimize-keeps-a-dimmed-cell
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | home | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_FILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/minimized.txt | true-swords-clash | minimized-is-recorded
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/screen.txt | the-app-is-no-longer-in-view
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hqwin-minimized | the-cell-is-dimmed
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | and-keeps-its-name
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | NEGATIVE-the-apps-body-is-gone-the-picker-shows
+SLEEP | 2
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | still-one-launch
+
+CASE    | restore-from-the-cell
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/minimized.txt | restoring-clears-the-minimized-state
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hqwin-minimized | the-cell-is-active-again-not-dimmed
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | the-body-is-back
+
+CASE    | close-removes-the-cell-and-restores-the-picker-byte-for-byte
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | closeapp | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | closeapp-works
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/minimized.txt | no-dimmed-cell-left
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | the-bottom-bar-is-empty-again
+RUN | /usr/bin/cmp | $T/picker0.xhtpm | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm
+EXPECT_EXIT | 0 | the-picker-layout-is-BYTE-IDENTICAL-to-the-one-before-the-app-was-opened
+SLEEP | 2
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | after-open-minimize-restore-and-close-the-window-was-launched-exactly-once
+
+CASE    | control-flip-does-relaunch
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | flip | $T/h/&.hq-apps/plus-phone/instances/1
+WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/launch.log | plus-phone-landscape.xhtpm | 5000 | CONTROL-flip-changes-the-window-size-so-it-DOES-launch-again-(the-launch-log-can-see-a-relaunch)

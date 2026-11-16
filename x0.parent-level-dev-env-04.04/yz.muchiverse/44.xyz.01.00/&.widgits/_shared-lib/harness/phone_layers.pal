@@ -1,0 +1,4 @@
+# phone_layers.pal - the +phone layers: one window, phone bars injected, names-only bottom bar, minimize (2026-11-16). See cases/phone_layers.pdl
+exec ./ops/+x/harness_case_op.+x cases/phone_layers.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/phone_layers.pdl
+halt

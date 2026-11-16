@@ -66,9 +66,12 @@ static int is_word(const char *s);
 static void phone_footer(const char *inst, char *out, size_t cap) {
     char f[P], id[64] = "", mf[P], ln[400], title[120] = ""; snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); FILE *fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); }
     if (is_word(id)) { snprintf(mf, sizeof mf, "%s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", HOUSE, id); fp = fopen(mf, "r"); while (fp && fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "TITLE", 5)) continue; char *b = strchr(ln, '|'); if (!b) continue; b++; while (*b == ' ') b++; snprintf(title, sizeof title, "%s", b); title[strcspn(title, "\r\n")] = 0; size_t l = strlen(title); while (l && title[l - 1] == ' ') title[--l] = 0; break; } if (fp) fclose(fp); }
+    int minimized = 0; if (!title[0]) {      /* no app in view: a MINIMIZED app (minimized.txt) is still a cell, dimmed */
+        snprintf(f, sizeof f, "%s/.hq_manager/minimized.txt", inst); fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); }
+        if (is_word(id)) { snprintf(mf, sizeof mf, "%s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", HOUSE, id); fp = fopen(mf, "r"); while (fp && fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "TITLE", 5)) continue; char *b = strchr(ln, '|'); if (!b) continue; b++; while (*b == ' ') b++; snprintf(title, sizeof title, "%s", b); title[strcspn(title, "\r\n")] = 0; size_t l = strlen(title); while (l && title[l - 1] == ' ') title[--l] = 0; break; } if (fp) fclose(fp); minimized = title[0] != 0; } }
     for (char *c = title; *c; c++) if (*c == '"' || *c == '<' || *c == '>' || *c == '&' || *c == '$') *c = ' ';
     /* the same cell as the LyfeDesk bottom bar's window cells: class hqwin (+ hqwin-minimized when minimized), label = the window emoji and its NAME, click = activate (restore) the app */
-    if (title[0]) snprintf(out, cap, "<footer id=\"statusbar\" class=\"phone-footer\">\n      <item id=\"ft-app1\" class=\"phone-ft hqwin\" label=\"\xF0\x9F\xAA\x9F %s\" action=\"'%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' open '%s' '%s'\"/>\n    </footer>", title, HOUSE, inst, id); else snprintf(out, cap, "<footer id=\"statusbar\" class=\"phone-footer\">\n    </footer>");
+    if (title[0]) snprintf(out, cap, "<footer id=\"statusbar\" class=\"phone-footer\">\n      <item id=\"ft-app1\" class=\"phone-ft hqwin%s\" label=\"\xF0\x9F\xAA\x9F %s\" action=\"'%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' open '%s' '%s'\"/>\n    </footer>", minimized ? " hqwin-minimized" : "", title, HOUSE, inst, id); else snprintf(out, cap, "<footer id=\"statusbar\" class=\"phone-footer\">\n    </footer>");
 }
 static int generate_layout(const char *inst, const char *lay, int win_w, int *ic) {
     char app[P], src[P], dst[P]; static char xb[16384], cb[8192]; snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); *ic = pick_icon(win_w);
@@ -156,7 +159,7 @@ static int v_flip(const char *inst) { char o[16]; kv(inst, "ORIENT", o, sizeof o
 static int v_relaunch(const char *inst) { usleep(300000); kill_window(inst); long pid = launch(inst); return pid ? 0 : 1; }
 static int v_open(const char *inst, const char *app) { for (const char *c = app; *c; c++) if (!(isalnum((unsigned char)*c) || *c == '-' || *c == '_')) return 2; char f[P], txt[200]; snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst);
     /* an INSTALLED app opens its screen: screen.txt names it, the projector hides the grid and shows the app (a package with no screens is a BLANK app, shown as blank). settings is show-only. */
-    char mf[P], sf[P]; const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (h && strcmp(app, "settings")) { snprintf(mf, sizeof mf, "%.*s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", (int)(h - inst), inst, app); if (!access(mf, R_OK)) { snprintf(sf, sizeof sf, "%s/.hq_manager/screen.txt", inst); wr(sf, app); unlink(f); bump(inst); refresh_layout(inst);      /* same window: its layout file is rewritten and re-parsed (no relaunch) */ return 0; } }
+    char mf[P], sf[P]; const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (h && strcmp(app, "settings")) { snprintf(mf, sizeof mf, "%.*s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", (int)(h - inst), inst, app); if (!access(mf, R_OK)) { snprintf(sf, sizeof sf, "%s/.hq_manager/screen.txt", inst); wr(sf, app); { char mn[P]; snprintf(mn, sizeof mn, "%s/.hq_manager/minimized.txt", inst); unlink(mn); } unlink(f); bump(inst); refresh_layout(inst);      /* same window: its layout file is rewritten and re-parsed (no relaunch) */ return 0; } }
     snprintf(txt, sizeof txt, "%s: nothing to show yet. Nothing was started.\n", app); wr(f, txt); bump(inst); return 0; }
 /* INSTALL / UNINSTALL (2026-11-15, design section 24.4): an app reaches the phone only as a checked package folder. `install <house> <package_dir>`: app_check first (refused = nothing copied, its lines are printed), then the folder
  * replaces apps/<id>/ (copied beside it first and renamed, so a failed copy never leaves half an app); every open phone is told to republish. `uninstall <house> <id>`: removes apps/<id>/ (the system app settings is refused). */
@@ -175,7 +178,12 @@ static int v_uninstall(const char *id) {
     char dst[P], tmp[P]; snprintf(dst, sizeof dst, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, id); if (access(dst, F_OK)) { printf("UNINSTALL-REFUSED %s is not installed\n", id); return 1; }
     snprintf(tmp, sizeof tmp, "%s/&.hq-apps/plus-phone/uninstall.out", HOUSE); char *rm[] = { "/bin/rm", "-rf", dst, NULL }; run_out(rm, tmp); unlink(tmp); bump_all(); printf("UNINSTALLED %s\n", id); return 0;
 }
-static int v_home(const char *inst) { char f[P], sl[P]; int had = screen_layout(inst, sl, sizeof sl); snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst); unlink(f); snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); unlink(f); bump(inst); if (had) refresh_layout(inst); return 0; }
+/* MINIMIZE (PLUS-PHONE-LAYOUT-SPEC rule 3): leaving an open app (the < button, the "app picker" row) goes to the picker and keeps the app as a DIMMED cell in the phone bottom bar (minimized.txt = its id; a UI preference, never game state);
+ * tapping the cell opens it again. Today a minimized app is NOT running in the background (its projector stops with the view; its data and ledger are untouched). `closeapp` removes the cell for good. */
+static int v_home(const char *inst) { char f[P], sl[P], id[64] = ""; int had = screen_layout(inst, sl, sizeof sl); snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); { FILE *fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); } }
+    if (had && is_word(id)) { char mf[P]; snprintf(mf, sizeof mf, "%s/.hq_manager/minimized.txt", inst); wr(mf, id); }
+    snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst); unlink(f); snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); unlink(f); bump(inst); if (had) refresh_layout(inst); return 0; }
+static int v_closeapp(const char *inst) { v_home(inst); char f[P]; snprintf(f, sizeof f, "%s/.hq_manager/minimized.txt", inst); unlink(f); bump(inst); refresh_layout(inst); return 0; }
 
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: phone_op new|list <house> | close <house> <n> | flip|relaunch|home|closeself <instance> | open <instance> <app>\n"); return 2; }
@@ -183,7 +191,7 @@ int main(int argc, char **argv) {
     if (!strcmp(v, "new") || !strcmp(v, "list") || !strcmp(v, "close") || !strcmp(v, "prefs") || !strcmp(v, "install") || !strcmp(v, "uninstall")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); if (!strcmp(v, "install")) return argc >= 4 ? v_install(argv[3]) : 2; if (!strcmp(v, "uninstall")) return argc >= 4 ? v_uninstall(argv[3]) : 2; if (!strcmp(v, "prefs")) return argc >= 4 ? v_prefs(argv[3], argc >= 5 ? argv[4] : NULL) : 2; if (!strcmp(v, "new")) return v_new(); if (!strcmp(v, "list")) return v_list(); if (argc < 4) return 2; return v_close(argv[3]); }
     if (!house_of(argv[2])) { fprintf(stderr, "phone_op: not a plus-phone instance: %s\n", argv[2]); return 2; }
     if (!strcmp(v, "quit")) { usleep(300000); kill_window(argv[2]); printf("PHONE-QUIT window closed, the phone and its apps keep their data (phone_op relaunch brings it back)\n"); return 0; }      /* HQ > quit: close the WINDOW only; "close" deletes the whole instance (tests, clean-up) and would lose a match */
-    if (!strcmp(v, "flip")) return v_flip(argv[2]); if (!strcmp(v, "relaunch")) return v_relaunch(argv[2]); if (!strcmp(v, "home")) return v_home(argv[2]);
+    if (!strcmp(v, "flip")) return v_flip(argv[2]); if (!strcmp(v, "relaunch")) return v_relaunch(argv[2]); if (!strcmp(v, "home")) return v_home(argv[2]); if (!strcmp(v, "closeapp")) return v_closeapp(argv[2]);
     if (!strcmp(v, "open") && argc >= 4) return v_open(argv[2], argv[3]);
     if (!strcmp(v, "closeself")) { const char *at = strstr(argv[2], MARK); return v_close(at + strlen(MARK)); }
     fprintf(stderr, "phone_op: unknown verb %s\n", v); return 2;
