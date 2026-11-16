@@ -1,0 +1,4 @@
+# video_brand.pal - the brand video palettes are not blue (2026-11-15). See cases/video_brand.pdl
+exec ./ops/+x/harness_case_op.+x cases/video_brand.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/video_brand.pdl
+halt

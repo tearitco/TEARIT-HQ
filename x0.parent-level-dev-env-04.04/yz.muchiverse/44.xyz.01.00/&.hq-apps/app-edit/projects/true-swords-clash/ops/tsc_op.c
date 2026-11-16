@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <dirent.h>
 #define P 4096
 static char MATCH[P], LEDGER[P];
 /* ---- verses ---- */
@@ -233,6 +234,26 @@ static int ui_online(const char *v) {
     char m[120]; snprintf(m, sizeof m, "JOIN|%s|%d", tok, my_rating()); net_send(m); return 0;
 }
 /* the peer process of this window (palnet_peer, the house p2p companion), started and owned by the screen's module: the spawn funnel gets the module pid as owner, so it ends with the window */
+/* MASTER HOST LIST wiring (2026-11-15). phone_prefs.pdl rows (read here, written by `phone_op prefs`): HOSTLIST_URL | https://... (a master list to fetch before joining), NET_ADVERTISE | <address peers should dial> (also makes the peer listen on every interface).
+ * Hosting: the module publishes this phone's address:port (from palnet's own presence file) to <house>/&.hq-apps/plus-phone/net/hosts.pdl and again every 5 minutes until the match starts. Joining: the peer is started with PALNET_SEEDS = the live hosts of kind tsc. */
+static int pref_row(const char *house, const char *key, char *out, size_t cap) { char f[P], ln[600]; out[0] = 0; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", house); FILE *fp = fopen(f, "r"); if (!fp) return 0; size_t kl = strlen(key); while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, key, kl) || strncmp(ln + kl, " | ", 3)) continue; ln[strcspn(ln, "\r\n")] = 0; snprintf(out, cap, "%s", ln + kl + 3); fclose(fp); return 1; } fclose(fp); return 0; }
+static int run_capture(char *const av[], char *out, size_t cap) { int pf[2]; if (pipe(pf)) return -1; pid_t c = fork(); if (c < 0) return -1; if (c == 0) { close(pf[0]); dup2(pf[1], 1); int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 2); } execv(av[0], av); _exit(127); } close(pf[1]); size_t n = 0; ssize_t r; while (n + 1 < cap && (r = read(pf[0], out + n, cap - 1 - n)) > 0) n += (size_t)r; out[n] = 0; close(pf[0]); int st; waitpid(c, &st, 0); return WIFEXITED(st) ? WEXITSTATUS(st) : -1; }
+static int house_of(const char *inst, char *house, size_t cap) { const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (!h) return 0; snprintf(house, cap, "%.*s", (int)(h - inst), inst); return 1; }
+static void host_list_path(const char *house, char *o, size_t cap) { snprintf(o, cap, "%s/&.hq-apps/plus-phone/net/hosts.pdl", house); }
+static char HL_BIN[P]; static int PUBLISHED; static time_t LAST_PUB;
+static void host_publish(const char *inst) {      /* find our own peer in the presence directory (project_id tsc-<n>) and publish its address and port */
+    char house[P]; if (!house_of(inst, house, sizeof house)) return; char dir[P]; snprintf(dir, sizeof dir, "%s/&.hq-apps/plus-phone/net/presence", house); const char *b = strrchr(inst, '/'); char proj[96]; snprintf(proj, sizeof proj, "tsc-%s", b ? b + 1 : "0");
+    DIR *d = opendir(dir); if (!d) return; struct dirent *e; char host[84] = "", port[16] = "";
+    while ((e = readdir(d))) { char want[110]; snprintf(want, sizeof want, "%s-", proj); if (strncmp(e->d_name, want, strlen(want))) continue; char f[P], ln[200]; snprintf(f, sizeof f, "%s/%s", dir, e->d_name); FILE *fp = fopen(f, "r"); if (!fp) continue; while (fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "host=", 5)) snprintf(host, sizeof host, "%s", ln + 5); else if (!strncmp(ln, "port=", 5)) snprintf(port, sizeof port, "%s", ln + 5); } fclose(fp); if (host[0] && port[0]) break; }
+    closedir(d); if (!host[0] || !port[0]) return; char list[P], bin[P]; host_list_path(house, list, sizeof list); snprintf(bin, sizeof bin, "%s/&.hq-apps/plus-phone/ops/+x/hostlist_op.+x", house); if (access(bin, X_OK)) return; char out[200]; char id[96]; snprintf(id, sizeof id, "%s", proj);
+    char *av[] = { bin, "publish", list, "tsc", id, host, port, "--ttl", "600", "--note", "True Swords Clash", NULL }; run_capture(av, out, sizeof out); PUBLISHED = strstr(out, "HOST-PUBLISHED") != NULL;
+}
+static void host_unpublish(const char *inst) { char house[P]; if (!house_of(inst, house, sizeof house)) return; const char *b = strrchr(inst, '/'); char proj[96], list[P], bin[P], out[100]; snprintf(proj, sizeof proj, "tsc-%s", b ? b + 1 : "0"); host_list_path(house, list, sizeof list); snprintf(bin, sizeof bin, "%s/&.hq-apps/plus-phone/ops/+x/hostlist_op.+x", house); if (access(bin, X_OK)) return; char *av[] = { bin, "remove", list, proj, NULL }; run_capture(av, out, sizeof out); }
+static void seeds_for_join(const char *inst, char *seeds, size_t cap) {      /* fetch the master list first when a URL is set, then the live hosts of kind tsc as addr:port,addr:port */
+    seeds[0] = 0; char house[P]; if (!house_of(inst, house, sizeof house)) return; char list[P], bin[P], url[400], out[600]; host_list_path(house, list, sizeof list); snprintf(bin, sizeof bin, "%s/&.hq-apps/plus-phone/ops/+x/hostlist_op.+x", house); if (access(bin, X_OK)) return;
+    if (pref_row(house, "HOSTLIST_URL", url, sizeof url) && !strncmp(url, "https://", 8)) { char *av[] = { bin, "fetch", url, list, NULL }; run_capture(av, out, sizeof out); }
+    char *av2[] = { bin, "seeds", list, "tsc", NULL }; if (run_capture(av2, out, sizeof out) == 0) { out[strcspn(out, "\r\n")] = 0; snprintf(seeds, cap, "%s", out); }
+}
 static long PEER_PID; static char PEER_EPOCH[40];
 static void peer_stop(void) { if (PEER_PID > 1) { kill((pid_t)PEER_PID, SIGTERM); PEER_PID = 0; } }
 static void peer_start(const char *inst) {
@@ -241,8 +262,9 @@ static void peer_start(const char *inst) {
     snprintf(peer, sizeof peer, "%s/palnet_peer.+x", self); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", house); snprintf(root, sizeof root, "%s/&.hq-apps/plus-phone/net/presence", house); snprintf(outf, sizeof outf, "%s/net_out.txt", MATCH); snprintf(inf, sizeof inf, "%s/net_in.txt", MATCH); snprintf(sp, sizeof sp, "%s/net_spawn.out", MATCH);
     const char *b = strrchr(inst, '/'); snprintf(proj, sizeof proj, "tsc-%s", b ? b + 1 : "0"); snprintf(owner, sizeof owner, "%d", (int)getpid()); if (access(peer, X_OK) || access(funnel, R_OK)) return;
     { char cmd[P + 20]; snprintf(cmd, sizeof cmd, "mkdir -p '%s'", root); (void)cmd; char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/plus-phone/net", house); mkdir(d, 0755); mkdir(root, 0755); }
+    char seeds[512] = "", adv[84] = "", stn[16]; net_state(stn, sizeof stn); if (!strcmp(stn, "join")) seeds_for_join(inst, seeds, sizeof seeds); pref_row(house, "NET_ADVERTISE", adv, sizeof adv);
     pid_t c = fork(); if (c < 0) return;
-    if (c == 0) { int fd = open(sp, O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) dup2(fd, 1); int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 2); } setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "tsc", 1); setenv("PRISC_NET_ROOT", root, 1); setenv("PRISC_PROJECT_ROOT", MATCH, 1);
+    if (c == 0) { int fd = open(sp, O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) dup2(fd, 1); int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 2); } setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "tsc", 1); setenv("PRISC_NET_ROOT", root, 1); setenv("PRISC_PROJECT_ROOT", MATCH, 1); { char ow[24]; snprintf(ow, sizeof ow, "%d", (int)getppid()); setenv("PALNET_OWNER_PID", ow, 1); } if (seeds[0]) setenv("PALNET_SEEDS", seeds, 1); if (adv[0]) { setenv("PALNET_BIND", "0.0.0.0", 1); setenv("PALNET_ADVERTISE", adv, 1); }
         char *av[] = { "sh", funnel, house, owner, "tsc-net", "--", peer, "tsc", proj, "-", outf, inf, "tsc", NULL }; execv("/bin/sh", av); _exit(127); }
     waitpid(c, NULL, 0); FILE *fp = fopen(sp, "r"); char out[64] = ""; if (fp) { if (fgets(out, sizeof out, fp)) {} fclose(fp); } unlink(sp); PEER_PID = atol(out);
 }
@@ -268,7 +290,9 @@ static int module_main(const char *inst, int once) {
         char st[16]; net_state(st, sizeof st); int force = 0;
         if (st[0]) { char ep[40] = "", ef[P]; snprintf(ef, sizeof ef, "%s/net_epoch.txt", MATCH); FILE *e = fopen(ef, "r"); if (e) { if (fgets(ep, sizeof ep, e)) ep[strcspn(ep, "\r\n")] = 0; fclose(e); }
             if (!PEER_PID || strcmp(ep, PEER_EPOCH)) { peer_stop(); peer_start(inst); snprintf(PEER_EPOCH, sizeof PEER_EPOCH, "%s", ep); force = 1; }
-            if (net_pump()) force = 1; } else if (PEER_PID) { peer_stop(); PEER_EPOCH[0] = 0; }
+            if (net_pump()) force = 1;
+            if (!strcmp(st, "host")) { time_t tn = time(NULL); if (!access(LEDGER, F_OK)) { if (PUBLISHED) { host_unpublish(inst); PUBLISHED = 0; } } else if (!PUBLISHED || tn - LAST_PUB >= 300) { host_publish(inst); if (PUBLISHED) LAST_PUB = tn; } } }
+        else { if (PUBLISHED) { host_unpublish(inst); PUBLISHED = 0; } if (PEER_PID) { peer_stop(); PEER_EPOCH[0] = 0; } }
         long m = msizeq(); time_t now = time(NULL); if (force || m != seen || now - last >= 5) { publish(); seen = m; last = now; } if (getppid() == 1) { peer_stop(); return 0; } usleep(400000); }
 }
 int main(int argc, char **argv) {

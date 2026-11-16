@@ -574,7 +574,10 @@ int main(int argc, char **argv) {
 
     time_t last_heartbeat = time(NULL);
 
+    /* 2026-11-15 (tsc package copy): optional PALNET_OWNER_PID - the peer ends by itself when that process is gone (the spawn funnel did not end the peers of closed phone windows: five strays seen after 30 min; house rule: a process exits when its owner is gone) */
+    const char *owner_env = getenv("PALNET_OWNER_PID"); pid_t owner_pid = (owner_env && owner_env[0]) ? (pid_t)atol(owner_env) : 0;
     while (!g_shutdown_requested) {
+        if (owner_pid > 1) { int gone = kill(owner_pid, 0) != 0 && errno == ESRCH; if (!gone) { char sp[64], sl[256] = ""; snprintf(sp, sizeof sp, "/proc/%ld/stat", (long)owner_pid); FILE *sf = fopen(sp, "r"); if (sf) { if (fgets(sl, sizeof sl, sf)) {} fclose(sf); char *rp = strrchr(sl, ')'); gone = rp && rp[1] == ' ' && rp[2] == 'Z'; } } if (gone) { g_shutdown_requested = 1; break; } }
         fd_set rfds;
         FD_ZERO(&rfds);
         FD_SET(g_listen_fd, &rfds);

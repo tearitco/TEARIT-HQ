@@ -1,0 +1,66 @@
+# phone_hostlist (2026-11-15): the master host list op (&.hq-apps/plus-phone/ops/hostlist_op.c), scratch files only, a fake clock (--now), NO real network (the failed-fetch test points at a closed local port).
+# Proves: publish and list with a time to live; expired rows are not listed or seeded; the seed form is addr:port,addr:port; a bad port, a bad id and a bar in the note are REFUSED; publishing the same id again replaces it;
+# fetch merges a master list file and DROPS invalid or expired rows (counted); a missing source and an unreachable url change nothing; remove and prune.
+RESULTS | ../results/phone_hostlist.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | net
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/hostlist_op.+x | $T/hostlist_op.+x
+
+CASE    | publish-and-expire
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | tsc | phone-1 | 127.0.0.1 | 41000 | --ttl | 600 | --now | 1000
+EXPECT_OUT | HOST-PUBLISHED phone-1 127.0.0.1:41000 | published
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | tsc | --now | 1100
+EXPECT_OUT | tsc phone-1 127.0.0.1 41000 500 | listed-with-500-seconds-left
+EXPECT_OUT | HOSTS 1 | one-host
+RUN | $T/hostlist_op.+x | seeds | $T/net/hosts.pdl | tsc | --now | 1100
+EXPECT_OUT_IS | 127.0.0.1:41000 | the-seed-form-for-palnet
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | tsc | --now | 1700
+EXPECT_OUT | HOSTS 0 | NEGATIVE-an-expired-host-is-not-listed
+RUN | $T/hostlist_op.+x | seeds | $T/net/hosts.pdl | tsc | --now | 1700
+EXPECT_OUT_IS |  | NEGATIVE-and-gives-no-seed
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | other | --now | 1100
+EXPECT_OUT | HOSTS 0 | a-host-of-another-kind-is-not-listed-for-tsc-and-vice-versa
+
+CASE    | refusals
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | tsc | phone-2 | 127.0.0.1 | 80 | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-port-80-is-refused
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | tsc | ../etc | 127.0.0.1 | 41001 | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-an-id-with-a-slash-is-refused
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | TSC | phone-2 | 127.0.0.1 | 41001 | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-an-uppercase-kind-is-refused
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | tsc | phone-2 | 127.0.0.1 | 41001 | --note | a\pb | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-a-bar-in-the-note-is-refused
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | tsc | phone-2 | 127.0.0.1 | 41001 | --ttl | 5 | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-a-ttl-under-10-is-refused
+RUN | $T/hostlist_op.+x | publish | $T/net/hosts.pdl | tsc | phone-1 | 10.0.0.7 | 41005 | --now | 1000 | --ttl | 900
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | tsc | --now | 1000
+EXPECT_OUT | phone-1 10.0.0.7 41005 900 | publishing-the-same-id-replaces-the-row
+EXPECT_OUT | HOSTS 1 | and-does-not-add-a-second
+
+CASE    | fetch
+WRITE | master.pdl | # a master list\nHOST | tsc | alpha | 192.168.1.20 | 42000 | 5000 | friend one\nHOST | tsc | beta | 192.168.1.21 | 80 | 5000 | bad port\nHOST | TSC | gamma | 192.168.1.22 | 42002 | 5000 | bad kind\nHOST | tsc | delta | 192.168.1.23 | 42003 | 900 | already expired\nnot a row at all\n
+RUN | $T/hostlist_op.+x | fetch | $T/master.pdl | $T/net/hosts.pdl | --now | 1000
+EXPECT_OUT | FETCHED added=1 dropped=4 | one-good-row-merged-and-four-dropped
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | tsc | --now | 1000
+EXPECT_OUT | alpha 192.168.1.20 42000 | the-good-row-is-in
+EXPECT_OUT | HOSTS 2 | with-the-local-one
+RUN | $T/hostlist_op.+x | fetch | $T/nothing.pdl | $T/net/hosts.pdl | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-a-missing-source-is-refused
+RUN | $T/hostlist_op.+x | fetch | http://127.0.0.1:9/hosts.pdl | $T/net/hosts.pdl | --now | 1000
+EXPECT_EXIT | 1 | NEGATIVE-an-unreachable-url-fails-and-changes-nothing
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | tsc | --now | 1000
+EXPECT_OUT | HOSTS 2 | still-2-hosts
+
+CASE    | remove-and-prune
+RUN | $T/hostlist_op.+x | remove | $T/net/hosts.pdl | alpha
+EXPECT_OUT | HOST-REMOVED 1 | removed
+RUN | $T/hostlist_op.+x | prune | $T/net/hosts.pdl | --now | 99999
+EXPECT_OUT | PRUNED 1 | prune-drops-the-expired-row
+RUN | $T/hostlist_op.+x | list | $T/net/hosts.pdl | --now | 99999
+EXPECT_OUT | HOSTS 0 | and-the-list-is-empty
+
+CASE    | end
+CLEAN |

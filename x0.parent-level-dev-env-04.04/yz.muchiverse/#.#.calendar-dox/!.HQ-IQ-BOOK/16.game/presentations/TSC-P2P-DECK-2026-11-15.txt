@@ -1,0 +1,19 @@
+# True Swords Clash over p2p, two phones (2026-11-15). Real frames from a real run; BRAND rows set the colours (no blue).
+NUMBERS | off
+BRAND | tearit
+TITLE | Tear-it co | presents the +phone sandbox | Tear-it co presents the plus phone sandbox.
+BRAND | tsots
+TITLE | True Swords Clash | A TSOTS game, text edition, played over p2p between two phones | True Swords Clash, a TSOTS game, played between two phones.
+SHOT | /tmp/cc/vid/scene/s01.png | | Two phones open True Swords Clash. Nothing is connected yet.
+SHOT | /tmp/cc/vid/scene/s02.png | | Phone 1 taps host an online match.
+SHOT | /tmp/cc/vid/scene/s03.png | | Phone 2 taps join. Both ledgers get the same START row: same seed, seats 1 and 2.
+SHOT | /tmp/cc/vid/scene/s04.png | | Phone 1 sorts 2 verses. Phone 2 cannot see them.
+SHOT | /tmp/cc/vid/scene/s05.png | | Right order, plus 2 mana. Now it is phone 2's turn.
+SHOT | /tmp/cc/vid/scene/s06.png | | Phone 2 sorts its own 2 verses.
+SHOT | /tmp/cc/vid/scene/s07.png | | Right again, plus 2 mana.
+SHOT | /tmp/cc/vid/scene/s08.png | | Phone 1 casts Fire: die 5, 5 damage.
+SHOT | /tmp/cc/vid/scene/s09.png | | Phone 2 casts Fire: die 1, 1 damage.
+SHOT | /tmp/cc/vid/scene/s10.png | | Phone 1 forfeits. Ratings 984 and 1016. The two ledgers are byte-identical.
+SLIDE | What you just saw | Real taps on two real phone windows ; One ledger on both phones, identical byte for byte ; Every received move is verified by replay ; A forged move is refused ; Elo after the match: 984 and 1016 ; Tested by cases tsc_p2p and tsc_rules | Real taps, one ledger, every move verified, Elo 984 and 1016.
+BRAND | tearit
+TITLE | Tear-it co | +phone, app-edit and the office tools | Tear-it co. Plus phone, app edit, and the office tools.

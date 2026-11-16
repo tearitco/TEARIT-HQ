@@ -99,12 +99,17 @@ static int v_new(void) {
     long pid = launch(in); if (!pid) { printf("PHONE-FAILED could not start the window (layout, renderer or spawn funnel missing)\n"); return 1; }
     printf("PHONE-OPENED %d port=%d pid=%ld\n", num, port, pid); return 0;
 }
-static int v_prefs(const char *key, const char *val) {      /* phone_prefs.pdl is a PREFERENCE file (no game state): only ICON_MAX so far, validated, written atomically */
-    if (strcmp(key, "icon_max")) { printf("PREFS-REFUSED unknown setting %s (known: icon_max)\n", key); return 1; }
-    char f[P]; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", HOUSE);
-    if (!val) { printf("icon_max %s\n", ICON_NAME[icon_cap()]); return 0; }
-    int ok = 0; for (int i = 0; i < 3; i++) if (!strcmp(val, ICON_NAME[i])) ok = 1; if (!ok) { printf("PREFS-REFUSED icon_max must be small, medium or large (got %s); nothing changed\n", val); return 1; }
-    char txt[200]; snprintf(txt, sizeof txt, "# phone_prefs.pdl - a PREFERENCE of the plus phone (never read as game input). Written by `phone_op prefs`.\nICON_MAX | %s\n", val); wr(f, txt); printf("PREFS-SET icon_max %s\n", val); return 0;
+/* phone_prefs.pdl is a PREFERENCE file (no game state), whole file rewritten atomically. Keys: icon_max (small|medium|large), hostlist_url (https://..., the master host list to fetch before joining; `-` clears it), net_advertise (the address other machines should dial, an IPv4 or host name; `-` clears it). */
+static int pref_valid_word(const char *s, const char *extra, size_t hi) { size_t n = strlen(s); if (!n || n > hi) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || strchr(extra, *s))) return 0; return 1; }
+static void pref_read(const char *f, const char *key, char *out, size_t cap) { out[0] = 0; FILE *fp = fopen(f, "r"); if (!fp) return; char ln[600]; size_t kl = strlen(key); while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, key, kl) || strncmp(ln + kl, " | ", 3)) continue; ln[strcspn(ln, "\r\n")] = 0; snprintf(out, cap, "%s", ln + kl + 3); break; } fclose(fp); }
+static int v_prefs(const char *key, const char *val) {
+    int is_icon = !strcmp(key, "icon_max"), is_url = !strcmp(key, "hostlist_url"), is_adv = !strcmp(key, "net_advertise"); if (!is_icon && !is_url && !is_adv) { printf("PREFS-REFUSED unknown setting %s (known: icon_max, hostlist_url, net_advertise)\n", key); return 1; }
+    char f[P], url[400], adv[100]; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", HOUSE); pref_read(f, "HOSTLIST_URL", url, sizeof url); pref_read(f, "NET_ADVERTISE", adv, sizeof adv); const char *icon = ICON_NAME[icon_cap()];
+    if (!val) { if (is_icon) printf("icon_max %s\n", icon); else printf("%s %s\n", key, is_url ? (url[0] ? url : "-") : (adv[0] ? adv : "-")); return 0; }
+    if (is_icon) { int ok = 0; for (int i = 0; i < 3; i++) if (!strcmp(val, ICON_NAME[i])) ok = 1; if (!ok) { printf("PREFS-REFUSED icon_max must be small, medium or large (got %s); nothing changed\n", val); return 1; } icon = val; }
+    else if (is_url) { if (!strcmp(val, "-")) url[0] = 0; else if (!strncmp(val, "https://", 8) && strlen(val) <= 300 && pref_valid_word(val + 8, "./-_:?=&%~", 290)) snprintf(url, sizeof url, "%s", val); else { printf("PREFS-REFUSED hostlist_url must be an https:// address of at most 300 plain characters (nothing changed)\n"); return 1; } }
+    else { if (!strcmp(val, "-")) adv[0] = 0; else if (pref_valid_word(val, ".-", 80)) snprintf(adv, sizeof adv, "%s", val); else { printf("PREFS-REFUSED net_advertise must be an IPv4 address or a host name (nothing changed)\n"); return 1; } }
+    char txt[900]; snprintf(txt, sizeof txt, "# phone_prefs.pdl - a PREFERENCE of the plus phone (never read as game input). Written by `phone_op prefs`.\nICON_MAX | %s\n", icon); if (url[0]) { size_t l = strlen(txt); snprintf(txt + l, sizeof txt - l, "HOSTLIST_URL | %s\n", url); } if (adv[0]) { size_t l = strlen(txt); snprintf(txt + l, sizeof txt - l, "NET_ADVERTISE | %s\n", adv); } wr(f, txt); printf("PREFS-SET %s %s\n", key, val); return 0;
 }
 static int v_list(void) { char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/plus-phone/instances", HOUSE); DIR *dp = opendir(d); if (!dp) { printf("PHONES 0\n"); return 0; } struct dirent *e; int n = 0;
     while ((e = readdir(dp))) { if (e->d_name[0] == '.') continue; char in[P], po[16] = "", or_[16] = ""; snprintf(in, sizeof in, "%s/%s", d, e->d_name); kv(in, "PORT", po, sizeof po); kv(in, "ORIENT", or_, sizeof or_); printf("%s %s %s %s\n", e->d_name, po, or_, is_window(pid_of(in)) ? "running" : "stopped"); n++; } closedir(dp); printf("PHONES %d\n", n); return 0; }

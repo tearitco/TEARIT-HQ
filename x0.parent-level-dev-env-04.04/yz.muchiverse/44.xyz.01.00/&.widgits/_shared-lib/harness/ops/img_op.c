@@ -3,6 +3,8 @@
  *   img_op mean <png> <x0> <y0> <x1> <y1>               mean luma (0..255) of the box, one decimal
  *   img_op vrun <png> <x0> <x1> <y0> <y1> [thresh]      the longest vertical run of pixels brighter than thresh (default 110) in any column x0..x1-1 within y0..y1-1: a scrollbar thumb is a long run, text never is
  *   img_op diff <a.png> <b.png> <x0> <y0> <x1> <y1> [thr]   how many pixels of the box differ by more than thr (default 40) in luma: "did this region change?"
+ *   img_op bluepx <png> [x0 y0 x1 y1]                  how many pixels are BLUE-dominant (b > r+30 and b >= g-10 and b > 60: blue and cyan, never grey, yellow or red): "is the picture still blue?" (added 2026-11-15 for the brand video)
+  *   img_op bluesolid <png>                              pixels that are clearly blue (b > r+80, b >= g, b > 120): fringes of text anti-aliasing do not count, a blue area does
  *   img_op size <png>                                    "<w> <h>"
  * Exit 0 and one number on stdout; 2 on a usage error or an unreadable file (a case then FAILs on EXPECT_EXIT). */
 #include <stdio.h>
@@ -18,6 +20,8 @@ int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: img_op mean|vrun|diff|size ...\n"); return 2; }
     int w, h; unsigned char *a = load(argv[2], &w, &h); if (!a) return 2;
     if (!strcmp(argv[1], "size")) { printf("%d %d\n", w, h); return 0; }
+    if (!strcmp(argv[1], "bluepx")) { int x0 = 0, y0 = 0, x1 = w, y1 = h; if (argc >= 7) { x0 = clampi(atoi(argv[3]), 0, w); y0 = clampi(atoi(argv[4]), 0, h); x1 = clampi(atoi(argv[5]), 0, w); y1 = clampi(atoi(argv[6]), 0, h); } long n = 0; for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) { const unsigned char *px = a + ((size_t)y * w + x) * 4; int r = px[0], g = px[1], b = px[2]; if (b > r + 30 && b >= g - 10 && b > 60) n++; } printf("%ld\n", n); return 0; }
+    if (!strcmp(argv[1], "bluesolid")) { long n = 0; for (long i = 0; i < (long)w * h; i++) { const unsigned char *px = a + i * 4; int r = px[0], g = px[1], b = px[2]; if (b > r + 80 && b >= g && b > 120) n++; } printf("%ld\n", n); return 0; }
     if (!strcmp(argv[1], "mean") && argc >= 7) { int x0 = clampi(atoi(argv[3]), 0, w), y0 = clampi(atoi(argv[4]), 0, h), x1 = clampi(atoi(argv[5]), 0, w), y1 = clampi(atoi(argv[6]), 0, h); double s = 0; long n = 0;
         for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) { s += luma(a + ((size_t)y * w + x) * 4); n++; } if (!n) return 2; printf("%.1f\n", s / n); return 0; }
     if (!strcmp(argv[1], "vrun") && argc >= 7) { int x0 = clampi(atoi(argv[3]), 0, w), x1 = clampi(atoi(argv[4]), 0, w), y0 = clampi(atoi(argv[5]), 0, h), y1 = clampi(atoi(argv[6]), 0, h), th = argc >= 8 ? atoi(argv[7]) : 110, best = 0;

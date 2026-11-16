@@ -1,0 +1,25 @@
+# video_brand (2026-11-15): owner "make sure that video isn't still blue: yellow/black or black/red". The REAL video_op builds three slides from a deck, one per BRAND row; img_op bluepx counts blue-dominant pixels.
+# Proves: a Tear-it (yellow on black) slide and a TSOTS (red on black) slide have NO blue pixels, and the old classic (navy/blue) look DOES (the control: the counter can fail). Needs ffmpeg and the DejaVu fonts.
+RESULTS | ../results/video_brand.txt
+ENV | LC_ALL | C
+
+CASE    | slides
+SCRATCH |
+WRITE | deck.txt | BRAND | tearit\nTITLE | Tear-it co | presents the phone | caption one\nBRAND | tsots\nSLIDE | True Swords Clash | one ; two | caption two\nBRAND | classic\nTITLE | Old look | the control | caption three\n
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/video_op.+x | deck | $T/deck.txt | $T/out
+EXPECT_EXIT | 0 | deck-built
+EXPECT_OUT | slides=3 | three-slides
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | bluepx | $T/out/snapshots/01_Tear_it_co.png
+CAPTURE | b1
+EXPECT_LE | $b1 | 0 | the-tear-it-co-slide-has-no-blue-pixels
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | bluepx | $T/out/snapshots/02_True_Swords_Clash.png
+CAPTURE | b2
+EXPECT_LE | $b2 | 0 | the-TSOTS-slide-has-no-blue-pixels
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | bluepx | $T/out/snapshots/03_Old_look.png
+CAPTURE | b3
+EXPECT_GE | $b3 | 1000 | NEGATIVE-CONTROL-the-classic-look-is-blue-so-the-counter-can-fail
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/img_op.+x | bluesolid | $T/out/snapshots/03_Old_look.png
+CAPTURE | b4
+EXPECT_GE | $b4 | 1000 | and-bluesolid-sees-it-too
+CASE    | end
+CLEAN |

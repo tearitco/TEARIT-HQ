@@ -1,0 +1,4 @@
+# phone_hostlist.pal - the +phone master host list op (2026-11-15). See cases/phone_hostlist.pdl
+exec ./ops/+x/harness_case_op.+x cases/phone_hostlist.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/phone_hostlist.pdl
+halt

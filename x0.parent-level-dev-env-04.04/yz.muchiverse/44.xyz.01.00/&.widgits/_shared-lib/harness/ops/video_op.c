@@ -2,7 +2,7 @@
 /* video_op - slides and narrated videos WITHOUT Python (owner 2026-11-04: no Python; replaces presentation/make_deck.py, remote_tts.py and the PIL part of make_presentation_video.py).
  *   video_op deck   <deck.txt> <outdir>              1280x720 PNG slides -> <outdir>/snapshots/NN_*.png and <outdir>/manifest.txt
  *   video_op render <outdir> [--captions] [--no-tts]  <outdir>/manifest.txt -> <outdir>/video.mp4 (one frame per row, held while its narration plays)
- * Deck file (fields split by "|", bullets by ";", "#" = comment):  TITLE | title | subtitle | narration      SLIDE | heading | bullet ; bullet ; ... | narration      SHOT | picture.png | | narration  (a real 1280x720 picture as one frame)
+  * Deck file (BRAND | tearit|tsots|classic recolours the slide rows that follow it: no blue unless classic) (fields split by "|", bullets by ";", "#" = comment):  TITLE | title | subtitle | narration      SLIDE | heading | bullet ; bullet ; ... | narration      SHOT | picture.png | | narration  (a real 1280x720 picture as one frame)
  * Manifest (one row per snapshot, playback order):  file | seconds | caption      (the caption is the narration text; with --captions it is also drawn on the frame, for window shots)
  * Pictures and video are made by ffmpeg (drawtext, concat, apad) and the audio length by ffprobe: external programs run with fork/exec, no shell. Narration: the wav of each caption comes from the Kokoro
  * service on another machine over ssh (the machine is named by PRESENT_TTS_HOST, user@host: never hardcoded here; heavy work goes off the desktop). Kokoro is Python on THAT machine: an outside service, not our code.
@@ -40,18 +40,26 @@ static void mk(const char *d) { mkdir(d, 0755); }
 /* The slide footer's status word comes from the deck (`FOOTER | progress cut`), never from this program: until 2026-11-07 it was hard-coded as "proposed plan", which put that label on a progress video
  * that reported built and tested work (seen in a frame of the nov-7 video). No FOOTER row = no status word. */
 static char g_foot[80] = "";
+static const char *C_BG = "0x121622", *C_ACC = "0x5aa0ff", *C_HEAD = "0xebf0ff", *C_SUB = "0x96beff", *C_BUL = "0xdce2f0", *C_RULE = "0x3c5078", *C_FOOT = "0x788296"; static char g_brand_name[40] = "LyfeDesk";      /* deck row `BRAND | tearit|tsots|classic` (2026-11-15, owner: the video must not be blue: yellow on black for Tear-it co, red on black for TSOTS) */
 static int g_nonum = 0;      /* deck row `NUMBERS | off`: the footer carries no "n / total" (a video that mixes deck slides with real screenshots has its own order, so the deck numbers misled; 2026-11-09) */
+static int cur_brand = 0, row_brand[MAXR];      /* 0 classic, 1 tearit, 2 tsots: a BRAND row applies to the slide rows that FOLLOW it, so one deck can open in Tear-it yellow and play on in TSOTS red */
+static void set_brand(int b) {
+    if (b == 1) { C_BG = "0x000000"; C_ACC = "0xf5c400"; C_HEAD = "0xfff2b0"; C_SUB = "0xd9b400"; C_BUL = "0xf0e6b8"; C_RULE = "0x6b5600"; C_FOOT = "0x9a8200"; snprintf(g_brand_name, sizeof g_brand_name, "Tear-it co"); }
+    else if (b == 2) { C_BG = "0x000000"; C_ACC = "0xd41f1f"; C_HEAD = "0xf2d6d6"; C_SUB = "0xd05050"; C_BUL = "0xe8caca"; C_RULE = "0x5a1414"; C_FOOT = "0x9a4040"; snprintf(g_brand_name, sizeof g_brand_name, "TSOTS"); }
+    else { C_BG = "0x121622"; C_ACC = "0x5aa0ff"; C_HEAD = "0xebf0ff"; C_SUB = "0x96beff"; C_BUL = "0xdce2f0"; C_RULE = "0x3c5078"; C_FOOT = "0x788296"; snprintf(g_brand_name, sizeof g_brand_name, "LyfeDesk"); }
+}
 
 /* one slide: drawtext rows (textfile per row, so no escaping of the content) over a dark background */
 static int slide(int title, const char *head, const char *sub, char bullets[][200], int nb, int n, int total, const char *tmp, const char *out) {
     char flt[8192] = ""; size_t fl = 0; int k = 0; char tf[P];
 #define DT(txt, font, size, col, x, y) do { snprintf(tf, sizeof tf, "%s/t%d.txt", tmp, k++); wfile(tf, txt); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawtext=fontfile=%s:textfile=%s:fontsize=%d:fontcolor=%s:x=%d:y=%d", font, tf, size, col, x, y); } while (0)
-    fl += (size_t)snprintf(flt + fl, sizeof flt - fl, "drawbox=x=0:y=0:w=1280:h=10:color=0x5aa0ff:t=fill");
-    char foot[200]; if (g_nonum) { if (g_foot[0]) snprintf(foot, sizeof foot, "LyfeDesk  -  %s", g_foot); else snprintf(foot, sizeof foot, "LyfeDesk"); } else if (g_foot[0]) snprintf(foot, sizeof foot, "LyfeDesk  -  %s  -  %d / %d", g_foot, n, total); else snprintf(foot, sizeof foot, "LyfeDesk  -  %d / %d", n, total); DT(foot, FR, 18, "0x788296", 48, 680);
-    if (title) { char L[6][200]; int nl = wrap(head, 26, L, 6); for (int i = 0; i < nl; i++) DT(L[i], FB, 66, "0xebf0ff", 70, 210 + i * 78); nl = wrap(sub, 60, L, 4); for (int i = 0; i < nl; i++) DT(L[i], FR, 30, "0x96beff", 74, 450 + i * 40); }
-    else { DT(head, FB, 46, "0xebf0ff", 60, 44); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=60:y=112:w=1160:h=3:color=0x3c5078:t=fill"); int y = 140;
-        for (int b = 0; b < nb; b++) { char L[6][200]; int nl = wrap(bullets[b], 66, L, 6); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=66:y=%d:w=14:h=14:color=0x5aa0ff:t=fill", y + 14); for (int i = 0; i < nl; i++) { DT(L[i], FR, 31, "0xdce2f0", 104, y); y += 42; } y += 16; } }
-    char *av[] = { "nice", "-n", "15", "ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=0x121622:s=1280x720", "-frames:v", "1", "-vf", flt, (char *)out, NULL };
+    fl += (size_t)snprintf(flt + fl, sizeof flt - fl, "drawbox=x=0:y=0:w=1280:h=10:color=%s:t=fill", C_ACC);
+    char foot[200]; { const char *nm = g_brand_name; if (g_nonum) { if (g_foot[0]) snprintf(foot, sizeof foot, "%s  -  %s", nm, g_foot); else snprintf(foot, sizeof foot, "%s", nm); } else if (g_foot[0]) snprintf(foot, sizeof foot, "%s  -  %s  -  %d / %d", nm, g_foot, n, total); else snprintf(foot, sizeof foot, "%s  -  %d / %d", nm, n, total); } DT(foot, FR, 18, C_FOOT, 48, 680);
+    if (title) { char L[6][200]; int nl = wrap(head, 26, L, 6); for (int i = 0; i < nl; i++) DT(L[i], FB, 66, C_HEAD, 70, 210 + i * 78); nl = wrap(sub, 60, L, 4); for (int i = 0; i < nl; i++) DT(L[i], FR, 30, C_SUB, 74, 450 + i * 40); }
+    else { DT(head, FB, 46, C_HEAD, 60, 44); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=60:y=112:w=1160:h=3:color=%s:t=fill", C_RULE); int y = 140;
+        for (int b = 0; b < nb; b++) { char L[6][200]; int nl = wrap(bullets[b], 66, L, 6); fl += (size_t)snprintf(flt + fl, sizeof flt - fl, ",drawbox=x=66:y=%d:w=14:h=14:color=%s:t=fill", y + 14, C_ACC); for (int i = 0; i < nl; i++) { DT(L[i], FR, 31, C_BUL, 104, y); y += 42; } y += 16; } }
+    char bgs[64]; snprintf(bgs, sizeof bgs, "color=c=%s:s=1280x720", C_BG);
+    char *av[] = { "nice", "-n", "15", "ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", bgs, "-frames:v", "1", "-vf", flt, (char *)out, NULL };
     return run(av, NULL);
 }
 static int cmd_deck(const char *deck, const char *outdir) {
@@ -59,10 +67,11 @@ static int cmd_deck(const char *deck, const char *outdir) {
     FILE *f = fopen(deck, "r"); if (!f) { fprintf(stderr, "video_op: cannot read %s\n", deck); return 1; }
     static char rows[MAXR][8192]; int nr = 0; while (fgets(ln, sizeof ln, f) && nr < MAXR) { char *t = trim(ln); if (!*t || *t == '#') continue;
         if (!strncmp(t, "FOOTER", 6)) { char *bar = strchr(t, '|'); if (bar) snprintf(g_foot, sizeof g_foot, "%s", trim(bar + 1)); continue; }      /* FOOTER | text: not a slide */
+        if (!strncmp(t, "BRAND", 5)) { char *bar = strchr(t, '|'); const char *b = bar ? trim(bar + 1) : ""; cur_brand = !strcmp(b, "tearit") ? 1 : !strcmp(b, "tsots") ? 2 : 0; continue; }      /* BRAND | tearit (yellow on black) / tsots (red on black) / classic; not a slide */
         if (!strncmp(t, "NUMBERS", 7)) { char *bar = strchr(t, '|'); g_nonum = bar && !strcmp(trim(bar + 1), "off"); continue; }      /* NUMBERS | off: no page numbers in the footer; not a slide */
-        snprintf(rows[nr++], sizeof rows[0], "%s", t); } fclose(f);
+        row_brand[nr] = cur_brand; snprintf(rows[nr++], sizeof rows[0], "%s", t); } fclose(f);
     FILE *m = fopen(mpath, "w"); if (!m) return 1; char tmp[P]; snprintf(tmp, sizeof tmp, "%s/.t", outdir); mk(tmp);
-    for (int i = 0; i < nr; i++) { char *fld[4] = { 0 }, *p = rows[i]; int nf = 0; while (nf < 4) { fld[nf++] = p; char *b = strchr(p, '|'); if (!b || nf == 4) break; *b = 0; p = b + 1; }
+    for (int i = 0; i < nr; i++) { set_brand(row_brand[i]); char *fld[4] = { 0 }, *p = rows[i]; int nf = 0; while (nf < 4) { fld[nf++] = p; char *b = strchr(p, '|'); if (!b || nf == 4) break; *b = 0; p = b + 1; }
         for (int k = 0; k < nf; k++) { fld[k] = trim(fld[k]); }
         if (nf < 4) { fprintf(stderr, "video_op: row %d needs 4 fields\n", i + 1); fclose(m); return 1; }
         char name[96]; int w = 0; for (const char *c = fld[1]; *c && w < 30; c++) name[w++] = (*c >= '0' && *c <= '9') || (*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') ? *c : '_'; name[w] = 0;

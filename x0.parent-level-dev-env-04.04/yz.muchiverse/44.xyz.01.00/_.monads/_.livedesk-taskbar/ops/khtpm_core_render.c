@@ -771,6 +771,7 @@ static void load_theme_colors(void) {
     FILE *f = fopen(path, "r");
     if (!f) return;
     char line[PATH_BUF];
+    char acc_over[16] = "";      /* optional `COLOR | accent | #rrggbb` row (2026-11-15, owner: the brand video must be yellow/black or black/red, never blue): wins over the derived accent below */
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "COLOR", 5) != 0) continue;
         char *p = strchr(line, '|');
@@ -792,13 +793,14 @@ static void load_theme_colors(void) {
         if (v[0] != '#') continue;
         if (strcmp(key, "bg") == 0) snprintf(g_theme_bg, sizeof(g_theme_bg), "%s", v);
         else if (strcmp(key, "fg") == 0) snprintf(g_theme_fg, sizeof(g_theme_fg), "%s", v);
+        else if (strcmp(key, "accent") == 0 && strlen(v) == 7) snprintf(acc_over, sizeof(acc_over), "%s", v);
     }
     fclose(f);
     /* g_theme_accent tracks g_theme_fg (a +150deg hue rotation - roughly
      * opposite-ish on the wheel without landing exactly on the
      * mathematical complement, which for some hues reads as muddy) -
      * recomputed every time the theme reloads, same as bg/fg. */
-    snprintf(g_theme_accent, sizeof(g_theme_accent), "%s", kh_hue_rotate_hex(g_theme_fg, 150.0));
+    snprintf(g_theme_accent, sizeof(g_theme_accent), "%s", acc_over[0] ? acc_over : kh_hue_rotate_hex(g_theme_fg, 150.0));
 }
 
 static double load_theme_opacity(void) {
