@@ -43,3 +43,12 @@ Live: photographs of the picker with the store tile, the store screen, an instal
 
 ## 7. Open questions
 Settled: the repo is public (owner 2026-11-16), no token. Still open: where the owner wants the first-install prompt (on the phone or in a desktop window); whether app versions can be pinned per app or only per repo commit (default: per repo commit); update flow (the notice only, for now).
+
+## 8. Dependencies ("dep"), owner 2026-11-16 (SAID): "verses is separate but will install dep if needed... a dep in meta .pdl, like a json npm file" (DOC design, not built)
+**Why:** True Swords Clash needs a 4.6 MB Bible text that is NOT part of the app (the owner's translated file; whether it is published publicly is his decision, so it is a separate package that can be approved or withheld on its own).
+**Manifest:** `manifest.pdl` gets rows `DEP | <dep id> | <minimum version>` (several allowed). `app_check` must accept the key (today an unknown key is an error) and check the id is a word.
+**Catalog:** a dependency is a catalog ENTRY of `KIND | phone-dep` (a DATA package: files only, same rules as an app: no binaries, no symlinks, no `+x`, tree hash verified, same pinned commit). It installs to `&.hq-apps/plus-phone/deps/<id>/` (not into `apps/`, so it never shows as a tile) with a `version.txt`.
+**Install:** `ui_install <app>` first resolves every `DEP` of the app: already installed at a high enough version = fine; else it must be a VERIFIED entry of the catalog, which is installed first (hash re-checked, ledger row `INSTALL|<dep>|...`); a dep that is not in the catalog = the app is NOT installed and the screen says `needs <dep> (not in the approved catalog)`. **Uninstall** of an app never removes a dep still named by another installed app's manifest.
+**App side:** the app reads the dep from `deps/<id>/` (TSC's `load_verses` looks there first, then its own folder, so the owner's local copy still works).
+**Tests (when built):** a package with a DEP installs the dep first (control: the dep is absent without the DEP row); a missing dep refuses the app and installs nothing; a dep with a wrong hash/ELF refuses the app; uninstalling one of two apps keeps the shared dep; `app_check` accepts DEP and refuses a bad id.
+**Status 2026-11-16:** the repo `https://github.com/tearitco/lyfedesk-approved-apps` is public and holds stock-x only (commit `2343adf`, history rebuilt to ONE commit so the verses file is in no object). TSC and the verses dep are added after this section is built and the owner decides whether the verses package is published.
