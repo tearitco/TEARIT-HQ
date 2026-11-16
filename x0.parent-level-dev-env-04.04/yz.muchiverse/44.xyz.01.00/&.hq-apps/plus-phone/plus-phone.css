@@ -1,8 +1,8 @@
 /* plus-phone.css - portrait phone (360 x 700). Colour/border plus the window size (explicit widths must be px). Dark palette of the other -hq windows; tiles are the house swatch. */
-window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
+window { font-family: Ubuntu; font-size: 10px; }      /* colours follow Settings (livedesk_theme.pdl bg / fg): owner 2026-11-15, no theme of our own */
 .phone-portrait { width: 360px; height: 700px; }
-.quiet { color: #8a8a8a; }
-.swatch { width: 120px; height: 120px; background-color: #1f3a5a; color: #ffffff; border: 1px solid #2f5f8f; border-width: 1; }
-.swatch.active { background-color: #2f5f8f; }
+.quiet { color: #909090; }
+.swatch { width: 120px; height: 120px; border: 1px solid #808080; border-width: 1; }
+.swatch.active { border: 1px solid #ffffff; }
 /* the phone's own top and bottom toolbars (2026-11-15, owner: every phone gets both, empty at first): full-width bands, no nav number */
-.bar-top, .bar-bottom { height: 28px; background-color: #1c1c1c; border: 1px solid #333333; border-width: 1; }
+.bar-top, .bar-bottom { height: 28px; border: 1px solid #606060; border-width: 1; }

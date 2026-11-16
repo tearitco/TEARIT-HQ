@@ -1,0 +1,43 @@
+# +phone as a dev platform: for agents and humans, consumer and enterprise (2026-11-15)
+
+Owner 2026-11-15: +phone is the interface of the TSOTS company's phone software, "separate but equal" with LyfeDesk; it should be a well documented dev platform for agents and humans, consumer and enterprise; the first product is a text True Swords Clash tested through the phone sandbox; a presentation video of a p2p PvP match comes when the pipeline is complete. Labels: **BUILT** (a case or a picture exists), **DESIGN** (only written), **OPEN** (owner decision).
+
+## 1. The pipeline, one line per stage
+`author (app-edit)` -> `package (a folder: manifest.pdl, screens/, ops/, data)` -> `check (app_check + layout_check)` -> `install/download (phone_op install, later pack get from GitHub)` -> `run (the phone opens the app's SCREEN)` -> `test (a harness case)` -> `present (screenshots/video)`.
+| Stage | What | State | Where |
+|---|---|---|---|
+| Author | app-edit lists projects, checks, exports to the phone, opens a phone | BUILT v1 (no screen editing yet) | `&.hq-apps/app-edit/`, case `app_edit` 14 |
+| Package | folder named after the app id; rows APP, TITLE, ICON, ORDER, PIN, ORIENT, PLATFORM, SCREEN; unknown keys refused | BUILT | `&.hq-apps/plus-phone/ops/app_check.c`, case `app_package` 22 |
+| Check | package check + the house layout validator on every screen | BUILT | `app_check`, `@.apps/layout-studio/ops/layout_check` |
+| Install | `phone_op install <house> <package>` (checked first, copied beside and renamed); `uninstall` | BUILT | `phone_op.c` |
+| Download | packs and apps from GitHub Releases / repos, sha256-checked, data only | DESIGN | design doc section 28 |
+| Run | `phone_op open` relaunches the phone window on the app's first SCREEN; `<` goes home | BUILT, seen live | `phone_op.c screen_layout()` |
+| App logic | ONE op per app = rules + the window's projector + UI verbs (the plugz / app-edit pattern); state = a ledger | BUILT for True Swords Clash | `projects/true-swords-clash/ops/tsc_op.c` |
+| Test | pal + case `.pdl` + C ops, scratch house, negatives | BUILT | cases `plus_phone` 47, `app_package` 22, `app_edit` 14, `tsc_rules` 61, `window_place` 15, `layout_preview` 7 |
+| Present | window PNGs by `dump_frame_png_op`, real relay clicks | BUILT for stills; video DESIGN | section 5 below |
+
+## 2. For an agent (how to build an app without reading the renderer)
+1. Make the folder `<app>/` with `manifest.pdl` (copy `projects/true-swords-clash/manifest.pdl`), an `icon/` sprite folder, `screens/<name>.xhtpm` + `.css`.
+2. A screen is ONE layout: `<window class="<app> database-window phone-portrait">` (the `database-window` class is what makes the css `width/height` size the window), a `<module>` that is your op, chrome buttons (`x` = `onclick="CLOSE"`, `<` = `phone_op home`), and `${var}` values from `<instance>/.hq_manager/ui.txt`. Buttons are `<item action="'<op>' '<verb>' '<arg>' '${ARG3}'">`; **`${PKG}` is the folder of the layout file** (`screens/`), so reach your op as `${PKG}/../ops/+x/<op>` and the phone as `${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x`.
+3. Your op has three jobs: the verbs (write files, append ONE byte to `marker.txt`), the module mode (republish `ui.txt` when the marker grew or every 5 s, end when the parent is gone), and `--once <instance>` for the harness.
+4. State rule (no ghost data): the match/game state is an append-only ledger; a replay recomputes every row and refuses an edited one; chance is a hash of seed + row number. Ratings and similar are PROJECTIONS derived from finished ledgers.
+5. Check with `app_check <package> <house>`, install with `phone_op install`, open with `phone_op open <instance> <app>`, photograph with `dump_frame_png_op <winid> out.png` and OPEN the PNG.
+6. Write the harness case first or with it (`harness/README.md`; no Python, no new logic `.sh`; run gated via `cpu_gate`).
+Traps found (each cost real time): a class set from a variable does not restyle visibly (put the state in the label text); a list taller than the window opens scrolled (trim to about 16 rows of 30 px); a sprite tile's caption must be one line; the first relay click after a restart is often dropped (retry and stop on the effect).
+
+## 3. For a human
+Open the phone (top bar `+`), tap an app. In app-edit pick a project, `check`, `export to the phone`, `open a phone`. Settings > the two colors (below) change the look of everything.
+
+## 4. Consumer and enterprise
+**Consumer (DESIGN):** apps and data packs are downloaded from the company's GitHub repos (section 28 of the phone design doc), paid in cones (a ledger row, not a flag); p2p play (TSC rated PvP) with a host list from GitHub. **Enterprise (DESIGN, OPEN):** the same packages, installed from a private repo or a private index (`packs.pdl` is just a URL and a sha256 list), with the signing rule for installable code still an owner decision; per-organisation themes use the two Settings colors; an audit trail is already the ledger of each app. Nothing here is verified against a real company deployment.
+
+## 5. Presentation notes: video color, font, capture
+- **Colors are the Settings "2 colors"** (owner 2026-11-15: use the existing settings, do not add a theme): `#.desktop/livedesk_theme.pdl` rows `COLOR | bg` and `COLOR | fg`. **Tear-it co = yellow on black:** bg `#000000`, fg `#f5c400`. **TSOTS = black and red:** bg `#000000`, fg `#d41f1f`. The phone and the True Swords Clash screen carry NO colors of their own now, so every label and chrome accent follows these two values (SEEN: XO nov-15 `13`, yellow). To record a scene in a brand: back up the theme file (`sha256sum` it), write the two values, relaunch the phone (`phone_op relaunch <instance>`; the renderer reads the theme at start), capture, copy the backup back and check the hash. It changes the owner's live desktop colors while it runs: say so before doing it.
+- **Font:** one css line, `font-family:` in the app's css (the draw core honours it; seen with `DejaVu Serif` on the TSC screen, `Ubuntu` on the phone grid). Installed faces: `fc-list : family`.
+- **Known gaps for a brand video:** the phone window's own background stays a fixed grey (not from css or Settings; renderer-owned); the app icon art is blue placeholder art and does not follow the colors; the tiles' border is a neutral grey.
+- **Video pipeline (DESIGN, not built this session):** frames = `dump_frame_png_op` after each real relay step (a manifest of steps with captions taken from real state values, like the rpg-space `board_ctl manifest` receipts), muxed with ffmpeg; narration with the local kokoro TTS (see the presentation-pipeline memory: no `-shortest`, check audio per frame). The old driver script is Python: do not extend it; write a C op or a case that emits the frame list and call ffmpeg from a case. The p2p PvP video needs the p2p match first.
+
+## 6. What is NOT done (honest list, in build order)
+1. **Events-based:** the match is a ledger and every row is an event, but the house event-page engine (blueprintz event pages, `triggers.pdl`) is NOT wired to the TSC ledger rows (the trigger sources today are toggle/done/failed; a "ledger row" source is not built). Plan: a package `events.pdl` (`ON | miracle | <verb>`) dispatched by the op, then pages through the existing trigger runner, editable in app-edit.
+2. **p2p PvP:** `palnet_peer` is same-machine only (127.0.0.1 hardcoded); a two-phone match needs both phones to exchange ledger rows (the seed in the START row makes both replays identical) and identity for ratings.
+3. App-edit editing (new app, new screen from a template, preview inside the editor); package download from GitHub; the Settings "Apps and data" screen; real icons; the video.
