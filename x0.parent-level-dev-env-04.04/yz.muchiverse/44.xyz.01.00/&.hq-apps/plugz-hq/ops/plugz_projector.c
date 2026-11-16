@@ -42,7 +42,7 @@ static void put(char *b, size_t cap, const char *fmt, ...) __attribute__((format
 static void put(char *b, size_t cap, const char *fmt, ...) { size_t l = strlen(b); va_list ap; va_start(ap, fmt); vsnprintf(b + l, cap - l, fmt, ap); va_end(ap); }
 static void clean(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '\t') *s = ' '; }
 
-static char last_ui[48 * 1024];
+static char last_ui[160 * 1024];   /* 237 registered tests + plugs need ~35 KB per 100 rows */
 static void publish(void) {
     char kind[32], book[128], page[128], sel_s[16], pend[96], last[400];
     rd1("kind.txt", kind, sizeof kind); rd1("book.txt", book, sizeof book); rd1("page.txt", page, sizeof page); rd1("sel.txt", sel_s, sizeof sel_s); rd1("pending.txt", pend, sizeof pend); rd1("last.txt", last, sizeof last);
@@ -51,8 +51,8 @@ static void publish(void) {
     char tmpr[P]; snprintf(tmpr, sizeof tmpr, "%s/rows.new", HQ);
     char *a1[] = { op, "rows", HOUSE, book, page, kind, tmpr, NULL }; char nul1[P]; snprintf(nul1, sizeof nul1, "/dev/null"); runop(a1, nul1);
     rename(tmpr, rowsf);
-    static char ids[64][96], txt[64][200], state[64][40]; int n = 0; FILE *fp = fopen(rowsf, "r"); char ln[512];
-    while (fp && n < 64 && fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; char *t1 = strchr(ln, '\t'); if (!t1) continue; *t1++ = 0; char *t2 = strchr(t1, '\t'); if (!t2) continue; *t2++ = 0;
+    static char ids[400][96], txt[400][200], state[400][40]; int n = 0; FILE *fp = fopen(rowsf, "r"); char ln[512];
+    while (fp && n < 400 && fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; char *t1 = strchr(ln, '\t'); if (!t1) continue; *t1++ = 0; char *t2 = strchr(t1, '\t'); if (!t2) continue; *t2++ = 0;
         snprintf(ids[n], sizeof ids[n], "%s", t1); snprintf(state[n], sizeof state[n], "%s", t2);
         if (!strcmp(kind, "plugs")) snprintf(txt[n], sizeof txt[n], "[%c] %s", !strcmp(t2, "on") ? 'x' : ' ', ln); else if (strcmp(t2, "-")) snprintf(txt[n], sizeof txt[n], "%s  [%s]", ln, t2); else snprintf(txt[n], sizeof txt[n], "%s", ln);
         clean(txt[n]); n++; }
