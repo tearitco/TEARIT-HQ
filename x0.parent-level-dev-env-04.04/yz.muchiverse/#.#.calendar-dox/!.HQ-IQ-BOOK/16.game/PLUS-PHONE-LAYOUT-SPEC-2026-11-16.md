@@ -65,3 +65,20 @@ Owner: "the individual app will also get a chrome (under the tb for phone hq). T
 **So the top stack inside the phone is THREE rows:** (1) the phone's chrome (meta window frame/title), (2) the phone top tb (`HQ v | phone : <page> v`), (3) the APP's chrome row directly beneath it (the app's name and its own window controls: minimize `_` back to home, close `x` = `closeapp`). This resolves question 1: the app's chrome is a separate row (not the same row as the app's own top tb). The app's own top tb (bar 3 in section 1) and bottom tb come after the chrome and are optional per app. Entities (a hotbar, cursword, ...) wait until this stack of three works.
 **Implementation shape (DOC):** token `${APP_CHROME}` in an app screen, built once by `phone_op` from the open app's manifest `TITLE` (like `${PHONE_FOOTER}`); the app never draws the phone's rows and the phone never knows the app's name except through the manifest.
 **Built 2026-11-16:** token `${APP_CHROME}` (portrait TSC screen); `phone_op` `app_chrome()` writes a tab bar `appchrome` directly under the phone tab bar: the app NAME as a display-only cell (class `no-nav`: no number, not a control; owner "the top app chrome does not need nav for the app name") plus `[_]` (= `phone_op home`, minimize) and `[x]` (= `closeapp`). Seen live: the name shows with no badge, typing `3` then Enter minimized TSC (same pid, `minimized.txt` set). Renderer: the existing opt-in class `no-nav` is now also honored by `<tab>` elements (display-only tab, narrower, not in `g_nav[]`; precedent: the dock strip and swatch grids already honored it). The landscape TSC screen still has its own bars (not migrated). Harness: `phone_layers` 40.
+
+## 9. Reserved slots: an app may also have its own bottom bar and its own hotbar (owner 2026-11-16, SAID; not built)
+Owner: "the app may also have a bottom bar and even a hotbar of its own, so keep that in mind when we go forward, even though we have not addressed those yet. rpg-edit-style projects have hotbars in their x11 window, as does LyfeDesk."
+**Consequence for every layout decision from here on (DOC):** the phone's view area is a stack with slots that an app MAY fill, and the phone must never assume an app's body owns the whole area between the app chrome and the phone bottom bar. Top to bottom inside the phone window:
+```
+ phone chrome (meta)                          phone owns, always
+ phone top tb   (HQ v | phone : page v)       phone owns, always
+ APP CHROME     (name, _ minimize, x close)   phone draws it for every open app (built)
+ app top tb / tabs                            app OPTIONAL (today TSC has none)
+ APP VIEW (body)                              app owns
+ app bottom bar                               app OPTIONAL   (reserved)
+ app HOTBAR                                   app OPTIONAL   (reserved; rpg-edit and LyfeDesk have one in their window)
+ PHONE BOTTOM BAR (names of open apps, later entities)   phone owns, always
+```
+- A hotbar is a separate window family in the house today (`@.apps/hotbar-hq/hotbar-desk.xhtpm`, the `🪟 Hotbar (desk)` cell in the LyfeDesk bottom bar); how an app would host one INSIDE the phone window is open (a band the app declares, or the phone composing the existing hotbar layout) and is NOT decided here.
+- Do not duplicate: the phone's later ENTITY cells (cursword...) are the phone bottom bar's; an app's hotbar is the app's own (its items, its data). Two different things that both look like a row of cells.
+- Rules of thumb so nothing blocks it later: keep the app view a scrolling region between fixed bars; keep the app's optional bars declared as tokens or sections of its screen (like `${APP_CHROME}`), never baked into the phone template; keep the phone's own bars in one definition (`PHONE-BARS`, `PHONE_FOOTER`).
