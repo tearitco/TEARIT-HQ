@@ -1,7 +1,7 @@
 <!-- match.xhtpm (the screen offers 2 to 6 verses so a challenge fits the phone; the rules op accepts 2 to 10) - the True Swords Clash screen of the phone (2026-11-15). ONE layout for the whole game: every value is a ${var} from <instance>/.hq_manager/ui.txt written by ops/tsc_op.c (module mode, the app-edit / plugz pattern);
      the phone opens it in its own window when the app has a SCREEN row. Every button runs ONE verb of tsc_op (the rules op); the match is the ledger <instance>/tsc/ledger.txt, nothing else.
      Chrome: x closes the phone window, < goes back to the phone's home grid (phone_op home). -->
-<window label="${window_title}" class="tsc database-window phone-portrait">
+<window label="${window_title}" class="tsc database-window phone-portrait managed">
   <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">

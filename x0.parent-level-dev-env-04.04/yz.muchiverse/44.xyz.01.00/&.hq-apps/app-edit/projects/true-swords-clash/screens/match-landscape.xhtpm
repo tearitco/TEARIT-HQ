@@ -1,6 +1,6 @@
 <!-- match-landscape.xhtpm - the True Swords Clash screen when the phone is ROTATED (700 x 360). Same module, same ui.txt variables and same verbs as match.xhtpm: only the shape differs. LEFT = the actions (a list that scrolls), RIGHT = the match (hp lines, whose turn, the verses of a challenge, what you typed).
      Chrome: x closes the phone window, < and the first row go back to the phone's home grid (the match stays in its ledger and resumes), @ rotates the phone back to portrait. -->
-<window label="${window_title}" class="tsc database-window phone-landscape">
+<window label="${window_title}" class="tsc database-window phone-landscape managed">
   <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
