@@ -345,3 +345,4 @@ HARNESS | world_clock_check | office | CASE | world: clock trigger runs a world 
 HARNESS | world_common_check | office | CASE | world: common book state volumes | world_common | - | - | no | volume sums conserved after every step; state re-written per case
 # ---- xo (registered 2026-11-16) ----
 HARNESS | xo_export_check | office | CASE | xo: projection op for docs and media | xo_export | - | - | no | XO projection of docs with a pre.name, into a scratch XO folder only
+HARNESS | appstore_git_check | office | CASE | phone: app store (git, pinned) | appstore_git | - | - | no | pinned commit only, tree hashes, binaries/symlinks/+x refused, install re-hash and ledger (local repo, no network)

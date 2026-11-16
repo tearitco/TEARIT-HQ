@@ -1,0 +1,120 @@
+# appstore_git (2026-11-16): the App Store's GIT source (design: BOOK 16.game/PLUS-PHONE-APP-STORE-AND-APPROVED-REPO-DESIGN-2026-11-16.md section 4) against a LOCAL git repo built in the scratch folder (no network, the real git program,
+# the real store_op, phone_op, app_check). Proves: the store fetches ONLY the pinned commit (a later commit in the repo changes nothing), the catalog lists only packages whose tree hash matches catalog.pdl, a package with a compiled binary,
+# a symlink, an ops/+x folder, a wrong hash or a system id is refused with its reason, the pin must be a full commit id and the url https or local, install re-hashes the folder (a file changed after the check is refused) and writes
+# an install ledger row with the commit and the hash. Controls: the independent find|sha256sum hash equals the op's; an untampered package installs; the refusals are not caused by a broken fixture.
+RESULTS | ../results/appstore_git.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/apps/settings
+MKDIR | h/&.hq-apps/plus-phone/instances/1/.hq_manager
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/layout_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/layout_check.+x
+RUN | /usr/bin/gcc | -w | -O2 | -o | $T/store_op.+x | $HOUSE/&.hq-apps/app-edit/projects/appstore/ops/store_op.c
+EXPECT_EXIT | 0 | the-store-op-compiles
+WRITE   | h/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | #!/bin/sh\nshift; shift; shift; shift; shift; shift\nexec "$@"\n
+RUN | /bin/chmod | +x | $T/h/&.widgits/_shared-lib/ops/+x/cpu_gate.+x
+WRITE   | h/&.hq-apps/plus-phone/apps/settings/manifest.pdl | APP | id | settings\nTITLE | settings\nPLATFORM | 1\n
+RUN | /usr/bin/git | init | -q | $T/repo
+MKDIR | repo/good-app/icon
+MKDIR | repo/good-app/ops
+MKDIR | repo/tamper-app/icon
+MKDIR | repo/elf-app/icon
+MKDIR | repo/elf-app/ops
+MKDIR | repo/link-app/icon
+MKDIR | repo/plusx-app/icon
+MKDIR | repo/plusx-app/ops/+x
+WRITE   | repo/good-app/manifest.pdl | APP | id | good-app\nTITLE | Good App\nICON | icon\nPLATFORM | 1\n
+WRITE   | repo/good-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+WRITE   | repo/good-app/ops/build_good-app.sh | #!/bin/sh\nmkdir -p "$(dirname "$0")/+x" && echo built > "$(dirname "$0")/+x/built.txt"\n
+WRITE   | repo/tamper-app/manifest.pdl | APP | id | tamper-app\nTITLE | Tamper App\nICON | icon\nPLATFORM | 1\n
+WRITE   | repo/tamper-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+WRITE   | repo/elf-app/manifest.pdl | APP | id | elf-app\nTITLE | Elf App\nICON | icon\nPLATFORM | 1\n
+WRITE   | repo/elf-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+RUN | /bin/cp | /bin/true | $T/repo/elf-app/ops/blob
+WRITE   | repo/link-app/manifest.pdl | APP | id | link-app\nTITLE | Link App\nICON | icon\nPLATFORM | 1\n
+WRITE   | repo/link-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+RUN | /bin/ln | -s | /etc/hostname | $T/repo/link-app/leak
+WRITE   | repo/plusx-app/manifest.pdl | APP | id | plusx-app\nTITLE | Plusx App\nICON | icon\nPLATFORM | 1\n
+WRITE   | repo/plusx-app/icon/sprite.csv | r,g,b,a\n1,2,3,255\n
+WRITE   | repo/plusx-app/ops/+x/prebuilt | not a binary but it is a prebuilt folder\n
+WRITE   | repo/catalog.pdl | # approved phone apps\nENTRY | good-app | KIND | phone-app | VERSION | 1 | SHA256 | fdb0f7f434a775818ae289468f9555a7ff3a85cee7a5d37b7c292de48283b77b\nENTRY | tamper-app | KIND | phone-app | VERSION | 1 | SHA256 | fdb0f7f434a775818ae289468f9555a7ff3a85cee7a5d37b7c292de48283b77b\nENTRY | elf-app | KIND | phone-app | VERSION | 1 | SHA256 | 0000000000000000000000000000000000000000000000000000000000000000\nENTRY | link-app | KIND | phone-app | VERSION | 1 | SHA256 | 0000000000000000000000000000000000000000000000000000000000000000\nENTRY | plusx-app | KIND | phone-app | VERSION | 1 | SHA256 | 0000000000000000000000000000000000000000000000000000000000000000\nENTRY | settings | KIND | phone-app | VERSION | 1 | SHA256 | 0000000000000000000000000000000000000000000000000000000000000000\nENTRY | toy-thing | KIND | toy | VERSION | 1 | SHA256 | 0000000000000000000000000000000000000000000000000000000000000000\n
+RUN | /usr/bin/git | -C | $T/repo | add | -A
+RUN | /usr/bin/git | -C | $T/repo | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | approved
+EXPECT_EXIT | 0 | the-fixture-repo-has-its-first-commit
+RUN | /bin/sh | -c | git -C "$1" rev-parse HEAD > "$0" | $T/c1.txt | $T/repo
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p %s\n' "$1" "$(cat "$2")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo | $T/c1.txt
+EXPECT_HAS | h/&.hq-apps/plus-phone/phone_prefs.pdl | STORE_SOURCE | the-pin-row-is-in-the-prefs
+
+CASE    | the-hash-is-right
+RUN | $T/store_op.+x | treehash | $T/repo/good-app
+EXPECT_OUT_IS | fdb0f7f434a775818ae289468f9555a7ff3a85cee7a5d37b7c292de48283b77b | the-op-hash-of-the-good-package-equals-the-constant
+RUN | /bin/sh | -c | cd "$0" && find . -type f \p sed 's#^\./##' \p LC_ALL=C sort \p xargs sha256sum \p sha256sum \p cut -d' ' -f1 | $T/repo/good-app
+EXPECT_OUT_IS | fdb0f7f434a775818ae289468f9555a7ff3a85cee7a5d37b7c292de48283b77b | CONTROL-the-independent-find-and-sha256sum-pipeline-gives-the-same-hash
+RUN | $T/store_op.+x | treehash | $T/repo/elf-app
+EXPECT_OUT | compiled binary | NEGATIVE-a-folder-with-an-ELF-binary-has-no-hash
+RUN | $T/store_op.+x | treehash | $T/repo/link-app
+EXPECT_OUT | symlink | NEGATIVE-a-folder-with-a-symlink-has-no-hash
+
+CASE    | sync-takes-only-the-pinned-commit
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_EXIT | 1 | sync-ends-1-because-some-entries-are-refused
+EXPECT_OUT | SYNCED | it-fetched-and-checked
+EXPECT_OUT | verified=1 refused=6 | one-package-verified-six-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | OK\pgood-app\p1\pfdb0f7f434a775818ae289468f9555a7ff3a85cee7a5d37b7c292de48283b77b | the-good-package-is-verified-with-its-hash
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\ptamper-app\phash mismatch | NEGATIVE-a-wrong-hash-is-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\pelf-app\pa compiled binary | NEGATIVE-a-compiled-binary-is-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\plink-app\psymlink | NEGATIVE-a-symlink-is-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\pplusx-app\pcontains a +x folder | NEGATIVE-a-prebuilt-folder-is-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\psettings\pbad or system id | NEGATIVE-a-system-id-is-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/verified.txt | REFUSED\ptoy-thing\pkind toy is not supported yet | a-later-kind-is-refused-for-now
+RUN | $T/store_op.+x | catalog | $T/h
+EXPECT_OUT | good-app\pGood App\p0\pOK | the-catalog-lists-the-verified-package
+EXPECT_OUT_LACKS | tamper-app | NEGATIVE-the-refused-packages-are-not-offered
+EXPECT_OUT_LACKS | elf-app | and-not-the-binary-one
+
+CASE    | a-later-commit-changes-nothing-until-the-pin-moves
+WRITE   | repo/good-app/manifest.pdl | APP | id | good-app\nTITLE | Evil Title\nICON | icon\nPLATFORM | 1\n
+RUN | /usr/bin/git | -C | $T/repo | add | -A
+RUN | /usr/bin/git | -C | $T/repo | -c | user.name=t | -c | user.email=t@t | commit | -q | -m | later
+EXPECT_EXIT | 0 | CONTROL-a-second-commit-exists-in-the-repo
+EXPECT_HAS | repo/good-app/manifest.pdl | Evil Title | CONTROL-the-repo-head-now-has-the-changed-file
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | verified=1 refused=6 | sync-at-the-same-pin-still-verifies-the-same-way
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/repo/good-app/manifest.pdl | Good App | the-cache-holds-the-PINNED-files
+EXPECT_LACKS | h/&.hq-apps/plus-phone/store_cache/repo/good-app/manifest.pdl | Evil Title | NEGATIVE-the-later-commit-is-not-in-the-cache
+
+CASE    | install-rehashes-and-writes-the-ledger
+RUN | /bin/sh | -c | echo '# changed after the check' >> "$0" | $T/h/&.hq-apps/plus-phone/store_cache/repo/good-app/manifest.pdl
+RUN | $T/store_op.+x | ui_install | good-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-file-changed-after-the-check-is-refused
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/good-app | and-nothing-was-installed
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | files changed since they were verified | the-screen-says-why
+RUN | $T/store_op.+x | sync | $T/h
+RUN | $T/store_op.+x | ui_install | good-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | CONTROL-after-a-fresh-sync-the-same-package-installs
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/good-app/manifest.pdl | it-is-in-apps
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/good-app/ops/+x/built.txt | and-built-locally
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/install.ledger | INSTALL\pgood-app\p1\p | the-ledger-has-an-install-row
+EXPECT_HAS | h/&.hq-apps/plus-phone/store_cache/install.ledger | fdb0f7f434a775818ae289468f9555a7ff3a85cee7a5d37b7c292de48283b77b | with-the-hash
+RUN | $T/store_op.+x | ui_install | tamper-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-refused-package-cannot-be-installed-by-id
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/tamper-app | nothing-of-it-landed
+
+CASE    | the-pin-and-url-are-checked
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p main\n' "$1" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | full 40-hex | NEGATIVE-a-branch-name-is-not-a-pin
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p http://example.invalid/x.git \p %s\n' "$(cat "$1")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/c1.txt
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | https | NEGATIVE-plain-http-is-refused
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p ext::sh -c touch\p/tmp/x \p %s\n' "$(cat "$1")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/c1.txt
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | https | NEGATIVE-an-ext-transport-url-is-refused
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p 0123456789012345678901234567890123456789\n' "$1" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | could not fetch | NEGATIVE-a-pin-that-is-not-in-the-repo-fetches-nothing
