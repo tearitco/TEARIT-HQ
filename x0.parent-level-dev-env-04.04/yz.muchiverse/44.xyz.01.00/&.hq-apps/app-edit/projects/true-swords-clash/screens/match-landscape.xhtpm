@@ -1,0 +1,55 @@
+<!-- match-landscape.xhtpm - the True Swords Clash screen when the phone is ROTATED (700 x 360). Same module, same ui.txt variables and same verbs as match.xhtpm: only the shape differs. LEFT = the actions (a list that scrolls), RIGHT = the match (hp lines, whose turn, the verses of a challenge, what you typed).
+     Chrome: x closes the phone window, < and the first row go back to the phone's home grid (the match stays in its ledger and resumes), @ rotates the phone back to portrait. -->
+<window label="${window_title}" class="tsc database-window phone-landscape">
+  <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
+  <page name="main">
+    <item id="bar-top" class="bar-top" label=""/>
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <item id="back" class="chrome-btn" label="<" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
+    <item id="flip" class="chrome-btn" label="@" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
+    <sidebar id="sidebar" class="sidebar">
+      <scrolllist>
+        <item id="new_c" class="btn" label="  new match vs the computer  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'computer' '${ARG3}'"/>
+        <item id="new_h" class="btn" label="  new match vs a friend  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'human' '${ARG3}'"/>
+        <item id="host" class="btn" label="  host an online match  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_host' '-' '${ARG3}'"/>
+        <item id="join" class="btn" label="  join an online match  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_join' '-' '${ARG3}'"/>
+        <item id="m2" class="btn" label="  sort 2 verses  = +2 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '2' '${ARG3}'"/>
+        <item id="m3" class="btn" label="  sort 3 verses  = +3 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '3' '${ARG3}'"/>
+        <item id="m4" class="btn" label="  sort 4 verses  = +4 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '4' '${ARG3}'"/>
+        <item id="m5" class="btn" label="  sort 5 verses  = +5 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '5' '${ARG3}'"/>
+        <item id="m6" class="btn" label="  sort 6 verses  = +6 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '6' '${ARG3}'"/>
+        <repeat count="${n_mir}" bind="mir">
+          <item id="mir${mir.#}" class="${mir.cls}" label="${mir.label}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_miracle' '${mir.name}' '${ARG3}'"/>
+        </repeat>
+        <item id="d1" class="btn" label="  1  " show="${dig_1}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '1' '${ARG3}'"/>
+        <item id="d2" class="btn" label="  2  " show="${dig_2}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '2' '${ARG3}'"/>
+        <item id="d3" class="btn" label="  3  " show="${dig_3}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '3' '${ARG3}'"/>
+        <item id="d4" class="btn" label="  4  " show="${dig_4}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '4' '${ARG3}'"/>
+        <item id="d5" class="btn" label="  5  " show="${dig_5}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '5' '${ARG3}'"/>
+        <item id="d6" class="btn" label="  6  " show="${dig_6}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '6' '${ARG3}'"/>
+        <item id="d7" class="btn" label="  7  " show="${dig_7}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '7' '${ARG3}'"/>
+        <item id="d8" class="btn" label="  8  " show="${dig_8}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '8' '${ARG3}'"/>
+        <item id="d9" class="btn" label="  9  " show="${dig_9}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '9' '${ARG3}'"/>
+        <item id="d0" class="btn" label="  10  " show="${dig_0}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_digit' '0' '${ARG3}'"/>
+        <item id="clr" class="btn" label="  clear my order  " show="${show_answer}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_clear' '-' '${ARG3}'"/>
+        <item id="again_c" class="btn" label="  play again vs the computer  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'computer' '${ARG3}'"/>
+        <item id="again_h" class="btn" label="  play again vs a friend  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'human' '${ARG3}'"/>
+        <item id="host2" class="btn" label="  host an online match  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_host' '-' '${ARG3}'"/>
+        <item id="join2" class="btn" label="  join an online match  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_join' '-' '${ARG3}'"/>
+        <item id="forfeit" class="btn danger" label="  forfeit  " show="${show_play}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_forfeit' '-' '${ARG3}'"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${line_p1}" class="hp-line"/>
+      <text label="${line_p2}" class="hp-line"/>
+      <text label="${line_turn}" class="quiet"/>
+      <text label="${line_last2}" class="last-line"/>
+      <text label="${line_last}" class="last-line"/>
+      <repeat count="${n_ch}" bind="ch">
+        <text label="${ch.text}" class="verse"/>
+      </repeat>
+      <text label="${typed_line}" class="block-title" show="${show_answer}"/>
+    </panel>
+    <item id="bar-bottom" class="bar-bottom" label="  <  phones      @  rotate  " action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
+  </page>
+</window>

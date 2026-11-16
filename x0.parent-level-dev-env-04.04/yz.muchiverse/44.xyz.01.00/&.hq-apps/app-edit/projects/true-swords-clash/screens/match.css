@@ -6,3 +6,4 @@ window { font-family: DejaVu Serif; font-size: 11px; }
 .dimbtn         { border: 1px solid #404040; }
 .btn.active     { border: 1px solid #ffffff; }
 .btn.danger     { border: 1px solid #c04040; }
+.bar-top, .bar-bottom { height: 28px; border: 1px solid #606060; border-width: 1; }

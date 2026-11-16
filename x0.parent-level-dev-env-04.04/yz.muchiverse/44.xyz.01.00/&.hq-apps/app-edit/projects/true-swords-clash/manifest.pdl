@@ -3,6 +3,7 @@ APP | id | true-swords-clash
 TITLE | True Swords Clash
 ICON | icon
 ORDER | 1
-ORIENT | portrait
+ORIENT | both
 PLATFORM | 1
 SCREEN | home | screens/match.xhtpm
+SCREEN | home-landscape | screens/match-landscape.xhtpm

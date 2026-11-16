@@ -4,8 +4,10 @@
 <window label="${window_title}" class="tsc database-window phone-portrait">
   <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
   <page name="main">
+    <item id="bar-top" class="bar-top" label=""/>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <item id="back" class="chrome-btn" label="<" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
+    <item id="flip" class="chrome-btn" label="@" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
     <text label="${line_p1}" class="hp-line"/>
     <text label="${line_p2}" class="hp-line"/>
     <text label="${line_turn}" class="quiet"/>
@@ -45,5 +47,6 @@
       <item id="join2" class="btn" label="  join an online match  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_join' '-' '${ARG3}'"/>
       <item id="forfeit" class="btn danger" label="  forfeit  " show="${show_play}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_forfeit' '-' '${ARG3}'"/>
     </scrolllist>
+    <item id="bar-bottom" class="bar-bottom" label="  <  phones      @  rotate  " action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
   </page>
 </window>
