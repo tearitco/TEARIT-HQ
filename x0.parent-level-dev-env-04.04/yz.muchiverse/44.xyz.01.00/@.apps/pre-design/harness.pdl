@@ -6,3 +6,10 @@ GLOBAL | no
 HARNESS | stamp | office | ACTION | stamp this page | @.apps/pre-design/ops/+x/office_stamp.+x | ${APP} ${PAGE} @plug:office-example:stamp_limit @plug:office-example:stamp_label | - | no | example harnz: appends a line to state/office_stamps.txt (the plug sets the limit and the label)
 # test (CASE): a harness case for agents; the last verdict shows beside it. This one checks this book's tools and the stamp op in a scratch copy.
 HARNESS | office_check | office | CASE | check office tools | office_tools | - | - | no | example test: the tools of this book are valid and the stamp op keeps its cap
+# the +phone / True Swords Clash harnesses (2026-11-15, owner: "save the harnesses used for this in lyfedesk tools office"). The office is OPEN USER SPACE: these are plain tests listed here so a human or an agent can run them from the Tools menu; nothing about them is special or boxed in.
+HARNESS | phone_check | office | CASE | phone: windows, icons, settings | plus_phone | - | - | no | the plus phone (phone_op, projector, icon sizes, prefs, placement, flip): scratch house
+HARNESS | app_package_check | office | CASE | phone: app packages | app_package | - | - | no | app_check, install and uninstall, app screens with back
+HARNESS | app_edit_check | office | CASE | app-edit: list, check, export | app_edit | - | - | no | the app editor v1: projects, check, export to the phone
+HARNESS | tsc_rules_check | office | CASE | True Swords Clash: rules, ledger, screen | tsc_rules | - | - | no | the rules op on the real verses: miracles, replay refusal, Elo, the phone screen projection
+HARNESS | window_place_check | office | CASE | windows: placement beside the dock | window_place | - | - | no | the shared window placement op
+HARNESS | layout_preview_check | office | CASE | layout-studio: preview a layout | layout_preview | - | - | no | layout_check plus a real window PNG
