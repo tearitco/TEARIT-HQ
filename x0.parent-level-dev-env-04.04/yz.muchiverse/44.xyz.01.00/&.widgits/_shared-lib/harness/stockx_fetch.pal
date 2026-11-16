@@ -1,0 +1,4 @@
+# stockx_fetch.pal - stock+x quote op (2026-11-15). See cases/stockx_fetch.pdl
+exec ./ops/+x/harness_case_op.+x cases/stockx_fetch.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/stockx_fetch.pdl
+halt

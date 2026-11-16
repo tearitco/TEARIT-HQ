@@ -1,0 +1,49 @@
+# stockx_fetch (2026-11-15): &.hq-apps/app-edit/projects/stock-x/ops/stockx_fetch_op.c on CANNED json files, NO network (the live request was made by hand once; observed AAPL 356.27 USD).
+# Proves: price and previous close become integer micro-units; a ledger row and the latest projection are written; the cache keys on FETCH time (the bug the live run found:
+# a market-time cache re-requests every call while the market is closed); a call past the ttl refetches; a bad symbol, a response with no price and a missing file write NOTHING;
+# the hourly budget (300) refuses a live request with exit 4 and never touches the ledger.
+RESULTS | ../results/stockx_fetch.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | bus
+RUN | /usr/bin/gcc | -O2 | -Wall | -o | $T/sx.+x | $HOUSE/&.hq-apps/app-edit/projects/stock-x/ops/stockx_fetch_op.c | -lm
+EXPECT_EXIT | 0 | the-op-compiles
+WRITE | good.json | {"chart":{"result":[{"meta":{"currency":"USD","symbol":"AAPL","regularMarketPrice":356.27,"chartPreviousClose":350.1,"regularMarketTime":1763000000}}]}}
+WRITE | noprice.json | {"chart":{"result":[{"meta":{"symbol":"ZZZ"}}]}}
+
+CASE    | quote-and-ledger
+RUN | $T/sx.+x | quote | AAPL | $T/bus | --file | $T/good.json | --now | 5000
+EXPECT_OUT_IS | AAPL 356270000 350100000 1763000000 USD fresh | price-and-previous-close-are-integer-micro-units
+EXPECT_HAS | $T/bus/yahoo.ledger | Q\p1\p1763000000\pAAPL@yahoo\p356270000\p350100000\pUSD | the-ledger-row
+EXPECT_HAS | $T/bus/latest.txt | AAPL@yahoo\p356270000\p350100000\p1763000000\pUSD\p5000 | latest-carries-fetched-at-5000
+RUN | $T/sx.+x | quote | AAPL | $T/bus | --file | $T/good.json | --now | 5030
+EXPECT_OUT_IS | AAPL 356270000 350100000 1763000000 USD cached | a-fetch-30-s-ago-is-served-from-cache-although-the-market-time-is-days-old
+RUN | $T/sx.+x | quote | AAPL | $T/bus | --file | $T/good.json | --now | 5040 | --ttl | 10
+EXPECT_OUT | fresh | CONTROL-the-same-30-s-old-quote-with-ttl-10-is-stale-and-refetched-so-the-cached-line-above-came-from-the-cache
+RUN | $T/sx.+x | quote | AAPL | $T/bus | --file | $T/good.json | --now | 5100 | --force
+EXPECT_OUT | fresh | force-refetches
+EXPECT_HAS | $T/bus/yahoo.ledger | Q\p2\p | the-second-row-is-numbered-2
+
+CASE    | writes-nothing-on-bad-input
+RUN | $T/sx.+x | quote | AA\pPL | $T/bus | --now | 6000
+EXPECT_EXIT | 2 | NEGATIVE-a-bar-in-the-symbol-is-refused
+RUN | $T/sx.+x | quote | lower | $T/bus | --now | 6000
+EXPECT_EXIT | 2 | NEGATIVE-lowercase-is-refused
+RUN | $T/sx.+x | quote | ZZZ | $T/bus | --file | $T/noprice.json | --now | 6000
+EXPECT_EXIT | 3 | NEGATIVE-no-price-in-the-response
+RUN | $T/sx.+x | quote | ZZZ | $T/bus | --file | $T/nothere.json | --now | 6000
+EXPECT_EXIT | 3 | NEGATIVE-missing-response-file
+EXPECT_LACKS | $T/bus/yahoo.ledger | ZZZ | none-of-the-failures-wrote-a-ledger-row
+EXPECT_LACKS | $T/bus/latest.txt | ZZZ | nor-the-projection
+
+CASE    | budget
+CASE    | budget
+MKDIR | full
+RUN | /bin/sh | -c | /usr/bin/seq 4700 5000 > $T/full/yahoo.budget
+RUN | $T/sx.+x | quote | MSFT | $T/full | --now | 5001
+EXPECT_EXIT | 4 | 301-requests-in-the-last-hour-is-refused-before-any-network-use
+EXPECT_NOFILE | $T/full/yahoo.ledger | the-refusal-wrote-no-ledger-row
+RUN | $T/sx.+x | quote | MSFT | $T/full | --file | $T/good.json | --now | 5001
+EXPECT_EXIT | 0 | CONTROL-the-canned-file-path-has-no-budget-so-the-refusal-above-came-from-the-budget-itself
