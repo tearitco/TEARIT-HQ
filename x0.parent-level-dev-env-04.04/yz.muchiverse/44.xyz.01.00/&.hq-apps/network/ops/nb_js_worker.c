@@ -3636,16 +3636,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_node_compare.c"
     /* Node isConnected/ownerDocument/nodeValue installs extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_node_state.c"
-    JS_SetPropertyStr(ctx, Ep, "remove",         JS_NewCFunction(ctx, nb_el_remove_js, "remove", 0));
-    JSValue Hp = JS_NewObject(ctx);
-    JS_SetPrototype(ctx, Hp, Ep);
-    JS_SetPropertyStr(ctx, Hf, "prototype", JS_DupValue(ctx, Hp));
-    JSValue Sp = JS_NewObject(ctx);
-    JS_SetPrototype(ctx, Sp, Ep);
-    JS_SetPropertyStr(ctx, Sf, "prototype", JS_DupValue(ctx, Sp));
-    JSValue Tp = JS_NewObject(ctx);
-    JS_SetPrototype(ctx, Tp, Np);
-    JS_SetPropertyStr(ctx, Tf, "prototype", JS_DupValue(ctx, Tp));
+    /* Element.remove and HTMLElement/SVGElement/Text prototype bases extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_proto_bases.c"
     {
         JSAtom nm = JS_NewAtom(ctx, "data");
         JS_DefinePropertyGetSet(ctx, Tp, nm,
