@@ -1,0 +1,4 @@
+# appstore_local.pal - the +phone App Store with the LOCAL catalog (2026-11-16). See cases/appstore_local.pdl
+exec ./ops/+x/harness_case_op.+x cases/appstore_local.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/appstore_local.pdl
+halt

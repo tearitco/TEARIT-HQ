@@ -1,0 +1,84 @@
+# appstore_local (2026-11-16): &.hq-apps/app-edit/projects/appstore/ops/store_op.c, the App Store's engine, in a SCRATCH house with the REAL phone_op, app_check and store_op. The catalog is the app-edit projects folder; install = phone_op install
+# plus the app's own build (a stub cpu_gate runs the command, the real one is not needed); remove = phone_op uninstall. Fixtures: good-app (builds), bad-app (fails app_check), fail-build (installs, its build exits 1), settings and appstore (system apps).
+# Proves the store does only what the verbs say, shows failures honestly, and never offers or touches a system app. Every refusal has a passing control. NO network.
+RESULTS | ../results/appstore_local.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/apps/settings
+MKDIR | h/&.hq-apps/plus-phone/instances/1/.hq_manager
+MKDIR | h/&.hq-apps/app-edit/projects/good-app/icon
+MKDIR | h/&.hq-apps/app-edit/projects/good-app/ops
+MKDIR | h/&.hq-apps/app-edit/projects/bad-app/icon
+MKDIR | h/&.hq-apps/app-edit/projects/fail-build/icon
+MKDIR | h/&.hq-apps/app-edit/projects/fail-build/ops
+MKDIR | h/&.hq-apps/app-edit/projects/settings
+MKDIR | h/&.hq-apps/app-edit/projects/appstore
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/layout_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/layout_check.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/appstore/ops/+x/store_op.+x | $T/store_op.+x
+WRITE   | h/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | #!/bin/sh\nshift; shift; shift; shift; shift; shift\nexec "$@"\n
+RUN | /bin/chmod | +x | $T/h/&.widgits/_shared-lib/ops/+x/cpu_gate.+x
+WRITE   | h/&.hq-apps/plus-phone/apps/settings/manifest.pdl | APP | id | settings\nTITLE | settings\nPLATFORM | 1\n
+WRITE   | h/&.hq-apps/app-edit/projects/settings/manifest.pdl | APP | id | settings\nTITLE | settings\nPLATFORM | 1\n
+WRITE   | h/&.hq-apps/app-edit/projects/appstore/manifest.pdl | APP | id | appstore\nTITLE | App Store\nPLATFORM | 1\n
+WRITE   | h/&.hq-apps/app-edit/projects/good-app/manifest.pdl | APP | id | good-app\nTITLE | Good App\nICON | icon\nPLATFORM | 1\n
+WRITE   | h/&.hq-apps/app-edit/projects/good-app/ops/build_good-app.sh | #!/bin/sh\nmkdir -p "$(dirname "$0")/+x" && echo built > "$(dirname "$0")/+x/built.txt"\n
+WRITE   | h/&.hq-apps/app-edit/projects/fail-build/manifest.pdl | APP | id | fail-build\nTITLE | Fail Build\nICON | icon\nPLATFORM | 1\n
+WRITE   | h/&.hq-apps/app-edit/projects/fail-build/ops/build_fail-build.sh | #!/bin/sh\nexit 1\n
+WRITE   | h/&.hq-apps/app-edit/projects/bad-app/manifest.pdl | APP | id | bad-app\nTITLE | Bad App\nICON | icon\nPLATFORM | 99\n
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/apps/settings/icon/sprite.csv | $T/sprite.csv
+RUN | /bin/cp | $T/sprite.csv | $T/h/&.hq-apps/app-edit/projects/good-app/icon/sprite.csv
+RUN | /bin/cp | $T/sprite.csv | $T/h/&.hq-apps/app-edit/projects/bad-app/icon/sprite.csv
+RUN | /bin/cp | $T/sprite.csv | $T/h/&.hq-apps/app-edit/projects/fail-build/icon/sprite.csv
+
+CASE    | the-catalog
+RUN | $T/store_op.+x | catalog | $T/h
+EXPECT_OUT | good-app\pGood App\p0\pOK | a-good-package-is-listed-not-installed-and-checks-OK
+EXPECT_OUT | bad-app\pBad App\p0\pCHECK-FAIL | a-package-that-fails-app_check-is-listed-with-the-failure
+EXPECT_OUT | fail-build\pFail Build\p0\pOK | the-build-failing-package-checks-OK-(its-build-is-only-seen-at-install)
+EXPECT_OUT_LACKS | settings | NEGATIVE-the-system-app-settings-is-never-offered
+EXPECT_OUT_LACKS | appstore | NEGATIVE-the-system-app-appstore-is-never-offered
+
+CASE    | install-builds-and-says-so
+RUN | $T/store_op.+x | ui_install | good-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | install-good-app
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/good-app/manifest.pdl | the-package-folder-is-in-apps
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/good-app/ops/+x/built.txt | its-own-build-ran
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | good-app installed | the-result-line-says-installed
+RUN | $T/store_op.+x | catalog | $T/h
+EXPECT_OUT | good-app\pGood App\p1 | the-catalog-now-shows-it-installed
+RUN | $T/store_op.+x | /x | /y | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_2_verb=ui_remove | the-screen-offers-remove-for-the-installed-app
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_apps=3 | the-screen-lists-the-3-catalog-entries-(not-the-2-system-apps)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | app_0_verb=ui_install | CONTROL-an-uninstalled-app-(bad-app,-entry-0)-is-offered-install
+
+CASE    | refusals-and-honest-failure
+RUN | $T/store_op.+x | ui_install | bad-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-package-that-fails-app_check-is-refused
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/bad-app | nothing-of-it-was-installed
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | bad-app not installed | the-screen-says-why
+RUN | $T/store_op.+x | ui_install | fail-build | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-a-failing-build-is-a-failure
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | build FAILED | and-the-store-says-the-build-failed-(not-installed-OK)
+RUN | $T/store_op.+x | ui_install | settings | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 2 | NEGATIVE-a-system-app-cannot-be-installed-over
+RUN | $T/store_op.+x | ui_install | ../good-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 2 | NEGATIVE-a-path-in-the-id-is-refused
+RUN | $T/store_op.+x | ui_install | nope | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-an-id-that-is-not-in-the-catalog-is-refused
+
+CASE    | remove
+RUN | $T/store_op.+x | ui_remove | settings | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 2 | NEGATIVE-the-system-app-settings-cannot-be-removed
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/settings/manifest.pdl | and-it-is-still-there
+RUN | $T/store_op.+x | ui_remove | good-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | remove-good-app
+EXPECT_NOFILE | h/&.hq-apps/plus-phone/apps/good-app | its-folder-is-gone
+RUN | $T/store_op.+x | ui_remove | good-app | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 1 | NEGATIVE-removing-an-app-that-is-not-installed-is-refused
+EXPECT_EXISTS | h/&.hq-apps/app-edit/projects/good-app/manifest.pdl | the-catalog-source-is-untouched-by-a-remove
