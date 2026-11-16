@@ -10029,6 +10029,14 @@ static void assign_nav_and_layout(void) {
         for (int bi = 0; bi < page->n_children; bi++) { Elem *b = page->children[bi]; if (strcmp(b->tag, "item") != 0) continue; if (elem_has_class(b, "bar-top") && !kh_fbt) kh_fbt = b; else if (elem_has_class(b, "bar-bottom") && !kh_fbb) kh_fbb = b; }
         if (kh_fbt) { css_compute_style(&g_sheet, kh_fbt->tag, kh_fbt->id, kh_fbt->classes, kh_fbt->n_classes, 0, &kh_fbt->style); int bh = (kh_fbt->style.has_height && !kh_fbt->style.height_is_pct) ? kh_fbt->style.height : 28; kh_fbt->x = 1; kh_fbt->y = y; kh_fbt->w = g_win_w - 2; kh_fbt->h = bh; kh_fbt->nav_index = 0; if (kh_fbt->label[0]) { kh_fbt->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_fbt; } y += bh + 2; }
         if (kh_fbb) { css_compute_style(&g_sheet, kh_fbb->tag, kh_fbb->id, kh_fbb->classes, kh_fbb->n_classes, 0, &kh_fbb->style); int bh = (kh_fbb->style.has_height && !kh_fbb->style.height_is_pct) ? kh_fbb->style.height : 28; kh_fbb->x = 1; kh_fbb->y = g_win_h - bh - 1; kh_fbb->w = g_win_w - 2; kh_fbb->h = bh; kh_fbb->nav_index = 0; if (kh_fbb->label[0]) { kh_fbb->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_fbb; } kh_fbot = bh + 4; }
+        /* 2026-11-15: a <footer> in a FLAT page (rpg-edit's own bottom bar shape, until now only laid out by the sidebar+panel path): one row of its items pinned to the window bottom, items side by side, nav-numbered, and the scrolllist stops above it. Same sizing rules as the sidebar path (css height or 24, padding 6, width from css or text+18). */
+        for (int fi0 = 0; fi0 < page->n_children; fi0++) { Elem *ft = page->children[fi0]; if (strcmp(ft->tag, "footer") != 0) continue;
+            css_compute_style(&g_sheet, ft->tag, ft->id, ft->classes, ft->n_classes, 0, &ft->style); int rh = ft->style.has_height ? ft->style.height : scaled(24); if (rh < 12) rh = 12; int fh = rh + scaled(4);
+            ft->x = 0; ft->y = g_win_h - fh; ft->w = g_win_w; ft->h = fh; ft->nav_index = 0; int fx = scaled(6);
+            for (int k = 0; k < ft->n_children; k++) { Elem *fi = ft->children[k]; if (strcmp(fi->tag, "item") != 0 && strcmp(fi->tag, "text") != 0) continue; css_compute_style(&g_sheet, fi->tag, fi->id, fi->classes, fi->n_classes, 0, &fi->style);
+                int fw = fi->style.has_width ? fi->style.width : (kh_measure_text_px(&fi->style, fi->label) + scaled(18)); fi->x = fx; fi->w = fw; fi->h = rh - scaled(4); fi->y = ft->y + scaled(2); fx += fw + scaled(4);
+                if (strcmp(fi->tag, "item") == 0 && (fi->onclick[0] || fi->label[0])) { fi->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = fi; } else fi->nav_index = 0; }
+            if (fh + 4 > kh_fbot) kh_fbot = fh + 4; break; }
         int chrome_x = g_win_w - 8;      /* has_canvas only */
         int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
         int found_close = 0;

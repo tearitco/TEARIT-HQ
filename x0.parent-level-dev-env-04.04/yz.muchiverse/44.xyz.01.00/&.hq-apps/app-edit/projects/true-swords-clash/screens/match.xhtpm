@@ -4,7 +4,10 @@
 <window label="${window_title}" class="tsc database-window phone-portrait">
   <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
   <page name="main">
-    <item id="bar-top" class="bar-top" label=""/>
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-home" class="tab" label="< phones" onclick="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' home '${ARG3}'"/>
+      <tab id="tb-rot" class="tab" label="@ rotate" onclick="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+    </tabbar>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <item id="back" class="chrome-btn" label="<" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
     <item id="flip" class="chrome-btn" label="@" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
@@ -47,6 +50,9 @@
       <item id="join2" class="btn" label="  join an online match  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_join' '-' '${ARG3}'"/>
       <item id="forfeit" class="btn danger" label="  forfeit  " show="${show_play}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_forfeit' '-' '${ARG3}'"/>
     </scrolllist>
-    <item id="bar-bottom" class="bar-bottom" label="  <  phones      @  rotate  " action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
+    <footer id="statusbar" class="phone-footer">
+      <item id="ft-leave" class="phone-ft" label="x leave" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' home '${ARG3}'"/>
+      <item id="ft-rot" class="phone-ft" label="@ rotate" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+    </footer>
   </page>
 </window>
