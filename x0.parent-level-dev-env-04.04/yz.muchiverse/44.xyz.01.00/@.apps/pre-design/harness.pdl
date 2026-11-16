@@ -17,3 +17,7 @@ HARNESS | tsc_p2p_check | office | CASE | True Swords Clash: two phones over p2p
 HARNESS | phone_hostlist_check | office | CASE | phone: master host list | phone_hostlist | - | - | no | the host list op: publish, expire, refusals, merge a master list, no real network
 HARNESS | video_brand_check | office | CASE | video: brand colours are not blue | video_brand | - | - | no | Tear-it co yellow and TSOTS red slides have no blue pixels; the old look is the control
 HARNESS | tsc_owner_check | office | CASE | tsc: peer ends with its owner | tsc_owner | - | - | no | two peers, one with an owner: only that one ends (control: the other stays alive)
+HARNESS | phone_layers_check | office | CASE | phone: layers, one window, bars | phone_layers | - | - | no | one window per phone, bars injected once, names-only bottom bar, minimize, PKG path guard
+HARNESS | stockx_ledger_check | office | CASE | stock+x: ledger engine | stockx_ledger | - | - | no | integer cents and micro-shares, replay refuses an edited ledger, refusals write nothing
+HARNESS | stockx_fetch_check | office | CASE | stock+x: quote op | stockx_fetch | - | - | no | the Yahoo quote op on canned data: cache, budget, refusals (no network)
+HARNESS | appstore_local_check | office | CASE | phone: app store (local) | appstore_local | - | - | no | catalog, install + build, honest failure, system apps never offered, remove
