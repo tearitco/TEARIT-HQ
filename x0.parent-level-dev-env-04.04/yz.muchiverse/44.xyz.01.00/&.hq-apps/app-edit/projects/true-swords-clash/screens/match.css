@@ -1,0 +1,12 @@
+/* match.css - sibling css of match.xhtpm: colour only plus the phone window size (explicit widths must be px). Same dark palette as the phone and the -hq windows. */
+window { background-color: #141414; font-family: Ubuntu; font-size: 11px; }
+.phone-portrait { width: 360px; height: 700px; }
+.quiet          { color: #8a8a8a; }
+.hp-line        { color: #f0f0f0; }
+.last-line      { color: #e0c060; }
+.block-title    { color: #e8e8e8; }
+.verse          { color: #cfe3ff; }
+.btn            { background-color: #232323; border: 1px solid #3a3a3a; color: #dddddd; }
+.dimbtn         { background-color: #1a1a1a; border: 1px solid #2a2a2a; color: #666666; }
+.btn.active     { background-color: #2f5f8f; color: #ffffff; }
+.btn.danger     { background-color: #3a1e1e; border-color: #6b2b2b; color: #ffdede; }

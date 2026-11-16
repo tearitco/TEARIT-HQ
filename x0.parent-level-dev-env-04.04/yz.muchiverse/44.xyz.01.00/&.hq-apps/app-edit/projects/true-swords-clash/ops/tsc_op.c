@@ -134,7 +134,60 @@ static int cmd_ai(void) {
     if (pick) return act("MIRACLE_AI", pick);
     char n[4]; snprintf(n, sizeof n, "%d", 2 + (int)(rnd(seq, 7) % 3)); return act("AIMANA", n);
 }
+/* ---- the phone screen (2026-11-15): this op is also the window's projector (module) and its UI verbs, the app-edit / plugz pattern.
+ *   module:  tsc_op <house> <package dir>   (env KHTPM_ARG3 = the phone instance dir; republishes <inst>/.hq_manager/ui.txt when marker.txt GREW or every 5 s; ends with its parent)   [--once <inst>] = one projection, for the harness
+ *   verbs:   tsc_op ui_new computer|human <inst>   ui_deal <n> <inst>   ui_digit <d> <inst>   ui_clear <inst>   ui_miracle <name> <inst>   ui_forfeit <inst>
+ * The match lives at <inst>/tsc/ledger.txt (the ledger is the only state). <inst>/.hq_manager/typed.txt is the digits typed so far for the open challenge: a UI scratch value, never read by the rules.
+ * Against the computer, its turn is played at once after the human's action (the result lines show both). */
+static char HQD[P];
+static void rdq(const char *name, char *o, size_t cap) { char f[P]; snprintf(f, sizeof f, "%s/%s", HQD, name); o[0] = 0; FILE *fp = fopen(f, "r"); if (!fp) return; if (fgets(o, (int)cap, fp)) o[strcspn(o, "\r\n")] = 0; fclose(fp); }
+static void wrq(const char *name, const char *text) { char f[P], t[P]; snprintf(f, sizeof f, "%s/%s", HQD, name); snprintf(t, sizeof t, "%s.tmp", f); FILE *w = fopen(t, "w"); if (!w) return; fputs(text, w); fputc('\n', w); fclose(w); rename(t, f); }
+static void bumpq(void) { char f[P]; snprintf(f, sizeof f, "%s/marker.txt", HQD); struct stat sb; if (!stat(f, &sb) && sb.st_size > 4096) unlink(f); FILE *m = fopen(f, "a"); if (m) { fputc('x', m); fclose(m); } }
+static long msizeq(void) { char f[P]; struct stat sb; snprintf(f, sizeof f, "%s/marker.txt", HQD); return stat(f, &sb) ? 0 : (long)sb.st_size; }
+static int set_inst(const char *inst) { snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); snprintf(MATCH, sizeof MATCH, "%s/tsc", inst); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", MATCH); return 1; }
+static char UI[16384], LAST_UI[16384];
+static void u(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+#include <stdarg.h>
+static void u(const char *fmt, ...) { size_t l = strlen(UI); va_list ap; va_start(ap, fmt); vsnprintf(UI + l, sizeof UI - l, fmt, ap); va_end(ap); }
+static void clean(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '\t') *s = ' '; }
+static void digs(int n) { for (int dg = 0; dg < 10; dg++) { int pos = dg == 0 ? 10 : dg; u("dig_%d=%d\n", dg, pos <= n); } }
+static void publish(void) {
+    UI[0] = 0; char typed[16]; rdq("typed.txt", typed, sizeof typed); int have = !access(LEDGER, F_OK); int rc = have ? replay(1) : 0; const char *n1 = "Player 1", *n2 = "Player 2";
+    u("window_title=True Swords Clash\n"); digs(0);
+    if (!have) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=Sort verses for mana, then cast Miracles. HP 100.\nline_last=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
+    else if (rc) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=This match's ledger does not replay (it was edited). Start a new match.\nline_last=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
+    else { if (COMPUTER) { n1 = "You"; n2 = "Computer"; } UI[0] = 0; u("window_title=True Swords Clash\n"); digs(PHASE && !OVER ? CH_N : 0); char s1[100], s2[100]; side_text(&S[0], s1, sizeof s1); side_text(&S[1], s2, sizeof s2);
+        int choose = !OVER && !PHASE, answer = !OVER && PHASE; u("show_setup=0\nshow_play=%d\nshow_choose=%d\nshow_answer=%d\nshow_over=%d\n", OVER ? 0 : 1, choose, answer, OVER);
+        u("line_p1=%s%s   HP %d   Mana %d   [%s]\nline_p2=%s%s   HP %d   Mana %d   [%s]\n", TURN == 0 && !OVER ? "> " : "  ", n1, S[0].hp, S[0].mana, s1, TURN == 1 && !OVER ? "> " : "  ", n2, S[1].hp, S[1].mana, s2);
+        if (OVER) u("line_turn=%s wins.\n", WINNER == 0 ? n1 : n2); else if (answer) u("line_turn=%s: order the %d verses (Bible order).\n", TURN == 0 ? n1 : n2, CH_N); else u("line_turn=%s: sort verses for mana, or cast a Miracle.\n", TURN == 0 ? n1 : n2);
+        char la[400]; snprintf(la, sizeof la, "%s", answer ? "" : LAST); clean(la); u("line_last=%s\n", la);
+        int nm = 0; if (choose) { for (int i = 0; i < 11; i++) { int cost = i == 0 ? 0 : i; int ok = S[TURN].mana >= cost; static const char *nice[11] = { "Hail Mary", "Slash", "Fire", "Berserk", "Heal", "Judgement", "Poison", "Locust", "Blessing", "Angel", "Holy Sword" };
+                u("mir_%d_label=  %s   (%d)%s  \nmir_%d_name=%s\nmir_%d_cls=%s\n", nm, nice[i], cost, ok ? "" : "   low", nm, MNAME[i], nm, ok ? "btn" : "dimbtn"); nm++; } }
+        u("n_mir=%d\n", nm); if (answer) { u("n_ch=%d\n", CH_N); for (int d = 0; d < CH_N; d++) { char t[300]; snprintf(t, sizeof t, "%d)  %s", (d + 1) % 10 == 0 && d + 1 == 10 ? 10 : d + 1, V[CH_START + CH_PERM[d]].text); clean(t); u("ch_%d_text=%s\n", d, t); } } else u("n_ch=0\n");
+        
+        char tl[80] = "your order: "; for (int i = 0; i < CH_N && answer; i++) { char c[8]; snprintf(c, sizeof c, "%c ", i < (int)strlen(typed) ? typed[i] : '_'); strcat(tl, c); } u("typed_line=%s\n", answer ? tl : ""); }
+    if (strcmp(UI, LAST_UI)) { char f[P], t[P]; snprintf(f, sizeof f, "%s/ui.txt", HQD); snprintf(t, sizeof t, "%s/ui.txt.tmp", HQD); FILE *w = fopen(t, "w"); if (w) { fputs(UI, w); fclose(w); rename(t, f); } snprintf(LAST_UI, sizeof LAST_UI, "%s", UI); }
+}
+static void computer_plays(void) { for (int i = 0; i < 4; i++) { if (replay(1) || OVER || !COMPUTER || TURN != 1) return; cmd_ai(); } }
+static int ui_verb(const char *v, const char *arg, const char *inst) {
+    set_inst(inst); if (!load_verses()) return 2;
+    if (!strcmp(v, "ui_new")) { if (strcmp(arg, "computer") && strcmp(arg, "human")) return 2; mkdir(MATCH, 0755); if (!access(LEDGER, F_OK)) { char prev[P]; snprintf(prev, sizeof prev, "%s/ledger.prev.txt", MATCH); rename(LEDGER, prev); } char row[200]; snprintf(row, sizeof row, "START|%llu|%s", (unsigned long long)((uint64_t)time(NULL) * 2654435761u), arg); append(row); wrq("typed.txt", ""); bumpq(); return 0; }
+    if (replay(1)) { bumpq(); return 3; }
+    if (!strcmp(v, "ui_clear")) { wrq("typed.txt", ""); bumpq(); return 0; }
+    if (!strcmp(v, "ui_deal")) { int rc = act("DEAL", arg); if (!rc) wrq("typed.txt", ""); bumpq(); return rc; }
+    if (!strcmp(v, "ui_digit")) { char typed[16]; rdq("typed.txt", typed, sizeof typed); if (!PHASE || OVER || !isdigit((unsigned char)arg[0])) return 1; int pos = arg[0] == '0' ? 10 : arg[0] - '0'; if (pos > CH_N || (int)strlen(typed) >= CH_N) return 1; size_t l = strlen(typed); typed[l] = arg[0]; typed[l + 1] = 0; wrq("typed.txt", typed);
+        if ((int)strlen(typed) == CH_N) { act("ANSWER", typed); wrq("typed.txt", ""); computer_plays(); } bumpq(); return 0; }
+    if (!strcmp(v, "ui_miracle")) { int rc = act("MIRACLE", arg); if (!rc) computer_plays(); bumpq(); return rc; }
+    if (!strcmp(v, "ui_forfeit")) { int rc = act("FORFEIT", ""); bumpq(); return rc; }
+    return 2;
+}
+static int module_main(const char *inst, int once) {
+    set_inst(inst); if (!load_verses()) return 2; if (once) { publish(); return 0; }
+    long seen = -1; time_t last = 0; for (;;) { long m = msizeq(); time_t now = time(NULL); if (m != seen || now - last >= 5) { publish(); seen = m; last = now; } if (getppid() == 1) return 0; usleep(400000); }
+}
 int main(int argc, char **argv) {
+    { const char *ki = getenv("KHTPM_ARG3"); if (argc >= 3 && argv[1][0] == '/') { if (argc >= 5 && !strcmp(argv[3], "--once")) return module_main(argv[4], 1); if (!ki || !ki[0]) { fprintf(stderr, "tsc_op: no KHTPM_ARG3 (open it through the phone)\n"); return 2; } return module_main(ki, 0); } }
+    if (argc >= 4 && !strncmp(argv[1], "ui_", 3)) return ui_verb(argv[1], argv[2], argv[3]);
     if (argc < 3) { fprintf(stderr, "usage: tsc_op new|state|deal|answer|miracle|forfeit|ai <match dir> [args]\n"); return 2; }
     const char *verb = argv[1]; snprintf(MATCH, sizeof MATCH, "%s", argv[2]); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", MATCH);
     if (!load_verses()) return 2;

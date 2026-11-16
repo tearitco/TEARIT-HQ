@@ -95,3 +95,37 @@ RUN | $T/p/ops/+x/tsc_op.+x | ai | $T/m7
 EXPECT_EXIT | 0 | the-computer-plays-its-own-turn
 RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m7
 EXPECT_OUT | turn=1 | and-hands-the-turn-back
+
+CASE    | phone-screen
+MKDIR | inst/.hq_manager
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
+EXPECT_EXIT | 0 | one-projection-with-no-match
+EXPECT_HAS | inst/.hq_manager/ui.txt | show_setup=1 | no-match-yet-shows-the-start-buttons
+EXPECT_HAS | inst/.hq_manager/ui.txt | show_play=0 | and-no-play-area
+RUN | $T/p/ops/+x/tsc_op.+x | ui_new | human | $T/inst
+EXPECT_EXIT | 0 | ui-new-match
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
+EXPECT_HAS | inst/.hq_manager/ui.txt | show_choose=1 | the-choose-pane-after-a-new-match
+EXPECT_HAS | inst/.hq_manager/ui.txt | line_p1=> Player 1   HP 100   Mana 0 | player-1-has-the-turn-and-full-hp
+EXPECT_HAS | inst/.hq_manager/ui.txt | n_mir=11 | eleven-miracles-listed
+EXPECT_HAS | inst/.hq_manager/ui.txt | dig_1=0 | no-digit-buttons-outside-a-challenge
+RUN | $T/p/ops/+x/tsc_op.+x | ui_deal | 2 | $T/inst
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
+EXPECT_HAS | inst/.hq_manager/ui.txt | show_answer=1 | the-answer-pane-after-a-deal
+EXPECT_HAS | inst/.hq_manager/ui.txt | n_ch=2 | two-verses-shown
+EXPECT_HAS | inst/.hq_manager/ui.txt | dig_2=1 | digit-2-is-offered
+EXPECT_HAS | inst/.hq_manager/ui.txt | dig_3=0 | NEGATIVE-digit-3-is-not-offered-for-two-verses
+RUN | $T/p/ops/+x/tsc_op.+x | ui_digit | 3 | $T/inst
+EXPECT_EXIT | 1 | NEGATIVE-a-digit-beyond-the-verse-count-is-refused
+RUN | $T/p/ops/+x/tsc_op.+x | ui_digit | 1 | $T/inst
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
+EXPECT_HAS | inst/.hq_manager/ui.txt | typed_line=your order: 1 _ | the-first-digit-is-shown
+RUN | $T/p/ops/+x/tsc_op.+x | ui_digit | 2 | $T/inst
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
+EXPECT_HAS | inst/.hq_manager/ui.txt | show_answer=0 | the-second-digit-submits-the-answer
+EXPECT_HAS | inst/.hq_manager/ui.txt | line_p2=> Player 2 | and-the-turn-passed
+EXPECT_HAS | inst/tsc/ledger.txt | ANSWER\p1\p12\p | the-typed-digits-became-a-ledger-row
+RUN | /bin/sed | -i | s/ANSWER\p1\p12/ANSWER\p1\p21/ | $T/inst/tsc/ledger.txt
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
+EXPECT_HAS | inst/.hq_manager/ui.txt | does not replay | NEGATIVE-an-edited-ledger-shows-the-warning-instead-of-the-match
+EXPECT_HAS | inst/.hq_manager/ui.txt | show_setup=1 | and-offers-a-new-match
