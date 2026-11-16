@@ -22,7 +22,7 @@ A normal phone app (`appstore`, `PIN | first`, system app like settings) with on
 **Repo layout:** `catalog.pdl` at the root (`ENTRY | <id> | KIND | phone-app | VERSION | <n> | SHA256 | <sha256 of the package tree> | NOTE | ...`), one folder per package (`<id>/manifest.pdl`, `icon/`, `screens/`, `ops/*.c`, a build recipe). **No compiled binaries** (the house rule: compiled programs are in no branch).
 **Rules the store enforces, in order; any failure installs NOTHING and says which:**
 1. **Pinned commit, never HEAD.** The store trusts a source only at the commit written in the local `STORE_SOURCE` row. "Approved" = the owner (or the owner-designated maintainer) merged the app into the repo AND the pin was updated on this machine. A newer remote commit is only a notice ("newer approved commit available"), never auto-applied.
-2. **Fetch exactly that commit** over https (`git fetch` of the sha into a capped cache folder, or the tarball of that sha). Read-only: a plain GET, no login, no identity sent. A private repo needs a token: DESIGN ONLY, not built; the token would live in the user's own secret file, never in a log, a commit, or a doc.
+2. **Fetch exactly that commit** over https (`git fetch` of the sha into a capped cache folder, or the tarball of that sha). Read-only: a plain GET, no login, no identity sent. The repo is PUBLIC (owner 2026-11-16, "like the others"), so no token or credential exists anywhere in this design; a private repo is out of scope.
 3. **Verify** `SHA256` of the package tree against `catalog.pdl` (the catalog is part of the pinned commit), reject symlinks and paths outside the package folder.
 4. **Reject prebuilt binaries** (any file that is ELF/executable in `ops/+x/`); only source is accepted.
 5. **`app_check`** (the existing format validator).
@@ -42,4 +42,4 @@ Live: photographs of the picker with the store tile, the store screen, an instal
 4. LATER: other kinds (toys, apps) in the same catalog.
 
 ## 7. Open questions
-Public or private repo (private needs a token design); where the owner wants the first-install prompt (on the phone or in a desktop window); whether app versions can be pinned per app or only per repo commit (default: per repo commit); update flow (the notice only, for now).
+Settled: the repo is public (owner 2026-11-16), no token. Still open: where the owner wants the first-install prompt (on the phone or in a desktop window); whether app versions can be pinned per app or only per repo commit (default: per repo commit); update flow (the notice only, for now).
