@@ -152,6 +152,7 @@ int main(int argc, char **argv) {
     const char *v = argv[1];
     if (!strcmp(v, "new") || !strcmp(v, "list") || !strcmp(v, "close") || !strcmp(v, "prefs") || !strcmp(v, "install") || !strcmp(v, "uninstall")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); if (!strcmp(v, "install")) return argc >= 4 ? v_install(argv[3]) : 2; if (!strcmp(v, "uninstall")) return argc >= 4 ? v_uninstall(argv[3]) : 2; if (!strcmp(v, "prefs")) return argc >= 4 ? v_prefs(argv[3], argc >= 5 ? argv[4] : NULL) : 2; if (!strcmp(v, "new")) return v_new(); if (!strcmp(v, "list")) return v_list(); if (argc < 4) return 2; return v_close(argv[3]); }
     if (!house_of(argv[2])) { fprintf(stderr, "phone_op: not a plus-phone instance: %s\n", argv[2]); return 2; }
+    if (!strcmp(v, "quit")) { usleep(300000); kill_window(argv[2]); printf("PHONE-QUIT window closed, the phone and its apps keep their data (phone_op relaunch brings it back)\n"); return 0; }      /* HQ > quit: close the WINDOW only; "close" deletes the whole instance (tests, clean-up) and would lose a match */
     if (!strcmp(v, "flip")) return v_flip(argv[2]); if (!strcmp(v, "relaunch")) return v_relaunch(argv[2]); if (!strcmp(v, "home")) return v_home(argv[2]);
     if (!strcmp(v, "open") && argc >= 4) return v_open(argv[2], argv[3]);
     if (!strcmp(v, "closeself")) { const char *at = strstr(argv[2], MARK); return v_close(at + strlen(MARK)); }
