@@ -3722,20 +3722,8 @@ static double nb_ctx_num(JSContext *ctx, JSValueConst o, const char *k, double d
 #include "nb_worker_c2d_stroketext.c"
 /* canvas 2D gradient helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_c2d_gradient.c"
-static JSValue nb_c2d_createPattern(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    (void)this_val;
-    /* Pattern holds its source reference; resolved to pixels at fill time
-     * so canvas-source patterns track later draws (live pattern). */
-    JSValue p = JS_NewObject(ctx);
-    if (argc >= 1 && JS_IsObject(argv[0]))
-        JS_SetPropertyStr(ctx, p, "src", JS_DupValue(ctx, argv[0]));
-    JS_SetPropertyStr(ctx, p, "rep",
-                      (argc >= 2 && JS_IsString(argv[1])) ? JS_DupValue(ctx, argv[1]) : JS_NewString(ctx, "repeat"));
-    return p;
-}
-static JSValue nb_c2d_lineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    return JS_NewArray(ctx);
-}
+/* canvas 2D pattern/line-dash helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_c2d_pattern_linedash.c"
 /* ---- WebGL (GLES2 via EGL pbuffer, headless) ----
  * REAL, NEW 2026-10-07 (maximal scope: canvas/webgl fast): EGL probe
  * rendered+readback with no X server. getContext('webgl') returns a
