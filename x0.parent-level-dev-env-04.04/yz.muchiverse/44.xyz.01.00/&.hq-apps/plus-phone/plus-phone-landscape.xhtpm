@@ -7,8 +7,17 @@
   <module id="projector" src="&.hq-apps/plus-phone/ops/+x/phone_projector.+x"/>
   <page name="main">
     <tabbar id="toolbar" class="tab-bar">
-      <tab id="tb-book" class="tab" label="${book_label} : ${page_label}" onclick="'${PKG}/ops/+x/phone_op.+x' home '${ARG3}'"/>
+      <tab id="tb-hq" class="tab" label="HQ v" onclick="ACTIVATE" target_id="tb-hq"/>
+      <tab id="tb-book" class="tab" label="${book_label} : ${page_label} v" onclick="ACTIVATE" target_id="tb-book"/>
     </tabbar>
+    <item id="hq-restart" class="dd-row dropdown-child" target_id="tb-hq" label="restart phone" action="'${PKG}/ops/+x/phone_op.+x' relaunch '${ARG3}'"/>
+    <item id="hq-quit" class="dd-row dropdown-child" target_id="tb-hq" label="quit phone" action="'${PKG}/ops/+x/phone_op.+x' quit '${ARG3}'"/>
+    <item id="hq-rot" class="dd-row dropdown-child" target_id="tb-hq" label="rotate" action="'${PKG}/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+    <item id="hq-cancel" class="dd-row dropdown-child quiet" target_id="tb-hq" label="- cancel -" action="void"/>
+    <repeat count="${n_pages}" bind="pg">
+      <item id="pg${pg.#}" class="dd-row dropdown-child" target_id="tb-book" label="${pg.label}" action="${pg.act}"/>
+    </repeat>
+    <item id="pg-cancel" class="dd-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <item id="flip" class="chrome-btn" label="@" action="'${PKG}/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
     <item id="back" class="chrome-btn" label="<" show="${app_open}" action="'${PKG}/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
@@ -17,6 +26,8 @@
     </repeat>
     <text label="no apps installed" class="quiet" show="${no_apps}"/>
     <text label="${last_result}" class="quiet" show="${show_last}"/>
-    <item id="bar-bottom" class="bar-bottom" label=""/>
+    <footer id="statusbar" class="phone-footer">
+      <item id="ft-rot" class="phone-ft" label="@ rotate" action="'${PKG}/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+    </footer>
   </page>
 </window>

@@ -7037,6 +7037,17 @@ static void layout_dropdown_overlays(Elem *container, int x, int w) {
         }
     }
 }
+/* 2026-11-15: a page-level <footer> (rpg-edit's bottom bar shape): ONE row of its items pinned to the window bottom, items side by side, nav-numbered. Shared by the flat-page and the swatch-grid layouts. place=0 only measures: returns the height the footer needs (0 = no footer); place=1 positions it at the current g_win_h and returns the height to reserve (footer + 4). Sizing as in the sidebar path: css height or 24, padding 6, item width from css or text + 18. */
+static int layout_page_footer(Elem *page, int place) {
+    for (int i0 = 0; i0 < page->n_children; i0++) { Elem *ft = page->children[i0]; if (strcmp(ft->tag, "footer") != 0) continue;
+        css_compute_style(&g_sheet, ft->tag, ft->id, ft->classes, ft->n_classes, 0, &ft->style); int rh = ft->style.has_height ? ft->style.height : scaled(24); if (rh < 12) rh = 12; int fh = rh + scaled(4);
+        if (!place) return fh + 4;
+        ft->x = 0; ft->y = g_win_h - fh; ft->w = g_win_w; ft->h = fh; ft->nav_index = 0; int fx = scaled(6);
+        for (int k = 0; k < ft->n_children; k++) { Elem *fi = ft->children[k]; if (strcmp(fi->tag, "item") != 0 && strcmp(fi->tag, "text") != 0) continue; css_compute_style(&g_sheet, fi->tag, fi->id, fi->classes, fi->n_classes, 0, &fi->style);
+            int fw = fi->style.has_width ? fi->style.width : (kh_measure_text_px(&fi->style, fi->label) + scaled(18)); fi->x = fx; fi->w = fw; fi->h = rh - scaled(4); fi->y = ft->y + scaled(2); fx += fw + scaled(4);
+            if (strcmp(fi->tag, "item") == 0 && (fi->onclick[0] || fi->label[0])) { fi->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = fi; } else fi->nav_index = 0; }
+        return fh + 4; }
+    return 0; }
 
 /* Real, generic dual-region layout - fires only when `page` declares
  * BOTH a <sidebar> and a <panel> (see this section's own header
@@ -9787,6 +9798,7 @@ static void assign_nav_and_layout(void) {
             Elem *item = page->children[i];
             int is_sw = 0, is_close = 0, c;
             if (strcmp(item->tag, "item") != 0) continue;
+            if (elem_has_class(item, "dropdown-child")) continue;      /* dropdown rows are placed by the shared overlay pass at the end of this layout */
             for (c = 0; c < item->n_classes; c++) {
                 if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
                 if (strcmp(item->classes[c], "close-btn") == 0 ||
@@ -9897,7 +9909,7 @@ static void assign_nav_and_layout(void) {
                 }
                 if (strcmp(item->id, "close") == 0) is_close = 1;
                 if (item == kh_bar_top || item == kh_bar_bottom) continue;      /* toolbar bands are placed separately */
-                if (is_sw || is_close || KH_IS_FOOTER_CHIP(item)) continue;
+                if (is_sw || is_close || KH_IS_FOOTER_CHIP(item) || elem_has_class(item, "dropdown-child")) continue;
                 const char *fam = item->n_classes ? item->classes[0] : "";
                 /* room for draw_elem's "[ ]NN. " nav badge (~46px) PLUS
                  * the whole label, or the CSS width if it asks for more -
@@ -9968,7 +9980,7 @@ static void assign_nav_and_layout(void) {
             for (i = 0; i < page->n_children; i++) {
                 Elem *item = page->children[i];
                 if (strcmp(item->tag, "item") != 0) continue;
-                if (!KH_IS_FOOTER_CHIP(item)) continue;
+                if (!KH_IS_FOOTER_CHIP(item) || elem_has_class(item, "dropdown-child")) continue;
                 /* room for draw_elem's "[ ]NN. " nav badge (~46px) PLUS
                  * the whole label, or the CSS width if it asks for more -
                  * a too-narrow chip clipped "A"/"B" to just the badge. */
@@ -9985,11 +9997,13 @@ static void assign_nav_and_layout(void) {
         }
         #undef KH_IS_FOOTER_CHIP
         if (kh_bar_bottom) { int bbh = (kh_bar_bottom->style.has_height && !kh_bar_bottom->style.height_is_pct) ? kh_bar_bottom->style.height : 28; max_y += bbh + 6; }      /* room for the bottom toolbar */
+        max_y += layout_page_footer(page, 0);      /* room for a <footer> (measure only) */
         g_win_h = max_y + 8;
         /* same rule for height: an explicit pixel height in the window's CSS is a MINIMUM (a phone is taller than its few tiles) */
         { CssStyle khs; memset(&khs, 0, sizeof khs); if (g_window) css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL, g_window->classes, g_window->n_classes, 0, &khs);
           if (g_window && khs.has_height && !khs.height_is_pct && khs.height > g_win_h) g_win_h = khs.height; }
         if (kh_bar_bottom) { int bbh = (kh_bar_bottom->style.has_height && !kh_bar_bottom->style.height_is_pct) ? kh_bar_bottom->style.height : 28; kh_bar_bottom->x = 1; kh_bar_bottom->y = g_win_h - bbh - 1; kh_bar_bottom->w = g_win_w - 2; kh_bar_bottom->h = bbh; }      /* pinned to the bottom edge */
+        layout_page_footer(page, 1); layout_dropdown_overlays(page, 0, g_win_w);      /* footer pinned at the final height, then the shared dropdown pass */
         } else {
         /* A page carrying a <canvas> is a live-framebuffer window (the
          * piececraft-hq board). It gets a horizontal toolbar row, top-
@@ -10034,14 +10048,7 @@ static void assign_nav_and_layout(void) {
         for (int bi = 0; bi < page->n_children; bi++) { Elem *b = page->children[bi]; if (strcmp(b->tag, "item") != 0) continue; if (elem_has_class(b, "bar-top") && !kh_fbt) kh_fbt = b; else if (elem_has_class(b, "bar-bottom") && !kh_fbb) kh_fbb = b; }
         if (kh_fbt) { css_compute_style(&g_sheet, kh_fbt->tag, kh_fbt->id, kh_fbt->classes, kh_fbt->n_classes, 0, &kh_fbt->style); int bh = (kh_fbt->style.has_height && !kh_fbt->style.height_is_pct) ? kh_fbt->style.height : 28; kh_fbt->x = 1; kh_fbt->y = y; kh_fbt->w = g_win_w - 2; kh_fbt->h = bh; kh_fbt->nav_index = 0; if (kh_fbt->label[0]) { kh_fbt->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_fbt; } y += bh + 2; }
         if (kh_fbb) { css_compute_style(&g_sheet, kh_fbb->tag, kh_fbb->id, kh_fbb->classes, kh_fbb->n_classes, 0, &kh_fbb->style); int bh = (kh_fbb->style.has_height && !kh_fbb->style.height_is_pct) ? kh_fbb->style.height : 28; kh_fbb->x = 1; kh_fbb->y = g_win_h - bh - 1; kh_fbb->w = g_win_w - 2; kh_fbb->h = bh; kh_fbb->nav_index = 0; if (kh_fbb->label[0]) { kh_fbb->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_fbb; } kh_fbot = bh + 4; }
-        /* 2026-11-15: a <footer> in a FLAT page (rpg-edit's own bottom bar shape, until now only laid out by the sidebar+panel path): one row of its items pinned to the window bottom, items side by side, nav-numbered, and the scrolllist stops above it. Same sizing rules as the sidebar path (css height or 24, padding 6, width from css or text+18). */
-        for (int fi0 = 0; fi0 < page->n_children; fi0++) { Elem *ft = page->children[fi0]; if (strcmp(ft->tag, "footer") != 0) continue;
-            css_compute_style(&g_sheet, ft->tag, ft->id, ft->classes, ft->n_classes, 0, &ft->style); int rh = ft->style.has_height ? ft->style.height : scaled(24); if (rh < 12) rh = 12; int fh = rh + scaled(4);
-            ft->x = 0; ft->y = g_win_h - fh; ft->w = g_win_w; ft->h = fh; ft->nav_index = 0; int fx = scaled(6);
-            for (int k = 0; k < ft->n_children; k++) { Elem *fi = ft->children[k]; if (strcmp(fi->tag, "item") != 0 && strcmp(fi->tag, "text") != 0) continue; css_compute_style(&g_sheet, fi->tag, fi->id, fi->classes, fi->n_classes, 0, &fi->style);
-                int fw = fi->style.has_width ? fi->style.width : (kh_measure_text_px(&fi->style, fi->label) + scaled(18)); fi->x = fx; fi->w = fw; fi->h = rh - scaled(4); fi->y = ft->y + scaled(2); fx += fw + scaled(4);
-                if (strcmp(fi->tag, "item") == 0 && (fi->onclick[0] || fi->label[0])) { fi->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = fi; } else fi->nav_index = 0; }
-            if (fh + 4 > kh_fbot) kh_fbot = fh + 4; break; }
+        { int fb = layout_page_footer(page, 1); if (fb > kh_fbot) kh_fbot = fb; }      /* 2026-11-15: a <footer> on a flat page (rpg-edit's bottom bar shape) */
         int chrome_x = g_win_w - 8;      /* has_canvas only */
         int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
         int found_close = 0;
