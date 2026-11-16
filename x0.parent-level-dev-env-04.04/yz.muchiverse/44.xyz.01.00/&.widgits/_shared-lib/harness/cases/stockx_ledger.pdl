@@ -1,0 +1,104 @@
+# stockx_ledger (2026-11-16): &.hq-apps/app-edit/projects/stock-x/ops/stockx_op.c, the stock+x paper-broker engine, on a CANNED quote bus (no network). It must do what the old Yahoo test_suite did (add credit, buy, sell, portfolio;
+# options come in a later phase) with INTEGER money: cents and micro-shares, no float. The ledger is the only authority: replay recomputes every row, a hand-edited ledger is refused, files beside it change nothing.
+# Every refusal has a passing control. NO network.
+RESULTS | ../results/stockx_ledger.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | bus
+RUN | /usr/bin/gcc | -O2 | -o | $T/sx.+x | $HOUSE/&.hq-apps/app-edit/projects/stock-x/ops/stockx_op.c
+EXPECT_EXIT | 0 | the-op-compiles
+WRITE | bus/latest.txt | AAPL@yahoo\p356270000\p350100000\p1763000000\pUSD\p5000\nNVDA@yahoo\p118500000\p117000000\p1763000000\pUSD\p5000\nONE@yahoo\p1000000\p1000000\p1763000000\pUSD\p5000\n
+
+CASE    | the-old-suite-behaviours-in-integer-cents
+RUN | $T/sx.+x | $T/led | new
+EXPECT_OUT_IS | cash=100000 | a-new-account-has-1000-dollars
+RUN | $T/sx.+x | $T/led | new
+EXPECT_EXIT | 1 | NEGATIVE-an-existing-ledger-is-never-overwritten
+RUN | $T/sx.+x | $T/led | credit | 100000
+EXPECT_OUT_IS | cash=200000 | add-credit-1000-dollars
+RUN | $T/sx.+x | $T/led | buy | NVDA | 10 | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cash=81500;pos=NVDA@yahoo:10000000 | buy-10-shares-at-118.50-costs-exactly-1185.00
+RUN | $T/sx.+x | $T/led | sell | NVDA | 5 | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cash=140750;pos=NVDA@yahoo:5000000 | sell-5-shares-brings-592.50
+RUN | $T/sx.+x | $T/led | state | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cash_cents=140750 | portfolio-cash
+EXPECT_OUT | pos NVDA@yahoo qty_micro=5000000 price_micro=118500000 value_cents=59250 | portfolio-holding-valued-at-the-quote
+EXPECT_OUT | total_cents=200000 | cash-plus-holdings-is-exactly-2000-dollars-(a-sell-at-the-same-price-changes-no-total)
+
+CASE    | fractions-and-rounding-are-exact
+RUN | $T/sx.+x | $T/led | buy | AAPL | 2.5 | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cents=89068 | 2.5-shares-at-356.27-is-890.675-rounded-half-up-to-890.68
+RUN | $T/sx.+x | $T/led | buy | ONE | 0.1 | --bus | $T/bus | --now | 5100
+RUN | $T/sx.+x | $T/led | buy | ONE | 0.1 | --bus | $T/bus | --now | 5100
+RUN | $T/sx.+x | $T/led | buy | ONE | 0.1 | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cash=51652;pos=ONE@yahoo:300000 | three-times-0.1-share-is-exactly-0.3-(the-float-trap)
+RUN | $T/sx.+x | $T/led | sell | ONE | 0.3 | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cash=51682;pos=ONE@yahoo:0 | selling-0.3-leaves-exactly-zero
+RUN | $T/sx.+x | $T/led | state | --bus | $T/bus | --now | 5100
+EXPECT_OUT_LACKS | pos ONE | a-zero-position-is-not-listed
+EXPECT_OUT | total_cents=200000 | the-total-is-still-exactly-2000-dollars-after-all-the-fractions
+
+CASE    | refusals-write-nothing
+RUN | $T/sx.+x | $T/led | buy | AAPL | 1000 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 1 | NEGATIVE-cannot-spend-more-than-the-cash
+RUN | $T/sx.+x | $T/led | sell | NVDA | 6 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 1 | NEGATIVE-cannot-sell-shares-you-do-not-hold-(no-shorting)
+RUN | $T/sx.+x | $T/led | buy | AAPL | 0.000001 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 1 | NEGATIVE-a-trade-worth-less-than-a-cent-is-refused
+RUN | $T/sx.+x | $T/led | buy | AAPL | 0.1234567 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 2 | NEGATIVE-more-than-6-decimals-is-refused
+RUN | $T/sx.+x | $T/led | buy | AAPL | -1 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 2 | NEGATIVE-a-negative-quantity-is-refused
+RUN | $T/sx.+x | $T/led | buy | AAPL | abc | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 2 | NEGATIVE-a-non-number-is-refused
+RUN | $T/sx.+x | $T/led | buy | aapl | 1 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 2 | NEGATIVE-a-lowercase-symbol-is-refused
+RUN | $T/sx.+x | $T/led | buy | ZZZZ | 1 | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 4 | NEGATIVE-a-symbol-with-no-quote-is-refused
+RUN | $T/sx.+x | $T/led | replay
+EXPECT_OUT | REPLAY-OK rows=9 | none-of-the-refusals-wrote-a-row-(9-rows-exactly)
+
+CASE    | quote-freshness-boundary
+RUN | $T/sx.+x | $T/led | buy | AAPL | 0.01 | --bus | $T/bus | --now | 5301
+EXPECT_EXIT | 4 | NEGATIVE-a-quote-301-seconds-old-is-refused
+RUN | $T/sx.+x | $T/led | buy | AAPL | 0.01 | --bus | $T/bus | --now | 4000
+EXPECT_EXIT | 4 | NEGATIVE-a-quote-from-the-future-is-refused
+RUN | $T/sx.+x | $T/led | buy | AAPL | 0.01 | --bus | $T/bus | --now | 5300
+EXPECT_EXIT | 0 | CONTROL-a-quote-exactly-300-seconds-old-is-accepted-so-the-refusals-above-come-from-the-age
+
+CASE    | a-hand-edited-ledger-is-refused
+RUN | /bin/cp | -r | $T/led | $T/ctl
+RUN | $T/sx.+x | $T/ctl | state | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 0 | CONTROL-an-untouched-copy-replays
+RUN | /bin/cp | -r | $T/led | $T/f1
+RUN | /usr/bin/sed | -i | s/89068/89069/ | $T/f1/ledger.txt
+RUN | $T/sx.+x | $T/f1 | state | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 3 | NEGATIVE-one-cent-changed-in-a-trade-is-refused
+RUN | /bin/cp | -r | $T/led | $T/f2
+RUN | /usr/bin/sed | -i | s/cash=81500/cash=81501/ | $T/f2/ledger.txt
+RUN | $T/sx.+x | $T/f2 | state | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 3 | NEGATIVE-a-changed-result-text-is-refused
+RUN | /bin/cp | -r | $T/led | $T/f3
+RUN | /usr/bin/sed | -i | 3d | $T/f3/ledger.txt
+RUN | $T/sx.+x | $T/f3 | state | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 3 | NEGATIVE-a-deleted-row-is-refused-(numbering-and-balances-break)
+RUN | /bin/cp | -r | $T/led | $T/f4
+RUN | /usr/bin/sed | -i | s/NVDA@yahoo\p5000000/NVDA@yahoo\p9000000/ | $T/f4/ledger.txt
+RUN | $T/sx.+x | $T/f4 | state | --bus | $T/bus | --now | 5100
+EXPECT_EXIT | 3 | NEGATIVE-an-edited-holding-is-refused
+
+CASE    | files-beside-the-ledger-change-nothing
+RUN | /bin/sh | -c | $T/sx.+x $T/led state --bus $T/bus --now 5100 > $T/s0.txt
+RUN | /bin/cp | $T/led/ledger.txt | $T/led0.txt
+WRITE | led/cash.txt | 999999999\n
+WRITE | led/state.txt | cash=999999999\n
+WRITE | led/portfolio.txt | NVDA 1000000\n
+RUN | $T/sx.+x | $T/led | state | --bus | $T/bus | --now | 5100
+EXPECT_OUT | cash_cents=51326 | a-stray-cash-file-is-ignored-(cash-comes-from-the-ledger-only)
+RUN | /bin/sh | -c | $T/sx.+x $T/led state --bus $T/bus --now 5100 > $T/s1.txt
+RUN | /usr/bin/cmp | $T/s0.txt | $T/s1.txt
+EXPECT_EXIT | 0 | the-whole-state-output-is-identical-with-the-stray-files-there
+RUN | /usr/bin/cmp | $T/led0.txt | $T/led/ledger.txt
+EXPECT_EXIT | 0 | the-ledger-is-byte-identical-after-reading
