@@ -54,6 +54,8 @@ static int icon_cap(void) {      /* NOT kv(): that helper reads <dir>/phone.txt 
     while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "ICON_MAX | ", 11)) continue; ln[strcspn(ln, "\r\n")] = 0; for (int i = 0; i < 3; i++) if (!strcmp(ln + 11, ICON_NAME[i])) { fclose(fp); return i; } }
     fclose(fp); return 2;
 }
+static int count_apps(void) { char d[P]; snprintf(d, sizeof d, "%s/&.hq-apps/plus-phone/apps", HOUSE); DIR *dp = opendir(d); if (!dp) return 1; int n = 0; struct dirent *e; while ((e = readdir(dp))) if (e->d_name[0] != '.') n++; closedir(dp); return n < 1 ? 1 : n; }
+static int fill_px(int win_w, int ic) { int c = (win_w - 50) / (ICON_PX[ic] + 8); if (c < 1) c = 1; { int n = count_apps(); if (n < c) c = n; }      /* few apps: fewer columns, so they fill the width; more apps than columns: the step size, rows wrap */ int t = (win_w - 50) / c - 9; return t < ICON_PX[ic] ? ICON_PX[ic] : t; }      /* 2026-11-15 owner: "shouldnt the 2 app icons fill full screen size": same column count as the step, tile grown to fill the row (the renderer keeps the same count: (w-50)/(t+8)) */
 static int pick_icon(int win_w) { for (int i = icon_cap(); i >= 0; i--) if ((win_w - 50) / (ICON_PX[i] + 8) >= 2) return i; return 0; }
 static int slurp(const char *f, char *buf, size_t cap) { FILE *fp = fopen(f, "r"); if (!fp) return 0; size_t n = fread(buf, 1, cap - 1, fp); fclose(fp); buf[n] = 0; return 1; }
 static void replace_all(char *buf, size_t cap, const char *from, const char *to) { char *out = malloc(cap); if (!out) return; size_t o = 0, fl = strlen(from), tl = strlen(to); for (char *p = buf; *p && o + tl + 2 < cap; ) { if (!strncmp(p, from, fl)) { memcpy(out + o, to, tl); o += tl; p += fl; } else out[o++] = *p++; } out[o] = 0; snprintf(buf, cap, "%s", out); free(out); }
@@ -62,8 +64,8 @@ static int generate_layout(const char *inst, const char *lay, int win_w, int *ic
     char app[P], src[P], dst[P]; static char xb[16384], cb[8192]; snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); *ic = pick_icon(win_w);
     snprintf(src, sizeof src, "%s/%s", app, lay); if (!slurp(src, xb, sizeof xb)) return 0; replace_all(xb, sizeof xb, "${PKG}", app);
     char stem[96]; snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
-    snprintf(src, sizeof src, "%s/%s.css", app, stem); if (!slurp(src, cb, sizeof cb)) return 0; char to[64]; snprintf(to, sizeof to, "width: %dpx; height: %dpx;", ICON_PX[*ic], ICON_PX[*ic]); replace_all(cb, sizeof cb, "width: 120px; height: 120px;", to);
-    snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); { char it[64]; snprintf(it, sizeof it, "%s %d\n", ICON_NAME[*ic], ICON_PX[*ic]); snprintf(dst, sizeof dst, "%s/icon_size.txt", inst); wr(dst, it); } return 1;
+    snprintf(src, sizeof src, "%s/%s.css", app, stem); if (!slurp(src, cb, sizeof cb)) return 0; char to[64]; snprintf(to, sizeof to, "width: %dpx; height: %dpx;", fill_px(win_w, *ic), fill_px(win_w, *ic)); replace_all(cb, sizeof cb, "width: 120px; height: 120px;", to);
+    snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); { char it[64]; snprintf(it, sizeof it, "%s %d\n", ICON_NAME[*ic], fill_px(win_w, *ic)); snprintf(dst, sizeof dst, "%s/icon_size.txt", inst); wr(dst, it); } return 1;
 }
 /* start (or restart) the window of an instance with the layout for its orientation; prints nothing, returns the pid or 0 */
 static long launch(const char *inst) {

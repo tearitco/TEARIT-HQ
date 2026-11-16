@@ -2682,7 +2682,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * still exactly one line for anything that doesn't need more -
          * this only activates for a box some other real code path
          * already decided needs to be taller. */
-        int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0;
+        int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0 && !sprite_under_label;      /* 2026-11-15 (plus phone): a sprite tile keeps its caption on ONE line under the art (single-line path), it used to word-wrap from the top over the picture */
         int find_lo = -1, find_hi = -1;
         if (kh_find_active()) kh_find_label_match(shown_label, &find_lo, &find_hi);
         /* INLINE SPANS (phase 2, step 1b/step 3, 2026-10-09) - when the

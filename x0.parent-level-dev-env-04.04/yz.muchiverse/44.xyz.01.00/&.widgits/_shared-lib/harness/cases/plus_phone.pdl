@@ -61,13 +61,13 @@ EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/2/launch.log | landscape | NEGAT
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/launch.log | nonesuch | NEGATIVE-and-the-log-has-no-layout-that-does-not-exist
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | flip | $T/h/&.hq-apps/plus-phone/instances/1
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/phone.txt | ORIENT \p portrait | flipping-twice-returns-to-portrait
-WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/icon_size.txt | medium 120 | 5000 | back-in-portrait-the-icons-snap-to-medium-two-columns-fit
+WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/icon_size.txt | medium 148 | 5000 | back-in-portrait-two-apps-fill-the-row-two-columns-of-148
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | flip | $T/h/&.hq-apps/plus-phone/instances/1
-WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/icon_size.txt | large 160 | 5000 | in-landscape-they-snap-UP-to-large
+WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/icon_size.txt | large 318 | 5000 | in-landscape-two-apps-fill-the-row-two-columns-of-318
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | prefs | $T/h | icon_max | small
 EXPECT_OUT | PREFS-SET icon_max small | the-cap-is-set
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | flip | $T/h/&.hq-apps/plus-phone/instances/1
-WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/icon_size.txt | small 96 | 5000 | with-the-cap-on-small-a-portrait-phone-drops-from-medium-to-small
+WAIT_HAS | h/&.hq-apps/plus-phone/instances/1/icon_size.txt | small 148 | 5000 | with-the-cap-on-small-the-step-is-small-and-two-apps-still-fill-the-row
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | prefs | $T/h | icon_max | huge
 EXPECT_EXIT | 1 | NEGATIVE-a-size-that-is-not-small-medium-large-is-refused
 EXPECT_OUT | PREFS-REFUSED icon_max must be | with-the-reason
