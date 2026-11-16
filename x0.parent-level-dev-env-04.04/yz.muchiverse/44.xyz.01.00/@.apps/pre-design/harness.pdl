@@ -16,3 +16,4 @@ HARNESS | layout_preview_check | office | CASE | layout-studio: preview a layout
 HARNESS | tsc_p2p_check | office | CASE | True Swords Clash: two phones over p2p | tsc_p2p | - | - | no | two real palnet_peer processes on this machine: handshake, moves, forged rows refused, forfeit, ratings
 HARNESS | phone_hostlist_check | office | CASE | phone: master host list | phone_hostlist | - | - | no | the host list op: publish, expire, refusals, merge a master list, no real network
 HARNESS | video_brand_check | office | CASE | video: brand colours are not blue | video_brand | - | - | no | Tear-it co yellow and TSOTS red slides have no blue pixels; the old look is the control
+HARNESS | tsc_owner_check | office | CASE | tsc: peer ends with its owner | tsc_owner | - | - | no | two peers, one with an owner: only that one ends (control: the other stays alive)

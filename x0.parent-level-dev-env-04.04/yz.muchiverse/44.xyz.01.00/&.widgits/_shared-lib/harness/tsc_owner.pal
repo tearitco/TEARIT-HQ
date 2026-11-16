@@ -1,0 +1,4 @@
+# tsc_owner.pal - the package peer ends with its owner (2026-11-15). See cases/tsc_owner.pdl
+exec ./ops/+x/harness_case_op.+x cases/tsc_owner.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/tsc_owner.pdl
+halt

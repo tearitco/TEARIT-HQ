@@ -1,0 +1,31 @@
+# tsc_owner (2026-11-15): the package's palnet_peer ends by itself when its owner process (PALNET_OWNER_PID) is gone (five stray peers had survived 10-30 minutes after their phone windows closed).
+# ONE run, two real peers with the same setup: A has an owner (a sleep that ends after 3 s), B has none. Proves: both are alive while the owner lives (control), then A has ended and B is STILL alive, so the end of A is the owner rule and not something else (the first version of this check lived inside tsc_p2p and passed even without an owner: it proved nothing).
+# "ended" = gone or a zombie nobody reaped. Needs /bin/sh and ps.
+RESULTS | ../results/tsc_owner.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | p/ops/+x
+MKDIR | net/presence
+MKDIR | a/tsc
+MKDIR | b/tsc
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/ops/+x/palnet_peer.+x | $T/p/ops/+x/palnet_peer.+x
+ENV | PRISC_NET_ROOT | $T/net/presence
+ENV | PRISC_PROJECT_ROOT | $T/p
+
+CASE    | owner-lifetime
+SPAWN | own | /bin/sleep | 3
+ENV | PALNET_OWNER_PID | $own
+SPAWN | pa | $T/p/ops/+x/palnet_peer.+x | tsc | tsc-a | - | $T/a/tsc/net_out.txt | $T/a/tsc/net_in.txt | tsc
+ENV | PALNET_OWNER_PID |
+SPAWN | pb | $T/p/ops/+x/palnet_peer.+x | tsc | tsc-b | - | $T/b/tsc/net_out.txt | $T/b/tsc/net_in.txt | tsc
+SLEEP | 1500
+RUN | /bin/sh | -c | sa=$(ps -o stat= -p $pa 2>/dev/null); sb=$(ps -o stat= -p $pb 2>/dev/null); case "$sa" in ""\pZ*) a=ended;; *) a=alive;; esac; case "$sb" in ""\pZ*) b=ended;; *) b=alive;; esac; echo "a=$a b=$b"
+EXPECT_OUT | a=alive b=alive | CONTROL-both-peers-are-alive-while-the-owner-lives
+SLEEP | 6000
+RUN | /bin/sh | -c | sa=$(ps -o stat= -p $pa 2>/dev/null); sb=$(ps -o stat= -p $pb 2>/dev/null); case "$sa" in ""\pZ*) a=ended;; *) a=alive;; esac; case "$sb" in ""\pZ*) b=ended;; *) b=alive;; esac; echo "a=$a b=$b"
+EXPECT_OUT | a=ended b=alive | the-peer-with-an-owner-ended-by-itself-and-the-one-without-an-owner-is-still-alive
+
+CASE    | end
+CLEAN |

@@ -87,16 +87,5 @@ EXPECT_HAS | b/tsc/rating.txt | 984\p0\p1\p | the-guests-rating-went-down-16
 RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
 EXPECT_EXIT | 0 | the-two-ledgers-are-identical-at-the-end
 
-CASE    | owner-lifetime
-MKDIR | o/tsc
-SPAWN | own | /bin/sleep | 4
-ENV | PALNET_OWNER_PID | $own
-SPAWN | po | $T/p/ops/+x/palnet_peer.+x | tsc | tsc-own | - | $T/o/tsc/net_out.txt | $T/o/tsc/net_in.txt | tsc
-SLEEP | 1500
-EXPECT_LACKS | /proc/$po/stat | ) Z | CONTROL-the-peer-is-not-a-zombie-while-its-owner-lives
-SLEEP | 5500
-EXPECT_HAS | /proc/$po/stat | ) Z | the-peer-ended-by-itself-when-its-owner-process-was-gone-it-is-a-zombie-the-harness-never-reaped
-ENV | PALNET_OWNER_PID |
-
 CASE    | end
 CLEAN |
