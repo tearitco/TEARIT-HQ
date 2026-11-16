@@ -1,4 +1,4 @@
 # store_sources.default.pdl - the approved-apps source this LyfeDesk release ships with (App Store, design: BOOK 16.game/PLUS-PHONE-APP-STORE-AND-APPROVED-REPO-DESIGN-2026-11-16.md section 4).
 # One row:  STORE_SOURCE | git | <https url of a PUBLIC repo> | <the full 40-hex commit this release trusts>
 # The user's own STORE_SOURCE row in phone_prefs.pdl wins over this one. The pin is moved by a release (a new commit id here) or by the user; the store never follows a branch.
-STORE_SOURCE | git | https://github.com/tearitco/lyfedesk-approved-apps | 2343adfecfc4c22ae1f7d5072fb7eee17382aa7d
+STORE_SOURCE | git | https://github.com/tearitco/lyfedesk-approved-apps | 1204e7e71f8df2c23f91399d6c743c724cab5e82
