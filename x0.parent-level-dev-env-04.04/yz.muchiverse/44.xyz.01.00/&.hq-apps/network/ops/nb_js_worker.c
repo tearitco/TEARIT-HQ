@@ -3634,28 +3634,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_node_core.c"
     /* Node equality/root/position installs extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_node_compare.c"
-    {
-        JSAtom nm = JS_NewAtom(ctx, "isConnected");
-        JS_DefinePropertyGetSet(ctx, Np, nm,
-            JS_NewCFunction(ctx, nb_node_isConnected, "get isConnected", 0), JS_UNDEFINED,
-            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-    }
-    {
-        JSAtom nm = JS_NewAtom(ctx, "ownerDocument");
-        JS_DefinePropertyGetSet(ctx, Np, nm,
-            JS_NewCFunction(ctx, nb_node_ownerDocument, "get ownerDocument", 0), JS_UNDEFINED,
-            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-    }
-    {
-        JSAtom nm = JS_NewAtom(ctx, "nodeValue");
-        JS_DefinePropertyGetSet(ctx, Np, nm,
-            JS_NewCFunction(ctx, nb_node_value_get, "get nodeValue", 0),
-            JS_NewCFunction(ctx, nb_node_value_set, "set nodeValue", 1),
-            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-    }
+    /* Node isConnected/ownerDocument/nodeValue installs extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_node_state.c"
     JS_SetPropertyStr(ctx, Ep, "remove",         JS_NewCFunction(ctx, nb_el_remove_js, "remove", 0));
     JSValue Hp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Hp, Ep);
