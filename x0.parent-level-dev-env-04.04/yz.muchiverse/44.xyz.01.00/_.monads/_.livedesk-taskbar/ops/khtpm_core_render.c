@@ -6056,7 +6056,7 @@ static int kh_layout_tabbar_wrap(Elem *tabbar, int x0, int y0) {
         Elem *tab = tabbar->children[i];
         if (strcmp(tab->tag, "tab") != 0) continue;
         css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
-        int tw = scaled(52);
+        int tw = elem_has_class(tab, "no-nav") ? scaled(14) : scaled(52);      /* class="no-nav": a display-only tab (no badge, no number): narrower */
         if (font_ui && tab->label[0]) {
             XGlyphInfo gi;
             XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
@@ -6068,6 +6068,7 @@ static int kh_layout_tabbar_wrap(Elem *tabbar, int x0, int y0) {
             rows++;
         }
         tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
+        if (elem_has_class(tab, "no-nav")) { tab->nav_index = 0; tx += tw + scaled(3); continue; }      /* display-only tab: not in g_nav[], so the typed digits of the others are unchanged (owner 2026-11-16: the app name in the phone chrome row is not a control) */
         tab->nav_index = ++g_n_nav;
         g_nav[g_n_nav - 1] = tab;
         tx += tw + scaled(3);
@@ -7587,14 +7588,14 @@ static int layout_sidebar_panel(Elem *page) {
                 }
                 css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
                 /* [ ]N. badge is ~46px (playbook); 34 left labels clipped. */
-                int tw = scaled(52);
+                int tw = elem_has_class(tab, "no-nav") ? scaled(14) : scaled(52);
                 if (font_ui && tab->label[0]) {
                     XGlyphInfo gi;
                     XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
                     tw += gi.xOff;
                 }
                 tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
-                tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
+                if (elem_has_class(tab, "no-nav")) tab->nav_index = 0; else { tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab; }
                 tx += tw + scaled(3);
             }
             /* REAL FIX 2026-10-10 (owner: "pet screen flickers"; found by capturing the live window 2 min:

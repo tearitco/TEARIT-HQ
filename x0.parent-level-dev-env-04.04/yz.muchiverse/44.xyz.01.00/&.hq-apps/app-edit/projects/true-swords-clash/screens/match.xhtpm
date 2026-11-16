@@ -5,6 +5,7 @@
   <module id="projector" src="&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x"/>
   <page name="main">
     ${PHONE_BARS}
+    ${APP_CHROME}
     <text label="${line_p1}" class="hp-line"/>
     <text label="${line_p2}" class="hp-line"/>
     <text label="${line_turn}" class="quiet"/>

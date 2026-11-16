@@ -32,6 +32,7 @@ CASE    | the-picker-template-has-the-bars-block-once
 EXPECT_HAS | picker0.xhtpm | PHONE-BARS-BEGIN | the-bars-block-is-marked-in-the-phone-template
 EXPECT_HAS | picker0.xhtpm | show="${app_open}" | CONTROL-the-picker-keeps-the-app_open-guards-(the-next-case-must-not-have-them)
 EXPECT_HAS | picker0.xhtpm | phone_projector.+x | the-window-module-is-the-phone-projector
+EXPECT_LACKS | picker0.xhtpm | id="appchrome" | the-picker-has-no-app-chrome-row
 
 CASE    | open-an-app-in-the-same-window
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
@@ -41,6 +42,11 @@ EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | tsc_op.+x" 
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="tb-hq" | the-phone-top-bar-is-injected
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ${PHONE_BARS} | no-bars-token-left
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ${PHONE_FOOTER} | no-footer-token-left
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="appchrome" | the-apps-own-chrome-row-sits-under-the-phone-bar
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ac-min" | with-its-own-minimize-control
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ac-close" | and-close-control
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | class="tab no-nav" label="True Swords Clash" | the-app-name-in-the-chrome-is-a-label-with-no-nav-number-(owner-2026-11-16)
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ac-title" class="tab" | NEGATIVE-the-name-is-not-a-numbered-tab
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | show="${app_open}" | the-app_open-guards-are-dropped-inside-an-app
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | the-apps-body-is-there
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | the-bottom-bar-names-the-open-app
@@ -58,6 +64,7 @@ EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/screen.txt | the-
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hqwin-minimized | the-cell-is-dimmed
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | and-keeps-its-name
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | NEGATIVE-the-apps-body-is-gone-the-picker-shows
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="appchrome" | and-the-apps-chrome-row-is-gone-too
 SLEEP | 2
 RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
 EXPECT_OUT_IS | 1 | still-one-launch
