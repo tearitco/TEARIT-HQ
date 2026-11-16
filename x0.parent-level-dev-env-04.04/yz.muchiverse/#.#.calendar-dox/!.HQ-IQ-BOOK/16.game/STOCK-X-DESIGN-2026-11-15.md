@@ -36,7 +36,7 @@ App package, `phone_op` verbs (`install`, `open`, `relaunch`, `quit`, `flip`, `h
 ## 2. Goals and non-goals
 **Goals (SAID):** real prices from Yahoo; buy and sell; later charts, watchlists, options, fractional shares; a Robinhood-like feel in our framework.
 **Goals (DOC, from the same intent):** a quote screen, a buy/sell sheet, a portfolio with day change, an orders and history list, price alerts later; works for several users on one house; runs alongside a browser on a weak CPU (house rule: idle cost near zero, say what a feature costs).
-**Non-goals:** real money, real brokerage, margin, shorting (phase 5 at the earliest), after-hours routing, tax lots and tax forms, any claim that a price is current or tradable. Prices are what a free feed returned at a time; the app shows that time.
+**Non-goals:** real money, real brokerage, margin, shorting (phase 5 at the earliest), after-hours routing, real tax forms (a simulated tax is in section 13, which DOES need cost-basis lots), any claim that a price is current or tradable. Prices are what a free feed returned at a time; the app shows that time.
 
 ## 3. What is wrong in the old code for our house (the four fixes)
 1. **Mutable state is the authority** (`state.txt`, `balance=`, `stocks=`): ghost data by the house rule. Fix: ledger plus projections (4.1).
@@ -107,7 +107,7 @@ Idle: zero (no timers while the app is closed, none polling while open except th
 Executing real trades for users needs a licensed broker-dealer relationship (or an introducing-broker arrangement with an API provider), customer identification and anti-money-laundering checks, custody of funds and securities, best-execution and disclosure obligations, licensed market data and a lawyer. None of that is in this design; the app must say "paper trading, prices may be delayed, not advice" on its first screen. The ledger design (integer money, replay, no hand edits) is chosen so that a future real-money back end could sit behind the same verbs, but that is a business decision, not an engineering step.
 
 ## 10. Open questions for the owner
-1. **Whose app is it?** The phone is the TSOTS company's interface, rpg-edit is app #2; is stock+x a Tear-it co app, a TSOTS app, or its own brand (colors and name)? (Affects theme and the package's `manifest.pdl`.)
+1. ~~Whose app is it?~~ **ANSWERED 2026-11-15 (SAID): stock+x is a TSOTS app for now** (black and red brand, the phone is the TSOTS interface). A WSR app follows with the same interface (section 14).
 2. **Start money and refills:** $1,000 like the old project? A daily top-up, or none?
 3. **Fees and spread:** zero for now?
 4. **Which users:** one account per LyfeDesk user, per phone, or per phone and user? (Section 31.3 of the phone design doc is the identity question.)
@@ -125,3 +125,47 @@ P0 first: the fetch op and its cases (canned responses), then ONE hand-run live 
 - Phone framework: `16.game/PLUS-PHONE-DESIGN-2026-11-15.md` (sections 27 to 32), `16.game/PLUS-PHONE-PLATFORM-DEV-GUIDE-2026-11-15.md`; the app to copy the shape from: `&.hq-apps/app-edit/projects/true-swords-clash/` (`ops/tsc_op.c`, `screens/`); the fetch shape: `&.hq-apps/plus-phone/ops/hostlist_op.c` (`fetch`).
 - House rules: `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`, `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` (add a row before building), `03-pitfalls/RUNTIME-FILE-GROWTH-STANDARD.md`, `03-pitfalls/hq-cpu-safety.md`.
 - Outside: Yahoo Finance terms `https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html`; the v8 chart endpoint is unofficial and undocumented (secondary sources: `https://scrapfly.io/blog/guide-to-yahoo-finance-api`, `https://github.com/ranaroussi/yfinance` issues).
+
+## 13. Fees, tribute, tax and rebates (owner 2026-11-15, SAID; TEMPIRE and TEMPEROR are NEW names, no earlier mention anywhere in the tree: grep of the whole repo)
+**Owner:** "there will be an adjustable platform fee, a tax (tribute) tx fee for the chain, quarterly estimated tax payments, a year tax, and rebates from TEMPIRE." **TEMPIRE** = the name of the empire; **TEMPEROR** = the name of the emperor.
+
+### 13.1 What the house already designed that this lands on (READ, `16.game/CHAIN-MASTER-BANK-FED-AND-CONTRACTS-DESIGN-2026-10-28.md`, DESIGN, nothing built)
+The chain is the master bank ("Fed"): a **master account (treasury)** that receives a **master tax** and a **master tx fee on every purchase**, an **issuer** that creates units only by a rule in `policy.pdl`, **bonds**, and owner **contracts** (taxes, dividends, royalties, annuities). That document says the word "tribute" is not yet a defined term (OPEN). The WSR stack has a built `tax_loop.c` (225 lines in `WSR_PAL-PREFERED/ops`) and governments with `tax_rate_adj`. So the owner's list is not a new subsystem: it is **stock+x being the first customer of the master-bank design**, plus the empire naming.
+DOC mapping (proposal): **TEMPIRE** = the authority that owns the master account and the `policy.pdl` of a world (the chain-as-bank plus government); **TEMPEROR** = the signing role that may change that policy (owner-signed changes, as the chain doc already requires). **Tribute** = the master tx fee paid to TEMPIRE on a chain transaction (to be confirmed: the owner wrote "tax (tribute) tx fee for chain").
+
+### 13.2 Five money flows, each a ledger row (never a free field)
+| Flow | When | Who sets the rate | Ledger rows (user ledger and treasury ledger, linked by the trade number) |
+|---|---|---|---|
+| **Platform fee** | on every BUY and SELL | **adjustable** by the platform operator (a signed `policy.pdl` row, with a history of changes so a replay uses the rate that applied then) | `FEE | n | trade_n | cents | rate_id` (replaces the old `fee_cents` column) |
+| **Tribute (chain tx fee)** | on every settlement that touches the chain | TEMPIRE policy (TEMPEROR-signed) | `TRIBUTE | n | trade_n | cents | rate_id` |
+| **Quarterly estimated tax** | each game quarter | TEMPIRE policy; computed from the user's REALIZED gain so far this year (an estimate, like real estimated payments) | `TAXEST | n | quarter | cents` and the matching treasury credit |
+| **Year tax** | year end | TEMPIRE policy; true-up = tax on the year's realized gain minus estimates paid | `TAXYEAR | n | year | tax_cents | est_paid_cents | due_cents` |
+| **Rebate** | when policy says (for example a loss year, a fee holiday, a loyalty rule) | TEMPIRE policy | `REBATE | n | reason | cents | rule_id` (money comes OUT of the treasury) |
+All five are integer cents, appended through verbs, replayed; the treasury account is a second ledger written by the same verbs so **money never appears or vanishes** (the user ledger debit equals the treasury credit; a case checks the sum of both ledgers is constant).
+
+### 13.3 What taxing needs that section 4 did not have
+- **Realized gain** needs **cost basis**: lots per symbol. Default **FIFO** lots (a `LOT` projection from the BUY rows); average-cost as a policy option. Fractional shares work the same (micro-shares).
+- **A calendar:** quarters and years of GAME time or REAL time? (the world clock exists for DSR/WSR; the phone app would read the world clock). OPEN.
+- **Estimates:** a simple rule first: quarterly estimate = rate x realized gain so far, minus estimates already paid; the year-end true-up can refund (a negative due becomes a REBATE-like row). Losses carry forward? OPEN.
+- **Everything adjustable lives in `policy.pdl`** (rates, thresholds, dates), signed by TEMPEROR, read by replay with the policy version in force at each row's time; a user can never edit it.
+- **Display:** the portfolio screen shows fees and tax paid and an "estimated tax due" line, so the cost of trading is visible (the Robinhood feel plus the empire).
+
+### 13.4 Open questions for the owner (new)
+1. Is the **tribute** the same as the master tx fee in the 2026-10-28 chain doc (paid on chain transactions), separate from the platform fee? 2. Who is **TEMPEROR** in practice: the owner's key, a role several signers can hold, a game character? 3. Are **TEMPIRE** and the chain-master-bank the same thing, or is the chain one department of the empire? 4. Quarters and years in game time (the world clock) or real time? 5. Which events earn a **rebate**? 6. Is tax on gains only, or also on dividends and income (WSR's `tax_loop.c` is the model to read)? 7. Is a user's tax paid from the trading cash or from a separate wallet?
+
+## 14. The WSR app and a shared price service (owner 2026-11-15, SAID)
+**Owner:** "we will do a WSR app too. Same interface, but it runs the WSR 'entity price simulation' (which should not be exclusive to the app; other apps should be able to use these prices too), and if we view the `wsr-sim-#` we can see the sim actually being played out by the 'entity bank' in 2D/3D."
+
+### 14.1 What exists (READ)
+- **The price engine and the economy ops are built** in `WSR_PAL-PREFERED/ops` (53 ops): `corp_update_price.c` (165 lines, the ported analysis formula, once per End Turn), `corp_trade`, `corp_ipo`, `bank_loan_op.c`, `day_loop.c`, `market_quote.c`, `market_settle.c`, `tax_loop.c` (225), `pop_update`, `realestate_*`, `gov_*`; pieces `corp_<TICKER>/state.txt` and `price_history.txt` (`tick,price,prev,change%`). A bank is a `corp_*` with `industry=bank`.
+- **The design for watching it play is written, not built:** `08-roadmap/design-docs/DSR-SIMULATION-DESIGN.md` ("two mini civilizations you watch play": a world clock ledger with phases in a day, buildings as entities with a kind including **bank**, a population pool with a watchable sample, daily routines as data, WSR mechanics through entities, loans with daily interest, **same seed gives the same numbers** (its phase 1 test), a speed control to watch), `DSR-WSR-PETS-BRIDGE-DESIGN.md` (companies, population and pets on a **2D/3D map**; entity_uid bridges every identity; WSR `state.txt` is the authority for company finance and the entity's `variables.txt` is a read-only projection; **no `dsr` book exists on the pc-hq board yet**), `DSR-AS-PHYSICAL-WSR-PLAN.md`. Built today: the DSR toy window (`&.hq-apps/dsr`), the `dsr-rpg` and `dsr-rpg-board` apps, and in the `dsr-test` page 4 banks, 8 stores, 2 castles, 2 population entities (no game state on them yet, per the simulation doc).
+- **Not found:** the name `wsr-sim-#`, an "entity bank" as a defined term (the nearest is the DSR bank entities = `corp_*` with `industry=bank` and the chain master bank), and any shared price service. WSR trades do not move prices (a flagged v1 simplification in `player_trade.c`).
+
+### 14.2 The shared price service (DOC, proposal)
+A **quote bus**: one folder per world (`prices/`), one append-only quote ledger per SOURCE (`yahoo`, `wsr-sim-1`, `wsr-sim-2`...), rows `Q | n | ts | SYM@source | price_micro | prev_micro | meta`; a projection `latest.txt` (`SYM@source | price | ts | change`) that ANY app reads and none writes. **Producers** write only their own source's ledger: `stockx_fetch_op` (Yahoo) and the WSR sim (its price op appends one `Q` row per corp per tick). **Consumers** (stock+x, the WSR app, a pet shop, the board's building signs, the chain exchange) read `latest.txt`. This is section 5.2's `SOURCE` rows made real and it keeps one authority per fact: the WSR piece stays the authority for company finance, the bus carries only prices.
+- Same interface, two apps: **stock+x** (source `yahoo`) and the **WSR app** (source `wsr-sim-<n>`) are one package shape with a different `SOURCE` row, so the second app is mostly data (the usage-framework rule: not two products).
+
+### 14.3 `wsr-sim-<n>` (DOC, proposal)
+One simulation world = one numbered instance (like phone instances): `wsr-sim-<n>/` with its seed, its world-clock ledger, its corp and bank entities (WSR pieces with entity bodies per the bridge doc), its quote source, a speed setting. **Viewing it** = the DSR board (2D/3D) opened on that instance: a READ-ONLY projection of the sim ledgers (buildings, citizens walking, the bank lending), never a second authority. The **bank** acts through the same ops the player uses (`bank_loan_op`, deposits) so the viewer shows real ledger events. Determinism: same seed gives the same prices (a harness case, as the simulation doc already specifies). Idle cost: the sim runs only while an instance is open or asked to run at a stated speed (house CPU rule).
+### 14.4 Open questions (new)
+What does "entity bank" mean precisely (the 4 DSR bank entities, the chain master bank, or the empire's bank)? Should player trades move prices in `wsr-sim` (the old v1 said no)? Several sims at once (`wsr-sim-1`, `-2`) or one world with many banks? Do sim prices and Yahoo prices ever mix in one portfolio (a symbol is `SYM@source`, so yes by design)? Is the sim time the world clock the tax calendar of section 13 uses?
