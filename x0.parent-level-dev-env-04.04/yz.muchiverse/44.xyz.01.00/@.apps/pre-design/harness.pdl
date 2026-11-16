@@ -23,3 +23,325 @@ HARNESS | stockx_fetch_check | office | CASE | stock+x: quote op | stockx_fetch 
 HARNESS | appstore_local_check | office | CASE | phone: app store (local) | appstore_local | - | - | no | catalog, install + build, honest failure, system apps never offered, remove
 HARNESS | store_catalog | office | ACTION | phone: app store catalog | &.hq-apps/app-edit/projects/appstore/ops/+x/store_op.+x | catalog ${HOUSE} | - | no | read-only: every package in the app-edit projects with installed 0/1 and its app_check result (what the App Store would offer)
 HARNESS | phone_list | office | ACTION | phone: list open phones | &.hq-apps/plus-phone/ops/+x/phone_op.+x | list ${HOUSE} | - | no | read-only: the phone instances, their windows and state
+# ---- asset (registered 2026-11-16) ----
+HARNESS | asset_root_check | office | CASE | asset: root resolver: first existing row wins | asset_root | - | - | no | asset_root_op: first row with the probe wins, darwin rows skipped, share is the parent
+# ---- auction (registered 2026-11-16) ----
+HARNESS | auction_hq_check | office | CASE | auction: auction hq rules and ledger replay | auction_hq | - | - | no | LIST, BID, BUY, CANCEL on a scratch package; refusals logged; state replayed from the ledger
+# ---- board (registered 2026-11-16) ----
+HARNESS | board_ctl_freeze_check | office | CASE | board: freeze, thaw and engine key | board_ctl_freeze | - | - | no | board_ctl freeze remembers the prior running value; thaw plays only if the world was running
+# ---- book (registered 2026-11-16) ----
+HARNESS | book_check_check | office | CASE | book: page file and map book checks | book_check | - | - | no | 14 hand-counted checks on a tiny house: page file A1-A10, map book B1-B4
+HARNESS | book_db_check | office | CASE | book: per-book db layer over the trunk | book_db | - | - | no | a reader takes the book layer, else the shared trunk; the party is read by name
+HARNESS | book_label_check | office | CASE | book: toolbar tab shows the display name | book_label | - | - | no | the book tab shows the GAME title row, else the folder id; checked by the projector test mode
+HARNESS | book_page_check | office | CASE | book: create, list, rename book pages | book_page | - | - | no | book_page_op on a scratch sessions root; a sibling dir proves no write outside it
+# ---- camera (registered 2026-11-16) ----
+HARNESS | camera_3d_free_check | office | CASE | camera: 3d free camera, arrows move the selector | camera_3d_free | - | - | no | compiled engine and camera test; the old camera sitting on the xelector must fail
+# ---- campus (registered 2026-11-16) ----
+HARNESS | campus_look_check | office | CASE | campus: look table trained from five phrases | campus_look | - | - | no | five campus phrases train a look table; a wear nudge changes the gate material
+# ---- centroid (registered 2026-11-16) ----
+HARNESS | centroid_book_check | office | CASE | centroid: book file save and reopen | centroid_book | - | - | no | edit_last must save and reopen the centroid book, test and live; no window
+HARNESS | centroid_clear_check | office | CASE | centroid: clear a stamped desk to flat | centroid_clear | - | - | no | clears a stamped desk back to a flat 16x16; scratch only
+HARNESS | centroid_parts_check | office | CASE | centroid: part generator stamps island and room | centroid_parts | - | - | no | the part generator stamps a tapered island and a room; no window
+HARNESS | centroid_test_check | office | CASE | centroid: the campus is a file, pets do not place it | centroid_test | - | - | no | centroid-test step 1: the campus is a file; hunger and sleep are not in it
+# ---- chain (registered 2026-11-16) ----
+HARNESS | chain_escrow_faucet_check | office | CASE | chain: escrow, faucet and daily mining cap | chain_escrow_faucet | - | - | no | multichain roots, faucet, escrow and the daily mining cap, on scratch chains only
+HARNESS | chain_escrow_signed_check | office | CASE | chain: signed escrow rows | chain_escrow_signed | - | - | no | Ed25519 signed LOCK, PAYOUT and REFUND rows; refusals and literal signatures
+HARNESS | chain_signed_check | office | CASE | chain: signed transactions on a test chain | chain_signed | - | - | no | signed TX rows with a nonce check; forged, tampered and replayed lines are dropped
+HARNESS | ev_chain_check | office | CASE | chain: event command uses a test chain | ev_chain | - | - | no | bad amounts exit 2; chain and wallet refusals exit 1 with an ERR row
+HARNESS | ev_chain_signed_check | office | CASE | chain: signed event rows under a policy cap | ev_chain_signed | - | - | no | ev_chain signing through sig_op under a policy cap; keys live outside every chain folder
+# ---- chem (registered 2026-11-16) ----
+HARNESS | chem_exam_check | office | CASE | chem: exam make and exam grade | chem_exam | - | - | no | chem_label exam-make and exam-grade; key worked by hand for seed 3; bad formulas refused
+HARNESS | chem_label_check | office | CASE | chem: formula labels from the locked elements | chem_label | - | - | no | chem_label against the real locked elements.pdl as ground truth
+# ---- class (registered 2026-11-16) ----
+HARNESS | class_audio_check | office | CASE | class: narrate class text to audio (live) | class_audio | - | - | no | offline parse and refusals; the narration case needs the Kokoro host (live)
+# ---- clock (registered 2026-11-16) ----
+HARNESS | clock_feature_off_check | office | CASE | clock: reminders stay off while the feature is off | clock_feature_off | - | - | no | an AT row with needs= installs only while the feature file says ENABLED 1
+HARNESS | day_night_plug_check | office | CASE | clock: day and night plug phases | day_night_plug | - | - | no | phase hours and tints through pet_sky; a changed hour breaks parity; no plug installs nothing
+HARNESS | game_clock_hold_check | office | CASE | clock: world clock held while a game is live | game_clock_hold | - | - | no | a book with GAME clock pause holds the editor clock while the driver says the game is on
+HARNESS | lc_clock_base_check | office | CASE | clock: one deterministic clock step | lc_clock_base | - | - | no | real lc_clock on a scratch root: one step pass, no daemon, no popup, no wall clock
+HARNESS | lc_clock_burn_check | office | CASE | clock: daemon real-time fire budget | lc_clock_burn | - | - | no | a reminder fires at most once per interval; a batch runs one event and the rest collapse
+HARNESS | lc_clock_cmds_check | office | CASE | clock: commands through the mailbox | lc_clock_cmds | - | - | no | rate, pause, resume, advance and settime through the mailbox, with limits and audit
+HARNESS | lc_clock_recur_check | office | CASE | clock: repeat every n units, catch-up cap | lc_clock_recur | - | - | no | repeat=every with calendar months and years, until=, catch-up cap 12, schedule cursor
+HARNESS | lc_clock_restore_check | office | CASE | clock: no double firing after restore | lc_clock_restore | - | - | no | a snapshot restore puts the clock files back and the clock resumes from its cursor
+HARNESS | needs_clock_check | office | CASE | clock: needs tick trigger from the daemon | needs_clock | - | - | no | the clock daemon's own command line runs needs_tick in a scratch house
+# ---- coin shop (registered 2026-11-16) ----
+HARNESS | coin_shop_ui_check | office | CASE | coin shop: shop verbs run in the real editor | coin_shop_ui | - | - | no | the real editor binary runs the shop verbs on a scratch house; ledger read via shop_op
+# ---- cpu (registered 2026-11-16) ----
+HARNESS | cpu_gate_stop_engines_check | office | CASE | cpu: gate ends engines before a heavy run | cpu_gate_stop_engines | - | - | no | cpu_gate run --stop-engines ends only this house's fake engines, never another's
+# ---- csv (registered 2026-11-16) ----
+HARNESS | csv_batch_check | office | CASE | csv: batch, prompt and parse verbs | csv_batch | - | - | no | csv_lab batch, prompt and parse verbs on a scratch tree
+HARNESS | csv_call_check | office | CASE | csv: call verb and quota with stubs | csv_call | - | - | no | csv_lab call and quota against stub providers; no network
+HARNESS | csv_jobs_check | office | CASE | csv: jobs verb on a scratch tree | csv_jobs | - | - | no | csv_lab jobs verb on a scratch tree
+HARNESS | csv_lab_hq_check | office | CASE | csv: lab manager once-mode and daemon | csv_lab_hq | - | - | no | csv_lab_manager --once on a scratch house, one daemon section, source mutants
+HARNESS | csv_lint_check | office | CASE | csv: lint of the translation table | csv_lint | - | - | no | csv_lab lint verb on the trans.tsv columns: jobid, zh, pinyin, source
+HARNESS | csv_merge_check | office | CASE | csv: merge verb and ui | csv_merge | - | - | no | csv_lab merge and ui verbs on scratch data
+HARNESS | csv_pipeline_check | office | CASE | csv: whole pipeline in one run | csv_pipeline | - | - | no | csv_lab pipeline; house root and key dir come from the environment
+# ---- data (registered 2026-11-16) ----
+HARNESS | data_hq_p0_check | office | CASE | data: dataset layer: roles, delimiter, ledger | data_hq_p0 | - | - | no | role rules, delimiter, rounding and a tampered ledger; each family has a mutant that fails
+HARNESS | data_hq_p1_check | office | CASE | data: chart rasteriser and panel chooser | data_hq_p1 | - | - | no | chart_op output read back as a PNG; a negative control for each family
+HARNESS | data_hq_p2_check | office | CASE | data: studio window backend and wiring | data_hq_p2 | - | - | no | manager on a scratch house with a tampered ledger and fixtures; the drive is separate
+# ---- db (registered 2026-11-16) ----
+HARNESS | db_publish_check | office | CASE | db: window follows the open book | db_publish | - | - | no | a table comes from the open book's layer, else the shared trunk; mirror rules
+# ---- deck (registered 2026-11-16) ----
+HARNESS | deck_video_check | office | CASE | deck: narrated mp4 with audio and video (live) | deck_video | - | - | no | deck text to slides to narrated mp4; checks both streams; needs the narration host (live)
+# ---- desk (registered 2026-11-16) ----
+HARNESS | desk_copy_check | office | CASE | desk: copy desk pals on a scratch tree | desk_copy | - | - | no | desk_copy_op on a scratch livedesk tree; real user data is never touched
+HARNESS | desk_restart_check | office | CASE | desk: restart managers on fake houses | desk_restart | - | - | no | fake managers (copies of sleep) on fake houses; no real desktop or process touched
+HARNESS | desk_synch_check | office | CASE | desk: synch the book and page to rooms | desk_synch | - | - | no | GOTO only when the desk book and open page match; from-desk never writes
+# ---- digipet (registered 2026-11-16) ----
+HARNESS | digipet_needs_check | office | CASE | digipet: first NEEDS loop as RPG Maker-style events | digipet_needs | - | - | no | the first NEEDS loop as events on the house clock, on scratch roots; real event pages run
+# ---- dsr (registered 2026-11-16) ----
+HARNESS | dsr_sim_step1_check | office | CASE | dsr: 30-day headless economy run | dsr_sim_step1 | - | - | no | scenario generator and a deterministic 30-day economy on the house clock; scratch roots
+# ---- dust (registered 2026-11-16) ----
+HARNESS | dust_gen_check | office | CASE | dust: two levels and the zoom between them | dust_gen | - | - | no | rpg-dust R2: same input gives the same output; two real levels; zoom between them
+HARNESS | dust_ladder_check | office | CASE | dust: ladder refusals | dust_ladder | - | - | no | rpg-dust ladder mode: every refusal case, with the real element data
+HARNESS | dust_react_check | office | CASE | dust: reactions from chem formulas | dust_react | - | - | no | rpg-dust react mode: reactions checked against the locked element data
+HARNESS | dust_seed_check | office | CASE | dust: seed and mix values | dust_seed | - | - | no | rpg-dust R1 seed op; values pinned from its first run; mix(0) is the published value
+HARNESS | dust_zoom_check | office | CASE | dust: zoom events with a ledger | dust_zoom | - | - | no | rpg-dust R2c zoom in and out as events with an append-only ledger
+# ---- eden (registered 2026-11-16) ----
+HARNESS | eden_conductor_check | office | CASE | eden: conductor v0 day tick | eden_conductor | - | - | no | Eden conductor on scratch roots: day tick through the real clock and event pages
+HARNESS | eden_install_check | office | CASE | eden: install and clock daemon verbs | eden_install | - | - | no | install_eden dry run, apply and refusals; daemon start, stop and Next day in a scratch livedesk
+HARNESS | eden_loop_check | office | CASE | eden: playable loop v1 on scratch roots | eden_loop | - | - | no | begin, stop, days, digging, chickens; the tomom case builds from source in a scratch copy
+# ---- edit (registered 2026-11-16) ----
+HARNESS | edit_doors_check | office | CASE | edit: proved door passes, unproved door refused | edit_doors | - | - | no | the proved Islands door passes and an unproved door is refused; no window
+HARNESS | edit_last_check | office | CASE | edit: save and reopen the last book | edit_last | - | - | no | edit_last.sh on a scratch house saves and reopens the page; no window
+HARNESS | edit_open_check | office | CASE | edit: open a scratch book with pages | edit_open | - | - | no | a scratch book with two pages and one event opens; no window
+# ---- editor (registered 2026-11-16) ----
+HARNESS | editor_skip_check | office | CASE | editor: closed doc rows checked from source | editor_skip | - | - | no | closed rows of DONE.md that can be checked from source; no window, no relay
+HARNESS | editor_skip_live_check | office | CASE | editor: closed rows read from the live board (live) | editor_skip_live | - | - | no | same closed rows read from live board state; meaningful only while the edit board is open (live)
+# ---- engine (registered 2026-11-16) ----
+HARNESS | bv_session_sync_check | office | CASE | engine: session binary copies after a build | bv_session_sync | - | - | no | after a build, live sessions get their private binary copies brought up to date
+# ---- entity (registered 2026-11-16) ----
+HARNESS | entity_grade_check | office | CASE | entity: grades by exams | entity_grade | - | - | no | LOCKED cases for the concept-bank entity_grade op
+# ---- esc (registered 2026-11-16) ----
+HARNESS | esc_first_publish_check | office | CASE | esc: backs out one level, innermost first | esc_first_publish | - | - | no | possessed state is published to esc_first.txt; Enter on a cell drives the follow
+# ---- events (registered 2026-11-16) ----
+HARNESS | mr_log_cap_check | office | CASE | events: audit writer caps messages and history | mr_log_cap | - | - | no | mr_log caps messages.txt and history.txt as the runtime file standard requires
+# ---- exchange (registered 2026-11-16) ----
+HARNESS | exchange_hq_check | office | CASE | exchange: resting orders and matching | exchange_hq | - | - | no | exchange-hq once-mode: resting orders, spread and price-time matching on a scratch package
+# ---- footrace (registered 2026-11-16) ----
+HARNESS | footrace_fu_race_check | office | CASE | footrace: race mode v0 rules | footrace_fu_race | - | - | no | race rules, action tokens, combat roll-off and finish rule; a referee audit checks the ledger
+# ---- frame (registered 2026-11-16) ----
+HARNESS | frame_tools_check | office | CASE | frame: raw to png and frame stats | frame_tools | - | - | no | raw_to_png and frame_stats built from source; the PNG is read back against fixture numbers
+# ---- fridge (registered 2026-11-16) ----
+HARNESS | eat_page_check | office | CASE | fridge: eat event page | eat_page | - | - | no | fridge eat run by the page itself; the C fallback never writes the marker file
+HARNESS | fridge_op_check | office | CASE | fridge: eat the best fitting food | fridge_op | - | - | no | the largest nourishment at or below hunger is eaten; hunger never goes below zero
+# ---- game (registered 2026-11-16) ----
+HARNESS | game_driver_watchdog_check | office | CASE | game: driver restarted by the resident core | game_driver_watchdog | - | - | no | the core restarts a game driver while the running switch is on; scratch house
+HARNESS | game_new_check | office | CASE | game: foundation generator makes a new game | game_new | - | - | no | game_new op on templates; both programs built from source; the live editor is not covered
+HARNESS | game_page_export_check | office | CASE | game: page export and book check | game_page_export | - | - | no | game_page_export rows worked by hand from the op header; pixels are cells times 80
+HARNESS | game_setup_parser_check | office | CASE | game: game.pdl parser and map checks | game_setup_parser | - | - | no | khtpm_game_setup parser: map, cell, edit and mode checks on scratch files
+HARNESS | game_slots_check | office | CASE | game: save and load slots | game_slots | - | - | no | game_slot_op save and load slots on a scratch entity tree
+HARNESS | game_snapshot_check | office | CASE | game: snapshot store and real restore | game_snapshot | - | - | no | content-addressed snapshot store and a real restore on scratch roots only
+# ---- gen (registered 2026-11-16) ----
+HARNESS | gen_map_check | office | CASE | gen: map generator determinism | gen_map | - | - | no | same seed twice gives identical bytes; verify re-reads the invariants; mutations must fail
+# ---- generator (registered 2026-11-16) ----
+HARNESS | generator_ground_check | office | CASE | generator: ground blocks from recipes | generator_ground | - | - | no | ground A2 blocks drawn from recipes and knobs; only the original transparency is read
+HARNESS | generator_level_check | office | CASE | generator: test level from any asset root | generator_level | - | - | no | a test level drawn from any asset root, so a replacement is judged in place
+HARNESS | generator_voxel_check | office | CASE | generator: voxel part recipes | generator_voxel | - | - | no | voxel recipes for characters, items and buildings from events/gen_voxel rows
+# ---- git (registered 2026-11-16) ----
+HARNESS | commit_scoped_check | office | CASE | git: scoped commit leaves foreign staged files | commit_scoped | - | - | no | scratch repo: a pathspec commit never takes a file staged by someone else
+# ---- harness (registered 2026-11-16) ----
+HARNESS | harness_bank_check | office | CASE | harness: behavior bank weights and ranking | harness_bank | - | - | no | bank weights from a results ledger, Laplace estimate and weighted ranking on scratch files
+HARNESS | harness_cleanup_a_check | office | CASE | harness: cleanup kills leftover daemons, part a | harness_cleanup_a | - | - | no | a detached daemon left in a scratch house must be killed by the end of the run
+HARNESS | harness_cleanup_b_check | office | CASE | harness: cleanup kills leftover daemons, part b | harness_cleanup_b | - | - | no | nothing from the scratch house may be alive after harness_cleanup_a has ended
+HARNESS | harness_copydir_check | office | CASE | harness: COPYDIR case verb | harness_copydir | - | - | no | COPYDIR copies a tree, skips names at any depth, keeps modes and skips symlinks
+HARNESS | harness_include_check | office | CASE | harness: INCLUDE case verb | harness_include | - | - | no | nested fixtures run in place; a missing fixture fails loudly
+HARNESS | harness_menu_check | office | CASE | harness: the menu op lists and checks rows | harness_menu | - | - | no | harness_menu_op rows: a registered case, a confirm for destructive rows, the verdict beside each
+HARNESS | harness_snapshot_check | office | CASE | harness: SNAPSHOT and RESTORE of files | harness_snapshot | - | - | no | snapshot and restore of the case op on scratch files, with absolute paths
+# ---- hash (registered 2026-11-16) ----
+HARNESS | hash_op_check | office | CASE | hash: SHA-256 vectors | hash_op | - | - | no | hash_op checked against the published SHA-256 vectors and sha256sum
+# ---- hotbar (registered 2026-11-16) ----
+HARNESS | hotbar_minimize_check | office | CASE | hotbar: minimize and restore on a scratch tree | hotbar_minimize | - | - | no | a real hotbar manager on a scratch tree: hide is idempotent, republish within 300 ms
+# ---- install (registered 2026-11-16) ----
+HARNESS | install_ledger_check | office | CASE | install: labelled install ledger and hosts | install_ledger | - | - | no | install_ledger_op on scratch folders: labelled installs and the hosts lookup
+# ---- irc (registered 2026-11-16) ----
+HARNESS | irc_friends_pane_check | office | CASE | irc: friends pane peer list | irc_friends_pane | - | - | no | peers_now and known_peers rows as the Friends list; fixture files, no network
+HARNESS | irc_two_machine_check | office | CASE | irc: two-machine network proof (live) | irc_two_machine | - | - | no | a pet post reaches the far machine's chat inbox; needs both machines (live)
+# ---- items (registered 2026-11-16) ----
+HARNESS | item_ledger_check | office | CASE | items: ledger refusals and tamper check | item_ledger | - | - | no | every refusal leaves the ledger unchanged; the tamper case proves check can fail
+# ---- knowledge (registered 2026-11-16) ----
+HARNESS | knowledge_hq_check | office | CASE | knowledge: manager once-mode | knowledge_hq | - | - | no | knowledge_manager --once on a scratch house
+# ---- land (registered 2026-11-16) ----
+HARNESS | land_gen_check | office | CASE | land: seeds differ, cap refused | land_gen | - | - | no | size and seed come from a pdl; two seeds differ, the same seed matches, past the cap is refused
+# ---- layout (registered 2026-11-16) ----
+HARNESS | layout_check_editor_check | office | CASE | layout: editor board passes the layout checker | layout_check_editor | - | - | no | the editor board template passes Layout Studio checker with the keys the editor publishes
+# ---- legend (registered 2026-11-16) ----
+HARNESS | legend_page_check | office | CASE | legend: deterministic cells.txt | legend_page | - | - | no | same legend gives byte-identical cells.txt; a mutated legend must differ; bad input refused
+# ---- lint (registered 2026-11-16) ----
+HARNESS | py_lint_check | office | CASE | lint: no new tracked Python | py_lint | - | - | no | ratchet against new tracked Python; the real repo is checked against the baseline
+# ---- live (registered 2026-11-16) ----
+HARNESS | live_blank_page_size_check | office | CASE | live: blank page limits in the editor (live) | live_blank_page_size | - | - | no | x, y and z limits of a blank page in the running editor board; needs LIVE_OK=1 (live)
+HARNESS | live_dropdown_thumb_check | office | CASE | live: book dropdown hides the scrollbar thumb (live) | live_dropdown_thumb | - | - | no | clicks the real editor and photographs the book dropdown; the thumb must hide behind the rows (live)
+HARNESS | live_dsk_seat_check | office | CASE | live: take a seat at Teropoly (live) | live_dsk_seat | - | - | no | drives the real editor like a person with relay taps; the editor must be open on the deskopoly book (live)
+HARNESS | live_esc_first_check | office | CASE | live: Esc backs out one level in a window (live) | live_esc_first | - | - | no | a tiny scratch window with Interact armed; Esc releases the possession first (live)
+HARNESS | live_lamps_at_dusk_check | office | CASE | live: lamps on at dusk in the 3D canvas (live) | live_lamps_at_dusk | - | - | no | the dusk event turns lamps on and the 3D canvas gets brighter; game saved to slot 9 first (live)
+HARNESS | live_legend_page_check | office | CASE | live: legend page draws in the editor (live) | live_legend_page | - | - | no | a legend page loads and draws in the running editor board; the base page is restored (live)
+HARNESS | live_mouse_align_check | office | CASE | live: six real clicks on the 3D canvas (live) | live_mouse_align | - | - | no | xdotool clicks on the 3D canvas; the pick must land inside the clicked cell (live)
+HARNESS | live_mouse_calibrate_check | office | CASE | live: twelve clicks calibrate the 3D pick (live) | live_mouse_calibrate | - | - | no | pinned camera and twelve real clicks on a grid; the round trip lands inside the picked cell (live)
+HARNESS | live_place_and_move_check | office | CASE | live: place and move items in the editor (live) | live_place_and_move | - | - | no | three ways to place or move: palette click, place verb, goto bank; slot 9 loaded back (live)
+HARNESS | live_placer_verb_check | office | CASE | live: shared placer through the verb path (live) | live_placer_verb | - | - | no | arms a furniture tile in the palette bar and places it; the placed item is removed after (live)
+# ---- loop (registered 2026-11-16) ----
+HARNESS | loop_exit_check | office | CASE | loop: board pal loops end when the engine is gone | loop_exit | - | - | no | real pal loops end under the real loop guard when their engine is gone; engine ops are stubs
+HARNESS | loop_guard_logcap_check | office | CASE | loop: guard log and frame history are capped | loop_guard_logcap | - | - | no | the session loop guard trims an oversize log and an oversize frame_history
+# ---- material (registered 2026-11-16) ----
+HARNESS | material_colour_check | office | CASE | material: periodic colour shared include | material_colour | - | - | no | all 118 element colours equal the pin taken before the lift; material colours
+# ---- mcl (registered 2026-11-16) ----
+HARNESS | mcl_bench_check | office | CASE | mcl: item bench on a scratch book | mcl_bench | - | - | no | items move only through item_ledger_op; every refusal checks that nothing was burned
+HARNESS | mcl_touch_page_check | office | CASE | mcl: touch page ev 20 has an effect | mcl_touch_page | - | - | no | the mcl-hq touch page is played by its own runner and the effect read from state files
+# ---- minimap (registered 2026-11-16) ----
+HARNESS | minimap_fit_check | office | CASE | minimap: a wide page is not drawn as 256 | minimap_fit | - | - | no | a 504-wide page is not drawn as a 256 board; a far camera stays on the board
+# ---- music (registered 2026-11-16) ----
+HARNESS | music_daemon_check | office | CASE | music: daemon v0 patterns, WAV and stop | music_daemon | - | - | no | music seq, synth and daemon on a scratch dir; headless file sink, no audio played
+# ---- nb (registered 2026-11-16) ----
+HARNESS | nb_atob_check | office | CASE | nb: atob through the page worker | nb_atob | - | - | no | one page through nb_js_worker; atob tokens anchored to line starts; needs the worker binary
+HARNESS | nb_crypto_random_check | office | CASE | nb: crypto random through the page worker | nb_crypto_random | - | - | no | one page through nb_js_worker; crypto random tokens; needs the worker binary
+HARNESS | nb_element_methods_check | office | CASE | nb: element methods through the worker | nb_element_methods | - | - | no | one page through nb_js_worker; element methods; needs the worker binary
+HARNESS | nb_media_check | office | CASE | nb: media through the worker | nb_media | - | - | no | one page through nb_js_worker; media; needs the worker binary
+HARNESS | nb_probe_check | office | CASE | nb: probe op for the worker | nb_probe | - | - | no | a dead worker is a result, a silent worker times out, a real worker answers STATUS
+HARNESS | nb_text_blob_check | office | CASE | nb: text blob through the worker | nb_text_blob | - | - | no | one page through nb_js_worker; text blob tokens; needs the worker binary
+# ---- net (registered 2026-11-16) ----
+HARNESS | palnet_peer_net_check | office | CASE | net: three peers on loopback addresses | palnet_peer_net | - | - | no | bind and advertise from env, seeds find peers, reconnect after restart; loopback only
+# ---- overlay (registered 2026-11-16) ----
+HARNESS | overlay_wrap_wiring_check | office | CASE | overlay: wrap wiring only | overlay_wrap_wiring | - | - | no | wiring of the overlay wrap only; the wrap needs X font metrics and is not tested here
+# ---- page (registered 2026-11-16) ----
+HARNESS | page_follow_check | office | CASE | page: controlled character follows a changed page | page_follow | - | - | no | petslike_core page_follow follows a changed page only when the board's own pin says game
+# ---- palette (registered 2026-11-16) ----
+HARNESS | palette_studio_check | office | CASE | palette: one front door for the generators | palette_studio | - | - | no | templates, knobs, save as sheet or crop, and a replay that proves the bytes
+# ---- pchq (registered 2026-11-16) ----
+HARNESS | pchq_levels_check | office | CASE | pchq: level machinery on scratch copies | pchq_levels | - | - | no | diagnoses the map load path of piececraft-hq on scratch copies; no GUI, no daemons
+HARNESS | pchq_playtest_action_check | office | CASE | pchq: player verbs toggle, playtest, stop | pchq_playtest_action | - | - | no | the real board action script on a scratch tree; the play-mode file is read back
+# ---- pet (registered 2026-11-16) ----
+HARNESS | pet_ai_check | office | CASE | pet: headless life of a pet off screen | pet_ai | - | - | no | a hungry pet with an empty bag walks, eats, and remembers the place
+HARNESS | pet_build_check | office | CASE | pet: room creation backend | pet_build | - | - | no | build_room appends room rows; refusals for no free door spot, a room already there, house full
+HARNESS | pet_cast_check | office | CASE | pet: identity is the piece uid | pet_cast | - | - | no | the wallet shown is the pet's uid prefix; a pet is only an appearance in a game
+HARNESS | pet_chain_check | office | CASE | pet: blockchain adapter on a scratch chain | pet_chain | - | - | no | init, wallet per pet and mining on a difficulty-2 scratch chain, never the live chain
+HARNESS | pet_econ_check | office | CASE | pet: economy: buy, sell and shop | pet_econ | - | - | no | buy and sell move coins and items, conserved and ledgered; a hungry pet with coins shops
+HARNESS | pet_explore_check | office | CASE | pet: village fog and growth | pet_explore | - | - | no | walking reveals tiles; a well explored map grows new tiles
+HARNESS | pet_mining_check | office | CASE | pet: computer and rigs earn cones | pet_mining | - | - | no | off until switched on; the base computer fills a work meter; cones on a scratch chain
+HARNESS | pet_net_say_check | office | CASE | pet: net say through the guard | pet_net_say | - | - | no | a pet's net say passes the guard and the real chat op in a scratch house
+HARNESS | pet_phones_check | office | CASE | pet: every pet has a house phone | pet_phones | - | - | no | pets exchange numbers, a hello text is routed, an unknown number is refused
+HARNESS | pet_post_check | office | CASE | pet: one door for a pet's IRC post | pet_post | - | - | no | a pet post goes through the guard; each refusal has a control row that shows the allowed case
+HARNESS | pet_say_clock_check | office | CASE | pet: say line from the clock command | pet_say_clock | - | - | no | the clock daemon's command line triggers pet_say in a scratch house
+HARNESS | pet_skills_check | office | CASE | pet: skills trained by chatting | pet_skills | - | - | no | trigger words give EXP, at most 3 words count, unrelated chat gives none
+HARNESS | pet_stt_tts_check | office | CASE | pet: speech to text on the pet voices | pet_stt_tts | - | - | no | vosk speech to text on the pet's TTS voices, and the mic path with a fake recorder
+HARNESS | pet_teachme_check | office | CASE | pet: teach me pipeline with a fake teacher | pet_teachme | - | - | no | a good card lands as PENDING only, never accepted by itself; no network
+HARNESS | pet_town_check | office | CASE | pet: town building spends coins and wood | pet_town | - | - | no | build_building spends coins and wood and stamps the footprint on the town map
+HARNESS | pet_train_check | office | CASE | pet: training session on the pet state (live) | pet_train | - | - | no | all six pets learn through the real verbs on the LIVE pet state, then one day tick (live)
+# ---- phrase (registered 2026-11-16) ----
+HARNESS | hidden_layer_check | office | CASE | phrase: hidden layer on concept-bank phrases | hidden_layer | - | - | no | LOCKED cases for the hidden_layer op
+HARNESS | hidden_layer_look_check | office | CASE | phrase: nine look dimensions | hidden_layer_look | - | - | no | hidden_layer with nine look dimensions on 60 reviewed phrases
+# ---- physics (registered 2026-11-16) ----
+HARNESS | phys_nodes_check | office | CASE | physics: phys_node_eval on the sample system | phys_nodes | - | - | no | the real phys_node_eval op on a scratch copy of the sample system
+# ---- piece (registered 2026-11-16) ----
+HARNESS | piece_check_check | office | CASE | piece: read-only identity audit | piece_check | - | - | no | read-only audit of piece identity against the expectations in its design doc
+HARNESS | piece_mint_check | office | CASE | piece: mint, hash and check | piece_mint | - | - | no | piece_mint with the wallet hash pinned to an independent sha256sum
+# ---- pieces (registered 2026-11-16) ----
+HARNESS | pieces_2d_parity_check | office | CASE | pieces: 2D view draws entity pieces | pieces_2d_parity | - | - | no | the 2D renderer draws a piece's footprint; a positive run and a negative control
+# ---- pin (registered 2026-11-16) ----
+HARNESS | pin_pick_check | office | CASE | pin: which open book page a board obeys | pin_pick | - | - | no | the house-wide pin and the board folder pin resolve the right open_book_page path
+# ---- play (registered 2026-11-16) ----
+HARNESS | play_cdda_hq_check | office | CASE | play: cdda-hq playthrough | play_cdda_hq | - | - | no | generated playthrough of cdda-hq on a scratch copy of the game
+HARNESS | play_centroid_crew_check | office | CASE | play: centroid crew playthrough | play_centroid_crew | - | - | no | generated playthrough of the centroid crew on a scratch copy
+HARNESS | play_df_hq_check | office | CASE | play: df-hq playthrough | play_df_hq | - | - | no | generated playthrough of df-hq on a scratch copy of the game
+HARNESS | play_mcl_hq_check | office | CASE | play: mcl-hq playthrough | play_mcl_hq | - | - | no | generated playthrough of mcl-hq on a scratch copy of the game
+HARNESS | play_rpg_dust_planet_map_check | office | CASE | play: rpg-dust planet map playthrough | play_rpg_dust_planet_map | - | - | no | generated playthrough of rpg-dust on a scratch copy
+HARNESS | play_rpg_space_blueprint_check | office | CASE | play: rpg-space blueprint playthrough | play_rpg_space_blueprint | - | - | no | generated playthrough of the rpg-space blueprint on a scratch copy
+HARNESS | play_rpg_space_fridge_check | office | CASE | play: rpg-space fridge playthrough | play_rpg_space_fridge | - | - | no | generated playthrough of the rpg-space fridge on a scratch copy
+HARNESS | play_rpg_space_planet_map_check | office | CASE | play: rpg-space planet map playthrough | play_rpg_space_planet_map | - | - | no | generated playthrough of the rpg-space planet map on a scratch copy
+# ---- player (registered 2026-11-16) ----
+HARNESS | player_menu_playtest_check | office | CASE | player: play-test row and play-mode file | player_menu_playtest | - | - | no | the Player menu play-test row and play-mode transitions through the query op
+# ---- plug (registered 2026-11-16) ----
+HARNESS | plug_header_check | office | CASE | plug: plug file header check | plug_header | - | - | no | harness_menu_op check validates a plug header and the cross-plug rules of one book
+HARNESS | plug_loader_check | office | CASE | plug: load order of ON plugs | plug_loader | - | - | no | ON plugs of a book in load order; a plug comes after every plug it requires
+HARNESS | plug_maker_check | office | CASE | plug: maker writes plug and harnz rows | plug_maker | - | - | no | make writes a plug or harnz row that passes check and shows in the lists
+HARNESS | plug_ref_check | office | CASE | plug: plug references resolved | plug_ref | - | - | no | an event node may take a plug reference, resolved when the command runs
+HARNESS | plug_triggers_check | office | CASE | plug: triggers fire on a switch or a finished test | plug_triggers | - | - | no | trigger rows fire on a plug switch; loops and deep chains refused, each with a control
+# ---- plugz (registered 2026-11-16) ----
+HARNESS | plugz_hq_check | office | CASE | plugz: plugs, harnz and tests window ops | plugz_hq | - | - | no | plugz window ops in a scratch house; ui.txt is what the template shows
+# ---- possess (registered 2026-11-16) ----
+HARNESS | possess_enter_check | office | CASE | possess: Enter chooses the character | possess_enter | - | - | no | the possess verb does what Enter does in the board: choose the stand-in
+HARNESS | possess_enter_daemon_check | office | CASE | possess: daemon half of Enter | possess_enter_daemon | - | - | no | the resident daemon in a scratch house takes Enter from the history and possesses
+# ---- prisc (registered 2026-11-16) ----
+HARNESS | prisc_exec_args_check | office | CASE | prisc: exec argument passing | prisc_exec_args | - | - | no | the pal runs an args echo op three times and reads what each run received
+HARNESS | prisc_optional_default_ops_check | office | CASE | prisc: default_op.txt is optional | prisc_optional_default_ops | - | - | no | prisc with no default_op.txt beside it still runs; built from the shared source
+# ---- proc (registered 2026-11-16) ----
+HARNESS | proc_ledger_add_check | office | CASE | proc: ledger add and reaper | proc_ledger_add | - | - | no | a process registered by the helper is killed by the reaper; the PID reuse guard is checked
+HARNESS | proc_registry_v2_check | office | CASE | proc: registry v2 owner ends processes | proc_registry_v2 | - | - | no | a process ends when its owner dies; keep and house rows do not
+# ---- proof (registered 2026-11-16) ----
+HARNESS | proof_all_fix_check | office | CASE | proof: run-all op on a one-case menu | proof_all_fix | - | - | no | the run-all op on a one-case menu; never runs the live proof list
+# ---- pvp (registered 2026-11-16) ----
+HARNESS | pvp_skin_check | office | CASE | pvp: rpg-pvp as a skin of the core | pvp_skin | - | - | no | the 25-command script gives the same results as the old fork built from git HEAD
+# ---- quest (registered 2026-11-16) ----
+HARNESS | ghost_run_check | office | CASE | quest: ghost worktree runner | ghost_run | - | - | no | q012 ghost_run with a fake backend and a fake judge; no network
+HARNESS | quartermaster_check | office | CASE | quest: quartermaster binary | quartermaster | - | - | no | quest q013 quartermaster LOCKED cases on the built binary
+HARNESS | quest_q001_clamp_check | office | CASE | quest: q001 clamp op | quest_q001_clamp | - | - | no | quest q001 clamp_op LOCKED cases; the worker may not edit the file
+HARNESS | quest_q002_weighted_pick_check | office | CASE | quest: q002 weighted pick | quest_q002_weighted_pick | - | - | no | quest q002 weighted_pick LOCKED cases against an independent reference
+HARNESS | quest_q010_horn_errors_check | office | CASE | quest: q010 provider errors are never hidden | quest_q010_horn_errors | - | - | no | fake curl on PATH; a provider failure is shown and never hidden
+HARNESS | quest_q011_quest_check_check | office | CASE | quest: q011 quest_check on scratch repos | quest_q011_quest_check | - | - | no | quest_check on scratch git repos with a packet and a work branch
+HARNESS | quest_q019_phrases_check | office | CASE | quest: q019 Eden talk phrases judge | quest_q019_phrases | - | - | no | the phrase judge compiles, each rule can fail, then the worker's file is checked
+HARNESS | quest_q020_var_cmp_check | office | CASE | quest: q020 variable compare op | quest_q020_var_cmp | - | - | no | quest q020 var_cmp LOCKED cases; the worker may not edit the file
+# ---- relations (registered 2026-11-16) ----
+HARNESS | relations_cap_check | office | CASE | relations: MEET rows capped by compaction | relations_cap | - | - | no | relations.txt is capped by compaction, not trimmed, so the cap holds
+# ---- render (registered 2026-11-16) ----
+HARNESS | bv_gpu_seam_check | office | CASE | render: sky seam in the voxel floor shader | bv_gpu_seam | - | - | no | offline EGL: the fixed shader leaks no sky pixels; the pre-fix shader must fail
+# ---- ring (registered 2026-11-16) ----
+HARNESS | ring_board_core_check | office | CASE | ring: 40-tile ring board from events | ring_board_core | - | - | no | a 40-tile ring board made only of RPG Maker-style events on a scratch entity
+# ---- run (registered 2026-11-16) ----
+HARNESS | run_menu_check | office | CASE | run: run menu op picks a branch | run_menu | - | - | no | mr_run_menu with a stub picker; the branch script only leaves a marker file
+# ---- runtime (registered 2026-11-16) ----
+HARNESS | growth_probe_check | office | CASE | runtime: file growth audit | growth_probe | - | - | no | the runtime-growth audit flags a big live file that the scratch standard does not name
+# ---- select (registered 2026-11-16) ----
+HARNESS | select_follows_possession_check | office | CASE | select: tab and pet row follow possession | select_follows_possession | - | - | no | Tab or a pet row runs select; while possessing, the selection follows the possession
+# ---- shop (registered 2026-11-16) ----
+HARNESS | shop_check | office | CASE | shop: balances on a scratch book | shop | - | - | no | every refused shop action leaves all balances unchanged; the coin total is checked
+# ---- sig (registered 2026-11-16) ----
+HARNESS | sig_op_check | office | CASE | sig: Ed25519 signing op | sig_op | - | - | no | Ed25519 sign and verify with a fixture key; the signature is a literal
+# ---- solar (registered 2026-11-16) ----
+HARNESS | solar_sandbox_check | office | CASE | solar: sample entities have their methods | solar_sandbox | - | - | no | each shipped sample entity row is present; the solar sandbox step 1
+# ---- spawn (registered 2026-11-16) ----
+HARNESS | spawn_lint_check | office | CASE | spawn: unregistered launch sites ratchet | spawn_lint | - | - | no | flags new unregistered launch sites; the real tree must stay within the baseline
+# ---- store (registered 2026-11-16) ----
+HARNESS | ev_store_check | office | CASE | store: store event command | ev_store | - | - | no | Store event command on a scratch catalog; buy, install and review are not built
+# ---- survivor (registered 2026-11-16) ----
+HARNESS | survivor_craft_check | office | CASE | survivor: craft moves items through the ledger | survivor_craft | - | - | no | items move only through item_ledger_op; a refused craft changes nothing
+HARNESS | survivor_slice_check | office | CASE | survivor: slice on scratch books | survivor_slice | - | - | no | items move only through item_ledger_op on scratch copies of the shipped lab
+# ---- synch (registered 2026-11-16) ----
+HARNESS | pc_synch_games_check | office | CASE | synch: game board follows the desk book | pc_synch_games | - | - | no | a board with its own pin follows the desk only when the desk book is that game
+# ---- taskbar (registered 2026-11-16) ----
+HARNESS | taskbar_harness_menu_check | office | CASE | taskbar: harness cell runs the menu | taskbar_harness_menu | - | - | no | cell 11 of the taskbar is wired end to end by data and one list builder
+# ---- teropoly (registered 2026-11-16) ----
+HARNESS | deskopoly_check | office | CASE | teropoly: the whole state is an append-only ledger | deskopoly | - | - | no | property board as a ledger: replay, refusals and phase numbers pinned on scratch runs
+HARNESS | dsk_auction_check | office | CASE | teropoly: auctions after a skip | dsk_auction | - | - | no | decline order, bid minimum and step, standing bidder skipped; bank auction_end rows
+HARNESS | dsk_camera_check | office | CASE | teropoly: camera snaps to the entity | dsk_camera | - | - | no | snap arithmetic and guards through the real driver on a scratch house; the picture is not here
+HARNESS | dsk_chat_check | office | CASE | teropoly: chat front door parses text | dsk_chat | - | - | no | deskopoly_chat turns text into engine verbs; --parse touches no file
+HARNESS | dsk_chathook_check | office | CASE | teropoly: game chat hook from the editor | dsk_chathook | - | - | no | the typed line reaches the Teropoly side through the game chat hook; the window is not drawn
+HARNESS | dsk_labels_check | office | CASE | teropoly: names written on the board | dsk_labels | - | - | no | text labels become new floor atlas tiles; only the cells with ink change
+HARNESS | dsk_pettrade_check | office | CASE | teropoly: pets propose trades (stopgap) | dsk_pettrade | - | - | no | pet_trades stopgap: a pet offers cash for a street that completes its colour
+HARNESS | dsk_talk_check | office | CASE | teropoly: table talk reads as sentences | dsk_talk | - | - | no | talk_row sentences with player names and tile labels, checked over three whole games
+HARNESS | dsk_talkwrap_check | office | CASE | teropoly: wrapped talk sentence stays in its row | dsk_talkwrap | - | - | no | the driver word-wraps each sentence to talk_wrap characters; no text drawn over text
+HARNESS | dsk_trade_check | office | CASE | teropoly: trade engine slice | dsk_trade | - | - | no | offer, counter, amend, accept, reject, cancel, expiry and the atomic swap on the engine
+HARNESS | dsk_tradeui_check | office | CASE | teropoly: trade screen through the driver | dsk_tradeui | - | - | no | trade screen state and buttons driven by command lines; the ledger is the truth
+# ---- tools (registered 2026-11-16) ----
+HARNESS | tools_menu_check | office | CASE | tools: list of plugs, harnz and tests | tools_menu | - | - | no | the Tools list has three groups; picking a plug flips its ENABLED row and logs it
+# ---- transfer (registered 2026-11-16) ----
+HARNESS | transfer_map_access_check | office | CASE | transfer: map access in play modes | transfer_map_access | - | - | no | mr_transfer_desk map access in play modes on a scratch house
+# ---- tree (registered 2026-11-16) ----
+HARNESS | tree_lint_check | office | CASE | tree: tech and evolution tree linter | tree_lint | - | - | no | generic tree linter: every failure is one FAIL row with a code and an id
+# ---- tune (registered 2026-11-16) ----
+HARNESS | joint_tune_check | office | CASE | tune: joint tuning | joint_tune | - | - | no | LOCKED cases for the concept-bank joint_tune op
+# ---- ui (registered 2026-11-16) ----
+HARNESS | ui_mode_check | office | CASE | ui: edit and play mode flip sidebar keys | ui_mode | - | - | no | ui_mode_op flips a window's sidebar state keys from layouts.pdl data
+HARNESS | ui_player_check | office | CASE | ui: sound player | ui_player | - | - | no | ui_sound_player LOCKED cases for the UI sounds, dry run
+HARNESS | ui_sounds_check | office | CASE | ui: sound render | ui_sounds | - | - | no | ui_sound_render LOCKED cases for UI sounds, from data rows
+# ---- video (registered 2026-11-16) ----
+HARNESS | video_sync_check | office | CASE | video: picture lasts as long as its holds | video_sync | - | - | no | two generated frames rendered silent; checked on the video stream: frame count and length
+# ---- voxel (registered 2026-11-16) ----
+HARNESS | views_to_voxel_check | office | CASE | voxel: visual hull op | views_to_voxel | - | - | no | views_to_voxel LOCKED cases checked against an independent second implementation
+# ---- window (registered 2026-11-16) ----
+HARNESS | close_listed_check | office | CASE | window: close listed windows on restart | close_listed | - | - | no | close_listed.sh and the close-on-restart rule on scratch sleepers; no real window touched
+# ---- world (registered 2026-11-16) ----
+HARNESS | world_clock_check | office | CASE | world: clock trigger runs a world event | world_clock | - | - | no | the clock daemon's command line runs a world event in a scratch house
+HARNESS | world_common_check | office | CASE | world: common book state volumes | world_common | - | - | no | volume sums conserved after every step; state re-written per case
+# ---- xo (registered 2026-11-16) ----
+HARNESS | xo_export_check | office | CASE | xo: projection op for docs and media | xo_export | - | - | no | XO projection of docs with a pre.name, into a scratch XO folder only

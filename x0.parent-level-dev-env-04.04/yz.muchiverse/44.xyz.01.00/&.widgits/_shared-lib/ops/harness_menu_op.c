@@ -31,7 +31,7 @@
 #include <time.h>
 #include "../plug_ref.c"      /* the engine's plug rules (value types and bounds, row splitting): the plug check uses the SAME code */
 
-#define MAXR 48
+#define MAXR 400   /* rows per book file; was 48 until 2026-11-16, when 222 registered cases overflowed it and the whole list failed */
 #define P 4096
 typedef struct { char id[40], page[48], kind[8], label[80], target[P], args[P], writes[8], confirm[8], src[P]; int line, global; } Row;
 static Row R[MAXR]; static int nr, nbad;
