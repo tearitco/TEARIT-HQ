@@ -1,0 +1,4 @@
+# tsc_rules.pal - True Swords Clash rules op (2026-11-15). See cases/tsc_rules.pdl
+exec ./ops/+x/harness_case_op.+x cases/tsc_rules.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/tsc_rules.pdl
+halt

@@ -1,0 +1,97 @@
+# tsc_rules (2026-11-15): True Swords Clash rules op (&.hq-apps/app-edit/projects/true-swords-clash/ops/tsc_op.c) on the REAL verse file (Chinese-to-English Bible, 31102 verses), scratch matches only.
+# Proves: a challenge deals n verses WITHOUT references and the right order is accepted / a wrong one gives no mana and ends the turn; a miracle without mana, with a challenge open, or out of turn is REFUSED and writes no row;
+# a miracle costs mana and does its effect; the same seed and moves give the same ledger bytes; a hand-edited ledger row is REFUSED by replay (negative); forfeit ends the match; the computer plays only its own turn.
+RESULTS | ../results/tsc_rules.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | p/ops/+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/ops/+x/tsc_op.+x | $T/p/ops/+x/tsc_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/verses.txt | $T/p/verses.txt
+
+CASE    | challenge
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/m1 | --vs | human | --seed | 11
+EXPECT_EXIT | 0 | new-match
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m1 | 11
+EXPECT_EXIT | 1 | NEGATIVE-eleven-verses-is-refused-2-to-10-only
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m1 | 2
+EXPECT_EXIT | 0 | two-verses-dealt
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m1
+EXPECT_OUT | phase=answer | an-open-challenge
+EXPECT_OUT | challenge_n=2 | two-verses-on-screen
+EXPECT_OUT | ch_2= | the-second-verse-is-shown
+EXPECT_OUT_LACKS | \p\p | no-raw-line-or-reference-leaks-into-the-challenge
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m1 | hailmary
+EXPECT_EXIT | 1 | NEGATIVE-a-miracle-with-a-challenge-open-is-refused
+RUN | $T/p/ops/+x/tsc_op.+x | answer | $T/m1 | 21
+EXPECT_OUT | right: +2 mana | the-right-order-earns-the-mana
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m1
+EXPECT_OUT | p1_mana=2 | player-1-has-2-mana
+EXPECT_OUT | turn=2 | the-turn-passed-to-player-2
+
+CASE    | miracles
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m1 | fire
+EXPECT_EXIT | 1 | NEGATIVE-player-2-has-0-mana-fire-costs-2
+EXPECT_LACKS | m1/ledger.txt | MIRACLE\p2\pfire | the-refused-miracle-wrote-no-row
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m1 | nonsense
+EXPECT_EXIT | 1 | NEGATIVE-an-unknown-miracle-is-refused
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m1 | hailmary
+EXPECT_EXIT | 0 | hail-mary-costs-0
+EXPECT_OUT | hail mary | its-result-is-told
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m1 | fire
+EXPECT_EXIT | 0 | player-1-casts-fire-for-2-mana
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m1
+EXPECT_OUT | p1_mana=0 | fire-cost-the-2-mana
+EXPECT_OUT | p2_hp=9 | fire-did-1-to-6-damage-so-player-2-is-94-to-99
+
+CASE    | determinism
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/m3 | --vs | human | --seed | 11
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m3 | 2
+RUN | $T/p/ops/+x/tsc_op.+x | answer | $T/m3 | 21
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m3 | hailmary
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m3 | fire
+RUN | /usr/bin/cmp | $T/m1/ledger.txt | $T/m3/ledger.txt
+EXPECT_EXIT | 0 | same-seed-and-moves-give-the-same-ledger-bytes
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/m4 | --vs | human | --seed | 12
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m4 | 2
+RUN | $T/p/ops/+x/tsc_op.+x | answer | $T/m4 | 21
+RUN | /usr/bin/cmp | -s | $T/m1/ledger.txt | $T/m4/ledger.txt
+EXPECT_EXIT | 1 | NEGATIVE-another-seed-gives-a-different-ledger
+
+CASE    | tamper
+RUN | /bin/cp | $T/m1/ledger.txt | $T/m5.ledger
+RUN | /bin/mkdir | $T/m5
+RUN | /bin/cp | $T/m1/ledger.txt | $T/m5/ledger.txt
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m5
+EXPECT_EXIT | 0 | the-copy-of-the-honest-ledger-replays
+RUN | /bin/sed | -i | s/+2 mana/+9 mana/ | $T/m5/ledger.txt
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m5
+EXPECT_EXIT | 3 | NEGATIVE-a-hand-edited-result-is-refused-by-replay
+RUN | /bin/cp | $T/m1/ledger.txt | $T/m5/ledger.txt
+RUN | /bin/sed | -i | s/START\p11/START\p12/ | $T/m5/ledger.txt
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m5
+EXPECT_EXIT | 3 | NEGATIVE-a-changed-seed-changes-every-roll-and-is-refused
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m5 | 3
+EXPECT_EXIT | 3 | NEGATIVE-a-live-action-on-a-bad-ledger-is-refused-too
+
+CASE    | forfeit-and-computer
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/m6 | --vs | human | --seed | 5
+RUN | $T/p/ops/+x/tsc_op.+x | forfeit | $T/m6
+EXPECT_EXIT | 0 | forfeit
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m6
+EXPECT_OUT | phase=over | the-match-is-over
+EXPECT_OUT | winner=2 | the-other-player-wins
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m6 | 2
+EXPECT_EXIT | 1 | NEGATIVE-nothing-can-be-played-after-the-end
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/m7 | --vs | computer | --seed | 5
+RUN | $T/p/ops/+x/tsc_op.+x | ai | $T/m7
+EXPECT_EXIT | 1 | NEGATIVE-the-computer-does-not-play-on-the-humans-turn
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/m7 | 2
+RUN | $T/p/ops/+x/tsc_op.+x | answer | $T/m7 | 99
+RUN | $T/p/ops/+x/tsc_op.+x | miracle | $T/m7 | hailmary
+EXPECT_EXIT | 1 | NEGATIVE-the-human-cannot-play-the-computers-turn
+RUN | $T/p/ops/+x/tsc_op.+x | ai | $T/m7
+EXPECT_EXIT | 0 | the-computer-plays-its-own-turn
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/m7
+EXPECT_OUT | turn=1 | and-hands-the-turn-back
