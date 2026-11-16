@@ -3626,30 +3626,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_el_methods.c"
     /* Element structural navigation getters install extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_el_nav.c"
-    {
-        JSAtom nm = JS_NewAtom(ctx, "scrollTop");
-        JS_DefinePropertyGetSet(ctx, Ep, nm,
-            JS_NewCFunctionMagic(ctx, nb_el_scroll_get, "get scrollTop", 0, JS_CFUNC_generic_magic, 1),
-            JS_NewCFunctionMagic(ctx, nb_el_scroll_set, "set scrollTop", 1, JS_CFUNC_generic_magic, 1),
-            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-        nm = JS_NewAtom(ctx, "scrollLeft");
-        JS_DefinePropertyGetSet(ctx, Ep, nm,
-            JS_NewCFunctionMagic(ctx, nb_el_scroll_get, "get scrollLeft", 0, JS_CFUNC_generic_magic, 0),
-            JS_NewCFunctionMagic(ctx, nb_el_scroll_set, "set scrollLeft", 1, JS_CFUNC_generic_magic, 0),
-            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-        nm = JS_NewAtom(ctx, "scrollHeight");
-        JS_DefinePropertyGetSet(ctx, Ep, nm,
-            JS_NewCFunctionMagic(ctx, nb_el_scroll_dim, "get scrollHeight", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
-            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-        nm = JS_NewAtom(ctx, "scrollWidth");
-        JS_DefinePropertyGetSet(ctx, Ep, nm,
-            JS_NewCFunctionMagic(ctx, nb_el_scroll_dim, "get scrollWidth", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
-            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
-        JS_FreeAtom(ctx, nm);
-    }
+    /* Element scroll properties install extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_el_scroll.c"
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentHTML", JS_NewCFunction(ctx, nb_el_insertAdjacentHTML, "insertAdjacentHTML", 2));
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentText", JS_NewCFunction(ctx, nb_el_insertAdjacentText, "insertAdjacentText", 2));
     JS_SetPropertyStr(ctx, Ep, "insertAdjacentElement", JS_NewCFunction(ctx, nb_el_insertAdjacentElement, "insertAdjacentElement", 2));
