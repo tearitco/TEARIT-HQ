@@ -311,3 +311,15 @@ SEEN: a real app-edit window (784x504 PNG read), a real mouse click on "export t
 
 ### 26b. Placement clears the left GNOME dock (2026-11-15, owner: "make sure the phones don't open over the left ubuntu gnome left tb")
 `window_place_op` reads the desktop's `_NET_WORKAREA` (x y w h with the dock and panel already subtracted; on this desktop `140 54 2356 1610`) and starts at its left edge plus 10 (first phone at x=150, y=110 from `TOP_Y`), and wraps at its right edge. Used only when `--screen-w` is NOT given, so the harness stays deterministic (case `window_place` 15/0 unchanged). Seen: two real phones at x=150 and x=526. The dock width is read, not hard-coded, so a wider dock or another monitor is handled. NOT covered: windows that do not use the placement op (app-edit and the other sidebar windows open at the renderer's house default x=80, which is inside the 140 px dock; not changed because the owner asked about phones only).
+
+## 27. SEPARATE BUT EQUAL, and the first real app (owner 2026-11-15)
+**Owner:** +phone is "not really part of LyfeDesk": it is the interface for the phone software of **TSOTS**, a separate company (not Tear-it co). LyfeDesk also uses it. The first product is tested through the phone sandbox, not raw rpg-edit. rpg-edit opens as the SECOND phone app; our rpg-edit apps run in the phone later; the text-based Bible app comes first. (SAID)
+
+**Rules that follow (DOC, to keep true in code):**
+1. The phone (`phone_op`, `phone_prefs.pdl`, app packages, `app_check`) must not assume LyfeDesk: no taskbar-only paths, no LyfeDesk wording in phone-facing text. LyfeDesk is one HOST of the phone (top-bar `0`/`+`), not its owner. A later native phone shell must be able to use the same packages unchanged.
+2. App packages are the contract between product and phone. TSOTS apps are packages; app-edit (the IDE) exports them.
+3. App order: 1 settings (pinned), 2 True Swords Clash (text), 3 rpg-edit (opens the existing editor in the phone). Not built: the rpg-edit package.
+
+**First real app = text True Swords Clash (READ the middle-house sources, not yet run):** rules `+.TSOTS-ALPHA-OMEGA/#.RULES/True_Swords_Clash_Rules.txt` (HP 100, Mana 0; turn = Mana Challenge 2-10 sorted verses, or one of 11 Miracles; 4 statuses; win at HP 0 or forfeit), design `@.apps/TSC_ELO/TSC_DESIGN.md` (reuse the TSOTS-OG Mana Challenge engine; master ledger `data/master_ledger.txt`; Elo op). Per the ledger standard, the match state is ledger rows only; screens are projections.
+**Plan (build order):** (1) read TSC_DESIGN.md sections 5-12 and TSC_ELO ops, find what runs without GL (`NO_GL=1`); (2) screens as layouts: home, mana challenge (sort verses), miracle list, status/HP, result; (3) one op for the verbs (as `app_edit_op`), calling the existing TSC ops where they exist; (4) the phone renders package screens (open item 1 of section 26); (5) a case that plays a scripted match and checks the ledger.
+**Open questions for the owner:** Bible text source (KJV/WEB; the book-stack file is unlabelled); HvC first, then HvH?; where does the Elo rating live for a phone user?
