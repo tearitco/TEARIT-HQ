@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #define P 4096
 #define NPOS 64
 static char LEDGER[P], DIR_[P]; static long long CASH; static struct { char sym[40]; long long q; } POS[NPOS]; static int NP;
@@ -54,14 +55,22 @@ static int quote(const char *bus, const char *sym, long long now, long maxage, l
     while (fp && fgets(ln, sizeof ln, fp)) if (!strncmp(ln, key, strlen(key))) { long long p = 0, q = 0, ts = 0, fa = 0; char cc[16]; if (sscanf(ln + strlen(key), "%lld|%lld|%lld|%15[^|]|%lld", &p, &q, &ts, cc, &fa) >= 5 && p > 0) { if (maxage > 0 && (now - fa > maxage || now < fa)) ok = -1; else { *price = p; *prev = q; ok = 1; } } }
     if (fp) fclose(fp); return ok > 0; }
 /* ---- the phone app (2026-11-16): module = projector of <inst>/.hq_manager/ui.txt; ui_ verbs append ledger rows through the same op. The account lives at <inst>/stockx/ledger.txt (the ledger is the only state). ---- */
-static char HQD[P], ACCT[P];
-static void ui_set(const char *inst) { snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); snprintf(ACCT, sizeof ACCT, "%s/stockx", inst); mkdir(ACCT, 0755); snprintf(DIR_, sizeof DIR_, "%s", ACCT); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", ACCT); }
+static char HQD[P], ACCT[P], INSTD[P], HOUSED[P];
+static void ui_set(const char *inst) { snprintf(INSTD, sizeof INSTD, "%s", inst); { const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (h) snprintf(HOUSED, sizeof HOUSED, "%.*s", (int)(h - inst), inst); } snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); snprintf(ACCT, sizeof ACCT, "%s/stockx", inst); mkdir(ACCT, 0755); snprintf(DIR_, sizeof DIR_, "%s", ACCT); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", ACCT); }
 static void bumpq(void) { char f[P]; snprintf(f, sizeof f, "%s/marker.txt", HQD); struct stat sb; if (!stat(f, &sb) && sb.st_size > 4096) unlink(f); FILE *m = fopen(f, "a"); if (m) { fputc('x', m); fclose(m); } }
 static long msizeq(void) { char f[P]; struct stat sb; snprintf(f, sizeof f, "%s/marker.txt", HQD); return stat(f, &sb) ? 0 : (long)sb.st_size; }
 static void money(long long c, char *o, size_t cap) { snprintf(o, cap, "%s$%lld.%02lld", c < 0 ? "-" : "", (c < 0 ? -c : c) / 100, (c < 0 ? -c : c) % 100); }
+/* STOPGAP (copy of tsc_op's book_vars; remove when phone_projector publishes the phone bar's book:page variables): the book name is the BOOK row of phone_prefs.pdl (default phone); the pages are home (the user's name) plus every installed app; the current page is this app's name. */
+static int pref_book(const char *house, char *out, size_t cap) { char f[4096], ln[300]; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", house); FILE *fp = fopen(f, "r"); out[0] = 0; while (fp && fgets(ln, sizeof ln, fp)) if (!strncmp(ln, "BOOK", 4)) { char *b = strchr(ln, '|'); if (b) { b++; while (*b == ' ') b++; b[strcspn(b, "\r\n")] = 0; snprintf(out, cap, "%s", b); } } if (fp) fclose(fp); return out[0] != 0; }
+static int book_vars(char *UI, size_t cap, const char *inst, const char *house, const char *page) {
+    char b[80] = "", un[80] = "", ln[300]; int n = 0; if (!pref_book(house, b, sizeof b)) snprintf(b, sizeof b, "phone"); n += snprintf(UI + n, cap - n, "book_label=%s\npage_label=%s\n", b, page);
+    { char sf[4096]; snprintf(sf, sizeof sf, "%s/#.desktop/strip_ui.txt", house); FILE *pf = fopen(sf, "r"); if (pf) { while (fgets(ln, sizeof ln, pf)) if (!strncmp(ln, "username=", 9)) { ln[strcspn(ln, "\r\n")] = 0; snprintf(un, sizeof un, "%s", ln + 9); break; } fclose(pf); } if (!un[0]) snprintf(un, sizeof un, "home"); }
+    char ad[4096]; snprintf(ad, sizeof ad, "%s/&.hq-apps/plus-phone/apps", house); n += snprintf(UI + n, cap - n, "pg_0_label=%s\npg_0_act='%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '%s'\n", un, house, inst); int k = 1;
+    DIR *dp = opendir(ad); if (dp) { struct dirent *e; while ((e = readdir(dp)) && k < 12) { if (e->d_name[0] == '.') continue; char mf[4096]; snprintf(mf, sizeof mf, "%s/%s/manifest.pdl", ad, e->d_name); if (access(mf, R_OK)) continue; n += snprintf(UI + n, cap - n, "pg_%d_label=%s\npg_%d_act='%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'open' '%s' '%s'\n", k, e->d_name, k, house, inst, e->d_name); k++; } closedir(dp); }
+    n += snprintf(UI + n, cap - n, "n_pages=%d\n", k); return n; }
 static void publish(void) {
     static char UI[8192]; int n = 0; int have = !access(LEDGER, F_OK); int rc = have ? replay(1) : 0; char m[40], t[40]; money(CASH, m, sizeof m);
-    n += snprintf(UI + n, sizeof UI - n, "window_title=stock+x\n"); if (!have) n += snprintf(UI + n, sizeof UI - n, "line_cash=No paper account yet.\nline_total=\nstatus=Paper money only: nothing real is traded.\nshow_new=1\nshow_acct=0\nn_pos=0\n");
+    n += snprintf(UI + n, sizeof UI - n, "window_title=stock+x\n"); n += book_vars(UI + n, sizeof UI - n, INSTD, HOUSED, "stock-x"); if (!have) n += snprintf(UI + n, sizeof UI - n, "line_cash=No paper account yet.\nline_total=\nstatus=Paper money only: nothing real is traded.\nshow_new=1\nshow_acct=0\nn_pos=0\n");
     else if (rc) n += snprintf(UI + n, sizeof UI - n, "line_cash=This ledger does not replay (it was edited).\nline_total=\nstatus=Nothing is shown from it.\nshow_new=0\nshow_acct=0\nn_pos=0\n");
     else { int np = 0; char pl[2048] = ""; for (int i = 0; i < NP; i++) if (POS[i].q > 0) { char sy[40]; snprintf(sy, sizeof sy, "%s", POS[i].sym); char *at = strchr(sy, '@'); if (at) *at = 0; size_t l = strlen(pl); snprintf(pl + l, sizeof pl - l, "pos_%d_text=%s   %lld.%06lld shares\n", np, sy, POS[i].q / 1000000, POS[i].q % 1000000); np++; }
         money(CASH, t, sizeof t); n += snprintf(UI + n, sizeof UI - n, "line_cash=Cash   %s\nline_total=Paper account, %d ledger rows\nstatus=Quotes and trading come next.\nshow_new=0\nshow_acct=1\nn_pos=%d\n%s", t, rows(), np, pl); }

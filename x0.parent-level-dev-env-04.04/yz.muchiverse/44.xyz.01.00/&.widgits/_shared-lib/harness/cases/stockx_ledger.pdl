@@ -7,7 +7,7 @@ ENV | LC_ALL | C
 CASE    | setup
 SCRATCH |
 MKDIR | bus
-RUN | /usr/bin/gcc | -O2 | -o | $T/sx.+x | $HOUSE/&.hq-apps/app-edit/projects/stock-x/ops/stockx_op.c
+RUN | /usr/bin/gcc | -w | -O2 | -o | $T/sx.+x | $HOUSE/&.hq-apps/app-edit/projects/stock-x/ops/stockx_op.c
 EXPECT_EXIT | 0 | the-op-compiles
 WRITE | bus/latest.txt | AAPL@yahoo\p356270000\p350100000\p1763000000\pUSD\p5000\nNVDA@yahoo\p118500000\p117000000\p1763000000\pUSD\p5000\nONE@yahoo\p1000000\p1000000\p1763000000\pUSD\p5000\n
 
