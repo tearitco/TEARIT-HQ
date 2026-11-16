@@ -6723,6 +6723,11 @@ static void layout_toolbar_row(Elem *row, int x, int y, int w) {
 static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
     int composer_rows = 0;
     Elem *scrolllist = NULL;
+    /* 2026-11-15 (owner: every phone window keeps the top and bottom toolbar, "exactly how it works in rpg-edit, lyfedesk"): a direct child <item class="bar-top"> / "bar-bottom" is a full-width band pinned to the top / bottom edge of this container, OUT of the flow; the rows and the scrolllist then fill what is left. Same classes the swatch-grid path already honours. Idempotent: positions come only from x/y/w/h given here. A band with a label is a nav item (so its action is reachable), an empty one is not. */
+    Elem *kh_bt = NULL, *kh_bb = NULL;
+    for (int i = 0; i < container->n_children; i++) { Elem *c = container->children[i]; if (strcmp(c->tag, "item") != 0) continue; if (elem_has_class(c, "bar-top") && !kh_bt) kh_bt = c; else if (elem_has_class(c, "bar-bottom") && !kh_bb) kh_bb = c; }
+    if (kh_bt) { css_compute_style(&g_sheet, kh_bt->tag, kh_bt->id, kh_bt->classes, kh_bt->n_classes, 0, &kh_bt->style); int bh = (kh_bt->style.has_height && !kh_bt->style.height_is_pct) ? kh_bt->style.height : 28; kh_bt->x = x; kh_bt->y = y; kh_bt->w = w; kh_bt->h = bh; kh_bt->nav_index = 0; if (kh_bt->label[0]) { kh_bt->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_bt; } y += bh + 2; h -= bh + 2; }
+    if (kh_bb) { css_compute_style(&g_sheet, kh_bb->tag, kh_bb->id, kh_bb->classes, kh_bb->n_classes, 0, &kh_bb->style); int bh = (kh_bb->style.has_height && !kh_bb->style.height_is_pct) ? kh_bb->style.height : 28; kh_bb->x = x; kh_bb->y = y + h - bh; kh_bb->w = w; kh_bb->h = bh; kh_bb->nav_index = 0; if (kh_bb->label[0]) { kh_bb->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_bb; } h -= bh + 2; }
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/
@@ -6756,6 +6761,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
     int y_cursor = y;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
+        if (c == kh_bt || c == kh_bb) continue;      /* pinned bands, placed above */
         /* REAL, NEW 2026-09-03 - a dropdown-child never consumes fixed-
          * row space of its own; it's positioned as a real overlay,
          * relative to its trigger, in the dedicated pass right after
@@ -7619,8 +7625,14 @@ static int layout_sidebar_panel(Elem *page) {
     } else {
         int sidebar_w = SIDEBAR_W;
         if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
-        sidebar->x = 0; sidebar->y = content_top; sidebar->w = sidebar_w; sidebar->h = g_win_h - content_top;
-        panel->x = sidebar_w; panel->y = content_top; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - content_top;
+        /* 2026-11-15: the same top/bottom bands as the flat-page path (owner: every phone window keeps both): direct <item class="bar-top"|"bar-bottom"> children of the page are pinned to the top / bottom edge, out of the flow, and the sidebar and panel fill what is left. */
+        int kh_sbot = 0;
+        for (int bi = 0; bi < page->n_children; bi++) { Elem *b = page->children[bi]; int top = 0, bot = 0; if (strcmp(b->tag, "item") != 0) continue; top = elem_has_class(b, "bar-top"); bot = elem_has_class(b, "bar-bottom"); if (!top && !bot) continue;
+            css_compute_style(&g_sheet, b->tag, b->id, b->classes, b->n_classes, 0, &b->style); int bh = (b->style.has_height && !b->style.height_is_pct) ? b->style.height : 28; b->x = 1; b->w = g_win_w - 2; b->h = bh; b->nav_index = 0;
+            if (top) { b->y = content_top; content_top += bh + 2; } else { b->y = g_win_h - bh - 1; kh_sbot = bh + 4; }
+            if (b->label[0]) { b->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = b; } }
+        sidebar->x = 0; sidebar->y = content_top; sidebar->w = sidebar_w; sidebar->h = g_win_h - content_top - kh_sbot;
+        panel->x = sidebar_w; panel->y = content_top; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - content_top - kh_sbot;
     }
 
     /* MILESTONE B/C (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a) - a
@@ -10012,11 +10024,17 @@ static void assign_nav_and_layout(void) {
 
         int y = CHROME_H + canvas_tabbar_h;
         if (window_is_entity_menu()) y = CHROME_H * 2; /* chrome row, nametag row, then items */
+        /* 2026-11-15 (owner: every phone window keeps the top and bottom toolbar, like rpg-edit/lyfedesk): a direct <item class="bar-top"|"bar-bottom"> of a flat page is a full-width band pinned to the top / bottom edge, OUT of the flow; the scrolllist below gets only what is left. Same classes as the swatch-grid path. A labelled band is a nav item. */
+        Elem *kh_fbt = NULL, *kh_fbb = NULL; int kh_fbot = 0;
+        for (int bi = 0; bi < page->n_children; bi++) { Elem *b = page->children[bi]; if (strcmp(b->tag, "item") != 0) continue; if (elem_has_class(b, "bar-top") && !kh_fbt) kh_fbt = b; else if (elem_has_class(b, "bar-bottom") && !kh_fbb) kh_fbb = b; }
+        if (kh_fbt) { css_compute_style(&g_sheet, kh_fbt->tag, kh_fbt->id, kh_fbt->classes, kh_fbt->n_classes, 0, &kh_fbt->style); int bh = (kh_fbt->style.has_height && !kh_fbt->style.height_is_pct) ? kh_fbt->style.height : 28; kh_fbt->x = 1; kh_fbt->y = y; kh_fbt->w = g_win_w - 2; kh_fbt->h = bh; kh_fbt->nav_index = 0; if (kh_fbt->label[0]) { kh_fbt->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_fbt; } y += bh + 2; }
+        if (kh_fbb) { css_compute_style(&g_sheet, kh_fbb->tag, kh_fbb->id, kh_fbb->classes, kh_fbb->n_classes, 0, &kh_fbb->style); int bh = (kh_fbb->style.has_height && !kh_fbb->style.height_is_pct) ? kh_fbb->style.height : 28; kh_fbb->x = 1; kh_fbb->y = g_win_h - bh - 1; kh_fbb->w = g_win_w - 2; kh_fbb->h = bh; kh_fbb->nav_index = 0; if (kh_fbb->label[0]) { kh_fbb->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = kh_fbb; } kh_fbot = bh + 4; }
         int chrome_x = g_win_w - 8;      /* has_canvas only */
         int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
         int found_close = 0;
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
+            if (item == kh_fbt || item == kh_fbb) continue;      /* pinned bands, placed above */
             /* REAL FIX 2026-09-15, direct live report ("we dont need a
              * sidbar at all" - file-explorer's own list needed real
              * scrolling, which this flat-page path never had at all
@@ -10036,7 +10054,7 @@ static void assign_nav_and_layout(void) {
              * the whole window, not one region sharing it with a
              * sidebar. */
             if (strcmp(item->tag, "scrolllist") == 0) {
-                int room = g_win_h - y - 8;
+                int room = g_win_h - y - 8 - kh_fbot;
                 if (room < ROW_H) room = ROW_H;
                 css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
                 layout_scroll_region(item, 0, y, g_win_w, room,
