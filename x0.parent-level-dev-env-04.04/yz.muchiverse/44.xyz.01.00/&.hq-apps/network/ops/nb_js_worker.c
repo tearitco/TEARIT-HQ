@@ -3683,13 +3683,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_font_blit.c"
 /* canvas font string parsing helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_font_parse.c"
-static void nb_ctx_str(JSContext *ctx, JSValueConst o, const char *k, char *out, size_t n, const char *def) {
-    JSValue v = JS_GetPropertyStr(ctx, o, k);
-    const char *s = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
-    snprintf(out, n, "%s", s ? s : def);
-    if (s) JS_FreeCString(ctx, s);
-    JS_FreeValue(ctx, v);
-}
+/* canvas context string property helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_ctx_str.c"
 /* ---- canvas 2D ---- */
 static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { (void)ctx; (void)this_val; (void)argc; (void)argv; return JS_UNDEFINED; }
 static void nb_grad_sample(JSContext *ctx, JSValue grad, double t, unsigned char out[4]);
