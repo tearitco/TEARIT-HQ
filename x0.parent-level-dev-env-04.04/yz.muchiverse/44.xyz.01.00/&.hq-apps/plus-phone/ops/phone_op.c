@@ -75,12 +75,23 @@ static int screen_layout(const char *inst, char *out, size_t cap) {      /* the 
     while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "SCREEN", 6)) continue; ln[strcspn(ln, "\r\n")] = 0; char *b1 = strchr(ln, '|'); if (!b1) continue; char *b2 = strchr(b1 + 1, '|'); if (!b2) continue; char nm[64]; snprintf(nm, sizeof nm, "%.*s", (int)(b2 - b1 - 1) > 60 ? 60 : (int)(b2 - b1 - 1), b1 + 1); char *n = nm; while (*n == ' ') n++; size_t nl = strlen(n); while (nl && n[nl - 1] == ' ') n[--nl] = 0;
         b2++; while (*b2 == ' ') b2++; char rel[400]; snprintf(rel, sizeof rel, "%s", b2); size_t l = strlen(rel); while (l && rel[l - 1] == ' ') rel[--l] = 0; if (!strcmp(n, "home-landscape")) snprintf(land, sizeof land, "%s", rel); else if (!port[0]) snprintf(port, sizeof port, "%s", rel); }
     fclose(fp); char orient[16] = ""; kv(inst, "ORIENT", orient, sizeof orient); const char *rel = (!strcmp(orient, "landscape") && land[0]) ? land : port[0] ? port : land; if (!rel[0]) return 0; snprintf(out, cap, "%s/&.hq-apps/plus-phone/apps/%s/%s", HOUSE, id, rel); return !access(out, R_OK); }
+/* ONE WINDOW (owner 2026-11-16, PLUS-PHONE-LAYOUT-SPEC): the phone window always runs its OWN layout file <inst>/plus-phone[-landscape].xhtpm; this writes into it what the window shows now:
+ * the open app's screen (css first, ${PKG} filled) or the picker. The renderer re-parses that file, so open and home need no relaunch (flip still does: the window size changes). */
+static int refresh_layout(const char *inst) {
+    char orient[16]; kv(inst, "ORIENT", orient, sizeof orient); int land = !strcmp(orient, "landscape"); const char *lay = land ? "plus-phone-landscape.xhtpm" : "plus-phone.xhtpm"; int ic = 0; char sl[P];
+    if (screen_layout(inst, sl, sizeof sl)) {
+        static char xb[65536], cb[16384]; char id[64] = "", f[P], pkg[P], css[P], stem[96], dst[P]; snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); FILE *fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); }
+        snprintf(pkg, sizeof pkg, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, id); snprintf(css, sizeof css, "%s", sl); char *d = strrchr(css, '.'); if (d) snprintf(d, 6, ".css");
+        if (slurp(sl, xb, sizeof xb) && slurp(css, cb, sizeof cb)) { replace_all(xb, sizeof xb, "${PKG}", pkg); snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0; snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); return 1; }
+    }
+    return generate_layout(inst, lay, land ? 704 : 364, &ic);
+}
 static long launch(const char *inst) {
     char orient[16]; kv(inst, "ORIENT", orient, sizeof orient);
     { char op[P], app[P], tmp[P], ws[16], hs[16]; int land = !strcmp(orient, "landscape"); snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/window_place_op.+x", HOUSE); snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); snprintf(tmp, sizeof tmp, "%s/place.out", inst);
       snprintf(ws, sizeof ws, "%d", land ? 704 : 364); snprintf(hs, sizeof hs, "%d", land ? 364 : 704);      /* window sizes with frame; the shared op picks a free slot beside the other phones (placement.pdl opt-in) */
       if (!access(op, X_OK)) { char *av[] = { op, "place", app, (char *)inst, ws, hs, NULL }; run_out(av, tmp); unlink(tmp); } } const char *lay = !strcmp(orient, "landscape") ? "plus-phone-landscape.xhtpm" : "plus-phone.xhtpm";
-    char x[P], exe[P], funnel[P], tmp[P], nm[48], n[16]; int ic = 0; if (!screen_layout(inst, x, sizeof x)) { if (!generate_layout(inst, lay, !strcmp(orient, "landscape") ? 704 : 364, &ic)) return 0; snprintf(x, sizeof x, "%s/%s", inst, lay); }      /* the per-instance layout: tile size filled in */ snprintf(exe, sizeof exe, "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", HOUSE); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
+    char x[P], exe[P], funnel[P], tmp[P], nm[48], n[16]; if (!refresh_layout(inst)) return 0; snprintf(x, sizeof x, "%s/%s", inst, lay);      /* the per-instance layout (picker with tile size filled in, or the open app's screen) */ snprintf(exe, sizeof exe, "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", HOUSE); snprintf(funnel, sizeof funnel, "%s/&.widgits/_shared-lib/kh_spawn.sh", HOUSE);
     if (access(x, R_OK) || access(exe, X_OK) || access(funnel, R_OK)) return 0;
     kv(inst, "PHONE", n, sizeof n); snprintf(nm, sizeof nm, "plus-phone-%s", n); snprintf(tmp, sizeof tmp, "%s/spawn.out", inst); setenv("KH_ROLE", "tool", 1); setenv("KH_APP", "plus-phone", 1);
     char *av[] = { "/bin/sh", funnel, HOUSE, "0", nm, "--", exe, HOUSE, x, (char *)inst, NULL }; run_out(av, tmp);
@@ -126,7 +137,7 @@ static int v_flip(const char *inst) { char o[16]; kv(inst, "ORIENT", o, sizeof o
 static int v_relaunch(const char *inst) { usleep(300000); kill_window(inst); long pid = launch(inst); return pid ? 0 : 1; }
 static int v_open(const char *inst, const char *app) { for (const char *c = app; *c; c++) if (!(isalnum((unsigned char)*c) || *c == '-' || *c == '_')) return 2; char f[P], txt[200]; snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst);
     /* an INSTALLED app opens its screen: screen.txt names it, the projector hides the grid and shows the app (a package with no screens is a BLANK app, shown as blank). settings is show-only. */
-    char mf[P], sf[P]; const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (h && strcmp(app, "settings")) { snprintf(mf, sizeof mf, "%.*s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", (int)(h - inst), inst, app); if (!access(mf, R_OK)) { snprintf(sf, sizeof sf, "%s/.hq_manager/screen.txt", inst); wr(sf, app); unlink(f); bump(inst); { char sl[P]; if (screen_layout(inst, sl, sizeof sl)) spawn_self("relaunch", inst); } return 0; } }
+    char mf[P], sf[P]; const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (h && strcmp(app, "settings")) { snprintf(mf, sizeof mf, "%.*s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", (int)(h - inst), inst, app); if (!access(mf, R_OK)) { snprintf(sf, sizeof sf, "%s/.hq_manager/screen.txt", inst); wr(sf, app); unlink(f); bump(inst); refresh_layout(inst);      /* same window: its layout file is rewritten and re-parsed (no relaunch) */ return 0; } }
     snprintf(txt, sizeof txt, "%s: nothing to show yet. Nothing was started.\n", app); wr(f, txt); bump(inst); return 0; }
 /* INSTALL / UNINSTALL (2026-11-15, design section 24.4): an app reaches the phone only as a checked package folder. `install <house> <package_dir>`: app_check first (refused = nothing copied, its lines are printed), then the folder
  * replaces apps/<id>/ (copied beside it first and renamed, so a failed copy never leaves half an app); every open phone is told to republish. `uninstall <house> <id>`: removes apps/<id>/ (the system app settings is refused). */
@@ -145,7 +156,7 @@ static int v_uninstall(const char *id) {
     char dst[P], tmp[P]; snprintf(dst, sizeof dst, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, id); if (access(dst, F_OK)) { printf("UNINSTALL-REFUSED %s is not installed\n", id); return 1; }
     snprintf(tmp, sizeof tmp, "%s/&.hq-apps/plus-phone/uninstall.out", HOUSE); char *rm[] = { "/bin/rm", "-rf", dst, NULL }; run_out(rm, tmp); unlink(tmp); bump_all(); printf("UNINSTALLED %s\n", id); return 0;
 }
-static int v_home(const char *inst) { char f[P], sl[P]; int had = screen_layout(inst, sl, sizeof sl); snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst); unlink(f); snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); unlink(f); bump(inst); if (had) spawn_self("relaunch", inst); return 0; }
+static int v_home(const char *inst) { char f[P], sl[P]; int had = screen_layout(inst, sl, sizeof sl); snprintf(f, sizeof f, "%s/.hq_manager/last.txt", inst); unlink(f); snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); unlink(f); bump(inst); if (had) refresh_layout(inst); return 0; }
 
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: phone_op new|list <house> | close <house> <n> | flip|relaunch|home|closeself <instance> | open <instance> <app>\n"); return 2; }
