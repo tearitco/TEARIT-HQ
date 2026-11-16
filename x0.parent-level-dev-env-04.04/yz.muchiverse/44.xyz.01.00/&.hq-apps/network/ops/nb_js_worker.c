@@ -3666,12 +3666,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_parser_serializer.c"
         /* NodeList/HTMLCollection global installs extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_list_classes.c"
-        f = add_class(ctx, "DOMTokenList", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
-        JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_cl_item, "item", 1));
-        JS_FreeValue(ctx, p);
-        JS_SetPropertyStr(ctx, g, "DOMTokenList", f);
+        /* DOMTokenList global install extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_domtokenlist.c"
         f = add_class(ctx, "NamedNodeMap", JS_UNDEFINED);
         p = JS_GetPropertyStr(ctx, f, "prototype");
         JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
