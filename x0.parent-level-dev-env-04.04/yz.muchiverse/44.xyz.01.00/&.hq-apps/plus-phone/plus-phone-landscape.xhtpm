@@ -6,7 +6,9 @@
 <window label="${phone_title}" class="palettes-pal phone-landscape">
   <module id="projector" src="&.hq-apps/plus-phone/ops/+x/phone_projector.+x"/>
   <page name="main">
-    <item id="bar-top" class="bar-top" label=""/>
+    <tabbar id="toolbar" class="tab-bar">
+      <tab id="tb-book" class="tab" label="${book_label} : ${page_label}" onclick="'${PKG}/ops/+x/phone_op.+x' home '${ARG3}'"/>
+    </tabbar>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <item id="flip" class="chrome-btn" label="@" action="'${PKG}/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
     <item id="back" class="chrome-btn" label="<" show="${app_open}" action="'${PKG}/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>

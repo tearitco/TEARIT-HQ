@@ -8,6 +8,6 @@ window { font-family: DejaVu Serif; font-size: 11px; }
 .btn.danger     { border: 1px solid #c04040; }
 .bar-top, .bar-bottom { height: 28px; border: 1px solid #606060; border-width: 1; }
 .tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
-.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 110px; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 150px; }
 .phone-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; }
 .phone-ft { width: 150px; border: 1px solid #444444; }

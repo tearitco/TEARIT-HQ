@@ -192,11 +192,14 @@ static void u(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 static void u(const char *fmt, ...) { size_t l = strlen(UI); va_list ap; va_start(ap, fmt); vsnprintf(UI + l, sizeof UI - l, fmt, ap); va_end(ap); }
 static void clean(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '\t') *s = ' '; }
 static void digs(int n) { for (int dg = 0; dg < 10; dg++) { int pos = dg == 0 ? 10 : dg; u("dig_%d=%d\n", dg, pos <= n); } }
+static int pref_row(const char *house, const char *key, char *out, size_t cap); static int house_of(const char *inst, char *house, size_t cap);
+static void book_vars(const char *page) {      /* the book:page breadcrumb of the tab bar is DATA (owner 2026-11-15: names are flexible): the book name is the BOOK row of phone_prefs.pdl (default phone), the page is this app's own name */
+    char house[P], b[80] = ""; if (house_of(HQD, house, sizeof house)) pref_row(house, "BOOK", b, sizeof b); if (!b[0]) snprintf(b, sizeof b, "phone"); u("book_label=%s\npage_label=%s\n", b, page); }
 static void rate_if_over(void);
 static void publish(void) {
     rate_if_over();      /* a finished match is counted once, on whichever path it ended (a received row, a verb): the projection is where every path passes */
     UI[0] = 0; char typed[16]; rdq("typed.txt", typed, sizeof typed); int have = !access(LEDGER, F_OK); int rc = have ? replay(1) : 0; const char *n1 = "Player 1", *n2 = "Player 2";
-    u("window_title=True Swords Clash\n"); digs(0);
+    u("window_title=True Swords Clash\n"); book_vars("tsc"); digs(0);
     char netst[16]; net_state(netst, sizeof netst); const char *setup_msg = !strcmp(netst, "host") ? "Hosting: waiting for an opponent..." : !strcmp(netst, "join") ? "Joining: looking for a host..." : "Sort verses for mana, then cast Miracles. HP 100."; char nerr[200] = ""; { char ef[P]; snprintf(ef, sizeof ef, "%s/net_error.txt", MATCH); FILE *e = fopen(ef, "r"); if (e) { if (fgets(nerr, sizeof nerr, e)) nerr[strcspn(nerr, "\r\n")] = 0; fclose(e); } }
     if (!have) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=%s\nline_last=%s\nline_last2=\nn_mir=0\nn_ch=0\ntyped_line=\n", setup_msg, nerr); }
     else if (rc) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=This match's ledger does not replay (it was edited). Start a new match.\nline_last=\nline_last2=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
