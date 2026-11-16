@@ -10,6 +10,16 @@
     <scrolllist>
       <item id="new" class="btn" label="  open a paper account ($1,000.00)  " show="${show_new}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_new' '-' '${ARG3}'"/>
       <item id="cr" class="btn" label="  add $1,000.00 of paper credit  " show="${show_acct}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_credit' '-' '${ARG3}'"/>
+      <item id="rf" class="btn" label="  refresh quotes  " show="${show_acct}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_refresh' '-' '${ARG3}'"/>
+      <repeat count="${n_q}" bind="q">
+        <text label="${q.text}" class="verse"/>
+      </repeat>
+      <repeat count="${n_b}" bind="b">
+        <item id="b${b.#}" class="btn" label="${b.label}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_buy' '${b.sym}' '${ARG3}'"/>
+      </repeat>
+      <repeat count="${n_b}" bind="s">
+        <item id="s${s.#}" class="${s.cls}" label="${s.label}" action="'${PKG}/../ops/+x/stockx_op.+x' 'ui_sell' '${s.sym}' '${ARG3}'"/>
+      </repeat>
       <repeat count="${n_pos}" bind="pos">
         <text label="${pos.text}" class="verse"/>
       </repeat>
