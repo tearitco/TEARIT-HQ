@@ -129,3 +129,29 @@ RUN | /bin/sed | -i | s/ANSWER\p1\p12/ANSWER\p1\p21/ | $T/inst/tsc/ledger.txt
 RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/inst
 EXPECT_HAS | inst/.hq_manager/ui.txt | does not replay | NEGATIVE-an-edited-ledger-shows-the-warning-instead-of-the-match
 EXPECT_HAS | inst/.hq_manager/ui.txt | show_setup=1 | and-offers-a-new-match
+
+CASE    | elo
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/e1 | --vs | computer | --seed | 3 | --rating | 1200
+RUN | $T/p/ops/+x/tsc_op.+x | forfeit | $T/e1
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/e1
+EXPECT_OUT | rating_p1=1200>1184 | equal-ratings-the-loser-loses-16
+EXPECT_OUT | rating_p2=1200>1216 | and-the-winner-gains-16
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/e2 | --vs | computer | --seed | 3 | --rating | 1000 | --opp | 1400
+RUN | $T/p/ops/+x/tsc_op.+x | forfeit | $T/e2
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/e2
+EXPECT_OUT | rating_p1=1000>997 | an-underdog-loses-only-3
+EXPECT_OUT | rating_p2=1400>1403 | and-the-favourite-gains-3
+RUN | $T/p/ops/+x/tsc_op.+x | new | $T/e3 | --vs | human | --seed | 3
+RUN | $T/p/ops/+x/tsc_op.+x | forfeit | $T/e3
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/e3
+EXPECT_OUT_LACKS | rating_p1 | NEGATIVE-a-friend-match-is-not-rated
+MKDIR | i2/.hq_manager
+RUN | $T/p/ops/+x/tsc_op.+x | ui_new | computer | $T/i2
+RUN | $T/p/ops/+x/tsc_op.+x | ui_forfeit | - | $T/i2
+EXPECT_HAS | i2/tsc/rating.txt | 984\p0\p1\p | the-lost-match-moved-the-rating-to-984-and-counted-one-loss
+RUN | $T/p/ops/+x/tsc_op.+x | ui_clear | - | $T/i2
+EXPECT_HAS | i2/tsc/rating.txt | 984\p0\p1\p | NEGATIVE-another-action-after-the-end-does-not-count-the-match-twice
+RUN | $T/p/ops/+x/tsc_op.+x | ui_new | computer | $T/i2
+EXPECT_HAS | i2/tsc/ledger.txt | \p984\p984 | the-next-match-starts-from-the-new-rating
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/i2
+EXPECT_HAS | i2/.hq_manager/ui.txt | line_last2= | the-screen-has-the-second-result-line

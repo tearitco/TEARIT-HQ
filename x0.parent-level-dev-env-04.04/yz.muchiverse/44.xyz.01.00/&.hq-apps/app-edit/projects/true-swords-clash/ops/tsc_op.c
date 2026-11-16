@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <time.h>
+#include <math.h>
 #include <sys/stat.h>
 #define P 4096
 static char MATCH[P], LEDGER[P];
@@ -41,7 +42,9 @@ static uint32_t rnd(int seq, int k) { uint64_t z = SEED * 0x9E3779B97F4A7C15ULL 
 typedef struct { int hp, mana, bleed, poison, locust, bless; } Side;
 static Side S[2]; static int TURN, OVER, WINNER = -1, SEQ, COMPUTER, PHASE;   /* PHASE 0 = choose, 1 = a deal waits for its answer */
 static int CH_N, CH_START, CH_PERM[10];                                         /* CH_PERM[display position] = rank in Bible order */
-static char LAST[400];
+static char LAST[400], LAST2[400];
+static int RA = 1000, RB = 1000;      /* the two ratings at the START row (a computer match is rated; a friend match is not) */
+static void elo(int *na, int *nb) { double ea = 1.0 / (1.0 + pow(10.0, (RB - RA) / 400.0)); double sa = WINNER == 0 ? 1.0 : 0.0; double da = 32.0 * (sa - ea); *na = RA + (int)(da >= 0 ? da + 0.5 : da - 0.5); *nb = RB + (int)(-da >= 0 ? -da + 0.5 : -da - 0.5); }
 static const char *MNAME[11] = { "hailmary", "slash", "fire", "berserk", "heal", "judgement", "poison", "locust", "blessing", "angel", "holysword" };
 static void side_text(const Side *s, char *o, size_t cap) { o[0] = 0; if (s->bleed) strncat(o, "bleeding ", cap - strlen(o) - 1); if (s->poison) strncat(o, "poison ", cap - strlen(o) - 1); if (s->locust) strncat(o, "locust ", cap - strlen(o) - 1); if (s->bless) strncat(o, "blessing ", cap - strlen(o) - 1); if (!o[0]) snprintf(o, cap, "none"); else o[strlen(o) - 1] = 0; }
 static void end_turn(char *res, size_t cap) {      /* hand the turn over; the new current player takes the status effects at the START of their turn (rules) */
@@ -82,19 +85,19 @@ static int apply(const char *kind, int p, const char *a1, const char *a2, int se
     if (!strcmp(kind, "ANSWER")) { char key[16]; answer_key(key); int okk = !strcmp(a1, key); char ref[80]; snprintf(ref, sizeof ref, "%.60s", V[CH_START].text); PHASE = 0;
         if (okk) { S[p].mana += CH_N; snprintf(res, cap, "right: +%d mana (from: %s...)", CH_N, ref); } else snprintf(res, cap, "wrong: no mana, the turn ends (the order was %s)", key);
         end_turn(res, cap); return 0; }
-    if (!strcmp(kind, "AIMANA")) { int n = atoi(a1); int win = (int)(rnd(seq, 0) % 100) < 62; if (win) { S[p].mana += n; snprintf(res, cap, "the computer sorts %d verses: +%d mana", n, n); } else snprintf(res, cap, "the computer fails %d verses: no mana", n); end_turn(res, cap); return 0; }
+    if (!strcmp(kind, "AIMANA")) { int n = atoi(a1); int pw = 62 + (RB - 1000) / 10; if (pw < 30) pw = 30; if (pw > 90) pw = 90; int win = (int)(rnd(seq, 0) % 100) < pw; if (win) { S[p].mana += n; snprintf(res, cap, "the computer sorts %d verses: +%d mana", n, n); } else snprintf(res, cap, "the computer fails %d verses: no mana", n); end_turn(res, cap); return 0; }
     if (!strcmp(kind, "MIRACLE")) { int c = cost_of(a1); if (c < 0 || S[p].mana < c) return 1; miracle(p, a1, seq, res, cap); if (!OVER) end_turn(res, cap); return 0; }
     if (!strcmp(kind, "FORFEIT")) { OVER = 1; WINNER = 1 - p; snprintf(res, cap, "player %d forfeits: player %d wins", p + 1, WINNER + 1); return 0; }
     (void)a2; return 1;
 }
-static void init_state(void) { memset(S, 0, sizeof S); S[0].hp = S[1].hp = 100; TURN = 0; OVER = 0; WINNER = -1; PHASE = 0; CH_N = 0; LAST[0] = 0; }
+static void init_state(void) { memset(S, 0, sizeof S); S[0].hp = S[1].hp = 100; TURN = 0; OVER = 0; WINNER = -1; PHASE = 0; CH_N = 0; LAST[0] = 0; LAST2[0] = 0; RA = RB = 1000; }
 /* replay: 0 = ok; 3 = a row is wrong */
 static int replay(int quiet) {
     FILE *f = fopen(LEDGER, "r"); if (!f) { fprintf(stderr, "tsc_op: no ledger %s\n", LEDGER); return 2; }
     static char ln[2048]; SEQ = 0; init_state(); int started = 0, rc = 0;
     while (fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\r\n")] = 0; if (!ln[0]) continue; char *fl[6] = { 0 }; int nf = 0; char *p = ln; while (nf < 6) { fl[nf++] = p; char *bar = strchr(p, '|'); if (!bar) break; *bar = 0; p = bar + 1; }
         int seq = ++SEQ;
-        if (!strcmp(fl[0], "START")) { if (started || nf < 3) { rc = 3; break; } SEED = strtoull(fl[1], NULL, 10); COMPUTER = !strcmp(fl[2], "computer"); started = 1; continue; }
+        if (!strcmp(fl[0], "START")) { if (started || nf < 3) { rc = 3; break; } SEED = strtoull(fl[1], NULL, 10); COMPUTER = !strcmp(fl[2], "computer"); if (nf >= 5) { RA = atoi(fl[3]); RB = atoi(fl[4]); } started = 1; continue; }
         if (!started || OVER || nf < 3) { rc = 3; break; }
         char res[400]; int pl = atoi(fl[1]) - 1; int kind_ok;
         if (pl != TURN) { rc = 3; break; }
@@ -105,7 +108,7 @@ static int replay(int quiet) {
         else if (!strcmp(fl[0], "FORFEIT")) { kind_ok = !apply("FORFEIT", pl, "", "", seq, res, sizeof res); }
         else { rc = 3; break; }
         if (!kind_ok || strcmp(res, fl[nf - 1])) { rc = 3; if (!quiet) fprintf(stderr, "tsc_op: ledger row %d does not replay (stored: %s | computed: %s)\n", seq, fl[nf - 1], res); break; }
-        snprintf(LAST, sizeof LAST, "%s", res); }
+        snprintf(LAST2, sizeof LAST2, "%s", LAST); snprintf(LAST, sizeof LAST, "%s", res); }
     fclose(f); if (!started && !rc) rc = 3; return rc;
 }
 static int append(const char *row) { FILE *f = fopen(LEDGER, "a"); if (!f) return 0; fprintf(f, "%s\n", row); fclose(f); return 1; }
@@ -113,6 +116,7 @@ static int cmd_state(void) {
     int rc = replay(0); if (rc) return rc; char st[2][100]; side_text(&S[0], st[0], sizeof st[0]); side_text(&S[1], st[1], sizeof st[1]);
     printf("mode=%s\nturn=%d\nphase=%s\nwinner=%d\nseq=%d\n", COMPUTER ? "computer" : "human", TURN + 1, OVER ? "over" : PHASE ? "answer" : "choose", WINNER + 1, SEQ);
     for (int i = 0; i < 2; i++) printf("p%d_hp=%d\np%d_mana=%d\np%d_status=%s\n", i + 1, S[i].hp, i + 1, S[i].mana, i + 1, st[i]);
+    if (OVER && COMPUTER) { int na, nb; elo(&na, &nb); printf("rating_p1=%d>%d\nrating_p2=%d>%d\n", RA, na, RB, nb); }
     printf("last=%s\n", LAST); if (PHASE == 1 && !OVER) { printf("challenge_n=%d\n", CH_N); for (int d = 0; d < CH_N; d++) printf("ch_%d=%s\n", d + 1, V[CH_START + CH_PERM[d]].text); } return 0;
 }
 static int act(const char *kind, const char *a1) {      /* a live action by the player whose turn it is */
@@ -154,13 +158,13 @@ static void digs(int n) { for (int dg = 0; dg < 10; dg++) { int pos = dg == 0 ? 
 static void publish(void) {
     UI[0] = 0; char typed[16]; rdq("typed.txt", typed, sizeof typed); int have = !access(LEDGER, F_OK); int rc = have ? replay(1) : 0; const char *n1 = "Player 1", *n2 = "Player 2";
     u("window_title=True Swords Clash\n"); digs(0);
-    if (!have) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=Sort verses for mana, then cast Miracles. HP 100.\nline_last=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
-    else if (rc) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=This match's ledger does not replay (it was edited). Start a new match.\nline_last=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
+    if (!have) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=Sort verses for mana, then cast Miracles. HP 100.\nline_last=\nline_last2=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
+    else if (rc) { u("show_setup=1\nshow_play=0\nshow_choose=0\nshow_answer=0\nshow_over=0\nline_p1=\nline_p2=\nline_turn=This match's ledger does not replay (it was edited). Start a new match.\nline_last=\nline_last2=\nn_mir=0\nn_ch=0\ntyped_line=\n"); }
     else { if (COMPUTER) { n1 = "You"; n2 = "Computer"; } UI[0] = 0; u("window_title=True Swords Clash\n"); digs(PHASE && !OVER ? CH_N : 0); char s1[100], s2[100]; side_text(&S[0], s1, sizeof s1); side_text(&S[1], s2, sizeof s2);
         int choose = !OVER && !PHASE, answer = !OVER && PHASE; u("show_setup=0\nshow_play=%d\nshow_choose=%d\nshow_answer=%d\nshow_over=%d\n", OVER ? 0 : 1, choose, answer, OVER);
         u("line_p1=%s%s   HP %d   Mana %d   [%s]\nline_p2=%s%s   HP %d   Mana %d   [%s]\n", TURN == 0 && !OVER ? "> " : "  ", n1, S[0].hp, S[0].mana, s1, TURN == 1 && !OVER ? "> " : "  ", n2, S[1].hp, S[1].mana, s2);
-        if (OVER) u("line_turn=%s wins.\n", WINNER == 0 ? n1 : n2); else if (answer) u("line_turn=%s: order the %d verses (Bible order).\n", TURN == 0 ? n1 : n2, CH_N); else u("line_turn=%s: sort verses for mana, or cast a Miracle.\n", TURN == 0 ? n1 : n2);
-        char la[400]; snprintf(la, sizeof la, "%s", answer ? "" : LAST); clean(la); u("line_last=%s\n", la);
+        if (OVER) { if (COMPUTER) { int na, nb; elo(&na, &nb); u("line_turn=%s wins.  Rating %d -> %d\n", WINNER == 0 ? n1 : n2, RA, na); } else u("line_turn=%s wins.  (friend matches are not rated)\n", WINNER == 0 ? n1 : n2); } else if (answer) u("line_turn=%s: order the %d verses (Bible order).\n", TURN == 0 ? n1 : n2, CH_N); else u("line_turn=%s: sort verses for mana, or cast a Miracle.\n", TURN == 0 ? n1 : n2);
+        char la[400], lb[400]; snprintf(la, sizeof la, "%s", answer ? "" : LAST); snprintf(lb, sizeof lb, "%s", answer ? "" : LAST2); clean(la); clean(lb); u("line_last=%s\nline_last2=%s\n", la, lb);
         int nm = 0; if (choose) { for (int i = 0; i < 11; i++) { int cost = i == 0 ? 0 : i; int ok = S[TURN].mana >= cost; static const char *nice[11] = { "Hail Mary", "Slash", "Fire", "Berserk", "Heal", "Judgement", "Poison", "Locust", "Blessing", "Angel", "Holy Sword" };
                 u("mir_%d_label=  %s   (%d)%s  \nmir_%d_name=%s\nmir_%d_cls=%s\n", nm, nice[i], cost, ok ? "" : "   low", nm, MNAME[i], nm, ok ? "btn" : "dimbtn"); nm++; } }
         u("n_mir=%d\n", nm); if (answer) { u("n_ch=%d\n", CH_N); for (int d = 0; d < CH_N; d++) { char t[300]; snprintf(t, sizeof t, "%d)  %s", (d + 1) % 10 == 0 && d + 1 == 10 ? 10 : d + 1, V[CH_START + CH_PERM[d]].text); clean(t); u("ch_%d_text=%s\n", d, t); } } else u("n_ch=0\n");
@@ -169,9 +173,18 @@ static void publish(void) {
     if (strcmp(UI, LAST_UI)) { char f[P], t[P]; snprintf(f, sizeof f, "%s/ui.txt", HQD); snprintf(t, sizeof t, "%s/ui.txt.tmp", HQD); FILE *w = fopen(t, "w"); if (w) { fputs(UI, w); fclose(w); rename(t, f); } snprintf(LAST_UI, sizeof LAST_UI, "%s", UI); }
 }
 static void computer_plays(void) { for (int i = 0; i < 4; i++) { if (replay(1) || OVER || !COMPUTER || TURN != 1) return; cmd_ai(); } }
-static int ui_verb(const char *v, const char *arg, const char *inst) {
+/* RATING (a PROJECTION of finished computer matches, derived from the ledger by this op; the rules never read it): <inst>/tsc/rating.txt = rating|wins|losses|last rated seed. The START row of a match copies the rating, so the replay stays pure. */
+static int my_rating(void) { char f[P]; snprintf(f, sizeof f, "%s/rating.txt", MATCH); FILE *fp = fopen(f, "r"); if (!fp) return 1000; int r = 1000; if (fscanf(fp, "%d", &r) != 1) r = 1000; fclose(fp); return r < 100 ? 100 : r > 3000 ? 3000 : r; }
+static void rate_if_over(void) {
+    if (replay(1) || !OVER || !COMPUTER) return; char f[P], ln[200]; snprintf(f, sizeof f, "%s/rating.txt", MATCH); int r = 1000, w = 0, l = 0; unsigned long long last = 0; FILE *fp = fopen(f, "r"); if (fp) { if (fgets(ln, sizeof ln, fp)) sscanf(ln, "%d|%d|%d|%llu", &r, &w, &l, &last); fclose(fp); }
+    if (last == (unsigned long long)SEED) return;      /* this match was already counted */
+    int na, nb; elo(&na, &nb); if (WINNER == 0) w++; else l++; snprintf(ln, sizeof ln, "%d|%d|%d|%llu\n", na, w, l, (unsigned long long)SEED); char t[P]; snprintf(t, sizeof t, "%s.tmp", f); fp = fopen(t, "w"); if (fp) { fputs(ln, fp); fclose(fp); rename(t, f); } (void)r;
+}
+static int ui_verb0(const char *v, const char *arg, const char *inst);
+static int ui_verb(const char *v, const char *arg, const char *inst) { int rc = ui_verb0(v, arg, inst); set_inst(inst); rate_if_over(); bumpq(); return rc; }
+static int ui_verb0(const char *v, const char *arg, const char *inst) {
     set_inst(inst); if (!load_verses()) return 2;
-    if (!strcmp(v, "ui_new")) { if (strcmp(arg, "computer") && strcmp(arg, "human")) return 2; mkdir(MATCH, 0755); if (!access(LEDGER, F_OK)) { char prev[P]; snprintf(prev, sizeof prev, "%s/ledger.prev.txt", MATCH); rename(LEDGER, prev); } char row[200]; snprintf(row, sizeof row, "START|%llu|%s", (unsigned long long)((uint64_t)time(NULL) * 2654435761u), arg); append(row); wrq("typed.txt", ""); bumpq(); return 0; }
+    if (!strcmp(v, "ui_new")) { if (strcmp(arg, "computer") && strcmp(arg, "human")) return 2; mkdir(MATCH, 0755); if (!access(LEDGER, F_OK)) { char prev[P]; snprintf(prev, sizeof prev, "%s/ledger.prev.txt", MATCH); rename(LEDGER, prev); } int ra = my_rating(); char row[200]; snprintf(row, sizeof row, "START|%llu|%s|%d|%d", (unsigned long long)((uint64_t)time(NULL) * 2654435761u), arg, ra, ra); append(row); wrq("typed.txt", ""); bumpq(); return 0; }
     if (replay(1)) { bumpq(); return 3; }
     if (!strcmp(v, "ui_clear")) { wrq("typed.txt", ""); bumpq(); return 0; }
     if (!strcmp(v, "ui_deal")) { int rc = act("DEAL", arg); if (!rc) wrq("typed.txt", ""); bumpq(); return rc; }
@@ -191,9 +204,9 @@ int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: tsc_op new|state|deal|answer|miracle|forfeit|ai <match dir> [args]\n"); return 2; }
     const char *verb = argv[1]; snprintf(MATCH, sizeof MATCH, "%s", argv[2]); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", MATCH);
     if (!load_verses()) return 2;
-    if (!strcmp(verb, "new")) { const char *vs = "computer"; uint64_t seed = (uint64_t)time(NULL) * 2654435761u; for (int i = 3; i + 1 < argc; i += 2) { if (!strcmp(argv[i], "--vs")) vs = argv[i + 1]; else if (!strcmp(argv[i], "--seed")) seed = strtoull(argv[i + 1], NULL, 10); }
+    if (!strcmp(verb, "new")) { const char *vs = "computer"; uint64_t seed = (uint64_t)time(NULL) * 2654435761u; int ra = 1000, rb = -1; for (int i = 3; i + 1 < argc; i += 2) { if (!strcmp(argv[i], "--vs")) vs = argv[i + 1]; else if (!strcmp(argv[i], "--seed")) seed = strtoull(argv[i + 1], NULL, 10); else if (!strcmp(argv[i], "--rating")) ra = atoi(argv[i + 1]); else if (!strcmp(argv[i], "--opp")) rb = atoi(argv[i + 1]); } if (rb < 0) rb = ra;
         if (strcmp(vs, "computer") && strcmp(vs, "human")) { fprintf(stderr, "tsc_op: --vs computer|human\n"); return 2; } mkdir(MATCH, 0755); if (!access(LEDGER, F_OK)) { fprintf(stderr, "tsc_op: a match already exists here\n"); return 1; }
-        char row[200]; snprintf(row, sizeof row, "START|%llu|%s", (unsigned long long)seed, vs); if (!append(row)) return 2; printf("NEW %s seed %llu vs %s\n", MATCH, (unsigned long long)seed, vs); return 0; }
+        char row[200]; snprintf(row, sizeof row, "START|%llu|%s|%d|%d", (unsigned long long)seed, vs, ra, rb); if (!append(row)) return 2; printf("NEW %s seed %llu vs %s\n", MATCH, (unsigned long long)seed, vs); return 0; }
     if (!strcmp(verb, "state")) return cmd_state();
     if (!strcmp(verb, "ai")) return cmd_ai();
     if (!strcmp(verb, "forfeit")) return act("FORFEIT", "");

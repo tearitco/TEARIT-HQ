@@ -9,6 +9,7 @@
     <text label="${line_p1}" class="hp-line"/>
     <text label="${line_p2}" class="hp-line"/>
     <text label="${line_turn}" class="quiet"/>
+    <text label="${line_last2}" class="last-line"/>
     <text label="${line_last}" class="last-line"/>
     <scrolllist>
       <item id="new_c" class="btn" label="  new match vs the computer  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'computer' '${ARG3}'"/>
