@@ -14,6 +14,8 @@
     <scrolllist>
       <item id="new_c" class="btn" label="  new match vs the computer  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'computer' '${ARG3}'"/>
       <item id="new_h" class="btn" label="  new match vs a friend (same phone)  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'human' '${ARG3}'"/>
+      <item id="host" class="btn" label="  host an online match  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_host' '-' '${ARG3}'"/>
+      <item id="join" class="btn" label="  join an online match  " show="${show_setup}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_join' '-' '${ARG3}'"/>
       <item id="m2" class="btn" label="  sort 2 verses  = +2 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '2' '${ARG3}'"/>
       <item id="m3" class="btn" label="  sort 3 verses  = +3 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '3' '${ARG3}'"/>
       <item id="m4" class="btn" label="  sort 4 verses  = +4 mana  " show="${show_choose}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_deal' '4' '${ARG3}'"/>

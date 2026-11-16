@@ -1,0 +1,90 @@
+# tsc_p2p (2026-11-15): True Swords Clash between TWO phones over the house p2p peer (palnet_peer, two REAL processes on this machine, a scratch presence directory).
+# Proves: host and join agree on one START row (same seed, seats 1 and 2); each side may move only on its own turn; a move sent by one side becomes the SAME ledger row on the other (cmp of the two ledgers);
+# a forged row (wrong seat, or a result that does not replay) is REFUSED and leaves the ledger as it was; a forfeit is allowed out of turn; ratings move for both players (+16 / -16 between equals).
+# Transport only touches files: the op writes net_out.txt and reads net_in.txt; palnet_peer does the sockets. Cross-machine = PALNET_SEEDS / PALNET_BIND env (not exercised here).
+RESULTS | ../results/tsc_p2p.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | p/ops/+x
+MKDIR | a/.hq_manager
+MKDIR | b/.hq_manager
+MKDIR | net/presence
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/ops/+x/tsc_op.+x | $T/p/ops/+x/tsc_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/ops/+x/palnet_peer.+x | $T/p/ops/+x/palnet_peer.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/true-swords-clash/verses.txt | $T/p/verses.txt
+ENV | PRISC_NET_ROOT | $T/net/presence
+ENV | PRISC_PROJECT_ROOT | $T/p
+
+CASE    | handshake
+RUN | $T/p/ops/+x/tsc_op.+x | ui_host | - | $T/a
+EXPECT_EXIT | 0 | host-session
+RUN | $T/p/ops/+x/tsc_op.+x | ui_join | - | $T/b
+EXPECT_EXIT | 0 | join-session
+SPAWN | pa | $T/p/ops/+x/palnet_peer.+x | tsc | tsc-a | - | $T/a/tsc/net_out.txt | $T/a/tsc/net_in.txt | tsc
+SPAWN | pb | $T/p/ops/+x/palnet_peer.+x | tsc | tsc-b | - | $T/b/tsc/net_out.txt | $T/b/tsc/net_in.txt | tsc
+WAIT_HAS | a/tsc/net_in.txt | JOIN\p | 25000 | the-hosts-peer-received-the-guests-JOIN
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/a
+EXPECT_HAS | a/tsc/ledger.txt | START\p | the-host-wrote-the-START-row
+EXPECT_HAS | a/tsc/ledger.txt | \pnet\p1000\p1000 | in-net-mode-with-both-ratings
+EXPECT_FILE | a/tsc/seat.txt | 1\n | the-host-is-seat-1
+WAIT_HAS | b/tsc/net_in.txt | START\p | 25000 | the-guests-peer-received-START
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/b
+EXPECT_FILE | b/tsc/seat.txt | 2\n | the-guest-is-seat-2
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+EXPECT_EXIT | 0 | both-ledgers-are-byte-identical-after-the-handshake
+
+CASE    | moves
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/b/tsc | 2
+EXPECT_EXIT | 1 | NEGATIVE-the-guest-cannot-move-on-the-hosts-turn
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/a/tsc | 2
+EXPECT_EXIT | 0 | the-host-deals-2-verses
+WAIT_HAS | b/tsc/net_in.txt | ROW\p2\pDEAL | 25000 | the-deal-reached-the-guest
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/b
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+EXPECT_EXIT | 0 | the-guests-ledger-has-the-same-DEAL-row
+RUN | $T/p/ops/+x/tsc_op.+x | answer | $T/a/tsc | 12
+EXPECT_EXIT | 0 | the-host-answers
+WAIT_HAS | b/tsc/net_in.txt | ROW\p3\pANSWER | 25000 | the-answer-reached-the-guest
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/b
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+EXPECT_EXIT | 0 | same-ledger-after-the-answer
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/a/tsc | 2
+EXPECT_EXIT | 1 | NEGATIVE-the-host-cannot-move-on-the-guests-turn
+RUN | $T/p/ops/+x/tsc_op.+x | deal | $T/b/tsc | 3
+EXPECT_EXIT | 0 | the-guest-deals-3-verses
+WAIT_HAS | a/tsc/net_in.txt | ROW\p4\pDEAL | 25000 | the-guests-deal-reached-the-host
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/a
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+EXPECT_EXIT | 0 | the-host-has-the-guests-DEAL-row-too
+
+CASE    | forged
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+APPEND | b/tsc/net_in.txt | nodeX\pROW\p5\pANSWER\p2\p123\pright: +9 mana\n
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/b
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+EXPECT_EXIT | 0 | NEGATIVE-a-forged-row-for-the-guests-own-seat-changed-nothing
+EXPECT_EXISTS | b/tsc/net_error.txt | and-the-guest-was-told
+RUN | /bin/rm | -f | $T/a/tsc/net_error.txt
+APPEND | a/tsc/net_in.txt | nodeX\pROW\p5\pANSWER\p2\p123\pright: +9 mana\n
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/a
+EXPECT_HAS | a/tsc/net_error.txt | does not replay | NEGATIVE-a-move-for-the-right-seat-with-a-result-that-does-not-replay-is-cut-off-again
+EXPECT_LACKS | a/tsc/ledger.txt | +9 mana | and-never-stays-in-the-ledger
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/a/tsc
+EXPECT_EXIT | 0 | the-hosts-ledger-still-replays
+
+CASE    | forfeit-and-rating
+RUN | $T/p/ops/+x/tsc_op.+x | ui_forfeit | - | $T/b
+EXPECT_EXIT | 0 | the-guest-forfeits
+WAIT_HAS | a/tsc/net_in.txt | FORFEIT | 25000 | the-forfeit-reached-the-host
+RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/a
+RUN | $T/p/ops/+x/tsc_op.+x | state | $T/a/tsc
+EXPECT_OUT | winner=1 | the-host-wins
+EXPECT_HAS | a/tsc/rating.txt | 1016\p1\p0\p | the-hosts-rating-went-up-16
+EXPECT_HAS | b/tsc/rating.txt | 984\p0\p1\p | the-guests-rating-went-down-16
+RUN | /usr/bin/cmp | $T/a/tsc/ledger.txt | $T/b/tsc/ledger.txt
+EXPECT_EXIT | 0 | the-two-ledgers-are-identical-at-the-end
+
+CASE    | end
+CLEAN |

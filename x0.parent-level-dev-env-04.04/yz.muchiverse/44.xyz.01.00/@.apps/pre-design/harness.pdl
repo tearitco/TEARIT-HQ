@@ -13,3 +13,4 @@ HARNESS | app_edit_check | office | CASE | app-edit: list, check, export | app_e
 HARNESS | tsc_rules_check | office | CASE | True Swords Clash: rules, ledger, screen | tsc_rules | - | - | no | the rules op on the real verses: miracles, replay refusal, Elo, the phone screen projection
 HARNESS | window_place_check | office | CASE | windows: placement beside the dock | window_place | - | - | no | the shared window placement op
 HARNESS | layout_preview_check | office | CASE | layout-studio: preview a layout | layout_preview | - | - | no | layout_check plus a real window PNG
+HARNESS | tsc_p2p_check | office | CASE | True Swords Clash: two phones over p2p | tsc_p2p | - | - | no | two real palnet_peer processes on this machine: handshake, moves, forged rows refused, forfeit, ratings
