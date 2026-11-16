@@ -1,0 +1,12 @@
+/* phone_entity.inc - TEXT-INCLUDED by phone_op.c and phone_projector.c (pure, two consumers: house standard). Which entities the phone shows and where they live.
+ * Needs: HOUSE (char[]), is_word(const char *). Rules: `ENTITY | <name>` rows of phone_prefs.pdl (default cursword); the entity folder comes ONLY from the taskbar projection #.desktop/strip_ui.txt (tab_N_label / tab_N_sprite) and is accepted only when realpath() ends in /pals/<name>, sits under /xyzfs/users/ and has a readable menu.chtpm. */
+static int ent_names(char n[8][40]) { char f[P], ln[300]; int c = 0; snprintf(f, sizeof f, "%s/&.hq-apps/plus-phone/phone_prefs.pdl", HOUSE); FILE *fp = fopen(f, "r");
+    while (fp && fgets(ln, sizeof ln, fp) && c < 8) { if (strncmp(ln, "ENTITY", 6)) continue; char *b = strchr(ln, '|'); if (!b) continue; b++; while (*b == ' ') b++; b[strcspn(b, "\r\n")] = 0; size_t l = strlen(b); while (l && b[l - 1] == ' ') b[--l] = 0; if (is_word(b) && strlen(b) < 40) snprintf(n[c++], 40, "%s", b); }
+    if (fp) fclose(fp); if (!c) { snprintf(n[0], 40, "cursword"); c = 1; } return c; }
+static int ent_listed(const char *name) { char n[8][40]; int c = ent_names(n); for (int i = 0; i < c; i++) if (!strcmp(n[i], name)) return 1; return 0; }
+static int ent_dir(const char *name, char *out, size_t cap) {
+    if (!is_word(name)) return 0; char f[P], ln[P + 40], key[80]; snprintf(f, sizeof f, "%s/#.desktop/strip_ui.txt", HOUSE); FILE *fp = fopen(f, "r"); if (!fp) return 0; int idx = -1; char want[80]; snprintf(want, sizeof want, "=%s", name);
+    while (fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "tab_", 4)) { char *us = strstr(ln, "_label"); if (us && !strcmp(us + 6, want)) idx = atoi(ln + 4); } } rewind(fp); if (idx < 0) { fclose(fp); return 0; }
+    snprintf(key, sizeof key, "tab_%d_sprite=", idx); char path[P] = ""; while (fgets(ln, sizeof ln, fp)) { if (!strncmp(ln, key, strlen(key))) { ln[strcspn(ln, "\r\n")] = 0; snprintf(path, sizeof path, "%s", ln + strlen(key)); } } fclose(fp); if (!path[0]) return 0;
+    char rp[P]; if (!realpath(path, rp)) return 0; char tail[80]; snprintf(tail, sizeof tail, "/pals/%s", name); size_t rl = strlen(rp), tl = strlen(tail); if (rl <= tl || strcmp(rp + rl - tl, tail) || !strstr(rp, "/xyzfs/users/")) return 0;
+    char mf[P]; snprintf(mf, sizeof mf, "%s/menu.chtpm", rp); if (access(mf, R_OK)) return 0; snprintf(out, cap, "%s", rp); return 1; }

@@ -1,0 +1,134 @@
+# phone_entity (2026-11-16): an ENTITY (cursword) on the +phone (spec: BOOK 16.game/PLUS-PHONE-CURSWORD-ENTITY-IMPLEMENTATION-SPEC-2026-11-16.md). SCRATCH house, the REAL phone_op and phone_projector, a STUB renderer that logs every launch (a launch COUNT proves "one window"),
+# a scratch entity folder whose menu actions only touch marker files. Proves: the bottom bar gets a cell for each LISTED entity that resolves under xyzfs/users/.../pals/<name> (an unlisted one, a symlink out and a folder outside pals get none and cannot be opened);
+# tapping it shows the entity's own menu rows as buttons in the SAME window; row N runs exactly that row's action (sh -c form, with the entity folder as $0 and the house as $1, no shell string built), Cancel goes back, Close writes the word CLOSE to the entity's relay and
+# nothing else; an unsupported action form, a bad row number and a bad name are refused with no side effect. NEVER touches a real entity (the live Close row would end the owner's cursword). NO network.
+RESULTS | ../results/phone_entity.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+MKDIR | h/_.monads/_.livedesk-taskbar/ops/+x
+MKDIR | h/#.desktop
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_op.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone.xhtpm | $T/h/&.hq-apps/plus-phone/plus-phone.xhtpm
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm | $T/h/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone.css | $T/h/&.hq-apps/plus-phone/plus-phone.css
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.css | $T/h/&.hq-apps/plus-phone/plus-phone-landscape.css
+RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/apps | $T/h/&.hq-apps/plus-phone/apps
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/kh_spawn.sh | $T/h/&.widgits/_shared-lib/kh_spawn.sh
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x
+WRITE   | h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | #!/bin/sh\necho "$2" >> "$3/launch.log"\nsleep 600\n
+RUN | /bin/chmod | +x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
+EXPECT_OUT | PHONE-OPENED 1 | phone-1-is-open
+RUN | /bin/cp | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | $T/picker0.xhtpm
+SLEEP | 2500
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | one-launch-so-far
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/cursword
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/other
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/evil
+MKDIR | h/bare/pals/bare
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/menu.chtpm | <window class="entity-menu">\n  <page name="main">\n    <item label="Dir" action="sh -c 'echo ran &gt; &quot;$0/ran_dir&quot;'"/>\n    <item label="Inventory" action="sh -c 'echo &quot;$1&quot; &gt; &quot;$0/ran_house&quot;'"/>\n    <item label="Chat" action="sh -c 'echo &quot;$WIN_X&quot; &gt; &quot;$0/ran_winx&quot;'"/>\n    <item label="Odd" action="exec /bin/true"/>\n    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="x"/>\n    <item label="Close" action="CLOSE"/>\n    <item label="Cancel" action="void"/>\n  </page>\n</window>\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/other/menu.chtpm | <window class="entity-menu"><page name="main"><item label="Dir" action="sh -c 'touch &quot;$0/ran_dir&quot;'"/></page></window>\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/evil/menu.chtpm | <window class="entity-menu"><page name="main"><item label="Dir" action="sh -c 'touch &quot;$0/ran_dir&quot;'"/></page></window>\n
+WRITE   | h/bare/pals/bare/menu.chtpm | <window class="entity-menu"><page name="main"><item label="Dir" action="sh -c 'touch &quot;$0/ran_dir&quot;'"/></page></window>\n
+RUN | /bin/ln | -s | $T/h/xyzfs/users/u1/home/livedesk/pals/evil | $T/h/xyzfs/users/u1/home/livedesk/pals/linked
+WRITE   | h/#.desktop/strip_ui.txt | n_tabs=5\ntab_0_label=cursword\ntab_0_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/cursword\ntab_1_label=other\ntab_1_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/other\ntab_2_label=linked\ntab_2_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/linked\ntab_3_label=bare\ntab_3_sprite=$T/h/bare/pals/bare\n
+WRITE   | h/&.hq-apps/plus-phone/phone_prefs.pdl | ENTITY | cursword\nENTITY | linked\nENTITY | bare\n
+RUN | /bin/cp | $T/h/xyzfs/users/u1/home/livedesk/pals/cursword/menu.chtpm | $T/menu0.chtpm
+
+CASE    | the-bottom-bar-lists-only-valid-listed-entities
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | home | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-ent0" | the-cursword-cell-is-in-the-bottom-bar
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | cursword | named-by-its-name
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | phone_op.+x' entity ' | tapping-it-runs-phone_op-entity
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-ent1" | NEGATIVE-a-listed-entity-that-is-a-symlink-out-of-pals-gets-no-cell
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-ent2" | NEGATIVE-a-listed-entity-outside-xyzfs-users-gets-no-cell
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | >other< | NEGATIVE-an-entity-that-is-not-listed-in-the-prefs-gets-no-cell
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ${PHONE_FOOTER} | no-token-left
+
+CASE    | tapping-the-cell-shows-the-menu-in-the-same-window
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | cursword
+EXPECT_OUT | ENTITY-OPENED cursword | the-entity-screen-opens
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | phone_projector.+x | the-window-module-is-still-the-phone-projector
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="tb-hq" | the-phone-top-bar-is-there
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="appchrome" | with-the-chrome-row
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | class="tab no-nav" label="cursword" | named-cursword-and-not-numbered
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | label="  Dir  " | row-1-is-Dir
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | label="  Cancel  " | and-Cancel-is-there
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="e6" | six-rows-(the-cli_io-field-is-not-a-row)
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="e7" | NEGATIVE-and-no-seventh
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-ent0" | the-bottom-bar-keeps-the-cursword-cell
+SLEEP | 2500
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | the-window-was-not-launched-again-(one-window)
+
+CASE    | a-row-runs-exactly-that-rows-action
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/cursword/ran_dir | CONTROL-the-marker-is-absent-before-the-tap
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 1
+EXPECT_OUT | started | row-1-starts
+SLEEP | 1500
+WAIT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/ran_dir | ran | 5000 | row-1-ran-its-action-with-the-entity-folder-as-0
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/cursword/ran_house | and-ONLY-row-1-(row-2s-marker-is-still-absent)
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 2
+SLEEP | 1500
+WAIT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/ran_house | $T/h | 5000 | row-2-got-the-house-as-1
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 3
+SLEEP | 1500
+WAIT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/ran_winx | 100 | 5000 | row-3-got-WIN_X-in-its-environment
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 4
+EXPECT_EXIT | 1 | NEGATIVE-an-action-form-the-phone-does-not-run-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 7
+EXPECT_EXIT | 2 | NEGATIVE-a-row-number-past-the-end-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 0
+EXPECT_EXIT | 2 | NEGATIVE-row-0-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 1x
+EXPECT_EXIT | 2 | NEGATIVE-a-non-number-is-refused
+
+CASE    | cancel-close-and-the-refusals
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/cursword/interact_relay.txt | CONTROL-no-close-request-yet
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 6
+EXPECT_OUT | back | Cancel-goes-back
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="e1" | the-menu-is-gone-from-the-window
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/cursword/interact_relay.txt | and-Cancel-sent-no-close-request
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | cursword
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | 5
+EXPECT_OUT | close requested | Close-is-accepted
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/interact_relay.txt | CLOSE | the-entity-relay-got-the-word-CLOSE
+RUN | /usr/bin/wc | -l | $T/h/xyzfs/users/u1/home/livedesk/pals/cursword/interact_relay.txt
+EXPECT_OUT | 1 | exactly-one-line
+RUN | /usr/bin/cmp | $T/menu0.chtpm | $T/h/xyzfs/users/u1/home/livedesk/pals/cursword/menu.chtpm
+EXPECT_EXIT | 0 | the-entitys-menu-file-is-byte-identical-(the-phone-only-reads-it)
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | other
+EXPECT_EXIT | 1 | NEGATIVE-an-entity-not-listed-in-the-prefs-cannot-be-opened
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | linked
+EXPECT_EXIT | 1 | NEGATIVE-a-listed-entity-that-is-a-symlink-out-of-pals-cannot-be-opened
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | bare
+EXPECT_EXIT | 1 | NEGATIVE-a-listed-entity-outside-xyzfs-users-cannot-be-opened
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | ../other
+EXPECT_EXIT | 1 | NEGATIVE-a-name-with-a-path-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-run | $T/h/&.hq-apps/plus-phone/instances/1 | evil | 1
+EXPECT_EXIT | 1 | NEGATIVE-running-a-row-of-an-unlisted-entity-is-refused
+SLEEP | 1500
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/evil/ran_dir | and-nothing-ran
+RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
+EXPECT_OUT_IS | 1 | at-the-end-the-window-was-still-launched-exactly-once
+
+CASE    | the-grid-tile
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_ents=1 | exactly-one-entity-tile-(cursword)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | ent_0_label=cursword | named-cursword
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | ent_0_id=cursword | with-its-id-for-the-tap
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | ent_1_label | NEGATIVE-the-symlinked-and-the-outside-entities-and-the-unlisted-one-have-no-tile
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | repeat count="${n_ents}" | the-picker-layout-has-the-entity-tile-row
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | 'entity' '${ARG3}' '${ent.id}' | and-its-tap-runs-phone_op-entity
+EXPECT_HAS | h/&.hq-apps/plus-phone/apps/true-swords-clash/manifest.pdl | APP | CONTROL-the-app-tiles-are-still-published-from-the-same-projector
+RUN | /bin/rm | -f | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl
+RUN | /bin/rm | -f | $T/h/#.desktop/strip_ui.txt
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_ents=0 | NEGATIVE-with-no-entity-on-the-desk-there-is-no-tile-(the-default-name-alone-is-not-enough)

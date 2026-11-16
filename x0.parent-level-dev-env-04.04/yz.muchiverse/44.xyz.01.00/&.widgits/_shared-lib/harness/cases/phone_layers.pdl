@@ -24,7 +24,7 @@ RUN | /bin/chmod | +x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_rende
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | new | $T/h
 EXPECT_OUT | PHONE-OPENED 1 | phone-1-is-open
 RUN | /bin/cp | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | $T/picker0.xhtpm
-SLEEP | 2
+SLEEP | 2500
 RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
 EXPECT_OUT_IS | 1 | one-launch-so-far
 
@@ -56,7 +56,7 @@ EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords C
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-app1" | CONTROL-the-footer-cell-id-check-can-see-a-cell-(the-open-apps-own)
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-rot" | NEGATIVE-the-bottom-bar-has-no-rotate-cell
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-leave" | NEGATIVE-and-no-leave-cell
-SLEEP | 2
+SLEEP | 2500
 RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
 EXPECT_OUT_IS | 1 | STILL-ONE-LAUNCH-the-window-was-not-relaunched
 
@@ -68,7 +68,7 @@ EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hqwin-minimiz
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | and-keeps-its-name
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | NEGATIVE-the-apps-body-is-gone-the-picker-shows
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="appchrome" | and-the-apps-chrome-row-is-gone-too
-SLEEP | 2
+SLEEP | 2500
 RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
 EXPECT_OUT_IS | 1 | still-one-launch
 
@@ -85,7 +85,7 @@ EXPECT_NOFILE | h/&.hq-apps/plus-phone/instances/1/.hq_manager/minimized.txt | n
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | the-bottom-bar-is-empty-again
 RUN | /usr/bin/cmp | $T/picker0.xhtpm | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm
 EXPECT_EXIT | 0 | the-picker-layout-is-BYTE-IDENTICAL-to-the-one-before-the-app-was-opened
-SLEEP | 2
+SLEEP | 2500
 RUN | /usr/bin/grep | -c | . | $T/h/&.hq-apps/plus-phone/instances/1/launch.log
 EXPECT_OUT_IS | 1 | after-open-minimize-restore-and-close-the-window-was-launched-exactly-once
 

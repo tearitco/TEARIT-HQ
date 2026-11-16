@@ -347,3 +347,4 @@ HARNESS | world_common_check | office | CASE | world: common book state volumes 
 HARNESS | xo_export_check | office | CASE | xo: projection op for docs and media | xo_export | - | - | no | XO projection of docs with a pre.name, into a scratch XO folder only
 HARNESS | appstore_git_check | office | CASE | phone: app store (git, pinned) | appstore_git | - | - | no | pinned commit only, tree hashes, binaries/symlinks/+x refused, install re-hash and ledger (local repo, no network)
 HARNESS | appstore_dep_check | office | CASE | phone: app store (dependencies) | appstore_dep | - | - | no | DEP rows, dep install before the app, missing/low/changed dep refused, dep kept on remove (local repo, no network)
+HARNESS | phone_entity_check | office | CASE | phone: entity (cursword) menu | phone_entity | - | - | no | cell and tile for valid entities only, menu rows in the same window, row runner, Cancel/Close, refusals (scratch entity, never the real one)

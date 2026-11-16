@@ -12,6 +12,7 @@
 #include <signal.h>
 #define P 4096
 static char HOUSE[P], INST[P], HQ[P], last_ui[16384];
+static int is_word(const char *s); static int ent_names(char n[8][40]); static int ent_dir(const char *name, char *out, size_t cap);   /* phone_entity.inc, included below */
 static int kv(const char *file, const char *key, char *out, size_t cap) { out[0] = 0; FILE *fp = fopen(file, "r"); if (!fp) return 0; char ln[400]; size_t kl = strlen(key); int hit = 0; while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, key, kl) || strncmp(ln + kl, " | ", 3)) continue; snprintf(out, cap, "%s", ln + kl + 3); out[strcspn(out, "\r\n")] = 0; hit = 1; break; } fclose(fp); return hit; }
 static long msize(void) { char f[P]; struct stat sb; snprintf(f, sizeof f, "%s/marker.txt", HQ); return stat(f, &sb) ? 0 : (long)sb.st_size; }
 static void publish(void) {
@@ -33,6 +34,7 @@ static void publish(void) {
       for (int i = 0; i < n; i++) { l = strlen(ui); snprintf(ui + l, sizeof ui - l, "pg_%d_label=%s\npg_%d_act='%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'open' '%s' '%s'\n", i + 1, ids[i], i + 1, HOUSE, inst, ids[i]); } }      /* the pages of the book: home + every installed app (the HQ/page dropdown rows) */
     l = strlen(ui); snprintf(ui + l, sizeof ui - l, "n_apps=%d\ntiles_show=%d\nno_apps=%d\napp_open=%d\napp_title=%s\napp_blank=1\n", n, open_i >= 0 ? 0 : 1, (n == 0 && open_i < 0) ? 1 : 0, open_i >= 0 ? 1 : 0, open_i >= 0 ? titles[open_i] : "");
     for (int i = 0; i < n; i++) { l = strlen(ui); snprintf(ui + l, sizeof ui - l, "app_%d_label=%s\napp_%d_id=%s\napp_%d_icon=%s\napp_%d_show=%d\n", i, titles[i], i, ids[i], i, icons[i], i, (open_i < 0 || i == open_i) ? 1 : 0); }
+    { char en[8][40]; int ne = ent_names(en), k = 0; for (int i = 0; i < ne; i++) { char dir[P]; if (!ent_dir(en[i], dir, sizeof dir)) continue; l = strlen(ui); snprintf(ui + l, sizeof ui - l, "ent_%d_label=%s\nent_%d_id=%s\nent_%d_icon=%s/&.hq-apps/plus-phone/entity-icon\n", k, en[i], k, en[i], k, HOUSE); k++; } l = strlen(ui); snprintf(ui + l, sizeof ui - l, "n_ents=%d\n", k); }
     l = strlen(ui); snprintf(ui + l, sizeof ui - l, "last_result=%s\nshow_last=%d\n", last, last[0] ? 1 : 0);
     if (strcmp(ui, last_ui)) { char t[P]; snprintf(f, sizeof f, "%s/ui.txt", HQ); snprintf(t, sizeof t, "%s/ui.txt.tmp", HQ); FILE *w = fopen(t, "w"); if (w) { fputs(ui, w); fclose(w); rename(t, f); } snprintf(last_ui, sizeof last_ui, "%s", ui); }
 }
@@ -40,6 +42,8 @@ static void publish(void) {
  * (one writer of ui.txt at a time); on home the child is stopped and we publish the picker again. A module is started once per window launch, so this is how a window can change app without being relaunched. */
 static pid_t child = 0; static char child_app[64] = "";
 static int word_ok(const char *s) { if (!*s) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || *s == '-' || *s == '_')) return 0; return 1; }
+static int is_word(const char *s) { return word_ok(s); }
+#include "phone_entity.inc"
 static int module_src(const char *id, char *out, size_t cap) {      /* the src of the <module> in the app's first SCREEN file */
     char mf[P], ln[600], rel[400] = ""; snprintf(mf, sizeof mf, "%s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", HOUSE, id); FILE *fp = fopen(mf, "r"); if (!fp) return 0;
     while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "SCREEN", 6)) continue; char *b1 = strchr(ln, '|'); if (!b1) continue; char *b2 = strchr(b1 + 1, '|'); if (!b2) continue; b2++; while (*b2 == ' ') b2++; snprintf(rel, sizeof rel, "%s", b2); rel[strcspn(rel, "\r\n ")] = 0; break; } fclose(fp); if (!rel[0]) return 0;

@@ -24,6 +24,9 @@
     <repeat count="${n_apps}" bind="app">
       <item id="app${app.#}" class="swatch" show="${app.show}" sprite="${app.icon}" label="${app.label}" action="'${PKG}/ops/+x/phone_op.+x' 'open' '${ARG3}' '${app.id}'"/>
     </repeat>
+    <repeat count="${n_ents}" bind="ent">
+      <item id="ent${ent.#}" class="swatch" show="${tiles_show}" sprite="${ent.icon}" label="${ent.label}" action="'${PKG}/ops/+x/phone_op.+x' 'entity' '${ARG3}' '${ent.id}'"/>
+    </repeat>
     <text label="no apps installed" class="quiet" show="${no_apps}"/>
     <text label="${last_result}" class="quiet" show="${show_last}"/>
     ${PHONE_FOOTER}

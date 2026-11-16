@@ -1,0 +1,4 @@
+# phone_entity.pal - an entity (cursword) on the +phone (2026-11-16). See cases/phone_entity.pdl
+exec ./ops/+x/harness_case_op.+x cases/phone_entity.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/phone_entity.pdl
+halt
