@@ -6,21 +6,24 @@
 <window label="${phone_title}" class="palettes-pal phone-portrait managed">
   <module id="projector" src="&.hq-apps/plus-phone/ops/+x/phone_projector.+x"/>
   <page name="main">
+    <!-- PHONE-BARS-BEGIN: the phone's own top bar block (tab bar, HQ and page dropdowns, chrome buttons). phone_op injects it where an app screen has the token PHONE_BARS, so apps never re-draw phone bars (PLUS-PHONE-LAYOUT-SPEC) -->
     <tabbar id="toolbar" class="tab-bar">
       <tab id="tb-hq" class="tab" label="HQ v" onclick="ACTIVATE" target_id="tb-hq"/>
       <tab id="tb-book" class="tab" label="${book_label} : ${page_label} v" onclick="ACTIVATE" target_id="tb-book"/>
     </tabbar>
-    <item id="hq-restart" class="dd-row dropdown-child" target_id="tb-hq" label="restart phone" action="'${PKG}/ops/+x/phone_op.+x' relaunch '${ARG3}'"/>
-    <item id="hq-quit" class="dd-row dropdown-child" target_id="tb-hq" label="quit phone" action="'${PKG}/ops/+x/phone_op.+x' quit '${ARG3}'"/>
-    <item id="hq-rot" class="dd-row dropdown-child" target_id="tb-hq" label="rotate" action="'${PKG}/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+    <item id="hq-restart" class="dd-row dropdown-child" target_id="tb-hq" label="restart phone" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' relaunch '${ARG3}'"/>
+    <item id="hq-quit" class="dd-row dropdown-child" target_id="tb-hq" label="quit phone" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' quit '${ARG3}'"/>
+    <item id="hq-rot" class="dd-row dropdown-child" target_id="tb-hq" label="rotate" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' flip '${ARG3}'"/>
+    <item id="hq-home" class="dd-row dropdown-child" show="${app_open}" target_id="tb-hq" label="app picker" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' home '${ARG3}'"/>
     <item id="hq-cancel" class="dd-row dropdown-child quiet" target_id="tb-hq" label="- cancel -" action="void"/>
     <repeat count="${n_pages}" bind="pg">
       <item id="pg${pg.#}" class="dd-row dropdown-child" target_id="tb-book" label="${pg.label}" action="${pg.act}"/>
     </repeat>
     <item id="pg-cancel" class="dd-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
-    <item id="flip" class="chrome-btn" label="@" action="'${PKG}/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
-    <item id="back" class="chrome-btn" label="<" show="${app_open}" action="'${PKG}/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
+    <item id="flip" class="chrome-btn" label="@" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'flip' '${ARG3}'"/>
+    <item id="back" class="chrome-btn" label="<" show="${app_open}" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'home' '${ARG3}'"/>
+    <!-- PHONE-BARS-END -->
     <repeat count="${n_apps}" bind="app">
       <item id="app${app.#}" class="swatch" show="${app.show}" sprite="${app.icon}" label="${app.label}" action="'${PKG}/ops/+x/phone_op.+x' 'open' '${ARG3}' '${app.id}'"/>
     </repeat>

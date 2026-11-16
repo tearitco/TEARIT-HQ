@@ -77,12 +77,20 @@ static int screen_layout(const char *inst, char *out, size_t cap) {      /* the 
     fclose(fp); char orient[16] = ""; kv(inst, "ORIENT", orient, sizeof orient); const char *rel = (!strcmp(orient, "landscape") && land[0]) ? land : port[0] ? port : land; if (!rel[0]) return 0; snprintf(out, cap, "%s/&.hq-apps/plus-phone/apps/%s/%s", HOUSE, id, rel); return !access(out, R_OK); }
 /* ONE WINDOW (owner 2026-11-16, PLUS-PHONE-LAYOUT-SPEC): the phone window always runs its OWN layout file <inst>/plus-phone[-landscape].xhtpm; this writes into it what the window shows now:
  * the open app's screen (css first, ${PKG} filled) or the picker. The renderer re-parses that file, so open and home need no relaunch (flip still does: the window size changes). */
+/* The phone's own top-bar block, defined ONCE in the phone template between the PHONE-BARS-BEGIN / -END comments; an app screen asks for it with the token ${PHONE_BARS} (the app never re-draws phone bars).
+ * Injected into an app the `show="${app_open}"` guards go (an app is open by definition). out = the block, or empty if the template has no markers. */
+static int phone_bars(const char *lay, char *out, size_t cap) {
+    static char tb[32768]; char src[P]; out[0] = 0; snprintf(src, sizeof src, "%s/&.hq-apps/plus-phone/%s", HOUSE, lay); if (!slurp(src, tb, sizeof tb)) return 0;
+    char *b = strstr(tb, "PHONE-BARS-BEGIN"); char *e = strstr(tb, "<!-- PHONE-BARS-END"); if (!b || !e || e < b) return 0; b = strchr(b, '\n'); if (!b) return 0; b++;
+    size_t n = (size_t)(e - b); if (n + 1 > cap) return 0; memcpy(out, b, n); out[n] = 0; replace_all(out, cap, " show=\"${app_open}\"", ""); return 1;
+}
 static int refresh_layout(const char *inst) {
     char orient[16]; kv(inst, "ORIENT", orient, sizeof orient); int land = !strcmp(orient, "landscape"); const char *lay = land ? "plus-phone-landscape.xhtpm" : "plus-phone.xhtpm"; int ic = 0; char sl[P];
     if (screen_layout(inst, sl, sizeof sl)) {
         static char xb[65536], cb[16384]; char id[64] = "", f[P], pkg[P], css[P], stem[96], dst[P]; snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); FILE *fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); }
         snprintf(pkg, sizeof pkg, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, id); snprintf(css, sizeof css, "%s", sl); char *d = strrchr(css, '.'); if (d) snprintf(d, 6, ".css");
-        if (slurp(sl, xb, sizeof xb) && slurp(css, cb, sizeof cb)) { replace_all(xb, sizeof xb, "${PKG}", pkg); snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0; snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); return 1; }
+        if (slurp(sl, xb, sizeof xb) && slurp(css, cb, sizeof cb)) { if (strstr(xb, "${PHONE_BARS}")) { static char pb[16384]; if (phone_bars(lay, pb, sizeof pb)) replace_all(xb, sizeof xb, "${PHONE_BARS}", pb); }
+            replace_all(xb, sizeof xb, "${PKG}", pkg); snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0; snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); return 1; }
     }
     return generate_layout(inst, lay, land ? 704 : 364, &ic);
 }
