@@ -17,6 +17,8 @@ RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.xhtpm | $T/h/&.
 RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone.css | $T/h/&.hq-apps/plus-phone/plus-phone.css
 RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/plus-phone-landscape.css | $T/h/&.hq-apps/plus-phone/plus-phone-landscape.css
 RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/apps | $T/h/&.hq-apps/plus-phone/apps
+RUN | /bin/rm | -rf | $T/h/&.hq-apps/plus-phone/apps/appstore | $T/h/&.hq-apps/plus-phone/apps/stock-x
+# the case asserts EXACTLY two apps (settings and true-swords-clash): whatever else the owner installed in the live house must not leak into the scratch copy (2026-11-16: the App Store and stock+x made n_apps=4)
 RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/kh_spawn.sh | $T/h/&.widgits/_shared-lib/kh_spawn.sh
 RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x
 WRITE   | h/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | #!/bin/sh\necho "$2" >> "$3/launch.log"\nsleep 600\n

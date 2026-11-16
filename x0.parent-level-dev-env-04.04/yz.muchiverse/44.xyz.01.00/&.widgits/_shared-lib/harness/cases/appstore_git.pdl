@@ -118,3 +118,20 @@ EXPECT_OUT | https | NEGATIVE-an-ext-transport-url-is-refused
 RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p 0123456789012345678901234567890123456789\n' "$1" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo
 RUN | $T/store_op.+x | sync | $T/h
 EXPECT_OUT | could not fetch | NEGATIVE-a-pin-that-is-not-in-the-repo-fetches-nothing
+
+CASE    | sync-from-the-screen-and-the-shipped-default
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p %s\n' "$1" "$(cat "$2")" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo | $T/c1.txt
+RUN | $T/store_op.+x | ui_sync | - | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 0 | the-sync-verb-of-the-screen-runs
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | synced the approved apps (verified=1 | and-says-how-many-were-verified
+RUN | $T/store_op.+x | /x | /y | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | show_sync=1 | the-screen-offers-the-sync-button-in-git-mode
+RUN | /bin/rm | -f | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | no STORE_SOURCE | NEGATIVE-with-no-user-row-and-no-shipped-default-nothing-is-fetched
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p %s\n' "$1" "$(cat "$2")" > "$0" | $T/h/&.hq-apps/plus-phone/store_sources.default.pdl | $T/repo | $T/c1.txt
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | verified=1 | the-row-shipped-with-the-install-is-used-when-the-user-has-none
+RUN | /bin/sh | -c | printf 'STORE_SOURCE \p git \p %s \p main\n' "$1" > "$0" | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl | $T/repo
+RUN | $T/store_op.+x | sync | $T/h
+EXPECT_OUT | full 40-hex | the-users-own-row-wins-over-the-shipped-default-(its-bad-pin-is-refused-not-replaced)

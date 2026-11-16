@@ -6,6 +6,7 @@
     ${APP_CHROME}
     <text label="${status}" class="quiet"/>
     <scrolllist>
+      <item id="sy" class="btn" label="  sync approved apps  " show="${show_sync}" action="'${PKG}/../ops/+x/store_op.+x' 'ui_sync' '-' '${ARG3}'"/>
       <repeat count="${n_apps}" bind="app">
         <item id="a${app.#}" class="${app.cls}" label="${app.label}" action="'${PKG}/../ops/+x/store_op.+x' '${app.verb}' '${app.id}' '${ARG3}'"/>
       </repeat>
