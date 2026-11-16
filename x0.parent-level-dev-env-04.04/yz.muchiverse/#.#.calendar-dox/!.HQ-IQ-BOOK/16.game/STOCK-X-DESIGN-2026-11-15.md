@@ -178,3 +178,30 @@ Three SEPARATE charges (platform fee, chain tx fee, tribute) plus tax; **tribute
 - **Tax calendar needs no new code:** quarterly estimate = a `lc_clock` schedule `every:3month` and year tax = `every:1year` on the world's clock (`CLOCK-AS-THE-PLAY-SPINE-DESIGN.md`, built and tested); a real-time world uses a clock at wall rate. Sim trades use the sim clock, Yahoo trades the real clock (owner round 1).
 - **WSR tax today** is a yearly flat percent of CASH per government (`tax_loop.c`); section 13's gains-based estimates are NEW, and the cash-based levy stays as the government layer beneath TEMPEROR's tribute.
 - Plan section 10 holds the full list and what is still unread.
+
+## 16. The market interfaces that already exist, and how stock+x and the WSR app fit the phone layers (2026-11-16, READ + DOC)
+**READ** (`&.hq-apps/exchange-hq/exchange-hq.xhtpm`, `&.hq-apps/auction-hq/auction-hq.xhtpm`; I did not open the live windows):
+| | Exchange HQ v2 | Auction HQ | What it tells us |
+|---|---|---|---|
+| Shape | desktop window: top tab bar (Market, Loans, Orders, Feed, Settings), left sidebar (last, avg, bid, ask, spread, mid, hi/lo, volume, then an order-book ladder), a chart canvas with a hotbar over it, bottom footer (unit, chart, refresh) | sidebar of tabs (Open, Sell, Bid, History, refresh) and a content panel of rows; a typed command line (`LIST ...`, `BID id amount`, `BUY id`) | a market screen = a SUMMARY block, a LIST, and a COMMAND surface |
+| Engine | one `<module>` manager publishes `exchange_ui.txt` and polls `exchange_action.txt`; state replayed from an append-only `ledger` | same: `auction_ui.txt`, `auction_action.txt`, replay of `auction/ledger.txt` | the SAME projector + action-file + ledger shape as the phone apps (`tsc_op`) and the ledger rule; stock+x is the third instance, not a new pattern |
+| Controllers | humans and AI entities (pets, WSR entities) use the SAME commands (auction design) | same idea | owner's "controllers are interchangeable": make the stock+x verbs plain commands (`buy SYM qty`, `sell ...`, `watch SYM`), so a phone tap, a typed line, a harness and an AI call the same op |
+| Units | chain units (cones, mined, play) | same | different market (paper USD stocks vs chain goods); do not merge them, share the SHAPE and the quote bus idea |
+**The phone market app under the layering** (portrait, top to bottom): phone chrome (meta) / phone tb `HQ v | phone : markets v` (the dropdown pages are the BOOK's pages: `markets`, `portfolio`, `orders`, `feed`, mirroring Exchange HQ's tabs) / app chrome row `stock+x  [_] [x]` (name not numbered) / the VIEW / phone bottom bar `🪟 stock+x`.
+```
+ phone : markets v
+ stock+x          [_] [x]
+ ---------------------------------
+ AAPL   356.27 USD   +0.4%   08:15
+ watchlist
+ [1] AAPL  356.27   +0.4%
+ [2] MSFT  ...
+ [3] + add symbol (digits / typed)
+ ---------------------------------
+ AAPL   bid/ask n/a (paper)   cash $1,000.00
+ [buy]  [sell]  [chart]     <- 2 to 6 buttons per screen
+ 🪟 stock+x
+```
+`portfolio`: holdings, value at cached quotes, day change, cash, fees paid, tribute (section 13), estimated tax; `orders`: the replayed ledger rows (the "History"); `feed`: news/price changes (WSR's news op later). The pure broker view stays the light one; the order-book ladder (Exchange HQ) only matters for the WSR sim with banks, and then as a second view of the same world (the board), not on the phone.
+**What this adds to the plan:** (1) the app's verbs are CLI-shaped commands (auction pattern) so controllers share them; (2) pages = the phone dropdown, no per-app tab code; (3) the chart is a later canvas (Exchange HQ has `chart.raw` via `exchange_chart.+x`; a phone canvas is NOT researched); (4) both the stock+x app and the WSR app use `SOURCE` rows and the same screens.
+**S1 status 2026-11-16:** the quote op and its case are done (`stockx_fetch_op`, `stockx_fetch` 17); NEXT is the ledger and replay op with the old test suite's seven behaviours, then the screens.
