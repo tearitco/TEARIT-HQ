@@ -62,9 +62,6 @@
       </repeat>
       <text label="${typed_line}" class="block-title" show="${show_answer}"/>
     </panel>
-    <footer id="statusbar" class="phone-footer">
-      <item id="ft-leave" class="phone-ft" label="x leave" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' home '${ARG3}'"/>
-      <item id="ft-rot" class="phone-ft" label="@ rotate" action="'${HOUSE}/&.hq-apps/plus-phone/ops/+x/phone_op.+x' flip '${ARG3}'"/>
-    </footer>
+    ${PHONE_FOOTER}
   </page>
 </window>

@@ -60,9 +60,19 @@ static int pick_icon(int win_w) { for (int i = icon_cap(); i >= 0; i--) if ((win
 static int slurp(const char *f, char *buf, size_t cap) { FILE *fp = fopen(f, "r"); if (!fp) return 0; size_t n = fread(buf, 1, cap - 1, fp); fclose(fp); buf[n] = 0; return 1; }
 static void replace_all(char *buf, size_t cap, const char *from, const char *to) { char *out = malloc(cap); if (!out) return; size_t o = 0, fl = strlen(from), tl = strlen(to); for (char *p = buf; *p && o + tl + 2 < cap; ) { if (!strncmp(p, from, fl)) { memcpy(out + o, to, tl); o += tl; p += fl; } else out[o++] = *p++; } out[o] = 0; snprintf(buf, cap, "%s", out); free(out); }
 /* writes <inst>/<lay> and <inst>/<same stem>.css from the templates; returns 1 on success and the icon index in *ic */
+/* The phone's BOTTOM bar (PLUS-PHONE-LAYOUT-SPEC, owner 2026-11-16): ONLY names, the open apps now (entities, a later hotbar, none yet); no rotate or leave cells (rotate is in the HQ menu, home in the picker row).
+ * Token ${PHONE_FOOTER} in a layout is replaced by this footer: one cell per open app (today the one named in screen.txt, its manifest TITLE), an empty bar when none is open. */
+static int is_word(const char *s);
+static void phone_footer(const char *inst, char *out, size_t cap) {
+    char f[P], id[64] = "", mf[P], ln[400], title[120] = ""; snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); FILE *fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); }
+    if (is_word(id)) { snprintf(mf, sizeof mf, "%s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", HOUSE, id); fp = fopen(mf, "r"); while (fp && fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "TITLE", 5)) continue; char *b = strchr(ln, '|'); if (!b) continue; b++; while (*b == ' ') b++; snprintf(title, sizeof title, "%s", b); title[strcspn(title, "\r\n")] = 0; size_t l = strlen(title); while (l && title[l - 1] == ' ') title[--l] = 0; break; } if (fp) fclose(fp); }
+    for (char *c = title; *c; c++) if (*c == '"' || *c == '<' || *c == '>' || *c == '&' || *c == '$') *c = ' ';
+    /* the same cell as the LyfeDesk bottom bar's window cells: class hqwin (+ hqwin-minimized when minimized), label = the window emoji and its NAME, click = activate (restore) the app */
+    if (title[0]) snprintf(out, cap, "<footer id=\"statusbar\" class=\"phone-footer\">\n      <item id=\"ft-app1\" class=\"phone-ft hqwin\" label=\"\xF0\x9F\xAA\x9F %s\" action=\"'%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' open '%s' '%s'\"/>\n    </footer>", title, HOUSE, inst, id); else snprintf(out, cap, "<footer id=\"statusbar\" class=\"phone-footer\">\n    </footer>");
+}
 static int generate_layout(const char *inst, const char *lay, int win_w, int *ic) {
     char app[P], src[P], dst[P]; static char xb[16384], cb[8192]; snprintf(app, sizeof app, "%s/&.hq-apps/plus-phone", HOUSE); *ic = pick_icon(win_w);
-    snprintf(src, sizeof src, "%s/%s", app, lay); if (!slurp(src, xb, sizeof xb)) return 0; replace_all(xb, sizeof xb, "${PKG}", app);
+    snprintf(src, sizeof src, "%s/%s", app, lay); if (!slurp(src, xb, sizeof xb)) return 0; replace_all(xb, sizeof xb, "${PKG}", app); { char ft[1024]; phone_footer(inst, ft, sizeof ft); replace_all(xb, sizeof xb, "${PHONE_FOOTER}", ft); }
     char stem[96]; snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
     snprintf(src, sizeof src, "%s/%s.css", app, stem); if (!slurp(src, cb, sizeof cb)) return 0; char to[64]; snprintf(to, sizeof to, "width: %dpx; height: %dpx;", fill_px(win_w, *ic), fill_px(win_w, *ic)); replace_all(cb, sizeof cb, "width: 120px; height: 120px;", to);
     snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); { char it[64]; snprintf(it, sizeof it, "%s %d\n", ICON_NAME[*ic], fill_px(win_w, *ic)); snprintf(dst, sizeof dst, "%s/icon_size.txt", inst); wr(dst, it); } return 1;
@@ -89,8 +99,9 @@ static int refresh_layout(const char *inst) {
     if (screen_layout(inst, sl, sizeof sl)) {
         static char xb[65536], cb[16384]; char id[64] = "", f[P], pkg[P], css[P], stem[96], dst[P]; snprintf(f, sizeof f, "%s/.hq_manager/screen.txt", inst); FILE *fp = fopen(f, "r"); if (fp) { if (fgets(id, sizeof id, fp)) id[strcspn(id, "\r\n")] = 0; fclose(fp); }
         snprintf(pkg, sizeof pkg, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, id); snprintf(css, sizeof css, "%s", sl); char *d = strrchr(css, '.'); if (d) snprintf(d, 6, ".css");
-        if (slurp(sl, xb, sizeof xb) && slurp(css, cb, sizeof cb)) { if (strstr(xb, "${PHONE_BARS}")) { static char pb[16384]; if (phone_bars(lay, pb, sizeof pb)) replace_all(xb, sizeof xb, "${PHONE_BARS}", pb); }
-            replace_all(xb, sizeof xb, "${PKG}", pkg); snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0; snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); return 1; }
+        if (slurp(sl, xb, sizeof xb) && slurp(css, cb, sizeof cb)) { { char *m = strstr(xb, "<module"); char *e = m ? strstr(m, "/>") : NULL; if (e) { const char *pm = "<module id=\"projector\" src=\"&.hq-apps/plus-phone/ops/+x/phone_projector.+x\"/>"; memmove(m + strlen(pm), e + 2, strlen(e + 2) + 1); memcpy(m, pm, strlen(pm)); } }      /* the window's module is always the phone projector (it runs the app's own as its child) */
+            if (strstr(xb, "${PHONE_BARS}")) { static char pb[16384]; if (phone_bars(lay, pb, sizeof pb)) replace_all(xb, sizeof xb, "${PHONE_BARS}", pb); }
+            { char ft[1024]; phone_footer(inst, ft, sizeof ft); replace_all(xb, sizeof xb, "${PHONE_FOOTER}", ft); } replace_all(xb, sizeof xb, "${PKG}", pkg); snprintf(stem, sizeof stem, "%s", lay); char *dot = strrchr(stem, '.'); if (dot) *dot = 0; snprintf(dst, sizeof dst, "%s/%s.css", inst, stem); wr(dst, cb); snprintf(dst, sizeof dst, "%s/%s", inst, lay); wr(dst, xb); return 1; }
     }
     return generate_layout(inst, lay, land ? 704 : 364, &ic);
 }

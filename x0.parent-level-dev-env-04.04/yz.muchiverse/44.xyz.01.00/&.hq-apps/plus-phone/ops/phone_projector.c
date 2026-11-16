@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <signal.h>
 #define P 4096
 static char HOUSE[P], INST[P], HQ[P], last_ui[16384];
 static int kv(const char *file, const char *key, char *out, size_t cap) { out[0] = 0; FILE *fp = fopen(file, "r"); if (!fp) return 0; char ln[400]; size_t kl = strlen(key); int hit = 0; while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, key, kl) || strncmp(ln + kl, " | ", 3)) continue; snprintf(out, cap, "%s", ln + kl + 3); out[strcspn(out, "\r\n")] = 0; hit = 1; break; } fclose(fp); return hit; }
@@ -34,9 +36,26 @@ static void publish(void) {
     l = strlen(ui); snprintf(ui + l, sizeof ui - l, "last_result=%s\nshow_last=%d\n", last, last[0] ? 1 : 0);
     if (strcmp(ui, last_ui)) { char t[P]; snprintf(f, sizeof f, "%s/ui.txt", HQ); snprintf(t, sizeof t, "%s/ui.txt.tmp", HQ); FILE *w = fopen(t, "w"); if (w) { fputs(ui, w); fclose(w); rename(t, f); } snprintf(last_ui, sizeof last_ui, "%s", ui); }
 }
+/* ONE WINDOW (PLUS-PHONE-LAYOUT-SPEC): the phone window's module is always THIS projector; an open app's own projector (the <module src> its screen declares) runs as our CHILD while the app is open, and we stay silent
+ * (one writer of ui.txt at a time); on home the child is stopped and we publish the picker again. A module is started once per window launch, so this is how a window can change app without being relaunched. */
+static pid_t child = 0; static char child_app[64] = "";
+static int word_ok(const char *s) { if (!*s) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || *s == '-' || *s == '_')) return 0; return 1; }
+static int module_src(const char *id, char *out, size_t cap) {      /* the src of the <module> in the app's first SCREEN file */
+    char mf[P], ln[600], rel[400] = ""; snprintf(mf, sizeof mf, "%s/&.hq-apps/plus-phone/apps/%s/manifest.pdl", HOUSE, id); FILE *fp = fopen(mf, "r"); if (!fp) return 0;
+    while (fgets(ln, sizeof ln, fp)) { if (strncmp(ln, "SCREEN", 6)) continue; char *b1 = strchr(ln, '|'); if (!b1) continue; char *b2 = strchr(b1 + 1, '|'); if (!b2) continue; b2++; while (*b2 == ' ') b2++; snprintf(rel, sizeof rel, "%s", b2); rel[strcspn(rel, "\r\n ")] = 0; break; } fclose(fp); if (!rel[0]) return 0;
+    char sp[P]; snprintf(sp, sizeof sp, "%s/&.hq-apps/plus-phone/apps/%s/%s", HOUSE, id, rel); fp = fopen(sp, "r"); if (!fp) return 0; static char buf[8192]; size_t n = fread(buf, 1, sizeof buf - 1, fp); fclose(fp); buf[n] = 0;
+    char *m = strstr(buf, "<module"); if (!m) return 0; char *s = strstr(m, "src=\""); if (!s) return 0; s += 5; char *e = strchr(s, '"'); if (!e) return 0; size_t l = (size_t)(e - s); if (l + 1 > cap) return 0; memcpy(out, s, l); out[l] = 0; return 1;
+}
+static int app_child(void) {      /* reconcile the child with screen.txt; 1 = an app projector is running (it writes ui.txt) */
+    char scr[64] = "", f[P]; snprintf(f, sizeof f, "%s/screen.txt", HQ); FILE *fp = fopen(f, "r"); if (fp) { if (fgets(scr, sizeof scr, fp)) scr[strcspn(scr, "\r\n")] = 0; fclose(fp); } if (!word_ok(scr)) scr[0] = 0;
+    if (child > 0) { int st; pid_t r = waitpid(child, &st, WNOHANG); if (r == child) { child = 0; child_app[0] = 0; } else if (strcmp(child_app, scr)) { kill(child, SIGTERM); waitpid(child, &st, 0); child = 0; child_app[0] = 0; } }
+    if (!child && scr[0]) { char src[P], exe[P], pkg[P]; if (module_src(scr, src, sizeof src)) { snprintf(exe, sizeof exe, "%s/%s", HOUSE, src); snprintf(pkg, sizeof pkg, "%s/&.hq-apps/plus-phone/apps/%s", HOUSE, scr);
+        if (!access(exe, X_OK)) { pid_t c = fork(); if (c == 0) { execl(exe, exe, HOUSE, pkg, (char *)NULL); _exit(127); } if (c > 0) { child = c; snprintf(child_app, sizeof child_app, "%s", scr); } } } }
+    return child > 0;
+}
 int main(int argc, char **argv) {
     if (argc < 2) return 2; snprintf(HOUSE, sizeof HOUSE, "%s", argv[1]); const char *inst = getenv("KHTPM_ARG3"); if (argc >= 5 && !strcmp(argv[3], "--once")) inst = argv[4]; if (!inst || !inst[0]) { fprintf(stderr, "phone_projector: no instance dir\n"); return 2; }
     snprintf(INST, sizeof INST, "%s", inst); snprintf(HQ, sizeof HQ, "%s/.hq_manager", inst); mkdir(HQ, 0755);
     if (argc >= 4 && !strcmp(argv[3], "--once")) { publish(); return 0; }
-    long seen = -1; time_t lastfull = 0; for (;;) { long m = msize(); time_t now = time(NULL); if (m != seen || now - lastfull >= 5) { publish(); seen = m; lastfull = now; } if (getppid() == 1) return 0; usleep(400000); }
+    long seen = -1; time_t lastfull = 0; int had = 0; for (;;) { int run = app_child(); if (run) had = 1; else { if (had) { seen = -1; had = 0; last_ui[0] = 0; }      /* the app projector overwrote ui.txt: forget what we last wrote so the picker is written again */ long m = msize(); time_t now = time(NULL); if (m != seen || now - lastfull >= 5) { publish(); seen = m; lastfull = now; } } if (getppid() == 1) { if (child > 0) kill(child, SIGTERM); return 0; } usleep(400000); }
 }

@@ -26,8 +26,6 @@
     </repeat>
     <text label="no apps installed" class="quiet" show="${no_apps}"/>
     <text label="${last_result}" class="quiet" show="${show_last}"/>
-    <footer id="statusbar" class="phone-footer">
-      <item id="ft-rot" class="phone-ft" label="@ rotate" action="'${PKG}/ops/+x/phone_op.+x' flip '${ARG3}'"/>
-    </footer>
+    ${PHONE_FOOTER}
   </page>
 </window>

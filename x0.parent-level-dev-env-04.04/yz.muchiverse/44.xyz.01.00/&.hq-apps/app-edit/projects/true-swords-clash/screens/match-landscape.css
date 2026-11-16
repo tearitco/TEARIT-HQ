@@ -10,6 +10,7 @@ window { font-family: DejaVu Serif; font-size: 11px; }
 .tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
 .tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 150px; }
 .phone-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; }
-.phone-ft { width: 150px; border: 1px solid #444444; }
+.phone-ft { width: 240px; border: 1px solid #444444; }
 .dd-row { border: 1px solid #444444; background-color: #1a1a1a; }
 .dd-row { width: 200px; }
+.hqwin-minimized { color: #666666; border: 1px dashed #555555; }   /* a minimized app cell: same look as the LyfeDesk bottom bar (entity_menu_default.css) */
