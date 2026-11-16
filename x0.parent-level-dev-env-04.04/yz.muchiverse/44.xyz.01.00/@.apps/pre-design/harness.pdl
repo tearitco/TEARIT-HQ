@@ -21,3 +21,5 @@ HARNESS | phone_layers_check | office | CASE | phone: layers, one window, bars |
 HARNESS | stockx_ledger_check | office | CASE | stock+x: ledger engine | stockx_ledger | - | - | no | integer cents and micro-shares, replay refuses an edited ledger, refusals write nothing
 HARNESS | stockx_fetch_check | office | CASE | stock+x: quote op | stockx_fetch | - | - | no | the Yahoo quote op on canned data: cache, budget, refusals (no network)
 HARNESS | appstore_local_check | office | CASE | phone: app store (local) | appstore_local | - | - | no | catalog, install + build, honest failure, system apps never offered, remove
+HARNESS | store_catalog | office | ACTION | phone: app store catalog | &.hq-apps/app-edit/projects/appstore/ops/+x/store_op.+x | catalog ${HOUSE} | - | no | read-only: every package in the app-edit projects with installed 0/1 and its app_check result (what the App Store would offer)
+HARNESS | phone_list | office | ACTION | phone: list open phones | &.hq-apps/plus-phone/ops/+x/phone_op.+x | list ${HOUSE} | - | no | read-only: the phone instances, their windows and state
