@@ -3632,10 +3632,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_el_adjacent.c"
     /* Node prototype core methods/getters install extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_node_core.c"
-    JS_SetPropertyStr(ctx, Np, "isEqualNode",    JS_NewCFunction(ctx, nb_el_isEqualNode, "isEqualNode", 1));
-    JS_SetPropertyStr(ctx, Np, "isSameNode",     JS_NewCFunction(ctx, nb_el_isSameNode, "isSameNode", 1));
-    JS_SetPropertyStr(ctx, Np, "getRootNode",    JS_NewCFunction(ctx, nb_node_getRootNode, "getRootNode", 0));
-    JS_SetPropertyStr(ctx, Np, "compareDocumentPosition", JS_NewCFunction(ctx, nb_node_compareDocumentPosition, "compareDocumentPosition", 1));
+    /* Node equality/root/position installs extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_node_compare.c"
     {
         JSAtom nm = JS_NewAtom(ctx, "isConnected");
         JS_DefinePropertyGetSet(ctx, Np, nm,
