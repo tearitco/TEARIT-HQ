@@ -49,6 +49,9 @@ EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | class="tab no
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ac-title" class="tab" | NEGATIVE-the-name-is-not-a-numbered-tab
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | show="${app_open}" | the-app_open-guards-are-dropped-inside-an-app
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | hp-line | the-apps-body-is-there
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | apps/true-swords-clash/screens/../ops/+x/tsc_op.+x | the-apps-buttons-point-at-its-ops-via-PKG-=-the-screens-folder
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | true-swords-clash/../ops | NEGATIVE-PKG-is-not-the-package-root-(that-made-every-TSC-button-point-at-a-path-that-does-not-exist,-found-live-2026-11-16)
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/apps/true-swords-clash/ops/+x/tsc_op.+x | CONTROL-the-op-the-button-path-resolves-to-exists-in-the-scratch-house
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | True Swords Clash | the-bottom-bar-names-the-open-app
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-app1" | CONTROL-the-footer-cell-id-check-can-see-a-cell-(the-open-apps-own)
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-rot" | NEGATIVE-the-bottom-bar-has-no-rotate-cell
