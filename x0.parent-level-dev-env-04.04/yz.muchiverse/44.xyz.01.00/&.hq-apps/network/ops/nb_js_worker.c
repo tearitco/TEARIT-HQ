@@ -3668,32 +3668,8 @@ static void install_dom_classes(JSContext *ctx) {
 #include "nb_worker_install_list_classes.c"
         /* DOMTokenList global install extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_domtokenlist.c"
-        f = add_class(ctx, "NamedNodeMap", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
-        JS_SetPropertyStr(ctx, p, "item", JS_NewCFunction(ctx, nb_list_item, "item", 1));
-        JS_FreeValue(ctx, p);
-        JS_SetPropertyStr(ctx, g, "NamedNodeMap", f);
-        f = add_class(ctx, "MutationRecord", JS_UNDEFINED);
-        p = JS_GetPropertyStr(ctx, f, "prototype");
-        JS_SetPropertyStr(ctx, p, "constructor", JS_DupValue(ctx, f));
-        JS_FreeValue(ctx, p);
-        JS_SetPropertyStr(ctx, g, "MutationRecord", f);
-        JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
-    }
-
-    JS_FreeValue(ctx, g);
-    /* the constructor function refs were consumed by JS_SetPropertyStr on the
-     * global; the prototype objects are still ours (dups chain/holder). */
-    JS_FreeValue(ctx, Ap);
-    JS_FreeValue(ctx, Dp);
-    JS_FreeValue(ctx, Tp);
-    JS_FreeValue(ctx, Sp);
-    JS_FreeValue(ctx, Hp);
-    JS_FreeValue(ctx, Ep);
-    JS_FreeValue(ctx, Np);
-    JS_FreeValue(ctx, ETp);
-}
+        /* install_dom_classes tail and cleanup extracted (Phase 1, single-TU include). */
+#include "nb_worker_install_dom_tail.c"
 
 /* ---- minimal TTF (DejaVuSans, ASCII simple glyphs) for canvas fillText ----
  * REAL, NEW 2026-10-07: fillText drew nothing (noop). No TTF library is
