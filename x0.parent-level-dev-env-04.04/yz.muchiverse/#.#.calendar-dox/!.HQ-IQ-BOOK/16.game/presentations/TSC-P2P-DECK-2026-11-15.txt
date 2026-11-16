@@ -6,6 +6,7 @@ BRAND | tsots
 TITLE | True Swords Clash | A TSOTS game, text edition, played over p2p between two phones | True Swords Clash, a TSOTS game, played between two phones.
 SHOT | /tmp/cc/vid/scene/s01.png | | Two phones open True Swords Clash. Nothing is connected yet.
 SHOT | /tmp/cc/vid/scene/s02.png | | Phone 1 taps host an online match.
+SLIDE | The master host list | Phone 1 publishes itself: HOST / tsc / tsc-1 / 127.0.0.1 / 9952 ; Phone 2's peer starts seeded: PALNET_SEEDS=127.0.0.1:9952 ; The row is removed when the match starts ; A master list can live on GitHub or Supabase | Phone 1 puts its address on the host list. Phone 2 starts its peer from that list. The row goes away when the match starts.
 SHOT | /tmp/cc/vid/scene/s03.png | | Phone 2 taps join. Both ledgers get the same START row: same seed, seats 1 and 2.
 SHOT | /tmp/cc/vid/scene/s04.png | | Phone 1 sorts 2 verses. Phone 2 cannot see them.
 SHOT | /tmp/cc/vid/scene/s05.png | | Right order, plus 2 mana. Now it is phone 2's turn.
