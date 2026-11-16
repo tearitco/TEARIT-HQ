@@ -78,7 +78,8 @@ CASE    | forfeit-and-rating
 RUN | $T/p/ops/+x/tsc_op.+x | ui_forfeit | - | $T/b
 EXPECT_EXIT | 0 | the-guest-forfeits
 WAIT_HAS | a/tsc/net_in.txt | FORFEIT | 25000 | the-forfeit-reached-the-host
-RUN | $T/p/ops/+x/tsc_op.+x | ui_pump | - | $T/a
+RUN | $T/p/ops/+x/tsc_op.+x | $T | x | --once | $T/a
+EXPECT_EXIT | 0 | the-host-screen-module-pass-ran-the-pump-and-counted-the-match
 RUN | $T/p/ops/+x/tsc_op.+x | state | $T/a/tsc
 EXPECT_OUT | winner=1 | the-host-wins
 EXPECT_HAS | a/tsc/rating.txt | 1016\p1\p0\p | the-hosts-rating-went-up-16

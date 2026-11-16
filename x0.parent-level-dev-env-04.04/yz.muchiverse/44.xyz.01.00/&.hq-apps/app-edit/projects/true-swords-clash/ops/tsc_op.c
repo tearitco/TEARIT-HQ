@@ -85,9 +85,9 @@ static void answer_key(char *o) { for (int r = 0; r < CH_N; r++) for (int d = 0;
 /* ONE row interpreter for replay AND live: returns 0 ok; res = the result text for the row (compared on replay) */
 static int apply(const char *kind, int p, const char *a1, const char *a2, int seq, char *res, size_t cap) {
     res[0] = 0;
-    if (!strcmp(kind, "DEAL")) { int n = atoi(a1); if (n < 2 || n > 10) return 1; deal(n, seq); if (!CH_N) return 1; PHASE = 1; snprintf(res, cap, "%d verses dealt at line %d", n, CH_START); return 0; }
+    if (!strcmp(kind, "DEAL")) { int n = atoi(a1); if (n < 2 || n > 10) return 1; deal(n, seq); if (!CH_N) return 1; PHASE = 1; snprintf(res, cap, "%d verses dealt", n); return 0; }
     if (!strcmp(kind, "ANSWER")) { char key[16]; answer_key(key); int okk = !strcmp(a1, key); char ref[80]; snprintf(ref, sizeof ref, "%.60s", V[CH_START].text); PHASE = 0;
-        if (okk) { S[p].mana += CH_N; snprintf(res, cap, "right: +%d mana (from: %s...)", CH_N, ref); } else snprintf(res, cap, "wrong: no mana, the turn ends (the order was %s)", key);
+        if (okk) { S[p].mana += CH_N; snprintf(res, cap, "right: +%d mana", CH_N); } else snprintf(res, cap, "wrong: no mana, turn ends (order %s)", key);
         end_turn(res, cap); return 0; }
     if (!strcmp(kind, "AIMANA")) { int n = atoi(a1); int pw = 62 + (RB - 1000) / 10; if (pw < 30) pw = 30; if (pw > 90) pw = 90; int win = (int)(rnd(seq, 0) % 100) < pw; if (win) { S[p].mana += n; snprintf(res, cap, "the computer sorts %d verses: +%d mana", n, n); } else snprintf(res, cap, "the computer fails %d verses: no mana", n); end_turn(res, cap); return 0; }
     if (!strcmp(kind, "MIRACLE")) { int c = cost_of(a1); if (c < 0 || S[p].mana < c) return 1; miracle(p, a1, seq, res, cap); if (!OVER) end_turn(res, cap); return 0; }
@@ -191,7 +191,9 @@ static void u(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 static void u(const char *fmt, ...) { size_t l = strlen(UI); va_list ap; va_start(ap, fmt); vsnprintf(UI + l, sizeof UI - l, fmt, ap); va_end(ap); }
 static void clean(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '\t') *s = ' '; }
 static void digs(int n) { for (int dg = 0; dg < 10; dg++) { int pos = dg == 0 ? 10 : dg; u("dig_%d=%d\n", dg, pos <= n); } }
+static void rate_if_over(void);
 static void publish(void) {
+    rate_if_over();      /* a finished match is counted once, on whichever path it ended (a received row, a verb): the projection is where every path passes */
     UI[0] = 0; char typed[16]; rdq("typed.txt", typed, sizeof typed); int have = !access(LEDGER, F_OK); int rc = have ? replay(1) : 0; const char *n1 = "Player 1", *n2 = "Player 2";
     u("window_title=True Swords Clash\n"); digs(0);
     char netst[16]; net_state(netst, sizeof netst); const char *setup_msg = !strcmp(netst, "host") ? "Hosting: waiting for an opponent..." : !strcmp(netst, "join") ? "Joining: looking for a host..." : "Sort verses for mana, then cast Miracles. HP 100."; char nerr[200] = ""; { char ef[P]; snprintf(ef, sizeof ef, "%s/net_error.txt", MATCH); FILE *e = fopen(ef, "r"); if (e) { if (fgets(nerr, sizeof nerr, e)) nerr[strcspn(nerr, "\r\n")] = 0; fclose(e); } }
@@ -200,7 +202,7 @@ static void publish(void) {
     else { if (COMPUTER) { n1 = "You"; n2 = "Computer"; } if (NETM) { n1 = SEAT == 1 ? "You" : "Opponent"; n2 = SEAT == 2 ? "You" : "Opponent"; } int mine = !NETM || TURN + 1 == SEAT; UI[0] = 0; u("window_title=True Swords Clash\n"); digs(PHASE && !OVER ? CH_N : 0); char s1[100], s2[100]; side_text(&S[0], s1, sizeof s1); side_text(&S[1], s2, sizeof s2);
         int choose = !OVER && !PHASE && mine, answer = !OVER && PHASE && mine; u("show_setup=0\nshow_play=%d\nshow_choose=%d\nshow_answer=%d\nshow_over=%d\n", OVER ? 0 : 1, choose, answer, OVER);
         u("line_p1=%s%s   HP %d   Mana %d   [%s]\nline_p2=%s%s   HP %d   Mana %d   [%s]\n", TURN == 0 && !OVER ? "> " : "  ", n1, S[0].hp, S[0].mana, s1, TURN == 1 && !OVER ? "> " : "  ", n2, S[1].hp, S[1].mana, s2);
-        if (OVER) { if (COMPUTER || NETM) { int na, nb; elo(&na, &nb); int s2 = NETM && SEAT == 2; u("line_turn=%s wins.  Rating %d -> %d\n", WINNER == 0 ? n1 : n2, s2 ? RB : RA, s2 ? nb : na); } else u("line_turn=%s wins.  (friend matches are not rated)\n", WINNER == 0 ? n1 : n2); } else if (!mine) u("line_turn=Opponent's turn: wait for their move.\n"); else if (answer) u("line_turn=%s: order the %d verses (Bible order).\n", TURN == 0 ? n1 : n2, CH_N); else u("line_turn=%s: sort verses for mana, or cast a Miracle.\n", TURN == 0 ? n1 : n2);
+        if (OVER) { if (COMPUTER || NETM) { int na, nb; elo(&na, &nb); int s2 = NETM && SEAT == 2; u("line_turn=%s %s.  Rating %d -> %d\n", WINNER == 0 ? n1 : n2, !strcmp(WINNER == 0 ? n1 : n2, "You") ? "win" : "wins", s2 ? RB : RA, s2 ? nb : na); } else u("line_turn=%s wins.  (friend matches are not rated)\n", WINNER == 0 ? n1 : n2); } else if (!mine) u("line_turn=Opponent's turn: wait for their move.\n"); else if (answer) u("line_turn=%s: order the %d verses (Bible order).\n", TURN == 0 ? n1 : n2, CH_N); else u("line_turn=%s: sort verses for mana, or cast a Miracle.\n", TURN == 0 ? n1 : n2);
         char la[400], lb[400]; snprintf(la, sizeof la, "%s", answer ? "" : LAST); snprintf(lb, sizeof lb, "%s", answer ? "" : LAST2); clean(la); clean(lb); u("line_last=%s\nline_last2=%s\n", la, lb);
         int nm = 0; if (choose) { for (int i = 0; i < 11; i++) { int cost = i == 0 ? 0 : i; int ok = S[TURN].mana >= cost; static const char *nice[11] = { "Hail Mary", "Slash", "Fire", "Berserk", "Heal", "Judgement", "Poison", "Locust", "Blessing", "Angel", "Holy Sword" };
                 u("mir_%d_label=  %s   (%d)%s  \nmir_%d_name=%s\nmir_%d_cls=%s\n", nm, nice[i], cost, ok ? "" : "   low", nm, MNAME[i], nm, ok ? "btn" : "dimbtn"); nm++; } }
@@ -261,7 +263,7 @@ static int ui_verb0(const char *v, const char *arg, const char *inst) {
     return 2;
 }
 static int module_main(const char *inst, int once) {
-    set_inst(inst); if (!load_verses()) return 2; if (once) { publish(); return 0; }
+    set_inst(inst); if (!load_verses()) return 2; if (once) { char st0[16]; net_state(st0, sizeof st0); if (st0[0]) net_pump(); publish(); return 0; }
     long seen = -1; time_t last = 0; for (;;) {
         char st[16]; net_state(st, sizeof st); int force = 0;
         if (st[0]) { char ep[40] = "", ef[P]; snprintf(ef, sizeof ef, "%s/net_epoch.txt", MATCH); FILE *e = fopen(ef, "r"); if (e) { if (fgets(ep, sizeof ep, e)) ep[strcspn(ep, "\r\n")] = 0; fclose(e); }

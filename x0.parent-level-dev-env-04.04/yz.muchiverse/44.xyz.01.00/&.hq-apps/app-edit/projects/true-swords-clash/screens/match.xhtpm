@@ -41,6 +41,8 @@
       <item id="clr" class="btn" label="  clear my order  " show="${show_answer}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_clear' '-' '${ARG3}'"/>
       <item id="again_c" class="btn" label="  play again vs the computer  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'computer' '${ARG3}'"/>
       <item id="again_h" class="btn" label="  play again vs a friend  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_new' 'human' '${ARG3}'"/>
+      <item id="host2" class="btn" label="  host an online match  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_host' '-' '${ARG3}'"/>
+      <item id="join2" class="btn" label="  join an online match  " show="${show_over}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_join' '-' '${ARG3}'"/>
       <item id="forfeit" class="btn danger" label="  forfeit  " show="${show_play}" action="'${PKG}/../ops/+x/tsc_op.+x' 'ui_forfeit' '-' '${ARG3}'"/>
     </scrolllist>
   </page>
