@@ -56,11 +56,18 @@ Signalling is the same text path (`command` kind: `call <gid-or-number>`); media
 ### 3.8 Caps and costs (RUNTIME-FILE-GROWTH-STANDARD rows to add when built)
 `inbox.txt`, `outbox.txt`, `history.txt` rotate at the phone's own caps (2000 lines / 262144 bytes, 3 generations, server-rotated, already in `phone.pdl`); `ledger.txt` and `observations.log` need a rotation row (check the standard); the app's `<instance>/texting/` cache is capped at 64 KB per contact list and 256 KB per open thread. Idle cost: the router loop (2 s sleep, one exec per pass; measure with a browser running before shipping, as the standard requires).
 
+### 3.9 Search, added contacts, notes (OWNER 2026-11-16: "that stuff can be searchable, add contacts, note, etc.")
+- **Address book = a user-owned, append-only file** `<my phone dir>/contacts.txt` (it lives with the human's phone, NOT in the phone instance, so deleting a phone window or instance never loses it). One row per change: `<ms>|CONTACT|<number>|<name>|<tags>`, `<ms>|NOTE|<number>|<text>`, `<ms>|RENAME|<number>|<name>`, `<ms>|DELETE|<number>`. The current book is derived by replaying the rows (a projection, safe to rebuild; same rule as every ledger here). A contact can be a number typed by hand (it need not be in `phones.index` yet: the router answers an unknown number with a `fail` message, so a typo is visible), or picked from the auto list (3.3). The auto list and the address book are merged by number; the user's name wins over the index label.
+- **Notes** are private: a note about a contact or a thread, never routed, never in the ledger, never on the chain, never sent to another phone (the router does not read `contacts.txt`). Tags (`friend`, `bot`, `owned`) are free words.
+- **Search verb** `text_op search <query>` (C, case-insensitive substring, no shell): looks in (1) contact names, numbers, tags and notes, (2) message text in MY OWN `inbox.txt` / `outbox.txt` / rotated generations (only my phone's files, never another user's). Results are rows `contact: <name>` or `<name>: <line snippet> (<date>)`; tap opens the thread. Slice 1 scans with caps (stop after 200 hits or 4 MB read); if it gets slow, add a derived `search.idx` projection with a byte cursor (never mtime), rebuilt from the same files. The house already has a search-field pattern (`@.apps/layout-studio/templates/menu-search.xhtpm`, the Tools dropdown search): reuse the `<cli_io>` + results-list shape, do not invent a second one.
+- **Privacy note:** because search reads message text, it works only on files the user already owns; a hashed ledger row (3.4) is not searchable and does not need to be.
+- **Tests (added to `texting_app`):** add a contact by hand then see it in the list; a note is found by search and is NOT in the router ledger or the other phone's inbox (negative); a search term in another user's file finds nothing (negative); a rebuilt projection after deleting the cache is identical; a DELETE row removes the contact but keeps the thread; the caps stop a huge scan.
+
 ## 4. Phases (each ends with a harness that can fail and a photo)
 | Phase | What | Test |
 |---|---|---|
 | 0 | decide the two blockers (section 5), `PAL-CHAIN-STANDARD` read | (doc) |
-| 1 | `text_op` contacts + send + thread projection, the app screens | `texting_app` (scratch house, real ops, stub renderer like `phone_entity`) |
+| 1 | `text_op` contacts (auto + added by hand), notes, search, send, thread projection, the app screens | `texting_app` (scratch house, real ops, stub renderer like `phone_entity`) |
 | 2 | router ledger gets `sha256(text)` + message id; block list | extend `pet_phones` |
 | 3 | `phone_reply_op` + `reply.pdl` + loop cap | `texting_reply` (3.5) |
 | 4 | live on a test phone with scratch users, photo of both ends | photos |
@@ -73,6 +80,7 @@ Signalling is the same text path (`command` kind: `call <gid-or-number>`); media
 2. **Chain message tx** (slice 5): change `PAL-CHAIN-STANDARD` for a commitment tx type: yes or later?
 3. **Reply default:** silent unless the entity has a `reply.pdl` (DOC recommendation) or reply for owned entities by default?
 4. **Blocking default** for other users' messages: open, or "owned only" until a phone opts in?
+5. **Where the address book lives** (3.9): `contacts.txt` beside the human's own phone (needs decision 1). Search covers my own phone files only: OK?
 
 ## 6. Evidence
 Read: `phone_send_op.c` (header and helpers), `server_route_op.c` (header), `^.hai-server/{README.md,router.pal,tunables.conf,phones.index}`, `HAI-ROBOTS-PHONES-SERVER-DESIGN.md` (headings and sections 3b/3c), `041.pal-chain/ops/chain_send.c` (header), one `phone.pdl`. Run: harness `pet_phones` (11 PASS, 2026-11-16). NOT read: the rest of the router, `phone_ensure_op`, `PAL-CHAIN-STANDARD`, any other user's phone (private).
