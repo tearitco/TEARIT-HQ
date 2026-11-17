@@ -6757,16 +6757,8 @@ static int cli_main(int argc, char **argv) {
  * NB_CRASH_BT so normal runs stay quiet. backtrace_symbols_fd() is the
  * async-signal-safe half of execinfo, and stderr is already the per-house
  * worker log, so the trace lands next to the page errors. */
-static void nb_crash_handler(int sig) {
-    void *bt[64];
-    static const char hdr[] = "CRASH| fatal signal in worker (see frames below)\n";
-    ssize_t w = write(STDERR_FILENO, hdr, sizeof(hdr) - 1);
-    (void)w;
-    int n = backtrace(bt, 64);
-    backtrace_symbols_fd(bt, n, STDERR_FILENO);
-    signal(sig, SIG_DFL);
-    raise(sig);
-}
+/* Worker fatal-signal handler extracted (Phase 1, single-TU include). */
+#include "nb_worker_crash_handler.c"
 static void nb_crash_install(void) {
     if (!getenv("NB_CRASH_BT")) return;
     signal(SIGSEGV, nb_crash_handler);
