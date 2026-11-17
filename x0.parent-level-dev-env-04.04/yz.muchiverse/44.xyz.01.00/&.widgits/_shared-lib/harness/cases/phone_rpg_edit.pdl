@@ -1,0 +1,59 @@
+# phone_rpg_edit (2026-11-17; owner: "make sure rpg edit opens as a phone app ... we should explicitly prove/test each"): the rpg-edit PHONE APP (&.hq-apps/app-edit/projects/rpg-edit, op redit_op). SCRATCH house, the REAL redit_op, a STUB editor launcher
+# (h/@.apps/rpg-edit-hq/button.sh appends one byte to launched.txt, so a launch is a countable fact) and a stand-in "running editor" process (a sleep whose command line holds the editor board path). The real editor window is never touched.
+# Proves: the screen reports the last book:page and "closed"; Open starts the launcher exactly once; with an editor running Open does NOT launch another (control: it did launch when none was running) and the screen says open; a missing launcher is refused;
+# the package passes app_check and the layout validator. The live window was opened through a real phone by hand (photo in the design doc); this case guards the logic.
+RESULTS | ../results/phone_rpg_edit.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.hq-apps/plus-phone/instances/p1
+MKDIR | h/&.hq-apps/plus-phone/apps
+MKDIR | h/@.apps/rpg-edit-hq/state
+MKDIR | h/@.apps/rpg-edit-hq/board
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/rpg-edit/ops/+x/redit_op.+x | $T/redit_op.+x
+EXPECT_EXISTS | redit_op.+x | the-real-op-is-built
+WRITE | h/@.apps/rpg-edit-hq/state/last_book.txt | book=centroid\npage=live\n
+WRITE | h/@.apps/rpg-edit-hq/button.sh | #!/bin/sh\nprintf x >> $T/launched.txt\n
+
+CASE    | closed
+RUN | $T/redit_op.+x | $T/h | pkg | --once | $T/h/&.hq-apps/plus-phone/instances/p1
+EXPECT_EXIT | 0 | the-module-publishes-once
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | last page: centroid : live | the-screen-shows-the-last-book-and-page
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | editor_open=0 | no-editor-is-running
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | open the editor | the-button-offers-to-open
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | window_title=rpg-edit | the-window-is-titled
+
+CASE    | open-launches
+RUN | $T/redit_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/p1
+EXPECT_EXIT | 0 | open-succeeds
+RUN | /usr/bin/wc | -c | $T/launched.txt
+EXPECT_OUT | 1 $T/launched.txt | the-launcher-ran-exactly-once-CONTROL-for-the-next-case
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/last.txt | editor was started | the-screen-says-it-started
+
+CASE    | already-open
+SPAWN | ED | /bin/sh | -c | sleep 600 | fakeeditor | $T/h/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+RUN | $T/redit_op.+x | $T/h | pkg | --once | $T/h/&.hq-apps/plus-phone/instances/p1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | editor_open=1 | a-running-editor-is-seen
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | editor is open | the-button-says-open
+RUN | $T/redit_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/p1
+EXPECT_EXIT | 0 | open-while-open-is-not-an-error
+RUN | /usr/bin/wc | -c | $T/launched.txt
+EXPECT_OUT | 1 $T/launched.txt | NEGATIVE-no-second-launch-while-an-editor-runs
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/last.txt | already open | the-screen-explains-why
+
+CASE    | missing-launcher
+RUN | /bin/rm | -f | $T/h/@.apps/rpg-edit-hq/button.sh
+RUN | /usr/bin/pkill | -P | 1 | -f | nothing-matches-this-pattern-xyzzy
+RUN | /bin/kill | $ED
+RUN | $T/redit_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/p1
+EXPECT_EXIT | 2 | a-missing-launcher-is-refused
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/last.txt | launcher is missing | and-says-so
+
+CASE    | package
+RUN | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $HOUSE/&.hq-apps/app-edit/projects/rpg-edit | $HOUSE
+EXPECT_OUT | CHECK-OK rpg-edit | the-package-passes-app_check
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/&.hq-apps/app-edit/projects/rpg-edit/screens/edit.xhtpm
+EXPECT_OUT | 0 error(s), 0 warning(s) | the-screen-passes-the-layout-validator
+
+CLEAN   |

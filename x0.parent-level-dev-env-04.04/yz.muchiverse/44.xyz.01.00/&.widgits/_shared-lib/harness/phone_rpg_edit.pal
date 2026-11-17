@@ -1,0 +1,4 @@
+# phone_rpg_edit.pal - see cases/phone_rpg_edit.pdl
+exec ./ops/+x/harness_case_op.+x cases/phone_rpg_edit.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/phone_rpg_edit.pdl
+halt

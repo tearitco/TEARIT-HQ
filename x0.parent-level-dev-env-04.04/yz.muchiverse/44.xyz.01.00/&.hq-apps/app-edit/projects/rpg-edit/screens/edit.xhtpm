@@ -1,0 +1,17 @@
+<!-- edit.xhtpm - the rpg-edit phone screen (2026-11-17): a launcher for the rpg-edit-hq editor window. Every value is a ${var} written by redit_op (the projector module); each button runs ONE verb. -->
+<window label="${window_title}" class="rpgedit database-window phone-portrait managed">
+  <module id="projector" src="&.hq-apps/plus-phone/apps/rpg-edit/ops/+x/redit_op.+x"/>
+  <page name="main">
+    ${PHONE_BARS}
+    ${APP_CHROME}
+    <text label="${status}" class="quiet"/>
+    <text label="${hint}" class="quiet"/>
+    <scrolllist class="from-top">
+      <item id="op" class="btn" label="${open_label}" action="'${PKG}/../ops/+x/redit_op.+x' 'ui_open' '${ARG3}'"/>
+      <item id="rf" class="btn" label="  refresh  " action="'${PKG}/../ops/+x/redit_op.+x' 'ui_refresh' '${ARG3}'"/>
+      <text label="${page_line}" class="verse"/>
+      <text label="${editor_line}" class="verse"/>
+    </scrolllist>
+    ${PHONE_FOOTER}
+  </page>
+</window>

@@ -1,0 +1,8 @@
+# manifest.pdl - rpg-edit as a phone app (owner 2026-11-17: "make sure rpg edit opens as a phone app"; app #2 of the TSOTS phone, BOOK 16.game/PLUS-PHONE-PLATFORM-DEV-GUIDE-2026-11-15.md). v1 is a LAUNCHER: the screen shows the editor's last book:page and one button that opens the existing rpg-edit-hq editor window (it then appears in the phone bottom bar as an ordinary window cell). The editor is NOT embedded in the 364 x 704 screen: that is the open question in the design doc.
+APP | id | rpg-edit
+TITLE | rpg-edit
+ICON | icon
+ORDER | 2
+ORIENT | portrait
+PLATFORM | 1
+SCREEN | home | screens/edit.xhtpm
