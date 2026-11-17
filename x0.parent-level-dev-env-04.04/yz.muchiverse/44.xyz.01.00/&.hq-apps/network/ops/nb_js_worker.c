@@ -6759,13 +6759,8 @@ static int cli_main(int argc, char **argv) {
  * worker log, so the trace lands next to the page errors. */
 /* Worker fatal-signal handler extracted (Phase 1, single-TU include). */
 #include "nb_worker_crash_handler.c"
-static void nb_crash_install(void) {
-    if (!getenv("NB_CRASH_BT")) return;
-    signal(SIGSEGV, nb_crash_handler);
-    signal(SIGABRT, nb_crash_handler);
-    signal(SIGBUS, nb_crash_handler);
-    signal(SIGFPE, nb_crash_handler);
-}
+/* Worker crash-signal installer extracted (Phase 1, single-TU include). */
+#include "nb_worker_crash_install.c"
 
 int main(int argc, char **argv) {
     nb_crash_install();
