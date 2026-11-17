@@ -13,6 +13,8 @@ MKDIR | h/_.monads/_.livedesk-taskbar/ops/+x
 MKDIR | h/&.hq-apps/plus-phone/ops/+x
 RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/ops/+x/app_edit_op.+x | $T/h/&.hq-apps/app-edit/app_edit_op.+x
 RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/emoji_icon_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/emoji_icon_op.+x
 RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x
 RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
 WRITE | h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | # resolution=1\nOLD-ICON\n

@@ -1,0 +1,81 @@
+# emoji_icon (2026-11-17; owner: "if user changed icon in pdl would it auto update like other things in house?"): the shared op emoji_icon_op. emoji.txt is the SETTING (a user edits it), sprite.csv the PROJECTION made by the HOUSE pipeline, emoji.made the record.
+# SCRATCH house, the REAL emoji_icon_op and the REAL emoji ops; a counting STUB replaces emoji_gen_atlas where the case must prove that NO process is started (unchanged setting) or that a failing emoji is not retried.
+# Proves: set makes a complete 64 px csv and records the emoji; an unchanged setting starts nothing (control: the stub counts a start when the setting changes); an edited emoji.txt regenerates a DIFFERENT sprite on the next sync; a failing emoji keeps the old sprite
+# byte for byte and is not retried until emoji.txt changes; a control character in emoji.txt is ignored.
+RESULTS | ../results/emoji_icon.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/_.monads/_.livedesk-taskbar/ops/+x
+MKDIR | h/icon
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/emoji_icon_op.+x | $T/emoji_icon_op.+x
+RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x | $T/real_gen.+x
+RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x
+RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x
+WRITE | h/icon/sprite.csv | # resolution=1\nOLD-ICON\n
+
+CASE    | set
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | set | 🎨
+EXPECT_EXIT | 0 | set-succeeds
+EXPECT_OUT | ICON-SET | and-says-so
+EXPECT_HAS | h/icon/sprite.csv | # resolution=64 | a-64-px-sprite
+EXPECT_LACKS | h/icon/sprite.csv | OLD-ICON | NEGATIVE-the-old-icon-is-gone
+EXPECT_HAS | h/icon/emoji.txt | 🎨 | the-setting-is-recorded
+EXPECT_HAS | h/icon/emoji.made | 🎨 | and-what-the-sprite-was-made-from
+RUN | /bin/cp | $T/h/icon/sprite.csv | $T/palette.csv
+
+CASE    | unchanged-starts-nothing
+WRITE | h/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x | #!/bin/sh\nprintf x >> $T/count.txt\nexit 1\n
+RUN | /bin/chmod | +x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | sync
+EXPECT_OUT | ICON-UNCHANGED | an-unchanged-setting-is-left-alone
+RUN | /bin/sh | -c | test ! -e $T/count.txt
+EXPECT_EXIT | 0 | no-process-was-started
+
+CASE    | failing-emoji-kept-and-not-retried
+WRITE | h/icon/emoji.txt | 🐙\n
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | sync
+EXPECT_EXIT | 1 | a-failing-emoji-is-reported
+EXPECT_OUT | ICON-KEPT | and-says-kept
+RUN | /usr/bin/cmp | $T/palette.csv | $T/h/icon/sprite.csv
+EXPECT_EXIT | 0 | the-old-sprite-is-byte-identical
+RUN | /usr/bin/wc | -c | $T/count.txt
+EXPECT_OUT | 1 $T/count.txt | CONTROL-the-stub-was-started-once
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | sync
+EXPECT_OUT | ICON-UNCHANGED | the-same-failing-emoji-is-not-retried
+RUN | /usr/bin/wc | -c | $T/count.txt
+EXPECT_OUT | 1 $T/count.txt | NEGATIVE-still-one-start
+
+CASE    | edited-setting-regenerates
+RUN | /bin/cp | $T/real_gen.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x
+WRITE | h/icon/emoji.txt | 🗡️\n
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | sync
+EXPECT_OUT | ICON-SYNCED | the-edited-emoji-is-converted
+EXPECT_HAS | h/icon/emoji.made | 🗡 | the-record-follows
+RUN | /usr/bin/cmp | -s | $T/palette.csv | $T/h/icon/sprite.csv
+EXPECT_EXIT | 1 | the-sprite-is-a-different-picture-from-the-palette
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | sync
+EXPECT_OUT | ICON-UNCHANGED | and-then-it-settles
+
+CASE    | control-character
+WRITE | h/icon/emoji.txt | a\tb\n
+RUN | $T/emoji_icon_op.+x | $T/h | $T/h/icon | sync
+EXPECT_OUT | ICON-UNCHANGED | a-control-character-is-ignored
+
+
+CASE    | phone-wiring
+COPY | &.hq-apps/plus-phone/ops/phone_projector.c | phone_projector.c
+COPY | &.hq-apps/app-edit/ops/app_edit_op.c | app_edit_op.c
+RUN | /usr/bin/grep | -c | -F | icon_sync(e->d_name) | phone_projector.c
+EXPECT_OUT | 1 | the-phone-syncs-each-app-icon-on-every-refresh
+RUN | /usr/bin/grep | -c | -F | execl(op, op, HOUSE, dir, "sync" | phone_projector.c
+EXPECT_OUT | 1 | it-calls-the-shared-op-sync-verb
+RUN | /usr/bin/grep | -c | -F | strcmp(want, made) | phone_projector.c
+EXPECT_OUT | 1 | and-only-when-the-setting-differs-from-what-the-sprite-was-made-from
+RUN | /usr/bin/grep | -c | -F | emoji_icon_op.+x | app_edit_op.c
+EXPECT_OUT | 1 | app-edit-uses-the-same-shared-op-not-its-own-pipeline
+RUN | /usr/bin/grep | -c | -F | emoji_gen_atlas.+x | app_edit_op.c
+EXPECT_OUT | 0 | NEGATIVE-app-edit-has-no-private-copy-of-the-pipeline
+
+CLEAN   |

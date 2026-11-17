@@ -86,19 +86,13 @@ int main(int argc, char **argv) {
         if (n == 0) { wr("last.txt", "no project selected"); bump(); return 1; }
         char pk[P]; snprintf(pk, sizeof pk, "%s/&.hq-apps/app-edit/projects/%s", HOUSE, ids[selected(ids, n)]);
         if (!strcmp(v, "check")) { char chk[P]; tool("&.hq-apps/plus-phone/ops/+x/app_check.+x", chk, sizeof chk); char *av[] = { chk, pk, HOUSE, NULL }; int rc = run_out(av, outf); (void)rc; result("check", outf); return 0; }
-        if (!strcmp(v, "icon")) {      /* icon <emoji> <instance>: the selected project's icon/sprite.csv made from an emoji by the HOUSE pipeline (emoji_gen_atlas: FreeType + NotoColorEmoji to a PNG, then emoji_xtract: PNG to the 64 px RGBA csv), the same two ops tp_place_desktop and hatch_egg use. No new icon form in manifest.pdl. The old icon is kept unless the new csv is complete. */
-            const char *em = argv[2]; size_t el = strlen(em); int okc = el > 0 && el <= 16; for (size_t i = 0; okc && i < el; i++) if ((unsigned char)em[i] < 0x20) okc = 0;
-            if (!okc) { wr("last.txt", "icon: give one emoji"); bump(); return 2; }
-            char ga[P], xt[P], png[P], csv[P], fin[P], emf[P]; tool("_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x", ga, sizeof ga); tool("_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x", xt, sizeof xt);
-            snprintf(png, sizeof png, "%s/icon_tmp.png", HQ); snprintf(csv, sizeof csv, "%s/icon/sprite.csv.new", pk); snprintf(fin, sizeof fin, "%s/icon/sprite.csv", pk); snprintf(emf, sizeof emf, "%s/icon/emoji.txt", pk);
-            if (access(ga, X_OK) || access(xt, X_OK)) { wr("last.txt", "icon: the emoji ops are not built"); bump(); return 1; }
+        if (!strcmp(v, "icon")) {      /* icon <emoji> <instance>: the selected project's icon/sprite.csv from an emoji, by the SHARED op emoji_icon_op (the house pipeline: emoji_gen_atlas then emoji_xtract; writes emoji.txt = the setting and emoji.made). No new icon form in manifest.pdl; the old icon is kept unless the new one is complete. */
+            char eo[P], dir[P]; tool("&.widgits/_shared-lib/ops/+x/emoji_icon_op.+x", eo, sizeof eo); snprintf(dir, sizeof dir, "%s/icon", pk);
+            if (access(eo, X_OK)) { wr("last.txt", "icon: emoji_icon_op is not built"); bump(); return 1; }
             { char d[P]; snprintf(d, sizeof d, "%s/icon", pk); mkdir(d, 0755); }
-            unlink(csv); char *a1[] = { ga, (char *)em, png, NULL }; int r1 = run_out(a1, outf); char *a2[] = { xt, png, "0", "64", csv, NULL }; int r2 = r1 == 0 ? run_out(a2, outf) : -1; unlink(png);
-            struct stat sb; char h1[40] = ""; FILE *cf = fopen(csv, "r"); if (cf) { if (fgets(h1, sizeof h1, cf)) h1[strcspn(h1, "\r\n")] = 0; fclose(cf); }
-            if (r1 != 0 || r2 != 0 || stat(csv, &sb) || sb.st_size < 20000 || strcmp(h1, "# resolution=64")) { unlink(csv); wr("last.txt", "icon: could not make that emoji (the old icon is kept)"); bump(); return 1; }
-            if (rename(csv, fin) != 0) { unlink(csv); wr("last.txt", "icon: could not write the icon"); bump(); return 1; }
-            { char t[P]; snprintf(t, sizeof t, "%s.tmp", emf); FILE *w = fopen(t, "w"); if (w) { fprintf(w, "%s\n", em); fclose(w); rename(t, emf); } }
-            wr("last.txt", "icon set from the emoji (export to put it on the phone)"); bump(); return 0; }
+            char *av[] = { eo, HOUSE, dir, "set", (char *)argv[2], NULL }; int rc = run_out(av, outf);
+            if (rc == 0) { wr("last.txt", "icon set from the emoji (export to put it on the phone)"); bump(); return 0; }
+            wr("last.txt", rc == 2 ? "icon: give one emoji" : "icon: could not make that emoji (the old icon is kept)"); bump(); return rc == 2 ? 2 : 1; }
         if (!strcmp(v, "export")) { char op[P]; tool("&.hq-apps/plus-phone/ops/+x/phone_op.+x", op, sizeof op); char *av[] = { op, "install", HOUSE, pk, NULL }; run_out(av, outf); result("export", outf); return 0; }
     }
     if (argc < 2) { fprintf(stderr, "usage: app_edit_op open <house> | select|check|export|phone|icon <arg> <instance> | <house> <pkg> (module)\n"); return 2; }

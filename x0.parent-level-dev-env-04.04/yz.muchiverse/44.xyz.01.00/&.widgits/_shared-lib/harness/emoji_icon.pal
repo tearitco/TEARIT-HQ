@@ -1,0 +1,4 @@
+# emoji_icon.pal - see cases/emoji_icon.pdl
+exec ./ops/+x/harness_case_op.+x cases/emoji_icon.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/emoji_icon.pdl
+halt
