@@ -827,21 +827,8 @@ static int  g_cookie_path_set = 0;
 /* Cookie line parse helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_cookie_parse_line.c"
 
-static int cookie_load_file(CookieEnt *ents, int maxn) {
-    char *buf = NULL;
-    size_t bl = 0;
-    if (!read_file(g_cookie_path, &buf, &bl)) return 0;
-    int n = 0;
-    char *p = buf;
-    while (p && *p && n < maxn) {
-        char *nl = strchr(p, '\n');
-        if (nl) { *nl = 0; }
-        if (cookie_parse_line(p, &ents[n])) n++;
-        p = nl ? nl + 1 : NULL;
-    }
-    free(buf);
-    return n;
-}
+/* Cookie file load helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_cookie_load_file.c"
 
 static void cookie_save_file(const CookieEnt *ents, int n) {
     if (!g_cookie_path[0]) return;
