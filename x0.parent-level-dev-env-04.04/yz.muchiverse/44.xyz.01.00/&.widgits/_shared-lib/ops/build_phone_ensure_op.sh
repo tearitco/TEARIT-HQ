@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p +x
-for n in phone_ensure_op phone_send_op server_route_op game_slot_op wordbank_ensure_op wordbank_score_op trunk_op text_op phone_event_op; do
+for n in phone_ensure_op phone_send_op server_route_op game_slot_op wordbank_ensure_op wordbank_score_op trunk_op text_op phone_event_op phone_reply_ai_op; do
     ${CC:-gcc} -std=c11 -Wall -Wextra -O2 -o +x/$n.+x $n.c
     echo "OK +x/$n.+x"
 done

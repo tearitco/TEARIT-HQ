@@ -4,8 +4,10 @@
 # House pattern (PRISC-OPS-ARCHITECTURE.md): the .pal only sequences; the real work is the compiled op, which is the single writer of every inbox.
 # server_route_op reads each phone's outbox from a saved byte cursor (size growth, never mtime), delivers once, logs a ledger row + an observations row, and exits.
 # `sleep` under prisc+x is MICROSECONDS (2000000 = 2 s): a bare `sleep 2` would re-exec the op thousands of times a second (the world_manager CPU bug of 2026-09-28).
+# phone_event_op (2026-11-16, Texting design 3.5e) runs right after the router: it plays an entity on-message event page for each new text (the auto-reply). It does nothing while reply_default=0 and an entity has no page of its own.
 
 loop:
   exec @OPS@/server_route_op.+x .
+  exec @OPS@/phone_event_op.+x . @HOUSE@
   sleep 2000000
   j loop

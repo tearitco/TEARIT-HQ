@@ -1,0 +1,46 @@
+# texting_reply_ai (2026-11-16): the model-backed reply command (ops/phone_reply_ai_op.c, registry command phone_reply_ai; BOOK 16.game/PLUS-PHONE-TEXTING-APP-DESIGN-2026-11-16.md 3.5e and
+# 17.ai/ENTITY-LLM-ENDPOINTS-HOW-TO-TEST-AND-USE-2026-11-16.md). SCRATCH house, the REAL phone_reply_ai_op and phone_send_op, a tiny STUB in place of ai_chat (compiled here, so NO network and no
+# model is called; the live model was tried once by hand, see the design doc). Proves: a model reply is sent as "[auto] <reply>" with '|' made safe; a failing model, an empty reply and a reached daily
+# cap each send the FALLBACK text instead (still marked [auto]); the stub is not even called at the cap (control: it was called in the ok case); a fallback without the marker gets it.
+RESULTS | ../results/texting_reply_ai.txt
+ENV | LC_ALL | C
+ENV | MUCHI_MSG_TEXT | hello there
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.widgits/entity-cli/ops
+MKDIR | h/ent/phone
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x
+WRITE | stub_ai.c | #include <stdio.h>\n#include <string.h>\nint main(int c, char **v) { char p[600], m[64] = "ok"; snprintf(p, 600, "%s/stub_mode.txt", v[1]); FILE *f = fopen(p, "r"); if (f) { fscanf(f, "%63s", m); fclose(f); } if (!strcmp(m, "fail")) return 1; snprintf(p, 600, "%s/chat_history.txt", v[1]); f = fopen(p, "a"); fprintf(f, "[2026-11-16 12:00:00] USER: %s", v[3]); fputc(10, f); fprintf(f, "[2026-11-16 12:00:00] bot: %s", !strcmp(m, "empty") ? "" : "stub reply with\pbar"); fputc(10, f); fclose(f); return 0; }\n
+RUN | gcc | -o | $T/h/&.widgits/entity-cli/ops/ai_chat.+x | $T/stub_ai.c
+EXPECT_EXISTS | h/&.widgits/entity-cli/ops/ai_chat.+x | the-stub-is-built
+WRITE | h/ent/phone/phone.pdl | SECTION      \p KEY                  \p VALUE\nPHONE        \p number               \p 471-5576-0009\nPHONE        \p owner_label          \p botX\nPHONE        \p history_max_lines    \p 2000\nPHONE        \p history_max_bytes    \p 262144\n
+WRITE | h/ent/phone/outbox.txt | # outbox\n
+WRITE | h/ent/label.txt | bot\n
+
+CASE    | model-reply
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x | $T/h/ent/phone | $T/h/ent | $T/h | 471-5576-0001 | fallback words
+EXPECT_OUT | AI-REPLY ok | the-model-answered
+EXPECT_HAS | h/ent/phone/outbox.txt | [auto] stub reply with/bar | the-reply-is-sent-marked-automatic-with-the-bar-made-safe
+EXPECT_LACKS | h/ent/phone/outbox.txt | fallback words | CONTROL-the-fallback-was-not-used
+EXPECT_HAS | h/ent/ai_reply_log.txt | 17 | the-attempt-is-counted-for-the-daily-cap
+
+CASE    | fallbacks
+WRITE | h/ent/stub_mode.txt | fail\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x | $T/h/ent/phone | $T/h/ent | $T/h | 471-5576-0001 | fallback words
+EXPECT_OUT | AI-REPLY fallback model call failed | NEGATIVE-a-failing-model-falls-back
+EXPECT_HAS | h/ent/phone/outbox.txt | [auto] fallback words | and-the-fallback-is-sent-with-the-marker-added
+WRITE | h/ent/stub_mode.txt | empty\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x | $T/h/ent/phone | $T/h/ent | $T/h | 471-5576-0001 | [auto] already marked
+EXPECT_OUT | AI-REPLY fallback empty reply | NEGATIVE-an-empty-model-reply-falls-back
+EXPECT_HAS | h/ent/phone/outbox.txt | [auto] already marked | and-an-already-marked-fallback-is-kept-as-is
+EXPECT_LACKS | h/ent/phone/outbox.txt | [auto] [auto] | NEGATIVE-the-marker-is-never-doubled
+
+CASE    | daily-cap
+WRITE | h/ent/stub_mode.txt | ok\n
+WRITE | h/ent/ai_reply_log.txt | 9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n9999999999999\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x | $T/h/ent/phone | $T/h/ent | $T/h | 471-5576-0001 | capped words
+EXPECT_OUT | AI-REPLY fallback daily cap | NEGATIVE-at-50-calls-in-24h-the-model-is-not-asked
+EXPECT_HAS | h/ent/phone/outbox.txt | [auto] capped words | and-the-fallback-is-sent

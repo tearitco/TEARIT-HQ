@@ -46,4 +46,4 @@ Seen: `ent_test: Hello.` and in `chat_history.txt`: `[2026-11-16 21:36:18] USER:
 - **Test it** with this recipe in a scratch house plus a harness case that stubs the model (a tiny local op that echoes) so the case stays offline; the live recipe above is the only network step.
 
 ## 5. Not done / not known
-Groq and OpenRouter were not called (no keys present, quota rule). Whether `robot_chat_001`, `eden_robot` and `page_ai_chat_demo` use the LAN backend or an API one was not read (their folders hold chat data). Concurrency (two calls at once on a 270M model) and the Mac's idle cost were not measured. The `phone_reply_ai` command is a design, not built.
+Groq and OpenRouter were not called (no keys present, quota rule). Whether `robot_chat_001`, `eden_robot` and `page_ai_chat_demo` use the LAN backend or an API one was not read (their folders hold chat data). Concurrency (two calls at once on a 270M model) and the Mac's idle cost were not measured. The `phone_reply_ai` command is BUILT (2026-11-16, `ops/phone_reply_ai_op.c`, harness `texting_reply_ai`; see the Texting design 3.5e).

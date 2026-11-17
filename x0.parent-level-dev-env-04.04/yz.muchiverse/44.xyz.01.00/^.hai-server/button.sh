@@ -17,13 +17,13 @@ case "${1:-status}" in
         if [ "$SERVER_DIR" = "$SCRIPT_DIR" ] && [ "${HAI_ROUTER_LIVE_OK:-}" != "1" ]; then
             echo "refused: this would route the LIVE phones. Needs the owner's OK: set HAI_ROUTER_LIVE_OK=1 (or test on a copy with HAI_SERVER_DIR=...)" >&2; exit 1
         fi
-        [ -x "$OPS/server_route_op.+x" ] || { echo "missing $OPS/server_route_op.+x (sh '&.widgits/_shared-lib/ops/build_phone_ensure_op.sh')" >&2; exit 1; }
+        [ -x "$OPS/server_route_op.+x" ] && [ -x "$OPS/phone_event_op.+x" ] || { echo "missing $OPS/server_route_op.+x or phone_event_op.+x (sh '&.widgits/_shared-lib/ops/build_phone_ensure_op.sh')" >&2; exit 1; }
         [ -f "$SERVER_DIR/phones.index" ] || { echo "missing $SERVER_DIR/phones.index" >&2; exit 1; }
         alive && { echo "router already running (pid $(cat "$PIDFILE"))"; exit 0; }
         mkdir -p "$SERVER_DIR/system"
         gcc -O0 -std=c11 -w -o "$SERVER_DIR/system/prisc+x" "$HOUSE/&.widgits/_shared-lib/system/prisc+x.c" || { echo "prisc+x build failed" >&2; exit 1; }
         # fill @OPS@ with plain awk string ops: POSIX (this runs under dash too), and the path contains '&', which sed would expand
-        awk -v ops="$OPS" '{ while ((i = index($0, "@OPS@")) > 0) $0 = substr($0, 1, i - 1) ops substr($0, i + 5); print }' "$SCRIPT_DIR/router.pal" > "$SERVER_DIR/router.run.pal"
+        awk -v ops="$OPS" -v house="$HOUSE" '{ while ((i = index($0, "@OPS@")) > 0) $0 = substr($0, 1, i - 1) ops substr($0, i + 5); while ((i = index($0, "@HOUSE@")) > 0) $0 = substr($0, 1, i - 1) house substr($0, i + 8); print }' "$SCRIPT_DIR/router.pal" > "$SERVER_DIR/router.run.pal"
         cd "$SERVER_DIR" || exit 1
         setsid nohup ./system/prisc+x ./router.run.pal >> router.log 2>&1 < /dev/null &
         echo $! > "$PIDFILE"

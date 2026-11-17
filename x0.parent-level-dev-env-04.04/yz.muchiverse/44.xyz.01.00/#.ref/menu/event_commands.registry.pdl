@@ -1751,3 +1751,11 @@ COMMAND phone_reply
   PARAMS text
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_send_op.+x" "$MUCHI_PHONE" "$MUCHI_MSG_FROM" say "t:$MUCHI_MSG_FROM" '{text}'
 END
+
+COMMAND phone_reply_ai
+  LABEL Phone: Reply with the entity's model (opt-in)
+  FIELD1 Fallback text (sent if the model fails):
+  FIELD2 -
+  PARAMS text
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x" "$MUCHI_PHONE" "$MUCHI_TARGET_ENT" "$D" "$MUCHI_MSG_FROM" '{text}'
+END
