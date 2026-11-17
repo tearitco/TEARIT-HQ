@@ -811,13 +811,8 @@ static int  g_cookie_path_set = 0;
 /* Cookie path match helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_cookie_path_match.c"
 
-static char *trim_c(char *s) {
-    while (*s == ' ' || *s == '\t') s++;
-    size_t n = strlen(s);
-    while (n && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
-        s[--n] = 0;
-    return s;
-}
+/* Cookie string trim helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_trim_c.c"
 
 static void sanitize_cookie_value(const char *in, char *out, size_t olen) {
     size_t o = 0;
