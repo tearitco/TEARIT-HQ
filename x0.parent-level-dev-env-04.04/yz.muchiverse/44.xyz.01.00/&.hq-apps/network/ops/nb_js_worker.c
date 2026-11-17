@@ -157,8 +157,8 @@ static JSRuntime *g_live_rt  = NULL;
 /* Bounded frame reader extracted (Phase 1, single-TU include). */
 #include "nb_worker_recv_frame_ex.c"
 
-static int recv_frame_budget(int budget_ms) { return recv_frame_ex(budget_ms, NULL); }
-static int recv_frame(void) { return recv_frame_budget(-1); }
+/* Frame reader convenience wrappers extracted (Phase 1, single-TU include). */
+#include "nb_worker_recv_frame_wrappers.c"
 
 /* Split g_rbuf into the LOAD fields, copying each into a target buffer.
  * LOAD payload layout (newline-delimited, plan §4 + extra href/title):
