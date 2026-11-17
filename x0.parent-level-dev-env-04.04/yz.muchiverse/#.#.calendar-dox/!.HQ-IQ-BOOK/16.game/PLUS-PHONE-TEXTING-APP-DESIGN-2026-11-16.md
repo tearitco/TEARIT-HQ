@@ -86,7 +86,7 @@ Signalling is the same text path (`command` kind: `call <gid-or-number>`); media
 
 ## 5. Decisions
 **DECIDED (OWNER, asked in chat 2026-11-16):**
-1. **The human's own phone:** create one for the owner's account (`phone_ensure_op`, writes a phone folder under the owner's own user folder; the number is told to the owner).
+1. **The human's own phone:** RESOLVED 2026-11-16 (asked in chat, twice): use the existing phone of cursword's `self` (`<user>/pals/cursword/inventory/self/inventory/zz.phone`, number `297-2363-0074`, label `self`, found in `phones.index`; I read it: both files held only their header comment, no messages). Cursword is the player's avatar, so its own phone is the human's. NO new phone is created. The address book (trunk + branch, 3.9, 3.10) goes beside it.
 2. **Chain message tx:** LATER, after texting works (phases 1 to 4 put the text hash in the router ledger only; phase 5 changes `PAL-CHAIN-STANDARD`).
 3. **Auto-reply:** "can have a custom default reply event/pal, editable ez". So there IS a default reply (not silence): every phone gets a **default reply event** from one shared template, and the owner (or any user) edits it in a plain file. See 3.5. Loop cap and rate limit still apply.
 4. **Other users:** open to everyone, with the router's per-sender rate limit and a per-phone block list (any phone may block numbers; nobody is blocked by default).
