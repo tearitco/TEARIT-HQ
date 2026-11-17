@@ -132,4 +132,11 @@ RUN | /usr/bin/grep | -c | -F | bv_piece_flag.h | bv_menu_input.c
 EXPECT_OUT | 1 | the-menu-input-includes-the-same-header
 RUN | /usr/bin/grep | -c | -F | static int piece_pdl_flag( | bv_menu_input.c
 EXPECT_OUT | 0 | NEGATIVE-no-private-copy-of-the-flag-reader-is-left
+# first frame at the window's own size (2026-11-17, owner: "first frame of the hud started with font 2 big out of frame"): the engine waited for nothing and drew frame 1 from the shared size file of another window. Behaviour proven in a scratch run (no frame without the session size file, then exactly the file's size; the old engine stayed at the foreign size); here the wiring.
+RUN | /usr/bin/awk | /bv_wait_session_size\(project_root/ { w = NR } /^    render_one_frame\(\);/ { if (!r) r = NR } END { exit !(w && r && w < r) } | bv_render_3d.c
+EXPECT_EXIT | 0 | the-wait-comes-BEFORE-the-first-frame
+RUN | /usr/bin/awk | /bv_wait_session_size\(project_root/ { w = NR } /^    render_one_frame\(\);/ { if (!r) r = NR } END { exit !(w && r && r < w) } | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-a-wait-after-the-first-frame-is-false
+RUN | /usr/bin/grep | -q | -F | vsig.sz = -2; vsig.mt = -2; | bv_render_3d.c
+EXPECT_EXIT | 0 | the-loop-switches-to-the-session-size-file-when-it-appears
 CLEAN |

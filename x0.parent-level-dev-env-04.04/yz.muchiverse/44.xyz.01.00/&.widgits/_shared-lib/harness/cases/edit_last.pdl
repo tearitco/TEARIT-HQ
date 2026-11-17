@@ -47,3 +47,13 @@ RUN | /usr/bin/awk | /edit_last.sh" save/ { if (!s) s = NR } /edit_last.sh" reso
 EXPECT_EXIT | 0 | save-comes-BEFORE-resolve
 RUN | /usr/bin/awk | /edit_last.sh" save/ { if (!s) s = NR } /edit_last.sh" resolve/ { if (!r) r = NR } END { exit !(s && r && r < s) } | open_board.sh
 EXPECT_EXIT | 1 | NEGATIVE-resolve-before-save-is-false
+
+# 2026-11-17: the relaunch landed on centroid:test although resolve said live. CONFIRM_START_MAP regenerates the book on its default page AFTER a CONFIRM_SET_DESK sent in the same instant. The launcher must send START_MAP, wait for the book, then SET_DESK.
+RUN | /usr/bin/awk | /CONFIRM_START_MAP/ { s = NR } /CONFIRM_SET_DESK/ { d = NR } END { exit !(s && d && s < d) } | open_board.sh
+EXPECT_EXIT | 0 | start-map-is-sent-before-set-desk
+RUN | /usr/bin/grep | -c | -F | CONFIRM_SET_DESK | open_board.sh
+EXPECT_OUT | 1 | set-desk-is-its-own-write-not-in-the-START_MAP-line
+RUN | /usr/bin/awk | /CONFIRM_START_MAP/ && /CONFIRM_SET_DESK/ { bad = 1 } END { exit bad } | open_board.sh
+EXPECT_EXIT | 0 | no-single-line-sends-both-commands
+RUN | /usr/bin/awk | /CONFIRM_START_MAP/ && /CONFIRM_SET_DESK/ { bad = 1 } END { exit !bad } | open_board.sh
+EXPECT_EXIT | 1 | NEGATIVE-both-in-one-line-is-the-bug

@@ -118,6 +118,16 @@ static void bv_prefer_session_file(char *path, size_t cap, const char *name) {
     char sp[4400]; snprintf(sp, sizeof(sp), "%s/pieces/display/%s", project_root, name);
     struct stat sst; if (stat(sp, &sst) == 0) snprintf(path, cap, "%s", sp);
 }
+/* The first frame of a new session must be drawn at THIS window's canvas size. The window writes the session's own pieces/display/board_view.txt on its first layout; until then the only size on disk is the shared
+ * #.desktop/pchq_board_view.txt (another board's, or the last layout of a closed one: 717x430 against a 1127x741 canvas). A frame drawn from that is stretched into the window, so the HUD text and the corner map come
+ * out too big and partly out of frame for one frame (owner 2026-11-17, "first frame of the hud started with font 2 big out of frame"; same cause as the earlier first-frame minimap scale report). Wait for the
+ * session file (up to max_ms, then fall back to the shared one so a window that never writes it still works). Returns 1 when the session file exists. */
+static int bv_wait_session_size(const char *proj, int max_ms) {
+    char sp[4400]; snprintf(sp, sizeof(sp), "%s/pieces/display/board_view.txt", proj);
+    struct stat sst; int waited = 0;
+    while (stat(sp, &sst) != 0 && waited < max_ms) { struct timespec ts = { 0, 100 * 1000 * 1000 }; nanosleep(&ts, NULL); waited += 100; }
+    return stat(sp, &sst) == 0;
+}
 static char house_root[MAX_PATH] = "";
 /* vertical FOV, degrees. Wider default (was 60) so the sky / sun /
  * horizon are in frame, not tunnel-visioned onto the board - direct
@@ -5406,6 +5416,7 @@ int main(int argc, char **argv) {
     long long last_req = bv_file_size(reqp);
     long long served = 0;
     /* one render at start so the overlay exists before the first request */
+    if (project_root[0]) bv_wait_session_size(project_root, 15000);      /* the first frame must be drawn at this window's canvas size, not another window's (see bv_wait_session_size) */
     render_one_frame();
 
     /* MILESTONE A (pc-hq board reframe) - the khtpm board window writes
@@ -5444,6 +5455,10 @@ int main(int argc, char **argv) {
         long long now = bv_file_size(reqp);
         int vw = last_vw, vh = last_vh, view_changed = 0;
         static bv_sig_t vsig = { -2, -2 };
+        if (house_root[0] && !strstr(vszp, "/pieces/display/board_view.txt")) {      /* still on the shared file: switch to the session's own the moment it exists, and force a re-read */
+            char t[PATH_BUF]; snprintf(t, sizeof(t), "%s/#.desktop/pchq_board_view.txt", house_root); bv_prefer_session_file(t, sizeof(t), "board_view.txt");
+            if (strcmp(t, vszp) != 0) { snprintf(vszp, sizeof(vszp), "%s", t); vsig.sz = -2; vsig.mt = -2; }
+        }
         if (vszp[0] && bv_sig_changed(vszp, &vsig)) {
             FILE *vf = fopen(vszp, "r");
             if (vf) { if (fscanf(vf, "%d %d", &vw, &vh) == 2 &&

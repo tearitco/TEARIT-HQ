@@ -64,7 +64,10 @@ if [ ! -d "$PCHQ_PKG/pieces/system/maps/$BOOK" ]; then
     BOOK=rpg-edit-hq
     PAGE=start
 fi
-sleep 8; printf 'CONFIRM_START_MAP:%s\nCONFIRM_SET_DESK:%s\n' "$BOOK" "$PAGE" >> "$INBOX"
+# START_MAP regenerates the book on its default page (centroid: test) and that finishes AFTER a SET_DESK sent in the same instant, so the desk the owner was on was lost again (2026-11-17, found after the last-book fix: resolve said live, the editor opened test). Send START_MAP, wait until the engine's world_01/state.txt names the book (up to 40 s), let the generate settle, then SET_DESK.
+sleep 8; printf 'CONFIRM_START_MAP:%s\n' "$BOOK" >> "$INBOX"
+for _i in $(seq 1 20); do sleep 2; [ "$(sed -n 's/^map_id=//p' "$PCHQ_PKG/pieces/world_01/state.txt" 2>/dev/null | head -1)" = "$BOOK" ] && break; done
+sleep 6; printf 'CONFIRM_SET_DESK:%s\n' "$PAGE" >> "$INBOX"
 # Declare the window the OWNER of the engine's detached stack: it leaves the process we registered, and it RESPAWNS when the board reloads its book, which is how a closed board
 # used to leave a trigger watcher, a clock daemon and the board-viewer prisc / parser / renderer running for hours. Two explicit rules in #.desktop/proc_adopt_rules.pdl, applied on
 # every registry pass (the guard, every ~30 s) while the window lives: this instance's session folder, and the board-viewer session this window reports in state/ui.txt
