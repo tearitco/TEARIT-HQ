@@ -1,12 +1,8 @@
 /* nb_worker_node_root.c - Node root/ownership helpers (mechanical extract, single-TU include) */
 #define NB_OWNER_PROP "__nb_owner"
 
-static JSValue nb_global_document(JSContext *ctx) {
-    JSValue g = JS_GetGlobalObject(ctx);
-    JSValue doc = JS_GetPropertyStr(ctx, g, "document");
-    JS_FreeValue(ctx, g);
-    return doc; /* caller frees */
-}
+/* Node global-document helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_node_global_document.c"
 static JSValue nb_node_getRootNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     (void)argc; (void)argv;
     NbNode *n = get_this(ctx, this_val);
