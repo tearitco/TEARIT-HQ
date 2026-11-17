@@ -131,13 +131,8 @@ static JSRuntime *g_live_rt  = NULL;
 
 /* Read one length-prefixed payload from stdin into g_rbuf.
  * Returns 1 on success, 0 on EOF/shutdown. */
-/* Milliseconds remaining until a monotonic deadline (0 if already past). */
-static long ms_until(long deadline_ms) {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    long left = deadline_ms - (long)(now.tv_sec * 1000L + now.tv_nsec / 1000000L);
-    return left < 0 ? 0 : left;
-}
+/* Monotonic deadline helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_ms_until.c"
 
 /* Bounded frame read. budget_ms < 0 keeps the historical blocking
  * behaviour; >= 0 gives up once the budget is spent and returns 0.
