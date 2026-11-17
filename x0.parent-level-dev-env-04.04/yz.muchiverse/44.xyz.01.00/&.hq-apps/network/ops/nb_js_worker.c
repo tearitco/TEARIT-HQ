@@ -364,10 +364,8 @@ static JSValue nb_el_scroll_dim(JSContext *ctx, JSValueConst this_val, int argc,
 /* Phase 3 slice 2: simple block layout for getBoundingClientRect.
  * x is 0 for now (no inline flow), y is stacked: parent y + sum of
  * previous siblings' CSS heights. Hidden ancestors (display:none) give 0,0,0,0. */
-static int layout_hidden_anc(NbNode *n) {
-    for (NbNode *a = n; a; a = a->parent) if (css_hidden(a)) return 1;
-    return 0;
-}
+/* Layout hidden ancestor helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_layout_hidden_anc.c"
 /* Text metrics for unstyled content. The khtpm renderer draws 12px text on a
  * 14px baseline, so a line box is 14px tall and an average glyph advances
  * ~7px; content wraps at the renderer's 640px column. */
