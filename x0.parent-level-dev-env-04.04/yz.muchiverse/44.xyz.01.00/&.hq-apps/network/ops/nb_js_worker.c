@@ -453,20 +453,8 @@ static double nb_edge_pad_h(NbNode *n);
 
 /* The usable content column: the pane width, minus the scrollbar when the
  * document actually overflows it. */
-static double g_col_px(NbNode *from) {
-    if (g_measuring) return g_viewport_px;
-    if (g_gutter_state < 0) {
-        if (g_viewport_h <= 0.0 || !from) {
-            g_gutter_state = 0;              /* no measurement -> no guess */
-        } else {
-            g_measuring = 1;
-            double doc_h = nb_doc_root_h(from);
-            g_measuring = 0;
-            g_gutter_state = (doc_h > g_viewport_h) ? 1 : 0;
-        }
-    }
-    return g_gutter_state ? (g_viewport_px - NB_SCROLLBAR_W) : g_viewport_px;
-}
+/* Content column width helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_g_col_px.c"
 
 /* The chrome the renderer puts ABOVE the first content row inside the
  * scrolled column. Both terms are measured off the renderer, not guessed:
