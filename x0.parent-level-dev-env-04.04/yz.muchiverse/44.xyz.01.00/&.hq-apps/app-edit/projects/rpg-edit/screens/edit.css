@@ -10,3 +10,4 @@ window { font-family: DejaVu Serif; font-size: 11px; }
 .ft-narrow { width: 108px; }
 .dd-row { border: 1px solid #444444; background-color: #1a1a1a; width: 200px; }
 .hqwin-minimized { color: #666666; border: 1px dashed #555555; }
+.edview { width: 344px; height: 440px; }

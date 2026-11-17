@@ -351,6 +351,14 @@ if ! engine_up; then
     trap - EXIT INT TERM
 fi
 
+# ── engine only (2026-11-17, the phone-embedded editor): PCHQ_ENGINE_ONLY=1 stops here, after the engine session is up and BEFORE any board window is started: the caller hosts the canvas in its OWN window (a phone screen).
+# PCHQ_OWNER_PID=<pid> hands the engine to that process (the phone window): the registry ends the engine when it is gone, the same rule the board window gives its engine below.
+if [ -n "${PCHQ_ENGINE_ONLY:-}" ]; then
+    _ep="$(cat "$DATA/pieces/system/engine.pid" 2>/dev/null)"
+    case "$_ep" in ''|*[!0-9]*) ;; *) if [ -n "${PCHQ_OWNER_PID:-}" ] && [ -d "/proc/$PCHQ_OWNER_PID" ] && [ -d "/proc/$_ep" ]; then proc_reg_op_register "$_ep" owner "$PCHQ_OWNER_PID" engine pchq-engine; fi ;; esac
+    if engine_up; then echo "open_pchq_board: engine only, up (no board window)"; exit 0; else echo "open_pchq_board: engine only, NOT up (read $ENGLOG)" >&2; exit 1; fi
+fi
+
 # ── launch the board window — standard x11-hq shape ─────────────────
 if [ "$DATA" = "$PKG" ]; then
     setsid nohup "$BIN" "$HOUSE_ROOT" "$BOARD_TPL" piececraft-hq >/tmp/pchq-board.log 2>&1 < /dev/null &

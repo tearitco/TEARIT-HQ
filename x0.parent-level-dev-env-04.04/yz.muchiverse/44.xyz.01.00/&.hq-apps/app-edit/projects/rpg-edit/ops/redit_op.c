@@ -1,10 +1,13 @@
-/* redit_op - the rpg-edit phone app's screen engine (2026-11-17; owner: "make sure rpg edit opens as a phone app"; guide BOOK 16.game/PLUS-PHONE-PLATFORM-DEV-GUIDE-2026-11-15.md section 2). v1 = a LAUNCHER for the existing rpg-edit-hq editor window.
- *   module (the window runs it): redit_op <house> <package dir> with env KHTPM_ARG3 = the phone instance dir; republishes <inst>/.hq_manager/ui.txt when marker.txt grew or every 5 s; ends with its parent. [--once <inst>] publishes once (harness).
- *   verbs (each button runs ONE):  ui_open <inst>   ui_refresh <inst>
- * ui_open: if an editor window is already running (a process whose command line holds <house>/@.apps/rpg-edit-hq/board/, which also covers a launch in progress) it does NOT start another (the editor is single-instance and relaunching reaps the
- * owner's session); it says so and the phone's bottom bar lists that window as a cell. Otherwise it runs `<house>/@.apps/rpg-edit-hq/button.sh run` (through cpu_gate when the house has it: a launch starts the 3D engine) which opens the editor on the
- * last book and page (the launcher saves the open page itself, pitfall 34). The screen shows that last book:page from <app>/state/last_book.txt (read only: a projection, safe to delete) and whether the editor is open.
- * Footprint: no resident work beyond the module's 0.4 s poll and ONE /proc scan every 5 s while the screen is shown. Exit: 0 ok, 2 usage. */
+/* redit_op - the rpg-edit phone app's screen engine (2026-11-17; owner: "the editor should open in the window ... the phone hardware and size should still be present"; design BOOK 16.game/PLUS-PHONE-RPG-EDIT-EMBEDDED-DESIGN-2026-11-17.md).
+ * The EDITOR RUNS INSIDE THE PHONE SCREEN: this op is the host. It gives the phone its OWN editor instance (a pc-hq data folder <inst>/phone<N>-rpg-edit-pchq made by pchq_instance_init.sh, the book folders LINKED from the desktop editor's
+ * data so edits to a book are shared), starts that instance's engine session without a window (open_pchq_board.sh with PCHQ_ENGINE_ONLY=1, through cpu_gate, owned by the phone window), runs the board projector (pchq_board_projector, PCHQ_PKG = the
+ * data folder) as a child, and BRIDGES its variables into the phone's <inst>/.hq_manager/ui.txt: bv_session and canvas_raw as they are (the renderer reads bv_session by that name and routes the canvas size and clicks into that session), every
+ * other projector variable with the prefix ed_ (so none collides with the phone's own book_label / page_label / n_pages).
+ *   module (the window runs it): redit_op <house> <package dir> with env KHTPM_ARG3 = the phone instance dir; [--once <inst>] projects once WITHOUT starting anything, bridging the projector ui.txt if one exists (harness).
+ *   verbs (each button runs ONE):  ui_open <inst> (open the DESKTOP editor window; never a second one)   ui_refresh <inst>
+ * Load order of a fresh phone editor (a small state machine in the 0.4 s loop): data folder + links -> projector + engine start (background) -> CONFIRM_START_MAP:<last book> to the engine inbox -> wait until world_01 names the book, settle 6 s
+ * (START_MAP regenerates the book on its default page AFTER a same-instant SET_DESK, pitfall 35) -> CONFIRM_SET_DESK:<last page>. The last book:page is the desktop editor's state/last_book.txt (read only).
+ * Footprint: the engine session and the projector while the screen is open (measure before claiming a number), no resident work after the window is gone (the registry ends the engine, the module kills the projector). Exit: 0 ok, 2 usage. */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,8 +41,14 @@ static int book_vars(char *UI, size_t cap, const char *inst, const char *house, 
     DIR *dp = opendir(ad); if (dp) { struct dirent *e; while ((e = readdir(dp)) && k < 12) { if (e->d_name[0] == '.') continue; char mf[4096]; snprintf(mf, sizeof mf, "%s/%s/manifest.pdl", ad, e->d_name); if (access(mf, R_OK)) continue; n += snprintf(UI + n, cap - n, "pg_%d_label=%s\npg_%d_act='%s/&.hq-apps/plus-phone/ops/+x/phone_op.+x' 'open' '%s' '%s'\n", k, e->d_name, k, house, inst, e->d_name); k++; } closedir(dp); }
     n += snprintf(UI + n, cap - n, "n_pages=%d\n", k); return n; }
 
+
 /* ---- the editor ---- */
-/* pid of a running editor window / launch of this house, 0 if none: scans /proc for a command line holding "<house>/@.apps/rpg-edit-hq/board/" (never ourselves) */
+#include <sys/types.h>
+#include <limits.h>
+static char DATA[P], EUI[P];            /* the phone's editor data folder; the projector's state dir (<inst>/editor_ui) */
+static pid_t PROJ = 0, ENGL = 0;        /* projector child, background engine launch */
+static int STAGE = 0, ONCE = 0; static time_t STAGE_T = 0; static char WANT_BOOK[80], WANT_PAGE[80];
+/* pid of a running DESKTOP editor window / launch of this house, 0 if none: scans /proc for a command line holding "<house>/@.apps/rpg-edit-hq/board/" (never ourselves) */
 static int editor_pid(void) {
     char pat[P]; snprintf(pat, sizeof pat, "%s/@.apps/rpg-edit-hq/board/", HOUSE); DIR *d = opendir("/proc"); if (!d) return 0; struct dirent *e; int found = 0; pid_t me = getpid();
     while (!found && (e = readdir(d))) { if (e->d_name[0] < '1' || e->d_name[0] > '9') continue; int pid = atoi(e->d_name); if (pid == me) continue; char f[64], buf[8192]; snprintf(f, sizeof f, "/proc/%d/cmdline", pid);
@@ -52,22 +61,77 @@ static void last_page(char *book, size_t bc, char *page, size_t pc) {
     while (fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "book=", 5)) snprintf(book, bc, "%s", ln + 5); else if (!strncmp(ln, "page=", 5)) snprintf(page, pc, "%s", ln + 5); } fclose(fp);
 }
 static void clean(char *s) { for (; *s; s++) if (*s == '\n' || *s == '\r' || *s == '=') *s = ' '; }
+static void kv_of(const char *file, const char *key, char *out, size_t cap) { out[0] = 0; FILE *fp = fopen(file, "r"); if (!fp) return; char ln[600]; size_t kl = strlen(key); while (fgets(ln, sizeof ln, fp)) if (!strncmp(ln, key, kl) && ln[kl] == '=') { snprintf(out, cap, "%s", ln + kl + 1); out[strcspn(out, "\r\n")] = 0; break; } fclose(fp); }
+/* a `KEY | value` row of the phone config (phone.txt) */
+static void row_of(const char *file, const char *key, char *out, size_t cap) { out[0] = 0; FILE *fp = fopen(file, "r"); if (!fp) return; char ln[300]; size_t kl = strlen(key); while (fgets(ln, sizeof ln, fp)) if (!strncmp(ln, key, kl) && !strncmp(ln + kl, " | ", 3)) { snprintf(out, cap, "%s", ln + kl + 3); out[strcspn(out, "\r\n")] = 0; break; } fclose(fp); }
+static int window_pid(void) { char f[P], b[32]; snprintf(f, sizeof f, "%s/window.pid", INST); rd1(f, b, sizeof b); return atoi(b); }
+/* ---- starting the phone's own editor instance ---- */
+static void ensure_data(void) {
+    const char *base = strrchr(INST, '/'); base = base ? base + 1 : INST; snprintf(DATA, sizeof DATA, "%s/phone%s-rpg-edit-pchq", INST, base); snprintf(EUI, sizeof EUI, "%s/editor_ui", INST);
+    char init[P], of[P]; snprintf(init, sizeof init, "%s/@.apps/piececraft-hq/ops/pchq_instance_init.sh", HOUSE); snprintf(of, sizeof of, "%s/init.out", HQD);
+    char rdy[P]; snprintf(rdy, sizeof rdy, "%s/pieces/system/.instance-ready", DATA);
+    if (access(rdy, F_OK) != 0) { char *av[] = { "/bin/sh", init, DATA, NULL }; run_out(av, of); }
+    char md[P], src[P]; snprintf(md, sizeof md, "%s/pieces/system/maps", DATA); mkdir(md, 0755); snprintf(src, sizeof src, "%s/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps", HOUSE);
+    DIR *dp = opendir(src); if (dp) { struct dirent *e; while ((e = readdir(dp))) { if (e->d_name[0] == '.') continue; char from[P], to[P], tgt[P]; snprintf(from, sizeof from, "%s/%s", src, e->d_name); snprintf(to, sizeof to, "%s/%s", md, e->d_name);
+            struct stat sb; if (lstat(to, &sb) == 0) continue; ssize_t n = readlink(from, tgt, sizeof tgt - 1); if (n > 0) { tgt[n] = 0; if (symlink(tgt, to) != 0) { /* best effort */ } } else if (symlink(from, to) != 0) { /* best effort */ } } closedir(dp); }
+    snprintf(of, sizeof of, "%s/pieces/system/widget_cmds", DATA); mkdir(of, 0755); mkdir(EUI, 0755);
+}
+static pid_t child(char *const av[], const char *env_pkg, int engine_only) {
+    pid_t c = fork(); if (c != 0) return c;
+    int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); }
+    setenv("PCHQ_PKG", env_pkg, 1); if (engine_only) { char ow[24]; snprintf(ow, sizeof ow, "%d", window_pid()); setenv("PCHQ_ENGINE_ONLY", "1", 1); setenv("PCHQ_OWNER_PID", ow, 1); }
+    execv(av[0], av); _exit(127);
+}
+static void inbox(const char *line) { char f[P]; snprintf(f, sizeof f, "%s/pieces/system/widget_cmds/inbox.txt", DATA); FILE *fp = fopen(f, "a"); if (fp) { fprintf(fp, "%s\n", line); fclose(fp); } }
+static void stop_children(void) { if (PROJ > 0) { kill(PROJ, SIGTERM); waitpid(PROJ, NULL, 0); PROJ = 0; } }
+static void on_term(int s) { (void)s; if (PROJ > 0) kill(PROJ, SIGTERM); _exit(0); }
+static void start_projector(void) {
+    char pj[P], host[80]; snprintf(pj, sizeof pj, "%s/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x", HOUSE); const char *hb = strrchr(DATA, '/'); snprintf(host, sizeof host, "%s", hb ? hb + 1 : DATA);
+    char *av[] = { pj, HOUSE, EUI, host, NULL }; if (access(pj, X_OK) == 0) PROJ = child(av, DATA, 0);
+}
+/* one step of the load: returns after at most a few file reads */
+static void step(void) {
+    time_t now = time(NULL); char wf[P], mid[80];
+    if (STAGE == 0) {
+        last_page(WANT_BOOK, sizeof WANT_BOOK, WANT_PAGE, sizeof WANT_PAGE); ensure_data();
+        char gate[P], opb[P];      /* the projector is started AFTER the engine launch: open_pchq_board.sh reaps every projector of the same instance first (found 2026-11-17, it killed ours) */
+        snprintf(gate, sizeof gate, "%s/&.widgits/_shared-lib/ops/+x/cpu_gate.+x", HOUSE); snprintf(opb, sizeof opb, "%s/@.apps/piececraft-hq/open_pchq_board.sh", HOUSE);
+        { char *av1[] = { gate, HOUSE, "run", "phone_rpg_edit_engine", "--wait", "150", "--", "/bin/sh", opb, HOUSE, NULL }; char *av2[] = { "/bin/sh", opb, HOUSE, NULL }; ENGL = child(access(gate, X_OK) == 0 ? av1 : av2, DATA, 1); }
+        STAGE = 1; STAGE_T = now; return; }
+    if (STAGE == 1) { int st; pid_t r = waitpid(ENGL, &st, WNOHANG); if (r == ENGL) { ENGL = 0; if (WIFEXITED(st) && WEXITSTATUS(st) == 0) { start_projector(); STAGE = WANT_BOOK[0] ? 2 : 5; STAGE_T = now; } else { STAGE = 9; STAGE_T = now; } }
+        else if (now - STAGE_T > 240) { if (ENGL > 0) kill(ENGL, SIGKILL); STAGE = 9; STAGE_T = now; } return; }
+    if (STAGE == 2) { char l[200]; snprintf(l, sizeof l, "CONFIRM_START_MAP:%s", WANT_BOOK); inbox(l); STAGE = 3; STAGE_T = now; return; }
+    if (STAGE == 3) { snprintf(wf, sizeof wf, "%s/pieces/world_01/state.txt", DATA); kv_of(wf, "map_id", mid, sizeof mid);
+        if ((!strcmp(mid, WANT_BOOK) && now - STAGE_T >= 6) || now - STAGE_T > 40) { if (WANT_PAGE[0]) { char l[200]; snprintf(l, sizeof l, "CONFIRM_SET_DESK:%s", WANT_PAGE); inbox(l); } STAGE = 5; STAGE_T = now; } return; }
+}
+/* the projector's variables into the phone's ui text: the ones the RENDERER reads by name (bv_session, canvas_raw, bv_h1, bv_h2, interact_class, interact_armed: canvas routing and the In: key relay) unchanged, everything else prefixed ed_ */
+static int bridge(char *UI, size_t cap) {
+    char f[P], ln[800]; int n = 0; snprintf(f, sizeof f, "%s/state/ui.txt", EUI); FILE *fp = fopen(f, "r"); if (!fp) return 0;
+    while (fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; char *eq = strchr(ln, '='); if (!eq || eq == ln) continue; *eq = 0; const char *k = ln, *v = eq + 1;
+        if (!strcmp(k, "bv_session") || !strcmp(k, "canvas_raw") || !strcmp(k, "bv_h1") || !strcmp(k, "bv_h2") || !strcmp(k, "interact_class") || !strcmp(k, "interact_armed")) n += snprintf(UI + n, cap - n, "%s=%s\n", k, v); else n += snprintf(UI + n, cap - n, "ed_%s=%s\n", k, v);
+        if (n > (int)cap - 1000) break; }
+    fclose(fp); return n;
+}
 static void publish(void) {
-    static char UI[16384]; int n = 0; char last[300], f[P], book[80], page[80], status[400], pl[200], el[200]; int pid = editor_pid();
+    static char UI[65536]; int n = 0; char last[300], f[P], book[80], page[80], status[400], pl[200], el[200]; int pid = editor_pid();
     snprintf(f, sizeof f, "%s/last.txt", HQD); rd1(f, last, sizeof last); last_page(book, sizeof book, page, sizeof page);
-    snprintf(status, sizeof status, "%s", last[0] ? last : (pid ? "the editor is open" : "the editor is closed"));
+    const char *stg = STAGE == 0 ? "starting the editor..." : STAGE == 1 ? "starting the editor engine..." : STAGE == 2 || STAGE == 3 ? "opening your last page..." : STAGE == 9 ? "the editor could not start (see the desktop editor)" : "";
+    snprintf(status, sizeof status, "%s", last[0] ? last : (stg[0] ? stg : (book[0] ? "" : "no last page yet")));      /* ready = empty: the screen shows the editor's own book label */
+    char ptitle[120] = "phone", pn[16] = "", pp[16] = ""; { char pf[P]; snprintf(pf, sizeof pf, "%s/phone.txt", INST); row_of(pf, "PHONE", pn, sizeof pn); row_of(pf, "PORT", pp, sizeof pp); if (pn[0]) snprintf(ptitle, sizeof ptitle, "+%s :%s", pn, pp); }      /* the window is the PHONE: its title is the phone's name, the app is only what it has open (owner 2026-11-17) */
     snprintf(pl, sizeof pl, "last page: %s", book[0] ? book : "none"); if (book[0] && page[0]) snprintf(pl, sizeof pl, "last page: %s : %s", book, page);
     snprintf(el, sizeof el, "%s", pid ? "editor window: open" : "editor window: not open");
     clean(status); clean(pl);
-    n += snprintf(UI + n, sizeof UI - n, "window_title=rpg-edit\nstatus=%s\nhint=%s\nopen_label=%s\npage_line=%s\neditor_line=%s\neditor_open=%d\n", status, pid ? "Tap its cell below to show it." : "Opens the editor on the last page.", pid ? "  editor is open  " : "  open the editor  ", pl, el, pid ? 1 : 0);
+    n += snprintf(UI + n, sizeof UI - n, "window_title=%s\nstatus=%s\nhint=%s\nopen_label=%s\npage_line=%s\neditor_line=%s\neditor_open=%d\nstage=%d\n", ptitle, status, pid ? "The desktop editor is open too." : "Opens the editor on the last page.", pid ? "  editor is open  " : "  open the editor  ", pl, el, pid ? 1 : 0, STAGE);
     n += book_vars(UI + n, sizeof UI - n, INST, HOUSE, "rpg-edit");
-    char uf[P], t[P], old[16384] = ""; snprintf(uf, sizeof uf, "%s/ui.txt", HQD); FILE *fp = fopen(uf, "r"); if (fp) { size_t r = fread(old, 1, sizeof old - 1, fp); old[r] = 0; fclose(fp); }
+    n += bridge(UI + n, sizeof UI - n);      /* reads the projector's ui.txt if there is one (harness: a fake one) */
+    char uf[P], t[P]; static char old[65536]; old[0] = 0; snprintf(uf, sizeof uf, "%s/ui.txt", HQD); FILE *fp = fopen(uf, "r"); if (fp) { size_t r = fread(old, 1, sizeof old - 1, fp); old[r] = 0; fclose(fp); }
     if (strcmp(old, UI)) { snprintf(t, sizeof t, "%s/ui.txt.tmp", HQD); fp = fopen(t, "w"); if (fp) { fputs(UI, fp); fclose(fp); rename(t, uf); } }
 }
 static int module_main(const char *inst, int once) {
-    snprintf(INST, sizeof INST, "%s", inst); snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); if (!house_of(inst)) return 2; if (once) { publish(); return 0; }
+    snprintf(INST, sizeof INST, "%s", inst); snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); if (!house_of(inst)) return 2; ONCE = once; snprintf(EUI, sizeof EUI, "%s/editor_ui", inst); if (once) { publish(); return 0; }
+    signal(SIGTERM, on_term); signal(SIGHUP, on_term);
     long seen = -1; time_t last = 0; pid_t pp = getppid();      /* end when the window that started us is gone (an orphan is adopted by the user systemd, so ppid == 1 never fires) */
-    for (;;) { long m = msizeq(); time_t now = time(NULL); if (m != seen || now - last >= 5) { publish(); seen = m; last = now; } if (getppid() != pp || pp <= 1) return 0; usleep(400000); }
+    for (;;) { step(); long m = msizeq(); time_t now = time(NULL); if (m != seen || now - last >= 1) { publish(); seen = m; last = now; } if (getppid() != pp || pp <= 1) { stop_children(); return 0; } usleep(400000); }
 }
 static int ui_verb(const char *verb, const char *inst) {
     snprintf(INST, sizeof INST, "%s", inst); snprintf(HQD, sizeof HQD, "%s/.hq_manager", inst); mkdir(HQD, 0755); if (!house_of(inst)) return 2;

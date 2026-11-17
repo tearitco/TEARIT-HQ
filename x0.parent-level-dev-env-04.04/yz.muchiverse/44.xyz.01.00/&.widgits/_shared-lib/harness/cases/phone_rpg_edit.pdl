@@ -22,7 +22,7 @@ EXPECT_EXIT | 0 | the-module-publishes-once
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | last page: centroid : live | the-screen-shows-the-last-book-and-page
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | editor_open=0 | no-editor-is-running
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | open the editor | the-button-offers-to-open
-EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | window_title=rpg-edit | the-window-is-titled
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | window_title=phone | the-window-is-titled-by-the-phone-(plain-name-when-no-phone.txt)
 
 CASE    | open-launches
 RUN | $T/redit_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/p1
@@ -55,5 +55,35 @@ RUN | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $HOUSE/&.hq-apps/app-edi
 EXPECT_OUT | CHECK-OK rpg-edit | the-package-passes-app_check
 RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/&.hq-apps/app-edit/projects/rpg-edit/screens/edit.xhtpm
 EXPECT_OUT | 0 error(s), 0 warning(s) | the-screen-passes-the-layout-validator
+
+
+CASE    | embedded-bridge
+WRITE | h/&.hq-apps/plus-phone/instances/p1/phone.txt | # phone.txt\nPHONE \p 3\nPORT \p 41003\nORIENT \p portrait\n
+MKDIR | h/&.hq-apps/plus-phone/instances/p1/editor_ui/state
+WRITE | h/&.hq-apps/plus-phone/instances/p1/editor_ui/state/ui.txt | bv_session=/x/sessions/1\ncanvas_raw=/x/sessions/1/pieces/display/rgb.raw\nbv_h1=/x/h1.txt\nbv_h2=/x/h2.txt\ninteract_class=interact-active\ninteract_armed=1\ninteract_label=ON\nbook_label=book:centroid\npage_label=page:live\nn_desk_opts=2\nd_0_id=live\nd_0_label=live\n
+RUN | $T/redit_op.+x | $T/h | pkg | --once | $T/h/&.hq-apps/plus-phone/instances/p1
+EXPECT_EXIT | 0 | the-module-bridges-the-projector-file
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | window_title=+3 :41003 | the-window-title-is-the-PHONE-name-not-the-app
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | window_title=rpg-edit | NEGATIVE-the-app-name-is-not-the-window-title
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | bv_session=/x/sessions/1 | the-session-passes-through-unchanged
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | canvas_raw=/x/sessions/1/pieces/display/rgb.raw | the-canvas-passes-through-unchanged
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | bv_h1=/x/h1.txt | the-In-relay-files-pass-through-unchanged
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | interact_armed=1 | the-In-armed-flag-passes-through-unchanged
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_bv_session= | NEGATIVE-bv_session-is-not-renamed-with-the-ed_-prefix
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_canvas_raw= | NEGATIVE-canvas_raw-is-not-renamed-with-the-ed_-prefix
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_bv_h1= | NEGATIVE-bv_h1-is-not-renamed-with-the-ed_-prefix
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_bv_h2= | NEGATIVE-bv_h2-is-not-renamed-with-the-ed_-prefix
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_interact_class= | NEGATIVE-interact_class-is-not-renamed-with-the-ed_-prefix
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_interact_armed= | NEGATIVE-interact_armed-is-not-renamed-with-the-ed_-prefix
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_interact_label=ON | other-projector-vars-get-the-ed_-prefix
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_d_0_id=live | and-the-page-picker-rows-too
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | \nbook_label=book:centroid | NEGATIVE-the-editor-book-label-does-not-overwrite-the-phone-top-bar
+COPY | &.hq-apps/app-edit/projects/rpg-edit/screens/edit.xhtpm | edit.xhtpm
+RUN | /usr/bin/grep | -q | -F | relay="${bv_h1},${bv_h2}" | edit.xhtpm
+EXPECT_EXIT | 0 | the-In-tab-declares-the-key-relay
+RUN | /usr/bin/grep | -q | -F | class="tab ${interact_class}" | edit.xhtpm
+EXPECT_EXIT | 0 | and-takes-its-armed-look-from-the-renderer-var
+RUN | /usr/bin/awk | /<canvas / { c = NR } /\$\{PHONE_BARS\}/ { b = NR } /\$\{PHONE_FOOTER\}/ { f = NR } END { exit !(b && c && f && b < c && c < f) } | edit.xhtpm
+EXPECT_EXIT | 0 | the-canvas-sits-between-the-phone-top-bar-and-footer
 
 CLEAN   |

@@ -1,17 +1,19 @@
-<!-- edit.xhtpm - the rpg-edit phone screen (2026-11-17): a launcher for the rpg-edit-hq editor window. Every value is a ${var} written by redit_op (the projector module); each button runs ONE verb. -->
+<!-- edit.xhtpm - the rpg-edit phone screen (2026-11-17): the EDITOR inside the phone window. The phone's own top bar and footer (${PHONE_BARS}, ${PHONE_FOOTER}) stay; between them: a small editor toolbar (the In switch and the page picker) and the map canvas of this phone's own editor instance. Every value is a ${var} written by redit_op (the host and bridge): bv_session and canvas_raw come from the editor's projector as they are (the renderer routes the canvas size and clicks into that session), everything else has the prefix ed_. Design BOOK 16.game/PLUS-PHONE-RPG-EDIT-EMBEDDED-DESIGN-2026-11-17.md (slice S1: map view and page picker). -->
 <window label="${window_title}" class="rpgedit database-window phone-portrait managed">
   <module id="projector" src="&.hq-apps/plus-phone/apps/rpg-edit/ops/+x/redit_op.+x"/>
   <page name="main">
     ${PHONE_BARS}
     ${APP_CHROME}
-    <text label="${status}" class="quiet"/>
-    <text label="${hint}" class="quiet"/>
-    <scrolllist class="from-top">
-      <item id="op" class="btn" label="${open_label}" action="'${PKG}/../ops/+x/redit_op.+x' 'ui_open' '${ARG3}'"/>
-      <item id="rf" class="btn" label="  refresh  " action="'${PKG}/../ops/+x/redit_op.+x' 'ui_refresh' '${ARG3}'"/>
-      <text label="${page_line}" class="verse"/>
-      <text label="${editor_line}" class="verse"/>
-    </scrolllist>
+    <tabbar id="edtb" class="tab-bar">
+      <tab id="ed-in" class="tab ${interact_class}" label="In: ${ed_interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+      <tab id="ed-page" class="tab" label="${ed_page_label} v" onclick="ACTIVATE" target_id="ed-page"/>
+    </tabbar>
+    <repeat count="${ed_n_desk_opts}" bind="ed_d">
+      <item id="do-${ed_d.#}" class="dd-row dropdown-child ${ed_d.active}" target_id="ed-page" label="${ed_d.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${ed_d.id}'"/>
+    </repeat>
+    <item id="do-cancel" class="dd-row dropdown-child quiet" target_id="ed-page" label="- cancel -" action="void"/>
+    <text label="${ed_book_label}  ${status}" class="quiet"/>
+    <canvas id="view" class="edview" sprite="${canvas_raw}"/>
     ${PHONE_FOOTER}
   </page>
 </window>

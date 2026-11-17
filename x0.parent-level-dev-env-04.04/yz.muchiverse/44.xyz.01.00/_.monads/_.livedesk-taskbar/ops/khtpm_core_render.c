@@ -10164,6 +10164,14 @@ static void assign_nav_and_layout(void) {
                 } else {
                     /* not user-owned: grow the window to the framebuffer */
                     if (cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
+                    /* a fixed-size canvas (CSS width/height, e.g. the editor inside a phone screen) in a window that has a bv_session var tells THAT session its pixel size, so the engine renders exactly that and the canvas blits 1:1;
+                     * written only when it changes (kh_canvas_size_path: no session var and not the pc-hq board = nothing is written) */
+                    {
+                        char vsz2[PATH_BUF]; static int last_sw = -1, last_sh = -1; static char last_sp[PATH_BUF];
+                        if (kh_session_display_path("board_view.txt", vsz2, sizeof(vsz2)) && (item->w != last_sw || item->h != last_sh || strcmp(vsz2, last_sp) != 0)) {
+                            FILE *vf2 = fopen(vsz2, "w"); if (vf2) { fprintf(vf2, "%d %d\n", item->w, item->h); fclose(vf2); last_sw = item->w; last_sh = item->h; snprintf(last_sp, sizeof(last_sp), "%s", vsz2); }
+                        }
+                    }
                 }
                 y += item->h + 4;
                 continue;
