@@ -1,0 +1,159 @@
+# trunk_op (2026-11-16): the house standard for shared, versioned data (BOOK 02-architecture/TRUNK-AND-BRANCH-SHARED-DATA-STANDARD-2026-11-16.md, decision D87). SCRATCH folder, the REAL op, NO network.
+# Proves: a trunk row is inherited by every branch; a branch override changes only that branch and a later trunk edit does not clobber it; a DEL hides a key for one branch only; only a file's owner may write it;
+# a trunk refuses private rows; publish copies a public branch row to the trunk (trunk owner only) and refuses a private one; sync is idempotent; verify fails on any edit made outside the op (hand-appended row,
+# row edited in place); compact drops rows equal to the trunk's value and keeps the merged view identical; caps and bad keys are refused; init never overwrites. Each negative has a sabotage run (see the README row).
+RESULTS | ../results/trunk_op.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | init-trunk | --as | alice
+EXPECT_OUT | INIT-OK | the-trunk-is-created
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | name | Bob | --as | alice | --now-ms | 1000
+EXPECT_OUT | PUT-OK name | row-1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | phone | 555 | --as | alice | --now-ms | 1001
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | init-branch | $T/T | --as | carol
+EXPECT_OUT | INIT-OK | branch-1-owned-by-carol
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | init-branch | $T/T | --as | dave
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | init-trunk | --as | mallory
+EXPECT_OUT | REFUSED | NEGATIVE-init-never-overwrites-an-existing-trunk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B3 | init-branch | $T/missing | --as | erin
+EXPECT_OUT | REFUSED | NEGATIVE-a-branch-needs-an-existing-trunk
+
+CASE    | a-branch-inherits-the-trunk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | name
+EXPECT_OUT_IS | Bob | branch-1-reads-the-trunk-value
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | get | name
+EXPECT_OUT_IS | Bob | branch-2-reads-it-too
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | list
+EXPECT_OUT | LIST-END 2 | the-merged-view-has-both-keys
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | nokey
+EXPECT_OUT | NOT-FOUND | NEGATIVE-an-unknown-key-is-not-found
+
+CASE    | an-override-changes-only-that-branch
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | name | Robert | --as | carol | --now-ms | 1002
+EXPECT_OUT | PUT-OK | the-override-is-written-to-the-branch
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | name
+EXPECT_OUT_IS | Robert | branch-1-sees-its-override
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | get | name
+EXPECT_OUT_IS | Bob | NEGATIVE-branch-2-is-unchanged
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | get | name
+EXPECT_OUT_IS | Bob | NEGATIVE-the-trunk-is-unchanged
+
+CASE    | a-later-trunk-edit-does-not-clobber-an-override
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | name | Bobby | --as | alice | --now-ms | 1003
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | name
+EXPECT_OUT_IS | Robert | NEGATIVE-the-override-survives-the-trunk-edit
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | get | name
+EXPECT_OUT_IS | Bobby | a-branch-with-no-override-follows-the-trunk
+
+CASE    | a-delete-hides-a-key-for-one-branch-only
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | del | phone | --as | dave | --now-ms | 1004
+EXPECT_OUT | DEL-OK | the-delete-row-is-written
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | get | phone
+EXPECT_OUT | NOT-FOUND | the-key-is-hidden-in-branch-2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | phone
+EXPECT_OUT_IS | 555 | NEGATIVE-branch-1-still-sees-it
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | get | phone
+EXPECT_OUT_IS | 555 | NEGATIVE-the-trunk-still-has-it
+
+CASE    | only-the-owner-writes
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | x | 1 | --as | carol
+EXPECT_OUT | REFUSED only the trunk owner | NEGATIVE-a-non-owner-cannot-write-the-trunk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | x | 1 | --as | dave
+EXPECT_OUT | REFUSED only the branch owner | NEGATIVE-another-owner-cannot-write-a-branch
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | del | name | --as | dave
+EXPECT_OUT | REFUSED | NEGATIVE-nor-delete-from-it
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | x | 1 | --private | --as | alice
+EXPECT_OUT | REFUSED a trunk holds no private rows | NEGATIVE-a-trunk-refuses-private-rows
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | get | x
+EXPECT_OUT | NOT-FOUND | and-nothing-was-written
+
+CASE    | publish-copies-public-rows-and-refuses-private-ones
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | secret | hush | --private | --as | carol | --now-ms | 1005
+EXPECT_OUT | PUT-OK | a-private-row-is-kept-on-the-branch
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | publish | secret | --as | alice
+EXPECT_OUT | REFUSED secret is private | NEGATIVE-a-private-row-is-never-published
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | get | secret
+EXPECT_OUT | NOT-FOUND | and-it-is-not-on-the-trunk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | publish | name | --as | carol
+EXPECT_OUT | REFUSED only the trunk owner | NEGATIVE-a-branch-owner-cannot-publish-into-someone-elses-trunk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | publish | name | --as | alice | --now-ms | 1006
+EXPECT_OUT | PUBLISH-OK name | the-trunk-owner-publishes-a-public-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | get | name
+EXPECT_OUT_IS | Robert | the-trunk-now-holds-it
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | get | name
+EXPECT_OUT_IS | Robert | and-a-branch-with-no-override-sees-the-new-trunk-value
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | publish | nokey | --as | alice
+EXPECT_OUT | REFUSED no branch row | NEGATIVE-publishing-a-key-the-branch-does-not-have-is-refused
+
+CASE    | sync-is-idempotent
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | status
+EXPECT_OUT | behind= | status-reports-how-far-behind-the-branch-is
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | sync | --as | dave | --now-ms | 1007
+EXPECT_OUT | SYNC-OK behind= | the-first-sync-records-the-trunk-head
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | sync | --as | dave | --now-ms | 1008
+EXPECT_OUT | nothing to do | NEGATIVE-a-second-sync-changes-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | status
+EXPECT_OUT | behind=0 | and-the-branch-is-no-longer-behind
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B2 | sync | --as | carol
+EXPECT_OUT | REFUSED only the branch owner | NEGATIVE-only-the-owner-syncs-a-branch
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | sync | --as | alice
+EXPECT_OUT | REFUSED sync is for a branch | NEGATIVE-a-trunk-is-not-synced
+
+CASE    | verify-catches-every-edit-made-outside-the-op
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | verify
+EXPECT_OUT | VERIFY-OK | CONTROL-an-untouched-trunk-verifies
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | verify
+EXPECT_OUT | VERIFY-OK | CONTROL-so-does-a-branch
+RUN | /bin/cp | $T/T | $T/T.keep
+WRITE   | T | 0|OWNER|alice||\n1000-alice-2|PUT|name|Bob||\n9999-mallory-1|PUT|name|Forged|\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | verify
+EXPECT_OUT | VERIFY-FAIL the file was changed outside trunk_op | NEGATIVE-a-hand-appended-row-is-caught
+RUN | /bin/cp | $T/T.keep | $T/T
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | verify
+EXPECT_OUT | VERIFY-OK | CONTROL-restoring-the-bytes-verifies-again
+RUN | /bin/sed | -i | s/Bobby/Bobbi/ | $T/T
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | verify
+EXPECT_OUT | VERIFY-FAIL | NEGATIVE-a-row-edited-in-place-is-refused
+RUN | /bin/cp | $T/T.keep | $T/T
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/nofile | verify
+EXPECT_OUT | VERIFY-FAIL | NEGATIVE-a-missing-file-fails
+
+CASE    | compact-keeps-the-merged-view-and-shrinks-the-branch
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | phone | 555 | --as | carol | --now-ms | 1010
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | name | Robert | --as | carol | --now-ms | 1011
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | city | Rome | --as | carol | --now-ms | 1012
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | color | red | --as | alice | --now-ms | 1009
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | put | color | blue | --as | carol | --now-ms | 1013
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | list
+EXPECT_OUT | city\pRome\pbranch | CONTROL-before-compaction-the-branch-has-its-own-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | compact | --as | carol
+EXPECT_OUT | COMPACT-OK | compaction-runs
+EXPECT_OUT | the merged view is identical | and-says-the-view-is-identical
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | phone
+EXPECT_OUT_IS | 555 | the-phone-is-still-555-now-inherited-from-the-trunk
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | city
+EXPECT_OUT_IS | Rome | a-real-override-is-kept
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | color
+EXPECT_OUT_IS | blue | a-real-override-that-DIFFERS-from-the-trunk-is-kept-by-compaction
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | get | color
+EXPECT_OUT_IS | red | and-the-trunk-is-untouched
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | get | secret
+EXPECT_OUT_IS | hush | a-private-row-is-kept
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | verify
+EXPECT_OUT | VERIFY-OK | the-compacted-branch-still-verifies
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/B1 | compact | --as | dave
+EXPECT_OUT | REFUSED only the branch owner | NEGATIVE-only-the-owner-compacts
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | compact | --as | alice
+EXPECT_OUT | REFUSED compact is for a branch | NEGATIVE-a-trunk-is-not-compacted
+
+CASE    | caps-and-bad-input-are-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | bad key | 1 | --as | alice
+EXPECT_OUT | REFUSED bad key | NEGATIVE-a-key-with-a-space
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | k/../x | 1 | --as | alice
+EXPECT_OUT | REFUSED bad key | NEGATIVE-a-key-with-path-characters
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | big | 1234567890 | --as | alice | --max-bytes | 60
+EXPECT_OUT | REFUSED the file is at its size cap | NEGATIVE-an-append-past-the-size-cap
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/T | put | k | 1 | --as | ../x
+EXPECT_OUT | REFUSED bad --as | NEGATIVE-a-bad-owner-id
