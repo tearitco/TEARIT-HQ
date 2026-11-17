@@ -185,3 +185,23 @@ RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-cli | $T/h/&.hq-apps
 EXPECT_OUT | ENTITY-REFUSED | NEGATIVE-empty-text-is-refused
 SLEEP | 1500
 EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/third/cli_got.txt | and-none-of-the-refused-ones-ran-the-script
+
+CASE    | icons-the-entity-own-picture-and-the-standard-app-icon
+RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/default-icon | $T/h/&.hq-apps/plus-phone/default-icon
+RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/entity-icon | $T/h/&.hq-apps/plus-phone/entity-icon
+WRITE   | h/#.desktop/strip_ui.txt | n_tabs=1\ntab_0_label=cursword\ntab_0_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/cursword\n
+WRITE   | h/&.hq-apps/plus-phone/phone_prefs.pdl | ENTITY | cursword\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | entity-icon | CONTROL-an-entity-with-no-sprite.csv-gets-the-shipped-sword
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/sprite.csv | # resolution=1\nr,g,b,a\n255,0,0,255\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | entity-icon | the-entity-with-its-own-sprite.csv-does-not-get-the-shipped-sword
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | ent_0_icon=$T/h/xyzfs/users/u1/home/livedesk/pals/cursword | and-its-tile-points-at-its-own-folder
+RUN | /bin/rm | -f | $T/h/xyzfs/users/u1/home/livedesk/pals/cursword/sprite.csv
+RUN | /bin/ln | -s | /etc/passwd | $T/h/xyzfs/users/u1/home/livedesk/pals/cursword/sprite.csv
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | entity-icon | NEGATIVE-a-sprite.csv-that-is-a-symlink-is-not-used
+RUN | /bin/rm | -rf | $T/h/&.hq-apps/plus-phone/apps/true-swords-clash/icon
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | default-icon | an-app-with-no-icon-folder-gets-the-standard-colored-icon
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | apps/settings/icon | CONTROL-an-app-with-an-icon-keeps-its-own
