@@ -43,9 +43,9 @@ Blocking: a per-user `block.txt` (numbers) honoured by the router (a router chan
 - Encryption of the text at rest is NOT in slice 1 (phone files are plain text today): say so in the app's help, do not claim privacy the files do not have.
 
 ### 3.5 Entities answer (OWNER: AI/FSM via an event trigger)
-- **Trigger:** the router already knows when an inbox grew. A small op `phone_reply_op <phone_dir>` (resident or fired by the router after delivery) reads the entity's inbox from its own byte cursor (size growth, never mtime) and for each new `say` line asks the entity's **reply policy**: `<entity>/reply.pdl` rows `REPLY | <match> | <action>` where action is `text <fixed reply>`, `event <page>` (plays an event page, which may call `phone_send_op`), or `ai <backend>` (the house AI layer, rate-limited, off by default). No policy = the entity stays silent (the safe default of slice 1).
+- **Trigger:** the router already knows when an inbox grew. A small op `phone_reply_op <phone_dir>` (resident or fired by the router after delivery) reads the entity's inbox from its own byte cursor (size growth, never mtime) and for each new `say` line asks the entity's **reply policy**: `<entity>/reply.pdl` rows `REPLY | <match> | <action>` where action is `text <fixed reply>`, `event <page>` (plays an event page, which may call `phone_send_op`), or `ai <backend>` (the house AI layer, rate-limited, off by default). **Default (OWNER decision 3):** a phone with no `reply.pdl` of its own uses the shared template `^.hai-server/_TEMPLATE/default-reply.pdl` (one default reply event, editable in plain text: change the text, the `event` page or `ai` rule, or set `REPLY | * | none` to go silent); the router never overwrites an edited file. The default text says it is automatic.
 - **Safety:** an auto-reply is a normal outbox line (kind `say`) so it passes the same rate limit and ledger; a per-pair reply cap (for example 3 per minute) stops two entities talking forever; the loop guard is a joint in `tunables.conf`.
-- **Test case (documented for users and agents, harness `texting_reply`, scratch house, NO network, no real entity):** two scratch phones A (a human-like sender) and B (an entity with a `reply.pdl`). Steps: (1) A sends `say` to B with `phone_send_op`; (2) one `server_route_op` pass: B's inbox has the line, the ledger has one row and no text; (3) one `phone_reply_op` pass: B's outbox has the reply addressed to A; (4) a second router pass: A's inbox has the reply; (5) negatives: a phone with no `reply.pdl` stays silent; a message from a blocked number gets no reply; the loop cap stops a ping-pong after N messages; a spoofed sender number is refused by `phone_send_op`; sabotage proof for each (remove the cap, remove the block check). The same steps, as prose with the exact commands, go into this doc and into `XO/31.Nov/nov-16/` when the case passes.
+- **Test case (documented for users and agents, harness `texting_reply`, scratch house, NO network, no real entity):** two scratch phones A (a human-like sender) and B (an entity with a `reply.pdl`). Steps: (1) A sends `say` to B with `phone_send_op`; (2) one `server_route_op` pass: B's inbox has the line, the ledger has one row and no text; (3) one `phone_reply_op` pass: B's outbox has the reply addressed to A; (4) a second router pass: A's inbox has the reply; (5) negatives: a phone whose `reply.pdl` says `none` stays silent; a phone with no file gets the template default reply, marked automatic; an EDITED reply.pdl is used instead of the template; a message from a blocked number gets no reply; the loop cap stops a ping-pong after N messages; a spoofed sender number is refused by `phone_send_op`; sabotage proof for each (remove the cap, remove the block check). The same steps, as prose with the exact commands, go into this doc and into `XO/31.Nov/nov-16/` when the case passes.
 
 ### 3.6 Group chats (later)
 A group = one append-only **group ledger** `^.hai-server/groups/<gid>/messages.txt` plus `members.txt` (numbers). The router fans each group line out to every member's inbox (one `say` line each, `ref = g:<gid>`); membership changes are rows (`JOIN`, `LEAVE`, `KICK`) so history is replayable. The thread screen is the same screen filtered by `ref`.
@@ -75,12 +75,16 @@ Signalling is the same text path (`command` kind: `call <gid-or-number>`); media
 | 6 | groups | `texting_group` |
 | 7 | AV design | (doc) |
 
-## 5. Open decisions (owner)
-1. **The human's own phone.** Which phone is jb's? If none exists, create one for the account with `phone_ensure_op` (writes into the user's folder; do it only when told).
-2. **Chain message tx** (slice 5): change `PAL-CHAIN-STANDARD` for a commitment tx type: yes or later?
-3. **Reply default:** silent unless the entity has a `reply.pdl` (DOC recommendation) or reply for owned entities by default?
-4. **Blocking default** for other users' messages: open, or "owned only" until a phone opts in?
-5. **Where the address book lives** (3.9): `contacts.txt` beside the human's own phone (needs decision 1). Search covers my own phone files only: OK?
+## 5. Decisions
+**DECIDED (OWNER, asked in chat 2026-11-16):**
+1. **The human's own phone:** create one for the owner's account (`phone_ensure_op`, writes a phone folder under the owner's own user folder; the number is told to the owner).
+2. **Chain message tx:** LATER, after texting works (phases 1 to 4 put the text hash in the router ledger only; phase 5 changes `PAL-CHAIN-STANDARD`).
+3. **Auto-reply:** "can have a custom default reply event/pal, editable ez". So there IS a default reply (not silence): every phone gets a **default reply event** from one shared template, and the owner (or any user) edits it in a plain file. See 3.5. Loop cap and rate limit still apply.
+4. **Other users:** open to everyone, with the router's per-sender rate limit and a per-phone block list (any phone may block numbers; nobody is blocked by default).
+
+**STILL OPEN (asked as the build goes):**
+5. **Where the address book lives** (3.9): `contacts.txt` beside the human's own phone, and search covers only my own phone files: OK? (implied by decision 1, to confirm before phase 1 ships.)
+6. The default reply's wording and whether it names itself as automatic ("auto-reply: ...") so a human is never fooled.
 
 ## 6. Evidence
 Read: `phone_send_op.c` (header and helpers), `server_route_op.c` (header), `^.hai-server/{README.md,router.pal,tunables.conf,phones.index}`, `HAI-ROBOTS-PHONES-SERVER-DESIGN.md` (headings and sections 3b/3c), `041.pal-chain/ops/chain_send.c` (header), one `phone.pdl`. Run: harness `pet_phones` (11 PASS, 2026-11-16). NOT read: the rest of the router, `phone_ensure_op`, `PAL-CHAIN-STANDARD`, any other user's phone (private).
