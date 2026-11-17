@@ -6,6 +6,7 @@
  *     check - <instance>              run app_check on the selected project, put its verdict in last.txt
  *     export - <instance>             phone_op install <house> <project>: app_check first, nothing copied on failure; the result line goes to last.txt
  *     phone - <instance>              phone_op new <house> (a phone to look at the exported app)
+ *     icon <emoji> <instance>         the selected project's icon/sprite.csv from an emoji through the house pipeline (emoji_gen_atlas then emoji_xtract); icon/emoji.txt records which; the old icon stays unless the new one is complete
  *   --once <instance>                 (harness) one projection and exit. All state is files under <instance>/.hq_manager/ (sel.txt last.txt marker.txt ui.txt); every writer appends one byte to marker.txt.
  * Projects are folders <house>/&.hq-apps/app-edit/projects/<id>/ (an app PACKAGE, validated by plus-phone's app_check). The editor edits NO file yet (v1 = check, export, look); screens and the canvas come next.
  * Build: sh build_app_edit.sh */
@@ -76,7 +77,7 @@ static int verb_open(void) {
 static void result(const char *what, const char *outf) { char line[300] = "", ln[400]; FILE *fp = fopen(outf, "r"); while (fp && fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) snprintf(line, sizeof line, "%s", ln); } if (fp) fclose(fp); unlink(outf); char ts[16], res[400]; stamp(ts, sizeof ts); snprintf(res, sizeof res, "%s  %s: %s", ts, what, line[0] ? line : "(no output)"); wr("last.txt", res); bump(); }
 int main(int argc, char **argv) {
     if (argc >= 3 && !strcmp(argv[1], "open")) { snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); return verb_open(); }
-    if (argc >= 4 && (!strcmp(argv[1], "select") || !strcmp(argv[1], "check") || !strcmp(argv[1], "export") || !strcmp(argv[1], "phone"))) {
+    if (argc >= 4 && (!strcmp(argv[1], "select") || !strcmp(argv[1], "check") || !strcmp(argv[1], "export") || !strcmp(argv[1], "phone") || !strcmp(argv[1], "icon"))) {
         if (!set_paths_from_instance(argv[3])) { fprintf(stderr, "app_edit_op: not an app-edit instance dir: %s\n", argv[3]); return 2; }
         static char ids[MAXPJ][64]; int n = list_projects(ids); const char *v = argv[1];
         if (!strcmp(v, "select")) { for (const char *c = argv[2]; *c; c++) if (!isdigit((unsigned char)*c)) return 2; wr("sel.txt", argv[2]); wr("last.txt", ""); bump(); return 0; }
@@ -85,9 +86,22 @@ int main(int argc, char **argv) {
         if (n == 0) { wr("last.txt", "no project selected"); bump(); return 1; }
         char pk[P]; snprintf(pk, sizeof pk, "%s/&.hq-apps/app-edit/projects/%s", HOUSE, ids[selected(ids, n)]);
         if (!strcmp(v, "check")) { char chk[P]; tool("&.hq-apps/plus-phone/ops/+x/app_check.+x", chk, sizeof chk); char *av[] = { chk, pk, HOUSE, NULL }; int rc = run_out(av, outf); (void)rc; result("check", outf); return 0; }
+        if (!strcmp(v, "icon")) {      /* icon <emoji> <instance>: the selected project's icon/sprite.csv made from an emoji by the HOUSE pipeline (emoji_gen_atlas: FreeType + NotoColorEmoji to a PNG, then emoji_xtract: PNG to the 64 px RGBA csv), the same two ops tp_place_desktop and hatch_egg use. No new icon form in manifest.pdl. The old icon is kept unless the new csv is complete. */
+            const char *em = argv[2]; size_t el = strlen(em); int okc = el > 0 && el <= 16; for (size_t i = 0; okc && i < el; i++) if ((unsigned char)em[i] < 0x20) okc = 0;
+            if (!okc) { wr("last.txt", "icon: give one emoji"); bump(); return 2; }
+            char ga[P], xt[P], png[P], csv[P], fin[P], emf[P]; tool("_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x", ga, sizeof ga); tool("_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x", xt, sizeof xt);
+            snprintf(png, sizeof png, "%s/icon_tmp.png", HQ); snprintf(csv, sizeof csv, "%s/icon/sprite.csv.new", pk); snprintf(fin, sizeof fin, "%s/icon/sprite.csv", pk); snprintf(emf, sizeof emf, "%s/icon/emoji.txt", pk);
+            if (access(ga, X_OK) || access(xt, X_OK)) { wr("last.txt", "icon: the emoji ops are not built"); bump(); return 1; }
+            { char d[P]; snprintf(d, sizeof d, "%s/icon", pk); mkdir(d, 0755); }
+            unlink(csv); char *a1[] = { ga, (char *)em, png, NULL }; int r1 = run_out(a1, outf); char *a2[] = { xt, png, "0", "64", csv, NULL }; int r2 = r1 == 0 ? run_out(a2, outf) : -1; unlink(png);
+            struct stat sb; char h1[40] = ""; FILE *cf = fopen(csv, "r"); if (cf) { if (fgets(h1, sizeof h1, cf)) h1[strcspn(h1, "\r\n")] = 0; fclose(cf); }
+            if (r1 != 0 || r2 != 0 || stat(csv, &sb) || sb.st_size < 20000 || strcmp(h1, "# resolution=64")) { unlink(csv); wr("last.txt", "icon: could not make that emoji (the old icon is kept)"); bump(); return 1; }
+            if (rename(csv, fin) != 0) { unlink(csv); wr("last.txt", "icon: could not write the icon"); bump(); return 1; }
+            { char t[P]; snprintf(t, sizeof t, "%s.tmp", emf); FILE *w = fopen(t, "w"); if (w) { fprintf(w, "%s\n", em); fclose(w); rename(t, emf); } }
+            wr("last.txt", "icon set from the emoji (export to put it on the phone)"); bump(); return 0; }
         if (!strcmp(v, "export")) { char op[P]; tool("&.hq-apps/plus-phone/ops/+x/phone_op.+x", op, sizeof op); char *av[] = { op, "install", HOUSE, pk, NULL }; run_out(av, outf); result("export", outf); return 0; }
     }
-    if (argc < 2) { fprintf(stderr, "usage: app_edit_op open <house> | select|check|export|phone <arg> <instance> | <house> <pkg> (module)\n"); return 2; }
+    if (argc < 2) { fprintf(stderr, "usage: app_edit_op open <house> | select|check|export|phone|icon <arg> <instance> | <house> <pkg> (module)\n"); return 2; }
     snprintf(HOUSE, sizeof HOUSE, "%s", argv[1]); const char *inst = getenv("KHTPM_ARG3"); int once = argc >= 5 && !strcmp(argv[3], "--once"); if (once) inst = argv[4];
     if (!inst || !inst[0] || !set_paths_from_instance(inst)) { fprintf(stderr, "app_edit_op: no usable instance dir (KHTPM_ARG3)\n"); return 2; }
     if (once) { publish(); return 0; }

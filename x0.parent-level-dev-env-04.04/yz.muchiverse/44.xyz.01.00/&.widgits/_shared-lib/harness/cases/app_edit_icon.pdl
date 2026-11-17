@@ -1,0 +1,48 @@
+# app_edit_icon (2026-11-17; owner: "for emoji icons user can set, use the in-house pipeline that converts emoji to sprite.csv"): app-edit's `icon <emoji> <instance>` verb makes the selected project's icon/sprite.csv through the HOUSE pipeline
+# (emoji_gen_atlas then emoji_xtract, the same two ops the tile picker and egg hatching use) with no new icon form in manifest.pdl. SCRATCH house, the REAL app_edit_op and the REAL emoji ops.
+# Proves: a good emoji replaces the old icon with a complete 64 px csv and records the emoji; an empty or control-character argument is refused and the old icon stays; when the pipeline fails (a stub xtract that exits 1) the old icon is KEPT and the screen says so
+# (control: the same call with the real ops worked first); the produced csv passes app_check as a package icon.
+RESULTS | ../results/app_edit_icon.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.hq-apps/app-edit/instances/main/.hq_manager
+MKDIR | h/&.hq-apps/app-edit/projects/aa-good/icon
+MKDIR | h/_.monads/_.livedesk-taskbar/ops/+x
+MKDIR | h/&.hq-apps/plus-phone/ops/+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/ops/+x/app_edit_op.+x | $T/h/&.hq-apps/app-edit/app_edit_op.+x
+RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x
+RUN | /bin/cp | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x
+WRITE | h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | # resolution=1\nOLD-ICON\n
+WRITE | h/&.hq-apps/app-edit/projects/aa-good/manifest.pdl | APP \p id \p aa-good\nTITLE \p Good one\nICON \p icon\nPLATFORM \p 1\n
+
+CASE    | refused-input
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | icon |  | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_EXIT | 2 | an-empty-emoji-is-refused
+EXPECT_HAS | h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | OLD-ICON | the-old-icon-stays-after-a-refusal
+
+CASE    | emoji-icon
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | icon | 🎨 | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_EXIT | 0 | the-pipeline-made-the-icon
+EXPECT_HAS | h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | # resolution=64 | it-is-a-64-px-sprite
+EXPECT_LACKS | h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | OLD-ICON | NEGATIVE-the-old-icon-is-gone
+EXPECT_HAS | h/&.hq-apps/app-edit/projects/aa-good/icon/emoji.txt | 🎨 | the-emoji-is-recorded
+RUN | /usr/bin/wc | -l | $T/h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv
+EXPECT_OUT | 4100 | the-csv-is-complete-3-header-rows-and-4096-pixels
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/app-edit/projects/aa-good | $T/h
+EXPECT_OUT | CHECK-OK aa-good | the-new-icon-passes-app_check
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/last.txt | icon set from the emoji | the-screen-says-so
+
+CASE    | pipeline-fails-old-icon-kept
+RUN | /bin/cp | $T/h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv | $T/good_icon.csv
+WRITE | h/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x | #!/bin/sh\nexit 1\n
+RUN | /bin/chmod | +x | $T/h/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x
+RUN | $T/h/&.hq-apps/app-edit/app_edit_op.+x | icon | 🗡️ | $T/h/&.hq-apps/app-edit/instances/main
+EXPECT_EXIT | 1 | a-failing-pipeline-is-reported
+RUN | /usr/bin/cmp | $T/good_icon.csv | $T/h/&.hq-apps/app-edit/projects/aa-good/icon/sprite.csv
+EXPECT_EXIT | 0 | the-previous-good-icon-is-byte-identical
+EXPECT_HAS | h/&.hq-apps/app-edit/instances/main/.hq_manager/last.txt | old icon is kept | and-the-screen-says-the-old-icon-is-kept
+
+CLEAN   |

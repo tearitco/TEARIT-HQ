@@ -1,0 +1,4 @@
+# app_edit_icon.pal - see cases/app_edit_icon.pdl
+exec ./ops/+x/harness_case_op.+x cases/app_edit_icon.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/app_edit_icon.pdl
+halt
