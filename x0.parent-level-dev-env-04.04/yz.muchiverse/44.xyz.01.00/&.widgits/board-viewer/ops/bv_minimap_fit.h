@@ -40,4 +40,24 @@ static int bv_minimap_dot(double cam, double origin, int cells, int span_px, int
     *px = (int)t;
     return outside;
 }
+/* The colour of one cell on the corner map = the average colour of its tile in the page's atlas (2026-11-16, owner: "why dont i see snow on mini map?" on
+ * ark-age and live). ad70266e2 had replaced the per-cell colours with three flat ones (water, wall, floor), so snow, roads and sand could not show.
+ * A cell's floor or wall id IS the atlas slot (slot % cols, slot / cols, no -1; 0 = no tile). Only pixels with alpha >= 128 count, so a tile that is mostly
+ * transparent keeps the colour of its drawn part. Returns 1 and the colour, or 0 when the slot is off the atlas or has no opaque pixel (the caller keeps its
+ * old flat colour then). Pure, no allocation: also compiled by minimap_fit_op for the harness. */
+static int bv_minimap_tile_avg(const unsigned char *atlas, int aw, int ah, int cols, int tp, int slot, int *r, int *g, int *b) {
+    if (!atlas || cols < 1 || tp < 1 || slot < 1) return 0;
+    int ox = (slot % cols) * tp, oy = (slot / cols) * tp;
+    if (ox + tp > aw || oy + tp > ah) return 0;
+    long sr = 0, sg = 0, sb = 0, n = 0;
+    for (int y = 0; y < tp; y++)
+        for (int x = 0; x < tp; x++) {
+            const unsigned char *p = atlas + ((size_t)(oy + y) * (size_t)aw + (size_t)(ox + x)) * 4;
+            if (p[3] < 128) continue;
+            sr += p[0]; sg += p[1]; sb += p[2]; n++;
+        }
+    if (n == 0) return 0;
+    *r = (int)(sr / n); *g = (int)(sg / n); *b = (int)(sb / n);
+    return 1;
+}
 #endif

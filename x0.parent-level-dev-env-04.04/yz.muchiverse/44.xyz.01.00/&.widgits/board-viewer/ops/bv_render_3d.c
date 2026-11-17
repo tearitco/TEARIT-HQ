@@ -2658,6 +2658,15 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     bv_fill_rect(mm_x - 2, mm_y - 2, mm_x - 1, mm_y + mm_h + 2, 150, 150, 160);
     bv_fill_rect(mm_x + mm_w + 1, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
 
+    /* Real tile colours (2026-11-16, owner: "why dont i see snow on mini map?" on ark-age and live): one average colour per atlas slot, rebuilt only when the atlas is reloaded
+     * (g_mk.id changes on every reload, including a skin swap). A cell paints the colour of its wall tile, else its floor tile; the old flat colours stay as the fallback. */
+    static unsigned char s_mm_col[1024][3]; static unsigned char s_mm_has[1024]; static int s_mm_id = -1;
+    if (g_mm_maker && g_mk.atlas && g_mk.id != s_mm_id) {
+        int nt = g_mk.tiles < 1024 ? g_mk.tiles : 1024;
+        memset(s_mm_has, 0, sizeof s_mm_has);
+        for (int s = 1; s < nt; s++) { int tr, tg, tb; if (bv_minimap_tile_avg(g_mk.atlas, g_mk.aw, g_mk.ah, g_mk.cols, g_mk.tile_px, s, &tr, &tg, &tb)) { s_mm_col[s][0] = (unsigned char)tr; s_mm_col[s][1] = (unsigned char)tg; s_mm_col[s][2] = (unsigned char)tb; s_mm_has[s] = 1; } }
+        s_mm_id = g_mk.id;
+    }
     /* One sample per output pixel when the page is bigger than the inset. A cell loop at 1px would be the whole 504 page and then get dropped. */
     int samples_x = cellpx > 0 ? ww : mm_w, samples_y = cellpx > 0 ? wh : mm_h;
     for (int row = 0; row < samples_y; row++) {
@@ -2677,6 +2686,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
                 unsigned short fl = g_mk.cells[((size_t)by * (size_t)g_mk.w + (size_t)bx) * 2];
                 unsigned short wl = g_mk.cells[((size_t)by * (size_t)g_mk.w + (size_t)bx) * 2 + 1];
                 if (!fl && !wl) { r = 90; g = 150; b = 210; }
+                else if (s_mm_id == g_mk.id && (wl ? wl : fl) < 1024 && s_mm_has[wl ? wl : fl]) { int sl = wl ? wl : fl; r = s_mm_col[sl][0]; g = s_mm_col[sl][1]; b = s_mm_col[sl][2]; }
                 else if (wl) { r = 150; g = 100; b = 60; }
                 else { r = 70; g = 160; b = 55; }
             } else if (!g_mm_col_top || g_mm_col_top[by][bx] < 0 || !g_mm_board3d) { r = 18; g = 18; b = 22; }
