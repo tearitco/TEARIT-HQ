@@ -804,15 +804,8 @@ static int  g_cookie_path_set = 0;
 #include "nb_worker_href_parts.c"
 
 /* RFC 6265 §5.1.4 default-path for a Set-Cookie with no explicit Path. */
-static void default_cookie_path(const char *rp, char *out, size_t olen) {
-    if (!rp || rp[0] != '/') { snprintf(out, olen, "/"); return; }
-    const char *r = strrchr(rp, '/');
-    if (!r || r == rp) { snprintf(out, olen, "/"); return; }
-    size_t n = (size_t)(r - rp);
-    if (n >= olen) n = olen - 1;
-    memcpy(out, rp, n); out[n] = 0;
-    if (!out[0]) snprintf(out, olen, "/");
-}
+/* Default cookie path helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_default_cookie_path.c"
 
 /* RFC 6265 §5.1.4 path-match: `cp` is the cookie path, `rp` the request path. */
 static int cookie_path_match(const char *cp, const char *rp) {
