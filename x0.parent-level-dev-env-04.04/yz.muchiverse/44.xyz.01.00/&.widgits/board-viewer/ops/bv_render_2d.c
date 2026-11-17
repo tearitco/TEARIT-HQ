@@ -36,7 +36,7 @@
 #include <dirent.h>
 #include <setjmp.h>
 #include <png.h>
-#include "bv_minimap_fit.h"   /* same corner-map fit as the 3D view: a page wider than the corner scales down */
+#include "bv_minimap_fit.h"
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
@@ -46,6 +46,7 @@
 
 #define MAX_LINE     1024
 #define PATH_BUF     4096
+#include "bv_piece_flag.h"      /* piece_pdl_flag: the same de_possessible lock as key 9 and the 3D click (needs PATH_BUF and MAX_LINE above) */
 #define MAX_DIM      256          /* board cells per side, hard ceiling */
 #define MAX_FRAME_PX 2400         /* per side; CELL shrinks to fit P1's whole-board view */
 #define MAX_LEGEND   64
@@ -1215,6 +1216,41 @@ static void p2d_scene(int cols, int rows, float *x0, float *y0, float *x1, float
     *x0 = 0; *y0 = 0; *x1 = (float)cols; *y1 = (float)rows;
     if (g_xel_on) { if (g_xel_x < *x0) *x0 = (float)g_xel_x; if (g_xel_y < *y0) *y0 = (float)g_xel_y; if (g_xel_x + 1 > *x1) *x1 = (float)(g_xel_x + 1); if (g_xel_y + 1 > *y1) *y1 = (float)(g_xel_y + 1); }
     for (int k = 0; k < g_np2d; k++) { if (g_p2d[k].x < *x0) *x0 = g_p2d[k].x; if (g_p2d[k].y < *y0) *y0 = g_p2d[k].y; if (g_p2d[k].x + g_p2d[k].sx > *x1) *x1 = g_p2d[k].x + g_p2d[k].sx; if (g_p2d[k].y + g_p2d[k].sy > *y1) *y1 = g_p2d[k].y + g_p2d[k].sy; } }
+/* Where the 2D corner map was drawn this frame, so a click on it names a page cell (2026-11-17, parity with the 3D view: owner "when i click on mini map, it moves my cam / xelector there"). Cleared before the maps draw, set by
+ * p2d_minimap / p2d_cells_minimap, read by the click handler. The cell maths is bv_minimap_cell (bv_minimap_fit.h, harness minimap_fit). */
+static struct { int valid, x, y, w, h, cellpx, wx0, wy0, ww, wh, pw, ph; } g_mm2d;
+/* set one key=value line of a small state file, atomically (the file is rewritten whole: other lines stay byte for byte) */
+static void p2d_kv_set(const char *path, const char *key, const char *val) {
+    char *buf = NULL; long sz = 0; FILE *f = host_fopen(path, "r");
+    if (f) { fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET); if (sz < 0) sz = 0; buf = malloc((size_t)sz + 1); if (buf) { sz = (long)fread(buf, 1, (size_t)sz, f); buf[sz] = 0; } fclose(f); }
+    size_t cap = (size_t)sz + strlen(key) + strlen(val) + 8, o = 0; char *out = malloc(cap); if (!out) { free(buf); return; }
+    size_t kl = strlen(key); int done = 0; const char *p = buf ? buf : "";
+    while (*p) { const char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
+        if (!done && ll > kl && !strncmp(p, key, kl) && p[kl] == '=') { o += (size_t)snprintf(out + o, cap - o, "%s=%s\n", key, val); done = 1; }
+        else { memcpy(out + o, p, ll); o += ll; out[o++] = '\n'; }
+        p += ll + (e ? 1 : 0); }
+    if (!done) o += (size_t)snprintf(out + o, cap - o, "%s=%s\n", key, val);
+    write_atomic(path, out, o); free(out); free(buf);
+}
+static void p2d_mm_record(int x, int y, int w, int h, int cellpx, int wx0, int wy0, int ww, int wh, int pw, int ph) {
+    g_mm2d.valid = 1; g_mm2d.x = x; g_mm2d.y = y; g_mm2d.w = w; g_mm2d.h = h; g_mm2d.cellpx = cellpx; g_mm2d.wx0 = wx0; g_mm2d.wy0 = wy0; g_mm2d.ww = ww; g_mm2d.wh = wh; g_mm2d.pw = pw; g_mm2d.ph = ph;
+}
+/* Move the xelector to a page cell after a corner-map click. A possessed character locks it: the click is ignored unless the book view.pdl says VIEW | minimap_click_possessed | release (and the piece is not de_possessible),
+ * the same rule as the 3D view. Writes xelector_01/state.txt pos_x/pos_y; returns 1 when it moved. */
+static int p2d_xelector_to(int cx, int cy) {
+    char xp[PATH_BUF], poss[64] = "", pol[32] = ""; if (!focused_root[0]) return 0;
+    snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focused_root); read_kv_str(xp, "possessed_id", poss, sizeof(poss));
+    if (poss[0] && strcmp(poss, "none") != 0) {
+        view_pdl_get("minimap_click_possessed", pol, sizeof(pol));
+        if (strcmp(pol, "release") != 0 || piece_pdl_flag(focused_root, poss, "de_possessible", 0)) return 0;
+        p2d_kv_set(xp, "last_possessed_id", poss); p2d_kv_set(xp, "possessed_id", "none");
+    }
+    char v[24]; snprintf(v, sizeof v, "%d", cx); p2d_kv_set(xp, "pos_x", v); snprintf(v, sizeof v, "%d", cy); p2d_kv_set(xp, "pos_y", v);
+    char sp[PATH_BUF]; snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", focused_root);
+    snprintf(v, sizeof v, "%d", cx); p2d_kv_set(sp, "selector_x", v); snprintf(v, sizeof v, "%d", cy); p2d_kv_set(sp, "selector_y", v);
+    return 1;
+}
+
 /* MINIMAP in 2D (owner 2026-10-27: "there should be a minimap in 2d if the map is bigger than the view"): the whole scene at a few pixels per cell in the top-right corner - the page as its own picture, every piece as its average colour, the
  * visible part as a yellow outline, the followed cell (xelector) as a red dot. Drawn only when part of the scene is outside the view. view.pdl `VIEW | view_2d_minimap | 0` turns it off. (vx0,vy0,vx1,vy1) = the visible rectangle in cells. */
 static void p2d_minimap(unsigned char *px, int W, int H, int cols, int rows, const unsigned char *map_px, int map_w, int map_h, int map_tile, float vx0, float vy0, float vx1, float vy1, int selx, int sely) {
@@ -1226,6 +1262,7 @@ static void p2d_minimap(unsigned char *px, int W, int H, int cols, int rows, con
     int cells_w = (int)ceilf(sw), cells_h = (int)ceilf(sh), mw, mh, cellpx = 0;
     bv_minimap_box(cells_w, cells_h, 8, max_px, &mw, &mh, &cellpx); float sc = (float)mw / sw;
     int ox = W - mw - 8, oy = 8;
+    p2d_mm_record(ox, oy, mw, mh, 0, (int)floorf(sx0), (int)floorf(sy0), cells_w, cells_h, cols, rows);
     for (int y = -2; y < mh + 2; y++) for (int x = -2; x < mw + 2; x++) { unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4; int edge = x < 0 || y < 0 || x >= mw || y >= mh; d[0] = edge ? 200 : 10; d[1] = edge ? 200 : 10; d[2] = edge ? 205 : 16; d[3] = 255; }
     for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) { float wx = sx0 + (x + 0.5f) / sc, wy = sy0 + (y + 0.5f) / sc; unsigned char *d = px + ((size_t)(oy + y) * W + (ox + x)) * 4;
         if (wx >= 0 && wy >= 0 && wx < cols && wy < rows && map_px && map_tile > 0) { int mx = (int)(wx * map_tile), my = (int)(wy * map_tile); if (mx < map_w && my < map_h) { const unsigned char *s = map_px + ((size_t)my * map_w + mx) * 4; if (s[3]) { d[0] = s[0] / 2 + 20; d[1] = s[1] / 2 + 20; d[2] = s[2] / 2 + 20; } } }
@@ -1305,6 +1342,7 @@ static void p2d_cells_minimap(unsigned char *px, int W, int H, int view_x, int v
     int max_px = 200; if (W > 24 && W - 16 < max_px) max_px = W - 16; if (H > 24 && H - 16 < max_px) max_px = H - 16; if (max_px < 8) return;
     int mw, mh, cellpx = 0; bv_minimap_box(fw, fh, 8, max_px, &mw, &mh, &cellpx);
     int ox = W - mw - 8, oy = 8;
+    p2d_mm_record(ox, oy, mw, mh, cellpx, 0, 0, fw, fh, fw, fh);
     for (int y = -2; y < mh + 2; y++) for (int x = -2; x < mw + 2; x++) {
         int sx = ox + x, sy = oy + y; if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
         unsigned char *d = px + ((size_t)sy * W + sx) * 4; int edge = x < 0 || y < 0 || x >= mw || y >= mh;
@@ -2026,7 +2064,15 @@ int main(void) {
             if (strcmp(prev, stamp) != 0) {
                 int px = cx * W / cw, py = cy * H / ch;
                 int scx = px / cell, scy = py / cell;
-                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                int mmx = 0, mmy = 0, mm_in = g_mm2d.valid && px >= g_mm2d.x && py >= g_mm2d.y && px < g_mm2d.x + g_mm2d.w && py < g_mm2d.y + g_mm2d.h;
+                if (mm_in) {      /* a click on the corner map names a PAGE cell, not the scene cell under it (before this the top-right click picked whatever cell lay beneath the map) */
+                    if (bv_minimap_cell(px, py, g_mm2d.x, g_mm2d.y, g_mm2d.w, g_mm2d.h, g_mm2d.cellpx, g_mm2d.wx0, g_mm2d.wy0, g_mm2d.ww, g_mm2d.wh, g_mm2d.pw, g_mm2d.ph, &mmx, &mmy)) {
+                        if (p2d_xelector_to(mmx, mmy)) {
+                            char pp[PATH_BUF]; snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_root);
+                            FILE *pf = host_fopen(pp, "w"); if (pf) { time_t now = time(NULL); struct tm tmv; localtime_r(&now, &tmv); fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n", mmx, mmy, 0, tmv.tm_hour, tmv.tm_min, tmv.tm_sec); fclose(pf); }
+                        }
+                    }      /* outside the page (the margin): consumed, nothing moves */
+                } else if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
                     int bx = ox + scx;
                     int by = side_mode ? hy : (oy + scy);
                     int bz = side_mode ? (side_zcount - 1 - (oy + scy)) : cur_z;

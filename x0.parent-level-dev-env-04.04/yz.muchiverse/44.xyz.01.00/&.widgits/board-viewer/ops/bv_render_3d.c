@@ -3326,8 +3326,8 @@ static void bv_xelector_to(const char *project_root, const char *focus, int hx, 
         if (mm_click) {
             char wp[PATH_BUF], mid[128] = "", did[128] = "", vp[PATH_BUF];
             snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focus); bv_world_ids(wp, mid, sizeof(mid), did, sizeof(did));
-            if (mid[0] && did[0] && !strchr(mid, '/') && !strchr(did, '/')) { snprintf(vp, sizeof(vp), "%s/pieces/system/maps/%s/%s/view.pdl", focus, mid, did); read_kv_str(vp, "minimap_click_possessed", pol, sizeof(pol)); }
-            if (!pol[0]) { snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focus); read_kv_str(vp, "minimap_click_possessed", pol, sizeof(pol)); }
+            if (mid[0] && did[0] && !strchr(mid, '/') && !strchr(did, '/')) { snprintf(vp, sizeof(vp), "%s/pieces/system/maps/%s/view.pdl", focus, mid); hud_pdl_str(vp, "minimap_click_possessed", pol, sizeof(pol), ""); }      /* house row form: VIEW | minimap_click_possessed | release, in the book view.pdl (the 2D reader uses the same file) */
+            if (!pol[0]) { snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focus); hud_pdl_str(vp, "minimap_click_possessed", pol, sizeof(pol), ""); }
         }
         if (!(mm_click && strcmp(pol, "release") == 0 && !piece_pdl_flag(focus, poss, "de_possessible", 0))) return;
         bv_set_kv_str(xp, "last_possessed_id", poss); bv_set_kv_str(xp, "possessed_id", "none");
