@@ -1161,18 +1161,8 @@ static double nb_ctx_num(JSContext *ctx, JSValueConst o, const char *k, double d
 /* document.createComment binding extracted (Phase 1, single-TU include). */
 #include "nb_worker_dom_create_comment.c"
 
-static void nb_set_owner_prop(JSContext *ctx, JSValue wrapper, JSValueConst owner_doc) {
-    if (JS_IsObject(wrapper) && JS_IsObject(owner_doc))
-        JS_SetPropertyStr(ctx, wrapper, "__nb_owner", JS_DupValue(ctx, owner_doc));
-}
-static JSValue nb_doc_throw_dom(JSContext *ctx, const char *name, const char *msg) {
-    JSValue e = JS_NewError(ctx);
-    if (!JS_IsException(e)) {
-        JS_SetPropertyStr(ctx, e, "name", JS_NewString(ctx, name));
-        JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, msg));
-    }
-    return JS_Throw(ctx, e);
-}
+/* document owner/DOM-exception helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_doc_node_helpers.c"
 static JSValue nb_doc_importNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     if (argc < 1 || !JS_IsObject(argv[0]))
         return nb_doc_throw_dom(ctx, "TypeError", "importNode requires a node");
