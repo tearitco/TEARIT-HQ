@@ -263,13 +263,8 @@ static char *attrs_set(const NbNode *n, const char *name, const char *val);
 /* Script src storage and execution helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_script_src_helpers.c"
 
-static JSValue nb_script_src_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    (void)argc; (void)argv;
-    NbNode *n = get_this(ctx, this_val);
-    if (!n) return JS_NewString(ctx, "");
-    const char *s = script_get_src(n);
-    return JS_NewString(ctx, s ? s : "");
-}
+/* Script src getter binding extracted (Phase 1, single-TU include). */
+#include "nb_worker_script_src_get.c"
 
 static JSValue nb_script_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
