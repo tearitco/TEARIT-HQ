@@ -8776,7 +8776,8 @@ static int layout_dock_bar(Elem *page) {
         static int s_hdr_w_latch = 0;
         if (g_win_w < s_hdr_w_latch) g_win_w = s_hdr_w_latch;
         if (g_win_w < 80) g_win_w = 80;
-        if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
+        /* RIGHT CLAMP (2026-11-16, owner: the "%N" load cell was cut off after the "+" cell was added): the bar only grows when its cells need it, and the old limit "screen minus the left offset" (a 200 px margin on the right too) cut the last cell. It may now reach 14 px from the screen edge (the same EDGE_MARGIN the managed windows use); a normal bar is not wider than before. */
+        if (g_win_x + g_win_w > sw - 14) g_win_w = sw - 14 - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
         s_hdr_w_latch = g_win_w;      /* after the screen clamp, so a smaller screen / new offset still wins */
         /* top bar drag offset (see g_hdr_dx): applied after the width clamp above, which must keep using the home x */
