@@ -1,0 +1,116 @@
+# texting_reply (2026-11-16): the entity AUTO-REPLY as an EVENT (owner: "the auto reply should use events"; BOOK 16.game/PLUS-PHONE-TEXTING-APP-DESIGN-2026-11-16.md 3.5e).
+# SCRATCH house, REAL ops: phone_send_op, server_route_op, phone_event_op, the real play_event.sh, the real registry command phone_reply (compiled by the real events-hq manager through
+# bp_edit_op, the "editable ez" path) and the SHIPPED default page ^.hai-server/_TEMPLATE/default-reply-event. Phones: A = a sender, B = an entity with its OWN on-message page, C = an entity
+# with NO page, D = a phone with no page that is in no_reply.txt. Proves: a text to C gets the default "[auto]" reply, delivered by the router to A (and not before the event pass: control);
+# B's OWN page wins over the default; negatives with controls: reply_default=0 gives no reply, no_reply.txt blocks the default, an "[auto]" line never triggers a page, the per-pair cap stops
+# the reply after N, reply_enabled=0 stops everything, a non-say kind is ignored, a second pass answers nothing new (byte cursor). NO network, no real entity, nothing in the live house.
+RESULTS | ../results/texting_reply.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/&.widgits/events-hq/ops/+x
+MKDIR | h/&.hq-apps/blueprintz/ops/+x
+MKDIR | h/#.ref/menu
+MKDIR | h/101.mutaclsym-scratch/system
+MKDIR | h/^.hai-server
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botD/inventory/zz.phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/&.widgits/events-hq/ops/play_event.sh
+RUN | /bin/cp | $HOUSE/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x | $T/h/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | $T/h/&.hq-apps/blueprintz/ops/+x/bp_edit_op.+x
+RUN | /bin/cp | $HOUSE/#.ref/menu/event_commands.registry.pdl | $T/h/#.ref/menu/event_commands.registry.pdl
+RUN | /bin/cp | $HOUSE/101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x | $T/h/101.mutaclsym-scratch/system/prisc+x
+RUN | /bin/cp | -r | $HOUSE/^.hai-server/_TEMPLATE | $T/h/^.hai-server/_TEMPLATE
+EXPECT_EXISTS | h/^.hai-server/_TEMPLATE/default-reply-event/event_pkg/pages/page_1/cmd_1.sh | the-shipped-default-page-exists
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/phone.pdl | SECTION      \p KEY                  \p VALUE\nPHONE        \p number               \p 471-5576-0001\nPHONE        \p owner_label          \p botA\nPHONE        \p history_max_lines    \p 2000\nPHONE        \p history_max_bytes    \p 262144\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone/phone.pdl | SECTION      \p KEY                  \p VALUE\nPHONE        \p number               \p 471-5576-7310\nPHONE        \p owner_label          \p botB\nPHONE        \p history_max_lines    \p 2000\nPHONE        \p history_max_bytes    \p 262144\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone/phone.pdl | SECTION      \p KEY                  \p VALUE\nPHONE        \p number               \p 471-5576-0003\nPHONE        \p owner_label          \p botC\nPHONE        \p history_max_lines    \p 2000\nPHONE        \p history_max_bytes    \p 262144\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botD/inventory/zz.phone/phone.pdl | SECTION      \p KEY                  \p VALUE\nPHONE        \p number               \p 471-5576-0004\nPHONE        \p owner_label          \p botD\nPHONE        \p history_max_lines    \p 2000\nPHONE        \p history_max_bytes    \p 262144\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botD/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botD/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE | h/^.hai-server/phones.index | 471-5576-0001\puA\pbotA\p$T/h/xyzfs/users/u1/home/livedesk/pals/botA\p$T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone\n471-5576-7310\puB\pbotB\p$T/h/xyzfs/users/u1/home/livedesk/pals/botB\p$T/h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone\n471-5576-0003\puC\pbotC\p$T/h/xyzfs/users/u1/home/livedesk/pals/botC\p$T/h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone\n471-5576-0004\puD\pbotD\p$T/h/xyzfs/users/u1/home/livedesk/pals/botD\p$T/h/xyzfs/users/u1/home/livedesk/pals/botD/inventory/zz.phone\n
+WRITE | h/^.hai-server/tunables.conf | reply_default=1\nreply_max_per_pair_per_min=3\n
+WRITE | h/^.hai-server/no_reply.txt | 471-5576-0004\n
+# B's OWN page, authored the way a user does (the real manager through bp_edit_op): seed a page, then append the registry command phone_reply.
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1/condition.pdl | SECTION      \p KEY                \p VALUE\nCOND \p trigger \p on-message\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1/event.ir.pdl | SECTION      \p KEY                \p VALUE\n----------------------------------------\nMETA         \p piece_id           \p botB\nSTATE        \p source               \p hand-made\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1/event.pal | exec cmd_1.sh\nhalt\n
+WRITE | h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1/cmd_1.sh | #!/bin/sh\nexit 0\n
+RUN | /bin/chmod | +x | $T/h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1/cmd_1.sh
+RUN | $T/h/&.hq-apps/blueprintz/ops/+x/bp_edit_op.+x | $T/h | $T/h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg | botB | append | phone_reply | text=[auto] botB own words
+EXPECT_OUT | bp_edit: ok append | the-real-manager-compiled-botB-own-page
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/botB/event_pkg/pages/page_1/cmd_1.sh | phone_send_op | the-compiled-script-calls-the-send-op
+
+CASE    | default-reply-for-an-entity-with-no-page
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | say | t:x | hello C
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+EXPECT_OUT | routed=1 | A-text-to-C-is-delivered
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone/outbox.txt | automatic reply | CONTROL-C-has-not-replied-before-the-event-pass
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=1 skipped_auto=0 capped=0 nopage=0 failed=0 | the-default-page-played-once
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/botC/inventory/zz.phone/outbox.txt | [auto] automatic reply | C-outbox-has-the-default-reply-marked-automatic
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | [auto] automatic reply | the-router-delivers-the-reply-to-A
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=0 | the-second-pass-answers-nothing-new-(cursor)-and-the-reply-line-did-not-chain
+
+CASE    | own-page-wins
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-7310 | say | t:x | hello B
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=1 | B-played-its-page
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone/outbox.txt | [auto] botB own words | B-replies-with-ITS-words
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/botB/inventory/zz.phone/outbox.txt | automatic reply | NEGATIVE-the-default-was-not-used-for-B
+
+CASE    | negatives
+# a phone in no_reply.txt never gets the default (control: C, same default on, replied above)
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0004 | say | t:x | hello D
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | nopage=1 | NEGATIVE-D-is-in-no_reply.txt-so-no-page-runs
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/botD/inventory/zz.phone/outbox.txt | automatic | NEGATIVE-D-did-not-reply
+# an [auto] line never triggers a page (two bots never chain)
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | say | t:x | [auto] I am a bot too
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=0 skipped_auto=1 | NEGATIVE-an-[auto]-line-triggers-no-page
+# a kind other than say is ignored
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | task | t:x | do a thing
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=0 skipped_auto=0 capped=0 nopage=0 | NEGATIVE-a-task-is-not-a-message-nothing-runs
+# default off: nobody gets the default (control: with reply_default=1 above C replied)
+WRITE | h/^.hai-server/tunables.conf | reply_default=0\nreply_max_per_pair_per_min=3\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | say | t:x | hello again C
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=0 skipped_auto=0 capped=0 nopage=1 | NEGATIVE-reply_default=0-gives-no-default-reply
+
+CASE    | cap-and-off-switch
+RUN | /bin/rm | -f | $T/h/^.hai-server/event_replies.txt
+WRITE | h/^.hai-server/tunables.conf | reply_default=1\nreply_max_per_pair_per_min=2\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | say | t:x | one
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | say | t:x | two
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-0003 | say | t:x | three
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | played=2 skipped_auto=0 capped=1 | the-pair-cap-allows-2-and-stops-the-3rd-(control-played=2)
+WRITE | h/^.hai-server/tunables.conf | reply_enabled=0\nreply_default=1\nreply_max_per_pair_per_min=9\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 471-5576-7310 | say | t:x | B again
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_event_op.+x | $T/h/^.hai-server | $T/h
+EXPECT_OUT | reply_enabled=0 | NEGATIVE-reply_enabled=0-stops-the-whole-source

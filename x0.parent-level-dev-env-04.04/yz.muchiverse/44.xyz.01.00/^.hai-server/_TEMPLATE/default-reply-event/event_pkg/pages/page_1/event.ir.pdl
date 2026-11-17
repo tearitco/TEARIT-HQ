@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | default-reply-event
+STATE        | source               | hand-made
+NODE         | id=1 type=phone_reply | text=[auto] automatic reply: I got your message and will answer later

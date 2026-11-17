@@ -1743,3 +1743,11 @@ COMMAND gen_catalog
   PARAMS -
   TEMPLATE exec "$D/@.apps/generator-hq/ops/+x/generator_tile_op.+x" catalog "$D/@.apps/generator-hq/out"
 END
+
+COMMAND phone_reply
+  LABEL Phone: Reply to the sender
+  FIELD1 Reply text:
+  FIELD2 -
+  PARAMS text
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_send_op.+x" "$MUCHI_PHONE" "$MUCHI_MSG_FROM" say "t:$MUCHI_MSG_FROM" '{text}'
+END
