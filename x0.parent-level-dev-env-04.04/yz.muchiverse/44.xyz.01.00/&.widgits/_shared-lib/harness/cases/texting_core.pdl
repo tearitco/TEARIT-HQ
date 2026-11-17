@@ -1,0 +1,134 @@
+# texting_core (2026-11-16): the Texting core (ops/text_op.c, BOOK 16.game/PLUS-PHONE-TEXTING-APP-DESIGN-2026-11-16.md). SCRATCH house with 4 phones (me = the self phone of a scratch cursword, my own bot A,
+# ANOTHER USER'S bot B, and an unknown number); the REAL phone_send_op, server_route_op, trunk_op and text_op. Proves: my phone is found; contacts list owned entities first and leave out my own number;
+# send goes to MY outbox only and the router delivers; threads and a thread show both directions with unread counts and --read; search covers contacts, notes and MY lines only (a word that exists only in another
+# user's inbox is NOT found); the address book (trunk + branch) names contacts, keeps notes private (never in a phone or the ledger); bad numbers, a phone outside xyzfs/users and a missing phone are refused. NO network.
+RESULTS | ../results/texting_core.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/^.hai-server
+MKDIR | h/&.hq-apps/plus-phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone
+MKDIR | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone
+MKDIR | h/bare/zz.phone
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/trunk_op.+x
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/phone.pdl | SECTION      | KEY                  | VALUE\nPHONE        | number               | 297-2363-0074\nPHONE        | owner_label          | self\nPHONE        | history_max_lines    | 2000\nPHONE        | history_max_bytes    | 262144\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/phone.pdl | SECTION      | KEY                  | VALUE\nPHONE        | number               | 157-0288-6369\nPHONE        | owner_label          | botA\nPHONE        | history_max_lines    | 2000\nPHONE        | history_max_bytes    | 262144\n
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/phone.pdl | SECTION      | KEY                  | VALUE\nPHONE        | number               | 471-5576-7310\nPHONE        | owner_label          | botB\nPHONE        | history_max_lines    | 2000\nPHONE        | history_max_bytes    | 262144\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE   | h/^.hai-server/phones.index | 297-2363-0074\paaaa\pself\p$T/h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self\p$T/h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone\n157-0288-6369\pbbbb\pbotA\p$T/h/xyzfs/users/u1/home/livedesk/pals/botA\p$T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone\n471-5576-7310\pcccc\pbotB\p$T/h/xyzfs/users/u2/home/livedesk/pals/botB\p$T/h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | me
+EXPECT_OUT | ME\p297-2363-0074\pself | my-phone-is-the-self-row
+
+CASE    | contacts-owned-first-and-without-me
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contacts
+EXPECT_OUT | CONTACT\p157-0288-6369\pbotA\powned | my-own-bot-is-an-owned-contact
+EXPECT_OUT | CONTACT\p471-5576-7310\pbotB\pother | another-users-bot-is-an-other-contact
+EXPECT_OUT_LACKS | CONTACT\p297-2363-0074 | NEGATIVE-my-own-number-is-not-in-my-contacts
+
+CASE    | send-and-deliver
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | send | 157-0288-6369 | hello | from | me
+EXPECT_OUT | SENT to 157-0288-6369 | the-text-is-sent
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/outbox.txt | hello from me | it-is-in-MY-outbox
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | hello | CONTROL-not-delivered-before-the-router-runs
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+EXPECT_OUT | routed=1 | the-router-delivers-one-message
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | hello from me | and-it-is-in-botA-inbox
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | send | 12345 | hi
+EXPECT_OUT | REFUSED | NEGATIVE-a-bad-number-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | send | 157-0288-6369 | has\pbar
+EXPECT_OUT | REFUSED | NEGATIVE-text-with-a-bar-is-refused-by-the-send-op
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | send | 000-0000-0000 | anyone
+EXPECT_OUT | SENT | an-unknown-number-is-accepted-by-the-outbox
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+EXPECT_OUT | unroutable=1 | and-the-router-reports-it-unroutable-(a-fail-goes-back)
+
+CASE    | threads-and-a-thread
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 297-2363-0074 | say | t:297-2363-0074 | hi-from-botA
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | threads
+EXPECT_OUT | THREAD\p157-0288-6369\pbotA | one-thread-with-botA
+EXPECT_OUT | \pin\p1\phi-from-botA | the-last-line-is-botA-s-reply-with-1-unread
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/inbox.txt | fail | CONTROL-the-router-did-send-me-a-fail-for-the-unknown-number
+EXPECT_OUT | THREAD\p000-0000-0000\p000-0000-0000\p | the-unknown-number-shows-as-my-own-outgoing-thread
+EXPECT_OUT | \pout\p0\panyone | NEGATIVE-the-fail-message-is-not-a-line-so-its-last-line-is-still-mine-and-nothing-is-unread
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | thread | 157-0288-6369 | --read
+EXPECT_OUT | \pout\phello from me | the-thread-has-my-line
+EXPECT_OUT | \pin\phi-from-botA | and-the-reply
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | threads
+EXPECT_OUT | \pin\p0\phi-from-botA | after-reading-nothing-is-unread
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | thread | 157-0288-6369x
+EXPECT_OUT | REFUSED | NEGATIVE-a-bad-peer-number-is-refused
+
+CASE    | only-say-lines-are-messages
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/inbox.txt | # inbox\n5\p157-0288-6369\p297-2363-0074\psay\pt:x\phi-from-botA\n7\p157-0288-6369\p297-2363-0074\pfail\pt:x\pnope-fail\n8\p157-0288-6369\p297-2363-0074\ptask\pt:x\pnope-task\n
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/inbox.txt | nope-fail | CONTROL-a-fail-line-from-a-valid-number-really-is-in-my-inbox
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/inbox.txt | nope-task | CONTROL-and-a-task-line
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | thread | 157-0288-6369
+EXPECT_OUT_LACKS | nope-fail | NEGATIVE-a-fail-line-is-not-a-message
+EXPECT_OUT_LACKS | nope-task | NEGATIVE-nor-a-task-line
+EXPECT_OUT | hi-from-botA | CONTROL-the-say-line-is-still-there
+
+CASE    | the-address-book
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contact | add | 471-5576-7310 | Bobby
+EXPECT_OUT | CONTACT-SAVED | a-contact-is-named
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contacts
+EXPECT_OUT | CONTACT\p471-5576-7310\pBobby\pother | the-book-name-wins-over-the-index-label
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contact | note | 471-5576-7310 | owes-me-a-quasar
+EXPECT_OUT | NOTE-SAVED | a-note-is-saved
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/contacts.txt | verify
+EXPECT_OUT | VERIFY-OK | the-address-book-verifies
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contact | add | 999 | Nope
+EXPECT_OUT | REFUSED | NEGATIVE-a-bad-number-is-not-added
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contact | publish | 471-5576-7310
+EXPECT_OUT | CONTACT-PUBLISHED | a-contact-is-published-to-the-trunk
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | contact | publish | 157-0288-6369
+EXPECT_OUT | REFUSED | NEGATIVE-publishing-a-contact-with-no-row-is-refused
+
+CASE    | search-covers-my-files-only
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | search | bobby
+EXPECT_OUT | HIT\pcontact\p471-5576-7310\pBobby | a-contact-is-found-by-name-(case-insensitive)
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | search | QUASAR
+EXPECT_OUT | HIT\pcontact\p471-5576-7310 | a-note-is-found
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | search | hi-from
+EXPECT_OUT | HIT\pmsg\p157-0288-6369 | a-message-is-found
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | send | 471-5576-7310 | zebra-secret-word
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | search | zebra
+EXPECT_OUT | HIT\pmsg\p471-5576-7310\p | my-own-sent-line-is-found
+RUN | /bin/cp | $T/h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | $T/botB.inbox
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | # inbox\n1\p471-5576-7310\p471-5576-7310\psay\pt:x\pquokka-only-in-botB\n
+EXPECT_HAS | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | quokka-only-in-botB | CONTROL-the-word-really-is-in-the-other-users-inbox
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | search | quokka
+EXPECT_OUT | SEARCH-END 0 | NEGATIVE-a-word-that-only-exists-in-another-users-inbox-is-not-found
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | search | nothing-matches-this
+EXPECT_OUT | SEARCH-END 0 | CONTROL-no-hit-says-so
+
+CASE    | privacy-of-notes
+EXPECT_LACKS | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | quasar | NEGATIVE-a-note-never-reaches-another-phone
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | quasar | NEGATIVE-nor-my-bot
+EXPECT_LACKS | h/^.hai-server/ledger.txt | quasar | NEGATIVE-nor-the-router-ledger
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/contacts.trunk.txt | quasar | NEGATIVE-nor-the-shared-trunk
+EXPECT_LACKS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/contacts.trunk.txt | hush-never | CONTROL-sanity
+
+CASE    | my-phone-must-be-mine-and-safe
+WRITE   | h/&.hq-apps/plus-phone/texting.pdl | MYPHONE | 999-9999-9999\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | me
+EXPECT_OUT | REFUSED no phone of mine | NEGATIVE-an-unknown-MYPHONE-is-refused
+WRITE   | h/^.hai-server/phones.index | 297-2363-0074\paaaa\pself\p$T/h/bare\p$T/h/bare/zz.phone\n
+WRITE   | h/&.hq-apps/plus-phone/texting.pdl | MYPHONE | 297-2363-0074\n
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | me
+EXPECT_OUT | REFUSED my phone folder is not under xyzfs/users | NEGATIVE-a-phone-outside-xyzfs-users-is-refused
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h | threads
+EXPECT_OUT | REFUSED | NEGATIVE-and-nothing-is-read-from-it
