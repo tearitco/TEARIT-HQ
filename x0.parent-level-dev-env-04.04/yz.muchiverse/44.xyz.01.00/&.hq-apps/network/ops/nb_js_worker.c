@@ -474,14 +474,8 @@ static double nb_edge_pad_h(NbNode *n);
  * claiming <title> takes body space in some other browser - it is saying the
  * box tree must describe the pixels this renderer actually draws, which is
  * what G2.2 measures. */
-#define NB_SBAR_ARROW_H 14
-static char g_page_title[256];
-
-static double g_content_inset_top(void) {
-    double inset = g_gutter_state ? (double)NB_SBAR_ARROW_H : 0.0;
-    if (g_page_title[0]) inset += (double)NB_ROW_PX;
-    return inset;
-}
+/* Content inset helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_content_inset_top.c"
 
 /* WIDTH of an element's border box - the half of the box tree that was
  * missing (G2.1, slice 1, 2026-10-14).
