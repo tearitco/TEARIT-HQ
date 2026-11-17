@@ -233,24 +233,8 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
 #include "nb_worker_selector_compound.c"
 /* Selector chain and query helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_selector_query.c"
-static NbNode *find_by_id(const NbNode *n, const char *id) {
-    if (!n || !id) return NULL;
-    if (n->id && !strcmp(n->id, id)) return (NbNode *)n;
-    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        NbNode *r = find_by_id(c, id);
-        if (r) return r;
-    }
-    return NULL;
-}
-static NbNode *find_tag_first(const NbNode *n, const char *tag) {
-    if (!n || !tag) return NULL;
-    if (n->tag && !strcasecmp(n->tag, tag)) return (NbNode *)n;
-    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        NbNode *r = find_tag_first(c, tag);
-        if (r) return r;
-    }
-    return NULL;
-}
+/* Basic DOM find helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_find_helpers.c"
 
 static const char *img_get_src(const NbNode *n);
 static void img_set_src(struct NbNode *n, const char *s);
