@@ -11,6 +11,7 @@
   <module src="&.hq-apps/co-lab-hai/+x/colab_hai_manager.+x"/>
   <page name="main">
     <sidebar>
+      <text label="${room_label}" class="pending-count"/>
       <text label="Participants" class="quiet"/>
       <repeat count="${participants_count}" bind="p">
         <text label="${p.name}" class="${p.class}"/>

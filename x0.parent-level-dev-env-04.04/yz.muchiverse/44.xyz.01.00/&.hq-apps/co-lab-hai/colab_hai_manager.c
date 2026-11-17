@@ -601,6 +601,8 @@ static void write_chtpm_projection(void) {
     }
     write_agent_feeds();
 
+    /* the room an agent must join, shown in the toolbar (owner 2026-11-17: "a room number so i can have grok join it, just to be sure we are in the same session"). Full id, the same number as #.desktop/colab_hai/current_session.txt and the folder name. */
+    CH_APPEND("room_label=Room %s\n", g_session_id);
     CH_APPEND("participants_count=%d\n", g_n_participants);
     for (int i = 0; i < g_n_participants; i++) {
         char esc[128];
