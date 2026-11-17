@@ -499,16 +499,8 @@ static double nb_edge_pad_h(NbNode *n);
  * inline-vs-block detection by tag beyond the common set. Those are
  * slice-2 work and pretending otherwise is how a box tree starts lying.
  */
-static int layout_is_block_tag(const char *t) {
-    if (!t) return 1;
-    static const char *inline_tags[] = {
-        "a", "b", "em", "i", "strong", "span", "code", "small", "u",
-        "label", "sub", "sup", "abbr", "cite", "q", "kbd", "samp", NULL
-    };
-    for (int i = 0; inline_tags[i]; i++)
-        if (!strcasecmp(t, inline_tags[i])) return 0;
-    return 1;
-}
+/* Block tag classifier extracted (Phase 1, single-TU include). */
+#include "nb_worker_layout_is_block_tag.c"
 
 static double nb_box_w(NbNode *n) {
     if (!n || layout_hidden_anc(n)) return 0;
