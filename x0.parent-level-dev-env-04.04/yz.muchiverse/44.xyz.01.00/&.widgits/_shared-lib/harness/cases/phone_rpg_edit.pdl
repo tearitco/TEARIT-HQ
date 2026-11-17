@@ -13,6 +13,8 @@ MKDIR | h/@.apps/rpg-edit-hq/state
 MKDIR | h/@.apps/rpg-edit-hq/board
 RUN | /bin/cp | $HOUSE/&.hq-apps/app-edit/projects/rpg-edit/ops/+x/redit_op.+x | $T/redit_op.+x
 EXPECT_EXISTS | redit_op.+x | the-real-op-is-built
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/page_start_op.+x | $T/page_start_op.+x
+EXPECT_EXISTS | page_start_op.+x | the-shared-page-start-op-is-built
 WRITE | h/@.apps/rpg-edit-hq/state/last_book.txt | book=centroid\npage=live\n
 WRITE | h/@.apps/rpg-edit-hq/button.sh | #!/bin/sh\nprintf x >> $T/launched.txt\n
 
@@ -91,5 +93,30 @@ RUN | /usr/bin/grep | -q | -F | class="tab ${interact_class}" | edit.xhtpm
 EXPECT_EXIT | 0 | and-takes-its-armed-look-from-the-renderer-var
 RUN | /usr/bin/awk | /<canvas / { c = NR } /\$\{PHONE_BARS\}/ { b = NR } /\$\{PHONE_FOOTER\}/ { f = NR } END { exit !(b && c && f && b < c && c < f) } | edit.xhtpm
 EXPECT_EXIT | 0 | the-canvas-sits-between-the-phone-top-bar-and-footer
+
+
+CASE    | page-start
+WRITE | h/d/pieces/system/maps/b/p1/cells.txt | width=40\nheight=20\ncells\n0,0,0\n
+WRITE | h/d/pieces/system/maps/b/p2/cells.txt | width=40\nheight=20\ncells\n0,0,0\n
+WRITE | h/d/pieces/system/maps/b/p2/view.pdl | start \p 7 9\n
+WRITE | h/d/pieces/xelector_01/state.txt | pos_x=8\npos_y=8\npossessed_id=hero_01\n
+MKDIR | h/s/pieces/system
+MKDIR | h/s/pieces/display
+WRITE | h/s/pieces/system/bv_state.txt | selector_x=8\nselector_y=8\ncurrent_z=17\n
+RUN | $T/page_start_op.+x | $T/h/d | b | p1 | $T/h/s
+EXPECT_EXIT | 0 | page-start-runs
+EXPECT_HAS | h/s/pieces/system/bv_state.txt | selector_x=20 | no-start-row-means-the-page-middle-x
+EXPECT_HAS | h/s/pieces/system/bv_state.txt | selector_y=10 | and-the-middle-y
+EXPECT_HAS | h/s/pieces/system/bv_state.txt | current_z=17 | other-keys-of-the-state-are-kept
+EXPECT_HAS | h/d/pieces/xelector_01/state.txt | pos_x=20 | the-xelector-piece-moves-too
+EXPECT_HAS | h/d/pieces/xelector_01/state.txt | possessed_id=hero_01 | and-keeps-its-other-rows
+EXPECT_HAS | h/s/pieces/display/bv_screen_changed.txt | start | the-next-frame-is-requested
+RUN | $T/page_start_op.+x | $T/h/d | b | p2 | $T/h/s
+EXPECT_HAS | h/s/pieces/system/bv_state.txt | selector_x=7 | a-start-row-of-the-page-wins-x
+EXPECT_HAS | h/s/pieces/system/bv_state.txt | selector_y=9 | and-y
+RUN | $T/page_start_op.+x | $T/h/d | b | nopage | $T/h/s
+EXPECT_HAS | h/s/pieces/system/bv_state.txt | selector_x=7 | an-unpainted-page-changes-nothing
+RUN | $T/page_start_op.+x | $T/h/d | b | ../x | $T/h/s
+EXPECT_EXIT | 2 | a-path-trick-in-the-page-name-is-refused
 
 CLEAN   |

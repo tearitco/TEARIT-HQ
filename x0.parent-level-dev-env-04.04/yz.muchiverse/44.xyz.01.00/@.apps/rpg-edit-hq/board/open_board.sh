@@ -65,9 +65,12 @@ if [ ! -d "$PCHQ_PKG/pieces/system/maps/$BOOK" ]; then
     PAGE=start
 fi
 # START_MAP regenerates the book on its default page (centroid: test) and that finishes AFTER a SET_DESK sent in the same instant, so the desk the owner was on was lost again (2026-11-17, found after the last-book fix: resolve said live, the editor opened test). Send START_MAP, wait until the engine's world_01/state.txt names the book (up to 40 s), let the generate settle, then SET_DESK.
+PSTART="$HOUSE/&.widgits/_shared-lib/ops/+x/page_start_op.+x"
 sleep 8; printf 'CONFIRM_START_MAP:%s\n' "$BOOK" >> "$INBOX"
 for _i in $(seq 1 20); do sleep 2; [ "$(sed -n 's/^map_id=//p' "$PCHQ_PKG/pieces/world_01/state.txt" 2>/dev/null | head -1)" = "$BOOK" ] && break; done
 sleep 6; printf 'CONFIRM_SET_DESK:%s\n' "$PAGE" >> "$INBOX"
+# 2026-11-17 (owner: start over land so there is something to see): once the page has loaded, put the cursor on the page's start cell (a `start | x y` row of the page's view.pdl, else its middle): the same shared op the phone editor uses.
+if [ -x "$PSTART" ] && [ -n "$PAGE" ]; then sleep 8; _S="$(sed -n 's/^bv_session=//p' "$HERE/state/ui.txt" 2>/dev/null | head -1)"; [ -n "$_S" ] && [ -d "$_S" ] && "$PSTART" "$PCHQ_PKG" "$BOOK" "$PAGE" "$_S" >/dev/null 2>&1; fi
 # Declare the window the OWNER of the engine's detached stack: it leaves the process we registered, and it RESPAWNS when the board reloads its book, which is how a closed board
 # used to leave a trigger watcher, a clock daemon and the board-viewer prisc / parser / renderer running for hours. Two explicit rules in #.desktop/proc_adopt_rules.pdl, applied on
 # every registry pass (the guard, every ~30 s) while the window lives: this instance's session folder, and the board-viewer session this window reports in state/ui.txt

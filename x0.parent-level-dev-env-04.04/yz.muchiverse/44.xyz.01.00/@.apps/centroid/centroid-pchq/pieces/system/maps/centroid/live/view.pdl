@@ -2,3 +2,5 @@
 # The CPU walk still stops at 96 steps. The GPU walks to view_fog_end.
 view_fog_start=48
 view_fog_end=160
+# Where a freshly opened editor puts its cursor (page_start_op): over the island, not the empty corner.
+start | 144 228

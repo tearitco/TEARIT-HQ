@@ -102,7 +102,11 @@ static void step(void) {
         else if (now - STAGE_T > 240) { if (ENGL > 0) kill(ENGL, SIGKILL); STAGE = 9; STAGE_T = now; } return; }
     if (STAGE == 2) { char l[200]; snprintf(l, sizeof l, "CONFIRM_START_MAP:%s", WANT_BOOK); inbox(l); STAGE = 3; STAGE_T = now; return; }
     if (STAGE == 3) { snprintf(wf, sizeof wf, "%s/pieces/world_01/state.txt", DATA); kv_of(wf, "map_id", mid, sizeof mid);
-        if ((!strcmp(mid, WANT_BOOK) && now - STAGE_T >= 6) || now - STAGE_T > 40) { if (WANT_PAGE[0]) { char l[200]; snprintf(l, sizeof l, "CONFIRM_SET_DESK:%s", WANT_PAGE); inbox(l); } STAGE = 5; STAGE_T = now; } return; }
+        if ((!strcmp(mid, WANT_BOOK) && now - STAGE_T >= 6) || now - STAGE_T > 40) { if (WANT_PAGE[0]) { char l[200]; snprintf(l, sizeof l, "CONFIRM_SET_DESK:%s", WANT_PAGE); inbox(l); } STAGE = WANT_PAGE[0] ? 4 : 5; STAGE_T = now; } return; }
+    if (STAGE == 4) {      /* the page has loaded: put the cursor on the page's start cell (the shared op page_start_op: a start row of the page, else its middle) so the first picture shows something */
+        if (now - STAGE_T >= 8) { char op[P], ui[P], sess[P] = ""; snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/page_start_op.+x", HOUSE); snprintf(ui, sizeof ui, "%s/state/ui.txt", EUI); kv_of(ui, "bv_session", sess, sizeof sess);
+            char *av[] = { op, DATA, WANT_BOOK, WANT_PAGE, sess, NULL }; if (sess[0] && access(op, X_OK) == 0) { char of[P]; snprintf(of, sizeof of, "%s/start.out", HQD); run_out(av, of); } STAGE = 5; STAGE_T = now; }
+        return; }
 }
 /* the projector's variables into the phone's ui text: the ones the RENDERER reads by name (bv_session, canvas_raw, bv_h1, bv_h2, interact_class, interact_armed: canvas routing and the In: key relay) unchanged, everything else prefixed ed_ */
 static int bridge(char *UI, size_t cap) {
@@ -119,7 +123,7 @@ static int bridge(char *UI, size_t cap) {
 static void publish(void) {
     static char UI[65536]; int n = 0; char last[300], f[P], book[80], page[80], status[400], pl[200], el[200]; int pid = editor_pid();
     snprintf(f, sizeof f, "%s/last.txt", HQD); rd1(f, last, sizeof last); last_page(book, sizeof book, page, sizeof page);
-    const char *stg = STAGE == 0 ? "starting the editor..." : STAGE == 1 ? "starting the editor engine..." : STAGE == 2 || STAGE == 3 ? "opening your last page..." : STAGE == 9 ? "the editor could not start (see the desktop editor)" : "";
+    const char *stg = STAGE == 0 ? "starting the editor..." : STAGE == 1 ? "starting the editor engine..." : STAGE == 2 || STAGE == 3 ? "opening your last page..." : STAGE == 4 ? "opening your last page..." : STAGE == 9 ? "the editor could not start (see the desktop editor)" : "";
     snprintf(status, sizeof status, "%s", last[0] ? last : (stg[0] ? stg : (book[0] ? "" : "no last page yet")));      /* ready = empty: the screen shows the editor's own book label */
     char ptitle[120] = "phone", pn[16] = "", pp[16] = ""; { char pf[P]; snprintf(pf, sizeof pf, "%s/phone.txt", INST); row_of(pf, "PHONE", pn, sizeof pn); row_of(pf, "PORT", pp, sizeof pp); if (pn[0]) snprintf(ptitle, sizeof ptitle, "+%s :%s", pn, pp); }      /* the window is the PHONE: its title is the phone's name, the app is only what it has open (owner 2026-11-17) */
     snprintf(pl, sizeof pl, "last page: %s", book[0] ? book : "none"); if (book[0] && page[0]) snprintf(pl, sizeof pl, "last page: %s : %s", book, page);
