@@ -8237,6 +8237,8 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
         if (elem_has_class(t, "no-nav")) {
             cw = g_dock_cell_pad_px + dock_text_px(t->label) + g_dock_text_pad_px + dock_skin_slack();
             if (cw < g_dock_status_min_px) cw = g_dock_status_min_px;
+            /* WRAP (2026-11-16, owner: "the %N should be able to wrap", the clock cell already does): this status cell is last and had no width cap, so on a full bar (the + cell, a small screen) it ran past the row and lost its "N". It now takes only the room left in the row (never less than the status minimum) and its text wraps inside the cell. */
+            { int room = max_w - (col_x - x); if (room >= g_dock_status_min_px && cw > room) cw = room; }
             t->x = col_x; t->y = y; t->w = cw; t->h = DOCK_BAR_H; t->nav_index = 0;
             css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
             col_x += cw + DOCK_CELL_GAP;
@@ -8776,8 +8778,7 @@ static int layout_dock_bar(Elem *page) {
         static int s_hdr_w_latch = 0;
         if (g_win_w < s_hdr_w_latch) g_win_w = s_hdr_w_latch;
         if (g_win_w < 80) g_win_w = 80;
-        /* RIGHT CLAMP (2026-11-16, owner: the "%N" load cell was cut off after the "+" cell was added): the bar only grows when its cells need it, and the old limit "screen minus the left offset" (a 200 px margin on the right too) cut the last cell. It may now reach 14 px from the screen edge (the same EDGE_MARGIN the managed windows use); a normal bar is not wider than before. */
-        if (g_win_x + g_win_w > sw - 14) g_win_w = sw - 14 - g_win_x;
+        if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
         s_hdr_w_latch = g_win_w;      /* after the screen clamp, so a smaller screen / new offset still wins */
         /* top bar drag offset (see g_hdr_dx): applied after the width clamp above, which must keep using the home x */
