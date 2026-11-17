@@ -179,25 +179,7 @@ static int pdl_hostkey(const char *pdl_path, int keycode) {
     fclose(f);
     return hit;
 }
-/* Read a boolean-ish flag from an entity's piece.pdl (muta parity for
- * possess). Matches "<key>" appearing with "true"/"1" on the same line,
- * house `SECTION | possessable | 1` OR a bare `possessable=1`. */
-static int piece_pdl_flag(const char *host_root, const char *entity_id,
-                          const char *flag, int def) {
-    char p[PATH_BUF];
-    snprintf(p, sizeof(p), "%s/pieces/%s/piece.pdl", host_root, entity_id);
-    FILE *f = fopen(p, "r");
-    if (!f) return def;
-    int r = def; char l[MAX_LINE];
-    while (fgets(l, sizeof(l), f)) {
-        if (!strstr(l, flag)) continue;
-        if (strstr(l, "true") || strstr(l, " 1") || strstr(l, "=1")) r = 1;
-        else if (strstr(l, "false") || strstr(l, " 0") || strstr(l, "=0")) r = 0;
-        break;
-    }
-    fclose(f);
-    return r;
-}
+#include "bv_piece_flag.h"      /* piece_pdl_flag: shared with bv_render_3d.c (the minimap click uses the same de_possessible lock) */
 /* Is there an engine PIECE called entity_id? A possessed_id with no pieces/<id>/state.txt names something the DAEMON drives (a pet or Harold: game state, not a piece; DECISION D1, 02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): the engine holds that possession but moves nothing and never reads a position it does not have. */
 static int piece_exists(const char *host_root, const char *entity_id) {
     char p[PATH_BUF]; snprintf(p, sizeof(p), "%s/pieces/%s/state.txt", host_root, entity_id); return access(p, F_OK) == 0;

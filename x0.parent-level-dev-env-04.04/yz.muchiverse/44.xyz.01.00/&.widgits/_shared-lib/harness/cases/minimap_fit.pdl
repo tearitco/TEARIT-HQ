@@ -116,4 +116,20 @@ EXPECT_EXIT | 1 | NEGATIVE-the-silent-256-cap-is-gone
 COPY | &.widgits/board-viewer/ops/bv_menu_input.c | bv_menu_input.c
 RUN | /usr/bin/grep | -c | -F | bv_page_lims(focused_project_root | bv_menu_input.c
 EXPECT_OUT | 2 | both-arrow-paths-use-the-page-size
+# possession and the free camera on a corner-map click (2026-11-17; owner: "depends on desired game mode, keep flexible"; free camera modes also recentre). Behaviour was proven in a scratch session (ignore keeps possession, release lets go and moves, a de_possessible piece cannot be released, mode 3 moves its base); here the wiring.
+COPY | &.widgits/board-viewer/ops/bv_piece_flag.h | bv_piece_flag.h
+RUN | /usr/bin/grep | -q | -F | minimap_click_possessed | bv_render_3d.c
+EXPECT_EXIT | 0 | the-possession-policy-is-a-page-setting
+RUN | /usr/bin/grep | -q | -F | piece_pdl_flag(focus, poss, "de_possessible", 0) | bv_render_3d.c
+EXPECT_EXIT | 0 | release-honours-the-de_possessible-lock
+RUN | /usr/bin/grep | -q | -F | if (poss[0] && strcmp(poss, "none") != 0) return; | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-possession-no-longer-blocks-every-click-unconditionally
+RUN | /usr/bin/grep | -q | -F | bv_set_kv_int(sp, "cam_base_x", hx) | bv_render_3d.c
+EXPECT_EXIT | 0 | mode-3-moves-its-base-on-a-minimap-click
+RUN | /usr/bin/grep | -c | -F | bv_piece_flag.h | bv_render_3d.c
+EXPECT_OUT | 1 | the-engine-includes-the-shared-flag-header
+RUN | /usr/bin/grep | -c | -F | bv_piece_flag.h | bv_menu_input.c
+EXPECT_OUT | 1 | the-menu-input-includes-the-same-header
+RUN | /usr/bin/grep | -c | -F | static int piece_pdl_flag( | bv_menu_input.c
+EXPECT_OUT | 0 | NEGATIVE-no-private-copy-of-the-flag-reader-is-left
 CLEAN |

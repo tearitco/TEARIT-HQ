@@ -2412,6 +2412,7 @@ static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
 /* Maker pages draw the cells file, not the glyph board. The corner map reads those cells directly, including a page wider than MAX_BOARD_DIM. */
 static int g_mm_maker = 0;
 #include "bv_minimap_fit.h"
+#include "bv_piece_flag.h"
 /* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
 static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
 /* Where the corner map was last painted, so a click on it can be turned back into a page cell (2026-11-17, owner: "when i click on mini map, it moves my cam / xelector there"). Set by bv_draw_minimap
@@ -3283,7 +3284,7 @@ static void bv_write_click_hud(const char *focus, int hit,
  * pos_x/pos_y, then the screen-changed marker so the next frame draws it. Only for a solid-voxel hit (a sky miss moves nothing), and not while possessing
  * (then the xelector is tied to the hero and moving it would need a world tick: arrows own that). */
 static void write_file_atomic(const char *path, const void *data, size_t len);
-static void bv_set_kv_int(const char *path, const char *key, int val) {
+static void bv_set_kv_str(const char *path, const char *key, const char *val) {
     char *buf = NULL; size_t n = 0; long sz = 0; FILE *f = host_fopen(path, "r");
     if (f) { fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET); if (sz < 0) sz = 0;
              buf = malloc((size_t)sz + 1); if (buf) { n = fread(buf, 1, (size_t)sz, f); buf[n] = 0; } fclose(f); }
@@ -3291,13 +3292,14 @@ static void bv_set_kv_int(const char *path, const char *key, int val) {
     int done = 0; size_t kl = strlen(key); const char *p = buf ? buf : "";
     while (*p) {
         const char *e = strchr(p, '\n'); size_t ll = e ? (size_t)(e - p) : strlen(p);
-        if (!done && ll > kl && !strncmp(p, key, kl) && p[kl] == '=') { o += (size_t)snprintf(out + o, cap - o, "%s=%d\n", key, val); done = 1; }
+        if (!done && ll > kl && !strncmp(p, key, kl) && p[kl] == '=') { o += (size_t)snprintf(out + o, cap - o, "%s=%s\n", key, val); done = 1; }
         else { memcpy(out + o, p, ll); o += ll; out[o++] = '\n'; }
         p += ll + (e ? 1 : 0);
     }
-    if (!done) o += (size_t)snprintf(out + o, cap - o, "%s=%d\n", key, val);
+    if (!done) o += (size_t)snprintf(out + o, cap - o, "%s=%s\n", key, val);
     write_file_atomic(path, out, o); free(out); free(buf);
 }
+static void bv_set_kv_int(const char *path, const char *key, int val) { char v[32]; snprintf(v, sizeof v, "%d", val); bv_set_kv_str(path, key, v); }
 static void bv_xelector_to(const char *project_root, const char *focus, int hx, int hy) {
     char sp[PATH_BUF], xp[PATH_BUF], mk[PATH_BUF], poss[64] = "";
     int lim_x = MAX_BOARD_DIM, lim_y = MAX_BOARD_DIM;      /* a painted page can be wider (live is 504 x 364): the limit is the page, as the arrow keys already do (bv_menu_input) */
@@ -3305,10 +3307,26 @@ static void bv_xelector_to(const char *project_root, const char *focus, int hx, 
     if (!project_root || !project_root[0] || !focus || !focus[0] || hx < 0 || hy < 0 || hx >= lim_x || hy >= lim_y) return;
     snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focus);
     read_kv_str(xp, "possessed_id", poss, sizeof(poss));
-    if (poss[0] && strcmp(poss, "none") != 0) return;
+    int mm_click = g_mm_click; g_mm_click = 0;      /* consumed: only the move that came from THIS corner-map click may use the minimap rules below */
     snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+    if (poss[0] && strcmp(poss, "none") != 0) {
+        /* A floor click does nothing while a character is possessed (the xelector is locked to it). A click on the corner map follows the page setting `minimap_click_possessed` (view.pdl of the page, then of the
+         * project; owner 2026-11-17: "depends on desired game mode, keep flexible"): ignore (default) = same as a floor click; release = let go of the character as key 9 does (honouring the piece de_possessible lock), then move. */
+        char pol[32] = "";
+        if (mm_click) {
+            char wp[PATH_BUF], mid[128] = "", did[128] = "", vp[PATH_BUF];
+            snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focus); bv_world_ids(wp, mid, sizeof(mid), did, sizeof(did));
+            if (mid[0] && did[0] && !strchr(mid, '/') && !strchr(did, '/')) { snprintf(vp, sizeof(vp), "%s/pieces/system/maps/%s/%s/view.pdl", focus, mid, did); read_kv_str(vp, "minimap_click_possessed", pol, sizeof(pol)); }
+            if (!pol[0]) { snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focus); read_kv_str(vp, "minimap_click_possessed", pol, sizeof(pol)); }
+        }
+        if (!(mm_click && strcmp(pol, "release") == 0 && !piece_pdl_flag(focus, poss, "de_possessible", 0))) return;
+        bv_set_kv_str(xp, "last_possessed_id", poss); bv_set_kv_str(xp, "possessed_id", "none");
+    }
     bv_set_kv_int(sp, "selector_x", hx); bv_set_kv_int(sp, "selector_y", hy);
     bv_set_kv_int(xp, "pos_x", hx); bv_set_kv_int(xp, "pos_y", hy);
+    if (mm_click && read_kv_int(sp, "camera_mode", default_camera_mode(focus)) == 3 && read_kv_int(sp, "cam_base_x", -99999) != -99999) {      /* the free camera (mode 3) sits on its own base cell, not on the xelector: a click on the corner map moves that base too (mode 4 adds the selector to its pan, modes 1 and 2 follow the xelector) */
+        bv_set_kv_int(sp, "cam_base_x", hx); bv_set_kv_int(sp, "cam_base_z", hy);
+    }
     snprintf(mk, sizeof(mk), "%s/pieces/display/bv_screen_changed.txt", project_root);
     { FILE *m = host_fopen(mk, "a"); if (m) { fputc('.', m); fclose(m); } }
 }
