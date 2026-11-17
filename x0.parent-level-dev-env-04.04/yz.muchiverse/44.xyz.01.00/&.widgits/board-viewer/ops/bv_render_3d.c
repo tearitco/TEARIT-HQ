@@ -2383,6 +2383,13 @@ static int g_mm_maker = 0;
 /* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
 static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
+/* The corner map is sized by the PAINTED page (g_mk.w x g_mk.h) when there is one, not by the 3D glyph board (<= 256). The full frame AND the click's HUD-only repaint (bv_repaint_hud_only)
+ * must both call this: the repaint used the glyph-board size, so after any click the map turned square, cropped to the page's top-left and pinned the eye to the right edge
+ * (owner 2026-11-16: "scale / crop is weird again"; reproduced with a scratch session, before/after in CENTROID-TEST-AND-LIVE). Pass the flag of the last full frame. */
+static void bv_mm_page_dims(int maker_ground) {
+    g_mm_maker = 0;
+    if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= 512 && g_mk.h <= 512 && g_mk.cells) { g_mm_maker = 1; g_mm_board_w = g_mk.w; g_mm_board_h = g_mk.h; }
+}
 
 /* REAL FIX 2026-09-30, direct live report ("hud/mini map still isn't
  * moving to accommodate smaller window... they should size dynamically
@@ -5172,11 +5179,8 @@ static int render_one_frame(void) {
      * g_fbuf, on top of the raymarch, before the atomic write. */
     g_mm_board3d = board3d; g_mm_col_top = col_top;
     g_mm_board_w = board_w; g_mm_board_h = board_h;
-    g_mm_maker = 0;
     /* The letter grid stays at MAX_BOARD_DIM. A painted page is allowed up to the same 512 the cells loader already accepts, and the corner map scales it. */
-    if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= 512 && g_mk.h <= 512 && g_mk.cells) {
-        g_mm_maker = 1; g_mm_board_w = g_mk.w; g_mm_board_h = g_mk.h;
-    }
+    bv_mm_page_dims(maker_ground);
     { double fl = sqrt(cam.forward.x * cam.forward.x + cam.forward.z * cam.forward.z), dx = cam.forward.x, dz = cam.forward.z;
       if (fl < 0.25) { dx = cam.up.x; dz = cam.up.z; fl = sqrt(dx * dx + dz * dz); }      /* looking straight down: the screen-up direction is the way it faces */
       g_mm_cam_x = cam.eye.x; g_mm_cam_z = cam.eye.z; g_mm_cam_ok = fl > 1e-6; if (g_mm_cam_ok) { g_mm_cam_dx = dx / fl; g_mm_cam_dz = dz / fl; } }
@@ -5275,6 +5279,7 @@ static void bv_repaint_hud_only(void) {
     g_fbuf = buf; g_fw = a; g_fh = b;
     g_mm_board3d = g_click_board;
     g_mm_board_w = g_click_bw; g_mm_board_h = g_click_bh;
+    bv_mm_page_dims(g_mm_maker);      /* same page size as the full frame, or the map shrinks to the glyph board after a click */
     g_mm_selx = g_click_sx; g_mm_sely = g_click_sy;
     bv_draw_hud(g_click_focus, g_click_z, g_click_sx, g_click_sy);
     write_file_atomic(overlay, g_fbuf, bytes);

@@ -56,4 +56,9 @@ RUN | /usr/bin/grep | -q | -F | bv_minimap_tile_avg | bv_render_3d.c
 EXPECT_EXIT | 0 | the-corner-map-asks-for-the-tile-colour
 RUN | /usr/bin/grep | -q | -F | s_mm_has[wl ? wl : fl] | bv_render_3d.c
 EXPECT_EXIT | 0 | the-tile-colour-is-used-before-the-flat-fallback
+# the click's HUD-only repaint must size the corner map by the painted page, like the full frame (2026-11-16: after a click the map turned square and cropped to the page top-left). Source checks prove the wiring; the behaviour was proven by a scratch-session before/after run (CENTROID-TEST-AND-LIVE).
+RUN | /usr/bin/grep | -q | -F | bv_mm_page_dims(maker_ground) | bv_render_3d.c
+EXPECT_EXIT | 0 | the-full-frame-sizes-the-map-by-the-page
+RUN | /usr/bin/grep | -q | -F | bv_mm_page_dims(g_mm_maker) | bv_render_3d.c
+EXPECT_EXIT | 0 | the-click-repaint-sizes-the-map-by-the-page-too
 CLEAN |
