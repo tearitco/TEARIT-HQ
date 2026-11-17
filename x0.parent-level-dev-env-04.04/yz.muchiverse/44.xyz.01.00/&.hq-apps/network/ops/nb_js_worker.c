@@ -193,24 +193,8 @@ static JSValue nb_el_attachShadow(JSContext *ctx, JSValueConst this_val, int arg
 static NbNode *nb_template_content_frag(JSContext *ctx, JSValue el, NbNode *n);
 static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *nodeName);
 
-/* ---- small string builder ---- */
-typedef struct { char *s; size_t len, cap; } SB;
-static void sb_grow(SB *b, size_t need) {
-    if (b->len + need + 1 <= b->cap) return;
-    size_t nc = b->cap ? b->cap : 64;
-    while (nc < b->len + need + 1) nc *= 2;
-    char *nb = realloc(b->s, nc);
-    if (!nb) abort();
-    b->s = nb; b->cap = nc;
-}
-static void sb_put(SB *b, const char *x) {
-    if (!x) return;
-    size_t n = strlen(x);
-    sb_grow(b, n);
-    memcpy(b->s + b->len, x, n);
-    b->len += n;
-    b->s[b->len] = 0;
-}
+/* Small string builder helpers extracted (Phase 1, single-TU include). */
+#include "nb_worker_sb.c"
 
 /* ---- node tree helpers (NbNode fields are public in nb_dom.h) ---- */
 static void local_append(NbNode *parent, NbNode *child) {
