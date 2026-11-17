@@ -792,14 +792,8 @@ typedef struct {
 static char g_cookie_path[PATH_MAX];
 static int  g_cookie_path_set = 0;
 
-static void mkdir_p(const char *path) {
-    char tmp[PATH_MAX];
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    for (char *p = tmp + 1; *p; p++) {
-        if (*p == '/') { *p = 0; mkdir(tmp, 0755); *p = '/'; }
-    }
-    mkdir(tmp, 0755);
-}
+/* Recursive mkdir helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_mkdir_p.c"
 
 static void cookie_jar_init(void) {
     g_cookie_path_set = 1;
