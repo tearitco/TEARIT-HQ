@@ -33,6 +33,10 @@ if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$DPID" ] && [ 
     "$REG" "$HOUSE" register "$DPID" owner "$WPID" daemon rpg-edit-hq rpg-edit-hq-daemon "$APP/ops/+x/rpg_edit_hq.+x $HOUSE $APP" >/dev/null 2>&1 || true
 fi
 INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"
+# Re-open where the owner WAS (2026-11-17, owner: "make sure the last book page opens"): nothing called edit_last.sh save since 2026-11-08, so state/last_book.txt was stale (deskopoly/board) and every relaunch
+# fell back to it. The page this editor had open is in its own persisted world_01/state.txt (map_id, desk_id); save it as the last book first. A page that no longer exists is refused by save and the older row is used.
+CURB=$(sed -n 's/^map_id=//p' "$PCHQ_PKG/pieces/world_01/state.txt" 2>/dev/null | head -1); CURP=$(sed -n 's/^desk_id=//p' "$PCHQ_PKG/pieces/world_01/state.txt" 2>/dev/null | head -1)
+if [ -n "$CURB" ] && [ -n "$CURP" ]; then sh "$APP/ops/edit_last.sh" save "$APP/state/last_book.txt" "$CURB" "$CURP" --house "$HOUSE" --maps "$PCHQ_PKG/pieces/system/maps" >/dev/null 2>&1 || true; fi
 # Last edited book, or the Islands demo (page start) when the row is missing or names a book this instance cannot open.
 LINE=$(sh "$APP/ops/edit_last.sh" resolve "$APP/state/last_book.txt" --house "$HOUSE" --maps "$PCHQ_PKG/pieces/system/maps" --demo-book rpg-edit-hq --demo-page start) || exit 1
 BOOK=${LINE#book=}; BOOK=${BOOK%% page=*}; PAGE=${LINE#*page=}
