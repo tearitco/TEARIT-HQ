@@ -1,8 +1,9 @@
 /* minimap_fit_op — the corner-map size and the camera pixel.
  *   minimap_fit_op box <cells_w> <cells_h> <px_per_col> <max_px>
  *   minimap_fit_op dot <cam> <origin> <cells> <span_px> <cellpx>
+ *   minimap_fit_op cell <px> <py> <box_x> <box_y> <box_w> <box_h> <cellpx> <wx0> <wy0> <ww> <wh> <page_w> <page_h>   (the page cell under a corner-map click)
  *   minimap_fit_op tileavg <cells.rgba> <cols> <tile_px> <slot>      (the colour the corner map paints for that atlas slot)
- * Prints `box W H CELL`, `dot PX OUTSIDE` or `tileavg R G B` (`tileavg none`). Exit 2 on a bad call.
+ * Prints `box W H CELL`, `dot PX OUTSIDE`, `cell X Y` (`cell none`) or `tileavg R G B` (`tileavg none`). Exit 2 on a bad call.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,11 @@ int main(int argc, char **argv) {
         int px, out;
         out = bv_minimap_dot(atof(argv[2]), atof(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), &px);
         printf("dot %d %d\n", px, out);
+        return 0;
+    }
+    if (argc == 15 && !strcmp(argv[1], "cell")) {
+        int x, y; int v[13]; for (int i = 0; i < 13; i++) v[i] = atoi(argv[2 + i]);
+        if (bv_minimap_cell(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], &x, &y)) printf("cell %d %d\n", x, y); else printf("cell none\n");
         return 0;
     }
     if (argc == 6 && !strcmp(argv[1], "tileavg")) {

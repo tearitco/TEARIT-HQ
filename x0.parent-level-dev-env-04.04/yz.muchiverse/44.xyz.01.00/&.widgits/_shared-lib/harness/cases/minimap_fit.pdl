@@ -86,4 +86,34 @@ RUN | /usr/bin/grep | -q | -F | read_kv_str(world_state_path_sky, "desk_id" | bv
 EXPECT_EXIT | 1 | NEGATIVE-the-sky-reader-has-no-bare-desk_id-read
 RUN | /usr/bin/grep | -q | -F | read_kv_str(worldp, "desk_id" | bv_render_3d.c
 EXPECT_EXIT | 1 | NEGATIVE-the-hud-label-has-no-bare-desk_id-read
+# minimap click-to-move (2026-11-17, owner: "when i click on mini map, it moves my cam / xelector there on big map"): the cell under a click on the corner map. Pure maths first (the inverse of how bv_draw_minimap paints), then the wiring in the engine and the menu input.
+RUN | $T/minimap_fit_op | cell | 100 | 50 | 100 | 50 | 160 | 116 | 0 | 0 | 0 | 504 | 364 | 504 | 364
+EXPECT_OUT | cell 0 0 | the-box-corner-is-page-cell-0-0
+RUN | $T/minimap_fit_op | cell | 259 | 165 | 100 | 50 | 160 | 116 | 0 | 0 | 0 | 504 | 364 | 504 | 364
+EXPECT_OUT | cell 500 360 | the-far-corner-pixel-is-past-column-255-(the-old-cap)
+RUN | $T/minimap_fit_op | cell | 99 | 50 | 100 | 50 | 160 | 116 | 0 | 0 | 0 | 504 | 364 | 504 | 364
+EXPECT_OUT | cell none | NEGATIVE-one-pixel-left-of-the-box-is-no-hit
+RUN | $T/minimap_fit_op | cell | 100 | 166 | 100 | 50 | 160 | 116 | 0 | 0 | 0 | 504 | 364 | 504 | 364
+EXPECT_OUT | cell none | NEGATIVE-one-pixel-below-the-box-is-no-hit
+RUN | $T/minimap_fit_op | cell | 200 | 200 | 100 | 100 | 128 | 128 | 8 | 0 | 0 | 16 | 16 | 16 | 16
+EXPECT_OUT | cell 12 12 | a-16-desk-at-8-px-per-cell
+RUN | $T/minimap_fit_op | cell | 100 | 100 | 100 | 100 | 160 | 160 | 8 | -4 | -4 | 24 | 24 | 16 | 16
+EXPECT_OUT | cell none | NEGATIVE-the-margin-is-outside-the-page
+RUN | $T/minimap_fit_op | cell | 140 | 140 | 100 | 100 | 160 | 160 | 8 | -4 | -4 | 24 | 24 | 16 | 16
+EXPECT_OUT | cell 1 1 | inside-the-margin-window-the-cell-is-offset
+RUN | $T/minimap_fit_op | cell | 108 | 108 | 100 | 100 | 192 | 192 | 8 | 250 | 100 | 24 | 24 | 504 | 364
+EXPECT_OUT | cell 251 101 | a-follow-window-starts-at-its-own-origin
+RUN | $T/minimap_fit_op | cell | 180 | 108 | 100 | 100 | 192 | 192 | 8 | 496 | 100 | 24 | 24 | 504 | 364
+EXPECT_OUT | cell none | NEGATIVE-a-follow-window-hanging-past-the-page-edge
+RUN | /usr/bin/grep | -q | -F | bv_minimap_cell(mpx | bv_render_3d.c
+EXPECT_EXIT | 0 | the-ray-click-asks-the-minimap-first
+RUN | /usr/bin/grep | -q | -F | g_mm_hit.valid = 1 | bv_render_3d.c
+EXPECT_EXIT | 0 | the-drawn-box-is-recorded-for-the-click
+RUN | /usr/bin/grep | -q | -F | hx >= lim_x | bv_render_3d.c
+EXPECT_EXIT | 0 | the-xelector-limit-is-the-page
+RUN | /usr/bin/grep | -q | -F | hy >= MAX_BOARD_DIM) return; | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-silent-256-cap-is-gone
+COPY | &.widgits/board-viewer/ops/bv_menu_input.c | bv_menu_input.c
+RUN | /usr/bin/grep | -c | -F | bv_page_lims(focused_project_root | bv_menu_input.c
+EXPECT_OUT | 2 | both-arrow-paths-use-the-page-size
 CLEAN |

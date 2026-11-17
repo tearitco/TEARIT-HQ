@@ -322,6 +322,31 @@ static int clamp_int(int v, int lo, int hi) {
     return v;
 }
 
+/* The last usable cursor cell of the shown page: MAX_BOARD_DIM - 1 on the letter grid, or the real size of a painted page from its cells.txt header (centroid live is 504 x 364; grok 2026-11-11 for the xelector
+ * arrows, now shared with the older cursor path below so both stop at the page and a click on the corner map can leave the cursor anywhere on it). */
+static void bv_page_lims(const char *root, int *lx, int *ly) {
+    char wst[PATH_BUF], desk[64] = "", map_id[64] = "", cp[PATH_BUF];
+    *lx = MAX_BOARD_DIM - 1; *ly = MAX_BOARD_DIM - 1;
+    snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wst, "desk_id", desk, sizeof(desk));
+    read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+    if (desk[0] && map_id[0] && !strchr(desk, '/') && !strchr(map_id, '/')) {
+        snprintf(cp, sizeof(cp), "%s/pieces/system/maps/%s/%s/cells.txt", root, map_id, desk);
+        FILE *cf = fopen(cp, "r");
+        if (cf) {
+            char ln[80]; int cw = 0, ch = 0;
+            while (fgets(ln, sizeof(ln), cf)) {
+                if (!strncmp(ln, "width=", 6)) cw = atoi(ln + 6);
+                else if (!strncmp(ln, "height=", 7)) ch = atoi(ln + 7);
+                else if (!strncmp(ln, "cells", 5)) break;
+            }
+            fclose(cf);
+            if (cw > 0 && cw <= 8192) *lx = cw - 1;
+            if (ch > 0 && ch <= 8192) *ly = ch - 1;
+        }
+    }
+}
+
 /* Optional multi-Z chunk support - same real convention bv_compose_
  * frame.c's own resolve_board_path() and bv_render_3d.c's own
  * resolve_board_path_3d() already use (see either file's own header
@@ -791,6 +816,7 @@ static int handle_one_key(int key) {
              * It is a free cursor: the limit is the world limit (MAX_BOARD_DIM), not one chunk. */
             int lim_w = board_w > MAX_BOARD_DIM ? board_w : MAX_BOARD_DIM;
             int lim_h = board_h > MAX_BOARD_DIM ? board_h : MAX_BOARD_DIM;
+            { int plx, ply; bv_page_lims(focused_project_root, &plx, &ply); if (plx + 1 > lim_w) lim_w = plx + 1; if (ply + 1 > lim_h) lim_h = ply + 1; }
             int old_sel_x = selector_x, old_sel_y = selector_y;
             selector_x = clamp_int(selector_x + dx, 0, lim_w - 1);
             selector_y = clamp_int(selector_y + dy, 0, lim_h - 1);
@@ -1222,28 +1248,7 @@ static int handle_one_key(int key) {
         int selector_x = read_kv_int(xelector_state_path, "pos_x", read_kv_int(state_path, "selector_x", 0));
         int selector_y = read_kv_int(xelector_state_path, "pos_y", read_kv_int(state_path, "selector_y", 0));
         /* The letter grid stops at MAX_BOARD_DIM. A cells.txt page can be wider (centroid live is 504). Stopping at 255 parks the 2D cursor in the middle of that minimap. */
-        int lim_x = MAX_BOARD_DIM - 1, lim_y = MAX_BOARD_DIM - 1;
-        {
-            char wst[PATH_BUF], desk[64] = "", map_id[64] = "", cp[PATH_BUF];
-            snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", focused_project_root);
-            read_kv_str(wst, "desk_id", desk, sizeof(desk));
-            read_kv_str(wst, "map_id", map_id, sizeof(map_id));
-            if (desk[0] && map_id[0] && !strchr(desk, '/') && !strchr(map_id, '/')) {
-                snprintf(cp, sizeof(cp), "%s/pieces/system/maps/%s/%s/cells.txt", focused_project_root, map_id, desk);
-                FILE *cf = fopen(cp, "r");
-                if (cf) {
-                    char ln[80]; int cw = 0, ch = 0;
-                    while (fgets(ln, sizeof(ln), cf)) {
-                        if (!strncmp(ln, "width=", 6)) cw = atoi(ln + 6);
-                        else if (!strncmp(ln, "height=", 7)) ch = atoi(ln + 7);
-                        else if (!strncmp(ln, "cells", 5)) break;
-                    }
-                    fclose(cf);
-                    if (cw > 0 && cw <= 8192) lim_x = cw - 1;
-                    if (ch > 0 && ch <= 8192) lim_y = ch - 1;
-                }
-            }
-        }
+        int lim_x, lim_y; bv_page_lims(focused_project_root, &lim_x, &lim_y);      /* the page, not 256 (helper above) */
         selector_x = clamp_int(selector_x + dx, 0, lim_x);
         selector_y = clamp_int(selector_y + dy, 0, lim_y);
         write_kv_int(state_path, "selector_x", selector_x);

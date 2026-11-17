@@ -2414,6 +2414,10 @@ static int g_mm_maker = 0;
 #include "bv_minimap_fit.h"
 /* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
 static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
+/* Where the corner map was last painted, so a click on it can be turned back into a page cell (2026-11-17, owner: "when i click on mini map, it moves my cam / xelector there"). Set by bv_draw_minimap
+ * (valid = 0 when no map was drawn), read by bv_ray_click. The cell maths is bv_minimap_cell in bv_minimap_fit.h (harness minimap_fit). */
+static struct { int valid, x, y, w, h, cellpx, wx0, wy0, ww, wh, fw, fh, pw, ph; } g_mm_hit;
+static int g_mm_click = 0;      /* 1 while the click being handled landed on the corner map (read by the callers that move the camera) */
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 /* The corner map is sized by the PAINTED page (g_mk.w x g_mk.h) when there is one, not by the 3D glyph board (<= 256). The full frame AND the click's HUD-only repaint (bv_repaint_hud_only)
  * must both call this: the repaint used the glyph-board size, so after any click the map turned square, cropped to the page's top-left and pinned the eye to the right edge
@@ -2624,6 +2628,7 @@ static void bv_fill_rect(int x0, int y0, int x1, int y1, unsigned char r, unsign
  * none), so the minimap stacks below it in the same corner instead of
  * overlapping. */
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h) {
+    g_mm_hit.valid = 0;
     if (!hud_pdl_int(pdl, "hud_minimap", 1)) return;
     if (g_mm_board_w <= 0 || g_mm_board_h <= 0) return;
 
@@ -2673,6 +2678,8 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int mm_x = right_anchor ? (g_fw - mm_w - pad) : pad;
     if (mm_x < 0) mm_x = 0;
     if (mm_y < 0) mm_y = 0;
+    g_mm_hit.valid = 1; g_mm_hit.x = mm_x; g_mm_hit.y = mm_y; g_mm_hit.w = mm_w; g_mm_hit.h = mm_h; g_mm_hit.cellpx = cellpx;
+    g_mm_hit.wx0 = wx0; g_mm_hit.wy0 = wy0; g_mm_hit.ww = ww; g_mm_hit.wh = wh; g_mm_hit.fw = g_fw; g_mm_hit.fh = g_fh; g_mm_hit.pw = g_mm_board_w; g_mm_hit.ph = g_mm_board_h;
 
     /* Real, new (direct user report: "the minimap is fliped along
      * vertical axis. chicken in on right in minimap but left in real
@@ -3164,6 +3171,17 @@ static int bv_ray_click(const char *house, const Camera *cam,
     g_pick_cw = cw; g_pick_ch = ch;
     if (pcx) *pcx = cx;
     if (pcy) *pcy = cy;
+    g_mm_click = 0;
+    if (g_mm_hit.valid && g_mm_hit.fw > 0 && g_mm_hit.fh > 0) {      /* the corner map: a click inside its box names a page cell, no ray (the box is in frame pixels, the click in canvas pixels) */
+        int mpx = (int)((double)cx * (double)g_mm_hit.fw / (double)cw), mpy = (int)((double)cy * (double)g_mm_hit.fh / (double)ch), mcx = 0, mcy = 0;
+        if (mpx >= g_mm_hit.x && mpy >= g_mm_hit.y && mpx < g_mm_hit.x + g_mm_hit.w && mpy < g_mm_hit.y + g_mm_hit.h) {
+            f = host_fopen(seen_path, "w"); if (f) { fputs(stamp, f); fclose(f); }
+            if (!bv_minimap_cell(mpx, mpy, g_mm_hit.x, g_mm_hit.y, g_mm_hit.w, g_mm_hit.h, g_mm_hit.cellpx, g_mm_hit.wx0, g_mm_hit.wy0, g_mm_hit.ww, g_mm_hit.wh, g_mm_hit.pw, g_mm_hit.ph, &mcx, &mcy)) return -1;      /* the margin or past the page: consumed, nothing moves */
+            *hx = mcx; *hy = mcy; *hz = 0;
+            if (!g_pick_maker && g_mm_col_top && mcx < MAX_BOARD_DIM && mcy < MAX_BOARD_DIM && g_mm_col_top[mcy][mcx] >= 0) *hz = g_mm_col_top[mcy][mcx];
+            g_mm_click = 1; return 1;
+        }
+    }
     /* Match the picture: screen x is mirrored so desk +x stays on the right. */
     double ndc_x = 1.0 - (2.0 * cx / (double)cw);
     double ndc_y = 1.0 - (2.0 * cy / (double)ch);
@@ -3282,7 +3300,9 @@ static void bv_set_kv_int(const char *path, const char *key, int val) {
 }
 static void bv_xelector_to(const char *project_root, const char *focus, int hx, int hy) {
     char sp[PATH_BUF], xp[PATH_BUF], mk[PATH_BUF], poss[64] = "";
-    if (!project_root || !project_root[0] || !focus || !focus[0] || hx < 0 || hy < 0 || hx >= MAX_BOARD_DIM || hy >= MAX_BOARD_DIM) return;
+    int lim_x = MAX_BOARD_DIM, lim_y = MAX_BOARD_DIM;      /* a painted page can be wider (live is 504 x 364): the limit is the page, as the arrow keys already do (bv_menu_input) */
+    if (g_mm_maker && g_mk.ok && g_mk.w > 0 && g_mk.w <= 512 && g_mk.h > 0 && g_mk.h <= 512) { if (g_mk.w > lim_x) lim_x = g_mk.w; if (g_mk.h > lim_y) lim_y = g_mk.h; }
+    if (!project_root || !project_root[0] || !focus || !focus[0] || hx < 0 || hy < 0 || hx >= lim_x || hy >= lim_y) return;
     snprintf(xp, sizeof(xp), "%s/pieces/xelector_01/state.txt", focus);
     read_kv_str(xp, "possessed_id", poss, sizeof(poss));
     if (poss[0] && strcmp(poss, "none") != 0) return;

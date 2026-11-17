@@ -60,4 +60,17 @@ static int bv_minimap_tile_avg(const unsigned char *atlas, int aw, int ah, int c
     *r = (int)(sr / n); *g = (int)(sg / n); *b = (int)(sb / n);
     return 1;
 }
+/* Click on the corner map -> the page cell under it (2026-11-17, owner: "when i click on mini map, it moves my cam / xelector there on big map"). The inverse of how bv_draw_minimap paints:
+ * cellpx > 0 means cell (col,row) of the shown window was painted at box_x + col * cellpx; cellpx == 0 means the box shows the window scaled to box_w x box_h, one sample per output pixel. (wx0, wy0, ww, wh) is the
+ * window of the page that was painted (it includes minimap_margin and the minimap_follow window), page_w x page_h the real page. Returns 1 and the cell, or 0 when the pixel is outside the box or the cell lies outside
+ * the page (the margin, or a follow window hanging over the edge). Pure: the harness compiles it through minimap_fit_op. */
+static int bv_minimap_cell(int px, int py, int box_x, int box_y, int box_w, int box_h, int cellpx,
+                           int wx0, int wy0, int ww, int wh, int page_w, int page_h, int *cx, int *cy) {
+    if (box_w < 1 || box_h < 1 || px < box_x || py < box_y || px >= box_x + box_w || py >= box_y + box_h) return 0;
+    int bx, by;
+    if (cellpx > 0) { bx = wx0 + (px - box_x) / cellpx; by = wy0 + (py - box_y) / cellpx; }
+    else { bx = wx0 + (int)((double)(px - box_x) * (double)ww / (double)box_w); by = wy0 + (int)((double)(py - box_y) * (double)wh / (double)box_h); }
+    if (bx < 0 || by < 0 || bx >= page_w || by >= page_h) return 0;
+    *cx = bx; *cy = by; return 1;
+}
 #endif
