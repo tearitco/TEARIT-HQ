@@ -4879,15 +4879,8 @@ static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, J
     }
     return JS_UNDEFINED;
 }
-static __attribute__((used)) JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    JSValue global = JS_GetGlobalObject(ctx);
-    JSValue doc = JS_GetPropertyStr(ctx, global, "document");
-    JSValue ce = JS_GetPropertyStr(ctx, doc, "createElement");
-    JSValue arg = JS_NewString(ctx, "img");
-    JSValue el = JS_Call(ctx, ce, doc, 1, &arg);
-    JS_FreeValue(ctx, arg); JS_FreeValue(ctx, ce); JS_FreeValue(ctx, doc); JS_FreeValue(ctx, global);
-    return el;
-}
+/* Image constructor helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_image_ctor.c"
 /* element/document dispatchEvent helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_dispatch.c"
 /* Node.contains (row-31): webcomponents-lite.js does
