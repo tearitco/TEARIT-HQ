@@ -818,15 +818,8 @@ static int  g_cookie_path_set = 0;
 #include "nb_worker_sanitize_cookie_value.c"
 
 /* days-from-civil -> UNIX epoch (no TZ dependence; glibc timegm macro-gated). */
-static time_t epoch_from_ymd(int y, int m, int d, int hh, int mi, int ss) {
-    if (m < 3) { m += 12; y--; }
-    int era = (y >= 0 ? y : y - 399) / 400;
-    unsigned yoe = (unsigned)(y - era * 400);
-    unsigned doy = (153u * (unsigned)(m > 2 ? m - 3 : m + 9) + 2) / 5 + (unsigned)d - 1u;
-    unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
-    long days = (long)(era * 146097) + (long)doe - 719468L;
-    return (time_t)days * 86400L + hh * 3600L + mi * 60L + ss;
-}
+/* Epoch from ymd helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_epoch_from_ymd.c"
 
 static const char *const COOKIE_MONTHS[12] =
     { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
