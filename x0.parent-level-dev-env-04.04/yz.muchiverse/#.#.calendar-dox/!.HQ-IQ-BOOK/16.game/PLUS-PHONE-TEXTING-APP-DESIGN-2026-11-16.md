@@ -63,11 +63,19 @@ Signalling is the same text path (`command` kind: `call <gid-or-number>`); media
 - **Privacy note:** because search reads message text, it works only on files the user already owns; a hashed ledger row (3.4) is not searchable and does not need to be.
 - **Tests (added to `texting_app`):** add a contact by hand then see it in the list; a note is found by search and is NOT in the router ledger or the other phone's inbox (negative); a search term in another user's file finds nothing (negative); a rebuilt projection after deleting the cache is identical; a DELETE row removes the contact but keeps the thread; the caps stop a huge scan.
 
+### 3.10 Shared contacts: a trunk and branches, like git (OWNER 2026-11-16: "contacts can be shared, and stem from a trunk, like gits")
+- **Model:** the address book is not one file but a **trunk** (a shared book) plus **branches** (one per phone, or per user). A branch **inherits** every trunk row and adds its own rows on top; a row on a branch wins over the same number on the trunk for that branch only. Nothing is copied: a branch stores only its own rows plus a pointer to the trunk (`TRUNK | <path or id> | <trunk head>`), so a trunk edit shows up in every branch that has not overridden it.
+- **Rows carry an id** (`<ms>-<phone number>-<n>`) so books can be combined without conflicts: **sharing = publishing rows to the trunk**, **updating a branch = replaying trunk rows newer than the branch's recorded head** (a fast-forward), and **merge = the union of rows by id, then the latest row per number wins** (the same replay rule as the ledger; no hand merging, no ghost state). A DELETE on a branch hides a trunk contact for that branch only; a DELETE on the trunk removes it for everyone who has not overridden it.
+- **What is shared and what is not:** names, numbers and tags can be published; **notes are private by default** (a row flag `private`, never published, never read by another phone's app); the user chooses per contact what goes on the trunk.
+- **Who may write the trunk:** the owner of the trunk (initially the human's own book); entities the user owns can READ it (so an owned entity "knows" the contacts) but write only to their own branch; a published row from another user is a pull request in spirit: it lands on that user's branch, never silently on someone else's trunk.
+- **Files (still plain append-only rows, DOC):** `<trunk dir>/contacts.txt` (the trunk), `<phone dir>/contacts.txt` (a branch) with its `TRUNK` row; verbs of `text_op`: `contact add|rename|delete|note`, `contacts publish <number>` (copy a row to the trunk), `contacts sync` (fast-forward the branch). The git analogy is for the mental model only: no git is used, the format is rows and replay.
+- **Tests (in `texting_app`):** a trunk row appears in two branches; a branch override changes only that branch; a trunk edit after the branch override does not clobber it; publish copies a non-private row and refuses a private one (negative); sync is idempotent (second run changes nothing); deleting the cache rebuilds identical books.
+
 ## 4. Phases (each ends with a harness that can fail and a photo)
 | Phase | What | Test |
 |---|---|---|
 | 0 | decide the two blockers (section 5), `PAL-CHAIN-STANDARD` read | (doc) |
-| 1 | `text_op` contacts (auto + added by hand), notes, search, send, thread projection, the app screens | `texting_app` (scratch house, real ops, stub renderer like `phone_entity`) |
+| 1 | `text_op` contacts (auto + added by hand, trunk + branches 3.10), notes, search, send, thread projection, the app screens | `texting_app` (scratch house, real ops, stub renderer like `phone_entity`) |
 | 2 | router ledger gets `sha256(text)` + message id; block list | extend `pet_phones` |
 | 3 | `phone_reply_op` + `reply.pdl` + loop cap | `texting_reply` (3.5) |
 | 4 | live on a test phone with scratch users, photo of both ends | photos |
@@ -83,8 +91,8 @@ Signalling is the same text path (`command` kind: `call <gid-or-number>`); media
 4. **Other users:** open to everyone, with the router's per-sender rate limit and a per-phone block list (any phone may block numbers; nobody is blocked by default).
 
 **STILL OPEN (asked as the build goes):**
-5. **Where the address book lives** (3.9): `contacts.txt` beside the human's own phone, and search covers only my own phone files: OK? (implied by decision 1, to confirm before phase 1 ships.)
-6. The default reply's wording and whether it names itself as automatic ("auto-reply: ...") so a human is never fooled.
+5. **Address book** (3.9, 3.10): DECIDED: beside the human's own phone, searchable over my own phone files only, and contacts can be SHARED as a trunk with per-phone branches.
+6. **Default reply marked automatic**: DECIDED (yes, "[auto] ..." text, editable).
 
 ## 6. Evidence
 Read: `phone_send_op.c` (header and helpers), `server_route_op.c` (header), `^.hai-server/{README.md,router.pal,tunables.conf,phones.index}`, `HAI-ROBOTS-PHONES-SERVER-DESIGN.md` (headings and sections 3b/3c), `041.pal-chain/ops/chain_send.c` (header), one `phone.pdl`. Run: harness `pet_phones` (11 PASS, 2026-11-16). NOT read: the rest of the router, `phone_ensure_op`, `PAL-CHAIN-STANDARD`, any other user's phone (private).
