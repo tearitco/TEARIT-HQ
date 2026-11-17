@@ -155,3 +155,33 @@ RUN | /usr/bin/grep | -c | phone-ft | $T/h/&.hq-apps/plus-phone/instances/1/plus
 EXPECT_OUT_IS | 3 | exactly-three-footer-cells
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | 🗡 | NEGATIVE-no-dagger-emoji-in-the-footer-(draws-as-an-empty-box)
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | 🪟 | NEGATIVE-no-window-emoji-in-the-footer
+
+CASE    | the-cli-io-row-reuses-the-entitys-own-commit-script
+MKDIR | h/&.widgits/entity-cli/ops
+WRITE   | h/&.widgits/entity-cli/ops/entity_cli_commit.sh | #!/bin/sh\nprintf 'D=%s H=%s T=%s\\n' "$1" "$2" "$3" > "$1/cli_got.txt"\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/third/menu.chtpm | <window class="entity-menu">\n  <page name="main">\n    <item label="Dir" action="void"/>\n    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="${HOUSE}/&amp;.widgits/entity-cli/ops/entity_cli_commit.sh"/>\n  </page>\n</window>\n
+WRITE   | h/&.hq-apps/plus-phone/phone_prefs.pdl | ENTITY | cursword\nENTITY | third\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | third
+EXPECT_OUT | ENTITY-OPENED third | the-entity-with-a-cli-io-row-opens
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | <cli_io id="cmd" | the-screen-has-the-text-field
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | entity-cli '${ARG3}' 'third' | its-action-is-the-phone-verb-with-the-instance-and-the-name
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="e1" | and-the-one-item-row-is-still-a-button
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="e2" | NEGATIVE-the-cli-io-line-is-not-counted-as-a-button-row
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity | $T/h/&.hq-apps/plus-phone/instances/1 | cursword
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | <cli_io | NEGATIVE-an-entity-whose-menu-has-no-cli-io-row-gets-no-field
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/third/cli_got.txt | CONTROL-nothing-was-committed-yet
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-cli | $T/h/&.hq-apps/plus-phone/instances/1 | third | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | hello there
+EXPECT_OUT | ENTITY-CLI third: sent | the-text-is-sent
+WAIT_HAS | h/xyzfs/users/u1/home/livedesk/pals/third/cli_got.txt | hello there | 5000 | the-script-got-the-text-as-ONE-argument
+WAIT_HAS | h/xyzfs/users/u1/home/livedesk/pals/third/cli_got.txt | pals/third H=$T/h T=hello | 5000 | with-the-entity-own-folder-first-then-the-house-then-the-text
+RUN | /bin/rm | -f | $T/h/xyzfs/users/u1/home/livedesk/pals/third/cli_got.txt
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-cli | $T/h/&.hq-apps/plus-phone/instances/1 | cursword | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | nope
+EXPECT_OUT | ENTITY-REFUSED | NEGATIVE-an-entity-without-a-cli-io-row-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-cli | $T/h/&.hq-apps/plus-phone/instances/1 | other | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | nope
+EXPECT_OUT | ENTITY-REFUSED | NEGATIVE-an-unlisted-entity-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-cli | $T/h/&.hq-apps/plus-phone/instances/1 | ../third | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | nope
+EXPECT_OUT | ENTITY-REFUSED | NEGATIVE-a-name-with-path-characters-is-refused
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | entity-cli | $T/h/&.hq-apps/plus-phone/instances/1 | third | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h |
+EXPECT_OUT | ENTITY-REFUSED | NEGATIVE-empty-text-is-refused
+SLEEP | 1500
+EXPECT_NOFILE | h/xyzfs/users/u1/home/livedesk/pals/third/cli_got.txt | and-none-of-the-refused-ones-ran-the-script
