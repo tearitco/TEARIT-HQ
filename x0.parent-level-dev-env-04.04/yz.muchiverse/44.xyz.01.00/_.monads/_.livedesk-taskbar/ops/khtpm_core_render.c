@@ -5582,6 +5582,13 @@ static int kh_session_display_path(const char *name, char *out, size_t cap) {
     const char *s = kh_get_var("bv_session"); if (!s || !s[0]) return 0;
     snprintf(out, cap, "%s/pieces/display/%s", s, name); return 1;
 }
+/* Which canvas-size file THIS window may write (2026-11-17, phone-embedded editor S0, BOOK 16.game/PLUS-PHONE-RPG-EDIT-EMBEDDED-DESIGN-2026-11-17.md): any window that has a bv_session var writes its OWN session copy (a phone screen hosting an engine session reports its canvas the same way the pc-hq board does); the house-wide
+ * #.desktop/pchq_board_view.txt stays the pc-hq board's alone (another canvas window writing it made the board's 3D frame flip size every pass). Returns 0 when the window may write none. */
+static int kh_canvas_size_path(char *out, size_t cap) {
+    if (kh_session_display_path("board_view.txt", out, cap)) return 1;
+    if (kh_is_pchq_board()) { snprintf(out, cap, "%s/#.desktop/pchq_board_view.txt", g_house_root); return 1; }
+    return 0;
+}
 static int g_win_resizing = 0;
 /* Overlay chrome (IN-GAME-LAYOUTS-PLAN.md 4c): an overlay row with class ov-chrome whose FIRST child is a
  * <text class="ov-title"> can be dragged by that title with the mouse (class ov-slide-x: sideways only,
@@ -7442,11 +7449,9 @@ static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int 
     /* A resizable window writes the fill size later in this same
      * layout. Writing the smaller region size here too makes
      * pchq_board_view.txt flip every pass and the 3D view flicker. */
-    if (kh_is_pchq_board()) {      /* resizable or not: only the board window writes it, and it must (the resizable fill write below belongs to the generic panel path pc-hq does not take) */
+    {      /* resizable or not: the pc-hq board and any window with a bv_session var write it (kh_canvas_size_path); the resizable fill write below belongs to the generic panel path pc-hq does not take */
         char vsz[PATH_BUF];
-        if (!kh_session_display_path("board_view.txt", vsz, sizeof(vsz))) snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
-        FILE *vf = fopen(vsz, "w");
-        if (vf) { fprintf(vf, "%d %d\n", cv->w, cv->h); fclose(vf); }
+        if (kh_canvas_size_path(vsz, sizeof(vsz))) { FILE *vf = fopen(vsz, "w"); if (vf) { fprintf(vf, "%d %d\n", cv->w, cv->h); fclose(vf); } }
     }
     return 1;
 }
@@ -10148,11 +10153,9 @@ static void assign_nav_and_layout(void) {
                     item->h = g_win_h - item->y - 8;
                     if (item->w < 64) item->w = 64;
                     if (item->h < 64) item->h = 64;
-                    if (kh_is_pchq_board()) {      /* the GLOBAL file belongs to the pc-hq board only: any other canvas window (rpg-pet, pet-trainer) writing it made the board's 3D frame flip size every pass and letterbox (2026-10-10) */
+                    {      /* the pc-hq board writes the house-wide file, any window with a bv_session var writes its session copy (kh_canvas_size_path); another canvas window (rpg-pet, pet-trainer) with neither writes nothing: the GLOBAL file made the board's 3D frame flip size every pass */
                     char vsz[PATH_BUF];
-                    if (!kh_session_display_path("board_view.txt", vsz, sizeof(vsz))) snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
-                    FILE *vf = fopen(vsz, "w");
-                    if (vf) { fprintf(vf, "%d %d\n", item->w, item->h); fclose(vf); }
+                    if (kh_canvas_size_path(vsz, sizeof(vsz))) { FILE *vf = fopen(vsz, "w"); if (vf) { fprintf(vf, "%d %d\n", item->w, item->h); fclose(vf); } }
                     }
                     if (g_package_dir[0]) {   /* the same size for THIS app, next to its package (the global file above belongs to the pc-hq board): canvas_view.txt */
                         char vp2[PATH_BUF], vtmp[PATH_BUF + 8]; static int last_w = -1, last_h = -1;

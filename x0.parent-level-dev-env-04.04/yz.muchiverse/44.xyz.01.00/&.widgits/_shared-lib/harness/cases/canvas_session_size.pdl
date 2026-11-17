@@ -1,0 +1,41 @@
+# canvas_session_size (2026-11-17; phone-embedded editor slice S0, BOOK 16.game/PLUS-PHONE-RPG-EDIT-EMBEDDED-DESIGN-2026-11-17.md): the shared renderer let only a layout FILE NAMED pchq-board.xhtpm publish its canvas size; now any window that has a bv_session var publishes it into ITS OWN session
+# (kh_canvas_size_path), and the house-wide #.desktop/pchq_board_view.txt stays the pc-hq board's alone. SCRATCH layouts, the REAL renderer in a real window (needs the user's display; heavy: gate it with cpu_gate).
+# Proves: a canvas window WITHOUT bv_session writes no session file and leaves the house-wide file byte for byte; a canvas window WITH bv_session writes "<w> <h>" into its session; (the old renderer fails the second one, see the sabotage run in the commit).
+RESULTS | ../results/canvas_session_size.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | winA/state
+MKDIR | winB/state
+MKDIR | sess/pieces/display
+WRITE | winA/test.xhtpm | <window label="csstestA" class="database-window user-resizable" vars="state/ui.txt">\n  <page name="main">\n    <sidebar id="rail" class="pchq-rail sidebar"><text label="rail"/></sidebar>\n    <panel id="view-panel" class="pchq-view">\n      <canvas id="view" sprite="${canvas_raw}"/>\n    </panel>\n  </page>\n</window>\n
+WRITE | winB/test.xhtpm | <window label="csstestB" class="database-window user-resizable" vars="state/ui.txt">\n  <page name="main">\n    <sidebar id="rail" class="pchq-rail sidebar"><text label="rail"/></sidebar>\n    <panel id="view-panel" class="pchq-view">\n      <canvas id="view" sprite="${canvas_raw}"/>\n    </panel>\n  </page>\n</window>\n
+WRITE | winA/state/ui.txt | bv_session=$T/sess\ncanvas_raw=$T/sess/pieces/display/rgb.raw\n
+WRITE | winB/state/ui.txt | canvas_raw=$T/sess/pieces/display/rgb.raw\n
+RUN | /bin/sh | -c | cksum "$0" > "$1" | $HOUSE/#.desktop/pchq_board_view.txt | $T/g_before.txt
+EXPECT_EXIT | 0 | the-house-wide-size-file-is-recorded
+
+CASE    | no-session-var-writes-nothing
+SPAWN | WB | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | $HOUSE | $T/winB/test.xhtpm
+SLEEP | 9000
+EXPECT_ALIVE | $WB | the-window-ran
+EXPECT_NOFILE | sess/pieces/display/board_view.txt | NEGATIVE-no-session-file-without-a-bv_session-var
+RUN | /bin/sh | -c | cksum "$0" > "$1" | $HOUSE/#.desktop/pchq_board_view.txt | $T/g_after.txt
+RUN | /usr/bin/cmp | $T/g_before.txt | $T/g_after.txt
+EXPECT_EXIT | 0 | the-house-wide-file-is-untouched
+RUN | /bin/kill | $WB
+
+CASE    | session-var-writes-its-session
+SPAWN | WA | $HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x | $HOUSE | $T/winA/test.xhtpm
+SLEEP | 9000
+EXPECT_ALIVE | $WA | the-window-ran
+EXPECT_EXISTS | sess/pieces/display/board_view.txt | the-canvas-size-is-published-into-its-session
+RUN | /bin/sh | -c | read w h < "$0"; test "$w" -ge 64 -a "$h" -ge 64 | $T/sess/pieces/display/board_view.txt
+EXPECT_EXIT | 0 | it-is-two-sensible-numbers
+RUN | /bin/sh | -c | cksum "$0" > "$1" | $HOUSE/#.desktop/pchq_board_view.txt | $T/g_after2.txt
+RUN | /usr/bin/cmp | $T/g_before.txt | $T/g_after2.txt
+EXPECT_EXIT | 0 | and-the-house-wide-file-still-untouched
+RUN | /bin/kill | $WA
+
+CLEAN   |

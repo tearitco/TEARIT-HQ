@@ -3572,8 +3572,11 @@ static int render_one_frame(void) {
     load_terrain_legend(focused_project_root);
     ensure_digit_glyphs_loaded(project_root);
 
-    int selector_x = read_kv_int(state_path, "selector_x", board_w / 2);
-    int selector_y = read_kv_int(state_path, "selector_y", board_h / 2);
+    /* Where a fresh session starts looking (nothing saved in bv_state.txt yet): the middle of the board, and on a PAINTED page the middle of THAT page, not of the 256 glyph board behind it (2026-11-17, frame glitch: a relaunched editor on centroid:live, 504 x 364, opened on pos 128,128 = open sky beside the island). */
+    int def_sx = board_w / 2, def_sy = board_h / 2;
+    if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= 512 && g_mk.h <= 512) { def_sx = g_mk.w / 2; def_sy = g_mk.h / 2; }
+    int selector_x = read_kv_int(state_path, "selector_x", def_sx);
+    int selector_y = read_kv_int(state_path, "selector_y", def_sy);
     /* current_z is the SAME real field ops/bv_menu_input.c's own z/x
      * handler writes to the focused host's own pieces/xelector_01/
      * state.txt pos_z (civ-vs-piece.md §6b) - board-viewer's own

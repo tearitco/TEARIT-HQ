@@ -1,0 +1,4 @@
+# canvas_session_size.pal - see cases/canvas_session_size.pdl
+exec ./ops/+x/harness_case_op.+x cases/canvas_session_size.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/canvas_session_size.pdl
+halt

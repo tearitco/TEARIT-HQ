@@ -155,4 +155,11 @@ RUN | /usr/bin/grep | -c | -F | hud_pdl_str(vp, "minimap_click_possessed" | bv_r
 EXPECT_OUT | 2 | the-3d-setting-is-read-as-a-house-pipe-row-book-then-system
 RUN | /usr/bin/grep | -c | -F | read_kv_str(vp, "minimap_click_possessed" | bv_render_3d.c
 EXPECT_OUT | 0 | NEGATIVE-no-key-equals-value-reader-for-the-setting-is-left
+# a fresh session on a PAINTED page starts at that page's middle (2026-11-17, frame glitch: a relaunched editor on centroid:live opened on pos 128,128 = open sky). Proven in a scratch run: HUD pos 128,128,1 with the old engine, 252,182,1 with the new (page 504 x 364); here the wiring.
+RUN | /usr/bin/grep | -q | -F | def_sx = g_mk.w / 2 | bv_render_3d.c
+EXPECT_EXIT | 0 | a-painted-page-sets-its-own-default-centre
+RUN | /usr/bin/grep | -q | -F | read_kv_int(state_path, "selector_x", def_sx) | bv_render_3d.c
+EXPECT_EXIT | 0 | the-saved-selector-still-wins-the-default-is-only-a-fallback
+RUN | /usr/bin/grep | -q | -F | read_kv_int(state_path, "selector_x", board_w / 2) | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-glyph-board-centre-is-no-longer-the-only-default
 CLEAN |
