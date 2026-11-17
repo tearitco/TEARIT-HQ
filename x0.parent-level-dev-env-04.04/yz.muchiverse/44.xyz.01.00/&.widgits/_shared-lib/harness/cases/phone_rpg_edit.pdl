@@ -60,7 +60,7 @@ EXPECT_OUT | 0 error(s), 0 warning(s) | the-screen-passes-the-layout-validator
 CASE    | embedded-bridge
 WRITE | h/&.hq-apps/plus-phone/instances/p1/phone.txt | # phone.txt\nPHONE \p 3\nPORT \p 41003\nORIENT \p portrait\n
 MKDIR | h/&.hq-apps/plus-phone/instances/p1/editor_ui/state
-WRITE | h/&.hq-apps/plus-phone/instances/p1/editor_ui/state/ui.txt | bv_session=/x/sessions/1\ncanvas_raw=/x/sessions/1/pieces/display/rgb.raw\nbv_h1=/x/h1.txt\nbv_h2=/x/h2.txt\ninteract_class=interact-active\ninteract_armed=1\ninteract_label=ON\nbook_label=book:centroid\npage_label=page:live\nn_desk_opts=2\nd_0_id=live\nd_0_label=live\n
+WRITE | h/&.hq-apps/plus-phone/instances/p1/editor_ui/state/ui.txt | bv_session=/x/sessions/1\ncanvas_raw=/x/sessions/1/pieces/display/rgb.raw\nbv_h1=/x/h1.txt\nbv_h2=/x/h2.txt\ninteract_class=interact-active\ninteract_armed=1\ninteract_label=ON\nbook_label=book:centroid\npage_label=page:live\nn_desk_opts=2\nd_0_id=live\nd_0_label=live\nn_file_opts=003\nf_0_label=default\nf_0_verb=load-map\nf_0_arg=default\nf_1_label=Open File Explorer\nf_1_verb=file-hq\nf_1_arg=\nf_2_label=Centroid\nf_2_verb=load-map\nf_2_arg=centroid\n
 RUN | $T/redit_op.+x | $T/h | pkg | --once | $T/h/&.hq-apps/plus-phone/instances/p1
 EXPECT_EXIT | 0 | the-module-bridges-the-projector-file
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | window_title=+3 :41003 | the-window-title-is-the-PHONE-name-not-the-app
@@ -78,7 +78,13 @@ EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_inter
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_interact_label=ON | other-projector-vars-get-the-ed_-prefix
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_d_0_id=live | and-the-page-picker-rows-too
 EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | \nbook_label=book:centroid | NEGATIVE-the-editor-book-label-does-not-overwrite-the-phone-top-bar
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_n_file_opts=003 | the-book-list-is-bridged
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_f_2_arg=centroid | a-book-row-keeps-its-load-verb-and-id
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | ed_f_1_verb=menu | the-File-Explorer-row-is-made-inert
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/p1/.hq_manager/ui.txt | file-hq | NEGATIVE-no-row-can-start-a-desktop-window-from-the-phone
 COPY | &.hq-apps/app-edit/projects/rpg-edit/screens/edit.xhtpm | edit.xhtpm
+RUN | /usr/bin/grep | -q | -F | target_id="ed-book" | edit.xhtpm
+EXPECT_EXIT | 0 | the-screen-has-a-book-dropdown-like-the-page-one
 RUN | /usr/bin/grep | -q | -F | relay="${bv_h1},${bv_h2}" | edit.xhtpm
 EXPECT_EXIT | 0 | the-In-tab-declares-the-key-relay
 RUN | /usr/bin/grep | -q | -F | class="tab ${interact_class}" | edit.xhtpm

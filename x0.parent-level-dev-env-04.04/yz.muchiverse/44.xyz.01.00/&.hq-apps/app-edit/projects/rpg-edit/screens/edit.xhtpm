@@ -6,13 +6,18 @@
     ${APP_CHROME}
     <tabbar id="edtb" class="tab-bar">
       <tab id="ed-in" class="tab ${interact_class}" label="In: ${ed_interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+      <tab id="ed-book" class="tab" label="${ed_book_label} v" onclick="ACTIVATE" target_id="ed-book"/>
       <tab id="ed-page" class="tab" label="${ed_page_label} v" onclick="ACTIVATE" target_id="ed-page"/>
     </tabbar>
+    <repeat count="${ed_n_file_opts}" bind="ed_f">
+      <item id="fo-${ed_f.#}" class="dd-row dropdown-child ${ed_f.active}" target_id="ed-book" label="${ed_f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${ed_f.verb}' '${ed_f.arg}'"/>
+    </repeat>
+    <item id="fo-cancel" class="dd-row dropdown-child quiet" target_id="ed-book" label="- cancel -" action="void"/>
     <repeat count="${ed_n_desk_opts}" bind="ed_d">
       <item id="do-${ed_d.#}" class="dd-row dropdown-child ${ed_d.active}" target_id="ed-page" label="${ed_d.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${ed_d.id}'"/>
     </repeat>
     <item id="do-cancel" class="dd-row dropdown-child quiet" target_id="ed-page" label="- cancel -" action="void"/>
-    <text label="${ed_book_label}  ${status}" class="quiet"/>
+    <text label="${status}" class="quiet"/>
     <canvas id="view" class="edview" sprite="${canvas_raw}"/>
     ${PHONE_FOOTER}
   </page>

@@ -106,8 +106,12 @@ static void step(void) {
 }
 /* the projector's variables into the phone's ui text: the ones the RENDERER reads by name (bv_session, canvas_raw, bv_h1, bv_h2, interact_class, interact_armed: canvas routing and the In: key relay) unchanged, everything else prefixed ed_ */
 static int bridge(char *UI, size_t cap) {
-    char f[P], ln[800]; int n = 0; snprintf(f, sizeof f, "%s/state/ui.txt", EUI); FILE *fp = fopen(f, "r"); if (!fp) return 0;
+    char f[P], ln[800]; int n = 0, fix = 0; snprintf(f, sizeof f, "%s/state/ui.txt", EUI); FILE *fp = fopen(f, "r"); if (!fp) return 0;
     while (fgets(ln, sizeof ln, fp)) { ln[strcspn(ln, "\r\n")] = 0; char *eq = strchr(ln, '='); if (!eq || eq == ln) continue; *eq = 0; const char *k = ln, *v = eq + 1;
+        /* the book list is the desktop menu: its "Open File Explorer" row would start a real desktop window from the phone, so it becomes an inert row (verb menu, arg close) */
+        if (!strncmp(k, "f_", 2) && strlen(k) >= 8 && !strcmp(k + strlen(k) - 5, "_verb") && !strcmp(v, "file-hq")) { v = "menu"; fix = 1; }
+        else if (fix && !strncmp(k, "f_", 2) && strlen(k) >= 6 && !strcmp(k + strlen(k) - 4, "_arg")) { v = "close"; fix = 0; }
+        else if (!strncmp(k, "f_", 2) && !strncmp(v, "Open File Explorer", 18)) v = "(desktop only)";
         if (!strcmp(k, "bv_session") || !strcmp(k, "canvas_raw") || !strcmp(k, "bv_h1") || !strcmp(k, "bv_h2") || !strcmp(k, "interact_class") || !strcmp(k, "interact_armed")) n += snprintf(UI + n, cap - n, "%s=%s\n", k, v); else n += snprintf(UI + n, cap - n, "ed_%s=%s\n", k, v);
         if (n > (int)cap - 1000) break; }
     fclose(fp); return n;
