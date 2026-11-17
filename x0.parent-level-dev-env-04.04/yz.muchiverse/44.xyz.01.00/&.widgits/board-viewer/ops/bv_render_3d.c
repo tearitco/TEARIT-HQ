@@ -340,6 +340,24 @@ static void read_kv_str(const char *path, const char *key, char *out, size_t out
     fclose(f);
 }
 
+/* map_id and desk_id of the shown page, read the OLD HARDENED way (CENTROID_GOLD_STD "Atomic state-file publish", HOUSE_CODE_PITFALLS 17: a read that fails or looks partial re-uses the last good copy and a new bad value is acted
+ * on only once it persists). world_01/state.txt is rewritten in place by other processes while the engine runs, so one frame can read it half-written and see an empty map_id or desk_id; every reader used to treat that as "no page"
+ * (the 3D scene went to sky and the corner map to the 256-cell glyph board for one frame; owner 2026-11-16: "sometimes minimap glitches for 1 frame"). Several readers run in ONE frame, so "persists" is a TIME (100 ms; a torn write
+ * lasts microseconds), not a call count. A table of 4 files, keyed by path. No lock, no new file, no change to the writers. */
+static void bv_world_ids(const char *path, char *map_id, size_t mn, char *desk_id, size_t dn) {
+    static struct { char path[4352], map[128], desk[128]; long long bad_since; } T[4]; static int tn = 0;
+    char m[128] = "", d[128] = ""; read_kv_str(path, "map_id", m, sizeof(m)); read_kv_str(path, "desk_id", d, sizeof(d));
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); long long now = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    int k = -1; for (int i = 0; i < tn; i++) if (strcmp(T[i].path, path) == 0) k = i;
+    if (k < 0 && tn < 4 && m[0] && d[0]) { k = tn++; snprintf(T[k].path, sizeof(T[k].path), "%s", path); T[k].bad_since = 0; T[k].map[0] = T[k].desk[0] = 0; }
+    if (m[0] && d[0]) { if (k >= 0) { snprintf(T[k].map, sizeof(T[k].map), "%s", m); snprintf(T[k].desk, sizeof(T[k].desk), "%s", d); T[k].bad_since = 0; } }
+    else if (k >= 0 && T[k].map[0] && T[k].desk[0]) {
+        if (!T[k].bad_since) T[k].bad_since = now;
+        if (now - T[k].bad_since < 100) { snprintf(m, sizeof(m), "%s", T[k].map); snprintf(d, sizeof(d), "%s", T[k].desk); }
+    }
+    snprintf(map_id, mn, "%s", m); snprintf(desk_id, dn, "%s", d);
+}
+
 static int read_kv_int(const char *path, const char *key, int def) {
     char buf[64];
     read_kv_str(path, key, buf, sizeof(buf));
@@ -482,12 +500,25 @@ static const char *g_ml_dir_override = NULL;      /* set while the land overlay 
 static int maker_load_base(const char *root) {
     char wpath[4352], map_id[128] = "", desk_id[128] = "";
     snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root);
-    read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
-    read_kv_str(wpath, "desk_id", desk_id, sizeof(desk_id));
-    if (!g_ml_dir_override && (!map_id[0] || !desk_id[0])) return 0;
-    char dir[4352];
-    snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
+    bv_world_ids(wpath, map_id, sizeof(map_id), desk_id, sizeof(desk_id));
+    /* The old hardened reader rules (CENTROID_GOLD_STD "Atomic state-file publish", HOUSE_CODE_PITFALLS 17): a read that FAILS or LOOKS PARTIAL re-uses the last good copy, and a new bad value is acted on only when it is seen on two
+     * consecutive frames. world_01/state.txt is rewritten by other processes while this runs, so one frame can read an empty or torn map_id/desk_id; that used to return 0 here, maker_ground went false and the corner map sized
+     * itself from the 256-cell glyph board for that one frame (owner 2026-11-16: "sometimes minimap glitches for 1 frame to a different crop size"). No lock, no new file: the reader does not trust one bad frame. */
+    static char s_good_dir[4352] = "", s_good_root[4352] = "", s_seen_bad[4352] = "";
+    int partial = !map_id[0] || !desk_id[0];
+    char dir[4352] = "";
+    if (!partial) snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
     if (g_ml_dir_override) snprintf(dir, sizeof(dir), "%s", g_ml_dir_override);
+    else {
+        int usable = 0;
+        if (!partial) { char ct[4500]; struct stat cs; snprintf(ct, sizeof(ct), "%s/cells.txt", dir); usable = stat(ct, &cs) == 0; }
+        if (usable) s_seen_bad[0] = 0;
+        else if (s_good_dir[0] && strcmp(s_good_root, root) == 0) {
+            char bad[4400]; snprintf(bad, sizeof(bad), "%s", partial ? "(partial)" : dir);
+            if (strcmp(s_seen_bad, bad) != 0) { snprintf(s_seen_bad, sizeof(s_seen_bad), "%s", bad); snprintf(dir, sizeof(dir), "%s", s_good_dir); partial = 0; }      /* first sighting: keep the last good page */
+        }
+        if (partial) return 0;
+    }
     /* Reload when the book was re-exported. House standard (owner 2026-10-25, "always use the marker size checker"): the exporter appends one byte to <desk>/cells.marker after it wrote cells.rgba, and the stamp is that
      * file's SIZE (grows = new book, never st_mtime: two exports inside one second looked identical and the engine kept a stale atlas, "right shape, wrong blocks"). A desk with no marker yet (an exporter not converted)
      * falls back to the old mtime of cells.rgba. The directory key alone kept a stale atlas after gta-hq re-exported people and buildings. Camera state is not touched. */
@@ -597,6 +628,7 @@ static int maker_load_base(const char *root) {
         fclose(f);
     }
     g_mk.ok = 1;
+    if (!g_ml_dir_override) { snprintf(s_good_dir, sizeof(s_good_dir), "%s", dir); snprintf(s_good_root, sizeof(s_good_root), "%s", root); }
     return 1;
 }
 
@@ -619,7 +651,7 @@ static int maker_load(const char *root) {
 
     if (!changed && applied_id == g_mk.id) return ok;
     applied_id = g_mk.id + 0;
-    char wpath[4352], map_id[128] = ""; snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root); read_kv_str(wpath, "map_id", map_id, sizeof(map_id));
+    char wpath[4352], map_id[128] = "", bv_tmp_d[128]; snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root); bv_world_ids(wpath, map_id, sizeof(map_id), bv_tmp_d, sizeof(bv_tmp_d));
     char sdir[4352]; snprintf(sdir, sizeof(sdir), "%s/pieces/system/maps/%s/%s", root, map_id, src);
     MakerAtlas prim = g_mk; memset(&g_mk, 0, sizeof(g_mk)); g_ml_dir_override = sdir; int sok = maker_load_base(root); g_ml_dir_override = NULL;
     MakerAtlas lnd = g_mk; g_mk = prim;
@@ -1003,7 +1035,7 @@ static VehPiece g_veh[VEH_MAX]; static int g_veh_cnt = 0;
 static const char *veh_name(int k) { static char nm[VEH_MAX][10]; if (k == 0) return "ship_01"; snprintf(nm[k], sizeof nm[k], "veh_%d", k); return nm[k]; }
 static void load_vehicle(const char *root) {      /* every vehicle piece that exists, whose desk= (if given) is the desk on show */
     g_veh_cnt = 0; char path[PATH_BUF], cur[128] = "";
-    snprintf(path, sizeof(path), "%s/pieces/world_01/state.txt", root); read_kv_str(path, "desk_id", cur, sizeof(cur));
+    snprintf(path, sizeof(path), "%s/pieces/world_01/state.txt", root); { char bv_tmp_m[128]; bv_world_ids(path, bv_tmp_m, sizeof(bv_tmp_m), cur, sizeof(cur)); }
     for (int k = 0; k < VEH_MAX; k++) {
         snprintf(path, sizeof(path), "%s/pieces/%s/state.txt", root, veh_name(k));
         FILE *f = host_fopen(path, "r"); if (!f) continue;
@@ -2512,8 +2544,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         if (strcmp(source, "board") == 0 || !book[0] || !page[0]) {
             char worldp[PATH_BUF];
             snprintf(worldp, sizeof(worldp), "%s/pieces/world_01/state.txt", game_root);
-            read_kv_str(worldp, "map_id", book, sizeof(book));
-            read_kv_str(worldp, "desk_id", page, sizeof(page));
+            bv_world_ids(worldp, book, sizeof(book), page, sizeof(page));
         }
         if (!book[0]) snprintf(book, sizeof(book), "-");
         if (!page[0]) snprintf(page, sizeof(page), "-");
@@ -3792,8 +3823,7 @@ static int render_one_frame(void) {
     {   /* a page view.pdl wins, then the project view.pdl. House fog stays 18..48. */
         char vq[PATH_BUF], mapid[64], deskid[64];
         mapid[0] = 0; deskid[0] = 0;
-        read_kv_str(world_state_path_sky, "map_id", mapid, sizeof(mapid));
-        read_kv_str(world_state_path_sky, "desk_id", deskid, sizeof(deskid));
+        bv_world_ids(world_state_path_sky, mapid, sizeof(mapid), deskid, sizeof(deskid));
         int fe = -1, fs = -1;
         if (mapid[0] && deskid[0]) {
             snprintf(vq, sizeof(vq), "%s/pieces/system/maps/%s/%s/view.pdl", focused_project_root, mapid, deskid);

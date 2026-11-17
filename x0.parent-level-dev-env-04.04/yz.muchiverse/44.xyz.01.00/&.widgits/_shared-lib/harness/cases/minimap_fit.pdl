@@ -40,7 +40,19 @@ EXPECT_EXIT | 0 | backslash-in-2d-still-reaches-the-style-switch
 # tile colours (same scratch, same compiled op)
 # 2026-11-16 (owner: "why dont i see snow on mini map?" on ark-age and live): a cell paints the average colour of its atlas tile, not three flat colours. Real atlases, real helper.
 RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/ark-age/cells.rgba | 16 | 24 | 6
-EXPECT_OUT | tileavg 255 255 255 | ark-age-snow-slot-6-is-white
+EXPECT_OUT | tileavg 235 211 166 | ark-age-slot-6-is-SAND-(owner-2026-11-17)
+RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/live/cells.rgba | 16 | 24 | 6
+EXPECT_OUT | tileavg 255 255 255 | live-active-sheet-slot-6-is-SNOW
+RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/live/cells-rmmv.rgba | 16 | 24 | 6
+EXPECT_OUT | tileavg 255 255 255 | live-rmmv-sheet-keeps-the-snow-(backslash-swap)
+RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/live/cells-gen.rgba | 16 | 24 | 6
+EXPECT_OUT | tileavg 255 255 255 | live-gen-sheet-keeps-the-snow-(backslash-swap)
+RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/ark-age/cells-rmmv.rgba | 16 | 24 | 6
+EXPECT_OUT | tileavg 235 211 166 | ark-age-rmmv-sheet-is-sand
+RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/ark-age/cells-gen.rgba | 16 | 24 | 6
+EXPECT_OUT | tileavg 166 211 235 | ark-age-gen-sheet-is-sand-(red-blue-swapped)
+RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/ark-age/cells.rgba | 16 | 24 | 6
+EXPECT_OUT_LACKS | 255 255 255 | NEGATIVE-ark-age-slot-6-is-not-snow-any-more
 RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/ark-age/cells.rgba | 16 | 24 | 1
 EXPECT_OUT | tileavg 125 194 60 | grass-slot-1-is-green
 EXPECT_OUT_LACKS | 255 255 255 | NEGATIVE-grass-is-not-white
@@ -50,7 +62,7 @@ RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/
 EXPECT_OUT | tileavg none | an-off-atlas-slot-keeps-the-old-flat-colour-(none)
 RUN | $T/minimap_fit_op | tileavg | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/ark-age/cells.rgba | 16 | 24 | 0
 EXPECT_OUT | tileavg none | slot-0-is-no-tile
-# NOTE (data, not asserted): live/cells.rgba slot 6 is TAN (235,211,166), the 2026-11-06 rmmv sheet; only ark-age's active sheet has the white snow tile, so the live snow band is sand-coloured on the minimap AND in 3D.
+# DATA DECISION (owner 2026-11-17): sand on ark-age, snow on live; slot 6 is the snow-band tile on both pages. The sheets are asserted above.
 COPY | &.widgits/board-viewer/ops/bv_render_3d.c | bv_render_3d.c
 RUN | /usr/bin/grep | -q | -F | bv_minimap_tile_avg | bv_render_3d.c
 EXPECT_EXIT | 0 | the-corner-map-asks-for-the-tile-colour
@@ -61,4 +73,17 @@ RUN | /usr/bin/grep | -q | -F | bv_mm_page_dims(maker_ground) | bv_render_3d.c
 EXPECT_EXIT | 0 | the-full-frame-sizes-the-map-by-the-page
 RUN | /usr/bin/grep | -q | -F | bv_mm_page_dims(g_mm_maker) | bv_render_3d.c
 EXPECT_EXIT | 0 | the-click-repaint-sizes-the-map-by-the-page-too
+# world_01/state.txt is rewritten by other processes: every engine reader of map_id/desk_id goes through bv_world_ids (last good copy, a bad read is trusted only after 100 ms), never a bare read_kv_str (2026-11-16, "minimap glitches for 1 frame"). Source checks prove the wiring; the behaviour was proven by a scratch-session run with desk_id blanked for one frame (whole frame byte-identical, CENTROID-TEST-AND-LIVE).
+RUN | /usr/bin/grep | -q | -F | static void bv_world_ids | bv_render_3d.c
+EXPECT_EXIT | 0 | the-hardened-reader-exists
+RUN | /usr/bin/grep | -q | -F | bv_world_ids(wpath, map_id, sizeof(map_id), desk_id, sizeof(desk_id)) | bv_render_3d.c
+EXPECT_EXIT | 0 | the-maker-loader-uses-it
+RUN | /usr/bin/grep | -q | -F | bv_world_ids(world_state_path_sky | bv_render_3d.c
+EXPECT_EXIT | 0 | the-sky-reader-uses-it
+RUN | /usr/bin/grep | -q | -F | read_kv_str(wpath, "desk_id" | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-maker-loader-has-no-bare-desk_id-read
+RUN | /usr/bin/grep | -q | -F | read_kv_str(world_state_path_sky, "desk_id" | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-sky-reader-has-no-bare-desk_id-read
+RUN | /usr/bin/grep | -q | -F | read_kv_str(worldp, "desk_id" | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-hud-label-has-no-bare-desk_id-read
 CLEAN |
