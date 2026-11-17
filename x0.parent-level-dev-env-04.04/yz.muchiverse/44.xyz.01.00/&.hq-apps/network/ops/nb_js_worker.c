@@ -448,14 +448,8 @@ static double nb_edge_pad_h(NbNode *n);
 /* Total height of the document `from` belongs to. Walks to the topmost
  * ancestor, then sums its children - the same shape nb_content_h uses, so the
  * measurement is the one the box tree would report anyway. */
-static double nb_doc_root_h(NbNode *from) {
-    if (!from) return 0.0;
-    NbNode *top = from;
-    while (top->parent) top = top->parent;
-    double sum = 0.0;
-    for (NbNode *c = top->first_child; c; c = c->next_sibling) sum += nb_content_h(c);
-    return sum;
-}
+/* Document root height helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_nb_doc_root_h.c"
 
 /* The usable content column: the pane width, minus the scrollbar when the
  * document actually overflows it. */
