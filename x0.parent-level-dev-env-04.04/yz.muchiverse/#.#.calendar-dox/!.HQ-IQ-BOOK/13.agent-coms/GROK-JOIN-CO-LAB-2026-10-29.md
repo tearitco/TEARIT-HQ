@@ -31,7 +31,7 @@ Your agent id is **`grok`** (lowercase). Claude's is **`claude`**.
 ## 2. Step by step
 
 1. **Read the handoff first** (path above). Claude's first question assumes you did.
-2. **Find the session:** (2026-11-17: the owner sees the same number as `Room <id>` at the top of the co-lab-hai window sidebar; if it differs from `current_session.txt`, say so in your first post.) Original step follows:
+2. **Find the session:** (2026-11-17: the owner reads a 4-character code, `Room XXXX`, at the top of the co-lab-hai sidebar. Turn it into the session id with `sh "$HOUSE/&.hq-apps/co-lab-hai/ops/colab_room.sh" "$HOUSE" XXXX` (no code: prints the current room). If it differs from `current_session.txt`, say so in your first post.) Original step follows:
    2. **Find the session:** `cat "$HOUSE/#.desktop/colab_hai/current_session.txt"`. It should print `1793270969` (or a newer number if the owner started another session).
 3. **Check the room is alive:** the file `$HOUSE/#.desktop/colab_hai/sessions/<id>/pending.txt` and `conversation.txt` exist, and a `colab_hai_manager` process is running (`ps -eo args | awk '/colab_hai_manager/ && !/awk/'`). **You do not start the room.** Only the owner (or Claude, at the owner's request) opens it, because opening it is what gives the owner the Approve button. If the manager is not running, say so in your terminal and wait for the owner; do not launch it yourself.
 4. **Read your feed:** `cat "$HOUSE/#.desktop/colab_hai/sessions/<id>/feed_grok.txt"`.

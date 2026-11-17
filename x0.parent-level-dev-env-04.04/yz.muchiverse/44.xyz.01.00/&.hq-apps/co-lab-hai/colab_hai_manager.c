@@ -331,6 +331,14 @@ static void switch_session(const char *sid) {
     if (cs) { fprintf(cs, "%s\n", sid); fclose(cs); }
 }
 
+/* The room code a human can relay: the session id (unix seconds) mod 36^4 written in base 36, 4 characters 0-9 A-Z (owner 2026-11-17: the 10 digit id is too long to relay by hand). Deterministic, so
+ * ops/colab_room.sh turns a code back into the session id by scanning the session folders (1.68 million codes against a few dozen sessions: a clash is reported, never guessed). */
+static void room_code(const char *sid, char *out) {
+    long v = atol(sid) % 1679616L; if (v < 0) v = -v;
+    for (int i = 3; i >= 0; i--) { int d = (int)(v % 36); out[i] = (char)(d < 10 ? '0' + d : 'A' + d - 10); v /= 36; }
+    out[4] = 0;
+}
+
 static void start_new_session(void) {
     char sid[64];
     snprintf(sid, sizeof(sid), "%ld", (long)time(NULL));
@@ -602,7 +610,7 @@ static void write_chtpm_projection(void) {
     write_agent_feeds();
 
     /* the room an agent must join, shown in the toolbar (owner 2026-11-17: "a room number so i can have grok join it, just to be sure we are in the same session"). Full id, the same number as #.desktop/colab_hai/current_session.txt and the folder name. */
-    CH_APPEND("room_label=Room %s\n", g_session_id);
+    { char rc[8]; room_code(g_session_id, rc); CH_APPEND("room_label=Room %s\n", rc); }
     CH_APPEND("participants_count=%d\n", g_n_participants);
     for (int i = 0; i < g_n_participants; i++) {
         char esc[128];
