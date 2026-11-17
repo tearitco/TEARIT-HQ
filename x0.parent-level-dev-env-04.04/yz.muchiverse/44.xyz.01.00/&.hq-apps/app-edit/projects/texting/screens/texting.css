@@ -1,0 +1,12 @@
+/* texting.css - structure only; colours come from the Settings 2 colors */
+window { font-family: DejaVu Serif; font-size: 11px; }
+.phone-portrait { width: 360px; height: 700px; }
+.btn            { border: 1px solid #808080; }
+.dimbtn         { border: 1px solid #404040; }
+.tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 150px; }
+.phone-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; }
+.phone-ft { width: 168px; border: 1px solid #444444; }
+.ft-narrow { width: 108px; }
+.dd-row { border: 1px solid #444444; background-color: #1a1a1a; width: 200px; }
+.hqwin-minimized { color: #666666; border: 1px dashed #555555; }

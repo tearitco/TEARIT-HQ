@@ -19,7 +19,7 @@
 #define MAXE 32
 static char HOUSE[P], HQD[P], INST[P];
 static int word(const char *s) { if (!*s || strlen(s) > 40) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || *s == '-' || *s == '_')) return 0; return 1; }
-static int sys_app(const char *id) { return !strcmp(id, "settings") || !strcmp(id, "appstore"); }
+static int sys_app(const char *id) { return !strcmp(id, "settings") || !strcmp(id, "appstore") || !strcmp(id, "texting"); }
 static int house_of(const char *inst) { const char *h = strstr(inst, "/&.hq-apps/plus-phone/instances/"); if (!h) return 0; snprintf(HOUSE, sizeof HOUSE, "%.*s", (int)(h - inst), inst); return 1; }
 /* fork/exec with an output file and a 600 s watchdog; returns the exit code, -1 on a signal or timeout */
 static int run_out(char *const av[], const char *outf) { pid_t c = fork(); if (c < 0) return -1; if (c == 0) { int fd = open(outf, O_WRONLY | O_CREAT | O_TRUNC, 0644); if (fd >= 0) dup2(fd, 1); int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 2); dup2(nul, 0); } execv(av[0], av); _exit(127); }

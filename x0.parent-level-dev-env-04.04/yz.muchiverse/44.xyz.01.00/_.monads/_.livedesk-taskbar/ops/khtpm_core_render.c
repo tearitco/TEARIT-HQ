@@ -3759,6 +3759,8 @@ static int reparse_chtpm_if_changed(void) {
                 }
             }
         }
+        /* 2026-11-16 (Texting): the phone windows use a <page>, not a <panel>, so the same class on a PAGE-level scrolllist starts it at the top too (the Texting contacts/search/thread lists). No existing window has the class there, so nothing else changes. */
+        { Elem *pg = find_by_tag(new_window, "page"); if (pg) { int i, j; for (i = 0; i < pg->n_children; i++) { Elem *c = pg->children[i]; if (strcmp(c->tag, "scrolllist") != 0) continue; for (j = 0; j < c->n_classes; j++) if (strcmp(c->classes[j], "from-top") == 0) g_default_scrolllist_scroll = 0; } } }
     }
     /* FIND IN PAGE: the other half of the promise the reset above makes
      * ("a content change should re-search"). It has to run HERE - once the

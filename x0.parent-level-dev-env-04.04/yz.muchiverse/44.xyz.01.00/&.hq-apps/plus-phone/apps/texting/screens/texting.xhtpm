@@ -1,0 +1,30 @@
+<!-- texting.xhtpm - the Texting screen (2026-11-16): ONE window, four views (threads, contacts, one thread, search); every number and row is a ${var} written by texting_op (the projector module), every button runs ONE verb of texting_op, which calls the core op text_op. -->
+<window label="${window_title}" class="texting database-window phone-portrait managed">
+  <module id="projector" src="&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x"/>
+  <page name="main">
+    ${PHONE_BARS}
+    ${APP_CHROME}
+    <text label="${status}" class="quiet"/>
+    <item id="vt" class="${cls_threads}" label="  threads  " action="'${PKG}/../ops/+x/texting_op.+x' 'ui_threads' '${ARG3}'"/>
+    <item id="vc" class="${cls_contacts}" label="  contacts  " action="'${PKG}/../ops/+x/texting_op.+x' 'ui_contacts' '${ARG3}'"/>
+    <item id="vs" class="${cls_search}" label="  search  " action="'${PKG}/../ops/+x/texting_op.+x' 'ui_searchview' '${ARG3}'"/>
+    <text label="${hint}" class="quiet"/>
+    <scrolllist class="from-top">
+      <cli_io id="cmdtop" target_id="cmdtop" label="${cmd_label}" show="${show_top}" action="'${PKG}/../ops/+x/texting_op.+x' 'ui_cmd' '${ARG3}'"/>
+      <repeat count="${n_t}" bind="t">
+        <item id="t${t.#}" class="btn" label="${t.label}" action="'${PKG}/../ops/+x/texting_op.+x' 'ui_open' '${ARG3}' '${t.peer}'"/>
+      </repeat>
+      <repeat count="${n_c}" bind="c">
+        <item id="c${c.#}" class="btn" label="${c.label}" action="'${PKG}/../ops/+x/texting_op.+x' 'ui_open' '${ARG3}' '${c.peer}'"/>
+      </repeat>
+      <repeat count="${n_l}" bind="l">
+        <text label="${l.text}" class="verse"/>
+      </repeat>
+      <repeat count="${n_s}" bind="s">
+        <item id="s${s.#}" class="btn" label="${s.label}" action="'${PKG}/../ops/+x/texting_op.+x' 'ui_open' '${ARG3}' '${s.peer}'"/>
+      </repeat>
+      <cli_io id="cmd" target_id="cmd" label="${cmd_label}" show="${show_bot}" action="'${PKG}/../ops/+x/texting_op.+x' 'ui_cmd' '${ARG3}'"/>
+    </scrolllist>
+    ${PHONE_FOOTER}
+  </page>
+</window>

@@ -1,0 +1,8 @@
+# manifest.pdl - Texting, a base phone app (owner 2026-11-16: "its a base app"). Design: BOOK 16.game/PLUS-PHONE-TEXTING-APP-DESIGN-2026-11-16.md (core ops: &.widgits/_shared-lib/ops/text_op.c)
+APP | id | texting
+TITLE | Texting
+ICON | icon
+ORDER | 10
+ORIENT | portrait
+PLATFORM | 1
+SCREEN | home | screens/texting.xhtpm

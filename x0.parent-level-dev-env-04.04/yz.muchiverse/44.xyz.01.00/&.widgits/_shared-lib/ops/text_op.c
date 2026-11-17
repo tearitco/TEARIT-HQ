@@ -65,14 +65,28 @@ static int owned(const Ix *x) { const char *a = strstr(MYPHONE, "/xyzfs/users/")
 
 /* ---- the address book (trunk_op) ---- */
 static char TRUNK[PN], BRANCH[PN], TOP[PN];
+static void book_load(void);
 static int book_ready(void) {
     snprintf(TOP, sizeof TOP, "%s/&.widgits/_shared-lib/ops/+x/trunk_op.+x", HOUSE); if (access(TOP, X_OK)) { printf("REFUSED trunk_op is not built\n"); return 0; }
     snprintf(TRUNK, sizeof TRUNK, "%s/contacts.trunk.txt", MYPHONE); snprintf(BRANCH, sizeof BRANCH, "%s/contacts.txt", MYPHONE); char out[400];
     if (access(TRUNK, F_OK)) { char *a[] = { TOP, TRUNK, "init-trunk", "--as", "me", NULL }; run(a, out, sizeof out); }
     if (access(BRANCH, F_OK)) { char *a[] = { TOP, BRANCH, "init-branch", TRUNK, "--as", "me", NULL }; run(a, out, sizeof out); }
-    return !access(BRANCH, F_OK);
+    if (access(BRANCH, F_OK)) return 0;
+    book_load(); return 1;
 }
-static int book_get(const char *key, char *val, size_t cap) { char *a[] = { TOP, BRANCH, "get", (char *)key, NULL }; char out[4200]; int rc = run(a, out, sizeof out); if (rc != 0) return 0; chomp(out); snprintf(val, cap, "%s", out); return 1; }
+/* the address book is read ONCE per run with `trunk_op list` (one fork), then looked up in memory: a screen refresh must not fork per contact */
+static char **BKEY, **BVAL; static int NB;
+static void book_load(void) {
+    static char out[400000]; char *a[] = { TOP, BRANCH, "list", NULL }; NB = 0; if (run(a, out, sizeof out) != 0) return;
+    int cap = 0; char *save = NULL;
+    for (char *ln = strtok_r(out, "\n", &save); ln; ln = strtok_r(NULL, "\n", &save)) {
+        char *b1 = strchr(ln, '|'); if (!b1) continue; char *b2 = strrchr(ln, '|'); if (b2 == b1) continue; *b1 = 0; *b2 = 0; char *val = b1 + 1;
+        char *w = val; for (char *r = val; *r; r++) { if (*r == '\\' && r[1]) { r++; *w++ = (*r == 'p') ? '|' : (*r == 'n') ? '\n' : *r; } else *w++ = *r; } *w = 0;
+        if (NB == cap) { cap = cap ? cap * 2 : 64; BKEY = realloc(BKEY, (size_t)cap * sizeof *BKEY); BVAL = realloc(BVAL, (size_t)cap * sizeof *BVAL); if (!BKEY || !BVAL) exit(2); }
+        BKEY[NB] = strdup(ln); BVAL[NB] = strdup(val); NB++;
+    }
+}
+static int book_get(const char *key, char *val, size_t cap) { for (int i = 0; i < NB; i++) if (!strcmp(BKEY[i], key)) { snprintf(val, cap, "%s", BVAL[i]); return 1; } return 0; }
 static const char *name_of(const Ix *x, char *buf, size_t cap) { char key[40], v[200]; snprintf(key, sizeof key, "c.%s", x->number); if (book_get(key, v, sizeof v)) snprintf(buf, cap, "%s", v); else snprintf(buf, cap, "%s", x->label); return buf; }
 
 static int v_me(void) { printf("ME|%s|%s|%s\n", MYNUM, MYLABEL, MYPHONE); return 0; }

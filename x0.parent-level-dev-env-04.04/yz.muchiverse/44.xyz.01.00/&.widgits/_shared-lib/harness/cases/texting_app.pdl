@@ -1,0 +1,149 @@
+# texting_app (2026-11-16): the Texting APP's engine (the shipped package &.hq-apps/plus-phone/apps/texting, ops/texting_op.c) in a SCRATCH house with the REAL text_op, phone_send_op, server_route_op, trunk_op. The projector runs with --once and the test reads the screen variables it
+# writes (<inst>/.hq_manager/ui.txt): which view, which rows, the status and hint lines; each button is one verb (ui_threads, ui_contacts, ui_searchview, ui_open, ui_cmd). Proves: the four views show the right rows (threads with unread marks, contacts owned-first,
+# one thread with both directions, search results), the compose field sends through the core op and the router delivers, contacts and notes can be added from the screen, bad input is refused with a visible message and no side effect, a missing phone shows the refusal on the screen,
+# and the package passes app_check. The renderer itself is not run here (the live photo is the evidence for the pixels). NO network.
+RESULTS | ../results/texting_app.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/&.widgits/_shared-lib/ops/+x
+MKDIR | h/^.hai-server
+MKDIR | h/&.hq-apps/plus-phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone
+MKDIR | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone
+MKDIR | h/bare/zz.phone
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/text_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/text_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/trunk_op.+x | $T/h/&.widgits/_shared-lib/ops/+x/trunk_op.+x
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/phone.pdl | SECTION      | KEY                  | VALUE\nPHONE        | number               | 297-2363-0074\nPHONE        | owner_label          | self\nPHONE        | history_max_lines    | 2000\nPHONE        | history_max_bytes    | 262144\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/phone.pdl | SECTION      | KEY                  | VALUE\nPHONE        | number               | 157-0288-6369\nPHONE        | owner_label          | botA\nPHONE        | history_max_lines    | 2000\nPHONE        | history_max_bytes    | 262144\n
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/phone.pdl | SECTION      | KEY                  | VALUE\nPHONE        | number               | 471-5576-7310\nPHONE        | owner_label          | botB\nPHONE        | history_max_lines    | 2000\nPHONE        | history_max_bytes    | 262144\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | # inbox\n
+WRITE   | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/outbox.txt | # outbox\n
+WRITE   | h/^.hai-server/phones.index | 297-2363-0074\paaaa\pself\p$T/h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self\p$T/h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone\n157-0288-6369\pbbbb\pbotA\p$T/h/xyzfs/users/u1/home/livedesk/pals/botA\p$T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone\n471-5576-7310\pcccc\pbotB\p$T/h/xyzfs/users/u2/home/livedesk/pals/botB\p$T/h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone\n
+MKDIR | h/&.hq-apps/plus-phone/instances/1
+MKDIR | h/&.hq-apps/plus-phone/apps
+RUN | /bin/cp | -r | $HOUSE/&.hq-apps/plus-phone/apps/texting | $T/h/&.hq-apps/plus-phone/apps/texting
+RUN | /bin/mkdir | -p | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXISTS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | the-projector-wrote-the-screen-variables
+
+CASE    | the-threads-view-when-nothing-was-said
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | window_title=Texting | titled-Texting
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | status=self (297-2363-0074) | the-status-names-my-phone
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_t=0 | no-threads-yet
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | No conversations yet | and-the-hint-says-what-to-do
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | show_top=0 | no-input-field-on-the-threads-view-(top)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | show_bot=0 | nor-at-the-bottom
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | cls_threads=dimbtn | the-active-tab-is-dimmed
+
+CASE    | the-contacts-view
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_contacts | $T/h/&.hq-apps/plus-phone/instances/1
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_c=2 | two-contacts-(my-bot-and-the-other-users-bot)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | c_0_label=  botA  [owned]  157-0288-6369 | my-own-bot-comes-first
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | c_1_label=  botB  [other]  471-5576-7310 | the-other-users-bot-second
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | c_0_peer=157-0288-6369 | tapping-it-opens-that-number
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | show_top=1 | the-contacts-field-is-at-the-TOP-(the-list-opens-at-its-start)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | cmd_label=Contacts: | and-labelled
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_t=0 | CONTROL-other-lists-are-empty-in-this-view
+
+CASE    | open-a-thread-and-send
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/1 | 157-0288-6369
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | No messages with botA yet | an-empty-thread-says-so
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | cmd_label=Message: | the-compose-field-is-labelled
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | show_top=1 | in-a-thread-the-field-is-at-the-TOP-(the-list-opens-at-its-start-newest-line-first)
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | show_bot=0 | and-never-at-the-bottom
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | hello bot
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | sent | the-send-says-sent
+EXPECT_HAS | h/xyzfs/users/u1/home/livedesk/pals/cursword/inventory/self/inventory/zz.phone/outbox.txt | hello bot | it-is-in-MY-outbox
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+EXPECT_OUT | routed=1 | the-router-delivers-it
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_l=1 | the-thread-has-one-line
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | l_0_text=me: hello bot | shown-as-mine
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 297-2363-0074 | say | t:x | hi back
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | l_0_text=botA: hi back | botA-s-reply-is-the-NEWEST-line-and-shows-under-its-name
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | l_1_text=me: hello bot | and-my-earlier-line-is-below-it
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h |
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | nothing typed | NEGATIVE-an-empty-message-sends-nothing
+
+CASE    | threads-unread-and-read
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/phone_send_op.+x | $T/h/xyzfs/users/u1/home/livedesk/pals/botA/inventory/zz.phone | 297-2363-0074 | say | t:x | second reply
+RUN | $T/h/&.widgits/_shared-lib/ops/+x/server_route_op.+x | $T/h/^.hai-server
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_threads | $T/h/&.hq-apps/plus-phone/instances/1
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_t=1 | one-thread
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | t_0_label=  * botA: second reply | an-unread-reply-is-marked-with-a-star
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | t_0_peer=157-0288-6369 | tapping-opens-the-peer
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/1 | 157-0288-6369
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_threads | $T/h/&.hq-apps/plus-phone/instances/1
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | t_0_label=  botA: second reply | after-opening-it-is-read
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | * botA | NEGATIVE-and-the-star-is-gone
+
+CASE    | contacts-and-notes-from-the-screen
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_contacts | $T/h/&.hq-apps/plus-phone/instances/1
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | add 471-5576-7310 Bobby
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | CONTACT-SAVED | the-contact-is-saved
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | note 471-5576-7310 owes me a quasar
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | NOTE-SAVED | the-note-is-saved
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | c_1_label=  Bobby  [other]  471-5576-7310 | the-book-name-replaces-the-index-label
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | add 12 Nope
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | type: add | NEGATIVE-a-bad-number-is-refused-with-a-hint
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | hello
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | type: add | NEGATIVE-a-plain-sentence-in-contacts-is-not-sent
+EXPECT_LACKS | h/xyzfs/users/u2/home/livedesk/pals/botB/inventory/zz.phone/inbox.txt | quasar | NEGATIVE-the-note-never-reaches-the-other-phone
+
+CASE    | search
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_searchview | $T/h/&.hq-apps/plus-phone/instances/1
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | quasar
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_s=1 | a-note-is-found
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | s_0_label=  contact: Bobby  471-5576-7310 | shown-as-a-contact-hit
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | hello bot
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | to botA: hello bot | a-message-is-found-and-says-to-whom
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | s_0_peer=157-0288-6369 | tapping-opens-that-thread
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | zzzznothing
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | Nothing found | NEGATIVE-no-match-says-so
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_s=0 | and-lists-nothing
+
+CASE    | refusals-and-no-side-effects
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_open | $T/h/&.hq-apps/plus-phone/instances/1 | 12345
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | not a phone number | NEGATIVE-a-bad-number-does-not-open-a-thread
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_threads | $T/h/&.hq-apps/plus-phone/instances/1
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | ui_cmd | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h | hello
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/last.txt | open contacts or a conversation first | NEGATIVE-typing-in-the-threads-view-sends-nothing
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | nonsense | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-verb-exits-2
+WRITE   | h/&.hq-apps/plus-phone/texting.pdl | MYPHONE | 999-9999-9999\n
+RUN | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting | --once | $T/h/&.hq-apps/plus-phone/instances/1
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | status=REFUSED no phone of mine | a-missing-phone-shows-the-refusal-on-the-screen
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_t=0 | and-lists-nothing
+RUN | /bin/rm | -f | $T/h/&.hq-apps/plus-phone/texting.pdl
+
+CASE    | the-package
+RUN | /bin/cp | $HOUSE/&.hq-apps/plus-phone/ops/+x/app_check.+x | $T/h/&.hq-apps/app_check.+x
+RUN | $T/h/&.hq-apps/app_check.+x | $T/h/&.hq-apps/plus-phone/apps/texting
+EXPECT_OUT | CHECK-OK texting | the-package-passes-app_check
+
+CASE    | the-module-ends-with-its-window
+RUN | /bin/sh | -c | KHTPM_ARG3="$1" "$2" "$3" "$4" >/dev/null 2>&1 & sleep 1; pgrep -f "texting_op[.]\+x $3 " >/dev/null && echo MODULE-ALIVE; sleep 1; exit 0 | sh | $T/h/&.hq-apps/plus-phone/instances/1 | $T/h/&.hq-apps/plus-phone/apps/texting/ops/+x/texting_op.+x | $T/h | $T/h/&.hq-apps/plus-phone/apps/texting
+EXPECT_OUT | MODULE-ALIVE | CONTROL-while-its-window-lives-the-module-runs
+SLEEP | 2500
+RUN | /usr/bin/pgrep | -f | texting_op[.]\+x $T/h 
+EXPECT_EXIT | 1 | the-module-is-GONE-after-its-window-ended-(not-adopted-and-left-running)
