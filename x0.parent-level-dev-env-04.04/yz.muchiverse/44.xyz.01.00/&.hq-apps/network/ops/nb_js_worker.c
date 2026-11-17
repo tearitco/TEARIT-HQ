@@ -200,18 +200,8 @@ static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *n
 #include "nb_worker_node_tree_helpers.c"
 
 /* ---- text / html serialization ---- */
-static void node_text_content(const NbNode *n, SB *b) {
-    if (!n) return;
-    if (n->tag && !strcmp(n->tag, "#comment")) {
-        sb_put(b, n->text);
-        return;
-    }
-    sb_put(b, n->text);
-    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        if (c->tag && !strcmp(c->tag, "#comment")) continue;
-        node_text_content(c, b);
-    }
-}
+/* Node textContent helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_node_text_content.c"
 /* HTML fragment serialization (innerHTML / outerHTML / XMLSerializer).
  * The old emitter wrote text verbatim, which is wrong for the three things
  * a page actually does with innerHTML:
