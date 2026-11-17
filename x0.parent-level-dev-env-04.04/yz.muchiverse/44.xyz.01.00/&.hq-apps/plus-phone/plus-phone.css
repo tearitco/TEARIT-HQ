@@ -12,4 +12,5 @@ window { font-family: Ubuntu; font-size: 10px; }      /* colours follow Settings
 .dd-row { width: 200px; }
 .phone-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; }
 .phone-ft { width: 168px; border: 1px solid #444444; }
+.ft-narrow { width: 108px; }
 .hqwin-minimized { color: #666666; border: 1px dashed #555555; }   /* a minimized app cell: same look as the LyfeDesk bottom bar (entity_menu_default.css) */

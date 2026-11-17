@@ -1,0 +1,17 @@
+/* match.css - sibling css of match.xhtpm. NO brand colours here (owner 2026-11-15: use the Settings "2 colors", do not invent a new theme): the window background and every unstyled label follow #.desktop/livedesk_theme.pdl (COLOR bg / COLOR fg), so Tear-it co = yellow on black and TSOTS = red on black are just those two values.
+   Only structure is set here: the phone window size (explicit px) and the serif face (one css line, font-family). Buttons are a plain translucent-dark row so they read on any bg. */
+window { font-family: DejaVu Serif; font-size: 11px; }
+.phone-portrait { width: 360px; height: 700px; }
+.btn            { border: 1px solid #808080; }
+.dimbtn         { border: 1px solid #404040; }
+.btn.active     { border: 1px solid #ffffff; }
+.btn.danger     { border: 1px solid #c04040; }
+.bar-top, .bar-bottom { height: 28px; border: 1px solid #606060; border-width: 1; }
+.tab-bar { background-color: #1a1a1a; border: 1px solid #444444; }
+.tab { background-color: #1a1a1a; color: #aaaaaa; border: 1px solid #444444; padding: 2px 2px; width: 150px; }
+.phone-footer { height: 44px; background-color: #181818; border: 1px solid #2a2a2a; }
+.phone-ft { width: 168px; border: 1px solid #444444; }
+.ft-narrow { width: 108px; }
+.dd-row { border: 1px solid #444444; background-color: #1a1a1a; }
+.dd-row { width: 200px; }
+.hqwin-minimized { color: #666666; border: 1px dashed #555555; }   /* a minimized app cell: same look as the LyfeDesk bottom bar (entity_menu_default.css) */

@@ -132,3 +132,26 @@ RUN | /bin/rm | -f | $T/h/&.hq-apps/plus-phone/phone_prefs.pdl
 RUN | /bin/rm | -f | $T/h/#.desktop/strip_ui.txt
 RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_projector.+x | $T/h | $T/h/&.hq-apps/plus-phone | --once | $T/h/&.hq-apps/plus-phone/instances/1
 EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/.hq_manager/ui.txt | n_ents=0 | NEGATIVE-with-no-entity-on-the-desk-there-is-no-tile-(the-default-name-alone-is-not-enough)
+
+CASE    | the-bottom-bar-holds-at-most-three-cells
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/third
+MKDIR | h/xyzfs/users/u1/home/livedesk/pals/fourth
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/third/menu.chtpm | <window class="entity-menu"><page name="main"><item label="Dir" action="void"/></page></window>\n
+WRITE   | h/xyzfs/users/u1/home/livedesk/pals/fourth/menu.chtpm | <window class="entity-menu"><page name="main"><item label="Dir" action="void"/></page></window>\n
+WRITE   | h/#.desktop/strip_ui.txt | n_tabs=4\ntab_0_label=cursword\ntab_0_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/cursword\ntab_1_label=other\ntab_1_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/other\ntab_2_label=third\ntab_2_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/third\ntab_3_label=fourth\ntab_3_sprite=$T/h/xyzfs/users/u1/home/livedesk/pals/fourth\n
+WRITE   | h/&.hq-apps/plus-phone/phone_prefs.pdl | ENTITY | cursword\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-app1" | an-open-app-and-one-entity-two-cells
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | ft-narrow | NEGATIVE-two-cells-keep-the-wide-class
+WRITE   | h/&.hq-apps/plus-phone/phone_prefs.pdl | ENTITY | cursword\nENTITY | other\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+EXPECT_HAS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-ent1" | the-second-entity-has-a-cell
+RUN | /usr/bin/grep | -c | ft-narrow | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm
+EXPECT_OUT_IS | 3 | three-cells-all-three-take-the-narrow-class
+WRITE   | h/&.hq-apps/plus-phone/phone_prefs.pdl | ENTITY | cursword\nENTITY | other\nENTITY | third\nENTITY | fourth\n
+RUN | $T/h/&.hq-apps/plus-phone/ops/+x/phone_op.+x | open | $T/h/&.hq-apps/plus-phone/instances/1 | true-swords-clash
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | id="ft-ent2" | NEGATIVE-the-third-entity-does-not-get-a-cell-(three-cells-max)
+RUN | /usr/bin/grep | -c | phone-ft | $T/h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm
+EXPECT_OUT_IS | 3 | exactly-three-footer-cells
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | 🗡 | NEGATIVE-no-dagger-emoji-in-the-footer-(draws-as-an-empty-box)
+EXPECT_LACKS | h/&.hq-apps/plus-phone/instances/1/plus-phone.xhtpm | 🪟 | NEGATIVE-no-window-emoji-in-the-footer
