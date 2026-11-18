@@ -74,7 +74,7 @@ static char T_UP[48] = "jumped", T_DOWN[48] = "jumped", LEVELREL[300], LEVEL_SOL
 static char REQ[8][32]; static int NREQ;
 static uint64_t RULES_HASH;
 /* a level (mode walk, and the editor's level document): LVROW[y] is a string of LW tiles; START and GOAL are cells */
-static struct { int w, h, sx, sy, gx, gy; char rows[LVMAXH][LVMAXW + 1]; char name[64]; } LV;
+static struct { int w, h, sx, sy, gx, gy; char rows[LVMAXH][LVMAXW + 1]; char name[64]; int ne, ex[8], ey[8], npw, px[4], py[4]; } LV;   /* ne enemies (ENEMY rows), npw projectile power-ups (POWER rows) */
 
 typedef struct { long round; char actor[32], verb[16], target[200], at[48], res[300]; } Row;
 typedef struct { long tick; char verb[8], target[16], at[32], res[200]; } Ev;
@@ -90,6 +90,8 @@ static struct {
     char clear_level[20], clear_run[20];
     /* platform (mode platform): one gravity-field body per player (Q8 cells), the pending one-tick jump pulse, and how many times a player fell out of the level and was put back on START */
     PF_Body pb[MAXPL]; int jp[MAXPL]; long falls;
+    /* platform extras (2026-11-18): enemies (walkers on the same physics), power-ups, fireballs; per player: armed, facing, fire pulse, score; counts of stomps, shots and hits */
+    struct { PF_Body b; int dir, alive; } en[8]; int pw_taken[4]; struct { long x, y, vx; int life, alive; } fb[4]; int armed[MAXPL], facing[MAXPL], fire[MAXPL]; long score, stomps, shots_kills, hits;
 } S;
 static long KNOWN_SIZE;                      /* bytes of the ledger as this process last read or wrote it */
 
@@ -117,11 +119,15 @@ static int level_check(void) {
     if (LV.gx < 0 || LV.gx >= LV.w || LV.gy < 0 || LV.gy >= LV.h) return bad("level: GOAL is outside the level");
     if (is_solid(LV.rows[LV.sy][LV.sx])) return bad("level: START is inside a solid tile");
     if (is_solid(LV.rows[LV.gy][LV.gx])) return bad("level: GOAL is inside a solid tile");
+    for (int i = 0; i < LV.ne; i++) if (LV.ex[i] < 0 || LV.ex[i] >= LV.w || LV.ey[i] < 0 || LV.ey[i] >= LV.h || is_solid(LV.rows[LV.ey[i]][LV.ex[i]])) return bad("level: ENEMY %d is outside the level or inside a solid tile", i + 1);
+    for (int i = 0; i < LV.npw; i++) if (LV.px[i] < 0 || LV.px[i] >= LV.w || LV.py[i] < 0 || LV.py[i] >= LV.h || is_solid(LV.rows[LV.py[i]][LV.px[i]])) return bad("level: POWER %d is outside the level or inside a solid tile", i + 1);
     return 0;
 }
 static int level_render(char *o, size_t cap) {
     int n = snprintf(o, cap, "# level.pdl - a Teario level, the ONE format Make writes and Play reads (BOOK 16.game TEARIO plan 1.2 and 5.1). Top row is 0; . empty, # solid ground.\nMETA  | name | %s\nMETA  | size | %d x %d\nSTART | %d | %d\nGOAL  | %d | %d\n", LV.name, LV.w, LV.h, LV.sx, LV.sy, LV.gx, LV.gy);
     for (int y = 0; y < LV.h && n > 0 && (size_t)n < cap; y++) n += snprintf(o + n, cap - (size_t)n, "ROW   | %d | %s\n", y, LV.rows[y]);
+    for (int i = 0; i < LV.ne && n > 0 && (size_t)n < cap; i++) n += snprintf(o + n, cap - (size_t)n, "ENEMY | %d | %d\n", LV.ex[i], LV.ey[i]);
+    for (int i = 0; i < LV.npw && n > 0 && (size_t)n < cap; i++) n += snprintf(o + n, cap - (size_t)n, "POWER | %d | %d\n", LV.px[i], LV.py[i]);
     return (n > 0 && (size_t)n < cap) ? n : -1;
 }
 static uint64_t level_hash(void) { static char b[8192]; int n = level_render(b, sizeof b); return n < 0 ? 0 : fnv(FNV0, b, (size_t)n); }
@@ -131,6 +137,8 @@ static int level_load_file(const char *path, uint64_t *fold) {
         if (!strcmp(fl[0], "META") && n >= 3 && !strcmp(fl[1], "name")) snprintf(LV.name, sizeof LV.name, "%s", fl[2]);
         else if (!strcmp(fl[0], "START") && n >= 3) { LV.sx = atoi(fl[1]); LV.sy = atoi(fl[2]); ns++; }
         else if (!strcmp(fl[0], "GOAL") && n >= 3) { LV.gx = atoi(fl[1]); LV.gy = atoi(fl[2]); ng++; }
+        else if (!strcmp(fl[0], "ENEMY") && n >= 3) { if (LV.ne >= 8) { fclose(f); return bad("level: at most 8 ENEMY rows"); } LV.ex[LV.ne] = atoi(fl[1]); LV.ey[LV.ne++] = atoi(fl[2]); }
+        else if (!strcmp(fl[0], "POWER") && n >= 3) { if (LV.npw >= 4) { fclose(f); return bad("level: at most 4 POWER rows"); } LV.px[LV.npw] = atoi(fl[1]); LV.py[LV.npw++] = atoi(fl[2]); }
         else if (!strcmp(fl[0], "ROW") && n >= 3) { int y = atoi(fl[1]); if (y < 0 || y >= LVMAXH || strlen(fl[2]) > LVMAXW) { fclose(f); return bad("level: bad ROW %s", fl[1]); } if (LV.rows[y][0]) { fclose(f); return bad("level: ROW %d twice", y); } snprintf(LV.rows[y], sizeof LV.rows[y], "%s", fl[2]); if (y > maxy) maxy = y; } }
     fclose(f); if (ns != 1 || ng != 1) return bad("level: exactly one START and one GOAL row are needed"); LV.h = maxy + 1; LV.w = LV.h > 0 ? (int)strlen(LV.rows[0]) : 0;
     for (int y = 0; y < LV.h; y++) if (!LV.rows[y][0]) return bad("level: ROW %d is missing", y);
@@ -143,6 +151,7 @@ static int level_from_doc(void) {
         if (!strcmp(id, "name")) snprintf(LV.name, sizeof LV.name, "%s", tx);
         else if (!strcmp(id, "start")) { if (sscanf(tx, "%d %d", &LV.sx, &LV.sy) != 2) return bad("level: start is `x y`"); hs = 1; }
         else if (!strcmp(id, "goal")) { if (sscanf(tx, "%d %d", &LV.gx, &LV.gy) != 2) return bad("level: goal is `x y`"); hg = 1; }
+        else if (strlen(id) == 2 && (id[0] == 'e' || id[0] == 'p') && id[1] >= '1' && id[1] <= '8') { int a, b; if (sscanf(tx, "%d %d", &a, &b) != 2) return bad("level: %s is `x y`", id); if (id[0] == 'e') { if (LV.ne >= 8) return bad("level: at most 8 enemies"); LV.ex[LV.ne] = a; LV.ey[LV.ne++] = b; } else { if (LV.npw >= 4) return bad("level: at most 4 power-ups"); LV.px[LV.npw] = a; LV.py[LV.npw++] = b; } }
         else if (id[0] == 'r' && strlen(id) == 3 && id[1] >= '0' && id[1] <= '9' && id[2] >= '0' && id[2] <= '9') { int y = atoi(id + 1); if (y >= LVMAXH || strlen(tx) > LVMAXW) return bad("level: bad row %s", id); snprintf(LV.rows[y], sizeof LV.rows[y], "%s", tx); if (y > maxy) maxy = y; } }
     if (!hs || !hg) return bad("level: the document needs start and goal rows"); LV.h = maxy + 1; LV.w = LV.h > 0 ? (int)strlen(LV.rows[0]) : 0;
     for (int y = 0; y < LV.h; y++) if (!LV.rows[y][0]) return bad("level: row r%02d is missing", y);
@@ -208,6 +217,8 @@ static uint64_t state_hash(void) {
     if (MODE == M_SNAKE) { char sb[8192]; int m = snprintf(sb, sizeof sb, "snake;len=%d;grow=%d;dir=%d;score=%d;food=%d,%d;foods=%d;", S.slen, S.sgrow, S.sdir, S.sscore, S.sfood_x, S.sfood_y, S.sfoods);
         for (int i = 0; i < S.slen && m < 8000; i++) m += snprintf(sb + m, sizeof sb - (size_t)m, "%d,%d;", S.bx[i], S.by[i]); h = fnv(h, sb, strlen(sb)); }
     if (MODE == M_PLATFORM) { char pb[2048]; int m = snprintf(pb, sizeof pb, "platform;falls=%ld;", S.falls); for (int i = 0; i < S.np && m < 1900; i++) { const PF_Body *b = &S.pb[i]; m += snprintf(pb + m, sizeof pb - (size_t)m, "%ld,%ld,%ld,%ld,%d,%d,%d,%d,%d;", b->x, b->y, b->vx, b->vy, b->field, b->grounded, b->coyote, b->jbuf, S.jp[i]); } h = fnv(h, pb, strlen(pb)); }
+    if (MODE == M_PLATFORM) { char xb[2048]; int m = snprintf(xb, sizeof xb, "plat2;score=%ld,%ld,%ld,%ld;", S.score, S.stomps, S.shots_kills, S.hits); for (int i = 0; i < LV.ne && m < 1700; i++) m += snprintf(xb + m, sizeof xb - (size_t)m, "e%d,%ld,%ld,%ld,%d,%d;", i, S.en[i].b.x, S.en[i].b.y, S.en[i].b.vx, S.en[i].dir, S.en[i].alive);
+        for (int k = 0; k < 4 && m < 1900; k++) m += snprintf(xb + m, sizeof xb - (size_t)m, "f%d,%ld,%ld,%d,%d;", k, S.fb[k].x, S.fb[k].y, S.fb[k].life, S.fb[k].alive); for (int p = 0; p < 4; p++) m += snprintf(xb + m, sizeof xb - (size_t)m, "p%d;", S.pw_taken[p]); for (int i = 0; i < S.np; i++) m += snprintf(xb + m, sizeof xb - (size_t)m, "a%d,%d,%d;", S.armed[i], S.facing[i], S.fire[i]); h = fnv(h, xb, strlen(xb)); }
     return h;
 }
 static uint64_t doc_hash(void) { uint64_t h = FNV0; for (int i = 0; i < S.ndoc; i++) { h = fnv(h, S.did[i], strlen(S.did[i])); h = fnv(h, "=", 1); h = fnv(h, S.dtx[i], strlen(S.dtx[i])); h = fnv(h, "\n", 1); } return h; }
@@ -242,13 +253,32 @@ static void snake_step(void) {
         snprintf(res, sizeof res, "len=%d;score=%d;food=%d,%d;next=%d,%d", S.slen + S.sgrow, S.sscore, fx, fy, ok ? S.sfood_x : -1, ok ? S.sfood_y : -1); q_push("eat", "p1", at, res);
         if (!ok) { S.phase = PH_OVER; S.winner = 0; snprintf(hs, sizeof hs, "%016llx", (unsigned long long)state_hash()); snprintf(res, sizeof res, "winner=p1;ticks=%ld;score=%d;hash=%s", S.tick, S.sscore, hs); q_push("over", "-", at, res); } }
 }
-/* ---------- mode platform: walk's level with the shared gravity-field body (phys_field.c, D90). ONE plane field pulling down; left/right are surface-relative, jump is a one-tick pulse. A body that falls below the level is put back on START and counted. ---------- */
+/* ---------- mode platform: walk's level with the shared gravity-field body (phys_field.c, D90). ONE plane field pulling down; left/right are surface-relative, jump is a one-tick pulse. A body that falls below the level is put back on START and counted.
+ * Enemies (level rows ENEMY x y) are walkers on the SAME physics: they patrol, turn at a wall or at a ledge, and die when a falling hero lands on their head (a stomp bounces the hero) or when a fireball hits them; touching one from the side puts the hero back on START (hits). A POWER row is a pick-up that arms the hero: the input `fire` then shoots a fireball (at most 4 live, 36 ticks, stopped by a wall). All of it is integer and replays from the inputs alone. ---------- */
 static int plat_solid(void *ctx, long cx, long cy) { (void)ctx; if (cx < 0 || cx >= LV.w) return 1; if (cy < 0 || cy >= LV.h) return 0; return is_solid(LV.rows[cy][cx]); }
-static void plat_spawn(int i) { PF_Body *b = &S.pb[i]; memset(b, 0, sizeof *b); b->w = 200; b->h = 200; b->field = -1; b->x = LV.sx * PF_Q + (PF_Q - b->w) / 2; b->y = LV.sy * PF_Q + (PF_Q - b->h); S.jp[i] = 0; S.pos[i] = LV.sx; }
+static void plat_spawn(int i) { PF_Body *b = &S.pb[i]; memset(b, 0, sizeof *b); b->w = 200; b->h = 200; b->field = -1; b->x = LV.sx * PF_Q + (PF_Q - b->w) / 2; b->y = LV.sy * PF_Q + (PF_Q - b->h); S.jp[i] = 0; S.pos[i] = LV.sx; S.armed[i] = 0; S.facing[i] = 1; S.fire[i] = 0; }
+static void plat_world_init(void) {
+    memset(S.en, 0, sizeof S.en); memset(S.pw_taken, 0, sizeof S.pw_taken); memset(S.fb, 0, sizeof S.fb); S.score = S.stomps = S.shots_kills = S.hits = 0;
+    for (int i = 0; i < LV.ne; i++) { PF_Body *b = &S.en[i].b; b->w = 200; b->h = 200; b->field = -1; b->x = LV.ex[i] * PF_Q + (PF_Q - b->w) / 2; b->y = LV.ey[i] * PF_Q + (PF_Q - b->h); S.en[i].dir = -1; S.en[i].alive = 1; }
+    for (int i = 0; i < S.np; i++) plat_spawn(i);
+}
+static int hit_box(const PF_Body *a, const PF_Body *b) { return a->x < b->x + b->w && b->x < a->x + a->w && a->y < b->y + b->h && b->y < a->y + a->h; }
 static void plat_step(void) {
-    for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; int mask = (S.dir[i] < 0 ? 1 : S.dir[i] > 0 ? 2 : 0) | (S.jp[i] ? 4 : 0);
-        pf_step(b, &PT, &PFIELD, 1, mask, plat_solid, NULL); S.jp[i] = 0;
+    for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; int mask = (S.dir[i] < 0 ? 1 : S.dir[i] > 0 ? 2 : 0) | (S.jp[i] ? 4 : 0); if (S.dir[i]) S.facing[i] = S.dir[i];
+        if (S.fire[i] && S.armed[i]) for (int k = 0; k < 4; k++) if (!S.fb[k].alive) { S.fb[k].alive = 1; S.fb[k].life = 36; S.fb[k].x = b->x + b->w / 2; S.fb[k].y = b->y + b->h / 2; S.fb[k].vx = 56L * S.facing[i]; break; }
+        S.fire[i] = 0; pf_step(b, &PT, &PFIELD, 1, mask, plat_solid, NULL); S.jp[i] = 0;
         if (b->y > (long)(LV.h + 2) * PF_Q) { S.falls++; plat_spawn(i); } S.pos[i] = (int)((b->x + b->w / 2) / PF_Q); }
+    PF_Tune et = PT; et.run_max = 10; et.accel = 10; et.friction = 10;
+    for (int e = 0; e < LV.ne; e++) if (S.en[e].alive) { PF_Body *b = &S.en[e].b; long ox = b->x; pf_step(b, &et, &PFIELD, 1, S.en[e].dir < 0 ? 1 : 2, plat_solid, NULL);
+        if (b->grounded) { long fx = S.en[e].dir > 0 ? b->x + b->w : b->x - 1, fy = b->y + b->h; if (!plat_solid(NULL, pf_floordiv(fx, PF_Q), pf_floordiv(fy, PF_Q)) || b->x == ox) { S.en[e].dir = -S.en[e].dir; b->vx = 10L * S.en[e].dir; } }   /* a turn (at a wall or a ledge) also turns the momentum, else the next tick stands still and the wall test turns it back */
+        if (b->y > (long)(LV.h + 2) * PF_Q) S.en[e].alive = 0; }
+    for (int k = 0; k < 4; k++) if (S.fb[k].alive) { S.fb[k].x += S.fb[k].vx; if (--S.fb[k].life <= 0 || plat_solid(NULL, pf_floordiv(S.fb[k].x, PF_Q), pf_floordiv(S.fb[k].y, PF_Q))) { S.fb[k].alive = 0; continue; }
+        for (int e = 0; e < LV.ne; e++) if (S.en[e].alive) { const PF_Body *b = &S.en[e].b; if (S.fb[k].x >= b->x && S.fb[k].x <= b->x + b->w && S.fb[k].y >= b->y && S.fb[k].y <= b->y + b->h) { S.en[e].alive = 0; S.fb[k].alive = 0; S.score += 100; S.shots_kills++; break; } } }
+    for (int i = 0; i < S.np; i++) { PF_Body *h = &S.pb[i];
+        for (int e = 0; e < LV.ne; e++) if (S.en[e].alive && hit_box(h, &S.en[e].b)) {
+            if (h->vy > 0 && (h->y + h->h) - h->vy <= S.en[e].b.y + 64) { S.en[e].alive = 0; h->vy = -(PT.jump_v * 2 / 3); S.score += 100; S.stomps++; }   /* a stomp: the hero is falling and its feet were above the head before this tick's move (a fast fall may sink deeper than a fixed depth) */
+            else { S.hits++; plat_spawn(i); break; } }
+        for (int p = 0; p < LV.npw; p++) if (!S.pw_taken[p] && (h->x + h->w / 2) / PF_Q == LV.px[p] && (h->y + h->h / 2) / PF_Q == LV.py[p]) { S.pw_taken[p] = 1; S.armed[i] = 1; S.score += 50; } }
     S.tick++; for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; if ((b->x + b->w / 2) / PF_Q == LV.gx && (b->y + b->h / 2) / PF_Q == LV.gy) { S.winner = i; S.phase = PH_OVER; break; } }
 }
 static void step_tick(void) {
@@ -341,7 +371,7 @@ static int apply(const Row *in, const char *arg2, Row *out) {
         if (S.phase != PH_LOBBY) return bad("start is only legal in the lobby"); if (S.np < R_minp) return bad("a game needs %ld to %ld players", R_minp, R_maxp);
         S.phase = PH_PLAY; S.cur = 0; S.round = 1; S.tick = 0; hx(RULES_HASH, hs); S.lastturn_tick = -1;
         if (MODE == M_SNAKE) snake_init(); if (WALKISH) for (int i = 0; i < S.np; i++) S.pos[i] = LV.sx;
-        if (MODE == M_PLATFORM) for (int i = 0; i < S.np; i++) plat_spawn(i);
+        if (MODE == M_PLATFORM) plat_world_init();
         snprintf(out->actor, sizeof out->actor, "bank"); snprintf(out->target, sizeof out->target, "-"); snprintf(out->at, sizeof out->at, "0"); snprintf(out->res, sizeof out->res, "seed=%ld,players=%d,rules=%s", S.seed, S.np, hs); out->round = 0; return 0; }
     if (!strcmp(v, "seat")) {
         int i = pidx(in->target); if (i < 0) return bad("seat: no player %s", in->target); const char *dr = arg2 && *arg2 ? arg2 : ""; if (strcmp(dr, "pet") && strcmp(dr, "human")) return bad("seat: human or pet");
@@ -379,10 +409,10 @@ static int apply(const Row *in, const char *arg2, Row *out) {
     if (KIND == K_REALTIME && MODE != M_SNAKE && !strcmp(v, "input")) {
         if (S.phase == PH_OVER) return bad("the game is over"); if (S.phase != PH_PLAY) return bad("the game has not started");
         int i = pidx(in->actor); if (i < 0) return bad("input: no player %s", in->actor);
-        int isjump = MODE == M_PLATFORM && !strcmp(in->target, "jump"); int dir = isjump ? 0 : !strcmp(in->target, "left") ? -1 : !strcmp(in->target, "right") ? 1 : !strcmp(in->target, "stay") ? 0 : 9; if (dir == 9) return bad(MODE == M_PLATFORM ? "input: left, right, stay or jump" : "input: left, right or stay");
+        int isjump = MODE == M_PLATFORM && !strcmp(in->target, "jump"), isfire = MODE == M_PLATFORM && !strcmp(in->target, "fire"); int dir = (isjump || isfire) ? 0 : !strcmp(in->target, "left") ? -1 : !strcmp(in->target, "right") ? 1 : !strcmp(in->target, "stay") ? 0 : 9; if (dir == 9) return bad(MODE == M_PLATFORM ? "input: left, right, stay, jump or fire" : "input: left, right or stay");
         long t = in->round >= 0 ? in->round : S.tick; if (t < S.tick) return bad("input at tick %ld is in the past (the game is at tick %ld)", t, S.tick); if (t > S.tick + 100000) return bad("input: tick too far ahead");
         sim_to(t); if (S.phase != PH_PLAY) return bad("the game ended at tick %ld, before this input", S.tick); if (S.tick != t) return bad("input: could not reach tick %ld", t);
-        if (isjump) S.jp[i] = 1; else S.dir[i] = dir; snprintf(out->actor, sizeof out->actor, "%s", in->actor); snprintf(out->target, sizeof out->target, "%s", in->target); snprintf(out->at, sizeof out->at, "%d", S.pos[i]); snprintf(out->res, sizeof out->res, "ok"); out->round = t; return 0; }
+        if (isjump) S.jp[i] = 1; else if (isfire) S.fire[i] = 1; else S.dir[i] = dir; snprintf(out->actor, sizeof out->actor, "%s", in->actor); snprintf(out->target, sizeof out->target, "%s", in->target); snprintf(out->at, sizeof out->at, "%d", S.pos[i]); snprintf(out->res, sizeof out->res, "ok"); out->round = t; return 0; }
     return bad("unknown verb %s for a %s game", v, KIND == K_LEDGER ? "ledger" : "realtime");
 }
 
@@ -572,7 +602,7 @@ static int keys_apply(const int *codes, int n, int *refused, int *ignored) {
 /* mode platform keys (the press-impulse model: the key IO has no release line, so a direction key LATCHES until another one): arrow left / right = run that way, down = stay, up or space (32) = a jump pulse; one `input` row per accepted key, stamped with the current tick */
 static int plat_keys_apply(const int *codes, int n) {
     int applied = 0;
-    for (int i = 0; i < n; i++) { char d = key_dir(codes[i]); const char *t = d == 'L' ? "left" : d == 'R' ? "right" : d == 'D' ? "stay" : (d == 'U' || codes[i] == 32) ? "jump" : NULL; if (t && !live(-1, "p1", "input", t, NULL, NULL)) applied++; }
+    for (int i = 0; i < n; i++) { char d = key_dir(codes[i]); const char *t = d == 'L' ? "left" : d == 'R' ? "right" : d == 'D' ? "stay" : (d == 'U' || codes[i] == 32) ? "jump" : (codes[i] == 102 || codes[i] == 120) ? "fire" : NULL; if (t && !live(-1, "p1", "input", t, NULL, NULL)) applied++; }
     return applied;
 }
 /* ---------- pace: tuning.pdl `TUNE | tick_ms | N` (2026-11-09, BOOK 16.game/REALTIME-SPIKES-HELD-KEYS-TICK-RATE-PICTURE-RATE-2026-11-09.md) ----------
@@ -628,7 +658,7 @@ static int cmd_status(void) {
         if (S.phase >= PH_PLAY) fprintf(OUT, "SNAKE len=%d grow=%d dir=%c score=%d head=%d,%d food=%d,%d foods=%d\n", S.slen, S.sgrow, DCH[S.sdir], S.sscore, S.bx[0], S.by[0], S.sfood_x, S.sfood_y, S.sfoods); return 0; }
     if (KIND == K_LEDGER) fprintf(OUT, " round=%ld current=p%d rolls=%ld", S.round, S.cur + 1, S.nrolls); else fprintf(OUT, " tick=%ld", S.tick);
     fprintf(OUT, " over=%d winner=%s\n", S.phase == PH_OVER, S.phase == PH_OVER && S.winner >= 0 ? S.name[S.winner] : "-");
-    for (int i = 0; i < S.np; i++) { fprintf(OUT, "PLAYER p%d name=%s driver=%s pos=%d", i + 1, S.name[i], S.human[i] ? "human" : "pet", S.pos[i]); if (MODE == M_PLATFORM) fprintf(OUT, " body=%ld,%ld,%ld,%ld grounded=%d falls=%ld", S.pb[i].x, S.pb[i].y, S.pb[i].vx, S.pb[i].vy, S.pb[i].grounded, S.falls); fprintf(OUT, "\n"); } return 0;
+    for (int i = 0; i < S.np; i++) { fprintf(OUT, "PLAYER p%d name=%s driver=%s pos=%d", i + 1, S.name[i], S.human[i] ? "human" : "pet", S.pos[i]); if (MODE == M_PLATFORM) fprintf(OUT, " body=%ld,%ld,%ld,%ld grounded=%d falls=%ld score=%ld stomps=%ld kills=%ld hits=%ld armed=%d enemies=%d", S.pb[i].x, S.pb[i].y, S.pb[i].vx, S.pb[i].vy, S.pb[i].grounded, S.falls, S.score, S.stomps, S.shots_kills, S.hits, S.armed[i], ({ int c_ = 0; for (int e_ = 0; e_ < LV.ne; e_++) c_ += S.en[e_].alive; c_; })); fprintf(OUT, "\n"); } if (MODE == M_PLATFORM) for (int e = 0; e < LV.ne; e++) fprintf(OUT, "ENEMY e%d body=%ld,%ld dir=%d alive=%d\n", e + 1, S.en[e].b.x, S.en[e].b.y, S.en[e].dir, S.en[e].alive); if (MODE == M_PLATFORM) for (int k = 0; k < 4; k++) if (S.fb[k].alive) fprintf(OUT, "FIREBALL f%d at=%ld,%ld vx=%ld life=%d\n", k + 1, S.fb[k].x, S.fb[k].y, S.fb[k].vx, S.fb[k].life); return 0;
 }
 static int cmd_check(void) {   /* replay already ran (load); the invariants */
     if (KIND == K_REALTIME && MODE == M_SNAKE) {
@@ -1051,7 +1081,13 @@ static int doc_paint(const char *tool, long x, long y, const char *as) {
     if (!LEVELDOC) return bad("paint: only a level document has tiles"); int h = doc_rows(); if (!h) return bad("paint: the document has no level yet (use blank)");
     int w = (int)strlen(S.dtx[doc_find("r00")]); if (x < 0 || x >= w || y < 0 || y >= h) return bad("paint: the cell %ld,%ld is outside the level (%d x %d)", x, y, w, h);
     if (!strcmp(tool, "start") || !strcmp(tool, "goal")) { char tx[40]; snprintf(tx, sizeof tx, "%ld %ld", x, y); int ix = doc_find(tool); if (ix >= 0 && !strcmp(S.dtx[ix], tx)) return bad("paint: the %s is already there", tool); return live(-1, as, ix >= 0 ? "set" : "add", tool, tx, NULL); }
-    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : 0; if (!ch) return bad("paint: the tool is ground, erase, start or goal");
+    if (!strcmp(tool, "enemy") || !strcmp(tool, "power")) {   /* enemy: ids e1..e8, power: p1..p4, text `x y` */
+        char pre = tool[0] == 'e' ? 'e' : 'p'; int mx = pre == 'e' ? 8 : 4; char tx[40], id[4]; snprintf(tx, sizeof tx, "%ld %ld", x, y); if (is_solid(S.dtx[doc_find(((void)(snprintf(id, sizeof id, "r%02ld", y)), id))][x])) return bad("paint: the cell is solid ground, an %s needs an empty cell", tool);
+        for (int k = 1; k <= mx; k++) { snprintf(id, sizeof id, "%c%d", pre, k); int ix = doc_find(id); if (ix >= 0 && !strcmp(S.dtx[ix], tx)) return bad("paint: there is already an %s at %ld,%ld", tool, x, y); }
+        for (int k = 1; k <= mx; k++) { snprintf(id, sizeof id, "%c%d", pre, k); if (doc_find(id) < 0) return live(-1, as, "add", id, tx, NULL); } return bad("paint: at most %d %s rows", mx, pre == 'e' ? "enemy" : "power-up"); }
+    if (!strcmp(tool, "erase")) { char tx[40], id[4]; snprintf(tx, sizeof tx, "%ld %ld", x, y);   /* erase takes an enemy or a power-up off the cell first, else the ground */
+        for (int k = 0; k < 12; k++) { snprintf(id, sizeof id, "%c%d", k < 8 ? 'e' : 'p', k < 8 ? k + 1 : k - 7); int ix = doc_find(id); if (ix >= 0 && !strcmp(S.dtx[ix], tx)) return live(-1, as, "del", id, NULL, NULL); } }
+    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : 0; if (!ch) return bad("paint: the tool is ground, erase, start, goal, enemy or power");
     char id[8], tx[LVMAXW + 2]; snprintf(id, sizeof id, "r%02ld", y); snprintf(tx, sizeof tx, "%s", S.dtx[doc_find(id)]); if (tx[x] == ch) return bad("paint: that cell is already %s", ch == '#' ? "ground" : "empty");
     tx[x] = ch; return live(-1, as, "set", id, tx, NULL);
 }
@@ -1060,13 +1096,16 @@ static int cursor_cell(long *x, long *y) { char eb[P], p[P + 96], b[600]; snprin
     snprintf(p, sizeof p, "%s/%s-pchq/pieces/xelector_01/state.txt", EDIT, bn); FILE *f = fopen(p, "r"); if (!f) return 0; size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); int hx_ = 0, hy_ = 0;
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) { *x = atol(l + 6); hx_ = 1; } else if (!strncmp(l, "pos_y=", 6)) { *y = atol(l + 6); hy_ = 1; } } return hx_ && hy_; }
 static void scene_events(void) {
-    static char b[2048]; int n = snprintf(b, sizeof b, "%d %d 255 210 60 !Other1 0 2 1 \xe6\x97\x97\n", LV.gx, LV.gy);   /* the goal: a flag (the Chinese character 旗) */
+    static char b[4096]; int n = snprintf(b, sizeof b, "%d %d 255 210 60 !Other1 0 2 1 \xe6\x97\x97\n", LV.gx, LV.gy);   /* the goal: a flag (the Chinese character 旗) */
     if (LEVELDOC) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 220 60 60 People1 0 2 1\n", LV.sx, LV.sy);   /* Make: the start cell shows the hero */
-    for (int i = 0; i < S.np && n < 1900; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
+    for (int i = 0; i < LV.ne && n < 3600; i++) if (LEVELDOC || (MODE == M_PLATFORM && S.en[i].alive)) { int cx = LEVELDOC ? LV.ex[i] : (int)((S.en[i].b.x + S.en[i].b.w / 2) / PF_Q), cy = LEVELDOC ? LV.ey[i] : (int)((S.en[i].b.y + S.en[i].b.h / 2) / PF_Q); n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 190 70 210 Monster %d 2 1\n", cx, cy, i % 8); }   /* enemies (怪) */
+    for (int i = 0; i < LV.npw && n < 3600; i++) if (LEVELDOC || !S.pw_taken[i]) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 90 200 255 !Crystal 0 2 1\n", LV.px[i], LV.py[i]);   /* power-ups (晶) */
+    if (MODE == M_PLATFORM && !LEVELDOC) for (int k = 0; k < 4 && n < 3700; k++) if (S.fb[k].alive) n += snprintf(b + n, sizeof b - (size_t)n, "%ld %ld 255 120 30 !Flame 0 2 1\n", (long)pf_floordiv(S.fb[k].x, PF_Q), (long)pf_floordiv(S.fb[k].y, PF_Q));   /* fireballs (火) */
+    for (int i = 0; i < S.np && n < 3800; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
     char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b);
 }
 static void page_events(void) { if (scene_on) { scene_events(); return; } static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
-static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } return fnv(h, S.pos, sizeof S.pos); }
+static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } if (scene_on && MODE == M_PLATFORM && !LEVELDOC) { for (int e = 0; e < LV.ne; e++) { long ex_ = (S.en[e].b.x + 100) / PF_Q, ey_ = (S.en[e].b.y + 100) / PF_Q; h = fnv(h, &ex_, sizeof ex_); h = fnv(h, &ey_, sizeof ey_); h = fnv(h, &S.en[e].alive, sizeof S.en[e].alive); } for (int k = 0; k < 4; k++) { long fx_ = S.fb[k].alive ? S.fb[k].x / PF_Q : -1, fy_ = S.fb[k].y / PF_Q; h = fnv(h, &fx_, sizeof fx_); h = fnv(h, &fy_, sizeof fy_); } h = fnv(h, S.pw_taken, sizeof S.pw_taken); } return fnv(h, S.pos, sizeof S.pos); }
 /* the engine loads a desk's picture (map.png) when the desk LOADS, so Make asks the board engine for a desk reload (the key `6`, through its own key file as the toolbar's Desk > reload does) after it redraws the level */
 static void engine_reload(void) { char p[P + 64], ln[600], sess[P + 64] = "", op[P + 64], out[200]; snprintf(p, sizeof p, "%s/board/state/ui.txt", EDIT); FILE *f = fopen(p, "r"); if (!f) return;
     while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bv_session=", 11)) { snprintf(sess, sizeof sess, "%s", ln + 11); sess[strcspn(sess, "\r\n")] = 0; } fclose(f);
@@ -1103,7 +1142,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "new_game")) { if (mode_play && KIND != K_EDITOR) { archive_game(); mode_play = 0; memset(&S, 0, sizeof S); S.winner = -1; if (page_on) set_desk("board"); snprintf(dmsg, sizeof dmsg, "the last game is in archive/; choose the players, then START"); } }
     else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!sync_state()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
     else if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "up") || !strcmp(c, "down"))) { if (!S.human[0]) snprintf(dmsg, sizeof dmsg, "no human seat"); else if (!sync_state()) { char dc[2] = { (char)(c[0] - 'a' + 'A'), 0 }; human_live("turn", dc, NULL, "p1"); } }
-    else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay") || (MODE == M_PLATFORM && !strcmp(c, "jump")))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
+    else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay") || (MODE == M_PLATFORM && (!strcmp(c, "jump") || !strcmp(c, "fire"))))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
     else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "blank_level")) { if (!sync_state()) { if (doc_blank(20, 12, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "a starter level: 20 x 12, ground along the bottom"); } }
     else if (KIND == K_EDITOR && LEVELDOC && !strncmp(c, "paint_", 6)) { long x = 0, y = 0; if (!cursor_cell(&x, &y)) snprintf(dmsg, sizeof dmsg, "no cursor cell: the editor cursor was not found"); else if (!sync_state()) { if (doc_paint(c + 6, x, y, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "%s at %ld,%ld", c + 6, x, y); } }
     else if (KIND == K_EDITOR && !strncmp(c, "add_", 4)) { char id[32]; snprintf(id, sizeof id, "%s", c + 4); if (!sync_state()) { int ix = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) ix = 1; if (!strcmp(id, "item")) { snprintf(id, sizeof id, "item%d", S.ndoc + 1); ix = 0; } char tx[80]; snprintf(tx, sizeof tx, "%s (added from the bar)", id); if (LEVELDOC && !strcmp(id, "start")) snprintf(tx, sizeof tx, "2 10"); if (LEVELDOC && !strcmp(id, "goal")) snprintf(tx, sizeof tx, "17 10"); human_live(ix ? "set" : "add", id, tx, "author"); } }
@@ -1121,7 +1160,7 @@ static void publish(void) {
     snprintf(b, sizeof b, "%.200s", dmsg); add_txt(o, C, &nt, b);
     if (KIND == K_EDITOR) {
         snprintf(b, sizeof b, "%d rows, %s, %ld edits", S.ndoc, S.published ? "published" : "not published", S.nedits); add_txt(o, C, &nt, b);
-        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { add_btn(o, C, &nb, "ground here", "paint_ground"); add_btn(o, C, &nb, "erase here", "paint_erase"); add_btn(o, C, &nb, "start here", "paint_start"); add_btn(o, C, &nb, "goal here", "paint_goal"); } add_btn(o, C, &nb, "publish", "publish"); }
+        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { add_btn(o, C, &nb, "ground here", "paint_ground"); add_btn(o, C, &nb, "erase here", "paint_erase"); add_btn(o, C, &nb, "start here", "paint_start"); add_btn(o, C, &nb, "goal here", "paint_goal"); add_btn(o, C, &nb, "enemy here", "paint_enemy"); add_btn(o, C, &nb, "power here", "paint_power"); } add_btn(o, C, &nb, "publish", "publish"); }
         else { add_btn(o, C, &nb, "add start", "add_start"); add_btn(o, C, &nb, "add goal", "add_goal"); add_btn(o, C, &nb, "add item", "add_item"); add_btn(o, C, &nb, "remove last", "remove_last"); add_btn(o, C, &nb, "publish", "publish"); }
     } else if (!mode_play) {
         snprintf(b, sizeof b, "%d players, seed %ld", nplayers, seed_pref); add_txt(o, C, &nt, b); add_btn(o, C, &nb, "players -", "players_down"); add_btn(o, C, &nb, "players +", "players_up");
@@ -1134,7 +1173,7 @@ static void publish(void) {
         if (over && S.winner >= 0) { snprintf(b, sizeof b, "winner: %s", S.name[S.winner]); add_txt(o, C, &nt, b); }
         if (!over && KIND == K_LEDGER && S.human[S.cur]) add_btn(o, C, &nb, "Roll", "roll");
         if (!over && KIND == K_REALTIME && MODE == M_SNAKE && S.human[0]) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Up", "up"); add_btn(o, C, &nb, "Down", "down"); add_btn(o, C, &nb, "Right", "right"); }
-        else if (!over && KIND == K_REALTIME) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Stay", "stay"); add_btn(o, C, &nb, "Right", "right"); if (MODE == M_PLATFORM) add_btn(o, C, &nb, "Jump", "jump"); } }
+        else if (!over && KIND == K_REALTIME) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Stay", "stay"); add_btn(o, C, &nb, "Right", "right"); if (MODE == M_PLATFORM) { add_btn(o, C, &nb, "Jump", "jump"); add_btn(o, C, &nb, "Fire", "fire"); } } }
         if (!over && !run) add_btn(o, C, &nb, "Step", "step"); snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(o, C, &nb, b, "speed_next"); if (over) add_btn(o, C, &nb, "New game", "new_game");
     }
     snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, nb); strncat(o, b, C - strlen(o) - 1); write_atomic(FEED, o); dirty = 0; ST.publishes++;

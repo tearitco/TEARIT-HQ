@@ -44,6 +44,26 @@ EXPECT_EXIT | 2 | NEGATIVE-a-cell-outside-the-level-is-refused
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | lava | 1 | 1
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-tool-is-refused
 
+CASE    | tt_actors
+# enemies and power-ups are document rows e1..e8 / p1..p4 (text `x y`); the level file gets ENEMY / POWER rows
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | enemy | 8 | 10
+EXPECT_EXIT | 0 | an-enemy-is-placed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | power | 5 | 7
+EXPECT_EXIT | 0 | a-power-up-is-placed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | export
+EXPECT_HAS | $T/s1/level.pdl | ENEMY \p 8 \p 10 | the-level-file-has-the-ENEMY-row
+EXPECT_HAS | $T/s1/level.pdl | POWER \p 5 \p 7 | and-the-POWER-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | enemy | 8 | 10
+EXPECT_EXIT | 2 | NEGATIVE-a-second-enemy-on-the-same-cell-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | enemy | 0 | 11
+EXPECT_EXIT | 2 | NEGATIVE-an-enemy-inside-solid-ground-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | erase | 8 | 10
+EXPECT_EXIT | 0 | erase-takes-the-enemy-off-the-cell
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | export
+RUN | grep | -c | ^ENEMY | $T/s1/level.pdl
+EXPECT_OUT_IS | 0 | no-ENEMY-row-is-left
+EXPECT_HAS | $T/s1/level.pdl | POWER \p 5 \p 7 | the-power-up-stays
+
 CASE    | tt_replay_and_scene
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | replay
 EXPECT_EXIT | 0 | the-edit-rows-replay-to-a-state

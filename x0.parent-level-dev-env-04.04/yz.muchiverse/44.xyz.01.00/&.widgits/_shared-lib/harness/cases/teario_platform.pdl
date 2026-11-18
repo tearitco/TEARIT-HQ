@@ -9,11 +9,14 @@ SCRATCH |
 COPYDIR | @.apps/teario | tpl/teario
 COPYDIR | @.apps/teario-play | tpl/walk
 RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/tpl/walk/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/tpl/walk/rulesets/default/board.pdl
 COPYDIR | @.apps/teario-play | tpl/plat
 RUN | sed | -i | s/^MODE .*/MODE \pplatform/ | $T/tpl/plat/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/tpl/plat/rulesets/default/board.pdl
 EXPECT_HAS | $T/tpl/plat/rulesets/default/board.pdl | MODE \pplatform | the-scratch-copy-is-platform-mode
 COPYDIR | @.apps/teario-play | tpl/grav
 RUN | sed | -i | s/^MODE .*/MODE \pplatform/ | $T/tpl/grav/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/tpl/grav/rulesets/default/board.pdl
 RUN | sh | -c | printf 'RULE \p gravity \p 8\n' >> $T/tpl/grav/rulesets/default/rules.pdl
 
 CASE    | tpl_jump_arithmetic
@@ -57,7 +60,7 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | i
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | advance | 200
 EXPECT_OUT | tick 81 | OBSERVED-jumping-at-tick-44-clears-the-pit-and-the-run-ends-at-tick-81
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | verify_clear
-EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=3236cb1185ec70e7;ticks=81 | the-proof-line-pinned
+EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=7b701c98a4c9ab49;ticks=81 | the-proof-line-pinned
 RUN | grep | -c | ^EVENT | $T/g2/ledger.txt
 EXPECT_OUT_IS | 6 | INPUTS-ONLY-6-rows-for-an-81-tick-run:-new-join-start-input-input-ckpt
 
@@ -117,3 +120,85 @@ RUN | sed | -n | 12p | $T/sc/map.txt
 EXPECT_OUT_IS | ##########..######## | map.txt-row-11-matches-the-level-(the-pit-is-two-dots)
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | scene | $T/sc
 EXPECT_OUT | SCENE 20x12 | walk-mode-has-the-same-level-so-the-same-scene
+
+CASE    | tpl_enemies
+# Meadow (the shipped level): a platform with a POWER pick-up, a pit, two ENEMY walkers right of the pit. The demo input script was FOUND by a search in scratch and is pinned here as OBSERVED: right at 0, jumps at 12 / 58 / 200, left 88, stay 89, fire 90, right 230 clears the level in 241 ticks with a pick-up (+50), a fireball kill (+100) and a stomp (+100), score 250, no hit.
+COPYDIR | @.apps/teario-play | tpl/mead
+MKDIR   | m1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | input | p1 | jump | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | advance | 36
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | status
+EXPECT_OUT | score=50 stomps=0 kills=0 hits=0 armed=1 enemies=2 | OBSERVED-the-power-up-is-picked-up-(+50)-and-arms-the-hero
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | input | p1 | jump | 58
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | input | p1 | fire | 70
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | advance | 44
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m1 | status
+EXPECT_OUT | FIREBALL f1 at=4868,1420 vx=56 life=8 | OBSERVED-an-armed-hero-fires-a-fireball-to-the-right-(vx-56)
+MKDIR   | m2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | input | p1 | fire | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | advance | 30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m2 | status
+EXPECT_OUT | armed=0 enemies=2 | NEGATIVE-fire-before-the-power-up-does-nothing
+EXPECT_OUT_LACKS | FIREBALL | and-no-fireball-exists
+MKDIR   | m3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | input | p1 | jump | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | input | p1 | jump | 58
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | input | p1 | stay | 90
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | advance | 220
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m3 | status
+EXPECT_OUT | hits=1 armed=0 | OBSERVED-touching-an-enemy-from-the-side-is-a-hit:-the-hero-is-back-on-START-and-disarmed
+EXPECT_OUT | body=284,2616 | back-on-START-(x-284)
+MKDIR   | m4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | jump | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | jump | 58
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | left | 88
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | stay | 89
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | fire | 90
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | jump | 200
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | input | p1 | right | 230
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | advance | 400
+EXPECT_OUT | tick 241 | OBSERVED-the-level-is-cleared-at-tick-241
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | status
+EXPECT_OUT | score=250 stomps=1 kills=1 hits=0 armed=1 enemies=0 | OBSERVED-250-=-pick-up-50-+-fireball-kill-100-+-stomp-100-and-no-enemy-left
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | verify_clear
+EXPECT_OUT | CLEAR level=97d185088521224b;run=90063f35aee18764;ticks=241 | the-proof-line-of-the-full-Meadow-clear-pinned
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | replay
+EXPECT_OUT | REPLAY events=12 | the-12-rows-replay-(inputs-only)
+RUN | cp | -r | $T/m4 | $T/m5
+RUN | sed | -i | s/\pinput\pfire\p/\pinput\pstay\p/ | $T/m5/ledger.txt
+RUN | cmp | $T/m4/ledger.txt | $T/m5/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m5 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-a-run-with-the-fire-removed-is-NOT-a-clear-(the-hash-no-longer-reproduces)
+
+CASE    | tpl_level_rows
+RUN | grep | -c | ^ENEMY | $T/tpl/teario/levels/meadow.pdl
+EXPECT_OUT_IS | 2 | the-level-file-has-2-ENEMY-rows
+RUN | grep | -c | ^POWER | $T/tpl/teario/levels/meadow.pdl
+EXPECT_OUT_IS | 1 | and-1-POWER-row
+RUN | cp | -r | $T/tpl/teario | $T/tpl/teario_bad
+RUN | cp | -r | $T/tpl/mead | $T/tpl/mead_bad
+RUN | sed | -i | s#\.\./teario/#../teario_bad/# | $T/tpl/mead_bad/rulesets/default/board.pdl
+RUN | sed | -i | s/^ENEMY \p 13 \p 10/ENEMY \p 2 \p 11/ | $T/tpl/teario_bad/levels/meadow.pdl
+RUN | cmp | $T/tpl/teario/levels/meadow.pdl | $T/tpl/teario_bad/levels/meadow.pdl
+EXPECT_EXIT | 1 | vacuity-the-bad-level-differs
+MKDIR   | mb
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead_bad | $T/mb | new | 7
+EXPECT_EXIT | 2 | NEGATIVE-an-enemy-inside-solid-ground-(row-11)-is-refused-when-a-game-is-made
+EXPECT_OUT | ENEMY 1 is outside the level or inside a solid tile | and-the-engine-says-why

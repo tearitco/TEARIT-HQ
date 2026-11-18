@@ -3,5 +3,5 @@
 # LEVEL | solid | <tile characters>              the tiles the hero cannot enter (the legend is ../teario/tiles.pdl)
 # NO PHYSICS YET: each tick the hero moves one column along the START row by its input (left, right, stay); a solid tile stops it; reaching the GOAL column wins.
 MODE  | platform
-LEVEL | file  | ../teario/levels/first-steps.pdl
+LEVEL | file  | ../teario/levels/meadow.pdl
 LEVEL | solid | #

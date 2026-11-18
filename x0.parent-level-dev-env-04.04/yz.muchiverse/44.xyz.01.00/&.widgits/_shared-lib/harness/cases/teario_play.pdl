@@ -10,6 +10,7 @@ COPYDIR | @.apps/teario | tp/teario
 COPYDIR | @.apps/teario-play | tp/teario-play
 # the shipped app is MODE platform since 2026-11-18; this case pins the WALK mode of the shared engine, so its scratch copy is set to walk
 RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/tp/teario-play/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/tp/teario-play/rulesets/default/board.pdl
 EXPECT_EXISTS | $T/tp/teario/levels/first-steps.pdl | the-shared-level-fixture-is-where-the-play-app-looks-(../teario/levels)
 EXPECT_HAS | $T/tp/teario-play/rulesets/default/board.pdl | LEVEL \p file  \p ../teario/levels/first-steps.pdl | the-play-app-names-the-shared-level-file
 RUN | grep | -c | ^ROW | $T/tp/teario/levels/first-steps.pdl
@@ -163,16 +164,22 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-pl
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | join | H | human
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | start
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | right | 0
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | jump | 44
-RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | advance | 200
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | jump | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | jump | 58
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | left | 88
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | stay | 89
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | fire | 90
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | jump | 200
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | right | 230
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | advance | 400
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/teario-play | $T/tp_gp | $T/tp_x2
 EXPECT_EXIT | 0 | the-data-studio-runs-the-Teario-Play-exporter-on-a-platform-run
 EXPECT_OUT | files=3 | three-files
-EXPECT_HAS | $T/tp_x2/game.csv | ef513d9d44ab9e1f,realtime,default,770d019900e570b4,7,1,1,1,6,81,over,winner,p1,human,46a1370bdadf3df5,platform,81, | game.csv:-the-run-is-a-win-by-a-human-in-81-ticks-6-rows-mode-platform
+EXPECT_HAS | $T/tp_x2/game.csv | 90063f35aee18764,realtime,default,556b485b74ea48b2,7,1,1,1,12,241,over,winner,p1,human,8604b2c5e0be7f49,platform,241, | game.csv:-the-Meadow-clear-by-a-human-in-241-ticks-12-rows-mode-platform
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/tp_x2/game.csv | $T/tp_x2/schema.pdl
 EXPECT_EXIT | 0 | the-schema-passes-the-studios-check
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | index | $T/tp_x2
-EXPECT_OUT | winner,p1,human,1,46a1370bdadf3df5 | and-data_op-index-reads-it-(human-so-private)
+EXPECT_OUT | winner,p1,human,1,8604b2c5e0be7f49 | and-data_op-index-reads-it-(human-so-private)
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | list | $T/tp_g1
 EXPECT_OUT | private | a-run-with-a-human-seat-is-listed-PRIVATE-(fail-closed)
 
