@@ -202,12 +202,15 @@ class Harness:
 
     # ---------------- final video build ----------------
 
-    def build_video(self, tts: bool = True, voice: str | None = None, fps: int = 30, width: int = 1280):
+    def build_video(self, tts: bool = True, voice: str | None = None, fps: int = 30, width: int = 1280, theme: str = "plain"):
+        # theme (owner 2026-11-18): tearit = gold/red/light purple, tsots = black/red/yellow, harnecient = green (generic AI / harness decks), plain = the old dark strip
+
         if not self._manifest_rows:
             raise RuntimeError("presentation_harness: no frames added - call add_frame() first")
         self.write_manifest()
         cmd = [sys.executable, str(self._maker_script), str(self.feature_dir),
                "--fps", str(fps), "--width", str(width)]
+        cmd += ["--theme", theme]
         if not tts:
             cmd.append("--no-tts")
         if voice:

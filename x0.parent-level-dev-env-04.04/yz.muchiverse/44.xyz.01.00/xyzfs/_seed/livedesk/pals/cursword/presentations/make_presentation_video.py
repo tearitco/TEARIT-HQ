@@ -85,6 +85,15 @@ FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 CAPTION_BG = (16, 16, 16, 235)   # near-opaque dark strip, readable over any frame
 CAPTION_FG = (240, 240, 240, 255)
+# House palettes (owner 2026-11-18): --theme tearit = gold / red / light purple, tsots = black / red / yellow, harnecient (generic AI / harness decks) = green. Each is (caption strip bg, caption text, frame-number label, accent bar).
+# Default "plain" keeps the old dark strip so older decks re-render unchanged.
+THEMES = {
+    "plain":      {"bg": (16, 16, 16),   "fg": (240, 240, 240), "label": (150, 150, 150), "accent": None},
+    "tearit":     {"bg": (58, 36, 92),   "fg": (255, 215, 90),  "label": (196, 170, 240), "accent": (200, 32, 48)},
+    "tsots":      {"bg": (10, 10, 10),   "fg": (255, 222, 40),  "label": (214, 40, 48),   "accent": (214, 40, 48)},
+    "harnecient": {"bg": (8, 36, 20),    "fg": (200, 255, 214), "label": (80, 200, 120),  "accent": (40, 170, 90)},
+}
+THEME = THEMES["plain"]
 CAPTION_PAD = 18
 CAPTION_MIN_H = 90
 
@@ -151,14 +160,16 @@ def render_captioned_frame(src_path: Path, caption: str, target_w: int, out_path
     canvas = Image.new("RGB", (canvas_w, total_h), (16, 16, 16))
     canvas.paste(img, (0, 0))
     draw = ImageDraw.Draw(canvas)
-    draw.rectangle([0, img.height, img.width, img.height + caption_h], fill=CAPTION_BG[:3])
+    draw.rectangle([0, img.height, img.width, img.height + caption_h], fill=THEME["bg"])
+    if THEME["accent"]:
+        draw.rectangle([0, img.height, img.width, img.height + 5], fill=THEME["accent"])
 
     label = f"{frame_no}/{total}"
-    draw.text((CAPTION_PAD, img.height + 10), label, font=label_font, fill=(150, 150, 150))
+    draw.text((CAPTION_PAD, img.height + 10), label, font=label_font, fill=THEME["label"])
 
     y = img.height + 10 + label_font.getbbox("Ag")[3] + 8
     for line in lines:
-        draw.text((CAPTION_PAD, y), line, font=font, fill=CAPTION_FG[:3])
+        draw.text((CAPTION_PAD, y), line, font=font, fill=THEME["fg"])
         y += line_h
 
     canvas.save(out_path)
@@ -341,9 +352,12 @@ def main():
                      help="render a silent video (default: narrate captions via TTS)")
     ap.add_argument("--voice", default=DEFAULT_VOICE,
                      help=f"pet voice name, edge-style from voices.pdl (default: {DEFAULT_VOICE})")
+    ap.add_argument("--theme", default="plain", choices=sorted(THEMES), help="caption palette: tearit (gold/red/light purple), tsots (black/red/yellow), harnecient (green), plain (old dark strip)")
     ap.add_argument("--title", default=None,
                      help="YouTube-ready title (default: derived from the feature dir name)")
     args = ap.parse_args()
+    global THEME
+    THEME = THEMES[args.theme]
     build_video(args.feature_dir.resolve(), args.fps, args.width, args.tts, args.voice, args.title)
 
 
