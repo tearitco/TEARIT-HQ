@@ -949,17 +949,8 @@ static double nb_ctx_num(JSContext *ctx, JSValueConst o, const char *k, double d
 
 /* Node-mode CLI entry extracted (Phase 1, single-TU include). */
 #include "nb_worker_cli_main.c"
-
-/* ---- fatal-signal backtrace (2026-10-26) ----
- * A hostile or oversized page script can take the worker down in ways that
- * leave NOTHING in the log: no WERR, no STATUS, just a zombie the manager
- * never hears from again. Measured on Cloudflare's orchestrate/chl_page
- * script: the last line in the worker log is "resolved script URL", and the
- * process is then gone. Without gdb on the box, the only way to tell a
- * SIGSEGV from an abort() is to have the worker report it itself. Gated by
- * NB_CRASH_BT so normal runs stay quiet. backtrace_symbols_fd() is the
- * async-signal-safe half of execinfo, and stderr is already the per-house
- * worker log, so the trace lands next to the page errors. */
+/* Fatal-signal backtrace notes extracted (Phase 1, single-TU include). */
+#include "nb_worker_crash_handler_notes.c"
 /* Worker fatal-signal handler extracted (Phase 1, single-TU include). */
 #include "nb_worker_crash_handler.c"
 /* Worker crash-signal installer extracted (Phase 1, single-TU include). */
