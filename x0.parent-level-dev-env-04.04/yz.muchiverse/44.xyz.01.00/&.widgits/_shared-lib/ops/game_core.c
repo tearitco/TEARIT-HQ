@@ -529,7 +529,7 @@ static int cmd_export(const char *outdir) {
         else if (!strcmp(nm, "outcome")) snprintf(v, sizeof v, "%s", KIND == K_EDITOR ? (S.published ? "published" : "open") : S.phase != PH_OVER ? "open" : S.winner >= 0 ? "winner" : "nobody");
         else if (!strcmp(nm, "winner")) { if (S.phase == PH_OVER && S.winner >= 0) snprintf(v, sizeof v, "p%d", S.winner + 1); } else if (!strcmp(nm, "winner_driver")) { if (S.phase == PH_OVER && S.winner >= 0) snprintf(v, sizeof v, "%s", S.human[S.winner] ? "human" : "pet"); }
         else if (!strcmp(nm, "state_hash")) hx(state_hash(), v); else if (!strcmp(nm, "track_length")) snprintf(v, sizeof v, "%d", LENGTH); else if (!strcmp(nm, "finish")) snprintf(v, sizeof v, "%s", FINISH == F_STAY ? "exact_stay" : FINISH == F_BOUNCE ? "bounce" : "reach");
-        else if (!strcmp(nm, "jumps")) snprintf(v, sizeof v, "%d", NJ); else if (!strcmp(nm, "rolls")) snprintf(v, sizeof v, "%ld", S.nrolls); else if (!strcmp(nm, "mode")) snprintf(v, sizeof v, "%s", MODE == M_SNAKE ? "snake" : MODE == M_WALK ? "walk" : "track");
+        else if (!strcmp(nm, "jumps")) snprintf(v, sizeof v, "%d", NJ); else if (!strcmp(nm, "rolls")) snprintf(v, sizeof v, "%ld", S.nrolls); else if (!strcmp(nm, "mode")) snprintf(v, sizeof v, "%s", MODE == M_SNAKE ? "snake" : MODE == M_WALK ? "walk" : MODE == M_PLATFORM ? "platform" : "track");
         else if (!strcmp(nm, "ticks")) snprintf(v, sizeof v, "%ld", S.tick); else if (!strcmp(nm, "score")) { if (MODE == M_SNAKE) snprintf(v, sizeof v, "%d", S.sscore); } else if (!strcmp(nm, "doc_rows")) snprintf(v, sizeof v, "%d", S.ndoc); else if (!strcmp(nm, "edits")) snprintf(v, sizeof v, "%ld", S.nedits);
         bcell(&G, v, 0); }
     G.p[G.n - 1] = '\n';

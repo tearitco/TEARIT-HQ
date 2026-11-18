@@ -8,6 +8,8 @@ CASE    | tp_level
 SCRATCH |
 COPYDIR | @.apps/teario | tp/teario
 COPYDIR | @.apps/teario-play | tp/teario-play
+# the shipped app is MODE platform since 2026-11-18; this case pins the WALK mode of the shared engine, so its scratch copy is set to walk
+RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/tp/teario-play/rulesets/default/board.pdl
 EXPECT_EXISTS | $T/tp/teario/levels/first-steps.pdl | the-shared-level-fixture-is-where-the-play-app-looks-(../teario/levels)
 EXPECT_HAS | $T/tp/teario-play/rulesets/default/board.pdl | LEVEL \p file  \p ../teario/levels/first-steps.pdl | the-play-app-names-the-shared-level-file
 RUN | grep | -c | ^ROW | $T/tp/teario/levels/first-steps.pdl
@@ -155,14 +157,22 @@ WRITE   | tp_g1/stray.txt | nobody declared me
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | audit
 EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
 RUN | rm | $T/tp_g1/stray.txt
-RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/teario-play | $T/tp_g1 | $T/tp_x2
-EXPECT_EXIT | 0 | the-data-studio-runs-the-Teario-Play-exporter-on-a-run-played-under-a-COPY-of-the-app-(same-files-same-rules-hash)
+# the exporter runs under the REAL app (the provider finds game_core relative to the house), which is MODE platform since 2026-11-18: play a platform clear under it (jump at tick 44), export that
+MKDIR   | tp_gp
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | input | p1 | jump | 44
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-play | $T/tp_gp | advance | 200
+RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/teario-play | $T/tp_gp | $T/tp_x2
+EXPECT_EXIT | 0 | the-data-studio-runs-the-Teario-Play-exporter-on-a-platform-run
 EXPECT_OUT | files=3 | three-files
-EXPECT_HAS | $T/tp_x2/game.csv | 6167fd95d30e929b,realtime,default,aa6c5f8864acb31a,7,1,1,1,5,15,over,winner,p1,human,4fb62ecadb9ca27f,walk,15, | game.csv:-the-run-is-a-win-by-a-human-in-15-ticks-5-rows-mode-walk
+EXPECT_HAS | $T/tp_x2/game.csv | ef513d9d44ab9e1f,realtime,default,770d019900e570b4,7,1,1,1,6,81,over,winner,p1,human,46a1370bdadf3df5,platform,81, | game.csv:-the-run-is-a-win-by-a-human-in-81-ticks-6-rows-mode-platform
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/tp_x2/game.csv | $T/tp_x2/schema.pdl
 EXPECT_EXIT | 0 | the-schema-passes-the-studios-check
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | index | $T/tp_x2
-EXPECT_OUT | winner,p1,human,1,4fb62ecadb9ca27f | and-data_op-index-reads-it-(human-so-private)
+EXPECT_OUT | winner,p1,human,1,46a1370bdadf3df5 | and-data_op-index-reads-it-(human-so-private)
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | list | $T/tp_g1
 EXPECT_OUT | private | a-run-with-a-human-seat-is-listed-PRIVATE-(fail-closed)
 

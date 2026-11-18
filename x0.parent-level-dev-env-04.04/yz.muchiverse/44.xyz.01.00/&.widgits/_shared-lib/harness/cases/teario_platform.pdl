@@ -8,6 +8,7 @@ CASE    | tpl_setup
 SCRATCH |
 COPYDIR | @.apps/teario | tpl/teario
 COPYDIR | @.apps/teario-play | tpl/walk
+RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/tpl/walk/rulesets/default/board.pdl
 COPYDIR | @.apps/teario-play | tpl/plat
 RUN | sed | -i | s/^MODE .*/MODE \pplatform/ | $T/tpl/plat/rulesets/default/board.pdl
 EXPECT_HAS | $T/tpl/plat/rulesets/default/board.pdl | MODE \pplatform | the-scratch-copy-is-platform-mode

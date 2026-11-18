@@ -9,6 +9,7 @@ CASE    | tm_level
 SCRATCH |
 COPYDIR | @.apps/teario | tm/teario
 COPYDIR | @.apps/teario-play | tm/teario-play
+RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/tm/teario-play/rulesets/default/board.pdl
 COPYDIR | @.apps/teario-make | tm/teario-make
 MKDIR   | tm_g
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | new | 7
