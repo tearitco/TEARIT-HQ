@@ -819,6 +819,7 @@ static int pg_events(char *buf, size_t cap) {
     return ne;
 }
 static int cmd_scene(int argc, char **argv);
+static int doc_blank(long w, long h, const char *as); static int doc_paint(const char *tool, long x, long y, const char *as); static int cursor_cell(long *x, long *y);
 static int cmd_page(int argc, char **argv) {
     if (argc < 1) { fprintf(ERRF, "usage: page <desk_dir> [atlas.rgba] [noevents]\n"); return 2; } const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) { fprintf(ERRF, "page: the desk folder does not exist (make it first)\n"); return 2; }
     if (load_page()) { fprintf(ERRF, "%s\n", MSG); return 2; }
@@ -918,6 +919,8 @@ static int engine_verb(int argc, char **argv) {
     if (KIND == K_EDITOR && (!strcmp(verb, "add") || !strcmp(verb, "set") || !strcmp(verb, "del"))) {
         if (need_args(ac, !strcmp(verb, "del") ? 1 : 2, "add|set <id> <text...>   del <id>   [as=author]")) return 2; char tx[200] = ""; for (int i = 1; i < ac; i++) { if (i > 1) strncat(tx, " ", sizeof tx - strlen(tx) - 1); strncat(tx, av[i], sizeof tx - strlen(tx) - 1); }
         if (live(-1, as, verb, av[0], tx, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "%s %s: %d rows in the document\n", verb, av[0], S.ndoc); return 0; }
+    if (KIND == K_EDITOR && LEVELDOC && !strcmp(verb, "blank")) { long w = 20, h = 12; char *e; if (ac > 0) { w = strtol(av[0], &e, 10); if (*e) { fprintf(ERRF, "blank: width is a number\n"); return 2; } } if (ac > 1) { h = strtol(av[1], &e, 10); if (*e) { fprintf(ERRF, "blank: height is a number\n"); return 2; } } if (doc_blank(w, h, as)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "blank %ldx%ld: %d rows in the document\n", w, h, S.ndoc); return 0; }
+    if (KIND == K_EDITOR && LEVELDOC && !strcmp(verb, "paint")) { if (need_args(ac, 3, "paint ground|erase|start|goal <x> <y>   [as=author]")) return 2; char *e1, *e2; long x = strtol(av[1], &e1, 10), y = strtol(av[2], &e2, 10); if (*e1 || *e2) { fprintf(ERRF, "paint: x and y are numbers\n"); return 2; } if (doc_paint(av[0], x, y, as)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "paint %s %ld,%ld: %d rows in the document\n", av[0], x, y, S.ndoc); return 0; }
     if (KIND == K_EDITOR && !strcmp(verb, "publish")) { if (live(-1, as, "publish", "", NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "published doc=%s rows=%d\n", S.pubhash, S.ndoc); return 0; }
     if (!strcmp(verb, "export") && ac == 1) return cmd_export(av[0]);
     if (!strcmp(verb, "export")) { if (KIND != K_EDITOR) { fprintf(ERRF, "export: only an editor game has a document (give an out folder to write the data tables: export <out_dir>)\n"); return 2; } if (write_doc()) { fprintf(ERRF, "export: cannot write doc.txt\n"); return 2; } fprintf(OUT, "wrote doc.txt (%d rows)\n", S.ndoc); return 0; }
@@ -1012,7 +1015,7 @@ static void set_desk(const char *want) {
 /* ---------- scene: the LEVEL of a walk / platform game drawn as an editor desk (2026-11-18, owner: "no land under the player"). A PROJECTION of the level file, safe to delete, rewritten byte for byte: cells.txt (the land) + map.txt + the atlas and the look files copied from the book's authored board desk. Slots of the Teropoly atlas: 0 empty (sky), 1 grass (the surface), 32 dirt (below the surface). Heroes and the goal flag are events.txt rows (scene_events), refreshed as the game runs. ---------- */
 static int scene_on;
 static int cmd_scene(int argc, char **argv) {
-    if (!WALKISH) return bad("scene: only a walk or platform game has a level to draw");
+    if (LEVELDOC) { if (level_from_doc()) return 1; } else if (!WALKISH) return bad("scene: only a walk, platform or level-document game has a level to draw");
     if (argc < 1) return bad("usage: scene <desk_dir> [atlas.rgba]");
     struct stat sb; if (stat(argv[0], &sb) || !S_ISDIR(sb.st_mode)) return bad("scene: the desk folder does not exist (make it first)");
     static char cb[24000], mb[4200]; int n = snprintf(cb, sizeof cb, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", LV.w, LV.h), m = 0;
@@ -1031,8 +1034,34 @@ static int ui_mode_wanted(void) { char p[P + 16], ln[512]; snprintf(p, sizeof p,
     while (fgets(ln, sizeof ln, f)) { char *fl[6]; if (ln[0] == '#') continue; int n = split_row(ln, fl, 6); if (n >= 3 && !strcmp(fl[0], "GAME") && !strcmp(fl[1], "ui_mode") && !strcmp(fl[2], "play")) want = 1; } fclose(f); return want; }
 static void ui_mode_set(const char *mode) { char op[P + 64], sides[P + 64], lay[P + 64], out[300]; snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x", HOUSE); snprintf(sides, sizeof sides, "%s/board/state/sides.txt", EDIT); snprintf(lay, sizeof lay, "%s/layouts.pdl", EDIT);
     if (access(op, X_OK) || access(lay, R_OK)) return; char *av[] = { op, sides, (char *)"--bars", lay, (char *)"--no-settings", (char *)mode, NULL }; run_capture(av, out, sizeof out); }
+/* ---------- Make's level tools (2026-11-18): the level is the ledger DOCUMENT (rows name, start, goal, r00..rNN); every tool is an ordinary EDIT row, so a replay rebuilds the level and Play's own level file is never touched (Make publishes, Play reads the published level). ---------- */
+static int doc_find(const char *id) { for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) return i; return -1; }
+static int doc_rows(void) { int n = 0; char id[8]; for (;; n++) { snprintf(id, sizeof id, "r%02d", n); if (doc_find(id) < 0) break; } return n; }
+/* blank <w> <h>: a starter level in an empty document: ground along the bottom, start at the left, goal at the right */
+static int doc_blank(long w, long h, const char *as) {
+    if (!LEVELDOC) return bad("blank: only a level document has tiles"); if (S.ndoc) return bad("blank: the document is not empty (it already has %d rows)", S.ndoc);
+    if (w < 8 || w > LVMAXW || h < 4 || h > 30) return bad("blank: width is 8 to %d, height 4 to 30", LVMAXW);
+    char id[8], tx[LVMAXW + 2]; if (live(-1, as, "add", "name", "untitled", NULL)) return 1;
+    snprintf(tx, sizeof tx, "2 %ld", h - 2); if (live(-1, as, "add", "start", tx, NULL)) return 1; snprintf(tx, sizeof tx, "%ld %ld", w - 3, h - 2); if (live(-1, as, "add", "goal", tx, NULL)) return 1;
+    for (long y = 0; y < h; y++) { memset(tx, y == h - 1 ? '#' : '.', (size_t)w); tx[w] = 0; snprintf(id, sizeof id, "r%02ld", y); if (live(-1, as, "add", id, tx, NULL)) return 1; }
+    return 0;
+}
+/* paint <tool> <x> <y>: ground | erase | start | goal at a cell of the level */
+static int doc_paint(const char *tool, long x, long y, const char *as) {
+    if (!LEVELDOC) return bad("paint: only a level document has tiles"); int h = doc_rows(); if (!h) return bad("paint: the document has no level yet (use blank)");
+    int w = (int)strlen(S.dtx[doc_find("r00")]); if (x < 0 || x >= w || y < 0 || y >= h) return bad("paint: the cell %ld,%ld is outside the level (%d x %d)", x, y, w, h);
+    if (!strcmp(tool, "start") || !strcmp(tool, "goal")) { char tx[40]; snprintf(tx, sizeof tx, "%ld %ld", x, y); int ix = doc_find(tool); if (ix >= 0 && !strcmp(S.dtx[ix], tx)) return bad("paint: the %s is already there", tool); return live(-1, as, ix >= 0 ? "set" : "add", tool, tx, NULL); }
+    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : 0; if (!ch) return bad("paint: the tool is ground, erase, start or goal");
+    char id[8], tx[LVMAXW + 2]; snprintf(id, sizeof id, "r%02ld", y); snprintf(tx, sizeof tx, "%s", S.dtx[doc_find(id)]); if (tx[x] == ch) return bad("paint: that cell is already %s", ch == '#' ? "ground" : "empty");
+    tx[x] = ch; return live(-1, as, "set", id, tx, NULL);
+}
+/* the editor's cursor cell (the xelector of the editor's own world): where the shelf buttons paint */
+static int cursor_cell(long *x, long *y) { char eb[P], p[P + 96], b[600]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
+    snprintf(p, sizeof p, "%s/%s-pchq/pieces/xelector_01/state.txt", EDIT, bn); FILE *f = fopen(p, "r"); if (!f) return 0; size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); int hx_ = 0, hy_ = 0;
+    for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) { *x = atol(l + 6); hx_ = 1; } else if (!strncmp(l, "pos_y=", 6)) { *y = atol(l + 6); hy_ = 1; } } return hx_ && hy_; }
 static void scene_events(void) {
     static char b[2048]; int n = snprintf(b, sizeof b, "%d %d 255 210 60 !Other1 0 2 1 \xe6\x97\x97\n", LV.gx, LV.gy);   /* the goal: a flag (the Chinese character 旗) */
+    if (LEVELDOC) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 220 60 60 People1 0 2 1\n", LV.sx, LV.sy);   /* Make: the start cell shows the hero */
     for (int i = 0; i < S.np && n < 1900; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
     char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b);
 }
@@ -1071,6 +1100,8 @@ static void handle(const char *c) {
     else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!sync_state()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
     else if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "up") || !strcmp(c, "down"))) { if (!S.human[0]) snprintf(dmsg, sizeof dmsg, "no human seat"); else if (!sync_state()) { char dc[2] = { (char)(c[0] - 'a' + 'A'), 0 }; human_live("turn", dc, NULL, "p1"); } }
     else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay") || (MODE == M_PLATFORM && !strcmp(c, "jump")))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
+    else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "blank_level")) { if (!sync_state()) { if (doc_blank(20, 12, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "a starter level: 20 x 12, ground along the bottom"); } }
+    else if (KIND == K_EDITOR && LEVELDOC && !strncmp(c, "paint_", 6)) { long x = 0, y = 0; if (!cursor_cell(&x, &y)) snprintf(dmsg, sizeof dmsg, "no cursor cell: the editor cursor was not found"); else if (!sync_state()) { if (doc_paint(c + 6, x, y, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "%s at %ld,%ld", c + 6, x, y); } }
     else if (KIND == K_EDITOR && !strncmp(c, "add_", 4)) { char id[32]; snprintf(id, sizeof id, "%s", c + 4); if (!sync_state()) { int ix = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) ix = 1; if (!strcmp(id, "item")) { snprintf(id, sizeof id, "item%d", S.ndoc + 1); ix = 0; } char tx[80]; snprintf(tx, sizeof tx, "%s (added from the bar)", id); if (LEVELDOC && !strcmp(id, "start")) snprintf(tx, sizeof tx, "2 10"); if (LEVELDOC && !strcmp(id, "goal")) snprintf(tx, sizeof tx, "17 10"); human_live(ix ? "set" : "add", id, tx, "author"); } }
     else if (KIND == K_EDITOR && !strcmp(c, "remove_last")) { if (!sync_state()) { if (S.ndoc) { char id[32]; snprintf(id, sizeof id, "%s", S.did[S.ndoc - 1]); human_live("del", id, NULL, "author"); } else snprintf(dmsg, sizeof dmsg, "the document is empty"); } }
     else if (KIND == K_EDITOR && !strcmp(c, "publish")) { if (!sync_state()) human_live("publish", "", NULL, "author"); }
@@ -1086,7 +1117,8 @@ static void publish(void) {
     snprintf(b, sizeof b, "%.200s", dmsg); add_txt(o, C, &nt, b);
     if (KIND == K_EDITOR) {
         snprintf(b, sizeof b, "%d rows, %s, %ld edits", S.ndoc, S.published ? "published" : "not published", S.nedits); add_txt(o, C, &nt, b);
-        add_btn(o, C, &nb, "add start", "add_start"); add_btn(o, C, &nb, "add goal", "add_goal"); add_btn(o, C, &nb, "add item", "add_item"); add_btn(o, C, &nb, "remove last", "remove_last"); add_btn(o, C, &nb, "publish", "publish");
+        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { add_btn(o, C, &nb, "ground here", "paint_ground"); add_btn(o, C, &nb, "erase here", "paint_erase"); add_btn(o, C, &nb, "start here", "paint_start"); add_btn(o, C, &nb, "goal here", "paint_goal"); } add_btn(o, C, &nb, "publish", "publish"); }
+        else { add_btn(o, C, &nb, "add start", "add_start"); add_btn(o, C, &nb, "add goal", "add_goal"); add_btn(o, C, &nb, "add item", "add_item"); add_btn(o, C, &nb, "remove last", "remove_last"); add_btn(o, C, &nb, "publish", "publish"); }
     } else if (!mode_play) {
         snprintf(b, sizeof b, "%d players, seed %ld", nplayers, seed_pref); add_txt(o, C, &nt, b); add_btn(o, C, &nb, "players -", "players_down"); add_btn(o, C, &nb, "players +", "players_up");
         { char hp[8] = "none"; if (human_seat) snprintf(hp, sizeof hp, "p%d", human_seat); snprintf(b, sizeof b, "you play: %s", hp); } add_btn(o, C, &nb, b, "human_next");
@@ -1118,7 +1150,7 @@ static int driver_main(int argc, char **argv) {
         if (!access(pp, R_OK)) { if (load_page()) snprintf(dmsg, sizeof dmsg, "page.pdl refused: %.180s", MSG); else {
             char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
             snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); snprintf(DESKDIR, sizeof DESKDIR, "%s/%s-pchq/pieces/system/maps/%s/play", BOOK, NAME, NAME); snprintf(ATLAS, sizeof ATLAS, "%s/%s-pchq/pieces/system/maps/%s/board/cells.rgba", BOOK, NAME, NAME); page_on = 1; } } }
-    if (KIND == K_REALTIME && WALKISH) {   /* the level is drawn as the book's "play" desk (scene verb) and the heroes follow the ledger, as the Teropoly page does */
+    if ((KIND == K_REALTIME && WALKISH) || (KIND == K_EDITOR && LEVELDOC)) {   /* the level is drawn as the book's "play" desk (scene verb) and the heroes follow the ledger, as the Teropoly page does */
         char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
         snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); snprintf(DESKDIR, sizeof DESKDIR, "%s/%s-pchq/pieces/system/maps/%s/play", BOOK, NAME, NAME); snprintf(ATLAS, sizeof ATLAS, "%s/%s-pchq/pieces/system/maps/%s/board/cells.rgba", BOOK, NAME, NAME); page_on = 1; scene_on = 1; }
     static int ui_play; ui_play = ui_mode_wanted(); if (ui_play) ui_mode_set("play");
@@ -1165,6 +1197,7 @@ static int driver_main(int argc, char **argv) {
             if (was_live) { was_live = 0; stats_seg_end(now_us() - seg_us, pace_us, stats_path); }
             if (mode_play && run && KIND == K_LEDGER && S.phase == PH_PLAY && S.human[S.cur]) { char yt[120]; snprintf(yt, sizeof yt, "your turn, %s: press Roll", S.name[S.cur]); if (strcmp(dmsg, yt)) { snprintf(dmsg, sizeof dmsg, "%s", yt); dirty = 1; } }
         }
+        if (scene_on && LEVELDOC && mode_play) { static int dsig_set; static uint64_t dsig; uint64_t dg = doc_hash(); if (!dsig_set || dg != dsig) { dsig_set = 1; dsig = dg; if (S.ndoc) page_make(); } }   /* Make: the level is redrawn when the document changes */
         if (page_on && mode_play) { uint64_t sg = pos_sig(); if (sg != page_sig) { page_sig = sg; page_events(); } static long dg = 0; long td = now_ms(); if (td - dg >= 2000) { dg = td; set_desk("play"); } }   /* the figures follow the ledger; the desk guard re-points the world after a board relaunch (as the Teropoly driver) */
         { long tp = now_us(); if (dirty && tp - last_pub >= 200000) { publish(); last_pub = tp; } }   /* the feed is rewritten at most 5 times a second, whatever the step pace */
         { long tn = now_us(), wake = tn + (live ? HK_MS : IDLE_MS) * 1000L; if (live && next_us < wake) wake = next_us; if (dirty && last_pub + 200000 < wake) wake = last_pub + 200000;

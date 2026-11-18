@@ -1,0 +1,62 @@
+# teario_tools (2026-11-18; Teario-Make's level tools): the level is the ledger DOCUMENT of the editor-kind game; `blank` makes a starter level and `paint ground|erase|start|goal x y` edits it as ordinary EDIT rows, so a replay rebuilds the level (no state file is the authority) and Play's own level file is never touched. Every pin is hand-computed from the 20 x 12 starter: ground along row 11, start 2,10, goal 17,10.
+RESULTS | ../results/teario_tools.txt
+ENV | LC_ALL | C
+
+CASE    | tt_setup
+SCRATCH |
+COPYDIR | @.apps/teario-make | tt/make
+MKDIR   | s1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | new | 7
+EXPECT_OUT | kind=editor | an-editor-game
+
+CASE    | tt_blank
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | ground | 1 | 1
+EXPECT_EXIT | 2 | NEGATIVE-painting-before-a-level-exists-is-refused
+EXPECT_OUT | no level yet | and-says-use-blank
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | blank | 7 12
+EXPECT_EXIT | 2 | NEGATIVE-a-width-under-8-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | blank
+EXPECT_OUT | blank 20x12: 15 rows in the document | HAND-COMPUTED-name-start-goal-plus-12-rows-=-15
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | blank
+EXPECT_EXIT | 2 | NEGATIVE-a-second-blank-is-refused-(the-document-is-not-empty)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | export
+RUN | grep | -c | ^ROW | $T/s1/level.pdl
+EXPECT_OUT_IS | 12 | twelve-tile-rows
+EXPECT_HAS | $T/s1/level.pdl | ROW   \p 11 \p #################### | the-starter-has-ground-along-the-bottom
+EXPECT_HAS | $T/s1/level.pdl | START \p 2 \p 10 | start-2-10
+EXPECT_HAS | $T/s1/level.pdl | GOAL  \p 17 \p 10 | goal-17-10
+
+CASE    | tt_paint
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | ground | 5 | 9
+EXPECT_EXIT | 0 | ground-painted
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | ground | 5 | 9
+EXPECT_EXIT | 2 | NEGATIVE-the-same-cell-again-changes-nothing-and-is-refused-(no-empty-ledger-row)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | erase | 3 | 11
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | start | 3 | 9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | goal | 18 | 9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | export
+EXPECT_HAS | $T/s1/level.pdl | ROW   \p 9 \p .....#.............. | the-ground-block-is-at-column-5-of-row-9
+EXPECT_HAS | $T/s1/level.pdl | ROW   \p 11 \p ###.################ | the-erased-cell-is-column-3-of-row-11
+EXPECT_HAS | $T/s1/level.pdl | START \p 3 \p 9 | the-start-moved
+EXPECT_HAS | $T/s1/level.pdl | GOAL  \p 18 \p 9 | the-goal-moved
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | ground | 20 | 5
+EXPECT_EXIT | 2 | NEGATIVE-a-cell-outside-the-level-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | paint | lava | 1 | 1
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-tool-is-refused
+
+CASE    | tt_replay_and_scene
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | replay
+EXPECT_EXIT | 0 | the-edit-rows-replay-to-a-state
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | ckpt
+EXPECT_EXIT | 0 | the-edits-are-pinned-with-a-ckpt-row-(without-one-an-edited-row-is-NOT-detectable)
+RUN | cp | -r | $T/s1 | $T/s2
+RUN | sed | -i | s/\pset\pr09\p/\pset\pr08\p/ | $T/s2/ledger.txt
+RUN | cmp | $T/s1/ledger.txt | $T/s2/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s2 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-forged-paint-row-(moved-to-another-row)-no-longer-reproduces-its-hash
+MKDIR   | d1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | scene | $T/d1
+EXPECT_OUT | SCENE 20x12 | the-document-is-drawn-as-a-desk
+RUN | sed | -n | 17p | $T/d1/cells.txt
+EXPECT_OUT_IS | 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 1,0,2 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 | the-painted-ground-cell-is-a-grass-tile-at-column-5
