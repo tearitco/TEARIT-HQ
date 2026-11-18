@@ -1067,6 +1067,10 @@ static void scene_events(void) {
 }
 static void page_events(void) { if (scene_on) { scene_events(); return; } static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
 static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } return fnv(h, S.pos, sizeof S.pos); }
+/* the engine loads a desk's picture (map.png) when the desk LOADS, so Make asks the board engine for a desk reload (the key `6`, through its own key file as the toolbar's Desk > reload does) after it redraws the level */
+static void engine_reload(void) { char p[P + 64], ln[600], sess[P + 64] = "", op[P + 64], out[200]; snprintf(p, sizeof p, "%s/board/state/ui.txt", EDIT); FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bv_session=", 11)) { snprintf(sess, sizeof sess, "%s", ln + 11); sess[strcspn(sess, "\r\n")] = 0; } fclose(f);
+    snprintf(op, sizeof op, "%s/&.widgits/board-viewer/tools/+x/bv_keys.+x", HOUSE); if (!sess[0] || access(sess, R_OK) || access(op, X_OK)) return; char *av[] = { op, sess, (char *)"6", NULL }; run_capture(av, out, sizeof out); }
 static void page_make(void) {
     if (!page_on) return; mkdir_p(DESKDIR); char p[P + 16], out[300]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); FILE *f = fopen(p, "w"); if (f) fclose(f);   /* the last game's figures are emptied before the new page is drawn */
     { char ex[P], sheet[P], fr[P]; snprintf(ex, sizeof ex, "%s/@.apps/deskopoly/ops/+x/deskopoly_frames.+x", HOUSE); snprintf(sheet, sizeof sheet, "%s/../../../#.NNEST_ASSETS/tsots-characters/People1.png", HOUSE); snprintf(fr, sizeof fr, "%s/../../../#.NNEST_ASSETS/tsots-characters/frames", HOUSE);
@@ -1074,7 +1078,7 @@ static void page_make(void) {
     char *a[] = { (char *)(scene_on ? "scene" : "page"), DESKDIR, ATLAS, (char *)"noevents" }; if (verb_here(4, a, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "page refused: %.180s", out); return; }
     char raw[P + 16], png[P + 16], r2p[P + 96], sz[40]; snprintf(raw, sizeof raw, "%s/map.raw", DESKDIR); snprintf(png, sizeof png, "%s/map.png", DESKDIR); snprintf(r2p, sizeof r2p, "%s/&.widgits/_shared-lib/ops/+x/raw_to_png.+x", HOUSE);
     char *b[] = { (char *)"preview", DESKDIR, raw }; if (!verb_here(3, b, out, sizeof out)) { if (scene_on) snprintf(sz, sizeof sz, "%dx%d", LV.w * 24, LV.h * 24); else snprintf(sz, sizeof sz, "%dx%d", COLS * PG_block * HD_px, (ROWS + PG_start) * PG_block * HD_px); char *c[] = { r2p, raw, png, (char *)"--size", sz, NULL }; run_capture(c, out, sizeof out); unlink(raw); }   /* 2D: the picture beside map.txt, which the 2D renderer blits 1:1 and draws the events.txt figures over */
-    set_desk("play"); page_events(); page_sig = pos_sig();
+    set_desk("play"); page_events(); page_sig = pos_sig(); if (scene_on && LEVELDOC) engine_reload();
 }
 static void begin_game(void) {
     char out[300], sd[16]; archive_game(); mkdir_p(SD); snprintf(sd, sizeof sd, "%ld", seed_pref); char *n1[] = { (char *)"new", sd };
