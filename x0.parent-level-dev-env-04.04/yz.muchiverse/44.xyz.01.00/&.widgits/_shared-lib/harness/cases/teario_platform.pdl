@@ -1,0 +1,78 @@
+# teario_platform (2026-11-18; Teario-universe T2, D90): MODE platform = the walk level plus the shared gravity-field body (_shared-lib/phys_field.c): gravity, run, jump on the SAME shared engine, inputs-only run ledger, replay refuses a forged run.
+# A scratch copy of teario-play with MODE platform (the shipped app stays MODE walk, case teario_play). Hand-computed pin: a jump pulse gives rise 200+184+168+152 = 704 in 4 ticks (y 2616 -> 1912, vy -152); with RULE gravity 8 it is 200+192+184+176 = 752 (y 1864, vy -176).
+# OBSERVED pins (the run is deterministic): jump at tick 44 while running right clears the pit and reaches the goal at tick 81; running right without a jump falls into the pit (falls=2 after 150 ticks).
+RESULTS | ../results/teario_platform.txt
+ENV | LC_ALL | C
+
+CASE    | tpl_setup
+SCRATCH |
+COPYDIR | @.apps/teario | tpl/teario
+COPYDIR | @.apps/teario-play | tpl/walk
+COPYDIR | @.apps/teario-play | tpl/plat
+RUN | sed | -i | s/^MODE .*/MODE \pplatform/ | $T/tpl/plat/rulesets/default/board.pdl
+EXPECT_HAS | $T/tpl/plat/rulesets/default/board.pdl | MODE \pplatform | the-scratch-copy-is-platform-mode
+COPYDIR | @.apps/teario-play | tpl/grav
+RUN | sed | -i | s/^MODE .*/MODE \pplatform/ | $T/tpl/grav/rulesets/default/board.pdl
+RUN | sh | -c | printf 'RULE \p gravity \p 8\n' >> $T/tpl/grav/rulesets/default/rules.pdl
+
+CASE    | tpl_jump_arithmetic
+MKDIR   | g3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | input | p1 | jump | 3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | advance | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | status
+EXPECT_OUT | body=540,1912,0,-152 | HAND-COMPUTED-4-ticks-after-the-jump-the-rise-is-704-(2616-704-1912)-and-vy-is--152
+EXPECT_HAS | $T/g3/ledger.txt | mode=platform | the-first-row-records-the-mode
+MKDIR   | g4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/grav | $T/g4 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/grav | $T/g4 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/grav | $T/g4 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/grav | $T/g4 | input | p1 | jump | 3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/grav | $T/g4 | advance | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/grav | $T/g4 | status
+EXPECT_OUT | body=540,1864,0,-176 | HAND-COMPUTED-with-RULE-gravity-8-the-rise-is-752-(y-1864):-the-physics-is-DATA
+EXPECT_OUT_LACKS | 1912 | NEGATIVE-it-is-not-the-default-gravity-answer
+
+CASE    | tpl_pit_and_clear
+MKDIR   | g1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | advance | 150
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | status
+EXPECT_OUT | falls=2 | OBSERVED-running-right-with-no-jump-falls-into-the-pit-and-is-put-back-on-START-(falls=2-at-tick-150)
+EXPECT_OUT | over=0 | and-has-not-won
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | verify_clear
+EXPECT_EXIT | 1 | NEGATIVE-a-run-that-fell-is-not-a-clear
+MKDIR   | g2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | input | p1 | jump | 44
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | advance | 200
+EXPECT_OUT | tick 81 | OBSERVED-jumping-at-tick-44-clears-the-pit-and-the-run-ends-at-tick-81
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | verify_clear
+EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=3236cb1185ec70e7;ticks=81 | the-proof-line-pinned
+RUN | grep | -c | ^EVENT | $T/g2/ledger.txt
+EXPECT_OUT_IS | 6 | INPUTS-ONLY-6-rows-for-an-81-tick-run:-new-join-start-input-input-ckpt
+
+CASE    | tpl_tamper_and_input_rules
+MKDIR   | h1
+RUN | cp | $T/g2/ledger.txt | $T/h1/ledger.txt
+RUN | sed | -i | s/\pinput\pjump\p/\pinput\pstay\p/ | $T/h1/ledger.txt
+RUN | cmp | $T/g2/ledger.txt | $T/h1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/h1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-run-with-the-jump-removed-no-longer-reproduces-its-hash-and-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g3 | input | p1 | fly
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-input-is-refused
+MKDIR   | w1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | input | p1 | jump
+EXPECT_EXIT | 2 | NEGATIVE-the-walk-mode-has-no-jump-(its-replay-hashes-stay-valid)
