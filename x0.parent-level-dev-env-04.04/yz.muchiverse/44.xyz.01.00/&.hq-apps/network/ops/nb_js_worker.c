@@ -337,16 +337,8 @@ static JSValue nb_el_scroll_dim(JSContext *ctx, JSValueConst this_val, int argc,
 static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 /* DOMRect.toJSON helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_rect_tojson.c"
-
-/* ---- IntersectionObserver (2026-11-08, extended 2026-11-09) ----
- * Real initial entries from the worker's box geometry, delivered as a
- * queued microtask and batched per task. DOM-driven geometry changes
- * (childList / attribute edits, textContent / innerHTML) re-evaluate
- * observed targets and deliver change entries. It intentionally does not
- * claim scroll delivery: the worker knows the LOAD viewport, not a live
- * pane-scroll channel. Thresholds are not yet modelled; a change entry
- * fires when isIntersecting or the ratio changes. */
-#define NB_INT_MAX_OBS 32
+/* IntersectionObserver notes and limits extracted (Phase 1, single-TU include). */
+#include "nb_worker_intersection_observer_state.c"
 /* IntersectionObserver helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_intersection_observer.c"
 /* ResizeObserver helpers extracted (Phase 1, single-TU include). */
