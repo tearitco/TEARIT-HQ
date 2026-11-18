@@ -583,22 +583,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 #include "nb_worker_select_index_selected.c"
 /* classList native methods extracted (Phase 1, single-TU include). */
 #include "nb_worker_classlist.c"
-
-#define IDMAPNAME "__nb_idmap"    /* global object: node index -> JS wrapper (identity) */
-/* DOM class prototypes (2026-09-18): real bundles branch on
- * `instanceof Element` and touch `Element.prototype` at load time. The
- * per-context global object `__nb_protos` holds the constructor-chain
- * prototypes for element/text/document wrappers built by install_dom_classes. */
-#define PROTONAME "__nb_protos"
-#define PROTO_EL 0   /* element wrappers ride HTMLElement.prototype */
-#define PROTO_TEXT 1 /* text nodes ride Text.prototype */
-#define PROTO_DOC 2  /* the document object rides Document.prototype */
-
-/* upgrade a freshly built wrapper if a custom-element class is registered
- * for its tag (customElements upgrade-on-creation). Defined in the CE
- * section below (line ~3070). */
-static void ce_upgrade_node_if_registered(JSContext *ctx, JSValue el, NbNode *n);
-
+/* DOM node identity/prototype defs and CE upgrade decl extracted (Phase 1, single-TU include). */
+#include "nb_worker_dom_node_identity_defs.c"
 /* Build a JS element object wrapping a C NbNode. */
 /* DOM node wrapper builder extracted (Phase 1, single-TU include). */
 #include "nb_worker_push_node.c"
