@@ -375,16 +375,8 @@ static JSValue nb_dom_createEvent(JSContext *ctx, JSValueConst this_val, int arg
 #include "nb_worker_treewalker.c"
 /* document/DOM factory helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_dom_document.c"
-/* ---- element natives (this = element object) ---- */
-static int attrs_has(const NbNode *n, const char *name);
-static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_el_normalize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_el_remove_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_el_before_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_el_after_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_el_replaceWith_js(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static const NbNode *nb_top_root(const NbNode *n);
-static JSValue nb_global_document(JSContext *ctx);
+/* Element native forward declarations extracted (Phase 1, single-TU include). */
+#include "nb_worker_element_native_forward_decls.c"
 /* getAttribute helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_get_attribute.c"
 /* element.attributes getter helper extracted (Phase 1, single-TU include). */
