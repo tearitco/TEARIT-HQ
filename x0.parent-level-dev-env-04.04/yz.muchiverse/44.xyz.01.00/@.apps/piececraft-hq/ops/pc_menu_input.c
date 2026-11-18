@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include "win_posix_shim.h"
 #include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
+#include "../../../&.widgits/_shared-lib/pchq_book_path.c"   /* bp_dir(): where a book lives, no symlinks (owner 2026-11-18) */
 
 #define MAX_LINE 512
 #define MAX_PATH 4096
@@ -356,13 +357,13 @@ static void check_player_touch_trigger(const char *proj_root, int turn, int px, 
     FILE *f = NULL;
     if (desk_id[0] && !strchr(desk_id, '/') && !strchr(desk_id, '\'')) {
         snprintf(events_path, sizeof(events_path),
-                 "%s/pieces/system/maps/%s/%s/events.pdl",
-                 real_root_local, map_id, desk_id);
+                 "%s/%s/events.pdl",
+                 bp_dir(real_root_local, map_id), desk_id);
         f = fopen(events_path, "r");
     }
     if (!f) {
         snprintf(events_path, sizeof(events_path),
-                 "%s/pieces/system/maps/%s/events.pdl", real_root_local, map_id);
+                 "%s/events.pdl", bp_dir(real_root_local, map_id));
         f = fopen(events_path, "r");
     }
     if (!f) return;

@@ -1,0 +1,82 @@
+# book_roots (2026-11-18; owner: "we dont use simlinks for anything in code"): the ONE book locator (_shared-lib/pchq_book_path.c, op book_path_op). SCRATCH house, no links.
+# Proves: the lookup ORDER (own folder, the app named like the book, another app, the piececraft store, extra ROOT rows), the not-found answer, the refusal of names that could leave the maps folder,
+# the list (de-duplicated, no "default", no folder without game.pdl, no extra root that climbs out or is absolute), and that NO symlink is needed or made.
+RESULTS | ../results/book_roots.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/book_path_op.+x | $T/bpo
+EXPECT_EXISTS | bpo | the-real-op-is-built
+MKDIR | h/inst/pieces/system/maps/mine
+WRITE | h/inst/pieces/system/maps/mine/game.pdl | GAME \p label \p mine\n
+MKDIR | h/inst/pieces/system/maps/dup
+WRITE | h/inst/pieces/system/maps/dup/game.pdl | GAME \p label \p dup-in-instance\n
+MKDIR | h/inst/pieces/system/maps/default
+WRITE | h/inst/pieces/system/maps/default/game.pdl | GAME \p label \p default\n
+MKDIR | h/@.apps/alpha/alpha-pchq/pieces/system/maps/alpha
+WRITE | h/@.apps/alpha/alpha-pchq/pieces/system/maps/alpha/game.pdl | GAME \p label \p alpha\n
+MKDIR | h/@.apps/alpha/alpha-pchq/pieces/system/maps/dup
+WRITE | h/@.apps/alpha/alpha-pchq/pieces/system/maps/dup/game.pdl | GAME \p label \p dup-in-alpha\n
+MKDIR | h/@.apps/beta/beta-pchq/pieces/system/maps/shared
+WRITE | h/@.apps/beta/beta-pchq/pieces/system/maps/shared/game.pdl | GAME \p label \p shared\n
+MKDIR | h/@.apps/piececraft-hq/pieces/system/maps/store
+WRITE | h/@.apps/piececraft-hq/pieces/system/maps/store/game.pdl | GAME \p label \p store\n
+MKDIR | h/@.apps/piececraft-hq/pieces/system/maps/nogame
+WRITE | h/@.apps/piececraft-hq/pieces/system/maps/nogame/map.txt | x\n
+MKDIR | h/extra/stuff
+WRITE | h/extra/stuff/game.pdl | GAME \p label \p stuff\n
+MKDIR | h/inst/pieces/trap
+WRITE | h/inst/pieces/trap/game.pdl | GAME \p label \p trap\n
+MKDIR | h/outside/leak
+WRITE | h/outside/leak/game.pdl | GAME \p label \p leak\n
+WRITE | h/#.desktop/book_roots.pdl | # extra stores\nROOT \p ../outside\nROOT \p /tmp\nROOT \p extra\n
+
+CASE    | order
+RUN | $T/bpo | $T/h/inst | $T/h | mine
+EXPECT_EXIT | 0 | a-book-in-the-instance-is-found
+EXPECT_OUT_IS | $T/h/inst/pieces/system/maps/mine | step1-the-instance-own-folder
+RUN | $T/bpo | $T/h/inst | $T/h | dup
+EXPECT_OUT_IS | $T/h/inst/pieces/system/maps/dup | the-instance-copy-wins-over-an-app-copy
+RUN | $T/bpo | $T/h/inst | $T/h | alpha
+EXPECT_OUT_IS | $T/h/@.apps/alpha/alpha-pchq/pieces/system/maps/alpha | step2-the-app-named-like-the-book
+RUN | $T/bpo | $T/h/inst | $T/h | shared
+EXPECT_OUT_IS | $T/h/@.apps/beta/beta-pchq/pieces/system/maps/shared | step3-another-apps-own-book
+RUN | $T/bpo | $T/h/inst | $T/h | store
+EXPECT_OUT_IS | $T/h/@.apps/piececraft-hq/pieces/system/maps/store | step4-the-piececraft-store
+RUN | $T/bpo | $T/h/inst | $T/h | stuff
+EXPECT_EXIT | 0 | an-extra-root-book-is-found
+EXPECT_OUT_IS | $T/h/extra/stuff | step5-a-ROOT-row-of-book_roots.pdl
+RUN | $T/bpo | $T/h/inst | $T/h | leak
+EXPECT_EXIT | 1 | NEGATIVE-a-ROOT-row-that-climbs-out-is-ignored
+RUN | $T/bpo | $T/h/inst | $T/h | nogame
+EXPECT_EXIT | 1 | NEGATIVE-a-store-folder-without-game.pdl-is-not-a-book
+
+CASE    | not-found-and-refused
+RUN | $T/bpo | $T/h/inst | $T/h | nothing
+EXPECT_EXIT | 1 | an-unknown-book-is-not-found
+EXPECT_OUT_IS | $T/h/inst/pieces/system/maps/nothing | and-the-answer-is-the-instance-path-so-old-callers-fail-as-before
+RUN | $T/bpo | $T/h/inst | $T/h | ../outside/leak
+EXPECT_EXIT | 1 | NEGATIVE-a-name-with-slashes-is-refused
+EXPECT_OUT_LACKS | outside | and-no-path-leaves-the-maps-folder
+RUN | $T/bpo | $T/h/inst | $T/h | mine/../../../trap
+EXPECT_EXIT | 1 | NEGATIVE-a-name-that-REALLY-resolves-through-dotdot-is-still-refused-(the-folder-exists)
+EXPECT_OUT_LACKS | trap/game | and-prints-no-path-into-it
+RUN | $T/bpo | $T/h/inst | $T/h | .hidden
+EXPECT_EXIT | 1 | NEGATIVE-a-leading-dot-is-refused
+RUN | $T/bpo | $T/h/inst | $T/h | ..
+EXPECT_EXIT | 1 | NEGATIVE-dotdot-is-refused
+
+CASE    | list
+RUN | $T/bpo | list | $T/h/inst | $T/h
+EXPECT_EXIT | 0 | list-runs
+EXPECT_OUT | mine | the-instance-book-is-listed
+EXPECT_OUT | alpha | an-app-book-is-listed
+EXPECT_OUT | shared | another-app-book-is-listed
+EXPECT_OUT | store | a-store-book-is-listed
+EXPECT_OUT | stuff | an-extra-root-book-is-listed
+EXPECT_OUT_LACKS | default | NEGATIVE-default-is-never-listed
+EXPECT_OUT_LACKS | nogame | NEGATIVE-a-folder-without-game.pdl-is-not-listed
+EXPECT_OUT_LACKS | leak | NEGATIVE-a-climbing-ROOT-row-adds-nothing
+RUN | /usr/bin/find | $T/h | -type | l
+EXPECT_OUT_IS |  | no-symlink-exists-in-the-scratch-house-the-resolver-needs-none

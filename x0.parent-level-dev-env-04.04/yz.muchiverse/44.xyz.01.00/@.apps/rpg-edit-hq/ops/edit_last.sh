@@ -17,8 +17,11 @@ page_real() {
             END { exit !found }
         ' "$rooms" && return 0
     fi
-    if [ -n "$maps" ] && [ -f "$maps/$book/$page/map.txt" ]; then
-        return 0
+    if [ -n "$maps" ]; then
+        # the book may live in its app, not in the instance (no symlinks, owner 2026-11-18): ask the shared locator
+        bd="$maps/$book"; bpo="$house/&.widgits/_shared-lib/ops/+x/book_path_op.+x"
+        [ -x "$bpo" ] && bd=$("$bpo" "${maps%/pieces/system/maps}" "$house" "$book" 2>/dev/null || true)
+        [ -f "$bd/$page/map.txt" ] && return 0
     fi
     return 1
 }

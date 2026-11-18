@@ -52,6 +52,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
+#include "../../_shared-lib/pchq_book_path.c"   /* bp_dir(): where a book lives, no symlinks (owner 2026-11-18); LOC_UNUSED comes from bv_move_range.c -> khtpm_locations.c */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -313,7 +314,7 @@ static void bv_page_lims(const char *root, int *lx, int *ly) {
     read_kv_str(wst, "desk_id", desk, sizeof(desk));
     read_kv_str(wst, "map_id", map_id, sizeof(map_id));
     if (desk[0] && map_id[0] && !strchr(desk, '/') && !strchr(map_id, '/')) {
-        snprintf(cp, sizeof(cp), "%s/pieces/system/maps/%s/%s/cells.txt", root, map_id, desk);
+        snprintf(cp, sizeof(cp), "%s/%s/cells.txt", bp_dir(root, map_id), desk);
         FILE *cf = fopen(cp, "r");
         if (cf) {
             char ln[80]; int cw = 0, ch = 0;
@@ -940,7 +941,7 @@ static int handle_one_key(int key) {
             }
             if (!strcmp(mid, "centroid") && did[0]) {
                 char dir[PATH_BUF], skinp[PATH_BUF], cur[16] = "rmmv", next[16], src[PATH_BUF], dst[PATH_BUF], mark[PATH_BUF];
-                snprintf(dir, sizeof(dir), "%s/pieces/system/maps/centroid/%s", focused_project_root, did);
+                snprintf(dir, sizeof(dir), "%s/%s", bp_dir(focused_project_root, "centroid"), did);
                 snprintf(skinp, sizeof(skinp), "%s/skin.txt", dir);
                 FILE *sf = fopen(skinp, "r");
                 if (sf) { if (!fgets(cur, sizeof cur, sf)) cur[0] = 0; fclose(sf); cur[strcspn(cur, "\r\n")] = 0; }
@@ -978,7 +979,7 @@ static int handle_one_key(int key) {
             FILE *wf = fopen(wp, "r"); if (wf) { size_t wn = fread(wb, 1, sizeof(wb) - 1, wf); wb[wn] = 0; fclose(wf); }
             for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "map_id=", 7)) snprintf(mid, sizeof(mid), "%s", l + 7);
             if (mid[0]) {
-                char vp[PATH_BUF]; snprintf(vp, sizeof(vp), "%s/pieces/system/maps/%s/view.pdl", focused_project_root, mid);
+                char vp[PATH_BUF]; snprintf(vp, sizeof(vp), "%s/view.pdl", bp_dir(focused_project_root, mid));
                 FILE *vf = fopen(vp, "r"); char vl[256];
                 while (vf && fgets(vl, sizeof(vl), vf)) { char *d = strstr(vl, "default_style"); if (!d || !strchr(vl, '|')) continue; d = strchr(d, '|'); if (!d) continue; d++; while (*d == ' ') d++; d[strcspn(d, " \r\n")] = 0; if (d[0]) snprintf(cur, sizeof(cur), "%s", d); }
                 if (vf) fclose(vf);

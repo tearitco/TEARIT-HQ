@@ -41,6 +41,7 @@
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
+#include "../../_shared-lib/pchq_book_path.c"   /* bp_dir(): where a book lives, no symlinks (owner 2026-11-18) */
 #include "../../_shared-lib/khtpm_pin_pick.c"   /* pin_path_pick(): a board obeys its OWN open_book_page.txt before the house-wide one (S3b-1) */
 #include "../../_shared-lib/xelector_look.c"   /* xel_look_pick(): the free / controlling look of the xelector, data-driven (view.pdl xelector_* rows) */
 
@@ -1033,7 +1034,7 @@ static int desk_dir(char *out, size_t osz) {
     read_kv_str(wst, "desk_id", desk, sizeof(desk));
     read_kv_str(wst, "map_id", map_id, sizeof(map_id));
     if (!desk[0] || !map_id[0] || strchr(desk, '/') || strchr(map_id, '/')) return 0;
-    snprintf(out, osz, "%s/pieces/system/maps/%s/%s", root, map_id, desk);
+    snprintf(out, osz, "%s/%s", bp_dir(root, map_id), desk);
     return 1;
 }
 /* ASCII view (` key) of a book that has its own glyphs: <desk>/ascii_legend.txt, same rows as terrain_legend.txt
@@ -1102,9 +1103,9 @@ static int desk_map_png(char *path, size_t psz, int *tile_px) {
     read_kv_str(wst, "map_id", map_id, sizeof(map_id));
     if (!desk[0] || !map_id[0]) return 0;
     if (strchr(desk, '/') || strchr(map_id, '/')) return 0;
-    snprintf(path, psz, "%s/pieces/system/maps/%s/%s/map.png", root, map_id, desk);
+    snprintf(path, psz, "%s/%s/map.png", bp_dir(root, map_id), desk);
     char mt[PATH_BUF];
-    snprintf(mt, sizeof(mt), "%s/pieces/system/maps/%s/%s/map.txt", root, map_id, desk);
+    snprintf(mt, sizeof(mt), "%s/%s/map.txt", bp_dir(root, map_id), desk);
     FILE *f = host_fopen(mt, "r");
     if (!f) return 0;
     char line[MAX_DIM + 8];
@@ -2084,7 +2085,7 @@ int main(void) {
                     { char wp[PATH_BUF + 64]; snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focused_root);
                       FILE *wf = host_fopen(wp, "r");
                       if (wf) { char ln[256]; while (fgets(ln, sizeof ln, wf)) { ln[strcspn(ln, "\r\n")] = 0; if (!strncmp(ln, "map_id=", 7)) snprintf(mk_map, sizeof mk_map, "%s", ln + 7); else if (!strncmp(ln, "desk_id=", 8)) snprintf(mk_desk, sizeof mk_desk, "%s", ln + 8); } fclose(wf); } }
-                    snprintf(mk_dir, sizeof(mk_dir), "%s/pieces/system/maps/%s/%s", focused_root, mk_map, mk_desk);
+                    snprintf(mk_dir, sizeof(mk_dir), "%s/%s", bp_dir(focused_root, mk_map), mk_desk);
                     int mk_painted = mk_map[0] && mk_desk[0] && access(mk_dir, F_OK) == 0;
                     if (!bvr_click(focused_root, project_root, bx, by, 0, 0) && !mk_painted)   /* Move range open: select/place */
                         pf = host_fopen(pp, "w");

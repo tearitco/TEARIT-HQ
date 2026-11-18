@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "../khtpm_locations.c"
+#include "../pchq_book_path.c"   /* the book may live in its app, not in the data folder: no symlinks (owner 2026-11-18) */
 static int kv_int(const char *file, const char *key, int dflt) { FILE *f = fopen(file, "r"); if (!f) return dflt; char ln[300]; size_t kl = strlen(key); while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, key, kl) && ln[kl] == '=') { fclose(f); return atoi(ln + kl + 1); } fclose(f); return dflt; }
 static void kv_set(const char *file, const char *key, int val) {      /* replace the key's line, or append it; whole file rewritten through a temp name */
     static char buf[65536]; size_t n = 0; FILE *f = fopen(file, "r"); if (f) { n = fread(buf, 1, sizeof buf - 1, f); fclose(f); } buf[n] = 0;
@@ -27,7 +29,7 @@ int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: page_start_op <data dir> <book> <page> [<session dir>]\n"); return 2; }
     const char *data = argv[1], *book = argv[2], *page = argv[3], *sess = argc > 4 ? argv[4] : "";
     if (strchr(book, '/') || strchr(page, '/') || strstr(book, "..") || strstr(page, "..")) { fprintf(stderr, "page_start_op: bad book or page name\n"); return 2; }
-    char pd[4400], f[4500]; snprintf(pd, sizeof pd, "%s/pieces/system/maps/%s/%s", data, book, page);
+    char pd[4400], f[4500]; snprintf(pd, sizeof pd, "%s/%s", bp_dir(data, book), page);
     snprintf(f, sizeof f, "%s/cells.txt", pd); int w = kv_int(f, "width", 0), h = kv_int(f, "height", 0);
     if (w < 1 || h < 1) { printf("START-SKIP page is not painted\n"); return 0; }
     char xp[4500]; snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", data);      /* a possessed cursor is moved too: this is a FRESH page open, and the view follows the selector (checked live 2026-11-17 with hero_01 possessing) */

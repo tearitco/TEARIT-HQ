@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include "win_posix_shim.h"
 #include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_house_root() / loc_real_root(): one place that finds the house and real roots */
+#include "../../../&.widgits/_shared-lib/pchq_book_path.c"   /* bp_book_dir(): a book is found where its app keeps it, no symlinks (owner 2026-11-18) */
 
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
@@ -55,6 +56,12 @@ static char project_root[MAX_PATH] = ".";
  * failure" pitfall - real persistent data must target the REAL root,
  * never the session root, unless a file is individually symlinked. */
 static char real_root[MAX_PATH] = ".";
+/* gbk - the folder of a book (the instance's own, else the app that carries it, else the pc-hq store): pchq_book_path.c. Static buffer, single thread. */
+static const char *gbk(const char *map_id) {
+    static char out[MAX_PATH], hr[MAX_PATH]; static char hr_for[MAX_PATH];
+    if (strcmp(hr_for, real_root) != 0) { hr[0] = 0; loc_house_root(real_root, hr, sizeof hr); snprintf(hr_for, sizeof hr_for, "%s", real_root); }
+    bp_book_dir(real_root, hr, map_id, out, sizeof out); return out;
+}
 
 #ifdef _WIN32
 #include <windows.h>
@@ -251,7 +258,7 @@ static void load_extrusion_table(const char *map_id, const char *desk_id, char g
     *n = 0;
     *default_delta = 0;
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/maps/%s/%s/extrusion.pdl", real_root, map_id, desk_id);
+    snprintf(path, sizeof(path), "%s/%s/extrusion.pdl", gbk(map_id), desk_id);
     FILE *f = host_fopen(path, "r");
     if (!f) return;
     char line[256];
@@ -290,7 +297,7 @@ static void load_extrusion_table(const char *map_id, const char *desk_id, char g
  * desk is genuinely loadable, not just a folder that's never read. */
 static int load_map_surface(const char *map_id, const char *desk_id, int ox, int oy, int surface[CHUNK_DIM][CHUNK_DIM], char surface_glyph[CHUNK_DIM][CHUNK_DIM]) {
     char map_path[PATH_BUF];
-    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id);
+    snprintf(map_path, sizeof(map_path), "%s/%s/map.txt", gbk(map_id), desk_id);
     FILE *f = host_fopen(map_path, "r");
     if (!f) return 1;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
@@ -365,7 +372,7 @@ static void emit_chunk(int cx, int cy, int surface[CHUNK_DIM][CHUNK_DIM], char s
  * take this path, so its chunk files stay the only board. */
 static int emit_full_board(const char *map_id, const char *desk_id) {
     char map_path[PATH_BUF];
-    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id);
+    snprintf(map_path, sizeof(map_path), "%s/%s/map.txt", gbk(map_id), desk_id);
     FILE *f = host_fopen(map_path, "r");
     if (!f) return 0;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
@@ -450,10 +457,10 @@ int main(int argc, char **argv) {
      * first desk - game.pdl desk_1_id. Without this the File-menu load of such a book fell back to flat. */
     if (map_id) {
         char probe[PATH_BUF];
-        snprintf(probe, sizeof(probe), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id_buf);
+        snprintf(probe, sizeof(probe), "%s/%s/map.txt", gbk(map_id), desk_id_buf);
         if (host_access(probe) != 0) {
             char gp[PATH_BUF], gl[256];
-            snprintf(gp, sizeof(gp), "%s/pieces/system/maps/%s/game.pdl", real_root, map_id);
+            snprintf(gp, sizeof(gp), "%s/game.pdl", gbk(map_id));
             FILE *gf = host_fopen(gp, "r");
             if (gf) {
                 while (fgets(gl, sizeof(gl), gf)) {
@@ -559,7 +566,7 @@ int main(int argc, char **argv) {
         /* Other 16x16 slices listed in game.pdl. The window reads the
          * full board written above, not one slice. */
         char gp[PATH_BUF];
-        snprintf(gp, sizeof(gp), "%s/pieces/system/maps/%s/game.pdl", real_root, map_id);
+        snprintf(gp, sizeof(gp), "%s/game.pdl", gbk(map_id));
         FILE *gf = host_fopen(gp, "r");
         int cxs[64], cys[64], seen[64];
         for (int i = 0; i < 64; i++) { cxs[i] = cys[i] = 0; seen[i] = 0; }
@@ -750,7 +757,7 @@ int main(int argc, char **argv) {
     int spawn_row = 8;
     if (map_id && map_id[0]) {
         char epath[PATH_BUF];
-        snprintf(epath, sizeof(epath), "%s/pieces/system/maps/%s/events.pdl", real_root, map_id);
+        snprintf(epath, sizeof(epath), "%s/events.pdl", gbk(map_id));
         FILE *ef = host_fopen(epath, "r");
         if (ef) {
             char eline[256];
@@ -770,8 +777,8 @@ int main(int argc, char **argv) {
      * not index that table. */
     if (map_id && desk_id && desk_id[0]) {
         char spath[PATH_BUF];
-        snprintf(spath, sizeof(spath), "%s/pieces/system/maps/%s/%s/START.txt",
-                 real_root, map_id, desk_id);
+        snprintf(spath, sizeof(spath), "%s/%s/START.txt",
+                 gbk(map_id), desk_id);
         FILE *sf = host_fopen(spath, "r");
         if (sf) {
             char line[128];

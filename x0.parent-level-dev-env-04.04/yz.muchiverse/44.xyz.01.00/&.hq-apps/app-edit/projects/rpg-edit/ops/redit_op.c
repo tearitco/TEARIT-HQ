@@ -71,9 +71,8 @@ static void ensure_data(void) {
     char init[P], of[P]; snprintf(init, sizeof init, "%s/@.apps/piececraft-hq/ops/pchq_instance_init.sh", HOUSE); snprintf(of, sizeof of, "%s/init.out", HQD);
     char rdy[P]; snprintf(rdy, sizeof rdy, "%s/pieces/system/.instance-ready", DATA);
     if (access(rdy, F_OK) != 0) { char *av[] = { "/bin/sh", init, DATA, NULL }; run_out(av, of); }
-    char md[P], src[P]; snprintf(md, sizeof md, "%s/pieces/system/maps", DATA); mkdir(md, 0755); snprintf(src, sizeof src, "%s/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/system/maps", HOUSE);
-    DIR *dp = opendir(src); if (dp) { struct dirent *e; while ((e = readdir(dp))) { if (e->d_name[0] == '.') continue; char from[P], to[P], tgt[P]; snprintf(from, sizeof from, "%s/%s", src, e->d_name); snprintf(to, sizeof to, "%s/%s", md, e->d_name);
-            struct stat sb; if (lstat(to, &sb) == 0) continue; ssize_t n = readlink(from, tgt, sizeof tgt - 1); if (n > 0) { tgt[n] = 0; if (symlink(tgt, to) != 0) { /* best effort */ } } else if (symlink(from, to) != 0) { /* best effort */ } } closedir(dp); }
+    /* Books: NO links and no copies (owner 2026-11-18). The phone's data folder only needs an empty maps folder; every reader finds a book where its app keeps it (pchq_book_path.c). */
+    char md[P]; snprintf(md, sizeof md, "%s/pieces/system/maps", DATA); mkdir(md, 0755);
     snprintf(of, sizeof of, "%s/pieces/system/widget_cmds", DATA); mkdir(of, 0755); mkdir(EUI, 0755);
 }
 static pid_t child(char *const av[], const char *env_pkg, int engine_only) {

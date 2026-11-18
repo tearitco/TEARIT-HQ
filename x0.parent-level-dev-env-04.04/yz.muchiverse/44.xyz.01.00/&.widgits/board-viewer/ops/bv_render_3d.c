@@ -65,6 +65,7 @@
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
 #include "bv_move_range.c"    /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
+#include "../../_shared-lib/pchq_book_path.c"   /* bp_dir(): where a book lives, no symlinks (owner 2026-11-18) */
 #include "../../_shared-lib/khtpm_pin_pick.c"   /* pin_path_pick(): a board obeys its OWN open_book_page.txt before the house-wide one (S3b-1) */
 #include <signal.h>
 #include <fcntl.h>
@@ -517,7 +518,7 @@ static int maker_load_base(const char *root) {
     static char s_good_dir[4352] = "", s_good_root[4352] = "", s_seen_bad[4352] = "";
     int partial = !map_id[0] || !desk_id[0];
     char dir[4352] = "";
-    if (!partial) snprintf(dir, sizeof(dir), "%s/pieces/system/maps/%s/%s", root, map_id, desk_id);
+    if (!partial) snprintf(dir, sizeof(dir), "%s/%s", bp_dir(root, map_id), desk_id);
     if (g_ml_dir_override) snprintf(dir, sizeof(dir), "%s", g_ml_dir_override);
     else {
         int usable = 0;
@@ -662,7 +663,7 @@ static int maker_load(const char *root) {
     if (!changed && applied_id == g_mk.id) return ok;
     applied_id = g_mk.id + 0;
     char wpath[4352], map_id[128] = "", bv_tmp_d[128]; snprintf(wpath, sizeof(wpath), "%s/pieces/world_01/state.txt", root); bv_world_ids(wpath, map_id, sizeof(map_id), bv_tmp_d, sizeof(bv_tmp_d));
-    char sdir[4352]; snprintf(sdir, sizeof(sdir), "%s/pieces/system/maps/%s/%s", root, map_id, src);
+    char sdir[4352]; snprintf(sdir, sizeof(sdir), "%s/%s", bp_dir(root, map_id), src);
     MakerAtlas prim = g_mk; memset(&g_mk, 0, sizeof(g_mk)); g_ml_dir_override = sdir; int sok = maker_load_base(root); g_ml_dir_override = NULL;
     MakerAtlas lnd = g_mk; g_mk = prim;
     int filled = 0, under_n = 0;
@@ -3326,7 +3327,7 @@ static void bv_xelector_to(const char *project_root, const char *focus, int hx, 
         if (mm_click) {
             char wp[PATH_BUF], mid[128] = "", did[128] = "", vp[PATH_BUF];
             snprintf(wp, sizeof(wp), "%s/pieces/world_01/state.txt", focus); bv_world_ids(wp, mid, sizeof(mid), did, sizeof(did));
-            if (mid[0] && did[0] && !strchr(mid, '/') && !strchr(did, '/')) { snprintf(vp, sizeof(vp), "%s/pieces/system/maps/%s/view.pdl", focus, mid); hud_pdl_str(vp, "minimap_click_possessed", pol, sizeof(pol), ""); }      /* house row form: VIEW | minimap_click_possessed | release, in the book view.pdl (the 2D reader uses the same file) */
+            if (mid[0] && did[0] && !strchr(mid, '/') && !strchr(did, '/')) { snprintf(vp, sizeof(vp), "%s/view.pdl", bp_dir(focus, mid)); hud_pdl_str(vp, "minimap_click_possessed", pol, sizeof(pol), ""); }      /* house row form: VIEW | minimap_click_possessed | release, in the book view.pdl (the 2D reader uses the same file) */
             if (!pol[0]) { snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focus); hud_pdl_str(vp, "minimap_click_possessed", pol, sizeof(pol), ""); }
         }
         if (!(mm_click && strcmp(pol, "release") == 0 && !piece_pdl_flag(focus, poss, "de_possessible", 0))) return;
@@ -3877,7 +3878,7 @@ static int render_one_frame(void) {
         bv_world_ids(world_state_path_sky, mapid, sizeof(mapid), deskid, sizeof(deskid));
         int fe = -1, fs = -1;
         if (mapid[0] && deskid[0]) {
-            snprintf(vq, sizeof(vq), "%s/pieces/system/maps/%s/%s/view.pdl", focused_project_root, mapid, deskid);
+            snprintf(vq, sizeof(vq), "%s/%s/view.pdl", bp_dir(focused_project_root, mapid), deskid);
             fe = read_kv_int(vq, "view_fog_end", -1);
             fs = read_kv_int(vq, "view_fog_start", -1);
         }

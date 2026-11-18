@@ -46,21 +46,9 @@ case "$(sed -n 's/^editor_open=//p' "$APP/state/prefs.txt" 2>/dev/null | tail -1
 case "$BOOK" in
     *[!A-Za-z0-9_-]*|"") exit 1 ;;
 esac
-# The edit package only ships its own map. Every other book with a game.pdl is a link, so the book dropdown can list it. A new book appears without a code change.
-for src in "$HOUSE"/@.apps/*/*-pchq/pieces/system/maps/*/game.pdl; do
-    [ -f "$src" ] || continue
-    bookdir=$(dirname "$src")
-    bookname=$(basename "$bookdir")
-    link="$PCHQ_PKG/pieces/system/maps/$bookname"
-    [ -e "$link" ] || [ -L "$link" ] && continue
-    ln -s "$bookdir" "$link"
-done
-LINK="$PCHQ_PKG/pieces/system/maps/$BOOK"
-SRC="$HOUSE/@.apps/$BOOK/$BOOK-pchq/pieces/system/maps/$BOOK"
-if [ ! -d "$LINK" ] && [ -d "$SRC" ]; then
-    ln -s "$SRC" "$LINK"
-fi
-if [ ! -d "$PCHQ_PKG/pieces/system/maps/$BOOK" ]; then
+# The edit package only ships its own map. Every other book is FOUND where its app keeps it (book_path_op, the shared locator: no symlinks, owner 2026-11-18), so the book dropdown lists it and a new book appears without a code change.
+BPO="$HOUSE/&.widgits/_shared-lib/ops/+x/book_path_op.+x"
+if ! "$BPO" "$PCHQ_PKG" "$HOUSE" "$BOOK" >/dev/null 2>&1; then
     BOOK=rpg-edit-hq
     PAGE=start
 fi

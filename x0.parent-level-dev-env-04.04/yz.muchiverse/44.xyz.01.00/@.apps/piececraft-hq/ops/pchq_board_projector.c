@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include "../../../&.widgits/_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
+#include "../../../&.widgits/_shared-lib/pchq_book_path.c"   /* bp_book_dir() / bp_list_books(): the one book locator (no symlinks, owner 2026-11-18) */
 #include <dirent.h>
 #ifndef _WIN32
 #include <glob.h>
@@ -267,8 +268,9 @@ static int emit_map_events(char *ui, size_t *off, int n, const char *host, int *
         fclose(sf);
     }
     if (!map[0] || !desk[0] || strchr(map, '/') || strchr(desk, '/')) return n;
-    char bar[PATH_MAX];
-    snprintf(bar, sizeof(bar), "%s/pieces/system/maps/%s/%s/bar.txt", host, map, desk);
+    char bar[PATH_MAX], bk[PATH_MAX], hr[PATH_MAX] = "";
+    loc_house_root(host, hr, sizeof hr); bp_book_dir(host, hr, map, bk, sizeof bk);
+    snprintf(bar, sizeof(bar), "%s/%s/bar.txt", bk, desk);
     FILE *f = fopen(bar, "r");
     if (!f) return n;
     char line[256];
@@ -612,7 +614,9 @@ static int find_board_session(const char *house, const char *host_id, char *out,
 /* 2026-11-08 the book label shows the book's DISPLAY name: the `GAME | title | <name>` row of <house>/@.apps/<id>/game.pdl (Teropoly), else the folder id (which stays the identifier everywhere else). A pure data lookup, no per-game code; an id with a slash or `..` is never opened. */
 static void book_display(const char *house, const char *id, char *out, size_t cap) {
     snprintf(out, cap, "%s", id); if (!id[0] || strchr(id, '/') || strstr(id, "..")) return;
-    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/@.apps/%s/game.pdl", house, id); FILE *f = fopen(p, "r"); if (!f) return; char ln[512];
+    char p[PATH_MAX]; snprintf(p, sizeof p, "%s/@.apps/%s/game.pdl", house, id); FILE *f = fopen(p, "r");
+    if (!f) { char bk[PATH_MAX]; if (bp_book_dir("/nonexistent", house, id, bk, sizeof bk)) { snprintf(p, sizeof p, "%s/game.pdl", bk); f = fopen(p, "r"); } }   /* a book with no app of its own (tsots, doom ...): its own game.pdl, found by the shared locator */
+    if (!f) return; char ln[512];
     while (fgets(ln, sizeof ln, f)) {
         char *c = ln; while (*c == ' ') c++; if (strncmp(c, "GAME", 4)) continue; char *a = strchr(c, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue;
         char key[32]; snprintf(key, sizeof key, "%.*s", (int)(b - a - 1), a + 1); char *k = key; while (*k == ' ') k++; char *e = k + strlen(k); while (e > k && e[-1] == ' ') *--e = 0; if (strcmp(k, "title")) continue;
@@ -834,7 +838,7 @@ int main(int argc, char **argv) {
         char data_root[PATH_MAX];
         snprintf(data_root, sizeof(data_root), "%s", host_root(house, host_id));
         char game_pdl[PATH_MAX];
-        snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", data_root, proj_id);
+        { char bkd[PATH_MAX]; bp_book_dir(data_root, house, proj_id, bkd, sizeof bkd); snprintf(game_pdl, sizeof(game_pdl), "%s/game.pdl", bkd); }
         char proj_label[64] = "";
         read_pdl_kv(game_pdl, "label", proj_label, sizeof(proj_label));
         char n_desks_s[8] = "";
@@ -999,22 +1003,8 @@ int main(int argc, char **argv) {
          * pieces/system/maps/ that has a game.pdl (except "default"), sorted by folder name, labelled "<icon> <label>" from its own
          * game.pdl GAME rows (folder name when there is no label); fixed tail: default-legacy. Verb load-map, arg = the folder name. */
         {
-            char maps_dir[PATH_MAX];
-            snprintf(maps_dir, sizeof(maps_dir), "%s/pieces/system/maps", data_root);
             static char book_ids[64][64];
-            int n_books = 0;
-            DIR *md = opendir(maps_dir);
-            if (md) {
-                struct dirent *de;
-                while ((de = readdir(md)) != NULL && n_books < 64) {
-                    if (de->d_name[0] == '.' || strcmp(de->d_name, "default") == 0 || strlen(de->d_name) >= sizeof(book_ids[0])) continue;
-                    char gp[PATH_MAX];
-                    snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, de->d_name);
-                    if (access(gp, R_OK) != 0) continue;
-                    snprintf(book_ids[n_books++], sizeof(book_ids[0]), "%s", de->d_name);
-                }
-                closedir(md);
-            }
+            int n_books = bp_list_books(data_root, house, book_ids, 64);   /* the instance's own books, every app's books and the pc-hq store (pchq_book_path.c) */
             for (int bi = 1; bi < n_books; bi++) {          /* insertion sort: stable menu order, no qsort needed */
                 char tmp[64]; snprintf(tmp, sizeof(tmp), "%s", book_ids[bi]);
                 int bj = bi - 1;
@@ -1029,8 +1019,8 @@ int main(int argc, char **argv) {
                 active_level[0] ? "" : "pchq-menu-active");
             int nf = 2;
             for (int bi = 0; bi < n_books; bi++) {
-                char gp[PATH_MAX], icon[32] = "", lbl[64] = "", full[112];
-                snprintf(gp, sizeof(gp), "%s/%s/game.pdl", maps_dir, book_ids[bi]);
+                char gp[PATH_MAX], bkd[PATH_MAX], icon[32] = "", lbl[64] = "", full[112];
+                bp_book_dir(data_root, house, book_ids[bi], bkd, sizeof bkd); snprintf(gp, sizeof(gp), "%s/game.pdl", bkd);
                 read_pdl_kv(gp, "icon", icon, sizeof(icon));
                 read_pdl_kv(gp, "label", lbl, sizeof(lbl));
                 if (!lbl[0] || strcmp(lbl, "RPG-Pet") == 0) snprintf(lbl, sizeof(lbl), "%s", book_ids[bi]);

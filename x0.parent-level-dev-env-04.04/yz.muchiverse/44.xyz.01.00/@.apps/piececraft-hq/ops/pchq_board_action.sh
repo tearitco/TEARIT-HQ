@@ -253,7 +253,7 @@ case "$VERB" in
         PCHQ="$(real_pchq)"
         WS="$PCHQ/pieces/world_01/state.txt"
         MAPID="$(sed -n 's/^map_id=//p' "$WS" | head -n1)"; CUR="$(sed -n 's/^desk_id=//p' "$WS" | head -n1)"
-        BOOK="$PCHQ/pieces/system/maps/$MAPID"
+        BOOK="$("$SELF_DIR/../../../&.widgits/_shared-lib/ops/+x/book_path_op.+x" "$PCHQ" "$(cd "$SELF_DIR/../../.." && pwd)" "$MAPID" 2>/dev/null || true)"
         [ -n "$MAPID" ] && [ -f "$BOOK/game.pdl" ] || exit 0
         [ -d "$BOOK/$CUR" ] || CUR="$(sed -n 's/^GAME *| *desk_1_id *| *//p' "$BOOK/game.pdl" | head -n1)"
         [ -d "$BOOK/$CUR" ] || exit 0
@@ -284,7 +284,7 @@ case "$VERB" in
         PCHQ="$(real_pchq)"
         WS="$PCHQ/pieces/world_01/state.txt"
         MAPID="$(sed -n 's/^map_id=//p' "$WS" | head -n1)"; CUR="$(sed -n 's/^desk_id=//p' "$WS" | head -n1)"
-        BOOK="$PCHQ/pieces/system/maps/$MAPID"
+        BOOK="$("$SELF_DIR/../../../&.widgits/_shared-lib/ops/+x/book_path_op.+x" "$PCHQ" "$(cd "$SELF_DIR/../../.." && pwd)" "$MAPID" 2>/dev/null || true)"
         [ -n "$MAPID" ] && [ -f "$BOOK/game.pdl" ] || exit 0
         [ -d "$BOOK/$CUR" ] || exit 0
         N=2; while [ -e "$BOOK/page_$N" ]; do N=$((N + 1)); done
@@ -300,7 +300,7 @@ case "$VERB" in
         PCHQ="$(real_pchq)"
         WS="$PCHQ/pieces/world_01/state.txt"
         MAPID="$(sed -n 's/^map_id=//p' "$WS" | head -n1)"; CUR="$(sed -n 's/^desk_id=//p' "$WS" | head -n1)"
-        SRC="$PCHQ/pieces/system/maps/$MAPID"
+        SRC="$("$SELF_DIR/../../../&.widgits/_shared-lib/ops/+x/book_path_op.+x" "$PCHQ" "$(cd "$SELF_DIR/../../.." && pwd)" "$MAPID" 2>/dev/null || true)"
         [ -n "$MAPID" ] && [ -d "$SRC/$CUR" ] || exit 0
         N=2; while [ -e "$PCHQ/pieces/system/maps/book_$N" ]; do N=$((N + 1)); done
         NB="book_$N"; DST="$PCHQ/pieces/system/maps/$NB"

@@ -2,7 +2,8 @@ SECTION      | KEY                | VALUE
 ----------------------------------------------------------------------
 GAME         | type               | board-game
 GAME         | icon               | 🗺️
-GAME         | label              | TSOTS
+GAME         | label              | 0.soulpen
+GAME         | title              | 0.soulpen
 GAME         | n_chunks           | 56
 GAME         | chunk_0_x          | 0
 GAME         | chunk_0_y          | 0

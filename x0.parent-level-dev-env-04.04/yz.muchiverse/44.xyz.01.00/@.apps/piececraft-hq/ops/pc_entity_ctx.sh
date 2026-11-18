@@ -29,6 +29,8 @@ while [ "$d" != "/" ]; do
 done
 [ -n "$HOUSE" ] || HOUSE="$(cd "$ROOT/../../.." && pwd)"
 BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+# bkd <book>: the folder of a book (the instance, else the app that carries it, else the pc-hq store); no symlinks (owner 2026-11-18). Prints the instance path when not found.
+bkd() { "$HOUSE/&.widgits/_shared-lib/ops/+x/book_path_op.+x" "$ROOT" "$HOUSE" "$1" 2>/dev/null || printf "%s/pieces/system/maps/%s\n" "$ROOT" "$1"; }
 if [ ! -x "$BIN" ]; then
     echo "$(date '+%H:%M:%S') ERROR no renderer at $BIN" >> "$LOG"
     echo "pc_entity_ctx: missing renderer $BIN" >&2
@@ -69,7 +71,7 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     W="$ROOT/pieces/world_01/state.txt"
     MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
     DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
-    PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+    PKG="$(bkd "$MAP")/$DESK/ev/$ID"
     # Start and stop must run while play is off. Every other page
     # still waits for play mode, same as the other entities.
     VERB=""
@@ -81,7 +83,7 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
     fi
     # Desk events.pdl is the cell-32 list. The ev/ package was built on
     # the old grid and its verb often disagrees. Play the pdl command.
-    EVF="$ROOT/pieces/system/maps/$MAP/$DESK/events.pdl"
+    EVF="$(bkd "$MAP")/$DESK/events.pdl"
     CMD=""
     if [ -f "$EVF" ]; then
         CMD=$(awk -v id="$ID" '
@@ -121,7 +123,7 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
                 ;;
         esac
     fi
-    DP="$ROOT/pieces/system/maps/$MAP/deadpool.pdl"
+    DP="$(bkd "$MAP")/deadpool.pdl"
     if [ -f "$DP" ] && awk -F'|' -v desk="$DESK" -v id="$ID" '
         { gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/^[ \t]+|[ \t]+$/, "", $3) }
         $2=="desk" { d=$3 }
@@ -135,7 +137,7 @@ if [ "$KIND" = mapev ] && [ -n "$ID" ]; then
         W="$ROOT/pieces/world_01/state.txt"
         MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
         DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
-        PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+        PKG="$(bkd "$MAP")/$DESK/ev/$ID"
         if [ -d "$PKG/event_pkg" ]; then
             sh "$HOUSE/&.widgits/events-hq/ops/play_event.sh" "$PKG" "$HOUSE" on-click
             echo "$(date '+%H:%M:%S') play mapev $ID" >> "$LOG"
@@ -257,7 +259,7 @@ label_for() {
             W="$ROOT/pieces/world_01/state.txt"
             MAP=$(sed -n 's/^map_id=//p' "$W" | head -1)
             DESK=$(sed -n 's/^desk_id=//p' "$W" | head -1)
-            PKG="$ROOT/pieces/system/maps/$MAP/$DESK/ev/$ID"
+            PKG="$(bkd "$MAP")/$DESK/ev/$ID"
             printf '    <item label="%s" action="sh %s/&.widgits/events-hq/button.sh %s %s"/>\n' \
                 "$(label_for "$v")" "$HOUSE" "$PKG" "$HOUSE"
             continue
