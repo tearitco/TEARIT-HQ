@@ -569,6 +569,12 @@ static int keys_apply(const int *codes, int n, int *refused, int *ignored) {
     for (int i = 0; i < n; i++) { char d = key_dir(codes[i]); if (!d) { (*ignored)++; continue; } char dc[2] = { d, 0 }; if (live(-1, "p1", "turn", dc, NULL, NULL)) (*refused)++; else applied++; }
     return applied;
 }
+/* mode platform keys (the press-impulse model: the key IO has no release line, so a direction key LATCHES until another one): arrow left / right = run that way, down = stay, up or space (32) = a jump pulse; one `input` row per accepted key, stamped with the current tick */
+static int plat_keys_apply(const int *codes, int n) {
+    int applied = 0;
+    for (int i = 0; i < n; i++) { char d = key_dir(codes[i]); const char *t = d == 'L' ? "left" : d == 'R' ? "right" : d == 'D' ? "stay" : (d == 'U' || codes[i] == 32) ? "jump" : NULL; if (t && !live(-1, "p1", "input", t, NULL, NULL)) applied++; }
+    return applied;
+}
 /* ---------- pace: tuning.pdl `TUNE | tick_ms | N` (2026-11-09, BOOK 16.game/REALTIME-SPIKES-HELD-KEYS-TICK-RATE-PICTURE-RATE-2026-11-09.md) ----------
  * tick_ms = milliseconds per step (a roll for a ledger game, a logical tick for a realtime game) at the "normal" speed button. It is a CONFIG/PREFERENCE of the window: it is NOT in the rules hash and never in the ledger
  * (ticks are logical, so replay and the final hash are the same at 33 ms and at 2000 ms). The fast / slow buttons scale it by the kind's own ratios (120:550:1400 ledger, 40:100:250 realtime) and the result is never under 33 ms (30 ticks a second).
@@ -885,10 +891,10 @@ static int engine_verb(int argc, char **argv) {
     if (!strcmp(verb, "seat")) { if (need_args(ac, 2, "seat <pN> human|pet")) return 2; if (live(-1, "", "seat", av[0], av[1], NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "%s is now %s\n", av[0], av[1]); return 0; }
     if (!strcmp(verb, "roll") && KIND == K_LEDGER) { Row r; if (live(-1, as, "roll", "", NULL, &r)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "%s rolled %s: %s\n", r.actor, r.target, r.res); return 0; }
     if (!strcmp(verb, "talk") && KIND == K_LEDGER) { if (ac) { fprintf(ERRF, "usage: talk\n"); return 2; } fprintf(OUT, "TALK sentences=%ld\n", S.ntk); return 0; }
-    if (!strcmp(verb, "keys") && KIND == K_REALTIME && MODE == M_SNAKE) {   /* keys <relay_file> <byte_offset>: what the driver does with state/interact_relay.txt, as a verb the harness can run: steer p1 by the arrow codes written after the cursor */
+    if (!strcmp(verb, "keys") && KIND == K_REALTIME && (MODE == M_SNAKE || MODE == M_PLATFORM)) {   /* keys <relay_file> <byte_offset>: what the driver does with state/interact_relay.txt, as a verb the harness can run: steer p1 by the arrow codes written after the cursor */
         if (need_args(ac, 2, "keys <relay_file> <byte_offset>")) return 2; char *e; long off = strtol(av[1], &e, 10); if (*e || off < 0) { fprintf(ERRF, "keys: the offset is a number of bytes\n"); return 2; }
         if (S.phase != PH_PLAY) { fprintf(ERRF, "keys: the game is %s\n", S.phase == PH_OVER ? "over" : "not started"); return 2; }
-        int codes[64], refused, ignored; int n = keys_poll(av[0], &off, codes, 64); int applied = keys_apply(codes, n, &refused, &ignored); fprintf(OUT, "KEYS read=%d applied=%d refused=%d ignored=%d offset=%ld tick=%ld\n", n, applied, refused, ignored, off, S.tick); return 0; }
+        int codes[64], refused = 0, ignored = 0; int n = keys_poll(av[0], &off, codes, 64); int applied = MODE == M_PLATFORM ? plat_keys_apply(codes, n) : keys_apply(codes, n, &refused, &ignored); if (MODE == M_PLATFORM) ignored = n - applied; fprintf(OUT, "KEYS read=%d applied=%d refused=%d ignored=%d offset=%ld tick=%ld\n", n, applied, refused, ignored, off, S.tick); return 0; }
     if (!strcmp(verb, "turn") && KIND == K_REALTIME && MODE == M_SNAKE) { if (need_args(ac, 2, "turn <pN> L|R|U|D [tick]")) return 2; long t = -1; if (ac > 2) { char *e; t = strtol(av[2], &e, 10); if (*e || t < 0) { fprintf(ERRF, "turn: tick is a number\n"); return 2; } }
         if (live(t, av[0], "turn", av[1], NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "%s turns %s at tick %ld\n", av[0], av[1], t >= 0 ? t : S.tick); return 0; }
     if (!strcmp(verb, "verify_clear") && KIND == K_REALTIME && WALKISH) {   /* read-only: the run ledger replayed (load did it) and ends at the goal; prints the proof Make records with its `clear` verb */
@@ -1035,7 +1041,7 @@ static void handle(const char *c) {
     else if (!strcmp(c, "new_game")) { if (mode_play && KIND != K_EDITOR) { archive_game(); mode_play = 0; memset(&S, 0, sizeof S); S.winner = -1; if (page_on) set_desk("board"); snprintf(dmsg, sizeof dmsg, "the last game is in archive/; choose the players, then START"); } }
     else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!sync_state()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
     else if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "up") || !strcmp(c, "down"))) { if (!S.human[0]) snprintf(dmsg, sizeof dmsg, "no human seat"); else if (!sync_state()) { char dc[2] = { (char)(c[0] - 'a' + 'A'), 0 }; human_live("turn", dc, NULL, "p1"); } }
-    else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay"))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
+    else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay") || (MODE == M_PLATFORM && !strcmp(c, "jump")))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
     else if (KIND == K_EDITOR && !strncmp(c, "add_", 4)) { char id[32]; snprintf(id, sizeof id, "%s", c + 4); if (!sync_state()) { int ix = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) ix = 1; if (!strcmp(id, "item")) { snprintf(id, sizeof id, "item%d", S.ndoc + 1); ix = 0; } char tx[80]; snprintf(tx, sizeof tx, "%s (added from the bar)", id); if (LEVELDOC && !strcmp(id, "start")) snprintf(tx, sizeof tx, "2 10"); if (LEVELDOC && !strcmp(id, "goal")) snprintf(tx, sizeof tx, "17 10"); human_live(ix ? "set" : "add", id, tx, "author"); } }
     else if (KIND == K_EDITOR && !strcmp(c, "remove_last")) { if (!sync_state()) { if (S.ndoc) { char id[32]; snprintf(id, sizeof id, "%s", S.did[S.ndoc - 1]); human_live("del", id, NULL, "author"); } else snprintf(dmsg, sizeof dmsg, "the document is empty"); } }
     else if (KIND == K_EDITOR && !strcmp(c, "publish")) { if (!sync_state()) human_live("publish", "", NULL, "author"); }
@@ -1063,7 +1069,7 @@ static void publish(void) {
         if (over && S.winner >= 0) { snprintf(b, sizeof b, "winner: %s", S.name[S.winner]); add_txt(o, C, &nt, b); }
         if (!over && KIND == K_LEDGER && S.human[S.cur]) add_btn(o, C, &nb, "Roll", "roll");
         if (!over && KIND == K_REALTIME && MODE == M_SNAKE && S.human[0]) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Up", "up"); add_btn(o, C, &nb, "Down", "down"); add_btn(o, C, &nb, "Right", "right"); }
-        else if (!over && KIND == K_REALTIME) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Stay", "stay"); add_btn(o, C, &nb, "Right", "right"); } }
+        else if (!over && KIND == K_REALTIME) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Stay", "stay"); add_btn(o, C, &nb, "Right", "right"); if (MODE == M_PLATFORM) add_btn(o, C, &nb, "Jump", "jump"); } }
         if (!over && !run) add_btn(o, C, &nb, "Step", "step"); snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(o, C, &nb, b, "speed_next"); if (over) add_btn(o, C, &nb, "New game", "new_game");
     }
     snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, nb); strncat(o, b, C - strlen(o) - 1); write_atomic(FEED, o); dirty = 0; ST.publishes++;
@@ -1107,6 +1113,8 @@ static int driver_main(int argc, char **argv) {
         static int was_run = -1; int run = running(); int run0 = run; if (run != was_run) { was_run = run; dirty = 1; }
         if (KIND == K_REALTIME && MODE == M_SNAKE) { int kc[32]; int kn = keys_poll(relay, &kcur, kc, 32);   /* arrows 1000-1003 steer a human snake while the game runs; while stopped the cursor still advances, so keys pressed during a pause are dropped, not queued */
             if (kn > 0 && mode_play && run0 && S.phase == PH_PLAY && S.human[0] && !sync_state()) { int rf, ig; int ap = keys_apply(kc, kn, &rf, &ig); if (ap) { snprintf(dmsg, sizeof dmsg, "arrow keys: %d turn(s)", ap); dirty = 1; } } }
+        if (KIND == K_REALTIME && MODE == M_PLATFORM) { int kc[32]; int kn = keys_poll(relay, &kcur, kc, 32);
+            if (kn > 0 && mode_play && run0 && S.phase == PH_PLAY && !sync_state()) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { int ap = plat_keys_apply(kc, kn); if (ap) { snprintf(dmsg, sizeof dmsg, "keys: %d input(s)", ap); dirty = 1; } } } }
         struct stat ls; if (mode_play && !stat(LEDGER, &ls) && ls.st_size != KNOWN_SIZE) { reload(); dirty = 1; stuck = 0; }   /* somebody else (the CLI) wrote the ledger */
         int live = mode_play && run && KIND != K_EDITOR && S.phase == PH_PLAY && !stuck && !(KIND == K_LEDGER && S.human[S.cur]);
         long t = now_us(), pace_us = pace_ms(speed) * 1000L;

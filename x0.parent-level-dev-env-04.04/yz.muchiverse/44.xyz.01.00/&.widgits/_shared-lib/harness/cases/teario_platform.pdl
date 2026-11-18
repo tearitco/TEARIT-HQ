@@ -76,3 +76,20 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | j
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | start
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | input | p1 | jump
 EXPECT_EXIT | 2 | NEGATIVE-the-walk-mode-has-no-jump-(its-replay-hashes-stay-valid)
+
+CASE    | tpl_keys
+# the press-impulse model on the real key relay lines: right arrow (1001) latches RIGHT, space (32) is a JUMP pulse, an unrelated key (65) is ignored; one input row per accepted key
+MKDIR   | k1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | start
+WRITE | k1/relay.txt | KEY_PRESSED: 1001\nKEY_PRESSED: 32\nKEY_PRESSED: 65\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | keys | $T/k1/relay.txt | 0
+EXPECT_OUT | KEYS read=3 applied=2 refused=0 ignored=1 | three-keys-read-two-accepted-(right-and-jump)-one-ignored
+RUN | grep | -c | ^EVENT.*\pinput\p | $T/k1/ledger.txt
+EXPECT_OUT_IS | 2 | exactly-two-input-rows-(inputs-only-ledger)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | advance | 6
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | status
+EXPECT_OUT | body=666,1776,36,-136 | OBSERVED-after-6-ticks-of-right-plus-jump-the-hero-is-airborne-and-moving-right-(vx-36-vy--136)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | keys | $T/k1/relay.txt | 0
+EXPECT_EXIT | 2 | NEGATIVE-the-walk-mode-has-no-key-verb-(only-snake-and-platform)
