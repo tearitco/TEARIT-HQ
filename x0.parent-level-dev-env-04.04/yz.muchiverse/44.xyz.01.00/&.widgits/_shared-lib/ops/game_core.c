@@ -818,6 +818,7 @@ static int pg_events(char *buf, size_t cap) {
         char row[96]; snprintf(row, sizeof row, "%d %d %u %u %u People1 %d 2 1 %c\n", cx, cy, (PG_tok[pl] >> 16) & 255, (PG_tok[pl] >> 8) & 255, PG_tok[pl] & 255, pl, (char)(65 + pl)); if (strlen(buf) + strlen(row) + 1 < cap) { strcat(buf, row); ne++; } }
     return ne;
 }
+static int cmd_scene(int argc, char **argv);
 static int cmd_page(int argc, char **argv) {
     if (argc < 1) { fprintf(ERRF, "usage: page <desk_dir> [atlas.rgba] [noevents]\n"); return 2; } const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) { fprintf(ERRF, "page: the desk folder does not exist (make it first)\n"); return 2; }
     if (load_page()) { fprintf(ERRF, "%s\n", MSG); return 2; }
@@ -934,6 +935,7 @@ static int engine_verb(int argc, char **argv) {
         }
         fclose(fp); fprintf(OUT, "GRID cols=%d rows=%d len=%d food=%d,%d file=%s\n", COLS, ROWS, S.slen, S.sfood_x, S.sfood_y, av[0]); return 0; }
     if (!strcmp(verb, "page")) return cmd_page(ac, av);
+    if (!strcmp(verb, "scene")) { if (cmd_scene(ac, av)) { fprintf(ERRF, "%s\n", MSG); return 2; } return 0; }
     if (!strcmp(verb, "preview")) return cmd_preview(ac, av);
     if (!strcmp(verb, "status")) return cmd_status();
     if (!strcmp(verb, "check")) return cmd_check();
@@ -1007,15 +1009,37 @@ static void set_desk(const char *want) {
         if (!e) break; p = e + 1; }
     if (!saw || same) return; char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", WORLD); FILE *w = fopen(tmp, "w"); if (!w) return; fputs(out, w); fclose(w); rename(tmp, WORLD);
 }
-static void page_events(void) { static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
-static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); return fnv(h, S.pos, sizeof S.pos); }
+/* ---------- scene: the LEVEL of a walk / platform game drawn as an editor desk (2026-11-18, owner: "no land under the player"). A PROJECTION of the level file, safe to delete, rewritten byte for byte: cells.txt (the land) + map.txt + the atlas and the look files copied from the book's authored board desk. Slots of the Teropoly atlas: 0 empty (sky), 1 grass (the surface), 32 dirt (below the surface). Heroes and the goal flag are events.txt rows (scene_events), refreshed as the game runs. ---------- */
+static int scene_on;
+static int cmd_scene(int argc, char **argv) {
+    if (!WALKISH) return bad("scene: only a walk or platform game has a level to draw");
+    if (argc < 1) return bad("usage: scene <desk_dir> [atlas.rgba]");
+    struct stat sb; if (stat(argv[0], &sb) || !S_ISDIR(sb.st_mode)) return bad("scene: the desk folder does not exist (make it first)");
+    static char cb[24000], mb[4200]; int n = snprintf(cb, sizeof cb, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", LV.w, LV.h), m = 0;
+    for (int y = 0; y < LV.h; y++) { for (int x = 0; x < LV.w; x++) { int sol = is_solid(LV.rows[y][x]), top = sol && (y == 0 || !is_solid(LV.rows[y - 1][x])); n += snprintf(cb + n, sizeof cb - (size_t)n, "%s%d,0,%d", x ? " " : "", sol ? (top ? 1 : 32) : 0, sol ? 2 : 1); mb[m++] = sol ? '#' : '.'; } cb[n++] = '\n'; mb[m++] = '\n'; }
+    mb[m] = 0; char p[P + 16]; snprintf(p, sizeof p, "%s/cells.txt", argv[0]); if (write_atomic(p, cb)) return bad("scene: cannot write cells.txt");
+    snprintf(p, sizeof p, "%s/map.txt", argv[0]); if (write_atomic(p, mb)) return bad("scene: cannot write map.txt");
+    if (argc > 1 && strstr(argv[1], ".rgba")) { char *sl = strrchr(argv[1], '/'); size_t dl = sl ? (size_t)(sl - argv[1]) : 0; static const char *cp[] = { "cells.rgba", "skin.txt", "extrusion.pdl" };
+        for (int k = 0; k < 3 && dl; k++) { char src[P + 16], dst[P + 16], *buf; snprintf(src, sizeof src, "%.*s/%s", (int)dl, argv[1], cp[k]); snprintf(dst, sizeof dst, "%s/%s", argv[0], cp[k]); FILE *f = fopen(src, "rb"); if (!f) continue;
+            fseek(f, 0, SEEK_END); long z = ftell(f); rewind(f); buf = malloc((size_t)z + 1); if (buf && fread(buf, 1, (size_t)z, f) == (size_t)z) { struct stat ds; if (stat(dst, &ds) || ds.st_size != z) { FILE *w = fopen(dst, "wb"); if (w) { fwrite(buf, 1, (size_t)z, w); fclose(w); } } } free(buf); fclose(f); } }
+    { char mk[P + 16]; snprintf(mk, sizeof mk, "%s/cells.marker", argv[0]); struct stat ms; FILE *mf = fopen(mk, (!stat(mk, &ms) && ms.st_size >= 4096) ? "w" : "a"); if (mf) { fputc('1', mf); fclose(mf); } }   /* the engine reloads the atlas by this marker's size, not by mtime */
+    fprintf(OUT, "SCENE %dx%d\n", LV.w, LV.h); return 0;
+}
+static void scene_cell(int i, int *cx, int *cy) { if (MODE == M_PLATFORM) { const PF_Body *b = &S.pb[i]; *cx = (int)((b->x + b->w / 2) / PF_Q); *cy = (int)((b->y + b->h / 2) / PF_Q); } else { *cx = S.pos[i]; *cy = LV.sy; } }
+static void scene_events(void) {
+    static char b[2048]; int n = snprintf(b, sizeof b, "%d %d 255 210 60 !Other1 0 2 1 \xe6\x97\x97\n", LV.gx, LV.gy);   /* the goal: a flag (the Chinese character 旗) */
+    for (int i = 0; i < S.np && n < 1900; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
+    char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b);
+}
+static void page_events(void) { if (scene_on) { scene_events(); return; } static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
+static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } return fnv(h, S.pos, sizeof S.pos); }
 static void page_make(void) {
     if (!page_on) return; mkdir_p(DESKDIR); char p[P + 16], out[300]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); FILE *f = fopen(p, "w"); if (f) fclose(f);   /* the last game's figures are emptied before the new page is drawn */
     { char ex[P], sheet[P], fr[P]; snprintf(ex, sizeof ex, "%s/@.apps/deskopoly/ops/+x/deskopoly_frames.+x", HOUSE); snprintf(sheet, sizeof sheet, "%s/../../../#.NNEST_ASSETS/tsots-characters/People1.png", HOUSE); snprintf(fr, sizeof fr, "%s/../../../#.NNEST_ASSETS/tsots-characters/frames", HOUSE);
       if (!access(ex, X_OK) && !access(sheet, R_OK) && !access(fr, W_OK)) { char *av[] = { ex, sheet, (char *)"People1", fr, NULL }; run_capture(av, out, sizeof out); } }   /* the 3D walk frames of People1: only the MISSING ones are made, never overwriting (deskopoly_frames, as the Teropoly driver does) */
-    char *a[] = { (char *)"page", DESKDIR, ATLAS, (char *)"noevents" }; if (verb_here(4, a, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "page refused: %.180s", out); return; }
+    char *a[] = { (char *)(scene_on ? "scene" : "page"), DESKDIR, ATLAS, (char *)"noevents" }; if (verb_here(4, a, out, sizeof out)) { snprintf(dmsg, sizeof dmsg, "page refused: %.180s", out); return; }
     char raw[P + 16], png[P + 16], r2p[P + 96], sz[40]; snprintf(raw, sizeof raw, "%s/map.raw", DESKDIR); snprintf(png, sizeof png, "%s/map.png", DESKDIR); snprintf(r2p, sizeof r2p, "%s/&.widgits/_shared-lib/ops/+x/raw_to_png.+x", HOUSE);
-    char *b[] = { (char *)"preview", DESKDIR, raw }; if (!verb_here(3, b, out, sizeof out)) { snprintf(sz, sizeof sz, "%dx%d", COLS * PG_block * HD_px, (ROWS + PG_start) * PG_block * HD_px); char *c[] = { r2p, raw, png, (char *)"--size", sz, NULL }; run_capture(c, out, sizeof out); unlink(raw); }   /* 2D: the picture beside map.txt, which the 2D renderer blits 1:1 and draws the events.txt figures over */
+    char *b[] = { (char *)"preview", DESKDIR, raw }; if (!verb_here(3, b, out, sizeof out)) { if (scene_on) snprintf(sz, sizeof sz, "%dx%d", LV.w * 24, LV.h * 24); else snprintf(sz, sizeof sz, "%dx%d", COLS * PG_block * HD_px, (ROWS + PG_start) * PG_block * HD_px); char *c[] = { r2p, raw, png, (char *)"--size", sz, NULL }; run_capture(c, out, sizeof out); unlink(raw); }   /* 2D: the picture beside map.txt, which the 2D renderer blits 1:1 and draws the events.txt figures over */
     set_desk("play"); page_events(); page_sig = pos_sig();
 }
 static void begin_game(void) {
@@ -1089,6 +1113,9 @@ static int driver_main(int argc, char **argv) {
         if (!access(pp, R_OK)) { if (load_page()) snprintf(dmsg, sizeof dmsg, "page.pdl refused: %.180s", MSG); else {
             char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
             snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); snprintf(DESKDIR, sizeof DESKDIR, "%s/%s-pchq/pieces/system/maps/%s/play", BOOK, NAME, NAME); snprintf(ATLAS, sizeof ATLAS, "%s/%s-pchq/pieces/system/maps/%s/board/cells.rgba", BOOK, NAME, NAME); page_on = 1; } } }
+    if (KIND == K_REALTIME && WALKISH) {   /* the level is drawn as the book's "play" desk (scene verb) and the heroes follow the ledger, as the Teropoly page does */
+        char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
+        snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); snprintf(DESKDIR, sizeof DESKDIR, "%s/%s-pchq/pieces/system/maps/%s/play", BOOK, NAME, NAME); snprintf(ATLAS, sizeof ATLAS, "%s/%s-pchq/pieces/system/maps/%s/board/cells.rgba", BOOK, NAME, NAME); page_on = 1; scene_on = 1; }
     char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644);
     if (lf < 0) { fprintf(stderr, "game_core driver: cannot open the lock file %s (does the editor's state folder exist?)\n", lk); return 1; }
     if (flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "game_core driver: already running\n"); return 0; }

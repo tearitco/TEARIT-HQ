@@ -94,3 +94,26 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/k1 | s
 EXPECT_OUT | body=666,1776,36,-136 | OBSERVED-after-6-ticks-of-right-plus-jump-the-hero-is-airborne-and-moving-right-(vx-36-vy--136)
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | keys | $T/k1/relay.txt | 0
 EXPECT_EXIT | 2 | NEGATIVE-the-walk-mode-has-no-key-verb-(only-snake-and-platform)
+
+CASE    | tpl_scene
+# the land under the player (owner 2026-11-18: "no land under the player"): the level drawn as an editor desk. Level row 11 is ##########..######## (a 2-tile pit at columns 10 and 11), row 8 has a platform at columns 6-9.
+MKDIR   | sc
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/sc | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/sc | scene | $T/nodir
+EXPECT_EXIT | 2 | NEGATIVE-a-desk-folder-that-does-not-exist-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/sc | scene | $T/sc
+EXPECT_OUT | SCENE 20x12 | the-scene-is-the-size-of-the-level
+EXPECT_HAS | $T/sc/cells.txt | width=20 | 20-wide
+EXPECT_HAS | $T/sc/cells.txt | height=12 | 12-high
+RUN | sed | -n | 8p | $T/sc/cells.txt
+EXPECT_OUT_IS | 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 | an-empty-row-is-sky-(slot-0-height-1)
+RUN | sed | -n | 16p | $T/sc/cells.txt
+EXPECT_OUT_IS | 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 1,0,2 1,0,2 1,0,2 1,0,2 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 | the-floating-platform-at-columns-6-to-9-has-grass-on-top-(slot-1-height-2)
+RUN | sed | -n | 19p | $T/sc/cells.txt
+EXPECT_OUT_IS | 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 0,0,1 0,0,1 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 1,0,2 | the-ground-row-is-grass-with-a-2-tile-pit-at-columns-10-and-11
+RUN | sed | -n | 11p | $T/sc/map.txt
+EXPECT_OUT_IS | ....................| map.txt-row-10-is-empty
+RUN | sed | -n | 12p | $T/sc/map.txt
+EXPECT_OUT_IS | ##########..######## | map.txt-row-11-matches-the-level-(the-pit-is-two-dots)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/walk | $T/w1 | scene | $T/sc
+EXPECT_OUT | SCENE 20x12 | walk-mode-has-the-same-level-so-the-same-scene
