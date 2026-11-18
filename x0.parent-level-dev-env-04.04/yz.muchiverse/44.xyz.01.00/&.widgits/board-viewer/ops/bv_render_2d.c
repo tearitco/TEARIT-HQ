@@ -41,6 +41,7 @@
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 #include "bv_move_range.c"   /* shared Move range finder file helpers */
 #include "../../_shared-lib/khtpm_locations.c"   /* loc_resolve_saved(): saved paths resolved against the live house root */
+#include "../../_shared-lib/glyph_sheet.c"   /* gs_find(): the Chinese character of a sprite sheet (owner 2026-11-18, D23) */
 #include "../../_shared-lib/pchq_book_path.c"   /* bp_dir(): where a book lives, no symlinks (owner 2026-11-18) */
 #include "../../_shared-lib/khtpm_pin_pick.c"   /* pin_path_pick(): a board obeys its OWN open_book_page.txt before the house-wide one (S3b-1) */
 #include "../../_shared-lib/xelector_look.c"   /* xel_look_pick(): the free / controlling look of the xelector, data-driven (view.pdl xelector_* rows) */
@@ -1068,8 +1069,9 @@ static void load_desk_ascii_legend(void) {
     fclose(f);
 }
 /* ASCII view of events.txt (x y r g b charset index dir pattern [glyph]): one glyph per event in the event's own colour,
- * brightened; no glyph column = the first letter of the sheet name. Replaces the sprites while view_2d_style=ascii. */
+ * brightened; no glyph column = the sheet's Chinese character from board-viewer/glyph_sheets.pdl (never a Latin letter, D23). Replaces the sprites while view_2d_style=ascii. */
 static void draw_map_event_glyphs(unsigned char *px, int W, int ox, int oy, int cols, int rows, int cell) {
+    gs_load(house_root);
     char dd[PATH_BUF], path[PATH_BUF];
     if (!desk_dir(dd, sizeof(dd))) return;
     snprintf(path, sizeof(path), "%s/events.txt", dd);
@@ -1082,7 +1084,7 @@ static void draw_map_event_glyphs(unsigned char *px, int W, int ox, int oy, int 
         if (sscanf(line, "%d %d %d %d %d %63s %d %d %d %7s%n", &ex, &ey, &r, &g, &b, name, &index, &dir, &pat, gl, &n) < 9) continue;
         int scx = ex - ox, scy = ey - oy;
         if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
-        if (!gl[0]) { gl[0] = name[0] == '!' || name[0] == '$' ? name[1] : name[0]; gl[1] = '\0'; }
+        if (!gl[0] && !gs_find(name, gl, sizeof(gl))) snprintf(gl, sizeof(gl), "%s", "\xe7\x89\xa9");   /* no glyph column: the sheet's Chinese character from glyph_sheets.pdl, else (U+7269 thing); never a Latin letter */
         unsigned int cp = bv_cjk_utf8_first(gl);
         if (!cp) continue;
         unsigned char gr = (unsigned char)(r + (255 - r) * 3 / 5), gg = (unsigned char)(g + (255 - g) * 3 / 5), gb = (unsigned char)(b + (255 - b) * 3 / 5);

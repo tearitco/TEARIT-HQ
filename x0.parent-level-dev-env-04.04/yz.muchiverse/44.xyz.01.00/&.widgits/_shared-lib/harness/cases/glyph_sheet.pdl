@@ -1,0 +1,38 @@
+# glyph_sheet (2026-11-18; owner: "these are always supposed to get assigned Chinese characters, not English", D23): an ASCII-view cell whose events.txt row has no glyph column takes the CHINESE character of its sprite sheet
+# from &.widgits/board-viewer/glyph_sheets.pdl (op glyph_sheet_op over _shared-lib/glyph_sheet.c); a sheet that is not listed gets the DEFAULT character; never a Latin letter. SCRATCH house with its own table.
+RESULTS | ../results/glyph_sheet.txt
+ENV | LC_ALL | C
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/glyph_sheet_op.+x | $T/gs
+EXPECT_EXISTS | gs | the-real-op-is-built
+MKDIR | h/&.widgits/board-viewer
+WRITE | h/&.widgits/board-viewer/glyph_sheets.pdl | # test table\nSHEET \p people \p 人\nSHEET \p door \p 门\nSHEET \p bigmonster \p 兽\nDEFAULT \p 物\n
+
+CASE    | lookup
+RUN | $T/gs | $T/h | People2
+EXPECT_OUT_IS | 人 | a-numbered-sheet-uses-its-stem
+RUN | $T/gs | $T/h | !Door1
+EXPECT_OUT_IS | 门 | a-leading-bang-is-ignored
+RUN | $T/gs | $T/h | $BigMonster2
+EXPECT_OUT_IS | 兽 | a-leading-dollar-is-ignored
+RUN | $T/gs | $T/h | PEOPLE3
+EXPECT_OUT_IS | 人 | case-does-not-matter
+RUN | $T/gs | $T/h | Weird9
+EXPECT_OUT_IS | 物 | an-unlisted-sheet-gets-the-DEFAULT-character
+EXPECT_OUT_LACKS | W | NEGATIVE-never-the-first-letter-of-the-name
+RUN | $T/gs | $T/h | Actor1
+EXPECT_OUT_LACKS | A | NEGATIVE-an-English-sheet-name-letter-never-appears
+
+CASE    | missing-table
+RUN | /bin/rm | -f | $T/h/&.widgits/board-viewer/glyph_sheets.pdl
+RUN | $T/gs | $T/h | People1
+EXPECT_EXIT | 1 | no-table-means-nothing-is-defined-(the-engine-then-uses-its-own-Chinese-fallback)
+
+CASE    | real-table
+RUN | $T/gs | $HOUSE | People2
+EXPECT_OUT_IS | 人 | the-shipped-table-people
+RUN | $T/gs | $HOUSE | !Other1
+EXPECT_OUT_IS | 物 | the-shipped-table-other
+RUN | $T/gs | $HOUSE | Monster
+EXPECT_OUT_IS | 怪 | the-shipped-table-monster

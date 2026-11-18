@@ -1,0 +1,25 @@
+# glyph_sheets.pdl - the Chinese character an ASCII-view cell gets when an events.txt row has NO glyph column (owner 2026-11-18: "these are always supposed to get assigned Chinese characters, not English"; D23).
+# SHEET | <sprite sheet stem> | <one Chinese character>. The stem is the sheet name without a leading ! or $ and without trailing digits, compared case-insensitively (People2 -> people, !Door1 -> door, $BigMonster2 -> bigmonster).
+# A row with its own glyph column in events.txt always wins. A sheet that is not listed here gets the DEFAULT row (never a Latin letter). Read by _shared-lib/glyph_sheet.c (view_2d_style=ascii in bv_render_2d.c).
+SHEET | people | 人
+SHEET | actor | 主
+SHEET | sf_actor | 主
+SHEET | monster | 怪
+SHEET | sf_monster | 怪
+SHEET | bigmonster | 兽
+SHEET | evil | 魔
+SHEET | animals | 兽
+SHEET | nature | 木
+SHEET | vehicle | 车
+SHEET | chest | 箱
+SHEET | door | 门
+SHEET | sf_door | 门
+SHEET | flame | 火
+SHEET | switch | 关
+SHEET | crystal | 晶
+SHEET | damage | 伤
+SHEET | roof | 屋
+SHEET | window | 窗
+SHEET | other | 物
+SHEET | object | 物
+DEFAULT | 物
