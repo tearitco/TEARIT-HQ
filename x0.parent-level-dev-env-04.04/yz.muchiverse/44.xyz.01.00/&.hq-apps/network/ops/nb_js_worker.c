@@ -127,18 +127,8 @@ static JSRuntime *g_live_rt  = NULL;
 #include "nb_worker_dom_runtime_state.c"
 /* Node handle index helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_node_index.c"
-
-/* Forward decls for the customElements / ShadowRoot / template-content
- * section (2026-09-20). Defined AFTER js_error_to_cstr so lifecycle hooks
- * reuse the g_trace_cb dump channel. */
-static JSValue ce_define(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue ce_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue ce_when_def(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue ce_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static JSValue nb_el_attachShadow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-static NbNode *nb_template_content_frag(JSContext *ctx, JSValue el, NbNode *n);
-static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *nodeName);
-
+/* customElements/ShadowRoot/template forward declarations extracted (Phase 1, single-TU include). */
+#include "nb_worker_ce_forward_decls.c"
 /* Small string builder helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_sb.c"
 
