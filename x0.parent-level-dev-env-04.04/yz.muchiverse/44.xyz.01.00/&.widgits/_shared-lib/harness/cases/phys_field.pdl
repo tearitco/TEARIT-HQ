@@ -1,0 +1,63 @@
+# phys_field (2026-11-18; owner: Teario-universe, "mario-galaxy style gravity and jumping that all games can reuse", flat level = one field, planets voxel, hop between asteroids): the shared body step
+# _shared-lib/phys_field.c (pure, integer Q8, no float) driven by op phys_field_op over SCRATCH scenes. Every pinned number is HAND-COMPUTED from the rules (free fall y = g*n*(n+1)/2; jump rise = sum of the
+# impulse speeds); the apex case changes the knob and the prediction changes with it. Replay: the same scene twice gives the same HASH. Sabotage-proven (see the commit message).
+RESULTS | ../results/phys_field.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/phys_field_op.+x | $T/pf
+EXPECT_EXISTS | pf | the-real-op-is-built
+WRITE | fall.pdl | ROW \p 0 \p ...........\nROW \p 1 \p ...........\nROW \p 2 \p ...........\nROW \p 3 \p ...........\nROW \p 4 \p ...........\nROW \p 5 \p ...........\nROW \p 6 \p ...........\nROW \p 7 \p ...........\nROW \p 8 \p ...........\nROW \p 9 \p ...........\nROW \p 10 \p ...........\nROW \p 11 \p ...........\nROW \p 12 \p ...........\nROW \p 13 \p ...........\nROW \p 14 \p ...........\nROW \p 15 \p ...........\nROW \p 16 \p ...........\nROW \p 17 \p ...........\nROW \p 18 \p ...........\nROW \p 19 \p ...........\nROW \p 20 \p ...........\nROW \p 21 \p ...........\nROW \p 22 \p ...........\nROW \p 23 \p ###########\nFIELD \p 0 \p plane \p 0 1\nBODY \p 512 \p 0 \p 200 \p 200\n
+WRITE | land.pdl | ROW \p 0 \p ...........\nROW \p 1 \p ...........\nROW \p 2 \p ...........\nROW \p 3 \p ...........\nROW \p 4 \p ...........\nROW \p 5 \p ...........\nROW \p 6 \p ...........\nROW \p 7 \p ...........\nROW \p 8 \p ...........\nROW \p 9 \p ...........\nROW \p 10 \p ...........\nROW \p 11 \p ...........\nROW \p 12 \p ...........\nROW \p 13 \p ...........\nROW \p 14 \p ...........\nROW \p 15 \p ...........\nROW \p 16 \p ...........\nROW \p 17 \p ...........\nROW \p 18 \p ...........\nROW \p 19 \p ...........\nROW \p 20 \p ...........\nROW \p 21 \p ...........\nROW \p 22 \p ...........\nROW \p 23 \p ###########\nFIELD \p 0 \p plane \p 0 1\nBODY \p 512 \p 4000 \p 200 \p 200\n
+WRITE | jump.pdl | ROW \p 0 \p ...........\nROW \p 1 \p ...........\nROW \p 2 \p ...........\nROW \p 3 \p ...........\nROW \p 4 \p ...........\nROW \p 5 \p ...........\nROW \p 6 \p ...........\nROW \p 7 \p ...........\nROW \p 8 \p ...........\nROW \p 9 \p ...........\nROW \p 10 \p ...........\nROW \p 11 \p ...........\nROW \p 12 \p ...........\nROW \p 13 \p ...........\nROW \p 14 \p ...........\nROW \p 15 \p ...........\nROW \p 16 \p ...........\nROW \p 17 \p ...........\nROW \p 18 \p ...........\nROW \p 19 \p ...........\nROW \p 20 \p ...........\nROW \p 21 \p ...........\nROW \p 22 \p ...........\nROW \p 23 \p ###########\nFIELD \p 0 \p plane \p 0 1\nBODY \p 512 \p 5688 \p 200 \p 200\nINPUT \p 1 \p 4\nINPUT \p 2 \p 0\n
+WRITE | jump2.pdl | ROW \p 0 \p ...........\nROW \p 1 \p ...........\nROW \p 2 \p ...........\nROW \p 3 \p ...........\nROW \p 4 \p ...........\nROW \p 5 \p ...........\nROW \p 6 \p ...........\nROW \p 7 \p ...........\nROW \p 8 \p ...........\nROW \p 9 \p ...........\nROW \p 10 \p ...........\nROW \p 11 \p ...........\nROW \p 12 \p ...........\nROW \p 13 \p ...........\nROW \p 14 \p ...........\nROW \p 15 \p ...........\nROW \p 16 \p ...........\nROW \p 17 \p ...........\nROW \p 18 \p ...........\nROW \p 19 \p ...........\nROW \p 20 \p ...........\nROW \p 21 \p ...........\nROW \p 22 \p ...........\nROW \p 23 \p ###########\nTUNE \p jump_v \p 300\nFIELD \p 0 \p plane \p 0 1\nBODY \p 512 \p 5688 \p 200 \p 200\nINPUT \p 1 \p 4\nINPUT \p 2 \p 0\n
+WRITE | axis.pdl | ROW \p 0 \p ...............\nROW \p 1 \p ...............\nROW \p 2 \p ...............\nROW \p 3 \p ...............\nROW \p 4 \p ...............\nROW \p 5 \p .....#####.....\nROW \p 6 \p .....#####.....\nROW \p 7 \p .....#####.....\nROW \p 8 \p .....#####.....\nROW \p 9 \p .....#####.....\nROW \p 10 \p ...............\nROW \p 11 \p ...............\nROW \p 12 \p ...............\nROW \p 13 \p ...............\nROW \p 14 \p ...............\nFIELD \p 1 \p point \p 1920 1920 \p 3000 \p axis\nBODY \p 2816 \p 1820 \p 200 \p 200\n
+WRITE | rad.pdl | ROW \p 0 \p ...............\nROW \p 1 \p ...............\nROW \p 2 \p ...............\nROW \p 3 \p ...............\nROW \p 4 \p ...............\nROW \p 5 \p .....#####.....\nROW \p 6 \p .....#####.....\nROW \p 7 \p .....#####.....\nROW \p 8 \p .....#####.....\nROW \p 9 \p .....#####.....\nROW \p 10 \p ...............\nROW \p 11 \p ...............\nROW \p 12 \p ...............\nROW \p 13 \p ...............\nROW \p 14 \p ...............\nFIELD \p 1 \p point \p 1920 1920 \p 3000 \p radial\nBODY \p 3000 \p 3000 \p 200 \p 200\n
+WRITE | tie.pdl | FIELD \p 1 \p point \p 1920 1920 \p 2200 \p axis\nFIELD \p 2 \p point \p 6000 1920 \p 2200 \p axis\nBODY \p 3860 \p 1820 \p 200 \p 200\n
+WRITE | b.pdl | FIELD \p 1 \p point \p 1920 1920 \p 1500 \p axis\nFIELD \p 2 \p point \p 6000 1920 \p 1500 \p axis\nBODY \p 4500 \p 1820 \p 200 \p 200\n
+WRITE | none.pdl | FIELD \p 1 \p point \p 1920 1920 \p 1500 \p axis\nFIELD \p 2 \p point \p 6000 1920 \p 1500 \p axis\nBODY \p 3500 \p 1820 \p 200 \p 200\n
+WRITE | run.pdl | ROW \p 0 \p ...........\nROW \p 1 \p ...........\nROW \p 2 \p ...........\nROW \p 3 \p ...........\nROW \p 4 \p ...........\nROW \p 5 \p ...........\nROW \p 6 \p ...........\nROW \p 7 \p ...........\nROW \p 8 \p ...........\nROW \p 9 \p ...........\nROW \p 10 \p ...........\nROW \p 11 \p ...........\nROW \p 12 \p ...........\nROW \p 13 \p ...........\nROW \p 14 \p ...........\nROW \p 15 \p ...........\nROW \p 16 \p ...........\nROW \p 17 \p ...........\nROW \p 18 \p ...........\nROW \p 19 \p ...........\nROW \p 20 \p ...........\nROW \p 21 \p ...........\nROW \p 22 \p ...........\nROW \p 23 \p ###########\nFIELD \p 0 \p plane \p 0 1\nBODY \p 512 \p 5688 \p 200 \p 200\nINPUT \p 1 \p 2\n
+
+CASE    | flat-field
+RUN | $T/pf | $T/fall.pdl | 8
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | T 1 x=512 y=16 vx=0 vy=16 u=0,256 f=0 g=0 | tick-1-gravity-16-moves-16
+EXPECT_OUT | T 8 x=512 y=576 vx=0 vy=128 u=0,256 f=0 g=0 | free-fall-y-equals-g-n-n+1-over-2-576-at-tick-8
+RUN | $T/pf | $T/land.pdl | 20
+EXPECT_OUT | y=5688 vx=0 vy=0 u=0,256 f=0 g=1 | the-body-rests-on-the-floor-and-is-grounded
+EXPECT_OUT_LACKS | y=5689 | NEGATIVE-it-never-sinks-into-the-floor
+RUN | $T/pf | $T/run.pdl | 10
+EXPECT_OUT | T 1 x=518 y=5688 vx=6 vy=0 u=0,256 f=0 g=1 | holding-right-accelerates-6-per-tick-on-the-ground
+EXPECT_OUT | T 8 x=728 y=5688 vx=48 | x-is-512-plus-6-times-36-and-the-speed-reached-run_max-48
+EXPECT_OUT | T 10 x=824 y=5688 vx=48 | and-stays-capped-at-48-(x-824)
+
+CASE    | jump
+RUN | $T/pf | $T/jump.pdl | 16
+EXPECT_OUT | T 2 x=512 y=5488 vx=0 vy=-200 u=0,256 f=0 g=0 | the-jump-impulse-is-jump_v-200-up
+EXPECT_OUT | T 14 x=512 y=4336 vx=0 vy=-8 u=0,256 f=0 g=0 | apex-after-13-ticks-rise-1352-equals-the-sum-200-184-to-8
+RUN | $T/pf | $T/jump2.pdl | 22
+EXPECT_OUT | T 20 x=512 y=2724 vx=0 vy=-12 u=0,256 f=0 g=0 | with-jump_v-300-the-apex-is-2724-the-prediction-follows-the-knob
+EXPECT_OUT_LACKS | y=4336 | NEGATIVE-the-stronger-jump-does-not-stop-at-the-old-apex
+
+CASE    | planets
+RUN | $T/pf | $T/axis.pdl | 30
+EXPECT_OUT | T 1 x=2800 y=1820 vx=-16 vy=0 u=-256,0 f=1 g=0 | a-cube-planet-pulls-along-the-dominant-axis-toward-its-centre
+EXPECT_OUT | T 30 x=2560 y=1820 vx=0 vy=0 u=-256,0 f=1 g=1 | and-the-body-lands-on-the-planets-face-x-2560
+RUN | $T/pf | $T/rad.pdl | 1
+EXPECT_OUT | u=-181,-181 f=1 | radial-mode-points-at-the-centre-(isqrt-1668)
+EXPECT_OUT_LACKS | u=-256,0 | NEGATIVE-radial-is-not-the-axis-answer
+RUN | $T/pf | $T/b.pdl | 1
+EXPECT_OUT | f=2 | in-reach-of-asteroid-B-only-B-pulls
+RUN | $T/pf | $T/none.pdl | 1
+EXPECT_OUT | f=-1 | between-the-reaches-nothing-pulls-free-flight
+EXPECT_OUT | vy=0 | and-the-body-does-not-fall
+RUN | $T/pf | $T/tie.pdl | 1
+EXPECT_OUT | f=1 | equal-distance-the-lower-field-id-wins
+
+CASE    | replay
+RUN | $T/pf | $T/jump.pdl | 40
+EXPECT_OUT | HASH | the-trace-has-a-hash
+RUN | /bin/cp | $T/pf | $T/pf2
+RUN | $T/pf2 | $T/jump.pdl | 40
+EXPECT_OUT | HASH 167753c8ddb146b2 | the-same-scene-again-gives-the-same-hash-pinned-from-a-first-run
