@@ -193,6 +193,8 @@ static int reap_timed(pid_t pid, int secs) { struct timespec t0, t1; clock_getti
 static int game_row(const char *want, char *cmd, size_t ccap, char *bdir, size_t bcap) {
     char lb[PATH_MAX + 32], bk[200], book[96] = "", gp[PATH_MAX + 96], ln[1024]; snprintf(lb, sizeof lb, "%s/state/last_book.txt", APP); read_file(lb, bk, sizeof bk); cmd[0] = 0;
     for (char *l = strtok(bk, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "book=", 5)) snprintf(book, sizeof book, "%s", l + 5);
+    { char wp[PATH_MAX + 96], wb[600]; snprintf(wp, sizeof wp, "%s/" PET_APP "-pchq/pieces/world_01/state.txt", APP); read_file(wp, wb, sizeof wb);   /* the book the board SHOWS wins over last_book.txt (2026-11-18: that file is saved only at launch, so Play ran the launch book after a switch in the Books dropdown) */
+        for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "map_id=", 7) && l[7]) { char gq[PATH_MAX + 128]; snprintf(gq, sizeof gq, "%s/@.apps/%.90s/game.pdl", HOUSE, l + 7); if (!access(gq, R_OK)) snprintf(book, sizeof book, "%s", l + 7); break; } }
     if (!book[0]) return 0; for (const char *c = book; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-')) return 0;
     snprintf(bdir, bcap, "%s/@.apps/%s", HOUSE, book); snprintf(gp, sizeof gp, "%s/game.pdl", bdir); FILE *f = fopen(gp, "r"); if (!f) return 0;
     while (fgets(ln, sizeof ln, f)) { char *p = ln; while (*p == ' ') p++; if (strncmp(p, "GAME", 4)) continue; char *a = strchr(p, '|'); if (!a) continue; char *b = strchr(a + 1, '|'); if (!b) continue; char key[32]; snprintf(key, sizeof key, "%.*s", (int)(b - a - 1), a + 1);
