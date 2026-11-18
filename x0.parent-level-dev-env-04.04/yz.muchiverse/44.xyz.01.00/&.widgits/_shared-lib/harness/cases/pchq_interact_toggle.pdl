@@ -1,0 +1,40 @@
+# pchq_interact_toggle (2026-11-18; owner: "see there some fundamental problems with in: mode ... get in like with rpg-edit / pc-hq"): the In: tab verb `interact` of pchq_board_action.sh is a TRUE TOGGLE.
+# SCRATCH session: Enter (13) engages Interact Mode; once engaged Enter is only a game key, so a second click must send Esc (27) to keyboard/history.txt (what the engine and petslike_core read to leave).
+# Before the fix a second click appended another 13 and nothing happened (measured on the live phone: still armed after 16 s). The real script is copied under $T.
+RESULTS | ../results/pchq_interact_toggle.txt
+ENV | LC_ALL | C
+CASE    | toggle
+SCRATCH |
+MKDIR   | #.desktop
+MKDIR   | bv/pieces/apps/player_app
+MKDIR   | bv/pieces/keyboard
+MKDIR   | bv/pieces/display
+COPY    | @.apps/piececraft-hq/ops/pchq_board_action.sh | @.apps/piececraft-hq/ops/pchq_board_action.sh
+WRITE   | bv/pieces/display/active_gui_is_typing.txt | 0\n
+WRITE   | bv/pieces/apps/player_app/interact_relay.txt |
+WRITE   | bv/pieces/keyboard/history.txt |
+
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
+EXPECT_EXIT | 0 | interact-runs
+EXPECT_HAS  | bv/pieces/apps/player_app/interact_relay.txt | 13 | off-then-click-engages-with-Enter
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | and-the-history-gets-Enter
+EXPECT_LACKS | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | NEGATIVE-engaging-sends-no-Esc
+
+WRITE   | bv/pieces/display/active_gui_is_typing.txt | 1\n
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | on-then-click-leaves-with-Esc
+
+CASE    | on-sends-no-second-enter
+SCRATCH |
+MKDIR   | #.desktop
+MKDIR   | bv/pieces/apps/player_app
+MKDIR   | bv/pieces/keyboard
+MKDIR   | bv/pieces/display
+COPY    | @.apps/piececraft-hq/ops/pchq_board_action.sh | @.apps/piececraft-hq/ops/pchq_board_action.sh
+WRITE   | bv/pieces/display/active_gui_is_typing.txt | 1\n
+WRITE   | bv/pieces/apps/player_app/interact_relay.txt |
+WRITE   | bv/pieces/keyboard/history.txt |
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
+EXPECT_LACKS | bv/pieces/apps/player_app/interact_relay.txt | 13 | NEGATIVE-leaving-does-not-append-Enter-to-the-game-relay
+EXPECT_LACKS | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | NEGATIVE-and-not-to-the-history
+EXPECT_HAS   | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | only-Esc

@@ -137,7 +137,8 @@ restore_interact() {
 
 case "$VERB" in
     interact)
-        append_key 13
+        # A real toggle (owner 2026-11-18: In: must behave like the desktop rpg-edit and pc-hq tab): Enter engages Interact Mode, but once engaged Enter is only a game key, so the way OUT is Esc (27) in the session's keyboard history (the same line petslike_core writes to leave INT). Before this a second click did nothing and only Esc on the keyboard left it.
+        if interact_on; then printf 'KEY_PRESSED: 27\n' >> "$H2"; else append_key 13; fi
         ;;
     autotick)
         # The clock tab of the toolbar: play / pause the game clock of THIS board's world (the same flag the pc-hq ']' key flips, world_01 autotick_enabled;
