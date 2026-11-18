@@ -1266,15 +1266,8 @@ static char *g_last_push;             /* rows of the last frame we pushed */
 /* Global event/timer/install helper extracted (Phase 1, single-TU include). */
 #include "nb_worker_install_events_timers.c"
 
-/* boot hygiene (2026-09-09): install_dom / install_events_timers ran under a
- * protected call so a throw was reported to stderr as WERR| and the
- * page still loaded. QuickJS property definitions don't throw on non-writable
- * targets (JS_DefinePropertyGetSet just returns FALSE), so the direct calls
- * are enough; keep the name for call-site clarity. */
-static void boot_install_safe(JSContext *ctx) {
-    install_dom(ctx);
-    install_events_timers(ctx);
-}
+/* Boot install helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_boot_install_safe.c"
 
 /* Script eval budget helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_eval_budget.c"
