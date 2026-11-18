@@ -1026,6 +1026,11 @@ static int cmd_scene(int argc, char **argv) {
     fprintf(OUT, "SCENE %dx%d\n", LV.w, LV.h); return 0;
 }
 static void scene_cell(int i, int *cx, int *cy) { if (MODE == M_PLATFORM) { const PF_Body *b = &S.pb[i]; *cx = (int)((b->x + b->w / 2) / PF_Q); *cy = (int)((b->y + b->h / 2) / PF_Q); } else { *cx = S.pos[i]; *cy = LV.sy; } }
+/* GAME | ui_mode | play  (2026-11-18, owner: Teario should not show palettes while it plays): the editor's own bars are declared in its layouts.pdl (palettes = edit only, pets = play); this driver puts the window in that mode while the game runs (ui_mode_op, bars only: --no-settings leaves the chat flag alone) and back to edit when the driver ends. A book without the row is untouched. */
+static int ui_mode_wanted(void) { char p[P + 16], ln[512]; snprintf(p, sizeof p, "%s/game.pdl", BOOK); FILE *f = fopen(p, "r"); if (!f) return 0; int want = 0;
+    while (fgets(ln, sizeof ln, f)) { char *fl[6]; if (ln[0] == '#') continue; int n = split_row(ln, fl, 6); if (n >= 3 && !strcmp(fl[0], "GAME") && !strcmp(fl[1], "ui_mode") && !strcmp(fl[2], "play")) want = 1; } fclose(f); return want; }
+static void ui_mode_set(const char *mode) { char op[P + 64], sides[P + 64], lay[P + 64], out[300]; snprintf(op, sizeof op, "%s/&.widgits/_shared-lib/ops/+x/ui_mode_op.+x", HOUSE); snprintf(sides, sizeof sides, "%s/board/state/sides.txt", EDIT); snprintf(lay, sizeof lay, "%s/layouts.pdl", EDIT);
+    if (access(op, X_OK) || access(lay, R_OK)) return; char *av[] = { op, sides, (char *)"--bars", lay, (char *)"--no-settings", (char *)mode, NULL }; run_capture(av, out, sizeof out); }
 static void scene_events(void) {
     static char b[2048]; int n = snprintf(b, sizeof b, "%d %d 255 210 60 !Other1 0 2 1 \xe6\x97\x97\n", LV.gx, LV.gy);   /* the goal: a flag (the Chinese character 旗) */
     for (int i = 0; i < S.np && n < 1900; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
@@ -1116,6 +1121,7 @@ static int driver_main(int argc, char **argv) {
     if (KIND == K_REALTIME && WALKISH) {   /* the level is drawn as the book's "play" desk (scene verb) and the heroes follow the ledger, as the Teropoly page does */
         char eb[P]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
         snprintf(WORLD, sizeof WORLD, "%s/%s-pchq/pieces/world_01/state.txt", EDIT, bn); snprintf(DESKDIR, sizeof DESKDIR, "%s/%s-pchq/pieces/system/maps/%s/play", BOOK, NAME, NAME); snprintf(ATLAS, sizeof ATLAS, "%s/%s-pchq/pieces/system/maps/%s/board/cells.rgba", BOOK, NAME, NAME); page_on = 1; scene_on = 1; }
+    static int ui_play; ui_play = ui_mode_wanted(); if (ui_play) ui_mode_set("play");
     char lk[P]; snprintf(lk, sizeof lk, "%s/driver.lock", GDIR); int lf = open(lk, O_RDWR | O_CREAT, 0644);
     if (lf < 0) { fprintf(stderr, "game_core driver: cannot open the lock file %s (does the editor's state folder exist?)\n", lk); return 1; }
     if (flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "game_core driver: already running\n"); return 0; }
@@ -1166,6 +1172,7 @@ static int driver_main(int argc, char **argv) {
               if (ino >= 0) { char ib[512]; while (read(ino, ib, sizeof ib) > 0) { } } } }
     }
     if (page_on) set_desk("board");   /* the world goes back to the authored board when the driver ends */
+    if (ui_play) ui_mode_set("edit");   /* and the window goes back to its edit bars */
     if (was_live) stats_seg_end(now_us() - seg_us, pace_ms(speed) * 1000L, stats_path);
     { char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */
     return 0;
