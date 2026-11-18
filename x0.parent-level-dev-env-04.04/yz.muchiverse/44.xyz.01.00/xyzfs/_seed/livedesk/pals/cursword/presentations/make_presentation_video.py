@@ -352,12 +352,16 @@ def main():
                      help="render a silent video (default: narrate captions via TTS)")
     ap.add_argument("--voice", default=DEFAULT_VOICE,
                      help=f"pet voice name, edge-style from voices.pdl (default: {DEFAULT_VOICE})")
+    ap.add_argument("--font", default=None, help="caption font file (a .ttf or .ttc); needed for Japanese or Chinese captions, the default DejaVuSans has no CJK glyphs (e.g. /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc)")
     ap.add_argument("--theme", default="plain", choices=sorted(THEMES), help="caption palette: tearit (gold/red/light purple), tsots (black/red/yellow), harnecient (green), plain (old dark strip)")
     ap.add_argument("--title", default=None,
                      help="YouTube-ready title (default: derived from the feature dir name)")
     args = ap.parse_args()
     global THEME
     THEME = THEMES[args.theme]
+    if args.font:
+        global FONT_REGULAR, FONT_BOLD
+        FONT_REGULAR = FONT_BOLD = args.font
     build_video(args.feature_dir.resolve(), args.fps, args.width, args.tts, args.voice, args.title)
 
 
