@@ -1322,25 +1322,8 @@ static void boot_install_safe(JSContext *ctx) {
 
 /* Script eval budget helpers extracted (Phase 1, single-TU include). */
 #include "nb_worker_eval_budget.c"
-/* Format a value for console display (duk_safe_to_string semantics); clears
- * any exception a throwing toString() may have left behind. */
-static const char *js_display_cstr(JSContext *ctx, JSValueConst v, char *buf, size_t bl) {
-    if (JS_IsUndefined(v)) { snprintf(buf, bl, "undefined"); return buf; }
-    char *s = JS_ToCString(ctx, v);
-    if (!s) {
-        JSValue e = JS_GetException(ctx);
-        JS_FreeValue(ctx, e);
-        snprintf(buf, bl, "undefined");
-        return buf;
-    }
-    snprintf(buf, bl, "%s", s);
-    JS_FreeCString(ctx, s);
-    if (JS_HasException(ctx)) {
-        JSValue e = JS_GetException(ctx);
-        JS_FreeValue(ctx, e);
-    }
-    return buf;
-}
+/* JS value display string helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_js_display_cstr.c"
 
 /* Run the page script; sends STATUS ok|err across the wire. */
 static void dom_teardown(void) {
