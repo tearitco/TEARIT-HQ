@@ -263,13 +263,8 @@ typedef struct {
 } NbCanvas;
 static NbCanvas g_canvases[NB_CANVAS_MAX];
 
-static void nb_canvas_reset(void) {
-    for (int i = 0; i < NB_CANVAS_MAX; i++) {
-        free(g_canvases[i].px);
-        g_canvases[i].px = NULL;
-        g_canvases[i].used = 0;
-    }
-}
+/* Canvas state reset helper extracted (Phase 1, single-TU include). */
+#include "nb_worker_canvas_reset.c"
 
 /* DOM render rows serializer extracted (Phase 1, single-TU include). */
 #include "nb_worker_dom_render_rows.c"
