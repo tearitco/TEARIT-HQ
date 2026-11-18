@@ -1337,19 +1337,8 @@ static void boot_install_safe(JSContext *ctx) {
  * and external <script src> executes at its DOM position. Per-slice
  * failures print to stderr (surfaced by the manager as WERR|/[worker]).
  * A legacy page.js without any sentinel is treated as one program. */
-#define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"
-static const char *find_script_boundary(const char *p, const char *end,
-                                        const char **after) {
-    const char *q = p;
-    for (; q + sizeof(SCRIPT_BOUNDARY) - 1 <= end; q++) {
-        if (q[0] == '/' && q[1] == '*' &&
-            memcmp(q, SCRIPT_BOUNDARY, sizeof(SCRIPT_BOUNDARY) - 1) == 0) {
-            *after = q + sizeof(SCRIPT_BOUNDARY) - 1;
-            return q;
-        }
-    }
-    return NULL;
-}
+/* Script boundary marker and finder extracted (Phase 1, single-TU include). */
+#include "nb_worker_script_boundary.c"
 /* Debug-only (NB_BUNDLE_TRACE=1): inject console probes into kevlar's sxs
  * customElement wrapper (D.prototype.createElement) so a real LOAD reveals
  * what `_.a(O,null)` returns, the live binding of `_.a`/`O`, and whether the
