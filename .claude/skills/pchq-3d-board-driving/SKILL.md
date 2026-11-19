@@ -12,9 +12,10 @@ Paths are from the house `44.xyz.01.00/`. Quote them (`&`, `@`). Companions: ski
 |---|---|---|
 | **the game's player** | the extruded RPG Maker sprite (a row of the play desk's `events.txt`); stands on the ground | `maps/<book>/play/events.txt`, written by `game_core` |
 | **xelector** | the cursor; drawn as the CYAN cube; arrows move it, `z`/`x` change its LEVEL; with `possessed_id` set its cell IS that piece's cell | `pieces/xelector_01/state.txt` |
-| **hero_01** | the engine's own hero piece; drawn as a plain placeholder cube; `game_core` does NOT drive it | `pieces/hero_01/state.txt` |
+| **hero_01** | the engine hero piece; INVISIBLE while unpossessed (moving only it changed nothing, RAN); `game_core` does NOT drive it | `pieces/hero_01/state.txt` |
+| **moon_01 / sun_01** | sky pieces; the pale cube floating in the sky IS the moon (RAN: move it, the cube vanishes, restore it, it returns) | `pieces/moon_01/state.txt` |
 | **floor_z** | the ground layer (16); a piece at `pos_z = floor_z + 1` (17) is at HUD `z=1`; the launcher resets hero and xelector to it | `pieces/system/board_manifest.txt` |
-HUD (top-left): `pos x,y,z` = the XELECTOR cell and its level (HUD z = pos_z - floor_z), NOT the hero; `poss hero_01` = what it possesses; `click` / `ray` = the last mouse pick.
+HUD (top-left): `pos x,y` = the SELECTOR from bv_state (default = page centre, why a fresh Teario session says 10,6) and `z` = xelector pos_z - floor_z; NOT the xelector cell and NOT the hero; `poss hero_01` = what it possesses; `click` / `ray` = the last mouse pick.
 
 ## 2. The recipe: engine keys, measured
 - Session: `S=$(sed -n 's/^bv_session=//p' @.apps/<app>/board/state/ui.txt | head -1)`; state: `$S/pieces/system/bv_state.txt` (camera, render mode); piece state: `@.apps/<app>/<app>-pchq/pieces/<piece>/state.txt`.
