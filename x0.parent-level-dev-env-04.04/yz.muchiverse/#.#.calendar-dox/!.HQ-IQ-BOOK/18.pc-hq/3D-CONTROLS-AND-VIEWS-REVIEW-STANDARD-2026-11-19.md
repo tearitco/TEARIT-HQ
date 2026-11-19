@@ -31,3 +31,16 @@ Rows that DIFFER become a bug row with the owner's expected behaviour in his wor
 
 ## 5. Open items (the Teario symptoms that started this review, owner screenshot 2026-11-19 04:20)
 In the 3D view of the Teario-Make window (In: ON, possessed hero_01): the level is a long strip running away from the camera, the hero and a white cube float above it ("we are not standing on the ground"), the minimap shows the hero facing sideways although it should face the goal, and the camera keys do not behave as expected for 3D. Hypothesis (UNMEASURED): the 2D platformer's (x, y-down) cells are placed into the 3D grid with the legend's depth/up axes swapped. First review rows to run on the Teario window once the owner says it is free: `1`..`4`, `q` `e`, `r` `t`, `w a s d`, `c` `v`, `;`, `f`, `8`, `9`, each with section 4.
+
+## 6. First review run, 2026-11-19 (Teario-Make window, engine keys through `bv_keys`, state read before/after, `f` reset between; owner said to drive it; the owner's own driving guide is the skill `pchq-3d-board-driving`)
+| Control | Expected state change (what the code/docs say) | Measured | Verdict |
+|---|---|---|---|
+| `q` / `e` | yaw -/+ | yaw 180 -> 170 / 190 (10 per press; x9 = 90 / 270) | MATCHES |
+| `c` / `v` | camera height | `cam_z_level` +1 / -1 | MATCHES |
+| `w` `s` `a` `d` | pan | `cam_pan_z` -1 / +1, `cam_pan_x` -1 / +1 (1 per press) | MATCHES |
+| `r` (pitch down) | pitch -10 | 6 -> -25 first press (clamped), then -35 | DIFFERS on the first press (jumps 31) |
+| `t` (pitch up) | pitch +10 | stays -25 from any start; never returns to +6 | DIFFERS: pitch keys clamp to -80..-25 (`PITCH_MIN/MAX` in `bv_menu_input.c`) but the default view and `f` use +6; only `f` restores the level view |
+| `1` | first person | `camera_mode=1`, pitch 6, yaw 180: picture is only sky (the camera faces across the level, along rows, not toward the goal) | PICTURE DIFFERS from "player faces the goal"; yaw 90 (`q` x9) faces the goal along x |
+| `3` / `4` | modes 3, 4 | `camera_mode` 3 / 4, pitch -90, pan set | state MATCHES; the 5 s photo of mode 3 looked side-on and small: UNVERIFIED (maybe an unfinished redraw) |
+| `z` x13 | xelector level -13 | `pos_z` 30 -> 17, HUD z 14 -> 1, hero followed (possessed), the cyan cube landed on the ground | MATCHES |
+Owner intent for these rows: NOT STATED in a doc I could find, except the owner's words "camera controls aren't what are expected for 3d" and "player should be facing goal": a DIFFERS row needs his statement of what he expects before it is a bug. Photos 15 to 17 in XO `nov-18/15.teario-own-window-first-launch`.
