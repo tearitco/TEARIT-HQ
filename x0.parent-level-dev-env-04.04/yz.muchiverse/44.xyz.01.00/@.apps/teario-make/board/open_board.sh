@@ -7,12 +7,13 @@ GATE="$HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x"
 [ -x "$GATE" ] && { "$GATE" "$HOUSE" check --wait 90 >/dev/null || { echo "open_board: the machine is too busy right now (cpu_gate); not relaunching" >&2; exit 1; }; }
 export PCHQ_PKG="$APP/teario-make-pchq"
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
-mkdir -p "$HERE/state" "$APP/state"
 # the stamp bank is the DEFAULT left bar: seed side_stamp=1 only when the file is missing (a user's own minimize is kept across launches)
 [ -f "$HERE/state/sides.txt" ] || printf 'side_stamp=1\n' > "$HERE/state/sides.txt"
 # the ONE game driver (one instance: it locks itself). Registered through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl); handed to the window below so it ends with it.
 FUNNEL="$HOUSE/&.widgits/_shared-lib/kh_spawn.sh"; REG="$HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"; DRV="$HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x"
-ps -eo stat,args | awk -v b="$DRV driver $HOUSE $APP $APP" '$1 !~ /Z/ && index($0, b) {f=1} END{exit !f}' || {
+# is a driver of THIS window folder already registered and alive? The registry is the record (AGENTS.md: every process the house starts is a row), NOT a `ps | awk` scan of the arguments: that scan matched the awk process own command line and always answered yes (found 2026-11-19, the driver never started).
+DPID0="$([ -x "$REG" ] && "$REG" "$HOUSE" list 2>/dev/null | awk -F' [|] ' '$10 == "teario-make-driver" {print $2}' | tail -1)"
+{ [ -n "$DPID0" ] && [ -d "/proc/$DPID0" ]; } || {
     KH_ROLE=daemon KH_APP=teario-make sh "$FUNNEL" "$HOUSE" 0 teario-make-driver -- "$DRV" driver "$HOUSE" "$APP" "$APP" >/dev/null 2>&1; }
 PCHQ_BOARD_TPL="$HERE/pchq-board.xhtpm" sh "$HOUSE/@.apps/piececraft-hq/open_pchq_board.sh" "$HOUSE" || exit 1
 WPID="$(cat "$PCHQ_PKG/pieces/system/board_window.pid" 2>/dev/null)"
