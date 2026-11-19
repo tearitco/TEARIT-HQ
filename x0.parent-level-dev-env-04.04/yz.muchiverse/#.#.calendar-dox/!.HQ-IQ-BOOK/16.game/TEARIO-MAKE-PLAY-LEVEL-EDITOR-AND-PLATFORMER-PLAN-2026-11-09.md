@@ -565,6 +565,8 @@ Class: `#.#.calendar-dox/1-1.HARNECIENT.SMOL/DAY_29_TEARIO_MAKE_PLAY.txt`.
 ```
 
 ## STATUS 2026-11-18 (what exists, with evidence; the older sections above are the plan, this one wins where they differ)
+
+> **DEVIATION (2026-11-18, owner found it; decision log D92):** everything described below as built for enemies, stomp, fireball, power-up, patrol and the Make tools is NATIVE C in `game_core` MODE platform, not event pages. Section 2 of this plan (all mechanics as events, `tp_*` nodes, `teario compile`, blueprintz) is NOT built, and Teario has no `events/` folder. Read D92 for the fix order before adding any mechanic.
 Label key: RAN = I ran it and looked / the harness case named passed; NOT = not done. House paths from `44.xyz.01.00`.
 
 | Piece | State | Evidence |
