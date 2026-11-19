@@ -4,3 +4,4 @@
 #   kind events : the folder holds event folders, each with event_pkg/pages (like a game's events/)
 # id: letters, digits, _ - . only. Loaded with the Games menu row; edits go through the same ops as any other loaded event.
 BOOK | reader | single | _.monads/_.book-stack/pieces/reader
+BOOK | teario | events | @.apps/teario/events

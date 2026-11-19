@@ -15,7 +15,7 @@ On 2026-11-18 Teario's enemies, stomp, fireball, power-up and patrol were writte
 ## 2. The unit: one rule = four files (+ one page)
 | # | File | Role | Example (BUILT) / (PROPOSED) |
 |---|---|---|---|
-| 1 | `_shared-lib/rule_<name>.c` | the PURE module: integer only, no files, no clock, no float, no environment; the ONE implementation; text-included | `phys_field.c` (BUILT, D90) / `rule_patrol.c` (BUILT 2026-11-18, case `rule_patrol` 20 checks; registry row and event page still to do) |
+| 1 | `_shared-lib/rule_<name>.c` | the PURE module: integer only, no files, no clock, no float, no environment; the ONE implementation; text-included | `phys_field.c` (BUILT, D90) / `rule_patrol.c` (BUILT 2026-11-18, case `rule_patrol` 27 checks, registry row, event page and Blueprintz proven) |
 | 2 | `ops/rule_<name>_op.c` | thin CLI op that includes (1): `<op> <app> <state dir> <args>`; a PURE STATE -> STATE function over a scene: reads the scene rows and RULE numbers, prints the trace and a hash, exit code (0 ok, 2 a bad scene); ledger rows are written only for inputs and for consequences that are facts (a clear, a publish), because in an inputs-only run ledger tick state is derived by replay (refined 2026-11-18 by the first built rule); a `--describe` line (inputs, outputs, RULE keys) | `phys_field_op.c`, `rule_patrol_op.c` (BUILT) |
 | 3 | one `COMMAND` row in `#.ref/menu/event_commands.registry.pdl` | `COMMAND <type> / LABEL / FIELDn / PARAMS / TEMPLATE exec "<op>" '{param}' / END`: makes the op appear in events-hq and Blueprintz with no manager recompile | the 172 existing rows are the pattern |
 | 4 | `harness/cases/<name>.pdl` + `.pal` | runs the op ALONE with hand-computed expectations plus a sabotage proof | `phys_field.pdl` (23 checks, BUILT) |
@@ -57,7 +57,7 @@ Integer fixed point (Q8: 1/256 of a cell, `long`), no float, no clock, no `rand(
 
 ## 8. Worked examples
 - **BUILT, the right shape:** `phys_field` (D90): pure module + `phys_field_op` + case `phys_field` (23 checks, sabotage-proven); also reused by `game_core` MODE platform. It is the pattern to copy.
-- **BUILT first rule (2026-11-18):** `rule_patrol` (one body, turn at a wall or ledge, fall out): module `_shared-lib/rule_patrol.c`, op `ops/rule_patrol_op.c`, case `rule_patrol` (20 checks, hand-computed, 5 sabotages), called in-process by `game_core`, speed = RULE `patrol_speed`. STILL TO DO for it: `COMMAND` row, `events/tm_patrol` page, `LOAD:teario`. Then fireball, stomp, pickup, side hit, goal, score.
+- **BUILT first rule (2026-11-18):** `rule_patrol` (one body, turn at a wall or ledge, fall out): module `_shared-lib/rule_patrol.c`, op `ops/rule_patrol_op.c`, case `rule_patrol` (20 checks, hand-computed, 5 sabotages), called in-process by `game_core`, speed = RULE `patrol_speed`. The registry `COMMAND` row, the `events/tm_patrol` page and `teario (book)` in Blueprintz are ALSO built and were driven in the real window (view, edit a parameter, Pause / Fire / Step ev, trace). Then fireball, stomp, pickup, side hit, goal, score.
 - **The counter-example (do not copy):** Teario's enemies / stomp / fireball in `game_core.c` MODE platform (D92): behaviour that no harness can run alone, no page, nothing in Blueprintz.
 
 ## 9. Pitfalls that cost real runs (all hit 2026-11-18)
@@ -81,3 +81,10 @@ Tick, touch, tile-hit and input triggers (N2); entity-pair and tile-contact voca
 - Code examples: `44.xyz.01.00/&.widgits/_shared-lib/phys_field.c`, `.../ops/phys_field_op.c`, `.../harness/cases/phys_field.pdl`, harness README `.../harness/README.md`.
 - Teario plan (the worked project): BOOK `16.game/TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09.md` section 2 (all mechanics as events) and 2.7 (this contract).
 - Wraith-alpha in-memory DB (future): memory `wraith-alpha-in-memory-db-plan`; not started.
+
+## 12. How to put a rule into Blueprintz, step by step (RAN 2026-11-18 with `rule_patrol`; the repeatable recipe)
+1. Registry: add one `COMMAND <rule>` block to `#.ref/menu/event_commands.registry.pdl` (`PARAMS`, `TEMPLATE exec "$D/<op>" "$D/<scene path>" '{param}'`). Allowed characters in a parameter value: letters, digits and `_ - . : , = | / space`: a path with `@` or `&` must be built by the TEMPLATE from `$D`.
+2. Event: `mkdir -p @.apps/<app>/events/<name>/event_pkg/pages/page_1`, put the scene or data file beside it, then seed with the real manager: `BP_PAGE=page_1 bp_edit_op <house> <event_pkg> <name> append <type> '<k=v|k=v>'` and `... trigger ui`. NEVER hand-write the IR, the `.pal` or the wrappers. (Plain `new_page` on an empty `pages/` makes `page_2` and leaves `page_1` empty.)
+3. Blueprintz list: add `BOOK | <id> | events | @.apps/<app>/events` to `&.hq-apps/blueprintz/books.pdl`; the window lists `<id> (book)` in its "Load verbs of a game" menu. Open the window with `cpu_gate ... sh &.hq-apps/blueprintz/button.sh run`, drive it with `relay_drive` (gentle mode, `tapid <id>`; ids are in `#.desktop/ascii_frames/<pid>.<seq>.objects.pdl`; pick a dropdown row with Down keys + Enter).
+4. Proof in the real window: the page is listed with `no problems found`; edit a parameter field (clear it first); Pause, Fire, Step ev and read the trace rows; Detach; `button.sh stop`. Remove the runtime files the run leaves in the event folder (`inventory/`, `master_ledger.txt`, `.hq_manager/`) before committing.
+5. Harness: registry row present (and a not-present negative), the page's command and trigger, the compiled wrapper prints the same line as the op alone; sabotage the registry row and the wrapper.

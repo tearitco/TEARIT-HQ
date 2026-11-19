@@ -55,3 +55,16 @@ RUN | $T/rp | $T/ledge.pdl | 30
 RUN | /bin/cp | $T/rp | $T/rp2
 RUN | $T/rp2 | $T/ledge.pdl | 30
 EXPECT_OUT | HASH | the-run-ends-with-a-trace-hash
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93): a registry COMMAND row, the page tm_patrol (seeded through the real events-hq manager, edited in the real Blueprintz window), whose compiled wrapper runs THIS op with the page's parameters
+RUN | grep | -c | ^COMMAND rule_patrol$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_patrol-row
+RUN | grep | -c | ^COMMAND rule_patrol_typo$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 0 | NEGATIVE-a-command-that-is-not-in-the-registry-is-not-found-(the-count-can-be-0)
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_patrol/event_pkg/pages/page_1/event.ir.pdl | type=rule_patrol | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_patrol/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_patrol/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | T 10 x=512 y=568 vx=10 dir=1 alive=1 g=1 | the-page-gives-the-SAME-line-as-the-op-alone-(ledge-turn-on-tick-10)
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_patrol/scene.pdl | RULE \p patrol_speed \p 10 | the-scene-carries-the-speed-as-a-RULE-row

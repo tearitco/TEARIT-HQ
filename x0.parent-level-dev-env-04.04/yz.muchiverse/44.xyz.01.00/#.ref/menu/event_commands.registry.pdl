@@ -1759,3 +1759,12 @@ COMMAND phone_reply_ai
   PARAMS text
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/phone_reply_ai_op.+x" "$MUCHI_PHONE" "$MUCHI_TARGET_ENT" "$D" "$MUCHI_MSG_FROM" '{text}'
 END
+
+# rule_patrol = the PATROL rule of a game as an op (D93, BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): runs `rule_patrol_op <scene> <ticks>` over a scene file under the teario events folder (the SAME pure module rule_patrol.c the game tick loop calls in-process) and prints the trace and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only), ticks a whole number. `rule_patrol_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_patrol
+  LABEL teario: Patrol rule (scene, ticks)
+  FIELD1 Scene:
+  FIELD2 Ticks:
+  PARAMS scene,ticks
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_patrol_op.+x" "$D/@.apps/teario/events/{scene}" '{ticks}'
+END
