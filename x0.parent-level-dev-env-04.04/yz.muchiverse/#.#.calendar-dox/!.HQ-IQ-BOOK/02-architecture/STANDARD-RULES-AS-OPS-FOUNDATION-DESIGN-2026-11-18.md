@@ -97,3 +97,8 @@ List the clauses of the module (each test, each number, each loop exit, each qui
 
 ## 15. A scene must make the sabotaged answer DIFFER (lesson from `rule_fall`, 2026-11-19)
 When you design the scene for a clause, hand-compute the answer AND the answer the plausible-wrong version would give, and check they differ. `rule_fall`'s "far above the world" body at y -500 gave "not fallen" for the real rule, but also for an `abs()` mirror (500 is inside the 3584 limit), so the sabotage survived; y -4000 (mirror 4000 > 3584) makes them differ. Section 14 says one scene per clause; this says each scene must be able to fail.
+
+## 16. Run EVERY case that names the file you changed, and label what a pin proves (lessons from `rule_food`, 2026-11-19)
+(a) Moving code out of a shared file can break a test that COPIES that file (chutes' font-mutation test copied `game_core.c` to a scratch folder where `#include "../x.c"` no longer resolved; it failed silently from the first rule until the food step because I only ran the mode's own cases). Before committing, `grep -ln <file> harness/cases/*.pdl` and run all of them.
+(b) A pin has a KIND, say it in the case: HAND-COMPUTED (forced by the scene), PUBLISHED (an outside source gives the value, for example splitmix64 outputs), or PINNED-FROM-THE-MOVED-CODE (not independent: it only detects a later change). The independent proof that a MOVE changed nothing is the existing case that exercised the old code passing unchanged.
+(c) When your memory of a "known value" disagrees with the code, do not bend either: check a second known value; if the others agree the function is right and the memory is the faulty part, and say so in the case (here: splitmix64 output 2).

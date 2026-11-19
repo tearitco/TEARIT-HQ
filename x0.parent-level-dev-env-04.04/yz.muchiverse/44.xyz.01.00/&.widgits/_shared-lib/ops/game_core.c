@@ -67,6 +67,7 @@ enum { F_REACH = 0, F_STAY = 1, F_BOUNCE = 2 };
 #include "../rule_pickup.c"   /* the PICKUP rule (D92/D93): one pure module, also the CLI op rule_pickup_op */
 #include "../rule_goal.c"   /* the GOAL rule (D92/D93): one pure module, also the CLI op rule_goal_op */
 #include "../rule_win.c"   /* the WIN rule (D92/D93): one pure module over rule_goal.c, also the CLI op rule_win_op */
+#include "../rule_food.c"   /* the FOOD rule (D92/D93): one pure module over seed_mix.c, also the CLI op rule_food_op */
 #include "../rule_spawn.c"   /* the SPAWN rule (D92/D93): one pure module, also the CLI op rule_spawn_op */
 #include "../rule_fall.c"   /* the FALL rule (D92/D93): one pure module, also the CLI op rule_fall_op */
 #include "../rule_input.c"   /* the INPUT rule (D92/D93): one pure module, also the CLI op rule_input_op */
@@ -113,7 +114,7 @@ static int bad(const char *fmt, ...) { va_list ap; va_start(ap, fmt); vsnprintf(
 static uint64_t fnv(uint64_t h, const void *p, size_t n) { const unsigned char *s = p; for (size_t i = 0; i < n; i++) { h ^= s[i]; h *= 1099511628211ULL; } return h; }
 #define FNV0 14695981039346656037ULL
 static void hx(uint64_t h, char *o) { snprintf(o, 20, "%016llx", (unsigned long long)h); }
-static uint64_t mix(uint64_t x) { x += 0x9e3779b97f4a7c15ULL; x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL; x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL; return x ^ (x >> 31); }
+static uint64_t mix(uint64_t x) { return sm_mix(x); }   /* the house seeded mixer: seed_mix.c, one authority (rule_food.c uses it too) */
 static int die(long sd, long idx, int k) { return (int)(mix((uint64_t)sd * 1000003ULL + (uint64_t)idx * 16 + (uint64_t)k) % 6) + 1; }
 static long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000L + t.tv_nsec / 1000000L; }
 static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
@@ -249,12 +250,7 @@ static void q_push(const char *verb, const char *target, const char *at, const c
 }
 static int on_body(int x, int y, int upto) { for (int i = 0; i < upto; i++) if (S.bx[i] == x && S.by[i] == y) return 1; return 0; }
 /* the k-th food goes to free[ mix(seed*1000003 + k*16 + 7) % nfree ], free = the unoccupied cells in row-major order at the moment it spawns; returns 0 when the board is full */
-static int spawn_food(void) {
-    int nfree = 0; for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (!on_body(x, y, S.slen)) nfree++;
-    if (!nfree) return 0; int pick = (int)(mix((uint64_t)S.seed * 1000003ULL + (uint64_t)S.sfoods * 16 + 7) % (uint64_t)nfree), k = 0;
-    for (int y = 0; y < ROWS; y++) for (int x = 0; x < COLS; x++) if (!on_body(x, y, S.slen)) { if (k++ == pick) { S.sfood_x = x; S.sfood_y = y; S.sfoods++; return 1; } }
-    return 0;
-}
+static int spawn_food(void) { int fx = 0, fy = 0; if (!fd_spawn(S.bx, S.by, S.slen, COLS, ROWS, S.seed, S.sfoods, &fx, &fy)) return 0; S.sfood_x = fx; S.sfood_y = fy; S.sfoods++; return 1; }   /* the FOOD rule: rule_food.c, the same function the op rule_food_op runs (the caller counts the spawn) */
 static void snake_init(void) {
     S.slen = (int)R_startlen; S.sgrow = 0; S.sdir = 1; S.sscore = 0; S.sfoods = 0; S.nq = 0; S.lastturn_tick = -1; int hx = COLS / 2, hy = ROWS / 2;
     for (int i = 0; i < S.slen; i++) { S.bx[i] = hx - i; S.by[i] = hy; } spawn_food();

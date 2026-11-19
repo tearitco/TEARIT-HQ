@@ -775,7 +775,7 @@ RUN | $T/pb/gc.+x | $T/pg/chutes | $T/pgs | labelmask | 72 | 100
 EXPECT_OUT | glyph=432 outline=350 | PIN:-"100"-in-a-72-px-block-is-432-glyph-pixels-and-350-outline-pixels-(both-sides-agree-above,-this-pins-the-number)
 RUN | cp | $HOUSE/&.widgits/_shared-lib/ops/game_core.c | $T/pb/gc_font.c
 RUN | sed | -i | s/{0,0,0x5F,0,0}/{0,0,0x5E,0,0}/ | $T/pb/gc_font.c
-RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -o | $T/pb/gc_font.+x | $T/pb/gc_font.c
+RUN | gcc | -std=gnu11 | -Wno-format-truncation | -Wno-misleading-indentation | -O2 | -I | $HOUSE/&.widgits/_shared-lib/ops | -o | $T/pb/gc_font.+x | $T/pb/gc_font.c
 EXPECT_EXIT | 0 | the-copy-with-ONE-font-byte-changed-compiles
 RUN | $T/pb/gc_font.+x | $T/pg/chutes | $T/pgs | fontsum
 CAPTURE | f_gc

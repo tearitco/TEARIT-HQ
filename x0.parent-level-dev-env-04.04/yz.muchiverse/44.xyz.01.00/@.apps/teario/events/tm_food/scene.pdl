@@ -1,0 +1,11 @@
+# tm_food scene (snake rule, D93): a 3 x 3 board whose snake covers every cell but (1,0) and (0,1); seed 0, k 0 (the first food): the seeded pick lands on (0,1). Change K to 1 and the food moves to (1,0). A full board gives OK 0 (the game is won).
+BOARD | 3 | 3
+SEED | 0
+K | 0
+BODY | 0 | 0
+BODY | 2 | 0
+BODY | 1 | 1
+BODY | 2 | 1
+BODY | 0 | 2
+BODY | 1 | 2
+BODY | 2 | 2

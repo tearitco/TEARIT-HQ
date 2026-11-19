@@ -1,0 +1,95 @@
+# rule_food (2026-11-19; D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the FOOD rule as an op: where the k-th food of a snake game appears: a seeded pick among the cells not on the snake body, in ROW-MAJOR order. Over seed_mix.c (the house's seeded mixer).
+# TWO KINDS OF PINS, labelled: HAND-COMPUTED where the answer is forced (one free cell, a full board, the free-cell ORDER) and PUBLISHED where an outside source gives the value (splitmix64 outputs 1 and 3 for seed 0: 0xE220A8397B1DCDAF and 0x06C45D188009454F). The seed-driven picks (the hash decides) are PINNED-FROM-THE-MOVED-CODE: they are not independent, the independent proof that the move changed nothing is the existing `snake` case (180 checks, food positions in its ledgers) passing unchanged.
+RESULTS | ../results/rule_food.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_food_op.+x | $T/rd
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | full.pdl | BOARD \p 3 \p 3\nBODY \p 0 \p 0\nBODY \p 1 \p 0\nBODY \p 2 \p 0\nBODY \p 0 \p 1\nBODY \p 1 \p 1\nBODY \p 2 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2
+WRITE | free21.pdl | BOARD \p 3 \p 3\nBODY \p 0 \p 0\nBODY \p 1 \p 0\nBODY \p 2 \p 0\nBODY \p 0 \p 1\nBODY \p 1 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2
+WRITE | free00.pdl | BOARD \p 3 \p 3\nBODY \p 1 \p 0\nBODY \p 2 \p 0\nBODY \p 0 \p 1\nBODY \p 1 \p 1\nBODY \p 2 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2
+WRITE | two0.pdl | BOARD \p 3 \p 3\nBODY \p 0 \p 0\nBODY \p 2 \p 0\nBODY \p 1 \p 1\nBODY \p 2 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2\nK \p 0
+WRITE | two1.pdl | BOARD \p 3 \p 3\nBODY \p 0 \p 0\nBODY \p 2 \p 0\nBODY \p 1 \p 1\nBODY \p 2 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2\nK \p 1
+WRITE | two2.pdl | BOARD \p 3 \p 3\nBODY \p 0 \p 0\nBODY \p 2 \p 0\nBODY \p 1 \p 1\nBODY \p 2 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2\nK \p 2
+WRITE | two4.pdl | BOARD \p 3 \p 3\nBODY \p 0 \p 0\nBODY \p 2 \p 0\nBODY \p 1 \p 1\nBODY \p 2 \p 1\nBODY \p 0 \p 2\nBODY \p 1 \p 2\nBODY \p 2 \p 2\nK \p 4
+WRITE | open1.pdl | BOARD \p 1 \p 1
+WRITE | nobody.pdl | SEED \p 1
+WRITE | mix0.pdl | MIX \p 0
+WRITE | mix2g.pdl | MIX \p 4354685564936845354
+WRITE | mixg.pdl | MIX \p 11400714819323198485
+WRITE | s_0_0.pdl | BOARD \p 8 \p 8\nSEED \p 0\nK \p 0\nBODY \p 0 \p 0
+WRITE | s_0_1.pdl | BOARD \p 8 \p 8\nSEED \p 0\nK \p 1\nBODY \p 0 \p 0
+WRITE | s_0_0.pdl | BOARD \p 8 \p 8\nSEED \p 0\nK \p 0\nBODY \p 0 \p 0
+WRITE | s_0_5.pdl | BOARD \p 8 \p 8\nSEED \p 0\nK \p 5\nBODY \p 0 \p 0
+WRITE | s_1000_3.pdl | BOARD \p 8 \p 8\nSEED \p 1000\nK \p 3\nBODY \p 0 \p 0
+WRITE | s_12345_9.pdl | BOARD \p 8 \p 8\nSEED \p 12345\nK \p 9\nBODY \p 0 \p 0
+WRITE | s_77_40.pdl | BOARD \p 8 \p 8\nSEED \p 77\nK \p 40\nBODY \p 0 \p 0
+WRITE | s_5_11.pdl | BOARD \p 8 \p 8\nSEED \p 5\nK \p 11\nBODY \p 0 \p 0
+
+CASE    | forced-answers
+# 3 x 3 board. Full board (all 9 cells on the body): no food, OK 0. Exactly one free cell: the food goes THERE whatever the seed: (2,1) and (0,0)
+RUN | $T/rd | $T/full.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | FOOD -1,-1 OK 0 | HAND-COMPUTED-a-full-board-has-no-free-cell
+RUN | $T/rd | $T/free21.pdl
+EXPECT_OUT | FOOD 2,1 OK 1 | HAND-COMPUTED-the-only-free-cell-is-2-1
+RUN | $T/rd | $T/free00.pdl
+EXPECT_OUT | FOOD 0,0 OK 1 | HAND-COMPUTED-the-only-free-cell-is-0-0-(index-0-of-1)
+
+CASE    | row-major-order
+# two free cells, (1,0) and (0,1): in ROW-MAJOR order (y outer) free[0] = (1,0), free[1] = (0,1). The pick is the mixer's parity, so the food is (0,1) at k 0 and (1,0) at k 1: a column-major order would swap each answer
+RUN | $T/rd | $T/two0.pdl
+EXPECT_OUT | FOOD 0,1 OK 1 | PINNED-k-0-picks-free-1-which-is-0-1-in-row-major-order
+RUN | $T/rd | $T/two1.pdl
+EXPECT_OUT | FOOD 1,0 OK 1 | PINNED-k-1-picks-free-0-which-is-1-0
+RUN | $T/rd | $T/two2.pdl
+EXPECT_OUT | FOOD 1,0 OK 1 | PINNED-k-2
+RUN | $T/rd | $T/two4.pdl
+EXPECT_OUT | FOOD 0,1 OK 1 | PINNED-k-4-picks-free-1-again-(k-matters)
+
+CASE    | the-mixer
+# splitmix64 of seed 0: output 1 = mix(0) = 0xE220A8397B1DCDAF, output 3 = mix(2 x gamma) = 0x06C45D188009454F: PUBLISHED values (outside the repo); output 2 = mix(gamma) is PINNED from the code (my recollection of the published value disagreed, the other two agree, so the function is the published one)
+RUN | $T/rd | $T/mix0.pdl
+EXPECT_OUT | MIX 16294208416658607535 | PUBLISHED-splitmix64-output-1-for-seed-0-is-0xE220A8397B1DCDAF
+RUN | $T/rd | $T/mixg.pdl
+EXPECT_OUT | MIX 3055647633038352039 | PINNED-from-the-code-output-2
+RUN | $T/rd | $T/mix2g.pdl
+EXPECT_OUT | MIX 487617019471545679 | PUBLISHED-splitmix64-output-3-for-seed-0-is-0x06C45D188009454F
+
+CASE    | seed-and-count
+# a head-only snake on an 8 x 8 board: the seed and k decide (PINNED from the moved code; they also prove every constant in the pick is used: seed x 1000003, k x 16, + 7)
+RUN | $T/rd | $T/s_0_0.pdl
+EXPECT_OUT | FOOD 7,3 OK 1 | PINNED-seed-0-k-0
+RUN | $T/rd | $T/s_0_1.pdl
+EXPECT_OUT | FOOD 2,6 OK 1 | PINNED-seed-0-k-1
+RUN | $T/rd | $T/s_0_0.pdl
+EXPECT_OUT | FOOD 7,3 OK 1 | PINNED-seed-0-k-0
+RUN | $T/rd | $T/s_0_5.pdl
+EXPECT_OUT | FOOD 4,6 OK 1 | PINNED-seed-0-k-5
+RUN | $T/rd | $T/s_1000_3.pdl
+EXPECT_OUT | FOOD 2,3 OK 1 | PINNED-seed-1000-k-3
+RUN | $T/rd | $T/s_12345_9.pdl
+EXPECT_OUT | FOOD 6,7 OK 1 | PINNED-seed-12345-k-9
+RUN | $T/rd | $T/s_77_40.pdl
+EXPECT_OUT | FOOD 0,4 OK 1 | PINNED-seed-77-k-40
+RUN | $T/rd | $T/s_5_11.pdl
+EXPECT_OUT | FOOD 1,6 OK 1 | PINNED-seed-5-k-11
+
+CASE    | contract
+RUN | $T/rd | --describe
+EXPECT_OUT | RULE keys: none | the-op-describes-its-inputs-outputs-and-that-it-has-no-RULE-numbers
+RUN | $T/rd | $T/nobody.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-a-BOARD-row-is-refused
+EXPECT_OUT | needs BOARD | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_food (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_food$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_food-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_food/event_pkg/pages/page_1/event.ir.pdl | type=rule_food | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_food/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_food/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | FOOD 0,1 OK 1 | the-page-gives-the-SAME-line-as-the-op-alone

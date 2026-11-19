@@ -1833,3 +1833,11 @@ COMMAND rule_win
   PARAMS scene
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_win_op.+x" "$D/@.apps/teario/events/{scene}"
 END
+
+# rule_food = the FOOD rule (where the k-th food of a snake game appears: a seeded pick among the cells not on the body, in row-major order) of a game as an op (D93): runs `rule_food_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_food.c, over the house mixer seed_mix.c, the game calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_food_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_food
+  LABEL snake: Food rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_food_op.+x" "$D/@.apps/teario/events/{scene}"
+END
