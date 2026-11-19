@@ -100,3 +100,38 @@ if you fix one, fix the other the same way, or they'll silently drift and only
 ONE of the two real trigger paths (depending on which UI surface is used) will
 actually work.
 ================================================================================
+
+--------------------------------------------------------------------------------
+PITFALL 3 — the Read menu cell is too narrow for the Tao row (found 2026-11-19, NOT FIXED)
+Symptom: the picker from Read ("Choose") is a 264 px window. The row
+"Tao Te Ching (random chapter)" wraps to two lines; "chapter)" falls below its
+row bar, so the text looks like it escapes the cell.
+Cause (read, not guessed): the picker sets no width. The renderer's window
+width defaults to g_win_w = 260 (khtpm_core_render.c, ~line 5712 region), and the
+generic chtpm layout wraps a label that is wider than the item. The
+context-menu draw path (draw_context_menu) does not wrap, so this is a different path.
+Measured: picker window appears in 160 ms and is painted by ~0.7 s on a nested
+display (Xephyr :98), so the picker is not the slow part.
+Options (not chosen yet): (A) size the picker cell to its labels in the shared
+renderer (needs rebuild + bar relaunch); (B) shorten the label in
+data/sources.pdl to "Tao Te Ching" (data only, a workaround).
+A window size file (.hq_manager/win_size.txt) is NOT the fix: it stores a menu
+size in the entity folder, which is ghost data.
+
+--------------------------------------------------------------------------------
+PITFALL 4 — Read searched the WHOLE HOUSE for a file at a fixed path (FOUND + FIXED 2026-11-19)
+Symptom: clicking Read on the book-stack tile was slow before the menu appeared.
+Cause (measured): the live entity (xyzfs/users/<uid>/home/livedesk/pals/book-stack/meta.pdl and its
+menu.chtpm) found the reader event with
+  READER_PATH=$(find "$H" -path "*monads/*book-stack/.../event.pal" | head -1)
+with no -maxdepth: 48,138 directories, 2.7 s wall on every click, warm cache. The file is always at
+  $H/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
+Fix: try that real path first; the find stays ONLY as a fallback when the file is not there:
+  READER_PATH="$H/_.monads/_.book-stack/.../event.pal"; [ -f "$READER_PATH" ] || READER_PATH=$(find ...)
+Both files carry the same string (see PITFALL 2): change both together. Verified: the fast path
+resolves in 0.01 s; a control with the file only under a different folder name still found it by the fallback.
+Not the cause (all measured fast): the picker window (160 ms), asset_root_op (0.00 s), the Bible tool
+(0.15 s), the pc-hq book list and the projector (30 ms CPU in 12 s). LESSON: never `find` the house root
+for a file whose location is known; a fixed path first, a search only as a fallback.
+The live copy is user data (never committed): a fresh install copies the house template, so check
+that template's Read line too if the pals copy is ever regenerated.
