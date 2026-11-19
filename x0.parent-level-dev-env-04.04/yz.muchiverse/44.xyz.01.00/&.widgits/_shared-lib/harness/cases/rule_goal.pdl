@@ -1,0 +1,61 @@
+# rule_goal (2026-11-18; decision log D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the GOAL rule as an op. _shared-lib/rule_goal.c is the pure module (called in-process by the game tick loop for each body), ops/rule_goal_op.c is its CLI face.
+# Every pinned number is HAND-COMPUTED: a 200 x 200 body at x 1000 y 568 has its CENTRE at (1100, 668) = cell (4, 2). Scenes are designed so every clause is the only thing deciding some result.
+RESULTS | ../results/rule_goal.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_goal_op.+x | $T/rg
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | reach.pdl | GOAL \p 4 \p 2\nHERO \p 1000 \p 568 \p 200 \p 200\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 1100 \p 568 \p 200 \p 200
+WRITE | wrongx.pdl | GOAL \p 5 \p 2\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | wrongy.pdl | GOAL \p 4 \p 3\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | corner.pdl | GOAL \p 3 \p 2\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | e1179.pdl | GOAL \p 4 \p 2\nHERO \p 1179 \p 568 \p 200 \p 200
+WRITE | e1180.pdl | GOAL \p 4 \p 2\nHERO \p 1180 \p 568 \p 200 \p 200
+WRITE | e1180b.pdl | GOAL \p 5 \p 2\nHERO \p 1180 \p 568 \p 200 \p 200
+WRITE | negative.pdl | GOAL \p 0 \p 2\nHERO \p -300 \p 568 \p 200 \p 200
+WRITE | nogoal.pdl | HERO \p 1000 \p 568 \p 200 \p 200
+
+CASE    | reach
+# three bodies against the goal cell (4, 2): x 1000 (centre 1100, cell 4) yes; x 100 (centre 200, cell 0) no; x 1100 (centre 1200, cell 4) yes
+RUN | $T/rg | $T/reach.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | REACHED 101 | HAND-COMPUTED-bodies-1-and-3-are-in-cell-4-2-body-2-is-in-cell-0-2
+
+CASE    | the-centre-cell-decides
+# a wrong column, a wrong row and the top-left cell (3, 2) all miss; the edge: centre x 1279 (body x 1179) is column 4, centre x 1280 (body x 1180) is column 5
+RUN | $T/rg | $T/wrongx.pdl
+EXPECT_OUT | REACHED 0 | HAND-COMPUTED-goal-column-5-not-the-centre-column
+RUN | $T/rg | $T/wrongy.pdl
+EXPECT_OUT | REACHED 0 | HAND-COMPUTED-goal-row-3-not-the-centre-row
+RUN | $T/rg | $T/corner.pdl
+EXPECT_OUT | REACHED 0 | HAND-COMPUTED-the-top-left-cell-(3-2)-is-not-the-goal-cell-for-this-body
+RUN | $T/rg | $T/e1179.pdl
+EXPECT_OUT | REACHED 1 | HAND-COMPUTED-centre-x-1279-is-column-4
+RUN | $T/rg | $T/e1180.pdl
+EXPECT_OUT | REACHED 0 | HAND-COMPUTED-centre-x-1280-is-column-5-so-goal-4-2-is-not-reached
+RUN | $T/rg | $T/e1180b.pdl
+EXPECT_OUT | REACHED 1 | HAND-COMPUTED-and-goal-5-2-is-reached
+
+CASE    | the-truncation-quirk
+# C integer division truncates toward zero: a centre of -200 (body x -300) is cell 0, not -1. Existing behaviour, kept and pinned
+RUN | $T/rg | $T/negative.pdl
+EXPECT_OUT | REACHED 1 | HAND-COMPUTED--200-/-256-is-0-in-C
+
+CASE    | contract
+RUN | $T/rg | --describe
+EXPECT_OUT | RULE keys: none | the-op-describes-its-inputs-outputs-and-that-it-has-no-RULE-numbers
+RUN | $T/rg | $T/nogoal.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-a-GOAL-row-is-refused
+EXPECT_OUT | needs a GOAL | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_goal (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_goal$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_goal-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_goal/event_pkg/pages/page_1/event.ir.pdl | type=rule_goal | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_goal/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_goal/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | REACHED 10 | the-page-gives-the-SAME-line-as-the-op-alone

@@ -1,0 +1,4 @@
+# tm_pickup scene (Teario, D93): the hero centre (1100, 668) is cell (4, 2), where the item is: collected, armed, +50.
+RULE | pickup_score | 50
+HERO | 1000 | 568 | 200 | 200 | 0
+ITEM | 4 | 2 | 0

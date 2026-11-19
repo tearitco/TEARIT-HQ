@@ -1,0 +1,84 @@
+# rule_pickup (2026-11-18; decision log D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the PICKUP rule as an op. _shared-lib/rule_pickup.c is the pure module (called in-process by the game tick loop), ops/rule_pickup_op.c is its CLI face.
+# Every pinned number is HAND-COMPUTED: the hero box x 1000 y 568 w 200 h 200 has its CENTRE at (1100, 668), which is cell (1100 / 256, 668 / 256) = (4, 2). Scenes were designed so that EVERY clause is the only thing deciding some result (lesson of rule_stomp: two sabotages survived a first draft).
+RESULTS | ../results/rule_pickup.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_pickup_op.+x | $T/rk
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | collect.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0
+WRITE | wrongx.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 5 \p 2 \p 0
+WRITE | wrongy.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 3 \p 0
+WRITE | taken.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 1
+WRITE | samecell.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0\nITEM \p 4 \p 2 \p 0
+WRITE | two.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0\nITEM \p 9 \p 9 \p 0
+WRITE | corner.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 3 \p 2 \p 0\nITEM \p 4 \p 2 \p 0
+WRITE | e1179.pdl | RULE \p pickup_score \p 50\nHERO \p 1179 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0\nITEM \p 5 \p 2 \p 0
+WRITE | e1180.pdl | RULE \p pickup_score \p 50\nHERO \p 1180 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0\nITEM \p 5 \p 2 \p 0
+WRITE | keeparmed.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 1\nITEM \p 9 \p 9 \p 0
+WRITE | addscore.pdl | RULE \p pickup_score \p 50\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0\nSCORE \p 30
+WRITE | s75.pdl | RULE \p pickup_score \p 75\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0
+WRITE | s0.pdl | RULE \p pickup_score \p 0\nHERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0
+WRITE | negative.pdl | RULE \p pickup_score \p 50\nHERO \p -300 \p 568 \p 200 \p 200 \p 0\nITEM \p 0 \p 2 \p 0
+WRITE | norule.pdl | HERO \p 1000 \p 568 \p 200 \p 200 \p 0\nITEM \p 4 \p 2 \p 0
+
+CASE    | collect
+# the centre cell (4, 2) holds the item: collected, armed, +50 (the scene's SCORE is 0)
+RUN | $T/rk | $T/collect.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=1 | HAND-COMPUTED-centre-cell-4-2-holds-the-item
+RUN | $T/rk | $T/addscore.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 80 ITEMS=1 | HAND-COMPUTED-30-before-+-50-is-80-(the-score-is-added-to-not-replaced)
+
+CASE    | the-centre-cell-decides
+# a wrong column (5), a wrong row (3) and the top-left cell (3, 2) all miss; the centre cell is what counts. Edge: centre x 1279 (hero x 1179) is still column 4, centre x 1280 (hero x 1180) is column 5
+RUN | $T/rk | $T/wrongx.pdl
+EXPECT_OUT | COLLECTED 0 ARMED 0 SCORE 0 ITEMS=0 | HAND-COMPUTED-column-5-is-not-the-centre-column
+RUN | $T/rk | $T/wrongy.pdl
+EXPECT_OUT | COLLECTED 0 ARMED 0 SCORE 0 ITEMS=0 | HAND-COMPUTED-row-3-is-not-the-centre-row
+RUN | $T/rk | $T/corner.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=01 | HAND-COMPUTED-the-top-left-cell-(3-2)-is-NOT-collected-the-centre-cell-(4-2)-is
+RUN | $T/rk | $T/e1179.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=10 | HAND-COMPUTED-centre-x-1279-is-column-4
+RUN | $T/rk | $T/e1180.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=01 | HAND-COMPUTED-centre-x-1280-is-column-5-so-the-column-5-item-is-collected-and-the-column-4-item-is-not
+
+CASE    | once-and-all
+# an item already taken is not collected again; two items in ONE cell are both collected in the same call; an item elsewhere is left; an armed collector that collects nothing stays armed
+RUN | $T/rk | $T/taken.pdl
+EXPECT_OUT | COLLECTED 0 ARMED 0 SCORE 0 ITEMS=1 | HAND-COMPUTED-already-taken-nothing-happens
+RUN | $T/rk | $T/samecell.pdl
+EXPECT_OUT | COLLECTED 2 ARMED 1 SCORE 100 ITEMS=11 | HAND-COMPUTED-both-items-in-the-cell-are-collected-(2-x-50)
+RUN | $T/rk | $T/two.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=10 | HAND-COMPUTED-only-the-item-in-the-centre-cell
+RUN | $T/rk | $T/keeparmed.pdl
+EXPECT_OUT | COLLECTED 0 ARMED 1 SCORE 0 ITEMS=0 | HAND-COMPUTED-already-armed-and-nothing-collected-stays-armed
+
+CASE    | the-number-is-data
+RUN | $T/rk | $T/s75.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 75 | HAND-COMPUTED-pickup_score-75
+RUN | $T/rk | $T/s0.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 0 | HAND-COMPUTED-pickup_score-0-still-collects-and-arms
+
+CASE    | the-truncation-quirk
+# the centre expression uses C integer division (truncates toward zero): a centre of -200 (hero x -300) is cell 0, not -1. Existing behaviour, kept and pinned (no level lets a body get there); a floor division would not collect this item
+RUN | $T/rk | $T/negative.pdl
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=1 | HAND-COMPUTED--200-/-256-is-0-in-C
+
+CASE    | contract
+RUN | $T/rk | --describe
+EXPECT_OUT | RULE keys: pickup_score | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rk | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-RULE-pickup_score-is-refused
+EXPECT_OUT | the number is data, there is no default | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_pickup (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_pickup$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_pickup-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_pickup/event_pkg/pages/page_1/event.ir.pdl | type=rule_pickup | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_pickup/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_pickup/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | COLLECTED 1 ARMED 1 SCORE 50 ITEMS=1 | the-page-gives-the-SAME-line-as-the-op-alone

@@ -7,3 +7,7 @@ cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_patro
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_fireball_op.+x rule_fireball_op.c && echo "OK +x/rule_fireball_op.+x"
 # rule_stomp_op (2026-11-18, D93): the CLI face of the STOMP / HIT rule (rule_stomp.c over rule_patrol.c over phys_field.c)
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_stomp_op.+x rule_stomp_op.c && echo "OK +x/rule_stomp_op.+x"
+# rule_pickup_op (2026-11-18, D93): the CLI face of the pickup rule (rule_pickup.c over phys_field.c)
+cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_pickup_op.+x rule_pickup_op.c && echo "OK +x/rule_pickup_op.+x"
+# rule_goal_op (2026-11-18, D93): the CLI face of the goal rule (rule_goal.c over phys_field.c)
+cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_goal_op.+x rule_goal_op.c && echo "OK +x/rule_goal_op.+x"

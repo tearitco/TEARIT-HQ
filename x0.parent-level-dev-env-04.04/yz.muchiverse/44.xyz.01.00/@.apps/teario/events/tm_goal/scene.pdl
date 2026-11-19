@@ -1,0 +1,4 @@
+# tm_goal scene (Teario, D93): the goal cell is (4, 2); the hero centre (1100, 668) is in it, the second body (centre 200, 668) is not: REACHED 10.
+GOAL | 4 | 2
+HERO | 1000 | 568 | 200 | 200
+HERO | 100 | 568 | 200 | 200

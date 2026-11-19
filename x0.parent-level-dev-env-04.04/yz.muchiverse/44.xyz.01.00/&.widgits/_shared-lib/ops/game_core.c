@@ -64,6 +64,8 @@ enum { F_REACH = 0, F_STAY = 1, F_BOUNCE = 2 };
 #include "../rule_patrol.c"   /* the PATROL rule (D92/D93): one pure module, also the CLI op rule_patrol_op */
 #include "../rule_fireball.c"   /* the FIREBALL rule (D92/D93): one pure module, also the CLI op rule_fireball_op */
 #include "../rule_stomp.c"   /* the STOMP / HIT rule (D92/D93): one pure module, also the CLI op rule_stomp_op */
+#include "../rule_pickup.c"   /* the PICKUP rule (D92/D93): one pure module, also the CLI op rule_pickup_op */
+#include "../rule_goal.c"   /* the GOAL rule (D92/D93): one pure module, also the CLI op rule_goal_op */
 #define WALKISH (MODE == M_WALK || MODE == M_PLATFORM)
 static PF_Tune PT; static PF_Field PFIELD;   /* the physics knobs (RULE rows gravity, jump_v, run_max, accel, friction: part of the rules hash) and the one plane field of a flat level */
 
@@ -73,6 +75,7 @@ static int KIND = K_LEDGER, MODE = M_TRACK, FINISH = F_REACH, WRAP = 0, LEVELDOC
 static long R_maxp = 4, R_minp = 2, R_maxrows = 5000, R_ckpt = 10, R_seed = 7, R_maxticks = 4000, R_docmax = 40, R_startlen = 3, R_grow = 1, R_scorefood = 10, R_needclear = 0, R_patrol = 10;   /* R_patrol: RULE patrol_speed (Q8 per tick), default 10 = the speed before it was data */
 static FB_Rule FBR = { 56, 36, 4, 100 };   /* RULE fireball_speed, fireball_life, fireball_max, fireball_score; the defaults are the values before they were data */
 static ST_Rule STR = { 64, 133, 100 };   /* RULE stomp_margin, stomp_bounce, stomp_score; the defaults are the values before they were data (the bounce was jump_v * 2 / 3 = 133) */
+static PK_Rule PKR = { 50 };   /* RULE pickup_score; the default is the value before it was data */
 static int LENGTH = 30, NJ; static int JF[MAXJ], JT[MAXJ];
 static int COLS = 16, ROWS = 12;
 static char T_UP[48] = "jumped", T_DOWN[48] = "jumped", LEVELREL[300], LEVEL_SOLID[16] = "#";
@@ -172,7 +175,7 @@ static int load_config(void) {
         else if (!strcmp(fl[1], "ruleset")) snprintf(RS, sizeof RS, "%s", fl[2]); }
     fclose(f); if (!KIND) return bad("game.pdl: GAME | kind must be ledger, realtime or editor");
     if (!good_word(RS, 24, 1)) return bad("game.pdl: bad ruleset name");
-    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; STR = (ST_Rule){ 64, 133, 100 }; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
+    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; STR = (ST_Rule){ 64, 133, 100 }; PKR = (PK_Rule){ 50 }; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
     const char *files[2] = { "board.pdl", "rules.pdl" };
     for (int k = 0; k < 2; k++) { snprintf(p, sizeof p, "%s/rulesets/%s/%s", APP, RS, files[k]); f = fopen(p, "r"); if (!f) return bad("missing %s", p);
         RULES_HASH = fnv(RULES_HASH, files[k], strlen(files[k]));
@@ -192,7 +195,8 @@ static int load_config(void) {
                 else if (!strcmp(fl[1], "default_seed")) R_seed = v; else if (!strcmp(fl[1], "max_ticks")) R_maxticks = v; else if (!strcmp(fl[1], "max_doc_rows")) R_docmax = v;
                 else if (!strcmp(fl[1], "gravity")) PT.gravity = v; else if (!strcmp(fl[1], "jump_v")) PT.jump_v = v; else if (!strcmp(fl[1], "run_max")) PT.run_max = v; else if (!strcmp(fl[1], "accel")) PT.accel = v; else if (!strcmp(fl[1], "friction")) PT.friction = v;
                 else if (!strcmp(fl[1], "min_players")) R_minp = v; else if (!strcmp(fl[1], "start_len")) R_startlen = v; else if (!strcmp(fl[1], "grow")) R_grow = v; else if (!strcmp(fl[1], "score_food")) R_scorefood = v;
-                else if (!strcmp(fl[1], "publish_needs_clear")) R_needclear = v; else if (!strcmp(fl[1], "stomp_margin")) { if (v < 0 || v > 256) { fclose(f); return bad("rules.pdl: stomp_margin is 0 to 256"); } STR.margin = v; } else if (!strcmp(fl[1], "stomp_bounce")) { if (v < 0 || v > 1000) { fclose(f); return bad("rules.pdl: stomp_bounce is 0 to 1000"); } STR.bounce = v; } else if (!strcmp(fl[1], "stomp_score")) { if (v < 0 || v > 100000) { fclose(f); return bad("rules.pdl: stomp_score is 0 to 100000"); } STR.score = v; }
+                else if (!strcmp(fl[1], "publish_needs_clear")) R_needclear = v; else if (!strcmp(fl[1], "pickup_score")) { if (v < 0 || v > 100000) { fclose(f); return bad("rules.pdl: pickup_score is 0 to 100000"); } PKR.score = v; }
+                else if (!strcmp(fl[1], "stomp_margin")) { if (v < 0 || v > 256) { fclose(f); return bad("rules.pdl: stomp_margin is 0 to 256"); } STR.margin = v; } else if (!strcmp(fl[1], "stomp_bounce")) { if (v < 0 || v > 1000) { fclose(f); return bad("rules.pdl: stomp_bounce is 0 to 1000"); } STR.bounce = v; } else if (!strcmp(fl[1], "stomp_score")) { if (v < 0 || v > 100000) { fclose(f); return bad("rules.pdl: stomp_score is 0 to 100000"); } STR.score = v; }
                 else if (!strcmp(fl[1], "fireball_speed")) { if (v < 1 || v > 256) { fclose(f); return bad("rules.pdl: fireball_speed is 1 to 256"); } FBR.speed = v; } else if (!strcmp(fl[1], "fireball_life")) { if (v < 1 || v > 600) { fclose(f); return bad("rules.pdl: fireball_life is 1 to 600"); } FBR.life = (int)v; } else if (!strcmp(fl[1], "fireball_max")) { if (v < 1 || v > 4) { fclose(f); return bad("rules.pdl: fireball_max is 1 to 4"); } FBR.max = (int)v; } else if (!strcmp(fl[1], "fireball_score")) { if (v < 0 || v > 100000) { fclose(f); return bad("rules.pdl: fireball_score is 0 to 100000"); } FBR.score = v; }
                 else if (!strcmp(fl[1], "patrol_speed")) { if (v < 1 || v > 256) { fclose(f); return bad("rules.pdl: patrol_speed is 1 to 256"); } R_patrol = v; }
                 else if (!strcmp(fl[1], "finish")) { FINISH = !strcmp(fl[2], "reach") ? F_REACH : !strcmp(fl[2], "exact_stay") ? F_STAY : !strcmp(fl[2], "bounce") ? F_BOUNCE : -1; if (FINISH < 0) { fclose(f); return bad("rules.pdl: finish is reach, exact_stay or bounce"); } }
@@ -278,8 +282,8 @@ static void plat_step(void) {
     { int kk = fb_step(S.fb, 4, S.en, LV.ne, plat_solid, NULL); S.score += (long)kk * FBR.score; S.shots_kills += kk; }   /* the FIREBALL rule (rule_fireball.c): moves the shots, kills, returns the kills */
     for (int i = 0; i < S.np; i++) { PF_Body *h = &S.pb[i];
         { ST_Result sr = st_contact(h, S.en, LV.ne, &STR); S.score += (long)sr.stomps * STR.score; S.stomps += sr.stomps; if (sr.hit) { S.hits++; plat_spawn(i); } }   /* the STOMP / HIT rule: rule_stomp.c, the same function the op rule_stomp_op runs (a hit respawns the hero: still the game's) */
-        for (int p = 0; p < LV.npw; p++) if (!S.pw_taken[p] && (h->x + h->w / 2) / PF_Q == LV.px[p] && (h->y + h->h / 2) / PF_Q == LV.py[p]) { S.pw_taken[p] = 1; S.armed[i] = 1; S.score += 50; } }
-    S.tick++; for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; if ((b->x + b->w / 2) / PF_Q == LV.gx && (b->y + b->h / 2) / PF_Q == LV.gy) { S.winner = i; S.phase = PH_OVER; break; } }
+        pk_collect(h, LV.px, LV.py, S.pw_taken, LV.npw, &PKR, &S.armed[i], &S.score); }   /* the PICKUP rule: rule_pickup.c, the same function the op rule_pickup_op runs */
+    S.tick++; for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; if (gl_reached(b, LV.gx, LV.gy)) { S.winner = i; S.phase = PH_OVER; break; }   /* the GOAL rule: rule_goal.c, the same function the op rule_goal_op runs (the winner and the phase stay the loop of the game) */ }
 }
 static void step_tick(void) {
     if (MODE == M_SNAKE) { snake_step(); return; }

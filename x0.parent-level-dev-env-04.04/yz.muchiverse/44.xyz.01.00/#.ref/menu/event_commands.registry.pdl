@@ -1785,3 +1785,19 @@ COMMAND rule_stomp
   PARAMS scene
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_stomp_op.+x" "$D/@.apps/teario/events/{scene}"
 END
+
+# rule_pickup = the PICKUP rule (collect an item whose cell holds the body centre: taken, armed, +pickup_score) of a game as an op (D93): runs `rule_pickup_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_pickup.c the game tick loop calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_pickup_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_pickup
+  LABEL teario: Pickup rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_pickup_op.+x" "$D/@.apps/teario/events/{scene}"
+END
+
+# rule_goal = the GOAL rule (is the body centre in the goal cell) of a game as an op (D93): runs `rule_goal_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_goal.c the game tick loop calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_goal_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_goal
+  LABEL teario: Goal rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_goal_op.+x" "$D/@.apps/teario/events/{scene}"
+END
