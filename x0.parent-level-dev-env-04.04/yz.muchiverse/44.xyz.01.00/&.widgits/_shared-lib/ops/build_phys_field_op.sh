@@ -5,3 +5,5 @@ cd "$(dirname "$0")" && mkdir -p +x && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_patrol_op.+x rule_patrol_op.c && echo "OK +x/rule_patrol_op.+x"
 # rule_fireball_op (2026-11-18, D93): the CLI face of the FIREBALL rule (rule_fireball.c over rule_patrol.c over phys_field.c)
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_fireball_op.+x rule_fireball_op.c && echo "OK +x/rule_fireball_op.+x"
+# rule_stomp_op (2026-11-18, D93): the CLI face of the STOMP / HIT rule (rule_stomp.c over rule_patrol.c over phys_field.c)
+cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_stomp_op.+x rule_stomp_op.c && echo "OK +x/rule_stomp_op.+x"

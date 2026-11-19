@@ -1,0 +1,6 @@
+# tm_stomp scene (Teario, D93): the hero falls onto a walker, 620 <= 632 so it is a stomp (+100, the walker dies, the hero bounces at 133). Edit a RULE number here (try stomp_margin 0: the same contact becomes a hit).
+RULE | stomp_margin | 64
+RULE | stomp_bounce | 133
+RULE | stomp_score | 100
+HERO | 1000 | 460 | 200 | 200 | 40
+WALKER | 1000 | 568 | 200 | 200 | 1

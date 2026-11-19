@@ -2,6 +2,7 @@
 # min_players, max_players  one hero        ckpt_every  a `ckpt` row (the state hash) every this many logical ticks and at the end (plan 3.2: 300)
 # patrol_speed  an enemy walker speed in Q8 cells per tick (10 = 10/256 of a cell a tick), read by the PATROL rule (_shared-lib/rule_patrol.c, op rule_patrol_op); part of the rules hash, so a changed speed is a different game
 # fireball_speed, fireball_life, fireball_max, fireball_score  the FIREBALL rule (_shared-lib/rule_fireball.c, op rule_fireball_op): a shot flies fireball_speed Q8 per tick for fireball_life ticks, at most fireball_max at once (1 to 4), a kill is worth fireball_score; part of the rules hash
+# stomp_margin, stomp_bounce, stomp_score  the STOMP / HIT contact rule (_shared-lib/rule_stomp.c, op rule_stomp_op): falling onto a walker kills it if the feet were no deeper than stomp_margin (Q8) into its head before this tick; the hero bounces up at stomp_bounce (Q8 per tick); a stomp is worth stomp_score; any other touch is a hit; part of the rules hash
 # max_ticks  the longest run (plan 3.3: 9000 ticks = 5 minutes at 30 a second)        max_rows  hard cap on ledger rows
 # Ledger shape (INPUTS only, no row per tick): input pN left|right|stay (round = the tick), ckpt, seat. Replay simulates between rows with the same step function and refuses a ckpt whose hash differs.
 RULE | min_players  | 1
@@ -15,3 +16,6 @@ RULE | fireball_speed | 56
 RULE | fireball_life  | 36
 RULE | fireball_max   | 4
 RULE | fireball_score | 100
+RULE | stomp_margin  | 64
+RULE | stomp_bounce  | 133
+RULE | stomp_score   | 100

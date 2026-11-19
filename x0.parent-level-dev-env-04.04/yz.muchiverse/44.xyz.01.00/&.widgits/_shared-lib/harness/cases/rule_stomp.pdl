@@ -1,0 +1,97 @@
+# rule_stomp (2026-11-18; decision log D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the STOMP / HIT contact rule as an op. _shared-lib/rule_stomp.c is the pure module (called in-process by the game tick loop, targets are rule_patrol.c walkers), ops/rule_stomp_op.c is its CLI face.
+# Every pinned number is HAND-COMPUTED. Bodies are 200 x 200 Q8, the walker stands at x 1000, y 568 (its head at y 568), margin 64: a stomp needs  (hero y + 200) - vy  <=  568 + 64 = 632. Sabotage-proven (see the commit message).
+RESULTS | ../results/rule_stomp.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_stomp_op.+x | $T/rs
+EXPECT_EXISTS | rs | the-real-op-is-built
+WRITE | stomp.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 460 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | edge632.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 472 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | edge633.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 473 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | rising.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 460 \p 200 \p 200 \p -10\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | still.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 460 \p 200 \p 200 \p 0\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | side.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 900 \p 568 \p 200 \p 200 \p 0\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | apart.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1300 \p 568 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | touching.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 800 \p 568 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | dead.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 460 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 0
+WRITE | two.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 460 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1\nWALKER \p 1050 \p 568 \p 200 \p 200 \p 1
+WRITE | margin0.pdl | RULE \p stomp_margin \p 0\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 472 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | margin100.pdl | RULE \p stomp_margin \p 100\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 480 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | data.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 100\nRULE \p stomp_score \p 250\nHERO \p 1000 \p 460 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | norule.pdl | HERO \p 1000 \p 460 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | standing_above.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 400 \p 200 \p 200 \p 0\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+WRITE | hitfirst.pdl | RULE \p stomp_margin \p 64\nRULE \p stomp_bounce \p 133\nRULE \p stomp_score \p 100\nHERO \p 1000 \p 460 \p 200 \p 200 \p 40\nWALKER \p 1000 \p 400 \p 200 \p 200 \p 1\nWALKER \p 1000 \p 568 \p 200 \p 200 \p 1
+
+CASE    | stomp
+# the hero (y 460, falling 40) overlaps the walker (y 568 to 768): (460 + 200) - 40 = 620 <= 632, so it is a STOMP: the walker dies, vy = -133, +100
+RUN | $T/rs | $T/stomp.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | STOMPS 1 HIT 0 SCORE 100 HERO vy=-133 WALKERS=0 | HAND-COMPUTED-620-<=-632-a-stomp-the-walker-dies-and-the-hero-bounces
+
+CASE    | the-exact-boundary
+# (y + 200) - 40 against 632: y 472 gives 632 (<=, a stomp), y 473 gives 633 (a HIT)
+RUN | $T/rs | $T/edge632.pdl
+EXPECT_OUT | STOMPS 1 HIT 0 SCORE 100 HERO vy=-133 WALKERS=0 | HAND-COMPUTED-632-<=-632-still-a-stomp
+RUN | $T/rs | $T/edge633.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 SCORE 0 HERO vy=40 WALKERS=1 | HAND-COMPUTED-633-is-too-deep-so-it-is-a-HIT-and-the-walker-lives
+
+CASE    | not-a-stomp
+# rising (vy -10) and standing (vy 0) are hits even from above; a side touch is a hit
+RUN | $T/rs | $T/rising.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 SCORE 0 HERO vy=-10 WALKERS=1 | HAND-COMPUTED-rising-is-a-hit
+RUN | $T/rs | $T/still.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 SCORE 0 HERO vy=0 WALKERS=1 | HAND-COMPUTED-vy-0-is-a-hit
+RUN | $T/rs | $T/side.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 SCORE 0 HERO vy=0 WALKERS=1 | HAND-COMPUTED-a-side-touch-x-900-to-1100-over-1000-to-1200-is-a-hit
+
+CASE    | no-contact
+# apart (x 1300, past the walker's right edge 1200) and only edge-touching (x 800 + 200 = 1000: the overlap is strict) do nothing, even while falling; a dead walker is ignored
+RUN | $T/rs | $T/apart.pdl
+EXPECT_OUT | STOMPS 0 HIT 0 SCORE 0 HERO vy=40 WALKERS=1 | HAND-COMPUTED-no-overlap-nothing-happens
+RUN | $T/rs | $T/touching.pdl
+EXPECT_OUT | STOMPS 0 HIT 0 SCORE 0 HERO vy=40 WALKERS=1 | HAND-COMPUTED-edges-that-only-touch-do-not-overlap
+RUN | $T/rs | $T/dead.pdl
+EXPECT_OUT | STOMPS 0 HIT 0 SCORE 0 HERO vy=40 WALKERS=0 | HAND-COMPUTED-a-dead-walker-is-ignored-(no-stomp-no-hit)
+
+CASE    | two-walkers
+# a stomp turns vy into a rise, so a SECOND overlapping walker in the same tick is a HIT (the existing behaviour, kept): the first walker is stomped (+100), then the hit ends the scan
+RUN | $T/rs | $T/two.pdl
+EXPECT_OUT | STOMPS 1 HIT 1 SCORE 100 HERO vy=-133 WALKERS=01 | HAND-COMPUTED-first-stomped-second-is-a-hit
+
+CASE    | the-numbers-are-data
+# stomp_margin 0: 632 <= 568 is false, so y 472 is a HIT; stomp_margin 100: (480 + 200) - 40 = 640 <= 668, a STOMP; stomp_bounce 100 gives vy -100 and stomp_score 250 gives SCORE 250
+RUN | $T/rs | $T/margin0.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 | HAND-COMPUTED-margin-0-the-same-contact-is-now-a-hit
+RUN | $T/rs | $T/margin100.pdl
+EXPECT_OUT | STOMPS 1 HIT 0 SCORE 100 | HAND-COMPUTED-margin-100-a-deeper-stomp-counts
+RUN | $T/rs | $T/data.pdl
+EXPECT_OUT | STOMPS 1 HIT 0 SCORE 250 HERO vy=-100 WALKERS=0 | HAND-COMPUTED-bounce-100-and-score-250-come-from-the-RULE-rows
+
+CASE    | contract
+RUN | $T/rs | --describe
+EXPECT_OUT | RULE keys: stomp_margin stomp_bounce stomp_score | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rs | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-the-three-RULE-numbers-is-refused
+EXPECT_OUT | the numbers are data, there is no default | and-the-op-says-why
+
+CASE    | falling-is-required
+# a hero resting just above (y 400 to 600, vy 0) overlaps the walker head (568) by 32 and its feet term (400 + 200) - 0 = 600 <= 632 WOULD pass the depth test: only vy > 0 makes it a HIT. A falling-only rule is what stops a hero that is standing or rising from killing by touch
+RUN | $T/rs | $T/standing_above.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 SCORE 0 HERO vy=0 WALKERS=1 | HAND-COMPUTED-not-falling-so-a-HIT-although-the-depth-test-alone-would-pass
+
+CASE    | a-hit-stops-the-scan
+# the hero (y 460, falling 40) overlaps walker A (y 400: (660 - 40) = 620 <= 464 is false, a HIT) and then walker B (the standard one, a stomp). The hit ENDS the scan, so B is NOT stomped: WALKERS=11, vy stays 40
+RUN | $T/rs | $T/hitfirst.pdl
+EXPECT_OUT | STOMPS 0 HIT 1 SCORE 0 HERO vy=40 WALKERS=11 | HAND-COMPUTED-the-first-contact-is-a-hit-and-the-scan-stops-before-the-second-walker
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_stomp (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_stomp$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_stomp-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_stomp/event_pkg/pages/page_1/event.ir.pdl | type=rule_stomp | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_stomp/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_stomp/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | STOMPS 1 HIT 0 SCORE 100 HERO vy=-133 WALKERS=0 | the-page-gives-the-SAME-line-as-the-op-alone-(the-stomp)

@@ -1777,3 +1777,11 @@ COMMAND rule_fireball
   PARAMS scene,ticks
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_fireball_op.+x" "$D/@.apps/teario/events/{scene}" '{ticks}'
 END
+
+# rule_stomp = the STOMP / HIT contact rule of a game as an op (D93): runs `rule_stomp_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_stomp.c the game tick loop calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_stomp_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_stomp
+  LABEL teario: Stomp / hit rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_stomp_op.+x" "$D/@.apps/teario/events/{scene}"
+END
