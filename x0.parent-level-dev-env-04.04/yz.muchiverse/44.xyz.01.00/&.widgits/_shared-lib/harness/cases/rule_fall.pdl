@@ -1,0 +1,55 @@
+# rule_fall (2026-11-19; D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the FALL rule as an op: a body whose top edge is strictly below (level height + fall_margin) cells has fallen out of the world.
+# HAND-COMPUTED: level 12 cells, margin 2: limit = (12 + 2) * 256 = 14 * 256 = 3584. A body at y 3584 is ON the limit (not fallen: strict), at y 3585 it has fallen.
+RESULTS | ../results/rule_fall.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_fall_op.+x | $T/rf
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | edge.pdl | RULE \p fall_margin \p 2\nLEVEL \p 12\nBODY \p 3584\nBODY \p 3585\nBODY \p 0\nBODY \p 3000
+WRITE | m0.pdl | RULE \p fall_margin \p 0\nLEVEL \p 12\nBODY \p 3072\nBODY \p 3073
+WRITE | m5.pdl | RULE \p fall_margin \p 5\nLEVEL \p 12\nBODY \p 4352\nBODY \p 4353
+WRITE | h3.pdl | RULE \p fall_margin \p 2\nLEVEL \p 3\nBODY \p 1280\nBODY \p 1281
+WRITE | neg.pdl | RULE \p fall_margin \p 2\nLEVEL \p 12\nBODY \p -4000
+WRITE | norule.pdl | LEVEL \p 12\nBODY \p 0
+WRITE | nolevel.pdl | RULE \p fall_margin \p 2\nBODY \p 0
+
+CASE    | the-limit
+# level 12, margin 2: limit 3584; y 3584 has NOT fallen (strict), 3585 has; 0 and 3000 are inside the world
+RUN | $T/rf | $T/edge.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | LIMIT 3584 FELL 0100 | HAND-COMPUTED-14-x-256-is-3584-and-only-the-body-strictly-below-it-fell
+
+CASE    | the-numbers-are-data
+# margin 0: limit 12 x 256 = 3072 (3072 stays, 3073 falls); margin 5: 17 x 256 = 4352 (4352 stays, 4353 falls); a level 3 high with margin 2: 5 x 256 = 1280
+RUN | $T/rf | $T/m0.pdl
+EXPECT_OUT | LIMIT 3072 FELL 01 | HAND-COMPUTED-margin-0
+RUN | $T/rf | $T/m5.pdl
+EXPECT_OUT | LIMIT 4352 FELL 01 | HAND-COMPUTED-margin-5
+RUN | $T/rf | $T/h3.pdl
+EXPECT_OUT | LIMIT 1280 FELL 01 | HAND-COMPUTED-the-level-height-counts-too
+
+CASE    | above-the-world
+RUN | $T/rf | $T/neg.pdl
+EXPECT_OUT | LIMIT 3584 FELL 0 | HAND-COMPUTED-far-above-the-world-is-not-a-fall-(its-mirror-4000-would-be)
+
+CASE    | contract
+RUN | $T/rf | --describe
+EXPECT_OUT | RULE keys: fall_margin | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rf | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-RULE-fall_margin-is-refused
+EXPECT_OUT | the number is data, there is no default | and-the-op-says-why
+RUN | $T/rf | $T/nolevel.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-a-LEVEL-row-is-refused
+EXPECT_OUT | needs a LEVEL | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_fall (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_fall$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_fall-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_fall/event_pkg/pages/page_1/event.ir.pdl | type=rule_fall | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_fall/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_fall/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | LIMIT 3584 FELL 01 | the-page-gives-the-SAME-line-as-the-op-alone

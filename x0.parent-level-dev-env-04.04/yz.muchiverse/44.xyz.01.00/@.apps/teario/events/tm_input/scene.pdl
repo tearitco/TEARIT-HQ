@@ -1,0 +1,2 @@
+# tm_input scene (Teario, D93): the seat has pressed right + jump + fire while armed and facing left: mask 2 | 4 = 6, shoot 1, facing turns to 1, jump and fire are consumed (MASK 6 SHOOT 1 FACING 1 AFTER jp=0 fire=0 dir=1).
+LATCH | 1 | 1 | 1 | 1 | -1

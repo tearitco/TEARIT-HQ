@@ -73,7 +73,7 @@ EXPECT_OUT_IS | 5 | INPUTS-ONLY-5-rows-for-a-15-tick-run:-new-join-start-input-c
 EXPECT_HAS | $T/tp_g1/ledger.txt | mode=walk | the-first-row-records-the-mode
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | verify_clear
 EXPECT_EXIT | 0 | a-won-run-IS-a-verified-clear
-EXPECT_OUT_IS | CLEAR level=c33747c5fc30580b;run=4e05937c3e8a3833;ticks=15 | with-the-level-hash-the-run-hash-and-the-ticks
+EXPECT_OUT_IS | CLEAR level=c33747c5fc30580b;run=78e46c3849c2ace3;ticks=15 | with-the-level-hash-the-run-hash-and-the-ticks
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | replay
 EXPECT_OUT_IS | REPLAY events=5 hash=4fb62ecadb9ca27f | replay-reproduces-the-pinned-hash
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tp/teario-play | $T/tp_g1 | check
@@ -175,7 +175,7 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/teario-pl
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | provider | $HOUSE/@.apps/teario-play | $T/tp_gp | $T/tp_x2
 EXPECT_EXIT | 0 | the-data-studio-runs-the-Teario-Play-exporter-on-a-platform-run
 EXPECT_OUT | files=3 | three-files
-EXPECT_HAS | $T/tp_x2/game.csv | 29ca75e2b8db2370,realtime,default,be9593ccfa48d12a,7,1,1,1,12,241,over,winner,p1,human,8604b2c5e0be7f49,platform,241, | game.csv:-the-Meadow-clear-by-a-human-in-241-ticks-12-rows-mode-platform
+EXPECT_HAS | $T/tp_x2/game.csv | 001acb8e1e6383ec,realtime,default,4f8ef6482152e240,7,1,1,1,12,241,over,winner,p1,human,8604b2c5e0be7f49,platform,241, | game.csv:-the-Meadow-clear-by-a-human-in-241-ticks-12-rows-mode-platform
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | check | $T/tp_x2/game.csv | $T/tp_x2/schema.pdl
 EXPECT_EXIT | 0 | the-schema-passes-the-studios-check
 RUN | $HOUSE/&.hq-apps/data-hq/ops/+x/data_op.+x | index | $T/tp_x2

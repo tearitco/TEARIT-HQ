@@ -1,0 +1,67 @@
+# rule_input (2026-11-19; D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the INPUT rule as an op: a seat's latched input (dir, jump, fire) becomes this tick's controls (the mask phys_field.c takes: 1 left, 2 right, 4 jump), the facing, whether a shot is fired, and which latches are consumed.
+# HAND-COMPUTED from the definition: mask = (dir<0 ? 1 : dir>0 ? 2 : 0) | (jp ? 4 : 0); facing follows a non-zero dir and is kept at dir 0; shoot = fire AND armed; jump and fire are one-shot (cleared), dir stays latched. LATCH is dir | jp | fire | armed | facing.
+RESULTS | ../results/rule_input.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_input_op.+x | $T/ri
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | left.pdl | LATCH \p -1 \p 0 \p 0 \p 0 \p 1
+WRITE | right.pdl | LATCH \p 1 \p 0 \p 0 \p 0 \p -1
+WRITE | stay.pdl | LATCH \p 0 \p 0 \p 0 \p 0 \p -1
+WRITE | jump.pdl | LATCH \p 0 \p 1 \p 0 \p 0 \p 1
+WRITE | rj.pdl | LATCH \p 1 \p 1 \p 0 \p 0 \p -1
+WRITE | lj.pdl | LATCH \p -1 \p 1 \p 0 \p 0 \p 1
+WRITE | fa.pdl | LATCH \p 0 \p 0 \p 1 \p 1 \p 1
+WRITE | fu.pdl | LATCH \p 0 \p 0 \p 1 \p 0 \p 1
+WRITE | na.pdl | LATCH \p 0 \p 0 \p 0 \p 1 \p 1
+WRITE | all.pdl | LATCH \p -1 \p 1 \p 1 \p 1 \p 1
+WRITE | nolatch.pdl | # nothing
+
+CASE    | the-mask
+# left 1, right 2, none 0, jump 4, right+jump 6, left+jump 5
+RUN | $T/ri | $T/left.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | MASK 1 SHOOT 0 FACING -1 AFTER jp=0 fire=0 dir=-1 | HAND-COMPUTED-left-is-1
+RUN | $T/ri | $T/right.pdl
+EXPECT_OUT | MASK 2 SHOOT 0 FACING 1 AFTER jp=0 fire=0 dir=1 | HAND-COMPUTED-right-is-2
+RUN | $T/ri | $T/stay.pdl
+EXPECT_OUT | MASK 0 SHOOT 0 FACING -1 AFTER jp=0 fire=0 dir=0 | HAND-COMPUTED-no-direction-is-0-and-the-facing-is-KEPT-(-1)
+RUN | $T/ri | $T/jump.pdl
+EXPECT_OUT | MASK 4 SHOOT 0 FACING 1 AFTER jp=0 fire=0 dir=0 | HAND-COMPUTED-jump-alone-is-4-and-the-facing-is-kept-(1)
+RUN | $T/ri | $T/rj.pdl
+EXPECT_OUT | MASK 6 SHOOT 0 FACING 1 AFTER jp=0 fire=0 dir=1 | HAND-COMPUTED-right-plus-jump-is-6-and-the-facing-turns-from--1-to-1
+RUN | $T/ri | $T/lj.pdl
+EXPECT_OUT | MASK 5 SHOOT 0 FACING -1 AFTER jp=0 fire=0 dir=-1 | HAND-COMPUTED-left-plus-jump-is-5-and-the-facing-turns-from-1-to--1
+
+CASE    | fire
+# a fire press shoots only when armed; an unarmed press shoots nothing; armed without a press shoots nothing; every fire latch is consumed
+RUN | $T/ri | $T/fa.pdl
+EXPECT_OUT | MASK 0 SHOOT 1 FACING 1 AFTER jp=0 fire=0 dir=0 | HAND-COMPUTED-press-and-armed-shoots
+RUN | $T/ri | $T/fu.pdl
+EXPECT_OUT | MASK 0 SHOOT 0 FACING 1 AFTER jp=0 fire=0 dir=0 | HAND-COMPUTED-press-but-unarmed-shoots-nothing-and-the-press-is-still-consumed
+RUN | $T/ri | $T/na.pdl
+EXPECT_OUT | MASK 0 SHOOT 0 FACING 1 AFTER jp=0 fire=0 dir=0 | HAND-COMPUTED-armed-without-a-press-shoots-nothing
+
+CASE    | one-shot-latches
+# everything at once: left + jump + fire + armed: mask 5, shoot, facing -1, jump and fire cleared, the direction stays latched (-1)
+RUN | $T/ri | $T/all.pdl
+EXPECT_OUT | MASK 5 SHOOT 1 FACING -1 AFTER jp=0 fire=0 dir=-1 | HAND-COMPUTED-the-direction-stays-latched-the-jump-and-fire-are-cleared
+
+CASE    | contract
+RUN | $T/ri | --describe
+EXPECT_OUT | RULE keys: none | the-op-describes-its-inputs-outputs-and-that-it-has-no-RULE-numbers
+RUN | $T/ri | $T/nolatch.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-a-LATCH-row-is-refused
+EXPECT_OUT | needs a LATCH | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_input (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_input$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_input-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_input/event_pkg/pages/page_1/event.ir.pdl | type=rule_input | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_input/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_input/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | MASK 6 SHOOT 1 FACING 1 AFTER jp=0 fire=0 dir=1 | the-page-gives-the-SAME-line-as-the-op-alone

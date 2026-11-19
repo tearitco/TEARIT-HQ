@@ -147,7 +147,7 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/
 CAPTURE | q3
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | clear | $T/tm/teario-play | $T/tm_pw
 EXPECT_EXIT | 0 | the-clear-of-THIS-level-is-recorded
-EXPECT_OUT_IS | clear recorded: level=c33747c5fc30580b;run=4e05937c3e8a3833;ticks=15 | with-level-run-and-ticks
+EXPECT_OUT_IS | clear recorded: level=c33747c5fc30580b;run=78e46c3849c2ace3;ticks=15 | with-level-run-and-ticks
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | ledger_hash
 CAPTURE | q4
 EXPECT_NE | $q3 | $q4 | vacuity-the-clear-DID-append-a-row-(the-refusals-before-appended-nothing)
@@ -156,7 +156,7 @@ EXPECT_EXIT | 0 | PUBLISH-IS-ACCEPTED-AFTER-THE-VERIFIED-CLEAR
 EXPECT_OUT | published doc=090de069773bcc19 rows=15 | with-the-doc-hash
 RUN | grep | -c | -F | \pclear\p | $T/tm_g/ledger.txt
 EXPECT_OUT_IS | 1 | exactly-one-clear-row
-EXPECT_HAS | $T/tm_g/ledger.txt | EVENT\p17\pauthor\ppublish\p-\p15\pdoc=090de069773bcc19;level=c33747c5fc30580b;clear=4e05937c3e8a3833 | the-publish-row-records-the-doc-hash-the-LEVEL-hash-and-the-clear-run-hash
+EXPECT_HAS | $T/tm_g/ledger.txt | EVENT\p17\pauthor\ppublish\p-\p15\pdoc=090de069773bcc19;level=c33747c5fc30580b;clear=78e46c3849c2ace3 | the-publish-row-records-the-doc-hash-the-LEVEL-hash-and-the-clear-run-hash
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | check
 EXPECT_OUT | CHECK ok | checks
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | replay
@@ -188,7 +188,7 @@ EXPECT_EXIT | 1 | NEGATIVE-A-LEDGER-WITH-ITS-CLEAR-ROWS-DELETED-BUT-A-PUBLISH-RO
 EXPECT_OUT | no verified clear | by-the-publish-rule-itself-at-replay
 MKDIR   | tm_h2
 RUN | cp | $T/tm_g/ledger.txt | $T/tm_h2/ledger.txt
-RUN | sed | -i | s/level=c33747c5fc30580b;run=4e05937c3e8a3833/level=c33747c5fc30580a;run=4e05937c3e8a3833/ | $T/tm_h2/ledger.txt
+RUN | sed | -i | s/level=c33747c5fc30580b;run=78e46c3849c2ace3/level=c33747c5fc30580a;run=78e46c3849c2ace3/ | $T/tm_h2/ledger.txt
 RUN | cmp | $T/tm_g/ledger.txt | $T/tm_h2/ledger.txt
 EXPECT_EXIT | 1 | vacuity-the-level-hash-edit-changed-the-file
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_h2 | replay

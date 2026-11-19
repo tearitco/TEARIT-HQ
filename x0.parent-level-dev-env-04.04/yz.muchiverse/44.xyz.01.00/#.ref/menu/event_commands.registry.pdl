@@ -1809,3 +1809,19 @@ COMMAND rule_spawn
   PARAMS scene
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_spawn_op.+x" "$D/@.apps/teario/events/{scene}"
 END
+
+# rule_fall = the FALL rule (has a body sunk below the world: strictly past (level height + fall_margin) cells) of a game as an op (D93): runs `rule_fall_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_fall.c the game calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_fall_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_fall
+  LABEL teario: Fall rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_fall_op.+x" "$D/@.apps/teario/events/{scene}"
+END
+
+# rule_input = the INPUT rule (a seat's latched direction, jump and fire become this tick's mask, facing and shot; jump and fire are one-shot) of a game as an op (D93): runs `rule_input_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_input.c the game calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_input_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_input
+  LABEL teario: Input rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_input_op.+x" "$D/@.apps/teario/events/{scene}"
+END

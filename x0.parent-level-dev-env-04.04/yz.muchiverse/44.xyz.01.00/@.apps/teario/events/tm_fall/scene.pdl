@@ -1,0 +1,5 @@
+# tm_fall scene (Teario, D93): level 12 cells, margin 2: limit (12 + 2) * 256 = 3584. The body at 3584 is on the limit (not fallen), the one at 3585 has fallen: LIMIT 3584 FELL 01.
+RULE | fall_margin | 2
+LEVEL | 12
+BODY | 3584
+BODY | 3585
