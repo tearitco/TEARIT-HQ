@@ -1,0 +1,5 @@
+# tm_win scene (Teario, D93): the goal is cell (4, 2); seats 1 and 2 both stand in it on the same tick (centre 1100, 668), seat 0 does not: the LOWEST seat in the goal wins, WINNER 1 OVER 1. Edit a HERO x to 100 and run again.
+GOAL | 4 | 2
+HERO | 100 | 568 | 200 | 200
+HERO | 1000 | 568 | 200 | 200
+HERO | 1000 | 568 | 200 | 200

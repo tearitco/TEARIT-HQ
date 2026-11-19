@@ -66,6 +66,7 @@ enum { F_REACH = 0, F_STAY = 1, F_BOUNCE = 2 };
 #include "../rule_stomp.c"   /* the STOMP / HIT rule (D92/D93): one pure module, also the CLI op rule_stomp_op */
 #include "../rule_pickup.c"   /* the PICKUP rule (D92/D93): one pure module, also the CLI op rule_pickup_op */
 #include "../rule_goal.c"   /* the GOAL rule (D92/D93): one pure module, also the CLI op rule_goal_op */
+#include "../rule_win.c"   /* the WIN rule (D92/D93): one pure module over rule_goal.c, also the CLI op rule_win_op */
 #include "../rule_spawn.c"   /* the SPAWN rule (D92/D93): one pure module, also the CLI op rule_spawn_op */
 #include "../rule_fall.c"   /* the FALL rule (D92/D93): one pure module, also the CLI op rule_fall_op */
 #include "../rule_input.c"   /* the INPUT rule (D92/D93): one pure module, also the CLI op rule_input_op */
@@ -290,7 +291,7 @@ static void plat_step(void) {
     for (int i = 0; i < S.np; i++) { PF_Body *h = &S.pb[i];
         { ST_Result sr = st_contact(h, S.en, LV.ne, &STR); S.score += (long)sr.stomps * STR.score; S.stomps += sr.stomps; if (sr.hit) { S.hits++; plat_spawn(i); } }   /* the STOMP / HIT rule: rule_stomp.c, the same function the op rule_stomp_op runs (a hit respawns the hero: still the game's) */
         pk_collect(h, LV.px, LV.py, S.pw_taken, LV.npw, &PKR, &S.armed[i], &S.score); }   /* the PICKUP rule: rule_pickup.c, the same function the op rule_pickup_op runs */
-    S.tick++; for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; if (gl_reached(b, LV.gx, LV.gy)) { S.winner = i; S.phase = PH_OVER; break; }   /* the GOAL rule: rule_goal.c, the same function the op rule_goal_op runs (the winner and the phase stay the loop of the game) */ }
+    S.tick++; { int w = wn_winner(S.pb, S.np, LV.gx, LV.gy); if (w >= 0) { S.winner = w; S.phase = PH_OVER; } }   /* the WIN rule: rule_win.c (over rule_goal.c), the same function the op rule_win_op runs (the phase and the winner stay the game's state) */
 }
 static void step_tick(void) {
     if (MODE == M_SNAKE) { snake_step(); return; }

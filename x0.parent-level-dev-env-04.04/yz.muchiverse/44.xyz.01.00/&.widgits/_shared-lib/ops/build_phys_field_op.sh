@@ -17,3 +17,5 @@ cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_spawn
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_fall_op.+x rule_fall_op.c && echo "OK +x/rule_fall_op.+x"
 # rule_input_op (2026-11-19, D93): the CLI face of the input rule (rule_input.c)
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_input_op.+x rule_input_op.c && echo "OK +x/rule_input_op.+x"
+# rule_win_op (2026-11-19, D93): the CLI face of the win rule (rule_win.c over rule_goal.c)
+cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_win_op.+x rule_win_op.c && echo "OK +x/rule_win_op.+x"

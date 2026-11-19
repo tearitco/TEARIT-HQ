@@ -1,0 +1,64 @@
+# rule_win (2026-11-19; D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the WIN rule as an op: the lowest-numbered seat whose body centre is in the goal cell wins; none = -1. Built on rule_goal (the centre cell).
+# HAND-COMPUTED: the goal is cell (4, 2). A 200 x 200 body at x 1000 y 568 has its centre (1100, 668) = cell (4, 2): IN. At x 100 the centre is (200, 668) = cell (0, 2): OUT. Scenes are designed so the plausible-wrong version (last seat wins, any seat counts, off-by-one) gives a DIFFERENT answer (standard section 15).
+RESULTS | ../results/rule_win.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_win_op.+x | $T/rw
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | one.pdl | GOAL \p 4 \p 2\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | second.pdl | GOAL \p 4 \p 2\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | third.pdl | GOAL \p 4 \p 2\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | tie.pdl | GOAL \p 4 \p 2\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 1000 \p 568 \p 200 \p 200\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | tie3.pdl | GOAL \p 4 \p 2\nHERO \p 1000 \p 568 \p 200 \p 200\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | none.pdl | GOAL \p 4 \p 2\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 100 \p 568 \p 200 \p 200
+WRITE | empty.pdl | GOAL \p 4 \p 2
+WRITE | other.pdl | GOAL \p 0 \p 2\nHERO \p 100 \p 568 \p 200 \p 200\nHERO \p 1000 \p 568 \p 200 \p 200
+WRITE | nogoal.pdl | HERO \p 1000 \p 568 \p 200 \p 200
+
+CASE    | who-wins
+# one body in the goal: seat 0; the second seat in: seat 1; only the third in: seat 2 (the index is the seat, not a count)
+RUN | $T/rw | $T/one.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | WINNER 0 OVER 1 | HAND-COMPUTED-seat-0-is-in-cell-4-2
+RUN | $T/rw | $T/second.pdl
+EXPECT_OUT | WINNER 1 OVER 1 | HAND-COMPUTED-seat-0-is-out-seat-1-is-in
+RUN | $T/rw | $T/third.pdl
+EXPECT_OUT | WINNER 2 OVER 1 | HAND-COMPUTED-only-seat-2-is-in-so-the-winner-is-index-2
+
+CASE    | a-tie-goes-to-the-lowest-seat
+# two bodies in on the same tick: seats 1 and 2 -> seat 1 (a last-wins rule would say 2); seats 0 and 2 -> seat 0
+RUN | $T/rw | $T/tie.pdl
+EXPECT_OUT | WINNER 1 OVER 1 | HAND-COMPUTED-seats-1-and-2-both-in-the-lowest-wins
+RUN | $T/rw | $T/tie3.pdl
+EXPECT_OUT | WINNER 0 OVER 1 | HAND-COMPUTED-seats-0-and-2-both-in-the-lowest-wins
+
+CASE    | nobody
+# nobody in the goal: -1 and not over; no bodies at all: -1 and not over
+RUN | $T/rw | $T/none.pdl
+EXPECT_OUT | WINNER -1 OVER 0 | HAND-COMPUTED-both-bodies-are-in-cell-0-2
+RUN | $T/rw | $T/empty.pdl
+EXPECT_OUT | WINNER -1 OVER 0 | HAND-COMPUTED-no-bodies-no-winner
+
+CASE    | the-goal-cell-decides
+# goal (0, 2): now the body at x 100 (cell 0, 2) is the one in, seat 0 (the OUT body), not seat 1
+RUN | $T/rw | $T/other.pdl
+EXPECT_OUT | WINNER 0 OVER 1 | HAND-COMPUTED-with-goal-0-2-the-far-left-body-wins
+
+CASE    | contract
+RUN | $T/rw | --describe
+EXPECT_OUT | RULE keys: none | the-op-describes-its-inputs-outputs-and-that-it-has-no-RULE-numbers
+RUN | $T/rw | $T/nogoal.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-a-GOAL-row-is-refused
+EXPECT_OUT | needs a GOAL | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_win (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_win$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_win-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_win/event_pkg/pages/page_1/event.ir.pdl | type=rule_win | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_win/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_win/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | WINNER 1 OVER 1 | the-page-gives-the-SAME-line-as-the-op-alone-(a-tie-goes-to-the-lowest-seat)

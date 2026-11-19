@@ -1825,3 +1825,11 @@ COMMAND rule_input
   PARAMS scene
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_input_op.+x" "$D/@.apps/teario/events/{scene}"
 END
+
+# rule_win = the WIN rule (the lowest-numbered seat whose body centre is in the goal cell wins; none = -1) of a game as an op (D93): runs `rule_win_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_win.c, built on rule_goal.c, the game calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_win_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_win
+  LABEL teario: Win rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_win_op.+x" "$D/@.apps/teario/events/{scene}"
+END
