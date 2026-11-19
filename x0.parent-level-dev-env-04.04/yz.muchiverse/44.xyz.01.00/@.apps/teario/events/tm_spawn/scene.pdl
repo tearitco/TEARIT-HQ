@@ -1,0 +1,5 @@
+# tm_spawn scene (Teario, D93): a hero at cell (3, 10) with a deliberately dirty body and seat state (DIRTY / STATE defaults) is put standing at x 796 y 2616 (3*256 + 28, 10*256 + 56) with every motion field and the seat state reset.
+RULE | body_w | 200
+RULE | body_h | 200
+CELL | 3 | 10
+DIRTY | 50 | -30 | 1 | 3 | 2

@@ -60,7 +60,7 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | i
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | advance | 200
 EXPECT_OUT | tick 81 | OBSERVED-jumping-at-tick-44-clears-the-pit-and-the-run-ends-at-tick-81
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | verify_clear
-EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=f59f1d42e3ffc375;ticks=81 | the-proof-line-pinned
+EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=3afbda7a2d677f2d;ticks=81 | the-proof-line-pinned
 RUN | grep | -c | ^EVENT | $T/g2/ledger.txt
 EXPECT_OUT_IS | 6 | INPUTS-ONLY-6-rows-for-an-81-tick-run:-new-join-start-input-input-ckpt
 
@@ -177,7 +177,7 @@ EXPECT_OUT | tick 241 | OBSERVED-the-level-is-cleared-at-tick-241
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | status
 EXPECT_OUT | score=250 stomps=1 kills=1 hits=0 armed=1 enemies=0 | OBSERVED-250-=-pick-up-50-+-fireball-kill-100-+-stomp-100-and-no-enemy-left
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | verify_clear
-EXPECT_OUT | CLEAR level=97d185088521224b;run=5117a05370f07798;ticks=241 | the-proof-line-of-the-full-Meadow-clear-pinned
+EXPECT_OUT | CLEAR level=97d185088521224b;run=29ca75e2b8db2370;ticks=241 | the-proof-line-of-the-full-Meadow-clear-pinned
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | replay
 EXPECT_OUT | REPLAY events=12 | the-12-rows-replay-(inputs-only)
 RUN | cp | -r | $T/m4 | $T/m5
@@ -308,4 +308,14 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead75 | $T/m9 |
 EXPECT_OUT | score=275 stomps=1 kills=1 hits=0 armed=1 | HAND-COMPUTED-75-+-100-+-100-the-pick-up-value-comes-from-the-RULE-row
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead75 | $T/m4 | replay
 EXPECT_EXIT | 1 | NEGATIVE-the-run-recorded-under-pickup_score-50-is-refused-by-the-pickup_score-75-game
+EXPECT_OUT | the rules say ruleset=default | and-the-refusal-names-the-rules-mismatch
+
+CASE    | tpl_body_size_is_data
+# the body size is two RULE rows (body_w, body_h), part of the rules hash: a copy with body_w 100 is a different game, so the Meadow run recorded under 200 is refused (the size also decides where every body stands)
+COPYDIR | @.apps/teario-play | tpl/mead100
+RUN | sed | -i | s/^RULE \p body_w .*/RULE \p body_w \p 100/ | $T/tpl/mead100/rulesets/default/rules.pdl
+RUN | grep | -c | body_w \p 100 | $T/tpl/mead100/rulesets/default/rules.pdl
+EXPECT_OUT_IS | 1 | vacuity-the-copy-really-has-body_w-100
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead100 | $T/m4 | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-run-recorded-under-body_w-200-is-refused-by-the-body_w-100-game
 EXPECT_OUT | the rules say ruleset=default | and-the-refusal-names-the-rules-mismatch

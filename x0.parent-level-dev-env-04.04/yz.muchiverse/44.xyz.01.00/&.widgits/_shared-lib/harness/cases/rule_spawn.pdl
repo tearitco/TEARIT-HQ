@@ -1,0 +1,62 @@
+# rule_spawn (2026-11-19; D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the SPAWN rule as an op: stand a body in a cell (centred, feet on the cell floor, every motion field cleared); a hero is also reset (jp 0, pos = cell column, armed 0, facing 1, fire 0); a walker starts alive walking left.
+# HAND-COMPUTED: cell (3,10), body 200 x 200: x = 3*256 + (256-200)/2 = 768 + 28 = 796; y = 10*256 + (256-200) = 2560 + 56 = 2616. The scenes start from a DIRTY body and a hero state that is deliberately NOT the start state (1 7 1 -1 1), so every reset is observable.
+RESULTS | ../results/rule_spawn.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_spawn_op.+x | $T/rn
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | hero.pdl | RULE \p body_w \p 200\nRULE \p body_h \p 200\nCELL \p 3 \p 10\nDIRTY \p 50 \p -30 \p 1 \p 3 \p 2
+WRITE | heroclean.pdl | RULE \p body_w \p 200\nRULE \p body_h \p 200\nCELL \p 0 \p 0
+WRITE | walker.pdl | RULE \p body_w \p 200\nRULE \p body_h \p 200\nKIND \p walker\nCELL \p 3 \p 10\nDIRTY \p 50 \p -30 \p 1 \p 3 \p 2\nWALKER \p 1 \p 0
+WRITE | small.pdl | RULE \p body_w \p 100\nRULE \p body_h \p 150\nCELL \p 3 \p 10
+WRITE | full.pdl | RULE \p body_w \p 256\nRULE \p body_h \p 256\nCELL \p 3 \p 10
+WRITE | odd.pdl | RULE \p body_w \p 201\nRULE \p body_h \p 201\nCELL \p 3 \p 10
+WRITE | norule.pdl | CELL \p 3 \p 10
+WRITE | nocell.pdl | RULE \p body_w \p 200\nRULE \p body_h \p 200
+WRITE | zero.pdl | RULE \p body_w \p 0\nRULE \p body_h \p 200\nCELL \p 3 \p 10
+
+CASE    | hero
+# dirty body (vx 50 vy -30 grounded 1 coyote 3 jbuf 2) and state (jp 1 pos 7 armed 1 facing -1 fire 1) all reset; x 796 y 2616; pos = the cell column 3; field -1
+RUN | $T/rn | $T/hero.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | BODY x=796 y=2616 w=200 h=200 vx=0 vy=0 field=-1 grounded=0 coyote=0 jbuf=0 HERO jp=0 pos=3 armed=0 facing=1 fire=0 | HAND-COMPUTED-796-2616-and-every-motion-field-and-seat-state-reset
+RUN | $T/rn | $T/heroclean.pdl
+EXPECT_OUT | BODY x=28 y=56 w=200 h=200 vx=0 vy=0 field=-1 grounded=0 coyote=0 jbuf=0 HERO jp=0 pos=0 armed=0 facing=1 fire=0 | HAND-COMPUTED-cell-0-0-is-28-56-and-the-seat-state-is-the-defaults-even-when-the-scene-sets-none-(the-op-seeds-a-dirty-state)
+
+CASE    | walker
+# a walker: same standing placement, motion cleared, dir -1 (left), alive 1, from a dirty dir 1 alive 0
+RUN | $T/rn | $T/walker.pdl
+EXPECT_OUT | BODY x=796 y=2616 w=200 h=200 vx=0 vy=0 field=-1 grounded=0 coyote=0 jbuf=0 WALKER dir=-1 alive=1 | HAND-COMPUTED-same-cell-same-place-walks-left-and-is-alive
+
+CASE    | the-numbers-are-data
+# body 100 x 150: x = 768 + (256-100)/2 = 768 + 78 = 846, y = 2560 + (256-150) = 2666; 256 x 256 fills the cell: x 768, y 2560; 201 x 201: x = 768 + 55/2 = 768 + 27 = 795 (C integer division), y = 2560 + 55 = 2615
+RUN | $T/rn | $T/small.pdl
+EXPECT_OUT | BODY x=846 y=2666 w=100 h=150 | HAND-COMPUTED-the-body-size-comes-from-the-RULE-rows
+RUN | $T/rn | $T/full.pdl
+EXPECT_OUT | BODY x=768 y=2560 w=256 h=256 | HAND-COMPUTED-a-full-cell-body-has-no-margin
+RUN | $T/rn | $T/odd.pdl
+EXPECT_OUT | BODY x=795 y=2615 w=201 h=201 | HAND-COMPUTED-55/2-is-27-in-C-integer-division
+
+CASE    | contract
+RUN | $T/rn | --describe
+EXPECT_OUT | RULE keys: body_w body_h | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rn | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-the-RULE-numbers-is-refused
+EXPECT_OUT | the numbers are data, there is no default | and-the-op-says-why
+RUN | $T/rn | $T/zero.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-zero-width-body-is-refused
+RUN | $T/rn | $T/nocell.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-a-CELL-is-refused
+EXPECT_OUT | needs a CELL | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_spawn (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameter
+RUN | grep | -c | ^COMMAND rule_spawn$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_spawn-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_spawn/event_pkg/pages/page_1/event.ir.pdl | type=rule_spawn | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_spawn/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_spawn/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | BODY x=796 y=2616 w=200 h=200 vx=0 vy=0 field=-1 grounded=0 coyote=0 jbuf=0 HERO jp=0 pos=3 armed=0 facing=1 fire=0 | the-page-gives-the-SAME-line-as-the-op-alone

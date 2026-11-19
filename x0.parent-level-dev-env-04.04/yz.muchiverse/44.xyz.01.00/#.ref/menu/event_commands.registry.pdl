@@ -1801,3 +1801,11 @@ COMMAND rule_goal
   PARAMS scene
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_goal_op.+x" "$D/@.apps/teario/events/{scene}"
 END
+
+# rule_spawn = the SPAWN rule (stand a body in a cell, centred, feet on the floor, motion cleared; a hero is also reset, a walker starts alive walking left) of a game as an op (D93): runs `rule_spawn_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_spawn.c the game calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_spawn_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_spawn
+  LABEL teario: Spawn rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_spawn_op.+x" "$D/@.apps/teario/events/{scene}"
+END
