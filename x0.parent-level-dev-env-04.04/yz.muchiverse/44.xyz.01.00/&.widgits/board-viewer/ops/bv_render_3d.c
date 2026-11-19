@@ -736,6 +736,15 @@ static int default_camera_mode(const char *root) {
     return 2;
 }
 
+/* default_yaw=<0..359> in the host's pieces/system/arrow_config.txt (owner 2026-11-19, Teario: "player should be facing goal"): the yaw a first / third person camera (modes 1 and 2) starts and resets to. Missing, invalid or a host without the key = 180, exactly the old behaviour, so no other board changes. A side-on level that runs along x faces its goal at 90. Modes 3 and 4 (top-down) keep 180 on purpose. */
+static int default_yaw(const char *root) {
+    if (!root || !root[0]) return 180;
+    char cfg[PATH_BUF];
+    snprintf(cfg, sizeof(cfg), "%s/pieces/system/arrow_config.txt", root);
+    int y = read_kv_int(cfg, "default_yaw", 180);
+    return (y >= 0 && y <= 359) ? y : 180;
+}
+
 static int default_current_z(const char *root) {
     if (!root || !root[0]) return 0;
     char hero_state_path[PATH_BUF];
@@ -3609,7 +3618,7 @@ static int render_one_frame(void) {
      * bv_menu_input.c's own header comment) and 'f' reset handlers (6
      * for modes 1/2, -90 for free-roam 3 / bird's-eye 4). */
     int default_cam_pitch = (camera_mode == 1 || camera_mode == 2) ? 6 : -90;
-    int cam_yaw = read_kv_int(state_path, "cam_yaw", 180);
+    int cam_yaw = read_kv_int(state_path, "cam_yaw", default_yaw(focused_project_root));
     int cam_pitch = read_kv_int(state_path, "cam_pitch", default_cam_pitch);
     /* Default cam_pan_x/y to the SELECTOR's own position (matches
      * where the 2D view actually starts) - see &.widgits/

@@ -35,3 +35,6 @@ HUD (top-left): `pos x,y,z` = the XELECTOR cell and its level (HUD z = pos_z - f
 
 ## 4. Open (do not treat as known)
 Which key reaches 2D "platform" play (none: platform mode is a GAME mode, not a camera); what raised the cursor to level 30; the pale cube above the ground (hero_01 placeholder? unproven); whether camera mode 3 / 4 photos were taken before the engine finished redrawing (5 s was too short once).
+
+## 5. Update 2026-11-19 (late): the facing fix exists
+`default_yaw=<0..359>` in a package's `pieces/system/arrow_config.txt` sets the yaw that camera modes 1 and 2 start at and `f` / the POV keys reset to (missing = 180, every other board unchanged; modes 3 and 4 keep 180). The Teario launcher sets it to 90, so a fresh first-person view looks along the level at the goal. Engine change in `bv_menu_input.c` and `bv_render_3d.c`, built with `scripts/build.sh` through `cpu_gate`; an OPEN board needs a NEW session (relaunch) to get the new binary. Proof recipe (RAN): fresh session -> key `1` gives yaw 90 -> `qq` then `f` gives 90; negative control: delete the line, `f` and `1` give 180, restore the line and byte-compare the file. The key is reread on every key press, so no relaunch is needed to toggle the config. Decision D96.

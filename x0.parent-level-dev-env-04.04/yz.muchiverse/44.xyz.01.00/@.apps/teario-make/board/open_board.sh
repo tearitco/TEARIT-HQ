@@ -7,6 +7,8 @@ GATE="$HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x"
 [ -x "$GATE" ] && { "$GATE" "$HOUSE" check --wait 90 >/dev/null || { echo "open_board: the machine is too busy right now (cpu_gate); not relaunching" >&2; exit 1; }; }
 export PCHQ_PKG="$APP/teario-make-pchq"
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
+# the FACING (owner 2026-11-19, "player should be facing goal"): the engine default yaw 180 looks ACROSS a level that runs along x (first person shows only sky); yaw 90 looks along x, at the goal. default_yaw is read by the engine from the package arrow_config.txt (a key only this package sets; a board without it keeps 180). One idempotent line; the file itself is made by the instance init above.
+AC="$PCHQ_PKG/pieces/system/arrow_config.txt"; if [ -f "$AC" ]; then if grep -q '^default_yaw=' "$AC"; then sed -i 's/^default_yaw=.*/default_yaw=90/' "$AC"; else printf 'default_yaw=90\n' >> "$AC"; fi; fi
 # the stamp bank is the DEFAULT left bar: seed side_stamp=1 only when the file is missing (a user's own minimize is kept across launches)
 [ -f "$HERE/state/sides.txt" ] || printf 'side_stamp=1\n' > "$HERE/state/sides.txt"
 # the ONE game driver (one instance: it locks itself). Registered through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl); handed to the window below so it ends with it.

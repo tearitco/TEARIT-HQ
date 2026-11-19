@@ -269,6 +269,15 @@ static int default_camera_mode(const char *root) {
     return 2;
 }
 
+/* default_yaw=<0..359> in the host's pieces/system/arrow_config.txt (owner 2026-11-19, Teario: "player should be facing goal"): the yaw a first / third person camera (modes 1 and 2) starts and resets to. Missing, invalid or a host without the key = 180, exactly the old behaviour, so no other board changes. A side-on level that runs along x faces its goal at 90. Modes 3 and 4 (top-down) keep 180 on purpose. */
+static int default_yaw(const char *root) {
+    if (!root || !root[0]) return 180;
+    char cfg[PATH_BUF];
+    snprintf(cfg, sizeof(cfg), "%s/pieces/system/arrow_config.txt", root);
+    int y = read_kv_int(cfg, "default_yaw", 180);
+    return (y >= 0 && y <= 359) ? y : 180;
+}
+
 static void write_kv(const char *path, const char *key, const char *value) {
     FILE *f = fopen(path, "r");
     char lines[64][MAX_LINE];
@@ -1282,7 +1291,7 @@ static int handle_one_key(int key) {
         write_kv_int(state_path, "maker_view", 0);    /* POV 1-4 are the glyph world (rollback from key 7) */
         write_kv_int(state_path, "camera_mode", camera_mode);
         if (camera_mode == 1 || camera_mode == 2) {
-            write_kv_int(state_path, "cam_yaw", 180);
+            write_kv_int(state_path, "cam_yaw", default_yaw(focused_project_root));
             write_kv_int(state_path, "cam_pitch", 6);
             /* drop any leftover free-roam pan so switching from mode 3/4
              * doesn't fling the follow-camera off with a huge offset */
@@ -1376,7 +1385,7 @@ static int handle_one_key(int key) {
         /* Reset, mode-dependent default (camera_control.c's own 'f'
          * handling per mode - see 5-pov-widgit.md §2e table). */
         if (camera_mode == 1 || camera_mode == 2) {
-            write_kv_int(state_path, "cam_yaw", 180);
+            write_kv_int(state_path, "cam_yaw", default_yaw(focused_project_root));
             write_kv_int(state_path, "cam_pitch", 6);
             /* also clear any w/a/s/d + c/v offset so 'f' fully re-centres */
             write_kv_int(state_path, "cam_pan_x", 0);

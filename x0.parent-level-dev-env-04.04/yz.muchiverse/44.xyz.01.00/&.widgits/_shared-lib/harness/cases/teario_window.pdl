@@ -96,3 +96,15 @@ CASE    | the-driver-guard-and-the-view
 EXPECT_LACKS | $HOUSE/@.apps/teario-make/board/open_board.sh | index($0, b) | the-self-matching-ps-awk-guard-is-gone
 EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | $10 == "teario-make-driver" {print $2} | the-guard-asks-the-process-registry
 EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | /proc/$DPID0 | and-checks-the-pid-is-alive
+
+CASE    | the-facing-default-yaw
+# D96 (2026-11-19): a board starts / resets its first and third person camera at the yaw in its package arrow_config.txt `default_yaw` (missing = 180, the old behaviour). These are TEXT checks (wiring only); the behaviour was proven LIVE with an engine key run and a negative control (key removed: f and key 1 give 180; key restored: f gives 90; photo 16 / the y2 photo in XO nov-18 15.*): a harness case cannot start an engine.
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | default_yaw=90 | the-teario-launcher-sets-the-facing-to-90
+RUN | grep | -q | -F | static int default_yaw | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c
+EXPECT_EXIT | 0 | input-code-has-the-default-yaw-helper
+RUN | grep | -q | -F | default_yaw(focused_project_root) | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c
+EXPECT_EXIT | 0 | input-code-uses-it-for-the-reset
+RUN | grep | -q | -F | default_yaw(focused_project_root) | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c
+EXPECT_EXIT | 0 | renderer-uses-it-before-any-key
+RUN | grep | -q | -F | zzz_no_such_text_zzz | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c
+EXPECT_EXIT | 1 | positive-control-the-grep-check-can-fail
