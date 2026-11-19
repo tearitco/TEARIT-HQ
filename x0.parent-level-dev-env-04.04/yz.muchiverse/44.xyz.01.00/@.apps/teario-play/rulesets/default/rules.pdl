@@ -1,5 +1,6 @@
 # rules.pdl - Teario-Play: caps and checkpoints as DATA.
 # min_players, max_players  one hero        ckpt_every  a `ckpt` row (the state hash) every this many logical ticks and at the end (plan 3.2: 300)
+# patrol_speed  an enemy walker speed in Q8 cells per tick (10 = 10/256 of a cell a tick), read by the PATROL rule (_shared-lib/rule_patrol.c, op rule_patrol_op); part of the rules hash, so a changed speed is a different game
 # max_ticks  the longest run (plan 3.3: 9000 ticks = 5 minutes at 30 a second)        max_rows  hard cap on ledger rows
 # Ledger shape (INPUTS only, no row per tick): input pN left|right|stay (round = the tick), ckpt, seat. Replay simulates between rows with the same step function and refuses a ckpt whose hash differs.
 RULE | min_players  | 1
@@ -8,3 +9,4 @@ RULE | default_seed | 7
 RULE | ckpt_every   | 300
 RULE | max_ticks    | 9000
 RULE | max_rows     | 2000
+RULE | patrol_speed | 10

@@ -15,8 +15,8 @@ On 2026-11-18 Teario's enemies, stomp, fireball, power-up and patrol were writte
 ## 2. The unit: one rule = four files (+ one page)
 | # | File | Role | Example (BUILT) / (PROPOSED) |
 |---|---|---|---|
-| 1 | `_shared-lib/rule_<name>.c` | the PURE module: integer only, no files, no clock, no float, no environment; the ONE implementation; text-included | `phys_field.c` (BUILT, D90) / `rule_patrol.c` (PROPOSED) |
-| 2 | `ops/rule_<name>_op.c` | thin CLI op that includes (1): `<op> <app> <state dir> <args>`; reads ledger/state rows and RULE numbers, APPENDS ledger rows, prints rows, exit code; a `--describe` line (inputs, outputs, RULE keys) | `phys_field_op.c` (BUILT) |
+| 1 | `_shared-lib/rule_<name>.c` | the PURE module: integer only, no files, no clock, no float, no environment; the ONE implementation; text-included | `phys_field.c` (BUILT, D90) / `rule_patrol.c` (BUILT 2026-11-18, case `rule_patrol` 20 checks; registry row and event page still to do) |
+| 2 | `ops/rule_<name>_op.c` | thin CLI op that includes (1): `<op> <app> <state dir> <args>`; a PURE STATE -> STATE function over a scene: reads the scene rows and RULE numbers, prints the trace and a hash, exit code (0 ok, 2 a bad scene); ledger rows are written only for inputs and for consequences that are facts (a clear, a publish), because in an inputs-only run ledger tick state is derived by replay (refined 2026-11-18 by the first built rule); a `--describe` line (inputs, outputs, RULE keys) | `phys_field_op.c`, `rule_patrol_op.c` (BUILT) |
 | 3 | one `COMMAND` row in `#.ref/menu/event_commands.registry.pdl` | `COMMAND <type> / LABEL / FIELDn / PARAMS / TEMPLATE exec "<op>" '{param}' / END`: makes the op appear in events-hq and Blueprintz with no manager recompile | the 172 existing rows are the pattern |
 | 4 | `harness/cases/<name>.pdl` + `.pal` | runs the op ALONE with hand-computed expectations plus a sabotage proof | `phys_field.pdl` (23 checks, BUILT) |
 | + | `@.apps/<app>/events/<rule>/event_pkg/pages/page_1/{event.ir.pdl,condition.pdl}` | the event page that names the op; edited in Blueprintz | the rpg-pet / rpg-space pages are the pattern |
@@ -57,7 +57,7 @@ Integer fixed point (Q8: 1/256 of a cell, `long`), no float, no clock, no `rand(
 
 ## 8. Worked examples
 - **BUILT, the right shape:** `phys_field` (D90): pure module + `phys_field_op` + case `phys_field` (23 checks, sabotage-proven); also reused by `game_core` MODE platform. It is the pattern to copy.
-- **PROPOSED first rule:** `rule_patrol` (one body, turn at a wall or ledge): module, op, `COMMAND` row, case, `events/tm_patrol` page, `LOAD:teario`; then fireball, stomp, pickup, side hit, goal, score.
+- **BUILT first rule (2026-11-18):** `rule_patrol` (one body, turn at a wall or ledge, fall out): module `_shared-lib/rule_patrol.c`, op `ops/rule_patrol_op.c`, case `rule_patrol` (20 checks, hand-computed, 5 sabotages), called in-process by `game_core`, speed = RULE `patrol_speed`. STILL TO DO for it: `COMMAND` row, `events/tm_patrol` page, `LOAD:teario`. Then fireball, stomp, pickup, side hit, goal, score.
 - **The counter-example (do not copy):** Teario's enemies / stomp / fireball in `game_core.c` MODE platform (D92): behaviour that no harness can run alone, no page, nothing in Blueprintz.
 
 ## 9. Pitfalls that cost real runs (all hit 2026-11-18)

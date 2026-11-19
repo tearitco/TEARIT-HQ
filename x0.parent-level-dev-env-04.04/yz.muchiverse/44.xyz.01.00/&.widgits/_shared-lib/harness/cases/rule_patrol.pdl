@@ -1,0 +1,57 @@
+# rule_patrol (2026-11-18; decision log D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the PATROL rule as an op. _shared-lib/rule_patrol.c is the pure module (the ONE implementation, called by the game tick loop in-process),
+# ops/rule_patrol_op.c is its CLI face (this case, an event page, Blueprintz or an AI call it by name). Every pinned number is HAND-COMPUTED from the rule (speed 10 Q8 per tick, a 200 Q8 body, tiles 256 Q8): see each CASE. Sabotage-proven (see the commit message).
+RESULTS | ../results/rule_patrol.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_patrol_op.+x | $T/rp
+EXPECT_EXISTS | rp | the-real-op-is-built
+WRITE | ledge.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..######..\nRULE \p patrol_speed \p 10\nWALKER \p 612 \p 568 \p 200 \p 200 \p -1
+WRITE | wall.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p .#........\nROW \p 3 \p ##########\nRULE \p patrol_speed \p 10\nWALKER \p 612 \p 568 \p 200 \p 200 \p -1
+WRITE | slow.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..######..\nRULE \p patrol_speed \p 5\nWALKER \p 612 \p 568 \p 200 \p 200 \p -1
+WRITE | fall.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p patrol_speed \p 10\nWALKER \p 612 \p 568 \p 200 \p 200 \p -1
+WRITE | nospeed.pdl | ROW \p 3 \p ##########\nWALKER \p 612 \p 568 \p 200 \p 200 \p -1
+
+CASE    | ledge
+# the floor is columns 2 to 7 (x 512 to 2047); a walker starting at x 612 moving left at 10 per tick reaches x 512 on tick 10 (612 - 10 x 10); the cell left of it (x 511, column 1) has no floor under it, so it turns ON THAT TICK
+RUN | $T/rp | $T/ledge.pdl | 14
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | T 9 x=522 y=568 vx=-10 dir=-1 alive=1 g=1 | HAND-COMPUTED-tick-9-still-walking-left-at-x-522
+EXPECT_OUT | T 10 x=512 y=568 vx=10 dir=1 alive=1 g=1 | HAND-COMPUTED-tick-10-the-ledge-turns-it-(x-512-dir-1-vx-10)
+EXPECT_OUT | T 11 x=522 y=568 vx=10 dir=1 alive=1 g=1 | and-it-walks-back-right-(522)-without-standing-still
+RUN | $T/rp | $T/ledge.pdl | 144
+EXPECT_OUT | T 143 x=1842 y=568 vx=10 dir=1 alive=1 g=1 | HAND-COMPUTED-tick-143-the-leading-edge-x-2042-is-still-on-column-7
+EXPECT_OUT | T 144 x=1852 y=568 vx=-10 dir=-1 alive=1 g=1 | HAND-COMPUTED-tick-144-the-leading-edge-x-2052-is-over-the-right-ledge-so-it-turns-left
+
+CASE    | wall
+# a wall on row 2 column 1 (x 256 to 511) with floor under everything: no ledge. Tick 10 reaches x 512 (touching the wall), tick 11 tries 502, is snapped back to 512 and has not moved, so the WALL test turns it
+RUN | $T/rp | $T/wall.pdl | 12
+EXPECT_OUT | T 10 x=512 y=568 vx=-10 dir=-1 alive=1 g=1 | HAND-COMPUTED-tick-10-touches-the-wall-and-has-not-turned-yet
+EXPECT_OUT | T 11 x=512 y=568 vx=10 dir=1 alive=1 g=1 | HAND-COMPUTED-tick-11-did-not-move-so-it-turned-(wall-test)
+EXPECT_OUT | T 12 x=522 y=568 vx=10 dir=1 alive=1 g=1 | and-walks-away-from-the-wall
+
+CASE    | speed-is-data
+# the same floor with RULE patrol_speed 5: 612 - 5 x 20 = 512, so the turn is on tick 20 (not tick 10): the number is data, not a constant in the rule
+RUN | $T/rp | $T/slow.pdl | 21
+EXPECT_OUT | T 19 x=517 y=568 vx=-5 dir=-1 alive=1 g=1 | HAND-COMPUTED-speed-5-tick-19-x-517
+EXPECT_OUT | T 20 x=512 y=568 vx=5 dir=1 alive=1 g=1 | HAND-COMPUTED-speed-5-turns-on-tick-20
+EXPECT_OUT | T 21 x=517 y=568 vx=5 dir=1 alive=1 g=1 | and-walks-right-at-5
+
+CASE    | fall-out
+# no floor at all, a 4-row level so the world ends at y = (4 + 2) x 256 = 1536; free fall adds 16 per tick (y = 568 + 8 n (n + 1)): tick 10 is y 1448 (inside), tick 11 is y 1624 (outside), so it is gone on tick 11 and does not move after
+RUN | $T/rp | $T/fall.pdl | 13
+EXPECT_OUT | T 10 x=512 y=1448 vx=-10 dir=-1 alive=1 g=0 | HAND-COMPUTED-tick-10-still-inside-the-world-(x-612-10-x-10-it-keeps-walking-while-it-falls)
+EXPECT_OUT | T 11 x=502 y=1624 vx=-10 dir=-1 alive=0 g=0 | HAND-COMPUTED-tick-11-past-the-bottom-so-alive-0
+EXPECT_OUT | T 13 x=502 y=1624 vx=-10 dir=-1 alive=0 g=0 | and-a-dead-walker-does-not-move-any-more
+
+CASE    | contract
+RUN | $T/rp | --describe
+EXPECT_OUT | RULE keys: patrol_speed | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rp | $T/nospeed.pdl | 3
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-RULE-patrol_speed-is-refused
+EXPECT_OUT | the number is data, there is no default | and-the-op-says-why
+RUN | $T/rp | $T/ledge.pdl | 30
+RUN | /bin/cp | $T/rp | $T/rp2
+RUN | $T/rp2 | $T/ledge.pdl | 30
+EXPECT_OUT | HASH | the-run-ends-with-a-trace-hash
