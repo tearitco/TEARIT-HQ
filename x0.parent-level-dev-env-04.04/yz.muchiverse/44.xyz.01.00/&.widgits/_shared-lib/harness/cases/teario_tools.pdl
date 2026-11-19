@@ -132,3 +132,42 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | sc
 EXPECT_OUT | SCENE 20x12 | the-document-is-drawn-as-a-desk
 RUN | sed | -n | 17p | $T/d1/cells.txt
 EXPECT_OUT_IS | 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 1,0,2 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 0,0,1 | the-painted-ground-cell-is-a-grass-tile-at-column-5
+
+CASE    | tt_book_layout_default_left_panel
+# 2026-11-19: Teario-Make opens with the stamp bank as its LEFT panel (a book's own default, @.apps/teario-make/layout.pdl, applied by `pal_side book_layout` from the page hook), and a user's own minimize sticks. Scratch house only: the live sides.txt is never touched.
+MKDIR   | bl/@.apps/rpg-edit-hq/board/state
+MKDIR   | bl/@.apps/rpg-edit-hq/state
+MKDIR   | bl/@.apps/teario-make
+RUN | cp | $HOUSE/@.apps/teario-make/layout.pdl | $T/bl/@.apps/teario-make/layout.pdl
+WRITE   | bl/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | Teario-Make | play
+EXPECT_EXIT | 0 | the-verb-runs
+EXPECT_OUT | BOOK_LAYOUT teario-make -> stamps | entering-the-book-chooses-its-default-(the-name-is-lower-cased-to-the-folder)
+EXPECT_HAS | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt | side_stamp=1 | the-stamp-bank-is-the-left-panel
+EXPECT_HAS | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt | side_right=1 | the-right-bar-is-untouched
+RUN | grep | -c | ^side_left=1 | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | the-pets-bar-is-hidden-(one-left-panel-at-a-time)
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | none
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | Teario-Make | page_2
+EXPECT_OUT | BOOK_LAYOUT teario-make unchanged | a-page-change-in-the-same-book-does-nothing
+RUN | grep | -c | ^side_stamp=1 | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | the-users-own-minimize-sticks-(the-default-is-not-re-applied)
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | stamps
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | some-other-book | page_1
+EXPECT_OUT | BOOK_LAYOUT some-other-book -> open | entering-a-book-with-no-default-while-the-bank-shows-brings-the-palettes-back
+EXPECT_HAS | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt | side_pal=1 | the-palettes-are-shown
+RUN | grep | -c | ^side_stamp=1 | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | and-the-empty-bank-is-hidden
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | third-book | page_1
+EXPECT_OUT | BOOK_LAYOUT third-book no default | a-book-with-no-default-and-no-bank-showing-leaves-the-panel-alone
+WRITE   | bl/@.apps/rpg-edit-hq/state/prefs.txt | sidebar_start=pets\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | teario-make | play
+EXPECT_OUT | BOOK_LAYOUT teario-make skipped (sidebar_start=pets wins) | an-explicit-sidebar_start-preference-wins-over-the-books-default
+RUN | grep | -c | ^side_stamp=1 | $T/bl/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | and-the-bank-did-not-open
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | ../evil | page_1
+EXPECT_OUT | BOOK_LAYOUT refused (book name) | NEGATIVE-a-book-name-with-a-slash-or-dots-is-refused
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/bl | book_layout | .hidden | page_1
+EXPECT_OUT | BOOK_LAYOUT refused (book name) | NEGATIVE-a-leading-dot-is-refused-too
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/board/page_hooks.pdl | book_layout ${BOOK} ${PAGE} | the-editor-runs-the-verb-on-a-book-change
+EXPECT_HAS | $HOUSE/@.apps/teario-make/layout.pdl | LAYOUT \p left \p stamps | the-book-names-the-stamp-bank-as-its-default

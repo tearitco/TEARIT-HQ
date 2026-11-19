@@ -246,17 +246,35 @@ int main(int argc, char **argv) {
     char sides[4200], pal[4200]; snprintf(sides, sizeof sides, "%s/@.apps/rpg-edit-hq/board/state/sides.txt", house); snprintf(pal, sizeof pal, "%s/@.apps/rpg-edit-hq/board/state/pal.txt", house);
     load_cats(house);
     int log_hist = 1; char title[96] = "";
+    if (!strcmp(verb, "book_layout")) {   /* 2026-11-19 (Teario stamp bank): a BOOK names its own default left panel in @.apps/<book>/layout.pdl (`LAYOUT | left | stamps|palettes|pets|none`); the projector runs this through board/page_hooks.pdl when the book or page changes.
+         * It acts only when the BOOK CHANGED since the last time (board/state/book_layout_last.txt), so a user's own minimize / toggle inside the book is never undone by a page change; an explicit sidebar_start preference (pets|palettes|none) wins; a book with no
+         * default that is entered while the stamp bank is showing gets the palettes back (the bank is empty outside a Make game). Same chain as `restore`: it sets `verb` and falls through, nothing is logged as a user choice. */
+        char bk[80]; snprintf(bk, sizeof bk, "%s", arg); int okb = bk[0] != 0;
+        for (char *q = bk; *q; q++) { if (*q >= 'A' && *q <= 'Z') *q = (char)(*q - 'A' + 'a'); if (!((*q >= 'a' && *q <= 'z') || (*q >= '0' && *q <= '9') || *q == '-' || *q == '_')) okb = 0; }
+        if (!okb) { printf("BOOK_LAYOUT refused (book name)\n"); return 0; }
+        char lastp[4300], prev[80] = ""; snprintf(lastp, sizeof lastp, "%s/@.apps/rpg-edit-hq/board/state/book_layout_last.txt", house); kv_get(lastp, "book", prev, sizeof prev);
+        if (!strcmp(prev, bk)) { printf("BOOK_LAYOUT %s unchanged\n", bk); return 0; }
+        kv_set(lastp, "book", bk);
+        char prp[4300], pst[32] = ""; snprintf(prp, sizeof prp, "%s/@.apps/rpg-edit-hq/state/prefs.txt", house); kv_get(prp, "sidebar_start", pst, sizeof pst);
+        if (pst[0] && strcmp(pst, "last") && strcmp(pst, "layout")) { printf("BOOK_LAYOUT %s skipped (sidebar_start=%s wins)\n", bk, pst); return 0; }
+        char lp[4300], want[32] = ""; snprintf(lp, sizeof lp, "%s/@.apps/%s/layout.pdl", house, bk); FILE *lf = fopen(lp, "r");
+        if (lf) { char row[200], a[24], c[32]; while (fgets(row, sizeof row, lf)) { if (row[0] == '#') continue; if (sscanf(row, " LAYOUT | %23[a-z] | %31[a-z]", a, c) == 2 && !strcmp(a, "left")) snprintf(want, sizeof want, "%s", c); } fclose(lf); }
+        char sp0[4200], cur[8] = ""; snprintf(sp0, sizeof sp0, "%s/@.apps/rpg-edit-hq/board/state/sides.txt", house); kv_get(sp0, "side_stamp", cur, sizeof cur);
+        if (!strcmp(want, "stamps")) verb = "stamps"; else if (!strcmp(want, "palettes")) verb = "open"; else if (!strcmp(want, "pets")) verb = "pets"; else if (!strcmp(want, "none")) verb = "none";
+        else if (cur[0]) verb = "open"; else { printf("BOOK_LAYOUT %s no default\n", bk); return 0; }
+        printf("BOOK_LAYOUT %s -> %s\n", bk, verb); log_hist = 0;
+    }
     if (!strcmp(verb, "restore")) {   /* the window just opened: apply the start layout (preference, else the last one, else the first-run default) without logging a new row */
         char pr[4200], want[32], last[32]; snprintf(pr, sizeof pr, "%s/@.apps/rpg-edit-hq/state/prefs.txt", house); kv_get(pr, "sidebar_start", want, sizeof want); hist_last(house, last, sizeof last);
         char ll[32] = "", lr[32] = "";      /* layout.pdl (default): LAYOUT | left | palettes|pets|none, LAYOUT | right | hai|edit|network|none */
         if (!want[0] || !strcmp(want, "layout")) { char lp[4200], lb[2000] = ""; snprintf(lp, sizeof lp, "%s/@.apps/rpg-edit-hq/layout.pdl", house); FILE *lf = fopen(lp, "r");
             if (lf) { char row[200]; while (fgets(row, sizeof row, lf)) { char a[24], b[24], c[32]; if (row[0] == '#') continue; if (sscanf(row, " LAYOUT | %23[a-z] | %31[a-z]", a, c) == 2) { (void)b; (void)lb; if (!strcmp(a, "left")) snprintf(ll, sizeof ll, "%s", c); else if (!strcmp(a, "right")) snprintf(lr, sizeof lr, "%s", c); } } fclose(lf); } }
-        if (ll[0] && strcmp(ll, "palettes") && strcmp(ll, "pets") && strcmp(ll, "none")) ll[0] = 0;
+        if (ll[0] && strcmp(ll, "palettes") && strcmp(ll, "pets") && strcmp(ll, "none") && strcmp(ll, "stamps")) ll[0] = 0;   /* stamps allowed 2026-11-19 (per-book default, verb book_layout) */
         if (lr[0]) { char cm[4200]; snprintf(cm, sizeof cm, "%s/@.apps/rpg-edit-hq/state/flag_chatmode.txt", house);
             if (!strcmp(lr, "none")) kv_set(sides, "side_right", "");
             else if (!strcmp(lr, "hai") || !strcmp(lr, "edit") || !strcmp(lr, "network")) { kv_set(sides, "side_right", "1"); FILE *cf = fopen(cm, "w"); if (cf) { fprintf(cf, "%s\n", lr); fclose(cf); } } }
         const char *m = ll[0] ? ll : (!strcmp(want, "pets") || !strcmp(want, "palettes") || !strcmp(want, "none")) ? want : (last[0] ? last : SIDE_FIRST_RUN);
-        static char mv[16]; snprintf(mv, sizeof mv, "%s", !strcmp(m, "palettes") ? "open" : !strcmp(m, "pets") ? "pets" : !strcmp(m, "none") ? "none" : "open"); verb = mv; log_hist = 0;
+        static char mv[16]; snprintf(mv, sizeof mv, "%s", !strcmp(m, "palettes") ? "open" : !strcmp(m, "pets") ? "pets" : !strcmp(m, "none") ? "none" : !strcmp(m, "stamps") ? "stamps" : "open"); verb = mv; log_hist = 0;
     }
     if (!strcmp(verb, "open")) { if (log_hist) hist_add(house, "palettes"); kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); kv_set(sides, "side_stamp", ""); }
     else if (!strcmp(verb, "pets")) { if (log_hist) hist_add(house, "pets"); kv_set(sides, "side_left", "1"); kv_set(sides, "side_pal", ""); kv_set(sides, "side_stamp", ""); }

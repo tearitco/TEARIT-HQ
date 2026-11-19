@@ -1,0 +1,4 @@
+# layout.pdl - this book's default editor layout (2026-11-19). Read by `pal_side <house> book_layout <book> <page>`, which the editor's board projector runs from board/page_hooks.pdl when the OPEN BOOK changes.
+# LAYOUT | left | stamps | palettes | pets | none     which left panel this book opens with (stamps = the Make stamp bank, fed by @.apps/teario-make/rulesets/default/stamps.pdl)
+# It acts once per book change, never on a page change, so a user's own minimize (the bank's `_`) or footer toggle sticks until they enter another book; an explicit sidebar_start preference (editor Settings) wins.
+LAYOUT | left | stamps
