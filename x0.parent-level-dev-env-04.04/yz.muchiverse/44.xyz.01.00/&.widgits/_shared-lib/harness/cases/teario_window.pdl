@@ -1,0 +1,92 @@
+# teario_window (2026-11-19; owner: Teario-Make has its OWN window, header and left bar, rpg-edit top bar not edited; plan BOOK 16.game TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN, phase P1).
+# This case checks the FILES of the window package. It does NOT open the window: a layout check proves the text is well formed and that what it points at exists, not that a button works. (+phone guide, pitfall 10: tap a REAL button in the live window.)
+RESULTS | ../results/teario_window.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+# the harness runs NOTHING before the first SCRATCH row and still reports PASS (found 2026-11-19: 5 of 50 checks ran): every case file starts with a setup case that has SCRATCH
+SCRATCH |
+RUN | /bin/true
+EXPECT_EXIT | 0 | scratch-ready
+
+CASE    | package-files
+EXPECT_EXISTS | $HOUSE/@.apps/teario-make/button.sh | the-launcher-exists
+EXPECT_EXISTS | $HOUSE/@.apps/teario-make/board/open_board.sh | the-board-launcher-exists
+EXPECT_EXISTS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | the-template-exists
+EXPECT_EXISTS | $HOUSE/@.apps/teario-make/board/pchq-board.css | the-css-exists
+EXPECT_EXISTS | $HOUSE/@.apps/teario-make/board/side_style.pdl | the-pinned-bar-width-exists
+EXPECT_HAS | $HOUSE/@.apps/teario-make/button.sh | board/open_board.sh | the-launcher-runs-the-board-launcher
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | args="teario-make-pchq" | the-projector-works-on-Teario-own-pc-hq-package
+EXPECT_EXISTS | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/game.pdl | and-that-package-holds-the-book
+
+CASE    | nothing-points-at-rpg-edit
+# owner 2026-11-19: Teario owns its header and left bar; no action, path or op of the editor app is used (the NEGATIVE: each file would name it if a copy kept an editor action)
+EXPECT_LACKS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | @.apps/rpg-edit-hq | the-template-calls-nothing-of-the-editor
+EXPECT_LACKS | $HOUSE/@.apps/teario-make/board/open_board.sh | @.apps/rpg-edit-hq | the-board-launcher-does-not-start-the-editor-daemon
+EXPECT_LACKS | $HOUSE/@.apps/teario-make/button.sh | @.apps/rpg-edit-hq | and-neither-does-the-launcher
+EXPECT_LACKS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | pal_side | the-stamp-bank-no-longer-needs-the-editor-pal_side-verbs
+
+CASE    | the-buttons-point-at-things-that-exist
+# every op the template and the launcher call, by path (the phone's dead-button class of bug: a path that does not exist fails silently on a click)
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | @.apps/layout-studio/ops/+x/side_toggle.+x | the-bank-toggle-is-the-shared-side_toggle-op
+EXPECT_EXISTS | $HOUSE/@.apps/layout-studio/ops/+x/side_toggle.+x | and-it-exists
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | @.apps/piececraft-hq/ops/pchq_board_action.sh | the-In-book-and-page-cells-use-the-shared-pc-hq-action-script
+EXPECT_EXISTS | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | and-it-exists
+EXPECT_EXISTS | $HOUSE/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x | the-shared-projector-is-built
+EXPECT_EXISTS | $HOUSE/@.apps/piececraft-hq/open_pchq_board.sh | the-shared-board-opener-exists
+EXPECT_EXISTS | $HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh | and-the-instance-init
+EXPECT_EXISTS | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | the-game-driver-binary-exists
+EXPECT_EXISTS | $HOUSE/&.widgits/_shared-lib/kh_spawn.sh | the-spawn-funnel-exists
+EXPECT_EXISTS | $HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x | and-the-process-registry-op
+EXPECT_EXISTS | $HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x | and-the-cpu-gate
+
+CASE    | every-variable-has-a-writer
+# each ${var} of the template is written by the shared projector, by game_core (the feeds) or by sides.txt. Checked against the SOURCE text of the writer (not the running window) with grep: EXPECT_HAS reads only the first 16384 bytes of a file, the projector and game_core are far bigger.
+RUN | grep | -q | -F | canvas_raw | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-canvas_raw
+RUN | grep | -q | -F | interact_class | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-interact_class
+RUN | grep | -q | -F | interact_label | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-interact_label
+RUN | grep | -q | -F | book_label | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-book_label
+RUN | grep | -q | -F | page_label | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-page_label
+RUN | grep | -q | -F | n_file_opts | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-the-book-rows
+RUN | grep | -q | -F | n_desk_opts | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-the-page-rows
+RUN | grep | -q | -F | bv_session | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-bv_session
+RUN | grep | -q | -F | no_session | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-writes-no_session
+RUN | grep | -q | -F | gm_on | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | game_core-writes-the-popup-feed-gm_on
+RUN | grep | -q | -F | gm_title | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | and-gm_title
+RUN | grep | -q | -F | n_stamp | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | and-the-stamp-list-n_stamp
+RUN | grep | -q | -F | stamp_off | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_EXIT | 0 | and-stamp_off
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | printf 'side_stamp=1 |  the-launcher-seeds-the-bank-OPEN-(the-default)
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | [ -f "$HERE/state/sides.txt" ] | and-only-when-the-file-is-missing-(a-users-minimize-is-kept)
+EXPECT_LACKS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | gme | no-footer-repeat-for-a-feed-key-game_core-never-writes-(gm_ne-is-always-0)
+
+CASE    | the-driver-uses-tearios-own-folder
+# game_core driver <house> <book app> <editor app>: both are Teario own folder, so the feeds land in @.apps/teario-make/state and the cursor cell is read from teario-make-pchq (cursor_cell derives it from the folder name)
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | "$APP" "$APP" >/dev/null 2>&1; } | the-driver-is-given-Teario-folder-as-book-and-as-editor
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | kh_spawn.sh | started-through-the-spawn-funnel-(every-process-registered)
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | cpu_gate | after-asking-the-cpu-gate
+
+CASE    | the-layout-validator
+# the house layout validator (layout studio): 0 errors on the template, and a copy with a broken closing tag FAILS (the negative control: the check can fail)
+SCRATCH |
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | layout_check-accepts-the-template
+EXPECT_OUT | 0 error(s) | with-zero-errors
+RUN | sed | s#</row>#</rowx>#g | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm
+EXPECT_EXIT | 0 | sed-made-the-broken-copy-(control-setup)
+WRITE   | bad.xhtpm | <window label="x"><page name="main"><row id="a"><text label="t"/></rowx></page></window>\n
+RUN | $HOUSE/@.apps/layout-studio/ops/+x/layout_check.+x | $T/bad.xhtpm
+EXPECT_EXIT | 1 | NEGATIVE-a-mismatched-closing-tag-is-an-ERROR-and-exits-1
+EXPECT_OUT | does not match the open | and-says-why
