@@ -1,0 +1,86 @@
+# rule_fireball (2026-11-18; decision log D92/D93, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the FIREBALL rule as an op. _shared-lib/rule_fireball.c is the pure module (the ONE implementation, called by the game tick loop in-process, targets are rule_patrol.c walkers),
+# ops/rule_fireball_op.c is its CLI face. Every pinned number is HAND-COMPUTED: shooter box x 256 y 512 w 200 h 200 gives a shot start at its centre (356, 612); speed 56 Q8 per tick, life 36 ticks, a shot fired on tick t has already moved once on tick t (x = 356 + 56 n after tick n).
+# Sabotage-proven (see the commit message).
+RESULTS | ../results/rule_fireball.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_fireball_op.+x | $T/rf
+EXPECT_EXISTS | rf | the-real-op-is-built
+WRITE | air.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nFIRE \p 1
+WRITE | wall.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ......#...\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nFIRE \p 1
+WRITE | kill.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nTARGET \p 1000 \p 512 \p 200 \p 200 \p 1\nFIRE \p 1
+WRITE | leftedge.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p -1 \p 1\nTARGET \p 100 \p 512 \p 200 \p 200 \p 1\nFIRE \p 1
+WRITE | leftmiss.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p -1 \p 1\nTARGET \p 100 \p 512 \p 199 \p 200 \p 1\nFIRE \p 1
+WRITE | max2.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 2\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nFIRE \p 1\nFIRE \p 2\nFIRE \p 3
+WRITE | max4.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nFIRE \p 1\nFIRE \p 2\nFIRE \p 3
+WRITE | unarmed.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 0\nFIRE \p 1
+WRITE | slow.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 28\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nFIRE \p 1
+WRITE | deadtarget.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nTARGET \p 1000 \p 512 \p 200 \p 200 \p 0\nFIRE \p 1
+WRITE | twotargets.pdl | ROW \p 0 \p ..........\nROW \p 1 \p ..........\nROW \p 2 \p ..........\nROW \p 3 \p ..........\nRULE \p fireball_speed \p 56\nRULE \p fireball_life \p 36\nRULE \p fireball_max \p 4\nRULE \p fireball_score \p 100\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nTARGET \p 1000 \p 512 \p 200 \p 200 \p 1\nTARGET \p 1000 \p 512 \p 200 \p 200 \p 1\nFIRE \p 1
+WRITE | norule.pdl | ROW \p 0 \p ..........\nSHOOTER \p 256 \p 512 \p 200 \p 200 \p 1 \p 1\nFIRE \p 1
+
+CASE    | flight
+# open air, life 36: tick 1 is x 412 (356 + 56) with life 35; tick 35 is x 2316 (356 + 56 x 35) with life 1; on tick 36 the life runs out and the shot is gone
+RUN | $T/rf | $T/air.pdl | 36
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | T 1 shots=1 kills=0 score=0 shot=412,612,35; | HAND-COMPUTED-the-shot-fired-on-tick-1-has-already-moved-once
+EXPECT_OUT | T 35 shots=1 kills=0 score=0 shot=2316,612,1; | HAND-COMPUTED-tick-35-x-2316-life-1
+EXPECT_OUT | T 36 shots=0 kills=0 score=0 shot= | HAND-COMPUTED-tick-36-the-life-ran-out
+
+CASE    | wall
+# a wall in column 6 of row 2 (x 1536 to 1791): tick 21 is x 1532 (still column 5, life 15), tick 22 is x 1588 (column 6, solid) so the shot is gone
+RUN | $T/rf | $T/wall.pdl | 23
+EXPECT_OUT | T 21 shots=1 kills=0 score=0 shot=1532,612,15; | HAND-COMPUTED-tick-21-just-before-the-wall
+EXPECT_OUT | T 22 shots=0 kills=0 score=0 shot= | HAND-COMPUTED-tick-22-the-wall-ends-the-shot
+
+CASE    | kill
+# a target box x 1000 to 1200, y 512 to 712: tick 11 is x 972 (outside), tick 12 is x 1028 (inside): the target dies, the shot ends, +100
+RUN | $T/rf | $T/kill.pdl | 13
+EXPECT_OUT | T 11 shots=1 kills=0 score=0 shot=972,612,25; targets=1 | HAND-COMPUTED-tick-11-not-there-yet
+EXPECT_OUT | T 12 shots=0 kills=1 score=100 shot= targets=0 | HAND-COMPUTED-tick-12-the-target-is-dead-and-the-shot-is-spent-(+100)
+EXPECT_OUT | T 13 shots=0 kills=1 score=100 shot= targets=0 | and-nothing-more-happens
+
+CASE    | facing-and-edge
+# facing left the shot goes x 356 - 56 n. A target box x 100 to 300: tick 1 is x 300, ON the right edge, and the edge counts (inclusive) so it dies on tick 1. A box x 100 to 299 (w 199): tick 1 is x 300 (outside, shot alive), tick 2 is x 244 (inside) so it dies on tick 2
+RUN | $T/rf | $T/leftedge.pdl | 2
+EXPECT_OUT | T 1 shots=0 kills=1 score=100 shot= targets=0 | HAND-COMPUTED-facing-left-x-300-is-on-the-edge-and-kills-on-tick-1
+RUN | $T/rf | $T/leftmiss.pdl | 3
+EXPECT_OUT | T 1 shots=1 kills=0 score=0 shot=300,612,35; targets=1 | HAND-COMPUTED-one-unit-outside-the-edge-the-shot-flies-on
+EXPECT_OUT | T 2 shots=0 kills=1 score=100 shot= targets=0 | HAND-COMPUTED-and-kills-on-tick-2-at-x-244
+
+CASE    | the-numbers-are-data
+# RULE fireball_max 2 and three fire inputs: the third finds no free slot (2 shots on tick 3); with max 4 there are 3. RULE fireball_speed 28: tick 10 is x 636 (356 + 280), life 26
+RUN | $T/rf | $T/max2.pdl | 3
+EXPECT_OUT | T 3 shots=2 | HAND-COMPUTED-max-2-the-third-shot-is-refused
+RUN | $T/rf | $T/max4.pdl | 3
+EXPECT_OUT | T 3 shots=3 | HAND-COMPUTED-max-4-all-three-fly
+RUN | $T/rf | $T/slow.pdl | 10
+EXPECT_OUT | T 10 shots=1 kills=0 score=0 shot=636,612,26; | HAND-COMPUTED-speed-28-tick-10-x-636
+
+CASE    | who-is-hit
+# an unarmed shooter fires nothing; a target that is already dead is passed through (the shot reaches tick 12 alive, x 1028); of two overlapping live targets only the FIRST dies and the shot is spent (targets=01)
+RUN | $T/rf | $T/unarmed.pdl | 5
+EXPECT_OUT | T 5 shots=0 kills=0 score=0 shot= | HAND-COMPUTED-unarmed-no-shot
+RUN | $T/rf | $T/deadtarget.pdl | 12
+EXPECT_OUT | T 12 shots=1 kills=0 score=0 shot=1028,612,24; targets=0 | HAND-COMPUTED-a-dead-target-is-passed-through
+RUN | $T/rf | $T/twotargets.pdl | 12
+EXPECT_OUT | T 12 shots=0 kills=1 score=100 shot= targets=01 | HAND-COMPUTED-one-kill-per-shot-the-first-target-only
+
+CASE    | contract
+RUN | $T/rf | --describe
+EXPECT_OUT | RULE keys: fireball_speed fireball_life fireball_max fireball_score | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rf | $T/norule.pdl | 3
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-the-four-RULE-numbers-is-refused
+EXPECT_OUT | the numbers are data, there is no default | and-the-op-says-why
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93, recipe in the standard section 12): a registry COMMAND row, the page tm_fireball (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's parameters
+RUN | grep | -c | ^COMMAND rule_fireball$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_fireball-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_fireball/event_pkg/pages/page_1/event.ir.pdl | type=rule_fireball | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_fireball/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_fireball/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | T 12 shots=0 kills=1 score=100 shot= targets=0 | the-page-gives-the-SAME-line-as-the-op-alone-(the-kill-on-tick-12)

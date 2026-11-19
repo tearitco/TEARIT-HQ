@@ -60,7 +60,7 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | i
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | advance | 200
 EXPECT_OUT | tick 81 | OBSERVED-jumping-at-tick-44-clears-the-pit-and-the-run-ends-at-tick-81
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | verify_clear
-EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=ccd3e648d3ecf85d;ticks=81 | the-proof-line-pinned
+EXPECT_OUT | CLEAR level=c33747c5fc30580b;run=8545299a9f646375;ticks=81 | the-proof-line-pinned
 RUN | grep | -c | ^EVENT | $T/g2/ledger.txt
 EXPECT_OUT_IS | 6 | INPUTS-ONLY-6-rows-for-an-81-tick-run:-new-join-start-input-input-ckpt
 
@@ -177,7 +177,7 @@ EXPECT_OUT | tick 241 | OBSERVED-the-level-is-cleared-at-tick-241
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | status
 EXPECT_OUT | score=250 stomps=1 kills=1 hits=0 armed=1 enemies=0 | OBSERVED-250-=-pick-up-50-+-fireball-kill-100-+-stomp-100-and-no-enemy-left
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | verify_clear
-EXPECT_OUT | CLEAR level=97d185088521224b;run=940c32e553bed838;ticks=241 | the-proof-line-of-the-full-Meadow-clear-pinned
+EXPECT_OUT | CLEAR level=97d185088521224b;run=65729fefdf356038;ticks=241 | the-proof-line-of-the-full-Meadow-clear-pinned
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m4 | replay
 EXPECT_OUT | REPLAY events=12 | the-12-rows-replay-(inputs-only)
 RUN | cp | -r | $T/m4 | $T/m5
@@ -219,3 +219,43 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead5 | $T/m6 | 
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead5 | $T/m6 | advance | 40
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead5 | $T/m6 | status
 EXPECT_OUT | ENEMY e1 | the-speed-5-game-runs-and-has-its-enemies
+
+CASE    | tpl_fireball_numbers_are_data
+# the four fireball numbers are RULE rows (rules.pdl), part of the rules hash: a copy with fireball_speed 28 is a different game, refuses the Meadow run recorded under 56, and its shot is really slower: the demo fires on tick 90 (the hero faces left) from x 4240; on tick 95 the shot is at 4240 - 5 x 56 = 3960 (speed 56) or 4240 - 5 x 28 = 4100 (speed 28)
+COPYDIR | @.apps/teario-play | tpl/mead28
+RUN | sed | -i | s/^RULE \p fireball_speed \p 56/RULE \p fireball_speed \p 28/ | $T/tpl/mead28/rulesets/default/rules.pdl
+RUN | grep | -c | fireball_speed \p 28 | $T/tpl/mead28/rulesets/default/rules.pdl
+EXPECT_OUT_IS | 1 | vacuity-the-copy-really-has-speed-28
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/m4 | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-run-recorded-under-fireball-speed-56-is-refused-by-the-speed-28-game
+EXPECT_OUT | the rules say ruleset=default | and-the-refusal-names-the-rules-mismatch
+MKDIR   | f56
+MKDIR   | f28
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | input | p1 | jump | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | input | p1 | jump | 58
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | input | p1 | left | 88
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | input | p1 | stay | 89
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | input | p1 | fire | 90
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | advance | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/f56 | status
+EXPECT_OUT | FIREBALL f1 at=3960,2716 vx=-56 life=31 | HAND-COMPUTED-speed-56-tick-95-x-4240-minus-280
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | input | p1 | jump | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | input | p1 | jump | 58
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | input | p1 | left | 88
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | input | p1 | stay | 89
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | input | p1 | fire | 90
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | advance | 5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead28 | $T/f28 | status
+EXPECT_OUT | FIREBALL f1 at=4100,2716 vx=-28 life=31 | HAND-COMPUTED-speed-28-tick-95-x-4240-minus-140-(slower)
+RUN | cp | -r | $T/m4 | $T/m7
+RUN | sed | -i | s/^RULE \p fireball_life.*/RULE \p fireball_life \p 99/ | $T/tpl/mead/rulesets/default/rules.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/mead | $T/m7 | replay
+EXPECT_EXIT | 1 | NEGATIVE-changing-fireball_life-also-changes-the-rules-hash-(the-recorded-run-is-refused)

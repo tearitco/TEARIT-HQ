@@ -57,7 +57,7 @@ Integer fixed point (Q8: 1/256 of a cell, `long`), no float, no clock, no `rand(
 
 ## 8. Worked examples
 - **BUILT, the right shape:** `phys_field` (D90): pure module + `phys_field_op` + case `phys_field` (23 checks, sabotage-proven); also reused by `game_core` MODE platform. It is the pattern to copy.
-- **BUILT first rule (2026-11-18):** `rule_patrol` (one body, turn at a wall or ledge, fall out): module `_shared-lib/rule_patrol.c`, op `ops/rule_patrol_op.c`, case `rule_patrol` (20 checks, hand-computed, 5 sabotages), called in-process by `game_core`, speed = RULE `patrol_speed`. The registry `COMMAND` row, the `events/tm_patrol` page and `teario (book)` in Blueprintz are ALSO built and were driven in the real window (view, edit a parameter, Pause / Fire / Step ev, trace). Then fireball, stomp, pickup, side hit, goal, score.
+- **BUILT first rule (2026-11-18):** `rule_patrol` (one body, turn at a wall or ledge, fall out): module `_shared-lib/rule_patrol.c`, op `ops/rule_patrol_op.c`, case `rule_patrol` (20 checks, hand-computed, 5 sabotages), called in-process by `game_core`, speed = RULE `patrol_speed`. The registry `COMMAND` row, the `events/tm_patrol` page and `teario (book)` in Blueprintz are ALSO built and were driven in the real window (view, edit a parameter, Pause / Fire / Step ev, trace). `rule_fireball` is BUILT the same way (module, op, registry row, page, 27 checks, 9 sabotages; its targets are `rule_patrol` walkers: rules compose). Then stomp, pickup, side hit, goal, score.
 - **The counter-example (do not copy):** Teario's enemies / stomp / fireball in `game_core.c` MODE platform (D92): behaviour that no harness can run alone, no page, nothing in Blueprintz.
 
 ## 9. Pitfalls that cost real runs (all hit 2026-11-18)

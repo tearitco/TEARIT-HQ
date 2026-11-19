@@ -1768,3 +1768,12 @@ COMMAND rule_patrol
   PARAMS scene,ticks
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_patrol_op.+x" "$D/@.apps/teario/events/{scene}" '{ticks}'
 END
+
+# rule_fireball = the FIREBALL rule of a game as an op (D93): runs `rule_fireball_op <scene> <ticks>` over a scene file under the teario events folder (the SAME pure module rule_fireball.c the game tick loop calls in-process) and prints the trace and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only), ticks a whole number. `rule_fireball_op --describe` lists its inputs, outputs and RULE keys.
+COMMAND rule_fireball
+  LABEL teario: Fireball rule (scene, ticks)
+  FIELD1 Scene:
+  FIELD2 Ticks:
+  PARAMS scene,ticks
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_fireball_op.+x" "$D/@.apps/teario/events/{scene}" '{ticks}'
+END

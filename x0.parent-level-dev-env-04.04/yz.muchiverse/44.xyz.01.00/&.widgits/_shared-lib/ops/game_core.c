@@ -62,6 +62,7 @@ enum { F_REACH = 0, F_STAY = 1, F_BOUNCE = 2 };
 #define LVMAXH 32
 #include "../phys_field.c"
 #include "../rule_patrol.c"   /* the PATROL rule (D92/D93): one pure module, also the CLI op rule_patrol_op */
+#include "../rule_fireball.c"   /* the FIREBALL rule (D92/D93): one pure module, also the CLI op rule_fireball_op */
 #define WALKISH (MODE == M_WALK || MODE == M_PLATFORM)
 static PF_Tune PT; static PF_Field PFIELD;   /* the physics knobs (RULE rows gravity, jump_v, run_max, accel, friction: part of the rules hash) and the one plane field of a flat level */
 
@@ -69,6 +70,7 @@ static FILE *OUT, *ERRF;                     /* stdout/stderr for the CLI; memor
 static char APP[P], SD[P], LEDGER[P], TITLE[96] = "Game", RS[40] = "default", MSG[400];
 static int KIND = K_LEDGER, MODE = M_TRACK, FINISH = F_REACH, WRAP = 0, LEVELDOC = 0;
 static long R_maxp = 4, R_minp = 2, R_maxrows = 5000, R_ckpt = 10, R_seed = 7, R_maxticks = 4000, R_docmax = 40, R_startlen = 3, R_grow = 1, R_scorefood = 10, R_needclear = 0, R_patrol = 10;   /* R_patrol: RULE patrol_speed (Q8 per tick), default 10 = the speed before it was data */
+static FB_Rule FBR = { 56, 36, 4, 100 };   /* RULE fireball_speed, fireball_life, fireball_max, fireball_score; the defaults are the values before they were data */
 static int LENGTH = 30, NJ; static int JF[MAXJ], JT[MAXJ];
 static int COLS = 16, ROWS = 12;
 static char T_UP[48] = "jumped", T_DOWN[48] = "jumped", LEVELREL[300], LEVEL_SOLID[16] = "#";
@@ -92,7 +94,7 @@ static struct {
     /* platform (mode platform): one gravity-field body per player (Q8 cells), the pending one-tick jump pulse, and how many times a player fell out of the level and was put back on START */
     PF_Body pb[MAXPL]; int jp[MAXPL]; long falls;
     /* platform extras (2026-11-18): enemies (walkers on the same physics), power-ups, fireballs; per player: armed, facing, fire pulse, score; counts of stomps, shots and hits */
-    RP_Walker en[8]; int pw_taken[4]; struct { long x, y, vx; int life, alive; } fb[4]; int armed[MAXPL], facing[MAXPL], fire[MAXPL]; long score, stomps, shots_kills, hits;
+    RP_Walker en[8]; int pw_taken[4]; FB_Shot fb[4]; int armed[MAXPL], facing[MAXPL], fire[MAXPL]; long score, stomps, shots_kills, hits;
 } S;
 static long KNOWN_SIZE;                      /* bytes of the ledger as this process last read or wrote it */
 
@@ -168,7 +170,7 @@ static int load_config(void) {
         else if (!strcmp(fl[1], "ruleset")) snprintf(RS, sizeof RS, "%s", fl[2]); }
     fclose(f); if (!KIND) return bad("game.pdl: GAME | kind must be ledger, realtime or editor");
     if (!good_word(RS, 24, 1)) return bad("game.pdl: bad ruleset name");
-    RULES_HASH = FNV0; PT = pf_default_tune(); memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
+    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
     const char *files[2] = { "board.pdl", "rules.pdl" };
     for (int k = 0; k < 2; k++) { snprintf(p, sizeof p, "%s/rulesets/%s/%s", APP, RS, files[k]); f = fopen(p, "r"); if (!f) return bad("missing %s", p);
         RULES_HASH = fnv(RULES_HASH, files[k], strlen(files[k]));
@@ -188,7 +190,8 @@ static int load_config(void) {
                 else if (!strcmp(fl[1], "default_seed")) R_seed = v; else if (!strcmp(fl[1], "max_ticks")) R_maxticks = v; else if (!strcmp(fl[1], "max_doc_rows")) R_docmax = v;
                 else if (!strcmp(fl[1], "gravity")) PT.gravity = v; else if (!strcmp(fl[1], "jump_v")) PT.jump_v = v; else if (!strcmp(fl[1], "run_max")) PT.run_max = v; else if (!strcmp(fl[1], "accel")) PT.accel = v; else if (!strcmp(fl[1], "friction")) PT.friction = v;
                 else if (!strcmp(fl[1], "min_players")) R_minp = v; else if (!strcmp(fl[1], "start_len")) R_startlen = v; else if (!strcmp(fl[1], "grow")) R_grow = v; else if (!strcmp(fl[1], "score_food")) R_scorefood = v;
-                else if (!strcmp(fl[1], "publish_needs_clear")) R_needclear = v; else if (!strcmp(fl[1], "patrol_speed")) { if (v < 1 || v > 256) { fclose(f); return bad("rules.pdl: patrol_speed is 1 to 256"); } R_patrol = v; }
+                else if (!strcmp(fl[1], "publish_needs_clear")) R_needclear = v; else if (!strcmp(fl[1], "fireball_speed")) { if (v < 1 || v > 256) { fclose(f); return bad("rules.pdl: fireball_speed is 1 to 256"); } FBR.speed = v; } else if (!strcmp(fl[1], "fireball_life")) { if (v < 1 || v > 600) { fclose(f); return bad("rules.pdl: fireball_life is 1 to 600"); } FBR.life = (int)v; } else if (!strcmp(fl[1], "fireball_max")) { if (v < 1 || v > 4) { fclose(f); return bad("rules.pdl: fireball_max is 1 to 4"); } FBR.max = (int)v; } else if (!strcmp(fl[1], "fireball_score")) { if (v < 0 || v > 100000) { fclose(f); return bad("rules.pdl: fireball_score is 0 to 100000"); } FBR.score = v; }
+                else if (!strcmp(fl[1], "patrol_speed")) { if (v < 1 || v > 256) { fclose(f); return bad("rules.pdl: patrol_speed is 1 to 256"); } R_patrol = v; }
                 else if (!strcmp(fl[1], "finish")) { FINISH = !strcmp(fl[2], "reach") ? F_REACH : !strcmp(fl[2], "exact_stay") ? F_STAY : !strcmp(fl[2], "bounce") ? F_BOUNCE : -1; if (FINISH < 0) { fclose(f); return bad("rules.pdl: finish is reach, exact_stay or bounce"); } }
                 else if (!strcmp(fl[1], "walls")) { if (!strcmp(fl[2], "wrap")) WRAP = 1; else if (!strcmp(fl[2], "solid")) WRAP = 0; else { fclose(f); return bad("rules.pdl: walls is solid or wrap"); } }
                 else if (!strcmp(fl[1], "doc_format")) { if (!strcmp(fl[2], "level")) LEVELDOC = 1; else { fclose(f); return bad("rules.pdl: doc_format is level"); } } } }
@@ -266,12 +269,11 @@ static void plat_world_init(void) {
 static int hit_box(const PF_Body *a, const PF_Body *b) { return a->x < b->x + b->w && b->x < a->x + a->w && a->y < b->y + b->h && b->y < a->y + a->h; }
 static void plat_step(void) {
     for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; int mask = (S.dir[i] < 0 ? 1 : S.dir[i] > 0 ? 2 : 0) | (S.jp[i] ? 4 : 0); if (S.dir[i]) S.facing[i] = S.dir[i];
-        if (S.fire[i] && S.armed[i]) for (int k = 0; k < 4; k++) if (!S.fb[k].alive) { S.fb[k].alive = 1; S.fb[k].life = 36; S.fb[k].x = b->x + b->w / 2; S.fb[k].y = b->y + b->h / 2; S.fb[k].vx = 56L * S.facing[i]; break; }
+        if (S.fire[i] && S.armed[i]) fb_spawn(S.fb, 4, &FBR, b, S.facing[i]);   /* the FIREBALL rule: rule_fireball.c, the same function the op rule_fireball_op runs */
         S.fire[i] = 0; pf_step(b, &PT, &PFIELD, 1, mask, plat_solid, NULL); S.jp[i] = 0;
         if (b->y > (long)(LV.h + 2) * PF_Q) { S.falls++; plat_spawn(i); } S.pos[i] = (int)((b->x + b->w / 2) / PF_Q); }
     for (int e = 0; e < LV.ne; e++) rp_step(&S.en[e], &PT, R_patrol, &PFIELD, 1, plat_solid, NULL, (long)(LV.h + 2) * PF_Q);   /* the PATROL rule: rule_patrol.c, the same function the op rule_patrol_op runs */
-    for (int k = 0; k < 4; k++) if (S.fb[k].alive) { S.fb[k].x += S.fb[k].vx; if (--S.fb[k].life <= 0 || plat_solid(NULL, pf_floordiv(S.fb[k].x, PF_Q), pf_floordiv(S.fb[k].y, PF_Q))) { S.fb[k].alive = 0; continue; }
-        for (int e = 0; e < LV.ne; e++) if (S.en[e].alive) { const PF_Body *b = &S.en[e].b; if (S.fb[k].x >= b->x && S.fb[k].x <= b->x + b->w && S.fb[k].y >= b->y && S.fb[k].y <= b->y + b->h) { S.en[e].alive = 0; S.fb[k].alive = 0; S.score += 100; S.shots_kills++; break; } } }
+    { int kk = fb_step(S.fb, 4, S.en, LV.ne, plat_solid, NULL); S.score += (long)kk * FBR.score; S.shots_kills += kk; }   /* the FIREBALL rule (rule_fireball.c): moves the shots, kills, returns the kills */
     for (int i = 0; i < S.np; i++) { PF_Body *h = &S.pb[i];
         for (int e = 0; e < LV.ne; e++) if (S.en[e].alive && hit_box(h, &S.en[e].b)) {
             if (h->vy > 0 && (h->y + h->h) - h->vy <= S.en[e].b.y + 64) { S.en[e].alive = 0; h->vy = -(PT.jump_v * 2 / 3); S.score += 100; S.stomps++; }   /* a stomp: the hero is falling and its feet were above the head before this tick's move (a fast fall may sink deeper than a fixed depth) */
