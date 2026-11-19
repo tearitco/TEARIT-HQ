@@ -9,6 +9,7 @@
  *   back        palettes bar, back to the category list
  *   arm <i>     arm tile i of the open category as the editor's brush: board/state/brush.txt (key, glyph, sprite) + pal_armed in pal.txt; a piececraft tile also goes
  *               through palettes_menu.sh arm-pc (the house's own brush file, palettes/state/pc_brush.txt)
+ *   stamps      the Make stamp bank takes the left slot (sides.txt side_stamp); pets / palettes / none / a palette pick clear it again
  *   list        only rewrite pal.txt (category list for the window)
  * Files (board/state/): sides.txt (side_left / side_pal: "1" = shown, EMPTY = hidden, other keys kept; same convention as layout-studio side_toggle) and pal.txt
  * (what the window binds: n_pcat, pcat_<i>_key/_label, pal_is_list, pal_is_tiles, pal_key, pal_title). Both written atomically. A state-key switch, not an href stack (owner OK 2026-11-02). */
@@ -257,9 +258,10 @@ int main(int argc, char **argv) {
         const char *m = ll[0] ? ll : (!strcmp(want, "pets") || !strcmp(want, "palettes") || !strcmp(want, "none")) ? want : (last[0] ? last : SIDE_FIRST_RUN);
         static char mv[16]; snprintf(mv, sizeof mv, "%s", !strcmp(m, "palettes") ? "open" : !strcmp(m, "pets") ? "pets" : !strcmp(m, "none") ? "none" : "open"); verb = mv; log_hist = 0;
     }
-    if (!strcmp(verb, "open")) { if (log_hist) hist_add(house, "palettes"); kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); }
-    else if (!strcmp(verb, "pets")) { if (log_hist) hist_add(house, "pets"); kv_set(sides, "side_left", "1"); kv_set(sides, "side_pal", ""); }
-    else if (!strcmp(verb, "none")) { if (log_hist) hist_add(house, "none"); kv_set(sides, "side_left", ""); kv_set(sides, "side_pal", ""); }
+    if (!strcmp(verb, "open")) { if (log_hist) hist_add(house, "palettes"); kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); kv_set(sides, "side_stamp", ""); }
+    else if (!strcmp(verb, "pets")) { if (log_hist) hist_add(house, "pets"); kv_set(sides, "side_left", "1"); kv_set(sides, "side_pal", ""); kv_set(sides, "side_stamp", ""); }
+    else if (!strcmp(verb, "none")) { if (log_hist) hist_add(house, "none"); kv_set(sides, "side_left", ""); kv_set(sides, "side_pal", ""); kv_set(sides, "side_stamp", ""); }
+    else if (!strcmp(verb, "stamps")) { if (log_hist) hist_add(house, "stamps"); kv_set(sides, "side_stamp", "1"); kv_set(sides, "side_left", ""); kv_set(sides, "side_pal", ""); }   /* the Make stamp bank (a Mario Maker style item bank, 2026-11-18): the left slot shows it instead of pets or palettes; the list itself is the game feed state/stamps_ui.txt */
     else if (!strcmp(verb, "tiles") || !strcmp(verb, "pick")) { if (log_hist) hist_add(house, "palettes");
         /* pick <key>: at the list = open that palette (at its first level with a choice), at a level = choose it and go down */
         char np[4300]; snprintf(np, sizeof np, "%s/@.apps/rpg-edit-hq/board/state/pal_nav.txt", house); char nk[64], nl[16]; kv_get(np, "kind", nk, sizeof nk); kv_get(np, "level", nl, sizeof nl);
@@ -276,7 +278,7 @@ int main(int argc, char **argv) {
             lvl = descend(lvl);
         }
         char sl[16]; snprintf(sl, sizeof sl, "%d", lvl); kv_set(np, "kind", nk); kv_set(np, "level", sl); kv_set(np, "page", "0");
-        kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", "");
+        kv_set(sides, "side_pal", "1"); kv_set(sides, "side_left", ""); kv_set(sides, "side_stamp", "");
     } else if (!strcmp(verb, "arm")) {
         int i = atoi(arg); char g[64], sp[1024], k[64], pm[4200];
         char kk[64]; snprintf(kk, sizeof kk, "ptile_%d_glyph", i); kv_get(pal, kk, g, sizeof g); snprintf(kk, sizeof kk, "ptile_%d_sprite", i); kv_get(pal, kk, sp, sizeof sp); kv_get(pal, "pal_key", k, sizeof k);

@@ -111,3 +111,6 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
 .hpb-ok { color: #3cdc50; }
 .hpb-low { color: #e03c3c; }
 .hpb-ko { color: #808080; }
+
+/* 2026-11-18 the picked stamp of the Make stamp bank (Tear-it purple and gold) */
+.stamp-picked { background-color: #5a3b78; color: #f0c040; font-size: 10px; }

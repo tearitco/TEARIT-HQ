@@ -9,3 +9,4 @@ FILE | ledger.txt | LEDGER     | every EDIT row and publish row (game_core)  | -
 FILE | ui.txt     | PROJECTION | game_core ui                                 | ui
 FILE | doc.txt    | PROJECTION | game_core export (the document as rows)      | export
 FILE | level.pdl  | PROJECTION | game_core export (the document as a Teario level file, the format Teario-Play reads) | export
+FILE | stamp_pick.txt | PREFERENCE | game_core pick (which stamp of the bank Make paints with; a tool choice, never read by the rules) | -

@@ -58,7 +58,7 @@ EXPECT_EXIT | 0 | a-deleted-level-file-regenerates-byte-for-byte-(it-is-a-PROJEC
 RUN | rm | $T/tm_g/level.keep
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | ui
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | audit
-EXPECT_OUT | AUDIT ok files=4 declared=4 | the-audit-passes-with-ledger-ui-doc-and-level
+EXPECT_OUT | AUDIT ok files=4 declared=5 | the-audit-passes-with-ledger-ui-doc-and-level
 WRITE   | tm_g/stray.txt | nobody declared me
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/tm_g | audit
 EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit

@@ -849,7 +849,7 @@ static int pg_events(char *buf, size_t cap) {
     return ne;
 }
 static int cmd_scene(int argc, char **argv);
-static int doc_blank(long w, long h, const char *as); static int doc_paint(const char *tool, long x, long y, const char *as); static int cursor_cell(long *x, long *y);
+static int doc_blank(long w, long h, const char *as); static int doc_paint(const char *tool, long x, long y, const char *as); static int cursor_cell(long *x, long *y); static int cmd_stamp(const char *verb, int ac, char **av, const char *as); static int stamps_load(void); static int stamp_picked(void); static int stamp_pick(const char *id);
 static int cmd_page(int argc, char **argv) {
     if (argc < 1) { fprintf(ERRF, "usage: page <desk_dir> [atlas.rgba] [noevents]\n"); return 2; } const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) { fprintf(ERRF, "page: the desk folder does not exist (make it first)\n"); return 2; }
     if (load_page()) { fprintf(ERRF, "%s\n", MSG); return 2; }
@@ -951,6 +951,7 @@ static int engine_verb(int argc, char **argv) {
         if (live(-1, as, verb, av[0], tx, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "%s %s: %d rows in the document\n", verb, av[0], S.ndoc); return 0; }
     if (KIND == K_EDITOR && LEVELDOC && !strcmp(verb, "blank")) { long w = 20, h = 12; char *e; if (ac > 0) { w = strtol(av[0], &e, 10); if (*e) { fprintf(ERRF, "blank: width is a number\n"); return 2; } } if (ac > 1) { h = strtol(av[1], &e, 10); if (*e) { fprintf(ERRF, "blank: height is a number\n"); return 2; } } if (doc_blank(w, h, as)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "blank %ldx%ld: %d rows in the document\n", w, h, S.ndoc); return 0; }
     if (KIND == K_EDITOR && LEVELDOC && !strcmp(verb, "paint")) { if (need_args(ac, 3, "paint ground|erase|start|goal <x> <y>   [as=author]")) return 2; char *e1, *e2; long x = strtol(av[1], &e1, 10), y = strtol(av[2], &e2, 10); if (*e1 || *e2) { fprintf(ERRF, "paint: x and y are numbers\n"); return 2; } if (doc_paint(av[0], x, y, as)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "paint %s %ld,%ld: %d rows in the document\n", av[0], x, y, S.ndoc); return 0; }
+    if (KIND == K_EDITOR && LEVELDOC && (!strcmp(verb, "stamps") || !strcmp(verb, "pick") || !strcmp(verb, "place"))) return cmd_stamp(verb, ac, av, as);
     if (KIND == K_EDITOR && !strcmp(verb, "publish")) { if (live(-1, as, "publish", "", NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "published doc=%s rows=%d\n", S.pubhash, S.ndoc); return 0; }
     if (!strcmp(verb, "export") && ac == 1) return cmd_export(av[0]);
     if (!strcmp(verb, "export")) { if (KIND != K_EDITOR) { fprintf(ERRF, "export: only an editor game has a document (give an out folder to write the data tables: export <out_dir>)\n"); return 2; } if (write_doc()) { fprintf(ERRF, "export: cannot write doc.txt\n"); return 2; } fprintf(OUT, "wrote doc.txt (%d rows)\n", S.ndoc); return 0; }
@@ -1092,6 +1093,30 @@ static int doc_paint(const char *tool, long x, long y, const char *as) {
     tx[x] = ch; return live(-1, as, "set", id, tx, NULL);
 }
 /* the editor's cursor cell (the xelector of the editor's own world): where the shelf buttons paint */
+/* the STAMP BANK (Make's sidebar, 2026-11-18): rulesets/<rs>/stamps.pdl rows `STAMP | id | label | class`; the id IS the doc_paint tool. Which stamp is picked is a PREFERENCE file <state>/stamp_pick.txt
+ * (a tool choice, never read by the rules); an absent or unknown pick means the first stamp. */
+typedef struct { char id[24], label[32], cls[12]; } Stamp; static Stamp STAMPS[16]; static int nstamps;
+static int stamps_load(void) {
+    char p[P], ln[512], *f[6]; nstamps = 0; snprintf(p, sizeof p, "%s/rulesets/%s/stamps.pdl", APP, RS); FILE *fp = fopen(p, "r"); if (!fp) return bad("missing %s", p);
+    while (fgets(ln, sizeof ln, fp)) { if (ln[0] == '#') continue; int n = split_row(ln, f, 6); if (n < 4 || strcmp(f[0], "STAMP")) continue;
+        if (nstamps >= 16) { fclose(fp); return bad("stamps.pdl: at most 16 stamps"); }
+        for (int i = 0; i < nstamps; i++) if (!strcmp(STAMPS[i].id, f[1])) { fclose(fp); return bad("stamps.pdl: the stamp %s is listed twice", f[1]); }
+        if (strcmp(f[3], "tile") && strcmp(f[3], "event")) { fclose(fp); return bad("stamps.pdl: the class of %s is tile or event", f[1]); }
+        snprintf(STAMPS[nstamps].id, sizeof STAMPS[0].id, "%s", f[1]); snprintf(STAMPS[nstamps].label, sizeof STAMPS[0].label, "%s", f[2]); snprintf(STAMPS[nstamps].cls, sizeof STAMPS[0].cls, "%s", f[3]); nstamps++; }
+    fclose(fp); if (!nstamps) return bad("stamps.pdl has no STAMP rows"); return 0;
+}
+static int stamp_picked(void) { char p[P], b[64] = ""; snprintf(p, sizeof p, "%s/stamp_pick.txt", SD); FILE *f = fopen(p, "r"); if (f) { if (fgets(b, sizeof b, f)) b[strcspn(b, "\r\n")] = 0; fclose(f); }
+    for (int i = 0; i < nstamps; i++) if (!strcmp(STAMPS[i].id, b)) return i; return 0; }
+static int stamp_pick(const char *id) { if (stamps_load()) return 1; int k = -1; for (int i = 0; i < nstamps; i++) if (!strcmp(STAMPS[i].id, id)) k = i;
+    if (k < 0) return bad("pick: there is no stamp %s in the bank", id); char p[P]; snprintf(p, sizeof p, "%s/stamp_pick.txt", SD); char d[64]; snprintf(d, sizeof d, "%s\n", id); return write_atomic(p, d) ? bad("pick: cannot write stamp_pick.txt") : 0; }
+static int cmd_stamp(const char *verb, int ac, char **av, const char *as) {
+    if (stamps_load()) { fprintf(ERRF, "%s\n", MSG); return 2; }
+    if (!strcmp(verb, "stamps")) { int pk = stamp_picked(); for (int i = 0; i < nstamps; i++) fprintf(OUT, "STAMP %s %s %s picked=%d\n", STAMPS[i].id, STAMPS[i].label, STAMPS[i].cls, i == pk); return 0; }
+    if (!strcmp(verb, "pick")) { if (ac != 1) { fprintf(ERRF, "usage: pick <stamp id>   (see: stamps)\n"); return 2; } if (stamp_pick(av[0])) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "picked %s\n", av[0]); return 0; }
+    if (ac != 2) { fprintf(ERRF, "usage: place <x> <y>   [as=author]   (paints the picked stamp)\n"); return 2; }
+    char *e1, *e2; long x = strtol(av[0], &e1, 10), y = strtol(av[1], &e2, 10); if (*e1 || *e2) { fprintf(ERRF, "place: x and y are numbers\n"); return 2; }
+    const char *id = STAMPS[stamp_picked()].id; if (doc_paint(id, x, y, as)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "place %s %ld,%ld: %d rows in the document\n", id, x, y, S.ndoc); return 0;
+}
 static int cursor_cell(long *x, long *y) { char eb[P], p[P + 96], b[600]; snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
     snprintf(p, sizeof p, "%s/%s-pchq/pieces/xelector_01/state.txt", EDIT, bn); FILE *f = fopen(p, "r"); if (!f) return 0; size_t n = fread(b, 1, sizeof b - 1, f); b[n] = 0; fclose(f); int hx_ = 0, hy_ = 0;
     for (char *l = strtok(b, "\n"); l; l = strtok(NULL, "\n")) { if (!strncmp(l, "pos_x=", 6)) { *x = atol(l + 6); hx_ = 1; } else if (!strncmp(l, "pos_y=", 6)) { *y = atol(l + 6); hy_ = 1; } } return hx_ && hy_; }
@@ -1149,6 +1174,8 @@ static void handle(const char *c) {
     else if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "up") || !strcmp(c, "down"))) { if (!S.human[0]) snprintf(dmsg, sizeof dmsg, "no human seat"); else if (!sync_state()) { char dc[2] = { (char)(c[0] - 'a' + 'A'), 0 }; human_live("turn", dc, NULL, "p1"); } }
     else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay") || (MODE == M_PLATFORM && (!strcmp(c, "jump") || !strcmp(c, "fire"))))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
     else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "blank_level")) { if (!sync_state()) { if (doc_blank(20, 12, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "a starter level: 20 x 12, ground along the bottom"); } }
+    else if (KIND == K_EDITOR && LEVELDOC && !strncmp(c, "pick_", 5)) { if (stamp_pick(c + 5)) snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); else snprintf(dmsg, sizeof dmsg, "picked %s", c + 5); }
+    else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "place")) { long x = 0, y = 0; if (stamps_load()) snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); else if (!cursor_cell(&x, &y)) snprintf(dmsg, sizeof dmsg, "no cursor cell: the editor cursor was not found"); else if (!sync_state()) { const char *id = STAMPS[stamp_picked()].id; if (doc_paint(id, x, y, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "%s at %ld,%ld", id, x, y); } }
     else if (KIND == K_EDITOR && LEVELDOC && !strncmp(c, "paint_", 6)) { long x = 0, y = 0; if (!cursor_cell(&x, &y)) snprintf(dmsg, sizeof dmsg, "no cursor cell: the editor cursor was not found"); else if (!sync_state()) { if (doc_paint(c + 6, x, y, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "%s at %ld,%ld", c + 6, x, y); } }
     else if (KIND == K_EDITOR && !strncmp(c, "add_", 4)) { char id[32]; snprintf(id, sizeof id, "%s", c + 4); if (!sync_state()) { int ix = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], id)) ix = 1; if (!strcmp(id, "item")) { snprintf(id, sizeof id, "item%d", S.ndoc + 1); ix = 0; } char tx[80]; snprintf(tx, sizeof tx, "%s (added from the bar)", id); if (LEVELDOC && !strcmp(id, "start")) snprintf(tx, sizeof tx, "2 10"); if (LEVELDOC && !strcmp(id, "goal")) snprintf(tx, sizeof tx, "17 10"); human_live(ix ? "set" : "add", id, tx, "author"); } }
     else if (KIND == K_EDITOR && !strcmp(c, "remove_last")) { if (!sync_state()) { if (S.ndoc) { char id[32]; snprintf(id, sizeof id, "%s", S.did[S.ndoc - 1]); human_live("del", id, NULL, "author"); } else snprintf(dmsg, sizeof dmsg, "the document is empty"); } }
@@ -1159,13 +1186,21 @@ static void handle(const char *c) {
 }
 static void add_btn(char *o, size_t cap, int *nb, const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "gmb_%d_label=%s\ngmb_%d_act='%s' ctl %s '%s'\n", *nb, label, *nb, SELF, cmd, GDIR); (*nb)++; strncat(o, b, cap - strlen(o) - 1); }
 static void add_txt(char *o, size_t cap, int *nt, const char *t) { char b[400]; snprintf(b, sizeof b, "gmt_%d_text=%s\n", (*nt)++, t[0] ? t : " "); strncat(o, b, cap - strlen(o) - 1); }
+/* the sidebar's list for the editor window (vars file <editor>/state/stamps_ui.txt): stamp_on, n_stamp, stamp_<i>_id / _label / _cls (the class carries `stamp-picked` for the picked one). Off (stamp_on empty) for a game that has no level document. */
+static void stamps_publish(void) {
+    char p[P], o[6000] = "", b[900]; snprintf(p, sizeof p, "%s/state/stamps_ui.txt", EDIT);
+    if (KIND == K_EDITOR && LEVELDOC && S.ndoc && !stamps_load()) { int pk = stamp_picked(); snprintf(b, sizeof b, "stamp_on=1\nn_stamp=%d\nstamp_picked=%s\n", nstamps, STAMPS[pk].id); strncat(o, b, sizeof o - strlen(o) - 1);
+        for (int i = 0; i < nstamps; i++) { snprintf(b, sizeof b, "stamp_%d_id=%s\nstamp_%d_label=%s%s\nstamp_%d_cls=%s\nstamp_%d_act='%s' ctl pick_%s '%s'\n", i, STAMPS[i].id, i, i == pk ? "> " : "", STAMPS[i].label, i, i == pk ? "stamp-picked" : STAMPS[i].cls, i, SELF, STAMPS[i].id, GDIR); strncat(o, b, sizeof o - strlen(o) - 1); } }
+    else strcpy(o, "stamp_on=\nstamp_off=1\nn_stamp=0\n");
+    write_atomic(p, o);
+}
 static void publish(void) {
     static char o[12000]; o[0] = 0; size_t C = sizeof o; int nt = 0, nb = 0; char b[300]; int run = running();
     snprintf(b, sizeof b, "gm_on=1\ngm_pid=%ld\ngm_title=%s\n", (long)getpid(), TITLE); strncat(o, b, C - strlen(o) - 1);
     snprintf(b, sizeof b, "%.200s", dmsg); add_txt(o, C, &nt, b);
     if (KIND == K_EDITOR) {
         snprintf(b, sizeof b, "%d rows, %s, %ld edits", S.ndoc, S.published ? "published" : "not published", S.nedits); add_txt(o, C, &nt, b);
-        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { add_btn(o, C, &nb, "ground here", "paint_ground"); add_btn(o, C, &nb, "erase here", "paint_erase"); add_btn(o, C, &nb, "start here", "paint_start"); add_btn(o, C, &nb, "goal here", "paint_goal"); add_btn(o, C, &nb, "enemy here", "paint_enemy"); add_btn(o, C, &nb, "power here", "paint_power"); } add_btn(o, C, &nb, "publish", "publish"); }
+        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { char pl[80] = "place stamp"; if (!stamps_load()) snprintf(pl, sizeof pl, "place: %s", STAMPS[stamp_picked()].label); add_btn(o, C, &nb, pl, "place"); } add_btn(o, C, &nb, "publish", "publish"); }
         else { add_btn(o, C, &nb, "add start", "add_start"); add_btn(o, C, &nb, "add goal", "add_goal"); add_btn(o, C, &nb, "add item", "add_item"); add_btn(o, C, &nb, "remove last", "remove_last"); add_btn(o, C, &nb, "publish", "publish"); }
     } else if (!mode_play) {
         snprintf(b, sizeof b, "%d players, seed %ld", nplayers, seed_pref); add_txt(o, C, &nt, b); add_btn(o, C, &nb, "players -", "players_down"); add_btn(o, C, &nb, "players +", "players_up");
@@ -1181,7 +1216,7 @@ static void publish(void) {
         else if (!over && KIND == K_REALTIME) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) hp = 1; if (hp) { add_btn(o, C, &nb, "Left", "left"); add_btn(o, C, &nb, "Stay", "stay"); add_btn(o, C, &nb, "Right", "right"); if (MODE == M_PLATFORM) { add_btn(o, C, &nb, "Jump", "jump"); add_btn(o, C, &nb, "Fire", "fire"); } } }
         if (!over && !run) add_btn(o, C, &nb, "Step", "step"); snprintf(b, sizeof b, "speed: %s", SPEED_NAME[speed]); add_btn(o, C, &nb, b, "speed_next"); if (over) add_btn(o, C, &nb, "New game", "new_game");
     }
-    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, nb); strncat(o, b, C - strlen(o) - 1); write_atomic(FEED, o); dirty = 0; ST.publishes++;
+    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, nb); strncat(o, b, C - strlen(o) - 1); write_atomic(FEED, o); stamps_publish(); dirty = 0; ST.publishes++;
 }
 static int driver_main(int argc, char **argv) {
     if (argc < 5) { fprintf(stderr, "usage: game_core driver <house_root> <book_app_dir> <editor_app_dir>\n"); return 2; }
@@ -1255,6 +1290,7 @@ static int driver_main(int argc, char **argv) {
     if (page_on) set_desk("board");   /* the world goes back to the authored board when the driver ends */
     if (ui_play) ui_mode_set("edit");   /* and the window goes back to its edit bars */
     if (was_live) stats_seg_end(now_us() - seg_us, pace_ms(speed) * 1000L, stats_path);
+    { char sp[P]; snprintf(sp, sizeof sp, "%s/state/stamps_ui.txt", EDIT); write_atomic(sp, "stamp_on=\nn_stamp=0\n"); }
     { char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } }   /* the bar disappears when the game ends */
     return 0;
 }

@@ -1,0 +1,9 @@
+# stamps.pdl - the STAMP BANK of Teario Make (the sidebar's list; a Mario Maker style bank, 2026-11-18). CONFIG: read by game_core, never written.
+# STAMP | id | label | class      the id IS the paint tool (tile stamps change a cell, event stamps place an actor); class is `tile` or `event`
+# A new stamp the engine knows how to paint is a new row here, no code change. Which one is picked is a PREFERENCE file (state/stamp_pick.txt).
+STAMP | ground | ground | tile
+STAMP | erase  | erase  | tile
+STAMP | start  | start  | event
+STAMP | goal   | goal   | event
+STAMP | enemy  | enemy  | event
+STAMP | power  | power  | event

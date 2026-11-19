@@ -64,6 +64,58 @@ RUN | grep | -c | ^ENEMY | $T/s1/level.pdl
 EXPECT_OUT_IS | 0 | no-ENEMY-row-is-left
 EXPECT_HAS | $T/s1/level.pdl | POWER \p 5 \p 7 | the-power-up-stays
 
+CASE    | tt_stamps
+# the STAMP BANK (Make's sidebar, 2026-11-18): rulesets/default/stamps.pdl; `pick <id>` chooses the stamp (a PREFERENCE file), `place x y` paints it with the same doc_paint as `paint`
+MKDIR   | s3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | blank
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | stamps
+EXPECT_OUT | STAMP ground ground tile picked=1 | the-first-stamp-is-picked-by-default
+EXPECT_OUT | STAMP enemy enemy event picked=0 | the-bank-lists-event-stamps-too
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | pick | enemy
+EXPECT_EXIT | 0 | an-event-stamp-is-picked
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | stamps
+EXPECT_OUT | STAMP enemy enemy event picked=1 | the-pick-moved-to-enemy
+EXPECT_OUT | STAMP ground ground tile picked=0 | and-left-ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | place | 8 | 10
+EXPECT_HAS | $T/s3/stamp_pick.txt | enemy | the-pick-is-a-file-in-the-state-folder
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | export
+EXPECT_HAS | $T/s3/level.pdl | ENEMY \p 8 \p 10 | placing-the-picked-event-stamp-writes-the-ENEMY-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | pick | ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | place | 5 | 9
+EXPECT_OUT | place ground 5,9 | a-tile-stamp-paints-a-cell
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | pick | lava
+EXPECT_EXIT | 2 | NEGATIVE-a-stamp-that-is-not-in-the-bank-is-refused
+EXPECT_OUT | there is no stamp lava in the bank | and-the-engine-says-why
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | stamps
+EXPECT_OUT | STAMP ground ground tile picked=1 | the-refused-pick-left-the-earlier-pick-alone
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s3 | audit
+EXPECT_EXIT | 0 | the-pick-file-is-declared-(PREFERENCE)-so-the-audit-passes
+RUN | cp | -r | $T/tt/make | $T/tt/make_dup
+RUN | sh | -c | printf 'STAMP \p ground \p again \p tile\n' >> "$T/tt/make_dup/rulesets/default/stamps.pdl"
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make_dup | $T/s3 | stamps
+EXPECT_EXIT | 2 | NEGATIVE-a-stamp-listed-twice-is-refused
+EXPECT_OUT | is listed twice | and-the-engine-names-it
+
+CASE    | tt_stamp_sidebar
+# the left slot is shared (pets / palettes / stamps): `pal_side stamps` shows the bank and hides the others, every other view hides it again (scratch house, the live sides.txt is never touched)
+MKDIR   | hs/@.apps/rpg-edit-hq/board/state
+WRITE   | hs/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1\nside_right=1\n
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/hs | stamps
+EXPECT_EXIT | 0 | the-stamps-view-opens
+EXPECT_HAS | $T/hs/@.apps/rpg-edit-hq/board/state/sides.txt | side_stamp=1 | the-stamp-bank-is-shown
+EXPECT_HAS | $T/hs/@.apps/rpg-edit-hq/board/state/sides.txt | side_right=1 | the-right-bar-is-untouched
+RUN | grep | -c | ^side_left=1 | $T/hs/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | the-pets-bar-is-hidden-while-the-stamps-show
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/hs | pets
+EXPECT_HAS | $T/hs/@.apps/rpg-edit-hq/board/state/sides.txt | side_left=1 | pets-come-back
+RUN | grep | -c | ^side_stamp=1 | $T/hs/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | and-the-stamp-bank-is-hidden-again
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/hs | stamps
+RUN | $HOUSE/@.apps/rpg-edit-hq/ops/+x/pal_side.+x | $T/hs | none
+RUN | grep | -c | ^side_stamp=1 | $T/hs/@.apps/rpg-edit-hq/board/state/sides.txt
+EXPECT_OUT_IS | 0 | the-minimise-button-(none)-hides-the-stamp-bank
+
 CASE    | tt_replay_and_scene
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/make | $T/s1 | replay
 EXPECT_EXIT | 0 | the-edit-rows-replay-to-a-state

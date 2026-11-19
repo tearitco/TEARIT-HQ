@@ -2,7 +2,7 @@
      A copy of the layout-studio sandbox board (pinned side bars) with rpg-edit-hq's own rows: the pets and stats are the LEFT bar, chat is the RIGHT bar, the bag hotbar is the bottom overlay,
      the dropdowns are rpg-edit-hq's. The canvas is the board engine frame (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view) of the book maps/rpg-edit-hq that rpg_edit_hq.+x exports.
      Launch: sh @.apps/rpg-edit-hq/board/open_board.sh. vars: rpg-edit-hq's state files FIRST, the board's after, so canvas_raw / interact_* are the board's. RULES: no angle brackets inside comments. -->
-<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/pal.txt state/prefs_ui.txt state/ctx.txt ../state/game_ui.txt">
+<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/pal.txt state/prefs_ui.txt state/ctx.txt ../state/game_ui.txt ../state/stamps_ui.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rpg-edit-hq-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
@@ -123,6 +123,15 @@
           <item id="pt${party.#}" class="pchq-ft skin-bar ${party.cls}" label="${party.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' select ${party.id}"/>
         </repeat>
       </row>
+      <!-- 2026-11-18 LEFT pinned bar, the STAMP BANK of Teario Make (a Mario Maker style item bank; shares the left slot with pets and palettes: pal_side `stamps` writes side_stamp and clears the others, the _ hides it). The list is the game feed ../state/stamps_ui.txt (stamp_on, n_stamp, stamp_<i>_label/_cls/_act): a new stamp is a row in the game's stamps.pdl, no row here. A pick runs the game's own `ctl pick_<id>`; the PICKED stamp has class stamp-picked and a "> " in its label. -->
+      <row id="side-s" class="canvas-overlay-left ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_stamp}">
+        <text label="stamps" class="hb-quiet ov-title theme-3 ov-line"/>
+        <item id="ss-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' none"/>
+        <text label="open Make and press new level" class="ph-quiet ov-line" show="${stamp_off}"/>
+        <repeat count="${n_stamp}" bind="stamp">
+          <item id="st${stamp.#}" class="pchq-ft skin-bar ${stamp.cls}" label="${stamp.label}" action="${stamp.act}"/>
+        </repeat>
+      </row>
       <!-- LEFT pinned bar, palettes (shares the left slot with the pets bar: pal_side writes side_left / side_pal together, so only one shows). Two views by state key: the category list (pal_is_list), or one category (pal_is_tiles) with a back row. Tiles: the category's tiles as sprite rows; a click arms the brush (pal_side arm). -->
       <row id="side-p" class="canvas-overlay-left ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_pal}">
         <text label="${pal_title}" class="hb-quiet ov-title theme-3 ov-line"/>
@@ -196,6 +205,7 @@
     <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
       <text label="ents" class="quiet"/>
       <item id="sl-toggle" class="pchq-ft" label="pets" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' pets"/>
+      <item id="ss-toggle" class="pchq-ft" label="stamps" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' stamps"/>
       <item id="sp-toggle" class="pchq-ft" label="palettes" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' open"/>
       <item id="sr-toggle" class="pchq-ft" label="chat" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/rpg-edit-hq/board/state/sides.txt' side_right toggle"/>
       <item id="hb-toggle" class="pchq-ft" label="hb" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x' toggle hb"/>
