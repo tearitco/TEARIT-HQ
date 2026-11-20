@@ -4,6 +4,7 @@ META         | piece_id           | book-stack
 STATE        | menu_stay_open     | 1
 STATE        | grab_pointer       | 1
 STATE        | grab_keyboard      | 1
+METHOD       | Rand                 | sh -c 'export PACKAGE_DIR="$0"; H="$1"; D="$HOME/Desktop/p"; mkdir -p "$D"; W0=$(xwininfo -root -children | grep -o "0x[0-9a-f]*" | sort -u); bash "$H/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/branches/bible_text/run.sh"; sleep 1; N=""; for w in $(xwininfo -root -children | grep -o "0x[0-9a-f]*" | sort -u); do echo "$W0" | grep -qx "$w" || N="$w"; done; [ -n "$N" ] && "$H/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x" "$N" "$D/rand_$(date +%Y%m%d_%H%M%S).png"'
 METHOD       | Read                 | sh -c 'H="$1" && export PACKAGE_DIR="$0" && exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$H/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal"'
 METHOD       | Dir                  | xdg-open
 METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
