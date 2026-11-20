@@ -3,7 +3,7 @@
 # order  = a number; rows are shown in ascending order.
 # action = a plain identifier (letters, digits, _): the folder under ../branches/ whose run.sh runs when the row is picked. A row whose branch has no run.sh is skipped with a note.
 # Edit a row here (or in blueprintz) to change the menu; the reader's event is  run_menu menu=<this file>.
-SOURCE | 1 | tao | Tao Te Ching (random chapter)
+SOURCE | 1 | tao | Tao Te Ching (random)
 SOURCE | 2 | proverbs31 | Proverbs 31 (daily)
 SOURCE | 3 | bible_tts | Bible verse (with TTS)
 SOURCE | 4 | bible_text | Bible verse (text)

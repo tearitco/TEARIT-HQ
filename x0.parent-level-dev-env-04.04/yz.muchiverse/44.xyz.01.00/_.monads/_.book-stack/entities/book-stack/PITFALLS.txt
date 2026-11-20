@@ -102,7 +102,7 @@ actually work.
 ================================================================================
 
 --------------------------------------------------------------------------------
-PITFALL 3 — the Read menu cell is too narrow for the Tao row (found 2026-11-19, NOT FIXED)
+PITFALL 3 — the Read menu cell is too narrow for the Tao row (found 2026-11-19, FIXED BY THE LABEL; the renderer cause is still open)
 Symptom: the picker from Read ("Choose") is a 264 px window. The row
 "Tao Te Ching (random chapter)" wraps to two lines; "chapter)" falls below its
 row bar, so the text looks like it escapes the cell.
@@ -135,3 +135,14 @@ Not the cause (all measured fast): the picker window (160 ms), asset_root_op (0.
 for a file whose location is known; a fixed path first, a search only as a fallback.
 The live copy is user data (never committed): a fresh install copies the house template, so check
 that template's Read line too if the pals copy is ever regenerated.
+
+PITFALL 3 follow-up (2026-11-19): fixed with data. data/sources.pdl row 1 is now "Tao Te Ching (random)"
+(21 columns); the picture after the change shows one line inside its row bar (the old label wrapped).
+Verified on a nested display (Xephyr) through the real Read chain; the control is the picture taken with
+the old label. What the trace showed about the real cause: this menu is the context-menu popup, so its
+width comes from measure_context_popup_w(), which measures labels with popup_text_px(); the rows are
+drawn wider than that measure (the 264 px cell held ~20 columns of the drawn text). The renderer reads a
+.css next to the generated menu (strace showed it opened) but a `window { width: ..ui }` rule does NOT
+change this popup's width, so a per-menu css is not a fix. The real fix, if a longer label is ever needed,
+is making measure_context_popup_w() measure what draw_context_menu() draws (a shared-renderer change).
+Rule of thumb until then: keep Read menu labels at or under ~22 columns.
