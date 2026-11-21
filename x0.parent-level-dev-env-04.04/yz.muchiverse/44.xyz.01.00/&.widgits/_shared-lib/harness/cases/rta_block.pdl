@@ -1,0 +1,11 @@
+# East Battery block: grass, cobble road, thatch roofs. Counts are the fixture grid.
+RESULTS | rta_block
+CASE | block
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_block_op.+x | $HOUSE/@.apps/rta/ops/rta_block_op.c | -lpng | -lz
+EXPECT_EXIT | 0 | block op compiles
+RUN | $T/rta_block_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_block_east.grid | $T/block.png
+EXPECT_EXIT | 0 | block paints
+EXPECT_EXISTS | block.png | png exists
+EXPECT_OUT | grass=167 road=12 building=13 roof=1 png=768x576 | counts and a roof pixel
+CLEAN
