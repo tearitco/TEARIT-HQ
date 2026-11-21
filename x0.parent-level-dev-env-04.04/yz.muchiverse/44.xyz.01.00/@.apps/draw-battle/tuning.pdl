@@ -1,0 +1,4 @@
+# tuning.pdl - Draw Battle timing as data. TUNE | name | value | what it does | default
+# tick_ms is read by the shared driver (game_core): milliseconds per step at the "normal" speed button (a roll for a ledger game). The fast / slow buttons scale it; 33 to 2000, anything else is REFUSED (verb `tuning` says why; the driver shows the reason in the feed and uses the default).
+# It is a preference of the window, not a rule: it is not in the rules hash and never in the ledger, so a replay is the same at any value.
+TUNE | tick_ms | 550 | milliseconds per decision at the normal speed (33 to 2000) | 550
