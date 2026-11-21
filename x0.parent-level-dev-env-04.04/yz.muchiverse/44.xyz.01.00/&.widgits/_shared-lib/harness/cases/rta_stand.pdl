@@ -1,0 +1,12 @@
+# Desk writer: building glyph B extrudes to 3. Car steps along R.
+RESULTS | rta_stand
+CASE | stand
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_stand_op.+x | $HOUSE/@.apps/rta/ops/rta_stand_op.c | -lpng | -lz
+EXPECT_EXIT | 0 | stand op compiles
+RUN | $T/rta_stand_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_stand_tiny.grid | $T/desk
+EXPECT_EXIT | 0 | desk writes
+EXPECT_OUT | w=4 h=3 buildings=1 road_x=0 road_y=0 | south road beside a roof
+EXPECT_HAS | $T/desk/extrusion.pdl | EXTRUDE \p B \p 3 | roof height is 3
+EXPECT_HAS | $T/desk/cells.txt | 8,0 | building slot
+CLEAN

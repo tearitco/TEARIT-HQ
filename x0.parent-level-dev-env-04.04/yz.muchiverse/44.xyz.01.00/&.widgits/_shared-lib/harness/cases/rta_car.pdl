@@ -1,0 +1,18 @@
+# One car. Ledger is the position. The second step moves +1 x. Off-road stays.
+RESULTS | rta_car
+CASE | car
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_car_op.+x | $HOUSE/@.apps/rta/ops/rta_car_op.c
+EXPECT_EXIT | 0 | car op compiles
+RUN | $T/rta_car_op.+x | --describe
+EXPECT_OUT | rule rta_car inputs grid,ledger outputs CAR row and events.txt numbers none | describe
+RUN | $T/rta_car_op.+x | step | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_car_tiny.grid | $T/ledger.txt | $T/events.txt
+EXPECT_EXIT | 0 | place
+EXPECT_OUT | x=1 y=1 | placed on the south road
+EXPECT_HAS | $T/ledger.txt | CAR \p 1 \p 1 \p place | placed row
+EXPECT_HAS | $T/events.txt | 1 1 40 210 220 block 0 2 1 | placed projection
+RUN | $T/rta_car_op.+x | step | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_car_tiny.grid | $T/ledger.txt | $T/events.txt
+EXPECT_EXIT | 0 | step
+EXPECT_OUT | x=2 y=1 | moved one cell east
+EXPECT_HAS | $T/events.txt | 2 1 40 210 220 block 0 2 1 | stepped projection
+CLEAN
