@@ -1,0 +1,8 @@
+# nav.pdl - how an agent DRIVES Bay slice inside the rpg-edit-hq editor (made by game_new_op; every row below the first block is a PLACEHOLDER until someone drives the real window and learns the ids).
+# Format:  NAV | kind | name | value | note        (data only; the executable form is tests/*.pdl, run by `relay_drive <pid> run <script> <winid>`)
+# The protocol is the same as Teropoly's: read @.apps/deskopoly/nav.pdl (leave In first, gentle mode, tapid for menu rows, press label:<text> for popup buttons, sync on the LEDGER).
+NAV | protocol | read-first     | @.apps/deskopoly/nav.pdl                       | the protocol rows were each learned by a failed live run
+NAV | script   | bay-slice-play  | tests/bay-slice-play.pdl                          | from any editor state to Play pressed and the popup on screen (UNTESTED LIVE when generated)
+NAV | script   | bay-slice-drive | tests/bay-slice-drive.pdl                         | the editor game's buttons (UNTESTED LIVE when generated)
+NAV | fact     | ledger         | @.apps/rpg-edit-hq/state/games/bay-slice/game/ledger.txt | the only authority; `game_core.+x @.apps/bay-slice <that folder> status` reads it
+NAV | fact     | buttons        | game_core.+x ctl <command> <games dir>          | what a popup button runs: it appends one line to action.txt, the driver reads it

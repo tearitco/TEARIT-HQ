@@ -1,0 +1,9 @@
+# bay-slice-play.pdl - from ANY editor state to "Play pressed" with the Bay slice popup on screen. UNTESTED LIVE when generated (game_new_op cannot drive a window): run it once, fix the ids, then delete this line.
+# Run: RELAY_DRIVE_NO_ESC=1 relay_drive <editor window pid> run @.apps/bay-slice/tests/bay-slice-play.pdl <x window id>
+# The editor must have this book open (Books dropdown: it appears after the editor board is relaunched).
+STEP | in | off
+STEP | ensure | pm-play | tb-player
+STEP | tapid | pm-play
+STEP | sleep | 3000
+STEP | expect | @.apps/rpg-edit-hq/state/game_ui.txt | contains | Bay slice | 15
+STEP | see | label:Bay slice
