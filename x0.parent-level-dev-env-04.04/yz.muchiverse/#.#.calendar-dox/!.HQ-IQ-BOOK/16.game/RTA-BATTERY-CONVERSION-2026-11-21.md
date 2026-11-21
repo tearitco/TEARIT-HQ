@@ -1,6 +1,6 @@
 # Robot Trap Auto: Battery conversion report
 
-Started 2026-11-21. Research and the menu rows only. No board, no ledger, no raster of Charleston.
+Started 2026-11-21. The menu rows were first. The rasters, the stood-up frame, and the ledger ops came later the same day. Read the section "Where the two cities stand" before the older sentences. Several lines below still say the download has not been run. Those lines are the plan as it was written. The later section is what ran.
 
 The agent brief, same shape as Draw Battle's `grok-coach.md`, sits beside the example: `grok-coach.md` in the car folder with `rta-v3.html`. This book file is the map audit. That coach file is the build order.
 
@@ -89,3 +89,51 @@ The reusable pieces are the ones that already exist: `game_new_op` for the edito
 - OpenStreetMap features as GeoJSON: one Overpass export of the box (roads, water, piers, amenities). Tool list, not data: `https://github.com/tmcw/awesome-geojson`.
 - City footprints that can answer GeoJSON: `https://gis.charleston-sc.gov/arcgis2/rest/services/External/EAM_ASSETS/MapServer/18` (Buildings, query format includes geoJSON). Checked as a service description on 2026-11-21. Not downloaded.
 - Draw Battle precedent: `DRAW-BATTLE-CLOCK-AND-FIGHT-2026-11-21.md`. Ledger rule: `../02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`.
+
+## Where the two cities stand (2026-11-21, observed)
+
+The owner named the Battery slice **Centon**, capital of the Centroid. Charleston is the real city the slice was copied from. Do not call the game Charleston. The bay slice has no Centroid name yet. Call it the bay slice until the owner names it.
+
+Neither city opens in an editor. Toys still launches `rta-v3.html`. There is no `game.pdl`, so rpg-edit has no book. Do not borrow the Draw Battle window to "open" a city. A proof frame is the painted PNG, or the board overlay raw with the engine text cropped off. `dump_frame_png_op` captures the whole X window, including the fight popup.
+
+| City | Box | Cell | Grid | Painter output | Assets (not in git) |
+|---|---|---|---|---|---|
+| Centon | south 32.767, west -79.942, north 32.790, east -79.924 | 10 m | 168 by 254 | grass 6216, park 561, path 3852, road 11911, beach 101, water 8618, pier 249, building 11164, png 2688 by 4064 | `#.NNEST_ASSETS/rta-battery/` (`battery-with-buildings.pdl`, `battery-city.png`, `battery-city.grid`) |
+| Bay slice | south 37.756, west -122.419, north 37.795, east -122.382 | 20 m | 163 by 216 | grass 7087, road 3661, water 12026, building 12434, park 0, pier 0, png 2608 by 3456 | `#.NNEST_ASSETS/rta-bay/` (`bay.pdl`, `bay.png`, `bay.grid`) |
+
+The bay box is Dogpatch through the Bay Bridge landing, with Salesforce Tower at the north end (the footprint nearest lon -122.397, lat 37.790, named in the pdl). It is not the whole city. Overpass returned 502 that hour, so the bay pull is DataSF streets (`3psu-pn9h`) and building footprints (`ynuv-fyni`), paged with `within_box`. The one-off convert stayed in `/tmp`. Do not add that Python to the repo.
+
+Ops on `grok`, local then pushed with this note:
+
+- `rta_shore_op`, `rta_block_op`, `rta_city_op` paint a `.pdl` of `BOX`, `CELL`, and `FEAT` rows. Glyphs are `.KPRSWiB`. Harnesses `rta_shore`, `rta_block`, `rta_city`.
+- `rta_stand_op` writes a desk from a city grid. Building glyph `B` extrudes to 3. Harness `rta_stand`.
+- `rta_car_op`, `rta_walk_op`, `rta_cash_op`, `rta_wanted_op` append ledger rows and, for the car, rewrite `events.txt`. Harnesses `rta_car` and `rta_play`. Walk stops at water. Cash adds. Wanted stops at 5.
+- Commits before this doc: `5ade0ebe0`, `08c1e20b3`, `fb3e095d0`, `261de11ed`, `734c59606`.
+
+Decks, outside git: `XO/31.Nov/nov-21/12.rta-battery-city/`, `13.rta-stood-up/`, `14.centon-tour/`, `15.bay-slice/`. Narrator face is Actor1, second face, top row, in the caption strip. English voice, Japanese subtitle. The whole picture stays in frame.
+
+## How a later agent finishes a city
+
+1. Keep the map as CONFIG (the `.pdl` and the grid). Player position, the car, cash, and wanted are ledger rows. `events.txt` and `map.png` are projections.
+2. Do not add a mode to `game_core.c`. A new rule is a new op, a harness case that can fail, and a row in the decision log before the code. Tick triggers are still not built, so the CLI op is the call.
+3. To stand a grid up, run `rta_stand_op` and aim the existing selector at a south road. Do not change camera equations. Roof cubes come from extrusion height 3. The sprite path caps at 96 boxes, so leave `building_draw` unset and use cubes.
+4. A car is a colored event box (`r g b` on the events line). No vehicle sheet was in the RPG Maker pack. Put the car one cell off the green cursor or the cursor hides it.
+5. An editor book is `game_new_op` on a scratch house, then a desk copied from the stand op. Do that only when the owner asks. The live editor is not the scratch house.
+6. The next paint gaps, both cities: autotile edges, piers on the bay slice (this pull had none), parks on the bay slice, and drawing the walker, the cash number, and the stars on the board. Those draws are projections of the ledger, not new state files.
+7. A third city uses the same painter. Pick a box that fits under 220 by 300 cells (`rta_city_op` caps). 20 m cells are the way to keep a wider neighborhood in one desk. Name it only after the owner names it.
+
+## Next grok session is the Minecraft handoff
+
+Centon and the bay slice stop here unless the owner asks for the editor book or the draw gaps above.
+
+Start the next session at `13.agent-coms/GROK/HANDOFF-2026-11-10-DF-MINECRAFT-EVENTS-META-HARNESSES-AND-CENTROID.md`, then the owner notes in `XO/31.Nov/nov-19/0.minecraft-handoff.md`. Read those before any Minecraft code. The rulings that are still in force:
+
+- Do not start a Minecraft mode in `game_core.c`.
+- Do not turn the live clock or autotick on.
+- A kit is a plug (`PLUG`, `PARAM`, `COMMAND`), the same shape as day-night. The 11-19 KIT dialect is withdrawn.
+- When a log breaks, its leaves only clear. They do not regrow.
+- Two clocks stay two clocks. Minecraft is real-time. CDDA is turn-based.
+- Mechanics are ops, RULE numbers, and ledger rows.
+- Do not copy Minecraft, CDDA, DF, or Doom text, tiles, or code.
+
+The Teario look question (flat 2D is the platformer, ordinary 3D is a board, do not remap a 2D row onto 3D height) is still open. Ask before changing it. Co-lab room N2UX stays closed.
