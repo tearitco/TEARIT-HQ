@@ -37,9 +37,9 @@ The copy is a one-time GeoJSON export of a small box, saved in the repo as CONFI
 
 A GitHub repo is useful only when it already holds that small extract (a FeatureCollection someone committed). `awesome-geojson` is a list of tools, not a Charleston map. Do not add a converter script from that list. The artifact is the `.geojson` file. If a later refresh is needed, a person re-exports the same box and replaces the file. The game does not call Overpass, the city server, or Google while it runs.
 
-Proposed box, to confirm before the export, not a surveyed boundary: the peninsula tip from the Battery waterfront north through the College of Charleston, wide enough for East Bay and a few blocks inland, and not as far as the MUSC campus unless the owner wants the hospital inside the first slice. The HTML's hospital is a rectangle. The real hospital can wait for a second chunk.
+Box, confirmed by the owner 2026-11-21: the peninsula tip from the Battery waterfront north through the College of Charleston, wide enough for East Bay and a few blocks inland. MUSC stays out of the first slice. The HTML's hospital is a rectangle. The real hospital waits for a second chunk. This is a chosen slice, not a surveyed boundary.
 
-Cell size is the other decision. The HTML is 80 by 60 cells with no meters. A Battery slice about 1.2 km by 0.9 km at 10 m a cell is about 120 by 90, which still fits one desk. At 4 m a cell it becomes a few hundred on a side and should be chunks, the way the editor already thinks in desks. Recommend 8–10 m for the first import so a building footprint is several cells and a road is one or two. Record the origin (south-west corner, lon/lat) and the meters per cell next to the file so the raster can be repeated.
+Cell size, confirmed the same day: 10 m. The HTML is 80 by 60 cells with no meters. A Battery slice about 1.2 km by 0.9 km at 10 m a cell is about 120 by 90, which still fits one desk. A building footprint is several cells and a road is one or two. Record the origin (south-west corner, lon/lat) and `10` meters per cell next to the file so the raster can be repeated. 8 m and 4 m (chunked) were the other choices and were not picked.
 
 Raster, later, as one C op, not in this pass:
 
@@ -64,7 +64,24 @@ The grid is CONFIG (an input the game does not write). Player position, a driven
 - Do not commit a state-wide PBF or a Python downloader.
 - Do not call the map a ledger.
 - Do not add a `game_core` mode named rta.
-- Do not start the raster until the box and the meters per cell are confirmed.
+- The box and the cell size are confirmed (2026-11-21): Battery through the College, 10 m. The owner said go on 2026-11-21, then said to do it in small chunks and to check in before a huge pass. No Overpass download and no full-desk paint have been run.
+
+## Tiles and voxels (how the look is managed)
+
+Top-down only. The flat picture is `map.png`. The perspective picture is the same cells stood up as voxels from `cells.txt` plus `cells.rgba` (the maker atlas the board already reads). Do not set `axis=side`. Do not invent a second camera.
+
+RPG Maker sheets already in the house, named by `tileset_registry.pdl`, not by a hardcoded path: `World_A1` is water, `World_A2` is grass and sand, roads and sidewalks come from the same outside set, buildings from `World_B`. A water or road edge is the existing floor autotile: eight neighbours of the same kind, same quadrant rule as `gta_hq.c` `draw_auto` and `tile_autotile.c`. Paint order is grass, then water (so the shore is the water autotile against land), then sand, then road, then sidewalk, then pier, then park, then a building footprint with its roof one step up. Charleston names stay labels. No Soul Pen names.
+
+The reusable pieces are the ones that already exist: `game_new_op` for the editor app, `tile_autotile.c` for the 48 floor shapes, a harness case on a tiny fixture GeoJSON. A new C op may rasterize and call that autotile. No new Python, and no new shell script for the harness.
+
+## Chunks (one at a time)
+
+1. Tiny fixture GeoJSON plus a harness case that only checks the file parses. No network.
+2. One raster op: fixture to a cell grid. Harness asserts water and a road cell. Still no network.
+3. Paint that small grid to `map.png` and `cells.txt` / `cells.rgba` with the RPG Maker autotile. Open the PNG.
+4. Check in, then one Overpass export of the confirmed box, saved as CONFIG.
+5. Same op on that file, one desk. Open flat and perspective.
+6. `game_new_op` editor app and the board window. Walk is a later rule, not part of the map chunk.
 
 ## External references
 
