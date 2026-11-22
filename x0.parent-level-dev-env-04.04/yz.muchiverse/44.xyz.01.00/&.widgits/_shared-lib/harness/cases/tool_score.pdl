@@ -1,0 +1,87 @@
+# tool_score (2026-11-22, D100): tool_score_op, the in-house ToolkenGPT: harness_bank_op find ranks, a RULE row sets the firing threshold, a SLOT|entry|arg|from|key row set fills the arguments from a state file. Scratch only, no network.
+# HAND-COMPUTED scores for the goal "plant crop" (find: keyword 1.0, synonym weight, sentence word 0.25, summed over the words, times the entry weight):
+#   farm.plant   keywords plant+crop = 2.0 x 0.9 = 1.800     farm.harvest  crop 1.0 + synonym plant 0.2 = 1.2 x 0.7 = 0.840     farm.till  synonym crop 0.5 + sentence plant 0.25 = 0.75 x 0.8 = 0.600
+#   mine.dig     sentence plant 0.25 x 0.5 = 0.125          sleep.bed  no word: absent
+RESULTS | ../results/tool_score.txt
+ENV | LC_ALL | C
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $T/ts
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x | $T/hbank
+RUN | /bin/cp | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $T/rules.pdl
+EXPECT_EXIT | 0 | real-rules-and-ops-copied
+WRITE | b/plant.behavior.pdl | BEHAVIOR \p farm.plant\nKEYWORDS \p plant, seed, crop\nWEIGHT \p 0.9000\n
+WRITE | b/till.behavior.pdl | BEHAVIOR \p farm.till\nKEYWORDS \p till, soil\nSYNONYM \p crop \p 0.5\nSENTENCE \p Break ground before you plant a crop\nWEIGHT \p 0.8000\n
+WRITE | b/harvest.behavior.pdl | BEHAVIOR \p farm.harvest\nKEYWORDS \p harvest, crop\nSYNONYM \p plant \p 0.2\nWEIGHT \p 0.7000\n
+WRITE | b/dig.behavior.pdl | BEHAVIOR \p mine.dig\nKEYWORDS \p dig, hole\nSENTENCE \p Dig a hole to plant a seed\nWEIGHT \p 0.5000\n
+WRITE | b/sleep.behavior.pdl | BEHAVIOR \p sleep.bed\nKEYWORDS \p sleep, bed\nWEIGHT \p 0.9000\n
+WRITE | w/plant.behavior.pdl | BEHAVIOR \p farm.plant\nKEYWORDS \p plant, seed, crop\nWEIGHT \p 0.1000\n
+RUN | /bin/cp | $T/b/till.behavior.pdl | $T/w/till.behavior.pdl
+RUN | /bin/cp | $T/b/harvest.behavior.pdl | $T/w/harvest.behavior.pdl
+RUN | /bin/cp | $T/b/dig.behavior.pdl | $T/w/dig.behavior.pdl
+RUN | /bin/cp | $T/b/sleep.behavior.pdl | $T/w/sleep.behavior.pdl
+WRITE | state.txt | x=14\ny=4\nitem=seed\nx=15\n
+WRITE | slots.pdl | SLOT \p farm.plant \p x \p from \p x\nSLOT \p farm.plant \p y \p from \p y\nSLOT \p farm.plant \p item \p from \p item\nSLOT \p farm.harvest \p bin \p from \p bin\nSLOT \p farm.plant \p z \p from \p nokey\n
+WRITE | slots_ok.pdl | SLOT \p farm.plant \p x \p from \p x\nSLOT \p farm.plant \p y \p from \p y\nSLOT \p farm.plant \p item \p from \p item\nSLOT \p farm.harvest \p bin \p from \p bin\n
+WRITE | r18.pdl | RULE \p tool_fire_min \p 1.8\n
+WRITE | r19.pdl | RULE \p tool_fire_min \p 1.9\n
+WRITE | norule.pdl | RULE \p tool_log_max_rows \p 5\n
+RUN | $T/ts | --describe
+EXPECT_OUT | tool_score_op: IN | describe-line
+
+CASE    | ranking
+# plant a crop: plant, harvest, till, dig in that order, the unrelated sleep entry absent
+RUN | $T/ts | $T/rules.pdl | $T/b | plant | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 0 | fires
+EXPECT_OUT | RANK\p1\p1.800\pfarm.plant | HAND-COMPUTED-plant-first
+EXPECT_OUT | RANK\p2\p0.840\pfarm.harvest | HAND-COMPUTED-harvest-second
+EXPECT_OUT | RANK\p3\p0.600\pfarm.till | HAND-COMPUTED-till-third
+EXPECT_OUT | RANK\p4\p0.125\pmine.dig | HAND-COMPUTED-dig-fourth
+EXPECT_OUT_LACKS | sleep.bed | unrelated-entry-absent
+EXPECT_OUT | FIRE\pfarm.plant\pplant.behavior.pdl\p- | fires-the-top-entry-with-no-slots-declared
+RUN | $T/ts | $T/rules.pdl | $T/b | sleep | --bank-op | $T/hbank
+EXPECT_OUT | FIRE\psleep.bed | another-goal-another-entry
+
+CASE    | wrong-weight-flips-the-rank
+# the same goal on a bank where farm.plant carries weight 0.1 (score 0.200): harvest 0.840 now ranks first. If this did not differ, the ranking assertions above could not fail.
+RUN | $T/ts | $T/rules.pdl | $T/w | plant | crop | --bank-op | $T/hbank
+EXPECT_OUT | RANK\p1\p0.840\pfarm.harvest | the-flip-puts-harvest-first
+EXPECT_OUT | RANK\p3\p0.200\pfarm.plant | plant-fell-to-third
+EXPECT_OUT | FIRE\pfarm.harvest | the-wrong-weight-fires-the-wrong-op
+
+CASE    | threshold-is-data
+# the goal word "ground" only appears in farm.till's sentence: 0.25 x 0.8 = 0.200 < RULE tool_fire_min 0.30
+RUN | $T/ts | $T/rules.pdl | $T/b | ground | --bank-op | $T/hbank
+EXPECT_EXIT | 1 | below-threshold-does-not-fire
+EXPECT_OUT | RANK\p1\p0.200\pfarm.till | still-ranked
+EXPECT_OUT | NOFIRE\pbest=0.200\pmin=0.30 | nofire-line-names-both-numbers
+EXPECT_OUT_LACKS | FIRE\pfarm | no-FIRE-row
+# boundary: best 1.800 fires under a rule of 1.8 (inclusive), not under 1.9
+RUN | $T/ts | $T/r18.pdl | $T/b | plant | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 0 | at-the-threshold-fires
+RUN | $T/ts | $T/r19.pdl | $T/b | plant | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 1 | just-above-the-score-does-not
+# no hit at all
+RUN | $T/ts | $T/rules.pdl | $T/b | zzzz | --bank-op | $T/hbank
+EXPECT_OUT | NOFIRE\pbest=0.000 | no-hit-is-nofire
+RUN | $T/ts | $T/norule.pdl | $T/b | plant | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 2 | missing-rule-refuses-no-default
+
+CASE    | slot-filler
+# farm.plant fires and its three slots come from state.txt (the LAST x wins: 15), in slot-row order; slots of other entries are ignored
+RUN | $T/ts | $T/rules.pdl | $T/b | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots_ok.pdl
+EXPECT_EXIT | 0 | fires-with-args
+EXPECT_OUT | FIRE\pfarm.plant\pplant.behavior.pdl\px=15 y=4 item=seed | slots-filled-from-state
+CAPTURE | first
+RUN | $T/ts | $T/rules.pdl | $T/b | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots_ok.pdl
+CAPTURE | second
+EXPECT_EQ | $first | $second | deterministic-same-input-same-output
+# a slot whose key the state lacks: the entry does not fire half-armed
+RUN | $T/ts | $T/rules.pdl | $T/b | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots.pdl
+EXPECT_EXIT | 1 | missing-key-does-not-fire
+EXPECT_OUT | NOARGS\pfarm.plant\pnokey | names-the-missing-key
+EXPECT_OUT_LACKS | FIRE\pfarm | no-FIRE-when-armed-half
+# the flipped bank fires harvest, whose slot key bin is absent
+RUN | $T/ts | $T/rules.pdl | $T/w | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots.pdl
+EXPECT_OUT | NOARGS\pfarm.harvest\pbin | wrong-op-needs-its-own-key
+CLEAN |
