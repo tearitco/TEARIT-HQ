@@ -69,8 +69,8 @@ Cell size is chosen so the box fits the painter cap. 10 m is a neighbourhood. 20
 |---|---|---|---|
 | Charleston (done, Centon) | `gis.charleston-sc.gov` EAM buildings, MapServer layer 18 | Overpass | 10 m, the Battery box |
 | San Francisco (done, bay slice) | `data.sf.gov` footprints `ynuv-fyni`, streets `3psu-pn9h` | Overpass | 20 m, Dogpatch to the tower |
-| New York | NYC Open Data building footprints `nqwf-w8eh` on `data.cityofnewyork.us` | Overpass | 20 m for lower Manhattan, or 256 m for the five boroughs |
-| Chicago | Chicago building footprints `hz9b-7nh8` on `data.cityofchicago.org` | Overpass | 20 m for the Loop, 256 m for the city |
+| New York | NYC Open Data building footprints `5zhs-2jue` on `data.cityofnewyork.us` (`nqwf-w8eh` is 404) | Overpass | 20 m for lower Manhattan, or 256 m for the five boroughs. A FiDi box is already cached |
+| Chicago | Chicago building footprints `syp8-uezg` on `data.cityofchicago.org` (the map view is `hz9b-7nh8`) | Overpass | 20 m for the Loop, 256 m for the city. A Loop box is already cached |
 | Los Angeles | LA GeoHub (`geohub.lacity.org`) building outlines | Overpass | 256 m for the basin, 20 m for one neighbourhood |
 | London | OS Open Zoomstack (`osdatahub.os.uk`, open download) | Overpass | 256 m for Greater London, 20 m for the City |
 | Paris, Rome, Cairo, Lagos, Mumbai, Shanghai, Mexico City, São Paulo, Sydney, Tokyo | Overpass for a box the owner names | a national portal only after a person checks the licence | 20 m for a centre, 256 m for the metro |
@@ -91,6 +91,23 @@ These are coarse bodies, not street grids. A city stamp does not apply until a p
 HiRISE and LRO camera frames are pictures. They are not the walk grid. The same rule as Google Maps on the Battery note: a picture is not CONFIG. The raster that becomes `CELL` values is the elevation product, sampled down to the desk cap.
 
 In-universe names for the Moon and Mars stay in `22.lore-ip`. This note does not assign them.
+
+## The puller (2026-11-21)
+
+There was no script. The one-off curls that built Centon and the bay slice are not a tool. The tool is `rta_pull_op` (`@.apps/rta/ops/rta_pull_op.c`), catalog `@.apps/rta/sources.pdl`, harness `rta_pull` (16 checks, no network: a local file copies, the same id twice matches, an unknown id and an oversize body write nothing, a `later` row is refused).
+
+`list` prints each id. `pull <catalog> <id> <outdir>` saves one row. `http` uses curl with a 32 MiB cap. `file` copies a path beside the catalog. `later` is a named source that is not a desk-sized file, and the op exits 5 with nothing written.
+
+Saved, outside git, under `#.NNEST_ASSETS`:
+
+| Cache | What it is | Observed |
+|---|---|---|
+| `rta-battery/` | Charleston Battery through the College, already on disk | 16 MB |
+| `rta-bay/` | Dogpatch through the tower, already on disk | 24 MB |
+| `rta-sources/nyc-fidi.geojson` | NYC footprints `5zhs-2jue`, box 40.704 to 40.714, -74.018 to -74.008 | 281572 bytes, 270 features |
+| `rta-sources/chicago-loop.geojson` | Chicago footprints `syp8-uezg`, box 41.878 to 41.890, -87.640 to -87.625 | 537079 bytes, 406 features |
+
+The old NYC id `nqwf-w8eh` returns 404. The Chicago map id `hz9b-7nh8` is the map view. The table id above is the one that returned polygons. Both boxes came back under the 1500-row page cap, so the file is the whole box. Overpass still returned no bytes on 2026-11-21, so Paris and the other centre rows stay `later`. London Zoomstack, the LA hub, the lunar LOLA DEM, and the Mars MOLA grid stay `later` because each file is a whole country or a whole body. A Moon or Mars pull waits on a bounded elevation tile.
 
 ## What a later agent does, in order
 
