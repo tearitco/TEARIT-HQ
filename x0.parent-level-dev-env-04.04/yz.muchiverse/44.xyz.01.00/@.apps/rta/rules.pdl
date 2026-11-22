@@ -1,0 +1,4 @@
+RULE | hunger_start | 80
+RULE | eat_amount | 30
+RULE | fuel_per_cell | 1
+RULE | drive_speed | 1

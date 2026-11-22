@@ -232,3 +232,8 @@ __pycache__/
 # cpu_gate (2026-11-03): the one-heavy-job lock and its run log
 **/#.desktop/heavy.lock
 **/#.desktop/heavy_runs.txt
+
+# Robot Trap Auto living-entity runtime ledgers (D103): written by the rta_* event pages, never committed
+**/#.desktop/rta_life_ledger.txt
+**/#.desktop/rta_mom_ledger.txt
+**/#.desktop/rta_mom_events.txt

@@ -5,3 +5,4 @@
 # id: letters, digits, _ - . only. Loaded with the Games menu row; edits go through the same ops as any other loaded event.
 BOOK | reader | single | _.monads/_.book-stack/pieces/reader
 BOOK | teario | events | @.apps/teario/events
+BOOK | rta | events | @.apps/rta/events

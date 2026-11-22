@@ -1841,3 +1841,35 @@ COMMAND rule_food
   PARAMS scene
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_food_op.+x" "$D/@.apps/teario/events/{scene}"
 END
+
+# rta_enter / rta_exit / rta_eat / rta_drive = the living-entity rules of Robot Trap Auto as ops (D103): each runs `rta_life_op <verb>` once and appends ONE row to the runtime ledger #.desktop/rta_life_ledger.txt (gitignored, never committed; scratch copies in harnesses) with the numbers from @.apps/rta/rules.pdl (RULE rows). entity and car are words (letters, digits, _ - . only). A refusal writes nothing and exits 10 (drive outside the car), 11 (a part refuses), 12 (already in or not in), 13 (road stopped). `rta_life_op --describe` lists inputs and outputs.
+COMMAND rta_enter
+  LABEL rta: enter the car
+  FIELD1 Entity:
+  FIELD2 Car:
+  PARAMS entity,car
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" enter "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{car}'
+END
+
+COMMAND rta_exit
+  LABEL rta: exit the car
+  FIELD1 Entity:
+  FIELD2 Car:
+  PARAMS entity,car
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" exit "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{car}'
+END
+
+COMMAND rta_eat
+  LABEL rta: eat
+  FIELD1 Entity:
+  PARAMS entity
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" eat "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}'
+END
+
+COMMAND rta_drive
+  LABEL rta: drive one road cell
+  FIELD1 Entity:
+  FIELD2 Car:
+  PARAMS entity,car
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" drive "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{car}' "$D/@.apps/rta/ops/+x/rta_momentum_op.+x" "$D/@.apps/rta/road.grid" "$D/#.desktop/rta_mom_ledger.txt" "$D/#.desktop/rta_mom_events.txt"
+END
