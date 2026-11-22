@@ -7,6 +7,7 @@ who is allowed to append one, and the other house jobs that are not
 a game at all.
 
 - `AI.md` — start here.
+- `META-STRATEGY-ATTRITION-HARNESS-TOOL-USE-AND-CHEAP-BUILDING-2026-11-22.md` — **the meta strategy (2026-11-22)**: harness verdict as the loss, tool use as weighted scores (Toolformer / ToolkenGPT / synthetic-trace SFT mapped to house parts), the attrition rules, what is built vs design, the build plan. Read before building any harness, generator or training hook.
 - `../08-roadmap/design-docs/LLMUD-HACK.md` — the research-side
   design. Describe, score, store. Not a license to classify in one
   token.
