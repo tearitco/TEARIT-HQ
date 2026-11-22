@@ -148,6 +148,8 @@ The Teario look question (flat 2D is the platformer, ordinary 3D is a board, do 
 
 SAID 2026-11-22: a car is always driven by a living entity with an FSM, the same family as the petslike projects. The entity gets in and gets out. Out of the car it does its other tasks, including eat and sleep. Every entity is living. There is no empty car that drives itself. The word "momentum" in the Nov 22 roadmap notes means the next piece of work that makes the piece after it cheaper, not this vx row.
 
+SAID the same day: the car itself is parts, simplified now, scalable to the Dustopia ladder later, in the shape of a CDDA vehicle. A part is a row (engine or motor, gas or electric store, tires, steering, and the others as they are needed). The drive state can move the car only when the parts that move it are present and fueled. A later zoom may open a part onto a material or a molecule. The first city does not simulate that zoom. Do not copy CDDA's part text or code. Do not put the part list in `game_core`.
+
 A whole planet, a setup menu, and laying Centon or the bay slice onto a coarse world are design only: `WORLD-FROM-CITY-SLICES-AND-DUST-SCALE-2026-11-21.md`. Do not start that generator in the city session.
 
 The cache list is `#.NNEST_ASSETS/rta-sources/INVENTORY.pdl`. The chaptered handoff, including the next research bet, is `XO/31.Nov/nov-22/0.rta-cities-handoff.md`. The bet is one playable minute on Centon before another map.
