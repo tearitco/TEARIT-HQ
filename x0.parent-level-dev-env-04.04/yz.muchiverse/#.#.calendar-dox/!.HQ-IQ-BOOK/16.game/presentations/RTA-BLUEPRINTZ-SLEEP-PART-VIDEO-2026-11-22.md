@@ -1,0 +1,9 @@
+# RTA Blueprintz sleep and part video (2026-11-22; D103, D108, D109; commits 8348f173d, 177ad069e)
+
+Video: `XO/31.Nov/nov-22/13.rta-blueprintz-sleep-part-video-2026-11-22/rta_blueprintz_sleep_part.mp4` (113 s, 1280x890, English voice, Japanese subtitles) and two stills.
+
+What it shows, in the REAL Blueprintz window (1180x780, `sh &.hq-apps/blueprintz/button.sh run`, book `rta (book)`), driven with `relay_drive` taps (gentle mode, window pixel coordinates): the book list (rta_drive, rta_eat, rta_enter, rta_exit, rta_part, rta_sleep), then one scene per page: select the page (command row and fields on screen), Pause once, Fire, Step ev. Pages: rta_part (car=car, slot=tank, kind=gas), rta_enter (BOTH fields filled: entity=joe, car=car, the D109 fix), rta_sleep in the car (refused), rta_exit, rta_sleep outside (entity=joe, turns=3).
+
+Ledger rows are a CAPTION read from the real `#.desktop/rta_life_ledger.txt` right after each Step ev (copied by the drive script), NOT drawn by the window. Observed final ledger: `PART | car | tank | gas | ok | 3`, `ENTER | joe | car`, `TURN | 1 | enter`, `EXIT | joe | car`, `TURN | 2 | exit`, `SLEEP | joe | 3 | 86`, `TURN | 5 | sleep`. The in-car sleep added no row (ledger unchanged at 3 rows), the page status still said rc=0 (prisc ignores the exit status), so only the ledger tells.
+
+Limits: the first scene (book list) was cut from the recording after one rehearsal of rta_part, so rta_part and rta_enter already read "ran" there. Only the part page's fields stop at kind (state=ok:3 is in the command row; the fourth field is scrolled below the pane). The guard cut the house at about 11:05 after recording and TTS were done (the window was gone, nothing needed redoing). Blueprintz state/ and cli_io_state.txt were restored from a tar and verified by sha256; the runtime rta ledger was removed. Scratch recorder and builder were not committed (session scratchpad).
