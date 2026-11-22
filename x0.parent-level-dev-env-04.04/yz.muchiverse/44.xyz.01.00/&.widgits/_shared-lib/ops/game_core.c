@@ -1050,7 +1050,7 @@ static void archive_game(void) { archive_dir(SD, LEDGER, ARCH); }
 static int cmd_play(const char *papp, const char *pstate, const char *as) {
     if (level_from_doc()) { char m0[400]; snprintf(m0, sizeof m0, "%s", MSG); return bad("play refused: %s", m0); }
     static char lb[8192]; if (level_render(lb, sizeof lb) <= 0) return bad("play refused: the level is too big to copy");
-    char lh[20]; hx(level_hash(), lh); char self[P]; ssize_t k = readlink("/proc/self/exe", self, sizeof self - 1); if (k <= 0) return bad("play: cannot find myself"); self[k] = 0;
+    char lh[20]; hx(level_hash(), lh); char self[P]; ssize_t k = readlink("/proc/self/exe", self, sizeof self - 1); if (k <= 0) return bad("play: cannot find myself"); self[k] = 0; { char *dl = strstr(self, " (deleted)"); if (dl && !dl[10]) *dl = 0; }   /* a rebuilt binary replaces the file under a running driver: the path without the suffix is the new one */
     char gd[P], arch[P], lg[P], lp[P], q[P]; snprintf(gd, sizeof gd, "%s", pstate); size_t L = strlen(gd); while (L > 1 && gd[L - 1] == '/') gd[--L] = 0; snprintf(q, sizeof q, "%s", gd); char *sl = strrchr(gd, '/'); if (!sl) return bad("play: the Play state folder must be a path");
     *sl = 0; snprintf(arch, sizeof arch, "%s/archive", gd); snprintf(lg, sizeof lg, "%s/ledger.txt", q); snprintf(lp, sizeof lp, "%s/level.pdl", q);
     archive_dir(q, lg, arch); mkdir_p(q); if (write_atomic(lp, lb)) return bad("play: cannot write %s", lp);
@@ -1295,7 +1295,7 @@ static int driver_main(int argc, char **argv) {
     snprintf(HOUSE, sizeof HOUSE, "%s", argv[2]); snprintf(BOOK, sizeof BOOK, "%s", argv[3]); snprintf(EDIT, sizeof EDIT, "%s", argv[4]);
     { char bb[P]; snprintf(bb, sizeof bb, "%s", BOOK); size_t L = strlen(bb); while (L > 1 && bb[L - 1] == '/') bb[--L] = 0; char *bn = strrchr(bb, '/'); snprintf(NAME, sizeof NAME, "%s", bn ? bn + 1 : bb); }
     if (!good_word(NAME, 40, 1)) { fprintf(stderr, "game_core driver: bad book folder name\n"); return 2; }
-    snprintf(APP, sizeof APP, "%s", BOOK); { ssize_t k = readlink("/proc/self/exe", SELF, sizeof SELF - 1); if (k > 0) SELF[k] = 0; else snprintf(SELF, sizeof SELF, "%s", argv[0]); }
+    snprintf(APP, sizeof APP, "%s", BOOK); { ssize_t k = readlink("/proc/self/exe", SELF, sizeof SELF - 1); if (k > 0) { SELF[k] = 0; char *dl = strstr(SELF, " (deleted)"); if (dl && !dl[10]) *dl = 0; } else snprintf(SELF, sizeof SELF, "%s", argv[0]); }
     snprintf(GDIR, sizeof GDIR, "%s/state/games/%s", EDIT, NAME); snprintf(SD, sizeof SD, "%s/game", GDIR); snprintf(LEDGER, sizeof LEDGER, "%s/ledger.txt", SD); snprintf(ARCH, sizeof ARCH, "%s/archive", GDIR);
     snprintf(FEED, sizeof FEED, "%s/state/game_ui.txt", EDIT); snprintf(ACT, sizeof ACT, "%s/action.txt", GDIR); snprintf(SW, sizeof SW, "%s/state/world/switches.txt", EDIT);
     OUT = stdout; ERRF = stderr; if (load_config()) { fprintf(stderr, "game_core driver: %s\n", MSG); return 1; } seed_pref = R_seed; nplayers = (int)R_maxp;   /* the setup screen starts with the table full: --players N at generation time */
