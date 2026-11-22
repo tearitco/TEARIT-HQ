@@ -412,6 +412,7 @@ typedef struct {
     /* A SECOND solid run under a column (cells.txt tokens 4..6 per cell: "F,Wl,D,U,UD,US"): tile slot U for it, hung UD levels below the floor level, its top US levels below the floor TOP (zoff + 1 - US). A column is otherwise one contiguous run, so a hull floating over a planet could not keep the planet's own centre under it. 0 = none. */
     unsigned short *under; unsigned char *udep, *usink; int under_any;
     int rock;               /* cells.txt rock_slot=: atlas slot painted on the hung (negative z) blocks; 0 = the cell floor tile. */
+    int evlift;             /* cells.txt event_lift=1 (D114, the voxel desk): a map event stands ON TOP of its column (the extrusion height of its map.txt glyph minus the floor level) instead of inside it. */
     unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
     int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. With DEPTH in use a cell with no floor and no wall tile has no block (the sky shows), so there is no separate hole key. */
     unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
@@ -557,6 +558,7 @@ static int maker_load_base(const char *root) {
             else if (strncmp(line, "atlas_cols=", 11) == 0) g_mk.cols = atoi(line + 11);
             else if (strncmp(line, "atlas_tiles=", 12) == 0) g_mk.tiles = atoi(line + 12);
             else if (strncmp(line, "rock_slot=", 10) == 0) g_mk.rock = atoi(line + 10);
+            else if (strncmp(line, "event_lift=1", 12) == 0) g_mk.evlift = 1;
             else if (strncmp(line, "cells", 5) == 0) {
                 if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
                 g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
@@ -4539,8 +4541,10 @@ static int render_one_frame(void) {
                            g_mk.ev[i].x + 1.0f, 4.10f, g_mk.ev[i].y + 1.0f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else {
-                ADDBOX(g_mk.ev[i].x + 0.15f, 1.0, g_mk.ev[i].y + 0.15f,
-                       g_mk.ev[i].x + 0.85f, top, g_mk.ev[i].y + 0.85f,
+                float lift = 0.f;
+                if (g_mk.evlift && g_mk.glyph && g_mk.ev[i].x >= 0 && g_mk.ev[i].y >= 0 && g_mk.ev[i].x < g_mk.w && g_mk.ev[i].y < g_mk.h) { int gh = g_mk.zh[(unsigned char)g_mk.glyph[g_mk.ev[i].y * g_mk.w + g_mk.ev[i].x]]; if (gh > 1) lift = (float)(gh - 1); }   /* D114: stand on the column top */
+                ADDBOX(g_mk.ev[i].x + 0.15f, 1.0f + lift, g_mk.ev[i].y + 0.15f,
+                       g_mk.ev[i].x + 0.85f, top + lift, g_mk.ev[i].y + 0.85f,
                        g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 }
                 if (hm >= 0 && sc.box_n > 0) sc.box[sc.box_n - 1].model = hm;
