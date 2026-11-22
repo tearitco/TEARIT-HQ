@@ -1873,3 +1873,34 @@ COMMAND rta_drive
   PARAMS entity,car
   TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" drive "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{car}' "$D/@.apps/rta/ops/+x/rta_momentum_op.+x" "$D/@.apps/rta/road.grid" "$D/#.desktop/rta_mom_ledger.txt" "$D/#.desktop/rta_mom_events.txt"
 END
+
+# vox_place / vox_mine / vox_wait / vox_sleep = the voxel rules as ops (D105): each runs `vox_op <verb>` once and appends its rows (all or nothing) to the runtime ledger #.desktop/vox_ledger.txt (gitignored, never committed; scratch copies in harnesses). The numbers are rows in @.apps/vox/rules.pdl and blocks.pdl, the seed terrain is @.apps/vox/terrain.pdl. cell is one word x,y,z (the registry allows 4 params); actor, item and tool are words (letters, digits, _ - . only). A refusal writes nothing and exits 10 unknown actor, 11 out of bounds, 12 out of reach, 13 target invalid, 14 ledger hand-edited, 15 no support, 16 item missing, 17 tool power too low, 19 not night, 20 no bed near, 21 bag full. `vox_op --describe` lists inputs and outputs.
+COMMAND vox_place
+  LABEL vox: place a block
+  FIELD1 Actor:
+  FIELD2 Item:
+  PARAMS actor,item,cell
+  TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" place "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{item}' '{cell}'
+END
+
+COMMAND vox_mine
+  LABEL vox: mine a block (one swing)
+  FIELD1 Actor:
+  FIELD2 Tool:
+  PARAMS actor,tool,cell
+  TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" mine "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{tool}' '{cell}'
+END
+
+COMMAND vox_wait
+  LABEL vox: wait manual turns
+  FIELD1 Turns:
+  PARAMS n
+  TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" wait "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{n}'
+END
+
+COMMAND vox_sleep
+  LABEL vox: sleep in a bed (skip the night)
+  FIELD1 Actor:
+  PARAMS actor
+  TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" sleep "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}'
+END
