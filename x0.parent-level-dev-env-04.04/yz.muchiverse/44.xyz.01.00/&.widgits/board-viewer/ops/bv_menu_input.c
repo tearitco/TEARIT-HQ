@@ -180,6 +180,21 @@ static int pdl_hostkey(const char *pdl_path, int keycode) {
     fclose(f);
     return hit;
 }
+/* GAMEKEY | <name> | <keycode>: keys a host's GAME wants while a game-driven possession is held (Teario option C, owner 2026-11-22, "go on option C"; the R14 fix). Same row shape as HOSTKEY; the difference is the gate, see handle_one_key. 1 when the code is listed. */
+static int pdl_gamekey(const char *pdl_path, int keycode) {
+    FILE *f = fopen(pdl_path, "r");
+    if (!f) return 0;
+    char l[MAX_LINE], t[16], k[64]; int hit = 0;
+    while (!hit && fgets(l, sizeof(l), f)) {
+        if (l[0] == '#') continue;
+        pdl_field(l, 0, t, sizeof(t));
+        if (strcmp(t, "GAMEKEY") != 0) continue;
+        pdl_field(l, 2, k, sizeof(k));
+        if (atoi(k) == keycode) hit = 1;
+    }
+    fclose(f);
+    return hit;
+}
 #include "bv_piece_flag.h"      /* piece_pdl_flag: shared with bv_render_3d.c (the minimap click uses the same de_possessible lock) */
 /* Is there an engine PIECE called entity_id? A possessed_id with no pieces/<id>/state.txt names something the DAEMON drives (a pet or Harold: game state, not a piece; DECISION D1, 02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md): the engine holds that possession but moves nothing and never reads a position it does not have. */
 static int piece_exists(const char *host_root, const char *entity_id) {
@@ -660,6 +675,20 @@ static int handle_one_key(int key) {
         if (rf) { struct timespec hts; clock_gettime(CLOCK_MONOTONIC, &hts); fprintf(rf, "%d %lld\n", key, (long long)hts.tv_sec * 1000 + hts.tv_nsec / 1000000); fclose(rf); }
         return 0;
     }
+    /* GAMEKEY rows (option C): while the xelector holds a GAME-DRIVEN possession (possessed_id names something with no engine piece: the daemon's People1, D1), a listed key is the game's, not the cursor's: it goes to the same <host>/../state/interact_relay.txt that game_core tails ("<code> <ms>") and the cursor does not move. Hero possession, no possession and unlisted keys are unchanged. -DBV_NO_GAMEKEYS is the harness negative fixture (the old behaviour: the key is dropped on the floor of the cursor). */
+#ifndef BV_NO_GAMEKEYS
+    if (focused_project_root[0] && kb_pdl_path[0] && pdl_gamekey(kb_pdl_path, key)) {
+        char xsp[PATH_BUF], pid_[64] = "";
+        snprintf(xsp, sizeof(xsp), "%s/pieces/xelector_01/state.txt", focused_project_root);
+        read_kv_str(xsp, "possessed_id", pid_, sizeof(pid_));
+        if (pid_[0] && strcmp(pid_, "none") != 0 && !piece_exists(focused_project_root, pid_)) {
+            char relay[PATH_BUF]; snprintf(relay, sizeof(relay), "%s/../state/interact_relay.txt", focused_project_root);
+            FILE *rf = fopen(relay, "a");
+            if (rf) { struct timespec gts; clock_gettime(CLOCK_MONOTONIC, &gts); fprintf(rf, "%d %lld\n", key, (long long)gts.tv_sec * 1000 + gts.tv_nsec / 1000000); fclose(rf); }
+            return 0;
+        }
+    }
+#endif
     int dx = 0, dy = 0;
     if (key == ARROW_LEFT) dx = left_dx;
     else if (key == ARROW_RIGHT) dx = right_dx;

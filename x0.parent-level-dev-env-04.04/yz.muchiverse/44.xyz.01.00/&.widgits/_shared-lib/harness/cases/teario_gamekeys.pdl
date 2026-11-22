@@ -1,0 +1,77 @@
+# teario_gamekeys (2026-11-22, Teario option C, the R14 fix; decision D97): arrow keys pressed in the Teario window reached only the engine cursor. Now a host keybinds.pdl row `GAMEKEY | <name> | <keycode>` makes bv_menu_input.c forward that key to <host>/../state/interact_relay.txt
+# ("<code> <ms>", the file game_core tails) WHILE the xelector holds a game-driven possession (possessed_id names something with no engine piece: People1). The REAL input op and the REAL game_core run on a scratch host + scratch game.
+# NEGATIVE controls: the same op source built with -DBV_NO_GAMEKEYS (the old behaviour: the key is dropped) must leave the relay empty and People1 where it was; and the real op with NO possession must not forward.
+RESULTS | ../results/teario_gamekeys.txt
+ENV | LC_ALL | C
+
+CASE    | gk_build
+SCRATCH |
+RUN | gcc | -O2 | -w | -o | $T/menu_real | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
+EXPECT_EXIT | 0 | the-real-input-op-builds-from-source
+RUN | gcc | -O2 | -w | -DBV_NO_GAMEKEYS | -o | $T/menu_old | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
+EXPECT_EXIT | 0 | the-negative-fixture-(old-behaviour)-builds
+COPYDIR | @.apps/teario | tpl/teario
+COPYDIR | @.apps/teario-play | tpl/plat
+RUN | sed | -i | s/^MODE .*/MODE \pplatform/ | $T/tpl/plat/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/tpl/plat/rulesets/default/board.pdl
+# a scratch host (the package) and the editor state folder beside it: <host>/../state/interact_relay.txt is the relay game_core tails
+MKDIR   | h1/host/pieces/system
+MKDIR   | h1/host/pieces/xelector_01
+MKDIR   | h1/state
+WRITE   | h1/host/pieces/system/bv_state.txt | focused_project_root=$T/h1/host\nrender_mode=1\ncamera_mode=1\nselector_x=5\nselector_y=5\n
+WRITE   | h1/host/pieces/system/board.txt | ................\n................\n................\n................\n................\n................\n................\n................\n
+WRITE   | h1/host/pieces/xelector_01/state.txt | pos_x=5\npos_y=5\npossessed_id=People1\n
+WRITE   | h1/host/pieces/system/keybinds.pdl | SECTION | KEY | VALUE\nGAMEKEY | left | 1000\nGAMEKEY | right | 1001\nGAMEKEY | up | 1002\nGAMEKEY | down | 1003\nGAMEKEY | jump | 32\n
+RUN | cp | -r | $T/h1 | $T/h2
+RUN | cp | -r | $T/h1 | $T/h3
+# h2 and h3 keep a host path of their own in bv_state
+RUN | sed | -i | s#/h1/host#/h2/host# | $T/h2/host/pieces/system/bv_state.txt
+RUN | sed | -i | s#/h1/host#/h3/host# | $T/h3/host/pieces/system/bv_state.txt
+RUN | sed | -i | s/possessed_id=People1/possessed_id=none/ | $T/h3/host/pieces/xelector_01/state.txt
+
+CASE    | gk_forward
+# POSITIVE: right arrow and jump while People1 is possessed reach the relay; game_core moves People1 (observed pin: the same body as the relay-lines case teario_platform/tpl_keys: right + jump)
+MKDIR   | g1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | start
+ENV | PRISC_PROJECT_ROOT | $T/h1/host
+RUN | $T/menu_real | 1001 | 32
+EXPECT_EXIT | 0 | the-input-op-ran
+EXPECT_HAS | $T/h1/state/interact_relay.txt | 1001  | right-arrow-forwarded-to-the-relay
+EXPECT_HAS | $T/h1/state/interact_relay.txt | 32  | jump-forwarded-to-the-relay
+EXPECT_HAS | $T/h1/host/pieces/xelector_01/state.txt | pos_x=5 | the-cursor-did-NOT-move-(the-key-is-the-games)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | keys | $T/h1/state/interact_relay.txt | 0
+EXPECT_OUT | KEYS read=2 applied=2 | game_core-read-and-applied-both-forwarded-keys
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | advance | 6
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g1 | status
+EXPECT_OUT | body=666,1776,36,-136 | People1-ran-right-and-jumped-(same-body-as-teario_platform-tpl_keys)
+
+CASE    | gk_negative_old_op
+# NEGATIVE: the old op (no GAMEKEY forwarding) drops the same keys: the relay stays empty and People1 stays where it started
+MKDIR   | g2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | start
+ENV | PRISC_PROJECT_ROOT | $T/h2/host
+RUN | $T/menu_old | 1001 | 32
+EXPECT_EXIT | 0 | the-old-op-ran
+RUN | sh | -c | cat $T/h2/state/interact_relay.txt 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 0 | the-old-op-forwards-nothing-(the-key-is-dropped)
+WRITE   | h2/state/interact_relay.txt | 
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | keys | $T/h2/state/interact_relay.txt | 0
+EXPECT_OUT | KEYS read=0 applied=0 | game_core-has-nothing-to-read
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | advance | 6
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tpl/plat | $T/g2 | status
+EXPECT_OUT_LACKS | body=666,1776,36,-136 | People1-did-not-run-or-jump
+EXPECT_OUT | body=540, | People1-is-still-at-its-start-column-(540)
+
+CASE    | gk_negative_no_possession
+# NEGATIVE: the REAL op, but nothing is possessed: the key is the cursor's, not forwarded (the cursor moves 1 cell on the right arrow)
+ENV | PRISC_PROJECT_ROOT | $T/h3/host
+RUN | $T/menu_real | 1001
+EXPECT_EXIT | 0 | the-real-op-ran-with-no-possession
+RUN | sh | -c | cat $T/h3/state/interact_relay.txt 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 0 | no-possession-nothing-forwarded
+EXPECT_HAS | $T/h3/host/pieces/xelector_01/state.txt | pos_x=6 | the-cursor-moved-instead-(vacuity:-the-key-was-handled)
+CLEAN |

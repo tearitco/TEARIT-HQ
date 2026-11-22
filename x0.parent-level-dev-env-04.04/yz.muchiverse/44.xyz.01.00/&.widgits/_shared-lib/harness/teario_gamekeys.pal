@@ -1,0 +1,4 @@
+# teario_gamekeys.pal - option C (R14 fix): while a game-driven possession is held, the engine's key op forwards GAMEKEY codes to the relay game_core tails. Read results/teario_gamekeys.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/teario_gamekeys.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/teario_gamekeys.pdl
+halt
