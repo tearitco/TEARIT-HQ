@@ -1,0 +1,3 @@
+# Local stand-in. The live city list is @.apps/rta/sources.pdl.
+SRC | pond | file | rta_pull_pond.json | json
+SRC | moon-ldem | later | USGS LOLA global DEM is not a desk-sized file | txt

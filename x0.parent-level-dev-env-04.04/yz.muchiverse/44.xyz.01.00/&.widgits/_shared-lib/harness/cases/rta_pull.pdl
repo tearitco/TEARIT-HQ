@@ -1,0 +1,32 @@
+# The puller copies a catalog row. The network is not in this case.
+RESULTS | rta_pull
+CASE | pull
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_pull_op.+x | $HOUSE/@.apps/rta/ops/rta_pull_op.c
+EXPECT_EXIT | 0 | pull op compiles
+COPY | &.widgits/_shared-lib/harness/fixtures/rta_pull_catalog.pdl | cat.pdl
+COPY | &.widgits/_shared-lib/harness/fixtures/rta_pull_pond.json | rta_pull_pond.json
+RUN | $T/rta_pull_op.+x | list | $T/cat.pdl
+EXPECT_EXIT | 0 | list runs
+EXPECT_OUT | pond file | pond is a file row
+EXPECT_OUT | moon-ldem later | moon is refused until a bounded file exists
+EXPECT_OUT | count=2 | both rows counted
+RUN | $T/rta_pull_op.+x | pull | $T/cat.pdl | pond | $T/out
+EXPECT_EXIT | 0 | pond copies
+EXPECT_OUT | id=pond bytes=43 file=pond.json | the fixture is 43 bytes
+RUN | cmp | -s | $T/rta_pull_pond.json | $T/out/pond.json
+EXPECT_EXIT | 0 | copy matches the source
+RUN | $T/rta_pull_op.+x | pull | $T/cat.pdl | pond | $T/out2
+EXPECT_EXIT | 0 | second copy
+RUN | cmp | -s | $T/out/pond.json | $T/out2/pond.json
+EXPECT_EXIT | 0 | same id twice is the same file
+RUN | $T/rta_pull_op.+x | pull | $T/cat.pdl | no-such | $T/miss
+EXPECT_EXIT | 3 | unknown id
+EXPECT_NOFILE | miss/no-such.json | unknown id writes nothing
+RUN | $T/rta_pull_op.+x | pull | $T/cat.pdl | pond | $T/tiny | --max-bytes | 8
+EXPECT_EXIT | 4 | over the cap
+EXPECT_NOFILE | tiny/pond.json | oversize writes nothing
+RUN | $T/rta_pull_op.+x | pull | $T/cat.pdl | moon-ldem | $T/moon
+EXPECT_EXIT | 5 | later row
+EXPECT_NOFILE | moon/moon-ldem.txt | a later row writes nothing
+CLEAN

@@ -1,0 +1,3 @@
+# stroke — a painted body is one ledger row. The page calls the op. It does not decide hp.
+exec cmd_1.sh
+halt

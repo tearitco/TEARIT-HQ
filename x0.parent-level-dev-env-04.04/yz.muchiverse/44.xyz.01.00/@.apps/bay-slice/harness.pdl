@@ -1,0 +1,3 @@
+# harness.pdl - the bay-slice book's harness rows, read by harness_menu_op: they show in the editor Harness tab when the bay-slice book is open.
+# HARNESS | id | page | kind | label | target | args | writes | confirm | note      (grammar: &.widgits/_shared-lib/ops/harness_menu_op.c header)
+HARNESS | bay-slice | * | CASE | bay-slice | bay-slice | - | - | no | the generated editor game: rules, replay, a hand-edited ledger refused, a stray file fails the audit, deleted projections regenerate

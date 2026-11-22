@@ -1,0 +1,15 @@
+# Speed stays until the next cell is not a road.
+RESULTS | rta_momentum
+CASE | momentum
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
+EXPECT_EXIT | 0 | compiles
+RUN | $T/rta_momentum_op.+x | push | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/ledger.txt | $T/events.txt | 2
+EXPECT_EXIT | 0 | push
+EXPECT_OUT | x=0 y=0 vx=2 | speed is 2
+RUN | $T/rta_momentum_op.+x | step | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/ledger.txt | $T/events.txt
+EXPECT_OUT | x=2 y=0 vx=2 | the same speed carries
+RUN | $T/rta_momentum_op.+x | step | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/ledger.txt | $T/events.txt
+EXPECT_OUT | x=2 y=0 vx=0 | off the road the speed drops to 0
+EXPECT_HAS | $T/events.txt | 2 0 40 210 220 block 0 2 1 | projection matches the stop
+CLEAN

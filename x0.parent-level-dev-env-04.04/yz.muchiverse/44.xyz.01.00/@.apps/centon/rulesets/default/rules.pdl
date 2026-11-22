@@ -1,0 +1,7 @@
+# rules.pdl - Centon: the publish rule (a STUB) and caps, as DATA.
+# REQUIRE | id          the document must contain a row with this id before `publish` is accepted (the Mario-Maker rule in miniature: a level needs a start and a goal)
+# max_doc_rows          most rows in the document (1 to 64)       max_rows  hard cap on ledger rows
+REQUIRE | start
+REQUIRE | goal
+RULE | max_doc_rows | 40
+RULE | max_rows     | 5000

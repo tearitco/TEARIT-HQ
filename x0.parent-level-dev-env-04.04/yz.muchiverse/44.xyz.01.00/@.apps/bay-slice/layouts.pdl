@@ -1,0 +1,3 @@
+# layouts.pdl - Bay slice's bars, declared as data. Same grammar as @.apps/rpg-edit-hq/layouts.pdl; read by ui_mode_op.
+# BAR | id | key | slot | modes | default | group | note
+# None yet: the game popup is drawn from the feed state/game_ui.txt (gm_title, gmt_<i>_text, gmb_<i>_label / gmb_<i>_act). Add a BAR row when a side bar is wanted.

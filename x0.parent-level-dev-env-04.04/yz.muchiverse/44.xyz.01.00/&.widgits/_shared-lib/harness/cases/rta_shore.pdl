@@ -1,0 +1,11 @@
+# Shore slice: park, beach, water, pier. Counts are the hand grid. blue=1 is a deep-water pixel.
+RESULTS | rta_shore
+CASE | shore
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_shore_op.+x | $HOUSE/@.apps/rta/ops/rta_shore_op.c | -lpng | -lz
+EXPECT_EXIT | 0 | shore op compiles
+RUN | $T/rta_shore_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets | $T/shore.png
+EXPECT_EXIT | 0 | shore paints
+EXPECT_EXISTS | shore.png | png exists
+EXPECT_OUT | park=108 beach=14 water=58 pier=12 blue=1 png=768x576 | counts and a blue water pixel
+CLEAN

@@ -1,0 +1,21 @@
+# Bounded map sources for later stamps. http rows are one neighbourhood page.
+# later rows are named on purpose and the puller refuses them.
+# Charleston and the bay slice are already under #.NNEST_ASSETS/rta-battery and rta-bay.
+SRC | nyc-fidi | http | https://data.cityofnewyork.us/resource/5zhs-2jue.geojson?$limit=1500&$where=within_box(the_geom,40.714,-74.008,40.704,-74.018) | geojson
+SRC | chicago-loop | http | https://data.cityofchicago.org/resource/syp8-uezg.geojson?$limit=1500&$where=within_box(the_geom,41.890,-87.625,41.878,-87.640) | geojson
+SRC | la-footprints | later | geohub.lacity.org has no desk-sized box URL in this catalog yet | txt
+SRC | london-zoomstack | later | OS Open Zoomstack is a country file, not a City of London box | txt
+SRC | paris-centre | later | Overpass box when a mirror answers: 48.856,2.347 to 48.859,2.351 | txt
+SRC | rome-centre | later | Overpass box when a mirror answers | txt
+SRC | cairo-centre | later | Overpass box when a mirror answers | txt
+SRC | lagos-centre | later | Overpass box when a mirror answers | txt
+SRC | mumbai-centre | later | Overpass box when a mirror answers | txt
+SRC | shanghai-centre | later | Overpass box when a mirror answers | txt
+SRC | mexico-centre | later | Overpass box when a mirror answers | txt
+SRC | saopaulo-centre | later | Overpass box when a mirror answers | txt
+SRC | sydney-centre | later | Overpass box when a mirror answers | txt
+SRC | tokyo-centre | later | Overpass until the GSI licence for a game cache is read | txt
+SRC | jerusalem-old | http | https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A25%5D%3Bway%5B%22building%22%5D%2831.776%2C35.226%2C31.782%2C35.236%29%3Bout%20geom%3B | json
+SRC | giza-plateau | http | https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A25%5D%3Bway%5B%22building%22%5D%2829.974%2C31.130%2C29.980%2C31.140%29%3Bout%20geom%3B | json
+SRC | moon-ldem | later | USGS LOLA global DEM is not a desk-sized file | txt
+SRC | mars-mola | later | USGS MOLA global grid is not a desk-sized file | txt

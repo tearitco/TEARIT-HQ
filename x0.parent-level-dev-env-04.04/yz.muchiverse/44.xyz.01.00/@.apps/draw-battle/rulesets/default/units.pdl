@@ -1,0 +1,55 @@
+# units.pdl — Draw Battle type catalog. READ from index.html on 2026-11-20.
+# CONFIG. game_core does not read this file yet. Do not put these numbers into game_core.c.
+# A later pure op reads these rows. The HTML page stays the picture reference, not the authority.
+# Columns: UNIT | group | id | label | emoji | color | speed | hp | dmg | range | size | flags | hunger | xp
+# flags: melee, ranged, flame, terrain. proj speed sits in the last extra field when the unit shoots.
+
+UNIT | army | soldier | Soldier | 🪖 | #3b82f6 | 55 | 40 | 8 | 26 | 1.00 | melee | 0.8 | 10
+UNIT | army | sniper | Sniper | 🎯 | #1d4ed8 | 38 | 25 | 22 | 150 | 0.95 | ranged | 0.6 | 15 | proj=400
+UNIT | army | grenadier | Grenadier | 💣 | #ea580c | 48 | 35 | 16 | 65 | 1.05 | ranged | 0.9 | 12 | proj=260
+UNIT | army | flame | Flamethrower | 🔥 | #ef4444 | 42 | 38 | 6 | 50 | 1.00 | flame | 1.0 | 14
+UNIT | army | roman | Roman | 🛡️ | #b91c1c | 50 | 60 | 11 | 28 | 1.10 | melee | 1.2 | 18
+UNIT | army | archer | Archer | 🏹 | #16a34a | 45 | 28 | 13 | 120 | 0.95 | ranged | 0.7 | 13 | proj=360
+UNIT | army | cavalry | Cavalry | 🐴 | #7c3aed | 90 | 48 | 13 | 30 | 1.15 | melee | 1.5 | 20
+UNIT | army | ninja | Ninja | 🥷 | #1e293b | 78 | 32 | 15 | 26 | 0.95 | melee | 0.9 | 16
+
+UNIT | animals | gorilla | Gorilla | 🦍 | #44403c | 48 | 90 | 18 | 32 | 1.35 | melee | 1.5 | 25
+UNIT | animals | boar | Boar | 🐗 | #92400e | 68 | 55 | 12 | 26 | 1.15 | melee | 1.0 | 15
+UNIT | animals | cheetah | Cheetah | 🐆 | #ca8a04 | 115 | 30 | 11 | 24 | 1.05 | melee | 1.8 | 18
+UNIT | animals | piranha | Piranha | 🐟 | #14b8a6 | 75 | 20 | 9 | 20 | 0.85 | melee | 0.8 | 12
+UNIT | animals | rat | Rat | 🐀 | #78716c | 85 | 14 | 5 | 18 | 0.70 | melee | 0.5 | 5
+UNIT | animals | frog | Frog | 🐸 | #16a34a | 55 | 22 | 7 | 22 | 0.90 | melee | 0.6 | 8
+
+UNIT | mythical | giant | Giant | 👹 | #334155 | 26 | 180 | 28 | 42 | 1.85 | melee | 2.0 | 50
+UNIT | mythical | dragon | Dragon | 🐉 | #b91c1c | 42 | 140 | 28 | 65 | 1.55 | ranged | 2.5 | 60 | proj=290
+UNIT | mythical | mage | Mage | 🧙 | #7c3aed | 38 | 26 | 22 | 130 | 1.00 | ranged | 1.0 | 30 | proj=310
+UNIT | mythical | necro | Necromancer | 💀 | #1e293b | 36 | 42 | 16 | 110 | 1.05 | ranged | 1.2 | 35 | proj=290
+UNIT | mythical | zombie | Zombie | 🧟 | #65a30d | 28 | 50 | 9 | 24 | 1.05 | melee | 0.3 | 15
+UNIT | mythical | slime | Slime | 🟢 | #ec4899 | 35 | 38 | 6 | 22 | 1.00 | melee | 0.4 | 10
+
+UNIT | terrain | wall | Wall | 🧱 | #94a3b8 | 0 | 9999 | 0 | 0 | 1.20 | terrain | 0 | 0
+UNIT | terrain | water_body | Water | 💧 | #38bdf8 | 0 | 9999 | 0 | 0 | 1.00 | terrain | 0 | 0
+UNIT | terrain | ice | Ice | ❄️ | #bae6fd | 0 | 9999 | 0 | 0 | 1.00 | terrain | 0 | 0
+UNIT | terrain | mine | Mine | 💣 | #ef4444 | 0 | 25 | 50 | 35 | 0.90 | terrain | 0 | 5
+UNIT | terrain | banana | Banana | 🍌 | #facc15 | 0 | 12 | 0 | 0 | 0.80 | terrain | 0 | 0
+UNIT | terrain | barrel | Barrel | 🛢️ | #92400e | 0 | 35 | 0 | 0 | 1.10 | terrain | 0 | 0
+UNIT | terrain | tree | Tree | 🌳 | #22c55e | 0 | 70 | 0 | 0 | 1.30 | terrain | 0 | 0
+UNIT | terrain | spike | Spikes | 🌵 | #78716c | 0 | 40 | 8 | 18 | 0.90 | terrain | 0 | 0
+
+# Falling-sand brushes. These are cell kinds, not soldiers. Grid in the HTML is 180 by 110.
+SAND | sand | 1 | 🏜️
+SAND | water | 2 | 💧
+SAND | fire | 3 | 🔥
+SAND | seed | 4 | 🌱
+SAND | plant | 5 | 🌿
+SAND | food | 6 | 🍎
+SAND | acid | 7 | 🧪
+SAND | smoke | 8 | 
+# empty cell is 0 and is not a brush
+
+# Switches from the HTML settings object. Preferences until a rule reads them.
+PREF | hunger | 1
+PREF | xp | 1
+PREF | friendly_fire | 0
+PREF | health_bars | 1
+PREF | show_level | 1

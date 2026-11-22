@@ -1,0 +1,4 @@
+# board.pdl - Draw Battle: the grammar of the document this editor makes, as DATA (hashed into the first ledger row with rules.pdl, so a changed grammar refuses an old ledger).
+# The document is a list of rows  ROW | id | text   (ids 1 to 24 letters, digits, - _; text 1 to 160 characters, no bar). The EDIT rows in the ledger (add / set / del) build it; `export` writes it as doc.txt.
+# A real level maker puts its tile and entity grammar here and replaces the text with a typed row; see BOOK 16.game/TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09.md section 3.
+DOC | row | id | text

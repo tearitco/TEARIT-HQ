@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | stroke
+NODE         | id=1 type=op | verb=db_battle_op|arg=stroke
