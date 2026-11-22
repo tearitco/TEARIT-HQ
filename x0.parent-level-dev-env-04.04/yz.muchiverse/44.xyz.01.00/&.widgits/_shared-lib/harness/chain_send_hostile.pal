@@ -1,0 +1,4 @@
+# chain_send_hostile.pal - LOCKED acceptance harness: chain_send refuses a hostile SENDER id (shell injection via popen). Read results/chain_send_hostile.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/chain_send_hostile.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/chain_send_hostile.pdl
+halt

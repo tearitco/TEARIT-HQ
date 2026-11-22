@@ -1,0 +1,34 @@
+# chain_send_hostile: the SENDER id of chain_send reaches popen() in current_balance(), so it must be format-checked like the recipient (found 2026-11-22: sender "x;touch FILE" ran touch on the unfixed op).
+# SCRATCH only; real chain_balance is copied in, so the whole path runs. Honest sends are the positive control.
+RESULTS | ../results/chain_send_hostile.txt
+SCRATCH |
+COPY | 041.pal-chain⛓️/ops/+x/chain_new.+x | 041.pal-chain/ops/+x/chain_new.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_send.+x | 041.pal-chain/ops/+x/chain_send.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_balance.+x | 041.pal-chain/ops/+x/chain_balance.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_miner.+x | 041.pal-chain/ops/+x/chain_miner.+x
+COPY | 041.pal-chain⛓️/ops/+x/chain_create_wallet.+x | 041.pal-chain/ops/+x/chain_create_wallet.+x
+
+CASE | setup
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain
+ENV | CHAIN_DIFFICULTY_HEX_ZEROS | 1
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | hs
+ENV | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/hs
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | alice | pw
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | bob | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | alice-funded
+
+CASE | positive-control
+RUN | $T/041.pal-chain/ops/+x/chain_send.+x | alice | bob | 5
+EXPECT_EXIT | 0 | honest-sender-sends
+
+CASE | hostile-sender
+RUN | $T/041.pal-chain/ops/+x/chain_send.+x | x;touch $T/PWNED_SEMI | bob | 5
+EXPECT_EXIT | 1 | semicolon-sender-refused
+EXPECT_NOFILE | PWNED_SEMI | semicolon-injection-did-not-run
+RUN | $T/041.pal-chain/ops/+x/chain_send.+x | $(touch $T/PWNED_SUB) | bob | 5
+EXPECT_EXIT | 1 | substitution-sender-refused
+EXPECT_NOFILE | PWNED_SUB | substitution-injection-did-not-run
+RUN | $T/041.pal-chain/ops/+x/chain_send.+x | ../alice | bob | 5
+EXPECT_EXIT | 1 | path-sender-refused
+CLEAN |

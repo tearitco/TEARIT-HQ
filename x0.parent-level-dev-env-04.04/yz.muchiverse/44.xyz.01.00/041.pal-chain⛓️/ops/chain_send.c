@@ -140,6 +140,13 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    /* Sender id reaches popen() in current_balance() and a path in wallet_pubkey():
+       format-check it like the recipient (2026-11-22 injection fix, case chain_send_hostile). */
+    if (!valid_wallet_id(from)) {
+        fprintf(stderr, "Invalid sender wallet_id - letters, digits, _ and - only.\n");
+        return 1;
+    }
+
     if (strcmp(from, "_burn") == 0) {
         fprintf(stderr, "_burn is the supply sink and can never be spent.\n");
         return 1;
