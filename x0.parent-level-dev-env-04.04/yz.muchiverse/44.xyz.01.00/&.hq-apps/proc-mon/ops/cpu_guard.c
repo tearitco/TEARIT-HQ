@@ -743,6 +743,7 @@ static void trim_debug_logs(void) {
     {   /* 2026-11-04: pet_post_audit.txt (every pet post attempt, written by pet_post.+x in the chat node) - second guard besides the writer's own cap; also its pending file */
         DIR *hd = opendir(house); int na = 0; if (hd) { struct dirent *he; while ((he = readdir(hd))) if (!strncmp(he->d_name, "044.pal-chat-irc", 16)) { snprintf(p, sizeof p, "%s/%s/pet_post_audit.txt", house, he->d_name); na += trim_tail(p, 1024 * 1024, 128 * 1024); snprintf(p, sizeof p, "%s/%s/pet_post_pending.txt", house, he->d_name); na += trim_tail(p, 256 * 1024, 32 * 1024); } closedir(hd); }
         if (na) logf_("HYGIENE | trimmed %d pet_post audit/pending file(s) (audit past 1 MB, pending past 256 KB)", na); }
+    snprintf(p, sizeof p, "%s/&.widgits/concept-bank/state/tool_log.txt", house); if (trim_tail(p, 1024 * 1024, 128 * 1024)) logf_("HYGIENE | tool_log.txt was past 1 MB (writer cap: RULE tool_log_max_rows): trimmed to its last 128 KB");   /* tool_log_op second guard, 2026-11-22 */
     snprintf(p, sizeof p, "%s/#.desktop/active_session.pdl", house); struct stat st; if (lstat(p, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 16 * 1024 && unlink(p) == 0) logf_("HYGIENE | active_session.pdl was %ld bytes (cap 16 KB): removed, hai_op rewrites it", (long)st.st_size); }
 static void hygiene_sweep(void) {
     trim_debug_logs();

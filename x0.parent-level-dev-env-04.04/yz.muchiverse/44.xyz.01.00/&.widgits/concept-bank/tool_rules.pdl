@@ -1,0 +1,17 @@
+# tool_rules.pdl - the ONE authority for the numbers and enumerations of the tool-use loop (tool_log_op, tool_ab_op, tool_score_op, mech_new_op). 2026-11-22, decision log D100.
+# Pipe rows `RULE | key | value`. A missing key makes the op that needs it REFUSE (exit 2): no op carries a default of its own. Several rows with the same key are a value LIST (tool_tier, tool_verdict).
+# Promotion stays MANUAL: nothing here promotes a concept; a threshold only decides whether an op FIRES, never whether a bank row is promoted.
+RULE | tool_log_max_rows | 2000
+RULE | tool_log_max_field | 200
+# tiers are data: the router starts at the cheapest and escalates on a judged failure
+RULE | tool_tier | rules
+RULE | tool_tier | gemma_local
+RULE | tool_tier | free_api
+RULE | tool_tier | paid_api
+RULE | tool_verdict | PASS
+RULE | tool_verdict | FAIL
+RULE | tool_verdict | SKIP
+# tool_score_op fires only at or above this score (harness_bank_op find: keyword 1.0 / synonym weight, summed over the goal words, times the entry's Laplace weight)
+RULE | tool_fire_min | 0.30
+# tool_ab_op credits a call only when WITH passes at least this many MORE checks than WITHOUT; punishes when WITH passes fewer
+RULE | tool_ab_margin | 1

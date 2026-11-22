@@ -1,0 +1,4 @@
+# tool_log.pal - see cases/tool_log.pdl
+exec ./ops/+x/harness_case_op.+x cases/tool_log.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/tool_log.pdl
+halt

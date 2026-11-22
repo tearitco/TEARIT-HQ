@@ -1,0 +1,67 @@
+# tool_log (2026-11-22, D100): tool_log_op, the capped append-only DATA|task|input|op|args|verdict|tier|tokens|ts attempt log. Scratch only, no network. The REAL rules file is copied, so a rule that vanished from it fails here.
+RESULTS | ../results/tool_log.txt
+ENV | LC_ALL | C
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_log_op.+x | $T/tl
+EXPECT_EXIT | 0 | op-copied
+RUN | /bin/cp | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $T/rules.pdl
+EXPECT_EXIT | 0 | real-rules-copied
+WRITE | cap3.pdl | RULE \p tool_log_max_rows \p 3\nRULE \p tool_log_max_field \p 40\nRULE \p tool_tier \p rules\nRULE \p tool_verdict \p PASS\nRULE \p tool_verdict \p FAIL\n
+WRITE | norows.pdl | RULE \p tool_log_max_field \p 40\nRULE \p tool_tier \p rules\nRULE \p tool_verdict \p PASS\n
+RUN | $T/tl | --describe
+EXPECT_OUT | tool_log_op: IN | describe-line
+
+CASE    | add-and-stats
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | plant-a-crop | goal: plant | till | 4 3 | PASS | rules | 0
+EXPECT_EXIT | 0 | add-ok
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | plant-a-crop | goal: plant | plant | 4 3 | FAIL | gemma_local | 120
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | dig-a-hole | goal: dig | till | 5 5 | PASS | rules | 0
+EXPECT_HAS | log.txt | DATA\pplant-a-crop\pgoal: plant\ptill\p4 3\pPASS\prules\p0\p | row-shape-with-ts-slot
+RUN | $T/tl | $T/rules.pdl | stats | $T/log.txt
+EXPECT_OUT | OP\ptill\p2 | stats-counts-per-op
+EXPECT_OUT | OP\pplant\p1 | stats-second-op
+EXPECT_OUT | VERDICT\pPASS\p2 | stats-pass
+EXPECT_OUT | VERDICT\pFAIL\p1 | stats-fail
+EXPECT_OUT | TIER\pgemma_local\p1 | stats-tier
+EXPECT_OUT | TOTAL\p3 | stats-total
+RUN | $T/tl | $T/rules.pdl | tail | $T/log.txt | 1
+EXPECT_OUT | dig-a-hole | tail-1-is-the-last-row
+EXPECT_OUT_LACKS | plant-a-crop | tail-1-lacks-earlier-rows
+
+CASE    | refusals
+# every refusal exits 2 AND leaves the log unchanged (TOTAL still 3)
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | t | i | o | a | MAYBE | rules | 0
+EXPECT_EXIT | 2 | verdict-not-in-rule-list
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | t | i | o | a | PASS | oracle | 0
+EXPECT_EXIT | 2 | tier-not-in-rule-list
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | t | bad\pbar | o | a | PASS | rules | 0
+EXPECT_EXIT | 2 | bar-in-a-field
+RUN | $T/tl | $T/rules.pdl | add | $T/log.txt | t | i | o | a | PASS | rules | x12
+EXPECT_EXIT | 2 | tokens-not-a-number
+RUN | $T/tl | $T/cap3.pdl | add | $T/log.txt | t | i | o | 0123456789012345678901234567890123456789X | PASS | rules | 0
+EXPECT_EXIT | 2 | field-longer-than-rule
+RUN | $T/tl | $T/norows.pdl | add | $T/log.txt | t | i | o | a | PASS | rules | 0
+EXPECT_EXIT | 2 | missing-rule-refuses
+RUN | $T/tl | $T/rules.pdl | stats | $T/log.txt
+EXPECT_OUT | TOTAL\p3 | refused-adds-appended-nothing
+
+CASE    | cap
+# cap 3: five adds keep only the last three; a pre-existing oversize file is trimmed too (streamed, never skipped)
+RUN | $T/tl | $T/cap3.pdl | add | $T/c.txt | t1 | i | o | a | PASS | rules | 0
+RUN | $T/tl | $T/cap3.pdl | add | $T/c.txt | t2 | i | o | a | PASS | rules | 0
+RUN | $T/tl | $T/cap3.pdl | add | $T/c.txt | t3 | i | o | a | PASS | rules | 0
+RUN | $T/tl | $T/cap3.pdl | add | $T/c.txt | t4 | i | o | a | PASS | rules | 0
+RUN | $T/tl | $T/cap3.pdl | add | $T/c.txt | t5 | i | o | a | FAIL | rules | 0
+RUN | $T/tl | $T/cap3.pdl | stats | $T/c.txt
+EXPECT_OUT | TOTAL\p3 | five-adds-keep-three
+EXPECT_LACKS | c.txt | DATA\pt1\p | oldest-row-dropped
+EXPECT_LACKS | c.txt | DATA\pt2\p | second-oldest-dropped
+EXPECT_HAS | c.txt | DATA\pt3\p | third-kept
+EXPECT_HAS | c.txt | DATA\pt5\p | newest-kept
+WRITE | big.txt | DATA\pa\pb\pc\pd\pPASS\prules\p0\p1\nDATA\pa\pb\pc\pd\pPASS\prules\p0\p2\nDATA\pa\pb\pc\pd\pPASS\prules\p0\p3\nDATA\pa\pb\pc\pd\pPASS\prules\p0\p4\nDATA\pa\pb\pc\pd\pPASS\prules\p0\p5\nDATA\pa\pb\pc\pd\pPASS\prules\p0\p6\nDATA\pa\pb\pc\pd\pPASS\prules\p0\p7\n
+RUN | $T/tl | $T/cap3.pdl | add | $T/big.txt | last | i | o | a | PASS | rules | 0
+RUN | $T/tl | $T/cap3.pdl | stats | $T/big.txt
+EXPECT_OUT | TOTAL\p3 | oversize-file-trimmed-not-skipped
+EXPECT_HAS | big.txt | DATA\plast\p | newest-survives-the-trim
+CLEAN |
