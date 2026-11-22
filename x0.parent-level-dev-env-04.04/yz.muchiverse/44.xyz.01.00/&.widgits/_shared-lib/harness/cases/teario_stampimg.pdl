@@ -222,3 +222,30 @@ EXPECT_EXIT | 2 | NEGATIVE-an-unknown-stamp-has-no-picture
 CASE    | the-window-shows-the-picture
 EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | sprite="${stamp.sprite}" | the-bank-row-binds-the-picture
 EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | sprite-inline sprite-big | and-draws-it-as-a-sprite-row
+
+CASE    | no-stray-figures
+# the coordinator's finding 2026-11-22: every picture carried the scratch level's start hero (a red dot, rgb 220,60,60). Only what the stamp itself adds may show: hero pixels only in the START picture, none elsewhere; goal flag colour (255,210,60) only in goal; enemy (190,70,210) only in enemy; power (90,200,255) only in power.
+RUN | grep | -c | 220,60,60,255 | $T/pic/ground/sprite.csv
+CAPTURE | h_ground
+EXPECT_EQ | $h_ground | 0 | ground-picture-has-no-start-hero-dot
+RUN | grep | -c | 220,60,60,255 | $T/pic/erase/sprite.csv
+CAPTURE | h_erase
+EXPECT_EQ | $h_erase | 0 | erase-picture-has-no-start-hero-dot
+RUN | grep | -c | 220,60,60,255 | $T/pic/enemy/sprite.csv
+CAPTURE | h_enemy
+EXPECT_EQ | $h_enemy | 0 | enemy-picture-has-no-start-hero-dot
+RUN | grep | -c | 220,60,60,255 | $T/pic/power/sprite.csv
+CAPTURE | h_power
+EXPECT_EQ | $h_power | 0 | power-picture-has-no-start-hero-dot
+RUN | grep | -c | 220,60,60,255 | $T/pic/goal/sprite.csv
+CAPTURE | h_goal
+EXPECT_EQ | $h_goal | 0 | goal-picture-has-no-start-hero-dot
+RUN | grep | -c | 220,60,60,255 | $T/pic/start/sprite.csv
+CAPTURE | h_start
+EXPECT_NE | $h_start | 0 | NEGATIVE-CONTROL-the-start-picture-DOES-have-the-hero-dot-(so-the-count-can-fail)
+RUN | grep | -c | 255,210,60,255 | $T/pic/ground/sprite.csv
+CAPTURE | f_ground
+EXPECT_EQ | $f_ground | 0 | ground-picture-has-no-goal-flag
+RUN | grep | -c | 255,210,60,255 | $T/pic/goal/sprite.csv
+CAPTURE | f_goal
+EXPECT_NE | $f_goal | 0 | NEGATIVE-CONTROL-the-goal-picture-has-the-flag
