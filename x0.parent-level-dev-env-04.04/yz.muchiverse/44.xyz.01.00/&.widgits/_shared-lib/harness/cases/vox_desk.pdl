@@ -1,0 +1,193 @@
+# vox_desk (2026-11-22, D112, owner complaint: the voxel app had NO picture). The ledger world projected as a pc-hq DESK (vox_op desk | layer | feed | act) and drawn OFFLINE by bv_gpu_desk_render (the same GPU raymarch and maker-scene rules as the board engine; headless EGL, no window, no live engine).
+# Expected cell rows are HAND-COMPUTED from the data rows (terrain.pdl: stone y0, dirt y1 to y2 over 16x16; blocks.pdl PICTURE slots dirt 1 stone 2 cobble 3): a column of height h has floor slot = its TOP block, wall slot = the block under it (height 1: wall 0), map.txt glyph for h is '2'..'G' (h 1 = '1').
+# Needs a GL driver (the render rows FAIL loudly without one, never silently pass). Everything runs under $T; the live ledger and desk are never named. SABOTAGES: a copy of vox_op.c with ONE clause broken must NOT print what the real op prints; the real source is cmp'd unchanged after.
+RESULTS | ../results/vox_desk.txt
+ENV     | LC_ALL | C
+CASE    | setup
+SCRATCH |
+MKDIR | d
+MKDIR | m
+MKDIR | r
+COPY | @.apps/vox/rules.pdl | d/rules.pdl
+COPY | @.apps/vox/blocks.pdl | d/blocks.pdl
+COPY | @.apps/vox/terrain.pdl | d/terrain.pdl
+COPY | @.apps/vox/ops/vox_op.c | m/orig.c
+COPY | &.widgits/board-viewer/ops/bv_gpu_desk_render.c | r/desk.c
+COPY | &.widgits/board-viewer/ops/bv_gpu_raymarch.c | r/bv_gpu_raymarch.c
+COPY | &.widgits/board-viewer/ops/bv_gpu_raymarch.h | r/bv_gpu_raymarch.h
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/vx | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox-op-compiles-without-warnings
+RUN | gcc | -O2 | -I | $T/r | -o | $T/deskr | $T/r/desk.c | $T/r/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
+EXPECT_EXIT | 0 | the-offline-desk-renderer-compiles
+ENV | BV_SHADER_FILE | $HOUSE/&.widgits/board-viewer/ops/bv_raymarch.frag
+RUN | $T/vx | move | $T/d | $T/l | player | 8 | 3 | 8
+RUN | $T/vx | give | $T/d | $T/l | player | cobble | 4 | seed
+RUN | $T/vx | give | $T/d | $T/l | player | apple | 1 | seed
+
+CASE    | top-down
+RUN | $T/vx | desk | $T/d | $T/l | $T/k1 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+EXPECT_OUT | DESK mode=top 16x16 solid_columns=256 highest=3 | seed-terrain-is-256-columns-3-high-(HAND-y0-to-y2)
+EXPECT_HAS | $T/k1/cells.txt | width=16\nheight=16\ntile_px=24\natlas_cols=16\natlas_tiles=43\ncells\n1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1\n | header-and-first-row-top-dirt-over-dirt
+EXPECT_HAS | $T/k1/map.txt | 3333333333333333 | map-glyph-3-is-height-3
+EXPECT_HAS | $T/k1/extrusion.pdl | EXTRUDE      \p 3                  \p 3 | extrusion-row-glyph-3-is-3-levels-(the-engine-height-path)
+EXPECT_FILE | $T/k1/events.txt | 8 8 240 200 40 People1 0 2 1\n | the-player-is-an-events-row-at-column-8-row-8
+EXPECT_FILE | $T/k1/skin.txt | rmmv\n | skin-file
+EXPECT_EXISTS | $T/k1/map.png | the-2D-picture-map.png-was-made-by-raw_to_png
+RUN | stat | -c | %s | $T/k1/cells.rgba
+EXPECT_OUT_IS | 110592 | atlas-is-16-cols-x-24px-x-3-rows-RGBA-(the-size-of-the-Teario-atlas)
+RUN | stat | -c | %s | $T/k1/cells.marker
+EXPECT_OUT_IS | 1 | marker-has-1-byte-after-the-first-write
+RUN | $T/deskr | $T/k1 | $T/a.raw
+EXPECT_OUT | tallest=3 actors=1 | offline-3D-render-before-any-mine-3-levels-1-actor
+RUN | $T/deskr | $T/k1 | $T/a2.raw
+RUN | cmp | -s | $T/a.raw | $T/a2.raw
+EXPECT_EXIT | 0 | NEGATIVE-CONTROL-no-change-renders-byte-identical
+
+CASE    | mine
+RUN | $T/vx | act | $T/d | $T/l | player | mine | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+EXPECT_OUT | damaged stage=1 progress=1/2 | first-swing-damages-the-dirt-under-the-feet-(hand-power-1-hardness-2)
+RUN | stat | -c | %s | $T/k1/cells.marker
+EXPECT_OUT_IS | 2 | marker-GREW-to-2-bytes-after-the-first-swing
+RUN | $T/vx | act | $T/d | $T/l | player | mine | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+EXPECT_OUT | broken stage=3 progress=2/2 | second-swing-breaks-it
+EXPECT_HAS | $T/k1/map.txt | 3333333323333333 | column-8-row-8-is-now-height-2-(HAND-top-dirt-y2-mined)
+EXPECT_HAS | $T/k1/cells.txt | 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,2 1,1 1,1 | the-mined-column-shows-dirt-top-over-a-STONE-side-(floor-1-wall-2)
+RUN | stat | -c | %s | $T/k1/cells.marker
+EXPECT_OUT_IS | 3 | marker-3-bytes-after-the-second-swing
+RUN | $T/deskr | $T/k1 | $T/b.raw
+EXPECT_OUT | tallest=3 actors=1 | render-after-the-mine
+RUN | cmp | -s | $T/a.raw | $T/b.raw
+EXPECT_EXIT | 1 | the-offline-render-AFTER-the-mine-DIFFERS-from-the-render-before
+CASE    | refusal-changes-nothing
+SUMTREE | before | k1
+RUN | $T/vx | act | $T/d | $T/l | player | sleep | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+EXPECT_EXIT | 19 | sleeping-in-daylight-is-refused-(19)
+SUMTREE | after | k1
+EXPECT_EQ | $before | $after | a-refused-act-leaves-every-desk-file-byte-identical-(marker-included)
+
+CASE    | tower
+RUN | $T/vx | act | $T/d | $T/l | player | up | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $T/vx | act | $T/d | $T/l | player | place | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $T/vx | act | $T/d | $T/l | player | up | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $T/vx | act | $T/d | $T/l | player | place | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $T/vx | cell | $T/d | $T/l | 8 | 3 | 8
+EXPECT_OUT_IS | cobble | the-tower-is-cobble-at-y3-(HAND-two-places-on-the-pit-floor-y1-then-y2-then-y3)
+EXPECT_HAS | $T/k1/map.txt | 3333333343333333 | the-tower-column-is-glyph-4-(height-4)
+EXPECT_HAS | $T/k1/cells.txt | 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 3,3 1,1 1,1 | the-tower-top-is-cobble-(slot-3)-over-cobble
+EXPECT_FILE | $T/k1/events.txt | 8 8 240 200 40 People1 0 2 1\n | the-player-row-follows-x-z
+EXPECT_HAS | $T/ui | gm_title=Voxel | feed-title
+EXPECT_HAS | $T/ui | gmt_1_text=player at 8,5,8  hunger | feed-shows-the-player-cell-and-hunger
+EXPECT_HAS | $T/ui | gmt_2_text=bag: cobble 2, apple 1 | feed-shows-the-bag-(HAND-4-cobble-given-2-placed)
+EXPECT_HAS | $T/ui | gm_nb=11 | feed-has-11-buttons
+EXPECT_HAS | $T/ui | act '$T/d' '$T/l' 'player' 'mine' 'desk=$T/k1' 'feed=$T/ui' | a-button-runs-vox_op-act-with-the-data-ledger-actor-and-desk
+RUN | $T/deskr | $T/k1 | $T/c.raw
+EXPECT_OUT | tallest=4 actors=1 | offline-3D-render-with-the-tower-is-4-levels-tall-(real-height)
+RUN | cmp | -s | $T/b.raw | $T/c.raw
+EXPECT_EXIT | 1 | the-render-with-the-tower-differs-from-the-one-with-only-the-pit
+SUMTREE | final | k1
+EXPECT_NE | $before | $final | vacuity-the-desk-tree-really-changed-between-the-refusal-and-now
+
+CASE    | layer
+RUN | $T/vx | layer | $T/d | $T/l | $T/k2 | 2 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+EXPECT_OUT | DESK mode=layer 16x16 solid_columns=256 highest=1 | layer-2-has-a-block-in-every-column
+EXPECT_HAS | $T/k2/cells.txt | 1,0 1,0 1,0 1,0 1,0 1,0 1,0 1,0 3,0 1,0 | layer-y2-column-8-row-8-is-the-first-placed-cobble-(slot-3)-wall-slot-0
+EXPECT_HAS | $T/k2/map.txt | 1111111111111111 | layer-map-is-flat-glyphs-(glyph-1-is-height-1)
+RUN | $T/vx | layer | $T/d | $T/l | $T/k3 | 5 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+EXPECT_OUT | DESK mode=layer 16x16 solid_columns=0 highest=0 | layer-5-is-air-everywhere-(HAND-nothing-above-y3)
+RUN | $T/vx | layer | $T/d | $T/l | $T/k4 | 16
+EXPECT_EXIT | 2 | NEGATIVE-a-layer-above-world_y_max-is-refused
+RUN | $T/deskr | $T/k2 | $T/l2.raw
+EXPECT_OUT | tallest=1 actors=1 | the-layer-slice-renders-flat-(1-level)
+
+CASE    | replay-and-regenerate
+RUN | rm | $T/k1/cells.marker
+SUMTREE | live | k1
+RUN | $T/vx | replay | $T/d | $T/l | $T/r1
+EXPECT_OUT | replayed identical | replay-1-identical-bytes
+RUN | $T/vx | replay | $T/d | $T/l | $T/r2
+EXPECT_OUT | replayed identical | replay-2-identical-bytes
+RUN | cmp | -s | $T/r1 | $T/r2
+EXPECT_EXIT | 0 | the-two-replays-are-byte-identical
+RUN | $T/vx | desk | $T/d | $T/r1 | $T/k5 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | rm | $T/k5/cells.marker
+SUMTREE | fromreplay | k5
+EXPECT_EQ | $live | $fromreplay | the-desk-projected-from-the-REPLAYED-ledger-is-the-same-tree-as-the-live-one-(marker-excluded)
+RUN | rm | -rf | $T/k1
+RUN | $T/vx | desk | $T/d | $T/l | $T/k1 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | rm | $T/k1/cells.marker
+SUMTREE | regen | k1
+EXPECT_EQ | $live | $regen | the-deleted-desk-regenerates-the-same-bytes-(map.png-included)
+RUN | $T/vx | desk | $T/d | $T/l | $T/k1
+EXPECT_EXIT | 0 | desk-without-png-still-writes-the-cells
+RUN | $T/deskr | $T/k1 | $T/d1.raw
+RUN | cmp | -s | $T/c.raw | $T/d1.raw
+EXPECT_EXIT | 0 | the-REGENERATED-desk-renders-byte-identical-to-the-render-before-deleting-it
+
+CASE    | hand-edit
+RUN | cp | $T/l | $T/he
+RUN | sed | -i | s/DAMAGE \p player \p hand \p 8 \p 2 \p 8 \p 1 \p 1$/DAMAGE \p player \p hand \p 8 \p 2 \p 8 \p 1 \p 5/ | $T/he
+RUN | cmp | -s | $T/l | $T/he
+EXPECT_EXIT | 1 | vacuity-the-hand-edit-really-changed-the-ledger
+RUN | $T/vx | act | $T/d | $T/he | player | wait | desk=$T/k6
+EXPECT_EXIT | 14 | NEGATIVE-act-refuses-a-hand-edited-ledger
+EXPECT_NOFILE | $T/k6/cells.txt | and-writes-no-desk
+
+CASE    | sabotage
+# each: copy the op, break ONE clause, build, run the SAME first steps on a fresh ledger, require the mutant to LACK what the real op prints; then the real source is cmp'd unchanged.
+RUN | cp | $T/m/orig.c | $T/m/m1.c
+RUN | sed | -i | s/h = top + 1; if (h == 1)/h = top; if (h == 1)/ | $T/m/m1.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m1.c
+EXPECT_EXIT | 1 | vacuity-mutant-1-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m1 | $T/m/m1.c
+EXPECT_EXIT | 0 | mutant-1-builds
+RUN | rm | -rf | $T/mk1 | $T/ml1
+RUN | $T/vx | move | $T/d | $T/ml1 | player | 8 | 3 | 8
+RUN | $T/m/m1 | desk | $T/d | $T/ml1 | $T/mk1
+EXPECT_OUT_LACKS | highest=3 | MUTANT-1-height-off-by-one-does-NOT-report-highest=3
+RUN | $T/vx | desk | $T/d | $T/ml1 | $T/mk1b
+EXPECT_OUT | highest=3 | the-real-op-reports-highest=3-on-the-same-ledger
+RUN | cp | $T/m/orig.c | $T/m/m2.c
+RUN | sed | -i | s/if (!bad) marker_bump(dir);/if (0) marker_bump(dir);/ | $T/m/m2.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m2.c
+EXPECT_EXIT | 1 | vacuity-mutant-2-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m2 | $T/m/m2.c
+EXPECT_EXIT | 0 | mutant-2-builds
+RUN | rm | -rf | $T/mk2 | $T/ml2
+RUN | $T/vx | move | $T/d | $T/ml2 | player | 8 | 3 | 8
+RUN | $T/m/m2 | desk | $T/d | $T/ml2 | $T/mk2
+RUN | stat | -c | %s | $T/mk2/cells.marker
+EXPECT_EXIT | 1 | MUTANT-2-never-bumps-the-marker-so-there-is-no-marker-file
+RUN | $T/vx | desk | $T/d | $T/ml2 | $T/mk2b
+RUN | stat | -c | %s | $T/mk2b/cells.marker
+EXPECT_EXIT | 0 | the-real-op-writes-the-marker
+RUN | cp | $T/m/orig.c | $T/m/m3.c
+RUN | sed | -i | s/if (op.desk\[0\]) r = project(&w, op.desk, -1, op.png);// | $T/m/m3.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m3.c
+EXPECT_EXIT | 1 | vacuity-mutant-3-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m3 | $T/m/m3.c
+EXPECT_EXIT | 0 | mutant-3-builds
+RUN | rm | -rf | $T/mk3 | $T/ml3
+RUN | $T/vx | move | $T/d | $T/ml3 | player | 8 | 3 | 8
+RUN | $T/vx | give | $T/d | $T/ml3 | player | cobble | 1 | seed
+RUN | $T/vx | desk | $T/d | $T/ml3 | $T/mk3
+RUN | $T/m/m3 | act | $T/d | $T/ml3 | player | mine | desk=$T/mk3
+RUN | $T/m/m3 | act | $T/d | $T/ml3 | player | mine | desk=$T/mk3
+EXPECT_EXIT | 0 | mutant-3-mines-(the-ledger-gets-the-rows)
+EXPECT_HAS | $T/mk3/map.txt | 3333333333333333 | MUTANT-3-act-does-not-redraw-so-the-desk-is-STALE
+RUN | $T/vx | act | $T/d | $T/ml3 | player | wait | desk=$T/mk3
+EXPECT_HAS | $T/mk3/map.txt | 3333333323333333 | the-real-op-act-redraws-the-pit-at-once
+RUN | cp | $T/m/orig.c | $T/m/m4.c
+RUN | sed | -i | s/if (w->a\[i\].has) en2/if (0) en2/ | $T/m/m4.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m4.c
+EXPECT_EXIT | 1 | vacuity-mutant-4-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m4 | $T/m/m4.c
+EXPECT_EXIT | 0 | mutant-4-builds
+RUN | rm | -rf | $T/mk4 | $T/ml4
+RUN | $T/vx | move | $T/d | $T/ml4 | player | 8 | 3 | 8
+RUN | $T/m/m4 | desk | $T/d | $T/ml4 | $T/mk4
+EXPECT_LACKS | $T/mk4/events.txt | People1 | MUTANT-4-writes-no-player-figure
+RUN | $T/vx | desk | $T/d | $T/ml4 | $T/mk4b
+EXPECT_HAS | $T/mk4b/events.txt | People1 | the-real-op-writes-the-player-figure
+RUN | cmp | -s | $T/m/orig.c | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | RESTORED-the-real-source-is-byte-identical-to-the-pre-sabotage-copy
+CLEAN |

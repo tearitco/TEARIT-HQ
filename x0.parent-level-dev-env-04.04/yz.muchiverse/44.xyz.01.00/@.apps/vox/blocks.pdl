@@ -1,4 +1,15 @@
 # blocks.pdl (vox) - block kinds as DATA (shape of rpg-space/blocks.pdl, handoff MINECRAFT-EVENTS section 2.1). vox_op reads the first 8 columns; the rest are kept for later rules (design rule 4c: nothing reads them until a rule does).
+# PICTURE | kind | atlas_slot | r | g | b   (D112: how a block LOOKS on the pc-hq desk; vox_op desk/layer paint one flat tile per slot into cells.rgba, so no colour is in C. Slot 0 is blank, slots 1..42 are free; a block with no PICTURE row draws blank.)
+PICTURE | dirt   | 1 | 134 | 96 | 67
+PICTURE | stone  | 2 | 128 | 128 | 128
+PICTURE | cobble | 3 | 100 | 100 | 108
+PICTURE | log    | 4 | 102 | 76 | 40
+PICTURE | leaves | 5 | 58 | 140 | 58
+PICTURE | sand   | 6 | 219 | 207 | 142
+PICTURE | bed    | 7 | 200 | 40 | 60
+PICTURE | water  | 8 | 50 | 90 | 200
+# PLAYER | r | g | b   the events.txt figure of every spawned actor (People1 row shape, as Teario writes its players)
+PLAYER | 240 | 200 | 40
 # BLOCK | kind | hardness | tool_best | min_power | drops | count | solid | opaque | light | gravity | flammable
 # hardness = total tool power needed; min_power = least power one swing must have (stone needs a pick); count = drops per block.
 BLOCK | dirt   | 2 | shovel | 0 | dirt    | 1 | 1 | 1 | 0 | 0 | 0

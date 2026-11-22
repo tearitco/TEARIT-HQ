@@ -3,3 +3,6 @@ FILE | #.desktop/vox_ledger.txt | LEDGER | vox_op (verbs give move mine place wa
 FILE | @.apps/vox/rules.pdl | CONFIG | a human | -
 FILE | @.apps/vox/blocks.pdl | CONFIG | a human | -
 FILE | @.apps/vox/terrain.pdl | CONFIG | a human | -
+FILE | @.apps/vox/state/game_ui.txt | PROJECTION | vox_op feed / act (the game bar feed of the Voxel window) | feed
+FILE | @.apps/vox/vox-pchq/pieces/system/maps/vox/play/* | PROJECTION | vox_op desk / layer / act (cells.txt cells.marker cells.rgba map.txt extrusion.pdl skin.txt events.txt map.png; safe to delete, rewritten byte for byte) | desk
+FILE | @.apps/vox/board/state/* | PREFERENCE | the board window (sides.txt, ui.txt) | -

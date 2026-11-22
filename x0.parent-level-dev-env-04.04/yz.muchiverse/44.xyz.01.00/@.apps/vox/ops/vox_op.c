@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 #define MAXA 8
 #define MAXI 16
 #define MAXC 4096
@@ -43,6 +46,7 @@ typedef struct { Actor a[MAXA]; int na; Cell c[MAXC]; int nc; Dmg d[MAXC]; int n
 static FILE *OUT; /* stdout, or /dev/null while verify and replay re-run verbs */
 static Blk BL[MAXB]; static int nb; static Rule RU[MAXR]; static int nr; static Rule TL[MAXT]; static int nt;
 static Rule DL[MAXD]; static int ndl; static Box BX[MAXX]; static int nx;
+typedef struct { char kind[NM]; int slot, r, g, b; } Pic; static Pic PC[MAXB]; static int npc; static int PL[3] = { 255, 255, 0 };
 
 static int split(char *line, char **f, int max) {
     int n = 0; char *s = line;
@@ -63,7 +67,9 @@ static int load_data(const char *dir) {
     if (!(fp = fopen(p, "r"))) return -1;
     while (fgets(l, sizeof l, fp)) { int n = split(l, f, 16);
         if (n >= 9 && !strcmp(f[0], "BLOCK") && nb < MAXB) { Blk *b = &BL[nb++]; snprintf(b->kind, NM, "%s", f[1]); b->hard = atoi(f[2]);
-            snprintf(b->tool, NM, "%s", f[3]); b->minp = atoi(f[4]); snprintf(b->drops, NM, "%s", f[5]); b->count = atoi(f[6]); b->solid = atoi(f[7]); } }
+            snprintf(b->tool, NM, "%s", f[3]); b->minp = atoi(f[4]); snprintf(b->drops, NM, "%s", f[5]); b->count = atoi(f[6]); b->solid = atoi(f[7]); }
+        else if (n >= 6 && !strcmp(f[0], "PICTURE") && npc < MAXB) { Pic *c = &PC[npc++]; snprintf(c->kind, NM, "%s", f[1]); c->slot = atoi(f[2]); c->r = atoi(f[3]); c->g = atoi(f[4]); c->b = atoi(f[5]); }
+        else if (n >= 4 && !strcmp(f[0], "PLAYER")) { PL[0] = atoi(f[1]); PL[1] = atoi(f[2]); PL[2] = atoi(f[3]); } }
     fclose(fp);
     snprintf(p, sizeof p, "%s/terrain.pdl", dir);
     if (!(fp = fopen(p, "r"))) return -1;
@@ -258,6 +264,105 @@ static int verify(FILE *L) {
     fclose(OUT); OUT = keep; fclose(t); if (r) fprintf(stderr, "ledger is not reproducible (hand-edited?)\n"); return r;
 }
 
+/* ---- projection (D112): the ledger world drawn as a pc-hq DESK, the same files Teario's board reads (cells.txt, cells.marker, cells.rgba, map.txt, extrusion.pdl, skin.txt, events.txt, map.png).
+ * A PROJECTION: derived from the fold of the ledger over the seed terrain, safe to delete, rewritten byte for byte (no clock, no random). It decides nothing and writes no ledger row.
+ * Axes: desk column = x, desk row = z, voxel y = HEIGHT. `desk` (top-down): each column shows its highest block (tile = its PICTURE slot) and the engine extrudes the column to its real height
+ * (map.txt glyph + extrusion.pdl EXTRUDE row, the engine's own height path; a height-1 column needs none), so the 3D picture has real height and a mined column is a visible pit.
+ * `layer <y>`: ONE y level as a flat floor (the block at that y, or blank), for the 2D slice. cells.txt rows are `F,Wl` pairs (floor slot, wall slot); the optional depth token is NOT written, so a column is exactly its height tall. ---- */
+#define TPX 24
+#define ACOLS 16
+#define ATILES 43
+#define ATW (ACOLS * TPX)
+#define ATH (((ATILES + ACOLS - 1) / ACOLS) * TPX)
+#define DMAX 64
+static unsigned char AT[ATW * ATH * 4];
+static int pic_slot(const char *kind) { for (int i = 0; i < npc; i++) if (!strcmp(PC[i].kind, kind) && PC[i].slot > 0 && PC[i].slot < ATILES) return PC[i].slot; return 0; }
+static void build_atlas(void) {   /* one flat tile per PICTURE row (a darker 1 px edge and a faint 4 px check so a tile reads as a block); slot 0 stays fully transparent */
+    memset(AT, 0, sizeof AT);
+    for (int i = 0; i < npc; i++) { int s = PC[i].slot; if (s < 1 || s >= ATILES) continue;
+        for (int py = 0; py < TPX; py++) for (int px = 0; px < TPX; px++) {
+            int edge = !px || !py || px == TPX - 1 || py == TPX - 1, chk = ((px / 4) + (py / 4)) & 1; int c[3] = { PC[i].r, PC[i].g, PC[i].b };
+            unsigned char *o = &AT[(((s / ACOLS) * TPX + py) * ATW + (s % ACOLS) * TPX + px) * 4];
+            for (int k = 0; k < 3; k++) { int v = edge ? c[k] * 3 / 4 : c[k] + (chk ? 8 : 0); o[k] = (unsigned char)(v > 255 ? 255 : v); } o[3] = 255; } }
+}
+static int write_atomic(const char *path, const void *buf, size_t n) {
+    char t[1100]; snprintf(t, sizeof t, "%s.tmp", path); FILE *f = fopen(t, "wb"); if (!f) return -1;
+    if (fwrite(buf, 1, n, f) != n) { fclose(f); return -1; } fclose(f); return rename(t, path);
+}
+static void marker_bump(const char *dir) {   /* the house marker rule: the engine reloads the desk when this file GROWS (never on mtime); reset only past 4096 bytes, as game_core does */
+    char mk[1100]; snprintf(mk, sizeof mk, "%s/cells.marker", dir); struct stat ms; FILE *f = fopen(mk, (!stat(mk, &ms) && ms.st_size >= 4096) ? "w" : "a"); if (f) { fputc('1', f); fclose(f); }
+}
+static char glyph_of(int h) { static const char g[] = "23456789ABCDEFGH"; return h <= 0 ? '.' : h == 1 ? '1' : g[h - 2]; }
+static void top_of(W *w, int x, int z, int ymax, int *top, int *bot) {   /* highest and lowest non-air y of a column, -1 = empty */
+    *top = *bot = -1; for (int y = 0; y <= ymax; y++) if (strcmp(kind_at(w, x, y, z), "air")) { if (*bot < 0) *bot = y; *top = y; }
+}
+static int run_png(const char *png_op, const char *raw, const char *png, int w, int h) {
+    char sz[40]; snprintf(sz, sizeof sz, "%dx%d", w, h); fflush(NULL); pid_t p = fork(); if (p < 0) return -1;
+    if (!p) { if (!freopen("/dev/null", "w", stdout) || !freopen("/dev/null", "w", stderr)) _exit(126); execl(png_op, png_op, raw, png, "--size", sz, (char *)NULL); _exit(127); }
+    int st = 0; waitpid(p, &st, 0); return WIFEXITED(st) && !WEXITSTATUS(st) ? 0 : -1;
+}
+/* layer < 0: top-down heightmap; otherwise the single y level `layer` */
+static int project(W *w, const char *dir, int layer, const char *png_op) {
+    int WX = R("world_x_max") + 1, WZ = R("world_z_max") + 1, YM = R("world_y_max"); if (WX > DMAX || WZ > DMAX || layer > YM) return 2;
+    static int Fs[DMAX][DMAX], Ws[DMAX][DMAX], Hs[DMAX][DMAX]; int solid = 0, hi = 0; build_atlas();
+    for (int z = 0; z < WZ; z++) for (int x = 0; x < WX; x++) { int top, bot, f = 0, wl = 0, h = 0;
+        if (layer < 0) { top_of(w, x, z, YM, &top, &bot); if (top >= 0) { h = top + 1; if (h == 1) f = pic_slot(kind_at(w, x, top, z)); else { f = pic_slot(kind_at(w, x, top, z)); wl = pic_slot(kind_at(w, x, top - 1, z)); if (!wl) wl = f; } } }
+        else { const char *k = kind_at(w, x, layer, z); if (strcmp(k, "air")) { h = 1; f = pic_slot(k); } }
+        Fs[z][x] = f; Ws[z][x] = wl; Hs[z][x] = h; if (h) solid++; if (h > hi) hi = h; }
+    size_t cap = (size_t)WX * WZ * 16 + 400; char *cb = malloc(cap), *mb = malloc((size_t)(WX + 1) * WZ + 1), ex[1200]; if (!cb || !mb) return 2; size_t n = 0, m = 0;
+    n += snprintf(cb + n, cap - n, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\ncells\n", WX, WZ, TPX, ACOLS, ATILES);
+    for (int z = 0; z < WZ; z++) { for (int x = 0; x < WX; x++) { n += snprintf(cb + n, cap - n, "%s%d,%d", x ? " " : "", Fs[z][x], Ws[z][x]); mb[m++] = glyph_of(Hs[z][x]); } cb[n++] = '\n'; mb[m++] = '\n'; }
+    int en = snprintf(ex, sizeof ex, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | note               | vox desk projection (vox_op), derived from the ledger; do not edit\n");
+    for (int h = 2; h <= YM + 1 && h <= 16; h++) en += snprintf(ex + en, sizeof ex - en, "EXTRUDE      | %c                  | %d\n", glyph_of(h), h);
+    char p[1100]; int bad = 0; mkdir(dir, 0775);
+    snprintf(p, sizeof p, "%s/cells.rgba", dir); bad |= write_atomic(p, AT, sizeof AT);
+    snprintf(p, sizeof p, "%s/skin.txt", dir); bad |= write_atomic(p, "rmmv\n", 5);
+    snprintf(p, sizeof p, "%s/extrusion.pdl", dir); bad |= write_atomic(p, ex, (size_t)en);
+    snprintf(p, sizeof p, "%s/map.txt", dir); bad |= write_atomic(p, mb, m);
+    snprintf(p, sizeof p, "%s/cells.txt", dir); bad |= write_atomic(p, cb, n);
+    { char ev[MAXA * 80 + 8]; size_t en2 = 0; ev[0] = 0; for (int i = 0; i < w->na; i++) if (w->a[i].has) en2 += snprintf(ev + en2, sizeof ev - en2, "%d %d %d %d %d People1 0 2 1\n", w->a[i].x, w->a[i].z, PL[0], PL[1], PL[2]);
+      snprintf(p, sizeof p, "%s/events.txt", dir); bad |= write_atomic(p, ev, en2); }
+    if (png_op && !bad) {   /* the 2D picture map.png: each cell's visible tile blitted 1:1 (a blank tile over a dark ground), through the house op raw_to_png like game_core desk_picture */
+        size_t ow = (size_t)WX * TPX, oh = (size_t)WZ * TPX; unsigned char *o = malloc(ow * oh * 4); if (!o) return 2;
+        for (int z = 0; z < WZ; z++) for (int x = 0; x < WX; x++) { int s = Ws[z][x] ? Ws[z][x] : Fs[z][x];
+            for (int py = 0; py < TPX; py++) for (int px = 0; px < TPX; px++) { unsigned char *d = &o[(((size_t)z * TPX + py) * ow + (size_t)x * TPX + px) * 4];
+                const unsigned char *a = &AT[(((s / ACOLS) * TPX + py) * ATW + (s % ACOLS) * TPX + px) * 4];
+                if (s && a[3]) { d[0] = a[0]; d[1] = a[1]; d[2] = a[2]; } else { d[0] = 24; d[1] = 24; d[2] = 32; } d[3] = 255; } }
+        char raw[1100], pn[1100]; snprintf(raw, sizeof raw, "%s/map.raw", dir); snprintf(pn, sizeof pn, "%s/map.png", dir);
+        if (write_atomic(raw, o, ow * oh * 4)) bad = 1; else { if (run_png(png_op, raw, pn, (int)ow, (int)oh)) bad = 1; unlink(raw); } free(o); }
+    if (!bad) marker_bump(dir);   /* LAST: the engine must see the whole desk when it reloads */
+    free(cb); free(mb); if (bad) { fprintf(stderr, "refused: cannot write the desk %s\n", dir); return 2; }
+    fprintf(OUT, "DESK mode=%s %dx%d solid_columns=%d highest=%d\n", layer < 0 ? "top" : "layer", WX, WZ, solid, hi); return 0;
+}
+/* the game bar feed (state/game_ui.txt shape of game_core: gm_on, gm_title, gmt_i_text, gmb_i_label / _act, counts): a PROJECTION, one text row per fact, one button per verb. A button runs `vox_op act` which appends the verb's rows,
+ * then rewrites the desk and this feed. */
+static const char *ACTS[][2] = { { "mine", "Mine" }, { "place", "Place" }, { "eat", "Eat" }, { "wait", "Wait" }, { "sleep", "Sleep" }, { "x-", "Left" }, { "x+", "Right" }, { "z-", "Back" }, { "z+", "Forward" }, { "up", "Up" }, { "down", "Down" } };
+#define NACT ((int)(sizeof ACTS / sizeof *ACTS))
+typedef struct { const char *self, *data, *ledger, *desk, *feed, *png; } Opt;
+static int write_feed(W *w, const char *an, const Opt *o) {
+    char b[8192]; size_t n = 0; Actor *a = actor(w, an, 0); int mm = minute_of(w->turn);
+    n += snprintf(b + n, sizeof b - n, "gm_on=1\ngm_title=Voxel\n");
+    n += snprintf(b + n, sizeof b - n, "gmt_0_text=turn %d  day %ld  light %d\n", w->turn, total_min(w->turn) / R("day_minutes"), light_of(mm));
+    if (a && a->has) { char bg[600] = ""; for (int i = 0; i < a->ni; i++) if (a->cnt[i]) { char t[80]; snprintf(t, sizeof t, "%s%s %d", bg[0] ? ", " : "", a->item[i], a->cnt[i]); strncat(bg, t, sizeof bg - strlen(bg) - 1); }
+        n += snprintf(b + n, sizeof b - n, "gmt_1_text=%s at %d,%d,%d  hunger %d/%d\ngmt_2_text=bag: %s\n", an, a->x, a->y, a->z, a->hunger, R("hunger_max"), bg[0] ? bg : "empty"); }
+    else n += snprintf(b + n, sizeof b - n, "gmt_1_text=no player %s yet (give and move first)\ngmt_2_text=bag: empty\n", an);
+    for (int i = 0; i < NACT; i++) n += snprintf(b + n, sizeof b - n, "gmb_%d_label=%s\ngmb_%d_act='%s' act '%s' '%s' '%s' '%s' 'desk=%s' 'feed=%s' 'png=%s'\n", i, ACTS[i][1], i, o->self, o->data, o->ledger, an, ACTS[i][0], o->desk, o->feed, o->png ? o->png : "");
+    n += snprintf(b + n, sizeof b - n, "gm_nt=3\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", NACT);
+    return write_atomic(o->feed, b, n);
+}
+static int act(W *w, FILE *L, const char *an, const char *what) {
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    static const struct { const char *k; int d[3]; } mv[] = { { "x+", { 1, 0, 0 } }, { "x-", { -1, 0, 0 } }, { "z+", { 0, 0, 1 } }, { "z-", { 0, 0, -1 } }, { "up", { 0, 1, 0 } }, { "down", { 0, -1, 0 } } };
+    for (int i = 0; i < 6; i++) if (!strcmp(what, mv[i].k)) return v_move(w, L, an, a->x + mv[i].d[0], a->y + mv[i].d[1], a->z + mv[i].d[2]);
+    if (!strcmp(what, "wait")) return v_wait(w, L, 1);
+    if (!strcmp(what, "sleep")) return v_sleep(w, L, an);
+    if (!strcmp(what, "eat")) { for (int i = 0; i < a->ni; i++) if (a->cnt[i] > 0 && food_value(a->item[i]) > 0) return v_eat(w, L, an, a->item[i]); fprintf(stderr, "refused: no food in bag\n"); return 16; }
+    int ty = -1; for (int y = a->y - 1; y >= 0; y--) if (solid_at(w, a->x, y, a->z)) { ty = y; break; }   /* the highest solid block under the player's feet */
+    if (!strcmp(what, "mine")) { if (ty < 0) { fprintf(stderr, "refused: nothing to mine\n"); return 13; } Blk *b = blk(kind_at(w, a->x, ty, a->z)); int *c = b ? bag(a, b->tool, 0) : NULL;
+        return v_mine(w, L, an, (c && *c > 0) ? b->tool : "hand", a->x, ty, a->z); }
+    if (!strcmp(what, "place")) { for (int i = 0; i < a->ni; i++) if (a->cnt[i] > 0 && blk(a->item[i]) && blk(a->item[i])->solid) return v_place(w, L, an, a->item[i], a->x, ty + 1, a->z); fprintf(stderr, "refused: item missing or not placeable\n"); return 16; }
+    fprintf(stderr, "refused: unknown action\n"); return 2;
+}
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--describe")) {
         puts("rule vox inputs data_dir(rules,blocks,terrain),ledger outputs GIVE MOVE DAMAGE MINE DROP PLACE TURN DAY SLEEP SPAWNPOINT rows numbers from RULE TOOL DAYLIGHT BLOCK rows refusal writes nothing");
@@ -267,8 +372,9 @@ int main(int argc, char **argv) {
     const char *v = argv[1]; int ac = argc - 4; char **av = argv + 4;
     if (load_data(argv[2])) { fprintf(stderr, "missing data file in %s\n", argv[2]); return 9; }
     FILE *L = fopen(argv[3], "a+"); if (!L) return 2;
-    int r = 2; W w; OUT = stdout;
-    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat");
+    int r = 2; W w; OUT = stdout; Opt op = { argv[0], argv[2], argv[3], "", "", NULL };
+    while (ac > 0 && strchr(av[ac - 1], (int)'=')) { char *o = av[ac - 1]; if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else break; ac--; }
+    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat") || !strcmp(v, "act");
     if (mut && (r = verify(L))) { fclose(L); return r; }
     char cx[3][32]; char *av5[5];   /* a page passes the cell as one word x,y,z (the registry allows 4 params) */
     if ((!strcmp(v, "mine") || !strcmp(v, "place")) && ac == 3 && sscanf(av[2], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) {
@@ -288,6 +394,11 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "cell") && ac == 3) { fprintf(OUT, "%s\n", kind_at(&w, atoi(av[0]), atoi(av[1]), atoi(av[2]))); r = 0; }
     else if (!strcmp(v, "inv") && ac == 1) { Actor *a = actor(&w, av[0], 0);
         if (!a) { fprintf(stderr, "unknown actor\n"); r = 10; } else { for (int i = 0; i < a->ni; i++) if (a->cnt[i]) fprintf(OUT, "%s=%d\n", a->item[i], a->cnt[i]); r = 0; } }
+    else if (!strcmp(v, "desk") && ac == 1) r = project(&w, av[0], -1, op.png);
+    else if (!strcmp(v, "layer") && ac == 2) r = project(&w, av[0], atoi(av[1]), op.png);
+    else if (!strcmp(v, "feed") && ac == 1 && op.feed[0]) { r = write_feed(&w, av[0], &op) ? 2 : 0; if (!r) fprintf(OUT, "FEED written\n"); }
+    else if (!strcmp(v, "act") && ac == 2) { r = act(&w, L, av[0], av[1]);
+        if (!r) { fold(&w, L); if (op.desk[0]) r = project(&w, op.desk, -1, op.png); if (!r && op.feed[0]) r = write_feed(&w, av[0], &op) ? 2 : 0; } }
     else if (!strcmp(v, "verify") && ac == 0) { r = verify(L); if (!r) fprintf(OUT, "verified\n"); }
     else if (!strcmp(v, "replay") && ac == 1) {
         FILE *d = fopen(av[0], "w+x"); if (!d) { fprintf(stderr, "refused: destination exists or cannot be created\n"); r = 2; } else { FILE *keep = OUT; OUT = fopen("/dev/null", "w"); r = replay_into(L, d); fclose(OUT); OUT = keep; if (!r && !same(L, d)) r = 14; fclose(d); if (!r) fprintf(OUT, "replayed identical\n"); } }
