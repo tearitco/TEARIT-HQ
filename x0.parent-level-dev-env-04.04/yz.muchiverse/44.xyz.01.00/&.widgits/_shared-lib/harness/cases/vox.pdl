@@ -1,0 +1,826 @@
+# vox (2026-11-22, D105; recipe: STANDARD-RULES-AS-OPS sections 12 to 16): the voxel foundation. ONE op (@.apps/vox/ops/vox_op.c) whose only state is the append-only ledger rows
+# GIVE MOVE DAMAGE MINE DROP PLACE TURN DAY SLEEP SPAWNPOINT; every number is a RULE / TOOL / DAYLIGHT / BLOCK row in @.apps/vox; place, mine, wait and sleep are called by four event pages (registry COMMAND rows vox_*).
+# Nothing here touches the live ledger: a scratch house under $T holds the pages, the data and a freshly built op (the page wrappers walk up to the folder holding xyzfs, which is $T/h).
+# GENERATED from the macro source by an awk one-off (X rows -> RUN rows; MUT rows -> five rows each); every expected number below is HAND-COMPUTED from the data rows, not copied from a run.
+# Each SABOTAGE (the MUT rows) copies the op source, breaks ONE clause with sed, builds it, runs the scenario and requires the mutant's output to LACK what the real op prints (so the real check would FAIL on it).
+RESULTS | ../results/vox.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | h/xyzfs
+MKDIR | h/#.desktop
+MKDIR | h/@.apps/vox/ops/+x
+MKDIR | b
+MKDIR | p
+MKDIR | d1
+MKDIR | d2
+MKDIR | s
+MKDIR | r1
+MKDIR | r2
+MKDIR | al
+COPYDIR | @.apps/vox/events | h/@.apps/vox/events
+COPY | @.apps/vox/rules.pdl | h/@.apps/vox/rules.pdl
+COPY | @.apps/vox/blocks.pdl | h/@.apps/vox/blocks.pdl
+COPY | @.apps/vox/terrain.pdl | h/@.apps/vox/terrain.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/vox/ops/+x/vox_op.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox-op-compiles-without-warnings-into-the-scratch-house
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | --describe
+EXPECT_OUT | rule vox inputs data_dir | describe-names-the-rule-and-its-inputs
+EXPECT_OUT | refusal writes nothing | describe-states-the-all-or-nothing-rule
+WRITE | sabotaged_registry.pdl | COMMAND vox_place\n  PARAMS actor,item,cell\nEND\n
+WRITE | b/empty_dir_marker | x\n
+
+CASE    | daylight
+# start_minute 420 (07:00), minutes_per_turn 10, day_minutes 1440; DAYLIGHT rows 360=8 420=15 1080=15 1140=8 1200=2; linear between rows, integer division toward zero
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d1/l
+EXPECT_OUT_IS | turn=0 minute=420 day=0 light=15 | start-is-minute-420-level-15-(HAND-the-DAYLIGHT-420-row)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d1/l | 72
+EXPECT_OUT_IS | turn=72 | 72-turns-is-turn-72
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d1/l
+EXPECT_OUT_IS | turn=72 minute=1140 day=0 light=8 | 19:00-is-level-8-(HAND-420+720=1140-the-DAYLIGHT-1140-row)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d1/l | 6
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d1/l
+EXPECT_OUT_IS | turn=78 minute=1200 day=0 light=2 | 20:00-is-level-2
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d1/l | 60
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d1/l
+EXPECT_OUT_IS | turn=138 minute=360 day=1 light=8 | 06:00-next-day-is-level-8-and-day-1-(HAND-420+1380=1800-1440)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d1/l | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d1/l
+EXPECT_OUT_IS | turn=141 minute=390 day=1 light=11 | the-midpoint-390-interpolates-8+7*30/60=11-(HAND-integer-division)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d1/l | 144
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d1/l
+EXPECT_OUT_IS | turn=285 minute=390 day=2 light=11 | 144-more-turns-is-exactly-one-more-day
+RUN | grep | -c | ^DAY | $T/d1/l
+EXPECT_OUT_IS | 2 | two-midnights-crossed-two-DAY-rows
+EXPECT_HAS | d1/l | DAY \p 1 | DAY-1-row
+EXPECT_HAS | d1/l | DAY \p 2 | DAY-2-row
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d2/l | 144
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/d2/l
+EXPECT_OUT_IS | turn=144 minute=420 day=1 light=15 | 144-turns-of-10-minutes-is-one-day
+RUN | grep | -c | ^DAY | $T/d2/l
+EXPECT_OUT_IS | 1 | one-day-is-exactly-one-DAY-row
+SUMTREE | sa | d2
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d2/l | 0
+EXPECT_EXIT | 2 | wait-zero-refuses-(exit-2)
+SUMTREE | sb | d2
+EXPECT_EQ | $sa | $sb | wait-zero-refuses-wrote-NOTHING
+SUMTREE | sa | d2
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d2/l | 10001
+EXPECT_EXIT | 2 | wait-over-the-rule-cap-refuses-(exit-2)
+SUMTREE | sb | d2
+EXPECT_EQ | $sa | $sb | wait-over-the-rule-cap-refuses-wrote-NOTHING
+SUMTREE | sa | d2
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/d2/l
+EXPECT_EXIT | 2 | wait-needs-an-argument-(exit-2)
+SUMTREE | sb | d2
+EXPECT_EQ | $sa | $sb | wait-needs-an-argument-wrote-NOTHING
+
+CASE    | place-mine-drops
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/p/l | joe | 3 | 3 | 3
+EXPECT_OUT_IS | at=3,3,3 | the-first-move-spawns-joe
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | 2 | 3
+EXPECT_OUT_IS | damaged stage=1 progress=1/2 | hand-power-1-on-dirt-hardness-2-is-stage-floor(3*1/2)=1
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | 2 | 3
+EXPECT_OUT_IS | broken stage=3 progress=2/2 | second-swing-breaks-it
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | inv | $T/h/@.apps/vox | $T/p/l | joe
+EXPECT_OUT_IS | dirt=1 | the-drop-went-to-the-bag-(RULE-count-1)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | cell | $T/h/@.apps/vox | $T/p/l | 3 | 2 | 3
+EXPECT_OUT_IS | air | the-mined-cell-folds-to-air
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | cell | $T/h/@.apps/vox | $T/p/l | 3 | 1 | 3
+EXPECT_OUT_IS | dirt | the-cell-below-is-still-seed-dirt
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | 2 | 3
+EXPECT_EXIT | 13 | mine-air-refuses-(exit-13)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | mine-air-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | 0 | 3
+EXPECT_EXIT | 17 | stone-needs-min-power-2-hand-is-1-(exit-17)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | stone-needs-min-power-2-hand-is-1-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | pick | 3 | 0 | 3
+EXPECT_EXIT | 16 | a-tool-not-in-the-bag-refuses-(exit-16)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | a-tool-not-in-the-bag-refuses-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/p/l | joe | pick | 1 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | pick | 3 | 0 | 3
+EXPECT_OUT_IS | damaged stage=1 progress=3/6 | pick-power-3-on-stone-hardness-6-is-stage-floor(9/6)=1
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | pick | 3 | 0 | 3
+EXPECT_OUT_IS | broken stage=3 progress=6/6 | second-pick-swing-breaks-the-stone
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | inv | $T/h/@.apps/vox | $T/p/l | joe
+EXPECT_OUT | cobble=1 | stone-drops-cobble
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | pick | 3 | 1 | 3
+EXPECT_OUT_IS | damaged stage=1 progress=1/2 | a-pick-on-dirt-swings-at-hand-power-(tool_best-is-shovel)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | cobble | 3 | 0 | 3
+EXPECT_OUT_IS | placed | cobble-placed-on-the-mined-cell-(neighbour-stone-supports-it)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | inv | $T/h/@.apps/vox | $T/p/l | joe
+EXPECT_OUT_LACKS | cobble | placing-removes-the-item-(conservation)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | cell | $T/h/@.apps/vox | $T/p/l | 3 | 0 | 3
+EXPECT_OUT_IS | cobble | the-placed-cell-folds-to-cobble
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | sapling | 3 | 2 | 3
+EXPECT_EXIT | 16 | a-sapling-is-not-in-the-bag-(exit-16)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | a-sapling-is-not-in-the-bag-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/p/l | joe | cobble | 1 | test
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | cobble | 3 | 0 | 3
+EXPECT_EXIT | 13 | placing-on-a-solid-cell-refuses-(exit-13)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | placing-on-a-solid-cell-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | cobble | 3 | 7 | 3
+EXPECT_EXIT | 15 | a-floating-cell-has-no-support-(exit-15)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | a-floating-cell-has-no-support-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | cobble | 3 | 3 | 9
+EXPECT_EXIT | 12 | out-of-reach-refuses-(exit-12)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | out-of-reach-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | cobble | 3 | 3 | 16
+EXPECT_EXIT | 11 | out-of-bounds-refuses-(exit-11)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | out-of-bounds-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/p/l | joe | cobble | 3 | 3 | 3
+EXPECT_EXIT | 13 | placing-into-the-actors-own-cell-refuses-(exit-13)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | placing-into-the-actors-own-cell-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | ghost | hand | 3 | 1 | 3
+EXPECT_EXIT | 10 | an-unknown-actor-refuses-(exit-10)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | an-unknown-actor-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | 1 | 9
+EXPECT_EXIT | 12 | mine-out-of-reach-refuses-(exit-12)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | mine-out-of-reach-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | -1 | 3
+EXPECT_EXIT | 11 | mine-out-of-bounds-refuses-(exit-11)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | mine-out-of-bounds-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/p/l | joe | 3 | 0 | 3
+EXPECT_EXIT | 18 | move-into-a-solid-cell-refuses-(exit-18)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | move-into-a-solid-cell-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/p/l | joe | 5 | 3 | 3
+EXPECT_EXIT | 18 | move-two-cells-refuses-(RULE-move_max-1)-(exit-18)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | move-two-cells-refuses-(RULE-move_max-1)-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/p/l | joe | 4 | 3 | 3
+EXPECT_OUT_IS | at=4,3,3 | one-cell-move-is-accepted
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/p/l | joe | dirt | 63 | test
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/p/l | joe | dirt | 1 | test
+EXPECT_EXIT | 21 | give-past-stack_max-refuses-(exit-21)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | give-past-stack_max-refuses-wrote-NOTHING
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/p/l | joe | hand | 3 | 1 | 3
+EXPECT_EXIT | 21 | a-drop-that-does-not-fit-refuses-and-the-swing-is-not-spent-(exit-21)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | a-drop-that-does-not-fit-refuses-and-the-swing-is-not-spent-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/p/l
+EXPECT_OUT_IS | turn=8 minute=500 day=0 light=15 | HAND-turns-move+2-mine+2-pick+1-pick-on-dirt+1-place+1-move=8
+RUN | grep | -c | . | $T/p/l
+CAPTURE | rows_p
+EXPECT_GE | $rows_p | 20 | the-ledger-really-has-rows-(vacuity-guard)
+
+CASE    | replay-and-tamper
+# the ledger is the authority: replaying its intent rows into a NEW file gives identical bytes, twice; a hand-edited ledger is refused and nothing is added
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/p/l
+EXPECT_OUT_IS | verified | the-untouched-ledger-verifies-(positive-control)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/vox | $T/p/l | $T/r1/l
+EXPECT_OUT_IS | replayed identical | replay-into-a-new-file-reproduces-every-byte
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/vox | $T/p/l | $T/r2/l
+RUN | cmp | -s | $T/p/l | $T/r1/l
+EXPECT_EXIT | 0 | replay-1-equals-the-ledger-byte-for-byte
+RUN | cmp | -s | $T/r1/l | $T/r2/l
+EXPECT_EXIT | 0 | replay-twice-gives-identical-bytes
+SUMTREE | sa | p
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/vox | $T/p/l | $T/r1/l
+EXPECT_EXIT | 2 | replay-into-an-existing-file-refuses-(exit-2)
+SUMTREE | sb | p
+EXPECT_EQ | $sa | $sb | replay-into-an-existing-file-refuses-wrote-NOTHING
+MKDIR | t1
+MKDIR | t2
+MKDIR | t3
+MKDIR | t4
+RUN | cp | $T/p/l | $T/t1/l
+RUN | cp | $T/p/l | $T/t2/l
+RUN | cp | $T/p/l | $T/t3/l
+RUN | cp | $T/p/l | $T/t4/l
+RUN | sed | -i | s/DAMAGE \p joe \p hand \p 3 \p 2 \p 3 \p 1 \p 1$/DAMAGE \p joe \p hand \p 3 \p 2 \p 3 \p 1 \p 5/ | $T/t1/l
+RUN | sed | -i | /^DROP/d | $T/t2/l
+APPEND | t3/l | MINE \p joe \p 5 \p 2 \p 5 \p dirt\n
+APPEND | t4/l | FOO \p bar \p baz\n
+RUN | cmp | -s | $T/p/l | $T/t1/l
+EXPECT_EXIT | 1 | a-DAMAGE-progress-edited-by-hand-really-changed-the-ledger-(vacuity-guard)
+RUN | cp | $T/t1/l | $T/t1/keep
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/t1/l
+EXPECT_EXIT | 14 | NEGATIVE-verify-refuses-a-DAMAGE-progress-edited-by-hand
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/t1/l | 1
+EXPECT_EXIT | 14 | NEGATIVE-a-verb-refuses-on-a-DAMAGE-progress-edited-by-hand
+RUN | cmp | -s | $T/t1/l | $T/t1/keep
+EXPECT_EXIT | 0 | the-refused-verb-wrote-nothing-after-a-DAMAGE-progress-edited-by-hand
+RUN | cmp | -s | $T/p/l | $T/t2/l
+EXPECT_EXIT | 1 | the-DROP-rows-deleted-really-changed-the-ledger-(vacuity-guard)
+RUN | cp | $T/t2/l | $T/t2/keep
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/t2/l
+EXPECT_EXIT | 14 | NEGATIVE-verify-refuses-the-DROP-rows-deleted
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/t2/l | 1
+EXPECT_EXIT | 14 | NEGATIVE-a-verb-refuses-on-the-DROP-rows-deleted
+RUN | cmp | -s | $T/t2/l | $T/t2/keep
+EXPECT_EXIT | 0 | the-refused-verb-wrote-nothing-after-the-DROP-rows-deleted
+RUN | cmp | -s | $T/p/l | $T/t3/l
+EXPECT_EXIT | 1 | a-forged-MINE-row-appended-really-changed-the-ledger-(vacuity-guard)
+RUN | cp | $T/t3/l | $T/t3/keep
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/t3/l
+EXPECT_EXIT | 14 | NEGATIVE-verify-refuses-a-forged-MINE-row-appended
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/t3/l | 1
+EXPECT_EXIT | 14 | NEGATIVE-a-verb-refuses-on-a-forged-MINE-row-appended
+RUN | cmp | -s | $T/t3/l | $T/t3/keep
+EXPECT_EXIT | 0 | the-refused-verb-wrote-nothing-after-a-forged-MINE-row-appended
+RUN | cmp | -s | $T/p/l | $T/t4/l
+EXPECT_EXIT | 1 | a-row-of-no-known-kind-appended-really-changed-the-ledger-(vacuity-guard)
+RUN | cp | $T/t4/l | $T/t4/keep
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/t4/l
+EXPECT_EXIT | 14 | NEGATIVE-verify-refuses-a-row-of-no-known-kind-appended
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/t4/l | 1
+EXPECT_EXIT | 14 | NEGATIVE-a-verb-refuses-on-a-row-of-no-known-kind-appended
+RUN | cmp | -s | $T/t4/l | $T/t4/keep
+EXPECT_EXIT | 0 | the-refused-verb-wrote-nothing-after-a-row-of-no-known-kind-appended
+
+CASE    | sleep
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/s/l | joe | bed | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/s/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/s/l | joe | bed | 3 | 3 | 4
+EXPECT_OUT_IS | placed | the-bed-is-a-block-placed-by-the-same-op
+SUMTREE | sa | s
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/s/l | joe
+EXPECT_EXIT | 19 | sleep-by-day-refuses-(exit-19)
+SUMTREE | sb | s
+EXPECT_EQ | $sa | $sb | sleep-by-day-refuses-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/s/l | 76
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/s/l
+EXPECT_OUT_IS | turn=78 minute=1200 day=0 light=2 | HAND-420+780=1200-level-2-below-sleep_max_light-3
+SUMTREE | sa | s
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/s/l | ghost
+EXPECT_EXIT | 10 | an-unknown-actor-cannot-sleep-(exit-10)
+SUMTREE | sb | s
+EXPECT_EQ | $sa | $sb | an-unknown-actor-cannot-sleep-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/s/l | joe
+EXPECT_OUT_IS | skipped_turns=66 | HAND-from-1200-to-the-wake-minute-420-is-660-minutes-=-66-turns
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/s/l
+EXPECT_OUT_IS | turn=144 minute=420 day=1 light=15 | the-sleep-moved-the-clock-to-07:00-next-day
+EXPECT_HAS | s/l | SLEEP \p joe \p 3 \p 3 \p 4 \p skipped_turns=66 | the-SLEEP-row-names-the-bed-and-the-skip
+EXPECT_HAS | s/l | SPAWNPOINT \p joe \p 3 \p 3 \p 4 | the-spawnpoint-is-the-bed
+EXPECT_HAS | s/l | TURN \p 144 \p sleep | the-clock-advance-is-a-ledger-row
+RUN | grep | -c | ^DAY | $T/s/l
+EXPECT_OUT_IS | 1 | the-skip-crossed-one-midnight-one-DAY-row
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/s/l | ann | 12 | 3 | 12
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/s/l | 77
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/s/l
+EXPECT_OUT_IS | turn=222 minute=1200 day=1 light=2 | night-again
+SUMTREE | sa | s
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/s/l | ann
+EXPECT_EXIT | 20 | sleep-with-no-bed-near-refuses-(exit-20)
+SUMTREE | sb | s
+EXPECT_EQ | $sa | $sb | sleep-with-no-bed-near-refuses-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/s/l
+EXPECT_OUT_IS | verified | the-sleep-ledger-replays-identically
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/vox | $T/s/l | $T/r2/s
+EXPECT_OUT_IS | replayed identical | and-replays-into-a-new-file
+
+CASE    | data-not-code
+MKDIR | dm0
+MKDIR | n0
+COPYDIR | @.apps/vox | dm0
+RUN | sed | -i | /RULE \p reach \p/d | $T/dm0/rules.pdl
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/dm0 | $T/n0/l | joe | hand | 3 | 1 | 3
+EXPECT_EXIT | 9 | NEGATIVE-a-rules-file-without-reach-refuses-9-(no-number-in-C)
+EXPECT_OUT | missing rule reach | the-refusal-names-the-missing-rule
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/nodata | $T/n0/l
+EXPECT_EXIT | 9 | NEGATIVE-a-missing-data-folder-refuses-9
+RUN | grep | -c | ^BLOCK | $HOUSE/@.apps/vox/blocks.pdl
+EXPECT_OUT_IS | 8 | blocks.pdl-has-the-8-kinds
+RUN | git | -C | $HOUSE | check-ignore | -q | #.desktop/vox_ledger.txt
+EXPECT_EXIT | 0 | the-runtime-ledger-is-git-ignored
+RUN | git | -C | $HOUSE | check-ignore | -q | #.desktop/vox_not_ignored.txt
+EXPECT_EXIT | 1 | NEGATIVE-a-neighbour-name-is-not-ignored-(the-check-can-fail)
+
+CASE    | registry-and-pages
+RUN | grep | -c | ^COMMAND vox_place$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | exactly-one-COMMAND-vox_place-row
+RUN | grep | -c | ^COMMAND vox_mine$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | exactly-one-COMMAND-vox_mine-row
+RUN | grep | -c | ^COMMAND vox_wait$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | exactly-one-COMMAND-vox_wait-row
+RUN | grep | -c | ^COMMAND vox_sleep$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | exactly-one-COMMAND-vox_sleep-row
+RUN | grep | -c | ^COMMAND vox_sleep$ | $T/sabotaged_registry.pdl
+EXPECT_OUT_IS | 0 | NEGATIVE-a-registry-copy-without-the-row-gives-0
+RUN | grep | -c | -F | vox_op.+x" place "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{item}' '{cell}' | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-place-template-is-exactly-op-data-ledger-actor-item-cell
+RUN | grep | -c | -F | vox_op.+x" mine "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{tool}' '{cell}' | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-mine-template-is-exactly-op-data-ledger-actor-tool-cell
+RUN | grep | -c | -F | vox_op.+x" wait "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{n}' | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-wait-template-is-exactly-op-data-ledger-n
+RUN | grep | -c | -F | vox_op.+x" sleep "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-sleep-template-is-exactly-op-data-ledger-actor
+EXPECT_HAS | h/@.apps/vox/events/vox_place/event_pkg/pages/page_1/event.ir.pdl | type=vox_place \p actor=joe | the-place-page-command-is-the-registered-type
+EXPECT_HAS | h/@.apps/vox/events/vox_mine/event_pkg/pages/page_1/event.ir.pdl | type=vox_mine \p actor=joe | the-mine-page-command-is-the-registered-type
+EXPECT_HAS | h/@.apps/vox/events/vox_wait/event_pkg/pages/page_1/event.ir.pdl | type=vox_wait \p n=1 | the-wait-page-command-is-the-registered-type
+EXPECT_HAS | h/@.apps/vox/events/vox_sleep/event_pkg/pages/page_1/event.ir.pdl | type=vox_sleep \p actor=joe | the-sleep-page-command-is-the-registered-type
+EXPECT_HAS | h/@.apps/vox/events/vox_place/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-place-page-has-a-ui-trigger
+EXPECT_HAS | h/@.apps/vox/events/vox_sleep/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-sleep-page-has-a-ui-trigger
+EXPECT_LACKS | h/@.apps/vox/events/vox_wait/event_pkg/pages/page_1/event.ir.pdl | type=vox_sleep | NEGATIVE-the-wait-page-is-not-the-sleep-command
+RUN | grep | -c | -F | BOOK \p vox \p events \p @.apps/vox/events | $HOUSE/&.hq-apps/blueprintz/books.pdl
+EXPECT_OUT_IS | 1 | blueprintz-lists-the-vox-book
+RUN | grep | -c | -F | vox_wait | $HOUSE/&.hq-apps/blueprintz/books.pdl
+EXPECT_OUT_IS | 0 | no-event-name-leaks-into-books.pdl
+
+CASE    | wrapper-equals-op
+# the compiled wrappers (cmd_1.sh) run the op on the scratch house; the same verbs by the op alone on another ledger give the same lines and the same bytes
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt | joe | pick | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/al/l | joe | pick | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/al/l | joe | 3 | 3 | 3
+RUN | sh | $T/h/@.apps/vox/events/vox_mine/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-mine-page-runs
+CAPTURE | page_mine
+EXPECT_EQ | $page_mine | damaged stage=1 progress=1/2 | HAND-pick-on-dirt-swings-at-hand-power
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/al/l | joe | pick | 3,2,3
+CAPTURE | alone_mine
+EXPECT_EQ | $page_mine | $alone_mine | the-mine-page-prints-the-SAME-line-as-the-op-alone-(cell-as-one-word-x,y,z)
+RUN | sh | $T/h/@.apps/vox/events/vox_mine/event_pkg/pages/page_1/cmd_1.sh
+CAPTURE | page_mine2
+EXPECT_EQ | $page_mine2 | broken stage=3 progress=2/2 | the-second-page-run-breaks-it
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/al/l | joe | pick | 3,2,3
+RUN | sh | $T/h/@.apps/vox/events/vox_wait/event_pkg/pages/page_1/cmd_1.sh
+CAPTURE | page_wait
+EXPECT_EQ | $page_wait | turn=4 | HAND-move+2-mine+1-wait=turn-4
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/al/l | 1
+CAPTURE | alone_wait
+EXPECT_EQ | $page_wait | $alone_wait | the-wait-page-prints-the-SAME-line-as-the-op-alone
+RUN | sh | $T/h/@.apps/vox/events/vox_place/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 16 | the-place-page-propagates-16-when-the-bag-has-no-cobble
+EXPECT_LACKS | h/#.desktop/vox_ledger.txt | PLACE | the-refusal-wrote-no-PLACE-row
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt | joe | cobble | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/al/l | joe | cobble | 1 | seed
+RUN | sh | $T/h/@.apps/vox/events/vox_place/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-place-page-runs-with-a-cobble-in-the-bag
+CAPTURE | page_place
+EXPECT_EQ | $page_place | placed | the-place-page-placed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/al/l | joe | cobble | 3,3,4
+RUN | sh | $T/h/@.apps/vox/events/vox_place/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 16 | the-place-page-propagates-16-again-(the-cobble-is-spent)
+RUN | sh | $T/h/@.apps/vox/events/vox_sleep/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 19 | the-sleep-page-propagates-19-by-day
+RUN | cmp | -s | $T/h/#.desktop/vox_ledger.txt | $T/al/l
+EXPECT_EXIT | 0 | the-scratch-house-ledger-and-the-op-alone-ledger-are-the-same-bytes
+RUN | grep | -c | . | $T/al/l
+CAPTURE | rows_al
+EXPECT_GE | $rows_al | 12 | the-ledger-really-has-rows-(vacuity-guard)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt
+EXPECT_OUT_IS | verified | the-page-written-ledger-replays-identically
+
+CASE    | sabotage
+# ONE clause broken per mutant source; the real op prints the phrase, the mutant must not (or must print what the real op never does)
+MKDIR | m01
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m01.c
+RUN | sed | -i | 0,/if (!in_reach(a, x, y, z, reach))/s@if (!in_reach(a, x, y, z, reach))@if (0)@ | $T/b/m01.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m01.c
+EXPECT_EXIT | 1 | mutant-01-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m01.+x | $T/b/m01.c
+EXPECT_EXIT | 0 | mutant-01-compiles
+RUN | $T/b/m01.+x | --describe
+EXPECT_OUT | rule vox | mutant-01-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m01.+x | move | $T/h/@.apps/vox | $T/m01/l | joe | 3 | 3 | 3
+RUN | $T/b/m01.+x | mine | $T/h/@.apps/vox | $T/m01/l | joe | hand | 3 | 1 | 9
+EXPECT_OUT_LACKS | out of reach | SABOTAGE-01-no-mine-reach-check-is-caught
+MKDIR | c01
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c01/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c01/l | joe | hand | 3 | 1 | 9
+EXPECT_OUT | out of reach | CONTROL-the-real-op-passes-the-same-check-01-no-mine-reach-check-is-caught
+MKDIR | m02
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m02.c
+RUN | sed | -i | s@if (power < b->minp)@if (0)@ | $T/b/m02.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m02.c
+EXPECT_EXIT | 1 | mutant-02-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m02.+x | $T/b/m02.c
+EXPECT_EXIT | 0 | mutant-02-compiles
+RUN | $T/b/m02.+x | --describe
+EXPECT_OUT | rule vox | mutant-02-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m02.+x | move | $T/h/@.apps/vox | $T/m02/l | joe | 3 | 3 | 3
+RUN | $T/b/m02.+x | mine | $T/h/@.apps/vox | $T/m02/l | joe | hand | 3 | 0 | 3
+EXPECT_OUT_LACKS | below | SABOTAGE-02-no-min_power-check-is-caught
+MKDIR | c02
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c02/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c02/l | joe | hand | 3 | 0 | 3
+EXPECT_OUT | below | CONTROL-the-real-op-passes-the-same-check-02-no-min_power-check-is-caught
+MKDIR | m03
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m03.c
+RUN | sed | -i | s@tool_power(!strcmp(tool, b->tool) ? tool : "hand")@tool_power(tool)@ | $T/b/m03.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m03.c
+EXPECT_EXIT | 1 | mutant-03-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m03.+x | $T/b/m03.c
+EXPECT_EXIT | 0 | mutant-03-compiles
+RUN | $T/b/m03.+x | --describe
+EXPECT_OUT | rule vox | mutant-03-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m03.+x | move | $T/h/@.apps/vox | $T/m03/l | joe | 3 | 3 | 3
+RUN | $T/b/m03.+x | give | $T/h/@.apps/vox | $T/m03/l | joe | pick | 1 | t
+RUN | $T/b/m03.+x | mine | $T/h/@.apps/vox | $T/m03/l | joe | pick | 3 | 1 | 3
+EXPECT_OUT_LACKS | damaged | SABOTAGE-03-any-tool-uses-its-power-is-caught
+MKDIR | c03
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c03/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c03/l | joe | pick | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c03/l | joe | pick | 3 | 1 | 3
+EXPECT_OUT | damaged | CONTROL-the-real-op-passes-the-same-check-03-any-tool-uses-its-power-is-caught
+MKDIR | m04
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m04.c
+RUN | sed | -i | s@int done = prog >= b->hard;@int done = prog >= 1;@ | $T/b/m04.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m04.c
+EXPECT_EXIT | 1 | mutant-04-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m04.+x | $T/b/m04.c
+EXPECT_EXIT | 0 | mutant-04-compiles
+RUN | $T/b/m04.+x | --describe
+EXPECT_OUT | rule vox | mutant-04-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m04.+x | move | $T/h/@.apps/vox | $T/m04/l | joe | 3 | 3 | 3
+RUN | $T/b/m04.+x | mine | $T/h/@.apps/vox | $T/m04/l | joe | hand | 3 | 1 | 3
+EXPECT_OUT_LACKS | damaged | SABOTAGE-04-hardness-ignored-is-caught
+MKDIR | c04
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c04/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c04/l | joe | hand | 3 | 1 | 3
+EXPECT_OUT | damaged | CONTROL-the-real-op-passes-the-same-check-04-hardness-ignored-is-caught
+MKDIR | m05
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m05.c
+RUN | sed | -i | s@if (solid_at(w, x, y, z) \p\p (a->x == x@if ((a->x == x@ | $T/b/m05.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m05.c
+EXPECT_EXIT | 1 | mutant-05-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m05.+x | $T/b/m05.c
+EXPECT_EXIT | 0 | mutant-05-compiles
+RUN | $T/b/m05.+x | --describe
+EXPECT_OUT | rule vox | mutant-05-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m05.+x | move | $T/h/@.apps/vox | $T/m05/l | joe | 3 | 3 | 3
+RUN | $T/b/m05.+x | give | $T/h/@.apps/vox | $T/m05/l | joe | cobble | 1 | t
+RUN | $T/b/m05.+x | place | $T/h/@.apps/vox | $T/m05/l | joe | cobble | 3 | 0 | 3
+EXPECT_OUT_LACKS | target occupied | SABOTAGE-05-place-on-solid-allowed-is-caught
+MKDIR | c05
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c05/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c05/l | joe | cobble | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c05/l | joe | cobble | 3 | 0 | 3
+EXPECT_OUT | target occupied | CONTROL-the-real-op-passes-the-same-check-05-place-on-solid-allowed-is-caught
+MKDIR | m06
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m06.c
+RUN | sed | -i | s@if (need) {@if (0) {@ | $T/b/m06.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m06.c
+EXPECT_EXIT | 1 | mutant-06-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m06.+x | $T/b/m06.c
+EXPECT_EXIT | 0 | mutant-06-compiles
+RUN | $T/b/m06.+x | --describe
+EXPECT_OUT | rule vox | mutant-06-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m06.+x | move | $T/h/@.apps/vox | $T/m06/l | joe | 3 | 3 | 3
+RUN | $T/b/m06.+x | give | $T/h/@.apps/vox | $T/m06/l | joe | cobble | 1 | t
+RUN | $T/b/m06.+x | place | $T/h/@.apps/vox | $T/m06/l | joe | cobble | 3 | 6 | 3
+EXPECT_OUT_LACKS | no support | SABOTAGE-06-no-support-rule-is-caught
+MKDIR | c06
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c06/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c06/l | joe | cobble | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c06/l | joe | cobble | 3 | 6 | 3
+EXPECT_OUT | no support | CONTROL-the-real-op-passes-the-same-check-06-no-support-rule-is-caught
+MKDIR | m07
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m07.c
+RUN | sed | -i | s@.c < 1 \p\p !blk(item)@*c < 0 \p\p !blk(item)@ | $T/b/m07.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m07.c
+EXPECT_EXIT | 1 | mutant-07-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m07.+x | $T/b/m07.c
+EXPECT_EXIT | 0 | mutant-07-compiles
+RUN | $T/b/m07.+x | --describe
+EXPECT_OUT | rule vox | mutant-07-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m07.+x | move | $T/h/@.apps/vox | $T/m07/l | joe | 3 | 3 | 3
+RUN | $T/b/m07.+x | give | $T/h/@.apps/vox | $T/m07/l | joe | cobble | 1 | t
+RUN | $T/b/m07.+x | place | $T/h/@.apps/vox | $T/m07/l | joe | cobble | 3 | 3 | 4
+RUN | $T/b/m07.+x | place | $T/h/@.apps/vox | $T/m07/l | joe | cobble | 3 | 3 | 5
+EXPECT_OUT_LACKS | item missing | SABOTAGE-07-place-with-an-empty-bag-allowed-is-caught
+MKDIR | c07
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c07/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c07/l | joe | cobble | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c07/l | joe | cobble | 3 | 3 | 4
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c07/l | joe | cobble | 3 | 3 | 5
+EXPECT_OUT | item missing | CONTROL-the-real-op-passes-the-same-check-07-place-with-an-empty-bag-allowed-is-caught
+MKDIR | m08
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m08.c
+RUN | sed | -i | s@ \p\p !blk(item)@@ | $T/b/m08.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m08.c
+EXPECT_EXIT | 1 | mutant-08-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m08.+x | $T/b/m08.c
+EXPECT_EXIT | 0 | mutant-08-compiles
+RUN | $T/b/m08.+x | --describe
+EXPECT_OUT | rule vox | mutant-08-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m08.+x | move | $T/h/@.apps/vox | $T/m08/l | joe | 3 | 3 | 3
+RUN | $T/b/m08.+x | give | $T/h/@.apps/vox | $T/m08/l | joe | sapling | 1 | t
+RUN | $T/b/m08.+x | place | $T/h/@.apps/vox | $T/m08/l | joe | sapling | 3 | 3 | 4
+EXPECT_OUT_LACKS | item missing | SABOTAGE-08-placing-a-non-block-item-is-caught
+MKDIR | c08
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c08/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c08/l | joe | sapling | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c08/l | joe | sapling | 3 | 3 | 4
+EXPECT_OUT | item missing | CONTROL-the-real-op-passes-the-same-check-08-placing-a-non-block-item-is-caught
+MKDIR | m09
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m09.c
+RUN | sed | -i | s@if (c) .c -= 1;@if (c) *c -= 0;@ | $T/b/m09.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m09.c
+EXPECT_EXIT | 1 | mutant-09-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m09.+x | $T/b/m09.c
+EXPECT_EXIT | 0 | mutant-09-compiles
+RUN | $T/b/m09.+x | --describe
+EXPECT_OUT | rule vox | mutant-09-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m09.+x | move | $T/h/@.apps/vox | $T/m09/l | joe | 3 | 3 | 3
+RUN | $T/b/m09.+x | give | $T/h/@.apps/vox | $T/m09/l | joe | cobble | 1 | t
+RUN | $T/b/m09.+x | place | $T/h/@.apps/vox | $T/m09/l | joe | cobble | 3 | 3 | 4
+RUN | $T/b/m09.+x | inv | $T/h/@.apps/vox | $T/m09/l | joe
+EXPECT_OUT | cobble=1 | SABOTAGE-09-place-does-not-consume-is-caught
+MKDIR | c09
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c09/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c09/l | joe | cobble | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c09/l | joe | cobble | 3 | 3 | 4
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | inv | $T/h/@.apps/vox | $T/c09/l | joe
+EXPECT_OUT_LACKS | cobble=1 | CONTROL-the-real-op-passes-the-same-check-09-place-does-not-consume-is-caught
+MKDIR | m10
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m10.c
+RUN | sed | -i | s@if (mut && (r = verify(L)))@if (0)@ | $T/b/m10.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m10.c
+EXPECT_EXIT | 1 | mutant-10-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m10.+x | $T/b/m10.c
+EXPECT_EXIT | 0 | mutant-10-compiles
+RUN | $T/b/m10.+x | --describe
+EXPECT_OUT | rule vox | mutant-10-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m10.+x | move | $T/h/@.apps/vox | $T/m10/l | joe | 3 | 3 | 3
+APPEND | m10/l | FOO \p x \p y\n
+RUN | $T/b/m10.+x | wait | $T/h/@.apps/vox | $T/m10/l | 1
+EXPECT_OUT | turn= | SABOTAGE-10-a-hand-edited-ledger-is-accepted-is-caught
+MKDIR | c10
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c10/l | joe | 3 | 3 | 3
+APPEND | c10/l | FOO \p x \p y\n
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c10/l | 1
+EXPECT_OUT_LACKS | turn= | CONTROL-the-real-op-passes-the-same-check-10-a-hand-edited-ledger-is-accepted-is-caught
+MKDIR | m11
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m11.c
+RUN | sed | -i | s@if (!r && !same(L, t)) r = 14;@@ | $T/b/m11.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m11.c
+EXPECT_EXIT | 1 | mutant-11-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m11.+x | $T/b/m11.c
+EXPECT_EXIT | 0 | mutant-11-compiles
+RUN | $T/b/m11.+x | --describe
+EXPECT_OUT | rule vox | mutant-11-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m11.+x | move | $T/h/@.apps/vox | $T/m11/l | joe | 3 | 3 | 3
+APPEND | m11/l | MINE \p joe \p 5 \p 2 \p 5 \p dirt\n
+RUN | $T/b/m11.+x | verify | $T/h/@.apps/vox | $T/m11/l
+EXPECT_OUT | verified | SABOTAGE-11-verify-without-the-byte-compare-is-caught
+MKDIR | c11
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c11/l | joe | 3 | 3 | 3
+APPEND | c11/l | MINE \p joe \p 5 \p 2 \p 5 \p dirt\n
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/c11/l
+EXPECT_OUT_LACKS | verified | CONTROL-the-real-op-passes-the-same-check-11-verify-without-the-byte-compare-is-caught
+MKDIR | m12
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m12.c
+RUN | sed | -i | s@if ((c ? .c : 0) + b->count > smax)@if (0)@ | $T/b/m12.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m12.c
+EXPECT_EXIT | 1 | mutant-12-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m12.+x | $T/b/m12.c
+EXPECT_EXIT | 0 | mutant-12-compiles
+RUN | $T/b/m12.+x | --describe
+EXPECT_OUT | rule vox | mutant-12-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m12.+x | move | $T/h/@.apps/vox | $T/m12/l | joe | 3 | 3 | 3
+RUN | $T/b/m12.+x | give | $T/h/@.apps/vox | $T/m12/l | joe | dirt | 64 | t
+RUN | $T/b/m12.+x | mine | $T/h/@.apps/vox | $T/m12/l | joe | hand | 3 | 1 | 3
+RUN | $T/b/m12.+x | mine | $T/h/@.apps/vox | $T/m12/l | joe | hand | 3 | 1 | 3
+EXPECT_OUT_LACKS | bag full | SABOTAGE-12-a-drop-past-stack_max-is-caught
+MKDIR | c12
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c12/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c12/l | joe | dirt | 64 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c12/l | joe | hand | 3 | 1 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c12/l | joe | hand | 3 | 1 | 3
+EXPECT_OUT | bag full | CONTROL-the-real-op-passes-the-same-check-12-a-drop-past-stack_max-is-caught
+MKDIR | m13
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m13.c
+RUN | sed | -i | s@if (light > maxl)@if (0)@ | $T/b/m13.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m13.c
+EXPECT_EXIT | 1 | mutant-13-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m13.+x | $T/b/m13.c
+EXPECT_EXIT | 0 | mutant-13-compiles
+RUN | $T/b/m13.+x | --describe
+EXPECT_OUT | rule vox | mutant-13-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m13.+x | move | $T/h/@.apps/vox | $T/m13/l | joe | 3 | 3 | 3
+RUN | $T/b/m13.+x | sleep | $T/h/@.apps/vox | $T/m13/l | joe
+EXPECT_OUT_LACKS | not night | SABOTAGE-13-sleep-by-day-is-caught
+MKDIR | c13
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c13/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/c13/l | joe
+EXPECT_OUT | not night | CONTROL-the-real-op-passes-the-same-check-13-sleep-by-day-is-caught
+MKDIR | m14
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m14.c
+RUN | sed | -i | s@if (!found) {@if (0) {@ | $T/b/m14.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m14.c
+EXPECT_EXIT | 1 | mutant-14-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m14.+x | $T/b/m14.c
+EXPECT_EXIT | 0 | mutant-14-compiles
+RUN | $T/b/m14.+x | --describe
+EXPECT_OUT | rule vox | mutant-14-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m14.+x | move | $T/h/@.apps/vox | $T/m14/l | joe | 3 | 3 | 3
+RUN | $T/b/m14.+x | wait | $T/h/@.apps/vox | $T/m14/l | 77
+RUN | $T/b/m14.+x | sleep | $T/h/@.apps/vox | $T/m14/l | joe
+EXPECT_OUT_LACKS | no bed near | SABOTAGE-14-sleep-without-a-bed-is-caught
+MKDIR | c14
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c14/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c14/l | 77
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/c14/l | joe
+EXPECT_OUT | no bed near | CONTROL-the-real-op-passes-the-same-check-14-sleep-without-a-bed-is-caught
+MKDIR | m15
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m15.c
+RUN | sed | -i | s@int dt = ((wake - mm) % dm + dm) % dm;@int dt = (wake - mm);@ | $T/b/m15.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m15.c
+EXPECT_EXIT | 1 | mutant-15-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m15.+x | $T/b/m15.c
+EXPECT_EXIT | 0 | mutant-15-compiles
+RUN | $T/b/m15.+x | --describe
+EXPECT_OUT | rule vox | mutant-15-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m15.+x | move | $T/h/@.apps/vox | $T/m15/l | joe | 3 | 3 | 3
+RUN | $T/b/m15.+x | give | $T/h/@.apps/vox | $T/m15/l | joe | bed | 1 | t
+RUN | $T/b/m15.+x | place | $T/h/@.apps/vox | $T/m15/l | joe | bed | 3 | 3 | 4
+RUN | $T/b/m15.+x | wait | $T/h/@.apps/vox | $T/m15/l | 76
+RUN | $T/b/m15.+x | sleep | $T/h/@.apps/vox | $T/m15/l | joe
+EXPECT_OUT_LACKS | skipped_turns=66 | SABOTAGE-15-wrong-skip-arithmetic-is-caught
+MKDIR | c15
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c15/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c15/l | joe | bed | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c15/l | joe | bed | 3 | 3 | 4
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c15/l | 76
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/c15/l | joe
+EXPECT_OUT | skipped_turns=66 | CONTROL-the-real-op-passes-the-same-check-15-wrong-skip-arithmetic-is-caught
+MKDIR | m16
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m16.c
+RUN | sed | -i | s@for (long d = d0 + 1; d <= d1; d++)@for (long d = d0 + 1; d <= d0; d++)@ | $T/b/m16.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m16.c
+EXPECT_EXIT | 1 | mutant-16-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m16.+x | $T/b/m16.c
+EXPECT_EXIT | 0 | mutant-16-compiles
+RUN | $T/b/m16.+x | --describe
+EXPECT_OUT | rule vox | mutant-16-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m16.+x | wait | $T/h/@.apps/vox | $T/m16/l | 144
+EXPECT_LACKS | m16/l | DAY \p 1 | SABOTAGE-16-no-DAY-row-is-caught
+MKDIR | c16
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c16/l | 144
+EXPECT_HAS | c16/l | DAY \p 1 | CONTROL-the-real-op-passes-the-same-check-16-no-DAY-row-is-caught
+MKDIR | m17
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m17.c
+RUN | sed | -i | s@if (solid_at(w, x, y, z)) {@if (0) {@ | $T/b/m17.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m17.c
+EXPECT_EXIT | 1 | mutant-17-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m17.+x | $T/b/m17.c
+EXPECT_EXIT | 0 | mutant-17-compiles
+RUN | $T/b/m17.+x | --describe
+EXPECT_OUT | rule vox | mutant-17-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m17.+x | move | $T/h/@.apps/vox | $T/m17/l | joe | 3 | 3 | 3
+RUN | $T/b/m17.+x | move | $T/h/@.apps/vox | $T/m17/l | joe | 3 | 0 | 3
+EXPECT_OUT_LACKS | cell is solid | SABOTAGE-17-move-into-a-solid-cell-is-caught
+MKDIR | c17
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c17/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c17/l | joe | 3 | 0 | 3
+EXPECT_OUT | cell is solid | CONTROL-the-real-op-passes-the-same-check-17-move-into-a-solid-cell-is-caught
+MKDIR | m18
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m18.c
+RUN | sed | -i | s@if (d > mm \p\p d == 0)@if (d == 0)@ | $T/b/m18.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m18.c
+EXPECT_EXIT | 1 | mutant-18-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m18.+x | $T/b/m18.c
+EXPECT_EXIT | 0 | mutant-18-compiles
+RUN | $T/b/m18.+x | --describe
+EXPECT_OUT | rule vox | mutant-18-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m18.+x | move | $T/h/@.apps/vox | $T/m18/l | joe | 3 | 3 | 3
+RUN | $T/b/m18.+x | move | $T/h/@.apps/vox | $T/m18/l | joe | 3 | 3 | 6
+EXPECT_OUT_LACKS | refused: step | SABOTAGE-18-a-long-jump-is-caught
+MKDIR | c18
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c18/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c18/l | joe | 3 | 3 | 6
+EXPECT_OUT | refused: step | CONTROL-the-real-op-passes-the-same-check-18-a-long-jump-is-caught
+MKDIR | m19
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m19.c
+RUN | sed | -i | s@if ((c ? .c : 0) + n > smax)@if (0)@ | $T/b/m19.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m19.c
+EXPECT_EXIT | 1 | mutant-19-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m19.+x | $T/b/m19.c
+EXPECT_EXIT | 0 | mutant-19-compiles
+RUN | $T/b/m19.+x | --describe
+EXPECT_OUT | rule vox | mutant-19-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m19.+x | give | $T/h/@.apps/vox | $T/m19/l | joe | dirt | 64 | t
+RUN | $T/b/m19.+x | give | $T/h/@.apps/vox | $T/m19/l | joe | dirt | 1 | t
+EXPECT_OUT_LACKS | bag full | SABOTAGE-19-give-past-stack_max-is-caught
+MKDIR | c19
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c19/l | joe | dirt | 64 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c19/l | joe | dirt | 1 | t
+EXPECT_OUT | bag full | CONTROL-the-real-op-passes-the-same-check-19-give-past-stack_max-is-caught
+MKDIR | m20
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m20.c
+RUN | sed | -i | s@adv(o, w->turn, turns, "sleep")@adv(o, w->turn, 0, "sleep")@ | $T/b/m20.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m20.c
+EXPECT_EXIT | 1 | mutant-20-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m20.+x | $T/b/m20.c
+EXPECT_EXIT | 0 | mutant-20-compiles
+RUN | $T/b/m20.+x | --describe
+EXPECT_OUT | rule vox | mutant-20-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m20.+x | move | $T/h/@.apps/vox | $T/m20/l | joe | 3 | 3 | 3
+RUN | $T/b/m20.+x | give | $T/h/@.apps/vox | $T/m20/l | joe | bed | 1 | t
+RUN | $T/b/m20.+x | place | $T/h/@.apps/vox | $T/m20/l | joe | bed | 3 | 3 | 4
+RUN | $T/b/m20.+x | wait | $T/h/@.apps/vox | $T/m20/l | 76
+RUN | $T/b/m20.+x | sleep | $T/h/@.apps/vox | $T/m20/l | joe
+RUN | $T/b/m20.+x | status | $T/h/@.apps/vox | $T/m20/l
+EXPECT_OUT_LACKS | minute=420 | SABOTAGE-20-sleep-that-does-not-move-the-clock-is-caught
+MKDIR | c20
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c20/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c20/l | joe | bed | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c20/l | joe | bed | 3 | 3 | 4
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c20/l | 76
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | sleep | $T/h/@.apps/vox | $T/c20/l | joe
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/c20/l
+EXPECT_OUT | minute=420 | CONTROL-the-real-op-passes-the-same-check-20-sleep-that-does-not-move-the-clock-is-caught
+MKDIR | m21
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m21.c
+RUN | sed | -i | s@if (!a \p\p !a->has) {@if (0) {@g | $T/b/m21.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m21.c
+EXPECT_EXIT | 1 | mutant-21-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m21.+x | $T/b/m21.c
+EXPECT_EXIT | 0 | mutant-21-compiles
+RUN | $T/b/m21.+x | --describe
+EXPECT_OUT | rule vox | mutant-21-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m21.+x | mine | $T/h/@.apps/vox | $T/m21/l | ghost | hand | 3 | 1 | 3
+EXPECT_OUT_LACKS | unknown actor | SABOTAGE-21-no-actor-check-is-caught
+MKDIR | c21
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c21/l | ghost | hand | 3 | 1 | 3
+EXPECT_OUT | unknown actor | CONTROL-the-real-op-passes-the-same-check-21-no-actor-check-is-caught
+MKDIR | m22
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m22.c
+RUN | sed | -i | s@if (!inb(x, y, z)) {@if (0) {@g | $T/b/m22.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m22.c
+EXPECT_EXIT | 1 | mutant-22-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m22.+x | $T/b/m22.c
+EXPECT_EXIT | 0 | mutant-22-compiles
+RUN | $T/b/m22.+x | --describe
+EXPECT_OUT | rule vox | mutant-22-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m22.+x | move | $T/h/@.apps/vox | $T/m22/l | joe | 3 | 3 | 3
+RUN | $T/b/m22.+x | place | $T/h/@.apps/vox | $T/m22/l | joe | cobble | 3 | 3 | 16
+EXPECT_OUT_LACKS | out of bounds | SABOTAGE-22-no-bounds-check-is-caught
+MKDIR | c22
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c22/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c22/l | joe | cobble | 3 | 3 | 16
+EXPECT_OUT | out of bounds | CONTROL-the-real-op-passes-the-same-check-22-no-bounds-check-is-caught
+MKDIR | m23
+MKDIR | dm23
+COPYDIR | @.apps/vox | dm23
+RUN | sed | -i | s/DAYLIGHT \p 360 \p 8/DAYLIGHT \p 360 \p 9/ | $T/dm23/rules.pdl
+RUN | cmp | -s | $HOUSE/@.apps/vox/rules.pdl | $T/dm23/rules.pdl
+EXPECT_EXIT | 1 | data-mutant-23-really-differs-(vacuity-guard)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/dm23 | $T/m23/l | 138
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/dm23 | $T/m23/l
+EXPECT_OUT_LACKS | light=8 | SABOTAGE-23-one-DAYLIGHT-table-value-flipped-is-caught
+MKDIR | c23
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c23/l | 138
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/c23/l
+EXPECT_OUT | light=8 | CONTROL-the-real-op-passes-the-same-check-23-one-DAYLIGHT-table-value-flipped-is-caught
+MKDIR | m24
+MKDIR | dm24
+COPYDIR | @.apps/vox | dm24
+RUN | sed | -i | s/RULE \p reach \p 4/RULE \p reach \p 40/ | $T/dm24/rules.pdl
+RUN | cmp | -s | $HOUSE/@.apps/vox/rules.pdl | $T/dm24/rules.pdl
+EXPECT_EXIT | 1 | data-mutant-24-really-differs-(vacuity-guard)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/dm24 | $T/m24/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/dm24 | $T/m24/l | joe | hand | 3 | 1 | 9
+EXPECT_OUT_LACKS | out of reach | SABOTAGE-24-the-reach-RULE-changed-moves-the-behaviour-(numbers-are-data)
+MKDIR | c24
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c24/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c24/l | joe | hand | 3 | 1 | 9
+EXPECT_OUT | out of reach | CONTROL-the-real-op-passes-the-same-check-24-the-reach-RULE-changed-moves-the-behaviour-(numbers-are-data)
+MKDIR | m25
+MKDIR | dm25
+COPYDIR | @.apps/vox | dm25
+RUN | sed | -i | s/BLOCK \p dirt   \p 2/BLOCK \p dirt   \p 1/ | $T/dm25/blocks.pdl
+RUN | cmp | -s | $HOUSE/@.apps/vox/blocks.pdl | $T/dm25/blocks.pdl
+EXPECT_EXIT | 1 | data-mutant-25-really-differs-(vacuity-guard)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/dm25 | $T/m25/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/dm25 | $T/m25/l | joe | hand | 3 | 1 | 3
+EXPECT_OUT_LACKS | damaged | SABOTAGE-25-dirt-hardness-in-blocks.pdl-changed-moves-the-behaviour
+MKDIR | c25
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c25/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c25/l | joe | hand | 3 | 1 | 3
+EXPECT_OUT | damaged | CONTROL-the-real-op-passes-the-same-check-25-dirt-hardness-in-blocks.pdl-changed-moves-the-behaviour
+
+CLEAN |

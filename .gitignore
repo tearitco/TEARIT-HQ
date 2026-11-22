@@ -237,3 +237,6 @@ __pycache__/
 **/#.desktop/rta_life_ledger.txt
 **/#.desktop/rta_mom_ledger.txt
 **/#.desktop/rta_mom_events.txt
+
+# vox voxel runtime ledger (D105): written by the vox_* event pages, never committed
+**/#.desktop/vox_ledger.txt

@@ -1,0 +1,33 @@
+# rules.pdl (vox) - every number of the voxel rules (D105). vox_op has no number of its own: a missing row refuses (exit 9).
+RULE | world_x_max | 15
+RULE | world_y_max | 15
+RULE | world_z_max | 15
+RULE | reach | 4
+RULE | stack_max | 64
+RULE | place_needs_support | 1
+RULE | move_max | 1
+RULE | wait_max_turns | 10000
+RULE | turns_move | 1
+RULE | turns_mine | 1
+RULE | turns_place | 1
+RULE | minutes_per_turn | 10
+RULE | day_minutes | 1440
+RULE | start_minute | 420
+RULE | sleep_max_light | 3
+RULE | sleep_bed_reach | 3
+RULE | sleep_wake_minute | 420
+# TOOL | name | power (a swing of the block's tool_best uses that tool's power; any other tool swings at the hand's power)
+TOOL | hand | 1
+TOOL | shovel | 2
+TOOL | axe | 2
+TOOL | shears | 2
+TOOL | pick | 3
+# DAYLIGHT | minute | level 0..15 (linear between rows, integer division toward zero; the sky and rules read this, nothing stores a time of day)
+DAYLIGHT | 0 | 2
+DAYLIGHT | 300 | 2
+DAYLIGHT | 360 | 8
+DAYLIGHT | 420 | 15
+DAYLIGHT | 1080 | 15
+DAYLIGHT | 1140 | 8
+DAYLIGHT | 1200 | 2
+DAYLIGHT | 1440 | 2

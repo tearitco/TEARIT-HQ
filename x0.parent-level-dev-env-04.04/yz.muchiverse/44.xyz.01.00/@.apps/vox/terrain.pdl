@@ -1,0 +1,4 @@
+# terrain.pdl (vox) - the SEED terrain, a CONFIG (never written by the game). The world is the fold of the VOX ledger over this.
+# TERRAIN | x1 | y1 | z1 | x2 | y2 | z2 | kind   (boxes, inclusive; a later row overrides an earlier one; anything else is air)
+TERRAIN | 0 | 0 | 0 | 15 | 0 | 15 | stone
+TERRAIN | 0 | 1 | 0 | 15 | 2 | 15 | dirt

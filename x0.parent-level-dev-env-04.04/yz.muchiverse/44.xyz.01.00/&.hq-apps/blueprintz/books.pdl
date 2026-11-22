@@ -6,3 +6,4 @@
 BOOK | reader | single | _.monads/_.book-stack/pieces/reader
 BOOK | teario | events | @.apps/teario/events
 BOOK | rta | events | @.apps/rta/events
+BOOK | vox | events | @.apps/vox/events

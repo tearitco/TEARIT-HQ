@@ -1,0 +1,11 @@
+# blocks.pdl (vox) - block kinds as DATA (shape of rpg-space/blocks.pdl, handoff MINECRAFT-EVENTS section 2.1). vox_op reads the first 8 columns; the rest are kept for later rules (design rule 4c: nothing reads them until a rule does).
+# BLOCK | kind | hardness | tool_best | min_power | drops | count | solid | opaque | light | gravity | flammable
+# hardness = total tool power needed; min_power = least power one swing must have (stone needs a pick); count = drops per block.
+BLOCK | dirt   | 2 | shovel | 0 | dirt    | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | stone  | 6 | pick   | 2 | cobble  | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | cobble | 6 | pick   | 2 | cobble  | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | log    | 4 | axe    | 0 | log     | 1 | 1 | 1 | 0 | 0 | 1
+BLOCK | leaves | 1 | shears | 0 | sapling | 1 | 1 | 0 | 0 | 0 | 1
+BLOCK | sand   | 2 | shovel | 0 | sand    | 1 | 1 | 1 | 0 | 1 | 0
+BLOCK | bed    | 1 | axe    | 0 | bed     | 1 | 1 | 0 | 0 | 0 | 1
+BLOCK | water  | 0 | -      | 0 | -       | 0 | 0 | 0 | 0 | 0 | 0
