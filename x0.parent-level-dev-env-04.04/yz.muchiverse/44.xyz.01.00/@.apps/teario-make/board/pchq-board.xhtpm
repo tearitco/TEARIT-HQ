@@ -22,13 +22,13 @@
     </sidebar>
     <panel id="view-panel" class="pchq-view">
       <canvas id="view" sprite="${canvas_raw}"/>
-      <!-- LEFT pinned bar: the STAMP BANK of Teario Make (a Mario Maker style item bank). Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl). It is OPEN by default (state/sides.txt side_stamp=1, seeded by open_board.sh), the underscore minimizes it and the footer cell stamps brings it back, both through the shared side_toggle op. The list is the game feed (stamp_on, n_stamp, stamp_i_label and _cls and _act): a new stamp is a row in the game stamps.pdl, no row here. A pick runs the game own ctl pick; the PICKED stamp has class stamp-picked and a greater-than sign in its label. -->
+      <!-- LEFT pinned bar: the STAMP BANK of Teario Make (a Mario Maker style item bank). Pinned = takes its width out of the canvas (class ov-pin, width from side_style.pdl). It is OPEN by default (state/sides.txt side_stamp=1, seeded by open_board.sh), the underscore minimizes it and the footer cell stamps brings it back, both through the shared side_toggle op. The list is the game feed (stamp_on, n_stamp, stamp_i_label and _cls and _act): a new stamp is a row in the game stamps.pdl, no row here. Each row carries a PICTURE (stamp_i_sprite, 2026-11-22): the stampimg verb paints the stamp into a scratch level with the same paint the Place button runs and crops the projection, so the picture is the placed result. A pick runs the game own ctl pick; the PICKED stamp has class stamp-picked and a greater-than sign in its label. -->
       <row id="side-s" class="canvas-overlay-left ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${side_stamp}">
         <text label="stamps" class="hb-quiet ov-title theme-3 ov-line"/>
         <item id="ss-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="'${HOUSE}/@.apps/layout-studio/ops/+x/side_toggle.+x' '${HOUSE}/@.apps/teario-make/board/state/sides.txt' side_stamp toggle"/>
         <text label="open Make and press new level" class="ph-quiet ov-line" show="${stamp_off}"/>
         <repeat count="${n_stamp}" bind="stamp">
-          <item id="st${stamp.#}" class="pchq-ft skin-bar ${stamp.cls}" label="${stamp.label}" action="${stamp.act}"/>
+          <item id="st${stamp.#}" class="pchq-ft skin-bar sprite-inline sprite-big ${stamp.cls}" label="${stamp.label}" sprite="${stamp.sprite}" action="${stamp.act}"/>
         </repeat>
       </row>
       <!-- the game popup (new level, place, publish...) from the game feed: gm_on, gm_title, gmt_i_text, gmb_i_label and _act. It is the same feed the editor drew; here it is Teario own row. -->

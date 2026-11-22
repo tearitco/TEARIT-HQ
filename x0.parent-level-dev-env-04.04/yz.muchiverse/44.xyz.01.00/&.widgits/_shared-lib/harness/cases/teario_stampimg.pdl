@@ -1,0 +1,224 @@
+# teario_stampimg (2026-11-22; owner SAID: "stamp bank should show example of stamp, like palettes"). The stamp bank of Teario-Make shows a PICTURE per stamp; this case proves the picture is the PLACED RESULT, not a second drawing:
+# the verb `stampimg <id> <out> <atlas>` paints the stamp into a scratch level with the same doc_paint the Place button runs, projects it with the same scene + preview + events.txt and crops the picture (sprite.csv, 64x64).
+# Here, for each of the six stamps in rulesets/default/stamps.pdl: (1) the scratch level the picture was made from is, byte for byte (level.pdl), the level made by the ordinary verbs blank + paint; (2) its cells.txt equals the `scene` of that independent level;
+# (3) the picture is deterministic (second run, same bytes) and distinct per stamp; NEGATIVES: a different tool gives a different level, a non-scratch state folder is refused, an unknown stamp is refused. Scratch only.
+RESULTS | ../results/teario_stampimg.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+COPYDIR | @.apps/teario-make | tm/teario-make
+MKDIR   | pic
+MKDIR   | indd
+RUN | /bin/true
+EXPECT_EXIT | 0 | scratch-ready
+
+CASE    | stamp-ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/ground/game | stampimg | ground | $T/pic/ground | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-ground-is-made
+EXPECT_OUT | STAMPIMG ground | and-says-so
+EXPECT_EXISTS | $T/pic/ground/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/ground/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/ground/game/level.pdl
+CAPTURE | pl_ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/ground | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/ground | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/ground | paint | ground | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/ground | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/ground/level.pdl
+CAPTURE | ip_ground
+EXPECT_EQ | $pl_ground | $ip_ground | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/ground | scene | $T/indd/ground | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/ground/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/ground/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/ground/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/ground/game | stampimg | ground | $T/pic2_ground | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_ground/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+CASE    | stamp-erase
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/erase/game | stampimg | erase | $T/pic/erase | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-erase-is-made
+EXPECT_OUT | STAMPIMG erase | and-says-so
+EXPECT_EXISTS | $T/pic/erase/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/erase/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/erase/game/level.pdl
+CAPTURE | pl_erase
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/erase | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/erase | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/erase | paint | erase | 3 | 3
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-erase
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/erase | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/erase/level.pdl
+CAPTURE | ip_erase
+EXPECT_EQ | $pl_erase | $ip_erase | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/erase
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/erase | scene | $T/indd/erase | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/erase/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/erase/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/erase/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/erase/game | stampimg | erase | $T/pic2_erase | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_erase/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+CASE    | stamp-start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/start/game | stampimg | start | $T/pic/start | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-start-is-made
+EXPECT_OUT | STAMPIMG start | and-says-so
+EXPECT_EXISTS | $T/pic/start/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/start/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/start/game/level.pdl
+CAPTURE | pl_start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/start | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/start | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/start | paint | start | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/start | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/start/level.pdl
+CAPTURE | ip_start
+EXPECT_EQ | $pl_start | $ip_start | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/start | scene | $T/indd/start | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/start/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/start/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/start/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/start/game | stampimg | start | $T/pic2_start | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_start/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+CASE    | stamp-goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/goal/game | stampimg | goal | $T/pic/goal | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-goal-is-made
+EXPECT_OUT | STAMPIMG goal | and-says-so
+EXPECT_EXISTS | $T/pic/goal/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/goal/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/goal/game/level.pdl
+CAPTURE | pl_goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/goal | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/goal | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/goal | paint | goal | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/goal | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/goal/level.pdl
+CAPTURE | ip_goal
+EXPECT_EQ | $pl_goal | $ip_goal | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/goal | scene | $T/indd/goal | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/goal/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/goal/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/goal/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/goal/game | stampimg | goal | $T/pic2_goal | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_goal/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+CASE    | stamp-enemy
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/enemy/game | stampimg | enemy | $T/pic/enemy | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-enemy-is-made
+EXPECT_OUT | STAMPIMG enemy | and-says-so
+EXPECT_EXISTS | $T/pic/enemy/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/enemy/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/enemy/game/level.pdl
+CAPTURE | pl_enemy
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/enemy | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/enemy | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/enemy | paint | enemy | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-enemy
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/enemy | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/enemy/level.pdl
+CAPTURE | ip_enemy
+EXPECT_EQ | $pl_enemy | $ip_enemy | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/enemy
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/enemy | scene | $T/indd/enemy | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/enemy/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/enemy/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/enemy/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/enemy/game | stampimg | enemy | $T/pic2_enemy | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_enemy/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+CASE    | stamp-power
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/power/game | stampimg | power | $T/pic/power | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-power-is-made
+EXPECT_OUT | STAMPIMG power | and-says-so
+EXPECT_EXISTS | $T/pic/power/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/power/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/power/game/level.pdl
+CAPTURE | pl_power
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/power | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/power | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/power | paint | power | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-power
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/power | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/power/level.pdl
+CAPTURE | ip_power
+EXPECT_EQ | $pl_power | $ip_power | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/power
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/power | scene | $T/indd/power | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/power/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/power/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/power/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/power/game | stampimg | power | $T/pic2_power | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_power/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+CASE    | negatives
+# a picture that did not depend on the stamp would make these fail: every stamp has its own picture, and the level of one tool is not the level of another
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/ground/sprite.csv
+CAPTURE | n_ground
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/erase/sprite.csv
+CAPTURE | n_erase
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/enemy/sprite.csv
+CAPTURE | n_enemy
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/power/sprite.csv
+CAPTURE | n_power
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/start/sprite.csv
+CAPTURE | n_start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/goal/sprite.csv
+CAPTURE | n_goal
+EXPECT_NE | $n_ground | $n_erase | NEGATIVE-ground-and-erase-pictures-differ
+EXPECT_NE | $n_enemy | $n_power | NEGATIVE-enemy-and-power-pictures-differ
+EXPECT_NE | $n_start | $n_goal | NEGATIVE-start-and-goal-pictures-differ
+EXPECT_NE | $n_ground | $n_enemy | NEGATIVE-ground-and-enemy-pictures-differ
+EXPECT_NE | $pl_enemy | $ip_power | NEGATIVE-the-level-of-an-enemy-stamp-is-not-the-level-of-a-power-up-stamp
+EXPECT_NE | $pl_ground | $ip_erase | NEGATIVE-a-picture-from-different-data-fails-the-level-comparison
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/notscratch | stampimg | ground | $T/pic_x | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 2 | NEGATIVE-a-state-folder-that-is-not-a-scratch-one-is-refused
+EXPECT_NOFILE | $T/pic_x/sprite.csv | and-writes-no-picture
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/nope/game | stampimg | nope | $T/pic_n | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-stamp-has-no-picture
+
+CASE    | the-window-shows-the-picture
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | sprite="${stamp.sprite}" | the-bank-row-binds-the-picture
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/pchq-board.xhtpm | sprite-inline sprite-big | and-draws-it-as-a-sprite-row

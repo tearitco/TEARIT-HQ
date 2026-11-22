@@ -858,7 +858,7 @@ static int pg_events(char *buf, size_t cap) {
         char row[96]; snprintf(row, sizeof row, "%d %d %u %u %u People1 %d 2 1 %c\n", cx, cy, (PG_tok[pl] >> 16) & 255, (PG_tok[pl] >> 8) & 255, PG_tok[pl] & 255, pl, (char)(65 + pl)); if (strlen(buf) + strlen(row) + 1 < cap) { strcat(buf, row); ne++; } }
     return ne;
 }
-static int cmd_scene(int argc, char **argv);
+static int cmd_scene(int argc, char **argv); static int cmd_stampimg(int ac, char **av);
 static int doc_blank(long w, long h, const char *as); static int doc_paint(const char *tool, long x, long y, const char *as); static int cursor_cell(long *x, long *y); static int cmd_stamp(const char *verb, int ac, char **av, const char *as); static int stamps_load(void); static int stamp_picked(void); static int stamp_pick(const char *id);
 static int cmd_page(int argc, char **argv) {
     if (argc < 1) { fprintf(ERRF, "usage: page <desk_dir> [atlas.rgba] [noevents]\n"); return 2; } const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) { fprintf(ERRF, "page: the desk folder does not exist (make it first)\n"); return 2; }
@@ -979,6 +979,7 @@ static int engine_verb(int argc, char **argv) {
         }
         fclose(fp); fprintf(OUT, "GRID cols=%d rows=%d len=%d food=%d,%d file=%s\n", COLS, ROWS, S.slen, S.sfood_x, S.sfood_y, av[0]); return 0; }
     if (!strcmp(verb, "page")) return cmd_page(ac, av);
+    if (!strcmp(verb, "stampimg")) { if (cmd_stampimg(ac, av)) { fprintf(ERRF, "%s\n", MSG); return 2; } return 0; }
     if (!strcmp(verb, "scene")) { if (cmd_scene(ac, av)) { fprintf(ERRF, "%s\n", MSG); return 2; } return 0; }
     if (!strcmp(verb, "preview")) return cmd_preview(ac, av);
     if (!strcmp(verb, "status")) return cmd_status();
@@ -1139,6 +1140,24 @@ static void scene_events(void) {
     for (int i = 0; i < S.np && n < 3800; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
     char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b);
 }
+/* stampimg <stamp id> <out_dir> <atlas.rgba>  (2026-11-22, owner: "stamp bank should show example of stamp, like palettes"): the bank's PICTURE of a stamp is the PLACED RESULT. In a SCRATCH state folder (its path must hold /stampimg/; its ledger is reset) a blank 8x4 level is made and the stamp is painted with the SAME doc_paint the Place button runs
+ * (erase on the ground row, the rest on the empty cell above it), the level is projected by the SAME scene + scene_events + preview the window uses, and a 3x3 cell crop around the painted cell is written as <out_dir>/sprite.csv (64x64, the format of every sprite= picture). One authority: no per-stamp art, a new stamps.pdl row gets its picture by itself. */
+static int cmd_stampimg(int ac, char **av) {
+    if (ac != 3) return bad("usage: stampimg <stamp id> <out_dir> <atlas.rgba>"); if (!(KIND == K_EDITOR && LEVELDOC)) return bad("stampimg: only a level-document editor has stamps");
+    if (!strstr(SD, "/stampimg/")) return bad("stampimg: refused, the state folder is not a scratch one (its path must hold /stampimg/)"); if (stamps_load()) return 1;
+    int k = -1; for (int i = 0; i < nstamps; i++) if (!strcmp(STAMPS[i].id, av[0])) k = i; if (k < 0) return bad("stampimg: there is no stamp %s in the bank", av[0]);
+    unlink(LEDGER); if (load()) return 1; if (live(-1, "", "new", "1", NULL, NULL)) return 1; if (doc_blank(8, 4, "author")) return 1;
+    long cx = 3, cy = !strcmp(av[0], "erase") ? 3 : 2; if (doc_paint(av[0], cx, cy, "author")) return 1; if (level_from_doc()) return 1;
+    char desk[P + 8]; snprintf(desk, sizeof desk, "%s/desk", SD); mkdir_p(desk); snprintf(DESKDIR, sizeof DESKDIR, "%s", desk);
+    FILE *so = OUT; OUT = fopen("/dev/null", "w"); if (!OUT) { OUT = so; return bad("stampimg: no /dev/null"); } char *sa[] = { desk, av[2] }; int sc = cmd_scene(2, sa); if (sc) { fclose(OUT); OUT = so; return 1; } scene_events();
+    char raw[P + 16]; snprintf(raw, sizeof raw, "%s/map.raw", desk); char *pa[] = { desk, raw }; int rc = cmd_preview(2, pa); fclose(OUT); OUT = so; if (rc) return bad("stampimg: the preview failed");
+    enum { T = 24, W8 = 8 * T, H4 = 4 * T }; static unsigned char im[W8 * H4 * 4]; FILE *f = fopen(raw, "rb"); if (!f) return bad("stampimg: no raw picture"); size_t got = fread(im, 4, (size_t)W8 * H4, f); fclose(f); if (got != (size_t)W8 * H4) return bad("stampimg: the preview is not 192x96");
+    char ep[P + 16], ln[256]; snprintf(ep, sizeof ep, "%s/events.txt", desk); f = fopen(ep, "r");   /* the figures of events.txt, the rows the window draws: a disc of the row's own colour on its cell */
+    while (f && fgets(ln, sizeof ln, f)) { int ex, ey, r, g, b; if (sscanf(ln, "%d %d %d %d %d", &ex, &ey, &r, &g, &b) != 5) continue; for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) { int dx = x - T / 2, dy = y - T / 2; if (dx * dx + dy * dy > 8 * 8 || ex < 0 || ex >= 8 || ey < 0 || ey >= 4) continue; unsigned char *p = im + (((size_t)ey * T + y) * W8 + (size_t)ex * T + x) * 4; p[0] = (unsigned char)r; p[1] = (unsigned char)g; p[2] = (unsigned char)b; p[3] = 255; } }
+    if (f) fclose(f); mkdir_p(av[1]); char cp[P + 16]; snprintf(cp, sizeof cp, "%s/sprite.csv", av[1]); static char cs[4096 * 20 + 200]; int n = snprintf(cs, sizeof cs, "# resolution=64\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n");
+    for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) { int sx = (int)(cx - 1) * T + x * (3 * T) / 64, sy = (int)(cy - 1) * T + y * (3 * T) / 64; const unsigned char *p = im + ((size_t)sy * W8 + sx) * 4; n += snprintf(cs + n, sizeof cs - (size_t)n, "%d,%d,%d,%d\n", p[0], p[1], p[2], p[3]); }
+    if (write_atomic(cp, cs)) return bad("stampimg: cannot write sprite.csv"); fprintf(OUT, "STAMPIMG %s %s fnv=%016llx\n", av[0], cp, (unsigned long long)fnv(FNV0, cs, (size_t)n)); return 0;
+}
 static void page_events(void) { if (scene_on) { scene_events(); return; } static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
 static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } if (scene_on && MODE == M_PLATFORM && !LEVELDOC) { for (int e = 0; e < LV.ne; e++) { long ex_ = (S.en[e].b.x + 100) / PF_Q, ey_ = (S.en[e].b.y + 100) / PF_Q; h = fnv(h, &ex_, sizeof ex_); h = fnv(h, &ey_, sizeof ey_); h = fnv(h, &S.en[e].alive, sizeof S.en[e].alive); } for (int k = 0; k < 4; k++) { long fx_ = S.fb[k].alive ? S.fb[k].x / PF_Q : -1, fy_ = S.fb[k].y / PF_Q; h = fnv(h, &fx_, sizeof fx_); h = fnv(h, &fy_, sizeof fy_); } h = fnv(h, S.pw_taken, sizeof S.pw_taken); } return fnv(h, S.pos, sizeof S.pos); }
 /* the board engine sleeps until it is woken: a changed events.txt is read when the next frame is drawn, and nothing asks for one while nobody touches the window (seen 2026-11-18: the text popup said "tick 241, over" while the picture still showed the start). The same wake-up the key tool sends (the code 126, bound to nothing) is appended to the session's relay, at most every 80 ms. */
@@ -1197,10 +1216,15 @@ static void handle(const char *c) {
 static void add_btn(char *o, size_t cap, int *nb, const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "gmb_%d_label=%s\ngmb_%d_act='%s' ctl %s '%s'\n", *nb, label, *nb, SELF, cmd, GDIR); (*nb)++; strncat(o, b, cap - strlen(o) - 1); }
 static void add_txt(char *o, size_t cap, int *nt, const char *t) { char b[400]; snprintf(b, sizeof b, "gmt_%d_text=%s\n", (*nt)++, t[0] ? t : " "); strncat(o, b, cap - strlen(o) - 1); }
 /* the sidebar's list for the editor window (vars file <editor>/state/stamps_ui.txt): stamp_on, n_stamp, stamp_<i>_id / _label / _cls (the class carries `stamp-picked` for the picked one). Off (stamp_on empty) for a game that has no level document. */
+/* the bank's pictures (2026-11-22): one child per stamp, once per driver run, runs THIS binary's stampimg verb on a scratch state folder <editor>/state/stampimg/<id>/game and writes <editor>/state/stampimg/<id>/pic/sprite.csv; the feed names the folder (stamp_<i>_sprite). A stamp whose picture failed has no sprite line (the row shows its name only). Bounded: at most 16 stamps, about 70 KB each. */
+static int stamp_pic(const char *id, char *dir, size_t cap) {
+    static char done[16][24]; static int ok[16]; int i = 0; while (i < 16 && done[i][0] && strcmp(done[i], id)) i++; snprintf(dir, cap, "%s/state/stampimg/%s/pic", EDIT, id); if (i >= 16) return 0; if (done[i][0]) return ok[i];
+    snprintf(done[i], sizeof done[i], "%s", id); char st[P + 40], out[300]; snprintf(st, sizeof st, "%s/state/stampimg/%s/game", EDIT, id); mkdir_p(st); char *a[] = { SELF, APP, st, (char *)"stampimg", (char *)id, dir, ATLAS, NULL }; ok[i] = !run_capture(a, out, sizeof out) && !strncmp(out, "STAMPIMG", 8); return ok[i];
+}
 static void stamps_publish(void) {
     char p[P], o[6000] = "", b[900]; snprintf(p, sizeof p, "%s/state/stamps_ui.txt", EDIT);
     if (KIND == K_EDITOR && LEVELDOC && S.ndoc && !stamps_load()) { int pk = stamp_picked(); snprintf(b, sizeof b, "stamp_on=1\nn_stamp=%d\nstamp_picked=%s\n", nstamps, STAMPS[pk].id); strncat(o, b, sizeof o - strlen(o) - 1);
-        for (int i = 0; i < nstamps; i++) { snprintf(b, sizeof b, "stamp_%d_id=%s\nstamp_%d_label=%s%s\nstamp_%d_cls=%s\nstamp_%d_act='%s' ctl pick_%s '%s'\n", i, STAMPS[i].id, i, i == pk ? "> " : "", STAMPS[i].label, i, i == pk ? "stamp-picked" : STAMPS[i].cls, i, SELF, STAMPS[i].id, GDIR); strncat(o, b, sizeof o - strlen(o) - 1); } }
+        for (int i = 0; i < nstamps; i++) { snprintf(b, sizeof b, "stamp_%d_id=%s\nstamp_%d_label=%s%s\nstamp_%d_cls=%s\nstamp_%d_act='%s' ctl pick_%s '%s'\n", i, STAMPS[i].id, i, i == pk ? "> " : "", STAMPS[i].label, i, i == pk ? "stamp-picked" : STAMPS[i].cls, i, SELF, STAMPS[i].id, GDIR); strncat(o, b, sizeof o - strlen(o) - 1); char pd[P + 16]; if (stamp_pic(STAMPS[i].id, pd, sizeof pd)) { snprintf(b, sizeof b, "stamp_%d_sprite=%s\n", i, pd); strncat(o, b, sizeof o - strlen(o) - 1); } } }
     else strcpy(o, "stamp_on=\nstamp_off=1\nn_stamp=0\n");
     write_atomic(p, o);
 }
