@@ -18,7 +18,7 @@ static int tr_load(const char *path) {
 /* first value of key, or NULL */
 static const char *tr_get(const char *key) { for (int i = 0; i < tr_n; i++) if (!strcmp(tr_k[i], key)) return tr_v[i]; return NULL; }
 /* is val one of the values listed under key (a list rule) */
-static int tr_in(const char *key, const char *val) { for (int i = 0; i < tr_n; i++) if (!strcmp(tr_k[i], key) && !strcmp(tr_v[i], val)) return 1; return 0; }
+__attribute__((unused)) static int tr_in(const char *key, const char *val) { for (int i = 0; i < tr_n; i++) if (!strcmp(tr_k[i], key) && !strcmp(tr_v[i], val)) return 1; return 0; }
 /* required numeric rule: returns 0 and sets *out, or -1 and prints the refusal */
 static int tr_num(const char *op, const char *key, double *out) {
     const char *v = tr_get(key); char *end; if (!v || !*v) { fprintf(stderr, "%s: refused: RULE %s missing in the rules file\n", op, key); return -1; }

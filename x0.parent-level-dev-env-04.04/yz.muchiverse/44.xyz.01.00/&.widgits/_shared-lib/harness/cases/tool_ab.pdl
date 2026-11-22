@@ -1,0 +1,69 @@
+# tool_ab (2026-11-22, D100): tool_ab_op, the Toolformer-style control run. A call is credited only if the case passes MORE checks WITH it than WITHOUT it; the credit/punish lands as one ledger row that harness_bank_op turns into the Laplace weight.
+# Inner case (the thing judged): ok.txt exists from the setup; g.txt exists only if the call makes it. Scratch only, no network. Inner rows use relative paths (no $T: the outer case would expand it).
+RESULTS | ../results/tool_ab.txt
+ENV | LC_ALL | C
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_ab_op.+x | $T/ab
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_log_op.+x | $T/tl
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | $T/hcase
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x | $T/hbank
+RUN | /bin/cp | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $T/rules.pdl
+EXPECT_EXIT | 0 | real-rules-and-ops-copied
+WRITE | m2.pdl | RULE \p tool_ab_margin \p 2\n
+WRITE | norule.pdl | RULE \p tool_log_max_rows \p 5\n
+WRITE | c/inner.pdl | CASE \p inner\nSCRATCH \p\nWRITE \p ok.txt \p alpha\nCALL_HERE \p\nEXPECT_HAS \p ok.txt \p alpha \p ok-kept\nEXPECT_HAS \p g.txt \p beta \p g-made\nCLEAN \p\n
+WRITE | c/nomarker.pdl | CASE \p inner\nSCRATCH \p\nEXPECT_HAS \p ok.txt \p alpha \p ok-kept\nCLEAN \p\n
+WRITE | c/useful.pdl | WRITE \p g.txt \p beta\n
+WRITE | c/useless.pdl | WRITE \p z.txt \p zzz\n
+WRITE | c/harmful.pdl | WRITE \p ok.txt \p corrupt\n
+WRITE | h/cases/demo.pdl | RESULTS \p ../results/demo.txt\n
+WRITE | h/results/demo.txt | RUN\p1\px\n
+WRITE | h/bank/demo.behavior.pdl | BEHAVIOR \p op.till\nKEYWORDS \p till\nCOUNTS \p reward=0 \p punish=0 \p cursor=0\nWEIGHT \p 0.5000\n
+
+CASE    | useful-call-is-credited
+# WITH the call: ok-kept + g-made pass (2/0); WITHOUT: ok-kept passes, g-made fails (1/1). 2-1 >= margin 1: CREDIT, one PASS row, weight (1+1)/(1+0+2)
+RUN | $T/ab | $T/rules.pdl | $T/c/inner.pdl | $T/c/useful.pdl | $T/h/cases/demo.pdl | --task | grow | --op | till | --house | $HOUSE | --case-op | $T/hcase | --bank-op | $T/hbank | --log | $T/log.txt | --log-op | $T/tl
+EXPECT_EXIT | 0 | credit-exits-0
+EXPECT_OUT_IS | AB\pgrow\ptill\pwith=2/0\pwithout=1/1\pCREDIT | with-beats-without
+EXPECT_HAS | h/results/demo.txt | PASS\ptool_ab/grow/till | reward-row-written
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | COUNTS \p reward=1 \p punish=0 | bank-counts-the-reward
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | WEIGHT \p 0.6667 | laplace-weight-2-of-3
+EXPECT_HAS | log.txt | DATA\pgrow\pab-control\ptill\puseful.pdl\pPASS\prules\p0\p | logged-as-a-DATA-row
+
+CASE    | useless-call-is-not-credited
+# the call changes nothing the case checks: WITH 1/1, WITHOUT 1/1: not credited, a FAIL row, reward stays 1, punish 1, weight (1+1)/(1+1+2)
+RUN | $T/ab | $T/rules.pdl | $T/c/inner.pdl | $T/c/useless.pdl | $T/h/cases/demo.pdl | --task | grow | --op | till | --house | $HOUSE | --case-op | $T/hcase | --bank-op | $T/hbank | --log | $T/log.txt | --log-op | $T/tl
+EXPECT_EXIT | 1 | useless-exits-1
+EXPECT_OUT_IS | AB\pgrow\ptill\pwith=1/1\pwithout=1/1\pUSELESS | equal-is-useless
+EXPECT_HAS | h/results/demo.txt | FAIL\ptool_ab/grow/till\puseless | punish-row-written
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | COUNTS \p reward=1 \p punish=1 | reward-unchanged-punish-added
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | WEIGHT \p 0.5000 | weight-falls-to-half
+
+CASE    | harmful-call-is-punished
+# the call corrupts ok.txt: WITH 0/2, WITHOUT 1/1: HARMFUL, punish 2, weight (1+1)/(1+2+2) = 0.4
+RUN | $T/ab | $T/rules.pdl | $T/c/inner.pdl | $T/c/harmful.pdl | $T/h/cases/demo.pdl | --task | grow | --op | till | --house | $HOUSE | --case-op | $T/hcase | --bank-op | $T/hbank | --log | $T/log.txt | --log-op | $T/tl
+EXPECT_EXIT | 1 | harmful-exits-1
+EXPECT_OUT_IS | AB\pgrow\ptill\pwith=0/2\pwithout=1/1\pHARMFUL | fewer-passes-with-the-call
+EXPECT_HAS | h/results/demo.txt | FAIL\ptool_ab/grow/till\pharmful | harmful-row-written
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | COUNTS \p reward=1 \p punish=2 | punish-counted
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | WEIGHT \p 0.4000 | weight-falls-to-point-four
+RUN | $T/tl | $T/rules.pdl | stats | $T/log.txt
+EXPECT_OUT | VERDICT\pPASS\p1 | log-holds-one-credit
+EXPECT_OUT | VERDICT\pFAIL\p2 | log-holds-two-failures
+
+CASE    | the-margin-is-data
+# the same useful call under RULE tool_ab_margin 2: 2-1 < 2, so it is USELESS. Nothing in the op decides the margin.
+RUN | $T/ab | $T/m2.pdl | $T/c/inner.pdl | $T/c/useful.pdl | $T/h/cases/demo.pdl | --task | grow | --op | till | --house | $HOUSE | --case-op | $T/hcase | --bank-op | $T/hbank
+EXPECT_EXIT | 1 | margin-2-refuses-credit
+EXPECT_OUT | USELESS | margin-from-the-rules-file
+
+CASE    | refusals
+RUN | $T/ab | $T/norule.pdl | $T/c/inner.pdl | $T/c/useful.pdl | $T/h/cases/demo.pdl | --task | grow | --op | till | --house | $HOUSE | --case-op | $T/hcase | --bank-op | $T/hbank
+EXPECT_EXIT | 2 | missing-margin-rule-refuses
+RUN | $T/ab | $T/rules.pdl | $T/c/nomarker.pdl | $T/c/useful.pdl | $T/h/cases/demo.pdl | --task | grow | --op | till | --house | $HOUSE | --case-op | $T/hcase | --bank-op | $T/hbank
+EXPECT_EXIT | 2 | case-without-CALL_HERE-refuses
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | COUNTS \p reward=1 \p punish=3 | the-margin-run-punished-and-refusals-added-nothing
+RUN | $T/ab | --describe
+EXPECT_OUT | tool_ab_op: IN | describe-line
+CLEAN |
