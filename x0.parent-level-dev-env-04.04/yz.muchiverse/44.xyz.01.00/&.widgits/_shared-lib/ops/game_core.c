@@ -1060,7 +1060,7 @@ static int cmd_scene(int argc, char **argv) {
     if (LEVELDOC) { if (level_from_doc()) return 1; } else if (!WALKISH) return bad("scene: only a walk, platform or level-document game has a level to draw");
     if (argc < 1) return bad("usage: scene <desk_dir> [atlas.rgba]");
     struct stat sb; if (stat(argv[0], &sb) || !S_ISDIR(sb.st_mode)) return bad("scene: the desk folder does not exist (make it first)");
-    static char cb[24000], mb[4200]; int n = snprintf(cb, sizeof cb, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\n%s", LV.w, LV.h, (MODE == M_PLATFORM || LEVELDOC) ? "axis=side\ncells\n" : "cells\n"), m = 0;
+    static char cb[24000], mb[4200]; int n = snprintf(cb, sizeof cb, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", LV.w, LV.h), m = 0;
     for (int y = 0; y < LV.h; y++) { for (int x = 0; x < LV.w; x++) { int sol = is_solid(LV.rows[y][x]), top = sol && (y == 0 || !is_solid(LV.rows[y - 1][x])); n += snprintf(cb + n, sizeof cb - (size_t)n, "%s%d,0,%d", x ? " " : "", sol ? (top ? 1 : 32) : 0, sol ? 2 : 1); mb[m++] = sol ? '#' : '.'; } cb[n++] = '\n'; mb[m++] = '\n'; }
     mb[m] = 0; char p[P + 16]; snprintf(p, sizeof p, "%s/cells.txt", argv[0]); if (write_atomic(p, cb)) return bad("scene: cannot write cells.txt");
     snprintf(p, sizeof p, "%s/map.txt", argv[0]); if (write_atomic(p, mb)) return bad("scene: cannot write map.txt");
