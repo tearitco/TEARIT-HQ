@@ -1,0 +1,264 @@
+# teario_teleport (2026-11-22; decision D111): the TELEPORT block in the REAL game_core platform body, make and play. A scratch copy of teario-play on a 16 x 8 level Tele: START (4,6), teleport tiles at (6,6) and (12,6), ground row 7. The goal is parked out of reach (1,1) so no run ends early.
+# HAND-COMPUTED: the body spawns at x 1052 (cell 4); running right it reaches cell 6 at tick 12 (observed, the same tick the coin of teario_blocks is near) and the rule moves it to the exit (12,6): x = 12*256 + 128 - 100 = 3100, y unchanged 1592 (feet on the floor), row `bank|teleport|p1|6,6>12,6|fee=0;score=0` at tick 12. Then it keeps running right at 48 per tick: 8 ticks later x = 3100 + 8*48 = 3484 and there is still exactly ONE teleport row (arriving did not bounce).
+# OBSERVED pins (deterministic): the ckpt at tick 20 pins a hash. Level Back has its tiles at (3,6) and (6,6): the body running right from 4 meets only the EXIT (6,6) and is not sent anywhere.
+# The rules hash must NOT change: blocks.pdl is not hashed (D106 policy), so a ledger made before the teleport row existed still opens.
+RESULTS | ../results/teario_teleport.txt
+ENV | LC_ALL | C
+
+CASE    | tt_setup
+SCRATCH |
+COPYDIR | @.apps/teario | tt/teario
+WRITE | tt/teario/levels/tele.pdl | # level.pdl - scratch\nMETA  \p name \p Tele\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 1 \p 1\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ................\nROW   \p 5 \p ................\nROW   \p 6 \p ......t.....t...\nROW   \p 7 \p ################
+WRITE | tt/teario/levels/back.pdl | # level.pdl - scratch\nMETA  \p name \p Back\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 1 \p 1\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ................\nROW   \p 5 \p ................\nROW   \p 6 \p ...t..t.........\nROW   \p 7 \p ################
+WRITE | tt/teario/levels/odd.pdl | # level.pdl - scratch\nMETA  \p name \p Odd\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 1 \p 1\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ................\nROW   \p 5 \p ................\nROW   \p 6 \p ......t.........\nROW   \p 7 \p ################
+WRITE | tt/teario/levels/tele2.pdl | # level.pdl - scratch\nMETA  \p name \p Tele2\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 1 \p 1\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ................\nROW   \p 5 \p ................\nROW   \p 6 \p ......t...t.t..\nROW   \p 7 \p ################
+COPYDIR | @.apps/teario-play | tt/plat
+RUN | sed | -i | s/meadow\.pdl/tele.pdl/ | $T/tt/plat/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-play | tt/back
+RUN | sed | -i | s/meadow\.pdl/back.pdl/ | $T/tt/back/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-play | tt/odd
+RUN | sed | -i | s/meadow\.pdl/odd.pdl/ | $T/tt/odd/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-play | tt/fee
+RUN | sed | -i | s/meadow\.pdl/tele.pdl/ | $T/tt/fee/rulesets/default/board.pdl
+RUN | sed | -i | s/^BLOCK \p teleport \p t \p 0/BLOCK \p teleport \p t \p 7/ | $T/tt/fee/rulesets/default/blocks.pdl
+COPYDIR | @.apps/teario-play | tt/badnum
+RUN | sed | -i | s/meadow\.pdl/tele.pdl/ | $T/tt/badnum/rulesets/default/board.pdl
+RUN | sed | -i | s/^BLOCK \p teleport \p t \p 0/BLOCK \p teleport \p t \p -1/ | $T/tt/badnum/rulesets/default/blocks.pdl
+COPYDIR | @.apps/teario-play | tt/solidtp
+RUN | sed | -i | s/meadow\.pdl/tele.pdl/ | $T/tt/solidtp/rulesets/default/board.pdl
+RUN | sed | -i | s/^LEVEL \p solid \p .*/LEVEL \p solid \p #t/ | $T/tt/solidtp/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-play | tt/old
+RUN | rm | $T/tt/old/rulesets/default/blocks.pdl
+RUN | sed | -i | s/meadow\.pdl/tele.pdl/ | $T/tt/old/rulesets/default/board.pdl
+EXPECT_HAS | $T/tt/plat/rulesets/default/blocks.pdl | BLOCK \p teleport \p t \p 0 | the-shipped-blocks-file-declares-the-teleport-tile-and-its-fee
+EXPECT_HAS | $T/tt/fee/rulesets/default/blocks.pdl | BLOCK \p teleport \p t \p 7 | vacuity-the-fee-copy-has-the-other-number
+RUN | grep | -c | ^BLOCK \p teleport | $HOUSE/@.apps/teario-make/rulesets/default/blocks.pdl
+EXPECT_OUT_IS | 1 | Make-ships-the-same-teleport-row
+MKDIR   | g
+
+CASE    | tt_trip
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | advance | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | status
+EXPECT_OUT | body=3100,1592,48,0 | HAND-COMPUTED-the-body-was-moved-from-cell-6-to-the-exit-(12,6):-x-3100-y-1592-vx-kept-48
+EXPECT_OUT | score=0 | the-fee-in-the-shipped-blocks.pdl-is-0
+EXPECT_HAS | $T/g/ledger.txt | EVENT\p12\pbank\pteleport\pp1\p6,6>12,6\pfee=0;score=0 | HAND-COMPUTED-the-consequence-row-at-tick-12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | check
+EXPECT_EXIT | 0 | the-run-checks-out
+
+CASE    | tt_no_bounce
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | advance | 8
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | status
+EXPECT_OUT | body=3484,1592,48,0 | HAND-COMPUTED-3100-plus-8-ticks-of-48:-the-body-ran-on-from-the-exit-and-was-not-sent-back
+RUN | grep | -c | bank\pteleport | $T/g/ledger.txt
+EXPECT_OUT_IS | 1 | exactly-ONE-teleport-row-(arriving-on-the-exit-does-not-send)
+EXPECT_HAS | $T/g/ledger.txt | hash=511b65faa7bed70a | OBSERVED-the-ckpt-at-tick-20-pins-the-state-hash
+
+CASE    | tt_replay_twice
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | status
+EXPECT_OUT | tick=20 | the-first-replay-from-the-ledger-alone-gives-the-same-tick
+EXPECT_OUT | body=3484,1592,48,0 | and-the-same-body
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | status
+EXPECT_OUT | body=3484,1592,48,0 | and-the-second-replay-gives-it-too
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/g | replay
+EXPECT_EXIT | 0 | replay-verifies-every-ckpt-hash
+
+CASE    | tt_forged_ledgers
+MKDIR   | f1
+RUN | sh | -c | grep -v '\pteleport\p' $T/g/ledger.txt > $T/f1/ledger.txt
+RUN | cmp | $T/g/ledger.txt | $T/f1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-forged-file-differs
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/f1 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-ledger-with-the-teleport-row-deleted-is-refused
+EXPECT_OUT | no row recorded | and-the-refusal-says-a-consequence-was-not-recorded
+MKDIR   | f2
+RUN | sh | -c | sed 's/\p6,6>12,6\p/\p6,6>13,6\p/' $T/g/ledger.txt > $T/f2/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/f2 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-teleport-row-with-another-destination-is-refused
+MKDIR   | f3
+RUN | sh | -c | sed 's/\p6,6>12,6\p/\p5,6>12,6\p/' $T/g/ledger.txt > $T/f3/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/f3 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-teleport-row-with-another-source-is-refused
+MKDIR   | f4
+RUN | sh | -c | sed 's/fee=0;score=0/fee=5;score=5/' $T/g/ledger.txt > $T/f4/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/f4 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-row-with-another-fee-is-refused
+MKDIR   | f5
+RUN | sh | -c | sed 's/^EVENT\p12\pbank\pteleport/EVENT\p11\pbank\pteleport/' $T/g/ledger.txt > $T/f5/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/f5 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-teleport-row-at-another-tick-is-refused
+
+CASE    | tt_exit_alone_sends_nothing
+MKDIR   | gb
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/back | $T/gb | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/back | $T/gb | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/back | $T/gb | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/back | $T/gb | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/back | $T/gb | advance | 20
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/back | $T/gb | status
+EXPECT_OUT | body=1844,1592,48,0 | OBSERVED-the-body-ran-across-the-EXIT-(6,6)-to-1844-and-was-not-moved-(the-same-run-on-Tele-is-at-3484)
+EXPECT_LACKS | $T/gb/ledger.txt | teleport | NEGATIVE-no-teleport-row-when-only-an-exit-was-touched
+MKDIR   | go
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/odd | $T/go | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/odd | $T/go | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/odd | $T/go | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/odd | $T/go | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/odd | $T/go | advance | 20
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/odd | $T/go | status
+EXPECT_OUT | body=1844,1592,48,0 | OBSERVED-a-single-unpaired-tile-is-inert-(the-body-ran-through-it)
+EXPECT_LACKS | $T/go/ledger.txt | teleport | NEGATIVE-no-teleport-row-for-an-unpaired-tile
+
+CASE    | tt_fee_is_data
+MKDIR   | gf
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/fee | $T/gf | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/fee | $T/gf | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/fee | $T/gf | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/fee | $T/gf | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/fee | $T/gf | advance | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/fee | $T/gf | status
+EXPECT_OUT | score=7 | HAND-COMPUTED-the-fee-7-in-blocks.pdl-is-added-to-the-score
+EXPECT_HAS | $T/gf/ledger.txt | EVENT\p12\pbank\pteleport\pp1\p6,6>12,6\pfee=7;score=7 | and-the-row-records-it
+
+CASE    | tt_bad_blocks_are_refused
+MKDIR   | badnum_g
+MKDIR   | solidtp_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/badnum | $T/badnum_g | status
+EXPECT_EXIT | 2 | NEGATIVE-a-negative-teleport-fee-in-blocks.pdl-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/solidtp | $T/solidtp_g | status
+EXPECT_EXIT | 2 | NEGATIVE-a-teleport-tile-that-is-in-the-solid-set-is-refused
+
+CASE    | tt_rules_hash_unchanged
+# D106 policy: blocks.pdl is not part of the rules hash, so the SAME first ledger row (rules=...) is written with and without the teleport row, and an old ledger opens. NEGATIVE CONTROL: a hashed row (patrol_speed) changes it.
+MKDIR   | h_old
+MKDIR   | h_new
+COPYDIR | @.apps/teario-play | tt/ctrl
+RUN | sed | -i | s/^RULE \p patrol_speed \p 10/RULE \p patrol_speed \p 11/ | $T/tt/ctrl/rulesets/default/rules.pdl
+MKDIR   | h_ctrl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/old | $T/h_old | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/plat | $T/h_new | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/ctrl | $T/h_ctrl | new | 7
+RUN | sh | -c | head -1 $T/h_old/ledger.txt \p grep -o 'rules=[0-9a-f]*'
+CAPTURE | rh_old
+RUN | sh | -c | head -1 $T/h_new/ledger.txt \p grep -o 'rules=[0-9a-f]*'
+CAPTURE | rh_new
+RUN | sh | -c | head -1 $T/h_ctrl/ledger.txt \p grep -o 'rules=[0-9a-f]*'
+CAPTURE | rh_ctrl
+EXPECT_NE | $rh_old | $rh_ctrl | vacuity-the-hash-DOES-change-with-a-hashed-row
+EXPECT_EQ | $rh_old | $rh_new | THE-RULES-HASH-DOES-NOT-CHANGE-with-the-teleport-row-in-blocks.pdl-and-its-tile-in-the-level
+
+
+CASE    | tt_make_setup
+# Make: the stamp bank has `tp`; it is placed by the ordinary paint verb (the Place button's own path); the level doc accepts it; a Play run of THAT level teleports and clears; publish passes.
+COPYDIR | @.apps/teario-play | tt/teario-play
+COPYDIR | @.apps/teario-make | tt/teario-make
+RUN | rm | -rf | $T/tt/teario-play/state | $T/tt/teario-play/teario-play-pchq
+RUN | rm | -rf | $T/tt/teario-make/state | $T/tt/teario-make/teario-make-pchq
+MKDIR   | mg
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | name | Tele
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | start | 3 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | goal | 17 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r00 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r01 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r02 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r03 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r04 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r05 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r06 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r07 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r08 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r09 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r10 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | add | r11 | ####################
+RUN | grep | ^STAMP | $T/tt/teario-make/rulesets/default/stamps.pdl
+EXPECT_HAS | $T/tt/teario-make/rulesets/default/stamps.pdl | STAMP \p tp     \p teleport \p tile | the-bank-row-exists-(a-tile-class-stamp)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | stamps
+EXPECT_OUT | STAMP tp teleport tile | the-bank-lists-the-teleport-stamp
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | paint | tp | 6 | 10
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-the-first-teleport
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | paint | tp | 11 | 10
+EXPECT_EXIT | 0 | and-the-second
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | paint | tp | 11 | 10
+EXPECT_EXIT | 2 | NEGATIVE-painting-a-teleport-on-a-teleport-is-refused
+EXPECT_OUT | already a teleport | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | export
+EXPECT_HAS | $T/mg/level.pdl | ROW   \p 10 \p ......t....t........ | the-exported-level-has-the-two-teleport-tiles
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | play | $T/tt/teario-play | $T/mp
+EXPECT_EXIT | 0 | play-opens-a-run-of-the-level-with-the-teleport-tiles
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-play | $T/mp | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-play | $T/mp | advance | 80
+EXPECT_OUT | tick 47 | OBSERVED-the-level-is-won-in-47-ticks-WITH-the-teleport
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-play | $T/mp | verify_clear
+EXPECT_OUT | ticks=47 | and-the-clear-verifies
+EXPECT_HAS | $T/mp/ledger.txt | EVENT\p17\pbank\pteleport\pp1\p6,10>11,10\pfee=0;score=0 | OBSERVED-the-teleport-row-at-tick-17-in-the-Play-run-of-the-edited-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | clear | $T/tt/teario-play | $T/mp
+EXPECT_EXIT | 0 | the-clear-is-recorded-in-Make
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | publish
+EXPECT_EXIT | 0 | PUBLISH-PASSES-with-a-level-that-has-teleports
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | audit
+EXPECT_EXIT | 0 | the-Make-audit-passes-(no-ghost-data)
+
+CASE    | tt_teleport_really_saves_the_walk
+# the SAME level without the two tiles (set r10 back to empty) is won in 76 ticks: the teleport is what made it 47
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | set | r10 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/mg | play | $T/tt/teario-play | $T/mp2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-play | $T/mp2 | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-play | $T/mp2 | advance | 120
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-play | $T/mp2 | verify_clear
+EXPECT_OUT | ticks=76 | OBSERVED-without-the-teleport-the-walk-takes-76-ticks-(47-with-it)
+EXPECT_LACKS | $T/mp2/ledger.txt | teleport | NEGATIVE-no-teleport-row-without-the-tiles
+
+CASE    | tt_stamp_picture_and_figures
+MKDIR   | pic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/stampimg/tp/game | stampimg | tp | $T/pic/tp | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-the-tp-stamp-is-made
+EXPECT_OUT | STAMPIMG tp | and-says-so
+RUN | grep | -c | 60,150,255,255 | $T/pic/tp/sprite.csv
+CAPTURE | tp_blue
+EXPECT_GE | $tp_blue | 1 | the-tp-picture-shows-the-SENDER-colour-(60-150-255)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tt/teario-make | $T/stampimg/ground/game | stampimg | ground | $T/pic/ground | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | grep | -c | 60,150,255,255 | $T/pic/ground/sprite.csv
+CAPTURE | g_blue
+EXPECT_EQ | $g_blue | 0 | NEGATIVE-the-ground-picture-has-no-teleport-colour
+
+CASE    | tt_driver_2d_and_3d_figures
+# The REAL driver (built from source, scratch house): a teleport tile is a STATIC tile; the player figure (events.txt, drawn over map.png in 2D and read by the 3D engine) jumps to the exit cell, the map.png picture stays the same (nothing in the land changed), and each end of the pair is a figure: sender blue (60 150 255), exit violet (160 90 255).
+SCRATCH |
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/gc | $HOUSE/&.widgits/_shared-lib/ops/game_core.c | -lm
+COPYDIR | @.apps/teario | house/@.apps/teario
+COPYDIR | @.apps/teario-play | house/@.apps/teario-play
+RUN | rm | -rf | $T/house/@.apps/teario-play/state | $T/house/@.apps/teario-play/board
+RUN | sed | -i | s/meadow\.pdl/tele.pdl/ | $T/house/@.apps/teario-play/rulesets/default/board.pdl
+WRITE | house/@.apps/teario/levels/tele.pdl | # level.pdl - scratch\nMETA  \p name \p Tele\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 1 \p 1\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ................\nROW   \p 5 \p ................\nROW   \p 6 \p ......t.....t...\nROW   \p 7 \p ################
+MKDIR   | house/@.apps/teario-play/state/games/teario-play/game
+MKDIR   | house/@.apps/teario-play/state/world
+COPY    | &.widgits/_shared-lib/ops/+x/raw_to_png.+x | house/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $T/gc | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | new | 7
+RUN | $T/gc | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | join | H | human
+RUN | $T/gc | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | start
+EXPECT_EXIT | 0 | a-started-game-with-a-human-seat-on-the-teleport-level
+SPAWN   | DRV | $T/gc | driver | $T/house | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play
+WAIT_HAS | house/@.apps/teario-play/state/game_ui.txt | RUNNING | 15000 | VACUITY-the-driver-runs
+WAIT_HAS | house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/cells.txt | cells | 10000 | VACUITY-the-driver-drew-the-desk
+SLEEP   | 2000
+EXPECT_EXISTS | house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/map.png | VACUITY-the-2D-picture-exists
+RUN | cp | $T/house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/map.png | $T/before.png
+EXPECT_HAS | house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/events.txt | 6 6 60 150 255 | THE-SENDER-figure-(blue)-is-at-(6,6)-before-the-trip
+EXPECT_HAS | house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/events.txt | 12 6 160 90 255 | THE-EXIT-figure-(violet)-is-at-(12,6)
+EXPECT_HAS | house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/events.txt | 4 6 | VACUITY-the-player-figure-starts-at-the-start-cell-(4,6)
+WRITE   | house/@.apps/teario-play/state/interact_relay.txt | 1001\n
+WAIT_HAS | house/@.apps/teario-play/state/games/teario-play/game/ledger.txt | teleport\pp1\p6,6>12,6 | 15000 | THE-TELEPORT-ROW-(driver-run-by-the-key-1001)
+SLEEP   | 2500
+RUN | /usr/bin/kill | $DRV
+SLEEP   | 1500
+RUN | grep | -c | ^4 6 220 60 60 People1 | $T/house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/events.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-the-player-figure-is-no-longer-on-the-start-cell-(4,6)
+RUN | grep | -c | ^1[2-9] 6 220 60 60 People1 | $T/house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/events.txt
+EXPECT_OUT_IS | 1 | THE-PLAYER-FIGURE-IS-PAST-THE-EXIT-(column-12-or-more)-on-the-same-row-in-events.txt-(the-picture-the-2D-window-and-the-3D-engine-draw)
+EXPECT_HAS | house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/events.txt | 6 6 60 150 255 | the-sender-figure-is-still-there-(a-static-tile)
+RUN | cmp | -s | $T/before.png | $T/house/@.apps/teario-play/teario-play-pchq/pieces/system/maps/teario-play/play/map.png
+EXPECT_EXIT | 0 | the-2D-land-picture-is-unchanged-(the-tile-is-static,-only-the-player-figure-moved)
+CLEAN   |

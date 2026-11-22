@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | tm_teleport
+STATE        | source               | events-hq
+NODE         | id=1 type=rule_teleport | scene=tm_teleport/scene.pdl

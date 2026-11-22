@@ -4,3 +4,5 @@
 # BLOCK | coin  | <char> | <value>   a tile walked through; a body overlapping it collects it once (rule_coin, _shared-lib/rule_coin.c, op rule_coin_op)
 BLOCK | brick | B | 5
 BLOCK | coin  | o | 10
+# BLOCK | teleport | <char> | <fee>   a tile walked into: the teleport tiles are numbered in reading order (top row first, left to right); tile 0 sends a body whose center is on it to tile 1, tile 2 to tile 3; an odd tile is only an EXIT, an unpaired last one is inert (one-way, no bounce, D111: rule_teleport, _shared-lib/rule_teleport.c, op rule_teleport_op). <fee> is added to the score per trip.
+BLOCK | teleport | t | 0

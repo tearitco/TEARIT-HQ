@@ -1810,6 +1810,14 @@ COMMAND rule_brick
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_brick_op.+x" "$D/@.apps/teario/events/{scene}"
 END
 
+# rule_teleport = the TELEPORT block rule (a body whose center is on a SENDING teleport tile is moved to its paired EXIT tile, tiles paired in reading order 0>1, 2>3; one-way, no bounce; +teleport_fee) of a game as an op (D111): runs `rule_teleport_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_teleport.c the game tick loop calls in-process) and prints `TELEPORTED n SCORE s FROM x,y TO x,y HERO x,y LEVEL rows` and a HASH.
+COMMAND rule_teleport
+  LABEL teario: Teleport rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_teleport_op.+x" "$D/@.apps/teario/events/{scene}"
+END
+
 # rule_goal = the GOAL rule (is the body centre in the goal cell) of a game as an op (D93): runs `rule_goal_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_goal.c the game tick loop calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_goal_op --describe` lists its inputs, outputs and RULE keys.
 COMMAND rule_goal
   LABEL teario: Goal rule (scene)

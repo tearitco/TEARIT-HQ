@@ -1,0 +1,8 @@
+# tm_teleport scene (Teario, D111): the hero box (x 300..499, y 300..499) has its CENTER in cell (1, 1) = the first teleport tile in reading order, a SENDER; the second one (4, 1) is its EXIT. The hero lands centered on (4, 1) with its feet on that cell's floor (y = 2 * 256 - 200 = 312, x = 4 * 256 + 128 - 100 = 1052), the fee is added. Edit a number or the hero here; the harness case rule_teleport pins the edges.
+RULE | teleport_fee | 0
+TILE | teleport | t
+HERO | 300 | 300 | 200 | 200
+ROW | ......
+ROW | .t..t.
+ROW | ......
+ROW | ######

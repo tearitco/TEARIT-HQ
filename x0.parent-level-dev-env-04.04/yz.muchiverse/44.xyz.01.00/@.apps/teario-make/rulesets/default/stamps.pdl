@@ -9,3 +9,4 @@ STAMP | start  | start  | event
 STAMP | goal   | goal   | event
 STAMP | enemy  | enemy  | event
 STAMP | power  | power  | event
+STAMP | tp     | teleport | tile

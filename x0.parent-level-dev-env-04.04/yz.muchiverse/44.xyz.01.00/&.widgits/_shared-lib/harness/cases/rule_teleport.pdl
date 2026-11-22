@@ -1,0 +1,131 @@
+# rule_teleport (2026-11-22; decision log D111, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the TELEPORT block rule as an op. _shared-lib/rule_teleport.c is the pure module (called in-process by game_core's platform tick); rule_teleport_op is its CLI face; event page tm_teleport runs it from Blueprintz.
+# PAIRING is derived from the level rows: the teleport tiles are numbered in reading order (top row first, left to right); tile 0 sends to tile 1, tile 2 to tile 3; an odd tile is only an EXIT; an unpaired last tile is inert. The trigger is the body's CENTER cell ((x + w/2, y + h/2) / 256), not an overlap.
+# ARRIVAL: center x on the exit cell center (x = cell*256 + 128 - w/2), feet on the exit cell floor (y = (cell+1)*256 - h), vy 0, vx kept, + teleport_fee. Every pinned line is HAND-COMPUTED from those sentences. One scene per clause, each with the plausible-WRONG answer that differs.
+# Cells OUTSIDE the level hold the teleport character (the op fills them), so a forgotten bounds test is visible. Hero box 200 x 200 unless said. Level A is 6 wide: tiles at (1,1) and (4,1), ground row 3.
+RESULTS | ../results/rule_teleport.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_teleport_op.+x | $T/rk
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | trip.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | small.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 340 \p 340 \p 100 \p 100\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | tripvel.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200 \p -77 \p 33\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | overlap.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 100 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | cx256.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 156 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | cx255.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 155 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | cy256.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 156 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | cy255.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 155 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | onexit.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 1052 \p 312 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | fee7.pdl | RULE \p teleport_fee \p 7\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200 \p 0 \p 0\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | scorebefore.pdl | RULE \p teleport_fee \p 7\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######\nSCORE \p 30
+WRITE | miss.pdl | RULE \p teleport_fee \p 7\nTILE \p teleport \p t\nHERO \p 10 \p 10 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | readorder.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 1100 \p 100 \p 200 \p 200\nROW \p ....t.\nROW \p .t....\nROW \p ......\nROW \p ######
+WRITE | readorder2.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ....t.\nROW \p .t....\nROW \p ......\nROW \p ######
+WRITE | four.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 0 \p 612 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p t..t..\nROW \p ######
+WRITE | four3.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 768 \p 612 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p t..t..\nROW \p ######
+WRITE | four1.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p t..t..\nROW \p ######
+WRITE | four_exit1.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 1052 \p 312 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p t..t..\nROW \p ######
+WRITE | unpaired.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 512 \p 612 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ..t...\nROW \p ######
+WRITE | unpaired_first.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ..t...\nROW \p ######
+WRITE | single.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t....\nROW \p ......\nROW \p ######
+WRITE | negx.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p -300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | rightx.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 1500 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | topedge.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p -300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | belowy.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 1100 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | negx2.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p -200 \p 300 \p 200 \p 200\nROW \p ......\nROW \p t..t..\nROW \p ......\nROW \p ######
+WRITE | negy2.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p -200 \p 200 \p 200\nROW \p .t..t.\nROW \p ......\nROW \p ......\nROW \p ######
+WRITE | other.pdl | RULE \p teleport_fee \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .x..x.\nROW \p ......\nROW \p ######
+WRITE | norule.pdl | TILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | notile.pdl | RULE \p teleport_fee \p 0\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+WRITE | badrule.pdl | RULE \p teleport_fe \p 0\nTILE \p teleport \p t\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .t..t.\nROW \p ......\nROW \p ######
+
+CASE    | trip-moves-the-body
+RUN | $T/rk | $T/trip.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1052,312 VX 0 VY 0 LEVEL ....../.t..t./....../###### | HAND-COMPUTED-center-in-(1,1)-sender-tile-0-to-tile-1-(4,1):-x-4*256+128-100=1052-y-2*256-200=312
+EXPECT_EXIT | 0 | the-op-runs
+RUN | $T/rk | $T/small.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1102,412 VX 0 VY 0 LEVEL ....../.t..t./....../###### | HAND-COMPUTED-a-100-box-lands-centered:-x-1024+128-50=1102-y-512-100=412
+RUN | $T/rk | $T/tripvel.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1052,312 VX 33 VY 0 LEVEL ....../.t..t./....../###### | HAND-COMPUTED-vy-is-zeroed-(-77-to-0)-and-vx-is-kept-(33)
+
+CASE    | trigger-is-the-center-cell
+RUN | $T/rk | $T/overlap.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 100,300 VX 0 VY 0 LEVEL ....../.t..t./....../###### | HAND-COMPUTED-the-box-100..299-overlaps-tile-column-1-but-its-center-x-200-is-column-0:-no-trip-(an-overlap-rule-would-trip)
+RUN | $T/rk | $T/cx256.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1052,312 | HAND-COMPUTED-x-156-plus-100-is-center-256-which-is-column-1
+RUN | $T/rk | $T/cx255.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 155,300 | HAND-COMPUTED-center-255-is-column-0
+RUN | $T/rk | $T/cy256.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1052,312 | HAND-COMPUTED-y-156-plus-100-is-center-256-which-is-row-1
+RUN | $T/rk | $T/cy255.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 300,155 | HAND-COMPUTED-center-y-255-is-row-0
+
+CASE    | an-exit-sends-nothing
+RUN | $T/rk | $T/onexit.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 1052,312 VX 0 VY 0 LEVEL ....../.t..t./....../###### | HAND-COMPUTED-the-center-(1152,412)-is-the-exit-(4,1):-tile-1-is-odd-so-no-bounce-and-no-loop
+
+CASE    | pairing-is-reading-order
+RUN | $T/rk | $T/readorder.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 4,0 TO 1,1 HERO 284,312 | HAND-COMPUTED-the-tile-in-the-TOP-row-(4,0)-is-tile-0-and-sends-to-(1,1)-(column-order-would-pick-(1,1)-first)
+RUN | $T/rk | $T/readorder2.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 300,300 | HAND-COMPUTED-(1,1)-is-tile-1-here-so-it-is-only-an-exit
+RUN | $T/rk | $T/four.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 0,2 TO 3,2 HERO 796,568 | HAND-COMPUTED-four-tiles:-tile-2-(0,2)-sends-to-tile-3-(3,2):-x-768+128-100=796-y-3*256-200=568
+RUN | $T/rk | $T/four3.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 768,612 | HAND-COMPUTED-tile-3-(3,2)-is-an-exit
+RUN | $T/rk | $T/four1.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1052,312 | HAND-COMPUTED-tile-0-sends-to-tile-1-(4,1)-not-to-the-next-tile-in-the-level
+RUN | $T/rk | $T/four_exit1.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 1052,312 | HAND-COMPUTED-tile-1-(4,1)-is-an-exit-EVEN-THOUGH-tiles-2-and-3-follow-it-(it-must-not-send-to-tile-2)
+RUN | $T/rk | $T/unpaired.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 512,612 | HAND-COMPUTED-tile-2-(2,2)-is-even-but-has-no-tile-3:-inert
+RUN | $T/rk | $T/unpaired_first.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 | HAND-COMPUTED-the-first-pair-still-works-beside-an-unpaired-third-tile
+RUN | $T/rk | $T/single.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - | HAND-COMPUTED-one-tile-alone-is-inert
+RUN | $T/rk | $T/other.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - | HAND-COMPUTED-another-tile-character-is-not-a-teleport-(the-character-is-data)
+
+CASE    | the-number-is-data
+RUN | $T/rk | $T/fee7.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 7 FROM 1,1 TO 4,1 | HAND-COMPUTED-teleport_fee-7-adds-7-to-a-score-of-0
+RUN | $T/rk | $T/scorebefore.pdl
+EXPECT_OUT | TELEPORTED 1 SCORE 37 FROM 1,1 TO 4,1 | HAND-COMPUTED-30-plus-7
+RUN | $T/rk | $T/miss.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - | HAND-COMPUTED-no-trip-no-fee
+
+CASE    | outside-the-level
+RUN | $T/rk | $T/negx.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO -300,300 | HAND-COMPUTED-center-x--200-is-column--1
+RUN | $T/rk | $T/rightx.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 1500,300 | HAND-COMPUTED-center-x-1600-is-column-6-of-a-6-wide-level
+RUN | $T/rk | $T/topedge.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 300,-300 | HAND-COMPUTED-center-y--200-is-row--1
+RUN | $T/rk | $T/belowy.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 300,1100 | HAND-COMPUTED-center-y-1200-is-row-4-of-a-4-row-level
+RUN | $T/rk | $T/negx2.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO -200,300 | HAND-COMPUTED-center-x--100-is-column--1-(floor)-not-column-0-(truncation):-the-tile-at-(0,1)-is-not-touched
+RUN | $T/rk | $T/negy2.pdl
+EXPECT_OUT | TELEPORTED 0 SCORE 0 FROM - TO - HERO 300,-200 | HAND-COMPUTED-center-y--100-is-row--1-(floor)-not-row-0:-the-tile-at-(1,0)-is-not-touched
+
+CASE    | contract
+RUN | $T/rk | --describe
+EXPECT_OUT | RULE keys: teleport_fee | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rk | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-RULE-teleport_fee-is-refused
+EXPECT_OUT | the number is data, there is no default | and-the-op-says-why
+RUN | $T/rk | $T/notile.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-TILE-teleport-is-refused
+RUN | $T/rk | $T/badrule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-RULE-key-is-refused
+
+CASE    | event-page
+RUN | grep | -c | ^COMMAND rule_teleport$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_teleport-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_teleport/event_pkg/pages/page_1/event.ir.pdl | type=rule_teleport | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_teleport/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_teleport/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | TELEPORTED 1 SCORE 0 FROM 1,1 TO 4,1 HERO 1052,312 VX 0 VY 0 LEVEL ....../.t..t./....../###### | the-page-gives-the-SAME-line-as-the-op-alone

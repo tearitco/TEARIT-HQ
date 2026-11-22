@@ -67,6 +67,7 @@ enum { F_REACH = 0, F_STAY = 1, F_BOUNCE = 2 };
 #include "../rule_pickup.c"   /* the PICKUP rule (D92/D93): one pure module, also the CLI op rule_pickup_op */
 #include "../rule_coin.c"   /* the COIN block rule (D92/D93/D106): one pure module, also the CLI op rule_coin_op */
 #include "../rule_brick.c"   /* the BRICK block rule (D92/D93/D106): one pure module, also the CLI op rule_brick_op */
+#include "../rule_teleport.c"   /* the TELEPORT block rule (D92/D93/D111): one pure module, also the CLI op rule_teleport_op */
 #include "../rule_goal.c"   /* the GOAL rule (D92/D93): one pure module, also the CLI op rule_goal_op */
 #include "../rule_win.c"   /* the WIN rule (D92/D93): one pure module over rule_goal.c, also the CLI op rule_win_op */
 #include "../rule_food.c"   /* the FOOD rule (D92/D93): one pure module over seed_mix.c, also the CLI op rule_food_op */
@@ -84,6 +85,7 @@ static FB_Rule FBR = { 56, 36, 4, 100 };   /* RULE fireball_speed, fireball_life
 static ST_Rule STR = { 64, 133, 100 };   /* RULE stomp_margin, stomp_bounce, stomp_score; the defaults are the values before they were data (the bounce was jump_v * 2 / 3 = 133) */
 static PK_Rule PKR = { 50 };   /* RULE pickup_score; the default is the value before it was data */
 static CN_Rule CNR = { -1 }; static BR_Rule BRR = { -1 };   /* RULE coin_value, brick_score (D106): no default, a level with coin or brick tiles and no row is refused */
+static TP_Rule TPR = { -1 }; static char TELE_CH;   /* blocks.pdl BLOCK | teleport | <char> | <fee> (D111): the pairing is derived from the level rows, see rule_teleport.c */
 static char COIN_CH, BRICK_CH;   /* board.pdl LEVEL | coin | <char> and LEVEL | brick | <char> (0 = this game has none) */
 static SP_Rule SPR = { 200, 200 };   /* RULE body_w, body_h; the defaults are the sizes before they were data */
 static long FAM = 2;   /* RULE fall_margin (whole cells below the world); the default is the value before it was data */
@@ -97,7 +99,7 @@ static struct { int w, h, sx, sy, gx, gy; char rows[LVMAXH][LVMAXW + 1]; char na
 static char ROWS0[LVMAXH][LVMAXW + 1];   /* the pristine level rows of a platform game (a coin or brick turns a tile of LV.rows into `.` while it runs; `start` restores them from here) */
 
 typedef struct { long round; char actor[32], verb[16], target[200], at[48], res[300]; } Row;
-typedef struct { long tick; char verb[8], target[16], at[32], res[200]; } Ev;
+typedef struct { long tick; char verb[12], target[16], at[32], res[200]; } Ev;
 static struct {
     int nrows, phase, np, cur, winner; long seed, round, nrolls, tick;
     char name[MAXPL][24]; int human[MAXPL], pos[MAXPL], dir[MAXPL], ever[MAXPL];
@@ -195,7 +197,7 @@ static int load_config(void) {
         else if (!strcmp(fl[1], "ruleset")) snprintf(RS, sizeof RS, "%s", fl[2]); }
     fclose(f); if (!KIND) return bad("game.pdl: GAME | kind must be ledger, realtime or editor");
     if (!good_word(RS, 24, 1)) return bad("game.pdl: bad ruleset name");
-    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; STR = (ST_Rule){ 64, 133, 100 }; PKR = (PK_Rule){ 50 }; CNR = (CN_Rule){ -1 }; BRR = (BR_Rule){ -1 }; COIN_CH = BRICK_CH = 0; SPR = (SP_Rule){ 200, 200 }; FAM = 2; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
+    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; STR = (ST_Rule){ 64, 133, 100 }; PKR = (PK_Rule){ 50 }; CNR = (CN_Rule){ -1 }; BRR = (BR_Rule){ -1 }; COIN_CH = BRICK_CH = 0; TPR = (TP_Rule){ -1 }; TELE_CH = 0; SPR = (SP_Rule){ 200, 200 }; FAM = 2; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
     const char *files[2] = { "board.pdl", "rules.pdl" };
     for (int k = 0; k < 2; k++) { snprintf(p, sizeof p, "%s/rulesets/%s/%s", APP, RS, files[k]); f = fopen(p, "r"); if (!f) return bad("missing %s", p);
         RULES_HASH = fnv(RULES_HASH, files[k], strlen(files[k]));
@@ -229,7 +231,7 @@ static int load_config(void) {
     snprintf(p, sizeof p, "%s/rulesets/%s/blocks.pdl", APP, RS); f = fopen(p, "r");
     if (f) { while (fgets(ln, sizeof ln, f)) { if (ln[0] == '#') continue; n = split_row(ln, fl, 10); if (n < 4 || strcmp(fl[0], "BLOCK")) continue; long v = atol(fl[3]); if (v < 0 || v > 100000 || !fl[2][0]) { fclose(f); return bad("blocks.pdl: BLOCK needs a character and a number 0 to 100000"); }
             if (!strcmp(fl[1], "brick")) { BRICK_CH = fl[2][0]; BRR.score = v; if (!is_solid(BRICK_CH)) { size_t L = strlen(LEVEL_SOLID); if (L < sizeof LEVEL_SOLID - 1) { LEVEL_SOLID[L] = BRICK_CH; LEVEL_SOLID[L + 1] = 0; } } }
-            else if (!strcmp(fl[1], "coin")) { COIN_CH = fl[2][0]; CNR.value = v; } else { fclose(f); return bad("blocks.pdl: BLOCK is brick or coin"); } } fclose(f); }
+            else if (!strcmp(fl[1], "coin")) { COIN_CH = fl[2][0]; CNR.value = v; } else if (!strcmp(fl[1], "teleport")) { TELE_CH = fl[2][0]; TPR.fee = v; } else { fclose(f); return bad("blocks.pdl: BLOCK is brick, coin or teleport"); } } fclose(f); }
     if (R_minp < 1 || R_minp > R_maxp) return bad("rules.pdl: min_players is 1 to max_players");
     if (R_maxp < 1 || R_maxp > MAXPL || (R_maxp < 2 && MODE != M_SNAKE && !WALKISH)) return bad("rules.pdl: max_players is 2 to %d", MAXPL);
     if (MODE == M_SNAKE) { if (KIND != K_REALTIME) return bad("board.pdl: MODE snake needs a realtime game"); if (R_maxp != 1 || R_minp != 1) return bad("rules.pdl: a snake game has exactly one snake (min_players and max_players 1)");
@@ -241,7 +243,7 @@ static int load_config(void) {
     if (WALKISH) { snprintf(p, sizeof p, "%s/%s", APP, LEVELREL); if (LEVEL_IN_RUN) { char rp[P]; snprintf(rp, sizeof rp, "%s/level.pdl", SD); if (!access(rp, R_OK)) snprintf(p, sizeof p, "%s", rp); } RULES_HASH = fnv(RULES_HASH, "level", 5); if (level_load_file(p, &RULES_HASH)) return 1; LENGTH = LV.w - 1; memcpy(ROWS0, LV.rows, sizeof ROWS0);
         if (MODE == M_PLATFORM) { int hc = 0, hb = 0; for (int y = 0; y < LV.h; y++) for (int x = 0; x < LV.w; x++) { if (COIN_CH && LV.rows[y][x] == COIN_CH) hc = 1; if (BRICK_CH && LV.rows[y][x] == BRICK_CH) hb = 1; }
             if (hc && CNR.value < 0) return bad("rules.pdl: the level has coin tiles but no RULE coin_value (the number is data)"); if (hb && BRR.score < 0) return bad("rules.pdl: the level has brick tiles but no RULE brick_score (the number is data)");
-            if (BRICK_CH && !is_solid(BRICK_CH)) return bad("board.pdl: the brick tile %c must be in LEVEL | solid", BRICK_CH); if (COIN_CH && is_solid(COIN_CH)) return bad("board.pdl: the coin tile %c must not be in LEVEL | solid", COIN_CH); } }   /* the level file is part of the rules hash: editing it after a game began refuses that ledger */
+            if (BRICK_CH && !is_solid(BRICK_CH)) return bad("board.pdl: the brick tile %c must be in LEVEL | solid", BRICK_CH); if (COIN_CH && is_solid(COIN_CH)) return bad("board.pdl: the coin tile %c must not be in LEVEL | solid", COIN_CH); if (TELE_CH && is_solid(TELE_CH)) return bad("board.pdl: the teleport tile %c must not be in LEVEL | solid", TELE_CH); } }   /* the level file is part of the rules hash: editing it after a game began refuses that ledger */
     for (int i = 0; i < NJ; i++) if (JF[i] < 1 || JF[i] >= LENGTH || JT[i] < 0 || JT[i] > LENGTH || JF[i] == JT[i]) return bad("board.pdl: JUMP %d -> %d is outside the track", JF[i], JT[i]);
     return 0;
 }
@@ -311,9 +313,10 @@ static void plat_step(void) {
         { ST_Result sr = st_contact(h, S.en, LV.ne, &STR); S.score += (long)sr.stomps * STR.score; S.stomps += sr.stomps; if (sr.hit) { S.hits++; plat_spawn(i); } }   /* the STOMP / HIT rule: rule_stomp.c, the same function the op rule_stomp_op runs (a hit respawns the hero: still the game's) */
         pk_collect(h, LV.px, LV.py, S.pw_taken, LV.npw, &PKR, &S.armed[i], &S.score); }   /* the PICKUP rule: rule_pickup.c, the same function the op rule_pickup_op runs */
     S.tick++;   /* the BLOCK rules run after the tick count moves on, so a consequence row carries the tick the NEXT step starts at (like the snake rows) */
-    for (int i = 0; i < S.np; i++) { const PF_Body *h = &S.pb[i]; int cx[4], cy[4]; char at[32], res[96];
+    for (int i = 0; i < S.np; i++) { PF_Body *h = &S.pb[i]; int cx[4], cy[4]; char at[32], res[96];
         if (BRICK_CH) { int n = br_bump(h, vy0[i], &LV.rows[0][0], LVMAXW + 1, LV.w, LV.h, BRICK_CH, &BRR, &S.score, cx, cy, 4); S.bricks += n; for (int k = 0; k < n; k++) { snprintf(at, sizeof at, "%d,%d", cx[k], cy[k]); snprintf(res, sizeof res, "value=%ld;score=%ld", BRR.score, S.score); q_push("brick", "p1", at, res); } }   /* the BRICK rule: rule_brick.c, the same function the op rule_brick_op runs */
-        if (COIN_CH) { int n = cn_collect(h, &LV.rows[0][0], LVMAXW + 1, LV.w, LV.h, COIN_CH, &CNR, &S.score, cx, cy, 4); S.coins += n; for (int k = 0; k < n; k++) { snprintf(at, sizeof at, "%d,%d", cx[k], cy[k]); snprintf(res, sizeof res, "value=%ld;score=%ld", CNR.value, S.score); q_push("coin", "p1", at, res); } } }   /* the COIN rule: rule_coin.c, the same function the op rule_coin_op runs */
+        if (COIN_CH) { int n = cn_collect(h, &LV.rows[0][0], LVMAXW + 1, LV.w, LV.h, COIN_CH, &CNR, &S.score, cx, cy, 4); S.coins += n; for (int k = 0; k < n; k++) { snprintf(at, sizeof at, "%d,%d", cx[k], cy[k]); snprintf(res, sizeof res, "value=%ld;score=%ld", CNR.value, S.score); q_push("coin", "p1", at, res); } }   /* the COIN rule: rule_coin.c, the same function the op rule_coin_op runs */
+        if (TELE_CH) { int fx, fy, tx, ty; if (tp_step(h, &LV.rows[0][0], LVMAXW + 1, LV.w, LV.h, TELE_CH, &TPR, &S.score, &fx, &fy, &tx, &ty)) { snprintf(at, sizeof at, "%d,%d>%d,%d", fx, fy, tx, ty); snprintf(res, sizeof res, "fee=%ld;score=%ld", TPR.fee, S.score); q_push("teleport", "p1", at, res); } } }   /* the TELEPORT rule: rule_teleport.c, the same function the op rule_teleport_op runs (D111): the body is moved to the paired exit, the row records the trip */
     { int w = wn_winner(S.pb, S.np, LV.gx, LV.gy); if (w >= 0) { S.winner = w; S.phase = PH_OVER; } }   /* the WIN rule: rule_win.c (over rule_goal.c), the same function the op rule_win_op runs (the phase and the winner stay the game's state) */
 }
 static void step_tick(void) {
@@ -430,7 +433,7 @@ static int apply(const Row *in, const char *arg2, Row *out) {
         S.l_kind = stayed ? 3 : bounced ? 4 : jumped > 0 ? 1 : jumped < 0 ? 2 : 0; if (bounced && jumped) S.l_kind = jumped > 0 ? 5 : 6;   /* 0 plain, 1 ladder, 2 chute, 3 stay, 4 bounce, 5 bounce then ladder, 6 bounce then chute */
         S.pos[S.cur] = np; talk_push(); if (S.phase == PH_PLAY) next_seat();
         snprintf(out->actor, sizeof out->actor, "%s", who); snprintf(out->target, sizeof out->target, "%d", d); snprintf(out->at, sizeof out->at, "%d", np); snprintf(out->res, sizeof out->res, "%s", res); out->round = rd0; return 0; }
-    if (KIND == K_REALTIME && ((MODE == M_SNAKE && (!strcmp(v, "eat") || !strcmp(v, "die") || !strcmp(v, "over"))) || (MODE == M_PLATFORM && (!strcmp(v, "coin") || !strcmp(v, "brick"))))) {   /* a CONSEQUENCE row (snake: eat, die, over; platform: coin, brick, D106): the ticks made it, replay must make the same one (round = the tick it happened at) */
+    if (KIND == K_REALTIME && ((MODE == M_SNAKE && (!strcmp(v, "eat") || !strcmp(v, "die") || !strcmp(v, "over"))) || (MODE == M_PLATFORM && (!strcmp(v, "coin") || !strcmp(v, "brick") || !strcmp(v, "teleport"))))) {   /* a CONSEQUENCE row (snake: eat, die, over; platform: coin, brick, D106): the ticks made it, replay must make the same one (round = the tick it happened at) */
         long t = in->round >= 0 ? in->round : S.tick; sim_to(t); if (S.tick != t) return bad("%s at tick %ld: the game is at tick %ld", v, t, S.tick);
         if (!S.nq) return bad("%s at tick %ld: the rules made no such consequence", v, t);
         Ev e = S.q[0]; if (strcmp(e.verb, v) || e.tick != t) return bad("%s at tick %ld: the rules say the next consequence is %s at tick %ld", v, t, e.verb, e.tick);
@@ -1154,8 +1157,8 @@ static int doc_paint(const char *tool, long x, long y, const char *as) {
         for (int k = 1; k <= mx; k++) { snprintf(id, sizeof id, "%c%d", pre, k); if (doc_find(id) < 0) return live(-1, as, "add", id, tx, NULL); } return bad("paint: at most %d %s rows", mx, pre == 'e' ? "enemy" : "power-up"); }
     if (!strcmp(tool, "erase")) { char tx[40], id[4]; snprintf(tx, sizeof tx, "%ld %ld", x, y);   /* erase takes an enemy or a power-up off the cell first, else the ground */
         for (int k = 0; k < 12; k++) { snprintf(id, sizeof id, "%c%d", k < 8 ? 'e' : 'p', k < 8 ? k + 1 : k - 7); int ix = doc_find(id); if (ix >= 0 && !strcmp(S.dtx[ix], tx)) return live(-1, as, "del", id, NULL, NULL); } }
-    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : !strcmp(tool, "brick") ? BRICK_CH : !strcmp(tool, "coin") ? COIN_CH : 0; if (!ch) return bad("paint: the tool is ground, erase, brick, coin, start, goal, enemy or power (brick and coin need a LEVEL | brick / coin row in board.pdl)");
-    char id[8], tx[LVMAXW + 2]; snprintf(id, sizeof id, "r%02ld", y); snprintf(tx, sizeof tx, "%s", S.dtx[doc_find(id)]); if (tx[x] == ch) return bad("paint: that cell is already %s", ch == '#' ? "ground" : ch == '.' ? "empty" : ch == BRICK_CH ? "a brick" : "a coin");
+    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : !strcmp(tool, "brick") ? BRICK_CH : !strcmp(tool, "coin") ? COIN_CH : !strcmp(tool, "tp") ? TELE_CH : 0; if (!ch) return bad("paint: the tool is ground, erase, brick, coin, tp, start, goal, enemy or power (brick, coin and tp need a LEVEL | brick / coin row in board.pdl)");
+    char id[8], tx[LVMAXW + 2]; snprintf(id, sizeof id, "r%02ld", y); snprintf(tx, sizeof tx, "%s", S.dtx[doc_find(id)]); if (tx[x] == ch) return bad("paint: that cell is already %s", ch == '#' ? "ground" : ch == '.' ? "empty" : ch == BRICK_CH ? "a brick" : ch == TELE_CH ? "a teleport" : "a coin");
     tx[x] = ch; return live(-1, as, "set", id, tx, NULL);
 }
 /* the editor's cursor cell (the xelector of the editor's own world): where the shelf buttons paint */
@@ -1192,6 +1195,7 @@ static void scene_events(void) {
     for (int i = 0; i < LV.ne && n < 3600; i++) if (LEVELDOC || (MODE == M_PLATFORM && S.en[i].alive)) { int cx = LEVELDOC ? LV.ex[i] : (int)((S.en[i].b.x + S.en[i].b.w / 2) / PF_Q), cy = LEVELDOC ? LV.ey[i] : (int)((S.en[i].b.y + S.en[i].b.h / 2) / PF_Q); n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 190 70 210 Monster %d 2 1\n", cx, cy, i % 8); }   /* enemies (怪) */
     for (int i = 0; i < LV.npw && n < 3600; i++) if (LEVELDOC || !S.pw_taken[i]) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 90 200 255 !Crystal 0 2 1\n", LV.px[i], LV.py[i]);   /* power-ups (晶) */
     if (COIN_CH) for (int y = 0; y < LV.h; y++) for (int x = 0; x < LV.w && n < 3600; x++) if (LV.rows[y][x] == COIN_CH) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 255 215 0 !Other1 0 2 1 \xe9\x87\x91\n", x, y);   /* coins (the character 金; a taken coin is already a `.` in the run's rows) */
+    if (TELE_CH) { int k = 0; for (int y = 0; y < LV.h; y++) for (int x = 0; x < LV.w && n < 3600; x++) if (LV.rows[y][x] == TELE_CH) { if (k & 1) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 160 90 255 !Other1 0 2 1 \xe9\x96\x80\n", x, y); else n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 60 150 255 !Other1 0 2 1 \xe9\x96\x80\n", x, y); k++; } }   /* teleports (the character 門): a SENDER is blue, its EXIT violet (D111; the tiles are static, the picture never changes while a run goes) */
     if (MODE == M_PLATFORM && !LEVELDOC) for (int k = 0; k < 4 && n < 3700; k++) if (S.fb[k].alive) n += snprintf(b + n, sizeof b - (size_t)n, "%ld %ld 255 120 30 !Flame 0 2 1\n", (long)pf_floordiv(S.fb[k].x, PF_Q), (long)pf_floordiv(S.fb[k].y, PF_Q));   /* fireballs (火) */
     for (int i = 0; i < S.np && n < 3800; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
     char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b);
