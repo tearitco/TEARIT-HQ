@@ -74,4 +74,44 @@ EXPECT_EXIT | 0 | the-real-op-ran-with-no-possession
 RUN | sh | -c | cat $T/h3/state/interact_relay.txt 2>/dev/null \p wc -l
 EXPECT_OUT_IS | 0 | no-possession-nothing-forwarded
 EXPECT_HAS | $T/h3/host/pieces/xelector_01/state.txt | pos_x=6 | the-cursor-moved-instead-(vacuity:-the-key-was-handled)
+
+CASE    | dp_enter_possess_game_token
+# P2 (2026-11-22): Enter on a GAME-DRIVEN token of the shown page (events.txt row, no engine piece) possesses it. LIVE finding: Enter on People1 left possessed_id=none, so option C's gate was unreachable.
+# Scratch host: book teario-make, desk play, events.txt = People1 at 2,10 and the goal prop !Other1 at 17,10.
+MKDIR   | d1/host/pieces/system/maps/teario-make/play
+MKDIR   | d1/host/pieces/xelector_01
+MKDIR   | d1/host/pieces/world_01
+WRITE   | d1/host/pieces/system/maps/teario-make/game.pdl | GAME | name | teario-make\n
+WRITE   | d1/host/pieces/system/maps/teario-make/play/events.txt | 2 10 220 60 60 People1 0 2 1\n17 10 255 210 60 !Other1 0 2 1\n
+WRITE   | d1/host/pieces/world_01/state.txt | entity_type=world\nmap_id=teario-make\ndesk_id=play\n
+WRITE   | d1/host/pieces/system/bv_state.txt | focused_project_root=$T/d1/host\nrender_mode=1\ncamera_mode=1\nselector_x=2\nselector_y=10\n
+WRITE   | d1/host/pieces/xelector_01/state.txt | entity_type=xelector\npos_x=2\npos_y=10\npos_z=17\npossessed_id=none\n
+RUN | cp | -r | $T/d1 | $T/d2
+RUN | cp | -r | $T/d1 | $T/d3
+RUN | cp | -r | $T/d1 | $T/d4
+RUN | sed | -i | s#/d1/host#/d2/host# | $T/d2/host/pieces/system/bv_state.txt
+RUN | sed | -i | s#/d1/host#/d3/host# | $T/d3/host/pieces/system/bv_state.txt
+RUN | sed | -i | s#/d1/host#/d4/host# | $T/d4/host/pieces/system/bv_state.txt
+RUN | sed | -i | s/pos_x=2/pos_x=17/ | $T/d2/host/pieces/xelector_01/state.txt
+RUN | sed | -i | s/pos_x=2/pos_x=5/ | $T/d3/host/pieces/xelector_01/state.txt
+RUN | gcc | -O2 | -w | -DBV_NO_DESKPOSSESS | -o | $T/menu_nodp | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
+EXPECT_EXIT | 0 | the-negative-fixture-(hero-only-Enter)-builds
+ENV | PRISC_PROJECT_ROOT | $T/d1/host
+RUN | $T/menu_real | 13
+EXPECT_EXIT | 0 | enter-ran-on-the-token-cell
+EXPECT_HAS | $T/d1/host/pieces/xelector_01/state.txt | possessed_id=People1 | Enter-on-People1-possesses-it
+EXPECT_HAS | $T/d1/host/pieces/xelector_01/state.txt | pos_x=2 | the-cursor-stays-on-its-cell
+
+CASE    | dp_negatives
+# NEGATIVES: the goal prop (!-prefixed) is never possessable; an empty cell possesses nothing; the old hero-only op leaves People1 unpossessed (the live bug).
+ENV | PRISC_PROJECT_ROOT | $T/d2/host
+RUN | $T/menu_real | 13
+EXPECT_HAS | $T/d2/host/pieces/xelector_01/state.txt | possessed_id=none | a-prop-(!Other1)-is-not-possessable
+ENV | PRISC_PROJECT_ROOT | $T/d3/host
+RUN | $T/menu_real | 13
+EXPECT_HAS | $T/d3/host/pieces/xelector_01/state.txt | possessed_id=none | an-empty-cell-possesses-nothing
+ENV | PRISC_PROJECT_ROOT | $T/d4/host
+RUN | $T/menu_nodp | 13
+EXPECT_EXIT | 0 | the-old-op-ran
+EXPECT_HAS | $T/d4/host/pieces/xelector_01/state.txt | possessed_id=none | the-old-op-cannot-possess-People1-(the-bug-this-fixes)
 CLEAN |

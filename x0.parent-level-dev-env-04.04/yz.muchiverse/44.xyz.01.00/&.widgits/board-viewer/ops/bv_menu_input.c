@@ -323,6 +323,28 @@ static void write_kv_int(const char *path, const char *key, int value) {
     write_kv(path, key, buf);
 }
 
+/* A GAME-DRIVEN token on the shown page (2026-11-22, Teario P2; D97): a row of the page's events.txt ("x y r g b <name> ..."), drawn by a game's driver and not an engine piece (People1 in Teario). Enter
+ * on its cell possesses it: possessed_id names the token, and the GAMEKEY rows then forward the arrows to the game. A "!"-prefixed name is a prop (the goal), never possessable. Not the ledger: the
+ * game decides whether it reads the keys (game_core applies them only to a human seat of a realtime platform game). Built with -DBV_NO_DESKPOSSESS the old behaviour (hero only) is kept for the harness. */
+static int desk_token_at(const char *root, int x, int y, char *out, size_t osz) {
+#ifdef BV_NO_DESKPOSSESS
+    (void)root; (void)x; (void)y; (void)out; (void)osz; return 0;
+#else
+    char wst[PATH_BUF], desk[64] = "", map_id[64] = "", ep[PATH_BUF], ln[160];
+    snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wst, "desk_id", desk, sizeof(desk)); read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+    if (!desk[0] || !map_id[0] || strchr(desk, '/') || strchr(map_id, '/')) return 0;
+    snprintf(ep, sizeof(ep), "%s/%s/events.txt", bp_dir(root, map_id), desk);
+    FILE *f = fopen(ep, "r"); if (!f) return 0;
+    int found = 0;
+    while (!found && fgets(ln, sizeof(ln), f)) {
+        int ex, ey, r, g, b; char nm[48];
+        if (sscanf(ln, "%d %d %d %d %d %47s", &ex, &ey, &r, &g, &b, nm) == 6 && ex == x && ey == y && nm[0] != '!' && strlen(nm) < osz) { snprintf(out, osz, "%s", nm); found = 1; }
+    }
+    fclose(f); return found;
+#endif
+}
+
 static int clamp_int(int v, int lo, int hi) {
     if (v < lo) return lo;
     if (v > hi) return hi;
@@ -1105,6 +1127,11 @@ static int handle_one_key(int key) {
                 write_kv_int(state_path, "selector_x", tx);
                 write_kv_int(state_path, "selector_y", ty);
                 write_kv_int(state_path, "current_z", tz);
+                bump_screen_changed(project_root);
+            } else if (!possessing && desk_token_at(focused_project_root, xx, xy, tid, sizeof(tid))) {
+                /* a game-driven token (no engine piece): the cursor stays on its cell, possessed_id names it */
+                write_kv(xs, "possessed_id", tid);
+                write_kv(xs, "last_possessed_id", tid);
                 bump_screen_changed(project_root);
             }
             return 0;
