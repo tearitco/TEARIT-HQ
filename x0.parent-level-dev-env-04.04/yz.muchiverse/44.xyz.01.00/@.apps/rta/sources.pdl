@@ -15,5 +15,7 @@ SRC | mexico-centre | later | Overpass box when a mirror answers | txt
 SRC | saopaulo-centre | later | Overpass box when a mirror answers | txt
 SRC | sydney-centre | later | Overpass box when a mirror answers | txt
 SRC | tokyo-centre | later | Overpass until the GSI licence for a game cache is read | txt
+SRC | jerusalem-old | http | https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A25%5D%3Bway%5B%22building%22%5D%2831.776%2C35.226%2C31.782%2C35.236%29%3Bout%20geom%3B | json
+SRC | giza-plateau | http | https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A25%5D%3Bway%5B%22building%22%5D%2829.974%2C31.130%2C29.980%2C31.140%29%3Bout%20geom%3B | json
 SRC | moon-ldem | later | USGS LOLA global DEM is not a desk-sized file | txt
 SRC | mars-mola | later | USGS MOLA global grid is not a desk-sized file | txt
