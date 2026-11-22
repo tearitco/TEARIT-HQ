@@ -173,12 +173,14 @@ static int level_from_doc(void) {
     return level_check();
 }
 static int split_row(char *line, char **f, int max) { int n = 0; char *p = line; while (n < max) { f[n++] = p; char *b = strchr(p, '|'); if (!b) break; *b = 0; p = b + 1; } for (int i = 0; i < n; i++) f[i] = trim(f[i]); return n; }
+static int OWN_RUN;   /* game.pdl `GAME | own_run | 1`: a window with NO Player menu (the own Teario-Play window): a started game runs by itself, nothing external sets the editor switch running=1 (default 0: the editor's switch decides, as before) */
 static int load_config(void) {
     char p[P], ln[1024]; FILE *f; char *fl[10]; int n;
     snprintf(p, sizeof p, "%s/game.pdl", APP); f = fopen(p, "r"); if (!f) return bad("no game.pdl in %s", APP);
     while (fgets(ln, sizeof ln, f)) { if (ln[0] == '#') continue; n = split_row(ln, fl, 10); if (n < 3 || strcmp(fl[0], "GAME")) continue;
         if (!strcmp(fl[1], "kind")) KIND = !strcmp(fl[2], "ledger") ? K_LEDGER : !strcmp(fl[2], "realtime") ? K_REALTIME : !strcmp(fl[2], "editor") ? K_EDITOR : 0;
         else if (!strcmp(fl[1], "title")) snprintf(TITLE, sizeof TITLE, "%s", fl[2]);
+        else if (!strcmp(fl[1], "own_run")) OWN_RUN = atoi(fl[2]) == 1;
         else if (!strcmp(fl[1], "ruleset")) snprintf(RS, sizeof RS, "%s", fl[2]); }
     fclose(f); if (!KIND) return bad("game.pdl: GAME | kind must be ledger, realtime or editor");
     if (!good_word(RS, 24, 1)) return bad("game.pdl: bad ruleset name");
@@ -1022,7 +1024,7 @@ static void stats_seg_end(long live_us, long pace_us, const char *path) {   /* a
         ST.ticks, ST.expected, ST.live_us / 1000, pace_us / 1000, ST.live_us > 0 ? (double)ST.ticks * 1e6 / (double)ST.live_us : 0.0, ST.loops, ST.dropped, ST.catch_ticks, ST.n, ST.publishes, pct(a, ST.n, 50), pct(a, ST.n, 90), pct(a, ST.n, 99), a[ST.n - 1],
         pct(b, nb, 50), pct(b, nb, 90), pct(b, nb, 99), nb ? b[0] : 0, nb ? b[nb - 1] : 0); (void)n; write_atomic(path, o); free(a); free(b);
 }
-static int running(void) { FILE *f = fopen(SW, "r"); if (!f) return 0; char ln[80]; int r = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "running=", 8)) r = atoi(ln + 8); fclose(f); return r; }
+static int running(void) { if (OWN_RUN) return mode_play; FILE *f = fopen(SW, "r"); if (!f) return 0; char ln[80]; int r = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "running=", 8)) r = atoi(ln + 8); fclose(f); return r; }
 static void rm_tree(const char *d) { DIR *dr = opendir(d); if (!dr) return; struct dirent *e; while ((e = readdir(dr))) { if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue; char p[P]; snprintf(p, sizeof p, "%s/%s", d, e->d_name); struct stat s; if (!lstat(p, &s) && S_ISDIR(s.st_mode)) rm_tree(p); else unlink(p); } closedir(dr); rmdir(d); }
 static int cmp_str(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
 static void archive_game(void) {   /* keep the last 3 games in archive/ (the cap), older ones are deleted */
