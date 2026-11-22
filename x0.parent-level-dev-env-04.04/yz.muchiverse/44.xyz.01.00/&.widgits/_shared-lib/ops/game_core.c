@@ -1271,7 +1271,7 @@ static void publish(void) {
     snprintf(b, sizeof b, "gm_on=1\ngm_pid=%ld\ngm_title=%s\n", (long)getpid(), TITLE); strncat(o, b, C - strlen(o) - 1);
     snprintf(b, sizeof b, "%.200s", dmsg); add_txt(o, C, &nt, b);
     if (KIND == K_EDITOR) {
-        snprintf(b, sizeof b, "%d rows, %s, %ld edits", S.ndoc, S.published ? "published" : "not published", S.nedits); add_txt(o, C, &nt, b);
+        snprintf(b, sizeof b, "%d rows, %ld edits", S.ndoc, S.nedits); add_txt(o, C, &nt, b); add_txt(o, C, &nt, S.published ? "published" : "draft");   /* short lines: the right-hand panel is 160 px wide and a wrapped line ran under the first button */
         if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { char pl[80] = "place stamp"; if (!stamps_load()) snprintf(pl, sizeof pl, "place: %s", STAMPS[stamp_picked()].label); add_btn(o, C, &nb, pl, "place"); } if (S.ndoc) add_btn(o, C, &nb, "play", "play"); add_btn(o, C, &nb, "publish", "publish"); }
         else { add_btn(o, C, &nb, "add start", "add_start"); add_btn(o, C, &nb, "add goal", "add_goal"); add_btn(o, C, &nb, "add item", "add_item"); add_btn(o, C, &nb, "remove last", "remove_last"); add_btn(o, C, &nb, "publish", "publish"); }
     } else if (!mode_play) {
@@ -1314,7 +1314,7 @@ static int driver_main(int argc, char **argv) {
     if (flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "game_core driver: already running\n"); return 0; }
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = on_term; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); sigaction(SIGHUP, &sa, NULL);
     FILE *devnull = fopen("/dev/null", "w"); OUT = devnull ? devnull : stdout; ERRF = OUT;
-    if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; page_make(); snprintf(dmsg, sizeof dmsg, OWN_RUN ? "a game was in progress; it is running" : "a game was in progress; it continues while the Player menu says playing"); }
+    if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; page_make(); snprintf(dmsg, sizeof dmsg, OWN_RUN ? "game running" : KIND == K_EDITOR ? "level open" : "a game was in progress; it continues while the Player menu says playing"); }
     if (KIND == K_EDITOR) { mode_play = 1; if (S.phase == PH_NONE) { char o2[200]; char *n1[] = { (char *)"new" }; if (verb_here(1, n1, o2, sizeof o2)) snprintf(dmsg, sizeof dmsg, "new refused: %.180s", o2); else { reload(); write_doc(); snprintf(dmsg, sizeof dmsg, "an empty document: add start and goal, then publish"); } } }
     struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; char relay[P]; snprintf(relay, sizeof relay, "%s/state/interact_relay.txt", EDIT); long kcur = stat(relay, &s) ? 0 : (long)s.st_size;   /* the driver tails the editor's key file with its OWN cursor, starting at the end: keys pressed before it started are never replayed */
     if (load_tuning()) { snprintf(dmsg, sizeof dmsg, "%.150s (the default pace is used)", MSG); TICK_MS = 0; }   /* a refused tick_ms is shown in the feed, not hidden: the game still runs at the kind's default */
