@@ -13,3 +13,4 @@ GAME   | clock       | pause
 # GAME | export  (data-hq P0): the data studio's exporter row (game.csv, events.csv, schema.pdl). The editor's Play ignores it.
 GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}
 GAME   | ui_mode     | play
+GAME   | own_run     | 1

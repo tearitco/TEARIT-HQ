@@ -1,0 +1,4 @@
+# teario_playwin.pal - the own Teario-Play window: the realtime game runs by itself (own_run) and a forwarded arrow becomes an input ledger row; negative without own_run. Read results/teario_playwin.txt.verdict.txt
+exec ./ops/+x/harness_case_op.+x cases/teario_playwin.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/teario_playwin.pdl
+halt

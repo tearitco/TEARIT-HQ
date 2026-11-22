@@ -94,7 +94,7 @@ EXPECT_OUT | does not match the open | and-says-why
 CASE    | the-driver-guard-and-the-view
 # found LIVE 2026-11-19 (the first launch): the driver guard `ps -eo stat,args | awk ... index($0, b)` matched the awk process OWN command line, always answered "already running", and the driver never started (the left bar stayed empty). The registry is the record instead. (A harness check cannot prove the driver STARTS; the live launch did.)
 EXPECT_LACKS | $HOUSE/@.apps/teario-make/board/open_board.sh | index($0, b) | the-self-matching-ps-awk-guard-is-gone
-EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | $10 == "teario-make-driver" {print $2} | the-guard-asks-the-process-registry
+EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | $10 == n {print $2} | the-guard-asks-the-process-registry-(for-the-app-name-driver,-so-teario-play-opens-with-the-same-launcher)
 EXPECT_HAS | $HOUSE/@.apps/teario-make/board/open_board.sh | /proc/$DPID0 | and-checks-the-pid-is-alive
 
 CASE    | the-facing-default-yaw

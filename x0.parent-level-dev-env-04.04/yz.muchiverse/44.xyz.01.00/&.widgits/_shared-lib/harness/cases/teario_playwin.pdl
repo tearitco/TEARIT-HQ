@@ -1,0 +1,56 @@
+# teario_playwin (2026-11-22, Teario P2): the OWN Teario-Play window has no Player menu, so the realtime game must run by itself once started (game.pdl `GAME | own_run | 1`, game_core running()). The REAL game_core driver runs in a scratch copy of the app; a human seat is joined; a key line written to the editor relay (what bv_menu_input forwards while People1 is possessed) must become an `input|right` ledger row. NEGATIVE: the same app without the own_run row does NOT run (nothing sets the editor switch), and the same key is not applied.
+RESULTS | ../results/teario_playwin.txt
+ENV | LC_ALL | C
+
+CASE    | pw_static
+SCRATCH |
+EXPECT_HAS | $HOUSE/@.apps/teario-play/game.pdl | own_run | the-play-app-declares-own_run
+EXPECT_HAS | $HOUSE/@.apps/teario-play/board/pchq-board.xhtpm | args="teario-play-pchq" | the-play-template-draws-the-PLAY-package
+EXPECT_HAS | $HOUSE/@.apps/teario-play/board/pchq-board.xhtpm | label="Teario-Play" | the-play-window-is-titled-Teario-Play
+EXPECT_LACKS | $HOUSE/@.apps/teario-play/board/pchq-board.xhtpm | args="teario-make-pchq" | NEGATIVE-the-copied-template-does-not-point-at-the-Make-package-(the-live-bug)
+EXPECT_HAS | $HOUSE/@.apps/teario-play/board/open_board.sh | teario-make/board/open_board.sh | the-play-launcher-is-the-same-launcher-(no-second-copy-of-the-logic)
+
+CLEAN   |
+CASE    | pw_runs_by_itself
+SCRATCH |
+COPYDIR | @.apps/teario | house/@.apps/teario
+COPYDIR | @.apps/teario-play | house/@.apps/teario-play
+RUN | rm | -rf | $T/house/@.apps/teario-play/state | $T/house/@.apps/teario-play/teario-play-pchq | $T/house/@.apps/teario-play/board
+MKDIR   | house/@.apps/teario-play/state/games/teario-play/game
+MKDIR   | house/@.apps/teario-play/state/world
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | start
+EXPECT_EXIT | 0 | a-started-game-with-a-human-seat
+SPAWN   | DRV | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/house | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play
+WAIT_HAS | house/@.apps/teario-play/state/game_ui.txt | RUNNING | 15000 | THE-GAME-RUNS-BY-ITSELF-(no-Player-menu-set-running=1)
+WRITE   | house/@.apps/teario-play/state/interact_relay.txt | 1001 1\n
+WAIT_HAS | house/@.apps/teario-play/state/games/teario-play/game/ledger.txt | input\pright | 15000 | A-FORWARDED-RIGHT-ARROW-BECAME-AN-input-right-LEDGER-ROW
+EXPECT_ALIVE | $DRV | the-driver-is-alive
+RUN     | /usr/bin/kill | $DRV
+SLEEP   | 1500
+EXPECT_DEAD | $DRV | the-driver-stopped-by-pid
+CLEAN   |
+
+CASE    | pw_negative_no_own_run
+# the same app WITHOUT the own_run row: running() reads the editor switch (absent here), so no tick and no applied key
+SCRATCH |
+COPYDIR | @.apps/teario | house/@.apps/teario
+COPYDIR | @.apps/teario-play | house/@.apps/teario-play
+RUN | rm | -rf | $T/house/@.apps/teario-play/state | $T/house/@.apps/teario-play/teario-play-pchq | $T/house/@.apps/teario-play/board
+RUN | sed | -i | /own_run/d | $T/house/@.apps/teario-play/game.pdl
+MKDIR   | house/@.apps/teario-play/state/games/teario-play/game
+MKDIR   | house/@.apps/teario-play/state/world
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play/state/games/teario-play/game | start
+SPAWN   | DRV2 | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | driver | $T/house | $T/house/@.apps/teario-play | $T/house/@.apps/teario-play
+WAIT_HAS | house/@.apps/teario-play/state/game_ui.txt | gm_title=Teario-Play | 10000 | VACUITY-the-driver-published-its-feed
+WRITE   | house/@.apps/teario-play/state/interact_relay.txt | 1001 1\n
+SLEEP   | 4000
+EXPECT_LACKS | house/@.apps/teario-play/state/game_ui.txt | RUNNING | NEGATIVE-without-own_run-the-game-does-not-run
+EXPECT_LACKS | house/@.apps/teario-play/state/games/teario-play/game/ledger.txt | input\pright | NEGATIVE-and-the-key-is-not-applied
+RUN     | /usr/bin/kill | $DRV2
+SLEEP   | 1500
+EXPECT_DEAD | $DRV2 | the-driver-stopped-by-pid
+CLEAN   |
