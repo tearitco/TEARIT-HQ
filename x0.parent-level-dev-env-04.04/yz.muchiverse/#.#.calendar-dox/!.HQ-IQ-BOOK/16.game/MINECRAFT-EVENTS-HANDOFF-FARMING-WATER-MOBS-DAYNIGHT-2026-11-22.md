@@ -236,3 +236,10 @@ Each step ends with: a green case, its negative control red, the replay twice, a
 3. Infinite water sources allowed (Minecraft) or conserved water?
 4. Leaf decay delay: fixed or random per leaf (proposal: random, seeded)?
 5. Graphic level default for damage/blood (per game, OWNER decided that it is per game; value not chosen).
+
+## 15. Preflight check, same day (RAN: grep and find, nothing built)
+
+- `vox_op` is NOT FOUND: a search of every `.c`, `.pdl` and `.md` under `44.xyz.01.00` (minus `xyzfs`) for the name returned no file. Section 2's "vox_op ledger" is therefore a MINE design, not a primitive. Step 2 of section 12 has to build it (or reuse the `rpg-space`/`rpg-dust` `blocks.pdl` rows plus the pieces ledger; read them first).
+- Found and usable: `blocks.pdl` in `rpg-space`, `rpg-dust`; `life.pdl` in `rpg-pet`, `rpg-space`, `cdda-hq` (hunger_ms, off by default); `mech_new_op` (`_shared-lib/ops/+x`, case `mech_new`, 43 checks); `rta_life_op` (turn-based hunger, `TURN` rows) as a model for hunger on turns.
+- `@.apps/rta/` has `ops/` only: no `events/` folder yet, so nothing calls `rta_life_op` from an event page.
+- Confidence ranking and the owner questions in section 14 are unchanged; Q1 (new app or evolve `mcl-hq`) now decides step 2.
