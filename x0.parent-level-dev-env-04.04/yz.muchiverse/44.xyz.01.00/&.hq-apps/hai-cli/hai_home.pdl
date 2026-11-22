@@ -1,0 +1,3 @@
+# hai-cli: where the hai package (the separate harnecient-hai repo) lives on this machine.
+# DEV WIRING until the installer (hai book 08, M7) puts hai under the house itself. Change this one row, nowhere else.
+HAI_HOME | /home/no/Desktop/github/work/#.hai/harnecient-hai

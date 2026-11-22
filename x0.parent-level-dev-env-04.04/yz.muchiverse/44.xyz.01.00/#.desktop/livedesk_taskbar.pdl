@@ -102,7 +102,10 @@ SECTION      | ai_menu_10_cmd        | sh _.monads/_.livedesk-taskbar/ops/open_k
 # img-hai is an h-ai window. toy.pdl used to put it under toys. That file is gone.
 SECTION      | ai_menu_11_label      | img-hai
 SECTION      | ai_menu_11_cmd        | sh &.hq-apps/img-hai/button.sh run
-SECTION      | ai_menu_12_label      | Cancel
+# hai-cli (2026-11-22, owner: "call it hai-cli and add it"): the hai FSM chat window; launcher only, the package is the separate harnecient-hai repo (see &.hq-apps/hai-cli/hai_home.pdl).
+SECTION      | ai_menu_12_label      | hai-cli
+SECTION      | ai_menu_12_cmd        | livedesk:open-hai-cli
+SECTION      | ai_menu_13_label      | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).

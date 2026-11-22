@@ -28,7 +28,7 @@ Relay file `#.desktop/entity_menu_history/<pid>.txt`, append only: move the poin
 - Never wrap `button.sh reset` in cpu_gate; relaunching changes the owner's screen: ask first.
 
 ## 5. Closing a dropdown (corrected 2026-11-14)
-Type the CANCEL row's nav number then Enter through the bar's relay (`KEY_PRESSED: 51`, `KEY_PRESSED: 49`, then `KEY_PRESSED: 13` for row 31; read the number off the photo). That closed it. I first reported it as NOT closed because I counted windows of the dropdown's size: a closed dropdown stays as an UNMAPPED window of the same geometry. Check `xwininfo -id <win> | grep "Map State"` (IsViewable = open, IsUnMapped = closed), never the existence of the window. Esc and a second click on the cell did not close it.
+Type the CANCEL row's nav number then Enter through the bar's relay (`KEY_PRESSED: 51`, `KEY_PRESSED: 49`, then `KEY_PRESSED: 13` for row 31; read the number off the photo). That closed it. **CORRECTION 2026-11-22:** a typed digit is a 1-based ROW INDEX in that menu, not the badge number, and digits do not add up across relay keys, so this can land on another row and Enter launches it (it launched tomom once). Prefer a pixel click on the Cancel row, and photograph the dropdown before pressing Enter. I first reported it as NOT closed because I counted windows of the dropdown's size: a closed dropdown stays as an UNMAPPED window of the same geometry. Check `xwininfo -id <win> | grep "Map State"` (IsViewable = open, IsUnMapped = closed), never the existence of the window. Esc and a second click on the cell did not close it.
 
 ## 6. Evidence rules
 A window that exists is not a window that is open: check its Map State.

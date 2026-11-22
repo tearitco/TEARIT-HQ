@@ -98,6 +98,16 @@ CAPTION_PAD = 18
 CAPTION_MIN_H = 90
 
 
+# Language rule (presentations standard 3b): a caption may be "SUBTITLE ## SPOKEN". The strip shows the SUBTITLE (e.g. Japanese, needs --font),
+# the voice speaks SPOKEN (e.g. English). With no " ## " the same text is shown and spoken, as before.
+NARRATOR_SHEET = None   # set by --narrator <faces sheet png>: second face of the top row (RPG Maker 144x144 cells), standard 3c
+def split_caption(caption: str):
+    if " ## " in caption:
+        shown, spoken = caption.split(" ## ", 1)
+        return shown.strip(), spoken.strip()
+    return caption, caption
+
+
 def parse_manifest(manifest_path: Path):
     rows = []
     for lineno, raw in enumerate(manifest_path.read_text().splitlines(), 1):
@@ -142,14 +152,18 @@ def render_captioned_frame(src_path: Path, caption: str, target_w: int, out_path
         new_h = int(img.height * (target_w / img.width))
         img = img.resize((target_w, new_h), Image.LANCZOS)
 
+    caption, _spoken = split_caption(caption)
+    face_w = 0
+    if NARRATOR_SHEET is not None:
+        face_w = 110   # the narrator sits LEFT of the words and the whole screen stays in frame (standard 3c)
     font = ImageFont.truetype(FONT_REGULAR, size=max(14, target_w // 60))
     label_font = ImageFont.truetype(FONT_BOLD, size=max(12, target_w // 80))
 
     draw_probe = ImageDraw.Draw(img)
-    max_text_w = img.width - 2 * CAPTION_PAD
+    max_text_w = img.width - 2 * CAPTION_PAD - face_w
     lines = wrap_caption(caption, font, max_text_w, draw_probe)
     line_h = font.getbbox("Ag")[3] + 6
-    caption_h = max(CAPTION_MIN_H, CAPTION_PAD * 2 + line_h * len(lines) + 22)
+    caption_h = max(CAPTION_MIN_H, CAPTION_PAD * 2 + line_h * len(lines) + 22, (110 + 20) if face_w else 0)
 
     total_h = img.height + caption_h
     # libx264 requires even width/height - round up and pad rather than
@@ -168,8 +182,12 @@ def render_captioned_frame(src_path: Path, caption: str, target_w: int, out_path
     draw.text((CAPTION_PAD, img.height + 10), label, font=label_font, fill=THEME["label"])
 
     y = img.height + 10 + label_font.getbbox("Ag")[3] + 8
+    if face_w:
+        sheet = Image.open(NARRATOR_SHEET).convert("RGBA")
+        face = sheet.crop((144, 0, 288, 144)).resize((100, 100), Image.LANCZOS)
+        canvas.paste(face, (CAPTION_PAD, img.height + 16), face)
     for line in lines:
-        draw.text((CAPTION_PAD, y), line, font=font, fill=THEME["fg"])
+        draw.text((CAPTION_PAD + face_w, y), line, font=font, fill=THEME["fg"])
         y += line_h
 
     canvas.save(out_path)
@@ -259,7 +277,7 @@ def build_video(feature_dir: Path, fps: int, width: int, use_tts: bool, voice: s
         if do_tts:
             audio_path = rendered_dir / f"frame_{i:03d}.wav"
             try:
-                dur = synthesize_caption(caption, voice, audio_path)
+                dur = synthesize_caption(split_caption(caption)[1], voice, audio_path)
             except Exception as e:
                 print(f"warning: TTS failed for frame {i} ({e!r}) - frame will be silent", file=sys.stderr)
                 dur = 0.0
@@ -353,12 +371,14 @@ def main():
     ap.add_argument("--voice", default=DEFAULT_VOICE,
                      help=f"pet voice name, edge-style from voices.pdl (default: {DEFAULT_VOICE})")
     ap.add_argument("--font", default=None, help="caption font file (a .ttf or .ttc); needed for Japanese or Chinese captions, the default DejaVuSans has no CJK glyphs (e.g. /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc)")
+    ap.add_argument("--narrator", default=None, help="RPG Maker faces sheet png; shows its second top-row face left of the caption (standard 3c)")
     ap.add_argument("--theme", default="plain", choices=sorted(THEMES), help="caption palette: tearit (gold/red/light purple), tsots (black/red/yellow), harnecient (green), plain (old dark strip)")
     ap.add_argument("--title", default=None,
                      help="YouTube-ready title (default: derived from the feature dir name)")
     args = ap.parse_args()
-    global THEME
+    global THEME, NARRATOR_SHEET
     THEME = THEMES[args.theme]
+    NARRATOR_SHEET = args.narrator
     if args.font:
         global FONT_REGULAR, FONT_BOLD
         FONT_REGULAR = FONT_BOLD = args.font

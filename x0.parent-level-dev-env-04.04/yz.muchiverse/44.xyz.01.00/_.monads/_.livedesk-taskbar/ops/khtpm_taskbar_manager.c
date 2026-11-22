@@ -5888,6 +5888,18 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-hai-cli") == 0) {
+        /* hai-cli (2026-11-22, owner: "call it hai-cli and add it"): the hai FSM chat window.
+         * Same registry indirection as h-ai-lab: path from livedesk_launchers.pdl launcher_hai_cli.
+         * The launcher only starts the window; the package is the separate harnecient-hai repo. */
+        char launcher[KTB_PATH_BUF];
+        if (ktb_hq_launcher_path(s->house_root, "hai_cli", launcher, sizeof(launcher))) {
+            char sh[KTB_PATH_BUF * 3];
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s\" run' >/dev/null 2>&1 &", launcher);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
+        }
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-colab-hai") == 0) {
         /* co-lab-hai (h-ai cell) - real, human-supervised multi-agent
          * chat window. Launched via button.sh, exact same pattern as
