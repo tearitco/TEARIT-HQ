@@ -32,10 +32,10 @@
         </repeat>
       </row>
       <!-- the game popup (new level, place, publish...) from the game feed: gm_on, gm_title, gmt_i_text, gmb_i_label and _act. It is the same feed the editor drew; here it is Teario own row. -->
-      <row id="game-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${gm_on}">
+      <row id="game-ov" class="canvas-overlay-right ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${gm_on}">
         <text label="${gm_title}" class="hb-quiet ov-title theme-3"/>
         <repeat count="${gm_nt}" bind="gmt"><text label="${gmt.text}" class="hb-quiet"/></repeat>
-        <repeat count="${gm_nb}" bind="gmb"><item id="gmb${gmb.#}" class="rp-menu-row" label="${gmb.label}" action="${gmb.act}"/></repeat>
+        <repeat count="${gm_nb}" bind="gmb"><item id="gmb${gmb.#}" class="pchq-ft skin-bar" label="${gmb.label}" action="${gmb.act}"/></repeat>
       </row>
     </panel>
     <footer id="statusbar" class="pchq-footer">
