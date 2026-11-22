@@ -1252,7 +1252,7 @@ static int driver_main(int argc, char **argv) {
     if (flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "game_core driver: already running\n"); return 0; }
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = on_term; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); sigaction(SIGHUP, &sa, NULL);
     FILE *devnull = fopen("/dev/null", "w"); OUT = devnull ? devnull : stdout; ERRF = OUT;
-    if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; page_make(); snprintf(dmsg, sizeof dmsg, "a game was in progress; it continues while the Player menu says playing"); }
+    if (!reload() && S.phase >= PH_PLAY) { mode_play = 1; page_make(); snprintf(dmsg, sizeof dmsg, OWN_RUN ? "a game was in progress; it is running" : "a game was in progress; it continues while the Player menu says playing"); }
     if (KIND == K_EDITOR) { mode_play = 1; if (S.phase == PH_NONE) { char o2[200]; char *n1[] = { (char *)"new" }; if (verb_here(1, n1, o2, sizeof o2)) snprintf(dmsg, sizeof dmsg, "new refused: %.180s", o2); else { reload(); write_doc(); snprintf(dmsg, sizeof dmsg, "an empty document: add start and goal, then publish"); } } }
     struct stat s; long cursor = stat(ACT, &s) ? 0 : (long)s.st_size; char relay[P]; snprintf(relay, sizeof relay, "%s/state/interact_relay.txt", EDIT); long kcur = stat(relay, &s) ? 0 : (long)s.st_size;   /* the driver tails the editor's key file with its OWN cursor, starting at the end: keys pressed before it started are never replayed */
     if (load_tuning()) { snprintf(dmsg, sizeof dmsg, "%.150s (the default pace is used)", MSG); TICK_MS = 0; }   /* a refused tick_ms is shown in the feed, not hidden: the game still runs at the kind's default */
