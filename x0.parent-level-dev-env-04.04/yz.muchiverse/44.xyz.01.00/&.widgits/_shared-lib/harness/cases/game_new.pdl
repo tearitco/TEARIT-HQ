@@ -466,7 +466,7 @@ WAIT_HAS | edit3/state/game_ui.txt | publish refused | 8000 | THE-PUBLISH-RULE-r
 EXPECT_LACKS | $T/edit3/state/games/demo-doc/game/ledger.txt | \ppublish\p | and-writes-no-publish-row
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | add_goal | $T/edit3/state/games/demo-doc
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | ctl | publish | $T/edit3/state/games/demo-doc
-WAIT_HAS | edit3/state/game_ui.txt | , published, | 8000 | and-publishes-once-start-and-goal-exist
+WAIT_HAS | edit3/state/game_ui.txt | gmt_2_text=published | 8000 | and-publishes-once-start-and-goal-exist
 EXPECT_HAS | $T/edit3/state/games/demo-doc/game/doc.txt | ROW\pgoal\p | the-doc.txt-projection-is-written
 RUN | $T/h/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/h/@.apps/demo-doc | $T/edit3/state/games/demo-doc/game | audit
 EXPECT_OUT | AUDIT ok files=3 | the-editor-state-folder-passes-the-audit
