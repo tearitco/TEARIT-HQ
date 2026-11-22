@@ -1,5 +1,5 @@
 # Shore slice: park, beach, water, pier. Counts are the hand grid. blue=1 is a deep-water pixel.
-RESULTS | rta_shore
+RESULTS | ../results/rta_shore.txt
 CASE | shore
 SCRATCH
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_shore_op.+x | $HOUSE/@.apps/rta/ops/rta_shore_op.c | -lpng | -lz

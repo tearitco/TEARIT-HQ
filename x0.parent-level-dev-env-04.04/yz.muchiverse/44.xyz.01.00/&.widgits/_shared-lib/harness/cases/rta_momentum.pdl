@@ -1,5 +1,5 @@
 # Speed stays until the next cell is not a road.
-RESULTS | rta_momentum
+RESULTS | ../results/rta_momentum.txt
 CASE | momentum
 SCRATCH
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c

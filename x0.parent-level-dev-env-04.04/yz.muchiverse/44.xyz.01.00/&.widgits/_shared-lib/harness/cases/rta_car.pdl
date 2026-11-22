@@ -1,5 +1,5 @@
 # One car. Ledger is the position. The second step moves +1 x. Off-road stays.
-RESULTS | rta_car
+RESULTS | ../results/rta_car.txt
 CASE | car
 SCRATCH
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_car_op.+x | $HOUSE/@.apps/rta/ops/rta_car_op.c

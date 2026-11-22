@@ -1,0 +1,76 @@
+# One living entity, one car, ledger rows only. Parts are four data rows; fuel is a conserved count.
+# Enter, drive one road cell, exit, eat; each refusal has a negative control; replay twice = same rows.
+RESULTS | ../results/rta_life.txt
+CASE | life
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_life_op.+x | $HOUSE/@.apps/rta/ops/rta_life_op.c
+EXPECT_EXIT | 0 | life op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
+EXPECT_EXIT | 0 | momentum op compiles
+WRITE | rules.pdl | RULE \p hunger_start \p 80\nRULE \p eat_amount \p 30\nRULE \p fuel_per_cell \p 1\nRULE \p drive_speed \p 1\n
+MKDIR | a
+MKDIR | b
+MKDIR | c
+MKDIR | d
+RUN | $T/rta_life_op.+x | --describe
+EXPECT_OUT | rule rta_life | describe
+# four PART rows
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | engine | gas | ok | 0
+EXPECT_EXIT | 0 | engine row
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | tank | gas | ok | 3
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | tires | gas | ok | 0
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | steering | gas | ok | 0
+EXPECT_HAS | $T/a/l.txt | PART \p car \p tank \p gas \p ok \p 3 | tank row holds 3 fuel
+# drive before entering refuses (negative control for the in-car check)
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/a/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/a/m.txt | $T/a/e.txt
+EXPECT_EXIT | 10 | drive outside the car refuses
+EXPECT_LACKS | $T/a/l.txt | DRIVE | refusal wrote no DRIVE row
+EXPECT_NOFILE | $T/a/m.txt | road step never ran
+RUN | $T/rta_life_op.+x | enter | $T/rules.pdl | $T/a/l.txt | joe | car
+EXPECT_EXIT | 0 | enter
+RUN | $T/rta_life_op.+x | enter | $T/rules.pdl | $T/a/l.txt | joe | car
+EXPECT_EXIT | 12 | enter twice refuses
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/a/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/a/m.txt | $T/a/e.txt
+EXPECT_EXIT | 0 | drive one road cell
+EXPECT_OUT | x=1 y=0 fuel=2 | one cell east, one fuel used
+EXPECT_HAS | $T/a/m.txt | MOM \p 1 \p 0 \p 1 | road ledger moved the car
+RUN | $T/rta_life_op.+x | exit | $T/rules.pdl | $T/a/l.txt | joe | car
+EXPECT_EXIT | 0 | exit
+RUN | $T/rta_life_op.+x | exit | $T/rules.pdl | $T/a/l.txt | joe | car
+EXPECT_EXIT | 12 | exit when not in car refuses
+RUN | $T/rta_life_op.+x | eat | $T/rules.pdl | $T/a/l.txt | joe
+EXPECT_OUT | hunger=50 | eat lowers hunger 80 to 50
+RUN | $T/rta_life_op.+x | eat | $T/rules.pdl | $T/a/l.txt | joe
+EXPECT_OUT | hunger=20 | second eat 50 to 20
+RUN | $T/rta_life_op.+x | status | $T/rules.pdl | $T/a/l.txt | joe | car
+EXPECT_OUT | in_car=0 hunger=20 fuel=2 turn=5 | five manual turns, fuel only went down
+# remove a tire: drive refuses
+RUN | $T/rta_life_op.+x | enter | $T/rules.pdl | $T/a/l.txt | joe | car
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | tires | gas | missing | 0
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/a/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/a/m.txt | $T/a/e.txt
+EXPECT_EXIT | 11 | missing tire refuses
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | tires | gas | ok | 0
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/a/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/a/m.txt | $T/a/e.txt
+EXPECT_OUT | x=2 y=0 fuel=1 | tire put back, drive works again (control)
+# empty fuel refuses
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/a/l.txt | car | tank | gas | empty | 0
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/a/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/a/m.txt | $T/a/e.txt
+EXPECT_EXIT | 11 | empty tank refuses
+# a missing rule refuses
+RUN | $T/rta_life_op.+x | eat | $T/nope.pdl | $T/a/l.txt | joe
+EXPECT_EXIT | 9 | missing RULE row refuses (no C constant)
+# replay twice into fresh ledgers: identical rows, and identical to the original
+RUN | $T/rta_life_op.+x | replay | $T/rules.pdl | $T/a/l.txt | $T/b/l.txt | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/b/m.txt | $T/b/e.txt
+EXPECT_EXIT | 0 | replay 1
+RUN | $T/rta_life_op.+x | replay | $T/rules.pdl | $T/a/l.txt | $T/c/l.txt | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/c/m.txt | $T/c/e.txt
+EXPECT_EXIT | 0 | replay 2
+SUMTREE | ha | $T/a
+SUMTREE | hb | $T/b
+SUMTREE | hc | $T/c
+EXPECT_EQ | $hb | $hc | two replays give identical ledgers, road ledger and projection
+EXPECT_EQ | $ha | $hb | replay equals the original run
+# negative control: a tampered ledger (one tire row dropped) makes the replay diverge, and the hash differs
+WRITE | d/src.txt | PART \p car \p engine \p gas \p ok \p 0\nPART \p car \p tank \p gas \p ok \p 3\nPART \p car \p steering \p gas \p ok \p 0\nENTER \p joe \p car\nDRIVE \p joe \p car \p 1 \p 0 \p 2\n
+RUN | $T/rta_life_op.+x | replay | $T/rules.pdl | $T/d/src.txt | $T/d/l.txt | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/d/m.txt | $T/d/e.txt
+EXPECT_EXIT | 14 | a ledger without tires does not replay (negative control)
+CLEAN

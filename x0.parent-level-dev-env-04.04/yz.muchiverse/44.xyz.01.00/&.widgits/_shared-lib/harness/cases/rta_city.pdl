@@ -1,5 +1,5 @@
 # Tiny box: a pond, a road, one roof. Border grass becomes the harbour.
-RESULTS | rta_city
+RESULTS | ../results/rta_city.txt
 CASE | city
 SCRATCH
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_city_op.+x | $HOUSE/@.apps/rta/ops/rta_city_op.c | -lpng | -lz | -lm

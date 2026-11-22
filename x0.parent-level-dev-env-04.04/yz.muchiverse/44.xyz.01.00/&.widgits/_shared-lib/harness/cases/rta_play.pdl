@@ -1,12 +1,13 @@
 # Walk, cash, and wanted. Each number is the ledger.
-RESULTS | rta_play
+RESULTS | ../results/rta_play.txt
 CASE | play
 SCRATCH
+WRITE | rules.pdl | RULE \p stars_max \p 2\n
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_walk_op.+x | $HOUSE/@.apps/rta/ops/rta_walk_op.c
 EXPECT_EXIT | 0 | walk compiles
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_cash_op.+x | $HOUSE/@.apps/rta/ops/rta_cash_op.c
 EXPECT_EXIT | 0 | cash compiles
-RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_wanted_op.+x | $HOUSE/@.apps/rta/ops/rta_wanted_op.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_bay_wanted_op.+x | $HOUSE/@.apps/rta/ops/rta_bay_wanted_op.c
 EXPECT_EXIT | 0 | wanted compiles
 RUN | $T/rta_walk_op.+x | step | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_walk_tiny.grid | $T/ledger.txt
 EXPECT_EXIT | 0 | walk places
@@ -19,8 +20,12 @@ RUN | $T/rta_cash_op.+x | add | $T/ledger.txt | 10
 EXPECT_OUT | cash=10 | first cash
 RUN | $T/rta_cash_op.+x | add | $T/ledger.txt | 5
 EXPECT_OUT | cash=15 | cash adds
-RUN | $T/rta_wanted_op.+x | add | $T/ledger.txt
+RUN | $T/rta_bay_wanted_op.+x | add | $T/ledger.txt | $T/rules.pdl
 EXPECT_OUT | wanted=1 | first star
-RUN | $T/rta_wanted_op.+x | add | $T/ledger.txt
+RUN | $T/rta_bay_wanted_op.+x | add | $T/ledger.txt | $T/rules.pdl
 EXPECT_OUT | wanted=2 | second star
+RUN | $T/rta_bay_wanted_op.+x | add | $T/ledger.txt | $T/rules.pdl
+EXPECT_OUT | wanted=2 | the cap is the RULE row (2), not a C constant
+RUN | $T/rta_bay_wanted_op.+x | add | $T/ledger.txt | $T/nonexistent.pdl
+EXPECT_EXIT | 4 | no rules row refuses (negative control)
 CLEAN

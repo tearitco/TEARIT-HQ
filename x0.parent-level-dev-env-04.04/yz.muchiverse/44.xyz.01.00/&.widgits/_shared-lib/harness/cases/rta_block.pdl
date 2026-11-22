@@ -1,5 +1,5 @@
 # East Battery block: grass, cobble road, thatch roofs. Counts are the fixture grid.
-RESULTS | rta_block
+RESULTS | ../results/rta_block.txt
 CASE | block
 SCRATCH
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_block_op.+x | $HOUSE/@.apps/rta/ops/rta_block_op.c | -lpng | -lz

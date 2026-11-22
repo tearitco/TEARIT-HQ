@@ -107,7 +107,8 @@ Ops on `grok`, local then pushed with this note:
 
 - `rta_shore_op`, `rta_block_op`, `rta_city_op` paint a `.pdl` of `BOX`, `CELL`, and `FEAT` rows. Glyphs are `.KPRSWiB`. Harnesses `rta_shore`, `rta_block`, `rta_city`.
 - `rta_stand_op` writes a desk from a city grid. Building glyph `B` extrudes to 3. Harness `rta_stand`.
-- `rta_car_op`, `rta_walk_op`, `rta_cash_op`, `rta_wanted_op` append ledger rows and, for the car, rewrite `events.txt`. Harnesses `rta_car` and `rta_play`. Walk stops at water. Cash adds. Wanted stops at 5.
+- `rta_car_op`, `rta_walk_op`, `rta_cash_op`, `rta_bay_wanted_op` (renamed 2026-11-22 from `rta_wanted_op`: crime is the bay slice, not Centon) append ledger rows and, for the car, rewrite `events.txt`. Harnesses `rta_car` and `rta_play`. Walk stops at water. Cash adds. Stars stop at the RULE row `stars_max`.
+- 2026-11-22 `rta_life_op` (harness `rta_life`, 27 checks): one entity, ENTER/EXIT/DRIVE/EAT/PART rows, manual turns, DRIVE calls `rta_momentum_op` only in the car with engine, tank (fuel count), tires, steering all ok; numbers are RULE rows; `replay` rebuilds identical ledgers. The `rta_*` verdict files had been written to `cases/` because `RESULTS` is relative to the case file; now `../results/<name>.txt`.
 - Commits before this doc: `5ade0ebe0`, `08c1e20b3`, `fb3e095d0`, `261de11ed`, `734c59606`.
 
 Decks, outside git: `XO/31.Nov/nov-21/12.rta-battery-city/`, `13.rta-stood-up/`, `14.centon-tour/`, `15.bay-slice/`. Narrator face is Actor1, second face, top row, in the caption strip. English voice, Japanese subtitle. The whole picture stays in frame.

@@ -1,5 +1,5 @@
 # Desk writer: building glyph B extrudes to 3. Car steps along R.
-RESULTS | rta_stand
+RESULTS | ../results/rta_stand.txt
 CASE | stand
 SCRATCH
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_stand_op.+x | $HOUSE/@.apps/rta/ops/rta_stand_op.c | -lpng | -lz
