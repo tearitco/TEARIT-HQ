@@ -1,5 +1,20 @@
 # Grok onboarding (read this first)
 
+## Next session is the cities (2026-11-22)
+
+Read this block before the 2026-10-29 editor notes. The city work is on branch `grok`. Start at `16.game/RTA-BATTERY-CONVERSION-2026-11-21.md`, then `XO/31.Nov/nov-22/0.rta-cities-handoff.md` and `0.rta-agent-compendium.md`. Style for videos is `XO/31.Nov/nov-22/0.tsots-style-guide.md`.
+
+What the owner corrected after the cube was built:
+
+- Roadmap momentum means the next piece of work that makes the following piece cheaper. It does not mean `rta_momentum_op`.
+- That op is a stopgap cube. A speed of 1 to 4 holds on road glyph `R` and drops to 0 off the road. Harness `rta_momentum` passed 6 of 6. It is not the driver.
+- SAID 2026-11-22: a car is always driven by a living entity with an FSM, the same family as the petslike projects. The entity gets in and gets out. Outside the car it eats, sleeps, and does its other tasks. Every entity is living. No car drives itself.
+- SAID the same day: the car is parts, simple now and Dustopia-scalable later, in the CDDA shape. Rows: engine or motor, gas or electric store, tires, steering, then more when a task needs them. Drive works only when the moving parts are installed and fueled. A later zoom may open a part onto a material or a molecule. This city does not run that zoom. Do not copy CDDA text or code. Do not put parts in `game_core`.
+- The next piece of work is that one living driver, photographed in the car and then out of it. A third city, a planet, a model, and Minecraft wait on that.
+- Centon (`@.apps/centon`, 168×254, 10 m) and the bay slice (`@.apps/bay-slice`, 163×216, 20 m) are editor books. Reopen the editor board to list them. Play still starts `game_core` and does not call the city ops.
+- Cache, not in git: `#.NNEST_ASSETS/rta-sources/INVENTORY.pdl`. Jerusalem old city and a Giza box are Overpass JSON there (TSOTS). They are not painted. Talks: TSOTS for Bible lands, tearitco for Centon, JBEZ for Dogpatch, JBYOND for the Mars parallel. Actor1 remains the only narrator face until the owner names another crop.
+- Do not turn on a world clock. Do not change the camera. Commit on `grok` by path from the grok worktree.
+
 The 2026-11-10 skyland and crew lane is `ONBOARD-2026-11-10-SKYLAND-AND-CREW.md` in this folder. Read it before touching `bp_op`, `crew_op`, or the Centroid docs. The editor notes below are still the camera and the board.
 
 Written 2026-10-29 after a live pass on `rpg-edit-hq`. The next Grok
