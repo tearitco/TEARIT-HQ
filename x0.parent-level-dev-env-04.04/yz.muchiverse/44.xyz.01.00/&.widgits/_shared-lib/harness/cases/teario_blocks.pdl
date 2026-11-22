@@ -1,0 +1,130 @@
+# teario_blocks (2026-11-22; decision D106): COIN and BRICK blocks in the REAL game_core platform body, inputs only. A scratch copy of teario-play on a 16 x 8 level: a brick at (4,4) over the START cell (4,6), a coin at (6,6) on the way, ground on row 7.
+# HAND-COMPUTED: the body spawns at x 1052 y 1592 (cell 4, feet on the floor); the first tick lets it land (grounded), so a jump pressed at tick 0 fires at tick 2 (rise 200, then 184): after tick 3 the head would be at 1592-384 = 1208, inside the brick's row (bottom edge 1280) so it is snapped flush (y 1280) and the brick at (4,4) breaks: row `brick|p1|4,4|value=5;score=5` at tick 3.
+# OBSERVED pins (deterministic): the coin at (6,6) is touched at tick 22 while running right (row `coin|p1|6,6|value=10;score=15`); the ckpt at tick 42 pins a hash. A brick beside the body (level Side) is a wall and is not broken.
+RESULTS | ../results/teario_blocks.txt
+ENV | LC_ALL | C
+
+CASE    | tb_setup
+SCRATCH |
+COPYDIR | @.apps/teario | tb/teario
+COPYDIR | @.apps/teario-play | tb/plat
+RUN | sed | -i | s/meadow\.pdl/blocks.pdl/ | $T/tb/plat/rulesets/default/board.pdl
+WRITE | tb/teario/levels/blocks.pdl | # level.pdl - scratch\nMETA  \p name \p Blocks\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 14 \p 6\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ....B...........\nROW   \p 5 \p ................\nROW   \p 6 \p ......o.........\nROW   \p 7 \p ################
+WRITE | tb/teario/levels/side.pdl | # level.pdl - scratch\nMETA  \p name \p Side\nMETA  \p size \p 16 x 8\nSTART \p 4 \p 6\nGOAL  \p 14 \p 6\nROW   \p 0 \p ................\nROW   \p 1 \p ................\nROW   \p 2 \p ................\nROW   \p 3 \p ................\nROW   \p 4 \p ................\nROW   \p 5 \p ................\nROW   \p 6 \p .......B........\nROW   \p 7 \p ################
+COPYDIR | @.apps/teario-play | tb/side
+RUN | sed | -i | s/meadow\.pdl/side.pdl/ | $T/tb/side/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-play | tb/badnum
+RUN | sed | -i | s/meadow\.pdl/blocks.pdl/ | $T/tb/badnum/rulesets/default/board.pdl
+RUN | sed | -i | s/^BLOCK \p brick \p B \p 5/BLOCK \p brick \p B \p -1/ | $T/tb/badnum/rulesets/default/blocks.pdl
+COPYDIR | @.apps/teario-play | tb/solidcoin
+RUN | sed | -i | s/meadow\.pdl/blocks.pdl/ | $T/tb/solidcoin/rulesets/default/board.pdl
+RUN | sed | -i | s/^LEVEL \p solid \p .*/LEVEL \p solid \p #o/ | $T/tb/solidcoin/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-play | tb/old
+COPYDIR | @.apps/teario-make | tb/oldmake
+COPYDIR | @.apps/teario-make | tb/newmake
+RUN | rm | $T/tb/old/rulesets/default/blocks.pdl
+RUN | rm | $T/tb/oldmake/rulesets/default/blocks.pdl
+COPYDIR | @.apps/teario-play | tb/oldplay_new
+COPYDIR | @.apps/teario-play | tb/ctrl
+RUN | sed | -i | s/^RULE \p patrol_speed \p 10/RULE \p patrol_speed \p 11/ | $T/tb/ctrl/rulesets/default/rules.pdl
+EXPECT_HAS | $T/tb/plat/rulesets/default/blocks.pdl | BLOCK \p brick \p B \p 5 | the-shipped-blocks-file-declares-the-brick-and-its-number
+EXPECT_HAS | $T/tb/plat/rulesets/default/blocks.pdl | BLOCK \p coin  \p o \p 10 | and-the-coin-and-its-number
+
+CASE    | tb_brick
+MKDIR   | g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | input | p1 | jump | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | advance | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | status
+EXPECT_OUT | score=5 stomps=0 kills=0 hits=0 armed=0 enemies=0 coins=0 bricks=1 | HAND-COMPUTED-the-jump-breaks-the-brick-over-the-start-(+5)-and-no-coin-yet
+EXPECT_HAS | $T/g/ledger.txt | EVENT\p3\pbank\pbrick\pp1\p4,4\pvalue=5;score=5 | HAND-COMPUTED-the-ledger-has-the-consequence-row-at-tick-3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | check
+EXPECT_EXIT | 0 | the-run-checks-out
+
+CASE    | tb_coin
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | input | p1 | right | 12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | advance | 30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | status
+EXPECT_OUT | score=15 stomps=0 kills=0 hits=0 armed=0 enemies=0 coins=1 bricks=1 | OBSERVED-the-run-right-touches-the-coin-at-tick-22-(+10)-the-brick-count-stays
+EXPECT_HAS | $T/g/ledger.txt | EVENT\p22\pbank\pcoin\pp1\p6,6\pvalue=10;score=15 | OBSERVED-the-coin-consequence-row
+EXPECT_HAS | $T/g/ledger.txt | hash=bf8ce3e824e91d7b | OBSERVED-the-ckpt-at-tick-42-pins-the-state-hash-including-the-changed-level
+
+CASE    | tb_replay_twice
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | status
+EXPECT_OUT | tick=42 | the-first-replay-from-the-ledger-alone-gives-the-same-tick
+EXPECT_OUT | coins=1 bricks=1 | and-the-same-block-counts
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | status
+EXPECT_OUT | score=15 | and-the-second-replay-gives-the-same-score
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/g | replay
+EXPECT_EXIT | 0 | replay-verifies-every-ckpt-hash
+
+CASE    | tb_forged_ledgers
+MKDIR   | f1
+RUN | sh | -c | grep -v '\pcoin\p' $T/g/ledger.txt > $T/f1/ledger.txt
+RUN | cmp | $T/g/ledger.txt | $T/f1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-forged-file-differs
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/f1 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-ledger-with-the-coin-row-deleted-is-refused
+EXPECT_OUT | no row recorded | and-the-refusal-says-a-consequence-was-not-recorded
+MKDIR   | f2
+RUN | sh | -c | sed 's/\pcoin\pp1\p6,6\p/\pcoin\pp1\p7,6\p/' $T/g/ledger.txt > $T/f2/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/f2 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-coin-row-moved-to-another-cell-is-refused
+MKDIR   | f3
+RUN | sh | -c | sed 's/\pbrick\pp1\p4,4\p/\pbrick\pp1\p5,4\p/' $T/g/ledger.txt > $T/f3/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/f3 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-brick-row-moved-to-another-cell-is-refused
+MKDIR   | f4
+RUN | sh | -c | sed 's/\pcoin\pp1\p6,6\pvalue=10;score=15/\pcoin\pp1\p6,6\pvalue=99;score=15/' $T/g/ledger.txt > $T/f4/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/plat | $T/f4 | status
+EXPECT_EXIT | 1 | NEGATIVE-a-row-with-another-value-is-refused
+
+CASE    | tb_side_is_a_wall
+MKDIR   | s
+MKDIR   | norule_g
+MKDIR   | nobrick_g
+MKDIR   | soft_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/side | $T/s | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/side | $T/s | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/side | $T/s | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/side | $T/s | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/side | $T/s | advance | 60
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/side | $T/s | status
+EXPECT_OUT | body=1592 | HAND-COMPUTED-the-body-stops-against-the-brick-at-column-7:-7-x-256-minus-200-is-1592
+EXPECT_OUT | bricks=0 | NEGATIVE-a-brick-hit-from-the-side-is-not-broken
+EXPECT_OUT_LACKS | brick\p | the-status-line-has-no-brick-row
+
+CASE    | tb_bad_blocks_are_refused
+MKDIR   | badnum_g
+MKDIR   | solidcoin_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/badnum | $T/badnum_g | status
+EXPECT_EXIT | 2 | NEGATIVE-a-negative-brick-number-in-blocks.pdl-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/solidcoin | $T/solidcoin_g | status
+EXPECT_EXIT | 2 | NEGATIVE-a-coin-tile-that-is-in-the-solid-set-is-refused
+
+CASE    | tb_old_ledgers_still_open
+# the lead's finding 2026-11-22: a rules change must not destroy existing documents and runs. blocks.pdl is NOT part of the rules hash, so a ledger made BEFORE the blocks existed (the folder without blocks.pdl) opens unchanged with the blocks present. Play: a run on the plain Meadow level; Make: a document. NEGATIVE CONTROL: a change to a HASHED rules row (patrol_speed 10 -> 11) refuses the same ledger.
+MKDIR   | old_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/old | $T/old_g | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/old | $T/old_g | join | H | human
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/old | $T/old_g | start
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/old | $T/old_g | input | p1 | right | 0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/old | $T/old_g | advance | 20
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/old | $T/old_g | status
+EXPECT_OUT | tick=20 | vacuity-the-old-run-works-without-blocks.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/oldplay_new | $T/old_g | status
+EXPECT_EXIT | 0 | the-old-ledger-opens-under-the-NEW-ruleset-with-blocks.pdl
+EXPECT_OUT | tick=20 | and-replays-to-the-same-tick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/oldplay_new | $T/old_g | replay
+EXPECT_EXIT | 0 | and-verifies
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/ctrl | $T/old_g | status
+EXPECT_EXIT | 1 | NEGATIVE-CONTROL-a-hashed-rules-row-changed-refuses-the-same-ledger
+MKDIR   | oldmake_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/oldmake | $T/oldmake_g | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/oldmake | $T/oldmake_g | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/oldmake | $T/oldmake_g | status
+EXPECT_OUT | doc_rows= | vacuity-the-old-document-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tb/newmake | $T/oldmake_g | status
+EXPECT_EXIT | 0 | the-old-Make-document-opens-under-the-NEW-Make-ruleset-with-blocks.pdl

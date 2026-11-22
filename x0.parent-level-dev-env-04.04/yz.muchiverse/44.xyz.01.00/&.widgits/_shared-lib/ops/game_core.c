@@ -65,6 +65,8 @@ enum { F_REACH = 0, F_STAY = 1, F_BOUNCE = 2 };
 #include "../rule_fireball.c"   /* the FIREBALL rule (D92/D93): one pure module, also the CLI op rule_fireball_op */
 #include "../rule_stomp.c"   /* the STOMP / HIT rule (D92/D93): one pure module, also the CLI op rule_stomp_op */
 #include "../rule_pickup.c"   /* the PICKUP rule (D92/D93): one pure module, also the CLI op rule_pickup_op */
+#include "../rule_coin.c"   /* the COIN block rule (D92/D93/D106): one pure module, also the CLI op rule_coin_op */
+#include "../rule_brick.c"   /* the BRICK block rule (D92/D93/D106): one pure module, also the CLI op rule_brick_op */
 #include "../rule_goal.c"   /* the GOAL rule (D92/D93): one pure module, also the CLI op rule_goal_op */
 #include "../rule_win.c"   /* the WIN rule (D92/D93): one pure module over rule_goal.c, also the CLI op rule_win_op */
 #include "../rule_food.c"   /* the FOOD rule (D92/D93): one pure module over seed_mix.c, also the CLI op rule_food_op */
@@ -81,6 +83,8 @@ static long R_maxp = 4, R_minp = 2, R_maxrows = 5000, R_ckpt = 10, R_seed = 7, R
 static FB_Rule FBR = { 56, 36, 4, 100 };   /* RULE fireball_speed, fireball_life, fireball_max, fireball_score; the defaults are the values before they were data */
 static ST_Rule STR = { 64, 133, 100 };   /* RULE stomp_margin, stomp_bounce, stomp_score; the defaults are the values before they were data (the bounce was jump_v * 2 / 3 = 133) */
 static PK_Rule PKR = { 50 };   /* RULE pickup_score; the default is the value before it was data */
+static CN_Rule CNR = { -1 }; static BR_Rule BRR = { -1 };   /* RULE coin_value, brick_score (D106): no default, a level with coin or brick tiles and no row is refused */
+static char COIN_CH, BRICK_CH;   /* board.pdl LEVEL | coin | <char> and LEVEL | brick | <char> (0 = this game has none) */
 static SP_Rule SPR = { 200, 200 };   /* RULE body_w, body_h; the defaults are the sizes before they were data */
 static long FAM = 2;   /* RULE fall_margin (whole cells below the world); the default is the value before it was data */
 static int LENGTH = 30, NJ; static int JF[MAXJ], JT[MAXJ];
@@ -90,6 +94,7 @@ static char REQ[8][32]; static int NREQ;
 static uint64_t RULES_HASH;
 /* a level (mode walk, and the editor's level document): LVROW[y] is a string of LW tiles; START and GOAL are cells */
 static struct { int w, h, sx, sy, gx, gy; char rows[LVMAXH][LVMAXW + 1]; char name[64]; int ne, ex[8], ey[8], npw, px[4], py[4]; } LV;   /* ne enemies (ENEMY rows), npw projectile power-ups (POWER rows) */
+static char ROWS0[LVMAXH][LVMAXW + 1];   /* the pristine level rows of a platform game (a coin or brick turns a tile of LV.rows into `.` while it runs; `start` restores them from here) */
 
 typedef struct { long round; char actor[32], verb[16], target[200], at[48], res[300]; } Row;
 typedef struct { long tick; char verb[8], target[16], at[32], res[200]; } Ev;
@@ -100,13 +105,15 @@ static struct {
     /* ledger: the last roll (derived by replay, not hashed) and the last five table-talk sentences */
     int l_valid, l_who, l_roll, l_from, l_land, l_to, l_kind, l_win, l_human; char tk[5][200]; long ntk;
     /* snake (mode snake): body[0] is the head; sdir 0 L 1 R 2 U 3 D; q = consequence rows the ticks made and no row has recorded yet */
-    int slen, sgrow, sdir, sscore, sfood_x, sfood_y, sfoods, bx[SNMAX], by[SNMAX], lastturn_ok; long lastturn_tick; int nq; Ev q[4];
+    int slen, sgrow, sdir, sscore, sfood_x, sfood_y, sfoods, bx[SNMAX], by[SNMAX], lastturn_ok; long lastturn_tick; int nq; Ev q[8];
     /* editor with a level document: the last verified clear (its level hash and run hash) */
     char clear_level[20], clear_run[20];
     /* platform (mode platform): one gravity-field body per player (Q8 cells), the pending one-tick jump pulse, and how many times a player fell out of the level and was put back on START */
     PF_Body pb[MAXPL]; int jp[MAXPL]; long falls;
     /* platform extras (2026-11-18): enemies (walkers on the same physics), power-ups, fireballs; per player: armed, facing, fire pulse, score; counts of stomps, shots and hits */
     RP_Walker en[8]; int pw_taken[4]; FB_Shot fb[4]; int armed[MAXPL], facing[MAXPL], fire[MAXPL]; long score, stomps, shots_kills, hits;
+    /* blocks (D106): coins collected and bricks broken this run; the level rows LV.rows are the derived overlay (a coin or brick turns into `.`), rebuilt from ROWS0 at `start` */
+    long coins, bricks;
 } S;
 static long KNOWN_SIZE;                      /* bytes of the ledger as this process last read or wrote it */
 
@@ -188,7 +195,7 @@ static int load_config(void) {
         else if (!strcmp(fl[1], "ruleset")) snprintf(RS, sizeof RS, "%s", fl[2]); }
     fclose(f); if (!KIND) return bad("game.pdl: GAME | kind must be ledger, realtime or editor");
     if (!good_word(RS, 24, 1)) return bad("game.pdl: bad ruleset name");
-    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; STR = (ST_Rule){ 64, 133, 100 }; PKR = (PK_Rule){ 50 }; SPR = (SP_Rule){ 200, 200 }; FAM = 2; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
+    RULES_HASH = FNV0; PT = pf_default_tune(); R_patrol = 10; FBR = (FB_Rule){ 56, 36, 4, 100 }; STR = (ST_Rule){ 64, 133, 100 }; PKR = (PK_Rule){ 50 }; CNR = (CN_Rule){ -1 }; BRR = (BR_Rule){ -1 }; COIN_CH = BRICK_CH = 0; SPR = (SP_Rule){ 200, 200 }; FAM = 2; memset(&PFIELD, 0, sizeof PFIELD); PFIELD.dy = 1; NJ = 0; NREQ = 0; MODE = M_TRACK; FINISH = F_REACH; WRAP = 0; LEVELDOC = 0; LEVELREL[0] = 0; snprintf(T_UP, sizeof T_UP, "jumped"); snprintf(T_DOWN, sizeof T_DOWN, "jumped");
     const char *files[2] = { "board.pdl", "rules.pdl" };
     for (int k = 0; k < 2; k++) { snprintf(p, sizeof p, "%s/rulesets/%s/%s", APP, RS, files[k]); f = fopen(p, "r"); if (!f) return bad("missing %s", p);
         RULES_HASH = fnv(RULES_HASH, files[k], strlen(files[k]));
@@ -218,6 +225,11 @@ static int load_config(void) {
                 else if (!strcmp(fl[1], "walls")) { if (!strcmp(fl[2], "wrap")) WRAP = 1; else if (!strcmp(fl[2], "solid")) WRAP = 0; else { fclose(f); return bad("rules.pdl: walls is solid or wrap"); } }
                 else if (!strcmp(fl[1], "doc_format")) { if (!strcmp(fl[2], "level")) LEVELDOC = 1; else { fclose(f); return bad("rules.pdl: doc_format is level"); } } } }
         fclose(f); }
+    /* blocks.pdl (D106): the block tiles and their numbers, read AFTER the hashed files and NOT part of the rules hash, so adding or tuning blocks never invalidates an existing ledger (every coin or brick consequence row records its value, replay refuses a changed number). Rows: BLOCK | brick | <char> | <score>, BLOCK | coin | <char> | <value>. A brick char is added to the solid set. */
+    snprintf(p, sizeof p, "%s/rulesets/%s/blocks.pdl", APP, RS); f = fopen(p, "r");
+    if (f) { while (fgets(ln, sizeof ln, f)) { if (ln[0] == '#') continue; n = split_row(ln, fl, 10); if (n < 4 || strcmp(fl[0], "BLOCK")) continue; long v = atol(fl[3]); if (v < 0 || v > 100000 || !fl[2][0]) { fclose(f); return bad("blocks.pdl: BLOCK needs a character and a number 0 to 100000"); }
+            if (!strcmp(fl[1], "brick")) { BRICK_CH = fl[2][0]; BRR.score = v; if (!is_solid(BRICK_CH)) { size_t L = strlen(LEVEL_SOLID); if (L < sizeof LEVEL_SOLID - 1) { LEVEL_SOLID[L] = BRICK_CH; LEVEL_SOLID[L + 1] = 0; } } }
+            else if (!strcmp(fl[1], "coin")) { COIN_CH = fl[2][0]; CNR.value = v; } else { fclose(f); return bad("blocks.pdl: BLOCK is brick or coin"); } } fclose(f); }
     if (R_minp < 1 || R_minp > R_maxp) return bad("rules.pdl: min_players is 1 to max_players");
     if (R_maxp < 1 || R_maxp > MAXPL || (R_maxp < 2 && MODE != M_SNAKE && !WALKISH)) return bad("rules.pdl: max_players is 2 to %d", MAXPL);
     if (MODE == M_SNAKE) { if (KIND != K_REALTIME) return bad("board.pdl: MODE snake needs a realtime game"); if (R_maxp != 1 || R_minp != 1) return bad("rules.pdl: a snake game has exactly one snake (min_players and max_players 1)");
@@ -226,7 +238,10 @@ static int load_config(void) {
     if (R_ckpt < 1 || R_ckpt > 1000) return bad("rules.pdl: ckpt_every is 1 to 1000");
     if (R_maxrows < 10 || R_maxrows > 100000) return bad("rules.pdl: max_rows is 10 to 100000");
     if (R_docmax < 1 || R_docmax > DOCMAX) return bad("rules.pdl: max_doc_rows is 1 to %d", DOCMAX);
-    if (WALKISH) { snprintf(p, sizeof p, "%s/%s", APP, LEVELREL); if (LEVEL_IN_RUN) { char rp[P]; snprintf(rp, sizeof rp, "%s/level.pdl", SD); if (!access(rp, R_OK)) snprintf(p, sizeof p, "%s", rp); } RULES_HASH = fnv(RULES_HASH, "level", 5); if (level_load_file(p, &RULES_HASH)) return 1; LENGTH = LV.w - 1; }   /* the level file is part of the rules hash: editing it after a game began refuses that ledger */
+    if (WALKISH) { snprintf(p, sizeof p, "%s/%s", APP, LEVELREL); if (LEVEL_IN_RUN) { char rp[P]; snprintf(rp, sizeof rp, "%s/level.pdl", SD); if (!access(rp, R_OK)) snprintf(p, sizeof p, "%s", rp); } RULES_HASH = fnv(RULES_HASH, "level", 5); if (level_load_file(p, &RULES_HASH)) return 1; LENGTH = LV.w - 1; memcpy(ROWS0, LV.rows, sizeof ROWS0);
+        if (MODE == M_PLATFORM) { int hc = 0, hb = 0; for (int y = 0; y < LV.h; y++) for (int x = 0; x < LV.w; x++) { if (COIN_CH && LV.rows[y][x] == COIN_CH) hc = 1; if (BRICK_CH && LV.rows[y][x] == BRICK_CH) hb = 1; }
+            if (hc && CNR.value < 0) return bad("rules.pdl: the level has coin tiles but no RULE coin_value (the number is data)"); if (hb && BRR.score < 0) return bad("rules.pdl: the level has brick tiles but no RULE brick_score (the number is data)");
+            if (BRICK_CH && !is_solid(BRICK_CH)) return bad("board.pdl: the brick tile %c must be in LEVEL | solid", BRICK_CH); if (COIN_CH && is_solid(COIN_CH)) return bad("board.pdl: the coin tile %c must not be in LEVEL | solid", COIN_CH); } }   /* the level file is part of the rules hash: editing it after a game began refuses that ledger */
     for (int i = 0; i < NJ; i++) if (JF[i] < 1 || JF[i] >= LENGTH || JT[i] < 0 || JT[i] > LENGTH || JF[i] == JT[i]) return bad("board.pdl: JUMP %d -> %d is outside the track", JF[i], JT[i]);
     return 0;
 }
@@ -245,6 +260,7 @@ static uint64_t state_hash(void) {
     if (MODE == M_PLATFORM) { char pb[2048]; int m = snprintf(pb, sizeof pb, "platform;falls=%ld;", S.falls); for (int i = 0; i < S.np && m < 1900; i++) { const PF_Body *b = &S.pb[i]; m += snprintf(pb + m, sizeof pb - (size_t)m, "%ld,%ld,%ld,%ld,%d,%d,%d,%d,%d;", b->x, b->y, b->vx, b->vy, b->field, b->grounded, b->coyote, b->jbuf, S.jp[i]); } h = fnv(h, pb, strlen(pb)); }
     if (MODE == M_PLATFORM) { char xb[2048]; int m = snprintf(xb, sizeof xb, "plat2;score=%ld,%ld,%ld,%ld;", S.score, S.stomps, S.shots_kills, S.hits); for (int i = 0; i < LV.ne && m < 1700; i++) m += snprintf(xb + m, sizeof xb - (size_t)m, "e%d,%ld,%ld,%ld,%d,%d;", i, S.en[i].b.x, S.en[i].b.y, S.en[i].b.vx, S.en[i].dir, S.en[i].alive);
         for (int k = 0; k < 4 && m < 1900; k++) m += snprintf(xb + m, sizeof xb - (size_t)m, "f%d,%ld,%ld,%d,%d;", k, S.fb[k].x, S.fb[k].y, S.fb[k].life, S.fb[k].alive); for (int p = 0; p < 4; p++) m += snprintf(xb + m, sizeof xb - (size_t)m, "p%d;", S.pw_taken[p]); for (int i = 0; i < S.np; i++) m += snprintf(xb + m, sizeof xb - (size_t)m, "a%d,%d,%d;", S.armed[i], S.facing[i], S.fire[i]); h = fnv(h, xb, strlen(xb)); }
+    if (MODE == M_PLATFORM && (S.coins || S.bricks)) { char kb[64]; int m = snprintf(kb, sizeof kb, "blocks;coins=%ld;bricks=%ld;", S.coins, S.bricks); h = fnv(h, kb, (size_t)m); for (int y = 0; y < LV.h; y++) h = fnv(h, LV.rows[y], strlen(LV.rows[y])); }   /* folded in ONLY once a block was taken, so every ledger without blocks keeps its old hashes (D106) */
     return h;
 }
 static uint64_t doc_hash(void) { uint64_t h = FNV0; for (int i = 0; i < S.ndoc; i++) { h = fnv(h, S.did[i], strlen(S.did[i])); h = fnv(h, "=", 1); h = fnv(h, S.dtx[i], strlen(S.dtx[i])); h = fnv(h, "\n", 1); } return h; }
@@ -252,7 +268,7 @@ static uint64_t doc_hash(void) { uint64_t h = FNV0; for (int i = 0; i < S.ndoc; 
 /* ---------- the step functions of kind realtime (ONE per MODE; replay and the live driver call the same one) ---------- */
 static const int DX[4] = { -1, 1, 0, 0 }, DY[4] = { 0, 0, -1, 1 }, OPP[4] = { 1, 0, 3, 2 }; static const char DCH[5] = "LRUD";
 static void q_push(const char *verb, const char *target, const char *at, const char *res) {
-    if (S.nq >= 4) return; Ev *e = &S.q[S.nq++]; e->tick = S.tick; snprintf(e->verb, sizeof e->verb, "%s", verb); snprintf(e->target, sizeof e->target, "%s", target); snprintf(e->at, sizeof e->at, "%s", at); snprintf(e->res, sizeof e->res, "%s", res);
+    if (S.nq >= 8) return; Ev *e = &S.q[S.nq++]; e->tick = S.tick; snprintf(e->verb, sizeof e->verb, "%s", verb); snprintf(e->target, sizeof e->target, "%s", target); snprintf(e->at, sizeof e->at, "%s", at); snprintf(e->res, sizeof e->res, "%s", res);
 }
 static int on_body(int x, int y, int upto) { for (int i = 0; i < upto; i++) if (S.bx[i] == x && S.by[i] == y) return 1; return 0; }
 /* the k-th food goes to free[ mix(seed*1000003 + k*16 + 7) % nfree ], free = the unoccupied cells in row-major order at the moment it spawns; returns 0 when the board is full */
@@ -279,12 +295,13 @@ static void snake_step(void) {
 static int plat_solid(void *ctx, long cx, long cy) { (void)ctx; if (cx < 0 || cx >= LV.w) return 1; if (cy < 0 || cy >= LV.h) return 0; return is_solid(LV.rows[cy][cx]); }
 static void plat_spawn(int i) { sp_hero(&S.pb[i], LV.sx, LV.sy, &SPR, &S.jp[i], &S.pos[i], &S.armed[i], &S.facing[i], &S.fire[i]); }   /* the SPAWN rule: rule_spawn.c, the same function the op rule_spawn_op runs */
 static void plat_world_init(void) {
-    memset(S.en, 0, sizeof S.en); memset(S.pw_taken, 0, sizeof S.pw_taken); memset(S.fb, 0, sizeof S.fb); S.score = S.stomps = S.shots_kills = S.hits = 0;
+    memset(S.en, 0, sizeof S.en); memset(S.pw_taken, 0, sizeof S.pw_taken); memset(S.fb, 0, sizeof S.fb); S.score = S.stomps = S.shots_kills = S.hits = 0; S.coins = S.bricks = 0; memcpy(LV.rows, ROWS0, sizeof LV.rows);   /* a run starts on the pristine level: coins and bricks come back (the overlay is derived) */
     for (int i = 0; i < LV.ne; i++) sp_walker(&S.en[i], LV.ex[i], LV.ey[i], &SPR);   /* the SPAWN rule again, for the walkers */
     for (int i = 0; i < S.np; i++) plat_spawn(i);
 }
 static void plat_step(void) {
-    for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; int shoot = 0, mask = in_controls(S.dir[i], S.jp[i], S.fire[i], S.armed[i], &S.facing[i], &shoot);   /* the INPUT rule: rule_input.c, the same function the op rule_input_op runs */
+    long vy0[MAXPL];   /* the vertical speed BEFORE the step: the BRICK rule needs it (the step zeroes vy on a head bump) */
+    for (int i = 0; i < S.np; i++) { PF_Body *b = &S.pb[i]; vy0[i] = b->vy; int shoot = 0, mask = in_controls(S.dir[i], S.jp[i], S.fire[i], S.armed[i], &S.facing[i], &shoot);   /* the INPUT rule: rule_input.c, the same function the op rule_input_op runs */
         if (shoot) fb_spawn(S.fb, 4, &FBR, b, S.facing[i]);   /* the FIREBALL rule: rule_fireball.c, the same function the op rule_fireball_op runs */
         pf_step(b, &PT, &PFIELD, 1, mask, plat_solid, NULL); in_consume(&S.jp[i], &S.fire[i]);
         if (fa_fell(b, LV.h, FAM)) { S.falls++; plat_spawn(i); } S.pos[i] = (int)((b->x + b->w / 2) / PF_Q); }   /* the FALL rule: rule_fall.c, the same function the op rule_fall_op runs (what a fall does stays the game's: count it and respawn) */
@@ -293,7 +310,11 @@ static void plat_step(void) {
     for (int i = 0; i < S.np; i++) { PF_Body *h = &S.pb[i];
         { ST_Result sr = st_contact(h, S.en, LV.ne, &STR); S.score += (long)sr.stomps * STR.score; S.stomps += sr.stomps; if (sr.hit) { S.hits++; plat_spawn(i); } }   /* the STOMP / HIT rule: rule_stomp.c, the same function the op rule_stomp_op runs (a hit respawns the hero: still the game's) */
         pk_collect(h, LV.px, LV.py, S.pw_taken, LV.npw, &PKR, &S.armed[i], &S.score); }   /* the PICKUP rule: rule_pickup.c, the same function the op rule_pickup_op runs */
-    S.tick++; { int w = wn_winner(S.pb, S.np, LV.gx, LV.gy); if (w >= 0) { S.winner = w; S.phase = PH_OVER; } }   /* the WIN rule: rule_win.c (over rule_goal.c), the same function the op rule_win_op runs (the phase and the winner stay the game's state) */
+    S.tick++;   /* the BLOCK rules run after the tick count moves on, so a consequence row carries the tick the NEXT step starts at (like the snake rows) */
+    for (int i = 0; i < S.np; i++) { const PF_Body *h = &S.pb[i]; int cx[4], cy[4]; char at[32], res[96];
+        if (BRICK_CH) { int n = br_bump(h, vy0[i], &LV.rows[0][0], LVMAXW + 1, LV.w, LV.h, BRICK_CH, &BRR, &S.score, cx, cy, 4); S.bricks += n; for (int k = 0; k < n; k++) { snprintf(at, sizeof at, "%d,%d", cx[k], cy[k]); snprintf(res, sizeof res, "value=%ld;score=%ld", BRR.score, S.score); q_push("brick", "p1", at, res); } }   /* the BRICK rule: rule_brick.c, the same function the op rule_brick_op runs */
+        if (COIN_CH) { int n = cn_collect(h, &LV.rows[0][0], LVMAXW + 1, LV.w, LV.h, COIN_CH, &CNR, &S.score, cx, cy, 4); S.coins += n; for (int k = 0; k < n; k++) { snprintf(at, sizeof at, "%d,%d", cx[k], cy[k]); snprintf(res, sizeof res, "value=%ld;score=%ld", CNR.value, S.score); q_push("coin", "p1", at, res); } } }   /* the COIN rule: rule_coin.c, the same function the op rule_coin_op runs */
+    { int w = wn_winner(S.pb, S.np, LV.gx, LV.gy); if (w >= 0) { S.winner = w; S.phase = PH_OVER; } }   /* the WIN rule: rule_win.c (over rule_goal.c), the same function the op rule_win_op runs (the phase and the winner stay the game's state) */
 }
 static void step_tick(void) {
     if (MODE == M_SNAKE) { snake_step(); return; }
@@ -409,7 +430,7 @@ static int apply(const Row *in, const char *arg2, Row *out) {
         S.l_kind = stayed ? 3 : bounced ? 4 : jumped > 0 ? 1 : jumped < 0 ? 2 : 0; if (bounced && jumped) S.l_kind = jumped > 0 ? 5 : 6;   /* 0 plain, 1 ladder, 2 chute, 3 stay, 4 bounce, 5 bounce then ladder, 6 bounce then chute */
         S.pos[S.cur] = np; talk_push(); if (S.phase == PH_PLAY) next_seat();
         snprintf(out->actor, sizeof out->actor, "%s", who); snprintf(out->target, sizeof out->target, "%d", d); snprintf(out->at, sizeof out->at, "%d", np); snprintf(out->res, sizeof out->res, "%s", res); out->round = rd0; return 0; }
-    if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(v, "eat") || !strcmp(v, "die") || !strcmp(v, "over"))) {   /* a CONSEQUENCE row: the ticks made it, replay must make the same one (round = the tick it happened at) */
+    if (KIND == K_REALTIME && ((MODE == M_SNAKE && (!strcmp(v, "eat") || !strcmp(v, "die") || !strcmp(v, "over"))) || (MODE == M_PLATFORM && (!strcmp(v, "coin") || !strcmp(v, "brick"))))) {   /* a CONSEQUENCE row (snake: eat, die, over; platform: coin, brick, D106): the ticks made it, replay must make the same one (round = the tick it happened at) */
         long t = in->round >= 0 ? in->round : S.tick; sim_to(t); if (S.tick != t) return bad("%s at tick %ld: the game is at tick %ld", v, t, S.tick);
         if (!S.nq) return bad("%s at tick %ld: the rules made no such consequence", v, t);
         Ev e = S.q[0]; if (strcmp(e.verb, v) || e.tick != t) return bad("%s at tick %ld: the rules say the next consequence is %s at tick %ld", v, t, e.verb, e.tick);
@@ -430,6 +451,7 @@ static int apply(const Row *in, const char *arg2, Row *out) {
         int isjump = MODE == M_PLATFORM && !strcmp(in->target, "jump"), isfire = MODE == M_PLATFORM && !strcmp(in->target, "fire"); int dir = (isjump || isfire) ? 0 : !strcmp(in->target, "left") ? -1 : !strcmp(in->target, "right") ? 1 : !strcmp(in->target, "stay") ? 0 : 9; if (dir == 9) return bad(MODE == M_PLATFORM ? "input: left, right, stay, jump or fire" : "input: left, right or stay");
         long t = in->round >= 0 ? in->round : S.tick; if (t < S.tick) return bad("input at tick %ld is in the past (the game is at tick %ld)", t, S.tick); if (t > S.tick + 100000) return bad("input: tick too far ahead");
         sim_to(t); if (S.phase != PH_PLAY) return bad("the game ended at tick %ld, before this input", S.tick); if (S.tick != t) return bad("input: could not reach tick %ld", t);
+        if (S.nq) return bad("input at tick %ld: the ticks before it made a %s row that no row recorded", t, S.q[0].verb);
         if (isjump) S.jp[i] = 1; else if (isfire) S.fire[i] = 1; else S.dir[i] = dir; snprintf(out->actor, sizeof out->actor, "%s", in->actor); snprintf(out->target, sizeof out->target, "%s", in->target); snprintf(out->at, sizeof out->at, "%d", S.pos[i]); snprintf(out->res, sizeof out->res, "ok"); out->round = t; return 0; }
     return bad("unknown verb %s for a %s game", v, KIND == K_LEDGER ? "ledger" : "realtime");
 }
@@ -666,7 +688,7 @@ static int do_tick(int *did) {   /* ONE step. *did = 1 when the game moved. A hu
     if (KIND == K_REALTIME) { if (S.nrows >= R_maxrows - 2) return bad("the ledger is full (max_rows %ld)", R_maxrows);
         if (S.tick % 4 == 0) for (int i = 0; i < S.np; i++) if (!S.human[i]) { char a[8]; snprintf(a, sizeof a, "p%d", i + 1); if (strcmp(pet_dir(i), S.dir[i] == 1 ? "right" : S.dir[i] == -1 ? "left" : "stay")) if (live(-1, a, "input", pet_dir(i), NULL, NULL)) return 1; }
         if (MODE == M_PLATFORM && S.tick % 10 == 3) for (int i = 0; i < S.np; i++) if (!S.human[i]) { char a[8]; snprintf(a, sizeof a, "p%d", i + 1); if (live(-1, a, "input", "jump", NULL, NULL)) return 1; }
-        step_tick(); *did = 1; if (S.phase == PH_OVER || S.tick % R_ckpt == 0) { if (live(-1, "", "ckpt", "", NULL, NULL)) return 1; } return 0; }
+        step_tick(); *did = 1; while (S.nq) { if (live(-1, "", S.q[0].verb, "", NULL, NULL)) return 1; }   /* a block rule (coin, brick) made consequence rows: each is appended */ if (S.phase == PH_OVER || S.tick % R_ckpt == 0) { if (live(-1, "", "ckpt", "", NULL, NULL)) return 1; } return 0; }
     return bad("tick is not a verb of an editor game");
 }
 static int cmd_status(void) {
@@ -676,7 +698,7 @@ static int cmd_status(void) {
         if (S.phase >= PH_PLAY) fprintf(OUT, "SNAKE len=%d grow=%d dir=%c score=%d head=%d,%d food=%d,%d foods=%d\n", S.slen, S.sgrow, DCH[S.sdir], S.sscore, S.bx[0], S.by[0], S.sfood_x, S.sfood_y, S.sfoods); return 0; }
     if (KIND == K_LEDGER) fprintf(OUT, " round=%ld current=p%d rolls=%ld", S.round, S.cur + 1, S.nrolls); else fprintf(OUT, " tick=%ld", S.tick);
     fprintf(OUT, " over=%d winner=%s\n", S.phase == PH_OVER, S.phase == PH_OVER && S.winner >= 0 ? S.name[S.winner] : "-");
-    for (int i = 0; i < S.np; i++) { fprintf(OUT, "PLAYER p%d name=%s driver=%s pos=%d", i + 1, S.name[i], S.human[i] ? "human" : "pet", S.pos[i]); if (MODE == M_PLATFORM) fprintf(OUT, " body=%ld,%ld,%ld,%ld grounded=%d falls=%ld score=%ld stomps=%ld kills=%ld hits=%ld armed=%d enemies=%d", S.pb[i].x, S.pb[i].y, S.pb[i].vx, S.pb[i].vy, S.pb[i].grounded, S.falls, S.score, S.stomps, S.shots_kills, S.hits, S.armed[i], ({ int c_ = 0; for (int e_ = 0; e_ < LV.ne; e_++) c_ += S.en[e_].alive; c_; })); fprintf(OUT, "\n"); } if (MODE == M_PLATFORM) for (int e = 0; e < LV.ne; e++) fprintf(OUT, "ENEMY e%d body=%ld,%ld dir=%d alive=%d\n", e + 1, S.en[e].b.x, S.en[e].b.y, S.en[e].dir, S.en[e].alive); if (MODE == M_PLATFORM) for (int k = 0; k < 4; k++) if (S.fb[k].alive) fprintf(OUT, "FIREBALL f%d at=%ld,%ld vx=%ld life=%d\n", k + 1, S.fb[k].x, S.fb[k].y, S.fb[k].vx, S.fb[k].life); return 0;
+    for (int i = 0; i < S.np; i++) { fprintf(OUT, "PLAYER p%d name=%s driver=%s pos=%d", i + 1, S.name[i], S.human[i] ? "human" : "pet", S.pos[i]); if (MODE == M_PLATFORM) fprintf(OUT, " body=%ld,%ld,%ld,%ld grounded=%d falls=%ld score=%ld stomps=%ld kills=%ld hits=%ld armed=%d enemies=%d coins=%ld bricks=%ld", S.pb[i].x, S.pb[i].y, S.pb[i].vx, S.pb[i].vy, S.pb[i].grounded, S.falls, S.score, S.stomps, S.shots_kills, S.hits, S.armed[i], ({ int c_ = 0; for (int e_ = 0; e_ < LV.ne; e_++) c_ += S.en[e_].alive; c_; }), S.coins, S.bricks); fprintf(OUT, "\n"); } if (MODE == M_PLATFORM) for (int e = 0; e < LV.ne; e++) fprintf(OUT, "ENEMY e%d body=%ld,%ld dir=%d alive=%d\n", e + 1, S.en[e].b.x, S.en[e].b.y, S.en[e].dir, S.en[e].alive); if (MODE == M_PLATFORM) for (int k = 0; k < 4; k++) if (S.fb[k].alive) fprintf(OUT, "FIREBALL f%d at=%ld,%ld vx=%ld life=%d\n", k + 1, S.fb[k].x, S.fb[k].y, S.fb[k].vx, S.fb[k].life); return 0;
 }
 static int cmd_check(void) {   /* replay already ran (load); the invariants */
     if (KIND == K_REALTIME && MODE == M_SNAKE) {
@@ -1094,7 +1116,7 @@ static int cmd_scene(int argc, char **argv) {
     if (argc < 1) return bad("usage: scene <desk_dir> [atlas.rgba]");
     struct stat sb; if (stat(argv[0], &sb) || !S_ISDIR(sb.st_mode)) return bad("scene: the desk folder does not exist (make it first)");
     static char cb[24000], mb[4200]; int n = snprintf(cb, sizeof cb, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", LV.w, LV.h), m = 0;
-    for (int y = 0; y < LV.h; y++) { for (int x = 0; x < LV.w; x++) { int sol = is_solid(LV.rows[y][x]), top = sol && (y == 0 || !is_solid(LV.rows[y - 1][x])); n += snprintf(cb + n, sizeof cb - (size_t)n, "%s%d,0,%d", x ? " " : "", sol ? (top ? 1 : 32) : 0, sol ? 2 : 1); mb[m++] = sol ? '#' : '.'; } cb[n++] = '\n'; mb[m++] = '\n'; }
+    for (int y = 0; y < LV.h; y++) { for (int x = 0; x < LV.w; x++) { int sol = is_solid(LV.rows[y][x]), top = sol && (y == 0 || !is_solid(LV.rows[y - 1][x])), brk = BRICK_CH && LV.rows[y][x] == BRICK_CH; n += snprintf(cb + n, sizeof cb - (size_t)n, "%s%d,0,%d", x ? " " : "", brk ? 36 : sol ? (top ? 1 : 32) : 0, sol ? 2 : 1);   /* a brick is the atlas rock slot 36 (D106) */ mb[m++] = sol ? '#' : '.'; } cb[n++] = '\n'; mb[m++] = '\n'; }
     mb[m] = 0; char p[P + 16]; snprintf(p, sizeof p, "%s/cells.txt", argv[0]); if (write_atomic(p, cb)) return bad("scene: cannot write cells.txt");
     snprintf(p, sizeof p, "%s/map.txt", argv[0]); if (write_atomic(p, mb)) return bad("scene: cannot write map.txt");
     if (argc > 1 && strstr(argv[1], ".rgba")) { char *sl = strrchr(argv[1], '/'); size_t dl = sl ? (size_t)(sl - argv[1]) : 0; static const char *cp[] = { "cells.rgba", "skin.txt", "extrusion.pdl" };
@@ -1132,8 +1154,8 @@ static int doc_paint(const char *tool, long x, long y, const char *as) {
         for (int k = 1; k <= mx; k++) { snprintf(id, sizeof id, "%c%d", pre, k); if (doc_find(id) < 0) return live(-1, as, "add", id, tx, NULL); } return bad("paint: at most %d %s rows", mx, pre == 'e' ? "enemy" : "power-up"); }
     if (!strcmp(tool, "erase")) { char tx[40], id[4]; snprintf(tx, sizeof tx, "%ld %ld", x, y);   /* erase takes an enemy or a power-up off the cell first, else the ground */
         for (int k = 0; k < 12; k++) { snprintf(id, sizeof id, "%c%d", k < 8 ? 'e' : 'p', k < 8 ? k + 1 : k - 7); int ix = doc_find(id); if (ix >= 0 && !strcmp(S.dtx[ix], tx)) return live(-1, as, "del", id, NULL, NULL); } }
-    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : 0; if (!ch) return bad("paint: the tool is ground, erase, start, goal, enemy or power");
-    char id[8], tx[LVMAXW + 2]; snprintf(id, sizeof id, "r%02ld", y); snprintf(tx, sizeof tx, "%s", S.dtx[doc_find(id)]); if (tx[x] == ch) return bad("paint: that cell is already %s", ch == '#' ? "ground" : "empty");
+    char ch = !strcmp(tool, "ground") ? '#' : !strcmp(tool, "erase") ? '.' : !strcmp(tool, "brick") ? BRICK_CH : !strcmp(tool, "coin") ? COIN_CH : 0; if (!ch) return bad("paint: the tool is ground, erase, brick, coin, start, goal, enemy or power (brick and coin need a LEVEL | brick / coin row in board.pdl)");
+    char id[8], tx[LVMAXW + 2]; snprintf(id, sizeof id, "r%02ld", y); snprintf(tx, sizeof tx, "%s", S.dtx[doc_find(id)]); if (tx[x] == ch) return bad("paint: that cell is already %s", ch == '#' ? "ground" : ch == '.' ? "empty" : ch == BRICK_CH ? "a brick" : "a coin");
     tx[x] = ch; return live(-1, as, "set", id, tx, NULL);
 }
 /* the editor's cursor cell (the xelector of the editor's own world): where the shelf buttons paint */
@@ -1169,6 +1191,7 @@ static void scene_events(void) {
     if (LEVELDOC) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 220 60 60 People1 0 2 1\n", LV.sx, LV.sy);   /* Make: the start cell shows the hero */
     for (int i = 0; i < LV.ne && n < 3600; i++) if (LEVELDOC || (MODE == M_PLATFORM && S.en[i].alive)) { int cx = LEVELDOC ? LV.ex[i] : (int)((S.en[i].b.x + S.en[i].b.w / 2) / PF_Q), cy = LEVELDOC ? LV.ey[i] : (int)((S.en[i].b.y + S.en[i].b.h / 2) / PF_Q); n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 190 70 210 Monster %d 2 1\n", cx, cy, i % 8); }   /* enemies (怪) */
     for (int i = 0; i < LV.npw && n < 3600; i++) if (LEVELDOC || !S.pw_taken[i]) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 90 200 255 !Crystal 0 2 1\n", LV.px[i], LV.py[i]);   /* power-ups (晶) */
+    if (COIN_CH) for (int y = 0; y < LV.h; y++) for (int x = 0; x < LV.w && n < 3600; x++) if (LV.rows[y][x] == COIN_CH) n += snprintf(b + n, sizeof b - (size_t)n, "%d %d 255 215 0 !Other1 0 2 1 \xe9\x87\x91\n", x, y);   /* coins (the character 金; a taken coin is already a `.` in the run's rows) */
     if (MODE == M_PLATFORM && !LEVELDOC) for (int k = 0; k < 4 && n < 3700; k++) if (S.fb[k].alive) n += snprintf(b + n, sizeof b - (size_t)n, "%ld %ld 255 120 30 !Flame 0 2 1\n", (long)pf_floordiv(S.fb[k].x, PF_Q), (long)pf_floordiv(S.fb[k].y, PF_Q));   /* fireballs (火) */
     for (int i = 0; i < S.np && n < 3800; i++) { int cx, cy; scene_cell(i, &cx, &cy); unsigned c = PG_tok[i % MAXPL]; n += snprintf(b + n, sizeof b - (size_t)n, "%d %d %u %u %u People1 %d 2 1\n", cx, cy, (c >> 16) & 255, (c >> 8) & 255, c & 255, i); }
     char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b);
@@ -1193,7 +1216,7 @@ static int cmd_stampimg(int ac, char **av) {
     if (write_atomic(cp, cs)) return bad("stampimg: cannot write sprite.csv"); fprintf(OUT, "STAMPIMG %s %s fnv=%016llx\n", av[0], cp, (unsigned long long)fnv(FNV0, cs, (size_t)n)); return 0;
 }
 static void page_events(void) { if (scene_on) { scene_events(); return; } static char b[4096]; pg_events(b, sizeof b); char p[P + 16]; snprintf(p, sizeof p, "%s/events.txt", DESKDIR); write_atomic(p, b); }
-static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } if (scene_on && MODE == M_PLATFORM && !LEVELDOC) { for (int e = 0; e < LV.ne; e++) { long ex_ = (S.en[e].b.x + 100) / PF_Q, ey_ = (S.en[e].b.y + 100) / PF_Q; h = fnv(h, &ex_, sizeof ex_); h = fnv(h, &ey_, sizeof ey_); h = fnv(h, &S.en[e].alive, sizeof S.en[e].alive); } for (int k = 0; k < 4; k++) { long fx_ = S.fb[k].alive ? S.fb[k].x / PF_Q : -1, fy_ = S.fb[k].y / PF_Q; h = fnv(h, &fx_, sizeof fx_); h = fnv(h, &fy_, sizeof fy_); } h = fnv(h, S.pw_taken, sizeof S.pw_taken); } return fnv(h, S.pos, sizeof S.pos); }
+static uint64_t pos_sig(void) { uint64_t h = fnv(FNV0, &S.np, sizeof S.np); h = fnv(h, &S.phase, sizeof S.phase); if (scene_on) for (int i = 0; i < S.np; i++) { int cx, cy; scene_cell(i, &cx, &cy); h = fnv(h, &cx, sizeof cx); h = fnv(h, &cy, sizeof cy); } if (scene_on && MODE == M_PLATFORM && !LEVELDOC) { for (int e = 0; e < LV.ne; e++) { long ex_ = (S.en[e].b.x + 100) / PF_Q, ey_ = (S.en[e].b.y + 100) / PF_Q; h = fnv(h, &ex_, sizeof ex_); h = fnv(h, &ey_, sizeof ey_); h = fnv(h, &S.en[e].alive, sizeof S.en[e].alive); } for (int k = 0; k < 4; k++) { long fx_ = S.fb[k].alive ? S.fb[k].x / PF_Q : -1, fy_ = S.fb[k].y / PF_Q; h = fnv(h, &fx_, sizeof fx_); h = fnv(h, &fy_, sizeof fy_); } h = fnv(h, S.pw_taken, sizeof S.pw_taken); h = fnv(h, &S.coins, sizeof S.coins); h = fnv(h, &S.bricks, sizeof S.bricks); } return fnv(h, S.pos, sizeof S.pos); }
 /* the board engine sleeps until it is woken: a changed events.txt is read when the next frame is drawn, and nothing asks for one while nobody touches the window (seen 2026-11-18: the text popup said "tick 241, over" while the picture still showed the start). The same wake-up the key tool sends (the code 126, bound to nothing) is appended to the session's relay, at most every 80 ms. */
 static void engine_nudge(void) { static long last_ms; static char sess[P + 64]; static long sess_ms; long now = now_ms(); if (now - last_ms < 80) return; last_ms = now;
     if (!sess[0] || now - sess_ms > 2000) { sess_ms = now; sess[0] = 0; char p[P + 64], ln[600]; snprintf(p, sizeof p, "%s/board/state/ui.txt", EDIT); FILE *f = fopen(p, "r"); if (!f) return;
@@ -1353,7 +1376,7 @@ static int driver_main(int argc, char **argv) {
             if (mode_play && run && KIND == K_LEDGER && S.phase == PH_PLAY && S.human[S.cur]) { char yt[120]; snprintf(yt, sizeof yt, "your turn, %s: press Roll", S.name[S.cur]); if (strcmp(dmsg, yt)) { snprintf(dmsg, sizeof dmsg, "%s", yt); dirty = 1; } }
         }
         if (scene_on && LEVELDOC && mode_play) { static int dsig_set; static uint64_t dsig; uint64_t dg = doc_hash(); if (!dsig_set || dg != dsig) { dsig_set = 1; dsig = dg; if (S.ndoc) page_make(); } }   /* Make: the level is redrawn when the document changes */
-        if (page_on && mode_play) { uint64_t sg = pos_sig(); if (sg != page_sig) { page_sig = sg; page_events(); if (scene_on) engine_nudge(); } static long dg = 0; long td = now_ms(); if (td - dg >= 2000) { dg = td; set_desk("play"); } }   /* the figures follow the ledger; the desk guard re-points the world after a board relaunch (as the Teropoly driver) */
+        if (page_on && mode_play) { uint64_t sg = pos_sig(); if (sg != page_sig) { page_sig = sg; { static long nb_seen; if (scene_on && MODE == M_PLATFORM && !LEVELDOC && S.bricks != nb_seen) { nb_seen = S.bricks; char sc_[400], *sa_[] = { (char *)"scene", DESKDIR, ATLAS, (char *)"noevents" }; verb_here(4, sa_, sc_, sizeof sc_); engine_reload(); } }   /* a broken (or restored) brick: the land is rewritten and the engine asked to reload the desk (D106) */ page_events(); if (scene_on) engine_nudge(); } static long dg = 0; long td = now_ms(); if (td - dg >= 2000) { dg = td; set_desk("play"); } }   /* the figures follow the ledger; the desk guard re-points the world after a board relaunch (as the Teropoly driver) */
         { long tp = now_us(); if (dirty && tp - last_pub >= 200000) { publish(); last_pub = tp; } }   /* the feed is rewritten at most 5 times a second, whatever the step pace */
         { long tn = now_us(), wake = tn + (live ? HK_MS : IDLE_MS) * 1000L; if (live && next_us < wake) wake = next_us; if (dirty && last_pub + 200000 < wake) wake = last_pub + 200000;
           if (wake > tn) { struct pollfd pf = { ino, POLLIN, 0 }; struct timespec to = { (wake - tn) / 1000000L, ((wake - tn) % 1000000L) * 1000L }; ppoll(&pf, ino >= 0 ? 1 : 0, &to, NULL);

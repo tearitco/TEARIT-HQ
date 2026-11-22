@@ -1794,6 +1794,22 @@ COMMAND rule_pickup
   TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_pickup_op.+x" "$D/@.apps/teario/events/{scene}"
 END
 
+# rule_coin = the COIN block rule (a body whose box overlaps a coin tile collects it: the tile becomes empty, +coin_value) of a game as an op (D106): runs `rule_coin_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_coin.c the game tick loop calls in-process) and prints `COLLECTED n SCORE s CELLS ... LEVEL rows` and a HASH. The number and the tile character are in the scene.
+COMMAND rule_coin
+  LABEL teario: Coin rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_coin_op.+x" "$D/@.apps/teario/events/{scene}"
+END
+
+# rule_brick = the BRICK block rule (a body rising into a brick from below breaks it: the tile becomes empty, +brick_score; from the side or above nothing) of a game as an op (D106): runs `rule_brick_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_brick.c the game tick loop calls in-process) and prints `BROKEN n SCORE s CELLS ... LEVEL rows` and a HASH.
+COMMAND rule_brick
+  LABEL teario: Brick rule (scene)
+  FIELD1 Scene:
+  PARAMS scene
+  TEMPLATE exec "$D/&.widgits/_shared-lib/ops/+x/rule_brick_op.+x" "$D/@.apps/teario/events/{scene}"
+END
+
 # rule_goal = the GOAL rule (is the body centre in the goal cell) of a game as an op (D93): runs `rule_goal_op <scene>` once over a scene file under the teario events folder (the SAME pure module rule_goal.c the game tick loop calls in-process) and prints the result and a hash. scene is a path under @.apps/teario/events/ (letters, digits, _ - . / only). `rule_goal_op --describe` lists its inputs, outputs and RULE keys.
 COMMAND rule_goal
   LABEL teario: Goal rule (scene)

@@ -3,3 +3,8 @@
 # Foundation: two kinds only. The plan's coins, blocks, spikes and doors come with the physics (no physics yet: the hero only walks along the START row).
 TILE | . | empty  | 0
 TILE | # | ground | 1
+# 2026-11-22 (D106): brick and coin. The character of each is also declared where the engine reads it: board.pdl `LEVEL | brick | B`, `LEVEL | coin | o` (and `LEVEL | solid` lists B). Numbers: rules.pdl RULE coin_value, brick_score.
+# B brick: solid; a body rising into it from below breaks it (rule_brick); from the side or above it is just a wall / a floor.
+# o coin: not solid; a body overlapping it collects it once (rule_coin).
+TILE | B | brick | 1
+TILE | o | coin  | 0

@@ -62,7 +62,7 @@
 #define FMAX 128   /* fields per row; a WRITE of a whole .pdl is one row with many bars */
 static char T[P], HOUSE[P], CASE[256] = "", RESULTS[P], OUT[16384];
 static int last_exit = -1, made_scratch;
-#define MAXVAR 32
+#define MAXVAR 96   /* was 32; teario_stampimg needs about 40 distinct names (D106 added the brick and coin pictures) */
 static struct { char name[48], val[P]; } VARS[MAXVAR]; static int NVARS;
 static pid_t SPAWNED[64]; static int NSPAWNED;
 /* READ verbs (EXPECT_FILE/HAS/LACKS/EXISTS/NOFILE, WAIT_HAS) accept an absolute path (a live file the case only looks at); writers (WRITE, APPEND, MKDIR, COPY) stay under $T */

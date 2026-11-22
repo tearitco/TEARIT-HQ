@@ -1,0 +1,6 @@
+# blocks.pdl - the BLOCK tiles of Teario and their numbers (decision D106). Read by game_core AFTER board.pdl and rules.pdl and NOT part of the rules hash:
+# adding or tuning a block never invalidates an existing ledger or Make document (every coin / brick consequence row in a run records its value, and replay refuses a changed number).
+# BLOCK | brick | <char> | <score>   a solid tile; a body rising into it from below breaks it (rule_brick, _shared-lib/rule_brick.c, op rule_brick_op); the char is added to the solid set
+# BLOCK | coin  | <char> | <value>   a tile walked through; a body overlapping it collects it once (rule_coin, _shared-lib/rule_coin.c, op rule_coin_op)
+BLOCK | brick | B | 5
+BLOCK | coin  | o | 10

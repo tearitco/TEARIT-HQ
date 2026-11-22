@@ -193,6 +193,69 @@ RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2
 CAPTURE | b
 EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
 
+CASE    | stamp-brick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/brick/game | stampimg | brick | $T/pic/brick | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-brick-is-made
+EXPECT_OUT | STAMPIMG brick | and-says-so
+EXPECT_EXISTS | $T/pic/brick/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/brick/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/brick/game/level.pdl
+CAPTURE | pl_brick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/brick | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/brick | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/brick | paint | brick | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-brick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/brick | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/brick/level.pdl
+CAPTURE | ip_brick
+EXPECT_EQ | $pl_brick | $ip_brick | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/brick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/brick | scene | $T/indd/brick | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/brick/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/brick/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/brick/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/brick/game | stampimg | brick | $T/pic2_brick | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_brick/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+
+CASE    | stamp-coin
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/coin/game | stampimg | coin | $T/pic/coin | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+EXPECT_EXIT | 0 | the-picture-of-coin-is-made
+EXPECT_OUT | STAMPIMG coin | and-says-so
+EXPECT_EXISTS | $T/pic/coin/sprite.csv | the-sprite-csv-exists
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/coin/game | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/coin/game/level.pdl
+CAPTURE | pl_coin
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/coin | new | 1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/coin | blank | 8 | 4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/coin | paint | coin | 3 | 2
+EXPECT_EXIT | 0 | the-ordinary-paint-verb-places-coin
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/coin | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/ind/coin/level.pdl
+CAPTURE | ip_coin
+EXPECT_EQ | $pl_coin | $ip_coin | the-level-behind-the-picture-IS-the-level-the-paint-verb-makes-(level.pdl-sha256)
+MKDIR | indd/coin
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/ind/coin | scene | $T/indd/coin | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/indd/coin/cells.txt
+CAPTURE | ic
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/stampimg/coin/game/desk/cells.txt
+CAPTURE | pc
+EXPECT_EQ | $pc | $ic | and-the-land-it-drew-is-the-scene-of-that-level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/coin/sprite.csv
+CAPTURE | a
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/tm/teario-make | $T/stampimg/coin/game | stampimg | coin | $T/pic2_coin | $HOUSE/@.apps/teario-make/teario-make-pchq/pieces/system/maps/teario-make/board/cells.rgba
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic2_coin/sprite.csv
+CAPTURE | b
+EXPECT_EQ | $a | $b | the-picture-is-deterministic-(same-bytes-on-a-second-run)
+
+
+
 CASE    | negatives
 # a picture that did not depend on the stamp would make these fail: every stamp has its own picture, and the level of one tool is not the level of another
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/ground/sprite.csv
@@ -249,3 +312,27 @@ EXPECT_EQ | $f_ground | 0 | ground-picture-has-no-goal-flag
 RUN | grep | -c | 255,210,60,255 | $T/pic/goal/sprite.csv
 CAPTURE | f_goal
 EXPECT_NE | $f_goal | 0 | NEGATIVE-CONTROL-the-goal-picture-has-the-flag
+
+CASE    | brick-and-coin-pictures
+# D106: the bank has a brick and a coin stamp; each has a picture that is its PLACED result (cases stamp-brick and stamp-coin above prove level and land equal the ordinary blank + paint). Here: the pictures are NOT the ground's, the erase's or each other's, and carry no stray start hero
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/brick/sprite.csv
+CAPTURE | n_brick
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/hash_op.+x | sha256 | --file | $T/pic/coin/sprite.csv
+CAPTURE | n_coin
+EXPECT_NE | $n_brick | $n_ground | NEGATIVE-a-brick-picture-is-not-the-ground-picture
+EXPECT_NE | $n_brick | $n_erase | NEGATIVE-a-brick-picture-is-not-the-erase-picture
+EXPECT_NE | $n_coin | $n_erase | NEGATIVE-a-coin-picture-is-not-the-empty-erase-picture
+EXPECT_NE | $n_coin | $n_brick | NEGATIVE-coin-and-brick-pictures-differ
+EXPECT_NE | $pl_brick | $pl_ground | NEGATIVE-the-brick-level-is-not-the-ground-level
+RUN | grep | -c | 220,60,60,255 | $T/pic/brick/sprite.csv
+CAPTURE | h_brick
+EXPECT_EQ | $h_brick | 0 | brick-picture-has-no-start-hero-dot
+RUN | grep | -c | 220,60,60,255 | $T/pic/coin/sprite.csv
+CAPTURE | h_coin
+EXPECT_EQ | $h_coin | 0 | coin-picture-has-no-start-hero-dot
+RUN | grep | -c | 255,215,0,255 | $T/pic/coin/sprite.csv
+CAPTURE | c_coin
+EXPECT_GE | $c_coin | 1 | the-coin-picture-shows-the-coin-colour-(255-215-0)
+RUN | grep | -c | 255,215,0,255 | $T/pic/ground/sprite.csv
+CAPTURE | c_ground
+EXPECT_EQ | $c_ground | 0 | NEGATIVE-the-ground-picture-has-no-coin-colour

@@ -3,6 +3,8 @@
 # A new stamp the engine knows how to paint is a new row here, no code change. Which one is picked is a PREFERENCE file (state/stamp_pick.txt).
 STAMP | ground | ground | tile
 STAMP | erase  | erase  | tile
+STAMP | brick  | brick  | tile
+STAMP | coin   | coin   | tile
 STAMP | start  | start  | event
 STAMP | goal   | goal   | event
 STAMP | enemy  | enemy  | event

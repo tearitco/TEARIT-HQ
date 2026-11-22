@@ -1,0 +1,139 @@
+# rule_brick (2026-11-22; decision log D106, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the BRICK block rule as an op. _shared-lib/rule_brick.c is the pure module (called in-process by game_core's platform tick after the body step), ops/rule_brick_op.c is its CLI face.
+# The scene gives the body AFTER the step (a body that bumped a ceiling is snapped flush under it: y is a multiple of 256) and vy, its vertical speed BEFORE the step (negative = rising; the step zeroes it on a bump). Every pinned line is HAND-COMPUTED from the clauses:
+# head bump = vy <= 0 AND y a multiple of 256 AND a brick in the row above the head (y/256 - 1) in a column the box overlaps (x/256 .. (x + w - 1)/256); every such brick breaks; the number is data; cap 4. One scene per clause, each with the plausible-WRONG answer different (standard sections 14 and 15).
+# Cells OUTSIDE the level hold the brick character (the op fills them), so a forgotten bounds test is visible. Hero box 200 x 200 unless said: y 512 is flush under row 1 (the head row is 1); x 300 covers column 1, x 400 covers columns 1 and 2.
+RESULTS | ../results/rule_brick.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_brick_op.+x | $T/rk
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | bump.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | still.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p 0\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | fall.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p 30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | fall1.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p 1\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | notflush.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 513 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | notflush2.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 511 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | rows.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p .B....\nROW \p ......\nROW \p .B....\nROW \p ######
+WRITE | own.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p ......\nROW \p .B....\nROW \p ######
+WRITE | below.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p ......\nROW \p ......\nROW \p #B####
+WRITE | side.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 568 \p 200 \p 200 \p -30\nROW \p ......\nROW \p ......\nROW \p ..B...\nROW \p ######
+WRITE | above.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 568 \p 200 \p 200 \p 30\nROW \p ......\nROW \p ......\nROW \p ......\nROW \p .B....
+WRITE | other.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .x....\nROW \p ......\nROW \p ######
+WRITE | solid.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .#....\nROW \p ......\nROW \p ######
+WRITE | one.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B.B..\nROW \p ......\nROW \p ######
+WRITE | wide.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 313 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .BB...\nROW \p ......\nROW \p ######
+WRITE | wide312.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 312 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .BB...\nROW \p ......\nROW \p ######
+WRITE | v7.pdl | RULE \p brick_score \p 7\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | v0.pdl | RULE \p brick_score \p 0\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | before.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nSCORE \p 30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | topedge.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 0 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | negx.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p -300 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p B.....\nROW \p ......\nROW \p ######
+WRITE | rightx.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 1600 \p 512 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .....B\nROW \p ......\nROW \p ######
+WRITE | belowy.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 300 \p 1280 \p 200 \p 200 \p -30\nROW \p ......\nROW \p .B....\nROW \p ......\nROW \p ######
+WRITE | alias_left.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p -512 \p 512 \p 200 \p 200 \p -30\nROW \p ...............................................................B\nROW \p ................................................................\nROW \p ................................................................
+WRITE | alias_right.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 16640 \p 512 \p 200 \p 200 \p -30\nROW \p ................................................................\nROW \p ................................................................\nROW \p B...............................................................
+WRITE | cap.pdl | RULE \p brick_score \p 5\nTILE \p brick \p B\nHERO \p 0 \p 512 \p 1200 \p 200 \p -30\nROW \p ......\nROW \p BBBBB.\nROW \p ......\nROW \p ######
+WRITE | norule.pdl | TILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......
+WRITE | notile.pdl | RULE \p brick_score \p 5\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......
+WRITE | badrule.pdl | RULE \p brick_scor \p 5\nTILE \p brick \p B\nHERO \p 300 \p 512 \p 200 \p 200 \p -30\nROW \p ......
+
+CASE    | head-bump-breaks
+# y 512 = 2 x 256 is flush under row 1; the box is column 1; vy -30 = rising: the brick (1,1) breaks, the tile becomes '.', +5
+RUN | $T/rk | $T/bump.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | BROKEN 1 SCORE 5 CELLS 1,1 LEVEL ....../....../....../###### | HAND-COMPUTED-the-brick-in-the-row-above-the-head-breaks
+# vy 0 counts as "not falling" (the rule says vy <= 0); vy 1 and 30 are falling: nothing. A rule that wants vy < 0 fails the first, one that ignores vy fails the others
+RUN | $T/rk | $T/still.pdl
+EXPECT_OUT | BROKEN 1 SCORE 5 CELLS 1,1 | HAND-COMPUTED-vy-0-is-not-falling
+RUN | $T/rk | $T/fall1.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.B..../....../###### | HAND-COMPUTED-vy-1-is-falling
+RUN | $T/rk | $T/fall.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.B..../....../###### | HAND-COMPUTED-vy-30-is-falling
+
+CASE    | head-contact-means-flush
+# y 513 and y 511 are not multiples of 256: the head is not on the brick's lower edge, nothing breaks (a rule without the flush test breaks it at both)
+RUN | $T/rk | $T/notflush.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.B..../....../###### | HAND-COMPUTED-513-is-not-a-multiple-of-256
+RUN | $T/rk | $T/notflush2.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.B..../....../###### | HAND-COMPUTED-511-is-not-a-multiple-of-256
+
+CASE    | only-the-row-above-the-head
+# the head row is y/256 - 1 = 1. A brick in row 0 (two rows up) or in the body's own row 2 does not break, nor one below the feet. (rows scene: bricks at (1,0) and (1,2), none at (1,1))
+RUN | $T/rk | $T/rows.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL .B..../....../.B..../###### | HAND-COMPUTED-the-bricks-are-in-rows-0-and-2-not-in-row-1
+RUN | $T/rk | $T/own.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../....../.B..../###### | HAND-COMPUTED-a-brick-in-the-body-own-row-is-a-wall-not-a-ceiling
+RUN | $T/rk | $T/below.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../....../....../#B#### | HAND-COMPUTED-a-brick-below-the-feet-is-a-floor
+
+CASE    | from-the-side-or-above-nothing
+# beside the body (its row 2, y 568 not flush, rising) and under the feet (the body stands on the brick, falling): nothing breaks
+RUN | $T/rk | $T/side.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../....../..B.../###### | HAND-COMPUTED-a-brick-at-the-side-is-not-hit
+RUN | $T/rk | $T/above.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../....../....../.B.... | HAND-COMPUTED-standing-on-a-brick-does-not-break-it
+
+CASE    | only-a-brick-tile
+RUN | $T/rk | $T/other.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.x..../....../###### | HAND-COMPUTED-x-is-not-the-brick-tile
+RUN | $T/rk | $T/solid.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.#..../....../###### | HAND-COMPUTED-ground-does-not-break
+
+CASE    | columns-of-the-box
+# x 300..499 is column 1 only: of the bricks at columns 1 and 3 only column 1 breaks. x 313..512 touches column 2 as well: both bricks of (1,1) (2,1) break; x 312..511 does not touch column 2 (a rule that tests x + w instead of x + w - 1 breaks both)
+RUN | $T/rk | $T/one.pdl
+EXPECT_OUT | BROKEN 1 SCORE 5 CELLS 1,1 LEVEL ....../...B../....../###### | HAND-COMPUTED-the-box-is-column-1-the-brick-in-column-3-stays
+RUN | $T/rk | $T/wide312.pdl
+EXPECT_OUT | BROKEN 1 SCORE 5 CELLS 1,1 LEVEL ....../..B.../....../###### | HAND-COMPUTED-312-plus-199-is-511-column-1
+RUN | $T/rk | $T/wide.pdl
+EXPECT_OUT | BROKEN 2 SCORE 10 CELLS 1,1;2,1 LEVEL ....../....../....../###### | HAND-COMPUTED-313-plus-199-is-512-column-2-both-bricks-break-left-to-right
+
+CASE    | the-number-is-data
+RUN | $T/rk | $T/v7.pdl
+EXPECT_OUT | BROKEN 1 SCORE 7 CELLS 1,1 | HAND-COMPUTED-brick_score-7
+RUN | $T/rk | $T/v0.pdl
+EXPECT_OUT | BROKEN 1 SCORE 0 CELLS 1,1 | HAND-COMPUTED-brick_score-0-still-breaks
+RUN | $T/rk | $T/before.pdl
+EXPECT_OUT | BROKEN 1 SCORE 35 CELLS 1,1 | HAND-COMPUTED-30-before-plus-5-is-35
+
+CASE    | outside-the-level
+# y 0 is flush under row -1 (the head row is above the world): nothing. Columns left of 0 / right of the last / a head row below the level: nothing. The op fills the outside with the brick character, so a missing bounds test shows
+RUN | $T/rk | $T/topedge.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.B..../....../###### | HAND-COMPUTED-the-head-row-is--1-outside-the-level
+RUN | $T/rk | $T/negx.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../B...../....../###### | HAND-COMPUTED-columns--2-and--1-are-outside
+RUN | $T/rk | $T/rightx.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.....B/....../###### | HAND-COMPUTED-column-6-is-outside-the-6-wide-level
+RUN | $T/rk | $T/belowy.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - LEVEL ....../.B..../....../###### | HAND-COMPUTED-y-1280-is-flush-under-row-4-the-head-row-4-is-past-the-4-row-level
+RUN | $T/rk | $T/alias_left.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - | HAND-COMPUTED-column--2-of-row-1-is-the-byte-of-column-63-of-row-0-a-real-brick-only-a-bounds-test-keeps-them-apart
+RUN | $T/rk | $T/alias_right.pdl
+EXPECT_OUT | BROKEN 0 SCORE 0 CELLS - | HAND-COMPUTED-column-65-of-row-1-is-column-0-of-row-2-a-real-brick
+
+CASE    | the-cap
+# a 1200 wide body over 5 bricks breaks the first 4 and leaves the fifth in the level
+RUN | $T/rk | $T/cap.pdl
+EXPECT_OUT | BROKEN 4 SCORE 20 CELLS 0,1;1,1;2,1;3,1 LEVEL ....../....B./....../###### | HAND-COMPUTED-the-first-4-of-5-the-fifth-stays
+
+CASE    | contract
+RUN | $T/rk | --describe
+EXPECT_OUT | RULE keys: brick_score | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rk | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-RULE-brick_score-is-refused
+EXPECT_OUT | the number is data, there is no default | and-the-op-says-why
+RUN | $T/rk | $T/notile.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-TILE-brick-is-refused
+RUN | $T/rk | $T/badrule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-RULE-key-is-refused
+
+CASE    | event-page
+RUN | grep | -c | ^COMMAND rule_brick$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_brick-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_brick/event_pkg/pages/page_1/event.ir.pdl | type=rule_brick | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_brick/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_brick/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | BROKEN 1 SCORE 5 CELLS 1,1 LEVEL ....../....../....../###### | the-page-gives-the-SAME-line-as-the-op-alone

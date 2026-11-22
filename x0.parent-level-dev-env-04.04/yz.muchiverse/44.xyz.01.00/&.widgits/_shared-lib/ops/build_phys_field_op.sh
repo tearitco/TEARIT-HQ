@@ -21,3 +21,6 @@ cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_input
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_win_op.+x rule_win_op.c && echo "OK +x/rule_win_op.+x"
 # rule_food_op (2026-11-19, D93): the CLI face of the food rule (rule_food.c over seed_mix.c)
 cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_food_op.+x rule_food_op.c && echo "OK +x/rule_food_op.+x"
+# rule_coin_op / rule_brick_op (2026-11-22, D106): the CLI faces of the coin and brick block rules (rule_coin.c, rule_brick.c over phys_field.c)
+cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_coin_op.+x rule_coin_op.c && echo "OK +x/rule_coin_op.+x"
+cd "$(dirname "$0")" && ${CC:-gcc} -std=gnu11 -Wall -Wextra -O2 -o +x/rule_brick_op.+x rule_brick_op.c && echo "OK +x/rule_brick_op.+x"

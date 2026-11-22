@@ -1,0 +1,131 @@
+# rule_coin (2026-11-22; decision log D106, standard BOOK 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md): the COIN block rule as an op. _shared-lib/rule_coin.c is the pure module (called in-process by game_core's platform tick), ops/rule_coin_op.c is its CLI face.
+# Every pinned line is HAND-COMPUTED from the clauses (box overlap, x + w - 1 as the last Q8 column, row-major scan, collect once = the tile becomes '.', the number is data, cap 4). One scene per clause, each with the plausible-WRONG answer different (standard sections 14 and 15).
+# The op fills every cell OUTSIDE the level with the coin character (guard rows above and below, the bytes right of the last column), so a rule that forgets a bounds test would take it and the case sees it. Hero box is 200 x 200 Q8 unless the scene says otherwise; Q8 = 1/256 cell: x 300 covers column 1 (300..499), x 400 covers columns 1 and 2 (400..599).
+RESULTS | ../results/rule_coin.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/rule_coin_op.+x | $T/rk
+EXPECT_EXIT | 0 | scratch-ready
+WRITE | own.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .o....\nROW \p ......\nROW \p ######
+WRITE | wide.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 400 \p 300 \p 200 \p 200\nROW \p ......\nROW \p ..o...\nROW \p ......\nROW \p ######
+WRITE | edge312.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 312 \p 300 \p 200 \p 200\nROW \p ......\nROW \p ..o...\nROW \p ......\nROW \p ######
+WRITE | edge313.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 313 \p 300 \p 200 \p 200\nROW \p ......\nROW \p ..o...\nROW \p ......\nROW \p ######
+WRITE | vedge312.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 312 \p 200 \p 200\nROW \p ......\nROW \p ......\nROW \p .o....\nROW \p ######
+WRITE | vedge313.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 313 \p 200 \p 200\nROW \p ......\nROW \p ......\nROW \p .o....\nROW \p ######
+WRITE | other.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .x....\nROW \p ......\nROW \p ######
+WRITE | solid.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .#....\nROW \p ......\nROW \p ######
+WRITE | empty.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p ......\nROW \p ......\nROW \p ######
+WRITE | two.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 400 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .oo...\nROW \p ......\nROW \p ######
+WRITE | tworows.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 400 \p 200 \p 200\nROW \p ......\nROW \p .o....\nROW \p .o....\nROW \p ######
+WRITE | order.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 400 \p 400 \p 200 \p 200\nROW \p ......\nROW \p ..o...\nROW \p .o....\nROW \p ######
+WRITE | far.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .o..o.\nROW \p ......\nROW \p ######
+WRITE | v25.pdl | RULE \p coin_value \p 25\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .o....\nROW \p ......\nROW \p ######
+WRITE | v0.pdl | RULE \p coin_value \p 0\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .o....\nROW \p ......\nROW \p ######
+WRITE | before.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nSCORE \p 30\nROW \p ......\nROW \p .o....\nROW \p ......\nROW \p ######
+WRITE | negx.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p -300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p o.....\nROW \p ......\nROW \p ######
+WRITE | rightx.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 1600 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .....o\nROW \p ......\nROW \p ######
+WRITE | abovey.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p -300 \p 200 \p 200\nROW \p ......\nROW \p .o....\nROW \p ......\nROW \p ######
+WRITE | belowy.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 1100 \p 200 \p 200\nROW \p ......\nROW \p .o....\nROW \p ......\nROW \p ######
+WRITE | alias_left.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p -512 \p 300 \p 200 \p 200\nROW \p ...............................................................o\nROW \p ................................................................\nROW \p ................................................................
+WRITE | alias_right.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 16640 \p 0 \p 200 \p 200\nROW \p ................................................................\nROW \p o...............................................................\nROW \p ................................................................
+WRITE | cap.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 0 \p 0 \p 600 \p 600\nROW \p ooo...\nROW \p ooo...\nROW \p ooo...\nROW \p ######
+WRITE | norule.pdl | TILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......
+WRITE | notile.pdl | RULE \p coin_value \p 10\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......
+WRITE | badrule.pdl | RULE \p coin_valu \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......
+WRITE | ragged.pdl | RULE \p coin_value \p 10\nTILE \p coin \p o\nHERO \p 300 \p 300 \p 200 \p 200\nROW \p ......\nROW \p .....
+
+CASE    | collect-by-overlap
+# the hero box x 300..499 y 300..499 is column 1, row 1: the coin there is collected, the tile becomes '.', +10, the cell is reported
+RUN | $T/rk | $T/own.pdl
+EXPECT_EXIT | 0 | the-op-runs
+EXPECT_OUT | COLLECTED 1 SCORE 10 CELLS 1,1 LEVEL ....../....../....../###### | HAND-COMPUTED-column-1-row-1-holds-the-coin-and-the-tile-is-empty-after
+# ANY overlap counts, not the centre: x 400..599 covers columns 1 and 2 (centre 500 is column 1) and the coin is in column 2
+RUN | $T/rk | $T/wide.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 10 CELLS 2,1 LEVEL ....../....../....../###### | HAND-COMPUTED-the-box-overlaps-column-2-although-its-centre-is-in-column-1
+
+CASE    | the-last-column-of-the-box-is-x-plus-w-minus-1
+# x 312 -> the box ends at Q8 column 511 (still column 1): the coin in column 2 is NOT touched; x 313 -> it ends at 512 (column 2): collected. A rule that tests x + w instead of x + w - 1 takes the coin at 312
+RUN | $T/rk | $T/edge312.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../..o.../....../###### | HAND-COMPUTED-312-plus-199-is-511-which-is-column-1
+RUN | $T/rk | $T/edge313.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 10 CELLS 2,1 LEVEL ....../....../....../###### | HAND-COMPUTED-313-plus-199-is-512-which-is-column-2
+# the same edge down the rows: y 312 ends at 511 (row 1), y 313 at 512 (row 2)
+RUN | $T/rk | $T/vedge312.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../....../.o..../###### | HAND-COMPUTED-312-plus-199-is-511-row-1
+RUN | $T/rk | $T/vedge313.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 10 CELLS 1,2 LEVEL ....../....../....../###### | HAND-COMPUTED-313-plus-199-is-512-row-2
+
+CASE    | only-a-coin-tile-is-a-coin
+# another tile character and a solid tile in the hero's cell are left alone (the coin character is data, `o`)
+RUN | $T/rk | $T/other.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../.x..../....../###### | HAND-COMPUTED-x-is-not-the-coin-tile
+RUN | $T/rk | $T/solid.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../.#..../....../###### | HAND-COMPUTED-a-wall-tile-is-not-a-coin
+
+CASE    | once-and-all
+# a cell that is already empty (a coin taken before) gives nothing again; two coins in one call are both taken, row by row then left to right; a far coin stays
+RUN | $T/rk | $T/empty.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../....../....../###### | HAND-COMPUTED-nothing-to-collect
+RUN | $T/rk | $T/two.pdl
+EXPECT_OUT | COLLECTED 2 SCORE 20 CELLS 1,1;2,1 LEVEL ....../....../....../###### | HAND-COMPUTED-columns-1-and-2-both-hold-a-coin-2-x-10
+RUN | $T/rk | $T/tworows.pdl
+EXPECT_OUT | COLLECTED 2 SCORE 20 CELLS 1,1;1,2 LEVEL ....../....../....../###### | HAND-COMPUTED-y-400..599-covers-rows-1-and-2
+RUN | $T/rk | $T/order.pdl
+EXPECT_OUT | COLLECTED 2 SCORE 20 CELLS 2,1;1,2 LEVEL ....../....../....../###### | HAND-COMPUTED-row-major-(2-1)-before-(1-2)-a-column-major-scan-would-say-1-2-first
+RUN | $T/rk | $T/far.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 10 CELLS 1,1 LEVEL ....../....o./....../###### | HAND-COMPUTED-only-the-coin-in-the-hero-cell-is-taken-the-one-in-column-4-stays
+
+CASE    | the-number-is-data
+RUN | $T/rk | $T/v25.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 25 CELLS 1,1 | HAND-COMPUTED-coin_value-25
+RUN | $T/rk | $T/v0.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 0 CELLS 1,1 | HAND-COMPUTED-coin_value-0-still-collects
+RUN | $T/rk | $T/before.pdl
+EXPECT_OUT | COLLECTED 1 SCORE 40 CELLS 1,1 | HAND-COMPUTED-30-before-plus-10-is-40-(added-to-not-replaced)
+
+CASE    | outside-the-level
+# cells beyond the level are never coins (the op fills them with the coin character: a missing bounds test takes them and the line changes). Left of column 0, right of the last column, above row 0, below the last row
+RUN | $T/rk | $T/negx.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../o...../....../###### | HAND-COMPUTED-x--300..-101-is-columns--2-and--1-the-coin-in-column-0-is-not-touched
+RUN | $T/rk | $T/rightx.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../.....o/....../###### | HAND-COMPUTED-x-1600-is-column-6-past-the-6-wide-level
+RUN | $T/rk | $T/abovey.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../.o..../....../###### | HAND-COMPUTED-y--300-is-rows--2-and--1
+RUN | $T/rk | $T/belowy.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - LEVEL ....../.o..../....../###### | HAND-COMPUTED-y-1100-is-row-4-past-the-4-row-level
+# a 64 wide level: column -2 of row 1 is the byte before row 1 in memory = column 63 of row 0 (a real coin); column 65 of row 0 is column 0 of row 1. Only a bounds test keeps them apart
+RUN | $T/rk | $T/alias_left.pdl
+EXPECT_OUT_LACKS | CELLS -2 | HAND-COMPUTED-column--2-is-outside-the-level
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - | and-the-real-coin-at-63-0-is-not-taken
+RUN | $T/rk | $T/alias_right.pdl
+EXPECT_OUT | COLLECTED 0 SCORE 0 CELLS - | HAND-COMPUTED-column-65-is-outside-the-level-the-coin-at-0-1-is-not-taken
+
+CASE    | the-cap
+# at most 4 cells are reported and taken per call (a body of a normal size touches at most 4): a 600 x 600 box over 9 coins takes the first 4 in row-major order and leaves the rest IN THE LEVEL (never silently lost)
+RUN | $T/rk | $T/cap.pdl
+EXPECT_OUT | COLLECTED 4 SCORE 40 CELLS 0,0;1,0;2,0;0,1 LEVEL ....../.oo.../ooo.../###### | HAND-COMPUTED-the-first-4-of-9-in-row-major-order-5-stay
+
+CASE    | contract
+RUN | $T/rk | --describe
+EXPECT_OUT | RULE keys: coin_value | the-op-describes-its-inputs-outputs-and-RULE-keys
+RUN | $T/rk | $T/norule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-RULE-coin_value-is-refused
+EXPECT_OUT | the number is data, there is no default | and-the-op-says-why
+RUN | $T/rk | $T/notile.pdl
+EXPECT_EXIT | 2 | NEGATIVE-a-scene-without-TILE-coin-is-refused
+RUN | $T/rk | $T/badrule.pdl
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-RULE-key-is-refused
+RUN | $T/rk | $T/ragged.pdl
+EXPECT_EXIT | 2 | NEGATIVE-rows-of-two-widths-are-refused
+
+CASE    | event-page
+# the rule is on the house's event vocabulary and in a Blueprintz page (D93 recipe, standard section 12): a registry COMMAND row, the page tm_coin (seeded through the real events-hq manager), whose compiled wrapper runs THIS op with the page's scene
+RUN | grep | -c | ^COMMAND rule_coin$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-registry-has-exactly-one-COMMAND-rule_coin-row
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_coin/event_pkg/pages/page_1/event.ir.pdl | type=rule_coin | the-page-command-is-the-registered-type
+EXPECT_HAS | $HOUSE/@.apps/teario/events/tm_coin/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-page-has-a-trigger
+RUN | sh | $HOUSE/@.apps/teario/events/tm_coin/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-compiled-wrapper-runs-the-op
+EXPECT_OUT | COLLECTED 1 SCORE 10 CELLS 1,1 LEVEL ....../....../....../###### | the-page-gives-the-SAME-line-as-the-op-alone

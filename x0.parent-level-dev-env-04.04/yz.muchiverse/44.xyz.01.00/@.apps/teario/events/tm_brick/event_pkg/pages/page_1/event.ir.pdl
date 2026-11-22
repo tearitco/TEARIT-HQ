@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | tm_brick
+STATE        | source               | events-hq
+NODE         | id=1 type=rule_brick | scene=tm_brick/scene.pdl
