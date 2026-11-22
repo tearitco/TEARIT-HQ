@@ -31,3 +31,10 @@ DAYLIGHT | 1080 | 15
 DAYLIGHT | 1140 | 8
 DAYLIGHT | 1200 | 2
 DAYLIGHT | 1440 | 2
+# hunger on manual turns (D110): every spawned actor gains hunger_per_turn on each TURN row (cap hunger_max); at starve_at mine and place refuse (22); EAT lowers hunger by food_<item> and costs turns_eat
+RULE | hunger_per_turn | 1
+RULE | hunger_max | 40
+RULE | starve_at | 30
+RULE | turns_eat | 1
+RULE | food_apple | 4
+RULE | food_bread | 12

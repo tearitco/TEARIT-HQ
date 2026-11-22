@@ -1,4 +1,4 @@
-# vox (2026-11-22, D105; recipe: STANDARD-RULES-AS-OPS sections 12 to 16): the voxel foundation. ONE op (@.apps/vox/ops/vox_op.c) whose only state is the append-only ledger rows
+# vox (2026-11-22, D105 + D110 hunger and eat; recipe: STANDARD-RULES-AS-OPS sections 12 to 16): the voxel foundation. ONE op (@.apps/vox/ops/vox_op.c) whose only state is the append-only ledger rows
 # GIVE MOVE DAMAGE MINE DROP PLACE TURN DAY SLEEP SPAWNPOINT; every number is a RULE / TOOL / DAYLIGHT / BLOCK row in @.apps/vox; place, mine, wait and sleep are called by four event pages (registry COMMAND rows vox_*).
 # Nothing here touches the live ledger: a scratch house under $T holds the pages, the data and a freshly built op (the page wrappers walk up to the folder holding xyzfs, which is $T/h).
 # GENERATED from the macro source by an awk one-off (X rows -> RUN rows; MUT rows -> five rows each); every expected number below is HAND-COMPUTED from the data rows, not copied from a run.
@@ -392,6 +392,115 @@ CAPTURE | rows_al
 EXPECT_GE | $rows_al | 12 | the-ledger-really-has-rows-(vacuity-guard)
 RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt
 EXPECT_OUT_IS | verified | the-page-written-ledger-replays-identically
+
+CASE    | hunger
+# D110: hunger rises hunger_per_turn=1 per TURN row for a spawned actor (cap hunger_max=40); EAT lowers it by food_<item> (apple 4, bread 12); starve_at=30 refuses mine and place (22).
+# HAND: give is no turn; move = turn 1 (hunger 1); wait 5 = turn 6 (hunger 6); eat apple: 6-4=2, the eat turn adds 1 = 3; eat bread: 3-12 -> 0, +1 = 1.
+MKDIR | hg
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/hg/l | joe | apple | 2 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/hg/l | joe | bread | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/hg/l | joe | pebble | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/hg/l | joe | cobble | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/hg/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/hg/l | joe
+EXPECT_OUT_IS | hunger=1 max=40 starved=0 | the-spawn-move-is-one-turn-so-hunger-1-(HAND)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/hg/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/hg/l | joe
+EXPECT_OUT_IS | hunger=6 max=40 starved=0 | five-more-turns-hunger-6-(HAND-6*1)
+SUMTREE | sa | hg
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | ghost | apple
+EXPECT_EXIT | 10 | an-unknown-actor-cannot-eat-(exit-10)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | joe | pebble
+EXPECT_EXIT | 16 | a-non-food-item-is-refused-(exit-16)
+SUMTREE | sb | hg
+EXPECT_EQ | $sa | $sb | eat-refusals-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | joe | apple
+EXPECT_OUT_IS | ate=apple hunger=3 | apple-lowers-6-by-4-then-the-eat-turn-adds-1-(HAND)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/hg/l | joe
+EXPECT_OUT_IS | hunger=3 max=40 starved=0 | the-fold-agrees-with-the-print
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | inv | $T/h/@.apps/vox | $T/hg/l | joe
+EXPECT_OUT | apple=1 | one-apple-left-the-eaten-one-left-the-bag
+EXPECT_HAS | hg/l | EAT \p joe \p apple \p 4 | the-EAT-row-names-actor-item-and-value
+EXPECT_HAS | hg/l | TURN \p 7 \p eat | the-eat-turn-is-a-ledger-row-(turn-7)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | joe | bread
+EXPECT_OUT_IS | ate=bread hunger=1 | bread-takes-3-to-0-floor-then-1-(HAND)
+SUMTREE | sa | hg
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | joe | bread
+EXPECT_EXIT | 16 | no-bread-left-refuses-(exit-16)
+SUMTREE | sb | hg
+EXPECT_EQ | $sa | $sb | eating-with-no-food-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/hg/l | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/hg/l | joe
+EXPECT_OUT_IS | hunger=40 max=40 starved=1 | hunger-is-capped-at-hunger_max-and-starved-(40>=30)
+SUMTREE | sa | hg
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/hg/l | joe | hand | 3 | 2 | 3
+EXPECT_EXIT | 22 | a-starved-actor-cannot-mine-(exit-22)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/hg/l | joe | cobble | 3 | 3 | 4
+EXPECT_EXIT | 22 | a-starved-actor-cannot-place-(exit-22)
+SUMTREE | sb | hg
+EXPECT_EQ | $sa | $sb | the-starved-refusals-wrote-NOTHING
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | joe | apple
+EXPECT_OUT_IS | ate=apple hunger=37 | a-starved-actor-may-still-eat-(40-4+1)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/hg/l | joe | bread | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg/l | joe | bread
+EXPECT_OUT_IS | ate=bread hunger=26 | 37-12+1=26-below-starve_at-(HAND)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/hg/l | joe
+EXPECT_OUT_IS | hunger=26 max=40 starved=0 | no-longer-starved
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/hg/l | joe | hand | 3 | 2 | 3
+EXPECT_OUT | damaged | mining-works-again-after-eating
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/hg/l
+EXPECT_OUT_IS | verified | the-hunger-ledger-replays-identically-(EAT-is-an-intent-row)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/vox | $T/hg/l | $T/r1/hg
+EXPECT_OUT_IS | replayed identical | and-replays-into-a-new-file
+RUN | cp | $T/hg/l | $T/hg_edit
+RUN | sed | -i | s/EAT \p joe \p apple \p 4/EAT \p joe \p apple \p 40/ | $T/hg_edit
+RUN | cmp | -s | $T/hg/l | $T/hg_edit
+EXPECT_EXIT | 1 | hand-edit-really-differs-(vacuity-guard)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/hg_edit
+EXPECT_EXIT | 14 | a-hand-edited-EAT-value-is-refused-(14)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/hg_edit | joe | apple
+EXPECT_EXIT | 14 | and-a-writing-verb-refuses-on-the-edited-ledger
+
+CASE    | hunger-data-and-page
+MKDIR | dh
+COPYDIR | @.apps/vox | dh
+RUN | sed | -i | s/RULE \p hunger_per_turn \p 1/RULE \p hunger_per_turn \p 0/ | $T/dh/rules.pdl
+RUN | cmp | -s | $HOUSE/@.apps/vox/rules.pdl | $T/dh/rules.pdl
+EXPECT_EXIT | 1 | hunger-data-mutant-differs-(vacuity-guard)
+MKDIR | hn
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/dh | $T/hn/l | joe | apple | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/dh | $T/hn/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/dh | $T/hn/l | joe
+EXPECT_OUT_IS | hunger=0 max=40 starved=0 | with-hunger_per_turn-0-in-DATA-nothing-rises-(numbers-are-data)
+SUMTREE | sa | hn
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/dh | $T/hn/l | joe | apple
+EXPECT_EXIT | 23 | an-actor-with-hunger-0-cannot-eat-(exit-23)
+SUMTREE | sb | hn
+EXPECT_EQ | $sa | $sb | not-hungry-wrote-NOTHING
+RUN | grep | -c | ^COMMAND vox_eat$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | exactly-one-COMMAND-vox_eat-row
+RUN | grep | -c | ^COMMAND vox_eat$ | $T/sabotaged_registry.pdl
+EXPECT_OUT_IS | 0 | NEGATIVE-a-registry-copy-without-the-row-gives-0
+RUN | grep | -c | -F | vox_op.+x" eat "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{item}' | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-eat-template-is-exactly-op-data-ledger-actor-item
+EXPECT_HAS | h/@.apps/vox/events/vox_eat/event_pkg/pages/page_1/event.ir.pdl | type=vox_eat \p actor=joe\pitem=bread | the-eat-page-command-is-the-registered-type
+EXPECT_HAS | h/@.apps/vox/events/vox_eat/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-eat-page-has-a-ui-trigger
+EXPECT_LACKS | h/@.apps/vox/events/vox_sleep/event_pkg/pages/page_1/event.ir.pdl | type=vox_eat | NEGATIVE-the-sleep-page-is-not-the-eat-command
+RUN | sh | $T/h/@.apps/vox/events/vox_eat/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 16 | the-eat-page-propagates-16-with-no-bread-in-the-bag
+EXPECT_LACKS | h/#.desktop/vox_ledger.txt | EAT | the-refusal-wrote-no-EAT-row
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt | joe | bread | 1 | seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/al/l | joe | bread | 1 | seed
+RUN | sh | $T/h/@.apps/vox/events/vox_eat/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-eat-page-runs-with-bread
+CAPTURE | page_eat
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/al/l | joe | bread
+CAPTURE | alone_eat
+EXPECT_EQ | $page_eat | $alone_eat | the-eat-page-prints-the-SAME-line-as-the-op-alone
+RUN | cmp | -s | $T/h/#.desktop/vox_ledger.txt | $T/al/l
+EXPECT_EXIT | 0 | page-ledger-and-op-alone-ledger-are-the-same-bytes-after-eat
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/h/#.desktop/vox_ledger.txt
+EXPECT_OUT_IS | verified | the-page-written-eat-ledger-replays-identically
 
 CASE    | sabotage
 # ONE clause broken per mutant source; the real op prints the phrase, the mutant must not (or must print what the real op never does)
@@ -823,4 +932,226 @@ RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c25/l | joe
 RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c25/l | joe | hand | 3 | 1 | 3
 EXPECT_OUT | damaged | CONTROL-the-real-op-passes-the-same-check-25-dirt-hardness-in-blocks.pdl-changed-moves-the-behaviour
 
+
+CASE    | hunger-sabotage
+# ONE hunger clause broken per mutant (source sed or DATA row); the real op/data prints the phrase, the mutant must not
+MKDIR | m26
+MKDIR | c26
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m26.c
+RUN | sed | -i | s@w->a\[i\].hunger += (t - w->turn) \* hpt;@@ | $T/b/m26.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m26.c
+EXPECT_EXIT | 1 | mutant-26-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m26.+x | $T/b/m26.c
+EXPECT_EXIT | 0 | mutant-26-compiles
+RUN | $T/b/m26.+x | --describe
+EXPECT_OUT | rule vox | mutant-26-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m26.+x | move | $T/h/@.apps/vox | $T/m26/l | joe | 3 | 3 | 3
+RUN | $T/b/m26.+x | wait | $T/h/@.apps/vox | $T/m26/l | 5
+RUN | $T/b/m26.+x | hunger | $T/h/@.apps/vox | $T/m26/l | joe
+EXPECT_OUT_LACKS | hunger=6 | SABOTAGE-26-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c26/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c26/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/c26/l | joe
+EXPECT_OUT | hunger=6 | CONTROL-the-real-op-passes-the-same-check-26
+MKDIR | m27
+MKDIR | c27
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m27.c
+RUN | sed | -i | s@if (w->a\[i\].hunger > hmax) w->a\[i\].hunger = hmax;@@ | $T/b/m27.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m27.c
+EXPECT_EXIT | 1 | mutant-27-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m27.+x | $T/b/m27.c
+EXPECT_EXIT | 0 | mutant-27-compiles
+RUN | $T/b/m27.+x | --describe
+EXPECT_OUT | rule vox | mutant-27-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m27.+x | move | $T/h/@.apps/vox | $T/m27/l | joe | 3 | 3 | 3
+RUN | $T/b/m27.+x | wait | $T/h/@.apps/vox | $T/m27/l | 100
+RUN | $T/b/m27.+x | hunger | $T/h/@.apps/vox | $T/m27/l | joe
+EXPECT_OUT_LACKS | hunger=40 | SABOTAGE-27-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c27/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c27/l | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/c27/l | joe
+EXPECT_OUT | hunger=40 | CONTROL-the-real-op-passes-the-same-check-27
+MKDIR | m28
+MKDIR | c28
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m28.c
+RUN | sed | -i | s@a->hunger -= atoi(f\[3\]);@@ | $T/b/m28.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m28.c
+EXPECT_EXIT | 1 | mutant-28-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m28.+x | $T/b/m28.c
+EXPECT_EXIT | 0 | mutant-28-compiles
+RUN | $T/b/m28.+x | --describe
+EXPECT_OUT | rule vox | mutant-28-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m28.+x | give | $T/h/@.apps/vox | $T/m28/l | joe | apple | 1 | t
+RUN | $T/b/m28.+x | move | $T/h/@.apps/vox | $T/m28/l | joe | 3 | 3 | 3
+RUN | $T/b/m28.+x | wait | $T/h/@.apps/vox | $T/m28/l | 5
+RUN | $T/b/m28.+x | eat | $T/h/@.apps/vox | $T/m28/l | joe | apple
+RUN | $T/b/m28.+x | hunger | $T/h/@.apps/vox | $T/m28/l | joe
+EXPECT_OUT_LACKS | hunger=3 | SABOTAGE-28-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c28/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c28/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c28/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c28/l | joe | apple
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/c28/l | joe
+EXPECT_OUT | hunger=3 | CONTROL-the-real-op-passes-the-same-check-28
+MKDIR | m29
+MKDIR | c29
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m29.c
+RUN | sed | -i | /"EAT")) { Actor/s@if (c) \*c -= 1;@@ | $T/b/m29.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m29.c
+EXPECT_EXIT | 1 | mutant-29-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m29.+x | $T/b/m29.c
+EXPECT_EXIT | 0 | mutant-29-compiles
+RUN | $T/b/m29.+x | --describe
+EXPECT_OUT | rule vox | mutant-29-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m29.+x | give | $T/h/@.apps/vox | $T/m29/l | joe | apple | 1 | t
+RUN | $T/b/m29.+x | move | $T/h/@.apps/vox | $T/m29/l | joe | 3 | 3 | 3
+RUN | $T/b/m29.+x | wait | $T/h/@.apps/vox | $T/m29/l | 5
+RUN | $T/b/m29.+x | eat | $T/h/@.apps/vox | $T/m29/l | joe | apple
+RUN | $T/b/m29.+x | eat | $T/h/@.apps/vox | $T/m29/l | joe | apple
+EXPECT_OUT_LACKS | no food in bag | SABOTAGE-29-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c29/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c29/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c29/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c29/l | joe | apple
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c29/l | joe | apple
+EXPECT_OUT | no food in bag | CONTROL-the-real-op-passes-the-same-check-29
+MKDIR | m30
+MKDIR | c30
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m30.c
+RUN | sed | -i | /static int v_mine/,/^}/s@if (a->hunger >= R("starve_at")) {@if (0) {@ | $T/b/m30.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m30.c
+EXPECT_EXIT | 1 | mutant-30-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m30.+x | $T/b/m30.c
+EXPECT_EXIT | 0 | mutant-30-compiles
+RUN | $T/b/m30.+x | --describe
+EXPECT_OUT | rule vox | mutant-30-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m30.+x | move | $T/h/@.apps/vox | $T/m30/l | joe | 3 | 3 | 3
+RUN | $T/b/m30.+x | wait | $T/h/@.apps/vox | $T/m30/l | 100
+RUN | $T/b/m30.+x | mine | $T/h/@.apps/vox | $T/m30/l | joe | hand | 3 | 2 | 3
+EXPECT_OUT_LACKS | starved | SABOTAGE-30-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c30/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c30/l | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/vox | $T/c30/l | joe | hand | 3 | 2 | 3
+EXPECT_OUT | starved | CONTROL-the-real-op-passes-the-same-check-30
+MKDIR | m31
+MKDIR | c31
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m31.c
+RUN | sed | -i | /static int v_place/,/^}/s@if (a->hunger >= R("starve_at")) {@if (0) {@ | $T/b/m31.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m31.c
+EXPECT_EXIT | 1 | mutant-31-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m31.+x | $T/b/m31.c
+EXPECT_EXIT | 0 | mutant-31-compiles
+RUN | $T/b/m31.+x | --describe
+EXPECT_OUT | rule vox | mutant-31-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m31.+x | give | $T/h/@.apps/vox | $T/m31/l | joe | cobble | 1 | t
+RUN | $T/b/m31.+x | move | $T/h/@.apps/vox | $T/m31/l | joe | 3 | 3 | 3
+RUN | $T/b/m31.+x | wait | $T/h/@.apps/vox | $T/m31/l | 100
+RUN | $T/b/m31.+x | place | $T/h/@.apps/vox | $T/m31/l | joe | cobble | 3 | 3 | 4
+EXPECT_OUT_LACKS | starved | SABOTAGE-31-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c31/l | joe | cobble | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c31/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c31/l | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/vox | $T/c31/l | joe | cobble | 3 | 3 | 4
+EXPECT_OUT | starved | CONTROL-the-real-op-passes-the-same-check-31
+MKDIR | m32
+MKDIR | c32
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m32.c
+RUN | sed | -i | s@if (a->hunger < 1) {@if (0) {@ | $T/b/m32.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m32.c
+EXPECT_EXIT | 1 | mutant-32-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m32.+x | $T/b/m32.c
+EXPECT_EXIT | 0 | mutant-32-compiles
+RUN | $T/b/m32.+x | --describe
+EXPECT_OUT | rule vox | mutant-32-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m32.+x | give | $T/dh | $T/m32/l | joe | apple | 1 | t
+RUN | $T/b/m32.+x | move | $T/dh | $T/m32/l | joe | 3 | 3 | 3
+RUN | $T/b/m32.+x | eat | $T/dh | $T/m32/l | joe | apple
+EXPECT_OUT_LACKS | not hungry | SABOTAGE-32-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/dh | $T/c32/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/dh | $T/c32/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/dh | $T/c32/l | joe | apple
+EXPECT_OUT | not hungry | CONTROL-the-real-op-passes-the-same-check-32
+MKDIR | m33
+MKDIR | c33
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m33.c
+RUN | sed | -i | s@if (fv < 1) {@if (0) {@ | $T/b/m33.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m33.c
+EXPECT_EXIT | 1 | mutant-33-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m33.+x | $T/b/m33.c
+EXPECT_EXIT | 0 | mutant-33-compiles
+RUN | $T/b/m33.+x | --describe
+EXPECT_OUT | rule vox | mutant-33-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m33.+x | give | $T/h/@.apps/vox | $T/m33/l | joe | pebble | 1 | t
+RUN | $T/b/m33.+x | move | $T/h/@.apps/vox | $T/m33/l | joe | 3 | 3 | 3
+RUN | $T/b/m33.+x | wait | $T/h/@.apps/vox | $T/m33/l | 5
+RUN | $T/b/m33.+x | eat | $T/h/@.apps/vox | $T/m33/l | joe | pebble
+EXPECT_OUT_LACKS | not food | SABOTAGE-33-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c33/l | joe | pebble | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c33/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c33/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c33/l | joe | pebble
+EXPECT_OUT | not food | CONTROL-the-real-op-passes-the-same-check-33
+MKDIR | m34
+MKDIR | c34
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m34.c
+RUN | sed | -i | s@adv(o, w->turn, tm, "eat")@adv(o, w->turn, 0, "eat")@ | $T/b/m34.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m34.c
+EXPECT_EXIT | 1 | mutant-34-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m34.+x | $T/b/m34.c
+EXPECT_EXIT | 0 | mutant-34-compiles
+RUN | $T/b/m34.+x | --describe
+EXPECT_OUT | rule vox | mutant-34-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m34.+x | give | $T/h/@.apps/vox | $T/m34/l | joe | apple | 1 | t
+RUN | $T/b/m34.+x | move | $T/h/@.apps/vox | $T/m34/l | joe | 3 | 3 | 3
+RUN | $T/b/m34.+x | wait | $T/h/@.apps/vox | $T/m34/l | 5
+RUN | $T/b/m34.+x | eat | $T/h/@.apps/vox | $T/m34/l | joe | apple
+RUN | $T/b/m34.+x | status | $T/h/@.apps/vox | $T/m34/l
+EXPECT_OUT_LACKS | turn=7 | SABOTAGE-34-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c34/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c34/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c34/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c34/l | joe | apple
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | status | $T/h/@.apps/vox | $T/c34/l
+EXPECT_OUT | turn=7 | CONTROL-the-real-op-passes-the-same-check-34
+MKDIR | m35
+MKDIR | c35
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m35.c
+RUN | sed | -i | /r = v_eat(&w, dst,/d | $T/b/m35.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m35.c
+EXPECT_EXIT | 1 | mutant-35-source-really-differs-(vacuity-guard)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m35.+x | $T/b/m35.c
+EXPECT_EXIT | 0 | mutant-35-compiles
+RUN | $T/b/m35.+x | --describe
+EXPECT_OUT | rule vox | mutant-35-runs-(a-crash-or-missing-binary-would-fake-a-catch)
+RUN | $T/b/m35.+x | give | $T/h/@.apps/vox | $T/m35/l | joe | apple | 1 | t
+RUN | $T/b/m35.+x | move | $T/h/@.apps/vox | $T/m35/l | joe | 3 | 3 | 3
+RUN | $T/b/m35.+x | wait | $T/h/@.apps/vox | $T/m35/l | 5
+RUN | $T/b/m35.+x | eat | $T/h/@.apps/vox | $T/m35/l | joe | apple
+RUN | $T/b/m35.+x | verify | $T/h/@.apps/vox | $T/m35/l
+EXPECT_OUT_LACKS | verified | SABOTAGE-35-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c35/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c35/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c35/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c35/l | joe | apple
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/vox | $T/c35/l
+EXPECT_OUT | verified | CONTROL-the-real-op-passes-the-same-check-35
+MKDIR | dfv
+COPYDIR | @.apps/vox | dfv
+RUN | sed | -i | s/RULE \p food_apple \p 4/RULE \p food_apple \p 9/ | $T/dfv/rules.pdl
+RUN | cmp | -s | $HOUSE/@.apps/vox/rules.pdl | $T/dfv/rules.pdl
+EXPECT_EXIT | 1 | data-mutant-36-really-differs-(vacuity-guard)
+MKDIR | m36
+MKDIR | c36
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/dfv | $T/m36/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/dfv | $T/m36/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/dfv | $T/m36/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/dfv | $T/m36/l | joe | apple
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/dfv | $T/m36/l | joe
+EXPECT_OUT_LACKS | hunger=3 | SABOTAGE-36-is-caught
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/vox | $T/c36/l | joe | apple | 1 | t
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/vox | $T/c36/l | joe | 3 | 3 | 3
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/vox | $T/c36/l | 5
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | eat | $T/h/@.apps/vox | $T/c36/l | joe | apple
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | hunger | $T/h/@.apps/vox | $T/c36/l | joe
+EXPECT_OUT | hunger=3 | CONTROL-the-real-op-passes-the-same-check-36
 CLEAN |

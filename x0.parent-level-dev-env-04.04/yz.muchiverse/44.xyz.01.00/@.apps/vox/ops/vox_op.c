@@ -8,14 +8,16 @@
  *   mine <actor> <tool> <x> <y> <z>      DAMAGE row; when progress >= hardness also MINE + DROP rows (drop goes to the bag); + TURN
  *   place <actor> <item> <x> <y> <z>     PLACE row (removes one item from the bag) + TURN
  *   wait <n>                             TURN row (a manual turn, n turns)         sleep <actor>   SLEEP + SPAWNPOINT + TURN skipping to the wake minute
- *   status | cell <x y z> | inv <actor>  read only
+ *   eat <actor> <item>                   EAT row (removes one food item from the bag, lowers hunger by RULE food_<item>) + TURN; refused: not food/none in bag (16), hunger 0 (23)
+ *   status | cell <x y z> | inv <actor> | hunger <actor>  read only (hunger: rises hunger_per_turn on every TURN row for a spawned actor, cap hunger_max; at starve_at mine/place refuse 22)
  *   verify                               re-run every intent row into memory and compare bytes (exit 14 = hand-edited or not reproducible)
  *   replay <dst_ledger>                  re-run every intent row of <ledger> into a NEW file (identical bytes expected)
  * Rows: GIVE|actor|item|n|why  MOVE|actor|x|y|z  DAMAGE|actor|tool|x|y|z|power|progress  MINE|actor|x|y|z|kind  DROP|actor|item|n
- *       PLACE|actor|item|x|y|z  TURN|n|verb  DAY|d  SLEEP|actor|bx|by|bz|skipped_turns=N  SPAWNPOINT|actor|x|y|z
+ *       PLACE|actor|item|x|y|z  EAT|actor|item|value  TURN|n|verb  DAY|d  SLEEP|actor|bx|by|bz|skipped_turns=N  SPAWNPOINT|actor|x|y|z
  * Every mutating verb runs verify first, so a hand-edited ledger refuses (14) before anything is added.
  * Exit: 0 ok, 2 usage, 9 missing rule/file, 10 unknown actor, 11 out of bounds, 12 out of reach, 13 target invalid, 14 ledger not reproducible,
- *       15 no support, 16 item missing or not placeable, 17 tool power below min_power, 18 move blocked, 19 sleep: not night, 20 sleep: no bed near, 21 bag full. */
+ *       15 no support, 16 item missing or not placeable, 17 tool power below min_power, 18 move blocked, 19 sleep: not night, 20 sleep: no bed near, 21 bag full,
+ *       22 starved (hunger >= starve_at: mine and place refuse; eat, wait, sleep, move still work), 23 eat: not hungry. */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +32,7 @@
 #define MAXD 32
 #define MAXX 32
 #define NM 32
-typedef struct { char name[NM]; int x, y, z, has, ni; char item[MAXI][NM]; int cnt[MAXI]; } Actor;
+typedef struct { char name[NM]; int x, y, z, has, hunger, ni; char item[MAXI][NM]; int cnt[MAXI]; } Actor;
 typedef struct { int x, y, z; char kind[NM]; } Cell;
 typedef struct { int x, y, z, prog; } Dmg;
 typedef struct { char kind[NM], tool[NM], drops[NM]; int hard, minp, count, solid; } Blk;
@@ -112,7 +114,17 @@ static void fold(W *w, FILE *L) {
         else if (n >= 4 && !strcmp(f[0], "DROP")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 1) : NULL; if (c) *c += atoi(f[3]); }
         else if (n >= 6 && !strcmp(f[0], "PLACE")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 0) : NULL; if (c) *c -= 1;
             set_cell(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), f[2]); int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 0); if (p) *p = 0; }
-        else if (n >= 3 && !strcmp(f[0], "TURN")) w->turn = atoi(f[1]); }
+        else if (n >= 4 && !strcmp(f[0], "EAT")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 0) : NULL; if (c) *c -= 1;
+            if (a) { a->hunger -= atoi(f[3]); if (a->hunger < 0) a->hunger = 0; } }
+        else if (n >= 3 && !strcmp(f[0], "TURN")) { int t = atoi(f[1]), hpt = R("hunger_per_turn"), hmax = R("hunger_max");
+            for (int i = 0; i < w->na; i++) if (w->a[i].has) { w->a[i].hunger += (t - w->turn) * hpt; if (w->a[i].hunger > hmax) w->a[i].hunger = hmax; }
+            w->turn = t; } }
+}
+/* hunger rises only on TURN rows (manual turns; no wall clock): every actor that has spawned gains hunger_per_turn per turn, capped at hunger_max; EAT lowers it */
+static int food_value(const char *item) {   /* RULE food_<item>; -1 = not food */
+    char k[NM + 8]; snprintf(k, sizeof k, "food_%s", item);
+    for (int i = 0; i < nr; i++) if (!strcmp(RU[i].k, k)) return RU[i].v;
+    return -1;
 }
 static long total_min(int turn) { return (long)R("start_minute") + (long)turn * R("minutes_per_turn"); }
 static int minute_of(int turn) { return (int)(total_min(turn) % R("day_minutes")); }
@@ -150,6 +162,7 @@ static int v_move(W *w, FILE *L, const char *an, int x, int y, int z) {
 static int v_mine(W *w, FILE *L, const char *an, const char *tool, int x, int y, int z) {
     int reach = R("reach"), tm = R("turns_mine"), smax = R("stack_max"); if (!word_ok(an) || !word_ok(tool)) return 2;
     Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    if (a->hunger >= R("starve_at")) { fprintf(stderr, "refused: starved (hunger %d)\n", a->hunger); return 22; }
     if (!inb(x, y, z)) { fprintf(stderr, "refused: out of bounds\n"); return 11; }
     if (!in_reach(a, x, y, z, reach)) { fprintf(stderr, "refused: out of reach\n"); return 12; }
     Blk *b = blk(kind_at(w, x, y, z)); if (!b || !b->solid) { fprintf(stderr, "refused: nothing to mine\n"); return 13; }
@@ -167,6 +180,7 @@ static int v_mine(W *w, FILE *L, const char *an, const char *tool, int x, int y,
 static int v_place(W *w, FILE *L, const char *an, const char *item, int x, int y, int z) {
     int reach = R("reach"), tm = R("turns_place"), need = R("place_needs_support"); if (!word_ok(an) || !word_ok(item)) return 2;
     Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    if (a->hunger >= R("starve_at")) { fprintf(stderr, "refused: starved (hunger %d)\n", a->hunger); return 22; }
     if (!inb(x, y, z)) { fprintf(stderr, "refused: out of bounds\n"); return 11; }
     if (!in_reach(a, x, y, z, reach)) { fprintf(stderr, "refused: out of reach\n"); return 12; }
     int *c = bag(a, item, 0); if (!c || *c < 1 || !blk(item)) { fprintf(stderr, "refused: item missing or not placeable\n"); return 16; }
@@ -175,6 +189,15 @@ static int v_place(W *w, FILE *L, const char *an, const char *item, int x, int y
         for (int i = 0; i < 6; i++) if (inb(x + dd[i][0], y + dd[i][1], z + dd[i][2]) && solid_at(w, x + dd[i][0], y + dd[i][1], z + dd[i][2])) sup = 1;
         if (!sup) { fprintf(stderr, "refused: no support\n"); return 15; } }
     char o[512]; snprintf(o, sizeof o, "PLACE | %s | %s | %d | %d | %d\n", an, item, x, y, z); adv(o, w->turn, tm, "place"); commit(L, o); fprintf(OUT, "placed\n"); return 0;
+}
+static int v_eat(W *w, FILE *L, const char *an, const char *item) {
+    int tm = R("turns_eat"); if (!word_ok(an) || !word_ok(item)) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    int fv = food_value(item); if (fv < 1) { fprintf(stderr, "refused: not food\n"); return 16; }
+    int *c = bag(a, item, 0); if (!c || *c < 1) { fprintf(stderr, "refused: no food in bag\n"); return 16; }
+    if (a->hunger < 1) { fprintf(stderr, "refused: not hungry\n"); return 23; }
+    char o[512]; snprintf(o, sizeof o, "EAT | %s | %s | %d\n", an, item, fv); adv(o, w->turn, tm, "eat"); commit(L, o);
+    int h = a->hunger - fv; if (h < 0) h = 0; h += tm * R("hunger_per_turn"); if (h > R("hunger_max")) h = R("hunger_max"); fprintf(OUT, "ate=%s hunger=%d\n", item, h); return 0;
 }
 static int v_wait(W *w, FILE *L, int n) {
     if (n < 1 || n > R("wait_max_turns")) { fprintf(stderr, "refused: wait n\n"); return 2; }
@@ -204,11 +227,12 @@ static int intent(FILE *dst, const char *line) {
     else if (n >= 6 && !strcmp(f[0], "PLACE")) r = v_place(&w, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
     else if (n >= 3 && !strcmp(f[0], "TURN") && !strcmp(f[2], "wait")) { int k = atoi(f[1]) - w.turn; r = v_wait(&w, dst, k); }
     else if (n >= 6 && !strcmp(f[0], "SLEEP")) r = v_sleep(&w, dst, f[1]);
+    else if (n >= 4 && !strcmp(f[0], "EAT")) r = v_eat(&w, dst, f[1], f[2]);
     return r;
 }
 static int is_intent(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
-    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
+    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
 }
 static int is_derived(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
@@ -244,7 +268,7 @@ int main(int argc, char **argv) {
     if (load_data(argv[2])) { fprintf(stderr, "missing data file in %s\n", argv[2]); return 9; }
     FILE *L = fopen(argv[3], "a+"); if (!L) return 2;
     int r = 2; W w; OUT = stdout;
-    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep");
+    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat");
     if (mut && (r = verify(L))) { fclose(L); return r; }
     char cx[3][32]; char *av5[5];   /* a page passes the cell as one word x,y,z (the registry allows 4 params) */
     if ((!strcmp(v, "mine") || !strcmp(v, "place")) && ac == 3 && sscanf(av[2], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) {
@@ -256,6 +280,9 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "place") && ac == 5) r = v_place(&w, L, av[0], av[1], atoi(av[2]), atoi(av[3]), atoi(av[4]));
     else if (!strcmp(v, "wait") && ac == 1) r = v_wait(&w, L, atoi(av[0]));
     else if (!strcmp(v, "sleep") && ac == 1) r = v_sleep(&w, L, av[0]);
+    else if (!strcmp(v, "eat") && ac == 2) r = v_eat(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "hunger") && ac == 1) { Actor *a = actor(&w, av[0], 0);
+        if (!a) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fprintf(OUT, "hunger=%d max=%d starved=%d\n", a->hunger, R("hunger_max"), a->hunger >= R("starve_at")); r = 0; } }
     else if (!strcmp(v, "status") && ac == 0) {
         int mm = minute_of(w.turn); fprintf(OUT, "turn=%d minute=%d day=%ld light=%d\n", w.turn, mm, total_min(w.turn) / R("day_minutes"), light_of(mm)); r = 0; }
     else if (!strcmp(v, "cell") && ac == 3) { fprintf(OUT, "%s\n", kind_at(&w, atoi(av[0]), atoi(av[1]), atoi(av[2]))); r = 0; }

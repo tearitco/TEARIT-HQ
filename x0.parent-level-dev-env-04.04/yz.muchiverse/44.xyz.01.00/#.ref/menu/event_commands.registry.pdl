@@ -1937,3 +1937,12 @@ COMMAND vox_sleep
   PARAMS actor
   TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" sleep "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}'
 END
+
+# vox_eat (D110) = hunger on manual turns: every TURN row raises each spawned actor's hunger by RULE hunger_per_turn (cap hunger_max, numbers in @.apps/vox/rules.pdl); `vox_op eat` removes one food item (RULE food_<item>) from the bag and lowers hunger by its value, costing turns_eat. A refusal writes nothing: 10 unknown actor, 16 not food or none in the bag, 23 not hungry. At hunger >= starve_at (30) vox_mine and vox_place refuse with 22 (eat, wait, sleep and move still work).
+COMMAND vox_eat
+  LABEL vox: eat one food item
+  FIELD1 Actor:
+  FIELD2 Item:
+  PARAMS actor,item
+  TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" eat "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{item}'
+END

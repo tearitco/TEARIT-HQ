@@ -1,5 +1,5 @@
 # state.pdl (vox) - the no-ghost-data declaration (NO-GHOST-DATA standard): FILE | name | kind | writer | regenerate_with
-FILE | #.desktop/vox_ledger.txt | LEDGER | vox_op (verbs give move mine place wait sleep) | -
+FILE | #.desktop/vox_ledger.txt | LEDGER | vox_op (verbs give move mine place wait sleep eat) | -
 FILE | @.apps/vox/rules.pdl | CONFIG | a human | -
 FILE | @.apps/vox/blocks.pdl | CONFIG | a human | -
 FILE | @.apps/vox/terrain.pdl | CONFIG | a human | -
