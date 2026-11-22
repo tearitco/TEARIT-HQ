@@ -7,3 +7,4 @@
 # `game_core ... audit` fails on any file in the state folder that is not declared here (a GHOST), and on a PROJECTION whose regenerating verb does not exist.
 FILE | ledger.txt | LEDGER     | every verb that moves the game, and seat (game_core) | -
 FILE | ui.txt     | PROJECTION | game_core ui                                          | ui
+FILE | level.pdl | CONFIG | game_core play of Teario-Make (the level being edited, copied when the author pressed play; read by this game, never written by it; its text is in the rules hash of the run and its hash in Make's play row) | -

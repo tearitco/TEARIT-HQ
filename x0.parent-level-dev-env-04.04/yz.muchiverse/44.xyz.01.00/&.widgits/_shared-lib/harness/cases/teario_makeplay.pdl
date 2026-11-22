@@ -1,0 +1,201 @@
+# teario_makeplay (2026-11-22, D104): the Make window's PLAY plays THE LEVEL BEING EDITED. Make's `play <play_app> <play_state>` verb validates the document (the export/publish rules), copies the level into the Play RUN folder as level.pdl
+# (game.pdl `GAME | level_in_run | 1` of Teario-Play: read INSTEAD of the LEVEL file, its text is part of the Play rules hash), opens the run with Play's own verbs (new, join, start) and appends a `play` row (level hash + Play rules hash) to Make's ledger.
+# Scratch only. The Play app is set to MODE walk (hand-solved like teario_make): the edited level has START 3 10, GOAL 17 10, so a win takes 14 ticks; the shipped fixture (START 2 10) takes 15.
+RESULTS | ../results/teario_makeplay.txt
+ENV | LC_ALL | C
+
+CASE    | mp_setup
+SCRATCH |
+COPYDIR | @.apps/teario | mp/teario
+COPYDIR | @.apps/teario-play | mp/teario-play
+RUN | rm | -rf | $T/mp/teario-play/state
+RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/mp/teario-play/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/mp/teario-play/rulesets/default/board.pdl
+COPYDIR | @.apps/teario-make | mp/teario-make
+RUN | rm | -rf | $T/mp/teario-make/state | $T/mp/teario-make/teario-make-pchq
+EXPECT_HAS | $T/mp/teario-play/game.pdl | GAME   \p level_in_run \p 1 | the-Play-app-opts-in-to-a-level-in-its-run-folder
+EXPECT_HAS | $T/mp/teario-make/game.pdl | GAME   \p play_app    \p ../teario-play | the-Make-app-names-its-Play-app
+MKDIR   | mp_g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | new | 7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | play | $T/mp/teario-play | $T/mp_p
+EXPECT_EXIT | 2 | NEGATIVE-an-EMPTY-document-is-refused-by-play
+EXPECT_OUT | play refused | and-says-so
+EXPECT_NOFILE | $T/mp_p/ledger.txt | and-NO-Play-run-was-opened
+EXPECT_NOFILE | $T/mp_p/level.pdl | and-no-level-copy-was-written
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | name | Edited
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | start | 3 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | goal | 17 10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r00 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r01 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r02 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r03 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r04 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r05 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r06 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r07 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r08 | ......####..........
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r09 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r10 | ....................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | add | r11 | ##########..########
+
+CASE    | mp_play_records_the_level
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | export
+RUN | cmp | $T/mp_g/level.pdl | $T/mp/teario/levels/first-steps.pdl
+EXPECT_EXIT | 1 | vacuity-the-EDITED-level-differs-from-the-level-file-the-Play-app-names-(START-3-10-not-2-10)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-no-play-row-and-no-clear-yet-so-no-publish
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | ledger_hash
+CAPTURE | mp_h0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | play | $T/mp/teario-play | $T/mp_p
+EXPECT_EXIT | 0 | PLAY-OPENS-A-RUN-OF-THE-EDITED-LEVEL
+EXPECT_OUT_IS | play recorded: level=35f7a23deaa7edd0;rules=ec5415676c47a233 | the-play-row-text-is-the-level-hash-and-the-Play-rules-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | ledger_hash
+CAPTURE | mp_h1
+EXPECT_NE | $mp_h0 | $mp_h1 | vacuity-the-play-DID-append-a-row
+RUN | grep | -c | -F | \pplay\p | $T/mp_g/ledger.txt
+EXPECT_OUT_IS | 1 | exactly-one-play-row
+EXPECT_HAS | $T/mp_g/ledger.txt | EVENT\p16\pauthor\pplay\p-\p15\plevel=35f7a23deaa7edd0;rules=ec5415676c47a233 | the-play-row-records-the-LEVEL-HASH-and-which-Play-run-(its-rules-hash)
+EXPECT_LACKS | $T/mp_g/ledger.txt | level=c33747c5fc30580b | NEGATIVE-the-row-does-not-hold-the-hash-of-the-fixture-level-the-Play-app-names
+RUN | cmp | $T/mp_p/level.pdl | $T/mp_g/level.pdl
+EXPECT_EXIT | 0 | the-run-folder-holds-THE-EDITED-level-byte-for-byte
+EXPECT_HAS | $T/mp_p/ledger.txt | rules=ec5415676c47a233,max=1,mode=walk | the-Play-ledger-first-row-holds-the-SAME-rules-hash-the-play-row-names
+EXPECT_HAS | $T/mp_p/ledger.txt | start\p-\p0\pseed=7,players=1,rules=ec5415676c47a233 | and-the-run-is-STARTED-(the-window-opens-on-a-game-in-progress)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_p | audit
+EXPECT_OUT | AUDIT ok | the-run-folder-with-level.pdl-passes-the-Play-no-ghost-audit-(declared-CONFIG)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_p | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_p | advance | 30
+EXPECT_OUT | tick 14 | the-edited-level-is-won-in-14-ticks-(START-3-the-fixture-needs-15)
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_p | verify_clear
+EXPECT_OUT_IS | CLEAR level=35f7a23deaa7edd0;run=56d72f6cc5c1158e;ticks=14 | Play-reports-the-EDITED-level-hash
+RUN | cp | -r | $T/mp_p | $T/mp_p1won
+
+CASE    | mp_sabotage_the_run_level
+# (a) the same Play app WITHOUT the level_in_run row ignores the run copy and plays the file: a different rules hash (positive control that the row is what makes the edited level play)
+COPYDIR | @.apps/teario-play | mp/play_nolir
+RUN | sed | -i | s/^MODE .*/MODE  \p walk/ | $T/mp/play_nolir/rulesets/default/board.pdl
+RUN | sed | -i | s/meadow\.pdl/first-steps.pdl/ | $T/mp/play_nolir/rulesets/default/board.pdl
+RUN | sed | -i | /level_in_run/d | $T/mp/play_nolir/game.pdl
+RUN | grep | -c | level_in_run | $T/mp/play_nolir/game.pdl
+EXPECT_OUT_IS | 0 | vacuity-the-row-is-really-gone-from-the-copy
+MKDIR   | mp_n
+RUN | cp | $T/mp_p/level.pdl | $T/mp_n/level.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/play_nolir | $T/mp_n | new | 7
+EXPECT_EXIT | 0 | the-app-without-the-row-still-opens-a-game
+EXPECT_HAS | $T/mp_n/ledger.txt | rules=cbb84c4124b8a936 | the-app-WITHOUT-the-row-plays-the-file-(the-fixture-rules-hash)
+EXPECT_LACKS | $T/mp_n/ledger.txt | rules=ec5415676c47a233 | NEGATIVE-and-NOT-the-edited-level-(so-level_in_run-is-what-makes-Play-play-the-edit)
+RUN | rm | -rf | $T/mp_n
+
+CASE    | mp_tamper_the_run_copy
+# (b) a run whose level.pdl was edited after the run began is refused by Play (the level text is in the rules hash)
+MKDIR   | mp_t
+RUN | cp | $T/mp_p/ledger.txt | $T/mp_t/ledger.txt
+RUN | cp | $T/mp_p/level.pdl | $T/mp_t/level.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_t | status
+EXPECT_EXIT | 0 | POSITIVE-CONTROL-the-untouched-copy-of-the-run-loads
+RUN | sed | -i | s/^ROW   \p 8 \p ......####\.\.\.\.\.\.\.\.\.\./ROW   \p 8 \p ....................../ | $T/mp_t/level.pdl
+RUN | cmp | $T/mp_p/level.pdl | $T/mp_t/level.pdl
+EXPECT_EXIT | 1 | vacuity-the-copy-was-really-changed
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_t | status
+EXPECT_EXIT | 2 | NEGATIVE-A-RUN-WITH-A-TAMPERED-LEVEL-COPY-IS-REFUSED
+RUN | rm | -rf | $T/mp_t
+# (c) a run with NO copy (deleted) falls back to the level FILE: the rules hash differs, the run is refused
+MKDIR   | mp_t2
+RUN | cp | $T/mp_p/ledger.txt | $T/mp_t2/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_t2 | status
+EXPECT_EXIT | 1 | NEGATIVE-the-run-with-its-level-copy-DELETED-is-refused-(it-would-be-another-level)
+RUN | rm | -rf | $T/mp_t2
+
+CASE    | mp_edit_then_play_again
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | set | r08 | ....######..........
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | export
+EXPECT_OUT | wrote doc.txt | the-edit-is-a-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-the-edited-level-has-no-clear-yet
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | play | $T/mp/teario-play | $T/mp_p
+EXPECT_EXIT | 0 | play-again-on-the-edited-level
+EXPECT_OUT_IS | play recorded: level=2a4f83cff4edc206;rules=8c22ba1eb4b0a55d | the-LEVEL-hash-and-the-Play-RULES-hash-both-CHANGED-after-one-tile-edit
+EXPECT_HAS | $T/mp_p/ledger.txt | rules=8c22ba1eb4b0a55d,max=1,mode=walk | the-new-run-carries-the-new-rules-hash
+RUN | grep | -c | -F | \pplay\p | $T/mp_g/ledger.txt
+EXPECT_OUT_IS | 2 | two-play-rows
+RUN | grep | -c | -F | rules=ec5415676c47a233 | $T/mp_p/ledger.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-the-new-run-ledger-is-not-the-old-one
+RUN | ls | $T/archive
+EXPECT_OUT | game- | the-old-run-was-archived-not-deleted
+# the OLD run ledger with the NEW level copy: refused
+MKDIR   | mp_o
+RUN | cp | $T/mp_p1won/ledger.txt | $T/mp_o/ledger.txt
+RUN | cp | $T/mp_p/level.pdl | $T/mp_o/level.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_o | status
+EXPECT_EXIT | 1 | NEGATIVE-AN-OLD-RUN-OF-THE-PREVIOUS-LEVEL-IS-REFUSED-ON-THE-EDITED-LEVEL
+RUN | cp | $T/mp_p1won/level.pdl | $T/mp_o/level.pdl
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_o | status
+EXPECT_EXIT | 0 | POSITIVE-CONTROL-the-same-old-run-with-ITS-OWN-level-loads
+RUN | rm | -rf | $T/mp_o
+
+CASE    | mp_clear_and_publish
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | clear | $T/mp/teario-play | $T/mp_p1won
+EXPECT_EXIT | 2 | NEGATIVE-a-clear-of-the-PREVIOUS-level-(a-real-win)-does-not-count-for-the-edited-one
+EXPECT_OUT | the proof is for another level | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | clear | $T/mp/teario-play | $T/mp_p
+EXPECT_EXIT | 2 | NEGATIVE-the-new-run-is-not-won-yet
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | publish
+EXPECT_EXIT | 2 | NEGATIVE-publish-still-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_p | input | p1 | right
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-play | $T/mp_p | advance | 30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | clear | $T/mp/teario-play | $T/mp_p
+EXPECT_EXIT | 0 | the-clear-of-the-EDITED-level-is-recorded
+EXPECT_OUT | level=2a4f83cff4edc206 | with-its-level-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | publish
+EXPECT_EXIT | 0 | PUBLISH-PASSES-AFTER-PLAYING-AND-CLEARING-THE-EDITED-LEVEL
+EXPECT_HAS | $T/mp_g/ledger.txt | level=2a4f83cff4edc206;clear= | and-the-publish-row-records-that-EDITED-level-and-its-clear
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | check
+EXPECT_OUT | CHECK ok | the-Make-ledger-with-play-rows-checks
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | replay
+EXPECT_EXIT | 0 | and-replays
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_g | audit
+EXPECT_OUT | AUDIT ok | the-Make-state-folder-is-still-clean-(the-play-row-adds-no-file)
+
+CASE    | mp_invalid_document
+MKDIR   | mp_b
+RUN | cp | $T/mp_g/ledger.txt | $T/mp_b/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | set | r05 | ...................
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | ledger_hash
+CAPTURE | mp_b0
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | play | $T/mp/teario-play | $T/mp_bp
+EXPECT_EXIT | 2 | NEGATIVE-a-19-tile-row-is-refused-by-play
+EXPECT_OUT | play refused | and-says-so
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | ledger_hash
+CAPTURE | mp_b1
+EXPECT_EQ | $mp_b0 | $mp_b1 | the-refused-play-appended-NO-row
+EXPECT_NOFILE | $T/mp_bp/ledger.txt | and-no-Play-run-exists
+EXPECT_NOFILE | $T/mp_bp/level.pdl | and-no-level-copy
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | set | start | 2 11
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | play | $T/mp/teario-play | $T/mp_bp
+EXPECT_EXIT | 2 | NEGATIVE-a-START-inside-the-ground-is-refused-too
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | play | $T/mp/teario-play
+EXPECT_EXIT | 2 | NEGATIVE-play-needs-both-folders
+# a Play app that cannot open the run (the level file named in the copy is fine but the app folder is not an app): no row, no folder
+RUN | cp | $T/mp_g/ledger.txt | $T/mp_b/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_b | play | $T/mp/nothing | $T/mp_bp
+EXPECT_EXIT | 2 | NEGATIVE-a-folder-that-is-not-a-Play-app-is-refused
+EXPECT_NOFILE | $T/mp_bp/level.pdl | and-the-half-made-run-folder-is-removed
+
+CASE    | mp_tamper_the_play_row
+MKDIR   | mp_r1
+RUN | cp | $T/mp_g/ledger.txt | $T/mp_r1/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_r1 | replay
+EXPECT_EXIT | 0 | POSITIVE-CONTROL-the-untouched-ledger-replays
+RUN | sed | -i | s/level=2a4f83cff4edc206;rules=8c22ba1eb4b0a55d/level=2a4f83cff4edc207;rules=8c22ba1eb4b0a55d/ | $T/mp_r1/ledger.txt
+RUN | cmp | $T/mp_g/ledger.txt | $T/mp_r1/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-forged-hash-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_r1 | replay
+EXPECT_EXIT | 1 | NEGATIVE-A-PLAY-ROW-WITH-A-FORGED-LEVEL-HASH-IS-REFUSED-AT-REPLAY
+# a play row copied into a ledger whose document differs: refused
+MKDIR   | mp_r2
+RUN | cp | $T/mp_g/ledger.txt | $T/mp_r2/ledger.txt
+RUN | sed | -i | s/\.\.\.\.######\.\.\.\.\.\.\.\.\.\.$/......####........../ | $T/mp_r2/ledger.txt
+RUN | cmp | $T/mp_g/ledger.txt | $T/mp_r2/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-row-was-changed-back
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/mp/teario-make | $T/mp_r2 | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-second-play-row-no-longer-names-the-level-of-the-document-then-so-the-ledger-is-refused
+CLEAN   |

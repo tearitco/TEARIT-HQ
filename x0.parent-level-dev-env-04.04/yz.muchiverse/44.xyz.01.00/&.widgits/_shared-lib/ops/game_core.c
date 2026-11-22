@@ -173,6 +173,7 @@ static int level_from_doc(void) {
     return level_check();
 }
 static int split_row(char *line, char **f, int max) { int n = 0; char *p = line; while (n < max) { f[n++] = p; char *b = strchr(p, '|'); if (!b) break; *b = 0; p = b + 1; } for (int i = 0; i < n; i++) f[i] = trim(f[i]); return n; }
+static int LEVEL_IN_RUN, PLAY_HANDOFF; static char PLAY_APP[P];   /* game.pdl `GAME | level_in_run | 1` (a walk/platform game reads <state>/level.pdl INSTEAD of its LEVEL file when that run copy exists: the copy is part of the rules hash), `GAME | play_app | <app folder relative to this app>` and `GAME | play_handoff | 1` (an editor game's `play` button opens that app's window on the run and closes its own) : D104 */
 static int OWN_RUN;   /* game.pdl `GAME | own_run | 1`: a window with NO Player menu (the own Teario-Play window): a started game runs by itself, nothing external sets the editor switch running=1 (default 0: the editor's switch decides, as before) */
 static int load_config(void) {
     char p[P], ln[1024]; FILE *f; char *fl[10]; int n;
@@ -181,6 +182,9 @@ static int load_config(void) {
         if (!strcmp(fl[1], "kind")) KIND = !strcmp(fl[2], "ledger") ? K_LEDGER : !strcmp(fl[2], "realtime") ? K_REALTIME : !strcmp(fl[2], "editor") ? K_EDITOR : 0;
         else if (!strcmp(fl[1], "title")) snprintf(TITLE, sizeof TITLE, "%s", fl[2]);
         else if (!strcmp(fl[1], "own_run")) OWN_RUN = atoi(fl[2]) == 1;
+        else if (!strcmp(fl[1], "level_in_run")) LEVEL_IN_RUN = atoi(fl[2]) == 1;
+        else if (!strcmp(fl[1], "play_app")) snprintf(PLAY_APP, sizeof PLAY_APP, "%s", fl[2]);
+        else if (!strcmp(fl[1], "play_handoff")) PLAY_HANDOFF = atoi(fl[2]) == 1;
         else if (!strcmp(fl[1], "ruleset")) snprintf(RS, sizeof RS, "%s", fl[2]); }
     fclose(f); if (!KIND) return bad("game.pdl: GAME | kind must be ledger, realtime or editor");
     if (!good_word(RS, 24, 1)) return bad("game.pdl: bad ruleset name");
@@ -222,7 +226,7 @@ static int load_config(void) {
     if (R_ckpt < 1 || R_ckpt > 1000) return bad("rules.pdl: ckpt_every is 1 to 1000");
     if (R_maxrows < 10 || R_maxrows > 100000) return bad("rules.pdl: max_rows is 10 to 100000");
     if (R_docmax < 1 || R_docmax > DOCMAX) return bad("rules.pdl: max_doc_rows is 1 to %d", DOCMAX);
-    if (WALKISH) { snprintf(p, sizeof p, "%s/%s", APP, LEVELREL); RULES_HASH = fnv(RULES_HASH, "level", 5); if (level_load_file(p, &RULES_HASH)) return 1; LENGTH = LV.w - 1; }   /* the level file is part of the rules hash: editing it after a game began refuses that ledger */
+    if (WALKISH) { snprintf(p, sizeof p, "%s/%s", APP, LEVELREL); if (LEVEL_IN_RUN) { char rp[P]; snprintf(rp, sizeof rp, "%s/level.pdl", SD); if (!access(rp, R_OK)) snprintf(p, sizeof p, "%s", rp); } RULES_HASH = fnv(RULES_HASH, "level", 5); if (level_load_file(p, &RULES_HASH)) return 1; LENGTH = LV.w - 1; }   /* the level file is part of the rules hash: editing it after a game began refuses that ledger */
     for (int i = 0; i < NJ; i++) if (JF[i] < 1 || JF[i] >= LENGTH || JT[i] < 0 || JT[i] > LENGTH || JF[i] == JT[i]) return bad("board.pdl: JUMP %d -> %d is outside the track", JF[i], JT[i]);
     return 0;
 }
@@ -362,6 +366,10 @@ static int apply(const Row *in, const char *arg2, Row *out) {
             if (!strstr(tx, ";run=") || !strstr(tx, ";ticks=")) return bad("clear: the proof needs level, run and ticks");
             snprintf(S.clear_level, sizeof S.clear_level, "%s", lh); const char *rn = strstr(tx, ";run="); snprintf(S.clear_run, 17, "%.16s", rn + 5); S.clear_run[16] = 0; S.nedits++;
             out->round = S.nedits; snprintf(out->actor, sizeof out->actor, "%s", who); snprintf(out->target, sizeof out->target, "-"); snprintf(out->at, sizeof out->at, "%d", S.ndoc); snprintf(out->res, sizeof out->res, "%s", tx); return 0; }
+        if (!strcmp(v, "play") && LEVELDOC) {   /* the author opened THIS level in Play (D104): arg2 = `level=<hex>;rules=<hex>` made by the CLI after it opened the Play run; the level must be the document as it is now */
+            if (level_from_doc()) { char m0[400]; snprintf(m0, sizeof m0, "%s", MSG); return bad("play refused: %s", m0); } char lh[20]; hx(level_hash(), lh); const char *lv = strstr(tx, "level="); if (!lv || strncmp(lv + 6, lh, 16)) return bad("play refused: the row is for another level (this level is %s)", lh);
+            if (!strstr(tx, ";rules=")) return bad("play: the row needs level and rules"); S.nedits++;
+            out->round = S.nedits; snprintf(out->actor, sizeof out->actor, "%s", who); snprintf(out->target, sizeof out->target, "-"); snprintf(out->at, sizeof out->at, "%d", S.ndoc); snprintf(out->res, sizeof out->res, "%s", tx); return 0; }
         if (!strcmp(v, "publish")) {
             for (int r = 0; r < NREQ; r++) { int ok = 0; for (int i = 0; i < S.ndoc; i++) if (!strcmp(S.did[i], REQ[r])) ok = 1; if (!ok) return bad("publish refused: the document has no row %s (rules.pdl REQUIRE)", REQ[r]); }
             char extra[80] = ""; if (LEVELDOC) { if (level_from_doc()) return bad("publish refused: %s", MSG); char lh[20]; hx(level_hash(), lh);
@@ -441,7 +449,7 @@ static int load(void) {
         Row in; memset(&in, 0, sizeof in); in.round = rnd; snprintf(in.actor, sizeof in.actor, "%s", fl[2]); snprintf(in.verb, sizeof in.verb, "%s", fl[3]); snprintf(in.target, sizeof in.target, "%s", fl[4]);
         const char *arg2 = NULL; char a2[220] = "";
         if (!strcmp(fl[3], "join") || !strcmp(fl[3], "seat")) { const char *d = strstr(fl[6], "driver="); if (d) { snprintf(a2, sizeof a2, "%s", d + 7); arg2 = a2; } }
-        else if (KIND == K_EDITOR && (!strcmp(fl[3], "add") || !strcmp(fl[3], "set") || !strcmp(fl[3], "clear"))) { snprintf(a2, sizeof a2, "%s", fl[6]); arg2 = a2; }
+        else if (KIND == K_EDITOR && (!strcmp(fl[3], "add") || !strcmp(fl[3], "set") || !strcmp(fl[3], "clear") || !strcmp(fl[3], "play"))) { snprintf(a2, sizeof a2, "%s", fl[6]); arg2 = a2; }
         if (lineno == 1) {   /* the first row carries the seed (target) and must name this game's kind and rules */
             char want[16]; snprintf(want, sizeof want, "kind=%s", KIND == K_LEDGER ? "ledger" : KIND == K_REALTIME ? "realtime" : "editor"); if (!strstr(fl[6], want)) { fclose(f); return bad("ledger line 1: this ledger is not a %s game", want + 5); }
             const char *c = strstr(fl[6], "core="); if (c && atoi(c + 5) > CORE_VERSION) { fclose(f); return bad("ledger line 1: written by a newer core (%d)", atoi(c + 5)); } }
@@ -859,6 +867,7 @@ static int pg_events(char *buf, size_t cap) {
     return ne;
 }
 static int cmd_scene(int argc, char **argv); static int cmd_stampimg(int ac, char **av);
+static int cmd_play(const char *papp, const char *pstate, const char *as);
 static int doc_blank(long w, long h, const char *as); static int doc_paint(const char *tool, long x, long y, const char *as); static int cursor_cell(long *x, long *y); static int cmd_stamp(const char *verb, int ac, char **av, const char *as); static int stamps_load(void); static int stamp_picked(void); static int stamp_pick(const char *id);
 static int cmd_page(int argc, char **argv) {
     if (argc < 1) { fprintf(ERRF, "usage: page <desk_dir> [atlas.rgba] [noevents]\n"); return 2; } const char *dd = argv[0]; struct stat sb; if (stat(dd, &sb) || !S_ISDIR(sb.st_mode)) { fprintf(ERRF, "page: the desk folder does not exist (make it first)\n"); return 2; }
@@ -947,6 +956,8 @@ static int engine_verb(int argc, char **argv) {
         char *cv[] = { self, av[0], av[1], (char *)"verify_clear", NULL }; static char co[600]; int rc = run_capture(cv, co, sizeof co); char *nl = strpbrk(co, "\r\n"); if (nl) *nl = 0;
         if (rc != 0 || strncmp(co, "CLEAR ", 6)) { fprintf(ERRF, "clear refused: the Play run is not a clear (%s)\n", co[0] ? co : "no answer"); return 2; }
         if (live(-1, as, "clear", "", co + 6, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "clear recorded: %s\n", co + 6); return 0; }
+    if (!strcmp(verb, "play") && KIND == K_EDITOR && LEVELDOC) {   /* play <play_app> <play_state>: open a Play run on THIS level (D104) and record a play row */
+        if (need_args(ac, 2, "play <play_app_dir> <play_state_dir>   [as=author]")) return 2; if (cmd_play(av[0], av[1], as)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "play recorded: %s\n", MSG); return 0; }
     if (!strcmp(verb, "input") && KIND == K_REALTIME && MODE != M_SNAKE) { if (need_args(ac, 2, "input <pN> left|right|stay [tick]")) return 2; long t = -1; if (ac > 2) { char *e; t = strtol(av[2], &e, 10); if (*e || t < 0) { fprintf(ERRF, "input: tick is a number\n"); return 2; } } if (live(t, av[0], "input", av[1], NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } fprintf(OUT, "%s %s at tick %ld\n", av[0], av[1], t >= 0 ? t : S.tick); return 0; }
     if (!strcmp(verb, "advance") && KIND == K_REALTIME) { long n = 1; if (ac > 0) { char *e; n = strtol(av[0], &e, 10); if (*e || n < 1 || n > 100000) { fprintf(ERRF, "advance: 1 to 100000 ticks\n"); return 2; } } if (S.phase != PH_PLAY) { fprintf(ERRF, "the game is %s\n", S.phase == PH_OVER ? "over" : "not started"); return 2; }
         for (long i = 0; i < n && S.phase == PH_PLAY; i++) { int did; if (do_tick(&did)) { fprintf(ERRF, "%s\n", MSG); return 2; } } if (S.phase == PH_PLAY && S.tick % R_ckpt) { if (live(-1, "", "ckpt", "", NULL, NULL)) { fprintf(ERRF, "%s\n", MSG); return 2; } } fprintf(OUT, "tick %ld rows=%d\n", S.tick, S.nrows); return 0; }
@@ -1028,10 +1039,32 @@ static void stats_seg_end(long live_us, long pace_us, const char *path) {   /* a
 static int running(void) { if (OWN_RUN) return mode_play; FILE *f = fopen(SW, "r"); if (!f) return 0; char ln[80]; int r = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "running=", 8)) r = atoi(ln + 8); fclose(f); return r; }
 static void rm_tree(const char *d) { DIR *dr = opendir(d); if (!dr) return; struct dirent *e; while ((e = readdir(dr))) { if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue; char p[P]; snprintf(p, sizeof p, "%s/%s", d, e->d_name); struct stat s; if (!lstat(p, &s) && S_ISDIR(s.st_mode)) rm_tree(p); else unlink(p); } closedir(dr); rmdir(d); }
 static int cmp_str(const void *a, const void *b) { return strcmp((const char *)a, (const char *)b); }
-static void archive_game(void) {   /* keep the last 3 games in archive/ (the cap), older ones are deleted */
-    struct stat s; if (stat(LEDGER, &s)) { rm_tree(SD); return; } mkdir(ARCH, 0755); char to[P]; snprintf(to, sizeof to, "%s/game-%ld", ARCH, (long)time(NULL)); int k = 0; while (!access(to, F_OK) && k < 50) snprintf(to, sizeof to, "%s/game-%ld-%d", ARCH, (long)time(NULL), ++k); rename(SD, to);
-    static char names[64][64]; int n = 0; DIR *d = opendir(ARCH); if (d) { struct dirent *e; while ((e = readdir(d)) && n < 64) if (!strncmp(e->d_name, "game-", 5)) snprintf(names[n++], 64, "%s", e->d_name); closedir(d); }
-    qsort(names, (size_t)n, 64, cmp_str); for (int i = 0; i < n - 3; i++) { char p[P]; snprintf(p, sizeof p, "%s/%s", ARCH, names[i]); rm_tree(p); }
+static void archive_dir(const char *sd, const char *ledger, const char *arch) {   /* keep the last 3 games in archive/ (the cap), older ones are deleted */
+    struct stat s; if (stat(ledger, &s)) { rm_tree(sd); return; } mkdir(arch, 0755); char to[P]; snprintf(to, sizeof to, "%s/game-%ld", arch, (long)time(NULL)); int k = 0; while (!access(to, F_OK) && k < 50) snprintf(to, sizeof to, "%s/game-%ld-%d", arch, (long)time(NULL), ++k); rename(sd, to);
+    static char names[64][64]; int n = 0; DIR *d = opendir(arch); if (d) { struct dirent *e; while ((e = readdir(d)) && n < 64) if (!strncmp(e->d_name, "game-", 5)) snprintf(names[n++], 64, "%s", e->d_name); closedir(d); }
+    qsort(names, (size_t)n, 64, cmp_str); for (int i = 0; i < n - 3; i++) { char p[P]; snprintf(p, sizeof p, "%s/%s", arch, names[i]); rm_tree(p); }
+}
+static void archive_game(void) { archive_dir(SD, LEDGER, ARCH); }
+/* D104: the Make window's PLAY. Opens a Play run on THE LEVEL BEING EDITED: validates the document (same rules as export and publish), puts the level text in the Play run folder as level.pdl (read by a game whose game.pdl says `level_in_run`, part of ITS rules hash),
+ * opens the run through the Play app's own CLI (new, join, start: the verbs its setup screen runs), then appends the `play` row (level hash + Play rules hash) to THIS ledger. Nothing is recorded when anything before fails. Sets MSG on refusal. */
+static int cmd_play(const char *papp, const char *pstate, const char *as) {
+    if (level_from_doc()) { char m0[400]; snprintf(m0, sizeof m0, "%s", MSG); return bad("play refused: %s", m0); }
+    static char lb[8192]; if (level_render(lb, sizeof lb) <= 0) return bad("play refused: the level is too big to copy");
+    char lh[20]; hx(level_hash(), lh); char self[P]; ssize_t k = readlink("/proc/self/exe", self, sizeof self - 1); if (k <= 0) return bad("play: cannot find myself"); self[k] = 0;
+    char gd[P], arch[P], lg[P], lp[P], q[P]; snprintf(gd, sizeof gd, "%s", pstate); size_t L = strlen(gd); while (L > 1 && gd[L - 1] == '/') gd[--L] = 0; snprintf(q, sizeof q, "%s", gd); char *sl = strrchr(gd, '/'); if (!sl) return bad("play: the Play state folder must be a path");
+    *sl = 0; snprintf(arch, sizeof arch, "%s/archive", gd); snprintf(lg, sizeof lg, "%s/ledger.txt", q); snprintf(lp, sizeof lp, "%s/level.pdl", q);
+    archive_dir(q, lg, arch); mkdir_p(q); if (write_atomic(lp, lb)) return bad("play: cannot write %s", lp);
+    char *c1[] = { self, (char *)papp, q, (char *)"new", (char *)"7", NULL }, *c2[] = { self, (char *)papp, q, (char *)"join", (char *)"Maker", (char *)"human", NULL }, *c3[] = { self, (char *)papp, q, (char *)"start", NULL }; char **cs[3] = { c1, c2, c3 }; static char co[600];
+    for (int i = 0; i < 3; i++) { int rc = run_capture(cs[i], co, sizeof co); char *nl = strpbrk(co, "\r\n"); if (nl) *nl = 0; if (rc != 0) { rm_tree(q); return bad("play refused: the Play app did not open the run (%s: %s)", cs[i][3], co[0] ? co : "no answer"); } }
+    char lnb[1024] = "", rh[20] = ""; FILE *f = fopen(lg, "r"); if (f) { if (fgets(lnb, sizeof lnb, f)) { char *r = strstr(lnb, "rules="); if (r) snprintf(rh, sizeof rh, "%.16s", r + 6); } fclose(f); } if (strlen(rh) != 16) { rm_tree(q); return bad("play: the Play run has no rules hash"); }
+    char tx[80]; snprintf(tx, sizeof tx, "level=%s;rules=%s", lh, rh); if (live(-1, as, "play", "", tx, NULL)) { rm_tree(q); return 1; } snprintf(MSG, sizeof MSG, "%s", tx); return 0;
+}
+/* the window handover (game.pdl `play_handoff`): start the Play app's own launcher, then end THIS window (its pid file): one Teario window at a time, two share one 3D daemon */
+static void play_handoff(const char *papp) {
+    char sh[P], pp[P], eb[P]; static char co[400]; snprintf(sh, sizeof sh, "%s/button.sh", papp); char *cv[] = { (char *)"/bin/sh", sh, (char *)"run", NULL }; run_capture(cv, co, sizeof co);
+    snprintf(eb, sizeof eb, "%s", EDIT); size_t L = strlen(eb); while (L > 1 && eb[L - 1] == '/') eb[--L] = 0; char *bn = strrchr(eb, '/'); bn = bn ? bn + 1 : eb;
+    snprintf(pp, sizeof pp, "%s/%s-pchq/pieces/system/board_window.pid", EDIT, bn); FILE *f = fopen(pp, "r"); if (!f) return; long pid = 0; if (fscanf(f, "%ld", &pid) != 1) pid = 0; fclose(f);
+    if (pid > 1) { char pr[64]; snprintf(pr, sizeof pr, "/proc/%ld", pid); if (!access(pr, F_OK)) kill((pid_t)pid, SIGTERM); }
 }
 /* run an engine verb IN THIS PROCESS (no child): output into a memory stream. */
 static int verb_here(int argc, char **argv, char *out, size_t cap) {
@@ -1203,6 +1236,10 @@ static void handle(const char *c) {
     else if (KIND == K_LEDGER && !strcmp(c, "roll")) { if (!sync_state()) { char who[8] = ""; if (S.phase == PH_PLAY && S.human[S.cur]) snprintf(who, sizeof who, "p%d", S.cur + 1); human_live("roll", "", NULL, who); } }
     else if (KIND == K_REALTIME && MODE == M_SNAKE && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "up") || !strcmp(c, "down"))) { if (!S.human[0]) snprintf(dmsg, sizeof dmsg, "no human seat"); else if (!sync_state()) { char dc[2] = { (char)(c[0] - 'a' + 'A'), 0 }; human_live("turn", dc, NULL, "p1"); } }
     else if (KIND == K_REALTIME && (!strcmp(c, "left") || !strcmp(c, "right") || !strcmp(c, "stay") || (MODE == M_PLATFORM && (!strcmp(c, "jump") || !strcmp(c, "fire"))))) { int hp = 0; for (int i = 0; i < S.np; i++) if (S.human[i]) { hp = i + 1; break; } if (!hp) snprintf(dmsg, sizeof dmsg, "no human seat"); else { char a[8]; snprintf(a, sizeof a, "p%d", hp); if (!sync_state()) human_live("input", c, NULL, a); } }
+    else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "play")) {   /* D104: play THIS level: open the Play run, record the play row, hand the window over (game.pdl play_app, play_handoff) */
+        if (!PLAY_APP[0]) snprintf(dmsg, sizeof dmsg, "refused: game.pdl has no play_app row");
+        else if (!sync_state()) { char pa[P], ps[P], pn[P]; snprintf(pa, sizeof pa, "%s/%s", APP, PLAY_APP); size_t L = strlen(PLAY_APP); while (L > 1 && PLAY_APP[L - 1] == '/') L--; snprintf(pn, sizeof pn, "%.*s", (int)L, PLAY_APP); char *bn = strrchr(pn, '/'); snprintf(ps, sizeof ps, "%s/state/games/%s/game", pa, bn ? bn + 1 : pn);
+            if (cmd_play(pa, ps, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else { snprintf(dmsg, sizeof dmsg, "Play opened on this level (%.60s)", MSG); reload(); write_ui(); write_doc(); if (PLAY_HANDOFF) play_handoff(pa); } } }
     else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "blank_level")) { if (!sync_state()) { if (doc_blank(20, 12, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "a starter level: 20 x 12, ground along the bottom"); } }
     else if (KIND == K_EDITOR && LEVELDOC && !strncmp(c, "pick_", 5)) { if (stamp_pick(c + 5)) snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); else snprintf(dmsg, sizeof dmsg, "picked %s", c + 5); }
     else if (KIND == K_EDITOR && LEVELDOC && !strcmp(c, "place")) { long x = 0, y = 0; if (stamps_load()) snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); else if (!cursor_cell(&x, &y)) snprintf(dmsg, sizeof dmsg, "no cursor cell: the editor cursor was not found"); else if (!sync_state()) { const char *id = STAMPS[stamp_picked()].id; if (doc_paint(id, x, y, "author")) { snprintf(dmsg, sizeof dmsg, "refused: %.200s", MSG); reload(); } else snprintf(dmsg, sizeof dmsg, "%s at %ld,%ld", id, x, y); } }
@@ -1235,7 +1272,7 @@ static void publish(void) {
     snprintf(b, sizeof b, "%.200s", dmsg); add_txt(o, C, &nt, b);
     if (KIND == K_EDITOR) {
         snprintf(b, sizeof b, "%d rows, %s, %ld edits", S.ndoc, S.published ? "published" : "not published", S.nedits); add_txt(o, C, &nt, b);
-        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { char pl[80] = "place stamp"; if (!stamps_load()) snprintf(pl, sizeof pl, "place: %s", STAMPS[stamp_picked()].label); add_btn(o, C, &nb, pl, "place"); } add_btn(o, C, &nb, "publish", "publish"); }
+        if (LEVELDOC) { if (!S.ndoc) add_btn(o, C, &nb, "new level", "blank_level"); else { char pl[80] = "place stamp"; if (!stamps_load()) snprintf(pl, sizeof pl, "place: %s", STAMPS[stamp_picked()].label); add_btn(o, C, &nb, pl, "place"); } if (S.ndoc) add_btn(o, C, &nb, "play", "play"); add_btn(o, C, &nb, "publish", "publish"); }
         else { add_btn(o, C, &nb, "add start", "add_start"); add_btn(o, C, &nb, "add goal", "add_goal"); add_btn(o, C, &nb, "add item", "add_item"); add_btn(o, C, &nb, "remove last", "remove_last"); add_btn(o, C, &nb, "publish", "publish"); }
     } else if (!mode_play) {
         snprintf(b, sizeof b, "%d players, seed %ld", nplayers, seed_pref); add_txt(o, C, &nt, b); add_btn(o, C, &nb, "players -", "players_down"); add_btn(o, C, &nb, "players +", "players_up");

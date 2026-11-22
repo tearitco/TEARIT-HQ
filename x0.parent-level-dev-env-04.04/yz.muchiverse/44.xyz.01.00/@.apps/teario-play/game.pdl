@@ -14,3 +14,5 @@ GAME   | clock       | pause
 GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}
 GAME   | ui_mode     | play
 GAME   | own_run     | 1
+# D104: a run folder may hold level.pdl (written by Teario-Make's `play` verb: the level being edited); it is read INSTEAD of the LEVEL file of board.pdl and its text is part of the rules hash, so a run of another level is refused
+GAME   | level_in_run | 1

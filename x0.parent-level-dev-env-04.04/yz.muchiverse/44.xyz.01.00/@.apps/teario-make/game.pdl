@@ -12,3 +12,6 @@ GAME   | driver      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x driver 
 GAME   | clock       | pause
 # GAME | export  (data-hq P0): the data studio's exporter row (game.csv, events.csv, schema.pdl). The editor's Play ignores it.
 GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}
+# D104: the `play` button opens a Teario-Play run on THE LEVEL BEING EDITED (the Play app folder is relative to this app), then starts the Play window and closes this one (one Teario window at a time: two share one 3D daemon)
+GAME   | play_app    | ../teario-play
+GAME   | play_handoff | 1
