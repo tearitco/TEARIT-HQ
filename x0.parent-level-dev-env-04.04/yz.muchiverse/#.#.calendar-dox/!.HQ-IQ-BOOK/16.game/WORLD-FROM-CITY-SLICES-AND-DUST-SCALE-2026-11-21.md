@@ -98,6 +98,8 @@ There was no script. The one-off curls that built Centon and the bay slice are n
 
 `list` prints each id. `pull <catalog> <id> <outdir>` saves one row. `http` uses curl with a 32 MiB cap. `file` copies a path beside the catalog. `later` is a named source that is not a desk-sized file, and the op exits 5 with nothing written.
 
+The on-disk list, with sizes and sha256, is `#.NNEST_ASSETS/rta-sources/INVENTORY.pdl`. It is not in git. Any later game may read those files as CONFIG. The handoff that says what to build next is `XO/31.Nov/nov-22/0.rta-cities-handoff.md`.
+
 Saved, outside git, under `#.NNEST_ASSETS`:
 
 | Cache | What it is | Observed |

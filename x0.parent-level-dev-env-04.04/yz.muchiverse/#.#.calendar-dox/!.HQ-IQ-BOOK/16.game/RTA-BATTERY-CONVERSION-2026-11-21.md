@@ -147,3 +147,5 @@ The Teario look question (flat 2D is the platformer, ordinary 3D is a board, do 
 `rta_momentum_op` is the handoff mechanic. The ledger row is `MOM | x | y | vx | why`. `push` sets vx from 1 to 4. `step` adds vx to x when that cell is a road glyph R, and sets vx to 0 when it is not. `events.txt` is rewritten from the row. Harness `rta_momentum` passed: a speed of 2 carries across one step, then the end of a four-cell road stops the car. Wire this op to the book tick in a later session. Do not put the speed in `game_core`. The Minecraft handoff above is still the session after these cities, unless the owner says to keep going on the books.
 
 A whole planet, a setup menu, and laying Centon or the bay slice onto a coarse world are design only: `WORLD-FROM-CITY-SLICES-AND-DUST-SCALE-2026-11-21.md`. Do not start that generator in the city session.
+
+The cache list is `#.NNEST_ASSETS/rta-sources/INVENTORY.pdl`. The chaptered handoff, including the next research bet, is `XO/31.Nov/nov-22/0.rta-cities-handoff.md`. The bet is one playable minute on Centon before another map.
