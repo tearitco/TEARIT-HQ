@@ -13,7 +13,7 @@ AC="$PCHQ_PKG/pieces/system/arrow_config.txt"; if [ -f "$AC" ]; then if grep -q 
 # the GAME KEYS (option C, the R14 fix, D97): while the xelector holds a game-driven possession (People1), the engine key op forwards these codes (arrows 1000-1003, space 32) to <editor>/state/interact_relay.txt, which game_core tails. One idempotent row each, in the package keybinds.pdl.
 KB="$PCHQ_PKG/pieces/system/keybinds.pdl"; if [ -f "$KB" ]; then for gk in left:1000 right:1001 up:1002 down:1003 jump:32; do grep -q "^GAMEKEY .*| ${gk#*:}\$" "$KB" || printf 'GAMEKEY      | %s | %s\n' "${gk%%:*}" "${gk#*:}" >> "$KB"; done; fi
 # the stamp bank is the DEFAULT left bar: seed side_stamp=1 only when the file is missing (a user's own minimize is kept across launches)
-[ -f "$HERE/state/sides.txt" ] || printf 'side_stamp=1\n' > "$HERE/state/sides.txt"
+[ -f "$HERE/state/sides.txt" ] || { if [ "$NAME" = teario-make ]; then printf 'side_stamp=1\n'; else printf 'side_stamp=\n'; fi > "$HERE/state/sides.txt"; }   # only the Make window has a stamp bank
 # the ONE game driver (one instance: it locks itself). Registered through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl); handed to the window below so it ends with it.
 FUNNEL="$HOUSE/&.widgits/_shared-lib/kh_spawn.sh"; REG="$HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"; DRV="$HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x"
 # is a driver of THIS window folder already registered and alive? The registry is the record (AGENTS.md: every process the house starts is a row), NOT a `ps | awk` scan of the arguments: that scan matched the awk process own command line and always answered yes (found 2026-11-19, the driver never started).
