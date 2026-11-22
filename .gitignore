@@ -240,3 +240,4 @@ __pycache__/
 
 # vox voxel runtime ledger (D105): written by the vox_* event pages, never committed
 **/#.desktop/vox_ledger.txt
+**/#.desktop/vox_board.pdl

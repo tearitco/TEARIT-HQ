@@ -310,7 +310,7 @@ static int project(W *w, const char *dir, int layer, const char *png_op) {
         else { const char *k = kind_at(w, x, layer, z); if (strcmp(k, "air")) { h = 1; f = pic_slot(k); } }
         Fs[z][x] = f; Ws[z][x] = wl; Hs[z][x] = h; if (h) solid++; if (h > hi) hi = h; }
     size_t cap = (size_t)WX * WZ * 16 + 400; char *cb = malloc(cap), *mb = malloc((size_t)(WX + 1) * WZ + 1), ex[1200]; if (!cb || !mb) return 2; size_t n = 0, m = 0;
-    n += snprintf(cb + n, cap - n, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\ncells\n", WX, WZ, TPX, ACOLS, ATILES);
+    n += snprintf(cb + n, cap - n, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nevent_lift=1\ncells\n", WX, WZ, TPX, ACOLS, ATILES);
     for (int z = 0; z < WZ; z++) { for (int x = 0; x < WX; x++) { n += snprintf(cb + n, cap - n, "%s%d,%d", x ? " " : "", Fs[z][x], Ws[z][x]); mb[m++] = glyph_of(Hs[z][x]); } cb[n++] = '\n'; mb[m++] = '\n'; }
     int en = snprintf(ex, sizeof ex, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | note               | vox desk projection (vox_op), derived from the ledger; do not edit\n");
     for (int h = 2; h <= YM + 1 && h <= 16; h++) en += snprintf(ex + en, sizeof ex - en, "EXTRUDE      | %c                  | %d\n", glyph_of(h), h);
@@ -336,7 +336,8 @@ static int project(W *w, const char *dir, int layer, const char *png_op) {
 }
 /* the game bar feed (state/game_ui.txt shape of game_core: gm_on, gm_title, gmt_i_text, gmb_i_label / _act, counts): a PROJECTION, one text row per fact, one button per verb. A button runs `vox_op act` which appends the verb's rows,
  * then rewrites the desk and this feed. */
-static const char *ACTS[][2] = { { "mine", "Mine" }, { "place", "Place" }, { "eat", "Eat" }, { "wait", "Wait" }, { "sleep", "Sleep" }, { "x-", "Left" }, { "x+", "Right" }, { "z-", "Back" }, { "z+", "Forward" }, { "up", "Up" }, { "down", "Down" } };
+/* the popup shows six buttons without scrolling (found by the first live window: Up was off screen, so Up, Place, Up, Place could not be pressed): the building verbs first, then the rest */
+static const char *ACTS[][2] = { { "mine", "Mine" }, { "place", "Place" }, { "up", "Up" }, { "down", "Down" }, { "eat", "Eat" }, { "wait", "Wait" }, { "sleep", "Sleep" }, { "x-", "Left" }, { "x+", "Right" }, { "z-", "Back" }, { "z+", "Forward" } };
 #define NACT ((int)(sizeof ACTS / sizeof *ACTS))
 typedef struct { const char *self, *data, *ledger, *desk, *feed, *png; } Opt;
 static int write_feed(W *w, const char *an, const Opt *o) {
@@ -363,6 +364,23 @@ static int act(W *w, FILE *L, const char *an, const char *what) {
     if (!strcmp(what, "place")) { for (int i = 0; i < a->ni; i++) if (a->cnt[i] > 0 && blk(a->item[i]) && blk(a->item[i])->solid) return v_place(w, L, an, a->item[i], a->x, ty + 1, a->z); fprintf(stderr, "refused: item missing or not placeable\n"); return 16; }
     fprintf(stderr, "refused: unknown action\n"); return 2;
 }
+/* the window's 3D engine reads cells.txt again when it is sent key 6 (game_core engine_reload does the same for Teario): after a button changed the desk, send it to the session named in <data>/board/state/ui.txt; a data dir without that file (every harness scratch) does nothing */
+static void reload3d(const char *data) {
+    char p[2048], sess[2048] = "", ln[2100], op[2200]; snprintf(p, sizeof p, "%s/board/state/ui.txt", data); FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bv_session=", 11)) { snprintf(sess, sizeof sess, "%s", ln + 11); sess[strcspn(sess, "\r\n")] = 0; } fclose(f);
+    snprintf(op, sizeof op, "%s/../../&.widgits/board-viewer/tools/+x/bv_keys.+x", data); if (!sess[0] || access(sess, R_OK) || access(op, X_OK)) return;
+    pid_t c = fork(); if (c == 0) { freopen("/dev/null", "w", stdout); freopen("/dev/null", "w", stderr); execl(op, op, sess, "6", (char *)NULL); _exit(1); } if (c > 0) { int st; waitpid(c, &st, 0); }
+}
+/* the board hook (D114): a window job writes <ledger dir>/vox_board.pdl (rows `BOARD | desk|feed|png|self|actor | value`); with that file beside the ledger, every ACCEPTED verb called by an event page (or a CLI) rewrites the desk and the feed and nudges the engine, exactly as a window button does through act. No file, no picture, so every harness stays as it was; a refused verb never reaches here. */
+static void board_hook(W *w, FILE *L, const char *ledger, const char *data, const char *me) {
+    char p[2100], ln[2300], desk[2048] = "", feed[2048] = "", png[2048] = "", self[2048] = "", actor[64] = "player"; snprintf(p, sizeof p, "%s", ledger); char *sl = strrchr(p, '/'); if (!sl) return; snprintf(sl, sizeof p - (size_t)(sl - p), "/vox_board.pdl");
+    FILE *f = fopen(p, "r"); if (!f) return;
+    while (fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\r\n")] = 0; char k[32], v[2048]; if (sscanf(ln, "BOARD | %31[^|] | %2047[^\n]", k, v) != 2) continue; for (char *e = k + strlen(k); e > k && e[-1] == ' '; ) *--e = 0;
+        if (!strcmp(k, "desk")) snprintf(desk, sizeof desk, "%s", v); else if (!strcmp(k, "feed")) snprintf(feed, sizeof feed, "%s", v); else if (!strcmp(k, "png")) snprintf(png, sizeof png, "%s", v); else if (!strcmp(k, "self")) snprintf(self, sizeof self, "%s", v); else if (!strcmp(k, "actor")) snprintf(actor, sizeof actor, "%s", v); }
+    fclose(f); if (!desk[0]) return;
+    Opt o = { self[0] ? self : me, data, ledger, desk, feed, png[0] ? png : NULL };
+    fold(w, L); project(w, desk, -1, o.png); if (feed[0]) write_feed(w, actor, &o); reload3d(data);
+}
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--describe")) {
         puts("rule vox inputs data_dir(rules,blocks,terrain),ledger outputs GIVE MOVE DAMAGE MINE DROP PLACE TURN DAY SLEEP SPAWNPOINT rows numbers from RULE TOOL DAYLIGHT BLOCK rows refusal writes nothing");
@@ -373,12 +391,17 @@ int main(int argc, char **argv) {
     if (load_data(argv[2])) { fprintf(stderr, "missing data file in %s\n", argv[2]); return 9; }
     FILE *L = fopen(argv[3], "a+"); if (!L) return 2;
     int r = 2; W w; OUT = stdout; Opt op = { argv[0], argv[2], argv[3], "", "", NULL };
-    while (ac > 0 && strchr(av[ac - 1], (int)'=')) { char *o = av[ac - 1]; if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else break; ac--; }
+    /* a window button runs the feed's act string and the renderer appends 3 args (instance dir, house root, field value; found by the first live window 2026-11-22): for act, take the key=value options from anywhere and only the first two plain words (actor, action) */
+    if (!strcmp(v, "act")) { int k = 0; for (int i = 0; i < ac; i++) { char *o = av[i];
+            if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else av[k++] = o; }
+        ac = k > 2 ? 2 : k; }
+    else while (ac > 0 && strchr(av[ac - 1], (int)'=')) { char *o = av[ac - 1]; if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else break; ac--; }
     int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat") || !strcmp(v, "act");
     if (mut && (r = verify(L))) { fclose(L); return r; }
     char cx[3][32]; char *av5[5];   /* a page passes the cell as one word x,y,z (the registry allows 4 params) */
     if ((!strcmp(v, "mine") || !strcmp(v, "place")) && ac == 3 && sscanf(av[2], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) {
         av5[0] = av[0]; av5[1] = av[1]; av5[2] = cx[0]; av5[3] = cx[1]; av5[4] = cx[2]; av = av5; ac = 5; }
+    char *avm[4]; if (!strcmp(v, "move") && ac == 2 && sscanf(av[1], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) { avm[0] = av[0]; avm[1] = cx[0]; avm[2] = cx[1]; avm[3] = cx[2]; av = avm; ac = 4; }   /* a page passes the target as one word x,y,z */
     fold(&w, L); r = 2;
     if (!strcmp(v, "give") && ac == 4) r = v_give(&w, L, av[0], av[1], atoi(av[2]), av[3]);
     else if (!strcmp(v, "move") && ac == 4) r = v_move(&w, L, av[0], atoi(av[1]), atoi(av[2]), atoi(av[3]));
@@ -398,9 +421,10 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "layer") && ac == 2) r = project(&w, av[0], atoi(av[1]), op.png);
     else if (!strcmp(v, "feed") && ac == 1 && op.feed[0]) { r = write_feed(&w, av[0], &op) ? 2 : 0; if (!r) fprintf(OUT, "FEED written\n"); }
     else if (!strcmp(v, "act") && ac == 2) { r = act(&w, L, av[0], av[1]);
-        if (!r) { fold(&w, L); if (op.desk[0]) r = project(&w, op.desk, -1, op.png); if (!r && op.feed[0]) r = write_feed(&w, av[0], &op) ? 2 : 0; } }
+        if (!r) { fold(&w, L); if (op.desk[0]) r = project(&w, op.desk, -1, op.png); if (!r && op.feed[0]) r = write_feed(&w, av[0], &op) ? 2 : 0; if (!r && op.desk[0]) reload3d(op.data); } }
     else if (!strcmp(v, "verify") && ac == 0) { r = verify(L); if (!r) fprintf(OUT, "verified\n"); }
     else if (!strcmp(v, "replay") && ac == 1) {
         FILE *d = fopen(av[0], "w+x"); if (!d) { fprintf(stderr, "refused: destination exists or cannot be created\n"); r = 2; } else { FILE *keep = OUT; OUT = fopen("/dev/null", "w"); r = replay_into(L, d); fclose(OUT); OUT = keep; if (!r && !same(L, d)) r = 14; fclose(d); if (!r) fprintf(OUT, "replayed identical\n"); } }
+    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
     fclose(L); return r;
 }

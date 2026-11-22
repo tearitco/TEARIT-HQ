@@ -10,10 +10,13 @@ VOX="$APP/ops/+x/vox_op.+x"; LEDGER="$HOUSE/#.desktop/vox_ledger.txt"; PNG="$HOU
 [ -x "$VOX" ] || { echo "open_board: build $VOX first (gcc -std=gnu11 -O2 -o ops/+x/vox_op.+x ops/vox_op.c)" >&2; exit 1; }
 export PCHQ_PKG="$APP/$NAME-pchq"
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
+ACTOR="${VOX_ACTOR:-joe}"   # the actor the event pages name (the seeded pages say joe)
 DESK="$PCHQ_PKG/pieces/system/maps/$NAME/play"; mkdir -p "$DESK" "$APP/state"
+# the board hook (D114): this marker file beside the ledger makes vox_op rewrite the desk and the panel and nudge the engine after every accepted verb, whoever called it (a window button or an event page)
+printf 'BOARD | desk | %s\nBOARD | feed | %s\nBOARD | png | %s\nBOARD | self | %s\nBOARD | actor | %s\n' "$DESK" "$APP/state/game_ui.txt" "$PNG" "$VOX" "$ACTOR" > "$HOUSE/#.desktop/vox_board.pdl"
 "$VOX" desk "$APP" "$LEDGER" "$DESK" "png=$PNG" >/dev/null || exit 1
-"$VOX" feed "$APP" "$LEDGER" player "desk=$DESK" "feed=$APP/state/game_ui.txt" "png=$PNG" "self=$VOX" >/dev/null || exit 1
-[ -f "$HERE/state/sides.txt" ] || printf 'side_stamp=\n' > "$HERE/state/sides.txt"
+"$VOX" feed "$APP" "$LEDGER" "$ACTOR" "desk=$DESK" "feed=$APP/state/game_ui.txt" "png=$PNG" "self=$VOX" >/dev/null || exit 1
+mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf 'side_stamp=\n' > "$HERE/state/sides.txt"
 PCHQ_BOARD_TPL="$HERE/pchq-board.xhtpm" sh "$HOUSE/@.apps/piececraft-hq/open_pchq_board.sh" "$HOUSE" || exit 1
 WPID="$(cat "$PCHQ_PKG/pieces/system/board_window.pid" 2>/dev/null)"; REG="$HOUSE/&.widgits/_shared-lib/ops/+x/proc_reg_op.+x"
 INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"; BOOK=$NAME; PAGE=play
@@ -25,3 +28,5 @@ if [ -x "$REG" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
     "$REG" "$HOUSE" rule-add "$WPID" "@file:$HERE/state/ui.txt#bv_session" engine $NAME bv-session >/dev/null 2>&1 || true
     "$REG" "$HOUSE" apply-rules >/dev/null 2>&1 || true
 fi
+# frame the 16x16 desk: the engine's default view shows only part of it (found by the first live window). Key f = reset, 3 = top-down mode, two a presses pan the centre onto the desk (measured in the second live session: pan_x -2 centres the 16x16 desk, the first session needed +6, so the framing is measured per launch: look at the photo); the keys go to the engine session the board opened.
+sleep 4; BVS="$(sed -n 's/^bv_session=//p' "$HERE/state/ui.txt" 2>/dev/null | head -1)"; [ -n "$BVS" ] && "$HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x" "$BVS" f3aa >/dev/null 2>&1

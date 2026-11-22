@@ -1954,3 +1954,12 @@ COMMAND vox_eat
   PARAMS actor,item
   TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" eat "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{item}'
 END
+
+# vox_move (D114) = one step of the actor to a cell (one word x,y,z, move_max 1 per call), so an event page can walk the voxel player: `vox_op move`. Refusals as the op (10 unknown actor, 11 out of bounds, 15 no support ...). When a board window is open (#.desktop/vox_board.pdl beside the ledger) every accepted vox verb of a page also rewrites the desk, the panel feed and nudges the 3D engine, so the picture changes when Step ev runs.
+COMMAND vox_move
+  LABEL vox: move one step
+  FIELD1 Actor:
+  FIELD2 Cell:
+  PARAMS actor,cell
+  TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" move "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{cell}'
+END

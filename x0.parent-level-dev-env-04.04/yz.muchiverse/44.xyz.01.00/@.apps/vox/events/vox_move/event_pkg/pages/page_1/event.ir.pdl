@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | vox_move
+STATE        | source               | events-hq
+NODE         | id=1 type=vox_move | actor=joe|cell=4,3,3

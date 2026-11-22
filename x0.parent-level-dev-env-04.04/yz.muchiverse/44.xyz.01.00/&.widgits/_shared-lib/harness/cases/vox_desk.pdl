@@ -27,7 +27,7 @@ RUN | $T/vx | give | $T/d | $T/l | player | apple | 1 | seed
 CASE    | top-down
 RUN | $T/vx | desk | $T/d | $T/l | $T/k1 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
 EXPECT_OUT | DESK mode=top 16x16 solid_columns=256 highest=3 | seed-terrain-is-256-columns-3-high-(HAND-y0-to-y2)
-EXPECT_HAS | $T/k1/cells.txt | width=16\nheight=16\ntile_px=24\natlas_cols=16\natlas_tiles=43\ncells\n1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1\n | header-and-first-row-top-dirt-over-dirt
+EXPECT_HAS | $T/k1/cells.txt | width=16\nheight=16\ntile_px=24\natlas_cols=16\natlas_tiles=43\nevent_lift=1\ncells\n1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1 1,1\n | header-(with-event_lift=1,-D114)-and-first-row-top-dirt-over-dirt
 EXPECT_HAS | $T/k1/map.txt | 3333333333333333 | map-glyph-3-is-height-3
 EXPECT_HAS | $T/k1/extrusion.pdl | EXTRUDE      \p 3                  \p 3 | extrusion-row-glyph-3-is-3-levels-(the-engine-height-path)
 EXPECT_FILE | $T/k1/events.txt | 8 8 240 200 40 People1 0 2 1\n | the-player-is-an-events-row-at-column-8-row-8
@@ -188,6 +188,73 @@ RUN | $T/m/m4 | desk | $T/d | $T/ml4 | $T/mk4
 EXPECT_LACKS | $T/mk4/events.txt | People1 | MUTANT-4-writes-no-player-figure
 RUN | $T/vx | desk | $T/d | $T/ml4 | $T/mk4b
 EXPECT_HAS | $T/mk4b/events.txt | People1 | the-real-op-writes-the-player-figure
+
+CASE    | board_hook
+# D114: with vox_board.pdl beside the ledger EVERY accepted verb (an event page calls the same CLI) rewrites the desk and the panel; no file = no picture; a refusal changes nothing. Hand-computed: joe at (3,3,3), the shovel (best tool of dirt, power 2) mines the dirt (3,2,3) in ONE swing (hardness 2), map row z=3 char x=3 goes 3 -> 2.
+RUN | rm | -rf | $T/hk | $T/hm
+MKDIR | hk
+MKDIR | hm
+RUN | $T/vx | move | $T/d | $T/hk/l | joe | 3 | 3 | 3
+RUN | $T/vx | give | $T/d | $T/hk/l | joe | shovel | 1 | seed
+RUN | $T/vx | give | $T/d | $T/hk/l | joe | cobble | 2 | seed
+RUN | $T/vx | give | $T/d | $T/hk/l | joe | bread | 1 | seed
+RUN | $T/vx | mine | $T/d | $T/hk/l | joe | shovel | 3,2,3
+EXPECT_EXIT | 0 | no-config-the-mine-works-as-before
+EXPECT_NOFILE | $T/hk/desk/map.txt | NEGATIVE-no-vox_board.pdl-means-no-desk-is-written-by-a-verb
+WRITE | hk/vox_board.pdl | BOARD \p desk \p $T/hk/desk\nBOARD \p feed \p $T/hk/ui.txt\nBOARD \p png \p $HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x\nBOARD \p self \p $T/vx\nBOARD \p actor \p joe\n
+RUN | $T/vx | place | $T/d | $T/hk/l | joe | cobble | 3,3,4
+EXPECT_EXIT | 0 | place-accepted-with-config
+EXPECT_HAS | $T/hk/desk/map.txt | 3332333333333333 | the-mine-of-the-first-call-shows-in-the-hook-written-desk-(row-3-col-3-is-height-2)
+EXPECT_HAS | $T/hk/desk/map.txt | 3333333333333333 | NEGATIVE-other-columns-still-height-3
+EXPECT_HAS | $T/hk/desk/events.txt | 3 3 240 200 40 People1 0 2 1 | the-figure-of-joe-is-at-column-3-row-3
+EXPECT_HAS | $T/hk/ui.txt | gmb_0_label=Mine | the-panel-feed-was-written-by-the-hook
+EXPECT_HAS | $T/hk/ui.txt | joe | the-panel-names-the-actor
+RUN | stat | -c | %s | $T/hk/desk/cells.marker
+EXPECT_OUT_IS | 1 | marker-1-byte-after-the-first-hook-write
+RUN | $T/vx | move | $T/d | $T/hk/l | joe | 4,3,3
+EXPECT_EXIT | 0 | a-page-passes-the-move-target-as-one-word-x-y-z
+EXPECT_HAS | $T/hk/desk/events.txt | 4 3 240 200 40 People1 0 2 1 | the-figure-moved-to-column-4
+RUN | $T/vx | eat | $T/d | $T/hk/l | joe | bread
+EXPECT_EXIT | 0 | eat-accepted
+RUN | $T/vx | wait | $T/d | $T/hk/l | 2
+EXPECT_EXIT | 0 | wait-accepted
+RUN | $T/vx | mine | $T/d | $T/hk/l | joe | shovel | 4,2,3
+EXPECT_EXIT | 0 | second-mine-accepted
+RUN | $T/vx | sleep | $T/d | $T/hk/l | joe
+EXPECT_EXIT | 19 | sleep-refused-not-night-(19)
+RUN | stat | -c | %s | $T/hk/desk/cells.marker
+EXPECT_OUT_IS | 5 | marker-is-5-bytes:-one-per-ACCEPTED-verb-since-the-config-(place-move-eat-wait-mine)-and-the-refused-sleep-wrote-none
+RUN | cp | $T/hk/desk/events.txt | $T/hk/ev_before
+RUN | $T/vx | mine | $T/d | $T/hk/l | joe | shovel | 3,2,99
+EXPECT_EXIT | 11 | out-of-bounds-mine-refused-(11)
+RUN | cmp | -s | $T/hk/desk/events.txt | $T/hk/ev_before
+EXPECT_EXIT | 0 | a-refused-verb-leaves-the-picture-byte-identical
+RUN | grep | -c | -F | COMMAND vox_move | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-vox_move-command-is-registered-once
+EXPECT_HAS | $HOUSE/@.apps/vox/events/vox_move/event_pkg/pages/page_1/event.ir.pdl | type=vox_move \p actor=joe | the-move-page-was-seeded-through-bp_edit_op
+EXPECT_HAS | $HOUSE/@.apps/vox/events/vox_move/event_pkg/pages/page_1/cmd_1.sh | vox_op.+x" move | the-move-page-wrapper-calls-vox_op-move
+EXPECT_HAS | $T/hk/ui.txt | gmb_2_label=Up | the-popup-order-puts-Up-third-(six-buttons-fit-without-scrolling:-Mine-Place-Up-Down-Eat-Wait)
+EXPECT_LACKS | $T/hk/ui.txt | gmb_2_label=Eat | NEGATIVE-Eat-is-no-longer-third-(it-was-before-the-first-live-window)
+RUN | grep | -c | -F | event_lift=1 | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c
+EXPECT_OUT_IS | 2 | the-engine-reads-the-event_lift-header-key-(comment-line-plus-parse-line;-figures-stand-on-their-column,-found-live:-buried-in-a-3-high-column)
+EXPECT_HAS | $T/hk/desk/cells.txt | event_lift=1\ncells | the-desk-header-asks-for-it
+RUN | cp | $T/m/orig.c | $T/m/m5.c
+RUN | sed | -i | s/board_hook(&w, L, argv\[3\], argv\[2\], argv\[0\]);/(void)0;/ | $T/m/m5.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m5.c
+EXPECT_EXIT | 1 | vacuity-mutant-5-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m5 | $T/m/m5.c
+EXPECT_EXIT | 0 | mutant-5-builds
+RUN | rm | -rf | $T/hm
+MKDIR | hm
+RUN | $T/vx | move | $T/d | $T/hm/l | joe | 3 | 3 | 3
+RUN | $T/vx | give | $T/d | $T/hm/l | joe | shovel | 1 | seed
+WRITE | hm/vox_board.pdl | BOARD \p desk \p $T/hm/desk\nBOARD \p feed \p $T/hm/ui.txt\nBOARD \p png \p\nBOARD \p self \p $T/vx\nBOARD \p actor \p joe\n
+RUN | $T/vx | desk | $T/d | $T/hm/l | $T/hm/desk
+RUN | $T/m/m5 | mine | $T/d | $T/hm/l | joe | shovel | 3,2,3
+EXPECT_EXIT | 0 | mutant-5-mines
+EXPECT_LACKS | $T/hm/desk/map.txt | 3332333333333333 | MUTANT-5-never-runs-the-hook-so-the-desk-is-STALE
+RUN | $T/vx | wait | $T/d | $T/hm/l | 1
+EXPECT_HAS | $T/hm/desk/map.txt | 3332333333333333 | the-real-op-hook-redraws-the-pit-at-once
 RUN | cmp | -s | $T/m/orig.c | $HOUSE/@.apps/vox/ops/vox_op.c
 EXPECT_EXIT | 0 | RESTORED-the-real-source-is-byte-identical-to-the-pre-sabotage-copy
 CLEAN |
