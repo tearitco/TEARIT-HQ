@@ -1,4 +1,4 @@
-# Tiny box: a pond, a road, one roof. Border grass becomes the harbour.
+# Tiny box: a pond, a road, one roof. Border grass becomes the harbour. D108: bridges (KIND rows = data) cross water; a plain road does not.
 RESULTS | ../results/rta_city.txt
 CASE | city
 SCRATCH
@@ -8,4 +8,18 @@ RUN | $T/rta_city_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSET
 EXPECT_EXIT | 0 | city paints
 EXPECT_EXISTS | city.png | png exists
 EXPECT_OUT | w=11 h=7 features=3 grass=0 park=0 path=0 road=4 beach=0 water=69 pier=0 building=4 png=176x112 | water road and a roof
+# ---- D108 painter trap 1: a bridge must beat water. A pond, a plain road (Lane, grid row 4 from the north) and a bridge (Deck, row 2) cross it.
+# The KIND row `KIND | bridge | road | 9` is DATA in the feature file; the op has no bridge constant.
+RUN | $T/rta_city_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_city_bridge.pdl | $T/b.png | $T/b.grid
+EXPECT_EXIT | 0 | bridge fixture paints
+EXPECT_FILE | b.grid | # north row first w=11 h=7 meters=10 west=-79.93040 south=32.76940\nWWWWWWWWWWW\nWWWWWWWWWWW\nRRRRRRRRRRR\nWWWWWWWWWWW\nRWWWWWWWWRR\nWWWWWWWWWWW\nWWWWWWWWWWW\n | HAND-DRAWN the bridge row is road end to end while the plain road row stays water across the pond (R only outside it)
+EXPECT_OUT | road=14 | 11 bridge cells plus 3 plain-road cells outside the pond
+# negative control: the same features with the KIND row deleted paint the OLD way (the bridge feature kind is unknown and is dropped, water stays)
+RUN | $T/rta_city_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_city_bridge_nokind.pdl | $T/c.png | $T/c.grid
+EXPECT_OUT | road=3 | NEGATIVE without the KIND row there is no bridge row: only the 3 plain-road cells outside the pond are road
+EXPECT_LACKS | c.grid | RRRRRRRRRRR | NEGATIVE without the KIND row the bridge row is not drawn
+# the priority is data too: the same row with priority 2 (below water 5) loses to the pond like a plain road
+RUN | $T/rta_city_op.+x | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_city_bridge_low.pdl | $T/d.png | $T/d.grid
+EXPECT_OUT | road=6 | a bridge with KIND priority 2 loses to water: its row keeps only the 3 cells outside the pond (3 + 3)
+EXPECT_LACKS | d.grid | RRRRRRRRRRR | priority 2 does not draw a full bridge row
 CLEAN

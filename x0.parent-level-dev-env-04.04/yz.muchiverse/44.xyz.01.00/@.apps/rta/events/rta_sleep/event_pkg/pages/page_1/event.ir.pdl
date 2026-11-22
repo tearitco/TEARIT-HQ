@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | rta_sleep
+STATE        | source               | events-hq
+NODE         | id=1 type=rta_sleep | entity=joe|turns=3

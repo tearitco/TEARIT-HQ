@@ -7,11 +7,14 @@ RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_life_op.+x | $HOUSE
 EXPECT_EXIT | 0 | life op compiles
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
 EXPECT_EXIT | 0 | momentum op compiles
-WRITE | rules.pdl | RULE \p hunger_start \p 80\nRULE \p eat_amount \p 30\nRULE \p fuel_per_cell \p 1\nRULE \p drive_speed \p 1\n
+WRITE | rules.pdl | RULE \p hunger_start \p 80\nRULE \p eat_amount \p 30\nRULE \p fuel_per_cell \p 1\nRULE \p drive_speed \p 1\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_per_turn \p 2\nRULE \p hunger_max \p 100\n
 MKDIR | a
 MKDIR | b
 MKDIR | c
 MKDIR | d
+MKDIR | s
+MKDIR | s2
+MKDIR | s3
 RUN | $T/rta_life_op.+x | --describe
 EXPECT_OUT | rule rta_life | describe
 # four PART rows
@@ -73,4 +76,91 @@ EXPECT_EQ | $ha | $hb | replay equals the original run
 WRITE | d/src.txt | PART \p car \p engine \p gas \p ok \p 0\nPART \p car \p tank \p gas \p ok \p 3\nPART \p car \p steering \p gas \p ok \p 0\nENTER \p joe \p car\nDRIVE \p joe \p car \p 1 \p 0 \p 2\n
 RUN | $T/rta_life_op.+x | replay | $T/rules.pdl | $T/d/src.txt | $T/d/l.txt | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/d/m.txt | $T/d/e.txt
 EXPECT_EXIT | 14 | a ledger without tires does not replay (negative control)
+# ---- D108: sleep (skip n turns; hunger rises by a RULE number per turn, capped by a RULE number; one SLEEP row + one TURN row with the new cumulative count; a refusal writes nothing)
+# rules: sleep_max_turns 8, hunger_per_turn 2, hunger_max 100, hunger_start 80 (HAND-COMPUTED below)
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s/l.txt | joe | 3
+EXPECT_EXIT | 0 | sleep 3 turns
+EXPECT_OUT_IS | slept=3 hunger=86 turn=3 | HAND-COMPUTED 80 + 3*2 = 86 and turn 0 + 3 = 3
+EXPECT_HAS | $T/s/l.txt | SLEEP \p joe \p 3 \p 86 | the skip is written as a SLEEP row
+EXPECT_HAS | $T/s/l.txt | TURN \p 3 \p sleep | the skip is written as ONE TURN row carrying the new cumulative count
+RUN | grep | -c | TURN | $T/s/l.txt
+EXPECT_OUT_IS | 1 | exactly one TURN row for the whole skip (not three)
+RUN | $T/rta_life_op.+x | status | $T/rules.pdl | $T/s/l.txt | joe | car
+EXPECT_OUT_IS | in_car=0 hunger=86 fuel=0 turn=3 | status reads hunger and turn back from the ledger
+# the cap: 86 + 8*2 = 102 -> hunger_max 100; turn 3 + 8 = 11
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s/l.txt | joe | 8
+EXPECT_OUT_IS | slept=8 hunger=100 turn=11 | hunger is capped at hunger_max (102 -> 100), the turn count adds 8
+# refusals write NOTHING: hash the tree before and after
+SUMTREE | before | $T/s
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s/l.txt | joe | 9
+EXPECT_EXIT | 16 | NEGATIVE one more than sleep_max_turns (9 > 8) refuses 16
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s/l.txt | joe | 8
+EXPECT_EXIT | 0 | CONTROL exactly sleep_max_turns is accepted (the bound is inclusive)
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe | 0
+EXPECT_EXIT | 16 | NEGATIVE zero turns refuses 16
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe | -2
+EXPECT_EXIT | 16 | NEGATIVE negative turns refuses 16
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe | 3x
+EXPECT_EXIT | 16 | NEGATIVE 3x is not a whole number, refuses 16
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe | abc
+EXPECT_EXIT | 16 | NEGATIVE a word refuses 16
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe |
+EXPECT_EXIT | 16 | NEGATIVE an empty count refuses 16
+EXPECT_NOFILE | $T/s2/l.txt | none of the six refusals created a ledger
+# in the car: refused 15, nothing written
+RUN | $T/rta_life_op.+x | enter | $T/rules.pdl | $T/s2/l.txt | joe | car
+SUMTREE | incar | $T/s2
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe | 2
+EXPECT_EXIT | 15 | NEGATIVE sleeping in the car refuses 15
+SUMTREE | incar2 | $T/s2
+EXPECT_EQ | $incar | $incar2 | the in-car refusal wrote nothing
+RUN | $T/rta_life_op.+x | exit | $T/rules.pdl | $T/s2/l.txt | joe | car
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s2/l.txt | joe | 2
+EXPECT_OUT_IS | slept=2 hunger=84 turn=4 | CONTROL after getting out the same sleep is accepted (80 + 4; enter and exit are 2 turns, plus 2 slept = 4)
+# each rule is a number the C file does not own
+WRITE | nomax.pdl | RULE \p hunger_start \p 80\nRULE \p hunger_per_turn \p 2\nRULE \p hunger_max \p 100\n
+WRITE | nohpt.pdl | RULE \p hunger_start \p 80\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_max \p 100\n
+WRITE | nocap.pdl | RULE \p hunger_start \p 80\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_per_turn \p 2\n
+RUN | $T/rta_life_op.+x | sleep | $T/nomax.pdl | $T/s3/l.txt | joe | 1
+EXPECT_EXIT | 9 | NEGATIVE no sleep_max_turns row refuses 9
+RUN | $T/rta_life_op.+x | sleep | $T/nohpt.pdl | $T/s3/l.txt | joe | 1
+EXPECT_EXIT | 9 | NEGATIVE no hunger_per_turn row refuses 9
+RUN | $T/rta_life_op.+x | sleep | $T/nocap.pdl | $T/s3/l.txt | joe | 1
+EXPECT_EXIT | 9 | NEGATIVE no hunger_max row refuses 9
+EXPECT_NOFILE | $T/s3/l.txt | the missing-rule refusals wrote nothing
+# a rule row changes the answer (no number in C): a copy with hunger_per_turn 5 gives 80 + 3*5 = 95
+WRITE | five.pdl | RULE \p hunger_start \p 80\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_per_turn \p 5\nRULE \p hunger_max \p 100\n
+RUN | $T/rta_life_op.+x | sleep | $T/five.pdl | $T/s3/l.txt | joe | 3
+EXPECT_OUT_IS | slept=3 hunger=95 turn=3 | HAND-COMPUTED the number comes from the rule row (80 + 15)
+# sleep then eat: eat counts down from the slept hunger (86 -> 56)
+RUN | $T/rta_life_op.+x | eat | $T/rules.pdl | $T/s/l.txt | joe
+EXPECT_OUT_IS | hunger=70 | eat after two sleeps: 100 - 30
+# replay: the sleep rows replay to the same bytes; a tampered skip (99 turns) diverges 14
+MKDIR | r1
+MKDIR | r2
+RUN | $T/rta_life_op.+x | replay | $T/rules.pdl | $T/s/l.txt | $T/r1/l.txt | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/r1/m.txt | $T/r1/e.txt
+EXPECT_EXIT | 0 | the ledger with SLEEP rows replays
+RUN | cmp | $T/s/l.txt | $T/r1/l.txt
+EXPECT_EXIT | 0 | the replayed ledger equals the original byte for byte
+WRITE | r2/src.txt | SLEEP \p joe \p 99 \p 100\nTURN \p 99 \p sleep\n
+RUN | $T/rta_life_op.+x | replay | $T/rules.pdl | $T/r2/src.txt | $T/r2/l.txt | $T/rta_momentum_op.+x | $HOUSE/&.widgits/_shared-lib/harness/fixtures/rta_mom_tiny.grid | $T/r2/m.txt | $T/r2/e.txt
+EXPECT_EXIT | 14 | NEGATIVE a hand-edited 99-turn skip does not replay
+# ---- D108: the 4-parameter part form used by the event page (state[:n]); bad slot and bad state exit 2 and write nothing
+MKDIR | p
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/p/l.txt | car | tank | gas | ok:3
+EXPECT_EXIT | 0 | page form: ok:3
+EXPECT_HAS | $T/p/l.txt | PART \p car \p tank \p gas \p ok \p 3 | page form writes the row with n 3
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/p/l.txt | car | tires | gas | missing
+EXPECT_HAS | $T/p/l.txt | PART \p car \p tires \p gas \p missing \p 0 | page form without :n writes n 0
+SUMTREE | pbefore | $T/p
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/p/l.txt | car | wheels | gas | ok:0
+EXPECT_EXIT | 2 | NEGATIVE bad slot refuses 2
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/p/l.txt | car | tank | gas | broken:1
+EXPECT_EXIT | 2 | NEGATIVE bad state refuses 2
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/p/l.txt | car | tank | gas | broken | 1
+EXPECT_EXIT | 2 | NEGATIVE bad state refuses 2 in the 5-argument form too
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/p/l.txt | car | tank | gas | OK:1
+EXPECT_EXIT | 2 | NEGATIVE the state words are exact (OK is not ok)
+SUMTREE | pafter | $T/p
+EXPECT_EQ | $pbefore | $pafter | the four part refusals wrote nothing
 CLEAN

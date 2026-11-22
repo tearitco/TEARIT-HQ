@@ -6,6 +6,9 @@
  * autotile edges is later.
  *   rta_city_op <tileset_dir> <feat.pdl> <out.png> <grid.txt>
  * grid.txt is north row first. Row 0 of the file is the north edge.
+ * KIND rows (data, optional, before the FEAT rows): `KIND | <feature kind> | <painted kind> | <priority>`. A feature kind with a KIND row is painted as the named
+ * kind (park path road water pier building beach) and beats a cell only when its priority is STRICTLY higher than the priority that set the cell (a tie keeps the first). A kind with no
+ * row keeps priority = its own kind number, so a file with no KIND row paints exactly as before. `KIND | bridge | road | 9` lets a road span water and pier.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o rta_city_op.+x rta_city_op.c -lpng -lz -lm
  */
 #include <png.h>
@@ -86,7 +89,18 @@ static void sample(const Img *s, int sx, int sy, unsigned char *dst) {
     }
 }
 
-static int kind_of(const char *s) {
+#define MAXKIND 8
+static struct { char name[32]; int paint, prio; } kx[MAXKIND];
+static int nkx;
+
+static int base_kind(const char *s);
+/* paint kind of a feature kind name, and the priority it stamps with (a KIND row, else the kind number itself) */
+static int kind_of(const char *s, int *prio) {
+    for (int i = 0; i < nkx; i++) if (!strcmp(kx[i].name, s)) { *prio = kx[i].prio; return kx[i].paint; }
+    int k = base_kind(s); *prio = k; return k;
+}
+
+static int base_kind(const char *s) {
     if (!strcmp(s, "park")) return PARK;
     if (!strcmp(s, "path")) return PATH;
     if (!strcmp(s, "road")) return ROAD;
@@ -107,11 +121,13 @@ static int pip(double x, double y, const double *xs, const double *ys, int n) {
     return inside;
 }
 
-static void stamp(unsigned char *g, int gw, int gh, int x, int y, int k) {
+static unsigned char *pr;   /* priority that set each cell (0 = nothing yet) */
+
+static void stamp(unsigned char *g, int gw, int gh, int x, int y, int k, int p) {
     if (x < 0 || y < 0 || x >= gw || y >= gh) return;
     unsigned char *c = g + y * gw + x;
     if (k == BLDG && (*c == WATER || *c == PIER)) return;
-    if (k > *c) *c = (unsigned char)k;
+    if (p > pr[y * gw + x]) { *c = (unsigned char)k; pr[y * gw + x] = (unsigned char)p; }
 }
 
 int main(int argc, char **argv) {
@@ -129,6 +145,11 @@ int main(int argc, char **argv) {
         if (strncmp(line, "BOX |", 5) == 0) {
             if (sscanf(line, "BOX | south | %lf | west | %lf | north | %lf | east | %lf", &south, &west, &north, &east) == 4)
                 have_box = 1;
+        } else if (strncmp(line, "KIND |", 6) == 0 && nkx < MAXKIND) {
+            char fk[32], pk[32]; int pp;
+            if (sscanf(line, "KIND | %31[^ |] | %31[^ |] | %d", fk, pk, &pp) == 3 && base_kind(pk) >= 0 && pp >= 1 && pp <= 255) {
+                snprintf(kx[nkx].name, 32, "%s", fk); kx[nkx].paint = base_kind(pk); kx[nkx].prio = pp; nkx++;
+            }
         } else if (strncmp(line, "CELL |", 6) == 0) {
             double olon, olat;
             if (sscanf(line, "CELL | meters | %lf | origin_lon | %lf | origin_lat | %lf", &meters, &olon, &olat) >= 1)
@@ -146,6 +167,8 @@ int main(int argc, char **argv) {
     }
     unsigned char *g = calloc((size_t)gw * gh, 1);
     if (!g) return 5;
+    pr = calloc((size_t)gw * gh, 1);
+    if (!pr) return 5;
 
     rewind(fp);
     double *rx = NULL, *ry = NULL;
@@ -156,7 +179,7 @@ int main(int argc, char **argv) {
 
     void flush(void) {
         if (!open || rn < 2) { rn = 0; open = 0; return; }
-        int k = kind_of(fkind);
+        int kp = 0, k = kind_of(fkind, &kp);
         if (k < 0) { rn = 0; open = 0; return; }
         if (fgeom_poly) {
             double minx = rx[0], maxx = rx[0], miny = ry[0], maxy = ry[0];
@@ -174,7 +197,7 @@ int main(int argc, char **argv) {
             if (y1 >= gh) y1 = gh - 1;
             for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) {
                 double lon = west + (x + 0.5) * dlon, lat = south + (y + 0.5) * dlat;
-                if (pip(lon, lat, rx, ry, rn)) stamp(g, gw, gh, x, y, k);
+                if (pip(lon, lat, rx, ry, rn)) stamp(g, gw, gh, x, y, k, kp);
             }
         } else {
             for (int i = 1; i < rn; i++) {
@@ -186,7 +209,7 @@ int main(int argc, char **argv) {
                     double t = (double)s / steps;
                     double lon = rx[i - 1] + (rx[i] - rx[i - 1]) * t;
                     double lat = ry[i - 1] + (ry[i] - ry[i - 1]) * t;
-                    stamp(g, gw, gh, (int)((lon - west) / dlon), (int)((lat - south) / dlat), k);
+                    stamp(g, gw, gh, (int)((lon - west) / dlon), (int)((lat - south) / dlat), k, kp);
                 }
             }
         }

@@ -2,3 +2,6 @@ RULE | hunger_start | 80
 RULE | eat_amount | 30
 RULE | fuel_per_cell | 1
 RULE | drive_speed | 1
+RULE | sleep_max_turns | 8
+RULE | hunger_per_turn | 2
+RULE | hunger_max | 100

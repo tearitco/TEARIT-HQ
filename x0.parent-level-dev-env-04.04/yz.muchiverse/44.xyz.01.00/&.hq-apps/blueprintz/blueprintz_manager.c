@@ -502,6 +502,25 @@ static void scan_edges(void) {
 }
 
 /* ---- ui.txt ---- */
+/* The renderer saves every <cli_io> by id in <package>/cli_io_state.txt and, on a rebuild, puts that saved text back OVER the field's content= seed.
+ * After an Enter in a field (the renderer clears the buffer and saves it empty) or an old session, a stale `fp1=` line hid the value of the selected
+ * command: "car =" came up empty while the command row said car=car (seen 2026-11-22, photographed). The fp fields are seeded from ui.txt (this manager is
+ * their one authority), so a BLANK saved line for one of them carries no fact and is removed before ui.txt is written. A line with text in it (someone
+ * is typing) and every other key (editline, addline, ...) is kept. */
+static void scrub_blank_fp_state(void) {
+    char p[P], tmp[P]; join(p, g_pkg, "cli_io_state.txt"); FILE *f = fopen(p, "r"); if (!f) return;
+    static char keep[16384]; size_t used = 0; int dropped = 0; char l[512];
+    while (fgets(l, sizeof l, f)) {
+        const char *q = l; int blank_fp = 0;
+        if (q[0] == 'f' && q[1] == 'p' && q[2] >= '0' && q[2] <= '9') { q += 2; while (*q >= '0' && *q <= '9') q++; blank_fp = (q[0] == '=' && (q[1] == '\n' || q[1] == '\r' || q[1] == 0)); }
+        if (blank_fp) { dropped++; continue; }
+        size_t n = strlen(l); if (used + n < sizeof keep) { memcpy(keep + used, l, n); used += n; }
+    }
+    fclose(f);
+    if (!dropped) return;
+    snprintf(tmp, P, "%s.tmp", p); f = fopen(tmp, "w"); if (!f) return; fwrite(keep, 1, used, f); fclose(f); rename(tmp, p);
+}
+
 static void write_ui(void) {
     static char buf[1 << 20]; size_t o = 0; int ui_cut = 0;      /* was 24000 bytes: near 48 events the rest of ui.txt (pages, commands, trace) was dropped silently */
 #define PUT(...) do { if (o < sizeof buf - 600) o += (size_t)snprintf(buf + o, sizeof buf - o, __VA_ARGS__); else ui_cut = 1; } while (0)
@@ -574,6 +593,7 @@ static void write_ui(void) {
 #undef PUT
     if (ui_cut) fprintf(stderr, "blueprintz_manager: ui.txt is over %d bytes, the end was cut\n", (int)sizeof buf);
     if (strcmp(buf, last_ui)) {
+        scrub_blank_fp_state();    /* before ui.txt changes: the renderer rebuilds when ui.txt is written and would read the stale line */
         char tmp[P], dst[P]; join(dst, g_state, "ui.txt"); snprintf(tmp, P, "%s.tmp", dst);
         FILE *f = fopen(tmp, "w"); if (!f) return; fputs(buf, f); fclose(f); rename(tmp, dst);
         snprintf(last_ui, sizeof last_ui, "%s", buf);

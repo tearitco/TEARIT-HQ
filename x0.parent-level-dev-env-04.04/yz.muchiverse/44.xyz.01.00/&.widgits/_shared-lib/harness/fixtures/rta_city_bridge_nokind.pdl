@@ -1,0 +1,13 @@
+BOX | south | 32.76940 | west | -79.93040 | north | 32.77000 | east | -79.92920
+CELL | meters | 10 | origin_lon | -79.93040 | origin_lat | 32.76940
+FEAT | water | pond | polygon | 0 | -79.93030 | 32.76943
+FEAT | water | pond | polygon | 1 | -79.92940 | 32.76943
+FEAT | water | pond | polygon | 2 | -79.92940 | 32.76990
+FEAT | water | pond | polygon | 3 | -79.93030 | 32.76990
+FEAT | water | pond | polygon | 4 | -79.93030 | 32.76943
+FEAT | road | Lane | line | 0 | -79.93045 | 32.76963
+FEAT | road | Lane | line | 1 | -79.92985 | 32.76963
+FEAT | road | Lane | line | 2 | -79.92925 | 32.76963
+FEAT | bridge | Deck | line | 0 | -79.93045 | 32.76981
+FEAT | bridge | Deck | line | 1 | -79.92985 | 32.76981
+FEAT | bridge | Deck | line | 2 | -79.92925 | 32.76981

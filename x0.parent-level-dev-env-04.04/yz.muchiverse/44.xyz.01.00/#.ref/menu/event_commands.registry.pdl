@@ -1890,6 +1890,23 @@ COMMAND rta_drive
   TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" drive "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{car}' "$D/@.apps/rta/ops/+x/rta_momentum_op.+x" "$D/@.apps/rta/road.grid" "$D/#.desktop/rta_mom_ledger.txt" "$D/#.desktop/rta_mom_events.txt"
 END
 
+# rta_sleep / rta_part (D108): `sleep` skips <turns> turns (1..sleep_max_turns, a RULE row; hunger rises hunger_per_turn per turn up to hunger_max), writes ONE SLEEP row and ONE TURN row with the new cumulative count; refused in the car (exit 15) or with a bad count (exit 16), a refusal writes nothing. `part` writes one PART row of a car: slot engine|tank|tires|steering, kind a word, state is ok|missing|empty with an optional :n after it (the registry allows 4 parameters, so state and the fuel count n share one word: ok:3 = ok with 3 fuel; ok = 0); a bad slot or state exits 2.
+COMMAND rta_sleep
+  LABEL rta: sleep (skip turns)
+  FIELD1 Entity:
+  FIELD2 Turns:
+  PARAMS entity,turns
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" sleep "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{turns}'
+END
+
+COMMAND rta_part
+  LABEL rta: set a car part
+  FIELD1 Car:
+  FIELD2 Slot:
+  PARAMS car,slot,kind,state
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" part "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{car}' '{slot}' '{kind}' '{state}'
+END
+
 # vox_place / vox_mine / vox_wait / vox_sleep = the voxel rules as ops (D105): each runs `vox_op <verb>` once and appends its rows (all or nothing) to the runtime ledger #.desktop/vox_ledger.txt (gitignored, never committed; scratch copies in harnesses). The numbers are rows in @.apps/vox/rules.pdl and blocks.pdl, the seed terrain is @.apps/vox/terrain.pdl. cell is one word x,y,z (the registry allows 4 params); actor, item and tool are words (letters, digits, _ - . only). A refusal writes nothing and exits 10 unknown actor, 11 out of bounds, 12 out of reach, 13 target invalid, 14 ledger hand-edited, 15 no support, 16 item missing, 17 tool power too low, 19 not night, 20 no bed near, 21 bag full. `vox_op --describe` lists inputs and outputs.
 COMMAND vox_place
   LABEL vox: place a block

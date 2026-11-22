@@ -1,0 +1,35 @@
+# bp_fp_state (2026-11-22, D109): the Blueprintz field editor showed `car =` EMPTY for the selected rta_enter command while the command row said car=car (photographed live).
+# Cause (seen in the real window, with a positive and a negative control): the renderer keeps every <cli_io> in <package>/cli_io_state.txt by id and, on a rebuild, restores that text
+# OVER the field's content= seed; a stale blank `fp1=` line (left by an Enter or an old session) therefore hid the seed. The manager is the one authority for the fp fields
+# (ui.txt), so it removes BLANK fp<N>= lines before it writes ui.txt; lines with text, and every other key, stay. Nothing here touches the live window: a scratch package dir.
+RESULTS | ../results/bp_fp_state.txt
+ENV | LC_ALL | C
+
+CASE    | scrub
+SCRATCH |
+MKDIR | house
+MKDIR | pkg/state
+MKDIR | pkg2/state
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/bpm.+x | $HOUSE/&.hq-apps/blueprintz/blueprintz_manager.c
+EXPECT_EXIT | 0 | the-manager-compiles
+WRITE | pkg/cli_io_state.txt | editline=\nfp1=\nfp0=typed words\nfp12=\naddline=\nfpx=\nfp=\n
+WRITE | pkg2/cli_io_state.txt | editline=\nfp0=typed words\naddline=\n
+EXPECT_HAS | pkg/cli_io_state.txt | fp1= | VACUITY-the-stale-blank-fp1-line-is-there-before-the-manager-runs
+SUMTREE | clean_before | $T/pkg2
+SPAWN | m1 | $T/bpm.+x | $T/house | $T/pkg
+WAIT_HAS | pkg/state/ui.txt | e_count=0 | 5000 | the-manager-wrote-ui.txt
+SLEEP | 300
+EXPECT_LACKS | pkg/cli_io_state.txt | fp1= | the-stale-blank-fp1-line-is-gone
+EXPECT_LACKS | pkg/cli_io_state.txt | fp12= | a-two-digit-blank-fp12-line-is-gone-too
+EXPECT_HAS | pkg/cli_io_state.txt | fp0=typed words | a-fp-line-with-text-stays-(someone-is-typing)
+EXPECT_HAS | pkg/cli_io_state.txt | editline= | NEGATIVE-a-blank-line-of-another-field-(editline)-stays
+EXPECT_HAS | pkg/cli_io_state.txt | addline= | NEGATIVE-a-blank-line-of-another-field-(addline)-stays
+EXPECT_HAS | pkg/cli_io_state.txt | fpx= | NEGATIVE-fpx=-is-not-an-fp-number-and-stays
+EXPECT_HAS | pkg/cli_io_state.txt | fp= | NEGATIVE-fp=-with-no-number-stays
+EXPECT_NOFILE | pkg/cli_io_state.txt.tmp | no-temp-file-left-behind
+SPAWN | m2 | $T/bpm.+x | $T/house | $T/pkg2
+WAIT_HAS | pkg2/state/ui.txt | e_count=0 | 5000 | the-second-manager-wrote-ui.txt
+SLEEP | 300
+SUMTREE | clean_after | $T/pkg2
+EXPECT_EQ | $clean_before | $clean_after | NEGATIVE-a-state-file-with-no-blank-fp-line-is-not-rewritten-and-nothing-else-in-its-package-changed
+CLEAN |
