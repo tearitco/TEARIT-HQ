@@ -1,0 +1,4 @@
+# mech_new.pal - see cases/mech_new.pdl
+exec ./ops/+x/harness_case_op.+x cases/mech_new.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/mech_new.pdl
+halt

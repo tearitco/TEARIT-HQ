@@ -1,0 +1,119 @@
+# mech_new (2026-11-22, D100): mech_new_op generates a mechanic (verb row, event page skeleton, RULE rows, a phase-table case, a concept-bank proposal row) from args + a KIND row; mech_step_op is the one rule op behind every generated verb.
+# The generated case is RUN for real (playthrough_op in a scratch pseudo-house: gcc of the shared op, real ledger, real verbs), then MUTATED red (a RULE number, then the op source) and run green again. Scratch only, no network. Every pinned number is hand-computed from the kind defaults in concept-bank/mech_kinds.pdl:
+#   dig: energy 3, cost 1, gain holes 1          -> 3 steps ok (energy 2,1,0 / holes 1,2,3), the 4th refused (need 1 energy, have 0)
+#   sleep (after dig fixed start energy 3): gain 2 limit 5 -> energy 5, then refused full
+#   plant: seed 3 cost 1, plots gain 1 limit 2    -> 2 steps ok (seed 2,1 / plots 1,2), the 3rd refused (plots is full (2))
+RESULTS | ../results/mech_new.txt
+ENV | LC_ALL | C
+CASE    | setup
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/+x/mech_new_op.+x | bin/mech_new
+COPY | &.widgits/concept-bank/mech_kinds.pdl | hs/&.widgits/concept-bank/mech_kinds.pdl
+COPY | &.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | hs/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x | hs/&.widgits/_shared-lib/harness/ops/+x/harness_verdict_op.+x
+COPY | &.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x | hs/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+COPY | &.widgits/_shared-lib/stb_image.h | hs/&.widgits/_shared-lib/stb_image.h
+COPY | &.widgits/_shared-lib/stb_image_write.h | hs/&.widgits/_shared-lib/stb_image_write.h
+COPY | &.widgits/_shared-lib/game_events.c | hs/&.widgits/_shared-lib/game_events.c
+COPY | &.widgits/_shared-lib/tool_rules.c | hs/&.widgits/_shared-lib/tool_rules.c
+COPY | &.widgits/_shared-lib/ops/mech_step_op.c | hs/&.widgits/_shared-lib/ops/mech_step_op.c
+COPY | &.widgits/_shared-lib/ops/mech_step_op.c | keep_step.c
+COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | hs/&.widgits/livedesk-clock/ops/+x/lc_clock.+x
+COPY | &.widgits/db-hq/data/system.pdl | hs/&.widgits/db-hq/data/system.pdl
+COPY | &.widgits/db-hq/data/actors.pdl | hs/&.widgits/db-hq/data/actors.pdl
+MKDIR | hs/xyzfs
+WRITE | hs/@.apps/demo/verbs.pdl | # demo app verbs\n
+WRITE | badkinds.pdl | KIND \p oops \p x \p Uses {{nothing}} here \p k\nEFFECT \p oops \p gain \p gold \p gain \p 1\nEFFECT \p oops \p limit \p gold \p max \p 3\nKIND \p noeff \p - \p Has no effects \p k\n
+RUN | $T/bin/mech_new | --describe
+EXPECT_OUT | mech_new_op: IN | describe-line
+SUMTREE | before | hs
+
+CASE    | refusals
+# every refusal exits 2 and leaves the house byte-identical (SUMTREE)
+RUN | $T/bin/mech_new | $T/hs | demo | dig | --kind | nokind
+EXPECT_EXIT | 2 | unknown-kind
+RUN | $T/bin/mech_new | $T/hs | demo | dig | --kind | dig | --kinds | $T/badkinds.pdl
+EXPECT_EXIT | 2 | kind-name-not-in-the-given-kinds-file
+RUN | $T/bin/mech_new | $T/hs | demo | thing | --kind | oops | --kinds | $T/badkinds.pdl
+EXPECT_EXIT | 2 | unreplaced-placeholder-refused
+EXPECT_OUT | unreplaced | placeholder-reason-named
+RUN | $T/bin/mech_new | $T/hs | demo | thing | --kind | noeff | --kinds | $T/badkinds.pdl
+EXPECT_EXIT | 2 | kind-with-no-effects-refused
+RUN | $T/bin/mech_new | $T/hs | demo | Bad\pName | --kind | dig
+EXPECT_EXIT | 2 | bad-name-refused
+RUN | $T/bin/mech_new | $T/hs | noapp | dig | --kind | dig
+EXPECT_EXIT | 2 | missing-app-refused
+SUMTREE | after | hs
+EXPECT_EQ | $before | $after | refusals-wrote-nothing
+
+CASE    | generate-dig
+RUN | $T/bin/mech_new | $T/hs | demo | dig | --kind | dig
+EXPECT_EXIT | 0 | dig-generated
+EXPECT_OUT | MECH_NEW\pdemo\pdig\pdig\pfiles=5 | summary-line
+EXPECT_HAS | hs/@.apps/demo/verbs.pdl | VERB \p dig | verb-row
+EXPECT_EXISTS | hs/@.apps/demo/events/dig/event_pkg/pages/page_1/condition.pdl | page-condition
+EXPECT_HAS | hs/@.apps/demo/events/dig/event_pkg/pages/page_1/event.ir.pdl | id=1 type=demo_verb \p verb=dig | page-node-shape
+EXPECT_HAS | hs/@.apps/demo/mechanics.pdl | RULE \p dig_cost \p 1 | rule-row-cost
+EXPECT_HAS | hs/@.apps/demo/mechanics.pdl | RULE \p start_energy \p 3 | rule-row-start
+EXPECT_HAS | hs/&.widgits/concept-bank/proposals/mech_proposals.txt | PROPOSE \p kind=mechanic \p id=demo.dig | proposal-row
+EXPECT_HAS | hs/&.widgits/concept-bank/proposals/mech_proposals.txt | status=candidate | proposal-stays-a-candidate
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/phases/demo_dig.phases.pdl | SAYIS \p dig: ok energy=0 holes=3 \p step-3-succeeds | HAND-COMPUTED-third-step
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/phases/demo_dig.phases.pdl | SAYIS \p dig: refused: need 1 energy, have 0 \p | HAND-COMPUTED-fourth-step-refused
+RUN | $T/bin/mech_new | $T/hs | demo | dig | --kind | dig
+EXPECT_EXIT | 2 | existing-name-refused
+EXPECT_OUT | already | existing-reason-named
+RUN | $T/bin/mech_new | $T/hs | demo | mydig | --kind | dig
+EXPECT_EXIT | 0 | second-mechanic-shares-the-start-rule
+RUN | /usr/bin/grep | -c | start_energy | $T/hs/@.apps/demo/mechanics.pdl
+EXPECT_OUT_IS | 1 | start-rule-written-once
+
+CASE    | run-the-generated-dig-case
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_dig.phases.pdl
+EXPECT_EXIT | 0 | the-generated-case-is-green
+EXPECT_OUT | PLAYTHROUGH\pdemo_dig\pdemo\pPASS | verdict-line
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/results/play_ledger.txt | PLAY\p | ledger-row-written
+
+CASE    | other-kinds
+# sleep after dig: the shared start rule (energy 3) is read back, so the replay is 3+2=5, then full
+RUN | $T/bin/mech_new | $T/hs | demo | nap | --kind | sleep
+EXPECT_EXIT | 0 | sleep-generated
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/phases/demo_nap.phases.pdl | SAYIS \p nap: ok energy=5 \p step-1-succeeds | HAND-COMPUTED-3-plus-2
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/phases/demo_nap.phases.pdl | SAYIS \p nap: refused: energy is full (5) \p | HAND-COMPUTED-full-at-5
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_nap.phases.pdl
+EXPECT_EXIT | 0 | sleep-case-green
+RUN | $T/bin/mech_new | $T/hs | demo | sow | --kind | plant
+EXPECT_EXIT | 0 | plant-generated
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/phases/demo_sow.phases.pdl | SAYIS \p sow: ok seed=1 plots=2 \p step-2-succeeds | HAND-COMPUTED-second-plant
+EXPECT_HAS | hs/&.widgits/_shared-lib/harness/play/phases/demo_sow.phases.pdl | SAYIS \p sow: refused: plots is full (2) \p | HAND-COMPUTED-limit
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_sow.phases.pdl
+EXPECT_EXIT | 0 | plant-case-green
+RUN | $T/bin/mech_new | $T/hs | demo | stitch | --kind | craft
+RUN | $T/bin/mech_new | $T/hs | demo | pick | --kind | mine
+RUN | $T/bin/mech_new | $T/hs | demo | put | --kind | place
+RUN | $T/bin/mech_new | $T/hs | demo | job | --kind | build-job
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_stitch.phases.pdl
+EXPECT_EXIT | 0 | craft-case-green
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_pick.phases.pdl
+EXPECT_EXIT | 0 | mine-case-green
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_put.phases.pdl
+EXPECT_EXIT | 0 | place-case-green
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_job.phases.pdl
+EXPECT_EXIT | 0 | build-job-case-green
+
+CASE    | mutate-the-generated-case-red
+# 1) a RULE number changes (plant_max 2 -> 3): the third plant now succeeds, the table's pinned refusal fails
+RUN | /usr/bin/sed | -i | s/sow_max \p 2/sow_max \p 3/ | $T/hs/@.apps/demo/mechanics.pdl
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_sow.phases.pdl
+EXPECT_EXIT | 1 | a-changed-rule-number-turns-the-generated-case-red
+RUN | /usr/bin/sed | -i | s/sow_max \p 3/sow_max \p 2/ | $T/hs/@.apps/demo/mechanics.pdl
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_sow.phases.pdl
+EXPECT_EXIT | 0 | restored-rule-is-green-again
+# 2) the rule op is wrong (the cost check accepts a stock equal to nothing): the pinned refusal of the dig case fails
+RUN | /usr/bin/sed | -i | s/stock\[r\] < (long)cv\[i\]/stock[r] < 0/ | $T/hs/&.widgits/_shared-lib/ops/mech_step_op.c
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_dig.phases.pdl
+EXPECT_EXIT | 1 | a-wrong-rule-op-turns-the-generated-case-red
+RUN | /bin/cp | $T/keep_step.c | $T/hs/&.widgits/_shared-lib/ops/mech_step_op.c
+RUN | $T/hs/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | run | $T/hs/&.widgits/_shared-lib/harness/play/phases/demo_dig.phases.pdl
+EXPECT_EXIT | 0 | restored-op-is-green-again
+CLEAN |

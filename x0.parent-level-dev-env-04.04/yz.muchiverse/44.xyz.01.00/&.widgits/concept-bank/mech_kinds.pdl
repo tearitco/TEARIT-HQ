@@ -1,0 +1,34 @@
+# mech_kinds.pdl - the KINDS of mechanic that mech_new_op can generate (data, 2026-11-22, D100). A kind is: what the verb takes, one sentence, and its EFFECT rows (what it costs, what it gives, what caps the gain) whose numbers become RULE rows of the app (D92: no number in C).
+#   KIND   | <kind> | <verb args, `-` for none> | <sentence, may use {{mech}} {{app}}> | <keywords, comma separated>
+#   EFFECT | <kind> | cost|gain|limit | <resource> | <rule key suffix> | <default number>      the RULE row written is `RULE | <mech>_<suffix> | <default>`
+#   START  | <kind> | <resource> | <default stock>                                         the RULE row written is `RULE | start_<resource> | <default>` (once per app)
+# A resource is a name; the app's ledger state/mech_ledger.txt is the only authority for how much of it exists (mech_step_op replays it).
+KIND   | dig         | x y    | Dig a hole at a cell for {{mech}} in {{app}}                 | dig, hole, ground, shovel
+EFFECT | dig         | cost   | energy   | cost | 1
+EFFECT | dig         | gain   | holes    | gain | 1
+START  | dig         | energy | 3
+KIND   | mine        | x y    | Mine a block at a cell for {{mech}} in {{app}}               | mine, ore, block, pickaxe
+EFFECT | mine        | cost   | energy   | cost | 1
+EFFECT | mine        | gain   | ore      | gain | 2
+START  | mine        | energy | 3
+KIND   | craft       | recipe | Craft an item from materials for {{mech}} in {{app}}         | craft, recipe, make, item
+EFFECT | craft       | cost   | material | cost | 2
+EFFECT | craft       | gain   | items    | gain | 1
+START  | craft       | material | 5
+KIND   | place       | item x y | Place an item from the bag on a cell for {{mech}} in {{app}} | place, put, block, furniture
+EFFECT | place       | cost   | bag      | cost | 1
+EFFECT | place       | gain   | placed   | gain | 1
+START  | place       | bag    | 2
+KIND   | plant       | x y    | Plant a seed on a plot for {{mech}} in {{app}}               | plant, seed, crop, farm
+EFFECT | plant       | cost   | seed     | cost | 1
+EFFECT | plant       | gain   | plots    | gain | 1
+EFFECT | plant       | limit  | plots    | max  | 2
+START  | plant       | seed   | 3
+KIND   | sleep       | -      | Sleep to get energy back for {{mech}} in {{app}}             | sleep, bed, rest, energy
+EFFECT | sleep       | gain   | energy   | gain | 2
+EFFECT | sleep       | limit  | energy   | max  | 5
+START  | sleep       | energy | 1
+KIND   | build-job   | site   | Start a build job on a site for {{mech}} in {{app}}          | build, job, site, construct
+EFFECT | build-job   | cost   | material | cost | 3
+EFFECT | build-job   | gain   | jobs     | gain | 1
+START  | build-job   | material | 7
