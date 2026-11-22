@@ -1,0 +1,128 @@
+# D113 the RTA board: the pc-hq desk is a PROJECTION of the life ledger (rta_board_op), re-projected after every accepted rta_life_op verb when rta_board.pdl sits beside the ledger.
+# Enter puts the entity on the car cell, drive moves both, exit stands it beside the car, sleep and eat change the panel text; replay twice = same bytes; deleting the desk regenerates identical bytes;
+# the hand-drawn Battery slice paints a bridge over water. Sabotages (wrong entity, wrong tile data, a refused verb) are able to fail.
+RESULTS | ../results/rta_board.txt
+CASE | board
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_life_op.+x | $HOUSE/@.apps/rta/ops/rta_life_op.c
+EXPECT_EXIT | 0 | life op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_board_op.+x | $HOUSE/@.apps/rta/ops/rta_board_op.c
+EXPECT_EXIT | 0 | board op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
+EXPECT_EXIT | 0 | momentum op compiles
+RUN | $T/rta_board_op.+x | --describe
+EXPECT_OUT | rule rta_board | describe
+WRITE | rules.pdl | RULE \p hunger_start \p 80\nRULE \p eat_amount \p 30\nRULE \p fuel_per_cell \p 1\nRULE \p drive_speed \p 1\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_per_turn \p 2\nRULE \p hunger_max \p 100\n
+WRITE | fast.pdl | RULE \p hunger_start \p 80\nRULE \p eat_amount \p 30\nRULE \p fuel_per_cell \p 1\nRULE \p drive_speed \p 4\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_per_turn \p 2\nRULE \p hunger_max \p 100\n
+MKDIR | s
+MKDIR | n
+MKDIR | w
+MKDIR | b
+WRITE | s/rta_board.pdl | BOARD \p rules \p $T/rules.pdl\nBOARD \p grid \p $HOUSE/@.apps/rta/road.grid\nBOARD \p life \p $T/s/l.txt\nBOARD \p desk \p $T/s/desk\nBOARD \p ui \p $T/s/ui.txt\nBOARD \p data \p $HOUSE/@.apps/rta-board/board.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p joe\nBOARD \p car \p car\nBOARD \p png \p $HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x\n
+WRITE | w/rta_board.pdl | BOARD \p rules \p $T/rules.pdl\nBOARD \p grid \p $HOUSE/@.apps/rta/road.grid\nBOARD \p life \p $T/w/l.txt\nBOARD \p desk \p $T/w/desk\nBOARD \p ui \p $T/w/ui.txt\nBOARD \p data \p $HOUSE/@.apps/rta-board/board.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p bob\nBOARD \p car \p car\n
+WRITE | b/rta_board.pdl | BOARD \p rules \p $T/fast.pdl\nBOARD \p grid \p $HOUSE/@.apps/rta/road.grid\nBOARD \p life \p $T/b/l.txt\nBOARD \p desk \p $T/b/desk\nBOARD \p ui \p $T/b/ui.txt\nBOARD \p data \p $HOUSE/@.apps/rta-board/board.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p joe\nBOARD \p car \p car\n
+# ---- no config beside the ledger: the verb works and NO picture is written (opt-in marker file)
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/n/l.txt | car | tank | gas | ok:6
+EXPECT_EXIT | 0 | a part row without a board config
+EXPECT_NOFILE | n/desk/events.txt | no config, no desk
+# ---- the four parts, the car is placed on the south road and the entity stands beside it
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/s/l.txt | car | engine | gas | ok:0
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/s/l.txt | car | tank | gas | ok:6
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/s/l.txt | car | tires | gas | ok:0
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/s/l.txt | car | steering | gas | ok:0
+EXPECT_FILE | s/desk/events.txt | 0 11 40 210 220 !Other1 0 2 1\n0 10 230 60 60 People1 0 2 1\n | BEFORE enter: the car on the road (0,11), the entity beside it on the park (0,10)
+EXPECT_HAS | s/ui.txt | gmt_0_text=joe: on foot (car at 0,11) | the panel says on foot
+EXPECT_HAS | s/ui.txt | gmt_1_text=hunger 80 of 100 | start hunger from the RULE row
+# a refused verb writes no row and does not touch the picture
+RUN | cp | $T/s/desk/events.txt | $T/s/ev_before.txt
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/s/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/s/m.txt | $T/s/me.txt
+EXPECT_EXIT | 10 | NEGATIVE drive on foot refuses
+RUN | cmp | $T/s/desk/events.txt | $T/s/ev_before.txt
+EXPECT_EXIT | 0 | the refusal left the picture byte for byte
+# ---- enter: the entity jumps onto the car cell
+RUN | $T/rta_life_op.+x | enter | $T/rules.pdl | $T/s/l.txt | joe | car
+EXPECT_FILE | s/desk/events.txt | 0 11 40 210 220 !Other1 0 2 1\n0 11 230 60 60 People1 0 2 1\n | AFTER enter: the entity rides on the car cell (0,11)
+EXPECT_HAS | s/ui.txt | gmt_0_text=joe: in the car (car at 0,11) | the panel says in the car
+# ---- drive three cells: car and entity move together
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/s/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/s/m.txt | $T/s/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/s/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/s/m.txt | $T/s/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/rules.pdl | $T/s/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/s/m.txt | $T/s/me.txt
+EXPECT_FILE | s/desk/events.txt | 3 11 40 210 220 !Other1 0 2 1\n3 11 230 60 60 People1 0 2 1\n | AFTER 3 drives: car and entity on (3,11)
+EXPECT_HAS | s/ui.txt | gmt_2_text=fuel 3  turn 4 | fuel 6 minus 3, four manual turns (enter plus three drives)
+# ---- exit: the entity stays, the car stays, the entity stands beside it
+RUN | $T/rta_life_op.+x | exit | $T/rules.pdl | $T/s/l.txt | joe | car
+EXPECT_FILE | s/desk/events.txt | 3 11 40 210 220 !Other1 0 2 1\n3 10 230 60 60 People1 0 2 1\n | AFTER exit: the entity stands beside the car (3,10)
+# ---- sleep and eat: the hunger number in the panel
+RUN | $T/rta_life_op.+x | sleep | $T/rules.pdl | $T/s/l.txt | joe | 3
+EXPECT_HAS | s/ui.txt | gmt_1_text=hunger 86 of 100 | after sleep 3 turns: 80 + 3 x 2
+RUN | $T/rta_life_op.+x | eat | $T/rules.pdl | $T/s/l.txt | joe
+EXPECT_HAS | s/ui.txt | gmt_1_text=hunger 56 of 100 | after eat: 86 - 30
+EXPECT_HAS | s/ui.txt | gmt_0_text=joe: on foot (car at 3,11) | on foot again
+# ---- the painted slice: road row 11 all road tile 41 (the bridge deck spans the water), water 38 north and south of the deck, sand 5 on the banks
+EXPECT_EXISTS | s/desk/map.png | map.png written beside events.txt (the engine reads events only beside a map.png, found live: without it the car and joe were invisible)
+EXPECT_HAS | s/desk/cells.txt | width=32\nheight=14\ntile_px=24\natlas_cols=16\natlas_tiles=43 | desk header from the data row
+EXPECT_HAS | s/desk/cells.txt | 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0\n | the whole row 11 is road: the bridge crosses the inlet
+EXPECT_HAS | s/desk/cells.txt | 5,0 38,0 38,0 38,0 38,0 38,0 5,0 | the inlet above the deck: sand, five water cells, sand
+# ---- replay twice and delete-and-regenerate: the same bytes (a projection)
+RUN | cp | $T/s/desk/events.txt | $T/s/ev1.txt
+RUN | cp | $T/s/desk/cells.txt | $T/s/cells1.txt
+RUN | cp | $T/s/ui.txt | $T/s/ui1.txt
+RUN | $T/rta_board_op.+x | project | $T/s/rta_board.pdl
+EXPECT_OUT | car=3,11 entity=3,10 in_car=0 hunger=56 fuel=3 turn=9 | the status line is what the ledger says (hunger 56; turn 9 = enter, 3 drives, exit, sleep skip 3, eat)
+RUN | cmp | $T/s/desk/events.txt | $T/s/ev1.txt
+EXPECT_EXIT | 0 | project again: events.txt equal
+RUN | cmp | $T/s/ui.txt | $T/s/ui1.txt
+EXPECT_EXIT | 0 | project again: the panel feed equal
+RUN | rm | -r | $T/s/desk
+RUN | rm | $T/s/ui.txt
+RUN | $T/rta_board_op.+x | project | $T/s/rta_board.pdl
+RUN | cmp | $T/s/desk/events.txt | $T/s/ev1.txt
+EXPECT_EXIT | 0 | the deleted desk regenerates the same events.txt
+RUN | cmp | $T/s/desk/cells.txt | $T/s/cells1.txt
+EXPECT_EXIT | 0 | the deleted desk regenerates the same cells.txt
+RUN | cmp | $T/s/ui.txt | $T/s/ui1.txt
+EXPECT_EXIT | 0 | the deleted panel feed regenerates the same bytes
+# no ghost data: a hand-edited projection changes nothing, the next projection overwrites it from the ledger
+WRITE | s/desk/events.txt | 9 9 1 2 3 !Other1 0 2 1\n
+RUN | $T/rta_board_op.+x | project | $T/s/rta_board.pdl
+RUN | cmp | $T/s/desk/events.txt | $T/s/ev1.txt
+EXPECT_EXIT | 0 | NEGATIVE a hand-edited events.txt is not read back as input: the ledger wins
+# the marker grows only when the cells change (reload rule): one byte after the first projection, still one after three more
+EXPECT_FILE | s/desk/cells.marker | 1 | cells.marker grew once (the desk was deleted and made twice, a fresh marker each time)
+# ---- sabotage 1: another entity name never rides in the car (the control: the same ledger, bob is never in the car)
+RUN | $T/rta_life_op.+x | part | $T/rules.pdl | $T/w/l.txt | car | engine | gas | ok:0
+RUN | $T/rta_life_op.+x | enter | $T/rules.pdl | $T/w/l.txt | joe | car
+EXPECT_LACKS | w/desk/events.txt | 0 11 230 60 60 People1 0 2 1 | NEGATIVE the config names bob, the ledger rows are joe's: nobody sits in the car
+EXPECT_HAS | w/desk/events.txt | 0 10 230 60 60 People1 0 2 1 | bob stays beside the car
+# ---- sabotage 2: a tile row changed in the data changes the picture (the cells check is able to fail)
+RUN | cp | $HOUSE/@.apps/rta-board/board.pdl | $T/board_sab.pdl
+APPEND | board_sab.pdl | TILE \p R \p 42\n
+WRITE | w/rta_board.pdl | BOARD \p rules \p $T/rules.pdl\nBOARD \p grid \p $HOUSE/@.apps/rta/road.grid\nBOARD \p life \p $T/w/l.txt\nBOARD \p desk \p $T/w/desk2\nBOARD \p ui \p $T/w/ui2.txt\nBOARD \p data \p $T/board_sab.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p joe\nBOARD \p car \p car\n
+RUN | $T/rta_board_op.+x | project | $T/w/rta_board.pdl
+EXPECT_EXIT | 0 | the sabotaged data projects
+EXPECT_LACKS | w/desk2/cells.txt | 41,0 41,0 41,0 41,0 41,0 41,0 41,0 41,0 | NEGATIVE with the road tile moved to 42 the road row no longer reads 41
+EXPECT_HAS | w/desk2/cells.txt | 42,0 42,0 42,0 42,0 42,0 42,0 42,0 42,0 | the road row reads 42 instead
+# ---- sabotage 3: a config without a key refuses 3 and writes no desk
+WRITE | w/bad.pdl | BOARD \p rules \p $T/rules.pdl\nBOARD \p desk \p $T/w/desk3\n
+RUN | $T/rta_board_op.+x | project | $T/w/bad.pdl
+EXPECT_EXIT | 3 | NEGATIVE a config without grid, life, ui, data, entity and car refuses 3
+EXPECT_NOFILE | w/desk3/events.txt | a refused projection wrote nothing
+# ---- the bridge: a car at drive_speed 4 crosses the inlet; the entity rides over the water cells
+RUN | $T/rta_life_op.+x | part | $T/fast.pdl | $T/b/l.txt | car | engine | gas | ok:0
+RUN | $T/rta_life_op.+x | part | $T/fast.pdl | $T/b/l.txt | car | tank | gas | ok:30
+RUN | $T/rta_life_op.+x | part | $T/fast.pdl | $T/b/l.txt | car | tires | gas | ok:0
+RUN | $T/rta_life_op.+x | part | $T/fast.pdl | $T/b/l.txt | car | steering | gas | ok:0
+RUN | $T/rta_life_op.+x | enter | $T/fast.pdl | $T/b/l.txt | joe | car
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+EXPECT_FILE | b/desk/events.txt | 20 11 40 210 220 !Other1 0 2 1\n20 11 230 60 60 People1 0 2 1\n | after 5 drives of 4: car and entity at x=20, the first deck cell over the water (row 10 above it is water)
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+EXPECT_FILE | b/desk/events.txt | 24 11 40 210 220 !Other1 0 2 1\n24 11 230 60 60 People1 0 2 1\n | mid-inlet at x=24: the car is over water on the bridge
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+RUN | $T/rta_life_op.+x | drive | $T/fast.pdl | $T/b/l.txt | joe | car | $T/rta_momentum_op.+x | $HOUSE/@.apps/rta/road.grid | $T/b/m.txt | $T/b/me.txt
+EXPECT_EXIT | 13 | NEGATIVE the eighth drive would leave the grid: road stopped, exit 13, no row
+EXPECT_FILE | b/desk/events.txt | 28 11 40 210 220 !Other1 0 2 1\n28 11 230 60 60 People1 0 2 1\n | the car crossed the bridge to x=28; the next +4 would leave the grid, the road stops it (exit 13, no row), so the picture stays at 28
+CLEAN

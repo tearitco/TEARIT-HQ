@@ -1,0 +1,35 @@
+<!-- Robot Trap Auto BOARD window (D112): a copy of the Teario-Play template with its own title and package (rta-board-pchq). The canvas shows the desk that rta_board_op projects from the rta ledgers;
+     the side text is the game feed ../state/game_ui.txt (who, hunger, fuel, turn), written by the same op. No stamp bank, no game driver. Launch: sh @.apps/rta-board/button.sh run. RULES: no angle brackets inside comments. -->
+<window label="Robot Trap Auto" class="pchq-board-pal database-window managed user-resizable" vars="../state/game_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt">
+  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rta-board-pchq"/>
+  <page name="main">
+    <tabbar id="toolbar" class="pchq-toolbar">
+      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}" relay="${bv_h1},${bv_h2}" onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+      <tab id="tb-book" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-book"/>
+      <tab id="tb-page" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-page"/>
+    </tabbar>
+    <sidebar id="rail" class="pchq-rail sidebar">
+      <repeat count="${n_file_opts}" bind="f">
+        <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
+      </repeat>
+      <item id="bk-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-book" label="- cancel -" action="void"/>
+      <repeat count="${n_desk_opts}" bind="d">
+        <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-page" label="${d.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
+      </repeat>
+      <item id="pg-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-page" label="- cancel -" action="void"/>
+    </sidebar>
+    <panel id="view-panel" class="pchq-view">
+      <canvas id="view" sprite="${canvas_raw}"/>
+      <!-- the game popup (new level, place, publish...) from the game feed: gm_on, gm_title, gmt_i_text, gmb_i_label and _act. It is the same feed the editor drew; here it is Teario own row. -->
+      <row id="game-ov" class="canvas-overlay-right ov-pin ov-scroll ov-chrome pchq-hotbar theme" show="${gm_on}">
+        <text label="${gm_title}" class="hb-quiet ov-title theme-3"/>
+        <repeat count="${gm_nt}" bind="gmt"><text label="${gmt.text}" class="hb-quiet"/></repeat>
+        <repeat count="${gm_nb}" bind="gmb"><item id="gmb${gmb.#}" class="pchq-ft skin-bar" label="${gmb.label}" action="${gmb.act}"/></repeat>
+      </row>
+    </panel>
+    <footer id="statusbar" class="pchq-footer">
+      <text label="${gmt_0_text}   ${gmt_1_text}   ${gmt_2_text}" class="quiet"/>
+    </footer>
+    <text label="No live board-viewer session - open the board with open_board.sh." class="quiet" show="${no_session}"/>
+  </page>
+</window>

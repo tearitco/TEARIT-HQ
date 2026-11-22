@@ -126,11 +126,11 @@ EXPECT_EXIT | 0 | op-alone-enter
 RUN | sh | $T/h/@.apps/rta/events/rta_drive/event_pkg/pages/page_1/cmd_1.sh
 EXPECT_EXIT | 0 | the-drive-page-drives-one-road-cell
 CAPTURE | page_drive
-EXPECT_EQ | $page_drive | x=1 y=0 fuel=2 | HAND-COMPUTED-one-cell-east-and-one-fuel-of-three-used
+EXPECT_EQ | $page_drive | x=1 y=11 fuel=2 | HAND-COMPUTED-one-cell-east-on-the-painted-slice-road-row-11-and-one-fuel-of-three-used
 RUN | $T/h/@.apps/rta/ops/+x/rta_life_op.+x | drive | $T/h/@.apps/rta/rules.pdl | $T/alone/l.txt | joe | car | $T/h/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/h/@.apps/rta/road.grid | $T/alone/m.txt | $T/alone/e.txt
 CAPTURE | alone_drive
 EXPECT_EQ | $page_drive | $alone_drive | the-page-prints-the-SAME-line-as-the-op-alone
-EXPECT_HAS | h/#.desktop/rta_mom_ledger.txt | MOM \p 1 \p 0 \p 1 | the-road-ledger-of-the-scratch-house-moved-the-car
+EXPECT_HAS | h/#.desktop/rta_mom_ledger.txt | MOM \p 1 \p 11 \p 1 | the-road-ledger-of-the-scratch-house-moved-the-car
 RUN | sh | $T/h/@.apps/rta/events/rta_exit/event_pkg/pages/page_1/cmd_1.sh
 EXPECT_EXIT | 0 | the-exit-page-runs
 EXPECT_HAS | h/#.desktop/rta_life_ledger.txt | EXIT \p joe \p car | the-exit-page-wrote-the-EXIT-row-for-joe-and-car

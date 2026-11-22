@@ -1,0 +1,23 @@
+# board.pdl - the RTA board's look as DATA (rta_board_op reads it; D113). One tile index per grid glyph in the shared 24 px atlas (cells.rgba, 16 columns, 43 tiles, copied from the Teario atlas).
+ATLAS | 16 | 43 | 24 | 36
+TILE | . | 1
+TILE | K | 1
+TILE | P | 32
+TILE | R | 41
+TILE | S | 5
+TILE | W | 38
+TILE | i | 37
+TILE | B | 40
+# glyphs a person may stand on, and the cells beside the car tried in this order when it is out of the car
+STAND | .KPS
+BESIDE | 0 | -1
+BESIDE | 0 | 1
+BESIDE | -1 | -1
+BESIDE | 1 | -1
+BESIDE | -1 | 1
+BESIDE | 1 | 1
+# sprites (events.txt charset index dir pattern) and tints
+SPRITE | person | People1 | 0 | 2 | 1
+SPRITE | car | !Other1 | 0 | 2 | 1
+COLOR | person | 230 | 60 | 60
+COLOR | car | 40 | 210 | 220

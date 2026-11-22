@@ -1,0 +1,46 @@
+# board_city.pdl - the RTA board slice in the Battery feature format (rta_city_op paints it; D113). 32 x 14 cells of 10 m.
+# A harbour inlet crosses the main street; the KIND row lets the bridge deck span the water, so the car can cross. The ground is one park polygon (grass that reaches the border would flood to harbour).
+# The painter ends a feature at a gap (polygon edge over 250 m, line step over 80 m), so every edge here is shorter than that.
+BOX | south | 32.76940 | west | -79.93040 | north | 32.77064 | east | -79.92698
+CELL | meters | 10 | origin_lon | -79.93040 | origin_lat | 32.76940
+KIND | bridge | road | 9
+FEAT | park | Ground | polygon | 0 | -79.93038 | 32.76942
+FEAT | park | Ground | polygon | 1 | -79.92870 | 32.76942
+FEAT | park | Ground | polygon | 2 | -79.92700 | 32.76942
+FEAT | park | Ground | polygon | 3 | -79.92700 | 32.77064
+FEAT | park | Ground | polygon | 4 | -79.92870 | 32.77064
+FEAT | park | Ground | polygon | 5 | -79.93038 | 32.77064
+FEAT | park | Ground | polygon | 6 | -79.93038 | 32.76942
+FEAT | water | harbour | polygon | 0 | -79.93038 | 32.77045
+FEAT | water | harbour | polygon | 1 | -79.92870 | 32.77045
+FEAT | water | harbour | polygon | 2 | -79.92700 | 32.77045
+FEAT | water | harbour | polygon | 3 | -79.92700 | 32.77064
+FEAT | water | harbour | polygon | 4 | -79.92870 | 32.77064
+FEAT | water | harbour | polygon | 5 | -79.93038 | 32.77064
+FEAT | water | harbour | polygon | 6 | -79.93038 | 32.77045
+FEAT | water | inlet | polygon | 0 | -79.92840 | 32.76942
+FEAT | water | inlet | polygon | 1 | -79.92780 | 32.76942
+FEAT | water | inlet | polygon | 2 | -79.92780 | 32.77064
+FEAT | water | inlet | polygon | 3 | -79.92840 | 32.77064
+FEAT | water | inlet | polygon | 4 | -79.92840 | 32.76942
+FEAT | road | Main | line | 0 | -79.93038 | 32.76963
+FEAT | road | Main | line | 1 | -79.92980 | 32.76963
+FEAT | road | Main | line | 2 | -79.92920 | 32.76963
+FEAT | road | Main | line | 3 | -79.92860 | 32.76963
+FEAT | road | Main | line | 4 | -79.92800 | 32.76963
+FEAT | road | Main | line | 5 | -79.92740 | 32.76963
+FEAT | road | Main | line | 6 | -79.92700 | 32.76963
+FEAT | bridge | Deck | line | 0 | -79.92880 | 32.76963
+FEAT | bridge | Deck | line | 1 | -79.92820 | 32.76963
+FEAT | bridge | Deck | line | 2 | -79.92760 | 32.76963
+FEAT | bridge | Deck | line | 3 | -79.92740 | 32.76963
+FEAT | building | 1 | polygon | 0 | -79.92940 | 32.76973
+FEAT | building | 1 | polygon | 1 | -79.92880 | 32.76973
+FEAT | building | 1 | polygon | 2 | -79.92880 | 32.77010
+FEAT | building | 1 | polygon | 3 | -79.92940 | 32.77010
+FEAT | building | 1 | polygon | 4 | -79.92940 | 32.76973
+FEAT | building | 2 | polygon | 0 | -79.92770 | 32.76973
+FEAT | building | 2 | polygon | 1 | -79.92710 | 32.76973
+FEAT | building | 2 | polygon | 2 | -79.92710 | 32.77030
+FEAT | building | 2 | polygon | 3 | -79.92770 | 32.77030
+FEAT | building | 2 | polygon | 4 | -79.92770 | 32.76973

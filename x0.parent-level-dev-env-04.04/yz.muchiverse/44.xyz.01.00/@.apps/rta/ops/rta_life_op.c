@@ -32,6 +32,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 #define SLOTS 4
 static const char *SL[SLOTS] = {"engine", "tank", "tires", "steering"};
@@ -152,7 +154,7 @@ static int do_drive(const char *rules, const char *led, const char *ent, const c
     turn(led, s.turn, "drive"); printf("x=%d y=%d fuel=%d\n", x, y, fuel); return 0;
 }
 
-int main(int argc, char **argv) {
+static int run(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--describe")) {
         printf("rule rta_life inputs rules,ledger outputs PART ENTER EXIT EAT SLEEP DRIVE TURN rows numbers from RULE rows\n"); return 0;
     }
@@ -187,4 +189,24 @@ int main(int argc, char **argv) {
         fclose(f); return 0;
     }
     return 2;
+}
+
+/* D113: the picture. After an ACCEPTED verb, when `rta_board.pdl` sits beside the ledger (opt-in marker file: a scratch house or a harness has none), run the sibling projection op
+ * `rta_board_op project <that file>`. The ledger row is already written; the projection only reads it, and a failure of the picture never undoes a row (its exit code is not ours). */
+static void board_hook(const char *argv0, const char *led) {
+    char cfg[1024], op[1024]; const char *sl = strrchr(led, '/');
+    if (sl) snprintf(cfg, sizeof cfg, "%.*s/rta_board.pdl", (int)(sl - led), led); else snprintf(cfg, sizeof cfg, "rta_board.pdl");
+    if (access(cfg, R_OK)) return;
+    sl = strrchr(argv0, '/');
+    if (sl) snprintf(op, sizeof op, "%.*s/rta_board_op.+x", (int)(sl - argv0), argv0); else snprintf(op, sizeof op, "./rta_board_op.+x");
+    if (access(op, X_OK)) return;
+    pid_t c = fork();
+    if (!c) { int dn = open("/dev/null", O_WRONLY); if (dn >= 0) dup2(dn, 1); execl(op, op, "project", cfg, (char *)0); _exit(127); }
+    if (c > 0) { int st; waitpid(c, &st, 0); }
+}
+
+int main(int argc, char **argv) {
+    int r = run(argc, argv);
+    if (r == 0 && argc > 3 && strcmp(argv[1], "status") && strcmp(argv[1], "replay") && strcmp(argv[1], "--describe")) board_hook(argv[0], argv[3]);
+    return r;
 }
