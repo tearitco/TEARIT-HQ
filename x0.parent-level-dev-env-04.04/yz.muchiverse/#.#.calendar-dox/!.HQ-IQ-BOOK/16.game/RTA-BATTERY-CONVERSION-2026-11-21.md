@@ -142,9 +142,11 @@ The Teario look question (flat 2D is the platformer, ordinary 3D is a board, do 
 
 `game_new_op` made two editor books, `centon` and `bay-slice`. Each desk is the stood-up city grid (building glyph B at height 3), written over the template board. The book list reads `@.apps/<name>/<name>-pchq/pieces/system/maps/<name>/game.pdl`. `open_board.sh` links that folder into the editor maps the next time the editor board launches. On this machine the links are already in `rpg-edit-hq-pchq/pieces/system/maps/` (`centon`, `bay-slice`). Reopen the editor board to see Centon and Bay slice. Player > Play starts the shared `game_core` driver. That driver does not call the city ops yet.
 
-## Momentum, for the next pass on these cities
+## A cube that keeps speed, and the real driver (corrected 2026-11-22)
 
-`rta_momentum_op` is the handoff mechanic. The ledger row is `MOM | x | y | vx | why`. `push` sets vx from 1 to 4. `step` adds vx to x when that cell is a road glyph R, and sets vx to 0 when it is not. `events.txt` is rewritten from the row. Harness `rta_momentum` passed: a speed of 2 carries across one step, then the end of a four-cell road stops the car. Wire this op to the book tick in a later session. Do not put the speed in `game_core`. The Minecraft handoff above is still the session after these cities, unless the owner says to keep going on the books.
+`rta_momentum_op` is a stopgap cube. The ledger row is `MOM | x | y | vx | why`. `push` sets vx from 1 to 4. `step` adds vx to x when that cell is a road glyph R, and sets vx to 0 when it is not. `events.txt` is rewritten from the row. Harness `rta_momentum` passed: a speed of 2 carries across one step, then the end of a four-cell road stops the car. Do not put that speed in `game_core`. Do not treat the cube as the driver.
+
+SAID 2026-11-22: a car is always driven by a living entity with an FSM, the same family as the petslike projects. The entity gets in and gets out. Out of the car it does its other tasks, including eat and sleep. Every entity is living. There is no empty car that drives itself. The word "momentum" in the Nov 22 roadmap notes means the next piece of work that makes the piece after it cheaper, not this vx row.
 
 A whole planet, a setup menu, and laying Centon or the bay slice onto a coarse world are design only: `WORLD-FROM-CITY-SLICES-AND-DUST-SCALE-2026-11-21.md`. Do not start that generator in the city session.
 
