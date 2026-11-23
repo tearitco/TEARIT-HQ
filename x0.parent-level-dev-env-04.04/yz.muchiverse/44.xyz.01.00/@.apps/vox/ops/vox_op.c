@@ -348,7 +348,8 @@ static int write_feed(W *w, const char *an, const Opt *o) {
         n += snprintf(b + n, sizeof b - n, "gmt_1_text=%s at %d,%d,%d  hunger %d/%d\ngmt_2_text=bag: %s\n", an, a->x, a->y, a->z, a->hunger, R("hunger_max"), bg[0] ? bg : "empty"); }
     else n += snprintf(b + n, sizeof b - n, "gmt_1_text=no player %s yet (give and move first)\ngmt_2_text=bag: empty\n", an);
     for (int i = 0; i < NACT; i++) n += snprintf(b + n, sizeof b - n, "gmb_%d_label=%s\ngmb_%d_act='%s' act '%s' '%s' '%s' '%s' 'desk=%s' 'feed=%s' 'png=%s'\n", i, ACTS[i][1], i, o->self, o->data, o->ledger, an, ACTS[i][0], o->desk, o->feed, o->png ? o->png : "");
-    n += snprintf(b + n, sizeof b - n, "gm_nt=3\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", NACT);
+    int nt = 3; { char kp[2100], kl[400]; snprintf(kp, sizeof kp, "%s/keys.pdl", o->data); FILE *kf = fopen(kp, "r"); if (kf) { while (fgets(kl, sizeof kl, kf)) if (!strncmp(kl, "LEGEND | ", 9)) { kl[strcspn(kl, "\r\n")] = 0; n += snprintf(b + n, sizeof b - n, "gmt_%d_text=%s\n", nt++, kl + 9); } fclose(kf); } }   /* D115: the key legend is DATA (keys.pdl LEGEND rows); no keys.pdl, no extra line */
+    n += snprintf(b + n, sizeof b - n, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt, NACT);
     return write_atomic(o->feed, b, n);
 }
 static int act(W *w, FILE *L, const char *an, const char *what) {

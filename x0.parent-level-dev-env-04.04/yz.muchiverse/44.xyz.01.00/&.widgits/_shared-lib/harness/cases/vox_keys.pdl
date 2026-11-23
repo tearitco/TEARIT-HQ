@@ -1,0 +1,106 @@
+# vox_keys (2026-11-22, D115): the Voxel window answers KEYS. The REAL input op (bv_menu_input.c) forwards a GAMEKEY key to <host>/../state/interact_relay.txt only while a game token is possessed (D101); the REAL vox_keys_op turns each relayed key into one `vox_op act` (map = @.apps/vox/keys.pdl, data); the REAL vox_op writes the rows. A refused act writes nothing. SABOTAGES: a mutant of vox_keys_op (map compare inverted) must NOT print what the real op prints; the input op built with -DBV_NO_GAMEKEYS forwards nothing; sources cmp'd after.
+RESULTS | ../results/vox_keys.txt
+ENV     | LC_ALL | C
+CASE    | setup
+SCRATCH |
+MKDIR | d
+MKDIR | m
+COPY | @.apps/vox/rules.pdl | d/rules.pdl
+COPY | @.apps/vox/blocks.pdl | d/blocks.pdl
+COPY | @.apps/vox/terrain.pdl | d/terrain.pdl
+COPY | @.apps/vox/keys.pdl | d/keys.pdl
+COPY | @.apps/vox/ops/vox_keys_op.c | m/orig.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/vx | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox-op-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/vk | $HOUSE/@.apps/vox/ops/vox_keys_op.c
+EXPECT_EXIT | 0 | vox-keys-op-builds
+RUN | gcc | -O2 | -w | -o | $T/menu_real | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
+EXPECT_EXIT | 0 | the-real-input-op-builds
+RUN | gcc | -O2 | -w | -DBV_NO_GAMEKEYS | -o | $T/menu_old | $HOUSE/&.widgits/board-viewer/ops/bv_menu_input.c | -lm
+EXPECT_EXIT | 0 | the-old-input-op-builds
+RUN | $T/vx | move | $T/d | $T/l | joe | 3 | 3 | 3
+RUN | $T/vx | give | $T/d | $T/l | joe | pick | 1 | seed
+RUN | $T/vx | give | $T/d | $T/l | joe | cobble | 4 | seed
+RUN | $T/vx | give | $T/d | $T/l | joe | bread | 1 | seed
+WRITE | vox_board.pdl | BOARD \p desk \p $T/desk\nBOARD \p feed \p $T/ui.txt\nBOARD \p self \p $T/vx\nBOARD \p actor \p joe\n
+MKDIR | desk
+MKDIR | h1/host/pieces/system
+MKDIR | h1/host/pieces/xelector_01
+MKDIR | h1/state
+WRITE | h1/host/pieces/system/bv_state.txt | focused_project_root=$T/h1/host\nrender_mode=1\ncamera_mode=1\nselector_x=5\nselector_y=5\n
+WRITE | h1/host/pieces/system/board.txt | ................\n................\n................\n................\n................\n................\n................\n................\n
+WRITE | h1/host/pieces/xelector_01/state.txt | pos_x=5\npos_y=5\npossessed_id=People1\n
+WRITE | h1/host/pieces/system/keybinds.pdl | SECTION \p KEY \p VALUE\n
+RUN | cp | -r | $T/h1 | $T/h3
+RUN | sed | -i | s#/h1/host#/h3/host# | $T/h3/host/pieces/system/bv_state.txt
+RUN | sed | -i | s/possessed_id=People1/possessed_id=none/ | $T/h3/host/pieces/xelector_01/state.txt
+RUN | cp | -r | $T/h1 | $T/h4
+RUN | sed | -i | s#/h1/host#/h4/host# | $T/h4/host/pieces/system/bv_state.txt
+
+CASE    | keybinds_from_data
+RUN | $T/vk | keybinds | $T/d/keys.pdl | $T/h1/host/pieces/system/keybinds.pdl
+EXPECT_EXIT | 0 | the-GAMEKEY-rows-are-made-from-the-KEYMAP-rows
+RUN | $T/vk | keybinds | $T/d/keys.pdl | $T/h1/host/pieces/system/keybinds.pdl
+RUN | grep | -c | ^GAMEKEY | $T/h1/host/pieces/system/keybinds.pdl
+EXPECT_OUT_IS | 11 | eleven-keys-once-(idempotent:-the-second-run-added-nothing)
+RUN | cp | $T/h1/host/pieces/system/keybinds.pdl | $T/h3/host/pieces/system/keybinds.pdl
+RUN | cp | $T/h1/host/pieces/system/keybinds.pdl | $T/h4/host/pieces/system/keybinds.pdl
+
+CASE    | possessed_keys_make_rows
+ENV | PRISC_PROJECT_ROOT | $T/h1/host
+RUN | $T/menu_real | 1001
+RUN | $T/menu_real | 108
+EXPECT_HAS | $T/h1/state/interact_relay.txt | 1001  | right-arrow-forwarded
+EXPECT_HAS | $T/h1/state/interact_relay.txt | 108  | the-mine-key-forwarded
+EXPECT_HAS | $T/h1/host/pieces/xelector_01/state.txt | pos_x=5 | the-cursor-did-NOT-move
+RUN | $T/vk | once | $T/d | $T/l | $T/h1/state/interact_relay.txt | 0
+EXPECT_OUT | KEYS read=2 applied=2 refused=0 unmapped=0 | both-keys-ran-vox_op-act
+EXPECT_HAS | $T/l | MOVE \p joe \p 4 \p 3 \p 3 | the-east-key-walked-joe-one-cell
+EXPECT_HAS | $T/l | DAMAGE \p joe \p hand \p 4 \p 2 \p 3 | the-mine-key-swung-at-the-ground-under-him-(dirt-wants-a-shovel,-so-the-hand)
+EXPECT_HAS | $T/ui.txt | gmt_3_text=possess Joe | the-panel-lists-the-keys-(LEGEND-row)
+EXPECT_HAS | $T/ui.txt | at 4,3,3 | the-panel-follows-the-ledger
+
+CASE    | refused_and_unmapped_write_nothing
+RUN | wc | -c | $T/l
+EXPECT_EXIT | 0 | ledger-size-read
+RUN | cp | $T/l | $T/l.before
+WRITE | h1/state/more.txt | 110 1\n99 2\n
+RUN | $T/vk | once | $T/d | $T/l | $T/h1/state/more.txt | 0
+EXPECT_OUT | KEYS read=2 applied=0 refused=1 unmapped=1 | sleep-refused-(daylight)-and-an-unmapped-key-counted
+RUN | cmp | -s | $T/l | $T/l.before
+EXPECT_EXIT | 0 | a-refused-verb-and-an-unmapped-key-wrote-NOTHING
+
+CASE    | no_possession_forwards_nothing
+ENV | PRISC_PROJECT_ROOT | $T/h3/host
+RUN | $T/menu_real | 1001
+RUN | sh | -c | cat $T/h3/state/interact_relay.txt 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 0 | no-possession-nothing-forwarded
+EXPECT_HAS | $T/h3/host/pieces/xelector_01/state.txt | pos_x=6 | vacuity:-the-key-moved-the-cursor-instead
+ENV | PRISC_PROJECT_ROOT | $T/h4/host
+RUN | $T/menu_old | 1001
+RUN | sh | -c | cat $T/h4/state/interact_relay.txt 2>/dev/null \p wc -l
+EXPECT_OUT_IS | 0 | the-old-input-op-(no-GAMEKEY)-forwards-nothing-even-when-possessed
+
+CASE    | replay_and_owner_gone
+RUN | $T/vx | verify | $T/d | $T/l
+EXPECT_OUT | verified | the-ledger-built-by-keys-verifies
+RUN | $T/vx | replay | $T/d | $T/l | $T/l.replay
+EXPECT_OUT | replayed identical | replay-gives-the-same-bytes
+RUN | $T/vk | tail | $T/d | $T/l | $T/h1/state/interact_relay.txt | 999999
+EXPECT_EXIT | 0 | the-tailer-exits-at-once-when-its-owner-pid-is-gone
+
+CASE    | sabotage_map
+RUN | cp | $T/m/orig.c | $T/m/m1.c
+RUN | sed | -i | s/KM\[i\].code == code/KM[i].code != code/ | $T/m/m1.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m1.c
+EXPECT_EXIT | 1 | vacuity-the-mutant-differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m1 | $T/m/m1.c
+MKDIR | mm
+WRITE | mm/vox_board.pdl | BOARD \p desk \p $T/desk\nBOARD \p self \p $T/vx\nBOARD \p actor \p joe\n
+RUN | $T/vx | move | $T/d | $T/mm/l | joe | 3 | 3 | 3
+RUN | $T/m/m1 | once | $T/d | $T/mm/l | $T/h1/state/interact_relay.txt | 0
+EXPECT_LACKS | $T/mm/l | MOVE \p joe \p 4 \p 3 \p 3 | MUTANT-maps-the-wrong-act:-joe-did-NOT-walk-east
+EXPECT_HAS | $T/mm/l | MOVE \p joe \p 2 \p 3 \p 3 | MUTANT-walked-west-instead-(vacuity:-the-keys-were-read)
+RUN | cmp | -s | $T/m/orig.c | $HOUSE/@.apps/vox/ops/vox_keys_op.c
+EXPECT_EXIT | 0 | RESTORED-the-real-source-is-byte-identical
+CLEAN |

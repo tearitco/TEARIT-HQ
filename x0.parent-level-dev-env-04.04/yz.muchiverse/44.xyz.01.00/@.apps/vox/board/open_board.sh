@@ -30,3 +30,9 @@ if [ -x "$REG" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
 fi
 # frame the 16x16 desk: the engine's default view shows only part of it (found by the first live window). Key f = reset, 3 = top-down mode, two a presses pan the centre onto the desk (measured in the second live session: pan_x -2 centres the 16x16 desk, the first session needed +6, so the framing is measured per launch: look at the photo); the keys go to the engine session the board opened.
 sleep 4; BVS="$(sed -n 's/^bv_session=//p' "$HERE/state/ui.txt" 2>/dev/null | head -1)"; [ -n "$BVS" ] && "$HOUSE/&.widgits/board-viewer/tools/+x/bv_keys.+x" "$BVS" f3aa >/dev/null 2>&1
+# KEYS (D115): the window's GAMEKEY rows come from the data table @.apps/vox/keys.pdl (idempotent), and a tailer registered to the board window turns each relayed key into one `vox_op act` (the relay is <host>/../state/interact_relay.txt, filled by the input op only while the player token is possessed; the tailer exits when the window is gone)
+KEYS="$APP/ops/+x/vox_keys_op.+x"
+if [ -x "$KEYS" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
+    "$KEYS" keybinds "$APP/keys.pdl" "$PCHQ_PKG/pieces/system/keybinds.pdl"
+    KH_APP=vox KH_ROLE=daemon sh "$HOUSE/&.widgits/_shared-lib/kh_spawn.sh" "$HOUSE" "$WPID" vox-keys -- "$KEYS" tail "$APP" "$LEDGER" "$APP/state/interact_relay.txt" "$WPID" >/dev/null 2>&1
+fi

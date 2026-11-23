@@ -1,0 +1,16 @@
+# keys.pdl (vox, D115) - the keys of the Voxel window while the player token is possessed. DATA: vox_keys_op has no key of its own.
+# KEYMAP | keycode | act (the act names of vox_op: x- x+ z- z+ up down mine place eat wait sleep) | label shown in the panel
+# GAMEKEY rows for the window's keybinds.pdl are made from these rows by `vox_keys_op keybinds`. Arrows are 1000-1003; the letters are the free ones (m and g are taken by the board menu verbs).
+ACTOR | joe
+KEYMAP | 1000 | x- | left=west
+KEYMAP | 1001 | x+ | right=east
+KEYMAP | 1002 | z- | up=north
+KEYMAP | 1003 | z+ | down=south
+KEYMAP | 108 | mine | l=mine
+KEYMAP | 112 | place | p=place
+KEYMAP | 117 | up | u=step up
+KEYMAP | 106 | down | j=step down
+KEYMAP | 107 | eat | k=eat
+KEYMAP | 98 | wait | b=wait
+KEYMAP | 110 | sleep | n=sleep
+LEGEND | possess Joe (Enter on him) then: arrows walk, l mine, p place, u up, j down, k eat, b wait, n sleep
