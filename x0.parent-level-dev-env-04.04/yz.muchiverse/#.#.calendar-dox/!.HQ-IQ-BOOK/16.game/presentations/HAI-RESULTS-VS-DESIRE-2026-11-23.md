@@ -21,9 +21,9 @@ hai knows 5 concepts and about 25 keywords. "house", "driving" and "confidence" 
 | Desire | Result today | Evidence |
 |---|---|---|
 | Key words are recognized | PARTIAL: 5 concepts, about 25 words, whole-word matching | `chat/data/concepts.pdl` |
-| A key word triggers a sub-conversation asking me to explain | **GAP**: not built (the fallback offers a menu, it does not ask) | the photograph above |
-| I can mark words that deserve more attention | **GAP**: not built (a hand-set attention weight per word is the plan) | none |
-| Explanations are remembered and change later behavior | **GAP**: today only GRADES move weights (Laplace, per concept); nothing a person types is stored as knowledge | `hai_chat` 17 checks, `hai_learn` 16 |
+| A key word triggers a sub-conversation asking me to explain | **BUILT 2026-11-23, inline in the same chat**: an unknown content word is asked about (`I do not know "house" yet. What does it mean to you?`), the typed answer is stored as a ledger row and quoted back later | case `hai_teach` 42 checks; relay injection into the real window, photographed |
+| I can mark words that deserve more attention | **BUILT**: `/mark word`: asked about first, counts double (confidence capped at 100) | `hai_teach`; photographed: 50% to 83% (graded) to 100% (marked) |
+| Explanations are remembered and change later behavior | **BUILT**: `/teach`, `/alias`, `/say`, `/forget`, `/pack`, the automatic ask and `/grade`: every lever is a ledger row, replay rebuilds it, a stray file teaches nothing | `hai_teach` (8 mutants red), `hai_chat` 17, `hai_learn` 16, `hai_send` 13 |
 | It learns phrases, concepts, tool calls, its own weights | PARTIAL: it adjusts concept weights from grades and shows a confidence per reply; replies are fixed and never rewritten (by design); phrases, concepts and tool calls are not learned | `hai_confidence` 11, `hai_calibration` 6 |
 | Confidence is honest | PARTIAL: confidence is shown and a calibration check exists; with 2 grades in a real session it says nothing yet (ECE 0.585 on 2 grades) | `hai_chat calib` |
 | It is a usable window | BUILT: opens from the H-AI menu (`hai-cli`, row 12), you type inside it, `/grade N` grades; tested by relay injection (16 of 16) | hai book 21, `window/tests/` |
@@ -59,3 +59,8 @@ Nothing in the chat learns from explanation yet. The numbers in section 4 are ab
 
 ## 9. Where things are
 Window and tests: hai repo `window/`, `book/21-hai-cli-in-the-h-ai-menu.md`; menu row and launcher: house `#.desktop/livedesk_taskbar.pdl`, `#.desktop/livedesk_launchers.pdl`, `&.hq-apps/hai-cli/`; lab data and scripts: `/home/no/staging/lab-router-2026-11-22/` (outside the repo); engineer pipeline guide: XO `%.HARNECIENT/%.calendar/nov-22/3.pipeline-for-engineers-...md`.
+
+## 11. Update 2026-11-23 (later): the gaps above were built the same day
+The owner asked for the chat above the input, for the chat to learn ("otherwise it's a dud"), and for many different levers. All RAN, in the real window: the transcript shows hai's reply text above the typing box; unknown words are asked about; seven teaching levers (ask, `/teach`, `/alias`, `/say`, `/mark`, `/forget`, `/pack`) plus `/grade`, each one a ledger row; a starter pack that taught the owner's three words (house, driving, confidence) in one command; every turn writes a `SAID` row of what hai said. Details and the lever table: hai repo `book/22-teaching-hai-the-levers-2026-11-23.md`. Three narrated mp4s were recorded (stakeholder report and two tutorials; XO `31.Nov/nov-22/13.*` to `15.*` and `%.HARNECIENT/hai-user-dox/tutorials/`).
+Measured (lab H12): after the starter pack, 20 of 20 differently worded sentences using a taught word were answered from it and 0 of 20 unrelated sentences were; but only 1 of 8 inflected forms (houses, driven, harnesses ...) were recognised: recognition is whole-word matching, the same lexical wall as the router. Confidence for a taught word is 50% when fresh, 83% after a grade of 4, 100% when marked.
+Still open: inflections; the web engine has no teach loop; teach logic is C, not event pages (D92 stopgap); low-confidence replies are asserted not asked; tool-call lever `/act` not built; the 20 owner sentences are still the decision-grade test.
