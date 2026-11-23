@@ -486,9 +486,20 @@ static void maker_read_parallax(const char *dir) {
 /* Map events (events.txt): x y r g b charset index direction pattern. Colour is the frame center; the charset name is for the 2D blit and the frame file lookup; the box uses r g b.
  * First 96 only. Re-read EVERY frame (the file is tiny): rpg-pet rewrites it as its monsters walk, and the old read-once-per-desk cache froze the sprites while the selector kept moving
  * (owner 2026-10-11: "the sprite stayed still but a blue block moved"). */
+/* D119 (2026-11-22): ONE snapshot of the shown desk's events.txt per frame. The driver rewrites that file atomically once per move; two reads in one frame (the xelector's token follow, then the drawn rows) could straddle the
+ * write: the car drawn on the new cell, the HUD pos / outline on the old (RTA, one step behind). ev_snap_take() reads once before load_xelector(); desk_token_cell and maker_read_events both parse THIS copy. */
+static char *g_ev_snap = NULL; static size_t g_ev_snap_len = 0; static char g_ev_snap_path[4400] = "";
+#ifdef BV_TEST_HOOKS
+static char g_tst_ev_path[4400] = "";
+#endif
 static void maker_read_events(const char *dir) {
     char path[4400], line[256]; snprintf(path, sizeof(path), "%s/events.txt", dir); g_mk.ev_n = 0;
-    FILE *f = fopen(path, "r"); if (!f) return;
+    FILE *f;
+#ifndef BV_NO_EV_SNAP
+    if (g_ev_snap && !strcmp(g_ev_snap_path, path)) f = fmemopen(g_ev_snap, g_ev_snap_len, "r"); else
+#endif
+    f = fopen(path, "r");
+    if (!f) return;
     while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
         int x, y, r, g, b, index, dir_, pat; char name[40];
         float x0, y0, z0, x1, y1, z1;
@@ -1164,6 +1175,21 @@ static void bv_set_kv_int(const char *path, const char *key, int val);
  * forwarded keys, so the xelector (outline cube, HUD pos, 2D cursor) must follow it: the ENGINE owns the per-frame read, so it re-reads the token row here and writes the xelector's own pos_x/pos_y (the one authority,
  * the same file the arrow keys write). Returns 1 and the cell when poss names such a token. */
 static int g_tf_set = 0, g_tf_x = 0, g_tf_y = 0;      /* D118: this frame the xelector followed a possessed token to g_tf_x,g_tf_y */
+static void ev_snap_take(const char *root) {      /* D119: call once per frame, before load_xelector() */
+    free(g_ev_snap); g_ev_snap = NULL; g_ev_snap_len = 0; g_ev_snap_path[0] = 0;
+#ifndef BV_NO_EV_SNAP
+    char wp[PATH_BUF], mid[128] = "", did[128] = "";
+    snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", root); bv_world_ids(wp, mid, sizeof mid, did, sizeof did);
+    if (!mid[0] || !did[0] || strchr(mid, '/') || strchr(did, '/')) return;
+    snprintf(g_ev_snap_path, sizeof g_ev_snap_path, "%s/%s/events.txt", bp_dir(root, mid), did);
+    FILE *f = host_fopen(g_ev_snap_path, "r"); if (!f) { g_ev_snap_path[0] = 0; return; }
+    size_t cap = 4096, n = 0; char *b = (char *)malloc(cap); if (!b) { fclose(f); g_ev_snap_path[0] = 0; return; }
+    for (;;) { size_t r = fread(b + n, 1, cap - n, f); n += r; if (n < cap) break; cap *= 2; char *nb = (char *)realloc(b, cap); if (!nb) break; b = nb; }
+    fclose(f); g_ev_snap = b; g_ev_snap_len = n;
+#else
+    (void)root;
+#endif
+}
 static int desk_token_cell(const char *root, const char *poss, int *tx, int *ty) {
     if (!root || !poss || !poss[0] || !strcmp(poss, "none") || !strcmp(poss, ".") || !strcmp(poss, "hero_01") || strchr(poss, '/') || strstr(poss, "..")) return 0;
     char pp[PATH_BUF]; snprintf(pp, sizeof pp, "%s/pieces/%s/state.txt", root, poss);
@@ -1172,7 +1198,12 @@ static int desk_token_cell(const char *root, const char *poss, int *tx, int *ty)
     snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", root); bv_world_ids(wp, mid, sizeof mid, did, sizeof did);
     if (!mid[0] || !did[0] || strchr(mid, '/') || strchr(did, '/')) return 0;
     snprintf(ep, sizeof ep, "%s/%s/events.txt", bp_dir(root, mid), did);
-    FILE *f = host_fopen(ep, "r"); if (!f) return 0;
+    FILE *f;
+#ifndef BV_NO_EV_SNAP
+    if (g_ev_snap && !strcmp(g_ev_snap_path, ep)) f = fmemopen(g_ev_snap, g_ev_snap_len, "r"); else
+#endif
+    f = host_fopen(ep, "r");
+    if (!f) return 0;
     int found = 0;
     while (!found && fgets(ln, sizeof ln, f)) { int ex, ey, r, g, b; char nm[64]; if (sscanf(ln, "%d %d %d %d %d %63s", &ex, &ey, &r, &g, &b, nm) == 6 && !strcmp(nm, poss)) { *tx = ex; *ty = ey; found = 1; } }
     fclose(f); return found;
@@ -2965,6 +2996,9 @@ static void bv_write_scene_receipt(const char *game_root, int board_w, int board
         fprintf(r, "xelector_x=%d\nxelector_y=%d\nxelector_z=%d\npossessed_id=%s\n",
                 g_xelector_x, g_xelector_y, g_xelector_z,
                 g_xelector_possessed_id[0] ? g_xelector_possessed_id : ".");
+#ifdef BV_TEST_HOOKS   /* D119 test only: the cell of the DRAWN event row named like the possessed token (g_mk.ev, what the car is drawn from) */
+    for (int i = 0; i < g_mk.ev_n; i++) if (g_xelector_possessed_id[0] && !strcmp(g_mk.ev[i].name, g_xelector_possessed_id)) { fprintf(r, "drawn_token_x=%d\ndrawn_token_y=%d\n", g_mk.ev[i].x, g_mk.ev[i].y); break; }
+#endif
     {
         char pickp[PATH_BUF], kind[32] = "-", id[64] = "-";
         snprintf(pickp, sizeof(pickp), "%s/pieces/display/pick.txt", game_root);
@@ -3553,7 +3587,17 @@ static int render_one_frame(void) {
     }
 
     load_entities(focused_project_root);
+    ev_snap_take(focused_project_root);
     load_xelector(focused_project_root);
+#ifdef BV_TEST_HOOKS   /* D119 test only: BV_TEST_EV2 names a file copied over the live events.txt RIGHT AFTER the xelector's read, i.e. the driver's atomic rewrite landing mid-frame */
+    {   const char *e2 = getenv("BV_TEST_EV2");
+        if (e2 && e2[0] && g_ev_snap_path[0] == 0) {   /* snapshot off or unreadable: still need the live path */
+            char wp[PATH_BUF], mid[128] = "", did[128] = ""; snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", focused_project_root); bv_world_ids(wp, mid, sizeof mid, did, sizeof did);
+            snprintf(g_tst_ev_path, sizeof g_tst_ev_path, "%s/%s/events.txt", bp_dir(focused_project_root, mid), did);
+        } else if (e2 && e2[0]) snprintf(g_tst_ev_path, sizeof g_tst_ev_path, "%s", g_ev_snap_path);
+        if (e2 && e2[0] && g_tst_ev_path[0]) { FILE *s = fopen(e2, "rb"), *d = fopen(g_tst_ev_path, "wb"); if (s && d) { char cb[4096]; size_t r; while ((r = fread(cb, 1, sizeof cb, s)) > 0) fwrite(cb, 1, r, d); } if (s) fclose(s); if (d) fclose(d); }
+    }
+#endif
     load_hero(focused_project_root);
     free_vehicles(); load_vehicle(focused_project_root);
     if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */

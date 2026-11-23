@@ -5,12 +5,18 @@ CASE    | build
 SCRATCH |
 MKDIR | g1
 MKDIR | g2
+MKDIR | g3
+MKDIR | g4
 RUN | gcc | -O2 | -w | -DBV_HAVE_GPU | -fopenmp | -o | $T/engine_real | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c | $HOUSE/&.widgits/board-viewer/ops/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
 EXPECT_EXIT | 0 | engine-builds-from-source
 RUN | gcc | -O2 | -w | -DBV_HAVE_GPU | -DBV_NO_TOKEN_FOLLOW | -fopenmp | -o | $T/engine_old | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c | $HOUSE/&.widgits/board-viewer/ops/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
 EXPECT_EXIT | 0 | negative-fixture-engine-builds
 RUN | gcc | -O2 | -w | -o | $T/ttest | $HOUSE/&.widgits/board-viewer/ops/bv_token_follow_test.c
 EXPECT_EXIT | 0 | test-program-builds
+RUN | gcc | -O2 | -w | -DBV_HAVE_GPU | -DBV_TEST_HOOKS | -fopenmp | -o | $T/engine_hook | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c | $HOUSE/&.widgits/board-viewer/ops/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
+EXPECT_EXIT | 0 | test-hook-engine-builds
+RUN | gcc | -O2 | -w | -DBV_HAVE_GPU | -DBV_TEST_HOOKS | -DBV_NO_EV_SNAP | -fopenmp | -o | $T/engine_hook_old | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c | $HOUSE/&.widgits/board-viewer/ops/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
+EXPECT_EXIT | 0 | test-hook-negative-engine-builds-(snapshot-off)
 CASE    | positive-real-engine
 ENV | BV3D_BIN | $T/engine_real
 RUN | $T/ttest | $T/g1
@@ -27,4 +33,19 @@ ENV | BV3D_BIN | $T/engine_old
 RUN | $T/ttest | $T/g2
 EXPECT_EXIT | 1 | the-test-fails-on-the-old-engine
 EXPECT_OUT | FAIL: possessed token moved to 3,11: the xelector state follows it | follow-check-fails-with-the-old-engine
+# D119 (2026-11-22): one events.txt snapshot per frame. A scratch DESK (cells.txt/rgba/marker) with token joe at 1,1 possessed; the test hook copies a second events.txt (joe at 3,1) over the live one right after the engine's xelector read (the driver's atomic rewrite landing mid-frame). The receipt has the HUD cell and drawn_token_x/y.
+CASE    | midframe-write-fixed-engine
+ENV | BV3D_BIN | $T/engine_hook
+RUN | $T/ttest | $T/g3 | mid
+EXPECT_EXIT | 0 | hud-and-drawn-car-agree
+EXPECT_OUT | ok  : the token row was DRAWN (receipt carries drawn_token_x/y) | the-car-row-was-drawn-(not-vacuous)
+EXPECT_OUT | ok  : HUD cell and the drawn token cell agree within one frame | agree-within-one-frame
+EXPECT_OUT | ok  : both are the frame's one snapshot (1,1), not the rewritten file (3,1) | one-snapshot
+EXPECT_OUT_LACKS | FAIL | no-failed-check
+CASE    | midframe-write-negative-two-reads
+ENV | BV3D_BIN | $T/engine_hook_old
+RUN | $T/ttest | $T/g4 | mid
+EXPECT_EXIT | 1 | the-old-two-read-engine-fails
+EXPECT_OUT | HUD xelector 1,1 drawn token 3,1 | the-trail:-cursor-1,1-while-the-car-is-drawn-on-3,1
+EXPECT_OUT | FAIL: HUD cell and the drawn token cell agree within one frame | disagreement-is-the-failed-check
 CLEAN |

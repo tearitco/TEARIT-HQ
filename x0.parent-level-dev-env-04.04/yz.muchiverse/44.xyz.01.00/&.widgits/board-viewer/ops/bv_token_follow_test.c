@@ -21,8 +21,28 @@ static void setup(int xx, int xy, const char *poss) {
     char b[900]; snprintf(b, sizeof b, "focused_project_root=%s\nrender_mode=1\ncamera_mode=2\nselector_x=%d\nselector_y=%d\n", dir, xx, xy); wr("pieces/system/bv_state.txt", b);
     snprintf(b, sizeof b, "entity_type=xelector\npos_x=%d\npos_y=%d\npos_z=1\npossessed_id=%s\n", xx, xy, poss); wr("pieces/xelector_01/state.txt", b); }
 static int frame(void) { const char *bin = getenv("BV3D_BIN"); if (!bin) bin = "ops/+x/bv_render_3d.+x"; char cmd[1900]; snprintf(cmd, sizeof cmd, "cd '%s' && timeout 60 '%s' >/dev/null 2>&1", dir, bin); return system(cmd) == 0 ? 0 : 2; }
+/* D119 mid-frame mode (argv[2] = "mid", engine built with -DBV_TEST_HOOKS): a scratch DESK (cells.txt, cells.rgba, cells.marker) with the token row "joe" at 1,1; the xelector possesses joe. The hook (env BV_TEST_EV2) copies a second events.txt (joe at 3,1)
+ * over the live one right after the engine's xelector read, as the driver's atomic rewrite landing mid-frame. The scene receipt then carries the xelector cell (HUD pos source) AND drawn_token_x/y (the cell of the row the car is drawn from).
+ * Held = the two agree (one snapshot per frame). The old engine reads the file twice: xelector 1,1 but drawn 3,1. A missing drawn_token row fails too (the car was not drawn: no vacuous pass). */
+static int mid_mode(void) {
+    setup(0, 0, "joe"); wr("pieces/world_01/state.txt", "desk_id=d1\nmap_id=m\n");
+    char b[900]; snprintf(b, sizeof b, "%s/pieces/system/maps/m/d1", dir); mdp(b);
+    char p[900], rgba[32]; memset(rgba, 90, sizeof rgba);
+    snprintf(p, sizeof p, "%s/cells.txt", b); FILE *f = fopen(p, "w"); if (!f) return 2; fputs("width=4\nheight=2\ntile_px=2\natlas_cols=1\natlas_tiles=2\ncells\n1,0 1,0 1,0 1,0\n1,0 1,0 1,0 1,0\n", f); fclose(f);
+    snprintf(p, sizeof p, "%s/cells.rgba", b); f = fopen(p, "wb"); if (!f) return 2; fwrite(rgba, 1, sizeof rgba, f); fclose(f);
+    snprintf(p, sizeof p, "%s/cells.marker", b); f = fopen(p, "w"); if (!f) return 2; fputs("x", f); fclose(f);
+    snprintf(p, sizeof p, "%s/events.txt", b); f = fopen(p, "w"); if (!f) return 2; fputs("1 1 200 60 60 joe 0 0 0\n", f); fclose(f);
+    snprintf(p, sizeof p, "%s/ev2.txt", dir); f = fopen(p, "w"); if (!f) return 2; fputs("3 1 200 60 60 joe 0 0 0\n", f); fclose(f);
+    setenv("BV_TEST_EV2", p, 1);
+    if (frame()) { fprintf(stderr, "engine run failed\n"); return 2; }
+    int hx = kv("pieces/display/scene_receipt.pdl", "xelector_x"), hy = kv("pieces/display/scene_receipt.pdl", "xelector_y"), dx = kv("pieces/display/scene_receipt.pdl", "drawn_token_x"), dy = kv("pieces/display/scene_receipt.pdl", "drawn_token_y");
+    printf("mid-frame write: HUD xelector %d,%d drawn token %d,%d\n", hx, hy, dx, dy);
+    check(dx != -9999 && dy != -9999, "the token row was DRAWN (receipt carries drawn_token_x/y)");
+    check(hx == dx && hy == dy, "HUD cell and the drawn token cell agree within one frame");
+    check(hx == 1 && hy == 1, "both are the frame's one snapshot (1,1), not the rewritten file (3,1)");
+    return bad; }
 int main(int argc, char **argv) {
-    if (argc < 2) { fprintf(stderr, "usage: %s <scratch dir>\n", argv[0]); return 2; } snprintf(dir, sizeof dir, "%s", argv[1]);
+    if (argc < 2) { fprintf(stderr, "usage: %s <scratch dir>\n", argv[0]); return 2; } snprintf(dir, sizeof dir, "%s", argv[1]); if (argc > 2 && !strcmp(argv[2], "mid")) return mid_mode();
     setup(0, 10, "joe"); token(3, 11); if (frame()) { fprintf(stderr, "engine run failed\n"); return 2; }
     printf("after frame 1: xelector %d,%d receipt %d,%d\n", kv("pieces/xelector_01/state.txt", "pos_x"), kv("pieces/xelector_01/state.txt", "pos_y"), kv("pieces/display/scene_receipt.pdl", "xelector_x"), kv("pieces/display/scene_receipt.pdl", "xelector_y"));
     check(kv("pieces/xelector_01/state.txt", "pos_x") == 3 && kv("pieces/xelector_01/state.txt", "pos_y") == 11, "possessed token moved to 3,11: the xelector state follows it");
