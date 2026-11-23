@@ -22,6 +22,20 @@ mkdir -p "$SDIR/+x" "$SDIR/ops/+x"
 CC=${CC:-gcc}
 JSDIR="$SDIR/../js"
 
+
+# 2026-11-23: wasm3 (MIT, v0.5.0, pinned in third_party/wasm3/PINNED.txt) is vendored as
+# source/ + LICENSE; libwasm3.a is built here (gitignored). Without it the worker could
+# not be rebuilt (audit P1-5). Excluded: wasi/uvwasi/meta_wasi/tracer (not used by nb_host.h).
+W3="$SDIR/../../../third_party/wasm3/source"
+if [ ! -f "$W3/m3_env.c" ]; then echo "ERROR: $W3 missing (vendored wasm3, see third_party/wasm3/PINNED.txt)"; exit 1; fi
+if [ ! -f "$W3/libwasm3.a" ]; then
+  echo "-- libwasm3.a"
+  W3O="$(mktemp -d)"
+  for f in m3_api_libc m3_bind m3_code m3_compile m3_core m3_deterministic m3_env m3_exec m3_function m3_info m3_module m3_parse m3_snapshot m3_validate m3_xxh64; do
+    $CC -std=gnu11 -O2 -w -I"$W3" -c "$W3/$f.c" -o "$W3O/$f.o" || exit 1
+  done
+  ar rcs "$W3/libwasm3.a" "$W3O"/*.o && rm -rf "$W3O" && echo "OK libwasm3.a" || exit 1
+fi
 echo "-- network_browser_manager -> +x/network_browser_manager.+x"
 $CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_browser_manager.c" "$SDIR/nb_dom.c" && echo "OK network_browser_manager" || exit 1
 

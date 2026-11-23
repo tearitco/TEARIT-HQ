@@ -1,0 +1,1 @@
+wasm3 main commit 28ecb9af6d2040e474a70f7cb7f43666740141fb (2026-09-29; the newest main, the API nb_host.h uses: m3type_t, M3Module.memories, 3-arg ResizeMemory; v0.5.0 does NOT compile). https://github.com/wasm3/wasm3, MIT. Vendored: source/ + LICENSE only (extra/, extensions/ removed). libwasm3.a is built by &.hq-apps/network/build.sh and gitignored.

@@ -350,7 +350,8 @@ EXPECT_HAS | tomom/ask_log.txt | ASK \p asa:0 \p  | ask-logged-in-the-scratch-co
 EXPECT_HAS | tomom/ask_log.txt | target= | ask-log-names-its-target
 EXPECT_HAS | game/participants/ava/phone.txt | MSG\p0\pIN\pasa\p | line-in-the-listeners-phone-inbox
 EXPECT_HAS | game/participants/asa/phone.txt | MSG\p0\pOUT\pava\p | line-in-the-speakers-outbox
-EXPECT_HAS | game/participants/ava/phone.txt | shining cosmos | fixed-seed-7-answer-is-the-known-tomom-hq-one
+NOTE | 2026-11-23: the seed-7 answer was "shining cosmos millions the" at 513efbe94 (reproduced by building that tree); chatbot_moe_v1.c (ce391169e cross-expert generation) and the curriculum changed since, HEAD gives "We machines their biology ..." (reproduced by hand)
+EXPECT_HAS | game/participants/ava/phone.txt | We machines their biology | fixed-seed-7-answer-is-the-current-tomom-hq-one
 RUN | /bin/sh | -c | grep -c '^MSG.IN.asa.shining' "$0" | $T/game/participants/ava/phone.txt
 APPEND  | game/conductor/wiring.pdl | WIRING \p tomom_bin \p ../../tomom/does_not_exist\n
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | act | ava | talk
