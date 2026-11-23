@@ -1,0 +1,4 @@
+# token_follow.pal - pal harness for cases/token_follow.pdl (the xelector follows a possessed game-driven token). Read results/token_follow.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/token_follow.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/token_follow.pdl
+halt

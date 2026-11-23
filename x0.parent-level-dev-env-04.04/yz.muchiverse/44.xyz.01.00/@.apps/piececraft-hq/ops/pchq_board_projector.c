@@ -54,7 +54,12 @@
  * until the next probe even though the engine is already up. */
 #ifdef _WIN32
 #define PCHQ_BV_RESCAN_SEC 30
-
+#endif
+#ifndef PCHQ_BV_SETTLE_S
+#define PCHQ_BV_SETTLE_S 240   /* D117: the session choice is re-checked for this long after start */
+#endif
+#ifndef PCHQ_BV_RECHECK_S
+#define PCHQ_BV_RECHECK_S 10
 #endif
 
 #ifndef _WIN32
@@ -718,12 +723,20 @@ int main(int argc, char **argv) {
                 have = 0;
             }
 #else
-            if (bv_cache[0] && stat(bv_cache, &cst) == 0 && S_ISDIR(cst.st_mode)) {
+            /* 2026-11-22 IN: ON FIX (D117): at launch this projector can start BEFORE its own engine session registers; the ledger then still names the LATEST
+             * earlier session of the same project (a leaked one from a previous take whose directory still exists), the cache pinned it for ever, and every click
+             * (In:, keys, File) went to a dead session: `In: off` never turned ON. So for the first PCHQ_BV_SETTLE_S seconds the cache is re-checked every
+             * PCHQ_BV_RECHECK_S seconds and follows the ledger when it now names another live session. Cost: at most 24 popen of ledger_peers per window life. */
+            static time_t t_first = 0, t_check = 0; time_t tnow = time(NULL); if (!t_first) t_first = tnow;
+            int recheck = bv_cache[0] && tnow - t_first < PCHQ_BV_SETTLE_S && tnow - t_check >= PCHQ_BV_RECHECK_S;
+            if (bv_cache[0] && !recheck && stat(bv_cache, &cst) == 0 && S_ISDIR(cst.st_mode)) {
                 snprintf(bv, sizeof(bv), "%s", bv_cache);
                 have = 1;
             } else {
+                if (recheck) t_check = tnow;
                 have = find_board_session(house, host_id, bv, sizeof(bv));
-                snprintf(bv_cache, sizeof(bv_cache), "%s", have ? bv : "");
+                if (have || !recheck) snprintf(bv_cache, sizeof(bv_cache), "%s", have ? bv : "");
+                else { snprintf(bv, sizeof(bv), "%s", bv_cache); have = 1; }
             }
 #endif
         }
@@ -787,6 +800,18 @@ int main(int argc, char **argv) {
             snprintf(h2, sizeof(h2), "%s/pieces/keyboard/history.txt", bv);
         }
         int interact = have && file_has_nonzero(typing);
+#if !defined(_WIN32) && !defined(PCHQ_NO_ESC_FIRST)
+        {   /* D117 (2026-11-22): ESC BACKS OUT ONE LEVEL on every board of this projector (owner 2026-11-05; petslike_core publishes it for its boards): while the xelector holds a possession, publish
+             * <board>/state/esc_first.txt = 57 ('9', the release key) ONCE per possession; khtpm_core_render sends it for the next Esc and deletes the file, so the first Esc releases, the second leaves In.
+             * Once per possession (last_pub) so a release in flight never re-arms a second 9 (which would possess again). */
+            static char last_pub[64] = ""; char xp[PATH_MAX], poss[64] = "", ef[PATH_MAX];
+            snprintf(xp, sizeof xp, "%s/pieces/xelector_01/state.txt", host_root(house, host_id)); read_kv(xp, "possessed_id", poss, sizeof poss);
+            int held = interact && poss[0] && strcmp(poss, "none") != 0;
+            snprintf(ef, sizeof ef, "%s/state/esc_first.txt", pkg);
+            if (held && strcmp(last_pub, poss) != 0) { FILE *ew = fopen(ef, "w"); if (ew) { fputs("57\n", ew); fclose(ew); } snprintf(last_pub, sizeof last_pub, "%s", poss); }
+            else if (!held) { if (last_pub[0]) remove(ef); last_pub[0] = '\0'; }
+        }
+#endif
 
         /* board-viewer's own config (same keys run_pchq_board_mode read
          * via pchq_read_config_kv) - live under @.apps/<host>/ */

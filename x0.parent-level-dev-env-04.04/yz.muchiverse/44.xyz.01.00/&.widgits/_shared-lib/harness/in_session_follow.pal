@@ -1,0 +1,4 @@
+# in_session_follow.pal - pal harness for cases/in_session_follow.pdl (the board window follows its OWN engine session so In: turns ON). Read results/in_session_follow.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/in_session_follow.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/in_session_follow.pdl
+halt

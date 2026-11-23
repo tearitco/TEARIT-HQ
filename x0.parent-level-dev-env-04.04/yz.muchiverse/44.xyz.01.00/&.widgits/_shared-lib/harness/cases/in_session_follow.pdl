@@ -1,0 +1,93 @@
+# in_session_follow (D117, 2026-11-22): the BIG BUG "In: off never turns ON" in the Voxel, Robot Trap Auto and Teario windows.
+# Root cause (measured live): the shared board projector (@.apps/piececraft-hq/ops/pchq_board_projector.c) starts BEFORE its own engine session registers in the ledger; the ledger then still names the latest
+# EARLIER live session of the same project (a leaked one from a previous take, directory still present); the projector cached that dir for ever, so In:, keys and File went to the dead session.
+# Fix: for the first 240 s the cache is re-checked every 10 s and follows the ledger. Scratch house, real projector compiled from source, real ledger_peers.
+# Method: ledger row for an OLD live session -> projector names it in ui.txt; a NEW row for the same project (the engine registering) -> ui.txt must name the NEW one. NEGATIVE control: the same source with the settle window
+# set to 0 (the old behaviour) keeps the old session. The In: click action must write the toggle key to the session ui.txt names.
+RESULTS | ../results/in_session_follow.txt
+ENV | LC_ALL | C
+
+CASE    | follow
+SCRATCH |
+RUN     | gcc | -std=c11 | -O2 | -w | -o | $T/proj_new | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-compiles-from-source
+RUN     | sed | -i | s/define PCHQ_BV_SETTLE_S 240/define PCHQ_BV_SETTLE_S 0/ | $T/src/proj.c
+RUN     | gcc | -std=c11 | -O2 | -w | -DPCHQ_BV_SETTLE_S=0 | -o | $T/proj_old | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | mutant-with-no-settle-window-compiles
+MKDIR   | &.widgits/board-viewer/ops/+x
+COPY    | &.widgits/board-viewer/ops/+x/ledger_peers.+x | &.widgits/board-viewer/ops/+x/ledger_peers.+x
+MKDIR   | @.apps/vx-pchq/pieces/system
+MKDIR   | default/home/runtime
+MKDIR   | s_old
+MKDIR   | s_new
+SPAWN   | P1 | sleep | 600
+SPAWN   | P2 | sleep | 600
+WRITE   | default/home/runtime/ledger.txt | 2026-11-22T10:00:00\pONLINE\pwidget\pboard-viewer:vx-pchq\p$T/s_old\p$P1\pBoard Viewer\ppieces/system/bv_state.txt\n
+MKDIR   | pkgA/state
+MKDIR   | pkgB/state
+SPAWN   | NEWP | $T/proj_new | $T | $T/pkgA | vx-pchq
+WAIT_HAS | pkgA/state/ui.txt | bv_session=$T/s_old | 20000 | the-projector-first-names-the-OLD-live-session
+SPAWN   | OLDP | $T/proj_old | $T | $T/pkgB | vx-pchq
+WAIT_HAS | pkgB/state/ui.txt | bv_session=$T/s_old | 20000 | mutant-also-names-the-old-session-first
+APPEND  | default/home/runtime/ledger.txt | 2026-11-22T10:00:30\pONLINE\pwidget\pboard-viewer:vx-pchq\p$T/s_new\p$P2\pBoard Viewer\ppieces/system/bv_state.txt\n
+WAIT_HAS | pkgA/state/ui.txt | bv_session=$T/s_new | 40000 | FIXED-the-projector-follows-the-ledger-to-the-NEW-engine-session
+EXPECT_LACKS | pkgA/state/ui.txt | s_old | the-fixed-projector-no-longer-names-the-old-session
+SLEEP   | 15000
+EXPECT_HAS   | pkgB/state/ui.txt | bv_session=$T/s_old | NEGATIVE-the-mutant-(old-behaviour)-stays-on-the-dead-session-after-15-s
+EXPECT_LACKS | pkgB/state/ui.txt | s_new | NEGATIVE-the-mutant-never-names-the-new-session
+CLEAN   |
+
+CASE    | click
+SCRATCH |
+MKDIR   | bv/pieces/apps/player_app
+MKDIR   | bv/pieces/keyboard
+MKDIR   | bv/pieces/display
+RUN     | sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
+EXPECT_EXIT | 0 | the-In-click-action-runs
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | In-click-while-off-writes-the-engage-key-13-to-the-bound-session
+EXPECT_HAS  | bv/pieces/apps/player_app/interact_relay.txt | 13 | and-the-relay-line-13
+WRITE   | bv/pieces/display/active_gui_is_typing.txt | 1
+RUN     | sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | In-click-while-ON-writes-Esc-27-(the-way-out)
+CLEAN   |
+
+CASE    | wiring
+EXPECT_HAS | $HOUSE/@.apps/vox/board/pchq-board.xhtpm | pchq_board_action.sh | vox-tb-in-calls-the-shared-action
+EXPECT_HAS | $HOUSE/@.apps/rta-board/board/pchq-board.xhtpm | pchq_board_action.sh | rta-tb-in-calls-the-shared-action
+EXPECT_HAS | $HOUSE/@.apps/teario-play/board/pchq-board.xhtpm | pchq_board_action.sh | teario-play-tb-in-calls-the-shared-action
+EXPECT_HAS | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c | PCHQ_BV_SETTLE_S | the-settle-window-is-in-the-source
+
+CASE    | esc-first
+SCRATCH |
+RUN     | gcc | -std=c11 | -O2 | -w | -o | $T/proj_new | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | projector-compiles
+RUN     | gcc | -std=c11 | -O2 | -w | -DPCHQ_NO_ESC_FIRST | -o | $T/proj_old | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_projector.c
+EXPECT_EXIT | 0 | mutant-without-esc-first-compiles
+MKDIR   | &.widgits/board-viewer/ops/+x
+COPY    | &.widgits/board-viewer/ops/+x/ledger_peers.+x | &.widgits/board-viewer/ops/+x/ledger_peers.+x
+MKDIR   | @.apps/vx-pchq/pieces/system
+MKDIR   | @.apps/vx-pchq/pieces/xelector_01
+MKDIR   | default/home/runtime
+MKDIR   | s1/pieces/display
+MKDIR   | pkgA/state
+MKDIR   | pkgB/state
+SPAWN   | P1 | sleep | 600
+WRITE   | default/home/runtime/ledger.txt | 2026-11-22T10:00:00\pONLINE\pwidget\pboard-viewer:vx-pchq\p$T/s1\p$P1\pBoard Viewer\ppieces/system/bv_state.txt\n
+WRITE   | s1/pieces/display/active_gui_is_typing.txt | 1
+WRITE   | @.apps/vx-pchq/pieces/xelector_01/state.txt | possessed_id=People1\npos_x=3\n
+SPAWN   | NEWP | $T/proj_new | $T | $T/pkgA | vx-pchq
+SPAWN   | OLDP | $T/proj_old | $T | $T/pkgB | vx-pchq
+WAIT_HAS | pkgA/state/esc_first.txt | 57 | 20000 | In-ON-and-a-possession-published-esc_first-57-(Esc-releases-first)
+SLEEP   | 3000
+EXPECT_NOFILE | pkgB/state/esc_first.txt | NEGATIVE-the-mutant-without-the-publisher-writes-none
+RUN     | rm | $T/pkgA/state/esc_first.txt
+SLEEP   | 3000
+EXPECT_NOFILE | pkgA/state/esc_first.txt | the-file-is-published-ONCE-per-possession-(the-window-deletes-it-after-sending-57)
+WRITE   | @.apps/vx-pchq/pieces/xelector_01/state.txt | possessed_id=none\npos_x=3\n
+SLEEP   | 3000
+WRITE   | @.apps/vx-pchq/pieces/xelector_01/state.txt | possessed_id=Joe\npos_x=3\n
+WAIT_HAS | pkgA/state/esc_first.txt | 57 | 20000 | a-NEW-possession-publishes-again
+WRITE   | s1/pieces/display/active_gui_is_typing.txt | 0
+SLEEP   | 3000
+EXPECT_NOFILE | pkgA/state/esc_first.txt | In-off-removes-the-offer
+CLEAN   |

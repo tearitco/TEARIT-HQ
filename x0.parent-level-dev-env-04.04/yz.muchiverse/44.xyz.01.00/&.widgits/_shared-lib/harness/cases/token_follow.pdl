@@ -1,0 +1,30 @@
+# token_follow (D118, 2026-11-22): while a desk token (a row of the shown desk events.txt, moved by the game after forwarded keys) is possessed, the xelector (outline cube, HUD pos) must FOLLOW it.
+# Real engine compiled from source on a scratch project (bv_token_follow_test.c). POSITIVE = the engine; NEGATIVE = the same source with -DBV_NO_TOKEN_FOLLOW (the old behaviour), which must FAIL the follow checks.
+RESULTS | ../results/token_follow.txt
+CASE    | build
+SCRATCH |
+MKDIR | g1
+MKDIR | g2
+RUN | gcc | -O2 | -w | -DBV_HAVE_GPU | -fopenmp | -o | $T/engine_real | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c | $HOUSE/&.widgits/board-viewer/ops/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
+EXPECT_EXIT | 0 | engine-builds-from-source
+RUN | gcc | -O2 | -w | -DBV_HAVE_GPU | -DBV_NO_TOKEN_FOLLOW | -fopenmp | -o | $T/engine_old | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c | $HOUSE/&.widgits/board-viewer/ops/bv_gpu_raymarch.c | -lm | -lEGL | -lGLESv2
+EXPECT_EXIT | 0 | negative-fixture-engine-builds
+RUN | gcc | -O2 | -w | -o | $T/ttest | $HOUSE/&.widgits/board-viewer/ops/bv_token_follow_test.c
+EXPECT_EXIT | 0 | test-program-builds
+CASE    | positive-real-engine
+ENV | BV3D_BIN | $T/engine_real
+RUN | $T/ttest | $T/g1
+EXPECT_EXIT | 0 | every-check-holds
+EXPECT_OUT | ok  : possessed token moved to 3,11: the xelector state follows it | xelector-state-follows
+EXPECT_OUT | ok  : the frame (HUD pos, outline cube) shows the xelector on 3,11 | frame-shows-it
+EXPECT_OUT | ok  : the HUD source (bv_state selector) follows too: pos 3,11 | hud-pos-follows
+EXPECT_OUT | ok  : the token moves again to 5,11: the xelector follows again | follows-again
+EXPECT_OUT | ok  : possessed_id=none: the token does not pull the xelector | none-does-not-follow
+EXPECT_OUT | ok  : an ENGINE piece named joe is not a desk token: the piece rules own it | engine-piece-untouched
+EXPECT_OUT_LACKS | FAIL | no-failed-check
+CASE    | negative-engine-without-follow
+ENV | BV3D_BIN | $T/engine_old
+RUN | $T/ttest | $T/g2
+EXPECT_EXIT | 1 | the-test-fails-on-the-old-engine
+EXPECT_OUT | FAIL: possessed token moved to 3,11: the xelector state follows it | follow-check-fails-with-the-old-engine
+CLEAN |
