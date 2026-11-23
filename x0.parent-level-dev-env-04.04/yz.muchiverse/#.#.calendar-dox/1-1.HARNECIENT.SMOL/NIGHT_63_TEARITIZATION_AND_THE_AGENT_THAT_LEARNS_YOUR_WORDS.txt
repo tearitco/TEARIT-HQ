@@ -1,0 +1,237 @@
+# NIGHT 63 — Tearitization, and the Agent That Learns Your Words
+# ====================================================================
+# Title: "NIGHT 63 — Tearitization, and the Agent That Learns Your Words"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-23. Part one: the new hai work, which is the teach loop, eight levers, starter packs, agents with their own folders and sessions and personalities, and the why line under every answer. What was measured and what is still open. Part two: Tearitization, the owner's name for a Civilization-style game for the SNES, rebuilt with events, played by several agents and a human, with world generation, in two dimensions and in three. It is a design. Nothing in part two is built. Ends with what is not proven.
+# Long-form: everything called RAN was run and seen and is written down in the BOOK or the hai repo. Everything called DESIGN says design. No unpublished lore is used.
+# Companion documents: NIGHT 62; XO nov-23 extensive report v1 and report v2; BOOK 16.game/TEARITIZATION-FORWARD-GUIDANCE-2026-11-23; BOOK 16.game/presentations/HAI-RESULTS-VS-DESIRE-2026-11-23 (sections 11 and 12); hai repo books 22 and 23; BOOK 17.ai META-STRATEGY-ATTRITION-HARNESS-TOOL-USE-AND-CHEAP-BUILDING-2026-11-22; decision log D87, D92, D93, D101, D115, D117 to D120.
+
+**THE NARRATOR:** Last class was night sixty-two, the proof that had to be played. It said a playable thing is proved by playing it, with the real window, the keys, and the picture opened and looked at. Tonight builds on that, and everything it says is either marked as run, or marked as design.
+
+**MAXINE:** Two parts, then?
+
+**THE NARRATOR:** Two parts. First, the new work on hai, the little chat that learns. Second, a name the owner gave today for what comes next: Tearitization.
+
+---
+
+**THE NARRATOR:** Part one. Maxine, what was wrong with hai this morning, in the owner's words?
+
+**MAXINE:** He said that if it does not learn, it is a dud. The chat showed a canned reply, and when he used a word it did not know, nothing happened.
+
+**TOMO:** So the first change was the teach loop. Now, when you type a sentence with a word hai does not know, it stops and asks, what does it mean to you? Your next line becomes the meaning. If you type skip, it lets it go.
+
+**RAHWEH:** And that is recorded. Not in memory. A row in a ledger.
+
+**TOMO:** Right. This is the house rule about ghost data. A fact lives in one place, an append-only ledger. State is rebuilt by replaying it. A file sitting beside the ledger teaches the chat nothing.
+
+**MAXINE:** Asking is one lever. The owner wanted many.
+
+**TOMO:** Eight in all. Ask is automatic. Then slash teach, word equals meaning, which teaches without waiting to be asked. Slash alias, which makes a new word trigger a behaviour hai already has, like greeting. Slash say, which makes hai answer with your own sentence. Slash mark, which makes a word count double. Slash forget, which removes the meaning, the answer, the alias and the mark. Slash pack, which loads a starter pack in one command. And slash grade, zero to four, which moves the weight of the last reply.
+
+**RAHWEH:** Each one is a row. Each one can be undone by another row. That is the attrition idea at toy scale. The person is the reviewer, and the review is cheap.
+
+**THE NARRATOR:** Give the confidence numbers, because they are worked, not guessed.
+
+**TOMO:** Say a taught word is house. The sentence has one content word, house. A fresh weight is zero point five, so the confidence is fifty percent. After a grade of four the weight is five sixths, so eighty three percent. After you mark the word, the hit counts double, so one hundred, capped. These numbers are in the test case, so they can fail.
+
+**MAXINE:** What is a starter pack?
+
+**TOMO:** A text file of rows, define, alias, say. The shipped pack is called lyfedesk. It has nine definitions, house, driving, confidence, harness, ledger, hai, harnecient, entity and attention, and four aliases. A pack is data. You add one by writing a file, never by editing C.
+
+---
+
+**THE NARRATOR:** Now the honest part. What was measured?
+
+**RAHWEH:** Two numbers from the lab. After the starter pack, twenty out of twenty differently worded sentences using a taught word were answered from the taught meaning. And zero out of twenty unrelated sentences were. So it fires when it should and stays quiet when it should.
+
+**MAXINE:** That sounds great.
+
+**RAHWEH:** And then the other number. Only one out of eight inflected forms was recognised. Houses, driven, harnesses. Recognition is exact whole word matching. The same wall the task router has.
+
+**TOMO:** So the right sentence is: hai learns words. It does not yet learn language. And the sentences in that test were written by an agent, not by a person. The decision grade test is the twenty sentences the owner will type himself, and that has not run.
+
+**THE NARRATOR:** Label that for the record.
+
+**RAHWEH:** Twenty of twenty and zero of twenty are measured, in the lab. One of eight is measured. The owner's twenty sentences are not proven.
+
+---
+
+**THE NARRATOR:** Next, the owner's end goal. Different agents, with different sessions, corpuses and personalities.
+
+**MAXINE:** And that now exists?
+
+**TOMO:** In the real window, yes, run and photographed. An agent is a folder. Inside it is its own copy of the corpus and the voice: concepts, replies, rules, seeds, stopwords, and packs. And a small card file with its name. The original agent, called hai, keeps its old paths, so nothing older broke.
+
+**RAHWEH:** Each agent has its own sessions, and a session is a ledger. That ledger is the agent's whole mind. What it was taught, what it was graded on, what it said.
+
+**MAXINE:** And a personality?
+
+**TOMO:** A personality is a data preset, applied once at birth. Some rows change numbers in the rules. Some rows change the answers. Some rows load a starter pack. There are three. Curious asks about everything and marks count triple. Terse gives one option and says hi, with a full stop. Scholar is born already knowing the glossary and says, my notes say.
+
+**MAXINE:** Applied once. So after that it is just files I can edit?
+
+**TOMO:** Exactly. After birth the files are plain data.
+
+**THE NARRATOR:** And a new session?
+
+**TOMO:** Starts empty, but it inherits what you taught it. Definitions, aliases, answers, marks, forgets, and your replies to its questions. It does not inherit grades or turns.
+
+**RAHWEH:** The sidebar lists the agents, then the sessions of the active agent, like a chat list. Commands are slash agent new, with a name and a personality, slash agent delete, slash session new. Chat is coloured. You in blue, hai in green, the levers muted.
+
+---
+
+**THE NARRATOR:** Maxine, you asked in the last class what the real window finds that the tests do not. Here is a fresh answer.
+
+**RAHWEH:** A click on new session fires twice inside one second. Both runs picked the same session name. The second run opened that file for writing while the first was still reading from it. The file was truncated. The new session lost everything it was supposed to inherit.
+
+**MAXINE:** And the headless test passed.
+
+**TOMO:** It did, because it clicked once. The fix: a session file is never overwritten, a suffix is added, and new on an empty session does nothing. And now there is a case for the quick double click.
+
+**THE NARRATOR:** That is the proof standard from last time, working.
+
+---
+
+**THE NARRATOR:** Two more changes landed after that. Tell me about the why line.
+
+**TOMO:** Every reply now records why it was decided. Which concept won, which words matched, what the weight was. Two commands dump it. One lists everything the agent knows, the bank. One explains the last answer. The window shows a why line under every answer, and a Bank view.
+
+**RAHWEH:** That is the validator's receipt. A person can audit any answer in one glance.
+
+**MAXINE:** And the new layout?
+
+**TOMO:** Three columns, like the house editor. Sessions on the left, the chat or the Bank in the middle, agents on the right, with a button for a new one. There are hide buttons and a bar of toggles.
+
+**RAHWEH:** And one lesson from that commit. In the test runner, a check row with the wrong number of fields is silently ignored. A test that cannot fail is worse than no test. The fix was to count check rows against pass lines.
+
+**THE NARRATOR:** I should say plainly. I did not re-run those cases for this class. The counts come from the written books and the commit messages.
+
+---
+
+**THE NARRATOR:** What is still open on hai?
+
+**TOMO:** A list. Entity binding, meaning an agent tied to a house pet by its uid, is design only. The first step would be one row in the agent card. Knowledge shared across sessions, because today a new session gets a snapshot. Inflections. The web version has no teach loop and no agents. The teach logic is written in C, not as event pages, which breaks decision ninety two, and it is a labelled stopgap with a removal condition. Low confidence answers are still stated, not asked. The tool call lever, slash act, is not built. And the ledgers have no size cap yet.
+
+**RAHWEH:** Say the removal condition again. It matters.
+
+**TOMO:** When the finite state table can carry the ask and store actions as rows, the C goes.
+
+---
+
+**THE NARRATOR:** Why does all this belong in a class about strategy?
+
+**RAHWEH:** Because of the loss. The harness verdict is the loss. A model describes in one fixed line and never sets a number. Promotion is reviewed by a person, never automatic. And only rows the harness has verified are training data.
+
+**MAXINE:** And hai?
+
+**RAHWEH:** Hai is the smallest working copy of that. The grade, the mark and the forget are the human verdicts, each a row. Those rows are what training data is made of. What it knows is rows you can read, not weights you cannot. And an agent is a folder, so a weak personality can be deleted without touching another one.
+
+---
+
+**THE NARRATOR:** Part two. Tearitization. Tomo, what did the owner ask for?
+
+**TOMO:** His words, as recorded: a Civ SNES style clone, that is, Sid Meier's Civilization as it was on the Super Nintendo, made using events, playable by multiple agents and a human, with world generation, and working in both two dimensions and three.
+
+**MAXINE:** And Tearitization is the name for rebuilding a known game shape the house way.
+
+**TOMO:** Yes. Every rule an op. The ledger the only authority. The pages shown in the Blueprintz editor. A harness that can fail.
+
+**THE NARRATOR:** Two things first. What about the existing civ app?
+
+**RAHWEH:** The owner says the app called civ rpgce is likely a false start. So guidance is not built on it. Its design document from October has good ideas. Settlers, huts that give one line of text once per settler, founding a city that leaves a marker, fog of war kept per unit. But it was a pets style skin, and its rules would live in C hooks, which decision ninety two forbids. We keep the ideas and leave the code. There is also an older text game plan called civ txt. Read, not run, and it predates the rules.
+
+**THE NARRATOR:** And the art?
+
+**TOMO:** Real, original art only. Faces from RPG Maker and art from the SNES game are not ours. We copy the shape of the rules, never the pictures or the text.
+
+---
+
+**THE NARRATOR:** How does a Civilization turn loop sit on what already works?
+
+**TOMO:** Look at the shape every rule has now, in Teario, the robot trap game, and the voxel game. Five parts. A ledger row is the only authority. One op per rule, with a describe flag. An event page in Blueprintz calls it. The numbers live in rule rows, not in code. And a harness case with sabotages that must turn it red.
+
+**RAHWEH:** And turns already exist. In the voxel game and the robot trap game, one verb is one turn. There are turn rows. Nothing runs on a clock.
+
+**MAXINE:** So next turn is a verb.
+
+**TOMO:** Next turn is the only thing that advances time. Units, cities, tiles, technology and gold are folds of the ledger. Move, found, research and build are intent rows, written after a rule checks them. Income, growth and the result of a hut are derived rows, regenerated on replay.
+
+**RAHWEH:** A hut is a good example. The result comes from the seed and the tile, so replaying the ledger gives the same answer. Once per unit.
+
+**TOMO:** And fog is a projection per player. Derived by a named verb, safe to delete, regenerated byte for byte.
+
+**THE NARRATOR:** All of this is design. Say so.
+
+**TOMO:** All of this is design.
+
+---
+
+**THE NARRATOR:** Now the players. How does a human play?
+
+**RAHWEH:** The way last class insisted. In turned ON, possess the piece, and from then on only keys. The pieces exist. The desk token is a row of the events file. A key forward writes to a relay, and a tiny tailer turns each key into one op call, exactly as the voxel game does with a key table in data. The cursor follows a moved token, and the screen reads one snapshot per frame.
+
+**MAXINE:** And the agents?
+
+**TOMO:** Proposed: an AI player is a hai style agent. A folder with a personality preset, builder, warlike, scholar, as rule rows. Weights for expand, research and defend. And a ledger of what it did and what it was graded on.
+
+**RAHWEH:** And a seat is a row. The Teropoly rule: a driver change is a row. Seat, civ two, human. Or seat, civ two, agent, with its name. Changing who plays is a new row, never an edit.
+
+**MAXINE:** What does an agent do on its turn? Does a model decide?
+
+**RAHWEH:** No. A small policy lists the legal moves. An op computes that list. It scores them with weights from rows, picks one, and a validator decides if it is legal and writes the row. If a model is used at all, it only describes, in one fixed line. It never sets a number and never writes a row.
+
+**THE NARRATOR:** And which model, if any?
+
+**TOMO:** First tier, none. Weights and a list of legal moves. Optionally, second tier, the local network model on the Mac, through the house contract. Free models only. Never the paid or the free quota services in a test. Never print a key. And a harness case must not touch the network.
+
+---
+
+**THE NARRATOR:** World generation.
+
+**TOMO:** A seeded op writes the world as ledger rows and a desk picture. The voxel game already has a terrain file as configuration. The robot trap game has a painter driven by kind rows. A generator op for the new game would take a seed, a width and a height, and use integer maths only. Same seed, same bytes. That is a test, with a sabotage that changes one tile and must turn red.
+
+**MAXINE:** And a shared map that many players change?
+
+**TOMO:** The trunk and branch standard. One base world, each player's discoveries as branch rows, never a copy per player. But its op is not built yet. That has to be said before anyone relies on it.
+
+**THE NARRATOR:** And two dimensions and three?
+
+**RAHWEH:** One scene description, two projections, the owner's parity rule. The board reads the desk files. Key zero toggles. Heights come from shade rows. And the lesson of decision one nineteen: read the desk once per frame, so the cursor and the drawn piece cannot disagree.
+
+**TOMO:** A risk, and it is not proven either way: a flat tile game may be hard to read in three dimensions. So the first slice is pictures only, judged by eye.
+
+---
+
+**THE NARRATOR:** What must the owner decide?
+
+**TOMO:** Eight things, each with a default. One, the map size. Sixteen by sixteen first. Two, turn based or simultaneous. Default turn based. Three, how many agent seats. One human and one agent first. Four, which free model, if any. Default none for the first five slices. Five, the cost of the ledger. Six, the art. Seven, where it lives. A new app, not civ rpgce. Eight, how far toward the civilization end state, with laws, cops and hiring, which have no design yet.
+
+**RAHWEH:** Number five matters most. Verifying the voxel ledger was measured once: about four tenths of a second at one thousand rows, and nine point nine seconds at five thousand. Five times the rows, about twenty five times the time. It grows with the square. A world with many units passes five thousand rows quickly. A checkpoint is a prerequisite and it is not built.
+
+**MAXINE:** And the plan?
+
+**TOMO:** Slices, each with a check that can fail. Slice zero, a sixteen by sixteen seeded map in two and three dimensions. Slice one, a settler moves and founds a city, as ledger rows through event pages; a founding on water must be refused. Slice two, two seats taking turns, the human by keys, one agent. Slice three, fog per player. Slice four, technology and gold. Slice five, world variety, with a reachability check. Slice six, agent personalities.
+
+**RAHWEH:** And each slice has to meet last class's standard. Pages shown in Blueprintz, In turned ON, keys only, the position read in every frame.
+
+**THE NARRATOR:** Risks?
+
+**TOMO:** The ledger cost. Two writers on one ledger, so one entry point and turns. Model quota. Art licences. Three dimensional readability. Rules sliding into C. And the weak machine, so one niced job at a time.
+
+---
+
+**THE NARRATOR:** The closing segment. What is not proven?
+
+**RAHWEH:** Everything in part two. Nothing in Tearitization is built. It is not proven that a Civilization rule set fits the five part shape without a hidden native rule. It is not proven that the three dimensional view is readable. It is not proven that an agent with weights plays a game worth watching. The checkpointed ledger is not built. The old civ txt app is not known to run. No art licence is settled.
+
+**TOMO:** On hai, the counts for the newest layout and the why line come from commit messages, not from a run for this class. The owner's twenty sentences have not been run. Inflections remain open.
+
+**MAXINE:** And what should I carry out of tonight?
+
+**RAHWEH:** Teach the agent by rows, and every lever is a verdict. An agent is a folder. A seat is a row. The model describes. The harness decides. A person promotes.
+
+**TOMO:** And before any build, the owner answers eight questions.
+
+**THE NARRATOR:** That is the class. The next one starts from the owner's answers.
