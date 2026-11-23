@@ -130,6 +130,9 @@ EXPECT_EXIT | 1 | no-daemon-before-Start
 RUN | $T/ld/eden_game/game/conductor/ops/+x/eden_op.+x | $T/ld/eden_game/game/conductor | daemon-start
 EXPECT_EXIT | 1 | daemon-start-before-Setup-refused
 EXPECT_NOFILE | ld/eden_game/eden_daemon.pid | no-pid-file-after-the-refusal
+# the daemon fires a reminder at most once per 120 s of real time and never two within 12 s (aa93e132a, the CPU guard fix): this case waits 8 s for day 2, so the budget is opened for THIS run only (the gap itself is covered by the lc_clock cases)
+ENV | LC_CLOCK_MIN_FIRE_GAP_MS | 0
+ENV | LC_CLOCK_MIN_SPACING_MS | 0
 RUN | /bin/sh | -c | exec sh "$0/ctl.sh" begin | $T/ld/pals/eden_button | $T/ld
 EXPECT_EXIT | 0 | Start-game-row-runs
 RUN | /usr/bin/cat | $T/ld/eden_game/eden_daemon.pid
@@ -148,6 +151,9 @@ RUN | /usr/bin/cat | $T/ld/eden_game/eden_daemon.pid
 EXPECT_OUT_IS | $dp | pid-file-unchanged
 RUN | /usr/bin/pgrep | -c | -f | $T/ld/eden_game/lc[.][+]x
 EXPECT_OUT_IS | 1 | still-exactly-one-daemon-process
+# the daemon fires a reminder at most once per 120 s of real time and never two within 12 s (aa93e132a, the CPU guard fix): this case waits 8 s for day 2, so the budget is opened for THIS run only (the gap itself is covered by the lc_clock cases)
+ENV | LC_CLOCK_MIN_FIRE_GAP_MS | 0
+ENV | LC_CLOCK_MIN_SPACING_MS | 0
 RUN | /bin/sh | -c | exec sh "$0/ctl.sh" begin | $T/ld/pals/eden_button | $T/ld
 RUN | /usr/bin/pgrep | -c | -f | $T/ld/eden_game/lc[.][+]x
 EXPECT_OUT_IS | 1 | Start-game-twice-still-one-daemon

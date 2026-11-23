@@ -338,7 +338,12 @@ ENV | LC_CLOCK_NO_POPUP | 1
 ENV | LC_CLOCK_EVENT_RUNNER | $T/&.widgits/digipet/ops/+x/event_page_op.+x
 RUN | $T/lc.+x | $T | new | g1
 RUN | $T/lc.+x | $T | reminder-add | g1 | 86400000 | common:day_tick |  | every:1day
-RUN | $T/lc.+x | $T | cmd | g1 | advance | 30d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1 | ok
 EXPECT_OUT_IS | 30 | 30-day-fast-forward-ledgers-exactly-30-ok-ticks

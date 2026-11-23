@@ -154,7 +154,12 @@ CASE | q019-WORKER-FILE-against-the-real-original
 SCRATCH |
 COPY | &.widgits/quest-pilot/q019-phrases/ops/phrase_lint.c | phrase_lint.c
 RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/phrase_lint.+x | $T/phrase_lint.c
-COPY | &.widgits/eden/conductor/phrases.pdl | orig.pdl
+# the "real original" is the conductor phrases file BEFORE the worker rows were adopted into it (468ebc4aa merged them: the live file now equals the worker file, so the judge saw 0 new rows and failed farm/questions). It is read from git: the parent of that commit.
+RUN | git | -C | $HOUSE | archive | -o | $T/orig.tar | 468ebc4aa^ | &.widgits/eden/conductor/phrases.pdl
+EXPECT_EXIT | 0 | original-before-adoption-archived
+MKDIR | origx
+RUN | tar | -xf | $T/orig.tar | -C | $T/origx
+RUN | /bin/cp | $T/origx/&.widgits/eden/conductor/phrases.pdl | $T/orig.pdl
 COPY | &.widgits/quest-pilot/q019-phrases/worker/phrases.pdl | cand.pdl
 RUN | $T/phrase_lint.+x | $T/orig.pdl | $T/cand.pdl | 40 | 12 | 8
 EXPECT_EXIT | 0 | worker-file-passes-the-judge

@@ -160,7 +160,12 @@ CAPTURE | total0
 RUN | $T/lc.+x | $T/h1 | reminders
 EXPECT_OUT | common:dsr_day_tick | schedule-row-points-at-common-dsr_day_tick
 EXPECT_OUT | every:1day | schedule-row-repeats-every-1day
-RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 30d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T/h1 | step | 0
 RUN | $T/lc.+x | $T/h1 | sched-count | r1
 EXPECT_OUT_IS | 30 | fast-forward-30-days-fires-exactly-30-schedule-rows
@@ -306,11 +311,26 @@ SUMTREE | day0b | h2/dsr_game
 EXPECT_EQ | $day0a | $day0b | same-seed-same-start-tree
 SUMTREE | day0c | h3/dsr_game
 EXPECT_NE | $day0a | $day0c | different-seed-different-start-tree-seed-variable
-RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 30d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 12d
 RUN | $T/lc.+x | $T/h1 | step | 0
-RUN | $T/lc.+x | $T/h2 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 6d
+RUN | $T/lc.+x | $T/h1 | step | 0
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/h2 | cmd | g1 | advance | 12d
 RUN | $T/lc.+x | $T/h2 | step | 0
-RUN | $T/lc.+x | $T/h3 | cmd | g1 | advance | 30d
+RUN | $T/lc.+x | $T/h2 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h2 | step | 0
+RUN | $T/lc.+x | $T/h2 | cmd | g1 | advance | 6d
+RUN | $T/lc.+x | $T/h2 | step | 0
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/h3 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h3 | step | 0
+RUN | $T/lc.+x | $T/h3 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h3 | step | 0
+RUN | $T/lc.+x | $T/h3 | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T/h3 | step | 0
 RUN | $T/lc.+x | $T/h4 | cmd | g1 | advance | 1d
 RUN | $T/lc.+x | $T/h4 | step | 0
@@ -408,7 +428,12 @@ COPY    | &.widgits/dsr-sim/scenario.pdl | hR/scenario.pdl
 RUN | $T/gen | $T/hR/scenario.pdl | $T/hR/dsr_game | --seed | 1789
 RUN | $T/lc.+x | $T/hR | new | g1
 RUN | $T/lc.+x | $T/hR | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
-RUN | $T/lc.+x | $T/hU | cmd | g1 | advance | 30d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/hU | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/hU | step | 0
+RUN | $T/lc.+x | $T/hU | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/hU | step | 0
+RUN | $T/lc.+x | $T/hU | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T/hU | step | 0
 SUMTREE | uninterrupted | hU/dsr_game
 RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 12d
@@ -440,7 +465,10 @@ EXPECT_OUT_IS | 12 | restored-schedule-ledger-has-12-rows
 RUN | $T/lc.+x | $T/hR | step | 0
 RUN | $T/q | $T/hR/dsr_game | get | dsr_world | day
 EXPECT_OUT_IS | 12 | stepping-after-the-restore-applies-no-tick-twice
-RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 18d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 18-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/hR | step | 0
+RUN | $T/lc.+x | $T/hR | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T/hR | step | 0
 RUN | $T/q | $T/hR/dsr_game | get | dsr_world | day
 EXPECT_OUT_IS | 30 | continued-to-day-30
@@ -469,7 +497,12 @@ RUN | $T/lc.+x | $T/h1 | new | g1
 RUN | $T/lc.+x | $T/h1 | reminder-add | g1 | 86400000 | common:dsr_day_tick |  | every:1day
 RUN | $T/q | $T/h1/dsr_game | money
 CAPTURE | t0
-RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 30d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T/h1 | step | 0
+RUN | $T/lc.+x | $T/h1 | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T/h1 | step | 0
 RUN | $T/q | $T/h1/dsr_game | money
 CAPTURE | t30

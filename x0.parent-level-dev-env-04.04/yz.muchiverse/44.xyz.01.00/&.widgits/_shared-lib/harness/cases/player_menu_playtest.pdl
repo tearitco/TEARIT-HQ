@@ -5,6 +5,8 @@ CASE    | player-menu
 SCRATCH |
 COPY    | &.widgits/_shared-lib/harness/ops/+x/player_menu_query_op.+x | bin/pmq
 MKDIR   | #.desktop
+# the Player menu rows are DATA since 2026-10-21 (player_menu_N_label/_cmd in livedesk_taskbar.pdl): without the file the menu is one Cancel row
+COPY    | #.desktop/livedesk_taskbar.pdl | #.desktop/livedesk_taskbar.pdl
 
 RUN | $T/bin/pmq | $T | cmd | livedesk:play-toggle
 EXPECT_OUT_IS | 1.play: OFF | no-file-play-off

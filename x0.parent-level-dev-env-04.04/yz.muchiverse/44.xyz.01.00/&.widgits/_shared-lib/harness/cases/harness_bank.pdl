@@ -9,14 +9,15 @@ WRITE   | h/bank/demo.behavior.pdl | BEHAVIOR | harness.demo\nKEYWORDS | demo\nC
 WRITE   | b/a.behavior.pdl | BEHAVIOR | demo.a\nKEYWORDS | teleport, door\nSYNONYM | warp | 0.7\nSENTENCE | Moves the player between maps.\nSLOT | 0 | POINTS_TO=map-access | WEIGHT=0.90\nWEIGHT | 0.5000\n
 WRITE   | b/b.behavior.pdl | BEHAVIOR | demo.b\nKEYWORDS | restart\nWEIGHT | 0.8000\n
 
-# the tracked seed is never rewritten; live counts go to bank/live/
+# the tracked seed is never rewritten; an ordinary gate run is a DEVELOPER run (2cb5a61e3, bank lanes): update writes bank/dev/, only HARNESS_BANK_LANE=live or bank/lane.txt writes bank/live/ (the lane the AI and games read)
 # update: 3 PASS rows -> reward 3, 1 FAIL -> punish 1, weight (3+1)/(3+1+2) = 0.6667
 RUN | $T/bin/hbank | $T/h/cases/demo.pdl
 EXPECT_OUT_IS | harness.demo reward=3 punish=1 weight=0.6667 | update-counts-and-laplace-weight
-EXPECT_NOFILE | h/bank/live/demo.behavior.pdl.tmp | no-temp-file-left-behind
-EXPECT_HAS | h/bank/live/demo.behavior.pdl | COUNTS \p reward=3 \p punish=1 \p cursor= | counts-written-to-the-sidecar
-EXPECT_HAS | h/bank/live/demo.behavior.pdl | WEIGHT \p 0.6667 | weight-written
-EXPECT_HAS | h/bank/live/demo.behavior.pdl | KEYWORDS \p demo | other-lines-untouched
+EXPECT_NOFILE | h/bank/dev/demo.behavior.pdl.tmp | no-temp-file-left-behind
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | COUNTS \p reward=3 \p punish=1 \p cursor= | counts-written-to-the-sidecar
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | WEIGHT \p 0.6667 | weight-written
+EXPECT_HAS | h/bank/dev/demo.behavior.pdl | KEYWORDS \p demo | other-lines-untouched
+EXPECT_NOFILE | h/bank/live/demo.behavior.pdl | NEGATIVE-a-developer-run-writes-nothing-to-the-live-lane
 
 EXPECT_HAS | h/bank/demo.behavior.pdl | COUNTS \p reward=0 | seed-sidecar-untouched
 # running it again over the same ledger counts nothing twice (append-only cursor)

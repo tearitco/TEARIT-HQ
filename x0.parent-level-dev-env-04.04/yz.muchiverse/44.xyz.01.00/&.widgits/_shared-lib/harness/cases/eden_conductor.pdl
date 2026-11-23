@@ -504,7 +504,10 @@ EXPECT_OUT | every:1day | and-repeats-every-1day
 EXPECT_HAS | game/participants/asa/items.txt | item_seed=5\n | page-setup-granted-asa
 RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | setup
 EXPECT_EXIT | 0 | game2-setup-in-its-own-house
-RUN | $T/lc.+x | $T | cmd | g1 | advance | 20d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 20-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 8d
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1
 EXPECT_OUT_IS | 20 | the-clock-fired-20-ticks
@@ -594,7 +597,12 @@ RUN | /usr/bin/cp | -r | $T/game/conductor | $T/game2/conductor
 WRITE   | game2/conductor/wiring.pdl | WIRING | lc_clock | ../../h2/lc.+x\nWIRING | house | ../../h2\nWIRING | clock | g1\nWIRING | first_ms | 86400000\nWIRING | repeat | every:1day\nWIRING | start_rate | x86400\nWIRING | participants | ../participants\nWIRING | template | participant_template\nWIRING | tree | ..\nWIRING | control_ledger | ../../eden_control_game2.txt
 RUN | $T/game/conductor/ops/+x/eden_op.+x | $T/game/conductor | setup
 RUN | $T/game2/conductor/ops/+x/eden_op.+x | $T/game2/conductor | setup
-RUN | $T/lc.+x | $T | cmd | g1 | advance | 30d
+# the clock catches up at most 12 occurrences per poll (285b13b3d, the rest collapses): a 30-day jump is advanced in chunks of at most 12 days, one step each, so every day still ticks
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 12d
+RUN | $T/lc.+x | $T | step | 0
+RUN | $T/lc.+x | $T | cmd | g1 | advance | 6d
 RUN | $T/lc.+x | $T | step | 0
 RUN | $T/lc.+x | $T | sched-count | r1
 EXPECT_OUT_IS | 30 | 30-day-fast-forward-fires-exactly-30-ticks

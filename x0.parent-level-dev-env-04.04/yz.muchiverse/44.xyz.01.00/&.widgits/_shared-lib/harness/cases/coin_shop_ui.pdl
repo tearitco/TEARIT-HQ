@@ -21,6 +21,10 @@ RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/item_ledger_op.+x | $T/house/@.apps/rpg-edit-hq/books/shop | mint | player | coin.play | 50 | gift
 RUN | /bin/rm | $T/house/@.apps/rpg-edit-hq/books/shop/QUARANTINE
 WRITE | house/@.apps/rpg-edit-hq/books/shop/RELEASE | shop_op\n
+# the editor writes ui.txt only while a window of it exists (viewer_kinds: argv[0] = khtpm_core_render and rpg-edit-hq.xhtpm in the arguments): a stand-in, a copy of tail named so, stands for it (without it the verbs run but no ui.txt is projected: the 16 file-missing failures of 2026-11-22)
+RUN | /bin/cp | /usr/bin/tail | $T/khtpm_core_render
+SPAWN | viewer | $T/khtpm_core_render | -f | /dev/null | rpg-edit-hq.xhtpm
+EXPECT_ALIVE | $viewer | setup.viewer-alive
 
 CASE    | before-any-pick
 RUN | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | fire | lshop | wallet

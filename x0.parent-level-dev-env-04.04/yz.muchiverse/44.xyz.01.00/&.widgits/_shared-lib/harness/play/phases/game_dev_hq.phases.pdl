@@ -13,17 +13,17 @@ UIKEY | canvas_raw | office-picture-path
 
 PHASE | p2_int | INT takes the floor and names the selected person | int, select
 DO | int
-SAY | INT on: Rex | int-on
-UI | interact_label | Rex | int-label-is-the-person
+SAY | INT on: Ivo | int-on
+UI | interact_label | Ivo | int-label-is-the-person
 DO | select | s2
-SAY | selected Pip | select-pip
+SAY | selected Ness | select-pip
 DO | int
 SAY | INT off | int-off
 
 PHASE | p3_talk | the player line and the staff reply land in the chat the sidebar reads | chat, say
 DO | say | hello
 HAS | state/chat.txt | You: hello | player-line
-HAS | state/chat.txt | Pip: heard | staff-reply
+HAS | state/chat.txt | Ness: heard | staff-reply
 UIKEY | chat_0 | chat-row-exported
 
 PHASE | p4_ship | hire, start, assign, advance three times, ship | hire, ship, week

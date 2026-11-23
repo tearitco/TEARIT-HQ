@@ -6,6 +6,8 @@ SCRATCH |
 MKDIR   | #.desktop
 MKDIR   | bv
 COPY    | @.apps/piececraft-hq/ops/pchq_board_action.sh | @.apps/piececraft-hq/ops/pchq_board_action.sh
+# stop delegates to doom_event.sh stop_game since 960422130 (2026-10-09); without a copy the verb ran nothing and the file kept playtest=1. The script derives HOUSE from its own location, so it writes only the scratch file
+COPY    | @.apps/piececraft-hq/ops/doom_event.sh | @.apps/piececraft-hq/ops/doom_event.sh
 
 RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | player | playtest
 EXPECT_EXIT | 0 | playtest-exit-0

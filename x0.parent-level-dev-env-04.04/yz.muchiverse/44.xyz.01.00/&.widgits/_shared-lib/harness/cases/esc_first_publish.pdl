@@ -15,7 +15,9 @@ WRITE | house/@.apps/rpg-edit-hq/state/flag_ctl.txt | pet\n
 MKDIR | house/@.apps/rpg-edit-hq/state/world
 WRITE | house/@.apps/rpg-edit-hq/state/world/switches.txt | int=1\nrunning=0\n
 # a stand-in board window: the daemon only publishes while a khtpm_core_render of the editor board exists (viewer_kinds scans /proc cmdlines at start), so a sleeping process carrying that cmdline makes its own 400 ms update run (the Enter trigger no longer works: Enter on Harold now possesses him, D1)
-SPAWN | V | /bin/sh | -c | sleep 300 | khtpm_core_render | $T/house/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
+# the scan (viewer_kinds, N3 idle-cost version) tests argv[0] for khtpm_core_render BEFORE it joins the arguments, so the stand-in must BE a program of that name (a copy of tail), not a sh whose argument carries the name (that matched in the old scan and is why this case went red)
+RUN | /bin/cp | /usr/bin/tail | $T/khtpm_core_render
+SPAWN | V | $T/khtpm_core_render | -f | /dev/null | $T/house/@.apps/rpg-edit-hq/board/pchq-board.xhtpm
 SPAWN | D | $T/house/@.apps/rpg-edit-hq/ops/+x/rpg_edit_hq.+x | $T/house | $T/house/@.apps/rpg-edit-hq
 SLEEP | 1500
 MKDIR | house/@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/hero_01
