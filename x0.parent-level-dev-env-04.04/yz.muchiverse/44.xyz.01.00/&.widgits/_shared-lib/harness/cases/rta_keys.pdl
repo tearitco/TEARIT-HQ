@@ -1,4 +1,4 @@
-# rta_keys (2026-11-22, D116): the Robot Trap Auto window answers KEYS through the same tailer as the Voxel window (D115): a KEYMAP row with a 5th field runs that command ($D = house root, two levels above the ledger). The REAL vox_keys_op runs the REAL rta_life_op rows named by the REAL @.apps/rta-board/keys.pdl in a scratch house. A refused verb (drive before enter) writes nothing. SABOTAGE: a mutant that ignores the command field applies nothing. Joe has no arrow-walk (no walk row exists): not tested because it does not exist.
+# D120 (2026-11-22): the arrow keys are ONE verb (`rta_life_op move`); the refused-key control is now o (exit) before enter (an arrow on foot WALKS, no longer a refused drive), and a new case walks Joe by the four arrows. rta_keys (2026-11-22, D116): the Robot Trap Auto window answers KEYS through the same tailer as the Voxel window (D115): a KEYMAP row with a 5th field runs that command ($D = house root, two levels above the ledger). The REAL vox_keys_op runs the REAL rta_life_op rows named by the REAL @.apps/rta-board/keys.pdl in a scratch house. A refused verb (drive before enter) writes nothing. SABOTAGE: a mutant that ignores the command field applies nothing. Arrow-walk exists since D120 (case arrows_walk_on_foot).
 RESULTS | ../results/rta_keys.txt
 ENV     | LC_ALL | C
 CASE    | setup
@@ -6,8 +6,10 @@ SCRATCH |
 MKDIR | H/#.desktop
 MKDIR | H/@.apps/rta/ops/+x
 MKDIR | m
+MKDIR | H/@.apps/rta-board
 COPY | @.apps/rta/rules.pdl | H/@.apps/rta/rules.pdl
 COPY | @.apps/rta/road.grid | H/@.apps/rta/road.grid
+COPY | @.apps/rta-board/board.pdl | H/@.apps/rta-board/board.pdl
 COPY | @.apps/rta-board/keys.pdl | H/keys.pdl
 COPY | @.apps/vox/ops/vox_keys_op.c | m/orig.c
 RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | $HOUSE/@.apps/rta/ops/rta_life_op.c
@@ -20,13 +22,14 @@ RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl |
 RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | tank | gas | ok | 3
 RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | tires | gas | ok | 0
 RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | steering | gas | ok | 0
-WRITE | relay0.txt | 1001 1\n
+WRITE | relay0.txt | 111 1\n
 WRITE | relay.txt | 105 2\n1001 3\n111 4\n107 5\n110 6\n99 7\n
+WRITE | relay_walk.txt | 1001 8\n1003 9\n1002 10\n1000 11\n
 
 CASE    | refused_writes_nothing
 RUN | cp | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
 RUN | $T/vk | once | $T/H | $T/H/#.desktop/rta_life_ledger.txt | $T/relay0.txt | 0
-EXPECT_OUT | KEYS read=1 applied=0 refused=1 unmapped=0 | drive-before-enter-is-refused-by-the-op-(exit-10)
+EXPECT_OUT | KEYS read=1 applied=0 refused=1 unmapped=0 | exit-before-enter-is-refused-by-the-op-(exit-12)
 RUN | cmp | -s | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
 EXPECT_EXIT | 0 | the-refusal-wrote-NOTHING
 
@@ -38,6 +41,15 @@ EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | DRIVE \p joe \p car | the-righ
 EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | EXIT \p joe \p car | the-o-key-left-the-car
 EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | EAT \p joe | the-k-key-ate
 EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | SLEEP \p joe \p 8 | the-n-key-slept-8-turns
+
+CASE    | arrows_walk_on_foot
+RUN | $T/vk | once | $T/H | $T/H/#.desktop/rta_life_ledger.txt | $T/relay_walk.txt | 0
+EXPECT_OUT | KEYS read=4 applied=4 refused=0 unmapped=0 | the-four-arrows-each-walked-one-step-on-foot
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | WALK \p joe \p 2 \p 10 | right-arrow-east-from-beside-the-car-(1,10)-to-(2,10)
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | WALK \p joe \p 2 \p 11 | down-arrow-south-onto-the-road-row
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | WALK \p joe \p 1 \p 10 | up-then-left-back-to-(1,10)
+RUN | grep | -c | ^WALK | $T/H/#.desktop/rta_life_ledger.txt
+EXPECT_OUT_IS | 4 | exactly-four-WALK-rows-and-the-drive-in-the-earlier-case-was-NOT-a-walk
 
 CASE    | sabotage_cmd_ignored
 RUN | cp | $T/m/orig.c | $T/m/m1.c

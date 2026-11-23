@@ -1,10 +1,13 @@
-# keys.pdl (rta-board, D116) - the keys of the Robot Trap Auto window while Joe's token is possessed. DATA for vox_keys_op: a KEYMAP row with a 5th field runs that command ($D = the house root); every rule stays in rta_life_op.
+# keys.pdl (rta-board, D116, D120) - the keys of the Robot Trap Auto window while Joe's token is possessed. DATA for vox_keys_op: a KEYMAP row with a 5th field runs that command ($D = the house root); every rule stays in rta_life_op.
 # KEYMAP | keycode | name | label | command
-# There is NO arrow-walk: Joe's place on the board is derived (beside the car), the ledger has no walk row for him (rta_walk_op is a separate Centon op). Enter-car is valid only beside the car (the op refuses otherwise).
+# D120: the four arrows run ONE verb, `rta_life_op move`: with Joe in the car (a fact of the ledger) east drives one road step and the other arrows are refused; on foot every arrow is one WALK row. The context rule is the ledger (ENTER/EXIT), not this file. i/o/k/n as before. Enter-car after a walk needs the car within RULE enter_reach.
 ACTOR | joe
 KEYMAP | 105 | enter | i=enter car | $D/@.apps/rta/ops/+x/rta_life_op.+x enter $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car
-KEYMAP | 1001 | drive | right=drive one road step | $D/@.apps/rta/ops/+x/rta_life_op.+x drive $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car $D/@.apps/rta/ops/+x/rta_momentum_op.+x $D/@.apps/rta/road.grid $D/#.desktop/rta_mom_ledger.txt $D/#.desktop/rta_mom_events.txt
+KEYMAP | 1000 | west | left=walk west | $D/@.apps/rta/ops/+x/rta_life_op.+x move $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car w $D/@.apps/rta/ops/+x/rta_momentum_op.+x $D/@.apps/rta/road.grid $D/#.desktop/rta_mom_ledger.txt $D/#.desktop/rta_mom_events.txt
+KEYMAP | 1001 | east | right=east (drive in the car, walk on foot) | $D/@.apps/rta/ops/+x/rta_life_op.+x move $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car e $D/@.apps/rta/ops/+x/rta_momentum_op.+x $D/@.apps/rta/road.grid $D/#.desktop/rta_mom_ledger.txt $D/#.desktop/rta_mom_events.txt
+KEYMAP | 1002 | north | up=walk north | $D/@.apps/rta/ops/+x/rta_life_op.+x move $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car n $D/@.apps/rta/ops/+x/rta_momentum_op.+x $D/@.apps/rta/road.grid $D/#.desktop/rta_mom_ledger.txt $D/#.desktop/rta_mom_events.txt
+KEYMAP | 1003 | south | down=walk south | $D/@.apps/rta/ops/+x/rta_life_op.+x move $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car s $D/@.apps/rta/ops/+x/rta_momentum_op.+x $D/@.apps/rta/road.grid $D/#.desktop/rta_mom_ledger.txt $D/#.desktop/rta_mom_events.txt
 KEYMAP | 111 | exit | o=exit car | $D/@.apps/rta/ops/+x/rta_life_op.+x exit $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe car
 KEYMAP | 107 | eat | k=eat | $D/@.apps/rta/ops/+x/rta_life_op.+x eat $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe
 KEYMAP | 110 | sleep | n=sleep 8 turns | $D/@.apps/rta/ops/+x/rta_life_op.+x sleep $D/@.apps/rta/rules.pdl $D/#.desktop/rta_life_ledger.txt joe 8
-LEGEND | possess Joe (Enter on him) then: i enter car (stand beside it), right arrow drives, o exit, k eat, n sleep
+LEGEND | possess Joe (Enter on him) then: arrows walk, i enter car (next to it), right drives in the car, o exit

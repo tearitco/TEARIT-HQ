@@ -12,6 +12,8 @@ MKDIR | h/@.apps/rta/ops/+x
 COPYDIR | @.apps/rta/events | h/@.apps/rta/events
 COPY | @.apps/rta/rules.pdl | h/@.apps/rta/rules.pdl
 COPY | @.apps/rta/road.grid | h/@.apps/rta/road.grid
+MKDIR | h/@.apps/rta-board
+COPY | @.apps/rta-board/board.pdl | h/@.apps/rta-board/board.pdl
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rta/ops/+x/rta_life_op.+x | $HOUSE/@.apps/rta/ops/rta_life_op.c
 EXPECT_EXIT | 0 | life-op-compiles-into-the-scratch-house
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rta/ops/+x/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
@@ -168,6 +170,23 @@ EXPECT_EXIT | 15 | the-sleep-page-propagates-15-in-the-car
 RUN | grep | -c | SLEEP | $T/h/#.desktop/rta_life_ledger.txt
 EXPECT_OUT_IS | 1 | the-in-car-refusal-wrote-no-second-SLEEP-row
 RUN | sh | $T/h/@.apps/rta/events/rta_exit/event_pkg/pages/page_1/cmd_1.sh
+# ---- D120: the rta_walk page (registry row, page command, trigger, the page prints the SAME line as the op alone, the WALK row is in the ledger)
+RUN | grep | -c | ^COMMAND rta_walk$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | exactly-one-COMMAND-rta_walk-row
+RUN | grep | -c | ^COMMAND rta_walk$ | $T/sabotaged_registry.pdl
+EXPECT_OUT_IS | 0 | NEGATIVE-a-registry-copy-without-the-walk-row-gives-0
+RUN | grep | -c | -F | rta_life_op.+x" walk "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{dir}' | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT_IS | 1 | the-walk-template-is-exactly-op-rules-ledger-entity-dir
+EXPECT_HAS | h/@.apps/rta/events/rta_walk/event_pkg/pages/page_1/event.ir.pdl | type=rta_walk \p entity=joe\pdir=e | the-walk-page-command-is-the-registered-type-with-entity-and-dir
+EXPECT_HAS | h/@.apps/rta/events/rta_walk/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | the-walk-page-has-a-ui-trigger
+RUN | sh | $T/h/@.apps/rta/events/rta_walk/event_pkg/pages/page_1/cmd_1.sh
+EXPECT_EXIT | 0 | the-walk-page-runs
+CAPTURE | page_walk
+EXPECT_EQ | $page_walk | x=2 y=10 | HAND-COMPUTED-the-car-drove-one-cell-east-to-(1,11)-so-joe-stands-on-(1,10)-and-steps-east-to-(2,10)
+RUN | $T/h/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/h/@.apps/rta/rules.pdl | $T/alone/l.txt | joe | e
+CAPTURE | alone_walk
+EXPECT_EQ | $page_walk | $alone_walk | the-walk-page-prints-the-SAME-line-as-the-op-alone
+EXPECT_HAS | h/#.desktop/rta_life_ledger.txt | WALK \p joe \p 2 \p 10 | the-walk-page-wrote-the-WALK-row
 WRITE | h/@.apps/rta/rules.pdl | RULE \p hunger_start \p 80\nRULE \p sleep_max_turns \p 2\nRULE \p hunger_per_turn \p 2\nRULE \p hunger_max \p 100\n
 RUN | sh | $T/h/@.apps/rta/events/rta_sleep/event_pkg/pages/page_1/cmd_1.sh
 EXPECT_EXIT | 16 | the-sleep-page-propagates-16-when-the-RULE-bound-is-2-(the-bound-is-data)

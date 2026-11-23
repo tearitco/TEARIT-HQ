@@ -1915,6 +1915,15 @@ COMMAND rta_part
   TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" part "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{car}' '{slot}' '{kind}' '{state}'
 END
 
+# rta_walk (D120): one step on foot, dir = n|s|e|w (row 0 is north). ONE `WALK | entity | x | y` row (+ a TURN row of RULE walk_turns) when the cell is a WALKABLE glyph (rules.pdl: not water, not a roof) and the entity is out of the car; a refusal writes nothing (exit 10 in the car, 18 bad dir, 19 blocked). Joe's cell = the last WALK row since the last ENTER/EXIT, else beside the car; enter-car after a walk needs the car within RULE enter_reach (exit 17). The page re-projects the board (rta_board hook).
+COMMAND rta_walk
+  LABEL rta: walk one step
+  FIELD1 Entity:
+  FIELD2 Dir (n s e w):
+  PARAMS entity,dir
+  TEMPLATE exec "$D/@.apps/rta/ops/+x/rta_life_op.+x" walk "$D/@.apps/rta/rules.pdl" "$D/#.desktop/rta_life_ledger.txt" '{entity}' '{dir}'
+END
+
 # vox_place / vox_mine / vox_wait / vox_sleep = the voxel rules as ops (D105): each runs `vox_op <verb>` once and appends its rows (all or nothing) to the runtime ledger #.desktop/vox_ledger.txt (gitignored, never committed; scratch copies in harnesses). The numbers are rows in @.apps/vox/rules.pdl and blocks.pdl, the seed terrain is @.apps/vox/terrain.pdl. cell is one word x,y,z (the registry allows 4 params); actor, item and tool are words (letters, digits, _ - . only). A refusal writes nothing and exits 10 unknown actor, 11 out of bounds, 12 out of reach, 13 target invalid, 14 ledger hand-edited, 15 no support, 16 item missing, 17 tool power too low, 19 not night, 20 no bed near, 21 bag full. `vox_op --describe` lists inputs and outputs.
 COMMAND vox_place
   LABEL vox: place a block

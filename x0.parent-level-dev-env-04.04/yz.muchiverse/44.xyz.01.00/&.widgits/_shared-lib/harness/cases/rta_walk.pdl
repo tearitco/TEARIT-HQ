@@ -1,0 +1,288 @@
+# rta_walk (2026-11-22, D120): Joe walks on foot on the RTA board. ONE `WALK | joe | x | y` ledger row per accepted step (+ a TURN row of RULE walk_turns) through rta_life_op; the walkable glyph classes are the WALKABLE row of rules.pdl, the grid and board data are PATH rows;
+# his cell = the car cell in the car, else the last WALK row since the last ENTER/EXIT, else beside the car. A refusal (water, a roof, off the grid, in the car, a car out of reach) writes NOTHING and exits non-zero.
+# The REAL ops, rules.pdl, road.grid and board.pdl run in a scratch house under $T. Hand-computed: the car spawns on the road (0,11); Joe stands beside it on (0,10); row 10 is grass x 0..17, sand 18, then the harbour x 19..23; the roofs of row 9 are x 9..14.
+RESULTS | ../results/rta_walk.txt
+ENV | LC_ALL | C
+
+CASE    | setup
+SCRATCH |
+MKDIR | H/#.desktop
+MKDIR | H/@.apps/rta/ops/+x
+MKDIR | H/@.apps/rta-board
+MKDIR | m
+COPY | @.apps/rta/rules.pdl | H/@.apps/rta/rules.pdl
+COPY | @.apps/rta/road.grid | H/@.apps/rta/road.grid
+COPY | @.apps/rta-board/board.pdl | H/@.apps/rta-board/board.pdl
+COPY | @.apps/rta/ops/rta_life_op.c | m/orig_life.c
+COPY | @.apps/rta/ops/rta_board_op.c | m/orig_board.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | $HOUSE/@.apps/rta/ops/rta_life_op.c
+EXPECT_EXIT | 0 | life-op-compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/H/@.apps/rta/ops/+x/rta_board_op.+x | $HOUSE/@.apps/rta/ops/rta_board_op.c
+EXPECT_EXIT | 0 | board-op-compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
+EXPECT_EXIT | 0 | momentum-op-compiles
+WRITE | H/#.desktop/rta_board.pdl | BOARD \p rules \p $T/H/@.apps/rta/rules.pdl\nBOARD \p grid \p $T/H/@.apps/rta/road.grid\nBOARD \p life \p $T/H/#.desktop/rta_life_ledger.txt\nBOARD \p desk \p $T/H/desk\nBOARD \p ui \p $T/H/ui.txt\nBOARD \p data \p $T/H/@.apps/rta-board/board.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p joe\nBOARD \p car \p car\nBOARD \p png \p $HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x\n
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | engine | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | tank | gas | ok:6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | tires | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | steering | gas | ok:0
+EXPECT_FILE | H/desk/events.txt | 0 11 40 210 220 !Other1 0 2 1\n0 10 230 60 60 People1 0 2 1\n | BEFORE any walk: the car on the road (0,11), Joe beside it on (0,10) (the old derivation, unchanged)
+
+CASE    | walk_east_three
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+EXPECT_EXIT | 0 | step 1
+EXPECT_OUT_IS | x=1 y=10 | HAND-COMPUTED (0,10) + east = (1,10)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+EXPECT_OUT_IS | x=3 y=10 | three steps east end on (3,10)
+EXPECT_HAS | H/#.desktop/rta_life_ledger.txt | WALK \p joe \p 1 \p 10\nTURN \p 1 \p walk\nWALK \p joe \p 2 \p 10\nTURN \p 2 \p walk\nWALK \p joe \p 3 \p 10\nTURN \p 3 \p walk\n | three WALK rows, each followed by one TURN row (RULE walk_turns 1)
+RUN | grep | -c | ^WALK | $T/H/#.desktop/rta_life_ledger.txt
+EXPECT_OUT_IS | 3 | exactly three WALK rows
+EXPECT_FILE | H/desk/events.txt | 0 11 40 210 220 !Other1 0 2 1\n3 10 230 60 60 People1 0 2 1\n | the PROJECTED events.txt: Joe at the last WALK cell (3,10), the car stays put on (0,11)
+EXPECT_HAS | H/ui.txt | gmt_0_text=joe: on foot (car at 0,11) | the panel keeps saying on foot, car cell unchanged
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | s
+EXPECT_OUT_IS | x=3 y=11 | south of the grass is the ROAD row: a person may stand on it (R is a WALKABLE glyph)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | n
+EXPECT_OUT_IS | x=3 y=10 | and back north
+
+CASE    | refusals_write_nothing
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+EXPECT_OUT_IS | x=9 y=10 | six more steps east: under the first roof
+RUN | cp | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+RUN | cp | $T/H/desk/events.txt | $T/ev.before
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | n
+EXPECT_EXIT | 19 | NEGATIVE walking north into a building roof (9,9 is B) is refused
+RUN | cmp | -s | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+EXPECT_EXIT | 0 | the roof refusal wrote NOTHING to the ledger
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+EXPECT_OUT_IS | x=18 y=10 | nine more east: on the sand beside the harbour (18,10)
+RUN | cp | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | e
+EXPECT_EXIT | 19 | NEGATIVE walking east into the harbour water (19,10 is W) is refused
+RUN | cmp | -s | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+EXPECT_EXIT | 0 | the water refusal wrote NOTHING to the ledger
+RUN | cmp | -s | $T/H/desk/events.txt | $T/ev.before
+EXPECT_EXIT | 1 | CONTROL the picture DID change with the accepted steps (so the equal-ledger check above is not vacuous)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | x
+EXPECT_EXIT | 18 | a direction that is not n s e w is refused
+RUN | cmp | -s | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+EXPECT_EXIT | 0 | the bad direction wrote nothing
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | joe | car
+EXPECT_EXIT | 17 | NEGATIVE enter-car from (18,10) while the car is at (0,11): not within RULE enter_reach
+RUN | cmp | -s | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+EXPECT_EXIT | 0 | the out-of-reach enter wrote nothing
+RUN | grep | -c | ^WALK | $T/H/#.desktop/rta_life_ledger.txt
+EXPECT_OUT_IS | 20 | HAND-COUNT 3 east + south + north + 6 east + 9 east = 20 WALK rows (the three refusals added none)
+
+CASE    | replay_and_projection
+MKDIR | r1
+MKDIR | r2
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | $T/r1/l.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/r1/m.txt | $T/r1/e.txt
+EXPECT_EXIT | 0 | replay of 20 WALK rows + parts into a fresh ledger
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | $T/r2/l.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/r2/m.txt | $T/r2/e.txt
+EXPECT_EXIT | 0 | replay twice
+RUN | cmp | -s | $T/r1/l.txt | $T/r2/l.txt
+EXPECT_EXIT | 0 | two replays give the SAME bytes
+RUN | cmp | -s | $T/r1/l.txt | $T/H/#.desktop/rta_life_ledger.txt
+EXPECT_EXIT | 0 | and the replay equals the original ledger byte for byte
+# delete the projection: it regenerates identical bytes
+RUN | cp | $T/H/desk/events.txt | $T/ev.keep
+RUN | cp | $T/H/desk/cells.txt | $T/cells.keep
+RUN | rm | -rf | $T/H/desk
+RUN | $T/H/@.apps/rta/ops/+x/rta_board_op.+x | project | $T/H/#.desktop/rta_board.pdl
+EXPECT_EXIT | 0 | the projection runs again from the ledger
+RUN | cmp | -s | $T/H/desk/events.txt | $T/ev.keep
+EXPECT_EXIT | 0 | events.txt regenerates byte for byte after the desk was deleted
+RUN | cmp | -s | $T/H/desk/cells.txt | $T/cells.keep
+EXPECT_EXIT | 0 | cells.txt regenerates byte for byte
+EXPECT_FILE | H/desk/events.txt | 0 11 40 210 220 !Other1 0 2 1\n18 10 230 60 60 People1 0 2 1\n | Joe at the last WALK cell (18,10), the car still on (0,11)
+
+CASE    | hand_edited_row_refused
+MKDIR | t
+RUN | cp | X
+RUN | cp | $T/H/#.desktop/rta_life_ledger.txt | $T/t/jump.txt
+RUN | sed | -i | s/joe . 5 . 10$/joe \p 8 \p 10/ | $T/t/jump.txt
+RUN | cmp | -s | $T/t/jump.txt | $T/H/#.desktop/rta_life_ledger.txt
+EXPECT_EXIT | 1 | vacuity: the edited copy differs from the ledger
+RUN | grep | -c | joe . 8 . 10 | $T/t/jump.txt
+EXPECT_OUT_IS | 2 | the edited row is there (the original 8,10 row plus the edited 5,10 row)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H/@.apps/rta/rules.pdl | $T/t/jump.txt | $T/t/out1.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/t/m1.txt | $T/t/e1.txt
+EXPECT_EXIT | 14 | NEGATIVE a WALK row three cells from its predecessor does not replay (exit 14)
+# off the grid, and a road row under a rule that lists no road
+MKDIR | H2/@.apps/rta
+MKDIR | H2/@.apps/rta-board
+COPY | @.apps/rta/road.grid | H2/@.apps/rta/road.grid
+COPY | @.apps/rta-board/board.pdl | H2/@.apps/rta-board/board.pdl
+WRITE | H2/@.apps/rta/rules.pdl | RULE \p hunger_start \p 80\nRULE \p eat_amount \p 30\nRULE \p fuel_per_cell \p 1\nRULE \p drive_speed \p 1\nRULE \p sleep_max_turns \p 8\nRULE \p hunger_per_turn \p 2\nRULE \p hunger_max \p 100\nRULE \p walk_turns \p 1\nRULE \p enter_reach \p 1\nWALKABLE \p .KPS\nPATH \p grid \p road.grid\nPATH \p board \p ../rta-board/board.pdl\n
+WRITE | t/off.txt | WALK \p joe \p -1 \p 10\nTURN \p 1 \p walk\n
+WRITE | t/road.txt | WALK \p joe \p 0 \p 11\nTURN \p 1 \p walk\n
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H/@.apps/rta/rules.pdl | $T/t/off.txt | $T/t/out2.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/t/m2.txt | $T/t/e2.txt
+EXPECT_EXIT | 14 | NEGATIVE a WALK row west of x=0 (off the grid) does not replay
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H/@.apps/rta/rules.pdl | $T/t/road.txt | $T/t/out3.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/t/m3.txt | $T/t/e3.txt
+EXPECT_EXIT | 0 | CONTROL the same row onto the road (0,11) replays under the real WALKABLE .KPSR
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H2/@.apps/rta/rules.pdl | $T/t/road.txt | $T/t/out4.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H2/@.apps/rta/road.grid | $T/t/m4.txt | $T/t/e4.txt
+EXPECT_EXIT | 14 | the SAME row under a rules file whose WALKABLE row has no R does not replay: the walkable classes are DATA
+
+CASE    | in_the_car_and_reach
+MKDIR | c
+MKDIR | d
+MKDIR | mv
+WRITE | c/rta_board.pdl | BOARD \p rules \p $T/H/@.apps/rta/rules.pdl\nBOARD \p grid \p $T/H/@.apps/rta/road.grid\nBOARD \p life \p $T/c/l.txt\nBOARD \p desk \p $T/c/desk\nBOARD \p ui \p $T/c/ui.txt\nBOARD \p data \p $T/H/@.apps/rta-board/board.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p joe\nBOARD \p car \p car\nBOARD \p png \p $HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x\n
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | car | engine | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | car | tank | gas | ok:6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | car | tires | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | car | steering | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | car | engine | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | car | tank | gas | ok:6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | car | tires | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | car | steering | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | car | engine | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | car | tank | gas | ok:6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | car | tires | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | car | steering | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | joe | car
+EXPECT_EXIT | 0 | enter from (1,10): the car (0,11) is within reach 1 (Chebyshev, diagonal counts)
+RUN | cp | $T/c/l.txt | $T/c/before.txt
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | joe | e
+EXPECT_EXIT | 10 | NEGATIVE no walk while in the car
+RUN | cmp | -s | $T/c/l.txt | $T/c/before.txt
+EXPECT_EXIT | 0 | the in-car walk wrote nothing
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | exit | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | joe | car
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | joe | s
+EXPECT_OUT_IS | x=0 y=11 | after EXIT he stands beside the car (0,10) as today, and the walk CONTINUES from there: south of (0,10) is (0,11), not south of his old (1,10)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | status | $T/H/@.apps/rta/rules.pdl | $T/c/l.txt | joe | car
+EXPECT_OUT_IS | in_car=0 hunger=80 fuel=6 turn=4 | HAND-COUNT walk, enter, exit, walk = 4 turns; the tank row holds 6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | joe | car
+EXPECT_EXIT | 17 | NEGATIVE enter from (2,10): the car (0,11) is 2 cells away, out of RULE enter_reach 1
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | joe | w
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/d/l.txt | joe | car
+EXPECT_EXIT | 0 | CONTROL walk back to (1,10): enter is accepted
+# the arrow verb: on foot it walks, in the car east drives and the other arrows are refused
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | move | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | joe | car | e | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/mv/m.txt | $T/mv/e.txt
+EXPECT_OUT_IS | x=1 y=10 | move east on foot is a walk
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | joe | car
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | move | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | joe | car | n | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/mv/m.txt | $T/mv/e.txt
+EXPECT_EXIT | 10 | NEGATIVE in the car only east drives: the north arrow is refused
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | move | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | joe | car | e | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/mv/m.txt | $T/mv/e.txt
+EXPECT_OUT_IS | x=1 y=11 fuel=5 | in the car the east arrow drives one road step (fuel 6 to 5)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/mv/l.txt | joe | e
+EXPECT_EXIT | 10 | still in the car after the drive: no walk
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/nope.pdl | $T/mv/l.txt | joe | e
+EXPECT_EXIT | 9 | a missing rules file refuses (no walkable class and no number in the C)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/w/l.txt | joe | w
+EXPECT_EXIT | 19 | NEGATIVE the west edge: (0,10) west is x -1, off the grid
+EXPECT_NOFILE | w/l.txt | the off-grid refusal created no ledger
+EXPECT_FILE | c/desk/events.txt | 0 11 40 210 220 !Other1 0 2 1\n0 11 230 60 60 People1 0 2 1\n | the projection after exit and a south step: the car stays on (0,11), Joe stands on the road cell (0,11)
+
+CASE    | sabotages
+MKDIR | s1
+MKDIR | s2
+MKDIR | s3
+MKDIR | s6
+MKDIR | s7
+MKDIR | mb
+WRITE | t/jump2.txt | WALK \p joe \p 3 \p 10\nTURN \p 1 \p walk\n
+COPY | @.apps/rta/ops/rta_place.h | m/rta_place.h
+# ---- m1: the walkable-glyph test dropped (water, roofs and the rules file stop mattering)
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H2/@.apps/rta/rules.pdl | $T/s1/l.txt | joe | s
+EXPECT_EXIT | 19 | REAL: south of (0,10) is the road row, and a rules file without R refuses it
+RUN | cp | $T/m/orig_life.c | $T/m/m1.c
+RUN | sed | -i | s/ \p\p !strchr(glyphs, pl.g\[y\]\[x\])// | $T/m/m1.c
+RUN | cmp | -s | $T/m/orig_life.c | $T/m/m1.c
+EXPECT_EXIT | 1 | vacuity: mutant 1 differs from the source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m1 | $T/m/m1.c
+EXPECT_EXIT | 0 | mutant 1 builds
+RUN | $T/m/m1 | walk | $T/H2/@.apps/rta/rules.pdl | $T/s1/l.txt | joe | s
+EXPECT_EXIT | 0 | MUTANT 1 walks onto a glyph the rules do not list
+# ---- m2: the in-car refusal dropped
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | car | engine | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | car | tank | gas | ok:6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | car | tires | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | car | steering | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | joe | car
+RUN | cp | $T/m/orig_life.c | $T/m/m2.c
+RUN | sed | -i | s/if (s.in_car) { fprintf(stderr, "refused: cannot walk/if (0) { fprintf(stderr, "refused: cannot walk/ | $T/m/m2.c
+RUN | cmp | -s | $T/m/orig_life.c | $T/m/m2.c
+EXPECT_EXIT | 1 | vacuity: mutant 2 differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m2 | $T/m/m2.c
+RUN | $T/m/m2 | walk | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | joe | e
+EXPECT_EXIT | 0 | MUTANT 2 walks while in the car
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/s2/l.txt | joe | e
+EXPECT_EXIT | 10 | REAL op refuses the same step in the same ledger state (it is still in the car: the mutant row is a WALK, the ENTER stays the last in/out row)
+# ---- m3: the reach test dropped
+RUN | cp | $T/m/orig_life.c | $T/m/m3.c
+RUN | sed | -i | s/if (dx > reach \p\p dy > reach)/if (0)/ | $T/m/m3.c
+RUN | cmp | -s | $T/m/orig_life.c | $T/m/m3.c
+EXPECT_EXIT | 1 | vacuity: mutant 3 differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m3 | $T/m/m3.c
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | car | engine | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | car | tank | gas | ok:6
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | car | tires | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | car | steering | gas | ok:0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | joe | e
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | enter | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | joe | car
+EXPECT_EXIT | 17 | REAL op: enter from (2,10) refused
+RUN | $T/m/m3 | enter | $T/H/@.apps/rta/rules.pdl | $T/s3/l.txt | joe | car
+EXPECT_EXIT | 0 | MUTANT 3 enters from two cells away
+# ---- m4: a replayed WALK row that is not one step is silently turned into an east step; m8: replay ignores WALK rows
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | replay | $T/H/@.apps/rta/rules.pdl | $T/t/jump2.txt | $T/t/o4.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/t/m4.txt | $T/t/e4b.txt
+EXPECT_EXIT | 14 | REAL: a lone WALK row three cells from the spawn spot does not replay
+RUN | cp | $T/m/orig_life.c | $T/m/m4.c
+RUN | sed | -i | s/return d ? do_walk(rules, led, ent, d) : 19;/return do_walk(rules, led, ent, d ? d : "e");/ | $T/m/m4.c
+RUN | cmp | -s | $T/m/orig_life.c | $T/m/m4.c
+EXPECT_EXIT | 1 | vacuity: mutant 4 differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m4 | $T/m/m4.c
+RUN | $T/m/m4 | replay | $T/H/@.apps/rta/rules.pdl | $T/t/jump2.txt | $T/t/o5.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/t/m5.txt | $T/t/e5.txt
+EXPECT_EXIT | 0 | MUTANT 4 accepts the jump
+RUN | cp | $T/m/orig_life.c | $T/m/m8.c
+RUN | sed | -i | s/"WALK \(.*\), a, &n, &x2)/"WALKQ \1, a, \&n, \&x2)/ | $T/m/m8.c
+RUN | cmp | -s | $T/m/orig_life.c | $T/m/m8.c
+EXPECT_EXIT | 1 | vacuity: mutant 8 differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m8 | $T/m/m8.c
+RUN | $T/m/m8 | replay | $T/H/@.apps/rta/rules.pdl | $T/t/jump2.txt | $T/t/o6.txt | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $T/H/@.apps/rta/road.grid | $T/t/m6.txt | $T/t/e6.txt
+EXPECT_EXIT | 0 | MUTANT 8 never looks at WALK rows in a replay
+# ---- m6: the step costs no turn
+RUN | cp | $T/m/orig_life.c | $T/m/m6.c
+RUN | sed | -i | s/if (wt > 0) row(led, "TURN/if (0) row(led, "TURN/ | $T/m/m6.c
+RUN | cmp | -s | $T/m/orig_life.c | $T/m/m6.c
+EXPECT_EXIT | 1 | vacuity: mutant 6 differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m6 | $T/m/m6.c
+RUN | $T/m/m6 | walk | $T/H/@.apps/rta/rules.pdl | $T/s6/l.txt | joe | e
+EXPECT_LACKS | s6/l.txt | TURN | MUTANT 6 writes no TURN row
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | walk | $T/H/@.apps/rta/rules.pdl | $T/s7/l.txt | joe | e
+EXPECT_HAS | s7/l.txt | TURN \p 1 \p walk | REAL op writes the TURN row for the same step
+# ---- m5: the picture ignores WALK rows
+WRITE | mb.pdl | BOARD \p rules \p $T/H/@.apps/rta/rules.pdl\nBOARD \p grid \p $T/H/@.apps/rta/road.grid\nBOARD \p life \p $T/H/#.desktop/rta_life_ledger.txt\nBOARD \p desk \p $T/mb/desk\nBOARD \p ui \p $T/mb/ui.txt\nBOARD \p data \p $T/H/@.apps/rta-board/board.pdl\nBOARD \p atlas \p $HOUSE/@.apps/rta-board/atlas.rgba\nBOARD \p entity \p joe\nBOARD \p car \p car\n
+RUN | cp | $T/m/orig_board.c | $T/m/m5.c
+RUN | sed | -i | s/{ walked = 1; wx = x; wy = y; }/{ ; }/ | $T/m/m5.c
+RUN | cmp | -s | $T/m/orig_board.c | $T/m/m5.c
+EXPECT_EXIT | 1 | vacuity: mutant 5 differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m5 | $T/m/m5.c
+RUN | $T/m/m5 | project | $T/mb.pdl
+EXPECT_OUT | entity=0,10 | MUTANT 5 draws Joe beside the car, ignoring his WALK rows
+RUN | $T/H/@.apps/rta/ops/+x/rta_board_op.+x | project | $T/mb.pdl
+EXPECT_OUT | entity=18,10 | REAL board op draws Joe on his last WALK cell
+# ---- restored: the real sources are byte-identical to the copies the mutants started from
+RUN | cmp | -s | $T/m/orig_life.c | $HOUSE/@.apps/rta/ops/rta_life_op.c
+EXPECT_EXIT | 0 | RESTORED life op source
+RUN | cmp | -s | $T/m/orig_board.c | $HOUSE/@.apps/rta/ops/rta_board_op.c
+EXPECT_EXIT | 0 | RESTORED board op source
+CLEAN |

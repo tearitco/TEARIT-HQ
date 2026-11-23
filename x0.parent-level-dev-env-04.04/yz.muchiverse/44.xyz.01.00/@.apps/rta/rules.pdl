@@ -5,3 +5,9 @@ RULE | drive_speed | 1
 RULE | sleep_max_turns | 8
 RULE | hunger_per_turn | 2
 RULE | hunger_max | 100
+RULE | walk_turns | 1
+RULE | enter_reach | 1
+# D120 walking on foot: the glyph classes a person may step on (grass, park, sidewalk, road/bridge; NOT water W, NOT a roof B) and where the grid and the board data are, relative to this file
+WALKABLE | .KPSR
+PATH | grid | road.grid
+PATH | board | ../rta-board/board.pdl

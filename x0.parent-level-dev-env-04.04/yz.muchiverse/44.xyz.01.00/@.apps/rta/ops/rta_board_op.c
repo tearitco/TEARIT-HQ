@@ -4,6 +4,7 @@
  *   rta_board_op project <config.pdl>
  *   rta_board_op --describe
  * config.pdl rows (`BOARD | key | value`): rules, grid, life (the ledger), desk (the desk folder), ui (the game_ui feed file), data (board.pdl), atlas, entity, car, png (optional: the raw_to_png op; with it the desk gets map.png, which the engine needs to read events.txt).
+ * D120: a WALK row (rta_life_op walk) after the last EXIT puts the entity on that cell, the car stays put; STAND / BESIDE are read by rta_place.h (shared with rta_life_op).
  * data (board.pdl) rows: ATLAS | cols | tiles | px | rock   TILE | glyph | index   STAND | glyphs   BESIDE | dx | dy   SPRITE | person|car | charset | index | dir | pattern   COLOR | person|car | r | g | b
  * Where things stand (all derived, nothing is stored):
  *   the car   : the last DRIVE row x y, else the spawn (the first road cell of the south-most road row, the same rule as rta_momentum_op);
@@ -21,14 +22,17 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#define MAXW 220
-#define MAXH 300
+#include "rta_place.h"
+#define MAXW PL_W
+#define MAXH PL_H
 #define P 1024
 
-static char grid[MAXH][MAXW];
-static int gw, gh;
+static PL plc;   /* grid + STAND + BESIDE, loaded by rta_place.h (shared with rta_life_op, D120) */
+#define grid plc.g
+#define gw plc.w
+#define gh plc.h
 static char cfg[16][2][P]; static int ncfg;
-static int tile_of[256]; static char stand[64] = ".K"; static int nbes, bdx[16], bdy[16];
+static int tile_of[256];
 static int at_cols = 16, at_tiles = 43, at_px = 24, at_rock = 36;
 static char spr[2][64]; static int sprI[2][3]; static int col[2][3];
 
@@ -60,30 +64,12 @@ static int load_data(const char *path) {
         char c[512]; snprintf(c, sizeof c, "%s", l);
         if (!strncmp(l, "ATLAS |", 7)) { sscanf(l, "ATLAS | %d | %d | %d | %d", &at_cols, &at_tiles, &at_px, &at_rock); }
         else if (!strncmp(l, "TILE |", 6)) { char *g = field(c, 1); char d[512]; snprintf(d, sizeof d, "%s", l); char *t = field(d, 2); if (g && t && g[0]) tile_of[(unsigned char)g[0]] = atoi(t); }
-        else if (!strncmp(l, "STAND |", 7)) { char *g = field(c, 1); if (g) snprintf(stand, sizeof stand, "%s", g); }
-        else if (!strncmp(l, "BESIDE |", 8) && nbes < 16) { int dx, dy; if (sscanf(l, "BESIDE | %d | %d", &dx, &dy) == 2) { bdx[nbes] = dx; bdy[nbes] = dy; nbes++; } }
         else if (!strncmp(l, "SPRITE |", 8)) { char w[16], cs[64]; int a, b, d; if (sscanf(l, "SPRITE | %15s | %63s | %d | %d | %d", w, cs, &a, &b, &d) == 5) { int k = !strcmp(w, "car"); snprintf(spr[k], 64, "%s", cs); sprI[k][0] = a; sprI[k][1] = b; sprI[k][2] = d; } }
         else if (!strncmp(l, "COLOR |", 7)) { char w[16]; int r, g, b; if (sscanf(l, "COLOR | %15s | %d | %d | %d", w, &r, &g, &b) == 4) { int k = !strcmp(w, "car"); col[k][0] = r; col[k][1] = g; col[k][2] = b; } }
     }
     fclose(f); return 0;
 }
 
-static int load_grid(const char *path) {
-    FILE *f = fopen(path, "r"); char row[MAXW + 8]; if (!f) return -1;
-    gw = gh = 0;
-    while (fgets(row, sizeof row, f)) {
-        if (row[0] == '#' || row[0] == '\n') continue;
-        int n = (int)strcspn(row, "\r\n");
-        if (n < 1 || n > MAXW || gh >= MAXH) { fclose(f); return -1; }
-        memcpy(grid[gh], row, (size_t)n); if (!gw) gw = n; if (n != gw) { fclose(f); return -1; } gh++;
-    }
-    fclose(f); return (gw && gh) ? 0 : -1;
-}
-
-static int spawn(int *x, int *y) {   /* the same rule as rta_momentum_op (what the first drive uses): the first road cell of the south-most road row */
-    for (int yy = gh - 1; yy >= 0; yy--) for (int xx = 0; xx < gw; xx++) if (grid[yy][xx] == 'R') { *x = xx; *y = yy; return 0; }
-    return -1;
-}
 
 static int rule(const char *path, const char *key, int *out) {
     FILE *f = fopen(path, "r"); char l[256], k[64]; int v; if (!f) return -1;
@@ -104,7 +90,6 @@ static int same_file(const char *path, const char *data, size_t n) {
     int same = b && k == n && !memcmp(b, data, n); free(b); return same;
 }
 
-static int standable(int x, int y) { return x >= 0 && y >= 0 && x < gw && y < gh && strchr(stand, grid[y][x]); }
 
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--describe")) {
@@ -115,17 +100,18 @@ int main(int argc, char **argv) {
     const char *k_rules = cv("rules"), *k_grid = cv("grid"), *k_life = cv("life"), *k_desk = cv("desk"), *k_ui = cv("ui"), *k_data = cv("data"), *k_atlas = cv("atlas"), *k_ent = cv("entity"), *k_car = cv("car"), *k_png = cv("png");
     if (!k_rules || !k_grid || !k_life || !k_desk || !k_ui || !k_data || !k_ent || !k_car) { fprintf(stderr, "rta_board: a config key is missing\n"); return 3; }
     if (load_data(k_data)) { fprintf(stderr, "rta_board: cannot read the board data\n"); return 3; }
-    if (load_grid(k_grid)) { fprintf(stderr, "rta_board: grid unreadable\n"); return 4; }
-    int cx, cy; if (spawn(&cx, &cy)) { fprintf(stderr, "rta_board: no road\n"); return 5; }
-    int hunger = 0, hmax = 100, fuel = 0, turn = 0, in_car = 0;
+    if (pl_load(&plc, k_grid, k_data)) { fprintf(stderr, "rta_board: grid unreadable\n"); return 4; }
+    int cx, cy; if (pl_spawn(&plc, &cx, &cy)) { fprintf(stderr, "rta_board: no road\n"); return 5; }
+    int hunger = 0, hmax = 100, fuel = 0, turn = 0, in_car = 0, walked = 0, wx = 0, wy = 0;
     rule(k_rules, "hunger_start", &hunger); rule(k_rules, "hunger_max", &hmax);
     FILE *lf = fopen(k_life, "r");
     if (lf) {
         char l[512], a[64], b[64], c[64], d[64]; int n, x, y;
         while (fgets(l, sizeof l, lf)) {
             if (sscanf(l, "PART | %63s | tank | %63s | %63s | %d", a, c, d, &n) == 4 && !strcmp(a, k_car)) fuel = n;
-            else if (sscanf(l, "ENTER | %63s | %63s", a, b) == 2 && !strcmp(a, k_ent)) in_car = 1;
-            else if (sscanf(l, "EXIT | %63s | %63s", a, b) == 2 && !strcmp(a, k_ent)) in_car = 0;
+            else if (sscanf(l, "ENTER | %63s | %63s", a, b) == 2 && !strcmp(a, k_ent)) { in_car = 1; walked = 0; }
+            else if (sscanf(l, "WALK | %63s | %d | %d", a, &x, &y) == 3 && !strcmp(a, k_ent)) { walked = 1; wx = x; wy = y; }
+            else if (sscanf(l, "EXIT | %63s | %63s", a, b) == 2 && !strcmp(a, k_ent)) { in_car = 0; walked = 0; }
             else if (sscanf(l, "EAT | %63s | %d", a, &n) == 2 && !strcmp(a, k_ent)) hunger = n;
             else if (sscanf(l, "SLEEP | %63s | %d | %d", a, &x, &n) == 3 && !strcmp(a, k_ent)) hunger = n;
             else if (sscanf(l, "DRIVE | %63s | %63s | %d | %d | %d", a, b, &x, &y, &n) == 5 && !strcmp(a, k_ent)) { cx = x; cy = y; fuel = n; }
@@ -134,7 +120,7 @@ int main(int argc, char **argv) {
         fclose(lf);
     }
     int ex = cx, ey = cy;
-    if (!in_car) for (int i = 0; i < nbes; i++) if (standable(cx + bdx[i], cy + bdy[i])) { ex = cx + bdx[i]; ey = cy + bdy[i]; break; }
+    if (!in_car) { if (walked) { ex = wx; ey = wy; } else pl_beside(&plc, cx, cy, &ex, &ey); }
 
     static char buf[MAXW * MAXH * 12 + 512]; size_t w = 0;
     w += (size_t)snprintf(buf + w, sizeof buf - w, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=%d\natlas_tiles=%d\nrock_slot=%d\ncells\n", gw, gh, at_px, at_cols, at_tiles, at_rock);

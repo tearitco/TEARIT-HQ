@@ -21,6 +21,8 @@
  *   rta_life_op part  <rules> <ledger> <car> <slot> <kind> <state[:n]>   (4-parameter form for the event page, the registry allows 4:
  *                                             "ok:3" = state ok, n 3; "ok" = n 0)
  *   rta_life_op drive <rules> <ledger> <entity> <car> <momentum_bin> <grid> <mom_ledger> <events>
+ *   rta_life_op walk  <rules> <ledger> <entity> <dir n|s|e|w>   (D120: one step on foot = ONE `WALK | entity | x | y` row + a TURN row of RULE walk_turns; exit 10 in the car, 18 bad dir, 19 blocked, 17 enter: car out of RULE enter_reach)
+ *   rta_life_op move  <rules> <ledger> <entity> <car> <dir> <momentum_bin> <grid> <mom_ledger> <events>   (the arrow key: in the car east = drive, on foot = walk)
  *   rta_life_op status <rules> <ledger> <entity> <car>
  *   rta_life_op replay <rules> <src_ledger> <dst_ledger> <momentum_bin> <grid> <mom_ledger> <events>
  * Exit: 0 ok, 2 usage (bad slot or part state), 9 missing rule, 10 not in car, 11 part refuses, 12 already in/not in, 13 road stopped,
@@ -34,11 +36,12 @@
 #include <sys/wait.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include "rta_place.h"
 
 #define SLOTS 4
 static const char *SL[SLOTS] = {"engine", "tank", "tires", "steering"};
 
-typedef struct { int in_car, hunger, turn, fuel; char st[SLOTS][16]; } S;
+typedef struct { int in_car, hunger, turn, fuel, walked, wx, wy, have_car, cx, cy; char st[SLOTS][16]; } S;
 
 static int rule(const char *path, const char *key, int *out) {
     FILE *f = fopen(path, "r"); char l[256], k[64]; int v;
@@ -58,10 +61,11 @@ static void load(const char *rules, const char *led, const char *ent, S *s) {
             for (int i = 0; i < SLOTS; i++) if (!strcmp(b, SL[i])) {
                 snprintf(s->st[i], 16, "%.15s", d); if (i == 1) s->fuel = n; }
         }
-        else if (sscanf(l, "ENTER | %63s | %63s", a, b) == 2 && !strcmp(a, ent)) s->in_car = 1;
-        else if (sscanf(l, "EXIT | %63s | %63s", a, b) == 2 && !strcmp(a, ent)) s->in_car = 0;
+        else if (sscanf(l, "ENTER | %63s | %63s", a, b) == 2 && !strcmp(a, ent)) { s->in_car = 1; s->walked = 0; }
+        else if (sscanf(l, "WALK | %63s | %d | %d", a, &x, &y) == 3 && !strcmp(a, ent)) { s->walked = 1; s->wx = x; s->wy = y; }
+        else if (sscanf(l, "EXIT | %63s | %63s", a, b) == 2 && !strcmp(a, ent)) { s->in_car = 0; s->walked = 0; }
         else if (sscanf(l, "EAT | %63s | %d", a, &n) == 2 && !strcmp(a, ent)) s->hunger = n;
-        else if (sscanf(l, "DRIVE | %63s | %63s | %d | %d | %d", a, e, &x, &y, &n) == 5 && !strcmp(a, ent)) s->fuel = n;
+        else if (sscanf(l, "DRIVE | %63s | %63s | %d | %d | %d", a, e, &x, &y, &n) == 5 && !strcmp(a, ent)) { s->fuel = n; s->have_car = 1; s->cx = x; s->cy = y; }
         else if (sscanf(l, "SLEEP | %63s | %d | %d", a, &x, &n) == 3 && !strcmp(a, ent)) s->hunger = n;
         else if (sscanf(l, "TURN | %d", &n) == 1) s->turn = n;
     }
@@ -108,9 +112,60 @@ static int do_part(const char *led, char **a) {
     return row(led, "PART | %s | %s | %s | %s | %d\n", a[0], a[1], a[2], a[3], atoi(a[4])) ? 2 : 0;
 }
 
+
+/* ---- D120: walking on foot. Joe's cell is ONE derived fact: the car cell when in the car; the last WALK row since the last ENTER/EXIT; else beside the car (BESIDE rows of board.pdl, as the picture always did).
+ * Data: `WALKABLE | glyphs` and `PATH | grid | <file>`, `PATH | board | <file>` (relative to the rules file) in rules.pdl; RULE walk_turns, enter_reach. Nothing numeric or glyph-valued lives in this C. */
+static int rules_row(const char *path, const char *key, char *out, size_t n) {   /* `KEY | a`, `KEY | a | b`: returns the text after "KEY | " (trimmed) */
+    FILE *f = fopen(path, "r"); char l[512]; size_t kl = strlen(key);
+    if (!f) return -1;
+    while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && !strncmp(l + kl, " | ", 3)) { l[strcspn(l, "\r\n")] = 0; snprintf(out, n, "%s", l + kl + 3); fclose(f); return 0; }
+    fclose(f); return -1;
+}
+static int load_place(const char *rules, PL *pl) {
+    char g[512], b[512], d[1024], p[1100];
+    if (rules_row(rules, "PATH | grid", g, sizeof g) || rules_row(rules, "PATH | board", b, sizeof b)) { fprintf(stderr, "missing PATH rows (grid, board)\n"); return -1; }
+    snprintf(d, sizeof d, "%s", rules); char *sl = strrchr(d, '/'); if (sl) sl[1] = 0; else d[0] = 0;
+    char gp[1100]; snprintf(gp, sizeof gp, "%s%s", d, g); snprintf(p, sizeof p, "%s%s", d, b);
+    if (pl_load(pl, gp, p)) { fprintf(stderr, "cannot read the grid or the board data\n"); return -1; }
+    return 0;
+}
+static void car_cell(const S *s, const PL *pl, int *x, int *y) { if (s->have_car) { *x = s->cx; *y = s->cy; } else if (pl_spawn(pl, x, y)) { *x = 0; *y = 0; } }
+static void where(const S *s, const PL *pl, int *x, int *y) {
+    int cx, cy; car_cell(s, pl, &cx, &cy);
+    if (s->in_car) { *x = cx; *y = cy; } else if (s->walked) { *x = s->wx; *y = s->wy; } else pl_beside(pl, cx, cy, x, y);
+}
+/* walk one step n|s|e|w (row 0 is north). Exit: 9 missing rule, 10 in the car, 18 bad direction, 19 blocked (off the grid, water, a roof: not a WALKABLE glyph), 2 no PATH rows */
+static int do_walk(const char *rules, const char *led, const char *ent, const char *dir) {
+    int wt; char glyphs[64];
+    if (rule(rules, "walk_turns", &wt) || rules_row(rules, "WALKABLE", glyphs, sizeof glyphs)) { fprintf(stderr, "missing walk rule\n"); return 9; }
+    static PL pl; if (load_place(rules, &pl)) return 2;
+    S s; load(rules, led, ent, &s);
+    if (s.in_car) { fprintf(stderr, "refused: cannot walk in the car\n"); return 10; }
+    int dx = 0, dy = 0;
+    if (!strcmp(dir, "e")) dx = 1; else if (!strcmp(dir, "w")) dx = -1; else if (!strcmp(dir, "n")) dy = -1; else if (!strcmp(dir, "s")) dy = 1;
+    else { fprintf(stderr, "refused: direction must be n s e or w\n"); return 18; }
+    int x, y; where(&s, &pl, &x, &y); x += dx; y += dy;
+    if (x < 0 || y < 0 || x >= pl.w || y >= pl.h || !strchr(glyphs, pl.g[y][x])) { fprintf(stderr, "refused: blocked\n"); return 19; }
+    row(led, "WALK | %s | %d | %d\n", ent, x, y);
+    if (wt > 0) row(led, "TURN | %d | walk\n", s.turn + wt);
+    printf("x=%d y=%d\n", x, y); return 0;
+}
+/* replay of a WALK row: the target must be ONE step from where the ledger so far puts the entity, else the row is not a legal walk (a hand-edited jump diverges) */
+static int walk_to(const char *rules, const char *led, const char *ent, int tx, int ty) {
+    static PL pl; if (load_place(rules, &pl)) return 2;
+    S s; load(rules, led, ent, &s); int x, y; where(&s, &pl, &x, &y);
+    const char *d = (tx == x + 1 && ty == y) ? "e" : (tx == x - 1 && ty == y) ? "w" : (tx == x && ty == y - 1) ? "n" : (tx == x && ty == y + 1) ? "s" : NULL;
+    return d ? do_walk(rules, led, ent, d) : 19;
+}
 static int do_move(const char *rules, const char *led, const char *ent, const char *car, int enter) {
     S s; load(rules, led, ent, &s);
     if (enter == s.in_car) { fprintf(stderr, "refused: %s\n", enter ? "already in car" : "not in car"); return 12; }
+    if (enter && s.walked) {   /* D120: after a walk the car must be within enter_reach cells (RULE, Chebyshev) of the entity; before any walk he stands beside it by derivation */
+        int reach; if (rule(rules, "enter_reach", &reach)) return 9;
+        static PL pl; if (load_place(rules, &pl)) return 2;
+        int cx, cy; car_cell(&s, &pl, &cx, &cy); int dx = s.wx > cx ? s.wx - cx : cx - s.wx, dy = s.wy > cy ? s.wy - cy : cy - s.wy;
+        if (dx > reach || dy > reach) { fprintf(stderr, "refused: the car is not within reach\n"); return 17; }
+    }
     row(led, "%s | %s | %s\n", enter ? "ENTER" : "EXIT", ent, car);
     turn(led, s.turn, enter ? "enter" : "exit"); printf("ok\n"); return 0;
 }
@@ -168,13 +223,20 @@ static int run(int argc, char **argv) {
     if (!strcmp(v, "sleep") && argc == 6) return do_sleep(rules, led, argv[4], argv[5]);
     if ((!strcmp(v, "enter") || !strcmp(v, "exit")) && argc == 6) return do_move(rules, led, argv[4], argv[5], !strcmp(v, "enter"));
     if (!strcmp(v, "eat") && argc == 5) return do_eat(rules, led, argv[4]);
+    if (!strcmp(v, "walk") && argc == 6) return do_walk(rules, led, argv[4], argv[5]);
+    if (!strcmp(v, "move") && argc == 11) {   /* D120 arrow key: in the car east drives (other arrows refuse), on foot an arrow walks. move <rules> <ledger> <entity> <car> <dir> <momentum> <grid> <mom_ledger> <events> */
+        S s; load(rules, led, argv[4], &s);
+        if (!s.in_car) return do_walk(rules, led, argv[4], argv[6]);
+        if (strcmp(argv[6], "e")) { fprintf(stderr, "refused: in the car only east drives\n"); return 10; }
+        return do_drive(rules, led, argv[4], argv[5], argv + 7);
+    }
     if (!strcmp(v, "drive") && argc == 10) return do_drive(rules, led, argv[4], argv[5], argv + 6);
     if (!strcmp(v, "status") && argc == 6) {
         S s; load(rules, led, argv[4], &s);
         printf("in_car=%d hunger=%d fuel=%d turn=%d\n", s.in_car, s.hunger, s.fuel, s.turn); return 0;
     }
     if (!strcmp(v, "replay") && argc == 9) {
-        FILE *f = fopen(led, "r"); char l[512], a[64], b[64], c[64], d[64], e[64]; int n;
+        FILE *f = fopen(led, "r"); char l[512], a[64], b[64], c[64], d[64], e[64]; int n;  int x2;
         if (!f) return 2;
         while (fgets(l, sizeof l, f)) {
             int r = 0;
@@ -184,6 +246,7 @@ static int run(int argc, char **argv) {
             else if (sscanf(l, "EAT | %63s | %d", a, &n) == 2) r = do_eat(rules, argv[4], a);
             else if (sscanf(l, "SLEEP | %63s | %d", a, &n) == 2) { char ns[16]; snprintf(ns, 16, "%d", n); r = do_sleep(rules, argv[4], a, ns); }
             else if (sscanf(l, "DRIVE | %63s | %63s | %d", a, e, &n) == 3) r = do_drive(rules, argv[4], a, e, argv + 5);
+            else if (sscanf(l, "WALK | %63s | %d | %d", a, &n, &x2) == 3) r = walk_to(rules, argv[4], a, n, x2);
             if (r) { fprintf(stderr, "replay diverged at: %s", l); return 14; }
         }
         fclose(f); return 0;
