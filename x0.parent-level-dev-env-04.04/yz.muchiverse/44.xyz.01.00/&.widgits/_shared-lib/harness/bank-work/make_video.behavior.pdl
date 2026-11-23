@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.make_video
+KIND | spoke
+KEYWORDS | video, mp4, presentation, narration, narrated, deck, subtitles, kokoro, voice, walkthrough
+SYNONYM | record | 0.7
+SYNONYM | recording | 0.7
+SYNONYM | demo | 0.7
+SYNONYM | slides | 0.6
+SENTENCE | Make a narrated mp4 from window photographs, English voice with Japanese subtitles and the narrator face.
+SEQUENCE | 1 | read !.PRESENTATIONS-THE-ONE-PLACE-STYLE-TOOLS-AND-HOW-TO-2026-11-18.md
+SEQUENCE | 2 | exec python3 xyzfs/_seed/livedesk/pals/cursword/presentations/make_presentation_video.py <deck> --theme harnecient --font <cjk ttc> --narrator <Actor1.png>
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

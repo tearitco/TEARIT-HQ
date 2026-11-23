@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.run_harness_case
+KIND | spoke
+KEYWORDS | harness, case, verdict, green, pass, passes, fail, fails, passed, failed
+SYNONYM | run | 0.5
+SYNONYM | check | 0.5
+SYNONYM | result | 0.6
+SYNONYM | suite | 0.7
+SENTENCE | Run one harness case file and read its verdict.
+SEQUENCE | 1 | exec ./ops/+x/harness_case_op.+x <absolute path of cases/NAME.pdl>
+SEQUENCE | 2 | read harness/README.md (verbs, pitfalls)
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.probe_mac
+KIND | spoke
+KEYWORDS | mac, lan, ssh, ollama, hardware, probe, macbook
+SYNONYM | machine | 0.3
+SYNONYM | host | 0.6
+SYNONYM | computer | 0.5
+SYNONYM | train | 0.5
+SENTENCE | Look up the LAN host table, then probe the host with read-only commands over key ssh.
+SEQUENCE | 1 | read 09-appendix/LAN-HOSTS.md
+SEQUENCE | 2 | exec ssh -o BatchMode=yes <login>@<host> <read-only commands>
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

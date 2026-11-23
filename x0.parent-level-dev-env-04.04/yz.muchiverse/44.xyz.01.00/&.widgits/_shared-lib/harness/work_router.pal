@@ -1,0 +1,4 @@
+# work_router.pal - LOCKED acceptance harness for the work-intent router (tool_score_op over harness/bank-work). Read results/work_router.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/work_router.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/work_router.pdl
+halt

@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.build_gated
+KIND | spoke
+KEYWORDS | compile, build, rebuild, gcc, cpu_gate, binary, make, compiling
+SYNONYM | heavy | 0.7
+SYNONYM | freezing | 0.6
+SYNONYM | gate | 0.8
+SYNONYM | guard | 0.4
+SENTENCE | Start every compile or heavy job through cpu_gate so the machine stays usable.
+SEQUENCE | 1 | exec _shared-lib/ops/+x/cpu_gate.+x <house> run <label> --wait N -- <cmd>
+SEQUENCE | 2 | read AGENTS.md Heavy work asks first
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

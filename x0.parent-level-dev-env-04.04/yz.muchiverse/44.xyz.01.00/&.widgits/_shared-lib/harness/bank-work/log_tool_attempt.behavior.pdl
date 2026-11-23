@@ -1,0 +1,12 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.log_tool_attempt
+KIND | spoke
+KEYWORDS | tool_log, tokens, token, attempt, log
+SYNONYM | record | 0.5
+SYNONYM | row | 0.3
+SYNONYM | count | 0.5
+SENTENCE | Append one harness-verified attempt row with its token count.
+SEQUENCE | 1 | exec _shared-lib/ops/+x/tool_log_op.+x <rules.pdl> add <log> <task> <input> <op> <args> <verdict> <tier> <tokens>
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

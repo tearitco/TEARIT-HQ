@@ -1,0 +1,13 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.route_docs
+KIND | spoke
+KEYWORDS | doc, docs, document, read, route, begin, start, where
+SYNONYM | first | 0.5
+SYNONYM | which | 0.5
+SYNONYM | find | 0.4
+SYNONYM | table | 0.5
+SENTENCE | AGENTS.md START HERE has one row per task type naming the ONE document to read first.
+SEQUENCE | 1 | read AGENTS.md START HERE route-by-task table
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

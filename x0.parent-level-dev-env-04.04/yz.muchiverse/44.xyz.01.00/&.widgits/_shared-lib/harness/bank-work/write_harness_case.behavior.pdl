@@ -1,0 +1,17 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.write_harness_case
+KIND | spoke
+KEYWORDS | mutant, mutation, negative, write, red, expect, fixture
+SYNONYM | new | 0.4
+SYNONYM | prove | 0.7
+SYNONYM | proves | 0.7
+SYNONYM | test | 0.5
+SYNONYM | tests | 0.5
+SYNONYM | assert | 0.7
+SENTENCE | Write a harness case: pal plus case pdl plus C ops, never a script, then mutate the code once so the case goes red.
+SEQUENCE | 1 | read harness/README.md
+SEQUENCE | 2 | copy a similar case from harness/cases
+SEQUENCE | 3 | run it, mutate the code once, run it again, expect red
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

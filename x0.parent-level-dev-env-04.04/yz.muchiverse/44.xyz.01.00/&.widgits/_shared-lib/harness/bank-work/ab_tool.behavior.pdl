@@ -1,0 +1,13 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.ab_tool
+KIND | spoke
+KEYWORDS | control, toolformer, credit, useless, helped, help, worth
+SYNONYM | compare | 0.7
+SYNONYM | without | 0.7
+SYNONYM | with | 0.4
+SYNONYM | tool | 0.4
+SENTENCE | Credit a tool call only if the outcome is better with it than without it.
+SEQUENCE | 1 | exec _shared-lib/ops/+x/tool_ab_op.+x <rules> <case> <call> <bankcase> --task T --op O --house H
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

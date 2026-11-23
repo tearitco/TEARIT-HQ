@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.xo_export
+KIND | spoke
+KEYWORDS | xo, export, owner, report, folder
+SYNONYM | copy | 0.4
+SYNONYM | put | 0.3
+SYNONYM | share | 0.5
+SYNONYM | document | 0.3
+SENTENCE | Put a doc copy in the owner XO folder (docs and media only, never code).
+SEQUENCE | 1 | exec _shared-lib/ops/+x/xo_export.+x <source> <subfolder> <pre.name>
+SEQUENCE | 2 | read AGENTS.md XO is the owner folder
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

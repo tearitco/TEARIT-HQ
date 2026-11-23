@@ -1,0 +1,83 @@
+# work_router (2026-11-22): the in-house router (tool_score_op over harness_bank_op) sends a goal in words to one of 20 WORK-INTENT entries in harness/bank-work/ (a repeated job of mine -> the real command or doc).
+# Matching is WHOLE WORD, exact: a multi-word keyword never matches, every query word found in a SENTENCE adds 0.25, so the caller drops stopwords (the word lists below are already filtered).
+# Measured 2026-11-22: DEV set (20 goals, tuned against) 18/20; HELD-OUT set (20 goals written in new words, run once) 18/20 = 90%. This case asserts only the goals that route RIGHT today; the known misses are listed below, NOT asserted:
+#   KNOWN-MISS dev: "run the chain signed test" -> chain_wallet (words chain, signed are chain keywords); "new test that can fail for the sender check" -> run_harness_case
+#   KNOWN-MISS held-out: "add coverage that fails when the sender id is not validated" -> run_harness_case; "enter text into the composer by injecting key presses" -> launch_hai_cli (composer is its keyword)
+# CAVEAT: tool_score_op said FIRE on every goal, wrong ones too: RULE tool_fire_min alone does not separate right from wrong (first-to-second score gap does, partly). A margin rule is the next step (a change to the shared op, owner/stronger-agent review).
+# Needs the compiled tool_score_op and harness_bank_op (ops/+x). No network, no shell.
+RESULTS | ../results/work_router.txt
+ENV | LC_ALL | C
+
+CASE | routes-that-are-right-today
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | commit | changes | claude | branch | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.commit_scoped\p | commit_scoped-goal-1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | type | hello | into | hai | window | check | ledger | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.relay_type\p | relay_type-goal-2
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | take | picture | dropdown | look | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.photograph_window\p | photograph_window-goal-3
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | compile | taskbar | manager | without | freezing | desktop | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.build_gated\p | build_gated-goal-4
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | open | h-ai | dropdown | click | new | row | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.taskbar_click\p | taskbar_click-goal-5
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | make | narrated | video | window | owner | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.make_video\p | make_video-goal-6
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | copy | report | into | owner | folder | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.xo_export\p | xo_export-goal-7
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | calling | tool | actually | help | useless | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.ab_tool\p | ab_tool-goal-8
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | confident | hai | its | last | answer | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.hai_chat\p | hai_chat-goal-9
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | start | hai | window | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.launch_hai_cli\p | launch_hai_cli-goal-10
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | hardware | mac | have | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.probe_mac\p | probe_mac-goal-11
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | already | op | before | write | one | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.verify_absence\p | verify_absence-goal-12
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | house | get | killed | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.cpu_status\p | cpu_status-goal-13
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | add | stomp | rule | enemy | teario | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.mechanic_as_event\p | mechanic_as_event-goal-14
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | chain | send | accept | bad | wallet | id | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.chain_wallet\p | chain_wallet-goal-15
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | which | document | read | first | phone | app | task | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.route_docs\p | route_docs-goal-16
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | record | attempt | its | token | count | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.log_tool_attempt\p | log_tool_attempt-goal-17
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | scaffold | new | game | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.new_game\p | new_game-goal-18
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | execute | img-hai | test | report | verdict | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.run_harness_case\p | run_harness_case-goal-19
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | git | add | only | files | touched | commit | them | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.commit_scoped\p | commit_scoped-goal-20
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | save | image | open | window | disk | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.photograph_window\p | photograph_window-goal-21
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | compile | c | file | but | wait | heavy | job | lock | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.build_gated\p | build_gated-goal-22
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | pick | entry | dropdown | under | header | cell | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.taskbar_click\p | taskbar_click-goal-23
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | produce | mp4 | narration | captions | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.make_video\p | make_video-goal-24
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | send | copy | doc | owner | folder | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.xo_export\p | xo_export-goal-25
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | append | tokens | row | log | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.log_tool_attempt\p | log_tool_attempt-goal-26
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | measure | whether | tool | call | improved | outcome | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.ab_tool\p | ab_tool-goal-27
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | calibrated | its | stated | confidence | after | grades | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.hai_chat\p | hai_chat-goal-28
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | open | hai-cli | launcher | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.launch_hai_cli\p | launch_hai_cli-goal-29
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | macbook | lan | run | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.probe_mac\p | probe_mac-goal-30
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | check | whether | duplicate | op | exists | before | writing | one | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.verify_absence\p | verify_absence-goal-31
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | load | high | guard | stopped | house | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.cpu_status\p | cpu_status-goal-32
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | define | happens | when | player | touches | coin | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.mechanic_as_event\p | mechanic_as_event-goal-33
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | wallet | send | cones | unchecked | sender | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.chain_wallet\p | chain_wallet-goal-34
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | where | start | reading | task | about | phone | apps | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.route_docs\p | route_docs-goal-35
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | generate | fresh | game | foundation | templates | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x
+EXPECT_OUT | FIRE\pwork.new_game\p | new_game-goal-36

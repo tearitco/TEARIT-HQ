@@ -1,0 +1,15 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.launch_hai_cli
+KIND | spoke
+KEYWORDS | hai-cli, hai_cli, composer
+SYNONYM | hai | 0.8
+SYNONYM | start | 0.5
+SYNONYM | open | 0.4
+SYNONYM | window | 0.4
+SYNONYM | launcher | 0.7
+SENTENCE | Open the hai-cli window with its launcher (or from the H-AI menu row 12).
+SEQUENCE | 1 | exec &.hq-apps/hai-cli/button.sh run
+SEQUENCE | 2 | read #.hai/harnecient-hai/book/21-hai-cli-in-the-h-ai-menu.md
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

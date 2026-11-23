@@ -1,0 +1,13 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.chain_wallet
+KIND | spoke
+KEYWORDS | chain, wallet, cones, pal-chain, chain_send, escrow, miner, signed, faucet
+SYNONYM | send | 0.5
+SYNONYM | coins | 0.7
+SYNONYM | money | 0.6
+SENTENCE | The house pal-chain: wallets, signed sends, escrow, the miner, the faucet.
+SEQUENCE | 1 | read 044.../041.pal-chain/ops/chain_send.c header
+SEQUENCE | 2 | harness cases chain_signed, chain_escrow_signed, chain_send_hostile
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.taskbar_click
+KIND | spoke
+KEYWORDS | taskbar, dropdown, menu, cell, topbar, header, row, bar
+SYNONYM | top | 0.5
+SYNONYM | click | 0.5
+SYNONYM | h-ai | 0.7
+SYNONYM | open | 0.3
+SENTENCE | Click a header cell through the bar relay, photograph the dropdown, click the ROW (typed digits are row indexes, not badges).
+SEQUENCE | 1 | skill lyfedesk-taskbar-driving
+SEQUENCE | 2 | read 02-architecture/LYFEDESK-ENTITIES-INPUT-MENUS-BOTTOM-BAR-REFERENCE-2026-11-16.md section 6
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,13 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.commit_scoped
+KIND | spoke
+KEYWORDS | commit, commits, pathspec, git, trailer, staged, stage
+SYNONYM | save | 0.4
+SYNONYM | branch | 0.6
+SYNONYM | changes | 0.4
+SENTENCE | Commit only my own paths with the house op so another agent staged files never ride along.
+SEQUENCE | 1 | exec _shared-lib/ops/+x/commit_scoped.+x <repo root> --branch <branch> --message-file F --trailer T -- <paths>
+SEQUENCE | 2 | read AGENTS.md Commit discipline
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

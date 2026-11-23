@@ -1,0 +1,15 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.verify_absence
+KIND | spoke
+KEYWORDS | exist, exists, already, duplicate, existing, absence, built, before
+SYNONYM | search | 0.5
+SYNONYM | whole | 0.3
+SYNONYM | first | 0.3
+SYNONYM | anyone | 0.5
+SYNONYM | someone | 0.5
+SENTENCE | Search all file types and palettes before saying something does not exist or building a new op.
+SEQUENCE | 1 | read memory feedback-verify-absence-and-duplicates
+SEQUENCE | 2 | grep the whole repo and the HQ-IQ-BOOK first
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

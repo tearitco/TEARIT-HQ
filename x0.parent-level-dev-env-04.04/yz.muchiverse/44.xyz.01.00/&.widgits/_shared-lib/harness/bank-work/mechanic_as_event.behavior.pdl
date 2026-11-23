@@ -1,0 +1,13 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.mechanic_as_event
+KIND | spoke
+KEYWORDS | mechanic, enemy, pickup, power-up, stomp, rule, event, page, mechanics
+SYNONYM | step | 0.5
+SYNONYM | happens | 0.6
+SYNONYM | gameplay | 0.6
+SENTENCE | Every game rule is an op called by an event page with numbers in RULE rows, never hard-coded in game_core.
+SEQUENCE | 1 | skill game-mechanics-are-events
+SEQUENCE | 2 | read 02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

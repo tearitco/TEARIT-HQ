@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.hai_chat
+KIND | spoke
+KEYWORDS | hai_chat, grade, graded, confidence, calibration, confident, reply, seeds
+SYNONYM | chat | 0.6
+SYNONYM | answer | 0.6
+SYNONYM | sure | 0.5
+SENTENCE | The hai FSM chat: a turn, a grade, the calibration of its confidence.
+SEQUENCE | 1 | exec hai_chat turn <datadir> <ledger> <text>
+SEQUENCE | 2 | exec hai_chat grade <datadir> <ledger> <0-4>
+SEQUENCE | 3 | exec hai_chat calib <datadir> <ledger>
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

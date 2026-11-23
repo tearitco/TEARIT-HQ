@@ -1,0 +1,15 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.relay_type
+KIND | spoke
+KEYWORDS | relay, relay_drive, keys, key, keystrokes, inject, cli_io, type, typing, press
+SYNONYM | window | 0.4
+SYNONYM | drive | 0.7
+SYNONYM | click | 0.4
+SYNONYM | person | 0.5
+SENTENCE | Drive a khtpm window through its input relay: tapid a field, type, enter, expect a file, shot.
+SEQUENCE | 1 | exec _shared-lib/ops/+x/relay_drive.+x <renderer pid> run <case.pdl> <window id>
+SEQUENCE | 2 | exec _shared-lib/ops/+x/relay_drive.+x findwin <w> <h>
+SEQUENCE | 3 | read 21.drive-doc-fix/00-INDEX.md
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

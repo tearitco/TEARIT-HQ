@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.new_game
+KIND | spoke
+KEYWORDS | game, scaffold, generator, game_new_op, platformer
+SYNONYM | new | 0.3
+SYNONYM | make | 0.3
+SYNONYM | project | 0.3
+SYNONYM | start | 0.2
+SENTENCE | Make a new game from data templates on the shared game_core binary.
+SEQUENCE | 1 | read 16.game/GAME-FOUNDATION-GENERATOR-HOW-TO-AGENT-GUIDE-2026-11-09.md
+SEQUENCE | 2 | exec _shared-lib/harness/ops/game_new_op.+x <house> new <name> --title T --kind K
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

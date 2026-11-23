@@ -1,0 +1,13 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.photograph_window
+KIND | spoke
+KEYWORDS | screenshot, photograph, png, picture, snapshot, capture, grab, dump
+SYNONYM | window | 0.3
+SYNONYM | image | 0.7
+SYNONYM | see | 0.4
+SYNONYM | look | 0.4
+SENTENCE | Photograph one window by id with the house op and OPEN the png.
+SEQUENCE | 1 | exec _shared-lib/ops/+x/dump_frame_png_op.+x <window id> out.png
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000

@@ -1,0 +1,14 @@
+# Work-intent entry (2026-11-22): a repeated job of mine, routed to the real command or doc. Seeds are hand-authored guesses; only WEIGHT is measured.
+BEHAVIOR | work.cpu_status
+KIND | spoke
+KEYWORDS | cpu, load, slow, guard, killed, laggy, hot, sluggish
+SYNONYM | machine | 0.4
+SYNONYM | busy | 0.7
+SYNONYM | house | 0.3
+SYNONYM | freeze | 0.4
+SENTENCE | Check the guard and load; a guard kill is our own footprint, never the browser.
+SEQUENCE | 1 | exec sh &.hq-apps/proc-mon/guard.sh status
+SEQUENCE | 2 | read 03-pitfalls/CPU-OPTIMIZATION-PITFALLS.md
+SOURCE | hand-authored 2026-11-22 (claude, Sonnet); keywords and synonym weights are seeds awaiting measurement
+COUNTS | reward=0 | punish=0 | cursor=0
+WEIGHT | 0.5000
