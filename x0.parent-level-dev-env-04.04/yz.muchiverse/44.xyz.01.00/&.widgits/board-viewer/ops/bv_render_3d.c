@@ -1159,8 +1159,27 @@ static CelestialBody load_celestial_body(const char *root, const char *entity_id
 static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
                          char *glyph, int glen, int *tail);
 static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max);
+static void bv_set_kv_int(const char *path, const char *key, int val);
+/* D118 (2026-11-22): a GAME-DRIVEN token (a row of the shown desk's events.txt: "x y r g b <name> ...", moved by the game's driver, no engine piece) that the xelector POSSESSES. The game moves it after the
+ * forwarded keys, so the xelector (outline cube, HUD pos, 2D cursor) must follow it: the ENGINE owns the per-frame read, so it re-reads the token row here and writes the xelector's own pos_x/pos_y (the one authority,
+ * the same file the arrow keys write). Returns 1 and the cell when poss names such a token. */
+static int g_tf_set = 0, g_tf_x = 0, g_tf_y = 0;      /* D118: this frame the xelector followed a possessed token to g_tf_x,g_tf_y */
+static int desk_token_cell(const char *root, const char *poss, int *tx, int *ty) {
+    if (!root || !poss || !poss[0] || !strcmp(poss, "none") || !strcmp(poss, ".") || !strcmp(poss, "hero_01") || strchr(poss, '/') || strstr(poss, "..")) return 0;
+    char pp[PATH_BUF]; snprintf(pp, sizeof pp, "%s/pieces/%s/state.txt", root, poss);
+    if (access(pp, F_OK) == 0) return 0;      /* an engine piece: the existing piece rules own it */
+    char wp[PATH_BUF], mid[128] = "", did[128] = "", ep[PATH_BUF], ln[256];
+    snprintf(wp, sizeof wp, "%s/pieces/world_01/state.txt", root); bv_world_ids(wp, mid, sizeof mid, did, sizeof did);
+    if (!mid[0] || !did[0] || strchr(mid, '/') || strchr(did, '/')) return 0;
+    snprintf(ep, sizeof ep, "%s/%s/events.txt", bp_dir(root, mid), did);
+    FILE *f = host_fopen(ep, "r"); if (!f) return 0;
+    int found = 0;
+    while (!found && fgets(ln, sizeof ln, f)) { int ex, ey, r, g, b; char nm[64]; if (sscanf(ln, "%d %d %d %d %d %63s", &ex, &ey, &r, &g, &b, nm) == 6 && !strcmp(nm, poss)) { *tx = ex; *ty = ey; found = 1; } }
+    fclose(f); return found;
+}
 static void load_xelector(const char *root) {
     g_xelector_present = 0;
+    g_tf_set = 0;
     g_xelector_possessed_id[0] = '\0';
     int cx = 0, cy = 0, cz = 0;
     char glyph[64] = "";
@@ -1203,6 +1222,15 @@ static void load_xelector(const char *root) {
     }
     fclose(f);
     g_xelector_present = (have_x && have_y && have_z);
+#ifndef BV_NO_TOKEN_FOLLOW
+    {   int tx, ty;   /* D118: follow a possessed game-driven token (see desk_token_cell) */
+        if (g_xelector_present && desk_token_cell(root, g_xelector_possessed_id, &tx, &ty) && (tx != g_xelector_x || ty != g_xelector_y)) {
+            g_xelector_x = tx; g_xelector_y = ty;
+            bv_set_kv_int(path, "pos_x", tx); bv_set_kv_int(path, "pos_y", ty);
+            g_tf_set = 1; g_tf_x = tx; g_tf_y = ty;      /* the session bv_state.txt (selector_x/y: the HUD pos) is written where it is read, below */
+        }
+    }
+#endif
 }
 
 /* Real hero marker, added 2026-08-03 (direct user report: "i still dont
@@ -3589,6 +3617,7 @@ static int render_one_frame(void) {
     if (maker_ground && g_mk.ok && g_mk.w > 0 && g_mk.h > 0 && g_mk.w <= 512 && g_mk.h <= 512) { def_sx = g_mk.w / 2; def_sy = g_mk.h / 2; }
     int selector_x = read_kv_int(state_path, "selector_x", def_sx);
     int selector_y = read_kv_int(state_path, "selector_y", def_sy);
+    if (g_tf_set && (selector_x != g_tf_x || selector_y != g_tf_y)) { selector_x = g_tf_x; selector_y = g_tf_y; bv_set_kv_int(state_path, "selector_x", selector_x); bv_set_kv_int(state_path, "selector_y", selector_y); }   /* D118: HUD pos and 2D cursor follow */
     /* current_z is the SAME real field ops/bv_menu_input.c's own z/x
      * handler writes to the focused host's own pieces/xelector_01/
      * state.txt pos_z (civ-vs-piece.md §6b) - board-viewer's own
