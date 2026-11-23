@@ -118,6 +118,15 @@ Labels: **RAN** = I ran it and saw it. **NOT DONE** = a gap.
 | a decision depends on a whole sentence, not on words (order, negation) | attention, last | only if a logged failure is an order or negation failure; none is today |
 Order stays book 13 section 5. **Rule: nothing ML goes live until it beats the hand seeds on goals it has not seen, and a human reviews the promotion.** Data needed first: logged goals with harness verdicts (the log has 8 rows; the 40 test goals are authored, not logged).
 
+## 8d. Lab results: teacher text, calibration, judges (RAN 2026-11-23; full notebook in XO `%.HARNECIENT/%.calendar/nov-22/4.lab-notebook-...md`)
+Pre-registered hypotheses, one small experiment each, teachers = llama3 8B (debil) and qwen2.5-coder 7B (Mac), 286 teacher phrasings, raw data and scripts in `/home/no/staging/lab-router-2026-11-22/` (outside the repo). Labels: confirmed, falsified, confounded.
+- **Router vs wording:** top-1 is 90% on the 40 human-written goals and about 53% on teacher-written phrasings (llama3 50%, qwen 60%): the router is bound to wording. In-sample fixes look large and do not transfer.
+- **Router confidence (CONFIRMED on fresh data):** softmax top-probability over the route scores at T = 0.12 is close to calibrated on two datasets independently (ECE 0.05 to 0.08) and on a third, never fitted (0.072); items at 0.8 or above are 90 to 95% right. **Candidate to replace the gap rule; needs an owner yes.** Resolves the open decision in the XO pipeline doc section 6.
+- **Falsified:** mined synonym rows (cross-teacher +1 to +4 points, FIRE precision falls to 79 to 88%); light stemming (+1.7); a 20-way LLM judge (50% accurate on known labels); a yes/no judge reaching 85% (best 80%, two judges both saying yes 81% with 82% precision: TRIAGE ONLY).
+- **Confirmed but confounded:** adding each plain-English route description as an extra SENTENCE row (+6.6 points pooled) mostly echoes the prompt the teachers were given (qwen +13 points; the independent set +1). Decision-grade test (H11) needs phrasings written by a person who never saw the descriptions.
+- **Pitfalls:** a model asked to copy the description echoes it; llama3 answers multiple choice as "1. 4"; matching is whole-word so every lexical trick has a small ceiling; judge validity must be measured on known labels before a judge is used.
+- **NOT done:** nothing from the lab is in the tracked bank or in `tool_rules.pdl`; the gap margin 0.45 is unchanged.
+
 ## 9. How to use this as a new agent
 
 1. Read AGENTS.md "START HERE" table and "Commit discipline"; read this page; read `17.ai/HARNESS-AS-GAME-BRAIN.md` and `17.ai/AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05.md` sections 3 to 6.
