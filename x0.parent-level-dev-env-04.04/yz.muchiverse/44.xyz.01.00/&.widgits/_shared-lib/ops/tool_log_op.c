@@ -4,6 +4,9 @@
  *                                                                                              a verdict not listed as RULE tool_verdict, a tier not listed as RULE tool_tier, a non-integer tokens
  *        tool_log_op <rules.pdl> tail <log> <n>        the last n rows
  *        tool_log_op <rules.pdl> stats <log>           `OP|<op>|<rows>`, `VERDICT|<verdict>|<rows>`, `TIER|<tier>|<rows>`, `TOTAL|<rows>`
+ *        tool_log_op <rules.pdl> weights <log> <bank_dir>   (2026-11-22) per BEHAVIOR entry of <bank_dir>/NAME.behavior.pdl: reward = PASS rows and punish = FAIL rows of the log whose op field equals the entry id (SKIP is ignored),
+ *                                               weight = (reward+k)/(reward+punish+2k) with k = RULE tool_weight_prior (1 = plain Laplace; a larger k shrinks small counts toward 0.5; a missing rule REFUSES); writes <bank_dir>/live/<file> = the seed with its COUNTS and WEIGHT rows replaced (git-ignored runtime lane that harness_bank_op find prefers),
+ *                                               prints `WEIGHT|<id>|reward=N|punish=M|<w>`. The whole log is recounted each time (the log is capped, so it is a sliding window): same log, same bytes. The tracked seeds are never written.
  *        tool_log_op --describe
  * CAP (RUNTIME-FILE-GROWTH-STANDARD.md): after every add the file keeps only the LAST RULE tool_log_max_rows rows (streamed, so a file of any size is trimmed, never skipped); second guard: cpu_guard trim_tail.
  * Exit 0 ok, 2 usage / refusal. A missing RULE refuses. */
@@ -11,6 +14,8 @@
 #include <time.h>
 #include <ctype.h>
 #include "../tool_rules.c"
+#include <dirent.h>
+#include <sys/stat.h>
 #define MAXK 256
 typedef struct { char k[TR_LEN]; long n; } Cnt;
 static int bump(Cnt *c, int *nc, const char *k) { for (int i = 0; i < *nc; i++) if (!strcmp(c[i].k, k)) { c[i].n++; return 0; } if (*nc >= MAXK) return -1; snprintf(c[*nc].k, TR_LEN, "%s", k); c[*nc].n = 1; (*nc)++; return 0; }
@@ -21,6 +26,32 @@ static int trim_log(const char *log, long keep) {
     long n = count_rows(log); if (n <= keep) return 0; long drop = n - keep; char tmp[4200]; snprintf(tmp, sizeof tmp, "%s.tmp", log);
     FILE *in = fopen(log, "r"), *o = fopen(tmp, "w"); if (!in || !o) { if (in) fclose(in); if (o) fclose(o); return -1; }
     char ln[8192]; long i = 0; while (fgets(ln, sizeof ln, in)) { if (i++ >= drop) fputs(ln, o); } fclose(in); fclose(o); return rename(tmp, log);
+}
+/* weights: see the header. Returns 0, 2 on an unreadable bank dir. */
+static int cmd_weights(const char *log, const char *bank) {
+    double k; if (tr_num("tool_log_op", "tool_weight_prior", &k)) return 2;
+    DIR *d = opendir(bank); if (!d) { fprintf(stderr, "tool_log_op: cannot open bank dir\n"); return 2; }
+    char live[4200]; snprintf(live, sizeof live, "%s/live", bank); mkdir(live, 0755);
+    struct dirent *de; int rc = 0;
+    while ((de = readdir(d))) {
+        size_t l = strlen(de->d_name); if (l < 14 || strcmp(de->d_name + l - 13, ".behavior.pdl")) continue;
+        char path[4200], out[4300]; snprintf(path, sizeof path, "%s/%s", bank, de->d_name); snprintf(out, sizeof out, "%s/%s", live, de->d_name);
+        FILE *f = fopen(path, "r"); if (!f) { rc = 2; continue; }
+        static char lines[400][1024]; int n = 0; char id[256] = ""; while (n < 400 && fgets(lines[n], sizeof lines[0], f)) { if (!strncmp(lines[n], "BEHAVIOR", 8)) { char *b = strchr(lines[n], '|'); if (b) { b++; while (*b == ' ') b++; snprintf(id, sizeof id, "%s", b); id[strcspn(id, "\r\n ")] = 0; } } n++; } fclose(f);
+        if (!id[0]) continue;
+        long rw = 0, pn = 0; FILE *lg = fopen(log, "r"); char ln[8192];
+        if (lg) { while (fgets(ln, sizeof ln, lg)) { ln[strcspn(ln, "\r\n")] = 0; char *c[10]; int k = split(ln, c, 10); if (k < 9 || strcmp(c[0], "DATA") || strcmp(c[3], id)) continue; if (!strcmp(c[5], "PASS")) rw++; else if (!strcmp(c[5], "FAIL")) pn++; } fclose(lg); }
+        double w = ((double)rw + k) / ((double)(rw + pn) + 2.0 * k);
+        FILE *o = fopen(out, "w"); if (!o) { rc = 2; continue; } int hc = 0, hw = 0;
+        for (int i = 0; i < n; i++) {
+            if (!strncmp(lines[i], "COUNTS", 6)) { fprintf(o, "COUNTS | reward=%ld | punish=%ld | cursor=0\n", rw, pn); hc = 1; }
+            else if (!strncmp(lines[i], "WEIGHT", 6)) { fprintf(o, "WEIGHT | %.4f\n", w); hw = 1; }
+            else fputs(lines[i], o); }
+        if (!hc) fprintf(o, "COUNTS | reward=%ld | punish=%ld | cursor=0\n", rw, pn);
+        if (!hw) fprintf(o, "WEIGHT | %.4f\n", w);
+        fclose(o); printf("WEIGHT|%s|reward=%ld|punish=%ld|%.4f\n", id, rw, pn, w);
+    }
+    closedir(d); return rc;
 }
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--describe")) { puts("tool_log_op: IN <rules.pdl> add|tail|stats <log> ... | OUT append-only DATA|task|input|op|args|verdict|tier|tokens|ts rows (harness-generated only), tail n rows, stats per op/verdict/tier | RULE keys: tool_log_max_rows tool_log_max_field tool_tier tool_verdict | module: _shared-lib/tool_rules.c"); return 0; }
@@ -53,6 +84,10 @@ int main(int argc, char **argv) {
         for (int i = 0; i < nv; i++) printf("VERDICT|%s|%ld\n", vs[i].k, vs[i].n);
         for (int i = 0; i < nt; i++) printf("TIER|%s|%ld\n", ts[i].k, ts[i].n);
         printf("TOTAL|%ld\n", tot); return 0;
+    }
+    if (!strcmp(cmd, "weights")) {
+        if (argc != 5) { fprintf(stderr, "tool_log_op weights <log> <bank_dir>\n"); return 2; }
+        return cmd_weights(log, argv[4]);
     }
     fprintf(stderr, "tool_log_op: unknown verb %s\n", cmd); return 2;
 }

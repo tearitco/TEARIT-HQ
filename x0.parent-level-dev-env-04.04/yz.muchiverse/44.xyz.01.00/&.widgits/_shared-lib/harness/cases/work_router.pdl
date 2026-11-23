@@ -6,6 +6,7 @@
 # Needs the compiled tool_score_op and harness_bank_op (ops/+x). No network, no shell.
 RESULTS | ../results/work_router.txt
 ENV | LC_ALL | C
+ENV | HARNESS_BANK_LANE | dev
 
 CASE | right-and-fires
 RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_score_op.+x | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $HOUSE/&.widgits/_shared-lib/harness/bank-work | commit | changes | claude | branch | --bank-op | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x

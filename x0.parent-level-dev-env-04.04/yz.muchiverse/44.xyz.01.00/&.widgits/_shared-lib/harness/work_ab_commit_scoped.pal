@@ -1,0 +1,4 @@
+# work_ab_commit_scoped.pal - LOCKED acceptance harness: the first real A/B of a work route (commit_scoped credited, a control useless). Read results/work_ab_commit_scoped.txt.verdict.txt.
+exec ./ops/+x/harness_case_op.+x cases/work_ab_commit_scoped.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/work_ab_commit_scoped.pdl
+halt

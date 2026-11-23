@@ -64,4 +64,35 @@ RUN | $T/tl | $T/cap3.pdl | add | $T/big.txt | last | i | o | a | PASS | rules |
 RUN | $T/tl | $T/cap3.pdl | stats | $T/big.txt
 EXPECT_OUT | TOTAL\p3 | oversize-file-trimmed-not-skipped
 EXPECT_HAS | big.txt | DATA\plast\p | newest-survives-the-trim
+CASE    | weights-from-the-log
+# 2026-11-22: tool_log_op weights recounts the WHOLE log per entry id (PASS = reward, FAIL = punish, SKIP ignored) and writes the Laplace weight into <bank>/live/, never into the seed.
+# RULE tool_weight_prior is 5 in the real rules: x.a: 2 PASS + 1 FAIL + 1 SKIP -> weight (2+5)/(2+1+10) = 0.5385. x.b: no rows -> 0.5000. A row of op x.aa must NOT count for x.a (exact id match).
+WRITE | wlog.txt | DATA\pt1\pi\px.a\pe\pPASS\prules\p0\p1\nDATA\pt2\pi\px.a\pe\pPASS\prules\p0\p2\nDATA\pt3\pi\px.a\pe\pFAIL\prules\p0\p3\nDATA\pt4\pi\px.a\pe\pSKIP\prules\p0\p4\nDATA\pt5\pi\px.aa\pe\pPASS\prules\p0\p5\n
+WRITE | wb/a.behavior.pdl | BEHAVIOR \p x.a\nKEYWORDS \p alpha\nCOUNTS \p reward=0 \p punish=0 \p cursor=0\nWEIGHT \p 0.9000\n
+WRITE | wb/b.behavior.pdl | BEHAVIOR \p x.b\nKEYWORDS \p beta\nWEIGHT \p 0.9000\n
+RUN | $T/tl | $T/rules.pdl | weights | $T/wlog.txt | $T/wb
+EXPECT_EXIT | 0 | weights-run
+EXPECT_OUT | WEIGHT\px.a\preward=2\ppunish=1\p0.5385 | a-counts-2-pass-1-fail-skip-ignored-exact-id
+EXPECT_OUT | WEIGHT\px.b\preward=0\ppunish=0\p0.5000 | no-rows-is-one-half
+EXPECT_HAS | wb/live/a.behavior.pdl | COUNTS \p reward=2 \p punish=1 | live-counts-written
+EXPECT_HAS | wb/live/a.behavior.pdl | WEIGHT \p 0.5385 | live-weight-written
+EXPECT_HAS | wb/live/b.behavior.pdl | COUNTS \p reward=0 \p punish=0 | an-entry-without-a-COUNTS-row-gets-one
+EXPECT_HAS | wb/a.behavior.pdl | WEIGHT \p 0.9000 | the-tracked-seed-is-never-written
+EXPECT_HAS | wb/a.behavior.pdl | reward=0 | the-seed-counts-stay-hand-authored
+RUN | /bin/cat | $T/wb/live/a.behavior.pdl
+CAPTURE | first_live
+RUN | $T/tl | $T/rules.pdl | weights | $T/wlog.txt | $T/wb
+RUN | /bin/cat | $T/wb/live/a.behavior.pdl
+CAPTURE | second_live
+EXPECT_EQ | $first_live | $second_live | same-log-same-bytes-idempotent
+# a new PASS row changes the live file (the equality above is not vacuous)
+WRITE | wlog2.txt | DATA\pt1\pi\px.a\pe\pPASS\prules\p0\p1\nDATA\pt2\pi\px.a\pe\pPASS\prules\p0\p2\nDATA\pt3\pi\px.a\pe\pFAIL\prules\p0\p3\nDATA\pt6\pi\px.a\pe\pPASS\prules\p0\p6\n
+RUN | $T/tl | $T/rules.pdl | weights | $T/wlog2.txt | $T/wb
+EXPECT_OUT | WEIGHT\px.a\preward=3\ppunish=1\p0.5714 | one-more-pass-moves-the-weight
+RUN | $T/tl | $T/rules.pdl | weights | $T/wlog.txt | $T/nowhere
+EXPECT_EXIT | 2 | an-unreadable-bank-dir-refuses
+RUN | $T/tl | $T/rules.pdl | weights | $T/wlog.txt
+EXPECT_EXIT | 2 | wrong-argument-count-refuses
+RUN | $T/tl | $T/cap3.pdl | weights | $T/wlog.txt | $T/wb
+EXPECT_EXIT | 2 | a-missing-weight-prior-refuses-no-default
 CLEAN |
