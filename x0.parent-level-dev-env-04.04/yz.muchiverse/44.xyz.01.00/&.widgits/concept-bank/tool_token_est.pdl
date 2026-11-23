@@ -1,0 +1,34 @@
+# tool_token_est.pdl - ESTIMATED token cost per work-intent route (2026-11-22; owner: "just use a common average from statistics, ratios are fine for now").
+# EVERY number here is an ESTIMATE, not a measurement. Neither the model nor the harness can read real token use (tool_log rows say tokens=0 = not measured).
+# Method: with_route = exec rows x call_tokens + read rows x avg_doc_tokens x section_fraction;
+#   without_route = with_route + explore_extra_reads x avg_doc_tokens + explore_extra_calls x call_tokens   (the ASSUMPTION: without a route one wrong doc is read first and two extra search calls are made).
+# MEASURED inputs: avg_doc_tokens = mean bytes/4 over 330 HQ-IQ-BOOK docs over 1 KB (depth 2), 2026-11-22; bytes_per_token 4 is the usual rule of thumb for English and code, off by up to about 30%.
+# ASSUMED inputs: call_tokens, section_fraction, explore_extra_reads, explore_extra_calls. Each EST row follows the two formulas above from the RULE rows and the exec/read counts of its bank-work entry; only the RATIO is meant to be read.
+# Biggest single item measured: harness/README.md is 162,017 bytes, about 40,500 tokens; a route must say "read the case header or grep one row", never "read the README".
+RULE | bytes_per_token | 4
+RULE | call_tokens | 600
+RULE | avg_doc_tokens | 4005
+RULE | section_fraction | 0.5
+RULE | explore_extra_reads | 1
+RULE | explore_extra_calls | 2
+EST | work.ab_tool | with=600 | without=5805 | ratio=0.10 | exec=1 read=0
+EST | work.build_gated | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.chain_wallet | with=2003 | without=7208 | ratio=0.28 | exec=0 read=1
+EST | work.commit_scoped | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.cpu_status | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.hai_chat | with=1800 | without=7005 | ratio=0.26 | exec=3 read=0
+EST | work.launch_hai_cli | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.log_tool_attempt | with=600 | without=5805 | ratio=0.10 | exec=1 read=0
+EST | work.make_video | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.mechanic_as_event | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.new_game | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.photograph_window | with=600 | without=5805 | ratio=0.10 | exec=1 read=0
+EST | work.probe_mac | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.relay_type | with=3203 | without=8408 | ratio=0.38 | exec=2 read=1
+EST | work.route_docs | with=2003 | without=7208 | ratio=0.28 | exec=0 read=1
+EST | work.run_harness_case | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.taskbar_click | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+EST | work.verify_absence | with=2003 | without=7208 | ratio=0.28 | exec=0 read=1
+EST | work.write_harness_case | with=2003 | without=7208 | ratio=0.28 | exec=0 read=1
+EST | work.xo_export | with=2603 | without=7808 | ratio=0.33 | exec=1 read=1
+TOTAL | all 20 routes used once | with=43448 | without=147548 | ratio=0.29
