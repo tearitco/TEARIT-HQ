@@ -1,0 +1,249 @@
+# NIGHT 62 — The Proof That Had To Be Played
+# ====================================================================
+# Title: "NIGHT 62 — The Proof That Had To Be Played"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-22 and 23. The owner's proof standard (a playable thing is proved by playing it: In ON, possess the player, keys only, event pages in Blueprintz, the picture in 2D and 3D, the HUD position read in every frame). Two bugs that only the human path found. Rules as ops called by event pages, with the ledger as the only authority. And why this is the attrition strategy: the harness verdict is the loss, a model only describes, promotion is human-reviewed, only harness-verified rows are training data. The hai work: tool_log, tool_ab, tool_score, the work router, route weights, router confidence, and what the lab falsified. Ends with what is NOT proven.
+# Long-form: everything called RAN was run and seen on 2026-11-22 or 23 and is written down in the BOOK. Everything called NOT PROVEN says so. No unpublished lore is used.
+# Companion documents: BOOK 17.ai META-STRATEGY-ATTRITION-HARNESS-TOOL-USE-AND-CHEAP-BUILDING-2026-11-22 (sections 3, 8, 8b, 8d); BOOK 16.game/presentations IN-ON-POSSESSION-FIX-2026-11-22, TEARIO-BRICK-COIN-MAKE-TO-PLAY-VIDEO, TEARIO-TELEPORT-VIDEO, RTA-IN-POSSESSION-KEYS-VIDEO, MINECRAFT-IN-POSSESSION-KEYS-VIDEO, HARNESS-FAILING-CASES-FIXED-2026-11-23; decision log D99 to D120; XO nov-23 extensive report.
+
+**THE NARRATOR:** Tonight is about the difference between a test that passes and a thing that works, and why this house decided that only one of them counts.
+
+**MAXINE:** Those are different? I thought a green harness meant it works.
+
+**TOMO:** A green harness means the harness is satisfied. The owner's standard for anything playable is stricter. You prove a playable thing by playing it. Open the real window, click In until the label says ON, possess the player, and from then on use keys only, like a person at a keyboard.
+
+**RAHWEH:** And the evidence is not a log line. The evidence is the picture, opened and looked at, in two dimensions and in three, with the position in the corner of the screen read in every frame.
+
+**THE NARRATOR:** Say what that position readout is, for someone who was not there.
+
+**TOMO:** A heads-up line on the board. It says the cursor position and who is possessed. If the player walks and that number does not follow, the screen is lying about the game, even if every ledger row is right.
+
+---
+
+**THE NARRATOR:** Start with the first bug, because it explains the whole standard. The top bar has a label, In. It is supposed to turn from off to ON when you click it.
+
+**MAXINE:** Why does it matter if a label changes?
+
+**TOMO:** Good question. In ON is what hands the keyboard to the board. If the label never turns ON, you cannot possess anyone, and you cannot play. In three windows, the Voxel board, the Robot Trap board and Teario Play, the label never turned ON.
+
+**MAXINE:** But the button worked in the tests.
+
+**TOMO:** That is exactly the trap. When the action was run by hand, it did everything right: the key was appended and the label said ON. The action was fine. The window was bound to the wrong session.
+
+**RAHWEH:** Say what a session is here.
+
+**TOMO:** Each board launch has its own session folder, with its own engine. A shared projector draws the top bar from a session. At launch the projector starts before its own engine has registered. So it asked the ledger for the latest live session of the same project, and got an older one, a leaked session from an earlier take. It then cached that answer until the folder vanished.
+
+**MAXINE:** So you clicked, and the click went to a ghost board.
+
+**TOMO:** Yes. Measured on the first launch: the window's state file named one session, and the new one was a different number. The clicks were written to the old one. Nothing crashed. Nothing printed an error. A script that wrote the key to the right session by hand would have passed.
+
+**THE NARRATOR:** And the fix?
+
+**TOMO:** For the first two hundred and forty seconds after launch the projector re-checks which session is its own, every ten seconds. Both numbers are knobs, not buried constants. It is modelled on the other boards, which never look their session up through the ledger at all.
+
+**RAHWEH:** What did the proof look like after?
+
+**TOMO:** One window at a time, fresh launch each time. Click In once, and the opened picture showed In ON in Voxel, Robot Trap and Teario Play. Then Esc releases the possession, arrows move to the token, Enter possesses it, and from there only keys. Esc twice at the end: first the possession ends with In still ON, then In goes off.
+
+---
+
+**THE NARRATOR:** The second bug is subtler. The cursor and the player.
+
+**MAXINE:** The cursor is the outline cube.
+
+**TOMO:** The selector, yes, the outline, the position in the readout, and the cursor in the flat two-dimensional view. The rule, from an earlier owner decision, is that when you possess something, the controlling look follows it. But on these boards the player is a token that lives in a desk events file, and when the token moved, the cursor stayed where it was.
+
+**RAHWEH:** Show it the way a person sees it.
+
+**TOMO:** You press left, the player steps left, and the readout still says the old cell. The fix teaches the engine to follow the possessed token row of the shown desk's events file. Teario Play was seen live: the token went from column six to column one by left keys, and the readout followed.
+
+**MAXINE:** You said there were two bugs, but this is one with a second half.
+
+**TOMO:** Right. After that fix, the Robot Trap board showed the cursor following, but one step late. The cause was in the engine: it read the events file twice per frame, once for the token follow and once for the rest, and a token could have moved between the two reads. That lag was fixed in a later commit.
+
+**THE NARRATOR:** Now say the honest part about the lag fix.
+
+**TOMO:** It is proven in the harness and offline. It has not yet been recorded live, because the live engine binary was not rebuilt for a fresh launch. I will come back to that in the last segment.
+
+**RAHWEH:** And the point of these two stories?
+
+**TOMO:** Both bugs live in the gap between a script's path and a human's path. A script knows the session it wants. A person only knows the window. A script writes the event it expects. A person presses a key and looks at the glass. If you only ever drive the script path, you can be green for weeks and wrong the whole time.
+
+---
+
+**THE NARRATOR:** Turn to how the rules are built, because the proof standard has a second half: the event pages shown in Blueprintz.
+
+**MAXINE:** What are event pages?
+
+**RAHWEH:** Small pages of data that say: when this happens, call this op. They are the places where rules are visible to a person. The house rule, from the owner, is that every game rule is an op. No rule is written natively into the shared game core. The numbers are rows in a rules file. The op is a small piece of C that does one thing and can be called from the command line. An event page calls the op. A harness case sits beside it.
+
+**TOMO:** So there are five parts for each rule. A pure module. A command-line op. A registry row. A harness case that can fail. And an event page you can open in Blueprintz and read.
+
+**MAXINE:** Which rules got that treatment in this stretch?
+
+**TOMO:** In Teario: the brick, the coin and the teleport. In the Voxel board, which is the Minecraft-style one: hunger and eating. In the Robot Trap board: sleep, parts of a car, and walking on foot.
+
+**THE NARRATOR:** One at a time. Brick and coin.
+
+**TOMO:** In the Make window the maker places a brick stamp above the start and a coin on the path, using the game's own pick and place buttons and walking the cursor with arrow keys. Then the play button opens the Play window on exactly that level. The maker possesses the player and uses keys only: jump, then right. The brick breaks, the coin is taken, and the player reaches the flag.
+
+**RAHWEH:** And what did the ledger say?
+
+**TOMO:** An event row for the brick with value five and score five, an event row for the coin with value ten and score fifteen, and a verification that printed the level as cleared with a tick count. The final panel said the game was over, with seventeen of nineteen for the player. And there was a picture bug found here too: the two-dimensional view kept drawing the brick after it broke. That fix was seen in the final photograph: the brick cell was empty and so was the coin cell.
+
+**MAXINE:** Which is the same lesson again. The ledger was right and the picture was wrong.
+
+**TOMO:** The ledger is the authority. The picture is a projection of it. When they disagree, the projection is the bug, and you only see it by looking at the projection.
+
+**THE NARRATOR:** The teleport.
+
+**TOMO:** A pair of tiles, the first at column five and the second at column eleven on the same row. One key, right, and the player moves from the first tile to the second. The frames show it: one near the start, one at the exit a few ticks later. The panel tick lags the picture by about two ticks, which is noted and not hidden. The ledger row records the teleport from one cell to the other. The Blueprintz page for the teleport rule was photographed in the real window.
+
+**THE NARRATOR:** Hunger.
+
+**TOMO:** In the Voxel board, hunger is not stored anywhere. It is a fold of the one ledger. Every turn row raises each actor's hunger by a rule number, up to a cap. A new row, eat, lowers it and takes one item from the bag. The numbers, one per turn, a cap of forty, starving at thirty, an apple worth four and bread worth twelve, are rule rows in data, not in code. A new food is one new row.
+
+**RAHWEH:** And starving?
+
+**TOMO:** At thirty, mine and place refuse and write nothing. Eating, waiting, sleeping, moving and giving still work, so eating recovers you. There is no death rule yet. The refusals write nothing at all: unknown actor, no food in the bag, not hungry, starved. A refused action leaves no row, so the ledger cannot drift.
+
+**MAXINE:** I like that hunger is not a number somewhere.
+
+**TOMO:** That is the no-ghost-data rule. A fact about the game lives in one place, the append-only ledger. If you keep hunger in a file and edit the file, you have changed the outcome without a row to say who or why. Observed cost: the verify step is quadratic in the number of rows. About four tenths of a second at a thousand rows, but nearly ten seconds at five thousand. That needs a checkpoint before long games. It is written down as not built.
+
+**THE NARRATOR:** Sleep and walking.
+
+**TOMO:** Sleep, in the Robot Trap board, skips from one to eight turns, with a maximum from a rule row. Hunger rises two per turn. It writes a sleep row and a turn row. In the car, or with a bad count, it refuses and writes nothing. Walking on foot is the newest: a walk row per step, where water and roofs refuse, and the kinds of ground are data classes.
+
+**RAHWEH:** And walking is where I have to be careful.
+
+**TOMO:** Yes. Walking is built and passes its harness case, seventy-seven checks. It has not been recorded live. I am labelling that now, so it cannot slide into the claim that it was seen.
+
+---
+
+**THE NARRATOR:** Why does the class say all of this is the attrition strategy?
+
+**MAXINE:** Remind me what attrition means here. It is not a war.
+
+**RAHWEH:** It is a war of wearing down the need for an outside model. The end state is that the house does its own work, and an outside model is only a bootstrap tier that has to graduate away.
+
+**TOMO:** The first idea behind it is that the harness verdict is the loss function. Large model training needs a signal that says that was good. Here the signal already exists and is cheap: a harness verdict, pass or fail, with counts. A tool call is good if the case does better with it than without it. That is the Toolformer filter, with the harness verdict standing in for language-model loss. And it is also the house rule, falsify your premise with a control.
+
+**MAXINE:** And training?
+
+**TOMO:** Counting. Reward and punish per route. No gradient descent, no graphics card. Neural training on this machine is explicitly out of scope.
+
+**RAHWEH:** The old four pieces are still the shape. TEARIT is the loop: watch, describe, decide. The Concept Bank is the weighted data the loop reads and writes. Tomom is the hand-built local model, still dormant. And the decision layer underneath is the finite state machine and goal planning.
+
+**THE NARRATOR:** State the rules of the loop, plainly, because everything else follows from them.
+
+**TOMO:** One. A model only describes, in one fixed line, and never sets a number. Two. The harness verdict is the loss. Three. Promotion is human reviewed, never automatic. Four. Only rows that a harness generated and verified are training data. The agent's own session transcripts are excluded, because they hold private paths and chat. Five. An outside model is a bootstrap tier, and the tier is written in the log so the dependence can be measured and shrunk.
+
+**MAXINE:** Why can the model not set a number?
+
+**RAHWEH:** Because then the number is ghost data. A model can say what a situation looks like in one line. The harness decides what to do about it and how well it went. If the model sets the weight, you can no longer check the weight against the world.
+
+---
+
+**THE NARRATOR:** Now the hai work. Four small ops. Say what each is for.
+
+**TOMO:** Tool log: an append-only file of rows, task, input, op, verdict, tier, tokens, time. Capped, and harness-written only. Tool A/B: a with-and-without control run, which credits a tool only if the with-run passes more checks. Tool score: ranks the known ops from goal words, and fires only above a threshold. And a mechanic generator that writes a verb, an event page skeleton, rule rows and a failing-capable case from arguments. In the run on 2026-11-22 their cases passed, with twenty-seven, twenty-five, twenty-eight and forty-three checks, and no failures.
+
+**MAXINE:** What is the control you keep mentioning?
+
+**TOMO:** The A/B has to be able to say a tool is useless. So a control where the route is identical to the baseline must come out USELESS. If it came out credited, the test could not fail, and a test that cannot fail proves nothing. In the one real credited case, a scoped commit, the with-route passed three of three checks and the plain git commit passed one of three, because it swept in another agent's staged file. That one is CREDIT.
+
+**RAHWEH:** The work router.
+
+**TOMO:** Twenty work intents, each a repeated job: run a harness case, commit scoped, photograph a window, build under the gate, and so on. Matching is by whole words, so entries use single-word keywords. On the twenty goals used for tuning it scored eighteen. On a held-out set of twenty goals written afterwards and run once it scored eighteen of twenty, ninety percent.
+
+**MAXINE:** Ninety percent sounds good.
+
+**TOMO:** It is optimistic. The sets are small and written by the same author. And the tool-score op said FIRE on all forty goals at first, including the wrong ones, because the minimum score was low. So a margin rule was added: fire only if the best score beats the second by a margin. At zero point four, all wrong routes were blocked, but six right routes fell back to the table. Then a later check showed that on weights derived from the log, one wrong route still fired, and the margin went to zero point four five, which is fitted to four mistakes, and the doc says to re-fit it as the log grows.
+
+**RAHWEH:** And the weights?
+
+**TOMO:** Route weights are derived from the log, one authority. A weight is a projection of the log rows: reward for pass, punish for fail, skips ignored. The same log gives the same bytes. Delete the projection and it comes back identical. With a plain count the weights flipped three of the forty tests, so a prior of five was added: one pass moves a route to about zero point five five, three passes to zero point six one five.
+
+**THE NARRATOR:** And what is the state of the evidence behind those weights?
+
+**TOMO:** Thin. About eight verified log rows. One of twenty routes has an A/B. So the rule is a floor: below a stated row count, a weight stays at the prior and is shown as UNPROVEN. Today the router is a catalogue, not a signal, and it must not be wired into agent prompts until several routes have A/B rows.
+
+---
+
+**THE NARRATOR:** On the twenty-third there was a lab. Say what it tested and what it found.
+
+**TOMO:** Hypotheses were written before each small experiment. Teacher text was made by two local models, one on the other machine and one on the Mac, about two hundred and eighty-six phrasings. First finding: the router is bound to wording. It gets ninety percent on the forty human-written goals and about fifty-three percent on teacher-written phrasings.
+
+**MAXINE:** So it memorised our way of talking.
+
+**RAHWEH:** Roughly. It matches whole words. Say it a different way and it misses.
+
+**TOMO:** Second finding, confirmed on fresh data: a confidence score. Take the softmax of the route scores with a temperature of zero point one two. It is close to calibrated on two datasets independently, with an expected error of five to eight percent, and on a third that was never used for fitting, seven percent. Items at point eight or above were right ninety to ninety-five percent of the time. It is a candidate to replace the gap rule, and it needs an owner yes. It is not adopted.
+
+**MAXINE:** What did not work?
+
+**TOMO:** Several things were falsified. Mined synonym rows gained a few points but made the fire precision fall to between seventy-nine and eighty-eight percent. Light stemming gave under two points. A twenty-way model judge was fifty percent accurate on known labels. A yes-or-no judge never reached eighty-five percent; two judges agreeing reached eighty-one with eighty-two percent precision, so triage only.
+
+**RAHWEH:** And one thing was confounded.
+
+**TOMO:** Adding each route's plain description as an extra sentence row raised accuracy by about six and a half points pooled, but that mostly echoes the prompt the teachers had been given. On the independent set the gain was one point. A decision-grade test needs phrasings from a person who never saw the descriptions.
+
+**MAXINE:** So the lab mostly said no.
+
+**THE NARRATOR:** That is the purpose of a lab with pre-written hypotheses. A falsified idea is a result, and it is cheaper than finding out in production.
+
+**RAHWEH:** And nothing from the lab went into the tracked bank or the rule file. The margin of point four five is unchanged.
+
+---
+
+**THE NARRATOR:** A word on the failing-case sweep, because it is the same lesson from another angle.
+
+**TOMO:** Every harness file was run once, one at a time, niced behind the gate. Forty-nine cases were red and eight skipped because they need a live window. Many had one shared cause: a shared core file had gained an include, and no scratch-house case copied it, so the scratch build failed. Fix the include in each case and a dozen cases went green, for example one from eight of thirty to thirty of thirty. In another, a new event had shifted every list index, so the case selected the wrong rows and still passed. The fix added an assertion of the selected name, so an index shift can no longer pass silently.
+
+**MAXINE:** And nothing was weakened?
+
+**TOMO:** No failing check was deleted. Where an expectation was stale, it was replaced by one asserting the new behaviour. After the first fixes, twenty-two were green and the rest were blocked with written evidence.
+
+---
+
+**THE NARRATOR:** Now the segment the owner asked for. What is not proven.
+
+**TOMO:** First. The lag fix for the cursor that followed one step late is proven in the harness and offline only. It has not been recorded live. An open board needs a fresh engine build and a fresh launch before anyone sees it.
+
+**RAHWEH:** Second. Walking on foot in the Robot Trap board passes seventy-seven checks. It has not been recorded live. The arrow keys could not walk Joe in the earlier recording because the ledger had no walk row for him; the new rule adds one, and the live proof is a recording job still waiting.
+
+**MAXINE:** Third. The router is bound to wording, ninety percent on our own words and about fifty-three on a model's words.
+
+**TOMO:** Fourth. The route weights are derived from the log but have not been reviewed by a person. They are unproven by their own floor.
+
+**RAHWEH:** Fifth. Of twenty routes, one has an A/B. A route that is a document to read cannot be A/B-ed that way at all. It can only be logged.
+
+**TOMO:** Sixth. The point four five margin is fitted to four wrong routes. The softmax confidence is the better candidate and waits for the owner's yes.
+
+**MAXINE:** Seventh. The Voxel ledger check gets slow with long games. And not built at all: farming, water, trees, mobs, a bed so that sleep can succeed, a brick holding a coin.
+
+**THE NARRATOR:** Say why we say all of this aloud.
+
+**TOMO:** Because the standard we started with was that a claim is only a claim until a harness or a dated observation backs it. A class that overstated would break its own rule.
+
+---
+
+**THE NARRATOR:** Close the loop. In a sentence each, what should a new agent carry out of tonight?
+
+**MAXINE:** Prove a playable thing by playing it, with keys only, and open the picture.
+
+**RAHWEH:** When the ledger and the picture disagree, the picture is the bug, and only the human path shows it.
+
+**TOMO:** Every rule is an op called by an event page, with its numbers in data and a case that can fail.
+
+**MAXINE:** The model describes. The harness decides. A person promotes.
+
+**MAXINE:** And if I am not sure something works?
+
+**TOMO:** Then you say it is not proven, you write down what would prove it, and you go and play it.
+
+**THE NARRATOR:** That is the class. The next one will start from the recording job that is still waiting.
