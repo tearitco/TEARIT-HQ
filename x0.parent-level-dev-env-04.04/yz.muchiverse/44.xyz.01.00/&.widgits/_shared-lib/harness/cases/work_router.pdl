@@ -1,7 +1,7 @@
 # work_router (2026-11-22): the in-house router (tool_score_op over harness_bank_op) sends a goal in words to one of 20 WORK-INTENT entries in harness/bank-work/ (a repeated job of mine -> the real command or doc).
 # Matching is WHOLE WORD, exact: a multi-word keyword never matches, every query word found in a SENTENCE adds 0.25, so the caller drops stopwords (the word lists below are already filtered).
 # Measured 2026-11-22 on 40 goals (a DEV set of 20 tuned against, a HELD-OUT set of 20 run once): 36 route right on top-1, 4 wrong. Before the margin rule tool_score_op said FIRE on ALL 40.
-# With RULE tool_fire_margin 0.40 (concept-bank/tool_rules.pdl): the 4 wrong routes are blocked (group 3) and some right ones fall back to NOFIRE too (group 2). 0.40 is FITTED to those 4 errors: re-fit as tool_log grows.
+# With RULE tool_fire_margin 0.45 (concept-bank/tool_rules.pdl): the 4 wrong routes are blocked (group 3) and some right ones fall back to NOFIRE too (group 2). 0.45 is FITTED to those 4 errors: re-fit as tool_log grows.
 # Group 1 = right and still FIRE. Group 2 = right but NOFIRE (a close race: the fallback is reading the AGENTS.md route table). Group 3 = the 4 known WRONG routes, asserted NOFIRE (exit 1).
 # Needs the compiled tool_score_op and harness_bank_op (ops/+x). No network, no shell.
 RESULTS | ../results/work_router.txt

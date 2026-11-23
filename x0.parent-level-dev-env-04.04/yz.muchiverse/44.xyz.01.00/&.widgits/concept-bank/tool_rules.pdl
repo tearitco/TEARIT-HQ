@@ -13,8 +13,8 @@ RULE | tool_verdict | FAIL
 RULE | tool_verdict | SKIP
 # tool_score_op fires only at or above this score (harness_bank_op find: keyword 1.0 / synonym weight, summed over the goal words, times the entry's Laplace weight)
 RULE | tool_fire_min | 0.30
-# tool_score_op fires only when the best score beats the SECOND by at least this gap (0 = off). 2026-11-22: 0.40, fitted to the 4 wrong routes of 40 goals (work_router); it also blocks 7 right ones. Re-fit it as tool_log grows.
-RULE | tool_fire_margin | 0.40
+# tool_score_op fires only when the best score beats the SECOND by at least this gap (0 = off). 2026-11-22: 0.45. 0.40 left one wrong route firing once live weights were used; 0.45 is the one threshold that blocks every wrong route on the 40 goals in BOTH the seed and the live lane (29 right routes still fire). Fitted to 4 errors on 40 goals: re-fit it as tool_log grows.
+RULE | tool_fire_margin | 0.45
 # tool_log_op weights: a route weight is (PASS + k) / (PASS + FAIL + 2k). k = 1 is plain Laplace and let 8 log rows swing router scores by a third (3 of 40 router tests flipped, one wrong route fired), so k = 5: one pass gives 0.545, three give 0.615. Re-fit as tool_log grows.
 RULE | tool_weight_prior | 5
 # tool_ab_op credits a call only when WITH passes at least this many MORE checks than WITHOUT; punishes when WITH passes fewer
