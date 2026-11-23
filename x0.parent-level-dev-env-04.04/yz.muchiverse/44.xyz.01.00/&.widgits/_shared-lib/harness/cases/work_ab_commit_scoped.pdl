@@ -1,0 +1,38 @@
+# work_ab_commit_scoped (2026-11-22): the FIRST real A/B of a work route (step 3 of the router plan). Question: does following the route "commit_scoped" beat what I would do without it?
+# Inner case, in its own scratch git repo: base.txt committed; ANOTHER agent's foreign.txt already staged; my mine.txt written. Three checks: mine.txt is in HEAD, foreign.txt is NOT in the commit, foreign.txt is STILL staged.
+# WITH = the house op commit_scoped.+x (commit by explicit pathspec). WITHOUT (baseline) = `git add mine.txt` + a plain `git commit`, what a quick commit does, which sweeps the staged foreign file in (the AGENTS.md "Concurrent agents" incident).
+# Expected: WITH 3/0, WITHOUT 1/2, margin 1 -> CREDIT. A route that changes nothing (the call equals the baseline) must come out USELESS: that second run shows the A/B can fail.
+# Scratch only: its own repo, no network, the real repo is never touched. The entry used for the counts is a COPY of bank-work/commit_scoped (the real weights are not written here).
+RESULTS | ../results/work_ab_commit_scoped.txt
+ENV | LC_ALL | C
+CASE    | setup
+SCRATCH |
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_ab_op.+x | $T/ab
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/ops/+x/tool_log_op.+x | $T/tl
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_case_op.+x | $T/hcase
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/harness_bank_op.+x | $T/hbank
+RUN | /bin/cp | $HOUSE/&.widgits/concept-bank/tool_rules.pdl | $T/rules.pdl
+EXPECT_EXIT | 0 | real-rules-and-ops-copied
+WRITE | c/inner.pdl | CASE \p inner\nSCRATCH \p\nENV \p GIT_AUTHOR_NAME \p t\nENV \p GIT_AUTHOR_EMAIL \p t@t\nENV \p GIT_COMMITTER_NAME \p t\nENV \p GIT_COMMITTER_EMAIL \p t@t\nRUN \p git \p init \p -q \p -b \p work \p repo\nWRITE \p repo/base.txt \p base\nRUN \p git \p -C \p repo \p add \p base.txt\nRUN \p git \p -C \p repo \p commit \p -q \p -m \p base\nWRITE \p repo/foreign.txt \p other agent\nRUN \p git \p -C \p repo \p add \p foreign.txt\nWRITE \p repo/mine.txt \p mine\nWRITE \p msg.txt \p add mine\nCALL_HERE \p\nRUN \p git \p -C \p repo \p show \p --name-only \p --format= \p HEAD\nEXPECT_OUT \p mine.txt \p mine-committed\nEXPECT_OUT_LACKS \p foreign.txt \p foreign-not-swept-into-the-commit\nRUN \p git \p -C \p repo \p diff \p --cached \p --name-only\nEXPECT_OUT \p foreign.txt \p foreign-still-staged\nCLEAN \p\n
+WRITE | c/route.pdl | RUN \p $HOUSE/&.widgits/_shared-lib/ops/+x/commit_scoped.+x \p repo \p --branch \p work \p --message-file \p msg.txt \p --trailer \p Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com> \p -- \p mine.txt\n
+WRITE | c/quick.pdl | RUN \p git \p -C \p repo \p add \p mine.txt\nRUN \p git \p -C \p repo \p commit \p -q \p -m \p add mine\n
+WRITE | h/cases/commit_scoped.pdl | RESULTS \p ../results/commit_scoped.txt\n
+WRITE | h/results/commit_scoped.txt | RUN\p1\px\n
+RUN | /bin/cp | $HOUSE/&.widgits/_shared-lib/harness/bank-work/commit_scoped.behavior.pdl | $T/h/bank-entry.pdl
+RUN | /bin/mkdir | -p | $T/h/bank
+RUN | /bin/cp | $T/h/bank-entry.pdl | $T/h/bank/commit_scoped.behavior.pdl
+
+CASE    | the-route-beats-the-quick-commit
+RUN | $T/ab | $T/rules.pdl | $T/c/inner.pdl | $T/c/route.pdl | $T/h/cases/commit_scoped.pdl | --task | commit_scoped | --op | work.commit_scoped | --house | $HOUSE | --baseline | $T/c/quick.pdl | --case-op | $T/hcase | --bank-op | $T/hbank | --log | $T/log.txt | --log-op | $T/tl
+EXPECT_EXIT | 0 | credit-exits-0
+EXPECT_OUT_IS | AB\pcommit_scoped\pwork.commit_scoped\pwith=3/0\pwithout=1/2\pCREDIT | with-beats-without-3-0-vs-1-2
+EXPECT_HAS | h/results/commit_scoped.txt | PASS\ptool_ab/commit_scoped/work.commit_scoped | reward-row-written
+EXPECT_HAS | h/bank/dev/commit_scoped.behavior.pdl | COUNTS \p reward=1 \p punish=0 | bank-counts-the-reward
+EXPECT_HAS | log.txt | DATA\pcommit_scoped\pab-control\pwork.commit_scoped | logged-as-a-DATA-row
+
+CASE    | a-route-that-changes-nothing-is-useless
+# the call IS the quick commit: WITH 1/2, WITHOUT 1/2: not credited
+RUN | $T/ab | $T/rules.pdl | $T/c/inner.pdl | $T/c/quick.pdl | $T/h/cases/commit_scoped.pdl | --task | commit_scoped_control | --op | quick | --house | $HOUSE | --baseline | $T/c/quick.pdl | --case-op | $T/hcase | --bank-op | $T/hbank | --log | $T/log.txt | --log-op | $T/tl
+EXPECT_EXIT | 1 | equal-is-not-credited
+EXPECT_OUT_IS | AB\pcommit_scoped_control\pquick\pwith=1/2\pwithout=1/2\pUSELESS | the-ab-can-fail
+CLEAN |
