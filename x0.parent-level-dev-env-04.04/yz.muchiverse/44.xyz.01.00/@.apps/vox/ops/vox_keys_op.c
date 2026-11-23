@@ -1,4 +1,4 @@
-/* vox_keys_op - the keys of the Voxel window (D115). The window's input op forwards a listed key ("<code> <ms>") to <app>/state/interact_relay.txt WHILE the xelector possesses a game-driven token (GAMEKEY rows, D101); this op turns each relayed key into ONE `vox_op act` call. It has no rule and no key of its own: the key -> act table is <data>/keys.pdl (KEYMAP rows), every rule stays in vox_op.
+/* vox_keys_op - (D115; a KEYMAP row with a 5th field, a command with $D = house root, runs that command instead of vox_op act: the RTA window ships such a keys.pdl, D116) the keys of the Voxel window (D115). The window's input op forwards a listed key ("<code> <ms>") to <app>/state/interact_relay.txt WHILE the xelector possesses a game-driven token (GAMEKEY rows, D101); this op turns each relayed key into ONE `vox_op act` call. It has no rule and no key of its own: the key -> act table is <data>/keys.pdl (KEYMAP rows), every rule stays in vox_op.
  * Usage: vox_keys_op once <data> <ledger> <relay> <offset>   read the relay bytes after <offset>, run each mapped key, print `KEYS read=N applied=A refused=R unmapped=U next=OFFSET`
  *        vox_keys_op tail <data> <ledger> <relay> <owner_pid>  the window's daemon: the same, polled every 250 ms from the END of the relay (keys pressed before it started are never replayed); exits when <owner_pid> is gone; the relay is truncated when it passes 65536 bytes (the cap, nothing else is written)
  *        vox_keys_op keybinds <keys.pdl> <keybinds.pdl>        append the missing `GAMEKEY | <act> | <code>` rows (idempotent)
@@ -15,15 +15,22 @@
 #include <time.h>
 #include <errno.h>
 #define MK 32
-typedef struct { int code; char act[16]; } Km;
+typedef struct { int code; char act[16]; char cmd[512]; } Km;
 static Km KM[MK]; static int nk; static char ACTOR[64] = "joe";
 static char *fld(char *s, char **next) { while (*s == ' ') s++; char *b = strchr(s, '|'); if (b) { *b = 0; *next = b + 1; } else *next = NULL; char *e = s + strlen(s); while (e > s && (e[-1] == ' ' || e[-1] == '\n' || e[-1] == '\r')) *--e = 0; return s; }
 static int load(const char *data) {
     char p[2048], l[512]; snprintf(p, sizeof p, "%s/keys.pdl", data); FILE *f = fopen(p, "r"); if (!f) return -1; nk = 0;
     while (fgets(l, sizeof l, f)) { if (l[0] == '#') continue; char *n, *t = fld(l, &n); if (!n) continue;
         if (!strcmp(t, "ACTOR")) { char *v = fld(n, &n); snprintf(ACTOR, sizeof ACTOR, "%s", v); }
-        else if (!strcmp(t, "KEYMAP") && nk < MK) { char *c = fld(n, &n); if (!n) continue; char *a = fld(n, &n); KM[nk].code = atoi(c); snprintf(KM[nk].act, sizeof KM[nk].act, "%s", a); nk++; } }
+        else if (!strcmp(t, "KEYMAP") && nk < MK) { char *c = fld(n, &n); if (!n) continue; char *a = fld(n, &n); KM[nk].code = atoi(c); snprintf(KM[nk].act, sizeof KM[nk].act, "%s", a); KM[nk].cmd[0] = 0; if (n) { fld(n, &n); if (n) { char *cm = fld(n, &n); snprintf(KM[nk].cmd, sizeof KM[nk].cmd, "%s", cm); } } nk++; } }
     fclose(f); return nk ? 0 : -1;
+}
+static int run_cmd(const char *ledger, const char *tmpl) {   /* a KEYMAP row with a 5th field runs that command instead of vox_op act: words split on spaces, $D = the house root (two levels above the ledger); no shell */
+    char house[2048], b[1024], *w[40]; int nw = 0; snprintf(house, sizeof house, "%s", ledger); for (int i = 0; i < 2; i++) { char *s = strrchr(house, '/'); if (!s) return 2; *s = 0; }
+    snprintf(b, sizeof b, "%s", tmpl); for (char *t = strtok(b, " "); t && nw < 39; t = strtok(NULL, " ")) { char *x = malloc(4096); if (!strncmp(t, "$D", 2)) snprintf(x, 4096, "%s%s", house, t + 2); else snprintf(x, 4096, "%s", t); w[nw++] = x; } w[nw] = NULL;
+    pid_t c = fork(); if (c < 0) return 2;
+    if (c == 0) { if (!freopen("/dev/null", "w", stdout) || !freopen("/dev/null", "w", stderr)) _exit(126); execv(w[0], w); _exit(127); }
+    int st; waitpid(c, &st, 0); for (int i = 0; i < nw; i++) free(w[i]); return WIFEXITED(st) ? WEXITSTATUS(st) : 2;
 }
 static int run_act(const char *data, const char *ledger, const char *act) {
     char bp[2200], ln[2300], desk[2048] = "", feed[2048] = "", png[2048] = "", self[2048] = ""; snprintf(bp, sizeof bp, "%s", ledger); char *sl = strrchr(bp, '/'); if (!sl) return 2; snprintf(sl, sizeof bp - (size_t)(sl - bp), "/vox_board.pdl");
@@ -40,7 +47,7 @@ static long apply(const char *data, const char *ledger, const char *relay, long 
     while (fgets(l, sizeof l, f)) { size_t n = strlen(l); if (!n || l[n - 1] != '\n') break; pos += (long)n; int code = atoi(l); (*rd)++;
         int hit = -1; for (int i = 0; i < nk; i++) if (KM[i].code == code) { hit = i; break; }
         if (hit < 0) { (*um)++; continue; }
-        if (run_act(data, ledger, KM[hit].act) == 0) (*ap)++; else (*rf)++; }
+        if ((KM[hit].cmd[0] ? run_cmd(ledger, KM[hit].cmd) : run_act(data, ledger, KM[hit].act)) == 0) (*ap)++; else (*rf)++; }
     fclose(f); return pos;
 }
 static int keybinds(const char *kp, const char *bp) {

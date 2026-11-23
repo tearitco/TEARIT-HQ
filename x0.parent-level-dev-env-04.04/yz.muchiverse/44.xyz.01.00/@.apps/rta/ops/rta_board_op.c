@@ -178,8 +178,10 @@ int main(int argc, char **argv) {
         ex, ey, col[0][0], col[0][1], col[0][2], spr[0], sprI[0][0], sprI[0][1], sprI[0][2]);
     snprintf(q, sizeof q, "%s/events.txt", k_desk); if (write_atomic(q, ev, en)) return 6;
 
-    char ui[1024]; size_t un = (size_t)snprintf(ui, sizeof ui, "gm_on=1\ngm_title=Robot Trap Auto\ngmt_0_text=%s: %s (car at %d,%d)\ngmt_1_text=hunger %d of %d\ngmt_2_text=fuel %d  turn %d\ngm_nt=3\ngm_nb=0\ngm_ne=0\ngm_nl=0\n",
-        k_ent, in_car ? "in the car" : "on foot", cx, cy, hunger, hmax, fuel, turn);
+    char leg[900] = ""; int nleg = 0;   /* D116: key legend lines are DATA, LEGEND rows of keys.pdl beside the data file; none, no extra line */
+    { char kp[1100], kl[400]; snprintf(kp, sizeof kp, "%s", k_data); char *sl = strrchr(kp, '/'); if (sl) { snprintf(sl, sizeof kp - (size_t)(sl - kp), "/keys.pdl"); FILE *kf = fopen(kp, "r"); if (kf) { while (fgets(kl, sizeof kl, kf)) if (!strncmp(kl, "LEGEND | ", 9) && nleg < 2) { kl[strcspn(kl, "\r\n")] = 0; size_t ll = strlen(leg); snprintf(leg + ll, sizeof leg - ll, "gmt_%d_text=%s\n", 3 + nleg, kl + 9); nleg++; } fclose(kf); } } }
+    char ui[2048]; size_t un = (size_t)snprintf(ui, sizeof ui, "gm_on=1\ngm_title=Robot Trap Auto\ngmt_0_text=%s: %s (car at %d,%d)\ngmt_1_text=hunger %d of %d\ngmt_2_text=fuel %d  turn %d\n%sgm_nt=%d\ngm_nb=0\ngm_ne=0\ngm_nl=0\n",
+        k_ent, in_car ? "in the car" : "on foot", cx, cy, hunger, hmax, fuel, turn, leg, 3 + nleg);
     if (write_atomic(k_ui, ui, un)) return 6;
     printf("car=%d,%d entity=%d,%d in_car=%d hunger=%d fuel=%d turn=%d\n", cx, cy, ex, ey, in_car, hunger, fuel, turn);
     return 0;

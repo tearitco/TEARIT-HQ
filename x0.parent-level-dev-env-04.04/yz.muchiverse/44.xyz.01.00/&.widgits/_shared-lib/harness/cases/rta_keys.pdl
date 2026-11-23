@@ -1,0 +1,53 @@
+# rta_keys (2026-11-22, D116): the Robot Trap Auto window answers KEYS through the same tailer as the Voxel window (D115): a KEYMAP row with a 5th field runs that command ($D = house root, two levels above the ledger). The REAL vox_keys_op runs the REAL rta_life_op rows named by the REAL @.apps/rta-board/keys.pdl in a scratch house. A refused verb (drive before enter) writes nothing. SABOTAGE: a mutant that ignores the command field applies nothing. Joe has no arrow-walk (no walk row exists): not tested because it does not exist.
+RESULTS | ../results/rta_keys.txt
+ENV     | LC_ALL | C
+CASE    | setup
+SCRATCH |
+MKDIR | H/#.desktop
+MKDIR | H/@.apps/rta/ops/+x
+MKDIR | m
+COPY | @.apps/rta/rules.pdl | H/@.apps/rta/rules.pdl
+COPY | @.apps/rta/road.grid | H/@.apps/rta/road.grid
+COPY | @.apps/rta-board/keys.pdl | H/keys.pdl
+COPY | @.apps/vox/ops/vox_keys_op.c | m/orig.c
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | $HOUSE/@.apps/rta/ops/rta_life_op.c
+EXPECT_EXIT | 0 | life-op-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/H/@.apps/rta/ops/+x/rta_momentum_op.+x | $HOUSE/@.apps/rta/ops/rta_momentum_op.c
+EXPECT_EXIT | 0 | momentum-op-builds
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/vk | $HOUSE/@.apps/vox/ops/vox_keys_op.c
+EXPECT_EXIT | 0 | keys-op-builds
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | engine | gas | ok | 0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | tank | gas | ok | 3
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | tires | gas | ok | 0
+RUN | $T/H/@.apps/rta/ops/+x/rta_life_op.+x | part | $T/H/@.apps/rta/rules.pdl | $T/H/#.desktop/rta_life_ledger.txt | car | steering | gas | ok | 0
+WRITE | relay0.txt | 1001 1\n
+WRITE | relay.txt | 105 2\n1001 3\n111 4\n107 5\n110 6\n99 7\n
+
+CASE    | refused_writes_nothing
+RUN | cp | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+RUN | $T/vk | once | $T/H | $T/H/#.desktop/rta_life_ledger.txt | $T/relay0.txt | 0
+EXPECT_OUT | KEYS read=1 applied=0 refused=1 unmapped=0 | drive-before-enter-is-refused-by-the-op-(exit-10)
+RUN | cmp | -s | $T/H/#.desktop/rta_life_ledger.txt | $T/l.before
+EXPECT_EXIT | 0 | the-refusal-wrote-NOTHING
+
+CASE    | keys_run_the_life_ops
+RUN | $T/vk | once | $T/H | $T/H/#.desktop/rta_life_ledger.txt | $T/relay.txt | 0
+EXPECT_OUT | KEYS read=6 applied=5 refused=0 unmapped=1 | enter-drive-exit-eat-sleep-applied-and-an-unmapped-key-counted
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | ENTER \p joe \p car | the-i-key-entered-the-car
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | DRIVE \p joe \p car | the-right-arrow-drove-a-road-step
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | EXIT \p joe \p car | the-o-key-left-the-car
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | EAT \p joe | the-k-key-ate
+EXPECT_HAS | $T/H/#.desktop/rta_life_ledger.txt | SLEEP \p joe \p 8 | the-n-key-slept-8-turns
+
+CASE    | sabotage_cmd_ignored
+RUN | cp | $T/m/orig.c | $T/m/m1.c
+RUN | sed | -i | s/KM\[hit\].cmd\[0\] ?/0 ?/ | $T/m/m1.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m1.c
+EXPECT_EXIT | 1 | vacuity-the-mutant-differs
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m1 | $T/m/m1.c
+RUN | cp | $T/l.before | $T/H/#.desktop/rta_life_ledger.txt
+RUN | $T/m/m1 | once | $T/H | $T/H/#.desktop/rta_life_ledger.txt | $T/relay.txt | 0
+EXPECT_OUT | applied=0 | MUTANT-ignores-the-command-field-so-nothing-is-applied
+RUN | cmp | -s | $T/m/orig.c | $HOUSE/@.apps/vox/ops/vox_keys_op.c
+EXPECT_EXIT | 0 | RESTORED-the-real-source-is-byte-identical
+CLEAN |

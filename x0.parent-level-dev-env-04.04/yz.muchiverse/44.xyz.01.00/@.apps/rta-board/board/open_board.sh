@@ -31,3 +31,9 @@ if [ -x "$REG" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
     "$REG" "$HOUSE" rule-add "$WPID" "@file:$HERE/state/ui.txt#bv_session" engine $NAME bv-session >/dev/null 2>&1 || true
     "$REG" "$HOUSE" apply-rules >/dev/null 2>&1 || true
 fi
+# KEYS (D116): the GAMEKEY rows come from the data table @.apps/rta-board/keys.pdl (idempotent) and the same registered tailer as the Voxel window (vox_keys_op, D115) runs the life ops named there, one per relayed key, while Joe's token is possessed; it exits when the window is gone
+KEYS="$HOUSE/@.apps/vox/ops/+x/vox_keys_op.+x"
+if [ -x "$KEYS" ] && [ -n "$WPID" ] && [ -d "/proc/$WPID" ]; then
+    "$KEYS" keybinds "$APP/keys.pdl" "$PCHQ_PKG/pieces/system/keybinds.pdl"
+    KH_APP=rta-board KH_ROLE=daemon sh "$FUNNEL" "$HOUSE" "$WPID" rta-keys -- "$KEYS" tail "$APP" "$D/rta_life_ledger.txt" "$APP/state/interact_relay.txt" "$WPID" >/dev/null 2>&1
+fi
