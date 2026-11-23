@@ -24,6 +24,9 @@ RUN | $T/vx | move | $T/d | $T/l | player | 8 | 3 | 8
 RUN | $T/vx | give | $T/d | $T/l | player | cobble | 4 | seed
 RUN | $T/vx | give | $T/d | $T/l | player | apple | 1 | seed
 
+RUN | echo | $HOUSE/&.hq-apps/data-hq/ops/+x/chart_op.+x
+CAPTURE | C
+
 CASE    | top-down
 RUN | $T/vx | desk | $T/d | $T/l | $T/k1 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
 EXPECT_OUT | DESK mode=top 16x16 solid_columns=256 highest=3 | seed-terrain-is-256-columns-3-high-(HAND-y0-to-y2)
@@ -58,6 +61,29 @@ RUN | $T/deskr | $T/k1 | $T/b.raw
 EXPECT_OUT | tallest=3 actors=1 | render-after-the-mine
 RUN | cmp | -s | $T/a.raw | $T/b.raw
 EXPECT_EXIT | 1 | the-offline-render-AFTER-the-mine-DIFFERS-from-the-render-before
+# D121 depth cue (2D map.png only): hand-computed pixels. Tile centre (px 12,py 12) has no check offset, so a pixel is the PICTURE colour plus the SHADE delta. Pit = stone wall 128 + 1 level x -45 = 83 = 0x53; neighbours dirt 134,96,67 = 866043.
+RUN | $C | pixel | $T/k1/map.png | 204 | 204
+EXPECT_OUT_IS | PIXEL 204 204 535353 | the-mined-column-reads-DARKER-in-2D-(stone-128-minus-45)
+RUN | $C | pixel | $T/k1/map.png | 180 | 204
+EXPECT_OUT_IS | PIXEL 180 204 866043 | NEGATIVE-its-neighbour-keeps-the-plain-dirt-colour
+RUN | $C | pixel | $T/k1/map.png | 12 | 12
+EXPECT_OUT_IS | PIXEL 12 12 866043 | NEGATIVE-a-flat-corner-column-has-no-cue
+MKDIR | dn
+COPY | @.apps/vox/rules.pdl | dn/rules.pdl
+COPY | @.apps/vox/blocks.pdl | dn/blocks.pdl
+COPY | @.apps/vox/terrain.pdl | dn/terrain.pdl
+RUN | sed | -i | /^SHADE/d | $T/dn/blocks.pdl
+RUN | cmp | -s | $T/d/blocks.pdl | $T/dn/blocks.pdl
+EXPECT_EXIT | 1 | vacuity-the-SHADE-rows-really-were-removed-from-the-copy
+RUN | $T/vx | desk | $T/dn | $T/l | $T/kn | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $C | pixel | $T/kn/map.png | 204 | 204
+EXPECT_OUT_IS | PIXEL 204 204 808080 | NEGATIVE-CONTROL-no-SHADE-rows-the-old-picture-(plain-stone-128)
+RUN | cmp | -s | $T/k1/map.png | $T/kn/map.png
+EXPECT_EXIT | 1 | the-cue-changes-map.png
+RUN | cmp | -s | $T/k1/cells.txt | $T/kn/cells.txt
+EXPECT_EXIT | 0 | 3D-input-cells.txt-is-byte-identical-with-and-without-the-cue
+RUN | cmp | -s | $T/k1/cells.rgba | $T/kn/cells.rgba
+EXPECT_EXIT | 0 | 3D-input-cells.rgba-is-byte-identical-with-and-without-the-cue
 CASE    | refusal-changes-nothing
 SUMTREE | before | k1
 RUN | $T/vx | act | $T/d | $T/l | player | sleep | desk=$T/k1 | feed=$T/ui | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
@@ -84,6 +110,10 @@ RUN | $T/deskr | $T/k1 | $T/c.raw
 EXPECT_OUT | tallest=4 actors=1 | offline-3D-render-with-the-tower-is-4-levels-tall-(real-height)
 RUN | cmp | -s | $T/b.raw | $T/c.raw
 EXPECT_EXIT | 1 | the-render-with-the-tower-differs-from-the-one-with-only-the-pit
+RUN | $C | pixel | $T/k1/map.png | 204 | 204
+EXPECT_OUT_IS | PIXEL 204 204 82828a | the-tower-reads-LIGHTER-(cobble-100,100,108-plus-30)
+RUN | $C | pixel | $T/k1/map.png | 180 | 204
+EXPECT_OUT_IS | PIXEL 180 204 866043 | NEGATIVE-the-tower-neighbour-is-not-lower-than-ALL-its-neighbours-so-no-pit-ring
 SUMTREE | final | k1
 EXPECT_NE | $before | $final | vacuity-the-desk-tree-really-changed-between-the-refusal-and-now
 
@@ -255,6 +285,38 @@ EXPECT_EXIT | 0 | mutant-5-mines
 EXPECT_LACKS | $T/hm/desk/map.txt | 3332333333333333 | MUTANT-5-never-runs-the-hook-so-the-desk-is-STALE
 RUN | $T/vx | wait | $T/d | $T/hm/l | 1
 EXPECT_HAS | $T/hm/desk/map.txt | 3332333333333333 | the-real-op-hook-redraws-the-pit-at-once
+RUN | cmp | -s | $T/m/orig.c | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | RESTORED-the-real-source-is-byte-identical-to-the-pre-sabotage-copy
+CASE    | shade-sabotage
+# a mined pit through the real op, then two mutants of the cue (not applied; wrong sign), each differing from the real picture; the real source is cmp'd unchanged after.
+RUN | rm | -rf | $T/sk | $T/sl
+RUN | $T/vx | move | $T/d | $T/sl | player | 8 | 3 | 8
+RUN | $T/vx | give | $T/d | $T/sl | player | shovel | 1 | seed
+RUN | $T/vx | mine | $T/d | $T/sl | player | shovel | 8,2,8
+EXPECT_EXIT | 0 | shovel-mines-the-dirt-under-the-feet-in-one-swing
+RUN | $T/vx | desk | $T/d | $T/sl | $T/sk | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $C | pixel | $T/sk/map.png | 204 | 204
+EXPECT_OUT_IS | PIXEL 204 204 535353 | the-real-op-draws-the-pit-dark
+RUN | cp | $T/m/orig.c | $T/m/m6.c
+RUN | sed | -i | s/if (has_pit/if (!has_pit/ | $T/m/m6.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m6.c
+EXPECT_EXIT | 1 | vacuity-mutant-6-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m6 | $T/m/m6.c
+EXPECT_EXIT | 0 | mutant-6-builds
+RUN | rm | -rf | $T/mk6
+RUN | $T/m/m6 | desk | $T/d | $T/sl | $T/mk6 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $C | pixel | $T/mk6/map.png | 204 | 204
+EXPECT_OUT_IS | PIXEL 204 204 808080 | MUTANT-6-never-applies-the-pit-cue-so-the-pit-is-plain-stone
+RUN | cp | $T/m/orig.c | $T/m/m7.c
+RUN | sed | -i | s/+= lo/-= lo/ | $T/m/m7.c
+RUN | cmp | -s | $T/m/orig.c | $T/m/m7.c
+EXPECT_EXIT | 1 | vacuity-mutant-7-really-differs-from-the-source
+RUN | gcc | -std=gnu11 | -O2 | -w | -o | $T/m/m7 | $T/m/m7.c
+EXPECT_EXIT | 0 | mutant-7-builds
+RUN | rm | -rf | $T/mk7
+RUN | $T/m/m7 | desk | $T/d | $T/sl | $T/mk7 | png=$HOUSE/&.widgits/_shared-lib/ops/+x/raw_to_png.+x
+RUN | $C | pixel | $T/mk7/map.png | 204 | 204
+EXPECT_OUT_IS | PIXEL 204 204 adadad | MUTANT-7-wrong-sign-makes-the-pit-LIGHTER-(128-plus-45-is-173)
 RUN | cmp | -s | $T/m/orig.c | $HOUSE/@.apps/vox/ops/vox_op.c
 EXPECT_EXIT | 0 | RESTORED-the-real-source-is-byte-identical-to-the-pre-sabotage-copy
 CLEAN |

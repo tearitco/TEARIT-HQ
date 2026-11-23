@@ -47,6 +47,7 @@ static FILE *OUT; /* stdout, or /dev/null while verify and replay re-run verbs *
 static Blk BL[MAXB]; static int nb; static Rule RU[MAXR]; static int nr; static Rule TL[MAXT]; static int nt;
 static Rule DL[MAXD]; static int ndl; static Box BX[MAXX]; static int nx;
 typedef struct { char kind[NM]; int slot, r, g, b; } Pic; static Pic PC[MAXB]; static int npc; static int PL[3] = { 255, 255, 0 };
+static int SH_PIT[3], SH_RAISE[3], has_pit, has_raise;   /* SHADE rows of blocks.pdl (2D depth cue of map.png only); absent row = no cue */
 
 static int split(char *line, char **f, int max) {
     int n = 0; char *s = line;
@@ -69,6 +70,8 @@ static int load_data(const char *dir) {
         if (n >= 9 && !strcmp(f[0], "BLOCK") && nb < MAXB) { Blk *b = &BL[nb++]; snprintf(b->kind, NM, "%s", f[1]); b->hard = atoi(f[2]);
             snprintf(b->tool, NM, "%s", f[3]); b->minp = atoi(f[4]); snprintf(b->drops, NM, "%s", f[5]); b->count = atoi(f[6]); b->solid = atoi(f[7]); }
         else if (n >= 6 && !strcmp(f[0], "PICTURE") && npc < MAXB) { Pic *c = &PC[npc++]; snprintf(c->kind, NM, "%s", f[1]); c->slot = atoi(f[2]); c->r = atoi(f[3]); c->g = atoi(f[4]); c->b = atoi(f[5]); }
+        else if (n >= 5 && !strcmp(f[0], "SHADE") && !strcmp(f[1], "pit")) { for (int k = 0; k < 3; k++) SH_PIT[k] = atoi(f[2 + k]); has_pit = 1; }
+        else if (n >= 5 && !strcmp(f[0], "SHADE") && !strcmp(f[1], "raise")) { for (int k = 0; k < 3; k++) SH_RAISE[k] = atoi(f[2 + k]); has_raise = 1; }
         else if (n >= 4 && !strcmp(f[0], "PLAYER")) { PL[0] = atoi(f[1]); PL[1] = atoi(f[2]); PL[2] = atoi(f[3]); } }
     fclose(fp);
     snprintf(p, sizeof p, "%s/terrain.pdl", dir);
@@ -324,10 +327,15 @@ static int project(W *w, const char *dir, int layer, const char *png_op) {
       snprintf(p, sizeof p, "%s/events.txt", dir); bad |= write_atomic(p, ev, en2); }
     if (png_op && !bad) {   /* the 2D picture map.png: each cell's visible tile blitted 1:1 (a blank tile over a dark ground), through the house op raw_to_png like game_core desk_picture */
         size_t ow = (size_t)WX * TPX, oh = (size_t)WZ * TPX; unsigned char *o = malloc(ow * oh * 4); if (!o) return 2;
-        for (int z = 0; z < WZ; z++) for (int x = 0; x < WX; x++) { int s = Ws[z][x] ? Ws[z][x] : Fs[z][x];
+        for (int z = 0; z < WZ; z++) for (int x = 0; x < WX; x++) { int s = Ws[z][x] ? Ws[z][x] : Fs[z][x]; int sh[3] = { 0, 0, 0 };
+            if (layer < 0 && Hs[z][x] > 0) {   /* depth cue: pit = lower than EVERY in-bounds neighbour, raise = higher than every one; levels x SHADE delta, added per channel */
+                int lo = 1 << 20, hi2 = 1 << 20, hh = Hs[z][x]; static const int DX[4] = { -1, 1, 0, 0 }, DZ[4] = { 0, 0, -1, 1 };
+                for (int k = 0; k < 4; k++) { int nx2 = x + DX[k], nz = z + DZ[k]; if (nx2 < 0 || nz < 0 || nx2 >= WX || nz >= WZ) continue; int nh = Hs[nz][nx2]; if (nh - hh < lo) lo = nh - hh; if (hh - nh < hi2) hi2 = hh - nh; }
+                if (has_pit && lo > 0 && lo < (1 << 20)) for (int k = 0; k < 3; k++) sh[k] += lo * SH_PIT[k];
+                if (has_raise && hi2 > 0 && hi2 < (1 << 20)) for (int k = 0; k < 3; k++) sh[k] += hi2 * SH_RAISE[k]; }
             for (int py = 0; py < TPX; py++) for (int px = 0; px < TPX; px++) { unsigned char *d = &o[(((size_t)z * TPX + py) * ow + (size_t)x * TPX + px) * 4];
                 const unsigned char *a = &AT[(((s / ACOLS) * TPX + py) * ATW + (s % ACOLS) * TPX + px) * 4];
-                if (s && a[3]) { d[0] = a[0]; d[1] = a[1]; d[2] = a[2]; } else { d[0] = 24; d[1] = 24; d[2] = 32; } d[3] = 255; } }
+                if (s && a[3]) { for (int k = 0; k < 3; k++) { int v = a[k] + sh[k]; d[k] = (unsigned char)(v < 0 ? 0 : v > 255 ? 255 : v); } } else { d[0] = 24; d[1] = 24; d[2] = 32; } d[3] = 255; } }
         char raw[1100], pn[1100]; snprintf(raw, sizeof raw, "%s/map.raw", dir); snprintf(pn, sizeof pn, "%s/map.png", dir);
         if (write_atomic(raw, o, ow * oh * 4)) bad = 1; else { if (run_png(png_op, raw, pn, (int)ow, (int)oh)) bad = 1; unlink(raw); } free(o); }
     if (!bad) marker_bump(dir);   /* LAST: the engine must see the whole desk when it reloads */

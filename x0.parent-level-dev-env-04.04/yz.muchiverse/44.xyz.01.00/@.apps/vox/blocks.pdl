@@ -8,6 +8,10 @@ PICTURE | leaves | 5 | 58 | 140 | 58
 PICTURE | sand   | 6 | 219 | 207 | 142
 PICTURE | bed    | 7 | 200 | 40 | 60
 PICTURE | water  | 8 | 50 | 90 | 200
+# SHADE | pit | dr | dg | db     2D depth cue (map.png only; cells.txt and cells.rgba, so the 3D, are untouched): a column LOWER than every in-bounds neighbour gets (levels lower) x this delta added per channel (negative = darker)
+# SHADE | raise | dr | dg | db   same for a column HIGHER than every neighbour. An absent row means no cue.
+SHADE | pit   | -45 | -45 | -45
+SHADE | raise | 30 | 30 | 30
 # PLAYER | r | g | b   the events.txt figure of every spawned actor (People1 row shape, as Teario writes its players)
 PLAYER | 240 | 200 | 40
 # BLOCK | kind | hardness | tool_best | min_power | drops | count | solid | opaque | light | gravity | flammable
