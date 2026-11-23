@@ -5,6 +5,7 @@ NEEDS | &.widgits/_shared-lib/petslike_core.c
 NEEDS | &.widgits/_shared-lib/petslike_toolbar.c
 NEEDS | &.widgits/_shared-lib/pet_sky.c
 NEEDS | &.widgits/_shared-lib/pet_footer.c
+NEEDS | &.widgits/_shared-lib/plug_ref.c
 NEEDS | &.widgits/_shared-lib/pet_nudge.c
 NEEDS | &.widgits/_shared-lib/kh_state_notify.h
 NEEDS | &.widgits/_shared-lib/csv_frames.c
