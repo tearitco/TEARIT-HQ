@@ -133,17 +133,32 @@ def parse_manifest(manifest_path: Path):
 
 
 def wrap_caption(caption: str, font: ImageFont.FreeTypeFont, max_width: int, draw: ImageDraw.ImageDraw):
-    # naive char-count wrap first, then verified/re-wrapped against real
-    # pixel width so long/short characters don't blow the frame
-    approx_chars = max(20, max_width // max(1, font.getlength("m")))
-    lines = textwrap.wrap(caption, width=int(approx_chars)) or [caption]
+    # Greedy fill against the REAL pixel width (2026-11-23). Words (split at spaces) fill each line; a word wider than a whole line (a URL, a path,
+    # or a long Japanese sentence, which has no spaces) is broken after the last character that fits. Nothing is ever cut: the old version
+    # wrapped by a character-count guess and then SHORTENED any line that was too wide and threw the tail away, so a long Japanese caption
+    # silently lost its last characters in every deck.
+    def fits(t):
+        return draw.textlength(t, font=font) <= max_width
     fixed = []
-    for line in lines:
-        while draw.textlength(line, font=font) > max_width and len(line) > 1:
-            # binary-shrink long unbroken tokens (urls/paths) rather than overflow
-            line = line[: len(line) - max(1, len(line) // 8)]
-        fixed.append(line)
-    return fixed
+    cur = ""
+    for word in (caption.split(" ") or [caption]):
+        trial = (cur + " " + word) if cur else word
+        if fits(trial):
+            cur = trial
+            continue
+        if cur:
+            fixed.append(cur)
+            cur = ""
+        while word and not fits(word) and len(word) > 1:
+            k = len(word) - 1
+            while k > 1 and not fits(word[:k]):
+                k -= 1
+            fixed.append(word[:k])
+            word = word[k:]
+        cur = word
+    if cur:
+        fixed.append(cur)
+    return fixed or [caption]
 
 
 def render_captioned_frame(src_path: Path, caption: str, target_w: int, out_path: Path, frame_no: int, total: int):
