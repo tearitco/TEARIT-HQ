@@ -23,9 +23,16 @@ RUN | /bin/cp | $T/b/sleep.behavior.pdl | $T/w/sleep.behavior.pdl
 WRITE | state.txt | x=14\ny=4\nitem=seed\nx=15\n
 WRITE | slots.pdl | SLOT \p farm.plant \p x \p from \p x\nSLOT \p farm.plant \p y \p from \p y\nSLOT \p farm.plant \p item \p from \p item\nSLOT \p farm.harvest \p bin \p from \p bin\nSLOT \p farm.plant \p z \p from \p nokey\n
 WRITE | slots_ok.pdl | SLOT \p farm.plant \p x \p from \p x\nSLOT \p farm.plant \p y \p from \p y\nSLOT \p farm.plant \p item \p from \p item\nSLOT \p farm.harvest \p bin \p from \p bin\n
-WRITE | r18.pdl | RULE \p tool_fire_min \p 1.8\n
-WRITE | r19.pdl | RULE \p tool_fire_min \p 1.9\n
+WRITE | r18.pdl | RULE \p tool_fire_min \p 1.8\nRULE \p tool_fire_margin \p 0.4\n
+WRITE | r19.pdl | RULE \p tool_fire_min \p 1.9\nRULE \p tool_fire_margin \p 0.4\n
 WRITE | norule.pdl | RULE \p tool_log_max_rows \p 5\n
+# margin fixtures (2026-11-22): rm0 = margin OFF (a near-tie fires, as before the rule existed), rm25 / rm15 straddle the 0.200 gap of the goal "crop", nomargin has only the threshold
+WRITE | rm0.pdl | RULE \p tool_fire_min \p 0.30\nRULE \p tool_fire_margin \p 0\n
+WRITE | rm25.pdl | RULE \p tool_fire_min \p 0.30\nRULE \p tool_fire_margin \p 0.25\n
+WRITE | rm15.pdl | RULE \p tool_fire_min \p 0.30\nRULE \p tool_fire_margin \p 0.15\n
+WRITE | nomargin.pdl | RULE \p tool_fire_min \p 0.30\n
+WRITE | t/a.behavior.pdl | BEHAVIOR \p tie.a\nKEYWORDS \p tie\nWEIGHT \p 0.9000\n
+WRITE | t/b.behavior.pdl | BEHAVIOR \p tie.b\nKEYWORDS \p tie\nWEIGHT \p 0.9000\n
 RUN | $T/ts | --describe
 EXPECT_OUT | tool_score_op: IN | describe-line
 
@@ -44,7 +51,8 @@ EXPECT_OUT | FIRE\psleep.bed | another-goal-another-entry
 
 CASE    | wrong-weight-flips-the-rank
 # the same goal on a bank where farm.plant carries weight 0.1 (score 0.200): harvest 0.840 now ranks first. If this did not differ, the ranking assertions above could not fail.
-RUN | $T/ts | $T/rules.pdl | $T/w | plant | crop | --bank-op | $T/hbank
+# (run with margin OFF: harvest leads till by only 0.240, which the real 0.40 margin would refuse)
+RUN | $T/ts | $T/rm0.pdl | $T/w | plant | crop | --bank-op | $T/hbank
 EXPECT_OUT | RANK\p1\p0.840\pfarm.harvest | the-flip-puts-harvest-first
 EXPECT_OUT | RANK\p3\p0.200\pfarm.plant | plant-fell-to-third
 EXPECT_OUT | FIRE\pfarm.harvest | the-wrong-weight-fires-the-wrong-op
@@ -67,6 +75,28 @@ EXPECT_OUT | NOFIRE\pbest=0.000 | no-hit-is-nofire
 RUN | $T/ts | $T/norule.pdl | $T/b | plant | crop | --bank-op | $T/hbank
 EXPECT_EXIT | 2 | missing-rule-refuses-no-default
 
+CASE    | margin-is-data
+# goal "crop": farm.plant 1.0 x 0.9 = 0.900, farm.harvest 1.0 x 0.7 = 0.700, farm.till synonym 0.5 x 0.8 = 0.400. The best leads by 0.200.
+RUN | $T/ts | $T/rm25.pdl | $T/b | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 1 | a-lead-of-0.200-under-a-margin-of-0.25-does-not-fire
+EXPECT_OUT | NOFIRE\pbest=0.900\pmin=0.30\pmargin=0.200<0.25\psecond=farm.harvest | nofire-line-names-the-gap-the-rule-and-the-runner-up
+EXPECT_OUT | RANK\p1\p0.900\pfarm.plant | the-race-is-still-ranked
+EXPECT_OUT_LACKS | FIRE\pfarm | no-FIRE-row-in-a-close-race
+RUN | $T/ts | $T/rm15.pdl | $T/b | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 0 | the-same-race-fires-under-a-margin-of-0.15
+EXPECT_OUT | FIRE\pfarm.plant | the-leader-fires-when-the-gap-is-enough
+RUN | $T/ts | $T/rm0.pdl | $T/b | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 0 | margin-0-is-off
+RUN | $T/ts | $T/rules.pdl | $T/b | crop | --bank-op | $T/hbank
+EXPECT_EXIT | 1 | the-real-rule-0.40-refuses-this-race-too
+# an exact tie has gap 0 and never fires under a positive margin
+RUN | $T/ts | $T/rules.pdl | $T/t | tie | --bank-op | $T/hbank
+EXPECT_EXIT | 1 | a-tie-does-not-fire
+EXPECT_OUT | margin=0.000 | the-gap-is-zero
+# a single hit has no runner-up: it fires (the "sleep" goal above already does)
+RUN | $T/ts | $T/nomargin.pdl | $T/b | sleep | --bank-op | $T/hbank
+EXPECT_EXIT | 2 | a-missing-margin-rule-refuses-no-default
+
 CASE    | slot-filler
 # farm.plant fires and its three slots come from state.txt (the LAST x wins: 15), in slot-row order; slots of other entries are ignored
 RUN | $T/ts | $T/rules.pdl | $T/b | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots_ok.pdl
@@ -81,7 +111,7 @@ RUN | $T/ts | $T/rules.pdl | $T/b | plant | crop | --bank-op | $T/hbank | --stat
 EXPECT_EXIT | 1 | missing-key-does-not-fire
 EXPECT_OUT | NOARGS\pfarm.plant\pnokey | names-the-missing-key
 EXPECT_OUT_LACKS | FIRE\pfarm | no-FIRE-when-armed-half
-# the flipped bank fires harvest, whose slot key bin is absent
-RUN | $T/ts | $T/rules.pdl | $T/w | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots.pdl
+# the flipped bank fires harvest (margin OFF, see above), whose slot key bin is absent
+RUN | $T/ts | $T/rm0.pdl | $T/w | plant | crop | --bank-op | $T/hbank | --state | $T/state.txt | --slots | $T/slots.pdl
 EXPECT_OUT | NOARGS\pfarm.harvest\pbin | wrong-op-needs-its-own-key
 CLEAN |
