@@ -818,7 +818,7 @@ RUN | $T/pb/gc.+x | ctl | roll | $T/c_edit/state/games/chutes
 WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | p1\proll\p | 8000 | THE-PRESS-IS-A-ROLL-ROW-BY-p1
 WAIT_HAS | c_edit/state/games/chutes/game/ledger.txt | p4\proll\p | 8000 | then-the-three-pets-roll-on-their-own-clock
 WAIT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 6 18 220 60 60 People1 0 2 1 A | 8000 | AFTER-THE-HUMAN'S-ROLL-A'S-FIGURE-STANDS-ON-SQUARE-38-(seed-7:-1-then-the-ladder)-in-the-play-desk's-events.txt
-EXPECT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 18 24 230 200 50 People1 3 2 1 D | and-the-pets'-figures-moved-too-(D-on-14)
+WAIT_HAS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 18 24 230 200 50 People1 3 2 1 D | 8000 | and-the-pets'-figures-moved-too-(D-on-14)
 EXPECT_LACKS | pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/events.txt | 4 31 220 60 60 People1 0 2 1 A | and-A-is-no-longer-in-the-start-strip
 RUN | stat | -c | %s | $T/pg/chutes/chutes-pchq/pieces/system/maps/chutes/play/cells.marker
 EXPECT_OUT_IS | 1 | FIVE-MOVES-LATER-the-page-was-NOT-rebuilt-(marker-still-1-byte:-the-figures-are-events-rows,-no-process-and-no-page-per-move)

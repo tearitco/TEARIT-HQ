@@ -9,6 +9,7 @@ MKDIR | @.apps/rpg-pvp-hq/state
 MKDIR | #.NNEST_ASSETS/rmmv-www-img
 COPY | &.widgits/_shared-lib/game_events.c | &.widgits/_shared-lib/game_events.c
 COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/plug_ref.c | &.widgits/_shared-lib/plug_ref.c
 COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
 COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
 COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_core.c

@@ -101,7 +101,12 @@ RUN     | grep | -Eq | ^pos_y=-?[0-9]+(\.[0-9]+)?$ | live/pieces/moon_01/state.t
 EXPECT_EXIT | 0 | moon-pos_y-numeric
 RUN     | grep | -Eq | ^pos_z=-?[0-9]+(\.[0-9]+)?$ | live/pieces/moon_01/state.txt
 EXPECT_EXIT | 0 | moon-pos_z-numeric
-RUN     | grep | -Eq | ^chicken,-?[0-9]+,-?[0-9]+,-?[0-9]+$ | live/pieces/world_01/animals.txt
+# animals.txt in the working tree is a RUNTIME file the live engine empties (0 bytes on 2026-11-22), so "shipped state" is read from git HEAD, not copied from the working tree.
+MKDIR   | head_animals
+RUN     | git | -C | $HOUSE | archive | -o | $T/head_animals.tar | HEAD | @.apps/piececraft-hq/pieces/world_01/animals.txt
+EXPECT_EXIT | 0 | animals-head-archive-made
+RUN     | tar | -xf | $T/head_animals.tar | -C | $T/head_animals
+RUN     | grep | -Eq | ^chicken,-?[0-9]+,-?[0-9]+,-?[0-9]+$ | head_animals/@.apps/piececraft-hq/pieces/world_01/animals.txt
 EXPECT_EXIT | 0 | animals-has-a-chicken-row
 RUN     | grep | -Eq | ^GAME +[\p] +n_desks +[\p] +2$ | live/pieces/system/maps/default/game.pdl
 EXPECT_EXIT | 0 | default-game-lists-2-desks
@@ -173,7 +178,8 @@ ENV     | PRISC_PROJECT_ROOT |
 EXPECT_HAS | ml_default/pieces/world_01/state.txt | map_id=default | default-world-map_id-set-to-the-map
 EXPECT_HAS | ml_default/pieces/world_01/state.txt | desk_id=desk1 | default-world-desk_id-desk1
 EXPECT_EXISTS | ml_default/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | default-chunk-z16-written
-EXPECT_HAS | ml_default/pieces/hero_01/state.txt | pos_x=1 | default-hero-spawns-at-map-tile-1-1
+EXPECT_HAS | ml_default/pieces/hero_01/state.txt | pos_x=8 | default-hero-spawns-at-center-8-8-no-start-no-event
+EXPECT_HAS | ml_default/pieces/hero_01/state.txt | pos_y=8 | default-hero-spawns-row-8
 EXPECT_OUT_LACKS | falling back | default-no-fallback-to-flat
 MKDIR   | ml_mineclonia_sample/pieces/system
 COPY    | @.apps/piececraft-hq/pieces/system/maps/mineclonia_sample/desk1/map.txt | ml_mineclonia_sample/pieces/system/maps/mineclonia_sample/desk1/map.txt
@@ -212,7 +218,8 @@ ENV     | PRISC_PROJECT_ROOT |
 EXPECT_HAS | ml_test_terraces/pieces/world_01/state.txt | map_id=test_terraces | test_terraces-world-map_id-set-to-the-map
 EXPECT_HAS | ml_test_terraces/pieces/world_01/state.txt | desk_id=desk1 | test_terraces-world-desk_id-desk1
 EXPECT_EXISTS | ml_test_terraces/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | test_terraces-chunk-z16-written
-EXPECT_HAS | ml_test_terraces/pieces/hero_01/state.txt | pos_x=1 | test_terraces-hero-spawns-at-map-tile-1-1
+EXPECT_HAS | ml_test_terraces/pieces/hero_01/state.txt | pos_x=8 | test_terraces-hero-spawns-at-center-8-8-no-start-no-event
+EXPECT_HAS | ml_test_terraces/pieces/hero_01/state.txt | pos_y=8 | test_terraces-hero-spawns-row-8
 EXPECT_OUT_LACKS | falling back | test_terraces-no-fallback-to-flat
 MKDIR   | ml_test_walls/pieces/system
 COPY    | @.apps/piececraft-hq/pieces/system/maps/test_walls/desk1/extrusion.pdl | ml_test_walls/pieces/system/maps/test_walls/desk1/extrusion.pdl
@@ -225,7 +232,8 @@ ENV     | PRISC_PROJECT_ROOT |
 EXPECT_HAS | ml_test_walls/pieces/world_01/state.txt | map_id=test_walls | test_walls-world-map_id-set-to-the-map
 EXPECT_HAS | ml_test_walls/pieces/world_01/state.txt | desk_id=desk1 | test_walls-world-desk_id-desk1
 EXPECT_EXISTS | ml_test_walls/pieces/system/chunks/chunk_0_0/chunk_0_0_z16.txt | test_walls-chunk-z16-written
-EXPECT_HAS | ml_test_walls/pieces/hero_01/state.txt | pos_x=1 | test_walls-hero-spawns-at-map-tile-1-1
+EXPECT_HAS | ml_test_walls/pieces/hero_01/state.txt | pos_x=8 | test_walls-hero-spawns-at-center-8-8-no-start-no-event
+EXPECT_HAS | ml_test_walls/pieces/hero_01/state.txt | pos_y=8 | test_walls-hero-spawns-row-8
 EXPECT_OUT_LACKS | falling back | test_walls-no-fallback-to-flat
 # the loaded maps are genuinely different worlds: terraces (extruded) != default
 SUMTREE | mlDefault | ml_default/pieces/system/chunks
