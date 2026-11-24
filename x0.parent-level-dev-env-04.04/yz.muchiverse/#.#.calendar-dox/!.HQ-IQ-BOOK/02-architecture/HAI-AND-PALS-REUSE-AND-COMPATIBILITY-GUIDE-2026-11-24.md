@@ -63,6 +63,7 @@ Sources READ today: `STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md`, `NO
 | user-visible needs | `survivor_op` + `needs.pdl` (RATE) + `itemdata.pdl` (USE) |
 
 ## 6. Where this lives
+Building the `m` move mode and party reorder: `HOW-TO-BUILD-M-MOVE-MODE-AND-REORDER-HANDOFF-2026-11-24.md` (same folder): what exists, the code anchors, the build plan and the test spec.
 This file is the authority. hai repo `book/27` section 8 points here; AGENTS.md routes the task type "hai, pals, books, party order, embodied agents" to it. If you add a hai-line doc, add a row to section 5 or a line to section 2, not a parallel guide.
 
 ## 7. C/JS compatibility method (BUILT 2026-11-24; the pattern to reuse for the next rule set)
