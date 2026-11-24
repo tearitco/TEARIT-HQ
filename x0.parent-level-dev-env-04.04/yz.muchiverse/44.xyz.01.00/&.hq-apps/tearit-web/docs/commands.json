@@ -166,25 +166,6 @@
    "describe": "a REST row: a free week, tiredness down"
   },
   {
-   "name": "compete",
-   "op": "ranch.compete",
-   "args": [
-    {
-     "name": "pet",
-     "type": "id"
-    },
-    {
-     "name": "cup",
-     "type": "id"
-    },
-    {
-     "name": "owner",
-     "type": "id"
-    }
-   ],
-   "describe": "a COMPETE row: rookie, town or grand cup"
-  },
-  {
    "name": "upgrade",
    "op": "ranch.upgrade",
    "args": [
@@ -236,6 +217,185 @@
     }
    ],
    "describe": "a TRANSFER row: trade a pet to another owner"
+  },
+  {
+   "name": "move",
+   "op": "ranch.move",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "x",
+     "type": "uint"
+    },
+    {
+     "name": "y",
+     "type": "uint"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a MOVE row: walk a pet to a free cell of the 12x8 ranch grid"
+  },
+  {
+   "name": "list",
+   "op": "ranch.list",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "price",
+     "type": "uint"
+    },
+    {
+     "name": "payee_pet",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a LIST row: put a pet up for sale"
+  },
+  {
+   "name": "unlist",
+   "op": "ranch.unlist",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "an UNLIST row"
+  },
+  {
+   "name": "buy",
+   "op": "ranch.buy",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "payer_pet",
+     "type": "id"
+    },
+    {
+     "name": "buyer_owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a BUY row: the payer pet pays the price, the pet changes owner"
+  },
+  {
+   "name": "buyitem",
+   "op": "ranch.buyitem",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "item",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a BUYITEM row: dumbbell, charm or elixir"
+  },
+  {
+   "name": "useitem",
+   "op": "ranch.useitem",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "item",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a USEITEM row"
+  },
+  {
+   "name": "giveitem",
+   "op": "ranch.giveitem",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "item",
+     "type": "id"
+    },
+    {
+     "name": "to_pet",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a GIVEITEM row: move an item to another pet"
+  },
+  {
+   "name": "challenge",
+   "op": "ranch.challenge",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "other_pet",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a CHALLENGE row: pet against pet"
+  },
+  {
+   "name": "compete",
+   "op": "ranch.compete",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "rank",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a COMPETE row against the ranked AI ladder: rank E D C B A S (beat the one below first)"
   }
  ],
  "types": {

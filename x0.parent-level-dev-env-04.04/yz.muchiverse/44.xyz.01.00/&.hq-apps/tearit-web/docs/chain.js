@@ -38,11 +38,14 @@
     stats: ['LIF', 'POW', 'INT', 'SKI', 'SPD', 'DEF'],
     foods: { bread: { cost: 5, fat: 5, stat: '', n: 0 }, meat: { cost: 20, fat: 15, stat: 'POW', n: 1 }, fruit: { cost: 12, fat: 10, stat: 'INT', n: 1 }, tonic: { cost: 50, fat: 30, stat: 'LIF', n: 2 } },
     drills: { sprint: { stat: 'SPD', cost: 10, gain: 3, fat: 12 }, lift: { stat: 'POW', cost: 10, gain: 3, fat: 12 }, study: { stat: 'INT', cost: 10, gain: 3, fat: 8 }, spar: { stat: 'SKI', cost: 15, gain: 3, fat: 15 }, guard: { stat: 'DEF', cost: 10, gain: 3, fat: 10 }, jog: { stat: 'LIF', cost: 10, gain: 2, fat: 6 } },
-    cups: { rookie: { entry: 10, prize: 60, rival: 90 }, town: { entry: 30, prize: 150, rival: 130 }, grand: { entry: 80, prize: 500, rival: 190 } },
+    ranks: ['E', 'D', 'C', 'B', 'A', 'S'],  /* ranked AI ladder (Monster Rancher style): you must have beaten the rank below to enter a rank */
+    rank: { E: { entry: 10, prize: 60, rival: 90 }, D: { entry: 20, prize: 130, rival: 125 }, C: { entry: 40, prize: 280, rival: 160 }, B: { entry: 80, prize: 600, rival: 200 }, A: { entry: 160, prize: 1300, rival: 245 }, S: { entry: 320, prize: 3000, rival: 295 } },
+    items: { dumbbell: { cost: 30, n: 2 }, charm: { cost: 40, n: 20 }, elixir: { cost: 60, n: 0 } },
     facilities: { gym: { base: 100, max: 3 }, barn: { base: 80, max: 3 } },
-    restFat: 40, barnRest: 10, tiredHalf: 60, tiredMax: 100, statCap: 99, compFat: 20, roll: 40, maxPets: 8
+    restFat: 40, barnRest: 10, tiredHalf: 60, tiredMax: 100, statCap: 99, compFat: 20, roll: 40, ai: ['Gruff', 'Mira', 'Tobo', 'Vexa', 'Bram', 'Lune', 'Oko', 'Pip', 'Rask', 'Sable', 'Tamsin', 'Yuki'], maxPets: 16, maxActive: 6, cols: 12, rows: 8, blocked: [[1, 1], [10, 1]]  /* the ranch grid (hai-style: positions are rows); the gym stands on (1,1) and the barn on (10,1); at most maxActive pets are out at once, the rest are frozen in storage */
   };
-  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER'];
+  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER', 'LIST', 'UNLIST', 'BUY', 'BUYITEM', 'USEITEM', 'GIVEITEM', 'CHALLENGE', 'MOVE'];
+  var RLEN = { FEED: 5, TRAIN: 5, REST: 4, COMPETE: 5, UPGRADE: 5, FREEZE: 4, THAW: 4, TRANSFER: 5, LIST: 6, UNLIST: 4, BUY: 5, BUYITEM: 5, USEITEM: 5, GIVEITEM: 6, CHALLENGE: 5, MOVE: 6 };
   function isVerb(v) { for (var i = 0; i < VERBS.length; i++) if (VERBS[i] === v) return true; return false; }
   function okId(s) { return /^[a-z0-9_-]{1,24}$/.test(s); }
   /* genes(seed, name): the same words always hatch the same pet (SHA-256 of "seed|name"; bytes pick species, six stats of 10..30, lifespan 120..180 weeks, look) */
@@ -50,7 +53,7 @@
     var h = sha256(String(seed) + '|' + name), b = [], i, st = {};
     for (i = 0; i < 32; i++) b.push(parseInt(h.substr(i * 2, 2), 16));
     for (i = 0; i < 6; i++) st[RANCH.stats[i]] = 10 + b[i] % 21;
-    return { species: RANCH.species[b[6] % RANCH.species.length], speciesIx: b[6] % RANCH.species.length, stats: st, life: 120 + b[7] % 61, hue: Math.round(b[8] * 360 / 256), eyes: b[9] % 4, horns: b[10] % 3, spots: b[11] % 4, hash: h };
+    return { species: RANCH.species[b[6] % RANCH.species.length], speciesIx: b[6] % RANCH.species.length, stats: st, life: 120 + b[7] % 61, hue: Math.round(b[8] * 360 / 256), sx: b[12] % RANCH.cols, sy: b[13] % RANCH.rows, eyes: b[9] % 4, horns: b[10] % 3, spots: b[11] % 4, hash: h };
   }
   function power(p) { return p.stats.POW + p.stats.INT + p.stats.SKI + p.stats.SPD + p.stats.DEF; }
   function splitRows(txl) { var out = [], parts = String(txl).split(';'), i, r; for (i = 0; i < parts.length; i++) { r = parts[i].replace(/^\s+|\s+$/g, ''); if (r) out.push(r); } return out; }
@@ -66,29 +69,48 @@
     function spend(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; bal[name] = (bal[name] || 0) - amt; bal._ranch = (bal._ranch || 0) + amt; return ''; }
     function week(p) { p.age++; if (p.age >= p.life) p.retired = true; }
     function addStat(p, s, n) { p.stats[s] = Math.min(RANCH.statCap, p.stats[s] + n); }
-    /* one ranch row: returns '' when allowed (and applied) else the reason. f = fields of the row. */
+    function active(o) { var k, n = 0; for (k in pets) if (pets[k].owner === o && !pets[k].frozen) n++; return n; }
+    function cellFree(x, y, self) { var k, bl = RANCH.blocked; if (x < 0 || y < 0 || x >= RANCH.cols || y >= RANCH.rows) return false; for (k = 0; k < bl.length; k++) if (bl[k][0] === x && bl[k][1] === y) return false; for (k in pets) if (pets[k] !== self && !pets[k].frozen && pets[k].x === x && pets[k].y === y) return false; return true; }
+    function place(p) { var i, x, y; for (i = 0; i < RANCH.cols * RANCH.rows; i++) { x = (p.g.sx + i) % RANCH.cols; y = (p.g.sy + Math.floor((p.g.sx + i) / RANCH.cols)) % RANCH.rows; if (cellFree(x, y, p)) { p.x = x; p.y = y; return; } } p.x = 0; p.y = 0; }
+    /* one ranch row: returns '' when allowed (and applied) else the reason. f = fields of the row. Row shapes (owner is always the second-last field, ts the last):
+     *   PET|name|seed words|owner|ts            FEED|pet|food|owner|ts     TRAIN|pet|drill|owner|ts     REST|pet|owner|ts      COMPETE|pet|rank|owner|ts   UPGRADE|pet|facility|owner|ts
+     *   FREEZE|pet|owner|ts  THAW|pet|owner|ts  TRANSFER|pet|newowner|owner|ts
+     *   LIST|pet|price|payee pet|owner|ts       UNLIST|pet|owner|ts        BUY|pet|payer pet|buyer owner|ts  (the payer pays the price to the payee, the pet changes owner)
+     *   BUYITEM|pet|item|owner|ts   USEITEM|pet|item|owner|ts   GIVEITEM|pet|item|to pet|owner|ts      CHALLENGE|pet|other pet|owner|ts */
     function ranch(f) {
-      var v = f[0], p, g, nm = f[1], ownerAt = { FEED: 3, TRAIN: 3, COMPETE: 3, UPGRADE: 3, TRANSFER: 3, REST: 2, FREEZE: 2, THAW: 2 }[v], e, d, fcl, cost, sc, rv, prize;
+      var v = f[0], p, g, nm = f[1], len = RLEN[v], d, e, why, cost, sc, rv, prize, q, k, cnt;
       if (v === 'PET') {
         if (f.length !== 5) return 'bad PET row'; if (!okId(nm) || nm.charAt(0) === '_') return 'bad pet name'; if (pets[nm]) return 'name already used';
         if (!f[2] || f[2].length > 40) return 'bad seed words'; if (!okId(f[3])) return 'bad owner';
-        var cnt = 0, k; for (k in pets) if (pets[k].owner === f[3]) cnt++; if (cnt >= RANCH.maxPets) return 'too many pets for ' + f[3];
-        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0 }; return '';
+        cnt = 0; for (k in pets) if (pets[k].owner === f[3]) cnt++; if (cnt >= RANCH.maxPets) return 'too many pets for ' + f[3]; if (active(f[3]) >= RANCH.maxActive) return 'six pets are already out: freeze one first';
+        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0, best: -1, items: {}, buffT: 0, buffF: 0, price: 0, payee: '', pvpW: 0, pvpL: 0, x: 0, y: 0 }; place(pets[nm]); return '';
       }
-      p = pets[nm]; if (!p) return 'no such pet'; if (f.length !== ownerAt + 2) return 'bad ' + v + ' row'; if (f[ownerAt] !== p.owner) return 'not the owner of ' + nm;
-      if (v === 'THAW') { if (!p.frozen) return 'not frozen'; p.frozen = false; return ''; }
+      p = pets[nm]; if (!p) return 'no such pet'; if (f.length !== len) return 'bad ' + v + ' row';
+      if (v === 'BUY') { q = pets[f[2]]; if (!(p.price > 0)) return nm + ' is not for sale'; if (!q) return 'no such paying pet'; if (q.owner !== f[3]) return 'the paying pet is not yours'; if (p.owner === f[3]) return 'you already own ' + nm; if (!p.frozen && active(f[3]) >= RANCH.maxActive) return 'six pets are already out: freeze one first';
+        if ((bal[f[2]] || 0) < p.price) return 'not enough coins in ' + f[2]; bal[f[2]] -= p.price; bal[p.payee] = (bal[p.payee] || 0) + p.price; p.owner = f[3]; p.price = 0; p.payee = ''; return ''; }
+      if (f[len - 2] !== p.owner) return 'not the owner of ' + nm;
+      if (v === 'THAW') { if (!p.frozen) return 'not frozen'; if (active(p.owner) >= RANCH.maxActive) return 'six pets are already out: freeze one first'; p.frozen = false; if (!cellFree(p.x, p.y, p)) place(p); return ''; }
       if (v === 'FREEZE') { if (p.frozen) return 'already frozen'; p.frozen = true; return ''; }
-      if (v === 'TRANSFER') { if (!okId(f[2])) return 'bad new owner'; p.owner = f[2]; return ''; }
+      if (v === 'TRANSFER') { if (!okId(f[2])) return 'bad new owner'; if (!p.frozen && active(f[2]) >= RANCH.maxActive) return f[2] + ' already has six pets out'; p.owner = f[2]; p.price = 0; p.payee = ''; return ''; }
+      if (v === 'LIST') { var pr = +f[2]; if (!(pr > 0) || Math.floor(pr) !== pr || pr > 1000000) return 'bad price'; q = pets[f[3]]; if (!q || q.owner !== p.owner) return 'the payee must be one of your pets'; p.price = pr; p.payee = f[3]; return ''; }
+      if (v === 'UNLIST') { if (!(p.price > 0)) return 'not listed'; p.price = 0; p.payee = ''; return ''; }
+      if (v === 'GIVEITEM') { q = pets[f[3]]; if (!q) return 'no such pet to give to'; if (!RANCH.items[f[2]]) return 'unknown item'; if (!(p.items[f[2]] > 0)) return nm + ' has no ' + f[2]; p.items[f[2]]--; q.items[f[2]] = (q.items[f[2]] || 0) + 1; return ''; }
       if (p.frozen) return nm + ' is frozen'; if (p.retired) return nm + ' has retired';
+      if (v === 'MOVE') { var mx = +f[2], my = +f[3]; if (Math.floor(mx) !== mx || Math.floor(my) !== my) return 'bad cell'; if (!cellFree(mx, my, p)) return 'that cell is not free'; p.x = mx; p.y = my; return ''; }
       if (v === 'FEED') { d = RANCH.foods[f[2]]; if (!d) return 'unknown food'; why = spend(nm, d.cost); if (why) return why; p.fat = Math.max(0, p.fat - d.fat); if (d.stat) addStat(p, d.stat, d.n); week(p); return ''; }
       if (v === 'REST') { p.fat = Math.max(0, p.fat - RANCH.restFat - p.fac.barn * RANCH.barnRest); week(p); return ''; }
       if (v === 'TRAIN') { d = RANCH.drills[f[2]]; if (!d) return 'unknown drill'; if (p.fat >= RANCH.tiredMax) return nm + ' is too tired'; why = spend(nm, d.cost); if (why) return why;
-        var gain = p.fat >= RANCH.tiredHalf ? Math.floor(d.gain / 2) : d.gain + p.fac.gym; addStat(p, d.stat, gain); p.fat = Math.min(RANCH.tiredMax, p.fat + d.fat); week(p); return ''; }
-      if (v === 'COMPETE') { e = RANCH.cups[f[2]]; if (!e) return 'unknown cup'; if (p.fat >= RANCH.tiredMax) return nm + ' is too tired'; why = spend(nm, e.entry); if (why) return why;
-        rv = parseInt(sha256(p.seed + '|' + nm + '|' + f[2] + '|' + p.age).substr(0, 2), 16) % RANCH.roll; sc = power(p) - Math.floor(p.fat / 2) + rv; p.cups++;
-        if (sc >= e.rival) { prize = Math.min(e.prize, bal._ranch || 0); bal._ranch -= prize; bal[nm] = (bal[nm] || 0) + prize; p.wins++; }
+        var gain = p.fat >= RANCH.tiredHalf ? Math.floor(d.gain / 2) : d.gain + p.fac.gym + (p.buffT ? RANCH.items.dumbbell.n : 0); p.buffT = 0; addStat(p, d.stat, gain); p.fat = Math.min(RANCH.tiredMax, p.fat + d.fat); week(p); return ''; }
+      if (v === 'UPGRADE') { var fcl = RANCH.facilities[f[2]]; if (!fcl) return 'unknown facility'; if (p.fac[f[2]] >= fcl.max) return 'already at the top level'; cost = fcl.base * (p.fac[f[2]] + 1); why = spend(nm, cost); if (why) return why; p.fac[f[2]]++; return ''; }
+      if (v === 'BUYITEM') { d = RANCH.items[f[2]]; if (!d) return 'unknown item'; why = spend(nm, d.cost); if (why) return why; p.items[f[2]] = (p.items[f[2]] || 0) + 1; return ''; }
+      if (v === 'USEITEM') { d = RANCH.items[f[2]]; if (!d) return 'unknown item'; if (!(p.items[f[2]] > 0)) return nm + ' has no ' + f[2]; p.items[f[2]]--; if (f[2] === 'dumbbell') p.buffT = 1; else if (f[2] === 'charm') p.buffF = 1; else if (f[2] === 'elixir') p.fat = 0; return ''; }
+      if (v === 'COMPETE') { var ri = RANCH.ranks.indexOf(f[2]); if (ri < 0) return 'unknown rank'; e = RANCH.rank[f[2]]; if (p.fat >= RANCH.tiredMax) return nm + ' is too tired'; if (p.best < ri - 1) return nm + ' must beat rank ' + RANCH.ranks[ri - 1] + ' first'; why = spend(nm, e.entry); if (why) return why;
+        rv = parseInt(sha256(p.seed + '|' + nm + '|' + f[2] + '|' + p.age).substr(0, 2), 16) % RANCH.roll; sc = power(p) - Math.floor(p.fat / 2) + rv + (p.buffF ? RANCH.items.charm.n : 0); p.buffF = 0; p.cups++;
+        if (sc >= e.rival) { prize = Math.min(e.prize, bal._ranch || 0); bal._ranch -= prize; bal[nm] = (bal[nm] || 0) + prize; p.wins++; if (ri > p.best) p.best = ri; }
         p.fat = Math.min(RANCH.tiredMax, p.fat + RANCH.compFat); week(p); return ''; }
-      if (v === 'UPGRADE') { fcl = RANCH.facilities[f[2]]; if (!fcl) return 'unknown facility'; if (p.fac[f[2]] >= fcl.max) return 'already at the top level'; cost = fcl.base * (p.fac[f[2]] + 1); why = spend(nm, cost); if (why) return why; p.fac[f[2]]++; return ''; }
+      if (v === 'CHALLENGE') { q = pets[f[2]]; if (!q) return 'no such opponent'; if (q === p) return 'a pet cannot challenge itself'; if (q.frozen || q.retired) return f[2] + ' cannot fight now'; if (p.fat >= RANCH.tiredMax) return nm + ' is too tired';
+        var ra = parseInt(sha256(p.seed + '|' + nm + '|' + f[2] + '|' + p.age).substr(0, 2), 16) % RANCH.roll, rb = parseInt(sha256(q.seed + '|' + f[2] + '|' + nm + '|' + q.age).substr(0, 2), 16) % RANCH.roll;
+        if (power(p) - Math.floor(p.fat / 2) + ra >= power(q) - Math.floor(q.fat / 2) + rb) { p.pvpW++; q.pvpL++; } else { p.pvpL++; q.pvpW++; } p.fat = Math.min(RANCH.tiredMax, p.fat + RANCH.compFat); week(p); return ''; }
       return 'unknown row';
     }
     if (P.error) return { ok: false, error: P.error, at: 0, height: 0, balances: bal, messages: msgs, pets: pets, work: 0 };
@@ -127,5 +149,5 @@
     if (!good.length) return { text: text, accepted: [], rejected: bad, mined: false };
     m = mine(text, miner, good, ts, cfg, 4000000); return { text: text + m.line + '\n', accepted: good, rejected: bad, mined: true }; }
   function messages(text, channel, cfg) { var v = verify(text, cfg), o = [], i; if (!v.ok) return o; for (i = 0; i < v.messages.length; i++) if (!channel || v.messages[i].channel === channel) o.push(v.messages[i]); return o; }
-  root.TearChain = { sha256: sha256, verify: verify, mine: mine, merge: merge, applyRows: applyRows, messages: messages, reward: reward, cleanText: cleanText, genes: genes, power: power, okId: okId, RANCH: RANCH, VERBS: VERBS, ZERO: ZERO, DEF: DEF };
+  root.TearChain = { RLEN: RLEN, sha256: sha256, verify: verify, mine: mine, merge: merge, applyRows: applyRows, messages: messages, reward: reward, cleanText: cleanText, genes: genes, power: power, okId: okId, RANCH: RANCH, VERBS: VERBS, ZERO: ZERO, DEF: DEF };
 })(typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : this));

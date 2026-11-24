@@ -1,49 +1,85 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My ranch - TEAR-IT Ranch</title><link rel="stylesheet" href="style.css"></head><body>
 <div id="hdr"></div><main><div id="empty" class="card" style="display:none"><h2>No pet yet</h2><p>Hatch one first, or upload a save: <a class="btn" href="index.html">Go to the landing page</a></p></div>
-<div class="ranch" id="game" style="display:none">
- <div class="card"><select id="sel"></select><img class="portrait" id="por" alt="pet"><h2 id="nm"></h2><div id="sub"></div>
-  <div class="stat"><span>age</span><span id="ageb"></span><span id="agev"></span></div><div class="stat"><span>tired</span><span id="fatb"></span><span id="fatv"></span></div><hr>
-  <div id="stats"></div><hr><div id="meta"></div></div>
- <div><div class="card"><div id="msg"></div>
-  <h3>Feed <small>(coins from the pet's own purse)</small></h3><div class="acts" id="feed"></div>
-  <h3>Train</h3><div class="acts" id="train"></div>
-  <h3>Rest and cups</h3><div class="acts"><button id="rest">Rest<small>free, a week</small></button><span id="cups" class="acts"></span></div>
-  <h3>Ranch</h3><div class="acts" id="fac"></div>
-  <h3>Money</h3><div class="acts"><button id="faucet">Faucet<small>+1000, once an hour</small></button><button id="mineb">Mine a block<small>+50, pet earns it</small></button></div>
-  <h3>Care</h3><div class="acts"><button id="freeze" class="sec">Freeze</button><input id="to" placeholder="new owner" style="width:140px"><button id="give" class="sec">Transfer</button><button id="dl" class="sec">Download my save</button></div></div>
-  <div class="card log" style="margin-top:14px"><h3>What happened</h3><div id="log"></div></div></div></div></main>
+<div id="game" style="display:none">
+ <div class="card"><b>Out on the ranch</b> <small>(up to six at once)</small> <div class="party" id="party"></div><div id="store"></div></div>
+ <div class="ranch" style="margin-top:14px">
+  <div class="card"><img class="portrait" id="por" alt="pet"><h2 id="nm"></h2><div id="sub"></div>
+   <div class="stat"><span>age</span><span id="ageb"></span><span id="agev"></span></div><div class="stat"><span>tired</span><span id="fatb"></span><span id="fatv"></span></div><hr>
+   <div id="stats"></div><hr><div id="meta"></div></div>
+  <div><div class="card"><div style="display:flex;gap:8px;align-items:center"><b>The ranch</b> <button id="v2" class="sec">2D</button><button id="v3" class="sec">3D</button><small>click a pet to pick it, click an empty cell to walk it there</small></div>
+    <canvas id="cv" width="640" height="420" style="width:100%;max-width:640px;border-radius:10px;border:2px solid var(--gold2);margin-top:6px;cursor:pointer"></canvas></div></div></div>
+ <div class="card" style="margin-top:14px"><div id="msg"></div>
+  <div class="cols">
+  <div><h3>Feed</h3><div class="acts" id="feed"></div><h3>Train</h3><div class="acts" id="train"></div><h3>Rest</h3><div class="acts"><button id="rest">Rest<small>free, a week</small></button></div>
+   <h3>Ranch</h3><div class="acts" id="fac"></div><h3>Money</h3><div class="acts"><button id="faucet">Faucet<small>+1000, once an hour</small></button><button id="mineb">Mine a block<small>+50, the pet earns it</small></button></div></div>
+  <div><h3>Ranked fights vs the AI <small>(beat a rank to open the next)</small></h3><div class="acts" id="ladder"></div>
+   <h3>Challenge another pet</h3><div class="acts"><select id="opp" style="width:auto"></select><button id="chal">Challenge</button></div>
+   <h3>Items</h3><div class="acts" id="items"></div><div class="acts"><select id="gto" style="width:auto"></select><select id="gitem" style="width:auto"></select><button id="give" class="sec">Give item</button></div>
+   <h3>Care and trade</h3><div class="acts"><button id="freeze" class="sec">Freeze</button><input id="to" placeholder="new owner" style="width:120px"><button id="xfer" class="sec">Transfer</button></div>
+   <div class="acts"><input id="price" placeholder="price" style="width:90px"><button id="list" class="sec">List for sale</button><button id="unlist" class="sec">Unlist</button><button id="dl" class="sec">Download my save</button></div></div></div></div>
+ <div class="card log" style="margin-top:14px"><h3>What happened</h3><div id="log"></div></div></div></main>
 <script src="chain.js"></script><script src="app.js"></script><script>
-TA.header('ranch');var $=TA.$,R=TearChain.RANCH,CAP=R.statCap;
-function mine(){var o=TA.owner(),s=TA.state(),k,l=[];for(k in s.pets)if(s.pets[k].owner===o)l.push(k);return l}
+TA.header('ranch');var $=TA.$,R=TearChain.RANCH,CAP=R.statCap,view=localStorage.getItem('tearit_view')||'2d',imgs={},CW=640,CH=420;
+for(var i=0;i<10;i++){imgs[i]=new Image();imgs[i].onload=function(){if(window.__s)drawGrid(window.__s)};imgs[i].src='img/pets/'+i+'.png'}
+function mine(s){var o=TA.owner(),k,l=[];for(k in s.pets)if(s.pets[k].owner===o)l.push(k);return l}
 function msg(t,ok){var m=$('msg');m.textContent=t;m.className=ok?'ok':'bad'}
-function row(verb,pet,a,b){var o=TA.owner();return verb+'|'+pet+'|'+(a?a+'|':'')+o+'|'+TA.ts()}
-function go(rows,okText,miner){var r=TA.act(miner||'_ranch',rows);msg(r.ok?okText:'refused: '+r.why,r.ok);draw()}
-function draw(){var s=TA.state(),l=mine(),cur=TA.curPet();if(!s.ok||!l.length){$('empty').style.display='';$('game').style.display='none';return}
- if(l.indexOf(cur)<0){cur=l[0];TA.setPet(cur)}$('empty').style.display='none';$('game').style.display='';var p=s.pets[cur],bal=s.balances[cur]||0;
- $('sel').innerHTML=l.map(function(k){return '<option'+(k===cur?' selected':'')+'>'+k+'</option>'}).join('');
- $('por').src=TA.petImg(p.g);$('por').className='portrait'+(p.frozen?' frozen':'');$('nm').textContent=cur;
- $('sub').innerHTML='<span class="tag">'+p.species+'</span> '+(p.frozen?'<span class="tag">frozen</span> ':'')+(p.retired?'<span class="tag">retired</span> ':'')+'<br><b>'+bal+'</b> coins';
+function row(verb,pet,a,b){return verb+'|'+pet+'|'+(a!==undefined&&a!==''?a+'|':'')+(b!==undefined?b+'|':'')+TA.owner()+'|'+TA.ts()}
+function go(rows,okText,miner){var r=TA.act(miner||'_ranch',rows);msg(r.ok?okText:'refused: '+r.why,r.ok);draw();return r.ok}
+function cur(){return TA.curPet()}
+/* ---- the grid: 2D top-down or 3D isometric, the SAME cells (positions are MOVE rows) ---- */
+var COLS=R.cols,ROWS=R.rows,C2=52,TW=64,TH=32,OX=(ROWS)*TW/2,OY=70;
+function iso(x,y){return[OX+(x-y)*TW/2,OY+(x+y)*TH/2]}
+function drawGrid(s){var cv=$('cv'),g=cv.getContext('2d'),pets=s.pets,p=pets[cur()],k,x,y,list=[];g.clearRect(0,0,CW,CH);
+ var bg=g.createLinearGradient(0,0,0,CH);bg.addColorStop(0,'#2d4a3a');bg.addColorStop(1,'#1e3328');g.fillStyle=bg;g.fillRect(0,0,CW,CH);
+ function tile(x,y,col){if(view==='2d'){g.fillStyle=col;g.fillRect(x*C2+16,y*C2+2,C2-1,C2-1)}else{var q=iso(x,y);g.fillStyle=col;g.beginPath();g.moveTo(q[0],q[1]);g.lineTo(q[0]+TW/2,q[1]+TH/2);g.lineTo(q[0],q[1]+TH);g.lineTo(q[0]-TW/2,q[1]+TH/2);g.closePath();g.fill();g.strokeStyle='#0003';g.stroke()}}
+ for(y=0;y<ROWS;y++)for(x=0;x<COLS;x++)tile(x,y,(x+y)%2?'#4d7a54':'#46704d');
+ var b=R.blocked,names=['gym','barn'],cols=['#a8322d','#8a5f1c'];
+ for(k=0;k<b.length;k++){tile(b[k][0],b[k][1],cols[k]);var pos=view==='2d'?[b[k][0]*C2+16+C2/2,b[k][1]*C2+C2/2+6]:(function(q){return[q[0],q[1]+TH/2+4]})(iso(b[k][0],b[k][1]));g.fillStyle='#fff';g.font='bold 13px Georgia';g.textAlign='center';g.fillText(names[k]+(p?' L'+p.fac[names[k]]:''),pos[0],pos[1])}
+ for(k in pets)if(!pets[k].frozen)list.push(pets[k]);list.sort(function(a,b){return view==='2d'?a.y-b.y:(a.x+a.y)-(b.x+b.y)});
+ list.forEach(function(q){var im=imgs[q.g.speciesIx],h=view==='2d'?64:70,w=im.width?im.width*h/im.height:40,px,py;if(view==='2d'){px=q.x*C2+16+C2/2;py=q.y*C2+C2}else{var c=iso(q.x,q.y);px=c[0];py=c[1]+TH}
+  if(q.name===cur()){g.strokeStyle='#ffd77a';g.lineWidth=3;g.beginPath();g.ellipse(px,py-2,w/2+4,8,0,0,7);g.stroke();g.lineWidth=1}
+  if(im.complete&&im.width)g.drawImage(im,px-w/2,py-h,w,h);g.fillStyle='#fff';g.font='12px Georgia';g.textAlign='center';g.fillText(q.name,px,py+12)})}
+function cellAt(ev){var cv=$('cv'),r=cv.getBoundingClientRect(),sx=(ev.clientX-r.left)*CW/r.width,sy=(ev.clientY-r.top)*CH/r.height;
+ if(view==='2d')return[Math.floor((sx-16)/C2),Math.floor(sy/C2)];var gx=(sx-OX)/(TW/2),gy=(sy-OY)/(TH/2);return[Math.floor((gx+gy)/2),Math.floor((gy-gx)/2)]}
+$('cv').onclick=function(ev){var s=TA.state(),c=cellAt(ev),k,hit='';for(k in s.pets){var q=s.pets[k];if(!q.frozen&&q.x===c[0]&&q.y===c[1])hit=k}
+ if(hit){if(s.pets[hit].owner===TA.owner()){TA.setPet(hit);draw()}else msg(hit+' belongs to '+s.pets[hit].owner,false);return}
+ if(c[0]<0||c[1]<0||c[0]>=COLS||c[1]>=ROWS)return;go([row('MOVE',cur(),c[0],c[1])],cur()+' walked to '+c[0]+','+c[1])};
+$('v2').onclick=function(){view='2d';localStorage.setItem('tearit_view',view);draw()};$('v3').onclick=function(){view='3d';localStorage.setItem('tearit_view',view);draw()};
+/* ---- the page ---- */
+function draw(){var s=TA.state(),l=mine(s),c=TA.curPet();window.__s=s;if(!s.ok||!l.length){$('empty').style.display='';$('game').style.display='none';return}
+ if(l.indexOf(c)<0||s.pets[c].frozen&&l.some(function(k){return !s.pets[k].frozen})){var f=l.filter(function(k){return !s.pets[k].frozen});c=(f[0]||l[0]);TA.setPet(c)}
+ $('empty').style.display='none';$('game').style.display='';var p=s.pets[c],bal=s.balances[c]||0,out=l.filter(function(k){return !s.pets[k].frozen}),st=l.filter(function(k){return s.pets[k].frozen});
+ $('party').innerHTML=out.map(function(k){var q=s.pets[k];return '<div class="chip'+(k===c?' on':'')+'" data-pick="'+k+'"><img src="'+TA.petImg(q.g)+'"><b>'+TA.esc(k)+'</b><small>'+q.species+' &middot; '+(s.balances[k]||0)+'c</small></div>'}).join('')||'<span class="dim">nobody is out: thaw a pet</span>';
+ $('store').innerHTML=st.length?'<small>in storage (frozen): </small>'+st.map(function(k){return '<span class="tag" data-pick="'+k+'" style="cursor:pointer">'+TA.esc(k)+'</span> '}).join(''):'';
+ $('por').src=TA.petImg(p.g);$('por').className='portrait'+(p.frozen?' frozen':'');$('nm').textContent=c;
+ $('sub').innerHTML='<span class="tag">'+p.species+'</span> '+(p.frozen?'<span class="tag">frozen</span> ':'')+(p.retired?'<span class="tag">retired</span> ':'')+(p.price>0?'<span class="tag">for sale '+p.price+'</span> ':'')+'<br><b>'+bal+'</b> coins';
  $('ageb').innerHTML=TA.bar(p.age,p.life,'age');$('agev').textContent=p.age+'/'+p.life;$('fatb').innerHTML=TA.bar(p.fat,100,'fat');$('fatv').textContent=p.fat;
  $('stats').innerHTML=R.stats.map(function(k){return '<div class="stat"><span>'+k+'</span>'+TA.bar(p.stats[k],CAP)+'<span>'+p.stats[k]+'</span></div>'}).join('');
- $('meta').innerHTML='cups won <b>'+p.wins+'</b> of '+p.cups+' &middot; gym '+p.fac.gym+' &middot; barn '+p.fac.barn+'<br><small>owner '+TA.esc(p.owner)+' &middot; seed "'+TA.esc(p.seed)+'"</small>';
+ var rk=p.best>=0?R.ranks[p.best]:'none yet';$('meta').innerHTML='best rank beaten <b>'+rk+'</b> &middot; ranked wins '+p.wins+'/'+p.cups+' &middot; pet fights '+p.pvpW+'-'+p.pvpL+'<br>gym '+p.fac.gym+' &middot; barn '+p.fac.barn+' &middot; cell '+p.x+','+p.y+'<br><small>owner '+TA.esc(p.owner)+' &middot; seed "'+TA.esc(p.seed)+'"</small>';
  var off=p.frozen||p.retired;
- $('feed').innerHTML=Object.keys(R.foods).map(function(f){var d=R.foods[f];return '<button data-feed="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>'+f+'<small>'+d.cost+' coins, tired -'+d.fat+(d.stat?', '+d.stat+' +'+d.n:'')+'</small></button>'}).join('');
- $('train').innerHTML=Object.keys(R.drills).map(function(f){var d=R.drills[f];return '<button data-train="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>'+f+'<small>'+d.cost+' coins, '+d.stat+' +'+(d.gain+p.fac.gym)+'</small></button>'}).join('');
- $('cups').innerHTML=Object.keys(R.cups).map(function(f){var d=R.cups[f];return '<button data-cup="'+f+'"'+(off||bal<d.entry?' disabled':'')+'>'+f+' cup<small>entry '+d.entry+', prize '+d.prize+'</small></button>'}).join('');
- $('fac').innerHTML=Object.keys(R.facilities).map(function(f){var d=R.facilities[f],lv=p.fac[f];return '<button data-fac="'+f+'"'+(off||lv>=d.max||bal<d.base*(lv+1)?' disabled':'')+'>'+f+' level '+lv+'<small>'+(lv>=d.max?'top level':'upgrade '+d.base*(lv+1)+' coins')+'</small></button>'}).join('');
- $('rest').disabled=off;$('mineb').disabled=false;$('faucet').disabled=p.frozen;$('freeze').textContent=p.frozen?'Thaw':'Freeze';$('freeze').disabled=p.retired&&!p.frozen;
- var lines=TA.load().split('\n').filter(Boolean).map(function(x){return x.split('|')}).filter(function(b){return b.slice(7).join('|').indexOf('|'+cur+'|')>=0||b[6]===cur}).slice(-8).reverse();
- $('log').innerHTML=lines.map(function(b){var t=b.slice(7).join('|');return '<div>#'+b[1]+' '+(t?TA.esc(t.replace(/\|\d{9,}$/,'')):'mined a block (+50)')+'</div>'}).join('')||'<span class="dim">nothing yet</span>';}
-document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var cur=TA.curPet();
- if(b.dataset.feed)go([row('FEED',cur,b.dataset.feed)],cur+' ate '+b.dataset.feed);
- else if(b.dataset.train)go([row('TRAIN',cur,b.dataset.train)],cur+' trained: '+b.dataset.train);
- else if(b.dataset.cup){var w0=TA.state().pets[cur].wins,c0=b.dataset.cup,r=TA.act("_ranch",[row("COMPETE",cur,c0)]);if(r.ok){var w1=TA.state().pets[cur].wins;msg(w1>w0?cur+" won the "+c0+" cup!":cur+" lost the "+c0+" cup. Train and try again.",w1>w0)}else msg("refused: "+r.why,false);draw()}
- else if(b.dataset.fac)go([row('UPGRADE',cur,b.dataset.fac)],b.dataset.fac+' upgraded');});
-$('rest').onclick=function(){go([row('REST',cur())],TA.curPet()+' rested')};function cur(){return TA.curPet()}
+ $('feed').innerHTML=Object.keys(R.foods).map(function(f){var d=R.foods[f];return '<button data-feed="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>'+f+'<small>'+d.cost+'c, tired -'+d.fat+(d.stat?', '+d.stat+' +'+d.n:'')+'</small></button>'}).join('');
+ $('train').innerHTML=Object.keys(R.drills).map(function(f){var d=R.drills[f];return '<button data-train="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>'+f+'<small>'+d.cost+'c, '+d.stat+' +'+(d.gain+p.fac.gym+(p.buffT?R.items.dumbbell.n:0))+'</small></button>'}).join('');
+ $('ladder').innerHTML=R.ranks.map(function(r,i){var d=R.rank[r],gate=p.best<i-1;var ai=R.ai[parseInt(TearChain.sha256(r+'|'+p.age).substr(0,2),16)%R.ai.length];return '<button data-rank="'+r+'"'+(off||gate||bal<d.entry?' disabled':'')+'>rank '+r+'<small>'+(gate?'beat '+R.ranks[i-1]+' first':'vs '+ai+': entry '+d.entry+', prize '+d.prize)+'</small></button>'}).join('');
+ $('fac').innerHTML=Object.keys(R.facilities).map(function(f){var d=R.facilities[f],lv=p.fac[f];return '<button data-fac="'+f+'"'+(off||lv>=d.max||bal<d.base*(lv+1)?' disabled':'')+'>'+f+' level '+lv+'<small>'+(lv>=d.max?'top level':'upgrade '+d.base*(lv+1)+'c')+'</small></button>'}).join('');
+ $('items').innerHTML=Object.keys(R.items).map(function(f){var d=R.items[f],n=p.items[f]||0;return '<span><button data-buy="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>buy '+f+'<small>'+d.cost+'c</small></button><button class="sec" data-use="'+f+'"'+(off||!n?' disabled':'')+'>use '+f+'<small>have '+n+'</small></button></span>'}).join('');
+ var others=Object.keys(s.pets).filter(function(k){return k!==c&&!s.pets[k].frozen&&!s.pets[k].retired});$('opp').innerHTML=others.map(function(k){return '<option value="'+k+'">'+k+' ('+s.pets[k].species+', '+s.pets[k].owner+')</option>'}).join('')||'<option value="">nobody to fight</option>';
+ $('gto').innerHTML=Object.keys(s.pets).filter(function(k){return k!==c}).map(function(k){return '<option>'+k+'</option>'}).join('');$('gitem').innerHTML=Object.keys(R.items).filter(function(i){return p.items[i]>0}).map(function(i){return '<option>'+i+'</option>'}).join('');
+ $('rest').disabled=off;$('faucet').disabled=p.frozen;$('chal').disabled=off||!others.length;$('freeze').textContent=p.frozen?'Thaw':'Freeze';$('freeze').disabled=p.retired&&!p.frozen;$('list').disabled=p.frozen;$('unlist').disabled=!(p.price>0);
+ var lines=TA.load().split('\n').filter(Boolean).map(function(x){return x.split('|')}).filter(function(b){return b.slice(7).join('|').indexOf('|'+c+'|')>=0||b[6]===c}).slice(-8).reverse();
+ $('log').innerHTML=lines.map(function(b){var t=b.slice(7).join('|');return '<div>#'+b[1]+' '+(t?TA.esc(t.replace(/\|\d{9,}$/,'')):'mined a block (+50)')+'</div>'}).join('')||'<span class="dim">nothing yet</span>';
+ $('v2').style.opacity=view==='2d'?1:.5;$('v3').style.opacity=view==='3d'?1:.5;drawGrid(s)}
+document.addEventListener('click',function(e){var pk=e.target.closest('[data-pick]');if(pk){TA.setPet(pk.dataset.pick);draw();return}var b=e.target.closest('button');if(!b)return;var c=cur(),d=b.dataset;
+ if(d.feed)go([row('FEED',c,d.feed)],c+' ate '+d.feed);else if(d.train)go([row('TRAIN',c,d.train)],c+' trained: '+d.train);else if(d.fac)go([row('UPGRADE',c,d.fac)],d.fac+' upgraded');
+ else if(d.buy)go([row('BUYITEM',c,d.buy)],c+' bought a '+d.buy);else if(d.use)go([row('USEITEM',c,d.use)],c+' used a '+d.use);
+ else if(d.rank){var w0=TA.state().pets[c].wins,r=TA.act('_ranch',[row('COMPETE',c,d.rank)]);if(r.ok){var w1=TA.state().pets[c].wins;msg(w1>w0?c+' beat rank '+d.rank+'!':c+' lost to rank '+d.rank+'. Train and try again.',w1>w0)}else msg('refused: '+r.why,false);draw()}});
+$('rest').onclick=function(){go([row('REST',cur())],cur()+' rested')};
 $('faucet').onclick=function(){go(['FAUCET|'+cur()+'|1000|'+TA.ts()],'faucet paid 1000 to '+cur(),'_ranch')};
 $('mineb').onclick=function(){var r=TA.act(cur(),[]);msg(r.ok?cur()+' mined a block (+50 coins, '+r.tries+' tries)':'refused: '+r.why,r.ok);draw()};
-$('freeze').onclick=function(){var p=TA.state().pets[cur()];go([row(p.frozen?'THAW':'FREEZE',cur())],p.frozen?'thawed':'frozen: it will keep until you thaw it')};
-$('give').onclick=function(){var t=TA.id($('to').value);if(!t){msg('type the new owner name',false);return}go([row('TRANSFER',cur(),t)],cur()+' now belongs to '+t)};
-$('dl').onclick=function(){TA.download('tearit-ranch-save.txt',TA.load())};
-$('sel').onchange=function(){TA.setPet($('sel').value);draw()};draw();
+$('chal').onclick=function(){var o=$('opp').value;if(!o)return;var s0=TA.state().pets[cur()],w0=s0.pvpW,r=TA.act('_ranch',[row('CHALLENGE',cur(),o)]);if(r.ok){var s1=TA.state().pets[cur()];msg(s1.pvpW>w0?cur()+' beat '+o+'!':cur()+' lost to '+o+'.',s1.pvpW>w0)}else msg('refused: '+r.why,false);draw()};
+$('give').onclick=function(){var t=$('gto').value,i=$('gitem').value;if(!t||!i){msg('pick an item and a pet to give it to',false);return}go([row('GIVEITEM',cur(),i,t)],'gave a '+i+' to '+t)};
+$('freeze').onclick=function(){var p=TA.state().pets[cur()];go([row(p.frozen?'THAW':'FREEZE',cur())],p.frozen?'thawed':'frozen: stored safely until you thaw it')};
+$('xfer').onclick=function(){var t=TA.id($('to').value);if(!t){msg('type the new owner name',false);return}go([row('TRANSFER',cur(),t)],cur()+' now belongs to '+t)};
+$('list').onclick=function(){var pr=parseInt($('price').value,10);if(!(pr>0)){msg('type a price',false);return}go([row('LIST',cur(),pr,cur())],cur()+' is for sale for '+pr+' (the money goes to '+cur()+')')};
+$('unlist').onclick=function(){go([row('UNLIST',cur())],'no longer for sale')};
+$('dl').onclick=function(){TA.download('tearit-ranch-save.txt',TA.load())};draw();
 </script></body></html>

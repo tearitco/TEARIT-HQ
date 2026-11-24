@@ -23,3 +23,5 @@ button:hover,.btn:hover{filter:brightness(1.08)}button:disabled{opacity:.45;curs
 #msg{min-height:26px;font-weight:bold}#msg.ok{color:var(--ok)}#msg.bad{color:var(--bad)}
 .log div{font-size:13px;border-bottom:1px dotted #0003;padding:2px 0}code{background:#0002;padding:0 4px;border-radius:4px;font-size:13px}pre{background:#1b1636;color:#f4ead2;padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-all}
 .lineup{width:100%;border-radius:12px;border:2px solid var(--gold)}.tag{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--gold);color:#2b1c05;font-size:12px}.frozen{filter:saturate(.3) brightness(1.2) hue-rotate(160deg)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:800px){.cols{grid-template-columns:1fr}}
+.party{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}.chip{display:flex;flex-direction:column;align-items:center;width:92px;padding:6px;border:2px solid var(--gold2);border-radius:10px;background:#fff6;cursor:pointer}.chip img{height:64px}.chip.on{border-color:#d9482f;background:#ffe9b8}.chip small{font-size:11px;color:#7a6540;text-align:center}

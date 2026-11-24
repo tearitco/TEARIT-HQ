@@ -1,0 +1,20 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Market - TEAR-IT Ranch</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div><main>
+<div class="card"><h2>The pet market</h2><p>Pets for sale on the chain you have loaded. To trade with a friend there is no server: <b>upload their save</b> on the landing page (it is verified and merged), buy or list here, then <b>download your save</b> and send it back. The copy with the most work wins, so always import theirs first and act second.</p>
+ <p>Pay with: <select id="payer" style="width:auto"></select> <span id="who" class="dim"></span></p><div id="msg"></div></div>
+<div id="list" class="opts" style="margin-top:14px"></div>
+<div class="card"><h3>Your pets for sale</h3><div id="mine"></div></div></main>
+<script src="chain.js"></script><script src="app.js"></script><script>
+TA.header('market');var $=TA.$,R=TearChain.RANCH;
+function msg(t,ok){var m=$('msg');m.textContent=t;m.className=ok?'ok':'bad'}
+function draw(){var s=TA.state(),o=TA.owner(),k,h='',mine='',opts='';if(!s.ok){$('list').innerHTML='<div class="card">the chain does not verify</div>';return}
+ for(k in s.pets)if(s.pets[k].owner===o&&!s.pets[k].frozen)opts+='<option>'+k+'</option>';$('payer').innerHTML=opts||'<option value="">(hatch a pet first)</option>';$('who').textContent=o?'you are '+o:'no owner name set: use the landing page';
+ for(k in s.pets){var p=s.pets[k];if(!(p.price>0))continue;var pw=TearChain.power(p);
+  var card='<div class="card"><div class="preview"><img src="'+TA.petImg(p.g)+'"><div><b>'+TA.esc(k)+'</b> <span class="tag">'+p.species+'</span><br><small>power '+pw+' &middot; age '+p.age+'/'+p.life+' &middot; rank '+(p.best>=0?R.ranks[p.best]:'-')+' &middot; owner '+TA.esc(p.owner)+'</small><br><b>'+p.price+'</b> coins <small>(paid to '+TA.esc(p.payee)+')</small></div></div>';
+  if(p.owner===o)mine+=card+'<button data-unlist="'+k+'" class="sec">Take off the market</button></div>';else h+=card+'<button data-buy="'+k+'">Buy for '+p.price+'</button></div>'}
+ $('list').innerHTML=h||'<div class="card"><span class="dim">nothing is for sale from anyone else. List one of your pets on the ranch page, or import a friend\'s save.</span></div>';$('mine').innerHTML=mine||'<span class="dim">none</span>'}
+document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var o=TA.owner(),k,r;
+ if(b.dataset.buy){k=b.dataset.buy;var py=$('payer').value;if(!py){msg('hatch a pet first: it pays',false);return}r=TA.act('_ranch',['BUY|'+k+'|'+py+'|'+o+'|'+TA.ts()]);msg(r.ok?'bought '+k+'! It is on your ranch now.':'refused: '+r.why,r.ok);draw()}
+ else if(b.dataset.unlist){r=TA.act('_ranch',['UNLIST|'+b.dataset.unlist+'|'+o+'|'+TA.ts()]);msg(r.ok?'taken off the market':'refused: '+r.why,r.ok);draw()}});
+draw();
+</script></body></html>

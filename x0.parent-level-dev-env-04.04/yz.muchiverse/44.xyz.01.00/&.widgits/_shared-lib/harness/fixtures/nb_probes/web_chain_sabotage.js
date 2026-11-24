@@ -59,13 +59,44 @@ var C_CHAIN='BLOCK|0|00000000000000000000000000000000000000000000000000000000000
  rv=radd('_ranch',['TRAIN|rex|lift|alice|9'],9); check('ranch-gym-level-raises-the-next-gain',rv.pets.rex.stats.POW+'','18');
  radd('_ranch',['FREEZE|rex|alice|10'],10); check('ranch-frozen-pet-cannot-act',radd('_ranch',['FEED|rex|bread|alice|11'],11).error,'rex is frozen');
  radd('_ranch',['THAW|rex|alice|12'],12);
- var before=T.verify(rc,rcfg).balances.rex; rv=radd('_ranch',['COMPETE|rex|rookie|alice|13'],13); var won=rv.pets.rex.wins;
+ var before=T.verify(rc,rcfg).balances.rex; rv=radd('_ranch',['COMPETE|rex|E|alice|13'],13); var won=rv.pets.rex.wins;
  check('ranch-cup-result-is-paid-from-the-pool',rv.ok+' cups'+rv.pets.rex.cups+' bal'+rv.balances.rex,'true cups1 bal'+(before-10+(won?60:0)));
  for(var ti=0;ti<14;ti++){ var tr=radd('_ranch',['TRAIN|rex|jog|alice|'+(20+ti)],20+ti); if(!tr.ok)break; }
- check('ranch-a-tired-pet-cannot-enter-a-cup',radd('_ranch',['COMPETE|rex|rookie|alice|40'],40).error,'rex is too tired');
+ check('ranch-a-tired-pet-cannot-enter-a-cup',radd('_ranch',['COMPETE|rex|E|alice|40'],40).error,'rex is too tired');
  radd('_ranch',['TRANSFER|rex|bob|alice|41'],41); check('ranch-transfer-moves-the-owner',radd('_ranch',['REST|rex|alice|42'],42).error,'not the owner of rex');
  check('ranch-new-owner-can-act',String(radd('_ranch',['REST|rex|bob|43'],43).ok),'true');
 var hk=T.mine('','x',['HACK|x'],1,rcfg); check('ranch-unknown-row-refused',T.verify(hk.line+'\n',rcfg).error,'unknown row HACK');
  var arr=T.applyRows('','steward',['PET|zed|zed words|carol|1','PET|zed|again|carol|1','HACK|x'],5,rcfg); check('ranch-steward-takes-the-pet-row-only',arr.accepted.length+' '+arr.rejected.length,'1 2');
+ /* ranch part 2: items, the ranked ladder gate, the pet market, pet-vs-pet */
+ var r2='',m2=0; function r2add(miner,rows,ts){var m=T.mine(r2,miner,rows,ts,rcfg),n=r2+m.line+'\n',v=T.verify(n,rcfg);if(v.ok)r2=n;return v;}
+ r2add('_ranch',['PET|ivy|ivy words|dan|1'],1); r2add('_ranch',['PET|kai|kai words|erin|2'],2); r2add('_ranch',['FAUCET|ivy|1000|9000'],9000); r2add('_ranch',['FAUCET|kai|1000|9000'],9000);
+ var iv=r2add('_ranch',['BUYITEM|ivy|dumbbell|dan|10'],10); check('ranch-item-bought-with-the-pets-coins',iv.ok+' coins'+iv.balances.ivy+' have'+iv.pets.ivy.items.dumbbell,'true coins970 have1');
+ check('ranch-using-an-item-you-lack-is-refused',r2add('_ranch',['USEITEM|ivy|charm|dan|11'],11).error,'ivy has no charm');
+ r2add('_ranch',['USEITEM|ivy|dumbbell|dan|12'],12); iv=r2add('_ranch',['TRAIN|ivy|lift|dan|13'],13); var pw0=T.genes('ivy words','ivy').stats.POW; check('ranch-dumbbell-adds-two-to-the-next-drill-only',(iv.pets.ivy.stats.POW-pw0)+'','5');
+ iv=r2add('_ranch',['TRAIN|ivy|lift|dan|14'],14); check('ranch-the-dumbbell-buff-was-used-up',(iv.pets.ivy.stats.POW-pw0)+'','8');
+ r2add('_ranch',['BUYITEM|kai|elixir|erin|15'],15); iv=r2add('_ranch',['GIVEITEM|kai|elixir|ivy|erin|16'],16); check('ranch-an-item-can-be-given-to-another-pet',iv.ok+' kai'+(iv.pets.kai.items.elixir||0)+' ivy'+iv.pets.ivy.items.elixir,'true kai0 ivy1');
+ check('ranch-ranked-gate-you-must-beat-the-rank-below',r2add('_ranch',['COMPETE|kai|D|erin|17'],17).error,'kai must beat rank E first');
+ check('ranch-unknown-rank-refused',r2add('_ranch',['COMPETE|kai|Z|erin|18'],18).error,'unknown rank');
+ r2add('_ranch',['LIST|ivy|100|ivy|dan|20'],20); check('ranch-buying-your-own-pet-is-refused',r2add('_ranch',['BUY|ivy|ivy|dan|21'],21).error,'you already own ivy');
+ check('ranch-buying-with-a-pet-that-is-not-yours-is-refused',r2add('_ranch',['BUY|ivy|kai|dan|22'],22).error,'the paying pet is not yours');
+ var b0=T.verify(r2,rcfg).balances; iv=r2add('_ranch',['BUY|ivy|kai|erin|23'],23); check('ranch-a-sale-moves-the-owner-and-the-coins',iv.ok+' owner'+iv.pets.ivy.owner+' kai'+iv.balances.kai+' ivy'+iv.balances.ivy,'true ownererin kai'+(b0.kai-100)+' ivy'+(b0.ivy+100));
+ check('ranch-a-sold-pet-is-no-longer-listed',r2add('_ranch',['BUY|ivy|kai|dan|24'],24).error,'ivy is not for sale');
+ iv=r2add('_ranch',['CHALLENGE|ivy|kai|erin|25'],25); check('ranch-a-challenge-is-recorded-for-both-pets',iv.ok+' '+(iv.pets.ivy.pvpW+iv.pets.ivy.pvpL+iv.pets.kai.pvpW+iv.pets.kai.pvpL),'true 2');
+ check('ranch-a-pet-cannot-challenge-itself',r2add('_ranch',['CHALLENGE|ivy|ivy|erin|26'],26).error,'a pet cannot challenge itself');
+ /* ranch part 3: the grid (positions are rows) and the limit of six pets out at once */
+ var r3='';function r3add(miner,rows,ts){var m=T.mine(r3,miner,rows,ts,rcfg),n=r3+m.line+'\n',v=T.verify(n,rcfg);if(v.ok)r3=n;return v;}
+ var six=true;for(var pi=1;pi<=6;pi++){six=six&&r3add('_ranch',['PET|p'+pi+'|grid words '+pi+'|zoe|'+pi],pi).ok;} var g3=T.verify(r3,rcfg);
+ check('grid-six-pets-fit-on-the-ranch',six+' '+Object.keys(g3.pets).length,'true 6');
+ check('grid-a-seventh-pet-is-refused-until-one-is-frozen',r3add('_ranch',['PET|p7|grid words 7|zoe|7'],7).error,'six pets are already out: freeze one first');
+ var cells={},inside=true,k3;for(k3 in g3.pets){var q3=g3.pets[k3];cells[q3.x+','+q3.y]=1;inside=inside&&q3.x>=0&&q3.x<T.RANCH.cols&&q3.y>=0&&q3.y<T.RANCH.rows;}
+ check('grid-every-pet-spawns-inside-the-grid',String(inside),'true'); check('grid-two-pets-never-share-a-cell',String(Object.keys(cells).length),'6');
+ var fx=-1,fy=-1,tx,ty;for(ty=0;ty<T.RANCH.rows&&fx<0;ty++)for(tx=0;tx<T.RANCH.cols&&fx<0;tx++){if(!cells[tx+','+ty]&&!(tx===1&&ty===1)&&!(tx===10&&ty===1)){fx=tx;fy=ty;}}
+ var mv=r3add('_ranch',['MOVE|p1|'+fx+'|'+fy+'|zoe|10'],10); check('grid-a-move-is-a-row-and-the-pet-stands-there',mv.ok+' '+mv.pets.p1.x+','+mv.pets.p1.y,'true '+fx+','+fy);
+ check('grid-moving-onto-another-pet-is-refused',r3add('_ranch',['MOVE|p2|'+g3.pets.p3.x+'|'+g3.pets.p3.y+'|zoe|11'],11).error,'that cell is not free');
+ check('grid-moving-onto-the-gym-is-refused',r3add('_ranch',['MOVE|p2|1|1|zoe|12'],12).error,'that cell is not free');
+ check('grid-moving-off-the-grid-is-refused',r3add('_ranch',['MOVE|p2|12|0|zoe|13'],13).error,'that cell is not free');
+ r3add('_ranch',['FREEZE|p1|zoe|14'],14); check('grid-freezing-one-makes-room-for-a-seventh',String(r3add('_ranch',['PET|p7|grid words 7|zoe|15'],15).ok),'true');
+ check('grid-thawing-into-a-full-ranch-is-refused',r3add('_ranch',['THAW|p1|zoe|16'],16).error,'six pets are already out: freeze one first');
+ check('grid-a-frozen-pet-no-longer-blocks-its-cell',String(r3add('_ranch',['MOVE|p2|'+fx+'|'+fy+'|zoe|17'],17).ok),'true');
  console.log('WEBCHAIN_TESTRESULT '+pass+'/'+total); console.log('WEBCHAIN_TESTDONE');
 })();
