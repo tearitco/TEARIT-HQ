@@ -73,3 +73,13 @@ Both entry points must be proven: the standalone `hai-cli` and the book in rpg-e
 3. A driver; then open it from Books and Play, photograph it, open the PNG.
 4. Overlays (pages left, agents and chat right) over the canvas, copied from rpg-space.
 5. Then permissions, the sandbox, learned commands (hai book 25 build order).
+
+## 10. First slice opened in the live editor (OBS 2026-11-24)
+**What was built:** `@.apps/hai-pal/` (house commit 09357edfd): `game.pdl` (no `driver` row, so Play starts nothing: `book_driver()` returns 0), `rooms.pdl` (ROOM rows home and garden), `state.pdl`, `verbs.pdl`, `ledger/world.ledger`, and the package `hai-pal-pchq/pieces/system/maps/hai-pal/` with `game.pdl` (two desks) and a desk folder per page written by `hai_world desk <ledger> <page> <desk_dir> <atlas.rgba>` (hai repo, case `hai_world`, 62 checks, 5 mutants). **Observed:** `edit_open.sh <house> hai-pal home` and `garden` answered `book=hai-pal page=... pages=2`; a bad page exited 2. `book_check` on the package: 4 pass, 2 fail, 8 skip (B1 to B4 pass; A1 and A2 fail exactly as for the generated `chutes`): the page-file conformance is still NOT done.
+**On screen (photographed, opened):** after `sh @.apps/rpg-edit-hq/button.sh run`, the Books dropdown (header cell 2) listed **hai-pal** (item 37) with the other books; picking it gave the header `book:hai-pal page:home` and the 3D board drew the room (parquet floor, cobble wall border, the two-cell inner block) with a figure on it and the room in the minimap. A leftover Teario-Play popup (the saved session's game) covered the centre.
+**Traps hit driving the real window (each cost a run):**
+- Typed digits through the relay (`KEY_PRESSED: 50`, `13`) did nothing for the header cell, and `37` then Enter chose the WRONG book (centroid). Use `MOUSE_EVENT: 1 <x> <y> 1` and `0` through `#.desktop/entity_menu_history/<board_window.pid>.txt`, with the pointer moved onto the window first.
+- The FIRST click on a cell or row only focuses it (`[>]` appears); click a SECOND time to open or activate it. Photograph between clicks to know which state you are in.
+- The launch itself rewrote the saved `@.apps/rpg-edit-hq/state/last_book.txt` (from `tsots/map071` to `teario-play/play`); record the file (copy + hash) BEFORE a launch and restore it afterwards.
+- A shell loop of `xwininfo -id` over every window can hang for 30 s while the engine starts; photograph the known window id instead.
+**Next:** a driver (a `GAME | driver` row) so Play runs the agents, event pages per verb, and `source=desk` page-file rows so `book_check` A1 to A10 pass.
