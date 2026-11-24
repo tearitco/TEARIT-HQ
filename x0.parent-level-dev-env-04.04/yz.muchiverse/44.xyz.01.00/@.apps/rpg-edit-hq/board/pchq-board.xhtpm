@@ -2,7 +2,7 @@
      A copy of the layout-studio sandbox board (pinned side bars) with rpg-edit-hq's own rows: the pets and stats are the LEFT bar, chat is the RIGHT bar, the bag hotbar is the bottom overlay,
      the dropdowns are rpg-edit-hq's. The canvas is the board engine frame (2D default, 0 = 3D, 1-4 POV, camera keys, backtick = glyph view) of the book maps/rpg-edit-hq that rpg_edit_hq.+x exports.
      Launch: sh @.apps/rpg-edit-hq/board/open_board.sh. vars: rpg-edit-hq's state files FIRST, the board's after, so canvas_raw / interact_* are the board's. RULES: no angle brackets inside comments. -->
-<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/pal.txt state/prefs_ui.txt state/ctx.txt ../state/game_ui.txt ../state/stamps_ui.txt">
+<window label="rpg-edit-hq board" class="pchq-board-pal database-window managed user-resizable" vars="../state/ui.txt ../state/clock_ui.txt state/ui.txt state/pchq/ui.txt state/sides.txt state/pal.txt state/prefs_ui.txt state/ctx.txt gm_defaults.txt ../state/game_ui.txt ../state/stamps_ui.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="rpg-edit-hq-pchq"/>
   <page name="main">
     <tabbar id="toolbar" class="pchq-toolbar">
@@ -170,10 +170,16 @@
       </row>
       <!-- 2026-11-04 the coin shop popup: pick an item in the Coin shop tab, then Buy / Sell / Close here (the "Show Choices" pattern of the rpg-space helm popup); it stays open so you can repeat, and shows the last answer -->
       <!-- 2026-11-08 the GAME BAR: the open book's game (state/game_ui.txt, published by the driver its game.pdl names, started by Play) draws its screens here. Generic: a title, gm_nt text rows and gm_nb buttons whose label and FULL action string come from the feed, so a new game adds data and no row. Hidden when gm_on is empty. -->
-      <row id="game-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${gm_on}">
+      <row id="game-ov" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${gm_pop}">
         <text label="${gm_title}" class="hb-quiet ov-title theme-3"/>
         <repeat count="${gm_nt}" bind="gmt"><text label="${gmt.text}" class="hb-quiet"/></repeat>
         <repeat count="${gm_nb}" bind="gmb"><item id="gmb${gmb.#}" class="rp-menu-row" label="${gmb.label}" action="${gmb.act}"/></repeat>
+      </row>
+      <!-- 2026-11-24 the GAME BAR as a BOTTOM STRIP (owner: the centred popup is ugly): a horizontal strip like the hotbar, shown when the feed says gmbar_on=1 and gm_pop=0 (the popup above shows when gm_pop is 1, the default from gm_defaults.txt, so every other book is unchanged). The feed gives gmbar_title (one line), gmbar_n and gmbar_<i>_label / _act, and gmbar_min_act for the minimize cell. A book picks bar, side (the popup docked by game-ov_x / game-ov_y) or popup in its own data. -->
+      <row id="game-bar" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${gmbar_on}">
+        <text label="${gmbar_title}" class="hb-quiet ov-title theme-3"/>
+        <item id="gmbar-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="${gmbar_min_act}"/>
+        <repeat count="${gmbar_n}" bind="gmbar"><item id="gmbar${gmbar.#}" class="hb-slot skin-bar" label="${gmbar.label}" action="${gmbar.act}"/></repeat>
       </row>
       <!-- 2026-11-08 the TRADE SCREEN (Teropoly M9): four panes left to right, [my tiles] [I give] [I get] [their tiles], placed by the vars tpa_x/tpa_y.. and filled by the game feed (tp_on, tp<id>_title, tp<id>_n, tp<id>_<i>_label/act). Generic: a game that publishes no tp_on never shows them. Pressing a tile item moves it across, so no drag and drop is needed (owner 2026-11-08: "use nav to click in or out"). -->
       <row id="tpa" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${tp_on}">

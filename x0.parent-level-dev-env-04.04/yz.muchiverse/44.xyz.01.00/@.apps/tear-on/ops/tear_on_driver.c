@@ -29,6 +29,10 @@ typedef struct { char name[48], owner[48], species[16], stats[48], items[40]; in
 typedef struct { char id[48], mode[8], owner[48], members[240], winners[120], scores[120]; int open; long pot; } Arena;
 static Pet pets[48]; static int np; static Arena ars[16]; static int nar;
 static char tab[12] = "care";
+/* LAYOUT (owner 2026-11-24: the popup across the middle of the board is ugly): bar = a horizontal strip at the bottom of the board (the game-bar row of the editor layout, like the hotbar), side = the popup docked to the left edge of the board, popup = the old centred popup. min = minimized to one button. A PREFERENCE of the view kept in play/layout.txt (never game state). */
+static char lay[8] = "bar"; static int minimized; static char LAYF[P]; static const char *bpre = "gmb";
+static void lay_save(void) { FILE *f = fopen(LAYF, "w"); if (f) { fprintf(f, "mode=%s\nmin=%d\n", lay, minimized); fclose(f); } }
+static void lay_load(void) { FILE *f = fopen(LAYF, "r"); if (!f) return; char l[64]; while (fgets(l, sizeof l, f)) { if (!strncmp(l, "mode=", 5)) { l[strcspn(l, "\r\n")] = 0; if (!strcmp(l + 5, "bar") || !strcmp(l + 5, "side") || !strcmp(l + 5, "popup")) snprintf(lay, sizeof lay, "%s", l + 5); } else if (!strncmp(l, "min=", 4)) minimized = atoi(l + 4) ? 1 : 0; } fclose(f); }
 static int cap_i = 0, res_i = 0; static const int CAPS[] = { 0, 10, 25, 50, 100 }, RESV[] = { 0, 50, 100, 250, 500 };
 static long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000L + t.tv_nsec / 1000000L; }
 static int running(void) { FILE *f = fopen(SW, "r"); if (!f) return 0; char ln[80]; int r = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "running=", 8)) r = atoi(ln + 8); fclose(f); return r; }
@@ -58,7 +62,7 @@ static Arena *selar(void) { for (int i = 0; i < nar; i++) if (!strcmp(ars[i].id,
 static char OUT_[16384]; static int nt_, nb_;
 static void catn(const char *s) { strncat(OUT_, s, sizeof OUT_ - strlen(OUT_) - 1); }
 static void add_text(const char *s) { char b[500]; snprintf(b, sizeof b, "gmt_%d_text=%s\n", nt_++, s[0] ? s : " "); catn(b); }
-static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "gmb_%d_label=%s\ngmb_%d_act='%s' %s '%s'\n", nb_, label, nb_, CTL, cmd, PLAY); nb_++; catn(b); }
+static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snprintf(b, sizeof b, "%s_%d_label=%s\n%s_%d_act='%s' %s '%s'\n", bpre, nb_, label, bpre, nb_, CTL, cmd, PLAY); nb_++; catn(b); }
 static void publish(void) {
     OUT_[0] = 0; nt_ = nb_ = 0; char b[600]; Pet *p = selpet(); Arena *a = selar(); static const char *RK[] = { "E", "D", "C", "B", "A", "S" };
     catn("gm_on=1\n"); snprintf(b, sizeof b, "gm_pid=%ld\ngm_title=TEAR-IT Ranch  -  %s\n", (long)getpid(), owner); catn(b);
@@ -76,14 +80,28 @@ static void publish(void) {
         if (!strcmp(tab, "wallet")) { snprintf(b, sizeof b, "cap %d (0 = none)", p->cap); add_text(b); snprintf(b, sizeof b, "reserve %d", p->reserve); add_text(b); snprintf(b, sizeof b, "sale %s", p->sale ? "open" : "LOCKED"); add_text(b); }
     } else add_text("no pet yet: Hatch a pet");
     add_text(msg);
-    add_btn("[Care]", "tab_care"); add_btn("[Train]", "tab_train"); add_btn("[Walk]", "tab_walk"); add_btn("[Arena]", "tab_arena"); add_btn("[Wallet]", "tab_wallet");
-    if (!strcmp(tab, "care")) { add_btn("Hatch a pet", "hatch"); add_btn("Next pet", "pet_next"); add_btn("Pet faucet +1000", "faucet"); add_btn("Feed bread (5)", "feed_bread"); add_btn("Feed meat (20)", "feed_meat"); add_btn("Rest (free)", "rest"); add_btn("Redraw board", "refresh"); }
-    else if (!strcmp(tab, "train")) { add_btn("Train sprint", "train_sprint"); add_btn("Train lift", "train_lift"); add_btn("Train study", "train_study"); add_btn("Next ranked fight", "rank"); }
-    else if (!strcmp(tab, "walk")) { add_btn("Walk up", "move_up"); add_btn("Walk down", "move_down"); add_btn("Walk left", "move_left"); add_btn("Walk right", "move_right"); }
-    else if (!strcmp(tab, "arena")) { add_btn("Open a 1v1", "arena_open_1v1"); add_btn("Open a 2v2", "arena_open_2v2"); add_btn("Open free for all", "arena_open_ffa"); add_btn("Join with my pet", "arena_join"); add_btn("Fill with defaults", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave (fee back)", "arena_leave"); add_btn("Next arena", "arena_next"); }
-    else { add_btn("Wallet cap: next", "wo_cap"); add_btn("Wallet reserve: next", "wo_reserve"); add_btn("Sale lock: toggle", "wo_sale"); add_btn("Next pet", "pet_next"); }
-    add_btn("Close the game", "close");
-    snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt_, nb_); catn(b);
+    int bar = !strcmp(lay, "bar"); bpre = bar ? "gmbar" : "gmb";
+    if (minimized) { add_btn("Open the game bar", "bar_open"); }
+    else if (bar) {
+        char tl[40]; snprintf(tl, sizeof tl, "Tab: %s >", !strcmp(tab, "care") ? "Care" : !strcmp(tab, "train") ? "Train" : !strcmp(tab, "walk") ? "Walk" : !strcmp(tab, "arena") ? "Arena" : "Wallet"); add_btn(tl, "tab_next");
+        if (!strcmp(tab, "care")) { add_btn("Hatch", "hatch"); add_btn("Next pet", "pet_next"); add_btn("+1000", "faucet"); add_btn("Bread 5", "feed_bread"); add_btn("Meat 20", "feed_meat"); add_btn("Rest", "rest"); add_btn("Layout", "lay_next"); }
+        else if (!strcmp(tab, "train")) { add_btn("Sprint", "train_sprint"); add_btn("Lift", "train_lift"); add_btn("Study", "train_study"); add_btn("Ranked", "rank"); }
+        else if (!strcmp(tab, "walk")) { add_btn("Up", "move_up"); add_btn("Down", "move_down"); add_btn("Left", "move_left"); add_btn("Right", "move_right"); }
+        else if (!strcmp(tab, "arena")) { add_btn("Open 1v1", "arena_open_1v1"); add_btn("Open 2v2", "arena_open_2v2"); add_btn("Open FFA", "arena_open_ffa"); add_btn("Join", "arena_join"); add_btn("Fill", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave", "arena_leave"); add_btn("Next arena", "arena_next"); }
+        else { add_btn("Cap >", "wo_cap"); add_btn("Reserve >", "wo_reserve"); add_btn("Sale lock", "wo_sale"); add_btn("Next pet", "pet_next"); add_btn("Redraw", "refresh"); add_btn("Layout", "lay_next"); }
+        add_btn("Close", "close");
+    } else {
+        add_btn("[Care]", "tab_care"); add_btn("[Train]", "tab_train"); add_btn("[Walk]", "tab_walk"); add_btn("[Arena]", "tab_arena"); add_btn("[Wallet]", "tab_wallet");
+        if (!strcmp(tab, "care")) { add_btn("Hatch a pet", "hatch"); add_btn("Next pet", "pet_next"); add_btn("Pet faucet +1000", "faucet"); add_btn("Feed bread (5)", "feed_bread"); add_btn("Feed meat (20)", "feed_meat"); add_btn("Rest (free)", "rest"); add_btn("Redraw board", "refresh"); }
+        else if (!strcmp(tab, "train")) { add_btn("Train sprint", "train_sprint"); add_btn("Train lift", "train_lift"); add_btn("Train study", "train_study"); add_btn("Next ranked fight", "rank"); }
+        else if (!strcmp(tab, "walk")) { add_btn("Walk up", "move_up"); add_btn("Walk down", "move_down"); add_btn("Walk left", "move_left"); add_btn("Walk right", "move_right"); }
+        else if (!strcmp(tab, "arena")) { add_btn("Open a 1v1", "arena_open_1v1"); add_btn("Open a 2v2", "arena_open_2v2"); add_btn("Open free for all", "arena_open_ffa"); add_btn("Join with my pet", "arena_join"); add_btn("Fill with defaults", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave (fee back)", "arena_leave"); add_btn("Next arena", "arena_next"); }
+        else { add_btn("Wallet cap: next", "wo_cap"); add_btn("Wallet reserve: next", "wo_reserve"); add_btn("Sale lock: toggle", "wo_sale"); add_btn("Next pet", "pet_next"); }
+        add_btn("Close the game", "close");
+        if (!strcmp(tab, "wallet")) add_btn("Layout: next", "lay_next"); add_btn("Minimize", "bar_min");
+    }
+    if (bar) { char ttl[400]; snprintf(ttl, sizeof ttl, "TEAR-IT Ranch - %s   %s  %ldc   %s", owner, p ? p->name : "no pet", p ? p->coins : 0L, msg); snprintf(b, sizeof b, "gm_nt=0\ngm_nb=0\ngm_ne=0\ngm_nl=0\ngm_pop=0\ngmbar_on=1\ngmbar_n=%d\ngmbar_title=%s\ngmbar_min_act='%s' bar_min '%s'\ngame-ov_x=\ngame-ov_y=\n", nb_, ttl, CTL, PLAY); catn(b); }
+    else { snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\ngm_pop=1\ngmbar_on=\ngmbar_n=0\n%s", nt_, nb_, !strcmp(lay, "side") ? "game-ov_x=0\ngame-ov_y=0\n" : "game-ov_x=\ngame-ov_y=\n"); catn(b); }
     char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs(OUT_, f); fclose(f); rename(tmp, FEED); } }
 /* BOARD REFRESH (seen live 2026-11-24). The rpg-edit board draws a page when a DIFFERENT page is selected: five walks gave a zero image difference, a same-page CONFIRM_SET_DESK did nothing, arena then ranch loaded the new cells at once (each load restarts the board engine, several seconds).
  * So: the bar text is instant; an arena_* command shows the arena page, hatch and walking show the ranch page (a real switch when the editor is on the other page, nothing when it is already there);
@@ -122,6 +140,10 @@ static void do_cmd(const char *c) {
     char row[400], ts[24], m[200]; snprintf(ts, sizeof ts, "%ld", (long)time(NULL)); Pet *p = selpet(); Arena *a = selar(); chain_read();
     if (!strcmp(c, "close")) { FILE *sf = fopen(SW, "w"); if (sf) { fputs("running=0\nint=1\n", sf); fclose(sf); } stop_ = 1; return; }
     if (!strcmp(c, "refresh")) { refresh_board(); return; }
+    if (!strcmp(c, "lay_next")) { snprintf(lay, sizeof lay, "%s", !strcmp(lay, "bar") ? "side" : !strcmp(lay, "side") ? "popup" : "bar"); minimized = 0; lay_save(); set_msg(!strcmp(lay, "bar") ? "layout: bottom bar" : !strcmp(lay, "side") ? "layout: side panel" : "layout: popup"); return; }
+    if (!strcmp(c, "bar_min")) { minimized = 1; lay_save(); return; }
+    if (!strcmp(c, "bar_open")) { minimized = 0; lay_save(); return; }
+    if (!strcmp(c, "tab_next")) { const char *o[] = { "care", "train", "walk", "arena", "wallet" }; int cur = 0; for (int i = 0; i < 5; i++) if (!strcmp(tab, o[i])) cur = i; snprintf(tab, sizeof tab, "%s", o[(cur + 1) % 5]); set_msg(""); return; }
     if (!strncmp(c, "tab_", 4)) { if (!strcmp(c + 4, "care") || !strcmp(c + 4, "train") || !strcmp(c + 4, "walk") || !strcmp(c + 4, "arena") || !strcmp(c + 4, "wallet")) { snprintf(tab, sizeof tab, "%s", c + 4); set_msg(""); } else set_msg("unknown tab"); return; }
     if (!strcmp(c, "pet_next")) { int cur = -1, nx = -1; for (int i = 0; i < np; i++) if (!strcmp(pets[i].name, sel)) cur = i; for (int k = 1; k <= np; k++) { int i = (cur + k + np) % np; if (!strcmp(pets[i].owner, owner) && !pets[i].frozen) { nx = i; break; } } if (nx >= 0) snprintf(sel, sizeof sel, "%s", pets[nx].name); set_msg("next pet"); return; }
     if (!strcmp(c, "arena_next")) { int cur = -1; for (int i = 0; i < nar; i++) if (!strcmp(ars[i].id, asel)) cur = i; if (nar > 0) snprintf(asel, sizeof asel, "%s", ars[(cur + 1) % nar].id); set_msg("next arena"); return; }
@@ -157,7 +179,7 @@ int main(int argc, char **argv) {
     mkdir(PLAY, 0755); { FILE *f = fopen(OWNERF, "r"); if (f) { char l[48]; if (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; int ok = l[0] != 0; for (char *c = l; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-')) ok = 0; if (ok) snprintf(owner, sizeof owner, "%s", l); } fclose(f); } }
     char lp[P + 16]; snprintf(lp, sizeof lp, "%s/driver.lock", PLAY); int lf = open(lp, O_WRONLY | O_CREAT, 0644); if (lf < 0 || flock(lf, LOCK_EX | LOCK_NB)) { fprintf(stderr, "tear_on_driver: already running\n"); return 0; }
     { const char *ow = getenv("GAME_OWNER_PID"); OWNERPID = ow ? atol(ow) : 0; } signal(SIGTERM, bye); signal(SIGINT, bye);
-    { FILE *f = fopen(ACT, "a"); if (f) fclose(f); } struct stat st; long cur = stat(ACT, &st) ? 0 : (long)st.st_size; long chain_sz = -1; chain_read(); publish(); long last = now_ms();
+    snprintf(LAYF, sizeof LAYF, "%s/play/layout.txt", BOOK); lay_load(); { FILE *f = fopen(ACT, "a"); if (f) fclose(f); } struct stat st; long cur = stat(ACT, &st) ? 0 : (long)st.st_size; long chain_sz = -1; chain_read(); publish(); long last = now_ms();
     while (!stop_) {
         usleep(80000); if (getppid() == 1 && !OWNERPID) { /* parent gone: fine for a detached start, keep going unless an owner pid was given */ } if (OWNERPID > 0 && kill((pid_t)OWNERPID, 0) != 0) break;
         if (!stat(ACT, &st) && (long)st.st_size > 65536) { /* drop the oldest half, keep whole lines */ FILE *f = fopen(ACT, "r"); if (f) { fseek(f, st.st_size / 2, SEEK_SET); char junk[200]; if (fgets(junk, sizeof junk, f)) {} char *keep = malloc((size_t)st.st_size); size_t n = fread(keep, 1, (size_t)st.st_size, f); fclose(f); FILE *o = fopen(ACT, "w"); if (o) { fwrite(keep, 1, n, o); fclose(o); } free(keep); cur = 0; } }

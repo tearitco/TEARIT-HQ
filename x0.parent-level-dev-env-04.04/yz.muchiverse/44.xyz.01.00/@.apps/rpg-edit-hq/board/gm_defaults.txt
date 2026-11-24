@@ -1,0 +1,3 @@
+gm_pop=1
+gmbar_on=
+gmbar_n=0

@@ -90,6 +90,7 @@ WRITE   | editor/state/world/switches.txt | running=1\nint=1\n
 RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | demo | $T/house
 EXPECT_EXIT | 0 | the-demo-chain-is-seeded-by-rows
 ENV     | TEAR_ON_REFRESH_WAIT | 1
+WRITE   | house/@.apps/tear-on/play/layout.txt | mode=popup\nmin=0\n
 SPAWN   | drv | $T/house/@.apps/tear-on/ops/+x/tear_on_driver.+x | $T/house | $T/house/@.apps/tear-on | $T/editor
 WAIT_HAS | editor/state/game_ui.txt | gm_on=1 | 8000 | the-driver-publishes-the-game-bar-feed
 EXPECT_HAS | editor/state/game_ui.txt | gm_title=TEAR-IT Ranch  -  you | the-bar-is-titled
@@ -102,6 +103,33 @@ EXPECT_HAS | editor/state/game_ui.txt | side_left=1 | the-pets-bar-is-shown
 EXPECT_HAS | editor/state/game_ui.txt | n_party=5 | the-bar-lists-every-pet-the-driver-acts-for
 EXPECT_HAS | editor/state/game_ui.txt | party_0_label=> rex | the-selected-pet-is-marked-in-the-party
 EXPECT_HAS | editor/state/game_ui.txt | party_4_id=tear_kai | the-party-has-one-row-per-pet-with-its-own-id
+EXPECT_HAS | editor/state/game_ui.txt | gm_pop=1 | the-popup-layout-shows-the-popup
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_on=\n | and-not-the-bottom-bar
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | lay_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | gmbar_on=1 | 12000 | the-layout-button-switches-to-the-bottom-bar
+EXPECT_HAS | editor/state/game_ui.txt | gm_pop=0 | the-popup-is-hidden-in-bar-layout
+EXPECT_HAS | editor/state/game_ui.txt | gm_on=1 | the-feed-still-says-gm_on-1-so-the-daemon-sees-a-live-game
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_0_label=Tab: Care > | the-bar-starts-with-the-tab-cycle-button
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_title=TEAR-IT Ranch | the-bar-title-names-the-game
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_min_act= | the-bar-has-a-minimize-action
+EXPECT_HAS | editor/state/game_ui.txt | gm_nb=0 | the-popup-list-is-empty-in-bar-layout
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | gmbar_0_label=Tab: Train > | 12000 | the-tab-button-cycles-the-tab
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_1_label=Sprint | and-shows-that-tabs-buttons
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | bar_min | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | gmbar_0_label=Open the game bar | 12000 | minimize-leaves-one-button
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_n=1 | the-minimized-bar-has-exactly-one-button
+EXPECT_HAS | house/@.apps/tear-on/play/layout.txt | min=1 | the-minimized-state-is-a-saved-preference
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | bar_open | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | gmbar_0_label=Tab: Train > | 12000 | open-restores-the-bar
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | lay_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | game-ov_x=0 | 12000 | the-side-layout-docks-the-popup-at-the-left-edge-of-the-board
+EXPECT_HAS | editor/state/game_ui.txt | gm_pop=1 | the-side-layout-uses-the-popup-row
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | lay_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | game-ov_x=\n | 12000 | the-next-layout-is-the-centred-popup-again
+EXPECT_HAS | house/@.apps/tear-on/play/layout.txt | mode=popup | the-layout-choice-is-saved
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_care | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | gmb_5_label=Hatch a pet | 12000 | the-care-tab-is-back-for-the-rest-of-the-case
 EXPECT_HAS | editor/state/game_ui.txt | nick_line=rex the | the-bar-names-the-selected-pet
 EXPECT_HAS | editor/state/game_ui.txt | stat_line2=cap | the-bar-shows-the-wallet-options
 EXPECT_HAS | editor/state/game_ui.txt | tear_on_ctl.+x' tab_arena | a-button-action-runs-the-ctl-program
