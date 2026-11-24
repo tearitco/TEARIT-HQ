@@ -1,0 +1,46 @@
+/* SABOTAGE probe (generated: this wrapper + web_chain.js verbatim). verify() is replaced by one that always says ok; web_chain case sabotage-verify-always-ok must then see WEBCHAIN_FAIL. */
+(function(){var o=TearChain.verify;TearChain.verify=function(t,c){var r=o(t,c);return {ok:true,height:r.height,work:r.work,balances:r.balances,messages:r.messages};};})();
+/* web_chain probe (2026-11-24). C_CHAIN is REAL output of the house C ops (chain_new web --difficulty 2, chain_create_wallet alice/bob, chain_miner alice x2, chain_send alice bob 1500, chain_miner bob x1; C balances alice 19500 bob 12000). Regenerate by repeating those commands. */
+var C_CHAIN='BLOCK|0|0000000000000000000000000000000000000000000000000000000000000000|117|003001479e1df42bf2fa3c9a69a65cb5ecdd9f85abbd2a8e08b5e1918a0345a6|1795510016|alice|\nBLOCK|1|003001479e1df42bf2fa3c9a69a65cb5ecdd9f85abbd2a8e08b5e1918a0345a6|113|001feb39d00f5c84717ba80054b3ea60f55c714c61bfc4e8fd9db3ed0a8f1018|1795510016|alice|\nBLOCK|2|001feb39d00f5c84717ba80054b3ea60f55c714c61bfc4e8fd9db3ed0a8f1018|324|0090fbaa3ae01fa2727c59819471600515919932aa25582af8548b0b09bdeeab|1795510016|bob|TX|alice|bob|1500|1795510016|alice-1795510016-289383\n';
+(function(){ var pass=0,total=0,T=TearChain,Z=T.ZERO;
+ function check(n,got,want){ total++; if(got===want){pass++;console.log('WEBCHAIN_OK '+n);} else console.log('WEBCHAIN_FAIL '+n+' got=['+got+'] want=['+want+']'); }
+ var cfg={zeros:2};
+ check('sha256-abc',T.sha256('abc'),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+ check('sha256-empty',T.sha256(''),'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+ check('sha256-two-blocks-448bits',T.sha256('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq'),'248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1');
+ check('c-block0-hash-recomputed',T.sha256('0|'+Z+'|117|'),'003001479e1df42bf2fa3c9a69a65cb5ecdd9f85abbd2a8e08b5e1918a0345a6');
+ var v=T.verify(C_CHAIN,cfg);
+ check('c-chain-verifies',String(v.ok)+' '+(v.error||''),'true ');
+ check('c-chain-height',String(v.height),'3');
+ check('c-balance-alice-matches-chain_balance',String(v.balances.alice),'19500');
+ check('c-balance-bob-matches-chain_balance',String(v.balances.bob),'12000');
+ var ls=C_CHAIN.split('\n');
+ var tam=ls[0]+'\n'+ls[1]+'\n'+ls[2].replace('|1500|','|9500|')+'\n';
+ var vt=T.verify(tam,cfg); check('tampered-amount-rejected',vt.ok+' '+vt.error+' at '+vt.at,'false hash does not recompute at 2');
+ var brk=ls[0]+'\n'+ls[2]+'\n'; var vb=T.verify(brk,cfg); check('broken-link-rejected',vb.ok+' '+vb.at,'false 1');
+ var vd=T.verify(C_CHAIN,{zeros:5}); check('wrong-difficulty-rejected',vd.ok+' '+vd.error,'false difficulty not met');
+ var m0=T.mine('', 'carol', [], 100, cfg); check('mine-genesis',String(m0.ok),'true');
+ var ch=m0.line+'\n'; var m1=T.mine(ch,'carol',['MSG|carol|general|hello from the page|101'],101,cfg); ch+=m1.line+'\n';
+ var vc=T.verify(ch,cfg); check('js-mined-verifies',vc.ok+' '+(vc.error||'')+' h'+vc.height+' carol'+vc.balances.carol,'true  h2 carol21000');
+ check('message-visible',JSON.stringify(T.messages(ch,'general',cfg).map(function(x){return x.text;})),'["hello from the page"]');
+ check('message-other-channel-empty',String(T.messages(ch,'forum',cfg).length),'0');
+ check('cleanText-strips-separators',T.cleanText('a|b;c\nd'),'a b c d');
+ var mo=T.mine(ch,'carol',['TX|carol|dave|99999999|102|x'],102,cfg); var vo=T.verify(ch+mo.line+'\n',cfg); check('overspend-rejected',vo.ok+' '+vo.error,'false insufficient balance for carol');
+ var ok=T.mine(ch,'carol',['TX|carol|dave|500|102|x'],102,cfg); var vk=T.verify(ch+ok.line+'\n',cfg); check('spend-accepted',vk.ok+' dave'+vk.balances.dave+' carol'+vk.balances.carol,'true dave500 carol31000');
+ var f1=T.mine(ch,'carol',['FAUCET|erin|1000|200'],200,cfg); var f1v=T.verify(ch+f1.line+'\n',cfg); check('faucet-claim-ok',f1v.ok+' erin'+f1v.balances.erin,'true erin1000');
+ var f2=T.mine(ch,'carol',['FAUCET|erin|1001|200'],200,cfg); check('faucet-over-cap-rejected',T.verify(ch+f2.line+'\n',cfg).error,'faucet amount over the cap');
+ var f3=T.mine(ch+f1.line+'\n','carol',['FAUCET|erin|1000|300'],300,cfg); check('faucet-cooldown-rejected',T.verify(ch+f1.line+'\n'+f3.line+'\n',cfg).error,'faucet cooldown');
+ var f4=T.mine(ch+f1.line+'\n','carol',['FAUCET|erin|1000|5000'],5000,cfg); check('faucet-after-cooldown-ok',String(T.verify(ch+f1.line+'\n'+f4.line+'\n',cfg).ok),'true');
+ var longer=ch+ok.line+'\n';
+ var mg=T.merge(ch,longer,cfg); check('merge-more-work-wins',mg.winner+' '+mg.reason,'b more work');
+ var mg2=T.merge(longer,ch,cfg); check('merge-more-work-wins-reversed',mg2.winner,'a');
+ var mg3=T.merge(ch,ch,cfg); check('merge-tie-keeps-first',mg3.winner+' '+mg3.reason,'a tie keeps a');
+ var forged=ls[0]+'\n'+ls[1]+'\n'+ls[2].replace('|1500|','|9500|')+'\n'+ls[2]+'\n'; var mg4=T.merge(C_CHAIN,forged,cfg); check('merge-forged-longer-loses',mg4.winner,'a');
+ check('merge-both-bad-refused',String(T.merge(tam,brk,cfg).ok),'false');
+ check('reward-halves',T.reward(0)+','+T.reward(999)+','+T.reward(1000)+','+T.reward(2000),'10500,10500,5250,2625');
+ var ar=T.applyRows(ch,'steward',['TX|carol|dave|100|103|a','TX|carol|dave|99999999|103|b','rm -rf /','MSG|carol|forum|second|104'],103,cfg);
+ check('steward-accepts-good-rows-in-one-block',ar.mined+' '+ar.accepted.length+' h'+T.verify(ar.text,cfg).height,'true 2 h3');
+ check('steward-rejects-overspend',ar.rejected.map(function(x){return x.why;}).join(' / '),'insufficient balance for carol / not an allowed row');
+ check('steward-nothing-good-mines-nothing',String(T.applyRows(ch,'steward',['nonsense'],103,cfg).mined),'false');
+ console.log('WEBCHAIN_TESTRESULT '+pass+'/'+total); console.log('WEBCHAIN_TESTDONE');
+})();

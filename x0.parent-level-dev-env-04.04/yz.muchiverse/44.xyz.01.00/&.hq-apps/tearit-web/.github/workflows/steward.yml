@@ -1,0 +1,34 @@
+name: steward
+on:
+  issues:
+    types: [opened, labeled]
+permissions:
+  contents: write
+  issues: write
+concurrency: steward
+jobs:
+  steward:
+    if: contains(github.event.issue.labels.*.name, 'tx')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: run the steward (same verifier as the page)
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          printf '%s\n' "$BODY" > "$RUNNER_TEMP/body.txt"
+          node steward.js "$RUNNER_TEMP/body.txt" steward > "$RUNNER_TEMP/verdict.json"
+          cat "$RUNNER_TEMP/verdict.json"
+      - name: commit the new block
+        run: |
+          git config user.name "tearit steward"
+          git config user.email "steward@users.noreply.github.com"
+          git add docs/chain/latest.txt
+          git diff --cached --quiet || git commit -m "steward: block from issue #${{ github.event.issue.number }}"
+          git push
+      - name: answer and close
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "steward verdict: $(cat "$RUNNER_TEMP/verdict.json")"
+          gh issue close ${{ github.event.issue.number }}

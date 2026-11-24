@@ -1,0 +1,9 @@
+{"manifest":"tearit-web-commands","version":1,"note":"DATA ONLY: each command names an allowlisted op and typed arguments. A client must refuse an op it does not know and any argument with a shell metacharacter. Signing of this file comes later.",
+ "commands":[
+  {"name":"verify","op":"chain.verify","args":[{"name":"chain_file","type":"path"}],"describe":"verify every block of a chain copy"},
+  {"name":"balance","op":"chain.balance","args":[{"name":"chain_file","type":"path"},{"name":"wallet","type":"id"}],"describe":"balance of a wallet from a verified copy"},
+  {"name":"send","op":"chain.send","args":[{"name":"from","type":"id"},{"name":"to","type":"id"},{"name":"amount","type":"uint"}],"describe":"queue a TX row"},
+  {"name":"post","op":"chain.post","args":[{"name":"wallet","type":"id"},{"name":"channel","type":"id"},{"name":"text","type":"text280"}],"describe":"queue a MSG row"},
+  {"name":"faucet","op":"chain.faucet","args":[{"name":"wallet","type":"id"}],"describe":"queue a FAUCET row (1000 max, 3600 s apart)"},
+  {"name":"merge","op":"chain.merge","args":[{"name":"mine","type":"path"},{"name":"theirs","type":"path"}],"describe":"fork rule: most work wins, tie keeps mine"}],
+ "types":{"id":"[a-z0-9_-]{1,32}","uint":"[0-9]{1,12}","text280":"no | ; or newline, max 280","path":"a local file path chosen by the user"}}

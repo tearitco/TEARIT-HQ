@@ -1,0 +1,41 @@
+# web_chain (2026-11-24): the tearit-web chain library (&.hq-apps/tearit-web/docs/chain.js, ONE pure ES5 file shipped to the browser) graded two ways. (1) the SAME file runs here in the house JS worker (nb_probe + nb_js_worker, no window) against a chain made by the REAL C ops (C_CHAIN in the probe; balances equal chain_balance), with tamper / broken-link / wrong-difficulty / overspend / faucet / merge negatives. (2) the C ops are run again in scratch and the deterministic block-0 hash must equal the JS hash. The sabotage case swaps in a chain.js whose verify always says ok: the probe MUST then report failures.
+# ANCHORING: the console capture echoes the probe's own SOURCE, so tokens are anchored to a line start with a leading newline. NEEDS ops/+x/nb_js_worker.+x (wasm3 build, D121).
+RESULTS | ../results/web_chain.txt
+ENV     | LC_ALL | C
+CASE    | js-vs-c-chain
+SCRATCH |
+COPY    | &.hq-apps/network/ops/+x/nb_probe.+x | np.+x
+WRITE   | dom.txt | N\p#document\p\p\p0\p\p0\p\nD\nN\phtml\p\p\p0\p\p0\p\nU\n
+COPY    | &.hq-apps/tearit-web/docs/chain.js | page.js
+COPY    | &.widgits/_shared-lib/harness/fixtures/nb_probes/web_chain.js | probe.js
+RUN | $T/np.+x | --worker | $HOUSE/&.hq-apps/network/ops/+x/nb_js_worker.+x | --page | $T/page.js | --dom | $T/dom.txt | --href | https://example.invalid/ | --title | web_chain:fixture | --probe | $T/probe.js | --console | $T/console.txt | --load-timeout | 30 | --eval-timeout | 60
+EXPECT_EXIT | 0 | the-probe-completed-LOAD-and-EVAL
+EXPECT_HAS | console.txt | \nLOG\pWEBCHAIN_TESTDONE | the-probe-ran-to-its-end
+EXPECT_HAS | console.txt | \nLOG\pWEBCHAIN_TESTRESULT 31/31 | all-31-assertions-held
+EXPECT_LACKS | console.txt | \nLOG\pWEBCHAIN_FAIL | no-assertion-named-a-failure
+CLEAN   |
+CASE    | sabotage-verify-always-ok
+SCRATCH |
+COPY    | &.hq-apps/network/ops/+x/nb_probe.+x | np.+x
+WRITE   | dom.txt | N\p#document\p\p\p0\p\p0\p\nD\nN\phtml\p\p\p0\p\p0\p\nU\n
+COPY    | &.hq-apps/tearit-web/docs/chain.js | page.js
+APPEND  | page.js | \n;(function(){var o=TearChain.verify;TearChain.verify=function(t,c){var r=o(t,c);return {ok:true,height:r.height,work:r.work,balances:r.balances,messages:r.messages};};})();\n
+COPY    | &.widgits/_shared-lib/harness/fixtures/nb_probes/web_chain.js | probe.js
+RUN | $T/np.+x | --worker | $HOUSE/&.hq-apps/network/ops/+x/nb_js_worker.+x | --page | $T/page.js | --dom | $T/dom.txt | --href | https://example.invalid/ | --title | web_chain:sabotage | --probe | $T/probe.js | --console | $T/console.txt | --load-timeout | 30 | --eval-timeout | 60
+EXPECT_HAS | console.txt | \nLOG\pWEBCHAIN_FAIL tampered-amount-rejected | a-verifier-that-accepts-everything-is-caught-by-the-tamper-check
+EXPECT_LACKS | console.txt | \nLOG\pWEBCHAIN_TESTRESULT 31/31 | the-sabotaged-library-does-not-pass-everything
+CLEAN   |
+CASE    | c-ops-block0-hash-matches-js
+SCRATCH |
+COPY    | 041.pal-chain⛓️/ops/+x/chain_new.+x | 041.pal-chain/ops/+x/chain_new.+x
+COPY    | 041.pal-chain⛓️/ops/+x/chain_miner.+x | 041.pal-chain/ops/+x/chain_miner.+x
+COPY    | 041.pal-chain⛓️/ops/+x/chain_create_wallet.+x | 041.pal-chain/ops/+x/chain_create_wallet.+x
+ENV     | PRISC_PROJECT_ROOT | $T/041.pal-chain
+RUN | $T/041.pal-chain/ops/+x/chain_new.+x | web | --kind | test | --difficulty | 2 | --cap | 0
+EXPECT_EXIT | 0 | chain-created
+ENV     | PRISC_PROJECT_ROOT | $T/041.pal-chain/chains/web
+RUN | $T/041.pal-chain/ops/+x/chain_create_wallet.+x | alice | pw
+RUN | $T/041.pal-chain/ops/+x/chain_miner.+x | alice | --blocks | 1
+EXPECT_EXIT | 0 | the-C-miner-mined-block-0
+EXPECT_HAS | 041.pal-chain/chains/web/data/blockchain.txt | BLOCK\p0\p0000000000000000000000000000000000000000000000000000000000000000\p117\p003001479e1df42bf2fa3c9a69a65cb5ecdd9f85abbd2a8e08b5e1918a0345a6\p | the-C-block-0-nonce-and-hash-equal-what-the-JS-probe-recomputes
+CLEAN   |
