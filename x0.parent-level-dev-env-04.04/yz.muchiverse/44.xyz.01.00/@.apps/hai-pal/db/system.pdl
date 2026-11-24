@@ -1,0 +1,11 @@
+# hai-pal party (2026-11-24, hai book 27, house guide 02-architecture/HAI-AND-PALS-REUSE-AND-COMPATIBILITY-GUIDE-2026-11-24.md).
+# The party ORDER is the role: Party member1 = the first pal = the MASTER (the user's hands and will, never fights); BookParty members = the followers, in order.
+# Read by petslike_core.c load_party() when this book is open in the editor. A PROJECTION of the world ledger (REORDER rows): to be written by a named verb, not by hand (not built yet).
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SYSTEM       | id                 | 1
+SYSTEM       | name               | Party
+SYSTEM       | member1            | hai
+SYSTEM       | id                 | 2
+SYSTEM       | name               | BookParty
+SYSTEM       | member1            | pip
