@@ -6,7 +6,8 @@
  * It publishes the generic GAME BAR feed <editor>/state/game_ui.txt (gm_on, gm_pid, gm_title, gm_nt + gmt_<i>_text, gm_nb + gmb_<i>_label / gmb_<i>_act, gm_ne, gm_nl); each button runs
  * tear_on_ctl, which appends one command word to <book>/play/action.txt that this driver reads.  PAUSE IS NOT OURS: the editor's switch running (state/world/switches.txt) is the one authority;
  * commands are handled only while running=1.  The selected pet and the selected arena are PREFERENCES (they change what is asked, never an outcome).
- * Commands: pet_next hatch faucet feed_bread feed_meat train_sprint train_lift train_study rest rank move_up move_down move_left move_right
+ * The bar has four tabs (a PREFERENCE, tab_care tab_train tab_walk tab_arena tab_wallet) so the narrow popup shows few short lines and at most nine buttons.
+ * Commands: tab_care tab_train tab_walk tab_arena tab_wallet pet_next hatch faucet feed_bread feed_meat train_sprint train_lift train_study rest rank move_up move_down move_left move_right
  *           arena_open_1v1 arena_open_2v2 arena_open_ffa arena_join arena_fill arena_fight arena_leave arena_next  wo_cap wo_reserve wo_sale  close
  * Cost: idle = a stat() of the switch file and the queue per 80 ms nap; one op call per click.  Files: game_ui.txt (rewritten), play/action.txt (capped at 64 KiB, oldest half dropped), play/driver.lock.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/tear_on_driver.+x tear_on_driver.c */
@@ -22,11 +23,12 @@
 #include <sys/wait.h>
 #define P 2048
 static char HOUSE[P], BOOK[P], EDIT[P], CHAIN[P], CHAINOP[P], ONOP[P], CTL[P], FEED[P], ACT[P], PLAY[P], SW[P], OWNERF[P];
-static char owner[48] = "you", sel[48] = "", asel[48] = "", msg[300] = "Press a button. Your pet is on the ranch page; the arena is on the other page.";
+static char owner[48] = "you", sel[48] = "", asel[48] = "", msg[300] = "Press a button.";
 static long OWNERPID = 0; static volatile sig_atomic_t stop_ = 0;
 typedef struct { char name[48], owner[48], species[16], stats[48], items[40]; int age, life, fat, x, y, frozen, retired, wins, cups, best, cap, reserve, sale; long coins, price; } Pet;
 typedef struct { char id[48], mode[8], owner[48], members[240], winners[120], scores[120]; int open; long pot; } Arena;
 static Pet pets[48]; static int np; static Arena ars[16]; static int nar;
+static char tab[12] = "care";
 static int cap_i = 0, res_i = 0; static const int CAPS[] = { 0, 10, 25, 50, 100 }, RESV[] = { 0, 50, 100, 250, 500 };
 static long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000L + t.tv_nsec / 1000000L; }
 static int running(void) { FILE *f = fopen(SW, "r"); if (!f) return 0; char ln[80]; int r = 0; while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "running=", 8)) r = atoi(ln + 8); fclose(f); return r; }
@@ -60,19 +62,30 @@ static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snpri
 static void publish(void) {
     OUT_[0] = 0; nt_ = nb_ = 0; char b[600]; Pet *p = selpet(); Arena *a = selar(); static const char *RK[] = { "E", "D", "C", "B", "A", "S" };
     catn("gm_on=1\n"); snprintf(b, sizeof b, "gm_pid=%ld\ngm_title=TEAR-IT Ranch  -  %s\n", (long)getpid(), owner); catn(b);
-    if (p) { snprintf(b, sizeof b, "%s the %s  \xc2\xb7  age %d/%d  \xc2\xb7  tired %d  \xc2\xb7  %ld coins", p->name, p->species, p->age, p->life, p->fat, p->coins); add_text(b); snprintf(b, sizeof b, "LIF POW INT SKI SPD DEF = %s", p->stats); add_text(b);
-        snprintf(b, sizeof b, "ranked wins %d of %d  \xc2\xb7  best rank beaten %s  \xc2\xb7  cell %d,%d", p->wins, p->cups, p->best >= 0 ? RK[p->best] : "none", p->x, p->y); add_text(b);
-        snprintf(b, sizeof b, "wallet options:  cap %d  \xc2\xb7  reserve %d  \xc2\xb7  sale %s", p->cap, p->reserve, p->sale ? "open" : "LOCKED"); add_text(b); }
-    else add_text("no pet yet: press Hatch a pet");
-    if (a) { snprintf(b, sizeof b, "arena %s  \xc2\xb7  %s  \xc2\xb7  pot %ld  \xc2\xb7  %s  \xc2\xb7  %s", a->id, a->mode, a->pot, a->open ? "open" : "finished", a->members[0] ? a->members : "(empty)"); add_text(b); if (a->winners[0]) { snprintf(b, sizeof b, "winners %s  \xc2\xb7  scores %s", a->winners, a->scores); add_text(b); } } else add_text("no arena yet: open one");
+    if (!strcmp(tab, "arena")) {
+        if (a) { snprintf(b, sizeof b, "%s  %s  pot %ld", a->id, a->mode, a->pot); add_text(b); snprintf(b, sizeof b, "%s", a->open ? "open" : "finished"); add_text(b); snprintf(b, sizeof b, "fighters: %s", a->members[0] ? a->members : "(none)"); add_text(b); if (a->winners[0]) { snprintf(b, sizeof b, "winners: %s", a->winners); add_text(b); snprintf(b, sizeof b, "scores: %s", a->scores); add_text(b); } }
+        else add_text("no arena yet: open one");
+    } else if (p) {
+        snprintf(b, sizeof b, "%s the %s", p->name, p->species); add_text(b); snprintf(b, sizeof b, "age %d/%d   tired %d", p->age, p->life, p->fat); add_text(b); if (!strcmp(tab, "train") || !strcmp(tab, "walk")) snprintf(b, sizeof b, "%ld coins  cell %d,%d", p->coins, p->x, p->y); else snprintf(b, sizeof b, "%ld coins", p->coins); add_text(b);
+        if (!strcmp(tab, "train")) { snprintf(b, sizeof b, "LIF %.*s", 0, ""); int v[6] = { 0 }; sscanf(p->stats, "%d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]); snprintf(b, sizeof b, "LIF %d POW %d INT %d", v[0], v[1], v[2]); add_text(b); snprintf(b, sizeof b, "SKI %d SPD %d DEF %d", v[3], v[4], v[5]); add_text(b); snprintf(b, sizeof b, "wins %d of %d  rank %s", p->wins, p->cups, p->best >= 0 ? RK[p->best] : "none"); add_text(b); }
+        if (!strcmp(tab, "wallet")) { snprintf(b, sizeof b, "cap %d (0 = none)", p->cap); add_text(b); snprintf(b, sizeof b, "reserve %d", p->reserve); add_text(b); snprintf(b, sizeof b, "sale %s", p->sale ? "open" : "LOCKED"); add_text(b); }
+    } else add_text("no pet yet: Hatch a pet");
     add_text(msg);
-    add_btn("Hatch a pet", "hatch"); add_btn("Next pet", "pet_next"); add_btn("Pet faucet +1000 (hourly)", "faucet"); add_btn("Feed bread (5)", "feed_bread"); add_btn("Feed meat (20)", "feed_meat");
-    add_btn("Train sprint", "train_sprint"); add_btn("Train lift", "train_lift"); add_btn("Train study", "train_study"); add_btn("Rest (free)", "rest"); add_btn("Next ranked fight", "rank");
-    add_btn("Walk up", "move_up"); add_btn("Walk down", "move_down"); add_btn("Walk left", "move_left"); add_btn("Walk right", "move_right");
-    add_btn("Open a 1v1", "arena_open_1v1"); add_btn("Open a 2v2", "arena_open_2v2"); add_btn("Open a free for all", "arena_open_ffa"); add_btn("Join with my pet (20)", "arena_join"); add_btn("Fill with default fighters", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave (fee back)", "arena_leave"); add_btn("Next arena", "arena_next");
-    add_btn("Wallet cap: next", "wo_cap"); add_btn("Wallet reserve: next", "wo_reserve"); add_btn("Sale lock: toggle", "wo_sale"); add_btn("Close the game", "close");
+    add_btn("[Care]", "tab_care"); add_btn("[Train]", "tab_train"); add_btn("[Walk]", "tab_walk"); add_btn("[Arena]", "tab_arena"); add_btn("[Wallet]", "tab_wallet");
+    if (!strcmp(tab, "care")) { add_btn("Hatch a pet", "hatch"); add_btn("Next pet", "pet_next"); add_btn("Pet faucet +1000", "faucet"); add_btn("Feed bread (5)", "feed_bread"); add_btn("Feed meat (20)", "feed_meat"); add_btn("Rest (free)", "rest"); }
+    else if (!strcmp(tab, "train")) { add_btn("Train sprint", "train_sprint"); add_btn("Train lift", "train_lift"); add_btn("Train study", "train_study"); add_btn("Next ranked fight", "rank"); }
+    else if (!strcmp(tab, "walk")) { add_btn("Walk up", "move_up"); add_btn("Walk down", "move_down"); add_btn("Walk left", "move_left"); add_btn("Walk right", "move_right"); }
+    else if (!strcmp(tab, "arena")) { add_btn("Open a 1v1", "arena_open_1v1"); add_btn("Open a 2v2", "arena_open_2v2"); add_btn("Open free for all", "arena_open_ffa"); add_btn("Join with my pet", "arena_join"); add_btn("Fill with defaults", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave (fee back)", "arena_leave"); add_btn("Next arena", "arena_next"); }
+    else { add_btn("Wallet cap: next", "wo_cap"); add_btn("Wallet reserve: next", "wo_reserve"); add_btn("Sale lock: toggle", "wo_sale"); add_btn("Next pet", "pet_next"); }
+    add_btn("Close the game", "close");
     snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt_, nb_); catn(b);
     char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs(OUT_, f); fclose(f); rename(tmp, FEED); } }
+/* The rpg-edit board reads a page when it is SELECTED, not when its files change (live 2026-11-24: five walks, a zero image difference; one CONFIRM_SET_DESK of the same page moved the sprite). After a row the driver re-sends the desk command: the page the action shows (arena_* the arena, hatch and walking the ranch, anything else the page the editor is on). Only while the editor is on book tear-on. */
+static void reload_board(const char *c) {
+    char wp[P], ip[P], l[200], map[48] = "", desk[48] = ""; snprintf(wp, sizeof wp, "%s/rpg-edit-hq-pchq/pieces/world_01/state.txt", EDIT); snprintf(ip, sizeof ip, "%s/rpg-edit-hq-pchq/pieces/system/widget_cmds/inbox.txt", EDIT);
+    FILE *f = fopen(wp, "r"); if (!f) return; while (fgets(l, sizeof l, f)) { if (!strncmp(l, "map_id=", 7)) { snprintf(map, sizeof map, "%s", l + 7); map[strcspn(map, "\r\n")] = 0; } else if (!strncmp(l, "desk_id=", 8)) { snprintf(desk, sizeof desk, "%s", l + 8); desk[strcspn(desk, "\r\n")] = 0; } } fclose(f);
+    if (strcmp(map, "tear-on")) return; const char *target = !strncmp(c, "arena_", 6) ? "arena" : (!strcmp(c, "hatch") || !strncmp(c, "move_", 5)) ? "ranch" : desk; if (strcmp(target, "ranch") && strcmp(target, "arena")) return;
+    FILE *o = fopen(ip, "a"); if (o) { fprintf(o, "CONFIRM_SET_DESK:%s\n", target); fclose(o); } }
 static void set_msg(const char *s) { snprintf(msg, sizeof msg, "%s", s); for (char *c = msg; *c; c++) if (*c == '\n' || *c == '=') *c = ' '; }
 /* append ONE row to the chain (mined + pages re-projected by tear_on_op do); the refusal text of the rules becomes the message */
 static int do_row(const char *row, const char *okmsg) {
@@ -81,6 +94,7 @@ static int do_row(const char *row, const char *okmsg) {
 static void do_cmd(const char *c) {
     char row[400], ts[24], m[200]; snprintf(ts, sizeof ts, "%ld", (long)time(NULL)); Pet *p = selpet(); Arena *a = selar(); chain_read();
     if (!strcmp(c, "close")) { FILE *sf = fopen(SW, "w"); if (sf) { fputs("running=0\nint=1\n", sf); fclose(sf); } stop_ = 1; return; }
+    if (!strncmp(c, "tab_", 4)) { if (!strcmp(c + 4, "care") || !strcmp(c + 4, "train") || !strcmp(c + 4, "walk") || !strcmp(c + 4, "arena") || !strcmp(c + 4, "wallet")) { snprintf(tab, sizeof tab, "%s", c + 4); set_msg(""); } else set_msg("unknown tab"); return; }
     if (!strcmp(c, "pet_next")) { int cur = -1, nx = -1; for (int i = 0; i < np; i++) if (!strcmp(pets[i].name, sel)) cur = i; for (int k = 1; k <= np; k++) { int i = (cur + k + np) % np; if (!strcmp(pets[i].owner, owner) && !pets[i].frozen) { nx = i; break; } } if (nx >= 0) snprintf(sel, sizeof sel, "%s", pets[nx].name); set_msg("next pet"); return; }
     if (!strcmp(c, "arena_next")) { int cur = -1; for (int i = 0; i < nar; i++) if (!strcmp(ars[i].id, asel)) cur = i; if (nar > 0) snprintf(asel, sizeof asel, "%s", ars[(cur + 1) % nar].id); set_msg("next arena"); return; }
     if (!strcmp(c, "hatch")) { static const char *W[] = { "wild moss", "river mist", "ember sky", "frost bell", "star dust", "iron leaf", "moon tide", "sun grain" }; int n = 1; char nm[48]; for (;;) { snprintf(nm, sizeof nm, "mochi%d", n); int used = 0; for (int i = 0; i < np; i++) if (!strcmp(pets[i].name, nm)) used = 1; if (!used) break; n++; }
@@ -119,7 +133,7 @@ int main(int argc, char **argv) {
     while (!stop_) {
         usleep(80000); if (getppid() == 1 && !OWNERPID) { /* parent gone: fine for a detached start, keep going unless an owner pid was given */ } if (OWNERPID > 0 && kill((pid_t)OWNERPID, 0) != 0) break;
         if (!stat(ACT, &st) && (long)st.st_size > 65536) { /* drop the oldest half, keep whole lines */ FILE *f = fopen(ACT, "r"); if (f) { fseek(f, st.st_size / 2, SEEK_SET); char junk[200]; if (fgets(junk, sizeof junk, f)) {} char *keep = malloc((size_t)st.st_size); size_t n = fread(keep, 1, (size_t)st.st_size, f); fclose(f); FILE *o = fopen(ACT, "w"); if (o) { fwrite(keep, 1, n, o); fclose(o); } free(keep); cur = 0; } }
-        int changed = 0; if (running() && !stat(ACT, &st) && (long)st.st_size > cur) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cur, SEEK_SET); char ln[100]; while (fgets(ln, sizeof ln, f) && !stop_) { cur += (long)strlen(ln); ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) { do_cmd(ln); changed = 1; } } fclose(f); } }
+        int changed = 0; if (running() && !stat(ACT, &st) && (long)st.st_size > cur) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cur, SEEK_SET); char ln[100]; while (fgets(ln, sizeof ln, f) && !stop_) { cur += (long)strlen(ln); ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) { do_cmd(ln); if (strncmp(ln, "tab_", 4) && strcmp(ln, "pet_next") && strcmp(ln, "arena_next") && strcmp(ln, "close")) reload_board(ln); changed = 1; } } fclose(f); } }
         struct stat cs; long csz = stat(CHAIN, &cs) ? -1 : (long)cs.st_size; if (csz != chain_sz) { chain_sz = csz; changed = 1; }
         if (changed || now_ms() - last > 5000) { chain_read(); publish(); last = now_ms(); } }
     char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); { FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } } return 0; }
