@@ -1,0 +1,73 @@
+# NIGHT 65 — The Pizza Party That Ran in the Real Board
+# ====================================================================
+# Title: "NIGHT 65 — The Pizza Party That Ran in the Real Board"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-24, the party night. The tear-it colors are yellow cheese and red pepperoni. Part one: what we built tonight (tear-on, the book in the rpg-edit board, its Play driver, wallet options per pet). Part two: what we found by looking at the real screen, including our own mistakes. Part three: what is not built, and Grok.
+# Long-form: RAN means run tonight and the result seen. DESIGN means design. NOT PROVEN means nobody has shown it. No unpublished lore is used.
+# Companion documents: NIGHT 64; BOOK 16.game TEAR-IT-RANCH-ARENA-TEAR-OFF-TEAR-ON-HOW-TO-USE; the Grok handoff update 2026-11-24 (section 7); XO nov-24 folders 1, 2, 3 and tear-on.
+
+**THE NARRATOR:** Welcome to night sixty-five. Tonight is a party, and the owner has chosen the menu. It is a pizza, in the tear-it colors. Yellow cheese, red pepperoni.
+
+**MAXINE:** I know where the cheese goes. The arena floor is that pale yellow parquet.
+
+**TOMO:** And the pepperoni is the fighters. Red circles on a yellow field. Hai, that is a very good menu.
+
+**RAHWEH:** Fine. But a party class still follows the house rule. Every claim is labelled. Run tonight, or design, or not proven. No exceptions for pizza.
+
+---
+
+**THE NARRATOR:** Part one. What came out of the oven. Maxine, start with the front door.
+
+**MAXINE:** The old window was renamed tear-off. A new entry in the network menu is called tear-on. Pick it, and the real rpg-edit board opens on a book called tear-on, with two pages, a ranch and an arena.
+
+**TOMO:** The pages are not drawn by hand. A small command reads the chain file, which is the only record of the game, and writes the page files. Same shape as the hai-pal book from last week, and it even reuses the same tile atlas.
+
+**RAHWEH:** RAN: the ranch page in three D, five pets standing where the chain put them, with the gym and the barn. The arena page, with the yellow floor and the fighters. Both in the owner's real editor, photographed and opened.
+
+**MAXINE:** Then Play. We pressed Player, then Play, and a game bar appeared, a small driver written in C. It has five tabs: Care, Train, Walk, Arena and Wallet. The first version had twenty-eight buttons in one long list and half of them fell off the bottom of the screen. Five tabs fixed it.
+
+**TOMO:** Every click on that bar is one row on the chain. The driver decides nothing. It asks the same rule program the web page uses, and the program says yes, or says no and names the reason.
+
+**RAHWEH:** RAN, live. Open a free for all. Join with a pet. Fill the empty chairs with default fighters. Fight. Winners and scores on the bar, and the chain still verifies. Once mina beat two default fighters, one forty-seven against one sixteen and one fourteen.
+
+**THE NARRATOR:** And the wallet.
+
+**TOMO:** Wallet options per pet. A cap, the most one spend may cost. A reserve, coins the pet must keep. A sale lock. They are rows on the chain too, and the rules check them at every place money leaves a pet: food, training, upgrades, entry fees, buying a pet. We saw mina with a cap of ten on the bar.
+
+---
+
+**THE NARRATOR:** Part two. What the real screen taught us. Rahweh?
+
+**RAHWEH:** Three things, and two of them are our own mistakes. First, the board does not redraw the pets by itself. We walked a pet five cells, photographed the board before and after, and the difference image was solid. Zero. The pizza does not re-bake itself.
+
+**MAXINE:** What does redraw it?
+
+**RAHWEH:** Choosing a different page. Arena, then back to the ranch, and the pet jumped to its new cell. The board engine restarts each time, a few seconds. So the bar text updates at once, the arena page loads when you open an arena, and a Refresh board button does the double switch on request.
+
+**TOMO:** Second, our mistake. We aimed a tap at the game bar and hit the left panel, which opened a palette. We backed out and the panel is still showing the wrong list. It is only a view, not data, and it is written down in the how-to, but it is our topping on the wrong slice.
+
+**MAXINE:** And third, we asked first. The editor was already running another game, the owner's Teario popup. Pressing Play replaces its game bar. So we saved the editor's switches, feed, saved book and world pointer with checksums, and waited for a yes.
+
+**THE NARRATOR:** And the tests?
+
+**RAHWEH:** All green tonight. Sixty-three for the tear-on harness, a hundred fifty-two for the C window, ninety-seven assertions on the web side. The driver case failed once for real while we were writing it, which is how we know it can fail.
+
+---
+
+**THE NARRATOR:** Part three. The not-built list. Because a party class also says what is not on the table.
+
+**RAHWEH:** Live pet motion without a page switch. We even tried writing into the play folder the way another book does, and the board did not take it. Not understood.
+
+**TOMO:** The Pals sidebar for the party and for the wallet options. The rules registered as events pages, which the house rule asks for. Signatures, so names are more than labels. A market where prices move. Team tournaments over many rounds.
+
+**MAXINE:** And the push. Many commits on the claude branch are still local. That is the owner's call.
+
+**THE NARRATOR:** And Grok?
+
+**RAHWEH:** Grok's own branch has no commits since the twenty-second. The handoff to Grok now has a section seven: the tear book is built, here is how it opens, here are the photographs, here is the state we left the editor in, and here is how to restore it. Grok's tasks are unchanged: the seeded map generator first, then test-play it by keys.
+
+**TOMO:** One more thing for Grok. The arena is a pattern. A short list of row verbs, one rule written as data, a C port graded against the other language, and a refusal list that names its reasons. A Civilization turn fits that shape.
+
+**THE NARRATOR:** That was night sixty-five. Yellow cheese, red pepperoni, a board that only re-bakes when you change the page, and a to-do list that is written on the box. Next time: the Pals sidebar, or the owner's choice.
