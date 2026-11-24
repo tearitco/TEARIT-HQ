@@ -84,3 +84,9 @@ window {
     font-size: 9px;
     padding: 1px 8px;
 }
+
+.tear-grid {
+    font-family: DejaVu Sans Mono;
+    font-size: 15px;
+    color: #9ad65a;
+}

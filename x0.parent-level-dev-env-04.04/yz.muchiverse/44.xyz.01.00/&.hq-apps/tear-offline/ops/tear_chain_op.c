@@ -28,13 +28,92 @@ static Cfg C = { 2, 10500, 1000, 21000000, 1000, 3600 };
 typedef struct { long index; char prev[72], hash[72], nonce[40], miner[NAMEL]; long ts; char *txl; } Blk;
 typedef struct { char name[NAMEL]; long bal, last; int has_last; } W;
 typedef struct { W w[MAXW]; int n; } Bal;
-typedef struct { int ok; long height; double work; char tip[72]; char why[160]; long at; Bal bal; char **mf, **mc, **mt; long *mts; int nm; } Ver;
+typedef struct { char name[NAMEL], owner[NAMEL], seed[48], payee[NAMEL]; int spec, sx, sy, x, y, stats[6], age, life, fat, frozen, retired, gym, barn, wins, cups, best, items[3], buffT, buffF, pvpW, pvpL; long price; } Pet;
+typedef struct { Pet p[64]; int n; } Pets;
+typedef struct { int ok; long height; double work; char tip[72]; char why[160]; long at; Bal bal; Pets pets; char **mf, **mc, **mt; long *mts; int nm; } Ver;
 
 static void sha_hex(const char *s, char out[65]) { unsigned char d[32]; SHA256((const unsigned char *)s, strlen(s), d); for (int i = 0; i < 32; i++) sprintf(out + 2 * i, "%02x", d[i]); out[64] = 0; }
 static const char ZERO[] = "0000000000000000000000000000000000000000000000000000000000000000";
 static W *wal(Bal *b, const char *n) { for (int i = 0; i < b->n; i++) if (!strcmp(b->w[i].name, n)) return &b->w[i]; if (b->n >= MAXW) return NULL; W *w = &b->w[b->n++]; memset(w, 0, sizeof *w); snprintf(w->name, NAMEL, "%s", n); return w; }
 static long reward(long i) { long e = i / C.halving; if (e > 40) return 0; return (long)floor((double)C.initial / pow(2, (double)e)); }
 static int meets(const char *h, int z) { for (int i = 0; i < z; i++) if (h[i] != '0') return 0; return 1; }
+/* ---- THE RANCH (port of the ranch rules in tearit-web docs/chain.js: same data, same order of checks, same reasons; parity is graded by harness case tear_offline) ---- */
+static const char *SPEC[10] __attribute__((unused)) = { "Fire", "Water", "Earth", "Wind", "Light", "Dark", "Lightning", "Ice", "Cosmic", "Celestial" };
+static const char *STN[6] __attribute__((unused)) = { "LIF", "POW", "INT", "SKI", "SPD", "DEF" };
+typedef struct { const char *n; long cost, fat; int stat; long k; } Food;
+static const Food FOODS[4] = { { "bread", 5, 5, -1, 0 }, { "meat", 20, 15, 1, 1 }, { "fruit", 12, 10, 2, 1 }, { "tonic", 50, 30, 0, 2 } };
+typedef struct { const char *n; int stat; long cost, gain, fat; } Drill;
+static const Drill DRILLS[6] = { { "sprint", 4, 10, 3, 12 }, { "lift", 1, 10, 3, 12 }, { "study", 2, 10, 3, 8 }, { "spar", 3, 15, 3, 15 }, { "guard", 5, 10, 3, 10 }, { "jog", 0, 10, 2, 6 } };
+typedef struct { const char *n; long entry, prize, rival; } Rank;
+static const Rank RANKS[6] = { { "E", 10, 60, 90 }, { "D", 20, 130, 125 }, { "C", 40, 280, 160 }, { "B", 80, 600, 200 }, { "A", 160, 1300, 245 }, { "S", 320, 3000, 295 } };
+typedef struct { const char *n; long cost, n2; } Item;
+static const Item ITEMS[3] = { { "dumbbell", 30, 2 }, { "charm", 40, 20 }, { "elixir", 60, 0 } };
+#define RESTFAT 40
+#define BARNREST 10
+#define TIREDHALF 60
+#define TIREDMAX 100
+#define STATCAP 99
+#define COMPFAT 20
+#define ROLL 40
+#define MAXPETS 16
+#define MAXACTIVE 6
+#define GCOLS 12
+#define GROWS 8
+static int roll_of(const char *s) { char h[65]; sha_hex(s, h); char two[3] = { h[0], h[1], 0 }; return (int)(strtol(two, NULL, 16) % ROLL); }
+static int ok_pet_id(const char *s) { size_t l = strlen(s); if (!l || l > 24) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') || *s == '_' || *s == '-')) return 0; return 1; }
+static Pet *pet_of(Pets *P, const char *n) { for (int i = 0; i < P->n; i++) if (!strcmp(P->p[i].name, n)) return &P->p[i]; return NULL; }
+static int power_of(const Pet *p) { return p->stats[1] + p->stats[2] + p->stats[3] + p->stats[4] + p->stats[5]; }
+static int blocked_cell(int x, int y) { return (x == 1 && y == 1) || (x == 10 && y == 1); }
+static int cell_free(Pets *P, int x, int y, Pet *self) { if (x < 0 || y < 0 || x >= GCOLS || y >= GROWS || blocked_cell(x, y)) return 0; for (int i = 0; i < P->n; i++) { Pet *q = &P->p[i]; if (q != self && !q->frozen && q->x == x && q->y == y) return 0; } return 1; }
+static void place_pet(Pets *P, Pet *p) { for (int i = 0; i < GCOLS * GROWS; i++) { int x = (p->sx + i) % GCOLS, y = (p->sy + (p->sx + i) / GCOLS) % GROWS; if (cell_free(P, x, y, p)) { p->x = x; p->y = y; return; } } p->x = 0; p->y = 0; }
+static int active_of(Pets *P, const char *o) { int n = 0; for (int i = 0; i < P->n; i++) if (!strcmp(P->p[i].owner, o) && !P->p[i].frozen) n++; return n; }
+static const char *VERBS[19] = { "TX", "MSG", "FAUCET", "PET", "FEED", "TRAIN", "REST", "COMPETE", "UPGRADE", "FREEZE", "THAW", "TRANSFER", "LIST", "UNLIST", "BUY", "BUYITEM", "USEITEM", "GIVEITEM", "CHALLENGE" };
+static int is_verb(const char *v) { for (int i = 0; i < 19; i++) if (!strcmp(VERBS[i], v)) return 1; return !strcmp(v, "MOVE"); }
+static int row_len(const char *v) { static const struct { const char *v; int n; } T[] = { { "FEED", 5 }, { "TRAIN", 5 }, { "REST", 4 }, { "COMPETE", 5 }, { "UPGRADE", 5 }, { "FREEZE", 4 }, { "THAW", 4 }, { "TRANSFER", 5 }, { "LIST", 6 }, { "UNLIST", 4 }, { "BUY", 5 }, { "BUYITEM", 5 }, { "USEITEM", 5 }, { "GIVEITEM", 6 }, { "CHALLENGE", 5 }, { "MOVE", 6 } }; for (unsigned i = 0; i < sizeof T / sizeof T[0]; i++) if (!strcmp(T[i].v, v)) return T[i].n; return 0; }
+/* returns NULL when allowed (and applied), else the reason (static text or the buffer why) */
+static const char *ranch_row(Bal *bal, Pets *P, char **f, int nf, char *why) {
+    const char *v = f[0]; const char *nm = nf > 1 ? f[1] : ""; Pet *p, *q; W *w, *w2;
+    #define SPEND(petn, amt) do { W *sw = wal(bal, (petn)); if (!sw || sw->bal < (amt)) { snprintf(why, 160, "not enough coins in %s", (petn)); return why; } sw->bal -= (amt); W *rp = wal(bal, "_ranch"); if (rp) rp->bal += (amt); } while (0)
+    #define WEEK(pp) do { (pp)->age++; if ((pp)->age >= (pp)->life) (pp)->retired = 1; } while (0)
+    #define ADDSTAT(pp, s, nn) do { (pp)->stats[s] += (nn); if ((pp)->stats[s] > STATCAP) (pp)->stats[s] = STATCAP; } while (0)
+    if (!strcmp(v, "PET")) {
+        if (nf != 5) return "bad PET row"; if (!ok_pet_id(nm) || nm[0] == '_') return "bad pet name"; if (pet_of(P, nm)) return "name already used";
+        if (!f[2][0] || strlen(f[2]) > 40) return "bad seed words"; if (!ok_pet_id(f[3])) return "bad owner";
+        int cnt = 0; for (int i = 0; i < P->n; i++) if (!strcmp(P->p[i].owner, f[3])) cnt++; if (cnt >= MAXPETS) { snprintf(why, 160, "too many pets for %s", f[3]); return why; }
+        if (active_of(P, f[3]) >= MAXACTIVE) return "six pets are already out: freeze one first"; if (P->n >= 64) return "too many pets on this chain";
+        char seedname[160], h[65]; snprintf(seedname, sizeof seedname, "%s|%s", f[2], nm); sha_hex(seedname, h); int b[32]; for (int i = 0; i < 32; i++) { char two[3] = { h[2 * i], h[2 * i + 1], 0 }; b[i] = (int)strtol(two, NULL, 16); }
+        p = &P->p[P->n++]; memset(p, 0, sizeof *p); snprintf(p->name, NAMEL, "%s", nm); snprintf(p->owner, NAMEL, "%s", f[3]); snprintf(p->seed, 48, "%s", f[2]); p->spec = b[6] % 10; for (int i = 0; i < 6; i++) p->stats[i] = 10 + b[i] % 21;
+        p->life = 120 + b[7] % 61; p->sx = b[12] % GCOLS; p->sy = b[13] % GROWS; p->best = -1; place_pet(P, p); return NULL; }
+    int len = row_len(v); p = pet_of(P, nm); if (!p) return "no such pet"; if (nf != len) { snprintf(why, 160, "bad %s row", v); return why; }
+    if (!strcmp(v, "BUY")) { q = pet_of(P, f[2]); if (!(p->price > 0)) { snprintf(why, 160, "%s is not for sale", nm); return why; } if (!q) return "no such paying pet"; if (strcmp(q->owner, f[3])) return "the paying pet is not yours";
+        if (!strcmp(p->owner, f[3])) { snprintf(why, 160, "you already own %s", nm); return why; } if (!p->frozen && active_of(P, f[3]) >= MAXACTIVE) return "six pets are already out: freeze one first";
+        w = wal(bal, f[2]); if (!w || w->bal < p->price) { snprintf(why, 160, "not enough coins in %s", f[2]); return why; } w->bal -= p->price; w2 = wal(bal, p->payee); if (w2) w2->bal += p->price; snprintf(p->owner, NAMEL, "%s", f[3]); p->price = 0; p->payee[0] = 0; return NULL; }
+    if (strcmp(f[len - 2], p->owner)) { snprintf(why, 160, "not the owner of %s", nm); return why; }
+    if (!strcmp(v, "THAW")) { if (!p->frozen) return "not frozen"; if (active_of(P, p->owner) >= MAXACTIVE) return "six pets are already out: freeze one first"; p->frozen = 0; if (!cell_free(P, p->x, p->y, p)) place_pet(P, p); return NULL; }
+    if (!strcmp(v, "FREEZE")) { if (p->frozen) return "already frozen"; p->frozen = 1; return NULL; }
+    if (!strcmp(v, "TRANSFER")) { if (!ok_pet_id(f[2])) return "bad new owner"; if (!p->frozen && active_of(P, f[2]) >= MAXACTIVE) { snprintf(why, 160, "%s already has six pets out", f[2]); return why; } snprintf(p->owner, NAMEL, "%s", f[2]); p->price = 0; p->payee[0] = 0; return NULL; }
+    if (!strcmp(v, "LIST")) { char *e; double pr = strtod(f[2], &e); if (!(pr > 0) || floor(pr) != pr || pr > 1000000) return "bad price"; q = pet_of(P, f[3]); if (!q || strcmp(q->owner, p->owner)) return "the payee must be one of your pets"; p->price = (long)pr; snprintf(p->payee, NAMEL, "%s", f[3]); return NULL; }
+    if (!strcmp(v, "UNLIST")) { if (!(p->price > 0)) return "not listed"; p->price = 0; p->payee[0] = 0; return NULL; }
+    if (!strcmp(v, "GIVEITEM")) { q = pet_of(P, f[3]); if (!q) return "no such pet to give to"; int it = -1; for (int i = 0; i < 3; i++) if (!strcmp(ITEMS[i].n, f[2])) it = i; if (it < 0) return "unknown item"; if (!(p->items[it] > 0)) { snprintf(why, 160, "%s has no %s", nm, f[2]); return why; } p->items[it]--; q->items[it]++; return NULL; }
+    if (p->frozen) { snprintf(why, 160, "%s is frozen", nm); return why; } if (p->retired) { snprintf(why, 160, "%s has retired", nm); return why; }
+    if (!strcmp(v, "MOVE")) { char *e1, *e2; double mx = strtod(f[2], &e1), my = strtod(f[3], &e2); if (floor(mx) != mx || floor(my) != my) return "bad cell"; if (!cell_free(P, (int)mx, (int)my, p)) return "that cell is not free"; p->x = (int)mx; p->y = (int)my; return NULL; }
+    if (!strcmp(v, "FEED")) { int fi = -1; for (int i = 0; i < 4; i++) if (!strcmp(FOODS[i].n, f[2])) fi = i; if (fi < 0) return "unknown food"; SPEND(nm, FOODS[fi].cost); p->fat -= (int)FOODS[fi].fat; if (p->fat < 0) p->fat = 0; if (FOODS[fi].stat >= 0) ADDSTAT(p, FOODS[fi].stat, (int)FOODS[fi].k); WEEK(p); return NULL; }
+    if (!strcmp(v, "REST")) { p->fat -= RESTFAT + p->barn * BARNREST; if (p->fat < 0) p->fat = 0; WEEK(p); return NULL; }
+    if (!strcmp(v, "TRAIN")) { int di = -1; for (int i = 0; i < 6; i++) if (!strcmp(DRILLS[i].n, f[2])) di = i; if (di < 0) return "unknown drill"; if (p->fat >= TIREDMAX) { snprintf(why, 160, "%s is too tired", nm); return why; } SPEND(nm, DRILLS[di].cost);
+        int gain = p->fat >= TIREDHALF ? (int)(DRILLS[di].gain / 2) : (int)DRILLS[di].gain + p->gym + (p->buffT ? (int)ITEMS[0].n2 : 0); p->buffT = 0; ADDSTAT(p, DRILLS[di].stat, gain); p->fat += (int)DRILLS[di].fat; if (p->fat > TIREDMAX) p->fat = TIREDMAX; WEEK(p); return NULL; }
+    if (!strcmp(v, "UPGRADE")) { int isg = !strcmp(f[2], "gym"), isb = !strcmp(f[2], "barn"); if (!isg && !isb) return "unknown facility"; int lv = isg ? p->gym : p->barn; if (lv >= 3) return "already at the top level"; long cost = (isg ? 100 : 80) * (lv + 1); SPEND(nm, cost); if (isg) p->gym++; else p->barn++; return NULL; }
+    if (!strcmp(v, "BUYITEM")) { int it = -1; for (int i = 0; i < 3; i++) if (!strcmp(ITEMS[i].n, f[2])) it = i; if (it < 0) return "unknown item"; SPEND(nm, ITEMS[it].cost); p->items[it]++; return NULL; }
+    if (!strcmp(v, "USEITEM")) { int it = -1; for (int i = 0; i < 3; i++) if (!strcmp(ITEMS[i].n, f[2])) it = i; if (it < 0) return "unknown item"; if (!(p->items[it] > 0)) { snprintf(why, 160, "%s has no %s", nm, f[2]); return why; } p->items[it]--; if (it == 0) p->buffT = 1; else if (it == 1) p->buffF = 1; else p->fat = 0; return NULL; }
+    if (!strcmp(v, "COMPETE")) { int ri = -1; for (int i = 0; i < 6; i++) if (!strcmp(RANKS[i].n, f[2])) ri = i; if (ri < 0) return "unknown rank"; if (p->fat >= TIREDMAX) { snprintf(why, 160, "%s is too tired", nm); return why; }
+        if (p->best < ri - 1) { snprintf(why, 160, "%s must beat rank %s first", nm, RANKS[ri - 1].n); return why; } SPEND(nm, RANKS[ri].entry);
+        char rs[200]; snprintf(rs, sizeof rs, "%s|%s|%s|%d", p->seed, nm, f[2], p->age); int rv = roll_of(rs); int sc = power_of(p) - p->fat / 2 + rv + (p->buffF ? (int)ITEMS[1].n2 : 0); p->buffF = 0; p->cups++;
+        if (sc >= RANKS[ri].rival) { W *pool = wal(bal, "_ranch"); long prize = RANKS[ri].prize < pool->bal ? RANKS[ri].prize : pool->bal; pool->bal -= prize; W *me = wal(bal, nm); me->bal += prize; p->wins++; if (ri > p->best) p->best = ri; }
+        p->fat += COMPFAT; if (p->fat > TIREDMAX) p->fat = TIREDMAX; WEEK(p); return NULL; }
+    if (!strcmp(v, "CHALLENGE")) { q = pet_of(P, f[2]); if (!q) return "no such opponent"; if (q == p) return "a pet cannot challenge itself"; if (q->frozen || q->retired) { snprintf(why, 160, "%s cannot fight now", f[2]); return why; } if (p->fat >= TIREDMAX) { snprintf(why, 160, "%s is too tired", nm); return why; }
+        char ra[200], rb[200]; snprintf(ra, sizeof ra, "%s|%s|%s|%d", p->seed, nm, f[2], p->age); snprintf(rb, sizeof rb, "%s|%s|%s|%d", q->seed, f[2], nm, q->age);
+        if (power_of(p) - p->fat / 2 + roll_of(ra) >= power_of(q) - q->fat / 2 + roll_of(rb)) { p->pvpW++; q->pvpL++; } else { p->pvpL++; q->pvpW++; } p->fat += COMPFAT; if (p->fat > TIREDMAX) p->fat = TIREDMAX; WEEK(p); return NULL; }
+    return "unknown row";
+}
 
 static char *slurp(const char *p, size_t *n) { FILE *f = fopen(p, "rb"); if (!f) { *n = 0; return NULL; } fseek(f, 0, SEEK_END); long l = ftell(f); fseek(f, 0, SEEK_SET); char *b = malloc((size_t)l + 1); size_t r = fread(b, 1, (size_t)l, f); b[r] = 0; fclose(f); *n = r; return b; }
 
@@ -50,19 +129,16 @@ static long parse(char *text, Blk **out, char *err, size_t es) {
         p = e + 1; }
     *out = bl; return n; }
 
-/* split tx_list into rows (copy into rows[], each malloc'd); matches TX| MSG| FAUCET| anywhere, like the JS regex */
+/* split tx_list into rows at ';' (copy into rows[], each malloc'd, trimmed) like the JS splitRows */
 static int split_rows(const char *t, char ***rows) {
-    int cap = 8, n = 0; char **r = malloc(sizeof(char *) * (size_t)cap); long pos[512]; int np = 0; size_t L = strlen(t);
-    for (size_t i = 0; i < L && np < 512; i++) if ((!strncmp(t + i, "TX|", 3)) || (!strncmp(t + i, "MSG|", 4)) || (!strncmp(t + i, "FAUCET|", 7))) pos[np++] = (long)i;
-    for (int i = 0; i < np; i++) { long s = pos[i], e = i + 1 < np ? pos[i + 1] : (long)L; while (e > s && (t[e - 1] == ';' || t[e - 1] == ',' || isspace((unsigned char)t[e - 1]))) e--;
-        if (n == cap) { cap *= 2; r = realloc(r, sizeof(char *) * (size_t)cap); } r[n] = strndup(t + s, (size_t)(e - s)); n++; }
+    int cap = 8, n = 0; char **r = malloc(sizeof(char *) * (size_t)cap); const char *p = t;
+    while (*p) { const char *e = strchr(p, ';'); size_t l = e ? (size_t)(e - p) : strlen(p); const char *s0 = p; while (l && isspace((unsigned char)*s0)) { s0++; l--; } while (l && isspace((unsigned char)s0[l - 1])) l--;
+        if (l) { if (n == cap) { cap *= 2; r = realloc(r, sizeof(char *) * (size_t)cap); } r[n++] = strndup(s0, l); } if (!e) { break; } p = e + 1; }
     *rows = r; return n; }
 
 static int fields(char *s, char **f, int max) { int k = 0; f[k++] = s; for (char *p = s; *p && k < max; p++) if (*p == '|') { *p = 0; f[k++] = p + 1; } return k; }
 static void fail(Ver *v, long at, const char *why) { v->ok = 0; v->at = at; snprintf(v->why, sizeof v->why, "%s", why); }
 
-/* ranch rows (PET FEED TRAIN REST COMPETE UPGRADE FREEZE THAW TRANSFER) are NOT ported to C yet: refuse such a block loudly (silently skipping them would compute wrong balances) */
-static int has_ranch_row(const char *t) { static const char *V[] = { "PET|", "FEED|", "TRAIN|", "REST|", "COMPETE|", "UPGRADE|", "FREEZE|", "THAW|", "TRANSFER|" }; for (int k = 0; k < 9; k++) { size_t l = strlen(V[k]); for (const char *p = t; (p = strstr(p, V[k])); p++) { if (p == t || p[-1] == ';') { return 1; } } (void)l; } return 0; }
 static void verify(char *text, Ver *v) {
     memset(v, 0, sizeof *v); v->ok = 1; snprintf(v->tip, 72, "%s", ZERO);
     char err[160]; Blk *bl; long n = parse(text, &bl, err, sizeof err); if (n < 0) { fail(v, 0, err); return; }
@@ -73,14 +149,15 @@ static void verify(char *text, Ver *v) {
         snprintf(pre, sizeof pre, "%ld|%s|%s|%s", i, b->prev, b->nonce, b->txl); char h[65]; sha_hex(pre, h);
         if (strcmp(h, b->hash)) { fail(v, i, "hash does not recompute"); break; }
         if (!meets(b->hash, C.zeros)) { fail(v, i, "difficulty not met"); break; }
-        if (has_ranch_row(b->txl)) { fail(v, i, "ranch rows are not supported by this build yet (web chain only)"); break; }
         char **rows; int nr = split_rows(b->txl, &rows);
         for (int j = 0; j < nr && v->ok; j++) { char tmp[4096]; snprintf(tmp, sizeof tmp, "%s", rows[j]); char *f[8]; int k = fields(tmp, f, 8);
             if (!strcmp(f[0], "TX")) { char *e; double amt = k > 3 ? strtod(f[3], &e) : 0; if (k < 4 || !(amt > 0) || floor(amt) != amt) { fail(v, i, "bad amount"); break; }
                 W *a = wal(&v->bal, f[1]); if (!a || a->bal < (long)amt) { snprintf(err, sizeof err, "insufficient balance for %s", f[1]); fail(v, i, err); break; } a->bal -= (long)amt; W *c = wal(&v->bal, f[2]); if (c) c->bal += (long)amt; }
             else if (!strcmp(f[0], "FAUCET")) { double fa = k > 2 ? atof(f[2]) : 0; long ft = k > 3 ? atol(f[3]) : 0; if (!(fa > 0) || fa > (double)C.fmax) { fail(v, i, "faucet amount over the cap"); break; }
                 W *w = wal(&v->bal, f[1]); if (!w) break; if (w->has_last && ft - w->last < C.fgap) { fail(v, i, "faucet cooldown"); break; } w->last = ft; w->has_last = 1; w->bal += (long)fa; }
-            else if (!strcmp(f[0], "MSG")) { if (k != 5) { fail(v, i, "bad MSG row"); break; } if (v->nm < 256) { v->mf[v->nm] = strdup(f[1]); v->mc[v->nm] = strdup(f[2]); v->mt[v->nm] = strdup(f[3]); v->mts[v->nm] = atol(f[4]); v->nm++; } } }
+            else if (!strcmp(f[0], "MSG")) { if (k != 5) { fail(v, i, "bad MSG row"); break; } if (v->nm < 256) { v->mf[v->nm] = strdup(f[1]); v->mc[v->nm] = strdup(f[2]); v->mt[v->nm] = strdup(f[3]); v->mts[v->nm] = atol(f[4]); v->nm++; } }
+            else if (!is_verb(f[0])) { snprintf(err, sizeof err, "unknown row %s", f[0]); fail(v, i, err); break; }
+            else { char wb[160]; const char *rs = ranch_row(&v->bal, &v->pets, f, k, wb); if (rs) { fail(v, i, rs); break; } } }
         for (int j = 0; j < nr; j++) { free(rows[j]); }
         free(rows); if (!v->ok) break;
         long r = reward(i); if (minted + r > C.supply) r = C.supply - minted; minted += r; W *m = wal(&v->bal, b->miner); if (m) m->bal += r; v->work += pow(16, C.zeros); }
@@ -102,10 +179,11 @@ int main(int argc, char **argv) {
     char *av[64]; int ac = 0; for (int i = 1; i < argc && ac < 64; i++) { if (!strcmp(argv[i], "--zeros") && i + 1 < argc) { C.zeros = atoi(argv[++i]); continue; } av[ac++] = argv[i]; }
     if (ac < 2) { fprintf(stderr, "usage: tear_chain_op verify|balance|mine|apply|merge|messages|tail <file> ...\n"); return 2; }
     const char *cmd = av[0], *file = av[1]; size_t n; Ver v;
-    if (!strcmp(cmd, "verify") || !strcmp(cmd, "balance") || !strcmp(cmd, "messages") || !strcmp(cmd, "tail")) {
+    if (!strcmp(cmd, "verify") || !strcmp(cmd, "balance") || !strcmp(cmd, "messages") || !strcmp(cmd, "tail") || !strcmp(cmd, "pets")) {
         char *t = slurp(file, &n); if (!t) t = strdup(""); char *keep = strdup(t); verify(t, &v);
         if (!strcmp(cmd, "verify")) { if (v.ok) { printf("OK height=%ld tip=%s work=%.0f\n", v.height, v.tip, v.work); return 0; } printf("BAD at=%ld why=%s\n", v.at, v.why); return 1; }
         if (!v.ok) { printf("BAD at=%ld why=%s\n", v.at, v.why); return 1; }
+        if (!strcmp(cmd, "pets")) { for (int i = 0; i < v.pets.n; i++) { Pet *q = &v.pets.p[i]; W *pw = wal(&v.bal, q->name); printf("%s|%s|%s|%d/%d|%d|%d,%d|%d %d %d %d %d %d|%d/%d|%d|%ld|%s|%d|%d|%d-%d|%d/%d|%ld|%d %d %d\n", q->name, q->owner, SPEC[q->spec], q->age, q->life, q->fat, q->x, q->y, q->stats[0], q->stats[1], q->stats[2], q->stats[3], q->stats[4], q->stats[5], q->wins, q->cups, q->best, q->price, q->payee, q->frozen, q->retired, q->pvpW, q->pvpL, q->gym, q->barn, pw ? pw->bal : 0, q->items[0], q->items[1], q->items[2]); } return 0; }
         if (!strcmp(cmd, "balance")) { if (ac < 3) return 2; W *w = wal(&v.bal, av[2]); printf("%ld\n", w ? w->bal : 0); return 0; }
         if (!strcmp(cmd, "messages")) { if (ac < 3) return 2; for (int i = 0; i < v.nm; i++) if (!strcmp(av[2], "*") || !strcmp(av[2], v.mc[i])) printf("%s\t%s\n", v.mf[i], v.mt[i]); return 0; }
         long want = ac > 2 ? atol(av[2]) : 10; Blk *bl; char err[160]; long nb = parse(keep, &bl, err, sizeof err); for (long i = nb > want ? nb - want : 0; i < nb; i++) printf("#%ld %.10s %s %.80s\n", bl[i].index, bl[i].hash, bl[i].miner, bl[i].txl); return 0; }

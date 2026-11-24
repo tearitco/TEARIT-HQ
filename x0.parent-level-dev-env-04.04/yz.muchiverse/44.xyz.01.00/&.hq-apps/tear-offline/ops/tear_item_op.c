@@ -10,12 +10,14 @@ int main(int argc, char **argv) {
     char cmd[1024]; const char *v = argv[1], *pkg = argv[2];
     if (argc >= 5 && argv[4][0]) {
         const char *t = argv[4];
-        if (!strcmp(v, "send") || !strcmp(v, "post") || !strcmp(v, "import") || !strcmp(v, "wallet")) {
+        if (!strcmp(v, "send") || !strcmp(v, "post") || !strcmp(v, "import") || !strcmp(v, "wallet") || !strcmp(v, "hatch")) {
             char verb[16]; snprintf(verb, sizeof verb, "%s", v); for (char *p = verb; *p; p++) *p = (char)(*p - 32 * (*p >= 'a' && *p <= 'z'));
             snprintf(cmd, sizeof cmd, "%s:%s", verb, t); }
         else return 0;
     } else if (!strncmp(v, "TAB ", 4)) snprintf(cmd, sizeof cmd, "TAB:%s", v + 4);
-    else if (!strcmp(v, "MINE") || !strcmp(v, "FAUCET") || !strcmp(v, "EXPORT") || !strcmp(v, "FETCH") || !strcmp(v, "REFRESH")) snprintf(cmd, sizeof cmd, "%s", v);
+    else if (!strncmp(v, "FEED ", 5)) snprintf(cmd, sizeof cmd, "FEED:%s", v + 5);
+    else if (!strncmp(v, "TRAIN ", 6)) snprintf(cmd, sizeof cmd, "TRAIN:%s", v + 6);
+    else if (!strcmp(v, "MINE") || !strcmp(v, "FAUCET") || !strcmp(v, "EXPORT") || !strcmp(v, "FETCH") || !strcmp(v, "REFRESH") || !strcmp(v, "REST") || !strcmp(v, "RANK") || !strcmp(v, "NEXTPET") || !strcmp(v, "PFAUCET")) snprintf(cmd, sizeof cmd, "%s", v);
     else return 0;
     for (char *p = cmd; *p; p++) if (*p == '\n' || *p == '\r') *p = ' ';
     char sp[1100], ap[1100]; snprintf(sp, sizeof sp, "%s/tear.seq", pkg); snprintf(ap, sizeof ap, "%s/tear_action.txt", pkg);

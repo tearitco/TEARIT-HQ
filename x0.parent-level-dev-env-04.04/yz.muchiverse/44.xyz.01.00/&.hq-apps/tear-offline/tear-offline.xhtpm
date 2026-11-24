@@ -13,6 +13,7 @@
       <item id="ts" class="tear-tab ${cls_send}"     label="Send"     action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB send'"/>
       <item id="tm" class="tear-tab ${cls_messages}" label="Messages" action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB messages'"/>
       <item id="te" class="tear-tab ${cls_explorer}" label="Explorer" action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB explorer'"/>
+      <item id="tr" class="tear-tab ${cls_ranch}"    label="Ranch"    action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB ranch'"/>
       <item id="ty" class="tear-tab ${cls_sync}"     label="Sync"     action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB sync'"/>
       <item id="rf" class="tear-tab" label="refresh" action="'${PKG}/ops/+x/tear_item_op.+x' 'REFRESH'"/>
     </sidebar>
@@ -55,6 +56,25 @@
         </repeat>
         <text id="b-empty" class="tear-quiet" label="${blks_empty}" show="${blks_empty}"/>
       </scrolllist>
+
+      <!-- Ranch: the 12x8 grid in text (2D), the selected pet, and the actions -->
+      <text id="r-l1" class="tear-big" label="${pet_line1}" show="${tab_ranch}"/>
+      <text id="r-l2" class="tear-kv" label="${pet_line2}" show="${tab_ranch}"/>
+      <text id="r-l3" class="tear-kv" label="${pet_line3}" show="${tab_ranch}"/>
+      <repeat count="${n_grid}" bind="g">
+        <text id="g${g.#}" class="tear-grid" label="${g.text}"/>
+      </repeat>
+      <text id="r-key" class="tear-quiet" label="@ your pet, letters other pets, G gym, B barn, . grass" show="${tab_ranch}"/>
+      <cli_io id="hatchline" target_id="hatchline" rows="1" class="tear-send top" label="hatch: name words" action="'${PKG}/ops/+x/tear_item_op.+x' hatch" show="${tab_ranch}"/>
+      <item id="r-pf" class="tear-btn" label="Pet faucet (+1000, hourly)" action="'${PKG}/ops/+x/tear_item_op.+x' 'PFAUCET'" show="${tab_ranch}"/>
+      <item id="r-fb" class="tear-btn" label="Feed bread (5)" action="'${PKG}/ops/+x/tear_item_op.+x' 'FEED bread'" show="${tab_ranch}"/>
+      <item id="r-fm" class="tear-btn" label="Feed meat (20)" action="'${PKG}/ops/+x/tear_item_op.+x' 'FEED meat'" show="${tab_ranch}"/>
+      <item id="r-t1" class="tear-btn" label="Train sprint" action="'${PKG}/ops/+x/tear_item_op.+x' 'TRAIN sprint'" show="${tab_ranch}"/>
+      <item id="r-t2" class="tear-btn" label="Train lift" action="'${PKG}/ops/+x/tear_item_op.+x' 'TRAIN lift'" show="${tab_ranch}"/>
+      <item id="r-t3" class="tear-btn" label="Train study" action="'${PKG}/ops/+x/tear_item_op.+x' 'TRAIN study'" show="${tab_ranch}"/>
+      <item id="r-rs" class="tear-btn" label="Rest (free)" action="'${PKG}/ops/+x/tear_item_op.+x' 'REST'" show="${tab_ranch}"/>
+      <item id="r-rk" class="tear-btn" label="Next ranked fight" action="'${PKG}/ops/+x/tear_item_op.+x' 'RANK'" show="${tab_ranch}"/>
+      <item id="r-np" class="tear-btn" label="Next pet" action="'${PKG}/ops/+x/tear_item_op.+x' 'NEXTPET'" show="${tab_ranch}"/>
 
       <!-- Sync -->
       <text id="y-hint" class="tear-quiet" label="Merge another copy by the fork rule (most work wins, a tie keeps yours). Type a file path then Enter." show="${tab_sync}"/>

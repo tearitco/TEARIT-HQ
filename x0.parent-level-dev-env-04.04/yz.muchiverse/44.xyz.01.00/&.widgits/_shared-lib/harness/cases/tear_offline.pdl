@@ -62,8 +62,8 @@ EXPECT_OUT | MERGE winner=b reason=a rejected | a-tampered-copy-never-wins
 RUN | $T/op.+x | merge | $T/t.txt | $T/t.txt | $T/o5.txt
 EXPECT_EXIT | 1 | two-bad-copies-are-refused
 RUN | $T/op.+x | mine | $T/r.txt | alice | 1 | PET\prex\px\pbob\p1
-EXPECT_EXIT | 1 | a-ranch-row-is-refused-by-the-C-build-(not-ported-yet-and-not-silently-skipped)
-EXPECT_OUT | REFUSED | the-refusal-is-loud
+EXPECT_EXIT | 0 | a-ranch-row-is-accepted-by-the-C-build-now-that-the-rules-are-ported
+EXPECT_OUT | MINED index=0 | the-pet-hatch-block-was-mined
 CLEAN   |
 CASE    | manager-driven-like-the-window
 SCRATCH |
@@ -116,4 +116,68 @@ COPY    | &.hq-apps/tear-offline/tear-offline.xhtpm | l.xhtpm
 EXPECT_HAS | l.xhtpm | class="tear-window database-window" | the-window-class-is-the-generic-database-window-(no-renderer-C)
 EXPECT_HAS | l.xhtpm | ops/+x/tear_offline_manager.+x | the-module-is-the-C-manager
 EXPECT_LACKS | l.xhtpm | .sh' | NEGATIVE-no-action-calls-a-shell-script
+CLEAN   |
+CASE    | c-ranch-state-equals-the-js-state
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | op.+x
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_ranch_chain.txt | r.txt
+RUN | $T/op.+x | verify | $T/r.txt
+EXPECT_EXIT | 0 | the-JS-mined-ranch-chain-verifies-in-C
+EXPECT_OUT | OK height=41 | all-41-blocks-accepted-(every-ranch-row-type-is-in-it)
+RUN | $T/op.+x | pets | $T/r.txt
+EXPECT_OUT | rex\palice\pCosmic\p8/130\p70\p6,4\p29 18 30 19 16 26\p1/2\p0\p0\p\p0\p0\p0-1\p1/0\p11260\p0 0 0 | pet-rex-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | mina\palice\pLight\p1/137\p20\p7,4\p19 30 23 26 27 18\p1/1\p0\p0\p\p0\p0\p0-1\p0/0\p1050\p0 0 0 | pet-mina-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | tobo\pcarol\pCosmic\p1/125\p20\p3,7\p14 16 13 22 28 23\p0/0\p-1\p0\p\p0\p0\p2-0\p0/0\p1000\p0 0 0 | pet-tobo-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | ivy\perin\pLight\p0/129\p0\p4,4\p25 12 15 15 16 23\p0/0\p-1\p0\p\p0\p0\p0-0\p0/0\p1100\p0 0 0 | pet-ivy-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | kai\perin\pWater\p2/148\p0\p5,2\p23 14 29 27 10 10\p0/0\p-1\p0\p\p0\p0\p0-0\p0/1\p860\p0 0 0 | pet-kai-equals-the-JS-state-byte-for-byte
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | TRAIN\prex\psprint\pbob\p99
+EXPECT_EXIT | 1 | a-stranger-cannot-train-rex
+EXPECT_OUT | not the owner of rex | the-reason-is-named-(not-the-owner-of-rex)
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | COMPETE\pkai\pC\perin\p99
+EXPECT_EXIT | 1 | the-ranked-gate-holds-in-C
+EXPECT_OUT | kai must beat rank D first | the-reason-is-named-(kai-must-beat-rank-D-first)
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | BUY\pivy\prex\palice\p99
+EXPECT_EXIT | 1 | a-sold-pet-is-not-for-sale
+EXPECT_OUT | ivy is not for sale | the-reason-is-named-(ivy-is-not-for-sale)
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | MOVE\prex\p1\p1\palice\p99
+EXPECT_EXIT | 1 | the-gym-cell-is-blocked
+EXPECT_OUT | that cell is not free | the-reason-is-named-(that-cell-is-not-free)
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | PET\prex\pagain\pzoe\p99
+EXPECT_EXIT | 1 | a-pet-name-cannot-be-reused
+EXPECT_OUT | name already used | the-reason-is-named-(name-already-used)
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | FEED\pnobody\pbread\palice\p99
+EXPECT_EXIT | 1 | a-missing-pet-is-refused
+EXPECT_OUT | no such pet | the-reason-is-named-(no-such-pet)
+RUN | $T/op.+x | mine | $T/r.txt | x | 99 | HACK\px
+EXPECT_EXIT | 1 | an-unknown-row-is-refused
+EXPECT_OUT | unknown row HACK | the-reason-is-named-(unknown-row-HACK)
+RUN | $T/op.+x | verify | $T/r.txt
+EXPECT_OUT | OK height=41 | NEGATIVE-the-refused-rows-never-reached-the-file
+CLEAN   |
+CASE    | window-ranch-tab-driven-like-the-window
+SCRATCH |
+MKDIR   | pkg/ops/+x
+MKDIR   | house
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | pkg/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_offline_manager.+x | pkg/ops/+x/tear_offline_manager.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_item_op.+x | pkg/ops/+x/tear_item_op.+x
+ENV     | USER | alice
+SPAWN   | mgr | $T/pkg/ops/+x/tear_offline_manager.+x | $T/house | $T/pkg
+WAIT_HAS | pkg/tear_ui.txt | wallet_id=alice | 5000 | the-manager-published-its-vars
+RUN | $T/pkg/ops/+x/tear_item_op.+x | TAB ranch | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | tab_ranch=1 | 5000 | the-ranch-tab-opens
+EXPECT_HAS | pkg/tear_ui.txt | no pet yet | the-window-says-there-is-no-pet-yet
+RUN | $T/pkg/ops/+x/tear_item_op.+x | hatch | $T/pkg | $T/house | rex blue dragon dreams
+WAIT_HAS | pkg/tear_ui.txt | pet_line1=rex the Cosmic | 8000 | the-window-hatched-the-same-pet-the-web-page-hatches-from-these-words
+EXPECT_HAS | pkg/tear_ui.txt | pet_line2=LIF POW INT SKI SPD DEF = 29 14 30 19 13 20 | the-stats-equal-the-JS-genes
+EXPECT_HAS | pkg/tear_ui.txt | n_grid=8 | the-grid-has-eight-rows
+EXPECT_HAS | pkg/tear_ui.txt | @ | the-selected-pet-is-drawn-on-the-grid-as-an-at-sign
+RUN | $T/pkg/ops/+x/tear_item_op.+x | PFAUCET | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | 1000 coins | 8000 | the-pet-claimed-the-faucet
+RUN | $T/pkg/ops/+x/tear_item_op.+x | TRAIN sprint | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | result=trained | 8000 | the-train-button-trained-the-pet
+EXPECT_HAS | pkg/tear_ui.txt | SPD DEF = 29 14 30 19 16 20 | the-sprint-drill-added-three-to-SPD
+RUN | $T/pkg/ops/+x/tear_item_op.+x | RANK | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | ranked fight | 8000 | the-ranked-fight-button-answered
+EXPECT_HAS | pkg/data/web_chain.txt | COMPETE\prex\pE\palice\p | the-fight-is-a-row-in-the-chain-file
 CLEAN   |
