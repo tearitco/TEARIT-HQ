@@ -84,12 +84,14 @@ COPY    | @.apps/tear-on/atlas/cells.rgba | house/@.apps/tear-on/atlas/cells.rgb
 WRITE   | editor/state/world/switches.txt | running=1\nint=1\n
 RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | demo | $T/house
 EXPECT_EXIT | 0 | the-demo-chain-is-seeded-by-rows
+ENV     | TEAR_ON_REFRESH_WAIT | 1
 SPAWN   | drv | $T/house/@.apps/tear-on/ops/+x/tear_on_driver.+x | $T/house | $T/house/@.apps/tear-on | $T/editor
 WAIT_HAS | editor/state/game_ui.txt | gm_on=1 | 8000 | the-driver-publishes-the-game-bar-feed
 EXPECT_HAS | editor/state/game_ui.txt | gm_title=TEAR-IT Ranch  -  you | the-bar-is-titled
 EXPECT_HAS | editor/state/game_ui.txt | rex the Cosmic | the-bar-shows-the-selected-pet
 EXPECT_HAS | editor/state/game_ui.txt | gmb_0_label=[Care] | the-first-button-is-the-care-tab
 EXPECT_HAS | editor/state/game_ui.txt | gmb_5_label=Hatch a pet | the-care-tab-starts-with-hatch
+EXPECT_HAS | editor/state/game_ui.txt | Refresh board (slow) | the-care-tab-has-the-refresh-board-button
 EXPECT_HAS | editor/state/game_ui.txt | tear_on_ctl.+x' tab_arena | a-button-action-runs-the-ctl-program
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_arena | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | gmb_5_label=Open a 1v1 | 12000 | the-arena-tab-shows-the-arena-buttons
@@ -111,6 +113,7 @@ RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | feed_meat | $T/house/@.app
 WAIT_HAS | editor/state/game_ui.txt | cap: mochi1 may spend at most 10 coins at a time | 12000 | the-bar-shows-the-rules-refusal-by-name
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | wo_sale | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | the pet is locked from sale | 12000 | the-sale-lock-button-locks-the-pet
+WRITE   | editor/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=tear-on\ndesk_id=ranch\n
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | arena_fight | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | the fight is over | 15000 | the-fight-button-ran-the-demo-arena-fight
 EXPECT_HAS | editor/state/game_ui.txt | winners | the-bar-shows-the-winners
@@ -120,10 +123,15 @@ RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | arena_join | $T/house/@.ap
 WAIT_HAS | editor/state/game_ui.txt | that arena is closed | 12000 | NEGATIVE-joining-a-finished-arena-is-refused
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | FEED | $T/house/@.apps/tear-on/play
 EXPECT_EXIT | 2 | NEGATIVE-a-command-word-must-be-lower-case
+WRITE   | editor/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=tear-on\ndesk_id=ranch\n
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | refresh | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | board redrawn from the chain | 25000 | the-refresh-button-switches-the-board-away-and-back-and-says-so
 WRITE   | editor/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=hai-pal\ndesk_id=home\n
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | feed_bread | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | fed bread | 12000 | the-feed-button-fed-the-pet
 EXPECT_LACKS | editor/rpg-edit-hq-pchq/pieces/system/widget_cmds/inbox.txt | CONFIRM_SET_DESK:home | NEGATIVE-nothing-is-sent-to-the-board-while-the-editor-is-on-another-book
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | refresh | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | open the tear-on book first | 12000 | NEGATIVE-refresh-is-refused-while-the-editor-is-on-another-book
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | close | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/world/switches.txt | running=0 | 12000 | the-close-button-stops-the-game-(running-0)
 WAIT_HAS | editor/state/game_ui.txt | gm_on=\n | 12000 | the-bar-disappears-when-the-driver-ends

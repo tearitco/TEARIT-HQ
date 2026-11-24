@@ -7,7 +7,7 @@
  * tear_on_ctl, which appends one command word to <book>/play/action.txt that this driver reads.  PAUSE IS NOT OURS: the editor's switch running (state/world/switches.txt) is the one authority;
  * commands are handled only while running=1.  The selected pet and the selected arena are PREFERENCES (they change what is asked, never an outcome).
  * The bar has four tabs (a PREFERENCE, tab_care tab_train tab_walk tab_arena tab_wallet) so the narrow popup shows few short lines and at most nine buttons.
- * Commands: tab_care tab_train tab_walk tab_arena tab_wallet pet_next hatch faucet feed_bread feed_meat train_sprint train_lift train_study rest rank move_up move_down move_left move_right
+ * Commands: refresh tab_care tab_train tab_walk tab_arena tab_wallet pet_next hatch faucet feed_bread feed_meat train_sprint train_lift train_study rest rank move_up move_down move_left move_right
  *           arena_open_1v1 arena_open_2v2 arena_open_ffa arena_join arena_fill arena_fight arena_leave arena_next  wo_cap wo_reserve wo_sale  close
  * Cost: idle = a stat() of the switch file and the queue per 80 ms nap; one op call per click.  Files: game_ui.txt (rewritten), play/action.txt (capped at 64 KiB, oldest half dropped), play/driver.lock.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/tear_on_driver.+x tear_on_driver.c */
@@ -72,7 +72,7 @@ static void publish(void) {
     } else add_text("no pet yet: Hatch a pet");
     add_text(msg);
     add_btn("[Care]", "tab_care"); add_btn("[Train]", "tab_train"); add_btn("[Walk]", "tab_walk"); add_btn("[Arena]", "tab_arena"); add_btn("[Wallet]", "tab_wallet");
-    if (!strcmp(tab, "care")) { add_btn("Hatch a pet", "hatch"); add_btn("Next pet", "pet_next"); add_btn("Pet faucet +1000", "faucet"); add_btn("Feed bread (5)", "feed_bread"); add_btn("Feed meat (20)", "feed_meat"); add_btn("Rest (free)", "rest"); }
+    if (!strcmp(tab, "care")) { add_btn("Hatch a pet", "hatch"); add_btn("Next pet", "pet_next"); add_btn("Pet faucet +1000", "faucet"); add_btn("Feed bread (5)", "feed_bread"); add_btn("Feed meat (20)", "feed_meat"); add_btn("Rest (free)", "rest"); add_btn("Refresh board (slow)", "refresh"); }
     else if (!strcmp(tab, "train")) { add_btn("Train sprint", "train_sprint"); add_btn("Train lift", "train_lift"); add_btn("Train study", "train_study"); add_btn("Next ranked fight", "rank"); }
     else if (!strcmp(tab, "walk")) { add_btn("Walk up", "move_up"); add_btn("Walk down", "move_down"); add_btn("Walk left", "move_left"); add_btn("Walk right", "move_right"); }
     else if (!strcmp(tab, "arena")) { add_btn("Open a 1v1", "arena_open_1v1"); add_btn("Open a 2v2", "arena_open_2v2"); add_btn("Open free for all", "arena_open_ffa"); add_btn("Join with my pet", "arena_join"); add_btn("Fill with defaults", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave (fee back)", "arena_leave"); add_btn("Next arena", "arena_next"); }
@@ -80,12 +80,20 @@ static void publish(void) {
     add_btn("Close the game", "close");
     snprintf(b, sizeof b, "gm_nt=%d\ngm_nb=%d\ngm_ne=0\ngm_nl=0\n", nt_, nb_); catn(b);
     char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); FILE *f = fopen(tmp, "w"); if (f) { fputs(OUT_, f); fclose(f); rename(tmp, FEED); } }
-/* The rpg-edit board reads a page when it is SELECTED, not when its files change (live 2026-11-24: five walks, a zero image difference; one CONFIRM_SET_DESK of the same page moved the sprite). After a row the driver re-sends the desk command: the page the action shows (arena_* the arena, hatch and walking the ranch, anything else the page the editor is on). Only while the editor is on book tear-on. */
+/* BOARD REFRESH (seen live 2026-11-24). The rpg-edit board draws a page when a DIFFERENT page is selected: five walks gave a zero image difference, a same-page CONFIRM_SET_DESK did nothing, arena then ranch loaded the new cells at once (each load restarts the board engine, several seconds).
+ * So: the bar text is instant; an arena_* command shows the arena page, hatch and walking show the ranch page (a real switch when the editor is on the other page, nothing when it is already there);
+ * the button Refresh board does the double switch on request. Only while the editor is on book tear-on; the wait for each switch is TEAR_ON_REFRESH_WAIT seconds (default 12). */
+static void set_msg(const char *s);
+static int world_desk(char *map, size_t ms, char *desk, size_t ds) { char wp[P], l[200]; snprintf(wp, sizeof wp, "%s/rpg-edit-hq-pchq/pieces/world_01/state.txt", EDIT); map[0] = desk[0] = 0; FILE *f = fopen(wp, "r"); if (!f) return 0; while (fgets(l, sizeof l, f)) { if (!strncmp(l, "map_id=", 7)) { snprintf(map, ms, "%s", l + 7); map[strcspn(map, "\r\n")] = 0; } else if (!strncmp(l, "desk_id=", 8)) { snprintf(desk, ds, "%s", l + 8); desk[strcspn(desk, "\r\n")] = 0; } } fclose(f); return 1; }
+static void send_desk(const char *d) { char ip[P]; snprintf(ip, sizeof ip, "%s/rpg-edit-hq-pchq/pieces/system/widget_cmds/inbox.txt", EDIT); FILE *o = fopen(ip, "a"); if (o) { fprintf(o, "CONFIRM_SET_DESK:%s\n", d); fclose(o); } }
+static void wait_desk(const char *want, int secs) { char m[48], d[48]; for (int i = 0; i < secs * 2; i++) { if (world_desk(m, sizeof m, d, sizeof d) && !strcmp(d, want)) return; usleep(500000); } }
 static void reload_board(const char *c) {
-    char wp[P], ip[P], l[200], map[48] = "", desk[48] = ""; snprintf(wp, sizeof wp, "%s/rpg-edit-hq-pchq/pieces/world_01/state.txt", EDIT); snprintf(ip, sizeof ip, "%s/rpg-edit-hq-pchq/pieces/system/widget_cmds/inbox.txt", EDIT);
-    FILE *f = fopen(wp, "r"); if (!f) return; while (fgets(l, sizeof l, f)) { if (!strncmp(l, "map_id=", 7)) { snprintf(map, sizeof map, "%s", l + 7); map[strcspn(map, "\r\n")] = 0; } else if (!strncmp(l, "desk_id=", 8)) { snprintf(desk, sizeof desk, "%s", l + 8); desk[strcspn(desk, "\r\n")] = 0; } } fclose(f);
-    if (strcmp(map, "tear-on")) return; const char *target = !strncmp(c, "arena_", 6) ? "arena" : (!strcmp(c, "hatch") || !strncmp(c, "move_", 5)) ? "ranch" : desk; if (strcmp(target, "ranch") && strcmp(target, "arena")) return;
-    FILE *o = fopen(ip, "a"); if (o) { fprintf(o, "CONFIRM_SET_DESK:%s\n", target); fclose(o); } }
+    char map[48], desk[48]; if (!world_desk(map, sizeof map, desk, sizeof desk) || strcmp(map, "tear-on")) return;
+    const char *target = !strncmp(c, "arena_", 6) ? "arena" : (!strcmp(c, "hatch") || !strncmp(c, "move_", 5)) ? "ranch" : NULL; if (!target || !strcmp(target, desk)) return; send_desk(target); }
+static void refresh_board(void) {
+    char map[48], desk[48]; if (!world_desk(map, sizeof map, desk, sizeof desk) || strcmp(map, "tear-on")) { set_msg("open the tear-on book first"); return; }
+    const char *back = !strcmp(desk, "arena") ? "arena" : "ranch", *other = !strcmp(back, "arena") ? "ranch" : "arena"; const char *w = getenv("TEAR_ON_REFRESH_WAIT"); int secs = w ? atoi(w) : 12; if (secs < 1) secs = 1; if (secs > 30) secs = 30;
+    send_desk(other); wait_desk(other, secs); sleep(4); send_desk(back); wait_desk(back, secs); set_msg("board redrawn from the chain"); }
 static void set_msg(const char *s) { snprintf(msg, sizeof msg, "%s", s); for (char *c = msg; *c; c++) if (*c == '\n' || *c == '=') *c = ' '; }
 /* append ONE row to the chain (mined + pages re-projected by tear_on_op do); the refusal text of the rules becomes the message */
 static int do_row(const char *row, const char *okmsg) {
@@ -94,6 +102,7 @@ static int do_row(const char *row, const char *okmsg) {
 static void do_cmd(const char *c) {
     char row[400], ts[24], m[200]; snprintf(ts, sizeof ts, "%ld", (long)time(NULL)); Pet *p = selpet(); Arena *a = selar(); chain_read();
     if (!strcmp(c, "close")) { FILE *sf = fopen(SW, "w"); if (sf) { fputs("running=0\nint=1\n", sf); fclose(sf); } stop_ = 1; return; }
+    if (!strcmp(c, "refresh")) { refresh_board(); return; }
     if (!strncmp(c, "tab_", 4)) { if (!strcmp(c + 4, "care") || !strcmp(c + 4, "train") || !strcmp(c + 4, "walk") || !strcmp(c + 4, "arena") || !strcmp(c + 4, "wallet")) { snprintf(tab, sizeof tab, "%s", c + 4); set_msg(""); } else set_msg("unknown tab"); return; }
     if (!strcmp(c, "pet_next")) { int cur = -1, nx = -1; for (int i = 0; i < np; i++) if (!strcmp(pets[i].name, sel)) cur = i; for (int k = 1; k <= np; k++) { int i = (cur + k + np) % np; if (!strcmp(pets[i].owner, owner) && !pets[i].frozen) { nx = i; break; } } if (nx >= 0) snprintf(sel, sizeof sel, "%s", pets[nx].name); set_msg("next pet"); return; }
     if (!strcmp(c, "arena_next")) { int cur = -1; for (int i = 0; i < nar; i++) if (!strcmp(ars[i].id, asel)) cur = i; if (nar > 0) snprintf(asel, sizeof asel, "%s", ars[(cur + 1) % nar].id); set_msg("next arena"); return; }
@@ -133,7 +142,7 @@ int main(int argc, char **argv) {
     while (!stop_) {
         usleep(80000); if (getppid() == 1 && !OWNERPID) { /* parent gone: fine for a detached start, keep going unless an owner pid was given */ } if (OWNERPID > 0 && kill((pid_t)OWNERPID, 0) != 0) break;
         if (!stat(ACT, &st) && (long)st.st_size > 65536) { /* drop the oldest half, keep whole lines */ FILE *f = fopen(ACT, "r"); if (f) { fseek(f, st.st_size / 2, SEEK_SET); char junk[200]; if (fgets(junk, sizeof junk, f)) {} char *keep = malloc((size_t)st.st_size); size_t n = fread(keep, 1, (size_t)st.st_size, f); fclose(f); FILE *o = fopen(ACT, "w"); if (o) { fwrite(keep, 1, n, o); fclose(o); } free(keep); cur = 0; } }
-        int changed = 0; if (running() && !stat(ACT, &st) && (long)st.st_size > cur) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cur, SEEK_SET); char ln[100]; while (fgets(ln, sizeof ln, f) && !stop_) { cur += (long)strlen(ln); ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) { do_cmd(ln); if (strncmp(ln, "tab_", 4) && strcmp(ln, "pet_next") && strcmp(ln, "arena_next") && strcmp(ln, "close")) reload_board(ln); changed = 1; } } fclose(f); } }
+        int changed = 0; if (running() && !stat(ACT, &st) && (long)st.st_size > cur) { FILE *f = fopen(ACT, "r"); if (f) { fseek(f, cur, SEEK_SET); char ln[100]; while (fgets(ln, sizeof ln, f) && !stop_) { cur += (long)strlen(ln); ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) { do_cmd(ln); if (strncmp(ln, "tab_", 4) && strcmp(ln, "pet_next") && strcmp(ln, "arena_next") && strcmp(ln, "close") && strcmp(ln, "refresh")) reload_board(ln); changed = 1; } } fclose(f); } }
         struct stat cs; long csz = stat(CHAIN, &cs) ? -1 : (long)cs.st_size; if (csz != chain_sz) { chain_sz = csz; changed = 1; }
         if (changed || now_ms() - last > 5000) { chain_read(); publish(); last = now_ms(); } }
     char tmp[P + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", FEED); { FILE *f = fopen(tmp, "w"); if (f) { fputs("gm_on=\n", f); fclose(f); rename(tmp, FEED); } } return 0; }
