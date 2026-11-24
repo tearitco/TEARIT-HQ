@@ -116,6 +116,16 @@ EXPECT_HAS | editor/state/game_ui.txt | gm_nb=0 | the-popup-list-is-empty-in-bar
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_next | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | gmbar_0_label=Tab: Train > | 12000 | the-tab-button-cycles-the-tab
 EXPECT_HAS | editor/state/game_ui.txt | gmbar_1_label=Sprint | and-shows-that-tabs-buttons
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_arena | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | gmbar_1_label=Open 1v1 | 12000 | the-bar-shows-the-arena-tab
+EXPECT_LACKS | editor/state/game_ui.txt | Next arena | NEGATIVE-the-bar-does-not-carry-the-eleventh-cell-that-overflowed
+EXPECT_HAS | editor/state/game_ui.txt | gmbar_n=9 | the-arena-strip-is-nine-buttons-plus-the-minimize-cell
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | Tab: Wallet > | 12000 | the-tab-cycle-moves-on
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | Tab: Care > | 12000 | and-wraps-to-care
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_next | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | Tab: Train > | 12000 | back-on-train-for-the-rest-of-the-case
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | bar_min | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | gmbar_0_label=Open the game bar | 12000 | minimize-leaves-one-button
 EXPECT_HAS | editor/state/game_ui.txt | gmbar_n=1 | the-minimized-bar-has-exactly-one-button

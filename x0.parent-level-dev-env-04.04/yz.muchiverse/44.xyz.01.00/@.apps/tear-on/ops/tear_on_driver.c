@@ -87,7 +87,7 @@ static void publish(void) {
         if (!strcmp(tab, "care")) { add_btn("Hatch", "hatch"); add_btn("Next pet", "pet_next"); add_btn("+1000", "faucet"); add_btn("Bread 5", "feed_bread"); add_btn("Meat 20", "feed_meat"); add_btn("Rest", "rest"); add_btn("Layout", "lay_next"); }
         else if (!strcmp(tab, "train")) { add_btn("Sprint", "train_sprint"); add_btn("Lift", "train_lift"); add_btn("Study", "train_study"); add_btn("Ranked", "rank"); }
         else if (!strcmp(tab, "walk")) { add_btn("Up", "move_up"); add_btn("Down", "move_down"); add_btn("Left", "move_left"); add_btn("Right", "move_right"); }
-        else if (!strcmp(tab, "arena")) { add_btn("Open 1v1", "arena_open_1v1"); add_btn("Open 2v2", "arena_open_2v2"); add_btn("Open FFA", "arena_open_ffa"); add_btn("Join", "arena_join"); add_btn("Fill", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave", "arena_leave"); add_btn("Next arena", "arena_next"); }
+        else if (!strcmp(tab, "arena")) { add_btn("Open 1v1", "arena_open_1v1"); add_btn("Open 2v2", "arena_open_2v2"); add_btn("Open FFA", "arena_open_ffa"); add_btn("Join", "arena_join"); add_btn("Fill", "arena_fill"); add_btn("FIGHT!", "arena_fight"); add_btn("Leave", "arena_leave"); }   /* Next arena stays on the side and popup layouts: ten cells fit the strip */
         else { add_btn("Cap >", "wo_cap"); add_btn("Reserve >", "wo_reserve"); add_btn("Sale lock", "wo_sale"); add_btn("Next pet", "pet_next"); add_btn("Redraw", "refresh"); add_btn("Layout", "lay_next"); }
         add_btn("Close", "close");
     } else {
