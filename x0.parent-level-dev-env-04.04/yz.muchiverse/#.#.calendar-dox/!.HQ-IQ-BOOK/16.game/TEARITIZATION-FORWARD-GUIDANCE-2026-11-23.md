@@ -5,7 +5,7 @@ Status: **DESIGN / PROPOSAL. Nothing in this document is built.** Written for th
 ## 1. What TEARITIZATION means (owner, 2026-11-23)
 A "CIV-SNES" style clone (Sid Meier's Civilization as it was on the SNES), made with EVENTS, playable by MULTIPLE AGENTS plus a HUMAN, with WORLD GENERATION, working in BOTH 2D AND 3D. The name is TEARITIZATION: take a known game shape and rebuild it the house way (every rule an op, the ledger the only authority, pages visible in Blueprintz, a harness that can fail).
 
-Two rules on the source game: we copy the SHAPE of the rules (turns, cities, units, tech, fog), never its pictures, sounds or text. Art must be real, original, ours. RPG Maker faces and SNES art are not ours (NOT PROVEN that any licence covers them; treat them as flagged). The lore of the owner's own franchise is unpublished IP and is not used here.
+Two rules on the source game: we copy the SHAPE of the rules (turns, cities, units, tech, fog), never its pictures, sounds or text. Art: placeholders are fine for tutorials; our own art comes later from the diffusion pipeline through hai. The lore of the owner's own franchise is unpublished IP and is not used here.
 
 ## 2. What already exists, and what the owner said about it
 - **`@.apps/civ-rpgce` is LIKELY A FALSE START (owner, 2026-11-23). Do not build on it.** READ: its 2026-10-14 design `16.game/CIV-RPGCE-DESIGN.md` has useful ideas (settlers, huts that grant one line once per settler, founding a city that leaves a marker, fog kept per unit as a list of seen tiles); but it was a petslike skin whose rules would live in C hooks, which D92 forbids ("no native rules, all ops, forever"). Take the ideas, not the code.
@@ -62,7 +62,7 @@ From `!.PRESENTATIONS-THE-ONE-PLACE-...md` sections 10 and 11: (10) each rule's 
 3. **How many AI seats.** Default: 1 human plus 1 agent for the first slice, then up to 3 agents.
 4. **Which free model tier, if any.** Default: none for the first five slices (weights and legal-move lists); the LAN Ollama on the Mac only to phrase a one-line description.
 5. **What the ledger of a world costs.** Observed once (RAN, scratch, niced, vox handoff): `verify` takes 0.42 s at 1007 rows and 9.9 s at 5035 rows (about 25x time for 5x rows, O(n^2)). A world with many units and turns passes 5000 rows quickly, so a ledger checkpoint or a hash chain is a PREREQUISITE (not built). Decision: build the checkpoint before S1 or cap the first world at about 1000 rows.
-6. **Unit art sources.** Real original art only. RPG Maker faces and SNES art are not ours. Default: flat-colour pieces with a letter glyph for S0 to S4 (the Teario and RTA approach), commission or generate original art later (a generator is allowed if the owner approves its output, "claude may approve into good/ after opening the picture").
+6. **Unit art sources.** Placeholder art is fine for now (tutorials); our own art comes later from the diffusion pipeline through hai. Default: flat-colour pieces with a letter glyph for S0 to S4 (the Teario and RTA approach), commission or generate original art later (a generator is allowed if the owner approves its output, "claude may approve into good/ after opening the picture").
 7. **Where it lives.** A NEW app (default name `tearit-civ`, owner may rename), generated with `game_new_op` into a scratch house first. Not `civ-rpgce`.
 8. **How much of the civilization end state to aim at.** Default: the Civ shape only (cities, units, tech, gold, fog). Laws, cops, hiring and capture are NOT FOUND as designs and wait for the owner's order (the Grok report asked this and it is still open).
 
@@ -81,13 +81,12 @@ Between S1 and S2 add the ledger checkpoint if decision 5 says so.
 1. **Ledger verify cost** (O(n^2), section 9 decision 5).
 2. **Simultaneous writers on one ledger.** The house ledgers are append-only with one writer verb; two agents writing at once risks interleaved rows. Mitigation: one `civ_op` entry point, serialised, turn-based.
 3. **Model cost and quota.** Free tier only; a probe once ate a whole day of free calls; never loop to a 429.
-4. **Art licences.** See decision 6.
 5. **3D readability** of a tile game (section 7).
 6. **Rules creeping into C.** The Teario precedent (D92): the stopgap hai teach logic is also in C today, labelled with a removal condition. Do not add a second stopgap.
 7. **CPU on a weak machine.** One slice, niced; measure the idle cost with a browser open, state it in the commit.
 
 ## 12. What is NOT proven
-Nothing here is built. NOT PROVEN: that a Civ-shaped rule set fits the five-part rule shape without a hidden native rule; that the 3D view of a tile map is readable; that an agent with weights plays a game worth watching; the cost of a checkpointed ledger; `civ-txt` runs; any art licence. The next step is the owner's answer to section 9, then S0.
+Nothing here is built. NOT PROVEN: that a Civ-shaped rule set fits the five-part rule shape without a hidden native rule; that the 3D view of a tile map is readable; that an agent with weights plays a game worth watching; the cost of a checkpointed ledger; `civ-txt` runs. The next step is the owner's answer to section 9, then S0.
 
 ## 13. External references
 Repo paths (BOOK = `x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/`): `16.game/CIV-RPGCE-DESIGN.md`; `16.game/GROK-HANDOFF-MINECRAFT-MODES-AND-CIVILIZATIONS-REPORT.md`; `16.game/MINECRAFT-EVENTS-HANDOFF-FARMING-WATER-MOBS-DAYNIGHT-2026-11-22.md`; `16.game/RTA-BATTERY-CONVERSION-2026-11-21.md`; `16.game/TEARIO-HANDOFF-WHERE-WE-ARE-AND-WHAT-IS-NEXT-2026-11-22.md`; `02-architecture/DESIGN-CHOICE-TEST-AND-DECISION-LOG.md` (D62, D87, D92, D93, D100, D101, D105, D109, D112, D115, D117 to D120); `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`; `02-architecture/TRUNK-AND-BRANCH-SHARED-DATA-STANDARD-2026-11-16.md`; `17.ai/META-STRATEGY-ATTRITION-HARNESS-TOOL-USE-AND-CHEAP-BUILDING-2026-11-22.md`; `17.ai/ENTITY-LLM-ENDPOINTS-HOW-TO-TEST-AND-USE-2026-11-16.md`; `!.PRESENTATIONS-THE-ONE-PLACE-STYLE-TOOLS-AND-HOW-TO-2026-11-18.md`; house `@.apps/vox`, `@.apps/rta`, `@.apps/civ-rpgce` (false start), `@.apps/civ-txt` (older). The hai repo `/home/no/Desktop/github/work/#.hai/harnecient-hai` books 22 and 23. No outside URLs were used.
