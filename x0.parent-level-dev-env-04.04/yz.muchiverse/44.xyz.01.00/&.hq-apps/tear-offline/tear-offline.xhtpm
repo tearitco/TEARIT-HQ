@@ -1,0 +1,67 @@
+<!-- tear-offline.xhtpm - X11-HQ window under the "network" cell: the in-house twin of the tearit web chain page (https://tearitco.github.io/tearit-web/).
+     Shared khtpm_core_render.+x, class="tear-window database-window" (generic sidebar/panel path, ZERO renderer C). Shape copied from chain-hq.xhtpm.
+     One <module>: ops/+x/tear_offline_manager.+x keeps <pkg>/data/web_chain.txt and publishes tear_ui.txt; every rule is ops/+x/tear_chain_op.+x
+     (C port of docs/chain.js, graded by harness case tear_offline). Actions: ops/+x/tear_item_op.+x writes tear_action.txt (no shell). -->
+<window label="tear-offline  ·  ${wallet_id}  ·  ${balance} mc" class="tear-window database-window" vars="tear_ui.txt">
+  <module src="&.hq-apps/tear-offline/ops/+x/tear_offline_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="tear-sidebar">
+      <text id="who" label="wallet: ${wallet_id}" class="tear-who"/>
+      <item id="tc" class="tear-tab ${cls_chain}"    label="Chain"    action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB chain'"/>
+      <item id="tw" class="tear-tab ${cls_wallet}"   label="Wallet"   action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB wallet'"/>
+      <item id="ts" class="tear-tab ${cls_send}"     label="Send"     action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB send'"/>
+      <item id="tm" class="tear-tab ${cls_messages}" label="Messages" action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB messages'"/>
+      <item id="te" class="tear-tab ${cls_explorer}" label="Explorer" action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB explorer'"/>
+      <item id="ty" class="tear-tab ${cls_sync}"     label="Sync"     action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB sync'"/>
+      <item id="rf" class="tear-tab" label="refresh" action="'${PKG}/ops/+x/tear_item_op.+x' 'REFRESH'"/>
+    </sidebar>
+
+    <panel id="content" class="tear-panel">
+      <text id="status" class="tear-status" label="${status}"/>
+      <text id="result" class="tear-quiet"  label="last: ${result}"/>
+
+      <!-- Chain -->
+      <text id="c-line" class="tear-big"   label="${chain_line}"  show="${tab_chain}"/>
+      <text id="c-path" class="tear-kv"    label="your copy:  ${chain_path}" show="${tab_chain}"/>
+      <text id="c-hint" class="tear-quiet" label="Every block is re-checked here with the same rules as the web page. Nothing leaves this computer unless you use Sync." show="${tab_chain}"/>
+
+      <!-- Wallet -->
+      <text id="w-bal"  class="tear-big"   label="${balance} millicones" show="${tab_wallet}"/>
+      <text id="w-id"   class="tear-kv"    label="wallet name:  ${wallet_id}" show="${tab_wallet}"/>
+      <cli_io id="walletline" target_id="walletline" rows="1" class="tear-send top" label="wallet name" action="'${PKG}/ops/+x/tear_item_op.+x' wallet" show="${tab_wallet}"/>
+      <item id="w-mine"   class="tear-btn" label="Mine a block (reward to you)" action="'${PKG}/ops/+x/tear_item_op.+x' 'MINE'"   show="${tab_wallet}"/>
+      <item id="w-faucet" class="tear-btn" label="Claim faucet (1000)"          action="'${PKG}/ops/+x/tear_item_op.+x' 'FAUCET'" show="${tab_wallet}"/>
+
+      <!-- Send -->
+      <text id="s-hint" class="tear-quiet" label="Send millicones. Type:  &lt;to-wallet&gt; &lt;amount&gt;  then Enter." show="${tab_send}"/>
+      <cli_io id="sendline" target_id="sendline" rows="1" class="tear-send top" label="to  amount" action="'${PKG}/ops/+x/tear_item_op.+x' send" show="${tab_send}"/>
+      <text id="s-bal" class="tear-kv" label="balance: ${balance} mc" show="${tab_send}"/>
+
+      <!-- Messages -->
+      <text id="m-hint" class="tear-quiet" label="Type  [general|forum|irc] your message  then Enter. A message is a row on the chain." show="${tab_messages}"/>
+      <cli_io id="postline" target_id="postline" rows="1" class="tear-send top" label="say" action="'${PKG}/ops/+x/tear_item_op.+x' post" show="${tab_messages}"/>
+      <scrolllist class="from-top" show="${tab_messages}">
+        <repeat count="${n_msgs}" bind="m">
+          <text id="m${m.#}" class="tear-hrow" label="${m.text}"/>
+        </repeat>
+        <text id="m-empty" class="tear-quiet" label="${msgs_empty}" show="${msgs_empty}"/>
+      </scrolllist>
+
+      <!-- Explorer -->
+      <scrolllist class="from-top" show="${tab_explorer}">
+        <repeat count="${n_blks}" bind="b">
+          <text id="b${b.#}" class="tear-hrow" label="${b.text}"/>
+        </repeat>
+        <text id="b-empty" class="tear-quiet" label="${blks_empty}" show="${blks_empty}"/>
+      </scrolllist>
+
+      <!-- Sync -->
+      <text id="y-hint" class="tear-quiet" label="Merge another copy by the fork rule (most work wins, a tie keeps yours). Type a file path then Enter." show="${tab_sync}"/>
+      <cli_io id="importline" target_id="importline" rows="1" class="tear-send top" label="import file" action="'${PKG}/ops/+x/tear_item_op.+x' import" show="${tab_sync}"/>
+      <item id="y-export" class="tear-btn" label="Export my copy (to the export folder)" action="'${PKG}/ops/+x/tear_item_op.+x' 'EXPORT'" show="${tab_sync}"/>
+      <item id="y-fetch"  class="tear-btn" label="Fetch the published copy (needs internet)" action="'${PKG}/ops/+x/tear_item_op.+x' 'FETCH'" show="${tab_sync}"/>
+
+    </panel>
+  </page>
+</window>

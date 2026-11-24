@@ -1,0 +1,116 @@
+# tear_offline (2026-11-24): the in-house twin of the tearit web chain page: &.hq-apps/tear-offline (window under the "network" cell). Graded in three parts, all in a scratch dir, never the live window or the network.
+# (1) tear_chain_op (the C port of tearit-web docs/chain.js) on a chain made by the REAL pal-chain C ops (balances equal chain_balance) and on the chain the JS mined (cross-implementation), plus tamper / difficulty / overspend / steward / fork-rule negatives.
+# (2) the REAL manager (tear_offline_manager) driven the way the window drives it: tear_item_op writes the action file, the manager answers in tear_ui.txt (mine, send, refuse, post, faucet cap, tampered copy flagged).
+# (3) the layout names every var the manager publishes (a layout that binds a var nobody writes is an empty window).
+RESULTS | ../results/tear_offline.txt
+ENV     | LC_ALL | C
+CASE    | c-op-vs-real-chain-and-js-chain
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | op.+x
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_c_chain.txt | c.txt
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_c_chain_tampered.txt | t.txt
+COPY    | &.hq-apps/tearit-web/docs/chain/latest.txt | js.txt
+RUN | $T/op.+x | verify | $T/c.txt
+EXPECT_EXIT | 0 | the-chain-from-the-C-ops-verifies
+EXPECT_OUT | OK height=3 tip=0090fbaa3ae01fa2727c59819471600515919932aa25582af8548b0b09bdeeab | tip-hash-equals-the-C-miner-tip
+RUN | $T/op.+x | balance | $T/c.txt | alice
+EXPECT_OUT_IS | 19500 | alice-equals-chain_balance
+RUN | $T/op.+x | balance | $T/c.txt | bob
+EXPECT_OUT_IS | 12000 | bob-equals-chain_balance-(received-1500-and-mined-one-block)
+RUN | $T/op.+x | verify | $T/t.txt
+EXPECT_EXIT | 1 | a-tampered-amount-is-refused
+EXPECT_OUT | BAD at=2 why=hash does not recompute | the-refusal-names-the-block-and-the-reason
+RUN | $T/op.+x | verify | $T/c.txt | --zeros | 5
+EXPECT_EXIT | 1 | the-wrong-difficulty-is-refused
+EXPECT_OUT | difficulty not met | wrong-difficulty-says-why
+RUN | $T/op.+x | verify | $T/js.txt
+EXPECT_EXIT | 0 | the-chain-the-JS-page-mined-verifies-in-C
+EXPECT_OUT | OK height=1 | cross-implementation-JS-block-accepted-by-the-C-verifier
+CLEAN   |
+CASE    | c-op-mine-apply-merge
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | op.+x
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_c_chain.txt | c.txt
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_c_chain_tampered.txt | t.txt
+RUN | $T/op.+x | mine | $T/a.txt | carol | 100
+EXPECT_OUT | MINED index=0 | genesis-mined
+RUN | $T/op.+x | mine | $T/a.txt | carol | 101 | MSG\pcarol\pgeneral\phello from C\p101
+EXPECT_OUT | MINED index=1 | a-message-row-mined
+RUN | $T/op.+x | messages | $T/a.txt | general
+EXPECT_OUT | hello from C | the-message-is-read-back-from-the-chain
+RUN | $T/op.+x | messages | $T/a.txt | forum
+EXPECT_OUT_LACKS | hello from C | NEGATIVE-another-channel-does-not-show-it
+RUN | $T/op.+x | mine | $T/a.txt | carol | 102 | TX\pcarol\pdave\p99999999\p102\px
+EXPECT_EXIT | 1 | an-overspend-is-refused-and-not-appended
+RUN | $T/op.+x | verify | $T/a.txt
+EXPECT_OUT | OK height=2 | the-refused-block-never-reached-the-file
+WRITE   | rows.txt | TX\pcarol\pdave\p100\p103\pa\nTX\pcarol\pdave\p99999999\p103\pb\nrm -rf /\nMSG\pcarol\pforum\psecond\p104\n
+RUN | $T/op.+x | apply | $T/a.txt | steward | 103 | $T/rows.txt
+EXPECT_OUT | APPLIED accepted=2 rejected=2 mined=1 | steward-takes-the-good-rows-and-rejects-the-overspend-and-the-non-row
+RUN | $T/op.+x | verify | $T/a.txt
+EXPECT_OUT | OK height=3 | after-the-steward-block-the-chain-still-verifies
+RUN | $T/op.+x | mine | $T/s.txt | carol | 100
+RUN | $T/op.+x | mine | $T/s.txt | carol | 101 | MSG\pcarol\pgeneral\phello from C\p101
+RUN | $T/op.+x | merge | $T/s.txt | $T/a.txt | $T/o1.txt
+EXPECT_OUT | MERGE winner=b reason=more work | the-longer-valid-copy-wins
+RUN | $T/op.+x | merge | $T/a.txt | $T/s.txt | $T/o2.txt
+EXPECT_OUT | MERGE winner=a reason=more work | the-same-order-reversed-still-picks-the-longer-one
+RUN | $T/op.+x | merge | $T/s.txt | $T/s.txt | $T/o3.txt
+EXPECT_OUT | tie keeps a | a-tie-keeps-the-first-copy
+RUN | $T/op.+x | merge | $T/t.txt | $T/c.txt | $T/o4.txt
+EXPECT_OUT | MERGE winner=b reason=a rejected | a-tampered-copy-never-wins
+RUN | $T/op.+x | merge | $T/t.txt | $T/t.txt | $T/o5.txt
+EXPECT_EXIT | 1 | two-bad-copies-are-refused
+CLEAN   |
+CASE    | manager-driven-like-the-window
+SCRATCH |
+MKDIR   | pkg/ops/+x
+MKDIR   | house
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | pkg/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_offline_manager.+x | pkg/ops/+x/tear_offline_manager.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_item_op.+x | pkg/ops/+x/tear_item_op.+x
+ENV     | USER | alice
+SPAWN   | mgr | $T/pkg/ops/+x/tear_offline_manager.+x | $T/house | $T/pkg
+WAIT_HAS | pkg/tear_ui.txt | wallet_id=alice | 5000 | the-manager-published-its-vars-for-the-login-wallet
+EXPECT_HAS | pkg/tear_ui.txt | balance=0 | an-empty-chain-has-a-zero-balance
+RUN | $T/pkg/ops/+x/tear_item_op.+x | TAB wallet | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | tab_wallet=1 | 5000 | a-tab-click-switches-the-tab-var
+RUN | $T/pkg/ops/+x/tear_item_op.+x | MINE | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | balance=10500 | 8000 | mine-click-mined-a-block-and-paid-the-wallet
+RUN | $T/pkg/ops/+x/tear_item_op.+x | send | $T/pkg | $T/house | bob 500
+WAIT_HAS | pkg/tear_ui.txt | balance=20500 | 8000 | send-moved-500-and-the-send-block-paid-its-miner
+RUN | $T/pkg/ops/+x/tear_item_op.+x | send | $T/pkg | $T/house | bob 99999999
+WAIT_HAS | pkg/tear_ui.txt | result=refused | 8000 | an-overspend-from-the-window-is-refused
+EXPECT_HAS | pkg/tear_ui.txt | balance=20500 | NEGATIVE-the-refused-send-changed-no-balance
+RUN | $T/pkg/ops/+x/tear_item_op.+x | FAUCET | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | balance=32000 | 8000 | the-faucet-paid-1000-plus-its-block-reward
+RUN | $T/pkg/ops/+x/tear_item_op.+x | FAUCET | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | result=faucet refused | 8000 | a-second-claim-inside-the-cooldown-is-refused
+RUN | $T/pkg/ops/+x/tear_item_op.+x | TAB messages | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | tab_messages=1 | 5000 | the-manager-took-the-tab-click-before-the-next-click-(one-action-slot-like-chain-hq)
+RUN | $T/pkg/ops/+x/tear_item_op.+x | post | $T/pkg | $T/house | forum hello from the window
+WAIT_HAS | pkg/tear_ui.txt | m_0_text=alice: hello from the window | 8000 | the-posted-message-is-in-the-messages-list
+EXPECT_HAS | pkg/tear_ui.txt | n_msgs=1 | one-message-row
+EXPECT_HAS | pkg/data/web_chain.txt | MSG\palice\pforum\phello from the window\p | the-message-is-a-row-in-the-chain-file-(not-ghost-state)
+EXPECT_NOFILE | pkg/tear_ui.txt.tmp | no-temp-file-left-behind
+CLEAN   |
+CASE    | manager-flags-a-tampered-copy
+SCRATCH |
+MKDIR   | pkg/ops/+x
+MKDIR   | pkg/data
+MKDIR   | house
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | pkg/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_offline_manager.+x | pkg/ops/+x/tear_offline_manager.+x
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_c_chain_tampered.txt | pkg/data/web_chain.txt
+ENV     | USER | alice
+SPAWN   | mgr | $T/pkg/ops/+x/tear_offline_manager.+x | $T/house | $T/pkg
+WAIT_HAS | pkg/tear_ui.txt | DOES NOT VERIFY | 5000 | a-tampered-local-copy-is-shown-as-not-verifying
+EXPECT_HAS | pkg/tear_ui.txt | hash does not recompute | the-window-says-why
+CLEAN   |
+CASE    | layout-binds-only-vars-the-manager-writes
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/tear-offline.xhtpm | l.xhtpm
+EXPECT_HAS | l.xhtpm | class="tear-window database-window" | the-window-class-is-the-generic-database-window-(no-renderer-C)
+EXPECT_HAS | l.xhtpm | ops/+x/tear_offline_manager.+x | the-module-is-the-C-manager
+EXPECT_LACKS | l.xhtpm | .sh' | NEGATIVE-no-action-calls-a-shell-script
+CLEAN   |
