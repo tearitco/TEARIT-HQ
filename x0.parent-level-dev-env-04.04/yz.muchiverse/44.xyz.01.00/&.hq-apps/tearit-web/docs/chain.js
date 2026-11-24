@@ -42,10 +42,10 @@
     rank: { E: { entry: 10, prize: 60, rival: 90 }, D: { entry: 20, prize: 130, rival: 125 }, C: { entry: 40, prize: 280, rival: 160 }, B: { entry: 80, prize: 600, rival: 200 }, A: { entry: 160, prize: 1300, rival: 245 }, S: { entry: 320, prize: 3000, rival: 295 } },
     items: { dumbbell: { cost: 30, n: 2 }, charm: { cost: 40, n: 20 }, elixir: { cost: 60, n: 0 } },
     facilities: { gym: { base: 100, max: 3 }, barn: { base: 80, max: 3 } },
-    restFat: 40, barnRest: 10, tiredHalf: 60, tiredMax: 100, statCap: 99, compFat: 20, roll: 40, ai: ['Gruff', 'Mira', 'Tobo', 'Vexa', 'Bram', 'Lune', 'Oko', 'Pip', 'Rask', 'Sable', 'Tamsin', 'Yuki'], maxPets: 16, maxActive: 6, cols: 12, rows: 8, blocked: [[1, 1], [10, 1]]  /* the ranch grid (hai-style: positions are rows); the gym stands on (1,1) and the barn on (10,1); at most maxActive pets are out at once, the rest are frozen in storage */
+    restFat: 40, barnRest: 10, tiredHalf: 60, tiredMax: 100, statCap: 99, compFat: 20, roll: 40, ai: ['Gruff', 'Mira', 'Tobo', 'Vexa', 'Bram', 'Lune', 'Oko', 'Pip', 'Rask', 'Sable', 'Tamsin', 'Yuki'], maxPets: 16, maxActive: 6, arena: { modes: { '1v1': { min: 2, max: 2 }, '2v2': { min: 4, max: 4 }, ffa: { min: 3, max: 8 } }, entry: 20, rake: 10, aiBase: 90, aiSpan: 40 }, cols: 12, rows: 8, blocked: [[1, 1], [10, 1]]  /* the ranch grid (hai-style: positions are rows); the gym stands on (1,1) and the barn on (10,1); at most maxActive pets are out at once, the rest are frozen in storage */
   };
-  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER', 'LIST', 'UNLIST', 'BUY', 'BUYITEM', 'USEITEM', 'GIVEITEM', 'CHALLENGE', 'MOVE'];
-  var RLEN = { FEED: 5, TRAIN: 5, REST: 4, COMPETE: 5, UPGRADE: 5, FREEZE: 4, THAW: 4, TRANSFER: 5, LIST: 6, UNLIST: 4, BUY: 5, BUYITEM: 5, USEITEM: 5, GIVEITEM: 6, CHALLENGE: 5, MOVE: 6 };
+  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER', 'LIST', 'UNLIST', 'BUY', 'BUYITEM', 'USEITEM', 'GIVEITEM', 'CHALLENGE', 'MOVE', 'ARENA', 'JOIN', 'LEAVE', 'FIGHT', 'FILL'];
+  var RLEN = { FEED: 5, TRAIN: 5, REST: 4, COMPETE: 5, UPGRADE: 5, FREEZE: 4, THAW: 4, TRANSFER: 5, LIST: 6, UNLIST: 4, BUY: 5, BUYITEM: 5, USEITEM: 5, GIVEITEM: 6, CHALLENGE: 5, MOVE: 6, ARENA: 5, JOIN: 5, LEAVE: 5, FIGHT: 4, FILL: 4 };
   function isVerb(v) { for (var i = 0; i < VERBS.length; i++) if (VERBS[i] === v) return true; return false; }
   function okId(s) { return /^[a-z0-9_-]{1,24}$/.test(s); }
   /* genes(seed, name): the same words always hatch the same pet (SHA-256 of "seed|name"; bytes pick species, six stats of 10..30, lifespan 120..180 weeks, look) */
@@ -64,26 +64,55 @@
     return { blocks: out }; }
   /* verify(text, cfg) -> { ok, height, work, balances, messages, pets, error, at } ; every rule the C chain enforces on receipt, plus MSG, FAUCET and the RANCH rows. */
   function verify(text, cfg) {
-    var c = cfgOf(cfg), P = parse(text), bal = {}, msgs = [], last = {}, pets = {}, minted = 0, work = 0, i, b, rows, j, f, r, why;
-    function fail(at, w) { return { ok: false, error: w, at: at, height: i, balances: bal, messages: msgs, pets: pets, work: work }; }
+    var c = cfgOf(cfg), P = parse(text), bal = {}, msgs = [], last = {}, pets = {}, arenas = {}, minted = 0, work = 0, i, b, rows, j, f, r, why;
+    function fail(at, w) { return { ok: false, error: w, at: at, height: i, balances: bal, messages: msgs, pets: pets, arenas: arenas, work: work }; }
     function spend(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; bal[name] = (bal[name] || 0) - amt; bal._ranch = (bal._ranch || 0) + amt; return ''; }
     function week(p) { p.age++; if (p.age >= p.life) p.retired = true; }
+    function spend2(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; bal[name] -= amt; return ''; }
     function addStat(p, s, n) { p.stats[s] = Math.min(RANCH.statCap, p.stats[s] + n); }
     function active(o) { var k, n = 0; for (k in pets) if (pets[k].owner === o && !pets[k].frozen) n++; return n; }
     function cellFree(x, y, self) { var k, bl = RANCH.blocked; if (x < 0 || y < 0 || x >= RANCH.cols || y >= RANCH.rows) return false; for (k = 0; k < bl.length; k++) if (bl[k][0] === x && bl[k][1] === y) return false; for (k in pets) if (pets[k] !== self && !pets[k].frozen && pets[k].x === x && pets[k].y === y) return false; return true; }
     function place(p) { var i, x, y; for (i = 0; i < RANCH.cols * RANCH.rows; i++) { x = (p.g.sx + i) % RANCH.cols; y = (p.g.sy + Math.floor((p.g.sx + i) / RANCH.cols)) % RANCH.rows; if (cellFree(x, y, p)) { p.x = x; p.y = y; return; } } p.x = 0; p.y = 0; }
+    /* ---- the ARENA: 1v1, 2v2 and free-for-all battles with pets or default entities (AI). Rows: ARENA|id|mode|owner|ts  JOIN|arena|pet|owner|ts  LEAVE|arena|pet|owner|ts  FILL|arena|owner|ts  FIGHT|arena|owner|ts.
+     * Entry fees go into the arena's pot, the house keeps a rake, the rest is paid out by the result (deterministic: power - tired/2 + a roll from the pet's seed). A default entity that wins pays its share to the house pool. ---- */
+    function arenaRow(f) {
+      var v = f[0], id = f[1], a, md, p, q, i, k, m, sc, ord, net, rake, wins, shares, total;
+      if (v === 'ARENA') { if (f.length !== 5) return 'bad ARENA row'; if (!okId(id) || id.charAt(0) === '_') return 'bad arena name'; if (arenas[id]) return 'arena name already used'; if (!RANCH.arena.modes[f[2]]) return 'unknown mode'; if (!okId(f[3])) return 'bad owner';
+        arenas[id] = { id: id, mode: f[2], owner: f[3], members: [], pot: 0, open: true, winners: [], scores: [] }; return ''; }
+      a = arenas[id]; if (!a) return 'no such arena'; if (f.length !== RLEN[v]) return 'bad ' + v + ' row'; if (!a.open) return 'that arena is closed'; md = RANCH.arena.modes[a.mode];
+      function inArena(pn) { for (var j = 0; j < a.members.length; j++) if (a.members[j].name === pn) return true; return false; }
+      function owns() { var j, o = f[f.length - 2]; if (o === a.owner) return true; for (j = 0; j < a.members.length; j++) if (!a.members[j].ai && pets[a.members[j].name].owner === o) return true; return false; }
+      if (v === 'JOIN') { p = pets[f[2]]; if (!p) return 'no such pet'; if (f[3] !== p.owner) return 'not the owner of ' + p.name; if (p.frozen) return p.name + ' is frozen'; if (p.retired) return p.name + ' has retired'; if (p.fat >= RANCH.tiredMax) return p.name + ' is too tired';
+        for (k in arenas) if (arenas[k].open) for (i = 0; i < arenas[k].members.length; i++) if (arenas[k].members[i].name === p.name) return p.name + ' is already in an arena';
+        if (a.members.length >= md.max) return 'the arena is full'; why = spend2(p.name, RANCH.arena.entry); if (why) return why; a.pot += RANCH.arena.entry; a.members.push({ name: p.name, ai: false }); return ''; }
+      if (v === 'LEAVE') { p = pets[f[2]]; if (!p) return 'no such pet'; if (f[3] !== p.owner) return 'not the owner of ' + p.name; if (!inArena(p.name)) return p.name + ' is not in that arena'; for (i = 0; i < a.members.length; i++) if (a.members[i].name === p.name) a.members.splice(i, 1); a.pot -= RANCH.arena.entry; bal[p.name] = (bal[p.name] || 0) + RANCH.arena.entry; return ''; }
+      if (v === 'FILL') { if (f[2] !== a.owner) return 'only the arena owner can fill it'; var want = Math.max(md.min, 2); if (a.members.length >= want) return 'the arena is already full enough'; var n0 = 0; for (i = 0; i < a.members.length; i++) if (a.members[i].ai) n0++;
+        while (a.members.length < want) { n0++; var an = 'ai-' + n0, h = sha256('ai|' + id + '|' + an); a.members.push({ name: an, ai: true, power: RANCH.arena.aiBase + parseInt(h.substr(0, 2), 16) % RANCH.arena.aiSpan }); } return ''; }
+      /* FIGHT */ if (!owns()) return 'you are not in that arena'; var reals = 0; for (i = 0; i < a.members.length; i++) if (!a.members[i].ai) reals++; if (!reals) return 'no pets in the arena';
+      if (a.mode === 'ffa' ? a.members.length < md.min : a.members.length !== md.max) return 'the arena needs ' + (a.mode === 'ffa' ? 'at least ' + md.min : md.max) + ' fighters';
+      sc = []; for (i = 0; i < a.members.length; i++) { m = a.members[i]; if (m.ai) sc.push(m.power + parseInt(sha256('ai|' + id + '|' + m.name + '|roll').substr(0, 2), 16) % RANCH.roll);
+        else { q = pets[m.name]; sc.push(power(q) - Math.floor(q.fat / 2) + parseInt(sha256(q.seed + '|' + id + '|' + m.name + '|arena').substr(0, 2), 16) % RANCH.roll); } }
+      rake = Math.floor(a.pot * RANCH.arena.rake / 100); net = a.pot - rake; bal._ranch = (bal._ranch || 0) + rake; shares = []; wins = [];
+      if (a.mode === '1v1') { k = sc[1] > sc[0] ? 1 : 0; wins = [k]; shares = [net]; }
+      else if (a.mode === '2v2') { k = (sc[1] + sc[3]) > (sc[0] + sc[2]) ? 1 : 0; wins = [k, k + 2]; shares = [Math.floor(net / 2) + (net % 2), Math.floor(net / 2)]; }
+      else { ord = []; for (i = 0; i < sc.length; i++) ord.push(i); ord.sort(function (x, y) { return sc[y] - sc[x] || x - y; }); wins = ord.slice(0, 3); var s1 = Math.floor(net * 50 / 100), s2 = Math.floor(net * 30 / 100), s3 = Math.floor(net * 20 / 100); shares = [s1 + (net - s1 - s2 - s3), s2, s3]; if (wins.length < 3) { shares = [net - (wins.length > 1 ? s2 : 0)]; if (wins.length > 1) shares = [net - s2, s2]; } }
+      a.winners = []; for (i = 0; i < wins.length; i++) { m = a.members[wins[i]]; a.winners.push(m.name); if (m.ai) bal._ranch = (bal._ranch || 0) + shares[i]; else { bal[m.name] = (bal[m.name] || 0) + shares[i]; pets[m.name].arenaW++; } }
+      for (i = 0; i < a.members.length; i++) { m = a.members[i]; if (!m.ai) { q = pets[m.name]; if (a.winners.indexOf(m.name) < 0) q.arenaL++; q.fat = Math.min(RANCH.tiredMax, q.fat + RANCH.compFat); week(q); } }
+      a.scores = sc; a.pot = 0; a.open = false; return '';
+    }
     /* one ranch row: returns '' when allowed (and applied) else the reason. f = fields of the row. Row shapes (owner is always the second-last field, ts the last):
      *   PET|name|seed words|owner|ts            FEED|pet|food|owner|ts     TRAIN|pet|drill|owner|ts     REST|pet|owner|ts      COMPETE|pet|rank|owner|ts   UPGRADE|pet|facility|owner|ts
      *   FREEZE|pet|owner|ts  THAW|pet|owner|ts  TRANSFER|pet|newowner|owner|ts
      *   LIST|pet|price|payee pet|owner|ts       UNLIST|pet|owner|ts        BUY|pet|payer pet|buyer owner|ts  (the payer pays the price to the payee, the pet changes owner)
      *   BUYITEM|pet|item|owner|ts   USEITEM|pet|item|owner|ts   GIVEITEM|pet|item|to pet|owner|ts      CHALLENGE|pet|other pet|owner|ts */
     function ranch(f) {
+      if (f[0] === 'ARENA' || f[0] === 'JOIN' || f[0] === 'LEAVE' || f[0] === 'FIGHT' || f[0] === 'FILL') return arenaRow(f);
       var v = f[0], p, g, nm = f[1], len = RLEN[v], d, e, why, cost, sc, rv, prize, q, k, cnt;
       if (v === 'PET') {
         if (f.length !== 5) return 'bad PET row'; if (!okId(nm) || nm.charAt(0) === '_') return 'bad pet name'; if (pets[nm]) return 'name already used';
         if (!f[2] || f[2].length > 40) return 'bad seed words'; if (!okId(f[3])) return 'bad owner';
         cnt = 0; for (k in pets) if (pets[k].owner === f[3]) cnt++; if (cnt >= RANCH.maxPets) return 'too many pets for ' + f[3]; if (active(f[3]) >= RANCH.maxActive) return 'six pets are already out: freeze one first';
-        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0, best: -1, items: {}, buffT: 0, buffF: 0, price: 0, payee: '', pvpW: 0, pvpL: 0, x: 0, y: 0 }; place(pets[nm]); return '';
+        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0, best: -1, items: {}, buffT: 0, buffF: 0, price: 0, payee: '', pvpW: 0, pvpL: 0, arenaW: 0, arenaL: 0, x: 0, y: 0 }; place(pets[nm]); return '';
       }
       p = pets[nm]; if (!p) return 'no such pet'; if (f.length !== len) return 'bad ' + v + ' row';
       if (v === 'BUY') { q = pets[f[2]]; if (!(p.price > 0)) return nm + ' is not for sale'; if (!q) return 'no such paying pet'; if (q.owner !== f[3]) return 'the paying pet is not yours'; if (p.owner === f[3]) return 'you already own ' + nm; if (!p.frozen && active(f[3]) >= RANCH.maxActive) return 'six pets are already out: freeze one first';
@@ -127,7 +156,7 @@
         else if (f[0] === 'MSG') { if (f.length !== 5) return fail(i, 'bad MSG row'); msgs.push({ block: i, from: f[1], channel: f[2], text: f[3], ts: +f[4] }); }
         else { why = ranch(f); if (why) return fail(i, why); } }
       r = reward(i, c); if (minted + r > c.supply) r = c.supply - minted; minted += r; bal[b.miner] = (bal[b.miner] || 0) + r; work += Math.pow(16, c.zeros); }
-    return { ok: true, height: P.blocks.length, work: work, balances: bal, messages: msgs, pets: pets, tip: P.blocks.length ? P.blocks[P.blocks.length - 1].hash : ZERO }; }
+    return { ok: true, height: P.blocks.length, work: work, balances: bal, messages: msgs, pets: pets, arenas: arenas, tip: P.blocks.length ? P.blocks[P.blocks.length - 1].hash : ZERO }; }
   function lineOf(b) { return 'BLOCK|' + b.index + '|' + b.prev + '|' + b.nonce + '|' + b.hash + '|' + b.ts + '|' + b.miner + '|' + b.txl; }
   /* mine(text, miner, rows, ts, cfg, maxTries) -> { ok, line, tries } : rows are strings ; ts is passed in so tests are deterministic. */
   function mine(text, miner, rows, ts, cfg, maxTries) { var c = cfgOf(cfg), P = parse(text), n = P.blocks ? P.blocks.length : 0, prev = n ? P.blocks[n - 1].hash : ZERO, txl = rows.join(';'), nonce = 0, h;

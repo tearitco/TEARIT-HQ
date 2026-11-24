@@ -21,7 +21,7 @@ var TA = (function () {
   function header(on) {
     var h = $('hdr'); if (!h) return;
     function a(href, label, k) { return '<a href="' + href + '"' + (on === k ? ' class="on"' : '') + '>' + label + '</a>'; }
-    h.innerHTML = '<img src="img/logo.png" alt="TEAR-IT"><b>TEAR-IT RANCH</b><nav>' + a('index.html', 'Home', 'home') + a('ranch.html', 'My ranch', 'ranch') + a('market.html', 'Market', 'market') + a('chain.html', 'The chain', 'chain') + '<a href="https://github.com/tearitco/tearit-web">Source</a></nav>';
+    h.innerHTML = '<img src="img/logo.png" alt="TEAR-IT"><b>TEAR-IT RANCH</b><nav>' + a('index.html', 'Home', 'home') + a('ranch.html', 'My ranch', 'ranch') + a('market.html', 'Market', 'market') + a('arena.html', 'Arena', 'arena') + a('chain.html', 'The chain', 'chain') + '<a href="https://github.com/tearitco/tearit-web">Source</a></nav>';
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function petImg(g) { return 'img/pets/' + g.speciesIx + '.png'; }

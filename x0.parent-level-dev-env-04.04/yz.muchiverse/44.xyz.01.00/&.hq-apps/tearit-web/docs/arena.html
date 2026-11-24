@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Arena - TEAR-IT Ranch</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div><main>
+<div class="card"><h2>The Arena</h2><p>Big battles on the real Board-game map: <b>1v1</b>, <b>2v2</b> teams, and <b>free for all</b> (up to 8). Bring your own pets or fill the empty places with the default fighters. Entry fees make the pot, the house keeps 10 percent, the winners split the rest.</p><div id="msg"></div></div>
+<div class="ranch" style="margin-top:14px;grid-template-columns:340px 1fr">
+ <div class="card"><h3>Open an arena</h3><select id="mode" style="width:auto"><option value="1v1">1v1 (two fighters)</option><option value="2v2">2v2 (two teams)</option><option value="ffa">free for all (3 to 8)</option></select> <button id="make">Open</button>
+  <h3>Arenas</h3><div id="alist"></div></div>
+ <div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b id="aname">no arena picked</b> <span id="ainfo" class="dim"></span> <button id="v2" class="sec">2D</button><button id="v3" class="sec">3D tilt</button></div>
+  <div id="stage" style="perspective:1100px;overflow:hidden;border-radius:10px;border:2px solid var(--gold2);margin-top:6px;background:#0b0820"><canvas id="cv" width="864" height="624" style="width:100%;display:block;transform-origin:50% 60%;transition:transform .4s"></canvas></div>
+  <div class="acts" style="margin-top:8px"><button id="join">Join with my pet</button><button id="leave" class="sec">Leave</button><button id="fill" class="sec">Fill with default fighters</button><button id="fight">FIGHT!</button></div><div id="res"></div>
+  <small class="dim">The picture is the real RPG Maker map (Map063, the 42x52 Board game version); the tilt is a view of that same picture. The house 3D engine board for the arena is the next step.</small></div></div>
+</main><script src="chain.js"></script><script src="app.js"></script><script>
+TA.header('arena');var $=TA.$,R=TearChain.RANCH,view=localStorage.getItem('tearit_aview')||'2d',pick=localStorage.getItem('tearit_arena')||'',img=new Image(),aiImgs=[],pimgs={};
+img.onload=function(){draw()};img.src='img/arena-map.jpg';for(var i=0;i<8;i++){var im=new Image();im.onload=function(){draw()};im.src='img/ai/'+i+'.png';aiImgs.push(im)}for(i=0;i<10;i++){var pi=new Image();pi.onload=function(){draw()};pi.src='img/pets/'+i+'.png';pimgs[i]=pi}
+/* where fighters stand: cell = (col,row) on the 24x22 floor (floor starts at pixel 144,48 of the cropped map, 24 px per tile) */
+var SP={'1v1':[[3,11],[20,11]],'2v2':[[3,6],[20,6],[3,16],[20,16]],ffa:[[3,3],[12,2],[20,3],[21,11],[20,19],[12,20],[3,19],[2,11]]};
+function msg(t,ok){$('msg').textContent=t;$('msg').className=ok?'ok':'bad'}
+function act(rows,okText){var r=TA.act('_ranch',rows);msg(r.ok?okText:'refused: '+r.why,r.ok);draw();return r}
+function row(v,a,x){return v+'|'+a+'|'+(x?x+'|':'')+TA.owner()+'|'+TA.ts()}
+function draw(){var s=TA.state(),ar=(s.arenas||{}),k,h='',a=ar[pick],g=$('cv').getContext('2d'),i;
+ for(k in ar){var q=ar[k];h+='<div class="chip" style="width:auto;flex-direction:row;gap:8px;margin:4px 0'+(k===pick?';border-color:#d9482f;background:#ffe9b8':'')+'" data-arena="'+k+'"><b>'+TA.esc(k)+'</b><small>'+q.mode+' &middot; '+q.members.length+' in &middot; '+(q.open?'open, pot '+q.pot:'finished')+'</small></div>'}
+ $('alist').innerHTML=h||'<span class="dim">no arenas yet: open one</span>';
+ g.clearRect(0,0,864,624);if(img.complete&&img.width)g.drawImage(img,0,0);
+ $('cv').style.transform=view==='3d'?'rotateX(42deg) scale(.96)':'none';$('v2').style.opacity=view==='2d'?1:.5;$('v3').style.opacity=view==='3d'?1:.5;
+ if(!a){$('aname').textContent='no arena picked';$('ainfo').textContent='';$('res').innerHTML='';return}
+ $('aname').textContent=a.id;$('ainfo').textContent=a.mode+' | pot '+a.pot+' | '+(a.open?'open':'finished')+' | owner '+a.owner;
+ var pos=SP[a.mode]||SP.ffa;g.textAlign='center';g.font='bold 14px Georgia';
+ a.members.forEach(function(m,j){var c=pos[j%pos.length],px=144+c[0]*24+12,py=48+c[1]*24+24,im2,w=60,hh=84,team=a.mode==='2v2'?(j%2?'#e0453a':'#3a8fe0'):'#ffd77a';
+  if(m.ai){im2=aiImgs[j%8];w=hh=72}else{var p=s.pets[m.name];im2=pimgs[p?p.g.speciesIx:0]}
+  g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(px,py,w/2,9,0,0,7);g.fill();g.strokeStyle=team;g.lineWidth=3;g.beginPath();g.ellipse(px,py,w/2+3,11,0,0,7);g.stroke();
+  if(im2&&im2.complete&&im2.width)g.drawImage(im2,px-w/2,py-hh+6,w,hh);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;g.strokeText(m.name,px,py+26);g.fillText(m.name,px,py+26);
+  if(a.scores&&a.scores.length){var win=a.winners.indexOf(m.name)>=0;g.fillStyle=win?'#ffd77a':'#ddd';g.strokeText((win?'WIN ':'')+a.scores[j],px,py-hh-2);g.fillText((win?'WIN ':'')+a.scores[j],px,py-hh-2)}});
+ $('res').innerHTML=!a.open&&a.winners.length?'<p class="ok">winners: <b>'+a.winners.map(TA.esc).join(', ')+'</b> &middot; scores '+a.scores.join(', ')+'</p>':'';
+ var cur=TA.curPet(),mine=TA.owner();$('join').disabled=!a.open||!cur;$('fill').disabled=!a.open||a.owner!==mine;$('fight').disabled=!a.open;$('leave').disabled=!a.open||!a.members.some(function(m){return m.name===cur})}
+document.addEventListener('click',function(e){var c=e.target.closest('[data-arena]');if(c){pick=c.dataset.arena;localStorage.setItem('tearit_arena',pick);draw()}});
+$('make').onclick=function(){var o=TA.owner();if(!o){msg('set your owner name on the landing page first',false);return}var s=TA.state(),n=1,id;do{id='arena'+(n++)}while(s.arenas&&s.arenas[id]);var r=act(['ARENA|'+id+'|'+$('mode').value+'|'+o+'|'+TA.ts()],'arena '+id+' is open');if(r.ok){pick=id;localStorage.setItem('tearit_arena',pick);draw()}};
+$('join').onclick=function(){if(pick)act([row('JOIN',pick,TA.curPet())],TA.curPet()+' joined '+pick+' (entry fee paid)')};
+$('leave').onclick=function(){if(pick)act([row('LEAVE',pick,TA.curPet())],'left, the entry fee came back')};
+$('fill').onclick=function(){if(pick)act([row('FILL',pick)],'default fighters stepped in')};
+$('fight').onclick=function(){if(pick)act([row('FIGHT',pick)],'the fight is over: see the scores on the map')};
+$('v2').onclick=function(){view='2d';localStorage.setItem('tearit_aview',view);draw()};$('v3').onclick=function(){view='3d';localStorage.setItem('tearit_aview',view);draw()};draw();
+</script></body></html>
