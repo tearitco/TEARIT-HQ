@@ -1,5 +1,5 @@
 /*nbjs-script-boundary*/
-/* tearit-web chain.js: the browser side of the pal-chain (experimental web chain, owner 2026-11-24: "keep it experimental, signing can wait").
+/* tearit-web chain.js: the browser side of the pal-chain AND the ranch rules (experimental web chain, owner 2026-11-24: "keep it experimental, signing can wait"; pets are wallets, Monster Rancher style).
  * ONE pure ES5 file (no DOM, no modules) so the same bytes run in the page, in a Web Worker and in the house's JS runner (harness case web_chain).
  * Block line (same as 041.pal-chain/chain_miner.c): BLOCK|index|prev_hash|nonce|hash|timestamp|miner|tx_list ; hash = SHA-256 of "index|prev|nonce|tx_list".
  * Rows inside tx_list: TX|from|to|amount|ts|id  (balance checked)  MSG|from|channel|text|ts  (social row)  FAUCET|wallet|amount|ts  (web-chain rule: <=1000, 3600 s apart per wallet).
@@ -32,18 +32,66 @@
   function cfgOf(c) { var o = {}, k; for (k in DEF) o[k] = (c && c[k] !== undefined) ? c[k] : DEF[k]; return o; }
   function reward(i, c) { c = cfgOf(c); var e = Math.floor(i / c.halving); return e > 40 ? 0 : Math.floor(c.initial / Math.pow(2, e)); }
   function meets(h, z) { for (var i = 0; i < z; i++) if (h.charAt(i) !== '0') return false; return true; }
-  function splitRows(txl) { var out = [], re = /(TX|MSG|FAUCET)\|/g, idx = [], m; while ((m = re.exec(txl))) idx.push(m.index);
-    for (var i = 0; i < idx.length; i++) out.push(txl.slice(idx[i], i + 1 < idx.length ? idx[i + 1] : txl.length).replace(/[;,\s]+$/, '')); return out; }
+  /* ---- THE RANCH: data, not code. Every number of the game lives in this one table (the pet rules below only read it). Placeholder art/names: our own art comes later. ---- */
+  var RANCH = {
+    species: ['Fire', 'Water', 'Earth', 'Wind', 'Light', 'Dark', 'Lightning', 'Ice', 'Cosmic', 'Celestial'],
+    stats: ['LIF', 'POW', 'INT', 'SKI', 'SPD', 'DEF'],
+    foods: { bread: { cost: 5, fat: 5, stat: '', n: 0 }, meat: { cost: 20, fat: 15, stat: 'POW', n: 1 }, fruit: { cost: 12, fat: 10, stat: 'INT', n: 1 }, tonic: { cost: 50, fat: 30, stat: 'LIF', n: 2 } },
+    drills: { sprint: { stat: 'SPD', cost: 10, gain: 3, fat: 12 }, lift: { stat: 'POW', cost: 10, gain: 3, fat: 12 }, study: { stat: 'INT', cost: 10, gain: 3, fat: 8 }, spar: { stat: 'SKI', cost: 15, gain: 3, fat: 15 }, guard: { stat: 'DEF', cost: 10, gain: 3, fat: 10 }, jog: { stat: 'LIF', cost: 10, gain: 2, fat: 6 } },
+    cups: { rookie: { entry: 10, prize: 60, rival: 90 }, town: { entry: 30, prize: 150, rival: 130 }, grand: { entry: 80, prize: 500, rival: 190 } },
+    facilities: { gym: { base: 100, max: 3 }, barn: { base: 80, max: 3 } },
+    restFat: 40, barnRest: 10, tiredHalf: 60, tiredMax: 100, statCap: 99, compFat: 20, roll: 40, maxPets: 8
+  };
+  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER'];
+  function isVerb(v) { for (var i = 0; i < VERBS.length; i++) if (VERBS[i] === v) return true; return false; }
+  function okId(s) { return /^[a-z0-9_-]{1,24}$/.test(s); }
+  /* genes(seed, name): the same words always hatch the same pet (SHA-256 of "seed|name"; bytes pick species, six stats of 10..30, lifespan 120..180 weeks, look) */
+  function genes(seed, name) {
+    var h = sha256(String(seed) + '|' + name), b = [], i, st = {};
+    for (i = 0; i < 32; i++) b.push(parseInt(h.substr(i * 2, 2), 16));
+    for (i = 0; i < 6; i++) st[RANCH.stats[i]] = 10 + b[i] % 21;
+    return { species: RANCH.species[b[6] % RANCH.species.length], speciesIx: b[6] % RANCH.species.length, stats: st, life: 120 + b[7] % 61, hue: Math.round(b[8] * 360 / 256), eyes: b[9] % 4, horns: b[10] % 3, spots: b[11] % 4, hash: h };
+  }
+  function power(p) { return p.stats.POW + p.stats.INT + p.stats.SKI + p.stats.SPD + p.stats.DEF; }
+  function splitRows(txl) { var out = [], parts = String(txl).split(';'), i, r; for (i = 0; i < parts.length; i++) { r = parts[i].replace(/^\s+|\s+$/g, ''); if (r) out.push(r); } return out; }
   function cleanText(s) { return String(s).replace(/[|;\r\n]/g, ' ').slice(0, 280); }
   function parse(text) { var lines = String(text).split('\n'), out = [], i, p;
     for (i = 0; i < lines.length; i++) { if (!lines[i]) continue; p = lines[i].split('|'); if (p[0] !== 'BLOCK' || p.length < 8) return { error: 'line ' + (i + 1) + ' is not a BLOCK row' };
       out.push({ index: +p[1], prev: p[2], nonce: p[3], hash: p[4], ts: +p[5], miner: p[6], txl: p.slice(7).join('|') }); }
     return { blocks: out }; }
-  /* verify(text, cfg) -> { ok, height, work, balances, messages, error, at } ; every rule the C chain enforces on receipt, plus MSG and FAUCET. */
+  /* verify(text, cfg) -> { ok, height, work, balances, messages, pets, error, at } ; every rule the C chain enforces on receipt, plus MSG, FAUCET and the RANCH rows. */
   function verify(text, cfg) {
-    var c = cfgOf(cfg), P = parse(text), bal = {}, msgs = [], last = {}, minted = 0, work = 0, i, b, rows, j, f, r;
-    function fail(at, why) { return { ok: false, error: why, at: at, height: i, balances: bal, messages: msgs, work: work }; }
-    if (P.error) return { ok: false, error: P.error, at: 0, height: 0, balances: bal, messages: msgs, work: 0 };
+    var c = cfgOf(cfg), P = parse(text), bal = {}, msgs = [], last = {}, pets = {}, minted = 0, work = 0, i, b, rows, j, f, r, why;
+    function fail(at, w) { return { ok: false, error: w, at: at, height: i, balances: bal, messages: msgs, pets: pets, work: work }; }
+    function spend(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; bal[name] = (bal[name] || 0) - amt; bal._ranch = (bal._ranch || 0) + amt; return ''; }
+    function week(p) { p.age++; if (p.age >= p.life) p.retired = true; }
+    function addStat(p, s, n) { p.stats[s] = Math.min(RANCH.statCap, p.stats[s] + n); }
+    /* one ranch row: returns '' when allowed (and applied) else the reason. f = fields of the row. */
+    function ranch(f) {
+      var v = f[0], p, g, nm = f[1], ownerAt = { FEED: 3, TRAIN: 3, COMPETE: 3, UPGRADE: 3, TRANSFER: 3, REST: 2, FREEZE: 2, THAW: 2 }[v], e, d, fcl, cost, sc, rv, prize;
+      if (v === 'PET') {
+        if (f.length !== 5) return 'bad PET row'; if (!okId(nm) || nm.charAt(0) === '_') return 'bad pet name'; if (pets[nm]) return 'name already used';
+        if (!f[2] || f[2].length > 40) return 'bad seed words'; if (!okId(f[3])) return 'bad owner';
+        var cnt = 0, k; for (k in pets) if (pets[k].owner === f[3]) cnt++; if (cnt >= RANCH.maxPets) return 'too many pets for ' + f[3];
+        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0 }; return '';
+      }
+      p = pets[nm]; if (!p) return 'no such pet'; if (f.length !== ownerAt + 2) return 'bad ' + v + ' row'; if (f[ownerAt] !== p.owner) return 'not the owner of ' + nm;
+      if (v === 'THAW') { if (!p.frozen) return 'not frozen'; p.frozen = false; return ''; }
+      if (v === 'FREEZE') { if (p.frozen) return 'already frozen'; p.frozen = true; return ''; }
+      if (v === 'TRANSFER') { if (!okId(f[2])) return 'bad new owner'; p.owner = f[2]; return ''; }
+      if (p.frozen) return nm + ' is frozen'; if (p.retired) return nm + ' has retired';
+      if (v === 'FEED') { d = RANCH.foods[f[2]]; if (!d) return 'unknown food'; why = spend(nm, d.cost); if (why) return why; p.fat = Math.max(0, p.fat - d.fat); if (d.stat) addStat(p, d.stat, d.n); week(p); return ''; }
+      if (v === 'REST') { p.fat = Math.max(0, p.fat - RANCH.restFat - p.fac.barn * RANCH.barnRest); week(p); return ''; }
+      if (v === 'TRAIN') { d = RANCH.drills[f[2]]; if (!d) return 'unknown drill'; if (p.fat >= RANCH.tiredMax) return nm + ' is too tired'; why = spend(nm, d.cost); if (why) return why;
+        var gain = p.fat >= RANCH.tiredHalf ? Math.floor(d.gain / 2) : d.gain + p.fac.gym; addStat(p, d.stat, gain); p.fat = Math.min(RANCH.tiredMax, p.fat + d.fat); week(p); return ''; }
+      if (v === 'COMPETE') { e = RANCH.cups[f[2]]; if (!e) return 'unknown cup'; if (p.fat >= RANCH.tiredMax) return nm + ' is too tired'; why = spend(nm, e.entry); if (why) return why;
+        rv = parseInt(sha256(p.seed + '|' + nm + '|' + f[2] + '|' + p.age).substr(0, 2), 16) % RANCH.roll; sc = power(p) - Math.floor(p.fat / 2) + rv; p.cups++;
+        if (sc >= e.rival) { prize = Math.min(e.prize, bal._ranch || 0); bal._ranch -= prize; bal[nm] = (bal[nm] || 0) + prize; p.wins++; }
+        p.fat = Math.min(RANCH.tiredMax, p.fat + RANCH.compFat); week(p); return ''; }
+      if (v === 'UPGRADE') { fcl = RANCH.facilities[f[2]]; if (!fcl) return 'unknown facility'; if (p.fac[f[2]] >= fcl.max) return 'already at the top level'; cost = fcl.base * (p.fac[f[2]] + 1); why = spend(nm, cost); if (why) return why; p.fac[f[2]]++; return ''; }
+      return 'unknown row';
+    }
+    if (P.error) return { ok: false, error: P.error, at: 0, height: 0, balances: bal, messages: msgs, pets: pets, work: 0 };
     for (i = 0; i < P.blocks.length; i++) { b = P.blocks[i];
       if (b.index !== i) return fail(i, 'index ' + b.index + ' expected ' + i);
       if (b.prev !== (i === 0 ? ZERO : P.blocks[i - 1].hash)) return fail(i, 'prev_hash does not match the tip');
@@ -51,13 +99,15 @@
       if (!meets(b.hash, c.zeros)) return fail(i, 'difficulty not met');
       rows = splitRows(b.txl);
       for (j = 0; j < rows.length; j++) { f = rows[j].split('|');
+        if (!isVerb(f[0])) return fail(i, 'unknown row ' + f[0]);
         if (f[0] === 'TX') { var amt = +f[3]; if (!(amt > 0) || Math.floor(amt) !== amt) return fail(i, 'bad amount'); if ((bal[f[1]] || 0) < amt) return fail(i, 'insufficient balance for ' + f[1]); bal[f[1]] -= amt; bal[f[2]] = (bal[f[2]] || 0) + amt; }
         else if (f[0] === 'FAUCET') { var fa = +f[2], ft = +f[3]; if (!(fa > 0) || fa > c.faucetMax) return fail(i, 'faucet amount over the cap'); if (last[f[1]] !== undefined && ft - last[f[1]] < c.faucetGap) return fail(i, 'faucet cooldown'); last[f[1]] = ft; bal[f[1]] = (bal[f[1]] || 0) + fa; }
-        else if (f[0] === 'MSG') { if (f.length !== 5) return fail(i, 'bad MSG row'); msgs.push({ block: i, from: f[1], channel: f[2], text: f[3], ts: +f[4] }); } }
+        else if (f[0] === 'MSG') { if (f.length !== 5) return fail(i, 'bad MSG row'); msgs.push({ block: i, from: f[1], channel: f[2], text: f[3], ts: +f[4] }); }
+        else { why = ranch(f); if (why) return fail(i, why); } }
       r = reward(i, c); if (minted + r > c.supply) r = c.supply - minted; minted += r; bal[b.miner] = (bal[b.miner] || 0) + r; work += Math.pow(16, c.zeros); }
-    return { ok: true, height: P.blocks.length, work: work, balances: bal, messages: msgs, tip: P.blocks.length ? P.blocks[P.blocks.length - 1].hash : ZERO }; }
+    return { ok: true, height: P.blocks.length, work: work, balances: bal, messages: msgs, pets: pets, tip: P.blocks.length ? P.blocks[P.blocks.length - 1].hash : ZERO }; }
   function lineOf(b) { return 'BLOCK|' + b.index + '|' + b.prev + '|' + b.nonce + '|' + b.hash + '|' + b.ts + '|' + b.miner + '|' + b.txl; }
-  /* mine(text, miner, rows, ts, cfg, maxTries) -> { ok, line, tries } : rows are strings (TX|..., MSG|..., FAUCET|...) ; ts is passed in so tests are deterministic. */
+  /* mine(text, miner, rows, ts, cfg, maxTries) -> { ok, line, tries } : rows are strings ; ts is passed in so tests are deterministic. */
   function mine(text, miner, rows, ts, cfg, maxTries) { var c = cfgOf(cfg), P = parse(text), n = P.blocks ? P.blocks.length : 0, prev = n ? P.blocks[n - 1].hash : ZERO, txl = rows.join(';'), nonce = 0, h;
     maxTries = maxTries || 5000000; for (; nonce < maxTries; nonce++) { h = sha256(n + '|' + prev + '|' + nonce + '|' + txl); if (meets(h, c.zeros)) return { ok: true, tries: nonce + 1, line: lineOf({ index: n, prev: prev, nonce: nonce, hash: h, ts: ts, miner: miner, txl: txl }) }; }
     return { ok: false, tries: nonce }; }
@@ -67,16 +117,15 @@
     if (!vb.ok) return { ok: true, text: a, winner: 'a', reason: 'b rejected: ' + vb.error };
     if (!va.ok) return { ok: true, text: b, winner: 'b', reason: 'a rejected: ' + va.error };
     return vb.work > va.work ? { ok: true, text: b, winner: 'b', reason: 'more work' } : { ok: true, text: a, winner: 'a', reason: va.work === vb.work ? 'tie keeps a' : 'more work' }; }
-  /* applyRows(text, miner, rows, ts, cfg): the STEWARD rule. Each submitted row is tried ALONE on top of the chain (so one bad row never blocks the others);
-   * accepted rows are mined into ONE block. Returns { text, accepted:[rows], rejected:[{row,why}], mined:bool }. A row must be TX|, MSG| or FAUCET| and <= 400 chars. */
+  /* applyRows(text, miner, rows, ts, cfg): the STEWARD rule. Each submitted row is tried ALONE on top of the chain (one bad row never blocks the others); accepted rows are mined into ONE block. */
   function applyRows(text, miner, rows, ts, cfg) {
     var good = [], bad = [], i, cur = text, m, v;
     for (i = 0; i < rows.length; i++) { var r = String(rows[i]).replace(/[\r\n]+/g, ' ').trim();
-      if (!/^(TX|MSG|FAUCET)\|/.test(r) || r.length > 400 || r.indexOf(';') >= 0) { bad.push({ row: r, why: 'not an allowed row' }); continue; }
+      if (!isVerb(r.split('|')[0]) || r.length > 400 || r.indexOf(';') >= 0) { bad.push({ row: r, why: 'not an allowed row' }); continue; }
       m = mine(cur, miner, good.concat([r]), ts, cfg, 4000000); if (!m.ok) { bad.push({ row: r, why: 'mining gave up' }); continue; }
       v = verify(cur + m.line + '\n', cfg); if (!v.ok) { bad.push({ row: r, why: v.error }); continue; } good.push(r); }
     if (!good.length) return { text: text, accepted: [], rejected: bad, mined: false };
     m = mine(text, miner, good, ts, cfg, 4000000); return { text: text + m.line + '\n', accepted: good, rejected: bad, mined: true }; }
   function messages(text, channel, cfg) { var v = verify(text, cfg), o = [], i; if (!v.ok) return o; for (i = 0; i < v.messages.length; i++) if (!channel || v.messages[i].channel === channel) o.push(v.messages[i]); return o; }
-  root.TearChain = { sha256: sha256, verify: verify, mine: mine, merge: merge, applyRows: applyRows, messages: messages, reward: reward, cleanText: cleanText, ZERO: ZERO, DEF: DEF };
+  root.TearChain = { sha256: sha256, verify: verify, mine: mine, merge: merge, applyRows: applyRows, messages: messages, reward: reward, cleanText: cleanText, genes: genes, power: power, okId: okId, RANCH: RANCH, VERBS: VERBS, ZERO: ZERO, DEF: DEF };
 })(typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : this));

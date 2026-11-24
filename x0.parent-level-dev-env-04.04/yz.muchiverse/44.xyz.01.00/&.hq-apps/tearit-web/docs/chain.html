@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The chain - TEAR-IT Ranch</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div><main>
+<div class="card"><h2>The chain</h2><p>Every pet, coin and message here is a row in one file that lives in your browser. Every block is re-checked here, with the same rules as our C tools. Nothing leaves your machine until you export it.</p>
+ <div id="status"></div><p><button id="export">Download my copy</button> <input type="file" id="import" style="width:auto"> <button id="fetch" class="sec">Fetch latest published copy</button> <button id="reset" class="sec">Start over</button></p>
+ <small>Import and fetch both go through the fork rule: both copies are verified and the one with the most work wins (a tie keeps yours).</small><div id="mergeout"></div></div>
+<div class="card" style="margin-top:14px"><h2>Coins</h2><div id="coins"></div>
+ <p>Send from <select id="from" style="width:auto"></select> to <input id="to" placeholder="wallet or pet" style="width:160px"> <input id="amt" placeholder="amount" style="width:90px"> <button id="send">Send</button> <span id="sendout"></span></p></div>
+<div class="card" style="margin-top:14px"><h2>Messages <small>(rows on the chain)</small></h2><select id="chan" style="width:auto"><option>general</option><option>forum</option><option>irc</option></select> <input id="msg" style="width:55%" placeholder="say something"> <button id="post">Post</button><div id="msgs"></div></div>
+<div class="card" style="margin-top:14px"><h2>Explorer</h2><div id="blocks" class="log"></div></div>
+<div class="card" style="margin-top:14px"><h2>Install the house on your computer</h2><p>Linux, a terminal, a C compiler. This is the house's original install location:</p><pre>curl -fsSL https://raw.githubusercontent.com/tearitco/tearit-install/main/install.sh | sh -s -- tearit-hq</pre><small>It builds into <code>~/tearit-hq</code> and writes a <code>tearit-hq</code> launcher to <code>~/.local/bin</code>.</small></div>
+<div class="card" style="margin-top:14px"><h2>Submit without a server</h2><p>Open an issue labelled <code>tx</code> on the repo with rows, one per line (<code>TX|from|to|amount|ts|id</code>, <code>MSG|from|channel|text|ts</code>, <code>FAUCET|wallet|amount|ts</code>, or a ranch row). The steward bot verifies each, mines a block and closes the issue. Machine-readable list: <a href="commands.json">commands.json</a>.</p></div>
+</main><script src="chain.js"></script><script src="app.js"></script><script>
+TA.header('chain');var $=TA.$;
+function who(){return TA.curPet()||'guest'}
+function render(){var v=TA.state();$('status').innerHTML=v.ok?'<span style="color:#2f7d4a">verified</span>: '+v.height+' blocks, tip <code>'+(v.tip||'').slice(0,12)+'</code>, work '+v.work:'<span style="color:#a8322d">does not verify: '+v.error+' (block '+v.at+')</span>';
+ var b=v.balances||{},k,h='',opts='';for(k in b)if(b[k])h+='<div><b>'+TA.esc(k)+'</b>: '+b[k]+(v.pets&&v.pets[k]?' <span class="tag">pet</span>':'')+'</div>';$('coins').innerHTML=h||'<span class="dim">no coins yet</span>';
+ for(k in (v.pets||{}))if(v.pets[k].owner===TA.owner())opts+='<option>'+k+'</option>';$('from').innerHTML=opts||'<option>guest</option>';
+ var ms=TearChain.messages(TA.load(),$('chan').value,TA.CFG);$('msgs').innerHTML=ms.slice(-30).map(function(m){return '<div><b>'+TA.esc(m.from)+'</b>: '+TA.esc(m.text)+' <small>#'+m.block+'</small></div>'}).join('')||'<small class="dim">no messages in this channel</small>';
+ $('blocks').innerHTML=TA.load().split('\n').filter(Boolean).slice(-14).reverse().map(function(l){var p=l.split('|');return '<div><code>#'+p[1]+' '+p[4].slice(0,10)+'</code> miner '+TA.esc(p[6])+' '+TA.esc(p.slice(7).join('|')).slice(0,100)+'</div>'}).join('')}
+$('send').onclick=function(){var a=parseInt($('amt').value,10),t=TA.id($('to').value),f=$('from').value;if(!t||!(a>0)){$('sendout').textContent='need a recipient and an amount';return}var r=TA.act('_ranch',['TX|'+f+'|'+t+'|'+a+'|'+TA.ts()+'|'+f+'-'+TA.ts()]);$('sendout').textContent=r.ok?'sent':'refused: '+r.why;render()};
+$('post').onclick=function(){var t=TearChain.cleanText($('msg').value);if(!t)return;TA.act('_ranch',['MSG|'+who()+'|'+$('chan').value+'|'+t+'|'+TA.ts()]);$('msg').value='';render()};
+$('export').onclick=function(){TA.download('tearit-web-chain.txt',TA.load())};
+function dm(o,l){var r=TA.merge(o);$('mergeout').innerHTML=r.ok?(r.winner==='b'?'<b>took '+l+'</b> ('+r.reason+')':'kept yours ('+r.reason+')'):'<b>refused: '+r.reason+'</b>';render()}
+$('import').onchange=function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){dm(String(rd.result),'the imported copy')};rd.readAsText(f)};
+$('fetch').onclick=function(){fetch('chain/latest.txt',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.text()}).then(function(t){dm(t,'the published copy')}).catch(function(e){$('mergeout').textContent='no published copy yet ('+e.message+')'})};
+$('reset').onclick=function(){if(confirm('Clear this browser\'s copy of the chain (pets and coins)?')){TA.save('');render()}};
+$('chan').onchange=render;render();
+</script></body></html>

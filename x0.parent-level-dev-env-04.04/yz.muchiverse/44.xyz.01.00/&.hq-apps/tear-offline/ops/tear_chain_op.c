@@ -61,6 +61,8 @@ static int split_rows(const char *t, char ***rows) {
 static int fields(char *s, char **f, int max) { int k = 0; f[k++] = s; for (char *p = s; *p && k < max; p++) if (*p == '|') { *p = 0; f[k++] = p + 1; } return k; }
 static void fail(Ver *v, long at, const char *why) { v->ok = 0; v->at = at; snprintf(v->why, sizeof v->why, "%s", why); }
 
+/* ranch rows (PET FEED TRAIN REST COMPETE UPGRADE FREEZE THAW TRANSFER) are NOT ported to C yet: refuse such a block loudly (silently skipping them would compute wrong balances) */
+static int has_ranch_row(const char *t) { static const char *V[] = { "PET|", "FEED|", "TRAIN|", "REST|", "COMPETE|", "UPGRADE|", "FREEZE|", "THAW|", "TRANSFER|" }; for (int k = 0; k < 9; k++) { size_t l = strlen(V[k]); for (const char *p = t; (p = strstr(p, V[k])); p++) { if (p == t || p[-1] == ';') { return 1; } } (void)l; } return 0; }
 static void verify(char *text, Ver *v) {
     memset(v, 0, sizeof *v); v->ok = 1; snprintf(v->tip, 72, "%s", ZERO);
     char err[160]; Blk *bl; long n = parse(text, &bl, err, sizeof err); if (n < 0) { fail(v, 0, err); return; }
@@ -71,6 +73,7 @@ static void verify(char *text, Ver *v) {
         snprintf(pre, sizeof pre, "%ld|%s|%s|%s", i, b->prev, b->nonce, b->txl); char h[65]; sha_hex(pre, h);
         if (strcmp(h, b->hash)) { fail(v, i, "hash does not recompute"); break; }
         if (!meets(b->hash, C.zeros)) { fail(v, i, "difficulty not met"); break; }
+        if (has_ranch_row(b->txl)) { fail(v, i, "ranch rows are not supported by this build yet (web chain only)"); break; }
         char **rows; int nr = split_rows(b->txl, &rows);
         for (int j = 0; j < nr && v->ok; j++) { char tmp[4096]; snprintf(tmp, sizeof tmp, "%s", rows[j]); char *f[8]; int k = fields(tmp, f, 8);
             if (!strcmp(f[0], "TX")) { char *e; double amt = k > 3 ? strtod(f[3], &e) : 0; if (k < 4 || !(amt > 0) || floor(amt) != amt) { fail(v, i, "bad amount"); break; }

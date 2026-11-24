@@ -3,7 +3,7 @@
  * docs/chain/latest.txt is rewritten. Usage: node steward.js <issue-body-file> <miner-name> ; prints a one-line JSON verdict. Exit 0 always when it ran (a rejection is a verdict, not an error). */
 var fs = require('fs'); global.window = global; require('./docs/chain.js');
 var body = fs.readFileSync(process.argv[2], 'utf8'), miner = (process.argv[3] || 'steward').replace(/[^a-z0-9_-]/gi, '') || 'steward';
-var rows = body.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return /^(TX|MSG|FAUCET)\|/.test(l); }).slice(0, 20);
+var rows = body.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return TearChain.VERBS.indexOf(l.split('|')[0]) >= 0; }).slice(0, 20);
 var path = 'docs/chain/latest.txt', cur = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '';
 var r = TearChain.applyRows(cur, miner, rows, Math.floor(Date.now() / 1000), { zeros: 2 });
 if (r.mined) fs.writeFileSync(path, r.text);

@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My ranch - TEAR-IT Ranch</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div><main><div id="empty" class="card" style="display:none"><h2>No pet yet</h2><p>Hatch one first, or upload a save: <a class="btn" href="index.html">Go to the landing page</a></p></div>
+<div class="ranch" id="game" style="display:none">
+ <div class="card"><select id="sel"></select><img class="portrait" id="por" alt="pet"><h2 id="nm"></h2><div id="sub"></div>
+  <div class="stat"><span>age</span><span id="ageb"></span><span id="agev"></span></div><div class="stat"><span>tired</span><span id="fatb"></span><span id="fatv"></span></div><hr>
+  <div id="stats"></div><hr><div id="meta"></div></div>
+ <div><div class="card"><div id="msg"></div>
+  <h3>Feed <small>(coins from the pet's own purse)</small></h3><div class="acts" id="feed"></div>
+  <h3>Train</h3><div class="acts" id="train"></div>
+  <h3>Rest and cups</h3><div class="acts"><button id="rest">Rest<small>free, a week</small></button><span id="cups" class="acts"></span></div>
+  <h3>Ranch</h3><div class="acts" id="fac"></div>
+  <h3>Money</h3><div class="acts"><button id="faucet">Faucet<small>+1000, once an hour</small></button><button id="mineb">Mine a block<small>+50, pet earns it</small></button></div>
+  <h3>Care</h3><div class="acts"><button id="freeze" class="sec">Freeze</button><input id="to" placeholder="new owner" style="width:140px"><button id="give" class="sec">Transfer</button><button id="dl" class="sec">Download my save</button></div></div>
+  <div class="card log" style="margin-top:14px"><h3>What happened</h3><div id="log"></div></div></div></div></main>
+<script src="chain.js"></script><script src="app.js"></script><script>
+TA.header('ranch');var $=TA.$,R=TearChain.RANCH,CAP=R.statCap;
+function mine(){var o=TA.owner(),s=TA.state(),k,l=[];for(k in s.pets)if(s.pets[k].owner===o)l.push(k);return l}
+function msg(t,ok){var m=$('msg');m.textContent=t;m.className=ok?'ok':'bad'}
+function row(verb,pet,a,b){var o=TA.owner();return verb+'|'+pet+'|'+(a?a+'|':'')+o+'|'+TA.ts()}
+function go(rows,okText,miner){var r=TA.act(miner||'_ranch',rows);msg(r.ok?okText:'refused: '+r.why,r.ok);draw()}
+function draw(){var s=TA.state(),l=mine(),cur=TA.curPet();if(!s.ok||!l.length){$('empty').style.display='';$('game').style.display='none';return}
+ if(l.indexOf(cur)<0){cur=l[0];TA.setPet(cur)}$('empty').style.display='none';$('game').style.display='';var p=s.pets[cur],bal=s.balances[cur]||0;
+ $('sel').innerHTML=l.map(function(k){return '<option'+(k===cur?' selected':'')+'>'+k+'</option>'}).join('');
+ $('por').src=TA.petImg(p.g);$('por').className='portrait'+(p.frozen?' frozen':'');$('nm').textContent=cur;
+ $('sub').innerHTML='<span class="tag">'+p.species+'</span> '+(p.frozen?'<span class="tag">frozen</span> ':'')+(p.retired?'<span class="tag">retired</span> ':'')+'<br><b>'+bal+'</b> coins';
+ $('ageb').innerHTML=TA.bar(p.age,p.life,'age');$('agev').textContent=p.age+'/'+p.life;$('fatb').innerHTML=TA.bar(p.fat,100,'fat');$('fatv').textContent=p.fat;
+ $('stats').innerHTML=R.stats.map(function(k){return '<div class="stat"><span>'+k+'</span>'+TA.bar(p.stats[k],CAP)+'<span>'+p.stats[k]+'</span></div>'}).join('');
+ $('meta').innerHTML='cups won <b>'+p.wins+'</b> of '+p.cups+' &middot; gym '+p.fac.gym+' &middot; barn '+p.fac.barn+'<br><small>owner '+TA.esc(p.owner)+' &middot; seed "'+TA.esc(p.seed)+'"</small>';
+ var off=p.frozen||p.retired;
+ $('feed').innerHTML=Object.keys(R.foods).map(function(f){var d=R.foods[f];return '<button data-feed="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>'+f+'<small>'+d.cost+' coins, tired -'+d.fat+(d.stat?', '+d.stat+' +'+d.n:'')+'</small></button>'}).join('');
+ $('train').innerHTML=Object.keys(R.drills).map(function(f){var d=R.drills[f];return '<button data-train="'+f+'"'+(off||bal<d.cost?' disabled':'')+'>'+f+'<small>'+d.cost+' coins, '+d.stat+' +'+(d.gain+p.fac.gym)+'</small></button>'}).join('');
+ $('cups').innerHTML=Object.keys(R.cups).map(function(f){var d=R.cups[f];return '<button data-cup="'+f+'"'+(off||bal<d.entry?' disabled':'')+'>'+f+' cup<small>entry '+d.entry+', prize '+d.prize+'</small></button>'}).join('');
+ $('fac').innerHTML=Object.keys(R.facilities).map(function(f){var d=R.facilities[f],lv=p.fac[f];return '<button data-fac="'+f+'"'+(off||lv>=d.max||bal<d.base*(lv+1)?' disabled':'')+'>'+f+' level '+lv+'<small>'+(lv>=d.max?'top level':'upgrade '+d.base*(lv+1)+' coins')+'</small></button>'}).join('');
+ $('rest').disabled=off;$('mineb').disabled=false;$('faucet').disabled=p.frozen;$('freeze').textContent=p.frozen?'Thaw':'Freeze';$('freeze').disabled=p.retired&&!p.frozen;
+ var lines=TA.load().split('\n').filter(Boolean).map(function(x){return x.split('|')}).filter(function(b){return b.slice(7).join('|').indexOf('|'+cur+'|')>=0||b[6]===cur}).slice(-8).reverse();
+ $('log').innerHTML=lines.map(function(b){var t=b.slice(7).join('|');return '<div>#'+b[1]+' '+(t?TA.esc(t.replace(/\|\d{9,}$/,'')):'mined a block (+50)')+'</div>'}).join('')||'<span class="dim">nothing yet</span>';}
+document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var cur=TA.curPet();
+ if(b.dataset.feed)go([row('FEED',cur,b.dataset.feed)],cur+' ate '+b.dataset.feed);
+ else if(b.dataset.train)go([row('TRAIN',cur,b.dataset.train)],cur+' trained: '+b.dataset.train);
+ else if(b.dataset.cup){var w0=TA.state().pets[cur].wins,c0=b.dataset.cup,r=TA.act("_ranch",[row("COMPETE",cur,c0)]);if(r.ok){var w1=TA.state().pets[cur].wins;msg(w1>w0?cur+" won the "+c0+" cup!":cur+" lost the "+c0+" cup. Train and try again.",w1>w0)}else msg("refused: "+r.why,false);draw()}
+ else if(b.dataset.fac)go([row('UPGRADE',cur,b.dataset.fac)],b.dataset.fac+' upgraded');});
+$('rest').onclick=function(){go([row('REST',cur())],TA.curPet()+' rested')};function cur(){return TA.curPet()}
+$('faucet').onclick=function(){go(['FAUCET|'+cur()+'|1000|'+TA.ts()],'faucet paid 1000 to '+cur(),'_ranch')};
+$('mineb').onclick=function(){var r=TA.act(cur(),[]);msg(r.ok?cur()+' mined a block (+50 coins, '+r.tries+' tries)':'refused: '+r.why,r.ok);draw()};
+$('freeze').onclick=function(){var p=TA.state().pets[cur()];go([row(p.frozen?'THAW':'FREEZE',cur())],p.frozen?'thawed':'frozen: it will keep until you thaw it')};
+$('give').onclick=function(){var t=TA.id($('to').value);if(!t){msg('type the new owner name',false);return}go([row('TRANSFER',cur(),t)],cur()+' now belongs to '+t)};
+$('dl').onclick=function(){TA.download('tearit-ranch-save.txt',TA.load())};
+$('sel').onchange=function(){TA.setPet($('sel').value);draw()};draw();
+</script></body></html>

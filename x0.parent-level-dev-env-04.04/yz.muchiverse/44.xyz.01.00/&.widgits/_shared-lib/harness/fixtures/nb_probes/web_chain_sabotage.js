@@ -42,5 +42,30 @@ var C_CHAIN='BLOCK|0|00000000000000000000000000000000000000000000000000000000000
  check('steward-accepts-good-rows-in-one-block',ar.mined+' '+ar.accepted.length+' h'+T.verify(ar.text,cfg).height,'true 2 h3');
  check('steward-rejects-overspend',ar.rejected.map(function(x){return x.why;}).join(' / '),'insufficient balance for carol / not an allowed row');
  check('steward-nothing-good-mines-nothing',String(T.applyRows(ch,'steward',['nonsense'],103,cfg).mined),'false');
+ var rc='',rcfg={zeros:2};
+ function radd(miner,rows,ts){var m=T.mine(rc,miner,rows,ts,rcfg),n=rc+m.line+'\n',v=T.verify(n,rcfg);if(v.ok)rc=n;return v;}
+ var gg=T.genes('blue dragon dreams','rex');
+ check('ranch-genes-same-words-same-pet',gg.species+' '+JSON.stringify(gg.stats)+' '+gg.life,'Cosmic {"LIF":29,"POW":14,"INT":30,"SKI":19,"SPD":13,"DEF":20} 130');
+ check('ranch-genes-other-name-other-pet',String(T.genes('blue dragon dreams','rexa').hash!==gg.hash),'true');
+ var rv=radd('_ranch',['PET|rex|blue dragon dreams|alice|1'],1);
+ check('ranch-pet-born-and-pool-funded',rv.ok+' '+rv.pets.rex.species+' pool'+rv.balances._ranch,'true Cosmic pool10500');
+ check('ranch-duplicate-name-refused',radd('_ranch',['PET|rex|other words|bob|2'],2).error,'name already used');
+ check('ranch-train-without-coins-refused',radd('_ranch',['TRAIN|rex|sprint|alice|3'],3).error,'not enough coins in rex');
+ radd('_ranch',['FAUCET|rex|1000|5000'],5000);
+ check('ranch-train-by-a-stranger-refused',radd('_ranch',['TRAIN|rex|sprint|bob|6'],6).error,'not the owner of rex');
+ rv=radd('_ranch',['TRAIN|rex|sprint|alice|7'],7);
+ check('ranch-train-pays-and-raises-the-stat',rv.ok+' SPD'+rv.pets.rex.stats.SPD+' coins'+rv.balances.rex+' tired'+rv.pets.rex.fat,'true SPD16 coins990 tired12');
+ rv=radd('_ranch',['UPGRADE|rex|gym|alice|8'],8); check('ranch-gym-costs-100-and-adds-a-point',rv.ok+' lvl'+rv.pets.rex.fac.gym+' coins'+rv.balances.rex,'true lvl1 coins890');
+ rv=radd('_ranch',['TRAIN|rex|lift|alice|9'],9); check('ranch-gym-level-raises-the-next-gain',rv.pets.rex.stats.POW+'','18');
+ radd('_ranch',['FREEZE|rex|alice|10'],10); check('ranch-frozen-pet-cannot-act',radd('_ranch',['FEED|rex|bread|alice|11'],11).error,'rex is frozen');
+ radd('_ranch',['THAW|rex|alice|12'],12);
+ var before=T.verify(rc,rcfg).balances.rex; rv=radd('_ranch',['COMPETE|rex|rookie|alice|13'],13); var won=rv.pets.rex.wins;
+ check('ranch-cup-result-is-paid-from-the-pool',rv.ok+' cups'+rv.pets.rex.cups+' bal'+rv.balances.rex,'true cups1 bal'+(before-10+(won?60:0)));
+ for(var ti=0;ti<14;ti++){ var tr=radd('_ranch',['TRAIN|rex|jog|alice|'+(20+ti)],20+ti); if(!tr.ok)break; }
+ check('ranch-a-tired-pet-cannot-enter-a-cup',radd('_ranch',['COMPETE|rex|rookie|alice|40'],40).error,'rex is too tired');
+ radd('_ranch',['TRANSFER|rex|bob|alice|41'],41); check('ranch-transfer-moves-the-owner',radd('_ranch',['REST|rex|alice|42'],42).error,'not the owner of rex');
+ check('ranch-new-owner-can-act',String(radd('_ranch',['REST|rex|bob|43'],43).ok),'true');
+var hk=T.mine('','x',['HACK|x'],1,rcfg); check('ranch-unknown-row-refused',T.verify(hk.line+'\n',rcfg).error,'unknown row HACK');
+ var arr=T.applyRows('','steward',['PET|zed|zed words|carol|1','PET|zed|again|carol|1','HACK|x'],5,rcfg); check('ranch-steward-takes-the-pet-row-only',arr.accepted.length+' '+arr.rejected.length,'1 2');
  console.log('WEBCHAIN_TESTRESULT '+pass+'/'+total); console.log('WEBCHAIN_TESTDONE');
 })();

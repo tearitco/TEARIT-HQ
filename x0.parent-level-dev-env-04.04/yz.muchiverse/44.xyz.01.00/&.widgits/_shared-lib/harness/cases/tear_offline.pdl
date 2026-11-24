@@ -61,6 +61,9 @@ RUN | $T/op.+x | merge | $T/t.txt | $T/c.txt | $T/o4.txt
 EXPECT_OUT | MERGE winner=b reason=a rejected | a-tampered-copy-never-wins
 RUN | $T/op.+x | merge | $T/t.txt | $T/t.txt | $T/o5.txt
 EXPECT_EXIT | 1 | two-bad-copies-are-refused
+RUN | $T/op.+x | mine | $T/r.txt | alice | 1 | PET\prex\px\pbob\p1
+EXPECT_EXIT | 1 | a-ranch-row-is-refused-by-the-C-build-(not-ported-yet-and-not-silently-skipped)
+EXPECT_OUT | REFUSED | the-refusal-is-loud
 CLEAN   |
 CASE    | manager-driven-like-the-window
 SCRATCH |

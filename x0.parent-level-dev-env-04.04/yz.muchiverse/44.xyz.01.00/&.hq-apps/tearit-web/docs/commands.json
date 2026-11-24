@@ -1,9 +1,248 @@
-{"manifest":"tearit-web-commands","version":1,"note":"DATA ONLY: each command names an allowlisted op and typed arguments. A client must refuse an op it does not know and any argument with a shell metacharacter. Signing of this file comes later.",
- "commands":[
-  {"name":"verify","op":"chain.verify","args":[{"name":"chain_file","type":"path"}],"describe":"verify every block of a chain copy"},
-  {"name":"balance","op":"chain.balance","args":[{"name":"chain_file","type":"path"},{"name":"wallet","type":"id"}],"describe":"balance of a wallet from a verified copy"},
-  {"name":"send","op":"chain.send","args":[{"name":"from","type":"id"},{"name":"to","type":"id"},{"name":"amount","type":"uint"}],"describe":"queue a TX row"},
-  {"name":"post","op":"chain.post","args":[{"name":"wallet","type":"id"},{"name":"channel","type":"id"},{"name":"text","type":"text280"}],"describe":"queue a MSG row"},
-  {"name":"faucet","op":"chain.faucet","args":[{"name":"wallet","type":"id"}],"describe":"queue a FAUCET row (1000 max, 3600 s apart)"},
-  {"name":"merge","op":"chain.merge","args":[{"name":"mine","type":"path"},{"name":"theirs","type":"path"}],"describe":"fork rule: most work wins, tie keeps mine"}],
- "types":{"id":"[a-z0-9_-]{1,32}","uint":"[0-9]{1,12}","text280":"no | ; or newline, max 280","path":"a local file path chosen by the user"}}
+{
+ "manifest": "tearit-web-commands",
+ "version": 2,
+ "note": "DATA ONLY: each command names an allowlisted op and typed arguments. A client must refuse an op it does not know and any argument with a shell metacharacter. Signing of this file comes later.",
+ "commands": [
+  {
+   "name": "verify",
+   "op": "chain.verify",
+   "args": [
+    {
+     "name": "chain_file",
+     "type": "path"
+    }
+   ],
+   "describe": "verify every block of a chain copy"
+  },
+  {
+   "name": "balance",
+   "op": "chain.balance",
+   "args": [
+    {
+     "name": "chain_file",
+     "type": "path"
+    },
+    {
+     "name": "wallet",
+     "type": "id"
+    }
+   ],
+   "describe": "balance of a wallet from a verified copy"
+  },
+  {
+   "name": "send",
+   "op": "chain.send",
+   "args": [
+    {
+     "name": "from",
+     "type": "id"
+    },
+    {
+     "name": "to",
+     "type": "id"
+    },
+    {
+     "name": "amount",
+     "type": "uint"
+    }
+   ],
+   "describe": "queue a TX row"
+  },
+  {
+   "name": "post",
+   "op": "chain.post",
+   "args": [
+    {
+     "name": "wallet",
+     "type": "id"
+    },
+    {
+     "name": "channel",
+     "type": "id"
+    },
+    {
+     "name": "text",
+     "type": "text280"
+    }
+   ],
+   "describe": "queue a MSG row"
+  },
+  {
+   "name": "faucet",
+   "op": "chain.faucet",
+   "args": [
+    {
+     "name": "wallet",
+     "type": "id"
+    }
+   ],
+   "describe": "queue a FAUCET row (1000 max, 3600 s apart)"
+  },
+  {
+   "name": "merge",
+   "op": "chain.merge",
+   "args": [
+    {
+     "name": "mine",
+     "type": "path"
+    },
+    {
+     "name": "theirs",
+     "type": "path"
+    }
+   ],
+   "describe": "fork rule: most work wins, tie keeps mine"
+  },
+  {
+   "name": "hatch",
+   "op": "ranch.pet",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "seed_words",
+     "type": "text40"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a PET row: the same words always hatch the same pet"
+  },
+  {
+   "name": "feed",
+   "op": "ranch.feed",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "food",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a FEED row: bread, meat, fruit, tonic (coins from the pet wallet)"
+  },
+  {
+   "name": "train",
+   "op": "ranch.train",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "drill",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a TRAIN row: sprint lift study spar guard jog"
+  },
+  {
+   "name": "rest",
+   "op": "ranch.rest",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a REST row: a free week, tiredness down"
+  },
+  {
+   "name": "compete",
+   "op": "ranch.compete",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "cup",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a COMPETE row: rookie, town or grand cup"
+  },
+  {
+   "name": "upgrade",
+   "op": "ranch.upgrade",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "facility",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "an UPGRADE row: gym or barn"
+  },
+  {
+   "name": "freeze",
+   "op": "ranch.freeze",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a FREEZE row (THAW undoes it)"
+  },
+  {
+   "name": "transfer",
+   "op": "ranch.transfer",
+   "args": [
+    {
+     "name": "pet",
+     "type": "id"
+    },
+    {
+     "name": "new_owner",
+     "type": "id"
+    },
+    {
+     "name": "owner",
+     "type": "id"
+    }
+   ],
+   "describe": "a TRANSFER row: trade a pet to another owner"
+  }
+ ],
+ "types": {
+  "id": "[a-z0-9_-]{1,32}",
+  "uint": "[0-9]{1,12}",
+  "text280": "no | ; or newline, max 280",
+  "path": "a local file path chosen by the user",
+  "text40": "no | ; or newline, max 40"
+ }
+}

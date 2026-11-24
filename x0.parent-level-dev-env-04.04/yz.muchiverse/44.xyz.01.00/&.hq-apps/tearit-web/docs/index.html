@@ -1,44 +1,33 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>tearit: web chain (experimental)</title>
-<style>body{font:15px/1.5 system-ui;max-width:900px;margin:1.5em auto;padding:0 1em;background:#14121c;color:#eee}h1,h2{color:#ffd166}section{border:1px solid #3a3550;border-radius:8px;padding:.8em 1em;margin:1em 0;background:#1d1a2a}input,textarea,button,select{font:inherit;background:#0f0d16;color:#eee;border:1px solid #4a4466;border-radius:5px;padding:.3em .5em}button{cursor:pointer;background:#3a3066}code,pre{background:#0f0d16;padding:.1em .3em;border-radius:4px;overflow-x:auto}pre{padding:.6em;white-space:pre-wrap;word-break:break-all}.ok{color:#7ee787}.bad{color:#ff7b72}small{color:#9a94b8}</style></head><body>
-<h1>tearit web chain <small>experimental, not shipped</small></h1>
-<p>Your copy of the chain lives in this browser. Everything below is checked here, block by block, with the same rules as the C chain tools. Nothing leaves your machine until you export it.</p>
-<section><h2>Chain</h2>
-<div id="status"></div>
-<button id="export">Download my copy</button> <input type="file" id="import"> <button id="fetch">Fetch latest published copy</button> <button id="reset">Start over</button>
-<p><small>Import and fetch both go through the fork rule: both copies are verified and the one with the most work wins (a tie keeps yours).</small></p><div id="mergeout"></div></section>
-<section><h2>Wallet</h2><p>Your wallet name is just a label on this chain (signatures come later).</p>
-<input id="wallet" placeholder="wallet name (a-z 0-9 _ -)" value="me"> <button id="mine">Mine a block (reward goes to you)</button> <button id="faucet">Claim faucet</button> <span id="mineout"></span>
-<p>Balance: <b id="balance">0</b> millicones</p></section>
-<section><h2>Send</h2><input id="to" placeholder="to wallet" size="14"> <input id="amt" placeholder="amount" size="8"> <button id="send">Queue and mine a block</button><div id="sendout"></div></section>
-<section><h2>Messages <small>(rows on the chain)</small></h2><select id="chan"><option>general</option><option>forum</option><option>irc</option></select> <input id="msg" size="40" placeholder="say something"> <button id="post">Post</button><div id="msgs"></div></section>
-<section><h2>Explorer</h2><div id="blocks"></div></section>
-<section><h2>Install the house on your computer</h2><p>Linux, a terminal, a C compiler. This is the house's original install location:</p>
-<pre>curl -fsSL https://raw.githubusercontent.com/tearitco/tearit-install/main/install.sh | sh -s -- tearit-hq</pre><p><small>It builds into <code>~/tearit-hq</code> and writes a <code>tearit-hq</code> launcher to <code>~/.local/bin</code>.</small></p></section>
-<section><h2>For command lines and agents</h2><p>Machine-readable command list: <a href="commands.json">commands.json</a> (data only: each entry names an op and typed arguments, never code).</p></section>
-<script src="chain.js"></script>
-<script>
-var KEY='tearit_web_chain_v0', CFG={zeros:2}, $=function(i){return document.getElementById(i)};
-var chain=localStorage.getItem(KEY)||'', pending=[];
-function save(){localStorage.setItem(KEY,chain)}
-function w(){return ($('wallet').value||'me').replace(/[^a-z0-9_-]/gi,'').slice(0,32)||'me'}
-function mineRows(rows){var m=TearChain.mine(chain,w(),rows,Math.floor(Date.now()/1000),CFG,3000000);if(!m.ok)return 'mining gave up';var t=chain+m.line+'\n',v=TearChain.verify(t,CFG);if(!v.ok)return 'refused: '+v.error;chain=t;save();return 'ok ('+m.tries+' tries)'}
-function render(){var v=TearChain.verify(chain,CFG);
- $('status').innerHTML=v.ok?'<span class="ok">verified</span>: '+v.height+' blocks, tip <code>'+(v.tip||'').slice(0,12)+'</code>, work '+v.work:'<span class="bad">does not verify: '+v.error+' (block '+v.at+')</span>';
- $('balance').textContent=(v.balances&&v.balances[w()])||0;
- var ms=TearChain.messages(chain,$('chan').value,CFG);$('msgs').innerHTML=ms.slice(-30).map(function(m){return '<div><b>'+esc(m.from)+'</b>: '+esc(m.text)+' <small>#'+m.block+'</small></div>'}).join('')||'<small>no messages in this channel</small>';
- $('blocks').innerHTML=chain.split('\n').filter(Boolean).slice(-12).reverse().map(function(l){var p=l.split('|');return '<div><code>#'+p[1]+' '+p[4].slice(0,10)+'</code> miner '+esc(p[6])+' '+esc(p.slice(7).join('|')).slice(0,90)+'</div>'}).join('')}
-function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-function ts(){return Math.floor(Date.now()/1000)}
-$('mine').onclick=function(){$('mineout').textContent=mineRows([]);render()};
-$('faucet').onclick=function(){$('mineout').textContent=mineRows(['FAUCET|'+w()+'|1000|'+ts()]);render()};
-$('send').onclick=function(){var a=parseInt($('amt').value,10),t=($('to').value||'').replace(/[^a-z0-9_-]/gi,'');if(!t||!(a>0)){$('sendout').textContent='need a wallet and an amount';return}$('sendout').textContent=mineRows(['TX|'+w()+'|'+t+'|'+a+'|'+ts()+'|'+w()+'-'+ts()]);render()};
-$('post').onclick=function(){var t=TearChain.cleanText($('msg').value);if(!t)return;mineRows(['MSG|'+w()+'|'+$('chan').value+'|'+t+'|'+ts()]);$('msg').value='';render()};
-$('export').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([chain],{type:'text/plain'}));a.download='tearit-web-chain.txt';document.body.appendChild(a);a.click();a.remove()};
-function doMerge(other,label){var r=TearChain.merge(chain,other,CFG);$('mergeout').innerHTML=r.ok?(r.winner==='b'?'<span class="ok">took '+label+'</span> ('+r.reason+')':'kept yours ('+r.reason+')'):'<span class="bad">refused: '+r.reason+'</span>';if(r.ok&&r.winner==='b'){chain=r.text;save()}render()}
-$('import').onchange=function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){doMerge(String(rd.result),'the imported copy')};rd.readAsText(f)};
-$('fetch').onclick=function(){fetch('chain/latest.txt',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.text()}).then(function(t){doMerge(t,'the published copy')}).catch(function(e){$('mergeout').innerHTML='<span class="bad">no published copy yet ('+e.message+')</span>'})};
-$('reset').onclick=function(){if(confirm('Clear this browser\'s copy of the chain?')){chain='';save();render()}};
-$('wallet').oninput=render;$('chan').onchange=render;render();
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TEAR-IT Ranch</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div><main>
+<div class="hero"><div><h1>TEAR-IT Ranch</h1><p>Hatch a pet from your own words. Train it, feed it, enter the cups, grow your ranch. Everything it does is a row on a blockchain that you keep: download it, upload it, trade your pets.</p></div></div>
+<div class="opts">
+ <div class="card"><h2>Hatch a new pet</h2><small>The same words always hatch the same pet.</small>
+  <label>your name<input id="own" maxlength="24" placeholder="you (a-z 0-9)"></label>
+  <label>pet name<input id="pname" maxlength="24" placeholder="rex"></label>
+  <label>words that seed it<input id="words" maxlength="40" placeholder="what you dream of"></label>
+  <div class="preview" id="prev"><span class="dim">type a pet name and some words to see who hatches</span></div>
+  <button id="hatch" disabled>Hatch it</button> <span id="hmsg"></span></div>
+ <div class="card"><h2>Upload an existing pet or world</h2><small>A save file you downloaded before, or a friend's. It is verified block by block; the copy with the most work wins.</small>
+  <p><input type="file" id="up"></p><div id="umsg"></div>
+  <h3>Visit the published world</h3><button id="fetch" class="sec">Fetch the published copy</button> <span id="fmsg"></span></div>
+ <div class="card" id="mine"><h2>Your pets</h2><div id="mypets"><span class="dim">none yet: hatch one, or upload a save</span></div></div>
+</div>
+<h2>Ten elements, one world</h2><img class="lineup" src="img/lineup.jpg" alt="the ten elemental Mochi Pets">
+<p class="dim">Experimental, not shipped. Names are labels (signatures come later). The chain explorer, messages and the house installer are on <a href="chain.html">The chain</a> page.</p>
+</main><script src="chain.js"></script><script src="app.js"></script><script>
+TA.header('home');var $=TA.$;$('own').value=TA.owner();
+function pre(){var n=TA.id($('pname').value),w=$('words').value.replace(/[|;\n]/g,' ').trim().slice(0,40),o=TA.id($('own').value),pets=TA.state().pets||{};
+ if(!n||!w){$('prev').innerHTML='<span class="dim">type a pet name and some words to see who hatches</span>';$('hatch').disabled=true;return}
+ var g=TearChain.genes(w,n),st=g.stats,taken=!!pets[n];
+ $('prev').innerHTML='<img src="'+TA.petImg(g)+'"><div><b>'+TA.esc(n)+'</b> <span class="tag">'+g.species+'</span><br><small>'+TearChain.RANCH.stats.map(function(k){return k+' '+st[k]}).join(' &middot; ')+'<br>lives about '+g.life+' weeks</small>'+(taken?'<br><b style="color:#a8322d">that name is taken</b>':'')+'</div>';
+ $('hatch').disabled=taken||!o}
+['pname','words','own'].forEach(function(i){$(i).oninput=pre});pre();
+$('hatch').onclick=function(){var n=TA.id($('pname').value),w=$('words').value.replace(/[|;\n]/g,' ').trim().slice(0,40),o=TA.id($('own').value);
+ var r=TA.act('_ranch',['PET|'+n+'|'+w+'|'+o+'|'+TA.ts()]);if(!r.ok){$('hmsg').textContent='refused: '+r.why;return}TA.setOwner(o);TA.setPet(n);location.href='ranch.html'};
+function mypets(){var o=TA.owner(),pets=TA.state().pets||{},k,h='';for(k in pets)if(!o||pets[k].owner===o)h+='<div><a class="btn" href="ranch.html" onclick="TA.setPet(\''+k+'\');TA.setOwner(\''+pets[k].owner+'\')">'+TA.esc(k)+'</a> <span class="tag">'+pets[k].species+'</span> <small>owner '+TA.esc(pets[k].owner)+'</small></div>';
+ $('mypets').innerHTML=h||'<span class="dim">none yet: hatch one, or upload a save</span>'}mypets();
+function took(r,el){var s=TA.state(),k,first='';if(r.ok&&r.winner==='b'){for(k in s.pets){first=k;break}el.innerHTML='took it ('+r.reason+')'+(first?'. <a href="ranch.html" onclick="TA.setPet(\''+first+'\');TA.setOwner(\''+s.pets[first].owner+'\')">Open the ranch</a>':'')}else el.textContent=r.ok?'kept yours ('+r.reason+')':'refused: '+r.reason;mypets()}
+$('up').onchange=function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){took(TA.merge(String(rd.result)),$('umsg'))};rd.readAsText(f)};
+$('fetch').onclick=function(){fetch('chain/latest.txt',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.text()}).then(function(t){took(TA.merge(t),$('fmsg'))}).catch(function(e){$('fmsg').textContent='no published copy yet ('+e.message+')'})};
 </script></body></html>
