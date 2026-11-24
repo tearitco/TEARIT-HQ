@@ -76,7 +76,7 @@
     /* ---- the ARENA: 1v1, 2v2 and free-for-all battles with pets or default entities (AI). Rows: ARENA|id|mode|owner|ts  JOIN|arena|pet|owner|ts  LEAVE|arena|pet|owner|ts  FILL|arena|owner|ts  FIGHT|arena|owner|ts.
      * Entry fees go into the arena's pot, the house keeps a rake, the rest is paid out by the result (deterministic: power - tired/2 + a roll from the pet's seed). A default entity that wins pays its share to the house pool. ---- */
     function arenaRow(f) {
-      var v = f[0], id = f[1], a, md, p, q, i, k, m, sc, ord, net, rake, wins, shares, total;
+      var v = f[0], id = f[1], a, md, p, q, i, k, m, sc, ord, net, rake, wins, shares, why;
       if (v === 'ARENA') { if (f.length !== 5) return 'bad ARENA row'; if (!okId(id) || id.charAt(0) === '_') return 'bad arena name'; if (arenas[id]) return 'arena name already used'; if (!RANCH.arena.modes[f[2]]) return 'unknown mode'; if (!okId(f[3])) return 'bad owner';
         arenas[id] = { id: id, mode: f[2], owner: f[3], members: [], pot: 0, open: true, winners: [], scores: [] }; return ''; }
       a = arenas[id]; if (!a) return 'no such arena'; if (f.length !== RLEN[v]) return 'bad ' + v + ' row'; if (!a.open) return 'that arena is closed'; md = RANCH.arena.modes[a.mode];

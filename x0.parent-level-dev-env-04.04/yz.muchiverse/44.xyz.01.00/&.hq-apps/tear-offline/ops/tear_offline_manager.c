@@ -5,7 +5,7 @@
  *   - keeps the local copy of the chain at <pkg>/data/web_chain.txt (a plain file the user can copy, import, export),
  *   - turns window clicks (<pkg>/tear_action.txt, written by tear_item_op) into op calls, and
  *   - publishes <pkg>/tear_ui.txt (the vars the layout binds).  Idle cost: sleeps in 50 ms polls, no timers, no network except the explicit FETCH click.
- * Commands: TAB:x MINE FAUCET SEND:to amount POST:[channel ]text IMPORT:path EXPORT FETCH WALLET:name REFRESH.  Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/tear_offline_manager.+x tear_offline_manager.c */
+ * Arena (2026-11-24): AOPEN:1v1|2v2|ffa AJOIN AFILL AFIGHT ALEAVE ANEXT, each one row of the chain through tear_chain_op. Commands: TAB:x MINE FAUCET SEND:to amount POST:[channel ]text IMPORT:path EXPORT FETCH WALLET:name REFRESH.  Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/tear_offline_manager.+x tear_offline_manager.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +25,9 @@ static char msgs[40][300]; static int nmsg; static char blks[14][200]; static in
 typedef struct { char name[32], owner[32], species[16], stats[40], rest[200]; int age, life, fat, x, y, frozen, wins, cups, best; long coins; } MyPet;
 static MyPet pets_[32]; static int npets_; static char sel[32] = ""; static char gridl[8][16]; static char pl1[200] = "", pl2[200] = "", pl3[200] = "";
 
+/* the arena: every arena of the chain (parsed from tear_chain_op arenas): id|mode|owner|open|pot|members|winners|scores|pet records */
+typedef struct { char id[32], mode[8], owner[32], members[200], winners[100], scores[100]; int open; long pot; } MyArena;
+static MyArena ar_[16]; static int nar_; static char asel[32] = ""; static char agrid[8][32]; static char al1[200] = "", al2[260] = "", al3[260] = "", al4[260] = "";
 static void clean_id(char *s) { char *o = s; for (; *s; s++) if (isalnum((unsigned char)*s) || *s == '_' || *s == '-') *o++ = *s; *o = 0; }
 static void clean_line(char *s) { for (; *s; s++) if (*s == '|' || *s == ';' || *s == '\n' || *s == '\r' || *s == '=') *s = ' '; }
 /* run an op: argv[0]=binary; stdout (first 8 KB) into out; returns exit code */
@@ -51,6 +54,20 @@ static void read_pets(void) {
         snprintf(pl1, sizeof pl1, "%s the %s  \xc2\xb7  age %d/%d  \xc2\xb7  tired %d  \xc2\xb7  %ld coins", m->name, m->species, m->age, m->life, m->fat, m->coins); snprintf(pl2, sizeof pl2, "LIF POW INT SKI SPD DEF = %s", m->stats);
         snprintf(pl3, sizeof pl3, "ranked wins %d of %d  \xc2\xb7  best rank beaten %s  \xc2\xb7  cell %d,%d", m->wins, m->cups, m->best >= 0 ? rk[m->best] : "none", m->x, m->y); }
 }
+static void read_arenas(void) {
+    char big[8192]; int c; nar_ = 0; op(big, sizeof big, &c, "arenas", chainf, NULL, NULL, NULL); if (c != 0) { return; }
+    for (char *p = big; *p && nar_ < 16;) { char *e = strchr(p, 10); if (e) { *e = 0; } if (*p) { char *fl[9]; int k = 0; fl[k++] = p; for (char *q = p; *q && k < 9; q++) { if (*q == 124) { *q = 0; fl[k++] = q + 1; } }
+            if (k >= 8) { MyArena *a = &ar_[nar_++]; memset(a, 0, sizeof *a); snprintf(a->id, 32, "%s", fl[0]); snprintf(a->mode, 8, "%s", fl[1]); snprintf(a->owner, 32, "%s", fl[2]); a->open = atoi(fl[3]); a->pot = atol(fl[4]); snprintf(a->members, 200, "%s", fl[5]); snprintf(a->winners, 100, "%s", fl[6]); snprintf(a->scores, 100, "%s", fl[7]); } }
+        if (!e) { break; } p = e + 1; }
+    int found = -1, lastopen = -1; for (int i = 0; i < nar_; i++) { if (!strcmp(ar_[i].id, asel)) { found = i; } if (ar_[i].open) { lastopen = i; } }
+    if (found < 0) { found = lastopen >= 0 ? lastopen : nar_ - 1; } if (found >= 0) { snprintf(asel, sizeof asel, "%s", ar_[found].id); } else { asel[0] = 0; }
+    for (int y = 0; y < 8; y++) { for (int x = 0; x < 24; x++) { agrid[y][x] = 46; } agrid[y][24] = 0; }
+    al1[0] = al2[0] = al3[0] = al4[0] = 0; if (found < 0) { return; }
+    static const int SP1[2][2] = { { 3, 11 }, { 20, 11 } }, SP2[4][2] = { { 3, 6 }, { 20, 6 }, { 3, 16 }, { 20, 16 } }, SPF[8][2] = { { 3, 3 }, { 12, 2 }, { 20, 3 }, { 21, 11 }, { 20, 19 }, { 12, 20 }, { 3, 19 }, { 2, 11 } };
+    MyArena *a = &ar_[found]; char mem[200]; snprintf(mem, sizeof mem, "%s", a->members); int j = 0; for (char *t = strtok(mem, ","); t && j < 8; t = strtok(NULL, ","), j++) { int cx = !strcmp(a->mode, "1v1") ? SP1[j % 2][0] : !strcmp(a->mode, "2v2") ? SP2[j % 4][0] : SPF[j][0], cy = !strcmp(a->mode, "1v1") ? SP1[j % 2][1] : !strcmp(a->mode, "2v2") ? SP2[j % 4][1] : SPF[j][1]; int row = cy * 8 / 22; if (row > 7) { row = 7; } agrid[row][cx] = (!strncmp(t, "ai-", 3)) ? 42 : (char)(t[0] >= 97 && t[0] <= 122 ? t[0] - 32 : t[0]); }
+    snprintf(al1, sizeof al1, "arena %s  \xc2\xb7  %s  \xc2\xb7  pot %ld  \xc2\xb7  %s  \xc2\xb7  owner %s", a->id, a->mode, a->pot, a->open ? "open" : "finished", a->owner);
+    snprintf(al2, sizeof al2, "fighters: %s", a->members[0] ? a->members : "(none yet)"); if (a->winners[0]) { snprintf(al3, sizeof al3, "winners: %s  \xc2\xb7  scores %s", a->winners, a->scores); } else { snprintf(al3, sizeof al3, "no result yet: join, fill with default fighters, then FIGHT"); }
+    snprintf(al4, sizeof al4, "%d arena(s) on this chain  \xc2\xb7  * default fighter, letters pets", nar_); }
 static void refresh(void) {
     char o[8192]; int c; op(o, sizeof o, &c, "verify", chainf, NULL, NULL, NULL); first_line(o);
     if (!o[0]) { snprintf(o, sizeof o, "OK height=0"); }
@@ -59,17 +76,19 @@ static void refresh(void) {
     char big[16384]; nmsg = 0; op(big, sizeof big, &c, "messages", chainf, "*", NULL, NULL);
     if (c == 0) { char *p = big; char *last[40]; int nl = 0; while (*p) { char *e = strchr(p, '\n'); if (e) *e = 0; if (*p) { if (nl == 40) { memmove(last, last + 1, sizeof(char *) * 39); nl--; } last[nl++] = p; } if (!e) { break; } p = e + 1; }
         for (int i = nl - 1; i >= 0; i--) { char *t = strchr(last[i], '\t'); if (t) *t = 0; snprintf(msgs[nmsg++], 300, "%s: %s", last[i], t ? t + 1 : ""); } }
-    read_pets();
+    read_pets(); read_arenas();
     nblk = 0; op(big, sizeof big, &c, "tail", chainf, "12", NULL, NULL);
     if (c == 0) { char *p = big; char *l[14]; int nl = 0; while (*p) { char *e = strchr(p, '\n'); if (e) *e = 0; if (*p && nl < 14) l[nl++] = p; if (!e) { break; } p = e + 1; } for (int i = nl - 1; i >= 0; i--) snprintf(blks[nblk++], 200, "%s", l[i]); } }
 static void write_ui(void) {
     char tmp[PL + 16], dst[PL + 16]; snprintf(dst, sizeof dst, "%s/tear_ui.txt", pkg); snprintf(tmp, sizeof tmp, "%s/tear_ui.txt.tmp", pkg); FILE *f = fopen(tmp, "w"); if (!f) return;
     fprintf(f, "wallet_id=%s\nbalance=%s\nstatus=%s   ·   wallet %s   ·   %s mc   ·   offline copy\nresult=%s\nchain_line=%s\nchain_path=%s\n", wallet, bal_s, chain_line, wallet, bal_s, result, chain_line, chainf);
-    const char *tabs[] = { "chain", "wallet", "send", "messages", "explorer", "sync", "ranch" };
-    for (int i = 0; i < 7; i++) { int on = !strcmp(cur_tab, tabs[i]); fprintf(f, "tab_%s=%s\ncls_%s=%s\n", tabs[i], on ? "1" : "", tabs[i], on ? "tab-active" : ""); }
+    const char *tabs[] = { "chain", "wallet", "send", "messages", "explorer", "sync", "ranch", "arena" };
+    for (int i = 0; i < 8; i++) { int on = !strcmp(cur_tab, tabs[i]); fprintf(f, "tab_%s=%s\ncls_%s=%s\n", tabs[i], on ? "1" : "", tabs[i], on ? "tab-active" : ""); }
     int sm = !strcmp(cur_tab, "messages"), se = !strcmp(cur_tab, "explorer"); fprintf(f, "n_msgs=%d\n", sm ? nmsg : 0); if (sm) for (int i = 0; i < nmsg; i++) fprintf(f, "m_%d_text=%s\n", i, msgs[i]);
     fprintf(f, "msgs_empty=%s\n", (sm && !nmsg) ? "no messages yet: post one above" : ""); fprintf(f, "n_blks=%d\n", se ? nblk : 0); if (se) for (int i = 0; i < nblk; i++) fprintf(f, "b_%d_text=%s\n", i, blks[i]);
     fprintf(f, "n_grid=%d\n", !strcmp(cur_tab, "ranch") ? 8 : 0); if (!strcmp(cur_tab, "ranch")) { for (int i = 0; i < 8; i++) { fprintf(f, "g_%d_text=%s\n", i, gridl[i]); } }
+    fprintf(f, "n_agrid=%d\n", !strcmp(cur_tab, "arena") ? 8 : 0); if (!strcmp(cur_tab, "arena")) { for (int i = 0; i < 8; i++) { fprintf(f, "ag_%d_text=%s\n", i, agrid[i]); } }
+    fprintf(f, "arena_l1=%s\narena_l2=%s\narena_l3=%s\narena_l4=%s\n", asel[0] ? al1 : "no arena yet: open one below", al2, al3, al4);
     fprintf(f, "pet_line1=%s\npet_line2=%s\npet_line3=%s\n", sel[0] ? pl1 : "no pet yet: type a name and words below to hatch one", pl2, pl3); fprintf(f, "sel_pet=%s\n", sel);
     fprintf(f, "blks_empty=%s\n", (se && !nblk) ? "the chain is empty: mine a block on the Wallet tab" : ""); fclose(f); rename(tmp, dst); }
 static void set_result(const char *s) { snprintf(result, sizeof result, "%s", s); clean_line(result); }
@@ -92,6 +111,10 @@ static void do_cmd(char *cmd) {
     else if (!strcmp(cmd, "REST") || !strcmp(cmd, "RANK") || !strcmp(cmd, "NEXTPET")) { if (!sel[0]) { set_result("hatch a pet first"); } else if (!strcmp(cmd, "NEXTPET")) { int cur = -1, nx = -1; for (int i = 0; i < npets_; i++) { if (!strcmp(pets_[i].name, sel)) { cur = i; } } for (int k = 1; k <= npets_; k++) { int i = (cur + k) % npets_; if (!strcmp(pets_[i].owner, wallet) && !pets_[i].frozen) { nx = i; break; } } if (nx >= 0) { snprintf(sel, sizeof sel, "%s", pets_[nx].name); } set_result("next pet"); }
         else { char row[300]; if (!strcmp(cmd, "REST")) { snprintf(row, sizeof row, "REST|%s|%s|%s", sel, wallet, ts); } else { int nb = 0; for (int i = 0; i < npets_; i++) { if (!strcmp(pets_[i].name, sel)) { nb = pets_[i].best + 1; } } const char *rk[] = { "E", "D", "C", "B", "A", "S" }; if (nb > 5) { nb = 5; } snprintf(row, sizeof row, "COMPETE|%s|%s|%s|%s", sel, rk[nb], wallet, ts); }
             long w0 = 0; for (int i = 0; i < npets_; i++) { if (!strcmp(pets_[i].name, sel)) { w0 = pets_[i].wins; } } op(o, sizeof o, &c, "mine", chainf, "_ranch", ts, row); if (c != 0) { first_line(o); set_result("refused (too tired, not enough coins, or retired)"); } else if (!strcmp(cmd, "REST")) { set_result("rested"); } else { refresh(); long w1 = 0; for (int i = 0; i < npets_; i++) { if (!strcmp(pets_[i].name, sel)) { w1 = pets_[i].wins; } } set_result(w1 > w0 ? "won the ranked fight" : "lost the ranked fight: train and try again"); } } }
+    else if (!strncmp(cmd, "AOPEN:", 6)) { const char *md = cmd + 6; if (strcmp(md, "1v1") && strcmp(md, "2v2") && strcmp(md, "ffa")) { set_result("unknown mode"); } else { char id[32]; int n = 1; for (;;) { snprintf(id, sizeof id, "arena%d", n); int used = 0; for (int i = 0; i < nar_; i++) { if (!strcmp(ar_[i].id, id)) { used = 1; } } if (!used) { break; } n++; } char row[300]; snprintf(row, sizeof row, "ARENA|%s|%s|%s|%s", id, md, wallet, ts); op(o, sizeof o, &c, "mine", chainf, "_ranch", ts, row); first_line(o); if (c == 0) { snprintf(asel, sizeof asel, "%s", id); set_result("arena opened"); } else { set_result(o[0] ? o : "could not open an arena"); } } }
+    else if (!strcmp(cmd, "AJOIN") || !strcmp(cmd, "AFILL") || !strcmp(cmd, "AFIGHT") || !strcmp(cmd, "ALEAVE")) { if (!asel[0]) { set_result("open an arena first"); } else if (!strcmp(cmd, "AJOIN") && !sel[0]) { set_result("hatch a pet first (Ranch tab)"); } else { char row[300]; if (!strcmp(cmd, "AJOIN")) { snprintf(row, sizeof row, "JOIN|%s|%s|%s|%s", asel, sel, wallet, ts); } else if (!strcmp(cmd, "ALEAVE")) { snprintf(row, sizeof row, "LEAVE|%s|%s|%s|%s", asel, sel, wallet, ts); } else if (!strcmp(cmd, "AFILL")) { snprintf(row, sizeof row, "FILL|%s|%s|%s", asel, wallet, ts); } else { snprintf(row, sizeof row, "FIGHT|%s|%s|%s", asel, wallet, ts); }
+            op(o, sizeof o, &c, "mine", chainf, "_ranch", ts, row); first_line(o); if (c == 0) { set_result(!strcmp(cmd, "AJOIN") ? "joined (entry fee 20 paid)" : !strcmp(cmd, "ALEAVE") ? "left, the entry fee came back" : !strcmp(cmd, "AFILL") ? "default fighters stepped in" : "the fight is over: see the winners above"); } else { set_result(o[0] ? o : "refused: see the rules"); } } }
+    else if (!strcmp(cmd, "ANEXT")) { int cur = -1; for (int i = 0; i < nar_; i++) { if (!strcmp(ar_[i].id, asel)) { cur = i; } } if (nar_ > 0) { snprintf(asel, sizeof asel, "%s", ar_[(cur + 1) % nar_].id); } set_result("next arena"); }
     else if (!strncmp(cmd, "WALLET:", 7)) { char w[48]; snprintf(w, sizeof w, "%.40s", cmd + 7); clean_id(w); if (w[0]) { snprintf(wallet, sizeof wallet, "%s", w); set_result("wallet name set (a label: signatures come later)"); } }
     refresh(); write_ui(); }
 static void poll(int *last) {

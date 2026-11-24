@@ -1,0 +1,4 @@
+duel|1v1|alice|0|0|rex,tobo|tobo|89,114|rex:0-1,tobo:2-0
+team|2v2|erin|0|0|ivy,kai,ai-1,ai-2|kai,ai-2|100,121,137,146|ivy:0-1,kai:1-0
+brawl|ffa|alice|0|0|mina,tobo,ai-1|mina,ai-1,tobo|150,108,130|mina:1-0,tobo:2-0
+lobby|1v1|erin|1|0||||

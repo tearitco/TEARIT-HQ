@@ -181,3 +181,93 @@ RUN | $T/pkg/ops/+x/tear_item_op.+x | RANK | $T/pkg | $T/house
 WAIT_HAS | pkg/tear_ui.txt | ranked fight | 8000 | the-ranked-fight-button-answered
 EXPECT_HAS | pkg/data/web_chain.txt | COMPETE\prex\pE\palice\p | the-fight-is-a-row-in-the-chain-file
 CLEAN   |
+CASE    | c-arena-state-equals-the-js-state
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | op.+x
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_arena_chain.txt | a.txt
+RUN | $T/op.+x | verify | $T/a.txt
+EXPECT_EXIT | 0 | the-JS-mined-arena-chain-verifies-in-C
+EXPECT_OUT | OK height=58 | all-58-blocks-accepted-(1v1-2v2-free-for-all-and-a-leave-are-in-it)
+RUN | $T/op.+x | arenas | $T/a.txt
+EXPECT_OUT | duel\p1v1\palice\p0\p0\prex,tobo\ptobo\p89,114\prex:0-1,tobo:2-0 | arena-duel-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | team\p2v2\perin\p0\p0\pivy,kai,ai-1,ai-2\pkai,ai-2\p100,121,137,146\pivy:0-1,kai:1-0 | arena-team-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | brawl\pffa\palice\p0\p0\pmina,tobo,ai-1\pmina,ai-1,tobo\p150,108,130\pmina:1-0,tobo:2-0 | arena-brawl-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | lobby\p1v1\perin\p1\p0\p\p\p\p | arena-lobby-equals-the-JS-state-byte-for-byte
+RUN | $T/op.+x | pets | $T/a.txt
+EXPECT_OUT | rex\palice\pCosmic\p9/130\p90\p6,4\p29 18 30 19 16 26\p1/2\p0\p0\p\p0\p0\p0-1\p1/0\p11240\p0 0 0 | pet-rex-after-the-arenas-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | mina\palice\pLight\p2/137\p40\p7,4\p19 30 23 26 27 18\p1/1\p0\p0\p\p0\p0\p0-1\p0/0\p1049\p0 0 0 | pet-mina-after-the-arenas-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | tobo\pcarol\pCosmic\p3/125\p60\p3,7\p14 16 13 22 28 23\p0/0\p-1\p0\p\p0\p0\p2-0\p0/0\p1003\p0 0 0 | pet-tobo-after-the-arenas-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | ivy\perin\pLight\p1/129\p20\p4,4\p25 12 15 15 16 23\p0/0\p-1\p0\p\p0\p0\p0-0\p0/0\p1080\p0 0 0 | pet-ivy-after-the-arenas-equals-the-JS-state-byte-for-byte
+EXPECT_OUT | kai\perin\pWater\p3/148\p20\p5,2\p23 14 29 27 10 10\p0/0\p-1\p0\p\p0\p0\p0-0\p0/1\p858\p0 0 0 | pet-kai-after-the-arenas-equals-the-JS-state-byte-for-byte
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | ARENA\pduel\p1v1\palice\p99
+EXPECT_EXIT | 1 | a-used-arena-name-is-refused
+EXPECT_OUT | arena name already used | the-reason-is-named-(arena name already used)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | ARENA\px\p3v3\palice\p99
+EXPECT_EXIT | 1 | an-unknown-mode-is-refused
+EXPECT_OUT | unknown mode | the-reason-is-named-(unknown mode)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | JOIN\pduel\prex\palice\p99
+EXPECT_EXIT | 1 | a-finished-arena-is-closed
+EXPECT_OUT | that arena is closed | the-reason-is-named-(that arena is closed)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | JOIN\pnone\prex\palice\p99
+EXPECT_EXIT | 1 | a-missing-arena-is-refused
+EXPECT_OUT | no such arena | the-reason-is-named-(no such arena)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | JOIN\plobby\prex\pbob\p99
+EXPECT_EXIT | 1 | only-the-owner-can-enter-a-pet
+EXPECT_OUT | not the owner of rex | the-reason-is-named-(not the owner of rex)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | FILL\plobby\pbob\p99
+EXPECT_EXIT | 1 | only-the-arena-owner-can-fill
+EXPECT_OUT | only the arena owner can fill it | the-reason-is-named-(only the arena owner can fill it)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | FIGHT\plobby\pbob\p99
+EXPECT_EXIT | 1 | a-stranger-cannot-start-a-fight
+EXPECT_OUT | you are not in that arena | the-reason-is-named-(you are not in that arena)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | FIGHT\plobby\perin\p99
+EXPECT_EXIT | 1 | a-fight-needs-a-real-pet
+EXPECT_OUT | no pets in the arena | the-reason-is-named-(no pets in the arena)
+RUN | $T/op.+x | mine | $T/a.txt | x | 99 | LEAVE\plobby\pkai\perin\p99
+EXPECT_EXIT | 1 | a-pet-that-never-joined-cannot-leave
+EXPECT_OUT | not in that arena | the-reason-is-named-(not in that arena)
+CLEAN   |
+CASE    | window-arena-tab-driven-like-the-window
+SCRATCH |
+MKDIR   | pkg/ops/+x
+MKDIR   | house
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | pkg/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_offline_manager.+x | pkg/ops/+x/tear_offline_manager.+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_item_op.+x | pkg/ops/+x/tear_item_op.+x
+ENV     | USER | alice
+SPAWN   | mgr | $T/pkg/ops/+x/tear_offline_manager.+x | $T/house | $T/pkg
+WAIT_HAS | pkg/tear_ui.txt | wallet_id=alice | 5000 | the-manager-published-its-vars
+RUN | $T/pkg/ops/+x/tear_item_op.+x | hatch | $T/pkg | $T/house | rex blue dragon dreams
+WAIT_HAS | pkg/tear_ui.txt | pet_line1=rex the Cosmic | 8000 | a-pet-hatched-first
+RUN | $T/pkg/ops/+x/tear_item_op.+x | PFAUCET | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | 1000 coins | 8000 | the-pet-has-coins-for-the-entry-fee
+RUN | $T/pkg/ops/+x/tear_item_op.+x | TAB arena | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | tab_arena=1 | 5000 | the-arena-tab-opens
+EXPECT_HAS | pkg/tear_ui.txt | no arena yet | the-window-says-there-is-no-arena-yet
+RUN | $T/pkg/ops/+x/tear_item_op.+x | AOPEN 1v1 | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | result=arena opened | 8000 | the-open-button-opened-an-arena
+EXPECT_HAS | pkg/tear_ui.txt | arena arena1 | the-window-shows-the-new-arena-by-name
+RUN | $T/pkg/ops/+x/tear_item_op.+x | AJOIN | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | result=joined | 8000 | my-pet-joined-and-paid-the-fee
+EXPECT_HAS | pkg/tear_ui.txt | fighters: rex | the-fighter-list-names-my-pet
+RUN | $T/pkg/ops/+x/tear_item_op.+x | AFILL | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | result=default fighters stepped in | 8000 | the-fill-button-added-a-default-fighter
+EXPECT_HAS | pkg/tear_ui.txt | fighters: rex,ai-1 | the-default-fighter-is-named-ai-1
+EXPECT_HAS | pkg/tear_ui.txt | n_agrid=8 | the-arena-floor-has-eight-rows
+RUN | $T/pkg/ops/+x/tear_item_op.+x | AFIGHT | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | result=the fight is over | 8000 | the-fight-button-ran-the-fight
+EXPECT_HAS | pkg/tear_ui.txt | winners: | the-window-shows-the-winners
+EXPECT_HAS | pkg/tear_ui.txt | finished | the-arena-is-finished
+EXPECT_HAS | pkg/data/web_chain.txt | ARENA\parena1\p1v1\palice\p | the-arena-is-a-row-in-the-chain-file
+EXPECT_HAS | pkg/data/web_chain.txt | FIGHT\parena1\palice\p | the-fight-is-a-row-in-the-chain-file
+RUN | $T/pkg/ops/+x/tear_item_op.+x | AFIGHT | $T/pkg | $T/house
+WAIT_HAS | pkg/tear_ui.txt | that arena is closed | 8000 | NEGATIVE-a-second-fight-in-a-finished-arena-is-refused
+CLEAN   |
+CASE    | layout-has-the-arena-tab-and-no-shell
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/tear-offline.xhtpm | l.xhtpm
+EXPECT_HAS | l.xhtpm | 'TAB arena' | the-sidebar-has-an-Arena-tab
+EXPECT_HAS | l.xhtpm | 'AFIGHT' | the-layout-has-the-fight-button
+EXPECT_HAS | l.xhtpm | show="${tab_arena}" | the-arena-widgets-show-only-on-the-arena-tab
+EXPECT_LACKS | l.xhtpm | .sh' | NEGATIVE-no-action-calls-a-shell-script
+CLEAN   |

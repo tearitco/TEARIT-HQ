@@ -14,6 +14,7 @@
       <item id="tm" class="tear-tab ${cls_messages}" label="Messages" action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB messages'"/>
       <item id="te" class="tear-tab ${cls_explorer}" label="Explorer" action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB explorer'"/>
       <item id="tr" class="tear-tab ${cls_ranch}"    label="Ranch"    action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB ranch'"/>
+      <item id="ta" class="tear-tab ${cls_arena}"    label="Arena"    action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB arena'"/>
       <item id="ty" class="tear-tab ${cls_sync}"     label="Sync"     action="'${PKG}/ops/+x/tear_item_op.+x' 'TAB sync'"/>
       <item id="rf" class="tear-tab" label="refresh" action="'${PKG}/ops/+x/tear_item_op.+x' 'REFRESH'"/>
     </sidebar>
@@ -75,6 +76,23 @@
       <item id="r-rs" class="tear-btn" label="Rest (free)" action="'${PKG}/ops/+x/tear_item_op.+x' 'REST'" show="${tab_ranch}"/>
       <item id="r-rk" class="tear-btn" label="Next ranked fight" action="'${PKG}/ops/+x/tear_item_op.+x' 'RANK'" show="${tab_ranch}"/>
       <item id="r-np" class="tear-btn" label="Next pet" action="'${PKG}/ops/+x/tear_item_op.+x' 'NEXTPET'" show="${tab_ranch}"/>
+
+      <!-- Arena: 1v1, 2v2 and free for all; the floor in text (same fighter places as the web map), the rules are rows of the chain -->
+      <text id="a-l1" class="tear-big" label="${arena_l1}" show="${tab_arena}"/>
+      <text id="a-l2" class="tear-kv" label="${arena_l2}" show="${tab_arena}"/>
+      <text id="a-l3" class="tear-kv" label="${arena_l3}" show="${tab_arena}"/>
+      <repeat count="${n_agrid}" bind="ag">
+        <text id="ag${ag.#}" class="tear-grid" label="${ag.text}"/>
+      </repeat>
+      <text id="a-l4" class="tear-quiet" label="${arena_l4}" show="${tab_arena}"/>
+      <item id="a-o1" class="tear-btn" label="Open a 1v1" action="'${PKG}/ops/+x/tear_item_op.+x' 'AOPEN 1v1'" show="${tab_arena}"/>
+      <item id="a-o2" class="tear-btn" label="Open a 2v2 (teams)" action="'${PKG}/ops/+x/tear_item_op.+x' 'AOPEN 2v2'" show="${tab_arena}"/>
+      <item id="a-o3" class="tear-btn" label="Open a free for all (3 to 8)" action="'${PKG}/ops/+x/tear_item_op.+x' 'AOPEN ffa'" show="${tab_arena}"/>
+      <item id="a-j" class="tear-btn" label="Join with my pet (fee 20)" action="'${PKG}/ops/+x/tear_item_op.+x' 'AJOIN'" show="${tab_arena}"/>
+      <item id="a-f" class="tear-btn" label="Fill with default fighters" action="'${PKG}/ops/+x/tear_item_op.+x' 'AFILL'" show="${tab_arena}"/>
+      <item id="a-g" class="tear-btn" label="FIGHT!" action="'${PKG}/ops/+x/tear_item_op.+x' 'AFIGHT'" show="${tab_arena}"/>
+      <item id="a-lv" class="tear-btn" label="Leave (fee back)" action="'${PKG}/ops/+x/tear_item_op.+x' 'ALEAVE'" show="${tab_arena}"/>
+      <item id="a-n" class="tear-btn" label="Next arena" action="'${PKG}/ops/+x/tear_item_op.+x' 'ANEXT'" show="${tab_arena}"/>
 
       <!-- Sync -->
       <text id="y-hint" class="tear-quiet" label="Merge another copy by the fork rule (most work wins, a tie keeps yours). Type a file path then Enter." show="${tab_sync}"/>

@@ -16,8 +16,9 @@ int main(int argc, char **argv) {
         else return 0;
     } else if (!strncmp(v, "TAB ", 4)) snprintf(cmd, sizeof cmd, "TAB:%s", v + 4);
     else if (!strncmp(v, "FEED ", 5)) snprintf(cmd, sizeof cmd, "FEED:%s", v + 5);
+    else if (!strncmp(v, "AOPEN ", 6)) snprintf(cmd, sizeof cmd, "AOPEN:%s", v + 6);
     else if (!strncmp(v, "TRAIN ", 6)) snprintf(cmd, sizeof cmd, "TRAIN:%s", v + 6);
-    else if (!strcmp(v, "MINE") || !strcmp(v, "FAUCET") || !strcmp(v, "EXPORT") || !strcmp(v, "FETCH") || !strcmp(v, "REFRESH") || !strcmp(v, "REST") || !strcmp(v, "RANK") || !strcmp(v, "NEXTPET") || !strcmp(v, "PFAUCET")) snprintf(cmd, sizeof cmd, "%s", v);
+    else if (!strcmp(v, "MINE") || !strcmp(v, "FAUCET") || !strcmp(v, "EXPORT") || !strcmp(v, "FETCH") || !strcmp(v, "REFRESH") || !strcmp(v, "REST") || !strcmp(v, "RANK") || !strcmp(v, "NEXTPET") || !strcmp(v, "PFAUCET") || !strcmp(v, "AJOIN") || !strcmp(v, "AFILL") || !strcmp(v, "AFIGHT") || !strcmp(v, "ALEAVE") || !strcmp(v, "ANEXT")) snprintf(cmd, sizeof cmd, "%s", v);
     else return 0;
     for (char *p = cmd; *p; p++) if (*p == '\n' || *p == '\r') *p = ' ';
     char sp[1100], ap[1100]; snprintf(sp, sizeof sp, "%s/tear.seq", pkg); snprintf(ap, sizeof ap, "%s/tear_action.txt", pkg);

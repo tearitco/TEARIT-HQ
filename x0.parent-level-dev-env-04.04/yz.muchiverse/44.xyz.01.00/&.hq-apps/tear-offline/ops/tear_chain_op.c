@@ -11,7 +11,7 @@
  *   tear_chain_op merge    <a> <b> <out>               fork rule, writes the winner to <out>            -> MERGE winner=a|b reason=<text>
  *   tear_chain_op messages <file> <channel|*>          one `from<TAB>text` line per message (verified chains only)
  *   tear_chain_op tail     <file> <n>                  the last n blocks as `#index hash10 miner rows`
- * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/tear_chain_op.+x tear_chain_op.c -lcrypto */
+  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/tear_chain_op.+x tear_chain_op.c -lcrypto -lm   (a failed link DELETES the old binary: check that the file exists after building) */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,9 +28,9 @@ static Cfg C = { 2, 10500, 1000, 21000000, 1000, 3600 };
 typedef struct { long index; char prev[72], hash[72], nonce[40], miner[NAMEL]; long ts; char *txl; } Blk;
 typedef struct { char name[NAMEL]; long bal, last; int has_last; } W;
 typedef struct { W w[MAXW]; int n; } Bal;
-typedef struct { char name[NAMEL], owner[NAMEL], seed[48], payee[NAMEL]; int spec, sx, sy, x, y, stats[6], age, life, fat, frozen, retired, gym, barn, wins, cups, best, items[3], buffT, buffF, pvpW, pvpL; long price; } Pet;
+typedef struct { char name[NAMEL], owner[NAMEL], seed[48], payee[NAMEL]; int spec, sx, sy, x, y, stats[6], age, life, fat, frozen, retired, gym, barn, wins, cups, best, items[3], buffT, buffF, pvpW, pvpL, arenaW, arenaL; long price; } Pet;
 typedef struct { Pet p[64]; int n; } Pets;
-typedef struct { int ok; long height; double work; char tip[72]; char why[160]; long at; Bal bal; Pets pets; char **mf, **mc, **mt; long *mts; int nm; } Ver;
+typedef struct { int ok; long height; double work; char tip[72]; char why[160]; long at; Bal bal; Pets pets; void *ar; char **mf, **mc, **mt; long *mts; int nm; } Ver;
 
 static void sha_hex(const char *s, char out[65]) { unsigned char d[32]; SHA256((const unsigned char *)s, strlen(s), d); for (int i = 0; i < 32; i++) sprintf(out + 2 * i, "%02x", d[i]); out[64] = 0; }
 static const char ZERO[] = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -67,12 +67,55 @@ static int blocked_cell(int x, int y) { return (x == 1 && y == 1) || (x == 10 &&
 static int cell_free(Pets *P, int x, int y, Pet *self) { if (x < 0 || y < 0 || x >= GCOLS || y >= GROWS || blocked_cell(x, y)) return 0; for (int i = 0; i < P->n; i++) { Pet *q = &P->p[i]; if (q != self && !q->frozen && q->x == x && q->y == y) return 0; } return 1; }
 static void place_pet(Pets *P, Pet *p) { for (int i = 0; i < GCOLS * GROWS; i++) { int x = (p->sx + i) % GCOLS, y = (p->sy + (p->sx + i) / GCOLS) % GROWS; if (cell_free(P, x, y, p)) { p->x = x; p->y = y; return; } } p->x = 0; p->y = 0; }
 static int active_of(Pets *P, const char *o) { int n = 0; for (int i = 0; i < P->n; i++) if (!strcmp(P->p[i].owner, o) && !P->p[i].frozen) n++; return n; }
-static const char *VERBS[19] = { "TX", "MSG", "FAUCET", "PET", "FEED", "TRAIN", "REST", "COMPETE", "UPGRADE", "FREEZE", "THAW", "TRANSFER", "LIST", "UNLIST", "BUY", "BUYITEM", "USEITEM", "GIVEITEM", "CHALLENGE" };
-static int is_verb(const char *v) { for (int i = 0; i < 19; i++) if (!strcmp(VERBS[i], v)) return 1; return !strcmp(v, "MOVE"); }
+static const char *VERBS[24] = { "TX", "MSG", "FAUCET", "PET", "FEED", "TRAIN", "REST", "COMPETE", "UPGRADE", "FREEZE", "THAW", "TRANSFER", "LIST", "UNLIST", "BUY", "BUYITEM", "USEITEM", "GIVEITEM", "CHALLENGE", "ARENA", "JOIN", "LEAVE", "FIGHT", "FILL" };
+static int is_verb(const char *v) { for (int i = 0; i < 24; i++) if (!strcmp(VERBS[i], v)) return 1; return !strcmp(v, "MOVE"); }
 static int row_len(const char *v) { static const struct { const char *v; int n; } T[] = { { "FEED", 5 }, { "TRAIN", 5 }, { "REST", 4 }, { "COMPETE", 5 }, { "UPGRADE", 5 }, { "FREEZE", 4 }, { "THAW", 4 }, { "TRANSFER", 5 }, { "LIST", 6 }, { "UNLIST", 4 }, { "BUY", 5 }, { "BUYITEM", 5 }, { "USEITEM", 5 }, { "GIVEITEM", 6 }, { "CHALLENGE", 5 }, { "MOVE", 6 } }; for (unsigned i = 0; i < sizeof T / sizeof T[0]; i++) if (!strcmp(T[i].v, v)) return T[i].n; return 0; }
+/* ---- THE ARENA (port of arenaRow in chain.js: same checks in the same order, same reasons, same arithmetic) ---- */
+typedef struct { char name[NAMEL]; int ai, power; } AMem;
+typedef struct { char id[NAMEL], mode[8], owner[NAMEL]; AMem m[8]; int nm; long pot; int open, nw; char win[8][NAMEL]; int ns; int sc[8]; } Arena;
+typedef struct { Arena a[16]; int n; } Arenas;
+#define ARENA_ENTRY 20
+#define ARENA_RAKE 10
+#define ARENA_AIBASE 90
+#define ARENA_AISPAN 40
+static int arena_mode(const char *m, int *mn, int *mx) { if (!strcmp(m, "1v1")) { *mn = 2; *mx = 2; return 1; } if (!strcmp(m, "2v2")) { *mn = 4; *mx = 4; return 1; } if (!strcmp(m, "ffa")) { *mn = 3; *mx = 8; return 1; } return 0; }
+static int hex2(const char *h) { char two[3] = { h[0], h[1], 0 }; return (int)strtol(two, NULL, 16); }
+static int arena_has(Arena *a, const char *n) { for (int j = 0; j < a->nm; j++) if (!strcmp(a->m[j].name, n)) return 1; return 0; }
+static const char *arena_row(Bal *bal, Pets *P, Arenas *AR, char **f, int nf, char *why) {
+    const char *v = f[0], *id = nf > 1 ? f[1] : ""; Arena *a = NULL; int mn, mx; Pet *p, *q; char tmp[200], h[65];
+    if (!strcmp(v, "ARENA")) { if (nf != 5) return "bad ARENA row"; if (!ok_pet_id(id) || id[0] == '_') return "bad arena name";
+        for (int i = 0; i < AR->n; i++) if (!strcmp(AR->a[i].id, id)) return "arena name already used";
+        if (!arena_mode(f[2], &mn, &mx)) return "unknown mode"; if (!ok_pet_id(f[3])) return "bad owner"; if (AR->n >= 16) return "too many arenas on this chain";
+        a = &AR->a[AR->n++]; memset(a, 0, sizeof *a); snprintf(a->id, NAMEL, "%s", id); snprintf(a->mode, 8, "%s", f[2]); snprintf(a->owner, NAMEL, "%s", f[3]); a->open = 1; return NULL; }
+    for (int i = 0; i < AR->n; i++) if (!strcmp(AR->a[i].id, id)) a = &AR->a[i];
+    if (!a) return "no such arena"; int len = !strcmp(v, "FIGHT") || !strcmp(v, "FILL") ? 4 : 5; if (nf != len) { snprintf(why, 160, "bad %s row", v); return why; } if (!a->open) return "that arena is closed";
+    arena_mode(a->mode, &mn, &mx);
+    if (!strcmp(v, "JOIN") || !strcmp(v, "LEAVE")) { p = pet_of(P, f[2]); if (!p) return "no such pet"; if (strcmp(f[3], p->owner)) { snprintf(why, 160, "not the owner of %s", p->name); return why; }
+        if (!strcmp(v, "LEAVE")) { if (!arena_has(a, p->name)) { snprintf(why, 160, "%s is not in that arena", p->name); return why; } for (int j = 0; j < a->nm; j++) if (!strcmp(a->m[j].name, p->name)) { memmove(&a->m[j], &a->m[j + 1], sizeof(AMem) * (size_t)(a->nm - j - 1)); a->nm--; break; } a->pot -= ARENA_ENTRY; W *w = wal(bal, p->name); if (w) w->bal += ARENA_ENTRY; return NULL; }
+        if (p->frozen) { snprintf(why, 160, "%s is frozen", p->name); return why; } if (p->retired) { snprintf(why, 160, "%s has retired", p->name); return why; } if (p->fat >= TIREDMAX) { snprintf(why, 160, "%s is too tired", p->name); return why; }
+        for (int k = 0; k < AR->n; k++) if (AR->a[k].open && arena_has(&AR->a[k], p->name)) { snprintf(why, 160, "%s is already in an arena", p->name); return why; }
+        if (a->nm >= mx) return "the arena is full"; W *w = wal(bal, p->name); if (!w || w->bal < ARENA_ENTRY) { snprintf(why, 160, "not enough coins in %s", p->name); return why; } w->bal -= ARENA_ENTRY;
+        a->pot += ARENA_ENTRY; AMem *m = &a->m[a->nm++]; memset(m, 0, sizeof *m); snprintf(m->name, NAMEL, "%s", p->name); return NULL; }
+    if (!strcmp(v, "FILL")) { if (strcmp(f[2], a->owner)) return "only the arena owner can fill it"; int want = mn > 2 ? mn : 2; if (a->nm >= want) return "the arena is already full enough"; int n0 = 0; for (int j = 0; j < a->nm; j++) if (a->m[j].ai) n0++;
+        while (a->nm < want) { n0++; AMem *m = &a->m[a->nm++]; memset(m, 0, sizeof *m); snprintf(m->name, NAMEL, "ai-%d", n0); m->ai = 1; snprintf(tmp, sizeof tmp, "ai|%s|%s", id, m->name); sha_hex(tmp, h); m->power = ARENA_AIBASE + hex2(h) % ARENA_AISPAN; } return NULL; }
+    /* FIGHT */ { int owns = !strcmp(f[2], a->owner), reals = 0; for (int j = 0; j < a->nm; j++) if (!a->m[j].ai) { reals++; Pet *mp = pet_of(P, a->m[j].name); if (mp && !strcmp(mp->owner, f[2])) owns = 1; }
+        if (!owns) return "you are not in that arena"; if (!reals) return "no pets in the arena";
+        if (!strcmp(a->mode, "ffa") ? a->nm < mn : a->nm != mx) { snprintf(why, 160, "the arena needs %s%d fighters", !strcmp(a->mode, "ffa") ? "at least " : "", !strcmp(a->mode, "ffa") ? mn : mx); return why; } }
+    for (int j = 0; j < a->nm; j++) { AMem *m = &a->m[j]; if (m->ai) { snprintf(tmp, sizeof tmp, "ai|%s|%s|roll", id, m->name); sha_hex(tmp, h); a->sc[j] = m->power + hex2(h) % ROLL; }
+        else { q = pet_of(P, m->name); snprintf(tmp, sizeof tmp, "%s|%s|%s|arena", q->seed, id, m->name); sha_hex(tmp, h); a->sc[j] = power_of(q) - q->fat / 2 + hex2(h) % ROLL; } }
+    a->ns = a->nm; long rake = a->pot * ARENA_RAKE / 100, net = a->pot - rake; W *pool = wal(bal, "_ranch"); if (pool) pool->bal += rake; int wins[3], nw = 0; long shares[3];
+    if (!strcmp(a->mode, "1v1")) { int k = a->sc[1] > a->sc[0] ? 1 : 0; wins[0] = k; nw = 1; shares[0] = net; }
+    else if (!strcmp(a->mode, "2v2")) { int k = (a->sc[1] + a->sc[3]) > (a->sc[0] + a->sc[2]) ? 1 : 0; wins[0] = k; wins[1] = k + 2; nw = 2; shares[0] = net / 2 + net % 2; shares[1] = net / 2; }
+    else { int ord[8]; for (int j = 0; j < a->nm; j++) ord[j] = j; for (int x = 1; x < a->nm; x++) { int t = ord[x], y = x - 1; while (y >= 0 && (a->sc[t] > a->sc[ord[y]] || (a->sc[t] == a->sc[ord[y]] && t < ord[y]))) { ord[y + 1] = ord[y]; y--; } ord[y + 1] = t; }
+        nw = 3; for (int j = 0; j < 3; j++) wins[j] = ord[j]; long s1 = net * 50 / 100, s2 = net * 30 / 100, s3 = net * 20 / 100; shares[0] = s1 + (net - s1 - s2 - s3); shares[1] = s2; shares[2] = s3; }
+    a->nw = nw; for (int j = 0; j < nw; j++) { AMem *m = &a->m[wins[j]]; snprintf(a->win[j], NAMEL, "%s", m->name); if (m->ai) { if (pool) pool->bal += shares[j]; } else { W *w = wal(bal, m->name); if (w) w->bal += shares[j]; pet_of(P, m->name)->arenaW++; } }
+    for (int j = 0; j < a->nm; j++) { AMem *m = &a->m[j]; if (m->ai) continue; q = pet_of(P, m->name); int won = 0; for (int k = 0; k < nw; k++) if (!strcmp(a->win[k], m->name)) won = 1; if (!won) q->arenaL++; q->fat += COMPFAT; if (q->fat > TIREDMAX) q->fat = TIREDMAX; q->age++; if (q->age >= q->life) q->retired = 1; }
+    a->pot = 0; a->open = 0; return NULL;
+}
 /* returns NULL when allowed (and applied), else the reason (static text or the buffer why) */
-static const char *ranch_row(Bal *bal, Pets *P, char **f, int nf, char *why) {
+static const char *ranch_row(Bal *bal, Pets *P, Arenas *AR, char **f, int nf, char *why) {
     const char *v = f[0]; const char *nm = nf > 1 ? f[1] : ""; Pet *p, *q; W *w, *w2;
+    if (!strcmp(f[0], "ARENA") || !strcmp(f[0], "JOIN") || !strcmp(f[0], "LEAVE") || !strcmp(f[0], "FIGHT") || !strcmp(f[0], "FILL")) return arena_row(bal, P, AR, f, nf, why);
     #define SPEND(petn, amt) do { W *sw = wal(bal, (petn)); if (!sw || sw->bal < (amt)) { snprintf(why, 160, "not enough coins in %s", (petn)); return why; } sw->bal -= (amt); W *rp = wal(bal, "_ranch"); if (rp) rp->bal += (amt); } while (0)
     #define WEEK(pp) do { (pp)->age++; if ((pp)->age >= (pp)->life) (pp)->retired = 1; } while (0)
     #define ADDSTAT(pp, s, nn) do { (pp)->stats[s] += (nn); if ((pp)->stats[s] > STATCAP) (pp)->stats[s] = STATCAP; } while (0)
@@ -140,7 +183,7 @@ static int fields(char *s, char **f, int max) { int k = 0; f[k++] = s; for (char
 static void fail(Ver *v, long at, const char *why) { v->ok = 0; v->at = at; snprintf(v->why, sizeof v->why, "%s", why); }
 
 static void verify(char *text, Ver *v) {
-    memset(v, 0, sizeof *v); v->ok = 1; snprintf(v->tip, 72, "%s", ZERO);
+    memset(v, 0, sizeof *v); v->ok = 1; snprintf(v->tip, 72, "%s", ZERO); v->ar = calloc(1, sizeof(Arenas));
     char err[160]; Blk *bl; long n = parse(text, &bl, err, sizeof err); if (n < 0) { fail(v, 0, err); return; }
     long minted = 0; char pre[8192]; v->mf = calloc(256, sizeof(char *)); v->mc = calloc(256, sizeof(char *)); v->mt = calloc(256, sizeof(char *)); v->mts = calloc(256, sizeof(long));
     for (long i = 0; i < n && v->ok; i++) { Blk *b = &bl[i]; v->height = i;
@@ -157,7 +200,7 @@ static void verify(char *text, Ver *v) {
                 W *w = wal(&v->bal, f[1]); if (!w) break; if (w->has_last && ft - w->last < C.fgap) { fail(v, i, "faucet cooldown"); break; } w->last = ft; w->has_last = 1; w->bal += (long)fa; }
             else if (!strcmp(f[0], "MSG")) { if (k != 5) { fail(v, i, "bad MSG row"); break; } if (v->nm < 256) { v->mf[v->nm] = strdup(f[1]); v->mc[v->nm] = strdup(f[2]); v->mt[v->nm] = strdup(f[3]); v->mts[v->nm] = atol(f[4]); v->nm++; } }
             else if (!is_verb(f[0])) { snprintf(err, sizeof err, "unknown row %s", f[0]); fail(v, i, err); break; }
-            else { char wb[160]; const char *rs = ranch_row(&v->bal, &v->pets, f, k, wb); if (rs) { fail(v, i, rs); break; } } }
+            else { char wb[160]; const char *rs = ranch_row(&v->bal, &v->pets, (Arenas *)v->ar, f, k, wb); if (rs) { fail(v, i, rs); break; } } }
         for (int j = 0; j < nr; j++) { free(rows[j]); }
         free(rows); if (!v->ok) break;
         long r = reward(i); if (minted + r > C.supply) r = C.supply - minted; minted += r; W *m = wal(&v->bal, b->miner); if (m) m->bal += r; v->work += pow(16, C.zeros); }
@@ -179,11 +222,12 @@ int main(int argc, char **argv) {
     char *av[64]; int ac = 0; for (int i = 1; i < argc && ac < 64; i++) { if (!strcmp(argv[i], "--zeros") && i + 1 < argc) { C.zeros = atoi(argv[++i]); continue; } av[ac++] = argv[i]; }
     if (ac < 2) { fprintf(stderr, "usage: tear_chain_op verify|balance|mine|apply|merge|messages|tail <file> ...\n"); return 2; }
     const char *cmd = av[0], *file = av[1]; size_t n; Ver v;
-    if (!strcmp(cmd, "verify") || !strcmp(cmd, "balance") || !strcmp(cmd, "messages") || !strcmp(cmd, "tail") || !strcmp(cmd, "pets")) {
+    if (!strcmp(cmd, "verify") || !strcmp(cmd, "balance") || !strcmp(cmd, "messages") || !strcmp(cmd, "tail") || !strcmp(cmd, "pets") || !strcmp(cmd, "arenas")) {
         char *t = slurp(file, &n); if (!t) t = strdup(""); char *keep = strdup(t); verify(t, &v);
         if (!strcmp(cmd, "verify")) { if (v.ok) { printf("OK height=%ld tip=%s work=%.0f\n", v.height, v.tip, v.work); return 0; } printf("BAD at=%ld why=%s\n", v.at, v.why); return 1; }
         if (!v.ok) { printf("BAD at=%ld why=%s\n", v.at, v.why); return 1; }
         if (!strcmp(cmd, "pets")) { for (int i = 0; i < v.pets.n; i++) { Pet *q = &v.pets.p[i]; W *pw = wal(&v.bal, q->name); printf("%s|%s|%s|%d/%d|%d|%d,%d|%d %d %d %d %d %d|%d/%d|%d|%ld|%s|%d|%d|%d-%d|%d/%d|%ld|%d %d %d\n", q->name, q->owner, SPEC[q->spec], q->age, q->life, q->fat, q->x, q->y, q->stats[0], q->stats[1], q->stats[2], q->stats[3], q->stats[4], q->stats[5], q->wins, q->cups, q->best, q->price, q->payee, q->frozen, q->retired, q->pvpW, q->pvpL, q->gym, q->barn, pw ? pw->bal : 0, q->items[0], q->items[1], q->items[2]); } return 0; }
+        if (!strcmp(cmd, "arenas")) { Arenas *AR = (Arenas *)v.ar; for (int i = 0; i < AR->n; i++) { Arena *a = &AR->a[i]; printf("%s|%s|%s|%d|%ld|", a->id, a->mode, a->owner, a->open, a->pot); for (int j = 0; j < a->nm; j++) printf("%s%s", j ? "," : "", a->m[j].name); printf("|"); for (int j = 0; j < a->nw; j++) printf("%s%s", j ? "," : "", a->win[j]); printf("|"); for (int j = 0; j < a->ns; j++) printf("%s%d", j ? "," : "", a->sc[j]); printf("|"); int fw = 0; for (int j = 0; j < a->nm; j++) if (!a->m[j].ai) { Pet *pp = pet_of(&v.pets, a->m[j].name); if (pp) { printf("%s%s:%d-%d", fw++ ? "," : "", pp->name, pp->arenaW, pp->arenaL); } } printf("\n"); } return 0; }
         if (!strcmp(cmd, "balance")) { if (ac < 3) return 2; W *w = wal(&v.bal, av[2]); printf("%ld\n", w ? w->bal : 0); return 0; }
         if (!strcmp(cmd, "messages")) { if (ac < 3) return 2; for (int i = 0; i < v.nm; i++) if (!strcmp(av[2], "*") || !strcmp(av[2], v.mc[i])) printf("%s\t%s\n", v.mf[i], v.mt[i]); return 0; }
         long want = ac > 2 ? atol(av[2]) : 10; Blk *bl; char err[160]; long nb = parse(keep, &bl, err, sizeof err); for (long i = nb > want ? nb - want : 0; i < nb; i++) printf("#%ld %.10s %s %.80s\n", bl[i].index, bl[i].hash, bl[i].miner, bl[i].txl); return 0; }
