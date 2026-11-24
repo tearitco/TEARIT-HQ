@@ -4,3 +4,7 @@ FILE | ledger/web_chain.txt | LEDGER     | tear_chain_op mine (the same C op as 
 FILE | atlas/cells.rgba     | CONFIG     | copied once from @.apps/hai-pal (the page atlas, 24 px tiles) | -
 FILE | tear-on-pchq/pieces/system/maps/tear-on/ranch/ | PROJECTION | tear_chain_op desk <chain> ranch <desk_dir> <atlas> | tear_on_op project
 FILE | tear-on-pchq/pieces/system/maps/tear-on/arena/ | PROJECTION | tear_chain_op desk <chain> arena <desk_dir> <atlas> | tear_on_op project
+FILE | play/action.txt  | CONFIG     | tear_on_ctl (a button appends one command word; capped at 64 KiB, the DRIVER drops the oldest half) | -
+FILE | play/driver.lock | CONFIG     | tear_on_driver (flock, one instance) | -
+FILE | play/owner.txt   | PREFERENCE | the owner label the driver acts as (default you); changes who acts, never an outcome | -
+FILE | ops/+x/*         | CONFIG     | built programs (gcc, see each .c header); not in git | -

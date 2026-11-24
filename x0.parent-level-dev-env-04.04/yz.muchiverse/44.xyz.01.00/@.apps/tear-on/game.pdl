@@ -1,7 +1,9 @@
 # game.pdl - tear-on (2026-11-24): TEAR-IT Ranch and Arena as a BOOK in rpg-edit's 2D/3D board, opened from the network menu (cell "tear-on"). Shape copied from @.apps/hai-pal.
-# There is NO `GAME | driver` row: Play starts nothing. The two pages (ranch, arena) are PROJECTIONS of the chain at ledger/web_chain.txt, drawn by `tear_chain_op desk` (run by tear_on_op project).
+# Player > Play starts the driver below (ops/tear_on_driver.c: a game bar with buttons; every click is ONE ROW on the chain). The two pages (ranch, arena) are PROJECTIONS of the chain at ledger/web_chain.txt, drawn by `tear_chain_op desk` (run by tear_on_op project).
 # One authority per fact: the chain file. Rules: &.hq-apps/tearit-web/docs/chain.js (JS) and &.hq-apps/tear-offline/ops/tear_chain_op.c (C, graded byte for byte, harness case tear_offline).
 GAME   | name        | tear-on
 GAME   | title       | tear-on
 GAME   | kind        | world
 GAME   | ruleset     | default
+GAME   | driver      | {book}/ops/+x/tear_on_driver.+x {house} {book} {editor}
+GAME   | clock       | pause

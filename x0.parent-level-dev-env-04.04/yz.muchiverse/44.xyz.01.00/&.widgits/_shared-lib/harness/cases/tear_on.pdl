@@ -66,3 +66,49 @@ EXPECT_HAS | taskbar.pdl | network_menu_9_cmd    \p livedesk:open-network:tearof
 EXPECT_HAS | taskbar.pdl | network_menu_10_cmd   \p livedesk:open-network:tearon\n | the-network-menu-has-a-tear-on-cell
 EXPECT_HAS | launchers.pdl | launcher_network_tearon \p &.hq-apps/tear-on/open_tear_on.sh | the-launcher-row-points-at-the-shim
 CLEAN   |
+CASE    | driver-plays-the-book-like-the-editor-does
+SCRATCH |
+MKDIR   | house/@.apps/tear-on/atlas
+MKDIR   | house/@.apps/tear-on/ops/+x
+MKDIR   | house/&.hq-apps/tear-offline/ops/+x
+MKDIR   | house/&.hq-apps/tear-on/ops/+x
+MKDIR   | editor/state/world
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-on/ops/+x/tear_on_op.+x | house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x
+COPY    | @.apps/tear-on/ops/+x/tear_on_driver.+x | house/@.apps/tear-on/ops/+x/tear_on_driver.+x
+COPY    | @.apps/tear-on/ops/+x/tear_on_ctl.+x | house/@.apps/tear-on/ops/+x/tear_on_ctl.+x
+COPY    | @.apps/tear-on/atlas/cells.rgba | house/@.apps/tear-on/atlas/cells.rgba
+WRITE   | editor/state/world/switches.txt | running=1\nint=1\n
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | demo | $T/house
+EXPECT_EXIT | 0 | the-demo-chain-is-seeded-by-rows
+SPAWN   | drv | $T/house/@.apps/tear-on/ops/+x/tear_on_driver.+x | $T/house | $T/house/@.apps/tear-on | $T/editor
+WAIT_HAS | editor/state/game_ui.txt | gm_on=1 | 8000 | the-driver-publishes-the-game-bar-feed
+EXPECT_HAS | editor/state/game_ui.txt | gm_title=TEAR-IT Ranch  -  you | the-bar-is-titled
+EXPECT_HAS | editor/state/game_ui.txt | rex the Cosmic | the-bar-shows-the-selected-pet
+EXPECT_HAS | editor/state/game_ui.txt | gmb_0_label=Hatch a pet | the-first-button-is-hatch
+EXPECT_HAS | editor/state/game_ui.txt | tear_on_ctl.+x' hatch | a-button-action-runs-the-ctl-program
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | hatch | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | hatched | 12000 | the-hatch-button-hatched-a-pet
+EXPECT_HAS | house/@.apps/tear-on/ledger/web_chain.txt | PET\pmochi1\p | the-hatch-is-a-row-in-the-chain
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | faucet | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | the pet claimed 1000 from the faucet | 12000 | the-faucet-button-paid-the-new-pet
+EXPECT_HAS | editor/state/game_ui.txt | 1000 coins | the-bar-shows-the-pets-coins
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | wo_cap | $T/house/@.apps/tear-on/play | 10 | 20
+WAIT_HAS | editor/state/game_ui.txt | wallet cap is now 10 | 12000 | the-wallet-cap-button-set-a-cap-(extra-click-arguments-are-ignored)
+EXPECT_HAS | house/@.apps/tear-on/ledger/web_chain.txt | WOPT\pmochi1\pcap\p10\pyou\p | the-cap-is-a-WOPT-row
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | feed_meat | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | cap: mochi1 may spend at most 10 coins at a time | 12000 | the-bar-shows-the-rules-refusal-by-name
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | wo_sale | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | the pet is locked from sale | 12000 | the-sale-lock-button-locks-the-pet
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | arena_fight | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | the fight is over | 15000 | the-fight-button-ran-the-demo-arena-fight
+EXPECT_HAS | editor/state/game_ui.txt | winners | the-bar-shows-the-winners
+EXPECT_HAS | house/@.apps/tear-on/ledger/web_chain.txt | FIGHT\parena1\pyou\p | the-fight-is-a-row-in-the-chain
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | arena_join | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/game_ui.txt | that arena is closed | 12000 | NEGATIVE-joining-a-finished-arena-is-refused
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | FEED | $T/house/@.apps/tear-on/play
+EXPECT_EXIT | 2 | NEGATIVE-a-command-word-must-be-lower-case
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | close | $T/house/@.apps/tear-on/play
+WAIT_HAS | editor/state/world/switches.txt | running=0 | 12000 | the-close-button-stops-the-game-(running-0)
+WAIT_HAS | editor/state/game_ui.txt | gm_on=\n | 12000 | the-bar-disappears-when-the-driver-ends
+CLEAN   |
