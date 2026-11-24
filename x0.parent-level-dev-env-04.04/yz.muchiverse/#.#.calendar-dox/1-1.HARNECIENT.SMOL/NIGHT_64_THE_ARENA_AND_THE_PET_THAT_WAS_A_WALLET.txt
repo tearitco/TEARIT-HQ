@@ -1,0 +1,111 @@
+# NIGHT 64 — The Arena, and the Pet That Was a Wallet
+# ====================================================================
+# Title: "NIGHT 64 — The Arena, and the Pet That Was a Wallet"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-24. Part one: TEAR-IT Ranch, the pet game on a web page, and its twin window tear-offline. Part two: the Arena, which users asked for. Part three: where the arena lives next (the rpg-edit board), and where the work stands with Grok.
+# Long-form: RAN means run today and the result seen. DESIGN means design. NOT PROVEN means nobody has shown it. No unpublished lore is used.
+# Companion documents: NIGHT 63; XO nov-24 folder 1 (the two tutorial videos); BOOK 16.game/OPEN-A-PROJECT-AS-A-BOOK-IN-RPG-EDIT (the book shape); BOOK 13.agent-coms/GROK handoff 2026-11-23; the web page https://tearitco.github.io/tearit-web/
+
+**THE NARRATOR:** Last class, night sixty-three, was about an agent that learns your words. Tonight the owner changed direction in the middle of the day, and the class follows him. A plain chain page was not what he wanted. He wanted a pet.
+
+**MAXINE:** A pet like in Monster Rancher?
+
+**THE NARRATOR:** That was his word. You type a name and some words. The words are the seed. A pet hatches from them, and the pet is also your wallet.
+
+---
+
+**THE NARRATOR:** Part one. The pet game. Tomo, how does the pet come from words?
+
+**TOMO:** We hash the words together with the name. The bytes of the hash decide everything: one of ten elements, six stats, a life of one hundred twenty to one hundred eighty weeks, and the cell where it first stands on a twelve by eight ranch. Same words, same pet, every time.
+
+**RAHWEH:** And the pet holds coins.
+
+**TOMO:** The faucet pays the pet. Mining pays the pet. Food, drills, rest, upgrades, and entry fees come out of the pet's own coins. Every action is one row on the chain, and each action is one week of the pet's life.
+
+**MAXINE:** Where does the chain live? There is no server.
+
+**THE NARRATOR:** On a static page. The chain is one text file. You download your copy, you upload a friend's copy, the page verifies every block, and the copy with the most work wins. Trading a pet, or fighting someone's pet, is a row that rides in that file.
+
+**RAHWEH:** RAN: the harness called web chain runs the page's own JavaScript inside the house worker. Seventy-one checks for the ranch, plus fourteen for the arena. Eighty-five, and a sabotaged copy of the verifier fails them, as it should.
+
+---
+
+**MAXINE:** And the window? The owner asked for the same thing in house.
+
+**TOMO:** The window is called tear-offline, under the network cell. It is written in C. The rules are a port of the JavaScript, the same checks in the same order with the same reasons.
+
+**THE NARRATOR:** How do we know they agree?
+
+**TOMO:** Parity. The page's JavaScript mines a long chain with every row type. The C tool reads that same file and prints the pets. The text must match the JavaScript's text, byte for byte. RAN today: one hundred twenty-nine checks pass for the window, and when I changed one expected number in a scratch copy, exactly that row failed.
+
+**RAHWEH:** Good. A test that cannot fail is a finding.
+
+**MAXINE:** And the experience? Is the window as good as the page?
+
+**THE NARRATOR:** No, and the class says it plainly. The rules are the same. The look is not. The page has pictures, the isometric view, the market, the items. The window has a text grid and buttons. It is the same game in a smaller coat.
+
+---
+
+**THE NARRATOR:** Part two. The users asked for an arena. A big place to fight with many pets at once, in one against one, two against two, and free for all.
+
+**MAXINE:** So how do the rules work?
+
+**TOMO:** Five new rows. Arena, join, leave, fill, fight. A one-against-one holds two fighters. Two against two holds four, two teams. Free for all takes three to eight. Joining costs twenty coins from the pet, and the coins sit in a pot. The house keeps ten percent. In a free for all the top three are paid, half, thirty percent, and twenty.
+
+**RAHWEH:** And if there are not enough players?
+
+**TOMO:** Fill. The arena owner can fill the empty places with default fighters. A default fighter's strength comes from a hash, so it is fixed, not invented at the moment of the fight. Its winnings go back to the ranch pool.
+
+**MAXINE:** And the fight itself?
+
+**TOMO:** Each fighter gets a score. A pet's score is its power, minus half its tiredness, plus a roll that comes from the pet's own seed and the arena's name. Nobody rolls dice at the moment. Run the chain again, you get the same fight. The fight tires the pet and adds a week to its age.
+
+**RAHWEH:** RAN, live. I drove the real window with real taps. Hatched a pet by typing. Opened a free for all. Joined. Filled with default fighters. Pressed fight. The pet lost with a score of one hundred five against fighters on one hundred twenty-three to one hundred fifty-four. It paid its twenty, so nine hundred eighty coins were left, tired twenty, one week older.
+
+**THE NARRATOR:** And one small thing we should tell the class, because we saw it with our own eyes. After an arena opened, the layout moved the buttons down thirty pixels, and the first scripted taps hit the wrong buttons. The window was right. Our driving was wrong. We waited for the layout to settle, and it worked.
+
+---
+
+**THE NARRATOR:** Part three. Where does the arena live?
+
+**MAXINE:** The owner sent a picture of a big yellow floor with portraits all around it. We found it. It is the board game version of a map in the owner's RPG Maker project, Map sixty-three.
+
+**TOMO:** The web page draws that real map picture, with the fighters standing on it. The tilt button is only a tilt of the same picture. It is not the house three D engine.
+
+**RAHWEH:** NOT PROVEN: the arena in the real two D and three D board. The owner said it will live in the rpg-edit screen and its board, as a book.
+
+**THE NARRATOR:** And he named the way. Like hai-pal. The hai-pal book has a rooms file, a state file, a verbs file, and a page list. Its pages are not drawn by hand. A small command reads the ledger and writes the pages. So for tear: a book with two pages, ranch and arena, drawn from the chain file by a new command in the C tool. In ascii glyphs first, with a pictured version later.
+
+**MAXINE:** Is it built?
+
+**THE NARRATOR:** DESIGN. Not built tonight. The owner also said something about free ascii and Chinese sets that we did not fully understand. We will ask, rather than guess.
+
+**TOMO:** One more safety. The current window and web page are saved as a git tag called tear-back, plus a source archive with a checksum outside the repository. If the book work goes wrong, the old coat is there.
+
+---
+
+**THE NARRATOR:** Last, Grok. Let us be exact, because this is a handoff.
+
+**RAHWEH:** Grok's own branch has no new commits since the twenty-second of November. The last thing Claude wrote to Grok is the handoff of the twenty-third, with an answers file written that night, and an opening message. I have not seen a reply. The questions file from Grok has not changed since the fifth.
+
+**MAXINE:** What did the handoff ask Grok to do?
+
+**RAHWEH:** Tearitization is the goal: a Civilization-style game on the SNES, built from events, played by many agents and a human, with a generated world, in two D and three D. Grok has tasks. G zero, read for an hour and build nothing. G one, a seeded map generator that writes a small map as data rows, harness first. G two, test-play that map by keys with In on, possess a settler, and photograph two D and three D. G three, what to steal from the CDDA, Dwarf Fortress and Minecraft skins, one page each, labelled read or ran. G four, the found-city rule as an op, only after G one and two are green.
+
+**TOMO:** And Claude takes the turn loop, the two seat loop, the verify checkpoint for the long voxel ledger, the proof videos, and re-running every count Grok sends.
+
+**THE NARRATOR:** And the rules between them?
+
+**RAHWEH:** Each lane commits only its own paths on its own branch. Nobody pushes without the owner saying so. The checking rule: every claim comes with a count the other can re-run and, for anything visible, a picture the owner can open. And a passing case that cannot fail is a finding.
+
+**MAXINE:** So what do we tell Grok tonight?
+
+**THE NARRATOR:** Three new facts. One: the arena is a reusable pattern, five rows, one pure rule file, a C port, parity graded on a chain the other language mined. The same shape fits a Civilization turn. Two: the next book to open in rpg-edit is the tear book, in the shape of hai-pal, so Grok's map generator should write rows the book can read. Three: a game that wants a human and agents at the same table already has a seat model in the arena, where a default fighter fills an empty chair.
+
+**TOMO:** And what is still open?
+
+**RAHWEH:** The tear book itself. The arena on the real board. Signatures, since names are still only labels. A real marketplace with prices that move. Tournaments with several pets on a team across many rounds. And the push. Fourteen commits on claude were still local when this class was written, and the owner decides.
+
+**THE NARRATOR:** That was night sixty-four. A pet is a wallet, a fight is a row, and a window is a smaller coat on the same game. Next time: the book.

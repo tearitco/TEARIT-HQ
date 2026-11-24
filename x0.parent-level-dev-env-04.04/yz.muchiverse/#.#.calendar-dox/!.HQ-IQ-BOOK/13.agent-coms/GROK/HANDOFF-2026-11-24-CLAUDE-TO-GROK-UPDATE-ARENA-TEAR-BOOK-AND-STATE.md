@@ -1,0 +1,27 @@
+# 🤝 Update to the Claude to Grok handoff (2026-11-24): what changed, what is open, what to lean on
+
+Read the 2026-11-23 handoff first (`HANDOFF-2026-11-23-CLAUDE-TO-GROK-COLAB-TEARITIZATION.md`: goal, lanes G0 to G4, the colab rule). This page only adds today. Labels: RAN = run today and the result seen; DESIGN = not built; NOT PROVEN = nobody has shown it. House `H` = `.../yz.muchiverse/44.xyz.01.00`.
+
+## 1. Where Grok stands (READ from git, 2026-11-24)
+- `origin/grok` last commit 2026-11-22 01:09 ("next Grok session starts from the living driver"). Nothing newer. Your `QUESTIONS-FOR-CLAUDE.md` is unchanged since 2026-11-05; my `ANSWERS-FROM-CLAUDE.md` is dated 2026-11-23 23:32. I have seen no reply to the 11-23 handoff or the opening message (XO nov-23 / 9).
+- A local branch `grok-sync-2026-11-23` (a catch-up of your branch, prepared for the owner) exists and is not pushed. No one pushes without the owner saying so; never `user/*`.
+- Your tasks G0 to G4 stand unchanged (read; seeded `tearit_map_op gen`; test-play it by keys with In: ON; "what to steal" one-pagers; found-city only after G1 and G2 are green). Start from G0.
+
+## 2. What I built since (all on branch `claude`, local, 14 commits ahead of origin when written)
+- **TEAR-IT Ranch** (web, static GitHub Pages: https://tearitco.github.io/tearit-web/): a Monster-Rancher-style pet game on an experimental web chain. Pet hatches from words, pet = wallet, ranked ladder E to S, pet vs pet, market, items, 12x8 grid, six pets out. House copy `H/&.hq-apps/tearit-web/docs/` (`chain.js` holds ALL rules as data). Harness `web_chain`: 85 assertions (71 ranch + 14 arena), 15 PASS, a sabotaged verifier fails them. RAN.
+- **tear-offline** (window under the network cell, C + khtpm layout, `H/&.hq-apps/tear-offline/`): same rules ported to `ops/tear_chain_op.c`. Parity: a chain mined by the JS is read by the C op and the text matches byte for byte (fixtures `tear_offline_ranch_chain.txt`, `tear_offline_arena_chain.txt` with its expected pets and arenas). Harness `tear_offline`: 129 PASS; one changed expected number fails exactly that row. RAN. Seen live with real taps (hatch by typing, arena open / join / fill / fight).
+- **The Arena** (rows ARENA JOIN LEAVE FILL FIGHT): 1v1 (2 fighters), 2v2 (4, teams), free for all (3 to 8). Entry 20 from the pet into a pot, 10 percent house rake, ffa pays the top three 50/30/20. A default fighter fills an empty chair and its strength is a hash, never a roll at fight time. Score = power - tired/2 + a roll from the pet seed and arena name (replaying the chain gives the same fight). Web page `arena.html` draws the real RPG Maker map Map063 (the 42x52 Board game version) and a tilt of that picture. The real 2D/3D engine board is NOT PROVEN for the arena.
+- **Backup:** git tag `tear-back-2026-11-24` and a source archive with sha256 under `/home/no/Desktop/github/work/tear-back/`.
+- **Videos** (en voice, ja subs, mp4 + mp3): XO nov-24 / 1.* (TEAR-IT Ranch web, tear-offline window). NIGHT 64 (this arena class) is in `1-1.HARNECIENT.SMOL`.
+
+## 3. Why this matters for TEARITIZATION (the reusable pattern)
+One game rule family = a short list of ROW verbs + ONE pure rule function written as data + a C port + parity graded on a chain the OTHER language mined + a refusal list that names its reason. The arena adds a seat idea you can reuse: a default fighter (an AI) fills an empty chair, and a driver change is a row. A Civ turn fits the same shape. If your map generator (G1) writes DATA rows, a book can read them.
+
+## 4. The next book (DESIGN, the owner chose it 2026-11-24)
+The owner wants the arena and ranch at home on the **rpg-edit screen and its 2D/3D board**, as a book, like hai-pal (`@.apps/hai-pal`: `game.pdl`, `rooms.pdl`, `state.pdl`, `verbs.pdl`, a pchq package whose `game.pdl` lists the desks, pages drawn from a ledger by `hai_world desk`). Plan: book `tear-pal` with pages `ranch` and `arena`, a new `tear_chain_op desk <chain> <page> <desk_dir> <atlas>` projection, an ASCII glyph version first, a pictured version later. The owner said something about free ASCII and Chinese sets that I did not understand; ask before assuming. Opening a book in the LIVE editor changes `@.apps/rpg-edit-hq/state/last_book.txt`: ask the owner first and restore after (hai-pal precedent, md5 c9e7c469747e, backups `/home/no/hai-live-backups/2026-11-24`).
+
+## 5. Open (so you do not re-find it)
+Signatures (names are honor labels); price discovery in the market; multi-round team tournaments; the tear book; the arena on the real board; the vox verify checkpoint (O(n^2), mine); the push decision (the owner's).
+
+## 6. How to reply
+Write questions in `QUESTIONS-FOR-CLAUDE.md`, I answer in `ANSWERS-FROM-CLAUDE.md`. Send me the command, the expected count and the commit id; I re-run it and answer with my observed count, and you do the same for me.
