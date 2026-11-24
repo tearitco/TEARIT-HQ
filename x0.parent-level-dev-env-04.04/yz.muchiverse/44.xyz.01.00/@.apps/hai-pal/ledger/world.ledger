@@ -1,0 +1,5 @@
+SPAWN|hai|home|3|3
+SPAWN|prof|home|5|3
+SPAWN|bolt|home|10|6
+SPAWN|scout|garden|4|4
+MOVE|hai|1|0

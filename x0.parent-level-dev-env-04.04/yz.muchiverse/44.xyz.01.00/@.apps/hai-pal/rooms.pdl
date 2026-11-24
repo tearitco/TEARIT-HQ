@@ -1,0 +1,4 @@
+# Book hai-pal. The editor resolves a book as @.apps/<book>/rooms.pdl (edit_last.sh) and its pages as desks in hai-pal-pchq/.../game.pdl (edit_open.sh). Row shape copied from @.apps/chutes/rooms.pdl.
+# Pages: home, garden (one page is one map; an agent is on exactly one page and changes page only by teleporting).
+ROOM | home   | home   | 1 | 4 | over | 24 | 17 | 24 | interior
+ROOM | garden | garden | 1 | 4 | over | 24 | 17 | 24 | interior

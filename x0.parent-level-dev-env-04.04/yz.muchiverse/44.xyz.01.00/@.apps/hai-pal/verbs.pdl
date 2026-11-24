@@ -1,0 +1,6 @@
+# verbs.pdl - the hai-pal manifest: the known verbs as data (grammar of @.apps/deskopoly/verbs.pdl). The rules are in the hai repo (ops/hai_world.c, ported in docs/world.js; cases hai_world and hai_world_parity).
+#   VERB | name | page | ui | args | what it does
+VERB | SPAWN    | no | ui | name page x y  | an agent appears on a page (the cell must be free)
+VERB | MOVE     | no | ui | name dx dy     | one step; a wall or another agent refuses it
+VERB | TELEPORT | no | ui | name page x y  | the only way to change page
+VERB | desk     | no | -  | page desk_dir atlas | read-only projection: rewrite the page's editor desk from the ledger

@@ -1,0 +1,5 @@
+# state.pdl - every file hai-pal may leave beside its book, and what kind of fact it is (no ghost data, owner 2026-11-07).
+# FILE | name | kind | writer | regenerate_with
+FILE | ledger/world.ledger | LEDGER     | hai_world do (the world rules of the hai repo, ops/hai_world.c) | -
+FILE | hai-pal-pchq/pieces/system/maps/hai-pal/home/    | PROJECTION | hai_world desk <ledger> home   <desk_dir> <atlas.rgba> | desk
+FILE | hai-pal-pchq/pieces/system/maps/hai-pal/garden/  | PROJECTION | hai_world desk <ledger> garden <desk_dir> <atlas.rgba> | desk

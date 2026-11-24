@@ -1,0 +1,6 @@
+# game.pdl - hai-pal (2026-11-24): hai agents as pals on pages of a book, opened in rpg-edit. DESIGN: hai repo book 25 and 26; house doc 16.game/OPEN-A-PROJECT-AS-A-BOOK-IN-RPG-EDIT-EVENT-BASED-PAGES-AS-SESSIONS-2026-11-23.md.
+# There is NO `GAME | driver` row yet: Play starts nothing (book_driver() returns 0 without one). The pages are drawn by `hai_world desk` from ledger/world.ledger (a PROJECTION).
+GAME   | name        | hai-pal
+GAME   | title       | hai-pal
+GAME   | kind        | world
+GAME   | ruleset     | default
