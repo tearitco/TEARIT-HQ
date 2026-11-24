@@ -494,6 +494,8 @@ static void load_party(void) {
     int bookparty = 0;
     if (!(env && env[0])) { char lb[PATH_MAX + 32], bk[200], nm[96] = "", sp[PATH_MAX + 160], sb[24000]; snprintf(lb, sizeof lb, "%s/state/last_book.txt", APP); read_file(lb, bk, sizeof bk);
         char *q = strstr(bk, "book="); if (q) { q += 5; size_t k = 0; while (*q && *q != '\n' && *q != '\r' && k < sizeof nm - 1) nm[k++] = *q++; nm[k] = 0; }
+        { char wp[PATH_MAX + 96], wb[600]; snprintf(wp, sizeof wp, "%s/" PET_APP "-pchq/pieces/world_01/state.txt", APP); read_file(wp, wb, sizeof wb);      /* the book the board SHOWS wins over last_book.txt, as in game_row() above */
+          for (char *l = strtok(wb, "\n"); l; l = strtok(NULL, "\n")) if (!strncmp(l, "map_id=", 7) && l[7]) { char gq[PATH_MAX + 128]; snprintf(gq, sizeof gq, "%.3000s/@.apps/%.90s/game.pdl", HOUSE, l + 7); if (!access(gq, R_OK)) snprintf(nm, sizeof nm, "%.90s", l + 7); break; } }
         int okn = nm[0] != 0; for (size_t i = 0; nm[i]; i++) { char c = nm[i]; if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) okn = 0; }
         if (okn && strcmp(nm, PET_APP) != 0) {             snprintf(sp, sizeof sp, "%.3000s/@.apps/%s/db/system.pdl", HOUSE, nm); read_file(sp, sb, sizeof sb);
             if (sb[0] && strstr(sb, "| BookParty")) { snprintf(dbl, sizeof dbl, "%.3000s/@.apps/%s/db", HOUSE, nm); bookparty = 1; } } }
