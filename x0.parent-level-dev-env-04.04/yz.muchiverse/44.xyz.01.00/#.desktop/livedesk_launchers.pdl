@@ -31,5 +31,6 @@ SECTION | launcher_network_auction  | &.hq-apps/auction-hq/open_auction_hq.sh
 SECTION | launcher_network_hqftp  | &.hq-apps/hq-ftp/open_hq_ftp.sh
 SECTION | launcher_network_court  | &.hq-apps/court-hq/button.sh
 SECTION | launcher_network_tearoffline | &.hq-apps/tear-offline/open_tear_offline.sh
+SECTION | launcher_network_tearon | &.hq-apps/tear-on/open_tear_on.sh
 # store cell (header cell 13): opens the Store window. Takes <house_root> as argv[1]. (owner 2026-10-27; mockup, design in 16.game/GAMES-AS-PACKAGES-AND-STORE-DESIGN.md)
 SECTION | launcher_store | &.hq-apps/store-hq/button.sh

@@ -271,3 +271,42 @@ EXPECT_HAS | l.xhtpm | 'AFIGHT' | the-layout-has-the-fight-button
 EXPECT_HAS | l.xhtpm | show="${tab_arena}" | the-arena-widgets-show-only-on-the-arena-tab
 EXPECT_LACKS | l.xhtpm | .sh' | NEGATIVE-no-action-calls-a-shell-script
 CLEAN   |
+CASE    | c-wallet-options-equal-the-js-state-and-refuse-by-name
+SCRATCH |
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | op.+x
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_wopt_chain.txt | w.txt
+RUN | $T/op.+x | verify | $T/w.txt
+EXPECT_OUT | OK height=63 | all-63-blocks-accepted-(WOPT-rows-and-an-open-arena-are-in-it)
+RUN | $T/op.+x | wopts | $T/w.txt
+EXPECT_OUT | rex\p30\p0\p1 | wallet-options-of-rex-equal-the-JS-state
+EXPECT_OUT | mina\p0\p1040\p1 | wallet-options-of-mina-equal-the-JS-state
+EXPECT_OUT | tobo\p0\p0\p0 | wallet-options-of-tobo-equal-the-JS-state
+EXPECT_OUT | ivy\p10\p0\p1 | wallet-options-of-ivy-equal-the-JS-state
+EXPECT_OUT | kai\p0\p0\p1 | wallet-options-of-kai-equal-the-JS-state
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | BUYITEM\prex\pcharm\palice\p99
+EXPECT_EXIT | 1 | the-cap-refuses-a-spend-over-it
+EXPECT_OUT | cap: rex may spend at most 30 coins at a time | the-reason-is-named-(cap: rex may spend at most 30 coins at a time)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | FEED\pmina\pmeat\palice\p99
+EXPECT_EXIT | 1 | the-reserve-refuses-a-spend-that-eats-it
+EXPECT_OUT | reserve: mina must keep 1040 coins | the-reason-is-named-(reserve: mina must keep 1040 coins)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | LIST\ptobo\p50\ptobo\pcarol\p99
+EXPECT_EXIT | 1 | a-sale-locked-pet-cannot-be-listed
+EXPECT_OUT | tobo is locked from sale | the-reason-is-named-(tobo is locked from sale)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | JOIN\pcup\pivy\perin\p99
+EXPECT_EXIT | 1 | the-arena-entry-obeys-the-cap
+EXPECT_OUT | cap: ivy may spend at most 10 coins at a time | the-reason-is-named-(cap: ivy may spend at most 10 coins at a time)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | WOPT\prex\pspeed\p5\palice\p99
+EXPECT_EXIT | 1 | an-unknown-option-is-refused
+EXPECT_OUT | unknown option | the-reason-is-named-(unknown option)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | WOPT\prex\pcap\p-1\palice\p99
+EXPECT_EXIT | 1 | a-negative-value-is-refused
+EXPECT_OUT | bad option value | the-reason-is-named-(bad option value)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | WOPT\prex\psale\p2\palice\p99
+EXPECT_EXIT | 1 | sale-must-be-0-or-1
+EXPECT_OUT | bad option value | the-reason-is-named-(bad option value)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | WOPT\prex\pcap\p5\pbob\p99
+EXPECT_EXIT | 1 | only-the-owner-sets-an-option
+EXPECT_OUT | not the owner of rex | the-reason-is-named-(not the owner of rex)
+RUN | $T/op.+x | mine | $T/w.txt | x | 99 | FEED\pmina\pbread\palice\p99
+EXPECT_EXIT | 0 | POSITIVE-a-spend-that-leaves-the-reserve-works
+CLEAN   |

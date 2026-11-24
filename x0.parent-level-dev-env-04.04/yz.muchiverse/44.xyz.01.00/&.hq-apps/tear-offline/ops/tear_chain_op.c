@@ -28,7 +28,7 @@ static Cfg C = { 2, 10500, 1000, 21000000, 1000, 3600 };
 typedef struct { long index; char prev[72], hash[72], nonce[40], miner[NAMEL]; long ts; char *txl; } Blk;
 typedef struct { char name[NAMEL]; long bal, last; int has_last; } W;
 typedef struct { W w[MAXW]; int n; } Bal;
-typedef struct { char name[NAMEL], owner[NAMEL], seed[48], payee[NAMEL]; int spec, sx, sy, x, y, stats[6], age, life, fat, frozen, retired, gym, barn, wins, cups, best, items[3], buffT, buffF, pvpW, pvpL, arenaW, arenaL; long price; } Pet;
+typedef struct { char name[NAMEL], owner[NAMEL], seed[48], payee[NAMEL]; int spec, sx, sy, x, y, stats[6], age, life, fat, frozen, retired, gym, barn, wins, cups, best, items[3], buffT, buffF, pvpW, pvpL, arenaW, arenaL, cap, reserve, nosale; long price; } Pet;
 typedef struct { Pet p[64]; int n; } Pets;
 typedef struct { int ok; long height; double work; char tip[72]; char why[160]; long at; Bal bal; Pets pets; void *ar; char **mf, **mc, **mt; long *mts; int nm; } Ver;
 
@@ -62,14 +62,15 @@ static const Item ITEMS[3] = { { "dumbbell", 30, 2 }, { "charm", 40, 20 }, { "el
 static int roll_of(const char *s) { char h[65]; sha_hex(s, h); char two[3] = { h[0], h[1], 0 }; return (int)(strtol(two, NULL, 16) % ROLL); }
 static int ok_pet_id(const char *s) { size_t l = strlen(s); if (!l || l > 24) return 0; for (; *s; s++) if (!((*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') || *s == '_' || *s == '-')) return 0; return 1; }
 static Pet *pet_of(Pets *P, const char *n) { for (int i = 0; i < P->n; i++) if (!strcmp(P->p[i].name, n)) return &P->p[i]; return NULL; }
+static const char *wallet_rule(Bal *bal, Pets *P, const char *name, long amt, char *why) { Pet *p = pet_of(P, name); if (!p) return NULL; W *w = wal(bal, name); long b = w ? w->bal : 0; if (p->cap > 0 && amt > p->cap) { snprintf(why, 160, "cap: %s may spend at most %d coins at a time", name, p->cap); return why; } if (p->reserve > 0 && b - amt < p->reserve) { snprintf(why, 160, "reserve: %s must keep %d coins", name, p->reserve); return why; } return NULL; }
 static int power_of(const Pet *p) { return p->stats[1] + p->stats[2] + p->stats[3] + p->stats[4] + p->stats[5]; }
 static int blocked_cell(int x, int y) { return (x == 1 && y == 1) || (x == 10 && y == 1); }
 static int cell_free(Pets *P, int x, int y, Pet *self) { if (x < 0 || y < 0 || x >= GCOLS || y >= GROWS || blocked_cell(x, y)) return 0; for (int i = 0; i < P->n; i++) { Pet *q = &P->p[i]; if (q != self && !q->frozen && q->x == x && q->y == y) return 0; } return 1; }
 static void place_pet(Pets *P, Pet *p) { for (int i = 0; i < GCOLS * GROWS; i++) { int x = (p->sx + i) % GCOLS, y = (p->sy + (p->sx + i) / GCOLS) % GROWS; if (cell_free(P, x, y, p)) { p->x = x; p->y = y; return; } } p->x = 0; p->y = 0; }
 static int active_of(Pets *P, const char *o) { int n = 0; for (int i = 0; i < P->n; i++) if (!strcmp(P->p[i].owner, o) && !P->p[i].frozen) n++; return n; }
-static const char *VERBS[24] = { "TX", "MSG", "FAUCET", "PET", "FEED", "TRAIN", "REST", "COMPETE", "UPGRADE", "FREEZE", "THAW", "TRANSFER", "LIST", "UNLIST", "BUY", "BUYITEM", "USEITEM", "GIVEITEM", "CHALLENGE", "ARENA", "JOIN", "LEAVE", "FIGHT", "FILL" };
-static int is_verb(const char *v) { for (int i = 0; i < 24; i++) if (!strcmp(VERBS[i], v)) return 1; return !strcmp(v, "MOVE"); }
-static int row_len(const char *v) { static const struct { const char *v; int n; } T[] = { { "FEED", 5 }, { "TRAIN", 5 }, { "REST", 4 }, { "COMPETE", 5 }, { "UPGRADE", 5 }, { "FREEZE", 4 }, { "THAW", 4 }, { "TRANSFER", 5 }, { "LIST", 6 }, { "UNLIST", 4 }, { "BUY", 5 }, { "BUYITEM", 5 }, { "USEITEM", 5 }, { "GIVEITEM", 6 }, { "CHALLENGE", 5 }, { "MOVE", 6 } }; for (unsigned i = 0; i < sizeof T / sizeof T[0]; i++) if (!strcmp(T[i].v, v)) return T[i].n; return 0; }
+static const char *VERBS[25] = { "TX", "MSG", "FAUCET", "PET", "FEED", "TRAIN", "REST", "COMPETE", "UPGRADE", "FREEZE", "THAW", "TRANSFER", "LIST", "UNLIST", "BUY", "BUYITEM", "USEITEM", "GIVEITEM", "CHALLENGE", "ARENA", "JOIN", "LEAVE", "FIGHT", "FILL", "WOPT" };
+static int is_verb(const char *v) { for (int i = 0; i < 25; i++) if (!strcmp(VERBS[i], v)) return 1; return !strcmp(v, "MOVE"); }
+static int row_len(const char *v) { static const struct { const char *v; int n; } T[] = { { "FEED", 5 }, { "TRAIN", 5 }, { "REST", 4 }, { "COMPETE", 5 }, { "UPGRADE", 5 }, { "FREEZE", 4 }, { "THAW", 4 }, { "TRANSFER", 5 }, { "LIST", 6 }, { "UNLIST", 4 }, { "BUY", 5 }, { "BUYITEM", 5 }, { "USEITEM", 5 }, { "GIVEITEM", 6 }, { "CHALLENGE", 5 }, { "MOVE", 6 }, { "WOPT", 6 } }; for (unsigned i = 0; i < sizeof T / sizeof T[0]; i++) if (!strcmp(T[i].v, v)) return T[i].n; return 0; }
 /* ---- THE ARENA (port of arenaRow in chain.js: same checks in the same order, same reasons, same arithmetic) ---- */
 typedef struct { char name[NAMEL]; int ai, power; } AMem;
 typedef struct { char id[NAMEL], mode[8], owner[NAMEL]; AMem m[8]; int nm; long pot; int open, nw; char win[8][NAMEL]; int ns; int sc[8]; } Arena;
@@ -94,7 +95,7 @@ static const char *arena_row(Bal *bal, Pets *P, Arenas *AR, char **f, int nf, ch
         if (!strcmp(v, "LEAVE")) { if (!arena_has(a, p->name)) { snprintf(why, 160, "%s is not in that arena", p->name); return why; } for (int j = 0; j < a->nm; j++) if (!strcmp(a->m[j].name, p->name)) { memmove(&a->m[j], &a->m[j + 1], sizeof(AMem) * (size_t)(a->nm - j - 1)); a->nm--; break; } a->pot -= ARENA_ENTRY; W *w = wal(bal, p->name); if (w) w->bal += ARENA_ENTRY; return NULL; }
         if (p->frozen) { snprintf(why, 160, "%s is frozen", p->name); return why; } if (p->retired) { snprintf(why, 160, "%s has retired", p->name); return why; } if (p->fat >= TIREDMAX) { snprintf(why, 160, "%s is too tired", p->name); return why; }
         for (int k = 0; k < AR->n; k++) if (AR->a[k].open && arena_has(&AR->a[k], p->name)) { snprintf(why, 160, "%s is already in an arena", p->name); return why; }
-        if (a->nm >= mx) return "the arena is full"; W *w = wal(bal, p->name); if (!w || w->bal < ARENA_ENTRY) { snprintf(why, 160, "not enough coins in %s", p->name); return why; } w->bal -= ARENA_ENTRY;
+        if (a->nm >= mx) return "the arena is full"; W *w = wal(bal, p->name); if (!w || w->bal < ARENA_ENTRY) { snprintf(why, 160, "not enough coins in %s", p->name); return why; } { const char *wr = wallet_rule(bal, P, p->name, ARENA_ENTRY, why); if (wr) return wr; } w->bal -= ARENA_ENTRY;
         a->pot += ARENA_ENTRY; AMem *m = &a->m[a->nm++]; memset(m, 0, sizeof *m); snprintf(m->name, NAMEL, "%s", p->name); return NULL; }
     if (!strcmp(v, "FILL")) { if (strcmp(f[2], a->owner)) return "only the arena owner can fill it"; int want = mn > 2 ? mn : 2; if (a->nm >= want) return "the arena is already full enough"; int n0 = 0; for (int j = 0; j < a->nm; j++) if (a->m[j].ai) n0++;
         while (a->nm < want) { n0++; AMem *m = &a->m[a->nm++]; memset(m, 0, sizeof *m); snprintf(m->name, NAMEL, "ai-%d", n0); m->ai = 1; snprintf(tmp, sizeof tmp, "ai|%s|%s", id, m->name); sha_hex(tmp, h); m->power = ARENA_AIBASE + hex2(h) % ARENA_AISPAN; } return NULL; }
@@ -116,7 +117,7 @@ static const char *arena_row(Bal *bal, Pets *P, Arenas *AR, char **f, int nf, ch
 static const char *ranch_row(Bal *bal, Pets *P, Arenas *AR, char **f, int nf, char *why) {
     const char *v = f[0]; const char *nm = nf > 1 ? f[1] : ""; Pet *p, *q; W *w, *w2;
     if (!strcmp(f[0], "ARENA") || !strcmp(f[0], "JOIN") || !strcmp(f[0], "LEAVE") || !strcmp(f[0], "FIGHT") || !strcmp(f[0], "FILL")) return arena_row(bal, P, AR, f, nf, why);
-    #define SPEND(petn, amt) do { W *sw = wal(bal, (petn)); if (!sw || sw->bal < (amt)) { snprintf(why, 160, "not enough coins in %s", (petn)); return why; } sw->bal -= (amt); W *rp = wal(bal, "_ranch"); if (rp) rp->bal += (amt); } while (0)
+    #define SPEND(petn, amt) do { W *sw = wal(bal, (petn)); if (!sw || sw->bal < (amt)) { snprintf(why, 160, "not enough coins in %s", (petn)); return why; } { const char *wr = wallet_rule(bal, P, (petn), (amt), why); if (wr) return wr; } sw->bal -= (amt); W *rp = wal(bal, "_ranch"); if (rp) rp->bal += (amt); } while (0)
     #define WEEK(pp) do { (pp)->age++; if ((pp)->age >= (pp)->life) (pp)->retired = 1; } while (0)
     #define ADDSTAT(pp, s, nn) do { (pp)->stats[s] += (nn); if ((pp)->stats[s] > STATCAP) (pp)->stats[s] = STATCAP; } while (0)
     if (!strcmp(v, "PET")) {
@@ -130,12 +131,13 @@ static const char *ranch_row(Bal *bal, Pets *P, Arenas *AR, char **f, int nf, ch
     int len = row_len(v); p = pet_of(P, nm); if (!p) return "no such pet"; if (nf != len) { snprintf(why, 160, "bad %s row", v); return why; }
     if (!strcmp(v, "BUY")) { q = pet_of(P, f[2]); if (!(p->price > 0)) { snprintf(why, 160, "%s is not for sale", nm); return why; } if (!q) return "no such paying pet"; if (strcmp(q->owner, f[3])) return "the paying pet is not yours";
         if (!strcmp(p->owner, f[3])) { snprintf(why, 160, "you already own %s", nm); return why; } if (!p->frozen && active_of(P, f[3]) >= MAXACTIVE) return "six pets are already out: freeze one first";
-        w = wal(bal, f[2]); if (!w || w->bal < p->price) { snprintf(why, 160, "not enough coins in %s", f[2]); return why; } w->bal -= p->price; w2 = wal(bal, p->payee); if (w2) w2->bal += p->price; snprintf(p->owner, NAMEL, "%s", f[3]); p->price = 0; p->payee[0] = 0; return NULL; }
+        w = wal(bal, f[2]); if (!w || w->bal < p->price) { snprintf(why, 160, "not enough coins in %s", f[2]); return why; } { const char *wr = wallet_rule(bal, P, f[2], p->price, why); if (wr) return wr; } w->bal -= p->price; w2 = wal(bal, p->payee); if (w2) w2->bal += p->price; snprintf(p->owner, NAMEL, "%s", f[3]); p->price = 0; p->payee[0] = 0; return NULL; }
     if (strcmp(f[len - 2], p->owner)) { snprintf(why, 160, "not the owner of %s", nm); return why; }
     if (!strcmp(v, "THAW")) { if (!p->frozen) return "not frozen"; if (active_of(P, p->owner) >= MAXACTIVE) return "six pets are already out: freeze one first"; p->frozen = 0; if (!cell_free(P, p->x, p->y, p)) place_pet(P, p); return NULL; }
     if (!strcmp(v, "FREEZE")) { if (p->frozen) return "already frozen"; p->frozen = 1; return NULL; }
     if (!strcmp(v, "TRANSFER")) { if (!ok_pet_id(f[2])) return "bad new owner"; if (!p->frozen && active_of(P, f[2]) >= MAXACTIVE) { snprintf(why, 160, "%s already has six pets out", f[2]); return why; } snprintf(p->owner, NAMEL, "%s", f[2]); p->price = 0; p->payee[0] = 0; return NULL; }
-    if (!strcmp(v, "LIST")) { char *e; double pr = strtod(f[2], &e); if (!(pr > 0) || floor(pr) != pr || pr > 1000000) return "bad price"; q = pet_of(P, f[3]); if (!q || strcmp(q->owner, p->owner)) return "the payee must be one of your pets"; p->price = (long)pr; snprintf(p->payee, NAMEL, "%s", f[3]); return NULL; }
+    if (!strcmp(v, "WOPT")) { const char *on = f[2], *ov = f[3]; if (strcmp(on, "cap") && strcmp(on, "reserve") && strcmp(on, "sale")) return "unknown option"; size_t l = strlen(ov); if (!l || l > 6) return "bad option value"; for (size_t i = 0; i < l; i++) if (ov[i] < 48 || ov[i] > 57) return "bad option value"; long nv = atol(ov); if (nv > 100000 || (!strcmp(on, "sale") && nv > 1)) return "bad option value"; if (!strcmp(on, "cap")) p->cap = (int)nv; else if (!strcmp(on, "reserve")) p->reserve = (int)nv; else { p->nosale = nv == 0; if (nv == 0) { p->price = 0; p->payee[0] = 0; } } return NULL; }
+    if (!strcmp(v, "LIST")) { if (p->nosale) { snprintf(why, 160, "%s is locked from sale", nm); return why; } char *e; double pr = strtod(f[2], &e); if (!(pr > 0) || floor(pr) != pr || pr > 1000000) return "bad price"; q = pet_of(P, f[3]); if (!q || strcmp(q->owner, p->owner)) return "the payee must be one of your pets"; p->price = (long)pr; snprintf(p->payee, NAMEL, "%s", f[3]); return NULL; }
     if (!strcmp(v, "UNLIST")) { if (!(p->price > 0)) return "not listed"; p->price = 0; p->payee[0] = 0; return NULL; }
     if (!strcmp(v, "GIVEITEM")) { q = pet_of(P, f[3]); if (!q) return "no such pet to give to"; int it = -1; for (int i = 0; i < 3; i++) if (!strcmp(ITEMS[i].n, f[2])) it = i; if (it < 0) return "unknown item"; if (!(p->items[it] > 0)) { snprintf(why, 160, "%s has no %s", nm, f[2]); return why; } p->items[it]--; q->items[it]++; return NULL; }
     if (p->frozen) { snprintf(why, 160, "%s is frozen", nm); return why; } if (p->retired) { snprintf(why, 160, "%s has retired", nm); return why; }
@@ -216,17 +218,42 @@ static int do_mine(const char *file, const char *miner, long ts, char **rows, in
     char *nt = malloc(strlen(t) + strlen(line) + 1); strcpy(nt, t); strcat(nt, line); Ver v; verify(nt, &v); if (!v.ok) { snprintf(err, sizeof err, "%s", v.why); fprintf(stderr, "refused: %s\n", err); return 1; }
     FILE *f = fopen(file, "a"); if (!f) return 1; fputs(line, f); fclose(f); *idx_out = nb; *tries_out = nonce + 1; return 0; }
 
+/* ---- DESK: project the verified chain onto an rpg-edit page (the tear-on book). Same page files as @.apps/hai-pal: map.txt cells.txt events.txt extrusion.pdl skin.txt cells.marker cells.rgba.
+ * ranch: 14x10 (12x8 ranch + a rock border), arena: 26x24 (24x22 floor + border). Read-only projection: safe to delete, rewritten byte for byte from the ledger. ---- */
+#include <sys/stat.h>
+static void spec_rgb(int s, int *r, int *g, int *b) { static const int T[10][3] = { { 230, 80, 40 }, { 60, 130, 230 }, { 150, 110, 60 }, { 150, 220, 200 }, { 250, 230, 120 }, { 110, 70, 150 }, { 240, 220, 50 }, { 170, 220, 250 }, { 120, 90, 220 }, { 250, 200, 230 } }; *r = T[s % 10][0]; *g = T[s % 10][1]; *b = T[s % 10][2]; }
+static int put_file(const char *dir, const char *name, const char *text) { char p[4200]; snprintf(p, sizeof p, "%s/%s", dir, name); FILE *f = fopen(p, "w"); if (!f) return 1; fputs(text, f); fclose(f); return 0; }
+static int desk_write(Ver *v, const char *page, const char *dir, const char *atlas) {
+    int ranch = !strcmp(page, "ranch"), arena = !strcmp(page, "arena"); if (!ranch && !arena) return 2; int W = ranch ? 14 : 26, H = ranch ? 10 : 24; mkdir(dir, 0755);
+    static char buf[40000]; size_t n = 0; n += (size_t)snprintf(buf + n, sizeof buf - n, "width=%d\nheight=%d\ntile_px=24\natlas_cols=16\natlas_tiles=43\nrock_slot=36\ncells\n", W, H);
+    for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) { const char *c; int ix = x - 1, iy = y - 1; if (x == 0 || y == 0 || x == W - 1 || y == H - 1) c = "36,0,2"; else if (ranch) c = (ix == 1 && iy == 1) ? "33,0,2" : (ix == 10 && iy == 1) ? "24,0,2" : "1,0,1"; else c = ((x + y) % 2) ? "39,0,1" : "42,0,1"; n += (size_t)snprintf(buf + n, sizeof buf - n, "%s%s", c, x + 1 < W ? " " : "\n"); } }
+    if (put_file(dir, "cells.txt", buf)) return 1;
+    n = 0; for (int y = 0; y < H; y++) { for (int x = 0; x < W; x++) buf[n++] = '.'; buf[n++] = '\n'; } buf[n] = 0; if (put_file(dir, "map.txt", buf)) return 1;
+    n = 0; int ne = 0; int r, g, b;
+    if (ranch) { for (int i = 0; i < v->pets.n; i++) { Pet *p = &v->pets.p[i]; if (p->frozen) continue; spec_rgb(p->spec, &r, &g, &b); char L = p->name[0] >= 'a' && p->name[0] <= 'z' ? (char)(p->name[0] - 32) : p->name[0]; n += (size_t)snprintf(buf + n, sizeof buf - n, "%d %d %d %d %d People1 %d 2 1 %c\n", p->x + 1, p->y + 1, r, g, b, p->spec % 8, L); ne++; } }
+    else { Arenas *AR = (Arenas *)v->ar; int found = -1, lastopen = -1, lastany = -1; for (int i = 0; i < AR->n; i++) { if (AR->a[i].nm > 0) lastany = i; if (AR->a[i].open && AR->a[i].nm > 0) lastopen = i; } found = lastopen >= 0 ? lastopen : lastany >= 0 ? lastany : AR->n - 1; /* an arena with fighters beats an empty one */
+        static const int SP1[2][2] = { { 3, 11 }, { 20, 11 } }, SP2[4][2] = { { 3, 6 }, { 20, 6 }, { 3, 16 }, { 20, 16 } }, SPF[8][2] = { { 3, 3 }, { 12, 2 }, { 20, 3 }, { 21, 11 }, { 20, 19 }, { 12, 20 }, { 3, 19 }, { 2, 11 } };
+        if (found >= 0) { Arena *a = &AR->a[found]; for (int j = 0; j < a->nm; j++) { int cx = !strcmp(a->mode, "1v1") ? SP1[j % 2][0] : !strcmp(a->mode, "2v2") ? SP2[j % 4][0] : SPF[j % 8][0], cy = !strcmp(a->mode, "1v1") ? SP1[j % 2][1] : !strcmp(a->mode, "2v2") ? SP2[j % 4][1] : SPF[j % 8][1]; AMem *m = &a->m[j];
+                if (m->ai) { r = g = b = 150; n += (size_t)snprintf(buf + n, sizeof buf - n, "%d %d %d %d %d People1 %d 2 1 *\n", cx + 1, cy + 1, r, g, b, (j + 3) % 8); }
+                else { Pet *p = pet_of(&v->pets, m->name); int sp = p ? p->spec : 0; spec_rgb(sp, &r, &g, &b); char L = m->name[0] >= 'a' && m->name[0] <= 'z' ? (char)(m->name[0] - 32) : m->name[0]; n += (size_t)snprintf(buf + n, sizeof buf - n, "%d %d %d %d %d People1 %d 2 1 %c\n", cx + 1, cy + 1, r, g, b, sp % 8, L); } ne++; } } }
+    buf[n] = 0; if (put_file(dir, "events.txt", buf)) return 1;
+    snprintf(buf, sizeof buf, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | tear-on\nMETA         | desk_id            | %s\nMETA         | note               | a page of tear-on drawn from its chain by tear_chain_op desk\n", page); if (put_file(dir, "extrusion.pdl", buf)) return 1;
+    if (put_file(dir, "skin.txt", "rmmv\n") || put_file(dir, "cells.marker", "1")) return 1;
+    if (atlas && atlas[0]) { FILE *a = fopen(atlas, "rb"); if (a) { char p[4200]; snprintf(p, sizeof p, "%s/cells.rgba", dir); FILE *o = fopen(p, "wb"); if (o) { char cb[8192]; size_t k; while ((k = fread(cb, 1, sizeof cb, a)) > 0) fwrite(cb, 1, k, o); fclose(o); } fclose(a); } }
+    printf("DESK page=%s w=%d h=%d entities=%d\n", page, W, H, ne); return 0; }
 static int ok_id(const char *s) { size_t l = strlen(s); if (!l || l >= NAMEL) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || *s == '_' || *s == '-')) return 0; return 1; }
 
 int main(int argc, char **argv) {
     char *av[64]; int ac = 0; for (int i = 1; i < argc && ac < 64; i++) { if (!strcmp(argv[i], "--zeros") && i + 1 < argc) { C.zeros = atoi(argv[++i]); continue; } av[ac++] = argv[i]; }
     if (ac < 2) { fprintf(stderr, "usage: tear_chain_op verify|balance|mine|apply|merge|messages|tail <file> ...\n"); return 2; }
     const char *cmd = av[0], *file = av[1]; size_t n; Ver v;
-    if (!strcmp(cmd, "verify") || !strcmp(cmd, "balance") || !strcmp(cmd, "messages") || !strcmp(cmd, "tail") || !strcmp(cmd, "pets") || !strcmp(cmd, "arenas")) {
+    if (!strcmp(cmd, "verify") || !strcmp(cmd, "balance") || !strcmp(cmd, "messages") || !strcmp(cmd, "tail") || !strcmp(cmd, "pets") || !strcmp(cmd, "arenas") || !strcmp(cmd, "desk") || !strcmp(cmd, "wopts")) {
         char *t = slurp(file, &n); if (!t) t = strdup(""); char *keep = strdup(t); verify(t, &v);
         if (!strcmp(cmd, "verify")) { if (v.ok) { printf("OK height=%ld tip=%s work=%.0f\n", v.height, v.tip, v.work); return 0; } printf("BAD at=%ld why=%s\n", v.at, v.why); return 1; }
         if (!v.ok) { printf("BAD at=%ld why=%s\n", v.at, v.why); return 1; }
         if (!strcmp(cmd, "pets")) { for (int i = 0; i < v.pets.n; i++) { Pet *q = &v.pets.p[i]; W *pw = wal(&v.bal, q->name); printf("%s|%s|%s|%d/%d|%d|%d,%d|%d %d %d %d %d %d|%d/%d|%d|%ld|%s|%d|%d|%d-%d|%d/%d|%ld|%d %d %d\n", q->name, q->owner, SPEC[q->spec], q->age, q->life, q->fat, q->x, q->y, q->stats[0], q->stats[1], q->stats[2], q->stats[3], q->stats[4], q->stats[5], q->wins, q->cups, q->best, q->price, q->payee, q->frozen, q->retired, q->pvpW, q->pvpL, q->gym, q->barn, pw ? pw->bal : 0, q->items[0], q->items[1], q->items[2]); } return 0; }
+        if (!strcmp(cmd, "wopts")) { for (int i = 0; i < v.pets.n; i++) { Pet *q = &v.pets.p[i]; printf("%s|%d|%d|%d\n", q->name, q->cap, q->reserve, q->nosale ? 0 : 1); } return 0; }
+        if (!strcmp(cmd, "desk")) { if (ac < 4) { fprintf(stderr, "usage: desk <chain> <ranch|arena> <desk_dir> [atlas.rgba]\n"); return 2; } int rc = desk_write(&v, av[2], av[3], ac > 4 ? av[4] : NULL); if (rc) fprintf(stderr, "desk: could not write %s (does its parent folder exist, is the page ranch or arena?)\n", av[3]); return rc; }
         if (!strcmp(cmd, "arenas")) { Arenas *AR = (Arenas *)v.ar; for (int i = 0; i < AR->n; i++) { Arena *a = &AR->a[i]; printf("%s|%s|%s|%d|%ld|", a->id, a->mode, a->owner, a->open, a->pot); for (int j = 0; j < a->nm; j++) printf("%s%s", j ? "," : "", a->m[j].name); printf("|"); for (int j = 0; j < a->nw; j++) printf("%s%s", j ? "," : "", a->win[j]); printf("|"); for (int j = 0; j < a->ns; j++) printf("%s%d", j ? "," : "", a->sc[j]); printf("|"); int fw = 0; for (int j = 0; j < a->nm; j++) if (!a->m[j].ai) { Pet *pp = pet_of(&v.pets, a->m[j].name); if (pp) { printf("%s%s:%d-%d", fw++ ? "," : "", pp->name, pp->arenaW, pp->arenaL); } } printf("\n"); } return 0; }
         if (!strcmp(cmd, "balance")) { if (ac < 3) return 2; W *w = wal(&v.bal, av[2]); printf("%ld\n", w ? w->bal : 0); return 0; }
         if (!strcmp(cmd, "messages")) { if (ac < 3) return 2; for (int i = 0; i < v.nm; i++) if (!strcmp(av[2], "*") || !strcmp(av[2], v.mc[i])) printf("%s\t%s\n", v.mf[i], v.mt[i]); return 0; }

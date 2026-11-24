@@ -1,0 +1,6 @@
+# state.pdl - every file tear-on may leave beside its book, and what kind of fact it is (no ghost data, owner 2026-11-07).
+# FILE | name | kind | writer | regenerate_with
+FILE | ledger/web_chain.txt | LEDGER     | tear_chain_op mine (the same C op as tear-off; rows PET FEED TRAIN ... ARENA JOIN FIGHT WOPT) | -
+FILE | atlas/cells.rgba     | CONFIG     | copied once from @.apps/hai-pal (the page atlas, 24 px tiles) | -
+FILE | tear-on-pchq/pieces/system/maps/tear-on/ranch/ | PROJECTION | tear_chain_op desk <chain> ranch <desk_dir> <atlas> | tear_on_op project
+FILE | tear-on-pchq/pieces/system/maps/tear-on/arena/ | PROJECTION | tear_chain_op desk <chain> arena <desk_dir> <atlas> | tear_on_op project

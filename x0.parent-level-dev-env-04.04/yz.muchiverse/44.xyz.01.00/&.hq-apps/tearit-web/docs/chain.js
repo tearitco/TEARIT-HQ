@@ -44,8 +44,8 @@
     facilities: { gym: { base: 100, max: 3 }, barn: { base: 80, max: 3 } },
     restFat: 40, barnRest: 10, tiredHalf: 60, tiredMax: 100, statCap: 99, compFat: 20, roll: 40, ai: ['Gruff', 'Mira', 'Tobo', 'Vexa', 'Bram', 'Lune', 'Oko', 'Pip', 'Rask', 'Sable', 'Tamsin', 'Yuki'], maxPets: 16, maxActive: 6, arena: { modes: { '1v1': { min: 2, max: 2 }, '2v2': { min: 4, max: 4 }, ffa: { min: 3, max: 8 } }, entry: 20, rake: 10, aiBase: 90, aiSpan: 40 }, cols: 12, rows: 8, blocked: [[1, 1], [10, 1]]  /* the ranch grid (hai-style: positions are rows); the gym stands on (1,1) and the barn on (10,1); at most maxActive pets are out at once, the rest are frozen in storage */
   };
-  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER', 'LIST', 'UNLIST', 'BUY', 'BUYITEM', 'USEITEM', 'GIVEITEM', 'CHALLENGE', 'MOVE', 'ARENA', 'JOIN', 'LEAVE', 'FIGHT', 'FILL'];
-  var RLEN = { FEED: 5, TRAIN: 5, REST: 4, COMPETE: 5, UPGRADE: 5, FREEZE: 4, THAW: 4, TRANSFER: 5, LIST: 6, UNLIST: 4, BUY: 5, BUYITEM: 5, USEITEM: 5, GIVEITEM: 6, CHALLENGE: 5, MOVE: 6, ARENA: 5, JOIN: 5, LEAVE: 5, FIGHT: 4, FILL: 4 };
+  var VERBS = ['TX', 'MSG', 'FAUCET', 'PET', 'FEED', 'TRAIN', 'REST', 'COMPETE', 'UPGRADE', 'FREEZE', 'THAW', 'TRANSFER', 'LIST', 'UNLIST', 'BUY', 'BUYITEM', 'USEITEM', 'GIVEITEM', 'CHALLENGE', 'MOVE', 'ARENA', 'JOIN', 'LEAVE', 'FIGHT', 'FILL', 'WOPT'];
+  var RLEN = { FEED: 5, TRAIN: 5, REST: 4, COMPETE: 5, UPGRADE: 5, FREEZE: 4, THAW: 4, TRANSFER: 5, LIST: 6, UNLIST: 4, BUY: 5, BUYITEM: 5, USEITEM: 5, GIVEITEM: 6, CHALLENGE: 5, MOVE: 6, ARENA: 5, JOIN: 5, LEAVE: 5, FIGHT: 4, FILL: 4, WOPT: 6 };
   function isVerb(v) { for (var i = 0; i < VERBS.length; i++) if (VERBS[i] === v) return true; return false; }
   function okId(s) { return /^[a-z0-9_-]{1,24}$/.test(s); }
   /* genes(seed, name): the same words always hatch the same pet (SHA-256 of "seed|name"; bytes pick species, six stats of 10..30, lifespan 120..180 weeks, look) */
@@ -66,9 +66,11 @@
   function verify(text, cfg) {
     var c = cfgOf(cfg), P = parse(text), bal = {}, msgs = [], last = {}, pets = {}, arenas = {}, minted = 0, work = 0, i, b, rows, j, f, r, why;
     function fail(at, w) { return { ok: false, error: w, at: at, height: i, balances: bal, messages: msgs, pets: pets, arenas: arenas, work: work }; }
-    function spend(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; bal[name] = (bal[name] || 0) - amt; bal._ranch = (bal._ranch || 0) + amt; return ''; }
+    /* wallet options of one pet (rows WOPT): cap = most it may spend at once, reserve = coins it must keep, sale = 0 locks it from sale */
+    function walletRule(name, amt) { var p = pets[name], o = p && p.opts; if (!o) return ''; if (o.cap > 0 && amt > o.cap) return 'cap: ' + name + ' may spend at most ' + o.cap + ' coins at a time'; if (o.reserve > 0 && (bal[name] || 0) - amt < o.reserve) return 'reserve: ' + name + ' must keep ' + o.reserve + ' coins'; return ''; }
+    function spend(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; var wr = walletRule(name, amt); if (wr) return wr; bal[name] = (bal[name] || 0) - amt; bal._ranch = (bal._ranch || 0) + amt; return ''; }
     function week(p) { p.age++; if (p.age >= p.life) p.retired = true; }
-    function spend2(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; bal[name] -= amt; return ''; }
+    function spend2(name, amt) { if ((bal[name] || 0) < amt) return 'not enough coins in ' + name; var wr = walletRule(name, amt); if (wr) return wr; bal[name] -= amt; return ''; }
     function addStat(p, s, n) { p.stats[s] = Math.min(RANCH.statCap, p.stats[s] + n); }
     function active(o) { var k, n = 0; for (k in pets) if (pets[k].owner === o && !pets[k].frozen) n++; return n; }
     function cellFree(x, y, self) { var k, bl = RANCH.blocked; if (x < 0 || y < 0 || x >= RANCH.cols || y >= RANCH.rows) return false; for (k = 0; k < bl.length; k++) if (bl[k][0] === x && bl[k][1] === y) return false; for (k in pets) if (pets[k] !== self && !pets[k].frozen && pets[k].x === x && pets[k].y === y) return false; return true; }
@@ -112,16 +114,17 @@
         if (f.length !== 5) return 'bad PET row'; if (!okId(nm) || nm.charAt(0) === '_') return 'bad pet name'; if (pets[nm]) return 'name already used';
         if (!f[2] || f[2].length > 40) return 'bad seed words'; if (!okId(f[3])) return 'bad owner';
         cnt = 0; for (k in pets) if (pets[k].owner === f[3]) cnt++; if (cnt >= RANCH.maxPets) return 'too many pets for ' + f[3]; if (active(f[3]) >= RANCH.maxActive) return 'six pets are already out: freeze one first';
-        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0, best: -1, items: {}, buffT: 0, buffF: 0, price: 0, payee: '', pvpW: 0, pvpL: 0, arenaW: 0, arenaL: 0, x: 0, y: 0 }; place(pets[nm]); return '';
+        g = genes(f[2], nm); pets[nm] = { name: nm, owner: f[3], seed: f[2], species: g.species, g: g, stats: JSON.parse(JSON.stringify(g.stats)), age: 0, life: g.life, fat: 0, frozen: false, retired: false, fac: { gym: 0, barn: 0 }, wins: 0, cups: 0, best: -1, items: {}, buffT: 0, buffF: 0, price: 0, payee: '', pvpW: 0, pvpL: 0, arenaW: 0, arenaL: 0, opts: { cap: 0, reserve: 0, sale: 1 }, x: 0, y: 0 }; place(pets[nm]); return '';
       }
       p = pets[nm]; if (!p) return 'no such pet'; if (f.length !== len) return 'bad ' + v + ' row';
       if (v === 'BUY') { q = pets[f[2]]; if (!(p.price > 0)) return nm + ' is not for sale'; if (!q) return 'no such paying pet'; if (q.owner !== f[3]) return 'the paying pet is not yours'; if (p.owner === f[3]) return 'you already own ' + nm; if (!p.frozen && active(f[3]) >= RANCH.maxActive) return 'six pets are already out: freeze one first';
-        if ((bal[f[2]] || 0) < p.price) return 'not enough coins in ' + f[2]; bal[f[2]] -= p.price; bal[p.payee] = (bal[p.payee] || 0) + p.price; p.owner = f[3]; p.price = 0; p.payee = ''; return ''; }
+        if ((bal[f[2]] || 0) < p.price) return 'not enough coins in ' + f[2]; if (walletRule(f[2], p.price)) return walletRule(f[2], p.price); bal[f[2]] -= p.price; bal[p.payee] = (bal[p.payee] || 0) + p.price; p.owner = f[3]; p.price = 0; p.payee = ''; return ''; }
       if (f[len - 2] !== p.owner) return 'not the owner of ' + nm;
       if (v === 'THAW') { if (!p.frozen) return 'not frozen'; if (active(p.owner) >= RANCH.maxActive) return 'six pets are already out: freeze one first'; p.frozen = false; if (!cellFree(p.x, p.y, p)) place(p); return ''; }
       if (v === 'FREEZE') { if (p.frozen) return 'already frozen'; p.frozen = true; return ''; }
       if (v === 'TRANSFER') { if (!okId(f[2])) return 'bad new owner'; if (!p.frozen && active(f[2]) >= RANCH.maxActive) return f[2] + ' already has six pets out'; p.owner = f[2]; p.price = 0; p.payee = ''; return ''; }
-      if (v === 'LIST') { var pr = +f[2]; if (!(pr > 0) || Math.floor(pr) !== pr || pr > 1000000) return 'bad price'; q = pets[f[3]]; if (!q || q.owner !== p.owner) return 'the payee must be one of your pets'; p.price = pr; p.payee = f[3]; return ''; }
+      if (v === 'WOPT') { var wn = f[2], wv = f[3]; if (wn !== 'cap' && wn !== 'reserve' && wn !== 'sale') return 'unknown option'; if (!/^[0-9]{1,6}$/.test(wv)) return 'bad option value'; var nv = +wv; if (nv > 100000 || (wn === 'sale' && nv > 1)) return 'bad option value'; p.opts[wn] = nv; if (wn === 'sale' && nv === 0) { p.price = 0; p.payee = ''; } return ''; }
+      if (v === 'LIST') { if (p.opts.sale === 0) return nm + ' is locked from sale'; var pr = +f[2]; if (!(pr > 0) || Math.floor(pr) !== pr || pr > 1000000) return 'bad price'; q = pets[f[3]]; if (!q || q.owner !== p.owner) return 'the payee must be one of your pets'; p.price = pr; p.payee = f[3]; return ''; }
       if (v === 'UNLIST') { if (!(p.price > 0)) return 'not listed'; p.price = 0; p.payee = ''; return ''; }
       if (v === 'GIVEITEM') { q = pets[f[3]]; if (!q) return 'no such pet to give to'; if (!RANCH.items[f[2]]) return 'unknown item'; if (!(p.items[f[2]] > 0)) return nm + ' has no ' + f[2]; p.items[f[2]]--; q.items[f[2]] = (q.items[f[2]] || 0) + 1; return ''; }
       if (p.frozen) return nm + ' is frozen'; if (p.retired) return nm + ' has retired';

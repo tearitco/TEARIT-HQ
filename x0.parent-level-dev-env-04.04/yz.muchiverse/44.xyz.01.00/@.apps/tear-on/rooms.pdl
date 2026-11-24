@@ -1,0 +1,4 @@
+# Book tear-on. The editor resolves a book as @.apps/<book>/rooms.pdl (edit_last.sh) and its pages as desks in tear-on-pchq/.../game.pdl (edit_open.sh). Row shape copied from @.apps/hai-pal/rooms.pdl.
+# Pages: ranch (the 12x8 ranch, gym G and barn B), arena (the 24x22 floor; the arena with fighters that was opened last).
+ROOM | ranch | ranch | 1 | 4 | over | 24 | 17 | 24 | interior
+ROOM | arena | arena | 1 | 4 | over | 24 | 17 | 24 | interior

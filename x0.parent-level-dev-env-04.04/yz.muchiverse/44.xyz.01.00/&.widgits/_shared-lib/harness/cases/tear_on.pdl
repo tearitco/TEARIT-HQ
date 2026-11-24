@@ -1,0 +1,68 @@
+# tear_on.pdl - the tear-on book (TEAR-IT Ranch and Arena as a book in the rpg-edit board, opened from the network menu), 2026-11-24.
+# Scratch "house" tree under $T: the chain op, the launcher op, the atlas and a chain; the live house and the live editor are never touched.
+CASE    | project-draws-both-pages-from-the-chain
+SCRATCH |
+MKDIR   | house/@.apps/tear-on/atlas
+MKDIR   | house/@.apps/tear-on/ledger
+MKDIR   | house/&.hq-apps/tear-offline/ops/+x
+MKDIR   | house/&.hq-apps/tear-on/ops/+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-on/ops/+x/tear_on_op.+x | house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x
+COPY    | @.apps/tear-on/atlas/cells.rgba | house/@.apps/tear-on/atlas/cells.rgba
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_arena_chain.txt | house/@.apps/tear-on/ledger/web_chain.txt
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | project | $T/house
+EXPECT_EXIT | 0 | the-projection-ran
+EXPECT_OUT | tear-on: pages projected | it-says-the-pages-were-projected
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/ranch/cells.txt | width=14 | the-ranch-page-is-14-wide
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/ranch/cells.txt | 33,0,2 | the-gym-tile-is-on-the-ranch
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/ranch/events.txt | 7 5 120 90 220 People1 0 2 1 R | rex-stands-where-the-chain-put-him
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/ranch/events.txt | 6 3 60 130 230 People1 1 2 1 K | kai-is-on-the-ranch-in-his-element-colour
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/cells.txt | height=24 | the-arena-page-is-24-high
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/events.txt | 21 4 150 150 150 People1 5 2 1 * | a-default-fighter-is-drawn-grey-with-a-star
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/events.txt | 4 4 250 230 120 People1 4 2 1 M | mina-is-on-the-arena-floor
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/extrusion.pdl | desk_id            \p arena | the-page-file-names-its-desk
+RUN | $T/house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | verify | $T/house/@.apps/tear-on/ledger/web_chain.txt
+EXPECT_OUT | OK height=58 | projecting-never-changes-the-chain
+CLEAN   |
+CASE    | demo-and-do-are-rows-and-refuse-by-name
+SCRATCH |
+MKDIR   | house/@.apps/tear-on/atlas
+MKDIR   | house/&.hq-apps/tear-offline/ops/+x
+MKDIR   | house/&.hq-apps/tear-on/ops/+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-on/ops/+x/tear_on_op.+x | house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x
+COPY    | @.apps/tear-on/atlas/cells.rgba | house/@.apps/tear-on/atlas/cells.rgba
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | demo | $T/house
+EXPECT_EXIT | 0 | the-demo-seeded-an-empty-chain
+EXPECT_HAS | house/@.apps/tear-on/ledger/web_chain.txt | ARENA\parena1\pffa\pyou\p | the-demo-arena-is-a-row-in-the-chain
+EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/events.txt | * | the-demo-arena-has-a-default-fighter-drawn
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | demo | $T/house
+EXPECT_OUT | the chain already has rows | NEGATIVE-the-demo-never-seeds-a-chain-that-has-rows
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | do | $T/house | WOPT\prex\pcap\p30\pyou\p99
+EXPECT_EXIT | 0 | a-wallet-option-is-one-row
+EXPECT_HAS | house/@.apps/tear-on/ledger/web_chain.txt | WOPT\prex\pcap\p30\pyou\p99 | the-option-row-is-in-the-chain
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | do | $T/house | BUYITEM\prex\pcharm\pyou\p99
+EXPECT_EXIT | 1 | the-cap-refuses-a-bigger-spend
+EXPECT_OUT | cap: rex may spend at most 30 coins at a time | the-reason-is-named
+CLEAN   |
+CASE    | book-launcher-and-menu-are-data-and-no-shell
+SCRATCH |
+COPY    | @.apps/tear-on/game.pdl | game.pdl
+COPY    | @.apps/tear-on/rooms.pdl | rooms.pdl
+COPY    | @.apps/tear-on/verbs.pdl | verbs.pdl
+COPY    | @.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/game.pdl | pchq_game.pdl
+COPY    | &.hq-apps/tear-on/open_tear_on.sh | shim.sh
+COPY    | #.desktop/livedesk_taskbar.pdl | taskbar.pdl
+COPY    | #.desktop/livedesk_launchers.pdl | launchers.pdl
+EXPECT_HAS | pchq_game.pdl | desk_1_id          \p ranch | the-first-page-is-the-ranch
+EXPECT_HAS | pchq_game.pdl | desk_2_id          \p arena | the-second-page-is-the-arena
+EXPECT_HAS | rooms.pdl | ROOM \p ranch | the-editor-resolves-the-ranch-page
+EXPECT_HAS | rooms.pdl | ROOM \p arena | the-editor-resolves-the-arena-page
+EXPECT_HAS | verbs.pdl | VERB \p WOPT | the-wallet-option-verb-is-in-the-manifest
+EXPECT_HAS | shim.sh | tear_on_op.+x" --open | the-shim-only-calls-the-C-op
+EXPECT_LACKS | shim.sh | case  | NEGATIVE-the-shim-has-no-logic
+EXPECT_HAS | taskbar.pdl | network_menu_9_label  \p tear-off\n | the-old-window-is-renamed-tear-off
+EXPECT_HAS | taskbar.pdl | network_menu_9_cmd    \p livedesk:open-network:tearoffline\n | the-old-window-keeps-its-command
+EXPECT_HAS | taskbar.pdl | network_menu_10_cmd   \p livedesk:open-network:tearon\n | the-network-menu-has-a-tear-on-cell
+EXPECT_HAS | launchers.pdl | launcher_network_tearon \p &.hq-apps/tear-on/open_tear_on.sh | the-launcher-row-points-at-the-shim
+CLEAN   |

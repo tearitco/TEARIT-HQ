@@ -22,5 +22,19 @@
  check('arena-free-for-all-needs-three-fighters',r4add('_ranch',['FIGHT|brawl|zed|43'],43).error,'the arena needs at least 3 fighters');
  r4add('_ranch',['FILL|brawl|zed|44'],44); var ff=r4add('_ranch',['FIGHT|brawl|zed|45'],45); check('arena-free-for-all-pays-three-places',ff.ok+' '+ff.arenas.brawl.winners.length+' scores'+ff.arenas.brawl.scores.length,'true 3 scores3');
  check('arena-a-fight-tires-the-real-pets-and-ages-them',ff.pets.a4.fat>=20&&ff.pets.a4.age>=1?'yes':'no','yes');
+ /* wallet options per pet (rows WOPT): cap, reserve, sale */
+ var vb = T.verify(r4, rcfg), a4b = vb.balances.a4;
+ r4add('_ranch',['WOPT|a1|cap|10|zed|60'],60); check('wopt-cap-refuses-a-bigger-spend',r4add('_ranch',['FEED|a1|meat|zed|61'],61).error,'cap: a1 may spend at most 10 coins at a time');
+ check('wopt-a-spend-under-the-cap-still-works',String(r4add('_ranch',['FEED|a1|bread|zed|62'],62).ok),'true');
+ r4add('_ranch',['WOPT|a4|reserve|'+(a4b-10)+'|zed|63'],63); check('wopt-reserve-refuses-a-spend-that-eats-it',r4add('_ranch',['FEED|a4|meat|zed|64'],64).error,'reserve: a4 must keep '+(a4b-10)+' coins');
+ check('wopt-a-spend-that-leaves-the-reserve-works',String(r4add('_ranch',['FEED|a4|bread|zed|65'],65).ok),'true');
+ r4add('_ranch',['LIST|a3|50|a3|zed|66'],66); var lv3=r4add('_ranch',['WOPT|a3|sale|0|zed|67'],67); check('wopt-sale-lock-clears-the-listing',String(lv3.ok)+' price'+lv3.pets.a3.price,'true price0');
+ check('wopt-sale-lock-refuses-a-new-listing',r4add('_ranch',['LIST|a3|50|a3|zed|68'],68).error,'a3 is locked from sale');
+ check('wopt-unknown-option-refused',r4add('_ranch',['WOPT|a2|speed|5|zed|69'],69).error,'unknown option');
+ check('wopt-bad-value-refused',r4add('_ranch',['WOPT|a2|cap|-1|zed|70'],70).error,'bad option value');
+ check('wopt-sale-must-be-0-or-1',r4add('_ranch',['WOPT|a2|sale|2|zed|71'],71).error,'bad option value');
+ check('wopt-only-the-owner-sets-an-option',r4add('_ranch',['WOPT|a2|cap|5|bob|72'],72).error,'not the owner of a2');
+ r4add('_ranch',['WOPT|a2|cap|10|zed|73'],73); r4add('_ranch',['ARENA|capcup|1v1|zed|74'],74); check('wopt-the-arena-entry-obeys-the-cap',r4add('_ranch',['JOIN|capcup|a2|zed|75'],75).error,'cap: a2 may spend at most 10 coins at a time');
+ r4add('_ranch',['WOPT|a2|cap|0|zed|76'],76); check('wopt-cap-0-lifts-the-cap',String(r4add('_ranch',['JOIN|capcup|a2|zed|77'],77).ok),'true');
  console.log('WEBCHAIN_TESTRESULT '+pass+'/'+total); console.log('WEBCHAIN_TESTDONE');
 })();

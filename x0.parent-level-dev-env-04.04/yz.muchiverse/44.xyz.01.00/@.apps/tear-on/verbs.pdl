@@ -1,0 +1,10 @@
+# verbs.pdl - the tear-on manifest: the known verbs as data (grammar of @.apps/deskopoly/verbs.pdl). The rules are rows of the chain (tear_chain_op / chain.js).
+#   VERB | name | page | ui | args | what it does
+VERB | PET     | no | ui | name words owner ts          | hatch a pet from words; the pet is the wallet
+VERB | MOVE    | no | ui | pet x y owner ts            | one cell on the ranch
+VERB | ARENA   | no | ui | id mode owner ts            | open an arena (1v1, 2v2, ffa)
+VERB | JOIN    | no | ui | arena pet owner ts          | a pet enters (entry fee 20 into the pot)
+VERB | FILL    | no | ui | arena owner ts              | default fighters fill the empty chairs
+VERB | FIGHT   | no | ui | arena owner ts              | resolve the fight, pay the pot
+VERB | WOPT    | no | ui | pet option value owner ts   | a wallet option of one pet (cap, reserve, sale)
+VERB | project | no | -  | -                           | read-only projection: rewrite both pages from the chain

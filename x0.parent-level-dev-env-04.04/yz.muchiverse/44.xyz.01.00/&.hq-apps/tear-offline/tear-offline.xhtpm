@@ -2,7 +2,7 @@
      Shared khtpm_core_render.+x, class="tear-window database-window" (generic sidebar/panel path, ZERO renderer C). Shape copied from chain-hq.xhtpm.
      One <module>: ops/+x/tear_offline_manager.+x keeps <pkg>/data/web_chain.txt and publishes tear_ui.txt; every rule is ops/+x/tear_chain_op.+x
      (C port of docs/chain.js, graded by harness case tear_offline). Actions: ops/+x/tear_item_op.+x writes tear_action.txt (no shell). -->
-<window label="tear-offline  ·  ${wallet_id}  ·  ${balance} mc" class="tear-window database-window" vars="tear_ui.txt">
+<window label="tear-off  ·  ${wallet_id}  ·  ${balance} mc" class="tear-window database-window" vars="tear_ui.txt">
   <module src="&.hq-apps/tear-offline/ops/+x/tear_offline_manager.+x"/>
   <page name="main">
 
