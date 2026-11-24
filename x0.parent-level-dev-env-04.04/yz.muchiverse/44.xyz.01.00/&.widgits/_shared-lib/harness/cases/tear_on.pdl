@@ -97,6 +97,13 @@ EXPECT_HAS | editor/state/game_ui.txt | rex the Cosmic | the-bar-shows-the-selec
 EXPECT_HAS | editor/state/game_ui.txt | gmb_0_label=[Care] | the-first-button-is-the-care-tab
 EXPECT_HAS | editor/state/game_ui.txt | gmb_5_label=Hatch a pet | the-care-tab-starts-with-hatch
 EXPECT_HAS | editor/state/game_ui.txt | Redraw board | the-care-tab-has-the-redraw-board-button
+EXPECT_HAS | editor/state/game_ui.txt | side_pal=\n | the-palettes-bar-is-hidden-while-the-game-runs
+EXPECT_HAS | editor/state/game_ui.txt | side_left=1 | the-pets-bar-is-shown
+EXPECT_HAS | editor/state/game_ui.txt | n_party=5 | the-bar-lists-every-pet-the-driver-acts-for
+EXPECT_HAS | editor/state/game_ui.txt | party_0_label=> rex | the-selected-pet-is-marked-in-the-party
+EXPECT_HAS | editor/state/game_ui.txt | party_4_id=tear_kai | the-party-has-one-row-per-pet-with-its-own-id
+EXPECT_HAS | editor/state/game_ui.txt | nick_line=rex the | the-bar-names-the-selected-pet
+EXPECT_HAS | editor/state/game_ui.txt | stat_line2=cap | the-bar-shows-the-wallet-options
 EXPECT_HAS | editor/state/game_ui.txt | tear_on_ctl.+x' tab_arena | a-button-action-runs-the-ctl-program
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_arena | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | gmb_5_label=Open a 1v1 | 12000 | the-arena-tab-shows-the-arena-buttons

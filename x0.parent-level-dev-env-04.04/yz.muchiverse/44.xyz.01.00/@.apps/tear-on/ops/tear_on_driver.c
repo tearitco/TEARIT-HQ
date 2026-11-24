@@ -62,6 +62,11 @@ static void add_btn(const char *label, const char *cmd) { char b[P + 300]; snpri
 static void publish(void) {
     OUT_[0] = 0; nt_ = nb_ = 0; char b[600]; Pet *p = selpet(); Arena *a = selar(); static const char *RK[] = { "E", "D", "C", "B", "A", "S" };
     catn("gm_on=1\n"); snprintf(b, sizeof b, "gm_pid=%ld\ngm_title=TEAR-IT Ranch  -  %s\n", (long)getpid(), owner); catn(b);
+    /* SIDE BARS FOR THIS BOOK (owner rule 2026-11-24, BOOK 16.game open-a-project doc section 11): while Play runs the left bar is the PALS bar, not the palettes: side_pal empty hides the tile palettes, side_left=1 shows the pets bar, its party is this owner's pets, its lines the selected pet. The editor's own values return when the feed drops (gm_on=). A PREFERENCE of the view, never game state. */
+    catn("side_pal=\nside_left=1\n");
+    { int k = 0; char pb[400]; for (int i = 0; i < np; i++) { if (strcmp(pets[i].owner, owner) || pets[i].frozen) continue; int on = !strcmp(pets[i].name, sel); snprintf(pb, sizeof pb, "party_%d_label=%s%s  %ldc\nparty_%d_id=tear_%s\nparty_%d_cls=%s\n", k, on ? "> " : "", pets[i].name, pets[i].coins, k, pets[i].name, k, on ? "active" : ""); catn(pb); k++; } snprintf(pb, sizeof pb, "n_party=%d\n", k); catn(pb); }
+    if (p) { snprintf(b, sizeof b, "coins=%ld\nnick_line=%s the %s\nstat_line=age %d/%d tired %d\nstat_line2=cap %d res %d %s\n", p->coins, p->name, p->species, p->age, p->life, p->fat, p->cap, p->reserve, p->sale ? "open" : "locked"); catn(b); }
+    else catn("coins=0\nnick_line=no pet yet\nstat_line=Hatch a pet on the Care tab\nstat_line2=\n");
     if (!strcmp(tab, "arena")) {
         if (a) { snprintf(b, sizeof b, "%s  %s  pot %ld", a->id, a->mode, a->pot); add_text(b); snprintf(b, sizeof b, "%s", a->open ? "open" : "finished"); add_text(b); snprintf(b, sizeof b, "fighters: %s", a->members[0] ? a->members : "(none)"); add_text(b); if (a->winners[0]) { snprintf(b, sizeof b, "winners: %s", a->winners); add_text(b); snprintf(b, sizeof b, "scores: %s", a->scores); add_text(b); } }
         else add_text("no arena yet: open one");
