@@ -1,3 +1,5 @@
+**[Play it in your browser: https://tearitco.github.io/tearit-web/](https://tearitco.github.io/tearit-web/)**  ([the ranch](https://tearitco.github.io/tearit-web/ranch.html) · [the chain explorer](https://tearitco.github.io/tearit-web/chain.html))
+
 # TEAR-IT Ranch (tearit web chain, experimental, not shipped)
 A Monster-Rancher-style pet game that runs from static files (GitHub Pages) on a blockchain you keep in your browser.
 - **Hatch** a pet from your own words (the same words always hatch the same pet, one of ten elements), or **upload** a save/world, or fetch the published one.
