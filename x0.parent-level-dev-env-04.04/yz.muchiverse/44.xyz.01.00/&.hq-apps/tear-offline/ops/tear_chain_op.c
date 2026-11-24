@@ -238,8 +238,10 @@ static int desk_write(Ver *v, const char *page, const char *dir, const char *atl
                 else { Pet *p = pet_of(&v->pets, m->name); int sp = p ? p->spec : 0; spec_rgb(sp, &r, &g, &b); char L = m->name[0] >= 'a' && m->name[0] <= 'z' ? (char)(m->name[0] - 32) : m->name[0]; n += (size_t)snprintf(buf + n, sizeof buf - n, "%d %d %d %d %d People1 %d 2 1 %c\n", cx + 1, cy + 1, r, g, b, sp % 8, L); } ne++; } } }
     buf[n] = 0; if (put_file(dir, "events.txt", buf)) return 1;
     snprintf(buf, sizeof buf, "SECTION      | KEY                | VALUE\n----------------------------------------------------------------------\nMETA         | map_id             | tear-on\nMETA         | desk_id            | %s\nMETA         | note               | a page of tear-on drawn from its chain by tear_chain_op desk\n", page); if (put_file(dir, "extrusion.pdl", buf)) return 1;
-    if (put_file(dir, "skin.txt", "rmmv\n") || put_file(dir, "cells.marker", "1")) return 1;
+    if (put_file(dir, "skin.txt", "rmmv\n")) return 1;
     if (atlas && atlas[0]) { FILE *a = fopen(atlas, "rb"); if (a) { char p[4200]; snprintf(p, sizeof p, "%s/cells.rgba", dir); FILE *o = fopen(p, "wb"); if (o) { char cb[8192]; size_t k; while ((k = fread(cb, 1, sizeof cb, a)) > 0) fwrite(cb, 1, k, o); fclose(o); } fclose(a); } }
+    /* RELOAD STAMP. The board engine reloads a page when the SIZE of cells.marker changes (bv_render_3d.c, owner standard 2026-10-25), never for rewritten files: a constant marker was why pets never moved on screen until a page switch (seen live 2026-11-24). The exporter grows it by one byte AFTER cells.rgba is written; capped at 4000 bytes (wraps to 1: any change of size reloads). */
+    { char mp[4200]; snprintf(mp, sizeof mp, "%s/cells.marker", dir); struct stat ms; long old = stat(mp, &ms) == 0 ? (long)ms.st_size : 0; long nw = (old % 4000) + 1; char mb[4001]; memset(mb, '1', (size_t)nw); mb[nw] = 0; if (put_file(dir, "cells.marker", mb)) return 1; }
     printf("DESK page=%s w=%d h=%d entities=%d\n", page, W, H, ne); return 0; }
 static int ok_id(const char *s) { size_t l = strlen(s); if (!l || l >= NAMEL) return 0; for (; *s; s++) if (!(isalnum((unsigned char)*s) || *s == '_' || *s == '-')) return 0; return 1; }
 

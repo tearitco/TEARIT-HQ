@@ -21,6 +21,11 @@ EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/
 EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/events.txt | 21 4 150 150 150 People1 5 2 1 * | a-default-fighter-is-drawn-grey-with-a-star
 EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/events.txt | 4 4 250 230 120 People1 4 2 1 M | mina-is-on-the-arena-floor
 EXPECT_HAS | house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/arena/extrusion.pdl | desk_id            \p arena | the-page-file-names-its-desk
+RUN | /usr/bin/stat | -c | %s | $T/house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/ranch/cells.marker
+EXPECT_OUT | 1 | the-first-projection-leaves-a-one-byte-reload-stamp
+RUN | $T/house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x | project | $T/house
+RUN | /usr/bin/stat | -c | %s | $T/house/@.apps/tear-on/tear-on-pchq/pieces/system/maps/tear-on/ranch/cells.marker
+EXPECT_OUT | 2 | NEGATIVE-the-same-chain-projected-again-still-grows-the-stamp-so-the-board-engine-reloads-the-page
 RUN | $T/house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | verify | $T/house/@.apps/tear-on/ledger/web_chain.txt
 EXPECT_OUT | OK height=58 | projecting-never-changes-the-chain
 CLEAN   |
@@ -91,7 +96,7 @@ EXPECT_HAS | editor/state/game_ui.txt | gm_title=TEAR-IT Ranch  -  you | the-bar
 EXPECT_HAS | editor/state/game_ui.txt | rex the Cosmic | the-bar-shows-the-selected-pet
 EXPECT_HAS | editor/state/game_ui.txt | gmb_0_label=[Care] | the-first-button-is-the-care-tab
 EXPECT_HAS | editor/state/game_ui.txt | gmb_5_label=Hatch a pet | the-care-tab-starts-with-hatch
-EXPECT_HAS | editor/state/game_ui.txt | Refresh board (slow) | the-care-tab-has-the-refresh-board-button
+EXPECT_HAS | editor/state/game_ui.txt | Redraw board | the-care-tab-has-the-redraw-board-button
 EXPECT_HAS | editor/state/game_ui.txt | tear_on_ctl.+x' tab_arena | a-button-action-runs-the-ctl-program
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | tab_arena | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | gmb_5_label=Open a 1v1 | 12000 | the-arena-tab-shows-the-arena-buttons
