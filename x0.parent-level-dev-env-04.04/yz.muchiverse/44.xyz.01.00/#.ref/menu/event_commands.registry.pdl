@@ -1972,3 +1972,12 @@ COMMAND vox_move
   PARAMS actor,cell
   TEMPLATE exec "$D/@.apps/vox/ops/+x/vox_op.+x" move "$D/@.apps/vox" "$D/#.desktop/vox_ledger.txt" '{actor}' '{cell}'
 END
+
+# tear_on_verb = the chain verbs of the tear-on book (TEAR-IT Ranch in the rpg-edit board). The engine reads GAME_ARG (the rest of the row, pipe separated) and mines ONE row through tear_on_op; verb pages are written by verbgen from @.apps/tear-on/verbs.pdl.
+COMMAND tear_on_verb
+  LABEL tear-on: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/tear-on/ops/+x/tear_on_verb.+x" '{verb}'[ '{arg}']
+END

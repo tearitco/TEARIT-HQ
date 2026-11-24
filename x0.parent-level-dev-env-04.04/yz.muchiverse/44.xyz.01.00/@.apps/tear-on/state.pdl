@@ -7,4 +7,7 @@ FILE | tear-on-pchq/pieces/system/maps/tear-on/arena/ | PROJECTION | tear_chain_
 FILE | play/action.txt  | CONFIG     | tear_on_ctl (a button appends one command word; capped at 64 KiB, the DRIVER drops the oldest half) | -
 FILE | play/driver.lock | CONFIG     | tear_on_driver (flock, one instance) | -
 FILE | play/owner.txt   | PREFERENCE | the owner label the driver acts as (default you); changes who acts, never an outcome | -
+FILE | events/<verb>/ | CONFIG     | verbgen gen (from verbs.pdl; one page per verb; edited pages are never overwritten) | verbgen gen @.apps/tear-on
+FILE | play/result.txt  | PROJECTION | tear_on_verb (ok or the rules' refusal of the last row; the LEDGER is the authority, this is only what the bar shows) | rewritten by the next row
+FILE | play/world/     | PROJECTION | play_event.sh (MUCHI_TARGET_ENT scratch for the page runs) | deleted any time
 FILE | ops/+x/*         | CONFIG     | built programs (gcc, see each .c header); not in git | -

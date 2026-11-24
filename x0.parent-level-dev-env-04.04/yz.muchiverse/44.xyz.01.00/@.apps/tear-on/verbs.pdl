@@ -1,10 +1,19 @@
-# verbs.pdl - the tear-on manifest: the known verbs as data (grammar of @.apps/deskopoly/verbs.pdl). The rules are rows of the chain (tear_chain_op / chain.js).
-#   VERB | name | page | ui | args | what it does
-VERB | PET     | no | ui | name words owner ts          | hatch a pet from words; the pet is the wallet
-VERB | MOVE    | no | ui | pet x y owner ts            | one cell on the ranch
-VERB | ARENA   | no | ui | id mode owner ts            | open an arena (1v1, 2v2, ffa)
-VERB | JOIN    | no | ui | arena pet owner ts          | a pet enters (entry fee 20 into the pot)
-VERB | FILL    | no | ui | arena owner ts              | default fighters fill the empty chairs
-VERB | FIGHT   | no | ui | arena owner ts              | resolve the fight, pay the pot
-VERB | WOPT    | no | ui | pet option value owner ts   | a wallet option of one pet (cap, reserve, sale)
-VERB | project | no | -  | -                           | read-only projection: rewrite both pages from the chain
+# verbs.pdl - the tear-on manifest: which verbs are EVENT PAGES (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md; the grammar of @.apps/rpg-pvp-hq/verbs.pdl). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check @.apps/tear-on   engine source <-> this file <-> events/ must agree
+#   verbgen gen   @.apps/tear-on   write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# The rules are rows of the chain (tear_chain_op, graded by harness cases web_chain / tear_offline); a page runs tear_on_verb, which mines ONE row. The driver's buttons play the page (do_row); args travel in GAME_ARG.
+GAME | tear-on | tear_on_verb | ops/+x/tear_on_verb.+x | ops/tear_on_verb.c
+#   VERB | name | page | trigger | args | what it does
+VERB | pet     | yes | ui | name words owner ts                | hatch a pet from words; the pet is the wallet
+VERB | faucet  | yes | ui | pet amount ts                    | the hourly pet faucet (+1000)
+VERB | feed    | yes | ui | pet food owner ts                 | feed a pet (bread 5, meat 20)
+VERB | train   | yes | ui | pet skill owner ts                | train sprint, lift or study
+VERB | rest    | yes | ui | pet owner ts                      | rest (free)
+VERB | compete | yes | ui | pet owner ts                      | the next ranked fight
+VERB | move    | yes | ui | pet x y owner ts                  | one cell on the ranch
+VERB | arena   | yes | ui | id mode owner ts                  | open an arena (1v1, 2v2, ffa)
+VERB | join    | yes | ui | arena pet owner ts                | a pet enters (entry fee 20 into the pot)
+VERB | leave   | yes | ui | arena pet owner ts                | a pet leaves (fee back)
+VERB | fill    | yes | ui | arena owner ts                    | default fighters fill the empty chairs
+VERB | fight   | yes | ui | arena owner ts                    | resolve the fight, pay the pot
+VERB | wopt    | yes | ui | pet option value owner ts         | a wallet option of one pet (cap, reserve, sale)

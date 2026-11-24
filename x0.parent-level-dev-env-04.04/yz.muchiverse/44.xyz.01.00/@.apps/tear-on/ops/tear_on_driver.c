@@ -101,9 +101,18 @@ static void refresh_board(void) {
     (void)other; (void)back; (void)secs; nudge_board(); set_msg("board redrawn from the chain"); }
 static void set_msg(const char *s) { snprintf(msg, sizeof msg, "%s", s); for (char *c = msg; *c; c++) if (*c == '\n' || *c == '=') *c = ' '; }
 /* append ONE row to the chain (mined + pages re-projected by tear_on_op do); the refusal text of the rules becomes the message */
+/* THE PAGE IS THE PATH (EVENT-VERB-PAGES-DESIGN, D92): a button plays the verb page @.apps/tear-on/events/<verb>/ (written by verbgen from verbs.pdl) through events-hq play_event.sh; the page runs tear_on_verb, which mines ONE row and writes play/result.txt (ok or the refusal). If the page did not run (package deleted, play_event failed, timeout) the driver mines the row directly and says so on the bar, never silently. A page run is a sh + bash + prisc launch: fine for a click. */
 static int do_row(const char *row, const char *okmsg) {
-    char out[600]; char *av[] = { ONOP, "do", HOUSE, (char *)row, NULL }; int c = run(av, out, sizeof out); char *e = strchr(out, '\n'); if (e) *e = 0;
-    if (c == 0) { set_msg(okmsg); return 0; } set_msg(out[0] ? out : "refused"); return c; }
+    char verb[24], pd[P], pl[P], rp[P], wd[P], args[600], out[600]; const char *bar = strchr(row, '|'); if (!bar || bar - row >= (int)sizeof verb) { set_msg("bad row"); return 2; }
+    snprintf(verb, sizeof verb, "%.*s", (int)(bar - row), row); for (char *q = verb; *q; q++) if (*q >= 'A' && *q <= 'Z') *q = (char)(*q + 32); snprintf(args, sizeof args, "%s", bar + 1);
+    snprintf(pd, sizeof pd, "%s/events/%s", BOOK, verb); snprintf(pl, sizeof pl, "%s/&.widgits/events-hq/ops/play_event.sh", HOUSE); snprintf(rp, sizeof rp, "%s/play/result.txt", BOOK); snprintf(wd, sizeof wd, "%s/play/world", BOOK);
+    /* a Blueprintz debugger pause (paused=1 in #.desktop/blueprintz_debug.txt, the owner's switch) would only QUEUE the page: skip it, mine directly, say so; never touch that file or its queue */
+    int held = 0; { const char *ov = getenv("BLUEPRINTZ_DEBUG_FILE"); char bp[P], bl[64]; snprintf(bp, sizeof bp, "%s", ov ? ov : ""); if (!ov) snprintf(bp, sizeof bp, "%s/#.desktop/blueprintz_debug.txt", HOUSE); FILE *bf = fopen(bp, "r"); if (bf) { while (fgets(bl, sizeof bl, bf)) if (!strncmp(bl, "paused=1", 8)) held = 1; fclose(bf); } }
+    struct stat ps; if (!held && !stat(pd, &ps) && !access(pl, R_OK)) { mkdir(wd, 0755); unlink(rp); setenv("GAME_ARG", args, 1); setenv("MUCHI_TARGET_ENT", wd, 1); char *av[] = { "/bin/bash", pl, pd, HOUSE, "ui", NULL }; run(av, out, sizeof out); unsetenv("GAME_ARG"); unsetenv("MUCHI_TARGET_ENT");
+        char rb[300] = ""; FILE *rf = fopen(rp, "r"); if (rf) { if (fgets(rb, sizeof rb, rf)) rb[strcspn(rb, "\r\n")] = 0; fclose(rf); }
+        if (rb[0]) { if (!strcmp(rb, "ok")) { set_msg(okmsg); return 0; } set_msg(rb); return 1; } }
+    char o2[600]; char *av2[] = { ONOP, "do", HOUSE, (char *)row, NULL }; int c = run(av2, o2, sizeof o2); char *e = strchr(o2, '\n'); if (e) *e = 0;
+    if (c == 0) { char m2[320]; snprintf(m2, sizeof m2, "%s (direct: the %s page did not run%s)", okmsg, verb, held ? ", events are paused in Blueprintz" : ""); set_msg(m2); return 0; } set_msg(o2[0] ? o2 : "refused"); return c; }
 static void do_cmd(const char *c) {
     char row[400], ts[24], m[200]; snprintf(ts, sizeof ts, "%ld", (long)time(NULL)); Pet *p = selpet(); Arena *a = selar(); chain_read();
     if (!strcmp(c, "close")) { FILE *sf = fopen(SW, "w"); if (sf) { fputs("running=0\nint=1\n", sf); fclose(sf); } stop_ = 1; return; }

@@ -63,7 +63,7 @@ EXPECT_HAS | pchq_game.pdl | desk_1_id          \p ranch | the-first-page-is-the
 EXPECT_HAS | pchq_game.pdl | desk_2_id          \p arena | the-second-page-is-the-arena
 EXPECT_HAS | rooms.pdl | ROOM \p ranch | the-editor-resolves-the-ranch-page
 EXPECT_HAS | rooms.pdl | ROOM \p arena | the-editor-resolves-the-arena-page
-EXPECT_HAS | verbs.pdl | VERB \p WOPT | the-wallet-option-verb-is-in-the-manifest
+EXPECT_HAS | verbs.pdl | VERB \p wopt | the-wallet-option-verb-is-in-the-manifest
 EXPECT_HAS | shim.sh | tear_on_op.+x" --open | the-shim-only-calls-the-C-op
 EXPECT_LACKS | shim.sh | case  | NEGATIVE-the-shim-has-no-logic
 EXPECT_HAS | taskbar.pdl | network_menu_9_label  \p tear-off\n | the-old-window-is-renamed-tear-off
@@ -134,6 +134,7 @@ WAIT_HAS | editor/state/game_ui.txt | board redrawn from the chain | 25000 | the
 WRITE   | editor/rpg-edit-hq-pchq/pieces/world_01/state.txt | map_id=hai-pal\ndesk_id=home\n
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | feed_bread | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | fed bread | 12000 | the-feed-button-fed-the-pet
+EXPECT_HAS | editor/state/game_ui.txt | direct: the feed page did not run | a-missing-page-falls-back-to-the-direct-row-and-the-bar-says-so
 EXPECT_LACKS | editor/rpg-edit-hq-pchq/pieces/system/widget_cmds/inbox.txt | CONFIRM_SET_DESK:home | NEGATIVE-nothing-is-sent-to-the-board-while-the-editor-is-on-another-book
 RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | refresh | $T/house/@.apps/tear-on/play
 WAIT_HAS | editor/state/game_ui.txt | open the tear-on book first | 12000 | NEGATIVE-refresh-is-refused-while-the-editor-is-on-another-book
@@ -141,3 +142,57 @@ RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_ctl.+x | close | $T/house/@.apps/te
 WAIT_HAS | editor/state/world/switches.txt | running=0 | 12000 | the-close-button-stops-the-game-(running-0)
 WAIT_HAS | editor/state/game_ui.txt | gm_on=\n | 12000 | the-bar-disappears-when-the-driver-ends
 CLEAN   |
+
+# ---- the verb pages are the path (D92, EVENT-VERB-PAGES-DESIGN): a button plays events/<verb>/, the page runs tear_on_verb, which mines ONE row ----
+CASE    | verb-pages-are-the-path
+SCRATCH |
+ENV     | BLUEPRINTZ_DEBUG_FILE | /nonexistent
+MKDIR   | house/xyzfs
+MKDIR   | house/@.apps/tear-on/atlas
+MKDIR   | house/@.apps/tear-on/ledger
+MKDIR   | house/@.apps/tear-on/ops/+x
+MKDIR   | house/@.apps/tear-on/play/world
+MKDIR   | house/&.hq-apps/tear-offline/ops/+x
+MKDIR   | house/&.hq-apps/tear-on/ops/+x
+COPY    | &.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x
+COPY    | &.hq-apps/tear-on/ops/+x/tear_on_op.+x | house/&.hq-apps/tear-on/ops/+x/tear_on_op.+x
+COPY    | @.apps/tear-on/ops/+x/tear_on_verb.+x | house/@.apps/tear-on/ops/+x/tear_on_verb.+x
+COPY    | @.apps/tear-on/atlas/cells.rgba | house/@.apps/tear-on/atlas/cells.rgba
+COPY    | &.widgits/_shared-lib/harness/fixtures/tear_offline_arena_chain.txt | house/@.apps/tear-on/ledger/web_chain.txt
+COPYDIR | @.apps/tear-on/events | house/@.apps/tear-on/events
+EXPECT_HAS | house/@.apps/tear-on/events/faucet/event_pkg/pages/page_1/event.ir.pdl | type=tear_on_verb \p verb=faucet | the-faucet-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tear-on/events/move/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | a-verb-page-has-a-ui-trigger
+RUN | $T/house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | verify | $T/house/@.apps/tear-on/ledger/web_chain.txt
+EXPECT_OUT | OK height=58 | the-chain-starts-at-58-blocks
+ENV     | GAME_ARG | mina\p10\p1700000000
+ENV     | MUCHI_TARGET_ENT | $T/house/@.apps/tear-on/play/world
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tear-on/events/faucet | $T/house | ui
+EXPECT_EXIT | 0 | the-faucet-page-was-played
+EXPECT_HAS | house/@.apps/tear-on/play/result.txt | ok | the-page-engine-reports-ok
+RUN | $T/house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | verify | $T/house/@.apps/tear-on/ledger/web_chain.txt
+EXPECT_OUT | OK height=59 | playing-the-page-mined-exactly-one-row
+EXPECT_HAS | house/@.apps/tear-on/ledger/web_chain.txt | FAUCET\pmina\p10\p1700000000 | the-row-on-the-chain-is-the-one-the-page-was-given
+ENV     | GAME_ARG | mina\p99999999\p1700000001
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tear-on/events/faucet | $T/house | ui
+EXPECT_HAS | house/@.apps/tear-on/play/result.txt | over the cap | a-refused-row-puts-the-rules-reason-on-the-result-file
+RUN | $T/house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | verify | $T/house/@.apps/tear-on/ledger/web_chain.txt
+EXPECT_OUT | OK height=59 | NEGATIVE-a-refused-row-adds-no-block
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_verb.+x | bogus
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-verb-is-refused-by-the-engine
+ENV     | GAME_ARG | mina\p10\p1700000002'x
+RUN | $T/house/@.apps/tear-on/ops/+x/tear_on_verb.+x | faucet
+EXPECT_EXIT | 2 | NEGATIVE-a-quote-in-an-argument-never-reaches-the-op
+RUN | $T/house/&.hq-apps/tear-offline/ops/+x/tear_chain_op.+x | verify | $T/house/@.apps/tear-on/ledger/web_chain.txt
+EXPECT_OUT | OK height=59 | NEGATIVE-neither-refusal-added-a-block
+
+CASE    | the-manifest-covers-every-engine-verb
+SCRATCH |
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $HOUSE/@.apps/tear-on
+EXPECT_EXIT | 0 | verbgen-check-passes-on-the-real-app
+EXPECT_OUT | missing-from-manifest 0, not-in-source 0, no-package 0 | thirteen-engine-verbs-thirteen-manifest-rows-thirteen-pages
+MKDIR   | neg/ops
+COPY    | @.apps/tear-on/ops/tear_on_verb.c | neg/ops/tear_on_verb.c
+COPYDIR | @.apps/tear-on/events | neg/events
+WRITE   | neg/verbs.pdl | GAME \p tear-on \p tear_on_verb \p ops/+x/tear_on_verb.+x \p ops/tear_on_verb.c\nVERB \p pet \p yes \p ui \p name \p hatch\n
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $T/neg
+EXPECT_EXIT | 1 | NEGATIVE-a-manifest-missing-engine-verbs-fails-the-check
