@@ -44,6 +44,22 @@ EXPECT_OUT | FORMULA solar bodies earth R=92 moon R=25 mars R=49 | three-bodies
 EXPECT_OUT | FORMULA solar gap earth-moon 117 | moon-does-not-merge
 EXPECT_OUT | FORMULA solar gap earth-mars 141 | mars-does-not-merge
 
+CASE | pages
+SCRATCH |
+RUN | $HOUSE/@.apps/earth-moth/ops/+x/earth_moth_op.+x | pages | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods | $T
+EXPECT_EXIT | 0 | three-pages-build
+EXPECT_OUT | PAGE | moon-page-named
+RUN | grep | -q | -F | 8,6, | $T/moon/cells.txt
+EXPECT_EXIT | 0 | moon-is-regolith-on-stone
+RUN | grep | -q | -F | 9,6, | $T/mars/cells.txt
+EXPECT_EXIT | 0 | mars-is-dust-on-stone
+RUN | grep | -q | -F | 2,6, | $T/solar/cells.txt
+EXPECT_EXIT | 0 | solar-holds-earth-grass
+RUN | grep | -q | -F | 8,6, | $T/solar/cells.txt
+EXPECT_EXIT | 0 | solar-holds-the-moon
+RUN | grep | -q | -F | 9,6, | $T/solar/cells.txt
+EXPECT_EXIT | 0 | solar-holds-mars
+
 CASE | refused
 SCRATCH |
 RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | pluto

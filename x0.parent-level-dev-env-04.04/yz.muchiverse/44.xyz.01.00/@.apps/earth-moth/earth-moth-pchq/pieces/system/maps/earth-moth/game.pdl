@@ -6,8 +6,14 @@ GAME         | label              | Earth moth
 GAME         | n_chunks           | 1
 GAME         | chunk_0_x          | 0
 GAME         | chunk_0_y          | 0
-GAME         | n_desks            | 2
+GAME         | n_desks            | 5
 GAME         | desk_1_id          | earth
 GAME         | desk_1_label       | earth
 GAME         | desk_2_id          | backup
 GAME         | desk_2_label       | backup
+GAME         | desk_3_id          | moon
+GAME         | desk_3_label       | moon
+GAME         | desk_4_id          | mars
+GAME         | desk_4_label       | mars
+GAME         | desk_5_id          | solar
+GAME         | desk_5_label       | solar

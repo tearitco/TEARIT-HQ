@@ -20,7 +20,7 @@
 #define ETW 4320
 #define ETH 2160
 
-enum { T_EMPTY = 0, T_WATER = 1, T_GRASS = 2, T_SAND = 3, T_SNOW = 4, T_LEAVES = 5, T_STONE = 6, T_DIRT = 7 };
+enum { T_EMPTY = 0, T_WATER = 1, T_GRASS = 2, T_SAND = 3, T_SNOW = 4, T_LEAVES = 5, T_STONE = 6, T_DIRT = 7, T_REGOLITH = 8, T_DUST = 9 };
 
 static const char *TILE_PNG[] = {
     "ITEMS/mcl_core/textures/default_water_source_animated.png",
@@ -31,6 +31,8 @@ static const char *TILE_PNG[] = {
 static const char *LEAVES_PNG = "ITEMS/mcl_core/textures/default_leaves.png";
 static const char *STONE_PNG = "ITEMS/mcl_core/textures/default_stone.png";
 static const char *DIRT_PNG = "ITEMS/mcl_core/textures/default_dirt.png";
+static const char *REGOLITH_PNG = "ITEMS/mcl_core/textures/default_gravel.png";
+static const char *DUST_PNG = "ITEMS/mcl_core/textures/mcl_core_red_sand.png";
 
 static int nglyph;
 static char gly[96];
@@ -447,6 +449,150 @@ static int animals_op(const char *etopo, const char *ledger) {
     return 0;
 }
 
+/* Radii match planet_ball_op. Moon and Mars have no height grid on disk,
+ * so their relief is the chord. Earth on the solar page still reads ETOPO. */
+#define R_MOON 25.0
+#define R_MARS 49.0
+#define SOLAR_N 256
+
+static int chord_tile(const int16_t *e, int x, int y, double cx, double cy, double R, int kind, int *hh, int *dep) {
+    double dx = x - cx, dy = cy - y, dist, z, lat, lon;
+    int elev, tile, up, dn;
+    dist = hypot(dx, dy);
+    if (dist > R) { *hh = 0; if (dep) *dep = 0; return T_EMPTY; }
+    z = sqrt(1.0 - (dist / R) * (dist / R));
+    up = (int)lround(z * R);
+    if (up < 1) up = 1;
+    dn = up;
+    if (kind == 0 && e) {
+        lon = (dx / R) * 180.0;
+        lat = (dy / R) * 90.0;
+        elev = elev_at(e, lat, lon);
+        if (elev <= 0) { tile = T_WATER; if (up > 6) up -= 5; }
+        else if (lat > 66.0 || lat < -58.0 || elev > 2200) tile = T_SNOW;
+        else if (elev < 80) tile = T_SAND;
+        else tile = T_GRASS;
+    } else if (kind == 1) tile = T_REGOLITH;
+    else tile = T_DUST;
+    init_gly();
+    if (up > nglyph) up = nglyph;
+    if (dn > 255) dn = 255;
+    *hh = up;
+    if (dep) *dep = dn;
+    return tile;
+}
+
+static int write_page(const char *dir, int n, const int16_t *e, const char *mine, int solar) {
+    FILE *f;
+    char path[1100];
+    int x, y, sx = 0, sy = 0;
+    int nearth = 0, nmoon = 0, nmars = 0;
+    struct stat ms;
+    const double ecx = 94.0, ecy = 94.0, mcx = 211.0, mcy = 94.0, acx = 206.0, acy = 206.0;
+    if (mkdir(dir, 0755) != 0 && errno != EEXIST) return 5;
+    snprintf(path, sizeof path, "%s/cells.txt", dir);
+    f = fopen(path, "w");
+    if (!f) return 5;
+    fprintf(f, "width=%d\nheight=%d\ntile_px=16\natlas_cols=8\natlas_tiles=16\nevent_lift=1\ncells\n", n, n);
+    for (y = 0; y < n; y++) {
+        for (x = 0; x < n; x++) {
+            int h = 0, dep = 0, tile = T_EMPTY;
+            double cx, cy, R;
+            int kind;
+            if (!solar) {
+                cx = (n - 1) / 2.0; cy = cx; R = (n > 80) ? R_MARS : R_MOON; kind = (n > 80) ? 2 : 1;
+                tile = chord_tile(e, x, y, cx, cy, R, kind, &h, &dep);
+            } else {
+                double de = hypot(x - ecx, y - ecy), dm = hypot(x - mcx, y - mcy), da = hypot(x - acx, y - acy);
+                if (de <= R_BALL && de <= dm && de <= da) { tile = chord_tile(e, x, y, ecx, ecy, R_BALL, 0, &h, &dep); nearth++; }
+                else if (dm <= R_MOON && dm <= da) { tile = chord_tile(e, x, y, mcx, mcy, R_MOON, 1, &h, &dep); nmoon++; }
+                else if (da <= R_MARS) { tile = chord_tile(e, x, y, acx, acy, R_MARS, 2, &h, &dep); nmars++; }
+            }
+            if (!solar && tile != T_EMPTY) { if (tile == T_REGOLITH) nmoon++; else nmars++; }
+            if (tile == T_EMPTY) fprintf(f, "%s0,0", x ? " " : "");
+            else fprintf(f, "%s%d,%d,%d", x ? " " : "", tile, T_STONE, dep);
+            (void)sx; (void)sy;
+        }
+        fputc('\n', f);
+    }
+    fclose(f);
+    if (!solar) { sx = n / 2; sy = n / 2; }
+    else { sx = (int)ecx; sy = (int)ecy; }
+    snprintf(path, sizeof path, "%s/cells.rgba", dir);
+    f = fopen(path, "w");
+    if (!f) return 5;
+    for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
+    for (x = 0; x < 4; x++) blit16(f, mine, TILE_PNG[x]);
+    blit16(f, mine, LEAVES_PNG);
+    blit16(f, mine, STONE_PNG);
+    blit16(f, mine, DIRT_PNG);
+    blit16(f, mine, REGOLITH_PNG);
+    blit16(f, mine, DUST_PNG);
+    for (x = 10; x < 16; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
+    fclose(f);
+    snprintf(path, sizeof path, "%s/map.txt", dir);
+    f = fopen(path, "w");
+    if (!f) return 5;
+    for (y = 0; y < n; y++) {
+        for (x = 0; x < n; x++) {
+            int h = 0, tile;
+            if (!solar) {
+                double cx = (n - 1) / 2.0;
+                tile = chord_tile(e, x, y, cx, cx, (n > 80) ? R_MARS : R_MOON, (n > 80) ? 2 : 1, &h, NULL);
+            } else {
+                double de = hypot(x - ecx, y - ecy), dm = hypot(x - mcx, y - mcy), da = hypot(x - acx, y - acy);
+                if (de <= R_BALL && de <= dm && de <= da) tile = chord_tile(e, x, y, ecx, ecy, R_BALL, 0, &h, NULL);
+                else if (dm <= R_MOON && dm <= da) tile = chord_tile(e, x, y, mcx, mcy, R_MOON, 1, &h, NULL);
+                else if (da <= R_MARS) tile = chord_tile(e, x, y, acx, acy, R_MARS, 2, &h, NULL);
+                else tile = T_EMPTY;
+            }
+            fputc(tile == T_EMPTY ? '.' : hglyph(h), f);
+        }
+        fputc('\n', f);
+    }
+    fclose(f);
+    snprintf(path, sizeof path, "%s/extrusion.pdl", dir);
+    f = fopen(path, "w");
+    if (!f) return 5;
+    fputs("EXTRUDE | . | 1\n", f);
+    init_gly();
+    for (x = 1; x <= nglyph; x++) fprintf(f, "EXTRUDE | %c | %d\n", hglyph(x), x);
+    fclose(f);
+    snprintf(path, sizeof path, "%s/events.txt", dir);
+    f = fopen(path, "w");
+    if (!f) return 5;
+    fprintf(f, "%d %d 210 170 120 block 0 2 1\n", sx, sy);
+    fclose(f);
+    snprintf(path, sizeof path, "%s/view.pdl", dir);
+    f = fopen(path, "w");
+    if (f) { fprintf(f, "start | %d %d\n", sx, sy); fclose(f); }
+    snprintf(path, sizeof path, "%s/cells.marker", dir);
+    {
+        int restart = (stat(path, &ms) == 0 && ms.st_size >= 4096);
+        f = fopen(path, restart ? "w" : "a");
+        if (f) { fputc('1', f); fclose(f); }
+    }
+    printf("PAGE %s spawn=%d,%d earth=%d moon=%d mars=%d\n", dir, sx, sy, nearth, nmoon, nmars);
+    return 0;
+}
+
+static int pages_op(const char *etopo, const char *mine, const char *maps) {
+    int16_t *e = load_etopo(etopo);
+    char path[1100];
+    int rc;
+    if (!e) { printf("fail etopo\n"); return 5; }
+    snprintf(path, sizeof path, "%s/moon", maps);
+    rc = write_page(path, 64, e, mine, 0);
+    if (rc) { free(e); return rc; }
+    snprintf(path, sizeof path, "%s/mars", maps);
+    rc = write_page(path, 112, e, mine, 0);
+    if (rc) { free(e); return rc; }
+    snprintf(path, sizeof path, "%s/solar", maps);
+    rc = write_page(path, SOLAR_N, e, mine, 1);
+    free(e);
+    return rc;
+}
+
 /* Same chord as cell_of, and the chunk formula from pc_generate_chunk:
  * z == surface is the tile, the next three are dirt, the rest is stone.
  * A desk column cannot store that stack, so the wall slot is stone. */
@@ -472,11 +618,13 @@ int main(int argc, char **argv) {
         if (argc != 2) { fprintf(stderr, "fail formula\n"); return 2; }
         return formula_op();
     }
+    if (argc >= 5 && !strcmp(cmd, "pages")) return pages_op(argv[2], argv[3], argv[4]);
     if (argc >= 6 && !strcmp(cmd, "desk")) return desk(argv[2], argv[3], argv[4], argv[5]);
     if (argc >= 4 && !strcmp(cmd, "spawn")) return ensure_ledger(argv[2], argv[3]);
     if (argc >= 5 && !strcmp(cmd, "step")) return step_op(argv[2], argv[3], argv[4]);
     if (argc >= 4 && !strcmp(cmd, "animals")) return animals_op(argv[2], argv[3]);
     fprintf(stderr, "usage: earth_moth_op formula\n"
+                    "       earth_moth_op pages <etopo> <mineclonia-mods> <maps-dir>\n"
                     "       earth_moth_op desk <etopo> <mineclonia-mods> <ledger> <deskdir>\n"
                     "       earth_moth_op spawn <etopo> <ledger>\n"
                     "       earth_moth_op step <etopo> <ledger> n|e|s|w\n"
