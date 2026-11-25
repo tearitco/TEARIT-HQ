@@ -8,3 +8,5 @@ GAMEKEY      | right | 1001
 GAMEKEY      | up | 1002
 GAMEKEY      | down | 1003
 GAMEKEY      | jump | 32
+GAMEKEY      | mine | 98
+GAMEKEY      | place | 103

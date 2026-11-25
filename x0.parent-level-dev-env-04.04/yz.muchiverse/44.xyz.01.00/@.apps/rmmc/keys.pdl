@@ -5,6 +5,8 @@ KEYVERB | right | walk | e
 KEYVERB | up    | walk | n
 KEYVERB | down  | walk | s
 KEYVERB | jump  | jump | -
+KEYVERB | mine  | mine | -
+KEYVERB | place | place | -
 # RULE rows: poll_ms = how often the driver looks at the relay file; idle_after_ms = how long after the last key the pose goes back to idle (the ledger has no clock, so the DRIVER owns the expiry: it re-projects with --idle)
 RULE | poll_ms | 100
 RULE | idle_after_ms | 400
