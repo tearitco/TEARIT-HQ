@@ -670,6 +670,29 @@ static int move_op(const char *map, const char *ledger, const char *which) {
     return 0;
 }
 
+static int step_op(const char *map, const char *ledger, const char *dir) {
+    int *g, w, h, sx, sy, x, y, rc, dx = 0, dy = 0, nx, ny;
+    FILE *f;
+    if (!strcmp(dir, "e")) dx = 1;
+    else if (!strcmp(dir, "s")) dy = 1;
+    else if (!strcmp(dir, "w")) dx = -1;
+    else if (!strcmp(dir, "n")) dy = -1;
+    else { printf("fail dir\n"); return 2; }
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    where(ledger, sx, sy, &x, &y);
+    nx = x + dx; ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= w || ny >= h) { free(g); printf("fail edge\n"); return 4; }
+    if (!land(g[ny * w + nx])) { free(g); printf("fail water\n"); return 4; }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "MOVE | %d | %d | %s\n", nx, ny, dir);
+    fclose(f);
+    printf("step=%d,%d %s\n", nx, ny, dir);
+    free(g);
+    return 0;
+}
+
 static int approach_mineral(const char *map, const char *ledger) {
     int *g, w, h, sx, sy, x, y, mx, my, rc, i, n = 0;
     int *seen, *qx, *qy, *px, *py, qh, qt;
@@ -914,6 +937,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "desk") && argc == 4) return desk(argv[2], argv[3], NULL);
     if (!strcmp(argv[1], "desk") && argc == 5) return desk(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "move") && argc == 5) return move_op(argv[2], argv[3], argv[4]);
+    if (!strcmp(argv[1], "step") && argc == 5) return step_op(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
     if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "place") && argc == 4) return place_op(argv[2], argv[3]);

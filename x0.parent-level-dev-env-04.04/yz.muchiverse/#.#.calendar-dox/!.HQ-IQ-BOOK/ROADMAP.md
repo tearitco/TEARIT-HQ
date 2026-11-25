@@ -110,6 +110,8 @@ An orbit is not a cell. It is a row: which body, an altitude, an angle. The ship
 
 The same travel exists on the flat map before any globe. The owner wants a lot of space flight, and a 2D picture of it: black space cells on the map, satellites, and a flight to the Moon or Mars. Those are later rows, not a new generator. A space cell is a kind, the way water is a kind. A satellite is a row with a position. A flight is a row that leaves the land cells and enters the black cells, then a landing row that arrives on another body's seed. The 2D desk paints the black the same way it paints water. The 3D globe, when it exists, reads those same rows. Do not add the black cells or the satellites while the proof is still one flat chunk.
 
+**A chosen step (2026-11-25).** `step` takes `n`, `e`, `s`, or `w` and appends a `MOVE`. North off the top of seed 1 writes nothing. East is `5,0`. `gen 1 64 64` passes `check`. The board keys are not bound to this verb yet. Not on the open window.
+
 **Fog (2026-11-25).** A cell is seen when it is the human start or a `MOVE`, or a 4-way neighbor of those. The desk paints the rest as tile 14 (`?`). An agent step does not clear fog. One land step changes the picture. Deleting `map.txt` and running `desk` again writes the same fog. Not on the open window. Not the black space of a later flight.
 
 **Place survives a rebuilt desk (2026-11-25).** `place` appends `PLACE` only on the cell you stand on, and only after `DIG`. A second place writes nothing. The dug mineral becomes tile 13 (`+`). Deleting `map.txt` and running `desk` again writes the same glyph. Not on the open window.

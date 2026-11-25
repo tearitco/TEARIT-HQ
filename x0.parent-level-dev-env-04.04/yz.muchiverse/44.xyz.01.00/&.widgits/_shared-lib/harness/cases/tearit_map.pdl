@@ -151,6 +151,19 @@ RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/fog1 | $T/fog-walk.txt
 EXPECT_EXIT | 0 | fog rebuilt
 RUN | cmp | -s | $T/fog1/map.txt | $T/fog1.keep
 EXPECT_EXIT | 0 | the same fog comes back
+RUN | rm | -f | $T/step.txt
+EXPECT_EXIT | 0 | step ledger cleared
+RUN | $T/tearit_map_op.+x | step | $T/a.txt | $T/step.txt | n
+EXPECT_EXIT | 4 | north off the map is refused
+RUN | test | ! | -s | $T/step.txt
+EXPECT_EXIT | 0 | a refused step writes nothing
+RUN | $T/tearit_map_op.+x | step | $T/a.txt | $T/step.txt | e
+EXPECT_EXIT | 0 | east is a chosen step
+EXPECT_OUT | step=5,0 | seed 1 east leaves the start
+RUN | $T/tearit_map_op.+x | gen | 1 | 64 | 64 | $T/wide64.txt
+EXPECT_EXIT | 0 | a 64 map writes
+RUN | $T/tearit_map_op.+x | check | $T/wide64.txt
+EXPECT_EXIT | 0 | the 64 map passes check
 RUN | rm | -f | $T/pl.txt
 EXPECT_EXIT | 0 | place ledger cleared
 RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt
