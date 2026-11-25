@@ -102,7 +102,7 @@ There is no date on the finish line. It arrives when that stranger session exist
 
 **Leverage now (2026-11-24).** One seeded map op, 16×16, with water and a mineral column, a desk that is 2D and 3D, and a harness that fails when a byte changes. Walk, found-city, dig, fog, a second seat, a city stamp, and the web view all read those same rows later. A geology sim, a Minecraft import, or a new civ app does not create that reuse.
 
-**City and dig on one desk (2026-11-25).** One ledger: `FOUND | 4 | 0 | desert`, three steps, `DIG | 2 | 1`. The desk file has `C` and no `*`. Cell 4,0 is tile 10. Cell 2,1 is grass. A rewrite while the window stayed open left the magenta tile up. After a relaunch, `board-2d-both.png` shows the gold cell and no magenta. The board does not always redraw a cell change from the marker alone.
+**City and dig on one desk (2026-11-25).** One ledger: `FOUND | 4 | 0 | desert`, three steps, `DIG | 2 | 1`. The desk file has `C` and no `*`. Cell 4,0 is tile 10. Cell 2,1 is grass. A rewrite while the window stayed open left the magenta tile up. The 2D view reloads when `cells.txt` changes size, not when only the marker grows. `desk` now appends one marker byte and a pad line, so the file grows. Without a relaunch, `board-2d-reload.png` dropped the gold cell, and `board-2d-reload2.png` brought it back with the mineral still dug.
 
 **A city is on the board (2026-11-25).** `FOUND | 4 | 0 | desert` on seed 1. A position on water cell 0,0 is refused (exit 4). After a relaunch the 2D dump `board-2d-city.png` shows a gold cell at the top of the land and the magenta mineral again, because that desk does not include the earlier DIG row. Commit follows the op.
 

@@ -529,15 +529,23 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     }
     snprintf(path, sizeof path, "%s/cells.marker", dir);
     {
-        FILE *m = fopen(path, "r");
-        int n = 0;
-        char b[4000];
-        if (m) { n = (int)fread(b, 1, sizeof b, m); fclose(m); }
-        if (n < 4000) n++;
-        m = fopen(path, "w");
+        /* The 3D view reloads when cells.marker grows (append one byte). The 2D view reloads when cells.txt changes size or mtime, and a same-second rewrite of the same length stays stale. A pad line as long as the marker makes cells.txt grow too. */
+        FILE *m = fopen(path, "a");
+        int n = 1;
+        struct stat ms;
         if (!m) { free(g); return 5; }
-        for (i = 0; i < n; i++) fputc('m', m);
+        fputc('m', m);
         fclose(m);
+        if (stat(path, &ms) == 0 && ms.st_size > 0 && ms.st_size < 4000) n = (int)ms.st_size;
+        snprintf(path, sizeof path, "%s/cells.txt", dir);
+        m = fopen(path, "a");
+        if (m) {
+            int k;
+            fputc('#', m);
+            for (k = 0; k < n; k++) fputc('.', m);
+            fputc('\n', m);
+            fclose(m);
+        }
         printf("desk=%s marker=%d\n", dir, n);
     }
     free(g);
