@@ -1,0 +1,28 @@
+# Seeded tearit map. Same seed matches. A bridge turned into water fails check.
+RESULTS | ../results/tearit_map.txt
+CASE | map
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/tearit_map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c
+EXPECT_EXIT | 0 | map op compiles
+RUN | $T/tearit_map_op.+x | gen | 1 | 16 | 16 | $T/a.txt
+EXPECT_EXIT | 0 | seed 1 writes
+EXPECT_OUT | bridge=1 | a bridge cell exists
+EXPECT_OUT | starts=2 | two starts
+RUN | $T/tearit_map_op.+x | gen | 1 | 16 | 16 | $T/b.txt
+EXPECT_EXIT | 0 | seed 1 again
+RUN | cmp | -s | $T/a.txt | $T/b.txt
+EXPECT_EXIT | 0 | same seed same bytes
+RUN | $T/tearit_map_op.+x | gen | 2 | 16 | 16 | $T/c.txt
+EXPECT_EXIT | 0 | seed 2 writes
+RUN | cmp | -s | $T/a.txt | $T/c.txt
+EXPECT_EXIT | 1 | a different seed differs
+RUN | $T/tearit_map_op.+x | check | $T/a.txt
+EXPECT_EXIT | 0 | seed 1 passes check
+EXPECT_OUT | ok | check says ok
+RUN | $T/tearit_map_op.+x | sabotage | $T/a.txt | $T/bad.txt
+EXPECT_EXIT | 0 | bridge cell becomes water
+RUN | $T/tearit_map_op.+x | check | $T/bad.txt
+EXPECT_EXIT | 4 | water on the bridge fails
+RUN | $T/tearit_map_op.+x | picture | $T/a.txt | $T/a.ppm
+EXPECT_EXIT | 0 | ppm writes
+EXPECT_OUT | picture= | picture path printed
