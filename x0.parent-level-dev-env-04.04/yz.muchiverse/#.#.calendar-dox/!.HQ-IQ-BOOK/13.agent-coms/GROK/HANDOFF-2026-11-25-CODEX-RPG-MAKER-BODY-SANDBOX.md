@@ -68,6 +68,10 @@ Key `2` was then sent with `board_ctl engine-key`. It did what the key does: `ca
 
 So key `2` is on, and the picture is not ready to present as the video. Still missing, in this order: the eye has to stand on a cell the ray can hit, the top face has to be a grass tile and the side a dirt tile (the video's cube, not one tile on every face), the body has to be the RPG Maker charset in front of that camera, and break / place are not verbs yet. Do not record a presentation of the sky frame.
 
+Later the same night the 3D daemon (pid 1246366) had exited, so dumps after 05:28 were the frozen sky frame even after `bv_state.txt` changed. A one-shot `bv_render_3d` plus `bv_compose_frame` in session `1795602987-684836` painted a new frame. The xelector is at 32,32 with `pos_z=35`. On a painted desk the renderer rewrites that as `pos_z - floor_z - 1` (floor_z is 16), so the anchor is 18, which is the solid layer in `board_full_z18.txt`. HUD then reads `pos 32,32,19`, `z=19`, `poss hero_01`. The picture (`/tmp/rmmc-live.png`, copy `XO/31.Nov/nov-25/3.rmc-expected/9-pov2-field.png`) is mode 2 behind a cyan box: a grass strip, a raised grass platform, and a dark floor. `arrow_config.txt` for this host is `tp_distance=7`, `tp_height=9`, `tp_look_down_deg=48`, `use_gpu_render=1`. `cam_home.txt` still says `107 68 0 89` (the Earth camera). A long-lived renderer subtracts that home from the file values, which is why pan 0 put the eye off the map. A fresh process stores the file values as the new home and the first frame's offset is zero.
+
+The cyan box is the event color `40 90 200`, not the charset. `Actor1_0_2_1.rgba` is on disk (1536 bytes) under `#.NNEST_ASSETS/tsots-characters/frames/`. The GPU scene still drew the flat box. `maker_view=1` (what key `7` writes) did not change the pixels of the next render. Break and place are still not verbs. Do not narrate this frame as the video.
+
 Reference frames from the video, and the house dump that is not one of them, are in `XO/31.Nov/nov-25/3.rmc-expected/`.
 
 ## The body
