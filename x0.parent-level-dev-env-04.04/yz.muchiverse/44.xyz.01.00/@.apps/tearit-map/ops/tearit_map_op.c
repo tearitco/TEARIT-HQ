@@ -1308,12 +1308,46 @@ static int hut_op(const char *map, const char *ledger) {
     return 0;
 }
 
-/* One beat of the other seat's life: open the hut, found once, otherwise walk. */
-static int roam_op(const char *map, const char *ledger) {
-    int *g, w, h, sx, sy, s2x, s2y, ax, ay, hx, hy, px, py, rc, i;
+/* First step of a land path from (ax,ay) to (hx,hy). Water and the human cell are walls. */
+static int step_path(int *g, int w, int h, int ax, int ay, int hx, int hy, int px, int py, int *nx, int *ny) {
     const int dx[4] = { 1, 0, -1, 0 };
     const int dy[4] = { 0, 1, 0, -1 };
-    int best = -1, bestd = 0;
+    int *prev, *qx, *qy, qh = 0, qt = 0, i, found = 0;
+    if (ax == hx && ay == hy) return 0;
+    prev = malloc((size_t)w * h * sizeof(int));
+    qx = malloc((size_t)w * h * sizeof(int));
+    qy = malloc((size_t)w * h * sizeof(int));
+    if (!prev || !qx || !qy) { free(prev); free(qx); free(qy); return 0; }
+    for (i = 0; i < w * h; i++) prev[i] = -1;
+    prev[ay * w + ax] = ay * w + ax;
+    qx[qt] = ax; qy[qt] = ay; qt++;
+    while (qh < qt && !found) {
+        int cx = qx[qh], cy = qy[qh];
+        qh++;
+        for (i = 0; i < 4; i++) {
+            int xx = cx + dx[i], yy = cy + dy[i], id;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            if (!land(g[yy * w + xx]) || (xx == px && yy == py)) continue;
+            id = yy * w + xx;
+            if (prev[id] >= 0) continue;
+            prev[id] = cy * w + cx;
+            if (xx == hx && yy == hy) { found = 1; break; }
+            qx[qt] = xx; qy[qt] = yy; qt++;
+        }
+    }
+    if (!found) { free(prev); free(qx); free(qy); return 0; }
+    {
+        int id = hy * w + hx, p;
+        while ((p = prev[id]) != ay * w + ax && p != id) id = p;
+        *nx = id % w; *ny = id / w;
+    }
+    free(prev); free(qx); free(qy);
+    return 1;
+}
+
+/* One beat of the other seat's life: open the hut, found once, otherwise walk. */
+static int roam_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, s2x, s2y, ax, ay, hx, hy, px, py, nx, ny, rc;
     FILE *f;
     rc = load_map(map, &g, &w, &h, &sx, &sy);
     if (rc) return rc;
@@ -1329,19 +1363,10 @@ static int roam_op(const char *map, const char *ledger) {
     } else if (opened(ledger, 1) && !agent_founded(ledger) && land(g[ay * w + ax]) && !(ax == px && ay == py) && !ledger_has_found(ledger, ax, ay)) {
         fprintf(f, "FOUND | %d | %d | agent\n", ax, ay);
         printf("roam=found %d,%d\n", ax, ay);
-    } else {
-        bestd = (ax > hx ? ax - hx : hx - ax) + (ay > hy ? ay - hy : hy - ay);
-        for (i = 0; i < 4; i++) {
-            int xx = ax + dx[i], yy = ay + dy[i], d;
-            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-            if (!land(g[yy * w + xx]) || (xx == px && yy == py)) continue;
-            d = (xx > hx ? xx - hx : hx - xx) + (yy > hy ? yy - hy : hy - yy);
-            if (best < 0 || d < bestd) { best = i; bestd = d; }
-        }
-        if (best < 0) { fclose(f); free(g); printf("fail roam\n"); return 4; }
-        fprintf(f, "AGENT | %d | %d | near\n", ax + dx[best], ay + dy[best]);
-        printf("roam=walk %d,%d\n", ax + dx[best], ay + dy[best]);
-    }
+    } else if (step_path(g, w, h, ax, ay, hx, hy, px, py, &nx, &ny)) {
+        fprintf(f, "AGENT | %d | %d | near\n", nx, ny);
+        printf("roam=walk %d,%d\n", nx, ny);
+    } else { fclose(f); free(g); printf("fail roam\n"); return 4; }
     fclose(f);
     free(g);
     return 0;
