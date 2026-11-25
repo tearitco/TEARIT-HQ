@@ -102,6 +102,8 @@ There is no date on the finish line. It arrives when that stranger session exist
 
 **Leverage now (2026-11-24).** One seeded map op, 16×16, with water and a mineral column, a desk that is 2D and 3D, and a harness that fails when a byte changes. Walk, found-city, dig, fog, a second seat, a city stamp, and the web view all read those same rows later. A geology sim, a Minecraft import, or a new civ app does not create that reuse.
 
+**A city is on the board (2026-11-25).** `FOUND | 4 | 0 | desert` on seed 1. A position on water cell 0,0 is refused (exit 4). After a relaunch the 2D dump `board-2d-city.png` shows a gold cell at the top of the land and the magenta mineral again, because that desk does not include the earlier DIG row. Commit follows the op.
+
 **Dig is on the board (2026-11-25).** Seed 1, cell 2,1. `approach` then `dig` wrote `DIG | 2 | 1`. The desk has no `*` after that. `XO/31.Nov/nov-24/grok-24/1.seed-map/board-2d-dug.png` is the same window at z=1 and the magenta cell is gone. Not a second clip.
 
 **First clip exists (2026-11-25), not a public post.** `XO/31.Nov/nov-24/grok-24/1.seed-map/seed-map.mp4` is 6 seconds. The window title is Tearit map. The 2D dump at z=1 shows the magenta mineral. The 3D dump is the same desk. English Kokoro, mean volume -22.8 dB, max -6.9 dB. Japanese line on the frame. Seed 1 written twice matched. It is two held window dumps, not a walked turn. Actor1 and Kokoro are not cleared for a public post. Photo steps: `13.agent-coms/GROK/ONBOARD-GROK.md`.

@@ -445,6 +445,7 @@ static int ledger_has_dig(const char *ledger, int x, int y) {
     return 0;
 }
 
+static int ledger_has_found(const char *ledger, int x, int y);
 static int desk(const char *in, const char *dir, const char *ledger) {
     FILE *f = fopen(in, "r");
     char line[256], kind[32], path[512];
@@ -471,11 +472,15 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     if (mx >= 0 && my >= 0 && mx < w && my < h) {
         g[my * w + mx] = ledger_has_dig(ledger, mx, my) ? GRASS : 9;
     }
+    if (ledger) {
+        for (y = 0; y < h; y++) for (x = 0; x < w; x++)
+            if (ledger_has_found(ledger, x, y)) g[y * w + x] = 10;
+    }
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=10\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=11\ncells\n", w, h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
         fputc('\n', f);
@@ -484,11 +489,11 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < 11; i++) {
         int pxs;
-        unsigned char r = i < 9 ? rgb[i][0] : 180;
-        unsigned char gg = i < 9 ? rgb[i][1] : 40;
-        unsigned char b = i < 9 ? rgb[i][2] : 200;
+        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : 240);
+        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : 200);
+        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : 40);
         for (pxs = 0; pxs < 16; pxs++) {
             fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
         }
@@ -498,7 +503,10 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
     for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) fputc(g[y * w + x] == 9 ? '*' : glyph[g[y * w + x]], f);
+        for (x = 0; x < w; x++) {
+            int k = g[y * w + x];
+            fputc(k == 9 ? '*' : k == 10 ? 'C' : glyph[k], f);
+        }
         fputc('\n', f);
     }
     fclose(f);
