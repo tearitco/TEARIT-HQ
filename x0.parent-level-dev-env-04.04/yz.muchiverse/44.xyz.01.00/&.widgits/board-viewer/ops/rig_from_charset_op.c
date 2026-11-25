@@ -15,6 +15,7 @@
  *   torso = middle half of the torso rows; side = the outer sleeve_side_frac columns of the torso rows: if side is skin-like the arm is skin and the sleeve is the torso colour,
  *   else arm = sleeve = side; leg = legs minus the bottom shoe_frac; shoe = the bottom shoe_frac of the legs; face = the commonest non-skin non-hair pixel of the eye band (omitted if none).
  * Exit: 0 written | 2 usage / bad arguments | 3 no opaque pixel in the chosen block | 4 PNG unreadable | 5 settings file missing or unusable | 6 output not written.
+* Also writes <out minus .pdl>.skin.csv: a Minecraft-style SKIN (part,face,u,v,r,g,b: head 8x8x8, torso 8x12x4, limbs 4x12x4, every face sampled from the four standing frames) for the voxel-model rig renderer.
  * The output is written to <out>.tmp and renamed, so a failed run leaves no half file.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o ops/+x/rig_from_charset_op.+x ops/rig_from_charset_op.c -lpng -lz -lm
  */
@@ -157,6 +158,24 @@ static int find_chin(int fw, int miny, int maxy) {
     g_face_top = best_start; return best_last;
 }
 
+/* ---- SKIN (owner 2026-11-25: "wrapping skin ... more than one colour as a pattern of the sprite ... it's CSV"): a Minecraft-style skin, one colour per surface voxel of every limb, sampled from the four standing frames
+ * (rows: 0 down = front, 1 left, 2 right, 3 up = back). Written as CSV beside the rig file (<name>.skin.csv): `part,face,u,v,r,g,b`. Parts and their voxel boxes (w x h x d, Minecraft's): head 8x8x8, torso 8x12x4,
+ * rarm / larm 4x12x4, rleg / lleg 4x12x4. Faces: F front (w x h), B back (w x h), L left (d x h), R right (d x h), T top (w x d), D bottom (w x d). u runs left to right and v top to bottom AS SEEN FROM OUTSIDE the
+ * face. rarm / rleg are the figure's right limbs (on the viewer's LEFT in the front frame, on the viewer's RIGHT in the back frame). A cell is the average of the opaque, non-outline pixels under it
+ * (outline pixels only when nothing else is there); a cell with no pixel takes the part's base colour. The renderer turns this into small voxel models (one box slot per limb, the box size is the scale). */
+static int g_frow, g_fh_;
+static void set_frame(int row, int by, int fh) { g_fy = by + row * fh; g_frow = row; g_fh_ = fh; }
+static void cell_avg(int x0, int y0, int x1, int y1, const int base[3], int out[3]) {
+    for (int pass = 0; pass < 2; pass++) { long r = 0, g = 0, b = 0, n = 0;
+        for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) { const unsigned char *p = P(x, y); if (!opaque(p) || (!pass && outline(p))) continue; r += p[0]; g += p[1]; b += p[2]; n++; }
+        if (n) { out[0] = (int)(r / n); out[1] = (int)(g / n); out[2] = (int)(b / n); return; } }
+    memcpy(out, base, 3 * sizeof(int)); }
+static void face_out(FILE *o, const char *part, char face, int w, int h, int x0, int y0, int x1, int y1, const int base[3]) {
+    if (x1 <= x0) x1 = x0 + 1; if (y1 <= y0) y1 = y0 + 1;
+    for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) {
+        int ax = x0 + u * (x1 - x0) / w, bx = x0 + (u + 1) * (x1 - x0) / w, ay = y0 + v * (y1 - y0) / h, by_ = y0 + (v + 1) * (y1 - y0) / h; if (bx <= ax) bx = ax + 1; if (by_ <= ay) by_ = ay + 1;
+        int c[3]; cell_avg(ax, ay, bx, by_, base, c); fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); } }
+static void flat_out(FILE *o, const char *part, char face, int w, int h, const int c[3]) { for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); }
 int main(int argc, char **argv) {
     if (argc < 4 || argc > 5) { fprintf(stderr, "usage: rig_from_charset_op <charset.png> <char_index 0..7> <out_rig.pdl> [convert.pdl]\n"); return 2; }
     char *end; long idx = strtol(argv[2], &end, 10);
@@ -229,6 +248,34 @@ int main(int argc, char **argv) {
             int sc = (p[2] - p[0] > p[1] - p[0]) ? p[2] - p[0] : p[1] - p[0], lum = p[0] + p[1] + p[2];
             if (sc > best) { best = sc; iris[0] = p[0]; iris[1] = p[1]; iris[2] = p[2]; has_iris = 1; } else if (!has_iris && lum < dk) { dk = lum; iris[0] = p[0]; iris[1] = p[1]; iris[2] = p[2]; } } }
 
+    {   /* the SKIN CSV beside the rig file: rig_x.pdl -> rig_x.skin.csv */
+        char sp[4300], st[4400]; snprintf(sp, sizeof sp, "%s", argv[3]); char *dot = strrchr(sp, '.'); if (dot && !strcmp(dot, ".pdl")) *dot = 0; strncat(sp, ".skin.csv", sizeof sp - strlen(sp) - 1); snprintf(st, sizeof st, "%s.tmp", sp);
+        FILE *so = fopen(st, "w"); if (!so) { free(img); return 6; }
+        fputs("part,face,u,v,r,g,b\n", so);
+        const int *hc = has_hair ? hair : skin;
+        for (int k = 0; k < 2; k++) {              /* front (down frame) and back (up frame): the viewer-left limb is the figure's right in the front frame, the figure's left in the back frame */
+            char fc = k ? 'B' : 'F'; set_frame(k ? 3 : 0, by, fh);
+            int ax0, ax1, bx0, bx1, cx0, cx1; extent(miny, hy1, fw, &ax0, &ax1); extent(hy1, ty1, fw, &bx0, &bx1); extent(ty1, maxy + 1, fw, &cx0, &cx1);
+            int q = (bx1 - bx0 + 1) / 4; if (q < 1) q = 1; int mid = (cx0 + cx1 + 1) / 2;
+            face_out(so, "head", fc, 8, 8, ax0, miny, ax1 + 1, hy1, skin);
+            face_out(so, "torso", fc, 8, 12, bx0 + q, hy1, bx1 + 1 - q, ty1, torso);
+            face_out(so, k ? "larm" : "rarm", fc, 4, 12, bx0, hy1, bx0 + q, ty1, arm);
+            face_out(so, k ? "rarm" : "larm", fc, 4, 12, bx1 + 1 - q, hy1, bx1 + 1, ty1, arm);
+            face_out(so, k ? "lleg" : "rleg", fc, 4, 12, cx0, ty1, mid, maxy + 1, leg);
+            face_out(so, k ? "rleg" : "lleg", fc, 4, 12, mid, ty1, cx1 + 1, maxy + 1, leg); }
+        for (int k = 0; k < 2; k++) {              /* left (row 1) and right (row 2) frames: head, torso and the limbs on the visible side; the hidden faces of a limb are its base colour */
+            char fc = k ? 'R' : 'L', ofc = k ? 'L' : 'R'; set_frame(k ? 2 : 1, by, fh);
+            int ax0, ax1, bx0, bx1, cx0, cx1; extent(miny, hy1, fw, &ax0, &ax1); extent(hy1, ty1, fw, &bx0, &bx1); extent(ty1, maxy + 1, fw, &cx0, &cx1);
+            const char *arm_n = k ? "rarm" : "larm", *arm_o = k ? "larm" : "rarm", *leg_n = k ? "rleg" : "lleg", *leg_o = k ? "lleg" : "rleg";
+            face_out(so, "head", fc, 8, 8, ax0, miny, ax1 + 1, hy1, skin); face_out(so, "torso", fc, 4, 12, bx0, hy1, bx1 + 1, ty1, torso);
+            face_out(so, arm_n, fc, 4, 12, bx0, hy1, bx1 + 1, ty1, arm); face_out(so, leg_n, fc, 4, 12, cx0, ty1, cx1 + 1, maxy + 1, leg);
+            if (!k) { flat_out(so, arm_n, ofc, 4, 12, arm); flat_out(so, arm_o, fc, 4, 12, arm); flat_out(so, leg_n, ofc, 4, 12, leg); flat_out(so, leg_o, fc, 4, 12, leg); } }   /* the hidden faces, once: larm R and rarm L, lleg R and rleg L */
+        flat_out(so, "head", 'T', 8, 8, hc); flat_out(so, "head", 'D', 8, 8, skin); flat_out(so, "torso", 'T', 8, 4, torso); flat_out(so, "torso", 'D', 8, 4, torso);
+        flat_out(so, "rarm", 'T', 4, 4, sleeve); flat_out(so, "larm", 'T', 4, 4, sleeve); flat_out(so, "rarm", 'D', 4, 4, arm); flat_out(so, "larm", 'D', 4, 4, arm);
+        flat_out(so, "rleg", 'T', 4, 4, leg); flat_out(so, "lleg", 'T', 4, 4, leg); flat_out(so, "rleg", 'D', 4, 4, shoe); flat_out(so, "lleg", 'D', 4, 4, shoe);
+        if (fclose(so) || rename(st, sp)) { remove(st); free(img); return 6; }
+        set_frame(0, by, fh);
+    }
     char tmp[4200]; snprintf(tmp, sizeof tmp, "%s.tmp", argv[3]);
     FILE *o = fopen(tmp, "w"); if (!o) { free(img); return 6; }
     fprintf(o, "# rig colours from %s (char %ld, frame %dx%d, figure rows %d..%d) by rig_from_charset_op; no texture, boxes only\n", base, idx, fw, fh, miny, maxy);

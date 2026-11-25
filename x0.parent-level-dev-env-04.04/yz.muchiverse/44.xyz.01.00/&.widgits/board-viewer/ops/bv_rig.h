@@ -121,4 +121,53 @@ static void __attribute__((unused)) bv_rig_colors(const char *dir, const char *c
     }
     memcpy(col, c[s].col, sizeof c[s].col); if (mask) *mask = c[s].mask;
 }
+/* ---- SKIN: voxel models for the limbs (owner 2026-11-25: "didn't we design so we could scale smaller voxels to render? ... more than one colour as a pattern of the sprite ... create it before render").
+ * rig_<name>.skin.csv (written by rig_from_charset_op: `part,face,u,v,r,g,b`) gives every surface voxel of every limb a colour. Each limb is ONE box (one slot of the box list) carrying a dense voxel model
+ * (the shader maps the grid onto the box, so the box size IS the voxel scale: 8x8x8 voxels in a 0.45 block head = Minecraft's 1/16 pixels). Parts in box order: head, torso, rarm, larm, rleg, lleg; faces F B L R T D.
+ * A model is built once per (skin, part, facing) and cached; a skin file is re-read at most once a second. Pure functions: the harness compiles this header alone. */
+#include <math.h>
+typedef struct { unsigned char c[6][6][12][8][3]; int rows; } BvRigSkin;
+static const int BV_RIG_PD[6][3] = { { 8, 8, 8 }, { 8, 12, 4 }, { 4, 12, 4 }, { 4, 12, 4 }, { 4, 12, 4 }, { 4, 12, 4 } };   /* w, h, d */
+static int __attribute__((unused)) bv_rig_skin_parse(const char *path, BvRigSkin *s) {
+    static const char *pn[6] = { "head", "torso", "rarm", "larm", "rleg", "lleg" }; static const char fn[7] = "FBLRTD";
+    memset(s, 0, sizeof *s); FILE *f = fopen(path, "r"); if (!f) return 0; char line[128]; int n = 0;
+    while (fgets(line, sizeof line, f)) { char p[16], fc; int u, v, r, g, b; if (sscanf(line, " %15[^,],%c,%d,%d,%d,%d,%d", p, &fc, &u, &v, &r, &g, &b) != 7) continue;
+        int pi = -1, fi = -1; for (int i = 0; i < 6; i++) if (!strcmp(p, pn[i])) pi = i; for (int i = 0; i < 6; i++) if (fc == fn[i]) fi = i;
+        if (pi < 0 || fi < 0 || u < 0 || u >= 8 || v < 0 || v >= 12) continue;
+        s->c[pi][fi][v][u][0] = (unsigned char)(r & 255); s->c[pi][fi][v][u][1] = (unsigned char)(g & 255); s->c[pi][fi][v][u][2] = (unsigned char)(b & 255); n++; }
+    fclose(f); s->rows = n; return n;
+}
+/* the dense grid of one limb for one facing, compact: out[((z * dim[1] + y) * dim[0] + x) * 4] = r g b a (a 255 = solid, 0 = empty). The figure's frame: wi runs from the figure's RIGHT to its LEFT, di from the FRONT to the BACK,
+ * vi from the top; x east, z south, y up. out must hold 16 * 16 * 16 * 4 bytes. Returns the voxel count. */
+static int __attribute__((unused)) bv_rig_skin_build(const BvRigSkin *s, int part, int fx, int fz, int dim[3], unsigned char *out) {
+    int w = BV_RIG_PD[part][0], h = BV_RIG_PD[part][1], d = BV_RIG_PD[part][2], rx = -fz, rz = fx, GX = fx ? d : w, GZ = fx ? w : d, n = 0;
+    dim[0] = GX; dim[1] = h; dim[2] = GZ; memset(out, 0, (size_t)GX * (size_t)h * (size_t)GZ * 4);
+    for (int vi = 0; vi < h; vi++) for (int di = 0; di < d; di++) for (int wi = 0; wi < w; wi++) {
+        if (!(wi == 0 || wi == w - 1 || di == 0 || di == d - 1 || vi == 0 || vi == h - 1)) continue;            /* a closed shell is enough: the ray meets the surface first */
+        int fc, u, v;
+        if (di == 0) { fc = 0; u = wi; v = vi; } else if (di == d - 1) { fc = 1; u = w - 1 - wi; v = vi; }
+        else if (wi == w - 1) { fc = 2; u = di; v = vi; } else if (wi == 0) { fc = 3; u = d - 1 - di; v = vi; }
+        else { fc = vi == 0 ? 4 : 5; u = wi; v = di; }
+        float lat = (float)wi - (w - 1) / 2.f, fwd = (d - 1) / 2.f - (float)di, wx = -rx * lat + fx * fwd, wz = -rz * lat + fz * fwd;
+        int gx = (int)floorf(wx + (GX - 1) / 2.f + 0.5f), gz = (int)floorf(wz + (GZ - 1) / 2.f + 0.5f), gy = h - 1 - vi; if (gx < 0 || gx >= GX || gz < 0 || gz >= GZ) continue;
+        unsigned char *o = out + (((size_t)gz * (size_t)h + (size_t)gy) * (size_t)GX + (size_t)gx) * 4; const unsigned char *c = s->c[part][fc][v][u];
+        o[0] = c[0]; o[1] = c[1]; o[2] = c[2]; o[3] = 255; n++; }
+    return n;
+}
+/* Cached per (dir, name): the parsed skin and its 6 x 4 models, refreshed once a second. Returns NULL when there is no rig_<name>.skin.csv (the caller keeps the flat-colour rig). */
+typedef struct { int dim[3], built; unsigned char vox[16 * 16 * 16 * 4]; } BvRigModel;
+static const BvRigSkin * __attribute__((unused)) bv_rig_skin_get(const char *dir, const char *charset, int fx, int fz, int part, const unsigned char **vox, int dim[3]) {
+    static struct { char key[4600]; time_t t; int has; BvRigSkin sk; BvRigModel m[6][4]; } c[4]; static int next = 0;
+    char key[4600]; snprintf(key, sizeof key, "%s/%s", dir, charset); time_t now = time(NULL); int s = -1;
+    for (int i = 0; i < 4; i++) if (!strcmp(c[i].key, key)) s = i;
+    if (s < 0 || c[s].t != now) {
+        if (s < 0) { s = next; next = (next + 1) & 3; snprintf(c[s].key, sizeof c[s].key, "%s", key); c[s].has = 0; c[s].t = 0; }
+        char p[4700]; snprintf(p, sizeof p, "%s/rig_%s.skin.csv", dir, charset + 4); BvRigSkin t; int had = c[s].has; int n = bv_rig_skin_parse(p, &t);
+        if (n > 0 && (!had || memcmp(&t, &c[s].sk, sizeof t))) { c[s].sk = t; c[s].has = 1; for (int a = 0; a < 6; a++) for (int b = 0; b < 4; b++) c[s].m[a][b].built = 0; } else if (n <= 0) c[s].has = 0;
+        c[s].t = now; }
+    if (!c[s].has) return NULL;
+    int fi = fx == 1 ? 3 : fx == -1 ? 1 : fz == -1 ? 2 : 0; BvRigModel *m = &c[s].m[part][fi];
+    if (!m->built) { bv_rig_skin_build(&c[s].sk, part, fx, fz, m->dim, m->vox); m->built = 1; }
+    *vox = m->vox; dim[0] = m->dim[0]; dim[1] = m->dim[1]; dim[2] = m->dim[2]; return &c[s].sk;
+}
 #endif
