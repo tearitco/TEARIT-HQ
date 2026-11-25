@@ -34,8 +34,10 @@ SUMTREE | hB | b
 EXPECT_EQ | $hA | $hB | same-input-twice-gives-identical-bytes
 RUN | /usr/bin/stat | -c | %s | $T/a/rmmc/desk/cells.marker
 EXPECT_OUT_IS | 1698 | the-marker-grew-to-old-mod-4000-plus-1-so-the-engine-reloads
-RUN | /usr/bin/stat | -c | %s | $T/a/rmmc/desk/events.txt
-EXPECT_OUT_IS | 0 | events-txt-is-empty
+RUN | /usr/bin/grep | -c | tree: | $T/a/rmmc/desk/events.txt
+EXPECT_OUT_IS | 5 | events-txt-has-one-tree-event-per-tree-on-land-tree-mode-events
+RUN | /usr/bin/grep | -c | rig: | $T/a/rmmc/desk/events.txt
+EXPECT_OUT_IS | 0 | the-biome-op-writes-no-actor-rows
 RUN | /usr/bin/grep | -c | tile_px=16 | $T/a/rmmc/desk/cells.txt
 EXPECT_OUT_IS | 1 | the-atlas-is-16px-blocks
 RUN | /usr/bin/grep | -c | ^SLOT | $T/a/rmmc/desk/legend.txt

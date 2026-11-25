@@ -21,3 +21,6 @@ GAMEKEY      | slot7 | 55
 GAMEKEY      | slot8 | 56
 GAMEKEY      | slot9 | 57
 GAMEKEY      | page | 48
+
+KEY          | pov_mode_1_alt     | 112       # 'p'  first person (Minecraft view) while the hotbar owns the digits
+KEY          | pov_mode_2_alt     | 111       # 'o'  third person

@@ -171,16 +171,18 @@ static void set_frame(int row, int by, int fh) { g_fy = by + row * fh; g_frow = 
  *   skin_detail_frac     0 = off; else a minority colour that covers at least this fraction of the cell's pixels and differs from the dominant by more than skin_detail_dist WINS (keeps an eye or a mouth that is a third of a cell)
  *   skin_detail_dist     colour distance (sum of channel differences) a minority must exceed to count as detail
  *   skin_outline_frac    0 = outline (very dark) pixels only count when nothing else is in the cell; else a cell whose opaque pixels are at least this fraction outline becomes the outline colour (crisp edges, a dark seam between limbs)
+ *   skin_hand_rows 0..4  the last N rows of each ARM (all four sides) and the bottom face are the SKIN tone: the hand. The sprite's hands are a few pixels under the torso band that the arm cells sample, so without this the arm ends in the sleeve colour (0 = off)
  *   skin_limb_rows 0 | 1 1 = arms and legs get ONE colour per row across their width (no pixel flecks: a limb is only about 3 sprite pixels wide, so a cell would be one pixel plus its outline); torso and head stay per cell
  *   skin_darken          0..1, multiplies every skin cell's brightness by (1 - value) on the SIDE faces L and R and the bottom D only, a cheap shading cue (0 = off) */
-typedef struct { int mode, quant; double detail_frac, detail_dist, outline_frac, darken; int limb_rows; } Skn;
-static Skn SK = { 0, 4, 0, 60, 0, 0, 0 };
+typedef struct { int mode, quant; double detail_frac, detail_dist, outline_frac, darken; int limb_rows, hand_rows; } Skn;
+static Skn SK = { 0, 4, 0, 60, 0, 0, 0, 0 };
+static int g_hand[3];   /* the skin tone, set by main before the faces are written */
 static void load_skin(const char *path) {
     FILE *f = fopen(path, "r"); if (!f) return; char line[256];
     while (fgets(line, sizeof line, f)) {
         char a[16], key[64]; double v; if (sscanf(line, " %15[^| ] | %63[^| ] | %lf", a, key, &v) != 3 || strcmp(a, "CONVERT")) continue;
         if (!strcmp(key, "skin_mode")) SK.mode = (int)v; else if (!strcmp(key, "skin_quant")) SK.quant = (int)v; else if (!strcmp(key, "skin_detail_frac")) SK.detail_frac = v;
-        else if (!strcmp(key, "skin_detail_dist")) SK.detail_dist = v; else if (!strcmp(key, "skin_outline_frac")) SK.outline_frac = v; else if (!strcmp(key, "skin_darken")) SK.darken = v; else if (!strcmp(key, "skin_limb_rows")) SK.limb_rows = (int)v; }
+        else if (!strcmp(key, "skin_detail_dist")) SK.detail_dist = v; else if (!strcmp(key, "skin_outline_frac")) SK.outline_frac = v; else if (!strcmp(key, "skin_darken")) SK.darken = v; else if (!strcmp(key, "skin_limb_rows")) SK.limb_rows = (int)v; else if (!strcmp(key, "skin_hand_rows")) SK.hand_rows = (int)v; }
     fclose(f);
     if (SK.mode < 0 || SK.mode > 1) SK.mode = 0; if (SK.quant < 3 || SK.quant > 6) SK.quant = 4;
     if (SK.detail_frac < 0 || SK.detail_frac > 1) SK.detail_frac = 0; if (SK.outline_frac < 0 || SK.outline_frac > 1) SK.outline_frac = 0; if (SK.darken < 0 || SK.darken > 0.8) SK.darken = 0; }
@@ -214,8 +216,8 @@ static void face_out(FILE *o, const char *part, char face, int w, int h, int x0,
     int rowmode = SK.limb_rows && (part[1] == 'a' || part[1] == 'l');   /* rarm larm rleg lleg */
     for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) {
         int ax = x0 + u * (x1 - x0) / w, bx = x0 + (u + 1) * (x1 - x0) / w, ay = y0 + v * (y1 - y0) / h, by_ = y0 + (v + 1) * (y1 - y0) / h;  if (rowmode) { ax = x0; bx = x1; } if (bx <= ax) bx = ax + 1; if (by_ <= ay) by_ = ay + 1;
-        int c[3]; cell_avg(ax, ay, bx, by_, base, c); if (SK.darken > 0 && (face == 'L' || face == 'R' || face == 'D')) for (int q = 0; q < 3; q++) c[q] = (int)(c[q] * (1.0 - SK.darken)); fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); } }
-static void flat_out(FILE *o, const char *part, char face, int w, int h, const int c[3]) { for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); }
+        int c[3]; cell_avg(ax, ay, bx, by_, base, c); if (SK.hand_rows > 0 && part[1] == 'a' && v >= h - SK.hand_rows) memcpy(c, g_hand, sizeof c); if (SK.darken > 0 && (face == 'L' || face == 'R' || face == 'D')) for (int q = 0; q < 3; q++) c[q] = (int)(c[q] * (1.0 - SK.darken)); fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); } }
+static void flat_out(FILE *o, const char *part, char face, int w, int h, const int c[3]) { for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) { const int *cc = (SK.hand_rows > 0 && part[1] == 'a' && face != 'T' && v >= h - SK.hand_rows) ? g_hand : c; fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, cc[0], cc[1], cc[2]); } }
 int main(int argc, char **argv) {
     if (argc < 4 || argc > 5) { fprintf(stderr, "usage: rig_from_charset_op <charset.png> <char_index 0..7> <out_rig.pdl> [convert.pdl]\n"); return 2; }
     char *end; long idx = strtol(argv[2], &end, 10);
@@ -293,7 +295,7 @@ int main(int argc, char **argv) {
         char sp[4300], st[4400]; snprintf(sp, sizeof sp, "%s", argv[3]); char *dot = strrchr(sp, '.'); if (dot && !strcmp(dot, ".pdl")) *dot = 0; strncat(sp, ".skin.csv", sizeof sp - strlen(sp) - 1); snprintf(st, sizeof st, "%s.tmp", sp);
         FILE *so = fopen(st, "w"); if (!so) { free(img); return 6; }
         fputs("part,face,u,v,r,g,b\n", so);
-        const int *hc = has_hair ? hair : skin;
+        const int *hc = has_hair ? hair : skin; memcpy(g_hand, skin, sizeof g_hand);
         for (int k = 0; k < 2; k++) {              /* front (down frame) and back (up frame): the viewer-left limb is the figure's right in the front frame, the figure's left in the back frame */
             char fc = k ? 'B' : 'F'; set_frame(k ? 3 : 0, by, fh);
             int ax0, ax1, bx0, bx1, cx0, cx1; extent(miny, hy1, fw, &ax0, &ax1); extent(hy1, ty1, fw, &bx0, &bx1); extent(ty1, maxy + 1, fw, &cx0, &cx1);
@@ -312,7 +314,7 @@ int main(int argc, char **argv) {
             face_out(so, arm_n, fc, 4, 12, bx0, hy1, bx1 + 1, ty1, arm); face_out(so, leg_n, fc, 4, 12, cx0, ty1, cx1 + 1, maxy + 1, leg);
             if (!k) { flat_out(so, arm_n, ofc, 4, 12, arm); flat_out(so, arm_o, fc, 4, 12, arm); flat_out(so, leg_n, ofc, 4, 12, leg); flat_out(so, leg_o, fc, 4, 12, leg); } }   /* the hidden faces, once: larm R and rarm L, lleg R and rleg L */
         flat_out(so, "head", 'T', 8, 8, hc); flat_out(so, "head", 'D', 8, 8, skin); flat_out(so, "torso", 'T', 8, 4, torso); flat_out(so, "torso", 'D', 8, 4, torso);
-        flat_out(so, "rarm", 'T', 4, 4, sleeve); flat_out(so, "larm", 'T', 4, 4, sleeve); flat_out(so, "rarm", 'D', 4, 4, arm); flat_out(so, "larm", 'D', 4, 4, arm);
+        flat_out(so, "rarm", 'T', 4, 4, sleeve); flat_out(so, "larm", 'T', 4, 4, sleeve); flat_out(so, "rarm", 'D', 4, 4, SK.hand_rows > 0 ? skin : arm); flat_out(so, "larm", 'D', 4, 4, SK.hand_rows > 0 ? skin : arm);
         flat_out(so, "rleg", 'T', 4, 4, leg); flat_out(so, "lleg", 'T', 4, 4, leg); flat_out(so, "rleg", 'D', 4, 4, shoe); flat_out(so, "lleg", 'D', 4, 4, shoe);
         if (fclose(so) || rename(st, sp)) { remove(st); free(img); return 6; }
         set_frame(0, by, fh);

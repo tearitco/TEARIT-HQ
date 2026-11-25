@@ -10,6 +10,9 @@ RULE  | tile_px      | 16
 RULE  | rock_tile    | stone
 RULE  | tree_trunk   | wood_side
 RULE  | tree_leaves  | leaves
+# tree_mode events = a tree is an EVENT (tree:trunk:crown_r:crown_h), drawn as a trunk with a FLOATING crown; columns = the old solid-column tree (leaves from the ground, trunk poking out the top). tree_leaf_rgb = the crown colour, hex.
+RULE  | tree_mode    | events
+RULE  | tree_leaf_rgb | 4f9a34
 # TILE | name | slot | png under the Mineclonia asset root (shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl) | fallback colour if the PNG is missing | tint | overlay
 # The grass top, the leaves and the grass-side overlay are grey in Mineclonia (the game tints them by biome), so they carry a tint here.
 TILE  | grass_top    | 1  | ITEMS/mcl_core/textures/mcl_core_grass_block_top.png      | 5d9a3a | 8cc766 | -

@@ -21,7 +21,7 @@
  *                shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl found by walking up from biomes.pdl, or $RMMC_HOUSE/shared/...). A missing PNG is reported on stderr
  *                ("MISSING asset") and the tile is a FLAT colour (the TILE row's fallback_rgb).
  *   cells.marker projection written last: size = old size mod 4000 + 1 (the engine reloads on a SIZE change); 1 byte when there was none.
- *   events.txt   written empty.
+ *   events.txt   written empty, or (RULE tree_mode events) one `x y r g b tree:<trunk>:<crown_r>:<crown_h> 0 0 0` row per TREE on land; the game adds its own actor rows.
  *   skin.txt     untouched.
  *
  * Rows of biomes.pdl ('#' comment, fields separated by '|', blanks trimmed):
@@ -359,10 +359,12 @@ static int build(const char *biomes_path, const char *dir) {
             H[i] = h; top[i] = (tc && h >= capfrom) ? tc : tt; side[i] = ts;
         }
     }
+    int tree_events = !strcmp(rule(bk, "tree_mode", "columns"), "events");
     for (int ti = 0; ti < bk->ntr; ti++) {
         Tree *t = &bk->tr[ti];
         if (t->cx < 0 || t->cy < 0 || t->cx >= W || t->cy >= Hh || !land[(size_t)t->cy * W + t->cx]) continue;
         int ground = H[(size_t)t->cy * W + t->cx];
+        if (tree_events) continue;     /* RULE tree_mode events: the tree is an EVENT (tree:<trunk>:<crown_r>:<crown_h>, the engine draws a trunk and a floating crown), the ground stays as painted */
         for (int dy = -t->crown_r; dy <= t->crown_r; dy++) for (int dx = -t->crown_r; dx <= t->crown_r; dx++) {
             int x = t->cx + dx, y = t->cy + dy; if (x < 0 || y < 0 || x >= W || y >= Hh || !land[(size_t)y * W + x]) continue;
             size_t i = (size_t)y * W + x;
@@ -421,7 +423,12 @@ static int build(const char *biomes_path, const char *dir) {
         snprintf(p, sizeof p, "%s/%s", dir, out[k].name); FILE *f = fopen(p, "wb"); if (!f) { fprintf(stderr, "rmmc_biome_op: cannot write %s\n", p); return 3; }
         fwrite(out[k].data, 1, out[k].n, f); fclose(f);
     }
-    snprintf(p, sizeof p, "%s/events.txt", dir); FILE *f = fopen(p, "wb"); if (f) fclose(f);
+    snprintf(p, sizeof p, "%s/events.txt", dir); FILE *f = fopen(p, "wb");
+    if (f && tree_events) {        /* one event row per TREE on land: `x y r g b tree:<trunk>:<crown_r>:<crown_h> 0 0 0` (r g b = the leaf colour, RULE tree_leaf_rgb as hex); actors are added by the game, never here */
+        unsigned lv = 0x4f9a34; sscanf(rule(bk, "tree_leaf_rgb", "4f9a34"), "%x", &lv);
+        for (int ti = 0; ti < bk->ntr; ti++) { Tree *t = &bk->tr[ti]; if (t->cx < 0 || t->cy < 0 || t->cx >= W || t->cy >= Hh || !land[(size_t)t->cy * W + t->cx]) continue;
+            fprintf(f, "%d %d %u %u %u tree:%d:%d:%d 0 0 0\n", t->cx, t->cy, (lv >> 16) & 255, (lv >> 8) & 255, lv & 255, t->trunk, t->crown_r, t->crown_h); } }
+    if (f) fclose(f);
     snprintf(p, sizeof p, "%s/cells.marker", dir); f = fopen(p, "wb"); if (f) { for (long i = 0; i < nm; i++) fputc('1', f); fclose(f); }
     int landn = 0; for (size_t i = 0; i < N; i++) landn += land[i];
     int hist[64] = {0}; (void)hist; (void)cmp_int;

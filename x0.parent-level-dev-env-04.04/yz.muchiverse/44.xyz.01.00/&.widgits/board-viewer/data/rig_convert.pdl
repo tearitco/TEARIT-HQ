@@ -34,3 +34,4 @@ CONVERT | skin_detail_dist | 90
 CONVERT | skin_outline_frac | 0.95
 CONVERT | skin_darken | 0.10
 CONVERT | skin_limb_rows | 1
+CONVERT | skin_hand_rows | 2

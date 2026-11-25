@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
             en += (size_t)snprintf(ev + en, 200, "%d %d %d %d %d %s %d %d %d\n", ex, ey, cr, cg, cb2, nm, fl, dir, pat); }
         else en += (size_t)snprintf(ev + en, 600, "%s\n", ln); }
     for (int i = 0; i < ndm; i++) { int st = DM[i].prog < 1 ? 1 : DM[i].prog > 3 ? 3 : DM[i].prog; en += (size_t)snprintf(ev + en, 100, "%d %d 34 26 22 crack:%d 0 2 0\n", DM[i].x, DM[i].z, st); }
-    if (!idle && lastact == 1 && lastdrop[0] && lastx >= 0) { int sl = slot_by_name(lastdrop), cr = 130, cg = 100, cbb = 70; if (sl) tile_avg(seed, sl, &cr, &cg, &cbb); en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d item:%s 0 2 0\n", lastx, lastz, cr, cg, cbb, lastdrop); }
+    if (!idle && lastact == 1 && lastdrop[0] && lastx >= 0) { int sl = slot_by_name(lastdrop), cr = 130, cg = 100, cbb = 70; if (sl) tile_avg(seed, sl, &cr, &cg, &cbb); en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d item:%s 0 2 0\n", lastx, lastz, cr, cg, cbb, lastdrop); en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d chip:6 0 2 0\n", lastx, lastz, cr, cg, cbb); }
     snprintf(p, sizeof p, "%s/cells.txt", out); if (write_atomic(p, cb, cn)) return 5;
     snprintf(p, sizeof p, "%s/map.txt", out); if (write_atomic(p, mb, mn)) return 5;
     snprintf(p, sizeof p, "%s/events.txt", out); if (write_atomic(p, ev, en)) return 5;
