@@ -117,3 +117,18 @@ RUN | $T/tearit_map_op.+x | gen | 1 | 32 | 32 | $T/wide.txt
 EXPECT_EXIT | 0 | a 32 map writes
 RUN | $T/tearit_map_op.+x | check | $T/wide.txt
 EXPECT_EXIT | 0 | the 32 map passes check
+RUN | rm | -f | $T/ag.txt | $T/ag2.txt
+EXPECT_EXIT | 0 | agent ledgers cleared
+RUN | $T/tearit_map_op.+x | agent | $T/a.txt | $T/ag.txt
+EXPECT_EXIT | 0 | one agent step
+EXPECT_OUT | agent= | the step was printed
+RUN | $T/tearit_map_op.+x | agent | $T/a.txt | $T/ag2.txt
+EXPECT_EXIT | 0 | the same step again
+RUN | cmp | -s | $T/ag.txt | $T/ag2.txt
+EXPECT_EXIT | 0 | no model, same step
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ag-before
+EXPECT_EXIT | 0 | desk before the agent
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ag-after | $T/ag.txt
+EXPECT_EXIT | 0 | desk after the agent
+RUN | cmp | -s | $T/ag-before/cells.txt | $T/ag-after/cells.txt
+EXPECT_EXIT | 1 | the agent cell changes the picture

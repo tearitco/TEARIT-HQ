@@ -449,10 +449,11 @@ static int ledger_has_dig(const char *ledger, int x, int y) {
 static int ledger_has_found(const char *ledger, int x, int y);
 static int ration_left(const char *map, const char *ledger, int *cap_out);
 static int where(const char *ledger, int sx, int sy, int *x, int *y);
+static void agent_at(const char *ledger, int sx, int sy, int *x, int *y);
 static int desk(const char *in, const char *dir, const char *ledger) {
     FILE *f = fopen(in, "r");
     char line[256], kind[32], path[512];
-    int w = 0, h = 0, x, y, *g, i, sx = 0, sy = 0, mx = 0, my = 0;
+    int w = 0, h = 0, x, y, *g, i, sx = 0, sy = 0, s2x = -1, s2y = -1, mx = 0, my = 0;
     static const unsigned char rgb[9][3] = {
         { 40, 90, 160 }, { 70, 140, 60 }, { 20, 90, 40 }, { 140, 120, 70 },
         { 120, 120, 120 }, { 190, 170, 90 }, { 60, 160, 170 }, { 200, 180, 80 }, { 120, 70, 40 }
@@ -468,6 +469,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
             int k = cell_kind(kind);
             if (k >= 0 && x >= 0 && y >= 0 && x < w && y < h) g[y * w + x] = k;
         } else if (sscanf(line, "START | 0 | %d | %d", &x, &y) == 2) { sx = x; sy = y; }
+        else if (sscanf(line, "START | 1 | %d | %d", &x, &y) == 2) { s2x = x; s2y = y; }
         else if (sscanf(line, "MINERAL | %d | %d", &x, &y) == 2) { mx = x; my = y; }
     }
     fclose(f);
@@ -483,11 +485,15 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     if (ledger) where(ledger, sx, sy, &px, &py);
     rat = ration_left(in, ledger, &cap);
     if (ledger && rat < cap && g[py * w + px] != 10) g[py * w + px] = 11;
+    int ax = s2x, ay = s2y;
+    if (ledger && s2x >= 0) agent_at(ledger, s2x, s2y, &ax, &ay);
+    if (ledger && ax >= 0 && ay >= 0 && ax < w && ay < h && g[ay * w + ax] != 10 && g[ay * w + ax] != 11)
+        g[ay * w + ax] = 12;
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=12\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=13\ncells\n", w, h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
         fputc('\n', f);
@@ -496,11 +502,11 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 12; i++) {
+    for (i = 0; i < 13; i++) {
         int pxs;
-        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : 90);
-        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : 40);
-        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : 30);
+        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : 40);
+        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : 80);
+        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : 220);
         for (pxs = 0; pxs < 16; pxs++) {
             fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
         }
@@ -512,7 +518,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             int k = g[y * w + x];
-            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : glyph[k], f);
+            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : k == 12 ? 'A' : glyph[k], f);
         }
         fputc('\n', f);
     }
@@ -533,6 +539,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         fprintf(f, "%d %d %d %d %d block 0 2 1\n", px, py, rr, gg, bb);
     }
     fprintf(f, "%d %d 180 80 200 block 0 2 1\n", mx, my);
+    if (ax >= 0 && ay >= 0) fprintf(f, "%d %d 40 80 220 block 0 2 1\n", ax, ay);
     fclose(f);
     snprintf(path, sizeof path, "%s/map.ppm", dir);
     {
@@ -751,6 +758,62 @@ static int body_op(const char *map, const char *ledger, int eat) {
     return 0;
 }
 
+static void agent_at(const char *ledger, int sx, int sy, int *x, int *y) {
+    FILE *f;
+    char line[256];
+    int a, b;
+    *x = sx;
+    *y = sy;
+    if (!ledger) return;
+    f = fopen(ledger, "r");
+    if (!f) return;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "AGENT | %d | %d", &a, &b) == 2) { *x = a; *y = b; }
+    }
+    fclose(f);
+}
+
+static int start_n(const char *map, int which, int *x, int *y) {
+    FILE *f = fopen(map, "r");
+    char line[256];
+    int n, a, b;
+    if (!f) return 5;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "START | %d | %d | %d", &n, &a, &b) == 3 && n == which) {
+            *x = a; *y = b; fclose(f); return 0;
+        }
+    }
+    fclose(f);
+    return 4;
+}
+
+static int agent_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, hx, hy, ax, ay, s2x, s2y, i, rc, nx = 0, ny = 0, found = 0;
+    const int dx[4] = { 1, 0, -1, 0 };
+    const int dy[4] = { 0, 1, 0, -1 };
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    if (start_n(map, 1, &s2x, &s2y)) { free(g); printf("fail start\n"); return 4; }
+    where(ledger, sx, sy, &hx, &hy);
+    agent_at(ledger, s2x, s2y, &ax, &ay);
+    for (i = 0; i < 4; i++) {
+        int xx = ax + dx[i], yy = ay + dy[i];
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        if (!land(g[yy * w + xx])) continue;
+        if (xx == hx && yy == hy) continue;
+        nx = xx; ny = yy; found = 1; break;
+    }
+    if (!found) { free(g); printf("fail no-step\n"); return 4; }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "AGENT | %d | %d | step\n", nx, ny);
+    fclose(f);
+    printf("agent=%d,%d\n", nx, ny);
+    free(g);
+    return 0;
+}
+
 static int dig_op(const char *map, const char *ledger) {
     int *g, w, h, sx, sy, x, y, mx, my, rc;
     FILE *f;
@@ -795,5 +858,6 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "found") && argc == 4) return found_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "eat") && argc == 4) return body_op(argv[2], argv[3], 1);
     if (!strcmp(argv[1], "sleep") && argc == 4) return body_op(argv[2], argv[3], 0);
+    if (!strcmp(argv[1], "agent") && argc == 4) return agent_op(argv[2], argv[3]);
     return 2;
 }
