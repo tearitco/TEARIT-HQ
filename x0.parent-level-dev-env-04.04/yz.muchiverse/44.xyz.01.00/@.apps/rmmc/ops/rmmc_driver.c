@@ -60,16 +60,19 @@ static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor
     n += (size_t)snprintf(fb + n, cap - n, "gm_on=1\ngm_title=rmmc\ngmt_0_text=%s: %s\ngmt_1_text=seat %s | %s\ngm_nt=2\ngm_nb=0\ngm_ne=0\ngm_nl=0\n", actor, where, seatn, msg);
     n += (size_t)snprintf(fb + n, cap - n, "side_pal=\nside_left=1\nparty_0_label=> %s\nparty_0_id=rmmc_%s\nparty_0_cls=active\nn_party=1\ncoins=0\nnick_line=%s the builder\nstat_line=%s\nstat_line2=seat %s\n", actor, actor, actor, where, seatn);
     int k = 0; char slots[12000] = ""; size_t sn = 0;
+    int page = 0, ri = 0; { char pg[PATH_MAX + 32]; snprintf(pg, sizeof pg, "%.4000s/play/page.txt", book); FILE *pf = fopen(pg, "r"); if (pf) { if (fscanf(pf, "%d", &page) != 1) page = 0; fclose(pf); } if (page < 0) page = 0; }   /* the hotbar shows 9 slots a page and a flip slot: 14 slots are wider than the bar (a PREFERENCE, play/page.txt) */
     snprintf(p, sizeof p, "%.4000s/hotbar.pdl", book); FILE *f = fopen(p, "r");
     while (f && fgets(line, sizeof line, f)) {
-        char a[16], item[64], label[64], spr[128] = ""; int nf = sscanf(line, " %15[^| ] | %63[^| ] | %63[^|\n] | %127[^|\n]", a, item, label, spr); if (nf < 3 || strcmp(a, "SLOT")) continue;
+        char a[16], item[64], label[64], spr[128] = ""; int nf = sscanf(line, " %15[^| ] | %63[^| ] | %63[^|\n] | %127[^|\n]", a, item, label, spr); if (nf < 3 || strcmp(a, "SLOT")) continue; if (ri++ / 9 != page) continue;
         for (char *e = spr + strlen(spr); e > spr && (e[-1] == ' ' || e[-1] == '\t'); ) *--e = 0;
         for (char *e = label + strlen(label); e > label && (e[-1] == ' ' || e[-1] == '\t'); ) *--e = 0;
         if (sn + 400 > sizeof slots) break;
         char cnt[24] = ""; { int bc = bag_count(item); if (bc > 0) snprintf(cnt, sizeof cnt, "  x%d", bc); }
-        sn += (size_t)snprintf(slots + sn, sizeof slots - sn, "gmbar_%d_label=%s%s%s\ngmbar_%d_sprite=%s%s%s\ngmbar_%d_act=sh -c \"'%s/ops/+x/rmmc_pick_op.+x' %s\"\n", k, !strcmp(pick, item) ? "> " : "", label, cnt, k, spr[0] ? book : "", spr[0] ? "/" : "", spr, k, book, item); k++;
+        char shown[48]; snprintf(shown, sizeof shown, "%s%s", !strcmp(pick, item) ? "> " : "", cnt[0] ? cnt + 2 : "·");   /* count only, as a Minecraft hotbar: a label with the item name made 14 slots wider than the bar */
+        sn += (size_t)snprintf(slots + sn, sizeof slots - sn, "gmbar_%d_label=%s%s%s\ngmbar_%d_sprite=%s%s%s\ngmbar_%d_act=sh -c \"'%s/ops/+x/rmmc_pick_op.+x' %s\"\n", k, "", shown, "", k, spr[0] ? book : "", spr[0] ? "/" : "", spr, k, book, item); k++;
     }
     if (f) fclose(f);
+    if (ri > 9) sn += (size_t)snprintf(slots + sn, sizeof slots - sn, "gmbar_%d_label=»  more\ngmbar_%d_sprite=\ngmbar_%d_act=sh -c \"'%s/ops/+x/rmmc_pick_op.+x' __page\"\n", k, k, k, book), k++;
     n += (size_t)snprintf(fb + n, cap - n, "gm_pop=0\ngmbar_on=%s\ngmbar_title=Blocks  (picked: %s)\ngmbar_min_act=void\ngmbar_n=%d\n%s", k ? "1" : "", pick[0] ? pick : "none", k, slots);
     return (int)(n < cap ? n : cap - 1);
 }

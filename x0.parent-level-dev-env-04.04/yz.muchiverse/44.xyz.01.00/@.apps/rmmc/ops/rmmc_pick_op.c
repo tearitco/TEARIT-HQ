@@ -12,6 +12,7 @@
 int main(int argc, char **argv) {
     if (argc != 2) { fprintf(stderr, "usage: rmmc_pick_op <item>\n"); return 2; }
     const char *item = argv[1];
+    int flip = !strcmp(item, "__page");   /* the hotbar page flip: not an item, a PREFERENCE (play/page.txt) */
     if (!*item || strlen(item) > 40) { fprintf(stderr, "rmmc_pick_op: bad item\n"); return 2; }
     for (const char *c = item; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) { fprintf(stderr, "rmmc_pick_op: bad item\n"); return 2; }
     char self[PATH_MAX]; if (!realpath(argv[0], self)) return 2;
@@ -20,11 +21,14 @@ int main(int argc, char **argv) {
     char hp[PATH_MAX + 32]; snprintf(hp, sizeof hp, "%s/hotbar.pdl", book);
     FILE *f = fopen(hp, "r"); if (!f) { fprintf(stderr, "rmmc_pick_op: %s missing\n", hp); return 3; }
     char line[256]; int ok = 0;
+    int nslots = 0;
     while (fgets(line, sizeof line, f)) {
-        char a[16], b[64]; if (sscanf(line, " %15[^| ] | %63[^| ]", a, b) != 2 || strcmp(a, "SLOT")) continue;
+        char a[16], b[64]; if (sscanf(line, " %15[^| ] | %63[^| ]", a, b) != 2 || strcmp(a, "SLOT")) continue; nslots++;
         if (!strcmp(b, item)) { ok = 1; break; }
     }
     fclose(f);
+    if (flip) { char dir2[PATH_MAX + 32], p2[PATH_MAX + 48], t2[PATH_MAX + 56]; snprintf(dir2, sizeof dir2, "%s/play", book); mkdir(dir2, 0755); snprintf(p2, sizeof p2, "%s/page.txt", dir2); snprintf(t2, sizeof t2, "%s.tmp", p2); int pg = 0; FILE *rf = fopen(p2, "r"); if (rf) { if (fscanf(rf, "%d", &pg) != 1) pg = 0; fclose(rf); } int pages = (nslots + 8) / 9; if (pages < 1) pages = 1; pg = (pg + 1) % pages;
+        FILE *o2 = fopen(t2, "w"); if (!o2) return 6; fprintf(o2, "%d\n", pg); if (fclose(o2) || rename(t2, p2)) { remove(t2); return 6; } printf("page %d\n", pg); return 0; }
     if (!ok) { fprintf(stderr, "rmmc_pick_op: %s is not a hotbar slot\n", item); return 2; }
     char dir[PATH_MAX + 32], p[PATH_MAX + 48], t[PATH_MAX + 56]; snprintf(dir, sizeof dir, "%s/play", book); mkdir(dir, 0755);
     snprintf(p, sizeof p, "%s/pick.txt", dir); snprintf(t, sizeof t, "%s.tmp", p);
